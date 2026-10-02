@@ -290,34 +290,5 @@ def test_the_verifiers_sampling_derivation_equals_the_builders_residence_derivat
         assert b0 == pytest.approx(v0, abs=2e-5) and b1 == pytest.approx(v1, abs=2e-5)
 
 
-def test_the_verifier_detects_a_disagreement_with_the_stored_contacts():
-    """verify_aspect_span_contacts RAISES when the stored contacts differ from the sampled truth."""
-    class _Cur:
-        def __init__(self, rows):
-            self._rows = rows
-
-        def fetchall(self):
-            return self._rows
-
-    class _Conn:
-        def __init__(self, rows):
-            self.rows = rows
-
-        def execute(self, sql, params=()):
-            return _Cur(self.rows)
-
-    obligations = ["marriage|p3|1.0.0|sun|aspect|signature_house|span:1|lagna|native"]
-    truth = [(_dt(a), _dt(b)) for a, b in [(60.0, 150.0), (168.0, 228.0)]]
-    ok = ver.verify_aspect_span_contacts(
-        _Conn(truth), chart_id="c", generation="5.0", obligations=obligations,
-        position_at=_probe, horizon=(_dt(0.0), _dt(300.0)))
-    assert ok == {"objects_checked": 1, "occurrences": 2}
-    with pytest.raises(RuntimeError, match="DISAGREE"):
-        ver.verify_aspect_span_contacts(
-            _Conn(truth[:1]), chart_id="c", generation="5.0", obligations=obligations,
-            position_at=_probe, horizon=(_dt(0.0), _dt(300.0)))
-    shifted = [(truth[0][0] + timedelta(hours=1), truth[0][1]), truth[1]]
-    with pytest.raises(RuntimeError, match="differ by more than"):
-        ver.verify_aspect_span_contacts(
-            _Conn(shifted), chart_id="c", generation="5.0", obligations=obligations,
-            position_at=_probe, horizon=(_dt(0.0), _dt(300.0)))
+# R10-6: the fixed-tolerance `verify_aspect_span_contacts` comparison (3 s / 6 h) is REMOVED — the derived-tolerance, union-of-contacts
+# certification (`contact_certify`, tests/l3/gochara/test_a53_r10_boundary_contract.py) covers aspect-to-span contacts.

@@ -60,6 +60,9 @@ def sha(b: bytes) -> str:
 WH = {W1: sha(W1_BYTES), W2: sha(W2_BYTES)}     # an asset with a writer: a PASS hashes ALL its census-listed writer files
 W3 = "platform/python-sidecar/pipeline/orchestrator/writers/bg_third.py"     # committed, NOT in the census's writer_files
 W4 = "platform/python-sidecar/pipeline/orchestrator/writers/bg_untracked.py"  # in the census's writer_files, never committed
+DECL_REL = "platform/scripts/governance/asset_declarations.json"
+DECL_BYTES = b'{"version": "1.7.0", "assets": {}}\n'
+DECL_SHA = hashlib.sha256(DECL_BYTES).hexdigest()
 COMMIT_DATE = "2026-09-30T10:00:00+05:30"                                      # before RUN: the census postdates the writers
 TOOL_COMMIT = "a" * 40
 CENSUS_DIR_REL = "00_ARCHITECTURE/control/census"
@@ -80,7 +83,7 @@ def make_repo(path, files=None, date=COMMIT_DATE):
     """A git repo whose census dir exists, with `files` ({relpath: bytes}) committed at `date`."""
     path.mkdir(parents=True, exist_ok=True)
     git(path, "init", "-q")
-    for rel, b in (files or {}).items():
+    for rel, b in {DECL_REL: DECL_BYTES, **(files or {})}.items():
         f = path / rel
         f.parent.mkdir(parents=True, exist_ok=True)
         f.write_bytes(b)
@@ -128,7 +131,7 @@ def ledger(tmp_path):
 
 def stamp(**over):
     d = dict(registry_revision=ac.REGISTRY_REVISION, registry_fingerprint=ac.registry_fingerprint(),
-             tool_commit=TOOL_COMMIT)
+             tool_commit=TOOL_COMMIT, declarations_sha256=DECL_SHA, declarations_version="1.7.0")
     d.update(over)
     return d
 
@@ -1471,9 +1474,11 @@ def test_unserialisable_facts_on_an_addition_and_a_nan_evidence_are_refusals(led
 
 EXPECTED_CURRENCY = {"verdict", "criterion_version", "registry_revision", "registry_fingerprint",
                      "detector", "writer_hashes", "writer_hashes_verified", "writer_hashes_reason", "upstream_cert_ids",
-                     "semantic_fingerprint", "na", "basis", "inconclusive", "transitive_only"}
+                     "semantic_fingerprint", "na", "basis", "inconclusive", "transitive_only", "citation_state",
+                     "declarations_sha256"}
 PROVENANCE_ONLY = {"evidence", "job_image_tag", "verified_by", "verified_on", "cross_checked", "prev_sha256", "seq", "cert_id",
-                   "cert_key", "generation", "asset", "layer", "kind", "gate", "criterion", "record_version"}
+                   "cert_key", "generation", "asset", "layer", "kind", "gate", "criterion", "record_version",
+                   "citation_state_caveat", "declarations_version"}                    # derived from citation_state + verdict + criterion: not independent
 
 
 def test_the_currency_fields_are_exactly_the_documented_set_and_provenance_is_excluded():
@@ -2390,7 +2395,7 @@ def test_verify_reads_an_applicability_na_with_no_cell_and_refuses_a_non_na_over
     cert_in_repo(fresh_repo, **na_kw(None))
     commit_all(fresh_repo)
     assert nc.verify_ledger_census_hashes(fresh_repo, "HEAD")["status"] == "PASS"
-    doctor(fresh_repo, verdict="PASS")
+    doctor(fresh_repo, verdict="PASS", citation_state_caveat=True)       # a PASS on Ldgr.source_presence with no state: caveat
     with pytest.raises(nc.CertificationRefused) as ei:
         nc.verify_ledger_census_hashes(fresh_repo, "HEAD")
     assert ei.value.code == "census_verdict_mismatch" and "no cell" in str(ei.value)

@@ -7,6 +7,7 @@ tests are where a shape change shows.
 """
 from __future__ import annotations
 
+from ._disposable_db_guard import UnsafeAdminDSN, guarded_admin_connect  # noqa: E402
 import os
 import json
 import uuid
@@ -211,7 +212,9 @@ BUILDER_GRANT_MIGRATIONS = ("1216_gochara_contract_builder_grants.sql",
                             "1220_gochara_contract_builder_function_execute.sql",
                             "1234_gochara_eval_window_builder_grants.sql",
                             # Stream B's record replace/finalise grants (draft PR #2940) — replaced my stand-in fixture
-                            "1242_gochara_builder_record_replace_finalise_grants.sql")
+                            "1242_gochara_builder_record_replace_finalise_grants.sql",
+                            # Stream B's verifier/sealer grants (draft PR #2949) — the faithful mirror's verifier/sealer set
+                            "1241_gochara_verifier_sealer_inventory_grants.sql")
 
 
 def create_am5_database(tag="am5", faithful=False):
@@ -220,7 +223,9 @@ def create_am5_database(tag="am5", faithful=False):
     psycopg = pytest.importorskip("psycopg")
     from psycopg.conninfo import make_conninfo
     try:
-        admin = psycopg.connect(ADMIN_DSN, autocommit=True, connect_timeout=3)
+        admin = guarded_admin_connect(ADMIN_DSN, autocommit=True, connect_timeout=3)
+    except UnsafeAdminDSN:
+        raise                    # a hostile admin DSN is a configuration ERROR, never a skip
     except Exception as exc:  # noqa: BLE001
         if os.environ.get("GOCHARA_A53_REQUIRE_DB") == "1":      # CI: an unreachable server is a FAILURE, never a skip
             pytest.fail(f"GOCHARA_A53_REQUIRE_DB=1 but the disposable database server is unreachable ({exc})")
@@ -262,7 +267,8 @@ def _populate_am5_database(conn, faithful=False):
     with conn.cursor() as cur:
         cur.execute("CREATE TABLE public.charts (id uuid PRIMARY KEY)")
         cur.execute("CREATE TABLE public._migrations_applied"
-                    " (filename text PRIMARY KEY, applied_at timestamptz DEFAULT now())")
+                    " (filename text PRIMARY KEY, applied_at timestamptz DEFAULT now(),"
+                    " sha256 text NOT NULL DEFAULT repeat('0', 64))")
         cur.execute("CREATE TABLE public.chart_facts (fact_id text PRIMARY KEY,"
                     " chart_id uuid, ayanamsha_id text, fact_category text, fact_subject text,"
                     " fact_key text,"
@@ -284,14 +290,25 @@ def _populate_am5_database(conn, faithful=False):
             cur.execute("INSERT INTO public.bg_transit_rules (rule_type, graha, primary_house, vedha_house,"
                         " phala, classical_citation) VALUES (%s, %s, %s, %s, 'x', %s)",
                         (rule_type, graha, house, vedha, citation))
+        if faithful:
+            # production-shaped: the LEGACY projection relation exists (1241's post-check names it; the gate's legacy-rows arm reads it)
+            cur.execute("CREATE TABLE public.kala_gochara_windows (id bigserial PRIMARY KEY, chart_id uuid NOT NULL,"
+                        " event_class text, generation text NOT NULL, intensity numeric)")
         # the faithful mirror applies the REAL builder-grant migrations too (R9-4): the restricted builder holds exactly
         # what production gives it (1216 tables, 1220 functions, 1234 window tables/functions) — and, once 1240 adds a
         # CHECK helper, only what 1240 itself grants it
-        for fname in MIGRATION_CHAIN + ["1206_gochara_search_inventory_completeness.sql",
+        for fname in MIGRATION_CHAIN + ["1206_gochara_search_inventory_completeness.sql"] + (
+                ["1232_gochara_search_moon_scope_domain.sql"] if faithful else []) + [
                                         "1240_gochara_window_verification_gate.sql"] + (
                                             list(BUILDER_GRANT_MIGRATIONS) if faithful else []):
+            if not (MIGRATIONS / fname).exists():
+                # (F-R13-3) 1241 is Stream B's, carried by PR #2949 only — this branch holds no copy of it. Until #2949 is on main the
+                # faithful mirror needs that file present in platform/migrations (check it out from the PR branch; never commit it here).
+                pytest.fail(f"{fname} is not in platform/migrations: the faithful mirror applies Stream B's REAL migration (PR #2949 "
+                            "pravaha/b6-1241-verifier-sealer-grants) and this branch carries no copy of it")
             cur.execute((MIGRATIONS / fname).read_text())
-            cur.execute("INSERT INTO public._migrations_applied(filename) VALUES (%s)",
+            cur.execute("INSERT INTO public._migrations_applied(filename)"
+                        " VALUES (%s)",
                         (fname,))
         cur.execute("INSERT INTO public.charts(id) VALUES (%s)", (CHART_ID,))
         subj = {"LAGNA": CHART["lagna_deg"], "SUN": CHART["natal"]["Sun"],
@@ -346,7 +363,8 @@ def _boot(conn, generation, vector=None):
         gk_ledger.publish_candidate(
             conn, CHART_ID, generation, kala,
             # R9-1: these legacy fixtures exercise the qualification policy that applies when numbers are enabled
-            vector or {"rule_registry": "r1", "result_policy": "window_qualification/1"},
+            vector or {"rule_registry": "r1", "result_policy": "window_qualification/1",
+                       "stored_scope": "stored_non_moon"},      # R9-10: a real vector always declares its scope
             {"backend": "swieph"}, f"[{H0.isoformat()},{H1.isoformat()})",
             writer_asset_id="ka_gochara_v5")
     return InventoryStore(conn), sky, kala
@@ -519,8 +537,9 @@ def test_the_verifier_imports_nothing_from_the_builder():
                  "record_store", "gochara_rules", "gochara_kernel")
     bad = {m for m in imported if any(f in m.replace("inventory_verifier", "") for f in forbidden)}
     assert not bad, f"the verifier must be independent of the builder: {bad}"
-    # stdlib only (the aspect-to-span re-derivation needs `datetime.timedelta`)
-    assert imported <= {"__future__", "hashlib", "typing", "decimal", "datetime"}, imported
+    # stdlib only (the aspect-to-span re-derivation needs `datetime.timedelta`; R9-10: `json` reads the
+    # manifest's stored_scope)
+    assert imported <= {"__future__", "hashlib", "typing", "decimal", "datetime", "json"}, imported
 
 
 def test_the_seal_check_sees_exactly_what_is_missing_after_the_builder_alone(am5):

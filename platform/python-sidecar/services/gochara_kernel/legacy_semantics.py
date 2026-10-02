@@ -142,7 +142,6 @@ TARA_MODIFIERS: dict[str, float] = {
     "pratyak": 0.80, "sadhana": 1.05, "naidhana": 0.70, "mitra": 1.15,
     "paramamitra": 1.20,
 }
-NAKSHATRA_ARC_DEG: float = 360.0 / 27.0
 
 # w30_nodal_drishti.py:75-97 — sign vocabulary and 5/7/9 aspect tables.
 W30_SIGN_NAMES: tuple[str, ...] = (
@@ -557,9 +556,14 @@ def resolve_valence_v3(
 # ---------------------------------------------------------------------------
 
 def longitude_to_nakshatra_index(longitude_deg: float) -> int:
-    """w23_tara_bala.py:150-156: floor(lon / (360/27)) + 1, clamped [1,27]."""
-    idx = int(longitude_deg / NAKSHATRA_ARC_DEG) + 1
-    return max(1, min(27, idx))
+    """w23_tara_bala.py:150-156 semantics with EXACT boundary membership (C13): the
+    float quotient `lon / (360/27)` put 7 of the 27 exact boundaries in the preceding
+    nakṣatra; the one exact helper (gochara_rules.kernel_factor.extent_index, integer
+    arcseconds) puts a boundary longitude in the FOLLOWING nakṣatra, seam-safe."""
+    # lazy absolute import: step06b also loads this module by file path (no package
+    # context), and the gochara_rules imports stay lazy everywhere else for the same reason
+    from services.gochara_rules.kernel_factor import NAKSHATRA_ARCSEC, extent_index
+    return extent_index(longitude_deg, None, NAKSHATRA_ARCSEC)
 
 
 def compute_tara(transit_nak_index: int, natal_nak_index: int) -> tuple[str, float]:

@@ -413,3 +413,58 @@ def test_every_reason_the_derivation_can_emit_is_declared_on_the_registry_row():
             emitted |= set(seg["reasons"])
     assert {"obstructor_residence_unknown", "node_obstruction_undecided", "node_residence_unknown"} <= emitted
     assert emitted <= declared, emitted - declared
+
+
+# ── Codex round 8 R8-7 — duplicate node keys; the version-bound structured callback contract ──────────────
+from services.gochara_rules.vedha_derive import check_callback_result, vedha_callback_result
+
+
+def test_a_duplicate_node_key_is_refused_before_the_node_early_return():
+    # the exact reproduction: replace one Rahu row by a duplicate Rahu key — the 36+6 census still passes
+    rahu = [i for i, r in enumerate(ROWS) if r[0] == "rahu"]
+    rows = [list(r) for r in ROWS]
+    rows[rahu[1]][1], rows[rahu[1]][2] = rows[rahu[0]][1], rows[rahu[0]][2]            # same (rahu, house) twice
+    with pytest.raises(VedhaPairsError, match="duplicate"):
+        pairs_from_rows([tuple(r) for r in rows])
+    # and a duplicate Ketu key, and a duplicate classical key, are refused the same way
+    k = [i for i, r in enumerate(ROWS) if r[0] == "ketu"]
+    rows = [list(r) for r in ROWS]; rows[k[2]][1], rows[k[2]][2] = rows[k[0]][1], rows[k[0]][2]
+    with pytest.raises(VedhaPairsError, match="duplicate"):
+        pairs_from_rows([tuple(r) for r in rows])
+
+
+def test_callback_returns_the_requested_reference_boundaries_scopes_and_structured_results():
+    res = base_residence(); res["Mars"] = cov(span(7, "04-20", "05-01")); res["Rahu"] = cov(span(7, "05-01", "05-05"))
+    out = run(res)
+    cb = vedha_callback_result(out, factor_ref=VREF)
+    assert cb["factor"] == VREF and cb["applicable"] is True and all(r["factor"] == VREF for r in cb["results"])
+    assert cb["boundaries"] == ["2025-04-14T00:00Z", "2025-04-20T00:00Z", "2025-05-01T00:00Z", "2025-05-05T00:00Z", "2025-05-15T00:00Z"]
+    assert cb["scopes"] == [MOON_SCOPE]                                                 # the inactive stretches carry the Moon scope
+    assert [r["state"] for r in cb["results"]] == ["inactive", "active", "unqualified", "inactive"]
+    assert check_callback_result(cb, VREF) is cb
+    na = vedha_callback_result(run(base_residence(), "Saturn", 8), factor_ref=VREF)
+    assert na["applicable"] is False and na["boundaries"] == [] and [r["state"] for r in na["results"]] == ["not_applicable"]
+    assert check_callback_result(na, VREF) is na
+
+
+def test_callback_contract_refuses_a_stale_or_mismatched_reference_and_malformed_results():
+    out = run(base_residence())
+    with pytest.raises(ValueError):
+        vedha_callback_result(out, factor_ref=composite_ref("vedha_attenuation", RULE_VERSION))      # the 1.0.0 row declares nothing
+    cb = vedha_callback_result(out, factor_ref=VREF)
+    other = composite_ref("activity_kernel", KERNEL_VERSION)
+    with pytest.raises(ValueError, match="asked for"):
+        check_callback_result(cb, other)                                                                # a different reference than requested
+    with pytest.raises(ValueError, match="returned factor"):
+        check_callback_result({**cb, "factor": other}, VREF)                                           # the top-level echo is wrong, the results' refs are right
+    bad = {**cb, "results": [{**cb["results"][0], "factor": other}]}
+    with pytest.raises(ValueError, match="carries factor"):
+        check_callback_result(bad, VREF)                                                                # the top-level ref is right, a result's is not
+    res = base_residence(); res["Mars"] = cov(span(7, "04-20", "05-01"))
+    gap = vedha_callback_result(run(res), factor_ref=VREF)
+    gap["results"][1] = {**gap["results"][1], "t_in": "2025-04-21T00:00Z"}
+    with pytest.raises(ValueError, match="abut"):
+        check_callback_result(gap, VREF)
+    na = vedha_callback_result(run(base_residence(), "Saturn", 8), factor_ref=VREF)
+    with pytest.raises(ValueError, match="not-applicable"):
+        check_callback_result({**na, "results": na["results"] + na["results"]}, VREF)

@@ -1,6 +1,8 @@
 """WP10 cutover rehearsal gate (remainder brief §7.A) — the step scripts under
-scripts/kala_gochara_cutover/ exercised end-to-end against the disposable
-remainder Postgres (port 55434) on a stripped-down synthetic schema.
+scripts/kala_gochara_cutover/ exercised end-to-end against a uniquely named
+disposable database created per run on the admin DSN's cluster (locally the
+shared disposable remainder Postgres, port 55434; in CI the db-integration
+job's Postgres service, via GOCHARA_WP10_ADMIN_DSN + GOCHARA_WP10_REQUIRE_DB=1).
 
 Synthetic schema only: kala_gochara_windows (migration 460 columns + 527's
 generation + 556's era_slice_key), _v2/build_state stubs (for step 10),
@@ -26,23 +28,41 @@ Per-step coverage:
 Production-refusal: every script refuses a 5433/non-loopback DSN without the
 matching tranche flag (asserted for steps 3 and 6 as representatives).
 
-NOT_RUN (skip with reason) when the disposable DB is unreachable — never a
-fallback to any other DSN.
+NOT_RUN (skip with reason) when the admin database is unreachable and
+GOCHARA_WP10_REQUIRE_DB is unset; a hard FAIL when the flag is set (CI) —
+never a fallback to any other DSN, never a silent pass.
 """
 from __future__ import annotations
 
+from ._disposable_db_guard import UnsafeAdminDSN, guarded_admin_connect  # noqa: E402
 import importlib.util
 import os
 import subprocess
 import sys
+import uuid
 from pathlib import Path
 
 import psycopg
 import pytest
 
-DSN = os.environ.get(
-    "GOCHARA_REMAINDER_DSN", "postgresql://wp6:local@localhost:55434/wp6"
+# C21 (steward M20261002T080256-690e): the fixture takes its ADMIN DSN from
+# GOCHARA_WP10_ADMIN_DSN (the shared disposable cluster's admin database
+# locally, the CI Postgres service in CI) and creates its OWN uniquely named
+# disposable database per run — the shared wp6 database made full-suite runs
+# fail with 'DROP ROLE data_plane_builder … DependentObjectsStillExist'
+# because roles are cluster-global and other databases on the cluster still
+# own objects for the role. With GOCHARA_WP10_REQUIRE_DB=1 an unreachable
+# server FAILS instead of skipping (CI sets it, so a missing server can never
+# read as green); without the flag it skips NOT_RUN with the reason.
+ADMIN_DSN = os.environ.get(
+    "GOCHARA_WP10_ADMIN_DSN", "postgresql://wp6:local@localhost:55434/postgres"
 )
+REQUIRE_DB = os.environ.get("GOCHARA_WP10_REQUIRE_DB") == "1"
+
+# The DSN of THIS RUN's disposable database, bound by the db fixture. Read at
+# call time by the tests (same-module global); only ever points at a database
+# the fixture itself created in this run.
+DSN = None
 
 SIDECAR = Path(__file__).resolve().parents[3]
 CUTOVER = SIDECAR / "scripts" / "kala_gochara_cutover"
@@ -55,10 +75,7 @@ DDL = """
 -- Ledger tables are created by step 4's migration apply (1081) and are NOT
 -- re-created by this fixture; reset them row-wise so every test starts from
 -- a clean ledger (a rolled-back manifest from a prior test must not leak
--- in). Never DROP them: this fixture can share a database with the WP6
--- tests (conftest's session-scoped wp6_schema), and dropping the ledger
--- tables out from under that schema fails downstream WP6 tests with
--- UndefinedTable (§12.5 / F-31 test-isolation).
+-- in). Never DROP them (§12.5 / F-31 test-isolation).
 DO $$
 BEGIN
   IF to_regclass('kala_gochara_convention') IS NOT NULL
@@ -273,10 +290,31 @@ def _apply_step05_repin(conn):
 
 @pytest.fixture()
 def db():
+    """A brand-new uniquely named disposable database per run, on the admin
+    DSN's cluster — never a shared database, and the cluster-global role is
+    never dropped (C21: the _builder_role.py discipline — DROP OWNED BY in
+    the current database only; create the role only if absent; drop only the
+    database this fixture itself created). Refuses by construction to run
+    against a database it did not create: the name is unique per run, so
+    CREATE DATABASE fails rather than touch anyone else's database."""
+    global DSN
     try:
-        conn = psycopg.connect(DSN, autocommit=True, connect_timeout=3)
+        admin = guarded_admin_connect(ADMIN_DSN, autocommit=True, connect_timeout=3)
+    except UnsafeAdminDSN:
+        raise                    # a hostile admin DSN is a configuration ERROR, never a skip
     except Exception as exc:  # noqa: BLE001
-        pytest.skip(f"NOT_RUN: disposable remainder database unreachable ({exc})")
+        if REQUIRE_DB:
+            pytest.fail(
+                f"GOCHARA_WP10_REQUIRE_DB=1: the WP10 cutover suite REQUIRES "
+                f"a reachable Postgres at GOCHARA_WP10_ADMIN_DSN and got: {exc}")
+        pytest.skip(f"NOT_RUN: WP10 admin database unreachable ({exc})")
+    dbname = f"wp10cut_{os.getpid()}_{uuid.uuid4().hex[:8]}"
+    admin.execute(f'CREATE DATABASE "{dbname}"')
+    parts = psycopg.conninfo.conninfo_to_dict(ADMIN_DSN)
+    parts["dbname"] = dbname
+    DSN = psycopg.conninfo.make_conninfo(**parts)
+    admin.close()
+    conn = psycopg.connect(DSN, autocommit=True)
     with conn.cursor() as cur:
         cur.execute(DDL)
         cur.execute(SEED)
@@ -284,14 +322,16 @@ def db():
         BEGIN
           IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'data_plane_builder') THEN
             DROP OWNED BY data_plane_builder;
-            DROP ROLE data_plane_builder;
+          ELSE
+            CREATE ROLE data_plane_builder NOLOGIN;
           END IF;
         END $$""")
-        cur.execute("CREATE ROLE data_plane_builder NOLOGIN")
     yield conn
-    with conn.cursor() as cur:
-        cur.execute("DROP OWNED BY data_plane_builder")
-        cur.execute("DROP ROLE IF EXISTS data_plane_builder")
+    conn.close()
+    admin = guarded_admin_connect(ADMIN_DSN, autocommit=True)
+    admin.execute(f'DROP DATABASE IF EXISTS "{dbname}" WITH (FORCE)')
+    admin.close()
+    DSN = None
 
 
 def _scalar(conn, sql, args=()):

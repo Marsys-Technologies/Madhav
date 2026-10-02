@@ -173,6 +173,11 @@ CREATE TABLE public.ka_gochara_eval_window_verification (
   -- input identity, the manifest vector and policy) as the verifier saw it; the gate recomputes it, so a record
   -- inserted (or a prerequisite/contact/manifest changed) after verification invalidates the stored verification
   derivation_inputs_digest text       NOT NULL,
+  -- R10-4 / AM-24 item 4: the identity of the RUNNER that executed the verification — its code commit, the digest of the
+  -- implementation modules it ran (which must be the ones the manifest vector pinned: the gate compares it to the vector's
+  -- `implementation`), its runtime and login. The database cannot prove the runner computed independently; it records WHAT ran
+  -- and refuses a row that does not name a commit or whose code is not the pinned code.
+  runner_identity         jsonb       NOT NULL,
   verified_at             timestamptz NOT NULL DEFAULT now(),
 
   PRIMARY KEY (chart_id, generation, event_class, path_id, rule_version),
@@ -197,6 +202,9 @@ CREATE TABLE public.ka_gochara_eval_window_verification (
     'travel_event')),
   CONSTRAINT kgewv_ids_nonblank_ck CHECK (btrim(verifier_id) <> '' AND btrim(verifier_version) <> ''
                                           AND btrim(policy_version) <> ''),
+  CONSTRAINT kgewv_runner_identity_ck CHECK (jsonb_typeof(runner_identity) = 'object'
+    AND btrim(COALESCE(runner_identity ->> 'commit', '')) <> ''
+    AND COALESCE(runner_identity ->> 'implementation_digest', '') ~ '^[0-9a-f]{64}$'),
   CONSTRAINT kgewv_status_ck CHECK (status IN ('VERIFIED', 'UNVERIFIED_DYNAMIC', 'FAILED')),
   CONSTRAINT kgewv_counts_ck CHECK (windows_expected >= 0 AND windows_stored >= 0
                                     AND windows_reproduced >= 0 AND windows_unverified >= 0
@@ -296,28 +304,42 @@ RETURNS text LANGUAGE sql STABLE SET search_path = pg_catalog, public AS $$
     FROM expected, unnest(expected.m) AS c), '[]'::jsonb)));
 $$;
 
--- R9-2: the digest of EVERYTHING the window derivation depends on — not just the windows and their member ids. Every record
--- of the grain (identity, agent, relation, kind, role, admission, house, anchor, target, contact, supports), its
--- prerequisite results, the contacts they reference, the snapshot's input identity, the manifest vector (digest) and the
--- result policy. The independent verifier builds the SAME canonical preimage in Python from its own reads; the gate
--- recomputes this one, so any later change to any of it (a record inserted with its membership link omitted, a result
--- flipped, a contact moved, a different manifest) makes the stored verification stale at the seal.
+-- R9-2 / R10-2: the digest of the COMPLETE SEMANTIC DEPENDENCY SET of the window derivation — preimage version 'inputs/2'.
+--   records   every record of the grain: identity, agent, relation, kind, object role, operator role, PROVENANCE, RULING,
+--             admission, house, frame (kind, arg), affected person, anchor, target, contact, support state and supports, and
+--             EVERY result field (evidence for/against, severity — as the text the database prints for the REAL — and the
+--             valence): a post-verification delete+reinsert of a record with a number in it changes this digest;
+--   prerequisites   each record's declared-prerequisite results;
+--   contacts  EVERY contact of the generation (not only those a surviving record references — a contact whose records were
+--             all removed is still a dependency) with the fields the geometry certification reads: identity, body,
+--             relation, target, t_in, t_out, t_exact, solver, delta_lambda, delta_t, precision regime;
+--   input / manifest / policy  the snapshot's input identity, the manifest vector (digest) and the result policy.
+-- The independent verifier builds the SAME canonical preimage in Python from its own reads (`window_gate`); the gate
+-- recomputes this one, so any later change to any of it makes the stored verification stale at the seal.
 CREATE OR REPLACE FUNCTION public.ka_gochara_eval_window_inputs_digest(
   p_chart uuid, p_generation text, p_class text, p_path text, p_version text)
 RETURNS text LANGUAGE sql STABLE SET search_path = pg_catalog, public AS $$
   WITH recs AS (
-    SELECT r.record_id, r.agent, r.relation, r.object_kind, r.operator_role, r.admission_state, r.house_from_frame,
-           r.period_anchor_lord, r.period_anchor_level, r.contact_id, r.temporal_support_intervals, o.canonical_target
+    SELECT r.record_id, r.agent, r.relation, r.object_kind, r.object_role, r.operator_role, r.provenance, r.ruling_ref,
+           r.admission_state, r.house_from_frame, r.frame_kind, r.frame_arg, r.affected_person, r.temporal_support_state,
+           r.period_anchor_lord, r.period_anchor_level, r.contact_id, r.temporal_support_intervals, o.canonical_target,
+           r.evidence_for_occurrence, r.evidence_against_occurrence, r.severity, r.outcome_valence_for_native
     FROM public.ka_gochara_relationship_record r
     JOIN public.ka_gochara_physical_object o ON o.physical_object_id = r.object_id
     WHERE (r.chart_id, r.generation, r.event_class, r.path_id, r.rule_version)
         = (p_chart, p_generation, p_class, p_path, p_version))
   SELECT public.ka_gochara_sha256_hex(public.ka_gochara_canonical_json(jsonb_build_object(
+    'version', 'inputs/2',
     'records', COALESCE((SELECT jsonb_agg(jsonb_build_object(
         'id', r.record_id::text, 'agent', r.agent, 'relation', r.relation, 'kind', r.object_kind,
-        'role', r.operator_role, 'admission', r.admission_state, 'house', r.house_from_frame,
+        'object_role', r.object_role, 'role', r.operator_role, 'provenance', r.provenance, 'ruling', r.ruling_ref,
+        'admission', r.admission_state, 'house', r.house_from_frame,
+        'frame_kind', r.frame_kind, 'frame_arg', r.frame_arg, 'person', r.affected_person,
+        'support_state', r.temporal_support_state,
         'anchor', jsonb_build_array(r.period_anchor_lord, r.period_anchor_level),
         'target', r.canonical_target, 'contact', r.contact_id::text,
+        'evidence_for', r.evidence_for_occurrence::text, 'evidence_against', r.evidence_against_occurrence::text,
+        'severity', r.severity::text, 'valence', r.outcome_valence_for_native,
         'supports', COALESCE((SELECT jsonb_agg(jsonb_build_array(
                        to_char(lower(x) AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"'),
                        to_char(upper(x) AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"')) ORDER BY lower(x))
@@ -328,12 +350,14 @@ RETURNS text LANGUAGE sql STABLE SET search_path = pg_catalog, public AS $$
         ORDER BY pr.record_id::text, pr.ordinal)
       FROM public.ka_gochara_record_prerequisite pr WHERE pr.record_id IN (SELECT record_id FROM recs)), '[]'::jsonb),
     'contacts', COALESCE((SELECT jsonb_agg(jsonb_build_array(
-        c.contact_id::text,
+        c.contact_id::text, c.body, c.relation_kind, o.canonical_target,
         to_char(c.t_in AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"'),
-        to_char(c.t_out AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"')) ORDER BY c.contact_id::text)
+        to_char(c.t_out AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"'),
+        to_char(c.t_exact AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"'),
+        c.solver_method, c.delta_lambda::text, c.delta_t::text, c.precision_regime) ORDER BY c.contact_id::text)
       FROM public.ka_gochara_contact c
-      WHERE c.chart_id = p_chart AND c.generation = p_generation
-        AND c.contact_id IN (SELECT contact_id FROM recs WHERE contact_id IS NOT NULL)), '[]'::jsonb),
+      JOIN public.ka_gochara_physical_object o ON o.physical_object_id = c.physical_object_id
+      WHERE c.chart_id = p_chart AND c.generation = p_generation), '[]'::jsonb),
     'input', (SELECT s.input_digest FROM public.ka_gochara_search_input_snapshot s
               WHERE s.chart_id = p_chart AND s.generation = p_generation),
     'manifest', (SELECT public.ka_gochara_sha256_hex(public.ka_gochara_canonical_json(p.input_generation_vector))
@@ -344,6 +368,23 @@ RETURNS text LANGUAGE sql STABLE SET search_path = pg_catalog, public AS $$
 $$;
 
 -- ── 4. the gates ──────────────────────────────────────────────────────────────
+
+-- R12-1: the LEGACY projection relations (`kala_gochara_contacts`, `kala_gochara_windows`) are not part of the '5.0' candidate: its writer
+-- writes none, publication consumes the first's content and the second's count, and a numeric legacy row would falsify the all-NULL
+-- disclosure. For a governed generation NONE may exist. Dynamic and table-existence-guarded (a relation that does not exist holds no
+-- rows); invoker rights (the caller needs SELECT on the columns it reads — chart_id, generation).
+CREATE OR REPLACE FUNCTION public.ka_gochara_legacy_projection_rows(p_chart uuid, p_generation text)
+RETURNS TABLE (relation text, n bigint) LANGUAGE plpgsql STABLE SET search_path = pg_catalog, public AS $$
+DECLARE t text; c bigint;
+BEGIN
+  FOREACH t IN ARRAY ARRAY['kala_gochara_contacts', 'kala_gochara_windows'] LOOP
+    IF to_regclass('public.' || t) IS NOT NULL THEN
+      EXECUTE format('SELECT count(*) FROM public.%I WHERE chart_id = $1 AND generation = $2', t) INTO c USING p_chart, p_generation;
+      IF c > 0 THEN relation := t; n := c; RETURN NEXT; END IF;
+    END IF;
+  END LOOP;
+END;
+$$;
 
 CREATE OR REPLACE FUNCTION public.ka_gochara_window_verification_violations(p_chart uuid, p_generation text)
 RETURNS TABLE (event_class text, path_id text, rule_version text, violation text, detail text)
@@ -393,27 +434,58 @@ LANGUAGE sql STABLE SET search_path = pg_catalog, public AS $$
   WHERE v.chart_id = p_chart AND v.generation = p_generation
     AND v.policy_version IS DISTINCT FROM (SELECT pol FROM mp)
   UNION ALL
-  SELECT e.event_class, e.path_id, e.rule_version, 'window_policy_differs_from_manifest'::text,
+  -- R11-1: GENERATION-WIDE — every window of the generation, whatever grain it sits in (an excluded / superseded / held
+  -- version's window is not exempt because no verification covers it)
+  SELECT w.event_class, w.path_id, w.rule_version, 'window_policy_differs_from_manifest'::text,
          (count(*) || ' window(s) were drafted under a policy other than the manifest''s')::text
-  FROM expected e
-  JOIN public.ka_gochara_eval_window w
-    ON (w.chart_id, w.generation, w.event_class, w.path_id, w.rule_version)
-     = (p_chart, p_generation, e.event_class, e.path_id, e.rule_version)
-  WHERE w.qualification IS NOT NULL AND (w.qualification ->> 'policy') IS DISTINCT FROM (SELECT pol FROM mp)
-  GROUP BY e.event_class, e.path_id, e.rule_version
+  FROM public.ka_gochara_eval_window w
+  WHERE w.chart_id = p_chart AND w.generation = p_generation
+    AND w.qualification IS NOT NULL AND (w.qualification ->> 'policy') IS DISTINCT FROM (SELECT pol FROM mp)
+  GROUP BY w.event_class, w.path_id, w.rule_version
   UNION ALL
-  -- the all-NULL policy: a window that carries ANY number (or a peak, or a valence other than unqualified) is refused
-  SELECT e.event_class, e.path_id, e.rule_version, 'window_carries_a_number_under_all_null_policy'::text,
+  -- the all-NULL policy: a window that carries ANY number (or a peak, or a valence other than unqualified) is refused —
+  -- in EVERY grain of the generation
+  SELECT w.event_class, w.path_id, w.rule_version, 'window_carries_a_number_under_all_null_policy'::text,
          (count(*) || ' window(s) carry a numerical result or peak while all_null_candidate/1 is in force')::text
-  FROM expected e
-  JOIN public.ka_gochara_eval_window w
-    ON (w.chart_id, w.generation, w.event_class, w.path_id, w.rule_version)
-     = (p_chart, p_generation, e.event_class, e.path_id, e.rule_version)
-  WHERE (SELECT pol FROM mp) = 'all_null_candidate/1'
+  FROM public.ka_gochara_eval_window w
+  WHERE w.chart_id = p_chart AND w.generation = p_generation
+    AND (SELECT pol FROM mp) = 'all_null_candidate/1'
     AND (w.peak_instant IS NOT NULL OR w.score IS NOT NULL OR w.evidence_for IS NOT NULL
          OR w.evidence_against IS NOT NULL OR w.severity IS NOT NULL OR w.objective_value IS NOT NULL
          OR w.outcome_valence_for_native IS DISTINCT FROM 'unqualified')
-  GROUP BY e.event_class, e.path_id, e.rule_version
+  GROUP BY w.event_class, w.path_id, w.rule_version
+  UNION ALL
+  SELECT '*'::text, NULL::text, NULL::text, 'legacy_projection_rows_present'::text,
+         (l.n || ' row(s) in ' || l.relation || ' for this generation — none may exist (the all-NULL candidate''s writer writes none; a numeric legacy row would falsify the all-NULL disclosure)')::text
+  FROM public.ka_gochara_legacy_projection_rows(p_chart, p_generation) l
+  UNION ALL
+  -- R11-1: the generation's PERMITTED OUTPUT GRAINS are exactly the grains its inventory INCLUDES on a windowed path (P1–P4,
+  -- the `expected` CTE). A relationship record, a window or a membership link in ANY other (class, path, version) — a
+  -- sealed-but-superseded version, a held path (P5), a class with no pin — is output nothing verified and nothing digests
+  -- (it may reuse an existing contact, so no contact/inventory digest moves): refused outright.
+  SELECT r.event_class, r.path_id, r.rule_version, 'output_grain_not_permitted'::text,
+         (count(*) || ' relationship record(s) sit in a grain this generation''s inventory does not include')::text
+  FROM public.ka_gochara_relationship_record r
+  WHERE r.chart_id = p_chart AND r.generation = p_generation
+    AND NOT EXISTS (SELECT 1 FROM expected e WHERE (e.event_class, e.path_id, e.rule_version)
+                                                  = (r.event_class, r.path_id, r.rule_version))
+  GROUP BY r.event_class, r.path_id, r.rule_version
+  UNION ALL
+  SELECT w.event_class, w.path_id, w.rule_version, 'output_grain_not_permitted'::text,
+         (count(*) || ' window(s) sit in a grain this generation''s inventory does not include')::text
+  FROM public.ka_gochara_eval_window w
+  WHERE w.chart_id = p_chart AND w.generation = p_generation
+    AND NOT EXISTS (SELECT 1 FROM expected e WHERE (e.event_class, e.path_id, e.rule_version)
+                                                  = (w.event_class, w.path_id, w.rule_version))
+  GROUP BY w.event_class, w.path_id, w.rule_version
+  UNION ALL
+  SELECT l.event_class, l.path_id, l.rule_version, 'output_grain_not_permitted'::text,
+         (count(*) || ' window-membership link(s) sit in a grain this generation''s inventory does not include')::text
+  FROM public.ka_gochara_eval_window_record l
+  WHERE l.chart_id = p_chart AND l.generation = p_generation
+    AND NOT EXISTS (SELECT 1 FROM expected e WHERE (e.event_class, e.path_id, e.rule_version)
+                                                  = (l.event_class, l.path_id, l.rule_version))
+  GROUP BY l.event_class, l.path_id, l.rule_version
   UNION ALL
   SELECT v.event_class, v.path_id, v.rule_version, 'window_verification_field_coverage_short'::text,
          array_to_string(ARRAY(SELECT f FROM unnest((SELECT f FROM required_fields)) f
@@ -505,6 +577,30 @@ LANGUAGE sql STABLE SET search_path = pg_catalog, public AS $$
   ) m
   WHERE m.missing + m.extra + m.orphans > 0
   UNION ALL
+  -- R10-4 / AM-24 item 4: the verification must name the code that ran, and that code must be the code the manifest PINNED
+  -- (the vector's `implementation` digests — the verification-job modules are in the governed implementation identity)
+  SELECT v.event_class, v.path_id, v.rule_version, 'window_verification_runner_not_pinned'::text,
+         ('runner ' || COALESCE(v.runner_identity ->> 'commit', '?') || ' ran implementation '
+          || COALESCE(v.runner_identity ->> 'implementation_digest', '?') || ', the manifest pins '
+          || COALESCE((SELECT public.ka_gochara_sha256_hex(public.ka_gochara_canonical_json(p.input_generation_vector -> 'implementation'))
+                       FROM public.kala_gochara_publication p WHERE p.chart_id = p_chart AND p.generation = p_generation), 'none'))::text
+  FROM public.ka_gochara_eval_window_verification v
+  WHERE v.chart_id = p_chart AND v.generation = p_generation
+    AND v.runner_identity ->> 'implementation_digest' IS DISTINCT FROM (
+          SELECT public.ka_gochara_sha256_hex(public.ka_gochara_canonical_json(p.input_generation_vector -> 'implementation'))
+          FROM public.kala_gochara_publication p WHERE p.chart_id = p_chart AND p.generation = p_generation)
+  UNION ALL
+  -- R10-2 / R11-1: the manifest's result policy governs EVERY record result field of the GENERATION — every record in every
+  -- grain, included or not, independently of the expected-verification CTE. No independent derivation of a record number
+  -- exists under either known policy, so a record carries NULL evidence and severity and the `unqualified` valence
+  SELECT r.event_class, r.path_id, r.rule_version, 'record_result_not_policy'::text,
+         (count(*) || ' relationship record(s) carry a numeric evidence/severity or a qualified valence under the manifest policy')::text
+  FROM public.ka_gochara_relationship_record r
+  WHERE r.chart_id = p_chart AND r.generation = p_generation
+    AND (r.evidence_for_occurrence IS NOT NULL OR r.evidence_against_occurrence IS NOT NULL
+         OR r.severity IS NOT NULL OR r.outcome_valence_for_native <> 'unqualified')
+  GROUP BY r.event_class, r.path_id, r.rule_version
+  UNION ALL
   SELECT e.event_class, e.path_id, e.rule_version, 'window_provenance_missing'::text,
          (count(*) || ' stored window(s) carry no objective/qualification provenance')::text
   FROM expected e
@@ -546,6 +642,425 @@ $$;
 COMMENT ON FUNCTION public.ka_gochara_candidate_gate_violations(uuid, text) IS
   'A5.3 R8-4: the ONE check a candidate must pass — the search-completeness violations (1206/1232) plus the window '
   'verification violations. No 1206/1232 function is redefined.';
+
+-- ── 4a. the VERIFIER-PERSISTED seal brief (F-R12-4) — state digest by per-row hash (R13-2 cost review) ────────────────────────────────────────────────────────
+-- The receipt's digest was only a 64-hex string the sealer supplied: nothing tied it to a brief the separate VERIFIER actually produced
+-- for THIS candidate. The verifier's `--brief` now persists each brief it produces here (append-only; the verifier INSERTs, the sealer
+-- only SELECTs — the grants are 1241's), and the receipt's deferred trigger requires `receipt.brief_digest` to equal the CURRENT
+-- persisted brief for the same (chart, generation, manifest) — "current" = the LATEST row (highest brief_id) for the generation, and its
+-- DB-attested `state_digest` must still equal the generation's state at COMMIT, so a re-verification or any change to the candidate makes
+-- an older brief unusable. The state digest is computed by ONE function, in the database (`ka_gochara_brief_state_digest`) — the job
+-- calls it too; there is no Python twin to drift. The brief digest itself (the sha256 of the full payload, which carries the migration
+-- ledger, the runner identity and the disclosures the database cannot recompute) is the verifier's attestation of what it showed.
+CREATE OR REPLACE FUNCTION public.ka_gochara_brief_state_digest(p_chart uuid, p_generation text)
+RETURNS text LANGUAGE plpgsql STABLE
+SET search_path = pg_catalog, public SET TimeZone = 'UTC' SET DateStyle = 'ISO, YMD' SET IntervalStyle = 'iso_8601' SET extra_float_digits = 1
+AS $$
+DECLARE t text; acc text := ''; n bigint; h text; pub record; legacy bigint;
+BEGIN
+  -- every row (every column but created_at) of the output, the search inputs and BOTH verification tables, one canonical line per row
+  FOREACH t IN ARRAY ARRAY[
+      'ka_gochara_relationship_record', 'ka_gochara_record_prerequisite', 'ka_gochara_contact', 'ka_gochara_eval_window',
+      'ka_gochara_eval_window_record', 'ka_gochara_search_path_pin', 'ka_gochara_search_inventory',
+      'ka_gochara_search_input_snapshot', 'ka_gochara_search_obligation', 'ka_gochara_search_interval',
+      'ka_gochara_eval_window_verification', 'ka_gochara_search_inventory_verification'] LOOP
+    -- (R13-2 cost review) a hash PER ROW, aggregated in hash order: the aggregate holds 65 bytes a row instead of the row's whole JSON text
+    -- and no collation decides the order. This REDUCES the field-size risk (the 1 GB value limit is reached at ~15 million rows of one table
+    -- and generation, independent of row width) — it does not remove it
+    EXECUTE format('SELECT count(*), coalesce(encode(sha256(convert_to(string_agg(h, E''\n'' ORDER BY h COLLATE "C"), ''UTF8'')), ''hex''), '''') '
+                   'FROM (SELECT encode(sha256(convert_to((to_jsonb(x) - ''created_at'')::text, ''UTF8'')), ''hex'') AS h '
+                   'FROM public.%I x WHERE x.chart_id = $1 AND x.generation = $2) s', t)
+      INTO n, h USING p_chart, p_generation;
+    acc := acc || t || ':' || n || ':' || h || E'\n';
+  END LOOP;
+  -- the BUILD coverage partitions (the on-demand Moon kinds are not part of a governed generation's build identity)
+  SELECT count(*), coalesce(encode(sha256(convert_to(string_agg(rh, E'\n' ORDER BY rh COLLATE "C"), 'UTF8')), 'hex'), '')
+    INTO n, h
+  FROM (SELECT encode(sha256(convert_to((to_jsonb(c) - 'created_at')::text, 'UTF8')), 'hex') AS rh FROM public.kala_gochara_coverage c
+        WHERE c.chart_id = p_chart AND c.generation = p_generation AND c.partition_kind IN ('body_target', 'event_class')) s;
+  acc := acc || 'coverage:' || n || ':' || h || E'\n';
+  -- the manifest's IDENTITY (never its publication fields: status / digest / counts — publication fills those in)
+  SELECT p.manifest_id::text AS manifest_id, p.horizon::text AS horizon, p.convention_id AS convention_id,
+         p.input_generation_vector::text AS vector, p.writer_asset_id AS writer, p.ephemeris_backend::text AS backend INTO pub
+  FROM public.kala_gochara_publication p WHERE p.chart_id = p_chart AND p.generation = p_generation;
+  acc := acc || 'manifest:' || coalesce(pub.manifest_id, '') || ':' || coalesce(pub.horizon, '') || ':' || coalesce(pub.convention_id::text, '')
+         || ':' || coalesce(pub.vector, '') || ':' || coalesce(pub.writer, '') || ':' || coalesce(pub.backend, '') || E'\n';
+  SELECT coalesce(sum(l.n), 0) INTO legacy FROM public.ka_gochara_legacy_projection_rows(p_chart, p_generation) l;
+  acc := acc || 'legacy:' || legacy || E'\n';
+  RETURN encode(sha256(convert_to(acc, 'UTF8')), 'hex');
+END;
+$$;
+COMMENT ON FUNCTION public.ka_gochara_brief_state_digest(uuid, text) IS
+  'A5.3 F-R12-4: the generation''s STATE as a brief sees it — a sha256 over every output / search-input / verification row, the build '
+  'coverage, the manifest identity and the legacy-row count. One implementation, used by the brief''s attestation trigger and by the '
+  'receipt''s commit-time check.';
+
+CREATE TABLE public.ka_gochara_seal_brief (
+  brief_id        bigint      GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  chart_id        uuid        NOT NULL,
+  generation      text        NOT NULL,
+  manifest_id     uuid        NOT NULL,
+  brief_digest    text        NOT NULL,
+  state_digest    text        NOT NULL,
+  runner_identity jsonb       NOT NULL,
+  -- (R13-3) WHO PRODUCED this brief: the commit of the code that ran, the IMMUTABLE image digest and the Cloud Run execution it ran in
+  -- (taken from the job's own environment by the verifier; the receipt must name this very brief, this commit and this execution)
+  producer_commit text        NOT NULL,
+  image_digest    text        NOT NULL,
+  execution_id    text        NOT NULL,
+  produced_by     text        NOT NULL DEFAULT session_user,
+  produced_at     timestamptz NOT NULL DEFAULT now(),
+  CONSTRAINT kgsb_digest_ck CHECK (brief_digest ~ '^[0-9a-f]{64}$'),
+  CONSTRAINT kgsb_state_ck CHECK (state_digest ~ '^[0-9a-f]{64}$'),
+  CONSTRAINT kgsb_runner_ck CHECK (jsonb_typeof(runner_identity) = 'object' AND runner_identity ? 'commit' AND runner_identity ? 'implementation_digest'),
+  CONSTRAINT kgsb_producer_commit_ck CHECK (btrim(producer_commit) <> ''),
+  CONSTRAINT kgsb_image_digest_ck CHECK (image_digest ~ '^sha256:[0-9a-f]{64}$'),
+  CONSTRAINT kgsb_execution_ck CHECK (btrim(execution_id) <> '')
+);
+CREATE INDEX kgsb_latest_ix ON public.ka_gochara_seal_brief (chart_id, generation, brief_id DESC);
+COMMENT ON TABLE public.ka_gochara_seal_brief IS
+  'A5.3 F-R12-4: every seal brief the VERIFIER produced — digest, runner identity and the DB-attested state digest of the candidate it '
+  'was produced for. Append-only. The verifier inserts; the sealer only reads (the grants are 1241''s).';
+
+CREATE OR REPLACE FUNCTION public.ka_gochara_seal_brief_immutable()
+RETURNS trigger LANGUAGE plpgsql SET search_path = pg_catalog, public AS $$
+BEGIN
+  RAISE EXCEPTION 'ka_gochara_seal_brief is append-only: % refused', TG_OP;
+END;
+$$;
+-- ATTESTATION: whatever the caller wrote for manifest_id / state_digest / produced_by / produced_at, the database sets them — to the
+-- generation's CANDIDATE manifest and its state RIGHT NOW (this trigger takes the seal locks itself), the session login and the
+-- transaction timestamp. A brief exists only for a candidate.
+CREATE OR REPLACE FUNCTION public.ka_gochara_seal_brief_attest()
+RETURNS trigger LANGUAGE plpgsql SET search_path = pg_catalog, public AS $$
+DECLARE m uuid; st text;
+BEGIN
+  -- (R13-2) the INSERT itself takes the seal locks, chart EXCLUSIVE first then global SHARED (the established order): a brief written
+  -- by ANY holder of INSERT is serialized with the sealer, whatever protocol its caller follows. It BLOCKS while a sealing transaction
+  -- holds the chart, and once the generation is sealed the status test below refuses it.
+  PERFORM public.ka_gochara_lock_chart(NEW.chart_id);
+  PERFORM public.ka_gochara_lock_global_shared();
+  -- (R14-2) a SEALED generation takes no brief — decided by the seal row itself, never by the manifest's status (a status can be edited; the
+  -- seal is permanent)
+  IF EXISTS (SELECT 1 FROM public.ka_gochara_generation_seal sl WHERE sl.chart_id = NEW.chart_id AND sl.generation = NEW.generation) THEN
+    RAISE EXCEPTION 'ka_gochara_seal_brief refused (brief_without_candidate): generation % of chart % is SEALED — a sealed generation takes no brief',
+      NEW.generation, NEW.chart_id USING ERRCODE = 'check_violation';
+  END IF;
+  SELECT p.manifest_id, p.status INTO m, st FROM public.kala_gochara_publication p
+  WHERE p.chart_id = NEW.chart_id AND p.generation = NEW.generation;
+  IF m IS NULL OR st IS DISTINCT FROM 'candidate' THEN
+    RAISE EXCEPTION 'ka_gochara_seal_brief refused (brief_without_candidate): generation % of chart % has no candidate manifest (status %)',
+      NEW.generation, NEW.chart_id, coalesce(st, 'none') USING ERRCODE = 'check_violation';
+  END IF;
+  NEW.manifest_id := m;
+  NEW.state_digest := public.ka_gochara_brief_state_digest(NEW.chart_id, NEW.generation);
+  NEW.produced_by := session_user;
+  NEW.produced_at := now();
+  RETURN NEW;
+END;
+$$;
+CREATE TRIGGER ka_gochara_seal_brief_attest
+  BEFORE INSERT ON public.ka_gochara_seal_brief
+  FOR EACH ROW EXECUTE FUNCTION public.ka_gochara_seal_brief_attest();
+CREATE TRIGGER ka_gochara_seal_brief_no_change
+  BEFORE UPDATE OR DELETE ON public.ka_gochara_seal_brief
+  FOR EACH ROW EXECUTE FUNCTION public.ka_gochara_seal_brief_immutable();
+CREATE TRIGGER ka_gochara_seal_brief_no_truncate
+  BEFORE TRUNCATE ON public.ka_gochara_seal_brief
+  FOR EACH STATEMENT EXECUTE FUNCTION public.ka_gochara_seal_brief_immutable();
+
+-- the sealer's EARLY look (and the receipt trigger's check): NULL when the digest is the CURRENT persisted brief of the generation for
+-- this manifest, was written by the verifier login (F-R13-4), and its state is still the generation's state; otherwise the NAMED reason
+CREATE OR REPLACE FUNCTION public.ka_gochara_seal_brief_problem(p_chart uuid, p_generation text, p_manifest uuid, p_digest text)
+RETURNS text LANGUAGE plpgsql STABLE SET search_path = pg_catalog, public AS $$
+DECLARE l record;
+BEGIN
+  SELECT b.brief_digest, b.manifest_id, b.state_digest, b.produced_by INTO l FROM public.ka_gochara_seal_brief b
+  WHERE b.chart_id = p_chart AND b.generation = p_generation ORDER BY b.brief_id DESC LIMIT 1;
+  IF NOT FOUND OR NOT EXISTS (SELECT 1 FROM public.ka_gochara_seal_brief b WHERE b.chart_id = p_chart AND b.generation = p_generation
+                              AND b.manifest_id = p_manifest AND b.brief_digest = p_digest) THEN
+    RETURN 'receipt_brief_not_persisted';
+  ELSIF l.brief_digest IS DISTINCT FROM p_digest OR l.manifest_id IS DISTINCT FROM p_manifest THEN
+    RETURN 'receipt_brief_superseded';
+  ELSIF l.produced_by IS DISTINCT FROM 'gochara_verifier' THEN
+    -- (F-R13-4) the brief must have been written by the VERIFIER login: `produced_by` is the database-attested session login, so a
+    -- brief inserted by any other principal that holds INSERT on the table is not an approval basis
+    RETURN 'receipt_brief_not_from_verifier';
+  ELSIF l.state_digest IS DISTINCT FROM public.ka_gochara_brief_state_digest(p_chart, p_generation) THEN
+    RETURN 'receipt_brief_state_changed';
+  END IF;
+  RETURN NULL;
+END;
+$$;
+
+-- ── 4b. the seal APPROVAL RECEIPT (R11-3) ──────────────────────────────────────────────────────────────────
+-- A durable record, linked to the seal row, of WHAT was approved and by whom: the brief digest (the sha256 of the canonical
+-- complete approval payload the sealing transaction recomputed under the seal locks and found equal), the approver login and the
+-- workflow run the approval was given in. Append-only (UPDATE/DELETE/TRUNCATE refused). The database cannot make the sealing
+-- workflow use the brief — the approval-gated workflow running as the sealer is part of the trusted system — but the receipt
+-- exists only with a seal (FK), is immutable, and names the digest that was approved.
+CREATE TABLE public.ka_gochara_seal_approval (
+  chart_id        uuid        NOT NULL,
+  generation      text        NOT NULL,
+  manifest_id     uuid        NOT NULL,
+  brief_digest    text        NOT NULL,
+  -- (R13-3) the receipt names the SPECIFIC persisted brief (its brief_id) and the producer execution the approval was given for
+  brief_id        bigint      NOT NULL,
+  producer_execution_id text  NOT NULL,
+  approver_login  text        NOT NULL,
+  approved_by_note text       NOT NULL,
+  run_id          bigint      NOT NULL,
+  run_attempt     integer     NOT NULL,
+  workflow_commit text        NOT NULL,
+  sealed_by       text        NOT NULL DEFAULT session_user,
+  approved_at     timestamptz NOT NULL DEFAULT now(),
+  PRIMARY KEY (chart_id, generation),
+  -- DEFERRED: the receipt and the seal row are written in ONE transaction (either order); a seal with no receipt is detectable
+  -- (`ka_gochara_seal_receipt_missing`), and the sealer step calls it before COMMIT
+  CONSTRAINT kgsa_seal_fk FOREIGN KEY (chart_id, generation)
+    REFERENCES public.ka_gochara_generation_seal (chart_id, generation) DEFERRABLE INITIALLY DEFERRED,
+  CONSTRAINT kgsa_digest_ck CHECK (brief_digest ~ '^[0-9a-f]{64}$'),
+  CONSTRAINT kgsa_brief_id_ck CHECK (brief_id >= 1),
+  CONSTRAINT kgsa_execution_ck CHECK (btrim(producer_execution_id) <> ''),
+  CONSTRAINT kgsa_approver_ck CHECK (btrim(approver_login) <> ''),
+  CONSTRAINT kgsa_commit_ck CHECK (btrim(workflow_commit) <> ''),
+  CONSTRAINT kgsa_attempt_ck CHECK (run_attempt >= 1)
+);
+-- (a new table carries no PUBLIC privilege: PostgreSQL grants none by default, so no REVOKE is needed — and 1240 revokes nothing)
+COMMENT ON TABLE public.ka_gochara_seal_approval IS
+  'A5.3 R11-3: the approval receipt of a seal — brief digest (sha256 of the canonical approval payload recomputed under the seal '
+  'locks), approver login + note, workflow run id/attempt, workflow commit. Append-only; FK to the seal row (deferred); inserted by '
+  'the sealer in the sealing transaction. The grants on it are 1241''s.';
+
+-- the sealer step calls this before COMMIT: TRUE iff the generation is sealed and no receipt exists for it
+CREATE OR REPLACE FUNCTION public.ka_gochara_seal_receipt_missing(p_chart uuid, p_generation text)
+RETURNS boolean LANGUAGE sql STABLE SET search_path = pg_catalog, public AS $$
+  SELECT EXISTS (SELECT 1 FROM public.ka_gochara_generation_seal s WHERE s.chart_id = p_chart AND s.generation = p_generation)
+     AND NOT EXISTS (SELECT 1 FROM public.ka_gochara_seal_approval a WHERE a.chart_id = p_chart AND a.generation = p_generation);
+$$;
+
+CREATE OR REPLACE FUNCTION public.ka_gochara_seal_approval_immutable()
+RETURNS trigger LANGUAGE plpgsql SET search_path = pg_catalog, public AS $$
+BEGIN
+  RAISE EXCEPTION 'ka_gochara_seal_approval is append-only: % refused', TG_OP;
+END;
+$$;
+-- RECEIPT ATTRIBUTION (Codex round 12): `sealed_by` and `approved_at` are not caller-supplied facts. A BEFORE INSERT trigger SETS them —
+-- whatever the sealer's INSERT carried — to the SESSION login (`session_user`, not a role switched to inside the session) and the
+-- transaction's timestamp, so they are database-attested.
+CREATE OR REPLACE FUNCTION public.ka_gochara_seal_approval_attest()
+RETURNS trigger LANGUAGE plpgsql SET search_path = pg_catalog, public AS $$
+BEGIN
+  NEW.sealed_by := session_user;
+  NEW.approved_at := now();
+  RETURN NEW;
+END;
+$$;
+CREATE TRIGGER ka_gochara_seal_approval_attest
+  BEFORE INSERT ON public.ka_gochara_seal_approval
+  FOR EACH ROW EXECUTE FUNCTION public.ka_gochara_seal_approval_attest();
+
+-- …and a receipt is valid only for the FIRST SEAL OF THIS TRANSACTION with the SAME manifest: at COMMIT the seal row for (chart, generation)
+-- must exist, name the receipt's manifest, and have been written in this very transaction (`sealed_at` is the transaction timestamp).
+-- So a receipt cannot be attached to a generation sealed before 1240 (or before this transaction), nor to another manifest.
+CREATE OR REPLACE FUNCTION public.ka_gochara_seal_approval_requires_first_seal()
+RETURNS trigger LANGUAGE plpgsql SET search_path = pg_catalog, public AS $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM public.ka_gochara_generation_seal s
+                 WHERE s.chart_id = NEW.chart_id AND s.generation = NEW.generation AND s.manifest_id = NEW.manifest_id
+                   AND s.sealed_at = transaction_timestamp()) THEN
+    RAISE EXCEPTION 'ka_gochara_seal_approval refused at commit (receipt_without_first_seal): the receipt for (chart %, generation %, manifest %) has no seal row of the same manifest written in this transaction — a receipt exists only for the first seal it is written with',
+      NEW.chart_id, NEW.generation, NEW.manifest_id USING ERRCODE = 'check_violation';
+  END IF;
+  RETURN NULL;
+END;
+$$;
+CREATE CONSTRAINT TRIGGER ka_gochara_seal_approval_zz_first_seal
+  AFTER INSERT ON public.ka_gochara_seal_approval
+  DEFERRABLE INITIALLY DEFERRED
+  FOR EACH ROW EXECUTE FUNCTION public.ka_gochara_seal_approval_requires_first_seal();
+
+-- …and (F-R12-4) the receipt's digest must be a brief the VERIFIER persisted: at COMMIT it must equal the CURRENT persisted brief of the
+-- generation for this manifest, whose state digest must still be the generation's state — a fabricated digest, a brief for another
+-- manifest, a superseded brief and a brief of a candidate that has since changed (even by a re-verification) are each refused by name.
+CREATE OR REPLACE FUNCTION public.ka_gochara_seal_approval_requires_persisted_brief()
+RETURNS trigger LANGUAGE plpgsql SET search_path = pg_catalog, public AS $$
+DECLARE why text; l record;
+BEGIN
+  why := public.ka_gochara_seal_brief_problem(NEW.chart_id, NEW.generation, NEW.manifest_id, NEW.brief_digest);
+  IF why IS NULL THEN
+    -- (R13-3) ...and it must be THAT brief, produced by THIS commit in THAT execution: an older same-state brief of another execution, or a
+    -- brief of different code, is not this run's approval basis
+    SELECT b.brief_id, b.producer_commit, b.execution_id INTO l FROM public.ka_gochara_seal_brief b
+    WHERE b.chart_id = NEW.chart_id AND b.generation = NEW.generation ORDER BY b.brief_id DESC LIMIT 1;
+    why := CASE WHEN l.brief_id IS DISTINCT FROM NEW.brief_id THEN 'receipt_brief_id_mismatch'
+                WHEN l.producer_commit IS DISTINCT FROM NEW.workflow_commit THEN 'receipt_brief_producer_commit_mismatch'
+                WHEN l.execution_id IS DISTINCT FROM NEW.producer_execution_id THEN 'receipt_brief_execution_mismatch' END;
+  END IF;
+  IF why IS NOT NULL THEN
+    RAISE EXCEPTION 'ka_gochara_seal_approval refused at commit (%): the receipt''s brief (digest %, id %, execution %) is not the current verifier-persisted brief of (chart %, generation %, manifest %) produced by the sealing commit',
+      why, NEW.brief_digest, NEW.brief_id, NEW.producer_execution_id, NEW.chart_id, NEW.generation, NEW.manifest_id
+      USING ERRCODE = 'check_violation';
+  END IF;
+  RETURN NULL;
+END;
+$$;
+CREATE CONSTRAINT TRIGGER ka_gochara_seal_approval_zz_persisted_brief
+  AFTER INSERT ON public.ka_gochara_seal_approval
+  DEFERRABLE INITIALLY DEFERRED
+  FOR EACH ROW EXECUTE FUNCTION public.ka_gochara_seal_approval_requires_persisted_brief();
+
+CREATE TRIGGER ka_gochara_seal_approval_no_change
+  BEFORE UPDATE OR DELETE ON public.ka_gochara_seal_approval
+  FOR EACH ROW EXECUTE FUNCTION public.ka_gochara_seal_approval_immutable();
+CREATE TRIGGER ka_gochara_seal_approval_no_truncate
+  BEFORE TRUNCATE ON public.ka_gochara_seal_approval
+  FOR EACH STATEMENT EXECUTE FUNCTION public.ka_gochara_seal_approval_immutable();
+
+-- ── 4c. every write that touches the claimed boundary serializes on the chart lock IN THE DATABASE (R13-2, R14-1, R14-2) ───────
+-- The seal's checks (the state digest at COMMIT, the brief, the gate) are reads: a read is no lock against a concurrent writer, and a
+-- DEFERRED check can be run early (`SET CONSTRAINTS ALL IMMEDIATE`) — a write committed after it would change the state the receipt
+-- attests with no further check; and a write that is merely never refused AFTER the seal changes what the seal attests afterwards.
+-- So every relation the sealed boundary depends on makes its WRITERS take the chart seal lock themselves (chart EXCLUSIVE first — the
+-- established order) and refuse once the generation is sealed:
+--   * the relations whose own write guards (1155 / 1206 / 1240) already take the lock and refuse sealed INSERT/UPDATE/DELETE: the output,
+--     search-input and verification tables and the brief table — EXCEPT (R14-1) the two deliberate sealed-time exceptions the older guards
+--     keep: ka_gochara_contact (1153's guard checks sealing on DELETE only; INSERT and enrichment UPDATE proceed) and the relationship
+--     record's 'precision_sync' UPDATE (1155:453-455). Both change DIGESTED fields after seal, so they get the guard below as well;
+--   * kala_gochara_coverage (BUILD partitions only — the on-demand Moon partitions are written after publication by design),
+--     kala_gochara_publication (identity columns frozen; the sealed LIFECYCLE is a whitelist — R14-2) and the LEGACY projection
+--     relations kala_gochara_contacts / kala_gochara_windows (for a governed generation) get the guard below.
+-- A concurrent writer therefore BLOCKS until the sealing transaction commits (or rolls back) and is then refused by the sealed-state test —
+-- so the state attested at COMMIT is the state the generation keeps. Only generations of major >= 5 are touched: writers of every other
+-- generation neither take this lock nor are refused. The governed test is an INLINE regex (the same text as ka_gochara_generation_governed
+-- — a static test pins the two together), so a legacy-generation write calls NO function; a GOVERNED row's write does call
+-- ka_gochara_lock_chart (EXECUTE held by the builder, sealer and verifier) and reads the seal table directly (SELECT; the sealer holds no
+-- EXECUTE on ka_gochara_generation_is_sealed).
+--
+-- HISTORICAL SCOPE (R14-1, mode 'regime'): the contact and precision refusals apply to a sealed generation whose MANIFEST carries a
+-- `result_policy` — the vector schema of this regime (1240). A generation sealed before it (a manifest without the key) keeps the older
+-- behaviour (enrichment UPDATE, precision_sync): nothing in production is sealed, so this is a stated boundary, not a live population.
+--
+-- CONCURRENCY NOTE (R14-3 review): for UPDATE/DELETE on kala_gochara_coverage, kala_gochara_contacts / _windows and ka_gochara_contact /
+-- ka_gochara_relationship_record, PostgreSQL locks the target TUPLE before a BEFORE ROW trigger runs, i.e. before the chart lock is
+-- requested; two sessions that interleave tuple and chart locks can deadlock and PostgreSQL aborts ONE participant — the operator retries
+-- the whole transaction. (The statement-level locks of 1153 / the publication statement lock below take the chart lock first where they
+-- exist.) The publication statement trigger scans ALL governed-generation rows of kala_gochara_publication — a table of a handful of
+-- rows — and calls ka_gochara_lock_chart for each chart found; a governed row of a NON-canonical chart would make that lock refuse
+-- (D-SCOPE, 1153) and with it EVERY UPDATE/DELETE statement on the table: the pre-window check is that no such row exists.
+CREATE OR REPLACE FUNCTION public.ka_gochara_boundary_write_guard()
+RETURNS trigger LANGUAGE plpgsql SET search_path = pg_catalog, public AS $$
+DECLARE
+  mode text := coalesce(TG_ARGV[0], '');
+  side text; rec jsonb; ch uuid; gen text; kind text; sealed boolean; old_status text; new_status text;
+BEGIN
+  FOREACH side IN ARRAY (CASE TG_OP WHEN 'INSERT' THEN ARRAY['new'] WHEN 'DELETE' THEN ARRAY['old'] ELSE ARRAY['old', 'new'] END) LOOP
+    rec := CASE side WHEN 'old' THEN to_jsonb(OLD) ELSE to_jsonb(NEW) END;
+    ch := (rec ->> 'chart_id')::uuid; gen := rec ->> 'generation'; kind := rec ->> 'partition_kind';
+    CONTINUE WHEN gen IS NULL OR gen !~ '^([5-9]|[1-9][0-9]+)\.[0-9]+$';
+    CONTINUE WHEN TG_TABLE_NAME = 'kala_gochara_coverage' AND coalesce(kind, '') NOT IN ('body_target', 'event_class');
+    PERFORM public.ka_gochara_lock_chart(ch);
+    sealed := EXISTS (SELECT 1 FROM public.ka_gochara_generation_seal sl WHERE sl.chart_id = ch AND sl.generation = gen);
+    IF sealed AND mode = 'regime' THEN
+      -- historical scope: only a generation whose manifest carries the result policy was sealed under this regime
+      sealed := EXISTS (SELECT 1 FROM public.kala_gochara_publication p
+                        WHERE p.chart_id = ch AND p.generation = gen AND p.input_generation_vector ? 'result_policy');
+    END IF;
+    IF sealed THEN
+      IF TG_TABLE_NAME = 'kala_gochara_publication' AND TG_OP = 'UPDATE'
+         AND (to_jsonb(NEW) - 'status' - 'superseded_at') = (to_jsonb(OLD) - 'status' - 'superseded_at') THEN
+        -- R14-2: the sealed LIFECYCLE is a WHITELIST. A published manifest may be superseded or withdrawn (rolled_back); nothing may return it
+        -- to 'candidate' (that would re-open it to a new brief), and nothing else changes. A no-op UPDATE is harmless.
+        old_status := to_jsonb(OLD) ->> 'status'; new_status := to_jsonb(NEW) ->> 'status';
+        IF (old_status = new_status AND (to_jsonb(NEW) ->> 'superseded_at') IS NOT DISTINCT FROM (to_jsonb(OLD) ->> 'superseded_at'))
+           OR (old_status = 'published' AND new_status IN ('superseded', 'rolled_back')) THEN
+          CONTINUE;
+        END IF;
+        RAISE EXCEPTION 'kala_gochara_publication refused (sealed lifecycle, R14-2): the sealed generation (chart %, generation %) may go published -> superseded or published -> rolled_back (withdrawal, attested rows retained) and nothing else; % -> % is not permitted',
+          ch, gen, old_status, new_status USING ERRCODE = 'check_violation';
+      END IF;
+      RAISE EXCEPTION '% refused (sealed boundary, R13-2/R14-1): (chart %, generation %) is SEALED — % of a row that belongs to the sealed candidate boundary is not permitted',
+        TG_TABLE_NAME, ch, gen, TG_OP USING ERRCODE = 'check_violation';
+    END IF;
+  END LOOP;
+  RETURN CASE WHEN TG_OP = 'DELETE' THEN OLD ELSE NEW END;
+END;
+$$;
+
+-- The sealer holds the chart lock and then WRITES the publication row; a builder UPDATE/DELETE of that row would hold its tuple (a BEFORE
+-- ROW trigger locks the tuple first) while waiting for the chart lock — a deadlock with the sealer. So the publication takes the chart
+-- lock at STATEMENT level, before any row lock. Unlike ka_gochara_chart_statement_lock (every chart in its table), this one locks the
+-- charts that have a GOVERNED-generation row — see the concurrency note above.
+CREATE OR REPLACE FUNCTION public.ka_gochara_publication_statement_lock()
+RETURNS trigger LANGUAGE plpgsql SET search_path = pg_catalog, public AS $$
+DECLARE c uuid;
+BEGIN
+  FOR c IN SELECT DISTINCT p.chart_id FROM public.kala_gochara_publication p
+           WHERE p.generation ~ '^([5-9]|[1-9][0-9]+)\.[0-9]+$' ORDER BY 1 LOOP
+    PERFORM public.ka_gochara_lock_chart(c);
+  END LOOP;
+  RETURN NULL;
+END;
+$$;
+
+-- TRUNCATE (F-R14-4): the four boundary relations refuse it while they hold any GOVERNED-generation row (TRUNCATE is owner-only in this
+-- deployment; no Gochara principal holds it). A table holding only legacy generations may still be truncated — the refusal is the
+-- boundary's, not the legacy tables'. Statement-level; reads the protected table as its owner.
+CREATE OR REPLACE FUNCTION public.ka_gochara_boundary_truncate_guard()
+RETURNS trigger LANGUAGE plpgsql SET search_path = pg_catalog, public AS $$
+DECLARE held boolean;
+BEGIN
+  EXECUTE format('SELECT EXISTS (SELECT 1 FROM public.%I WHERE generation ~ %L)', TG_TABLE_NAME, '^([5-9]|[1-9][0-9]+)\.[0-9]+$') INTO held;
+  IF held THEN
+    RAISE EXCEPTION '% refused (sealed boundary, F-R14-4): TRUNCATE while governed-generation rows exist is not permitted', TG_TABLE_NAME
+      USING ERRCODE = 'check_violation';
+  END IF;
+  RETURN NULL;
+END;
+$$;
+
+DO $$
+DECLARE t text;
+BEGIN
+  FOREACH t IN ARRAY ARRAY['kala_gochara_coverage', 'kala_gochara_publication', 'kala_gochara_contacts', 'kala_gochara_windows'] LOOP
+    IF to_regclass('public.' || t) IS NOT NULL THEN
+      EXECUTE format('DROP TRIGGER IF EXISTS ka_gochara_boundary_1_write_guard ON public.%I', t);
+      EXECUTE format('CREATE TRIGGER ka_gochara_boundary_1_write_guard BEFORE INSERT OR UPDATE OR DELETE ON public.%I '
+                     'FOR EACH ROW EXECUTE FUNCTION public.ka_gochara_boundary_write_guard()', t);
+      EXECUTE format('DROP TRIGGER IF EXISTS ka_gochara_boundary_2_no_truncate ON public.%I', t);
+      EXECUTE format('CREATE TRIGGER ka_gochara_boundary_2_no_truncate BEFORE TRUNCATE ON public.%I '
+                     'FOR EACH STATEMENT EXECUTE FUNCTION public.ka_gochara_boundary_truncate_guard()', t);
+    END IF;
+  END LOOP;
+  IF to_regclass('public.kala_gochara_publication') IS NOT NULL THEN
+    DROP TRIGGER IF EXISTS ka_gochara_boundary_0_statement_lock ON public.kala_gochara_publication;
+    CREATE TRIGGER ka_gochara_boundary_0_statement_lock BEFORE UPDATE OR DELETE ON public.kala_gochara_publication
+      FOR EACH STATEMENT EXECUTE FUNCTION public.ka_gochara_publication_statement_lock();
+  END IF;
+  -- R14-1: the two sealed-time exceptions of the older guards (1153 contact INSERT/enrichment; 1155 precision_sync), mode 'regime'
+  DROP TRIGGER IF EXISTS ka_gochara_boundary_1_write_guard ON public.ka_gochara_contact;
+  CREATE TRIGGER ka_gochara_boundary_1_write_guard BEFORE INSERT OR UPDATE OR DELETE ON public.ka_gochara_contact
+    FOR EACH ROW EXECUTE FUNCTION public.ka_gochara_boundary_write_guard('regime');
+  DROP TRIGGER IF EXISTS ka_gochara_boundary_1_write_guard ON public.ka_gochara_relationship_record;
+  CREATE TRIGGER ka_gochara_boundary_1_write_guard BEFORE UPDATE ON public.ka_gochara_relationship_record
+    FOR EACH ROW EXECUTE FUNCTION public.ka_gochara_boundary_write_guard('regime');
+END $$;
+
+-- Which of the four LATE-CREATABLE boundary relations exist and are guarded — read live (the runbook's pre-window inventory calls it):
+-- a relation created after this migration ran shows exists = true, guarded = false. What exists in production is UNKNOWN to this migration.
+CREATE OR REPLACE FUNCTION public.ka_gochara_boundary_guard_inventory()
+RETURNS TABLE (relation text, relation_exists boolean, write_guarded boolean, truncate_guarded boolean)
+LANGUAGE sql STABLE SET search_path = pg_catalog, public AS $$
+  SELECT x.t, to_regclass('public.' || x.t) IS NOT NULL,
+         EXISTS (SELECT 1 FROM pg_trigger g WHERE g.tgrelid = to_regclass('public.' || x.t) AND NOT g.tgisinternal
+                 AND g.tgname = 'ka_gochara_boundary_1_write_guard'),
+         EXISTS (SELECT 1 FROM pg_trigger g WHERE g.tgrelid = to_regclass('public.' || x.t) AND NOT g.tgisinternal
+                 AND g.tgname = 'ka_gochara_boundary_2_no_truncate')
+  FROM (VALUES ('kala_gochara_coverage'), ('kala_gochara_publication'), ('kala_gochara_contacts'), ('kala_gochara_windows')) AS x(t)
+  ORDER BY 1;
+$$;
+COMMENT ON FUNCTION public.ka_gochara_boundary_guard_inventory() IS
+  'A5.3 R14: for each of the four late-creatable boundary relations — does it exist, is its write guard installed, is its TRUNCATE guard installed. Live read; a relation created after 1240 ran appears with relation_exists = true and write_guarded = false.';
 
 -- ── 5. the write guard (the 1206 trio) ────────────────────────────────────────
 
@@ -632,6 +1147,32 @@ CREATE TRIGGER ka_gochara_generation_seal_zz_window_verified
   BEFORE INSERT ON public.ka_gochara_generation_seal
   FOR EACH ROW EXECUTE FUNCTION public.ka_gochara_generation_seal_window_guard();
 
+-- ── 6b. the approval receipt is ENFORCED at the first seal (R11-3; steward M…145007) ───────────────────────────────────
+-- A seal must not be able to exist without its approval receipt. A DEFERRED constraint trigger on the seal INSERT requires, at
+-- COMMIT, a `ka_gochara_seal_approval` row for the same (chart, generation) naming THIS manifest and carrying a brief digest;
+-- otherwise the whole transaction (the publication flip, the seal row) is refused by name and nothing remains. It is an AFTER
+-- INSERT trigger, so it fires only for a row actually inserted: a REPLAY (`ka_gochara_seal_generation` inserts ON CONFLICT DO
+-- NOTHING) and every generation sealed before 1240 are untouched. A receipt cannot pre-exist its seal (its FK to the seal row is
+-- deferred to the same commit), so "a receipt exists" means "written in this transaction". The receipt table's `sealed_by` is the
+-- SESSION login (`session_user`), not a role switched to inside the session.
+CREATE OR REPLACE FUNCTION public.ka_gochara_seal_requires_approval_receipt()
+RETURNS trigger LANGUAGE plpgsql SET search_path = pg_catalog, public AS $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM public.ka_gochara_seal_approval a
+                 WHERE a.chart_id = NEW.chart_id AND a.generation = NEW.generation AND a.manifest_id = NEW.manifest_id
+                   AND a.brief_digest ~ '^[0-9a-f]{64}$') THEN
+    RAISE EXCEPTION 'ka_gochara_generation_seal refused at commit (approval_receipt_missing): no ka_gochara_seal_approval row with a brief digest was written for (chart %, generation %, manifest %) in this transaction — a seal exists only with its approval receipt',
+      NEW.chart_id, NEW.generation, NEW.manifest_id USING ERRCODE = 'check_violation';
+  END IF;
+  RETURN NULL;
+END;
+$$;
+
+CREATE CONSTRAINT TRIGGER ka_gochara_generation_seal_zz_receipt_required
+  AFTER INSERT ON public.ka_gochara_generation_seal
+  DEFERRABLE INITIALLY DEFERRED
+  FOR EACH ROW EXECUTE FUNCTION public.ka_gochara_seal_requires_approval_receipt();
+
 -- ── 7. privileges (role-existence-guarded; explicit; table-level; no SECURITY DEFINER) ─────────────────
 -- The builder gets NOTHING on the verification table, and exactly ONE function: EXECUTE on the window CHECK helper
 -- `ka_gochara_window_qualification_ok(jsonb)`, which this migration's own `kgew_qualification_shape_ck` CALLS on every
@@ -666,7 +1207,10 @@ BEGIN
       public.ka_gochara_eval_window_expected_digest(uuid, text, text, text, text),
       public.ka_gochara_eval_window_inputs_digest(uuid, text, text, text, text),
       public.ka_gochara_canonical_json(jsonb), public.ka_gochara_sha256_hex(text),
-      public.ka_gochara_f4_token(real)
+      public.ka_gochara_f4_token(real),
+      -- R10-4 (iii): the job ENDS in the same combined candidate gate the seal uses (1240's own function; the 1206/1232
+      -- completeness function it calls, and what that reads, are Stream B's grants — see 1241)
+      public.ka_gochara_candidate_gate_violations(uuid, text)
       TO gochara_verifier;
     RAISE NOTICE 'migration 1240: verifier grants issued to role gochara_verifier';
   ELSE
@@ -714,11 +1258,51 @@ BEGIN
     RAISE EXCEPTION 'migration 1240 post-apply check failed: missing triggers: %', missing;
   END IF;
   SELECT count(*) INTO n FROM pg_trigger t
-  WHERE t.tgrelid = 'public.ka_gochara_generation_seal'::regclass AND NOT t.tgisinternal
-    AND t.tgname = 'ka_gochara_generation_seal_zz_window_verified';
-  IF n <> 1 THEN
-    RAISE EXCEPTION 'migration 1240 post-apply check failed: the seal trigger is not present exactly once';
+  WHERE t.tgrelid = 'public.ka_gochara_seal_approval'::regclass AND NOT t.tgisinternal
+    AND t.tgname IN ('ka_gochara_seal_approval_no_change', 'ka_gochara_seal_approval_no_truncate',
+                     'ka_gochara_seal_approval_attest', 'ka_gochara_seal_approval_zz_first_seal',
+                     'ka_gochara_seal_approval_zz_persisted_brief');
+  IF n <> 5 THEN
+    RAISE EXCEPTION 'migration 1240 post-apply check failed: the seal-approval receipt table lacks its append-only / attestation / first-seal / persisted-brief triggers';
   END IF;
+  SELECT count(*) INTO n FROM pg_trigger t
+  WHERE t.tgrelid = 'public.ka_gochara_seal_brief'::regclass AND NOT t.tgisinternal
+    AND t.tgname IN ('ka_gochara_seal_brief_attest', 'ka_gochara_seal_brief_no_change', 'ka_gochara_seal_brief_no_truncate');
+  IF n <> 3 THEN
+    RAISE EXCEPTION 'migration 1240 post-apply check failed: the seal-brief table lacks its attestation / append-only triggers';
+  END IF;
+  SELECT count(*) INTO n FROM pg_trigger t
+  WHERE t.tgrelid = 'public.ka_gochara_generation_seal'::regclass AND NOT t.tgisinternal
+    AND t.tgname IN ('ka_gochara_generation_seal_zz_window_verified', 'ka_gochara_generation_seal_zz_receipt_required');
+  IF n <> 2 THEN
+    RAISE EXCEPTION 'migration 1240 post-apply check failed: the window-verification seal trigger and the receipt-required seal trigger must each be present exactly once';
+  END IF;
+  SELECT string_agg(x.t, ', ') INTO missing
+  FROM (VALUES ('kala_gochara_coverage'), ('kala_gochara_publication'), ('kala_gochara_contacts'), ('kala_gochara_windows')) AS x(t)
+  WHERE to_regclass('public.' || x.t) IS NOT NULL
+    AND NOT EXISTS (SELECT 1 FROM pg_trigger g WHERE g.tgrelid = ('public.' || x.t)::regclass AND NOT g.tgisinternal
+                    AND g.tgname = 'ka_gochara_boundary_1_write_guard');
+  IF missing IS NOT NULL THEN
+    RAISE EXCEPTION 'migration 1240 post-apply check failed: the sealed-boundary write guard (R13-2) is missing on: %', missing;
+  END IF;
+  SELECT string_agg(x.t, ', ') INTO missing
+  FROM (VALUES ('kala_gochara_coverage'), ('kala_gochara_publication'), ('kala_gochara_contacts'), ('kala_gochara_windows')) AS x(t)
+  WHERE to_regclass('public.' || x.t) IS NOT NULL
+    AND NOT EXISTS (SELECT 1 FROM pg_trigger g WHERE g.tgrelid = ('public.' || x.t)::regclass AND NOT g.tgisinternal
+                    AND g.tgname = 'ka_gochara_boundary_2_no_truncate');
+  IF missing IS NOT NULL THEN
+    RAISE EXCEPTION 'migration 1240 post-apply check failed: the TRUNCATE guard (F-R14-4) is missing on: %', missing;
+  END IF;
+  SELECT string_agg(x.rel, ', ') INTO missing
+  FROM (VALUES ('ka_gochara_contact'), ('ka_gochara_relationship_record')) AS x(rel)
+  WHERE NOT EXISTS (SELECT 1 FROM pg_trigger g WHERE g.tgrelid = ('public.' || x.rel)::regclass AND NOT g.tgisinternal
+                    AND g.tgname = 'ka_gochara_boundary_1_write_guard');
+  IF missing IS NOT NULL THEN
+    RAISE EXCEPTION 'migration 1240 post-apply check failed: the sealed contact / precision guard (R14-1) is missing on: %', missing;
+  END IF;
+  -- RECORD which of the four late-creatable relations were guarded when 1240 ran (the live function ka_gochara_boundary_guard_inventory()
+  -- re-reads it at any time; what exists in production is not known to this migration)
+  RAISE NOTICE 'migration 1240: boundary guard inventory — %', (SELECT string_agg(i.relation || '[exists=' || i.relation_exists || ',write_guarded=' || i.write_guarded || ',truncate_guarded=' || i.truncate_guarded || ']', '; ') FROM public.ka_gochara_boundary_guard_inventory() i);
   SELECT string_agg(x.sig, ', ') INTO missing
   FROM (VALUES
     ('public.ka_gochara_f4_token(real)'),
@@ -731,7 +1315,15 @@ BEGIN
     ('public.ka_gochara_candidate_gate_violations(uuid,text)'),
     ('public.ka_gochara_window_verification_write_guard()'),
     ('public.ka_gochara_generation_seal_window_guard()'),
-    ('public.ka_gochara_window_qualification_ok(jsonb)')) AS x(sig)
+    ('public.ka_gochara_window_qualification_ok(jsonb)'),
+    ('public.ka_gochara_seal_receipt_missing(uuid,text)'),
+    ('public.ka_gochara_legacy_projection_rows(uuid,text)'),
+    ('public.ka_gochara_brief_state_digest(uuid,text)'),
+    ('public.ka_gochara_boundary_write_guard()'),
+    ('public.ka_gochara_publication_statement_lock()'),
+    ('public.ka_gochara_boundary_truncate_guard()'),
+    ('public.ka_gochara_boundary_guard_inventory()'),
+    ('public.ka_gochara_seal_brief_problem(uuid,text,uuid,text)')) AS x(sig)
   WHERE to_regprocedure(x.sig) IS NULL;
   IF missing IS NOT NULL THEN
     RAISE EXCEPTION 'migration 1240 post-apply check failed: missing functions: %', missing;
@@ -742,6 +1334,35 @@ BEGIN
                       'kgew_provenance_pair_ck', 'kgew_unqualified_no_result_ck', 'kgew_all_null_policy_ck');
   IF n <> 6 THEN
     RAISE EXCEPTION 'migration 1240 post-apply check failed: expected 6 window provenance constraints, found %', n;
+  END IF;
+  -- R10-5: the verifier must hold NO write privilege — table OR column level — anywhere on the builder write surface (every
+  -- Gochara table except the two verification tables it writes). `has_table_privilege` alone cannot see a column grant
+  -- (1242 grants the builder columns), so the column predicate is checked as well — the same predicate the job's identity
+  -- self-check applies at run time.
+  IF to_regrole('gochara_verifier') IS NOT NULL THEN
+    SELECT string_agg(h.what, ', ') INTO missing
+    FROM (
+      SELECT p.priv || ' on ' || c.relname AS what
+      FROM pg_class c JOIN pg_namespace ns ON ns.oid = c.relnamespace
+      CROSS JOIN (VALUES ('INSERT'), ('UPDATE'), ('DELETE'), ('TRUNCATE')) AS p(priv)
+      WHERE ns.nspname = 'public' AND c.relkind IN ('r', 'p')
+        AND (c.relname LIKE 'ka\_gochara\_%' OR c.relname LIKE 'kala\_gochara\_%')
+        AND c.relname NOT IN ('ka_gochara_search_inventory_verification', 'ka_gochara_eval_window_verification', 'ka_gochara_seal_brief')
+        AND has_table_privilege('gochara_verifier', c.oid, p.priv)
+      UNION ALL
+      SELECT p.priv || '(' || a.attname || ') on ' || c.relname
+      FROM pg_class c JOIN pg_namespace ns ON ns.oid = c.relnamespace
+      JOIN pg_attribute a ON a.attrelid = c.oid AND a.attnum > 0 AND NOT a.attisdropped
+      CROSS JOIN (VALUES ('INSERT'), ('UPDATE')) AS p(priv)
+      WHERE ns.nspname = 'public' AND c.relkind IN ('r', 'p')
+        AND (c.relname LIKE 'ka\_gochara\_%' OR c.relname LIKE 'kala\_gochara\_%')
+        AND c.relname NOT IN ('ka_gochara_search_inventory_verification', 'ka_gochara_eval_window_verification', 'ka_gochara_seal_brief')
+        AND has_column_privilege('gochara_verifier', c.oid, a.attnum, p.priv)
+        AND NOT has_table_privilege('gochara_verifier', c.oid, p.priv)
+    ) h;
+    IF missing IS NOT NULL THEN
+      RAISE EXCEPTION 'migration 1240 post-apply check failed: gochara_verifier holds write privileges on the builder write surface (table or column level): %', missing;
+    END IF;
   END IF;
   RAISE NOTICE 'migration 1240: presence checks passed';
 END;

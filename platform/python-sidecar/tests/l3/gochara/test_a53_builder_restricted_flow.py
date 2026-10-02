@@ -20,7 +20,7 @@ from services.gochara_kernel import window_gate as wg
 
 from .test_a53_inventory import CHART_ID
 from .test_a53_p1_support import GEN, _t, _world
-from .test_a53_window_verification_gate import CLS, SPANS, _materialise, _windows
+from .test_a53_window_verification_gate import CLS, SPANS, _materialise
 
 UTC = timezone.utc
 HELPER = "public.ka_gochara_window_qualification_ok(jsonb)"
@@ -70,7 +70,7 @@ def _builder_flow(w):
         w.boot()
         w.seed("saturn", [(180.0, _t(1, 10)), (210.0, _t(2, 20))])
         counts = _materialise(w, "P3", {"saturn": (_t(1, 10), _t(2, 20))})
-        out = _windows(w)
+        out = {p: w.step(f"window:{CLS}:{p}") for p in ("P1", "P2", "P3", "P4")}      # the BUILDER's steps only
     return counts, out
 
 
@@ -111,3 +111,12 @@ def test_mutation_removing_the_helper_grant_makes_the_builder_flow_fail_on_exact
     w.conn.execute(f"REVOKE EXECUTE ON FUNCTION {HELPER} FROM data_plane_builder")
     with pytest.raises(psycopg.errors.InsufficientPrivilege, match="ka_gochara_window_qualification_ok"):
         _builder_flow(w)
+
+
+def test_the_builder_replace_prelude_never_names_a_verification_table():
+    """R9-6.1 follow-up (Stream B finding on 58ce55523): the builder holds NO privilege on
+    ka_gochara_search_inventory_verification (1206 §7), so the replace-prelude must not DELETE
+    it — the header FK cascades the verifier's row instead (PC-4)."""
+    from services.gochara_kernel import inventory_store as store
+    assert not [t for t in store._CLASS_TABLES_DELETE_ORDER if t.endswith("_verification")]
+    assert store._CLASS_TABLES_DELETE_ORDER[-1] == "ka_gochara_search_inventory"  # header last

@@ -626,6 +626,10 @@ def frozen_permission_value(legacy_detail: dict, c5: dict) -> tuple[float, dict]
             sx["class_licence"] = c5["class_licence"]
             sx["detail"] = {lvl: c5["period_context"][lvl]
                             for lvl in ("md", "ad", "pd")}
+            if sx["active"]:
+                sx["state"] = "active"
+            elif sx.get("state") != "unavailable":
+                sx["state"] = "inactive"
         if sid in TESTIMONY_SYSTEMS:
             excluded.append({"system_id": sid, "reason": "testimony (N-15) — "
                              "annotates, never weights", "active": sx.get("active"),
@@ -647,6 +651,16 @@ def frozen_permission_value(legacy_detail: dict, c5: dict) -> tuple[float, dict]
         "systems_considered": [sx["system_id"] for sx in included],
         "system_count_active": sum(1 for sx in included if sx.get("active")),
         "systems_excluded": excluded,
+        # a system the read could not supply is UNAVAILABLE, never "inactive"
+        # (CLAUDE.md §N.7 item 6). The weight denominator is unchanged (it
+        # contributes 0 as it always has — DR-14 is silent), so the value is
+        # MARKED PARTIAL instead of silently lowered.
+        "systems_unavailable": [
+            {"system_id": sx["system_id"],
+             "reason": (sx.get("detail") or {}).get("reason")}
+            for sx in included if sx.get("state") == "unavailable"],
+        "permission_partial": any(
+            sx.get("state") == "unavailable" for sx in included),
         "permission_contract": PERMISSION_CONTRACT,
         "class_licence": c5["class_licence"],
         "admitted_paths": c5["admitted_paths"],
@@ -660,7 +674,8 @@ def frozen_permission_value(legacy_detail: dict, c5: dict) -> tuple[float, dict]
 def make_per_instant_permission_fn(conn, chart_id: str, event_class: str,
                                    dasha_periods: list[dict], chart: dict, *,
                                    pinned_build_id: str | None = None,
-                                   tier: str | None = None):
+                                   tier: str | None = None,
+                                   availability: dict | None = None):
     """permission_fn(t_jd) -> (permission, detail) for one event class:
     the frozen C5 licence (frozen_c5_permission_context) composed with the
     other DR-14 generators (gochara_intensity.permission.compute_permission
@@ -691,6 +706,15 @@ def make_per_instant_permission_fn(conn, chart_id: str, event_class: str,
                 swe, conn, chart_id, event_class, targets, t_jd,
                 dasha_periods=dasha_periods)
             detail = {**detail, "_legacy_permission": raw}
+            if availability:
+                # the class-context document knows WHY a system had no rows
+                # (none stored vs refused by the tier policy): state it
+                for sx in detail.get("systems") or []:
+                    if sx.get("state") == "unavailable":
+                        why = availability.get(sx["system_id"]) or {}
+                        sx["detail"] = {**(sx.get("detail") or {}),
+                                        "reason": why.get("reason") or (sx.get("detail") or {}).get("reason"),
+                                        "observed_rows_by_level_tier": why.get("observed_rows_by_level_tier")}
             cache[key] = frozen_permission_value(detail, c5)
         return cache[key]
 
@@ -727,10 +751,12 @@ def build_projection_class_context(conn, chart_id: str, event_class: str,
                 "§4.1) cannot be evaluated; regenerate the document with the "
                 "repaired step06a_class_context.py")
         contract = doc.get("_dasha_read_contract") or {}
+        extra = ({"availability": doc["_dasha_availability"]}
+                 if doc.get("_dasha_availability") else {})
         permission_fn = factory(
             conn, chart_id, event_class, dasha_rows, chart,
             pinned_build_id=contract.get("build_id"),
-            tier=contract.get("tier"))
+            tier=contract.get("tier"), **extra)
         if permission_fn is None:
             return None
     return ClassContext(
@@ -901,14 +927,16 @@ def three_field_valence(supportive_channel: float, afflicting_channel: float,
 
 # ── tārā: P6 testimony annotation on day rows (S-04, O-P6-TARA; ASTRA P1-6) ──
 
-NAKSHATRA_ARC_DEG = 360.0 / 27.0
 TARA_CONTRACT = "P6 tārā testimony (GOCHARA_DESIGN_SPECS_v1_4 §2.2 P6; S-04; D-PADMIT)"
 
 
 def nakshatra_index_1based(longitude_deg: float) -> int:
-    """1..27 (Aśvinī = 1) — the gochara_rules.p6.tara index convention."""
-    idx = int((float(longitude_deg) % 360.0) // NAKSHATRA_ARC_DEG) + 1
-    return max(1, min(27, idx))
+    """1..27 (Aśvinī = 1) — the gochara_rules.p6.tara index convention. EXACT boundary
+    membership (C13): the float `// (360/27)` put 15 of the 27 exact boundaries in the
+    preceding nakṣatra; the one exact helper (gochara_rules.kernel_factor.extent_index,
+    integer arcseconds) puts a boundary longitude in the FOLLOWING nakṣatra, seam-safe."""
+    from services.gochara_rules.kernel_factor import NAKSHATRA_ARCSEC, extent_index
+    return extent_index(float(longitude_deg), None, NAKSHATRA_ARCSEC)
 
 
 def make_tara_annotator(natal_moon_deg, planet_pos_fn):
@@ -1375,6 +1403,8 @@ def make_eval_fn(class_ctx: ClassContext, contacts: list[dict],
             "permission": permission,
             "permission_detail": permission_detail,
             "permission_systems_active": permission_detail["systems_active"],
+            "permission_systems_unavailable": permission_detail.get(
+                "systems_unavailable", []),
             "supportive": supportive,
             "afflicting": afflicting,
             "c2_positive": c2["positive"],

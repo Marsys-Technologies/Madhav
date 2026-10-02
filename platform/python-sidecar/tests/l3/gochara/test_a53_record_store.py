@@ -18,6 +18,7 @@ so the chart is a dict; no chart_facts needed at this tier).
 """
 from __future__ import annotations
 
+from ._disposable_db_guard import UnsafeAdminDSN, guarded_admin_connect  # noqa: E402
 import os
 import sys
 from datetime import datetime, timedelta, timezone
@@ -322,7 +323,9 @@ def _pg_dsn():
     psycopg = pytest.importorskip("psycopg")
     from psycopg.conninfo import make_conninfo
     try:
-        admin = psycopg.connect(ADMIN_DSN, autocommit=True, connect_timeout=3)
+        admin = guarded_admin_connect(ADMIN_DSN, autocommit=True, connect_timeout=3)
+    except UnsafeAdminDSN:
+        raise                    # a hostile admin DSN is a configuration ERROR, never a skip
     except Exception as exc:  # noqa: BLE001
         if os.environ.get("GOCHARA_A53_REQUIRE_DB") == "1":      # CI: an unreachable server is a FAILURE, never a skip
             pytest.fail(f"GOCHARA_A53_REQUIRE_DB=1 but the disposable database server is unreachable ({exc})")

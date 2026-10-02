@@ -95,11 +95,11 @@ def _seed(cur) -> None:
 def node_db():
     """A database THIS fixture creates and drops (disposable-server rule: it refuses to run
     anywhere else). NOT_RUN when the maintenance server is unreachable."""
+    from ._disposable_db_guard import check_admin_dsn, guarded_admin_connect
+    check_admin_dsn(MAINT_DSN)          # a hostile / multi-host / non-loopback DSN is a configuration ERROR (was: first-host-only urlsplit)
     parts = urlsplit(MAINT_DSN)
-    if parts.hostname not in ("localhost", "127.0.0.1", "::1"):
-        pytest.skip("NOT_RUN: node-pin PG tests run only against a loopback disposable server")
     try:
-        maint = psycopg.connect(MAINT_DSN, autocommit=True, connect_timeout=3)
+        maint = guarded_admin_connect(MAINT_DSN, autocommit=True, connect_timeout=3)
     except psycopg.OperationalError as exc:
         pytest.skip(f"NOT_RUN: disposable PostgreSQL unreachable ({exc.__class__.__name__})")
     name = f"nodepin_{uuid.uuid4().hex[:12]}"

@@ -83,13 +83,37 @@ def _record(w, path="P3", **over):
                                rule_version="1.0.0", report=report, input_digest=_input_digest(w))
 
 
-def _seal(w):
-    """Publish + seal in one transaction (the governed path); returns the manifest id or raises."""
+def _persist_test_brief(w, digest="a" * 64):
+    """F-R12-4 / F-R13-4: the receipt must name a brief the VERIFIER persisted. A test that writes a receipt by hand persists one first
+    AS THE VERIFIER LOGIN (the database attests its manifest, state and `produced_by`), unless the generation is already published
+    (a REPLAY). Call it BEFORE the sealing transaction opens."""
+    from .test_a53_verification_job import login
+    if w.conn.execute("SELECT status FROM public.kala_gochara_publication WHERE chart_id = %s AND generation = %s",
+                      (CHART_ID, GEN)).fetchone()[0] == "candidate":
+        with login(w, "gochara_verifier") as c:
+            c.execute("INSERT INTO public.ka_gochara_seal_brief (chart_id, generation, manifest_id, brief_digest, state_digest,"
+                      " runner_identity, producer_commit, image_digest, execution_id) VALUES (%s::uuid, %s, gen_random_uuid(), %s,"
+                      " repeat('0', 64), '{\"commit\": \"t\", \"implementation_digest\": \"t\"}'::jsonb, 'abc1234',"
+                      " 'sha256:' || repeat('1', 64), 'executions/test-exec-1')", (CHART_ID, GEN, digest))
+
+
+def _seal(w, receipt=True):
+    """Publish + seal in one transaction (the governed path); returns the manifest id or raises. R11-3: the seal is only
+    committable with its approval receipt (1240's deferred constraint trigger), so the helper writes one in the same
+    transaction (idempotent for a REPLAY, where the seal row — and its receipt — already exist)."""
+    if receipt:
+        _persist_test_brief(w)
     with w.conn.transaction():
         w.conn.execute("SELECT public.ka_gochara_lock_chart(%s::uuid)", (CHART_ID,))
         gk_ledger.publish(w.conn, CHART_ID, GEN)
-        return w.conn.execute("SELECT public.ka_gochara_seal_generation(%s::uuid, %s)",
-                              (CHART_ID, GEN)).fetchone()[0]
+        manifest = w.conn.execute("SELECT public.ka_gochara_seal_generation(%s::uuid, %s)", (CHART_ID, GEN)).fetchone()[0]
+        if receipt:
+            w.conn.execute(
+                "INSERT INTO public.ka_gochara_seal_approval (chart_id, generation, manifest_id, brief_digest, brief_id, producer_execution_id, approver_login,"
+                " approved_by_note, run_id, run_attempt, workflow_commit) VALUES (%s::uuid, %s, %s::uuid, repeat('a', 64),"
+                f" (SELECT coalesce(max(brief_id), 1) FROM public.ka_gochara_seal_brief), 'executions/test-exec-1', 'test-approver', 'test helper', 1, 1, 'abc1234') ON CONFLICT (chart_id, generation) DO NOTHING",
+                (CHART_ID, GEN, manifest))
+        return manifest
 
 
 def _built(w):
@@ -148,6 +172,8 @@ def test_the_verifier_derives_verifies_and_persists_with_only_the_migrations_gra
 def test_the_sealer_runs_the_window_gate_and_the_replay_check(rworld):
     w = rworld
     _built(w)
+    # R12-1: the gate's legacy-rows helper is 1240's but its grant is 1241's (closed ACL spec) — stood in here
+    w.conn.execute("GRANT EXECUTE ON FUNCTION public.ka_gochara_legacy_projection_rows(uuid, text) TO gochara_sealer")
     with as_role(w.conn, "gochara_sealer"):
         assert wg.candidate_gate(w.conn, CHART_ID, GEN, CLS) == []
         n = w.conn.execute("SELECT count(*) FROM public.ka_gochara_window_verification_replay_violations(%s::uuid, %s)",
@@ -371,18 +397,15 @@ def test_when_the_session_role_cannot_write_the_result_the_substeps_record_the_p
     """verification_pending_verifier_principal: never an error, never a builder-written row; the gate stays closed."""
     w = rworld
     _boot_p3(w)
-    monkeypatch.setattr(wg, "can_write_verification", lambda conn: False)
-    out = _windows(w)
+    out = {p: w.step(f"window:{CLS}:{p}") for p in ("P1", "P2", "P3", "P4")}     # the BUILDER's steps only (R9-6.1)
     assert all("verification_pending_verifier_principal" in r.notes and "candidate gate stays closed" in r.notes
                for r in out.values()), [r.notes for r in out.values()]
     assert w.conn.execute("SELECT count(*) FROM public.ka_gochara_eval_window_verification").fetchone()[0] == 0
-    monkeypatch.setattr(writer_mod.gk_verifier, "verify_aspect_span_contacts",
-                        lambda *a, **k: {"objects_checked": 0, "occurrences": 0})
     # the pending-state behaviour under test is independent of the contact-geometry certification (its own suite)
     monkeypatch.setattr(writer_mod.gk_contact_certify, "certify_contact_geometry",
                         lambda *a, **k: {"obligations_certified": 0, "contacts_expected": 0, "named_limit": "stubbed"})
     res = w.step(f"verify:{CLS}")
-    assert "verification_pending_verifier_principal" in res.notes and "gate CLOSED" in res.notes
+    assert "verification_pending_verifier_principal" in res.notes and "gate stays CLOSED" in res.notes
     import psycopg
     from services.gochara_kernel.window_gate import CandidateGateRefused
     monkeypatch.undo()

@@ -125,13 +125,14 @@ def test_the_seal_check_then_reports_only_what_is_genuinely_unfinished(run):
 
 def test_the_verifier_derives_every_included_path_so_a_class_without_its_contacts_fails_the_build(run):
     """R8-4: P2 is now derivable, so no included path is "unverifiable" any more — the independent inventory + ledger
-    derivations pass, and the NEXT independent check (aspect-to-span occurrences re-derived by sampling) refuses a
-    class whose contacts were never materialised: the build fails rather than write a verification row."""
+    derivations pass, and the NEXT independent check (R10-6: the complete contact-geometry certification, aspect-to-span
+    included, under the derived tolerance — the fixed-tolerance sampling precheck is gone) refuses a class whose contacts were
+    never materialised: the build fails rather than write a verification row."""
     step, conn = run
     for k in (writer_mod.CONVENTION_SUBSTEP, writer_mod.MANIFEST_SUBSTEP,
               writer_mod.SNAPSHOT_SUBSTEP, "inventory:marriage"):
         step(k)
-    with pytest.raises(RuntimeError, match="the two readings DISAGREE"):
+    with pytest.raises(RuntimeError, match="contact geometry certification failed.*is not in the ledger"):
         step("verify:marriage")
     assert conn.execute("SELECT count(*) FROM public.ka_gochara_search_inventory_verification"
                         ).fetchone()[0] == 0

@@ -1463,11 +1463,11 @@ def test_cross_pr_round_trip_the_real_brief_stdout_through_the_real_extractor_ch
     sa = "gochara-verifier-runtime@madhav-astrology.iam.gserviceaccount.com"
     args = ["--chart", CHART_ID, "--generation", GEN, "--brief", "--sealing-commit", SEALING_COMMIT]
     execution = {"metadata": {"name": EXECUTION_NAME}, "spec": {"taskCount": 1, "template": {"spec": {"serviceAccountName": sa, "maxRetries": 0, "containers": [{
-        "image": f"asia-south1-docker.pkg.dev/madhav-astrology/amjis/brahma-pipeline@{img}", "args": args,
+        "image": f"asia-south1-docker.pkg.dev/madhav-astrology/amjis/brahma-pipeline@{img}", "command": ["python", "-m", "pipeline.orchestrator.verification_job"], "args": args,
         "env": [{"name": "GOCHARA_RUNNER_COMMIT", "value": SEALING_COMMIT}, {"name": "GOCHARA_RUNNER_IMAGE_DIGEST", "value": img},
                 {"name": "GOCHARA_VERIFIER_DB_URL", "valueFrom": {"secretKeyRef": {"name": "gochara-verifier-db-url", "key": "latest"}}}]}]}}},
         "status": {"conditions": [{"type": "Completed", "status": "True"}], "succeededCount": 1}}
-    verified = xc.check(execution, execution_name=EXECUTION_NAME, image_digest=img, service_account=sa, runner_commit=SEALING_COMMIT, args=args, secret_name="gochara-verifier-db-url")
+    verified = xc.check(execution, execution_name=EXECUTION_NAME, image_repo="asia-south1-docker.pkg.dev/madhav-astrology/amjis/brahma-pipeline", image_digest=img, service_account=sa, runner_commit=SEALING_COMMIT, args=args, secret_name="gochara-verifier-db-url")
     xc.bind_producer(verified, comp["producer"], execution_name=EXECUTION_NAME, sealing_commit=SEALING_COMMIT)       # the brief's OWN producer line == the executed resource
     envelope_file.write_text(_json.dumps(xc.build_envelope(verified, run_id=str(run_id), attempt=str(attempt), sealing_commit=SEALING_COMMIT, brief_digest=digest, brief_id=brief_id,
                                                            producer_execution_id=comp["producer"]["execution_id"])))
@@ -1594,3 +1594,35 @@ def test_the_sealing_job_refuses_owner_membership_and_column_grants_on_the_verif
             w.conn.execute(f"REVOKE {priv} ({col}) ON public.{table} FROM {cw.SEALER}")
     assert w.conn.execute("SELECT status FROM public.kala_gochara_publication WHERE chart_id=%s AND generation=%s", (CHART_ID, GEN)).fetchone()[0] == "candidate"
     assert w.conn.execute("SELECT count(*) FROM public.ka_gochara_generation_seal").fetchone()[0] == 0 and _receipt(w.conn) == []
+
+
+def test_attack_on_a_sealed_generation_the_manifests_result_policy_cannot_be_removed_or_altered_by_the_builder_or_the_sealer(cbuilt):
+    """Steward round-15 attack: Stream A's sealed-contact guard keys its SCOPE on the manifest's `result_policy` key (a sealed manifest without it is treated as a PRE-regime seal and
+    the older, looser behaviour applies). So on a SEALED generation, removing or altering that key would silently re-open the contact/record write path. Each of: removing the key,
+    changing its value, and replacing the whole vector, attempted (a) as the RESTRICTED BUILDER and (b) as the REAL SEALER login, must be REFUSED, and the manifest must be unchanged."""
+    import psycopg
+    w = cbuilt
+    verify_as_verifier(w)
+    seal_as_sealer(w)
+    before = w.conn.execute("SELECT input_generation_vector::text FROM public.kala_gochara_publication WHERE chart_id = %s AND generation = %s", (CHART_ID, GEN)).fetchone()[0]
+    assert '"result_policy"' in before
+    attacks = ("UPDATE public.kala_gochara_publication SET input_generation_vector = input_generation_vector - 'result_policy' WHERE chart_id = '%s' AND generation = '%s'" % (CHART_ID, GEN),
+               "UPDATE public.kala_gochara_publication SET input_generation_vector = jsonb_set(input_generation_vector, '{result_policy}', '\"numeric_policy/1\"') WHERE chart_id = '%s' AND generation = '%s'" % (CHART_ID, GEN),
+               "UPDATE public.kala_gochara_publication SET input_generation_vector = '{}'::jsonb WHERE chart_id = '%s' AND generation = '%s'" % (CHART_ID, GEN))
+    for stmt in attacks:                                                                  # (a) the restricted builder (a savepoint per attempt, so the connection stays usable)
+        with pytest.raises((psycopg.errors.Error, RuntimeError)):
+            with as_role(w.conn, cw.BUILDER):
+                with w.conn.transaction():
+                    w.conn.execute(stmt)
+    for stmt in attacks:                                                                  # (b) the real sealer login
+        with pytest.raises(psycopg.errors.Error):
+            _sealer_raw(w, lambda conn, st=stmt: conn.execute(st))
+    after = w.conn.execute("SELECT input_generation_vector::text FROM public.kala_gochara_publication WHERE chart_id = %s AND generation = %s", (CHART_ID, GEN)).fetchone()[0]
+    assert after == before
+
+
+def test_the_boundary_guard_inventory_reports_every_boundary_relation_existing_and_guarded(cbuilt):
+    """Runbook §4.1 W5 / Stream A's `ka_gochara_boundary_guard_inventory()`: four rows, each (exists, write_guarded, truncate_guarded) = (true, true, true) in the composed world."""
+    rows = cbuilt.conn.execute("SELECT * FROM public.ka_gochara_boundary_guard_inventory()").fetchall()
+    got = [tuple(r.values()) if isinstance(r, dict) else tuple(r) for r in rows]
+    assert len(got) == 4 and all(r[1:] == (True, True, True) for r in got), got

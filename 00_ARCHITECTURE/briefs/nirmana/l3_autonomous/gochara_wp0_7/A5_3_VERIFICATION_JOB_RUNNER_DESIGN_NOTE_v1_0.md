@@ -1,10 +1,11 @@
 ---
 artifact: A5_3_VERIFICATION_JOB_RUNNER_DESIGN_NOTE
-version: "1.0"
-status: "DESIGN ONLY — no code until the native rules on ND-ROLES (option A). Nothing here is decided."
+version: "1.1"
+status: "BUILT as library + entry point (steward M…062613, R9-6.1), tested with a provisioned verifier role on a disposable database; no production role exists. Not decided: the roles themselves (native)."
 date: 2026-10-02
 author: Pravāha Stream A (Exec A), steward M20261002T055158-aac2
 changelog:
+  - "1.1 (2026-10-02): built. A disagreement writes NO row for the class (not a FAILED row): the gate then stays closed for the named reason `window_verification_missing` and the report names the stage; the writer is report-only; see brief v1.38."
   - "1.0 (2026-10-02): the runner the ND-ROLES packet (v1.1, option A) describes: entry point, preconditions, sequence, outputs, refusals, tests."
 ---
 

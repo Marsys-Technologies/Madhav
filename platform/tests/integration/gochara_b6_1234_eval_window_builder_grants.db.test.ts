@@ -92,7 +92,7 @@ const HORIZON = "tstzrange('2025-01-01T00:00Z','2026-01-01T00:00Z','[)')"
 const SUPPORT = "ARRAY[tstzrange('2025-03-09T00:00Z','2025-03-11T00:00Z')]::tstzrange[]"
 
 let seq = 0
-let ANCHOR_COLS = false          // the anchor columns exist only after 1233 is applied
+const ANCHOR_COLS = false        // the anchor columns exist only after 1233 is applied
 const uuid = (): string => `20000000-0000-4000-8000-${String(++seq).padStart(12, '0')}`
 
 function mig(name: string): string {

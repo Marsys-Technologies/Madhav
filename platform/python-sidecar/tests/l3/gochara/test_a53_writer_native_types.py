@@ -95,9 +95,9 @@ def test_the_rules_convention_and_record_substeps_run_with_native_types(native, 
     monkeypatch.setattr(writer_mod.gk_contact_certify, "certify_contact_geometry",
                         lambda *a, **k: {"obligations_certified": 0, "contacts_expected": 0,
                                          "named_limit": "stubbed for this row-shape seam test"})
-    with pytest.raises(CandidateGateRefused, match="window_verification_missing"):
-        step("verify:marriage")             # R8-4: every inventory/ledger/sampling check ran on dict rows; the
-                                            # window half of the candidate gate then refuses: no window results
+    res = step("verify:marriage")           # R8-4: every inventory/ledger/sampling check ran on dict rows; since R9-6.1 the
+                                            # builder only REPORTS — it persists nothing and does not read the gate
+    assert "NOT persisted by the builder" in res.notes
 
 
 def test_plan_substeps_and_run_with_native_types_and_dry_run_writes_nothing(native):

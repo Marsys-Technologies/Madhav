@@ -25,7 +25,7 @@ sys.path.insert(0, str(HERE.parent))
 import asset_census as ac  # noqa: E402
 import test_e1_9_assets_scope as e19  # noqa: E402
 
-STAMP_KEYS = {"registry_revision", "registry_fingerprint", "tool_commit", "tool_dirty"}
+STAMP_KEYS = {"registry_revision", "registry_fingerprint", "tool_commit", "tool_dirty", "declarations_sha256", "declarations_version"}
 NEEDS_GIT = pytest.mark.skipif(shutil.which("git") is None, reason="git binary not available: real-repository stamp tests cannot run")
 
 _CLEAN_ENV = {k: v for k, v in os.environ.items() if not k.startswith("GIT_")}
@@ -143,7 +143,8 @@ def test_the_new_keys_are_only_those_and_no_measurement_or_asset_is_touched(monk
     h = copy.deepcopy(doc["L0"])
     h.pop("generated")
     extra = set(h) - set(raw)
-    assert extra == STAMP_KEYS | ({"tool_commit_unavailable"} if h["tool_commit"] is None else set()), extra
+    assert extra == STAMP_KEYS | ({"tool_commit_unavailable"} if h["tool_commit"] is None else set()) \
+        | ({"declarations_unavailable"} if h["declarations_sha256"] is None or h["declarations_version"] is None else set()), extra
     assert h["tool_commit"] is None or h["tool_dirty"] is False
     assert {k: v for k, v in h.items() if k in raw} == json.loads(json.dumps(raw, default=str))
 
@@ -154,7 +155,7 @@ def test_the_rollup_ignores_the_head_keys_and_moves_no_cell(monkeypatch, tmp_pat
     assert doc["rollup"]["registry_fingerprint"] == doc["L0"]["registry_fingerprint"]
     for k in ("L0", "L2"):
         stamped = ac.rollup_census(doc[k])
-        bare = ac.rollup_census({kk: v for kk, v in doc[k].items() if kk not in STAMP_KEYS | {"tool_commit_unavailable"}})
+        bare = ac.rollup_census({kk: v for kk, v in doc[k].items() if kk not in STAMP_KEYS | {"tool_commit_unavailable", "declarations_unavailable"}})
         assert json.dumps(stamped, sort_keys=True) == json.dumps(bare, sort_keys=True)
         assert json.dumps(doc["rollup"]["layers"][k], sort_keys=True) == json.dumps(stamped, sort_keys=True)
 
