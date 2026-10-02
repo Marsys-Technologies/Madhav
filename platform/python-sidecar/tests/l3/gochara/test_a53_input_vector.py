@@ -70,6 +70,7 @@ def _ivv(db, stored, ephe, **kw):
     kw.setdefault("census_probe", lambda e, lo, hi: {f.name: iv._file_sha(f) for f in Path(e).glob("*.se1")})
     kw.setdefault("series_probe", lambda e: "ab" * 32)
     kw.setdefault("backend_probe", lambda e: ("swieph", stored["ephemeris"]["swe_version"]))
+    kw.setdefault("absolute_probe", lambda e: ivv.ABSOLUTE_PROBE_SUN_LAHIRI_DEG)       # the real one is tested against the real files
     return ivv.verify_inputs(db, stored, ephe_path=ephe, modules=iv.IMPLEMENTATION_MODULES, path_refs=REFS, **kw)
 
 
@@ -344,7 +345,7 @@ def test_the_independent_input_check_derives_every_derivable_component_and_names
     stored = _vector(db, ephe, l0_consumed=CONSUME)
     out = _ivv(db, stored, ephe)
     assert set(out["derived"]) == {"registry", "l0", "sky_convention", "ephemeris.files", "ephemeris.census",
-                                   "ephemeris.library", "ephemeris.backend", "ephemeris.version", "ephemeris.probe",
+                                   "ephemeris.library", "ephemeris.backend", "ephemeris.version", "ephemeris.probe", "ephemeris.absolute_probe",
                                    "schema", "stored_scope", "result_policy", "node", "implementation"}
     # R9-3: everything it does NOT derive is NAMED — the orb tables and rulings (builder code), the span the census was
     # taken over (supplied), and the semantics (not just the vocabulary) of the schema/scope/policy tokens
@@ -408,7 +409,8 @@ def test_the_opened_file_census_is_established_by_the_verifier_not_read_from_the
     # with no span supplied the census CANNOT be established, and the report says so rather than claiming it
     no_span = ivv.verify_inputs(db, stored, ephe_path=ephe, modules=iv.IMPLEMENTATION_MODULES, path_refs=REFS,
                                 series_probe=lambda e: "ab" * 32,
-                                backend_probe=lambda e: ("swieph", stored["ephemeris"]["swe_version"]))
+                                backend_probe=lambda e: ("swieph", stored["ephemeris"]["swe_version"]),
+                                absolute_probe=lambda e: ivv.ABSOLUTE_PROBE_SUN_LAHIRI_DEG)
     assert "ephemeris.census" not in no_span["derived"] and "ephemeris.census" in no_span["not_derived"]
 
 
@@ -951,3 +953,15 @@ def test_assemble_vector_validates_a_pre_shaped_ephemeris_component_against_the_
     assert iv.assemble_vector({**good, "ephemeris": comp})["ephemeris"] == comp
     with pytest.raises(iv.InputDrift, match="ephemeris component keys"):
         iv.assemble_vector({**good, "ephemeris": {k: v for k, v in comp.items() if k != "platform"}})
+
+
+@pytest.mark.parametrize("offset", [0.883956, -0.883956, 1e-6])
+def test_a_wrong_absolute_probe_is_refused_by_name_through_the_real_input_check_and_the_pinned_value_passes(db, ephe, offset):
+    """(d) The vector's series probe is compared writer-vs-verifier only (a wrong sidereal mode would be consistently wrong on both sides); the
+    absolute probe is compared with a CONSTANT. 0.883956 deg is the Fagan-Bradley / Lahiri gap."""
+    stored = _vector(db, ephe)
+    ok = _ivv(db, stored, ephe, absolute_probe=lambda e: ivv.ABSOLUTE_PROBE_SUN_LAHIRI_DEG)
+    assert "ephemeris.absolute_probe" in ok["derived"]
+    with pytest.raises(RuntimeError, match="ephemeris_absolute_probe_mismatch"):
+        _ivv(db, stored, ephe, absolute_probe=lambda e: ivv.ABSOLUTE_PROBE_SUN_LAHIRI_DEG + offset)
+

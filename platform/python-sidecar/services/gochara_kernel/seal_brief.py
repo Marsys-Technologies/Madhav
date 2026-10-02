@@ -254,6 +254,7 @@ def _build_payload(conn, chart_id: str, generation: str, *, sealing_commit: str 
             for p, v, s, pol, wc, we, di, at, vid, vver, rid in grains]})
     runners = {(g["runner"]["commit"], g["runner"]["implementation_digest"]) for c in classes for g in c["grains"]}
     pinned = hashlib.sha256(_canon(vector["implementation"]).encode("utf-8")).hexdigest()
+    natal_tiers = natal_input_tiers(conn, chart_id, generation)     # ONE read feeds both the disclosure and the observed-tiers field (F-R16-6)
     return {
         "schema": SCHEMA, "chart_id": chart_id, "generation": generation,
         "manifest": {"manifest_id": manifest_id, "status": "candidate" if as_candidate else status, "horizon": horizon,
@@ -280,8 +281,8 @@ def _build_payload(conn, chart_id: str, generation: str, *, sealing_commit: str 
         "ledger": _ledger_evidence(conn),
         "disclosures": {"policy": _policy_disclosure(manifest_policy(conn, chart_id, generation)),
                         "ephemeris_binding": EPHEMERIS_BINDING_DISCLOSURE,
-                        "natal_inputs": natal_disclosure(natal_input_tiers(conn, chart_id, generation)),
-                        "natal_input_tiers": natal_input_tiers(conn, chart_id, generation),
+                        "natal_inputs": natal_disclosure(natal_tiers),
+                        "natal_input_tiers": natal_tiers,
                         "named_limits": __import__("services.gochara_kernel.scope_response", fromlist=["x"]).named_limits(),
                         "attestation_binding": "composition: inputs/2 per grain + DB-guarded path pins + the 1206 inventory "
                                                "verification row + the generation-wide output identity above",
@@ -302,7 +303,7 @@ NATAL_SUBJECTS = ("LAGNA", "SUN", "MOON", "MAR", "MER", "JUP", "VEN", "SAT", "RA
 #: VERBATIM (steward ruling, F-R15-4) — printed ONLY when the consumed natal rows are exactly the ten subjects and every one is at tier `single`
 NATAL_SINGLE_TIER_DISCLOSURE = (
     "The ten natal longitudes this generation consumes (LAGNA, SUN, MOON, MAR, MER, JUP, VEN, SAT, RAH_MEAN, KET_MEAN; chart_facts "
-    "graha_position longitude_sidereal, lahiri) are read at the tier they carry, which is `single` (one derivation, no independent second "
+    "graha_position longitude_sidereal, lahiri_chitrapaksha) are read at the tier they carry, which is `single` (one derivation, no independent second "
     "pass); they are bound by content digest, not verified by this generation.")
 
 
@@ -324,7 +325,7 @@ def natal_disclosure(tiers: dict[str, list[str]]) -> str:
     if set(tiers) == set(NATAL_SUBJECTS) and all(t == [UNVERIFIED_DEFAULT] for t in tiers.values()):
         return NATAL_SINGLE_TIER_DISCLOSURE
     seen = "; ".join(f"{k}={'/'.join(v)}" for k, v in tiers.items()) or "no consumed natal row was found"
-    return ("The natal longitudes this generation consumes (chart_facts graha_position longitude_sidereal, lahiri) are read at the tiers they "
+    return ("The natal longitudes this generation consumes (chart_facts graha_position longitude_sidereal, lahiri_chitrapaksha) are read at the tiers they "
             f"carry — observed: {seen} — and are NOT all at the single tier the standard disclosure states; they are bound by content digest, "
             "not verified by this generation.")
 
