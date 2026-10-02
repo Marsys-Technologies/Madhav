@@ -535,7 +535,9 @@ def run(conn, *, chart_id: str, generation: str = GENERATION, classes=None, posi
     gate_all = [] if report_only else candidate_gate_on_candidate_manifest(conn, chart_id, generation)
     scope = set(pre["classes"])
     full = classes is None
-    gate = [v for v in gate_all if full or v["event_class"] is None or v["event_class"] in scope]
+    # generation-level violations carry event_class '*' (the completeness function) or None — BOTH are generation-level and
+    # always in scope: a subset run must not be able to call a generation-level mismatch "outside its classes" (R11-cand-1)
+    gate = [v for v in gate_all if full or v["event_class"] in (None, "*") or v["event_class"] in scope]
     report["gate"] = gate
     report["gate_outside_scope"] = [v for v in gate_all if v not in gate]
     report["gate_source"] = "ka_gochara_candidate_gate_violations"

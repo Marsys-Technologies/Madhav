@@ -158,3 +158,16 @@ def test_the_published_only_arms_are_rederived_against_the_candidate_manifest_an
                        " input_generation_vector || '{\"x\": 1}'::jsonb")
     got = {v["violation"] for v in vj.candidate_gate_on_candidate_manifest(w.conn, CHART_ID, GEN)}
     assert "input_vector_mismatch" in got
+
+
+def test_a_generation_level_violation_is_in_scope_of_a_subset_run(built):
+    """R11-cand-1 (Stream B's review): generation-level violations carry event_class '*', not NULL. A `--class` SUBSET run must
+    still be closed by them — here the candidate manifest names a legacy convention with no bridge."""
+    w = built
+    with w.conn.transaction():
+        w.conn.execute("SET LOCAL session_replication_role = replica")
+        w.conn.execute("UPDATE public.kala_gochara_publication SET convention_id = 'unbridged-legacy-convention'")
+    report = _run(w)                                    # classes=[CLS]: a SUBSET run
+    assert report["status"] == "NOT_VERIFIED" and report["exit_code"] == vj.EXIT_DISAGREE, report["classes"]
+    assert any(v["violation"] == "convention_bridge_missing" and v["event_class"] == "*" for v in report["gate"])
+    assert not any(v["event_class"] == "*" for v in report["gate_outside_scope"])
