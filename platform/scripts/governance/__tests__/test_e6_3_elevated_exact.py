@@ -18,6 +18,7 @@ from _e6_3_fixtures import (MINI_CENSUS, MINI_FLOOR, mini_patch, NA_NULL, World,
 
 T = load_tracker()
 REAL_FLOOR = dict(T.E63_REQUIRED_FLOOR)
+REAL_PINS_NOW = [c for ids in T.E63_REQUIRED_CRITERIA.values() for c in ids]
 REAL_PINS = dict(T.E63_REQUIRED_CRITERIA)
 ALL = {"ga_alpha", "bg_beta", "ka_gamma"}
 
@@ -495,18 +496,35 @@ def test_real_registry_all_PASS_is_never_elevated_exactly_when_the_rollup_says_n
     assert all_gates_pass is False
 
 
-def test_real_registry_an_asset_with_every_non_capped_non_NONE_criterion_PASS_and_the_rest_computed_NA(tmp_path, real_floor):
-    """The exact function agrees with the rollup when the capped/NONE criteria are released by DECLARED N/A rules."""
+def _na_rule_literal_replaced(src, merged):
+    """`src` (asset_census.py) with its NA_RULE_DECISIONS assignment rewritten to the literal `merged`, located with ast (the real
+    registry declares rules now, so a textual replace of an empty dict no longer works)."""
+    import ast
+    tree = ast.parse(src)
+    node = next(n for n in tree.body if (isinstance(n, ast.AnnAssign) and getattr(n.target, "id", None) == "NA_RULE_DECISIONS")
+                or (isinstance(n, ast.Assign) and getattr(n.targets[0], "id", None) == "NA_RULE_DECISIONS"))
+    lines = src.split("\n")
+    lines[node.lineno - 1:node.end_lineno] = [f"NA_RULE_DECISIONS: dict[str, str] = {merged!r}"]
+    return "\n".join(lines)
+
+
+def test_real_registry_an_asset_with_every_honoured_criterion_PASS_and_the_rest_computed_NA(tmp_path, real_floor, monkeypatch):
+    """The exact function agrees with the census rollup on the CURRENT real registry: criteria whose measured PASS the rollup does
+    not honour (computed from the rollup itself, not a hard-coded list) are released by DECLARED N/A rules, the rest PASS."""
     import pathlib
+    from _e6_3_fixtures import real_citation_patch, REAL_CITATION
+    real_citation_patch(monkeypatch, T)
     ac = _real_census_module()
     layer, asset = "L1", "ga_x"
     req = {c for c, e in ac.CRITERION_REGISTRY.items() if e["gate"] in ac.CELL_GATES and layer in e["layers"]}
-    blocked = {c for c in req if c.startswith("Null.") or c == "Narr.fidelity_test" or ac.CRITERION_REGISTRY[c]["detector"] == "NONE"}
-    assert blocked, "the real registry has capped/NONE criteria today"
-    src = (pathlib.Path(ac.__file__)).read_text(encoding="utf-8")
+    assert req and set(REAL_PINS_NOW) <= req | set(), "pins are a subset of what the real registry requires"
+    blocked = {c for c in req if ac._check_contribution(c, layer, {"v": "PASS"}, None)["v"] != "PASS"}
+    assert blocked, "the real registry has criteria whose measured PASS the rollup caps or refuses"
     rules = {f"{c}#measured:x-cause": "N-test" for c in blocked}
-    src = src.replace("NA_RULE_DECISIONS: dict[str, str] = {}", f"NA_RULE_DECISIONS: dict[str, str] = {rules!r}")
-    assert src != (pathlib.Path(ac.__file__)).read_text(encoding="utf-8")
+    merged = dict(ac.NA_RULE_DECISIONS, **rules)                                   # the real declared rules stay in force
+    original = pathlib.Path(ac.__file__).read_text(encoding="utf-8")
+    src = _na_rule_literal_replaced(original, merged)
+    assert src != original
     w = World(tmp_path, census=src)
     for c in sorted(req):
         e = ac.CRITERION_REGISTRY[c]
@@ -515,12 +533,13 @@ def test_real_registry_an_asset_with_every_non_capped_non_NONE_criterion_PASS_an
                                 na=dict(rule_id=f"{c}#measured:x-cause", decision_id="N-test", basis="measured_cause",
                                         cause="x-cause", facts=None)))
         else:
-            w.certs.append(cert(asset, c, "PASS", detector=e["detector"], layer=layer, revision=e["revision"], gate=e["gate"]))
+            w.certs.append(cert(asset, c, "PASS", detector=e["detector"], layer=layer, revision=e["revision"], gate=e["gate"],
+                                citation_state="sourced" if c in REAL_CITATION else ...))
     w.disps.append(disp(asset, "keep"))
     w.commit()
     assert asset in w.elevated(T)
     # and the rollup, given the same facts (each blocked criterion a measured N/A under a declared rule), agrees
-    saved_causes = dict(ac.NA_CAUSES)
+    saved_causes, saved_rules = dict(ac.NA_CAUSES), dict(ac.NA_RULE_DECISIONS)
     ac.NA_RULE_DECISIONS.update(rules)
     try:
         for c in blocked:
@@ -529,7 +548,11 @@ def test_real_registry_an_asset_with_every_non_capped_non_NONE_criterion_PASS_an
         cells = ac.rollup_asset(layer, meas)
         assert all(cell["v"] in ("PASS", "N/A") for cell in cells.values())
     finally:
-        for r in rules:
-            ac.NA_RULE_DECISIONS.pop(r, None)
+        ac.NA_RULE_DECISIONS.clear()
+        ac.NA_RULE_DECISIONS.update(saved_rules)
         ac.NA_CAUSES.clear()
         ac.NA_CAUSES.update(saved_causes)
+    # the reader and the census agree on what is NOT elevated too: drop the N/A of one blocked criterion and the asset falls
+    w.drop(asset, sorted(blocked)[0])
+    w.commit("one released criterion removed")
+    assert asset not in w.elevated(T)

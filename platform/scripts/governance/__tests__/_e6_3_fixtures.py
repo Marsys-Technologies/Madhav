@@ -28,6 +28,8 @@ TRACKER_PATH = pathlib.Path(os.environ.get("E6_3_TRACKER_UNDER_TEST")
 CTRL = "00_ARCHITECTURE/control"
 CERTS, GAPS, DISP = f"{CTRL}/asset_certs.jsonl", f"{CTRL}/asset_gaps.jsonl", f"{CTRL}/asset_dispositions.jsonl"
 SEED = "platform/scripts/seed/asset_registry_seed.ts"
+NIKASHA = "platform/scripts/governance/nikasha_certify.py"      # E5.1's own validator, committed in every fixture repo
+REAL_CITATION = ("Carr.D1", "Ldgr.source_presence")
 DECLARATIONS = "platform/scripts/governance/asset_declarations.json"
 # the declarations file the fixtures (and the golden ledgers' generator) commit; gate certificates are bound to its sha256
 DECL_TEXT = '{\n  "version": "1.0.0",\n  "assets": {}\n}\n'
@@ -94,11 +96,36 @@ MINI_PINNED = {"Ldgr": ("Ldgr.src",), "Idem": ("Idem.alt", "Idem.pat"), "Null": 
 MINI_CITATION = ("Ldgr.src", "Idem.alt")      # stands in for Carr.D1 / Ldgr.source_presence, which the mini registry lacks
 
 
+class _Active:
+    """The citation criteria the fixtures write records for AND commit into E5.1's validator copy (one source, so the
+    committed validator and the records agree). mini_patch / real_citation_patch set it together with the reader's constant."""
+    citation = MINI_CITATION
+
+
+ACTIVE = _Active()
+
+
+def nikasha_text(criteria=None):
+    """The REAL nikasha_certify.py of this checkout, with ONLY its CITATION_CRITERIA constant set to `criteria` (the mini
+    registry has no Carr.D1 / Ldgr.source_presence). Everything else is E5.1's own code: it is the validator the reader runs."""
+    src = (REPO / NIKASHA).read_text(encoding="utf-8")
+    line = 'CITATION_CRITERIA = ("Carr.D1", "Ldgr.source_presence")'
+    assert src.count(line) == 1, "E5.1's CITATION_CRITERIA line moved: update the fixtures"
+    return src.replace(line, f"CITATION_CRITERIA = {tuple(criteria or ACTIVE.citation)!r}")
+
+
 def mini_patch(monkeypatch, tracker):
     """Pin the floor AND the criterion ids the mini registry satisfies (the real ones name the real registry)."""
     monkeypatch.setattr(tracker, "E63_REQUIRED_FLOOR", MINI_FLOOR)
     monkeypatch.setattr(tracker, "E63_REQUIRED_CRITERIA", MINI_PINNED)
     monkeypatch.setattr(tracker, "E63_CITATION_CRITERIA", MINI_CITATION)
+    monkeypatch.setattr(ACTIVE, "citation", MINI_CITATION)
+
+
+def real_citation_patch(monkeypatch, tracker):
+    """The REAL citation criteria (Carr.D1, Ldgr.source_presence): for tests that run against the real registry."""
+    monkeypatch.setattr(tracker, "E63_CITATION_CRITERIA", REAL_CITATION)
+    monkeypatch.setattr(ACTIVE, "citation", REAL_CITATION)
 
 
 def sha(b: bytes) -> str:
@@ -144,7 +171,7 @@ def cert(asset, crit, verdict="PASS", *, kind="gate", gen=1, upstream=(), na=Non
     elif "citation_state" not in rec:
         # what the REAL v2 writer produces for every record: record_version 2, citation_state (null unless a citation gate),
         # citation_state_caveat true exactly for a citation-gate PASS whose state is not `sourced` (a null state counts)
-        citation_gate = kind == "gate" and crit in MINI_CITATION
+        citation_gate = kind == "gate" and crit in ACTIVE.citation
         state = None if citation_state is ... else citation_state
         rec["record_version"] = 2
         rec["citation_state"] = state
@@ -314,7 +341,7 @@ class World:
 
     def render(self):
         files = {CERTS: self.certs_text(), GAPS: jsonl(self.gaps), DISP: chained(self.disps), CENSUS: self.census,
-                 SEED: seed_text(self.seed_assets()), DECLARATIONS: self.declarations_text, GENERATOR: (REPO / GENERATOR).read_text(encoding="utf-8")}
+                 SEED: seed_text(self.seed_assets()), DECLARATIONS: self.declarations_text, NIKASHA: nikasha_text(), GENERATOR: (REPO / GENERATOR).read_text(encoding="utf-8")}
         if self.level_map is not None:
             files[LEVEL_MAP] = self.level_map
         files.update(self.raw)

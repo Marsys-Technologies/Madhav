@@ -122,6 +122,9 @@ data = open(path, "rb").read()
 out = {}
 try:
     import nikasha_certify as nc
+    # the golden ledgers were written by the real writer over the MINI registry with its CITATION_CRITERIA patched to the mini
+    # registry's Ldgr.src / Idem.alt (see fixtures/e6_3_golden/README.md): the validator is run under the same constant
+    nc.CITATION_CRITERIA = ("Ldgr.src", "Idem.alt")
     if mode == "chain":
         try:
             r = nc.parse_ledger(data)

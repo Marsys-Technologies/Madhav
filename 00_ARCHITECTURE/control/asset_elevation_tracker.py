@@ -395,6 +395,7 @@ E63_DISPOSITIONS_PATH = E63_CONTROL_DIR + "/asset_dispositions.jsonl"
 E63_LEVEL_MAP_PATH = E63_CONTROL_DIR + "/LEVEL_MAP.json"
 E63_CENSUS_PATH = "platform/scripts/governance/asset_census.py"
 E63_SEED_PATH = "platform/scripts/seed/asset_registry_seed.ts"
+E63_E51_PATH = "platform/scripts/governance/nikasha_certify.py"            # E5.1: the certificate ledger's own validator
 E63_DECLARATIONS_PATH = "platform/scripts/governance/asset_declarations.json"   # a gate certificate is bound to its sha256 at `ref`
 
 # FLOOR: how many criteria each core gate must have, per layer, in asset_census.CRITERION_REGISTRY. Pinned from the
@@ -1011,7 +1012,7 @@ def _e63_check_cert(r, n, facts):
     if r["cert_key"] != f"{asset}|{kind}|{crit}":
         _e63_fail("malformed", f"{where}: cert_key does not match asset|kind|criterion")
     layer = r.get("layer")
-    if layer not in facts.layer_prefix or _e63_layer_of(asset, facts, where) != layer:
+    if not isinstance(layer, str) or layer not in facts.layer_prefix or _e63_layer_of(asset, facts, where) != layer:
         _e63_fail("malformed", f"{where}: layer {layer!r} does not match asset {asset!r}")
     if not _e63_nonblank(r.get("detector")):
         _e63_fail("malformed", f"{where}: detector is required (NONE is spelled NONE)")
@@ -1075,6 +1076,62 @@ def _e63_check_watermark(r, n, certs):
     if ep != len(covered) or last != want_last:
         _e63_fail("watermark_mismatch", f"{where}: the watermark claims {ep} certificate(s) ending {last!r} up to seq "
                                         f"{cov} but the ledger holds {len(covered)} ending {want_last!r}")
+
+
+_E63_E51_DRIVER = r'''
+import json, sys
+sys.path.insert(0, ".")
+import nikasha_certify as nc
+data = sys.stdin.buffer.read()
+const = {k: list(getattr(nc, k)) for k in ("CITATION_CRITERIA", "CITATION_STRICT", "CITATION_STATES", "CITATION_PASS_REFUSED",
+                                           "READABLE_RECORD_VERSIONS")}
+const["DECLARATIONS_RELPATH"] = nc.DECLARATIONS_RELPATH
+try:
+    nc.parse_records(data)
+    print(json.dumps({"ok": True, "constants": const}))
+except nc.CertificationRefused as e:
+    print(json.dumps({"ok": False, "code": e.code, "message": e.message, "constants": const}))
+'''
+
+
+def _e63_e51_validate(repo, sha, data):
+    """E5.1's OWN validator, loaded from the same ref: nikasha_certify.py and asset_census.py at `ref` are written to a temporary
+    directory and `nikasha_certify.parse_records(data)` is run on the ledger bytes in a subprocess (no network, nothing written to
+    the repository). A ledger E5.1 refuses is refused here, so this reader can never accept what the writer's validator
+    refuses, whatever either side's copy of a rule says. The validator's constants (citation criteria / strict set / states,
+    readable versions, declarations path) must equal the ones this reader applies: a mismatch raises, forcing a deliberate edit
+    on one side. A ref without the validator raises (fail closed)."""
+    import shutil
+    import tempfile
+    nc_src = _e63_show(repo, sha, E63_E51_PATH)
+    census_src = _e63_show(repo, sha, E63_CENSUS_PATH)
+    d = tempfile.mkdtemp(prefix="e63_e51_")
+    try:
+        with open(os.path.join(d, "nikasha_certify.py"), "wb") as f:
+            f.write(nc_src)
+        with open(os.path.join(d, "asset_census.py"), "wb") as f:
+            f.write(census_src)
+        try:
+            r = subprocess.run([sys.executable, "-c", _E63_E51_DRIVER], input=data, capture_output=True, cwd=d, timeout=120,
+                               env={k: v for k, v in os.environ.items() if k not in ("PYTHONPATH", "PYTHONSTARTUP")})
+        except (OSError, subprocess.SubprocessError) as e:
+            _e63_fail("registry_unreadable", f"E5.1's validator at {sha[:12]} could not be run ({type(e).__name__}: {e})")
+    finally:
+        shutil.rmtree(d, ignore_errors=True)
+    try:
+        out = json.loads(r.stdout.decode("utf-8").strip().splitlines()[-1])
+        const = out["constants"]
+    except (ValueError, IndexError, KeyError, UnicodeDecodeError):
+        _e63_fail("registry_unreadable", f"E5.1's validator at {sha[:12]} did not answer ({r.stderr.decode('utf-8', 'replace')[-200:]})")
+    mine = {"CITATION_CRITERIA": list(E63_CITATION_CRITERIA), "CITATION_STRICT": list(E63_CITATION_STRICT),
+            "CITATION_STATES": list(E63_CITATION_STATES), "CITATION_PASS_REFUSED": list(E63_CITATION_BLOCKING),
+            "READABLE_RECORD_VERSIONS": list(E63_RECORD_VERSIONS), "DECLARATIONS_RELPATH": E63_DECLARATIONS_PATH}
+    if const != mine:
+        diff = sorted(k for k in mine if mine[k] != const.get(k))
+        _e63_fail("registry_unreadable", f"E5.1 at {sha[:12]} and this reader disagree on {diff}: a rule one side changed "
+                                         "(edit the E63_* constants deliberately to match)")
+    if not out["ok"]:
+        _e63_fail("malformed", f"{E63_CERTS_PATH}: E5.1's own reader refuses this ledger ({out['code']}): {out['message']}")
 
 
 def _e63_parse_certs(data, facts):
@@ -1442,7 +1499,9 @@ def _e63_load(ref, repo):
     sha = _e63_resolve_ref(ref, repo)
     facts = _e63_registry_facts(repo, sha)
     registry = _e63_registry_assets(repo, sha)
-    led = _e63_parse_certs(_e63_show(repo, sha, E63_CERTS_PATH), facts)
+    cert_bytes = _e63_show(repo, sha, E63_CERTS_PATH)
+    _e63_e51_validate(repo, sha, cert_bytes)          # E5.1's validator, from the same ref, has the first word
+    led = _e63_parse_certs(cert_bytes, facts)
     if led.last_covers is None:
         _e63_fail("watermark_missing", "the certificate ledger carries no watermark line: E5.5 has never evaluated it")
     if led.unevaluated:

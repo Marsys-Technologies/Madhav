@@ -133,15 +133,14 @@ def test_the_pins_are_a_subset_of_the_real_core_gate_ids_and_every_unpinned_id_i
     assert REAL_PINS["Carr"] == ("Carr.D1", "Carr.D2", "Carr.D3") and REAL_FLOOR["Carr"] == 3
 
 
-E6_CARR = "/Users/Dev/suvarna-engine-lane-e6-carr/platform/scripts/governance/asset_census.py"
-
-
-def test_the_real_pins_hold_on_the_registry_with_carr_detector_retired_2856(tmp_path, real_pins):
-    """suvarna/engine-E6-carr (#2856) retires Carr.detector (REGISTRY_REVISION 8+): the function must not raise on it."""
-    if not os.path.exists(E6_CARR):
-        pytest.skip("the engine-E6-carr worktree is not on this machine")
-    src = open(E6_CARR, encoding="utf-8").read()
-    assert '    "Carr.detector": dict(\n        retired_in_revision=' in src           # it really is the retired form
+def test_the_real_pins_hold_on_the_current_registry_where_carr_detector_is_retired(tmp_path, real_pins):
+    """main's registry retires Carr.detector (#2856): the function must not raise on it. The retirement and the CURRENT registry
+    revision are read from the code, not from a number written here."""
+    ac = _real_ac()
+    retired = ac.RETIRED_CRITERIA["Carr.detector"]
+    assert retired["retired_in_revision"] <= ac.REGISTRY_REVISION            # computed from the registry module itself
+    import pathlib
+    src = pathlib.Path(ac.__file__).read_text(encoding="utf-8")
     w = World(tmp_path, census=src).default()
     w.commit()
     facts = T._e63_registry_facts(str(w.repo), w.last)
@@ -325,17 +324,15 @@ def test_a_non_gate_family_gap_with_no_such_addition_folds_freely(w):
     assert got(w) == ALL                                       # Reach.new is NOT a declared addition here: informational
 
 
-E6_CARR_CENSUS = "/Users/Dev/suvarna-engine-lane-e6-carr/platform/scripts/governance/asset_census.py"
-
-
 def test_the_real_gap_ledger_also_parses_against_the_registry_with_carr_detector_retired(tmp_path, real_pins):
     import subprocess
     repo = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../.."))
     r = subprocess.run(["git", "-C", repo, "show", "origin/campaign/nikasha-test:00_ARCHITECTURE/control/asset_gaps.jsonl"],
                        capture_output=True)
-    if r.returncode != 0 or not os.path.exists(E6_CARR_CENSUS):
-        pytest.skip("origin/campaign/nikasha-test or the engine-E6-carr worktree is not available here")
-    w = World(tmp_path, census=open(E6_CARR_CENSUS, encoding="utf-8").read()).default()
+    if r.returncode != 0:
+        pytest.skip("origin/campaign/nikasha-test is not fetched here")
+    import pathlib
+    w = World(tmp_path, census=pathlib.Path(_real_ac().__file__).read_text(encoding="utf-8")).default()
     w.commit()
     facts = T._e63_registry_facts(str(w.repo), w.last)
     known = set(T._e63_registry_assets(repo, T._e63_resolve_ref("HEAD", repo)))        # the real seed's asset ids
