@@ -123,15 +123,15 @@ def test_an_older_same_state_brief_of_another_execution_cannot_pass_as_this_runs
 
 # ── the approval record and the sealing job ────────────────────────────────────────────────────────────────────────
 
-@pytest.mark.parametrize("over", [{"brief_id": 0}, {"brief_id": "7"}, {"brief_id": True}, {"brief_id": None}, {"producer_execution_id": " "},
-                                  {"producer_execution_id": 5}, {"schema": "seal_approval/1"}])
+@pytest.mark.parametrize("over", [{"brief_id": 0}, {"brief_id": "7"}, {"brief_id": True}, {"brief_id": None}, {"execution_id": " "},
+                                  {"execution_id": 5}, {"schema": "seal_approval/1"}])
 def test_an_approval_without_a_well_formed_brief_id_and_execution_is_refused_and_nothing_is_written(sealable, capsys, over):
     code, out = _run_job(sealable, capsys, _approval(sealable.digest, **over))
     assert code == sf.EXIT_REFUSED and out["code"] == "approval_malformed", out
     _nothing_written(sealable)
 
 
-@pytest.mark.parametrize("missing", ["brief_id", "producer_execution_id"])
+@pytest.mark.parametrize("missing", ["brief_id", "execution_id"])
 def test_an_approval_missing_either_field_is_refused(sealable, capsys, missing):
     a = _approval(sealable.digest)
     del a[missing]
@@ -145,7 +145,7 @@ def test_the_job_refuses_an_approval_naming_another_brief_id_or_execution_before
     wrong_id = _approval(w.digest, brief_id=BRIEF_IDS[w.digest] + 1)
     code, out = _run_job(w, capsys, wrong_id)
     assert code == sf.EXIT_MISMATCH and "receipt_brief_id_mismatch" in out["detail"], out
-    code, out = _run_job(w, capsys, _approval(w.digest, producer_execution_id="some-other-execution"))
+    code, out = _run_job(w, capsys, _approval(w.digest, execution_id="some-other-execution"))
     assert code == sf.EXIT_MISMATCH and "receipt_brief_execution_mismatch" in out["detail"], out
     _nothing_written(w)
 

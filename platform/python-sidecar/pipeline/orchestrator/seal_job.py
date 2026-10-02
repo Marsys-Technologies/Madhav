@@ -4,14 +4,17 @@
 
 NOT a registered writer and not in the build DAG. Run only by the `gochara-seal` workflow, in the job that mounts the sealer credential.
 It reads exactly ONE database credential, `GOCHARA_SEALER_DB_URL`; its first act is the identity self-check (it refuses to run as anything
-but the `gochara_sealer` login). It owns ONE explicit transaction: seal locks → the policy requirement (`all_null_candidate/1`) → the
+but the `gochara_sealer` login) — and BEFORE any database contact it checks that the code it is running is the code registered for the
+sealing commit (`implementation_digest.lock.json`; refused, exit 4, otherwise). It owns ONE explicit transaction: seal locks → the policy requirement (`all_null_candidate/1`) → the
 approval RECOMPUTE (refused on any mismatch before publishing) → publication → the authoritative seal → the receipt → the
 post-publication boundary re-check; a failure anywhere rolls publication back too.
 
 INTERFACE (agreed with Stream B through the steward):
-  --approval-file   JSON written by the workflow from the GitHub approval of THIS run (schema `seal_approval/1`):
-                    {"schema": "seal_approval/1", "brief_digest": <sha256>, "run_id": <int>, "run_attempt": <int>,
-                     "approver_login": <str>, "approved_by_note": "ruling:<owner ruling id>; actor:<github.triggering_actor>"}
+  --approval-file   JSON written by the workflow from the GitHub approval of THIS run (schema `seal_approval/2`, ST-WIRE-2):
+                    {"schema": "seal_approval/2", "brief_digest": <sha256>, "brief_id": <int>, "execution_id": <str>, "run_id": <int>,
+                     "run_attempt": <int>, "approver_login": <str>, "approved_by_note": "ruling:<owner ruling id>; actor:<github.triggering_actor>"}
+                    `brief_id` is the persisted brief the approval is for and `execution_id` the verifier execution that produced it; the job
+                    refuses unless that brief is the CURRENT persisted one, with the approved digest, produced by the sealing commit in that execution.
                     The note is MECHANICAL — exactly that format, written by the workflow, never free text; its actor must be this run's
                     GITHUB_TRIGGERING_ACTOR (a blank, a sentence, or another person's name is refused).
   environment       GITHUB_RUN_ID, GITHUB_RUN_ATTEMPT — the approval must have been given for exactly this run and attempt;
@@ -45,6 +48,11 @@ def main(argv=None) -> int:
     ap.add_argument("--generation", default="5.0")
     ap.add_argument("--approval-file", default=None)
     args = ap.parse_args(argv)
+    try:
+        sf.check_own_checkout()                     # ST-WIRE-2: the code this job runs == the registered digest — before ANY database contact
+    except sf.SealRefused as exc:
+        print(json.dumps({"status": "REFUSED", "code": exc.code, "detail": exc.detail}))
+        return exc.exit_code
     url = os.environ.get(ENV_URL)
     if not url:
         print(json.dumps({"status": "REFUSED", "code": "no_sealer_credential", "detail": f"{ENV_URL} is not set"}))
