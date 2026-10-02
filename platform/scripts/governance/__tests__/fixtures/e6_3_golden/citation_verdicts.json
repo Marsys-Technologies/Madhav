@@ -1,0 +1,1528 @@
+{
+ "citation_criteria": [
+  "Ldgr.src",
+  "Idem.alt"
+ ],
+ "citation_strict": [
+  "Idem.alt"
+ ],
+ "e5_1_commit": "172902feb39d44e36764ac71adb25e9c262285fb",
+ "variants": {
+  "absent_version_with_fields": {
+   "code": "bad_ledger",
+   "sha256": "3d5ac6c21378915716b471b5687b337676c7c5b997e7ef3c890645315a29f79a",
+   "verdict": "REFUSED"
+  },
+  "absent_version_without_fields": {
+   "sha256": "0c95422286af0f5bcf211e7134e2f903df52e676c51bb9edf07e5cd0cbfbaed0",
+   "states": {
+    "ga_alpha|gate|Build.any@1": [
+     null,
+     false
+    ],
+    "ga_alpha|gate|Build.reg@1": [
+     null,
+     false
+    ],
+    "ga_alpha|gate|Build.target@1": [
+     null,
+     false
+    ],
+    "ga_alpha|gate|Idem.alt@1": [
+     "sourced",
+     false
+    ],
+    "ga_alpha|gate|Idem.pat@1": [
+     null,
+     false
+    ],
+    "ga_alpha|gate|Ldgr.src@1": [
+     "sourced",
+     false
+    ],
+    "ga_alpha|gate|Null.x@1": [
+     null,
+     false
+    ],
+    "ga_beta|gate|Build.any@1": [
+     null,
+     false
+    ],
+    "ga_beta|gate|Build.reg@1": [
+     null,
+     false
+    ],
+    "ga_beta|gate|Build.target@1": [
+     null,
+     false
+    ],
+    "ga_beta|gate|Idem.alt@1": [
+     "sourced",
+     false
+    ],
+    "ga_beta|gate|Idem.pat@1": [
+     null,
+     false
+    ],
+    "ga_beta|gate|Ldgr.src@1": [
+     null,
+     true
+    ],
+    "ga_beta|gate|Null.x@1": [
+     null,
+     false
+    ],
+    "ga_delta|gate|Build.any@1": [
+     null,
+     false
+    ],
+    "ga_delta|gate|Build.reg@1": [
+     null,
+     false
+    ],
+    "ga_delta|gate|Build.target@1": [
+     null,
+     false
+    ],
+    "ga_delta|gate|Idem.alt@1": [
+     "unsourced",
+     false
+    ],
+    "ga_delta|gate|Idem.pat@1": [
+     null,
+     false
+    ],
+    "ga_delta|gate|Ldgr.src@1": [
+     "sourced",
+     false
+    ],
+    "ga_delta|gate|Null.x@1": [
+     null,
+     false
+    ],
+    "ga_gamma|gate|Build.any@1": [
+     null,
+     false
+    ],
+    "ga_gamma|gate|Build.reg@1": [
+     null,
+     false
+    ],
+    "ga_gamma|gate|Build.target@1": [
+     null,
+     false
+    ],
+    "ga_gamma|gate|Idem.alt@1": [
+     "sourced",
+     false
+    ],
+    "ga_gamma|gate|Idem.pat@1": [
+     null,
+     false
+    ],
+    "ga_gamma|gate|Ldgr.src@1": [
+     null,
+     true
+    ],
+    "ga_gamma|gate|Null.x@1": [
+     null,
+     false
+    ]
+   },
+   "verdict": "OK"
+  },
+  "applicability_na_null_state": {
+   "sha256": "294d43df62355ca5d2e099ab7a2e4d8378e18f79f0b7a457a17eec31e01dccfc",
+   "states": {
+    "ga_alpha|gate|Build.any@1": [
+     null,
+     false
+    ],
+    "ga_alpha|gate|Build.reg@1": [
+     null,
+     false
+    ],
+    "ga_alpha|gate|Build.target@1": [
+     null,
+     false
+    ],
+    "ga_alpha|gate|Idem.alt@1": [
+     "sourced",
+     false
+    ],
+    "ga_alpha|gate|Idem.pat@1": [
+     null,
+     false
+    ],
+    "ga_alpha|gate|Ldgr.src@1": [
+     null,
+     false
+    ],
+    "ga_alpha|gate|Null.x@1": [
+     null,
+     false
+    ],
+    "ga_beta|gate|Build.any@1": [
+     null,
+     false
+    ],
+    "ga_beta|gate|Build.reg@1": [
+     null,
+     false
+    ],
+    "ga_beta|gate|Build.target@1": [
+     null,
+     false
+    ],
+    "ga_beta|gate|Idem.alt@1": [
+     "sourced",
+     false
+    ],
+    "ga_beta|gate|Idem.pat@1": [
+     null,
+     false
+    ],
+    "ga_beta|gate|Ldgr.src@1": [
+     "sourced_ocr_unverified",
+     true
+    ],
+    "ga_beta|gate|Null.x@1": [
+     null,
+     false
+    ],
+    "ga_delta|gate|Build.any@1": [
+     null,
+     false
+    ],
+    "ga_delta|gate|Build.reg@1": [
+     null,
+     false
+    ],
+    "ga_delta|gate|Build.target@1": [
+     null,
+     false
+    ],
+    "ga_delta|gate|Idem.alt@1": [
+     "unsourced",
+     false
+    ],
+    "ga_delta|gate|Idem.pat@1": [
+     null,
+     false
+    ],
+    "ga_delta|gate|Ldgr.src@1": [
+     "sourced",
+     false
+    ],
+    "ga_delta|gate|Null.x@1": [
+     null,
+     false
+    ],
+    "ga_gamma|gate|Build.any@1": [
+     null,
+     false
+    ],
+    "ga_gamma|gate|Build.reg@1": [
+     null,
+     false
+    ],
+    "ga_gamma|gate|Build.target@1": [
+     null,
+     false
+    ],
+    "ga_gamma|gate|Idem.alt@1": [
+     "sourced",
+     false
+    ],
+    "ga_gamma|gate|Idem.pat@1": [
+     null,
+     false
+    ],
+    "ga_gamma|gate|Ldgr.src@1": [
+     null,
+     true
+    ],
+    "ga_gamma|gate|Null.x@1": [
+     null,
+     false
+    ]
+   },
+   "verdict": "OK"
+  },
+  "applicability_na_with_state": {
+   "code": "bad_ledger",
+   "sha256": "6c149483dd3d8d2a6c4e9ec5c5db5e28e4007e2a806354d65e7afadb2fe12808",
+   "verdict": "REFUSED"
+  },
+  "caveat_flipped_on_ocr_pass": {
+   "code": "bad_ledger",
+   "sha256": "861e63bf008525c706daa21827ae42bda15a03bde77b2113a2db29c8365467c8",
+   "verdict": "REFUSED"
+  },
+  "caveat_not_bool": {
+   "code": "bad_ledger",
+   "sha256": "79867a32912d233bbe3deaf520bf0d362688b3f88a6e56ea0e76114a41b09f7b",
+   "verdict": "REFUSED"
+  },
+  "caveat_true_on_sourced": {
+   "code": "bad_ledger",
+   "sha256": "6d7b849752fa8589b3b7e8440197154ee81a403048925fb126dee54d3adbe405",
+   "verdict": "REFUSED"
+  },
+  "clean": {
+   "sha256": "b131c33d2a72528d833fec62bb3717f56f972d044108eb0ed67eae9a687bfe12",
+   "states": {
+    "ga_alpha|gate|Build.any@1": [
+     null,
+     false
+    ],
+    "ga_alpha|gate|Build.reg@1": [
+     null,
+     false
+    ],
+    "ga_alpha|gate|Build.target@1": [
+     null,
+     false
+    ],
+    "ga_alpha|gate|Idem.alt@1": [
+     "sourced",
+     false
+    ],
+    "ga_alpha|gate|Idem.pat@1": [
+     null,
+     false
+    ],
+    "ga_alpha|gate|Ldgr.src@1": [
+     "sourced",
+     false
+    ],
+    "ga_alpha|gate|Null.x@1": [
+     null,
+     false
+    ],
+    "ga_beta|gate|Build.any@1": [
+     null,
+     false
+    ],
+    "ga_beta|gate|Build.reg@1": [
+     null,
+     false
+    ],
+    "ga_beta|gate|Build.target@1": [
+     null,
+     false
+    ],
+    "ga_beta|gate|Idem.alt@1": [
+     "sourced",
+     false
+    ],
+    "ga_beta|gate|Idem.pat@1": [
+     null,
+     false
+    ],
+    "ga_beta|gate|Ldgr.src@1": [
+     "sourced_ocr_unverified",
+     true
+    ],
+    "ga_beta|gate|Null.x@1": [
+     null,
+     false
+    ],
+    "ga_delta|gate|Build.any@1": [
+     null,
+     false
+    ],
+    "ga_delta|gate|Build.reg@1": [
+     null,
+     false
+    ],
+    "ga_delta|gate|Build.target@1": [
+     null,
+     false
+    ],
+    "ga_delta|gate|Idem.alt@1": [
+     "unsourced",
+     false
+    ],
+    "ga_delta|gate|Idem.pat@1": [
+     null,
+     false
+    ],
+    "ga_delta|gate|Ldgr.src@1": [
+     "sourced",
+     false
+    ],
+    "ga_delta|gate|Null.x@1": [
+     null,
+     false
+    ],
+    "ga_gamma|gate|Build.any@1": [
+     null,
+     false
+    ],
+    "ga_gamma|gate|Build.reg@1": [
+     null,
+     false
+    ],
+    "ga_gamma|gate|Build.target@1": [
+     null,
+     false
+    ],
+    "ga_gamma|gate|Idem.alt@1": [
+     "sourced",
+     false
+    ],
+    "ga_gamma|gate|Idem.pat@1": [
+     null,
+     false
+    ],
+    "ga_gamma|gate|Ldgr.src@1": [
+     null,
+     true
+    ],
+    "ga_gamma|gate|Null.x@1": [
+     null,
+     false
+    ]
+   },
+   "verdict": "OK"
+  },
+  "missing_caveat": {
+   "code": "bad_ledger",
+   "sha256": "5177192a96194c14ae3fb48b2ed3686bb07876c29e5c02d06b41d41acb050af1",
+   "verdict": "REFUSED"
+  },
+  "missing_state": {
+   "code": "bad_ledger",
+   "sha256": "b9c23882adf6f000619b6d64e6ab50b87eb0df0022f1c5c2c53815f9c3948672",
+   "verdict": "REFUSED"
+  },
+  "null_state_pass_caveat_false": {
+   "code": "bad_ledger",
+   "sha256": "39211e850855c7114aefa4f2cd6b309c8f3b7f503f6529ccff57ce95e6575e8c",
+   "verdict": "REFUSED"
+  },
+  "null_state_pass_caveat_true": {
+   "sha256": "b131c33d2a72528d833fec62bb3717f56f972d044108eb0ed67eae9a687bfe12",
+   "states": {
+    "ga_alpha|gate|Build.any@1": [
+     null,
+     false
+    ],
+    "ga_alpha|gate|Build.reg@1": [
+     null,
+     false
+    ],
+    "ga_alpha|gate|Build.target@1": [
+     null,
+     false
+    ],
+    "ga_alpha|gate|Idem.alt@1": [
+     "sourced",
+     false
+    ],
+    "ga_alpha|gate|Idem.pat@1": [
+     null,
+     false
+    ],
+    "ga_alpha|gate|Ldgr.src@1": [
+     "sourced",
+     false
+    ],
+    "ga_alpha|gate|Null.x@1": [
+     null,
+     false
+    ],
+    "ga_beta|gate|Build.any@1": [
+     null,
+     false
+    ],
+    "ga_beta|gate|Build.reg@1": [
+     null,
+     false
+    ],
+    "ga_beta|gate|Build.target@1": [
+     null,
+     false
+    ],
+    "ga_beta|gate|Idem.alt@1": [
+     "sourced",
+     false
+    ],
+    "ga_beta|gate|Idem.pat@1": [
+     null,
+     false
+    ],
+    "ga_beta|gate|Ldgr.src@1": [
+     "sourced_ocr_unverified",
+     true
+    ],
+    "ga_beta|gate|Null.x@1": [
+     null,
+     false
+    ],
+    "ga_delta|gate|Build.any@1": [
+     null,
+     false
+    ],
+    "ga_delta|gate|Build.reg@1": [
+     null,
+     false
+    ],
+    "ga_delta|gate|Build.target@1": [
+     null,
+     false
+    ],
+    "ga_delta|gate|Idem.alt@1": [
+     "unsourced",
+     false
+    ],
+    "ga_delta|gate|Idem.pat@1": [
+     null,
+     false
+    ],
+    "ga_delta|gate|Ldgr.src@1": [
+     "sourced",
+     false
+    ],
+    "ga_delta|gate|Null.x@1": [
+     null,
+     false
+    ],
+    "ga_gamma|gate|Build.any@1": [
+     null,
+     false
+    ],
+    "ga_gamma|gate|Build.reg@1": [
+     null,
+     false
+    ],
+    "ga_gamma|gate|Build.target@1": [
+     null,
+     false
+    ],
+    "ga_gamma|gate|Idem.alt@1": [
+     "sourced",
+     false
+    ],
+    "ga_gamma|gate|Idem.pat@1": [
+     null,
+     false
+    ],
+    "ga_gamma|gate|Ldgr.src@1": [
+     null,
+     true
+    ],
+    "ga_gamma|gate|Null.x@1": [
+     null,
+     false
+    ]
+   },
+   "verdict": "OK"
+  },
+  "pass_with_refuted": {
+   "code": "bad_ledger",
+   "sha256": "4484920c7d36ec8e0a773eba268bd9162e2bea7a4b2ea0fc5eca6ea3ce2de791",
+   "verdict": "REFUSED"
+  },
+  "pass_with_unsourced": {
+   "code": "bad_ledger",
+   "sha256": "90d2f41142345a872384bed2d5f04a7d18876498f4171d3644d4566fc9a38a15",
+   "verdict": "REFUSED"
+  },
+  "state_on_non_citation_gate": {
+   "code": "bad_ledger",
+   "sha256": "509547c055b0825de015cec223bb8b5163a4a74c4785e94d49d05307381ddbae",
+   "verdict": "REFUSED"
+  },
+  "strict_no_detector_null_state": {
+   "sha256": "fcef80327a54d9066ff4eb74c18ef2d277b6d197763945bdd3460c205b4136ca",
+   "states": {
+    "ga_alpha|gate|Build.any@1": [
+     null,
+     false
+    ],
+    "ga_alpha|gate|Build.reg@1": [
+     null,
+     false
+    ],
+    "ga_alpha|gate|Build.target@1": [
+     null,
+     false
+    ],
+    "ga_alpha|gate|Idem.alt@1": [
+     null,
+     false
+    ],
+    "ga_alpha|gate|Idem.pat@1": [
+     null,
+     false
+    ],
+    "ga_alpha|gate|Ldgr.src@1": [
+     "sourced",
+     false
+    ],
+    "ga_alpha|gate|Null.x@1": [
+     null,
+     false
+    ],
+    "ga_beta|gate|Build.any@1": [
+     null,
+     false
+    ],
+    "ga_beta|gate|Build.reg@1": [
+     null,
+     false
+    ],
+    "ga_beta|gate|Build.target@1": [
+     null,
+     false
+    ],
+    "ga_beta|gate|Idem.alt@1": [
+     "sourced",
+     false
+    ],
+    "ga_beta|gate|Idem.pat@1": [
+     null,
+     false
+    ],
+    "ga_beta|gate|Ldgr.src@1": [
+     "sourced_ocr_unverified",
+     true
+    ],
+    "ga_beta|gate|Null.x@1": [
+     null,
+     false
+    ],
+    "ga_delta|gate|Build.any@1": [
+     null,
+     false
+    ],
+    "ga_delta|gate|Build.reg@1": [
+     null,
+     false
+    ],
+    "ga_delta|gate|Build.target@1": [
+     null,
+     false
+    ],
+    "ga_delta|gate|Idem.alt@1": [
+     "unsourced",
+     false
+    ],
+    "ga_delta|gate|Idem.pat@1": [
+     null,
+     false
+    ],
+    "ga_delta|gate|Ldgr.src@1": [
+     "sourced",
+     false
+    ],
+    "ga_delta|gate|Null.x@1": [
+     null,
+     false
+    ],
+    "ga_gamma|gate|Build.any@1": [
+     null,
+     false
+    ],
+    "ga_gamma|gate|Build.reg@1": [
+     null,
+     false
+    ],
+    "ga_gamma|gate|Build.target@1": [
+     null,
+     false
+    ],
+    "ga_gamma|gate|Idem.alt@1": [
+     "sourced",
+     false
+    ],
+    "ga_gamma|gate|Idem.pat@1": [
+     null,
+     false
+    ],
+    "ga_gamma|gate|Ldgr.src@1": [
+     null,
+     true
+    ],
+    "ga_gamma|gate|Null.x@1": [
+     null,
+     false
+    ]
+   },
+   "verdict": "OK"
+  },
+  "strict_partial_null_state": {
+   "code": "bad_ledger",
+   "sha256": "3e8a4f72b4febb543fc4e9f3da32989d5919e4497b035b4b24eb7448e61cfcd5",
+   "verdict": "REFUSED"
+  },
+  "strict_partial_refuted": {
+   "code": "bad_ledger",
+   "sha256": "5b38cc297cc3a83d3316affdd84e10a9dd61ba9ec8ec4392e1f9c4abce6d3480",
+   "verdict": "REFUSED"
+  },
+  "strict_partial_sourced": {
+   "sha256": "0f41dcdfc86592427ccf16e29d5a2a592c3d3ff7d0bc9b46ec312b0a1cd8b987",
+   "states": {
+    "ga_alpha|gate|Build.any@1": [
+     null,
+     false
+    ],
+    "ga_alpha|gate|Build.reg@1": [
+     null,
+     false
+    ],
+    "ga_alpha|gate|Build.target@1": [
+     null,
+     false
+    ],
+    "ga_alpha|gate|Idem.alt@1": [
+     "sourced",
+     false
+    ],
+    "ga_alpha|gate|Idem.pat@1": [
+     null,
+     false
+    ],
+    "ga_alpha|gate|Ldgr.src@1": [
+     "sourced",
+     false
+    ],
+    "ga_alpha|gate|Null.x@1": [
+     null,
+     false
+    ],
+    "ga_beta|gate|Build.any@1": [
+     null,
+     false
+    ],
+    "ga_beta|gate|Build.reg@1": [
+     null,
+     false
+    ],
+    "ga_beta|gate|Build.target@1": [
+     null,
+     false
+    ],
+    "ga_beta|gate|Idem.alt@1": [
+     "sourced",
+     false
+    ],
+    "ga_beta|gate|Idem.pat@1": [
+     null,
+     false
+    ],
+    "ga_beta|gate|Ldgr.src@1": [
+     "sourced_ocr_unverified",
+     true
+    ],
+    "ga_beta|gate|Null.x@1": [
+     null,
+     false
+    ],
+    "ga_delta|gate|Build.any@1": [
+     null,
+     false
+    ],
+    "ga_delta|gate|Build.reg@1": [
+     null,
+     false
+    ],
+    "ga_delta|gate|Build.target@1": [
+     null,
+     false
+    ],
+    "ga_delta|gate|Idem.alt@1": [
+     "unsourced",
+     false
+    ],
+    "ga_delta|gate|Idem.pat@1": [
+     null,
+     false
+    ],
+    "ga_delta|gate|Ldgr.src@1": [
+     "sourced",
+     false
+    ],
+    "ga_delta|gate|Null.x@1": [
+     null,
+     false
+    ],
+    "ga_gamma|gate|Build.any@1": [
+     null,
+     false
+    ],
+    "ga_gamma|gate|Build.reg@1": [
+     null,
+     false
+    ],
+    "ga_gamma|gate|Build.target@1": [
+     null,
+     false
+    ],
+    "ga_gamma|gate|Idem.alt@1": [
+     "sourced",
+     false
+    ],
+    "ga_gamma|gate|Idem.pat@1": [
+     null,
+     false
+    ],
+    "ga_gamma|gate|Ldgr.src@1": [
+     null,
+     true
+    ],
+    "ga_gamma|gate|Null.x@1": [
+     null,
+     false
+    ]
+   },
+   "verdict": "OK"
+  },
+  "strict_partial_unsourced": {
+   "code": "bad_ledger",
+   "sha256": "146a8b71914cd68b0096d6492efe56f89f42ed05d2f7cc126091bff29da8e6e3",
+   "verdict": "REFUSED"
+  },
+  "strict_pass_null_state": {
+   "code": "bad_ledger",
+   "sha256": "244037c7e7bf9049511c3b14028daf6cd8a44cd06addd47d247d123225223899",
+   "verdict": "REFUSED"
+  },
+  "strict_pass_ocr": {
+   "sha256": "695068e8fec6c378539b06762f41405bd46a000a6109c13e27215b0e6a1c640b",
+   "states": {
+    "ga_alpha|gate|Build.any@1": [
+     null,
+     false
+    ],
+    "ga_alpha|gate|Build.reg@1": [
+     null,
+     false
+    ],
+    "ga_alpha|gate|Build.target@1": [
+     null,
+     false
+    ],
+    "ga_alpha|gate|Idem.alt@1": [
+     "sourced_ocr_unverified",
+     true
+    ],
+    "ga_alpha|gate|Idem.pat@1": [
+     null,
+     false
+    ],
+    "ga_alpha|gate|Ldgr.src@1": [
+     "sourced",
+     false
+    ],
+    "ga_alpha|gate|Null.x@1": [
+     null,
+     false
+    ],
+    "ga_beta|gate|Build.any@1": [
+     null,
+     false
+    ],
+    "ga_beta|gate|Build.reg@1": [
+     null,
+     false
+    ],
+    "ga_beta|gate|Build.target@1": [
+     null,
+     false
+    ],
+    "ga_beta|gate|Idem.alt@1": [
+     "sourced",
+     false
+    ],
+    "ga_beta|gate|Idem.pat@1": [
+     null,
+     false
+    ],
+    "ga_beta|gate|Ldgr.src@1": [
+     "sourced_ocr_unverified",
+     true
+    ],
+    "ga_beta|gate|Null.x@1": [
+     null,
+     false
+    ],
+    "ga_delta|gate|Build.any@1": [
+     null,
+     false
+    ],
+    "ga_delta|gate|Build.reg@1": [
+     null,
+     false
+    ],
+    "ga_delta|gate|Build.target@1": [
+     null,
+     false
+    ],
+    "ga_delta|gate|Idem.alt@1": [
+     "unsourced",
+     false
+    ],
+    "ga_delta|gate|Idem.pat@1": [
+     null,
+     false
+    ],
+    "ga_delta|gate|Ldgr.src@1": [
+     "sourced",
+     false
+    ],
+    "ga_delta|gate|Null.x@1": [
+     null,
+     false
+    ],
+    "ga_gamma|gate|Build.any@1": [
+     null,
+     false
+    ],
+    "ga_gamma|gate|Build.reg@1": [
+     null,
+     false
+    ],
+    "ga_gamma|gate|Build.target@1": [
+     null,
+     false
+    ],
+    "ga_gamma|gate|Idem.alt@1": [
+     "sourced",
+     false
+    ],
+    "ga_gamma|gate|Idem.pat@1": [
+     null,
+     false
+    ],
+    "ga_gamma|gate|Ldgr.src@1": [
+     null,
+     true
+    ],
+    "ga_gamma|gate|Null.x@1": [
+     null,
+     false
+    ]
+   },
+   "verdict": "OK"
+  },
+  "unknown_state": {
+   "code": "bad_ledger",
+   "sha256": "248a5698f4884f90184f0151f106119c7aec5e5e8285236f2f86420367aa1de5",
+   "verdict": "REFUSED"
+  },
+  "unsourced_no_detector_cell": {
+   "sha256": "15b17f669a2b5a56f5d6698eac5888ec2be04887f503b018cd7bdcc726a47010",
+   "states": {
+    "ga_alpha|gate|Build.any@1": [
+     null,
+     false
+    ],
+    "ga_alpha|gate|Build.reg@1": [
+     null,
+     false
+    ],
+    "ga_alpha|gate|Build.target@1": [
+     null,
+     false
+    ],
+    "ga_alpha|gate|Idem.alt@1": [
+     "unsourced",
+     false
+    ],
+    "ga_alpha|gate|Idem.pat@1": [
+     null,
+     false
+    ],
+    "ga_alpha|gate|Ldgr.src@1": [
+     "sourced",
+     false
+    ],
+    "ga_alpha|gate|Null.x@1": [
+     null,
+     false
+    ],
+    "ga_beta|gate|Build.any@1": [
+     null,
+     false
+    ],
+    "ga_beta|gate|Build.reg@1": [
+     null,
+     false
+    ],
+    "ga_beta|gate|Build.target@1": [
+     null,
+     false
+    ],
+    "ga_beta|gate|Idem.alt@1": [
+     "sourced",
+     false
+    ],
+    "ga_beta|gate|Idem.pat@1": [
+     null,
+     false
+    ],
+    "ga_beta|gate|Ldgr.src@1": [
+     "sourced_ocr_unverified",
+     true
+    ],
+    "ga_beta|gate|Null.x@1": [
+     null,
+     false
+    ],
+    "ga_delta|gate|Build.any@1": [
+     null,
+     false
+    ],
+    "ga_delta|gate|Build.reg@1": [
+     null,
+     false
+    ],
+    "ga_delta|gate|Build.target@1": [
+     null,
+     false
+    ],
+    "ga_delta|gate|Idem.alt@1": [
+     "unsourced",
+     false
+    ],
+    "ga_delta|gate|Idem.pat@1": [
+     null,
+     false
+    ],
+    "ga_delta|gate|Ldgr.src@1": [
+     "sourced",
+     false
+    ],
+    "ga_delta|gate|Null.x@1": [
+     null,
+     false
+    ],
+    "ga_gamma|gate|Build.any@1": [
+     null,
+     false
+    ],
+    "ga_gamma|gate|Build.reg@1": [
+     null,
+     false
+    ],
+    "ga_gamma|gate|Build.target@1": [
+     null,
+     false
+    ],
+    "ga_gamma|gate|Idem.alt@1": [
+     "sourced",
+     false
+    ],
+    "ga_gamma|gate|Idem.pat@1": [
+     null,
+     false
+    ],
+    "ga_gamma|gate|Ldgr.src@1": [
+     null,
+     true
+    ],
+    "ga_gamma|gate|Null.x@1": [
+     null,
+     false
+    ]
+   },
+   "verdict": "OK"
+  },
+  "v1_citation_gate_idem_alt_pass": {
+   "sha256": "75d47fd7005b445fcbac12ee1fddc1d4bdc582168aa5bc355150529568e955fc",
+   "states": {
+    "ga_alpha|gate|Build.any@1": [
+     null,
+     false
+    ],
+    "ga_alpha|gate|Build.reg@1": [
+     null,
+     false
+    ],
+    "ga_alpha|gate|Build.target@1": [
+     null,
+     false
+    ],
+    "ga_alpha|gate|Idem.alt@1": [
+     null,
+     true
+    ],
+    "ga_alpha|gate|Idem.pat@1": [
+     null,
+     false
+    ],
+    "ga_alpha|gate|Ldgr.src@1": [
+     "sourced",
+     false
+    ],
+    "ga_alpha|gate|Null.x@1": [
+     null,
+     false
+    ],
+    "ga_beta|gate|Build.any@1": [
+     null,
+     false
+    ],
+    "ga_beta|gate|Build.reg@1": [
+     null,
+     false
+    ],
+    "ga_beta|gate|Build.target@1": [
+     null,
+     false
+    ],
+    "ga_beta|gate|Idem.alt@1": [
+     "sourced",
+     false
+    ],
+    "ga_beta|gate|Idem.pat@1": [
+     null,
+     false
+    ],
+    "ga_beta|gate|Ldgr.src@1": [
+     "sourced_ocr_unverified",
+     true
+    ],
+    "ga_beta|gate|Null.x@1": [
+     null,
+     false
+    ],
+    "ga_delta|gate|Build.any@1": [
+     null,
+     false
+    ],
+    "ga_delta|gate|Build.reg@1": [
+     null,
+     false
+    ],
+    "ga_delta|gate|Build.target@1": [
+     null,
+     false
+    ],
+    "ga_delta|gate|Idem.alt@1": [
+     "unsourced",
+     false
+    ],
+    "ga_delta|gate|Idem.pat@1": [
+     null,
+     false
+    ],
+    "ga_delta|gate|Ldgr.src@1": [
+     "sourced",
+     false
+    ],
+    "ga_delta|gate|Null.x@1": [
+     null,
+     false
+    ],
+    "ga_gamma|gate|Build.any@1": [
+     null,
+     false
+    ],
+    "ga_gamma|gate|Build.reg@1": [
+     null,
+     false
+    ],
+    "ga_gamma|gate|Build.target@1": [
+     null,
+     false
+    ],
+    "ga_gamma|gate|Idem.alt@1": [
+     "sourced",
+     false
+    ],
+    "ga_gamma|gate|Idem.pat@1": [
+     null,
+     false
+    ],
+    "ga_gamma|gate|Ldgr.src@1": [
+     null,
+     true
+    ],
+    "ga_gamma|gate|Null.x@1": [
+     null,
+     false
+    ]
+   },
+   "verdict": "OK"
+  },
+  "v1_ldgr_pass": {
+   "sha256": "ae17c1644ef3801fcebbc569d66e15d6677a828874c145495976464fa93fa3c8",
+   "states": {
+    "ga_alpha|gate|Build.any@1": [
+     null,
+     false
+    ],
+    "ga_alpha|gate|Build.reg@1": [
+     null,
+     false
+    ],
+    "ga_alpha|gate|Build.target@1": [
+     null,
+     false
+    ],
+    "ga_alpha|gate|Idem.alt@1": [
+     "sourced",
+     false
+    ],
+    "ga_alpha|gate|Idem.pat@1": [
+     null,
+     false
+    ],
+    "ga_alpha|gate|Ldgr.src@1": [
+     null,
+     true
+    ],
+    "ga_alpha|gate|Null.x@1": [
+     null,
+     false
+    ],
+    "ga_beta|gate|Build.any@1": [
+     null,
+     false
+    ],
+    "ga_beta|gate|Build.reg@1": [
+     null,
+     false
+    ],
+    "ga_beta|gate|Build.target@1": [
+     null,
+     false
+    ],
+    "ga_beta|gate|Idem.alt@1": [
+     "sourced",
+     false
+    ],
+    "ga_beta|gate|Idem.pat@1": [
+     null,
+     false
+    ],
+    "ga_beta|gate|Ldgr.src@1": [
+     "sourced_ocr_unverified",
+     true
+    ],
+    "ga_beta|gate|Null.x@1": [
+     null,
+     false
+    ],
+    "ga_delta|gate|Build.any@1": [
+     null,
+     false
+    ],
+    "ga_delta|gate|Build.reg@1": [
+     null,
+     false
+    ],
+    "ga_delta|gate|Build.target@1": [
+     null,
+     false
+    ],
+    "ga_delta|gate|Idem.alt@1": [
+     "unsourced",
+     false
+    ],
+    "ga_delta|gate|Idem.pat@1": [
+     null,
+     false
+    ],
+    "ga_delta|gate|Ldgr.src@1": [
+     "sourced",
+     false
+    ],
+    "ga_delta|gate|Null.x@1": [
+     null,
+     false
+    ],
+    "ga_gamma|gate|Build.any@1": [
+     null,
+     false
+    ],
+    "ga_gamma|gate|Build.reg@1": [
+     null,
+     false
+    ],
+    "ga_gamma|gate|Build.target@1": [
+     null,
+     false
+    ],
+    "ga_gamma|gate|Idem.alt@1": [
+     "sourced",
+     false
+    ],
+    "ga_gamma|gate|Idem.pat@1": [
+     null,
+     false
+    ],
+    "ga_gamma|gate|Ldgr.src@1": [
+     null,
+     true
+    ],
+    "ga_gamma|gate|Null.x@1": [
+     null,
+     false
+    ]
+   },
+   "verdict": "OK"
+  },
+  "v1_non_citation_pass": {
+   "sha256": "0094a1817f0fad306c5587a0d4cd5d4cb266ea5597f2684aa5a1c38eff1d4bfd",
+   "states": {
+    "ga_alpha|gate|Build.any@1": [
+     null,
+     false
+    ],
+    "ga_alpha|gate|Build.reg@1": [
+     null,
+     false
+    ],
+    "ga_alpha|gate|Build.target@1": [
+     null,
+     false
+    ],
+    "ga_alpha|gate|Idem.alt@1": [
+     "sourced",
+     false
+    ],
+    "ga_alpha|gate|Idem.pat@1": [
+     null,
+     false
+    ],
+    "ga_alpha|gate|Ldgr.src@1": [
+     "sourced",
+     false
+    ],
+    "ga_alpha|gate|Null.x@1": [
+     null,
+     false
+    ],
+    "ga_beta|gate|Build.any@1": [
+     null,
+     false
+    ],
+    "ga_beta|gate|Build.reg@1": [
+     null,
+     false
+    ],
+    "ga_beta|gate|Build.target@1": [
+     null,
+     false
+    ],
+    "ga_beta|gate|Idem.alt@1": [
+     "sourced",
+     false
+    ],
+    "ga_beta|gate|Idem.pat@1": [
+     null,
+     false
+    ],
+    "ga_beta|gate|Ldgr.src@1": [
+     "sourced_ocr_unverified",
+     true
+    ],
+    "ga_beta|gate|Null.x@1": [
+     null,
+     false
+    ],
+    "ga_delta|gate|Build.any@1": [
+     null,
+     false
+    ],
+    "ga_delta|gate|Build.reg@1": [
+     null,
+     false
+    ],
+    "ga_delta|gate|Build.target@1": [
+     null,
+     false
+    ],
+    "ga_delta|gate|Idem.alt@1": [
+     "unsourced",
+     false
+    ],
+    "ga_delta|gate|Idem.pat@1": [
+     null,
+     false
+    ],
+    "ga_delta|gate|Ldgr.src@1": [
+     "sourced",
+     false
+    ],
+    "ga_delta|gate|Null.x@1": [
+     null,
+     false
+    ],
+    "ga_gamma|gate|Build.any@1": [
+     null,
+     false
+    ],
+    "ga_gamma|gate|Build.reg@1": [
+     null,
+     false
+    ],
+    "ga_gamma|gate|Build.target@1": [
+     null,
+     false
+    ],
+    "ga_gamma|gate|Idem.alt@1": [
+     "sourced",
+     false
+    ],
+    "ga_gamma|gate|Idem.pat@1": [
+     null,
+     false
+    ],
+    "ga_gamma|gate|Ldgr.src@1": [
+     null,
+     true
+    ],
+    "ga_gamma|gate|Null.x@1": [
+     null,
+     false
+    ]
+   },
+   "verdict": "OK"
+  },
+  "v1_with_fields": {
+   "code": "bad_ledger",
+   "sha256": "dd6b8995d6954e13750c694962e7358dbdd5f75da56ae66afdad0edbfdcef0f7",
+   "verdict": "REFUSED"
+  },
+  "v1_without_fields": {
+   "sha256": "ff7d7c80ac12bdb327a2987f047c184fefaeb93fcec3c618c0846a2945b75468",
+   "states": {
+    "ga_alpha|gate|Build.any@1": [
+     null,
+     false
+    ],
+    "ga_alpha|gate|Build.reg@1": [
+     null,
+     false
+    ],
+    "ga_alpha|gate|Build.target@1": [
+     null,
+     false
+    ],
+    "ga_alpha|gate|Idem.alt@1": [
+     "sourced",
+     false
+    ],
+    "ga_alpha|gate|Idem.pat@1": [
+     null,
+     false
+    ],
+    "ga_alpha|gate|Ldgr.src@1": [
+     "sourced",
+     false
+    ],
+    "ga_alpha|gate|Null.x@1": [
+     null,
+     false
+    ],
+    "ga_beta|gate|Build.any@1": [
+     null,
+     false
+    ],
+    "ga_beta|gate|Build.reg@1": [
+     null,
+     false
+    ],
+    "ga_beta|gate|Build.target@1": [
+     null,
+     false
+    ],
+    "ga_beta|gate|Idem.alt@1": [
+     "sourced",
+     false
+    ],
+    "ga_beta|gate|Idem.pat@1": [
+     null,
+     false
+    ],
+    "ga_beta|gate|Ldgr.src@1": [
+     null,
+     true
+    ],
+    "ga_beta|gate|Null.x@1": [
+     null,
+     false
+    ],
+    "ga_delta|gate|Build.any@1": [
+     null,
+     false
+    ],
+    "ga_delta|gate|Build.reg@1": [
+     null,
+     false
+    ],
+    "ga_delta|gate|Build.target@1": [
+     null,
+     false
+    ],
+    "ga_delta|gate|Idem.alt@1": [
+     "unsourced",
+     false
+    ],
+    "ga_delta|gate|Idem.pat@1": [
+     null,
+     false
+    ],
+    "ga_delta|gate|Ldgr.src@1": [
+     "sourced",
+     false
+    ],
+    "ga_delta|gate|Null.x@1": [
+     null,
+     false
+    ],
+    "ga_gamma|gate|Build.any@1": [
+     null,
+     false
+    ],
+    "ga_gamma|gate|Build.reg@1": [
+     null,
+     false
+    ],
+    "ga_gamma|gate|Build.target@1": [
+     null,
+     false
+    ],
+    "ga_gamma|gate|Idem.alt@1": [
+     "sourced",
+     false
+    ],
+    "ga_gamma|gate|Idem.pat@1": [
+     null,
+     false
+    ],
+    "ga_gamma|gate|Ldgr.src@1": [
+     null,
+     true
+    ],
+    "ga_gamma|gate|Null.x@1": [
+     null,
+     false
+    ]
+   },
+   "verdict": "OK"
+  },
+  "version_0": {
+   "code": "bad_ledger",
+   "sha256": "50dd031d9901a9a6dac67cda86668e989c8f17fd8652608e28591b9eeab6b5d8",
+   "verdict": "REFUSED"
+  },
+  "version_3": {
+   "code": "bad_ledger",
+   "sha256": "c3e63495e5fdd38456f10b0530fb910d5cf3fe5f8b7fc50ac14f01d4a2122116",
+   "verdict": "REFUSED"
+  },
+  "version_true": {
+   "code": "bad_ledger",
+   "sha256": "a2cf17a65401dba6b5e35ed7605a0f68880fa88361b0fac7155008079d292fc0",
+   "verdict": "REFUSED"
+  }
+ }
+}

@@ -86,23 +86,29 @@ def test_golden_v2_every_record_carries_version_2_state_and_caveat():
 
 # ---- v1 and v2 -------------------------------------------------------------------------------------------------------
 
-def test_v1_records_read_as_null_state_and_no_caveat(w):
+def test_v1_records_read_as_null_state_and_a_v1_citation_pass_is_caveated(w):
     for i, c in enumerate(w.certs):
         w.certs[i] = cert(c["asset"], c["criterion"], c["verdict"], kind=c["kind"], na=c["na"], v1=True)
     rep = report(w)
     assert set(rep) == ALL
-    for a in ALL:
-        assert rep[a]["citation_states"] == {} and rep[a]["citation_caveat"] is False
+    for a in ("ga_alpha", "bg_beta"):                   # they hold a v1 PASS on a citation gate: never hidden (N-74)
+        assert rep[a]["citation_states"] == {} and rep[a]["citation_caveat"] is True
+    assert rep["ka_gamma"]["citation_caveat"] is False
     assert all(r["record_version"] == 1 and "citation_state" not in r for r in w.certs)
 
 
-def test_a_v1_record_is_read_as_exactly_state_none_and_caveat_false(w):
+def test_a_v1_record_is_read_as_exactly_state_none_and_the_citation_gate_rule_caveat(w):
     w.certs[w.certs.index(w.find("ga_alpha", "Ldgr.src"))] = cert("ga_alpha", "Ldgr.src", v1=True)
     w.commit()
     facts = T._e63_registry_facts(str(w.repo), w.last)
     led = T._e63_parse_certs(T._e63_show(str(w.repo), w.last, "00_ARCHITECTURE/control/asset_certs.jsonl"), facts)
     rec = led.by_key["ga_alpha|gate|Ldgr.src"][0]
-    assert rec["record_version"] == 1 and rec["citation_state"] is None and rec["citation_state_caveat"] is False
+    assert rec["record_version"] == 1 and rec["citation_state"] is None and rec["citation_state_caveat"] is True
+    other = led.by_key["ga_alpha|gate|Idem.pat"][0]                                   # a non-citation v1 PASS
+    w.certs[w.certs.index(w.find("ga_alpha", "Idem.pat"))] = cert("ga_alpha", "Idem.pat", v1=True)
+    w.commit()
+    led = T._e63_parse_certs(T._e63_show(str(w.repo), w.last, "00_ARCHITECTURE/control/asset_certs.jsonl"), facts)
+    assert led.by_key["ga_alpha|gate|Idem.pat"][0]["citation_state_caveat"] is False
 
 
 def test_both_record_versions_are_accepted_in_one_ledger(w):

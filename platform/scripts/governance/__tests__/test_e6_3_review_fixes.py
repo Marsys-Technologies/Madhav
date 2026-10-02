@@ -25,6 +25,8 @@ from _e6_3_fixtures import (CENSUS, CERTS, DISP, GAPS, MINI_CENSUS, MINI_FLOOR, 
 
 T = load_tracker()
 REAL_FLOOR = dict(T.E63_REQUIRED_FLOOR)
+# the real registry's per-layer core-gate counts at origin/main today (Carr.detector retired by #2856: Carr is 3)
+CURRENT_COUNTS = {"Ldgr": 1, "Idem": 1, "Earn": 2, "Null": 2, "Vocab": 2, "Carr": 3, "Narr": 4, "Dens": 1, "Build": 9}
 REAL_PINS = dict(T.E63_REQUIRED_CRITERIA)
 ALL = {"ga_alpha", "bg_beta", "ka_gamma"}
 
@@ -229,6 +231,8 @@ def test_3_the_pinned_floor_is_met_by_the_real_registry_and_equals_it_but_for_th
         counts = {g: sum(1 for e in ac.CRITERION_REGISTRY.values() if e["gate"] == g and layer in e["layers"])
                   for g in ac.CELL_GATES}
         assert all(REAL_FLOOR[g] <= counts[g] <= REAL_FLOOR[g] + extras.get(g, 0) for g in REAL_FLOOR), (layer, counts)
+        # and the ACTUAL current counts, so a silent registry change is caught here and not only at the bounds
+        assert counts == CURRENT_COUNTS, (layer, counts)
 
 
 def test_3_the_real_registry_passes_the_floor_and_the_whole_module_walk(tmp_path, real_floor):

@@ -24,3 +24,13 @@ registry, with the writer's `CITATION_CRITERIA` patched to the mini registry's `
 sourced; `ga_beta` Ldgr.src `sourced_ocr_unverified` (caveat true); `ga_gamma` Ldgr.src PASS with a NULL state (caveat true, still
 a PASS); `ga_delta` Idem.alt NO_DETECTOR / `unsourced` (the census caps it). Every record is `record_version` 2 with
 `citation_state` (null except on the citation gates) and `citation_state_caveat`. Regenerate when the writer's shape changes.
+
+## citation_verdicts.json (E5.1's verdicts on the citation-state parity variants)
+
+Recorded ONCE from the REAL E5.1 reader (`nikasha_certify.parse_ledger` of branch `suvarna/engine-E5.1-citation-state`, commit in the
+file) by `python platform/scripts/governance/__tests__/_e6_3_citation_variants.py`: for each of the 32 variants (golden `ledger_v2.jsonl`
+mutated in one citation field and re-chained) it stores the variant's sha256, the verdict (OK / REFUSED + code) and, when OK, the parsed
+`[citation_state, citation_state_caveat]` of every certificate. `test_e6_3_citation_parity.py` checks E6.3's parser against it in CI (no
+E5.1 worktree needed) and, where the worktree exists, against the live reader. The variants run with E5.1's `CITATION_CRITERIA` patched to
+`Ldgr.src` / `Idem.alt` and `CITATION_STRICT` to `Idem.alt` (the mini registry has no Carr.D1); real Carr.D1 strictness is checked by a
+direct-call test. Re-record when the variants or E5.1's citation rules change.
