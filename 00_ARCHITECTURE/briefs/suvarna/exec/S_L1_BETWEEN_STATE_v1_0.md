@@ -1,6 +1,6 @@
 ---
 artifact: S_L1_BETWEEN_STATE
-version: 1.0
+version: 1.1
 status: DRAFT-FOR-REVIEW
 produced_by: exec-suvarna (integration-docs worker)
 produced_on: 2026-10-03
@@ -12,6 +12,7 @@ evidence:
   - /Users/Dev/suvarna-evidence/FactId/FACTID_SERVED_IMPACT_REPORT.md (sha256 3346899bf4b4266ed626667273e159e3fa217a86df2dab0d427572171bd4d043)
   - /Users/Dev/suvarna-evidence/OwnerDecisions/N-91_between_state_ruling_v1_0.md
 changelog:
+  - "1.1 (2026-10-03): 'no chart value is wrong' qualified: the stored 2026-09-07/08 rows were built on the Moshier ephemeris and S-L1 rebuilds on the canonical Swiss .se1 backend (#2860), so graha longitudes move by up to 0.665 arcsec and Vimshottari boundaries by about +1.94 h on the canonical chart (section 10 item, HOOKS_W7_HAND_READBACK 1.2 H22/H23). fact_ids, row counts and tiers are unaffected."
   - "1.0 (2026-10-03): first version. Baseline values were read 2026-10-02 22:10 to 22:17 UTC (2026-10-03 03:40 to 03:47 IST) as suvarna_reader on the canonical chart 482012f1-710e-4a25-994a-93821f5871aa; the 'after' columns are to be filled at W7."
 ---
 
@@ -19,7 +20,7 @@ changelog:
 
 ## 1. The paragraph for the runbook (v1.2, "state between S-L1 and S-L2")
 
-S-L1 re-runs the whole L1 (Gaṇita) layer for the owner's chart: **all 18 `ga_*` lanes**, including `ga_positions`, `ga_dashas` and `ga_vargas`. The fact_id formula in force drops `build_id` from the hash, so **about 99% of the chart's fact ids change once**: 142,094 of the 143,299 `chart_facts` rows get a new id; the 1,205 `ga_positions` rows (graha_position 430, bhava_cusps 360, house_chalit 225, graha_sign_attributes 100, sandhi_flag 90) keep theirs. The new ids are deterministic and **stable from then on** (a second rebuild reproduces them). The L2 (Bodha), L3 and L5 rows that cite the old ids are rebuilt only at S-L2, so between the two windows those citations point at ids that no longer exist. No chart value is wrong and nothing errors: the owner gets a quiet degradation, listed in section 3, and all of it clears when S-L2 closes. The window is accepted by owner-surrogate ruling N-91 (option (a)) on conditions that are listed in section 7. The clock runs from S-L1 CLOSE (section 8).
+S-L1 re-runs the whole L1 (Gaṇita) layer for the owner's chart: **all 18 `ga_*` lanes**, including `ga_positions`, `ga_dashas` and `ga_vargas`. The fact_id formula in force drops `build_id` from the hash, so **about 99% of the chart's fact ids change once**: 142,094 of the 143,299 `chart_facts` rows get a new id; the 1,205 `ga_positions` rows (graha_position 430, bhava_cusps 360, house_chalit 225, graha_sign_attributes 100, sandhi_flag 90) keep theirs. The new ids are deterministic and **stable from then on** (a second rebuild reproduces them). The L2 (Bodha), L3 and L5 rows that cite the old ids are rebuilt only at S-L2, so between the two windows those citations point at ids that no longer exist. No chart value is wrong and nothing errors (the one value-level move at S-L1 is the ephemeris backend, sub-arcsecond on graha longitudes and about two hours on Vimshottari boundaries, section 10): the owner gets a quiet degradation, listed in section 3, and all of it clears when S-L2 closes. The window is accepted by owner-surrogate ruling N-91 (option (a)) on conditions that are listed in section 7. The clock runs from S-L1 CLOSE (section 8).
 
 ## 2. What changes at S-L1, by id space (canonical chart; read 2026-10-02 22:10 to 22:17 UTC)
 
@@ -155,6 +156,7 @@ Two further statements of the same family were found and left, each for the reas
 
 ## 10. Things this window does not fix, stated so nobody assumes otherwise
 
+- **Ephemeris backend: Moshier to .se1 (a value move, not an id move).** The stored 2026-09-07/08 rows for the canonical chart were built on the Moshier ephemeris, not the `.se1` files (independent re-derivation: every stored planetary longitude matches Moshier to under 0.001 arcsec; `/Users/Dev/suvarna-evidence/SwissThreadMode/AUDIT_NOTE.md`, SWE_THREAD_AUDIT section 4a/4c). S-L1 rebuilds on the canonical Swiss `.se1` backend (#2860, `SE_EPHE_PATH` in both Dockerfiles). Expected: `graha_position` and every value derived from it moves by sub-arcsecond amounts (Moon +0.665 arcsec stored-minus-se1, Jupiter +0.202, Saturn -0.152, Mars +0.118, Venus +0.036, Mercury -0.016, Sun, nodes and Lagna about 0; the bound used at W7 is 0.0003 deg = 1.08 arcsec), and Vimshottari boundaries (`start_iso` / `end_iso`) move later by about 1.94 h (6,992 s). `fact_id`s, row counts and tiers are unaffected. Owners of anything keyed on an exact longitude or an exact dasha boundary instant of this chart (L3 windows, calibration data) should expect it to move once.
 - **The blind spot.** About 3.8% of the ids cited by L2 rows fall in 40 categories that no active L1 output-digest spec covers (figure as supplied to this worker by Exec Suvarṇa; the two reports in `/Users/Dev/suvarna-evidence/FactId/` do not carry it). It is **irrelevant for S-L1**, because all 18 lanes rebuild and every category is rewritten. It matters for any later partial rebuild: a change there would not move a digest.
 - **Signal ids embedding `chart_divisionals.id` (I-20).** 1,340 canonical MSR signals embed a random `chart_divisionals.id` in `configuration_jsonb` and `signal_summary_text` (1,305 distinct ids). `signal_id` is `uuid_v5(chart, ayanamsha, signal_type, varga, configuration_jsonb)` (migration 661), so the first MSR regeneration after a `ga_vargas` rebuild gives them new signal ids, stranding `kala_*` and `phala_*` rows keyed on them. `bodha_pratijna` also cites 190 `chart_divisionals` ids (135 rows). This is named in the I-20 "bo_laksana signal identity" design item. The fact_id change itself does not move any signal_id (0 of 1,787 id-like tokens in MSR `configuration_jsonb` resolve to a `chart_facts` id).
 - **Pravāha's `gochara_resonance_map.target_ref`** (88 rows, 17 distinct ids: arudha_pada and sensitive_degree_check categories) cites ids that change at S-L1. Pravāha's table: not touched here. SS passes it on. Relinking would change contact and window identities and `class_fingerprint`, and it has no served benefit (the table is read by natural key, not by id).
