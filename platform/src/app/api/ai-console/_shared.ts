@@ -243,8 +243,10 @@ function projectConnectionRow(row: Row) {
 
 function projectRole(row: Row) {
   return RoleTargetSchema.parse(row.kind === 'provider_model'
-    ? { kind: row.kind, connectionId: row.connection_id, modelId: row.model_id }
-    : { kind: row.kind, cliId: row.cli_id, modelId: row.model_id })
+    ? { kind: row.kind, connectionId: row.connection_id, modelId: row.model_id,
+      ...(row.effort == null ? {} : { effort: row.effort }) }
+    : { kind: row.kind, cliId: row.cli_id, modelId: row.model_id,
+      ...(row.effort == null ? {} : { effort: row.effort }) })
 }
 export function projectConfiguration(input: { id: unknown; name: unknown; version: unknown; roles: unknown;
   configurationKind: unknown; ownerConnectionId: unknown; ownerCliId: unknown }) {

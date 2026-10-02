@@ -50,22 +50,28 @@ export const adapterGemini: Adapter = {
     // request must be able to raise thinking above a lower configured default — RC-5.1);
     // 'auto' / unset → the registry-configured default.
     const configuredBudget = requestTransforms?.thinking_budget ?? 24576
-    const thinkingConfig: Record<string, unknown> =
-      requestTransforms?.thinking_level !== undefined
+    const levelModel = requestTransforms?.thinking_level !== undefined || meta.id.startsWith('gemini-3')
+    const effortBudget = req.effort === 'low' ? 1024 : req.effort === 'medium' ? 8192
+      : maxThinkingBudget(meta.id, configuredBudget)
+    // A BYOK model with no explicit effort/reasoning keeps its provider default.
+    // In particular, Gemini 3 does not accept a Gemini 2.5 thinkingBudget field.
+    const thinkingConfig: Record<string, unknown> | undefined = injectedModel
+      && !req.effort && (!req.reasoning || req.reasoning === 'auto') ? undefined
+      : levelModel
         ? {
-            thinkingLevel: req.reasoning === 'disable' ? 'low'
+            thinkingLevel: req.effort ?? (req.reasoning === 'disable' ? 'low'
               : req.reasoning === 'enable' ? 'high'
-                : requestTransforms.thinking_level,
+                : requestTransforms?.thinking_level ?? 'high'),
           }
         : {
-            thinkingBudget: req.reasoning === 'disable' ? 0
+            thinkingBudget: req.effort ? effortBudget : req.reasoning === 'disable' ? 0
               : req.reasoning === 'enable' ? maxThinkingBudget(meta.id, configuredBudget)
                 : configuredBudget,
           }
 
     const googleOptions: Record<string, unknown> = {
       safetySettings: SAFETY_BLOCK_NONE,
-      thinkingConfig,
+      ...(thinkingConfig ? { thinkingConfig } : {}),
     }
 
     // Structured output MUST go through `output` (Output.object), not a top-level

@@ -75,6 +75,7 @@ export function ProviderConnectionsSection({ state, loading, error, mutationPend
   const [modelManager, setModelManager] = useState<ProviderConnectionDto | null>(null)
   const [modelQuery, setModelQuery] = useState('')
   const [modelRole, setModelRole] = useState('all')
+  const [modelScope, setModelScope] = useState<'shortlist' | 'catalog'>('shortlist')
   const [visibleLimit, setVisibleLimit] = useState(30)
   const [modelCharge, setModelCharge] = useState(false)
   const providerDefault = state?.defaultChoice?.kind === 'provider_model' ? state.defaultChoice : null
@@ -179,7 +180,8 @@ export function ProviderConnectionsSection({ state, loading, error, mutationPend
     && !(state?.models ?? []).some(model => model.connectionId === providerDefault.connectionId && model.modelId === providerDefault.modelId)
 
   const catalog = (state?.models ?? []).filter(model => modelManager && model.connectionId === modelManager.id && model.available)
-  const filteredCatalog = catalog.filter(model => (modelRole === 'all' || model.compatibleRoles.includes(modelRole as typeof model.compatibleRoles[number]))
+  const filteredCatalog = catalog.filter(model => (modelScope === 'catalog' || model.userSelected || modelQuery.trim())
+    && (modelRole === 'all' || model.compatibleRoles.includes(modelRole as typeof model.compatibleRoles[number]))
     && `${model.displayName} ${model.modelId}`.toLowerCase().includes(modelQuery.trim().toLowerCase()))
     .sort((a, b) => Number(Boolean(b.userSelected)) - Number(Boolean(a.userSelected)) || a.displayName.localeCompare(b.displayName))
 
@@ -231,6 +233,9 @@ export function ProviderConnectionsSection({ state, loading, error, mutationPend
                 const model = state?.models.find(item => item.connectionId === connection.id && item.modelId === target.modelId)
                 return Boolean(model?.available && model.userSelected && model.plainTestedAt && model.compatibleRoles.includes(role))
               }))
+            const canConfigureRoles = connection.providerId !== 'kimi' && hasCurrentProviderConfirmation(connection)
+              && AI_ROLES.every(role => (state?.models ?? []).some(model => model.connectionId === connection.id
+                && model.available && model.userSelected && model.plainTestedAt && model.compatibleRoles.includes(role)))
             return (
               <article className="aic-card" key={connection.id}>
                 <div className="aic-card-head">
@@ -241,24 +246,28 @@ export function ProviderConnectionsSection({ state, loading, error, mutationPend
                   <p className="aic-mask" aria-label="Saved credential mask">{connection.maskedSuffix}</p>
                   {connection.providerId === 'anthropic' && !connection.workspaceId && connection.validationState !== 'validated' &&
                     <p className="aic-meta">Organization-wide Claude keys need a workspace ID. Set it here, then test the existing key.</p>}
+                  {connection.providerId === 'anthropic' && connection.workspaceId && connection.validationState === 'needs_attention' &&
+                    <p className="aic-meta">The key was retained. Check whether this workspace ID belongs to the key, then run Test connection. Replace the key only if the provider rejects it.</p>}
                   <p className="aic-meta">Last check · {formatCheckedAt(connection.lastCheckedAt ?? connection.lastValidatedAt)}</p>
                   {connection.validationState !== 'validated' && connection.lastErrorCode && (
                     <p className="aic-failure-guidance">{FAILURE_GUIDANCE[connection.lastErrorCode] ?? FAILURE_GUIDANCE.AI_EXECUTION_FAILED}</p>
                   )}
                   {connection.deletedAt && <p className="aic-status"><AlertCircle aria-hidden="true" />Deleted connection — retained because a saved choice refers to it</p>}
+                  {connection.providerId === 'kimi' && !connection.deletedAt && <p className="aic-failure-guidance">Direct Kimi API setup is retired. Use a Kimi model through OpenRouter. Existing saved choices remain visible until you replace or remove them.</p>}
                   {!connection.deletedAt && <div className="aic-actions">
-                    <button className="aic-button" data-primary="true" type="button" onClick={() => { setModelManager(connection); setModelQuery(''); setModelRole('all'); setVisibleLimit(30); setModelCharge(false) }}>Manage models ({models.length}/{catalogCount})</button>
+                    {connection.providerId !== 'kimi' && <><button className="aic-button" data-primary="true" type="button" onClick={() => { setModelManager(connection); setModelQuery(''); setModelRole('all'); setModelScope('shortlist'); setVisibleLimit(30); setModelCharge(false) }}>Manage models ({models.length}/{catalogCount})</button>
                     <button className="aic-button" type="button" onClick={() => openEditor({ kind: 'replace', connection })}>Replace key</button>
-                    {connection.providerId !== 'kimi' && <button className="aic-button" type="button" disabled={!hasCurrentProviderConfirmation(connection)} onClick={() => onConfigureRoles(connection.id)}>{preset ? 'Edit four roles' : 'Set up four roles'}</button>}
+                    <button className="aic-button" type="button" disabled={!preset && !canConfigureRoles} title={!preset && !canConfigureRoles ? 'Test and add models compatible with all four roles first' : undefined} onClick={() => onConfigureRoles(connection.id)}>{preset ? 'Edit four roles' : 'Set up four roles'}</button></>}
                     <div className="aic-card-menu" aria-label={`${connection.name} more actions`}>
-                      <button className="aic-button aic-icon-button" type="button" aria-label={`Test ${connection.name} connection`} title="Test connection" onClick={() => openEditor({ kind: 'test', connection })}><RotateCw aria-hidden="true" /></button>
+                      {connection.providerId !== 'kimi' && <button className="aic-button aic-icon-button" type="button" aria-label={`Test ${connection.name} connection`} title="Test connection" onClick={() => openEditor({ kind: 'test', connection })}><RotateCw aria-hidden="true" /></button>}
                       <button className="aic-button aic-icon-button" type="button" aria-label={`Rename ${connection.name} connection`} title="Rename" onClick={() => openEditor({ kind: 'rename', connection })}><Pencil aria-hidden="true" /></button>
                       {connection.providerId === 'anthropic' && <button className="aic-button aic-icon-button" type="button" aria-label="Workspace ID" title="Workspace ID" onClick={() => openEditor({ kind: 'workspace', connection })}><Settings2 aria-hidden="true" /></button>}
                       <button className="aic-button aic-icon-button" data-danger="true" type="button" aria-label={`Delete ${connection.name} connection`} title="Delete" onClick={() => previewDelete(connection)}><Trash2 aria-hidden="true" /></button>
                     </div>
                   </div>}
+                  {!connection.deletedAt && connection.providerId !== 'kimi' && !canConfigureRoles && hasCurrentProviderConfirmation(connection) && <p className="aic-meta">To set up four roles, test and add models that cover each role in Manage models.</p>}
                 </div>
-                {preset && <div className="aic-role-grid aic-card-roles">{AI_ROLES.map(role => <div className="aic-role-row" key={role}><span className="aic-role-label">{ROLE_LABELS[role]}</span><span className="aic-model-id">{preset.roles[role].modelId ?? 'Built-in default'}</span></div>)}</div>}
+                {preset && <div className="aic-role-grid aic-card-roles">{AI_ROLES.map(role => <div className="aic-role-row" key={role}><span className="aic-role-label">{ROLE_LABELS[role]}</span><span className="aic-model-id">{preset.roles[role].modelId ?? 'Built-in default'} · Effort: {preset.roles[role].effort ?? 'model default'}</span></div>)}</div>}
                 <div className="aic-model-row" data-default={presetChecked}><div><span className="aic-model-name">{preset ? 'Provider role setup' : 'Role setup needed'}</span><span className="aic-model-id">{presetReady ? 'All four roles use tested models from this provider' : connection.providerId === 'kimi' ? 'Direct Kimi API retired · use OpenRouter' : 'Set up four roles with tested models before selecting as default'}</span></div>{presetChoice && <AiChoiceRadio choice={presetChoice} checked={presetChecked} disabled={!presetReady || mutationPending} unavailable={presetChecked && !presetReady} label={connection.name} onSelect={onSelectDefault} />}</div>
                 <div className="aic-model-list" aria-label={`${connection.name} models`}>
                   {models.length === 0 ? <div className="aic-model-row"><span className="aic-model-id">No models in your shortlist. Open Manage models to test and add one.</span></div> : models.map(model => {
@@ -277,13 +286,14 @@ export function ProviderConnectionsSection({ state, loading, error, mutationPend
         <DialogContent className="pp-root aic-dialog aic-model-manager">
           <DialogHeader><DialogTitle>Manage {modelManager?.name} models</DialogTitle><DialogDescription>Browse this provider’s catalog. Only models you test and add appear in your shortlist and the question picker. A successful generation check does not verify every role or structured response.</DialogDescription></DialogHeader>
           <div className="aic-manager-controls">
+            <div className="aic-field"><label htmlFor="aic-model-scope">View</label><select id="aic-model-scope" value={modelScope} onChange={event => { setModelScope(event.target.value as 'shortlist' | 'catalog'); setVisibleLimit(30) }}><option value="shortlist">My shortlist</option><option value="catalog">Full catalog</option></select></div>
             <div className="aic-field"><label htmlFor="aic-model-search">Find a model</label><input id="aic-model-search" type="search" value={modelQuery} onChange={event => { setModelQuery(event.target.value); setVisibleLimit(30) }} placeholder="Search model name or ID" /></div>
-            <div className="aic-field"><label htmlFor="aic-model-role">Role support</label><select id="aic-model-role" value={modelRole} onChange={event => { setModelRole(event.target.value); setVisibleLimit(30) }}><option value="all">All roles</option><option value="synthesizer">Synthesizer</option><option value="planner">Planner</option><option value="deep_planner">Deep Planner</option><option value="worker">Worker</option></select></div>
+            <div className="aic-field"><label htmlFor="aic-model-role">Role support</label><select id="aic-model-role" value={modelRole} onChange={event => { setModelRole(event.target.value); setVisibleLimit(30) }}><option value="all">Any role</option><option value="synthesizer">Synthesizer</option><option value="planner">Planner</option><option value="deep_planner">Deep Planner</option><option value="worker">Worker</option></select></div>
           </div>
-          <p className="aic-meta">Showing {Math.min(visibleLimit, filteredCatalog.length)} of {filteredCatalog.length} matching models. Catalog entries have not all been individually tested.</p>
+          <p className="aic-meta">Showing {Math.min(visibleLimit, filteredCatalog.length)} of {filteredCatalog.length} matching models. Your shortlist is shown first; search or choose Full catalog to explore other models. Catalog entries have not all been individually tested.</p>
           <label className="aic-disclosure" htmlFor="aic-model-charge"><input id="aic-model-charge" type="checkbox" checked={modelCharge} onChange={event => setModelCharge(event.target.checked)} /> I understand each model test makes a tiny provider request and may create a small charge.</label>
           <div className="aic-manager-results">
-            {filteredCatalog.length === 0 && <p className="aic-empty">No matching models in the current catalog.</p>}
+            {filteredCatalog.length === 0 && <p className="aic-empty">{modelScope === 'shortlist' && !modelQuery.trim() ? 'Your shortlist is empty. Choose Full catalog, then test and add only the models you want to use.' : 'No matching models in the current catalog.'}</p>}
             {filteredCatalog.slice(0, visibleLimit).map(model => <div className="aic-manager-row" key={model.modelId}>
               <div><span className="aic-model-name">{model.displayName}</span><span className="aic-model-id">{model.modelId}</span><span className="aic-model-id">{model.lastProbeErrorCode ? `Last test failed · ${model.lastProbeErrorCode}` : model.plainTestedAt ? `Generation tested ${formatCheckedAt(model.plainTestedAt)}` : 'Listed · not individually tested'}{model.lastProbeInputTokens != null || model.lastProbeOutputTokens != null ? ` · test tokens ${model.lastProbeInputTokens ?? '?'}/${model.lastProbeOutputTokens ?? '?'} in/out` : ''}</span></div>
               {model.userSelected ? <div className="aic-actions"><button className="aic-button" type="button" aria-label={`${model.plainTestedAt ? 'Retest' : 'Test'} ${model.displayName}`} disabled={!modelCharge || mutationPending || !modelManager || !hasCurrentProviderConfirmation(modelManager)} onClick={() => testAndAddModel(model.modelId)}>{model.plainTestedAt ? 'Retest' : 'Test'}</button><button className="aic-button" type="button" aria-label={`Remove ${model.displayName} from shortlist`} disabled={mutationPending} onClick={() => removeModel(model.modelId)}>Remove</button></div>
