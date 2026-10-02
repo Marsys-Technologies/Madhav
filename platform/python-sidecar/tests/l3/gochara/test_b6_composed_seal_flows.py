@@ -1413,6 +1413,9 @@ def test_cross_pr_round_trip_the_real_brief_stdout_through_the_real_extractor_ch
     """F-R13-1 (the seam bug): the sealing workflow's scripts (PR #2975) had only ever seen a FIXTURE brief. Here the REAL `--brief` stdout (Stream A head 7e81f2870: chunk
     lines, then the compact `BRIEFED` line) as a real verifier login goes, shaped as Cloud Run log entries, through the REAL extractor and the REAL check, the REAL approval extraction,
     and the REAL gated orchestrator script, which runs the REAL `seal_job` as a subprocess on the sealer login — and the receipt names the digest the verifier persisted."""
+    # G6 (steward M20261002T230554-65a7): the composed fixture's daśā rows are ONE pinned build — else the writer's and verifier's `dasha_builds_mixed` / `dasha_build_not_pinned` refusals fire in this harness
+    builds = [r[0] for r in cbuilt.conn.execute("SELECT DISTINCT build_id::text FROM public.chart_dashas WHERE chart_id = %s AND system_id = 'vimshottari' ORDER BY 1", (CHART_ID,)).fetchall()]
+    assert builds == [PINNED_BUILD], builds
     import hashlib as _hl
     import json as _json
     import subprocess
