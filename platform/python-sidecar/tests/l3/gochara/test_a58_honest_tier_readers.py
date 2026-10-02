@@ -1,13 +1,20 @@
 """A58 — honest-tier readers (steward M20261002T094420-d113).
 
-A base-layer rebuild relabels MUDDA / NARAYANA daśā rows to the tier they
-honestly earn. The pinned `two_pass_verified` read of the non-pinned DR-14
-systems would then come back EMPTY and the plurality would report those
-systems INACTIVE — a silent omission that reads as a finding. The reader now
-accepts any honestly emitted COMPUTED tier for the systems that only vote, and
-still refuses floored / divergent / pending / unknown / NULL; the accepted
-tier is carried to the permission detail (never implied verified). The
-vimshottari §4.0 read (the '5.0' writer's contract, AM-10, the build pin)
+A base-layer rebuild relabels MUDDA / NARAYANA level-1 daśā rows from
+`two_pass_verified` to `classical_match`. The pinned `two_pass_verified` read
+would then come back EMPTY for them and the plurality would report them
+INACTIVE — a silent omission that reads as a finding. Two repairs:
+
+ 1. a PER-(system, level) tier policy: ONLY mudda/narayana level 1 accept the
+    honest computed tiers; every other (system, level) stays strict, so the row
+    set read on today's data is IDENTICAL (the deeper `single` levels, and the
+    level-1 rows already excluded today, stay excluded — a separate decision);
+ 2. a system with NO readable row is UNAVAILABLE (could not be checked), not
+    inactive (checked, did not fire): the permission VALUE is unchanged
+    (DR-14 fixes the weights over all generators and is silent on a missing
+    one) and is marked partial, with the reason.
+
+The vimshottari §4.0 read (the '5.0' writer's contract, AM-10, the build pin)
 stays STRICT.
 
 Pure stub-conn plumbing: no Swiss, no real DB. The stub conn EVALUATES the
@@ -20,6 +27,7 @@ import sys
 from pathlib import Path
 
 import pytest
+import swisseph as swe
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 
@@ -102,53 +110,84 @@ def test_tier_evidence_never_calls_an_unverified_tier_verified():
         assert ev == {"verification_pass_status": t, "tier_verified": False}
 
 
-# ── behaviour-neutral on today's rows ───────────────────────────────────────
+# ── behaviour-neutral on today's rows (per-level) ───────────────────────────
 
-def _today():
-    T = V.TWO_PASS_VERIFIED
-    return [_row("v1", "vimshottari", T), _row("m1", "mudda", T, lord="Mars"),
-            _row("n1", "narayana", T, lord="Taurus")]
+T, CM, SG = V.TWO_PASS_VERIFIED, V.CLASSICAL_MATCH, V.SINGLE
+SYSTEMS = ["vimshottari", "yogini", "ashtottari", "chara_karaka", "naisargika",
+           "mudda", "narayana", "kalachakra"]
 
 
-def test_on_todays_all_two_pass_rows_the_policy_read_equals_the_strict_read():
-    strict = DD.fetch_dasha_periods_multilevel(
-        _Conn(_today()), "c", systems=["mudda", "narayana"])
+def _rows_from(spec):
+    """spec: {(system, level): (tier, n)} -> stored rows (a parent chain per
+    system so level 2/3 rows have a parent)."""
+    rows, k = [], 0
+    for (system, level), (tier, n) in spec.items():
+        for i in range(n):
+            k += 1
+            rows.append(_row(f"{system}-{level}-{i}", system, tier, level=level,
+                             parent=(None if level == 1 else f"{system}-{level - 1}-0"),
+                             lord="Mars" if level == 1 else "Venus",
+                             start=f"{2000 + 10 * level + i:04d}-01-01T00:00:00+00:00",
+                             end=f"{2000 + 10 * level + i + 1:04d}-01-01T00:00:00+00:00"))
+    return rows
+
+
+# The live read-only count (chart 482012f1, lahiri, levels 1-3) TODAY, in miniature:
+# mudda/narayana L1 two_pass, deeper `single`; yogini/ashtottari/chara_karaka/naisargika L1
+# classical_match; kalachakra every level single; vimshottari every level two_pass.
+TODAY = {
+    ("vimshottari", 1): (T, 2), ("vimshottari", 2): (T, 2), ("vimshottari", 3): (T, 2),
+    ("mudda", 1): (T, 3), ("mudda", 2): (SG, 3), ("mudda", 3): (SG, 4),
+    ("narayana", 1): (T, 2), ("narayana", 2): (SG, 3),
+    ("yogini", 1): (CM, 3), ("yogini", 2): (SG, 3),
+    ("ashtottari", 1): (CM, 2), ("ashtottari", 2): (SG, 2),
+    ("chara_karaka", 1): (CM, 2), ("chara_karaka", 2): (SG, 2),
+    ("naisargika", 1): (CM, 2), ("naisargika", 2): (SG, 2),
+    ("kalachakra", 1): (SG, 2), ("kalachakra", 2): (SG, 2),
+}
+AFTER = {**TODAY, ("mudda", 1): (CM, 3), ("narayana", 1): (CM, 2)}  # the rebuild's relabel
+
+
+def _ids(rows):
+    return sorted((r["system_id"], r["level_n"], r["dasha_row_id"]) for r in rows)
+
+
+def test_on_todays_rows_the_policy_read_is_identical_to_the_strict_read_per_system_and_level():
+    rows = _rows_from(TODAY)
+    strict = DD.fetch_dasha_periods_multilevel(_Conn(rows), "c", systems=SYSTEMS)
     policy = DD.fetch_dasha_periods_multilevel(
-        _Conn(_today()), "c", systems=["mudda", "narayana"],
-        accept_tiers=RTP.HONEST_COMPUTED_TIERS)
-    assert strict and strict == policy
+        _Conn(rows), "c", systems=SYSTEMS, level_tier_policy=True)
+    assert strict and _ids(strict) == _ids(policy)
+    # and the strict read is what the DR-14 plurality sees TODAY: vimshottari L1-3,
+    # mudda L1, narayana L1 — nothing deeper, no classical_match/single level-1 system
+    assert {(r["system_id"], r["level_n"]) for r in strict} == {
+        ("vimshottari", 1), ("vimshottari", 2), ("vimshottari", 3),
+        ("mudda", 1), ("narayana", 1)}
+
+
+def test_after_the_relabel_level_one_of_mudda_and_narayana_still_comes_back_carrying_its_tier():
+    rows = _rows_from(AFTER)
+    strict = DD.fetch_dasha_periods_multilevel(_Conn(rows), "c", systems=SYSTEMS)
+    assert {r["system_id"] for r in strict} == {"vimshottari"}      # the defect
+    policy = DD.fetch_dasha_periods_multilevel(
+        _Conn(rows), "c", systems=SYSTEMS, level_tier_policy=True)
+    # the SAME (system, level) set as today — nothing deeper started voting
+    assert {(r["system_id"], r["level_n"]) for r in policy} == {
+        ("vimshottari", 1), ("vimshottari", 2), ("vimshottari", 3),
+        ("mudda", 1), ("narayana", 1)}
+    assert {r["verification_pass_status"] for r in policy
+            if r["system_id"] in ("mudda", "narayana")} == {CM}
+    assert {r["verification_pass_status"] for r in policy
+            if r["system_id"] == "vimshottari"} == {T}
 
 
 def test_default_read_stays_strict_equality_on_the_contract_tier():
-    conn = _Conn(_today())
+    conn = _Conn(_rows_from(TODAY))
     DD.fetch_dasha_periods_multilevel(conn, "c", systems=["vimshottari"])
     sql, params = conn.calls[0]
-    assert "verification_pass_status = %s" in sql and "ANY(%s)\n" not in sql.split(
-        "verification_pass_status =")[1][:20] + "\n"
+    assert "AND verification_pass_status = %s" in sql and "ANY(%s)\n" not in sql.split(
+        "AND verification_pass_status =")[1][:12] + "\n"
     assert params[4] == DD.READ_CONTRACT_TIER == V.TWO_PASS_VERIFIED
-
-
-# ── after the relabel ───────────────────────────────────────────────────────
-
-def _relabelled():
-    return [
-        _row("v1", "vimshottari", V.TWO_PASS_VERIFIED),
-        _row("m1", "mudda", V.CLASSICAL_MATCH, lord="Mars"),
-        _row("n1", "narayana", V.SINGLE, lord="Taurus"),
-    ]
-
-
-def test_strict_read_comes_back_empty_for_relabelled_systems_the_defect():
-    assert DD.fetch_dasha_periods_multilevel(
-        _Conn(_relabelled()), "c", systems=["mudda", "narayana"]) == []
-
-
-def test_policy_read_returns_relabelled_rows_each_carrying_its_own_tier():
-    out = DD.fetch_dasha_periods_multilevel(
-        _Conn(_relabelled()), "c", systems=["mudda", "narayana"],
-        accept_tiers=RTP.HONEST_COMPUTED_TIERS)
-    assert {r["system_id"]: r["verification_pass_status"] for r in out} == {
-        "mudda": V.CLASSICAL_MATCH, "narayana": V.SINGLE}
 
 
 @pytest.mark.parametrize("refused", [
@@ -157,8 +196,7 @@ def test_policy_read_returns_relabelled_rows_each_carrying_its_own_tier():
 def test_policy_read_still_refuses_floored_divergent_pending_unknown_null(refused):
     rows = [_row("m1", "mudda", refused, lord="Mars")]
     assert DD.fetch_dasha_periods_multilevel(
-        _Conn(rows), "c", systems=["mudda"],
-        accept_tiers=RTP.HONEST_COMPUTED_TIERS) == []
+        _Conn(rows), "c", systems=["mudda"], level_tier_policy=True) == []
 
 
 def test_backstop_drops_a_row_that_escapes_the_predicate():
@@ -171,54 +209,127 @@ def test_backstop_drops_a_row_that_escapes_the_predicate():
                 def fetchall(_s):
                     return rows
             return _X()
-    rows = [_row("m1", "mudda", V.DIVERGENT_FLAGGED), _row("m2", "mudda", V.SINGLE,
-            start="2031-01-01T00:00:00+00:00", end="2032-01-01T00:00:00+00:00")]
+    rows = [_row("m1", "mudda", V.DIVERGENT_FLAGGED), _row("m2", "mudda", V.SINGLE, level=2, parent="m1x",
+            start="2031-01-01T00:00:00+00:00", end="2032-01-01T00:00:00+00:00"),
+            _row("m3", "mudda", CM, start="2033-01-01T00:00:00+00:00", end="2034-01-01T00:00:00+00:00")]
     out = DD.fetch_dasha_periods_multilevel(
-        _Leaky(rows), "c", systems=["mudda"], accept_tiers=RTP.HONEST_COMPUTED_TIERS)
-    assert [r["dasha_row_id"] for r in out] == ["m2"]
+        _Leaky(rows), "c", systems=["mudda"], level_tier_policy=True)
+    assert [r["dasha_row_id"] for r in out] == ["m3"]   # divergent L1 and single L2 both dropped
 
 
-# ── step06a: vimshottari strict, the voting systems honest ──────────────────
+def test_the_policy_table_is_the_explicit_minimum():
+    assert RTP.LEVEL_TIER_POLICY == {("mudda", 1): RTP.HONEST_COMPUTED_TIERS,
+                                     ("narayana", 1): RTP.HONEST_COMPUTED_TIERS}
+    assert RTP.accepted_tiers_for("vimshottari", 1) == RTP.STRICT_TIERS
+    assert RTP.accepted_tiers_for("mudda", 2) == RTP.STRICT_TIERS
+    assert RTP.accepted_tiers_for("yogini", 1) == RTP.STRICT_TIERS
+    assert not RTP.row_tier_accepted("mudda", None, CM)      # a NULL level is strict
 
-def test_step06a_pinned_read_keeps_vimshottari_strict_and_reads_relabelled_others():
+
+# ── step06a: vimshottari strict, the voting systems under the policy ────────
+
+def test_step06a_pinned_read_keeps_vimshottari_strict_and_reads_relabelled_level_one():
     mod = _load_step06a()
-    rows = _relabelled() + [
-        # a vimshottari row at an honest-but-unverified tier must NOT enter
-        _row("v2", "vimshottari", V.CLASSICAL_MATCH, lord="Saturn", build="b-other")]
+    rows = _rows_from(AFTER) + [
+        # a vimshottari row at an honest-but-unverified tier must NOT enter the pin
+        _row("vx", "vimshottari", CM, lord="Saturn", build="b-other")]
     periods, contract = mod.load_pinned_dasha_periods(
-        _Conn(rows), "not-the-canonical-chart", ["vimshottari", "mudda", "narayana"])
-    by = {(p["system_id"], p["dasha_row_id"]): p["verification_pass_status"]
-          for p in periods}
-    assert by == {("vimshottari", "v1"): V.TWO_PASS_VERIFIED,
-                  ("mudda", "m1"): V.CLASSICAL_MATCH,
-                  ("narayana", "n1"): V.SINGLE}
-    assert contract["tier"] == V.TWO_PASS_VERIFIED
-    assert contract["builds_seen"] == [BUILD]  # the classical_match vim row never seen
-    # the document states what it read and at which tier
-    assert mod._rows_by_system_tier([dict(zip(DD._MULTILEVEL_KEYS, r))
-                                     for r in _relabelled()]) == {
-        "mudda": {V.CLASSICAL_MATCH: 1}, "narayana": {V.SINGLE: 1},
-        "vimshottari": {V.TWO_PASS_VERIFIED: 1}}
+        _Conn(rows), "not-the-canonical-chart", SYSTEMS)
+    got = {(p["system_id"], p["level_n"]): p["verification_pass_status"] for p in periods}
+    assert got == {("vimshottari", 1): T, ("vimshottari", 2): T, ("vimshottari", 3): T,
+                   ("mudda", 1): CM, ("narayana", 1): CM}
+    assert contract["tier"] == T and contract["builds_seen"] == [BUILD]
 
 
-# ── the consumer: the plurality keeps the system and states its tier ────────
+class _CountConn:
+    """Serves the availability COUNT from stored rows (system, level, tier -> n)."""
+
+    def __init__(self, rows):
+        self.rows, self.sql = rows, []
+
+    def execute(self, sql, params=None):
+        self.sql.append(sql)
+        if "GROUP BY" in sql:
+            agg = {}
+            for r in self.rows:
+                k = (r[1], r[2], r[8])
+                agg[k] = agg.get(k, 0) + 1
+            out = [{"system_id": a, "level_n": b, "verification_pass_status": c, "n": n}
+                   for (a, b, c), n in sorted(agg.items())]
+        else:
+            out = []
+
+        class _X:
+            def fetchall(_s):
+                return out
+        return _X()
+
+
+def test_availability_document_says_why_a_system_has_no_readable_row():
+    mod = _load_step06a()
+    rows = _rows_from(TODAY)
+    read = DD.fetch_dasha_periods_multilevel(
+        _Conn(rows), "c", systems=SYSTEMS, level_tier_policy=True)
+    av = mod.dasha_availability(_CountConn(rows), "c", read)
+    assert av["vimshottari"]["state"] == av["mudda"]["state"] == av["narayana"]["state"] == "available"
+    for sid in ("yogini", "ashtottari", "chara_karaka", "naisargika", "kalachakra"):
+        assert av[sid]["state"] == "unavailable", sid
+        assert av[sid]["reason"] == "all_stored_rows_refused_by_tier_policy"
+        assert av[sid]["observed_rows_by_level_tier"]            # states what exists
+    # a system with nothing stored is a different reason
+    av2 = mod.dasha_availability(_CountConn([]), "c", [])
+    assert {v["reason"] for v in av2.values()} == {"no_rows_stored"}
+
+
+# ── the consumer ────────────────────────────────────────────────────────────
+
+_MUDDA = {"system_id": "mudda", "lord_graha": "Mars",
+          "start_iso": "2020-01-01T00:00:00+00:00", "end_iso": "2030-01-01T00:00:00+00:00"}
+_REL = ({"Mars"}, set())
+_T_ISO = "2025-06-01T00:00:00+00:00"
+
 
 def test_permission_detail_carries_the_accepted_tier_and_is_unchanged_without_one():
-    t_iso = "2025-06-01T00:00:00+00:00"
-    relevant = ({"Mars"}, set())
-    mudda = {"system_id": "mudda", "lord_graha": "Mars",
-             "start_iso": "2020-01-01T00:00:00+00:00",
-             "end_iso": "2030-01-01T00:00:00+00:00"}
-    # a tier-less (MD-only fetch) row: detail keys exactly as before
-    base = perm._dasha_contributions([mudda], t_iso, *relevant)["mudda"]
+    base = perm._dasha_contributions([_MUDDA], _T_ISO, *_REL)["mudda"]
     assert base["active"] and "verification_pass_status" not in base["detail"]
-    # a relabelled multilevel row: active AND states its unverified tier
     hit = perm._dasha_contributions(
-        [{**mudda, "verification_pass_status": V.CLASSICAL_MATCH}], t_iso, *relevant)["mudda"]
-    assert hit["active"]
-    assert hit["detail"]["verification_pass_status"] == V.CLASSICAL_MATCH
+        [{**_MUDDA, "verification_pass_status": CM}], _T_ISO, *_REL)["mudda"]
+    assert hit["active"] and hit["state"] == "active"
+    assert hit["detail"]["verification_pass_status"] == CM
     assert hit["detail"]["tier_verified"] is False
-    # and today's two_pass row says verified
     today = perm._dasha_contributions(
-        [{**mudda, "verification_pass_status": V.TWO_PASS_VERIFIED}], t_iso, *relevant)["mudda"]
+        [{**_MUDDA, "verification_pass_status": T}], _T_ISO, *_REL)["mudda"]
     assert today["detail"]["tier_verified"] is True
+
+
+def test_a_system_with_no_rows_is_unavailable_not_inactive_and_a_covering_miss_is_inactive():
+    rows = [_MUDDA, {**_MUDDA, "system_id": "narayana", "lord_graha": "Venus"}]  # narayana: lord misses
+    out = perm._dasha_contributions(rows, _T_ISO, *_REL)
+    assert out["mudda"]["state"] == "active"
+    assert out["narayana"]["state"] == "inactive" and out["narayana"]["active"] is False
+    for sid in perm.DASHA_SYSTEM_IDS:
+        if sid not in ("mudda", "narayana"):
+            assert out[sid]["state"] == "unavailable" and out[sid]["active"] is False
+            assert out[sid]["detail"]["reason"] == perm.REASON_NO_READABLE_ROWS
+
+
+def test_unavailable_changes_no_permission_value_and_marks_the_result_partial():
+    """DR-14 fixes the weights over all generators and is silent on a missing one: the
+    denominator is unchanged (today's value does not move) — the result is MARKED partial."""
+    full = [{**_MUDDA, "system_id": sid, "lord_graha": "Mars"} for sid in perm.DASHA_SYSTEM_IDS]
+    partial = [r for r in full if r["system_id"] in ("mudda", "narayana")]
+
+    def run(periods):
+        return perm.compute_permission(
+            swe, None, "c", "career", [], 2460000.0, dasha_periods=periods)
+    v_full, d_full = run(full)
+    v_part, d_part = run(partial)
+    # the value of the partial read equals what treating the missing systems as 0 always gave:
+    expected = sum(perm.SYSTEM_WEIGHTS[s] for s in ("mudda", "narayana")) / sum(perm.SYSTEM_WEIGHTS.values())
+    assert v_part == pytest.approx(expected)
+    assert d_full["permission_partial"] is False and d_full["systems_unavailable"] == []
+    assert d_part["permission_partial"] is True
+    assert {u["system_id"] for u in d_part["systems_unavailable"]} == (
+        set(perm.DASHA_SYSTEM_IDS) - {"mudda", "narayana"})
+    assert all(s["state"] in ("active", "inactive", "unavailable")
+               for s in d_part["systems"] if "state" in s)

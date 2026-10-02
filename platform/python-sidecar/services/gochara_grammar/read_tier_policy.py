@@ -14,8 +14,10 @@ constants (never literals, CLAUDE.md §N.4):
     build pin). Unchanged behaviour.
   * `HONEST_COMPUTED_TIERS` -- every tier a writer emits for a value it actually
     computed: two_pass_verified, classical_match, single, single_pass,
-    documented_approximation, computed_extension. A reader that only needs the
-    computed value (a timing system that votes in a plurality) accepts these.
+    documented_approximation, computed_extension.
+  * `LEVEL_TIER_POLICY`     -- which (system, level) reads accept the honest set;
+    every other (system, level) stays STRICT, so a row set read today is read
+    identically (behaviour-neutral) and only the relabelled level-1 rows return.
 
 Everything else is REFUSED: floored (a null/zero stood in for the value),
 divergent_flagged (two passes disagreed), pending_w3_verification, the
@@ -46,10 +48,41 @@ HONEST_COMPUTED_TIERS: Final[frozenset[str]] = frozenset({
 })
 
 
+# PER-(system, level) policy. The default for every (system, level) is STRICT — exactly what the
+# pinned read accepted before this policy existed — so a row set read today is read identically.
+# Only the entries below are widened, and only for the rows a base-layer relabel moves OFF
+# `two_pass_verified` while the system's reading contract is unchanged: the level-1 (MD) rows of
+# the non-pinned systems whose level 1 is read today (mudda, narayana: today `two_pass_verified`,
+# after the rebuild `classical_match`). Deeper levels of every system, every other system's level
+# 1, and vimshottari at every level are NOT widened here: whether `single` deeper levels, or the
+# `classical_match` / `single` level-1 rows the strict read already excludes today (yogini,
+# ashtottari, chara_karaka, naisargika, kalachakra), SHOULD vote in the plurality is a separate
+# question that changes today's permission values — a decision, not this policy (see the A58
+# report). Widening is a one-line edit of this table.
+LEVEL_TIER_POLICY: Final[dict[tuple[str, int], frozenset[str]]] = {
+    ("mudda", 1): HONEST_COMPUTED_TIERS,
+    ("narayana", 1): HONEST_COMPUTED_TIERS,
+}
+
+
+def accepted_tiers_for(system_id: str, level_n: int) -> frozenset[str]:
+    """The tiers a read of (system_id, level_n) accepts: the table entry, else STRICT."""
+    return LEVEL_TIER_POLICY.get((system_id, int(level_n)), STRICT_TIERS)
+
+
 def tier_accepted(status: Any, accepted: Iterable[str] = HONEST_COMPUTED_TIERS) -> bool:
     """True iff `status` is exactly one of the `accepted` tiers. Case-sensitive,
     NULL / non-string / unknown spellings are refused (never case-folded)."""
     return isinstance(status, str) and status in frozenset(accepted)
+
+
+def row_tier_accepted(system_id: Any, level_n: Any, status: Any) -> bool:
+    """The per-level policy applied to one row (a NULL level or system is STRICT)."""
+    try:
+        accepted = accepted_tiers_for(str(system_id), int(level_n))
+    except (TypeError, ValueError):
+        accepted = STRICT_TIERS
+    return tier_accepted(status, accepted)
 
 
 def tier_evidence(status: Any) -> dict:
@@ -58,10 +91,5 @@ def tier_evidence(status: Any) -> dict:
     return {"verification_pass_status": status, "tier_verified": is_verified(status)}
 
 
-def sql_params(accepted: Iterable[str]) -> list[str]:
-    """Deterministic (sorted) parameter list for a `= ANY(%s)` predicate."""
-    return sorted(frozenset(accepted))
-
-
-__all__ = ["STRICT_TIERS", "HONEST_COMPUTED_TIERS", "tier_accepted",
-           "tier_evidence", "sql_params"]
+__all__ = ["STRICT_TIERS", "HONEST_COMPUTED_TIERS", "LEVEL_TIER_POLICY",
+           "accepted_tiers_for", "tier_accepted", "row_tier_accepted", "tier_evidence"]
