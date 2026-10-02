@@ -20,7 +20,8 @@ platform/scripts/governance/__tests__/test_flip_detector.py (with mutation proof
         Failure classes: UNDECLARED_CHANGE (no hook declares the changed row/category/column), KIND_MISMATCH (a hook declares the
             category but not this KIND of change), DECLARED_BUT_ABSENT (a non-optional hook entry saw no change at all),
             EXPECTATION_MISMATCH (expected_count violated), DASHA_SHIFT_UNDECLARED (a dasha start shift outside every declared
-            range), HOOK_ERROR (invalid hook file or a --require-lanes lane with no hook). Warning class (never fails):
+            range), HOOK_ERROR (invalid hook file or a --require-lanes lane with no hook), EMPTY_READ (a compared table has zero rows in
+            either state). Warning class (never fails):
             OPTIONAL_ABSENT (an entry marked "optional": true saw no change).
         Exit codes:
             0  verdict PASS, or verdict NOT_CHECKED with --allow-not-checked (the summary still prints every NOT CHECKED item)
@@ -74,6 +75,9 @@ ENTRY_FIELDS = {"table", "kind", "categories", "fact_keys", "ayanamsha_ids", "sy
 V_ALERT, V_FAIL, V_NOT_CHECKED, V_PASS = "ALERT", "FAIL", "NOT_CHECKED", "PASS"
 F_UNDECLARED, F_KIND, F_ABSENT, F_EXPECT, F_DASHA, F_HOOK = ("UNDECLARED_CHANGE", "KIND_MISMATCH", "DECLARED_BUT_ABSENT", "EXPECTATION_MISMATCH",
                                                              "DASHA_SHIFT_UNDECLARED", "HOOK_ERROR")
+F_EMPTY = "EMPTY_READ"
+FAILURE_CLASSES = (F_UNDECLARED, F_KIND, F_ABSENT, F_EXPECT, F_DASHA, F_HOOK, F_EMPTY)
+REPORT_REQUIRED_KEYS = ("failures", "failure_counts", "not_checked", "chart_id")
 W_OPTIONAL_ABSENT = "OPTIONAL_ABSENT"
 EXIT_PASS, EXIT_FAIL, EXIT_ALERT, EXIT_NOT_CHECKED = 0, 2, 3, 4
 
@@ -89,8 +93,8 @@ STANDING_NOT_CHECKED = (
 
 # ------------------------------------------------------------------ read-only reader
 def q(sql, retries=4):
-    if not re.match(r"^\s*select\b", sql, re.I):
-        raise RuntimeError("flip_detector is read-only: only SELECT statements are allowed")
+    if not re.match(r"^\s*select\b", sql, re.I) or ";" in sql.strip().rstrip(";"):
+        raise RuntimeError("flip_detector is read-only: only a single SELECT statement is allowed")
     reader = os.environ.get("FLIP_READER")
     for i in range(retries):
         if reader:
@@ -105,8 +109,21 @@ def q(sql, retries=4):
     return [ln.split("\t") for ln in r.stdout.splitlines() if ln != ""]
 
 
+UUID_RE = re.compile(r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$")
+
+
+def normalize_chart_id(c):
+    """The ONE place a chart id is normalised (trim, braces, lower case) and validated as a UUID; anything else raises ValueError.
+    Everything that interpolates a chart id into SQL, compares it with NATIVE or matches a hook 'charts' prefix goes through here."""
+    t = str(c).strip().strip("{}").strip().lower()
+    if not UUID_RE.match(t):
+        raise ValueError(f"not a chart UUID: {str(c)[:60]!r}")
+    return t
+
+
 def resolve(c):
-    return CHARTS.get(c, c)
+    key = str(c).strip().lower()
+    return normalize_chart_id(CHARTS.get(key, c))
 
 
 def ts_parse(s):
@@ -171,8 +188,8 @@ def validate_hook(h, fname):
             elif any(re.search(r"[*?\[\]()|^$\\]", c) for c in cats):
                 errs.append(f"{w}: 'categories' must be exact names, not patterns")
         for f in ("fact_keys", "ayanamsha_ids"):
-            if f in e and not (isinstance(e[f], list) and all(isinstance(x, str) for x in e[f])):
-                errs.append(f"{w}: '{f}' must be a list of exact strings")
+            if f in e and not (isinstance(e[f], list) and e[f] and all(isinstance(x, str) and x for x in e[f])):
+                errs.append(f"{w}: '{f}' must be a NON-EMPTY list of exact strings (omit the field to match all; an empty list would broaden, not narrow)")
         ct = e.get("change_types")
         if ct is not None and not (isinstance(ct, list) and ct and set(ct) <= set(CHANGE_TYPES)):
             errs.append(f"{w}: 'change_types' must be a non-empty subset of {CHANGE_TYPES}")
@@ -183,8 +200,8 @@ def validate_hook(h, fname):
             ok = isinstance(ec, dict) and set(ec) <= {"exact", "min", "max"} and ec and all(isinstance(v, int) and v >= 0 for v in ec.values()) and not ("exact" in ec and len(ec) > 1)
             if not ok:
                 errs.append(f"{w}: 'expected_count' must be {{\"exact\": n}} or {{\"min\": a, \"max\": b}} (non-negative integers)")
-    if "charts" in h and not (isinstance(h["charts"], list) and all(isinstance(c, str) and len(c) >= 8 for c in h["charts"])):
-        errs.append(f"{fname}: 'charts' must be a list of chart-id prefixes (>= 8 chars)")
+    if "charts" in h and not (isinstance(h["charts"], list) and h["charts"] and all(isinstance(c, str) and re.match(r"^[0-9a-fA-F-]{8,}$", c) for c in h["charts"])):
+        errs.append(f"{fname}: 'charts' must be a NON-EMPTY list of hex chart-id prefixes (>= 8 chars); omit the field to apply to every chart")
     return errs
 
 
@@ -233,7 +250,9 @@ def entry_matches(e, c):
 
 
 def applies_to_chart(h, chart_id):
-    return not h.get("charts") or any(chart_id.startswith(p) for p in h["charts"])
+    if "charts" not in h:
+        return True
+    return any(chart_id.lower().startswith(p.lower()) for p in h["charts"])
 
 
 def attribute_all(changes, hooks, chart_id):
@@ -309,8 +328,10 @@ def expectation_report(hooks, counts, chart_id, have_dash=True, have_daily=True,
 
 # ------------------------------------------------------------------ read production
 def read_state(chart_id, dashas=True, daily=True):
+    chart_id = normalize_chart_id(chart_id)  # the only interpolated operator-controlled value: a UUID or nothing
     st = {"chart_facts": []}
     for (ay,) in q(f"select distinct ayanamsha_id from chart_facts where chart_id='{chart_id}' order by 1"):
+        ay = ay.replace("'", "''")
         st["chart_facts"] += q(f"""select ayanamsha_id, fact_category, fact_subject, fact_key, coalesce(fact_value_text,''), coalesce(fact_value_num::text,''),
                  coalesce(verification_pass_status,'') from chart_facts where chart_id='{chart_id}' and ayanamsha_id='{ay}'""")
     st["divisionals"] = q(f"""select ayanamsha_id, varga, graha, fact_category, fact_key, coalesce(fact_value_text,''), coalesce(fact_value_num::text,''), coalesce(sign,'')
@@ -318,6 +339,7 @@ def read_state(chart_id, dashas=True, daily=True):
     if dashas:
         rows = []
         for ay, sy in q(f"select distinct ayanamsha_id, system_id from chart_dashas where chart_id='{chart_id}' order by 1,2"):
+            ay, sy = ay.replace("'", "''"), sy.replace("'", "''")
             rows += q(f"""select ayanamsha_id, system_id, level_n, lord_graha, coalesce(kp_sublevel,''), coalesce(kp_sub_lord,''), coalesce(kp_sub_sub_lord,''),
                  start_iso::text, end_iso::text, dasha_row_id::text, coalesce(parent_row_id::text,'') from chart_dashas
                  where chart_id='{chart_id}' and ayanamsha_id='{ay}' and system_id='{sy}'""")
@@ -394,15 +416,20 @@ def diff_table(table, A, B, nkey):
     """A,B: key -> sorted occurrence lists [(t, n, tier)]. nkey = (index of fact_category, index of fact_key) inside the key tuple.
     Returns (class_and_tier_changes, continuous_stats)."""
     out = []
-    cont = {"compared": 0, "changed": 0, "max_abs_delta": 0.0}
+    cont = {"compared": 0, "changed": 0, "max_abs_delta": 0.0, "to_non_numeric": 0, "keys_appeared": 0, "keys_disappeared": 0,
+            "time_keys_appeared": 0, "time_keys_disappeared": 0}
     for k in sorted(set(A) | set(B)):
         a, b = A.get(k), B.get(k)
         cat, key = k[nkey[0]], k[nkey[1]]
         base = {"table": table, "key": list(k), "category": cat, "fact_key": key, "ayanamsha": k[0]}
         if a is None or b is None:
             vals = b if a is None else a
-            if {kind_of(v[0], v[1], key) for v in vals} <= {"continuous", "time"}:
-                continue  # an appearing/disappearing continuous or timestamp value is not a class change
+            kinds = {kind_of(v[0], v[1], key) for v in vals}
+            if kinds == {"time"}:
+                cont["time_keys_appeared" if a is None else "time_keys_disappeared"] += 1
+                continue  # an appearing/disappearing timestamp-valued fact is not a class change
+            if "continuous" in kinds:  # a continuous key that appears or disappears IS a change (it can trigger declared/undeclared logic)
+                cont["keys_appeared" if a is None else "keys_disappeared"] += 1
             out.append({**base, "change": "appeared" if a is None else "disappeared", "value": [list(v[:2]) for v in vals][:2]})
             continue
         if len(a) != len(b):
@@ -411,7 +438,12 @@ def diff_table(table, A, B, nkey):
             kd = kind_of(x[0], x[1], key)
             if kd == "continuous":
                 cont["compared"] += 1
-                if not same_num(x[1], y[1]):
+                if (y[0] or "") != "" or y[1] in ("", None):
+                    # the continuous number became NULL or text (1.694 -> 'no_data'): a number was lost, which is a value change
+                    cont["changed"] += 1
+                    cont["to_non_numeric"] += 1
+                    out.append({**base, "change": "value", "before": [x[0], x[1]], "after": [y[0], y[1]]})
+                elif not same_num(x[1], y[1]):
                     cont["changed"] += 1
                     try:
                         cont["max_abs_delta"] = max(cont["max_abs_delta"], abs(float(y[1]) - float(x[1])))
@@ -517,12 +549,22 @@ def _declared_by(hooks, chart_id, table, tier_only_scope):
     return sorted(out)
 
 
+def report_is_malformed(rep):
+    """A report missing the keys the verdict is decided from (or with the wrong shapes) is never PASS and never a crash."""
+    if not isinstance(rep, dict) or any(k not in rep for k in REPORT_REQUIRED_KEYS):
+        return True
+    return not isinstance(rep["failures"], dict) or not isinstance(rep["failure_counts"], dict) or not isinstance(rep["not_checked"], list)
+
+
 def decide_verdict(rep):
     """The ONE place a verdict is decided. ALERT > FAIL > NOT_CHECKED > PASS. PASS only when no failure class is non-empty AND nothing is
-    NOT CHECKED. It reads the report's own failure lists, so a failure can never be hidden by a stale 'verdict' field."""
+    NOT CHECKED. It reads the report's own failure lists, so a failure can never be hidden by a stale 'verdict' field. A malformed report
+    (missing failures / failure_counts / not_checked) is FAIL: a saved report JSON must never be trusted for its 'verdict' field."""
+    if report_is_malformed(rep):
+        return V_FAIL
     if rep.get("ALERT_anchor_changed"):
         return V_ALERT
-    if any(rep["failures"].get(k) for k in (F_UNDECLARED, F_KIND, F_ABSENT, F_EXPECT, F_DASHA, F_HOOK)):
+    if any(rep["failures"].get(k) for k in FAILURE_CLASSES):
         return V_FAIL
     if rep.get("not_checked"):
         return V_NOT_CHECKED
@@ -531,7 +573,18 @@ def decide_verdict(rep):
 
 def compare_states(snap, cur, hooks, chart_id, have_dash=True, have_daily=True, hook_errors=(), standing_not_checked=STANDING_NOT_CHECKED):
     """Pure function (no I/O): the whole comparison. Returns the report dict (JSON-serializable, deterministic ordering).
-    `standing_not_checked` is the registry of scopes the detector never compares; production always uses STANDING_NOT_CHECKED."""
+    `standing_not_checked` is the registry of scopes the detector never compares; production always uses STANDING_NOT_CHECKED.
+    EMPTY_READ rule: every table compared (chart_facts, chart_divisionals always; chart_dashas / panchanga_daily when compared) must hold
+    at least one row in BOTH states. A real chart always has rows in each; zero rows means the read returned nothing (for example a
+    row-level-security block for the reader), and empty-versus-empty would otherwise read as 'nothing changed'."""
+    chart_id = normalize_chart_id(chart_id)
+    empty = []
+    for label, key, on in (("chart_facts", "chart_facts", True), ("chart_divisionals", "divisionals", True), ("chart_dashas", "dashas", have_dash),
+                           ("panchanga_daily", "daily", have_daily)):
+        if on:
+            for side, st in (("snapshot", snap), ("current", cur)):
+                if not st.get(key):
+                    empty.append(f"EMPTY READ: {label} has zero rows in the {side} state (a real chart has rows: the read returned nothing; check reader grants / row-level security)")
     fk = lambda r: (r[0], r[1], r[2], r[3])
     fv = lambda r: (r[4], r[5], r[6])
     changes, cont1 = diff_table("chart_facts", occ_map(snap["chart_facts"], fk, fv), occ_map(cur["chart_facts"], fk, fv), (1, 3))
@@ -569,9 +622,9 @@ def compare_states(snap, cur, hooks, chart_id, have_dash=True, have_daily=True, 
            "continuous": {"chart_facts": cont1, "chart_divisionals": cont2}, "dashas": dinfo,
            "dasha_shift_unattributed": shift_unattrib, "expectations": exp_rows, "expectation_mismatches": exp_bad,
            "failure_counts": {F_UNDECLARED: len(undeclared), F_KIND: len(kind_mm), F_ABSENT: len(absent), F_EXPECT: len(exp_bad),
-                              F_DASHA: len(shift_unattrib), F_HOOK: len(hook_errors)},
+                              F_DASHA: len(shift_unattrib), F_HOOK: len(hook_errors), F_EMPTY: len(empty)},
            "failures": {F_UNDECLARED: [_brief(c) for c in undeclared[:50]], F_KIND: [_brief(c) for c in kind_mm[:50]], F_ABSENT: absent,
-                        F_EXPECT: exp_bad, F_DASHA: shift_unattrib, F_HOOK: list(hook_errors)},
+                        F_EXPECT: exp_bad, F_DASHA: shift_unattrib, F_HOOK: list(hook_errors), F_EMPTY: empty},
            "warnings": warn, "not_checked": not_checked, "changes": changes}
     if chart_id == NATIVE:
         rep["anchors"], rep["ALERT_anchor_changed"] = anchors_check(cur["chart_facts"])
@@ -607,6 +660,8 @@ def render_summary(rep, allow_not_checked=False):
     """Human summary lines (deterministic)."""
     L = []
     v = decide_verdict(rep)
+    if report_is_malformed(rep):
+        return [f"VERDICT: {v}   exit {exit_code(rep, allow_not_checked)}   MALFORMED REPORT: needs {list(REPORT_REQUIRED_KEYS)} (a saved report is never trusted for its verdict)"]
     L.append(f"VERDICT: {v}   exit {exit_code(rep, allow_not_checked)}   chart {rep['chart_id']}")
     if rep.get("ALERT_anchor_changed"):
         L.append("ALERT: A FORENSIC ANCHOR CHANGED. STOP AND GO TO SS.")
@@ -631,8 +686,10 @@ def render_summary(rep, allow_not_checked=False):
         L.append("NOT CHECKED items are never counted as passing" + ("; exit 0 only because --allow-not-checked was passed" if allow_not_checked and v == V_NOT_CHECKED else ""))
     for k, n in rep["by_table_category_change_lane"][:30]:
         L.append(f"   {n:7d}  {k[0]:18s} {k[1]:42s} {k[2]:16s} {k[3]}")
-    c = rep["continuous"]["chart_facts"]
-    L.append(f"continuous (chart_facts): compared {c['compared']} changed {c['changed']} max |delta| {c['max_abs_delta']:.6g}")
+    for tname in ("chart_facts", "chart_divisionals"):
+        c = rep["continuous"][tname]
+        L.append(f"continuous ({tname}): compared {c['compared']} changed {c['changed']} (to NULL/text {c['to_non_numeric']}) keys appeared {c['keys_appeared']} "
+                 f"disappeared {c['keys_disappeared']} max |delta| {c['max_abs_delta']:.6g}")
     if rep["dashas"]:
         L.append("dasha shifts: " + json.dumps({k: (x.get("rows_shifted"), x.get("mode_shift_sec"), x.get("lanes")) for k, x in sorted(rep["dashas"].items()) if x.get("rows_shifted")}, sort_keys=True))
     if rep["chart_id"] == NATIVE and not rep["ALERT_anchor_changed"]:
@@ -646,12 +703,20 @@ def _csv(x):
 
 def cmd_compare(a):
     snap = json.load(gzip.open(a.compare, "rt"))
-    chart_id = snap["meta"]["chart_id"]
-    hooks, herrs = load_hooks(a.hooks_dir or DEFAULT_HOOKS_DIR, _csv(a.require_lanes))
+    try:
+        chart_id = normalize_chart_id(snap["meta"]["chart_id"])
+    except (ValueError, KeyError) as ex:
+        print(f"ERROR: snapshot chart id is not a valid UUID: {ex}", file=sys.stderr)
+        return EXIT_FAIL
+    hooks, herrs = load_hooks(a.hooks_dir if a.hooks_dir is not None else DEFAULT_HOOKS_DIR, _csv(a.require_lanes))
     if a.against:
         cur = json.load(gzip.open(a.against, "rt"))
-        if cur["meta"]["chart_id"] != chart_id:
-            print(f"ERROR: --against snapshot is for chart {cur['meta']['chart_id']}, not {chart_id}", file=sys.stderr)
+        try:
+            other = normalize_chart_id(cur["meta"]["chart_id"])
+        except (ValueError, KeyError):
+            other = None
+        if other != chart_id:
+            print(f"ERROR: --against snapshot is for chart {cur['meta'].get('chart_id')}, not {chart_id}", file=sys.stderr)
             return EXIT_FAIL
         have_dash = "dashas" in snap and "dashas" in cur and not a.no_dashas
         have_daily = "daily" in snap and "daily" in cur and not a.no_daily
@@ -680,7 +745,7 @@ def validate_report(hooks_dir, required=()):
 
 
 def cmd_validate(a):
-    rep = validate_report(a.hooks_dir or DEFAULT_HOOKS_DIR, _csv(a.require_lanes))
+    rep = validate_report(a.hooks_dir if a.hooks_dir is not None else DEFAULT_HOOKS_DIR, _csv(a.require_lanes))
     print("valid hook lanes:", rep["valid_lanes"])
     for e in rep["errors"]:
         print("HOOK ERROR:", e)
@@ -708,7 +773,15 @@ def main(argv=None):
         ap.error("exactly one of --snapshot / --compare / --validate-hooks")
     if a.against and not a.compare:
         ap.error("--against needs --compare")
+    if a.hooks_dir is not None and not a.hooks_dir.strip():
+        ap.error("--hooks-dir must not be empty (omit it to use the default S-L1 hooks folder)")
+    if a.require_lanes is not None and not _csv(a.require_lanes):
+        ap.error("--require-lanes must name at least one lane (omit it to require none)")
     if a.snapshot:
+        try:
+            resolve(a.snapshot)
+        except ValueError as ex:
+            ap.error(f"--snapshot: {ex} (use native, abhinandan, kiran or a chart UUID)")
         cmd_snapshot(a)
         return 0
     return cmd_compare(a) if a.compare else cmd_validate(a)

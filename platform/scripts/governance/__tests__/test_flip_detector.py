@@ -748,10 +748,34 @@ def test_real_hooks_with_no_changes_list_exactly_the_entries_a_lane_author_must_
 
 
 # ----------------------------------------------------------------------------------------------- unchanged safety properties
-@pytest.mark.parametrize("bad", ["update chart_facts set x=1", "delete from chart_facts", "insert into x values (1)", "drop table x", "with a as (select 1) delete from x"])
-def test_read_only_guard(bad):
+@pytest.mark.parametrize("bad", ["update chart_facts set x=1", "delete from chart_facts", "insert into x values (1)", "drop table x", "with a as (select 1) delete from x",
+                                 "select 1; delete from chart_facts", "select 1;update x set y=2", "SELECT 1 ; DROP TABLE x"])
+def test_read_only_guard(bad, tmp_path, monkeypatch):
+    """The guard must refuse BEFORE any process is started. A stub psql on PATH proves it (and keeps this test fast, with no 30 s retry
+    sleeps, even when the guard is mutated away: the stub exits 0, so the call returns instead of raising and the test fails at once)."""
+    stub_dir = tmp_path / "bin"
+    stub_dir.mkdir()
+    log = tmp_path / "psql_calls.log"
+    stub = stub_dir / "psql"
+    stub.write_text(f"#!/bin/sh\necho called >> {log}\nexit 0\n")
+    stub.chmod(0o755)
+    monkeypatch.setenv("PATH", f"{stub_dir}{os.pathsep}{os.environ.get('PATH', '')}")
+    monkeypatch.delenv("FLIP_READER", raising=False)
+    monkeypatch.setattr(F.time, "sleep", lambda *_: None)
     with pytest.raises(RuntimeError, match="read-only"):
         ORIG_Q(bad)
+    assert not log.exists(), "a refused statement must never reach psql"
+
+
+def test_read_only_guard_allows_one_select_with_a_trailing_semicolon(tmp_path, monkeypatch):
+    stub_dir = tmp_path / "bin"
+    stub_dir.mkdir()
+    stub = stub_dir / "psql"
+    stub.write_text("#!/bin/sh\nprintf 'a\\tb\\n'\n")
+    stub.chmod(0o755)
+    monkeypatch.setenv("PATH", f"{stub_dir}{os.pathsep}{os.environ.get('PATH', '')}")
+    monkeypatch.delenv("FLIP_READER", raising=False)
+    assert ORIG_Q("select 1;") == [["a", "b"]]
 
 
 def test_compare_against_other_chart_snapshot_is_refused(tmp_path, capsys):
@@ -767,3 +791,235 @@ def test_mode_exclusivity():
         F.main(["--validate-hooks", "--compare", "x"])
     with pytest.raises(SystemExit):
         F.main(["--against", "x", "--validate-hooks"])
+
+
+# ----------------------------------------------------------------------------------------------- review fixes (independent review of #2945)
+def nonint_state():
+    """base_state with an occupied argala cell holding a NON-INTEGRAL score (the a29 failure shape: a number that can become NULL)."""
+    return mutate(base_state(), lambda s: [r.__setitem__(5, "1.5") for r in s["chart_facts"] if r[1] == "argala_natal_matrix"])
+
+
+def set_argala(s, num="", text=""):
+    for r in s["chart_facts"]:
+        if r[1] == "argala_natal_matrix":
+            r[4], r[5] = text, num
+
+
+# --- MED-1: a continuous value judged by its snapshot side only was invisible when it became NULL / text / vanished
+def test_med1_continuous_number_becoming_null_is_a_value_change():
+    rep = run(nonint_state(), mutate(nonint_state(), lambda s: set_argala(s, "", "")), [])
+    assert counts(rep) == {"UNDECLARED_CHANGE": 5} and rep["verdict"] == "FAIL"
+    assert {c["change"] for c in rep["changes"]} == {"value"} and rep["changes"][0]["before"] == ["", "1.5"] and rep["changes"][0]["after"] == ["", ""]
+    cont = rep["continuous"]["chart_facts"]
+    assert cont["to_non_numeric"] == 5 and cont["changed"] == 5
+
+
+def test_med1_continuous_number_becoming_text_is_a_value_change(tmp_path):
+    rep = run(nonint_state(), mutate(nonint_state(), lambda s: set_argala(s, "", "no_data")), [])
+    assert counts(rep) == {"UNDECLARED_CHANGE": 5}
+    declared = run(nonint_state(), mutate(nonint_state(), lambda s: set_argala(s, "", "no_data")), loaded(tmp_path, ARGALA), standing_not_checked=NO_STANDING)
+    assert declared["verdict"] == "PASS" and all(c["lanes"] == ["argala"] for c in declared["changes"])
+    wrong_kind = hook("argala", [entry(["argala_natal_matrix"], ["appeared"])])
+    kind = run(nonint_state(), mutate(nonint_state(), lambda s: set_argala(s, "", "no_data")), loaded(tmp_path, wrong_kind))
+    assert kind["failure_counts"]["KIND_MISMATCH"] == 5
+
+
+def test_med1_continuous_number_to_another_number_is_still_not_a_class_change():
+    rep = run(nonint_state(), mutate(nonint_state(), lambda s: set_argala(s, "2.5")), [], standing_not_checked=NO_STANDING)
+    assert rep["verdict"] == "PASS" and rep["changes_total"] == 0
+    assert rep["continuous"]["chart_facts"]["changed"] == 5 and rep["continuous"]["chart_facts"]["to_non_numeric"] == 0
+
+
+def test_med1_whole_continuous_category_disappearing_is_five_changes(tmp_path):
+    def drop(s):
+        s["chart_facts"] = [r for r in s["chart_facts"] if r[1] != "graha_shadbala_total"]
+    rep = run(base_state(), mutate(base_state(), drop), [])
+    assert counts(rep) == {"UNDECLARED_CHANGE": 5}
+    assert {(c["category"], c["fact_key"], c["change"]) for c in rep["changes"]} == {("graha_shadbala_total", "total", "disappeared")}
+    assert rep["continuous"]["chart_facts"]["keys_disappeared"] == 5
+    assert any("keys appeared 0 disappeared 5" in ln for ln in F.render_summary(rep))
+    h = hook("tiers", [entry(["graha_shadbala_total"], ["disappeared"])])
+    ok = run(base_state(), mutate(base_state(), drop), loaded(tmp_path, h), standing_not_checked=NO_STANDING)
+    assert ok["verdict"] == "PASS" and all(c["lanes"] == ["tiers"] for c in ok["changes"])
+
+
+def test_med1_continuous_key_appearing_is_a_change_and_can_be_declared_or_missing(tmp_path):
+    def drop(s):
+        s["chart_facts"] = [r for r in s["chart_facts"] if r[1] != "graha_shadbala_total"]
+    rep = run(mutate(base_state(), drop), base_state(), [])
+    assert counts(rep) == {"UNDECLARED_CHANGE": 5} and rep["continuous"]["chart_facts"]["keys_appeared"] == 5
+    declared_but_nothing = hook("tiers", [entry(["graha_shadbala_total"], ["appeared"])])
+    assert counts(run(base_state(), base_state(), loaded(tmp_path, declared_but_nothing))) == {"DECLARED_BUT_ABSENT": 1}
+    wrong_kind = hook("tiers", [entry(["graha_shadbala_total"], ["value"])])
+    assert run(mutate(base_state(), drop), base_state(), loaded(tmp_path, wrong_kind))["failure_counts"]["KIND_MISMATCH"] == 5
+
+
+def test_med1_timestamp_keys_appearing_stay_ignored_but_are_counted():
+    def add(s):
+        s["chart_facts"].append(["INVARIANT", "birth_time_facts", "BIRTH", "utc", "2026-01-01T00:00:00+00:00", "", "single"])
+    rep = run(base_state(), mutate(base_state(), add), [], standing_not_checked=NO_STANDING)
+    assert rep["changes_total"] == 0 and rep["continuous"]["chart_facts"]["time_keys_appeared"] == 1 and rep["verdict"] == "PASS"
+
+
+# --- MED-2: empty reads must not pass
+EMPTY_KEYS = [("chart_facts", {"chart_facts": []}), ("chart_divisionals", {"divisionals": []}), ("chart_dashas", {"dashas": []}), ("panchanga_daily", {"daily": []})]
+
+
+@pytest.mark.parametrize("label,blank", EMPTY_KEYS, ids=[k[0] for k in EMPTY_KEYS])
+@pytest.mark.parametrize("sides", ["both", "snapshot", "current"])
+def test_med2_a_compared_table_with_zero_rows_is_a_failure(label, blank, sides):
+    snap, cur = base_state(), base_state()
+    if sides in ("both", "snapshot"):
+        snap.update(copy.deepcopy(blank))
+    if sides in ("both", "current"):
+        cur.update(copy.deepcopy(blank))
+    rep = run(snap, cur, [], chart=OTHER)
+    assert rep["failure_counts"]["EMPTY_READ"] == (2 if sides == "both" else 1)
+    assert rep["verdict"] == "FAIL" and F.exit_code(rep) == 2 and F.exit_code(rep, allow_not_checked=True) == 2
+    assert all(label in m for m in rep["failures"]["EMPTY_READ"])
+
+
+def test_med2_everything_empty_on_a_non_native_chart_is_not_clean():
+    empty = {"chart_facts": [], "divisionals": [], "dashas": [], "daily": []}
+    rep = run(copy.deepcopy(empty), copy.deepcopy(empty), [], chart=OTHER)
+    assert rep["changes_total"] == 0 and rep["failure_counts"]["EMPTY_READ"] == 8
+    assert F.exit_code(rep, allow_not_checked=True) == 2
+
+
+def test_med2_tables_not_compared_are_not_required_to_have_rows():
+    snap, cur = base_state(), base_state()
+    snap["dashas"], cur["dashas"], snap["daily"], cur["daily"] = [], [], [], []
+    rep = run(snap, cur, [], chart=OTHER, have_dash=False, have_daily=False, standing_not_checked=NO_STANDING)
+    assert rep["verdict"] == "PASS"
+
+
+def test_med2_cli_empty_snapshots_exit_2_even_with_allow_not_checked(tmp_path, capsys):
+    d = write_hooks(tmp_path, ARGALA_OPT)
+    empty = {"chart_facts": [], "divisionals": [], "dashas": [], "daily": []}
+    a, b = snapshot_file(tmp_path, "a.json.gz", empty, chart=OTHER), snapshot_file(tmp_path, "b.json.gz", empty, chart=OTHER)
+    out = tmp_path / "r.json"
+    code = F.main(["--compare", str(a), "--against", str(b), "--hooks-dir", str(d), "--out", str(out), "--allow-not-checked"])
+    text = capsys.readouterr().out
+    assert code == 2 and "FAIL EMPTY_READ" in text and json.loads(out.read_text())["verdict"] == "FAIL"
+
+
+# --- LOW-3 / LOW-4: chart id validation and normalisation
+@pytest.mark.parametrize("bad", ["abc", "x'; drop table chart_facts; --", NATIVE + "'", NATIVE[:-1], "", "native; select 1", NATIVE.replace("-", "")])
+def test_low3_chart_id_must_be_a_uuid(bad):
+    with pytest.raises(ValueError):
+        F.resolve(bad)
+    with pytest.raises(ValueError):
+        F.read_state(bad)  # raises before any SQL is built (the tripwire would raise AssertionError otherwise)
+    with pytest.raises(ValueError):
+        run(base_state(), base_state(), [], chart=bad)
+
+
+def test_low3_snapshot_names_and_uuids_resolve():
+    assert F.resolve("native") == NATIVE and F.resolve("Native") == NATIVE and F.resolve(OTHER) == OTHER
+    assert F.resolve(" {" + NATIVE.upper() + "} ") == NATIVE
+
+
+def test_low3_cli_refuses_a_bad_snapshot_target(capsys):
+    with pytest.raises(SystemExit) as ei:
+        F.main(["--snapshot", "x'; drop table t; --"])
+    assert ei.value.code == 2
+
+
+@pytest.mark.parametrize("form", [NATIVE.upper(), "{" + NATIVE + "}", "  " + NATIVE.upper() + " "])
+def test_low4_uppercase_or_braced_chart_id_still_gets_the_anchor_check(form):
+    def f(s):
+        for r in s["chart_facts"]:
+            if r[0] == "lahiri_chitrapaksha" and r[1] == "graha_position" and r[2] == "LAGNA":
+                r[4] = "Taurus"
+    rep = run(base_state(), mutate(base_state(), f), [], chart=form)
+    assert rep["verdict"] == "ALERT" and rep["chart_id"] == NATIVE and F.exit_code(rep) == 3
+
+
+def test_low4_hook_chart_prefix_matches_regardless_of_case(tmp_path):
+    h = copy.deepcopy(ARGALA)
+    h["charts"] = [NATIVE[:8].upper()]
+    hooks = loaded(tmp_path, h)
+    rep = run(base_state(), mutate(base_state(), change_argala), hooks, chart=NATIVE.upper(), standing_not_checked=NO_STANDING)
+    assert rep["verdict"] == "PASS"
+
+
+def test_low4_snapshot_with_uppercase_chart_id_in_meta_is_normalised(tmp_path, capsys):
+    d = write_hooks(tmp_path, ARGALA_OPT)
+    a = snapshot_file(tmp_path, "a.json.gz", base_state(), chart=NATIVE.upper())
+    b = snapshot_file(tmp_path, "b.json.gz", base_state(), chart=NATIVE)
+    out = tmp_path / "r.json"
+    assert F.main(["--compare", str(a), "--against", str(b), "--hooks-dir", str(d), "--out", str(out), "--allow-not-checked"]) == 0
+    rep = json.loads(out.read_text())
+    assert rep["chart_id"] == NATIVE and "anchors" in rep  # native-only anchor check ran
+    capsys.readouterr()
+
+
+# --- LOW-5: empty lists broaden, so they are rejected
+@pytest.mark.parametrize("name,bad", [
+    ("empty_fact_keys", hook("empty_fact_keys", [entry(["a"], fact_keys=[])])),
+    ("empty_ayanamsha_ids", hook("empty_ayanamsha_ids", [entry(["a"], ayanamsha_ids=[])])),
+    ("empty_charts", hook("empty_charts", [entry(["a"])], charts=[])),
+    ("blank_fact_key", hook("blank_fact_key", [entry(["a"], fact_keys=[""])])),
+    ("non_hex_chart", hook("non_hex_chart", [entry(["a"])], charts=["zzzzzzzz"]))])
+def test_low5_empty_lists_are_rejected(tmp_path, name, bad):
+    write_hooks(tmp_path, bad)
+    hooks, errs = F.load_hooks(str(tmp_path / "hooks"))
+    assert errs and not hooks, name
+    assert validate(tmp_path) == 2
+
+
+# --- LOW-6: empty --hooks-dir / --require-lanes must not silently fall back
+@pytest.mark.parametrize("args", [["--validate-hooks", "--hooks-dir", ""], ["--validate-hooks", "--hooks-dir", "   "],
+                                  ["--validate-hooks", "--hooks-dir", "x", "--require-lanes", ""], ["--compare", "x", "--hooks-dir", ""]])
+def test_low6_empty_hooks_dir_or_lanes_is_refused(args):
+    with pytest.raises(SystemExit) as ei:
+        F.main(args)
+    assert ei.value.code == 2
+
+
+# --- LOW-7: the fixtures must stay byte-equal to the real hooks once those are in the tree
+def test_low7_fixtures_match_the_real_hook_directory_when_it_exists():
+    real = pathlib.Path(F.DEFAULT_HOOKS_DIR)
+    if not real.is_dir():
+        pytest.skip(f"real hook directory not in this tree yet: {real} (the S-L1 hook files land with their lane PRs); re-run when it exists")
+    present = [f for f in sorted(REAL_HOOKS.glob("*.json")) if (real / f.name).exists()]
+    if not present:
+        pytest.skip(f"{real} exists but holds none of the {len(list(REAL_HOOKS.glob('*.json')))} fixture lanes yet")
+    for f in present:
+        assert (real / f.name).read_bytes() == f.read_bytes(), f"fixture hooks_real/{f.name} drifted from the real hook; refresh the fixture and the golden file"
+
+
+# --- survivors: narrowing fields of an entry
+def test_hook_ayanamsha_narrowing_is_honoured(tmp_path):
+    raman_only = hook("posn", [entry(["graha_position"], ["value"], ayanamsha_ids=["raman"])])
+    rep = run(base_state(), mutate(base_state(), change_mar_pada), loaded(tmp_path, raman_only))  # the pada change is lahiri only
+    assert counts(rep) == {"UNDECLARED_CHANGE": 1, "DECLARED_BUT_ABSENT": 1}
+    assert rep["failures"]["UNDECLARED_CHANGE"][0]["ayanamsha"] == "lahiri_chitrapaksha"
+    lahiri = hook("posn", [entry(["graha_position"], ["value"], ayanamsha_ids=["lahiri_chitrapaksha"])])
+    ok = run(base_state(), mutate(base_state(), change_mar_pada), loaded(tmp_path, lahiri), standing_not_checked=NO_STANDING)
+    assert ok["verdict"] == "PASS"
+
+
+def test_hook_fact_key_narrowing_is_honoured(tmp_path):
+    sign_only = hook("posn", [entry(["graha_position"], ["value"], fact_keys=["sign"])])
+    rep = run(base_state(), mutate(base_state(), change_mar_pada), loaded(tmp_path, sign_only))  # the change is key 'pada'
+    assert counts(rep) == {"UNDECLARED_CHANGE": 1, "DECLARED_BUT_ABSENT": 1}
+    pada = hook("posn", [entry(["graha_position"], ["value"], fact_keys=["pada"])])
+    assert run(base_state(), mutate(base_state(), change_mar_pada), loaded(tmp_path, pada), standing_not_checked=NO_STANDING)["verdict"] == "PASS"
+
+
+# --- a malformed or tampered report is never PASS and never a crash
+@pytest.mark.parametrize("rep", [{}, None, {"verdict": "PASS"}, {"verdict": "PASS", "failure_counts": {}, "not_checked": [], "chart_id": "x"},
+                                 {"verdict": "PASS", "failures": [], "failure_counts": {}, "not_checked": [], "chart_id": "x"}])
+def test_malformed_report_is_a_clean_failure_not_a_keyerror(rep):
+    assert F.decide_verdict(rep) == "FAIL"
+    assert F.exit_code(rep) == 2 and F.exit_code(rep, allow_not_checked=True) == 2
+    assert F.render_summary(rep)[0].startswith("VERDICT: FAIL") and "MALFORMED REPORT" in F.render_summary(rep)[0]
+
+
+def test_saved_report_json_verdict_field_is_not_trusted(tmp_path):
+    rep = run(base_state(), mutate(base_state(), change_mar_pada), [])
+    saved = json.loads(json.dumps(rep))
+    saved["verdict"] = "PASS"
+    del saved["failures"]  # a hand-edited / truncated saved report
+    assert F.exit_code(saved, allow_not_checked=True) == 2

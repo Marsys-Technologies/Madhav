@@ -1,11 +1,12 @@
 ---
 artifact: FLIP_DETECTOR_README
-version: 2.0
+version: 2.1
 status: DRAFT-FOR-REVIEW
 produced_by: exec-suvarna
 decision: SS N-64 (S-L1 acceptance criterion); verdict-deciding tool, one independent review required before the S-L1 integration PR relies on it
 scope: tooling and tests only. The detector is read-only and never writes to the database.
 changelog:
+  - "2.1 (2026-10-02): fixes from the independent review of PR 2945. A continuous number that becomes NULL/text, and continuous keys that appear or disappear, are now changes (were invisible). New failure class EMPTY_READ (zero rows in a compared table in either state). Chart ids are validated as UUIDs and normalised once. Empty fact_keys / ayanamsha_ids / charts lists, an empty --hooks-dir and an empty --require-lanes are rejected. A single-SELECT guard (no statement chaining). A malformed or truncated report is FAIL (exit 2), never a KeyError. W7 hand-check list added."
   - "2.0 (2026-10-02): moved to platform/scripts/governance with CI-collected tests and mutation proof. New: DECLARED_BUT_ABSENT and KIND_MISMATCH failure classes, optional hook entries, NOT_CHECKED verdict + exit 4 + --allow-not-checked, standing NOT CHECKED registry (chart_dashas tier, l1_tajik_varsha_year_lords tier), 'pr' now required in a hook, missing/empty hooks dir is an error, offline --against compare, --out for --validate-hooks, deterministic JSON. Detector logic for class/tier/dasha diffing and anchors is unchanged from v1.1 (PR 2859)."
   - "1.1: investigation-branch version (PR 2859): snapshot, compare, validate-hooks, anchors, expectation counts."
 ---
@@ -37,6 +38,7 @@ The verdict is decided in exactly one function (`decide_verdict`) from the repor
 | `EXPECTATION_MISMATCH` | an entry's `expected_count` (`exact`, or `min`/`max`) was violated for the chart compared. An explicit `{"exact": 0}` or `{"min": 0}` is how a hook says "zero is fine" |
 | `DASHA_SHIFT_UNDECLARED` | a dasha start shift larger than 2 s outside every declared `dasha_shift` range |
 | `HOOK_ERROR` | a hook file is invalid or unparseable, the hooks directory is missing or has no `*.json`, or a `--require-lanes` lane has no valid hook |
+| `EMPTY_READ` | a compared table has zero rows in the snapshot or in the current state. Rule: `chart_facts` and `chart_divisionals` are always compared; `chart_dashas` and `panchanga_daily` when compared (not `--no-dashas` / `--no-daily`). A real chart has rows in each, so zero means the read returned nothing (for example a row-level-security block for the reader); empty-versus-empty would otherwise read as "nothing changed". Exit 2, also with `--allow-not-checked` |
 
 Warning class (never fails): `OPTIONAL_ABSENT`, an entry marked `"optional": true` that saw no change. It is printed and recorded in the JSON `warnings`.
 
@@ -159,7 +161,35 @@ An entry is judged once per compare: by `expected_count` if it has one, else it 
 
 ### What the detector compares (unchanged from v1.1)
 
-For one chart: every `chart_facts` row (with `verification_pass_status`), every `chart_divisionals` row, every `chart_dashas` row (row set and start shifts), plus the global `panchanga_daily` table. A class change is a changed non-timestamp text, a changed integral number (or any value of a class-numeric key), a key that appears or disappears, or a changed occurrence count. A tier change is a changed `verification_pass_status` for `chart_facts`. Continuous values (longitudes, strengths), timestamp-valued facts and dasha shifts of 2 s or less are reported separately and never block.
+For one chart: every `chart_facts` row (with `verification_pass_status`), every `chart_divisionals` row, every `chart_dashas` row (row set and start shifts), plus the global `panchanga_daily` table. A class change is a changed non-timestamp text, a changed integral number (or any value of a class-numeric key), a key that appears or disappears, or a changed occurrence count. A tier change is a changed `verification_pass_status` for `chart_facts`.
+
+Continuous (non-integral) numbers are judged by their snapshot side: a continuous number that changes to another number (longitudes, strengths) is counted in the `continuous` block and never blocks, but a continuous number that becomes **NULL or text** is a `value` change, and a continuous key that **appears or disappears** is an `appeared` / `disappeared` change (so a hook must declare it). The `continuous` block and the printed summary count `to_non_numeric`, `keys_appeared` and `keys_disappeared`. Timestamp-valued facts that appear or disappear are ignored but counted (`time_keys_appeared`, `time_keys_disappeared`). Dasha shifts of 2 s or less never block.
+
+### Chart ids
+
+`--snapshot` accepts `native`, `abhinandan`, `kiran` or a chart UUID; anything else is refused. Every chart id (operator input, snapshot metadata, the compare itself) goes through one normaliser (trim, braces, lower case) and must be a UUID before it is placed in SQL, compared with the native id for the anchor check, or matched against a hook `charts` prefix. The SQL guard accepts a single `SELECT` only (no statement chaining).
+
+### A saved report is not a verdict
+
+The JSON report's `verdict` and `exit_code` fields are a convenience copy. Do not trust them: `decide_verdict` / `exit_code` recompute the verdict from the report's own `failures`, `failure_counts` and `not_checked`, and a report missing those keys is FAIL (exit 2), never PASS and never a crash. To judge a saved report, recompute; do not read the field.
+
+## W7 hand-check list
+
+The detector cannot see these. The W7 reader does them by hand and records the result with the flip report:
+
+1. **Gandanta, Abhinandan (`1c826d5a`): six `is_gandanta` false-to-true flips** (Mars in `krishnamurti`, `lahiri_chitrapaksha`, `raman`, `true_chitra`; Venus in `raman` and `surya_siddhanta_classical`) are hidden by the sorted-occurrence pairing. For each of the 10 subjects x 5 ayanamshas list **value and `formula_id` per occurrence**, before and after. The canonical and third charts are expected to flip none.
+2. **Any key with more than one occurrence**: a value swap between occurrences is invisible (occurrences are paired in sorted order). List every `(ayanamsha, category, subject, key)` with more than one row before or after and compare values by `formula_id` or build order.
+3. **The two tier read-backs** above (`chart_dashas` mudda/narayana; `l1_tajik_varsha_year_lords`).
+4. **Per-`fact_category` row counts before and after**, and the **NULL count in `argala_natal_matrix`** (rows whose numeric and text values are both NULL), for the chart compared:
+
+```sql
+SELECT fact_category, count(*) AS n,
+       count(*) FILTER (WHERE fact_value_num IS NULL AND fact_value_text IS NULL) AS n_null
+FROM chart_facts
+WHERE chart_id = '<CHART_UUID>'
+GROUP BY fact_category
+ORDER BY fact_category;
+```
 
 ## What the detector cannot check
 

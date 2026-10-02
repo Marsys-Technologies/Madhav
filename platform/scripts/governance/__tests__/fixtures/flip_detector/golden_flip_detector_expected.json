@@ -54,6 +54,7 @@
   "failure_counts": {
    "DASHA_SHIFT_UNDECLARED": 0,
    "DECLARED_BUT_ABSENT": 0,
+   "EMPTY_READ": 0,
    "EXPECTATION_MISMATCH": 0,
    "HOOK_ERROR": 0,
    "KIND_MISMATCH": 0,
@@ -140,6 +141,7 @@
   "failure_counts": {
    "DASHA_SHIFT_UNDECLARED": 0,
    "DECLARED_BUT_ABSENT": 1,
+   "EMPTY_READ": 0,
    "EXPECTATION_MISMATCH": 0,
    "HOOK_ERROR": 0,
    "KIND_MISMATCH": 0,
@@ -243,6 +245,7 @@
   "failure_counts": {
    "DASHA_SHIFT_UNDECLARED": 1,
    "DECLARED_BUT_ABSENT": 1,
+   "EMPTY_READ": 0,
    "EXPECTATION_MISMATCH": 0,
    "HOOK_ERROR": 0,
    "KIND_MISMATCH": 5,
@@ -329,6 +332,7 @@
   "failure_counts": {
    "DASHA_SHIFT_UNDECLARED": 0,
    "DECLARED_BUT_ABSENT": 2,
+   "EMPTY_READ": 0,
    "EXPECTATION_MISMATCH": 0,
    "HOOK_ERROR": 0,
    "KIND_MISMATCH": 0,
