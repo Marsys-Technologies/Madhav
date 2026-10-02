@@ -186,9 +186,223 @@
   "consumed_bodies_note": "the eight persisted bodies AND the Moon (the windows projection and class context read it: on-demand, never persisted, but consumed) — freeze.py REQUIRED_CONSUMED_BODIES; the opened-file census must then contain sepl_NN (all bodies but the Moon) AND semo_NN (the Moon) for every 600-year block the horizon touches."
  },
  "dasha_plurality_tier_policy": {
-  "decision": "ND-DASHA-PLURALITY-TIERS (decisions/ND_DASHA_PLURALITY_TIERS_v1_0.md)",
-  "version": "<<DASHA_PLURALITY_TIER_POLICY_VERSION_AT_FREEZE: the option chosen (a|b|c|d) and Stream A's per-(system, level) accepted-set version (PR #2954)>>",
-  "note": "a FROZEN INPUT (steward M20261002T095645-d429): the 4.x permission arithmetic enters the stored '4.1' intensities, so the tier policy must be fixed in Stage 1 before any '4.1' output exists (DR-15(d))."
+  "option": "a",
+  "decision": "NRS-DASHA-PLURALITY-20261002 (decisions/NATIVE_RESPONSES_BY_DELEGATE_v1_0.md §4) — ND-DASHA-PLURALITY-TIERS RULED: option (a) KEEP; (b) deferred to its own '5.x' decision; (c)/(d) rejected",
+  "version": "(a) — accepted set by (system, level): vimshottari L1–L4 strict; mudda L1 and narayana L1 at their honest computed tier; all else unavailable; PR #2954 read_tier_policy @ <<POLICY_MERGE_COMMIT_AT_FREEZE (main 385d0a480 today)>>",
+  "accepted_set": {
+   "vimshottari": [
+    1,
+    2,
+    3,
+    4
+   ],
+   "mudda": [
+    1
+   ],
+   "narayana": [
+    1
+   ]
+  },
+  "unavailable": {
+   "chara_karaka": "stored at classical_match (level 1) / single (deeper): below the accepted tier for its (system, level)",
+   "yogini": "stored at classical_match (level 1) / single (deeper): below the accepted tier for its (system, level)",
+   "ashtottari": "stored at classical_match (level 1) / single (deeper): below the accepted tier for its (system, level)",
+   "naisargika": "stored at classical_match (level 1) / single (deeper): below the accepted tier for its (system, level)",
+   "kalachakra": "stored at single at every level: no second check exists"
+  },
+  "denominator": 1.0,
+  "ceiling": 0.66,
+  "label": "partial — 5 of 8 daśā systems unavailable (named: chara_karaka, yogini, ashtottari, naisargika, kalachakra); ceiling 0.66; diagnostic only",
+  "policy": {
+   "pr": 2954,
+   "commit": "<<POLICY_MERGE_COMMIT_AT_FREEZE: 40-hex>>",
+   "module": "services/gochara_grammar/read_tier_policy.py",
+   "module_sha256": "<<SHA256_OF_THE_MODULE_AT_FREEZE (python3 -m services.gochara_eval.freeze prints code hashes; or shasum -a 256)>>"
+  },
+  "observed_tiers": "<<READ_AT_FREEZE: the list printed by `python3 -m services.gochara_eval.dump_extract --generation 4.1 --read-dasha-tiers` AFTER Suvarna's relabel (read-only, 2026-10-02 before the relabel: see observed_tiers_2026_10_02)>>",
+  "observed_tiers_2026_10_02": [
+   {
+    "system": "ashtottari",
+    "level": 1,
+    "tier": "classical_match",
+    "count": 13
+   },
+   {
+    "system": "ashtottari",
+    "level": 2,
+    "tier": "single",
+    "count": 91
+   },
+   {
+    "system": "ashtottari",
+    "level": 3,
+    "tier": "single",
+    "count": 724
+   },
+   {
+    "system": "ashtottari",
+    "level": 4,
+    "tier": "single",
+    "count": 5764
+   },
+   {
+    "system": "chara_karaka",
+    "level": 1,
+    "tier": "classical_match",
+    "count": 21
+   },
+   {
+    "system": "chara_karaka",
+    "level": 2,
+    "tier": "single",
+    "count": 241
+   },
+   {
+    "system": "chara_karaka",
+    "level": 3,
+    "tier": "single",
+    "count": 2881
+   },
+   {
+    "system": "chara_karaka",
+    "level": 4,
+    "tier": "single",
+    "count": 27712
+   },
+   {
+    "system": "kalachakra",
+    "level": 1,
+    "tier": "single",
+    "count": 9
+   },
+   {
+    "system": "kalachakra",
+    "level": 2,
+    "tier": "single",
+    "count": 81
+   },
+   {
+    "system": "kalachakra",
+    "level": 3,
+    "tier": "single",
+    "count": 729
+   },
+   {
+    "system": "kalachakra",
+    "level": 4,
+    "tier": "single",
+    "count": 6225
+   },
+   {
+    "system": "mudda",
+    "level": 1,
+    "tier": "two_pass_verified",
+    "count": 48
+   },
+   {
+    "system": "mudda",
+    "level": 2,
+    "tier": "single",
+    "count": 432
+   },
+   {
+    "system": "mudda",
+    "level": 3,
+    "tier": "single",
+    "count": 3886
+   },
+   {
+    "system": "mudda",
+    "level": 4,
+    "tier": "single",
+    "count": 16108
+   },
+   {
+    "system": "naisargika",
+    "level": 1,
+    "tier": "classical_match",
+    "count": 8
+   },
+   {
+    "system": "naisargika",
+    "level": 2,
+    "tier": "single",
+    "count": 62
+   },
+   {
+    "system": "naisargika",
+    "level": 3,
+    "tier": "single",
+    "count": 490
+   },
+   {
+    "system": "naisargika",
+    "level": 4,
+    "tier": "single",
+    "count": 3829
+   },
+   {
+    "system": "narayana",
+    "level": 1,
+    "tier": "two_pass_verified",
+    "count": 21
+   },
+   {
+    "system": "narayana",
+    "level": 2,
+    "tier": "single",
+    "count": 245
+   },
+   {
+    "system": "vimshottari",
+    "level": 1,
+    "tier": "two_pass_verified",
+    "count": 13
+   },
+   {
+    "system": "vimshottari",
+    "level": 2,
+    "tier": "two_pass_verified",
+    "count": 104
+   },
+   {
+    "system": "vimshottari",
+    "level": 3,
+    "tier": "two_pass_verified",
+    "count": 923
+   },
+   {
+    "system": "vimshottari",
+    "level": 4,
+    "tier": "two_pass_verified",
+    "count": 8165
+   },
+   {
+    "system": "yogini",
+    "level": 1,
+    "tier": "classical_match",
+    "count": 35
+   },
+   {
+    "system": "yogini",
+    "level": 2,
+    "tier": "single",
+    "count": 273
+   },
+   {
+    "system": "yogini",
+    "level": 3,
+    "tier": "single",
+    "count": 2168
+   },
+   {
+    "system": "yogini",
+    "level": 4,
+    "tier": "single",
+    "count": 14272
+   }
+  ],
+  "note": "RULED and FROZEN 2026-10-02, before any '4.1' output exists (steward: if any '4.1' output already exists when this is applied, STOP and report — DR-15(d)). The '4.1' run must observe the same tiers and counts (reconciled live before any window row is read). Read-only check 2026-10-02: #2954's policy yields exactly vimshottari L1–L4, mudda L1, narayana L1 BOTH today AND after the base-layer relabel of Mudda/Narayana L1 to classical_match."
  },
  "av_donor_rows": {
   "behaviour": "<<AV_DONOR_BEHAVIOUR_AT_FREEZE: 'donor_resolved' (the L1 ashtakavarga_bindu_contributor rows exist — the governed '4.1' run happens AFTER step 3 and after Suvarna's base-layer rebuild creates them) | 'sign_grain_interim' (they do not)>>",

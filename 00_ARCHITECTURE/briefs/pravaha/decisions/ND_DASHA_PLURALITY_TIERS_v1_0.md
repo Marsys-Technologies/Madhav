@@ -1,7 +1,7 @@
 ---
 artifact: ND_DASHA_PLURALITY_TIERS
 version: "1.0"
-status: "FOR THE NATIVE — nothing here is decided. Needed before the Stage-1 freeze of the '4.1' diagnostic measurement (a frozen input)."
+status: "RULED (delegated, 2026-10-02) — NRS-DASHA-PLURALITY-20261002 in decisions/NATIVE_RESPONSES_BY_DELEGATE_v1_0.md §4: option (a) KEEP, pinned by (system, level) NAME (Vimśottarī L1–L4, Mudda L1, Nārāyaṇa L1 under PR #2954's policy); (b) deferred to its own '5.x' decision after R-VOCAB-1; (c) and (d) rejected. FROZEN as a typed input of the Stage-1 freeze. The note below is kept as the record of the options."
 date: 2026-10-02
 author: Stream B (Śāstra), item B6.0 (steward M20261002T095645-d429; measurement by Stream A)
 evidence_rule: "Doctrine text is quoted from the ratified record (DISAGREEMENT_REGISTER DIS.027 / DR-14 and its full text file). Code facts are file:line on Stream A's tree. Row counts are READ-ONLY production figures for the canonical chart (482012f1…, lahiri_chitrapaksha). No candidate was run; every numerical statement below is 'in principle'."
