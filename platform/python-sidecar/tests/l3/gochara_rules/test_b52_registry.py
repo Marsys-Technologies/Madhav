@@ -18,8 +18,8 @@ from services.gochara_rules.dignity import (
     DEBILITY, EXALTATION, MULATRIKONA, dignity_of,
 )
 from services.gochara_rules.nature import (
-    NAISARGIKA_MAITRI, agent_nature, mercury_affiliation, moon_paksa,
-    naisargika_relation,
+    NON_NODE_GRAHAS, agent_nature, mercury_affiliation, moon_paksa,
+    naisargika_maitri_from_rows, naisargika_relation,
 )
 from services.gochara_rules.registry import (
     CLASS_BY_NAME, FACTORS, KARAKA_SETS, KARAKA_UNATTACHED, RULE_PATHS,
@@ -118,20 +118,105 @@ def test_yoga_row_verse_cited_without_locator_rejected():
 
 
 # ── §3.1 naisargika maitrī table ─────────────────────────────────────────────
+# Fixture snapshot of the derived table (BPHS ch.3 śl.55 [D] PG39:C1, with
+# the Moon row's PG40:C1 exception) — it lived in services/gochara_rules/
+# nature.py as a module constant until Pravāha C10 (2026-10-02); production
+# now loads the mapping from the L0 rows of bg_graha_naisargika_friendship
+# (migration 250) via naisargika_maitri_from_rows, and this snapshot is the
+# test-only pin the loader output is checked against.
+NAISARGIKA_MAITRI: dict[str, dict[str, frozenset[str]]] = {
+    "Sun": {"friends": frozenset({"Moon", "Mars", "Jupiter"}),
+            "enemies": frozenset({"Venus", "Saturn"}),
+            "neutral": frozenset({"Mercury"})},
+    "Moon": {"friends": frozenset({"Sun", "Mercury"}),
+             "enemies": frozenset(),  # the text's own exception (PG40:C1)
+             "neutral": frozenset({"Mars", "Jupiter", "Venus", "Saturn"})},
+    "Mars": {"friends": frozenset({"Sun", "Moon", "Jupiter"}),
+             "enemies": frozenset({"Mercury"}),
+             "neutral": frozenset({"Venus", "Saturn"})},
+    "Mercury": {"friends": frozenset({"Sun", "Venus"}),
+                "enemies": frozenset({"Moon"}),
+                "neutral": frozenset({"Mars", "Jupiter", "Saturn"})},
+    "Jupiter": {"friends": frozenset({"Sun", "Moon", "Mars"}),
+                "enemies": frozenset({"Mercury", "Venus"}),
+                "neutral": frozenset({"Saturn"})},
+    "Venus": {"friends": frozenset({"Mercury", "Saturn"}),
+              "enemies": frozenset({"Sun", "Moon"}),
+              "neutral": frozenset({"Mars", "Jupiter"})},
+    "Saturn": {"friends": frozenset({"Mercury", "Venus"}),
+               "enemies": frozenset({"Sun", "Moon", "Mars"}),
+               "neutral": frozenset({"Jupiter"})},
+}
+
+# The 42 non-node rows of bg_graha_naisargika_friendship, copied verbatim
+# (graha, other_graha, relation) from migration 250 — the L0 source the
+# production loader reads. Stream B verified read-only (2026-10) that all 42
+# non-node pairs agree with the derived snapshot above.
+L0_NAISARGIKA_ROWS = [
+    ("Sun", "Moon", "friend"), ("Sun", "Mars", "friend"),
+    ("Sun", "Jupiter", "friend"), ("Sun", "Mercury", "neutral"),
+    ("Sun", "Venus", "enemy"), ("Sun", "Saturn", "enemy"),
+    ("Moon", "Sun", "friend"), ("Moon", "Mercury", "friend"),
+    ("Moon", "Mars", "neutral"), ("Moon", "Jupiter", "neutral"),
+    ("Moon", "Venus", "neutral"), ("Moon", "Saturn", "neutral"),
+    ("Mars", "Sun", "friend"), ("Mars", "Moon", "friend"),
+    ("Mars", "Jupiter", "friend"), ("Mars", "Venus", "neutral"),
+    ("Mars", "Saturn", "neutral"), ("Mars", "Mercury", "enemy"),
+    ("Mercury", "Sun", "friend"), ("Mercury", "Venus", "friend"),
+    ("Mercury", "Mars", "neutral"), ("Mercury", "Jupiter", "neutral"),
+    ("Mercury", "Saturn", "neutral"), ("Mercury", "Moon", "enemy"),
+    ("Jupiter", "Sun", "friend"), ("Jupiter", "Moon", "friend"),
+    ("Jupiter", "Mars", "friend"), ("Jupiter", "Saturn", "neutral"),
+    ("Jupiter", "Mercury", "enemy"), ("Jupiter", "Venus", "enemy"),
+    ("Venus", "Mercury", "friend"), ("Venus", "Saturn", "friend"),
+    ("Venus", "Mars", "neutral"), ("Venus", "Jupiter", "neutral"),
+    ("Venus", "Sun", "enemy"), ("Venus", "Moon", "enemy"),
+    ("Saturn", "Mercury", "friend"), ("Saturn", "Venus", "friend"),
+    ("Saturn", "Jupiter", "neutral"), ("Saturn", "Sun", "enemy"),
+    ("Saturn", "Moon", "enemy"), ("Saturn", "Mars", "enemy"),
+]
+
+NAISARGIKA_TABLE = naisargika_maitri_from_rows(L0_NAISARGIKA_ROWS)
+
+
+def test_loader_output_equals_snapshot_for_all_42_pairs():
+    table = naisargika_maitri_from_rows(L0_NAISARGIKA_ROWS)
+    assert table == NAISARGIKA_MAITRI
+    # node rows in the L0 source are skipped, not loaded (§3.3)
+    with_nodes = L0_NAISARGIKA_ROWS + [("Rahu", "Sun", "enemy"),
+                                       ("Sun", "Rahu", "enemy")]
+    assert naisargika_maitri_from_rows(with_nodes) == NAISARGIKA_MAITRI
+
+
+def test_loader_db_less_literal_rows_and_refusals():
+    # mapping-shaped rows (a psycopg dict-row path) load identically
+    rows = [{"graha": g, "other_graha": o, "relation": r}
+            for g, o, r in L0_NAISARGIKA_ROWS]
+    assert naisargika_maitri_from_rows(rows) == NAISARGIKA_MAITRI
+    # an unknown relation label refuses — never defaulted
+    with pytest.raises(ValueError, match="unknown relation label"):
+        naisargika_maitri_from_rows(
+            L0_NAISARGIKA_ROWS + [("Sun", "Moon", "great_friend")])
+    # a missing non-node pair refuses — never defaulted
+    with pytest.raises(ValueError, match="missing 1 non-node pair"):
+        naisargika_maitri_from_rows(L0_NAISARGIKA_ROWS[:-1])
+
+
 def test_maitri_spot_checks():
     # Sun–Saturn enemies in BOTH directions
-    assert naisargika_relation("Sun", "Saturn") == "enemy"
-    assert naisargika_relation("Saturn", "Sun") == "enemy"
+    assert naisargika_relation("Sun", "Saturn", NAISARGIKA_TABLE) == "enemy"
+    assert naisargika_relation("Saturn", "Sun", NAISARGIKA_TABLE) == "enemy"
     # the Moon has NO enemies (the text's own exception, PG40:C1)
-    assert NAISARGIKA_MAITRI["Moon"]["enemies"] == frozenset()
-    assert naisargika_relation("Moon", "Saturn") == "neutral"
-    assert naisargika_relation("Moon", "Mercury") == "friend"
+    assert NAISARGIKA_TABLE["Moon"]["enemies"] == frozenset()
+    assert naisargika_relation("Moon", "Saturn", NAISARGIKA_TABLE) == "neutral"
+    assert naisargika_relation("Moon", "Mercury", NAISARGIKA_TABLE) == "friend"
     # nodes are NOT in the table (translator's note, not registry content)
-    assert naisargika_relation("Rahu", "Sun") is None
-    assert naisargika_relation("Sun", "Rahu") is None
+    assert naisargika_relation("Rahu", "Sun", NAISARGIKA_TABLE) is None
+    assert naisargika_relation("Sun", "Rahu", NAISARGIKA_TABLE) is None
     # every row partitions the other six grahas exactly once
-    grahas = set(NAISARGIKA_MAITRI)
-    for g, row in NAISARGIKA_MAITRI.items():
+    grahas = set(NON_NODE_GRAHAS)
+    assert set(NAISARGIKA_TABLE) == grahas
+    for g, row in NAISARGIKA_TABLE.items():
         covered = row["friends"] | row["enemies"] | row["neutral"]
         assert covered == grahas - {g}
 
@@ -177,9 +262,11 @@ def test_dignity_of_mulatrikona_and_own():
     assert MULATRIKONA["Moon"]["span_state"] == "unverified_ocr"
     assert dignity_of("Moon", "Taurus", deg_in_sign=10.0) == "unqualified"
     assert dignity_of("Moon", "Taurus") == "unqualified"
-    # naisargika-based tiers without a compound operand
-    assert dignity_of("Saturn", "Taurus") == "friend"   # Venus rules Taurus
-    assert dignity_of("Saturn", "Leo") == "enemy"       # Sun rules Leo
+    # naisargika-based tiers without a compound operand (loaded L0 table)
+    assert dignity_of("Saturn", "Taurus", naisargika=NAISARGIKA_TABLE) == "friend"   # Venus rules Taurus
+    assert dignity_of("Saturn", "Leo", naisargika=NAISARGIKA_TABLE) == "enemy"       # Sun rules Leo
+    # without the loaded table the sign-lord tiers are unqualified, never assumed
+    assert dignity_of("Saturn", "Taurus") == "unqualified"
     # compound operand unlocks the extreme tiers
     assert dignity_of("Saturn", "Taurus",
                       compound_relation="extreme_friend") == "extreme_friend"
