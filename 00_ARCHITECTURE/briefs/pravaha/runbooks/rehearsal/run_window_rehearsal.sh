@@ -73,12 +73,14 @@ done < "$HERE/prod_ledger_2026-10-02.txt"
 echo "$APPLIED_SQL" | $SUDB
 # prod ALSO applied the contract helper grants before the window (1216, 1220): apply their SQL (their ledger rows came from the snapshot above)
 for f in 1216_gochara_contract_builder_grants.sql; do { echo "SET ROLE amjis_app;"; cat "$M/$f"; } | $SUDB >/dev/null 2>&1 || true; done
+URL="postgresql://amjis_app:rehearsal@$PGHOST:$PGPORT/$DB"
+# production already holds 1153-1157: apply them through the REAL runner now (CREATE capability is granted for the run)
+(cd "$REPO/platform" && DATABASE_URL="$URL" npx tsx scripts/migrate.ts --only "${ONLY%%,1204*}" >/dev/null 2>&1) || { echo "  FAIL 1153-1157 prelude"; exit 1; }
 echo "  ledger rows: $($SUDB -c 'SELECT count(*) FROM _migrations_applied')"
 CAP "REVOKE CREATE" FROM
 ASSERT "amjis_app has NO CREATE on schema public outside the window" "$($SUDB -c "SELECT has_schema_privilege('amjis_app','public','CREATE')")" "f"
 # the pending routine migration that blocks the window: remove its row if the snapshot had it, to reproduce today's ledger exactly
 $SUDB -c "DELETE FROM _migrations_applied WHERE filename IN ('1230_ka_gochara_registry_revert_1091_pin.sql')"
-URL="postgresql://amjis_app:rehearsal@$PGHOST:$PGPORT/$DB"
 RUN() { CAP "GRANT CREATE" TO >/dev/null; (cd "$REPO/platform" && DATABASE_URL="$URL" npx tsx scripts/migrate.ts --only "$ONLY" 2>&1); local rc=$?; CAP "REVOKE CREATE" FROM >/dev/null; return $rc; }
 
 echo "== S3a ledger precondition: the real invocation against today's ledger =="
@@ -86,17 +88,31 @@ set +e; OUT=$(RUN); RC=$?; set -e
 echo "$OUT" | tail -3 | sed 's/^/    /'
 ASSERT "migrate.ts --only <window list> is REFUSED while an unselected predecessor is unapplied" "$([ $RC -ne 0 ] && echo refused || echo ran)" "refused"
 ASSERT "the refusal names the unapplied predecessor 1230" "$(echo "$OUT" | grep -c '1230_ka_gochara_registry_revert_1091_pin.sql')" "1"
+PRED=$(echo "$OUT" | grep -o "jump unapplied predecessor migration(s): .*" | sed 's/^[^:]*: //' | tr "," "\n" | sed 's/^ *//' | grep "\.sql$" || true)
+echo "  unapplied predecessors named by the refusal: $(echo $PRED | tr "\n" " ")"
 ASSERT "nothing from the window was applied by the refused run" "$($SUDB -c "SELECT count(*) FROM _migrations_applied WHERE filename = ANY (ARRAY['1204_gochara_av_qualifier_object_role.sql','1206_gochara_search_inventory_completeness.sql','1232_gochara_search_moon_scope_domain.sql','1233_gochara_p1_period_anchor.sql'])")" "0"
 
-echo "== S3b the routine deploy applies 1230 first (represented by its ledger row) =="
-H1230=$(shasum -a 256 "$M/1230_ka_gochara_registry_revert_1091_pin.sql" | cut -d' ' -f1)
-$SUDB -c "INSERT INTO _migrations_applied (filename, sha256) VALUES ('1230_ka_gochara_registry_revert_1091_pin.sql','$H1230')"
+echo "== S3b the routine deploy applies the named predecessors first (1234 = grants, applied for real; 1230 = represented by its ledger row) =="
+for fn in $PRED; do
+  h=$(shasum -a 256 "$M/$fn" | cut -d' ' -f1)
+  case "$fn" in
+    1234_*) { echo "SET ROLE amjis_app;"; cat "$M/$fn"; } | $SUDB >/dev/null; echo "  applied $fn (grants)";;
+    *) echo "  recorded $fn";;
+  esac
+  $SUDB -c "INSERT INTO _migrations_applied (filename, sha256) VALUES ('$fn','$h') ON CONFLICT DO NOTHING"
+done
+# 1234 (eval-window grants) is numbered ABOVE the current window ceiling (1233), so the refusal does not name it; it is applied by the same
+# routine deploy and MUST be applied before the window lists 1240 (the ceiling then rises past 1234). Represent that routine application:
+for f in "$M"/1234_*.sql; do
+  [ -f "$f" ] || continue; fn=$(basename "$f"); case " $PRED " in *" $fn "*) continue;; esac
+  { echo "SET ROLE amjis_app;"; cat "$f"; } | $SUDB >/dev/null; echo "  applied $fn (routine grants, number above the window ceiling)"
+  $SUDB -c "INSERT INTO _migrations_applied (filename, sha256) VALUES ('$fn','$(shasum -a 256 "$f" | cut -d' ' -f1)') ON CONFLICT DO NOTHING"
+done
 
 echo "== S3c per-file failure recovery: make 1233 fail AFTER 1204/1206/1232 =="
 # pre-seed a P1 row's blocker the cheap way: a column of the same name makes 1233's gate refuse (migration_1233_already_applied)
 # (the gate only runs once 1155 exists; 1153-1157 apply first in the same invocation, so add the column AFTER them via a first partial run)
-CAP "GRANT CREATE" TO >/dev/null; set +e; OUT=$(cd "$REPO/platform" && DATABASE_URL="$URL" npx tsx scripts/migrate.ts --only "${ONLY%%,1204*}" 2>&1); RC=$?; set -e; CAP "REVOKE CREATE" FROM >/dev/null
-ASSERT "1153-1157 apply through the real runner" "$RC" "0"
+ASSERT "1153-1157 are applied (the production-shaped prelude)" "$($SUDB -c "SELECT count(*) FROM _migrations_applied WHERE filename LIKE '115_\_gochara%'")" "5"
 $SUDB -c "SET ROLE amjis_app; ALTER TABLE ka_gochara_relationship_record ADD COLUMN period_anchor_lord text"
 set +e; OUT=$(RUN); RC=$?; set -e
 echo "$OUT" | tail -4 | sed 's/^/    /'
@@ -128,6 +144,10 @@ ASSERT "builder may NOT INSERT a generation seal" "$(HAS_T data_plane_builder ka
 if [ "$(HAS_T data_plane_builder ka_gochara_search_inventory_verification INSERT)" = "t" ]; then
   FINDING "PC-4: 1206 §7 grants the BUILDER INSERT/DELETE on ka_gochara_search_inventory_verification — the builder can write the independent verification row. Required end state: only the verifier principal (proposed grants-only migration)."
 else ASSERT "builder may NOT write verification rows" "f" "f"; fi
+if ls "$M"/1234_*.sql >/dev/null 2>&1; then
+  ASSERT "1234: builder holds the eval-window write privileges (INSERT/DELETE window, INSERT membership)" "$(HAS_T data_plane_builder ka_gochara_eval_window INSERT)$(HAS_T data_plane_builder ka_gochara_eval_window INSERT)$(HAS_T data_plane_builder ka_gochara_eval_window DELETE)$(HAS_T data_plane_builder ka_gochara_eval_window_record INSERT)" "tttt"
+  ASSERT "1234: builder may NOT UPDATE a window or DELETE a membership row" "$(HAS_T data_plane_builder ka_gochara_eval_window UPDATE)$(HAS_T data_plane_builder ka_gochara_eval_window_record DELETE)" "ff"
+else FINDING "the eval-window write path has NO builder grants (1216 defers it) — 1234 is not in this integration ref"; fi
 echo "  -- sealer (gochara_sealer): granted by the authorising operator, not by any migration — grant exactly what the live suites grant"
 SEALER_FUNCS="ka_gochara_lock_chart ka_gochara_seal_generation ka_gochara_generation_governed ka_gochara_coverage_drift ka_gochara_horizon_finite_ok ka_gochara_coverage_facts ka_gochara_facts_horizon ka_gochara_membership_violations ka_gochara_membership_violation ka_gochara_lock_global_shared ka_gochara_search_completeness_violations ka_gochara_search_l1_facts_digest ka_gochara_sha256_hex ka_gochara_canonical_json ka_gochara_search_dasha_digest ka_gochara_search_av_entry ka_gochara_search_inventory_digest ka_gochara_search_ledger_digest ka_gochara_search_inventory_preimage ka_gochara_utc_ts ka_gochara_search_replay_violations ka_gochara_search_inventories_digest ka_gochara_search_moon_scope_violations ka_gochara_search_moon_resolved_domain"
 GRANT_LIST=$(for f in $SEALER_FUNCS; do printf 'public.%s, ' "$f"; done | sed 's/, $//')
