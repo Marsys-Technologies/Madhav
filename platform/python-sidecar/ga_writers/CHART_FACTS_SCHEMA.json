@@ -4035,7 +4035,7 @@
         "GNATIKARAKA",
         "DARAKARAKA"
       ],
-      "subject_note": "Per-school role lists (ga_writers/_karaka_roles.py). parashari_rahu_excluded: 7 subjects, ranks 1-7 = ATMA, AMATYA, BHRATRI, MATRI, PUTRA, GNATI, DARA (no PITRIKARAKA; the Matrikaraka doubles as Pitrikaraka). kn_rao_rahu_included (headline school): 8 subjects, ranks 1-8 = ATMA, AMATYA, BHRATRI, MATRI, PITRI, PUTRA, GNATI, DARA (BPHS 32.13-17, sourced_ocr_unverified). STRIKARAKA is NOT a subject: it is the labelled alias fact_key strikaraka_alias on the DARAKARAKA subject (kn_rao school only).",
+      "subject_note": "Per-school role lists (ga_writers/_karaka_roles.py). parashari_rahu_excluded: 7 subjects, ranks 1-7 = ATMA, AMATYA, BHRATRI, MATRI, PUTRA, GNATI, DARA (no PITRIKARAKA subject; a pre-existing label convention kept unchanged. BPHS 32.13-17's note only says some count seven karakas by treating Matrukaraka and Putrakaraka as identical; it gives no rank-to-role table for the 7-scheme). kn_rao_rahu_included (headline school): 8 subjects, ranks 1-8 = ATMA, AMATYA, BHRATRI, MATRI, PITRI, PUTRA, GNATI, DARA (BPHS 32.13-17, sourced_ocr_unverified). STRIKARAKA is NOT a subject: it is the labelled alias fact_key strikaraka_alias on the DARAKARAKA subject (kn_rao school only).",
       "two_pass_methodology": "rahu_excluded_sort vs rahu_included_sort both emitted if karaka_order_differs; AK_divergence halts build",
       "section_b_enrichment": true,
       "allowed_keys": {
@@ -4095,8 +4095,8 @@
             "STRIKARAKA"
           ],
           "applies_only_to": "DARAKARAKA subject, formula_id kn_rao_rahu_included",
-          "note": "Labelled alias of the Darakaraka in the 8-karaka scheme (same graha as DARAKARAKA.assigned_graha); not a ninth subject row.",
-          "verification_min": "two_pass_verified"
+          "note": "Labelled alias of the Darakaraka in the 8-karaka scheme (same graha as DARAKARAKA.assigned_graha); not a ninth subject row. Tier is single (UNVERIFIED_DEFAULT): a pure label, nothing double-checks it, so it does not claim two_pass_verified.",
+          "verification_min": "single"
         },
         "karaka_rank": {
           "value_type": "num",

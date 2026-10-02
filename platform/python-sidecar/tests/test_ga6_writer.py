@@ -1081,6 +1081,31 @@ class TestKarakaReaderMapping:
                 _FakeKarakaConn(_STORED_KN_RAO_ROWS + [("X", "assigned_graha", "Sun", None)]),
                 MOCK_CHART_ID, MOCK_AYAN)
 
+    def test_duplicated_or_invalid_assigned_grahas_fail_loudly(self):
+        """Ranks 1..8 and subject pairing are clean, but the eight grahas are not 8 distinct valid
+        grahas: ga_sensitive's rows are corrupt and ga_vargas must not inherit them."""
+        m = _mod()
+
+        def _with_graha(subject, graha):
+            return [
+                (s_, k, (graha if (s_ == subject and k == "assigned_graha") else t), n)
+                for (s_, k, t, n) in _STORED_KN_RAO_ROWS
+            ]
+
+        # same graha (Mars) assigned to two roles
+        dup = _with_graha("GNATIKARAKA", "Mars")
+        with pytest.raises(m.KarakaDependencyMissing, match="distinct grahas"):
+            m._read_jaimini_karakas(_FakeKarakaConn(dup), MOCK_CHART_ID, MOCK_AYAN)
+        # Ketu / a non-graha value is never a valid karaka holder
+        for bad in ("Ketu", "Pluto"):
+            with pytest.raises(m.KarakaDependencyMissing, match="distinct grahas"):
+                m._read_jaimini_karakas(
+                    _FakeKarakaConn(_with_graha("DARAKARAKA", bad)), MOCK_CHART_ID, MOCK_AYAN)
+        # the unmodified rows still read cleanly
+        assert m._read_jaimini_karakas(
+            _FakeKarakaConn(_STORED_KN_RAO_ROWS), MOCK_CHART_ID, MOCK_AYAN
+        ) == CANONICAL_KARAKA_ASSIGNMENTS
+
     def test_no_in_writer_derivation_remains(self):
         m = _mod()
         assert not hasattr(m, "_compute_jaimini_karakas")

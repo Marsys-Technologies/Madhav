@@ -397,10 +397,32 @@ class TestSectionBEnrichment:
 # ── 18–19: Verification pass ─────────────────────────────────────────────────
 
 class TestVerificationPass:
+    # Narrow, named exemption (NOT a blanket relaxation): the one row key that is honestly
+    # `single`. karaka_chara_position/DARAKARAKA/strikaraka_alias is a pure label on the
+    # DARAKARAKA assigned_graha row (constant value "STRIKARAKA"); no second derivation can
+    # double-check it, so stamping two_pass_verified on it would be an unearned claim
+    # (CLAUDE.md N.8). Every other row must still be two_pass_verified.
+    _ALLOWED_SINGLE: frozenset[tuple[str, str, str]] = frozenset({
+        ("karaka_chara_position", "DARAKARAKA", "strikaraka_alias"),
+    })
+
     def test_all_two_pass_verified(self, all_rows):
-        """Zero rows may have verification_pass_status = 'single'."""
-        single = [r for r in all_rows if r.get("verification_pass_status") == "single"]
+        """Zero rows may have verification_pass_status = 'single', except the one allow-listed
+        (category, subject, key) in _ALLOWED_SINGLE."""
+        single = [
+            r for r in all_rows
+            if r.get("verification_pass_status") == "single"
+            and (r["fact_category"], r["fact_subject"], r["fact_key"]) not in self._ALLOWED_SINGLE
+        ]
         assert single == [], f"{len(single)} single-pass rows detected; zero allowed"
+
+    def test_allowed_single_is_exactly_the_alias_row_and_single(self, all_rows):
+        """The exemption is live and exact: the allow-listed key is present and emitted as
+        `single` (not two_pass_verified), and it is the ONLY single row."""
+        single = [r for r in all_rows if r.get("verification_pass_status") == "single"]
+        assert {(r["fact_category"], r["fact_subject"], r["fact_key"]) for r in single} \
+            == set(self._ALLOWED_SINGLE)
+        assert all(r["formula_id"] == "kn_rao_rahu_included" for r in single)
 
     def test_zero_divergent_flagged(self, all_rows):
         """Zero rows may have verification_pass_status = 'divergent_flagged'."""
@@ -899,6 +921,10 @@ class TestKarakaRolesGolden:
         emitted_subjects = {r["fact_subject"] for r in rows}
         assert emitted_subjects == set(cat["applies_to_subjects"])
         assert "strikaraka_alias" in cat["allowed_keys"]
+        # Declared tier == emitted tier (the alias is a pure label; it is `single`).
+        alias = next(r for r in rows if r["fact_key"] == "strikaraka_alias")
+        assert cat["allowed_keys"]["strikaraka_alias"]["verification_min"] \
+            == alias["verification_pass_status"] == "single"
 
 
 def _find_schema_category(node, name):
