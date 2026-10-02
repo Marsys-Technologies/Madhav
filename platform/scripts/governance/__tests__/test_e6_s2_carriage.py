@@ -727,6 +727,11 @@ def test_d1_an_ocr_stop_must_be_followed_by_a_lower_case_letter_or_a_digit_and_n
     two = dict(text="If a b. c d. e f.", start="If a", end="f.")
     assert cut("x. If a b. c d. e f.", dict(two, ocr_stops=[_H("b."), _H("d.")]), OPEN) == d1._toks("If a b. c d. e f.")
     assert cut("x. If a b. c d. e f.", dict(two, ocr_stops=[_H("b."), _H("d."), _H("zz.")]), OPEN) is None       # three: over the cap
+    three = dict(text="If a b. c d. e f. g h.", start="If a", end="h.")
+    assert cut("x. If a b. c d. e f. g h.", dict(three, ocr_stops=[_H("b."), _H("d."), _H("f.")]), OPEN) is None   # all three occur and continue in lower case: only the cap refuses
+    assert cut("x. If a b. c d. e f. g h.", dict(three, ocr_stops=[_H("b."), _H("d.")]), OPEN) is None            # (and two are not enough: f. is an undeclared stop)
+    assert cut("x. If a b. c d. e f.", dict(two, ocr_stops=[_H("b."), _H("d.")]), OPEN) is not None
+    assert cut("x. If a b. c d e.", dict(d, ocr_stops=[dict(_H("b."), observed_garble="g" * 201)]), OPEN) is None   # a note is a note, not an essay
     for bad in (dict(text="b."), dict(text="b.", evidence=EVID), dict(text="b.", observed_garble="g"), dict(text="b.", evidence=" ", observed_garble="g"),
                 dict(text="b.", evidence=EVID, observed_garble="g", extra=1)):
         assert cut("x. If a b. c d e.", dict(d, ocr_stops=[bad]), OPEN) is None                              # every hatch carries evidence AND a note
@@ -799,6 +804,9 @@ def test_d1_sentence_openers_are_declared_from_a_short_allowed_set_and_the_start
     assert _measure(spec=dict(SPEC, extra_fields=[no_so, SPEC["extra_fields"][1]]))["v"] == "PARTIAL"     # the engine never passes without declared openers
     for ok in (["If"], ["If", "When", "Where", "Whenever", "While", "Should"]):
         d1.validate_spec(dict(SPEC, extra_fields=[dict(ef0, sentence_openers=ok), SPEC["extra_fields"][1]]), "x")
+    for bad in (dict(COND, ocr_lost_stop=_H("a b c d e f")), dict(COND, ocr_lost_stop=dict(_H("a b"), observed_garble="g" * 201))):
+        with pytest.raises(d1.SpecError, match="condition"):                                              # a 6-word lead-in; an essay for a note
+            d1.validate_spec(dict(SPEC, extra_fields=[dict(ef0, condition=bad), SPEC["extra_fields"][1]]), "x")
     with pytest.raises(d1.SpecError, match="condition"):                                                  # a start whose first word is not a declared opener
         d1.validate_spec(dict(SPEC, extra_fields=[dict(ef0, sentence_openers=["When"]), SPEC["extra_fields"][1]]), "x")
     assert _measure(spec=dict(SPEC, extra_fields=[dict(ef0, sentence_openers=["When"]), SPEC["extra_fields"][1]]))["v"] == "PARTIAL"
@@ -883,6 +891,7 @@ def test_d1_by_claimant_cannot_name_more_claimants_than_the_table_has_rows():
     ([{"from": "happens not", "to": "happens", "evidence": EVID}], "WORD FOR WORD"),
     ([{"from": "sickness no", "to": "sickness xo", "evidence": EVID}], "WORD FOR WORD"),           # one word pair < 60% alike though the whole is >= 60%
     ([{"from": "ab cdef", "to": "zy cdez", "evidence": EVID}], "WORD FOR WORD"),                   # the whole is under 60% alike
+    ([{"from": "bbacd cdcacc", "to": "acada bcdcba", "evidence": EVID}], "WORD FOR WORD"),         # each word pair >= 60% alike, the whole is not
     ([{"from": "Janma-nakshatra", "to": "tJanmunukshatra", "evidence": EVID, "x": 1}], "evidence"),
     (["Janma-nakshatra"], "evidence"),
 ])
