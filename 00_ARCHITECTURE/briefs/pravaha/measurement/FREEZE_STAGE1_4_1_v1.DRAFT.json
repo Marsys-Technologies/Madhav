@@ -146,5 +146,27 @@
   "what_it_cannot_say": "per-(class, year) computation coverage; that any event class's windows are complete; anything about the Moon (on-demand, never persisted in 4.1 — windows rest on the 8 persisted bodies' contacts only, a disclosed limitation of the generation); anything for the 'windows' substep (it writes kala_gochara_windows and no coverage rows)",
   "readback_command": "python3 -m services.gochara_eval.dump_extract --generation 4.1 --read-coverage-summary  (read-only; reads no window row)",
   "readback": "<<READ_AT_FREEZE: output of readback_command — partitions, full_horizon, unsearched, targets_requested/resolved/unresolved, event_class_partitions (expected 0)>>"
+ },
+ "ephemeris_requirement": {
+  "id": "S1-REQ-EPHEMERIS",
+  "kind": "NAMED STAGE-1 REQUIREMENT — a precondition of the governed '4.1' RUN, verified at freeze by manifest read-back (steward M20261002T042929-e773). Until it is met the freeze cannot be FROZEN and no extract may be generated.",
+  "why": "The '4.1' manifest input vector carries NO ephemeris or implementation identity (no opened-file hashes, no swisseph library hash; it predates AM-16). Production L1 was found to have run on the Moshier fallback; a measurement whose ephemeris cannot be identified afterwards is not acceptable.",
+  "requirement": "Before the governed '4.1' run, the candidate writer's manifest records the ephemeris identity as ONE definition shared with '5.0' (AM-16 ephemeris component, schema ka_gochara_input_vector/2): key `ephemeris` = {backend:'swieph', swe_version, library_sha256 (sha256 of the loaded swisseph artifact), platform ('<system>-<machine>'), files {<.se1 name>: sha256} — the files the kernel actually OPENS for the consumed bodies over the consumed horizon, probe_digest (fixed series probe)}, and the writer REFUSES (raises, no manifest published) when the identity cannot be established or any probe is served by the Moshier fallback.",
+  "minimal_change": {
+   "where": "pipeline/orchestrator/writers/ka_gochara_v4_41_candidate.py::_run_manifest (and one re-check in the final 'windows' substep)",
+   "keys_added_to_input_generation_vector": [
+    "ephemeris (the AM-16 component, exactly as '5.0' stores it)",
+    "ephemeris_definition = 'ka_gochara_input_vector/2:ephemeris' (names which definition applies; the 4.1 vector has no schema key)"
+   ],
+   "single_source": "ONE public function (proposed `ephemeris_component(ephe_path, bodies, jd_lo, jd_hi) -> dict`) returning exactly the stored component, called by BOTH the '5.0' vector builder and the '4.1' manifest substep — built on the existing ephemeris_identity / probe_opened_files / probe_series_digest / runtime_artifact_sha in services/gochara_kernel/input_vector.py (branch pravaha/a53-am5-inventory; not yet on main). Bodies, flags and swe ids are the kernel's own module constants (services.gochara_kernel.knots GRAHA_TO_SWE, EPHE_FLAGS), which the 4.1 enumerator already imports — never a copy. Probe range = the enumerator's own range: HORIZON_START - 1 day .. HORIZON_END + 1 day (build_body_index pads one day each side). Bodies = the 8 PERSISTED_BODIES plus every other body any 4.1 substep passes to swisseph (Stream A to enumerate calc_ut reachability from step06a/step06b).",
+   "refusal": "InputDrift (already raised by probe_opened_files when retflag lacks SEFLG_SWIEPH, i.e. a Moshier-served probe, or an opened file is absent; by ephemeris_identity when no ephe_path / no .se1 opened; by runtime_artifact_sha when the library has no file) must propagate out of _run_manifest. The final 'windows' substep recomputes the component and compares it with the stored one; a difference refuses.",
+   "stored_keys_alignment": "Stream A's current code emits `runtime: {swisseph_sha256}` and no `platform` under schema label /1; AM-16 /2 (amendments draft; am16_vectors_frozen_v2.json) names `library_sha256` and `platform`. The two generations can share ONE definition only if the code is brought to /2 (or the amendment is changed) — a decision before the 4.1 run, not after."
+  },
+  "limits_stated_plainly": [
+   "the probe is a witness at the manifest's probe instants (both horizon ends and each file-block boundary) plus content hashes of the opened files and a fixed series digest — it does not prove every sampled instant was file-served (same limitation as '5.0')",
+   "this identifies the TRANSIT kernel's ephemeris; the natal L1 facts the chain consumes carry their own provenance (Suvarna's L1 rebuild record) and are not covered by this component"
+  ],
+  "verification": "read-only read-back at freeze: python3 -m services.gochara_eval.dump_extract --generation 4.1 --read-manifest-orb  -> `ephemeris` + `ephemeris_problems`; the freeze verifier REFUSES unless ephemeris_problems == [] (checks: AM-16 key set exactly; backend 'swieph'; swe_version; library_sha256/probe_digest are sha256; platform; files non-empty, each a Swiss .se1 name with a sha256 — a Moshier-served build opens none).",
+  "manifest_readback": "<<READ_AT_FREEZE: the full object printed by the verification command>>"
  }
 }
