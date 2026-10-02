@@ -369,6 +369,23 @@ $$;
 
 -- ── 4. the gates ──────────────────────────────────────────────────────────────
 
+-- R12-1: the LEGACY projection relations (`kala_gochara_contacts`, `kala_gochara_windows`) are not part of the '5.0' candidate: its writer
+-- writes none, publication consumes the first's content and the second's count, and a numeric legacy row would falsify the all-NULL
+-- disclosure. For a governed generation NONE may exist. Dynamic and table-existence-guarded (a relation that does not exist holds no
+-- rows); invoker rights (the caller needs SELECT on the columns it reads — chart_id, generation).
+CREATE OR REPLACE FUNCTION public.ka_gochara_legacy_projection_rows(p_chart uuid, p_generation text)
+RETURNS TABLE (relation text, n bigint) LANGUAGE plpgsql STABLE SET search_path = pg_catalog, public AS $$
+DECLARE t text; c bigint;
+BEGIN
+  FOREACH t IN ARRAY ARRAY['kala_gochara_contacts', 'kala_gochara_windows'] LOOP
+    IF to_regclass('public.' || t) IS NOT NULL THEN
+      EXECUTE format('SELECT count(*) FROM public.%I WHERE chart_id = $1 AND generation = $2', t) INTO c USING p_chart, p_generation;
+      IF c > 0 THEN relation := t; n := c; RETURN NEXT; END IF;
+    END IF;
+  END LOOP;
+END;
+$$;
+
 CREATE OR REPLACE FUNCTION public.ka_gochara_window_verification_violations(p_chart uuid, p_generation text)
 RETURNS TABLE (event_class text, path_id text, rule_version text, violation text, detail text)
 LANGUAGE sql STABLE SET search_path = pg_catalog, public AS $$
@@ -437,6 +454,10 @@ LANGUAGE sql STABLE SET search_path = pg_catalog, public AS $$
          OR w.evidence_against IS NOT NULL OR w.severity IS NOT NULL OR w.objective_value IS NOT NULL
          OR w.outcome_valence_for_native IS DISTINCT FROM 'unqualified')
   GROUP BY w.event_class, w.path_id, w.rule_version
+  UNION ALL
+  SELECT '*'::text, NULL::text, NULL::text, 'legacy_projection_rows_present'::text,
+         (l.n || ' row(s) in ' || l.relation || ' for this generation — none may exist (the all-NULL candidate''s writer writes none; a numeric legacy row would falsify the all-NULL disclosure)')::text
+  FROM public.ka_gochara_legacy_projection_rows(p_chart, p_generation) l
   UNION ALL
   -- R11-1: the generation's PERMITTED OUTPUT GRAINS are exactly the grains its inventory INCLUDES on a windowed path (P1–P4,
   -- the `expected` CTE). A relationship record, a window or a membership link in ANY other (class, path, version) — a
@@ -824,7 +845,8 @@ BEGIN
       public.ka_gochara_f4_token(real),
       -- R10-4 (iii): the job ENDS in the same combined candidate gate the seal uses (1240's own function; the 1206/1232
       -- completeness function it calls, and what that reads, are Stream B's grants — see 1241)
-      public.ka_gochara_candidate_gate_violations(uuid, text)
+      public.ka_gochara_candidate_gate_violations(uuid, text),
+      public.ka_gochara_legacy_projection_rows(uuid, text)
       TO gochara_verifier;
     RAISE NOTICE 'migration 1240: verifier grants issued to role gochara_verifier';
   ELSE
@@ -842,7 +864,7 @@ BEGIN
     GRANT EXECUTE ON FUNCTION
       public.ka_gochara_window_verification_violations(uuid, text),
       public.ka_gochara_window_verification_replay_violations(uuid, text),
-      public.ka_gochara_candidate_gate_violations(uuid, text),
+      public.ka_gochara_candidate_gate_violations(uuid, text), public.ka_gochara_legacy_projection_rows(uuid, text),
       public.ka_gochara_eval_window_content_digest(uuid, text, text, text, text),
       public.ka_gochara_eval_window_stored_digest(uuid, text, text, text, text),
       public.ka_gochara_eval_window_expected_digest(uuid, text, text, text, text),
@@ -896,7 +918,8 @@ BEGIN
     ('public.ka_gochara_window_verification_write_guard()'),
     ('public.ka_gochara_generation_seal_window_guard()'),
     ('public.ka_gochara_window_qualification_ok(jsonb)'),
-    ('public.ka_gochara_seal_receipt_missing(uuid,text)')) AS x(sig)
+    ('public.ka_gochara_seal_receipt_missing(uuid,text)'),
+    ('public.ka_gochara_legacy_projection_rows(uuid,text)')) AS x(sig)
   WHERE to_regprocedure(x.sig) IS NULL;
   IF missing IS NOT NULL THEN
     RAISE EXCEPTION 'migration 1240 post-apply check failed: missing functions: %', missing;

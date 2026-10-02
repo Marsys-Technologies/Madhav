@@ -135,25 +135,24 @@ def test_a_changed_candidate_with_an_empty_gate_is_refused_before_anything_is_pu
     assert w.conn.execute("SELECT count(*) FROM public.ka_gochara_seal_approval").fetchone()[0] == 0
 
 
-def test_a_seal_that_fails_after_the_recompute_rolls_back_the_publication_and_leaves_no_receipt(built, monkeypatch):
-    """Atomic: the approval matched, the publish ran, then the authoritative seal failed — nothing stays half-done."""
+def test_a_failure_after_publication_rolls_back_the_publication_the_seal_and_the_receipt(built):
+    """Atomic: the approval matched, the publication ran, the seal ran, then the RECEIPT insert failed (the sealer's INSERT on the
+    receipt table revoked) — nothing stays half-done: the manifest is still a candidate, no seal row, no receipt."""
+    import psycopg
     w = built
     _verified(w)
     approved = _brief_as_verifier(w, sealing_commit=APPROVAL["sealing_commit"])["sha256"]
-    real = seal_flow.gk_ledger.publish
-
-    def publish_then_break(conn, chart, gen):
-        out = real(conn, chart, gen)
-        conn.execute("DELETE FROM public.ka_gochara_eval_window_verification")     # the seal's own gate will now refuse
-        return out
-    monkeypatch.setattr(seal_flow.gk_ledger, "publish", publish_then_break)
-    with pytest.raises(Exception, match="window verification"):
+    _sealer_stand_ins(w)
+    w.conn.execute("REVOKE INSERT ON public.ka_gochara_seal_approval FROM gochara_sealer")
+    with pytest.raises(psycopg.errors.InsufficientPrivilege):
         with w.conn.transaction():
             w.conn.execute("SELECT public.ka_gochara_lock_chart(%s::uuid)", (CHART_ID,))
+            w.conn.execute("SET LOCAL ROLE gochara_sealer")
             seal_flow.seal_with_approval(w.conn, chart_id=CHART_ID, generation=GEN, approved_digest=approved, **APPROVAL)
     assert w.conn.execute("SELECT status FROM public.kala_gochara_publication").fetchone()[0] == "candidate"
+    assert w.conn.execute("SELECT count(*) FROM public.ka_gochara_generation_seal").fetchone()[0] == 0
     assert w.conn.execute("SELECT count(*) FROM public.ka_gochara_seal_approval").fetchone()[0] == 0
-    assert w.conn.execute("SELECT count(*) FROM public.ka_gochara_eval_window_verification").fetchone()[0] == 4   # rolled back
+    assert w.conn.execute("SELECT count(*) FROM public.ka_gochara_eval_window_verification").fetchone()[0] == 4
 
 
 def test_the_entry_points_brief_mode_prints_the_payload_and_its_digest_and_refuses_when_not_approvable(built, monkeypatch, capsys):

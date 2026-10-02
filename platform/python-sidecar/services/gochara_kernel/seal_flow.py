@@ -24,6 +24,19 @@ def seal_with_approval(conn, *, chart_id: str, generation: str, approved_digest:
     payload = seal_brief.recompute_under_locks(conn, chart_id, generation, approved_digest, sealing_commit=sealing_commit)
     # (2) publish, then the authoritative SQL seal (its triggers run the combined gate on the published row)
     gk_ledger.publish(conn, chart_id, generation)
+    # (2b) re-check the candidate boundary AFTER publication, still under the seal locks: nothing may have changed between the
+    # recompute and the publish (an unguarded write path would show here), and the digest publication stored must be the one the
+    # approved payload carried. Any difference refuses the transaction — nothing stays published.
+    after = seal_brief.payload_digest(seal_brief.build_payload(conn, chart_id, generation, sealing_commit=sealing_commit,
+                                                                as_candidate=True))
+    stored = conn.execute("SELECT content_digest FROM public.kala_gochara_publication WHERE chart_id = %s AND generation = %s",
+                          (chart_id, generation)).fetchone()
+    stored = next(iter(stored.values())) if isinstance(stored, dict) else stored[0]
+    if after != approved_digest or stored != payload["publication_content_digest"]:
+        raise seal_brief.ApprovalMismatch(
+            "the candidate changed between the approval recompute and publication (or the publication digest is not the approved "
+            f"one): payload {after} vs approved {approved_digest}; stored content_digest {stored} vs approved "
+            f"{payload['publication_content_digest']} — the transaction is refused, nothing stays published")
     manifest_id = conn.execute("SELECT public.ka_gochara_seal_generation(%s::uuid, %s)", (chart_id, generation)).fetchone()
     manifest_id = next(iter(manifest_id.values())) if isinstance(manifest_id, dict) else manifest_id[0]
     # (3) the approval receipt, linked to the seal row by its primary key

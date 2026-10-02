@@ -215,6 +215,10 @@ def generation_output_problems(conn, chart_id: str, generation: str, policy: str
                 " generation = %s GROUP BY 1, 2, 3", (chart_id, generation)):
             if (cls, path, ver) not in permitted:
                 problems.append(f"{n} {what} in {cls}/{path}@{ver}, a grain this generation's inventory does not include")
+    from .candidate_boundary import legacy_projection_counts
+    for table, n in legacy_projection_counts(conn, chart_id, generation).items():
+        if n:
+            problems.append(f"{n} legacy {table} row(s) exist for this generation — none may (R12-1: the '5.0' writer writes none)")
     for cls, path, ver, n in rows(
             "SELECT event_class, path_id, rule_version, count(*) FROM public.ka_gochara_relationship_record WHERE chart_id = %s"
             " AND generation = %s AND (evidence_for_occurrence IS NOT NULL OR evidence_against_occurrence IS NOT NULL OR"

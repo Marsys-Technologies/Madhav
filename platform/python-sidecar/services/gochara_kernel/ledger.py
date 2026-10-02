@@ -566,11 +566,22 @@ def _canonical_row_set(conn, chart_id: str, generation: str) -> str:
         "WHERE chart_id = %s AND generation = %s",
         (chart_id, generation),
     ).fetchall()
-    coverage_rows = conn.execute(
-        "SELECT row_to_json(c.*) FROM kala_gochara_coverage c "
-        "WHERE chart_id = %s AND generation = %s",
-        (chart_id, generation),
-    ).fetchall()
+    # R12-1: the publication boundary is the CANDIDATE boundary (`candidate_boundary`): for a governed (5.x) generation the
+    # on-demand Moon receipts (AM-4: written at query time) are NOT part of the published content — the approval binds exactly
+    # what this digest covers. Legacy (pre-5) generations keep every coverage row.
+    from .candidate_boundary import EXCLUDED_ON_DEMAND_KINDS, is_governed
+    if is_governed(generation):
+        coverage_rows = conn.execute(
+            "SELECT row_to_json(c.*) FROM kala_gochara_coverage c "
+            "WHERE chart_id = %s AND generation = %s AND partition_kind <> ALL(%s)",
+            (chart_id, generation, list(EXCLUDED_ON_DEMAND_KINDS)),
+        ).fetchall()
+    else:
+        coverage_rows = conn.execute(
+            "SELECT row_to_json(c.*) FROM kala_gochara_coverage c "
+            "WHERE chart_id = %s AND generation = %s",
+            (chart_id, generation),
+        ).fetchall()
     canon = sorted(
         canonical_json(_scalar(r)) for r in list(contact_rows) + list(coverage_rows)
     )
