@@ -1,11 +1,12 @@
 ---
-version: 1.0
-status: DRAFT_FOR_SS_REVIEW
+version: 1.1
+status: DECIDED_N-106 (SS ruled all three decisions as recommended; TI-L2-30 may be coded from this design after the batch is released)
 lane: TI-i-fl2-007
 item: TI-L2-19 (Q-L2-06 design REVIEW; gate for TI-L2-30)
 branch: suvarna/land/TI-i-fl2-007
 basis: origin/main 7773df1f9 (bo_bimba.py / bo_karanajala.py unchanged since adb0db29d); production DB read 2026-10-03, reader-only SELECT, chart 482012f1
 changelog:
+  - 1.1 -- SS ruling N-106 recorded: all three decisions (section 5) DECIDED as recommended; section 4 Option A is the decided identity; option analysis kept as history.
   - 1.0 -- design REVIEW for SS: classification of the non-name yoga/dosha node subjects and the id-change list. Document only; nothing is coded.
 ---
 
@@ -14,7 +15,7 @@ changelog:
 Ruling Q-L2-06 (N-59): do the name fix and the identity fix together in the one `bo_bimba` rebuild (identity =
 `signal_type_id` + configuration key), and BEFORE coding classify the non-name subjects: "a real yoga with a bad
 name gets its catalogue name; a flag, timestamp or number that is not a yoga gets NO yoga node". This is that
-classification and the id-change list. SS approves it (or changes it) before TI-L2-30 is coded. No code, data or
+classification and the id-change list. SS approved it as recommended (ruling N-106, section 5) before TI-L2-30 is coded. No code, data or
 registry change is made here.
 
 ## 1. What is live (chart 482012f1, production, 2026-10-03)
@@ -39,7 +40,7 @@ All 13 yoga/dosha `signal_type_id`s on the chart, the subject each gives today, 
 | `panchanga_special_yoga_combinations:combination_name` | `yoga:panchaka` | a catalogue combination, named | **keep a yoga node** |
 | `panchanga_yoga:name` | `yoga:<panchanga yoga name>` | the birth-time panchanga yoga, a catalogue name | **keep a yoga node** |
 | `dosha_label:dosha_name` | `dosha:manglik_dosha` (5), `dosha:kemadruma_dosha` (1) | a catalogue dosha, named | **keep a dosha node** |
-| `kendradhipati_dosha:doshas_kendradhipati` | `dosha:afflicted` (10) / `dosha:unafflicted` (10) | one signal **per graha** (`planet` in the configuration; `ruled_houses`; `kendradhipati_active` true or false; `doctrine_status = PROPOSED`) | **split by `kendradhipati_active`**: the `true` rows ("afflicted", 2 per ayanamsha) are instances of a real dosha with a bad name: one dosha node each, label from the catalogue name plus the graha, keyed by `planet`; the `false` rows ("unafflicted") assert the dosha does NOT apply and get **no node** (a Dosha node for an absent dosha would read as a finding). SS call, see 5.1 |
+| `kendradhipati_dosha:doshas_kendradhipati` | `dosha:afflicted` (10) / `dosha:unafflicted` (10) | one signal **per graha** (`planet` in the configuration; `ruled_houses`; `kendradhipati_active` true or false; `doctrine_status = PROPOSED`) | **split by `kendradhipati_active`**: the `true` rows ("afflicted", 2 per ayanamsha) are instances of a real dosha with a bad name: one dosha node each, label from the catalogue name plus the graha, keyed by `planet`; the `false` rows ("unafflicted") assert the dosha does NOT apply and get **no node** (a Dosha node for an absent dosha would read as a finding). DECIDED (N-106, section 5.1) |
 | `graha_yoga_karaka_flag:is_yoga_karaka` | `yoga:false` | the flag `is_yoga_karaka = false` for a graha | **no node** (named by SS as the example) |
 | `panchanga_yoga:inauspicious_flag` | `yoga:false` | the flag `inauspicious_flag = false` | **no node** (named by SS) |
 | `panchanga_special_yoga_combinations:active_at_birth_flag` | `yoga:true` | the flag `active_at_birth_flag = true` | **no node** (flag) |
@@ -70,32 +71,37 @@ node count goes down to 60, not up.
 Node id depends on `(chart, ayanamsha, node_type, node_subject)`. Two ways to meet "identity = `signal_type_id` +
 configuration key":
 
+*Option analysis (history; **Option A is the decided identity, N-106**):*
+
 * **Option B (the ruling's wording)**: `node_subject = <class>:<signal_type_id>:<configuration key value>`, where the
   configuration key is `fact_value_text` / `yoga_name` / `dosha_name` for the named types and `planet` for
   kendradhipati. **All 60 nodes get new ids** (50 catalogue-name nodes and 10 kendradhipati graha nodes, 12 per
   ayanamsha). 85 old ids are retired: 35 of them (the non-name nodes) disappear, 50 re-key. Two signal types that happen
   to carry the same catalogue name can no longer collide.
-* **Option A (smaller churn, same rule for what gets a node)**: keep `<class>:<slug of catalogue name>` for the 50
+* **Option A (DECIDED; smaller churn, same rule for what gets a node)**: keep `<class>:<slug of catalogue name>` for the 50
   catalogue-name nodes and add the graha for kendradhipati. The 50 existing ids stay; 35 retire; 10 are new. Risk: two
   signal types carrying one catalogue name would collide again (none do today: the 50 names are distinct within an
   ayanamsha), which is the defect class being removed.
 
 Either way, edges: no live edge attaches to these nodes (section 1), so no edge id moves on this chart. The code
 that must follow (TI-L2-30): `bo_karanajala.py:927-941` (`_yoga_node_subject` lookup for membership edges, which would
-simply find no node for the 10 no-node types), `bo_bimba.py` (`yoga_best` dedup, the label and the citation
+simply find no node for the six flag/attribute types and the unafflicted rows), `bo_bimba.py` (`yoga_best` dedup, the label and the citation
 `"{Class} node: {name}"` at `:523`).
 
-## 5. Decisions needed from SS
+## 5. Decisions (SS ruling N-106: all three DECIDED as recommended)
 
-1. **Kendradhipati `unafflicted` rows**: no node (proposed). The alternative, a node that says the dosha is absent, is
-   a negative finding presented as a Dosha node. Also `doctrine_status = PROPOSED` on all 20 signals: the 10 afflicted
-   nodes inherit a proposed (not ratified) doctrine; say so in the node, or hold them out until ratified.
-2. **Option A or B** (section 4). B follows the ruling's words; A avoids re-keying 50 catalogue-name nodes. Because no
-   edge is attached today the extra cost of B on this chart is the id churn only; on a chart whose membership edges
-   exist it would also re-wire them.
-3. **Flag types stay MSR signals only**: confirm that nothing downstream wants a graph node for `is_yoga_karaka` or
-   `active_at_birth_flag` (a yoga-karaka graha is a graha property; `bo_chart_gestalt` and `bo_pramana_mapa` do not read
-   yoga nodes by subject).
+1. **DECIDED. Kendradhipati `unafflicted` rows get NO node; one dosha node per AFFLICTED planet, keyed by planet.**
+   (Reasoning kept: a node that says the dosha is absent would be a negative finding presented as a Dosha node.)
+   Note carried into the implementation: all 20 kendradhipati signals have `doctrine_status = PROPOSED`, so the 10
+   afflicted-planet nodes inherit a proposed (not ratified) doctrine and the node should say so.
+2. **DECIDED. Option A identity**: the 50 existing catalogue-name node ids stay, 35 retire (the non-name subjects),
+   10 are new (the afflicted-planet dosha nodes). Result: 60 nodes on the canonical chart, 12 per ayanamsha. Option B
+   (re-key all 60) is not taken.
+3. **DECIDED. The six flag/attribute types stay MSR-only** (`is_yoga_karaka`, `inauspicious_flag`,
+   `active_at_birth_flag`, `end_iso`, `number`, `constituent_facts_jsonb_atomic`): no graph node. The signals remain
+   in `bodha_msr_signals`.
+
+Open item that is not a decision here: the section 6 list of things that move with TI-L2-30 is unchanged.
 
 ## 6. Things that move with TI-L2-30 (so the review is not read as a one-file change)
 
@@ -112,5 +118,4 @@ simply find no node for the 10 no-node types), `bo_bimba.py` (`yoga_best` dedup,
 ## 7. What is NOT done
 
 No code, no registry or declaration change, no rebuild, no ids computed or written. The counts are a live reading.
-Queries: `ti_l2_19_queries.sql`. The classification is mine, for SS to approve; the bracketed "SS call" items are not
-decided here.
+Queries: `ti_l2_19_queries.sql`. The classification was mine; SS approved it with the three decisions (N-106).
