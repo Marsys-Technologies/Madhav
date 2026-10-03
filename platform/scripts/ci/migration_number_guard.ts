@@ -42,6 +42,40 @@
  *       whitelist: exit-clean iff ITEMIZED. A bare or partial entry is treated as UNDISCLOSED,
  *       not as a partial pass — see DisclosedAddition's docstring below.
  *
+ *   E5  OWNER-VS-ROUTINE. An owner-path migration number (see OWNER-PATH SCAN below) equals a
+ *       number present in platform/migrations or platform/supabase/migrations. Never baselined.
+ *
+ *   E6  OWNER-DUPLICATE. Two distinct owner-path claims on one number (a forward file plus its
+ *       ROLLBACK companion is ONE claim, not two). Never baselined.
+ *
+ * ── OWNER-PATH SCAN (N-95) ─────────────────────────────────────────────────────
+ * Owner-path SQL (applied by a native-run executor, never by migrate.ts) lives under
+ * `00_ARCHITECTURE/briefs/suvarna/exec/<package>/` — outside both migration directories and outside
+ * every folder migrate.ts reads — yet it draws numbers (1265, 1272, 1273, 1274 ...) from the SAME
+ * sequence. A routine migration that took one of them would be a collision no directory scan saw.
+ * The scan is CONVENTION-DRIVEN, not a list: every file matching `^\d{4}[a-z]?[_-].*\.sql$` at ANY
+ * depth under OWNER_PATH_ROOT is an owner-path claim (so `sql/1265_*.sql` and `1272_*.sql` are both
+ * found; `00_roles.sql`, `verify_*.sql`, `*.LIVE.sql` and `.py` files are not). Owner numbers also
+ * feed `nextNumber`, so `migration:next` can never hand out a number an executor package holds.
+ * When the folder does not exist (e.g. on a base without these packages) the scan is the empty set.
+ *
+ * Rollback pairing: only the suffix convention `_ROLLBACK.sql` / `.ROLLBACK.sql` (case-insensitive)
+ * is a companion, and only with a forward file of the same stem in the same folder; `_undo`,
+ * `_down`, `.revert`, a rollback in another folder, or an unmatched stem are separate claims (so a
+ * forward file merely NAMED `1272_rollback_guard.sql` is a real claim). Excluded support SQL, by
+ * narrow convention: `*.LIVE.sql` and `*verify_(before|after)_apply*`.
+ *
+ * KNOWN EVASIONS (stated so the scan cannot overclaim — CLAUDE.md §N.8). These are NOT detected:
+ *   - names with no separator after the number (`1272.sql`), 3-digit (`272_x.sql`) or 5-digit
+ *     (`12720_x.sql`) numbers (4 digits exactly is deliberate: it skips `00_roles.sql`-style fixtures)
+ *   - prefixed names (`m1272_x.sql`, `mig_1272_x.sql`, `verify_1272.sql`)
+ *   - non-`.sql` extensions (`.sql.txt`, `.sql.bak`, `.psql`, `.sql.gz`)
+ *   - DDL carried inline in `.py` / `plan.txt` with no `.sql` file
+ *   - any package outside OWNER_PATH_ROOT — the root is hardcoded; a new executor root MUST be
+ *     added to OWNER_PATH_ROOT (and this scan) when it is introduced
+ *   - a 4-digit fixture under a package's `tests/` (e.g. `1255_model.sql`) would be a FALSE claim
+ *   - collisions with a not-yet-merged PR are only seen when CI runs on the merged tree
+ *
  * ── DISCLOSED (not fixed) COLLISIONS — Dvārapāla RULING 70 ─────────────────────
  * The frozen baseline (`legacy_duplicate_groups`) is deliberately immutable — it is the exact set
  * that existed when this guard was introduced, and MUST NOT be hand-edited to silence a new
@@ -83,6 +117,9 @@ const __dirname_ = path.dirname(__filename_)
 
 /** Directories that share the single migration number sequence, repo-root-relative. */
 export const MIGRATION_DIRS = ['platform/migrations', 'platform/supabase/migrations'] as const
+
+/** Owner-path executor packages: SQL here is outside migrate.ts yet shares the number sequence. */
+export const OWNER_PATH_ROOT = '00_ARCHITECTURE/briefs/suvarna/exec'
 
 export interface MigrationEntry {
   /** repo-root-relative path, e.g. `platform/supabase/migrations/473_bg_sky_calendar.sql` */
@@ -130,6 +167,8 @@ export interface GuardResult {
   maxNumber: number
   nextNumber: number
   duplicateGroups: Record<number, string[]>
+  /** owner-path claims (forward + rollback files), scanned from OWNER_PATH_ROOT */
+  ownerEntries: MigrationEntry[]
 }
 
 /** Repo root, derived from this file's location (`<root>/platform/scripts/ci/`). */
@@ -175,6 +214,59 @@ export function collectNumberedMigrations(
     }
   }
   return out
+}
+
+/**
+ * Owner-path scan: every `^\d{4}[a-z]?[_-].*\.sql` at ANY depth under `ownerRoot`. Exactly four
+ * digits on purpose — executor packages carry fixtures like `tests/schema/00_roles.sql` that are
+ * not migration numbers. A missing root is the empty set (never an error).
+ */
+export function collectOwnerPathMigrations(
+  repoRoot: string,
+  ownerRoot: string = OWNER_PATH_ROOT
+): MigrationEntry[] {
+  const out: MigrationEntry[] = []
+  const walk = (relDir: string): void => {
+    const abs = path.join(repoRoot, relDir)
+    if (!fs.existsSync(abs)) return
+    for (const name of fs.readdirSync(abs).sort()) {
+      if (name === 'node_modules' || name === '__pycache__') continue
+      const rel = `${relDir}/${name}`
+      const st = fs.statSync(path.join(repoRoot, rel))
+      if (st.isDirectory()) {
+        walk(rel)
+      } else if (st.isFile() && /^\d{4}[a-z]?[_-].*\.sql$/i.test(name) && !isNonMigrationSql(name)) {
+        const number = parseMigrationNumber(name)
+        if (number !== null) out.push({ relPath: rel, dir: relDir, filename: name, number })
+      }
+    }
+  }
+  walk(ownerRoot)
+  return out
+}
+
+/**
+ * Support SQL that may carry a migration-number prefix but is NOT a migration claim:
+ *   `*.LIVE.sql`                         — captured live definition of an object (evidence copy)
+ *   `*verify_before_apply*` / `*verify_after_apply*` — executor pre/post-apply verification scripts
+ * Deliberately NARROW. A broad "verify"/"live" exclusion would let a genuine migration named
+ * `1273_verify_grants.sql` or `1274_go_live.sql` walk past the guard, which is the failure this
+ * guard exists to prevent; a rare false RED on an oddly named support file is the cheaper error.
+ */
+function isNonMigrationSql(filename: string): boolean {
+  return /\.live\.sql$/i.test(filename) || /[_.-]verify[_-](before|after)[_-]apply/i.test(filename)
+}
+
+/** Rollback convention: suffix `_ROLLBACK.sql` or `.ROLLBACK.sql`, case-insensitive. */
+const ROLLBACK_SUFFIX = /[_.]rollback\.sql$/i
+
+function isRollbackFile(filename: string): boolean {
+  return ROLLBACK_SUFFIX.test(filename)
+}
+
+/** Stem used to pair a rollback with its forward file: `1274_x_ROLLBACK.sql` and `1274_x.sql` → `1274_x`. */
+function pairingStem(filename: string): string {
+  return filename.replace(ROLLBACK_SUFFIX, '').replace(/\.sql$/i, '').toLowerCase()
 }
 
 /**
@@ -224,10 +316,13 @@ export function loadBaseline(repoRoot: string): Baseline {
 export function checkMigrationNumbers(
   entries: MigrationEntry[],
   baseline: Baseline,
-  opts: { repoRoot?: string } = {}
+  opts: { repoRoot?: string; ownerEntries?: MigrationEntry[] } = {}
 ): GuardResult {
   const errors: string[] = []
   const warnings: string[] = []
+  const ownerEntries = opts.ownerEntries ?? []
+  // Allocation suggestions must skip owner-path numbers too.
+  const allForNext = [...entries, ...ownerEntries]
 
   // ── E1 — identical filename present in more than one directory ──────────────
   const byFilename = new Map<string, MigrationEntry[]>()
@@ -270,7 +365,7 @@ export function checkMigrationNumbers(
         `[E2 NEW-COLLISION] migration number ${number} is claimed ${group.length} times:\n` +
           paths.map(p => `      - ${p}`).join('\n') +
           `\n      This number is NOT in the frozen legacy baseline. Renumber the NEW file to ` +
-          `${computeNextMigrationNumber(entries)} — max() across BOTH directories, per ` +
+          `${computeNextMigrationNumber(allForNext)} — max() across BOTH directories, per ` +
           `00_ARCHITECTURE/MIGRATION_AND_MERGE_PROTOCOL_v1_0.md §3. Update the file's internal ` +
           `header comment to match.`
       )
@@ -307,7 +402,7 @@ export function checkMigrationNumbers(
             `to it:\n` +
             added.map(p => `      - ${p}`).join('\n') +
             `\n      A disclosed collision is not a licence to add another. Renumber to ` +
-            `${computeNextMigrationNumber(entries)}. Do not edit the baseline file to silence this.`
+            `${computeNextMigrationNumber(allForNext)}. Do not edit the baseline file to silence this.`
         )
       }
       warnings.push(
@@ -327,7 +422,7 @@ export function checkMigrationNumbers(
           `these files are new to it:\n` +
           added.map(p => `      - ${p}`).join('\n') +
           `\n      A pre-existing collision is not a licence to add another. Renumber to ` +
-          `${computeNextMigrationNumber(entries)}. Do not edit the baseline file to silence this.`
+          `${computeNextMigrationNumber(allForNext)}. Do not edit the baseline file to silence this.`
       )
     }
     const removed = (legacyFiles ?? []).filter(p => !paths.includes(p))
@@ -351,6 +446,47 @@ export function checkMigrationNumbers(
     }
   }
 
+  // ── E5/E6 — owner-path claims (outside migrate.ts, same number sequence) ─────────
+  // A rollback file (suffix convention only) is a companion, not a claim, when a forward file with
+  // the MATCHING STEM sits in the SAME folder. Any other rollback-ish file is an orphan and claims
+  // its number like any forward file.
+  const forwardKeys = new Set(
+    ownerEntries.filter(e => !isRollbackFile(e.filename)).map(e => `${e.dir}\0${pairingStem(e.filename)}`)
+  )
+  const claims = ownerEntries.filter(
+    e => !isRollbackFile(e.filename) || !forwardKeys.has(`${e.dir}\0${pairingStem(e.filename)}`)
+  )
+  const routineByNumber = new Map<number, string[]>()
+  for (const e of entries) {
+    routineByNumber.set(e.number, [...(routineByNumber.get(e.number) ?? []), e.relPath])
+  }
+  const claimsByNumber = new Map<number, MigrationEntry[]>()
+  for (const c of claims) {
+    claimsByNumber.set(c.number, [...(claimsByNumber.get(c.number) ?? []), c])
+  }
+  for (const [number, group] of [...claimsByNumber].sort((a, b) => a[0] - b[0])) {
+    const routine = routineByNumber.get(number)
+    if (routine) {
+      errors.push(
+        `[E5 OWNER-VS-ROUTINE] migration number ${number} is claimed by an owner-path executor ` +
+          `package AND by a routine migration:\n` +
+          [...group.map(g => g.relPath), ...routine].sort().map(p => `      - ${p}`).join('\n') +
+          `\n      Owner-path SQL is never read by migrate.ts but shares this sequence. Renumber the ` +
+          `ROUTINE file to ${computeNextMigrationNumber(allForNext)} (the owner-path number is ` +
+          `already referenced by its executor plan and must not move).`
+      )
+    }
+    if (group.length > 1) {
+      errors.push(
+        `[E6 OWNER-DUPLICATE] owner-path migration number ${number} is claimed ${group.length} ` +
+          `times:\n` +
+          group.map(g => g.relPath).sort().map(p => `      - ${p}`).join('\n') +
+          `\n      A forward file and its ROLLBACK companion are one claim; two distinct forward ` +
+          `files are not. Renumber one to ${computeNextMigrationNumber(allForNext)}.`
+      )
+    }
+  }
+
   // ── ADVISORY — header/filename number mismatch ───────────────────────────────
   if (opts.repoRoot) {
     for (const e of entries) {
@@ -359,21 +495,23 @@ export function checkMigrationNumbers(
     }
   }
 
-  const maxNumber = entries.length ? Math.max(...entries.map(e => e.number)) : 0
+  const maxNumber = allForNext.length ? Math.max(...allForNext.map(e => e.number)) : 0
   return {
     errors,
     warnings,
     entries,
     maxNumber,
-    nextNumber: computeNextMigrationNumber(entries),
+    nextNumber: computeNextMigrationNumber(allForNext),
     duplicateGroups,
+    ownerEntries,
   }
 }
 
 /** Run the guard against a real checkout. */
 export function runGuard(repoRoot: string): GuardResult {
   const entries = collectNumberedMigrations(repoRoot)
-  return checkMigrationNumbers(entries, loadBaseline(repoRoot), { repoRoot })
+  const ownerEntries = collectOwnerPathMigrations(repoRoot)
+  return checkMigrationNumbers(entries, loadBaseline(repoRoot), { repoRoot, ownerEntries })
 }
 
 // ── CLI ────────────────────────────────────────────────────────────────────────
@@ -401,6 +539,8 @@ function main(): void {
   const baselineForPrint = loadBaseline(repoRoot)
   process.stdout.write(
     `MIGRATION NUMBER GUARD (cross-directory)\n${perDir}\n` +
+      `  ${OWNER_PATH_ROOT}: ${result.ownerEntries.length} owner-path numbered .sql ` +
+      `(${[...new Set(result.ownerEntries.map(e => e.number))].sort((a, b) => a - b).join(', ') || '—'})\n` +
       `  next allocatable number (max across BOTH + 1): ${result.nextNumber}\n` +
       `  duplicate-number groups present: ${Object.keys(result.duplicateGroups).length} ` +
       `(frozen legacy baseline: ${Object.keys(baselineForPrint.legacy_duplicate_groups).length} + ` +
