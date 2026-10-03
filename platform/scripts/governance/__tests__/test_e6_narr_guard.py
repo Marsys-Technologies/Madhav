@@ -687,13 +687,13 @@ def _census_with(ms, asset=AID):
     return rd.census_obj(ms, asset=asset, layer="L0")
 
 
-def nworld(tmp_path, ms, *, entry=ENTRY, census_src=None, text=None, crits=(NCRIT,), extra_files=None):
+def nworld(tmp_path, ms, *, entry=ENTRY, census_src=None, text=None, crits=(NCRIT,), extra_files=None, asset=AID):
     pathlib_tmp = pathlib.Path(tmp_path)
     pathlib_tmp.mkdir(parents=True, exist_ok=True)
     w = World(tmp_path, census=census_src or rd.CENSUS_TEXT)
     ent = {k: entry.get(k) for k in ("prose_fields", "prose_coupling", "carriage") if entry.get(k) is not None}
-    w.declarations_text = json.dumps({"version": "1.0.0", "assets": {AID: ent}}, indent=2) + "\n"
-    body = text if text is not None else json.dumps(_census_with(ms))
+    w.declarations_text = json.dumps({"version": "1.0.0", "assets": {asset: ent}}, indent=2) + "\n"
+    body = text if text is not None else json.dumps(_census_with(ms, asset=asset))
     w.raw[CFILE] = body
     w.raw["platform/scripts/governance/carriage_d1.py"] = (HERE.parent / "carriage_d1.py").read_text(encoding="utf-8")
     for k, v in (extra_files or {}).items():
@@ -702,18 +702,18 @@ def nworld(tmp_path, ms, *, entry=ENTRY, census_src=None, text=None, crits=(NCRI
     for c in crits:
         e = ac.CRITERION_REGISTRY[c]
         r = f"{c}#measured:no-prose"
-        w.certs.append(cert(AID, c, "N/A", detector=e["detector"], layer="L0", revision=e["revision"], gate="Narr",
+        w.certs.append(cert(asset, c, "N/A", detector=e["detector"], layer="L0", revision=e["revision"], gate="Narr",
                             na=dict(rule_id=r, decision_id=ac.NA_RULE_DECISIONS[r], basis="measured_cause", cause="no-prose", facts=None),
                             evidence=dict(census_run_id=RUN_ID, census_file=CFILE, census_sha256=digest),
                             declarations_sha256=sha(w.declarations_text.encode())))
-    w.disps.append(disp(AID, "keep"))
+    w.disps.append(disp(asset, "keep"))
     w.commit()
     return w
 
 
-def satisfied_narr(w, crits=(NCRIT,)):
+def satisfied_narr(w, crits=(NCRIT,), asset=AID):
     state, _d, _g, _p = T._e63_load(w.last, str(w.repo))
-    return [T._e63_satisfies(state.by_key[f"{AID}|gate|{c}"][-1], state, False) for c in crits]
+    return [T._e63_satisfies(state.by_key[f"{asset}|gate|{c}"][-1], state, False) for c in crits]
 
 
 def _full(d1rec):
@@ -754,8 +754,10 @@ def test_the_reader_fails_closed_on_a_ref_whose_census_has_no_guard_and_leaves_a
     assert satisfied_narr(nworld(tmp_path / "inert_guard", _full(_d1(rows=_one_word_off())), census_src=inert)) == [False]       # a ref census whose guard never refuses: the reader's own D1 PASS requirement holds
     plain = {c: dict(v=NA, measured="x", cause="no-prose") for c in NARR}               # a [] declaration with NO carriage check (bg_yogas shape): the declared rule alone decides, exactly as before
     nocar = {"prose_fields": [], "evidence": ENTRY["evidence"]}
-    assert satisfied_narr(nworld(tmp_path / "nocarriage", plain, entry=nocar)) == [True]
-    assert satisfied_narr(nworld(tmp_path / "nocarriage_nocensus", plain, entry=nocar, text="{}")) == [True]
+    # the stand-in is an asset that is NOT in PROSE_COUPLING_REQUIRED (bg_yogas): since the required-coupling pin the latta's own id with this entry is the double deletion, tested below
+    assert "bg_yogas" not in ac.PROSE_COUPLING_REQUIRED
+    assert satisfied_narr(nworld(tmp_path / "nocarriage", plain, entry=nocar, asset="bg_yogas"), asset="bg_yogas") == [True]
+    assert satisfied_narr(nworld(tmp_path / "nocarriage_nocensus", plain, entry=nocar, text="{}", asset="bg_yogas"), asset="bg_yogas") == [True]
 
 
 def test_F1_the_reader_refuses_a_ref_declaration_that_is_empty_prose_on_a_d1_carriage_without_its_coupling(tmp_path):
