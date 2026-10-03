@@ -159,7 +159,9 @@ class FakeCursor:
         elif s.startswith("SELECT prediction_id, source_pramana_id,") and "FROM mimamsa_predictions" in s:
             self._rows = [{"prediction_id": r["prediction_id"], "source_pramana_id": r["source_pramana_id"],
                            "is_stale": r.get("chart_context_stale_at") is not None}
-                          for (c, _), r in sorted(db.preds.items()) if c == params[0]]
+                          for (c, _), r in sorted(db.preds.items()) if c == params[0]
+                          and ("lifecycle_status IN ('pending', 'due')" not in s
+                               or r["lifecycle_status"] in ("pending", "due"))]
             if db.after_existing_select:
                 db.after_existing_select(db)
                 db.after_existing_select = None
@@ -650,7 +652,13 @@ def sc_race(be, w) -> list[str]:
             None, T_OLD, "pending", "[]", "racerhash", "mi_bhavisya_v1.0"]), created_at=T_CREATED)
 
     be.conn.after_existing_select = racer
-    be.run(w)
+    res = be.run(w)
+    if res.rows_inserted != 2:
+        v.append(f"race: rows_inserted={res.rows_inserted}, expected 2 (a1's prediction + set; the raced a2 adds nothing)")
+    if (CHART, "pred_" + A[2], "ch_career_verbal") in be.conn.msets:
+        v.append("race: a manifestation set was inserted for a prediction whose insert conflicted")
+    if (CHART, "pred_" + A[1]) not in be.conn.preds or (CHART, "pred_" + A[1], "ch_career_verbal") not in be.conn.msets:
+        v.append("race: a1 was not frozen with its set")
     row = be.conn.preds[(CHART, "pred_" + A[2])]
     if row["outcome_claim"] != "RACER claim" or row["emitted_at"] != T_OLD or row["frozen_bundle_hash"] != "racerhash":
         v.append("race: a concurrently-inserted row was overwritten")
@@ -756,12 +764,19 @@ MUTANTS = {
         "            ON CONFLICT (chart_id, prediction_id, channel_id) DO NOTHING\n",
         "            ON CONFLICT (chart_id, prediction_id, channel_id) DO UPDATE SET citation_ref = EXCLUDED.citation_ref,"
         " frozen_at = EXCLUDED.frozen_at\n"),
+    # NIT-2 (review of #3040): the set-only-for-an-inserted-prediction guard, and "frozen = every status"
+    "set_inserted_when_prediction_conflicted": mutate(
+        "                if cur.rowcount == 1:\n                    preds_inserted += 1\n",
+        "                if True:\n                    preds_inserted += 1\n"),
+    "frozen_means_pending_or_due_only": mutate(
+        "\"FROM mimamsa_predictions WHERE chart_id = %s\",",
+        "\"FROM mimamsa_predictions WHERE chart_id = %s AND lifecycle_status IN ('pending', 'due')\","),
     "commits_the_connection": mutate(
         "        logger.info(\n            \"[mi_bhavisya] froze",
         "        conn.commit()\n        logger.info(\n            \"[mi_bhavisya] froze"),
 }
 # a commit by the writer is observable on the fake connection only (PG sees it as the orchestrator's commit)
-FAKE_ONLY = {"commits_the_connection"}
+FAKE_ONLY = {"commits_the_connection", "set_inserted_when_prediction_conflicted"}
 
 
 # ======================================================================================

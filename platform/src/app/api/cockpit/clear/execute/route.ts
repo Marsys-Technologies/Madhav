@@ -153,11 +153,6 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  // Compute downstream (to be marked stale)
-  const downstreamSet = computeDownstreamClosure(affectedAssetIds, registry)
-  for (const id of affectedAssetIds) downstreamSet.delete(id)
-  const downstreamAssets = Array.from(downstreamSet)
-
   // Execute: delete data + reset throughput + mark downstream stale
   // Delete in reverse topo order (downstream-first for FK safety)
   // No pre-filter by target_table — every scope asset must either clear or report failure
@@ -169,6 +164,7 @@ export async function POST(req: NextRequest) {
   // Assets whose clear is an explicit null because their rows are history (SS N-104): no statement
   // is issued, and the operator is told so instead of a silent skip.
   const notices: { asset_id: string; message: string }[] = []
+  let downstreamAssets: string[] = []
 
   const pool = await getPool()
   const client = await pool.connect()
@@ -319,6 +315,12 @@ export async function POST(req: NextRequest) {
       )
     }
 
+    // Downstream is computed from the assets that were really cleared: an append-only asset
+    // (SS N-104) kept every row, so nothing downstream of it became stale because of this clear.
+    const downstreamSet = computeDownstreamClosure(affectedAssetIds.filter(id => !noticedAssetIds.has(id)), registry)
+    for (const id of affectedAssetIds) downstreamSet.delete(id)
+    downstreamAssets = Array.from(downstreamSet)
+
     // Mark downstream as stale (only those currently lit/building/error — dormant stays dormant)
     if (downstreamAssets.length > 0) {
       await client.query(
@@ -345,12 +347,13 @@ export async function POST(req: NextRequest) {
 
   return NextResponse.json({
     cleared: {
-      assets: affectedAssetIds.length,
+      assets: affectedAssetIds.length - notices.length,
+      preserved: notices.length,
       ops: cleared_op_count,
       rows: cleared_rows_total,
       downstream_stale: downstreamAssets.length,
     },
     ...(failed_tables.length > 0 ? { failed_tables } : {}),
-    ...(notices.length > 0 ? { notices } : {}),
+    ...(notices.length > 0 ? { notices, preserved_assets: notices.map(n => n.asset_id) } : {}),
   })
 }

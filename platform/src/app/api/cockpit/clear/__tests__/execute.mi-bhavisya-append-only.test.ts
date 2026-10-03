@@ -31,6 +31,11 @@ const REGISTRY = [
     count_sql: 'SELECT (SELECT count(*) FROM mimamsa_predictions WHERE chart_id = $1) + (SELECT count(*) FROM mimamsa_manifestation_sets WHERE chart_id = $1) AS count',
     english_name: 'Bhavisya', sanskrit_name: 'Bhavisya',
   },
+  {
+    asset_id: 'mi_dependant', layer: 'mimamsa', depends_on: ['mi_bhavisya'], estimated_seconds: 60,
+    scope: 'per_chart', target_table: 'mimamsa_calibration', count_sql: null,
+    english_name: 'Dependant', sanskrit_name: 'Dependant',
+  },
 ]
 
 let clientQueries: string[] = []
@@ -77,6 +82,10 @@ describe('POST /api/cockpit/clear/execute - mi_bhavisya is append-only (SS N-104
     const body = await res.json()
     expect(body.notices).toEqual([{ asset_id: 'mi_bhavisya', message: 'mi_bhavisya is append-only (N-104): nothing cleared' }])
     expect(body.failed_tables).toBeUndefined()
+    expect(body.preserved_assets).toEqual(['mi_bhavisya'])
+    expect(body.cleared.assets).toBe(0)
+    expect(body.cleared.preserved).toBe(1)
+    expect(body.cleared.downstream_stale).toBe(0)
     expect(body.cleared.ops).toBe(0)
     expect(body.cleared.rows).toBe(0)
     // not a single statement names the two tables, and the registry-derived fallback DELETE never runs
@@ -90,5 +99,14 @@ describe('POST /api/cockpit/clear/execute - mi_bhavisya is append-only (SS N-104
       chart_id: CHART, scope: 'asset', scope_target: 'mi_bhavisya', preview_hash: previewHash(['mi_bhavisya']),
     }))
     expect(clientQueries.filter(q => /UPDATE asset_throughput\s+SET state='dormant'/i.test(q))).toEqual([])
+  })
+
+  it('does not mark the asset\'s dependants stale: no asset_throughput write of any kind (MED-1)', async () => {
+    setupMocks()
+    const res = await EXECUTE(makeReq({
+      chart_id: CHART, scope: 'asset', scope_target: 'mi_bhavisya', preview_hash: previewHash(['mi_bhavisya']),
+    }))
+    expect(res.status).toBe(200)
+    expect(clientQueries.filter(q => /asset_throughput/i.test(q))).toEqual([])
   })
 })
