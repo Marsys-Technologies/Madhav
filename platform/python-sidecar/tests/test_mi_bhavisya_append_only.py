@@ -31,6 +31,7 @@ Scenarios (each returns a list of VIOLATIONS; the real writer must produce none)
             not drop and every row's bytes (all columns) are unchanged; rows_inserted == 0.
   empty     an empty table receives the full set (a prediction and a manifestation set per anchor);
             a second run is a byte-identical no-op.
+  moved     an anchor re-identified since the freeze: the old prediction and its set stay; one new of each is added.
   partial   with some natural keys absent, exactly those are inserted (plus their sets).
   notiming  anchors without a window / no anchors at all never delete anything.
   dry_run   writes nothing and reports exactly what a real run would add.
@@ -179,6 +180,13 @@ class FakeCursor:
             for k, r in db.preds.items():
                 if k[0] == params[-1]:
                     r["emitted_at"] = params[0]
+                    n += 1
+            self.rowcount = n
+        elif s.startswith("UPDATE mimamsa_manifestation_sets"):
+            n = 0
+            for k, r in db.msets.items():
+                if k[0] == params[-1]:
+                    r["citation_ref"] = params[0]
                     n += 1
             self.rowcount = n
         elif s.startswith("INSERT INTO mimamsa_predictions"):
@@ -649,7 +657,31 @@ def sc_race(be, w) -> list[str]:
     return v + audit(be)
 
 
-CORE = [sc_existing, sc_empty, sc_partial, sc_notiming, sc_dry_run]
+def sc_anchor_moved(be, w) -> list[str]:
+    """An anchor whose id changed since the freeze (a new identity for the same event): the old prediction AND
+    its manifestation set stay exactly as frozen (citation_ref still names the freeze-time anchor); the new
+    anchor adds one new prediction + one new set."""
+    v = []
+    be.set_anchors([anchor(1)])
+    be.seed_pred(CHART, "pred_" + A[1], A[1])
+    be.seed_mset(CHART, "pred_" + A[1], A[1])
+    be.set_anchors([anchor(6)])  # a1 is gone; a6 is the same event under a new identity
+    before = be.snapshot()
+    res = be.run(w)
+    after = be.snapshot()
+    if be.counts(CHART) != (2, 2):
+        v.append(f"anchor_moved: expected 2 predictions + 2 sets (old kept, new added), got {be.counts(CHART)}")
+    if res.rows_inserted != 2:
+        v.append(f"anchor_moved: rows_inserted={res.rows_inserted}, expected 2")
+    if not all(r in after[0] for r in before[0]) or not all(r in after[1] for r in before[1]):
+        v.append("anchor_moved: the frozen prediction or its manifestation set changed")
+    pids, mids = be.keys(CHART)
+    if pids != sorted(["pred_" + A[1], "pred_" + A[6]]) or mids != pids:
+        v.append("anchor_moved: wrong prediction/set keys")
+    return v + audit(be)
+
+
+CORE = [sc_existing, sc_empty, sc_partial, sc_notiming, sc_dry_run, sc_anchor_moved]
 
 
 def run_scenarios(make_backend, w, scenarios=CORE) -> list[str]:
@@ -716,6 +748,14 @@ MUTANTS = {
         "                _c.execute(\"INSERT INTO mimamsa_manifestation_sets (chart_id, prediction_id, channel_id, domain, source,"
         " citation_ref, is_literal, frozen_at) VALUES (%s,%s,%s,%s,%s,%s,%s,%s) ON CONFLICT (chart_id, prediction_id, channel_id)"
         " DO NOTHING\", _m)"),
+    "restamp_set_citation_ref_update": mutate(
+        "        logger.info(\n            \"[mi_bhavisya] froze",
+        "        with conn.cursor() as _c:\n            _c.execute(\"UPDATE mimamsa_manifestation_sets SET citation_ref = %s "
+        "WHERE chart_id = %s\", ('{}', chart_id))\n        logger.info(\n            \"[mi_bhavisya] froze"),
+    "set_insert_do_update": mutate(
+        "            ON CONFLICT (chart_id, prediction_id, channel_id) DO NOTHING\n",
+        "            ON CONFLICT (chart_id, prediction_id, channel_id) DO UPDATE SET citation_ref = EXCLUDED.citation_ref,"
+        " frozen_at = EXCLUDED.frozen_at\n"),
     "commits_the_connection": mutate(
         "        logger.info(\n            \"[mi_bhavisya] froze",
         "        conn.commit()\n        logger.info(\n            \"[mi_bhavisya] froze"),
