@@ -55,7 +55,16 @@ export async function POST(req: NextRequest) {
     )
     assetIds = rows.map((r: { asset_id: string }) => r.asset_id)
   } else if (scope === 'asset' && scope_target) {
-    assetIds = [scope_target]
+    // C32: scope 'asset' must not materialize a 'dormant' asset_throughput row for an id that is not an ACTIVE
+    // asset_registry row (an untargeted or INACTIVE asset) — refuse it like any other invalid target.
+    const { rows } = await query<{ asset_id: string }>(
+      'SELECT asset_id FROM asset_registry WHERE asset_id=$1 AND is_active = true',
+      [scope_target]
+    )
+    if (rows.length === 0) {
+      return NextResponse.json({ error: 'scope_target is not an active asset' }, { status: 400 })
+    }
+    assetIds = rows.map((r: { asset_id: string }) => r.asset_id)
   }
 
   // Touch asset_throughput updated_at (or no-op if not present) so the stats
