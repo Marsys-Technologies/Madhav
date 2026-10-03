@@ -197,7 +197,7 @@ ALTER TABLE public.l1_data_plane_trigger_attestations ENABLE TRIGGER l1_data_pla
 -- every mode needs --expect-plan: the in-process administrator credential is fetched only after the plan hash matched.
 -- gate files (exec/gate_v2, PR #2938; pins BOUND by SS decision N-86 (GATE_V2 revision 3)): prerun_gate.py sha256 01ab1d70d0cffea015a64af5430f355dd8d419307aceeaeacf3a0cc4d715773e; run_gated.sh sha256 305b4406bba57f85944bbb57cb269368287aaa6d6f782e986afa7f857606f076; executor_standards.py sha256 bbea69552a6a92e7aed3a75758b533868e3e3d2c5b47385ccc1bf6c0660dc135
 -- plan hash = bind_gate_into_plan_hash(sha256(plan text + "\n" + json(EXPECTED_DIFF)), prerun_gate.py pin, run_gated.sh pin)
--- F-A2 module: d6_f_a2_key_widening_DRAFT.py sha256 af5e6565d6e6c0b0d4906952bb7cf76ad5ea000147b43eeda2c2f4fcaa347215
+-- F-A2 module: d6_f_a2_key_widening_DRAFT.py sha256 c911c239c7344976b0c223b4835f0417c1b9b44ba247e8a790e6e7fbca2d0565
 -- verification SQL (read only, run by the operator as the reader; named in the hashed plan text so an edit changes the plan hash): verify_before_apply.sql sha256 1f29d3a5d9b74c8bc1fd5db5cf6228315454cd76f0f666868ceaf5b92b328e3f; verify_after_apply.sql sha256 d4aa716c71f0cd74d29659babdf7a2e99f4a402bb68a7f37d776f55a1ba0a986; s_l1_ga_vargas_acceptance_check.sql sha256 1d675ed082f4a21cfdab7af3ed026f946cd4a17e51f1eb57762756b02eabcd87
 -- patch A module: d6_capture_patch_a.py sha256 613553c1320ab3ed63bbb98ce7bc0f2468fe3d762b6daf06d27d3d85d6b79d81
 -- patches B and C module: d6_dasha_partition_patches.py sha256 bdf5fabbd370d6ec60b6ffbd732af7a9b63984c020f6deeb62f91f5ada99b695

@@ -103,7 +103,7 @@ Both were derived by `make_function_patch.py` from the rehearsal worker's patche
 | item | value |
 |---|---|
 | executor `d6_dataplane_capture_fa2_exec.py` sha256 | see `plan.txt` last line / `make_plan.py` (PROVISIONAL until the freeze: every executor edit changes it) |
-| F-A2 module `d6_f_a2_key_widening_DRAFT.py` sha256 | `af5e6565d6e6c0b0d4906952bb7cf76ad5ea000147b43eeda2c2f4fcaa347215` |
+| F-A2 module `d6_f_a2_key_widening_DRAFT.py` sha256 | `c911c239c7344976b0c223b4835f0417c1b9b44ba247e8a790e6e7fbca2d0565` |
 | patch A module `d6_capture_patch_a.py` sha256 | `613553c1320ab3ed63bbb98ce7bc0f2468fe3d762b6daf06d27d3d85d6b79d81` |
 | patches B and C module `d6_dasha_partition_patches.py` sha256 | printed by `make_plan.py` / last lines of `plan.txt` (NOT FINAL until the freeze) |
 | live definition `live_defs/l1_data_plane_capture_row.LIVE.sql` sha256 | `0f8f42b6c93a9a5d2d25333cc2bd3cf52aed60e7cb7d51a87979ede92e74b9b8` |
@@ -177,7 +177,7 @@ Both read catalog text, md5, ACL and the attestation tables only; rows 60 and 61
 
 ## 9a. Freeze timing and the final sequence (ordering authority, SS ruling)
 
-The plan is frozen ONCE, and only AFTER the integration (#2960, #2970 and the other integration pull requests) and #2858's `ga_vargas` writer are in main AND the deployed pipeline image is verified, so that the bound `ga_vargas` writer digest (`0d4f8a14a23fdd47efaea4c51346417ec18908de3d1047746e7036fa1fdb4c11`) is the one that will actually run. Shared-module churn in those pull requests can shift that digest; the executor then refuses at `--apply` (the writer-first check) and forces a re-freeze. The owner apply is ordered AFTER those writers and AFTER migrations 1255 and 1219. The final sequence, verbatim:
+The plan is frozen ONCE, and only AFTER the integration (#2960, #2970 and the other integration pull requests) and #2858's `ga_vargas` writer are in main AND the deployed pipeline image is verified, so that the bound `ga_vargas` writer digest (`9212b478621c3572e75f606819e865de768b6212def695cf67bd368e0510e8a1`) is the one that will actually run. Shared-module churn in those pull requests can shift that digest; the executor then refuses at `--apply` (the writer-first check) and forces a re-freeze. The owner apply is ordered AFTER those writers and AFTER migrations 1255 and 1219. The final sequence, verbatim:
 
 1255 merged and verified live → #2965/#2969/#2971 etc. into the integration → integration merged and deployed → clean no-shim 18-lane pass on that build → #2858 writer merged → short delta review of the edited D6 plan → SS says freeze → plan hash + plan-file sha → SS dry-run approval → dry run through the gate → owner's D6 line → SS apply approval → apply → W1.
 
