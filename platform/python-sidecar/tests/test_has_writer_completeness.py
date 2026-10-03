@@ -597,6 +597,9 @@ _SEED_ONLY_ALLOWED = frozenset({
     "ka_gochara",              # migration 342/345 format variant
     "ka_gochara_resonance",    # migration 459 format variant
     "ka_gochara_sweep",        # migration 460 format variant
+    "ka_gochara_v5",           # migration 1243 multi-row VALUES (the line extractor
+                               # misses the v5 row); the @register() writer lives on
+                               # Stream A's a53 branch, not main (Pravaha C41)
     "ka_jivana_parva",         # migration 345 format variant
     "ka_kala_darshana",        # migration 345 format variant
     "ka_kalasutra",            # migration 345 format variant

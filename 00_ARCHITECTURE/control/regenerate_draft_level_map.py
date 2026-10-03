@@ -94,9 +94,10 @@ MIGRATION_DIRS = ("platform/migrations", "platform/supabase/migrations")
 # Registry rows the seed calls active but the live registry holds inactive (evidence: E6 census at origin/main adb0db29d,
 # census_L3.json population_excluded_inactive: is_active False, catalog_status CURRENT).
 LIVE_INACTIVE_OVERRIDES = ("ka_gochara_v3_century_materialize",)
-# Seed-only inactive row: census L3 `phantom_registered`, not in the live registry total (23). Present so the family input's
-# `_notes.inactive` allowance verifies; never in the level map.
-SEED_ONLY_INACTIVE = ("ka_gochara_v4_41_candidate",)
+# Seed-only inactive rows: census L3 `phantom_registered`, not in the live registry total. Present so the family input's
+# `_notes.inactive` allowance verifies; never in the level map. (ka_gochara_v5: Pravaha C41's inert A5.3 skeleton, seeded
+# by migration 1243, activated only transiently by the steward dispatch.)
+SEED_ONLY_INACTIVE = ("ka_gochara_v4_41_candidate", "ka_gochara_v5")
 
 DRAFT_BASIS = (
     "DRAFT. DAG = the 127 active registry rows' depends_on: the repo's frozen live-registry reconstruction before migration "

@@ -43,14 +43,15 @@ describe('capability estate census', () => {
       + census.denominators.public_registrar_resolution.name_only_unverified,
     ).toBe(census.denominators.public_registrar_resolution.descriptor_denominator)
     expect(census.denominators.producer_assets).toMatchObject({
-      // Pravāha A2.5 (PR #2799): ka_gochara_v4_41_candidate ships in the seed
-      // is_active: false — inert to all planners — so it counts as retired
-      // (inactive), never active, until the steward dispatch's transient flip.
-      total: 130,
+      // Pravāha A2.5 (PR #2799) + C41: ka_gochara_v4_41_candidate and
+      // ka_gochara_v5 ship in the seed is_active: false — inert to all
+      // planners — so they count as retired (inactive), never active, until
+      // the steward dispatch's transient flip.
+      total: 131,
       active: 128,
-      retired: 2,
+      retired: 3,
       writer_identities: 124,
-      non_writer_identities: 6,
+      non_writer_identities: 7,
     })
     expect(
       census.denominators.producer_assets.active + census.denominators.producer_assets.retired,
@@ -73,10 +74,10 @@ describe('capability estate census', () => {
     ]) expect(Object.values(subtotal).reduce((sum, value) => sum + value, 0)).toBe(128)
     expect(census.denominators.reviewed_output_digest_coverage).toMatchObject({
       assets_with_any_reviewed_spec: 120,
-      // main's 9 + the inactive A2.5 candidate (no output-digest spec by
-      // design — candidate-only, steward-dispatched); crucially it does NOT
-      // enter active_assets_without_any_reviewed_spec below.
-      assets_without_any_reviewed_spec: 10,
+      // main's 9 + the inactive A2.5 candidate + the inactive C41 v5 skeleton
+      // (no output-digest specs by design — steward-dispatched); crucially they
+      // do NOT enter active_assets_without_any_reviewed_spec below.
+      assets_without_any_reviewed_spec: 11,
       active_assets_without_any_reviewed_spec: 8,
       current_source_intended_spec_rows: 119,
       current_source_intended_active_spec_rows: 119,
@@ -100,10 +101,11 @@ describe('capability estate census', () => {
       ])
 
     // "retired" is the census's inactive bucket (generator: !asset.is_active,
-    // line ~617); the A2.5 candidate ships inactive (planner-inert), so it
-    // lists here until the steward dispatch's transient flip/staged run.
+    // line ~617); the A2.5 candidate and the C41 v5 skeleton ship inactive
+    // (planner-inert), so they list here until the steward dispatch's
+    // transient flip/staged run.
     expect(census.details.producer_assets.retired_asset_ids)
-      .toEqual(['ka_gochara_sweep', 'ka_gochara_v4_41_candidate'])
+      .toEqual(['ka_gochara_sweep', 'ka_gochara_v4_41_candidate', 'ka_gochara_v5'])
     expect(census.details.reviewed_output_digest_coverage.active_assets_without_any_reviewed_spec)
       .not.toContain('ka_gochara_sweep')
     expect(census.details.reviewed_output_digest_coverage.assets_without_any_reviewed_spec)
