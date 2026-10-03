@@ -68,23 +68,48 @@ def test_a_document_a_test_names_is_never_skippable():
     assert ci_changes.docs_only([f], frozenset({"*"})) is False                      # the wildcard sentinel: nothing is provably unpinned
 
 
-def test_an_unreadable_pinned_list_fails_closed(tmp_path, monkeypatch):
-    monkeypatch.setattr(ci_changes, "PINNED_FILE", tmp_path / "missing.json")
+def test_a_failing_scan_fails_closed(monkeypatch):
+    def boom(*a, **k):
+        raise OSError("git ls-files failed")
+    monkeypatch.setattr(ci_changes, "scan_pinned", boom)
     assert ci_changes._pinned() == frozenset({"*"}) and ci_changes.docs_only(["00_ARCHITECTURE/briefs/x/a.md"]) is False
-    (tmp_path / "bad.json").write_text("{not json")
-    monkeypatch.setattr(ci_changes, "PINNED_FILE", tmp_path / "bad.json")
+
+
+def test_a_scan_that_finds_nothing_classifies_nothing_as_docs_only(monkeypatch):
+    """A real tree always has tests naming documents: an EMPTY scan means the scan did not see the tests, so it must never read as 'nothing is pinned'."""
+    monkeypatch.setattr(ci_changes, "scan_pinned", lambda *a, **k: [])
+    assert ci_changes._pinned() == frozenset({"*"})
     assert ci_changes.docs_only(["00_ARCHITECTURE/briefs/x/a.md"]) is False
+    assert ci_changes.is_doc("00_ARCHITECTURE/briefs/x/a.md") is False
 
 
-def test_the_pinned_list_covers_every_document_a_test_names():
-    """Review N-103: the committed list must contain (at least) every docs-eligible md/txt that any test file names. A stale EXTRA entry is harmless."""
+def test_the_live_scan_is_non_empty_and_agrees_with_the_classifier():
     try:
-        fresh = set(ci_changes.scan_pinned())
+        pins = ci_changes._pinned()
     except (OSError, subprocess.SubprocessError):
         pytest.skip("not a git checkout")
-    committed = set(ci_changes._pinned())
-    missing = sorted(fresh - committed)
-    assert not missing, f"run `python3 platform/scripts/governance/ci_changes.py --regen-pinned`; tests now name: {missing[:5]}"
+    if "*" in pins:
+        pytest.skip("no git checkout to scan (the classifier fails closed here, which the tests above pin)")
+    assert pins, "a repo whose tests name no documents at all is not credible"
+    sample = sorted(pins)[0]
+    assert ci_changes.docs_only([sample], pins) is False                              # a pinned document never takes the fast path
+    assert ci_changes.docs_only([sample, "00_ARCHITECTURE/briefs/zz/unpinned_new_note.md"], pins) is False
+    assert ci_changes.docs_only(["00_ARCHITECTURE/briefs/zz/unpinned_new_note.md"], pins) is True
+
+
+def test_a_tracked_test_file_that_cannot_be_read_fails_closed(tmp_path, monkeypatch):
+    (tmp_path / "t").mkdir()
+    (tmp_path / "t" / "test_ok.py").write_text('open("00_ARCHITECTURE/a.md")')
+    files = ["t/test_ok.py", "t/test_gone.py", "00_ARCHITECTURE/a.md"]
+    monkeypatch.setattr(ci_changes, "tracked_files", lambda: files)
+    monkeypatch.setattr(ci_changes, "HERE", tmp_path / "a" / "b" / "c")                  # HERE.parents[2] == tmp_path: the repo root the scan reads
+    assert ci_changes.scan_pinned(files=files) == ["00_ARCHITECTURE/a.md"]               # the lenient scan skips the unreadable file and still pins a.md
+    assert ci_changes._pinned() == frozenset({"*"})                                      # the classifier's scan is strict: an unread test could hide a pin
+
+
+def test_there_is_no_committed_pinned_list():
+    assert not (HERE.parent / "ci_docs_pinned.json").exists(), "the pinned set is computed at classify time; a committed copy would go stale and conflict"
+    assert "PINNED_FILE" not in vars(ci_changes) and "pinned_document" not in vars(ci_changes)
 
 
 def test_scan_pinned_resolves_paths_and_basenames(tmp_path):
@@ -223,7 +248,10 @@ def _run_step(tmp_path, event, *, files, script_text=None):
     gov = repo / "platform" / "scripts" / "governance"
     gov.mkdir(parents=True)
     (gov / "ci_changes.py").write_text(script_text if script_text is not None else SCRIPT.read_text())
-    (gov / "ci_docs_pinned.json").write_text('{"pinned": []}')
+    (gov / "__tests__").mkdir()
+    (gov / "__tests__" / "test_canary.py").write_text('open("00_ARCHITECTURE/briefs/x/CANARY_PINNED.md")')   # a real tree's tests always name some document
+    (repo / "00_ARCHITECTURE" / "briefs" / "x").mkdir(parents=True)
+    (repo / "00_ARCHITECTURE" / "briefs" / "x" / "CANARY_PINNED.md").write_text("c")
     (repo / "base.txt").write_text("b")
     _git(repo, "add", ".")
     _git(repo, "commit", "-qm", "base")
