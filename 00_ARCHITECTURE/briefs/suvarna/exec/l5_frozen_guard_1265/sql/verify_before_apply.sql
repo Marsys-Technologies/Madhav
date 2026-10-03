@@ -1,0 +1,19 @@
+-- READ ONLY (run by the operator as suvarna_reader; hash-bound in the plan). Expected BEFORE the 1265 plan applies.
+-- 1. none of the new objects exists (expect 0 and 0)
+SELECT (SELECT count(*) FROM pg_proc WHERE proname IN ('l5_frozen_withdrawal_authorizes', 'mimamsa_predictions_frozen_row_guard',
+          'brahma_prospective_ledger_frozen_row_guard', 'mimamsa_manifestation_sets_frozen_row_guard', 'brahma_mimamsa_prediction_ledger_delete_guard')) AS new_functions,
+       (SELECT count(*) FROM pg_trigger WHERE tgname LIKE '%frozen_row_guard%' OR tgname LIKE 'brahma_mimamsa_prediction_ledger_delete_guard%') AS new_triggers;
+-- 2. the captured live-only builder guard is live as captured (expect md5 46c23854275c2712b30860a2b174adb2, 1084, amjis_app, {amjis_app=X/amjis_app}, tgtype 15, enabled O)
+SELECT md5(p.prosrc), length(convert_to(p.prosrc, 'UTF8')), pg_get_userbyid(p.proowner), p.proacl::text, p.proconfig::text,
+       (SELECT tgtype || '/' || tgenabled FROM pg_trigger WHERE tgname = 'mimamsa_predictions_builder_guard')
+  FROM pg_proc p WHERE p.proname = 'mimamsa_predictions_builder_guard';
+-- 3. the recorded builder grants (expect DELETE,INSERT,SELECT / amjis_app on both tables)
+SELECT c.relname, string_agg(a.privilege_type, ',' ORDER BY a.privilege_type), min(pg_get_userbyid(a.grantor))
+  FROM pg_class c, aclexplode(c.relacl) a
+ WHERE c.relname IN ('mimamsa_predictions', 'mimamsa_manifestation_sets') AND c.relnamespace = 'public'::regnamespace AND a.grantee = 'data_plane_builder'::regrole
+ GROUP BY 1 ORDER BY 1;
+-- 4. schema public: amjis_app has USAGE and NO CREATE (expect f), and the schema ACL text (kept; compare after)
+SELECT has_schema_privilege('amjis_app', 'public', 'CREATE') AS amjis_app_can_create, (SELECT nspacl::text FROM pg_namespace WHERE nspname = 'public') AS schema_acl;
+-- 5. frozen-set baseline (row counts per table; the executor binds the md5s)
+SELECT 'mimamsa_predictions' AS t, count(*) FROM mimamsa_predictions UNION ALL SELECT 'mimamsa_manifestation_sets', count(*) FROM mimamsa_manifestation_sets
+UNION ALL SELECT 'brahma_prospective_ledger', count(*) FROM brahma_prospective_ledger UNION ALL SELECT 'brahma_mimamsa_prediction_ledger', count(*) FROM brahma_mimamsa_prediction_ledger;
