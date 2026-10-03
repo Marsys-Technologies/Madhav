@@ -1,0 +1,16 @@
+{
+  "lane": "ga_vargas_invariant_sentinels",
+  "ruling": "F-A2 7-column chart_divisionals key (Q-L1-01, #2858) + #2960 first-pass-only INVARIANT sentinels",
+  "pr": "#2960 (3211d74bc) in the integration; the 7-column key is #2858 (F-A2, migrations 1222 / 1223, lands after the integration and is part of the same W6 build)",
+  "description": "ga_vargas writes six INVARIANT scope_cap sentinels per chart (D81 plus five floored bodies, ayanamsha INVARIANT); they differ only in fact_subject. Under today's six-column chart_divisionals key FOUR OF THE SIX COLLIDE on one stored row, so production holds 2 sentinel rows per chart (ALL_VARGAS 1, D81 1: reader count 2026-10-02, identical on all three charts); all six are stored only with F-A2's seven-column key (fact_subject added). #2960 makes the writer emit the INVARIANT sentinels in the FIRST ayanamsha sub-step only (every one of the five sub-steps used to delete all six and re-emit them, so the writer reported 38,620 rows for 38,596 stored; reported now equals stored). Detector view: chart_divisionals scope_cap, key (INVARIANT, ALL_VARGAS, SCOPE_CAP, scope_cap, computation_status) goes from 1 to 5 occurrences = ONE occurrence_count change (the row-level figure is +4: 2 -> 6 stored rows). This entry therefore needs F-A2 in the same build; without F-A2 the stored count stays 2 and the entry reads EXPECTATION_MISMATCH (observed 0), which is correct. The other chart_divisionals effects of F-A2 are in fa2_ga_vargas.json (its own PR, #2858).",
+  "may_change": [
+    {
+      "table": "chart_divisionals",
+      "categories": ["scope_cap"],
+      "change_types": ["occurrence_count"],
+      "expected_count": {"exact": 1},
+      "expected_direction": "scope_cap computation_status key (INVARIANT / ALL_VARGAS): 1 -> 5 occurrences; row level 2 -> 6 stored rows (+4).",
+      "note": "source: rehearsal-synthetic (19-lane rehearsal, flip_detector v2.3 compare against the origin/main baseline build on the same synthetic chart; HOOKS_COMPLETENESS_v1_0.md, Source evidence) (chart_divisionals scope_cap: ONE occurrence_count change, before 1, after 5; stored 2 -> 6; production canonical 2 rows) and the lane's test_ga_vargas_invariant_sentinels.py (six sentinels, seven-column KEY). Code-driven, chart independent."
+    }
+  ]
+}

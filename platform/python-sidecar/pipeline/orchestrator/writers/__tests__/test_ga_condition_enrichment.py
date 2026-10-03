@@ -388,14 +388,16 @@ class TestInsertPerVargaAvastaRows:
 
     def test_calls_delete_before_insert(self):
         conn = MagicMock()
+        conn.execute.return_value.rowcount = 1  # a real cursor reports the INSERT's rowcount
         rows = self._make_rows()
-        _insert_per_varga_avastha_rows(conn, rows)
+        assert _insert_per_varga_avastha_rows(conn, rows) == len(rows)  # returns rows landed
 
         # conn.execute should have been called at least twice (once DELETE, once INSERT)
         assert conn.execute.call_count >= 2
 
     def test_delete_sql_contains_chart_facts(self):
         conn = MagicMock()
+        conn.execute.return_value.rowcount = 1  # a real cursor reports the INSERT's rowcount
         rows = self._make_rows()
         _insert_per_varga_avastha_rows(conn, rows)
 
@@ -407,6 +409,7 @@ class TestInsertPerVargaAvastaRows:
 
     def test_insert_sql_contains_chart_facts(self):
         conn = MagicMock()
+        conn.execute.return_value.rowcount = 1  # a real cursor reports the INSERT's rowcount
         rows = self._make_rows()
         _insert_per_varga_avastha_rows(conn, rows)
 
@@ -416,5 +419,5 @@ class TestInsertPerVargaAvastaRows:
 
     def test_no_op_on_empty_rows(self):
         conn = MagicMock()
-        _insert_per_varga_avastha_rows(conn, [])
+        assert _insert_per_varga_avastha_rows(conn, []) == 0
         conn.execute.assert_not_called()
