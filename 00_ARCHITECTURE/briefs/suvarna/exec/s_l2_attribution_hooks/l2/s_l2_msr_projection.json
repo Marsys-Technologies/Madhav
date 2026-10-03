@@ -1,0 +1,265 @@
+{
+  "lane": "s_l2_msr_projection",
+  "ruling": "S-L2 MSR projection (bo_laksana + five satellites)",
+  "pr": "suvarna/land/TI-s-l2-prep-001",
+  "description": "bodha_msr_signals after the S-L2 rebuild versus the S-L1-close snapshot. Row key (detector registry) = ayanamsha, signal_type_class, signal_type_id (+ varga/fact_subject/fact_key); identity = signal_id and the digest of constituent_facts_array are CONTENT, so a re-keyed citation or a moved signal id reads as a value change on the same key. Every count is derived from a rule (which L1 facts S-L1 re-keys; which declared S-L1 changes can add or remove a projected fact; the writers' own projection) and from the production class counts of 2026-10-03; none is a measured count plus a margin. The rehearsal must confirm each entry (HOOKS record section 6).",
+  "may_change": [
+    {
+      "table": "bodha_msr_signals",
+      "categories": [
+        "annual",
+        "arudha",
+        "configuration",
+        "dosha",
+        "nakshatra_semantic",
+        "panchanga",
+        "parivartana",
+        "sade_sati",
+        "special_lagna",
+        "tradition_specific",
+        "varga_pattern",
+        "vargottama_amplification",
+        "yoga"
+      ],
+      "change_types": [
+        "value"
+      ],
+      "expected_count": {
+        "exact": 6764
+      },
+      "note": "13 classes, every signal cites at least one fact S-L1 re-keys (read 2026-10-03: n_stable_cite = 0 for each), so every surviving signal changes its cites digest; no declared S-L1 change adds or removes a signal of these classes (rule: the declared appeared/disappeared facts map to composite_state, karaka_alignment and parivartana only, via bo_laksana._signal_type_class), so survivors = before count: 2871+1400+1169+590+315+150+75+74+45+26+25+20+4. Source: S_L2_ATTRIBUTION_HOOKS_v1_0.md section 3.1 (R1, R2)."
+    },
+    {
+      "table": "bodha_msr_signals",
+      "categories": [
+        "composite_state"
+      ],
+      "change_types": [
+        "value"
+      ],
+      "expected_count": {
+        "min": 36388,
+        "max": 37694
+      },
+      "note": "36,628 of 37,694 signals cite a re-keyed fact (1,066 cite only ga_positions facts, whose ids survive); at most 240 composite signals disappear (sun_required_rupa: 240 graha_in_house_composite_strength facts); min = 36,628 - 240; max = every signal. Source: section 3.1 (R1, R3)."
+    },
+    {
+      "table": "bodha_msr_signals",
+      "categories": [
+        "karaka_alignment"
+      ],
+      "change_types": [
+        "value"
+      ],
+      "expected_count": {
+        "min": 6121,
+        "max": 6156
+      },
+      "note": "All 6,156 signals cite a re-keyed fact; at most 35 disappear (STRIKARAKA -> PUTRAKARAKA relabel); min = 6,156 - 35; max = all. Source: section 3.1 (R1, R3)."
+    },
+    {
+      "table": "bodha_msr_signals",
+      "categories": [
+        "dhana_axis",
+        "sudarshana_agreement"
+      ],
+      "change_types": [
+        "value"
+      ],
+      "expected_count": {
+        "min": 0,
+        "max": 55
+      },
+      "note": "Their cited facts are ga_positions graha_position facts (ids survive S-L1) and their configurations hold discrete values only, so cites and identity do not move; only the bo_laksana_rerank enrichment digests can. 0 to all 45+10. Source: section 3.1 (R2)."
+    },
+    {
+      "table": "bodha_msr_signals",
+      "categories": [
+        "composite_state"
+      ],
+      "change_types": [
+        "appeared"
+      ],
+      "expected_count": {
+        "min": 0,
+        "max": 4081
+      },
+      "note": "Upper bound = every declared appeared fact that maps to composite_state yields at most one new signal: argala_graha_natal 156, ashtakavarga_bindu_contributor 3,360, sensitive_point_gulika_mandi 35, geometry categories (45+30+315+85; optional on this chart) 475, graha_gandanta twin rows 50, dasha_scope_cap (1 INVARIANT fact, fanned out to every ayanamsha) 5. Collapse by identity can only lower it. Source: section 3.1 and 3.2 (R3)."
+    },
+    {
+      "table": "bodha_msr_signals",
+      "categories": [
+        "composite_state"
+      ],
+      "change_types": [
+        "disappeared"
+      ],
+      "expected_count": {
+        "min": 0,
+        "max": 240
+      },
+      "note": "Upper bound = the 240 graha_in_house_composite_strength facts that sun_required_rupa removes (simple_multiplication, cross_formula_divergence). Source: section 3.1 (R3)."
+    },
+    {
+      "table": "bodha_msr_signals",
+      "categories": [
+        "karaka_alignment"
+      ],
+      "change_types": [
+        "appeared"
+      ],
+      "expected_count": {
+        "min": 0,
+        "max": 1340
+      },
+      "note": "karaka_chara_position +35 (PUTRAKARAKA) +5 (strikaraka_alias) and karaka_web_per_varga up to +1,300 (collapse by identity can only lower it). Source: section 3.1 (R3)."
+    },
+    {
+      "table": "bodha_msr_signals",
+      "categories": [
+        "karaka_alignment"
+      ],
+      "change_types": [
+        "disappeared"
+      ],
+      "expected_count": {
+        "min": 0,
+        "max": 35
+      },
+      "note": "karaka_chara_position STRIKARAKA -35. Source: section 3.1 (R3)."
+    },
+    {
+      "table": "bodha_msr_signals",
+      "categories": [
+        "parivartana"
+      ],
+      "change_types": [
+        "appeared"
+      ],
+      "expected_count": {
+        "min": 0,
+        "max": 15
+      },
+      "note": "parivartana_pairs appeared, optional on this chart, max 15. Source: section 3.1 (R3)."
+    },
+    {
+      "table": "bodha_msr_signals",
+      "categories": [
+        "annual",
+        "arudha",
+        "configuration",
+        "dhana_axis",
+        "dosha",
+        "nakshatra_semantic",
+        "panchanga",
+        "sade_sati",
+        "special_lagna",
+        "sudarshana_agreement",
+        "tradition_specific",
+        "varga_pattern",
+        "vargottama_amplification",
+        "yoga"
+      ],
+      "change_types": [
+        "appeared",
+        "disappeared"
+      ],
+      "expected_count": {
+        "exact": 0
+      },
+      "note": "No declared S-L1 change can create or remove a fact projected into these 14 classes on the canonical chart (the ephemeris move has no class flip there; the vichara dedupe touches only varga_ratification_divergence). Source: section 3.1 (R3)."
+    },
+    {
+      "table": "bodha_msr_signals",
+      "categories": [
+        "parivartana"
+      ],
+      "change_types": [
+        "disappeared"
+      ],
+      "expected_count": {
+        "exact": 0
+      },
+      "note": "Nothing removes a parivartana fact. Source: section 3.1 (R3)."
+    },
+    {
+      "table": "bodha_msr_signals",
+      "categories": [
+        "varga_ratification_divergence"
+      ],
+      "change_types": [
+        "value",
+        "appeared",
+        "disappeared",
+        "occurrence_count",
+        "tier"
+      ],
+      "expected_count": {
+        "min": 0
+      },
+      "optional": true,
+      "note": "9 signals today (3 on three ayanamshas) from chart_vichara; the ga_vichara dedupe (8,524 -> 7,774 rows) can change them in either direction and no upper bound on appearances is derivable, so only the attribution is declared (min 0, no max). Source: section 3.1 (R4)."
+    },
+    {
+      "table": "bodha_msr_signals",
+      "categories": [
+        "annual",
+        "arudha",
+        "composite_state",
+        "configuration",
+        "dhana_axis",
+        "dosha",
+        "karaka_alignment",
+        "nakshatra_semantic",
+        "panchanga",
+        "parivartana",
+        "sade_sati",
+        "special_lagna",
+        "sudarshana_agreement",
+        "tradition_specific",
+        "varga_pattern",
+        "varga_ratification_divergence",
+        "vargottama_amplification",
+        "yoga"
+      ],
+      "change_types": [
+        "tier"
+      ],
+      "expected_count": {
+        "min": 0,
+        "max": 50678
+      },
+      "note": "verification_pass_status follows the cited facts' tiers; the tiers lane re-labels 20,415 facts; at most one tier change per signal (50,678 signals). Source: section 3.1 (R5)."
+    },
+    {
+      "table": "bodha_msr_signals",
+      "categories": [
+        "annual",
+        "arudha",
+        "composite_state",
+        "configuration",
+        "dhana_axis",
+        "dosha",
+        "karaka_alignment",
+        "nakshatra_semantic",
+        "panchanga",
+        "parivartana",
+        "sade_sati",
+        "special_lagna",
+        "sudarshana_agreement",
+        "tradition_specific",
+        "varga_pattern",
+        "vargottama_amplification",
+        "yoga"
+      ],
+      "change_types": [
+        "occurrence_count"
+      ],
+      "expected_count": {
+        "min": 0
+      },
+      "optional": true,
+      "note": "Signals whose semantic key repeats can change multiplicity when the identity collapse changes; no bound derivable, attribution only. Source: section 3.1 (R4)."
+    }
+  ]
+}

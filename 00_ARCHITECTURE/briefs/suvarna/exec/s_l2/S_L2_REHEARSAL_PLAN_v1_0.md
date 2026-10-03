@@ -1,6 +1,6 @@
 ---
 artifact: S_L2_REHEARSAL_PLAN
-version: 1.0
+version: 1.1
 status: DRAFT-FOR-REVIEW
 produced_by: exec-suvarna (bo-uuid-fix worker, S-L2 PREP lane, SS decision N-96)
 produced_on: 2026-10-03
@@ -12,6 +12,7 @@ sources:
   - 00_ARCHITECTURE/briefs/suvarna/exec/s_l2/S_L2_WINDOW_RUNBOOK_v1_0.md (W-steps, acceptance checks A2-xx) and s_l2_attribution_hooks/ (this lane)
   - /Users/Dev/suvarna-evidence/S_L2/work/L2_DATAPLANE_MECHANICS.md and L2_WRITES_MAP.md (this lane's code and reader studies)
 changelog:
+  - "1.1 (2026-10-03): #3008 is merged; B7 added as measurement M14 (the bo_laksana strict count check, to confirm on real post-S-L1 L1 output); M9 states that 1,340 is a LOWER BOUND; the privilege recipe now includes migrations 1272/1273 (HELD executor, PR #3045) applied on the mirror before pass 1 (they are blockers B3/B4, not a deviation)."
   - "1.0 (2026-10-03): first version."
 ---
 
@@ -54,7 +55,7 @@ R4. L1 content, one of two variants (SS chooses; variant A is the pass of record
 - **Variant A (after S-L1 close, preferred).** Restore S-L1's actual production output for the canonical chart (L1 tables, L1 generation/partition/head records, `asset_provenance_receipts` for the 18 `ga_*` assets) through the owner path the S-L1 rehearsal used; the reader cannot export tables it cannot SELECT (all L1 history tables), so for those the restore needs a privileged export; a table that cannot be restored makes the rehearsal NOT RUN for it, never simulated.
 - **Variant B (before S-L1 close, finds defects early; does not satisfy the day-7 checkpoint).** Build L1 on the disposable database by running the real S-L1 chain (18 `ga_*` lanes, one orchestrator run, 567 s in the S-L1 rehearsal) from the S-L1 integration head, so the heads and receipts are produced by the real producer; the L1 data plane writes the heads when each writer's last partition completes (1035:1305-1515).
 R5. Stored production L2 rows (pass 2 only): the canonical chart's rows of every table in `l2_data_plane_asset_outputs` (reader `\copy` where SELECT is granted; the 12 L1 protected tables, `charts` and the history tables are not readable). Snapshot row counts and the privilege comparison of section 3 BEFORE pass 1; verify the L1 head and generation rows exist for the 12 closure assets (G-3).
-R6. **Prerequisite: the real B3/B4/B5 changes.** Until SS's migrations exist as files, the only possible run is an EXPERIMENT (patches applied in the disposable database only, labelled as such: `bind_patched_EXPERIMENT.sql`, `20_EXPERIMENT_grants.sql`); an experiment can find defects but is never a clean pass.
+R6. **Prerequisite: the real B3/B4/B5 changes.** Until SS's migrations exist as files, the only possible run is an EXPERIMENT (patches applied in the disposable database only, labelled as such: `bind_patched_EXPERIMENT.sql`, `20_EXPERIMENT_grants.sql`); an experiment can find defects but is never a clean pass. **B3 and B4 now exist as the HELD owner-path executor of PR #3045 (migration numbers 1272/1273):** the clean pass applies them to the mirror THROUGH THE EXECUTOR (dry run, apply, with the non-superuser administrator and the production owners; the executor's own mirror tests and rollback proof are in that PR) before pass 1, never by hand. B5 (`chart_fact_identity`, migration 1262) is still a prerequisite that must exist as a file (or be applied through its own executor) before a clean pass.
 
 ## 5. The passes
 
@@ -82,11 +83,12 @@ This is satisfied by the entrypoint itself (`runner.load_run` reads `build_runs.
 | M6 | MSR / embeddings / nodes / edges counts after P2 and the hook derivations (A2-10..A2-24) | the runbook's SQL | proves the counts are rule-derived |
 | M7 | the L1 flip-detector compare, before vs after P2 | `flip_detector.py --compare` with `--hooks-dir .../s_l2_attribution_hooks` (lane `s_l2_l1_untouched`) | S-L2 changes no L1 row; verdict NOT_CHECKED (standing registry), failure classes all 0 |
 | M8 | the disclosure detector's verdict before and after (the served `l2_receipts_predate_l1` computation: L2 receipts older than L1 receipts for the chart) evaluated by the same SQL the served detector uses, against the disposable DB | the receipt comparison from L2_DATAPLANE_MECHANICS section 5 | clearing criterion "the detector reads 0 stale" (runbook section 10) |
-| M9 | stored vs new `signal_id` for the 1,340 chart_divisionals-embedding signals | the A2-14 query | the I-20 move, observed not assumed |
+| M9 | stored vs new `signal_id`: the 1,340 chart_divisionals-embedding signals (the certain part) AND the total number of signals whose id moved, against the prediction rule of runbook section 9 item 3 | the A2-14 query | the I-20 move, observed not assumed; 1,340 is a LOWER BOUND |
 | M10 | logs: no `ContractError`, no `TypeError`, no "not JSON serializable"; warnings listed | job log grep | the PR #3008 class of defects |
 | M11 | **an integrity check that can go red:** after pass 2, for ONE light asset corrupt its output inside a rolled-back transaction (e.g. set a value outside the check's allowed set through the builder session within an admitted generation, or run the check against a copy) and show that the asset's registry `integrity_check_sql` evaluated by the orchestrator's own `_probe_asset` turns false; repeat for a heavy asset's last-substep check | a deliberately wrong row + the probe | B6: a detector that has never been shown to fail is not a detector (CLAUDE.md N.8) |
 | M12 | the stop conditions fire: for each of `missing completed selected L2 dependencies` (run a dependent before its upstream), `reported N inserts + M updates but protected capture contains K rows` (a writer that miscounts) and `replay changed output` (a second run with changed input) show the failure text and that the asset is `error`, not `lit` | three controlled failures on the disposable DB | runbook W2 stop list |
 | M13 | first heartbeat: for every light asset record `asset_throughput.last_built_at` at the start stamp and at completion, and the longest transaction age seen by `pg_stat_activity` | sampled every 5 s | B10 |
+| M14 | **B7: the `bo_laksana` strict count check** (`inserted != len(signal_rows)` raises "refusing a partial root generation"): on real post-S-L1 L1 output record, per ayanamsha substep, the number of signal rows built, the number inserted, the number skipped by `ON CONFLICT ... DO NOTHING`, and whether the check raised; if it raises, record the colliding `(signal_type_id, configuration_jsonb)` groups by category | the job log of `bo_laksana` and a rolled-back count of the colliding groups | B7 is inferred from code and counts, never executed; the three remedies (dedupe before the check, discriminator in the configuration, relax the check) move signal ids and counts, so the decision (runbook G-5) needs this measurement |
 
 ## 8. Pass criteria (what the final clean pass must show)
 
