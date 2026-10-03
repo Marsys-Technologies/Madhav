@@ -70,6 +70,13 @@ def _stub_ascendant(offset_minutes: int, ayanamsha_id: str) -> dict:
     }
 
 
+# F7 (Track I, LIFE_EVENTS_SCOPE_AUDIT): the engine no longer defaults to the
+# native's embedded events; a caller must pass its own. These tests exercise the
+# engine's scoring behaviour, so they pass the native's embedded set EXPLICITLY
+# through this clearly-named fixture (never as an engine default).
+_NATIVE_FIXTURE = list(E.TRAINING_EVENTS)
+
+
 # ── Candidate generation ─────────────────────────────────────────────────────
 def test_exactly_37_offsets():
     offsets = build_candidate_offsets()
@@ -79,7 +86,7 @@ def test_exactly_37_offsets():
 
 
 def test_run_produces_37x5_rows():
-    rows = run_rectification(_stub_ascendant)
+    rows = run_rectification(_stub_ascendant, training_events=_NATIVE_FIXTURE)
     assert len(rows) == 37 * len(AYANAMSHAS) == 185
     assert len({r.offset_minutes for r in rows}) == 37
     assert {r.ayanamsha_id for r in rows} == set(AYANAMSHAS)
@@ -118,14 +125,14 @@ def test_default_training_set_all_clean():
 
 # ── Lagna stability ──────────────────────────────────────────────────────────
 def test_lagna_stable_near_recorded_time():
-    rows = run_rectification(_stub_ascendant)
+    rows = run_rectification(_stub_ascendant, training_events=_NATIVE_FIXTURE)
     near = [r for r in rows if r.offset_minutes == 0]
     assert all(r.lagna_stable for r in near)
     assert all(r.lagna_sign == "Aries" for r in near)
 
 
 def test_lagna_unstable_at_extreme_early_offset():
-    rows = run_rectification(_stub_ascendant)
+    rows = run_rectification(_stub_ascendant, training_events=_NATIVE_FIXTURE)
     early = [r for r in rows if r.offset_minutes == -90]
     assert all(not r.lagna_stable for r in early)
     # sign has shifted away from the recorded-time sign
@@ -133,15 +140,15 @@ def test_lagna_unstable_at_extreme_early_offset():
 
 
 def test_unstable_candidate_has_no_fit_score():
-    rows = run_rectification(_stub_ascendant)
+    rows = run_rectification(_stub_ascendant, training_events=_NATIVE_FIXTURE)
     early = [r for r in rows if r.offset_minutes == -90]
     assert all(r.lel_fit_score is None for r in early)
 
 
 # ── Best selection ───────────────────────────────────────────────────────────
 def test_best_has_highest_mean_score():
-    rows = run_rectification(_stub_ascendant)
-    best = select_best(rows)
+    rows = run_rectification(_stub_ascendant, training_events=_NATIVE_FIXTURE)
+    best = select_best(rows, training_events=_NATIVE_FIXTURE)
     # recompute mean per offset; best score must be the max
     by_off: dict[int, list[float]] = {}
     for r in rows:
@@ -154,8 +161,8 @@ def test_best_has_highest_mean_score():
 
 
 def test_best_auto_action_is_stage_for_review():
-    rows = run_rectification(_stub_ascendant)
-    best = select_best(rows)
+    rows = run_rectification(_stub_ascendant, training_events=_NATIVE_FIXTURE)
+    best = select_best(rows, training_events=_NATIVE_FIXTURE)
     assert best.auto_action == AUTO_ACTION == "stage_for_review"
 
 
@@ -169,14 +176,14 @@ def test_confidence_label_thresholds():
 
 
 def test_confidence_interval_widens_below_one():
-    rows = run_rectification(_stub_ascendant)
-    best = select_best(rows)
+    rows = run_rectification(_stub_ascendant, training_events=_NATIVE_FIXTURE)
+    best = select_best(rows, training_events=_NATIVE_FIXTURE)
     assert best.confidence_low <= best.best_lel_fit_score <= best.confidence_high
 
 
 def test_competing_candidates_top_3():
-    rows = run_rectification(_stub_ascendant)
-    best = select_best(rows)
+    rows = run_rectification(_stub_ascendant, training_events=_NATIVE_FIXTURE)
+    best = select_best(rows, training_events=_NATIVE_FIXTURE)
     assert len(best.competing_candidates) <= 3
     scores = [c["mean_lel_fit_score"] for c in best.competing_candidates]
     assert scores == sorted(scores, reverse=True)
@@ -201,7 +208,7 @@ def test_uniform_scores_within_stable_window_is_expected():
     → same dasha-lord house → same fit score. This is by design.
     The tiebreaker (abs(offset)=0) selects the recorded birth time.
     confidence_label='unresolved' is the honest B.10-compliant output."""
-    rows = run_rectification(_stub_ascendant)
+    rows = run_rectification(_stub_ascendant, training_events=_NATIVE_FIXTURE)
     # verify all stable candidates have the same fit score
     stable_scores = {r.lel_fit_score for r in rows if r.lagna_stable and r.lel_fit_score is not None}
     assert len(stable_scores) == 1, (
@@ -209,7 +216,7 @@ def test_uniform_scores_within_stable_window_is_expected():
         f"got {stable_scores}"
     )
     # verify best_offset == 0 (recorded time selected as tiebreaker)
-    best = select_best(rows)
+    best = select_best(rows, training_events=_NATIVE_FIXTURE)
     assert best.offset_minutes == 0, (
         f"Expected tiebreaker to select recorded birth time (offset=0), got {best.offset_minutes}"
     )
@@ -221,8 +228,8 @@ def test_uniform_scores_within_stable_window_is_expected():
 
 # ── Determinism ──────────────────────────────────────────────────────────────
 def test_engine_is_deterministic():
-    a = select_best(run_rectification(_stub_ascendant))
-    b = select_best(run_rectification(_stub_ascendant))
+    a = select_best(run_rectification(_stub_ascendant, training_events=_NATIVE_FIXTURE), training_events=_NATIVE_FIXTURE)
+    b = select_best(run_rectification(_stub_ascendant, training_events=_NATIVE_FIXTURE), training_events=_NATIVE_FIXTURE)
     assert a.best_lel_fit_score == b.best_lel_fit_score
     assert a.offset_minutes == b.offset_minutes
 
@@ -649,3 +656,87 @@ def test_calibration_min_events_threshold_read_from_registry():
     assert flags is not None
     assert flags["calibration_state"] == "sparse"
     assert flags["lel_event_count"] == 12
+
+
+# ═════════════════════════════════════════════════════════════════════════════
+# F7 (Track I, LIFE_EVENTS_SCOPE_AUDIT, SS N-110): no native-training-set default
+# ═════════════════════════════════════════════════════════════════════════════
+import dataclasses
+import inspect
+import json
+from pathlib import Path
+
+_GOLDEN = Path(__file__).parent / "fixtures" / "ph_rectification_native_golden_v1.json"
+
+
+def _plain(o):
+    if dataclasses.is_dataclass(o):
+        return {k: _plain(v) for k, v in dataclasses.asdict(o).items()}
+    if isinstance(o, datetime):
+        return o.isoformat()
+    if isinstance(o, dict):
+        return {k: _plain(v) for k, v in o.items()}
+    if isinstance(o, (list, tuple)):
+        return [_plain(x) for x in o]
+    return o
+
+
+def _reference_signs():
+    return {ay: _stub_ascendant(0, ay)["sign"] for ay in AYANAMSHAS}
+
+
+def test_run_rectification_without_training_events_raises():
+    with pytest.raises(ValueError, match="training_events"):
+        run_rectification(_stub_ascendant)
+    with pytest.raises(ValueError, match="training_events"):
+        run_rectification(_stub_ascendant, training_events=None)
+
+
+def test_score_candidate_without_training_events_raises():
+    with pytest.raises(ValueError, match="training_events"):
+        score_candidate(0, _stub_ascendant, _reference_signs())
+
+
+def test_select_best_without_training_events_raises():
+    rows = run_rectification(_stub_ascendant, training_events=_NATIVE_FIXTURE)
+    with pytest.raises(ValueError, match="training_events"):
+        select_best(rows)
+    with pytest.raises(ValueError, match="training_events"):
+        select_best(rows, training_events=None)
+
+
+def test_empty_training_events_is_a_valid_structural_run_not_an_error():
+    """[] means 'this chart has no events' (the writer's structural_no_lel basis):
+    legitimate and must NOT raise nor fall back to anything."""
+    rows = run_rectification(_stub_ascendant, training_events=[])
+    assert len(rows) == 37 * 5
+    assert all(r.lel_events_tested == 0 and r.lel_fit_score is None for r in rows)
+    best = select_best(rows, training_events=[])
+    assert best.lel_training_events == 0
+
+
+def test_engine_functions_do_not_reference_the_native_set():
+    """No code path in the three scoring entry points names the native constants
+    (docstrings may; identifiers may not)."""
+    import ast
+    import textwrap
+    for fn in (run_rectification, select_best, score_candidate):
+        tree = ast.parse(textwrap.dedent(inspect.getsource(fn)))
+        names = {n.id for n in ast.walk(tree) if isinstance(n, ast.Name)}
+        assert not names & {"TRAINING_EVENTS", "_TRAINING_EVENTS_BASE"}, fn.__name__
+
+
+def test_explicit_native_events_are_byte_identical_to_pre_change_golden():
+    """Golden captured from origin/main (7d1130703) BEFORE the default was removed,
+    passing the native's events explicitly: 185 candidate rows + the best row, with
+    the stub ascendant. Removing the default must not move a single byte."""
+    rows = run_rectification(_stub_ascendant, training_events=list(E.TRAINING_EVENTS))
+    best = select_best(rows, training_events=list(E.TRAINING_EVENTS))
+    text = json.dumps({"rows": _plain(rows), "best": _plain(best)}, sort_keys=True, indent=1) + "\n"
+    assert text.encode("utf-8") == _GOLDEN.read_bytes()
+
+
+def test_non_native_events_never_inherit_native_counts():
+    other = [TrainingEvent("SYN.1", datetime(2005, 1, 1, tzinfo=timezone.utc), "career", "Mars", "exact")]
+    rows = run_rectification(_stub_ascendant, training_events=other, dasha_lord_natal_sign_index={"Mars": 0})
+    assert all(r.lel_events_tested == 1 for r in rows)

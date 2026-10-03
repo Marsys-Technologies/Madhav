@@ -448,7 +448,7 @@ def score_candidate(
     EVERY ayanamsha. Returns one RectificationCandidate per ayanamsha.
     """
     if training_events is None:
-        training_events = _firewall_filter(TRAINING_EVENTS)
+        raise ValueError(_NO_TRAINING_EVENTS_MSG)
     base_utc = recorded_birth_utc if recorded_birth_utc is not None else RECORDED_BIRTH_UTC
 
     cand_birth = base_utc + timedelta(minutes=offset_minutes)
@@ -502,18 +502,18 @@ def run_rectification(
     the module-level RECORDED_BIRTH_UTC constant (native Abhisek Mohanty).
     Always pass this from ctx.config['birth_params'] for non-native charts.
 
-    JL-017 (CONTAMINATION-CLASS): training_events/dasha_lord_natal_sign_index
-    default to the native's own embedded TRAINING_EVENTS/_DASHA_LORD_NATAL_SIGN_INDEX
-    ONLY for backward compatibility of direct callers (e.g. tests); the writer
-    MUST pass explicit chart-scoped values (or refuse to score) for any chart
-    other than the native's own chart — never let another chart silently inherit
-    the native's life events / natal dasha-lord positions.
+    JL-017 (CONTAMINATION-CLASS) + F7: training_events is REQUIRED (None raises
+    ValueError; [] is a valid no-events run). There is NO fallback to the native's
+    embedded TRAINING_EVENTS, so a missing wiring can never silently apply one
+    chart's life events to another. (dasha_lord_natal_sign_index still defaults to
+    the native's map when None; the writer passes its own chart-scoped map.)
+    Direct callers (tests) pass the native set explicitly via a named fixture.
 
     Returns a flat list of RectificationCandidate (37 * 5 = 185 rows).
     """
     # Reference signs from the recorded time (offset 0).
     reference_signs = {ay: ascendant_fn(0, ay)["sign"] for ay in AYANAMSHAS}
-    training = _firewall_filter(training_events if training_events is not None else TRAINING_EVENTS)
+    training = _firewall_filter(_require_training_events(training_events))
 
     results: list[RectificationCandidate] = []
     for off in build_candidate_offsets():
@@ -547,10 +547,10 @@ def select_best(
     training_events must be the SAME list passed to run_rectification() for these
     candidates — this only affects the reported lel_training_events/firewall_note
     metadata (candidates already carry their own lel_fit_score/lel_events_tested
-    from scoring); defaults to the native's TRAINING_EVENTS for backward
-    compatibility of direct callers.
+    from scoring); REQUIRED (None raises ValueError, F7) — no native fallback,
+    [] is valid.
     """
-    training = _firewall_filter(training_events if training_events is not None else TRAINING_EVENTS)
+    training = _firewall_filter(_require_training_events(training_events))
     n_training = len(training)
     firewall_note = (
         f"LEAKAGE-FIREWALL: {n_training} training events (all pre-2020-01-01, "
@@ -626,3 +626,16 @@ def select_best(
         lel_training_matched=rep.lel_events_matched,
         leakage_firewall_note=firewall_note,
     )
+
+
+_NO_TRAINING_EVENTS_MSG = (
+    "training_events is required: the engine never defaults to the native's embedded "
+    "TRAINING_EVENTS (F7). Pass this chart's own events; pass [] for a chart with none."
+)
+
+
+def _require_training_events(training_events):
+    """F7: a missing (None) training set is a wiring bug, never 'use the native's'."""
+    if training_events is None:
+        raise ValueError(_NO_TRAINING_EVENTS_MSG)
+    return training_events
