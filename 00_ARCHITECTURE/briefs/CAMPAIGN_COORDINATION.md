@@ -8498,3 +8498,15 @@ Resume condition for everything downstream: a successful protected deploy with 1
 - Post-merge CI run `36918560871` passed. Automatic deployment run `36920639596` succeeded. Cloud Run `amjis-web` showed revision `amjis-web-probe-2992093bc962-36920639596-1` at 100% traffic. Neither PR introduced a migration; no direct production SQL or paid provider prompt was run under this lease.
 - Authenticated production UI loaded Cockpit, AI Console, and Observatory Overview, Analytics, and Consumption. Cockpit displayed a summary and two sections. Portal Overview displayed the activity graph and 66 calls split as 0 customer calls and 66 validation checks. Analytics customer filter showed no activity, while validation showed 66 calls. Consumption displayed `System probe` and `Automated check · api · validation`; selecting Abhisek Mohanty showed his separate scope and older aggregate estimates.
 - Accuracy limit: the 66 observed probe calls ended with planner errors and had no input/output usage receipts or priced cost. Live successful provider-token capture and exact cost remain unverified. The UI correctly marks these calls incomplete instead of inventing token or cost values. Provider execution repair was outside this lease; no provider route or credential was changed.
+
+
+---
+
+## 2026-10-03 — AI full-circle acceptance and gap repairs
+
+- Lease ID: L-AI-CIRCLE-ACCEPTANCE-20261003; holder: Codex.
+- Started: 2026-10-03T12:03:25.904521+00:00; expiry: 2026-10-03T18:03:25.904521+00:00; status: ACTIVE — LOCAL SOURCE AND TESTS.
+- Worktree: `/Users/Dev/.codex/worktrees/ai-circle-acceptance/Madhav`; branch `codex/ai-circle-acceptance`.
+- Authority: user requested implementing the agreed full-circle acceptance programme and fixing its gaps.
+- Scope: AI Console execution, metering ownership/receipts, user usage/Observatory reconciliation, execution-path inventory, acceptance tests, task-owned evidence and runbook. All source changes remain local and reviewable.
+- No production deployment, live provider/CLI generation, credential/IAM/network change, protected merge, chart/build/rebuild, applied migration edit, foreign worktree edit or unrelated campaign state mutation. Existing ACTIVE-labelled older entries are expired and are not revived.
