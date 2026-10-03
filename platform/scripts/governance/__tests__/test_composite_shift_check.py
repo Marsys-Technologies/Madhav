@@ -4,6 +4,8 @@ flip_detector.py cannot separate a row's class label from its continuous number 
 the label check and the per-row numeric bound live in this script. These tests pin that it PASSES the declared change and FAILS every
 deviation (each CS check has tamper cases, and each numeric bound is tested one step inside and one step beyond), so it cannot be a vacuous green.
 No database, no network: states are the in-memory snapshots of _composite_shift_fixture.py (synthetic values, rehearsal move pattern).
+No PyJHora / swisseph / ga_writers import: the two pins that need them (the PyJHora longevity constants and the CS6 writer-boundary pins) live in
+platform/python-sidecar/tests/test_composite_shift_check_pyjhora_pins.py, because the governance CI job has no PyJHora.
 """
 from __future__ import annotations
 
@@ -43,19 +45,13 @@ def test_the_script_table_and_the_fixture_table_are_the_same_transcription_of_th
     assert tuple(M.VARGAS) == tuple(F.VARGAS)
 
 
-def test_the_longevity_slopes_are_the_pyjhora_constants_the_writer_delegates_to():
-    from jhora import const
-    assert tuple(const.pindayu_full_longevity_of_planets) == M.PINDAYU_FULL
-    assert tuple(const.nisargayu_full_longevity_of_planets) == M.NISARGAYU_FULL
-
-
 def test_the_rounding_steps_are_the_writers_own():
     root = REPO / "platform/python-sidecar/ga_writers"
     assert 'round(deg_in_sign, 6)' in (root / "ga_vargas_writer.py").read_text() and "deg_in_sign = d1_long % 30.0" in (root / "ga_vargas_writer.py").read_text()
     sdc = (root / "ga_sensitive_degree_writer.py").read_text()
     assert '"orb_deg": round(orb, 4)' in sdc and '"bhaga_orb_deg": round(bhaga_orb, 4)' in sdc
     ayu = (root / "ga_ayurdaya_writer.py").read_text()
-    assert "round(float(v), 4)" in ayu and "round(total, 4)" in ayu  # (the 60/200 slope lives in PyJHora's _amsayu, method=2; test_the_longevity_slopes pins the full-longevity tables)
+    assert "round(float(v), 4)" in ayu and "round(total, 4)" in ayu  # (the 60/200 slope lives in PyJHora's _amsayu, method=2; the full-longevity tables are pinned in platform/python-sidecar/tests/test_composite_shift_check_pyjhora_pins.py, which needs PyJHora)
     assert M.VARGA_STEP_DEG == 1e-6 and M.SDC_STEP_DEG == 1e-4 and M.AYU_STEP_YEARS == 1e-4 and M.AMSAYU_SLOPE == pytest.approx(0.3)
 
 
@@ -211,39 +207,6 @@ def test_CS5_the_changed_row_count_must_lie_in_the_derived_bound():
 
 
 # ----------------------------------------------------------------------------------------------- CS6: the label expectation is derived (x n per varga)
-SIDECAR = REPO / "platform/python-sidecar"
-
-
-def _writers():
-    import sys
-    if str(SIDECAR) not in sys.path:
-        sys.path.insert(0, str(SIDECAR))
-    from ga_writers import ga_ayurdaya_writer, ga_sensitive_degree_writer, ga_vargas_writer
-    return ga_vargas_writer, ga_sensitive_degree_writer, ga_ayurdaya_writer
-
-
-def test_CS6_label_boundaries_are_the_writers_own():
-    """The model: every varga's sign changes exactly at multiples of 30/n of the D1 longitude, nowhere else; the mrityu tolerances,
-    pushkara navamsa starts / arc / bhaga orb and the ayus class edges are the writers' (PyJHora const) values."""
-    from jhora import const
-    gv, gs, ga = _writers()
-
-    def sign(n, lam):
-        return gv._compute_d2_hora(lam) if n == 2 else gv._compute_d3_drekkana(lam) if n == 3 else \
-            int(lam / 30.0) % 12 if n == 1 else gv._compute_general_varga(lam, n)
-    eps = 1e-7
-    for n in (int(v[1:]) for v in M.VARGAS):
-        step = 30.0 / n
-        for k in (1, 7, n + 3, 11 * n - 1):                        # boundaries inside and at the edges of signs
-            b = k * step
-            assert sign(n, b - eps) != sign(n, b + eps), (n, k)    # a boundary flips the label...
-            assert sign(n, b + eps) == sign(n, b + step - eps), (n, k)   # ...and nothing flips it inside one amsa
-    assert {g: M.MRITYU_TOL[g] for g in M.MRITYU_TOL} == {g: gs.mrityu_bhaga_tolerance(g) for g in M.MRITYU_TOL}
-    assert tuple(const.pushkara_navamsa) == M.PUSHKARA_NAVAMSA_START and gs.PUSHKARA_NAVAMSA_ARC == M.PUSHKARA_NAVAMSA_ARC
-    assert "bhaga_orb <= 0.5" in (SIDECAR / "ga_writers/ga_sensitive_degree_writer.py").read_text() and M.PUSHKARA_BHAGA_ORB == 0.5
-    for edge in M.AYUS_BOUNDARIES:
-        assert ga.classify_ayus(edge - 1e-9) != ga.classify_ayus(edge)
-    assert [ga.classify_ayus(x) for x in (0.0, 31.9, 32.0, 63.9, 64.0, 120.0)] == ["alpayu", "alpayu", "madhyayu", "madhyayu", "purnayu", "purnayu"]
 
 
 def test_CS6_is_silent_on_the_fixture_base():
