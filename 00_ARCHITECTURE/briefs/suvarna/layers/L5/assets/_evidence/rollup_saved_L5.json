@@ -1,0 +1,3443 @@
+{
+ "registry_revision": 16,
+ "registry_fingerprint": "8b88e7b26f32fdf8f665533b96357c8c332fb142a7166a6468a0f64ec51cb97c",
+ "rollup": {
+  "lel_events": {
+   "Ldgr": {
+    "gate": "Ldgr",
+    "v": "NO_DETECTOR",
+    "checks": [
+     {
+      "criterion": "Ldgr.source_presence",
+      "v": "NO_DETECTOR",
+      "state": "UNKNOWN",
+      "reason": "not measured (target-table columns not supplied \u2014 applicability undecidable)"
+     }
+    ],
+    "registry_revision": 16,
+    "registry_fingerprint": "8b88e7b26f32fdf8f665533b96357c8c332fb142a7166a6468a0f64ec51cb97c"
+   },
+   "Idem": {
+    "gate": "Idem",
+    "v": "NO_DETECTOR",
+    "checks": [
+     {
+      "criterion": "Idem.pattern",
+      "v": "NO_DETECTOR",
+      "state": "MEASURED",
+      "reason": "N/A without a declared cause (cause=None): the inspector named no usable cause, so no rule can release it"
+     }
+    ],
+    "registry_revision": 16,
+    "registry_fingerprint": "8b88e7b26f32fdf8f665533b96357c8c332fb142a7166a6468a0f64ec51cb97c"
+   },
+   "Earn": {
+    "gate": "Earn",
+    "v": "NO_DETECTOR",
+    "checks": [
+     {
+      "criterion": "Earn.build_record",
+      "v": "NO_DETECTOR",
+      "state": "MEASURED",
+      "reason": "measured"
+     },
+     {
+      "criterion": "Earn.service_state",
+      "v": "NO_DETECTOR",
+      "state": "UNKNOWN",
+      "reason": "not measured (asset_kind not supplied \u2014 applicability undecidable)"
+     }
+    ],
+    "registry_revision": 16,
+    "registry_fingerprint": "8b88e7b26f32fdf8f665533b96357c8c332fb142a7166a6468a0f64ec51cb97c"
+   },
+   "Null": {
+    "gate": "Null",
+    "v": "NO_DETECTOR",
+    "checks": [
+     {
+      "criterion": "Null.schema_default",
+      "v": "NO_DETECTOR",
+      "state": "APPLIES",
+      "reason": "not measured (applies)"
+     },
+     {
+      "criterion": "Null.blank_rows",
+      "v": "NO_DETECTOR",
+      "state": "APPLIES",
+      "reason": "not measured (applies)"
+     }
+    ],
+    "registry_revision": 16,
+    "registry_fingerprint": "8b88e7b26f32fdf8f665533b96357c8c332fb142a7166a6468a0f64ec51cb97c"
+   },
+   "Vocab": {
+    "gate": "Vocab",
+    "v": "NO_DETECTOR",
+    "checks": [
+     {
+      "criterion": "Vocab.identity",
+      "v": "NO_DETECTOR",
+      "state": "APPLIES",
+      "reason": "not measured (applies)"
+     },
+     {
+      "criterion": "Vocab.alias",
+      "v": "NO_DETECTOR",
+      "state": "UNKNOWN",
+      "reason": "not measured (target-table columns not supplied \u2014 applicability undecidable)"
+     }
+    ],
+    "registry_revision": 16,
+    "registry_fingerprint": "8b88e7b26f32fdf8f665533b96357c8c332fb142a7166a6468a0f64ec51cb97c"
+   },
+   "Carr": {
+    "gate": "Carr",
+    "v": "NO_DETECTOR",
+    "checks": [
+     {
+      "criterion": "Carr.D1",
+      "v": "NO_DETECTOR",
+      "state": "APPLIES",
+      "reason": "not measured (applies)"
+     },
+     {
+      "criterion": "Carr.D2",
+      "v": "NO_DETECTOR",
+      "state": "APPLIES",
+      "reason": "not measured (applies)"
+     },
+     {
+      "criterion": "Carr.D3",
+      "v": "NO_DETECTOR",
+      "state": "APPLIES",
+      "reason": "not measured (applies)"
+     }
+    ],
+    "registry_revision": 16,
+    "registry_fingerprint": "8b88e7b26f32fdf8f665533b96357c8c332fb142a7166a6468a0f64ec51cb97c"
+   },
+   "Narr": {
+    "gate": "Narr",
+    "v": "NO_DETECTOR",
+    "checks": [
+     {
+      "criterion": "Narr.agree",
+      "v": "NO_DETECTOR",
+      "state": "APPLIES",
+      "reason": "not measured (applies)"
+     },
+     {
+      "criterion": "Narr.checkable",
+      "v": "NO_DETECTOR",
+      "state": "APPLIES",
+      "reason": "not measured (applies)"
+     },
+     {
+      "criterion": "Narr.fidelity_test",
+      "v": "NO_DETECTOR",
+      "state": "APPLIES",
+      "reason": "not measured (applies)"
+     },
+     {
+      "criterion": "Narr.lint",
+      "v": "NO_DETECTOR",
+      "state": "APPLIES",
+      "reason": "not measured (applies)"
+     }
+    ],
+    "registry_revision": 16,
+    "registry_fingerprint": "8b88e7b26f32fdf8f665533b96357c8c332fb142a7166a6468a0f64ec51cb97c"
+   },
+   "Dens": {
+    "gate": "Dens",
+    "v": "NO_DETECTOR",
+    "checks": [
+     {
+      "criterion": "Dens.served",
+      "v": "NO_DETECTOR",
+      "state": "MEASURED",
+      "reason": "N/A without a declared cause (cause=None): the inspector named no usable cause, so no rule can release it"
+     }
+    ],
+    "registry_revision": 16,
+    "registry_fingerprint": "8b88e7b26f32fdf8f665533b96357c8c332fb142a7166a6468a0f64ec51cb97c"
+   },
+   "Build": {
+    "gate": "Build",
+    "v": "FAIL",
+    "checks": [
+     {
+      "criterion": "Build.registered",
+      "v": "NO_DETECTOR",
+      "state": "MEASURED",
+      "reason": "N/A without a declared cause (cause=None): the inspector named no usable cause, so no rule can release it"
+     },
+     {
+      "criterion": "Build.contract",
+      "v": "NO_DETECTOR",
+      "state": "MEASURED",
+      "reason": "N/A without a declared cause (cause=None): the inspector named no usable cause, so no rule can release it"
+     },
+     {
+      "criterion": "Build.target",
+      "v": "NO_DETECTOR",
+      "state": "MEASURED",
+      "reason": "N/A without a declared cause (cause=None): the inspector named no usable cause, so no rule can release it"
+     },
+     {
+      "criterion": "Build.dag",
+      "v": "PASS",
+      "state": "MEASURED",
+      "reason": "measured"
+     },
+     {
+      "criterion": "Build.count_integrity",
+      "v": "PASS",
+      "state": "MEASURED",
+      "reason": "measured"
+     },
+     {
+      "criterion": "Build.completion",
+      "v": "FAIL",
+      "state": "MEASURED",
+      "reason": "measured"
+     },
+     {
+      "criterion": "Build.exercised",
+      "v": "NO_DETECTOR",
+      "state": "MEASURED",
+      "reason": "N/A without a declared cause (cause=None): the inspector named no usable cause, so no rule can release it"
+     },
+     {
+      "criterion": "Build.history",
+      "v": "NO_DETECTOR",
+      "state": "MEASURED",
+      "reason": "N/A without a declared cause (cause=None): the inspector named no usable cause, so no rule can release it"
+     },
+     {
+      "criterion": "Build.dep_liveness",
+      "v": "NO_DETECTOR",
+      "state": "MEASURED",
+      "reason": "N/A without a declared cause (cause=None): the inspector named no usable cause, so no rule can release it"
+     }
+    ],
+    "registry_revision": 16,
+    "registry_fingerprint": "8b88e7b26f32fdf8f665533b96357c8c332fb142a7166a6468a0f64ec51cb97c"
+   }
+  },
+  "mi_abhilekha": {
+   "Ldgr": {
+    "gate": "Ldgr",
+    "v": "NO_DETECTOR",
+    "checks": [
+     {
+      "criterion": "Ldgr.source_presence",
+      "v": "NO_DETECTOR",
+      "state": "UNKNOWN",
+      "reason": "not measured (target-table columns not supplied \u2014 applicability undecidable)"
+     }
+    ],
+    "registry_revision": 16,
+    "registry_fingerprint": "8b88e7b26f32fdf8f665533b96357c8c332fb142a7166a6468a0f64ec51cb97c"
+   },
+   "Idem": {
+    "gate": "Idem",
+    "v": "PARTIAL",
+    "checks": [
+     {
+      "criterion": "Idem.pattern",
+      "v": "PARTIAL",
+      "state": "MEASURED",
+      "reason": "measured"
+     }
+    ],
+    "registry_revision": 16,
+    "registry_fingerprint": "8b88e7b26f32fdf8f665533b96357c8c332fb142a7166a6468a0f64ec51cb97c"
+   },
+   "Earn": {
+    "gate": "Earn",
+    "v": "NO_DETECTOR",
+    "checks": [
+     {
+      "criterion": "Earn.build_record",
+      "v": "NO_DETECTOR",
+      "state": "MEASURED",
+      "reason": "measured"
+     },
+     {
+      "criterion": "Earn.service_state",
+      "v": "NO_DETECTOR",
+      "state": "UNKNOWN",
+      "reason": "not measured (asset_kind not supplied \u2014 applicability undecidable)"
+     }
+    ],
+    "registry_revision": 16,
+    "registry_fingerprint": "8b88e7b26f32fdf8f665533b96357c8c332fb142a7166a6468a0f64ec51cb97c"
+   },
+   "Null": {
+    "gate": "Null",
+    "v": "NO_DETECTOR",
+    "checks": [
+     {
+      "criterion": "Null.schema_default",
+      "v": "NO_DETECTOR",
+      "state": "APPLIES",
+      "reason": "not measured (applies)"
+     },
+     {
+      "criterion": "Null.blank_rows",
+      "v": "NO_DETECTOR",
+      "state": "APPLIES",
+      "reason": "not measured (applies)"
+     }
+    ],
+    "registry_revision": 16,
+    "registry_fingerprint": "8b88e7b26f32fdf8f665533b96357c8c332fb142a7166a6468a0f64ec51cb97c"
+   },
+   "Vocab": {
+    "gate": "Vocab",
+    "v": "NO_DETECTOR",
+    "checks": [
+     {
+      "criterion": "Vocab.identity",
+      "v": "NO_DETECTOR",
+      "state": "MEASURED",
+      "reason": "measured"
+     },
+     {
+      "criterion": "Vocab.alias",
+      "v": "NO_DETECTOR",
+      "state": "UNKNOWN",
+      "reason": "not measured (target-table columns not supplied \u2014 applicability undecidable)"
+     }
+    ],
+    "registry_revision": 16,
+    "registry_fingerprint": "8b88e7b26f32fdf8f665533b96357c8c332fb142a7166a6468a0f64ec51cb97c"
+   },
+   "Carr": {
+    "gate": "Carr",
+    "v": "NO_DETECTOR",
+    "checks": [
+     {
+      "criterion": "Carr.D1",
+      "v": "NO_DETECTOR",
+      "state": "APPLIES",
+      "reason": "not measured (applies)"
+     },
+     {
+      "criterion": "Carr.D2",
+      "v": "NO_DETECTOR",
+      "state": "APPLIES",
+      "reason": "not measured (applies)"
+     },
+     {
+      "criterion": "Carr.D3",
+      "v": "NO_DETECTOR",
+      "state": "APPLIES",
+      "reason": "not measured (applies)"
+     }
+    ],
+    "registry_revision": 16,
+    "registry_fingerprint": "8b88e7b26f32fdf8f665533b96357c8c332fb142a7166a6468a0f64ec51cb97c"
+   },
+   "Narr": {
+    "gate": "Narr",
+    "v": "NO_DETECTOR",
+    "checks": [
+     {
+      "criterion": "Narr.agree",
+      "v": "NO_DETECTOR",
+      "state": "APPLIES",
+      "reason": "not measured (applies)"
+     },
+     {
+      "criterion": "Narr.checkable",
+      "v": "NO_DETECTOR",
+      "state": "APPLIES",
+      "reason": "not measured (applies)"
+     },
+     {
+      "criterion": "Narr.fidelity_test",
+      "v": "NO_DETECTOR",
+      "state": "APPLIES",
+      "reason": "not measured (applies)"
+     },
+     {
+      "criterion": "Narr.lint",
+      "v": "NO_DETECTOR",
+      "state": "APPLIES",
+      "reason": "not measured (applies)"
+     }
+    ],
+    "registry_revision": 16,
+    "registry_fingerprint": "8b88e7b26f32fdf8f665533b96357c8c332fb142a7166a6468a0f64ec51cb97c"
+   },
+   "Dens": {
+    "gate": "Dens",
+    "v": "PASS",
+    "checks": [
+     {
+      "criterion": "Dens.served",
+      "v": "PASS",
+      "state": "MEASURED",
+      "reason": "measured"
+     }
+    ],
+    "registry_revision": 16,
+    "registry_fingerprint": "8b88e7b26f32fdf8f665533b96357c8c332fb142a7166a6468a0f64ec51cb97c"
+   },
+   "Build": {
+    "gate": "Build",
+    "v": "FAIL",
+    "checks": [
+     {
+      "criterion": "Build.registered",
+      "v": "PASS",
+      "state": "MEASURED",
+      "reason": "measured"
+     },
+     {
+      "criterion": "Build.contract",
+      "v": "PASS",
+      "state": "MEASURED",
+      "reason": "measured"
+     },
+     {
+      "criterion": "Build.target",
+      "v": "PASS",
+      "state": "MEASURED",
+      "reason": "measured"
+     },
+     {
+      "criterion": "Build.dag",
+      "v": "PASS",
+      "state": "MEASURED",
+      "reason": "measured"
+     },
+     {
+      "criterion": "Build.count_integrity",
+      "v": "PASS",
+      "state": "MEASURED",
+      "reason": "measured"
+     },
+     {
+      "criterion": "Build.completion",
+      "v": "PARTIAL",
+      "state": "MEASURED",
+      "reason": "measured"
+     },
+     {
+      "criterion": "Build.exercised",
+      "v": "PASS",
+      "state": "MEASURED",
+      "reason": "measured"
+     },
+     {
+      "criterion": "Build.history",
+      "v": "PARTIAL",
+      "state": "MEASURED",
+      "reason": "measured"
+     },
+     {
+      "criterion": "Build.dep_liveness",
+      "v": "FAIL",
+      "state": "MEASURED",
+      "reason": "measured"
+     }
+    ],
+    "registry_revision": 16,
+    "registry_fingerprint": "8b88e7b26f32fdf8f665533b96357c8c332fb142a7166a6468a0f64ec51cb97c"
+   }
+  },
+  "mi_adhilepa": {
+   "Ldgr": {
+    "gate": "Ldgr",
+    "v": "NO_DETECTOR",
+    "checks": [
+     {
+      "criterion": "Ldgr.source_presence",
+      "v": "NO_DETECTOR",
+      "state": "UNKNOWN",
+      "reason": "not measured (target-table columns not supplied \u2014 applicability undecidable)"
+     }
+    ],
+    "registry_revision": 16,
+    "registry_fingerprint": "8b88e7b26f32fdf8f665533b96357c8c332fb142a7166a6468a0f64ec51cb97c"
+   },
+   "Idem": {
+    "gate": "Idem",
+    "v": "PASS",
+    "checks": [
+     {
+      "criterion": "Idem.pattern",
+      "v": "PASS",
+      "state": "MEASURED",
+      "reason": "measured"
+     }
+    ],
+    "registry_revision": 16,
+    "registry_fingerprint": "8b88e7b26f32fdf8f665533b96357c8c332fb142a7166a6468a0f64ec51cb97c"
+   },
+   "Earn": {
+    "gate": "Earn",
+    "v": "NO_DETECTOR",
+    "checks": [
+     {
+      "criterion": "Earn.build_record",
+      "v": "NO_DETECTOR",
+      "state": "MEASURED",
+      "reason": "measured"
+     },
+     {
+      "criterion": "Earn.service_state",
+      "v": "NO_DETECTOR",
+      "state": "UNKNOWN",
+      "reason": "not measured (asset_kind not supplied \u2014 applicability undecidable)"
+     }
+    ],
+    "registry_revision": 16,
+    "registry_fingerprint": "8b88e7b26f32fdf8f665533b96357c8c332fb142a7166a6468a0f64ec51cb97c"
+   },
+   "Null": {
+    "gate": "Null",
+    "v": "NO_DETECTOR",
+    "checks": [
+     {
+      "criterion": "Null.schema_default",
+      "v": "NO_DETECTOR",
+      "state": "APPLIES",
+      "reason": "not measured (applies)"
+     },
+     {
+      "criterion": "Null.blank_rows",
+      "v": "NO_DETECTOR",
+      "state": "APPLIES",
+      "reason": "not measured (applies)"
+     }
+    ],
+    "registry_revision": 16,
+    "registry_fingerprint": "8b88e7b26f32fdf8f665533b96357c8c332fb142a7166a6468a0f64ec51cb97c"
+   },
+   "Vocab": {
+    "gate": "Vocab",
+    "v": "NO_DETECTOR",
+    "checks": [
+     {
+      "criterion": "Vocab.identity",
+      "v": "PASS",
+      "state": "MEASURED",
+      "reason": "measured"
+     },
+     {
+      "criterion": "Vocab.alias",
+      "v": "NO_DETECTOR",
+      "state": "UNKNOWN",
+      "reason": "not measured (target-table columns not supplied \u2014 applicability undecidable)"
+     }
+    ],
+    "registry_revision": 16,
+    "registry_fingerprint": "8b88e7b26f32fdf8f665533b96357c8c332fb142a7166a6468a0f64ec51cb97c"
+   },
+   "Carr": {
+    "gate": "Carr",
+    "v": "NO_DETECTOR",
+    "checks": [
+     {
+      "criterion": "Carr.D1",
+      "v": "NO_DETECTOR",
+      "state": "APPLIES",
+      "reason": "not measured (applies)"
+     },
+     {
+      "criterion": "Carr.D2",
+      "v": "NO_DETECTOR",
+      "state": "APPLIES",
+      "reason": "not measured (applies)"
+     },
+     {
+      "criterion": "Carr.D3",
+      "v": "NO_DETECTOR",
+      "state": "APPLIES",
+      "reason": "not measured (applies)"
+     }
+    ],
+    "registry_revision": 16,
+    "registry_fingerprint": "8b88e7b26f32fdf8f665533b96357c8c332fb142a7166a6468a0f64ec51cb97c"
+   },
+   "Narr": {
+    "gate": "Narr",
+    "v": "NO_DETECTOR",
+    "checks": [
+     {
+      "criterion": "Narr.agree",
+      "v": "NO_DETECTOR",
+      "state": "APPLIES",
+      "reason": "not measured (applies)"
+     },
+     {
+      "criterion": "Narr.checkable",
+      "v": "NO_DETECTOR",
+      "state": "APPLIES",
+      "reason": "not measured (applies)"
+     },
+     {
+      "criterion": "Narr.fidelity_test",
+      "v": "NO_DETECTOR",
+      "state": "APPLIES",
+      "reason": "not measured (applies)"
+     },
+     {
+      "criterion": "Narr.lint",
+      "v": "NO_DETECTOR",
+      "state": "APPLIES",
+      "reason": "not measured (applies)"
+     }
+    ],
+    "registry_revision": 16,
+    "registry_fingerprint": "8b88e7b26f32fdf8f665533b96357c8c332fb142a7166a6468a0f64ec51cb97c"
+   },
+   "Dens": {
+    "gate": "Dens",
+    "v": "PASS",
+    "checks": [
+     {
+      "criterion": "Dens.served",
+      "v": "PASS",
+      "state": "MEASURED",
+      "reason": "measured"
+     }
+    ],
+    "registry_revision": 16,
+    "registry_fingerprint": "8b88e7b26f32fdf8f665533b96357c8c332fb142a7166a6468a0f64ec51cb97c"
+   },
+   "Build": {
+    "gate": "Build",
+    "v": "FAIL",
+    "checks": [
+     {
+      "criterion": "Build.registered",
+      "v": "PASS",
+      "state": "MEASURED",
+      "reason": "measured"
+     },
+     {
+      "criterion": "Build.contract",
+      "v": "PASS",
+      "state": "MEASURED",
+      "reason": "measured"
+     },
+     {
+      "criterion": "Build.target",
+      "v": "PASS",
+      "state": "MEASURED",
+      "reason": "measured"
+     },
+     {
+      "criterion": "Build.dag",
+      "v": "PASS",
+      "state": "MEASURED",
+      "reason": "measured"
+     },
+     {
+      "criterion": "Build.count_integrity",
+      "v": "PASS",
+      "state": "MEASURED",
+      "reason": "measured"
+     },
+     {
+      "criterion": "Build.completion",
+      "v": "FAIL",
+      "state": "MEASURED",
+      "reason": "measured"
+     },
+     {
+      "criterion": "Build.exercised",
+      "v": "PASS",
+      "state": "MEASURED",
+      "reason": "measured"
+     },
+     {
+      "criterion": "Build.history",
+      "v": "FAIL",
+      "state": "MEASURED",
+      "reason": "measured"
+     },
+     {
+      "criterion": "Build.dep_liveness",
+      "v": "FAIL",
+      "state": "MEASURED",
+      "reason": "measured"
+     }
+    ],
+    "registry_revision": 16,
+    "registry_fingerprint": "8b88e7b26f32fdf8f665533b96357c8c332fb142a7166a6468a0f64ec51cb97c"
+   }
+  },
+  "mi_bhara": {
+   "Ldgr": {
+    "gate": "Ldgr",
+    "v": "NO_DETECTOR",
+    "checks": [
+     {
+      "criterion": "Ldgr.source_presence",
+      "v": "NO_DETECTOR",
+      "state": "UNKNOWN",
+      "reason": "not measured (target-table columns not supplied \u2014 applicability undecidable)"
+     }
+    ],
+    "registry_revision": 16,
+    "registry_fingerprint": "8b88e7b26f32fdf8f665533b96357c8c332fb142a7166a6468a0f64ec51cb97c"
+   },
+   "Idem": {
+    "gate": "Idem",
+    "v": "PASS",
+    "checks": [
+     {
+      "criterion": "Idem.pattern",
+      "v": "PASS",
+      "state": "MEASURED",
+      "reason": "measured"
+     }
+    ],
+    "registry_revision": 16,
+    "registry_fingerprint": "8b88e7b26f32fdf8f665533b96357c8c332fb142a7166a6468a0f64ec51cb97c"
+   },
+   "Earn": {
+    "gate": "Earn",
+    "v": "NO_DETECTOR",
+    "checks": [
+     {
+      "criterion": "Earn.build_record",
+      "v": "NO_DETECTOR",
+      "state": "MEASURED",
+      "reason": "measured"
+     },
+     {
+      "criterion": "Earn.service_state",
+      "v": "NO_DETECTOR",
+      "state": "UNKNOWN",
+      "reason": "not measured (asset_kind not supplied \u2014 applicability undecidable)"
+     }
+    ],
+    "registry_revision": 16,
+    "registry_fingerprint": "8b88e7b26f32fdf8f665533b96357c8c332fb142a7166a6468a0f64ec51cb97c"
+   },
+   "Null": {
+    "gate": "Null",
+    "v": "NO_DETECTOR",
+    "checks": [
+     {
+      "criterion": "Null.schema_default",
+      "v": "NO_DETECTOR",
+      "state": "APPLIES",
+      "reason": "not measured (applies)"
+     },
+     {
+      "criterion": "Null.blank_rows",
+      "v": "NO_DETECTOR",
+      "state": "APPLIES",
+      "reason": "not measured (applies)"
+     }
+    ],
+    "registry_revision": 16,
+    "registry_fingerprint": "8b88e7b26f32fdf8f665533b96357c8c332fb142a7166a6468a0f64ec51cb97c"
+   },
+   "Vocab": {
+    "gate": "Vocab",
+    "v": "NO_DETECTOR",
+    "checks": [
+     {
+      "criterion": "Vocab.identity",
+      "v": "PASS",
+      "state": "MEASURED",
+      "reason": "measured"
+     },
+     {
+      "criterion": "Vocab.alias",
+      "v": "NO_DETECTOR",
+      "state": "UNKNOWN",
+      "reason": "not measured (target-table columns not supplied \u2014 applicability undecidable)"
+     }
+    ],
+    "registry_revision": 16,
+    "registry_fingerprint": "8b88e7b26f32fdf8f665533b96357c8c332fb142a7166a6468a0f64ec51cb97c"
+   },
+   "Carr": {
+    "gate": "Carr",
+    "v": "NO_DETECTOR",
+    "checks": [
+     {
+      "criterion": "Carr.D1",
+      "v": "NO_DETECTOR",
+      "state": "APPLIES",
+      "reason": "not measured (applies)"
+     },
+     {
+      "criterion": "Carr.D2",
+      "v": "NO_DETECTOR",
+      "state": "APPLIES",
+      "reason": "not measured (applies)"
+     },
+     {
+      "criterion": "Carr.D3",
+      "v": "NO_DETECTOR",
+      "state": "APPLIES",
+      "reason": "not measured (applies)"
+     }
+    ],
+    "registry_revision": 16,
+    "registry_fingerprint": "8b88e7b26f32fdf8f665533b96357c8c332fb142a7166a6468a0f64ec51cb97c"
+   },
+   "Narr": {
+    "gate": "Narr",
+    "v": "NO_DETECTOR",
+    "checks": [
+     {
+      "criterion": "Narr.agree",
+      "v": "NO_DETECTOR",
+      "state": "APPLIES",
+      "reason": "not measured (applies)"
+     },
+     {
+      "criterion": "Narr.checkable",
+      "v": "NO_DETECTOR",
+      "state": "APPLIES",
+      "reason": "not measured (applies)"
+     },
+     {
+      "criterion": "Narr.fidelity_test",
+      "v": "NO_DETECTOR",
+      "state": "APPLIES",
+      "reason": "not measured (applies)"
+     },
+     {
+      "criterion": "Narr.lint",
+      "v": "NO_DETECTOR",
+      "state": "APPLIES",
+      "reason": "not measured (applies)"
+     }
+    ],
+    "registry_revision": 16,
+    "registry_fingerprint": "8b88e7b26f32fdf8f665533b96357c8c332fb142a7166a6468a0f64ec51cb97c"
+   },
+   "Dens": {
+    "gate": "Dens",
+    "v": "NO_DETECTOR",
+    "checks": [
+     {
+      "criterion": "Dens.served",
+      "v": "NO_DETECTOR",
+      "state": "MEASURED",
+      "reason": "N/A without a declared cause (cause=None): the inspector named no usable cause, so no rule can release it"
+     }
+    ],
+    "registry_revision": 16,
+    "registry_fingerprint": "8b88e7b26f32fdf8f665533b96357c8c332fb142a7166a6468a0f64ec51cb97c"
+   },
+   "Build": {
+    "gate": "Build",
+    "v": "FAIL",
+    "checks": [
+     {
+      "criterion": "Build.registered",
+      "v": "PASS",
+      "state": "MEASURED",
+      "reason": "measured"
+     },
+     {
+      "criterion": "Build.contract",
+      "v": "PASS",
+      "state": "MEASURED",
+      "reason": "measured"
+     },
+     {
+      "criterion": "Build.target",
+      "v": "PASS",
+      "state": "MEASURED",
+      "reason": "measured"
+     },
+     {
+      "criterion": "Build.dag",
+      "v": "PASS",
+      "state": "MEASURED",
+      "reason": "measured"
+     },
+     {
+      "criterion": "Build.count_integrity",
+      "v": "PASS",
+      "state": "MEASURED",
+      "reason": "measured"
+     },
+     {
+      "criterion": "Build.completion",
+      "v": "FAIL",
+      "state": "MEASURED",
+      "reason": "measured"
+     },
+     {
+      "criterion": "Build.exercised",
+      "v": "PASS",
+      "state": "MEASURED",
+      "reason": "measured"
+     },
+     {
+      "criterion": "Build.history",
+      "v": "FAIL",
+      "state": "MEASURED",
+      "reason": "measured"
+     },
+     {
+      "criterion": "Build.dep_liveness",
+      "v": "FAIL",
+      "state": "MEASURED",
+      "reason": "measured"
+     }
+    ],
+    "registry_revision": 16,
+    "registry_fingerprint": "8b88e7b26f32fdf8f665533b96357c8c332fb142a7166a6468a0f64ec51cb97c"
+   }
+  },
+  "mi_bhavisya": {
+   "Ldgr": {
+    "gate": "Ldgr",
+    "v": "NO_DETECTOR",
+    "checks": [
+     {
+      "criterion": "Ldgr.source_presence",
+      "v": "NO_DETECTOR",
+      "state": "UNKNOWN",
+      "reason": "not measured (target-table columns not supplied \u2014 applicability undecidable)"
+     }
+    ],
+    "registry_revision": 16,
+    "registry_fingerprint": "8b88e7b26f32fdf8f665533b96357c8c332fb142a7166a6468a0f64ec51cb97c"
+   },
+   "Idem": {
+    "gate": "Idem",
+    "v": "PASS",
+    "checks": [
+     {
+      "criterion": "Idem.pattern",
+      "v": "PASS",
+      "state": "MEASURED",
+      "reason": "measured"
+     }
+    ],
+    "registry_revision": 16,
+    "registry_fingerprint": "8b88e7b26f32fdf8f665533b96357c8c332fb142a7166a6468a0f64ec51cb97c"
+   },
+   "Earn": {
+    "gate": "Earn",
+    "v": "NO_DETECTOR",
+    "checks": [
+     {
+      "criterion": "Earn.build_record",
+      "v": "NO_DETECTOR",
+      "state": "MEASURED",
+      "reason": "measured"
+     },
+     {
+      "criterion": "Earn.service_state",
+      "v": "NO_DETECTOR",
+      "state": "UNKNOWN",
+      "reason": "not measured (asset_kind not supplied \u2014 applicability undecidable)"
+     }
+    ],
+    "registry_revision": 16,
+    "registry_fingerprint": "8b88e7b26f32fdf8f665533b96357c8c332fb142a7166a6468a0f64ec51cb97c"
+   },
+   "Null": {
+    "gate": "Null",
+    "v": "NO_DETECTOR",
+    "checks": [
+     {
+      "criterion": "Null.schema_default",
+      "v": "NO_DETECTOR",
+      "state": "APPLIES",
+      "reason": "not measured (applies)"
+     },
+     {
+      "criterion": "Null.blank_rows",
+      "v": "NO_DETECTOR",
+      "state": "APPLIES",
+      "reason": "not measured (applies)"
+     }
+    ],
+    "registry_revision": 16,
+    "registry_fingerprint": "8b88e7b26f32fdf8f665533b96357c8c332fb142a7166a6468a0f64ec51cb97c"
+   },
+   "Vocab": {
+    "gate": "Vocab",
+    "v": "NO_DETECTOR",
+    "checks": [
+     {
+      "criterion": "Vocab.identity",
+      "v": "PASS",
+      "state": "MEASURED",
+      "reason": "measured"
+     },
+     {
+      "criterion": "Vocab.alias",
+      "v": "NO_DETECTOR",
+      "state": "UNKNOWN",
+      "reason": "not measured (target-table columns not supplied \u2014 applicability undecidable)"
+     }
+    ],
+    "registry_revision": 16,
+    "registry_fingerprint": "8b88e7b26f32fdf8f665533b96357c8c332fb142a7166a6468a0f64ec51cb97c"
+   },
+   "Carr": {
+    "gate": "Carr",
+    "v": "NO_DETECTOR",
+    "checks": [
+     {
+      "criterion": "Carr.D1",
+      "v": "NO_DETECTOR",
+      "state": "APPLIES",
+      "reason": "not measured (applies)"
+     },
+     {
+      "criterion": "Carr.D2",
+      "v": "NO_DETECTOR",
+      "state": "APPLIES",
+      "reason": "not measured (applies)"
+     },
+     {
+      "criterion": "Carr.D3",
+      "v": "NO_DETECTOR",
+      "state": "APPLIES",
+      "reason": "not measured (applies)"
+     }
+    ],
+    "registry_revision": 16,
+    "registry_fingerprint": "8b88e7b26f32fdf8f665533b96357c8c332fb142a7166a6468a0f64ec51cb97c"
+   },
+   "Narr": {
+    "gate": "Narr",
+    "v": "NO_DETECTOR",
+    "checks": [
+     {
+      "criterion": "Narr.agree",
+      "v": "NO_DETECTOR",
+      "state": "APPLIES",
+      "reason": "not measured (applies)"
+     },
+     {
+      "criterion": "Narr.checkable",
+      "v": "NO_DETECTOR",
+      "state": "APPLIES",
+      "reason": "not measured (applies)"
+     },
+     {
+      "criterion": "Narr.fidelity_test",
+      "v": "NO_DETECTOR",
+      "state": "APPLIES",
+      "reason": "not measured (applies)"
+     },
+     {
+      "criterion": "Narr.lint",
+      "v": "NO_DETECTOR",
+      "state": "APPLIES",
+      "reason": "not measured (applies)"
+     }
+    ],
+    "registry_revision": 16,
+    "registry_fingerprint": "8b88e7b26f32fdf8f665533b96357c8c332fb142a7166a6468a0f64ec51cb97c"
+   },
+   "Dens": {
+    "gate": "Dens",
+    "v": "PASS",
+    "checks": [
+     {
+      "criterion": "Dens.served",
+      "v": "PASS",
+      "state": "MEASURED",
+      "reason": "measured"
+     }
+    ],
+    "registry_revision": 16,
+    "registry_fingerprint": "8b88e7b26f32fdf8f665533b96357c8c332fb142a7166a6468a0f64ec51cb97c"
+   },
+   "Build": {
+    "gate": "Build",
+    "v": "FAIL",
+    "checks": [
+     {
+      "criterion": "Build.registered",
+      "v": "PASS",
+      "state": "MEASURED",
+      "reason": "measured"
+     },
+     {
+      "criterion": "Build.contract",
+      "v": "PASS",
+      "state": "MEASURED",
+      "reason": "measured"
+     },
+     {
+      "criterion": "Build.target",
+      "v": "PASS",
+      "state": "MEASURED",
+      "reason": "measured"
+     },
+     {
+      "criterion": "Build.dag",
+      "v": "PASS",
+      "state": "MEASURED",
+      "reason": "measured"
+     },
+     {
+      "criterion": "Build.count_integrity",
+      "v": "PASS",
+      "state": "MEASURED",
+      "reason": "measured"
+     },
+     {
+      "criterion": "Build.completion",
+      "v": "FAIL",
+      "state": "MEASURED",
+      "reason": "measured"
+     },
+     {
+      "criterion": "Build.exercised",
+      "v": "PASS",
+      "state": "MEASURED",
+      "reason": "measured"
+     },
+     {
+      "criterion": "Build.history",
+      "v": "FAIL",
+      "state": "MEASURED",
+      "reason": "measured"
+     },
+     {
+      "criterion": "Build.dep_liveness",
+      "v": "PARTIAL",
+      "state": "MEASURED",
+      "reason": "measured"
+     }
+    ],
+    "registry_revision": 16,
+    "registry_fingerprint": "8b88e7b26f32fdf8f665533b96357c8c332fb142a7166a6468a0f64ec51cb97c"
+   }
+  },
+  "mi_darshana": {
+   "Ldgr": {
+    "gate": "Ldgr",
+    "v": "NO_DETECTOR",
+    "checks": [
+     {
+      "criterion": "Ldgr.source_presence",
+      "v": "NO_DETECTOR",
+      "state": "UNKNOWN",
+      "reason": "not measured (target-table columns not supplied \u2014 applicability undecidable)"
+     }
+    ],
+    "registry_revision": 16,
+    "registry_fingerprint": "8b88e7b26f32fdf8f665533b96357c8c332fb142a7166a6468a0f64ec51cb97c"
+   },
+   "Idem": {
+    "gate": "Idem",
+    "v": "PASS",
+    "checks": [
+     {
+      "criterion": "Idem.pattern",
+      "v": "PASS",
+      "state": "MEASURED",
+      "reason": "measured"
+     }
+    ],
+    "registry_revision": 16,
+    "registry_fingerprint": "8b88e7b26f32fdf8f665533b96357c8c332fb142a7166a6468a0f64ec51cb97c"
+   },
+   "Earn": {
+    "gate": "Earn",
+    "v": "NO_DETECTOR",
+    "checks": [
+     {
+      "criterion": "Earn.build_record",
+      "v": "NO_DETECTOR",
+      "state": "MEASURED",
+      "reason": "measured"
+     },
+     {
+      "criterion": "Earn.service_state",
+      "v": "NO_DETECTOR",
+      "state": "UNKNOWN",
+      "reason": "not measured (asset_kind not supplied \u2014 applicability undecidable)"
+     }
+    ],
+    "registry_revision": 16,
+    "registry_fingerprint": "8b88e7b26f32fdf8f665533b96357c8c332fb142a7166a6468a0f64ec51cb97c"
+   },
+   "Null": {
+    "gate": "Null",
+    "v": "NO_DETECTOR",
+    "checks": [
+     {
+      "criterion": "Null.schema_default",
+      "v": "NO_DETECTOR",
+      "state": "APPLIES",
+      "reason": "not measured (applies)"
+     },
+     {
+      "criterion": "Null.blank_rows",
+      "v": "NO_DETECTOR",
+      "state": "APPLIES",
+      "reason": "not measured (applies)"
+     }
+    ],
+    "registry_revision": 16,
+    "registry_fingerprint": "8b88e7b26f32fdf8f665533b96357c8c332fb142a7166a6468a0f64ec51cb97c"
+   },
+   "Vocab": {
+    "gate": "Vocab",
+    "v": "NO_DETECTOR",
+    "checks": [
+     {
+      "criterion": "Vocab.identity",
+      "v": "PASS",
+      "state": "MEASURED",
+      "reason": "measured"
+     },
+     {
+      "criterion": "Vocab.alias",
+      "v": "NO_DETECTOR",
+      "state": "UNKNOWN",
+      "reason": "not measured (target-table columns not supplied \u2014 applicability undecidable)"
+     }
+    ],
+    "registry_revision": 16,
+    "registry_fingerprint": "8b88e7b26f32fdf8f665533b96357c8c332fb142a7166a6468a0f64ec51cb97c"
+   },
+   "Carr": {
+    "gate": "Carr",
+    "v": "NO_DETECTOR",
+    "checks": [
+     {
+      "criterion": "Carr.D1",
+      "v": "NO_DETECTOR",
+      "state": "APPLIES",
+      "reason": "not measured (applies)"
+     },
+     {
+      "criterion": "Carr.D2",
+      "v": "NO_DETECTOR",
+      "state": "APPLIES",
+      "reason": "not measured (applies)"
+     },
+     {
+      "criterion": "Carr.D3",
+      "v": "NO_DETECTOR",
+      "state": "APPLIES",
+      "reason": "not measured (applies)"
+     }
+    ],
+    "registry_revision": 16,
+    "registry_fingerprint": "8b88e7b26f32fdf8f665533b96357c8c332fb142a7166a6468a0f64ec51cb97c"
+   },
+   "Narr": {
+    "gate": "Narr",
+    "v": "NO_DETECTOR",
+    "checks": [
+     {
+      "criterion": "Narr.agree",
+      "v": "NO_DETECTOR",
+      "state": "APPLIES",
+      "reason": "not measured (applies)"
+     },
+     {
+      "criterion": "Narr.checkable",
+      "v": "NO_DETECTOR",
+      "state": "APPLIES",
+      "reason": "not measured (applies)"
+     },
+     {
+      "criterion": "Narr.fidelity_test",
+      "v": "NO_DETECTOR",
+      "state": "APPLIES",
+      "reason": "not measured (applies)"
+     },
+     {
+      "criterion": "Narr.lint",
+      "v": "NO_DETECTOR",
+      "state": "APPLIES",
+      "reason": "not measured (applies)"
+     }
+    ],
+    "registry_revision": 16,
+    "registry_fingerprint": "8b88e7b26f32fdf8f665533b96357c8c332fb142a7166a6468a0f64ec51cb97c"
+   },
+   "Dens": {
+    "gate": "Dens",
+    "v": "PASS",
+    "checks": [
+     {
+      "criterion": "Dens.served",
+      "v": "PASS",
+      "state": "MEASURED",
+      "reason": "measured"
+     }
+    ],
+    "registry_revision": 16,
+    "registry_fingerprint": "8b88e7b26f32fdf8f665533b96357c8c332fb142a7166a6468a0f64ec51cb97c"
+   },
+   "Build": {
+    "gate": "Build",
+    "v": "FAIL",
+    "checks": [
+     {
+      "criterion": "Build.registered",
+      "v": "PASS",
+      "state": "MEASURED",
+      "reason": "measured"
+     },
+     {
+      "criterion": "Build.contract",
+      "v": "PASS",
+      "state": "MEASURED",
+      "reason": "measured"
+     },
+     {
+      "criterion": "Build.target",
+      "v": "PASS",
+      "state": "MEASURED",
+      "reason": "measured"
+     },
+     {
+      "criterion": "Build.dag",
+      "v": "PASS",
+      "state": "MEASURED",
+      "reason": "measured"
+     },
+     {
+      "criterion": "Build.count_integrity",
+      "v": "PASS",
+      "state": "MEASURED",
+      "reason": "measured"
+     },
+     {
+      "criterion": "Build.completion",
+      "v": "FAIL",
+      "state": "MEASURED",
+      "reason": "measured"
+     },
+     {
+      "criterion": "Build.exercised",
+      "v": "PASS",
+      "state": "MEASURED",
+      "reason": "measured"
+     },
+     {
+      "criterion": "Build.history",
+      "v": "FAIL",
+      "state": "MEASURED",
+      "reason": "measured"
+     },
+     {
+      "criterion": "Build.dep_liveness",
+      "v": "FAIL",
+      "state": "MEASURED",
+      "reason": "measured"
+     }
+    ],
+    "registry_revision": 16,
+    "registry_fingerprint": "8b88e7b26f32fdf8f665533b96357c8c332fb142a7166a6468a0f64ec51cb97c"
+   }
+  },
+  "mi_gunanaka": {
+   "Ldgr": {
+    "gate": "Ldgr",
+    "v": "NO_DETECTOR",
+    "checks": [
+     {
+      "criterion": "Ldgr.source_presence",
+      "v": "NO_DETECTOR",
+      "state": "UNKNOWN",
+      "reason": "not measured (target-table columns not supplied \u2014 applicability undecidable)"
+     }
+    ],
+    "registry_revision": 16,
+    "registry_fingerprint": "8b88e7b26f32fdf8f665533b96357c8c332fb142a7166a6468a0f64ec51cb97c"
+   },
+   "Idem": {
+    "gate": "Idem",
+    "v": "PASS",
+    "checks": [
+     {
+      "criterion": "Idem.pattern",
+      "v": "PASS",
+      "state": "MEASURED",
+      "reason": "measured"
+     }
+    ],
+    "registry_revision": 16,
+    "registry_fingerprint": "8b88e7b26f32fdf8f665533b96357c8c332fb142a7166a6468a0f64ec51cb97c"
+   },
+   "Earn": {
+    "gate": "Earn",
+    "v": "NO_DETECTOR",
+    "checks": [
+     {
+      "criterion": "Earn.build_record",
+      "v": "NO_DETECTOR",
+      "state": "MEASURED",
+      "reason": "measured"
+     },
+     {
+      "criterion": "Earn.service_state",
+      "v": "NO_DETECTOR",
+      "state": "UNKNOWN",
+      "reason": "not measured (asset_kind not supplied \u2014 applicability undecidable)"
+     }
+    ],
+    "registry_revision": 16,
+    "registry_fingerprint": "8b88e7b26f32fdf8f665533b96357c8c332fb142a7166a6468a0f64ec51cb97c"
+   },
+   "Null": {
+    "gate": "Null",
+    "v": "NO_DETECTOR",
+    "checks": [
+     {
+      "criterion": "Null.schema_default",
+      "v": "NO_DETECTOR",
+      "state": "APPLIES",
+      "reason": "not measured (applies)"
+     },
+     {
+      "criterion": "Null.blank_rows",
+      "v": "NO_DETECTOR",
+      "state": "APPLIES",
+      "reason": "not measured (applies)"
+     }
+    ],
+    "registry_revision": 16,
+    "registry_fingerprint": "8b88e7b26f32fdf8f665533b96357c8c332fb142a7166a6468a0f64ec51cb97c"
+   },
+   "Vocab": {
+    "gate": "Vocab",
+    "v": "NO_DETECTOR",
+    "checks": [
+     {
+      "criterion": "Vocab.identity",
+      "v": "PASS",
+      "state": "MEASURED",
+      "reason": "measured"
+     },
+     {
+      "criterion": "Vocab.alias",
+      "v": "NO_DETECTOR",
+      "state": "UNKNOWN",
+      "reason": "not measured (target-table columns not supplied \u2014 applicability undecidable)"
+     }
+    ],
+    "registry_revision": 16,
+    "registry_fingerprint": "8b88e7b26f32fdf8f665533b96357c8c332fb142a7166a6468a0f64ec51cb97c"
+   },
+   "Carr": {
+    "gate": "Carr",
+    "v": "NO_DETECTOR",
+    "checks": [
+     {
+      "criterion": "Carr.D1",
+      "v": "NO_DETECTOR",
+      "state": "APPLIES",
+      "reason": "not measured (applies)"
+     },
+     {
+      "criterion": "Carr.D2",
+      "v": "NO_DETECTOR",
+      "state": "APPLIES",
+      "reason": "not measured (applies)"
+     },
+     {
+      "criterion": "Carr.D3",
+      "v": "NO_DETECTOR",
+      "state": "APPLIES",
+      "reason": "not measured (applies)"
+     }
+    ],
+    "registry_revision": 16,
+    "registry_fingerprint": "8b88e7b26f32fdf8f665533b96357c8c332fb142a7166a6468a0f64ec51cb97c"
+   },
+   "Narr": {
+    "gate": "Narr",
+    "v": "NO_DETECTOR",
+    "checks": [
+     {
+      "criterion": "Narr.agree",
+      "v": "NO_DETECTOR",
+      "state": "APPLIES",
+      "reason": "not measured (applies)"
+     },
+     {
+      "criterion": "Narr.checkable",
+      "v": "NO_DETECTOR",
+      "state": "APPLIES",
+      "reason": "not measured (applies)"
+     },
+     {
+      "criterion": "Narr.fidelity_test",
+      "v": "NO_DETECTOR",
+      "state": "APPLIES",
+      "reason": "not measured (applies)"
+     },
+     {
+      "criterion": "Narr.lint",
+      "v": "NO_DETECTOR",
+      "state": "APPLIES",
+      "reason": "not measured (applies)"
+     }
+    ],
+    "registry_revision": 16,
+    "registry_fingerprint": "8b88e7b26f32fdf8f665533b96357c8c332fb142a7166a6468a0f64ec51cb97c"
+   },
+   "Dens": {
+    "gate": "Dens",
+    "v": "PASS",
+    "checks": [
+     {
+      "criterion": "Dens.served",
+      "v": "PASS",
+      "state": "MEASURED",
+      "reason": "measured"
+     }
+    ],
+    "registry_revision": 16,
+    "registry_fingerprint": "8b88e7b26f32fdf8f665533b96357c8c332fb142a7166a6468a0f64ec51cb97c"
+   },
+   "Build": {
+    "gate": "Build",
+    "v": "FAIL",
+    "checks": [
+     {
+      "criterion": "Build.registered",
+      "v": "PASS",
+      "state": "MEASURED",
+      "reason": "measured"
+     },
+     {
+      "criterion": "Build.contract",
+      "v": "PASS",
+      "state": "MEASURED",
+      "reason": "measured"
+     },
+     {
+      "criterion": "Build.target",
+      "v": "PASS",
+      "state": "MEASURED",
+      "reason": "measured"
+     },
+     {
+      "criterion": "Build.dag",
+      "v": "PASS",
+      "state": "MEASURED",
+      "reason": "measured"
+     },
+     {
+      "criterion": "Build.count_integrity",
+      "v": "PASS",
+      "state": "MEASURED",
+      "reason": "measured"
+     },
+     {
+      "criterion": "Build.completion",
+      "v": "FAIL",
+      "state": "MEASURED",
+      "reason": "measured"
+     },
+     {
+      "criterion": "Build.exercised",
+      "v": "PASS",
+      "state": "MEASURED",
+      "reason": "measured"
+     },
+     {
+      "criterion": "Build.history",
+      "v": "FAIL",
+      "state": "MEASURED",
+      "reason": "measured"
+     },
+     {
+      "criterion": "Build.dep_liveness",
+      "v": "FAIL",
+      "state": "MEASURED",
+      "reason": "measured"
+     }
+    ],
+    "registry_revision": 16,
+    "registry_fingerprint": "8b88e7b26f32fdf8f665533b96357c8c332fb142a7166a6468a0f64ec51cb97c"
+   }
+  },
+  "mi_jivanaghatana": {
+   "Ldgr": {
+    "gate": "Ldgr",
+    "v": "NO_DETECTOR",
+    "checks": [
+     {
+      "criterion": "Ldgr.source_presence",
+      "v": "NO_DETECTOR",
+      "state": "UNKNOWN",
+      "reason": "not measured (target-table columns not supplied \u2014 applicability undecidable)"
+     }
+    ],
+    "registry_revision": 16,
+    "registry_fingerprint": "8b88e7b26f32fdf8f665533b96357c8c332fb142a7166a6468a0f64ec51cb97c"
+   },
+   "Idem": {
+    "gate": "Idem",
+    "v": "PASS",
+    "checks": [
+     {
+      "criterion": "Idem.pattern",
+      "v": "PASS",
+      "state": "MEASURED",
+      "reason": "measured"
+     }
+    ],
+    "registry_revision": 16,
+    "registry_fingerprint": "8b88e7b26f32fdf8f665533b96357c8c332fb142a7166a6468a0f64ec51cb97c"
+   },
+   "Earn": {
+    "gate": "Earn",
+    "v": "NO_DETECTOR",
+    "checks": [
+     {
+      "criterion": "Earn.build_record",
+      "v": "NO_DETECTOR",
+      "state": "MEASURED",
+      "reason": "measured"
+     },
+     {
+      "criterion": "Earn.service_state",
+      "v": "NO_DETECTOR",
+      "state": "UNKNOWN",
+      "reason": "not measured (asset_kind not supplied \u2014 applicability undecidable)"
+     }
+    ],
+    "registry_revision": 16,
+    "registry_fingerprint": "8b88e7b26f32fdf8f665533b96357c8c332fb142a7166a6468a0f64ec51cb97c"
+   },
+   "Null": {
+    "gate": "Null",
+    "v": "NO_DETECTOR",
+    "checks": [
+     {
+      "criterion": "Null.schema_default",
+      "v": "NO_DETECTOR",
+      "state": "APPLIES",
+      "reason": "not measured (applies)"
+     },
+     {
+      "criterion": "Null.blank_rows",
+      "v": "NO_DETECTOR",
+      "state": "APPLIES",
+      "reason": "not measured (applies)"
+     }
+    ],
+    "registry_revision": 16,
+    "registry_fingerprint": "8b88e7b26f32fdf8f665533b96357c8c332fb142a7166a6468a0f64ec51cb97c"
+   },
+   "Vocab": {
+    "gate": "Vocab",
+    "v": "NO_DETECTOR",
+    "checks": [
+     {
+      "criterion": "Vocab.identity",
+      "v": "PASS",
+      "state": "MEASURED",
+      "reason": "measured"
+     },
+     {
+      "criterion": "Vocab.alias",
+      "v": "NO_DETECTOR",
+      "state": "UNKNOWN",
+      "reason": "not measured (target-table columns not supplied \u2014 applicability undecidable)"
+     }
+    ],
+    "registry_revision": 16,
+    "registry_fingerprint": "8b88e7b26f32fdf8f665533b96357c8c332fb142a7166a6468a0f64ec51cb97c"
+   },
+   "Carr": {
+    "gate": "Carr",
+    "v": "NO_DETECTOR",
+    "checks": [
+     {
+      "criterion": "Carr.D1",
+      "v": "NO_DETECTOR",
+      "state": "APPLIES",
+      "reason": "not measured (applies)"
+     },
+     {
+      "criterion": "Carr.D2",
+      "v": "NO_DETECTOR",
+      "state": "APPLIES",
+      "reason": "not measured (applies)"
+     },
+     {
+      "criterion": "Carr.D3",
+      "v": "NO_DETECTOR",
+      "state": "APPLIES",
+      "reason": "not measured (applies)"
+     }
+    ],
+    "registry_revision": 16,
+    "registry_fingerprint": "8b88e7b26f32fdf8f665533b96357c8c332fb142a7166a6468a0f64ec51cb97c"
+   },
+   "Narr": {
+    "gate": "Narr",
+    "v": "NO_DETECTOR",
+    "checks": [
+     {
+      "criterion": "Narr.agree",
+      "v": "NO_DETECTOR",
+      "state": "APPLIES",
+      "reason": "not measured (applies)"
+     },
+     {
+      "criterion": "Narr.checkable",
+      "v": "NO_DETECTOR",
+      "state": "APPLIES",
+      "reason": "not measured (applies)"
+     },
+     {
+      "criterion": "Narr.fidelity_test",
+      "v": "NO_DETECTOR",
+      "state": "APPLIES",
+      "reason": "not measured (applies)"
+     },
+     {
+      "criterion": "Narr.lint",
+      "v": "NO_DETECTOR",
+      "state": "APPLIES",
+      "reason": "not measured (applies)"
+     }
+    ],
+    "registry_revision": 16,
+    "registry_fingerprint": "8b88e7b26f32fdf8f665533b96357c8c332fb142a7166a6468a0f64ec51cb97c"
+   },
+   "Dens": {
+    "gate": "Dens",
+    "v": "NO_DETECTOR",
+    "checks": [
+     {
+      "criterion": "Dens.served",
+      "v": "NO_DETECTOR",
+      "state": "MEASURED",
+      "reason": "N/A without a declared cause (cause=None): the inspector named no usable cause, so no rule can release it"
+     }
+    ],
+    "registry_revision": 16,
+    "registry_fingerprint": "8b88e7b26f32fdf8f665533b96357c8c332fb142a7166a6468a0f64ec51cb97c"
+   },
+   "Build": {
+    "gate": "Build",
+    "v": "PARTIAL",
+    "checks": [
+     {
+      "criterion": "Build.registered",
+      "v": "PASS",
+      "state": "MEASURED",
+      "reason": "measured"
+     },
+     {
+      "criterion": "Build.contract",
+      "v": "PASS",
+      "state": "MEASURED",
+      "reason": "measured"
+     },
+     {
+      "criterion": "Build.target",
+      "v": "PASS",
+      "state": "MEASURED",
+      "reason": "measured"
+     },
+     {
+      "criterion": "Build.dag",
+      "v": "PASS",
+      "state": "MEASURED",
+      "reason": "measured"
+     },
+     {
+      "criterion": "Build.count_integrity",
+      "v": "PASS",
+      "state": "MEASURED",
+      "reason": "measured"
+     },
+     {
+      "criterion": "Build.completion",
+      "v": "PASS",
+      "state": "MEASURED",
+      "reason": "measured"
+     },
+     {
+      "criterion": "Build.exercised",
+      "v": "PASS",
+      "state": "MEASURED",
+      "reason": "measured"
+     },
+     {
+      "criterion": "Build.history",
+      "v": "PARTIAL",
+      "state": "MEASURED",
+      "reason": "measured"
+     },
+     {
+      "criterion": "Build.dep_liveness",
+      "v": "PASS",
+      "state": "MEASURED",
+      "reason": "measured"
+     }
+    ],
+    "registry_revision": 16,
+    "registry_fingerprint": "8b88e7b26f32fdf8f665533b96357c8c332fb142a7166a6468a0f64ec51cb97c"
+   }
+  },
+  "mi_kula": {
+   "Ldgr": {
+    "gate": "Ldgr",
+    "v": "NO_DETECTOR",
+    "checks": [
+     {
+      "criterion": "Ldgr.source_presence",
+      "v": "NO_DETECTOR",
+      "state": "UNKNOWN",
+      "reason": "not measured (target-table columns not supplied \u2014 applicability undecidable)"
+     }
+    ],
+    "registry_revision": 16,
+    "registry_fingerprint": "8b88e7b26f32fdf8f665533b96357c8c332fb142a7166a6468a0f64ec51cb97c"
+   },
+   "Idem": {
+    "gate": "Idem",
+    "v": "PASS",
+    "checks": [
+     {
+      "criterion": "Idem.pattern",
+      "v": "PASS",
+      "state": "MEASURED",
+      "reason": "measured"
+     }
+    ],
+    "registry_revision": 16,
+    "registry_fingerprint": "8b88e7b26f32fdf8f665533b96357c8c332fb142a7166a6468a0f64ec51cb97c"
+   },
+   "Earn": {
+    "gate": "Earn",
+    "v": "NO_DETECTOR",
+    "checks": [
+     {
+      "criterion": "Earn.build_record",
+      "v": "NO_DETECTOR",
+      "state": "MEASURED",
+      "reason": "measured"
+     },
+     {
+      "criterion": "Earn.service_state",
+      "v": "NO_DETECTOR",
+      "state": "UNKNOWN",
+      "reason": "not measured (asset_kind not supplied \u2014 applicability undecidable)"
+     }
+    ],
+    "registry_revision": 16,
+    "registry_fingerprint": "8b88e7b26f32fdf8f665533b96357c8c332fb142a7166a6468a0f64ec51cb97c"
+   },
+   "Null": {
+    "gate": "Null",
+    "v": "NO_DETECTOR",
+    "checks": [
+     {
+      "criterion": "Null.schema_default",
+      "v": "NO_DETECTOR",
+      "state": "APPLIES",
+      "reason": "not measured (applies)"
+     },
+     {
+      "criterion": "Null.blank_rows",
+      "v": "NO_DETECTOR",
+      "state": "APPLIES",
+      "reason": "not measured (applies)"
+     }
+    ],
+    "registry_revision": 16,
+    "registry_fingerprint": "8b88e7b26f32fdf8f665533b96357c8c332fb142a7166a6468a0f64ec51cb97c"
+   },
+   "Vocab": {
+    "gate": "Vocab",
+    "v": "NO_DETECTOR",
+    "checks": [
+     {
+      "criterion": "Vocab.identity",
+      "v": "PASS",
+      "state": "MEASURED",
+      "reason": "measured"
+     },
+     {
+      "criterion": "Vocab.alias",
+      "v": "NO_DETECTOR",
+      "state": "UNKNOWN",
+      "reason": "not measured (target-table columns not supplied \u2014 applicability undecidable)"
+     }
+    ],
+    "registry_revision": 16,
+    "registry_fingerprint": "8b88e7b26f32fdf8f665533b96357c8c332fb142a7166a6468a0f64ec51cb97c"
+   },
+   "Carr": {
+    "gate": "Carr",
+    "v": "NO_DETECTOR",
+    "checks": [
+     {
+      "criterion": "Carr.D1",
+      "v": "NO_DETECTOR",
+      "state": "APPLIES",
+      "reason": "not measured (applies)"
+     },
+     {
+      "criterion": "Carr.D2",
+      "v": "NO_DETECTOR",
+      "state": "APPLIES",
+      "reason": "not measured (applies)"
+     },
+     {
+      "criterion": "Carr.D3",
+      "v": "NO_DETECTOR",
+      "state": "APPLIES",
+      "reason": "not measured (applies)"
+     }
+    ],
+    "registry_revision": 16,
+    "registry_fingerprint": "8b88e7b26f32fdf8f665533b96357c8c332fb142a7166a6468a0f64ec51cb97c"
+   },
+   "Narr": {
+    "gate": "Narr",
+    "v": "NO_DETECTOR",
+    "checks": [
+     {
+      "criterion": "Narr.agree",
+      "v": "NO_DETECTOR",
+      "state": "APPLIES",
+      "reason": "not measured (applies)"
+     },
+     {
+      "criterion": "Narr.checkable",
+      "v": "NO_DETECTOR",
+      "state": "APPLIES",
+      "reason": "not measured (applies)"
+     },
+     {
+      "criterion": "Narr.fidelity_test",
+      "v": "NO_DETECTOR",
+      "state": "APPLIES",
+      "reason": "not measured (applies)"
+     },
+     {
+      "criterion": "Narr.lint",
+      "v": "NO_DETECTOR",
+      "state": "APPLIES",
+      "reason": "not measured (applies)"
+     }
+    ],
+    "registry_revision": 16,
+    "registry_fingerprint": "8b88e7b26f32fdf8f665533b96357c8c332fb142a7166a6468a0f64ec51cb97c"
+   },
+   "Dens": {
+    "gate": "Dens",
+    "v": "PASS",
+    "checks": [
+     {
+      "criterion": "Dens.served",
+      "v": "PASS",
+      "state": "MEASURED",
+      "reason": "measured"
+     }
+    ],
+    "registry_revision": 16,
+    "registry_fingerprint": "8b88e7b26f32fdf8f665533b96357c8c332fb142a7166a6468a0f64ec51cb97c"
+   },
+   "Build": {
+    "gate": "Build",
+    "v": "PARTIAL",
+    "checks": [
+     {
+      "criterion": "Build.registered",
+      "v": "PASS",
+      "state": "MEASURED",
+      "reason": "measured"
+     },
+     {
+      "criterion": "Build.contract",
+      "v": "PASS",
+      "state": "MEASURED",
+      "reason": "measured"
+     },
+     {
+      "criterion": "Build.target",
+      "v": "PASS",
+      "state": "MEASURED",
+      "reason": "measured"
+     },
+     {
+      "criterion": "Build.dag",
+      "v": "PASS",
+      "state": "MEASURED",
+      "reason": "measured"
+     },
+     {
+      "criterion": "Build.count_integrity",
+      "v": "PASS",
+      "state": "MEASURED",
+      "reason": "measured"
+     },
+     {
+      "criterion": "Build.completion",
+      "v": "PASS",
+      "state": "MEASURED",
+      "reason": "measured"
+     },
+     {
+      "criterion": "Build.exercised",
+      "v": "PASS",
+      "state": "MEASURED",
+      "reason": "measured"
+     },
+     {
+      "criterion": "Build.history",
+      "v": "PARTIAL",
+      "state": "MEASURED",
+      "reason": "measured"
+     },
+     {
+      "criterion": "Build.dep_liveness",
+      "v": "PASS",
+      "state": "MEASURED",
+      "reason": "measured"
+     }
+    ],
+    "registry_revision": 16,
+    "registry_fingerprint": "8b88e7b26f32fdf8f665533b96357c8c332fb142a7166a6468a0f64ec51cb97c"
+   }
+  },
+  "mi_pariksha": {
+   "Ldgr": {
+    "gate": "Ldgr",
+    "v": "NO_DETECTOR",
+    "checks": [
+     {
+      "criterion": "Ldgr.source_presence",
+      "v": "NO_DETECTOR",
+      "state": "UNKNOWN",
+      "reason": "not measured (target-table columns not supplied \u2014 applicability undecidable)"
+     }
+    ],
+    "registry_revision": 16,
+    "registry_fingerprint": "8b88e7b26f32fdf8f665533b96357c8c332fb142a7166a6468a0f64ec51cb97c"
+   },
+   "Idem": {
+    "gate": "Idem",
+    "v": "PASS",
+    "checks": [
+     {
+      "criterion": "Idem.pattern",
+      "v": "PASS",
+      "state": "MEASURED",
+      "reason": "measured"
+     }
+    ],
+    "registry_revision": 16,
+    "registry_fingerprint": "8b88e7b26f32fdf8f665533b96357c8c332fb142a7166a6468a0f64ec51cb97c"
+   },
+   "Earn": {
+    "gate": "Earn",
+    "v": "NO_DETECTOR",
+    "checks": [
+     {
+      "criterion": "Earn.build_record",
+      "v": "NO_DETECTOR",
+      "state": "MEASURED",
+      "reason": "measured"
+     },
+     {
+      "criterion": "Earn.service_state",
+      "v": "NO_DETECTOR",
+      "state": "UNKNOWN",
+      "reason": "not measured (asset_kind not supplied \u2014 applicability undecidable)"
+     }
+    ],
+    "registry_revision": 16,
+    "registry_fingerprint": "8b88e7b26f32fdf8f665533b96357c8c332fb142a7166a6468a0f64ec51cb97c"
+   },
+   "Null": {
+    "gate": "Null",
+    "v": "NO_DETECTOR",
+    "checks": [
+     {
+      "criterion": "Null.schema_default",
+      "v": "NO_DETECTOR",
+      "state": "APPLIES",
+      "reason": "not measured (applies)"
+     },
+     {
+      "criterion": "Null.blank_rows",
+      "v": "NO_DETECTOR",
+      "state": "APPLIES",
+      "reason": "not measured (applies)"
+     }
+    ],
+    "registry_revision": 16,
+    "registry_fingerprint": "8b88e7b26f32fdf8f665533b96357c8c332fb142a7166a6468a0f64ec51cb97c"
+   },
+   "Vocab": {
+    "gate": "Vocab",
+    "v": "NO_DETECTOR",
+    "checks": [
+     {
+      "criterion": "Vocab.identity",
+      "v": "PASS",
+      "state": "MEASURED",
+      "reason": "measured"
+     },
+     {
+      "criterion": "Vocab.alias",
+      "v": "NO_DETECTOR",
+      "state": "UNKNOWN",
+      "reason": "not measured (target-table columns not supplied \u2014 applicability undecidable)"
+     }
+    ],
+    "registry_revision": 16,
+    "registry_fingerprint": "8b88e7b26f32fdf8f665533b96357c8c332fb142a7166a6468a0f64ec51cb97c"
+   },
+   "Carr": {
+    "gate": "Carr",
+    "v": "NO_DETECTOR",
+    "checks": [
+     {
+      "criterion": "Carr.D1",
+      "v": "NO_DETECTOR",
+      "state": "APPLIES",
+      "reason": "not measured (applies)"
+     },
+     {
+      "criterion": "Carr.D2",
+      "v": "NO_DETECTOR",
+      "state": "APPLIES",
+      "reason": "not measured (applies)"
+     },
+     {
+      "criterion": "Carr.D3",
+      "v": "NO_DETECTOR",
+      "state": "APPLIES",
+      "reason": "not measured (applies)"
+     }
+    ],
+    "registry_revision": 16,
+    "registry_fingerprint": "8b88e7b26f32fdf8f665533b96357c8c332fb142a7166a6468a0f64ec51cb97c"
+   },
+   "Narr": {
+    "gate": "Narr",
+    "v": "NO_DETECTOR",
+    "checks": [
+     {
+      "criterion": "Narr.agree",
+      "v": "NO_DETECTOR",
+      "state": "APPLIES",
+      "reason": "not measured (applies)"
+     },
+     {
+      "criterion": "Narr.checkable",
+      "v": "NO_DETECTOR",
+      "state": "APPLIES",
+      "reason": "not measured (applies)"
+     },
+     {
+      "criterion": "Narr.fidelity_test",
+      "v": "NO_DETECTOR",
+      "state": "APPLIES",
+      "reason": "not measured (applies)"
+     },
+     {
+      "criterion": "Narr.lint",
+      "v": "NO_DETECTOR",
+      "state": "APPLIES",
+      "reason": "not measured (applies)"
+     }
+    ],
+    "registry_revision": 16,
+    "registry_fingerprint": "8b88e7b26f32fdf8f665533b96357c8c332fb142a7166a6468a0f64ec51cb97c"
+   },
+   "Dens": {
+    "gate": "Dens",
+    "v": "PASS",
+    "checks": [
+     {
+      "criterion": "Dens.served",
+      "v": "PASS",
+      "state": "MEASURED",
+      "reason": "measured"
+     }
+    ],
+    "registry_revision": 16,
+    "registry_fingerprint": "8b88e7b26f32fdf8f665533b96357c8c332fb142a7166a6468a0f64ec51cb97c"
+   },
+   "Build": {
+    "gate": "Build",
+    "v": "FAIL",
+    "checks": [
+     {
+      "criterion": "Build.registered",
+      "v": "PASS",
+      "state": "MEASURED",
+      "reason": "measured"
+     },
+     {
+      "criterion": "Build.contract",
+      "v": "PASS",
+      "state": "MEASURED",
+      "reason": "measured"
+     },
+     {
+      "criterion": "Build.target",
+      "v": "PASS",
+      "state": "MEASURED",
+      "reason": "measured"
+     },
+     {
+      "criterion": "Build.dag",
+      "v": "PASS",
+      "state": "MEASURED",
+      "reason": "measured"
+     },
+     {
+      "criterion": "Build.count_integrity",
+      "v": "PASS",
+      "state": "MEASURED",
+      "reason": "measured"
+     },
+     {
+      "criterion": "Build.completion",
+      "v": "FAIL",
+      "state": "MEASURED",
+      "reason": "measured"
+     },
+     {
+      "criterion": "Build.exercised",
+      "v": "PASS",
+      "state": "MEASURED",
+      "reason": "measured"
+     },
+     {
+      "criterion": "Build.history",
+      "v": "FAIL",
+      "state": "MEASURED",
+      "reason": "measured"
+     },
+     {
+      "criterion": "Build.dep_liveness",
+      "v": "FAIL",
+      "state": "MEASURED",
+      "reason": "measured"
+     }
+    ],
+    "registry_revision": 16,
+    "registry_fingerprint": "8b88e7b26f32fdf8f665533b96357c8c332fb142a7166a6468a0f64ec51cb97c"
+   }
+  },
+  "mi_pramana": {
+   "Ldgr": {
+    "gate": "Ldgr",
+    "v": "NO_DETECTOR",
+    "checks": [
+     {
+      "criterion": "Ldgr.source_presence",
+      "v": "NO_DETECTOR",
+      "state": "UNKNOWN",
+      "reason": "not measured (target-table columns not supplied \u2014 applicability undecidable)"
+     }
+    ],
+    "registry_revision": 16,
+    "registry_fingerprint": "8b88e7b26f32fdf8f665533b96357c8c332fb142a7166a6468a0f64ec51cb97c"
+   },
+   "Idem": {
+    "gate": "Idem",
+    "v": "PASS",
+    "checks": [
+     {
+      "criterion": "Idem.pattern",
+      "v": "PASS",
+      "state": "MEASURED",
+      "reason": "measured"
+     }
+    ],
+    "registry_revision": 16,
+    "registry_fingerprint": "8b88e7b26f32fdf8f665533b96357c8c332fb142a7166a6468a0f64ec51cb97c"
+   },
+   "Earn": {
+    "gate": "Earn",
+    "v": "NO_DETECTOR",
+    "checks": [
+     {
+      "criterion": "Earn.build_record",
+      "v": "NO_DETECTOR",
+      "state": "MEASURED",
+      "reason": "measured"
+     },
+     {
+      "criterion": "Earn.service_state",
+      "v": "NO_DETECTOR",
+      "state": "UNKNOWN",
+      "reason": "not measured (asset_kind not supplied \u2014 applicability undecidable)"
+     }
+    ],
+    "registry_revision": 16,
+    "registry_fingerprint": "8b88e7b26f32fdf8f665533b96357c8c332fb142a7166a6468a0f64ec51cb97c"
+   },
+   "Null": {
+    "gate": "Null",
+    "v": "NO_DETECTOR",
+    "checks": [
+     {
+      "criterion": "Null.schema_default",
+      "v": "NO_DETECTOR",
+      "state": "APPLIES",
+      "reason": "not measured (applies)"
+     },
+     {
+      "criterion": "Null.blank_rows",
+      "v": "NO_DETECTOR",
+      "state": "APPLIES",
+      "reason": "not measured (applies)"
+     }
+    ],
+    "registry_revision": 16,
+    "registry_fingerprint": "8b88e7b26f32fdf8f665533b96357c8c332fb142a7166a6468a0f64ec51cb97c"
+   },
+   "Vocab": {
+    "gate": "Vocab",
+    "v": "NO_DETECTOR",
+    "checks": [
+     {
+      "criterion": "Vocab.identity",
+      "v": "PASS",
+      "state": "MEASURED",
+      "reason": "measured"
+     },
+     {
+      "criterion": "Vocab.alias",
+      "v": "NO_DETECTOR",
+      "state": "UNKNOWN",
+      "reason": "not measured (target-table columns not supplied \u2014 applicability undecidable)"
+     }
+    ],
+    "registry_revision": 16,
+    "registry_fingerprint": "8b88e7b26f32fdf8f665533b96357c8c332fb142a7166a6468a0f64ec51cb97c"
+   },
+   "Carr": {
+    "gate": "Carr",
+    "v": "NO_DETECTOR",
+    "checks": [
+     {
+      "criterion": "Carr.D1",
+      "v": "NO_DETECTOR",
+      "state": "APPLIES",
+      "reason": "not measured (applies)"
+     },
+     {
+      "criterion": "Carr.D2",
+      "v": "NO_DETECTOR",
+      "state": "APPLIES",
+      "reason": "not measured (applies)"
+     },
+     {
+      "criterion": "Carr.D3",
+      "v": "NO_DETECTOR",
+      "state": "APPLIES",
+      "reason": "not measured (applies)"
+     }
+    ],
+    "registry_revision": 16,
+    "registry_fingerprint": "8b88e7b26f32fdf8f665533b96357c8c332fb142a7166a6468a0f64ec51cb97c"
+   },
+   "Narr": {
+    "gate": "Narr",
+    "v": "NO_DETECTOR",
+    "checks": [
+     {
+      "criterion": "Narr.agree",
+      "v": "NO_DETECTOR",
+      "state": "APPLIES",
+      "reason": "not measured (applies)"
+     },
+     {
+      "criterion": "Narr.checkable",
+      "v": "NO_DETECTOR",
+      "state": "APPLIES",
+      "reason": "not measured (applies)"
+     },
+     {
+      "criterion": "Narr.fidelity_test",
+      "v": "NO_DETECTOR",
+      "state": "APPLIES",
+      "reason": "not measured (applies)"
+     },
+     {
+      "criterion": "Narr.lint",
+      "v": "NO_DETECTOR",
+      "state": "APPLIES",
+      "reason": "not measured (applies)"
+     }
+    ],
+    "registry_revision": 16,
+    "registry_fingerprint": "8b88e7b26f32fdf8f665533b96357c8c332fb142a7166a6468a0f64ec51cb97c"
+   },
+   "Dens": {
+    "gate": "Dens",
+    "v": "PASS",
+    "checks": [
+     {
+      "criterion": "Dens.served",
+      "v": "PASS",
+      "state": "MEASURED",
+      "reason": "measured"
+     }
+    ],
+    "registry_revision": 16,
+    "registry_fingerprint": "8b88e7b26f32fdf8f665533b96357c8c332fb142a7166a6468a0f64ec51cb97c"
+   },
+   "Build": {
+    "gate": "Build",
+    "v": "FAIL",
+    "checks": [
+     {
+      "criterion": "Build.registered",
+      "v": "PASS",
+      "state": "MEASURED",
+      "reason": "measured"
+     },
+     {
+      "criterion": "Build.contract",
+      "v": "PASS",
+      "state": "MEASURED",
+      "reason": "measured"
+     },
+     {
+      "criterion": "Build.target",
+      "v": "PASS",
+      "state": "MEASURED",
+      "reason": "measured"
+     },
+     {
+      "criterion": "Build.dag",
+      "v": "PASS",
+      "state": "MEASURED",
+      "reason": "measured"
+     },
+     {
+      "criterion": "Build.count_integrity",
+      "v": "PASS",
+      "state": "MEASURED",
+      "reason": "measured"
+     },
+     {
+      "criterion": "Build.completion",
+      "v": "FAIL",
+      "state": "MEASURED",
+      "reason": "measured"
+     },
+     {
+      "criterion": "Build.exercised",
+      "v": "PASS",
+      "state": "MEASURED",
+      "reason": "measured"
+     },
+     {
+      "criterion": "Build.history",
+      "v": "FAIL",
+      "state": "MEASURED",
+      "reason": "measured"
+     },
+     {
+      "criterion": "Build.dep_liveness",
+      "v": "FAIL",
+      "state": "MEASURED",
+      "reason": "measured"
+     }
+    ],
+    "registry_revision": 16,
+    "registry_fingerprint": "8b88e7b26f32fdf8f665533b96357c8c332fb142a7166a6468a0f64ec51cb97c"
+   }
+  },
+  "mi_sambandha": {
+   "Ldgr": {
+    "gate": "Ldgr",
+    "v": "PASS",
+    "checks": [
+     {
+      "criterion": "Ldgr.source_presence",
+      "v": "PASS",
+      "state": "MEASURED",
+      "reason": "measured"
+     }
+    ],
+    "registry_revision": 16,
+    "registry_fingerprint": "8b88e7b26f32fdf8f665533b96357c8c332fb142a7166a6468a0f64ec51cb97c"
+   },
+   "Idem": {
+    "gate": "Idem",
+    "v": "PASS",
+    "checks": [
+     {
+      "criterion": "Idem.pattern",
+      "v": "PASS",
+      "state": "MEASURED",
+      "reason": "measured"
+     }
+    ],
+    "registry_revision": 16,
+    "registry_fingerprint": "8b88e7b26f32fdf8f665533b96357c8c332fb142a7166a6468a0f64ec51cb97c"
+   },
+   "Earn": {
+    "gate": "Earn",
+    "v": "NO_DETECTOR",
+    "checks": [
+     {
+      "criterion": "Earn.build_record",
+      "v": "NO_DETECTOR",
+      "state": "MEASURED",
+      "reason": "measured"
+     },
+     {
+      "criterion": "Earn.service_state",
+      "v": "NO_DETECTOR",
+      "state": "UNKNOWN",
+      "reason": "not measured (asset_kind not supplied \u2014 applicability undecidable)"
+     }
+    ],
+    "registry_revision": 16,
+    "registry_fingerprint": "8b88e7b26f32fdf8f665533b96357c8c332fb142a7166a6468a0f64ec51cb97c"
+   },
+   "Null": {
+    "gate": "Null",
+    "v": "NO_DETECTOR",
+    "checks": [
+     {
+      "criterion": "Null.schema_default",
+      "v": "NO_DETECTOR",
+      "state": "APPLIES",
+      "reason": "not measured (applies)"
+     },
+     {
+      "criterion": "Null.blank_rows",
+      "v": "NO_DETECTOR",
+      "state": "APPLIES",
+      "reason": "not measured (applies)"
+     }
+    ],
+    "registry_revision": 16,
+    "registry_fingerprint": "8b88e7b26f32fdf8f665533b96357c8c332fb142a7166a6468a0f64ec51cb97c"
+   },
+   "Vocab": {
+    "gate": "Vocab",
+    "v": "NO_DETECTOR",
+    "checks": [
+     {
+      "criterion": "Vocab.identity",
+      "v": "PASS",
+      "state": "MEASURED",
+      "reason": "measured"
+     },
+     {
+      "criterion": "Vocab.alias",
+      "v": "NO_DETECTOR",
+      "state": "UNKNOWN",
+      "reason": "not measured (target-table columns not supplied \u2014 applicability undecidable)"
+     }
+    ],
+    "registry_revision": 16,
+    "registry_fingerprint": "8b88e7b26f32fdf8f665533b96357c8c332fb142a7166a6468a0f64ec51cb97c"
+   },
+   "Carr": {
+    "gate": "Carr",
+    "v": "NO_DETECTOR",
+    "checks": [
+     {
+      "criterion": "Carr.D1",
+      "v": "NO_DETECTOR",
+      "state": "APPLIES",
+      "reason": "not measured (applies)"
+     },
+     {
+      "criterion": "Carr.D2",
+      "v": "NO_DETECTOR",
+      "state": "APPLIES",
+      "reason": "not measured (applies)"
+     },
+     {
+      "criterion": "Carr.D3",
+      "v": "NO_DETECTOR",
+      "state": "APPLIES",
+      "reason": "not measured (applies)"
+     }
+    ],
+    "registry_revision": 16,
+    "registry_fingerprint": "8b88e7b26f32fdf8f665533b96357c8c332fb142a7166a6468a0f64ec51cb97c"
+   },
+   "Narr": {
+    "gate": "Narr",
+    "v": "NO_DETECTOR",
+    "checks": [
+     {
+      "criterion": "Narr.agree",
+      "v": "NO_DETECTOR",
+      "state": "APPLIES",
+      "reason": "not measured (applies)"
+     },
+     {
+      "criterion": "Narr.checkable",
+      "v": "NO_DETECTOR",
+      "state": "APPLIES",
+      "reason": "not measured (applies)"
+     },
+     {
+      "criterion": "Narr.fidelity_test",
+      "v": "NO_DETECTOR",
+      "state": "APPLIES",
+      "reason": "not measured (applies)"
+     },
+     {
+      "criterion": "Narr.lint",
+      "v": "NO_DETECTOR",
+      "state": "APPLIES",
+      "reason": "not measured (applies)"
+     }
+    ],
+    "registry_revision": 16,
+    "registry_fingerprint": "8b88e7b26f32fdf8f665533b96357c8c332fb142a7166a6468a0f64ec51cb97c"
+   },
+   "Dens": {
+    "gate": "Dens",
+    "v": "PASS",
+    "checks": [
+     {
+      "criterion": "Dens.served",
+      "v": "PASS",
+      "state": "MEASURED",
+      "reason": "measured"
+     }
+    ],
+    "registry_revision": 16,
+    "registry_fingerprint": "8b88e7b26f32fdf8f665533b96357c8c332fb142a7166a6468a0f64ec51cb97c"
+   },
+   "Build": {
+    "gate": "Build",
+    "v": "FAIL",
+    "checks": [
+     {
+      "criterion": "Build.registered",
+      "v": "PASS",
+      "state": "MEASURED",
+      "reason": "measured"
+     },
+     {
+      "criterion": "Build.contract",
+      "v": "PASS",
+      "state": "MEASURED",
+      "reason": "measured"
+     },
+     {
+      "criterion": "Build.target",
+      "v": "PASS",
+      "state": "MEASURED",
+      "reason": "measured"
+     },
+     {
+      "criterion": "Build.dag",
+      "v": "PASS",
+      "state": "MEASURED",
+      "reason": "measured"
+     },
+     {
+      "criterion": "Build.count_integrity",
+      "v": "PASS",
+      "state": "MEASURED",
+      "reason": "measured"
+     },
+     {
+      "criterion": "Build.completion",
+      "v": "FAIL",
+      "state": "MEASURED",
+      "reason": "measured"
+     },
+     {
+      "criterion": "Build.exercised",
+      "v": "PASS",
+      "state": "MEASURED",
+      "reason": "measured"
+     },
+     {
+      "criterion": "Build.history",
+      "v": "FAIL",
+      "state": "MEASURED",
+      "reason": "measured"
+     },
+     {
+      "criterion": "Build.dep_liveness",
+      "v": "FAIL",
+      "state": "MEASURED",
+      "reason": "measured"
+     }
+    ],
+    "registry_revision": 16,
+    "registry_fingerprint": "8b88e7b26f32fdf8f665533b96357c8c332fb142a7166a6468a0f64ec51cb97c"
+   }
+  },
+  "mi_sankalpa": {
+   "Ldgr": {
+    "gate": "Ldgr",
+    "v": "NO_DETECTOR",
+    "checks": [
+     {
+      "criterion": "Ldgr.source_presence",
+      "v": "NO_DETECTOR",
+      "state": "UNKNOWN",
+      "reason": "not measured (target-table columns not supplied \u2014 applicability undecidable)"
+     }
+    ],
+    "registry_revision": 16,
+    "registry_fingerprint": "8b88e7b26f32fdf8f665533b96357c8c332fb142a7166a6468a0f64ec51cb97c"
+   },
+   "Idem": {
+    "gate": "Idem",
+    "v": "PASS",
+    "checks": [
+     {
+      "criterion": "Idem.pattern",
+      "v": "PASS",
+      "state": "MEASURED",
+      "reason": "measured"
+     }
+    ],
+    "registry_revision": 16,
+    "registry_fingerprint": "8b88e7b26f32fdf8f665533b96357c8c332fb142a7166a6468a0f64ec51cb97c"
+   },
+   "Earn": {
+    "gate": "Earn",
+    "v": "NO_DETECTOR",
+    "checks": [
+     {
+      "criterion": "Earn.build_record",
+      "v": "NO_DETECTOR",
+      "state": "MEASURED",
+      "reason": "measured"
+     },
+     {
+      "criterion": "Earn.service_state",
+      "v": "NO_DETECTOR",
+      "state": "UNKNOWN",
+      "reason": "not measured (asset_kind not supplied \u2014 applicability undecidable)"
+     }
+    ],
+    "registry_revision": 16,
+    "registry_fingerprint": "8b88e7b26f32fdf8f665533b96357c8c332fb142a7166a6468a0f64ec51cb97c"
+   },
+   "Null": {
+    "gate": "Null",
+    "v": "NO_DETECTOR",
+    "checks": [
+     {
+      "criterion": "Null.schema_default",
+      "v": "NO_DETECTOR",
+      "state": "APPLIES",
+      "reason": "not measured (applies)"
+     },
+     {
+      "criterion": "Null.blank_rows",
+      "v": "NO_DETECTOR",
+      "state": "APPLIES",
+      "reason": "not measured (applies)"
+     }
+    ],
+    "registry_revision": 16,
+    "registry_fingerprint": "8b88e7b26f32fdf8f665533b96357c8c332fb142a7166a6468a0f64ec51cb97c"
+   },
+   "Vocab": {
+    "gate": "Vocab",
+    "v": "NO_DETECTOR",
+    "checks": [
+     {
+      "criterion": "Vocab.identity",
+      "v": "NO_DETECTOR",
+      "state": "MEASURED",
+      "reason": "measured"
+     },
+     {
+      "criterion": "Vocab.alias",
+      "v": "NO_DETECTOR",
+      "state": "UNKNOWN",
+      "reason": "not measured (target-table columns not supplied \u2014 applicability undecidable)"
+     }
+    ],
+    "registry_revision": 16,
+    "registry_fingerprint": "8b88e7b26f32fdf8f665533b96357c8c332fb142a7166a6468a0f64ec51cb97c"
+   },
+   "Carr": {
+    "gate": "Carr",
+    "v": "NO_DETECTOR",
+    "checks": [
+     {
+      "criterion": "Carr.D1",
+      "v": "NO_DETECTOR",
+      "state": "APPLIES",
+      "reason": "not measured (applies)"
+     },
+     {
+      "criterion": "Carr.D2",
+      "v": "NO_DETECTOR",
+      "state": "APPLIES",
+      "reason": "not measured (applies)"
+     },
+     {
+      "criterion": "Carr.D3",
+      "v": "NO_DETECTOR",
+      "state": "APPLIES",
+      "reason": "not measured (applies)"
+     }
+    ],
+    "registry_revision": 16,
+    "registry_fingerprint": "8b88e7b26f32fdf8f665533b96357c8c332fb142a7166a6468a0f64ec51cb97c"
+   },
+   "Narr": {
+    "gate": "Narr",
+    "v": "NO_DETECTOR",
+    "checks": [
+     {
+      "criterion": "Narr.agree",
+      "v": "NO_DETECTOR",
+      "state": "APPLIES",
+      "reason": "not measured (applies)"
+     },
+     {
+      "criterion": "Narr.checkable",
+      "v": "NO_DETECTOR",
+      "state": "APPLIES",
+      "reason": "not measured (applies)"
+     },
+     {
+      "criterion": "Narr.fidelity_test",
+      "v": "NO_DETECTOR",
+      "state": "APPLIES",
+      "reason": "not measured (applies)"
+     },
+     {
+      "criterion": "Narr.lint",
+      "v": "NO_DETECTOR",
+      "state": "APPLIES",
+      "reason": "not measured (applies)"
+     }
+    ],
+    "registry_revision": 16,
+    "registry_fingerprint": "8b88e7b26f32fdf8f665533b96357c8c332fb142a7166a6468a0f64ec51cb97c"
+   },
+   "Dens": {
+    "gate": "Dens",
+    "v": "NO_DETECTOR",
+    "checks": [
+     {
+      "criterion": "Dens.served",
+      "v": "NO_DETECTOR",
+      "state": "MEASURED",
+      "reason": "N/A without a declared cause (cause=None): the inspector named no usable cause, so no rule can release it"
+     }
+    ],
+    "registry_revision": 16,
+    "registry_fingerprint": "8b88e7b26f32fdf8f665533b96357c8c332fb142a7166a6468a0f64ec51cb97c"
+   },
+   "Build": {
+    "gate": "Build",
+    "v": "FAIL",
+    "checks": [
+     {
+      "criterion": "Build.registered",
+      "v": "PASS",
+      "state": "MEASURED",
+      "reason": "measured"
+     },
+     {
+      "criterion": "Build.contract",
+      "v": "PASS",
+      "state": "MEASURED",
+      "reason": "measured"
+     },
+     {
+      "criterion": "Build.target",
+      "v": "PASS",
+      "state": "MEASURED",
+      "reason": "measured"
+     },
+     {
+      "criterion": "Build.dag",
+      "v": "PASS",
+      "state": "MEASURED",
+      "reason": "measured"
+     },
+     {
+      "criterion": "Build.count_integrity",
+      "v": "PASS",
+      "state": "MEASURED",
+      "reason": "measured"
+     },
+     {
+      "criterion": "Build.completion",
+      "v": "FAIL",
+      "state": "MEASURED",
+      "reason": "measured"
+     },
+     {
+      "criterion": "Build.exercised",
+      "v": "PASS",
+      "state": "MEASURED",
+      "reason": "measured"
+     },
+     {
+      "criterion": "Build.history",
+      "v": "PARTIAL",
+      "state": "MEASURED",
+      "reason": "measured"
+     },
+     {
+      "criterion": "Build.dep_liveness",
+      "v": "FAIL",
+      "state": "MEASURED",
+      "reason": "measured"
+     }
+    ],
+    "registry_revision": 16,
+    "registry_fingerprint": "8b88e7b26f32fdf8f665533b96357c8c332fb142a7166a6468a0f64ec51cb97c"
+   }
+  },
+  "mi_seva": {
+   "Ldgr": {
+    "gate": "Ldgr",
+    "v": "NO_DETECTOR",
+    "checks": [
+     {
+      "criterion": "Ldgr.source_presence",
+      "v": "NO_DETECTOR",
+      "state": "UNKNOWN",
+      "reason": "not measured (target-table columns not supplied \u2014 applicability undecidable)"
+     }
+    ],
+    "registry_revision": 16,
+    "registry_fingerprint": "8b88e7b26f32fdf8f665533b96357c8c332fb142a7166a6468a0f64ec51cb97c"
+   },
+   "Idem": {
+    "gate": "Idem",
+    "v": "PARTIAL",
+    "checks": [
+     {
+      "criterion": "Idem.pattern",
+      "v": "PARTIAL",
+      "state": "MEASURED",
+      "reason": "measured"
+     }
+    ],
+    "registry_revision": 16,
+    "registry_fingerprint": "8b88e7b26f32fdf8f665533b96357c8c332fb142a7166a6468a0f64ec51cb97c"
+   },
+   "Earn": {
+    "gate": "Earn",
+    "v": "NO_DETECTOR",
+    "checks": [
+     {
+      "criterion": "Earn.build_record",
+      "v": "NO_DETECTOR",
+      "state": "MEASURED",
+      "reason": "measured"
+     },
+     {
+      "criterion": "Earn.service_state",
+      "v": "NO_DETECTOR",
+      "state": "UNKNOWN",
+      "reason": "not measured (asset_kind not supplied \u2014 applicability undecidable)"
+     }
+    ],
+    "registry_revision": 16,
+    "registry_fingerprint": "8b88e7b26f32fdf8f665533b96357c8c332fb142a7166a6468a0f64ec51cb97c"
+   },
+   "Null": {
+    "gate": "Null",
+    "v": "NO_DETECTOR",
+    "checks": [
+     {
+      "criterion": "Null.schema_default",
+      "v": "NO_DETECTOR",
+      "state": "APPLIES",
+      "reason": "not measured (applies)"
+     },
+     {
+      "criterion": "Null.blank_rows",
+      "v": "NO_DETECTOR",
+      "state": "APPLIES",
+      "reason": "not measured (applies)"
+     }
+    ],
+    "registry_revision": 16,
+    "registry_fingerprint": "8b88e7b26f32fdf8f665533b96357c8c332fb142a7166a6468a0f64ec51cb97c"
+   },
+   "Vocab": {
+    "gate": "Vocab",
+    "v": "NO_DETECTOR",
+    "checks": [
+     {
+      "criterion": "Vocab.identity",
+      "v": "NO_DETECTOR",
+      "state": "MEASURED",
+      "reason": "measured"
+     },
+     {
+      "criterion": "Vocab.alias",
+      "v": "NO_DETECTOR",
+      "state": "UNKNOWN",
+      "reason": "not measured (target-table columns not supplied \u2014 applicability undecidable)"
+     }
+    ],
+    "registry_revision": 16,
+    "registry_fingerprint": "8b88e7b26f32fdf8f665533b96357c8c332fb142a7166a6468a0f64ec51cb97c"
+   },
+   "Carr": {
+    "gate": "Carr",
+    "v": "NO_DETECTOR",
+    "checks": [
+     {
+      "criterion": "Carr.D1",
+      "v": "NO_DETECTOR",
+      "state": "APPLIES",
+      "reason": "not measured (applies)"
+     },
+     {
+      "criterion": "Carr.D2",
+      "v": "NO_DETECTOR",
+      "state": "APPLIES",
+      "reason": "not measured (applies)"
+     },
+     {
+      "criterion": "Carr.D3",
+      "v": "NO_DETECTOR",
+      "state": "APPLIES",
+      "reason": "not measured (applies)"
+     }
+    ],
+    "registry_revision": 16,
+    "registry_fingerprint": "8b88e7b26f32fdf8f665533b96357c8c332fb142a7166a6468a0f64ec51cb97c"
+   },
+   "Narr": {
+    "gate": "Narr",
+    "v": "NO_DETECTOR",
+    "checks": [
+     {
+      "criterion": "Narr.agree",
+      "v": "NO_DETECTOR",
+      "state": "APPLIES",
+      "reason": "not measured (applies)"
+     },
+     {
+      "criterion": "Narr.checkable",
+      "v": "NO_DETECTOR",
+      "state": "APPLIES",
+      "reason": "not measured (applies)"
+     },
+     {
+      "criterion": "Narr.fidelity_test",
+      "v": "NO_DETECTOR",
+      "state": "APPLIES",
+      "reason": "not measured (applies)"
+     },
+     {
+      "criterion": "Narr.lint",
+      "v": "NO_DETECTOR",
+      "state": "APPLIES",
+      "reason": "not measured (applies)"
+     }
+    ],
+    "registry_revision": 16,
+    "registry_fingerprint": "8b88e7b26f32fdf8f665533b96357c8c332fb142a7166a6468a0f64ec51cb97c"
+   },
+   "Dens": {
+    "gate": "Dens",
+    "v": "NO_DETECTOR",
+    "checks": [
+     {
+      "criterion": "Dens.served",
+      "v": "NO_DETECTOR",
+      "state": "MEASURED",
+      "reason": "N/A without a declared cause (cause=None): the inspector named no usable cause, so no rule can release it"
+     }
+    ],
+    "registry_revision": 16,
+    "registry_fingerprint": "8b88e7b26f32fdf8f665533b96357c8c332fb142a7166a6468a0f64ec51cb97c"
+   },
+   "Build": {
+    "gate": "Build",
+    "v": "FAIL",
+    "checks": [
+     {
+      "criterion": "Build.registered",
+      "v": "PASS",
+      "state": "MEASURED",
+      "reason": "measured"
+     },
+     {
+      "criterion": "Build.contract",
+      "v": "PASS",
+      "state": "MEASURED",
+      "reason": "measured"
+     },
+     {
+      "criterion": "Build.target",
+      "v": "PASS",
+      "state": "MEASURED",
+      "reason": "measured"
+     },
+     {
+      "criterion": "Build.dag",
+      "v": "PASS",
+      "state": "MEASURED",
+      "reason": "measured"
+     },
+     {
+      "criterion": "Build.count_integrity",
+      "v": "PASS",
+      "state": "MEASURED",
+      "reason": "measured"
+     },
+     {
+      "criterion": "Build.completion",
+      "v": "PARTIAL",
+      "state": "MEASURED",
+      "reason": "measured"
+     },
+     {
+      "criterion": "Build.exercised",
+      "v": "PASS",
+      "state": "MEASURED",
+      "reason": "measured"
+     },
+     {
+      "criterion": "Build.history",
+      "v": "PARTIAL",
+      "state": "MEASURED",
+      "reason": "measured"
+     },
+     {
+      "criterion": "Build.dep_liveness",
+      "v": "FAIL",
+      "state": "MEASURED",
+      "reason": "measured"
+     }
+    ],
+    "registry_revision": 16,
+    "registry_fingerprint": "8b88e7b26f32fdf8f665533b96357c8c332fb142a7166a6468a0f64ec51cb97c"
+   }
+  },
+  "mi_vistara": {
+   "Ldgr": {
+    "gate": "Ldgr",
+    "v": "NO_DETECTOR",
+    "checks": [
+     {
+      "criterion": "Ldgr.source_presence",
+      "v": "NO_DETECTOR",
+      "state": "UNKNOWN",
+      "reason": "not measured (target-table columns not supplied \u2014 applicability undecidable)"
+     }
+    ],
+    "registry_revision": 16,
+    "registry_fingerprint": "8b88e7b26f32fdf8f665533b96357c8c332fb142a7166a6468a0f64ec51cb97c"
+   },
+   "Idem": {
+    "gate": "Idem",
+    "v": "PARTIAL",
+    "checks": [
+     {
+      "criterion": "Idem.pattern",
+      "v": "PARTIAL",
+      "state": "MEASURED",
+      "reason": "measured"
+     }
+    ],
+    "registry_revision": 16,
+    "registry_fingerprint": "8b88e7b26f32fdf8f665533b96357c8c332fb142a7166a6468a0f64ec51cb97c"
+   },
+   "Earn": {
+    "gate": "Earn",
+    "v": "NO_DETECTOR",
+    "checks": [
+     {
+      "criterion": "Earn.build_record",
+      "v": "NO_DETECTOR",
+      "state": "MEASURED",
+      "reason": "measured"
+     },
+     {
+      "criterion": "Earn.service_state",
+      "v": "NO_DETECTOR",
+      "state": "UNKNOWN",
+      "reason": "not measured (asset_kind not supplied \u2014 applicability undecidable)"
+     }
+    ],
+    "registry_revision": 16,
+    "registry_fingerprint": "8b88e7b26f32fdf8f665533b96357c8c332fb142a7166a6468a0f64ec51cb97c"
+   },
+   "Null": {
+    "gate": "Null",
+    "v": "NO_DETECTOR",
+    "checks": [
+     {
+      "criterion": "Null.schema_default",
+      "v": "NO_DETECTOR",
+      "state": "APPLIES",
+      "reason": "not measured (applies)"
+     },
+     {
+      "criterion": "Null.blank_rows",
+      "v": "NO_DETECTOR",
+      "state": "APPLIES",
+      "reason": "not measured (applies)"
+     }
+    ],
+    "registry_revision": 16,
+    "registry_fingerprint": "8b88e7b26f32fdf8f665533b96357c8c332fb142a7166a6468a0f64ec51cb97c"
+   },
+   "Vocab": {
+    "gate": "Vocab",
+    "v": "NO_DETECTOR",
+    "checks": [
+     {
+      "criterion": "Vocab.identity",
+      "v": "NO_DETECTOR",
+      "state": "MEASURED",
+      "reason": "measured"
+     },
+     {
+      "criterion": "Vocab.alias",
+      "v": "NO_DETECTOR",
+      "state": "UNKNOWN",
+      "reason": "not measured (target-table columns not supplied \u2014 applicability undecidable)"
+     }
+    ],
+    "registry_revision": 16,
+    "registry_fingerprint": "8b88e7b26f32fdf8f665533b96357c8c332fb142a7166a6468a0f64ec51cb97c"
+   },
+   "Carr": {
+    "gate": "Carr",
+    "v": "NO_DETECTOR",
+    "checks": [
+     {
+      "criterion": "Carr.D1",
+      "v": "NO_DETECTOR",
+      "state": "APPLIES",
+      "reason": "not measured (applies)"
+     },
+     {
+      "criterion": "Carr.D2",
+      "v": "NO_DETECTOR",
+      "state": "APPLIES",
+      "reason": "not measured (applies)"
+     },
+     {
+      "criterion": "Carr.D3",
+      "v": "NO_DETECTOR",
+      "state": "APPLIES",
+      "reason": "not measured (applies)"
+     }
+    ],
+    "registry_revision": 16,
+    "registry_fingerprint": "8b88e7b26f32fdf8f665533b96357c8c332fb142a7166a6468a0f64ec51cb97c"
+   },
+   "Narr": {
+    "gate": "Narr",
+    "v": "NO_DETECTOR",
+    "checks": [
+     {
+      "criterion": "Narr.agree",
+      "v": "NO_DETECTOR",
+      "state": "APPLIES",
+      "reason": "not measured (applies)"
+     },
+     {
+      "criterion": "Narr.checkable",
+      "v": "NO_DETECTOR",
+      "state": "APPLIES",
+      "reason": "not measured (applies)"
+     },
+     {
+      "criterion": "Narr.fidelity_test",
+      "v": "NO_DETECTOR",
+      "state": "APPLIES",
+      "reason": "not measured (applies)"
+     },
+     {
+      "criterion": "Narr.lint",
+      "v": "NO_DETECTOR",
+      "state": "APPLIES",
+      "reason": "not measured (applies)"
+     }
+    ],
+    "registry_revision": 16,
+    "registry_fingerprint": "8b88e7b26f32fdf8f665533b96357c8c332fb142a7166a6468a0f64ec51cb97c"
+   },
+   "Dens": {
+    "gate": "Dens",
+    "v": "NO_DETECTOR",
+    "checks": [
+     {
+      "criterion": "Dens.served",
+      "v": "NO_DETECTOR",
+      "state": "MEASURED",
+      "reason": "N/A without a declared cause (cause=None): the inspector named no usable cause, so no rule can release it"
+     }
+    ],
+    "registry_revision": 16,
+    "registry_fingerprint": "8b88e7b26f32fdf8f665533b96357c8c332fb142a7166a6468a0f64ec51cb97c"
+   },
+   "Build": {
+    "gate": "Build",
+    "v": "NO_DETECTOR",
+    "checks": [
+     {
+      "criterion": "Build.registered",
+      "v": "PASS",
+      "state": "MEASURED",
+      "reason": "measured"
+     },
+     {
+      "criterion": "Build.contract",
+      "v": "PASS",
+      "state": "MEASURED",
+      "reason": "measured"
+     },
+     {
+      "criterion": "Build.target",
+      "v": "PASS",
+      "state": "MEASURED",
+      "reason": "measured"
+     },
+     {
+      "criterion": "Build.dag",
+      "v": "PASS",
+      "state": "MEASURED",
+      "reason": "measured"
+     },
+     {
+      "criterion": "Build.count_integrity",
+      "v": "PASS",
+      "state": "MEASURED",
+      "reason": "measured"
+     },
+     {
+      "criterion": "Build.completion",
+      "v": "PARTIAL",
+      "state": "MEASURED",
+      "reason": "measured"
+     },
+     {
+      "criterion": "Build.exercised",
+      "v": "PASS",
+      "state": "MEASURED",
+      "reason": "measured"
+     },
+     {
+      "criterion": "Build.history",
+      "v": "PASS",
+      "state": "MEASURED",
+      "reason": "measured"
+     },
+     {
+      "criterion": "Build.dep_liveness",
+      "v": "NO_DETECTOR",
+      "state": "MEASURED",
+      "reason": "N/A without a declared cause (cause=None): the inspector named no usable cause, so no rule can release it"
+     }
+    ],
+    "registry_revision": 16,
+    "registry_fingerprint": "8b88e7b26f32fdf8f665533b96357c8c332fb142a7166a6468a0f64ec51cb97c"
+   }
+  }
+ },
+ "dens_rev4_static": {
+  "lel_events": {
+   "before": "N/A",
+   "after": "PARTIAL",
+   "measured": "STRUCTURAL: 7 module(s) reach it by code: L5_mimamsa/lel_intake_checklist.ts, L5_mimamsa/prediction_lifecycle_sweep.ts, L5_mimamsa/query_life_events.ts, L5_mimamsa/query_mechanism_retrodiction.ts, platform-mcp/src/tools/kala_views/ahead.ts, platform-mcp/src/tools/mechanism_retrodiction.ts (+1 more); a referencing capability declares density_contract but L5_mimamsa/lel_intake_checklist.ts: no tier column in its served select; L5_mimamsa/prediction_lifecycle_sweep.ts: no tier column in its served select; L5_mimamsa/query_life_events.ts: no tier column in its served select; L5_mimamsa/query_mechanism_retrodiction.ts: tier carriage not established (a run-time select list, a sub-select / INSERT\u2026SELECT / UNION branch, or SELECT * with unknown columns); also a served select outside the scanned serving roots (not graded): platform/src/lib/tools/structured/query_life_events.ts"
+  },
+  "mi_abhilekha": {
+   "before": "PASS",
+   "after": "PARTIAL",
+   "measured": "STRUCTURAL: 1 module(s) reach it by code: L5_mimamsa/query_journal.ts; a referencing capability declares density_contract but L5_mimamsa/query_journal.ts: no tier column in its served select"
+  },
+  "mi_adhilepa": {
+   "before": "PASS",
+   "after": "PARTIAL",
+   "measured": "STRUCTURAL: 1 module(s) reach it by code: L5_mimamsa/query_load_bearing.ts; a referencing capability declares density_contract but L5_mimamsa/query_load_bearing.ts: no tier column in its served select"
+  },
+  "mi_bhara": {
+   "before": "N/A",
+   "after": "FAIL",
+   "measured": "STRUCTURAL: 3 module(s) reach it by code: platform-mcp/src/tools/kala_views/ahead.ts, platform-mcp/src/tools/kala_views/story.ts, platform-mcp/src/lib/kala_envelope.ts; 2 served select(s) of its table; no referencing capability that serves it declares density_contract"
+  },
+  "mi_bhavisya": {
+   "before": "PASS",
+   "after": "PARTIAL",
+   "measured": "STRUCTURAL: 4 module(s) reach it by code: L5_mimamsa/prediction_lifecycle_sweep.ts, L5_mimamsa/query_calibration.ts, L5_mimamsa/query_manifestation_sets.ts, L5_mimamsa/query_predictions.ts; a referencing capability declares density_contract but L5_mimamsa/prediction_lifecycle_sweep.ts: no tier column in its served select; L5_mimamsa/query_manifestation_sets.ts: no tier column in its served select; L5_mimamsa/query_predictions.ts: no tier column in its served select"
+  },
+  "mi_darshana": {
+   "before": "PASS",
+   "after": "PARTIAL",
+   "measured": "STRUCTURAL: 2 module(s) reach it by code: L5_mimamsa/query_insight_embeddings.ts, L5_mimamsa/query_insights.ts; a referencing capability declares density_contract but L5_mimamsa/query_insight_embeddings.ts: no tier column in its served select; L5_mimamsa/query_insights.ts: no tier column in its served select"
+  },
+  "mi_gunanaka": {
+   "before": "PASS",
+   "after": "PARTIAL",
+   "measured": "STRUCTURAL: 4 module(s) reach it by code: L4_phala/query_predictive_anchors.ts, L5_mimamsa/query_calibration.ts, register_spine_bundle.ts, platform-mcp/src/tools/mimamsa_outcome.ts; a referencing capability declares density_contract but L5_mimamsa/query_calibration.ts: no tier column in its served select; also a served select outside the scanned serving roots (not graded): platform/src/app/api/clients/[id]/learning/route.ts"
+  },
+  "mi_jivanaghatana": {
+   "before": "N/A",
+   "after": "NO_DETECTOR",
+   "measured": "NO_DETECTOR \u2014 no module in the serving roots references mimamsa_event_provenance, but it is named outside the scanned serving roots where a served select cannot be ruled out (R51): platform/src/app/api/cockpit/stats/deriveState.ts (a comment names it) \u2014 never the closable N/A"
+  },
+  "mi_kula": {
+   "before": "PASS",
+   "after": "PASS",
+   "measured": "STRUCTURAL: 1 module(s) reach it by code: L5_mimamsa/query_signal_families.ts; 1 capability(ies) declare density_contract AND select a tier column from it (evidence_tier) in: L5_mimamsa/query_signal_families.ts"
+  },
+  "mi_pariksha": {
+   "before": "PASS",
+   "after": "PARTIAL",
+   "measured": "STRUCTURAL: 4 module(s) reach it by code: L5_mimamsa/query_attribution.ts, L5_mimamsa/query_calibration.ts, L5_mimamsa/query_insights.ts, L5_mimamsa/query_mimamsa_discoveries.ts; a referencing capability declares density_contract but L5_mimamsa/query_attribution.ts: no tier column in its served select; L5_mimamsa/query_calibration.ts: no tier column in its served select; L5_mimamsa/query_mimamsa_discoveries.ts: no tier column in its served select"
+  },
+  "mi_pramana": {
+   "before": "PASS",
+   "after": "PARTIAL",
+   "measured": "STRUCTURAL: 4 module(s) reach it by code: L5_mimamsa/query_calibration.ts, L5_mimamsa/query_insights.ts, register_spine_bundle.ts, platform-mcp/src/tools/mimamsa_outcome.ts; a referencing capability declares density_contract but L5_mimamsa/query_calibration.ts: no tier column in its served select; L5_mimamsa/query_insights.ts: no tier column in its served select; also a served select outside the scanned serving roots (not graded): platform/src/app/api/clients/[id]/learning/route.ts"
+  },
+  "mi_sambandha": {
+   "before": "PASS",
+   "after": "PARTIAL",
+   "measured": "STRUCTURAL: 2 module(s) reach it by code: L5_mimamsa/query_manifestation_grammar.ts, L5_mimamsa/query_manifestation_sets.ts; a referencing capability declares density_contract but L5_mimamsa/query_manifestation_grammar.ts: no tier column in its served select"
+  },
+  "mi_sankalpa": {
+   "before": "N/A",
+   "after": "NO_DETECTOR",
+   "measured": "NO_DETECTOR \u2014 1 module(s) reach it by code: platform-mcp/src/lib/kala_upaya_diagnosis.ts, but no served `SELECT ... FROM` its table was found (no served select): whether it is served cannot be told by code; also a served select outside the scanned serving roots (not graded): platform/src/lib/mcp/intervention_ledger_writer.ts"
+  },
+  "mi_seva": {
+   "before": "N/A",
+   "after": "NO_DETECTOR",
+   "measured": "NO_DETECTOR \u2014 no module in the serving roots references mimamsa_preferences, but it is named outside the scanned serving roots where a served select cannot be ruled out (R51): platform/src/lib/build/assetInvalidation.ts (holds the table and selects FROM a run-time table name), platform/src/lib/cockpit/assetClearSpec.ts (a comment names it) \u2014 never the closable N/A"
+  },
+  "mi_vistara": {
+   "before": "N/A",
+   "after": "NO_DETECTOR",
+   "measured": "NO_DETECTOR \u2014 no module in the serving roots references mimamsa_export_log, but it is named outside the scanned serving roots where a served select cannot be ruled out (R51): platform/src/lib/build/assetInvalidation.ts (holds the table and selects FROM a run-time table name), platform/src/lib/cockpit/assetClearSpec.ts (a comment names it) \u2014 never the closable N/A"
+  }
+ }
+}

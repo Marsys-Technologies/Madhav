@@ -1,0 +1,277 @@
+{
+ "asset_id": "mi_darshana",
+ "collected_utc": "2026-10-03T12:30:37.878683Z",
+ "chart": "482012f1-710e-4a25-994a-93821f5871aa",
+ "registry": {
+  "rung": "R5",
+  "layer": "mimamsa",
+  "scope": "per_chart",
+  "domain": "chart",
+  "asset_id": "mi_darshana",
+  "size_sql": "SELECT pg_total_relation_size('mimamsa_insight_units')",
+  "count_sql": "SELECT (SELECT count(*) FROM mimamsa_insight_units WHERE chart_id = $1) + (SELECT count(*) FROM mimamsa_insight_embeddings WHERE chart_id = $1) AS count",
+  "dead_flag": null,
+  "is_active": true,
+  "asset_kind": "data",
+  "asset_type": "data",
+  "created_at": "2026-06-26T19:09:00.778042+00:00",
+  "depends_on": [
+   "mi_pramana",
+   "mi_adhilepa",
+   "mi_sambandha",
+   "mi_pariksha",
+   "mi_gunanaka",
+   "mi_kula",
+   "mi_jivanaghatana",
+   "bo_pratijna",
+   "bo_laksana",
+   "bo_sangati"
+  ],
+  "has_writer": true,
+  "layer_name": "M\u012bm\u0101\u1e43s\u0101",
+  "sort_order": 9,
+  "layer_index": "L5",
+  "clear_tables": null,
+  "english_name": "Insight surface",
+  "has_substeps": true,
+  "health_probe": null,
+  "storage_type": "pgvector",
+  "target_floor": 0,
+  "target_table": "mimamsa_insight_units",
+  "provides_apis": null,
+  "sanskrit_name": "Dar\u015bana",
+  "superseded_by": null,
+  "catalog_status": "CURRENT",
+  "service_health": null,
+  "last_invoked_at": null,
+  "selftest_detail": null,
+  "data_disposition": null,
+  "last_selftest_at": null,
+  "estimated_seconds": 1,
+  "volume_explanation": "One insight unit per promoted/supported discovery + calibration stratum + grammar cell with evidence",
+  "english_description": "LLM-ready pre-composed insight units with embeddings + provenance chains + trust metadata (R1\u2013R6)",
+  "integrity_check_sql": "\nSELECT\n  NOT EXISTS (\n    SELECT 1 FROM mimamsa_insight_units u\n    GROUP BY u.chart_id\n    HAVING count(DISTINCT u.insight_id) <> count(*)\n        OR count(*) FILTER (WHERE NOT EXISTS (SELECT 1 FROM charts c WHERE c.id = u.chart_id)) > 0\n        OR count(*) FILTER (WHERE u.insight_type NOT IN\n              ('calibrated_outlook','manifestation_grammar','emergent_law',\n               'retrodiction','load_bearing','verdict_object')) > 0\n        OR count(*) FILTER (WHERE u.evidence_grade NOT IN ('empirical','prior_only','structural')) > 0\n        OR count(*) FILTER (WHERE u.insight_type = 'calibrated_outlook')\n             <> (SELECT count(*) FROM mimamsa_reliability r WHERE r.chart_id = u.chart_id)\n        OR count(*) FILTER (WHERE u.insight_type = 'emergent_law')\n             <> (SELECT count(*) FROM mimamsa_discoveries d\n                  WHERE d.chart_id = u.chart_id AND d.discovery_class = 'emergent_law')\n        OR count(*) FILTER (WHERE u.insight_type = 'retrodiction')\n             <> (SELECT count(*) FROM mimamsa_discoveries d\n                  WHERE d.chart_id = u.chart_id AND d.discovery_class = 'retrodiction')\n        OR count(*) FILTER (WHERE u.insight_type = 'load_bearing')\n             <> (SELECT count(*) FROM mimamsa_load_bearing l WHERE l.chart_id = u.chart_id)\n        OR count(*) FILTER (WHERE u.insight_type = 'manifestation_grammar')\n             <> (SELECT least(20, count(*)) FROM mimamsa_manifestation_grammar g\n                  WHERE g.chart_id = u.chart_id\n                    AND g.evidence_grade IN ('empirical','assignment_only'))\n        OR count(*) FILTER (WHERE u.insight_type = 'verdict_object') > 40\n        OR count(*) FILTER (WHERE u.rank_consequence NOT BETWEEN 0 AND 10 OR u.n_support < 0) > 0\n        OR count(*) FILTER (WHERE u.confidence_band IS NOT NULL\n                              AND (isempty(u.confidence_band) OR lower(u.confidence_band) < 0\n                                   OR upper(u.confidence_band) > 1)) > 0\n        OR count(*) FILTER (WHERE u.provenance_chain IS NULL\n                              OR btrim(coalesce(u.statement, '')) = ''\n                              OR btrim(coalesce(u.leakage_status, '')) = ''\n                              OR btrim(coalesce(u.freshness_lel_version, '')) = ''\n                              OR btrim(coalesce(u.surface_formula_version, '')) = '') > 0\n  )\n  AND NOT EXISTS (\n    SELECT 1 FROM mimamsa_insight_embeddings e\n    GROUP BY e.chart_id\n    HAVING count(DISTINCT e.insight_id) <> count(*)\n        OR count(*) FILTER (WHERE NOT EXISTS (SELECT 1 FROM mimamsa_insight_units u2\n                                               WHERE u2.chart_id = e.chart_id\n                                                 AND u2.insight_id = e.insight_id)) > 0\n        OR count(*) FILTER (WHERE vector_dims(e.embedding) <> 768\n                              OR e.embedded_at IS NULL\n                              OR btrim(coalesce(e.embed_model_version, '')) = '') > 0\n  )\n",
+  "natural_key_partition": "mimamsa_insight_units (chart_id, insight_id) -- sole writer; (chart_id, insight_id) is the table's own PRIMARY KEY, and insight_id is deterministically constructed per insight_type from stable upstream identifiers (stratum_key / discovery_id / conclusion_id / event_class_id / channel_id+domain), never a bare uuid4 -- writer does an unconditional DELETE FROM mimamsa_insight_units WHERE chart_id = %s immediately before the INSERT batch (delete-then-insert-per-chart, CLAUDE.md SS N.3), so (chart_id, insight_id) is a sufficient live natural key; updated_at (DEFAULT now()) and last_calibrated_at (a second wall-clock write-time stamp on 2 of 5 insight_type branches) excluded from the digest value columns as non-deterministic across rebuilds",
+  "rebuild_on_probe_fail": false,
+  "expected_volume_inputs": {
+   "note": "these five identities are asserted exactly by this asset's integrity_check_sql above -- the formula and the check derive from the same source",
+   "floor": 0,
+   "partition": "chart_id",
+   "derivation": "calibrated_outlook = |mimamsa_reliability|; emergent_law and retrodiction = |mimamsa_discoveries| by class; load_bearing = |mimamsa_load_bearing|; manifestation_grammar = LEAST(20, qualifying grammar rows); verdict_object <= 40 (bo_pratijna LIMIT)",
+   "chart_scoped": true,
+   "observed_2026_09_05": {
+    "total": 150
+   }
+  },
+  "writer_timeout_seconds": 10800,
+  "expected_volume_formula": "EXOGENOUS(sum of five per-type upstream coverage identities, floor 0)"
+ },
+ "throughput": {
+  "state": "error",
+  "history": [],
+  "asset_id": "mi_darshana",
+  "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+  "last_error": "BLOCKED: upstream dependency(ies) mi_adhilepa, mi_gunanaka, mi_pariksha, mi_pramana, mi_sambandha did not complete in this run; skipped to avoid building on incomplete data",
+  "rows_written": 115,
+  "expected_rows": null,
+  "last_built_at": "2026-08-21T02:36:53.7534+00:00",
+  "rows_per_second": null,
+  "duration_seconds": null,
+  "last_measured_at": null,
+  "measurement_count": 0,
+  "last_measured_build_id": null,
+  "built_against_writer_hash": "unknown",
+  "built_against_upstream_hash": "afba6fd41be92722"
+ },
+ "runs_summary": [
+  {
+   "n": 10,
+   "last": "2026-07-13T21:13:41.719555+00:00",
+   "state": "aborted",
+   "disposition": null
+  },
+  {
+   "n": 33,
+   "last": "2026-08-13T01:17:22.604778+00:00",
+   "state": "complete",
+   "disposition": null
+  },
+  {
+   "n": 30,
+   "last": "2026-08-21T02:36:53.7534+00:00",
+   "state": "error",
+   "disposition": "blocked_dependency"
+  },
+  {
+   "n": 21,
+   "last": null,
+   "state": "queued",
+   "disposition": null
+  }
+ ],
+ "last_runs": [
+  {
+   "error": null,
+   "scope": "asset_set",
+   "state": "complete",
+   "run_id": "cbd6ea44-3c09-4ce5-9b21-d22fb0eeccf6",
+   "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+   "ended_at": "2026-08-13T01:17:22.604778+00:00",
+   "started_at": "2026-08-13T01:17:18.582672+00:00",
+   "disposition": null,
+   "output_changed": null
+  },
+  {
+   "error": null,
+   "scope": "asset_set",
+   "state": "complete",
+   "run_id": "51eaa05c-7604-42cc-a3db-e7fa6d9c3f7c",
+   "chart_id": "1c826d5a-41cb-4450-b4dc-59d440e5f75a",
+   "ended_at": "2026-08-12T17:12:35.42649+00:00",
+   "started_at": "2026-08-12T17:12:30.781111+00:00",
+   "disposition": null,
+   "output_changed": null
+  },
+  {
+   "error": null,
+   "scope": "global",
+   "state": "complete",
+   "run_id": "9fc3e49d-8c24-4be7-80f0-29c8cff726e8",
+   "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+   "ended_at": "2026-08-07T23:49:23.354133+00:00",
+   "started_at": "2026-08-07T23:49:17.329337+00:00",
+   "disposition": null,
+   "output_changed": null
+  },
+  {
+   "error": null,
+   "scope": "asset_set",
+   "state": "complete",
+   "run_id": "5940f325-63b5-48ce-b9de-3472a5746af4",
+   "chart_id": "1c826d5a-41cb-4450-b4dc-59d440e5f75a",
+   "ended_at": "2026-07-28T10:59:43.806375+00:00",
+   "started_at": "2026-07-28T10:59:40.092921+00:00",
+   "disposition": null,
+   "output_changed": null
+  },
+  {
+   "error": null,
+   "scope": "asset_set",
+   "state": "complete",
+   "run_id": "8141e71d-44bc-4744-af31-b4c41e1bb7ec",
+   "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+   "ended_at": "2026-07-28T10:34:03.175097+00:00",
+   "started_at": "2026-07-28T10:34:00.132187+00:00",
+   "disposition": null,
+   "output_changed": null
+  },
+  {
+   "error": null,
+   "scope": "asset_set",
+   "state": "complete",
+   "run_id": "0faf6c66-8dad-4bcf-8478-fd92f3171b66",
+   "chart_id": "1c826d5a-41cb-4450-b4dc-59d440e5f75a",
+   "ended_at": "2026-07-28T05:02:53.041942+00:00",
+   "started_at": "2026-07-28T05:02:47.51222+00:00",
+   "disposition": null,
+   "output_changed": null
+  },
+  {
+   "error": null,
+   "scope": "asset_set",
+   "state": "complete",
+   "run_id": "ed26e2d3-6dfa-43a4-936e-a815f7fc5309",
+   "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+   "ended_at": "2026-07-28T03:31:52.945112+00:00",
+   "started_at": "2026-07-28T03:31:47.679642+00:00",
+   "disposition": null,
+   "output_changed": null
+  },
+  {
+   "error": null,
+   "scope": "layer",
+   "state": "complete",
+   "run_id": "7b364f83-07ce-4bd0-9024-92f01fc8ec59",
+   "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+   "ended_at": "2026-07-27T06:15:13.323183+00:00",
+   "started_at": "2026-07-27T06:15:12.677555+00:00",
+   "disposition": null,
+   "output_changed": null
+  }
+ ],
+ "last_runs_canonical": [
+  {
+   "error": null,
+   "state": "complete",
+   "run_id": "cbd6ea44-3c09-4ce5-9b21-d22fb0eeccf6",
+   "ended_at": "2026-08-13T01:17:22.604778+00:00",
+   "started_at": "2026-08-13T01:17:18.582672+00:00",
+   "disposition": null,
+   "output_changed": null
+  },
+  {
+   "error": null,
+   "state": "complete",
+   "run_id": "9fc3e49d-8c24-4be7-80f0-29c8cff726e8",
+   "ended_at": "2026-08-07T23:49:23.354133+00:00",
+   "started_at": "2026-08-07T23:49:17.329337+00:00",
+   "disposition": null,
+   "output_changed": null
+  },
+  {
+   "error": null,
+   "state": "complete",
+   "run_id": "8141e71d-44bc-4744-af31-b4c41e1bb7ec",
+   "ended_at": "2026-07-28T10:34:03.175097+00:00",
+   "started_at": "2026-07-28T10:34:00.132187+00:00",
+   "disposition": null,
+   "output_changed": null
+  },
+  {
+   "error": null,
+   "state": "complete",
+   "run_id": "ed26e2d3-6dfa-43a4-936e-a815f7fc5309",
+   "ended_at": "2026-07-28T03:31:52.945112+00:00",
+   "started_at": "2026-07-28T03:31:47.679642+00:00",
+   "disposition": null,
+   "output_changed": null
+  },
+  {
+   "error": null,
+   "state": "complete",
+   "run_id": "7b364f83-07ce-4bd0-9024-92f01fc8ec59",
+   "ended_at": "2026-07-27T06:15:13.323183+00:00",
+   "started_at": "2026-07-27T06:15:12.677555+00:00",
+   "disposition": null,
+   "output_changed": null
+  },
+  {
+   "error": null,
+   "state": "complete",
+   "run_id": "42720d15-f943-42af-8b76-e4f97f3bfd3f",
+   "ended_at": "2026-07-24T11:13:06.719553+00:00",
+   "started_at": "2026-07-24T11:13:05.429019+00:00",
+   "disposition": null,
+   "output_changed": null
+  },
+  {
+   "error": null,
+   "state": "complete",
+   "run_id": "17d69e59-50f2-4c47-ab81-602516b9211d",
+   "ended_at": "2026-07-18T14:18:43.374083+00:00",
+   "started_at": "2026-07-18T14:18:42.563475+00:00",
+   "disposition": null,
+   "output_changed": null
+  },
+  {
+   "error": null,
+   "state": "complete",
+   "run_id": "818faf3a-aba2-4507-8f23-354276e5ec9d",
+   "ended_at": "2026-07-18T06:42:02.825562+00:00",
+   "started_at": "2026-07-18T06:42:02.329697+00:00",
+   "disposition": null,
+   "output_changed": null
+  }
+ ],
+ "live_count": "count\n115\n(1 row)"
+}
