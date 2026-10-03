@@ -1076,6 +1076,8 @@ jobs:
             migrations+=(1155_gochara_relationship_record.sql)
             migrations+=(1156_gochara_eval_window.sql)
             migrations+=(1157_gochara_av_polarity_declaration.sql)
+            # Pravāha B (decision A, split of #2996): the staged-candidate evidence function — protected-class (needs CREATE on public), same window.
+            migrations+=(1235_ka_gochara_staged_candidate_evidence_function.sql)
           fi
           if [ "$APPLY_AI_METERING_SCHEMA_MIGRATION" = "true" ]; then
             migrations+=(1202_ai_metering_ledger.sql)
