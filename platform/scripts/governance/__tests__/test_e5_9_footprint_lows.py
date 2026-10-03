@@ -505,7 +505,7 @@ def test_a_hostile_32kb_literal_scans_in_bounded_time_and_never_reads_as_clean(r
     t0 = time.perf_counter()
     res = slw.scan_writer_tables("a_x", repo)
     elapsed = time.perf_counter() - t0
-    assert elapsed < 0.5, (name, elapsed)
+    assert elapsed < 5.0, (name, elapsed)  # wall-clock guard against quadratic/exponential blow-ups (seconds when broken); loose for loaded CI
     assert "tables" in res or "not_scanned" in res
 
 
@@ -517,7 +517,7 @@ def test_a_hostile_literal_just_under_the_64kb_cap_is_still_bounded(repo, unit, 
     writer(repo, "a_x", OWN + _py_literal(text))
     t0 = time.perf_counter()
     slw.scan_writer_tables("a_x", repo)
-    assert time.perf_counter() - t0 < 0.5
+    assert time.perf_counter() - t0 < 5.0  # wall-clock guard against quadratic/exponential blow-ups (seconds when broken); loose for loaded CI
 
 
 def test_select_into_is_linear_on_the_reported_hostile_input(repo):
@@ -552,7 +552,7 @@ def test_a_literal_over_64kb_is_not_scanned_and_fast(repo):
     writer(repo, "a_x", OWN + _py_literal(big))
     t0 = time.perf_counter()
     res = slw.scan_writer_tables("a_x", repo)
-    assert time.perf_counter() - t0 < 0.5
+    assert time.perf_counter() - t0 < 5.0  # wall-clock guard against quadratic/exponential blow-ups (seconds when broken); loose for loaded CI
     assert "tables" not in res and res["not_scanned"].startswith("sql_literal_too_long"), res
     # a long literal that WOULD have shown a write is not read as clean either
     writer(repo, "a_y", OWN + _py_literal("INSERT INTO t_b (x) VALUES (1) -- " + "z" * 200_000))

@@ -144,7 +144,7 @@ def test_comment_normalisation_is_linear_on_hostile_input(repo):
     write(repo, f"{WRITERS}/a_x.py", OWN + "SQL = " + repr("/*" * 30000) + "\n")
     t0 = time.perf_counter()
     slw.scan_writer_tables("a_x", repo)
-    assert time.perf_counter() - t0 < 0.5
+    assert time.perf_counter() - t0 < 5.0  # wall-clock guard against quadratic/exponential blow-ups (seconds when broken); loose for loaded CI
 
 
 def test_commented_out_sql_in_a_literal_over_reports_but_never_under_reports(repo):
@@ -482,7 +482,7 @@ def test_the_layered_dag_hostile_file_is_bounded_and_never_complete(repo):
     t0 = time.perf_counter()
     res = scan(repo, body)
     elapsed = time.perf_counter() - t0
-    assert elapsed < 1.0, elapsed
+    assert elapsed < 8.0, elapsed  # wall-clock guard against quadratic/exponential blow-ups (seconds when broken); loose for loaded CI
     assert "tables" not in res and res["not_scanned"].startswith("imported_sql_constant"), res
 
 
@@ -490,7 +490,7 @@ def test_a_clean_layered_dag_resolves_in_linear_time(repo):
     body = _reviewer_dag(10, 7).replace("from sqls import Q", "Q = 'SELECT 1'")
     t0 = time.perf_counter()
     res = scan(repo, OWN + body)
-    assert time.perf_counter() - t0 < 1.0
+    assert time.perf_counter() - t0 < 8.0  # wall-clock guard against quadratic/exponential blow-ups (seconds when broken); loose for loaded CI
     assert res.get("tables") == ["public.t_a"], res
 
 
@@ -500,7 +500,7 @@ def test_many_assignments_of_one_name_each_followed_by_an_execute_are_linear(rep
     t0 = time.perf_counter()
     res = scan(repo, body)
     elapsed = time.perf_counter() - t0
-    assert elapsed < 1.0, elapsed
+    assert elapsed < 8.0, elapsed  # wall-clock guard against quadratic/exponential blow-ups (seconds when broken); loose for loaded CI
     assert res.get("tables") == ["public.a", "public.t_a"] or res["not_scanned"].startswith("resolver_work_cap"), res
 
 

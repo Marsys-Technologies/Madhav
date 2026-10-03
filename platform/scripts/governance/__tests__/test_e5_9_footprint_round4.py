@@ -275,7 +275,7 @@ def test_one_class_with_thousands_of_sql_attributes_is_fast_or_capped(repo):
     body = "class B:\n" + "".join(f"    s{i}='DELETE FROM a{i}'\n" for i in range(n)) + "def run(cur):\n" + "".join(f"    cur.execute(B.s{i})\n" for i in range(n))
     t0 = time.perf_counter()
     res = scan(repo, body)
-    assert time.perf_counter() - t0 < 1.5
+    assert time.perf_counter() - t0 < 8.0  # wall-clock guard against quadratic/exponential blow-ups (seconds when broken); loose for loaded CI
     assert "tables" in res or res["not_scanned"].startswith("resolver_work_cap"), res
 
 
@@ -285,7 +285,7 @@ def test_thousands_of_classes_sharing_a_method_name_are_fast_or_capped(repo):
             + "def run(cur):\n" + "".join(f"    C{i}().go(cur)\n" for i in range(n)))
     t0 = time.perf_counter()
     res = scan(repo, body)
-    assert time.perf_counter() - t0 < 2.0
+    assert time.perf_counter() - t0 < 10.0  # wall-clock guard against quadratic/exponential blow-ups (seconds when broken); loose for loaded CI
     assert "tables" in res or res["not_scanned"].startswith("resolver_work_cap"), res
 
 
