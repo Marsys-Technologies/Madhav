@@ -26,6 +26,17 @@ import asset_census as ac  # noqa: E402
 import test_e1_9_assets_scope as e19  # noqa: E402
 
 STAMP_KEYS = {"registry_revision", "registry_fingerprint", "tool_commit", "tool_dirty", "declarations_sha256", "declarations_version"}
+
+
+@pytest.fixture(autouse=True)
+def _carriage_d1_from_the_real_module_path():
+    """Several tests here re-point `ac.__file__` at a temporary repo that holds only the tool file. Since the first carriage spec
+    (#2991) `ac._carriage_d1()` loads its sibling `carriage_d1.py` from `Path(__file__)`, so a test that ran first (or alone) and
+    reached it after the re-point failed (the sibling is absent in the temp repo); it passed only when an earlier test had cached
+    the module. Load it from the REAL module path before any re-point, so no test depends on the cache's state."""
+    ac._carriage_d1()
+    yield
+
 NEEDS_GIT = pytest.mark.skipif(shutil.which("git") is None, reason="git binary not available: real-repository stamp tests cannot run")
 
 _CLEAN_ENV = {k: v for k, v in os.environ.items() if not k.startswith("GIT_")}
