@@ -1472,12 +1472,16 @@ jobs:
         env:
           DATABASE_URL: ''
           PGHOST: ''
-        run: python -m pytest $(python platform/scripts/governance/ci_shard.py --count 3 --index ${{ matrix.shard }}) -q --no-header -rs
+        run: |
+          # a failing or empty ci_shard.py must stop here: `pytest $(…)` would swallow its exit status and collect the whole repo
+          mapfile -t FILES < <(python platform/scripts/governance/ci_shard.py --count 3 --index ${{ matrix.shard }})
+          [ "${#FILES[@]}" -gt 0 ] || { echo "::error::ci_shard.py returned no test files for shard ${{ matrix.shard }}"; exit 1; }
+          python -m pytest "${FILES[@]}" -q --no-header -rs
 
   governance-tool-tests:
-    # The ORIGINAL job name, kept as the one required check: green only when every shard above is green (a cancelled, skipped or failed
-    # shard is not green). The plan's `ci_job_passed` detectors and branch protection name this job, so they keep meaning "the whole
-    # governance test directory passed".
+    # The ORIGINAL job name, kept as ONE check: green only when every shard above is green (a cancelled, skipped or failed shard is not
+    # green). The Suvarṇa plan's `ci_job_passed` detectors name this job, so they keep meaning "the whole governance test directory
+    # passed". (It is not in the branch ruleset's required list today; that is unchanged.)
     name: Governance Tool Tests (pytest)
     needs: governance-tool-tests-shard
     if: ${{ always() }}

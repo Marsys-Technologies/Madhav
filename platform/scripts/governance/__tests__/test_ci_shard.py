@@ -131,3 +131,25 @@ def test_the_aggregate_script_fails_when_the_result_is_not_even_set(jobs):
     script = jobs["governance-tool-tests"]["steps"][0]["run"]
     p = subprocess.run(["bash", "-c", script], env={"PATH": "/usr/bin:/bin"}, capture_output=True, text=True)
     assert p.returncode != 0
+
+
+def test_no_step_can_turn_a_failing_shard_green_or_narrow_what_runs(jobs):
+    """Review N-103: continue-on-error, `|| true`, --co/--collect-only and --deselect would each make the aggregate green without the tests passing."""
+    for jname in ("governance-tool-tests-shard", "governance-tool-tests"):
+        job = jobs[jname]
+        assert "continue-on-error" not in job, jname
+        for st in job["steps"]:
+            assert "continue-on-error" not in st, (jname, st.get("name"))
+            run = str(st.get("run", ""))
+            assert "|| true" not in run and "--co " not in run + " " and "--collect-only" not in run and "--deselect" not in run, (jname, run)
+
+
+def test_the_shard_step_stops_when_ci_shard_returns_no_files(jobs):
+    run = next(st["run"] for st in jobs["governance-tool-tests-shard"]["steps"] if "python -m pytest" in str(st.get("run", "")))
+    assert "mapfile -t FILES < <(python platform/scripts/governance/ci_shard.py --count 3 --index ${{ matrix.shard }})" in run and '"${#FILES[@]}" -gt 0' in run and '"${FILES[@]}"' in run and "$(python" not in run
+
+
+def test_verify_exits_nonzero_on_a_broken_partition(tmp_path):
+    (tmp_path / "test_only.py").write_text("x")
+    p = subprocess.run([sys.executable, str(HERE.parent / "ci_shard.py"), "--count", "2", "--verify", "--root", str(tmp_path)], capture_output=True, text=True)
+    assert p.returncode == 1 and "empty shard" in p.stderr           # two shards, one file: an empty shard fails the run
