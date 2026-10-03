@@ -38,6 +38,11 @@ sqlite3.register_converter("DATE", lambda b: dt.date.fromisoformat(b.decode()))
 sqlite3.register_converter("BOOLEAN", lambda b: bool(int(b)))
 
 
+def event_uuid(chart, n) -> str:
+    """A deterministic REAL uuid per (chart, n): ids are uuids in production and the resolver parses them strictly."""
+    return str(uuid.uuid5(uuid.NAMESPACE_URL, f"life-event/{chart}/{n}"))
+
+
 class _Cur:
     def __init__(self, conn):
         self._c = conn
@@ -92,7 +97,7 @@ class FakeConn:
                 description TEXT NOT NULL, domain TEXT, outcome_observed BOOLEAN, chart_id TEXT NOT NULL,
                 provenance TEXT, chart_state TEXT, significance TEXT);
             CREATE VIEW life_events_chart_scoped AS
-                SELECT id, event_id, event_date, category, domain, description, outcome_observed, chart_id
+                SELECT id, event_id, event_date, category, domain, outcome_observed, chart_id
                 FROM life_events WHERE chart_id = app_chart_context();
             CREATE TABLE chart_dashas (chart_id TEXT, system_id TEXT, level_n INT, ayanamsha_id TEXT,
                 lord_graha TEXT, start_date DATE, end_date DATE);
@@ -106,7 +111,7 @@ class FakeConn:
         self.db.execute(
             "INSERT INTO life_events (id, event_id, event_date, category, description, domain, outcome_observed, chart_id,"
             " provenance, chart_state, significance) VALUES (?,?,?,?,?,?,?,?,?,?,?)",
-            (f"id-{str(chart)[:4]}-{n}", f"EVT.{str(chart)[:4]}.{n}", date.isoformat(), category,
+            (event_uuid(chart, n), f"EVT.{str(chart)[:4]}.{n}", date.isoformat(), category,
              description or f"MARKER-{str(chart)[:4]}-{n}", domain or category, outcome, str(chart),
              "PRIVATE-PROVENANCE", "PRIVATE-CHART-STATE", "PRIVATE-SIGNIFICANCE"))
 
@@ -132,8 +137,8 @@ def _ids(rows):
     return sorted(r["id"] for r in rows)
 
 
-A_IDS = sorted(f"id-4820-{n}" for n in (1, 2, 3))
-B_IDS = sorted(f"id-1c82-{n}" for n in (1, 2))
+A_IDS = sorted(event_uuid(CHART_A, n) for n in (1, 2, 3))
+B_IDS = sorted(event_uuid(CHART_B, n) for n in (1, 2))
 
 
 # ───────────────────────────────────────────────── the helper ────────────────────────────────────────────────────────
@@ -194,7 +199,7 @@ def test_helper_runs_in_its_own_savepoint_and_releases_it(two_charts):
 
 
 def test_columns_are_whitelisted_to_the_view_columns(two_charts):
-    for private in ("provenance", "chart_state", "significance", "source_citation", "recorded_at", "pool_consent"):
+    for private in ("description", "provenance", "chart_state", "significance", "source_citation", "recorded_at", "pool_consent"):
         with pytest.raises(ValueError):
             fetch_chart_life_events(two_charts, CHART_A, ("id", private))
     with pytest.raises(ValueError):
@@ -202,6 +207,7 @@ def test_columns_are_whitelisted_to_the_view_columns(two_charts):
     with pytest.raises(ValueError):
         fetch_chart_life_events(two_charts, CHART_A, ())
     assert "provenance" not in VIEW_COLUMNS and "chart_state" not in VIEW_COLUMNS
+    assert "description" not in VIEW_COLUMNS                              # SS N-109: no private free text in the builder's window
     assert two_charts.log == []                                            # refused before any statement ran
 
 
@@ -309,21 +315,62 @@ def test_ph_pramana_a_chart_with_no_events_cannot_be_given_an_earned_miss(two_ch
     assert rec_old[0].evidence_type == "life_event_miss"
 
 
-def test_ph_pramana_canonical_output_is_identical_to_the_old_unscoped_read_when_only_one_chart_has_events():
-    """Byte-identity for the canonical chart: with a single chart's events in the table, the scoped loader returns
-    exactly what the old unscoped loader returned (same entries, same order, same mapping)."""
-    from services.ph_pramana.engine import LelEntry
+def test_ph_pramana_canonical_rows_equal_the_old_unscoped_read_except_the_removed_free_text():
+    """Byte-identity for the canonical chart, apart from the ONE intended change (SS N-109): with a single chart's events in the table, the scoped loader
+    returns the same entries (same rows, order, dates, domains, valences) as the old unscoped loader; only `lel_jsonb` / `event_summary` differ: the id
+    REFERENCE replaces the free-text summary."""
     c = FakeConn()
     for n, d in enumerate([dt.date(2011, 3, 3), dt.date(2011, 3, 3), dt.date(2015, 6, 1), dt.date(2019, 1, 9)], start=1):
         c.add_event(CHART_A, n, d, outcome=[True, False, None, True][n - 1])
     old_rows = c.db.execute("SELECT id, event_date, category, description AS event_summary, outcome_observed FROM life_events ORDER BY event_date").fetchall()
-    old = []
-    for r in old_rows:                                              # the OLD mapping, verbatim
+    new = _writer()._load_lel(c, CHART_A)
+    assert len(new) == len(old_rows) == 4
+    for e, r in zip(new, old_rows):
         observed = r["outcome_observed"]
-        valence = 'observed' if observed else 'not_observed' if observed is False else None
-        old.append(LelEntry(lel_id=None, event_date=r["event_date"], domain=str(r["category"] or ''), event_summary=str(r["event_summary"] or ''),
-                            outcome_valence=valence, lel_jsonb={'id': str(r['id']), 'event_date': str(r['event_date']), 'summary': str(r['event_summary'] or '')}))
-    assert _writer()._load_lel(c, CHART_A) == old and len(old) == 4
+        assert (e.event_date, e.domain, e.lel_id) == (r["event_date"], str(r["category"] or ''), None)
+        assert e.outcome_valence == ('observed' if observed else 'not_observed' if observed is False else None)
+        assert e.lel_jsonb == {'id': str(r['id']), 'event_date': str(r['event_date']), 'source_table': 'life_events'}
+        assert e.event_summary == '' and 'summary' not in e.lel_jsonb
+
+
+def test_a_derived_pramana_row_never_carries_free_text(two_charts):
+    """DATA MINIMISATION (SS N-109): the loader never SELECTs `description`, and the derived record carries only the id reference."""
+    from services.ph_pramana.engine import AnchorForPramana, PramanaContext, derive_pramana_records
+    anchor = AnchorForPramana(anchor_id="ANC.X", domain="career", anchor_source="t", falsifier="a career event",
+                              window_start=dt.date(2011, 1, 1), window_end=dt.date(2012, 12, 31), peak_date=None,
+                              magnitude=None, confidence_high=None, derivation_ledger_jsonb={})
+    entries = _writer()._load_lel(two_charts, CHART_A)
+    assert not any("description" in s for s in two_charts.selects_of_life_events())
+    rec = derive_pramana_records(PramanaContext(chart_id=str(CHART_A), today=dt.date(2026, 10, 1), anchors=[anchor], lel_entries=entries))[0]
+    assert rec.evidence_type == "life_event_match" and rec.lel_entry_jsonb is not None
+    assert set(rec.lel_entry_jsonb) == {"id", "event_date", "source_table"}
+    assert rec.lel_entry_jsonb["id"] in A_IDS
+    assert "SYNTHETIC" not in repr(rec) and "MARKER" not in repr(rec)           # no free text anywhere in the derived record
+
+
+def test_the_id_reference_resolves_to_the_right_chart_scoped_row_and_a_foreign_id_does_not(two_charts):
+    from brahmagyan.phala.life_events_scope import resolve_life_event_text
+    a1, b1 = event_uuid(CHART_A, 1), event_uuid(CHART_B, 1)
+    assert resolve_life_event_text(two_charts, CHART_A, a1) == "MARKER-4820-1"
+    assert resolve_life_event_text(two_charts, str(CHART_A), uuid.UUID(a1)) == resolve_life_event_text(two_charts, CHART_A, a1)
+    assert resolve_life_event_text(two_charts, CHART_B, b1) == "MARKER-1c82-1"
+    # a foreign id (the other chart's event) does not resolve, in either direction; nor does an unknown id or a chart without events
+    assert resolve_life_event_text(two_charts, CHART_A, b1) is None
+    assert resolve_life_event_text(two_charts, CHART_B, a1) is None
+    assert resolve_life_event_text(two_charts, CHART_C, a1) is None
+    assert resolve_life_event_text(two_charts, CHART_A, uuid.uuid4()) is None
+    # strict inputs and loud failures
+    with pytest.raises(ValueError):
+        resolve_life_event_text(two_charts, CHART_A, "not-a-uuid")
+    with pytest.raises(psycopg.errors.InsufficientPrivilege):
+        resolve_life_event_text(FakeConn(fail_select=psycopg.errors.InsufficientPrivilege("denied")), CHART_A, a1)
+    assert two_charts.gucs[CHART_CONTEXT_GUC] == ""                           # pinned for the lookup, cleared after
+
+
+def test_mutant_resolver_without_the_chart_predicate_would_resolve_a_foreign_id(two_charts):
+    """Negative control: the same lookup WITHOUT the chart predicate resolves chart B's event for chart A, so the test above is discriminating."""
+    b1 = event_uuid(CHART_B, 1)
+    assert two_charts.db.execute("SELECT description FROM life_events WHERE id = ?", (b1,)).fetchone() is not None
 
 
 def test_ph_pramana_undefined_table_is_an_empty_log_but_a_privilege_error_is_not():

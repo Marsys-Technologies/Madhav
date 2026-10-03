@@ -175,8 +175,11 @@ class PhPramanaWriter(WriterBase):
         SAVEPOINT, so the outer transaction survives). A privilege error is NOT an empty log: it propagates.
 
         Column map (live `life_events`):
-          id (uuid) - event_date (date) - category (text) - description -> event_summary -
-          outcome_observed (bool) -> valence.
+          id (uuid) - event_date (date) - category (text) - outcome_observed (bool) -> valence.
+
+        DATA MINIMISATION (SS N-109): the event's free text (`description`) is NOT read and NOT copied into the derived row. `lel_entry_jsonb` carries the
+        life_events id REFERENCE (resolved on demand, chart-scoped, by `life_events_scope.resolve_life_event_text` for an entitled role); `LelEntry.event_summary`
+        is the empty string here.
         `id` is a uuid; `phala_pramana.lel_entry_id` is bigint, so the uuid is carried in lel_jsonb (auditable)
         and lel_id is left unset (None).
 
@@ -189,7 +192,7 @@ class PhPramanaWriter(WriterBase):
         try:
             rows = fetch_chart_life_events(
                 conn, chart_id,
-                ("id", "event_date", "category", "description", "outcome_observed"),
+                ("id", "event_date", "category", "outcome_observed"),
                 order_by=("event_date",),
             )
         except psycopg.errors.UndefinedTable as exc:
@@ -205,9 +208,8 @@ class PhPramanaWriter(WriterBase):
                 lel_id=None,
                 event_date=r['event_date'],
                 domain=str(r.get('category') or ''),
-                event_summary=str(r.get('description') or ''),
+                event_summary='',
                 outcome_valence=valence,
-                lel_jsonb={'id': str(r['id']), 'event_date': str(r['event_date']),
-                           'summary': str(r.get('description') or '')},
+                lel_jsonb={'id': str(r['id']), 'event_date': str(r['event_date']), 'source_table': 'life_events'},
             ))
         return entries

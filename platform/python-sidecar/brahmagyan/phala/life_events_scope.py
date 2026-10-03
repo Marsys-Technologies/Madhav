@@ -33,6 +33,11 @@ RELATION CHOICE
 
 COLUMNS
     Exactly the columns the L4 readers need (see VIEW_COLUMNS); `chart_id` is always returned for the runtime guard.
+
+RESOLVING A REFERENCE (SS N-109)
+    A derived row stores `lel_entry_jsonb = {"id": <life_events.id>, ...}`, never the event text. `resolve_life_event_text` turns that id back
+    into the text for an ENTITLED role (one that holds SELECT on the base table, e.g. the serving roles): chart-scoped (`id` AND `chart_id`), so an
+    id that belongs to another chart does not resolve (None). The builder cannot resolve it: the view has no free-text column.
 """
 from __future__ import annotations
 
@@ -57,12 +62,12 @@ SAVEPOINT = "sp_l4_life_events_scope"
 #   event_date         both         (window match / dasha lord on the date)
 #   category           both         (domain bucket)
 #   domain             ph_rectification (TrainingEvent.domain)
-#   description        ph_pramana   (LelEntry.event_summary -> lel_entry_jsonb.summary; PRIVATE FREE TEXT, required to
-#                                    keep the persisted output byte-identical; see the PR body)
+#   (description is NOT a column: SS N-109, data minimisation. Private free text is never copied into a derived L4 row;
+#    a derived row carries the life_event id reference and the text is resolved on demand by `resolve_life_event_text`.)
 #   outcome_observed   ph_pramana   (valence)
 #   chart_id           both         (the explicit predicate and the runtime guard)
 VIEW_COLUMNS: tuple[str, ...] = (
-    "id", "event_id", "event_date", "category", "domain", "description", "outcome_observed", "chart_id",
+    "id", "event_id", "event_date", "category", "domain", "outcome_observed", "chart_id",
 )
 
 _RESOLVE_SQL = (
@@ -157,5 +162,33 @@ def fetch_chart_life_events(
             _savepoint(conn, "ROLLBACK TO SAVEPOINT")
             _savepoint(conn, "RELEASE SAVEPOINT")
         except Exception:                                  # the connection may already be unusable; the original error wins
+            logger.debug("life_events_scope: rollback to savepoint failed", exc_info=True)
+        raise
+
+
+def resolve_life_event_text(conn: Any, chart_id: Any, event_ref: Any) -> str | None:
+    """The `description` of life event `event_ref` of THIS chart, for an entitled role; None when the id is unknown OR belongs to another chart.
+
+    Reads the BASE table (the view carries no free text), so a role without SELECT on it gets InsufficientPrivilege (loud, never None)."""
+    cid = normalize_chart_id(chart_id)
+    ref = normalize_chart_id(event_ref)                      # an id is a uuid: same strict parse (malformed raises)
+    _savepoint(conn, "SAVEPOINT")
+    try:
+        with conn.cursor() as cur:
+            cur.execute("SELECT set_config(%s, %s, true)", (CHART_CONTEXT_GUC, str(cid)))
+        with conn.cursor(row_factory=psycopg.rows.dict_row) as cur:
+            cur.execute(f"SELECT description, chart_id FROM {BASE_TABLE} WHERE chart_id = %s AND id = %s", (cid, ref))
+            rows = [dict(r) for r in cur.fetchall()]
+        if any(str(r.get("chart_id")) != str(cid) for r in rows):
+            raise ForeignChartRowError(f"life_events lookup for chart {cid} returned a row of another chart")
+        with conn.cursor() as cur:
+            cur.execute("SELECT set_config(%s, %s, true)", (CHART_CONTEXT_GUC, ""))
+        _savepoint(conn, "RELEASE SAVEPOINT")
+        return rows[0]["description"] if rows else None
+    except BaseException:
+        try:
+            _savepoint(conn, "ROLLBACK TO SAVEPOINT")
+            _savepoint(conn, "RELEASE SAVEPOINT")
+        except Exception:
             logger.debug("life_events_scope: rollback to savepoint failed", exc_info=True)
         raise
