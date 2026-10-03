@@ -341,3 +341,46 @@ describe('R16-1: one project canonicaliser and one annotation parser through the
     expect(() => composed([], [buildJob, redirected])).toThrow(/Verifier credential or identity is used outside/)
   })
 })
+
+
+// C53 (DECLARED_CONTROL_PLANE_EXCEPTION_20261003 follow-up): the Google-managed FIREBASE service
+// agent is on the canonical allow-list — exactly that role+member pair, project-number templated,
+// unconditional, project resource only. Anything looser still refuses.
+describe('C53: the Firebase management service agent is a canonical Google service-agent grant', () => {
+  const NUMBER = '938361928218'
+  const ADMIN = 'user:owner@example.com'
+  const FIREBASE_ROLE = 'roles/firebase.managementServiceAgent'
+  const FIREBASE_AGENT = `serviceAccount:service-${NUMBER}@gcp-sa-firebase.iam.gserviceaccount.com`
+  // the role's only SA_CONTROL_PERMISSIONS hit is resourcemanager.projects.setIamPolicy
+  // (DECLARED_CONTROL_PLANE_EXCEPTION_20261003, Stream B's role read)
+  const resolved = { [FIREBASE_ROLE]: ['resourcemanager.projects.setIamPolicy'],
+                     'roles/firebasedatabase.serviceAgent': ['resourcemanager.projects.setIamPolicy'] }
+  const atProject = (bindings: any[], resource = `projects/${NUMBER}`) => [{ resource, policy: { bindings } }]
+
+  it('the exact project-level unconditional pair is accepted (project number and project id forms)', () => {
+    for (const resource of [`projects/${NUMBER}`, canonicalResource(`projects/${NUMBER}`, NUMBER)]) {
+      expect(() => assertVerifierInheritedControl(atProject([{ role: FIREBASE_ROLE, members: [FIREBASE_AGENT] }], resource),
+        resolved, ADMIN, NUMBER, '')).not.toThrow()
+    }
+  })
+  it('a DIFFERENT member with that role is refused', () => {
+    const other = `serviceAccount:service-111@gcp-sa-firebase.iam.gserviceaccount.com`
+    expect(() => assertVerifierInheritedControl(atProject([{ role: FIREBASE_ROLE, members: [other] }]),
+      resolved, ADMIN, NUMBER, '')).toThrow(/remains outside the declared control-plane exceptions/)
+  })
+  it('that member with a DIFFERENT role is refused', () => {
+    expect(() => assertVerifierInheritedControl(atProject([{ role: 'roles/firebasedatabase.serviceAgent', members: [FIREBASE_AGENT] }]),
+      resolved, ADMIN, NUMBER, '')).toThrow(/remains outside the declared control-plane exceptions/)
+  })
+  it('a CONDITIONAL binding of the exact pair is refused', () => {
+    const conditional = [{ role: FIREBASE_ROLE, members: [FIREBASE_AGENT], condition: { title: 'c', expression: 'true' } }]
+    expect(() => assertVerifierInheritedControl(atProject(conditional),
+      resolved, ADMIN, NUMBER, '')).toThrow(/remains outside the declared control-plane exceptions/)
+  })
+  it('the exact pair on a FOLDER or ORG resource is refused (project resource only)', () => {
+    for (const resource of ['folders/1', 'organizations/1']) {
+      expect(() => assertVerifierInheritedControl(atProject([{ role: FIREBASE_ROLE, members: [FIREBASE_AGENT] }], resource),
+        resolved, ADMIN, NUMBER, '')).toThrow(/remains outside the declared control-plane exceptions/)
+    }
+  })
+})

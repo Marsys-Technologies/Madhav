@@ -94,6 +94,7 @@ function isCanonicalGoogleServiceAgentGrant(
     'roles/compute.instanceGroupManagerServiceAgent': `serviceAccount:${projectNumber}@cloudservices.gserviceaccount.com`,
     'roles/compute.serviceAgent': `serviceAccount:service-${projectNumber}@compute-system.iam.gserviceaccount.com`,
     'roles/container.serviceAgent': `serviceAccount:service-${projectNumber}@container-engine-robot.iam.gserviceaccount.com`,
+    'roles/firebase.managementServiceAgent': `serviceAccount:service-${projectNumber}@gcp-sa-firebase.iam.gserviceaccount.com`,
     'roles/pubsub.serviceAgent': `serviceAccount:service-${projectNumber}@gcp-sa-pubsub.iam.gserviceaccount.com`,
     'roles/run.serviceAgent': `serviceAccount:service-${projectNumber}@serverless-robot-prod.iam.gserviceaccount.com`,
   }
