@@ -88,7 +88,34 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
+  changes:
+    # Fast path: a pull request whose EVERY changed file is documentation/evidence (see platform/scripts/governance/ci_changes.py) skips the
+    # heavy jobs below. FAIL-CLOSED: only an explicit `docs_only=true` skips; a failed/empty/unreadable classification, a push, a merge_group
+    # or a manual run all run everything. A skipped job reports "Skipped", which a required check counts as passing, and the aggregate
+    # `Governance Tool Tests (pytest)` job accepts `skipped` ONLY together with docs_only=true.
+    name: Change Classification
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    outputs:
+      docs_only: ${{ steps.classify.outputs.docs_only }}
+    steps:
+      - name: Checkout (merge commit and its parents)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - name: Classify the change
+        id: classify
+        run: |
+          out=$(python3 platform/scripts/governance/ci_changes.py --event "$GITHUB_EVENT_NAME" --base HEAD^1 --head HEAD) || out="docs_only=false"
+          case "$out" in docs_only=true|docs_only=false) ;; *) out="docs_only=false" ;; esac
+          echo "$out" | tee -a "$GITHUB_OUTPUT"
+
   typecheck:
+    needs: changes
+    if: ${{ !cancelled() && needs.changes.outputs.docs_only != 'true' }}
     name: TypeScript (src only)
     runs-on: ubuntu-latest
     defaults:
@@ -112,6 +139,8 @@ jobs:
           if [ -n "$non_test" ]; then printf '%s\n' "$non_test"; exit 1; fi
 
   typecheck-mcp:
+    needs: changes
+    if: ${{ !cancelled() && needs.changes.outputs.docs_only != 'true' }}
     name: TypeScript — platform-mcp
     runs-on: ubuntu-latest
     defaults:
@@ -128,6 +157,8 @@ jobs:
       - run: npx tsc --noEmit
 
   unit-tests:
+    needs: changes
+    if: ${{ !cancelled() && needs.changes.outputs.docs_only != 'true' }}
     name: Unit Tests
     runs-on: ubuntu-latest
     # A healthy complete suite is measured in seconds locally and bounded minutes in
@@ -259,6 +290,8 @@ jobs:
   # and the provision step back onto `unit-tests` and delete this job.
   # ─────────────────────────────────────────────────────────────────────────────
   db-integration-tests:
+    needs: changes
+    if: ${{ !cancelled() && needs.changes.outputs.docs_only != 'true' }}
     name: DB Integration Tests (SAMĪKṢĀ, throwaway Postgres)
     runs-on: ubuntu-latest
     defaults:
@@ -983,6 +1016,8 @@ jobs:
         run: npx vitest run src/lib/pariprashna/pipeline/__tests__/reading_parts_persistence.db.test.ts --reporter=verbose
 
   pratijna-v4-fixture-property-tests:
+    needs: changes
+    if: ${{ !cancelled() && needs.changes.outputs.docs_only != 'true' }}
     # PRATIJÑĀ v4 Lane B3 — the CI tier of the campaign's three-tier
     # verification plan (00_ARCHITECTURE/briefs/adhisthana/MASTER_PLAN_v1_0.md
     # §5): "real-data snapshot fixture (one chart's facts+signals+Index
@@ -1067,6 +1102,8 @@ jobs:
           pytest tests/test_pratijna_v4_snapshot_properties.py -v --tb=short
 
   planner-regression:
+    needs: changes
+    if: ${{ !cancelled() && needs.changes.outputs.docs_only != 'true' }}
     name: Planner Regression Gate
     runs-on: ubuntu-latest
 
@@ -1106,6 +1143,8 @@ jobs:
         run: npx vitest run tests/planner --reporter=verbose
 
   icr-pr-gate:
+    needs: changes
+    if: ${{ !cancelled() && needs.changes.outputs.docs_only != 'true' }}
     name: ICR PR Gate (synthetic smoke)
     runs-on: ubuntu-latest
     # continue-on-error: true — PERMANENT DESIGN DECISION (not a temp soft-pass)
@@ -1436,6 +1475,8 @@ jobs:
         run: python platform/scripts/governance/check_fact_subject_wellformedness.py
 
   governance-tool-tests-shard:
+    needs: changes
+    if: ${{ !cancelled() && needs.changes.outputs.docs_only != 'true' }}
     # Suvarṇa E4.1 (sharded, Exec Suvarṇa): runs platform/scripts/governance/__tests__ as a whole, so the landed Nikaṣa tools and the
     # drift_detector/schema_validator tests are enforced, not just present. No DB, no network: tests that need a live DB skip on their
     # own (PG*/DATABASE_URL unset), and tests pinning campaign artifacts that are not on this tree skip via conftest.
@@ -1479,11 +1520,12 @@ jobs:
           python -m pytest "${FILES[@]}" -q --no-header -rs
 
   governance-tool-tests:
-    # The ORIGINAL job name, kept as ONE check: green only when every shard above is green (a cancelled, skipped or failed shard is not
-    # green). The Suvarṇa plan's `ci_job_passed` detectors name this job, so they keep meaning "the whole governance test directory
-    # passed". (It is not in the branch ruleset's required list today; that is unchanged.)
+    # The ORIGINAL job name, kept as ONE check: green only when every shard above is green (a cancelled or failed shard is not green; a
+    # SKIPPED shard is green ONLY on a docs-only pull request, where the `changes` job skipped it on purpose). The Suvarṇa plan's
+    # `ci_job_passed` detectors name this job, so they keep meaning "the whole governance test directory passed". (It is not in the
+    # branch ruleset's required list today; that is unchanged.)
     name: Governance Tool Tests (pytest)
-    needs: governance-tool-tests-shard
+    needs: [changes, governance-tool-tests-shard]
     if: ${{ always() }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -1491,14 +1533,14 @@ jobs:
       contents: read
 
     steps:
-      - name: Every shard passed
+      - name: Every shard passed (or was skipped on a docs-only change)
         env:
           SHARDS_RESULT: ${{ needs.governance-tool-tests-shard.result }}
+          DOCS_ONLY: ${{ needs.changes.outputs.docs_only }}
         run: |
-          if [ "$SHARDS_RESULT" != "success" ]; then
-            echo "::error::governance test shards finished '$SHARDS_RESULT', not 'success'"; exit 1
-          fi
-          echo "all governance test shards passed"
+          if [ "$SHARDS_RESULT" = "success" ]; then echo "all governance test shards passed"; exit 0; fi
+          if [ "$SHARDS_RESULT" = "skipped" ] && [ "$DOCS_ONLY" = "true" ]; then echo "docs-only change: governance test shards skipped by design"; exit 0; fi
+          echo "::error::governance test shards finished '$SHARDS_RESULT' (docs_only='$DOCS_ONLY'), not 'success'"; exit 1
 
   governance-gates:
     # v1.2 follow-on (2026-05-28): four gates from session_queue.yaml that the
@@ -1788,6 +1830,8 @@ jobs:
           SWE_EPHE_PATH="$nirmana_ephe_dir" pytest tests/test_service_probes.py tests/test_swiss_backend_helper.py -q
 
   governance-gates-gochara:
+    needs: changes
+    if: ${{ !cancelled() && needs.changes.outputs.docs_only != 'true' }}
     # C23 (Suvarṇa §N.8 finding; steward ruling M20261002T182324-6b9a): the four
     # sidecar gochara test directories sat outside every pytest selection —
     # green because never run. They run HERE, in a separate PARALLEL job, so the
