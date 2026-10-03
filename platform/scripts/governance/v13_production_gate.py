@@ -63,7 +63,7 @@ c = count("brahma_remedy_corpus")
 check("data:brahma_remedy_corpus", PASS if c >= 50 else FAIL, c, "≥50")
 
 # L1
-CHART_ID = q("SELECT id FROM charts LIMIT 1;")
+CHART_ID = "482012f1-710e-4a25-994a-93821f5871aa"  # canonical chart (was: unordered LIMIT 1 - nondeterministic once a 2nd chart exists)
 c = count("ganita_positions", f"chart_id='{CHART_ID}'")
 check("data:ganita_positions", PASS if c >= 40 else AMBER, c, "45 (5 ayanamshas × 9 grahas)",
       "40/45 rows — true_citra partial; functionally sufficient for portal.")
