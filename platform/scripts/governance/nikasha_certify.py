@@ -1055,7 +1055,11 @@ def build_record(*, asset, layer, criterion, evidence, verified_by, verdict=None
                                  f"{record.get('asset_kind')!r}")
 
     # R5: what the census rollup itself would not honour
-    if kind == "gate" and verdict == "PASS" and (criterion.startswith("Null.") or criterion == "Narr.fidelity_test"):
+    # S1 (pin 13): a Null PASS the census EARNED (both Null records carry the verified null_convention block) is the one Null PASS the rollup honours, so it is
+    # the one this writer can certify: the same `ac.null_lift_earned` the rollup runs, read from the census record, never typed by the caller
+    null_earned = (kind == "gate" and criterion.startswith("Null.") and meas is not None
+                   and ac.null_lift_earned(criterion, meas, (record or {}).get("measurements")))
+    if kind == "gate" and verdict == "PASS" and not null_earned and (criterion.startswith("Null.") or criterion == "Narr.fidelity_test"):
         _refuse("capped_verdict", f"{criterion} is capped at PARTIAL (Null: never PASS alone; fidelity_test: "
                                   "structural only)")
     if inconclusive and verdict in ("PASS", "PARTIAL"):
@@ -1109,6 +1113,17 @@ def build_record(*, asset, layer, criterion, evidence, verified_by, verdict=None
     if verdict == "N/A":
         if kind != "gate":
             _refuse("na_not_computed", "an addition has no registry applicability rule: its N/A cannot be computed")
+        if criterion in ac.NARR_CHECKS and meas is not None:
+            # NARR-GUARD (pin 16, N-94): the census's own coupling rule, not a copy. A Narr N/A of an asset coupled to Carr.D1 is certifiable only while the same census
+            # record reads Carr.D1 PASS (its effective contribution, with the verified passage evidence and a per-row result for every coupled column)
+            bad = ac.narr_coupling_problem(criterion, layer, meas, cfacts, (record or {}).get("measurements"))
+            if not bad:
+                # `cfacts` come from the census record alone (no declarations file is read here), so `declared_prose_coupling_missing` is unreachable above. An asset whose coupling is
+                # REQUIRED (asset_census.PROSE_COUPLING_REQUIRED) must carry it on the record it certifies: a plain R03 N/A record of such an asset is refused, whatever else it says
+                # (stricter only: no asset outside the table, and no record that carries its coupling block, is affected)
+                bad = ac.prose_coupling_required_problem(asset, {"prose_coupling": meas.get("prose_coupling")})
+            if bad:
+                _refuse("na_coupling_unmet", bad)
         na = _computed_na(criterion, layer, cfacts, na_rule_id, meas)
 
     # R6: what lets the record go stale

@@ -81,7 +81,7 @@ export const CLI_REGISTRY: Readonly<Record<CliId, CliDefinition>> = Object.freez
   gemini_antigravity: Object.freeze({
     id: 'gemini_antigravity', productName: 'Gemini / Antigravity', candidates: fixed('/Users/Dev/.local/bin/agy'),
     allowedRealpathPrefixes: fixed('/Users/Dev/.local/bin/'), versionArgs: fixed('--version'),
-    supportedVersion: '1.2.13', supportedVersions: fixed('1.2.12', '1.2.13'),
+    supportedVersion: '1.2.15', supportedVersions: fixed('1.2.12', '1.2.13', '1.2.15'),
     compatibleRoles: ALL_CLI_ROLES, supportsTools: false,
     supportsStructuredOutput: true,
     modelCatalog: Object.freeze({ args: fixed('models'), format: 'antigravity_models' }),

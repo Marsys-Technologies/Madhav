@@ -51,7 +51,15 @@ export async function refreshProviderCatalog(userId: string, connectionId: strin
     throw new AiConsoleError(safe.code)
   }
   const stored = await storeConnectionCatalogRefresh(userId, connectionId, {
-    credentialVersion: claim.credentialVersion, epoch: claim.epoch, models,
+    credentialVersion: claim.credentialVersion, epoch: claim.epoch,
+    // Provider discovery may also include capacity metadata. Persist only the
+    // catalogue contract; keep the repository's strict input validation intact.
+    models: models.map(({ modelId, displayName, compatibleRoles, supportsTools,
+      supportsStructuredOutput, supportedEfforts, defaultEffort }) => ({
+      modelId, displayName, compatibleRoles, supportsTools, supportsStructuredOutput,
+      ...(supportedEfforts === undefined ? {} : { supportedEfforts }),
+      ...(defaultEffort === undefined ? {} : { defaultEffort }),
+    })),
   })
   if (!stored) throw new AiConsoleError('AI_CHOICE_BROKEN')
   return { status: 'refreshed', modelCount: models.length }

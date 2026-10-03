@@ -42,7 +42,7 @@ const definitions = Object.freeze({
       '--strict-mcp-config', '--permission-mode', 'dontAsk'],
   }),
   gemini_antigravity: Object.freeze({
-    path: join(HOME, '.local/bin/agy'), versions: ['1.2.12', '1.2.13'], versionArgs: ['--version'],
+    path: join(HOME, '.local/bin/agy'), versions: ['1.2.12', '1.2.13', '1.2.15'], versionArgs: ['--version'],
     catalogArgs: ['models'],
   }),
   kimi_code: Object.freeze({
