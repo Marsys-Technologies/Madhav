@@ -23,17 +23,22 @@ It holds NO credentials: the cluster is `trust`-auth, loopback-only, and gone wh
 from __future__ import annotations
 
 import atexit
+import json
 import glob
 import os
 import re
 import shutil
 import socket
 import subprocess
+import sys
 import tempfile
 import threading
+import time
 from pathlib import Path
 
 import pytest
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))      # `_pg_watchdog` sits next to this module
 
 FORBIDDEN_PORTS = {5432, 55432}          # production-shaped / rehearsal ports: never ours
 DB_NAME = "suvarna_disposable"
@@ -160,11 +165,66 @@ def _short_tmp() -> str:
     return base if len(base) <= 40 else "/tmp"          # a unix socket path must stay under ~100 characters (macOS TMPDIR is long)
 
 
+def _write_owner_marker(root: Path) -> None:
+    """Record WHO owns this root (this pytest process: pid + start time) so a watchdog or a later session's sweep can tell an orphan from
+    a live run, and never touches a directory it cannot attribute."""
+    import _pg_watchdog as wd
+    start = wd.proc_start(os.getpid())
+    if not start:                                       # cannot identify this process: write no marker, so nothing can ever reap this root
+        return
+    (root / wd.OWNER_MARKER).write_text(json.dumps({"parent_pid": os.getpid(), "parent_start": start, "root": str(root),
+                                                   "created": time.time(), "v": wd.MARKER_VERSION}), encoding="utf-8")
+
+
+def _start_watchdog(cl: "Cluster") -> None:
+    """A detached process (own session) that stops the cluster and deletes its root once THIS pytest process is gone, however it died."""
+    import _pg_watchdog as wd
+    script = Path(wd.__file__).resolve()
+    start = wd.proc_start(os.getpid())
+    if not start:
+        return
+    try:
+        subprocess.Popen([sys.executable, str(script), str(os.getpid()), start, str(cl.root), str(cl.bin_dir / "pg_ctl")],
+                         stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, start_new_session=True, close_fds=True)
+    except OSError:
+        pass                                            # best effort: the atexit/finalizer path still covers a normal exit
+
+
+def sweep_stale_clusters(base: str | Path | None = None, pg_ctl: str | None = None) -> list[str]:
+    """Stop and delete leaked clusters of earlier runs: ONLY `suvarna_pg_*` directories directly under `base` that are owned by this user,
+    carry a valid ownership marker, and whose recorded owner process (pid + start time) is gone. A directory without a marker, with a
+    live owner, or owned by someone else is never touched. Returns the roots it reaped."""
+    import _pg_watchdog as wd
+    base_dir = Path(base or _short_tmp())
+    reaped: list[str] = []
+    try:
+        entries = sorted(base_dir.glob("suvarna_pg_*"))
+    except OSError:
+        return reaped
+    for root in entries:
+        try:
+            if not root.is_dir() or root.is_symlink() or root.stat().st_uid != os.getuid():
+                continue
+        except OSError:
+            continue
+        m = wd.read_marker(root)
+        if m is None or wd.owner_alive(m["parent_pid"], m["parent_start"]):
+            continue
+        if wd.reap(root, pg_ctl):
+            reaped.append(str(root))
+    return reaped
+
+
 def start_cluster(bin_dir: Path) -> Cluster:
     """initdb + pg_ctl start. Any failure after the binaries were found raises PGStartError with the log tail (never a skip)."""
+    try:
+        sweep_stale_clusters(pg_ctl=str(Path(bin_dir) / "pg_ctl"))     # leaked clusters of earlier killed runs (marker + dead owner only)
+    except Exception:                                                  # noqa: BLE001 - housekeeping must never fail a test run
+        pass
     root = Path(tempfile.mkdtemp(prefix="suvarna_pg_", dir=_short_tmp()))
     cl = Cluster(Path(bin_dir), root, 0)
     try:
+        _write_owner_marker(root)
         cl.sock_dir.mkdir()
         init = subprocess.run([str(bin_dir / "initdb"), "-D", str(cl.data_dir), "-A", "trust", "-U", DB_USER, "-E", "UTF8", "--no-sync",
                                "--locale=C"], capture_output=True, text=True, timeout=120)
@@ -184,6 +244,7 @@ def start_cluster(bin_dir: Path) -> Cluster:
                 raise PGStartError(last)
         else:
             raise PGStartError("pg_ctl could not bind a port after 5 attempts: " + last)
+        _start_watchdog(cl)                                              # outlives a SIGKILLed pytest and cleans up after it
         cl.psql(f"CREATE DATABASE {DB_NAME}", db="postgres")
         verify_own_cluster(cl)
         return cl
