@@ -444,6 +444,99 @@ describe('OWNER-PATH SCAN — owner-path numbers cannot collide with routine or 
     expect(out.errors).toEqual([])
   })
 
+  // ── REVIEW_3067 follow-ups (MED-1, LOW-1, NIT-2) ────────────────────────────
+  it('MED-1 — numbered LIVE captures and verify scripts are NOT claims (collect excludes them)', () => {
+    const tmp = makeTree([
+      `${O}/pkg_a/1272_x.sql`,
+      `${O}/pkg_a/1272_x.LIVE.sql`,
+      `${O}/pkg_a/1272_x.live.sql`,
+      `${O}/pkg_a/1272_verify_after_apply.sql`,
+      `${O}/pkg_a/1272_verify_before_apply.sql`,
+      `${O}/pkg_a/1272.verify-before-apply.sql`,
+    ])
+    try {
+      const owner = collectOwnerPathMigrations(tmp)
+      expect(owner.map(e => e.filename)).toEqual(['1272_x.sql'])
+      expect(checkMigrationNumbers(real, baseline, { ownerEntries: owner }).errors).toEqual([])
+    } finally {
+      fs.rmSync(tmp, { recursive: true, force: true })
+    }
+  })
+
+  it('MED-1 — the exclusion is NARROW (the real conventions only): other verify/live-ish names stay claims', () => {
+    // A broad "verify"/"live" exclusion would let a genuine migration such as
+    // 1273_verify_grants.sql or 1274_go_live.sql walk past the guard.
+    const tmp = makeTree([
+      `${O}/pkg_a/1272_verifier_grants.sql`,
+      `${O}/pkg_a/1273_verify_grants.sql`,
+      `${O}/pkg_a/1274_go_live.sql`,
+      `${O}/pkg_a/1275_deliver_live_rows.sql`,
+    ])
+    try {
+      expect(collectOwnerPathMigrations(tmp).map(e => e.number).sort()).toEqual([1272, 1273, 1274, 1275])
+    } finally {
+      fs.rmSync(tmp, { recursive: true, force: true })
+    }
+  })
+
+  it('NIT-2 — a numbered file directly in the exec root (depth 0) is a claim', () => {
+    const tmp = makeTree([`${O}/1272_root_level.sql`])
+    try {
+      expect(collectOwnerPathMigrations(tmp).map(e => e.relPath)).toEqual([`${O}/1272_root_level.sql`])
+    } finally {
+      fs.rmSync(tmp, { recursive: true, force: true })
+    }
+  })
+
+  it('NIT-2 — lowercase / mixed-case rollback suffixes are companions too', () => {
+    const owner = [
+      entry(`${O}/pkg_a/1275_x.sql`),
+      entry(`${O}/pkg_a/1275_x.rollback.sql`),
+      entry(`${O}/pkg_b/1276_y.sql`),
+      entry(`${O}/pkg_b/1276_y_Rollback.sql`),
+    ]
+    expect(checkMigrationNumbers(real, baseline, { ownerEntries: owner }).errors).toEqual([])
+  })
+
+  it('LOW-1 — a FORWARD file merely named "rollback_*" is a real claim: two forwards on one number fail', () => {
+    const owner = [entry(`${O}/pkg_a/1272_a.sql`), entry(`${O}/pkg_a/1272_rollback_guard.sql`)]
+    const out = checkMigrationNumbers(real, baseline, { ownerEntries: owner })
+    expect(out.errors.some(e => e.startsWith('[E6 OWNER-DUPLICATE]') && e.includes('1272'))).toBe(true)
+  })
+
+  it('LOW-1 — such a forward file plus its true rollback is still ONE claim', () => {
+    const owner = [
+      entry(`${O}/pkg_a/1272_rollback_guard.sql`),
+      entry(`${O}/pkg_a/1272_rollback_guard_ROLLBACK.sql`),
+    ]
+    expect(checkMigrationNumbers(real, baseline, { ownerEntries: owner }).errors).toEqual([])
+  })
+
+  it('LOW-1 — only the _ROLLBACK / .ROLLBACK suffix convention pairs: _undo / _down names are separate claims', () => {
+    for (const undo of ['1272_a_undo.sql', '1272_a_down.sql', '1272_a.revert.sql']) {
+      const owner = [entry(`${O}/pkg_a/1272_a.sql`), entry(`${O}/pkg_a/${undo}`)]
+      const out = checkMigrationNumbers(real, baseline, { ownerEntries: owner })
+      expect(out.errors.some(e => e.startsWith('[E6 OWNER-DUPLICATE]')), undo).toBe(true)
+    }
+  })
+
+  it('LOW-1 — a rollback needs a forward file with the MATCHING STEM in the SAME folder, else it is an orphan claim', () => {
+    // different folder
+    let owner = [entry(`${O}/pkg_a/1265_x.sql`), entry(`${O}/pkg_a/rollback/1265_x.ROLLBACK.sql`)]
+    expect(
+      checkMigrationNumbers(real, baseline, { ownerEntries: owner }).errors.some(e =>
+        e.startsWith('[E6 OWNER-DUPLICATE]')
+      )
+    ).toBe(true)
+    // same folder, different stem
+    owner = [entry(`${O}/pkg_a/1265_x.sql`), entry(`${O}/pkg_a/1265_other_ROLLBACK.sql`)]
+    expect(
+      checkMigrationNumbers(real, baseline, { ownerEntries: owner }).errors.some(e =>
+        e.startsWith('[E6 OWNER-DUPLICATE]')
+      )
+    ).toBe(true)
+  })
+
   it('runGuard WIRING — an end-to-end tree with an owner/routine clash goes red; a clean one stays green', () => {
     const baselineRel = 'platform/scripts/ci/migration_number_legacy_duplicates.json'
     const bad = makeTree([

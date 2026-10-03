@@ -59,6 +59,23 @@
  * feed `nextNumber`, so `migration:next` can never hand out a number an executor package holds.
  * When the folder does not exist (e.g. on a base without these packages) the scan is the empty set.
  *
+ * Rollback pairing: only the suffix convention `_ROLLBACK.sql` / `.ROLLBACK.sql` (case-insensitive)
+ * is a companion, and only with a forward file of the same stem in the same folder; `_undo`,
+ * `_down`, `.revert`, a rollback in another folder, or an unmatched stem are separate claims (so a
+ * forward file merely NAMED `1272_rollback_guard.sql` is a real claim). Excluded support SQL, by
+ * narrow convention: `*.LIVE.sql` and `*verify_(before|after)_apply*`.
+ *
+ * KNOWN EVASIONS (stated so the scan cannot overclaim — CLAUDE.md §N.8). These are NOT detected:
+ *   - names with no separator after the number (`1272.sql`), 3-digit (`272_x.sql`) or 5-digit
+ *     (`12720_x.sql`) numbers (4 digits exactly is deliberate: it skips `00_roles.sql`-style fixtures)
+ *   - prefixed names (`m1272_x.sql`, `mig_1272_x.sql`, `verify_1272.sql`)
+ *   - non-`.sql` extensions (`.sql.txt`, `.sql.bak`, `.psql`, `.sql.gz`)
+ *   - DDL carried inline in `.py` / `plan.txt` with no `.sql` file
+ *   - any package outside OWNER_PATH_ROOT — the root is hardcoded; a new executor root MUST be
+ *     added to OWNER_PATH_ROOT (and this scan) when it is introduced
+ *   - a 4-digit fixture under a package's `tests/` (e.g. `1255_model.sql`) would be a FALSE claim
+ *   - collisions with a not-yet-merged PR are only seen when CI runs on the merged tree
+ *
  * ── DISCLOSED (not fixed) COLLISIONS — Dvārapāla RULING 70 ─────────────────────
  * The frozen baseline (`legacy_duplicate_groups`) is deliberately immutable — it is the exact set
  * that existed when this guard was introduced, and MUST NOT be hand-edited to silence a new
@@ -218,7 +235,7 @@ export function collectOwnerPathMigrations(
       const st = fs.statSync(path.join(repoRoot, rel))
       if (st.isDirectory()) {
         walk(rel)
-      } else if (st.isFile() && /^\d{4}[a-z]?[_-].*\.sql$/i.test(name)) {
+      } else if (st.isFile() && /^\d{4}[a-z]?[_-].*\.sql$/i.test(name) && !isNonMigrationSql(name)) {
         const number = parseMigrationNumber(name)
         if (number !== null) out.push({ relPath: rel, dir: relDir, filename: name, number })
       }
@@ -228,9 +245,28 @@ export function collectOwnerPathMigrations(
   return out
 }
 
-/** `1274_x_ROLLBACK.sql` / `1265_x.ROLLBACK.sql` — the undo companion of a forward file. */
+/**
+ * Support SQL that may carry a migration-number prefix but is NOT a migration claim:
+ *   `*.LIVE.sql`                         — captured live definition of an object (evidence copy)
+ *   `*verify_before_apply*` / `*verify_after_apply*` — executor pre/post-apply verification scripts
+ * Deliberately NARROW. A broad "verify"/"live" exclusion would let a genuine migration named
+ * `1273_verify_grants.sql` or `1274_go_live.sql` walk past the guard, which is the failure this
+ * guard exists to prevent; a rare false RED on an oddly named support file is the cheaper error.
+ */
+function isNonMigrationSql(filename: string): boolean {
+  return /\.live\.sql$/i.test(filename) || /[_.-]verify[_-](before|after)[_-]apply/i.test(filename)
+}
+
+/** Rollback convention: suffix `_ROLLBACK.sql` or `.ROLLBACK.sql`, case-insensitive. */
+const ROLLBACK_SUFFIX = /[_.]rollback\.sql$/i
+
 function isRollbackFile(filename: string): boolean {
-  return /rollback/i.test(filename)
+  return ROLLBACK_SUFFIX.test(filename)
+}
+
+/** Stem used to pair a rollback with its forward file: `1274_x_ROLLBACK.sql` and `1274_x.sql` → `1274_x`. */
+function pairingStem(filename: string): string {
+  return filename.replace(ROLLBACK_SUFFIX, '').replace(/\.sql$/i, '').toLowerCase()
 }
 
 /**
@@ -411,13 +447,14 @@ export function checkMigrationNumbers(
   }
 
   // ── E5/E6 — owner-path claims (outside migrate.ts, same number sequence) ─────────
-  // A rollback file is a companion, not a claim, when a non-rollback file with the same number
-  // sits in the same folder. An orphan rollback (no forward sibling) still claims its number.
+  // A rollback file (suffix convention only) is a companion, not a claim, when a forward file with
+  // the MATCHING STEM sits in the SAME folder. Any other rollback-ish file is an orphan and claims
+  // its number like any forward file.
   const forwardKeys = new Set(
-    ownerEntries.filter(e => !isRollbackFile(e.filename)).map(e => `${e.dir}\0${e.number}`)
+    ownerEntries.filter(e => !isRollbackFile(e.filename)).map(e => `${e.dir}\0${pairingStem(e.filename)}`)
   )
   const claims = ownerEntries.filter(
-    e => !isRollbackFile(e.filename) || !forwardKeys.has(`${e.dir}\0${e.number}`)
+    e => !isRollbackFile(e.filename) || !forwardKeys.has(`${e.dir}\0${pairingStem(e.filename)}`)
   )
   const routineByNumber = new Map<number, string[]>()
   for (const e of entries) {
