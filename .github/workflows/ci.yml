@@ -1435,17 +1435,22 @@ jobs:
         # fact-category-pin-lint for future honest exceptions, if any arise.
         run: python platform/scripts/governance/check_fact_subject_wellformedness.py
 
-  governance-tool-tests:
-    # Suvarṇa E4.1: runs platform/scripts/governance/__tests__ as a whole, so the landed Nikaṣa tools and the
-    # drift_detector/schema_validator tests are enforced, not just present. No DB, no network: tests that need a
-    # live DB skip on their own (PG*/DATABASE_URL unset), and tests pinning campaign artifacts that are not on
-    # this tree skip via __tests__/conftest.py (each skip names the missing input and disarms when it lands).
-    # Measured locally (py3.13): 348 passed, 77 skipped, ~8s.
-    name: Governance Tool Tests (pytest)
+  governance-tool-tests-shard:
+    # Suvarṇa E4.1 (sharded, Exec Suvarṇa): runs platform/scripts/governance/__tests__ as a whole, so the landed Nikaṣa tools and the
+    # drift_detector/schema_validator tests are enforced, not just present. No DB, no network: tests that need a live DB skip on their
+    # own (PG*/DATABASE_URL unset), and tests pinning campaign artifacts that are not on this tree skip via conftest.
+    # The single job outgrew its 10-minute ceiling (median ~8.5 min, max ~10 min on main), so the test files are split across 3 shards by
+    # platform/scripts/governance/ci_shard.py (deterministic, size-balanced, `--verify` fails if any file is in no shard or in two).
+    # The aggregate job below keeps the original job name; this one is test steps only.
+    name: Governance Tool Tests shard ${{ matrix.shard }}/3
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
       contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3]
 
     steps:
       - name: Checkout
@@ -1459,12 +1464,37 @@ jobs:
       - name: Install Python dependencies
         run: pip install pyyaml pytest
 
-      - name: pytest — governance tool tests
+      - name: Shard partition is complete and disjoint
+        run: python platform/scripts/governance/ci_shard.py --count 3 --verify
+
+      - name: pytest — governance tool tests (shard ${{ matrix.shard }}/3)
         # Env is deliberately scrubbed of DB settings so nothing can reach a database.
         env:
           DATABASE_URL: ''
           PGHOST: ''
-        run: python -m pytest platform/scripts/governance/__tests__ -q --no-header -rs
+        run: python -m pytest $(python platform/scripts/governance/ci_shard.py --count 3 --index ${{ matrix.shard }}) -q --no-header -rs
+
+  governance-tool-tests:
+    # The ORIGINAL job name, kept as the one required check: green only when every shard above is green (a cancelled, skipped or failed
+    # shard is not green). The plan's `ci_job_passed` detectors and branch protection name this job, so they keep meaning "the whole
+    # governance test directory passed".
+    name: Governance Tool Tests (pytest)
+    needs: governance-tool-tests-shard
+    if: ${{ always() }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+
+    steps:
+      - name: Every shard passed
+        env:
+          SHARDS_RESULT: ${{ needs.governance-tool-tests-shard.result }}
+        run: |
+          if [ "$SHARDS_RESULT" != "success" ]; then
+            echo "::error::governance test shards finished '$SHARDS_RESULT', not 'success'"; exit 1
+          fi
+          echo "all governance test shards passed"
 
   governance-gates:
     # v1.2 follow-on (2026-05-28): four gates from session_queue.yaml that the
