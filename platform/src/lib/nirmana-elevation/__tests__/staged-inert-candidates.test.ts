@@ -131,14 +131,11 @@ describe('staged inert Gochara candidates — excluded while inert, visible the 
     expect(JSON.stringify(a)).not.toContain('has_runtime_evidence')
   })
 
-  it('ONE predicate: receipts OR build_run_assets, only for the two ids (NULL otherwise); NO asset_throughput and NO function call', () => {
+  it('DRAFT: the evidence expression calls ONLY the narrow SECURITY DEFINER function (after migration 1235 is applied)', () => {
     const sql = runtimeEvidenceSql('registry')
+    expect(sql).toContain('public.ka_gochara_staged_candidate_has_runtime_evidence(registry.asset_id)')
     expect(sql).toContain("registry.asset_id IN ('ka_gochara_v4_41_candidate', 'ka_gochara_v5')")
-    expect(sql).toContain('FROM public.asset_provenance_receipts rcpt WHERE rcpt.asset_id = registry.asset_id')
-    expect(sql).toContain('FROM public.build_run_assets bra WHERE bra.asset_id = registry.asset_id')
-    expect(sql).toMatch(/AS has_runtime_evidence$/)
-    expect(sql).not.toContain('asset_throughput')                                     // the control and ingress writers hold no SELECT on it; a refresh row is not a build
-    expect(sql).not.toContain('ka_gochara_staged_candidate_has_runtime_evidence')     // the SECURITY DEFINER function is a LATER protected migration (draft)
+    for (const table of ['asset_provenance_receipts', 'build_run_assets', 'asset_throughput']) expect(sql).not.toContain(table)
   })
 
   it('EVERY registry loader (monitor, snapshot, and all five definitions loaders) selects the evidence column — one predicate everywhere', () => {

@@ -147,9 +147,9 @@ export function excludeNirmanaStagedInertCandidates<T extends NirmanaRegistryCon
  * switch to it in a later routine change, after that migration is applied.
  */
 export function runtimeEvidenceSql(alias: string): string {
+  // DRAFT — apply only AFTER migration 1235 (the SECURITY DEFINER function) is applied in the protected window and read back.
   return `CASE WHEN ${alias}.asset_id IN ('ka_gochara_v4_41_candidate', 'ka_gochara_v5')
-              THEN (EXISTS (SELECT 1 FROM public.asset_provenance_receipts rcpt WHERE rcpt.asset_id = ${alias}.asset_id)
-                    OR EXISTS (SELECT 1 FROM public.build_run_assets bra WHERE bra.asset_id = ${alias}.asset_id)) END AS has_runtime_evidence`
+              THEN public.ka_gochara_staged_candidate_has_runtime_evidence(${alias}.asset_id) END AS has_runtime_evidence`
 }
 
 export type NirmanaExecutionObligation = Exclude<
