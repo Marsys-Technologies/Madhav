@@ -1,7 +1,7 @@
 /**
  * Suvarna / migration 1275 — STATIC contract (chart_id -> charts(id) ON DELETE CASCADE on phala_muhurta, phala_mitigation,
  * phala_phaladesa and 24 mimamsa_* tables: every per-chart row leaves when its chart is deleted). The live proof (a disposable
- * PostgreSQL 15 and 17 cluster, run as amjis_app on a production-mirrored layout: the delete-route scenario over all 27 tables,
+ * PostgreSQL 15 and 17 cluster, run as amjis_app on a production-mirrored layout: the delete-route scenario over all 29 tables,
  * 1265's frozen-row guard in three variants, the discriminator and spoof tests, guards, active-run guard, lock_timeout, and 15
  * mutants) is python-sidecar/tests/test_migration_1275_chart_delete_per_chart_tables.py. This file pins the text so a drive-by edit
  * (a 28th table, an excluded table, a NOT VALID link, a data write) is a deliberate, reviewed change.
@@ -25,18 +25,19 @@ const TABLES = [
   'mimamsa_intervention_ledger', 'mimamsa_journal', 'mimamsa_load_bearing', 'mimamsa_manifestation_grammar',
   'mimamsa_manifestation_sets', 'mimamsa_multipliers', 'mimamsa_predictions', 'mimamsa_qa_eval', 'mimamsa_reliability',
   'mimamsa_resonance_feedback', 'mimamsa_signal_adjustment', 'mimamsa_snapshot_cosign',
+  'brahma_prospective_ledger', 'brahma_mimamsa_prediction_ledger',
 ]
 const EXCLUDED = ['mimamsa_preferences', 'mimamsa_negative_controls', 'mimamsa_signal_families',
-  'brahma_mimamsa_prediction_ledger', 'brahma_prospective_ledger', '__ssv_', 'chart_facts', 'bodha_', 'chart_dashas']
+  '__ssv_', 'chart_facts', 'bodha_', 'chart_dashas']
 
 describe('migration 1275 — static contract', () => {
-  it('has ONE table list: exactly the 27 named tables, in order, each appearing once', () => {
+  it('has ONE table list: exactly the 29 named tables, in order, each appearing once', () => {
     const arrays = CODE.match(/\btables text\[\] := ARRAY\[([\s\S]*?)\];/g) ?? []
     expect(arrays).toHaveLength(1)
     const first = arrays[0]
     if (first === undefined) throw new Error('Expected the asserted single table list')
     expect([...first.matchAll(/'([a-z_]+)'/g)].map(m => m[1])).toEqual(TABLES)
-    expect(TABLES).toHaveLength(27)
+    expect(TABLES).toHaveLength(29)
     for (const t of TABLES) expect(CODE.match(new RegExp(`'${t}'`, 'g'))).toHaveLength(1)
   })
 
@@ -83,11 +84,18 @@ describe('migration 1275 — static contract', () => {
       'fk_before + added - dropped', 'something else changed']) expect(CODE).toContain(n)
   })
 
-  it('states the header facts: the gap, the 27 and the exclusions with reasons, the 1265 requirement and discriminator, locks', () => {
-    for (const n of ['PRIVACY GAP', 'N-108', 'THE RELINK', 'NO ACTION -> CASCADE', 'LAND TOGETHER WITH 1265', 'THE GAP', 'THE 27', 'EXCLUDED', 'NULLABLE', 'OWNER-PATH', 'THE 1265 REQUIREMENT', 'NOT EXISTS (SELECT 1 FROM public.charts WHERE id = OLD.chart_id)',
+  it('states the header facts: the gap, the 29 and the exclusions with reasons, the 1265 requirement and discriminator, locks', () => {
+    for (const n of ['PRIVACY GAP', 'N-108', 'THE RELINK', 'NO ACTION -> CASCADE', 'LAND TOGETHER WITH 1265', 'THE GAP', 'THE 29', 'EXCLUDED', 'NULLABLE', 'OWNER-PATH', 'THE 1265 REQUIREMENT', 'NOT EXISTS (SELECT 1 FROM public.charts WHERE id = OLD.chart_id)',
       'pg_trigger_depth() is NOT a safe discriminator', 'session_replication_role = replica', 'MEASURED', 'ACTIVE RUNS (ENFORCED',
       'SERVING EFFECT AT APPLY: none', 'NOT DONE HERE', 'VERIFICATION BY PRODUCTION STRUCTURE', 'ROLLBACK', 'HELD', 'AFTER S-L1',
       "on SS's review", 'charts/[id]/route.ts:87-107']) expect(FLAT).toContain(n)
+  })
+
+  it('checks charts relforcerowsecurity is false (SS standing constraint: no FORCE RLS on charts without revisiting the 1265 guard)', () => {
+    expect(CODE).toContain("SELECT relforcerowsecurity FROM pg_class WHERE oid = 'public.charts'::regclass")
+    expect(CODE).toContain('FORCE ROW LEVEL SECURITY')
+    expect(FLAT).toContain('STANDING CONSTRAINT (SS): NO FORCE ROW LEVEL SECURITY ON charts WITHOUT FIRST REVISITING THE 1265 GUARD')
+    expect(FLAT).toContain('ORDER (hard): S-L1 -> PR #3040 (append-only mi_bhavisya writer) + migration 1259 -> 1265')
   })
 
   it('is a ROUTINE migration (not protected), unique, in the 1200-1299 range', () => {

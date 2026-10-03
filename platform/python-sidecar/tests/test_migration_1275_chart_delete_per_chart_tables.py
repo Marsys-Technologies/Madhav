@@ -1,7 +1,7 @@
 """
 Migration 1275 (Suvarna, SS ruling N-108): PRIVACY GAP -- every per-chart row must leave when its chart is deleted.
 chart_id -> charts(id) ON DELETE CASCADE on phala_muhurta, phala_mitigation, phala_phaladesa and every mimamsa_* table
-with per-chart rows (27 tables). HELD: own draft PR, merges only after S-L1 and only on SS's review, TOGETHER WITH 1265.
+with per-chart rows (29 tables). HELD: own draft PR, merges only after S-L1 and only on SS's review, TOGETHER WITH 1265.
 
 Two tiers:
   * STATIC (always runs, DB-free): file shape, the ONE table list, guards, header sections.
@@ -12,7 +12,7 @@ Two tiers:
     The cluster MIRRORS production's privilege layout (read 2026-10-03): schema public is owned by data_plane_schema_owner and
     amjis_app has USAGE only (NO CREATE), while amjis_app owns every table involved.
 
-The fixture reproduces the 27 tables' chart_id shape (NOT NULL, leading index), mimamsa_predictions with its real 21 columns and
+The fixture reproduces the 29 tables' chart_id shape (NOT NULL, leading index), mimamsa_predictions with its real 21 columns and
 PK, the SET NULL links between the phala tables, charts, build_runs, chart_subject_consent and chart_subject_deletion_disputes
 (both cascade from charts, as in production).
 
@@ -56,7 +56,8 @@ MIMAMSA = ["mimamsa_adjudication_log", "mimamsa_anchor_adjustment", "mimamsa_att
            "mimamsa_intervention_ledger", "mimamsa_journal", "mimamsa_load_bearing", "mimamsa_manifestation_grammar",
            "mimamsa_manifestation_sets", "mimamsa_multipliers", "mimamsa_predictions", "mimamsa_qa_eval", "mimamsa_reliability",
            "mimamsa_resonance_feedback", "mimamsa_signal_adjustment", "mimamsa_snapshot_cosign"]
-TABLES = PHALA + MIMAMSA
+BRAHMA = ["brahma_prospective_ledger", "brahma_mimamsa_prediction_ledger"]  # added: the L5 ledgers 1265 guards
+TABLES = PHALA + MIMAMSA + BRAHMA
 RELINK = ["mimamsa_pool_contributions"]  # existing NO ACTION chart link -> CASCADE (SS N-108 addendum)
 ALL_TABLES = TABLES + RELINK
 OLD_POOL_DEF = "FOREIGN KEY (chart_id) REFERENCES charts(id)"
@@ -86,7 +87,7 @@ def test_the_table_list_appears_once_and_is_exactly_the_27_named_tables_in_order
     code = _code(_M1275)
     arr = re.findall(r"tables text\[\] := ARRAY\[(.*?)\];", code, re.S)
     assert len(arr) == 1
-    assert re.findall(r"'([a-z_]+)'", arr[0]) == TABLES and len(TABLES) == 27
+    assert re.findall(r"'([a-z_]+)'", arr[0]) == TABLES and len(TABLES) == 29
     for t in TABLES:
         assert code.count(f"'{t}'") == 1, f"{t} must appear only in the list"
 
@@ -94,7 +95,7 @@ def test_the_table_list_appears_once_and_is_exactly_the_27_named_tables_in_order
 def test_excluded_tables_never_appear_in_the_executable_sql():
     code = _code(_M1275)
     for t in ("mimamsa_preferences", "mimamsa_negative_controls", "mimamsa_signal_families",
-              "brahma_mimamsa_prediction_ledger", "brahma_prospective_ledger", "__ssv_", "chart_facts", "bodha_"):
+              "__ssv_", "chart_facts", "bodha_"):
         assert t not in code, t
 
 
@@ -130,7 +131,8 @@ def test_guards_and_post_checks_are_present():
 
 def test_header_states_the_gap_the_list_the_exclusions_the_1265_requirement_locks_and_what_is_not_done():
     sql = _flat(_M1275)
-    for needle in ("PRIVACY GAP", "N-108", "LAND TOGETHER WITH 1265", "THE GAP", "THE 27", "owned by amjis_app", "EXCLUDED",
+    for needle in ("PRIVACY GAP", "N-108", "LAND TOGETHER WITH 1265", "THE GAP", "THE 29", "owned by amjis_app", "EXCLUDED", "STANDING CONSTRAINT (SS): NO FORCE ROW LEVEL SECURITY ON charts WITHOUT FIRST REVISITING THE 1265 GUARD",
+                   "ORDER (hard): S-L1 -> PR #3040", "1259 -> 1265 (owner-path frozen-row guards) -> 1275 (this) -> any L5", "relforcerowsecurity", "SECURITY DEFINER", "06e668944",
                    "THE RELINK", "mimamsa_pool_contributions", "NO ACTION -> CASCADE", "__ssv_20260728a/b", "NULLABLE", "brahma_mimamsa_prediction_ledger",
                    "OWNER-PATH", "THE 1265 REQUIREMENT", "NOT EXISTS (SELECT 1 FROM public.charts WHERE id = OLD.chart_id)",
                    "pg_trigger_depth() is NOT a safe discriminator", "session_replication_role = replica", "ORDER / LOCKS",
@@ -305,6 +307,9 @@ def _mirror_production(c):
         c.execute(f'ALTER TABLE public."{t}" OWNER TO amjis_app')
     for (sq,) in c.execute("SELECT sequencename FROM pg_sequences WHERE schemaname = 'public'").fetchall():
         c.execute(f'ALTER SEQUENCE public."{sq}" OWNER TO amjis_app')
+    # charts as live: owner amjis_app, row-level security ON (no FORCE: the owner bypasses), a policy that matches nothing for ordinary roles
+    c.execute("ALTER TABLE public.charts ENABLE ROW LEVEL SECURITY")
+    c.execute("CREATE POLICY chart_owner_policy ON public.charts FOR ALL USING (false)")
 
 
 def _make_fixture(connect, *, extra_ddl: str = ""):
@@ -325,7 +330,7 @@ def _insert_pred(c, chart: str, pid: str, status: str = "pending"):
 
 
 def _seed(connect, rows: int = 2):
-    """Charts A and B, `rows` rows per chart in every one of the 27 tables (predictions: pending and confirmed), consent rows."""
+    """Charts A and B, `rows` rows per chart in every one of the 29 tables (predictions: pending and confirmed), consent rows."""
     with connect() as c:
         c.execute("INSERT INTO charts VALUES (%s, 'A'), (%s, 'B')", (CHART_A, CHART_B))
         for chart in (CHART_A, CHART_B):
@@ -388,6 +393,17 @@ _DISC_DEPTH = """
     RETURN OLD;
   END IF;
 """
+_DISC_DEFINER = """
+  -- DELETE caused by deleting the chart itself: the helper is SECURITY DEFINER (owner = owner of charts) because charts has RLS on.
+  IF public.l5_chart_gone(OLD.chart_id) THEN
+    RETURN OLD;
+  END IF;
+"""
+_HELPER_DEFINER = """
+CREATE FUNCTION public.l5_chart_gone(p_chart uuid) RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER
+  SET search_path = pg_catalog, pg_temp AS $$ SELECT NOT EXISTS (SELECT 1 FROM public.charts WHERE id = p_chart) $$;
+ALTER FUNCTION public.l5_chart_gone(uuid) OWNER TO amjis_app;
+"""
 _ANCHOR = "  -- DELETE. The one exception:"
 
 
@@ -396,11 +412,14 @@ def _guard_sql(variant: str) -> str:
     assert _ANCHOR in body
     if variant == "notexists":
         body = body.replace(_ANCHOR, _DISC_NOTEXISTS + _ANCHOR, 1)
+    elif variant == "definer":
+        body = body.replace(_ANCHOR, _DISC_DEFINER + _ANCHOR, 1)
     elif variant == "depth":
         body = body.replace(_ANCHOR, _DISC_DEPTH + _ANCHOR, 1)
     elif variant != "head":
         raise ValueError(variant)
-    return f"""
+    helper = _HELPER_DEFINER if variant == "definer" else ""
+    return f"""{helper}
 CREATE FUNCTION public.mimamsa_predictions_frozen_row_guard() RETURNS trigger LANGUAGE plpgsql SECURITY INVOKER
   SET search_path = pg_catalog, pg_temp AS $frozen${body}$frozen$;
 CREATE TRIGGER mimamsa_predictions_frozen_row_guard BEFORE UPDATE OR DELETE ON public.mimamsa_predictions
@@ -425,6 +444,23 @@ def test_fixture_mirrors_production_amjis_app_has_usage_only_and_owns_every_tabl
     r = _q(db, "SELECT has_schema_privilege('amjis_app','public','CREATE'), has_schema_privilege('amjis_app','public','USAGE'), "
                "(SELECT count(*) FROM pg_class WHERE relnamespace='public'::regnamespace AND relkind='r' AND relowner <> 'amjis_app'::regrole)")[0]
     assert r == (False, True, 0)
+
+
+def test_charts_row_level_security_is_modelled_on_and_not_forced(db):
+    _make_fixture(db)
+    assert _q(db, "SELECT relrowsecurity, relforcerowsecurity FROM pg_class WHERE oid = 'charts'::regclass") == [(True, False)]
+
+
+def test_refuses_when_charts_has_FORCE_ROW_LEVEL_SECURITY_and_changes_nothing(db):
+    """SS standing constraint: no FORCE RLS on charts without first revisiting the 1265 guard."""
+    _make_fixture(db)
+    _seed(db)
+    _exec(db, "ALTER TABLE charts FORCE ROW LEVEL SECURITY")
+    before = _fk_defs(db)
+    with pytest.raises(Exception) as ei:
+        _apply(db, _REAL)
+    assert "FORCE ROW LEVEL SECURITY" in str(ei.value) and "1265" in str(ei.value), str(ei.value)
+    assert _fk_defs(db) == before
 
 
 def test_precondition_before_apply_a_chart_delete_leaves_every_row_of_the_27_tables_behind(db):
@@ -506,7 +542,7 @@ def test_apply_adds_exactly_the_27_links_and_changes_no_data_column_or_index(db)
     _apply(db, _REAL, notices)
     fks_after = _fk_defs(db)
     assert set(fks_after) - set(fks_before) == set(CONS) and set(fks_before) <= set(fks_after)
-    assert len(fks_after) == len(fks_before) + 27
+    assert len(fks_after) == len(fks_before) + 29
     assert all(fks_after[c] == EXPECTED_DEF for c in CONS)
     assert fks_before[POOL_CON] == OLD_POOL_DEF and fks_after[POOL_CON] == EXPECTED_DEF, "the relink took"
     assert {k: fks_after[k] for k in fks_before if k != POOL_CON} == {k: v for k, v in fks_before.items() if k != POOL_CON}, "another existing FK changed"
@@ -514,7 +550,7 @@ def test_apply_adds_exactly_the_27_links_and_changes_no_data_column_or_index(db)
     assert _q(db, "SELECT tablename, indexname, indexdef FROM pg_indexes WHERE schemaname='public' ORDER BY 1, 2") == idx_before
     assert _q(db, "SELECT count(*) FROM pg_proc WHERE pronamespace='public'::regnamespace")[0][0] == 0, "no function created"
     rows = _q(db, "SELECT convalidated, confdeltype::text, condeferrable FROM pg_constraint WHERE conname = ANY(%s)", (CONS,))
-    assert len(rows) == 27 and set(rows) == {(True, "c", False)}
+    assert len(rows) == 29 and set(rows) == {(True, "c", False)}
 
 
 def test_the_delete_route_scenario_without_a_guard_every_row_of_the_chart_is_gone_in_all_27_tables_other_chart_untouched(db):
@@ -552,7 +588,7 @@ def test_idempotent_second_run_changes_nothing(db):
     snap = (_fk_defs(db), _data_digest(db))
     notices: list[str] = []
     _apply(db, _REAL, notices)
-    assert sum("already present on" in n for n in notices) == 28
+    assert sum("already present on" in n for n in notices) == 30
     assert snap == (_fk_defs(db), _data_digest(db))
 
 
@@ -700,9 +736,9 @@ def test_1265_head_as_it_stands_REFUSES_the_chart_delete_so_it_must_change(db):
     assert _q(db, "SELECT count(*) FROM charts WHERE id = %s", (CHART_A,))[0][0] == 1
 
 
-@pytest.mark.parametrize("variant", ["notexists"])
+@pytest.mark.parametrize("variant", ["definer"])
 def test_chart_delete_with_the_guard_removes_all_rows_in_every_table_and_a_direct_delete_stays_refused(db, variant):
-    """BOTH IN ONE FIXTURE (SS N-108): the chart delete removes all the chart's rows in all 27 tables including its predictions;
+    """BOTH IN ONE FIXTURE (SS N-108): the chart delete removes all the chart's rows in all 29 tables including its predictions;
     a direct DELETE on a prediction is refused for every role -- app writer, table owner and superuser; the other chart is untouched."""
     _make_fixture(db)
     _seed(db)
@@ -743,7 +779,7 @@ def test_chart_delete_that_rolls_back_leaves_every_prediction(db):
     _make_fixture(db)
     _seed(db)
     _apply(db, _REAL)
-    _install_guard(db, "notexists")
+    _install_guard(db, "definer")
     conn = db(user="amjis_app")
     conn.execute("DELETE FROM build_runs WHERE chart_id = %s", (CHART_A,))
     conn.execute("DELETE FROM charts WHERE id = %s", (CHART_A,))
@@ -757,7 +793,7 @@ def test_the_consent_withdrawal_exception_of_1265_still_works_alongside_the_disc
     _make_fixture(db)
     _seed(db)
     _apply(db, _REAL)
-    _install_guard(db, "notexists")
+    _install_guard(db, "definer")
     _exec(db, "UPDATE chart_subject_consent SET consent_state = 'withdrawn' WHERE chart_id = %s", (CHART_A,))
     _exec(db, "DELETE FROM mimamsa_predictions WHERE chart_id = %s", (CHART_A,), user="amjis_app")
     assert _prediction_rows(db, CHART_A) == 0 and _prediction_rows(db, CHART_B) == 2
@@ -786,11 +822,13 @@ GRANT SELECT ON public.charts TO attacker;
 """ % CHART_A
 
 
-def test_the_trigger_depth_discriminator_CAN_be_spoofed_by_a_role_that_may_create_a_trigger_the_not_exists_one_cannot(db):
-    """Same attack, two discriminators. The attacker holds DELETE on mimamsa_predictions, owns a decoy table with an AFTER INSERT
-    trigger that issues the direct DELETE; inside that nested call pg_trigger_depth() is 2, exactly what the RI cascade shows."""
+def test_spoof_attempt_depth_and_invoker_rights_not_exists_are_spoofable_only_the_security_definer_helper_resists(db):
+    """Same attack, three discriminators, on a world where charts has RLS ON (as live). The attacker holds DELETE on mimamsa_predictions and
+    owns a decoy table whose AFTER INSERT trigger issues the direct DELETE. depth: nested call shows depth 2 like the cascade. Invoker-rights
+    NOT EXISTS: the attacker's role cannot SEE the chart (no policy lets it), so it reads 'absent' and the direct delete is authorized (the
+    reason 1265's helper is SECURITY DEFINER). SECURITY DEFINER NOT EXISTS: refused."""
     outcome = {}
-    for variant in ("depth", "notexists"):
+    for variant in ("depth", "notexists", "definer"):
         _make_fixture(db)
         _seed(db)
         _apply(db, _REAL)
@@ -804,7 +842,8 @@ def test_the_trigger_depth_discriminator_CAN_be_spoofed_by_a_role_that_may_creat
             assert _prediction_rows(db, CHART_A) == 2
     print("\nspoof attempt:", outcome)
     assert outcome["depth"].startswith("DELETED 2"), outcome
-    assert outcome["notexists"].startswith("REFUSED"), outcome
+    assert outcome["notexists"].startswith("DELETED 2"), outcome
+    assert outcome["definer"].startswith("REFUSED"), outcome
 
 
 def test_the_depth_discriminator_also_lets_the_RI_cascade_through_so_both_work_for_the_legit_path_only_not_exists_resists_spoofing(db):
@@ -854,7 +893,7 @@ def test_the_only_way_to_make_not_exists_true_outside_the_cascade_needs_superuse
     _make_fixture(db)
     _seed(db)
     _apply(db, _REAL)
-    _install_guard(db, "notexists")
+    _install_guard(db, "definer")
     with pytest.raises(Exception) as ei:
         with db(user="amjis_app") as c:
             c.execute("SET session_replication_role = replica")
@@ -870,14 +909,15 @@ def test_the_only_way_to_make_not_exists_true_outside_the_cascade_needs_superuse
         _exec(db, "DELETE FROM mimamsa_predictions WHERE chart_id = %s", (CHART_B,), user="amjis_app")
 
 
-def test_a_non_owner_non_superuser_with_delete_cannot_spoof_by_inserting_a_chart_then_deleting_it(db):
-    """Creating and deleting THEIR OWN chart only reaches their own chart's rows; they cannot make another chart's parent 'gone'."""
+def test_a_non_owner_cannot_even_create_a_chart_under_rls_so_it_cannot_manufacture_a_gone_parent(db):
     _make_fixture(db)
     _seed(db)
     _apply(db, _REAL)
-    _install_guard(db, "notexists")
+    _install_guard(db, "definer")
     _exec(db, "GRANT SELECT, INSERT, DELETE ON charts TO attacker; GRANT SELECT, DELETE ON mimamsa_predictions TO attacker")
-    _exec(db, "INSERT INTO charts VALUES (gen_random_uuid(), 'mine')", user="attacker")
+    with pytest.raises(Exception) as ei:
+        _exec(db, "INSERT INTO charts VALUES (gen_random_uuid(), 'mine')", user="attacker")
+    assert "row-level security" in str(ei.value)
     with pytest.raises(Exception) as ei:
         _exec(db, "DELETE FROM mimamsa_predictions WHERE chart_id = %s", (CHART_B,), user="attacker")
     assert "frozen predictions cannot be deleted" in str(ei.value)
@@ -899,8 +939,8 @@ def _scenario(db, sql: str) -> list[str]:
     for c in CONS + [POOL_CON]:
         if fks_after.get(c) != EXPECTED_DEF:
             v.append(f"chart link {c} missing or wrong")
-    if len(fks_after) != len(fks_before) + 27:
-        v.append("FK count did not rise by exactly 27")
+    if len(fks_after) != len(fks_before) + 29:
+        v.append("FK count did not rise by exactly 29")
     if _data_digest(db) != data_before:
         v.append("a data row changed")
     b_before = _chart_counts(db, CHART_B)
@@ -954,6 +994,16 @@ def _redef_scenario(db, sql: str) -> list[str]:
     return v
 
 
+def _force_scenario(db, sql: str) -> list[str]:
+    _make_fixture(db)
+    _exec(db, "ALTER TABLE charts FORCE ROW LEVEL SECURITY")
+    try:
+        _apply(db, sql)
+        return ["applied with FORCE ROW LEVEL SECURITY on charts"]
+    except Exception as exc:  # noqa: BLE001
+        return [] if "FORCE ROW LEVEL SECURITY" in str(exc) else [f"refused for another reason: {str(exc).splitlines()[0]}"]
+
+
 def _runs_scenario(db, sql: str) -> list[str]:
     _make_fixture(db)
     _exec(db, "INSERT INTO build_runs (state) VALUES ('running')")
@@ -996,6 +1046,7 @@ _MUTANTS = {
     "relink_list_empty": (_REAL.replace("        'mimamsa_pool_contributions'\n", ""), "scenario"),
     "relink_drop_removed": (_REAL.replace("EXECUTE format('ALTER TABLE public.%I DROP CONSTRAINT %I', tbl, con);", "NULL;"), "scenario"),
     "relink_old_definition_widened_to_any": (_REAL.replace("AND NOT (tbl = ANY (relink) AND cdef = relink_old)", "AND NOT (tbl = ANY (relink))"), "redef"),
+    "force_rls_check_removed": (_REAL.replace("AND (SELECT relforcerowsecurity FROM pg_class WHERE oid = 'public.charts'::regclass) THEN", "AND false THEN"), "force"),
     "stop_no_chart_id_neutered": (_REAL.replace("IF NOT EXISTS (SELECT 1 FROM pg_attribute WHERE attrelid = rel AND attname = 'chart_id' AND NOT attisdropped) THEN", "IF false THEN"), "stop"),
     "stop_nullable_neutered": (_REAL.replace("AND NOT attisdropped AND attnotnull) THEN", "AND NOT attisdropped) THEN"), "stop"),
     "stop_missing_chart_neutered": (_REAL.replace("IF bad > 0 THEN", "IF false THEN"), "stop"),
@@ -1017,6 +1068,7 @@ def test_the_real_file_produces_no_violations(db):
     assert _scenario(db, _REAL) == []
     assert _stop_scenario(db, _REAL) == []
     assert _redef_scenario(db, _REAL) == []
+    assert _force_scenario(db, _REAL) == []
     assert _runs_scenario(db, _REAL) == []
     assert _lock_scenario(db, _REAL) == []
 
@@ -1024,5 +1076,5 @@ def test_the_real_file_produces_no_violations(db):
 @pytest.mark.parametrize("name", sorted(_MUTANTS))
 def test_every_mutant_is_caught(db, name):
     sql, kind = _MUTANTS[name]
-    v = {"scenario": _scenario, "stop": _stop_scenario, "redef": _redef_scenario, "runs": _runs_scenario, "lock": _lock_scenario}[kind](db, sql)
+    v = {"scenario": _scenario, "stop": _stop_scenario, "redef": _redef_scenario, "force": _force_scenario, "runs": _runs_scenario, "lock": _lock_scenario}[kind](db, sql)
     assert v, f"mutant {name} was NOT caught"

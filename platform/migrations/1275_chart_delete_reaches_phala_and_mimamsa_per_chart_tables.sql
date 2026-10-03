@@ -2,8 +2,8 @@
 --
 -- Suvarna (SS ruling N-108): PRIVACY GAP -- every per-chart row must leave when its chart is deleted. Adds
 --     FOREIGN KEY (chart_id) REFERENCES charts(id) ON DELETE CASCADE
--- (an OWNERSHIP link: a row belongs to a chart) to the 27 tables below, and RE-CREATES the one existing chart link that does not cascade
--- (mimamsa_pool_contributions, ON DELETE NO ACTION -> CASCADE; SS N-108 addendum). Schema-only: 27 ADD CONSTRAINTs and 1 guarded
+-- (an OWNERSHIP link: a row belongs to a chart) to the 29 tables below, and RE-CREATES the one existing chart link that does not cascade
+-- (mimamsa_pool_contributions, ON DELETE NO ACTION -> CASCADE; SS N-108 addendum). Schema-only: 29 ADD CONSTRAINTs and 1 guarded
 -- DROP+ADD of the same constraint name. NO DB OBJECT IS CREATED,
 -- NO DATA IS CHANGED OR DELETED. Transaction ownership belongs to platform/scripts/migrate.ts (no BEGIN/COMMIT here).
 --
@@ -14,10 +14,10 @@
 -- FAIL (the whole route transaction rolls back, nothing lost, but the chart cannot be deleted). See THE 1265 REQUIREMENT.
 --
 -- THE GAP (catalogue, suvarna_reader, 2026-10-03). The chart-delete route (platform/src/app/api/charts/[id]/route.ts:87-107) deletes
--- a few tables by hand and then DELETE FROM charts, relying on ON DELETE CASCADE foreign keys for everything else. These 27 tables
+-- a few tables by hand and then DELETE FROM charts, relying on ON DELETE CASCADE foreign keys for everything else. These 29 tables
 -- carry a chart_id column (NOT NULL on every one) and have NO foreign key to charts and no FK path to it, so their rows survive the
 -- chart's deletion: phala_muhurta 183, phala_mitigation 1,277, phala_phaladesa 26, and the L5 mimamsa_* tables (the largest:
--- mimamsa_fact_adjustment 123,272 and mimamsa_signal_adjustment 100,275 rows). Per-chart row counts of the 27 on 2026-10-03 are in
+-- mimamsa_fact_adjustment 123,272 and mimamsa_signal_adjustment 100,275 rows). Per-chart row counts of the 29 on 2026-10-03 are in
 -- the PR body; today every row of every table resolves to a real charts row (0 unresolved).
 --
 -- THE RELINK (SS N-108 addendum). public.mimamsa_pool_contributions (owner amjis_app; id uuid PK, chart_id uuid NOT NULL, event_classes, weights,
@@ -27,8 +27,10 @@
 --   definition (already done: NOTICE), or absent (added). ANY OTHER definition RAISES. Drop and add run back to back inside the one
 --   transaction, so the table is never without a link; the post-check asserts confdeltype = 'c', validated, not deferrable.
 --
--- THE 27 (all owned by amjis_app, the migration runner; routine path, no owner-path package is needed for this migration):
+-- THE 29 (all owned by amjis_app, the migration runner; routine path, no owner-path package is needed for this migration):
 --   phala_*   : phala_muhurta, phala_mitigation, phala_phaladesa
+--   brahma_*  : prospective_ledger (29 rows: 18 + 11), mimamsa_prediction_ledger (5 rows) -- ADDED (coordinator, from the reworked 1265): the L5 frozen-history
+--               guards of 1265 cover both, and both had no charts link, so a chart delete left their rows behind
 --   mimamsa_* : adjudication_log, anchor_adjustment, attribution, calibration, calibration_snapshot, convergence_adjustment,
 --               discoveries, event_provenance, export_log, fact_adjustment, insight_embeddings, insight_units, intervention_ledger,
 --               journal, load_bearing, manifestation_grammar, manifestation_sets, multipliers, predictions, qa_eval, reliability,
@@ -45,15 +47,13 @@
 --                                                        nullable chart_id: it will not guess); they hold copies of per-chart subject rows
 --                                                        (e.g. 292 prediction rows) and ALSO leak on chart deletion. Reported for an SS ruling
 --                                                        (drop the snapshots, or backfill and link); NOT touched here.
---   brahma_mimamsa_prediction_ledger, brahma_prospective_ledger   per-chart, no charts link, owned by amjis_app, but not named in SS's
---                                                        list (prefix brahma_, and append-only ledgers with a freeze trigger): reported.
 -- Everything else in the catalogue that has a chart_id and no charts link (about 120 further tables: bodha_*, chart_facts, chart_dashas,
 -- ga_*, kala_*, l1_/l2_data_plane_*, pariprashna_*, ...; several owned by data_plane_l1_owner / data_plane_l2_owner) is OUT of scope by
 -- SS's list and is reported in the PR and in /Users/Dev/suvarna-evidence/S_L1/mig1275_chart_id_all.txt, with owners: the ones owned by
 -- another role need an OWNER-PATH package (executor on the D6 pattern; SQL NOT under platform/migrations), not this migration.
 --
 -- THE 1265 REQUIREMENT (frozen-row guard must ALLOW the cascade from deleting the chart itself and refuse every other DELETE).
---   Deleting a chart is the strongest form of consent withdrawal. 1265's guard (head eb2432707) allows a DELETE only when the chart has
+--   Deleting a chart is the strongest form of consent withdrawal. 1265's FIRST-DRAFT guard (head eb2432707; reworked in 06e668944 to carry this discriminator) allows a DELETE only when the chart has
 --   a chart_subject_consent row in state 'withdrawn' and no open dispute. A chart delete does not satisfy that (and chart_subject_consent
 --   itself is deleted by the same cascade, in an unspecified order), so it would be refused. DISCRIMINATOR, proved on PostgreSQL 15 and 17
 --   in this PR's tests: inside the RI cascade the parent charts row is already deleted when the child's BEFORE DELETE row trigger runs, so
@@ -63,8 +63,20 @@
 --   row first without the RI cascade, which needs session_replication_role = replica (superuser) or to disable the RI trigger (owner),
 --   and either of those can disable the guard itself. pg_trigger_depth() is NOT a safe discriminator: any role that can create a trigger or
 --   call a plpgsql function from a trigger reaches the same depth as the RI action; the tests demonstrate that spoof succeeding.
---   The guard must evaluate the discriminator for DELETE only, and fire for the 27 tables only where a guard exists (today only
---   mimamsa_predictions has a DELETE trigger among them; the other 26 have none).
+--   The guard must evaluate the discriminator for DELETE only, and fire for the 29 tables only where a guard exists. With the reworked 1265
+--   (PR #3033 head 06e668944, owner-path package) four of them carry DELETE guards: mimamsa_predictions, mimamsa_manifestation_sets,
+--   brahma_prospective_ledger, brahma_mimamsa_prediction_ledger; the other 25 have none. 1265's helper l5_frozen_chart_cascade_authorizes
+--   is SECURITY DEFINER (owner amjis_app) because charts has row-level security ON on live: under the invoker's rights a role that no
+--   policy lets see the chart would read 'absent' and a direct delete would be authorized.
+--
+-- STANDING CONSTRAINT (SS): NO FORCE ROW LEVEL SECURITY ON charts WITHOUT FIRST REVISITING THE 1265 GUARD. relforcerowsecurity on public.charts
+--   is false on live (relrowsecurity true). This migration checks it in its pre-flight and RAISES if it is true (with FORCE the owner would not
+--   see its own charts rows: the validation below and the discriminator would misread every chart as absent). Read-only verify query:
+--     SELECT relrowsecurity, relforcerowsecurity FROM pg_class WHERE oid = 'public.charts'::regclass;   -- t | f
+--
+-- ORDER (hard): S-L1 -> PR #3040 (append-only mi_bhavisya writer) + migration 1259 -> 1265 (owner-path frozen-row guards) -> 1275 (this) -> any L5
+--   rebuild. 1265 and 1275 land in the same window; either order of those two was tested to apply (a 1265 self-test on an existing chart), but
+--   the stated order is the one to run.
 --
 -- ORDER / LOCKS. ADD FOREIGN KEY takes SHARE ROW EXCLUSIVE on the child and on charts, held to the end of this transaction (one
 --   migrate.ts transaction), and validates the child. MEASURED on disposable PostgreSQL 15 and 17 with production-sized synthetic data
@@ -72,7 +84,7 @@
 --   included, ran in 0.06-0.09 s; the cascade of a chart delete over ~113,000 rows took 0.04-0.05 s. charts is write-blocked for that time. SET LOCAL lock_timeout = '5s' makes a
 --   blocked attempt fail loudly instead of queueing; migrate.ts has no retry, so a long open read/write on any table involved during the
 --   deploy fails that deploy until it is re-run. NOT VALID + VALIDATE would gain nothing here: the locks of the ADD are held to commit
---   either way, and the tables are small. Child chart_id indexes already lead on every one of the 27 (the cascade DELETE uses them).
+--   either way, and the tables are small. Child chart_id indexes already lead on every one of the 29 (the cascade DELETE uses them).
 --
 -- ACTIVE RUNS (ENFORCED, not advisory): the first DO block RAISES, changing nothing, if build_runs holds a run that is not
 --   completed/failed/stopped (planned, running or paused) for any mi_* asset or for ph_muhurta, ph_pratikara, ph_phaladesa. 0 on 2026-10-03.
@@ -83,7 +95,7 @@
 --   * chart_id must exist and be NOT NULL; no row may reference a missing chart (report, never backfill);
 --   * the constraint must be ABSENT (added) or PRESENT WITH EXACTLY the expected definition (idempotent re-run); for the relink table also the
 --     previous NO ACTION definition (replaced);
---   * post-check (asserting, RAISES): each constraint (the 27 and the relinked one) exists, is a foreign key to charts(id) on chart_id, convalidated, ON DELETE CASCADE,
+--   * post-check (asserting, RAISES): each constraint (the 29 and the relinked one) exists, is a foreign key to charts(id) on chart_id, convalidated, ON DELETE CASCADE,
 --     not deferrable; the number of foreign keys in public rose by exactly (added - dropped).
 --
 -- SERVING EFFECT AT APPLY: none. No registry column is touched (nirmana_registry_receipt_invalidation does not fire), no data row is
@@ -91,19 +103,19 @@
 --   an INSERT with a chart_id that has no charts row is refused on these tables (the writers insert only for existing charts); the
 --   governance cascade-closure tooling reports the new cascades.
 --
--- NOT DONE HERE: the __ssv_ shadow tables; brahma_*_ledger; the ~120 other
+-- NOT DONE HERE: the __ssv_ shadow tables; the ~120 other
 --   per-chart tables without a charts link (report); the chart-delete route's own list; 1265's guard change; tombstones for the deleted
 --   rows (consent/withdrawal.ts writes them for the consent path; a chart delete is the owner removing the chart).
 --
--- VERIFICATION BY PRODUCTION STRUCTURE (CLAUDE.md N.4, Trap 103: never trust a deploy log). After the deploy, as suvarna_reader, expect 27 rows,
+-- VERIFICATION BY PRODUCTION STRUCTURE (CLAUDE.md N.4, Trap 103: never trust a deploy log). After the deploy, as suvarna_reader, expect 29 rows,
 -- convalidated t, confdeltype c, definition FOREIGN KEY (chart_id) REFERENCES charts(id) ON DELETE CASCADE:
 --   SELECT conrelid::regclass, conname, convalidated, confdeltype, pg_get_constraintdef(oid) FROM pg_constraint
---    WHERE conname LIKE '%\_chart\_id\_fkey' AND conrelid IN (<the 27 tables>, mimamsa_pool_contributions) AND confrelid = 'charts'::regclass ORDER BY 1;
---     -- 28 rows, all convalidated t, confdeltype c (mimamsa_pool_contributions was a)
+--    WHERE conname LIKE '%\_chart\_id\_fkey' AND conrelid IN (<the 29 tables>, mimamsa_pool_contributions) AND confrelid = 'charts'::regclass ORDER BY 1;
+--     -- 30 rows, all convalidated t, confdeltype c (mimamsa_pool_contributions was a)
 --   SELECT count(*) FROM pg_constraint c JOIN pg_namespace n ON n.oid = c.connamespace WHERE c.contype = 'f' AND n.nspname = 'public';
---     -- 224 + 27 = 251 (the relink is net 0; 1260, if applied first, adds net -2: 249)
+--     -- 224 + 29 = 253 (the relink is net 0; 1260, if applied first, adds net -2: 251)
 --
--- ROLLBACK (not executed by migrate.ts): ALTER TABLE <table> DROP CONSTRAINT <table>_chart_id_fkey; for each of the 27; for mimamsa_pool_contributions drop and
+-- ROLLBACK (not executed by migrate.ts): ALTER TABLE <table> DROP CONSTRAINT <table>_chart_id_fkey; for each of the 29; for mimamsa_pool_contributions drop and
 -- re-add it as FOREIGN KEY (chart_id) REFERENCES charts(id) (NO ACTION). Doing so re-opens the
 -- privacy gap; it should only be done if a chart delete is blocked by a frozen-row guard and 1265 cannot yet be changed.
 
@@ -152,7 +164,9 @@ DECLARE
         'mimamsa_reliability',
         'mimamsa_resonance_feedback',
         'mimamsa_signal_adjustment',
-        'mimamsa_snapshot_cosign'
+        'mimamsa_snapshot_cosign',
+        'brahma_prospective_ledger',
+        'brahma_mimamsa_prediction_ledger'
     ];
     -- The one existing link whose action is changed (NO ACTION -> CASCADE), same constraint name.
     relink text[] := ARRAY[
@@ -175,6 +189,10 @@ BEGIN
     SELECT count(*) INTO fk_before
       FROM pg_constraint c JOIN pg_namespace ns ON ns.oid = c.connamespace
      WHERE c.contype = 'f' AND ns.nspname = 'public';
+
+    IF to_regclass('public.charts') IS NOT NULL AND (SELECT relforcerowsecurity FROM pg_class WHERE oid = 'public.charts'::regclass) THEN
+        RAISE EXCEPTION '1275: public.charts has FORCE ROW LEVEL SECURITY; the standing constraint is no FORCE RLS on charts without first revisiting the 1265 guard (and the owner would not see its own chart rows here)';
+    END IF;
 
     IF to_regclass('public.charts') IS NULL OR NOT EXISTS (
          SELECT 1 FROM pg_index i WHERE i.indrelid = 'public.charts'::regclass AND i.indisprimary
