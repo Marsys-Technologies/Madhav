@@ -2086,6 +2086,8 @@ import unicodedata  # noqa: E402
 # the wave plan, not hidden.
 _DOSHA_TRAILING_TOKEN = re.compile(r"\s+(?:Dosha|Do\u1e63a|Dosa)$")
 _DOSHA_TRAILING_PAREN = re.compile(r"^(.*?)\s*\((.*?)\)\s*$")
+_KUTA_CATEGORIES = frozenset({"nakshatra_compatibility", "rashi_combination"})  # compatibility (kuta) doshas
+_DOSHA_ANY_TOKEN = re.compile(r"(?:Dosha|Do\u1e63a|Dosa)\b")
 
 
 def _fold_marks(text: str) -> str:
@@ -2118,14 +2120,40 @@ def _dosha_derived_names(d: dict) -> list[str]:
         m = _DOSHA_TRAILING_PAREN.match(nm)
         if m:
             add(m.group(1))
-            add(m.group(2))
+            # independent review L0B nit: a parenthetical is an alternative NAME only if it names a doṣa ("Kuja Doṣa");
+            # otherwise it is a QUALIFIER ("Sandhi", "Candra Dusthāna", "Svakṣetra", "Lagna") and is not an alias.
+            if _DOSHA_ANY_TOKEN.search(m.group(2)):
+                add(m.group(2))
     for nm in list(base) + list(derived):                  # T1
         stripped = _DOSHA_TRAILING_TOKEN.sub("", nm)
         if stripped != nm:
             add(stripped)
     for nm in list(base) + list(derived):                  # T3
         add(_fold_marks(nm))
+    if d["category"] in _KUTA_CATEGORIES:
+        # independent review L0B nit: stripping "Doṣa" from a compatibility (kuta) dosha leaves a bare generic word (Gana, Yoni,
+        # Tara, Varna, Vashya, Bhakoot ...) that names the kuta FACTOR, not the dosha. Single-token derived aliases of these are
+        # WITHHELD (low-confidence); they are listed by `withheld_dosha_aliases()` for the acharya batch.
+        derived = [x for x in derived if re.search(r"\s", x)]
     return derived
+
+
+def withheld_dosha_aliases(doshas: list[dict] | None = None) -> dict[str, list[str]]:
+    """canonical_id -> derived aliases that the rule produces but WITHHOLDS as low-confidence (listed for the acharya batch)."""
+    out: dict[str, list[str]] = {}
+    for d in (doshas if doshas is not None else DOSHAS):
+        if d["category"] not in _KUTA_CATEGORIES:
+            continue
+        base = _dosha_base_names(d)
+        raw: list[str] = []
+        for nm in list(base):
+            stripped = _DOSHA_TRAILING_TOKEN.sub("", nm)
+            for cand in (stripped, _fold_marks(stripped)):
+                if cand != nm and cand not in base and cand not in raw and not re.search(r"\s", cand):
+                    raw.append(cand)
+        if raw:
+            out[d["canonical_id"]] = raw
+    return out
 
 
 def _bg_ontology_owned_name_keys() -> frozenset[str]:

@@ -13,6 +13,7 @@ projections, no row of any other ontology class, and a rerun is a no-op.
 from __future__ import annotations
 
 import collections
+from pathlib import Path
 import re
 import unicodedata
 
@@ -109,8 +110,8 @@ def test_golden_alias_sets(cid, golden):
 
 
 def test_golden_totals():
-    assert sum(len(v) for v in SETS.values()) == 411
-    assert collections.Counter(len(v) for v in SETS.values()) == {4: 31, 7: 16, 6: 15, 5: 9, 3: 5, 8: 2, 9: 1}
+    assert sum(len(v) for v in SETS.values()) == 383
+    assert collections.Counter(len(v) for v in SETS.values()) == {3: 5, 4: 44, 5: 6, 6: 10, 7: 11, 8: 2, 9: 1}
 
 
 def test_the_ontology_class_set_is_unchanged_the_writer_still_emits_doshas_only_for_79():
@@ -177,15 +178,65 @@ def test_real_writer_fills_79_of_79_alias_sets_and_changes_nothing_else():
 
 
 # ── SS N-113 (a): the 7 names that are ALSO yoga names ──────────────────────────────────────────────────────
-# The alias sets are landed in full. Seven of their names (kemadruma, Kemadruma, daridra, Daridra, Rajju, Sakata Yoga,
-# Sarpa Yoga) are also names of a yoga in brahma_ontology. They stay in the dosha sets, but the SERVED winner for them
+# The alias sets are landed. Six of their names (kemadruma, Kemadruma, daridra, Daridra, Sakata Yoga, Sarpa Yoga; the seventh,
+# Rajju, is now a withheld generic kuta word and no longer collides) are also names of a yoga in brahma_ontology. They stay in the dosha sets, but the SERVED winner for them
 # stays the yoga (resolve_entity's tie order puts a dosha last: PR TI-L0-14 / #3054) until the acharya batch rules.
 # This test pins the 7 so the hold is a visible, countable list; flipping them is the one-line switch documented in
 # resolve_entity.ts (TIE HOLD), not a change to these sets.
 HELD_YOGA_NAMES = {"kemadruma": "kemadruma", "Kemadruma": "kemadruma", "daridra": "daridra", "Daridra": "daridra",
-                   "Rajju": "rajju_dosha", "Sakata Yoga": "shakata", "Sarpa Yoga": "sarpa_yoga_dosha"}
+                   "Sakata Yoga": "shakata", "Sarpa Yoga": "sarpa_yoga_dosha"}
 
 
 @pytest.mark.parametrize("alias,dosha_id", sorted(HELD_YOGA_NAMES.items()))
-def test_the_seven_yoga_colliding_names_are_in_the_dosha_alias_sets(alias, dosha_id):
+def test_the_six_yoga_colliding_names_are_in_the_dosha_alias_sets(alias, dosha_id):
     assert alias in SETS[dosha_id]
+
+
+# ── independent review L0B nits: qualifiers and generic kuta words ───────────────────────────────────────────
+def test_name_sa_parentheticals_that_are_qualifiers_are_not_aliases_but_name_parentheticals_are():
+    assert "Sandhi" not in SETS["balarishta_sandhi"] and "Candra Dusthāna" not in SETS["balarishta_moon_dusthana"]
+    assert "Svakṣetra" not in SETS["kuja_dosha_bhanga_own_sign"] and "Lagna" not in SETS["papa_kartari_lagna"]
+    assert "Aṣṭama/Kaṇṭaka Śani" not in SETS["dhaiya"]
+    assert "Kuja Doṣa" in SETS["manglik"], "a parenthetical that names a doṣa IS an alternative name"
+    # the head part before the parenthetical is always a name
+    assert "Bālāriṣṭa" in SETS["balarishta"] or "Bālāriṣṭa (Sandhi)" in SETS["balarishta_sandhi"]
+
+
+EXPECTED_WITHHELD = {
+    "nadi_dosha": ["Nadi", "Nāḍī"], "bhakoot_dosha": ["Bhakoot", "Bhakūṭa", "Bhakuta"], "gana_dosha": ["Gana", "Gaṇa"],
+    "yoni_dosha": ["Yoni"], "vashya_dosha": ["Vashya", "Vaśya", "Vasya"], "tara_dosha_compat": ["Tārā", "Tara"],
+    "varna_dosha": ["Varna", "Varṇa"], "graha_maitri_dosha": ["Graha-Maitri", "Graha-Maitrī"],
+    "gandanta_dosha": ["Gandanta", "Gaṇḍānta"], "mool_dosha": ["Mūla", "Mula"], "abhukta_mula_dosha": ["Abhukta-Mula"],
+    "vish_kanya_dosha": None, "rajju_dosha": ["Rajju"], "vedha_dosha": ["Vedha"],
+    "stree_deergha_dosha": ["Stree-Deergha", "Strī-Dīrgha", "Stri-Dirgha"], "mahendra_dosha": ["Mahendra"],
+}
+
+
+def test_generic_kuta_words_are_withheld_from_the_stored_sets_and_listed_for_the_acharya_batch():
+    withheld = D.withheld_dosha_aliases()
+    assert sum(len(v) for v in withheld.values()) == 28
+    for cid, words in withheld.items():
+        d = BY_ID[cid]
+        assert d["category"] in D._KUTA_CATEGORIES
+        for w in words:
+            assert " " not in w and w not in SETS[cid], (cid, w)
+    for cid, words in EXPECTED_WITHHELD.items():
+        if words is not None:
+            assert set(words) <= set(withheld.get(cid, [])), cid
+    # non-kuta single-token names are kept: they are distinctive names, not factors
+    assert "Manglik" in SETS["manglik"] and "Shrapit" in SETS["shrapit_dosha"] and "Angarak" in SETS["angarak"]
+
+
+# ── COUPLING (independent review L0B #1): the winner hold lives in the resolver ───────────────────────────────
+RESOLVER = Path(__file__).resolve().parents[3] / "platform" / "src" / "lib" / "retrieval" / "registry" / "layers" / "L0_brahmagyan" / "resolve_entity.ts"
+
+
+def test_the_dosha_alias_sets_may_only_land_in_a_tree_whose_resolver_keeps_a_dosha_last_in_ties():
+    """With main's ORDER BY (alphabetical entity_class) these alias sets alone flip 6 served names from the yoga to the dosha
+    (kemadruma, Kemadruma, daridra, Daridra, Sakata Yoga, Sarpa Yoga). PR #3054 adds `(entity_class = 'dosha')` to the
+    ORDER BY. This test is red until that line is in the tree: #3054 must be merged before (or with) this PR and before the
+    level-0 rebuild."""
+    sql = RESOLVER.read_text(encoding="utf-8")
+    order = re.search(r"ORDER BY[^`]*", sql)
+    assert order and "(entity_class = 'dosha')" in order.group(0), (
+        "resolve_entity.ts has no dosha-last tie preference: merge PR #3054 (TI-L0-14) first")
