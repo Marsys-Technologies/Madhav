@@ -2823,6 +2823,11 @@ def grade_null_convention(spec: dict, columns, types, stats) -> dict:
         elif d.get("value") is not None and per[c]["nulls"] == 0 and not _same_constant(per[c].get("sole"), d["value"], kinds[c]):
             const_viol.append(c)
     unscoped = [c for c, n in nullable.items() if not n.get("scope") and per[c]["nulls"] > 0]
+    # PARTITION NOTE (E6.1 follow-up, STAMP LOW): fallback_checked / elements_not_inspected / fallback_not_applicable / stamp_columns partition `cols` (each column in exactly one group,
+    # pinned by test_e6_stamp_columns._partition) only while the catalog reads that feed them agree. `kinds` (null_fetch_column_kinds) and `stamp_facts` (null_fetch_stamp_facts) are two
+    # separate pg_catalog SELECTs and the table SELECT is a third, not one snapshot: a concurrent ALTER COLUMN .. TYPE between them can list one column in TWO groups (a stamp the kinds
+    # read still saw as text sits in fb_checked AND stamps) or in none. That is an accounting race only: the verdict is decided from the one table SELECT's numbers (`per`) plus the
+    # refusal of a non-timestamp stamp above, never from the group lists, and a rebuild re-reads. It is recorded rather than guarded (guarding needs one catalog snapshot).
     fb_possible = [c for c in cols if _null_fb_possible(kinds[c], c in nullable)]
     elem_not_inspected = [c for c in fb_possible if kinds[c] == "array_other"]            # only the EMPTY-array test runs: the element contents are not looked at
     fb_checked = [c for c in fb_possible if c not in elem_not_inspected]                  # what the PASS claim "no literal fallback" actually covers
