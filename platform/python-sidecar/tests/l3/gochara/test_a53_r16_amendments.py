@@ -114,3 +114,18 @@ def test_the_real_probe_reproduces_the_constant_on_the_pinned_corpus_from_the_ma
     t.start()
     t.join()
     assert abs(box["v"] - ivv.ABSOLUTE_PROBE_SUN_LAHIRI_DEG) <= ivv.ABSOLUTE_PROBE_TOLERANCE_DEG, box   # a fresh thread (per-thread state on Linux)
+
+
+# ── F-R17-2: the canonical daśā build id is pinned in exactly two governed places, and they can never drift ────────────
+
+def test_the_two_governed_pins_of_the_canonical_dasha_build_are_equal():
+    from services.gochara_rules import permission
+    assert permission.DASHA_READ_CONTRACT["build_id"] == inv._C_BUILD == "1f89fd4c-7d1e-4f3a-b3ae-e7ff839a6feb"
+
+
+def test_the_canonical_dasha_build_is_pinned_in_no_other_governed_module():
+    from pathlib import Path
+    root = Path(__file__).resolve().parents[3]
+    hits = sorted(str(p.relative_to(root)) for d in ("services", "pipeline") for p in (root / d).rglob("*.py")
+                  if "1f89fd4c-7d1e-4f3a-b3ae-e7ff839a6feb" in p.read_text())
+    assert hits == ["services/gochara_kernel/inventory_verifier.py", "services/gochara_rules/permission.py"], hits

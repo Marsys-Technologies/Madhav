@@ -730,10 +730,10 @@ def validate_consumed_dasha_population(conn: Any, *, chart_id: str, generation: 
         "SELECT DISTINCT coalesce(build_id::text, 'NULL') FROM public.chart_dashas WHERE chart_id = %s AND system_id = %s AND ayanamsha_id = %s",
         (chart_id, _C_SYSTEM, _C_AYANAMSHA)).fetchall())
     if len(builds) > 1:
-        raise RuntimeError(f"dasha_builds_mixed: chart {chart_id} carries Vimśottarī rows of {len(builds)} builds {builds} (every tier) — "
+        raise Unverifiable(f"dasha_builds_mixed: chart {chart_id} carries Vimśottarī rows of {len(builds)} builds {builds} (every tier) — "
                            "a mixed L1 state is not verifiable")
     if builds and str(chart_id) == _C_CHART and builds[0] != _C_BUILD:
-        raise RuntimeError(f"dasha_build_not_pinned: the canonical chart's only Vimśottarī build is {builds[0]}, the frozen contract pins {_C_BUILD}")
+        raise Unverifiable(f"dasha_build_not_pinned: the canonical chart's only Vimśottarī build is {builds[0]}, the frozen contract pins {_C_BUILD}")
     consumed = rows(f"SELECT {cols} FROM public.chart_dashas WHERE chart_id = %s"
                     " AND dasha_row_id = ANY(%s::uuid[])", (chart_id, ids))
     build = _C_BUILD if str(chart_id) == _C_CHART else None
@@ -744,7 +744,7 @@ def validate_consumed_dasha_population(conn: Any, *, chart_id: str, generation: 
     problems = check_dasha_population(consumed, pinned, chart_id=chart_id,
                                       horizon=(horizon[0], horizon[1]), consumed_ids=ids)
     if problems:
-        raise RuntimeError("consumed daśā population violates the §4.0 read contract: " + "; ".join(problems))
+        raise Unverifiable("consumed daśā population violates the §4.0 read contract: " + "; ".join(problems))
     return {"consumed": len(consumed), "pinned_overlapping": sum(
         1 for r in pinned if r["start_iso"] < horizon[1] and r["end_iso"] > horizon[0])}
 

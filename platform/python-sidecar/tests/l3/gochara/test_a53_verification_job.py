@@ -356,3 +356,50 @@ def test_a_missing_l1_read_is_named_plainly_not_a_raw_permission_error(built, ta
         with pytest.raises(vj.VerificationRefused, match=f"verifier lacks SELECT on {table}") as exc:
             vj.check_identity(conn)
     assert exc.value.exit_code == vj.EXIT_PRIVILEGE and "data-plane owner" in str(exc.value)
+
+
+# ── F-R17-3: a NAMED refusal ends in the REFUSED exit (2), never the generic ERROR exit (5) ──────────────────────────
+
+ANOTHER_BUILD = "22222222-2222-4222-8222-222222222222"
+
+
+def _run_entry_as_verifier(w, monkeypatch, capsys):
+    monkeypatch.setattr(writer_mod, "calc_sidereal_lon", lambda body, jd, ephe: (195.0, 2))
+    monkeypatch.setattr(entry, "_build_kwargs", lambda conn, ephe: {
+        k: v for k, v in _kwargs(w, _job_position(w, [LIBRA])).items() if k != "classes"})
+    w.conn.execute(f"ALTER ROLE gochara_verifier LOGIN PASSWORD '{PASSWORD}'")
+    try:
+        monkeypatch.setenv(entry.ENV_URL, make_conninfo(w.dsn, user="gochara_verifier", password=PASSWORD))
+        code = entry.main(["--chart", CHART_ID, "--class", CLS])
+        return code, json.loads(capsys.readouterr().out)
+    finally:
+        w.conn.execute("ALTER ROLE gochara_verifier NOLOGIN PASSWORD NULL")
+
+
+def test_a_mixed_dasha_build_ends_the_job_in_refused_not_error(built, monkeypatch, capsys):
+    w = built
+    w.conn.execute(
+        "INSERT INTO public.chart_dashas (dasha_row_id, chart_id, ayanamsha_id, system_id, level_n, parent_row_id, lord_graha, start_iso, end_iso,"
+        " build_id, verification_pass_status) SELECT gen_random_uuid(), chart_id, ayanamsha_id, system_id, level_n, NULL, lord_graha, start_iso, end_iso,"
+        " %s::uuid, 'single' FROM public.chart_dashas WHERE system_id = 'vimshottari' AND level_n = 1 LIMIT 1", (ANOTHER_BUILD,))
+    code, out = _run_entry_as_verifier(w, monkeypatch, capsys)
+    assert code == vj.EXIT_REFUSED == 2, out
+    assert out["status"] == "REFUSED" and out["code"] == "stale_inputs" and "dasha_builds_mixed" in out["detail"], out
+    assert _counts(w.conn, vj.VERIFICATION_TABLES) == {t: 0 for t in vj.VERIFICATION_TABLES}
+
+
+def test_a_single_unpinned_dasha_build_ends_the_job_in_refused_not_error(built, monkeypatch, capsys):
+    w = built
+    w.conn.execute("UPDATE public.chart_dashas SET build_id = %s::uuid", (ANOTHER_BUILD,))
+    code, out = _run_entry_as_verifier(w, monkeypatch, capsys)
+    assert code == vj.EXIT_REFUSED == 2, out
+    assert out["status"] == "REFUSED" and out["code"] == "stale_inputs" and "dasha_build_not_pinned" in out["detail"], out
+
+
+def test_an_absolute_ephemeris_probe_mismatch_ends_the_job_in_refused_not_error(built, monkeypatch, capsys):
+    from services.gochara_kernel import input_vector_verifier as ivv
+    w = built
+    monkeypatch.setattr(ivv, "derive_absolute_probe", lambda ephe_path: ivv.ABSOLUTE_PROBE_SUN_LAHIRI_DEG + 1.0)
+    code, out = _run_entry_as_verifier(w, monkeypatch, capsys)
+    assert code == vj.EXIT_REFUSED == 2, out
+    assert out["status"] == "REFUSED" and out["code"] == "stale_inputs" and "ephemeris_absolute_probe_mismatch" in out["detail"], out

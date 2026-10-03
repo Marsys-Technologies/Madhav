@@ -53,6 +53,7 @@ import hashlib
 import json
 import logging
 import math
+import time
 import uuid
 import os
 import re
@@ -144,8 +145,9 @@ def level_totals(rows: list[dict]) -> dict[int, int]:
 
 
 def index_paths(rows: list[dict]) -> dict[tuple, dict]:
-    """(level, path) -> row, where path = the chain of sibling indices from the MD down
-    (siblings ordered by start_iso under their parent). Rows must be one build, §4.0-canonical."""
+    """(level, path) -> row, where path = the chain of (LORD, occurrence) from the MD down. Rows are paired ONLY by this STRUCTURE — never by `dasha_row_id` (every id changes at S-L1:
+    delete + re-insert) and never by a bare sibling index: within a parent the children are keyed by their LORD (the Vimśottarī order is fixed), the n-th child of that lord being `(lord, n)`.
+    Siblings are ordered by start. Rows must be one build, §4.0-canonical."""
     by_parent: dict = {}
     for r in rows:
         by_parent.setdefault(r.get("parent_row_id"), []).append(r)
@@ -154,12 +156,39 @@ def index_paths(rows: list[dict]) -> dict[tuple, dict]:
     out: dict[tuple, dict] = {}
 
     def walk(parent_id, path):
-        for i, r in enumerate(by_parent.get(parent_id, [])):
-            p = path + (i,)
+        seen: dict[str, int] = {}
+        for r in by_parent.get(parent_id, []):
+            lord = r["lord_graha"]
+            k = seen.get(lord, 0)
+            seen[lord] = k + 1
+            p = path + ((lord, k),)
             out[(int(r["level_n"]), p)] = r
             walk(r["dasha_row_id"], p)
     walk(None, ())
     return out
+
+
+def subtree_refusals(old_idx: dict, new_idx: dict) -> list[dict]:
+    """Suvarṇa's hardening (steward M20261003T003504-c27f): where a parent's CHILD SET differs old vs new (a different count, or a different lord sequence) that subtree is REFUSED and LISTED —
+    never best-guessed. Reported at the highest differing parent only (the deeper differences are its consequence). Any count difference at levels 1–3 is UNEXPECTED and stops the whole re-pin."""
+    def children(idx):
+        out: dict[tuple, list] = {}
+        for (lv, path) in idx:
+            out.setdefault(path[:-1], []).append((lv, path[-1][0]))
+        return {k: [x for x in v] for k, v in out.items()}
+    oc, nc = children(old_idx), children(new_idx)
+    diffs = [{"parent": p, "old": [l for _, l in oc.get(p, [])], "new": [l for _, l in nc.get(p, [])]} for p in sorted(set(oc) | set(nc), key=lambda p: (len(p), p))
+             if [l for _, l in oc.get(p, [])] != [l for _, l in nc.get(p, [])]]
+    refused: list[dict] = []
+    for d in diffs:
+        if not any(d["parent"][:len(r["parent"])] == r["parent"] and len(d["parent"]) > len(r["parent"]) for r in refused):
+            refused.append(d)
+    return refused
+
+
+def under_refused(key: tuple, refusals: list[dict]) -> bool:
+    lv, path = key
+    return any(path[:len(r["parent"])] == r["parent"] and len(path) > len(r["parent"]) for r in refusals)
 
 
 def integrity(rows: list[dict]) -> dict:
@@ -268,21 +297,30 @@ def _rows_digest(rows: list[dict]) -> str:
     return hashlib.sha256(json.dumps(rows, sort_keys=True, separators=(",", ":")).encode("utf-8")).hexdigest()
 
 
-def write_capture(path: str, chart_id: str, build_id: str, rows: list[dict]) -> str:
-    """The OLD build's rows, captured READ-ONLY BEFORE S-L1 (the old rows may no longer exist afterwards): {chart_id, build_id, sha256, rows} — the file is the evidence the comparison uses."""
-    d = {"chart_id": chart_id, "build_id": build_id, "rows": rows, "sha256": _rows_digest(rows)}
+def _capture_digest(rows: list[dict], natal: list[dict] | None) -> str:
+    return hashlib.sha256(json.dumps({"rows": rows, "natal": natal or []}, sort_keys=True, separators=(",", ":")).encode("utf-8")).hexdigest()
+
+
+def write_capture(path: str, chart_id: str, build_id: str, rows: list[dict], natal: list[dict] | None = None, meta: dict | None = None) -> str:
+    """The OLD build's rows (+ the ten natal longitudes), captured READ-ONLY BEFORE S-L1 (the old rows may no longer exist afterwards): {chart_id, build_id, rows, natal, meta, sha256} — `sha256` covers
+    `rows` AND `natal` (the canonical JSON); `meta` records how it was read (isolation, read-only, snapshot, elapsed). The file is the evidence the comparison uses."""
+    d = {"chart_id": chart_id, "build_id": build_id, "rows": rows, "natal": natal or [], "meta": meta or {}, "sha256": _capture_digest(rows, natal)}
     Path(path).write_text(json.dumps(d, indent=1, sort_keys=True), encoding="utf-8")
     return d["sha256"]
 
 
-def load_capture(path: str, chart_id: str, build_id: str) -> list[dict]:
+def load_capture_full(path: str, chart_id: str, build_id: str) -> dict:
     d = json.loads(Path(path).read_text(encoding="utf-8"))
-    if d.get("chart_id") != chart_id or d.get("build_id") != build_id or not d.get("rows") or d.get("sha256") != _rows_digest(d["rows"]):
-        raise ValueError("the captured old-rows file is not for this chart and the pinned build, is empty, or its sha256 does not match its rows")
+    if d.get("chart_id") != chart_id or d.get("build_id") != build_id or not d.get("rows") or d.get("sha256") != _capture_digest(d["rows"], d.get("natal")):
+        raise ValueError("the captured old-rows file is not for this chart and the pinned build, is empty, or its sha256 does not match its rows and natal longitudes")
     bad = tree_problems(d["rows"], "captured old rows")
     if bad:
         raise ValueError("the captured old-rows file is malformed: " + "; ".join(bad[:6]))                  # Codex R17-4: a malformed old capture STOPS the comparison
-    return d["rows"]
+    return d
+
+
+def load_capture(path: str, chart_id: str, build_id: str) -> list[dict]:
+    return load_capture_full(path, chart_id, build_id)["rows"]
 
 
 class ReaderRefused(Exception):
@@ -327,6 +365,33 @@ def open_readonly_connection():
     """psycopg (v3), READ ONLY — the connection the §4.0 reader requires."""
     import psycopg
     conn = psycopg.connect(os.environ["DATABASE_URL"])
+    conn.read_only = True
+    return conn
+
+
+NATAL_SUBJECTS = ("LAGNA", "SUN", "MOON", "MAR", "MER", "JUP", "VEN", "SAT", "RAH_MEAN", "KET_MEAN")
+
+
+class NatalRefused(Exception):
+    """The ten natal graha_position longitudes could not be read exactly (a STOP by name)."""
+
+
+def read_natal(conn, chart_id: str) -> list[dict]:
+    """The ten L1 `graha_position` / `longitude_sidereal` / Lahiri facts (value, tier, build_id, fact_id) — READ in the SAME transaction as the daśā rows; exactly these ten subjects or a STOP."""
+    cur = conn.execute("SELECT fact_id, fact_subject, fact_value_num, verification_pass_status, build_id::text FROM public.chart_facts"
+                       " WHERE chart_id = %s AND ayanamsha_id = 'lahiri_chitrapaksha' AND fact_category = 'graha_position' AND fact_key = 'longitude_sidereal' ORDER BY fact_subject", (chart_id,))
+    rows = [{"fact_id": str(r[0]), "fact_subject": str(r[1]), "longitude": None if r[2] is None else str(r[2]), "tier": str(r[3]), "build_id": None if r[4] is None else str(r[4])} for r in cur.fetchall()]
+    got = sorted(r["fact_subject"] for r in rows)
+    if got != sorted(NATAL_SUBJECTS) or any(r["longitude"] is None for r in rows):
+        raise NatalRefused(f"the natal read returned subjects {got}, expected exactly {sorted(NATAL_SUBJECTS)} each with a longitude")
+    return rows
+
+
+def open_capture_connection():
+    """psycopg (v3) for the pre-S-L1 capture: REPEATABLE READ + READ ONLY (ONE snapshot for every statement), `application_name = repin_capture` (so a lingering session is visible)."""
+    import psycopg
+    conn = psycopg.connect(os.environ["DATABASE_URL"], application_name="repin_capture")
+    conn.isolation_level = psycopg.IsolationLevel.REPEATABLE_READ
     conn.read_only = True
     return conn
 
@@ -439,8 +504,11 @@ def remeasure_reference_rows(old: dict, new: dict) -> tuple[list[dict], list[str
 
 
 def decide(*, new_tier_ok: bool, new_integrity: dict, m: dict, flips: list, ref_problems: list, forensic_report: str | None, shift_issues: list[str] | None = None,
-           tree_issues: list[str] | None = None, old_totals: dict | None = None, new_totals: dict | None = None) -> list[str]:
+           tree_issues: list[str] | None = None, old_totals: dict | None = None, new_totals: dict | None = None, refused_subtrees: list[dict] | None = None) -> list[str]:
     stops = list(shift_issues or []) + list(tree_issues or [])
+    for r in refused_subtrees or []:
+        label = " → ".join(f"{l}#{k}" for l, k in r["parent"]) or "(roots)"
+        stops.append(f"REFUSED SUBTREE under {label}: the child set differs (old {r['old']}, new {r['new']}) — never best-guessed; any count difference at levels 1–3 is UNEXPECTED")
     if old_totals is not None and new_totals is not None and old_totals != new_totals:
         stops.append(f"per-level row totals differ (old {old_totals}, new {new_totals}); lords AND row counts must be EQUAL at levels 1–3")
     if not new_tier_ok:
@@ -631,14 +699,42 @@ def _mode_error(a) -> str | None:
 
 
 def _capture_old(a, conn) -> int:
+    """ONE short read-only transaction (REPEATABLE READ, READ ONLY — one snapshot) reads the Vimśottarī Lahiri levels 1–3 of the pinned build AND the ten natal graha_position rows; writes the file
+    + sha256; the connection is closed (rolled back, never committed) BEFORE the tool returns; prints the elapsed time (Suvarṇa: run it in the hour BEFORE S-L1, never during the window)."""
+    started = time.monotonic()
     old_id = PERM.DASHA_READ_CONTRACT["build_id"]
-    if conn is None:
-        conn = open_readonly_connection()
+    own = conn is None
+    if own:
+        conn = open_capture_connection()
+    meta: dict = {}
     try:
-        rows = read_levels(conn, a.chart_id, old_id, "pinned build (capture)")
-    except ReaderRefused as exc:
-        print(f"STOP — {exc}", file=sys.stderr); return 3
-    print(f"captured {len(rows)} rows of {old_id} -> {a.capture_old} sha256 {write_capture(a.capture_old, a.chart_id, old_id, rows)}")
+        try:
+            if own:
+                meta["snapshot_start"] = conn.execute("SELECT pg_current_snapshot()::text").fetchone()[0]           # the FIRST statement opens the transaction
+                meta["transaction_isolation"] = conn.execute("SHOW transaction_isolation").fetchone()[0]
+                meta["transaction_read_only"] = conn.execute("SHOW transaction_read_only").fetchone()[0]
+                if meta["transaction_isolation"] != "repeatable read" or meta["transaction_read_only"] != "on":
+                    raise ReaderRefused(f"the capture transaction is {meta['transaction_isolation']!r} / read_only {meta['transaction_read_only']!r}, not repeatable read / on")
+            rows = read_levels(conn, a.chart_id, old_id, "pinned build (capture)")
+            natal = read_natal(conn, a.chart_id)
+            if own:
+                meta["snapshot_end"] = conn.execute("SELECT pg_current_snapshot()::text").fetchone()[0]
+                if meta["snapshot_end"] != meta["snapshot_start"]:
+                    raise ReaderRefused("the snapshot changed during the capture — it was NOT one transaction")
+        except (ReaderRefused, NatalRefused) as exc:
+            print(f"STOP — {exc}", file=sys.stderr); return 3
+    finally:
+        if own:
+            try:
+                conn.rollback()                      # a read-only transaction is ended, never committed
+            finally:
+                conn.close()
+    meta["captured_at"] = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    meta["elapsed_seconds"] = round(time.monotonic() - started, 3)
+    digest = write_capture(a.capture_old, a.chart_id, old_id, rows, natal, meta)
+    print(f"captured {len(rows)} daśā rows (levels 1–3) of {old_id} and {len(natal)} natal longitudes -> {a.capture_old}")
+    print(f"sha256 {digest}")
+    print(f"one {meta.get('transaction_isolation', 'injected')} read-only transaction, connection closed; elapsed {meta['elapsed_seconds']} s")
     return 0
 
 
@@ -689,6 +785,8 @@ def main(argv=None, *, conn=None) -> int:
     tree_issues = tree_problems(old_rows, "old build") + tree_problems(new_rows, "new build")          # Codex R17-4: well-formed trees BEFORE any comparison
     old_idx, new_idx = index_paths(old_rows), index_paths(new_rows)
     m = match(old_idx, new_idx)
+    refusals = subtree_refusals(old_idx, new_idx)
+    m = {**m, "matched": [k for k in m["matched"] if not under_refused(k, refusals)]}                          # a refused subtree is not paired at all (no best guess)
     stats = shift_stats(old_idx, new_idx, m["matched"])
     flips = path_lord_flips(old_idx, new_idx, m["matched"])                       # D7: every matched row keeps its lord — the STOP
     sensitive = lord_flips(old_rows, new_rows, oracle_instants()) if new_rows else []   # instants whose lord differs because a boundary MOVED — reported, D8
@@ -701,7 +799,7 @@ def main(argv=None, *, conn=None) -> int:
     extra_stops = build_problems(builds, a.new_build_id) + preflight_problems(fetch_preflight_facts(conn, a.chart_id), a.new_build_id)
     stops = decide(new_tier_ok=new_tier_ok, new_integrity=integrity(new_rows), m=m, flips=flips,
                    ref_problems=ref_problems, forensic_report=a.forensic_report, shift_issues=shift_problems(stats, notice),
-                   tree_issues=tree_issues, old_totals=level_totals(old_rows), new_totals=level_totals(new_rows))
+                   tree_issues=tree_issues, old_totals=level_totals(old_rows), new_totals=level_totals(new_rows), refused_subtrees=refusals)
     stops += extra_stops
     if notice is not None and notice.get("new_build_id") != a.new_build_id:                         # Codex R17-5: notice == --new-build-id == the database readback (the builds check above)
         stops.append(f"the SETTLED-1 notice names build {notice.get('new_build_id')}, not {a.new_build_id}")
