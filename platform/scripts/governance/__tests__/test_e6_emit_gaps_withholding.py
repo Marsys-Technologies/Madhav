@@ -1,0 +1,679 @@
+"""test_e6_emit_gaps_withholding.py — SS ruling N-100: the withholding list enforced INSIDE emit_gaps.
+
+`asset_census.emit_gaps_summary` (the one ledger writer; `emit_gaps` is its tuple wrapper; `main --emit-gaps` calls it)
+used to be able to write a CLOSED (credit) row for a WITHHELD (asset, criterion) cell directly, bypassing the E5.2 fold
+script (which strips withheld cells BEFORE calling it). The rule is now enforced where the rows are written:
+
+  * a cell whose gap id `<asset>-<criterion>` is an entry of `CTRL/NIKASHA_WITHHOLDING.json` gets NO row of any kind
+    (no OPEN, no RE-OPEN, no CLOSED credit), even when it now reads PASS/N-A and an OPEN row exists;
+  * an ABSENT file changes nothing (the summary is byte-for-byte the old dict);
+  * a PRESENT file that is malformed / not a regular file / untracked / not at HEAD / different from HEAD in content, mode
+    or index, or a TRACKED file missing from the work tree, REFUSES the emit (WithholdingRefused) before the ledger is
+    opened: the ledger stays byte-identical;
+  * a scoped run applies the same filter; a census the fold already filtered gives the same ledger (idempotent).
+
+Every guard has a mutation test: the real source is mutated textually (one change each, asserted to apply exactly once),
+loaded as a throwaway module, and the scenario that pins that guard must FAIL on the mutant while a baseline scenario
+still passes on it (so the mutant is alive, not merely broken).
+
+Run: cd platform/scripts/governance && python3 -m pytest __tests__/test_e6_emit_gaps_withholding.py -q
+"""
+from __future__ import annotations
+
+import json
+import os
+import pathlib
+import subprocess
+import sys
+import types
+
+import pytest
+
+HERE = pathlib.Path(__file__).resolve().parent
+GOV = HERE.parent
+sys.path.insert(0, str(GOV))
+
+import asset_census as ac  # noqa: E402
+
+SRC_PATH = GOV / "asset_census.py"
+SRC = SRC_PATH.read_text(encoding="utf-8")
+
+WH_REL = "00_ARCHITECTURE/control/NIKASHA_WITHHOLDING.json"
+GAPS_REL = "00_ARCHITECTURE/control/asset_gaps.jsonl"
+W_ASSET, W_CRIT = "bo_upaya", "Idem.pattern"
+W_ID = f"{W_ASSET}-{W_CRIT}"
+O_ASSET, O_CRIT = "bo_other", "Build.dag"          # an unwithheld cell
+O_ID = f"{O_ASSET}-{O_CRIT}"
+
+
+# ───────────────────────────── fixtures / helpers ─────────────────────────────
+
+def _entry(asset=W_ASSET, crit=W_CRIT, **over):
+    e = dict(asset=asset, criterion=crit, register_row="R244", reason="unearned PASS", condition="lifts on an SS decision",
+             decided_by="test")
+    e.update(over)
+    return e
+
+
+def wh_text(entries=None, **top) -> str:
+    entries = {W_ID: _entry()} if entries is None else entries
+    d = dict(version=1, doc="test", entries=entries)
+    d.update(top)
+    return json.dumps(d, indent=2) + "\n"
+
+
+def _row(gid, state="OPEN", **kw):
+    asset, crit = gid.split("-", 1)
+    r = dict(asset=asset, gap_id=gid, kind="gap", criterion=crit, what="w", change="", detector="d", owner="asset_census",
+             gate="this asset's certification", state=state, ts="t0")
+    r.update(kw)
+    return r
+
+
+def _git(cwd, *args, check=True):
+    env = {k: v for k, v in os.environ.items() if not k.startswith("GIT_")}
+    p = subprocess.run(["git", "-C", str(cwd), "-c", "user.name=t", "-c", "user.email=t@t", "-c", "commit.gpgsign=false",
+                        *args], capture_output=True, text=True, env=env)
+    if check and p.returncode != 0:
+        raise RuntimeError(f"git {args}: {p.stderr}")
+    return p
+
+
+class Env:
+    """A temp git repo whose control dir holds the ledger and (optionally) the withholding file."""
+
+    def __init__(self, tmp, *, rows=(), wh=None, commit=True, track_wh=True):
+        self.repo = pathlib.Path(tmp) / "repo"
+        self.ctrl = self.repo / "00_ARCHITECTURE" / "control"
+        self.ctrl.mkdir(parents=True)
+        self.gaps = self.ctrl / "asset_gaps.jsonl"
+        self.wh = self.ctrl / "NIKASHA_WITHHOLDING.json"
+        self.gaps.write_text("".join(json.dumps(r) + "\n" for r in rows), encoding="utf-8")
+        _git(self.repo, "init", "-q")
+        if wh is not None:
+            self.wh.write_text(wh, encoding="utf-8")
+        _git(self.repo, "add", GAPS_REL)
+        if wh is not None and track_wh:
+            _git(self.repo, "add", WH_REL)
+        if commit:
+            _git(self.repo, "commit", "-q", "-m", "base")
+
+    def commit_all(self):
+        _git(self.repo, "add", "-A")
+        _git(self.repo, "commit", "-q", "-m", "more")
+
+    def ledger(self) -> bytes:
+        return self.gaps.read_bytes()
+
+
+def census(cells, scope=None):
+    """cells: [(asset, crit, verdict)] -> a layer census."""
+    by: dict = {}
+    for a, c, v in cells:
+        by.setdefault(a, {})[c] = dict(v=v, measured=f"m-{v}")
+    c = dict(layer="L0", assets=[dict(asset_id=a, measurements=m) for a, m in by.items()])
+    if scope is not None:
+        c["scope"] = dict(assets=list(scope), partial=True, layers=["L0"])
+    return c
+
+
+class use_ctrl:
+    def __init__(self, m, path):
+        self.m, self.path = m, path
+
+    def __enter__(self):
+        self.old = self.m.CTRL
+        self.m.CTRL = pathlib.Path(self.path)
+
+    def __exit__(self, *a):
+        self.m.CTRL = self.old
+
+
+@pytest.fixture(scope="module")
+def real():
+    return ac
+
+
+def refuses(m, env, code, cen=None):
+    """True iff emit_gaps_summary raises m.WithholdingRefused(code) AND the ledger is byte-identical afterwards."""
+    cen = cen or census([(W_ASSET, W_CRIT, m.PASS), (O_ASSET, O_CRIT, m.PASS)])
+    before = env.ledger()
+    with use_ctrl(m, env.ctrl):
+        try:
+            m.emit_gaps_summary(cen)
+        except m.WithholdingRefused as e:
+            return e.code == code and env.ledger() == before
+        except Exception:  # noqa: BLE001 — any other failure is not the guard
+            return False
+    return False
+
+
+def proceeds(m, env, cen=None):
+    with use_ctrl(m, env.ctrl):
+        return m.emit_gaps_summary(cen or census([(O_ASSET, O_CRIT, m.PASS)]))
+
+
+# ───────────────────────────── scenarios (module-parametrised: real or mutant) ─────────────────────────────
+
+def sc_baseline(m, tmp):
+    """A valid tracked+clean list; an UNWITHHELD cell is still closed by measurement (the mutant is alive)."""
+    env = Env(tmp, rows=[_row(O_ID)], wh=wh_text())
+    out = proceeds(m, env)
+    rows = [json.loads(x) for x in env.ledger().decode().splitlines()]
+    return out["closed"] == 1 and rows[-1]["gap_id"] == O_ID and rows[-1]["state"] == "CLOSED"
+
+
+def sc_withheld_pass_no_credit(m, tmp):
+    env = Env(tmp, rows=[_row(W_ID), _row(O_ID)], wh=wh_text())
+    before = env.ledger()
+    out = proceeds(m, env, census([(W_ASSET, W_CRIT, m.PASS), (O_ASSET, O_CRIT, m.PASS)]))
+    new = env.ledger()[len(before):].decode()
+    return (new.count("\n") == 1 and O_ID in new and W_ID not in new and out["closed"] == 1
+            and out["withheld"] == [W_ID] and env.ledger().startswith(before))
+
+
+def sc_withheld_fail_no_open(m, tmp):
+    env = Env(tmp, rows=[], wh=wh_text())
+    out = proceeds(m, env, census([(W_ASSET, W_CRIT, m.FAIL)]))
+    return env.ledger() == b"" and out["added"] == 0 and out["withheld"] == [W_ID]
+
+
+def sc_withheld_fail_no_reopen(m, tmp):
+    env = Env(tmp, rows=[_row(W_ID, "CLOSED")], wh=wh_text())
+    before = env.ledger()
+    out = proceeds(m, env, census([(W_ASSET, W_CRIT, m.FAIL)]))
+    return env.ledger() == before and out["reopened"] == 0
+
+
+def sc_summary_key_only_with_list(m, tmp):
+    env = Env(tmp, rows=[_row(O_ID)], wh=wh_text({}))
+    return "withheld" not in proceeds(m, env)
+
+
+def sc_absent_unchanged(m, tmp):
+    env = Env(tmp, rows=[_row(W_ID), _row(O_ID)], wh=None)
+    out = proceeds(m, env, census([(W_ASSET, W_CRIT, m.PASS), (O_ASSET, O_CRIT, m.PASS)]))
+    return out == dict(added=0, skipped=0, closed=2, reopened=0, retired_opportunity_rows_left=0)
+
+
+def sc_absent_no_git(m, tmp):
+    d = pathlib.Path(tmp) / "plain"
+    d.mkdir(parents=True)
+    (d / "asset_gaps.jsonl").write_text(json.dumps(_row(O_ID)) + "\n", encoding="utf-8")
+    with use_ctrl(m, d):
+        out = m.emit_gaps_summary(census([(O_ASSET, O_CRIT, m.PASS)]))
+    return out["closed"] == 1
+
+
+def sc_scoped_filter(m, tmp):
+    env = Env(tmp, rows=[_row(W_ID), _row(O_ID)], wh=wh_text())
+    before = env.ledger()
+    cen = census([(W_ASSET, W_CRIT, m.PASS), (O_ASSET, O_CRIT, m.PASS)], scope=[W_ASSET, O_ASSET])
+    with use_ctrl(m, env.ctrl):
+        out = m.emit_gaps_summary(cen, assets=[W_ASSET])           # scoped to the withheld asset only
+    ok1 = env.ledger() == before and out["closed"] == 0 and out["withheld"] == [W_ID]
+    with use_ctrl(m, env.ctrl):
+        out = m.emit_gaps_summary(cen)                             # label-scoped (both assets)
+    new = env.ledger()[len(before):].decode()
+    return ok1 and out["withheld"] == [W_ID] and O_ID in new and W_ID not in new
+
+
+def sc_double_filter_idempotent(m, tmp):
+    full = census([(W_ASSET, W_CRIT, m.PASS), (O_ASSET, O_CRIT, m.PASS)])
+    pre = census([(O_ASSET, O_CRIT, m.PASS)])                     # what the fold hands emit_gaps_summary
+    e1 = Env(pathlib.Path(tmp) / "a", rows=[_row(W_ID), _row(O_ID)], wh=wh_text())
+    e2 = Env(pathlib.Path(tmp) / "b", rows=[_row(W_ID), _row(O_ID)], wh=wh_text())
+    with use_ctrl(m, e1.ctrl):
+        o1 = m.emit_gaps_summary(full)
+    with use_ctrl(m, e2.ctrl):
+        o2 = m.emit_gaps_summary(pre)
+    strip = lambda b: [{k: v for k, v in json.loads(x).items() if k != "ts"} for x in b.decode().splitlines()]  # noqa: E731
+    same = strip(e1.ledger()) == strip(e2.ledger()) and o1["closed"] == o2["closed"] == 1
+    b = e1.ledger()
+    with use_ctrl(m, e1.ctrl):
+        m.emit_gaps_summary(full)
+        m.emit_gaps_summary(pre)
+    return same and e1.ledger() == b
+
+
+def sc_untracked(m, tmp):
+    env = Env(tmp, rows=[_row(W_ID)], wh=wh_text(), track_wh=False)
+    return refuses(m, env, "withholding_untracked")
+
+
+def sc_dirty_content(m, tmp):
+    env = Env(tmp, rows=[_row(W_ID)], wh=wh_text())
+    env.wh.write_text(wh_text({}), encoding="utf-8")               # lifts the withholding in the work tree only
+    return refuses(m, env, "withholding_dirty")
+
+
+def sc_dirty_staged_only(m, tmp):
+    env = Env(tmp, rows=[_row(W_ID)], wh=wh_text())
+    env.wh.write_text(wh_text({}), encoding="utf-8")
+    _git(env.repo, "add", WH_REL)                                  # index == work tree, both differ from HEAD
+    return refuses(m, env, "withholding_dirty")
+
+
+def sc_dirty_mode_only(m, tmp):
+    env = Env(tmp, rows=[_row(W_ID)], wh=wh_text())
+    os.chmod(env.wh, 0o755)                                        # bytes equal HEAD; only `git diff HEAD` sees the mode
+    return refuses(m, env, "withholding_dirty")
+
+
+def sc_dirty_hidden_by_assume_unchanged(m, tmp):
+    env = Env(tmp, rows=[_row(W_ID)], wh=wh_text())
+    _git(env.repo, "update-index", "--assume-unchanged", WH_REL)
+    env.wh.write_text(wh_text({}), encoding="utf-8")               # git diff reports clean; the bytes differ from HEAD
+    return refuses(m, env, "withholding_dirty")
+
+
+def sc_no_head(m, tmp):
+    env = Env(tmp, rows=[_row(W_ID)], wh=wh_text(), commit=False)  # tracked (index) but no commit at all
+    return refuses(m, env, "withholding_not_at_head")
+
+
+def sc_not_in_git(m, tmp):
+    d = pathlib.Path(tmp) / "plain"
+    d.mkdir(parents=True)
+    (d / "asset_gaps.jsonl").write_text(json.dumps(_row(W_ID)) + "\n", encoding="utf-8")
+    (d / "NIKASHA_WITHHOLDING.json").write_text(wh_text(), encoding="utf-8")
+    before = (d / "asset_gaps.jsonl").read_bytes()
+    with use_ctrl(m, d):
+        try:
+            m.emit_gaps_summary(census([(W_ASSET, W_CRIT, m.PASS)]))
+        except m.WithholdingRefused as e:
+            return e.code == "withholding_not_in_git" and (d / "asset_gaps.jsonl").read_bytes() == before
+        except Exception:  # noqa: BLE001
+            return False
+    return False
+
+
+def sc_deleted_tracked(m, tmp):
+    env = Env(tmp, rows=[_row(W_ID)], wh=wh_text())
+    env.wh.unlink()                                                # a deleted list must not lift every withholding
+    return refuses(m, env, "withholding_deleted")
+
+
+def sc_deleted_staged_never_committed(m, tmp):
+    env = Env(tmp, rows=[_row(W_ID)], wh=wh_text(), track_wh=False)   # HEAD has the ledger only
+    _git(env.repo, "add", WH_REL)                                      # the list is in the index, never committed
+    env.wh.unlink()
+    return refuses(m, env, "withholding_deleted")
+
+
+def sc_deleted_via_git_rm(m, tmp):
+    env = Env(tmp, rows=[_row(W_ID)], wh=wh_text())
+    _git(env.repo, "rm", "-q", WH_REL)                                 # deleted in work tree AND index; HEAD still has it
+    return refuses(m, env, "withholding_deleted")
+
+
+def sc_absent_git_unavailable(m, tmp):
+    env = Env(tmp, rows=[_row(O_ID)], wh=None)
+    old = os.environ.get("PATH")
+    os.environ["PATH"] = str(pathlib.Path(tmp) / "empty-bin")
+    try:
+        return proceeds(m, env)["closed"] == 1
+    finally:
+        os.environ["PATH"] = old
+
+
+def sc_symlink(m, tmp):
+    env = Env(tmp, rows=[_row(W_ID)], wh=wh_text())
+    real_file = env.ctrl / "elsewhere.json"
+    real_file.write_text(wh_text(), encoding="utf-8")
+    env.wh.unlink()
+    env.wh.symlink_to(real_file)
+    return refuses(m, env, "withholding_not_regular_file")
+
+
+def sc_directory(m, tmp):
+    env = Env(tmp, rows=[_row(W_ID)], wh=None)
+    env.wh.mkdir()
+    return refuses(m, env, "withholding_not_regular_file")
+
+
+def sc_unreadable(m, tmp):
+    if hasattr(os, "geteuid") and os.geteuid() == 0:
+        return True                                                # root reads anything: nothing to test
+    env = Env(tmp, rows=[_row(W_ID)], wh=wh_text())
+    os.chmod(env.wh, 0o000)
+    try:
+        return refuses(m, env, "withholding_unreadable")
+    finally:
+        os.chmod(env.wh, 0o644)
+
+
+def sc_git_unavailable_present(m, tmp):
+    env = Env(tmp, rows=[_row(W_ID)], wh=wh_text())
+    old = os.environ.get("PATH")
+    os.environ["PATH"] = str(pathlib.Path(tmp) / "empty-bin")      # git cannot be found
+    try:
+        return refuses(m, env, "withholding_git_unavailable")
+    finally:
+        os.environ["PATH"] = old
+
+
+MALFORMED = {
+    "not_json": "{ nope",
+    "dup_key": '{"version": 1, "entries": {}, "entries": {}}',
+    "nan": '{"version": 1, "entries": {}, "x": NaN}',
+    "not_object": "[1]",
+    "bad_version": json.dumps(dict(version=2, entries={})),
+    "entries_list": json.dumps(dict(version=1, entries=[])),
+    "entry_not_object": json.dumps(dict(version=1, entries={W_ID: 1})),
+    "no_asset": json.dumps(dict(version=1, entries={"None-None": _entry(asset=None, crit=None)})),   # key agrees with the null fields
+    "empty_asset": json.dumps(dict(version=1, entries={W_ID: _entry(asset="")})),
+    "key_mismatch": json.dumps(dict(version=1, entries={"bo_upaya-Build.dag": _entry()})),
+    "unknown_criterion": json.dumps(dict(version=1, entries={"bo_upaya-Zzz.nope": _entry(crit="Zzz.nope")})),
+    "retired_criterion": json.dumps(dict(version=1, entries={"bo_upaya-Carr.detector": _entry(crit="Carr.detector")})),
+    "no_reason": json.dumps(dict(version=1, entries={W_ID: _entry(reason=" ")})),
+    "no_condition": json.dumps(dict(version=1, entries={W_ID: _entry(condition=None)})),
+    "no_decided_by": json.dumps(dict(version=1, entries={W_ID: _entry(decided_by=5)})),
+    "bad_register_row": json.dumps(dict(version=1, entries={W_ID: _entry(register_row="244")})),
+}
+MALFORMED_CODE = {"unknown_criterion": "withholding_unknown_criterion", "retired_criterion": "withholding_unknown_criterion"}
+
+
+def sc_malformed(name):
+    def _sc(m, tmp):
+        env = Env(tmp, rows=[_row(W_ID)], wh=MALFORMED[name])      # committed and clean: only the content is bad
+        return refuses(m, env, MALFORMED_CODE.get(name, "withholding_malformed"))
+    return _sc
+
+
+def sc_valid_no_register_row(m, tmp):
+    env = Env(tmp, rows=[_row(W_ID)], wh=wh_text({W_ID: {k: v for k, v in _entry().items() if k != "register_row"}}))
+    return proceeds(m, env, census([(W_ASSET, W_CRIT, m.PASS)]))["withheld"] == [W_ID]
+
+
+# ───────────────────────────── behaviour tests (real module) ─────────────────────────────
+
+POSITIVE = [sc_baseline, sc_withheld_pass_no_credit, sc_withheld_fail_no_open, sc_withheld_fail_no_reopen,
+            sc_summary_key_only_with_list, sc_absent_unchanged, sc_absent_no_git, sc_absent_git_unavailable, sc_scoped_filter,
+            sc_double_filter_idempotent, sc_valid_no_register_row]
+REFUSALS = [sc_untracked, sc_dirty_content, sc_dirty_staged_only, sc_dirty_mode_only, sc_dirty_hidden_by_assume_unchanged,
+            sc_no_head, sc_not_in_git, sc_deleted_tracked, sc_deleted_staged_never_committed, sc_deleted_via_git_rm, sc_symlink, sc_directory,
+            sc_unreadable, sc_git_unavailable_present] + [sc_malformed(n) for n in MALFORMED]
+
+
+@pytest.mark.parametrize("sc", POSITIVE, ids=lambda f: f.__name__)
+def test_scenario_holds_on_real_module(sc, tmp_path):
+    assert sc(ac, tmp_path) is True
+
+
+@pytest.mark.parametrize("name", sorted(MALFORMED))
+def test_malformed_list_refuses_and_ledger_is_byte_identical(name, tmp_path):
+    assert sc_malformed(name)(ac, tmp_path) is True
+
+
+@pytest.mark.parametrize("sc", [f for f in REFUSALS if f.__name__ != "_sc"], ids=lambda f: f.__name__)
+def test_unprovable_list_refuses_and_ledger_is_byte_identical(sc, tmp_path):
+    assert sc(ac, tmp_path) is True
+
+
+def test_withheld_close_via_tuple_wrapper_is_also_suppressed(tmp_path):
+    env = Env(tmp_path, rows=[_row(W_ID)], wh=wh_text())
+    before = env.ledger()
+    with use_ctrl(ac, env.ctrl):
+        assert ac.emit_gaps(census([(W_ASSET, W_CRIT, ac.PASS)])) == (0, 0, 0, 0)
+    assert env.ledger() == before
+
+
+def test_withheld_na_cell_is_not_credited_either(tmp_path):
+    env = Env(tmp_path, rows=[_row(W_ID)], wh=wh_text())
+    before = env.ledger()
+    cen = census([(W_ASSET, W_CRIT, ac.NA)])
+    with use_ctrl(ac, env.ctrl):
+        out = ac.emit_gaps_summary(cen)
+    assert env.ledger() == before and out["withheld"] == [W_ID]
+
+
+def test_withheld_superseded_id_still_gets_nothing(tmp_path):
+    env = Env(tmp_path, rows=[_row(W_ID, superseded_by="x")], wh=wh_text())
+    before = env.ledger()
+    with use_ctrl(ac, env.ctrl):
+        ac.emit_gaps_summary(census([(W_ASSET, W_CRIT, ac.PASS)]))
+    assert env.ledger() == before
+
+
+def test_a_lifted_entry_resumes_normal_closure(tmp_path):
+    env = Env(tmp_path, rows=[_row(W_ID)], wh=wh_text())
+    env.wh.write_text(wh_text({}), encoding="utf-8")
+    env.commit_all()                                               # the reviewed lift is a committed change
+    with use_ctrl(ac, env.ctrl):
+        out = ac.emit_gaps_summary(census([(W_ASSET, W_CRIT, ac.PASS)]))
+    assert out["closed"] == 1 and "withheld" not in out
+
+
+def test_withholding_never_touches_retired_criterion_closure(tmp_path):
+    """RETIRED criteria are not registry criteria, so they cannot be withheld (validator) and retirement closure is unchanged."""
+    rid = "bo_x-Carr.detector"
+    env = Env(tmp_path, rows=[_row(rid)], wh=wh_text())
+    with use_ctrl(ac, env.ctrl):
+        out = ac.emit_gaps_summary(census([(O_ASSET, O_CRIT, ac.PASS)]))
+    assert out["closed"] == 1 and json.loads(env.ledger().decode().splitlines()[-1])["closed_by"] == "retirement"
+
+
+def test_refusal_happens_before_the_ledger_is_even_created(tmp_path):
+    env = Env(tmp_path, rows=[], wh="{ nope")
+    env.gaps.unlink()
+    _git(env.repo, "rm", "-q", "--cached", GAPS_REL)
+    with use_ctrl(ac, env.ctrl), pytest.raises(ac.WithholdingRefused):
+        ac.emit_gaps_summary(census([(W_ASSET, W_CRIT, ac.FAIL)]))
+    assert not env.gaps.exists()
+
+
+# ───────────────────────────── CLI (`--emit-gaps`) ─────────────────────────────
+
+def _stub_main(monkeypatch, env, cen, m=ac):
+    out = pathlib.Path(env.repo) / "census_out.json"
+    monkeypatch.setattr(m, "CTRL", env.ctrl)
+    full = dict(cen, layer_name="Stub", scoring="fidelity", n_assets=len(cen["assets"]), registered_ids=0, registry_has_writer=0,
+                population_active=len(cen["assets"]), population_registry_total=len(cen["assets"]), population_excluded_inactive=[],
+                never_exercised_with_writer=[], phantom_registered=[], global_runs=0, global_runs_touching_layer=0, generated="t")
+    called = []
+    monkeypatch.setattr(m, "measure", lambda k, **kw: (called.append(k), dict(full))[1])
+    monkeypatch.setattr(m, "census_stamp", lambda: {})
+    monkeypatch.setattr(sys, "argv", ["asset_census.py", "--layer", "L0", "--emit-gaps", "--out", str(out)])
+    return out, called
+
+
+def test_cli_emit_gaps_reports_withheld_and_writes_no_credit(monkeypatch, tmp_path, capsys):
+    env = Env(tmp_path, rows=[_row(W_ID)], wh=wh_text())
+    before = env.ledger()
+    out, _ = _stub_main(monkeypatch, env, census([(W_ASSET, W_CRIT, ac.PASS)]))
+    assert ac.main() == 0
+    assert env.ledger() == before
+    assert f"WITHHELD (no row of any kind written): {W_ID}" in capsys.readouterr().out
+
+
+def sc_cli_refusal(m, tmp, monkeypatch):
+    env = Env(tmp, rows=[_row(W_ID)], wh=wh_text(), track_wh=False)
+    before = env.ledger()
+    out, called = _stub_main(monkeypatch, env, census([(W_ASSET, W_CRIT, m.PASS)]))
+    rc = m.main()
+    return rc == m.EXIT_WITHHOLDING == 7 and env.ledger() == before and not called and not out.exists()
+
+
+def sc_cli_refusal_in_loop(m, tmp, monkeypatch):
+    """The preflight passes, the list then goes bad before the emit (a race): the per-layer emit refuses too, exit 7."""
+    env = Env(tmp, rows=[_row(W_ID)], wh=wh_text())
+    before = env.ledger()
+    out, called = _stub_main(monkeypatch, env, census([(W_ASSET, W_CRIT, m.PASS)]), m)
+    real_load, n = m.load_withholding_entries, []
+
+    def flaky():
+        n.append(1)
+        if len(n) == 1:
+            return {}
+        raise m.WithholdingRefused("withholding_dirty", "went bad mid-run")
+
+    monkeypatch.setattr(m, "load_withholding_entries", flaky)
+    # emit_gaps_summary calls the module-level name too: the second call (inside it) is the one that raises
+    rc = m.main()
+    return rc == 7 and env.ledger() == before and bool(called) and not out.exists() and len(n) == 2 and real_load is not flaky
+
+
+def test_cli_refuses_with_exit_7_before_measuring(monkeypatch, tmp_path, capsys):
+    assert sc_cli_refusal(ac, tmp_path, monkeypatch) is True
+    assert "withholding refused" in capsys.readouterr().err
+
+
+# ───────────────────────────── parity with nikasha_fold.load_withholding (when the fold module exists) ─────────────────────────────
+
+FOLD_PATH = GOV / "nikasha_fold.py"
+
+
+@pytest.mark.skipif(not FOLD_PATH.is_file(), reason="nikasha_fold.py (E5.2, PR #3012) is not on this checkout yet: parity with its "
+                                                     "load_withholding is asserted once it lands")
+def test_validator_parity_with_the_fold(tmp_path):
+    import importlib.util
+    spec = importlib.util.spec_from_file_location("nikasha_fold_parity", FOLD_PATH)
+    fold = importlib.util.module_from_spec(spec)
+    sys.modules["nikasha_fold_parity"] = fold
+    try:
+        spec.loader.exec_module(fold)
+    finally:
+        sys.modules.pop("nikasha_fold_parity", None)
+    cases = dict(MALFORMED)
+    cases["valid"] = wh_text()
+    cases["valid_empty"] = wh_text({})
+    cases["valid_no_register_row"] = wh_text({W_ID: {k: v for k, v in _entry().items() if k != "register_row"}})
+    for name, text in cases.items():
+        p = tmp_path / f"{name}.json"
+        p.write_text(text, encoding="utf-8")
+        try:
+            want = ("ok", sorted(fold.load_withholding(p)["entries"]))
+        except fold.FoldRefused as e:
+            want = ("refused", e.code)
+        try:
+            got = ("ok", sorted(ac._wh_validate(text.encode())))
+        except ac.WithholdingRefused as e:
+            got = ("refused", e.code)
+        assert got == want, f"{name}: asset_census {got} vs fold {want}"
+
+
+# ───────────────────────────── mutation tests: one per guard ─────────────────────────────
+
+def _mutant(old: str, new: str):
+    assert SRC.count(old) == 1, f"mutation anchor must match exactly once: {old!r} ({SRC.count(old)})"
+    src = SRC.replace(old, new)
+    m = types.ModuleType("asset_census_mutant")
+    m.__file__ = str(SRC_PATH)
+    sys.modules["asset_census_mutant"] = m
+    try:
+        exec(compile(src, str(SRC_PATH), "exec"), m.__dict__)
+    finally:
+        sys.modules.pop("asset_census_mutant", None)
+    return m
+
+
+def _alive(m, tmp):
+    return sc_baseline(m, pathlib.Path(tmp) / "alive") is True
+
+
+MUTATIONS = {
+    # the filter itself
+    "filter_off": ("                if gid in withheld:\n                    suppressed.add(gid)\n                    continue",
+                   "                if False:\n                    suppressed.add(gid)\n                    continue", [sc_withheld_pass_no_credit]),
+    "filter_no_continue": ("                    suppressed.add(gid)\n                    continue    # N-100",
+                           "                    suppressed.add(gid)\n                    pass    # N-100", [sc_withheld_pass_no_credit]),
+    "list_not_loaded": ("    withheld = load_withholding_entries()       # N-100",
+                        "    withheld = {}       # N-100", [sc_withheld_pass_no_credit, sc_untracked]),
+    "summary_key_always": ('    if withheld:\n        out["withheld"]', '    if True:\n        out["withheld"]', [sc_summary_key_only_with_list]),
+    "summary_key_never": ('    if withheld:\n        out["withheld"]', '    if False:\n        out["withheld"]', [sc_withheld_pass_no_credit]),
+    # absent-file handling
+    "absent_refused": ("        return {}                       # absent file, no git: nothing to prove deleted",
+                       "        raise WithholdingRefused('x', 'x')", [sc_absent_git_unavailable]),
+    "absent_not_repo_refused": ("        return {}                       # absent and not a repo: no withholding",
+                                "        raise WithholdingRefused('x', 'x')", [sc_absent_no_git]),
+    # presence guards
+    "git_missing_ignored": ("    except WithholdingRefused:\n        if present:\n            raise\n",
+                            "    except WithholdingRefused:\n        if False:\n            raise\n", [sc_git_unavailable_present]),
+    "not_in_git_ignored": ('        if present:\n            raise WithholdingRefused("withholding_not_in_git", f"{WITHHOLDING_NAME} is present',
+                           '        if False:\n            raise WithholdingRefused("withholding_not_in_git", f"{WITHHOLDING_NAME} is present', [sc_not_in_git]),
+    "deleted_ignored": ("        if tracked or _wh_git(top, \"cat-file\", \"-e\", f\"HEAD:{rel}\").returncode == 0:",
+                        "        if False:", [sc_deleted_tracked]),
+    "deleted_index_only_ignored": ("        if tracked or _wh_git(top, \"cat-file\", \"-e\", f\"HEAD:{rel}\").returncode == 0:",
+                                  "        if _wh_git(top, \"cat-file\", \"-e\", f\"HEAD:{rel}\").returncode == 0:", [sc_deleted_staged_never_committed]),
+    "deleted_head_only_ignored": ("        if tracked or _wh_git(top, \"cat-file\", \"-e\", f\"HEAD:{rel}\").returncode == 0:",
+                                 "        if tracked:", [sc_deleted_via_git_rm]),
+    "regular_file_ignored": ("    if p.is_symlink() or not p.is_file():", "    if False:", [sc_symlink, sc_directory]),
+    "symlink_allowed": ("    if p.is_symlink() or not p.is_file():", "    if not p.is_file():", [sc_symlink]),
+    "directory_allowed": ("    if p.is_symlink() or not p.is_file():", "    if p.is_symlink():", [sc_directory]),
+    "unreadable_swallowed": ("    except OSError as exc:\n        raise WithholdingRefused(\"withholding_unreadable\"",
+                             "    except ZeroDivisionError as exc:\n        raise WithholdingRefused(\"withholding_unreadable\"", [sc_unreadable]),
+    "untracked_ignored": ("    if not tracked:\n        raise WithholdingRefused(\"withholding_untracked\"",
+                          "    if False:\n        raise WithholdingRefused(\"withholding_untracked\"", [sc_untracked]),
+    "head_missing_ignored": ("    if head.returncode != 0:\n        raise WithholdingRefused(\"withholding_not_at_head\"",
+                             "    if False:\n        raise WithholdingRefused(\"withholding_not_at_head\"", [sc_no_head]),
+    "git_diff_ignored": ("    if _wh_git(top, \"diff\", \"--quiet\", \"HEAD\", \"--\", rel).returncode != 0:", "    if False:", [sc_dirty_mode_only]),
+    "git_diff_exit1_only": ("    if _wh_git(top, \"diff\", \"--quiet\", \"HEAD\", \"--\", rel).returncode != 0:",
+                            "    if _wh_git(top, \"diff\", \"--quiet\", \"HEAD\", \"--\", rel).returncode == 1000:", [sc_dirty_mode_only]),
+    "byte_compare_ignored": ("    if head.stdout != raw:", "    if False:", [sc_dirty_hidden_by_assume_unchanged]),
+    # validator
+    "not_dict_ignored": ("    if not isinstance(data, dict) or data.get(\"version\") != 1 or not isinstance(data.get(\"entries\"), dict):",
+                         "    if False:", [sc_malformed("bad_version"), sc_malformed("entries_list"), sc_malformed("not_object")]),
+    "version_ignored": ("data.get(\"version\") != 1 or not isinstance(data.get(\"entries\"), dict):",
+                        "False or not isinstance(data.get(\"entries\"), dict):", [sc_malformed("bad_version")]),
+    "entries_type_ignored": ("data.get(\"version\") != 1 or not isinstance(data.get(\"entries\"), dict):",
+                             "data.get(\"version\") != 1 or False:", [sc_malformed("entries_list")]),
+    "dup_keys_allowed": ("            raise ValueError(f\"duplicate object key {k!r}\")", "            pass", [sc_malformed("dup_key")]),
+    "nan_allowed": ("    raise ValueError(f\"non-finite constant {c}\")", "    return 0", [sc_malformed("nan")]),
+    "json_error_swallowed": ("    except (UnicodeDecodeError, ValueError) as exc:\n        raise WithholdingRefused(\"withholding_malformed\"",
+                             "    except UnicodeDecodeError as exc:\n        raise WithholdingRefused(\"withholding_malformed\"", [sc_malformed("not_json")]),
+    "entry_type_ignored": ("        if not isinstance(e, dict):\n            raise WithholdingRefused(\"withholding_malformed\", f\"entry {key!r} is not an object\")",
+                           "        if False:\n            raise WithholdingRefused(\"withholding_malformed\", f\"entry {key!r} is not an object\")", [sc_malformed("entry_not_object")]),
+    "asset_crit_ignored": ("        if not (isinstance(asset, str) and asset and isinstance(crit, str) and crit):",
+                           "        if False:", [sc_malformed("no_asset")]),
+    "key_mismatch_ignored": ("        if key != f\"{asset}-{crit}\":", "        if False:", [sc_malformed("key_mismatch")]),
+    "registry_check_ignored": ("        if crit not in CRITERION_REGISTRY:\n            raise WithholdingRefused(\"withholding_unknown_criterion\"",
+                               "        if False:\n            raise WithholdingRefused(\"withholding_unknown_criterion\"",
+                               [sc_malformed("unknown_criterion"), sc_malformed("retired_criterion")]),
+    "text_fields_ignored": ("            if not (isinstance(e.get(f), str) and e[f].strip()):", "            if False:",
+                            [sc_malformed("no_reason"), sc_malformed("no_condition"), sc_malformed("no_decided_by")]),
+    "strip_ignored": ("            if not (isinstance(e.get(f), str) and e[f].strip()):", "            if not isinstance(e.get(f), str):", [sc_malformed("no_reason")]),
+    "register_row_ignored": ("        if rr is not None and not (isinstance(rr, str) and re.fullmatch(r\"R\\d+\", rr)):", "        if False:",
+                             [sc_malformed("bad_register_row")]),
+    "register_row_required": ("        if rr is not None and not (isinstance(rr, str) and re.fullmatch(r\"R\\d+\", rr)):",
+                              "        if not (isinstance(rr, str) and re.fullmatch(r\"R\\d+\", rr)):", [sc_valid_no_register_row]),
+    # CLI
+    "cli_exit_code": ("            return EXIT_WITHHOLDING\n\n    stamp = census_stamp()", "            return 0\n\n    stamp = census_stamp()", None),
+    "cli_preflight_removed": ("            load_withholding_entries()      # N-100: refuse a bad withholding list before any measuring",
+                              "            pass      # N-100", None),
+    "cli_loop_catch_exit": ("                return EXIT_WITHHOLDING\n            print(f\"  ledger:", "                return 0\n            print(f\"  ledger:", "loop"),
+}
+
+
+@pytest.mark.parametrize("name", sorted(MUTATIONS))
+def test_mutation_is_killed(name, tmp_path, monkeypatch):
+    old, new, scenarios = MUTATIONS[name]
+    m = _mutant(old, new)
+    assert _alive(m, tmp_path), f"{name}: the mutant must still pass the baseline (else it is merely broken)"
+    if scenarios is None:                                   # the CLI preflight
+        assert sc_cli_refusal(m, tmp_path / "cli", monkeypatch) is False
+        return
+    if scenarios == "loop":                                 # the CLI per-layer catch
+        assert sc_cli_refusal_in_loop(m, tmp_path / "cli", monkeypatch) is False
+        return
+    killed = []
+    for i, sc in enumerate(scenarios):
+        try:
+            ok = sc(m, tmp_path / f"s{i}")
+        except Exception:  # noqa: BLE001 — a mutant that breaks the scenario is also a kill
+            ok = False
+        killed.append(ok is not True)
+    assert any(killed), f"{name}: NO scenario failed on the mutant ({[s.__name__ for s in scenarios]})"
+
+
+def test_cli_refusal_inside_the_layer_loop_is_exit_7_too(monkeypatch, tmp_path):
+    assert sc_cli_refusal_in_loop(ac, tmp_path, monkeypatch) is True
+
+
+def test_every_mutation_scenario_passes_on_the_real_module(tmp_path):
+    seen = {}
+    for _name, (_o, _n, scs) in MUTATIONS.items():
+        for sc in scs if isinstance(scs, list) else ():
+            seen[sc.__name__ if sc.__name__ != "_sc" else id(sc)] = sc
+    for i, sc in enumerate(seen.values()):
+        assert sc(ac, tmp_path / f"r{i}") is True
