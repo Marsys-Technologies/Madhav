@@ -51,6 +51,9 @@ GRANT SELECT, INSERT, UPDATE, DELETE ON public.life_events TO role_orchestrator;
 GRANT SELECT ON public.life_events TO role_jobs;
 GRANT SELECT ON public.life_events TO nirmana_evidence_ingress_writer;
 GRANT SELECT ON public.life_events TO suvarna_reader;
+-- PRODUCTION COLUMN ACL (pg_attribute.attacl, read live 2026-10-03): data_plane_builder holds SELECT on exactly these five columns, granted by amjis_app
+-- (the builder-grants plan v1.3). The first mirror omitted this and was therefore not faithful (independent review HIGH-1).
+GRANT SELECT (id, event_date, category, description, outcome_observed) ON public.life_events TO data_plane_builder;
 GRANT SELECT ON public.charts TO data_plane_builder;
 RESET ROLE;
 CREATE OR REPLACE FUNCTION public.app_chart_context()

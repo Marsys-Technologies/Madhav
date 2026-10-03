@@ -90,8 +90,8 @@ def test_the_forward_sql_never_touches_data_and_only_reads_the_table_for_counts(
     assert "GRANT SELECT ON public.life_events_chart_scoped TO data_plane_builder;" in code
     # REVOKE nothing existing: the only REVOKEs are on the NEW view and the transient CREATE this file granted
     revokes = re.findall(r"(?im)^\s*REVOKE\b[^;]*;", code)
-    assert revokes == ["REVOKE ALL ON public.life_events_chart_scoped FROM PUBLIC, retrieval_census_ro;", "REVOKE CREATE ON SCHEMA public FROM amjis_app;"] or \
-        sorted(revokes) == sorted(["REVOKE ALL ON public.life_events_chart_scoped FROM PUBLIC, retrieval_census_ro;", "REVOKE CREATE ON SCHEMA public FROM amjis_app;"])
+    assert sorted(revokes) == sorted(["REVOKE ALL ON public.life_events_chart_scoped FROM PUBLIC, retrieval_census_ro;", "REVOKE CREATE ON SCHEMA public FROM amjis_app;",
+                                      "REVOKE SELECT (id, event_date, category, description, outcome_observed) ON public.life_events FROM data_plane_builder;"])
 
 
 # ------------------------------------------------------------------------------- gate + plan
@@ -187,6 +187,16 @@ def test_the_accepted_limit_is_stated_in_the_sql_and_in_the_plan(mod):
 
 
 def test_the_view_has_seven_columns_and_no_free_text(mod):
-    assert mod.VIEW_COLUMNS == ("id", "event_id", "event_date", "category", "domain", "outcome_observed", "chart_id")
-    assert "description" not in (EXEC_DIR / "1274_life_events_chart_scoped_view.sql").read_text().split("-- @@STEP s4")[1].split("-- @@STEP s5")[0].replace(
-        "-- NOT exposed", "").split("COMMENT")[0]
+    assert mod.VIEW_COLUMNS == ("id", "event_id", "event_date", "category", "domain", "chart_id")
+    s4 = (EXEC_DIR / "1274_life_events_chart_scoped_view.sql").read_text().split("-- @@STEP s4")[1].split("-- @@STEP s5")[0]
+    create_view = s4[s4.index("CREATE VIEW"):s4.index(";", s4.index("CREATE VIEW"))]
+    assert "description" not in create_view and "outcome_observed" not in create_view
+
+
+def test_the_landing_sequence_and_the_column_revoke_are_stated_in_the_sql_and_the_plan(mod):
+    head = (EXEC_DIR / "1274_life_events_chart_scoped_view.sql").read_text().split("-- @@STEP")[0]
+    assert "LANDING SEQUENCE" in head and "ONE slot" in head and "NO build in between" in head
+    plan = mod.render_plan()
+    assert "landing sequence" in plan and "NO build in between" in plan and "builder column grants" in plan
+    assert mod.EXPECTED_BUILDER_COLUMN_ACL == ["category:SELECT:false:amjis_app", "description:SELECT:false:amjis_app", "event_date:SELECT:false:amjis_app",
+                                               "id:SELECT:false:amjis_app", "outcome_observed:SELECT:false:amjis_app"]

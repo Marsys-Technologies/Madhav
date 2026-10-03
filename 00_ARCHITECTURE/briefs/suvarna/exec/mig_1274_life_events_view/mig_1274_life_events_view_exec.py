@@ -4,11 +4,12 @@
 
 WHAT IT DOES (forward leg), in ONE transaction as the Cloud SQL administrator (`postgres`: CREATEROLE, not a superuser), COMMIT only if every check holds:
   s1  GRANT the administrator membership of data_plane_schema_owner / amjis_app / data_plane_builder (only those it lacks; revoked again in s9)
-  s2  preconditions (SQL, raising): life_events owner amjis_app, RLS off, the seven exposed columns and types, app_chart_context() is the G1c accessor,
+  s2  preconditions (SQL, raising; the builder holds EXACTLY the five production column-level SELECT grants and no table privilege): life_events owner amjis_app, RLS off, the six exposed columns and types, app_chart_context() is the G1c accessor,
       data_plane_builder holds NO privilege on life_events, schema public owned by data_plane_schema_owner, amjis_app has no CREATE on it, pre-images taken
   s3  data_plane_schema_owner: GRANT CREATE ON SCHEMA public TO amjis_app          (transient: one statement's worth)
   s4  amjis_app (the table owner): CREATE VIEW ... WITH (security_barrier = true) ... WHERE chart_id = app_chart_context(); REVOKE ALL FROM PUBLIC,
       retrieval_census_ro (the default ACL of amjis_app in public would otherwise grant it); GRANT SELECT TO data_plane_builder
+  s4+ amjis_app, same step, AFTER the view is granted: REVOKE SELECT (id, event_date, category, description, outcome_observed) ON life_events FROM the builder (SS N-112)
   s5  data_plane_schema_owner: REVOKE CREATE ON SCHEMA public FROM amjis_app
   s6/s7  behavioural probe (COUNTS only, never content): as the builder the table is unreadable; the view returns 0 rows with the GUC unset, malformed, or
          pointing at a chart with no events; exactly the pinned chart's rows for the probe chart (and a second chart when one exists); read-only
@@ -75,10 +76,24 @@ SCHEMA_OWNER = "data_plane_schema_owner"
 BUILDER = "data_plane_builder"
 ASSUMED_FORWARD = (SCHEMA_OWNER, OWNER_ROLE, BUILDER)
 ASSUMED_ROLLBACK = (SCHEMA_OWNER, OWNER_ROLE)
-VIEW_COLUMNS = ("id", "event_id", "event_date", "category", "domain", "outcome_observed", "chart_id")      # 7: no free text (SS N-109)
+VIEW_COLUMNS = ("id", "event_id", "event_date", "category", "domain", "chart_id")      # 6, minimal: no free text (SS N-109), no outcome_observed (SS N-112)
+# The ONLY connection this plan may run on (LOW-1 of the independent review): Cloud SQL's administrator, database amjis, PostgreSQL major 15, not a superuser.
+# (Tests point these at their disposable database and role by monkeypatching; production values are the defaults.)
+EXPECTED_DATABASE = "amjis"
+EXPECTED_ADMIN = "postgres"
+EXPECTED_MAJOR = 15
+# The builder's column-level SELECT on life_events as read live (SS N-112): exactly these five, granted by amjis_app, not grantable. The forward leg revokes
+# them; the rollback leg re-grants exactly them.
+BUILDER_FORMER_COLUMNS = ("id", "event_date", "category", "description", "outcome_observed")
+EXPECTED_BUILDER_COLUMN_ACL = sorted(f"{c}:SELECT:false:amjis_app" for c in BUILDER_FORMER_COLUMNS)
+EXIT_COMMIT_UNKNOWN = 91       # conn.commit() itself raised: the server MAY have committed (distinct from a refusal, 1/2, and from 92-98)
+
+
+class CommitStateUnknown(Exception):
+    """conn.commit() raised: neither applied nor failed is known. outcome.json records commit_state_unknown; the exit code is EXIT_COMMIT_UNKNOWN."""
 # sha256 of pg_get_viewdef(view) with whitespace collapsed, as measured on the PostgreSQL 15.17 mirror (the text is stable within a major version); a different text on production (a different minor
 # version) fails the commit condition `post_view_definition_equals_plan` at the DRY RUN, before any apply.
-VIEW_DEF_SHA256 = "df02c05e9dd989f99e0f7e8fef6d5b0c5b317df1227bcc38cb6fabae30aa164d"
+VIEW_DEF_SHA256 = "670fefac008d3f1651292c90e2483b36c17e09084f39aa84d0b9029e742c8685"
 
 
 # ------------------------------------------------------------------------------------------------------ gate wiring (GATE_V2)
@@ -191,16 +206,17 @@ def rollback_leg() -> Leg:
 
 # commit conditions the EXECUTOR re-derives from the catalog (independently of the asserting SQL in the steps)
 FORWARD_CHECKS = (
-    "pre_roles_exist", "pre_table_owner_and_rls", "pre_view_absent", "pre_builder_has_no_table_privilege", "pre_schema_owner",
+    "pre_connected_as_expected_admin", "pre_roles_exist", "pre_table_owner_and_rls", "pre_view_absent", "pre_builder_has_no_table_level_privilege",
+    "pre_builder_holds_exactly_the_five_column_selects_from_the_owner", "pre_schema_owner",
     "pre_owner_role_has_no_create_on_public", "pre_accessor_function_present", "pre_admin_can_assume_the_roles",
     "step_*", "post_view_is_a_plain_security_barrier_view_owned_by_the_table_owner", "post_view_definition_equals_plan",
     "post_builder_select_on_view", "post_builder_select_only_on_view", "post_view_acl_is_exactly_owner_plus_builder_select",
-    "post_builder_has_no_table_privilege", "post_table_acl_unchanged", "post_schema_acl_unchanged",
+    "post_builder_has_no_table_or_column_privilege", "post_other_roles_column_acls_unchanged", "post_table_acl_unchanged", "post_schema_acl_unchanged",
     "post_owner_role_has_no_create_on_public", "post_accessor_function_unchanged", "post_memberships_restored",
 )
 ROLLBACK_CHECKS = (
-    "pre_roles_exist", "pre_view_present", "pre_admin_can_assume_the_roles", "step_*", "post_view_absent",
-    "post_builder_has_no_table_privilege", "post_table_acl_unchanged", "post_schema_acl_unchanged",
+    "pre_connected_as_expected_admin", "pre_roles_exist", "pre_view_present", "pre_builder_has_no_privilege_on_life_events", "pre_admin_can_assume_the_roles",
+    "step_*", "post_view_absent", "post_builder_column_grants_restored_exactly", "post_other_roles_column_acls_unchanged", "post_table_acl_unchanged", "post_schema_acl_unchanged",
     "post_accessor_function_unchanged", "post_memberships_restored",
 )
 
@@ -212,6 +228,9 @@ def render_plan(sha: str | None = None, pins: dict | None = None) -> str:
     lines = [
         "PLAN mig_1274_life_events_view (SS ruling N-105): chart-scoped, read-only, security-barrier view over life_events for data_plane_builder",
         f"object: {SCHEMA}.{VIEW_NAME} WITH (security_barrier = true); columns: {', '.join(VIEW_COLUMNS)}; owner {OWNER_ROLE}; SELECT to {BUILDER} ONLY",
+        f"connection: database {EXPECTED_DATABASE}, administrator {EXPECTED_ADMIN} (not a superuser), PostgreSQL major {EXPECTED_MAJOR}; refused otherwise (checked first)",
+        f"builder column grants on {SCHEMA}.{TABLE_NAME} revoked in the SAME transaction after the view is granted (SS N-112): {', '.join(EXPECTED_BUILDER_COLUMN_ACL)}; the rollback leg re-grants exactly these",
+        "landing sequence (SS N-112): the L4 reader PR (#3047) and this migration land in ONE slot after S-L1: deploy the readers, apply this right away with the active-run guard on, NO build in between",
         f"scoping: chart_id = {SCHEMA}.app_chart_context() (GUC app.chart_context; unset or malformed = NULL = zero rows)",
         "accepted limit (SS N-109): the scoping stops ACCIDENTAL cross-chart reads, not a HOSTILE builder session (the GUC is session-settable); no free-text column is exposed",
         f"transaction: ONE, as the Cloud SQL administrator; SET LOCAL lock_timeout = {LOCK_TIMEOUT}, statement_timeout = {STATEMENT_TIMEOUT}; COMMIT only if every check holds",
@@ -272,7 +291,8 @@ def snap(cur) -> dict:
     """The catalog facts the plan reasons about, read WITHOUT any role switch (pure pg_catalog queries: no USAGE on public is needed)."""
     d: dict = {}
     d["who"] = one(cur, "SELECT current_user::text, (SELECT rolsuper FROM pg_roles WHERE rolname = current_user), "
-                        "(SELECT rolcreaterole FROM pg_roles WHERE rolname = current_user), current_setting('server_version_num')::int")
+                        "(SELECT rolcreaterole FROM pg_roles WHERE rolname = current_user), current_setting('server_version_num')::int, "
+                        "current_database()::text, session_user::text")
     d["roles_exist"] = {r: bool(one(cur, "SELECT count(*) FROM pg_roles WHERE rolname = %s", (r,))) for r in ROLES_USED}
     d["role_is_super"] = {r: bool(one(cur, "SELECT COALESCE((SELECT rolsuper FROM pg_roles WHERE rolname = %s), false)", (r,))) for r in ROLES_USED}
     d["memberships"] = {r: bool(one(cur, "SELECT pg_has_role(current_user, %s, 'MEMBER')", (r,))) for r in ASSUMED_FORWARD
@@ -285,6 +305,17 @@ def snap(cur) -> dict:
                                      "has_table_privilege(%s, c.oid, 'INSERT,UPDATE,DELETE,TRUNCATE,REFERENCES,TRIGGER'), "
                                      "has_any_column_privilege(%s, c.oid, 'SELECT,INSERT,UPDATE,REFERENCES') " + _REL,
                                 (BUILDER, BUILDER, BUILDER, SCHEMA, TABLE_NAME)) if d["roles_exist"][BUILDER] else None
+    d["builder_colacl"] = None
+    d["colacl_other_md5"] = None
+    if d["table"] is not None and d["roles_exist"][BUILDER]:
+        cur.execute("SELECT a.attname || ':' || x.privilege_type || ':' || x.is_grantable::text || ':' || pg_get_userbyid(x.grantor) "
+                    "FROM pg_attribute a, LATERAL aclexplode(a.attacl) x WHERE a.attrelid = (SELECT c.oid " + _REL + ") AND a.attacl IS NOT NULL "
+                    "AND x.grantee = (SELECT oid FROM pg_roles WHERE rolname = %s) ORDER BY 1", (SCHEMA, TABLE_NAME, BUILDER))
+        d["builder_colacl"] = [r[0] for r in cur.fetchall()]
+        d["colacl_other_md5"] = one(cur, "SELECT COALESCE(md5(string_agg(a.attname || ':' || x.grantee::regrole::text || ':' || x.privilege_type || ':' || x.is_grantable::text || ':' || "
+                                         "x.grantor::regrole::text, ',' ORDER BY a.attname, x.grantee, x.privilege_type)), 'none') "
+                                         "FROM pg_attribute a, LATERAL aclexplode(a.attacl) x WHERE a.attrelid = (SELECT c.oid " + _REL + ") AND a.attacl IS NOT NULL "
+                                         "AND x.grantee <> (SELECT oid FROM pg_roles WHERE rolname = %s)", (SCHEMA, TABLE_NAME, BUILDER))
     d["view"] = one(cur, "SELECT c.relkind::text, pg_get_userbyid(c.relowner)::text, COALESCE(c.reloptions::text, ''), "
                          "encode(sha256(convert_to(regexp_replace(pg_get_viewdef(c.oid), '\\s+', ' ', 'g'), 'UTF8')), 'hex') " + _REL,
                     (SCHEMA, VIEW_NAME))
@@ -325,10 +356,14 @@ class Checks:
 
 def pre_checks(leg: Leg, pre: dict, ck: Checks) -> None:
     who = pre["who"]
+    # FIRST: the connection itself (LOW-1): the expected database and administrator, not a superuser, PostgreSQL 15. A superuser or a same-shaped clone is refused.
+    ck.chk("pre_connected_as_expected_admin",
+           who[4] == EXPECTED_DATABASE and who[0] == EXPECTED_ADMIN and who[5] == EXPECTED_ADMIN and not who[1] and who[3] // 10000 == EXPECTED_MAJOR,
+           f"database={who[4]} current_user={who[0]} session_user={who[5]} superuser={who[1]} server_version_num={who[3]}")
     need = ROLES_USED if leg.name == "forward" else (SCHEMA_OWNER, OWNER_ROLE)
     ck.chk("pre_roles_exist", all(pre["roles_exist"].get(r) for r in need), {r: pre["roles_exist"].get(r) for r in need})
     can = all(pre["memberships"].get(r) or (who[2] and not pre["role_is_super"].get(r) and pre["roles_exist"].get(r)) for r in leg.assumed) \
-        and (who[3] < 160000 or bool(who[1]))
+        and who[3] < 160000
     ck.chk("pre_admin_can_assume_the_roles", can, f"admin={who[0]} super={who[1]} createrole={who[2]} server_version_num={who[3]}")
     ck.chk("pre_accessor_function_present", pre["fn_md5"] is not None)
     if leg.name == "forward":
@@ -336,11 +371,14 @@ def pre_checks(leg: Leg, pre: dict, ck: Checks) -> None:
         ck.chk("pre_table_owner_and_rls", t is not None and t[0] == OWNER_ROLE and t[2] is False and t[3] is False, None if t is None else (t[0], t[2], t[3]))
         ck.chk("pre_view_absent", pre["view"] is None)
         bt = pre["builder_on_table"]
-        ck.chk("pre_builder_has_no_table_privilege", bt is not None and not any(bt), bt)
+        ck.chk("pre_builder_has_no_table_level_privilege", bt is not None and not (bt[0] or bt[1]), bt)
+        ck.chk("pre_builder_holds_exactly_the_five_column_selects_from_the_owner", pre["builder_colacl"] == EXPECTED_BUILDER_COLUMN_ACL, pre["builder_colacl"])
         ck.chk("pre_schema_owner", pre["schema"] is not None and pre["schema"][0] == SCHEMA_OWNER, pre["schema"] and pre["schema"][0])
         ck.chk("pre_owner_role_has_no_create_on_public", pre["owner_create_on_public"] is False, pre["owner_create_on_public"])
     else:
         ck.chk("pre_view_present", pre["view"] is not None)
+        bt = pre["builder_on_table"]
+        ck.chk("pre_builder_has_no_privilege_on_life_events", bt is not None and not any(bt) and pre["builder_colacl"] == [], (bt, pre["builder_colacl"]))
 
 
 def post_checks(leg: Leg, pre: dict, post: dict, ck: Checks, expected_owner_acl: list) -> None:
@@ -349,10 +387,13 @@ def post_checks(leg: Leg, pre: dict, post: dict, ck: Checks, expected_owner_acl:
     ck.chk("post_accessor_function_unchanged", post["fn_md5"] == pre["fn_md5"] and post["fn_md5"] is not None)
     ck.chk("post_memberships_restored", post["memberships"] == pre["memberships"], {"pre": pre["memberships"], "post": post["memberships"]})
     bt = post["builder_on_table"]
-    ck.chk("post_builder_has_no_table_privilege", bt is not None and not any(bt), bt)
+    ck.chk("post_other_roles_column_acls_unchanged", post["colacl_other_md5"] == pre["colacl_other_md5"] and post["colacl_other_md5"] is not None)
     if leg.name == "rollback":
         ck.chk("post_view_absent", post["view"] is None)
+        ck.chk("post_builder_column_grants_restored_exactly", post["builder_colacl"] == EXPECTED_BUILDER_COLUMN_ACL and bt is not None and not (bt[0] or bt[1]),
+               (post["builder_colacl"], bt))
         return
+    ck.chk("post_builder_has_no_table_or_column_privilege", bt is not None and not any(bt) and post["builder_colacl"] == [], (bt, post["builder_colacl"]))
     ck.chk("post_owner_role_has_no_create_on_public", post["owner_create_on_public"] is False, post["owner_create_on_public"])
     v = post["view"]
     ck.chk("post_view_is_a_plain_security_barrier_view_owned_by_the_table_owner",
@@ -694,7 +735,7 @@ def execute(args, connect, now=None, gate_fp=None):
                         conn.commit()
                     except BaseException as exc:                              # the commit call ITSELF failed: the server may have committed
                         o.mark_commit_unknown(digest, type(exc).__name__)
-                        raise
+                        raise CommitStateUnknown(type(exc).__name__) from exc
                     o.mark_committed(digest)                                  # IMMEDIATELY after the commit
                 finally:
                     signal.pthread_sigmask(signal.SIG_UNBLOCK, _HELD_SIGNALS)
@@ -757,6 +798,10 @@ def main(argv=None) -> int:
         code, result = execute(args, connect_admin, gate_fp=gate_fp)
     except SystemExit:
         raise
+    except CommitStateUnknown as exc:
+        print("COMMIT STATE UNKNOWN (%s raised by commit()): the change may or may not be committed; outcome.json records commit_state_unknown. "
+              "CHECK THE DATABASE before doing anything else." % exc)
+        return EXIT_COMMIT_UNKNOWN
     except Exception as exc:
         print("failed: %s %s" % (type(exc).__name__, str(exc)[:200].replace("\n", " ")))
         return 1

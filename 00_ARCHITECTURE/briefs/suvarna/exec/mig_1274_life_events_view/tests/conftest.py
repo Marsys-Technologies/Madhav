@@ -8,8 +8,8 @@ signalling that recorded PID (SIGINT = fast shutdown), and its directory is dele
 path under /tmp (a Unix socket path is limited to 104 bytes); the cluster listens on 127.0.0.1 only, on a free port.
 
 Set PG_BIN to a bin directory (e.g. /opt/homebrew/opt/postgresql@17/bin) to test another major version. The executor connects as `postgres_mimic`
-(non-superuser CREATEROLE, no table privilege, no USAGE on schema public: Cloud SQL's `postgres` as read live; valid on PostgreSQL <= 15). On
-PostgreSQL >= 16 CREATEROLE alone cannot grant, so run with M1274_TEST_ADMIN=postgres there.
+(non-superuser CREATEROLE, no table privilege, no USAGE on schema public: Cloud SQL's `postgres` as read live; valid on PostgreSQL <= 15). The executor
+refuses a superuser, so the plan is PostgreSQL 15 only; other majors are exercised only to show the refusal.
 """
 from __future__ import annotations
 
@@ -184,6 +184,7 @@ class Runner:
                 "view": "SELECT (SELECT relname FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname='public' AND relname='life_events_chart_scoped')",
                 "memberships": "SELECT string_agg(r.rolname||'>'||m.rolname, ',' ORDER BY r.rolname, m.rolname) FROM pg_auth_members am "
                                "JOIN pg_roles r ON r.oid=am.member JOIN pg_roles m ON m.oid=am.roleid",
+                "col_acl": "SELECT string_agg(attname||':'||attacl::text, ',' ORDER BY attname) FROM pg_attribute WHERE attrelid='public.life_events'::regclass AND attacl IS NOT NULL",
                 "rows": "SELECT count(*) FROM public.life_events",
                 "row_digest": "SELECT md5(string_agg(t::text, '|' ORDER BY id)) FROM public.life_events t",
                 "fn": "SELECT md5(pg_get_functiondef('public.app_chart_context()'::regprocedure))",
@@ -197,5 +198,9 @@ class Runner:
 
 
 @pytest.fixture()
-def runner(cluster, mod, db, tmp_path):
+def runner(cluster, mod, db, tmp_path, monkeypatch):
+    # the executor refuses any connection but production's (database amjis, administrator postgres, PostgreSQL 15); the disposable stand-ins are named here
+    monkeypatch.setattr(mod, "EXPECTED_DATABASE", db)
+    monkeypatch.setattr(mod, "EXPECTED_ADMIN", ADMIN_USER)
+    monkeypatch.setattr(mod, "EXPECTED_MAJOR", cluster.major)
     return Runner(cluster, mod, db, tmp_path)

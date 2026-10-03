@@ -1,12 +1,15 @@
 PLAN mig_1274_life_events_view (SS ruling N-105): chart-scoped, read-only, security-barrier view over life_events for data_plane_builder
-object: public.life_events_chart_scoped WITH (security_barrier = true); columns: id, event_id, event_date, category, domain, outcome_observed, chart_id; owner amjis_app; SELECT to data_plane_builder ONLY
+object: public.life_events_chart_scoped WITH (security_barrier = true); columns: id, event_id, event_date, category, domain, chart_id; owner amjis_app; SELECT to data_plane_builder ONLY
+connection: database amjis, administrator postgres (not a superuser), PostgreSQL major 15; refused otherwise (checked first)
+builder column grants on public.life_events revoked in the SAME transaction after the view is granted (SS N-112): category:SELECT:false:amjis_app, description:SELECT:false:amjis_app, event_date:SELECT:false:amjis_app, id:SELECT:false:amjis_app, outcome_observed:SELECT:false:amjis_app; the rollback leg re-grants exactly these
+landing sequence (SS N-112): the L4 reader PR (#3047) and this migration land in ONE slot after S-L1: deploy the readers, apply this right away with the active-run guard on, NO build in between
 scoping: chart_id = public.app_chart_context() (GUC app.chart_context; unset or malformed = NULL = zero rows)
 accepted limit (SS N-109): the scoping stops ACCIDENTAL cross-chart reads, not a HOSTILE builder session (the GUC is session-settable); no free-text column is exposed
 transaction: ONE, as the Cloud SQL administrator; SET LOCAL lock_timeout = 5s, statement_timeout = 120s; COMMIT only if every check holds
-view definition sha256 (whitespace collapsed): df02c05e9dd989f99e0f7e8fef6d5b0c5b317df1227bcc38cb6fabae30aa164d
-forward commit conditions: pre_roles_exist, pre_table_owner_and_rls, pre_view_absent, pre_builder_has_no_table_privilege, pre_schema_owner, pre_owner_role_has_no_create_on_public, pre_accessor_function_present, pre_admin_can_assume_the_roles, step_*, post_view_is_a_plain_security_barrier_view_owned_by_the_table_owner, post_view_definition_equals_plan, post_builder_select_on_view, post_builder_select_only_on_view, post_view_acl_is_exactly_owner_plus_builder_select, post_builder_has_no_table_privilege, post_table_acl_unchanged, post_schema_acl_unchanged, post_owner_role_has_no_create_on_public, post_accessor_function_unchanged, post_memberships_restored
-rollback commit conditions: pre_roles_exist, pre_view_present, pre_admin_can_assume_the_roles, step_*, post_view_absent, post_builder_has_no_table_privilege, post_table_acl_unchanged, post_schema_acl_unchanged, post_accessor_function_unchanged, post_memberships_restored
--- forward sql: 1274_life_events_chart_scoped_view.sql sha256 82de04116926dc42bd99daa2e341f1b4b5451f5d5dcc38def27b392e9975f1a5
+view definition sha256 (whitespace collapsed): 670fefac008d3f1651292c90e2483b36c17e09084f39aa84d0b9029e742c8685
+forward commit conditions: pre_connected_as_expected_admin, pre_roles_exist, pre_table_owner_and_rls, pre_view_absent, pre_builder_has_no_table_level_privilege, pre_builder_holds_exactly_the_five_column_selects_from_the_owner, pre_schema_owner, pre_owner_role_has_no_create_on_public, pre_accessor_function_present, pre_admin_can_assume_the_roles, step_*, post_view_is_a_plain_security_barrier_view_owned_by_the_table_owner, post_view_definition_equals_plan, post_builder_select_on_view, post_builder_select_only_on_view, post_view_acl_is_exactly_owner_plus_builder_select, post_builder_has_no_table_or_column_privilege, post_other_roles_column_acls_unchanged, post_table_acl_unchanged, post_schema_acl_unchanged, post_owner_role_has_no_create_on_public, post_accessor_function_unchanged, post_memberships_restored
+rollback commit conditions: pre_connected_as_expected_admin, pre_roles_exist, pre_view_present, pre_builder_has_no_privilege_on_life_events, pre_admin_can_assume_the_roles, step_*, post_view_absent, post_builder_column_grants_restored_exactly, post_other_roles_column_acls_unchanged, post_table_acl_unchanged, post_schema_acl_unchanged, post_accessor_function_unchanged, post_memberships_restored
+-- forward sql: 1274_life_events_chart_scoped_view.sql sha256 0ba21466368e4ce98e7cb40eb6676e4c46502facd466d8591f903a7e9467dd33
 -- step s1_assume_owner_roles
 -- The administrator (Cloud SQL `postgres`: CREATEROLE, not a superuser, no USAGE on schema public) needs membership of the roles it SETs.
 -- Only the memberships GRANTED HERE are revoked again in s9 (tracked in transaction-local GUCs).
@@ -27,6 +30,7 @@ DO $m1274$
 DECLARE
   v_owner text;
   v_cols  text;
+  v_bcols text;
 BEGIN
   IF to_regclass('public.life_events') IS NULL THEN RAISE EXCEPTION 'm1274 precondition: public.life_events does not exist'; END IF;
   IF to_regclass('public.life_events_chart_scoped') IS NOT NULL THEN
@@ -41,8 +45,8 @@ BEGIN
   SELECT string_agg(a.attname || ':' || format_type(a.atttypid, a.atttypmod), ',' ORDER BY a.attname) INTO v_cols
     FROM pg_attribute a
    WHERE a.attrelid = 'public.life_events'::regclass AND a.attnum > 0 AND NOT a.attisdropped
-     AND a.attname IN ('id','event_id','event_date','category','domain','outcome_observed','chart_id');
-  IF v_cols IS DISTINCT FROM 'category:text,chart_id:uuid,domain:text,event_date:date,event_id:text,id:uuid,outcome_observed:boolean' THEN
+     AND a.attname IN ('id','event_id','event_date','category','domain','chart_id');
+  IF v_cols IS DISTINCT FROM 'category:text,chart_id:uuid,domain:text,event_date:date,event_id:text,id:uuid' THEN
     RAISE EXCEPTION 'm1274 precondition: life_events column set/type differs from the plan: %', v_cols;
   END IF;
   -- the accessor exists, is owned by amjis_app and still reads app.chart_context
@@ -51,10 +55,17 @@ BEGIN
                   AND p.prosrc LIKE '%current_setting(''app.chart_context'', true)%') THEN
     RAISE EXCEPTION 'm1274 precondition: public.app_chart_context() missing or not the expected G1c accessor';
   END IF;
-  -- the ruling's starting point: the builder has NO privilege on the table (table or any column)
-  IF has_table_privilege('data_plane_builder', 'public.life_events', 'SELECT,INSERT,UPDATE,DELETE,TRUNCATE,REFERENCES,TRIGGER')
-     OR has_any_column_privilege('data_plane_builder', 'public.life_events', 'SELECT,INSERT,UPDATE,REFERENCES') THEN
-    RAISE EXCEPTION 'm1274 precondition: data_plane_builder already holds a privilege on life_events (the ruling is NO direct grant)';
+  -- the starting point read live (SS N-112): NO table-level privilege, and column-level SELECT on EXACTLY these five columns, each granted by amjis_app,
+  -- none grantable; nothing else. Any other state is not the one this plan was approved for.
+  IF has_table_privilege('data_plane_builder', 'public.life_events', 'SELECT,INSERT,UPDATE,DELETE,TRUNCATE,REFERENCES,TRIGGER') THEN
+    RAISE EXCEPTION 'm1274 precondition: data_plane_builder holds a table-level privilege on life_events';
+  END IF;
+  SELECT string_agg(a.attname || ':' || x.privilege_type || ':' || x.is_grantable::text || ':' || pg_get_userbyid(x.grantor), ',' ORDER BY a.attname, x.privilege_type)
+    INTO v_bcols
+    FROM pg_attribute a, LATERAL aclexplode(a.attacl) x
+   WHERE a.attrelid = 'public.life_events'::regclass AND a.attacl IS NOT NULL AND x.grantee = 'data_plane_builder'::regrole;
+  IF v_bcols IS DISTINCT FROM 'category:SELECT:false:amjis_app,description:SELECT:false:amjis_app,event_date:SELECT:false:amjis_app,id:SELECT:false:amjis_app,outcome_observed:SELECT:false:amjis_app' THEN
+    RAISE EXCEPTION 'm1274 precondition: the builder column ACL on life_events is not exactly the five production SELECT grants: %', v_bcols;
   END IF;
   -- the schema: owned by data_plane_schema_owner; amjis_app has no CREATE on it today
   IF (SELECT pg_get_userbyid(nspowner) FROM pg_namespace WHERE nspname = 'public') <> 'data_plane_schema_owner' THEN
@@ -70,6 +81,11 @@ BEGIN
   PERFORM set_config('madhav.m1274_pre_schema_acl', (SELECT COALESCE(nspacl::text, 'NULL') FROM pg_namespace WHERE nspname = 'public'), true);
   PERFORM set_config('madhav.m1274_pre_table_acl',  (SELECT COALESCE(relacl::text, 'NULL') FROM pg_class WHERE oid = 'public.life_events'::regclass), true);
   PERFORM set_config('madhav.m1274_pre_fn_md5',     (SELECT md5(pg_get_functiondef(to_regprocedure('public.app_chart_context()')))), true);
+  -- every OTHER role's column-level ACL on life_events (must be byte-for-byte the same afterwards)
+  PERFORM set_config('madhav.m1274_pre_colacl_other', (SELECT COALESCE(md5(string_agg(a.attname || ':' || x.grantee::regrole::text || ':' || x.privilege_type || ':' || x.is_grantable::text || ':' || x.grantor::regrole::text,
+                       ',' ORDER BY a.attname, x.grantee, x.privilege_type)), 'none')
+                       FROM pg_attribute a, LATERAL aclexplode(a.attacl) x
+                      WHERE a.attrelid = 'public.life_events'::regclass AND a.attacl IS NOT NULL AND x.grantee <> 'data_plane_builder'::regrole), true);
 END
 $m1274$;
 RESET ROLE;
@@ -80,14 +96,16 @@ RESET ROLE;
 -- step s4_create_view_as_table_owner
 SET LOCAL ROLE amjis_app;
 CREATE VIEW public.life_events_chart_scoped WITH (security_barrier = true) AS
-  SELECT id, event_id, event_date, category, domain, outcome_observed, chart_id
+  SELECT id, event_id, event_date, category, domain, chart_id
     FROM public.life_events
    WHERE chart_id = public.app_chart_context();
 -- the default ACL of amjis_app in public grants SELECT on every new relation to retrieval_census_ro: not wanted on this view
 REVOKE ALL ON public.life_events_chart_scoped FROM PUBLIC, retrieval_census_ro;
 GRANT SELECT ON public.life_events_chart_scoped TO data_plane_builder;
+-- SS N-112: the view is granted FIRST, then the builder's direct column grants are revoked (same transaction, same grantor amjis_app as every one of them)
+REVOKE SELECT (id, event_date, category, description, outcome_observed) ON public.life_events FROM data_plane_builder;
 COMMENT ON VIEW public.life_events_chart_scoped IS
-  'Chart-scoped (chart_id = app_chart_context(); GUC app.chart_context; unset = zero rows), read-only, security-barrier window on life_events for the shared builder (SS ruling N-105, migration 1274). Only the 7 columns the L4 readers need (no free text). Owner amjis_app; SELECT granted to data_plane_builder only.';
+  'Chart-scoped (chart_id = app_chart_context(); GUC app.chart_context; unset = zero rows), read-only, security-barrier window on life_events for the shared builder (SS ruling N-105, migration 1274). Only the 6 columns the L4 readers need (no free text). Owner amjis_app; SELECT granted to data_plane_builder only.';
 RESET ROLE;
 -- step s5_revoke_transient_create
 SET LOCAL ROLE data_plane_schema_owner;
@@ -124,13 +142,21 @@ DECLARE
   v_other_n bigint := current_setting('madhav.m1274_other_n', true)::bigint;
   v_cnt bigint;
   v_foreign bigint;
+  v_col text;
 BEGIN
-  -- (1) the builder still cannot read the table
+  -- (1) the builder cannot read the table: not at all, and not through any of the five columns it used to hold or any other
   BEGIN
     PERFORM 1 FROM public.life_events LIMIT 1;
     RAISE EXCEPTION 'm1274 probe: data_plane_builder CAN read public.life_events directly';
   EXCEPTION WHEN insufficient_privilege THEN NULL;
   END;
+  FOREACH v_col IN ARRAY ARRAY['id', 'event_date', 'category', 'description', 'outcome_observed', 'chart_id', 'event_id', 'domain'] LOOP
+    BEGIN
+      EXECUTE format('SELECT %I FROM public.life_events LIMIT 1', v_col);
+      RAISE EXCEPTION 'm1274 probe: data_plane_builder CAN still read life_events.% directly', v_col;
+    EXCEPTION WHEN insufficient_privilege THEN NULL;
+    END;
+  END LOOP;
   -- (2) GUC unset / empty / malformed / random chart -> zero rows (fail closed)
   PERFORM set_config('app.chart_context', '', true);
   SELECT count(*) INTO v_cnt FROM public.life_events_chart_scoped;
@@ -182,6 +208,7 @@ RESET ROLE;
 SET LOCAL ROLE data_plane_schema_owner;
 DO $m1274$
 DECLARE
+  v_col text;
   v_view regclass := to_regclass('public.life_events_chart_scoped');
   v_expected_owner_acl aclitem[] := acldefault('r', (SELECT oid FROM pg_roles WHERE rolname = 'amjis_app'));
   v_got aclitem[];
@@ -218,18 +245,34 @@ BEGIN
   IF v_opts IS DISTINCT FROM ARRAY['security_barrier=true']::text[] THEN RAISE EXCEPTION 'm1274 assert: reloptions are % (expected only security_barrier=true)', v_opts; END IF;
   IF (SELECT relkind FROM pg_class WHERE oid = v_view) <> 'v' THEN RAISE EXCEPTION 'm1274 assert: not a plain view'; END IF;
   IF (SELECT pg_get_userbyid(relowner) FROM pg_class WHERE oid = v_view) <> 'amjis_app' THEN RAISE EXCEPTION 'm1274 assert: view owner is not amjis_app'; END IF;
-  -- the view's own definition: chart-scoped by app_chart_context() and exposing exactly the seven columns
+  -- the view's own definition: chart-scoped by app_chart_context() and exposing exactly the six columns
   IF position('app_chart_context()' IN pg_get_viewdef(v_view)) = 0 OR position('chart_id' IN pg_get_viewdef(v_view)) = 0 THEN
     RAISE EXCEPTION 'm1274 assert: the view definition is not chart-scoped by app_chart_context()';
   END IF;
   IF (SELECT string_agg(attname, ',' ORDER BY attnum) FROM pg_attribute WHERE attrelid = v_view AND attnum > 0 AND NOT attisdropped)
-       IS DISTINCT FROM 'id,event_id,event_date,category,domain,outcome_observed,chart_id' THEN
+       IS DISTINCT FROM 'id,event_id,event_date,category,domain,chart_id' THEN
     RAISE EXCEPTION 'm1274 assert: the view column list differs from the plan';
   END IF;
-  -- the builder STILL has no direct privilege on the table
+  -- the builder has NO direct privilege on the table any more: none at table level, none on ANY column (the five former ones named), no ACL entry left
   IF has_table_privilege('data_plane_builder', 'public.life_events', 'SELECT,INSERT,UPDATE,DELETE,TRUNCATE,REFERENCES,TRIGGER')
      OR has_any_column_privilege('data_plane_builder', 'public.life_events', 'SELECT,INSERT,UPDATE,REFERENCES') THEN
-    RAISE EXCEPTION 'm1274 assert: data_plane_builder holds a privilege on life_events';
+    RAISE EXCEPTION 'm1274 assert: data_plane_builder still holds a privilege on life_events';
+  END IF;
+  FOREACH v_col IN ARRAY ARRAY['id', 'event_date', 'category', 'description', 'outcome_observed'] LOOP
+    IF has_column_privilege('data_plane_builder', 'public.life_events', v_col, 'SELECT') THEN
+      RAISE EXCEPTION 'm1274 assert: data_plane_builder can still SELECT life_events.% (the REVOKE did not take)', v_col;
+    END IF;
+  END LOOP;
+  IF EXISTS (SELECT 1 FROM pg_attribute a, LATERAL aclexplode(a.attacl) x
+              WHERE a.attrelid = 'public.life_events'::regclass AND a.attacl IS NOT NULL AND x.grantee = 'data_plane_builder'::regrole) THEN
+    RAISE EXCEPTION 'm1274 assert: a column ACL entry of data_plane_builder remains on life_events';
+  END IF;
+  IF (SELECT COALESCE(md5(string_agg(a.attname || ':' || x.grantee::regrole::text || ':' || x.privilege_type || ':' || x.is_grantable::text || ':' || x.grantor::regrole::text,
+                       ',' ORDER BY a.attname, x.grantee, x.privilege_type)), 'none')
+        FROM pg_attribute a, LATERAL aclexplode(a.attacl) x
+       WHERE a.attrelid = 'public.life_events'::regclass AND a.attacl IS NOT NULL AND x.grantee <> 'data_plane_builder'::regrole)
+     <> current_setting('madhav.m1274_pre_colacl_other') THEN
+    RAISE EXCEPTION 'm1274 assert: another role''s column ACL on life_events changed';
   END IF;
   -- nothing else moved: the table ACL, the schema ACL, the accessor function
   IF (SELECT COALESCE(relacl::text, 'NULL') FROM pg_class WHERE oid = 'public.life_events'::regclass) <> current_setting('madhav.m1274_pre_table_acl') THEN
@@ -263,7 +306,7 @@ BEGIN
   END LOOP;
 END
 $m1274$;
--- rollback sql: 1274_life_events_chart_scoped_view_ROLLBACK.sql sha256 d70811ecb7ddecae4732a1b2d9b497d1ea01dbba153acd160c0016ef3a6e8bd7
+-- rollback sql: 1274_life_events_chart_scoped_view_ROLLBACK.sql sha256 5d6432d0875993468ae0e34a5278fbc359d480a2422b22d3d962a118424ca62d
 -- step r1_assume_owner_roles
 DO $m1274$
 DECLARE r text;
@@ -281,6 +324,11 @@ SET LOCAL ROLE data_plane_schema_owner;
 DO $m1274$
 DECLARE v regclass := to_regclass('public.life_events_chart_scoped');
 BEGIN
+  -- the state the forward leg leaves: the builder holds NOTHING on life_events (table or column)
+  IF has_table_privilege('data_plane_builder', 'public.life_events', 'SELECT,INSERT,UPDATE,DELETE,TRUNCATE,REFERENCES,TRIGGER')
+     OR has_any_column_privilege('data_plane_builder', 'public.life_events', 'SELECT,INSERT,UPDATE,REFERENCES') THEN
+    RAISE EXCEPTION 'm1274 rollback precondition: data_plane_builder holds a privilege on life_events (not the state the forward leg leaves)';
+  END IF;
   IF v IS NULL THEN RAISE EXCEPTION 'm1274 rollback precondition: the view does not exist (nothing to roll back)'; END IF;
   IF (SELECT pg_get_userbyid(relowner) FROM pg_class WHERE oid = v) <> 'amjis_app'
      OR (SELECT relkind FROM pg_class WHERE oid = v) <> 'v'
@@ -294,21 +342,41 @@ BEGIN
   PERFORM set_config('madhav.m1274_pre_schema_acl', (SELECT COALESCE(nspacl::text, 'NULL') FROM pg_namespace WHERE nspname = 'public'), true);
   PERFORM set_config('madhav.m1274_pre_table_acl',  (SELECT COALESCE(relacl::text, 'NULL') FROM pg_class WHERE oid = 'public.life_events'::regclass), true);
   PERFORM set_config('madhav.m1274_pre_fn_md5',     (SELECT md5(pg_get_functiondef(to_regprocedure('public.app_chart_context()')))), true);
+  PERFORM set_config('madhav.m1274_pre_colacl_other', (SELECT COALESCE(md5(string_agg(a.attname || ':' || x.grantee::regrole::text || ':' || x.privilege_type || ':' || x.is_grantable::text || ':' || x.grantor::regrole::text,
+                       ',' ORDER BY a.attname, x.grantee, x.privilege_type)), 'none')
+                       FROM pg_attribute a, LATERAL aclexplode(a.attacl) x
+                      WHERE a.attrelid = 'public.life_events'::regclass AND a.attacl IS NOT NULL AND x.grantee <> 'data_plane_builder'::regrole), true);
 END
 $m1274$;
 RESET ROLE;
 -- step r3_drop_view_as_owner
 SET LOCAL ROLE amjis_app;
+GRANT SELECT (id, event_date, category, description, outcome_observed) ON public.life_events TO data_plane_builder;
 DROP VIEW public.life_events_chart_scoped RESTRICT;
 RESET ROLE;
 -- step r4_post_assertions
 SET LOCAL ROLE data_plane_schema_owner;
 DO $m1274$
+DECLARE v_bcols text;
 BEGIN
   IF to_regclass('public.life_events_chart_scoped') IS NOT NULL THEN RAISE EXCEPTION 'm1274 rollback assert: the view still exists'; END IF;
-  IF has_table_privilege('data_plane_builder', 'public.life_events', 'SELECT,INSERT,UPDATE,DELETE,TRUNCATE,REFERENCES,TRIGGER')
-     OR has_any_column_privilege('data_plane_builder', 'public.life_events', 'SELECT,INSERT,UPDATE,REFERENCES') THEN
-    RAISE EXCEPTION 'm1274 rollback assert: data_plane_builder holds a privilege on life_events';
+  -- the original production state, exactly: no table-level privilege; column-level SELECT on exactly the five columns, grantor amjis_app, not grantable
+  IF has_table_privilege('data_plane_builder', 'public.life_events', 'SELECT,INSERT,UPDATE,DELETE,TRUNCATE,REFERENCES,TRIGGER') THEN
+    RAISE EXCEPTION 'm1274 rollback assert: data_plane_builder holds a table-level privilege on life_events';
+  END IF;
+  SELECT string_agg(a.attname || ':' || x.privilege_type || ':' || x.is_grantable::text || ':' || pg_get_userbyid(x.grantor), ',' ORDER BY a.attname, x.privilege_type)
+    INTO v_bcols
+    FROM pg_attribute a, LATERAL aclexplode(a.attacl) x
+   WHERE a.attrelid = 'public.life_events'::regclass AND a.attacl IS NOT NULL AND x.grantee = 'data_plane_builder'::regrole;
+  IF v_bcols IS DISTINCT FROM 'category:SELECT:false:amjis_app,description:SELECT:false:amjis_app,event_date:SELECT:false:amjis_app,id:SELECT:false:amjis_app,outcome_observed:SELECT:false:amjis_app' THEN
+    RAISE EXCEPTION 'm1274 rollback assert: the builder column ACL on life_events is not exactly the original five SELECT grants: %', v_bcols;
+  END IF;
+  IF (SELECT COALESCE(md5(string_agg(a.attname || ':' || x.grantee::regrole::text || ':' || x.privilege_type || ':' || x.is_grantable::text || ':' || x.grantor::regrole::text,
+                       ',' ORDER BY a.attname, x.grantee, x.privilege_type)), 'none')
+        FROM pg_attribute a, LATERAL aclexplode(a.attacl) x
+       WHERE a.attrelid = 'public.life_events'::regclass AND a.attacl IS NOT NULL AND x.grantee <> 'data_plane_builder'::regrole)
+     <> current_setting('madhav.m1274_pre_colacl_other') THEN
+    RAISE EXCEPTION 'm1274 rollback assert: another role''s column ACL on life_events changed';
   END IF;
   IF (SELECT COALESCE(relacl::text, 'NULL') FROM pg_class WHERE oid = 'public.life_events'::regclass) <> current_setting('madhav.m1274_pre_table_acl') THEN
     RAISE EXCEPTION 'm1274 rollback assert: the life_events ACL changed';
@@ -339,4 +407,4 @@ $m1274$;
 -- gate pin executor_standards.py: bbea69552a6a92e7aed3a75758b533868e3e3d2c5b47385ccc1bf6c0660dc135
 -- gate pin prerun_gate.py: 01ab1d70d0cffea015a64af5430f355dd8d419307aceeaeacf3a0cc4d715773e
 -- gate pin run_gated.sh: 305b4406bba57f85944bbb57cb269368287aaa6d6f782e986afa7f857606f076
--- executor: mig_1274_life_events_view_exec.py sha256 cf28ac661449dbe0ed3fec28037242b7e50e681eb6e8d1c2df324003b6e80a61
+-- executor: mig_1274_life_events_view_exec.py sha256 972ce71403b2c0efea7e34b7c25a023677e3ef11e1093f23af1ad6875345a658
