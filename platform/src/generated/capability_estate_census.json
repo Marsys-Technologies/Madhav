@@ -6,7 +6,7 @@
     "A reviewed output-digest specification establishes deterministic output hashing, not semantic value, population, planner reachability, or empirical validity.",
     "The full MCP profile is registration-gated by the reviewed route authority; its real registration set is exact-set tested independently."
   ],
-  "content_sha256": "59961e00ce0a56001cdce7d6359069f05f10496ceb6e2f8428d5b9ec47550e4a",
+  "content_sha256": "80ef415ac55bd5e2b420b7165d9ef3b77295048503ed9489245f13f1f841fe77",
   "denominators": {
     "descriptor_route_contracts": {
       "by_public_route_disposition": {
@@ -20966,7 +20966,7 @@
       ]
     }
   },
-  "generated_at": "2026-10-03T14:01:01.000Z",
+  "generated_at": "2026-10-03T14:33:30.000Z",
   "provenance": {
     "method": "DB-free source census with recursively key-sorted canonical JSON and SHA-256 fingerprints",
     "sources": [
@@ -22259,7 +22259,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L5_mimamsa/prefix_generation.ts",
-            "sha256": "ae979acb424e33a663bb5080c504d4420d7958c416dc198089178c675db9679a"
+            "sha256": "ff1ddaf82624c8bc4d8f6b7b85378283d7e0b89db9f3dfddf472149b2cb61a0f"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L5_mimamsa/query_attribution.ts",
@@ -22407,7 +22407,7 @@
           }
         ],
         "path": "platform/src/lib/retrieval/{registry,synthesis}/**/*.ts (excluding tests)",
-        "sha256": "7ea144e6f9af544c427825c9266b703e753e4c0a4cd89229b7b389734f136d52"
+        "sha256": "50dd87b8e19afe488242a1117f7c3433c49830a911ee12fdd047cb69c927c431"
       },
       {
         "id": "service_effect_contracts",
@@ -22432,5 +22432,5 @@
     ]
   },
   "schema_version": "capability-estate-census/v1.2",
-  "source_revision": "02cad574984a3d52ba0a294e6061e3fb925a718b"
+  "source_revision": "52ba21847e7f446ed1190de2aacc1eea85bb5d26"
 }
