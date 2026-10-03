@@ -8,7 +8,7 @@ const token = (await readFile(tokenFile, 'utf8')).trim()
 const definitions = [
   { cliId: 'codex', versions: ['0.158.0'], auth: true },
   { cliId: 'claude_code', versions: ['2.1.284'], auth: true },
-  { cliId: 'gemini_antigravity', versions: ['1.2.12', '1.2.13'], auth: false },
+  { cliId: 'gemini_antigravity', versions: ['1.2.12', '1.2.13', '1.2.15'], auth: false },
   { cliId: 'kimi_code', versions: ['2.1.1'], auth: false },
 ]
 

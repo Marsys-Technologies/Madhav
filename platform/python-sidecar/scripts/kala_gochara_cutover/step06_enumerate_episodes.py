@@ -1152,6 +1152,154 @@ def build_coverage_rows(chart_id: str, generation: str,
 # ── main ─────────────────────────────────────────────────────────────────────
 
 
+class StaleOverlayRefusal(Exception):
+    """§12.9 overlay-freshness refusal. The CLI maps this to exit 7; an
+    in-process caller (the governed writer) lets it propagate."""
+
+
+class NoResonanceMapError(Exception):
+    """No gochara_resonance_map rows for the chart (exit 3 at the CLI)."""
+
+
+def _jd_of(dt: datetime) -> float:
+    import swisseph as swe
+
+    utc = dt.astimezone(UTC)
+    return float(swe.julday(utc.year, utc.month, utc.day,
+                            utc.hour + utc.minute / 60.0
+                            + (utc.second + utc.microsecond / 1e6) / 3600.0))
+
+
+def enumerate_core(conn, *, chart_id: str, generation: str,
+                   h_start: datetime, h_end: datetime, horizon_text: str,
+                   orb_deg: float, ephe_path: str | None,
+                   refine: bool = True,
+                   bodies: list[str] | None = None,
+                   dropped_refs_path: str | None = None,
+                   ) -> tuple[list[dict], list[dict], dict]:
+    """The whole enumeration on a CALLER-SUPPLIED connection, returning the
+    payloads IN MEMORY: (episodes, coverage, report). NEVER writes the
+    episodes/coverage JSON files (the CLI main() does that, byte-identical to
+    before), never commits/rolls back/closes `conn`, never opens its own —
+    every DB touch is a READ (the §12.9 freshness gate, the resonance map,
+    the resolution facts).
+
+    `bodies=None` enumerates all PERSISTED_BODIES; a subset enumerates exactly
+    those (per-body payloads concatenate exactly — dedupe keys on the pinned
+    §3.2 contact_id, which includes body). Raises StaleOverlayRefusal (§12.9),
+    NoResonanceMapError (no map rows), DedupeRefusal (ADK-0020 residual).
+    """
+    if bodies is None:
+        bodies = list(PERSISTED_BODIES)
+    horizon_jd = (_jd_of(h_start), _jd_of(h_end))
+
+    # §12.9 gate — BEFORE any enumeration (the same refusal step06 applies at
+    # consume time; a candidate must not be built on stale overlay rows).
+    from services.ka_vedha_gochara.freshness import (
+        check_overlay_freshness, gate_allows_overlays)
+    reports = check_overlay_freshness(conn, chart_id)
+    if not gate_allows_overlays(reports):
+        detail = "; ".join(f"{name}: {r.summary()}" for name, r in reports.items())
+        raise StaleOverlayRefusal(detail)
+    fingerprints = {
+        "house_vedha": reports["house_vedha"].current,
+        "moorti": reports["moorti"].current,
+    }
+
+    # ASTRA A2.5 A1: the runner's connection is dict_row — this module's
+    # contract for the map read is positional, so the cursor's row shape is
+    # pinned EXPLICITLY (never inherited from the connection).
+    import psycopg.rows
+    with conn.cursor(row_factory=psycopg.rows.tuple_row) as cur:
+        cur.execute(_FETCH_MAP_ROWS_SQL, (chart_id,))
+        map_rows = [
+            {
+                "event_class": r[0], "target_type": r[1], "target_ref": r[2],
+                "weight": r[3], "classical_citation": r[4],
+                "uncited_extension": r[5], "target_resolution_state": r[6],
+                "target_qualifier": r[7],
+            }
+            for r in cur.fetchall()
+        ]
+    facts = fetch_resolution_facts(conn, chart_id)
+
+    if not map_rows:
+        raise NoResonanceMapError(
+            f"no gochara_resonance_map rows for chart {chart_id} "
+            "— run ka_gochara_resonance first")
+
+    targets = resolve_targets(map_rows, facts)
+    state_counts: dict[str, int] = {}
+    for t in targets:
+        state_counts[t.state] = state_counts.get(t.state, 0) + 1
+
+    convention_id = gk_convention.canonical_convention_id()
+    start_pad = h_start.date() - timedelta(days=1)
+    end_pad = h_end.date() + timedelta(days=1)
+
+    episodes: list[dict] = []
+    searched: dict[str, dict[str, list[str]]] = {}
+    backends: dict[str, dict] = {}
+    no_exact_total = 0
+    no_exact_gated_total = 0
+    for body in bodies:
+        index, backend = build_body_index(body, start_pad, end_pad, ephe_path)
+        backends[body] = backend
+        eps, stats = enumerate_body(
+            index, body, targets, horizon_jd, orb_deg, backend,
+            ephe_path=ephe_path, refine=refine,
+            generation=generation)
+        episodes.extend(eps)
+        no_exact_total += stats["episodes_without_exact"]
+        no_exact_gated_total += stats["episodes_without_exact_withheld"]
+        searched[body] = stats["searched"]
+
+    coverage = build_coverage_rows(
+        chart_id, generation, targets, searched, horizon_text,
+        convention_id, backends.get("Saturn", {}))
+
+    # ADK-0020: dedupe to one row per physical contact BEFORE the payload is
+    # written — the ledger keys on the pinned §3.2 contact_id and refuses
+    # duplicates at insert (the 2026-09-28 Link 2 halt).
+    from step06_candidate_build import CONVENTION_VECTOR
+    episodes, dedupe_report = dedupe_episodes(
+        episodes,
+        chart_id=chart_id,
+        convention_id=convention_id,
+        method_version=CONVENTION_VECTOR["method_version"],
+        dropped_refs_path=dropped_refs_path,
+    )
+
+    # R5 closure: after dedupe, each physical boundary event is stored exactly
+    # once (as a sky_event row), over the WHOLE payload.
+    n_sky_events = assert_boundary_events_stored_once(episodes)
+
+    report = {
+        "driver": "step06_enumerate_episodes",
+        "chart_id": chart_id, "generation": generation,
+        "convention_id": convention_id,
+        "horizon": horizon_text,
+        "candidate_flags": {**CANDIDATE_FLAGS, "orb_max_deg": orb_deg},
+        "bodies_enumerated": bodies,
+        "moon_channel": "separate: Moon served on demand with moon_on_demand "
+                        "coverage (M-3/R7); never persisted by this driver",
+        "resonance_rows": len(map_rows),
+        "targets": len(targets),
+        "target_resolution_state_counts": state_counts,
+        "episodes_emitted": len(episodes),
+        "sky_boundary_events": n_sky_events,
+        "episodes_truncated_no_exact_kept": no_exact_total,
+        "episodes_truncated_no_exact_withheld_pre_41": no_exact_gated_total,
+        "dedupe": dedupe_report,
+        "coverage_partitions": len(coverage),
+        "upstream_fingerprints": fingerprints,
+        "ephemeris_backends": backends,
+        "refine": refine,
+        "build_id": f"wp10-step6-enum-{int(time.time())}",
+    }
+    return episodes, coverage, report
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = step_parser(6, __doc__)
     parser.add_argument("--chart-id", required=True)
@@ -1201,135 +1349,44 @@ def main(argv: list[str] | None = None) -> int:
             print(f"ERROR: --bodies has duplicates: {bodies}", file=sys.stderr)
             return 3
 
-    def _jd(dt: datetime) -> float:
-        utc = dt.astimezone(UTC)
-        return float(swe.julday(utc.year, utc.month, utc.day,
-                                utc.hour + utc.minute / 60.0
-                                + (utc.second + utc.microsecond / 1e6) / 3600.0))
-
-    horizon_jd = (_jd(h_start), _jd(h_end))
     horizon_text = f"[{args.horizon_start},{args.horizon_end})"
 
     conn = connect(resolve_dsn(args), step=6, autocommit=False)
     try:
-        # §12.9 gate — BEFORE any enumeration (the same refusal step06 applies
-        # at consume time; a candidate must not be built on stale overlay rows).
-        from services.ka_vedha_gochara.freshness import (
-            check_overlay_freshness, gate_allows_overlays)
-        reports = check_overlay_freshness(conn, args.chart_id)
-        conn.rollback()  # the checks only read; leave no open transaction
-        if not gate_allows_overlays(reports):
-            detail = "; ".join(f"{name}: {r.summary()}" for name, r in reports.items())
-            print(f"REFUSED (§12.9): {detail}. Enumeration on stale overlay rows "
-                  "would build the candidate on unverified citation state — rebuild "
-                  "ka_vedha_gochara and ka_moorti_nirnaya first.", file=sys.stderr)
-            conn.close()
-            return 7
-        fingerprints = {
-            "house_vedha": reports["house_vedha"].current,
-            "moorti": reports["moorti"].current,
-        }
-
-        with conn.cursor() as cur:
-            cur.execute(_FETCH_MAP_ROWS_SQL, (args.chart_id,))
-            map_rows = [
-                {
-                    "event_class": r[0], "target_type": r[1], "target_ref": r[2],
-                    "weight": r[3], "classical_citation": r[4],
-                    "uncited_extension": r[5], "target_resolution_state": r[6],
-                    "target_qualifier": r[7],
-                }
-                for r in cur.fetchall()
-            ]
-        facts = fetch_resolution_facts(conn, args.chart_id)
+        episodes, coverage, report = enumerate_core(
+            conn, chart_id=args.chart_id, generation=args.generation,
+            h_start=h_start, h_end=h_end, horizon_text=horizon_text,
+            orb_deg=args.orb_deg, ephe_path=args.ephe_path,
+            refine=not args.no_refine, bodies=bodies,
+            dropped_refs_path=args.episodes_out + ".dropped_refs.json")
+    except StaleOverlayRefusal as exc:
         conn.rollback()
-    finally:
+        print(f"REFUSED (§12.9): {exc}. Enumeration on stale overlay rows "
+              "would build the candidate on unverified citation state — rebuild "
+              "ka_vedha_gochara and ka_moorti_nirnaya first.", file=sys.stderr)
         conn.close()
-
-    if not map_rows:
-        print(f"ERROR: no gochara_resonance_map rows for chart {args.chart_id} "
-              "— run ka_gochara_resonance first", file=sys.stderr)
+        return 7
+    except NoResonanceMapError as exc:
+        conn.rollback()
+        print(f"ERROR: {exc}", file=sys.stderr)
+        conn.close()
         return 3
-
-    targets = resolve_targets(map_rows, facts)
-    state_counts: dict[str, int] = {}
-    for t in targets:
-        state_counts[t.state] = state_counts.get(t.state, 0) + 1
-
-    convention_id = gk_convention.canonical_convention_id()
-    start_pad = h_start.date() - timedelta(days=1)
-    end_pad = h_end.date() + timedelta(days=1)
-
-    episodes: list[dict] = []
-    searched: dict[str, dict[str, list[str]]] = {}
-    backends: dict[str, dict] = {}
-    no_exact_total = 0
-    no_exact_gated_total = 0
-    for body in bodies:
-        index, backend = build_body_index(body, start_pad, end_pad, args.ephe_path)
-        backends[body] = backend
-        eps, stats = enumerate_body(
-            index, body, targets, horizon_jd, args.orb_deg, backend,
-            ephe_path=args.ephe_path, refine=not args.no_refine,
-            generation=args.generation)
-        episodes.extend(eps)
-        no_exact_total += stats["episodes_without_exact"]
-        no_exact_gated_total += stats["episodes_without_exact_withheld"]
-        searched[body] = stats["searched"]
-
-    coverage = build_coverage_rows(
-        args.chart_id, args.generation, targets, searched, horizon_text,
-        convention_id, backends.get("Saturn", {}))
-
-    # ADK-0020: dedupe to one row per physical contact BEFORE the payload is
-    # written — the ledger keys on the pinned §3.2 contact_id and refuses
-    # duplicates at insert (the 2026-09-28 Link 2 halt).
-    from step06_candidate_build import CONVENTION_VECTOR
-    try:
-        episodes, dedupe_report = dedupe_episodes(
-            episodes,
-            chart_id=args.chart_id,
-            convention_id=convention_id,
-            method_version=CONVENTION_VECTOR["method_version"],
-            dropped_refs_path=args.episodes_out + ".dropped_refs.json",
-        )
     except DedupeRefusal as exc:
+        conn.rollback()
         print(f"REFUSED (ADK-0020): {exc}", file=sys.stderr)
+        conn.close()
         return 5
-
-    # R5 closure: after dedupe, each physical boundary event is stored exactly
-    # once (as a sky_event row), over the WHOLE payload — a target-attached
-    # boundary row or a duplicated event refuses the run, never ships.
-    n_sky_events = assert_boundary_events_stored_once(episodes)
+    finally:
+        try:
+            conn.close()
+        except Exception:  # noqa: BLE001
+            pass
 
     Path(args.episodes_out).write_text(
         json.dumps(episodes, indent=2, default=str) + "\n")
     Path(args.coverage_out).write_text(
         json.dumps(coverage, indent=2, default=str) + "\n")
 
-    report = {
-        "driver": "step06_enumerate_episodes",
-        "chart_id": args.chart_id, "generation": args.generation,
-        "convention_id": convention_id,
-        "horizon": horizon_text,
-        "candidate_flags": {**CANDIDATE_FLAGS, "orb_max_deg": args.orb_deg},
-        "bodies_enumerated": bodies,
-        "moon_channel": "separate: Moon served on demand with moon_on_demand "
-                        "coverage (M-3/R7); never persisted by this driver",
-        "resonance_rows": len(map_rows),
-        "targets": len(targets),
-        "target_resolution_state_counts": state_counts,
-        "episodes_emitted": len(episodes),
-        "sky_boundary_events": n_sky_events,
-        "episodes_truncated_no_exact_kept": no_exact_total,
-        "episodes_truncated_no_exact_withheld_pre_41": no_exact_gated_total,
-        "dedupe": dedupe_report,
-        "coverage_partitions": len(coverage),
-        "upstream_fingerprints": fingerprints,
-        "ephemeris_backends": backends,
-        "refine": not args.no_refine,
-        "build_id": f"wp10-step6-enum-{int(time.time())}",
-    }
     print(json.dumps(report, indent=2, default=str))
     if args.evidence:
         write_evidence(6, "ENUMERATION",

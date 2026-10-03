@@ -687,6 +687,22 @@ def test_c1_an_executed_row_still_exercises(monkeypatch, tmp_path):
     assert _m(c, "bg_x", "Build.history")["v"] == ac.PASS
 
 
+def _retirement_rows(ctrl):
+    """How many rows of the ledger COPY carry `closed_by: retirement` (the E6.1 item (i) retired-criterion
+    closure). The count is taken RELATIVE to the ledger under test: a ledger that already holds retirement rows
+    (the census-extended ledger) must not have them mistaken for closures made by this emit."""
+    rows = [json.loads(l) for l in (ctrl / "asset_gaps.jsonl").read_text(encoding="utf-8").splitlines() if l.strip()]
+    return sum(1 for r in rows if r.get("closed_by") == "retirement")
+
+
+def _closed_by_measurement(ctrl, rows_before, closed):
+    """`closed` (what emit_gaps closed THIS run) minus the retirement closures THIS emit appended
+    (retirement rows after minus retirement rows before). These tests are about closure BY MEASUREMENT, so
+    this delta is counted out; it is 0 retirement rows on a ledger that already has them, and 123 on the
+    857-line ledger whose first emit runs the retirement."""
+    return closed - (_retirement_rows(ctrl) - rows_before)
+
+
 @pytest.mark.skipif(not PROD_LEDGER.exists(), reason="production ledger not present in this checkout")
 def test_c1_b_reviewer_reproduction_the_open_bg_sign_medical_gap_stays_open(monkeypatch, tmp_path):
     """(b) W2-1_REVIEW A8, exactly: a COPY of the production ledger (holding the OPEN
@@ -709,8 +725,9 @@ def test_c1_b_reviewer_reproduction_the_open_bg_sign_medical_gap_stays_open(monk
     c = ac.measure("L0")
     assert _m(c, "bg_sign_medical", "Build.exercised")["v"] == ac.FAIL
     assert _m(c, "bg_sign_medical", "Build.history")["v"] not in ac.CLOSABLE
+    retirement_before = _retirement_rows(ctrl)
     added, skipped, closed, reopened = ac.emit_gaps(c)
-    assert closed == 0, "a never-executed queued row must not close the open Build.exercised gap"
+    assert _closed_by_measurement(ctrl, retirement_before, closed) == 0, "a never-executed queued row must not close the open Build.exercised gap"
     rows = [json.loads(l) for l in (ctrl / "asset_gaps.jsonl").read_text(encoding="utf-8").splitlines() if l.strip()]
     assert [r for r in rows if r.get("gap_id") == gid][-1]["state"] == "OPEN"
 
@@ -767,8 +784,9 @@ def test_c4_a_unstarted_aborted_and_blocked_error_rows_do_not_exercise_or_close(
     c = _measure_with_rows(monkeypatch, ctrl, _UNSTARTED)
     ex = _m(c, "bg_sign_medical", "Build.exercised")
     assert ex["v"] == ac.FAIL and "none ever started" in ex["measured"], ex
+    retirement_before = _retirement_rows(ctrl)
     added, skipped, closed, reopened = ac.emit_gaps(c)
-    assert closed == 0
+    assert _closed_by_measurement(ctrl, retirement_before, closed) == 0
     gid = "bg_sign_medical-Build.exercised"
     rows = [json.loads(l) for l in (ctrl / "asset_gaps.jsonl").read_text(encoding="utf-8").splitlines() if l.strip()]
     assert [r for r in rows if r.get("gap_id") == gid][-1]["state"] == "OPEN"

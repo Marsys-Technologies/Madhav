@@ -99,6 +99,7 @@ from typing import Any
 import psycopg.rows
 
 from pipeline.orchestrator.writers import WriterBase, WriterResult, register
+from services.w2g.node_series import NODE_SERIES_PREDICATE, assert_one_row_per_date
 from services.ka_graha_sancara.engine import ALL_GRAHAS, NAKSHATRAS, NAK_SIZE_DEG, SIGNS
 from services.ka_vedha_gochara.logic import (
     D_PG353_REMOVAL,
@@ -155,10 +156,11 @@ FROM bg_transit_rules
 WHERE rule_type = 'favourable' AND vedha_house IS NOT NULL
 """
 
-_FETCH_EPHEMERIS_RANGE_SQL = """
+_FETCH_EPHEMERIS_RANGE_SQL = f"""
 SELECT date, body, tropical_longitude
 FROM ephemeris_daily
 WHERE ayanamsha_id = 'tropical' AND date BETWEEN %s AND %s AND body = ANY(%s)
+  AND {NODE_SERIES_PREDICATE}
 ORDER BY body, date
 """
 
@@ -184,10 +186,11 @@ FROM bg_vedha_malefic_scale
 
 # M-8 (c): retrograde flag per body per day, for the
 # detail.intensity_qualifier='retrograde_malefic' stamp on obstructed rows.
-_FETCH_RETROGRADE_SQL = """
+_FETCH_RETROGRADE_SQL = f"""
 SELECT date, body
 FROM ephemeris_daily
 WHERE ayanamsha_id = 'tropical' AND date BETWEEN %s AND %s AND body = ANY(%s)
+  AND {NODE_SERIES_PREDICATE}
   AND is_retrograde
 """
 
@@ -342,6 +345,7 @@ def _fetch_daily_sidereal_by_body(
     with conn.cursor(row_factory=psycopg.rows.dict_row) as cur:
         cur.execute(_FETCH_EPHEMERIS_RANGE_SQL, (horizon_start, horizon_end, list(bodies)))
         rows = cur.fetchall()
+    assert_one_row_per_date(rows, context="ka_vedha_gochara._fetch_daily_sidereal_by_body")
 
     by_body: dict[str, list[tuple[date, float]]] = {b: [] for b in bodies}
     for r in rows:
@@ -362,6 +366,7 @@ def _fetch_retrograde_dates(
     with conn.cursor(row_factory=psycopg.rows.dict_row) as cur:
         cur.execute(_FETCH_RETROGRADE_SQL, (horizon_start, horizon_end, list(bodies)))
         rows = cur.fetchall()
+    assert_one_row_per_date(rows, context="ka_vedha_gochara._fetch_retrograde_dates")
     retro: dict[str, set[date]] = {}
     for r in rows:
         retro.setdefault(str(r["body"]), set()).add(r["date"])

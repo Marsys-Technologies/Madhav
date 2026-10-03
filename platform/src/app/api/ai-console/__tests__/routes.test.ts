@@ -39,7 +39,7 @@ const makeState = () => ({ connections: [{ ...row }],
     supports_tools: false, supports_structured_output: true, available: true }],
   configurations: [{ id: configId, name: 'Four roles', version: 3, configuration_kind: 'provider_preset', owner_connection_id: id, owner_cli_id: null, deleted_at: null }],
   roles: AI_ROLES.map(role => ({ configuration_id: configId, role, kind: target.kind, connection_id: id, model_id: target.modelId, cli_id: null })),
-  defaultChoice: { kind: 'custom_configuration', configurationId: configId }, clis: [], cliModels: [],
+  defaultChoice: { kind: 'custom_configuration' as const, configurationId: configId }, clis: [], cliModels: [],
 })
 const request = (method: string, body?: unknown) => new Request('http://localhost/api/ai-console', {
   method, headers: { 'Content-Type': 'application/json' }, ...(body === undefined ? {} : { body: JSON.stringify(body) }),
@@ -376,6 +376,23 @@ describe('mutation and validation admission', () => {
 })
 
 describe('AI Console safe API contracts', () => {
+  it('distinguishes advertised empty CLI effort from unknown manual-model effort', async () => {
+    const common = { cli_id: 'codex', display_name: 'A model', compatible_roles: [...AI_ROLES],
+      supports_tools: false, supports_structured_output: true, available: true, is_builtin_default: false,
+      supported_efforts: [], default_effort: null }
+    const state = { ...makeState(), clis: [{ cli_id: 'codex', granted_at: new Date(), revoked_at: null,
+      detected_product: 'Codex CLI', detected_version: '0.158.0', validation_state: 'reachable', last_checked_at: null }],
+    cliModels: [{ ...common, model_id: 'gpt-manual', is_manual: true, is_catalog_discovered: false },
+      { ...common, model_id: 'gpt-advertised', is_manual: false, is_catalog_discovered: true }] }
+    mocks.listAiConsoleState.mockResolvedValue(state)
+    const body = await (await root.GET()).json()
+    expect(body.cliModels[0]).toMatchObject({ supportedEfforts: [], effortSource: 'policy' })
+    expect(body.cliModels[1]).toMatchObject({ supportedEfforts: [], isCatalogDiscovered: true })
+    const cards = guards.projectCliCards(state)
+    expect(cards[0].models?.[0]).toMatchObject({ supportedEfforts: [], effortSource: 'policy' })
+    expect(cards[0].models?.[1]).toMatchObject({ supportedEfforts: [] })
+  })
+
   it('declares every route dynamic and disables caching for successful responses', async () => {
     for (const route of [root, connections, connection, validation, configurations, configuration, defaults]) {
       expect(route.dynamic).toBe('force-dynamic')

@@ -41,6 +41,42 @@ PINNED_FINGERPRINTS = {
     6: "62f08ad67334705860cf9bd4652a89efc4787f5e4eb3f1d0bab4fcad2ac0b8ce",
     # 7 (E6 item f): NA_CAUSES gains Carr.D1/D2/D3:no-carriage (the registry is unchanged; NA_CAUSES is fingerprinted)
     7: "118c3154f9fc136fb83a33f4568e49688f8cf639336cae346643127e101d52f9",
+    # 8 (E6 item i, SS A2): Carr.detector RETIRED - removed from the registry (32 to 31 entries; Carr is exactly D1-D3)
+    8: "0479f0cdaaa56c5838f2e1a4ce5ab3a59606b856ba0acd201d3f67725bed0842",
+    # 9 (SS N-65): NA_RULE_DECISIONS declares R01 Build.history#measured:never-run, R02 Dens.served#measured:no-served-surface and
+    # R03 Narr.{agree,checkable,fidelity_test,lint}#measured:no-prose (the registry and NA_CAUSES are unchanged; the rules are fingerprinted)
+    9: "9bfe15eccdd096e0a8def9199a6794a99a241e9ebd8fb1c5aadafa61a526e499",
+    # 10 (SS N-72): + Build.dep_liveness#measured:no-declared-dependencies (S4) and Earn.service_state#measured:not-a-service; NA_CAUSES gains
+    # Earn.service_state:not-a-service (the registry criteria are unchanged)
+    10: "1b980d1c48d19b53589db234ebeb5c2cbbffb6cddd5535ae7390b97b2a22666a",
+    # 11 (SS N-72 S2, N-73; provisional): Carr.D1 gets a detector (revision 2), NA_CAUSES gains Carr.D1/D2/D3:not-the-declared-carriage and
+    # :ratified_judgment, and the three not-the-declared-carriage rules are declared (inert until an asset declares a carriage check)
+    11: "c066a88e36b61827422796ae98f59a679458bbcb8ba88e2d80d351d582a39940",
+    # 12 (SS N-72 S3, N-73 (1)/(4), N-74 (b); provisional): Vocab.alias rev 2 / Ldgr.source_presence rev 3 (declared forms: an alias class measured against
+    # bg_ontology class planet; a declared source column with its citation_state), NA_CAUSES gains Vocab.alias:no-alias-class and
+    # Ldgr.source_presence:no-classical-claim, and the two declaration-keyed rules are declared (inert until an asset declares); columns_any unchanged
+    12: "35b0e03e412d0d36d8af2840bd3d4d612af2859e56035c90342266c98e33ed3d",
+    # 13 (SS N-72 S1, N-73, N-74; provisional): Null.schema_default / Null.blank_rows rev 2 (an asset that DECLARES `null_convention` gets the declared form:
+    # the Null cap lifts per asset only when schema_default and blank_rows are clean AND the detector verifies the convention; the cap line itself is unchanged);
+    # no N/A rule, NA_CAUSES unchanged, inert until an asset declares one
+    13: "fdee1861e969d88dc1139cbd0ff040d7b217710db3684313e00277c8150a85f1",
+    # 14 (SS N-74 item 5, N-74(a); provisional): Dens.served rev 5 (the scan tells a SELECT of the asset's table from a LABEL: an asset a serving module only
+    # names in a provenance string / prose / type name / import path / label-keyed value / map key is not reached, so it can read the no-served-surface N/A;
+    # every unclassifiable form stays a reach) and R02's decision text is cause-keyed ("an asset no served module selects rows from; being named only as a
+    # provenance label is not a select"; N/A = "not served directly", not "unused"); a service-kind asset named in a service_probe envelope is a REACH, not a label
+    # (bg_ephemeris_engine / bg_panchanga stay NO_DETECTOR); NA_CAUSES unchanged, asset_declarations.json unchanged
+    14: "f4af0c6c1e24fd25e41409f8f33ffeac8333411df2936bc9270d438ca20bc0f2",
+    # 15 (STAMP; provisional): `null_convention.stamp_columns: [{column, why}]`, a declared word for a write-time stamp column: the detector requires a NOT NULL timestamp /
+    # timestamptz with no NULL row and no sentinel timestamp and exempts it from the constant test ONLY (nothing else exempted); Null.schema_default / Null.blank_rows revision 3 (applicability text);
+    # NA_CAUSES / NA_RULE_DECISIONS unchanged, inert until an asset declares one
+    15: "ef64d8b9b8ec924d724a13e249e7e6a5f049beeb2d51932c10fb0be557985345",
+    # 16 (NARR-GUARD, N-94; provisional): `prose_coupling: {to: carriage_d1, columns, why, evidence}`, a declared word beside prose_fields []: the four Narr N/A releases of an asset that declares it stand
+    # only while its own Carr.D1 reads PASS (else NO_DETECTOR); Narr.agree / checkable / fidelity_test / lint revision 2 (applicability text); NA_CAUSES / NA_RULE_DECISIONS unchanged, inert until declared
+    16: "8b88e7b26f32fdf8f665533b96357c8c332fb142a7166a6468a0f64ec51cb97c",
+    # 23 (DENS-TIER-GUARD, N-98; provisional; pin 23 is pre-allocated, pins 17-22 belong to other lanes): the Dens tier vocabulary is a CLOSED list: a column counts as a tier only when it is exactly `tier` /
+    # `verification_pass_status`, or the asset declares it in density_tier_columns, and never when its name carries a deny-listed word (cost, price, pricing, plan, access, subscription, billing, fee, tariff);
+    # Dens.served revision 6 (applicability text); NA_CAUSES / NA_RULE_DECISIONS unchanged, inert until an asset declares density_tier_columns
+    23: "9a2b66cb84afcdf018a6ae0cde084756b42795d9e73b000c6526842bcaa855d4",
 }
 
 
@@ -61,7 +97,7 @@ def test_layers_cover_every_layer_where_the_criterion_is_measured_today():
     for layer, assets in FIXTURE["layers"].items():
         for aid, ms in assets.items():
             for crit in ms:
-                assert crit in ac.CRITERION_REGISTRY, (aid, crit)
+                assert crit in ac.CRITERION_REGISTRY, (aid, crit)   # the fixture no longer carries the retired Carr.detector
                 assert layer in ac.CRITERION_REGISTRY[crit]["layers"], (layer, aid, crit)
 
 
@@ -319,12 +355,16 @@ def test_absent_facts_never_yield_na_even_with_a_declared_rule(monkeypatch):
 
 
 def test_detector_none_criterion_never_reaches_pass():
-    # Carr.D1 is detector NONE; even if some caller hands it a PASS it is capped.
-    ms = {"Carr.detector": _m("PASS"), "Carr.D1": _m("PASS"), "Carr.D2": _m("PASS"), "Carr.D3": _m("PASS")}
+    # Carr.D2 and Carr.D3 are detector NONE (D1 got a detector in revision 11); even if some caller hands them a PASS it is capped.
+    ms = {"Carr.D1": _m("PASS"), "Carr.D2": _m("PASS"), "Carr.D3": _m("PASS")}
     cell = ac.rollup_asset("L2", ms)["Carr"]
     assert cell["v"] == "NO_DETECTOR"
+    for crit in ("Carr.D2", "Carr.D3"):
+        chk = next(c for c in cell["checks"] if c["criterion"] == crit)
+        assert chk["v"] == "NO_DETECTOR" and "detector NONE" in chk["reason"]
     d1 = next(c for c in cell["checks"] if c["criterion"] == "Carr.D1")
-    assert d1["v"] == "NO_DETECTOR" and "detector NONE" in d1["reason"]
+    # D1 has a detector, but a BARE {v: PASS} is not a D1 result: it carries no verified passage evidence, so it is not honoured
+    assert d1["v"] == "NO_DETECTOR" and "without verified passage evidence" in d1["reason"] and "no `d1` evidence" in d1["reason"]
 
 
 def test_measured_criterion_outside_its_layers_raises_never_dropped(monkeypatch):
@@ -394,9 +434,10 @@ def _census_layer(layer):
                        for a, ms in FIXTURE["layers"][layer].items()]}
 
 
-def test_fixture_is_the_127_asset_2457_cell_census():
+def test_fixture_is_the_127_asset_2330_cell_census():
+    # 2457 before E6 item i removed the 127 retired Carr.detector cells
     assert sum(len(v) for v in FIXTURE["layers"].values()) == 127
-    assert sum(len(ms) for v in FIXTURE["layers"].values() for ms in v.values()) == 2457
+    assert sum(len(ms) for v in FIXTURE["layers"].values() for ms in v.values()) == 2330
 
 
 def test_rollup_over_all_127_assets_is_total_versioned_and_never_better_than_the_worst_measured_check():
@@ -434,7 +475,7 @@ def test_rollup_over_the_fixture_never_changes_an_input_measurement():
 
 
 def test_existing_pure_functions_are_unchanged_on_every_measured_cell():
-    """gap_id_for / lookup_criterion on all 2,457 cells: identity form and gate/check/detector/revision
+    """gap_id_for / lookup_criterion on all 2,330 cells: identity form and gate/check/detector/revision
     are exactly what the registry declared before E6.1."""
     for layer, assets in FIXTURE["layers"].items():
         for aid, ms in assets.items():

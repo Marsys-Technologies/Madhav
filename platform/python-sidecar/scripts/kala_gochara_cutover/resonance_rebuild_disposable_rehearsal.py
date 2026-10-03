@@ -344,11 +344,13 @@ def load_ontology_models(cur) -> dict:
     return {"models": models, "non_eligible_present": others}
 
 
-SIGN_LORDS = [
-    (1, "Mars"), (2, "Venus"), (3, "Mercury"), (4, "Moon"), (5, "Sun"),
-    (6, "Mercury"), (7, "Venus"), (8, "Mars"), (9, "Jupiter"), (10, "Saturn"),
-    (11, "Saturn"), (12, "Jupiter"),
-]
+# The rehearsal seeds reference_signs with the REAL L0 values — taken from the seed that
+# creates the production table (brahmagyan/l0_reference.py:269 `SIGNS`; the loader at :1357-1375),
+# never hand-typed: that table stores lords in LOWERCASE ('mars'), which a hand-typed
+# Title-case fixture hid (real rebuild run 9863849f: all 51 lord rows 'unavailable').
+from brahmagyan.l0_reference import SIGNS as L0_SIGNS  # noqa: E402
+
+SIGN_LORDS = [(row[0], row[3]) for row in L0_SIGNS]
 
 
 def expected_lord_identities(signature_models: dict = SIGNATURE_MODELS):
@@ -460,6 +462,7 @@ REQUIRED_DETECTOR_CONTROLS: tuple[str, ...] = (
     "lord_token_wrong", "lord_token_missing", "birth_anchor_row_injected",
     "mechanism_weight_sign_flipped", "fact_ref_missing", "fact_ref_foreign_chart",
     "mechanism_state_forged", "m6_operand_missing", "m6_state_forged",
+    "lords_all_unavailable",
 )
 _DETECTOR_META_KEYS = ("clean", "restored_after_controls")
 # ASTRA v1.4 P2: the clean baseline is a MEASUREMENT with contents — every identity
@@ -730,8 +733,8 @@ def _seed(cur) -> dict:
     cur.executemany(
         "INSERT INTO reference_signs (sign_id, canonical_name_en, canonical_name_sa, lord, element,"
         " modality, natural_house, is_odd, is_biped, source_citation)"
-        " VALUES (%s, %s, %s, %s, 'fire', 'movable', %s, %s, TRUE, 'BPHS ch.1 (synthetic rehearsal)')",
-        [(n, SIGN_NAMES[n - 1], SIGN_NAMES[n - 1], lord, n, n % 2 == 1) for n, lord in SIGN_LORDS])
+        " VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, 'BPHS (real L0 seed values, l0_reference.SIGNS)')",
+        [row[:9] for row in L0_SIGNS])
 
     fact_rows = []
     build_id = str(uuid.uuid4())
@@ -1050,6 +1053,17 @@ def _detector_controls(cur, fixture: dict) -> dict:
                             (CHART_ID, "bereavement", "gulika_mandi_distance",
                              "mandi_sign_distance_from_8L")),
         lambda m: m["state:m6_operands"] == 1)
+    # (4) the PRODUCTION failure shape (real rebuild run 9863849f): EVERY lord row's stored
+    #     state 'unavailable' (the writer's lord-name lookup missed on the lowercase L0 values),
+    #     tokens / weights / citations / counts intact. The re-derivation must disagree for
+    #     EVERY lord row — a case-blind or self-agreeing check would call this clean.
+    controls["lords_all_unavailable"] = (
+        lambda: cur.execute(
+            "UPDATE gochara_resonance_map SET target_resolution_state='unavailable'"
+            " WHERE chart_id=%s AND target_type='lord'", (CHART_ID,)),
+        lambda m: m["value_violations"] >= cur.execute(
+            "SELECT count(*) FROM gochara_resonance_map WHERE chart_id=%s AND target_type='lord'",
+            (CHART_ID,)).fetchone()[0] > 0)
     # controls whose mutation necessarily changes a count (a deletion / an insertion) or
     # the global id set (a re-pointed reference): the validity criterion is that the
     # mutation was APPLIED, and that the quantity it must not touch stays preserved

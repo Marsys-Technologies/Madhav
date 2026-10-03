@@ -4,7 +4,7 @@ import { ObservatoryDashboard } from '../ObservatoryDashboard'
 
 const scope = vi.hoisted(() => ({ current: {} as Record<string, unknown> }))
 vi.mock('../ObservatoryScope', () => ({ useObservatoryScope: () => scope.current }))
-const totals = { transport_attempts: 2, transport_success: 1, transport_failed: 1, transport_pending: 0,
+const totals = { transport_attempts: 2, customer_attempts: 1, validation_attempts: 1, transport_success: 1, transport_failed: 1, transport_pending: 0,
   complete_usage: 1, transport_unpriced: 1, input_tokens: '100', output_tokens: '10',
   known_transport_cost_usd: '0.0004', legacy_records: 1, legacy_estimate_usd: '0.5', p50_success_ms: 1500 }
 const base = { admin: false, userId: 'alice', scope: 'mine', setScope: vi.fn(), selectedUserId: '', setSelectedUserId: vi.fn(),
@@ -26,6 +26,7 @@ describe('Observatory screens', () => {
     expect(await screen.findByText('Call activity · UTC')).toBeTruthy()
     expect(screen.getByRole('img', { name: /Provider calls and successful calls over time/ })).toBeTruthy()
     expect(screen.getByText('50%')).toBeTruthy()
+    expect(screen.getByText('1 customer call · 1 validation check')).toBeTruthy()
     expect(fetcher.mock.calls.every(([url]) => String(url).startsWith('/api/usage?'))).toBe(true)
   })
 

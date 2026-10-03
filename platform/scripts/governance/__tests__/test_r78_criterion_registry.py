@@ -66,14 +66,11 @@ def test_registered_criterion_returns_the_entry_for_a_registered_string():
 
 
 def test_specific_hand_only_criteria_are_registered_with_detector_none_and_stay_distinct():
-    """D4 review finding #2/#5: Carr.D1/D2/D3, Completeness.depth.dasha_link and Earn.service_state
-    are registered (so a hand row has somewhere to point) but with detector NONE (nothing in this
+    """D4 review finding #2/#5: Completeness.depth.dasha_link and Earn.service_state (and Carr.D1/D2/D3,
+    whose generic placeholder Carr.detector was retired at REGISTRY_REVISION 8 — see test_e6_i_*) are registered (so a hand row has somewhere to point) but with detector NONE (nothing in this
     script auto-measures them), and each is a DIFFERENT dict object from its generic placeholder —
     never merged by family alias."""
     for specific, generic in (
-        ("Carr.D1", "Carr.detector"),
-        ("Carr.D2", "Carr.detector"),
-        ("Carr.D3", "Carr.detector"),
         ("Completeness.depth.dasha_link", "Complete.depth"),
         ("Earn.service_state", "Earn.build_record"),
     ):

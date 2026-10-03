@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto'
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
@@ -43,10 +43,13 @@ describe('capability estate census', () => {
       + census.denominators.public_registrar_resolution.name_only_unverified,
     ).toBe(census.denominators.public_registrar_resolution.descriptor_denominator)
     expect(census.denominators.producer_assets).toMatchObject({
-      total: 129,
+      // Pravāha A2.5 (PR #2799): ka_gochara_v4_41_candidate ships in the seed
+      // is_active: false — inert to all planners — so it counts as retired
+      // (inactive), never active, until the steward dispatch's transient flip.
+      total: 130,
       active: 128,
-      retired: 1,
-      writer_identities: 123,
+      retired: 2,
+      writer_identities: 124,
       non_writer_identities: 6,
     })
     expect(
@@ -70,7 +73,10 @@ describe('capability estate census', () => {
     ]) expect(Object.values(subtotal).reduce((sum, value) => sum + value, 0)).toBe(128)
     expect(census.denominators.reviewed_output_digest_coverage).toMatchObject({
       assets_with_any_reviewed_spec: 120,
-      assets_without_any_reviewed_spec: 9,
+      // main's 9 + the inactive A2.5 candidate (no output-digest spec by
+      // design — candidate-only, steward-dispatched); crucially it does NOT
+      // enter active_assets_without_any_reviewed_spec below.
+      assets_without_any_reviewed_spec: 10,
       active_assets_without_any_reviewed_spec: 8,
       current_source_intended_spec_rows: 119,
       current_source_intended_active_spec_rows: 119,
@@ -93,7 +99,11 @@ describe('capability estate census', () => {
         'mi_seva',
       ])
 
-    expect(census.details.producer_assets.retired_asset_ids).toEqual(['ka_gochara_sweep'])
+    // "retired" is the census's inactive bucket (generator: !asset.is_active,
+    // line ~617); the A2.5 candidate ships inactive (planner-inert), so it
+    // lists here until the steward dispatch's transient flip/staged run.
+    expect(census.details.producer_assets.retired_asset_ids)
+      .toEqual(['ka_gochara_sweep', 'ka_gochara_v4_41_candidate'])
     expect(census.details.reviewed_output_digest_coverage.active_assets_without_any_reviewed_spec)
       .not.toContain('ka_gochara_sweep')
     expect(census.details.reviewed_output_digest_coverage.assets_without_any_reviewed_spec)
@@ -170,6 +180,46 @@ describe('capability estate census', () => {
     expect(renderCapabilityEstateCensus(first)).toBe(renderCapabilityEstateCensus(second))
     expect(renderCapabilityEstateCensus(first)).toMatch(/\n$/)
   }, 15_000)
+
+  // DECISION (E6.1 follow-up, item 5): `source_revision` is INFORMATIONAL display provenance and is deliberately NOT verified by `codegen:capability-estate-census:check`.
+  // `:check` reads `generated_at` / `source_revision` back from the committed artifact and re-renders with them, so it detects drift in every semantic field (denominators, details,
+  // the per-source SHA-256 fingerprints, content_sha256) but can never compare the revision with git. Verifying it would only manufacture false FAILs: GitHub's merge-group and squash
+  // commits attribute every changed path to a new queue SHA (see readCommittedCapabilityEstateCensusProvenance). "Which source was this built from" is answered by
+  // provenance.sources[].sha256, which `:check` does verify. The generator's own doc comment says "non-authoritative display provenance"; this test pins that status, so a change
+  // that starts verifying (or starts depending on) the stamp has to change the pin on purpose. (The generator file itself is a hashed source of the committed artifact, so this
+  // decision is recorded here rather than in a generator comment, which would force an artifact regeneration.)
+  it('treats source_revision as informational display provenance: no semantic field depends on it and nothing verifies it against git', async () => {
+    const generatedAt = '2026-09-13T00:00:00.000Z'
+    const a = await buildCapabilityEstateCensus({ generatedAt, sourceRevision: 'a'.repeat(40) })
+    const b = await buildCapabilityEstateCensus({ generatedAt, sourceRevision: 'b'.repeat(40) })
+    expect(a.source_revision).not.toBe(b.source_revision)
+    // everything the census MEASURES is identical whatever revision is stamped; only the stamp (and the hash that covers the whole rendered base) moves
+    const { source_revision: _ra, content_sha256: _ca, ...semanticA } = a
+    const { source_revision: _rb, content_sha256: _cb, ...semanticB } = b
+    expect(semanticB).toEqual(semanticA)
+    expect(b.content_sha256).not.toBe(a.content_sha256)
+
+    // :check reads the committed value back, so it passes for ANY well-formed committed revision: it cannot be a verification of the SHA
+    const repoRoot = mkdtempSync(join(tmpdir(), 'capability-estate-provenance-'))
+    try {
+      const generatedDir = join(repoRoot, 'platform', 'src', 'generated')
+      mkdirSync(generatedDir, { recursive: true })
+      for (const sha of ['c'.repeat(40), '0'.repeat(40)]) {
+        writeFileSync(join(generatedDir, 'capability_estate_census.json'), JSON.stringify({ generated_at: generatedAt, source_revision: sha }))
+        expect(readCommittedCapabilityEstateCensusProvenance(repoRoot).sourceRevision).toBe(sha)
+      }
+      // the only gate on the field is its shape: a malformed value is the deterministic fail-closed fallback, not a mismatch against git
+      writeFileSync(join(generatedDir, 'capability_estate_census.json'), JSON.stringify({ generated_at: generatedAt, source_revision: 'HEAD' }))
+      expect(readCommittedCapabilityEstateCensusProvenance(repoRoot).sourceRevision).toBe('unavailable')
+    } finally {
+      rmSync(repoRoot, { recursive: true, force: true })
+    }
+
+    // and the generator never asks git: no process spawn, no rev-parse (a future change that starts verifying the stamp must change this pin and the header comment)
+    const source = readFileSync(join(__dirname, '..', 'generate_capability_estate_census.ts'), 'utf8')
+    expect(source).not.toMatch(/child_process|execSync|spawnSync|execFileSync|rev-parse|git\s+(?:log|show|rev)/)
+    expect(source).toMatch(/non-authoritative display provenance/)                          // the generator's own words for it
+  }, 30_000)
 
   it('pins reviewed provenance across synthetic merge-group and squash commits', () => {
     const repoRoot = mkdtempSync(join(tmpdir(), 'capability-estate-provenance-'))

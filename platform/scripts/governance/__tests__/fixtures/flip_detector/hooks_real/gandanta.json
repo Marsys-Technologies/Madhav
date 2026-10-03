@@ -1,0 +1,35 @@
+{
+  "lane": "gandanta",
+  "ruling": "Gandanta",
+  "pr": "branch suvarna/land/TI-l1-gandanta-x1-001",
+  "description": "SS-ruled Gandanta change (decision sheet A-4 / X1, SS N-62, Track I item I-22). ONE shared module brahmagyan/gandanta.py (3 deg 20 min each side of the Meena|Mesha, Karka|Simha and Vrischika|Dhanu junctions) is now the only definition, imported by ga_sensitive_degree, ga_structural and ga_nakshatra. ga_sensitive_degree (sensitive_degree_check.gandanta) and ga_structural (legacy dosha fallback only; no stored row) already used 3 deg 20 min: their stored output does not move (only their source digests do), so sensitive_degree_check is deliberately NOT listed: a change there is UNATTRIBUTED. ga_nakshatra: graha_gandanta.is_gandanta (formula_id NULL) now follows 3 deg 20 min instead of 0 deg 48 min (value flips false to true; arc_minutes_from_junction / junction_type / side rows appear for the newly true readings), and the former 0 deg 48 min reading is emitted beside it as variant rows with formula_id = strict_0_48 (is_gandanta for every body, plus arc_minutes_from_junction / junction_type / side when true). The detector keys facts without formula_id and compares occurrences in sorted order, so every is_gandanta key reads as an occurrence_count change (1 to 2); an individual false-to-true flip is masked by the sorted pairing and is NOT detector-visible (listed under entry 1 only as a note). Offline reconstruction from stored longitudes (offline_old_vs_new.py, simulate_hook.py): canonical chart and third chart 0 readings change and 50 variant is_gandanta rows are added per chart; Abhinandan 6 readings flip false to true (Mars in krishnamurti, lahiri, raman, true_chitra; Venus in raman and surya_siddhanta) and the surya_siddhanta Mars reading (already true) is unchanged.",
+  "may_change": [
+    {
+      "table": "chart_facts",
+      "categories": ["graha_gandanta"],
+      "fact_keys": ["is_gandanta"],
+      "change_types": ["occurrence_count"],
+      "expected_direction": "every is_gandanta key gains its strict_0_48 variant twin: 1 occurrence becomes 2 (10 subjects x 5 ayanamshas = 50 keys per chart), on every chart.",
+      "expected_count": {"exact": 50},
+      "note": "Exact 50 per chart compared (offline simulation through flip_detector.compare_states: canonical 50, third 50, Abhinandan 50). The canonical and variant rows are told apart only by formula_id, which the detector does not read. source: rehearsal-synthetic (19-lane rehearsal, flip_detector v2.3 compare against the origin/main baseline build on the same synthetic chart; HOOKS_COMPLETENESS_v1_0.md, Source evidence) (graha_gandanta occurrence_count 50)."
+    },
+    {
+      "table": "chart_facts",
+      "categories": ["graha_gandanta"],
+      "fact_keys": ["is_gandanta"],
+      "change_types": ["value", "appeared", "disappeared", "tier"],
+      "expected_direction": "none detector-visible expected. The real class flips are Abhinandan only (S-L1b): 6 readings false to true (Mars in krishnamurti, lahiri_chitrapaksha, raman, true_chitra; Venus in raman and surya_siddhanta_classical); the canonical and third charts flip none. They are masked by the occurrence pairing (old ['false'] pairs with the first sorted new occurrence 'false'), so a value change reported here would mean a reading moved for a reason other than the 3 deg 20 min width.",
+      "note": "Explicit zero (was: no count, which read DECLARED_BUT_ABSENT on an unchanged chart): a value / appeared / disappeared / tier change under graha_gandanta is_gandanta that is not the occurrence-count change above would be a surprise, and EXPECTATION_MISMATCH attributes it to this lane for the reviewer instead of losing it. source: rehearsal-synthetic (19-lane rehearsal, flip_detector v2.3 compare against the origin/main baseline build on the same synthetic chart; HOOKS_COMPLETENESS_v1_0.md, Source evidence) (graha_gandanta: occurrence_count 50 only, 0 value / appeared / disappeared / tier) and the lane's offline simulation (canonical and third chart flip none; the Abhinandan false-to-true flips are masked by the sorted occurrence pairing, so they are NOT detector-visible: W7 hand read-back item 1 in FLIP_DETECTOR_README.md and HOOKS_W7_HAND_READBACK_v1_0.md).",
+      "expected_count": {"exact": 0}
+    },
+    {
+      "table": "chart_facts",
+      "categories": ["graha_gandanta"],
+      "fact_keys": ["arc_minutes_from_junction", "junction_type", "side"],
+      "change_types": ["appeared", "occurrence_count"],
+      "expected_direction": "detail rows follow the readings that are true: canonical chart 0 (no body within 3 deg 20 min of a junction), third chart 0, Abhinandan 15 = junction_type appeared 6 + side appeared 6 (arc_minutes_from_junction appears as a continuous value, which the detector ignores) + occurrence_count 1 each on arc_minutes_from_junction, junction_type and side for the surya_siddhanta Mars reading (true under both widths: canonical row plus strict_0_48 twin).",
+      "expected_count": {"min": 0, "max": 15},
+      "note": "Per chart: canonical 0, third 0, Abhinandan 15 (offline simulation through flip_detector.compare_states)."
+    }
+  ]
+}

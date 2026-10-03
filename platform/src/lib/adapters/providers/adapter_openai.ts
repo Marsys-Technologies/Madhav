@@ -11,17 +11,14 @@ export const adapterOpenai: Adapter = {
 
   prepareRequest(req: QueryRequest, meta: ModelMeta, injectedModel): StreamTextOptions {
     // Structured output via json_schema when responseSchema is present
-    const providerOptions =
-      req.responseSchema && meta.quirks.structured_output_format === 'json_schema'
-        ? {
-            openai: {
-              response_format: {
-                type: 'json_schema' as const,
-                json_schema: { name: 'response', schema: req.responseSchema, strict: true },
-              },
-            },
-          }
-        : undefined
+    const openaiOptions: Record<string, unknown> = {}
+    if (req.effort) openaiOptions.reasoningEffort = req.effort
+    if (req.responseSchema && meta.quirks.structured_output_format === 'json_schema') {
+      openaiOptions.response_format = {
+        type: 'json_schema', json_schema: { name: 'response', schema: req.responseSchema, strict: true },
+      }
+    }
+    const providerOptions = Object.keys(openaiOptions).length ? { openai: openaiOptions } : undefined
 
     const tools =
       req.tools?.length
@@ -46,7 +43,8 @@ export const adapterOpenai: Adapter = {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       providerOptions: providerOptions as any,
       maxOutputTokens: req.maxOutputTokens ?? meta.maxOutputTokens,
-      temperature: req.temperature,
+      // Reasoning models reject temperature on some API variants.
+      temperature: req.effort ? undefined : req.temperature,
       tools,
       toolChoice: req.toolChoice as unknown,
       stopWhen: req.multiStep ? stepCountIs(req.multiStep.maxSteps) : undefined,

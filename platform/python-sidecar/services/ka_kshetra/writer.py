@@ -102,6 +102,7 @@ from dataclasses import dataclass
 from datetime import date, datetime, time, timedelta
 from typing import Any, Iterable, Mapping, Optional
 
+from panchang_engine.swiss_backend import records_swiss_backend
 from pipeline.orchestrator.writers import SubStep, WriterBase, WriterResult, register
 
 from services.ka_kshetra import (
@@ -266,6 +267,7 @@ class _ClassContext:
 
 
 @register(ASSET_ID)
+@records_swiss_backend
 class KaKshetraWriter(WriterBase):
     """ṢAḌ-DARŚANA W2: the ten-stage point-process temporal field."""
 
