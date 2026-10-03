@@ -2,7 +2,9 @@
 --
 -- Suvarna (SS ruling N-108): PRIVACY GAP -- every per-chart row must leave when its chart is deleted. Adds
 --     FOREIGN KEY (chart_id) REFERENCES charts(id) ON DELETE CASCADE
--- (an OWNERSHIP link: a row belongs to a chart) to the 27 tables below. Schema-only: 27 ADD CONSTRAINTs. NO DB OBJECT IS CREATED,
+-- (an OWNERSHIP link: a row belongs to a chart) to the 27 tables below, and RE-CREATES the one existing chart link that does not cascade
+-- (mimamsa_pool_contributions, ON DELETE NO ACTION -> CASCADE; SS N-108 addendum). Schema-only: 27 ADD CONSTRAINTs and 1 guarded
+-- DROP+ADD of the same constraint name. NO DB OBJECT IS CREATED,
 -- NO DATA IS CHANGED OR DELETED. Transaction ownership belongs to platform/scripts/migrate.ts (no BEGIN/COMMIT here).
 --
 -- HELD. Own draft PR (suvarna/land/TI-mig-1275-001). Number 1275 allocated by SS. Merge only AFTER S-L1 and only on SS's review.
@@ -18,6 +20,13 @@
 -- mimamsa_fact_adjustment 123,272 and mimamsa_signal_adjustment 100,275 rows). Per-chart row counts of the 27 on 2026-10-03 are in
 -- the PR body; today every row of every table resolves to a real charts row (0 unresolved).
 --
+-- THE RELINK (SS N-108 addendum). public.mimamsa_pool_contributions (owner amjis_app; id uuid PK, chart_id uuid NOT NULL, event_classes, weights,
+--   priors_version, pool_consent, contributed_at; no triggers; no table references it) carries mimamsa_pool_contributions_chart_id_fkey =
+--   FOREIGN KEY (chart_id) REFERENCES charts(id)  (NO ACTION, validated, not deferrable). In one transaction the migration accepts exactly
+--   three states of that constraint: that definition (it is dropped and re-added with ON DELETE CASCADE, same name), the cascading
+--   definition (already done: NOTICE), or absent (added). ANY OTHER definition RAISES. Drop and add run back to back inside the one
+--   transaction, so the table is never without a link; the post-check asserts confdeltype = 'c', validated, not deferrable.
+--
 -- THE 27 (all owned by amjis_app, the migration runner; routine path, no owner-path package is needed for this migration):
 --   phala_*   : phala_muhurta, phala_mitigation, phala_phaladesa
 --   mimamsa_* : adjudication_log, anchor_adjustment, attribution, calibration, calibration_snapshot, convergence_adjustment,
@@ -27,9 +36,9 @@
 -- EXCLUDED, with reasons (every mimamsa_* table in public was enumerated):
 --   mimamsa_negative_controls, mimamsa_signal_families   global reference tables (no chart_id, no per-chart row)
 --   mimamsa_preferences                                  keyed by user_id/channel_id, not by chart
---   mimamsa_pool_contributions                           ALREADY has a chart_id FK to charts, ON DELETE NO ACTION (0 rows today): it would
---                                                        BLOCK a chart delete once it holds a row. Changing an existing FK's action is a
---                                                        different change; reported to SS in the PR, not done here.
+--   (mimamsa_pool_contributions is NOT excluded any more: it already had a chart_id FK to charts, ON DELETE NO ACTION, 0 rows today,
+--                                                        which would BLOCK a chart delete once it held a row. SS N-108 addendum: this migration
+--                                                        changes that one FK to ON DELETE CASCADE, in a single guarded step, see THE RELINK.)
 --   *__ssv_20260728a/b shadow copies (mimamsa_calibration__ssv_..., mimamsa_insight_units__ssv_... x2, mimamsa_journal__ssv_...,
 --     mimamsa_load_bearing__ssv_..., mimamsa_manifestation_grammar__ssv_..., mimamsa_multipliers__ssv_..., mimamsa_predictions__ssv_...,
 --     mimamsa_qa_eval__ssv_...)                          chart_id is NULLABLE on every one (the migration's own standard RAISES on a
@@ -72,27 +81,30 @@
 --   * every table must exist as an ordinary table in public; the migration user must own it (or be a member of its owner), because ADD
 --     CONSTRAINT needs table ownership (a table owned by another role is an OWNER-PATH item, not this file's);
 --   * chart_id must exist and be NOT NULL; no row may reference a missing chart (report, never backfill);
---   * the constraint must be ABSENT (added) or PRESENT WITH EXACTLY the expected definition (idempotent re-run);
---   * post-check (asserting, RAISES): each constraint exists, is a foreign key to charts(id) on chart_id, convalidated, ON DELETE CASCADE,
---     not deferrable; the number of foreign keys in public rose by exactly the number added.
+--   * the constraint must be ABSENT (added) or PRESENT WITH EXACTLY the expected definition (idempotent re-run); for the relink table also the
+--     previous NO ACTION definition (replaced);
+--   * post-check (asserting, RAISES): each constraint (the 27 and the relinked one) exists, is a foreign key to charts(id) on chart_id, convalidated, ON DELETE CASCADE,
+--     not deferrable; the number of foreign keys in public rose by exactly (added - dropped).
 --
 -- SERVING EFFECT AT APPLY: none. No registry column is touched (nirmana_registry_receipt_invalidation does not fire), no data row is
 --   written, no object created, no privilege changed. Behaviour after apply: deleting a chart now also deletes its rows in these tables;
 --   an INSERT with a chart_id that has no charts row is refused on these tables (the writers insert only for existing charts); the
 --   governance cascade-closure tooling reports the new cascades.
 --
--- NOT DONE HERE: mimamsa_pool_contributions (existing NO ACTION FK); the __ssv_ shadow tables; brahma_*_ledger; the ~120 other
+-- NOT DONE HERE: the __ssv_ shadow tables; brahma_*_ledger; the ~120 other
 --   per-chart tables without a charts link (report); the chart-delete route's own list; 1265's guard change; tombstones for the deleted
 --   rows (consent/withdrawal.ts writes them for the consent path; a chart delete is the owner removing the chart).
 --
 -- VERIFICATION BY PRODUCTION STRUCTURE (CLAUDE.md N.4, Trap 103: never trust a deploy log). After the deploy, as suvarna_reader, expect 27 rows,
 -- convalidated t, confdeltype c, definition FOREIGN KEY (chart_id) REFERENCES charts(id) ON DELETE CASCADE:
 --   SELECT conrelid::regclass, conname, convalidated, confdeltype, pg_get_constraintdef(oid) FROM pg_constraint
---    WHERE conname LIKE '%\_chart\_id\_fkey' AND conrelid IN (<the 27 tables>) AND confrelid = 'charts'::regclass ORDER BY 1;
+--    WHERE conname LIKE '%\_chart\_id\_fkey' AND conrelid IN (<the 27 tables>, mimamsa_pool_contributions) AND confrelid = 'charts'::regclass ORDER BY 1;
+--     -- 28 rows, all convalidated t, confdeltype c (mimamsa_pool_contributions was a)
 --   SELECT count(*) FROM pg_constraint c JOIN pg_namespace n ON n.oid = c.connamespace WHERE c.contype = 'f' AND n.nspname = 'public';
---     -- 224 + 27 = 251 (1260, if applied first, adds net -2: 249)
+--     -- 224 + 27 = 251 (the relink is net 0; 1260, if applied first, adds net -2: 249)
 --
--- ROLLBACK (not executed by migrate.ts): ALTER TABLE <table> DROP CONSTRAINT <table>_chart_id_fkey; for each of the 27. Doing so re-opens the
+-- ROLLBACK (not executed by migrate.ts): ALTER TABLE <table> DROP CONSTRAINT <table>_chart_id_fkey; for each of the 27; for mimamsa_pool_contributions drop and
+-- re-add it as FOREIGN KEY (chart_id) REFERENCES charts(id) (NO ACTION). Doing so re-opens the
 -- privacy gap; it should only be done if a chart delete is blocked by a frozen-row guard and 1265 cannot yet be changed.
 
 SET LOCAL lock_timeout = '5s';
@@ -142,6 +154,11 @@ DECLARE
         'mimamsa_signal_adjustment',
         'mimamsa_snapshot_cosign'
     ];
+    -- The one existing link whose action is changed (NO ACTION -> CASCADE), same constraint name.
+    relink text[] := ARRAY[
+        'mimamsa_pool_contributions'
+    ];
+    relink_old constant text := 'FOREIGN KEY (chart_id) REFERENCES charts(id)';
     expected constant text := 'FOREIGN KEY (chart_id) REFERENCES charts(id) ON DELETE CASCADE';
     tbl        text;
     con        text;
@@ -153,6 +170,7 @@ DECLARE
     fk_before  int;
     fk_after   int;
     added      int := 0;
+    dropped    int := 0;
 BEGIN
     SELECT count(*) INTO fk_before
       FROM pg_constraint c JOIN pg_namespace ns ON ns.oid = c.connamespace
@@ -165,7 +183,7 @@ BEGIN
     END IF;
 
     -- Guard pass: every table, BEFORE anything is added. STOP (raise) rather than invent a derivation.
-    FOREACH tbl IN ARRAY tables LOOP
+    FOREACH tbl IN ARRAY tables || relink LOOP
         con := tbl || '_chart_id_fkey';
         rel := to_regclass(format('public.%I', tbl));
         IF rel IS NULL THEN
@@ -190,13 +208,25 @@ BEGIN
         END IF;
         SELECT regexp_replace(pg_get_constraintdef(c.oid), ' public\.', ' ', 'g') INTO cdef
           FROM pg_constraint c WHERE c.conrelid = rel AND c.conname = con;
-        IF cdef IS NOT NULL AND cdef IS DISTINCT FROM expected THEN
+        IF cdef IS NOT NULL AND cdef IS DISTINCT FROM expected AND NOT (tbl = ANY (relink) AND cdef = relink_old) THEN
             RAISE EXCEPTION '1275: % on public.% exists but is not the expected chart link (found: %; expected: %)', con, tbl, cdef, expected;
         END IF;
     END LOOP;
 
+    -- Relink pass: the previous NO ACTION link is replaced (dropped here, re-added by the add pass below, same transaction).
+    FOREACH tbl IN ARRAY relink LOOP
+        con := tbl || '_chart_id_fkey';
+        rel := format('public.%I', tbl)::regclass;
+        SELECT regexp_replace(pg_get_constraintdef(c.oid), ' public\.', ' ', 'g') INTO cdef
+          FROM pg_constraint c WHERE c.conrelid = rel AND c.conname = con;
+        IF cdef = relink_old THEN
+            EXECUTE format('ALTER TABLE public.%I DROP CONSTRAINT %I', tbl, con);
+            dropped := dropped + 1;
+        END IF;
+    END LOOP;
+
     -- Add pass.
-    FOREACH tbl IN ARRAY tables LOOP
+    FOREACH tbl IN ARRAY tables || relink LOOP
         con := tbl || '_chart_id_fkey';
         rel := format('public.%I', tbl)::regclass;
         IF NOT EXISTS (SELECT 1 FROM pg_constraint c WHERE c.conrelid = rel AND c.conname = con) THEN
@@ -208,7 +238,7 @@ BEGIN
     END LOOP;
 
     -- Post-check: never trust a silent no-op.
-    FOREACH tbl IN ARRAY tables LOOP
+    FOREACH tbl IN ARRAY tables || relink LOOP
         con := tbl || '_chart_id_fkey';
         rel := format('public.%I', tbl)::regclass;
         IF NOT EXISTS (SELECT 1 FROM pg_constraint c
@@ -223,9 +253,9 @@ BEGIN
     SELECT count(*) INTO fk_after
       FROM pg_constraint c JOIN pg_namespace ns ON ns.oid = c.connamespace
      WHERE c.contype = 'f' AND ns.nspname = 'public';
-    IF fk_after <> fk_before + added THEN
-        RAISE EXCEPTION '1275: foreign keys in public went from % to % but % were added (something else changed)', fk_before, fk_after, added;
+    IF fk_after <> fk_before + added - dropped THEN
+        RAISE EXCEPTION '1275: foreign keys in public went from % to % but % were added and % dropped (something else changed)', fk_before, fk_after, added, dropped;
     END IF;
-    RAISE NOTICE '1275: added % of % chart links', added, array_length(tables, 1);
+    RAISE NOTICE '1275: added % chart links (% of them replacing a NO ACTION link); % tables + % relinked', added, dropped, array_length(tables, 1), array_length(relink, 1);
 END
 $mig$;

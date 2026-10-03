@@ -57,7 +57,11 @@ MIMAMSA = ["mimamsa_adjudication_log", "mimamsa_anchor_adjustment", "mimamsa_att
            "mimamsa_manifestation_sets", "mimamsa_multipliers", "mimamsa_predictions", "mimamsa_qa_eval", "mimamsa_reliability",
            "mimamsa_resonance_feedback", "mimamsa_signal_adjustment", "mimamsa_snapshot_cosign"]
 TABLES = PHALA + MIMAMSA
+RELINK = ["mimamsa_pool_contributions"]  # existing NO ACTION chart link -> CASCADE (SS N-108 addendum)
+ALL_TABLES = TABLES + RELINK
+OLD_POOL_DEF = "FOREIGN KEY (chart_id) REFERENCES charts(id)"
 CONS = [f"{t}_chart_id_fkey" for t in TABLES]
+POOL_CON = "mimamsa_pool_contributions_chart_id_fkey"
 EXPECTED_DEF = "FOREIGN KEY (chart_id) REFERENCES charts(id) ON DELETE CASCADE"
 CHART_A = "482012f1-710e-4a25-994a-93821f5871aa"
 CHART_B = "1c826d5a-41cb-4450-b4dc-59d440e5f75a"
@@ -89,17 +93,26 @@ def test_the_table_list_appears_once_and_is_exactly_the_27_named_tables_in_order
 
 def test_excluded_tables_never_appear_in_the_executable_sql():
     code = _code(_M1275)
-    for t in ("mimamsa_pool_contributions", "mimamsa_preferences", "mimamsa_negative_controls", "mimamsa_signal_families",
+    for t in ("mimamsa_preferences", "mimamsa_negative_controls", "mimamsa_signal_families",
               "brahma_mimamsa_prediction_ledger", "brahma_prospective_ledger", "__ssv_", "chart_facts", "bodha_"):
         assert t not in code, t
+
+
+def test_the_relink_list_is_exactly_the_pool_table_with_the_exact_old_definition():
+    code = _code(_M1275)
+    arr = re.findall(r"relink text\[\] := ARRAY\[(.*?)\];", code, re.S)
+    assert len(arr) == 1 and re.findall(r"'([a-z_]+)'", arr[0]) == RELINK
+    assert "relink_old constant text := 'FOREIGN KEY (chart_id) REFERENCES charts(id)'" in code
+    assert code.count("DROP CONSTRAINT") == 1, "the only drop is the relink's"
+    assert code.index("EXECUTE format('ALTER TABLE public.%I DROP CONSTRAINT") < code.index("EXECUTE format('ALTER TABLE public.%I ADD CONSTRAINT"), "drop first, then add"
 
 
 def test_constraints_only_no_db_object_no_data_no_grant_no_transaction_control():
     code = _code(_M1275)
     assert code.strip().startswith("SET LOCAL lock_timeout = '5s';")
     assert not re.search(r"^\s*(BEGIN|COMMIT|ROLLBACK)\s*;", code, re.M)
-    assert not re.search(r"\b(CREATE\s+(OR\s+REPLACE\s+)?(VIEW|FUNCTION|TABLE|INDEX|TRIGGER|SCHEMA|EXTENSION)|INSERT INTO|UPDATE\s+\w+\s+SET|DELETE FROM|TRUNCATE|GRANT|REVOKE|DROP\s)", code, re.I)
-    assert code.count("EXECUTE format('ALTER TABLE") == 1 and "DROP CONSTRAINT" not in code and "NOT VALID" not in code
+    assert not re.search(r"\b(CREATE\s+(OR\s+REPLACE\s+)?(VIEW|FUNCTION|TABLE|INDEX|TRIGGER|SCHEMA|EXTENSION)|INSERT INTO|UPDATE\s+\w+\s+SET|DELETE FROM|TRUNCATE|GRANT|REVOKE|DROP\s(?!CONSTRAINT))", code, re.I)
+    assert code.count("EXECUTE format('ALTER TABLE") == 2 and "NOT VALID" not in code
     assert "FOREIGN KEY (chart_id) REFERENCES public.charts(id) ON DELETE CASCADE" in code
     assert "SET NULL" not in code
 
@@ -118,7 +131,7 @@ def test_guards_and_post_checks_are_present():
 def test_header_states_the_gap_the_list_the_exclusions_the_1265_requirement_locks_and_what_is_not_done():
     sql = _flat(_M1275)
     for needle in ("PRIVACY GAP", "N-108", "LAND TOGETHER WITH 1265", "THE GAP", "THE 27", "owned by amjis_app", "EXCLUDED",
-                   "mimamsa_pool_contributions", "ON DELETE NO ACTION", "__ssv_20260728a/b", "NULLABLE", "brahma_mimamsa_prediction_ledger",
+                   "THE RELINK", "mimamsa_pool_contributions", "NO ACTION -> CASCADE", "__ssv_20260728a/b", "NULLABLE", "brahma_mimamsa_prediction_ledger",
                    "OWNER-PATH", "THE 1265 REQUIREMENT", "NOT EXISTS (SELECT 1 FROM public.charts WHERE id = OLD.chart_id)",
                    "pg_trigger_depth() is NOT a safe discriminator", "session_replication_role = replica", "ORDER / LOCKS",
                    "SHARE ROW EXCLUSIVE", "ACTIVE RUNS (ENFORCED", "SERVING EFFECT AT APPLY: none", "NOT DONE HERE",
@@ -278,6 +291,9 @@ def _ddl() -> str:
                          "CREATE INDEX phala_mitigation_chart_idx ON phala_mitigation (chart_id);\n")
         else:
             parts.append(_generic(t))
+    parts.append("CREATE TABLE mimamsa_pool_contributions (id uuid PRIMARY KEY DEFAULT gen_random_uuid(), chart_id uuid NOT NULL,\n"
+                 "  payload text, CONSTRAINT mimamsa_pool_contributions_chart_id_fkey FOREIGN KEY (chart_id) REFERENCES charts(id));\n"
+                 "CREATE INDEX mimamsa_pool_contributions_chart_idx ON mimamsa_pool_contributions (chart_id);\n")
     return "\n".join(parts)
 
 
@@ -313,7 +329,7 @@ def _seed(connect, rows: int = 2):
     with connect() as c:
         c.execute("INSERT INTO charts VALUES (%s, 'A'), (%s, 'B')", (CHART_A, CHART_B))
         for chart in (CHART_A, CHART_B):
-            for t in TABLES:
+            for t in ALL_TABLES:
                 if t == "mimamsa_predictions":
                     for k in range(rows):
                         _insert_pred(c, chart, f"p{k}", "pending" if k % 2 == 0 else "confirmed")
@@ -335,11 +351,11 @@ def _fk_defs(connect):
 
 
 def _chart_counts(connect, chart):
-    return {t: _q(connect, f"SELECT count(*) FROM {t} WHERE chart_id = %s", (chart,))[0][0] for t in TABLES}
+    return {t: _q(connect, f"SELECT count(*) FROM {t} WHERE chart_id = %s", (chart,))[0][0] for t in ALL_TABLES}
 
 
 def _data_digest(connect):
-    return {t: _q(connect, f"SELECT md5(coalesce(string_agg(to_jsonb(x)::text, '|' ORDER BY to_jsonb(x)::text), '')) FROM {t} x")[0][0] for t in TABLES}
+    return {t: _q(connect, f"SELECT md5(coalesce(string_agg(to_jsonb(x)::text, '|' ORDER BY to_jsonb(x)::text), '')) FROM {t} x")[0][0] for t in ALL_TABLES}
 
 
 def _route_delete(connect, chart: str, user: str = "amjis_app"):
@@ -414,10 +430,71 @@ def test_fixture_mirrors_production_amjis_app_has_usage_only_and_owns_every_tabl
 def test_precondition_before_apply_a_chart_delete_leaves_every_row_of_the_27_tables_behind(db):
     _make_fixture(db)
     _seed(db)
+    _exec(db, "DELETE FROM mimamsa_pool_contributions")  # its NO ACTION link would block the delete: tested separately below
     before = _chart_counts(db, CHART_A)
-    assert all(v > 0 for v in before.values())
+    assert all(v > 0 for k, v in before.items() if k != "mimamsa_pool_contributions")
     _route_delete(db, CHART_A)
     assert _chart_counts(db, CHART_A) == before, "precondition: nothing reaches these tables today (the privacy gap)"
+
+
+def test_precondition_the_existing_no_action_pool_link_BLOCKS_a_chart_delete_once_it_holds_a_row(db):
+    """SS N-108 addendum: mimamsa_pool_contributions has an ON DELETE NO ACTION link; with a row it makes DELETE FROM charts fail."""
+    _make_fixture(db)
+    _seed(db)
+    assert _q(db, "SELECT count(*) FROM mimamsa_pool_contributions WHERE chart_id = %s", (CHART_A,))[0][0] == 2
+    with pytest.raises(Exception) as ei:
+        _route_delete(db, CHART_A)
+    assert "mimamsa_pool_contributions_chart_id_fkey" in str(ei.value), str(ei.value)
+    assert _q(db, "SELECT count(*) FROM charts WHERE id = %s", (CHART_A,))[0][0] == 1
+
+
+def test_the_relink_replaces_the_no_action_link_with_cascade_in_one_step_and_a_pool_row_is_deleted_with_its_chart(db):
+    _make_fixture(db)
+    _seed(db)
+    assert _fk_defs(db)[POOL_CON] == OLD_POOL_DEF
+    notices: list[str] = []
+    _apply(db, _REAL, notices)
+    assert _fk_defs(db)[POOL_CON] == EXPECTED_DEF
+    assert _q(db, "SELECT convalidated, confdeltype::text, condeferrable FROM pg_constraint WHERE conname = %s", (POOL_CON,)) == [(True, "c", False)]
+    assert any("replacing a NO ACTION link" in n for n in notices)
+    b_rows = _q(db, "SELECT count(*) FROM mimamsa_pool_contributions WHERE chart_id = %s", (CHART_B,))[0][0]
+    _route_delete(db, CHART_A)
+    assert _q(db, "SELECT count(*) FROM mimamsa_pool_contributions WHERE chart_id = %s", (CHART_A,))[0][0] == 0
+    assert _q(db, "SELECT count(*) FROM mimamsa_pool_contributions WHERE chart_id = %s", (CHART_B,))[0][0] == b_rows > 0
+
+
+def test_the_relink_refuses_any_other_existing_definition_and_accepts_the_cascading_one(db):
+    for other in ("ON DELETE SET NULL", "ON DELETE RESTRICT"):
+        _make_fixture(db)
+        _exec(db, f"ALTER TABLE mimamsa_pool_contributions DROP CONSTRAINT {POOL_CON}; "
+                  f"ALTER TABLE mimamsa_pool_contributions ADD CONSTRAINT {POOL_CON} FOREIGN KEY (chart_id) REFERENCES charts(id) {other}")
+        before = _fk_defs(db)
+        with pytest.raises(Exception) as ei:
+            _apply(db, _REAL)
+        assert "is not the expected chart link" in str(ei.value), str(ei.value)
+        assert _fk_defs(db) == before
+    _make_fixture(db)
+    _exec(db, f"ALTER TABLE mimamsa_pool_contributions DROP CONSTRAINT {POOL_CON}; "
+              f"ALTER TABLE mimamsa_pool_contributions ADD CONSTRAINT {POOL_CON} FOREIGN KEY (chart_id) REFERENCES charts(id) ON DELETE CASCADE")
+    _apply(db, _REAL)  # already cascading: accepted, nothing dropped
+    assert _fk_defs(db)[POOL_CON] == EXPECTED_DEF
+    _make_fixture(db)
+    _exec(db, f"ALTER TABLE mimamsa_pool_contributions DROP CONSTRAINT {POOL_CON}")  # absent: added
+    _apply(db, _REAL)
+    assert _fk_defs(db)[POOL_CON] == EXPECTED_DEF
+
+
+def test_the_relink_checks_the_pool_table_like_the_others(db):
+    _make_fixture(db)
+    _exec(db, "ALTER TABLE mimamsa_pool_contributions ALTER COLUMN chart_id DROP NOT NULL")
+    with pytest.raises(Exception) as ei:
+        _apply(db, _REAL)
+    assert "public.mimamsa_pool_contributions.chart_id is nullable" in str(ei.value)
+    _make_fixture(db)
+    _exec(db, "ALTER TABLE mimamsa_pool_contributions OWNER TO other_owner")
+    with pytest.raises(Exception) as ei:
+        _apply(db, _REAL)
+    assert "mimamsa_pool_contributions" in str(ei.value) and "owner-path item" in str(ei.value)
 
 
 def test_apply_adds_exactly_the_27_links_and_changes_no_data_column_or_index(db):
@@ -431,7 +508,8 @@ def test_apply_adds_exactly_the_27_links_and_changes_no_data_column_or_index(db)
     assert set(fks_after) - set(fks_before) == set(CONS) and set(fks_before) <= set(fks_after)
     assert len(fks_after) == len(fks_before) + 27
     assert all(fks_after[c] == EXPECTED_DEF for c in CONS)
-    assert {fks_after[k] for k in fks_before} == {fks_before[k] for k in fks_before}, "an existing FK changed"
+    assert fks_before[POOL_CON] == OLD_POOL_DEF and fks_after[POOL_CON] == EXPECTED_DEF, "the relink took"
+    assert {k: fks_after[k] for k in fks_before if k != POOL_CON} == {k: v for k, v in fks_before.items() if k != POOL_CON}, "another existing FK changed"
     assert _data_digest(db) == data_before
     assert _q(db, "SELECT tablename, indexname, indexdef FROM pg_indexes WHERE schemaname='public' ORDER BY 1, 2") == idx_before
     assert _q(db, "SELECT count(*) FROM pg_proc WHERE pronamespace='public'::regnamespace")[0][0] == 0, "no function created"
@@ -446,7 +524,7 @@ def test_the_delete_route_scenario_without_a_guard_every_row_of_the_chart_is_gon
     _apply(db, _REAL)
     assert all(v > 0 for v in _chart_counts(db, CHART_A).values())
     _route_delete(db, CHART_A)
-    assert _chart_counts(db, CHART_A) == {t: 0 for t in TABLES}
+    assert _chart_counts(db, CHART_A) == {t: 0 for t in ALL_TABLES}
     assert _chart_counts(db, CHART_B) == b_before
     assert _q(db, "SELECT count(*) FROM chart_subject_consent WHERE chart_id = %s", (CHART_A,))[0][0] == 0
     assert _q(db, "SELECT count(*) FROM phala_mitigation WHERE chart_id = %s", (CHART_B,))[0][0] > 0, "SET NULL link between phala tables untouched"
@@ -474,7 +552,7 @@ def test_idempotent_second_run_changes_nothing(db):
     snap = (_fk_defs(db), _data_digest(db))
     notices: list[str] = []
     _apply(db, _REAL, notices)
-    assert sum("already present on" in n for n in notices) == 27
+    assert sum("already present on" in n for n in notices) == 28
     assert snap == (_fk_defs(db), _data_digest(db))
 
 
@@ -651,7 +729,7 @@ def test_chart_delete_with_the_guard_removes_all_rows_in_every_table_and_a_direc
     assert _prediction_rows(db, CHART_A) == 2
     # the chart itself is deleted (the route's statements): everything of that chart goes
     _route_delete(db, CHART_A)
-    assert _chart_counts(db, CHART_A) == {t: 0 for t in TABLES}
+    assert _chart_counts(db, CHART_A) == {t: 0 for t in ALL_TABLES}
     assert _prediction_rows(db, CHART_A) == 0
     assert _chart_counts(db, CHART_B) == b_before, "the other chart was touched"
     # and after the chart delete a direct DELETE on the OTHER chart's prediction is still refused
@@ -818,7 +896,7 @@ def _scenario(db, sql: str) -> list[str]:
     except Exception as exc:  # noqa: BLE001
         return [f"apply failed: {str(exc).splitlines()[0]}"]
     fks_after = _fk_defs(db)
-    for c in CONS:
+    for c in CONS + [POOL_CON]:
         if fks_after.get(c) != EXPECTED_DEF:
             v.append(f"chart link {c} missing or wrong")
     if len(fks_after) != len(fks_before) + 27:
@@ -861,13 +939,19 @@ def _stop_scenario(db, sql: str) -> list[str]:
 
 
 def _redef_scenario(db, sql: str) -> list[str]:
-    _make_fixture(db)
-    _exec(db, "ALTER TABLE mimamsa_discoveries ADD CONSTRAINT mimamsa_discoveries_chart_id_fkey FOREIGN KEY (chart_id) REFERENCES charts(id)")
-    try:
-        _apply(db, sql)
-        return ["accepted an existing link with another definition"]
-    except Exception as exc:  # noqa: BLE001
-        return [] if "is not the expected chart link" in str(exc) else [f"refused for another reason: {str(exc).splitlines()[0]}"]
+    v: list[str] = []
+    for setup in ("ALTER TABLE mimamsa_discoveries ADD CONSTRAINT mimamsa_discoveries_chart_id_fkey FOREIGN KEY (chart_id) REFERENCES charts(id)",
+                  f"ALTER TABLE mimamsa_pool_contributions DROP CONSTRAINT {POOL_CON}; ALTER TABLE mimamsa_pool_contributions ADD CONSTRAINT {POOL_CON} "
+                  "FOREIGN KEY (chart_id) REFERENCES charts(id) ON DELETE SET NULL"):
+        _make_fixture(db)
+        _exec(db, setup)
+        try:
+            _apply(db, sql)
+            v.append("accepted an existing link with another definition")
+        except Exception as exc:  # noqa: BLE001
+            if "is not the expected chart link" not in str(exc):
+                v.append(f"refused for another reason: {str(exc).splitlines()[0]}")
+    return v
 
 
 def _runs_scenario(db, sql: str) -> list[str]:
@@ -909,11 +993,14 @@ _MUTANTS = {
     "link_without_cascade": (_REAL.replace("REFERENCES public.charts(id) ON DELETE CASCADE', tbl, con);", "REFERENCES public.charts(id)', tbl, con);"), "scenario"),
     "link_not_valid": (_REAL.replace("REFERENCES public.charts(id) ON DELETE CASCADE', tbl, con);", "REFERENCES public.charts(id) ON DELETE CASCADE NOT VALID', tbl, con);"), "scenario"),
     "link_set_null": (_REAL.replace("REFERENCES public.charts(id) ON DELETE CASCADE', tbl, con);", "REFERENCES public.charts(id) ON DELETE SET NULL', tbl, con);"), "scenario"),
+    "relink_list_empty": (_REAL.replace("        'mimamsa_pool_contributions'\n", ""), "scenario"),
+    "relink_drop_removed": (_REAL.replace("EXECUTE format('ALTER TABLE public.%I DROP CONSTRAINT %I', tbl, con);", "NULL;"), "scenario"),
+    "relink_old_definition_widened_to_any": (_REAL.replace("AND NOT (tbl = ANY (relink) AND cdef = relink_old)", "AND NOT (tbl = ANY (relink))"), "redef"),
     "stop_no_chart_id_neutered": (_REAL.replace("IF NOT EXISTS (SELECT 1 FROM pg_attribute WHERE attrelid = rel AND attname = 'chart_id' AND NOT attisdropped) THEN", "IF false THEN"), "stop"),
     "stop_nullable_neutered": (_REAL.replace("AND NOT attisdropped AND attnotnull) THEN", "AND NOT attisdropped) THEN"), "stop"),
     "stop_missing_chart_neutered": (_REAL.replace("IF bad > 0 THEN", "IF false THEN"), "stop"),
     "owner_guard_neutered": (_REAL.replace("IF NOT pg_has_role(current_user, owner, 'USAGE') THEN", "IF false THEN"), "stop"),
-    "existing_link_check_neutered": (_REAL.replace("IF cdef IS NOT NULL AND cdef IS DISTINCT FROM expected THEN", "IF false THEN"), "redef"),
+    "existing_link_check_neutered": (_REAL.replace("IF cdef IS NOT NULL AND cdef IS DISTINCT FROM expected AND NOT (tbl = ANY (relink) AND cdef = relink_old) THEN", "IF false THEN"), "redef"),
     "active_runs_guard_neutered": (_REAL.replace("IF n_active > 0 THEN", "IF false THEN"), "runs"),
     "lock_timeout_removed": (_REAL.replace("SET LOCAL lock_timeout = '5s';", "", 1), "lock"),
     "lock_timeout_session_wide": (_REAL.replace("SET LOCAL lock_timeout = '5s';", "SET lock_timeout = '0';", 1), "lock"),

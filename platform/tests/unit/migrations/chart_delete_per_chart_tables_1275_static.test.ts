@@ -26,7 +26,7 @@ const TABLES = [
   'mimamsa_manifestation_sets', 'mimamsa_multipliers', 'mimamsa_predictions', 'mimamsa_qa_eval', 'mimamsa_reliability',
   'mimamsa_resonance_feedback', 'mimamsa_signal_adjustment', 'mimamsa_snapshot_cosign',
 ]
-const EXCLUDED = ['mimamsa_pool_contributions', 'mimamsa_preferences', 'mimamsa_negative_controls', 'mimamsa_signal_families',
+const EXCLUDED = ['mimamsa_preferences', 'mimamsa_negative_controls', 'mimamsa_signal_families',
   'brahma_mimamsa_prediction_ledger', 'brahma_prospective_ledger', '__ssv_', 'chart_facts', 'bodha_', 'chart_dashas']
 
 describe('migration 1275 — static contract', () => {
@@ -44,10 +44,19 @@ describe('migration 1275 — static contract', () => {
     for (const t of EXCLUDED) expect(CODE).not.toContain(t)
   })
 
+  it('has ONE relink list: exactly mimamsa_pool_contributions, with the exact old NO ACTION definition, dropped then re-added', () => {
+    const arrays = CODE.match(/\brelink text\[\] := ARRAY\[([\s\S]*?)\];/g) ?? []
+    expect(arrays).toHaveLength(1)
+    expect([...(arrays[0] ?? '').matchAll(/'([a-z_]+)'/g)].map(m => m[1])).toEqual(['mimamsa_pool_contributions'])
+    expect(CODE).toContain("relink_old constant text := 'FOREIGN KEY (chart_id) REFERENCES charts(id)'")
+    expect(CODE.match(/DROP CONSTRAINT/g)).toHaveLength(1)
+    expect(CODE.indexOf("%I DROP CONSTRAINT")).toBeLessThan(CODE.indexOf("%I ADD CONSTRAINT"))
+  })
+
   it('adds validated cascading chart links only: no object, no data, no grant, no NOT VALID, no drop, no transaction control', () => {
-    expect(CODE.match(/EXECUTE format\('ALTER TABLE/g)).toHaveLength(1)
+    expect(CODE.match(/EXECUTE format\('ALTER TABLE/g)).toHaveLength(2) // the relink's drop and the add
     expect(CODE).toContain('FOREIGN KEY (chart_id) REFERENCES public.charts(id) ON DELETE CASCADE')
-    expect(CODE).not.toMatch(/NOT VALID|SET NULL|DROP CONSTRAINT|INITIALLY DEFERRED/)
+    expect(CODE).not.toMatch(/NOT VALID|SET NULL|INITIALLY DEFERRED/)
     expect(CODE).not.toMatch(/\bCREATE\s+(OR\s+REPLACE\s+)?(VIEW|FUNCTION|TABLE|INDEX|TRIGGER|SCHEMA|EXTENSION)\b/i)
     expect(CODE).not.toMatch(/\b(INSERT INTO|DELETE FROM|TRUNCATE|GRANT|REVOKE)\b/i)
     expect(CODE).not.toMatch(/\bUPDATE\s+\w+\s+SET\b/i)
@@ -71,12 +80,11 @@ describe('migration 1275 — static contract', () => {
 
   it('asserts in the post-check: present, validated, ON DELETE CASCADE, not deferrable, on chart_id -> charts(id); FK count exact', () => {
     for (const n of ['c.convalidated AND c.confdeltype = \'c\'', 'NOT c.condeferrable', 'is missing, not validated, not ON DELETE CASCADE',
-      'fk_before + added', 'something else changed']) expect(CODE).toContain(n)
+      'fk_before + added - dropped', 'something else changed']) expect(CODE).toContain(n)
   })
 
   it('states the header facts: the gap, the 27 and the exclusions with reasons, the 1265 requirement and discriminator, locks', () => {
-    for (const n of ['PRIVACY GAP', 'N-108', 'LAND TOGETHER WITH 1265', 'THE GAP', 'THE 27', 'EXCLUDED', 'ON DELETE NO ACTION',
-      'NULLABLE', 'OWNER-PATH', 'THE 1265 REQUIREMENT', 'NOT EXISTS (SELECT 1 FROM public.charts WHERE id = OLD.chart_id)',
+    for (const n of ['PRIVACY GAP', 'N-108', 'THE RELINK', 'NO ACTION -> CASCADE', 'LAND TOGETHER WITH 1265', 'THE GAP', 'THE 27', 'EXCLUDED', 'NULLABLE', 'OWNER-PATH', 'THE 1265 REQUIREMENT', 'NOT EXISTS (SELECT 1 FROM public.charts WHERE id = OLD.chart_id)',
       'pg_trigger_depth() is NOT a safe discriminator', 'session_replication_role = replica', 'MEASURED', 'ACTIVE RUNS (ENFORCED',
       'SERVING EFFECT AT APPLY: none', 'NOT DONE HERE', 'VERIFICATION BY PRODUCTION STRUCTURE', 'ROLLBACK', 'HELD', 'AFTER S-L1',
       "on SS's review", 'charts/[id]/route.ts:87-107']) expect(FLAT).toContain(n)
