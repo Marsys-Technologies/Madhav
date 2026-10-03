@@ -38,7 +38,7 @@ frozen (the hunk set may still gain item 5, and the hash is computed once, at th
 
 outcome.json (status dry_run | applied | failed | commit_state_unknown) is written into the run's evidence directory in every mode
 (executor_standards.outcome_guard) with python_executable (sys.executable), python_version (full sys.version), psycopg_version and libpq_version, which are also bound into the evidence
-digest: --apply / --rollback refuse (exit 96, before any connection) under a different interpreter or driver than the matching dry run, or when its record is missing; and the
+digest: --apply / --rollback refuse (exit 92, before any connection) under a different interpreter or driver than the matching dry run, or when its record is missing; and the
 source runs on Python 3.11 and 3.12+ (no f-string reuses its own quote type: tests/test_py311_and_interpreter.py); commit_state_unknown means conn.commit() itself raised (the server MAY have committed: check the database first).
 An under_test launch marker is refused (exit 93) in every mode outside pytest. A MISSING outcome.json means check the database. The administrator password is fetched from Secret Manager inside this process ONLY after the
 plan hash matched, never printed or saved; tests inject a disposable connection and never reach connect_admin().
@@ -310,7 +310,7 @@ TEST_EVIDENCE_ENV = "DPFA2_TEST_EVIDENCE_ROOT"
 PYTEST_ENV = "PYTEST_CURRENT_TEST"
 EXIT_NO_LAUNCH = 93
 EXIT_TEST_ENV = 95
-EXIT_INTERPRETER = 96        # --apply / --rollback under a different interpreter (or driver) than the dry run, or no comparable record
+EXIT_INTERPRETER = 92        # --apply / --rollback under a different interpreter (or driver) than the dry run, or no comparable record (free: the gate uses 1, 2, 64, 93-98, 128+n)
 MODES = ("count", "dry-run", "apply", "rollback-dry-run", "rollback")
 
 
@@ -501,7 +501,7 @@ def render_plan(sha: str | None = None, pins: dict | None = None) -> str:
         "pg_get_functiondef after == the patched body (md5 as bound) and its diff from the before body has the bound sha256 and hunk count; owner/secdef/config/ACL unchanged; the new index is unique, "
         "valid, NULLS NOT DISTINCT on the 7 columns; every attestation row equals the live object under the gate's own join and equals the bound digest; the gate's three queries "
         "are false AFTER the plan under search_path public and stored == gate-side digests; identity probes: chart_divisionals 84 landed / 84 distinct identities (legacy 6 args: 18), chart_vichara writer-shaped fixture rows == distinct identities under the live 9 arguments and fewer under the legacy 8; transient grants "
-        "revoked and membership equals the pre-state; --expect-plan == plan hash; --expect-evidence == this run's evidence digest (apply; the digest binds the interpreter path, the full sys.version, the psycopg and libpq versions: an apply or rollback under a different interpreter or driver refuses, exit 96, before any connection).",
+        "revoked and membership equals the pre-state; --expect-plan == plan hash; --expect-evidence == this run's evidence digest (apply; the digest binds the interpreter path, the full sys.version, the psycopg and libpq versions: an apply or rollback under a different interpreter or driver refuses, exit 92, before any connection).",
         "-- ROLLBACK (--rollback-dry-run / --rollback), the exact inverse, as data_plane_l1_owner (generic: every function re-applied from its shipped live definition and re-attested):",
         "-- preconditions: each function md5 == its patched md5 and its attestation == its patched sha256; 7-column index; every changed table's trigger has its 'to' arguments with attestation " + "; ".join(f"{c.table} {c.to_digest}" for c in TRIGGER_CHANGES) + "; the patched comments; "
         "NO two chart_divisionals rows share the six-column key (a rebuild that landed widened rows makes the old index impossible: delete them first); no build in flight; gate green",
@@ -1125,7 +1125,7 @@ def safe_outcome_class(es):
                 return
             try:
                 add_interpreter_to_outcome(self.path)
-            except (OSError, ValueError) as exc:        # the standard file exists but lacks the interpreter record: reported as exactly that
+            except Exception as exc:        # the standard file exists but lacks the interpreter record: reported as exactly that, never a crash after COMMIT
                 self.interpreter_record_error = type(exc).__name__
 
         @staticmethod
@@ -1179,7 +1179,7 @@ def refuse(o, check: str, message: str):
 
 
 def refuse_interpreter(o, check: str, message: str):
-    """Distinct from every other refusal: exit EXIT_INTERPRETER (96), its own check name in outcome.json, before any connection."""
+    """Distinct from every other refusal and from every gate code: exit EXIT_INTERPRETER (92), its own check name in outcome.json, before any connection."""
     o.fail([check])
     o._warn("REFUSED (interpreter): " + message + "\n")
     raise SystemExit(EXIT_INTERPRETER)

@@ -163,9 +163,10 @@ MUTATIONS = [
     ("interpreter binding: the early precheck is no longer called", EX, "            interpreter_precheck(o, evidence_root, args.expect_evidence, lines)\n", "            pass\n", None, IB, "refuses_by_itself or rollback_under"),
     ("interpreter binding: a differing interpreter/driver field is no longer refused", EX, "        differs = [k for k in RUNTIME_KEYS if body[k] != now[k]]\n", "        differs = []\n", None, IB, "different_runtime or rollback_under"),
     ("interpreter binding: a missing field (old format) is no longer 'cannot compare'", EX, '        missing = [k for k in RUNTIME_KEYS if body.get(k) in (None, "")]\n', "        missing = []\n", None, IB, "cannot_be_compared or old_format"),
-    ("interpreter binding: the refusal exit code is no longer the distinct 96", EX, "    raise SystemExit(EXIT_INTERPRETER)\n", "    raise SystemExit(1)\n", None, IB, "refuses_by_itself"),
+    ("interpreter binding: the refusal exit code is no longer the distinct 92", EX, "    raise SystemExit(EXIT_INTERPRETER)\n", "    raise SystemExit(1)\n", None, IB, "refuses_by_itself"),
     ("interpreter binding: psycopg / libpq versions dropped from the runtime record", EX, '"psycopg_version": psycopg.__version__,\n            "libpq_version": psycopg.pq.version()}', '"psycopg_version": "x",\n            "libpq_version": 0}', None, PY311 + " " + IB, "interpreter or runtime"),
     ("interpreter record failure: the message is again the misleading 'could not be written'", EX, "        if o.interpreter_record_error:\n", "        if False:\n", None, PY311, "failed_interpreter_record"),
+    ("interpreter record failure: the except narrowed back to (OSError, ValueError) (an unexpected error crashes a committed apply)", EX, "            except Exception as exc:        # the standard file exists but lacks the interpreter record", "            except (OSError, ValueError) as exc:        # the standard file exists but lacks the interpreter record", None, IB, "unexpected_error or interpreter_step_raises"),
     ("verify SQL: the plan text no longer names the verification files", EX, '        + "; ".join(f"{n} sha256 {sha_file(HERE / n)}" for n in VERIFY_FILES),', '        + "",', None, WIRING, "verify_files"),
 ]
 

@@ -3,7 +3,7 @@
 Runtime record = sys.executable, the full sys.version, psycopg.__version__, the libpq version (psycopg.pq.version()). Three layers:
   (a) it is part of the evidence digest (run_leg), so a different runtime never reproduces the dry run's digest;
   (b) interpreter_precheck, before any connection and before the credential is fetched: a matching dry run's outcome.json is compared field by
-      field; any difference = exit 96 with check `interpreter_differs_from_dry_run`; a missing field = exit 96 `dry_run_evidence_lacks_interpreter_record`
+      field; any difference = exit 92 with check `interpreter_differs_from_dry_run`; a missing field = exit 92 `dry_run_evidence_lacks_interpreter_record`
       ("cannot compare"); the same runtime proceeds;
   (c) with no dry-run evidence to read (copied from another host) only (a) remains: the apply is refused by evidence_digest_matches_expected, rolled back.
 Simulated by patching sys.executable / sys.version / psycopg.__version__ / psycopg.pq.version in the test (the executor reads them at call time)."""
@@ -64,7 +64,7 @@ def test_apply_under_a_different_runtime_refuses_by_itself_before_connecting(run
     patch_runtime(monkeypatch, which)
     with pytest.raises(SystemExit) as ei:
         mod.execute(apply_args(runner, digest), no_connect, writer_runner=cf.writer_runner(mod))
-    assert ei.value.code == mod.EXIT_INTERPRETER == 96
+    assert ei.value.code == mod.EXIT_INTERPRETER == 92
     o = outcome_of(tmp_path, "apply")
     assert o["status"] == "failed" and o["failed_checks"] == ["interpreter_differs_from_dry_run"]
     monkeypatch.undo()
@@ -99,7 +99,7 @@ def test_the_rollback_under_a_different_runtime_refuses_too(runner, mod, monkeyp
     patch_runtime(monkeypatch, "version")
     with pytest.raises(SystemExit) as ei:
         mod.execute(runner.args("rollback", expect_evidence=d["evidence_digest"]), no_connect, writer_runner=cf.writer_runner(mod))
-    assert ei.value.code == 96
+    assert ei.value.code == 92
 
 
 @pytest.mark.parametrize("drop", list(KEYS.values()))
@@ -113,7 +113,7 @@ def test_a_dry_run_record_lacking_a_field_cannot_be_compared_and_refuses(runner,
     f.write_text(json.dumps(body))
     with pytest.raises(SystemExit) as ei:
         mod.execute(apply_args(runner, res["evidence_digest"]), no_connect, writer_runner=cf.writer_runner(mod))
-    assert ei.value.code == 96
+    assert ei.value.code == 92
     assert outcome_of(tmp_path, "apply")["failed_checks"] == ["dry_run_evidence_lacks_interpreter_record"]
     assert runner.state() == before
 
@@ -125,7 +125,7 @@ def test_an_old_format_dry_run_without_any_interpreter_fields_refuses_with_canno
     f.write_text(json.dumps(body))
     with pytest.raises(SystemExit) as ei:
         mod.execute(apply_args(runner, res["evidence_digest"]), no_connect, writer_runner=cf.writer_runner(mod))
-    assert ei.value.code == 96 and "cannot compare" in capsys.readouterr().err
+    assert ei.value.code == 92 and "cannot compare" in capsys.readouterr().err
 
 
 # ---------------------------------------------------------------------------------------------------- (a) the digest binds the runtime
@@ -158,3 +158,38 @@ def test_the_runtime_is_in_result_json_and_outcome_json_of_every_mode(runner):
     rec = json.loads((pathlib.Path(res["evidence_dir"]) / "result.json").read_text())["runtime"]
     o = json.loads(pathlib.Path(res["outcome_file"]).read_text())
     assert rec == {k: o[k] for k in KEYS.values()} and rec["libpq_version"] == psycopg.pq.version()
+
+
+# ---------------------------------------------------------------------------------------- an unexpected error in the interpreter step
+def raising_only_in_the_interpreter_step(real):
+    """runtime_record() that raises AttributeError ONLY when add_interpreter_to_outcome calls it (the step after the standard outcome write);
+    the precheck, the evidence digest and result.json still get the real record."""
+    def fake():
+        if sys._getframe(1).f_code.co_name == "add_interpreter_to_outcome":
+            raise AttributeError("simulated: no version attribute")
+        return real()
+    return fake
+
+
+def test_an_unexpected_error_in_the_interpreter_step_is_a_warning_not_a_crash(mod, tmp_path, monkeypatch):
+    es = mod.standards()
+    d = tmp_path / "w3"
+    monkeypatch.setattr(mod, "runtime_record", raising_only_in_the_interpreter_step(mod.runtime_record))
+    with mod.safe_outcome_class(es)(d, str(cf.EXEC_DIR / "d6_dataplane_capture_fa2_exec.py"), "a" * 64,
+                                    dict(es.fingerprint(str(cf.GATE_FIXTURE)), under_test=False)) as o:
+        result = mod.conclude(o, {}, "applied", "b" * 64)
+    assert o.write_error is None and o.interpreter_record_error == "AttributeError"
+    body = json.loads((d / "outcome.json").read_text())
+    assert body["status"] == "applied" and "python_executable" not in body and not list(d.glob(".outcome.*"))
+    assert result["outcome_file"] == o.path
+    assert result["warnings"] == ["outcome.json written without the interpreter record (AttributeError); THE COMMIT HAPPENED"]
+
+
+def test_a_committed_apply_whose_interpreter_step_raises_is_still_recorded_applied(runner, mod, monkeypatch, tmp_path):
+    digest = dry_run(runner)["evidence_digest"]
+    monkeypatch.setattr(mod, "runtime_record", raising_only_in_the_interpreter_step(mod.runtime_record))
+    code, res = runner.execute(apply_args(runner, digest))
+    assert code == 0 and res["status"] == "COMMITTED"
+    assert res["warnings"] == ["outcome.json written without the interpreter record (AttributeError); THE COMMIT HAPPENED"]
+    o = outcome_of(tmp_path, "apply")
+    assert o["status"] == "applied" and o["evidence_digest"] == digest and "python_executable" not in o
