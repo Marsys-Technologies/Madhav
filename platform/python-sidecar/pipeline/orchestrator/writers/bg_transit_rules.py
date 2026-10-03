@@ -34,11 +34,26 @@ class BgTransitRulesWriter(WriterBase):
 
         counts = seed_transit_rules(ctx.db_conn, dry_run=False)
 
+        # TI-L0-32 (CF-02): one class, two registered ids, THREE tables written. `rows_written`
+        # is the dispatched asset's own partition, not the three-table total (104 against a
+        # count_sql that sees 76): bg_transit_rules -> its rule rows, bg_transit_engine -> its 9
+        # engine rows. bg_transit_moorti (27) is written by this same run but credited to no
+        # asset's count_sql; it is reported in the notes, and declaring it as a produced table is a
+        # declarations change (asset_declarations.json) held with the wave plan. Record-only.
+        own = {"bg_transit_rules": counts.get("bg_transit_rules", 0),
+               "bg_transit_engine": counts.get("bg_transit_engine", 0)}
+        if ctx.asset_id not in own:
+            raise RuntimeError(
+                f"bg_transit_rules writer dispatched as {ctx.asset_id!r}; it reports {sorted(own)} - "
+                "refusing to report another asset's total"
+            )
         return WriterResult(
             asset_id=self.asset_id,
-            rows_inserted=counts.get("total", 0),
+            rows_inserted=own[ctx.asset_id],
             notes=(
                 f"bg_transit_engine={counts.get('bg_transit_engine', 0)}; "
-                f"bg_transit_rules={counts.get('bg_transit_rules', 0)}"
+                f"bg_transit_rules={counts.get('bg_transit_rules', 0)}; "
+                f"bg_transit_moorti={counts.get('bg_transit_moorti', 0)}; "
+                f"rows_written reports {ctx.asset_id!r} = {own[ctx.asset_id]} of {counts.get('total', 0)} total"
             ),
         )
