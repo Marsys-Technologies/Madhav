@@ -116,4 +116,3 @@ def test_writer_repairs_stale_rows_on_natural_key_conflict(monkeypatch):
     assert "tropical_longitude = EXCLUDED.tropical_longitude" in cursor.sql
     assert "ephemeris_daily.source_citation" in cursor.sql
     assert "IS DISTINCT FROM" in cursor.sql
-
