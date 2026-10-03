@@ -43,7 +43,7 @@ Usage:
   suvarna_rehearsal.py self-test --out PATH [--tracker-dir DIR] [--repo DIR]     (writes a self_test evidence document)
   suvarna_rehearsal.py validate PATH [--evidence-root DIR]                       (exit 0 valid, 2 invalid)
   suvarna_rehearsal.py cluster init|start|stop|status|reap|adopt [--root DIR] [--port N] [--pg-bin DIR] [--remove-data --confirm ROOT]
-  suvarna_rehearsal.py compare-fingerprints --pre prod.json --post rehearsal.json --expected assets.json --commit SHA [--explained e.json] [--out drill.json]
+  suvarna_rehearsal.py compare-fingerprints --pre prod.json --post rehearsal.json --expected assets.json|declarations --rows rows.json [--coverage cov.json] --commit SHA [--explained e.json] [--out drill.json]
   suvarna_rehearsal.py validate-drill PATH
   suvarna_rehearsal.py drill expected|reader-spec|baseline|validate-baseline|rehearsal-fingerprints|compare|status ...   (E5.7 mirror wiring, suvarna_mirror_drill.py)
   (compare-fingerprints --expected declarations  = the DECLARED L0 assets of 00_ARCHITECTURE/control/FINGERPRINT_DECLARATIONS.json)
@@ -53,6 +53,7 @@ from __future__ import annotations
 
 import argparse
 import contextlib
+import copy
 import fcntl
 import hashlib
 import io
@@ -1189,7 +1190,11 @@ MIN_DETAIL_CHARS = 40
 DEFAULT_LIMITS = (0.0, 0.25)                   # (max_undecided_share, max_difference_share)
 DRILL_KEYS = ("schema", "item", "result", "commit", "tool_sha256", "definition", "expected_assets", "production", "rehearsal",
               "explained_input", "inputs", "equal", "differences", "unexplained", "uncovered", "unexpected",
-              "explanations_without_difference", "problems", "limits")
+              "explanations_without_difference", "problems", "limits", "coverage", "rows", "empty_both_sides")
+RESULTS_PASS = ("PASS", "PASS_DECLARED_ONLY")   # PASS only when every L0 asset is declared, full and deterministic; otherwise the scoped label
+COVERAGE_KEYS = ("declarations_sha256", "units", "declared", "partial", "undeclared", "non_deterministic", "groups", "expected_differences", "scope")
+NON_DETERMINISTIC_FLAGS = ("rolling_horizon", "platform_bound")
+CODE_REQUIRES_FLAG = {"rolling_horizon": "rolling_horizon", "source_unavailable_offline": "platform_bound"}   # an explanation code only a flagged unit may carry
 _DECISION_ID = re.compile(r"N-[0-9]{1,6}")
 _ASSET_ID = re.compile(r"[a-z][a-z0-9_]*")
 
@@ -1227,16 +1232,78 @@ def _explanation_problem(kind: str, e: Any) -> str | None:
     return None
 
 
-def compare_fingerprint_sets(production: Any, rehearsal: Any, explained: Any = None, *, expected_assets: Any, commit: Any,
+def _unit_list(v: Any) -> bool:
+    return isinstance(v, list) and all(isinstance(x, str) and _ASSET_ID.fullmatch(x) for x in v) and len(set(v)) == len(v)
+
+
+def check_coverage(coverage: Any, expected: Sequence[str]) -> dict:
+    """The closed coverage block of an E5.7 drill (what the verdict covers and what it does not), checked against the expected units.
+    Returns a normalised copy; raises RehearsalError. `scope` is DERIVED, never trusted: all_declared_full only when nothing is partial,
+    undeclared or non-deterministic."""
+    if not (isinstance(coverage, Mapping) and set(coverage) == set(COVERAGE_KEYS)):
+        raise RehearsalError(f"coverage must be an object with exactly the keys {COVERAGE_KEYS}")
+    c = copy.deepcopy(dict(coverage))
+    if not (isinstance(c["declarations_sha256"], str) and _h64(c["declarations_sha256"]) or c["declarations_sha256"] is None):
+        raise RehearsalError("coverage.declarations_sha256 must be a sha256 or null")
+    if not (_unit_list(c["units"]) and _unit_list(c["declared"]) and c["units"] == sorted(expected)):
+        raise RehearsalError("coverage.units must be exactly the sorted expected_assets (the comparison units)")
+    if not (isinstance(c["partial"], Mapping) and all(isinstance(k, str) and _unit_list(v) and v for k, v in c["partial"].items())):
+        raise RehearsalError("coverage.partial must map an asset to the non-empty list of tables it does not cover")
+    if not (isinstance(c["undeclared"], Mapping) and all(isinstance(k, str) and isinstance(v, str) and v for k, v in c["undeclared"].items())):
+        raise RehearsalError("coverage.undeclared must map an asset to its reason code")
+    nd = c["non_deterministic"]
+    if not (isinstance(nd, Mapping) and all(k in c["units"] and isinstance(v, list) and v and set(v) <= set(NON_DETERMINISTIC_FLAGS) and len(set(v)) == len(v)
+                                          for k, v in nd.items())):
+        raise RehearsalError(f"coverage.non_deterministic must map a unit to a non-empty list of flags from {NON_DETERMINISTIC_FLAGS}")
+    if not (isinstance(c["groups"], Mapping) and all(k in c["units"] and _unit_list(v) and len(v) >= 2 for k, v in c["groups"].items())):
+        raise RehearsalError("coverage.groups must map a unit to its (at least two) member assets")
+    ed = c["expected_differences"]
+    if not (isinstance(ed, list) and all(isinstance(e, Mapping) and set(e) == {"unit", "table", "columns", "reference"} and e["unit"] in c["units"]
+                                         and isinstance(e["table"], str) and _unit_list(e["columns"]) and e["columns"]
+                                         and isinstance(e["reference"], str) and e["reference"].strip() for e in ed)):
+        raise RehearsalError("coverage.expected_differences must list {unit, table, columns, reference} records of units in coverage.units")
+    scope = "declared_only" if (c["partial"] or c["undeclared"] or c["non_deterministic"]) else "all_declared_full"
+    if c["scope"] != scope:
+        raise RehearsalError(f"coverage.scope is derived: it must be {scope!r} for this coverage")
+    return c
+
+
+def check_rows(rows: Any, prod: Mapping, reh: Mapping) -> dict:
+    """Row counts per unit per table for each side: {unit: {"production": {table: n} | null, "rehearsal": {...} | null}}, present for every
+    unit that has a fingerprint on that side, non-negative ints."""
+    if not isinstance(rows, Mapping):
+        raise RehearsalError("rows must be an object of unit -> {production, rehearsal} per-table row counts")
+    out: dict = {}
+    for u, v in rows.items():
+        if not (isinstance(u, str) and _ASSET_ID.fullmatch(u) and isinstance(v, Mapping) and set(v) == {"production", "rehearsal"}):
+            raise RehearsalError("rows entries must be {production, rehearsal} per unit")
+        for side in ("production", "rehearsal"):
+            t = v[side]
+            if t is not None and not (isinstance(t, Mapping) and t and all(isinstance(k, str) and isinstance(n, int) and not isinstance(n, bool) and n >= 0
+                                                                         for k, n in t.items())):
+                raise RehearsalError(f"rows.{u}.{side} must be null or a non-empty object of table -> non-negative int")
+        out[u] = {"production": dict(v["production"]) if v["production"] is not None else None,
+                  "rehearsal": dict(v["rehearsal"]) if v["rehearsal"] is not None else None}
+    for side, env in (("production", prod), ("rehearsal", reh)):
+        for u in env:
+            if out.get(u, {}).get(side) is None:
+                raise RehearsalError(f"rows.{u}.{side} is missing: a unit with a fingerprint must carry its row counts")
+    return out
+
+
+def compare_fingerprint_sets(production: Any, rehearsal: Any, explained: Any = None, *, expected_assets: Any, commit: Any, coverage: Any, rows: Any,
                              max_undecided_share: float = DEFAULT_LIMITS[0], max_difference_share: float = DEFAULT_LIMITS[1]) -> dict:
-    """E5.7: compare per-asset semantic fingerprints (E5.5's definition; both inputs carry its marker) of production (read as
-    suvarna_reader) with the rehearsal rebuild, over the L0 assets the drill MUST cover (`expected_assets`, required).
-    FAIL if any expected asset is on neither side (`uncovered`), any compared asset is outside the expected list, any
-    difference is unexplained, an explanation has no difference, an explanation is malformed (reason code valid for the
-    difference kind, detail >= 40 characters and not repeated across assets), the share of EXPLAINED differences without an
-    SS-recorded decision id `N-<n>` exceeds `max_undecided_share` (default 0: every difference needs a decision), or the
-    share of differing assets exceeds `max_difference_share`. PASS only when none of those holds; the output document
-    embeds both fingerprint sets, the explanations, input hashes, the commit and the tool hash, and `validate_drill`
+    """E5.7: compare per-unit semantic fingerprints (E5.5's definition; both inputs carry its marker) of production (read as
+    suvarna_reader) with the rehearsal rebuild, over the units the drill MUST cover (`expected_assets`, required: declared assets with tables
+    of their own and groups). FAIL if any expected unit is on neither side (`uncovered`), any compared unit is outside the expected list,
+    any difference is unexplained, an explanation has no difference, an explanation is malformed (reason code valid for the difference
+    kind, detail >= 40 characters and not repeated across units; `rolling_horizon` / `source_unavailable_offline` only on a unit flagged
+    rolling_horizon / platform_bound in `coverage`), the share of EXPLAINED differences without an SS-recorded decision id `N-<n>` exceeds
+    `max_undecided_share` (default 0), the share of differing units exceeds `max_difference_share`, or two equal fingerprints carry different
+    row counts. A unit that is EMPTY on both sides (zero rows everywhere) is never `equal`: it is listed in `empty_both_sides` and the
+    verdict cannot be PASS (it reads UNMEASURED). Otherwise PASS, or PASS_DECLARED_ONLY whenever `coverage` says any asset is partial,
+    undeclared or non-deterministic: a bare PASS means every L0 asset was declared, full and deterministic. The output embeds both
+    fingerprint sets, the explanations, the coverage block, the row counts, input hashes, the commit and the tool hash, and `validate_drill`
     re-derives it."""
     if not (isinstance(commit, str) and HEX40.fullmatch(commit)):
         raise RehearsalError("commit must be 40-hex")
@@ -1253,15 +1320,22 @@ def compare_fingerprint_sets(production: Any, rehearsal: Any, explained: Any = N
         if isinstance(share, bool) or not isinstance(share, (int, float)) or not 0 <= share <= 1:
             raise RehearsalError(f"{name} must be a number in [0, 1]")
     prod, reh = _check_envelope("production", production), _check_envelope("rehearsal", rehearsal)
+    cov = check_coverage(coverage, exp)
+    rws = check_rows(rows, prod, reh)
     expected = sorted(exp)
     uncovered = [a for a in expected if a not in prod and a not in reh]
     unexpected = sorted((set(prod) | set(reh)) - set(expected))
-    equal, diffs, problems = [], [], []
+    equal, diffs, problems, empty = [], [], [], []
     for a in expected:
         if a in uncovered:
             continue
         if a in prod and a in reh and prod[a] == reh[a]:
-            equal.append(a)
+            if rws[a]["production"] != rws[a]["rehearsal"]:
+                problems.append(f"{a}: equal fingerprints but different row counts {rws[a]['production']} vs {rws[a]['rehearsal']}: a fingerprint covers its rows, so one side is wrong")
+            elif sum(rws[a]["production"].values()) == 0:
+                empty.append(a)                                # equal because both are empty is not equality of content
+            else:
+                equal.append(a)
             continue
         kind = "missing_in_rehearsal" if a not in reh else "missing_in_production" if a not in prod else "fingerprint_differs"
         diffs.append({"asset": a, "kind": kind, "production": prod.get(a), "rehearsal": reh.get(a), "explained": None})
@@ -1274,6 +1348,11 @@ def compare_fingerprint_sets(production: Any, rehearsal: Any, explained: Any = N
         why = _explanation_problem(d["kind"], e)
         if why:
             problems.append(f"{d['asset']}: {why}")
+            continue
+        need = CODE_REQUIRES_FLAG.get(e["reason_code"])
+        if need is not None and need not in cov["non_deterministic"].get(d["asset"], []):
+            problems.append(f"{d['asset']}: reason code {e['reason_code']} needs the unit to be flagged {need} in the declarations "
+                            f"(flags: {cov['non_deterministic'].get(d['asset'], [])})")
             continue
         norm = _normal_detail(e["detail"])
         if norm in seen:
@@ -1290,7 +1369,8 @@ def compare_fingerprint_sets(production: Any, rehearsal: Any, explained: Any = N
     if expected and len(diffs) / len(expected) > max_difference_share:
         problems.append(f"{len(diffs)} of {len(expected)} expected assets differ: over the allowed share {max_difference_share}")
     failed = bool(unexplained or stray or uncovered or unexpected or problems)
-    return {"schema": DRILL_SCHEMA, "item": "E5.7", "result": "FAIL" if failed else "PASS", "commit": commit,
+    result = "FAIL" if failed else "UNMEASURED" if empty else ("PASS" if cov["scope"] == "all_declared_full" else "PASS_DECLARED_ONLY")
+    return {"schema": DRILL_SCHEMA, "item": "E5.7", "result": result, "commit": commit,
             "tool_sha256": tool_sha256(), "definition": FINGERPRINT_DEFINITION, "expected_assets": expected,
             "production": fingerprint_set(prod), "rehearsal": fingerprint_set(reh), "explained_input": dict(explained),
             "inputs": {"production_sha256": sha256_text(canonical_json(fingerprint_set(prod))),
@@ -1299,10 +1379,11 @@ def compare_fingerprint_sets(production: Any, rehearsal: Any, explained: Any = N
             "equal": equal, "differences": diffs, "unexplained": unexplained, "uncovered": uncovered, "unexpected": unexpected,
             "explanations_without_difference": stray, "problems": problems,
             "limits": {"max_undecided_share": max_undecided_share, "max_difference_share": max_difference_share,
-                       "min_detail_chars": MIN_DETAIL_CHARS}}
+                       "min_detail_chars": MIN_DETAIL_CHARS},
+            "coverage": cov, "rows": rws, "empty_both_sides": empty}
 
 
-def validate_drill(doc: Any, tool_sha: str | None = None) -> list[str]:
+def validate_drill(doc: Any, tool_sha: str | None = None, declarations_coverage: Mapping | None = None) -> list[str]:
     """Problems with an E5.7 comparison document ([] = valid): closed keys, the repo tool's hash, and every derived field
     (result, differences, coverage, problems, input hashes) re-derived from the embedded inputs. Never raises."""
     try:
@@ -1315,6 +1396,7 @@ def validate_drill(doc: Any, tool_sha: str | None = None) -> list[str]:
             return p + ["limits malformed"]
         again = compare_fingerprint_sets(doc["production"], doc["rehearsal"], doc["explained_input"],
                                          expected_assets=doc["expected_assets"], commit=doc["commit"],
+                                         coverage=doc["coverage"], rows=doc["rows"],
                                          max_undecided_share=lim["max_undecided_share"],
                                          max_difference_share=lim["max_difference_share"])
         again["tool_sha256"] = doc["tool_sha256"]
@@ -1325,6 +1407,8 @@ def validate_drill(doc: Any, tool_sha: str | None = None) -> list[str]:
                      "not a PASS this validator can give")
         if again != dict(doc):
             p.append("the document differs from the comparison re-derived from its embedded inputs")
+        if declarations_coverage is not None and doc["coverage"] != dict(declarations_coverage):
+            p.append("the coverage block is not the one the declarations file in use yields: the drill was made under other declarations")
         return p
     except RehearsalError as exc:
         return [f"drill inputs refused: {exc}"]
@@ -1332,18 +1416,27 @@ def validate_drill(doc: Any, tool_sha: str | None = None) -> list[str]:
         return [f"malformed drill document ({type(exc).__name__}: {str(exc)[:120]})"]
 
 
-def drill_expected_assets(declarations_path: str | Path | None = None) -> list[str]:
-    """The L0 assets an E5.7 drill must cover: the DECLARED assets of FINGERPRINT_DECLARATIONS.json (the loader validates the file against the
-    registry snapshot, the schema extract and the writer evidence). Undeclared assets are reported by `suvarna_mirror_drill.py expected`,
-    not silently dropped. The fingerprint definition is the declarations' own and must equal `FINGERPRINT_DEFINITION`."""
+def _load_declarations(declarations_path: str | Path | None = None):
     import fingerprint_declarations as fd  # noqa: PLC0415
     if fd.FINGERPRINT_DEFINITION != FINGERPRINT_DEFINITION:
         raise RehearsalError("fingerprint_declarations and the harness name different fingerprint definitions")
     try:
-        d = fd.load_declarations(declarations_path) if declarations_path else fd.load_declarations()
+        return fd.load_declarations(declarations_path) if declarations_path else fd.load_declarations()
     except fd.DeclarationError as exc:
         raise RehearsalError(f"the fingerprint declarations are refused: {exc}") from exc
-    return d.expected_assets()
+
+
+def drill_expected_assets(declarations_path: str | Path | None = None) -> list[str]:
+    """The comparison units an E5.7 drill must cover: every DECLARED asset with tables of its own plus every GROUP (`grp_<id>`: a shared table
+    is compared as one unit) of FINGERPRINT_DECLARATIONS.json (the loader validates the file against the registry snapshot, the schema extract
+    and the writer evidence). Undeclared assets are reported by `suvarna_mirror_drill.py expected` and carried in the drill's `coverage`
+    block, not silently dropped."""
+    return _load_declarations(declarations_path).expected_assets()
+
+
+def drill_coverage(declarations_path: str | Path | None = None) -> dict:
+    """The `coverage` block the drill document embeds (declared / partial / undeclared / non-deterministic / groups / expected differences)."""
+    return _load_declarations(declarations_path).drill_coverage()
 
 
 # ═════════════════════════ D. self-test (disposable PG, synthetic data) ═════════════════════════
@@ -1637,6 +1730,8 @@ def main(argv: Sequence[str] | None = None) -> int:
     v.add_argument("--repo", default=str(REPO_ROOT))
     vd = sub.add_parser("validate-drill")
     vd.add_argument("path")
+    vd.add_argument("--declarations", nargs="?", const="default", help="also require the coverage block to be the one these declarations yield "
+                                                                      "(no value: the committed FINGERPRINT_DECLARATIONS.json)")
     c = sub.add_parser("cluster")
     c.add_argument("action", choices=("init", "start", "stop", "status", "reap", "adopt"))
     c.add_argument("--root", default=DEFAULT_ROOT)
@@ -1651,6 +1746,8 @@ def main(argv: Sequence[str] | None = None) -> int:
     cf.add_argument("--expected", required=True, help="JSON list of the L0 asset ids the drill must cover, or the word `declarations`")
     cf.add_argument("--commit", required=True)
     cf.add_argument("--explained")
+    cf.add_argument("--rows", required=True, help="JSON {unit: {production: {table: n}, rehearsal: {table: n}}}: the row counts of both sides")
+    cf.add_argument("--coverage", help="JSON coverage block (not needed with --expected declarations, which derives it)")
     cf.add_argument("--out")
     if argv is None:
         argv = sys.argv[1:]
@@ -1683,18 +1780,26 @@ def main(argv: Sequence[str] | None = None) -> int:
                 _print({"valid": False, "problems": [f"unreadable drill file ({type(exc).__name__})"]})
                 return 2
             commit = doc.get("commit") if isinstance(doc, Mapping) else None
-            problems = validate_drill(doc, tool_sha256_at_commit(REPO_ROOT, commit))
+            dcov = None
+            if a.declarations:
+                dcov = drill_coverage(None if a.declarations == "default" else a.declarations)
+            problems = validate_drill(doc, tool_sha256_at_commit(REPO_ROOT, commit), declarations_coverage=dcov)
             _print({"valid": not problems, "problems": problems})
             return 0 if not problems else 2
         if a.cmd == "compare-fingerprints":
+            if a.expected == "declarations":
+                exp, cov = drill_expected_assets(), drill_coverage()
+            else:
+                if not a.coverage:
+                    raise RehearsalError("--coverage is required with an explicit --expected list (a verdict must say what it covers)")
+                exp, cov = rd(a.expected), rd(a.coverage)
             out = compare_fingerprint_sets(rd(a.pre), rd(a.post), rd(a.explained) if a.explained else None,
-                                           expected_assets=drill_expected_assets() if a.expected == "declarations" else rd(a.expected),
-                                           commit=a.commit)
+                                           expected_assets=exp, commit=a.commit, coverage=cov, rows=rd(a.rows))
             if a.out:
                 Path(a.out).parent.mkdir(parents=True, exist_ok=True)
                 Path(a.out).write_text(json.dumps(out, sort_keys=True, indent=2, ensure_ascii=True) + "\n", encoding="utf-8")
             _print(out)
-            return 0 if out["result"] == "PASS" else 4
+            return 0 if out["result"] in RESULTS_PASS else 4
         started, reason = None, "NEEDS_DISPOSABLE_PG"
         if not _psycopg_available():
             reason = "NEEDS_PSYCOPG"                       # the driver is not installed: UNMEASURED, not an error

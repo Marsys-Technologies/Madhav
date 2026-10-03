@@ -17,18 +17,22 @@ lifecycle, the connection policy and the existing E5.7 comparison (`compare_fing
                        policy-checked connection in a READ ONLY transaction, the production side produced later by the READ-ONLY reader
                        (specified by `reader-spec`, never run here). `validate_fingerprint_output` refuses anything the declarations do not name.
   3. DRILL COMPARE     the production file + the rehearsal file + explanations -> the EXISTING `compare_fingerprint_sets` over
-                       `expected_assets` = the DECLARED assets; undeclared / partial / non-deterministic assets are written to a sibling
-                       `.coverage.json` and printed, never dropped.
+                       `expected_assets` = the comparison UNITS (declared assets with tables of their own + one unit `grp_<id>` per
+                       shared-table GROUP, reported with all its members). The drill document itself carries the `coverage` block
+                       (declared / partial / undeclared / non-deterministic / groups / expected differences) and the row counts; the
+                       verdict says its scope (PASS_DECLARED_ONLY unless every L0 asset is declared, full and deterministic; an empty-on-
+                       both-sides unit is never equal). A sibling `.coverage.json` carries the human-readable report.
   4. STATUS            which steps are measured and which are UNMEASURED with a NEEDS_* reason (never PASS).
 
 Usage (also reachable as `suvarna_rehearsal.py drill ...`):
   suvarna_mirror_drill.py expected [--declarations P]
   suvarna_mirror_drill.py reader-spec [--declarations P]
-  suvarna_mirror_drill.py baseline --recipe DIR --scratch DIR --root DIR --port N [--with-l1-fixes] --out PATH     (starts/uses the harness cluster)
+  suvarna_mirror_drill.py baseline --recipe DIR --scratch DIR --root DIR --port N [--policy disposable|rehearsal --owner NAME --data-directory DIR]
+                                   [--with-l1-fixes] --out PATH     (starts/uses the harness cluster; the recipe also via $E57_MIRROR_RECIPE)
   suvarna_mirror_drill.py validate-baseline PATH
   suvarna_mirror_drill.py rehearsal-fingerprints --url URL --policy rehearsal|disposable --stage baseline|after_rebuild --as-of YYYY-MM-DD --commit SHA --out PATH
   suvarna_mirror_drill.py compare --production P --rehearsal P --commit SHA [--explained E] --out PATH
-  suvarna_mirror_drill.py status [--baseline P] [--production P] [--rehearsal P]
+  suvarna_mirror_drill.py status [--baseline P] [--production P] [--rehearsal P] [--build-record P]
 Exit: 0 ok · 2 refused / invalid · 4 comparison FAIL · 5 error.
 """
 from __future__ import annotations
@@ -44,6 +48,7 @@ import re
 import shutil
 import subprocess
 import sys
+import uuid
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
@@ -55,7 +60,7 @@ import fingerprint_declarations as fd  # noqa: E402
 import suvarna_rehearsal as sr  # noqa: E402
 
 TOOL_NAME = "suvarna_mirror_drill.py"
-DEFAULT_RECIPE = Path("/Users/Dev/suvarna-evidence/S_L1/rehearsal_final")
+RECIPE_ENV = "E57_MIRROR_RECIPE"                  # the mirror recipe directory: an argument or this variable (no machine-specific default)
 RECIPE_FILES = (("schema", "seed/prod_schema.sql"), ("roles", "sql/00_roles.sql"), ("sequences", "sql/20_sequences.sql"),
                 ("seed_fixes", "sql/30_seed_fixes.sql"))
 ROLES_MIRROR_REL = "../w1_privilege_audit/roles.sql"         # the W1 privilege audit's roles/ACL mirror (same role statements as 00_roles.sql)
@@ -77,17 +82,18 @@ NEEDS = {
     "decisions": "NEEDS_SS_DECISIONS",
     "as_of": "NEEDS_AS_OF_PIN",
 }
-# Aggregate-only ownership probes the production reader may run later (one statement each, no row content): they decide whether an
-# `undeclared` asset can be upgraded. Specified here and in the design note; this module never executes them.
+# Aggregate-only ownership probes the production reader ran (read-only, as suvarna_reader, counts only; results committed at
+# 00_ARCHITECTURE/control/FINGERPRINT_OWNERSHIP_PROBES_2026-10-03.txt). This module never executes them; they are listed so a re-run is exactly
+# these statements, and each carries the outcome it produced.
 OWNERSHIP_PROBES = (
     {"asset": "bg_rules", "sql": "SELECT extracted_by, count(*) FROM sutravali_rules GROUP BY 1",
-     "upgrade_if": "only extracted_by = 'python_regex_v2' exists: declare key rule_id (a deterministic uuid5), exclude created_at"},
+     "outcome": "only extracted_by = 'python_regex_v2' (3002 rows): bg_rules is DECLARED (key rule_id, a deterministic uuid5)"},
     {"asset": "bg_transit_rules", "sql": "SELECT rule_type, graha, count(*) FROM bg_transit_rules GROUP BY 1, 2",
-     "upgrade_if": "no rule_type/graha group outside the writer's owned categories (migration 397's double_transit rows absent)"},
+     "outcome": "7 double_transit rows (Jupiter 5, Saturn 2) from migration 397: bg_transit_rules stays UNDECLARED"},
     {"asset": "bg_gochara_citation_resolution", "sql": "SELECT count(*) FROM bg_gochara_citation_resolution",
-     "upgrade_if": "informational: the rows are migration-owned and stay undeclared"},
+     "outcome": "14 rows, migration-owned: stays UNDECLARED"},
     {"asset": "bg_sarvatobhadra_grid", "sql": "SELECT count(*) FROM bg_sarvatobhadra_grid",
-     "upgrade_if": "informational: registered deliberately empty (ADJUDICATION-11)"},
+     "outcome": "0 rows, registered deliberately empty (ADJUDICATION-11): stays UNDECLARED"},
 )
 
 
@@ -206,7 +212,8 @@ class Target:
     user: str
     db: str
     policy: str = "disposable"                  # connection policy of the verification connection ('rehearsal' | 'disposable')
-    expect: Mapping | None = None               # the disposable cluster's identity {data_directory, port}
+    expect: Mapping | None = None               # the cluster's identity {data_directory, port}
+    started: bool = False                       # this call started the cluster (so the caller stops it); an already-running cluster is left running
 
     @property
     def url(self) -> str:
@@ -233,24 +240,78 @@ def available_extensions(t: Target) -> set[str]:
     return {x.strip() for x in p.stdout.split("\n") if x.strip()}
 
 
-def harness_target(root: str | Path, *, db: str, port: int, pg_bin: str = sr.DEFAULT_PG_BIN, policy: str = "disposable") -> Target:
-    """Start (initialising if needed) the cluster this harness owns at `root` and make sure `db` exists. Lifecycle = E5.6's: marker,
-    flock, loopback-only config, `env -i`. The caller stops it (`sr.stop_cluster`)."""
-    sr.init_cluster(root, port=port, pg_bin=pg_bin)
+DB_NAME_RES = {"disposable": re.compile(r"suvarna_disposable[a-z0-9_]*"), "rehearsal": sr.rg.DB_NAME_RE}
+
+
+def validate_db_name(db: Any, policy: str) -> str:
+    """The database a baseline may be built in: `suvarna_disposable*` for the disposable policy, `rehearsal` / `rehearsal_<suffix>` for the rehearsal
+    policy. Checked BEFORE any cluster is touched, any restore runs or any CREATE DATABASE is issued."""
+    if policy not in DB_NAME_RES:
+        raise MirrorError(f"unknown policy {policy!r}")
+    if not (isinstance(db, str) and DB_NAME_RES[policy].fullmatch(db)):
+        raise MirrorError(f"database {db!r} is not allowed for the {policy} policy ({DB_NAME_RES[policy].pattern})")
+    return db
+
+
+def _quote_ident(name: str) -> str:
+    return '"' + name.replace('"', '""') + '"'
+
+
+def _quote_lit(text: str) -> str:
+    return "'" + text.replace("'", "''") + "'"
+
+
+def harness_target(root: str | Path, *, db: str, port: int, pg_bin: str = sr.DEFAULT_PG_BIN, policy: str = "disposable",
+                   owner: str | None = None, allow_existing_db: bool = False) -> Target:
+    """Start (initialising if needed, DISPOSABLE policy only) the cluster this harness owns at `root` and make sure `db` exists and is EMPTY.
+    Lifecycle = E5.6's: marker, flock, loopback-only config, `env -i`. The caller stops it (`sr.stop_cluster`) when `Target.started`.
+
+    REHEARSAL policy (the long-lived E5.6 cluster): the root must be exactly `sr.DEFAULT_ROOT`, the port exactly 55432, the database
+    `rehearsal`/`rehearsal_<suffix>`, the cluster must ALREADY exist with a valid ownership marker (this function never initialises it), its data
+    directory must be `<root>/pg` and owned by `owner` (explicit pin: the current user unless named, and always the running uid), and the
+    verification connection then goes through the rehearsal policy's own identity guard. Tests only: it is not run against the real cluster here."""
+    validate_db_name(db, policy)
+    if policy not in ("disposable", "rehearsal"):
+        raise MirrorError(f"unknown policy {policy!r}")
+    lay = sr._Layout(root)
+    if policy == "rehearsal":
+        if os.path.realpath(root) != os.path.realpath(sr.DEFAULT_ROOT) or str(lay.root) != os.path.realpath(sr.DEFAULT_ROOT):
+            raise MirrorError(f"the rehearsal policy only ever targets the rehearsal root {sr.DEFAULT_ROOT}")
+        if port != sr.DEFAULT_PORT:
+            raise MirrorError(f"the rehearsal policy only ever targets port {sr.DEFAULT_PORT}")
+        if sr.read_marker(root) is None or not (lay.data / "PG_VERSION").is_file():
+            raise MirrorError("the rehearsal cluster must already exist with a valid ownership marker: the baseline builder never initialises it")
+        import pwd  # noqa: PLC0415
+        try:
+            data_owner = pwd.getpwuid(lay.data.stat().st_uid).pw_name
+        except (OSError, KeyError) as exc:
+            raise MirrorError(f"cannot determine the owner of {lay.data}") from exc
+        want_owner = owner or sr._user()
+        if data_owner != want_owner or lay.data.stat().st_uid != os.getuid():
+            raise MirrorError(f"the data directory {lay.data} is owned by {data_owner!r}, not by {want_owner!r} running as this user")
+    else:
+        if port in sr.FORBIDDEN_PORTS or port == sr.DEFAULT_PORT:
+            raise MirrorError(f"port {port} is never used for a disposable baseline")
+        sr.init_cluster(root, port=port, pg_bin=pg_bin)
     st = sr.start_cluster(root, pg_bin=pg_bin)
     if st.get("state") != "running":
         raise MirrorError(f"cluster at {root} is not running: {st}")
-    lay = sr._Layout(root)
     t0 = Target(pg_bin=pg_bin, host=str(lay.sock), port=port, user=sr._user(), db="postgres", policy=policy)
-    p = run_psql(t0, sql=f"SELECT 1 FROM pg_database WHERE datname = '{db}'", on_error_stop=True, timeout=60)
+    p = run_psql(t0, sql=f"SELECT 1 FROM pg_database WHERE datname = {_quote_lit(db)}", on_error_stop=True, timeout=60)
     if p.returncode != 0:
         raise MirrorError(f"cannot reach the harness cluster: {p.stderr.strip()[:200]}")
     if not p.stdout.strip():
-        c = run_psql(t0, sql=f'CREATE DATABASE "{db}"', on_error_stop=True, timeout=60)
+        c = run_psql(t0, sql=f"CREATE DATABASE {_quote_ident(db)}", on_error_stop=True, timeout=60)
         if c.returncode != 0:
             raise MirrorError(f"CREATE DATABASE failed: {c.stderr.strip()[:200]}")
-    return Target(pg_bin=pg_bin, host=str(lay.sock), port=port, user=sr._user(), db=db, policy=policy,
-                  expect={"data_directory": str(lay.data), "port": port})
+    elif not allow_existing_db:
+        n = run_psql(t0, sql="SELECT count(*) FROM pg_tables WHERE schemaname = 'public'", on_error_stop=True, db=db, timeout=60)
+        if n.returncode != 0 or n.stdout.strip() != "0":
+            raise MirrorError(f"database {db} already exists and is not empty: refusing to restore a mirror over it (use a fresh name)")
+    expect = ({"data_directory": str(lay.data), "port": port} if policy == "disposable"
+              else {"data_directory": f"{sr.DEFAULT_ROOT}/pg", "port": sr.DEFAULT_PORT})
+    return Target(pg_bin=pg_bin, host=str(lay.sock), port=port, user=sr._user(), db=db, policy=policy, expect=expect,
+                  started=st.get("result") == "started")
 
 
 # ═════════════════════════ 1c. verification of the restored schema ═════════════════════════
@@ -325,6 +386,9 @@ def build_mirror_baseline(recipe_dir: str | Path, scratch_dir: str | Path, targe
     """Restore the production-faithful schema from the READ-ONLY recipe onto `target` (a cluster this harness started) and verify it.
     Steps (STEP_ORDER): copy_recipe, schema_only_check, extensions, roles, schema, sequences, seed_fixes (L1 data-plane fixes: SKIPPED unless
     `with_l1_fixes`), verify. NO production access. Returns the closed-schema document (`validate_baseline`)."""
+    validate_db_name(target.db, target.policy)                  # before ANY file is copied, restore run or database touched
+    if target.port in sr.FORBIDDEN_PORTS:
+        raise MirrorError(f"port {target.port} is never targeted")
     decls = decls or fd.load_declarations()
     extract = extract or fd.load_schema_extract()
     steps: list[dict] = []
@@ -485,6 +549,7 @@ def write_json(doc: Mapping, path: str | Path) -> str:
 OUTPUT_KEYS = ("schema", "side", "stage", "definition", "declarations_sha256", "commit", "as_of", "rebuild", "tables", "fingerprints")
 SIDES = ("production", "rehearsal")
 STAGES = ("baseline", "after_rebuild", "production_read")
+BUILD_RECORD_SCHEMA = "suvarna-build-record/v1"
 
 
 def _iso_date(v: Any) -> bool:
@@ -494,24 +559,41 @@ def _iso_date(v: Any) -> bool:
         return False
 
 
-def rehearsal_fingerprints(conn: Any, decls: fd.Declarations, *, stage: str, as_of: str, commit: str, assets: Sequence[str] | None = None,
+def real_uuid(v: Any) -> bool:
+    """A real, canonical (lower-case, hyphenated) RFC 4122 UUID of version 1-8: refuses the nil / all-zero id, `-`*36, anything that only
+    looks like one."""
+    if not isinstance(v, str):
+        return False
+    try:
+        u = uuid.UUID(v)
+    except ValueError:
+        return False
+    return str(u) == v and u.variant == uuid.RFC_4122 and u.version in range(1, 9)
+
+
+def _receipt_ok(rebuild: Any) -> bool:
+    return (isinstance(rebuild, Mapping) and set(rebuild) == {"run_id", "orchestrator_commit"} and real_uuid(rebuild["run_id"])
+            and isinstance(rebuild["orchestrator_commit"], str) and bool(HEX40.fullmatch(rebuild["orchestrator_commit"])))
+
+
+def rehearsal_fingerprints(conn: Any, decls: fd.Declarations, *, stage: str, as_of: str, commit: str, units: Sequence[str] | None = None,
                            rebuild: Mapping | None = None) -> dict:
-    """The rehearsal side: per declared asset per table {sha256, rows} + the composite, through an open connection (open it with
-    `sr.connect_checked`), in a READ ONLY transaction. stage `after_rebuild` must carry `rebuild` {run_id, orchestrator_commit}: a file
-    cannot claim a rebuild it has no receipt for. Declared assets only: an undeclared one is refused by `asset_fingerprints`."""
+    """The rehearsal side: per comparison unit per table {sha256, rows} + the composite, through an open connection (open it with
+    `sr.connect_checked`), in a READ ONLY transaction. stage `after_rebuild` must carry `rebuild` {run_id (a real UUID), orchestrator_commit}:
+    a file cannot claim a rebuild it has no receipt for (and the receipt is only SHAPE-checked until a build record verifies it, see
+    `verify_rebuild_receipt`). An undeclared asset is refused by `unit_fingerprints`."""
     if stage not in ("baseline", "after_rebuild"):
         raise MirrorError("stage must be 'baseline' or 'after_rebuild'")
     if not _iso_date(as_of) or not (isinstance(commit, str) and HEX40.fullmatch(commit)):
         raise MirrorError("as_of must be YYYY-MM-DD and commit 40-hex")
     if (stage == "after_rebuild") != (rebuild is not None):
         raise MirrorError("stage after_rebuild needs a rebuild receipt, and a baseline stage must not carry one")
-    if rebuild is not None and not (isinstance(rebuild, Mapping) and set(rebuild) == {"run_id", "orchestrator_commit"}
-                                    and re.fullmatch(r"[0-9a-f-]{36}", str(rebuild["run_id"])) and HEX40.fullmatch(str(rebuild["orchestrator_commit"]))):
-        raise MirrorError("rebuild must be exactly {run_id (uuid), orchestrator_commit (40-hex)}")
+    if rebuild is not None and not _receipt_ok(rebuild):
+        raise MirrorError("rebuild must be exactly {run_id (a real UUID: not nil, not all-zero), orchestrator_commit (40-hex)}")
     conn.rollback()                                # the identity check left a transaction open; read_only can only be set outside one
     conn.read_only = True
     try:
-        r = fd.asset_fingerprints(conn, decls, assets, cursor_prefix="e57")
+        r = fd.unit_fingerprints(conn, decls, units, cursor_prefix="e57")
     finally:
         with contextlib.suppress(Exception):
             conn.rollback()
@@ -522,8 +604,9 @@ def rehearsal_fingerprints(conn: Any, decls: fd.Declarations, *, stage: str, as_
 
 def validate_fingerprint_output(doc: Any, decls: fd.Declarations, *, side: str) -> list[str]:
     """Problems with a fingerprint-output document of `side` ([] = valid). The production reader's file and the rehearsal file are held to the
-    same rules: closed keys, the one definition, THIS declarations file's sha256, only declared assets and exactly their declared tables,
-    well-formed {sha256, rows}, and every asset fingerprint equal to the composition of its table fingerprints (recomputed, never trusted)."""
+    same rules: closed keys, the one definition, THIS declarations file's sha256, only comparison units and exactly their declared tables,
+    well-formed {sha256, rows}, every unit fingerprint equal to the composition of its table fingerprints (recomputed, never trusted), and
+    row counts that agree with the hashes (an empty table hashes to one known value; a non-empty table never does)."""
     if side not in SIDES:
         raise MirrorError(f"side must be one of {SIDES}")
     if not isinstance(doc, Mapping) or set(doc) != set(OUTPUT_KEYS):
@@ -547,20 +630,20 @@ def validate_fingerprint_output(doc: Any, decls: fd.Declarations, *, side: str) 
     if side == "rehearsal":
         if (doc["stage"] == "after_rebuild") != (doc["rebuild"] is not None):
             p.append("an after_rebuild file needs a rebuild receipt and a baseline file must not have one")
-        if doc["rebuild"] is not None and not (isinstance(doc["rebuild"], Mapping) and set(doc["rebuild"]) == {"run_id", "orchestrator_commit"}):
-            p.append("rebuild must be exactly {run_id, orchestrator_commit}")
+        if doc["rebuild"] is not None and not _receipt_ok(doc["rebuild"]):
+            p.append("rebuild must be exactly {run_id (a real UUID), orchestrator_commit (40-hex)}")
     elif doc["rebuild"] is not None:
         p.append("a production file has no rebuild receipt")
     tabs, fps = doc["tables"], doc["fingerprints"]
     if not (isinstance(tabs, Mapping) and isinstance(fps, Mapping)):
         return p + ["tables and fingerprints must be objects"]
-    declared = set(decls.declared_assets())
+    units = set(decls.expected_assets())
     for a in sorted(set(tabs) | set(fps)):
-        if a not in declared:
-            p.append(f"{a}: not a declared asset (undeclared and unknown assets are refused, never compared)")
-    if set(tabs) != set(fps):
-        p.append("tables and fingerprints must cover the same assets")
-    for a in sorted(set(tabs) & declared):
+        if a not in units:
+            p.append(f"{a}: not a comparison unit (undeclared and unknown assets are refused, never compared)")
+    for a in sorted(set(tabs) ^ set(fps)):
+        p.append(f"{a}: present in {'tables' if a in tabs else 'fingerprints'} only: tables and fingerprints must cover the same units")
+    for a in sorted(set(tabs) & set(fps) & units):
         t = tabs[a]
         if not (isinstance(t, Mapping) and set(t) == set(decls.tables(a))):
             p.append(f"{a}: tables must be exactly {decls.tables(a)}")
@@ -571,8 +654,44 @@ def validate_fingerprint_output(doc: Any, decls: fd.Declarations, *, side: str) 
                     and isinstance(m["rows"], int) and not isinstance(m["rows"], bool) and m["rows"] >= 0):
                 p.append(f"{a}.{name}: must be {{sha256, rows}}")
                 ok = False
+                continue
+            empty = fd.empty_table_fingerprint(decls, a, name)
+            if m["rows"] > 0 and m["sha256"] == empty:
+                p.append(f"{a}.{name}: rows={m['rows']} but the fingerprint is the empty-table fingerprint: the row count and the hash disagree")
+                ok = False
+            elif m["rows"] == 0 and m["sha256"] != empty:
+                p.append(f"{a}.{name}: rows=0 but the fingerprint is not the empty-table fingerprint: the row count and the hash disagree")
+                ok = False
         if ok and fps.get(a) != fd.composite_fingerprint({n: m["sha256"] for n, m in t.items()}):
-            p.append(f"{a}: the asset fingerprint is not the composition of its table fingerprints")
+            p.append(f"{a}: the unit fingerprint is not the composition of its table fingerprints")
+    return p
+
+
+def verify_rebuild_receipt(receipt: Any, record: Any, decls: fd.Declarations) -> list[str]:
+    """Problems verifying a rehearsal rebuild receipt {run_id, orchestrator_commit} against an orchestrator BUILD RECORD the harness can read
+    offline (`suvarna-build-record/v1`: a read-only export of the run's `build_runs` / `build_run_assets` rows: {schema, run_id, state
+    'completed', orchestrator_commit, assets: [{asset_id, state 'complete'}]}). [] = the receipt matches a completed run that built every
+    declared asset at the receipt's commit. Without such a record a receipt is only a claim."""
+    p: list[str] = []
+    if not _receipt_ok(receipt):
+        return ["the receipt is not {run_id (a real UUID), orchestrator_commit (40-hex)}"]
+    if not (isinstance(record, Mapping) and set(record) == {"schema", "run_id", "state", "orchestrator_commit", "assets"}):
+        return ["the build record is not an object with exactly {schema, run_id, state, orchestrator_commit, assets}"]
+    if record["schema"] != BUILD_RECORD_SCHEMA:
+        p.append("build record schema id differs")
+    if not real_uuid(record["run_id"]) or record["run_id"] != receipt["run_id"]:
+        p.append("the build record's run_id is not the receipt's run_id")
+    if record["state"] != "completed":
+        p.append(f"the build record's run state is {record['state']!r}, not 'completed'")
+    if record["orchestrator_commit"] != receipt["orchestrator_commit"]:
+        p.append("the build record was made at a different orchestrator commit than the receipt claims")
+    assets = record["assets"]
+    if not (isinstance(assets, list) and all(isinstance(x, Mapping) and set(x) == {"asset_id", "state"} for x in assets)):
+        return p + ["the build record's assets must be a list of {asset_id, state}"]
+    built = {x["asset_id"] for x in assets if x["state"] == "complete"}
+    missing = sorted(set(decls.declared_assets()) - built)
+    if missing:
+        p.append(f"the build record does not show these declared assets complete: {missing}")
     return p
 
 
@@ -581,20 +700,29 @@ def validate_fingerprint_output(doc: Any, decls: fd.Declarations, *, side: str) 
 def reader_spec(decls: fd.Declarations) -> dict:
     """Exactly what the production-side reader runs (as `suvarna_reader`, by the `suvarna` user; never here): one READ ONLY transaction, one
     server-side cursor per table issuing the SELECT below (E5.5's `build_select` of the declaration), rows consumed in-process by
-    `nikasha_stale_certs.fingerprint_rows`; the output file (`suvarna-l0-fingerprints/v1`, side production) holds aggregates only."""
+    `nikasha_stale_certs.fingerprint_rows`; the output file (`suvarna-l0-fingerprints/v1`, side production) holds aggregates only. The units are
+    the comparison units: assets with tables of their own and one `grp_<id>` per shared-table group."""
     return {"definition": fd.FINGERPRINT_DEFINITION, "declarations_sha256": decls.sha256, "role": "suvarna_reader",
             "transaction": "SET TRANSACTION READ ONLY (statement_timeout and lock_timeout are the role's own)",
-            "fingerprint": "nikasha_stale_certs.fingerprint_rows(rows, declaration) per table; asset = fingerprint_declarations.composite_fingerprint",
+            "fingerprint": "nikasha_stale_certs.fingerprint_rows(rows, declaration) per table; unit = fingerprint_declarations.composite_fingerprint",
             "output": {"schema": OUTPUT_SCHEMA, "side": "production", "stage": "production_read", "contains": "aggregates only: per table sha256 and rows"},
             "selects": fd.reader_selects(decls), "ownership_probes": [dict(x) for x in OWNERSHIP_PROBES],
-            "undeclared": decls.undeclared_assets()}
+            "probe_results": "00_ARCHITECTURE/control/FINGERPRINT_OWNERSHIP_PROBES_2026-10-03.txt",
+            "undeclared": decls.undeclared_assets(), "groups": decls.drill_coverage()["groups"],
+            "expected_differences": decls.expected_differences()}
 
 
 # ═════════════════════════ 4. compare (the existing E5.7 comparison) and status ═════════════════════════
 
+def _rows_of(doc: Mapping, unit: str) -> dict | None:
+    t = doc["tables"].get(unit)
+    return {n: m["rows"] for n, m in t.items()} if t else None
+
+
 def build_drill(production: Mapping, rehearsal: Mapping, decls: fd.Declarations, explained: Mapping | None, *, commit: str) -> tuple[dict, dict]:
-    """Validate both sides, require the same as-of pin and an after_rebuild rehearsal, then apply `suvarna_rehearsal.compare_fingerprint_sets`
-    over expected_assets = the DECLARED assets. Returns (drill document, coverage report). Raises MirrorError listing every problem."""
+    """Validate both sides, require the same as-of pin and an after_rebuild rehearsal, then apply `suvarna_rehearsal.compare_fingerprint_sets` over
+    expected_assets = the comparison units (declared assets with tables + one unit per group), with the declarations' `coverage` block and both
+    sides' row counts embedded in the drill document. Returns (drill document, coverage report). Raises MirrorError listing every problem."""
     problems = [f"production: {x}" for x in validate_fingerprint_output(production, decls, side="production")]
     problems += [f"rehearsal: {x}" for x in validate_fingerprint_output(rehearsal, decls, side="rehearsal")]
     if not problems:
@@ -606,48 +734,75 @@ def build_drill(production: Mapping, rehearsal: Mapping, decls: fd.Declarations,
             problems.append("the rebuild's orchestrator_commit is not the evidence commit")
     if problems:
         raise MirrorError("; ".join(problems))
+    rows = {u: {"production": _rows_of(production, u), "rehearsal": _rows_of(rehearsal, u)}
+            for u in sorted(set(production["tables"]) | set(rehearsal["tables"]))}
     drill = sr.compare_fingerprint_sets(sr.fingerprint_set(production["fingerprints"]), sr.fingerprint_set(rehearsal["fingerprints"]), explained,
-                                        expected_assets=decls.expected_assets(), commit=commit)
+                                        expected_assets=decls.expected_assets(), commit=commit, coverage=decls.drill_coverage(), rows=rows)
     cov = decls.coverage_report()
-    cov["differences_with_hints"] = [{"asset": d["asset"], "kind": d["kind"], "reproducibility": decls.reproducibility(d["asset"]),
-                                      "table_notes": {t["name"]: t["notes"] for t in decls.assets[d["asset"]]["tables"] if t.get("notes")}}
+    differing = {d["asset"]: d for d in drill["differences"]}
+    unit_status: dict[str, dict] = {}
+    for u in decls.expected_assets():
+        st = ("equal" if u in drill["equal"] else "empty_both_sides" if u in drill["empty_both_sides"] else differing[u]["kind"] if u in differing
+              else "uncovered")
+        unit_status[u] = {"status": st, "members": decls.members(u)}
+    cov["unit_status"] = unit_status
+    cov["differences_with_hints"] = [{"asset": d["asset"], "kind": d["kind"], "members": decls.members(d["asset"]),
+                                      "reproducibility": decls.reproducibility(d["asset"]),
+                                      "table_notes": {t["name"]: t["notes"] for t in decls._unit_tables(d["asset"]) if t.get("notes")}}
                                      for d in drill["differences"]]
+    cov["expected_differences_status"] = [{**e, "status": "observed" if e["unit"] in differing else "not_observed",
+                                           "hint": ("explain it (reason code production_ahead_of_commit, an SS decision id)" if e["unit"] in differing else
+                                                    "the unit did not differ: if the referenced change has landed, remove this record")}
+                                          for e in decls.expected_differences()]
+    cov["empty_both_sides"] = list(drill["empty_both_sides"])
     cov["as_of"] = production["as_of"]
-    cov["note"] = "undeclared assets are NOT in expected_assets: they are reported here, not compared"
+    cov["result"] = drill["result"]
+    cov["note"] = "undeclared assets are NOT in expected_assets: they are reported here and in the drill's coverage block, not compared"
     return drill, cov
 
 
-def drill_status(decls: fd.Declarations, *, baseline: Any = None, production: Any = None, rehearsal: Any = None) -> dict:
-    """Which steps are measured and which are UNMEASURED (with the NEEDS_* reason). Nothing here is ever PASS."""
+def drill_status(decls: fd.Declarations, *, baseline: Any = None, production: Any = None, rehearsal: Any = None, build_record: Any = None) -> dict:
+    """Which steps are measured and which are not. A step is MEASURED only when this module recomputed it from the declarations; a file that
+    merely has the right SHAPE is SHAPE_CHECKED, a rehearsal rebuild receipt without a verifying build record is CLAIMED_UNVERIFIED, and
+    everything that needs an outside actor is UNMEASURED with its NEEDS_* reason. The result is therefore always UNMEASURED today: this
+    function can never say a drill is done."""
     steps: list[dict] = [{"step": "declarations", "state": "MEASURED", "detail": {"declared": len(decls.declared_assets()),
                                                                                   "undeclared": len(decls.undeclared_assets()),
-                                                                                  "sha256": decls.sha256}}]
+                                                                                  "units": len(decls.expected_assets()), "sha256": decls.sha256}}]
     bprob = validate_baseline(baseline) if baseline is not None else None
     if baseline is not None and not bprob and baseline["result"] == "PASS":
-        steps.append({"step": "mirror_baseline", "state": "MEASURED", "detail": {"result": "PASS"}})
+        steps.append({"step": "mirror_baseline", "state": "SHAPE_CHECKED", "detail": {"result": "PASS", "note": "the file validates; the restore was not re-run"}})
     else:
-        steps.append({"step": "mirror_baseline", "state": "UNMEASURED", "reason": NEEDS["baseline"],
-                      "detail": {"problems": bprob} if bprob else {}})
+        steps.append({"step": "mirror_baseline", "state": "UNMEASURED", "reason": NEEDS["baseline"], "detail": {"problems": bprob} if bprob else {}})
     steps.append({"step": "text_seed", "state": "UNMEASURED", "reason": NEEDS["text_seed"]})
     reh_p = validate_fingerprint_output(rehearsal, decls, side="rehearsal") if rehearsal is not None else None
     if rehearsal is not None and not reh_p and rehearsal["stage"] == "after_rebuild":
-        steps.append({"step": "rehearsal_l0_rebuild", "state": "MEASURED", "detail": {"run_id": rehearsal["rebuild"]["run_id"]}})
+        rprob = verify_rebuild_receipt(rehearsal["rebuild"], build_record, decls) if build_record is not None else ["no build record supplied"]
+        if not rprob:
+            steps.append({"step": "rehearsal_l0_rebuild", "state": "MEASURED", "detail": {"run_id": rehearsal["rebuild"]["run_id"],
+                                                                                           "verified_against": BUILD_RECORD_SCHEMA}})
+        else:
+            steps.append({"step": "rehearsal_l0_rebuild", "state": "CLAIMED_UNVERIFIED", "reason": NEEDS["rebuild"],
+                          "detail": {"run_id": rehearsal["rebuild"]["run_id"], "unverified_because": rprob}})
     else:
         steps.append({"step": "rehearsal_l0_rebuild", "state": "UNMEASURED", "reason": NEEDS["rebuild"], "detail": {"problems": reh_p} if reh_p else {}})
     prod_p = validate_fingerprint_output(production, decls, side="production") if production is not None else None
     if production is not None and not prod_p:
-        steps.append({"step": "production_fingerprints", "state": "MEASURED", "detail": {"assets": len(production["fingerprints"])}})
+        steps.append({"step": "production_fingerprints", "state": "SHAPE_CHECKED",
+                      "detail": {"units": len(production["fingerprints"]), "note": "a file written by the reader: shape and consistency only, not re-read"}})
     else:
         steps.append({"step": "production_fingerprints", "state": "UNMEASURED", "reason": NEEDS["production"], "detail": {"problems": prod_p} if prod_p else {}})
     steps.append({"step": "linux_amd64_runtime", "state": "UNMEASURED", "reason": NEEDS["linux"],
-                  "detail": {"assets": sorted(a for a in decls.declared_assets() if "platform_bound" in decls.reproducibility(a))}})
-    steps.append({"step": "as_of_pin", "state": "MEASURED" if (production is not None and rehearsal is not None and not prod_p and not reh_p
-                                                                 and production["as_of"] == rehearsal["as_of"]) else "UNMEASURED",
-                  **({} if (production is not None and rehearsal is not None and not prod_p and not reh_p and production["as_of"] == rehearsal["as_of"])
-                     else {"reason": NEEDS["as_of"]}),
-                  "detail": {"rolling_horizon_assets": sorted(a for a in decls.declared_assets() if "rolling_horizon" in decls.reproducibility(a))}})
+                  "detail": {"units": sorted(u for u, v in decls.units().items() if "platform_bound" in v["reproducibility"])}})
+    pinned = production is not None and rehearsal is not None and not prod_p and not reh_p and production["as_of"] == rehearsal["as_of"]
+    rolling = sorted(u for u, v in decls.units().items() if "rolling_horizon" in v["reproducibility"])
+    if pinned:
+        steps.append({"step": "as_of_pin", "state": "SHAPE_CHECKED", "detail": {"as_of": production["as_of"], "rolling_horizon_units": rolling,
+                                                                               "note": "both files carry the same date; nothing proves the window was applied"}})
+    else:
+        steps.append({"step": "as_of_pin", "state": "UNMEASURED", "reason": NEEDS["as_of"], "detail": {"rolling_horizon_units": rolling}})
     steps.append({"step": "ss_decisions", "state": "UNMEASURED", "reason": NEEDS["decisions"]})
-    return {"result": "UNMEASURED" if any(s["state"] == "UNMEASURED" for s in steps) else "COMPLETE_INPUTS", "steps": steps}
+    return {"result": "UNMEASURED", "steps": steps}
 
 
 # ═════════════════════════ CLI ═════════════════════════
@@ -657,7 +812,7 @@ def _print(obj: Any) -> None:
 
 
 def _rd(path: str | Path) -> Any:
-    return json.loads(Path(path).read_text(encoding="utf-8"))
+    return fd.strict_loads(Path(path).read_text(encoding="utf-8"))      # duplicate keys, NaN and Infinity are refused
 
 
 def main(argv: Sequence[str] | None = None) -> int:
@@ -667,11 +822,15 @@ def main(argv: Sequence[str] | None = None) -> int:
         s = sub.add_parser(name)
         s.add_argument("--declarations", default=str(fd.DEFAULT_DECLARATIONS))
     b = sub.add_parser("baseline")
-    b.add_argument("--recipe", default=str(DEFAULT_RECIPE))
+    b.add_argument("--recipe", default=os.environ.get(RECIPE_ENV), help=f"the mirror recipe directory (default: ${RECIPE_ENV})")
     b.add_argument("--scratch", required=True)
     b.add_argument("--root", required=True)
     b.add_argument("--port", type=int, required=True)
-    b.add_argument("--db", default="suvarna_disposable_mirror")
+    b.add_argument("--policy", choices=("disposable", "rehearsal"), default="disposable")
+    b.add_argument("--db", default=None, help="default: suvarna_disposable_mirror (disposable) / rehearsal_mirror (rehearsal)")
+    b.add_argument("--owner", help="rehearsal policy: the OS user that must own the data directory (explicit pin)")
+    b.add_argument("--data-directory", help="rehearsal policy: must equal <root>/pg (explicit pin)")
+    b.add_argument("--allow-existing-db", action="store_true")
     b.add_argument("--pg-bin", default=sr.DEFAULT_PG_BIN)
     b.add_argument("--with-l1-fixes", action="store_true")
     b.add_argument("--keep-running", action="store_true")
@@ -702,18 +861,41 @@ def main(argv: Sequence[str] | None = None) -> int:
     st.add_argument("--baseline")
     st.add_argument("--production")
     st.add_argument("--rehearsal")
+    st.add_argument("--build-record")
     st.add_argument("--declarations", default=str(fd.DEFAULT_DECLARATIONS))
     a = ap.parse_args(argv)
     try:
         if a.cmd == "validate-baseline":
             try:
                 doc = _rd(a.path)
-            except (OSError, ValueError) as exc:
+            except (OSError, ValueError, fd.DeclarationError) as exc:
                 _print({"valid": False, "problems": [f"unreadable baseline file ({type(exc).__name__})"]})
                 return 2
             probs = validate_baseline(doc)
             _print({"valid": not probs, "problems": probs})
             return 0 if not probs else 2
+        if a.cmd == "baseline":
+            policy = a.policy
+            db = validate_db_name(a.db or ("suvarna_disposable_mirror" if policy == "disposable" else "rehearsal_mirror"), policy)   # before anything else
+            if not a.recipe:
+                raise MirrorError(f"no recipe directory: pass --recipe or set ${RECIPE_ENV}")
+            if policy == "rehearsal":
+                if not a.owner or not a.data_directory:
+                    raise MirrorError("the rehearsal policy needs the explicit pins --owner and --data-directory")
+                if os.path.realpath(a.data_directory) != os.path.realpath(os.path.join(a.root, "pg")):
+                    raise MirrorError("--data-directory must be <root>/pg")
+            decls = fd.load_declarations(a.declarations)
+            root = Path(os.path.realpath(a.root))
+            t = harness_target(root, db=db, port=a.port, pg_bin=a.pg_bin, policy=policy, owner=a.owner, allow_existing_db=a.allow_existing_db)
+            try:
+                doc = build_mirror_baseline(a.recipe, a.scratch, t, decls=decls, extract=fd.load_schema_extract(a.schema_extract),
+                                            with_l1_fixes=a.with_l1_fixes)
+            finally:
+                if t.started and not a.keep_running:
+                    sr.stop_cluster(root, pg_bin=a.pg_bin)
+            write_json(doc, a.out)
+            _print({"result": doc["result"], "steps": {s["name"]: s["status"] for s in doc["steps"]}, "problems": doc["verification"]["problems"][:20]})
+            return 0 if doc["result"] == "PASS" else 4
         decls = fd.load_declarations(a.declarations)
         if a.cmd == "expected":
             _print({"expected_assets": decls.expected_assets(), **decls.coverage_report()})
@@ -721,18 +903,6 @@ def main(argv: Sequence[str] | None = None) -> int:
         if a.cmd == "reader-spec":
             _print(reader_spec(decls))
             return 0
-        if a.cmd == "baseline":
-            root = Path(os.path.realpath(a.root))
-            t = harness_target(root, db=a.db, port=a.port, pg_bin=a.pg_bin)
-            try:
-                doc = build_mirror_baseline(a.recipe, a.scratch, t, decls=decls, extract=fd.load_schema_extract(a.schema_extract),
-                                            with_l1_fixes=a.with_l1_fixes)
-            finally:
-                if not a.keep_running:
-                    sr.stop_cluster(root, pg_bin=a.pg_bin)
-            write_json(doc, a.out)
-            _print({"result": doc["result"], "steps": {s["name"]: s["status"] for s in doc["steps"]}, "problems": doc["verification"]["problems"][:20]})
-            return 0 if doc["result"] == "PASS" else 4
         if a.cmd == "rehearsal-fingerprints":
             expect = {"data_directory": a.data_directory, "port": urlport(a.url)} if a.policy == "disposable" else None
             log = sr.ConnectionLog()
@@ -743,19 +913,21 @@ def main(argv: Sequence[str] | None = None) -> int:
             finally:
                 conn.close()
             write_json(doc, a.out)
-            _print({"written": a.out, "assets": len(doc["fingerprints"]), "connections": log.snapshot()})
+            _print({"written": a.out, "units": len(doc["fingerprints"]), "connections": log.snapshot()})
             return 0
         if a.cmd == "compare":
             drill, cov = build_drill(_rd(a.production), _rd(a.rehearsal), decls, _rd(a.explained) if a.explained else None, commit=a.commit)
             write_json(drill, a.out)
             cov_path = str(a.out) + ".coverage.json"
             write_json(cov, cov_path)
-            _print({"result": drill["result"], "differences": len(drill["differences"]), "unexplained": drill["unexplained"],
-                    "coverage_report": cov_path, "undeclared": sorted(cov["undeclared"]), "partial": sorted(cov["partial"])})
-            return 0 if drill["result"] == "PASS" else 4
+            _print({"result": drill["result"], "scope": drill["coverage"]["scope"], "differences": len(drill["differences"]),
+                    "unexplained": drill["unexplained"], "empty_both_sides": drill["empty_both_sides"], "coverage_report": cov_path,
+                    "undeclared": sorted(cov["undeclared"]), "partial": sorted(cov["partial"]), "groups": cov["groups"],
+                    "expected_differences": cov["expected_differences_status"]})
+            return 0 if drill["result"] in sr.RESULTS_PASS else 4
         if a.cmd == "status":
             _print(drill_status(decls, baseline=_rd(a.baseline) if a.baseline else None, production=_rd(a.production) if a.production else None,
-                                rehearsal=_rd(a.rehearsal) if a.rehearsal else None))
+                                rehearsal=_rd(a.rehearsal) if a.rehearsal else None, build_record=_rd(a.build_record) if a.build_record else None))
             return 0
         raise AssertionError(a.cmd)
     except (sr.RehearsalError, fd.DeclarationError) as exc:

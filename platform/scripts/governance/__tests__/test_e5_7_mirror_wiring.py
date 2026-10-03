@@ -55,9 +55,9 @@ def _table(name, key, key_ev, exclude=(), naive=()):
             "write_evidence": ["x.py:1"]}
 
 
-def _declared(tables, *, reproducibility=("deterministic",), notcov=()):
+def _declared(tables, *, reproducibility=("deterministic",), notcov=(), groups=()):
     return {"status": "declared", "fingerprint_definition": fd.FINGERPRINT_DEFINITION, "scope": "global",
-            "coverage": "partial" if notcov else "full", "reproducibility": list(reproducibility), "tables": tables,
+            "coverage": "partial" if notcov else "full", "reproducibility": list(reproducibility), "groups": list(groups), "tables": tables,
             "not_covered_tables": [{"name": n, "reason": "r" * 70, "evidence": ["x.py:1"]} for n in notcov]}
 
 
@@ -67,13 +67,18 @@ def syn_doc():
     a["a_roll"] = _declared([_table("syn_roll", ["k"], "primary_key:syn_roll_pk", [("computed_at", "wall_clock_timestamp")])],
                             reproducibility=("rolling_horizon", "platform_bound"))
     a["a_part"] = _declared([_table("syn_p", ["k"], "primary_key:syn_p_pk")], notcov=("syn_shared",))
+    a["a_gm1"] = _declared([], groups=("g_shared",))
+    a["a_gm2"] = _declared([], groups=("g_shared",))
     a["a_und"] = {"status": "undeclared", "reason_code": "shared_table", "tables_written": ["syn_shared"], "evidence": ["x.py:1"],
                   "reason": "a shared table written by two assets: no row filter exists, so neither can be fingerprinted alone"}
     a["a_svc"] = {"status": "undeclared", "reason_code": "no_table", "tables_written": [], "evidence": [],
                   "reason": "a service asset: it owns no stored rows, so there is nothing to fingerprint at all here"}
     return {"schema": fd.SCHEMA_ID, "fingerprint_definition": fd.FINGERPRINT_DEFINITION, "layer": "L0", "scope": "global",
             "source": {"registry_snapshot": "x", "registry_snapshot_sha256": "0" * 64, "schema_dump": "x", "schema_dump_sha256": "0" * 64,
-                       "code_commit": SHA40}, "assets": a}
+                       "code_commit": SHA40},
+            "groups": {"g_shared": {"tables": [_table("syn_g", ["k"], "primary_key:syn_g_pk", [("id", "surrogate_identity")])],
+                                    "members": {"a_gm1": ["x.py:1"], "a_gm2": ["x.py:1"]}, "reproducibility": ["deterministic"]}},
+            "assets": a}
 
 
 def syn_decls(sha="7" * 64):
@@ -141,6 +146,7 @@ def syn_baseline_decls():
                             _table("syn_two_b", ["k", "n"], "unique:syn_two_b_u", [("id", "surrogate_identity")])]),
     }
     doc["assets"] = {**keep, "a_svc": doc["assets"]["a_svc"]}
+    doc["groups"] = {}
     assert fd.validate(doc, registry=None, schema=None, repo_root=None) == []
     return fd.Declarations(doc=doc, sha256="9" * 64)
 
@@ -464,7 +470,7 @@ def test_baseline_validator_never_raises_on_garbage():
 
 def _tables_for(decls, assets=None, *, seed=0):
     out = {}
-    for a in (assets or decls.declared_assets()):
+    for a in (assets or decls.expected_assets()):
         out[a] = {t: {"sha256": hashlib.sha256(f"{a}|{t}|{seed}".encode()).hexdigest(), "rows": 5} for t in decls.tables(a)}
     return out
 
@@ -496,7 +502,7 @@ def test_rehearsal_fingerprints_on_the_cluster_match_the_declarations_loader_and
             with pytest.raises(Exception):                                         # the connection is read-only: a write is refused
                 conn.execute("INSERT INTO syn_two_a VALUES ('zz', '{}')")
             conn.rollback()
-            direct = fd.asset_fingerprints(conn, decls)
+            direct = fd.unit_fingerprints(conn, decls)
         finally:
             conn.close()
         assert doc["fingerprints"] == direct["fingerprints"] and doc["tables"] == direct["tables"] and doc["stage"] == "baseline"
@@ -553,6 +559,14 @@ def _o(mutate, side="production", **kw):
     ("undeclared_asset", lambda d: (d["tables"].update({"a_und": {}}), d["fingerprints"].update({"a_und": H})), "production"),
     ("unknown_asset", lambda d: (d["tables"].update({"nope": {}}), d["fingerprints"].update({"nope": H})), "production"),
     ("tables_without_fingerprint", lambda d: d["fingerprints"].pop("a_0"), "production"),
+    ("fingerprint_without_tables", lambda d: d["tables"].pop("a_1"), "production"),
+    ("fingerprint_without_tables_rehearsal", lambda d: d["tables"].pop("a_1"), "rehearsal"),
+    ("group_member_as_unit", lambda d: (d["tables"].update({"a_gm1": {}}), d["fingerprints"].update({"a_gm1": H})), "production"),
+    ("empty_hash_with_rows", lambda d: (d["tables"]["a_0"]["syn_t0"].update(sha256=fd.empty_table_fingerprint(D5, "a_0", "syn_t0")),
+                                        d["fingerprints"].update(a_0=fd.empty_table_fingerprint(D5, "a_0", "syn_t0"))), "production"),
+    ("zero_rows_with_data_hash", lambda d: d["tables"]["a_0"]["syn_t0"].update(rows=0), "production"),
+    ("nil_run_id", lambda d: d["rebuild"].update(run_id="00000000-0000-0000-0000-000000000000"), "rehearsal"),
+    ("dash_run_id", lambda d: d["rebuild"].update(run_id="-" * 36), "rehearsal"),
     ("missing_table", lambda d: d["tables"]["a_multi"].pop("syn_m2"), "production"),
     ("extra_table", lambda d: d["tables"]["a_0"].update({"extra": {"sha256": H, "rows": 1}}), "production"),
     ("bad_table_sha", lambda d: d["tables"]["a_0"]["syn_t0"].update({"sha256": "zz"}), "production"),
@@ -576,8 +590,8 @@ def test_fingerprint_output_validator_rejects_a_bad_side_and_garbage():
 
 # ═════════════════════════ 4. drill compare: the existing comparison over the DECLARED assets ═════════════════════════
 
-def _ex(n=1, ch=""):
-    return {"reason_code": "rolling_horizon", "detail": ("rolling forward horizon computed from today at run time; pinned window recorded " + ch).ljust(60, "."),
+def _ex(n=1, ch="", code="rolling_horizon"):
+    return {"reason_code": code, "detail": ("rolling forward horizon computed from today at run time; pinned window recorded " + ch).ljust(60, "."),
             "decision": f"N-{100 + n}"}
 
 
@@ -585,46 +599,135 @@ def _pair(**kw):
     return out_doc(D5, "production", **kw), out_doc(D5, "rehearsal", **kw)
 
 
-def test_compare_of_equal_sides_passes_over_exactly_the_declared_assets():
+def _set_unit(doc, unit, sha, rows=None):
+    """Give every table of `unit` the value `sha` (rows optional) and recompute the unit fingerprint."""
+    for t, m in doc["tables"][unit].items():
+        m["sha256"] = sha if len(doc["tables"][unit]) == 1 else hashlib.sha256(f"{sha}{t}".encode()).hexdigest()
+        if rows is not None:
+            m["rows"] = rows
+    doc["fingerprints"][unit] = fd.composite_fingerprint({t: m["sha256"] for t, m in doc["tables"][unit].items()})
+
+
+def _empty_unit(doc, unit):
+    for t, m in doc["tables"][unit].items():
+        m["sha256"], m["rows"] = fd.empty_table_fingerprint(D5, unit, t), 0
+    doc["fingerprints"][unit] = fd.composite_fingerprint({t: m["sha256"] for t, m in doc["tables"][unit].items()})
+
+
+def test_compare_of_equal_sides_is_scoped_over_the_comparison_units():
     prod, reh = _pair()
     drill, cov = smd.build_drill(prod, reh, D5, None, commit=SHA40)
-    assert drill["result"] == "PASS" and drill["expected_assets"] == D5.declared_assets() == sorted(D5.declared_assets()) and len(drill["equal"]) == len(D5.declared_assets())
-    assert "a_und" not in drill["expected_assets"] and "a_svc" not in drill["expected_assets"]
-    assert sr.validate_drill(drill) == []
+    units = D5.expected_assets()
+    assert len(units) == 9 and "grp_g_shared" in units and drill["expected_assets"] == units == sorted(units)
+    assert drill["result"] == "PASS_DECLARED_ONLY" and cov["result"] == "PASS_DECLARED_ONLY"      # partial, undeclared and non-deterministic assets exist
+    assert drill["equal"] == units and drill["empty_both_sides"] == []
+    assert not {"a_und", "a_svc", "a_gm1", "a_gm2"} & set(units)                                  # undeclared assets and group-only members are no units
+    assert sr.validate_drill(drill) == [] and sr.validate_drill(drill, declarations_coverage=D5.drill_coverage()) == []
+    assert drill["coverage"] == D5.drill_coverage() and drill["coverage"]["groups"] == {"grp_g_shared": ["a_gm1", "a_gm2"]}
+    assert set(drill["coverage"]["undeclared"]) == {"a_und", "a_svc"} and drill["coverage"]["partial"] == {"a_part": ["syn_shared"]}
+    assert drill["coverage"]["non_deterministic"] == {"a_roll": ["rolling_horizon", "platform_bound"]} and drill["coverage"]["scope"] == "declared_only"
+    assert drill["rows"]["a_multi"] == {"production": {"syn_m1": 5, "syn_m2": 5}, "rehearsal": {"syn_m1": 5, "syn_m2": 5}}
     assert set(cov["undeclared"]) == {"a_und", "a_svc"} and sorted(cov["partial"]) == ["a_part"] and cov["declarations_sha256"] == D5.sha256
-    assert cov["reproducibility"] == {"a_roll": ["rolling_horizon", "platform_bound"]} and cov["differences_with_hints"] == []
+    assert cov["unit_status"]["grp_g_shared"] == {"status": "equal", "members": ["a_gm1", "a_gm2"]} and cov["differences_with_hints"] == []
+    assert cov["reproducibility"] == {"a_roll": ["rolling_horizon", "platform_bound"]}
 
 
-def test_an_unexplained_difference_fails_and_an_explained_one_with_a_decision_passes():
+def test_a_bare_pass_needs_a_declarations_file_with_nothing_partial_undeclared_or_non_deterministic():
+    doc = syn_doc()
+    for a in ("a_und", "a_svc"):
+        doc["assets"].pop(a)
+    doc["assets"].pop("a_part")
+    doc["assets"]["a_roll"]["reproducibility"] = ["deterministic"]
+    assert fd.validate(doc, registry=None, schema=None, repo_root=None) == []
+    full = fd.Declarations(doc=doc, sha256="8" * 64)
+    assert full.drill_coverage()["scope"] == "all_declared_full"
+    drill, _ = smd.build_drill(out_doc(full, "production"), out_doc(full, "rehearsal"), full, None, commit=SHA40)
+    assert drill["result"] == "PASS" and sr.validate_drill(drill) == []
+
+
+def test_a_group_is_one_unit_and_its_members_are_reported_together():
     prod, reh = _pair()
-    reh["tables"]["a_roll"]["syn_roll"]["sha256"] = H
-    reh["fingerprints"]["a_roll"] = H
+    _set_unit(reh, "grp_g_shared", H)
+    drill, cov = smd.build_drill(prod, reh, D5, None, commit=SHA40)
+    assert drill["result"] == "FAIL" and drill["unexplained"] == ["grp_g_shared"] and [d["asset"] for d in drill["differences"]] == ["grp_g_shared"]
+    assert cov["unit_status"]["grp_g_shared"] == {"status": "fingerprint_differs", "members": ["a_gm1", "a_gm2"]}
+    assert cov["differences_with_hints"][0]["members"] == ["a_gm1", "a_gm2"]
+    ok, cov2 = smd.build_drill(prod, reh, D5, {"grp_g_shared": _ex(1, code="seeded_not_rebuilt")}, commit=SHA40)
+    assert ok["result"] == "PASS_DECLARED_ONLY" and cov2["unit_status"]["grp_g_shared"]["members"] == ["a_gm1", "a_gm2"]
+
+
+def test_an_unexplained_difference_fails_and_an_explained_one_with_a_decision_passes_scoped():
+    prod, reh = _pair()
+    _set_unit(reh, "a_roll", H)
     drill, cov = smd.build_drill(prod, reh, D5, None, commit=SHA40)
     assert drill["result"] == "FAIL" and drill["unexplained"] == ["a_roll"]
-    assert cov["differences_with_hints"] == [{"asset": "a_roll", "kind": "fingerprint_differs", "reproducibility": ["rolling_horizon", "platform_bound"], "table_notes": {}}]
+    assert cov["differences_with_hints"] == [{"asset": "a_roll", "kind": "fingerprint_differs", "members": ["a_roll"],
+                                              "reproducibility": ["rolling_horizon", "platform_bound"], "table_notes": {}}]
     drill2, _ = smd.build_drill(prod, reh, D5, {"a_roll": _ex()}, commit=SHA40)
-    assert drill2["result"] == "PASS" and drill2["differences"][0]["explained"]["decision"] == "N-101"
-    # an explanation without a decision id is refused by the existing comparison
+    assert drill2["result"] == "PASS_DECLARED_ONLY" and drill2["differences"][0]["explained"]["decision"] == "N-101"
     no_dec = dict(_ex())
     del no_dec["decision"]
     assert smd.build_drill(prod, reh, D5, {"a_roll": no_dec}, commit=SHA40)[0]["result"] == "FAIL"
 
 
+def test_rolling_horizon_and_platform_bound_codes_are_refused_for_a_deterministic_unit():
+    prod, reh = _pair()
+    _set_unit(reh, "a_0", H)
+    for code in ("rolling_horizon",):
+        r, _ = smd.build_drill(prod, reh, D5, {"a_0": _ex(code=code)}, commit=SHA40)
+        assert r["result"] == "FAIL" and r["unexplained"] == ["a_0"] and any("flagged rolling_horizon" in x for x in r["problems"])
+    miss = out_doc(D5, "rehearsal", assets=[u for u in D5.expected_assets() if u != "a_0"])
+    r, _ = smd.build_drill(prod, miss, D5, {"a_0": _ex(code="source_unavailable_offline")}, commit=SHA40)
+    assert r["result"] == "FAIL" and any("flagged platform_bound" in x for x in r["problems"])
+    # the flagged unit may carry them
+    _set_unit(reh, "a_roll", H)
+    assert smd.build_drill(prod, {**reh, **{}}, D5, {"a_0": _ex(1, "zero", code="seeded_not_rebuilt"), "a_roll": _ex(2, "roll")}, commit=SHA40)[0]["result"] == "PASS_DECLARED_ONLY"
+
+
 def test_too_many_differences_fail_even_when_each_is_explained():
     prod, reh = _pair()
     for i, a in enumerate(("a_0", "a_1", "a_2")):
-        t = f"syn_t{i}"
-        reh["tables"][a][t]["sha256"] = hashlib.sha256(f"x{i}".encode()).hexdigest()
-        reh["fingerprints"][a] = reh["tables"][a][t]["sha256"]
-    ex = {a: _ex(i, a) for i, a in enumerate(("a_0", "a_1", "a_2"))}
+        _set_unit(reh, a, hashlib.sha256(f"x{i}".encode()).hexdigest())
+    ex = {a: _ex(i, a, code="seeded_not_rebuilt") for i, a in enumerate(("a_0", "a_1", "a_2"))}
     assert smd.build_drill(prod, reh, D5, ex, commit=SHA40)[0]["result"] == "FAIL"
 
 
-def test_a_missing_asset_on_one_side_is_a_difference_not_a_silent_drop():
+def test_a_missing_unit_on_one_side_is_a_difference_not_a_silent_drop():
     prod, _ = _pair()
-    reh = out_doc(D5, "rehearsal", assets=[a for a in D5.declared_assets() if a != "a_roll"])
+    reh = out_doc(D5, "rehearsal", assets=[a for a in D5.expected_assets() if a != "a_roll"])
     drill, _ = smd.build_drill(prod, reh, D5, None, commit=SHA40)
     assert drill["result"] == "FAIL" and drill["differences"][0]["kind"] == "missing_in_rehearsal" and drill["unexplained"] == ["a_roll"]
+    assert drill["rows"]["a_roll"]["rehearsal"] is None
+
+
+def test_a_unit_that_is_empty_on_both_sides_is_never_equal_and_the_verdict_is_unmeasured():
+    prod, reh = _pair()
+    for d in (prod, reh):
+        _empty_unit(d, "a_multi")
+    assert smd.validate_fingerprint_output(prod, D5, side="production") == [] and smd.validate_fingerprint_output(reh, D5, side="rehearsal") == []
+    drill, cov = smd.build_drill(prod, reh, D5, None, commit=SHA40)
+    assert drill["result"] == "UNMEASURED" and drill["empty_both_sides"] == ["a_multi"] and "a_multi" not in drill["equal"]
+    assert cov["unit_status"]["a_multi"]["status"] == "empty_both_sides" and cov["empty_both_sides"] == ["a_multi"]
+    assert sr.validate_drill(drill) == []
+
+
+def test_equal_fingerprints_with_different_row_counts_are_a_refusal_in_the_compare():
+    prod, reh = _pair()
+    _set_unit(reh, "a_0", prod["tables"]["a_0"]["syn_t0"]["sha256"], rows=6)          # the same hash, one more row on the rehearsal side
+    drill, _ = smd.build_drill(prod, reh, D5, None, commit=SHA40)
+    assert drill["result"] == "FAIL" and "a_0" not in drill["equal"] and any("a_0: equal fingerprints but different row counts" in x for x in drill["problems"])
+
+
+def test_a_hash_and_a_row_count_that_disagree_are_refused_per_side():
+    for side in ("production", "rehearsal"):
+        d = out_doc(D5, side)
+        t = d["tables"]["a_0"]["syn_t0"]
+        t["sha256"] = fd.empty_table_fingerprint(D5, "a_0", "syn_t0")                  # rows=5 but the empty-table hash
+        d["fingerprints"]["a_0"] = t["sha256"]
+        assert any("empty-table fingerprint" in x for x in smd.validate_fingerprint_output(d, D5, side=side))
+        d = out_doc(D5, side)
+        d["tables"]["a_0"]["syn_t0"]["rows"] = 0                                          # rows=0 but a non-empty hash
+        assert any("rows=0" in x for x in smd.validate_fingerprint_output(d, D5, side=side))
 
 
 @pytest.mark.parametrize("name,mutate", [
@@ -633,7 +736,9 @@ def test_a_missing_asset_on_one_side_is_a_difference_not_a_silent_drop():
     ("rebuild_commit_not_evidence_commit", lambda p, r: r["rebuild"].update({"orchestrator_commit": "2" * 40})),
     ("production_declarations_sha", lambda p, r: p.update({"declarations_sha256": H})),
     ("rehearsal_undeclared_asset", lambda p, r: (r["tables"].update({"a_und": {}}), r["fingerprints"].update({"a_und": H}))),
+    ("rehearsal_group_member_is_no_unit", lambda p, r: (r["tables"].update({"a_gm1": {}}), r["fingerprints"].update({"a_gm1": H}))),
     ("production_definition", lambda p, r: p.update({"definition": "other/1"})),
+    ("rebuild_run_id_is_nil", lambda p, r: r["rebuild"].update({"run_id": "00000000-0000-0000-0000-000000000000"})),
 ])
 def test_build_drill_refuses_inconsistent_inputs(name, mutate):
     prod, reh = _pair()
@@ -649,6 +754,39 @@ def test_drill_uses_the_existing_comparison_and_defines_no_second_fingerprint():
 
 # ═════════════════════════ 5. status, reader spec, the CLI hook ═════════════════════════
 
+def test_real_uuid_accepts_only_canonical_rfc4122_ids():
+    assert smd.real_uuid("5e57e57e-5e57-4e57-8e57-5e57e57e57e5") and smd.real_uuid(str(__import__("uuid").uuid4())) and smd.real_uuid(str(__import__("uuid").uuid1()))
+    for bad in ("00000000-0000-0000-0000-000000000000", "-" * 36, "-" * 4, "", "x", None, 5, "5E57E57E-5E57-4E57-8E57-5E57E57E57E5",
+                "5e57e57e5e574e578e575e57e57e57e5", "{5e57e57e-5e57-4e57-8e57-5e57e57e57e5}", "ffffffff-ffff-ffff-ffff-ffffffffffff",
+                "5e57e57e-5e57-4e57-0e57-5e57e57e57e5"):
+        assert not smd.real_uuid(bad), bad
+
+
+def _record(decls=D5, run_id="5e57e57e-5e57-4e57-8e57-5e57e57e57e5", commit=SHA40, state="completed", **over):
+    rec = {"schema": smd.BUILD_RECORD_SCHEMA, "run_id": run_id, "state": state, "orchestrator_commit": commit,
+           "assets": [{"asset_id": a, "state": "complete"} for a in decls.declared_assets()]}
+    rec.update(over)
+    return rec
+
+
+def test_a_rebuild_receipt_is_verified_only_against_a_matching_completed_build_record():
+    receipt = {"run_id": "5e57e57e-5e57-4e57-8e57-5e57e57e57e5", "orchestrator_commit": SHA40}
+    assert smd.verify_rebuild_receipt(receipt, _record(), D5) == []
+    cases = {
+        "run id differs": _record(run_id="6e57e57e-5e57-4e57-8e57-5e57e57e57e5"), "not completed": _record(state="running"),
+        "other commit": _record(commit="2" * 40), "other schema": _record(schema="x/v1"),
+        "asset not complete": _record(assets=[{"asset_id": a, "state": "failed" if a == "a_0" else "complete"} for a in D5.declared_assets()]),
+        "asset missing": _record(assets=[{"asset_id": a, "state": "complete"} for a in D5.declared_assets() if a != "a_roll"]),
+        "extra key": {**_record(), "x": 1}, "assets not a list": _record(assets="x"), "asset shape": _record(assets=[{"asset_id": "a_0"}]),
+    }
+    for label, rec in cases.items():
+        assert smd.verify_rebuild_receipt(receipt, rec, D5), label
+    for bad in (None, {}, {"run_id": "x", "orchestrator_commit": SHA40}, {"run_id": "00000000-0000-0000-0000-000000000000", "orchestrator_commit": SHA40},
+                {"run_id": receipt["run_id"]}):
+        assert smd.verify_rebuild_receipt(bad, _record(), D5)
+    assert smd.verify_rebuild_receipt(receipt, None, D5) and smd.verify_rebuild_receipt(receipt, [], D5)
+
+
 def test_status_is_unmeasured_without_inputs_and_names_the_reasons():
     s = smd.drill_status(D5)
     assert s["result"] == "UNMEASURED" and "PASS" not in json.dumps(s)
@@ -657,18 +795,29 @@ def test_status_is_unmeasured_without_inputs_and_names_the_reasons():
     assert reasons["production_fingerprints"] == "NEEDS_PRODUCTION_READER_DUMP" and reasons["linux_amd64_runtime"] == "NEEDS_LINUX_AMD64_RUNTIME"
     assert reasons["text_seed"] == "NEEDS_TEXT_SEED" and reasons["ss_decisions"] == "NEEDS_SS_DECISIONS" and reasons["as_of_pin"] == "NEEDS_AS_OF_PIN"
     assert {x["step"]: x["state"] for x in s["steps"]}["declarations"] == "MEASURED"
+    assert "COMPLETE_INPUTS" not in SRC                                                            # the unreachable verdict is gone
 
 
-def test_status_marks_steps_measured_only_for_valid_inputs():
+def test_a_file_that_only_has_the_right_shape_is_never_measured():
     prod, reh = _pair()
     s = smd.drill_status(D5, baseline=_good_baseline(), production=prod, rehearsal=reh)
     st = {x["step"]: x["state"] for x in s["steps"]}
-    assert st["mirror_baseline"] == st["rehearsal_l0_rebuild"] == st["production_fingerprints"] == st["as_of_pin"] == "MEASURED"
+    assert st["mirror_baseline"] == st["production_fingerprints"] == st["as_of_pin"] == "SHAPE_CHECKED"
+    assert st["rehearsal_l0_rebuild"] == "CLAIMED_UNVERIFIED"                      # a self-asserted receipt is a claim
+    detail = {x["step"]: x.get("detail", {}) for x in s["steps"]}
+    assert detail["rehearsal_l0_rebuild"]["unverified_because"] == ["no build record supplied"] and s["result"] == "UNMEASURED"
     assert st["text_seed"] == st["linux_amd64_runtime"] == st["ss_decisions"] == "UNMEASURED"          # never inferable from files
+    assert "MEASURED" not in [v for k, v in st.items() if k != "declarations"]
+    # a record that does not match leaves it a claim; one that matches measures only the rebuild step
+    s2 = smd.drill_status(D5, rehearsal=reh, build_record=_record(state="running"))
+    assert {x["step"]: x["state"] for x in s2["steps"]}["rehearsal_l0_rebuild"] == "CLAIMED_UNVERIFIED"
+    s3 = smd.drill_status(D5, baseline=_good_baseline(), production=prod, rehearsal=reh, build_record=_record())
+    st3 = {x["step"]: x["state"] for x in s3["steps"]}
+    assert st3["rehearsal_l0_rebuild"] == "MEASURED" and st3["production_fingerprints"] == "SHAPE_CHECKED" and st3["as_of_pin"] == "SHAPE_CHECKED"
     bad_reh = copy.deepcopy(reh)
     bad_reh["declarations_sha256"] = H
-    s2 = smd.drill_status(D5, baseline=_good_baseline(), production=prod, rehearsal=bad_reh)
-    assert {x["step"]: x["state"] for x in s2["steps"]}["rehearsal_l0_rebuild"] == "UNMEASURED"
+    s4 = smd.drill_status(D5, baseline=_good_baseline(), production=prod, rehearsal=bad_reh, build_record=_record())
+    assert {x["step"]: x["state"] for x in s4["steps"]}["rehearsal_l0_rebuild"] == "UNMEASURED"
     bl = _good_baseline()
     bl["result"] = "FAIL"
     assert {x["step"]: x["state"] for x in smd.drill_status(D5, baseline=bl)["steps"]}["mirror_baseline"] == "UNMEASURED"
@@ -676,18 +825,39 @@ def test_status_marks_steps_measured_only_for_valid_inputs():
     assert {x["step"]: x["state"] for x in smd.drill_status(D5, rehearsal=base_stage)["steps"]}["rehearsal_l0_rebuild"] == "UNMEASURED"
 
 
-def test_reader_spec_lists_exactly_the_declared_tables_and_aggregate_only_probes():
+def test_the_reader_and_rehearsal_files_are_read_strictly(tmp_path, capsys):
+    prod, reh = _pair()
+    good = json.dumps(prod)
+    for name, text in (("dup.json", good.replace('"side": "production"', '"side": "production", "side": "rehearsal"', 1)),
+                       ("nan.json", good.replace('"rows": 5', '"rows": NaN', 1)), ("inf.json", good.replace('"rows": 5', '"rows": Infinity', 1)),
+                       ("junk.json", "{not json")):
+        (tmp_path / name).write_text(text)
+        with pytest.raises(Exception):
+            smd._rd(tmp_path / name)
+    (tmp_path / "reh.json").write_text(json.dumps(reh))
+    (tmp_path / "dup.json").write_text(good.replace('"side": "production"', '"side": "production", "side": "rehearsal"', 1))
+    assert smd.main(["status", "--production", str(tmp_path / "dup.json")]) == 2
+    out = tmp_path / "drill.json"
+    rc = smd.main(["compare", "--production", str(tmp_path / "dup.json"), "--rehearsal", str(tmp_path / "reh.json"), "--commit", SHA40, "--out", str(out)])
+    assert rc == 2 and not out.exists()
+
+
+def test_reader_spec_lists_exactly_the_unit_tables_and_aggregate_only_probes():
     spec = smd.reader_spec(D5)
-    assert spec["selects"] == fd.reader_selects(D5) and len(spec["selects"]) == 9 and spec["role"] == "suvarna_reader"
+    assert spec["selects"] == fd.reader_selects(D5) and len(spec["selects"]) == 10 and spec["role"] == "suvarna_reader"
     assert all(re.fullmatch(r'SELECT \* FROM "syn_[a-z0-9_]+"', s["sql"]) for s in spec["selects"])
-    assert not any(s["asset"] in ("a_und", "a_svc") for s in spec["selects"]) and set(spec["undeclared"]) == {"a_und", "a_svc"}
+    assert [s["table"] for s in spec["selects"] if s["asset"] == "grp_g_shared"] == ["syn_g"]
+    assert not any(s["asset"] in ("a_und", "a_svc", "a_gm1", "a_gm2") for s in spec["selects"]) and set(spec["undeclared"]) == {"a_und", "a_svc"}
+    assert spec["groups"] == {"grp_g_shared": ["a_gm1", "a_gm2"]}
     assert spec["declarations_sha256"] == D5.sha256 and spec["output"]["side"] == "production" and "aggregates only" in spec["output"]["contains"]
     for pr in smd.OWNERSHIP_PROBES:
         sql = pr["sql"]
         assert re.fullmatch(r"SELECT (?:[a-z_]+, )*count\(\*\) FROM [a-z_]+(?: GROUP BY [0-9, ]+)?", sql), sql          # aggregate-only, one statement
-        assert ";" not in sql and "WHERE" not in sql and "*)" in sql
+        assert ";" not in sql and "WHERE" not in sql and "*)" in sql and pr["outcome"]
     real = smd.reader_spec(fd.load_declarations())
-    assert len(real["selects"]) == 59 and {p["asset"] for p in smd.OWNERSHIP_PROBES} <= set(real["undeclared"])
+    assert len(real["selects"]) == 63 and real["expected_differences"][0]["unit"] == "bg_ephemeris"
+    assert {p["asset"] for p in smd.OWNERSHIP_PROBES} == {"bg_rules", "bg_transit_rules", "bg_gochara_citation_resolution", "bg_sarvatobhadra_grid"}
+    assert "bg_rules" not in real["undeclared"] and {"bg_transit_rules", "bg_gochara_citation_resolution", "bg_sarvatobhadra_grid"} <= set(real["undeclared"])
 
 
 def test_expected_status_and_reader_spec_never_open_a_connection(monkeypatch):
@@ -699,9 +869,9 @@ def test_expected_status_and_reader_spec_never_open_a_connection(monkeypatch):
     assert smd.main(["expected"]) == 0 and smd.main(["reader-spec"]) == 0 and smd.main(["status"]) == 0
 
 
-def test_the_harness_expected_assets_are_the_declared_assets():
-    assert sr.drill_expected_assets() == fd.load_declarations().declared_assets()
-    assert len(sr.drill_expected_assets()) == 28
+def test_the_harness_expected_assets_are_the_comparison_units():
+    assert sr.drill_expected_assets() == fd.load_declarations().expected_assets()
+    assert len(sr.drill_expected_assets()) == 32 and "grp_brahma_ontology" in sr.drill_expected_assets() and "bg_ontology" not in sr.drill_expected_assets()
 
 
 def test_the_harness_refuses_when_the_declarations_name_a_different_definition(monkeypatch):
@@ -726,19 +896,45 @@ def test_harness_drill_subcommand_delegates(capsys):
     assert json.loads(capsys.readouterr().out)["expected_assets"] == sr.drill_expected_assets()
 
 
+def _rows_file(units, decls, n=5):
+    return {u: {"production": {t: n for t in decls.tables(u)}, "rehearsal": {t: n for t in decls.tables(u)}} for u in units}
+
+
 def test_compare_fingerprints_cli_accepts_expected_declarations(tmp_path, capsys):
     decls = fd.load_declarations()
-    fps = {a: hashlib.sha256(a.encode()).hexdigest() for a in decls.declared_assets()}
+    units = decls.expected_assets()
+    fps = {a: hashlib.sha256(a.encode()).hexdigest() for a in units}
     p = tmp_path / "p.json"
     p.write_text(json.dumps(sr.fingerprint_set(fps)))
+    rows = tmp_path / "rows.json"
+    rows.write_text(json.dumps(_rows_file(units, decls)))
     out = tmp_path / "drill.json"
-    assert sr.main(["compare-fingerprints", "--pre", str(p), "--post", str(p), "--expected", "declarations", "--commit", SHA40, "--out", str(out)]) == 0
+    base = ["compare-fingerprints", "--pre", str(p), "--post", str(p), "--expected", "declarations", "--rows", str(rows), "--commit", SHA40, "--out", str(out)]
+    assert sr.main(base) == 0
     doc = json.loads(out.read_text())
-    assert doc["result"] == "PASS" and doc["expected_assets"] == decls.declared_assets() and sr.validate_drill(doc) == []
+    assert doc["result"] == "PASS_DECLARED_ONLY" and doc["expected_assets"] == units and sr.validate_drill(doc) == []
+    assert doc["coverage"] == decls.drill_coverage()
+    assert sr.main(["validate-drill", str(out), "--declarations"]) == 0                     # bound to the committed declarations
     capsys.readouterr()
     p2 = tmp_path / "p2.json"
-    p2.write_text(json.dumps(sr.fingerprint_set({**fps, "bg_panchanga": H})))       # an undeclared asset is `unexpected`: FAIL
-    assert sr.main(["compare-fingerprints", "--pre", str(p), "--post", str(p2), "--expected", "declarations", "--commit", SHA40]) == 4
+    p2.write_text(json.dumps(sr.fingerprint_set({**fps, "bg_panchanga": H})))               # an undeclared asset is `unexpected`: FAIL
+    rows2 = tmp_path / "rows2.json"
+    rows2.write_text(json.dumps({**_rows_file(units, decls), "bg_panchanga": {"production": {"t": 1}, "rehearsal": {"t": 1}}}))
+    assert sr.main(["compare-fingerprints", "--pre", str(p), "--post", str(p2), "--expected", "declarations", "--rows", str(rows2), "--commit", SHA40]) == 4
+    assert sr.main(["compare-fingerprints", "--pre", str(p), "--post", str(p), "--expected", str(tmp_path / "x.json"), "--rows", str(rows), "--commit", SHA40]) == 2   # no --coverage
+
+
+def test_validate_drill_cli_rejects_a_drill_made_under_other_declarations(tmp_path, capsys):
+    decls = fd.load_declarations()
+    units = decls.expected_assets()
+    fps = {a: hashlib.sha256(a.encode()).hexdigest() for a in units}
+    drill = sr.compare_fingerprint_sets(sr.fingerprint_set(fps), sr.fingerprint_set(fps), expected_assets=units, commit=SHA40,
+                                        coverage={**decls.drill_coverage(), "undeclared": {"bg_x": "no_table"}}, rows=_rows_file(units, decls))
+    p = tmp_path / "d.json"
+    p.write_text(json.dumps(drill))
+    assert sr.main(["validate-drill", str(p)]) == 0                                          # internally consistent
+    assert sr.main(["validate-drill", str(p), "--declarations"]) == 2                          # but not the committed declarations'
+    capsys.readouterr()
 
 
 def test_drill_cli_compare_writes_the_drill_and_the_coverage_report(tmp_path, capsys, monkeypatch):
@@ -751,25 +947,207 @@ def test_drill_cli_compare_writes_the_drill_and_the_coverage_report(tmp_path, ca
     assert rc == 0
     drill = json.loads(out.read_text())
     cov = json.loads((tmp_path / "L0_REBUILD_DRILL.json.coverage.json").read_text())
-    assert drill["result"] == "PASS" and sr.validate_drill(drill) == [] and sorted(cov["undeclared"]) == sorted(decls.undeclared_assets()) and sorted(cov["partial"]) == sorted(decls.partial_assets())
+    assert drill["result"] == "PASS_DECLARED_ONLY" and sr.validate_drill(drill) == [] and drill["coverage"] == decls.drill_coverage()
+    assert sorted(cov["undeclared"]) == sorted(decls.undeclared_assets()) and sorted(cov["partial"]) == sorted(decls.partial_assets())
     printed = json.loads(capsys.readouterr().out)
     assert printed["undeclared"] == sorted(decls.undeclared_assets()) and printed["partial"] == sorted(decls.partial_assets())
+    assert printed["scope"] == "declared_only" and set(printed["groups"]) == {"grp_brahma_class_priors", "grp_brahma_ontology", "grp_classical_text_chunks"}
+    assert printed["expected_differences"][0]["unit"] == "bg_ephemeris" and printed["expected_differences"][0]["status"] == "not_observed"
     (tmp_path / "reh2.json").write_text(json.dumps({**reh, "as_of": "2026-01-01"}))
     assert smd.main(["compare", "--production", str(tmp_path / "prod.json"), "--rehearsal", str(tmp_path / "reh2.json"), "--commit", SHA40, "--out", str(out)]) == 2
 
 
+def test_the_ephemeris_expected_difference_is_printed_and_never_hides_the_difference(tmp_path, capsys):
+    decls = fd.load_declarations()
+    prod, reh = out_doc(decls, "production"), out_doc(decls, "rehearsal")
+    _set = lambda d, u: [d["tables"][u][t].update(sha256=hashlib.sha256(f"{u}{t}x".encode()).hexdigest()) for t in d["tables"][u]]  # noqa: E731
+    _set(reh, "bg_ephemeris")
+    reh["fingerprints"]["bg_ephemeris"] = reh["tables"]["bg_ephemeris"]["ephemeris_daily"]["sha256"]
+    drill, cov = smd.build_drill(prod, reh, decls, None, commit=SHA40)
+    assert drill["result"] == "FAIL" and drill["unexplained"] == ["bg_ephemeris"]                 # not an exclusion: the difference still needs an explanation
+    st = cov["expected_differences_status"][0]
+    assert st["status"] == "observed" and st["columns"] == ["node_mode", "epoch_convention"] and "#3015" in st["reference"] and "production_ahead_of_commit" in st["hint"]
+    ok, _ = smd.build_drill(prod, reh, decls, {"bg_ephemeris": {"reason_code": "production_ahead_of_commit", "decision": "N-300",
+                                                                "detail": "production carries node_mode and epoch_convention that the writer at this commit does not write (PR #3015 held)"}}, commit=SHA40)
+    assert ok["result"] == "PASS_DECLARED_ONLY"
+
+
 def test_the_real_declarations_cover_the_real_drill_end_to_end_offline():
-    """All 28 declared assets through the whole pure pipeline (no database): equal sides pass; undeclared assets are reported."""
+    """All 32 comparison units through the whole pure pipeline (no database): equal sides pass scoped; undeclared assets are reported."""
     decls = fd.load_declarations()
     prod, reh = out_doc(decls, "production"), out_doc(decls, "rehearsal")
     drill, cov = smd.build_drill(prod, reh, decls, None, commit=SHA40)
-    assert drill["result"] == "PASS" and len(drill["expected_assets"]) == 28 and len(cov["undeclared"]) == 12
+    assert drill["result"] == "PASS_DECLARED_ONLY" and len(drill["expected_assets"]) == 32 and len(cov["undeclared"]) == 6
+    assert len(drill["equal"]) == 32 and sorted(cov["partial"]) == ["bg_remedies", "bg_texts"]
+
+
+# ── baseline target: database names, the rehearsal policy pins ──
+
+@pytest.mark.parametrize("db", ["postgres", "template1", "suvarna_disposable; DROP DATABASE x", "Suvarna_disposable", "suvarna_disposable-x", "", None,
+                                'suvarna_disposable"x', "suvarna_disposable x", "suvarna_disposable\n", "rehearsal", "suvarna", "suvarna_disposableX"])
+def test_a_disposable_baseline_database_must_match_the_policy_pattern(db):
+    with pytest.raises(smd.MirrorError, match="not allowed"):
+        smd.validate_db_name(db, "disposable")
+
+
+@pytest.mark.parametrize("db", ["postgres", "rehearsal-x", "rehearsal_", "rehearsalx", "suvarna_disposable_m", "", None, "rehearsal x", "rehearsal; DROP", 'rehearsal"'])
+def test_a_rehearsal_baseline_database_must_match_the_policy_pattern(db):
+    with pytest.raises(smd.MirrorError, match="not allowed"):
+        smd.validate_db_name(db, "rehearsal")
+
+
+def test_valid_database_names_are_accepted_and_quoted_safely():
+    assert smd.validate_db_name("suvarna_disposable", "disposable") == "suvarna_disposable" and smd.validate_db_name("suvarna_disposable_m1", "disposable")
+    assert smd.validate_db_name("rehearsal", "rehearsal") == "rehearsal" and smd.validate_db_name("rehearsal_mirror", "rehearsal")
+    with pytest.raises(smd.MirrorError, match="unknown policy"):
+        smd.validate_db_name("rehearsal", "production")
+    assert smd._quote_ident('a"b') == '"a""b"' and smd._quote_lit("a'b") == "'a''b'"
+
+
+def test_the_database_is_validated_before_any_cluster_is_touched(monkeypatch, tmp_path):
+    def boom(*a, **k):
+        raise AssertionError("no cluster may be touched")
+    monkeypatch.setattr(smd.sr, "init_cluster", boom)
+    monkeypatch.setattr(smd.sr, "start_cluster", boom)
+    monkeypatch.setattr(smd, "run_psql", boom)
+    with pytest.raises(smd.MirrorError, match="not allowed"):
+        smd.harness_target(tmp_path / "root", db="postgres", port=40123)
+    with pytest.raises(smd.MirrorError, match="not allowed"):
+        smd.harness_target(tmp_path / "root", db="suvarna_disposable_x", port=55432 + 1, policy="rehearsal")
+
+
+def test_build_mirror_baseline_validates_the_database_before_copying_or_restoring(tmp_path, monkeypatch):
+    monkeypatch.setattr(smd, "run_psql", lambda *a, **k: (_ for _ in ()).throw(AssertionError("no psql")))
+    t = smd.Target(pg_bin="/x", host="127.0.0.1", port=40001, user="u", db="postgres", policy="disposable")
+    scratch = tmp_path / "scratch"
+    with pytest.raises(smd.MirrorError, match="not allowed"):
+        smd.build_mirror_baseline(make_recipe(tmp_path / "r"), scratch, t, decls=syn_baseline_decls(), extract=_syn_extract())
+    assert not scratch.exists()                                                                  # nothing was copied either
+
+
+def test_baseline_cli_refuses_a_bad_database_before_anything_else(monkeypatch, tmp_path, capsys):
+    monkeypatch.setattr(smd, "harness_target", lambda *a, **k: (_ for _ in ()).throw(AssertionError("must not start a cluster")))
+    rc = smd.main(["baseline", "--recipe", str(tmp_path), "--scratch", str(tmp_path / "s"), "--root", str(tmp_path / "root"), "--port", "40001",
+                   "--db", "postgres", "--out", str(tmp_path / "o.json")])
+    assert rc == 2 and "not allowed" in capsys.readouterr().err
+
+
+def test_there_is_no_machine_specific_recipe_default_and_the_env_var_names_it(monkeypatch, tmp_path, capsys):
+    assert not hasattr(smd, "DEFAULT_RECIPE") and "rehearsal_final" not in SRC and "S_L1" not in SRC
+    monkeypatch.delenv(smd.RECIPE_ENV, raising=False)
+    monkeypatch.setattr(smd, "harness_target", lambda *a, **k: (_ for _ in ()).throw(AssertionError("must not start a cluster")))
+    assert smd.main(["baseline", "--scratch", str(tmp_path / "s"), "--root", str(tmp_path / "root"), "--port", "40001", "--out", str(tmp_path / "o.json")]) == 2
+    assert smd.RECIPE_ENV in capsys.readouterr().err
+    seen = {}
+    monkeypatch.setenv(smd.RECIPE_ENV, str(tmp_path / "from_env"))
+    monkeypatch.setattr(smd, "harness_target", lambda root, **kw: smd.Target(pg_bin="/x", host="h", port=40001, user="u", db="suvarna_disposable_mirror"))
+    monkeypatch.setattr(smd, "build_mirror_baseline", lambda recipe, *a, **k: seen.update(recipe=str(recipe)) or _good_baseline())
+    assert smd.main(["baseline", "--scratch", str(tmp_path / "s"), "--root", str(tmp_path / "root"), "--port", "40001", "--out", str(tmp_path / "o.json")]) == 0
+    assert seen["recipe"] == str(tmp_path / "from_env")
+
+
+def _rehearsal_root(monkeypatch, tmp_path, *, port=55432, with_marker=True, with_data=True):
+    root = pathlib.Path(os.path.realpath(tmp_path)) / "rehearsal"
+    root.mkdir(mode=0o700)
+    os.chmod(root, 0o700)
+    monkeypatch.setattr(sr, "DEFAULT_ROOT", str(root))
+    lay = sr._Layout(root)
+    if with_marker:
+        sr._write_marker(lay, port)
+    if with_data:
+        lay.data.mkdir()
+        (lay.data / "PG_VERSION").write_text("15\n")
+    return root
+
+
+def _stub_cluster(monkeypatch, *, started="already_running"):
+    calls = []
+    monkeypatch.setattr(smd.sr, "init_cluster", lambda *a, **k: calls.append("init") or {})
+    monkeypatch.setattr(smd.sr, "start_cluster", lambda root, pg_bin: calls.append("start") or {"state": "running", "result": started})
+    monkeypatch.setattr(smd, "run_psql", lambda t, *, sql=None, file=None, on_error_stop, db=None, timeout=900:
+                        types.SimpleNamespace(returncode=0, stdout="0" if "count(*)" in (sql or "") else ("" if "pg_database" in (sql or "") else "1"), stderr=""))
+    return calls
+
+
+def test_the_rehearsal_policy_pins_root_port_database_owner_and_never_initialises(monkeypatch, tmp_path):
+    root = _rehearsal_root(monkeypatch, tmp_path)
+    calls = _stub_cluster(monkeypatch)
+    t = smd.harness_target(root, db="rehearsal_mirror", port=55432, policy="rehearsal", owner=sr._user())
+    assert calls == ["start"] and t.policy == "rehearsal" and t.port == 55432 and t.started is False and t.host == str(root / "sock")
+    assert t.expect == {"data_directory": f"{root}/pg", "port": 55432} and t.url == f"postgresql://{sr._user()}@127.0.0.1:55432/rehearsal_mirror"
+    assert sr.rehearsal_policy(t.url) == t.url                                                          # the rehearsal URL guard accepts the verification URL
+    started = smd.harness_target(root, db="rehearsal_mirror", port=55432, policy="rehearsal")             # owner defaults to the running user
+    assert started.started is False
+    calls2 = _stub_cluster(monkeypatch, started="started")
+    assert smd.harness_target(root, db="rehearsal_mirror", port=55432, policy="rehearsal").started is True and calls2 == ["start"]
+
+
+@pytest.mark.parametrize("what", ["other_root", "other_port", "bad_db", "no_marker", "no_data", "wrong_owner", "forbidden_db"])
+def test_the_rehearsal_policy_refuses_every_pin_violation(monkeypatch, tmp_path, what):
+    root = _rehearsal_root(monkeypatch, tmp_path, with_marker=what != "no_marker", with_data=what != "no_data")
+    calls = _stub_cluster(monkeypatch)
+    kw = dict(db="rehearsal_mirror", port=55432, policy="rehearsal")
+    if what == "other_root":
+        other = pathlib.Path(os.path.realpath(tmp_path)) / "elsewhere"
+        other.mkdir(mode=0o700)
+        root = other
+    if what == "other_port":
+        kw["port"] = 5499
+    if what == "bad_db":
+        kw["db"] = "postgres"
+    if what == "forbidden_db":
+        kw["db"] = "suvarna_disposable_x"
+    if what == "wrong_owner":
+        kw["owner"] = "somebody_else"
+    with pytest.raises(smd.MirrorError):
+        smd.harness_target(root, **kw)
+    assert calls == []                                                                                     # nothing was started or initialised
+
+
+def test_a_disposable_baseline_never_uses_the_rehearsal_port_and_an_existing_database_must_be_empty(monkeypatch, tmp_path):
+    calls = _stub_cluster(monkeypatch)
+    with pytest.raises(smd.MirrorError, match="never used"):
+        smd.harness_target(tmp_path / "root", db="suvarna_disposable_m", port=55432)
+    assert calls == []
+    seen = []
+
+    def fake(t, *, sql=None, file=None, on_error_stop, db=None, timeout=900):
+        seen.append(sql)
+        out = "1" if "pg_database" in sql else "3"                     # the database exists and holds 3 tables
+        return types.SimpleNamespace(returncode=0, stdout=out, stderr="")
+    monkeypatch.setattr(smd, "run_psql", fake)
+    with pytest.raises(smd.MirrorError, match="not empty"):
+        smd.harness_target(tmp_path / "root", db="suvarna_disposable_m", port=40123)
+    assert smd.harness_target(tmp_path / "root", db="suvarna_disposable_m", port=40123, allow_existing_db=True).db == "suvarna_disposable_m"
+
+
+def test_baseline_cli_rehearsal_policy_needs_the_explicit_pins(monkeypatch, tmp_path, capsys):
+    monkeypatch.setattr(smd, "harness_target", lambda *a, **k: (_ for _ in ()).throw(AssertionError("must not start a cluster")))
+    base = ["baseline", "--recipe", str(tmp_path), "--scratch", str(tmp_path / "s"), "--root", str(tmp_path / "root"), "--port", "55432",
+            "--policy", "rehearsal", "--out", str(tmp_path / "o.json")]
+    assert smd.main(base) == 2 and "explicit pins" in capsys.readouterr().err
+    assert smd.main(base + ["--owner", "Dev"]) == 2
+    assert smd.main(base + ["--owner", "Dev", "--data-directory", str(tmp_path / "other" / "pg")]) == 2 and "<root>/pg" in capsys.readouterr().err
+    assert smd.main(base + ["--db", "postgres", "--owner", "Dev", "--data-directory", str(tmp_path / "root" / "pg")]) == 2
+
+
+def test_baseline_cli_passes_the_rehearsal_pins_through_and_stops_only_what_it_started(monkeypatch, tmp_path, capsys):
+    got, stopped = {}, []
+    root = tmp_path / "root"
+    monkeypatch.setattr(smd, "harness_target", lambda r, **kw: got.update(kw) or smd.Target(pg_bin="/x", host="h", port=55432, user="u", db=kw["db"], policy=kw["policy"],
+                                                                                           started=kw.get("started", False)))
+    monkeypatch.setattr(smd.sr, "stop_cluster", lambda r, pg_bin: stopped.append(str(r)))
+    monkeypatch.setattr(smd, "build_mirror_baseline", lambda *a, **k: _good_baseline())
+    args = ["baseline", "--recipe", str(tmp_path), "--scratch", str(tmp_path / "s"), "--root", str(root), "--port", "55432", "--policy", "rehearsal",
+            "--owner", "Dev", "--data-directory", str(root / "pg"), "--out", str(tmp_path / "o.json")]
+    assert smd.main(args) == 0
+    assert got["policy"] == "rehearsal" and got["owner"] == "Dev" and got["db"] == "rehearsal_mirror" and got["port"] == 55432 and stopped == []      # it did not start it
 
 
 def test_harness_target_starts_the_owned_cluster_and_creates_the_database_once(monkeypatch, tmp_path):
     calls = []
     monkeypatch.setattr(smd.sr, "init_cluster", lambda root, port, pg_bin: calls.append(("init", str(root), port)) or {})
-    monkeypatch.setattr(smd.sr, "start_cluster", lambda root, pg_bin: calls.append(("start", str(root))) or {"state": "running"})
+    monkeypatch.setattr(smd.sr, "start_cluster", lambda root, pg_bin: calls.append(("start", str(root))) or {"state": "running", "result": "started"})
     seen_sql = []
     exists = {"db": False}
 
@@ -778,14 +1156,16 @@ def test_harness_target_starts_the_owned_cluster_and_creates_the_database_once(m
         if sql.startswith("CREATE DATABASE"):
             exists["db"] = True
             return types.SimpleNamespace(returncode=0, stdout="", stderr="")
+        if "count(*)" in sql:
+            return types.SimpleNamespace(returncode=0, stdout="0", stderr="")
         return types.SimpleNamespace(returncode=0, stdout="1" if exists["db"] else "", stderr="")
     monkeypatch.setattr(smd, "run_psql", fake_psql)
     t = smd.harness_target(tmp_path / "root", db="suvarna_disposable_m", port=40123)
-    assert calls == [("init", str(tmp_path / "root"), 40123), ("start", str(tmp_path / "root"))]
+    assert calls == [("init", str(tmp_path / "root"), 40123), ("start", str(tmp_path / "root"))] and t.started is True
     assert [q for _d, q in seen_sql if q.startswith("CREATE DATABASE")] == ['CREATE DATABASE "suvarna_disposable_m"']
     assert t.host == str(tmp_path / "root" / "sock") and t.port == 40123 and t.db == "suvarna_disposable_m" and t.expect == {"data_directory": str(tmp_path / "root" / "pg"), "port": 40123}
     seen_sql.clear()
-    smd.harness_target(tmp_path / "root", db="suvarna_disposable_m", port=40123)           # second call: the database exists, no CREATE
+    smd.harness_target(tmp_path / "root", db="suvarna_disposable_m", port=40123)           # second call: the database exists and is empty, no CREATE
     assert not [q for _d, q in seen_sql if q.startswith("CREATE DATABASE")]
 
 
@@ -802,13 +1182,15 @@ def test_harness_target_never_uses_a_forbidden_port(tmp_path):
             smd.harness_target(tmp_path / "root", db="suvarna_disposable_m", port=port)
 
 
-def test_baseline_cli_writes_a_valid_document_and_always_stops_the_cluster(monkeypatch, tmp_path, capsys):
+def test_baseline_cli_writes_a_valid_document_and_stops_only_a_cluster_it_started(monkeypatch, tmp_path, capsys):
     stopped = []
-    monkeypatch.setattr(smd, "harness_target", lambda root, **kw: smd.Target(pg_bin="/x", host="h", port=40001, user="u", db="suvarna_disposable_m"))
+    state = {"started": True}
+    monkeypatch.setattr(smd, "harness_target", lambda root, **kw: smd.Target(pg_bin="/x", host="h", port=40001, user="u", db="suvarna_disposable_mirror",
+                                                                            started=state["started"]))
     monkeypatch.setattr(smd.sr, "stop_cluster", lambda root, pg_bin: stopped.append(str(root)))
     monkeypatch.setattr(smd, "build_mirror_baseline", lambda *a, **k: _good_baseline())
     out = tmp_path / "MIRROR_BASELINE.json"
-    args = ["baseline", "--scratch", str(tmp_path / "s"), "--root", str(tmp_path / "root"), "--port", "40001", "--out", str(out)]
+    args = ["baseline", "--recipe", str(tmp_path), "--scratch", str(tmp_path / "s"), "--root", str(tmp_path / "root"), "--port", "40001", "--out", str(out)]
     real_root = os.path.realpath(str(tmp_path / "root"))
     assert smd.main(args) == 0 and stopped == [real_root]
     assert smd.validate_baseline(json.loads(out.read_text())) == [] and smd.main(["validate-baseline", str(out)]) == 0
@@ -824,6 +1206,8 @@ def test_baseline_cli_writes_a_valid_document_and_always_stops_the_cluster(monke
     monkeypatch.setattr(smd, "build_mirror_baseline", boom)
     assert smd.main(args) == 2 and len(stopped) == 3                      # a refusal exits 2 and the cluster is still stopped
     assert smd.main(args + ["--keep-running"]) == 2 and len(stopped) == 3
+    state["started"] = False
+    assert smd.main(args) == 2 and len(stopped) == 3                      # a cluster that was already running is left running
     (tmp_path / "junk.json").write_text("{not json")
     assert smd.main(["validate-baseline", str(tmp_path / "junk.json")]) == 2
     assert smd.main(["validate-baseline", str(tmp_path / "absent.json")]) == 2
@@ -837,6 +1221,12 @@ def load_module(src: str, name: str):
     sys.modules[name] = mod
     exec(compile(src, f"<{name}>", "exec"), mod.__dict__)         # noqa: S102 - the repo's own source, one mutation applied
     return mod
+
+
+def _dup_file(tmp):
+    f = tmp / "dup_inv.json"
+    f.write_text('{"a": 1, "a": 2}')
+    return f
 
 
 def invariants(m, tmp: pathlib.Path) -> list[str]:
@@ -959,12 +1349,47 @@ def invariants(m, tmp: pathlib.Path) -> list[str]:
     prod_rb = copy.deepcopy(prod)
     prod_rb["rebuild"] = {"run_id": "x", "orchestrator_commit": SHA40}
     check("output_refuses_production_rebuild", lambda: v(prod_rb, "production") != [])
-    check("drill_pass", lambda: m.build_drill(prod, reh, D5, None, commit=SHA40)[0]["result"] == "PASS")
-    check("drill_expected_declared_only", lambda: m.build_drill(prod, reh, D5, None, commit=SHA40)[0]["expected_assets"] == D5.declared_assets())
+    check("drill_pass_scoped", lambda: m.build_drill(prod, reh, D5, None, commit=SHA40)[0]["result"] == "PASS_DECLARED_ONLY")
+    check("drill_expected_units", lambda: m.build_drill(prod, reh, D5, None, commit=SHA40)[0]["expected_assets"] == D5.expected_assets())
+    check("drill_carries_coverage_and_rows", lambda: m.build_drill(prod, reh, D5, None, commit=SHA40)[0]["coverage"] == D5.drill_coverage()
+          and m.build_drill(prod, reh, D5, None, commit=SHA40)[0]["rows"]["a_0"]["production"] == {"syn_t0": 5})
     check("drill_coverage_undeclared", lambda: set(m.build_drill(prod, reh, D5, None, commit=SHA40)[1]["undeclared"]) == {"a_und", "a_svc"})
     diff = copy.deepcopy(reh)
     diff["tables"]["a_roll"]["syn_roll"]["sha256"] = H
     diff["fingerprints"]["a_roll"] = H
+    flagless = copy.deepcopy(reh)
+    flagless["tables"]["a_0"]["syn_t0"]["sha256"] = H
+    flagless["fingerprints"]["a_0"] = H
+    check("drill_rolling_code_refused_on_deterministic_unit", lambda: m.build_drill(prod, flagless, D5, {"a_0": _ex()}, commit=SHA40)[0]["result"] == "FAIL")
+    check("drill_rolling_code_ok_on_flagged_unit", lambda: m.build_drill(prod, diff, D5, {"a_roll": _ex()}, commit=SHA40)[0]["result"] == "PASS_DECLARED_ONLY")
+    check("drill_group_members_reported", lambda: m.build_drill(prod, reh, D5, None, commit=SHA40)[1]["unit_status"]["grp_g_shared"]["members"] == ["a_gm1", "a_gm2"])
+    ep, er = copy.deepcopy(prod), copy.deepcopy(reh)
+    for dd_ in (ep, er):
+        _empty_unit(dd_, "a_multi")
+    check("drill_empty_both_unmeasured", lambda: m.build_drill(ep, er, D5, None, commit=SHA40)[0]["result"] == "UNMEASURED")
+    bad_rows = copy.deepcopy(reh)
+    bad_rows["tables"]["a_0"]["syn_t0"]["sha256"] = prod["tables"]["a_0"]["syn_t0"]["sha256"]
+    bad_rows["fingerprints"]["a_0"] = prod["fingerprints"]["a_0"]
+    bad_rows["tables"]["a_0"]["syn_t0"]["rows"] = 6
+    check("drill_row_cross_check", lambda: m.build_drill(prod, bad_rows, D5, None, commit=SHA40)[0]["result"] == "FAIL")
+    emp_h = copy.deepcopy(prod)
+    emp_h["tables"]["a_0"]["syn_t0"]["sha256"] = m.fd.empty_table_fingerprint(D5, "a_0", "syn_t0")
+    emp_h["fingerprints"]["a_0"] = emp_h["tables"]["a_0"]["syn_t0"]["sha256"]
+    check("output_refuses_empty_hash_with_rows", lambda: v(emp_h, "production") != [])
+    zero_rows = copy.deepcopy(prod)
+    zero_rows["tables"]["a_0"]["syn_t0"]["rows"] = 0
+    check("output_refuses_zero_rows_with_data_hash", lambda: v(zero_rows, "production") != [])
+    only_fp = copy.deepcopy(prod)
+    only_fp["tables"].pop("a_1")
+    check("output_refuses_unit_in_fingerprints_only", lambda: v(only_fp, "production") != [])
+    only_tab = copy.deepcopy(prod)
+    only_tab["fingerprints"].pop("a_1")
+    check("output_refuses_unit_in_tables_only", lambda: v(only_tab, "production") != [])
+    nil_run = copy.deepcopy(reh)
+    nil_run["rebuild"]["run_id"] = "00000000-0000-0000-0000-000000000000"
+    check("output_refuses_nil_run_id", lambda: v(nil_run, "rehearsal") != [])
+    check("real_uuid", lambda: m.real_uuid("5e57e57e-5e57-4e57-8e57-5e57e57e57e5") and not m.real_uuid("-" * 36) and not m.real_uuid("00000000-0000-0000-0000-000000000000")
+          and not m.real_uuid("5E57E57E-5E57-4E57-8E57-5E57E57E57E5") and not m.real_uuid("5e57e57e5e574e578e575e57e57e57e5") and not m.real_uuid("{5e57e57e-5e57-4e57-8e57-5e57e57e57e5}"))
     check("drill_difference_fails", lambda: m.build_drill(prod, diff, D5, None, commit=SHA40)[0]["result"] == "FAIL")
     check("drill_hint", lambda: m.build_drill(prod, diff, D5, None, commit=SHA40)[1]["differences_with_hints"][0]["reproducibility"] == ["rolling_horizon", "platform_bound"])
     check("drill_as_of", lambda: raises(m.MirrorError, lambda: m.build_drill(prod, {**reh, "as_of": "2026-10-04"}, D5, None, commit=SHA40)))
@@ -978,9 +1403,18 @@ def invariants(m, tmp: pathlib.Path) -> list[str]:
     blf["result"] = "FAIL"
     check("status_baseline_fail_unmeasured", lambda: {x["step"]: x["state"] for x in m.drill_status(D5, baseline=blf)["steps"]}["mirror_baseline"] == "UNMEASURED")
     check("status_unmeasured", lambda: m.drill_status(D5)["result"] == "UNMEASURED")
-    check("status_measured", lambda: {x["step"]: x["state"] for x in m.drill_status(D5, baseline=good, production=prod, rehearsal=reh)["steps"]}["production_fingerprints"] == "MEASURED")
+    sts = lambda **kw: {x["step"]: x["state"] for x in m.drill_status(D5, **kw)["steps"]}  # noqa: E731
+    check("status_shape_checked_only", lambda: sts(baseline=good, production=prod, rehearsal=reh)["production_fingerprints"] == "SHAPE_CHECKED"
+          and sts(baseline=good, production=prod, rehearsal=reh)["as_of_pin"] == "SHAPE_CHECKED" and sts(baseline=good, production=prod, rehearsal=reh)["mirror_baseline"] == "SHAPE_CHECKED")
+    check("status_receipt_is_a_claim", lambda: sts(rehearsal=reh)["rehearsal_l0_rebuild"] == "CLAIMED_UNVERIFIED")
+    check("status_receipt_verified_by_record", lambda: sts(rehearsal=reh, build_record=_record())["rehearsal_l0_rebuild"] == "MEASURED")
+    check("status_receipt_bad_record", lambda: sts(rehearsal=reh, build_record=_record(state="running"))["rehearsal_l0_rebuild"] == "CLAIMED_UNVERIFIED")
+    check("verify_receipt", lambda: m.verify_rebuild_receipt(reh["rebuild"], _record(), D5) == [] and m.verify_rebuild_receipt(reh["rebuild"], _record(commit="2" * 40), D5)
+          and m.verify_rebuild_receipt(reh["rebuild"], _record(run_id="6e57e57e-5e57-4e57-8e57-5e57e57e57e5"), D5))
+    check("verify_receipt_all_assets", lambda: m.verify_rebuild_receipt(reh["rebuild"], _record(assets=[]), D5) != [])
+    check("status_no_complete_inputs_verdict", lambda: "COMPLETE_INPUTS" not in json.dumps(m.drill_status(D5, baseline=good, production=prod, rehearsal=reh, build_record=_record())))
     check("status_rejects_baseline_stage", lambda: {x["step"]: x["state"] for x in m.drill_status(D5, rehearsal=base)["steps"]}["rehearsal_l0_rebuild"] == "UNMEASURED")
-    check("reader_spec", lambda: len(m.reader_spec(D5)["selects"]) == 9)
+    check("reader_spec", lambda: len(m.reader_spec(D5)["selects"]) == 10)
     check("probe_aggregate_only", lambda: all("count(*)" in p["sql"] and "WHERE" not in p["sql"] for p in m.OWNERSHIP_PROBES))
     check("psql_needs_exactly_one", lambda: raises(m.MirrorError, lambda: m.run_psql(m.Target(pg_bin="/x", host="127.0.0.1", port=40001, user="u", db="d"), on_error_stop=True)))
 
@@ -993,6 +1427,59 @@ def invariants(m, tmp: pathlib.Path) -> list[str]:
     check("fp_refuses_receipt_on_baseline", lambda: raises(m.MirrorError, lambda: m.rehearsal_fingerprints(Boom(), dd5, **good_kw, rebuild={"run_id": "5e57e57e-5e57-4e57-8e57-5e57e57e57e5", "orchestrator_commit": SHA40})))
     check("fp_refuses_bad_as_of", lambda: raises(m.MirrorError, lambda: m.rehearsal_fingerprints(Boom(), dd5, **{**good_kw, "as_of": "bad"})))
     check("forbidden_port", lambda: raises(m.MirrorError, lambda: m.run_psql(m.Target(pg_bin="/x", host="127.0.0.1", port=5432, user="u", db="d"), sql="SELECT 1", on_error_stop=True)))
+    # database names and the baseline guards
+    check("db_disposable_ok", lambda: m.validate_db_name("suvarna_disposable_m", "disposable") == "suvarna_disposable_m")
+    check("db_disposable_refuses", lambda: all(raises(m.MirrorError, lambda d=d: m.validate_db_name(d, "disposable")) for d in ("postgres", "rehearsal", "suvarna_disposable; x", "", None)))
+    check("db_rehearsal_ok_and_refuses", lambda: m.validate_db_name("rehearsal_m", "rehearsal") and raises(m.MirrorError, lambda: m.validate_db_name("suvarna_disposable_m", "rehearsal")))
+    check("db_unknown_policy", lambda: raises(m.MirrorError, lambda: m.validate_db_name("rehearsal", "production")))
+    good_recipe = make_recipe(tmp / "inv_br")
+    check("baseline_db_first", lambda: raises(m.MirrorError, lambda: m.build_mirror_baseline(good_recipe, tmp / "inv_bs", m.Target(pg_bin="/x", host="h", port=40001, user="u", db="postgres"))))
+    check("baseline_no_scratch_before_db_check", lambda: not (tmp / "inv_bs").exists())
+    check("harness_db_first", lambda: raises(m.MirrorError, lambda: m.harness_target(tmp / "no_root", db="postgres", port=40001)))
+    check("harness_disposable_not_rehearsal_port", lambda: raises(m.MirrorError, lambda: m.harness_target(tmp / "no_root", db="suvarna_disposable_m", port=55432)))
+    check("quote", lambda: m._quote_ident('a"b') == '"a""b"' and m._quote_lit("a'b") == "'a''b'")
+    check("strict_rd", lambda: raises(Exception, lambda: m._rd(_dup_file(tmp))))
+    # the rehearsal policy pins (stubs: nothing real is started or touched; each pin is isolated: every OTHER pin is satisfied)
+    def mkroot(name, *, marker=True, data=True):
+        r = tmp / name
+        r.mkdir(mode=0o700)
+        os.chmod(r, 0o700)
+        r = pathlib.Path(os.path.realpath(str(r)))
+        if marker:
+            m.sr._write_marker(m.sr._Layout(r), 55432)
+        if data:
+            m.sr._Layout(r).data.mkdir()
+            (m.sr._Layout(r).data / "PG_VERSION").write_text("15\n")
+        return r
+    saved = (m.sr.DEFAULT_ROOT, m.sr.init_cluster, m.sr.start_cluster, m.run_psql)
+    started_calls = []
+    nonempty = {"v": False}
+    m.sr.init_cluster = lambda *a, **k: started_calls.append("init") or {}
+    m.sr.start_cluster = lambda *a, **k: started_calls.append("start") or {"state": "running", "result": "started"}
+    m.run_psql = lambda t, *, sql=None, file=None, on_error_stop, db=None, timeout=900: types.SimpleNamespace(
+        returncode=0, stdout=(("3" if nonempty["v"] else "0") if "count(*)" in (sql or "") else ("1" if "pg_database" in (sql or "") else "")), stderr="")
+    try:
+        good_root = mkroot("inv_reh_good")
+        m.sr.DEFAULT_ROOT = str(good_root)
+        rkw = dict(db="rehearsal_m", port=55432, policy="rehearsal")
+        check("reh_ok", lambda: m.harness_target(good_root, **rkw).policy == "rehearsal")
+        check("reh_port_pin", lambda: raises(m.MirrorError, lambda: m.harness_target(good_root, db="rehearsal_m", port=5999, policy="rehearsal")))
+        check("reh_owner_pin", lambda: raises(m.MirrorError, lambda: m.harness_target(good_root, owner="nobody_else", **rkw)))
+        other = mkroot("inv_reh_other")
+        check("reh_root_pin", lambda: raises(m.MirrorError, lambda: m.harness_target(other, **rkw)))
+        nomarker = mkroot("inv_reh_nomarker", marker=False)
+        m.sr.DEFAULT_ROOT = str(nomarker)
+        check("reh_needs_marker", lambda: raises(m.MirrorError, lambda: m.harness_target(nomarker, **rkw)))
+        m.sr.DEFAULT_ROOT = str(good_root)
+        nonempty["v"] = True
+        check("reh_existing_db_must_be_empty", lambda: raises(m.MirrorError, lambda: m.harness_target(good_root, **rkw)))
+        check("reh_allow_existing", lambda: m.harness_target(good_root, allow_existing_db=True, **rkw).policy == "rehearsal")
+        check("reh_never_initialises", lambda: "init" not in started_calls)
+        check("disposable_existing_db_must_be_empty", lambda: raises(m.MirrorError, lambda: m.harness_target(tmp / "inv_d2", db="suvarna_disposable_m", port=40123)))
+        nonempty["v"] = False
+        check("disposable_not_rehearsal_port", lambda: raises(m.MirrorError, lambda: m.harness_target(tmp / "inv_d", db="suvarna_disposable_m", port=55432)))
+    finally:
+        m.sr.DEFAULT_ROOT, m.sr.init_cluster, m.sr.start_cluster, m.run_psql = saved
     return bad
 
 
@@ -1001,6 +1488,30 @@ def test_invariants_hold_on_the_unmutated_module(tmp_path):
 
 
 MUTANTS = [
+    ('    return (isinstance(rebuild, Mapping) and set(rebuild) == {"run_id", "orchestrator_commit"} and real_uuid(rebuild["run_id"])', '    return (isinstance(rebuild, Mapping) and set(rebuild) == {"run_id", "orchestrator_commit"}'),
+    ('    return str(u) == v and u.variant == uuid.RFC_4122 and u.version in range(1, 9)', '    return True'),
+    ('    return str(u) == v and u.variant == uuid.RFC_4122 and u.version in range(1, 9)', '    return u.variant == uuid.RFC_4122 and u.version in range(1, 9)'),
+    ('            if m["rows"] > 0 and m["sha256"] == empty:', '            if False:'),
+    ('            elif m["rows"] == 0 and m["sha256"] != empty:', '            elif False:'),
+    ('    for a in sorted(set(tabs) ^ set(fps)):', '    for a in []:'),
+    ('    if record["state"] != "completed":', '    if False:'),
+    ('    if record["orchestrator_commit"] != receipt["orchestrator_commit"]:', '    if False:'),
+    ('    if missing:', '    if False:'),
+    ('    if not real_uuid(record["run_id"]) or record["run_id"] != receipt["run_id"]:', '    if False:'),
+    ('        if not rprob:', '        if True:'),
+    ('        steps.append({"step": "production_fingerprints", "state": "SHAPE_CHECKED",', '        steps.append({"step": "production_fingerprints", "state": "MEASURED",'),
+    ('        steps.append({"step": "as_of_pin", "state": "SHAPE_CHECKED",', '        steps.append({"step": "as_of_pin", "state": "MEASURED",'),
+    ('        steps.append({"step": "mirror_baseline", "state": "SHAPE_CHECKED",', '        steps.append({"step": "mirror_baseline", "state": "MEASURED",'),
+    ('    validate_db_name(target.db, target.policy)                  # before ANY file is copied, restore run or database touched', '    pass'),
+    ('    validate_db_name(db, policy)\n    if policy not in ("disposable", "rehearsal"):', '    if policy not in ("disposable", "rehearsal"):'),
+    ('        if port in sr.FORBIDDEN_PORTS or port == sr.DEFAULT_PORT:', '        if False:'),
+    ('        if port != sr.DEFAULT_PORT:', '        if False:'),
+    ('        if os.path.realpath(root) != os.path.realpath(sr.DEFAULT_ROOT) or str(lay.root) != os.path.realpath(sr.DEFAULT_ROOT):', '        if False:'),
+    ('        if sr.read_marker(root) is None or not (lay.data / "PG_VERSION").is_file():', '        if False:'),
+    ('        if data_owner != want_owner or lay.data.stat().st_uid != os.getuid():', '        if False:'),
+    ('    elif not allow_existing_db:', '    elif False:'),
+    ('    return fd.strict_loads(Path(path).read_text(encoding="utf-8"))', '    return json.loads(Path(path).read_text(encoding="utf-8"))'),
+    ('    if not (isinstance(db, str) and DB_NAME_RES[policy].fullmatch(db)):', '    if False:'),
     ('    if dst_real == src_root or src_root in dst_real.parents or dst_real in src_root.parents:', '    if False:'),
     ('    if dst_root.exists() and (not dst_root.is_dir() or any(dst_root.iterdir())):', '    if False:'),
     ('            if p.is_symlink():\n                raise MirrorError(f"recipe file {rel}: {p} is a symlink")', '            if False:\n                raise MirrorError(f"recipe file {rel}: {p} is a symlink")'),
@@ -1024,7 +1535,7 @@ MUTANTS = [
     ('                and c["port"] not in sr.FORBIDDEN_PORTS):', '                and True):'),
     ('    if doc["definition"] != fd.FINGERPRINT_DEFINITION:', '    if False:'),
     ('    if doc["declarations_sha256"] != decls.sha256:', '    if False:'),
-    ('        if a not in declared:', '        if False:'),
+    ('        if a not in units:', '        if False:'),
     ('        if not (isinstance(t, Mapping) and set(t) == set(decls.tables(a))):', '        if not isinstance(t, Mapping):'),
     ('        if ok and fps.get(a) != fd.composite_fingerprint({n: m["sha256"] for n, m in t.items()}):', '        if False:'),
     ('    if doc["side"] != side:', '    if False:'),
@@ -1034,8 +1545,8 @@ MUTANTS = [
     ('        if rehearsal["stage"] != "after_rebuild":', '        if False:'),
     ('        if production["as_of"] != rehearsal["as_of"]:', '        if False:'),
     ('        if rehearsal["rebuild"] and rehearsal["rebuild"]["orchestrator_commit"] != commit:', '        if False:'),
-    ('expected_assets=decls.expected_assets(), commit=commit)', 'expected_assets=decls.declared_assets()[:-1], commit=commit)'),
-    ('    cov["note"] = "undeclared assets are NOT in expected_assets: they are reported here, not compared"', '    cov.pop("undeclared")'),
+    ('expected_assets=decls.expected_assets(), commit=commit, coverage=decls.drill_coverage(), rows=rows)', 'expected_assets=decls.expected_assets()[:-1], commit=commit, coverage=decls.drill_coverage(), rows=rows)'),
+    ('    cov["note"] = "undeclared assets are NOT in expected_assets: they are reported here and in the drill\'s coverage block, not compared"', '    cov.pop("undeclared")'),
     ('    if baseline is not None and not bprob and baseline["result"] == "PASS":', '    if baseline is not None:'),
     ('    if rehearsal is not None and not reh_p and rehearsal["stage"] == "after_rebuild":', '    if rehearsal is not None:'),
     ('    if t.port in sr.FORBIDDEN_PORTS:', '    if False:'),
