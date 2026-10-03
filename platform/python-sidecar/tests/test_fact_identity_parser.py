@@ -524,3 +524,135 @@ def test_all_30_vargas_matches_writer_constant():
     reference cannot' — this test IS the reference-equivalent check."""
     from ga_writers.ga_vargas_writer import ALL_30_VARGAS as WRITER_ALL_30_VARGAS
     assert ALL_30_VARGAS == frozenset(WRITER_ALL_30_VARGAS)
+
+
+# ═════════════════════════════════════════════════════════════════════════
+# S-L1 rehearsal P3 (2026-10-03): the four categories the parser had no rule
+# for after the S-L1 rebuilds. Every string below is a REAL row shape: the
+# subjects/keys come from the rehearsal's own gap listing
+# (rehearsal_final/out/gidx_output_final.txt) and the emitting ga_* writers.
+# ═════════════════════════════════════════════════════════════════════════
+
+_AV_PLANETS = ("SUN", "MOON", "MAR", "MER", "JUP", "VEN", "SAT")
+_AV_CONTRIBUTORS = _AV_PLANETS + ("LAGNA",)
+
+
+@pytest.mark.parametrize("subject,planet,contributor,sign", [
+    ("SUN-CONTRIBUTOR_SUN-SIGN_1", "SUN", "SUN", 1),          # the rehearsal's own gap example
+    ("MOON-CONTRIBUTOR_LAGNA-SIGN_12", "MOON", "LAGNA", 12),
+    ("SAT-CONTRIBUTOR_MER-SIGN_9", "SAT", "MER", 9),          # schema note: 'SUN-CONTRIBUTOR_MOON-SIGN_9' shape
+    ("SUN-CONTRIBUTOR_MOON-SIGN_9", "SUN", "MOON", 9),
+])
+def test_ashtakavarga_contributor_natural_tuple_is_parsed(subject, planet, contributor, sign):
+    r = parse_fact_identity(subject, "bindus", "ashtakavarga_bindu_contributor")
+    assert r == IdentityMatch(
+        entity_kind="graha_contributor_sign",
+        parse_rule="ashtakavarga_contributor_graha_sign",
+        graha_code=planet, graha_code_secondary=contributor, sign_num=sign,
+    )
+    # never tagged as a varga/house row: chart_reader_v4 selects on graha_code+varga_id
+    assert r.varga_id is None and r.house_num is None
+
+
+def test_ashtakavarga_contributor_full_672_grid_round_trips():
+    seen = set()
+    for p in _AV_PLANETS:
+        for c in _AV_CONTRIBUTORS:
+            for s in range(1, 13):
+                r = parse_fact_identity(f"{p}-CONTRIBUTOR_{c}-SIGN_{s}", "bindus", "ashtakavarga_bindu_contributor")
+                assert r is not None, (p, c, s)
+                assert (r.graha_code, r.graha_code_secondary, r.sign_num) == (p, c, s)
+                seen.add((r.graha_code, r.graha_code_secondary, r.sign_num))
+    assert len(seen) == 7 * 8 * 12 == 672
+
+
+@pytest.mark.parametrize("subject", [
+    "SUN-CONTRIBUTOR_SUN-SIGN_0",        # sign out of 1..12 -> DB CHECK would reject; must be a gap, not a crash
+    "SUN-CONTRIBUTOR_SUN-SIGN_13",
+    "RAH_MEAN-CONTRIBUTOR_SUN-SIGN_1",   # AV has 7 grahas only (CHART_FACTS_SCHEMA applies_to_subjects)
+    "SUN-CONTRIBUTOR_RAH_MEAN-SIGN_1",
+    "SUN-CONTRIBUTOR_ASC-SIGN_1",        # contributor token is LAGNA after norm_graha, never ASC
+    "SUN-CONTRIBUTOR_SUN",
+    "SUN-CONTRIBUTOR_-SIGN_1",
+])
+def test_ashtakavarga_contributor_malformed_is_a_gap_not_a_guess(subject):
+    assert parse_fact_identity(subject, "bindus", "ashtakavarga_bindu_contributor") is None
+    assert classify_unparsed_subject(subject, "ashtakavarga_bindu_contributor") is None
+
+
+def test_ashtakavarga_contributor_agrees_with_the_real_writer_subjects():
+    """Writer-agreement detector: build real rows with the real writer
+    function and require the parser to resolve every one of them."""
+    ga_strength_writer = pytest.importorskip("ga_writers.ga_strength_writer")
+    names = ("Sun", "Moon", "Mars", "Mercury", "Jupiter", "Venus", "Saturn")
+    contribs = names + ("Lagna",)
+    prastara = {n: {c: [1, 0] * 6 for c in contribs} for n in names}
+    bav = {n: [0] * 12 for n in names}
+    bav["SARVA"] = [0] * 12
+    pinda = {n: {"sodhya": 0, "graha": 0, "raasi": 0} for n in names}
+    rows = ga_strength_writer._build_ashtakavarga_rows(
+        bav, pinda, "chart", "build", "lahiri_chitrapaksha", "2026-01-01T00:00:00Z",
+        "test/0", "single", prastara=prastara,
+    )
+    contrib_rows = [r for r in rows if r["fact_category"] == "ashtakavarga_bindu_contributor"]
+    assert len(contrib_rows) == 672
+    for row in contrib_rows:
+        m = parse_fact_identity(row["fact_subject"], row["fact_key"], row["fact_category"])
+        assert m is not None and m.parse_rule == "ashtakavarga_contributor_graha_sign", row["fact_subject"]
+
+
+# ── YAMAKANTAKA: the same upagraha family as GULIKA / MANDI ──────────────
+
+@pytest.mark.parametrize("key", [
+    "longitude_sidereal", "sign", "sign_lord", "nakshatra", "nakshatra_lord", "pada", "house_d1",
+])
+def test_yamakantaka_is_classified_like_gulika_and_mandi(key):
+    for subj in ("GULIKA", "MANDI", "YAMAKANTAKA"):
+        assert parse_fact_identity(subj, key, "sensitive_point_gulika_mandi") is None
+    assert classify_unparsed_subject("YAMAKANTAKA", "sensitive_point_gulika_mandi") == \
+        classify_unparsed_subject("GULIKA", "sensitive_point_gulika_mandi") == \
+        "special_point_or_aggregate_marker"
+
+
+# ── panchanga_special_yoga_combinations (the YOGA_PANCHAKA gap) ──────────
+
+def test_yoga_panchaka_is_recognised():
+    for key in ("combination_name", "active_at_birth_flag", "constituent_facts_jsonb_atomic"):
+        assert parse_fact_identity("YOGA_PANCHAKA", key, "panchanga_special_yoga_combinations") is None
+    assert classify_unparsed_subject("YOGA_PANCHAKA", "panchanga_special_yoga_combinations") \
+        == "special_point_or_aggregate_marker"
+
+
+def test_special_yoga_subject_set_matches_the_panchang_engine_catalogue():
+    """Drift detector (CLAUDE.md N.7/N.8): the recognised YOGA_* subjects are
+    exactly the names `panchang_engine/special_yogas.py` can emit, plus the
+    pre-existing YOGA_UNKNOWN fallback. A new engine yoga turns this red (and
+    G-IDX would show it as a gap) instead of passing silently."""
+    import pathlib
+    import re
+    from brahmagyan.fact_identity_parser import KNOWN_PANCHANGA_SPECIAL_YOGA_SUBJECTS
+    src = (pathlib.Path(__file__).resolve().parents[1] / "panchang_engine" / "special_yogas.py").read_text(encoding="utf-8")
+    names = set(re.findall(r'_yoga_dict\(\s*"([a-z_]+)"', src))
+    assert len(names) == 9, names
+    expected = {f"YOGA_{n.upper()}" for n in names}
+    assert KNOWN_PANCHANGA_SPECIAL_YOGA_SUBJECTS == expected
+    for subj in expected:
+        assert classify_unparsed_subject(subj, "panchanga_special_yoga_combinations") == "special_point_or_aggregate_marker"
+    assert classify_unparsed_subject("YOGA_UNKNOWN", "panchanga_special_yoga_combinations") == "special_point_or_aggregate_marker"
+
+
+def test_unknown_special_yoga_name_is_a_gap():
+    assert classify_unparsed_subject("YOGA_BRAND_NEW_ENGINE_YOGA", "panchanga_special_yoga_combinations") is None
+
+
+# ── dasha_scope_cap: ONE explicit new identity-free reason ───────────────
+
+def test_dasha_scope_cap_sentinel_has_its_own_explicit_reason():
+    assert parse_fact_identity("PRANA_DASHA", "level_5_not_computed", "dasha_scope_cap") is None
+    assert classify_unparsed_subject("PRANA_DASHA", "dasha_scope_cap") == "scope_cap_sentinel"
+
+
+def test_scope_cap_sentinel_is_narrow_category_and_subject_both_required():
+    assert classify_unparsed_subject("PRANA_DASHA", "some_other_category") is None
+    assert classify_unparsed_subject("SOOKSHMA_DASHA", "dasha_scope_cap") is None
+    assert classify_unparsed_subject("PRANA_DASHA") is None  # no category supplied
