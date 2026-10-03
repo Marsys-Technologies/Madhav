@@ -361,6 +361,35 @@ jobs:
           npx vitest run tests/integration/gochara_b6_am5_search_inventory.db.test.ts tests/integration/gochara_b6_am14_moon_domain.db.test.ts tests/integration/gochara_b6_am21_p1_anchor.db.test.ts --reporter=verbose --no-file-parallelism
           python3 scripts/gochara/mutation_check_1206.py
 
+      - name: Pravāha A5.3 — migration 1240 / 1233 live-DB suites (window verification gate, roles, seal flows, P1 anchor) — REQUIRED, never skipped
+        # The A5.3 tests build their OWN throwaway databases (a53t_*) and cluster roles on the CI Postgres through the
+        # admin DSN, apply the real migrations verbatim, and drop everything afterwards; this runs serially after the
+        # 1206/1232/1233 suite above (which also creates and drops gochara_* roles). GOCHARA_A53_REQUIRE_DB=1 turns an
+        # unreachable server into a FAILING test instead of the suites' usual NOT_RUN skip — a skipped live suite is
+        # not evidence.
+        env:
+          GOCHARA_A53_ADMIN_DSN: postgresql://postgres:postgres@localhost:5432/postgres
+          GOCHARA_A53_REQUIRE_DB: '1'
+        run: |
+          pip install -r python-sidecar/requirements-ci.txt --quiet
+          # The real-ephemeris A5.3 suites (R9-10 real-sky agreement of builder and verifier) run on the SHA-pinned .se1
+          # corpus (same download + checksums as the governance-gates step); GOCHARA_SE1_REQUIRE=1 turns an absent corpus
+          # into a failure — a skipped real-sky suite is not evidence (§N.8).
+          se1_dir="$(mktemp -d)"
+          for se1_file in sepl_18.se1 semo_18.se1 seas_18.se1; do
+            curl --fail --silent --show-error --location --retry 2 \
+              "https://storage.googleapis.com/madhav-ephemeris/se1/$se1_file" --output "$se1_dir/$se1_file"
+          done
+          (cd "$se1_dir" && printf '%s\n' \
+            'ca1393ceab3a44fbc895887cf789c68819ae6a1cbc9b22225872dbe4ccd99a66  sepl_18.se1' \
+            '1ca07bd67c24374d77226180c20a4f9996cba013697894810518e7eb582ca4f7  semo_18.se1' \
+            'a2cd8fc33807c78ca9a700c91c2e042258b12fc4796519e00781440b5ad8b2e2  seas_18.se1' \
+            | sha256sum -c -)
+          export SE_EPHE_PATH="$se1_dir"
+          export GOCHARA_SE1_REQUIRE=1
+          cd python-sidecar
+          python -m pytest tests/l3/gochara/test_a53_migration_1240_static.py tests/l3/gochara/test_a53_window_verification_gate.py tests/l3/gochara/test_a53_window_verification_roles.py tests/l3/gochara/test_a53_builder_restricted_flow.py tests/l3/gochara/test_a53_all_null_policy.py tests/l3/gochara/test_a53_all_null_policy_db.py tests/l3/gochara/test_a53_complete_output_verification.py tests/l3/gochara/test_a53_p1_contact_completeness.py tests/l3/gochara/test_a53_verification_job.py tests/l3/gochara/test_a53_contact_certification.py tests/l3/gochara/test_a53_boundary_tolerance.py tests/l3/gochara/test_a53_p1_anchor.py tests/l3/gochara/test_a53_p1_support.py tests/l3/gochara/test_a53_scope_completeness.py tests/l3/gochara/test_a53_stored_scope_real_sky.py tests/l3/gochara/test_a53_r10_complete_records.py tests/l3/gochara/test_a53_r10_record_results.py tests/l3/gochara/test_a53_r10_locking.py tests/l3/gochara/test_a53_r10_runner_gate.py tests/l3/gochara/test_a53_r10_identity.py tests/l3/gochara/test_a53_r10_boundary_contract.py tests/l3/gochara/test_a53_r11_generation_wide.py tests/l3/gochara/test_a53_r11_p1_independence.py tests/l3/gochara/test_a53_r11_seal_brief.py tests/l3/gochara/test_a53_disposable_db_guard.py tests/l3/gochara/test_a53_r12_boundary.py tests/l3/gochara/test_a53_r12_seal_job.py tests/l3/gochara/test_a53_r12_persisted_brief.py tests/l3/gochara/test_a53_r13_brief_serializer.py tests/l3/gochara/test_a53_r13_timeouts.py tests/l3/gochara/test_a53_r13_sealed_boundary.py tests/l3/gochara/test_a53_r13_producer.py tests/l3/gochara/test_a53_r13_own_checkout.py tests/l3/gochara/test_a53_r14_sealed_contacts.py tests/l3/gochara/test_a53_r15_amendments.py tests/l3/gochara/test_a53_r16_amendments.py tests/l3/gochara/test_a53_r18_independence_pins.py tests/l3/gochara/test_a25_v41_candidate_writer.py tests/l3/gochara/test_a53_input_vector.py -q --tb=short -rs -p no:cacheprovider
+
       - name: RATE-07 — provision the rate-limit bucket DB (migration 580, real file)
         # A third throwaway database, bare: migration 580 is self-contained
         # (CREATE TABLE IF NOT EXISTS, no FK to anything) and applying the REAL
