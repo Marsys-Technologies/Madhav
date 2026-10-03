@@ -90,8 +90,7 @@ export interface NirmanaRegistryContractRow {
   data_disposition: 'RETAINED_AS_CAPITAL' | 'SUPERSEDED_IN_PLACE' | 'DROPPABLE' | null
   dead_flag: boolean | null
   /**
-   * Whether ANY receipt / build-run / throughput row exists for the asset (see `runtimeEvidenceSql`; the narrow SECURITY DEFINER function of
-   * migration 1243). Read only by `isNirmanaStagedInertCandidate`; null / undefined is NOT "none" — only `=== false` excludes.
+   * Whether ANY provenance receipt or build_run_assets row exists for the asset (see `runtimeEvidenceSql`). Read only by `isNirmanaStagedInertCandidate`; null / undefined is NOT "none" — only `=== false` excludes.
    */
   has_runtime_evidence?: boolean | null
 }
@@ -110,8 +109,8 @@ export const NIRMANA_STAGED_INERT_CANDIDATES: ReadonlySet<string> = new Set(['ka
 
 /**
  * The exclusion applies ONLY while the row still has the staged shape: exactly one of the two ids, is_active = false, has_writer = true, no
- * dependencies, catalog_status not RETIRED, and POSITIVELY no receipt / build-run / throughput evidence (`has_runtime_evidence === false`). Any
- * change — activation, a dependency, a receipt, a build run or throughput row, or a loader that does not supply the evidence column — makes the row
+ * dependencies, catalog_status not RETIRED, and POSITIVELY no receipt / build-run evidence (`has_runtime_evidence === false`). Any
+ * change — activation, a dependency, a receipt or a build-run row, or a loader that does not supply the evidence column — makes the row
  * count as a normal asset again, and the monitor / comparisons see it.
  */
 export function isNirmanaStagedInertCandidate(row: NirmanaRegistryContractRow): boolean {
@@ -133,17 +132,24 @@ export function excludeNirmanaStagedInertCandidates<T extends NirmanaRegistryCon
 }
 
 /**
- * SQL expression `has_runtime_evidence` for a registry row aliased `alias`: the result of the narrow SECURITY DEFINER function
- * `public.ka_gochara_staged_candidate_has_runtime_evidence` (migration 1243), which checks asset_provenance_receipts, build_run_assets AND
- * asset_throughput for the id without granting the connecting role SELECT on any of them. The function RAISES for any id other than the two staged
- * candidates, so it is evaluated ONLY for those two ids (NULL for every other row — which is never consulted). NULL is "unknown" and is NEVER
- * read as "no evidence": `isNirmanaStagedInertCandidate` excludes only on `=== false`. If the function is missing, denied or errors, the statement
- * fails and the whole registry read fails closed (a failed statement aborts the enclosing transaction; the candidate is never silently excluded).
- * ONE predicate for every loader (monitor, snapshot, all five definitions loaders).
+ * SQL expression `has_runtime_evidence` for a registry row aliased `alias`, ONE predicate for every loader (monitor, snapshot, all five definitions
+ * loaders incl. the ingress path): `EXISTS(asset_provenance_receipts) OR EXISTS(build_run_assets)` for exactly the two staged ids, NULL for every other
+ * row (never consulted). All three loader roles (amjis_app, nirmana_campaign_control_writer, nirmana_evidence_ingress_writer) hold SELECT on both
+ * tables (read-only production check, 2026-10-03); none of the two non-app roles holds SELECT on asset_throughput, so throughput is NOT part of the
+ * predicate — a cockpit refresh row is not a build, so it is not runtime evidence. NULL is "unknown" and is NEVER read as "no evidence":
+ * `isNirmanaStagedInertCandidate` excludes only on `=== false`.
+ *
+ * KNOWN LIMIT (documented, Suvarṇa-approved fallback (b)): the cockpit watchdog PRUNES old build_run_assets / build_runs rows
+ * (`app/api/cockpit/watchdog/route.ts:462-475`), and a FAILED run leaves no receipt — so a candidate whose only evidence was a pruned build row (plus a
+ * throughput row nobody here may read) would look evidence-free again and be excluded. PROCEDURAL COMMITMENT that closes it: any REAL dispatch of
+ * either candidate retires the asset or adjusts its frozen-population status IN THE SAME CHANGE (and removes its id from NIRMANA_STAGED_INERT_CANDIDATES).
+ * A narrow SECURITY DEFINER function that also reads asset_throughput is prepared as a separate protected-class migration (draft); the loaders
+ * switch to it in a later routine change, after that migration is applied.
  */
 export function runtimeEvidenceSql(alias: string): string {
   return `CASE WHEN ${alias}.asset_id IN ('ka_gochara_v4_41_candidate', 'ka_gochara_v5')
-              THEN public.ka_gochara_staged_candidate_has_runtime_evidence(${alias}.asset_id) END AS has_runtime_evidence`
+              THEN (EXISTS (SELECT 1 FROM public.asset_provenance_receipts rcpt WHERE rcpt.asset_id = ${alias}.asset_id)
+                    OR EXISTS (SELECT 1 FROM public.build_run_assets bra WHERE bra.asset_id = ${alias}.asset_id)) END AS has_runtime_evidence`
 }
 
 export type NirmanaExecutionObligation = Exclude<

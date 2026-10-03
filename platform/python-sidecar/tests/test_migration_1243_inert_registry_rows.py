@@ -95,10 +95,10 @@ def world(dsn):
     from pipeline.orchestrator.runner import _WRITER_SUBASSET_IDS
     registered = _production_writer_ids()
     conn = psycopg.connect(dsn, autocommit=True)
-    conn.execute("DROP FUNCTION IF EXISTS public.ka_gochara_staged_candidate_has_runtime_evidence(text); DROP TABLE IF EXISTS asset_registry, asset_provenance_receipts, build_run_assets, asset_throughput CASCADE; DROP FUNCTION IF EXISTS nirmana_invalidate_registry_receipts() CASCADE")
-    for role in ("amjis_app", "nirmana_campaign_control_writer", "outsider_role"):
+    conn.execute("DROP TABLE IF EXISTS asset_registry, asset_provenance_receipts, build_run_assets, asset_throughput CASCADE; DROP FUNCTION IF EXISTS nirmana_invalidate_registry_receipts() CASCADE")
+    for role in ("amjis_app", "nirmana_campaign_control_writer", "nirmana_evidence_ingress_writer", "outsider_role"):
         conn.execute(f"DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = '{role}') THEN CREATE ROLE {role} NOLOGIN; END IF; END $$")
-    conn.execute("GRANT CREATE, USAGE ON SCHEMA public TO amjis_app")
+    conn.execute("GRANT USAGE ON SCHEMA public TO amjis_app")                    # production: USAGE WITHOUT CREATE on public (the ordinary migration role)
     conn.execute(DDL)
     conn.execute("CREATE TABLE asset_provenance_receipts (asset_id text); CREATE TABLE build_run_assets (asset_id text); CREATE TABLE asset_throughput (asset_id text)")
     for tbl in ("asset_registry", "asset_provenance_receipts", "build_run_assets", "asset_throughput"):
@@ -230,77 +230,51 @@ def test_d_a_wrong_pre_existing_row_or_a_dependent_makes_the_migration_fail_loud
     assert _all_rows_but_the_two(conn) == other_before
 
 
-# ── Codex R20-1 / Suvarṇa's six conditions: the SECURITY DEFINER evidence function ───────────────────────────────────────────────────────────────────────────────────────────────
-FN = "public.ka_gochara_staged_candidate_has_runtime_evidence"
+# ── ROWS-ONLY deployability + the ONE evidence predicate (steward M20261003T131532-b179; Suvarṇa option (A)) ──────────────────────────────────────────────────────────────────────
 # the SAME expression the loaders embed (definitions.ts runtimeEvidenceSql)
-EXPR = ("CASE WHEN {a}.asset_id IN ('ka_gochara_v4_41_candidate', 'ka_gochara_v5') THEN " + FN + "({a}.asset_id) END")
+EXPR = """CASE WHEN {a}.asset_id IN ('ka_gochara_v4_41_candidate', 'ka_gochara_v5')
+  THEN (EXISTS (SELECT 1 FROM public.asset_provenance_receipts rcpt WHERE rcpt.asset_id = {a}.asset_id)
+        OR EXISTS (SELECT 1 FROM public.build_run_assets bra WHERE bra.asset_id = {a}.asset_id)) END"""
+ROLES = ("amjis_app", "nirmana_campaign_control_writer", "nirmana_evidence_ingress_writer")
 
 
 def _as(conn, role, sql, params=None):
-    """Run one statement as `role` (SET LOCAL ROLE inside a transaction), return fetchall, always restoring the session."""
     with conn.transaction():
         conn.execute(f"SET LOCAL ROLE {role}")
         return conn.execute(sql, params).fetchall()
 
 
-def test_e_the_function_answers_for_receipts_build_runs_and_throughput_including_the_pruning_and_refresh_only_cases(world):
+def test_e_the_rows_only_migration_applies_as_the_ordinary_role_WITHOUT_CREATE_on_public_and_creates_no_function(world):
+    conn, _ = world
+    assert conn.execute("SELECT has_schema_privilege('amjis_app', 'public', 'CREATE')").fetchone()[0] is False     # production: USAGE without CREATE (the ordinary migration role)
+    before = conn.execute("SELECT count(*) FROM pg_proc WHERE pronamespace = 'public'::regnamespace").fetchone()[0]
+    _apply(conn)                                                                                                       # SET LOCAL ROLE amjis_app inside _apply
+    assert conn.execute("SELECT count(*) FROM pg_proc WHERE pronamespace = 'public'::regnamespace").fetchone()[0] == before
+    assert conn.execute("SELECT count(*) FROM asset_registry WHERE asset_id IN (%s, %s)", (V41, V5)).fetchone()[0] == 2
+
+
+def test_f_ONE_predicate_receipts_or_build_run_assets_gives_IDENTICAL_results_for_all_three_loader_roles(world):
     conn, _ = world
     _apply(conn)
-    ev = lambda i: conn.execute(f"SELECT {FN}(%s)", (i,)).fetchone()[0]
-    assert ev(V5) is False and ev(V41) is False                                     # no rows anywhere
-    conn.execute("INSERT INTO asset_throughput VALUES (%s)", (V5,))                  # a cockpit REFRESH row: a throughput row with no build run
-    assert ev(V5) is True and ev(V41) is False
+    for role in ROLES[1:]:                                                          # production: SELECT on receipts + build_run_assets, NONE on asset_throughput
+        conn.execute(f"GRANT SELECT ON asset_provenance_receipts, build_run_assets, asset_registry TO {role}")
+    conn.execute("GRANT SELECT ON asset_registry TO amjis_app")
+    for role in ROLES[1:]:
+        assert conn.execute("SELECT has_table_privilege(%s, 'public.asset_throughput', 'SELECT')", (role,)).fetchone()[0] is False
+    q = f"SELECT asset_id, {EXPR.format(a='asset_registry')} AS ev FROM asset_registry WHERE asset_id IN (%s, %s, 'ka_gochara') ORDER BY 1"
+
+    def all_roles():
+        got = [_as(conn, r, q, (V41, V5)) for r in ROLES]
+        assert got[0] == got[1] == got[2], got                                      # monitor/snapshot (amjis_app), definitions (control writer) and ingress: identical
+        return got[0]
+
+    assert all_roles() == [("ka_gochara", None), (V41, False), (V5, False)]        # no evidence ⇒ False for the two (excluded), NULL for any other row (never consulted)
+    conn.execute("INSERT INTO asset_throughput VALUES (%s)", (V5,))                 # a cockpit REFRESH row: not a build ⇒ NOT evidence, in BOTH paths identically
+    assert all_roles() == [("ka_gochara", None), (V41, False), (V5, False)]
     conn.execute("INSERT INTO build_run_assets VALUES (%s)", (V41,))
-    assert ev(V41) is True
-    conn.execute("INSERT INTO asset_throughput VALUES (%s)", (V41,))
-    conn.execute("DELETE FROM build_run_assets WHERE asset_id = %s", (V41,))         # the watchdog PRUNES build_run_assets: the throughput row remains
-    assert ev(V41) is True
-    conn.execute("DELETE FROM asset_throughput WHERE asset_id = ANY(%s)", ([V41, V5],))
+    assert all_roles() == [("ka_gochara", None), (V41, True), (V5, False)]
     conn.execute("INSERT INTO asset_provenance_receipts VALUES (%s)", (V5,))
-    assert ev(V5) is True and ev(V41) is False                                       # a receipt alone
-    import psycopg
-    for bad in ("bg_texts", "ka_gochara", "KA_GOCHARA_V5", ""):
-        with pytest.raises(psycopg.errors.InvalidParameterValue):
-            ev(bad)
-    with pytest.raises(psycopg.errors.InvalidParameterValue):
-        conn.execute(f"SELECT {FN}(NULL)")
-
-
-def test_f_owner_security_definer_search_path_and_the_ACL_have_no_PUBLIC_entry(world):
-    conn, _ = world
-    _apply(conn)
-    owner, secdef, config, vol, rettype = conn.execute(
-        "SELECT pg_get_userbyid(proowner), prosecdef, proconfig, provolatile, prorettype::regtype::text FROM pg_proc WHERE oid = %s::regprocedure", (FN + "(text)",)).fetchone()
-    assert (owner, secdef, config, vol, rettype) == ("amjis_app", True, ["search_path=pg_catalog, pg_temp"], "s", "boolean")
-    grantees = {r[0] for r in conn.execute(
-        "SELECT CASE WHEN a.grantee = 0 THEN 'PUBLIC' ELSE pg_get_userbyid(a.grantee) END FROM pg_proc p, LATERAL aclexplode(p.proacl) a WHERE p.oid = %s::regprocedure", (FN + "(text)",)).fetchall()}
-    assert grantees == {"amjis_app", "nirmana_campaign_control_writer"}               # no PUBLIC entry, nobody else
-    assert conn.execute("SELECT has_function_privilege('outsider_role', %s, 'EXECUTE')", (FN + "(text)",)).fetchone()[0] is False
-
-
-def test_g_a_role_without_SELECT_on_the_evidence_tables_still_gets_the_answer_and_an_outsider_is_denied_loudly(world):
-    conn, _ = world
-    _apply(conn)
-    conn.execute("INSERT INTO asset_throughput VALUES (%s)", (V5,))
-    conn.execute("GRANT SELECT ON asset_registry TO nirmana_campaign_control_writer")      # production: the control writer reads asset_registry, and nothing else here
-    import psycopg
-    for tbl in ("asset_provenance_receipts", "build_run_assets", "asset_throughput"):          # the control writer reads none of the three directly in this test world
-        assert conn.execute("SELECT has_table_privilege('nirmana_campaign_control_writer', %s, 'SELECT')", (tbl,)).fetchone()[0] is False
-    # BOTH loader paths (the app role and the control writer) run the same expression and get IDENTICAL results
-    for sql_alias in ("asset_registry",):
-        q = f"SELECT asset_id, {EXPR.format(a=sql_alias)} AS has_runtime_evidence FROM asset_registry WHERE asset_id IN (%s, %s, 'ka_gochara') ORDER BY 1"
-        via_app = _as(conn, "amjis_app", q, (V41, V5))
-        via_control = _as(conn, "nirmana_campaign_control_writer", q, (V41, V5))
-        assert via_app == via_control == [("ka_gochara", None), (V41, False), (V5, True)]       # NULL for any other row (never consulted); refresh-only v5 ⇒ evidence PRESENT
-    # fail closed: a role with no EXECUTE gets an ERROR — the statement fails, it never reads as "no evidence"
-    with pytest.raises(psycopg.errors.InsufficientPrivilege):
-        _as(conn, "outsider_role", f"SELECT {FN}(%s)", (V5,))
-
-
-def test_h_missing_function_or_the_two_row_shapes_the_loader_rule_depends_on_fail_closed_in_SQL(world):
-    conn, _ = world
-    import psycopg
-    # before 1243 the function does not exist: the loader expression ERRORS (the registry read fails; nothing is silently excluded)
-    with pytest.raises(psycopg.errors.UndefinedFunction):
-        conn.execute(f"SELECT {EXPR.format(a='asset_registry')} FROM asset_registry WHERE asset_id = 'ka_gochara'").fetchall() or None
-        conn.execute(f"SELECT {EXPR.format(a='t')} FROM (SELECT '{V5}'::text AS asset_id) t").fetchall()
+    assert all_roles() == [("ka_gochara", None), (V41, True), (V5, True)]
+    # DOCUMENTED LIMIT: the watchdog prunes build_run_assets — a candidate whose only evidence was that build row looks evidence-free again.
+    conn.execute("DELETE FROM build_run_assets WHERE asset_id = %s", (V41,))
+    assert all_roles() == [("ka_gochara", None), (V41, False), (V5, True)]
