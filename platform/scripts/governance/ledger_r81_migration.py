@@ -67,6 +67,9 @@ def is_schema_row(row: dict) -> bool:
 # (hand and, where one was folded, census) onto it. Group 8 is the one partial overlap: per D4,
 # `bg_panchanga-G01` becomes its own criterion `Earn.service_state`, never folded onto a timing
 # id — its census siblings (`Earn.build_record`, `Cost.baseline`) are untouched, unsuperseded.
+# E6.4 amendment (SS N-97(4)): that rule is superseded for the four info prefixes (Cost., Count., Complete., Reach.): once the E6.4
+# migration (ledger_e6_4_info_rekey.py) is applied, `bg_panchanga-Cost.baseline` is superseded BY its `#info` id. The R81 fold itself still
+# never touches it; `bg_panchanga-Earn.build_record` (a gate criterion) stays unsuperseded.
 #
 # The four family aliases named in R79/D4 (Vocab.rule1.alias->Vocab.alias,
 # Dens.density_contract->Dens.served, Carr.D1|D2|D3->Carr.detector, Completeness.*->Complete.*)

@@ -8861,6 +8861,11 @@ FAILING = (FAIL, PARTIAL, NO_DET)
 # is resolved; anything else (WITHDRAWN, or a state string this script has never written) is left
 # alone rather than re-opened by inference.
 LIVE_GAP_STATES = ("OPEN", "IN_PROGRESS")
+# E6.4 (N-97(4)): the four NON-GATE families (not among CELL_GATES: the reader's `info_families`) are measurements, never gaps. The
+# ledger rows they once opened were re-keyed `kind: info` by ledger_e6_4_info_rekey.py; so that a later emit cannot open them again (a new
+# asset, or a CLOSED row that regresses), a FAILING verdict on one of these families appends no OPEN / RE-OPEN row. Stricter only: closure
+# by PASS / released N/A, retirement, every gate criterion and every other family are unchanged.
+INFO_ONLY_GATES = ("Cost", "Count", "Complete", "Reach")
 
 
 def _na_released(crit: str, rec: dict, all_meas=None, layer=None, facts=None) -> bool:
@@ -8941,6 +8946,11 @@ def emit_gaps_summary(census: dict, assets=None) -> dict:
       -> nothing to do; WITHDRAWN is a terminal, human decision (F4, A_REVIEW.md) and is "left
       alone rather than re-opened by inference" exactly as documented below — the code used to
       contradict this comment by re-opening WITHDRAWN rows too.
+    - check failing on an INFO-ONLY family (`INFO_ONLY_GATES`: Cost, Count, Complete, Reach; E6.4, N-97(4)),
+      whatever the prior row (none, CLOSED, ...)                                -> nothing appended: these are
+      measurements, not gaps (their old rows were re-keyed `kind: info`). Counted in the summary's
+      `info_only_suppressed` (present only when non-zero), never in `skipped`. A criterion matches when it begins
+      `<family>.` exactly (the migration's prefixes): `Completeness.*`, `Costly.*`, `Counter.*`, a bare `Reach` are NOT suppressed.
     - check closable (PASS/N-A) now, latest row OPEN or IN_PROGRESS            -> append CLOSED
       (closure BY MEASUREMENT: the same detector now passes; the row quotes the new measured value)
     - check closable, latest row CLOSED or no row                             -> nothing to do
@@ -9005,7 +9015,7 @@ def emit_gaps_summary(census: dict, assets=None) -> dict:
                     if r.get("superseded_by"):
                         ever_superseded.add(r["gap_id"])
     ts = dt.datetime.now().astimezone().isoformat(timespec="seconds")
-    added = skipped = closed = reopened = retired_opps_left = 0
+    added = skipped = closed = reopened = retired_opps_left = info_suppressed = 0
     with path.open("a", encoding="utf-8") as f:
         # E6 item i: close the OPEN rows of retired criteria (see the docstring); in ledger order, before this run's
         # measurements, and only for gap_ids no measurement below can touch (a retired crit is skipped there).
@@ -9052,6 +9062,9 @@ def emit_gaps_summary(census: dict, assets=None) -> dict:
                 if gid in ever_superseded:
                     continue  # a superseded id is never resurrected, whatever is measured now,
                               # and whatever any LATER row (with no superseded_by of its own) says
+                if v in FAILING and crit.startswith(tuple(g + "." for g in INFO_ONLY_GATES)):
+                    info_suppressed += 1        # its own counter: NOT `skipped` (the CLI prints that as "already present")
+                    continue  # E6.4: an info-only family is measured, never opened as a gap (no OPEN, no RE-OPEN)
                 prior_state = (prior or {}).get("state", "OPEN").upper()
                 # Carry hand metadata forward; only the very first OPEN row for a gid has none
                 # to carry, so it alone falls back to the census's own defaults.
@@ -9099,7 +9112,8 @@ def emit_gaps_summary(census: dict, assets=None) -> dict:
                         closed += 1
                     # else: no prior, or prior already CLOSED/terminal — nothing to do (idempotent)
     return dict(added=added, skipped=skipped, closed=closed, reopened=reopened,
-                retired_opportunity_rows_left=retired_opps_left)
+                retired_opportunity_rows_left=retired_opps_left,
+                **({"info_only_suppressed": info_suppressed} if info_suppressed else {}))
 
 
 def emit_gaps(census: dict, assets=None) -> tuple[int, int, int, int]:
@@ -9200,6 +9214,9 @@ def main() -> int:
             g = emit_gaps_summary(c)
             print(f"  ledger: {g['added']} row(s) appended, {g['skipped']} already present, "
                   f"{g['closed']} closed (by measurement, or by a criterion's retirement), {g['reopened']} re-opened")
+            if g.get("info_only_suppressed"):
+                print(f"  ledger: {g['info_only_suppressed']} failing cell(s) on info-only families "
+                      f"({', '.join(INFO_ONLY_GATES)}) measured, not opened as gaps (E6.4)")
             if g["retired_opportunity_rows_left"]:
                 print(f"  ledger: {g['retired_opportunity_rows_left']} retired-criterion opportunity row(s) left as is "
                       "(a retirement does not realise an opportunity)")
