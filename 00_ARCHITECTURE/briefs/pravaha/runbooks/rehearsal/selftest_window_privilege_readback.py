@@ -54,11 +54,12 @@ def main(mig: str, dsn: str) -> int:
         ok &= got == sorted([("column", "data_plane_builder", "UPDATE", "ka_gochara_search_inventory", "PRIVILEGE NOT HELD"),
                              ("table", "data_plane_builder", "DELETE", "ka_gochara_search_obligation", "PRIVILEGE NOT HELD"),
                              ("function", "gochara_sealer", "EXECUTE", "ka_gochara_lock_chart(uuid)", "PRIVILEGE NOT HELD")])
-        # (3) missing role and missing object
-        c.execute("DROP OWNED BY gochara_verifier; DROP ROLE gochara_verifier")
-        rows = c.execute(sql_q).fetchall()
-        print("[3] after dropping gochara_verifier:", sorted({r[5] for r in rows}), len([r for r in rows if r[1] == 'gochara_verifier']), "verifier rows")
-        ok &= any(r[5] == "ROLE MISSING" for r in rows)
+        # (3) a role that does not exist is NAMED (a fake grant is appended; roles are cluster-wide, so no real role is dropped)
+        fake = {"kind": "table", "role": "no_such_role_" + name, "priv": "SELECT", "obj": "public.ka_gochara_eval_window_verification", "col": ""}
+        rows = c.execute(G.render(items + [fake])).fetchall()
+        print("[3] fake role:", sorted({r[5] for r in rows}))
+        ok &= any(r[5] == "ROLE MISSING" and r[1].startswith("no_such_role_") for r in rows)
+        # (4) a missing object is NAMED
         c.execute("DROP TABLE public.ka_gochara_eval_window_verification CASCADE")
         rows = c.execute(sql_q).fetchall()
         missing = [r for r in rows if r[5] == "OBJECT MISSING"]
