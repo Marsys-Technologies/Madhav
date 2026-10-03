@@ -1,0 +1,1314 @@
+#!/usr/bin/env python3
+"""suvarna_rehearsal.py -- Suvarna E5.6 / E5.7: the off-production rehearsal harness (the parts that need no production data).
+
+Track E brief 7 (E5.6 rehearsal environment, E5.7 L0 rebuild drill), plan items E5.6 (detector `evidence_verified`,
+path `E5.6/REHEARSAL.json`, expect `result == "PASS"`, required key `cases`) and E5.7 (`E5.7/L0_REBUILD_DRILL.json`).
+Design: /Users/Dev/suvarna-evidence/E5.6/DESIGN.md. The cluster PROVISIONING scripts (`rehearsal/rehearsal_cluster.sh`,
+`apply_schema.sh`, `replay_schema.py`, `rehearsal_guard.py`) are E5.6 phase 1 and are reused, not rewritten; this module adds:
+
+  A. connection policy        every database connection this harness opens goes through `connect_checked`: the rehearsal
+                              URL guard (127.0.0.1:55432, db rehearsal*, no password) or, for `--self-test`, the disposable
+                              cluster's own loopback endpoint. A refused endpoint opens NO socket. The log of opened
+                              connections is what the `no_production_write` case is judged on.
+  B. cluster lifecycle        init / start / stop / status / reap / adopt for a long-lived rehearsal data dir with an
+                              ownership MARKER, an exclusive flock LOCKFILE, and a refusal to ever listen on or trust any
+                              address other than 127.0.0.1 (+ the unix socket inside the root). Binaries run under `env -i`.
+  C. evidence                 `REHEARSAL.json`: a CLOSED schema; every case is judged by a pure function over its recorded
+                              raw measurements (so the validator RE-DERIVES each result and a hand-edited `PASS` fails);
+                              a case that was not measured reads UNMEASURED with a `NEEDS_*` reason, never PASS; a
+                              `self_test` document can never read PASS and the writer refuses to put one at the detector's path.
+  D. self-test                the cases that can run on a disposable PostgreSQL with SYNTHETIC data (no production data, no
+                              credential): the idempotent-rebuild semantic fingerprint (E5.5's own `fingerprint_rows`/
+                              `table_fingerprint`), the family-intersecting dispatch refusal (through `suvarna_level_wave.run_cli`),
+                              the hold refusal (through the tracker's `hold_guard.evaluate`, when `--tracker-dir` names it),
+                              and the connection log. Everything that needs the real orchestrator, the replayed schema, the
+                              seed or a canary mechanism is a `NEEDS_*` case.
+  E. E5.7 comparison          `compare_fingerprint_sets`: pre/post semantic fingerprints (the SAME definition as E5.5), a
+                              difference is `explained` (closed reason code + text) or it is a failure.
+
+Usage:
+  suvarna_rehearsal.py self-test --out PATH [--tracker-dir DIR] [--repo DIR]     (writes a self_test evidence document)
+  suvarna_rehearsal.py validate PATH [--evidence-root DIR]                       (exit 0 valid, 2 invalid)
+  suvarna_rehearsal.py cluster init|start|stop|status|reap|adopt [--root DIR] [--port N] [--pg-bin DIR] [--remove-data --confirm ROOT]
+  suvarna_rehearsal.py compare-fingerprints --pre pre.json --post post.json [--explained e.json]
+Exit: 0 ok · 2 refused / invalid · 4 a measured case failed (self-test) · 5 error.
+"""
+from __future__ import annotations
+
+import argparse
+import contextlib
+import fcntl
+import hashlib
+import io
+import json
+import os
+import re
+import shutil
+import socket
+import subprocess
+import sys
+import tempfile
+import uuid
+from collections.abc import Callable, Mapping, Sequence
+from pathlib import Path
+from typing import Any
+from urllib.parse import urlsplit
+
+HERE = Path(__file__).resolve().parent
+sys.path.insert(0, str(HERE))
+sys.path.insert(0, str(HERE / "rehearsal"))
+import rehearsal_guard as rg  # noqa: E402  (E5.6 phase 1: the one URL decision point)
+
+REPO_ROOT = HERE.parents[2]
+TOOL_NAME = "suvarna_rehearsal.py"
+
+# ───────────────────────────── constants ─────────────────────────────
+
+LOOPBACK = rg.REHEARSAL_HOST                       # "127.0.0.1": the only host this harness ever targets
+DEFAULT_ROOT = "/Users/Dev/suvarna/rehearsal"      # the phase-1 layout: <root>/pg (data), <root>/sock, <root>/pg.log
+DEFAULT_PORT = rg.REHEARSAL_PORT                   # 55432
+DEFAULT_PG_BIN = "/opt/homebrew/opt/postgresql@15/bin"
+FORBIDDEN_PORTS = frozenset({5432, 6432, 6543})    # production-shaped ports: never targeted, whatever the policy
+MARKER_NAME = ".suvarna_rehearsal_cluster.json"
+MARKER_KIND = "suvarna-rehearsal-cluster"
+MARKER_VERSION = 1
+LOCK_NAME = "rehearsal.lock"
+SOCK_PATH_LIMIT = 90                               # a unix socket path must stay well under ~104 bytes
+EVIDENCE_SCHEMA = "suvarna-rehearsal-evidence/v1"
+DRILL_SCHEMA = "suvarna-l0-drill-evidence/v1"
+DETECTOR_EVIDENCE_PATH = "E5.6/REHEARSAL.json"     # the plan item's evidence_verified path under $SUVARNA_HOME/evidence
+HEX64 = re.compile(r"[0-9a-f]{64}")
+HEX40 = re.compile(r"[0-9a-f]{40}")
+
+
+class RehearsalError(Exception):
+    """Base class: bad input or a refused action; nothing was changed."""
+
+
+class EndpointRefused(RehearsalError):
+    """A database endpoint the policy does not allow. No socket was opened."""
+
+
+class LifecycleError(RehearsalError):
+    """A cluster lifecycle action was refused (marker, lock, path, address or process identity)."""
+
+
+def canonical_json(value: Any) -> str:
+    return json.dumps(value, sort_keys=True, separators=(",", ":"), ensure_ascii=True)
+
+
+def sha256_text(text: str) -> str:
+    return hashlib.sha256(text.encode("utf-8")).hexdigest()
+
+
+def sha256_file(path: str | Path) -> str:
+    h = hashlib.sha256()
+    with open(path, "rb") as f:
+        for chunk in iter(lambda: f.read(1 << 20), b""):
+            h.update(chunk)
+    return h.hexdigest()
+
+
+def tool_sha256() -> str:
+    return sha256_file(Path(__file__).resolve())
+
+
+# ═════════════════════════ A. connection policy ═════════════════════════
+
+def rehearsal_policy(url: Any) -> str:
+    """The rehearsal URL guard of E5.6 phase 1, unchanged: returns the NORMALISED url or raises ValueError."""
+    return rg.normalise_rehearsal_url(url)
+
+
+def disposable_policy(url: Any) -> str:
+    """For `--self-test` only: an explicit loopback URL on a port that is none of the forbidden ones, database
+    `suvarna_disposable*`, no password, no query. The disposable fixture itself verifies the server identity."""
+    if not isinstance(url, str) or not url or re.search(r"[\s\x00-\x1f\x7f\\]", url):
+        raise ValueError("empty URL or whitespace/control character")
+    parts = urlsplit(url)
+    if parts.scheme not in ("postgres", "postgresql") or parts.query or parts.fragment or parts.password is not None:
+        raise ValueError("scheme must be postgres(ql), with no password, query or fragment")
+    authority = url.split("://", 1)[1].split("/", 1)[0]
+    if authority.rpartition("@")[2].rsplit(":", 1)[0] != LOOPBACK:
+        raise ValueError(f"host is not exactly {LOOPBACK}")
+    try:
+        port = parts.port
+    except ValueError:
+        port = None
+    if port is None or port in FORBIDDEN_PORTS or port == rg.REHEARSAL_PORT:
+        raise ValueError(f"port {port!r} is missing or one of the production/rehearsal ports")
+    if not re.fullmatch(r"suvarna_disposable[a-z0-9_]*", parts.path.lstrip("/")):
+        raise ValueError("database is not suvarna_disposable*")
+    return url
+
+
+POLICIES: dict[str, Callable[[Any], str]] = {"rehearsal": rehearsal_policy, "disposable": disposable_policy}
+
+
+class ConnectionLog:
+    """Every endpoint the harness OPENED and every one it REFUSED (a refusal opens nothing). The `no_production_write`
+    case is judged from `opened`."""
+
+    def __init__(self) -> None:
+        self.opened: list[dict] = []
+        self.refused: list[dict] = []
+
+    def snapshot(self) -> dict:
+        return {"opened": [dict(e) for e in self.opened], "refused_count": len(self.refused)}
+
+
+def _endpoint(url: str) -> dict:
+    p = urlsplit(url)
+    return {"host": p.hostname or "", "port": p.port or 0, "database": p.path.lstrip("/")}
+
+
+def connect_checked(url: Any, policy: str, log: ConnectionLog, *, connect: Callable[..., Any] | None = None) -> Any:
+    """Open a connection ONLY to an endpoint the policy accepts; the NORMALISED url is what is dialled. A refused
+    endpoint raises EndpointRefused, is logged, and `connect` is never called."""
+    if policy not in POLICIES:
+        raise EndpointRefused(f"unknown connection policy {policy!r}")
+    try:
+        normalised = POLICIES[policy](url)
+    except ValueError as exc:
+        log.refused.append({"policy": policy, "reason": str(exc)[:200]})
+        raise EndpointRefused(f"{policy} policy refused the endpoint: {exc}") from exc
+    ep = _endpoint(normalised)
+    if ep["host"] != LOOPBACK or ep["port"] in FORBIDDEN_PORTS:        # belt and braces over the policy itself
+        log.refused.append({"policy": policy, "reason": "host/port outside the allowed set"})
+        raise EndpointRefused("endpoint is not loopback or is a forbidden port")
+    if connect is None:
+        import psycopg  # noqa: PLC0415
+        connect = psycopg.connect
+    conn = connect(normalised)
+    log.opened.append({**ep, "policy": policy})
+    return conn
+
+
+# ═════════════════════════ B. cluster lifecycle ═════════════════════════
+
+def _proc_command(pid: int) -> str | None:
+    """`ps -o command=` for a pid under a fixed locale; '' when there is no such process; None when `ps` cannot answer."""
+    ps = next((c for c in ("/bin/ps", "/usr/bin/ps") if os.path.exists(c)), None)
+    if ps is None:
+        return None
+    try:
+        p = subprocess.run([ps, "-p", str(pid), "-o", "command="], capture_output=True, text=True, timeout=10,
+                           env={"PATH": "/usr/bin:/bin", "LC_ALL": "C", "LANG": "C"})
+    except (OSError, subprocess.SubprocessError, ValueError):
+        return None
+    out = p.stdout.strip()
+    if p.returncode == 1 and not out:
+        return ""
+    return out if p.returncode == 0 and out else None
+
+
+def _is_postmaster_for(command: str, data_dir: Path) -> bool:
+    """Token-wise: `<...>/postgres -D <data_dir> ...` (never a substring match)."""
+    tok = command.split()
+    return (bool(tok) and os.path.basename(tok[0]) == "postgres" and "-D" in tok[:-1]
+            and tok[tok.index("-D") + 1] == str(data_dir))
+
+
+class _Layout:
+    def __init__(self, root: str | Path):
+        self.root = Path(root)
+        self.data = self.root / "pg"
+        self.sock = self.root / "sock"
+        self.log = self.root / "pg.log"
+        self.marker = self.root / MARKER_NAME
+        self.lock = self.root / LOCK_NAME
+
+
+def _check_root(root: Path, *, create: bool) -> None:
+    if not root.is_absolute() or str(root) != os.path.normpath(str(root)):
+        raise LifecycleError(f"root {str(root)!r} must be an absolute, normalised path")
+    p = root
+    while str(p) != "/":                                   # no symlink anywhere on the path
+        if p.is_symlink():
+            raise LifecycleError(f"refusing: {p} is a symlink")
+        p = p.parent
+    if root.exists():
+        if not root.is_dir():
+            raise LifecycleError(f"{root} exists and is not a directory")
+        if os.path.realpath(root) != str(root):
+            raise LifecycleError(f"{root} does not resolve to itself")
+        st = root.stat()
+        if st.st_uid != os.getuid():
+            raise LifecycleError(f"{root} is not owned by the current user")
+        if st.st_mode & 0o077:
+            raise LifecycleError(f"{root} must not be accessible to group/other (chmod 700)")
+    elif create:
+        root.mkdir(parents=True, mode=0o700)
+        os.chmod(root, 0o700)
+    else:
+        raise LifecycleError(f"{root} does not exist")
+
+
+def read_marker(root: str | Path) -> dict | None:
+    """The ownership marker, or None when absent/invalid. Valid = our kind and version, this root, loopback host, an int
+    port that is not forbidden, and this uid."""
+    lay = _Layout(root)
+    try:
+        if lay.marker.is_symlink():
+            return None
+        m = json.loads(lay.marker.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return None
+    ok = (isinstance(m, dict) and m.get("kind") == MARKER_KIND and m.get("v") == MARKER_VERSION
+          and m.get("root") == str(lay.root) and m.get("host") == LOOPBACK
+          and isinstance(m.get("port"), int) and not isinstance(m.get("port"), bool)
+          and 1024 <= m["port"] <= 65535 and m["port"] not in FORBIDDEN_PORTS and m.get("uid") == os.getuid())
+    return m if ok else None
+
+
+def _write_marker(lay: _Layout, port: int) -> dict:
+    m = {"kind": MARKER_KIND, "v": MARKER_VERSION, "root": str(lay.root), "host": LOOPBACK, "port": port,
+         "uid": os.getuid()}
+    tmp = lay.marker.with_name(MARKER_NAME + ".tmp")
+    tmp.write_text(json.dumps(m, sort_keys=True) + "\n", encoding="utf-8")
+    os.chmod(tmp, 0o600)
+    os.replace(tmp, lay.marker)
+    return m
+
+
+@contextlib.contextmanager
+def _locked(lay: _Layout):
+    """Exclusive, non-blocking flock for every mutating lifecycle action: two sessions never race a start/stop/reap, and the
+    kernel releases it when a holder dies (no stale lock, no pid-reuse guess)."""
+    flags = os.O_RDWR | os.O_CREAT | getattr(os, "O_NOFOLLOW", 0)
+    fd = os.open(lay.lock, flags, 0o600)
+    try:
+        try:
+            fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except OSError:
+            raise LifecycleError("another lifecycle command holds the rehearsal lock") from None
+        os.ftruncate(fd, 0)
+        os.write(fd, f"{os.getpid()}\n".encode())
+        yield
+    finally:
+        os.close(fd)
+
+
+def _pg_env(home: str, pg_bin: str) -> dict:
+    """`env -i`: nothing inherited (no PG*, DATABASE_URL, credential file); a private empty HOME."""
+    return {"PATH": f"{pg_bin}:/usr/bin:/bin", "HOME": home, "LANG": "en_US.UTF-8",
+            "PGPASSFILE": f"{home}/.no-pgpass", "PGSERVICEFILE": f"{home}/.no-pg-service"}
+
+
+def _run_pg(argv: list[str], pg_bin: str, *, timeout: int = 180) -> subprocess.CompletedProcess:
+    with tempfile.TemporaryDirectory(prefix="rehearsal-home.") as home:
+        return subprocess.run(argv, env=_pg_env(home, pg_bin), capture_output=True, text=True, timeout=timeout,
+                              stdin=subprocess.DEVNULL)
+
+
+def _bin(pg_bin: str, name: str) -> str:
+    p = Path(pg_bin) / name
+    if not (p.is_file() and os.access(p, os.X_OK)):
+        raise LifecycleError(f"PostgreSQL binary {p} not found or not executable")
+    return str(p)
+
+
+_LISTEN_RE = re.compile(r"^\s*listen_addresses\s*=\s*(.*?)\s*(?:#.*)?$")
+
+
+def check_loopback_config(data_dir: Path) -> None:
+    """Refuse to start a cluster whose config could listen on, or trust, any address but 127.0.0.1: every active
+    `listen_addresses` must be exactly '127.0.0.1', and every active pg_hba `host*` rule must be 127.0.0.1/32."""
+    lines: list[str] = []
+    for name, required in (("postgresql.conf", True), ("postgresql.auto.conf", False)):
+        f = data_dir / name
+        try:
+            lines += f.read_text(encoding="utf-8").splitlines()
+        except OSError as exc:
+            if required or f.exists():
+                raise LifecycleError(f"cannot read {f}: {exc}") from exc
+    for ln in lines:
+        if re.match(r"^\s*include(_if_exists|_dir)?\s*=", ln):
+            raise LifecycleError(f"active config include {ln.strip()!r}: refusing (it could re-open listen_addresses)")
+        m = _LISTEN_RE.match(ln)
+        if m and not ln.lstrip().startswith("#") and m.group(1).strip("'\" ") != LOOPBACK:
+            raise LifecycleError(f"listen_addresses is {m.group(1)!r}, not exactly '{LOOPBACK}': refusing")
+    hba = data_dir / "pg_hba.conf"
+    try:
+        hba_lines = hba.read_text(encoding="utf-8").splitlines()
+    except OSError as exc:
+        raise LifecycleError(f"cannot read {hba}: {exc}") from exc
+    for ln in hba_lines:
+        s = ln.split("#", 1)[0].split()
+        if not s:
+            continue
+        if s[0] == "local":
+            continue
+        if s[0].startswith("host"):
+            addr = s[3] if len(s) > 3 else ""
+            if addr != f"{LOOPBACK}/32":
+                raise LifecycleError(f"pg_hba.conf rule {ln.strip()!r} reaches an address other than {LOOPBACK}/32: refusing")
+        else:
+            raise LifecycleError(f"pg_hba.conf rule {ln.strip()!r} is not a local/host rule: refusing")
+
+
+def _port_free(port: int) -> bool:
+    with socket.socket() as s:
+        try:
+            s.bind((LOOPBACK, port))
+        except OSError:
+            return False
+    return True
+
+
+def status_cluster(root: str | Path) -> dict:
+    """{'state': 'not_initialised'|'stopped'|'running'|'foreign'|'unknown', ...}. 'running' only when the pid file names a live
+    postmaster whose command line carries THIS data dir; a live pid that is not that postmaster is 'foreign', and a `ps`
+    that cannot answer is 'unknown' (never read as stopped)."""
+    lay = _Layout(root)
+    marker = read_marker(root)
+    out: dict = {"root": str(lay.root), "marker": marker is not None, "port": (marker or {}).get("port")}
+    if not (lay.data / "PG_VERSION").is_file():
+        out["state"] = "not_initialised"
+        return out
+    try:
+        pid = int((lay.data / "postmaster.pid").read_text(encoding="utf-8").splitlines()[0].strip())
+    except (OSError, IndexError, ValueError):
+        out["state"] = "stopped"
+        return out
+    if not 1 < pid < 2**31:
+        out["state"] = "foreign"
+        return out
+    cmd = _proc_command(pid)
+    out["pid"] = pid
+    if cmd is None:
+        out["state"] = "unknown"
+    elif cmd == "":
+        out["state"] = "stopped"
+    elif _is_postmaster_for(cmd, lay.data):
+        out["state"] = "running"
+    else:
+        out["state"] = "foreign"
+    return out
+
+
+def init_cluster(root: str | Path, *, port: int = DEFAULT_PORT, pg_bin: str = DEFAULT_PG_BIN) -> dict:
+    """initdb a long-lived rehearsal data dir (idempotent). Writes the marker FIRST so a half-finished init is still ours."""
+    lay = _Layout(root)
+    if isinstance(port, bool) or not isinstance(port, int) or not 1024 <= port <= 65535 or port in FORBIDDEN_PORTS:
+        raise LifecycleError(f"port {port!r} is not allowed")
+    if len(str(lay.sock / ".s.PGSQL.00000")) > SOCK_PATH_LIMIT:
+        raise LifecycleError("root path too long for a unix socket")
+    _check_root(lay.root, create=True)
+    with _locked(lay):
+        marker = read_marker(root)
+        if marker is None:
+            if lay.marker.exists() or lay.marker.is_symlink():
+                raise LifecycleError("an invalid marker is present: refusing to touch it")
+            if lay.data.exists() and any(lay.data.iterdir()):
+                raise LifecycleError(f"{lay.data} exists, is not empty and has no ownership marker: use `adopt` or remove it")
+            marker = _write_marker(lay, port)
+        elif marker["port"] != port:
+            raise LifecycleError(f"marker says port {marker['port']}, not {port}")
+        if (lay.data / "PG_VERSION").is_file():
+            return {"action": "init", "result": "already_initialised", "marker": marker}
+        lay.sock.mkdir(mode=0o700, exist_ok=True)
+        os.chmod(lay.sock, 0o700)
+        initdb = _bin(pg_bin, "initdb")
+        r = _run_pg([initdb, "-D", str(lay.data), "-U", _user(), "-A", "trust", "--encoding=UTF8"], pg_bin)
+        if r.returncode != 0:
+            raise LifecycleError(f"initdb failed: {(r.stderr or r.stdout).strip()[-300:]}")
+        with open(lay.data / "postgresql.conf", "a", encoding="utf-8") as f:
+            f.write(f"\n# --- rehearsal overrides (E5.6, suvarna_rehearsal.py) ---\nlisten_addresses = '{LOOPBACK}'\n"
+                    f"port = {port}\nunix_socket_directories = '{lay.sock}'\nunix_socket_permissions = 0700\n"
+                    "unix_socket_group = ''\nmax_connections = 40\nfsync = off\nsynchronous_commit = off\nfull_page_writes = off\n")
+        (lay.data / "pg_hba.conf").write_text(f"local   all   all                 trust\nhost    all   all   {LOOPBACK}/32  trust\n",
+                                              encoding="utf-8")
+        check_loopback_config(lay.data)
+        return {"action": "init", "result": "initialised", "marker": marker}
+
+
+def _user() -> str:
+    import pwd  # noqa: PLC0415
+    return pwd.getpwuid(os.getuid()).pw_name
+
+
+def start_cluster(root: str | Path, *, pg_bin: str = DEFAULT_PG_BIN) -> dict:
+    lay = _Layout(root)
+    _check_root(lay.root, create=False)
+    marker = read_marker(root)
+    if marker is None:
+        raise LifecycleError("no valid ownership marker: refusing to start a cluster this harness does not own")
+    with _locked(lay):
+        if not (lay.data / "PG_VERSION").is_file():
+            raise LifecycleError("not initialised; run `cluster init`")
+        if lay.data.is_symlink() or os.path.realpath(lay.data) != str(lay.data):
+            raise LifecycleError("data dir is a symlink or resolves elsewhere")
+        check_loopback_config(lay.data)
+        st = status_cluster(root)
+        if st["state"] == "running":
+            return {"action": "start", "result": "already_running", **st}
+        if st["state"] in ("foreign", "unknown"):
+            raise LifecycleError(f"postmaster.pid is {st['state']}: refusing to start over it (inspect, then remove by hand)")
+        if not _port_free(marker["port"]):
+            raise LifecycleError(f"{LOOPBACK}:{marker['port']} is in use by another process")
+        opts = (f"-c listen_addresses={LOOPBACK} -p {marker['port']} -c unix_socket_directories={lay.sock} "
+                "-c unix_socket_permissions=0700")
+        r = _run_pg([_bin(pg_bin, "pg_ctl"), "-D", str(lay.data), "-l", str(lay.log), "-o", opts, "-w", "-t", "60", "start"], pg_bin)
+        if r.returncode != 0:
+            raise LifecycleError(f"pg_ctl start failed: {(r.stderr or r.stdout).strip()[-300:]}")
+        return {"action": "start", "result": "started", **status_cluster(root)}
+
+
+def stop_cluster(root: str | Path, *, pg_bin: str = DEFAULT_PG_BIN) -> dict:
+    lay = _Layout(root)
+    _check_root(lay.root, create=False)
+    if read_marker(root) is None:
+        raise LifecycleError("no valid ownership marker: refusing to stop a cluster this harness does not own")
+    with _locked(lay):
+        st = status_cluster(root)
+        if st["state"] in ("not_initialised", "stopped"):
+            return {"action": "stop", "result": "not_running", **st}
+        if st["state"] != "running":
+            raise LifecycleError(f"postmaster.pid is {st['state']}: refusing to signal it")
+        r = _run_pg([_bin(pg_bin, "pg_ctl"), "-D", str(lay.data), "-m", "fast", "-w", "-t", "60", "stop"], pg_bin)
+        if r.returncode != 0:
+            raise LifecycleError(f"pg_ctl stop failed: {(r.stderr or r.stdout).strip()[-300:]}")
+        return {"action": "stop", "result": "stopped", **status_cluster(root)}
+
+
+def reap_cluster(root: str | Path, *, pg_bin: str = DEFAULT_PG_BIN, remove_data: bool = False, confirm: str | None = None) -> dict:
+    """Stop the cluster (when it runs) and, ONLY with `remove_data=True` and `confirm == str(root)`, delete its data dir and
+    socket dir. Needs a valid marker; never follows a symlink; never removes the root, the marker or the lockfile."""
+    lay = _Layout(root)
+    _check_root(lay.root, create=False)
+    if read_marker(root) is None:
+        raise LifecycleError("no valid ownership marker: refusing to reap")
+    if remove_data and confirm != str(lay.root):
+        raise LifecycleError("--remove-data needs --confirm <the exact root path>")
+    stopped = stop_cluster(root, pg_bin=pg_bin)
+    removed: list[str] = []
+    if remove_data:
+        with _locked(lay):
+            if status_cluster(root)["state"] not in ("not_initialised", "stopped"):
+                raise LifecycleError("the cluster is still alive: refusing to delete its data dir")
+            for d in (lay.data, lay.sock):
+                if d.is_symlink():
+                    raise LifecycleError(f"{d} is a symlink: refusing")
+                if d.exists():
+                    if os.path.realpath(d) != str(d) or d.parent != lay.root:
+                        raise LifecycleError(f"{d} does not resolve to itself under the root: refusing")
+                    shutil.rmtree(d)
+                    removed.append(str(d))
+    return {"action": "reap", "stopped": stopped["result"], "removed": removed}
+
+
+def adopt_cluster(root: str | Path, *, port: int = DEFAULT_PORT) -> dict:
+    """Put a marker on an EXISTING phase-1 cluster (`rehearsal_cluster.sh init`) after checking its config is loopback-only.
+    Never changes the data dir."""
+    lay = _Layout(root)
+    _check_root(lay.root, create=False)
+    with _locked(lay):
+        if read_marker(root) is not None:
+            return {"action": "adopt", "result": "already_marked"}
+        if lay.marker.exists() or lay.marker.is_symlink():
+            raise LifecycleError("an invalid marker is present: refusing to touch it")
+        if not (lay.data / "PG_VERSION").is_file() or lay.data.is_symlink():
+            raise LifecycleError("no initialised, non-symlink data dir to adopt")
+        check_loopback_config(lay.data)
+        conf = (lay.data / "postgresql.conf").read_text(encoding="utf-8")
+        if not re.search(rf"^port\s*=\s*{port}\b", conf, re.M):
+            raise LifecycleError(f"postgresql.conf does not set port = {port}")
+        return {"action": "adopt", "result": "marked", "marker": _write_marker(lay, port)}
+
+
+# ═════════════════════════ C. evidence: closed schema, derived results ═════════════════════════
+
+# case id -> (title, required for the E5.6 acceptance, detector name, claim)
+CASE_CATALOG: dict[str, dict] = {
+    "find_fix_rebuild_certify": {
+        "title": "one level: find -> fix -> rebuild -> certify with E5.1-E5.5", "required": True,
+        "detector": "stale_after_fix_then_current_after_certify",
+        "claim": "after the fix E5.5 marks the certificate stale, the orchestrator rebuild changes the semantic fingerprint, "
+                 "a new E5.1 certificate is current, and the orchestrator ran at the evidence commit"},
+    "f3_proof": {
+        "title": "F3.PROOF: MSR writer delete/reinsert with referencing rows in all seven tables",
+        "required": True, "detector": "no_refusal_dangling_recorded_and_restored",
+        "claim": "no refusal with referencing rows present in all seven tables, a dangling count recorded and non-vacuous, "
+                 "and the downstream rebuild in wave order restores it to zero"},
+    "family_dispatch_refused": {
+        "title": "a family-intersecting dispatch is refused", "required": True,
+        "detector": "run_cli_refusal_with_no_db_contact",
+        "claim": "suvarna_level_wave.run_cli refuses an asset set that intersects the family set with exit 4, before any "
+                 "database contact or dispatch, and a non-family control carries no family refusal"},
+    "hold_refuses_dispatch": {
+        "title": "a hold refuses dispatch", "required": True, "detector": "hold_guard_blocks_dispatch_command",
+        "claim": "with the hold file present the dispatch command is blocked, without it the same command is allowed, "
+                 "and a non-dispatch command is not blocked"},
+    "canary_triggers_reversal": {
+        "title": "the canary triggers the reversal", "required": True, "detector": "canary_failure_reverses_to_pre_state",
+        "claim": "an injected difference fails the canary, the reversal runs, and the post-reversal semantic fingerprint "
+                 "equals the pre-operation one"},
+    "idempotent_rebuild_fingerprint_unchanged": {
+        "title": "an idempotent rebuild leaves the semantic fingerprint unchanged", "required": True,
+        "detector": "fingerprint_equal_after_rebuild_and_differs_after_material_change",
+        "claim": "a delete-then-insert rebuild that changes only volatile columns leaves the E5.5 fingerprint unchanged, "
+                 "another chart's fingerprint unchanged, and a material change moves it"},
+    "no_production_write": {
+        "title": "no production write: every connection was loopback and allowed", "required": True,
+        "detector": "connection_log_all_loopback_allowed",
+        "claim": "every connection the harness opened was to 127.0.0.1 on an allowed port, at least one was opened, and a "
+                 "non-loopback probe was refused without opening a socket"},
+}
+REQUIRED_CASES = tuple(k for k, v in CASE_CATALOG.items() if v["required"])
+CASE_KEYS = ("id", "title", "result", "basis", "detector", "measured", "fingerprints", "evidence", "unmeasured_reason")
+BASES = ("rehearsal_db", "synthetic_fixture")
+RESULTS = ("PASS", "FAIL", "UNMEASURED")
+_NEEDS = re.compile(r"NEEDS_[A-Z0-9_]{3,60}")
+
+
+def _h64(v: Any) -> bool:
+    return isinstance(v, str) and bool(HEX64.fullmatch(v))
+
+
+def _is_int(v: Any) -> bool:
+    return isinstance(v, int) and not isinstance(v, bool)
+
+
+def _keys(m: Any, want: Sequence[str]) -> list[str]:
+    if not isinstance(m, Mapping):
+        return ["measured is not an object"]
+    probs = [f"missing measured key {k!r}" for k in want if k not in m]
+    probs += [f"unexpected measured key {k!r}" for k in m if k not in want]
+    return probs
+
+
+def _judge_idempotent(m: Mapping) -> list[str]:
+    want = ("fingerprint_before", "fingerprint_after_rebuild", "fingerprint_after_material_change", "other_chart_before",
+            "other_chart_after", "rows_before", "rows_after", "volatile_columns_changed")
+    p = _keys(m, want)
+    if p:
+        return p
+    p = [f"{k} is not a sha256" for k in want[:5] if not _h64(m[k])]
+    if not (_is_int(m["rows_before"]) and m["rows_before"] > 0 and m["rows_after"] == m["rows_before"]):
+        p.append("row counts must be equal and positive")
+    if m["volatile_columns_changed"] is not True:
+        p.append("the rebuild did not change a volatile column: an unchanged table proves nothing")
+    if m["fingerprint_before"] != m["fingerprint_after_rebuild"]:
+        p.append("the fingerprint moved on an idempotent rebuild")
+    if m["fingerprint_after_material_change"] == m["fingerprint_before"]:
+        p.append("a material change did not move the fingerprint: the detector is blind")
+    if m["other_chart_before"] != m["other_chart_after"]:
+        p.append("another chart's fingerprint moved: the rebuild leaked outside its scope")
+    return p
+
+
+def _judge_family(m: Mapping) -> list[str]:
+    want = ("intersecting_assets", "exit_code", "refusal_codes", "connect_calls", "dispatch_calls", "control_exit_code",
+            "control_refusal_codes", "control_connect_calls", "missing_file_committing_codes")
+    p = _keys(m, want)
+    if p:
+        return p
+    if not (isinstance(m["intersecting_assets"], list) and m["intersecting_assets"]):
+        p.append("no family-intersecting asset was requested")
+    if m["exit_code"] != 4:
+        p.append("the refusal exit code is not 4")
+    if "FAMILY_ASSET" not in (m["refusal_codes"] or []):
+        p.append("no FAMILY_ASSET refusal")
+    if m["connect_calls"] != 0 or m["dispatch_calls"] != 0:
+        p.append("the refused request touched the database or dispatched")
+    codes = m["control_refusal_codes"] if isinstance(m["control_refusal_codes"], list) else []
+    if any(str(c).startswith(("FAMILY_", "SPLITS_")) for c in codes):
+        p.append("the non-family control was refused as a family request: the detector cannot tell")
+    if m["control_connect_calls"] is None or not _is_int(m["control_connect_calls"]):
+        p.append("control_connect_calls missing")
+    if "FAMILY_FILE_MISSING" not in (m["missing_file_committing_codes"] or []):
+        p.append("a committing run with no family file was not refused (fail-open)")
+    return p
+
+
+def _judge_hold(m: Mapping) -> list[str]:
+    want = ("hold_guard_sha256", "command", "blocked_with_hold", "blocked_without_hold", "reason_with_hold",
+            "non_dispatch_blocked_with_hold")
+    p = _keys(m, want)
+    if p:
+        return p
+    if not _h64(m["hold_guard_sha256"]):
+        p.append("hold_guard_sha256 is not a sha256")
+    if "suvarna_level_wave" not in str(m["command"]):
+        p.append("the command tested is not a level-wave dispatch")
+    if m["blocked_with_hold"] is not True:
+        p.append("the dispatch was not blocked with the hold present")
+    if m["blocked_without_hold"] is not False:
+        p.append("the dispatch was blocked without a hold: the guard cannot tell hold from no hold")
+    if m["non_dispatch_blocked_with_hold"] is not False:
+        p.append("a non-dispatch command was blocked: the guard over-refuses")
+    return p
+
+
+def _judge_canary(m: Mapping) -> list[str]:
+    want = ("baseline_canary_passed", "injected_difference_failed_canary", "reversal_triggered", "fingerprint_pre",
+            "fingerprint_post_reversal")
+    p = _keys(m, want)
+    if p:
+        return p
+    if m["baseline_canary_passed"] is not True:
+        p.append("the baseline canary did not pass")
+    if m["injected_difference_failed_canary"] is not True:
+        p.append("an injected difference did not fail the canary")
+    if m["reversal_triggered"] is not True:
+        p.append("the failed canary did not trigger the reversal")
+    if not (_h64(m["fingerprint_pre"]) and m["fingerprint_pre"] == m["fingerprint_post_reversal"]):
+        p.append("the post-reversal fingerprint is not the pre-operation one")
+    return p
+
+
+def _judge_f3(m: Mapping) -> list[str]:
+    want = ("referencing_tables_populated", "msr_replace_refused", "dangling_after_change", "dangling_tool",
+            "dangling_after_downstream_rebuild", "referencing_rows_restored", "downstream_waves", "fk_state")
+    p = _keys(m, want)
+    if p:
+        return p
+    t = m["referencing_tables_populated"]
+    if not (isinstance(t, Mapping) and len(t) == 7 and all(_is_int(v) and v > 0 for v in t.values())):
+        p.append("referencing rows are not present (> 0) in all seven tables")
+    if m["msr_replace_refused"] is not False:
+        p.append("the MSR delete/reinsert was refused")
+    if not (_is_int(m["dangling_after_change"]) and m["dangling_after_change"] > 0):
+        p.append("no dangling reference was recorded after a changed signal: the check is vacuous")
+    if m["dangling_after_downstream_rebuild"] != 0:
+        p.append("the downstream rebuild did not restore referential integrity")
+    restored = m["referencing_rows_restored"]
+    if not (isinstance(restored, Mapping) and set(restored) == set(t if isinstance(t, Mapping) else {}) and len(restored) == 7
+            and all(v is True for v in restored.values())):
+        p.append("the referencing rows of all seven tables were not restored by the downstream rebuild (cascaded rows included)")
+    if not (isinstance(m["downstream_waves"], list) and m["downstream_waves"]):
+        p.append("no downstream waves recorded")
+    if not isinstance(m["fk_state"], Mapping):
+        p.append("the observed foreign-key state (pg_constraint) is not recorded")
+    if not (isinstance(m["dangling_tool"], str) and m["dangling_tool"]):
+        p.append("dangling_tool missing")
+    return p
+
+
+def _judge_certify(m: Mapping) -> list[str]:
+    want = ("finding_id", "census_run_id", "stale_after_fix_detected", "fingerprint_before", "fingerprint_after_rebuild",
+            "certificate_current_after_certify", "certificate_detector_not_none", "orchestrator_commit", "evidence_commit")
+    p = _keys(m, want)
+    if p:
+        return p
+    if not (isinstance(m["finding_id"], str) and m["finding_id"] and isinstance(m["census_run_id"], str) and m["census_run_id"]):
+        p.append("finding_id / census_run_id missing")
+    if m["stale_after_fix_detected"] is not True:
+        p.append("E5.5 did not mark the old certificate stale after the fix")
+    if not (_h64(m["fingerprint_before"]) and _h64(m["fingerprint_after_rebuild"])
+            and m["fingerprint_before"] != m["fingerprint_after_rebuild"]):
+        p.append("the rebuild did not change the semantic fingerprint")
+    if m["certificate_current_after_certify"] is not True or m["certificate_detector_not_none"] is not True:
+        p.append("no current certificate backed by a real detector after the rebuild")
+    if not (isinstance(m["orchestrator_commit"], str) and HEX40.fullmatch(m["orchestrator_commit"])
+            and m["orchestrator_commit"] == m["evidence_commit"]):
+        p.append("the orchestrator did not run at the evidence commit")
+    return p
+
+
+def _judge_connections(m: Mapping) -> list[str]:
+    want = ("opened", "refused_count", "probe_refused_without_socket")
+    p = _keys(m, want)
+    if p:
+        return p
+    opened = m["opened"]
+    if not (isinstance(opened, list) and opened):
+        return p + ["no connection was recorded: the log proves nothing"]
+    for e in opened:
+        if not (isinstance(e, Mapping) and e.get("host") == LOOPBACK and _is_int(e.get("port"))
+                and e["port"] not in FORBIDDEN_PORTS and e.get("policy") in POLICIES):
+            p.append(f"an opened connection is not loopback/allowed: {e!r}")
+    if m["probe_refused_without_socket"] is not True:
+        p.append("a non-loopback probe was not refused without opening a socket")
+    return p
+
+
+JUDGES: dict[str, Callable[[Mapping], list[str]]] = {
+    "find_fix_rebuild_certify": _judge_certify, "f3_proof": _judge_f3, "family_dispatch_refused": _judge_family,
+    "hold_refuses_dispatch": _judge_hold, "canary_triggers_reversal": _judge_canary,
+    "idempotent_rebuild_fingerprint_unchanged": _judge_idempotent, "no_production_write": _judge_connections,
+}
+assert set(JUDGES) == set(CASE_CATALOG)
+
+
+def judge_case(case_id: str, measured: Mapping) -> tuple[str, list[str]]:
+    """The ONE place a measured case becomes PASS or FAIL: a pure function of the recorded raw values."""
+    if case_id not in JUDGES:
+        raise RehearsalError(f"unknown case {case_id!r}")
+    problems = JUDGES[case_id](measured)
+    return ("FAIL" if problems else "PASS"), problems
+
+
+def case_result(case_id: str, *, measured: Mapping, basis: str, fingerprints: Mapping | None = None,
+                evidence: Sequence[Mapping] | None = None) -> dict:
+    """A measured case record; its `result` is derived by `judge_case`, never chosen by the caller."""
+    spec = CASE_CATALOG[case_id]
+    result, _ = judge_case(case_id, measured)
+    return {"id": case_id, "title": spec["title"], "result": result, "basis": basis,
+            "detector": {"name": spec["detector"], "claim": spec["claim"]}, "measured": dict(measured),
+            "fingerprints": dict(fingerprints or {}), "evidence": [dict(e) for e in (evidence or [])],
+            "unmeasured_reason": None}
+
+
+def unmeasured_case(case_id: str, reason: str) -> dict:
+    """A case that was not measured: UNMEASURED with a NEEDS_* reason and nothing else; never PASS."""
+    if not _NEEDS.fullmatch(reason):
+        raise RehearsalError(f"an unmeasured reason must be NEEDS_<WHAT> (got {reason!r})")
+    spec = CASE_CATALOG[case_id]
+    return {"id": case_id, "title": spec["title"], "result": "UNMEASURED", "basis": None,
+            "detector": {"name": spec["detector"], "claim": spec["claim"]}, "measured": {}, "fingerprints": {},
+            "evidence": [], "unmeasured_reason": reason}
+
+
+def derive_summary(cases: Sequence[Mapping]) -> dict:
+    by = {c.get("id"): c for c in cases if isinstance(c, Mapping)}
+    res = [by.get(i, {}).get("result", "UNMEASURED") for i in REQUIRED_CASES]
+    return {"required": len(REQUIRED_CASES), "pass": res.count("PASS"), "fail": res.count("FAIL"),
+            "unmeasured": res.count("UNMEASURED")}
+
+
+def derive_result(mode: str, summary: Mapping) -> str:
+    """FAIL if any required case failed; PASS only in `rehearsal` mode with every required case PASS; otherwise UNMEASURED.
+    A `self_test` document can therefore never read PASS."""
+    if summary["fail"]:
+        return "FAIL"
+    if mode == "rehearsal" and summary["pass"] == summary["required"]:
+        return "PASS"
+    return "UNMEASURED"
+
+
+def build_evidence(*, mode: str, commit: str | None, cases: Sequence[Mapping], environment: Mapping,
+                   orchestrator_commit: str | None = None, job_image_commit: str | None = None) -> dict:
+    ordered = sorted(cases, key=lambda c: list(CASE_CATALOG).index(c["id"]))
+    summary = derive_summary(ordered)
+    return {"schema": EVIDENCE_SCHEMA, "item": "E5.6", "mode": mode, "result": derive_result(mode, summary),
+            "commit": commit, "orchestrator_commit": orchestrator_commit, "job_image_commit": job_image_commit,
+            "generated_by": {"tool": TOOL_NAME, "tool_sha256": tool_sha256()}, "environment": dict(environment),
+            "required_cases": list(REQUIRED_CASES), "cases": ordered, "summary": summary}
+
+
+TOP_KEYS = ("schema", "item", "mode", "result", "commit", "orchestrator_commit", "job_image_commit", "generated_by",
+            "environment", "required_cases", "cases", "summary")
+ENV_KEYS = ("cluster", "schema_replay", "seed")
+CLUSTER_KEYS = ("kind", "host", "port", "data_directory", "pg_version")
+
+
+def _validate_case(c: Any, mode: str) -> list[str]:
+    if not isinstance(c, Mapping):
+        return ["a case is not an object"]
+    cid = c.get("id")
+    if cid not in CASE_CATALOG:
+        return [f"unknown case id {cid!r}"]
+    p = [f"{cid}: key set differs from the closed case schema"] if set(c) != set(CASE_KEYS) else []
+    if p:
+        return p
+    spec = CASE_CATALOG[cid]
+    if c["title"] != spec["title"] or c["detector"] != {"name": spec["detector"], "claim": spec["claim"]}:
+        p.append(f"{cid}: title/detector differ from the catalog (a case cannot redefine its own detector)")
+    if c["result"] not in RESULTS:
+        return p + [f"{cid}: result {c['result']!r} is not PASS/FAIL/UNMEASURED"]
+    if c["result"] == "UNMEASURED":
+        if not (isinstance(c["unmeasured_reason"], str) and _NEEDS.fullmatch(c["unmeasured_reason"])):
+            p.append(f"{cid}: UNMEASURED needs a NEEDS_* reason")
+        if c["measured"] or c["fingerprints"] or c["evidence"] or c["basis"] is not None:
+            p.append(f"{cid}: UNMEASURED must carry no measurement, evidence or basis")
+        return p
+    if c["unmeasured_reason"] is not None:
+        p.append(f"{cid}: a measured case has an unmeasured_reason")
+    if c["basis"] not in BASES:
+        p.append(f"{cid}: basis {c['basis']!r} is not one of {BASES}")
+    if not isinstance(c["measured"], Mapping) or not c["measured"]:
+        return p + [f"{cid}: a measured case needs a non-empty `measured` object"]
+    derived, why = judge_case(cid, c["measured"])
+    if derived != c["result"]:
+        p.append(f"{cid}: recorded result {c['result']} but the recorded measurements judge {derived}"
+                 + (f" ({why[0]})" if why else ""))
+    if not isinstance(c["fingerprints"], Mapping) or not all(_h64(v) for v in c["fingerprints"].values()):
+        p.append(f"{cid}: fingerprints must be an object of sha256 values")
+    ev = c["evidence"]
+    if not isinstance(ev, list) or not all(isinstance(e, Mapping) and set(e) == {"path", "sha256"} and _check_relpath(e["path"])
+                                           and _h64(e["sha256"]) for e in ev):
+        p.append(f"{cid}: evidence must be a list of {{path (relative), sha256}}")
+    if mode == "self_test" and c["basis"] == "rehearsal_db":
+        p.append(f"{cid}: a self_test document cannot claim a rehearsal_db basis")
+    if mode == "rehearsal" and c["result"] == "PASS":
+        if c["basis"] != "rehearsal_db":
+            p.append(f"{cid}: a rehearsal PASS needs basis rehearsal_db (a synthetic fixture is not the rehearsal)")
+        if not ev:
+            p.append(f"{cid}: a rehearsal PASS needs evidence pointers")
+    return p
+
+
+def _check_relpath(p: Any) -> bool:
+    return (isinstance(p, str) and bool(p) and not p.startswith("/") and "\\" not in p
+            and ".." not in p.split("/") and "" not in p.split("/"))
+
+
+def validate_evidence(doc: Any) -> list[str]:
+    """Every problem found, [] when the document is valid. Re-derives every case result, the summary and the top-level
+    result; refuses any extra or missing key."""
+    if not isinstance(doc, Mapping):
+        return ["the document is not an object"]
+    if set(doc) != set(TOP_KEYS):
+        return [f"top-level keys differ from the closed schema: missing {sorted(set(TOP_KEYS) - set(doc))}, "
+                f"extra {sorted(set(doc) - set(TOP_KEYS))}"]
+    p: list[str] = []
+    if doc["schema"] != EVIDENCE_SCHEMA or doc["item"] != "E5.6":
+        p.append("schema/item mismatch")
+    mode = doc["mode"]
+    if mode not in ("rehearsal", "self_test"):
+        return p + [f"mode {mode!r} is not rehearsal/self_test"]
+    if doc["required_cases"] != list(REQUIRED_CASES):
+        p.append("required_cases differ from the catalog")
+    gb = doc["generated_by"]
+    if not (isinstance(gb, Mapping) and set(gb) == {"tool", "tool_sha256"} and gb["tool"] == TOOL_NAME and _h64(gb["tool_sha256"])):
+        p.append("generated_by is malformed")
+    cases = doc["cases"]
+    if not isinstance(cases, list):
+        return p + ["cases is not a list"]
+    ids = [c.get("id") if isinstance(c, Mapping) else None for c in cases]
+    if len(set(ids)) != len(ids):
+        p.append("a case id occurs twice")
+    missing = [i for i in REQUIRED_CASES if i not in ids]
+    if missing:
+        p.append(f"required case(s) absent (an absent case must be written as UNMEASURED): {missing}")
+    for c in cases:
+        p += _validate_case(c, mode)
+        if (isinstance(c, Mapping) and c.get("id") == "find_fix_rebuild_certify" and c.get("result") == "PASS"
+                and c["measured"].get("evidence_commit") != doc["commit"]):
+            p.append("find_fix_rebuild_certify.evidence_commit differs from the document commit")
+    summary = derive_summary(cases)
+    if doc["summary"] != summary:
+        p.append(f"summary {doc['summary']!r} differs from the derived {summary!r}")
+    want = derive_result(mode, summary)
+    if doc["result"] != want:
+        p.append(f"top-level result {doc['result']!r} differs from the derived {want!r}")
+    env = doc["environment"]
+    if not isinstance(env, Mapping) or set(env) != set(ENV_KEYS):
+        p.append("environment keys differ from the closed schema")
+    else:
+        cl = env["cluster"]
+        if not (isinstance(cl, Mapping) and set(cl) == set(CLUSTER_KEYS) and cl["host"] == LOOPBACK
+                and _is_int(cl["port"]) and cl["port"] not in FORBIDDEN_PORTS and cl["kind"] in ("rehearsal", "disposable")):
+            p.append("environment.cluster is malformed, not loopback, or on a forbidden port")
+        elif mode == "rehearsal" and not (cl["kind"] == "rehearsal" and cl["port"] == DEFAULT_PORT
+                                          and cl["data_directory"] == f"{DEFAULT_ROOT}/pg"):
+            p.append("a rehearsal document must name the rehearsal cluster (port 55432, the rehearsal data dir)")
+        elif mode == "self_test" and cl["kind"] != "disposable":
+            p.append("a self_test document must name a disposable cluster")
+    if mode == "rehearsal" and isinstance(env, Mapping):
+        rep, seed = env.get("schema_replay"), env.get("seed")
+        if not (isinstance(rep, Mapping) and set(rep) == {"files_applied", "files_failed", "report_sha256"}
+                and _is_int(rep["files_applied"]) and _is_int(rep["files_failed"]) and _h64(rep["report_sha256"])):
+            p.append("a rehearsal document needs environment.schema_replay {files_applied, files_failed, report_sha256}")
+        if not (isinstance(seed, Mapping) and set(seed) == {"manifest_sha256", "tables"} and _h64(seed["manifest_sha256"])
+                and isinstance(seed["tables"], list) and seed["tables"]):
+            p.append("a rehearsal document needs environment.seed {manifest_sha256, tables}")
+        for k in ("commit", "orchestrator_commit", "job_image_commit"):
+            if not (isinstance(doc[k], str) and HEX40.fullmatch(doc[k])):
+                p.append(f"a rehearsal document needs a 40-hex {k}")
+        if doc["orchestrator_commit"] != doc["job_image_commit"]:
+            p.append("orchestrator_commit must equal job_image_commit (the orchestrator runs from source at the job image's commit)")
+        if doc["commit"] != doc["orchestrator_commit"]:
+            p.append("commit must equal orchestrator_commit")
+    elif mode == "self_test":
+        for k in ("orchestrator_commit", "job_image_commit"):
+            if doc[k] is not None:
+                p.append(f"a self_test document has no {k}")
+        if doc["commit"] is not None and not (isinstance(doc["commit"], str) and HEX40.fullmatch(doc["commit"])):
+            p.append("commit must be 40-hex or null")
+    return p
+
+
+def check_pointers(doc: Mapping, evidence_root: str | Path) -> list[str]:
+    """Every evidence pointer names an existing file under `evidence_root` whose sha256 matches."""
+    root = Path(evidence_root)
+    p: list[str] = []
+    for c in doc.get("cases", []):
+        for e in c.get("evidence", []):
+            f = root / e["path"]
+            try:
+                if f.is_symlink() or not f.is_file():
+                    p.append(f"{c['id']}: evidence file {e['path']} is missing or a symlink")
+                elif sha256_file(f) != e["sha256"]:
+                    p.append(f"{c['id']}: evidence file {e['path']} does not match its recorded sha256")
+            except OSError as exc:
+                p.append(f"{c['id']}: evidence file {e['path']} unreadable ({exc})")
+    return p
+
+
+def write_evidence(doc: Mapping, path: str | Path, *, evidence_root: str | Path | None = None) -> str:
+    """Validate, then write atomically (canonical JSON, sorted keys, trailing newline). Refuses an invalid document, a
+    `self_test` document at the detector's path (E5.6/REHEARSAL.json), and (rehearsal mode) any dangling pointer."""
+    problems = validate_evidence(doc)
+    if problems:
+        raise RehearsalError("refusing to write an invalid evidence document: " + "; ".join(problems[:5]))
+    target = Path(path)
+    if doc["mode"] == "self_test" and target.as_posix().endswith(DETECTOR_EVIDENCE_PATH):
+        raise RehearsalError(f"a self_test document may never be written to the detector's path ({DETECTOR_EVIDENCE_PATH})")
+    if doc["mode"] == "rehearsal":
+        if evidence_root is None:
+            raise RehearsalError("a rehearsal document needs --evidence-root so its pointers can be verified")
+        pointer_problems = check_pointers(doc, evidence_root)
+        if pointer_problems:
+            raise RehearsalError("evidence pointers do not verify: " + "; ".join(pointer_problems[:5]))
+    text = json.dumps(doc, sort_keys=True, indent=2, ensure_ascii=True) + "\n"
+    target.parent.mkdir(parents=True, exist_ok=True)
+    tmp = target.with_name(target.name + ".tmp")
+    tmp.write_text(text, encoding="utf-8")
+    os.replace(tmp, target)
+    return sha256_text(text)
+
+
+# ═════════════════════════ E. E5.7: pre/post fingerprint comparison ═════════════════════════
+
+EXPLAIN_CODES = ("rolling_horizon", "embedding_equivalence_policy", "seeded_not_rebuilt", "source_unavailable_offline",
+                 "production_ahead_of_commit", "fixed_before_drill")
+
+
+def compare_fingerprint_sets(production: Mapping[str, str], rehearsal: Mapping[str, str],
+                             explained: Mapping[str, Mapping] | None = None) -> dict:
+    """E5.7: compare per-asset semantic fingerprints (E5.5's `fingerprint_rows` definition: one definition) of production
+    (read as suvarna_reader) with the rehearsal rebuild. An asset present on one side only, or with different fingerprints,
+    is a DIFFERENCE; it is explained only by {reason_code in EXPLAIN_CODES, detail non-blank}. PASS iff no unexplained
+    difference. An empty comparison is not PASS."""
+    explained = dict(explained or {})
+    for side, fp in (("production", production), ("rehearsal", rehearsal)):
+        if not isinstance(fp, Mapping) or not all(isinstance(k, str) and _h64(v) for k, v in fp.items()):
+            raise RehearsalError(f"{side} fingerprints must be an object of asset -> sha256")
+    assets = sorted(set(production) | set(rehearsal))
+    equal, diffs = [], []
+    for a in assets:
+        if a in production and a in rehearsal and production[a] == rehearsal[a]:
+            equal.append(a)
+            continue
+        kind = ("missing_in_rehearsal" if a not in rehearsal else "missing_in_production" if a not in production else "fingerprint_differs")
+        e = explained.get(a)
+        ok = (isinstance(e, Mapping) and set(e) == {"reason_code", "detail"} and e["reason_code"] in EXPLAIN_CODES
+              and isinstance(e["detail"], str) and bool(e["detail"].strip()))
+        diffs.append({"asset": a, "kind": kind, "production": production.get(a), "rehearsal": rehearsal.get(a),
+                      "explained": dict(e) if ok else None})
+    stray = sorted(set(explained) - {d["asset"] for d in diffs})
+    unexplained = [d["asset"] for d in diffs if d["explained"] is None]
+    result = "FAIL" if unexplained or stray else ("PASS" if assets else "UNMEASURED")
+    return {"schema": DRILL_SCHEMA, "result": result, "assets_compared": len(assets), "equal": equal, "differences": diffs,
+            "unexplained": unexplained, "explanations_without_difference": stray}
+
+
+# ═════════════════════════ D. self-test (disposable PG, synthetic data) ═════════════════════════
+
+def _git_commit(repo: str | Path) -> str | None:
+    try:
+        p = subprocess.run(["git", "-C", str(repo), "rev-parse", "HEAD"], capture_output=True, text=True, timeout=30)
+    except (OSError, subprocess.SubprocessError):
+        return None
+    out = p.stdout.strip()
+    return out if p.returncode == 0 and HEX40.fullmatch(out) else None
+
+
+SYNTH_NS = uuid.UUID("5e56e56e-5e56-4e56-8e56-5e56e56e56e5")
+SYNTH_DECL = {"table": "e56_synth_asset", "scope": "chart", "natural_key": ["node_key"],
+              "volatile_columns": ["id", "build_id", "created_at"]}
+
+
+def measure_idempotent_rebuild(conn: Any) -> dict:
+    """Synthetic table + two synthetic charts. A delete-then-insert rebuild of chart A changes only volatile columns."""
+    import nikasha_stale_certs as nsc  # noqa: PLC0415
+    a, b = str(uuid.uuid5(SYNTH_NS, "chart-a")), str(uuid.uuid5(SYNTH_NS, "chart-b"))
+    cur = conn.cursor()
+    cur.execute("DROP TABLE IF EXISTS e56_synth_asset")
+    cur.execute("CREATE TABLE e56_synth_asset (id bigserial PRIMARY KEY, chart_id uuid NOT NULL, node_key text NOT NULL, "
+                "payload jsonb NOT NULL, score numeric(12,4) NOT NULL, build_id text NOT NULL, "
+                "created_at timestamptz NOT NULL DEFAULT now(), UNIQUE (chart_id, node_key))")
+
+    def load(chart: str, build: str, bump: str | None = None) -> None:
+        for i in range(40):
+            score = f"{i * 1.25:.4f}"
+            if bump == f"k{i:02d}":
+                score = f"{i * 1.25 + 0.5:.4f}"
+            cur.execute("INSERT INTO e56_synth_asset (chart_id, node_key, payload, score, build_id) VALUES (%s,%s,%s::jsonb,%s,%s)",
+                        (chart, f"k{i:02d}", json.dumps({"i": i, "tag": f"t{i % 7}"}), score, build))
+    load(a, "build-1")
+    load(b, "build-1")
+    conn.commit()
+    ids_before = {r[0] for r in conn.execute("SELECT id FROM e56_synth_asset WHERE chart_id = %s", (a,)).fetchall()}
+    fp_a0 = nsc.table_fingerprint(conn, SYNTH_DECL, a)
+    fp_b0 = nsc.table_fingerprint(conn, SYNTH_DECL, b)
+    rows0 = conn.execute("SELECT count(*) FROM e56_synth_asset WHERE chart_id = %s", (a,)).fetchone()[0]
+    cur.execute("DELETE FROM e56_synth_asset WHERE chart_id = %s", (a,))     # the per-chart delete-then-insert rebuild (CLAUDE.md N.3)
+    load(a, "build-2")
+    conn.commit()
+    ids_after = {r[0] for r in conn.execute("SELECT id FROM e56_synth_asset WHERE chart_id = %s", (a,)).fetchall()}
+    fp_a1 = nsc.table_fingerprint(conn, SYNTH_DECL, a)
+    fp_b1 = nsc.table_fingerprint(conn, SYNTH_DECL, b)
+    rows1 = conn.execute("SELECT count(*) FROM e56_synth_asset WHERE chart_id = %s", (a,)).fetchone()[0]
+    cur.execute("DELETE FROM e56_synth_asset WHERE chart_id = %s", (a,))
+    load(a, "build-3", bump="k07")                                              # ONE semantic column changes
+    conn.commit()
+    fp_a2 = nsc.table_fingerprint(conn, SYNTH_DECL, a)
+    conn.execute("DROP TABLE IF EXISTS e56_synth_asset")
+    conn.commit()
+    return {"fingerprint_before": fp_a0, "fingerprint_after_rebuild": fp_a1, "fingerprint_after_material_change": fp_a2,
+            "other_chart_before": fp_b0, "other_chart_after": fp_b1, "rows_before": rows0, "rows_after": rows1,
+            "volatile_columns_changed": ids_before.isdisjoint(ids_after) and bool(ids_before)}
+
+
+def _git_env() -> dict:
+    return {**os.environ, "GIT_AUTHOR_NAME": "e56", "GIT_AUTHOR_EMAIL": "e56@invalid", "GIT_COMMITTER_NAME": "e56",
+            "GIT_COMMITTER_EMAIL": "e56@invalid", "GIT_CONFIG_GLOBAL": "/dev/null", "GIT_CONFIG_SYSTEM": "/dev/null"}
+
+
+def _fixture_repo(tmp: Path, family_doc: dict | None) -> Path:
+    repo = tmp / "repo"
+    repo.mkdir(parents=True)
+    env = _git_env()
+    run = lambda *a: subprocess.run(["git", "-C", str(repo), *a], env=env, capture_output=True, text=True, check=True)  # noqa: E731
+    run("init", "-q", "-b", "main")
+    (repo / "README").write_text("e56 fixture\n")
+    if family_doc is not None:
+        d = repo / "00_ARCHITECTURE" / "control"
+        d.mkdir(parents=True)
+        (d / "FAMILY_ASSETS.json").write_text(json.dumps(family_doc))
+    run("add", "-A")
+    run("-c", "commit.gpgsign=false", "commit", "-q", "-m", "fixture")
+    return repo
+
+
+def measure_family_refusal() -> dict:
+    """Drive `suvarna_level_wave.run_cli` (its own refusal path) with a request that intersects a fixture family set. The
+    `connect` and `dispatch` it is given RAISE: a refusal that reached the database or dispatched would be loud."""
+    import suvarna_level_wave as slw  # noqa: PLC0415
+    fam = {"family_gochara": ["ka_fixture_gochara"], "family_sangam": ["ka_fixture_sangam"], "family_kshetra": [],
+           "family_readers_L3": [], "family_readers_L4": [], "family_readers_L5": [],
+           "family_set": ["ka_fixture_gochara", "ka_fixture_sangam"]}
+    calls = {"connect": 0, "dispatch": 0}
+
+    def connect():
+        calls["connect"] += 1
+        raise AssertionError("the refused request touched the database")
+
+    def dispatch(*a, **k):
+        calls["dispatch"] += 1
+        raise AssertionError("the refused request dispatched")
+
+    def run(repo: Path, assets: str, *, commit: bool) -> tuple[int, list[str]]:
+        argv = ["--chart-id", str(uuid.uuid5(SYNTH_NS, "chart-a")), "--assets", assets, "--repo", str(repo),
+                "--family-ref", "main"] + (["--commit", "--mode", "single-run"] if commit else [])
+        out = io.StringIO()
+        code = slw.run_cli(slw.build_parser().parse_args(argv), connect=connect, git=_git_with_env, out=out, dispatch=dispatch)
+        last = [json.loads(ln) for ln in out.getvalue().splitlines() if ln.strip().startswith("{")][-1]
+        return code, [str(r.get("code")) for r in last.get("refusals", [])]
+
+    with tempfile.TemporaryDirectory(prefix="e56_family.") as td:
+        with_file = _fixture_repo(Path(td) / "a", fam)
+        no_file = _fixture_repo(Path(td) / "b", None)
+        code, codes = run(with_file, "bo_fixture_a,ka_fixture_gochara", commit=False)
+        connects_after_refusal, dispatches = calls["connect"], calls["dispatch"]
+        ctl_code, ctl_codes = run(with_file, "bo_fixture_a,bo_fixture_b", commit=False)
+        _mc, missing_codes = run(no_file, "bo_fixture_a", commit=True)
+    return {"intersecting_assets": ["ka_fixture_gochara"], "exit_code": code, "refusal_codes": sorted(set(codes)),
+            "connect_calls": connects_after_refusal, "dispatch_calls": dispatches, "control_exit_code": ctl_code,
+            "control_refusal_codes": sorted(set(ctl_codes)), "control_connect_calls": calls["connect"] - connects_after_refusal,
+            "missing_file_committing_codes": sorted(set(missing_codes))}
+
+
+def _git_with_env(repo: str, args: Sequence[str]) -> subprocess.CompletedProcess:
+    return subprocess.run(["git", "-C", str(repo), *args], capture_output=True, text=True, check=False, timeout=30,
+                          stdin=subprocess.DEVNULL, env=_git_env())
+
+
+def measure_hold(tracker_dir: str | Path) -> dict:
+    """The tracker's own `hold_guard.evaluate`, imported read-only from `tracker_dir` (the governance dir holding
+    `suvarna_tracker/`), against a throw-away SUVARNA_HOME."""
+    import importlib  # noqa: PLC0415
+    tdir = str(Path(tracker_dir).resolve())
+    guard_file = Path(tdir) / "suvarna_tracker" / "hold_guard.py"
+    if not guard_file.is_file():
+        raise RehearsalError(f"{guard_file} not found")
+    old_flag, sys.dont_write_bytecode = sys.dont_write_bytecode, True
+    sys.path.insert(0, tdir)
+    stale = [k for k in sys.modules if k == "suvarna_tracker" or k.startswith("suvarna_tracker.")]
+    saved = {k: sys.modules.pop(k) for k in stale}
+    try:
+        hg = importlib.import_module("suvarna_tracker.hold_guard")
+        cmd = "python3 platform/scripts/governance/suvarna_level_wave.py --chart-id x --assets bo_fixture_a --commit"
+        with tempfile.TemporaryDirectory(prefix="e56_hold.") as home:
+            (Path(home) / "run").mkdir()
+            off, _ = hg.evaluate("Bash", {"command": cmd}, home=home)
+            (Path(home) / "run" / "SUVARNA_HOLD").write_text("e56 self-test hold\n")
+            on, reason = hg.evaluate("Bash", {"command": cmd}, home=home)
+            benign, _ = hg.evaluate("Bash", {"command": "git status --short"}, home=home)
+        return {"hold_guard_sha256": sha256_file(guard_file), "command": cmd, "blocked_with_hold": bool(on),
+                "blocked_without_hold": bool(off), "reason_with_hold": str(reason)[:200],
+                "non_dispatch_blocked_with_hold": bool(benign)}
+    finally:
+        for k in [k for k in sys.modules if k == "suvarna_tracker" or k.startswith("suvarna_tracker.")]:
+            sys.modules.pop(k, None)
+        sys.modules.update(saved)
+        with contextlib.suppress(ValueError):
+            sys.path.remove(tdir)
+        sys.dont_write_bytecode = old_flag
+
+
+def measure_connections(log: ConnectionLog) -> dict:
+    """The log of opened connections, plus a probe: a non-loopback endpoint must be refused and open no socket."""
+    probes = {"called": 0}
+
+    def must_not_connect(*a, **k):
+        probes["called"] += 1
+        raise AssertionError("a refused endpoint opened a connection")
+
+    refused = 0
+    for url in ("postgresql://u@10.0.0.5:5432/rehearsal", "postgresql://u@localhost:55432/rehearsal"):
+        try:
+            connect_checked(url, "rehearsal", log, connect=must_not_connect)
+        except EndpointRefused:
+            refused += 1
+    return {"opened": [dict(e) for e in log.opened], "refused_count": len(log.refused),
+            "probe_refused_without_socket": refused == 2 and probes["called"] == 0}
+
+
+NEEDS_BY_CASE = {
+    "find_fix_rebuild_certify": "NEEDS_REHEARSAL_ORCHESTRATOR_RUN",
+    "f3_proof": "NEEDS_REHEARSAL_SCHEMA_WITH_1036",
+    "canary_triggers_reversal": "NEEDS_CANARY_REVERSAL_MECHANISM",
+}
+
+
+def run_self_test(*, tracker_dir: str | Path | None = None, repo: str | Path = REPO_ROOT,
+                  connect_url: str | None = None, pg_info: Mapping | None = None) -> dict:
+    """The cases that can run offline on a disposable PostgreSQL with synthetic data. `connect_url`/`pg_info` come from the
+    repo's `_disposable_pg` fixture when it is available; without them the database cases are UNMEASURED (NEEDS_DISPOSABLE_PG)."""
+    log = ConnectionLog()
+    cases: list[dict] = []
+    if connect_url:
+        conn = connect_checked(connect_url, "disposable", log)
+        try:
+            cases.append(case_result("idempotent_rebuild_fingerprint_unchanged", measured=measure_idempotent_rebuild(conn),
+                                     basis="synthetic_fixture"))
+        finally:
+            conn.close()
+    else:
+        cases.append(unmeasured_case("idempotent_rebuild_fingerprint_unchanged", "NEEDS_DISPOSABLE_PG"))
+    cases.append(case_result("family_dispatch_refused", measured=measure_family_refusal(), basis="synthetic_fixture"))
+    if tracker_dir:
+        cases.append(case_result("hold_refuses_dispatch", measured=measure_hold(tracker_dir), basis="synthetic_fixture"))
+    else:
+        cases.append(unmeasured_case("hold_refuses_dispatch", "NEEDS_TRACKER_HOLD_GUARD"))
+    if log.opened:
+        cases.append(case_result("no_production_write", measured=measure_connections(log), basis="synthetic_fixture"))
+    else:
+        cases.append(unmeasured_case("no_production_write", "NEEDS_DISPOSABLE_PG"))
+    for cid, reason in NEEDS_BY_CASE.items():
+        cases.append(unmeasured_case(cid, reason))
+    info = (pg_info or {}) if connect_url else {}                  # port 0 = no cluster was started
+    cluster = {"kind": "disposable", "host": LOOPBACK, "port": int(info.get("port", 0)),
+               "data_directory": str(info.get("data_directory", "")), "pg_version": str(info.get("pg_version", ""))}
+    env = {"cluster": cluster, "schema_replay": None, "seed": None}
+    return build_evidence(mode="self_test", commit=_git_commit(repo), cases=cases, environment=env)
+
+
+def _disposable_cluster() -> tuple[str, dict] | None:
+    """Start the repo's disposable cluster fixture (`__tests__/_disposable_pg.py`). None when no PostgreSQL binaries exist."""
+    sys.path.insert(0, str(HERE / "__tests__"))
+    try:
+        import _disposable_pg as dpg  # noqa: PLC0415
+    except ImportError:
+        return None
+    try:
+        cl = dpg.get_cluster()
+    except dpg.PGUnavailable:
+        return None
+    ver = cl.psql("SHOW server_version")
+    return cl.url, {"port": cl.port, "data_directory": str(cl.data_dir), "pg_version": ver, "_cluster": cl}
+
+
+# ═════════════════════════ CLI ═════════════════════════
+
+def _print(obj: Any) -> None:
+    print(json.dumps(obj, sort_keys=True, indent=2))
+
+
+def _cmd_cluster(a: argparse.Namespace) -> int:
+    pg_bin = a.pg_bin
+    try:
+        if a.action == "init":
+            out = init_cluster(a.root, port=a.port, pg_bin=pg_bin)
+        elif a.action == "start":
+            out = start_cluster(a.root, pg_bin=pg_bin)
+        elif a.action == "stop":
+            out = stop_cluster(a.root, pg_bin=pg_bin)
+        elif a.action == "status":
+            out = status_cluster(a.root)
+        elif a.action == "reap":
+            out = reap_cluster(a.root, pg_bin=pg_bin, remove_data=a.remove_data, confirm=a.confirm)
+        else:
+            out = adopt_cluster(a.root, port=a.port)
+    except LifecycleError as exc:
+        print(f"REFUSED: {exc}", file=sys.stderr)
+        return 2
+    _print(out)
+    return 0
+
+
+def main(argv: Sequence[str] | None = None) -> int:
+    ap = argparse.ArgumentParser(prog=TOOL_NAME, description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    sub = ap.add_subparsers(dest="cmd", required=True)
+    st = sub.add_parser("self-test")
+    st.add_argument("--out", required=True)
+    st.add_argument("--tracker-dir")
+    st.add_argument("--repo", default=str(REPO_ROOT))
+    v = sub.add_parser("validate")
+    v.add_argument("path")
+    v.add_argument("--evidence-root")
+    c = sub.add_parser("cluster")
+    c.add_argument("action", choices=("init", "start", "stop", "status", "reap", "adopt"))
+    c.add_argument("--root", default=DEFAULT_ROOT)
+    c.add_argument("--port", type=int, default=DEFAULT_PORT)
+    c.add_argument("--pg-bin", default=DEFAULT_PG_BIN)
+    c.add_argument("--remove-data", action="store_true")
+    c.add_argument("--confirm")
+    cf = sub.add_parser("compare-fingerprints")
+    cf.add_argument("--pre", required=True)
+    cf.add_argument("--post", required=True)
+    cf.add_argument("--explained")
+    a = ap.parse_args(argv)
+    try:
+        if a.cmd == "cluster":
+            return _cmd_cluster(a)
+        if a.cmd == "validate":
+            doc = json.loads(Path(a.path).read_text(encoding="utf-8"))
+            problems = validate_evidence(doc)
+            if not problems and a.evidence_root:
+                problems = check_pointers(doc, a.evidence_root)
+            if doc.get("mode") == "rehearsal" and not a.evidence_root:
+                problems.append("a rehearsal document is validated with --evidence-root")
+            _print({"valid": not problems, "problems": problems})
+            return 0 if not problems else 2
+        if a.cmd == "compare-fingerprints":
+            rd = lambda p: json.loads(Path(p).read_text(encoding="utf-8"))  # noqa: E731
+            out = compare_fingerprint_sets(rd(a.pre), rd(a.post), rd(a.explained) if a.explained else None)
+            _print(out)
+            return 0 if out["result"] == "PASS" else 4
+        started = _disposable_cluster()
+        try:
+            doc = run_self_test(tracker_dir=a.tracker_dir, repo=a.repo, connect_url=started[0] if started else None,
+                                pg_info=started[1] if started else None)
+            write_evidence(doc, a.out)
+        finally:
+            if started:
+                started[1]["_cluster"].stop()
+        _print({"mode": doc["mode"], "result": doc["result"], "summary": doc["summary"],
+                "cases": {c["id"]: c["result"] if c["result"] != "UNMEASURED" else c["unmeasured_reason"] for c in doc["cases"]}})
+        return 4 if doc["result"] == "FAIL" else 0
+    except RehearsalError as exc:
+        print(f"REFUSED: {exc}", file=sys.stderr)
+        return 2
+    except Exception as exc:  # noqa: BLE001
+        print(f"ERROR: {type(exc).__name__}: {exc}", file=sys.stderr)
+        return 5
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
