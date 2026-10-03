@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { EXPLICIT_CLEAR_OPS, deriveDeleteSqlFromCountSql } from '@/lib/cockpit/assetClearSpec'
+import { EXPLICIT_CLEAR_NOTICES, EXPLICIT_CLEAR_OPS, deriveDeleteSqlFromCountSql } from '@/lib/cockpit/assetClearSpec'
 
 /**
  * Locks the clear-completeness fix: writers that emit multiple tables must have an
@@ -77,6 +77,13 @@ describe('EXPLICIT_CLEAR_OPS — multi-table writer completeness', () => {
       'SELECT count(*) FROM mimamsa_predictions WHERE chart_id = $1',
     )
     expect(derived).toMatch(/^DELETE FROM mimamsa_predictions/)
+  })
+
+  it('every clear notice belongs to an explicit null, and mi_bhavisya says exactly what happened (SS N-104)', () => {
+    for (const assetId of Object.keys(EXPLICIT_CLEAR_NOTICES)) {
+      expect(EXPLICIT_CLEAR_OPS[assetId], `${assetId} has a notice, so its clear must be an explicit null`).toBeNull()
+    }
+    expect(EXPLICIT_CLEAR_NOTICES['mi_bhavisya']).toBe('mi_bhavisya is append-only (N-104): nothing cleared')
   })
 
   it('no explicit clear op anywhere deletes or updates mimamsa_predictions / mimamsa_manifestation_sets', () => {

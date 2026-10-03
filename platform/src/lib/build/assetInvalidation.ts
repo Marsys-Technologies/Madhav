@@ -1,5 +1,5 @@
 import 'server-only'
-import { deriveDeleteSqlFromCountSql, EXPLICIT_CLEAR_OPS } from '@/lib/cockpit/assetClearSpec'
+import { deriveDeleteSqlFromCountSql, EXPLICIT_CLEAR_NOTICES, EXPLICIT_CLEAR_OPS } from '@/lib/cockpit/assetClearSpec'
 import type { ClearPolicy, Queryable, RegistryEntryWithScope } from '@/lib/build/runPreparation'
 
 /**
@@ -61,6 +61,11 @@ export interface InvalidationResult {
   preservedAssetIds: string[]
   /** Operator policy only: assets whose DELETE failed and was rolled back to its savepoint. */
   failedAssetIds: string[]
+  /**
+   * Assets whose rows are history and are never cleared (SS N-104): no statement was issued for
+   * them. Surfaced so a caller can tell the operator that nothing was cleared, instead of a silent skip.
+   */
+  notices: Array<{ assetId: string; message: string }>
 }
 
 const TABLE_NAME_RE = /^[a-z_][a-z0-9_]{0,62}$/
@@ -132,7 +137,11 @@ export async function invalidateAssets(args: {
 }): Promise<InvalidationResult> {
   const { db, chartId, policy } = args
   const ordered = [...args.assets].reverse()
-  const result: InvalidationResult = { clearedAssetIds: [], preservedAssetIds: [], failedAssetIds: [] }
+  const result: InvalidationResult = { clearedAssetIds: [], preservedAssetIds: [], failedAssetIds: [], notices: [] }
+  const notice = (assetId: string) => {
+    const message = EXPLICIT_CLEAR_NOTICES[assetId]
+    if (message) result.notices.push({ assetId, message })
+  }
 
   if (policy === 'chart-correction-strict') {
     // Resolve every decision before the first DELETE so an unsafe or missing
@@ -141,6 +150,7 @@ export async function invalidateAssets(args: {
     for (const { asset, decision } of decisions) {
       if (decision.kind === 'preserve') {
         result.preservedAssetIds.push(asset.asset_id)
+        notice(asset.asset_id)
         continue
       }
       if (decision.kind === 'skip') continue
@@ -155,7 +165,10 @@ export async function invalidateAssets(args: {
   let savepointIndex = 0
   for (const asset of ordered) {
     const statements = operatorStatements(asset, chartId)
-    if (!statements) continue // no clear spec or skip-clean — non-destructive
+    if (!statements) {
+      notice(asset.asset_id)
+      continue // no clear spec or skip-clean — non-destructive
+    }
     const savepoint = `cb_${savepointIndex++}`
     await db.query(`SAVEPOINT ${savepoint}`)
     let failed = false

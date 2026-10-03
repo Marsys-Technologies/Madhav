@@ -836,6 +836,83 @@ def test_pg_table_shape_is_the_production_shape(cluster):
         be.close()
 
 
+STALENESS_TS = _REPO / "platform" / "src" / "lib" / "charts" / "chartContextStaleness.ts"
+
+
+def _staleness_update_sql(ts_source: str) -> str:
+    """The real UPDATE template a strict birth-detail correction runs on mimamsa_predictions
+    (chartContextStaleness.ts), turned into psycopg parameters ($1 -> chart, $2 -> run)."""
+    m = re.search(r"sql: `(UPDATE \$\{table\}.*?)`", ts_source, re.S)
+    assert m, "stale-marker UPDATE template not found in chartContextStaleness.ts"
+    return m.group(1).replace("${table}", "mimamsa_predictions").replace("$1", "%(chart)s").replace("$2", "%(run)s")
+
+
+def _strict_correction_scenario(be, update_sql: str) -> list[str]:
+    """A strict correction must leave every prediction (pending / due / confirmed) and every
+    manifestation set in place, setting only the staleness marker pair + the superseding run."""
+    v = []
+    seed_existing(be)
+    be.admin.execute("INSERT INTO build_runs VALUES (%s)", [_u(950)])
+    before_rows = be.admin.execute(
+        "SELECT chart_id, prediction_id, source_pramana_id, outcome_claim, domain, observation_window, eval_date,"
+        " confidence_band, magnitude_expected, falsifier_jsonb, base_rate, emitted_at, lifecycle_status, driving_signals,"
+        " frozen_bundle_hash, bundle_formula_version, created_at, contact_id FROM mimamsa_predictions"
+        " WHERE chart_id = %s ORDER BY prediction_id", [CHART]).fetchall()
+    sets_before = be.snapshot()[1]
+    already = be.admin.execute(
+        "SELECT prediction_id, chart_context_stale_at FROM mimamsa_predictions WHERE chart_id=%s AND chart_context_stale_at IS NOT NULL",
+        [CHART]).fetchall()
+    be.admin.execute(update_sql, {"chart": CHART, "run": _u(950)})
+    after_rows = be.admin.execute(
+        "SELECT chart_id, prediction_id, source_pramana_id, outcome_claim, domain, observation_window, eval_date,"
+        " confidence_band, magnitude_expected, falsifier_jsonb, base_rate, emitted_at, lifecycle_status, driving_signals,"
+        " frozen_bundle_hash, bundle_formula_version, created_at, contact_id FROM mimamsa_predictions"
+        " WHERE chart_id = %s ORDER BY prediction_id", [CHART]).fetchall()
+    if after_rows != before_rows:
+        v.append("strict correction: a prediction row changed beyond the staleness columns (or was deleted)")
+    if be.snapshot()[1] != sets_before:
+        v.append("strict correction: manifestation sets changed")
+    marked = be.admin.execute(
+        "SELECT count(*) FILTER (WHERE chart_context_stale_at IS NOT NULL AND chart_context_stale_reason = 'chart_details_changed'"
+        " AND chart_context_superseded_by_run_id = %s), count(*) FROM mimamsa_predictions WHERE chart_id=%s",
+        [_u(950), CHART]).fetchone()
+    # one row was already stale-marked at seed time (set once: untouched, so it has no superseding run)
+    if marked != (len(before_rows) - len(already), len(before_rows)):
+        v.append(f"strict correction: expected every not-yet-stale row marked with the run, got {marked}")
+    other = be.admin.execute("SELECT count(*) FROM mimamsa_predictions WHERE chart_id=%s AND chart_context_stale_at IS NOT NULL", [OTHER]).fetchone()[0]
+    if other != 0:
+        v.append("strict correction: another chart's prediction was marked")
+    stale_before = be.admin.execute(
+        "SELECT prediction_id, chart_context_stale_at FROM mimamsa_predictions WHERE chart_id=%s AND chart_context_stale_at IS NOT NULL ORDER BY 1", [CHART]).fetchall()
+    be.admin.execute(update_sql, {"chart": CHART, "run": _u(950)})
+    if be.admin.execute(
+        "SELECT prediction_id, chart_context_stale_at FROM mimamsa_predictions WHERE chart_id=%s AND chart_context_stale_at IS NOT NULL ORDER BY 1", [CHART]).fetchall() != stale_before:
+        v.append("strict correction: a second correction re-stamped an already-marked row (the marker must be set once)")
+    return v
+
+
+def test_pg_strict_birth_detail_correction_leaves_predictions_undeleted_with_marker_and_run_set(cluster):
+    be = PgBackend(cluster)
+    try:
+        assert _strict_correction_scenario(be, _staleness_update_sql(STALENESS_TS.read_text(encoding="utf-8"))) == []
+    finally:
+        be.close()
+
+
+@pytest.mark.parametrize("name,old,new", [
+    ("also_rewrites_status", "SET chart_context_stale_at = NOW(),", "SET lifecycle_status = 'expired', chart_context_stale_at = NOW(),"),
+    ("restamps_marked_rows", "AND chart_context_stale_at IS NULL", "AND true"),
+])
+def test_pg_strict_correction_mutants_are_caught(cluster, name, old, new):
+    src = STALENESS_TS.read_text(encoding="utf-8")
+    assert src.count(old) == 1, old
+    be = PgBackend(cluster)
+    try:
+        assert _strict_correction_scenario(be, _staleness_update_sql(src.replace(old, new))), f"mutant {name} survived"
+    finally:
+        be.close()
+
+
 def test_pg_the_old_writer_behaviour_is_what_the_ruling_forbids(cluster):
     """Control: the PRE-CHANGE writer deletes every pending row on a no-op rebuild (the 139-row hazard)."""
     be = PgBackend(cluster)

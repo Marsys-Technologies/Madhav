@@ -62,6 +62,18 @@ export function deriveDeleteSqlFromCountSql(countSql: string): string | null {
 }
 
 /**
+ * Operator-facing message for an asset whose clear is an EXPLICIT null because its rows are
+ * history (SS N-104). A null spec issues no statement, but a silent skip would let an operator
+ * believe something was cleared, so every clear route returns this message for such an asset
+ * (execute route: `notices`; invalidateAssets: `InvalidationResult.notices`). Every key MUST be
+ * an `EXPLICIT_CLEAR_OPS` null (pinned by a test). Other skip-clean nulls (lel_events, mi_seva,
+ * ...) keep their existing behaviour: this map is the deliberate, narrow opt-in.
+ */
+export const EXPLICIT_CLEAR_NOTICES: Record<string, string> = {
+  mi_bhavisya: 'mi_bhavisya is append-only (N-104): nothing cleared',
+}
+
+/**
  * Explicit clear operations for assets whose count_sql can't be auto-transformed.
  * null means the asset has no data rows to clear (skip cleanly, not an error).
  */
