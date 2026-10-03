@@ -41,7 +41,7 @@ import pytest
 from psycopg.rows import dict_row
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from brahmagyan import l0_doshas, l0_yogas  # noqa: E402
+from brahmagyan import l0_attribution_state as attr_module, l0_doshas, l0_yogas  # noqa: E402
 
 WRITERS_DDL = r"""
 CREATE TABLE public.brahma_dosha_catalog (
@@ -331,9 +331,9 @@ def _no_corpus(monkeypatch):
 
 
 def _install(monkeypatch, mod):
-    for m in (l0_doshas, l0_yogas):
-        monkeypatch.setattr(m, "_capture_attribution", mod.capture)
-        monkeypatch.setattr(m, "_restore_attribution", mod.restore)
+    """The writers import the helper lazily at call time, so patching the helper module's functions reaches both."""
+    monkeypatch.setattr(attr_module, "capture", mod.capture)
+    monkeypatch.setattr(attr_module, "restore", mod.restore)
 
 
 # --------------------------------------------------------------------------------------------- scenarios
@@ -541,10 +541,10 @@ def test_every_mutant_is_killed(monkeypatch, cluster, name, spec, _x):
 
 def test_integration_points_in_the_writers_are_mutation_checked(monkeypatch, cluster):
     """Removing the writer-side call (capture before the DELETE, or restore after the INSERTs) must be detected."""
-    helper = _helper_module(None)
-    _install(monkeypatch, helper)
-    monkeypatch.setattr(l0_doshas, "_capture_attribution", lambda *a, **k: None)  # restore then sees 'column absent' and does nothing
+    real_capture, real_restore = attr_module.capture, attr_module.restore
+    monkeypatch.setattr(attr_module, "capture", lambda *a, **k: None)  # restore then sees 'column absent' and does nothing
     assert any("sc_rebuild_keeps_values" in x for x in all_violations(monkeypatch, cluster))
-    _install(monkeypatch, helper)
-    monkeypatch.setattr(l0_yogas, "_restore_attribution", lambda *a, **k: {})
+    monkeypatch.setattr(attr_module, "capture", real_capture)
+    monkeypatch.setattr(attr_module, "restore", lambda *a, **k: {})
     assert any("sc_rebuild_keeps_values" in x for x in all_violations(monkeypatch, cluster))
+    monkeypatch.setattr(attr_module, "restore", real_restore)  # (the unmutated pass is test_real_writers_keep_the_state)

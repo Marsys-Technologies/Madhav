@@ -29,8 +29,6 @@ import logging
 from datetime import datetime, timezone
 from typing import Any
 
-from brahmagyan.l0_attribution_state import capture as _capture_attribution, restore as _restore_attribution
-
 logger = logging.getLogger(__name__)
 
 # ── Source citations ───────────────────────────────────────────────────────────
@@ -1937,12 +1935,10 @@ def seed_doshas(
                 "Apply migration 176 first."
             )
 
-        # All three projections are wholly owned by bg_doshas (the shared
-        # ontology delete is scoped to its entity class). The orchestrator owns
-        # the surrounding transaction/savepoint, so a failed replacement rolls
-        # back atomically.
-        # attribution_state (migration 1268) is not part of the seed: carry it across the replacement (SS N-111)
-        attribution_saved = _capture_attribution(cur, "brahma_dosha_catalog", "canonical_id", "classical_citations")
+        # All three projections are wholly owned by bg_doshas (the ontology delete is scoped to its entity class);
+        # the orchestrator owns the transaction, so a failed replacement rolls back atomically.
+        from brahmagyan import l0_attribution_state as _attr  # carry attribution_state (mig 1268) across the replace (SS N-111)
+        attribution_saved = _attr.capture(cur, "brahma_dosha_catalog", "canonical_id", "classical_citations")
         cur.execute("DELETE FROM reference_doshas")
         cur.execute("DELETE FROM brahma_dosha_catalog")
         cur.execute("DELETE FROM brahma_ontology WHERE entity_class = 'dosha'")
@@ -2023,7 +2019,7 @@ def seed_doshas(
             if cur.rowcount > 0:
                 ref_inserted += 1
 
-        _restore_attribution(cur, "brahma_dosha_catalog", "canonical_id", "classical_citations", attribution_saved)
+        _attr.restore(cur, "brahma_dosha_catalog", "canonical_id", "classical_citations", attribution_saved)
 
         cur.execute(
             """
