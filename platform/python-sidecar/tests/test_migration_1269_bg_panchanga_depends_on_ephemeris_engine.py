@@ -389,12 +389,16 @@ CHART = "482012f1-710e-4a25-994a-93821f5871aa"
 THROUGHPUT_DDL = """
 CREATE TABLE public.asset_throughput (asset_id text NOT NULL REFERENCES public.asset_registry(asset_id), chart_id uuid,
                                       state text NOT NULL, last_built_at timestamptz);
+CREATE TABLE public.build_runs (id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    state text NOT NULL CHECK (state IN ('planned','running','paused','completed','stopped','failed')));
 """
 
 
 def seed(env: Env, engine_state: str = "lit") -> None:
     env.run(THROUGHPUT_DDL)
     env.run("ALTER TABLE public.asset_throughput OWNER TO amjis_app")
+    env.run("ALTER TABLE public.build_runs OWNER TO amjis_app")
+    env.run("INSERT INTO public.build_runs (state) VALUES ('completed'), ('failed'), ('stopped')")  # terminal runs never block
     for aid, row in GRAPH.items():
         kw = dict(depends_on=row["depends_on"], is_active=row["is_active"], asset_kind=row["asset_kind"], has_writer=row["has_writer"])
         if row["asset_kind"] == "service":
@@ -611,6 +615,38 @@ def sc_absent(cl: Cluster, sql: str) -> list[str]:
         env.drop()
 
 
+def sc_idle_queue(cl: Cluster, sql: str) -> list[str]:
+    """SS N-111: the migration applies only with an idle build queue (the 1210 frozen-manifest hazard)."""
+    v: list[str] = []
+    for state in ("planned", "running", "paused"):
+        env = Env(cl)
+        try:
+            seed(env)
+            env.run("INSERT INTO public.build_runs (state) VALUES (%s)", (state,))
+            before = (env.snapshot("asset_registry", "asset_id"), env.snapshot("asset_freshness", "asset_id"))
+            exc = _try(lambda: env.apply(sql, "1269.sql"))
+            if exc is None:
+                v.append(f"a {state} run did not stop the migration")
+            elif "idle build queue" not in str(exc):
+                v.append(f"{state}: refused with the wrong message: {_msg(exc)}")
+            if (env.snapshot("asset_registry", "asset_id"), env.snapshot("asset_freshness", "asset_id")) != before:
+                v.append(f"{state}: state changed although the migration refused")
+        finally:
+            env.drop()
+    env = Env(cl)
+    try:
+        seed(env)  # only completed/failed/stopped runs: applies
+        env.apply(sql, "1269.sql")
+        env.run("INSERT INTO public.build_runs (state) VALUES ('running')")  # a later run must not fail an already-applied re-run
+        try:
+            env.apply(sql, "1269_again.sql", track=False)
+        except Exception as exc:  # noqa: BLE001
+            v.append(f"re-run with the edge present failed on an active run: {_msg(exc)}")
+    finally:
+        env.drop()
+    return v
+
+
 def sc_silent_noop(cl: Cluster, sql: str) -> list[str]:
     v: list[str] = []
     env = Env(cl)
@@ -626,7 +662,7 @@ def sc_silent_noop(cl: Cluster, sql: str) -> list[str]:
         env.drop()
 
 
-SCENARIOS = [sc_apply_once, sc_gate_is_effective, sc_idempotent, sc_guards, sc_absent, sc_silent_noop]
+SCENARIOS = [sc_apply_once, sc_gate_is_effective, sc_idempotent, sc_guards, sc_idle_queue, sc_absent, sc_silent_noop]
 
 
 def all_violations(cl: Cluster, sql: str) -> list[str]:
@@ -656,6 +692,9 @@ MUTANTS = [
     ("absent row raises instead of skipping", ("RAISE NOTICE '1269: bg_panchanga is not in asset_registry; skipped';\n        RETURN;", "RAISE EXCEPTION '1269: absent';")),
     ("lock_timeout session-wide", ("SET LOCAL lock_timeout = '5s';", "SET lock_timeout = '5s';")),
     ("also edits another asset's depends_on", ("    -- Post-check: re-read the cell", "    UPDATE asset_registry SET depends_on = depends_on || ARRAY['bg_ephemeris_engine'] WHERE asset_id = 'bg_class_priors';\n    -- Post-check: re-read the cell")),
+    ("idle-queue guard removed", ("IF EXISTS (SELECT 1 FROM build_runs WHERE state IN ('planned', 'running', 'paused')) THEN\n        RAISE", "IF false THEN\n        RAISE")),
+    ("idle-queue guard only looks at running", ("IF EXISTS (SELECT 1 FROM build_runs WHERE state IN ('planned', 'running', 'paused')) THEN\n        RAISE", "IF EXISTS (SELECT 1 FROM build_runs WHERE state IN ('running')) THEN\n        RAISE")),
+    ("idle-queue guard before the already-present skip", "guard_first"),
     ("row-count check and post-check removed", "noop"),
 ]
 
@@ -669,6 +708,13 @@ def _build_mutant(spec) -> str:
         i = s.index("    IF EXISTS (\n        WITH RECURSIVE reach(asset_id) AS (\n            SELECT d FROM asset_registry a")
         j = s.index("END\n$m1269$;")
         return s[:i] + s[j:]
+    if spec == "guard_first":  # the guard runs before the already-present skip: a re-run with an active run would fail
+        i = s.index("    -- idle build queue:")
+        j = s.index("    -- no cycle: bg_panchanga must not be reachable")
+        block = s[i:j]
+        s = s[:i] + s[j:]
+        k = s.index("    SELECT asset_kind, is_active INTO e_kind, e_active")
+        return s[:k] + block + s[k:]
     if spec == "noop":
         s = s.replace("    GET DIAGNOSTICS v_rows = ROW_COUNT;\n    IF v_rows <> 1 THEN\n        RAISE EXCEPTION '1269: bg_panchanga depends_on update touched % rows, expected 1', v_rows;\n    END IF;\n", "")
         assert "v_rows <> 1" not in s

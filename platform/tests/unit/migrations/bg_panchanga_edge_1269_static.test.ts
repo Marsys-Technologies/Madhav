@@ -4,8 +4,8 @@
  * The live proof (disposable PostgreSQL 15 and 17 as a NOSUPERUSER NOINHERIT amjis_app with USAGE but no CREATE on
  * schema public, loaded with the full live 129-row registry graph: apply, acyclicity and topological order, the REAL
  * deps_unsatisfied gate (bg_panchanga and ga_panchanga not blocked; an errored engine DOES block), the real
- * downstream closure, trigger staleness, idempotent re-run, 9 drift cases incl. a would-be cycle, absent row,
- * silent-no-op and 13 mutants) is python-sidecar/tests/test_migration_1269_bg_panchanga_depends_on_ephemeris_engine.py.
+ * downstream closure, trigger staleness, idempotent re-run, 9 drift cases incl. a would-be cycle, the idle-queue guard, absent row,
+ * silent-no-op and 16 mutants) is python-sidecar/tests/test_migration_1269_bg_panchanga_depends_on_ephemeris_engine.py.
  * This file pins the text.
  */
 import { describe, it, expect } from 'vitest'
@@ -42,6 +42,10 @@ describe('migration 1269 - static contract', () => {
     expect(CODE).toContain('FOR UPDATE')
     expect(CODE).toContain('GET DIAGNOSTICS v_rows = ROW_COUNT')
     expect(CODE).toContain('after the update')
+    // idle build queue (SS N-111): refuses while a run is planned/running/paused, and only AFTER the idempotent skips
+    expect(CODE).toContain("FROM build_runs WHERE state IN ('planned', 'running', 'paused')")
+    expect(CODE).toContain('apply with an idle build queue')
+    expect(CODE.indexOf('FROM build_runs')).toBeGreaterThan(CODE.indexOf('already depends on bg_ephemeris_engine; skipped'))
   })
 
   it('is registry-row DML only: no CREATE/ALTER/DROP/GRANT/REVOKE/INSERT/DELETE', () => {
@@ -58,7 +62,7 @@ describe('migration 1269 - static contract', () => {
   it('states the header facts: review inputs (order, gate, hash, in-flight runs, frozen manifests), staleness, NOT done', () => {
     expect(SQL).toContain('TI-L0-29')
     for (const needle of ['DAG ORDER', 'DISPATCH GATE', 'UPSTREAM HASH', 'IN-FLIGHT RUNS', 'NIRMANA FROZEN MANIFESTS',
-      'planned/running/paused', 'deps_unsatisfied', 'assertManifestMatchesRegistryIdentity', '_verify_registry_still_matches_manifest',
+      'planned/running/paused', 'THIS MIGRATION REFUSES (RAISE) WHILE ANY build_runs ROW', 'deps_unsatisfied', 'assertManifestMatchesRegistryIdentity', '_verify_registry_still_matches_manifest',
       'Assets that go stale: bg_panchanga ONLY', 'NOT DONE HERE', 'asset_registry_seed.ts', 'PRIVILEGE', 'IDEMPOTENT',
       'panchang_engine/__init__.py:63']) expect(SQL).toContain(needle)
   })

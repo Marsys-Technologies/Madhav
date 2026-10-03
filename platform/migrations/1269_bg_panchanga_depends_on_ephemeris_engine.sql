@@ -36,8 +36,9 @@
 --   (d) IN-FLIGHT RUNS. runner._verify_registry_still_matches_manifest compares each planned asset's live
 --       depends_on with the run's FROZEN manifest; a run planned/running/paused across this migration has its
 --       diverged assets terminalized and their dependents blocked (the 1210 hazard). ga_panchanga is in the S-L1
---       set. APPLY ONLY WHEN no build_runs row is in state planned/running/paused (this migration does not check;
---       it is a held, SS-sequenced merge, like 1210/1226).
+--       set. THEREFORE THIS MIGRATION REFUSES (RAISE) WHILE ANY build_runs ROW IS IN STATE planned/running/paused:
+--       the migrate job fails and is retried with an idle build queue (SS N-111: apply only with an idle queue).
+--       The check runs after the idempotent skips, so a re-run with the edge already present never fails on it.
 --   (e) NIRMANA FROZEN MANIFESTS. assertManifestMatchesRegistryIdentity throws on any depends_on change versus a
 --       frozen manifest, and the T0 manifest records bg_panchanga depends_on []. The Nirmana campaign is OFF and
 --       superseded (the 1210 precedent), so no frozen manifest is used for a live dispatch; a wave that was frozen
@@ -51,6 +52,7 @@
 --   * Cockpit blocking radius: bg_ephemeris_engine gains one direct dependent (bg_panchanga).
 --
 -- GUARDS (every one raises rather than skip)
+--   * the build queue must be idle: no build_runs row in state planned/running/paused (RAISE otherwise);
 --   * bg_panchanga must exist, be active, asset_kind = 'service', has_writer = false, target_table IS NULL, and
 --     depends_on exactly {} or already exactly {bg_ephemeris_engine} (then skipped); any other value is DRIFT.
 --   * bg_ephemeris_engine must exist, be active and asset_kind = 'service' (dependency trap otherwise).
@@ -58,8 +60,8 @@
 --   * ROW_COUNT = 1 and a post-check that re-reads the cell and re-walks the graph for a cycle through bg_panchanga.
 --   A row that does not exist (fresh bootstrap without the row) is skipped with a NOTICE (1210 convention).
 --
--- PRIVILEGE (P2 rule, W1_PRIVILEGE_AUDIT): runs as amjis_app, OWNER of asset_registry, asset_freshness and the
--- trigger function; needs only UPDATE on asset_registry. No CREATE, no GRANT, no DDL, nothing in schema public
+-- PRIVILEGE (P2 rule, W1_PRIVILEGE_AUDIT): runs as amjis_app, OWNER of asset_registry, asset_freshness, build_runs and the
+-- trigger function; needs UPDATE on asset_registry and SELECT on build_runs. No CREATE, no GRANT, no DDL, nothing in schema public
 -- beyond USAGE. Proven as amjis_app (NOSUPERUSER, NOINHERIT, no CREATE on public).
 --
 -- IDEMPOTENT: a second run finds the edge present and updates nothing (the trigger does not fire again).
@@ -119,6 +121,12 @@ BEGIN
     END IF;
     IF v_deps IS DISTINCT FROM '{}'::text[] THEN
         RAISE EXCEPTION '1269: bg_panchanga depends_on is % (audited: {}); refusing to overwrite', v_deps;
+    END IF;
+
+    -- idle build queue: a planned/running/paused run holds a frozen manifest that would diverge (see (d) in the header)
+    IF EXISTS (SELECT 1 FROM build_runs WHERE state IN ('planned', 'running', 'paused')) THEN
+        RAISE EXCEPTION '1269: a build run is planned/running/paused (% run(s)); apply with an idle build queue (frozen-manifest divergence)',
+            (SELECT count(*) FROM build_runs WHERE state IN ('planned', 'running', 'paused'));
     END IF;
 
     -- no cycle: bg_panchanga must not be reachable from bg_ephemeris_engine
