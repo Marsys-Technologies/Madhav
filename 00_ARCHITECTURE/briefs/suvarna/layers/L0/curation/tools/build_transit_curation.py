@@ -492,7 +492,7 @@ $curation$;
 """
 
 
-def seed_patch(repo_root, out):
+def seed_patch(repo_root, out, include_rules=False):
     import importlib.util, tempfile, os, shutil
     src = pathlib.Path(repo_root) / "platform/python-sidecar/brahmagyan/l0_transit.py"
     text = src.read_text(encoding="utf8")
@@ -522,6 +522,9 @@ def seed_patch(repo_root, out):
             return blk.replace(f'"classical_citation": {const},', f'"classical_citation": {json.dumps(targets[k], ensure_ascii=False)},')
         return blk
     body2 = re.sub(r"    \{\n(?:        .*\n)+?    \},", repl, body)
+    if not include_rules:
+        body2 = body
+        hit = set(targets)
     assert hit == set(targets), set(targets) - hit
     new = head + body2
     # engine
@@ -559,6 +562,91 @@ def seed_patch(repo_root, out):
     return tmp / "patched_l0_transit.py"
 
 
+def build_engine_sql(pin_engine):
+    """ENGINE-ONLY draft (rules citations are PR #3049's). Composable with #3049's rules reseal: the rules registry row is
+    guarded by 'contains the engine hash exactly once', not by whole-text md5."""
+    _, engine_sql = update_statements()
+    eng_old = REG["bg_transit_engine"]["english_description"]
+    assert REG["bg_transit_engine"]["integrity_check_sql"].count(OLD_ENGINE_HASH) == 1
+    assert REG["bg_transit_rules"]["integrity_check_sql"].count(OLD_ENGINE_HASH) == 1
+    return f"""-- =============================================================================
+-- DRAFT_NEEDS_NUMBER_l0_transit_engine_citation_curation.sql   (HELD DRAFT: NOT APPLIED, NOT A MIGRATION)
+-- Lane: curation-lane (Exec Suvarna), branch suvarna/land/TI-curation-001, N-101 curation of bg_transit_engine.
+-- SS allocates the migration number (block 1200-1299).
+--
+-- SCOPE: bg_transit_engine.classical_citation ONLY (9 rows). The 23 bg_transit_rules re-citations are PR #3049's (TI-L0-10);
+-- this lane's ledger independently confirms them (see ledger section 4) and ships no SQL or seed patch for them.
+-- The refuted "BPHS Ch.22 (Graha Gati)" (served bphs:PG22:C1 is Chapter 2, incarnations) is replaced on all 9 rows by an
+-- honest per-row source-state statement: UNSOURCED, or PARTIALLY SOURCED naming the one cell the held corpus states
+-- (Sun '30 days', Jupiter ~1 year, Saturn '30 months'/'900 days' per sign). NUMERIC VALUES ARE NOT TOUCHED (WAVE-1 Part B = SS decision).
+-- Reseals the engine sha256 inside BOTH stored integrity checks (bg_transit_engine, and the composite bg_transit_rules check).
+--
+-- GUARDS  engine content hash must equal the pinned pre-state; each UPDATE matches graha AND exact old citation, exactly 9 rows;
+--         the engine hash literal must occur exactly once in each registry check (so this composes with #3049's rules reseal in either
+--         order); english_description pinned; post-flight: pinned post hash, no row still cites BPHS Ch.22 as a source, the engine
+--         check reads true, and the rules check reads true iff it did before (it is only true while the rules table is at its sealed content).
+--         Idempotent: second apply = NOTICE + no-op.
+-- Seed parity: platform/python-sidecar/brahmagyan/l0_transit.py BG_TRANSIT_ENGINE must carry the same citations or the next rebuild
+--         reverts them -> DRAFT_l0_transit_engine_seed_curation.patch (stales nirmana-writer-digests.json: wait for #2984).
+--         Also: nirmana_l0_transit_integrity_contract.test.ts pins HASHES.engine; it must be re-baselined with the seed patch.
+-- =============================================================================
+
+DO $curation$
+DECLARE
+  c_old constant text := '{OLD_ENGINE_HASH}';
+  c_new constant text := '{pin_engine}';
+  c_desc_old constant text := {dq(eng_old, 'd')};
+  c_desc_new constant text := {dq(NEW_ENGINE_DESC, 'd')};
+  hash_sql constant text := {dq(ENGINE_HASH_SQL, 'q')};
+  eng_ic text; rul_ic text; eng_desc text;
+  h text; n integer; ok boolean; rules_ok_before boolean;
+BEGIN
+  SELECT integrity_check_sql, english_description INTO eng_ic, eng_desc FROM asset_registry WHERE asset_id = 'bg_transit_engine' FOR UPDATE;
+  IF NOT FOUND THEN RAISE EXCEPTION 'curation refuses: asset_registry row bg_transit_engine not found'; END IF;
+  SELECT integrity_check_sql INTO rul_ic FROM asset_registry WHERE asset_id = 'bg_transit_rules' FOR UPDATE;
+  IF NOT FOUND THEN RAISE EXCEPTION 'curation refuses: asset_registry row bg_transit_rules not found'; END IF;
+  EXECUTE hash_sql INTO h;
+  IF h = c_new THEN
+    IF position(c_new IN eng_ic) = 0 OR position(c_new IN rul_ic) = 0 THEN
+      RAISE EXCEPTION 'curation refuses: engine table is at the curated content but a registry contract is not resealed';
+    END IF;
+    RAISE NOTICE 'curation already applied: no-op';
+    RETURN;
+  END IF;
+  IF h IS DISTINCT FROM c_old THEN RAISE EXCEPTION 'curation refuses: bg_transit_engine is not the pinned pre-state (%)', h; END IF;
+  IF (length(eng_ic) - length(replace(eng_ic, c_old, ''))) <> length(c_old)
+     OR (length(rul_ic) - length(replace(rul_ic, c_old, ''))) <> length(c_old) THEN
+    RAISE EXCEPTION 'curation refuses: the engine hash literal is not present exactly once in both stored integrity checks';
+  END IF;
+  IF eng_desc IS DISTINCT FROM c_desc_old THEN RAISE EXCEPTION 'curation refuses: bg_transit_engine english_description has drifted'; END IF;
+  EXECUTE rul_ic INTO rules_ok_before;
+
+  {engine_sql};
+  GET DIAGNOSTICS n = ROW_COUNT;
+  IF n <> 9 THEN RAISE EXCEPTION 'curation expected 9 bg_transit_engine rows, updated %', n; END IF;
+  EXECUTE hash_sql INTO h;
+  IF h IS DISTINCT FROM c_new THEN RAISE EXCEPTION 'curation post-flight: engine content hash mismatch (%)', h; END IF;
+  SELECT count(*) INTO n FROM bg_transit_engine WHERE classical_citation LIKE '%BPHS Ch.22 (Graha Gati%' AND classical_citation NOT LIKE 'PARTIALLY SOURCED%' AND classical_citation NOT LIKE 'UNSOURCED%';
+  IF n <> 0 THEN RAISE EXCEPTION 'curation post-flight: % engine rows still cite BPHS Ch.22 as a source', n; END IF;
+
+  UPDATE asset_registry SET integrity_check_sql = replace(integrity_check_sql, c_old, c_new), english_description = c_desc_new WHERE asset_id = 'bg_transit_engine';
+  GET DIAGNOSTICS n = ROW_COUNT; IF n <> 1 THEN RAISE EXCEPTION 'curation expected 1 engine registry row, updated %', n; END IF;
+  UPDATE asset_registry SET integrity_check_sql = replace(integrity_check_sql, c_old, c_new) WHERE asset_id = 'bg_transit_rules';
+  GET DIAGNOSTICS n = ROW_COUNT; IF n <> 1 THEN RAISE EXCEPTION 'curation expected 1 rules registry row, updated %', n; END IF;
+
+  SELECT integrity_check_sql INTO eng_ic FROM asset_registry WHERE asset_id = 'bg_transit_engine';
+  EXECUTE eng_ic INTO ok;
+  IF ok IS NOT TRUE THEN RAISE EXCEPTION 'curation post-flight: bg_transit_engine stored integrity_check_sql reads false'; END IF;
+  SELECT integrity_check_sql INTO rul_ic FROM asset_registry WHERE asset_id = 'bg_transit_rules';
+  EXECUTE rul_ic INTO ok;
+  IF ok IS DISTINCT FROM rules_ok_before THEN RAISE EXCEPTION 'curation post-flight: bg_transit_rules stored check changed from % to %', rules_ok_before, ok; END IF;
+END
+$curation$;
+
+-- VERIFY: SELECT graha, left(classical_citation, 60) FROM bg_transit_engine ORDER BY graha;  then execute both stored integrity_check_sql: expect t
+"""
+
+
 if __name__ == "__main__":
     cmd = sys.argv[1]
     if cmd == "ledger":
@@ -571,6 +659,8 @@ if __name__ == "__main__":
     elif cmd == "update-statements":
         r, e = update_statements()
         print(r + ";\n" + e + ";")
+    elif cmd == "engine-sql":
+        open(sys.argv[3], "w", encoding="utf8").write(build_engine_sql(json.load(open(sys.argv[2]))["engine"]))
     elif cmd == "seed-patch":
         seed_patch(sys.argv[2], sys.argv[3])
     elif cmd == "verify-quotes":

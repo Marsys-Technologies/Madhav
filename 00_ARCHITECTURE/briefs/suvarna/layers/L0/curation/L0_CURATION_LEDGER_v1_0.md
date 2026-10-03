@@ -92,7 +92,9 @@ Counting units: row-weighted; `bg_doshas` is counted per dosha (79 doshas = 237 
 
 ## 4. bg_transit_rules and bg_transit_engine (the SS-ruled re-sourcing), inline
 
-### 4.1 Re-sourced rows (23): old citation -> Phaladeepika Adh. XXVI slokas 9-24
+### 4.1 The 23 transit rows: independent confirmation of PR #3049 (TI-L0-10), NO SQL OR SEED PATCH FOR THEM IN THIS PR
+
+**Reconciliation with PR #3049** (re-sources the same 24 `bg_transit_rules` citations in the seed module; read from `origin/pr3049` at head 2380e741): this lane derived the table independently from the corpus chunks before #3049 was known. Programmatic comparison: for all 18 direct rows the sloka number and page anchor are IDENTICAL (18/18, including Sun 8 = sl. 10 across PG324/325 and Mars 8 = sl. 15 across PG326/327); the 5 Ketu rows rest on the same basis (sl. 2 equivalence read with sl. 24, flagged as equivalence, acharya acceptance pending). Hence no duplicate SQL or seed patch for them here; the columns below are this lane's verification evidence (chunk uuid, sha256, minimum quote, what the sloka does and does not state). Differences to note: (a) #3049's strings carry no statement of which phala words the sloka lacks (the ledger lists them per row); (b) #3049 also rewrites the Ketu-12th citation (id 199) to an UNSOURCED-and-contradicted marker while keeping its valence: this lane left id 199 untouched per the SS wording, but #3049's change is a citation-text honesty fix only and looks consistent with the ruling; (c) neither sets `attribution_state` (TI-L0-09, #3044). The rules reseal (hash `1dbdd265...` -> new) is #3049's wave-plan draft, and the engine draft here composes with it in either order (tested).
 
 | id | row | old citation | state | class | chunk (page, sloka) | what the chunk states | phala words NOT in the sloka |
 |---|---|---|---|---|---|---|---|
@@ -320,8 +322,8 @@ Counting units: row-weighted; `bg_doshas` is counted per dosha (79 doshas = 237 
 
 | file | asset | change | integrity contract resealed | real-PG test evidence |
 |---|---|---|---|---|
-| `DRAFT_NEEDS_NUMBER_l0_transit_citation_curation.sql` | bg_transit_rules + bg_transit_engine | 23 rules + 9 engine citations (+ 2 registry rows; optional attribution_state block) | yes (sha256 x2) | `PG_TEST_EVIDENCE.txt` |
-| `DRAFT_l0_transit_seed_curation.patch` | bg_transit_rules + bg_transit_engine (seed module l0_transit.py) | same 32 citations; `git apply --check` clean on origin/main | n/a | `PG_TEST_EVIDENCE.txt (P7 seed parity)` |
+| `DRAFT_NEEDS_NUMBER_l0_transit_engine_citation_curation.sql` | bg_transit_engine | 9 citations + 2 registry rows (engine hash resealed inside both stored checks) | yes (sha256, composes with #3049's rules reseal in either order) | `PG_TEST_EVIDENCE_transit_engine.txt` |
+| `DRAFT_l0_transit_engine_seed_curation.patch` | bg_transit_engine (seed module l0_transit.py, BG_TRANSIT_ENGINE only) | same 9 citations; BG_TRANSIT_RULES byte-identical | n/a | `PG_TEST_EVIDENCE_transit_engine.txt (P7)` |
 | `DRAFT_NEEDS_NUMBER_l0_bg_dignity_reference_citation_curation.sql` | bg_dignity_reference | 82 citation cells over 5 tables | no (check does not hash these columns) | `PG_TEST_EVIDENCE_bg_dignity_reference.txt` |
 | `DRAFT_NEEDS_NUMBER_l0_bg_reference_citation_curation.sql` | bg_reference | 319 citation cells over 9 tables | yes (9 literals) | `PG_TEST_EVIDENCE_bg_reference.txt` |
 | `DRAFT_NEEDS_NUMBER_l0_bg_nakshatra_citation_curation.sql` | bg_nakshatra | 521 citation cells over 3 tables | yes (3 literals) | `PG_TEST_EVIDENCE_bg_nakshatra.txt` |
@@ -332,11 +334,11 @@ Each SQL is one `DO` block (transaction owned by the runner): per-table content 
 
 **Coupling and ordering (read before numbering):**
 
-1. Seed parity: each writer's seed module carries the old citations; a rebuild would revert the SQL. Only `l0_transit.py` is patched (draft patch); editing any `brahmagyan/l0_*.py` stales `nirmana-writer-digests.json` (a #2984 file), so the seed patches wait for #2984.
-2. `platform/tests/unit/migrations/nirmana_l0_transit_integrity_contract.test.ts` (run with a real DB in CI) builds its rows from `l0_transit.py` and pins the migration-1078 rules hash `1dbdd265...`; merging the seed patch alone turns it red (the curated content hashes to a different value). The migration, the seed patch and that test's re-baseline must land together.
-3. PR #3044 (migration 1268, `attribution_state`): apply 1268 BEFORE the transit draft. Its backfill guard expects exactly 19 `refuted` rows (the BPHS Ch.29 set this lane re-sources); applied after, it refuses by design. The optional block in the transit draft then moves the 18 FACT rows to `sourced` and resets the 5 Ketu INFERENCE rows to NULL.
-4. L3/Kala products hold build-time copies of the old rule citations: `gochara_resonance_map.classical_citation` (115 rows) and `kala_gochara_contacts.classical_citation` (123 rows, with a `corpus_verifiable` stamp); no integrity check compares them to `bg_transit_rules`, they read stale until `ka_gochara_resonance` / the contacts writer are rebuilt (Kala layer; not touched).
-5. Every re-citation to `muhurta_chintamani` or `tajaka_neelakanthi` rests on Devanagari/Hindi OCR chunks whose registry note reads AWAITING_NATIVE_DECISION. Rows proposed that way: 504 (row-weighted); they should not be applied before that decision.
+1. Seed parity: each writer's seed module carries the old citations; a rebuild would revert the SQL. Only `BG_TRANSIT_ENGINE` in `l0_transit.py` is patched (draft). Editing any `brahmagyan/l0_*.py` stales `nirmana-writer-digests.json` (a #2984 file), so seed patches wait for #2984. The other assets' seed modules are not patched.
+2. `nirmana_l0_transit_integrity_contract.test.ts` (real-DB CI) pins `HASHES.engine`; the engine seed patch changes it, so migration + seed patch + test re-baseline land together. PR #3049 already carries the same class of red check for the rules hash.
+3. PR #3049 and the engine draft touch disjoint hunks of `l0_transit.py` and disjoint columns; the engine hash literal appears in BOTH stored checks (engine and composite rules), which is why the engine draft rewrites both rows by literal replacement (not whole-text pins) and was tested composed with a simulated #3049 reseal in both orders. PR #3044 (attribution_state) is unaffected by the engine draft.
+4. L3/Kala copies of old rule citations (`gochara_resonance_map` 115 rows, `kala_gochara_contacts` 123 rows) stay stale until rebuilt: #3049's concern, not touched here.
+5. Every re-citation to `muhurta_chintamani` or `tajaka_neelakanthi` rests on Devanagari/Hindi OCR chunks whose registry note reads AWAITING_NATIVE_DECISION. Rows proposed that way: 504 (row-weighted); do not apply before that decision.
 
 ## 7. Findings outside the brief
 
