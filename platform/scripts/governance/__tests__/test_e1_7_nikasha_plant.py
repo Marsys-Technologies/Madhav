@@ -176,7 +176,9 @@ def test_unplantable_stale_names_a_declared_check_that_became_gradeable():
 def _doc(**over) -> dict:
     plants = [dict(id=p.id, check=p.check, asset=p.asset, planted=True, detected=True, verdict_before=p.base, verdict_after=p.expect[0],
                    collateral=[], same_asset_effects={}, restore_ok=True, error=None) for p in np_.PLANTS]
-    doc = dict(schema=np_.SCHEMA, inspector_blob_sha256="a" * 64, registry=dict(revision=1, fingerprint="f" * 64), plants=plants,
+    files = np_.runtime_files_sha256()
+    doc = dict(schema=np_.SCHEMA, inspector_blob_sha256=files[np_.INSPECTOR_REL], harness_file_sha256=files[np_.GEN_REL], runtime_files_sha256=files,
+               inspector_tree_dirty=False, runtime_files_dirty=[], registry=dict(revision=1, fingerprint="f" * 64), plants=plants,
                unplantable=dict(np_.UNPLANTABLE), unplantable_stale=[], uncovered_required=[],
                mutation=dict(suite_notices=True, mutants=[dict(id="m", check="c", plant="p", noticed=True, mutant_detected=False, mutant_verdict_after="PASS")]))
     doc.update(over)
@@ -221,13 +223,231 @@ def test_run_record_hash_is_stable_binds_the_results_and_ignores_prose():
     assert np_.run_record_sha256(d) == d["harness_sha256"]
     for mutate in (lambda x: x["plants"][0].update(detected=False), lambda x: x["plants"][0].update(verdict_after="NO_DETECTOR"),
                    lambda x: x.update(inspector_blob_sha256="b" * 64), lambda x: x["registry"].update(revision=2),
-                   lambda x: x["mutation"].update(suite_notices=False), lambda x: x["plants"][1].update(restore_ok=False)):
+                   lambda x: x["mutation"].update(suite_notices=False), lambda x: x["plants"][1].update(restore_ok=False),
+                   lambda x: x.update(harness_file_sha256="0" * 64), lambda x: x["runtime_files_sha256"].update({np_.INSPECTOR_REL: "0" * 64}),
+                   lambda x: x["runtime_files_sha256"].pop("platform/scripts/governance/carriage_d1.py"),
+                   lambda x: x.update(inspector_tree_dirty=True), lambda x: x.update(runtime_files_dirty=["x"])):
         e = copy.deepcopy(d)
         mutate(e)
         assert np_.run_record_sha256(e) != d["harness_sha256"]
     e = copy.deepcopy(d)
     e["plants"][0]["desc"] = "reworded"                                              # prose and dated measured text are not part of the record
     assert np_.run_record_sha256(e) == d["harness_sha256"]
+
+
+def test_the_sibling_modules_the_inspector_loads_are_hashed_into_the_evidence_and_mutated():
+    files = set(np_.evidence_files())
+    for rel in np_.RUNTIME_FILES:
+        assert rel in files, rel
+    for rel in ("platform/scripts/governance/carriage_d1.py", "platform/scripts/governance/check_fact_category_pinning.py",
+                "platform/scripts/governance/check_no_raw_token_in_narrative.py", "platform/python-sidecar/pipeline/orchestrator/dag_edge_guard.py",
+                np_.DECLARATIONS_REL, np_.D1_FIXTURE_REL, np_.GEN_REL):
+        assert rel in files, rel
+    assert set(np_.runtime_files_sha256()) == files
+    assert {m["file"] for m in np_.MUTANTS} >= {np_.INSPECTOR_REL, "platform/scripts/governance/carriage_d1.py",
+                                                  "platform/scripts/governance/check_no_raw_token_in_narrative.py"}
+
+
+# ── verify_evidence: integrity is checked against the tree, and the hash alone proves nothing (F1) ──
+CARR = "platform/scripts/governance/carriage_d1.py"
+
+
+def test_verify_a_genuine_record_is_consistent_with_the_working_tree():
+    assert np_.verify_evidence(_doc()) == []
+
+
+def _forge(**changes):
+    """A hand-written record that RECOMPUTES its own harness_sha256: what anyone can produce without running the harness."""
+    d = _doc()
+    for k, v in changes.items():
+        d[k] = v
+    d["harness_sha256"] = np_.run_record_sha256(d)
+    return d
+
+
+def test_verify_a_zeroed_harness_hash_does_not_survive():                              # H13: the hash replaced by zeros
+    d = _doc()
+    d["harness_sha256"] = "0" * 64
+    assert any("harness_sha256" in w for w in np_.verify_evidence(d))
+    z = _forge(harness_file_sha256="0" * 64)
+    assert any("harness_file_sha256" in w for w in np_.verify_evidence(z))               # consistent record, but not the file's hash
+    files = dict(z["runtime_files_sha256"])
+    files[np_.GEN_REL] = "0" * 64
+    z = _forge(harness_file_sha256="0" * 64, runtime_files_sha256=files)
+    assert any(np_.GEN_REL in w and "tree" in w for w in np_.verify_evidence(z))         # both consistent with each other, neither with the tree
+
+
+def test_verify_a_forged_inspector_or_sibling_hash_is_named():
+    for rel in (np_.INSPECTOR_REL, CARR, "platform/python-sidecar/pipeline/orchestrator/dag_edge_guard.py"):
+        files = dict(np_.runtime_files_sha256())
+        files[rel] = "0" * 64
+        d = _forge(runtime_files_sha256=files, **({"inspector_blob_sha256": "0" * 64} if rel == np_.INSPECTOR_REL else {}))
+        assert any(rel in w for w in np_.verify_evidence(d)), rel
+
+
+def test_verify_an_omitted_runtime_file_is_a_problem():
+    files = dict(np_.runtime_files_sha256())
+    files.pop(CARR)
+    assert any("differently" in w for w in np_.verify_evidence(_forge(runtime_files_sha256=files)))
+
+
+def test_verify_inspector_blob_must_equal_its_runtime_entry():
+    assert any("inspector_blob_sha256" in w for w in np_.verify_evidence(_forge(inspector_blob_sha256="b" * 64)))
+
+
+@pytest.mark.parametrize("dirty, files", [(True, []), (False, ["x.py"]), (None, None), (True, None)])
+def test_verify_a_dirty_or_unknown_tree_is_unmeasured(dirty, files):
+    assert any("UNMEASURED" in w for w in np_.verify_evidence(_forge(inspector_tree_dirty=dirty, runtime_files_dirty=files)))
+
+
+def test_verify_a_malformed_document_never_raises():
+    assert np_.verify_evidence({"schema": "x"}) and np_.verify_evidence([]) and np_.verify_evidence(None)
+    d = _doc()
+    d.pop("registry")
+    assert any("malformed" in w for w in np_.verify_evidence(d))
+
+
+def test_verify_against_a_git_ref_compares_the_blobs_at_that_ref():
+    blobs = {rel: np_._blob(rel, "HEAD") for rel in np_.evidence_files()}
+    if any(b is None for b in blobs.values()):
+        pytest.skip("an evidence file is not committed at HEAD yet")
+    import hashlib
+    files = {rel: hashlib.sha256(b).hexdigest() for rel, b in blobs.items()}
+    d = _forge(runtime_files_sha256=files, harness_file_sha256=files[np_.GEN_REL], inspector_blob_sha256=files[np_.INSPECTOR_REL])
+    assert np_.verify_evidence(d, "HEAD") == []
+    files[CARR] = "0" * 64
+    assert any(CARR in w for w in np_.verify_evidence(_forge(runtime_files_sha256=files), "HEAD"))
+    assert any("tree" in w for w in np_.verify_evidence(d, "no-such-ref-xyz"))
+
+
+def test_cli_verify_exit_codes(tmp_path, capsys):
+    ok = tmp_path / "ok.json"
+    ok.write_text(json.dumps(_doc()), encoding="utf-8")
+    assert np_.main(["verify", str(ok)]) == 0
+    bad = tmp_path / "bad.json"
+    bad.write_text(json.dumps(_forge(harness_file_sha256="0" * 64)), encoding="utf-8")
+    assert np_.main(["verify", str(bad)]) == 2 and "harness_file_sha256" in capsys.readouterr().err
+    assert np_.main(["verify", str(tmp_path / "missing.json")]) == 5
+
+
+def test_the_evidence_says_it_is_integrity_not_authenticity():
+    assert "INTEGRITY, not authenticity" in np_.EVIDENCE_DOC and "CI job" in np_.EVIDENCE_DOC
+    assert "INTEGRITY, NOT AUTHENTICITY" in np_.__doc__ and "L0-ONLY" in np_.__doc__
+    assert "INTEGRITY" in np_.run_record_sha256.__doc__
+
+
+def test_dirty_files_reports_a_modified_evidence_file_and_none_when_git_cannot_answer(monkeypatch):
+    got = np_.dirty_files()
+    assert got is None or isinstance(got, list)
+    monkeypatch.setattr(np_, "_git_out", lambda *a: (_ for _ in ()).throw(OSError("no git")))
+    assert np_.dirty_files() is None
+    monkeypatch.setattr(np_, "_git_out", lambda *a: subprocess_result(128, b"", b"fatal"))
+    assert np_.dirty_files() is None
+    monkeypatch.setattr(np_, "_git_out", lambda *a: subprocess_result(0, b" M platform/scripts/governance/asset_census.py\n", b""))
+    assert np_.dirty_files() == ["platform/scripts/governance/asset_census.py"]
+
+
+def subprocess_result(rc, out, err):
+    import subprocess
+    return subprocess.CompletedProcess([], rc, out, err)
+
+
+# ── survivors of the independent mutation sweep: each guard now has a test that kills its mutant ──
+def test_covered_checks_counts_only_planted_detected_clean_restored_plants():              # H11
+    good = dict(check="A", planted=True, detected=True, collateral=[], restore_ok=True)
+    assert np_.covered_checks([good]) == {"A"}
+    for broken in (dict(restore_ok=False), dict(planted=False), dict(detected=False), dict(collateral=["x/y: PASS->FAIL"])):
+        assert np_.covered_checks([dict(good, **broken)]) == set(), broken
+
+
+def test_noticed_requires_the_harness_to_have_run(  ):                                      # H8
+    m = dict(id="m", check="c", plant="p", file=np_.INSPECTOR_REL)
+    clean = dict(detected=True, collateral=[], harness_error=None, verdict_after="FAIL", error=None)
+    assert np_.noticed_record(m, clean)["noticed"] is False                                  # the suite still passes the plant: the mutant went unseen
+    assert np_.noticed_record(m, dict(clean, detected=False))["noticed"] is True
+    assert np_.noticed_record(m, dict(clean, collateral=["a/b: PASS->FAIL"]))["noticed"] is True
+    assert np_.noticed_record(m, dict(clean, detected=False, harness_error="boom"))["noticed"] is False   # a failed run is never a notice
+    assert np_.noticed_record(m, dict(clean, detected=False, harness_error=None))["noticed"] is True
+    assert np_.suite_notices([]) is False and np_.suite_notices([dict(noticed=True), dict(noticed=False)]) is False
+    assert np_.suite_notices([dict(noticed=True)]) is True
+
+
+@pytest.mark.parametrize("rc, wrote", [(4, True), (5, True), (1, True), (6, True), (-9, True), (0, False), (2, False)])
+def test_run_census_accepts_only_exit_0_2_3_with_a_census_file(monkeypatch, tmp_path, rc, wrote):   # H6
+    import subprocess
+    tree = tmp_path / "t"
+    (tree / "platform/scripts/governance").mkdir(parents=True)
+
+    def fake(cmd, **kw):
+        if wrote:
+            (tree / "census.json").write_text(json.dumps({"L0": {"assets": []}}), encoding="utf-8")
+        return subprocess.CompletedProcess(cmd, rc, b"", b"census crashed")
+    monkeypatch.setattr(np_.subprocess, "run", fake)
+
+    class _Cl:
+        bin_dir, env = tmp_path, staticmethod(lambda: {})
+    with pytest.raises(np_.HarnessError, match="did not produce a census"):
+        np_.run_census(type("D", (), {"cl": _Cl})(), tree, "x")
+
+
+@pytest.mark.parametrize("rc", [0, 2, 3])
+def test_run_census_accepts_the_inspectors_own_exit_codes(monkeypatch, tmp_path, rc):
+    import subprocess
+    tree = tmp_path / "t"
+    tree.mkdir()
+
+    def fake(cmd, **kw):
+        (tree / "census.json").write_text(json.dumps({"L0": {"assets": []}}), encoding="utf-8")
+        return subprocess.CompletedProcess(cmd, rc, b"", b"")
+    monkeypatch.setattr(np_.subprocess, "run", fake)
+
+    class _Cl:
+        bin_dir, env = tmp_path, staticmethod(lambda: {})
+    assert np_.run_census(type("D", (), {"cl": _Cl})(), tree, "x") == {"L0": {"assets": []}}
+
+
+def test_an_edit_anchor_that_occurs_twice_is_refused_like_one_that_occurs_never(tmp_path):    # H12
+    class _W:
+        work = tmp_path
+        wid = 0
+    inst = np_.Instance(_W, "k")
+    inst.tree = tmp_path
+    (tmp_path / "f.txt").write_text("a b a", encoding="utf-8")
+    with pytest.raises(np_.HarnessError, match="occurs 2 times"):
+        inst.edit("f.txt", "a", "c")
+    with pytest.raises(np_.HarnessError, match="occurs 0 times"):
+        inst.edit("f.txt", "zzz", "c")
+    inst.edit("f.txt", "b", "c")
+    assert (tmp_path / "f.txt").read_text() == "a c a"
+
+
+def test_write_tree_refuses_an_override_that_is_not_a_runtime_file(tmp_path):
+    with pytest.raises(np_.HarnessError, match="not a runtime file"):
+        np_.write_tree(tmp_path / "t", {}, {"some/other/file.py": b"x"})
+
+
+def test_a_runtime_file_and_its_mutant_win_over_a_synthetic_copy_of_the_same_path(tmp_path):
+    """The D1 declaration cites carriage_d1.py, so the synthetic file set holds a copy of it: written AFTER the runtime copy it silently replaced
+    the mutant (the carriage_d1 mutant was 'unnoticed' because it never reached the tree)."""
+    t1 = tmp_path / "a"
+    np_.write_tree(t1, {CARR: "SYNTHETIC COPY\n"}, {CARR: b"MUTANT\n"})
+    assert (t1 / CARR).read_bytes() == b"MUTANT\n"
+    t2 = tmp_path / "b"
+    np_.write_tree(t2, {CARR: "SYNTHETIC COPY\n"})
+    assert (t2 / CARR).read_bytes() == (np_.REPO / CARR).read_bytes()
+    assert (np_.REPO / CARR).read_bytes() == (np_.REPO / CARR).read_bytes() and b"SYNTHETIC" not in (t2 / CARR).read_bytes()
+
+
+def test_the_new_plants_cover_the_branches_the_sweep_found_unplanted():
+    ids = {p.id: p for p in np_.PLANTS}
+    assert ids["build_completion_integrity"].expect == ("PARTIAL",) and ids["build_completion_integrity"].check == "Build.completion"
+    assert ids["build_history_aborted"].check == "Build.history" and ids["build_dep_liveness_stale"].expect == ("PARTIAL",)
+
+
+def test_the_fixture_integrity_sql_holds_on_the_clean_world_and_is_declared_for_every_asset():
+    sql = np_.world_sql()
+    assert sql.count("bool_and(length(code) > 0)") == len(np_.ASSETS) and "bool_and(length(graha) > 0)" in sql
+    assert "WHERE code IS NULL" not in sql                                                  # the pre-N-99 SQL returned 0 (falsy): a baseline that cannot PASS
 
 
 def test_the_evidence_shape_is_the_scorecards_t1_reader_contract():
@@ -266,9 +486,10 @@ def test_cli_a_cluster_that_cannot_start_is_exit_5_never_a_verdict(capsys, monke
     assert "no PostgreSQL" in capsys.readouterr().err
 
 
-def test_the_mutation_anchors_exist_exactly_once_in_the_inspector():
-    src = (np_.REPO / np_.INSPECTOR_REL).read_text(encoding="utf-8")
+def test_the_mutation_anchors_exist_exactly_once_in_the_file_each_mutant_targets():
     for m in np_.MUTANTS:
+        src = (np_.REPO / m["file"]).read_text(encoding="utf-8")
+        assert m["file"] in np_.RUNTIME_FILES, m["id"]
         assert src.count(m["old"]) == 1, m["id"]
         assert m["old"] != m["new"]
         assert m["plant"] in {p.id for p in np_.PLANTS} and m["check"] == next(p.check for p in np_.PLANTS if p.id == m["plant"])
@@ -428,6 +649,10 @@ def test_REAL_the_whole_suite_detects_every_plant_cleanly_and_notices_every_muta
     import hashlib
     assert doc["inspector_blob_sha256"] == hashlib.sha256((np_.REPO / np_.INSPECTOR_REL).read_bytes()).hexdigest()
     assert doc["harness_sha256"] == np_.run_record_sha256(doc)
+    assert doc["runtime_files_sha256"] == np_.runtime_files_sha256() and doc["harness_file_sha256"] == doc["runtime_files_sha256"][np_.GEN_REL]
+    assert doc["inspector_tree_dirty"] in (True, False, None)
+    assert all("UNMEASURED" in w for w in np_.verify_evidence(doc))              # consistent with the tree; a dirty working tree is the only problem allowed
+    assert {m["file"] for m in doc["mutation"]["mutants"]} == {m["file"] for m in np_.MUTANTS}
 
 
 @pytest.mark.skipif(not os.environ.get("NIKASHA_PLANT_FULL"), reason="runs every plant (several minutes serial); set NIKASHA_PLANT_FULL=1")
@@ -457,3 +682,48 @@ def test_REAL_the_evidence_is_read_by_the_scorecards_t1_reader_when_the_scorecar
     finally:
         import shutil
         shutil.rmtree(work, ignore_errors=True)
+
+
+# ── F4: SIGTERM must stop the cluster and remove the temp dirs (a REAL subprocess; it starts and then kills its own cluster) ──
+def _pids_mentioning(path: Path) -> list:
+    import subprocess
+    out = subprocess.run(["ps", "-eo", "pid=,command="], capture_output=True, text=True).stdout
+    return [int(ln.split(None, 1)[0]) for ln in out.splitlines() if str(path) in ln and "ps -eo" not in ln]
+
+
+@pytest.mark.parametrize("sig_name, code", [("SIGTERM", 143), ("SIGHUP", 129)])
+def test_REAL_a_signal_stops_the_cluster_and_removes_the_temp_dirs(sig_name, code):
+    import shutil
+    import signal
+    import subprocess
+    import time
+    tmpd = Path(tempfile.mkdtemp(prefix="sigt_", dir="/tmp"))
+    env = {k: v for k, v in os.environ.items() if not (k.startswith("PG") or k in ("DATABASE_URL", "POSTGRES_URL"))}
+    env["TMPDIR"] = str(tmpd)
+    p = subprocess.Popen([sys.executable, str(HERE.parent / "nikasha_plant.py"), "run", "--only", "build_dag"], env=env, cwd=str(tmpd),
+                         start_new_session=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    try:
+        deadline = time.time() + 120
+        while time.time() < deadline and p.poll() is None and not list(tmpd.glob("nikasha_plant_*/tree_base")):
+            time.sleep(0.2)
+        if p.poll() is not None:
+            pytest.skip(f"the run ended before it reached the suite (no cluster?): {p.stderr.read().decode()[-300:]}")
+        assert list(tmpd.glob("suvarna_pg_*/data/postmaster.pid")), "the cluster should be up while the suite runs"
+        p.send_signal(getattr(signal, sig_name))
+        rc = p.wait(timeout=90)
+        assert rc == code, (rc, p.stderr.read().decode()[-300:])
+        deadline = time.time() + 30
+        while time.time() < deadline and _pids_mentioning(tmpd):
+            time.sleep(0.3)
+        assert _pids_mentioning(tmpd) == [], "a process of the run (postgres, psql, the inspector) survived the signal"
+        assert list(tmpd.glob("suvarna_pg_*")) == [] and list(tmpd.glob("nikasha_plant_*")) == [], "temp directories were left behind"
+    finally:
+        if p.poll() is None:
+            os.killpg(p.pid, signal.SIGKILL)
+            p.wait()
+        for pid in _pids_mentioning(tmpd):                    # never leave a cluster behind (host SysV memory is scarce), whatever the assertion said
+            try:
+                os.kill(pid, signal.SIGKILL)
+            except OSError:
+                pass
+        shutil.rmtree(tmpd, ignore_errors=True)

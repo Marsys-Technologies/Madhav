@@ -28,24 +28,30 @@ plant can make them fail, so they are declared in `unplantable` under the scorec
 the declaration stays true by asserting the cell reads NOT_GENERIC on every asset of the baseline and of every plant's census
 (a reason that stopped being true fails the run). The scorecard counts an unplantable check as NOT covered (T1 is at most
 PARTIAL while one is declared): see the E1.7 design note. The fixture schema is a PROJECTION of production (only what the
-inspector reads): the plants prove the detector logic, not that production's schema is the fixture's. `required` = every
+inspector reads) and it is L0-ONLY (every fixture asset is a bg_ asset measured with `--layer L0`): the plants prove the detector logic,
+not that production's schema is the fixture's, nor that the L1-L5 layer conventions (delete-then-insert idempotency, chart-scoped count_sql)
+behave the same. `required` = every
 registry criterion whose detector is `asset_census.py:measure()`; a registry change that adds one without a plant (or an
 unplantable declaration) fails the run (`uncovered_required`) and the unit tests.
 
-MUTATION. A mutated detector must be noticed: for each mutant (a byte copy of the inspector with ONE source line changed) a
-pristine world is built around it, the matching plant is run on a clone and judged against the CONTROL baseline (what a
+MUTATION. A mutated detector must be noticed: for each mutant (a byte copy of the inspector, or of a sibling module it loads by
+path, with ONE source line changed) a pristine world is built around it, the matching plant is run on a clone and judged against the CONTROL baseline (what a
 correct inspector reads on the clean world); the suite notices iff the plant no longer passes. A mutant the harness could
 not run is never "noticed"; an anchor that no longer matches exactly once is a harness error naming it.
 
 EVIDENCE. `run` writes `nikasha_t1_evidence/1` (the shape nikasha_scorecard.py's T1 reader consumes): `plants[]`,
-`unplantable`, `mutation.suite_notices`, `inspector_blob_sha256` (the sha256 of asset_census.py's bytes: run it on a clean
-checkout so it equals the blob at the ref), and `harness_sha256` = the sha256 of a canonical run record binding this file, the
-inspector, the registry revision and fingerprint, every plant's verdicts and flags, the unplantable declarations and the
-mutation result. It carries no clock, path or measured text (the inspector's text holds a date): same code + same inspector
-=> same bytes.
+`unplantable`, `mutation.suite_notices`, `inspector_blob_sha256` (the sha256 of asset_census.py's bytes), `harness_file_sha256`
+(this file), `runtime_files_sha256` ({path: sha256} of every file whose bytes decide a verdict: the inspector, the D1 engine, the two
+narration lints and their allowlists, the DAG guard, the declarations file, the D1 fixture and what it cites), `inspector_tree_dirty` /
+`runtime_files_dirty` (git status of those files: the hashes are of the WORKING tree) and `harness_sha256`, a hash over the record's own
+fields. THAT HASH IS INTEGRITY, NOT AUTHENTICITY: anyone can recompute it for hand-written fields. A verifier must recompute it, compare
+`harness_file_sha256` and every `runtime_files_sha256` entry with `git show <ref>:<path>`, and treat a dirty record as UNMEASURED
+(`verify` does exactly this). Authenticity comes only from the CI job that ran `run` producing the artifact. The record carries no
+clock, path or measured text (the inspector's text holds a date): same code + same inspector => same bytes.
 
 CLI
   nikasha_plant.py list
+  nikasha_plant.py verify EVIDENCE [--ref REF]            (exit 0 consistent with the tree, 2 problems, 5 unreadable)
   nikasha_plant.py run [--only id,id] [--out FILE]      (starts a disposable cluster; exit 0 every plant detected with no
                                                          collateral and restored, every required check covered or declared
                                                          unplantable, no unplantable claim stale, every mutant noticed;
@@ -56,10 +62,12 @@ from __future__ import annotations
 
 import argparse
 import hashlib
+import itertools
 import json
 import os
 import re
 import shutil
+import signal
 import subprocess
 import sys
 import tempfile
@@ -118,8 +126,9 @@ class AssetSpec:
 
 ASSETS = tuple(AssetSpec(s) for s in (
     "reg", "contract", "target", "dag", "cint", "comp", "exer", "hist", "anchor", "idem", "earn", "cost", "floor",
-    "depth", "ident", "alias", "ldgr", "dens", "ctl")) + (
+    "depth", "ident", "alias", "ldgr", "dens", "ctl", "integ", "histab", "anchor2")) + (
     AssetSpec("dep", deps=("bg_t1_anchor",)),
+    AssetSpec("depstale", deps=("bg_t1_anchor2",)),
 ) + tuple(AssetSpec(s, prose=True) for s in ("nagree", "nchk", "nfid", "nlint", "nsd", "nbl"))
 
 ROWS = (            # (code, variant, tier, synonyms, classical_citation, note, story_narrative)
@@ -128,6 +137,9 @@ ROWS = (            # (code, variant, tier, synonyms, classical_citation, note, 
     ("c3", None, "t2", "{s3}", "BPHS 1.3", "third", "row three verified"),
     ("c4", None, "t2", "{s4}", "BPHS 1.4", "fourth", "row four verified"),
 )
+# The declared integrity_check_sql HOLDS on the clean world (N-99, registry revision 25: count equality alone is not a completion when an asset
+# declares an integrity check; it must hold too): a truthy first value of the first row.
+INTEGRITY_SQL = "SELECT bool_and(length({col}) > 0) FROM {t}"
 T_RUN = "2026-01-01 00:00:00+00"         # the one build run
 T_START, T_END = "2026-01-01 00:00:01+00", "2026-01-01 00:00:10+00"
 RUN_ID = "00000000-0000-4000-8000-0000000000e1"
@@ -168,7 +180,7 @@ def registry_sql(a: AssetSpec) -> str:
     t = a.aid
     deps = "ARRAY[" + ", ".join(f"'{d}'" for d in a.deps) + "]::text[]" if a.deps else "ARRAY[]::text[]"
     return (f"INSERT INTO asset_registry (asset_id, layer, target_table, count_sql, integrity_check_sql, target_floor, depends_on, has_writer) "
-            f"VALUES ('{t}', 'brahmagyan', '{t}', 'SELECT count(*) FROM {t}', 'SELECT count(*) FROM {t} WHERE code IS NULL', {a.floor}, {deps}, true);\n"
+            f"VALUES ('{t}', 'brahmagyan', '{t}', 'SELECT count(*) FROM {t}', '{INTEGRITY_SQL.format(t=t, col='code')}', {a.floor}, {deps}, true);\n"
             f"INSERT INTO asset_throughput (asset_id, chart_id, state, rows_written, last_built_at, last_measured_at, duration_seconds) "
             f"VALUES ('{t}', NULL, 'lit', {len(ROWS)}, '{T_END}', '{T_END}', 2.0);\n"
             f"INSERT INTO build_run_assets (run_id, asset_id, position, state, disposition, started_at, ended_at) "
@@ -183,8 +195,9 @@ def world_sql(assets=ASSETS) -> str:
     out.append(d1_sql())
     # the dependency anchor also has a chart-scoped build record: its dependents read THAT row (Build.dep_liveness is graded at the
     # census chart), its own Build.completion reads the global row, so a plant on the chart row moves the dependent's cell only
-    out.append(f"INSERT INTO asset_throughput (asset_id, chart_id, state, rows_written, last_built_at, last_measured_at, duration_seconds) "
-               f"VALUES ('bg_t1_anchor', '{CHART}', 'lit', {len(ROWS)}, '{T_END}', '{T_END}', 2.0);\n")
+    for anchor in ("bg_t1_anchor", "bg_t1_anchor2"):
+        out.append(f"INSERT INTO asset_throughput (asset_id, chart_id, state, rows_written, last_built_at, last_measured_at, duration_seconds) "
+                   f"VALUES ('{anchor}', '{CHART}', 'lit', {len(ROWS)}, '{T_END}', '{T_END}', 2.0);\n")
     return "".join(out)
 
 
@@ -271,17 +284,24 @@ def tree_files(assets=ASSETS) -> dict:
     return files
 
 
-def write_tree(dest: Path, files: dict, inspector_bytes: bytes | None = None) -> None:
-    """The fixture repository: the real runtime files (byte copies; `inspector_bytes` replaces the inspector for the mutation test),
+def write_tree(dest: Path, files: dict, overrides: dict | None = None) -> None:
+    """The fixture repository: the real runtime files (byte copies; `overrides` {rel: bytes} replaces a runtime file for the mutation test),
     the synthetic files, then one git commit (the census stamps `tool_commit` only from a clean checkout)."""
+    overrides = overrides or {}
+    unknown = sorted(set(overrides) - set(RUNTIME_FILES))
+    if unknown:
+        raise HarnessError(f"an override names a file that is not a runtime file of the fixture: {unknown}")
+    for rel, text in files.items():                      # synthetic files first: a copy of a runtime file among them (the D1 declaration cites
+        out = dest / rel                                 # carriage_d1.py) must never overwrite the runtime copy or a mutant of it
+        out.parent.mkdir(parents=True, exist_ok=True)
+        out.write_text(text, encoding="utf-8")
     for rel in RUNTIME_FILES:
         out = dest / rel
         out.parent.mkdir(parents=True, exist_ok=True)
-        out.write_bytes(inspector_bytes if (rel == INSPECTOR_REL and inspector_bytes is not None) else (REPO / rel).read_bytes())
-    for rel, text in files.items():
-        out = dest / rel
-        out.parent.mkdir(parents=True, exist_ok=True)
-        out.write_text(text, encoding="utf-8")
+        out.write_bytes(overrides[rel] if rel in overrides else (REPO / rel).read_bytes())
+    for rel, data in overrides.items():                  # EARNED: a mutant that did not reach the tree would make "noticed" vacuous
+        if (dest / rel).read_bytes() != data:
+            raise HarnessError(f"the mutated {rel} did not reach the fixture tree")
     env = {"PATH": os.environ.get("PATH", "/usr/bin:/bin"), "HOME": str(dest), "GIT_CONFIG_NOSYSTEM": "1"}
     for args in (["init", "-q"], ["add", "-A"],
                  ["-c", "user.name=nikasha_plant", "-c", "user.email=nikasha_plant@invalid", "commit", "-q", "-m", "fixture"]):
@@ -402,7 +422,7 @@ def d1_sql() -> str:
     n = len(fx["bg_phaladeepika_latta"])
     t = D1_AID
     out.append(f"INSERT INTO asset_registry (asset_id, layer, target_table, count_sql, integrity_check_sql, target_floor, depends_on, has_writer) "
-               f"VALUES ('{t}', 'brahmagyan', '{t}', 'SELECT count(*) FROM {t}', 'SELECT count(*) FROM {t} WHERE graha IS NULL', {n}, "
+               f"VALUES ('{t}', 'brahmagyan', '{t}', 'SELECT count(*) FROM {t}', '{INTEGRITY_SQL.format(t=t, col='graha')}', {n}, "
                f"ARRAY[]::text[], true);\n"
                f"INSERT INTO asset_throughput (asset_id, chart_id, state, rows_written, last_built_at, last_measured_at, duration_seconds) "
                f"VALUES ('{t}', NULL, 'lit', {n}, '{T_END}', '{T_END}', 2.0);\n"
@@ -444,7 +464,7 @@ class Instance:
 
     def __init__(self, world: "World", key: str):
         self.world, self.key = world, key
-        self.dbname = f"nt_{key}"
+        self.dbname = f"nt_{world.wid}_{key}"
         self.tree = world.work / f"tree_{key}"
 
     def sql(self, q: str) -> str:
@@ -481,20 +501,24 @@ class Instance:
         shutil.rmtree(self.tree, ignore_errors=True)
 
 
+_WORLD_IDS = itertools.count(1)
+
+
 class World:
     """The pristine synthetic world (database `nt_base` + a tree) and its identity; clones are taken from it, never run on it."""
 
     def __init__(self, db: Db, work: Path, assets=ASSETS):
         self.db, self.work, self.assets = db, Path(work), assets
+        self.wid = next(_WORLD_IDS)                      # several worlds may share one cluster (a pytest session): names must not collide
         self.base_tree = self.work / "tree_base"
-        self.base_db = "nt_base"
+        self.base_db = f"nt_base_{self.wid}"
         self.fp: dict | None = None
 
-    def build(self, inspector_bytes: bytes | None = None) -> None:
+    def build(self, overrides: dict | None = None) -> None:
         self.db.create(self.base_db)
         self.db.sql(world_sql(self.assets), self.base_db)
         self.base_tree.mkdir(parents=True)
-        write_tree(self.base_tree, tree_files(self.assets), inspector_bytes)
+        write_tree(self.base_tree, tree_files(self.assets), overrides)
         self.fp = self.identity()
 
     def identity(self) -> dict:
@@ -587,6 +611,20 @@ plant(id="build_history", check="Build.history", asset=a("hist"),
                                "disposition, started_at, ended_at, error) VALUES ('00000000-0000-4000-8000-0000000000e2', '{t}', 0, 'error', NULL, "
                                "'2026-01-02 00:00:01+00', '2026-01-02 00:00:02+00', 'planted failure')"),
       allow=("Cost.baseline", "Earn.build_record"))                                   # the latest attempt is no longer a completion
+plant(id="build_history_aborted", check="Build.history", asset=a("histab"),
+      desc="a later build run is ABORTED for the asset (a different failure class from an error: the latest attempt never finished)",
+      apply=tbl_sql(a("histab"), "INSERT INTO build_runs (id, chart_id, scope, created_at) VALUES ('00000000-0000-4000-8000-0000000000e2', "
+                                 f"'{CHART}', 'layer', '2026-01-02 00:00:00+00'); INSERT INTO build_run_assets (run_id, asset_id, position, state, "
+                                 "disposition, started_at, ended_at, error) VALUES ('00000000-0000-4000-8000-0000000000e2', '{t}', 0, 'aborted', NULL, "
+                                 "'2026-01-02 00:00:01+00', '2026-01-02 00:00:02+00', NULL)"),
+      allow=("Cost.baseline", "Earn.build_record"))
+plant(id="build_completion_integrity", check="Build.completion", asset=a("integ"), expect=("PARTIAL",),
+      desc="the declared integrity_check_sql stops holding (a blank code on one row; the count still equals rows_written): count equality alone "
+           "is not a completion once the asset declares an integrity check (N-99, registry revision 25)",
+      apply=tbl_sql(a("integ"), "UPDATE {t} SET code = '' WHERE code = 'c4'"))
+plant(id="build_dep_liveness_stale", check="Build.dep_liveness", asset=a("depstale"), expect=("PARTIAL",),
+      desc="the declared dependency's build record at the census chart is stale (built, but an upstream has moved since)",
+      apply=thr_update(a("anchor2"), "state = 'stale'", f"chart_id = '{CHART}'"))
 plant(id="build_dep_liveness", check="Build.dep_liveness", asset=a("dep"),
       desc="the declared dependency's build record at the census chart leaves the lit state (state=error)",
       apply=thr_update(a("anchor"), "state = 'error'", f"chart_id = '{CHART}'"))
@@ -743,49 +781,110 @@ def run_one(world: World, p: Plant, base_cells: dict, key: str, extra: list | No
 # fails against the mutant (the control, the unmutated inspector, passes it). Anchors are exact source lines; a drifted anchor is a
 # harness failure naming it, never a silently skipped mutant.
 MUTANTS = (
-    dict(id="vocab_identity_inverted", plant="vocab_identity", check="Vocab.identity",
+    dict(id="vocab_identity_inverted", plant="vocab_identity", check="Vocab.identity", file=INSPECTOR_REL,
          old='m["Vocab.identity"] = dict(v=(FAIL if has_dup else PASS),', new='m["Vocab.identity"] = dict(v=(PASS if has_dup else FAIL),'),
-    dict(id="count_integrity_ignores_integrity", plant="build_count_integrity", check="Build.count_integrity",
+    dict(id="count_integrity_ignores_integrity", plant="build_count_integrity", check="Build.count_integrity", file=INSPECTOR_REL,
          old='ok_ci = bool(r["count_sql"]) and r["has_integrity"]', new='ok_ci = bool(r["count_sql"])'),
-    dict(id="ldgr_partial_read_as_pass", plant="ldgr_source_presence", check="Ldgr.source_presence",
+    dict(id="ldgr_partial_read_as_pass", plant="ldgr_source_presence", check="Ldgr.source_presence", file=INSPECTOR_REL,
          old="v = PASS if present == rows else (FAIL if present == 0 else PARTIAL)",
          new="v = PASS if present >= rows - 1 else (FAIL if present == 0 else PARTIAL)"),
+    # sibling modules the inspector loads by path: a detector that lives there must be covered by the mutation check too
+    dict(id="carriage_d1_effect_match_blinded", plant="carr_d1", check="Carr.D1", file="platform/scripts/governance/carriage_d1.py",
+         old='    e = _norm_effect(eff)\n    if not _effect_ok_text(e):\n        return False\n    key = claimant.strip().lower()\n',
+         new='    return True\n    e = _norm_effect(eff)\n    if not _effect_ok_text(e):\n        return False\n    key = claimant.strip().lower()\n'),
+    dict(id="raw_token_lint_blinded", plant="narr_lint", check="Narr.lint", file="platform/scripts/governance/check_no_raw_token_in_narrative.py",
+         old='_RAW_TOKEN_PREFIX_RE = r"(?:GRAHA|CLASSIFY_RESIDUAL|YOGA|DIGNITY|SUBSYSTEM):"',
+         new='_RAW_TOKEN_PREFIX_RE = r"(?:NEVER_MATCHES_ZZZ):"'),
 )
 
 
 def mutate(src: bytes, m: dict) -> bytes:
     text = src.decode("utf-8")
     if text.count(m["old"]) != 1:
-        raise HarnessError(f"mutation anchor for {m['id']} occurs {text.count(m['old'])} times in the inspector (expected exactly once): {m['old']!r}")
+        raise HarnessError(f"mutation anchor for {m['id']} occurs {text.count(m['old'])} times in {m.get('file', INSPECTOR_REL)} "
+                           f"(expected exactly once): {m['old']!r}")
     return text.replace(m["old"], m["new"]).encode("utf-8")
 
 
 def run_mutation(work: Path, db: Db, plants_by_id: dict, base_cells: dict, mutants=MUTANTS) -> dict:
-    """For each mutant: build a pristine world around the MUTATED inspector, run the mutant's plant on a clone, and judge it. The suite
-    notices a mutant iff the plant no longer passes the suite -- not detected, or the clean cells moved -- judged against the CONTROL
-    baseline (what a correct inspector reads on the clean world). A mutant the harness could not run is never "noticed"."""
-    src = (REPO / INSPECTOR_REL).read_bytes()
+    """For each mutant: build a pristine world around the MUTATED file (the inspector, or a sibling module it loads), run the mutant's plant
+    on a clone, and judge it. The suite notices a mutant iff the plant no longer passes the suite -- not detected, or the clean cells moved --
+    judged against the CONTROL baseline (what a correct inspector reads on the clean world). A mutant the harness could not run is never
+    "noticed"."""
     out = []
     for m in mutants:
+        rel = m.get("file", INSPECTOR_REL)
         w = World(db, Path(tempfile.mkdtemp(prefix=f"mut_{m['id'][:12]}_", dir=str(work))))
-        w.base_db = f"nm_{m['id'][:20]}"
+        w.base_db = f"nm_{w.wid}_{m['id'][:20]}"
         try:
-            w.build(inspector_bytes=mutate(src, m))
+            w.build(overrides={rel: mutate((REPO / rel).read_bytes(), m)})
             p = plants_by_id[m["plant"]]
             rec = run_one(w, p, base_cells, f"m_{m['id'][:20]}")
-            clean = bool(rec["detected"]) and not rec["collateral"]          # the suite would have passed the plant
-            out.append(dict(id=m["id"], check=m["check"], plant=m["plant"], mutant_detected=clean,
-                            noticed=(not clean and rec["harness_error"] is None),
-                            mutant_verdict_after=rec.get("verdict_after"), error=rec.get("error")))
+            out.append(noticed_record(m, rec))
         finally:
             db.drop(w.base_db)
-    return dict(suite_notices=bool(out) and all(x["noticed"] for x in out), mutants=out)
+    return dict(suite_notices=suite_notices(out), mutants=out)
+
+
+def noticed_record(m: dict, rec: dict) -> dict:
+    """One mutant's result from the mutant plant's run record. `clean` = the suite would have passed the plant; the mutant is noticed iff it
+    did not, AND the harness itself ran (a harness_error is a failed run, never a notice)."""
+    clean = bool(rec["detected"]) and not rec["collateral"]
+    return dict(id=m["id"], check=m["check"], plant=m["plant"], file=m.get("file", INSPECTOR_REL), mutant_detected=clean,
+                noticed=(not clean and rec.get("harness_error") is None), mutant_verdict_after=rec.get("verdict_after"), error=rec.get("error"))
+
+
+def suite_notices(mutants: list) -> bool:
+    return bool(mutants) and all(x["noticed"] for x in mutants)
+
+
+def covered_checks(records: list) -> set:
+    """The checks with a plant that was planted, detected, free of collateral and restored: only those count as covered."""
+    return {r["check"] for r in records if r.get("planted", True) and r["detected"] and not r["collateral"] and r["restore_ok"]}
+
+
+def evidence_files() -> list:
+    """Every file of the checkout the run reads or copies and whose bytes decide a verdict: the inspector, its run-time siblings (the D1
+    engine, the two narration lints and their allowlists, the DAG guard), the real declarations file and the D1 corpus fixture with every
+    repo file the D1 declaration cites. All are hashed into the evidence so a verifier can compare each with `git show <ref>:<path>`."""
+    return sorted(set(RUNTIME_FILES) | {DECLARATIONS_REL, D1_FIXTURE_REL, GEN_REL} | set(d1_declaration()[1]))
+
+
+def runtime_files_sha256(root: Path = REPO) -> dict:
+    return {rel: hashlib.sha256((Path(root) / rel).read_bytes()).hexdigest() for rel in evidence_files()}
+
+
+def _git_out(*args) -> subprocess.CompletedProcess:
+    env = {k: v for k, v in os.environ.items() if not k.startswith("GIT_")}
+    env["GIT_OPTIONAL_LOCKS"] = "0"
+    return subprocess.run(["git", "-C", str(REPO), *args], capture_output=True, env=env, timeout=60)
+
+
+def dirty_files() -> list | None:
+    """The evidence files with tracked modifications in the checkout (git status); None when git cannot answer. The evidence hashes the WORKING
+    tree, so a dirty file means the evidence describes code that is not any commit: a consumer must read `inspector_tree_dirty` /
+    `runtime_files_dirty` and treat a dirty record as UNMEASURED."""
+    try:
+        p = _git_out("status", "--porcelain", "--untracked-files=no", "--", *evidence_files())
+    except (OSError, subprocess.SubprocessError):
+        return None
+    if p.returncode != 0:
+        return None
+    return sorted(ln[3:].strip() for ln in p.stdout.decode("utf-8", "replace").splitlines() if ln.strip())
+
+
+EVIDENCE_DOC = (
+    "INTEGRITY, not authenticity: harness_sha256 is a hash over this record's own fields, so a verifier can detect an edited result but anyone "
+    "can recompute it for hand-written fields. A verifier must (1) recompute harness_sha256, (2) compare harness_file_sha256 and every "
+    "runtime_files_sha256 entry with `git show <ref>:<path>`, (3) treat inspector_tree_dirty / runtime_files_dirty as UNMEASURED. Authenticity "
+    "comes only from the CI job that ran `nikasha_plant.py run` producing the artifact.")
 
 
 def run_suite(db: Db, work: Path, only: set | None = None, plants=None, mutants=MUTANTS) -> dict:
     """The whole T1 run; returns the `nikasha_t1_evidence/1` document."""
     plants = list(plants if plants is not None else PLANTS)
     work = Path(work)
+    files_before = runtime_files_sha256()
     inspector = (REPO / INSPECTOR_REL).read_bytes()
     reg = registry_facts()
     world = World(db, work)
@@ -809,10 +908,15 @@ def run_suite(db: Db, work: Path, only: set | None = None, plants=None, mutants=
             dict(suite_notices=None, mutants=[])
     finally:
         db.drop(world.base_db)
-    covered = {r["check"] for r in records if r["detected"] and not r["collateral"] and r["restore_ok"]}
+    if runtime_files_sha256() != files_before:
+        raise HarnessError("a runtime file changed while the suite ran: the evidence would describe two different trees")
+    covered = covered_checks(records)
     required = reg["required"]
     uncovered = sorted(c for c in required if c not in covered and c not in UNPLANTABLE)
-    doc = dict(schema=SCHEMA, inspector_blob_sha256=hashlib.sha256(inspector).hexdigest(),
+    dirty = dirty_files()
+    doc = dict(schema=SCHEMA, _doc=EVIDENCE_DOC, inspector_blob_sha256=hashlib.sha256(inspector).hexdigest(),
+               harness_file_sha256=files_before[GEN_REL], runtime_files_sha256=files_before,
+               inspector_tree_dirty=(None if dirty is None else INSPECTOR_REL in dirty), runtime_files_dirty=dirty,
                registry=dict(revision=reg["revision"], fingerprint=reg["fingerprint"]), partial=bool(only),
                plants=records, unplantable=dict(sorted(UNPLANTABLE.items())), unplantable_stale=stale,
                uncovered_required=uncovered, mutation=mutation)
@@ -821,19 +925,65 @@ def run_suite(db: Db, work: Path, only: set | None = None, plants=None, mutants=
 
 
 def run_record_sha256(doc: dict) -> str:
-    """sha256 of the canonical run record: the harness file, the inspector, the registry identity, and every plant's verdicts and
-    flags. It binds the evidence to the exact code that produced it and to the results: change a result and it changes; the same
-    code on the same inspector gives the same record (no clock, no path, no measured text, which carries a date)."""
+    """sha256 of the canonical run record: the harness file hash, every runtime file hash, the inspector blob, the dirty flags, the registry
+    identity, and every plant's verdicts and flags. INTEGRITY, not authenticity (see EVIDENCE_DOC): change a result, a file hash or a flag
+    and it changes; but it is computed from the record's OWN fields, so it proves nothing about who produced them. The same code on the
+    same inspector gives the same record (no clock, no path, no measured text, which carries a date)."""
     rec = dict(
-        harness_sha256=hashlib.sha256((HERE / "nikasha_plant.py").read_bytes()).hexdigest(),
+        harness_file_sha256=doc.get("harness_file_sha256"), runtime_files_sha256=doc.get("runtime_files_sha256"),
+        inspector_tree_dirty=doc.get("inspector_tree_dirty"), runtime_files_dirty=doc.get("runtime_files_dirty"),
         inspector_blob_sha256=doc["inspector_blob_sha256"], registry=doc["registry"], partial=doc.get("partial", False),
         plants=[{k: r.get(k) for k in ("id", "check", "asset", "planted", "detected", "verdict_before", "verdict_after", "collateral",
                                         "same_asset_effects", "restore_ok", "error")} for r in doc["plants"]],
         unplantable=doc["unplantable"], unplantable_stale=doc["unplantable_stale"], uncovered_required=doc["uncovered_required"],
         mutation=dict(suite_notices=doc["mutation"].get("suite_notices"),
-                      mutants=[{k: m.get(k) for k in ("id", "check", "plant", "noticed", "mutant_detected", "mutant_verdict_after")}
+                      mutants=[{k: m.get(k) for k in ("id", "check", "plant", "file", "noticed", "mutant_detected", "mutant_verdict_after")}
                                for m in doc["mutation"].get("mutants", [])]))
     return hashlib.sha256(json.dumps(rec, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
+
+
+def _blob(rel: str, ref: str | None) -> bytes | None:
+    """The bytes of `rel` at `ref` (git show), or in the working tree when `ref` is None; None when absent."""
+    if ref is None:
+        p = REPO / rel
+        return p.read_bytes() if p.is_file() else None
+    r = _git_out("show", f"{ref}:{rel}")
+    return r.stdout if r.returncode == 0 else None
+
+
+def verify_evidence(doc, ref: str | None = None) -> list:
+    """The problems found when `doc` is checked the way a consumer must check it (empty list = consistent with the tree at `ref`, or the
+    working tree). Checks: the schema; the record hash recomputed from the record's own fields; `harness_file_sha256` and every
+    `runtime_files_sha256` entry against the file's bytes (git blob at `ref`); the set of hashed files equals the set this harness hashes
+    (omitting a file is a problem); `inspector_blob_sha256` equals the inspector's entry; a dirty tree is a problem. This proves the
+    evidence matches a tree; WHO produced it is the CI job's claim, not this function's."""
+    if not isinstance(doc, dict) or doc.get("schema") != SCHEMA:
+        return [f"not a {SCHEMA} document"]
+    why = []
+    try:
+        if run_record_sha256(doc) != doc.get("harness_sha256"):
+            why.append("harness_sha256 does not equal the hash recomputed from the record's fields")
+    except (KeyError, TypeError, AttributeError) as exc:
+        return [f"the record is malformed ({type(exc).__name__}: {exc})"]
+    files = doc.get("runtime_files_sha256")
+    if not isinstance(files, dict):
+        return why + ["runtime_files_sha256 is absent"]
+    want = set(evidence_files())
+    if set(files) != want:
+        why.append(f"runtime_files_sha256 names {sorted(set(files) ^ want)} differently from the files this harness hashes")
+    for rel in sorted(set(files) & want):
+        b = _blob(rel, ref)
+        got = None if b is None else hashlib.sha256(b).hexdigest()
+        if got != files[rel]:
+            why.append(f"{rel}: the evidence records {str(files[rel])[:12]}, the tree {'at ' + ref if ref else ''} has {str(got)[:12]}")
+    if doc.get("harness_file_sha256") != files.get(GEN_REL):
+        why.append("harness_file_sha256 does not equal the runtime_files_sha256 entry for the harness")
+    if doc.get("inspector_blob_sha256") != files.get(INSPECTOR_REL):
+        why.append("inspector_blob_sha256 does not equal the runtime_files_sha256 entry for the inspector")
+    if doc.get("inspector_tree_dirty") is not False or doc.get("runtime_files_dirty") != []:
+        why.append(f"the evidence was produced from a dirty or unknown tree (inspector_tree_dirty={doc.get('inspector_tree_dirty')!r}, "
+                   f"runtime_files_dirty={doc.get('runtime_files_dirty')!r}): UNMEASURED")
+    return why
 
 
 def verdict(doc: dict) -> tuple[int, list]:
@@ -886,6 +1036,9 @@ def main(argv=None) -> int:
     r = sub.add_parser("run")
     r.add_argument("--only", default=None, help="comma list of plant ids: no mutation run, evidence marked `partial` (not a full T1 record)")
     r.add_argument("--out", default=None, help="write the nikasha_t1_evidence/1 JSON here")
+    v = sub.add_parser("verify", help="check an evidence file the way a consumer must (record hash, file hashes against the tree, dirty flags)")
+    v.add_argument("evidence")
+    v.add_argument("--ref", default=None, help="git ref whose blobs the evidence must match (default: the working tree)")
     args = ap.parse_args(argv)
     if args.cmd == "list":
         for p in PLANTS:
@@ -893,20 +1046,38 @@ def main(argv=None) -> int:
         for c, why in sorted(UNPLANTABLE.items()):
             print(f"{'(unplantable)':24s} {c:24s} {why}")
         return 0
+    if args.cmd == "verify":
+        try:
+            doc = json.loads(Path(args.evidence).read_text(encoding="utf-8"))
+        except (OSError, ValueError) as exc:
+            print(f"nikasha_plant: cannot read the evidence: {exc}", file=sys.stderr)
+            return 5
+        problems = verify_evidence(doc, args.ref)
+        for pr in problems:
+            print("FAIL:", pr, file=sys.stderr)
+        print("evidence consistent with the tree" if not problems else f"{len(problems)} problem(s)")
+        return 0 if not problems else 2
     only = set(args.only.split(",")) if args.only else None
     if only and not only <= {p.id for p in PLANTS}:
         print(f"nikasha_plant: unknown plant id(s): {sorted(only - {p.id for p in PLANTS})}", file=sys.stderr)
         return 5
-    cluster = dp = None
     work = Path(tempfile.mkdtemp(prefix="nikasha_plant_"))
+
+    def _term(signum, _frame):                            # SIGTERM / SIGHUP become SystemExit so the finally block stops the cluster and deletes the
+        for sig in (signal.SIGTERM, signal.SIGHUP):       # temp dir (by default they kill the process with no cleanup); SIGINT already raises
+            signal.signal(sig, signal.SIG_IGN)            # KeyboardInterrupt. A second signal during the cleanup is ignored.
+        raise SystemExit(128 + signum)
+    for sig in (signal.SIGTERM, signal.SIGHUP):
+        signal.signal(sig, _term)
     try:
-        cluster, dp = _cluster()
+        cluster, _dp = _cluster()
         doc = run_suite(Db(cluster), work, only)
     except HarnessError as exc:
         print(f"nikasha_plant: {exc}", file=sys.stderr)
         return 5
     finally:
         shutil.rmtree(work, ignore_errors=True)
+        dp = sys.modules.get("_disposable_pg")            # the helper may be mid-start when the signal lands: stop whatever it holds
         if dp is not None:
             dp.shutdown()
     code, why = verdict(doc)
