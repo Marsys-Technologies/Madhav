@@ -1,0 +1,34 @@
+---
+artifact: REVIEW_REQUEST_A5_5_GATE
+version: "1.25"
+status: "FINAL for dispatch (round 20, narrow) — SHORT DELTA on v1.24 closing Codex round 19 (R19-1/2/3 + minor) and Fable round 19 (F-R19-1..5): complete protected-window selection in #2961 with an EXECUTING selection test; zero-measurement baselines refused at capture/import/load; W0 documented shape accepted; offset-less instants refused; checklist v1.2 and runbook v1.18; composed suite 1104 passed. Stream A unchanged (7678f7722)."
+author: "Stream B (Śāstra) — Exec B (Claude Sonnet)"
+date: "2026-10-03"
+reviewer: "Codex gpt-6-astra (max) — dispatched by the steward"
+authority: "Review request only; authorizes nothing."
+supersedes: "v1.24 (never edited)."
+---
+
+# A5.5 gate — round-20 request: delta
+
+## Heads and results
+Stream A **`7678f7722` FROZEN, unchanged** (1240 `05a8f897…`, lock `893c475a…`; window hashes unchanged: all ten lines OK on the integration tree and on a simulated merged `main`) · **#2961 `8a204a7b1`** (was `2ffb954af`) · **#2903 re-pin tool `5a46c9c97e61e86dde56c3608032431b9a9ff0e0`** (file sha256 `e67c4a48c5561cec61de403c1fdd1c569c3ddb1af01b8fc56380659e24881dbf`; was `4df9db116`) · integration ref **`20ad1bd6e`** · exhibit #2952 **`a6e4afb45`** (tree-identical) · docs `campaign/pravaha` (checklist v1.2, runbook v1.18).
+**ONE composed run on these bytes: 1104 passed in 11m59s, 0 failed, 0 skipped.** Tool file: 103 passed + 2 skipped without a database (the DB-backed pair was run in the earlier round; not re-run on this head).
+
+## By finding
+| finding | status | evidence |
+|---|---|---|
+| **R19-1 (P1)** composed deploy selection omits 1204/1206/1232/1233/1240 | **DONE** | #2961's `deploy.yml` now carries the writer branch's complete selection block (description, comments, ten `migrations+=` lines) beside #2961's phase/exception wiring (the diff between #2961 and the writer branch was pure insertions of that wiring; the merged file differs from the writer's only by those env lines). New test `platform/scripts/__tests__/gochara_window_dispatch_selection.test.ts` EXTRACTS the real "Apply exact protected public-schema migrations" shell block and EXECUTES it under `bash -e` with `npx` stubbed to print its arguments: asserts the selected set (1153–1157 then 1204, 1206, 1232, 1233, 1240, ascending), the ordered pending five, the exclusion of 1241 in all 31 input combinations, the refusal when no window is authorised, and that every Gochara file `migrate.ts` refuses as protected is selected. **It FAILS on #2961's old file (5 selected, three tests red) and passes on the new one.** `WINDOW_MERGE_CONTROL=1` adds: every selected file exists, `migrate.ts`'s Gochara protected set equals the selection, no `1241_*` on the tree — run on the integration tree (passes) and on a **simulated merged main** (#2961 + #2963 + #2867 + #2919 onto current main: passes; the a53 branch conflicts with current main in `test_wp10_cutover.py` and `test_node_series_pin.py` — a Stream A resolution, not resolved here). The integration ref's `deploy.yml` is now identical to #2961's head. Checklist row 7 makes the executing test the PRIMARY merge control (grep is secondary). |
+| **R19-2 (P2)** zero-measurement baseline accepted at acquisition | **DONE** | `coverage_problems` in the one shared `validate_capture` (acquisition, load, W0 import): at least one UNCLIPPED start and end at every level via `edge_clipped` (unflagged level-3 edges count). Tests: normal-dispatch capture of an all-clipped MD baseline ⇒ exit 3, no artifact, rollback once, close once, no commit; W0 import ⇒ exit 3, no artifact; a hand-built file with a correct checksum refused at load; unflagged PD edges counted. Mutation: removing the check fails the three tests. |
+| **R19-3 (P2)** checklist governance | **DONE** (v1.2) | Only the recorded named `1204` refusal is exempt from row 7's STOP; per automatic run: run id, RED at "Run general database migrations" with the refusal text and no other message, every `deploy-*` job skipped, ledger compared with the row-2 snapshot (no protected file, no `1241_*`, ordinary names explained); "no protected migration and no service deployment" replaces "applied nothing"; row 8 precondition: all runs finished and recorded, CI for the final SHA complete, in-progress and queued both empty; strict drain restored before/after acts 3 and 10; row-4 runs finished before act 3. |
+| **F-R19-1** attribution/observation | **DONE** | Read attributed to the train heads and the executing test; refusal first observable after row 7's first merge; integration ref's older `deploy.yml` stated and corrected. |
+| **F-R19-2** 1241 | **DONE** | #2949 stays unmerged until SETTLED-1 (merging it IS applying it); row 7 asserts no `1241_*` on main (test + `git ls-files`). |
+| **F-R19-3** W0 shape | **DONE (code + documentation)** | `import_w0` accepts the documented shape AND the database spelling (`is_truncated_at_window_*`, natal `value`/`fact_value_num`/`verification_pass_status`), fills `system_id`/tier/build when absent (a present wrong value still refused), drops level-4 rows with a count, prints every fill; docstring and runbook give the exact shape with a one-row example. Test in the documented shape (offset-bearing instants, database flag names, level-4 row present, natal `value`). |
+| **F-R19-4** offset-less instants | **DONE** | `_t` refuses an offset-less STRING by name (`instant without an offset`), a naive datetime object stays UTC by convention; tests on `TZ=Asia/Kolkata`, including a W0 file with an offset-less instant ⇒ exit 3, no artifact. |
+| **F-R19-5** wording | **DONE** | Dead level-4 filter removed; 1 s storage-rounding note; decision doc row B replaced; `ayanamsha_id` not per-row-checkable stated in the docstring and runbook; census under `meta.census`, microseconds kept (Codex minor). |
+
+## Also in this window (separate from round 19)
+**#2996 (migration 1243, two inert registry rows)** — Codex short review ACCEPT_WITH_AMENDMENTS closed in the PR (`75a36fe62`): shape-conditioned Nirmāṇa monitor exclusion for exactly the two ids (both directions tested), xmin comment reworded, migration sha256 `88be3ed5…8321`, release gate in checklist row 7. Reviewed separately; listed here only because the checklist references it.
+
+## Not done / not claimed
+Official pre-S-L1 capture not taken (steward, under the owner's credentials; the new tool prints a different data sha256 from the trial `d6a9b80d…` only if L1 changed — the format is unchanged since 4df9db116, so the trial comparand stands). Tool never run on real SETTLED-1 output. The automatic-run behaviour and the owner dispatch are source-read and test-executed, not observed. The a53 branch's conflict with current main is open (Stream A). Capacity checkpoint (Codex rank 4) not addressed. The 100-case PostgreSQL pair of the tool file was not re-run on this head. Nothing merged, queued, dispatched, applied or built by me.
