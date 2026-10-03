@@ -1995,17 +1995,52 @@ def _is_container_value(node: ast.AST) -> bool:
     return False
 
 
-def _has_nested_container(node: ast.AST) -> bool:
-    """A container literal / comprehension holding another mutable container as an element or value (a tuple that holds one
-    included: the tuple cannot change but the list inside it can)."""
+def _holds_mutable(node: ast.AST, depth: int = 0) -> bool:
+    """`node` evaluates to a mutable container, or to something that CARRIES one at any depth: a tuple of (a tuple of ...) a list, a starred element that unpacks a container
+    holding one, either branch of an `if`/`or`, either side of `+` / `*` (tuple concatenation). The nested-container refusal used to look ONE level down (`_is_container_value` on a
+    direct element), so `[('a', ['b'])]` read as flat: an alias of the inner list (`inner = Q[0][1]`) mutated it with nothing tying the mutation to `Q`. Closed list: a name, call
+    or subscript is not looked through (its own bindings are policed where it is bound); past depth 24 the answer is yes (fail closed)."""
+    if depth > 24:
+        return True
+    if _is_container_value(node):
+        return True
+    d = depth + 1
+    if isinstance(node, ast.Tuple):
+        return any(_holds_mutable(e, d) for e in node.elts)
+    if isinstance(node, ast.Starred):
+        return _holds_mutable(node.value, d) or _has_nested_container(node.value, d)
+    if isinstance(node, ast.IfExp):
+        return _holds_mutable(node.body, d) or _holds_mutable(node.orelse, d)
+    if isinstance(node, ast.BoolOp):
+        return any(_holds_mutable(v, d) for v in node.values)
+    if isinstance(node, ast.BinOp) and isinstance(node.op, (ast.Add, ast.Mult)):
+        return _holds_mutable(node.left, d) or _holds_mutable(node.right, d)
+    return False
+
+
+def _has_nested_container(node: ast.AST, depth: int = 0) -> bool:
+    """A container literal / comprehension holding another mutable container as an element or value, at ANY depth through tuples and the other carriers `_holds_mutable` lists (a
+    tuple that holds one included: the tuple cannot change but the list inside it can)."""
+    if depth > 24:
+        return True
+    d = depth + 1
     if isinstance(node, (ast.List, ast.Set, ast.Tuple)):
-        return any(_is_container_value(e) for e in node.elts)
+        return any(_holds_mutable(e, d) for e in node.elts)
     if isinstance(node, ast.Dict):
-        return any(v is not None and _is_container_value(v) for v in node.values)
+        return any(v is not None and _holds_mutable(v, d) for v in node.values)
     if isinstance(node, (ast.ListComp, ast.SetComp, ast.GeneratorExp)):
-        return _is_container_value(node.elt)
+        return _holds_mutable(node.elt, d)
     if isinstance(node, ast.DictComp):
-        return _is_container_value(node.value)
+        return _holds_mutable(node.value, d)
+    if isinstance(node, ast.BinOp) and isinstance(node.op, (ast.Add, ast.Mult, ast.BitOr)):      # [['a']] * 2, [['a']] + [['b']], {...} | {...}
+        return _has_nested_container(node.left, d) or _has_nested_container(node.right, d)
+    if isinstance(node, ast.IfExp):
+        return _has_nested_container(node.body, d) or _has_nested_container(node.orelse, d)
+    if isinstance(node, ast.BoolOp):
+        return any(_has_nested_container(v, d) for v in node.values)
+    if isinstance(node, ast.Call) and isinstance(node.func, ast.Name) and node.func.id in ("list", "dict", "set", "frozenset", "tuple"):
+        # the constructor copies its argument's elements / takes keyword values: list([['a']]), dict(k=['a']), dict([('k', ['a'])])
+        return any(_has_nested_container(a, d) for a in node.args) or any(_holds_mutable(k.value, d) for k in node.keywords)      # an ARGUMENT is copied: its elements matter, not that it is a container
     return False
 
 
@@ -2150,7 +2185,9 @@ class _WriteScan:
             for e in target.elts:
                 self._bind_iter_target(e, iter_node, "iter_values" if tag == "iter_values" else "iter")
         elif isinstance(target, ast.Starred):
-            self._bind_iter_target(target.value, iter_node, tag)
+            # `first, *rest = SRC`: `rest` is a fresh LIST (mutable, aliasable) whose elements are drawn from SRC. Tag "star" cleans like "iter" (the elements) but is NEVER an
+            # immutable value (E6.1 follow-up: a starred target used to read as immutable because its elements are, so `alias = rest; alias.append(x)` went unpoliced)
+            self._bind_iter_target(target.value, iter_node, "star")
 
     def _bind_unknown(self, target: ast.AST, why: str) -> None:
         if isinstance(target, ast.Name):
@@ -2388,11 +2425,104 @@ class _WriteScan:
         if self._steps > self.MAX_RESOLVER_STEPS:
             raise _Budget(f"more than {self.MAX_RESOLVER_STEPS} bindings / expressions examined in this file")
 
+    # ---- constant-only text that no reading can reconstruct -------------------------------------------------------------
+
+    _TEXT_TRANSFORMS = _STR_METHODS | {"translate", "swapcase"}
+    _CONST_CALLS = {"chr", "str", "bytes", "bytearray", "repr", "ascii", "int", "ord", "format", "list", "tuple", "set", "frozenset", "sorted", "reversed",
+                    "range", "map", "min", "max", "abs", "len"}
+
+    def _const_only(self, node: ast.AST | None, bound: frozenset = frozenset(), depth: int = 0) -> bool:
+        """`node` is built ONLY from literals: constants, containers / comprehensions of them, operators on them and a closed list of pure calls on them; a name counts only as a
+        comprehension target of the expression itself (`bound`). A closed allow-list: anything else (a module name, an attribute, a call outside the list) is not constant-only,
+        so the cases that were already read (names, parameters, f-string placeholders) keep their own handling. Each node is a counted step."""
+        self._step()
+        if node is None or isinstance(node, ast.Constant):
+            return True
+        if depth > 30:
+            return False
+        d = depth + 1
+        if isinstance(node, ast.Name):
+            return node.id in bound
+        if isinstance(node, ast.JoinedStr):
+            return all(self._const_only(v, bound, d) for v in node.values)
+        if isinstance(node, ast.FormattedValue):
+            return self._const_only(node.value, bound, d) and self._const_only(node.format_spec, bound, d)
+        if isinstance(node, (ast.Tuple, ast.List, ast.Set)):
+            return all(self._const_only(e, bound, d) for e in node.elts)
+        if isinstance(node, ast.Dict):
+            return all(k is not None and self._const_only(k, bound, d) for k in node.keys) and all(self._const_only(v, bound, d) for v in node.values)
+        if isinstance(node, ast.Starred):
+            return self._const_only(node.value, bound, d)
+        if isinstance(node, ast.UnaryOp):
+            return self._const_only(node.operand, bound, d)
+        if isinstance(node, ast.BinOp):
+            return self._const_only(node.left, bound, d) and self._const_only(node.right, bound, d)
+        if isinstance(node, ast.Subscript):
+            return self._const_only(node.value, bound, d) and self._const_only(node.slice, bound, d)
+        if isinstance(node, ast.Slice):
+            return all(self._const_only(x, bound, d) for x in (node.lower, node.upper, node.step))
+        if isinstance(node, ast.IfExp):
+            return all(self._const_only(x, bound, d) for x in (node.test, node.body, node.orelse))
+        if isinstance(node, ast.Compare):
+            return self._const_only(node.left, bound, d) and all(self._const_only(c, bound, d) for c in node.comparators)
+        if isinstance(node, ast.BoolOp):
+            return all(self._const_only(v, bound, d) for v in node.values)
+        if isinstance(node, (ast.ListComp, ast.SetComp, ast.GeneratorExp)):
+            names = set(bound)
+            for g in node.generators:
+                if g.is_async or not self._const_only(g.iter, frozenset(names), d):
+                    return False
+                names |= {n.id for n in ast.walk(g.target) if isinstance(n, ast.Name)}
+                if not all(self._const_only(i, frozenset(names), d) for i in g.ifs):
+                    return False
+            return self._const_only(node.elt, frozenset(names), d)
+        if isinstance(node, ast.Call):
+            f = node.func
+            args = [*node.args, *(k.value for k in node.keywords)]
+            if any(k.arg is None for k in node.keywords):
+                return False
+            if isinstance(f, ast.Attribute) and f.attr in self._TEXT_TRANSFORMS:
+                return self._const_only(f.value, bound, d) and all(self._const_only(a, bound, d) for a in args)
+            if isinstance(f, ast.Name) and f.id in self._CONST_CALLS and f.id not in self.defined:
+                return all(self._const_only(a, bound, d) for a in args)
+        return False
+
+    def _unreadable_constant_form(self, node: ast.AST) -> str | None:
+        """A text-TRANSFORMING expression made only of literals whose resulting text neither the placeholder renderer nor the constant evaluator can produce: `'%c%c%c' % (68, 69, 76)`,
+        `'%(v)s FROM hidden' % {'v': 'DELETE'}`, `'%-6s FROM t' % 'DELETE'`, `'ETELED'[::-1]`, `' '.join(w for w in (...))`, a format spec / conversion / index. The statement it runs is
+        not in any literal of the file (E6.1 follow-up: these read as clean, so a write built this way was missed), so it is NOT SCANNED, never passed. A closed list: only a template
+        (`%` with a str on the left, `str * n`), a slice, or a str method / `translate` call over a str constant is a transform (a number `10 * 5`, `.replace()` / `.strip()` of a literal and a plain
+        `'%s' % 'x'` that the renderer / `_walk` read are not), and only a constant-only expression is judged here (a name is handled by its own bindings)."""
+        if isinstance(node, ast.BinOp):
+            transform = (isinstance(node.op, ast.Mod) and _is_str(node.left)) or (isinstance(node.op, ast.Mult) and (_is_str(node.left) or _is_str(node.right)))
+        elif isinstance(node, ast.Subscript):
+            transform = isinstance(node.slice, ast.Slice)
+        elif isinstance(node, ast.Call):
+            transform = isinstance(node.func, ast.Attribute) and node.func.attr in self._TEXT_TRANSFORMS
+        else:
+            return None
+        if not transform:
+            return None
+        if isinstance(node, (ast.Subscript, ast.Call)) and not any(_is_str(n) for n in ast.walk(node)):
+            return None                                                   # a slice / method call over no string at all (a tuple of numbers) is no SQL text
+        if not self._const_only(node):
+            return None
+        if _render_sql_node(node) is not None:
+            return None                                                   # the placeholder renderer read this template (a part it could not read is a child node, judged on its own below)
+        if (isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute) and node.func.attr in self._STR_EVAL_METHODS
+                and self._eval_const(node, 0) is not None):
+            return None                                                   # `_walk` scans the evaluated text of a str-method call over literals (replace / strip / ...)
+        return f"write_form_not_analysed: a constant-only template whose text this scan cannot read: {ast.unparse(node)[:60]}"
+
     def _clean_expr(self, node: ast.AST | None) -> str | None:
         """None if `node` is provably built only from this file's literals, else the reason it is not."""
         if node is None:
             return None
         self._step()
+        if isinstance(node, (ast.BinOp, ast.Subscript, ast.Call)):
+            unreadable = self._unreadable_constant_form(node)
+            if unreadable:
+                return unreadable
         unp = lambda: ast.unparse(node)[:60]  # noqa: E731
         if isinstance(node, ast.Constant):
             return "bytes_sql_literal: SQL passed as bytes is not analysed" if isinstance(node.value, (bytes, bytearray)) else None
@@ -2455,7 +2585,7 @@ class _WriteScan:
 
     def _container_problem_uncached(self, ident: str) -> str | None:
         for b in self.bindings.get(ident, []) + self.attr_bindings.get(ident, []):
-            if (b[0] in ("expr", "econt") and _has_nested_container(b[1])) or (b[0] in ("elem", "subkey") and _is_container_value(b[1])):
+            if (b[0] in ("expr", "econt") and _has_nested_container(b[1])) or (b[0] in ("elem", "subkey") and _holds_mutable(b[1])):
                 return f"container_escapes: {ident} holds another mutable container (an inner alias can mutate it)"
         for ref in self.refs_by_ident.get(ident, []):
             self._step()
@@ -2785,7 +2915,7 @@ class _WriteScan:
         tag = b[0]
         if tag in ("expr", "elem", "econt"):
             return self._clean_expr(b[1])
-        if tag == "iter":
+        if tag in ("iter", "star"):
             return self._clean_iter(b[1])
         if tag == "iter_values":
             return self._clean_expr(b[1])

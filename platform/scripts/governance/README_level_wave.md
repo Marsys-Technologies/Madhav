@@ -165,6 +165,16 @@ A template made of this file's own constants is READ as the statement it runs: `
 `f'{V}ETE FROM t'`, `'DELETE FROM'.strip() + ' t'`, `'DELETE FROM x'.replace('x', 't')`, `v, f = 'DELETE', 'FROM'` are rendered
 with the constants written out (only `str` methods on literals are evaluated; nothing is imported or called) and scanned as well.
 
+The converse, a closed list (E6.1 follow-up): a text-TRANSFORMING expression made ONLY of literals whose text neither the renderer nor
+the evaluator can produce is **not scanned**, never passed: `'%c%c%c' % (68, 69, 76)`, `'%(v)s FROM t' % {'v': 'DELETE'}`, `'%-6s FROM t' %
+'DELETE'`, `'ETELED'[::-1]`, `' '.join(w for w in ('DELETE', 'FROM', 't'))`, `'x' * n`, a `.translate(...)` (reason
+`write_form_not_analysed: a constant-only template whose text this scan cannot read`). A name-built join (`', '.join(COLS)`), a number
+(`10 * 5`) and every form the renderer reads are unchanged. Also (same follow-up): a starred unpack target (`first, *rest = SRC`) is a
+list, so its aliases / escapes are policed like any other container, and a container that carries another mutable container at ANY depth
+(`[('a', ['b'])]`, `dict(k=['b'])`, `[['a']] * 2`) is not provable. The resolver's work is bounded deterministically: `_WriteScan.work_steps`
+(read-only) against `MAX_RESOLVER_STEPS`, asserted in `test_e5_9_footprint_steps.py` (steps per source line over the reviewer corpora and the
+hostile shapes), with the old wall-clock asserts kept only as a generous backstop.
+
 Documented, not detected: `VACUUM FULL` / `CLUSTER` (they rewrite a table, they write no rows), `COPY ... TO` with a runtime target
 (an export), an instance of another module's class that is called instead of this file's class (an imported delegate), `__dict__`
 on an instance (it only matters for class attributes, which it already disables), and a name collision elsewhere that makes an
