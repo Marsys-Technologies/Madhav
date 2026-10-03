@@ -1,6 +1,6 @@
 {
  "schema": "nikasha_registered_db_identities/1",
- "_doc": "Registered cluster identities (E1.7(b), SS N-119): the non-secret identity stamped into every census head as `db_identity` (database name + domain-tagged sha256 of pg_control_system().system_identifier; never a host, user, password or URL). A census whose db_identity equals a registered entry's was read from that cluster. Registration evidence is TWO INDEPENDENT READS of one value by two sessions through their approved read-only reader helpers. Append-only by convention: a restored/cloned cluster has a different identity and needs its own entry.",
+ "_doc": "Registered cluster identities (E1.7(b), SS N-119): the non-secret identity stamped into every census head as `db_identity` (database name + domain-tagged sha256 of pg_control_system().system_identifier; no connection details or credentials of any kind). A census whose db_identity equals a registered entry's was read from that cluster. Registration evidence is TWO INDEPENDENT READS of one value by two sessions through their approved read-only reader helpers. Append-only by convention: a restored/cloned cluster has a different identity and needs its own entry.",
  "entries": [
   {
    "role": "production",
