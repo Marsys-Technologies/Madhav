@@ -346,3 +346,102 @@ def test_hook_entries_cite_the_spec_not_only_a_run():
         assert "F_A2_KEY_WIDENING_D6_PLAN_v1_0.md" in h["may_change"][i]["note"], i
     assert h["may_change"][1]["note"].startswith("DERIVED, not stated by the spec")      # the pairing-artifact entry says so
     assert not any(e.get("optional") for e in h["may_change"]) and all("expected_count" in e for e in h["may_change"])
+
+
+# ---------------------------------------------------------------------------------------------- the scope pins are protected (review LOW-1)
+# Entries 0 to 4 carry ayanamsha_ids / fact_keys. A count entry alone would still catch most strays, but the PINS are what keep the attribution narrow: dropping or widening
+# one silently lets the entry absorb changes in an ayanamsha or key the spec never predicts. The expectations below are rebuilt from the spec model (F.AYANS, the writer's
+# D30 region tables above), not read back from the hook.
+D30_KEYS = [f"{lord}_{a}_{b}" for lord, a, b in D30_ODD + D30_EVEN]
+
+
+def pin_violations(h):
+    """[] when the hook's scope pins equal the spec-derived ones; one message per pin that is missing, broadened, narrowed or reordered-away."""
+    v = []
+    me = h["may_change"]
+    want_ay = {0: AYS, 1: AYS, 2: AYS, 3: AYS, 4: ["INVARIANT"]}
+    want_fk = {0: ["bindus"], 1: ["bindus"], 2: ["lord"], 3: D30_KEYS, 4: ["computation_status"]}
+    for i in range(5):
+        if sorted(me[i].get("ayanamsha_ids") or []) != sorted(want_ay[i]) or "ayanamsha_ids" not in me[i]:
+            v.append(f"entry {i}: ayanamsha_ids {me[i].get('ayanamsha_ids')!r} != {want_ay[i]!r}")
+        if sorted(me[i].get("fact_keys") or []) != sorted(want_fk[i]) or "fact_keys" not in me[i]:
+            v.append(f"entry {i}: fact_keys {me[i].get('fact_keys')!r} != {want_fk[i]!r}")
+    return v
+
+
+def test_the_ten_d30_keys_are_distinct_and_are_the_writers():
+    assert len(D30_KEYS) == 10 and len(set(D30_KEYS)) == 10
+    assert D30_KEYS[:5] == ["Mars_0_5", "Saturn_5_10", "Jupiter_10_18", "Mercury_18_25", "Venus_25_30"]
+    assert D30_KEYS[5:] == ["Venus_0_5", "Mercury_5_12", "Jupiter_12_20", "Saturn_20_25", "Mars_25_30"]
+
+
+def test_live_hook_scope_pins_equal_the_spec_derived_pins():
+    h = json.loads(LIVE_HOOK.read_text())
+    assert pin_violations(h) == []
+    assert (REAL_HOOKS / f"{LANE}.json").read_bytes() == LIVE_HOOK.read_bytes()      # the fixture copy carries the same pins
+    # the two explicit-zero entries stay unpinned by design (an absent key in ANY ayanamsha is a failure)
+    assert "ayanamsha_ids" not in h["may_change"][5] and "ayanamsha_ids" not in h["may_change"][6]
+
+
+def _drop_ay(i):
+    return lambda h: h["may_change"][i].pop("ayanamsha_ids")
+
+
+def _drop_fk(i):
+    return lambda h: h["may_change"][i].pop("fact_keys")
+
+
+def _widen_ay(i):
+    return lambda h: h["may_change"][i]["ayanamsha_ids"].append("made_up_ayanamsha")
+
+
+def _widen_fk(i, extra):
+    return lambda h: h["may_change"][i]["fact_keys"].append(extra)
+
+
+def _narrow_ay(i):
+    return lambda h: h["may_change"][i]["ayanamsha_ids"].pop()
+
+
+def _narrow_d30(h):
+    h["may_change"][3]["fact_keys"].pop()
+
+
+@pytest.mark.parametrize("name,mut", (
+    [(f"drop_ayanamsha_ids[{i}]", _drop_ay(i)) for i in range(5)]
+    + [(f"drop_fact_keys[{i}]", _drop_fk(i)) for i in range(5)]
+    + [(f"widen_ayanamsha_ids[{i}]", _widen_ay(i)) for i in range(5)]
+    + [("widen_fact_keys[0]", _widen_fk(0, "sarva_total")), ("widen_fact_keys[2]", _widen_fk(2, "occupant")),
+       ("widen_fact_keys[3]", _widen_fk(3, "Mars_99_100")), ("widen_fact_keys[4]", _widen_fk(4, "other_status"))]
+    + [(f"narrow_ayanamsha_ids[{i}]", _narrow_ay(i)) for i in range(4)]
+    + [("narrow_d30_ten_keys", _narrow_d30)]))
+def test_removing_or_changing_a_scope_pin_is_caught(name, mut):
+    """Mutate the real hook in memory; the pin check must go red for every removal, widening or narrowing of an ayanamsha_ids / fact_keys pin."""
+    h = json.loads(LIVE_HOOK.read_text())
+    mut(h)
+    assert pin_violations(h), name
+
+
+def test_the_pin_check_itself_is_not_vacuous():
+    """Control: an untouched hook is clean, and each single mutation above changes exactly the entry it targets (not a global failure)."""
+    h = json.loads(LIVE_HOOK.read_text())
+    assert pin_violations(h) == []
+    _drop_ay(3)(h)
+    v = pin_violations(h)
+    assert len(v) == 1 and v[0].startswith("entry 3: ayanamsha_ids")
+
+
+def test_a_pinned_entry_does_not_absorb_a_change_in_an_unpinned_ayanamsha(tmp_path):
+    """Behavioural twin of the pin: a d30 occurrence_count change in a made-up ayanamsha is NOT attributed to the d30 entry, so the entry still reads exactly 50
+    and the extra change is flagged (undeclared, not folded into the count)."""
+    def fn(rows):
+        for lord, a, b in D30_ODD:
+            rows.append(_row("made_up_ayanamsha", "D30", lord, "varga_d30_lord_per_amsa", f"{lord}_{a}_{b}", lord, str(a), "Aries"))
+            rows.append(_row("made_up_ayanamsha", "D30", lord, "varga_d30_lord_per_amsa", f"{lord}_{a}_{b}", lord, str(a), "Gemini"))
+    before = old_rows() + [_row("made_up_ayanamsha", "D30", lord, "varga_d30_lord_per_amsa", f"{lord}_{a}_{b}", lord, str(a), "Aries") for lord, a, b in D30_ODD]
+    after = new_rows()
+    fn(after)
+    rep = cmp(before, after, load_real(tmp_path))
+    obs = {e["entry"]: e["observed"] for e in rep["expectations"] if e["lane"] == LANE}
+    assert obs[3] == 50                                       # the made-up ayanamsha's five keys did not inflate the pinned entry
+    assert _fails(rep) and rep["failure_counts"]["UNDECLARED_CHANGE"] + rep["failure_counts"]["KIND_MISMATCH"] >= 5

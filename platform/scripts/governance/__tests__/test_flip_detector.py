@@ -605,8 +605,8 @@ def test_3_default_hooks_dir_is_the_slhooks_folder():
 
 
 # ----------------------------------------------------------------------------------------------- real hook files
-REAL_LANES = sorted(f.stem for f in REAL_HOOKS.glob("*.json"))  # the integration's 23 hook files + fa2_ga_vargas (pending, see PENDING_HOOKS)
-PENDING_HOOKS = ("fa2_ga_vargas.json",)  # F-A2 (PR 2858) adds this file to the hook directory later: allowed absent from the repo directory, byte-equal when present
+REAL_LANES = sorted(f.stem for f in REAL_HOOKS.glob("*.json"))  # the integration's 23 hook files + fa2_ga_vargas (landed in the hook directory with the F-A2 hook commit; still listed in PENDING_HOOKS)
+PENDING_HOOKS = ("fa2_ga_vargas.json",)  # F-A2 (PR 2858): LANDED in the hook directory (byte-equal to hooks_real, enforced by test_f12). Kept in the tuple on purpose: the tuple is pinned by test_f12 and by the README W7 lane-list tests (23 lanes), which the doc pass updates; emptying it is that pass's edit
 INTEGRATION_LANES = [n for n in REAL_LANES if n + ".json" not in PENDING_HOOKS]
 
 
