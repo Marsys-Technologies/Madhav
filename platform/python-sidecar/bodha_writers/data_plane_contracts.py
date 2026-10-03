@@ -500,6 +500,17 @@ def _open_generation(
                 observation.build_id, CONTRACT_VERSION,
             ),
         )
+        # ORDER IS LOAD-BEARING: open_l2_data_plane_generation() refuses to run unless the
+        # transaction-local pg_temp.l2_data_plane_bind_receipt that bind_l2_exact_inputs()
+        # creates already exists (migration 1036: "L2 generation open requires an exact-input
+        # bind receipt"). Bind first, then open.
+        cur.execute(
+            "SELECT public.bind_l2_exact_inputs(%s::uuid, %s::jsonb)",
+            (
+                observation.chart_id,
+                json.dumps(observation.dependency_vector, sort_keys=True),
+            ),
+        )
         cur.execute(
             """
             SELECT public.open_l2_data_plane_generation(
@@ -515,13 +526,6 @@ def _open_generation(
                 json.dumps(observation.calculation_context, sort_keys=True),
                 json.dumps(observation.dependency_vector, sort_keys=True),
                 observation.role,
-            ),
-        )
-        cur.execute(
-            "SELECT public.bind_l2_exact_inputs(%s::uuid, %s::jsonb)",
-            (
-                observation.chart_id,
-                json.dumps(observation.dependency_vector, sort_keys=True),
             ),
         )
 
