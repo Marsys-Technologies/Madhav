@@ -45,10 +45,6 @@ passwords removed. Credentials are never read or printed by this script.
 Snapshot store: --out, else $FLIP_SNAPSHOT_DIR, else /Users/Dev/suvarna-evidence/TrackI/ephemeris_flip/snapshots.
 
 Hook schema, matching rules, NOT CHECKED semantics and the W7 hand read-back SQL: see FLIP_DETECTOR_README.md next to this file.
-
-L2 (Bodha) extension, opt-in (L2_EXTENSION_VERSION below): add --l2 to --snapshot and --compare (and optionally --l2-tables a,b,c) to also snapshot / compare the 29 L2 tables
-of the L2_TABLES registry in the same read-only transaction; hooks may then name those tables. Without --l2 every output is byte-identical to the pre-L2 tool.
-See FLIP_DETECTOR_L2_README.md next to this file.
 """
 import sys, os, re, json, gzip, glob, hashlib, argparse, collections, subprocess, time
 from datetime import datetime, timezone
@@ -79,255 +75,12 @@ DAILY_COLS = ["date", "tithi_id", "paksha", "vara_id", "nakshatra_id", "moon_nak
 TABLES = ("chart_facts", "chart_divisionals", "chart_dashas", "panchanga_daily")
 # Tables a hook may name but the detector never reads. An entry on one of these is always NOT CHECKED (never silently passed).
 UNCOMPARED_TABLES = ("l1_tajik_varsha_year_lords",)
-LEGACY_HOOK_TABLES = TABLES + UNCOMPARED_TABLES  # the tables a hook could name before the L2 extension (kept so the validation message stays byte-identical)
+HOOK_TABLES = TABLES + UNCOMPARED_TABLES
 CHANGE_TYPES = ("value", "appeared", "disappeared", "occurrence_count", "tier")
 # chart_dashas is compared as a row set only (appeared / disappeared) plus start shifts; its tier is NOT compared.
 DASHA_CHANGE_TYPES = ("appeared", "disappeared", "tier")
 HOOK_FIELDS = {"lane", "ruling", "pr", "description", "charts", "may_change"}
 ENTRY_FIELDS = {"table", "kind", "categories", "fact_keys", "ayanamsha_ids", "systems", "change_types", "expected_direction", "expected_count", "shift_range_sec", "note", "optional"}
-
-# ------------------------------------------------------------------ L2 (Bodha) extension: opt-in behind --l2 (add-only)
-# Nothing below changes any output unless --l2 is given. The detector's row model is chart_facts-shaped:
-#   [ayanamsha, category, subject, key, text, num, tier]
-# For an L2 table the registry entry below builds those 7 columns from the live table:
-#   ayanamsha  the row's ayanamsha_id ('INVARIANT' for a table with none)
-#   category   the coarse class a hook names in "categories" (signal_type_class, node_type, edge_type, ...)
-#   subject, key   together with category the SEMANTIC natural key: NO generated id (signal_id, node_id, edge_id, ... are never in the key)
-#   text       'id=<generated identity>|label=value|label=digest|...': the generated identity FIRST, then the content columns that matter.
-#              Arrays / jsonb / vectors are compared by a 12-hex md5 digest (the content is never copied into the snapshot).
-#              A moved identity (the content it is derived from changed) therefore reads as a 'value' change, not as appeared + disappeared.
-#   num        up to a few continuous scores joined by ',' (empty part = NULL). They are NOT compared as class values: see diff_l2_table.
-#   tier       verification_pass_status (or the table's own tier-like column)
-# Rows that share a semantic key are an occurrence list (the existing occurrence_count mechanism). Adding a table is ONE _l2_reg() call.
-L2_EXTENSION_VERSION = "1.0"
-L2_COLS = ("ayanamsha", "category", "subject", "key", "text", "num", "tier")
-L2_TABLES = {}
-
-
-def _dg(col):
-    """12-hex md5 digest of a column's text form (arrays, jsonb, vectors): content compared by digest, never copied."""
-    return f"left(md5(coalesce(({col})::text,'')),12)"
-
-
-def _clean(expr):
-    """Text form with tab / CR / LF replaced (a tab or newline in a value would mis-split the reader's rows and fail the read)."""
-    return "regexp_replace(coalesce((" + expr + ")::text,''), E'[\\t\\r\\n]', ' ', 'g')"
-
-
-def _l2_reg(table, frm, cat, subj, key, ident, content=(), score=(), tier="''", aya="t.ayanamsha_id", must_have_rows=True, unread="", doc=""):
-    """Register one L2 table. `frm` uses alias t for the table itself (joins use their own aliases). `content` = [(label, sql expr)]; `score` = [sql expr].
-    must_have_rows is True only where the producing writer raises on zero rows or registry target_floor >= 1 guarantees rows for any chart."""
-    L2_TABLES[table] = {"from": frm, "category": cat, "subject": subj, "key": key, "ident": ident, "content": list(content), "score": list(score),
-                        "tier": tier, "aya": aya, "must_have_rows": bool(must_have_rows), "unread": unread, "doc": doc}
-
-
-def l2_select_sql(table, chart_id):
-    """The single SELECT that reads one L2 table for one chart as 7 chart_facts-shaped columns (the chart id is a validated UUID)."""
-    s = L2_TABLES[table]
-    cid = normalize_chart_id(chart_id)
-    text = _clean("'id=' || coalesce((" + s["ident"] + ")::text,'')" + "".join(f" || '|{lab}=' || coalesce(({expr})::text,'')" for lab, expr in s["content"]))
-    num = " || ',' || ".join(f"coalesce(({c})::text,'')" for c in s["score"]) or "''"
-    return (f"select {_clean(s['aya'])}, {_clean(s['category'])}, {_clean(s['subject'])}, {_clean(s['key'])}, {text}, {num}, {_clean(s['tier'])} "
-            f"from {s['from']} where t.chart_id='{cid}' order by 1,2,3,4,5")
-
-
-_V = "t.verification_pass_status"
-_NL = lambda a: f"coalesce({a}.node_type||':'||{a}.node_subject,'__missing_node__')"  # a node's semantic label (never its node_id)
-
-_l2_reg("bodha_msr_signals", "bodha_msr_signals t",
-        cat="t.signal_type_class",
-        subj="coalesce(t.varga_id,'') || '|' || coalesce(t.configuration_jsonb->>'fact_subject','') || '|' || coalesce(t.configuration_jsonb->>'fact_key','')",
-        key="t.signal_type_id", ident="t.signal_id",
-        content=[("valence", "t.valence"), ("producer", "t.producer_asset_id"), ("cites", _dg("t.constituent_facts_array")),
-                 ("sysconv", "t.system_convergence_count"), ("consensus", "t.cross_system_consensus_count"),
-                 ("contra", _dg("t.contradicts_signals_array")), ("nodecontrib", _dg("t.graph_node_strength_contribution_jsonb"))],
-        score=["t.computed_salience", "t.shadbala_norm", "t.dignity_score", "t.deterministic_strength"], tier=_V,
-        unread="signal_summary_text, signal_headline_text, classical_sources_*, epistemic_*, the salience sub-factors and modifiers, domain_salience_jsonb, "
-               "predicted/active dasha jsonb, remedy_hooks_array, ranks and the other columns outside the spec",
-        doc="Key = ayanamsha_id, signal_type_class, signal_type_id (+ varga_id and configuration_jsonb fact_subject/fact_key). Identity = signal_id "
-            "(uuid_v5 over the configuration): a config change re-keys the signal id and reads as a value change on the same semantic key. Cites = digest of "
-            "constituent_facts_array (moves when L1 fact ids move). Rerank enrichment (sysconv, consensus, contra, nodecontrib) is in the text.")
-_l2_reg("bodha_signal_embeddings", "bodha_signal_embeddings t left join bodha_msr_signals s on s.signal_id=t.signal_id",
-        cat="coalesce(s.signal_type_class,'__orphan__')", subj="coalesce(t.embedding_model,'') || '|' || coalesce(t.embedding_model_version,'')",
-        key="coalesce(s.signal_type_id,'__orphan__:'||t.signal_id::text)", ident="t.embedding_id",
-        content=[("signal", "t.signal_id"), ("vec", _dg("t.embedding_vec")), ("input", _dg("t.embedding_input_summary"))],
-        unread="the embedding vector itself (compared by a 12-hex md5 of its text form only), the input summary text (digest only)",
-        doc="Semantic key = the embedded signal's own key (joined from bodha_msr_signals; an embedding whose signal is gone is category __orphan__ keyed by the "
-            "dangling signal id) + the model. Identity = embedding_id; vec = digest of the vector.")
-_l2_reg("bodha_cgm_nodes", "bodha_cgm_nodes t",
-        cat="t.node_type", subj="t.node_subject", key="t.snapshot_type", ident="t.node_id",
-        content=[("dignity", "t.dignity_state"), ("domain", "t.primary_domain"), ("hub", "t.hub_flag"), ("msr", _dg("t.msr_signal_id")),
-                 ("pos", _dg("t.position_in_chart_jsonb")), ("constituents", _dg("t.configuration_constituents_array")), ("degin", "t.degree_in"), ("degout", "t.degree_out")],
-        score=["t.strength_score", "t.pagerank_score", "t.betweenness_centrality", "t.eigenvector_centrality", "t.harmonic_centrality"], tier=_V,
-        unread="node_embedding_vec, node_label_human, clustering/closeness/core metrics, domain_affiliations, cluster membership, ephemeris_audit_jsonb",
-        doc="Key = ayanamsha_id, node_type, node_subject, snapshot_type (the table's own unique key minus build_id). Identity = node_id (deterministic from the key).")
-_l2_reg("bodha_cgm_edges",
-        "bodha_cgm_edges t left join bodha_cgm_nodes nf on nf.node_id=t.from_node_id left join bodha_cgm_nodes nt on nt.node_id=t.to_node_id",
-        cat="t.edge_type", subj="t.snapshot_type || '|' || " + _NL("nf"), key=_NL("nt"), ident="t.edge_id",
-        content=[("valence", "t.valence"), ("direction", "t.direction"), ("cancelled", "t.cancelled_flag"), ("msr", _dg("t.underlying_msr_signal_ids_array")),
-                 ("facts", _dg("t.constituent_fact_ids_array")), ("vichara", _dg("t.constituent_ga_vichara_ids_array")), ("consensus", "t.cross_system_consensus_count")],
-        score=["t.computed_strength", "t.intrinsic_strength", "t.edge_betweenness"], tier=_V,
-        unread="edge_properties_jsonb, affected_domains, active_dasha_periods_jsonb, cancelled_by_jsonb, citation text, graph library versions",
-        doc="Key = ayanamsha_id, edge_type, snapshot_type, from-node label, to-node label (node_type:node_subject, joined; never node ids). Identity = edge_id. "
-            "msr/facts/vichara = digests of the cited L1/L2 id arrays (they move when the cited ids move).")
-_l2_reg("bodha_cgm_paths",
-        "bodha_cgm_paths t left join bodha_cgm_nodes nf on nf.node_id=t.from_node_id left join bodha_cgm_nodes nt on nt.node_id=t.to_node_id",
-        cat="t.path_type", subj="t.snapshot_type || '|' || " + _NL("nf"), key=_NL("nt"), ident="t.path_id",
-        content=[("len", "t.path_length"), ("final", "t.is_final_dispositor"), ("conv", "t.convergence_count"), ("nodes", _dg("t.path_node_ids_array")),
-                 ("edges", _dg("t.path_edge_ids_array"))],
-        score=["t.path_strength"], tier=_V, unread="path_label_human, citation text",
-        doc="Key = ayanamsha_id, path_type, snapshot_type, from/to node labels. Identity = path_id; the node/edge chains are digests.")
-_l2_reg("bodha_cgm_motifs", "bodha_cgm_motifs t",
-        cat="t.motif_class", subj="t.snapshot_type || '|' || t.motif_name", key="t.fingerprint_hash", ident="t.motif_id",
-        content=[("nodes", _dg("t.involved_node_ids_array")), ("edges", _dg("t.involved_edge_ids_array")), ("cite", "t.classical_citation_id")],
-        score=["t.motif_strength"], tier=_V, must_have_rows=False, unread="citation text",
-        doc="Key = ayanamsha_id, motif_class, snapshot_type, motif_name, fingerprint_hash. Legitimately empty for some charts (target_floor 0).")
-_l2_reg("bodha_cdlm_cells", "bodha_cdlm_cells t",
-        cat="t.snapshot_type",
-        subj="coalesce(t.tradition_view_id,'')||'|'||coalesce(t.dynamic_system_id,'')||'|'||coalesce(t.dynamic_maha_lord,'')||'|'||coalesce(t.dynamic_antar_lord,'')",
-        key="coalesce(t.domain_row,'')||'|'||coalesce(t.domain_col,'')||'|'||coalesce(t.subdomain_row,'')||'|'||coalesce(t.subdomain_col,'')", ident="t.cell_id",
-        content=[("sharedsig", "t.shared_signal_count"), ("sharedfac", "t.shared_factor_count"), ("contradict", "t.contradicting_signal_pairs_count"),
-                 ("sigids", _dg("t.shared_signal_ids_array")), ("asym", "t.asymmetric_linkage_flag"), ("domaincontra", "t.cross_domain_contradiction_flag")],
-        score=["t.net_linkage_strength", "t.computed_linkage_strength", "t.shared_signal_salience_sum", "t.positive_contribution", "t.negative_contribution"], tier=_V,
-        unread="the other jsonb/array columns (remedy, narrative, bridge seeds, predicted windows), ranks, evolution gradient",
-        doc="Key = ayanamsha_id, snapshot_type, tradition view + dynamic system/lords, domain/subdomain row and column (the table's unique key minus build_id).")
-_l2_reg("bodha_triangulation", "bodha_triangulation t",
-        cat="t.question_class", subj="''", key="t.tradition", ident="t.triangulation_id",
-        content=[("formula", "t.formula_version"), ("sigids", _dg("t.signal_ids")), ("inputs", _dg("t.verdict_inputs"))],
-        score=["t.concordance_score"], must_have_rows=False, doc="Key = ayanamsha_id, question_class, tradition. Identity = triangulation_id; signal_ids by digest.")
-_l2_reg("bodha_contradictions",
-        "bodha_contradictions t left join bodha_msr_signals sa on sa.signal_id=t.signal_a_id left join bodha_msr_signals sb on sb.signal_id=t.signal_b_id",
-        cat="t.tension_class", subj="coalesce(sa.signal_type_id,'__missing_signal__')", key="coalesce(sb.signal_type_id,'__missing_signal__')", ident="t.contradiction_id",
-        content=[("a", "t.signal_a_id"), ("b", "t.signal_b_id"), ("domains", _dg("t.domains_affected_array")), ("basis", _dg("t.tension_basis_jsonb"))],
-        score=["t.combined_salience"], tier=_V, must_have_rows=False,
-        unread="resolution_hint_jsonb, citation text",
-        doc="Key = ayanamsha_id, tension_class, signal_type_id of signal A and of signal B (joined). Identity = contradiction_id plus both signal ids (so a moved "
-            "signal id is visible). Legitimately empty for some charts.")
-_l2_reg("bodha_convergence", "bodha_convergence t",
-        cat="t.snapshot_type", subj="coalesce(t.dynamic_system_id,'')||'|'||coalesce(t.dynamic_maha_lord,'')||'|'||coalesce(t.dynamic_antar_lord,'')", key="t.domain",
-        ident="t.convergence_id",
-        content=[("count", "t.convergence_count"), ("crosstrad", "t.cross_tradition_count"), ("contra", "t.contradiction_count"), ("top", _dg("t.top_signal_ids_array"))],
-        score=["t.convergence_score", "t.salience_weighted_sum", "t.salience_max"], tier=_V, must_have_rows=False,
-        unread="tradition_breakdown_jsonb, classical_sources_jsonb", doc="Key = ayanamsha_id, snapshot_type, dynamic system/lords, domain.")
-_l2_reg("bodha_rm_resonances", "bodha_rm_resonances t",
-        cat="t.snapshot_type", subj="''", key="t.graha", ident="t.resonance_id",
-        content=[("class", "t.remedy_priority_class"), ("yk", "t.is_yoga_karaka_flag"), ("ck", "t.is_chara_karaka_role"), ("rank", "t.weakest_rank_in_chart"),
-                 ("doshas", _dg("t.associated_doshas_array")), ("motifs", _dg("t.associated_motifs_array")), ("cells", _dg("t.associated_cdlm_cells_array"))],
-        score=["t.resonance_score", "t.weakness_score", "t.contradiction_factor", "t.domain_burden", "t.motif_burden"], tier=_V, unread="ephemeris_audit_jsonb, citation text",
-        doc="Key = ayanamsha_id, snapshot_type, graha.")
-_l2_reg("bodha_mechanisms", "bodha_mechanisms t",
-        cat="t.mechanism_class", subj="t.snapshot_type || '|' || t.mechanism_name", key="t.fingerprint_hash", ident="t.mechanism_id",
-        content=[("valence", "t.valence"), ("nodes", _dg("t.member_node_ids_array")), ("edges", _dg("t.member_edge_ids_array")), ("vichara", _dg("t.constituent_ga_vichara_ids_array")),
-                 ("motif", "t.source_motif_id"), ("domains", _dg("t.domains_affected_array"))],
-        score=["t.edge_strength_avg", "t.edge_strength_min", "t.edge_strength_max"], tier=_V, unread="centrality_summary_jsonb, citation text",
-        doc="Key = ayanamsha_id, mechanism_class, snapshot_type, mechanism_name, fingerprint_hash. Identity = mechanism_id; vichara = digest of cited chart_vichara ids.")
-_l2_reg("bodha_discoveries", "bodha_discoveries t",
-        cat="t.discovery_class", subj="coalesce(t.discovery_subsystem,'')", key="coalesce(t.novelty_class_id,'')||'|'||coalesce(array_to_string(t.affected_domains_array,','),'')",
-        ident="t.discovery_id",
-        content=[("refs", _dg("t.constituent_refs_jsonb")), ("corroboration", "t.corroboration_count"), ("crosssub", "t.cross_subsystem_root"), ("novelty", "t.novelty_class")],
-        score=["t.non_obviousness_score", "t.consequence_score", "t.composite_discovery_rank"], must_have_rows=False,
-        unread="reasoning_chain_jsonb, the reading texts (surface/depth/hypothesis), falsifier and calibration jsonb, provenance",
-        doc="No natural unique key exists (discovery_id embeds the cited signal ids): semantic key = class, subsystem, novelty class + affected domains; many rows "
-            "share a key (an occurrence list); identity = discovery_id, so a re-cited discovery reads as a value change.")
-_l2_reg("bodha_anomalies", "bodha_anomalies t",
-        cat="t.anomaly_type", subj="coalesce(t.discovery_subsystem,'')", key="coalesce(t.anomaly_metric,'')", ident="t.anomaly_id",
-        content=[("subject", _dg("t.subject_ref_jsonb")), ("gate", "t.meaningfulness_gate_result")],
-        score=["t.anomaly_value", "t.chart_baseline_value", "t.sigma_from_baseline"], must_have_rows=False,
-        doc="Semantic key = anomaly_type, subsystem, metric (many rows share it); identity = anomaly_id (embeds the subject reference).")
-_l2_reg("bodha_pratijna", "bodha_pratijna t",
-        cat="'pratijna'", subj="''", key="t.event_class_id", ident="t.pratijna_id",
-        content=[("status", "t.status"), ("support", _dg("t.supporting_signal_ids")), ("contradict", _dg("t.contradicting_signal_ids")), ("derivation", _dg("t.derivation")),
-                 ("vargaconf", _dg("t.varga_confirmation"))],
-        score=["t.grade", "t.occurrence_grade", "t.condition_grade"], must_have_rows=False,
-        doc="Key = ayanamsha_id, event_class_id; the status is content, so a status flip reads as a value change. target_floor 0.")
-_l2_reg("synthesis_quality_scorecard", "synthesis_quality_scorecard t",
-        cat="'scorecard'", subj="''", key="'row'", ident="t.scorecard_id", aya="'INVARIANT'",
-        content=[("msr", "t.msr_signal_count"), ("cells", "t.cdlm_cell_count"), ("nodes", "t.cgm_node_count"), ("edges", "t.cgm_edge_count"), ("resonances", "t.rm_resonance_count"),
-                 ("prescriptions", "t.rm_prescription_count"), ("embeddings", "t.embedding_count"), ("convergence", "t.convergence_count"),
-                 ("contradictions", "t.contradiction_count"), ("divergent", "t.divergent_flagged_count"), ("orphans", "t.unresolved_constituent_facts_count"),
-                 ("trap1", "t.trap1_authority_inversion_count"), ("trap2", "t.trap2_narration_leak_count"), ("l1proj", "t.l1_assets_projected_count"),
-                 ("nothreshold", "t.msr_no_threshold_drop_flag"), ("lel", "t.lel_zero_leak_pass"), ("nopre", "t.no_pre_answer_pass"), ("pillars", "t.pillars_meet_reachability_pass"),
-                 ("ledger", "t.ledger_independence_pass"), ("discovery", "t.discovery_not_fabricated_pass")],
-        score=["t.two_pass_verified_pct", "t.documented_approximation_pct", "t.msr_citation_ref_coverage_pct"], must_have_rows=True,
-        unread="formula-version strings, l1_assets_projected_array, notes", doc="One row per chart; there is no ayanamsha, so ayanamsha = INVARIANT.")
-_l2_reg("bodha_cgm_sub_graphs", "bodha_cgm_sub_graphs t",
-        cat="t.subgraph_type", subj="coalesce(t.subgraph_label,'')", key="coalesce(t.classical_archetype_match,'')", ident="t.subgraph_id",
-        content=[("nodes", _dg("t.node_ids_array")), ("edges", _dg("t.edge_ids_array")), ("centroid", "t.subgraph_centroid_node_id")],
-        score=["t.subgraph_density"], tier=_V, must_have_rows=False, unread="graphml/gexf exports, representative_path_jsonb")
-_l2_reg("bodha_cgm_chart_topology_summary", "bodha_cgm_chart_topology_summary t",
-        cat="'topology'", subj="t.snapshot_type", key="'row'", ident="t.summary_id",
-        content=[("nodes", "t.total_nodes"), ("edges", "t.total_edges"), ("triangles", "t.triangle_count"), ("scc", "t.strongly_connected_components_count"),
-                 ("diameter", "t.graph_diameter"), ("fingerprint", "t.graph_fingerprint_hash"), ("isolated", _dg("t.isolated_node_ids_array")),
-                 ("hubs", _dg("t.top_5_hub_nodes_jsonb"))],
-        score=["t.graph_density", "t.hub_dominance_score", "t.fragmentation_score"], tier=_V, must_have_rows=False,
-        unread="the embedding vector, graphml/gexf exports, story arcs, central-node jsonb")
-_l2_reg("bodha_cdlm_chart_summary", "bodha_cdlm_chart_summary t",
-        cat="'summary'", subj="coalesce(t.tradition_view_id,'')||'|'||coalesce(t.dynamic_system_id,'')||'|'||coalesce(t.dynamic_maha_lord,'')||'|'||coalesce(t.dynamic_antar_lord,'')",
-        key="t.snapshot_type", ident="t.summary_id",
-        content=[("typology", "t.chart_typology_class"), ("bridges", "t.bridge_link_count"), ("asym", "t.asymmetric_link_count"), ("dom3", _dg("t.dominant_3_domains_array")),
-                 ("weak3", _dg("t.weakest_3_domains_array")), ("markers", _dg("t.pattern_cluster_markers_jsonb"))],
-        score=["t.total_chart_linkage", "t.contradiction_density"], tier=_V, must_have_rows=False, unread="house/karaka strength jsonb")
-_l2_reg("bodha_cdlm_domain_rollups", "bodha_cdlm_domain_rollups t",
-        cat="'rollup'", subj="t.snapshot_type||'|'||coalesce(t.tradition_view_id,'')||'|'||coalesce(t.dynamic_system_id,'')||'|'||coalesce(t.dynamic_maha_lord,'')||'|'||coalesce(t.dynamic_antar_lord,'')",
-        key="t.domain", ident="t.rollup_id",
-        content=[("signals", "t.signal_count_for_domain"), ("markers", _dg("t.pattern_markers_for_domain_array")), ("top3", _dg("t.top_3_linked_domains_jsonb"))],
-        score=["t.total_inbound_linkage", "t.total_outbound_linkage", "t.diagonal_density", "t.contradiction_density"], tier=_V, must_have_rows=False)
-_l2_reg("bodha_cdlm_pattern_clusters", "bodha_cdlm_pattern_clusters t",
-        cat="t.pattern_marker_type", subj="t.snapshot_type||'|'||coalesce(t.tradition_view_id,'')", key="coalesce(array_to_string(t.involved_domains_array,','),'')", ident="t.pattern_id",
-        content=[("cells", _dg("t.involved_cells_array")), ("signals", _dg("t.involved_signals_array")), ("archetype", "t.classical_archetype_match"),
-                 ("outcome", "t.predicted_outcome_class"), ("contradicts", _dg("t.contradicts_other_patterns_array"))],
-        score=["t.cluster_strength_total"], tier=_V, must_have_rows=False, unread="remedy theme, subgraph seed, active dasha windows jsonb")
-_l2_reg("bodha_chart_gestalt", "bodha_chart_gestalt t",
-        cat="'gestalt'", subj="''", key="'row'", ident="t.gestalt_id",
-        content=[("formula", "t.gestalt_formula_version"), ("threads", _dg("t.defining_threads_jsonb")), ("dynamics", _dg("t.central_dynamics_ids")), ("pivots", _dg("t.pivot_ids")),
-                 ("gravity", _dg("t.center_of_gravity_node_ids")), ("verdicts", _dg("t.domain_verdict_map_jsonb")), ("headline", _dg("t.headline_jsonb")),
-                 ("watch", _dg("t.watch_list_jsonb")), ("outliers", _dg("t.outliers_jsonb")), ("contested", _dg("t.contested_areas_jsonb"))],
-        score=["t.headline_confidence"], must_have_rows=False, unread="central_question_jsonb, headline_epistemic_jsonb, zoom_spine_jsonb")
-_l2_reg("bodha_question_lenses", "bodha_question_lenses t",
-        cat="'lens'", subj="''", key="t.question_type", ident="t.lens_id",
-        content=[("template", "t.lens_template_version"), ("formula", "t.lens_formula_version"), ("points", "t.points_only_assertion"),
-                 ("elements", _dg("t.template_element_ids_jsonb")), ("wildcards", _dg("t.wildcard_element_ids_jsonb")), ("ranked", _dg("t.all_relevant_ranked_jsonb"))],
-        tier=_V, must_have_rows=False)
-_l2_reg("bodha_grounding_matches",
-        "bodha_grounding_matches t left join bodha_msr_signals s on s.signal_id::text=t.target_id "
-        "left join ga_yoga_firings y on t.target_kind<>'msr_signal' and y.id::text=t.target_id",
-        cat="t.target_kind", subj="coalesce(t.matched_rule_id,'')", key="coalesce(s.signal_type_id,y.yoga_canonical_id,'__unresolved__:'||t.target_id)", ident="t.match_id",
-        content=[("target", "t.target_id"), ("granularity", "t.citation_granularity"), ("chain", _dg("t.derivation_chain")), ("evidence", _dg("t.grounding_evidence_jsonb"))],
-        tier="t.grounding_tier", must_have_rows=False,
-        doc="tier = grounding_tier (pratyaksa / yukti / sruti). Key = target_kind, matched rule, the grounded signal's type id (or the yoga canonical id).")
-_l2_reg("bodha_rm_chart_summary", "bodha_rm_chart_summary t",
-        cat="'summary'", subj="''", key="t.snapshot_type", ident="t.summary_id",
-        content=[("intensity", "t.recommended_intensity_class"), ("doshas", "t.total_active_dosha_count"), ("primary", "t.primary_dosha_class"), ("typology", "t.remedy_chart_typology"),
-                 ("review", "t.acharya_review_required_count"), ("top3", _dg("t.top_3_resonance_targets_jsonb")), ("top10", _dg("t.top_10_priority_prescriptions_jsonb")),
-                 ("phases", _dg("t.recommended_remedy_phase_sequence_jsonb"))], tier=_V, must_have_rows=False,
-        unread="chart_remedy_embedding_vec, feasibility and cross-tradition jsonb")
-_l2_reg("bodha_rm_dasha_windowed_prescriptions", "bodha_rm_dasha_windowed_prescriptions t",
-        cat="coalesce(t.dasha_system,'')", subj="coalesce(t.dasha_level,'')||'|'||coalesce(t.dasha_lord,'')", key="t.window_start_iso::text", ident="t.window_prescription_id",
-        content=[("end", "t.window_end_iso"), ("base", "t.base_prescription_id"), ("phase", "t.phase_within_window"), ("schedule", _dg("t.schedule_jsonb"))],
-        score=["t.window_intensity_multiplier"], tier=_V, must_have_rows=False, doc="A tombstone table: bo_upaya only deletes from it.")
-_l2_reg("bodha_rm_dosha_remedy_bundles", "bodha_rm_dosha_remedy_bundles t",
-        cat="'bundle'", subj="''", key="t.dosha_class", ident="t.bundle_id",
-        content=[("active", "t.active_flag"), ("cancellations", "t.cancellation_count"), ("prescriptions", _dg("t.prescription_ids_in_bundle_array")),
-                 ("summary", _dg("t.bundle_summary_jsonb")), ("sources", _dg("t.classical_sources_jsonb"))],
-        score=["t.intensity_score"], tier=_V, must_have_rows=False)
-_l2_reg("bodha_rm_pattern_remedies", "bodha_rm_pattern_remedies t",
-        cat="t.source_kind", subj="''", key="coalesce(t.remedy_theme,'')", ident="t.pattern_remedy_id",
-        content=[("source", "t.source_id"), ("prescriptions", _dg("t.prescription_ids_array"))],
-        score=["t.theme_strength", "t.cross_tradition_unanimity_score"], tier=_V, must_have_rows=False)
-_l2_reg("bodha_rm_remedy_prescriptions", "bodha_rm_remedy_prescriptions t",
-        cat="coalesce(t.remedy_category,'')", subj="t.snapshot_type||'|'||coalesce(t.target_graha,'')||'|'||coalesce(t.tradition,'')||'|'||coalesce(t.sub_tradition,'')",
-        key="coalesce(t.remedy_id_g27,'')", ident="t.prescription_id",
-        content=[("strength", "t.classical_strength_rating"), ("review", "t.requires_acharya_review_flag"), ("resonance", "t.target_resonance_id"), ("motif", "t.targets_motif_id"),
-                 ("cell", "t.targets_cell_id"), ("dosha", "t.targets_dosha_class"), ("corroboration", "t.cross_tradition_corroboration_count"), ("phase", "t.phase_sequence_class"),
-                 ("detail", _dg("t.prescription_detail_jsonb")), ("counter", _dg("t.counter_indications_array")), ("prereq", _dg("t.prerequisite_prescription_ids_array"))],
-        score=["t.resonance_match_score", "t.feasibility_score", "t.estimated_time_minutes_daily"], tier=_V, must_have_rows=True,
-        unread="prescription_embedding_vec, geometry/pilgrimage/cost jsonb, recommended hora/choghadiya arrays, substitute options, labels")
-# must_have_rows is True only for: bodha_msr_signals, bodha_signal_embeddings, bodha_cgm_nodes, bodha_cgm_edges, bodha_cgm_paths, bodha_cdlm_cells,
-# bodha_rm_resonances, bodha_mechanisms, synthesis_quality_scorecard, bodha_rm_remedy_prescriptions (writer raises on zero rows, or registry target_floor >= 1).
-for _t in ("bodha_cdlm_cells", "bodha_cgm_edges", "bodha_cgm_nodes", "bodha_cgm_paths", "bodha_mechanisms", "bodha_rm_resonances", "bodha_signal_embeddings", "bodha_msr_signals"):
-    L2_TABLES[_t]["must_have_rows"] = True
-
-HOOK_TABLES = LEGACY_HOOK_TABLES + tuple(L2_TABLES)  # additive: a hook may also name an L2 table (judged only when that table was compared)
 
 # Verdict classes, failure classes, warning class (see the module docstring).
 V_ALERT, V_FAIL, V_NOT_CHECKED, V_PASS = "ALERT", "FAIL", "NOT_CHECKED", "PASS"
@@ -533,7 +286,7 @@ def validate_hook(h, fname):
         if unknown:
             errs.append(f"{w}: unknown fields {sorted(unknown)}")
         if e.get("table") not in HOOK_TABLES:
-            errs.append(f"{w}: 'table' must be one of {LEGACY_HOOK_TABLES}")
+            errs.append(f"{w}: 'table' must be one of {HOOK_TABLES}")
         if "optional" in e and not isinstance(e["optional"], bool):
             errs.append(f"{w}: 'optional' must be true or false")
         if e.get("kind") == "dasha_shift":
@@ -651,13 +404,10 @@ def attribute_all(changes, hooks, chart_id):
     return counts
 
 
-def entry_observability(e, have_dash, have_daily, l2_tables=()):
-    """-> None if the detector can observe this entry, else the reason it cannot (the entry is then NOT CHECKED, not 'absent').
-    l2_tables = the L2 (Bodha) tables compared in this run (empty unless --l2): a hook entry on an L2 table that was not compared is NOT CHECKED."""
+def entry_observability(e, have_dash, have_daily):
+    """-> None if the detector can observe this entry, else the reason it cannot (the entry is then NOT CHECKED, not 'absent')."""
     if e.get("table") in UNCOMPARED_TABLES:
         return f"table {e['table']} is never read by the detector"
-    if e.get("table") in L2_TABLES and e["table"] not in l2_tables:
-        return f"L2 table {e['table']} not compared in this run (run with --l2 on a snapshot taken with --l2)"
     if e.get("table") == "chart_dashas":
         if not have_dash:
             return "chart_dashas not compared in this run (--no-dashas or absent from the snapshot)"
@@ -668,7 +418,7 @@ def entry_observability(e, have_dash, have_daily, l2_tables=()):
     return None
 
 
-def expectation_report(hooks, counts, chart_id, have_dash=True, have_daily=True, shift_counts=None, l2_tables=()):
+def expectation_report(hooks, counts, chart_id, have_dash=True, have_daily=True, shift_counts=None):
     """-> (expectation rows, EXPECTATION_MISMATCH messages, DECLARED_BUT_ABSENT messages, OPTIONAL_ABSENT warnings, entry-level NOT CHECKED).
     An entry that declares expected_count is judged by that bound (a bound with min 0 explicitly allows no change). An entry with no
     expected_count that observed nothing is DECLARED_BUT_ABSENT unless it is marked optional (then a warning). An entry the detector
@@ -679,7 +429,7 @@ def expectation_report(hooks, counts, chart_id, have_dash=True, have_daily=True,
         if not applies_to_chart(h, chart_id):
             continue
         for i, e in enumerate(h["may_change"]):
-            why = entry_observability(e, have_dash, have_daily, l2_tables)
+            why = entry_observability(e, have_dash, have_daily)
             label = f"{h['lane']}[{i}] ({e['table']}:{','.join(e.get('categories') or e.get('systems') or [])})"
             if why:
                 unchecked.append({"lane": h["lane"], "entry": i, "table": e["table"], "reason": why})
@@ -700,7 +450,7 @@ def expectation_report(hooks, counts, chart_id, have_dash=True, have_daily=True,
 
 
 # ------------------------------------------------------------------ read production
-def read_state(chart_id, dashas=True, daily=True, info=None, l2=None):
+def read_state(chart_id, dashas=True, daily=True, info=None):
     """Read one chart (and the global panchanga_daily) in ONE repeatable-read read-only transaction. The session must report
     transaction_read_only = on (requested through PGOPTIONS, proven by the first statement) or nothing is read."""
     chart_id = normalize_chart_id(chart_id)  # the only interpolated operator-controlled value: a UUID or nothing
@@ -715,11 +465,6 @@ def read_state(chart_id, dashas=True, daily=True, info=None, l2=None):
                  where chart_id='{chart_id}'"""))
     if daily:
         named.append(("daily", "select " + ",".join(f"{c}::text" for c in DAILY_COLS) + " from panchanga_daily order by date"))
-    l2 = list(l2 or [])
-    for t in l2:  # --l2: the L2 tables are read in the SAME repeatable-read read-only transaction (result-set names are letters + underscore only)
-        if t not in L2_TABLES:
-            raise ValueError(f"not an L2 table of the registry: {t!r}")
-        named.append(("xl_" + t, l2_select_sql(t, chart_id)))
     got = q_txn(named)
     if got["ro"] != [["on"]]:
         raise ReadError(f"database session is not read-only (transaction_read_only={got['ro']!r}); refusing to read")
@@ -730,8 +475,6 @@ def read_state(chart_id, dashas=True, daily=True, info=None, l2=None):
         st["dashas"] = dasha_label_rows(_rows(got, "dashas", 11))
     if daily:
         st["daily"] = _rows(got, "daily", len(DAILY_COLS))
-    if l2:
-        st["l2"] = {t: _rows(got, "xl_" + t, len(L2_COLS)) for t in l2}
     return st
 
 
@@ -750,24 +493,16 @@ def dasha_label_rows(rows):
     return [[r[0], r[1], int(r[2]), paths[r[9]], r[7], r[8]] for r in rows if r[1] != "scope_cap"]
 
 
-def l2_requested_tables(a):
-    """() unless --l2 was given; else the tables named by --l2-tables (comma list, registry names only) or every registry table."""
-    if not getattr(a, "l2", False):
-        return ()
-    named = _csv(getattr(a, "l2_tables", None))
-    return tuple(t for t in L2_TABLES if not named or t in named)
-
-
 def cmd_snapshot(a):
     """Never overwrites: a baseline is evidence. An existing file (or .sha256) at the target is refused (exit 6); pick another --out."""
     chart_id = resolve(a.snapshot)
     info = {}
     try:
-        st = read_state(chart_id, not a.no_dashas, not a.no_daily, info, l2=l2_requested_tables(a) or None)
+        st = read_state(chart_id, not a.no_dashas, not a.no_daily, info)
     except ReadError as ex:
         print(f"READ ERROR: {ex}", file=sys.stderr)
         return EXIT_READ_ERROR
-    empties = empty_tables(st, not a.no_dashas, not a.no_daily) + empty_l2_tables(st)
+    empties = empty_tables(st, not a.no_dashas, not a.no_daily)
     if empties:
         # the baseline is the evidence the whole flip report rests on: a snapshot of an empty read would be saved with a .sha256 and could not be overwritten
         print(f"READ ERROR: EMPTY READ: {', '.join(empties)} returned zero rows for chart {chart_id}; no snapshot was written "
@@ -777,8 +512,6 @@ def cmd_snapshot(a):
     st["meta"] = {"tool": "flip_detector.py", "tool_version": TOOL_VERSION, "chart_id": chart_id, "taken_at_utc": now, "db_user": info.get("db_user", ""), "read_only": True,
                   "single_transaction": "REPEATABLE READ READ ONLY", "no_dashas": bool(a.no_dashas), "no_daily": bool(a.no_daily),
                   "counts": {k: len(v) for k, v in st.items() if isinstance(v, list)}}
-    if "l2" in st:  # --l2 only: the default snapshot meta is byte-identical to the pre-L2 tool
-        st["meta"].update({"l2": True, "l2_extension_version": L2_EXTENSION_VERSION, "l2_tables": list(st["l2"]), "l2_counts": {t: len(v) for t, v in st["l2"].items()}})
     d = os.environ.get("FLIP_SNAPSHOT_DIR", DEFAULT_SNAPSHOT_DIR)
     out = a.out or os.path.join(d, f"pre_rebuild_{chart_id[:8]}_{now[:10]}_{now[11:19].replace(':', '')}.json.gz")
     os.makedirs(os.path.dirname(os.path.abspath(out)), exist_ok=True)
@@ -807,8 +540,6 @@ def cmd_snapshot(a):
             if os.path.exists(t):
                 os.unlink(t)
     print(f"snapshot: {out}\nsha256:   {h}\ncounts:   {st['meta']['counts']}\ntaken:    {now} as {st['meta']['db_user']}")
-    if "l2" in st:
-        print(f"l2:       {st['meta']['l2_counts']}")
     return 0
 
 
@@ -892,125 +623,6 @@ def diff_table(table, A, B, nkey):
             if len(x) > 2 and x[2] != y[2]:
                 out.append({**base, "change": "tier", "before": x[2], "after": y[2]})
     return out, cont
-
-
-# ------------------------------------------------------------------ L2 diff (only reached with --l2)
-L2_STANDING_NOT_CHECKED = (
-    {"id": "l2.unread_columns", "table": "l2", "what": "L2 columns outside each table's registry entry (the entry's `unread` text is in the report under l2_unread)",
-     "reason": "the L2 extension compares identity, the listed content columns (arrays / jsonb / embedding vectors by a 12-hex md5 digest only) and a few continuous scores; "
-               "every other column of the 29 L2 tables is never read", "readback": "hand read-back: 'L2 extension' in FLIP_DETECTOR_L2_README.md"},
-    {"id": "l2.generation_ledger", "table": "l2", "what": "the L2 data-plane generation ledger (producer generations, heads, partitions, run intents, row snapshots)",
-     "reason": "the reader role is denied SELECT on those tables; the detector sees the active L2 tables only, never the generation or head that produced them",
-     "readback": "hand read-back with a privileged login: 'L2 extension' in FLIP_DETECTOR_L2_README.md"},
-)
-
-
-def _l2_standing(standing, l2_tables):
-    """The standing NOT CHECKED registry for this run. Without L2 it is returned unchanged. With L2, the rows that say 'table not read by the detector'
-    for a table that IS now compared are dropped (they would be false) and the two L2 standing rows are added."""
-    if not l2_tables:
-        return standing
-    return tuple(n for n in standing if n.get("table") not in l2_tables) + L2_STANDING_NOT_CHECKED
-
-
-def empty_l2_tables(st, tables=None):
-    """L2 tables that must hold rows (registry flag must_have_rows) but hold none in this state. Only tables named in `tables` (default: those present in the state)."""
-    l2 = st.get("l2") or {}
-    return [t for t in (tables if tables is not None else l2) if t in L2_TABLES and L2_TABLES[t]["must_have_rows"] and not l2.get(t)]
-
-
-def _l2_cancel_common(a, b):
-    """Rows of a key that are identical on both sides (same identity text and tier) cancel (multiset): a duplicate-key group is then paired on what is left, so
-    one moved identity does not shift the pairing of the unchanged rows."""
-    pool = collections.Counter((x[0], x[2]) for x in b)
-    ra, gone = [], collections.Counter()
-    for x in a:
-        k = (x[0], x[2])
-        if pool[k] > 0:
-            pool[k] -= 1
-            gone[k] += 1
-        else:
-            ra.append(x)
-    rb = []
-    for y in b:
-        k = (y[0], y[2])
-        if gone[k] > 0:
-            gone[k] -= 1
-        else:
-            rb.append(y)
-    return ra, rb
-
-
-def _l2_score_pairs(base, a, b, stats):
-    """Continuous scores of rows whose identity text is identical on both sides. A score that moves is counted, never a class change; a score that becomes
-    NULL (a number lost) is a value change, as for the L1 continuous values."""
-    pool = collections.defaultdict(list)
-    for y in b:
-        pool[y[0]].append(y)
-    out = []
-    for x in a:
-        lst = pool.get(x[0])
-        if not lst:
-            continue
-        y = lst.pop(0)
-        px, py = x[3].split(","), y[3].split(",")
-        lost = False
-        for i in range(max(len(px), len(py))):
-            u, v = (px[i] if i < len(px) else ""), (py[i] if i < len(py) else "")
-            if u == "" and v == "":
-                continue
-            stats["compared"] += 1
-            if u != "" and v == "":
-                stats["changed"] += 1
-                stats["to_null"] += 1
-                lost = True
-                continue
-            try:
-                same = same_num(u, v)
-            except ValueError:
-                same = u == v
-            if not same:
-                stats["changed"] += 1
-                try:
-                    stats["max_abs_delta"] = max(stats["max_abs_delta"], abs(float(v) - float(u)))
-                except ValueError:
-                    pass
-        if lost:
-            out.append({**base, "change": "value", "before": [x[0], x[3]], "after": [y[0], y[3]], "note": "score_lost"})
-    return out
-
-
-def diff_l2_table(table, rows_a, rows_b):
-    """Class / identity / tier changes of one L2 table (7-column rows, see the L2 block above) -> (changes, score_stats).
-    The identity-bearing text and the tier go through the existing occ_map / diff_table unchanged (appeared, disappeared, value, occurrence_count, tier).
-    diff_table compares `num` whenever the text is non-empty, which would make every moved score a class change, so the scores are NOT passed as num:
-    they ride as a 4th element of the occurrence tuple (diff_table ignores it) and are compared here, continuously."""
-    kf = lambda r: (r[0], r[1], r[2], r[3])
-    vf = lambda r: (r[4], "", r[6], r[5])
-    A, B = occ_map(rows_a, kf, vf), occ_map(rows_b, kf, vf)
-    stats = {"compared": 0, "changed": 0, "to_null": 0, "max_abs_delta": 0.0, "keys_appeared": 0, "keys_disappeared": 0, "keys_both": 0}
-    A2, B2, orig, extra = {}, {}, {}, []
-    for k in sorted(set(A) | set(B)):
-        a, b = A.get(k), B.get(k)
-        if a is None or b is None:
-            stats["keys_appeared" if a is None else "keys_disappeared"] += 1
-            if a is not None:
-                A2[k] = a
-            else:
-                B2[k] = b
-            continue
-        stats["keys_both"] += 1
-        base = {"table": table, "key": list(k), "category": k[1], "fact_key": k[3], "ayanamsha": k[0]}
-        extra += _l2_score_pairs(base, a, b, stats)
-        ra, rb = _l2_cancel_common(a, b)
-        orig[k] = (len(a), len(b))
-        if ra or rb:
-            A2[k], B2[k] = ra, rb
-    changes, _ = diff_table(table, A2, B2, (1, 3))
-    for c in changes:
-        if c["change"] == "occurrence_count":
-            c["before"], c["after"] = orig[tuple(c["key"])]  # the totals, not what was left after the identical rows cancelled
-    return changes + extra, stats
 
 
 def dasha_diff(snap, cur, hooks, chart_id):
@@ -1136,7 +748,7 @@ def empty_tables(st, have_dash, have_daily):
 
 
 def compare_states(snap, cur, hooks, chart_id, have_dash=True, have_daily=True, hook_errors=(), standing_not_checked=STANDING_NOT_CHECKED,
-                   not_compared=None, extra_not_checked=(), l2_tables=(), l2_requested=False):
+                   not_compared=None, extra_not_checked=()):
     """Pure function (no I/O): the whole comparison. Returns the report dict (JSON-serializable, deterministic ordering).
     `standing_not_checked` is the registry of scopes the detector never compares; production always uses STANDING_NOT_CHECKED.
     EMPTY_READ rule: every table compared (chart_facts, chart_divisionals always; chart_dashas / panchanga_daily when compared) must hold
@@ -1144,20 +756,13 @@ def compare_states(snap, cur, hooks, chart_id, have_dash=True, have_daily=True, 
     row-level-security block for the reader), and empty-versus-empty would otherwise read as 'nothing changed'.
     A table that was NOT compared in this run (have_dash / have_daily False: a flag, or a section missing from a snapshot) is never silent:
     it adds a conditional NOT CHECKED row ('<table>.not_compared') carrying the reason in `not_compared` ({table: reason}), and the summary
-    prints n/a (never a green ok) for the classes it would have evaluated. `extra_not_checked` is a list of ready NOT CHECKED rows.
-    L2 (opt-in, default off: every output is then byte-identical to the pre-L2 tool): `l2_tables` = the L2 (Bodha) tables compared in this run (read from
-    snap["l2"] / cur["l2"]); `l2_requested` = the operator asked for L2 (--l2), so a missing section adds the conditional NOT CHECKED row 'l2.not_compared'
-    (reason in not_compared["l2"]). EMPTY_READ applies to L2 tables flagged must_have_rows only."""
+    prints n/a (never a green ok) for the classes it would have evaluated. `extra_not_checked` is a list of ready NOT CHECKED rows."""
     chart_id = normalize_chart_id(chart_id)
-    l2set = tuple(t for t in l2_tables if t in L2_TABLES)
     not_compared = dict(not_compared or {})
     empty = []
     for side, st in (("snapshot", snap), ("current", cur)):
         for label in empty_tables(st, have_dash, have_daily):
             empty.append(f"EMPTY READ: {label} has zero rows in the {side} state (a real chart has rows: the read returned nothing; check reader grants / row-level security)")
-    for side, st in (("snapshot", snap), ("current", cur)):
-        for t in empty_l2_tables(st, l2set):
-            empty.append(f"EMPTY READ: {t} has zero rows in the {side} state (a built chart has rows: the read returned nothing; check reader grants / row-level security)")
     fk = lambda r: (r[0], r[1], r[2], r[3])
     fv = lambda r: (r[4], r[5], r[6])
     changes, cont1 = diff_table("chart_facts", occ_map(snap["chart_facts"], fk, fv), occ_map(cur["chart_facts"], fk, fv), (1, 3))
@@ -1178,19 +783,15 @@ def compare_states(snap, cur, hooks, chart_id, have_dash=True, have_daily=True, 
     if have_dash:
         dch, dinfo, shift_unattrib, shift_counts = dasha_diff(snap["dashas"], cur["dashas"], hooks, chart_id)
         changes += dch
-    l2_cont = {}
-    for t in l2set:
-        ch3, l2_cont[t] = diff_l2_table(t, (snap.get("l2") or {}).get(t, []), (cur.get("l2") or {}).get(t, []))
-        changes += ch3
     counts = attribute_all(changes, hooks, chart_id)
-    exp_rows, exp_bad, absent, warn, entry_unchecked = expectation_report(hooks, counts, chart_id, have_dash, have_daily, shift_counts, l2set)
+    exp_rows, exp_bad, absent, warn, entry_unchecked = expectation_report(hooks, counts, chart_id, have_dash, have_daily, shift_counts)
     unattrib = [c for c in changes if not c["lanes"]]
     kind_mm = [c for c in unattrib if c["kind_mismatch"]]
     undeclared = [c for c in unattrib if not c["kind_mismatch"]]
     by = collections.Counter((c["table"], c["category"], c["change"], ",".join(c["lanes"]) or "UNATTRIBUTED") for c in changes)
     not_checked = [{"id": n["id"], "table": n["table"], "what": n["what"], "reason": n["reason"], "readback": n["readback"],
                     "declared_by_lanes": _declared_by(hooks, chart_id, n["table"], n["table"] == "chart_dashas"), "status": "NOT CHECKED"}
-                   for n in _l2_standing(standing_not_checked, l2set)]
+                   for n in standing_not_checked]
     not_checked += [{"id": f"{u['lane']}[{u['entry']}]", "table": u["table"], "what": "hook entry the detector cannot observe in this run", "reason": u["reason"],
                      "readback": "hand read-back", "declared_by_lanes": [u["lane"]], "status": "NOT CHECKED"} for u in entry_unchecked]
     for tname, on, what in (("chart_dashas", have_dash, "chart_dashas row sets and start shifts (a real dasha change would read as no change)"),
@@ -1199,15 +800,6 @@ def compare_states(snap, cur, hooks, chart_id, have_dash=True, have_daily=True, 
             not_checked.append({"id": f"{tname}.not_compared", "table": tname, "what": what, "reason": not_compared.get(tname, f"{tname} not compared in this run"),
                                 "readback": "re-run the compare WITHOUT --no-dashas / --no-daily on snapshots that carry the section",
                                 "declared_by_lanes": _declared_by(hooks, chart_id, tname, False), "status": "NOT CHECKED"})
-    if l2_requested and not_compared.get("l2"):
-        miss = sorted(t for t in L2_TABLES if t not in l2set)
-        not_checked.append({"id": "l2.not_compared", "table": "l2", "what": "L2 (Bodha) tables requested with --l2 but not compared (a real L2 change would read as no change)",
-                            "reason": not_compared["l2"], "readback": "re-run the snapshot and the compare WITH --l2 (both sides must carry the l2 section)",
-                            "declared_by_lanes": sorted({h["lane"] for h in hooks if applies_to_chart(h, chart_id) for e in h["may_change"] if e.get("table") in miss}),
-                            "status": "NOT CHECKED"})
-    for row in not_checked:
-        if row.get("table") == "l2" and row["id"] != "l2.not_compared":
-            row["declared_by_lanes"] = sorted({h["lane"] for h in hooks if applies_to_chart(h, chart_id) for e in h["may_change"] if e.get("table") in l2set})
     not_checked += [dict(x, status="NOT CHECKED") for x in extra_not_checked]
     rep = {"tool_version": TOOL_VERSION, "chart_id": chart_id, "changes_total": len(changes), "unattributed": len(unattrib),
            "compared": {"chart_facts": True, "chart_divisionals": True, "chart_dashas": bool(have_dash), "panchanga_daily": bool(have_daily)},
@@ -1227,11 +819,6 @@ def compare_states(snap, cur, hooks, chart_id, have_dash=True, have_daily=True, 
         rep["anchors"], rep["ALERT_anchor_changed"] = [], False
     else:
         rep["ALERT_anchor_changed"] = False
-    if l2set or l2_requested:
-        rep["compared"]["l2"] = list(l2set)
-        rep["l2_extension_version"] = L2_EXTENSION_VERSION
-        rep["continuous_l2"] = l2_cont
-        rep["l2_unread"] = {t: L2_TABLES[t]["unread"] for t in l2set}
     rep["verdict"] = decide_verdict(rep)
     return rep
 
@@ -1304,13 +891,6 @@ def render_summary(rep, allow_not_checked=False):
         L.append("dasha shifts: " + json.dumps({k: (x.get("rows_shifted"), x.get("mode_shift_sec"), x.get("lanes")) for k, x in sorted(rep["dashas"].items()) if x.get("rows_shifted")}, sort_keys=True))
     if rep["chart_id"] == NATIVE and not rep["ALERT_anchor_changed"]:
         L.append("anchors: 7 of 7 OK")
-    if rep.get("l2_extension_version"):  # --l2 runs only
-        l2c = comp.get("l2") or []
-        L.append(f"l2 (Bodha) tables compared: {len(l2c)} of {len(L2_TABLES)}" + ("" if l2c else "   NOT COMPARED in this run (see the NOT CHECKED line)"))
-        for t, c in sorted((rep.get("continuous_l2") or {}).items()):
-            if c["changed"] or c["to_null"] or c["keys_appeared"] or c["keys_disappeared"]:
-                L.append(f"continuous (l2 {t}): compared {c['compared']} changed {c['changed']} (to NULL {c['to_null']}) keys appeared {c['keys_appeared']} "
-                         f"disappeared {c['keys_disappeared']} max |delta| {c['max_abs_delta']:.6g}")
     return L
 
 
@@ -1379,36 +959,22 @@ def cmd_compare(a):
         for tname, key, flag, flagname, on in (("chart_dashas", "dashas", a.no_dashas, "--no-dashas", have_dash), ("panchanga_daily", "daily", a.no_daily, "--no-daily", have_daily)):
             if not on:
                 not_compared[tname] = f"{tname} not compared in this run: " + (flagname if flag else "the snapshot lacks the section")
-    want_l2 = l2_requested_tables(a)  # () unless --l2 (then nothing below differs from the pre-L2 tool)
-    l2_tables = ()
-    if want_l2:
-        in_snap = snap.get("l2") or {}
-        in_cur = (cur.get("l2") or {}) if cur is not None else None
-        l2_tables = tuple(t for t in want_l2 if t in in_snap and (in_cur is None or t in in_cur))
-        parts = [f"{x} missing from the snapshot's l2 section" for x in want_l2 if x not in in_snap]
-        if in_cur is not None:
-            parts += [f"{x} missing from the --against snapshot's l2 section" for x in want_l2 if x in in_snap and x not in in_cur]
-        if parts:
-            not_compared["l2"] = "L2 tables not compared in this run: " + "; ".join(parts)
     out = a.out or a.compare.replace(".json.gz", "") + f"_COMPARE_{datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%S')}.json"
     if cur is None:
         try:
-            cur = read_state(chart_id, have_dash, have_daily, l2=list(l2_tables) or None)
+            cur = read_state(chart_id, have_dash, have_daily)
         except ReadError as ex:
             rep = {"verdict": "READ_ERROR", "exit_code": EXIT_READ_ERROR, "chart_id": chart_id, "error": str(ex), "meta": {"snapshot": a.compare, "compared_at_utc": datetime.now(timezone.utc).isoformat()}}
             _write_json(out, rep)
             print(f"VERDICT: READ_ERROR   exit {EXIT_READ_ERROR}   {ex}\nreport: {out} | exit {EXIT_READ_ERROR}")
             return EXIT_READ_ERROR
-    rep = compare_states(snap, cur, hooks, chart_id, have_dash, have_daily, hook_errors=herrs, not_compared=not_compared, extra_not_checked=extra,
-                         l2_tables=l2_tables, l2_requested=bool(want_l2))
+    rep = compare_states(snap, cur, hooks, chart_id, have_dash, have_daily, hook_errors=herrs, not_compared=not_compared, extra_not_checked=extra)
     skipped = sorted(not_compared)
     rep["meta"] = {"snapshot": a.compare, "against": a.against, "snapshot_meta": snap["meta"], "compared_at_utc": datetime.now(timezone.utc).isoformat(),
                    "hook_lanes_loaded": [h["lane"] for h in hooks], "allow_not_checked": bool(a.allow_not_checked),
                    "flags": {"no_dashas": bool(a.no_dashas), "no_daily": bool(a.no_daily), "allow_not_checked": bool(a.allow_not_checked),
                              "i_know_dashas_are_not_compared": bool(a.i_know_dashas_are_not_compared), "require_lanes": _csv(a.require_lanes)},
                    "skipped_sections": skipped, "snapshot_sha256": sha_state}
-    if want_l2:
-        rep["meta"]["flags"].update({"l2": True, "l2_tables": list(want_l2)})
     code = exit_code(rep, a.allow_not_checked)
     rep["exit_code"] = code
     for ln in render_summary(rep, a.allow_not_checked):
@@ -1447,8 +1013,6 @@ def main(argv=None):
     ap.add_argument("--require-lanes")
     ap.add_argument("--no-dashas", action="store_true")
     ap.add_argument("--no-daily", action="store_true")
-    ap.add_argument("--l2", action="store_true", help="opt-in: also snapshot / compare the L2 (Bodha) tables of the registry (see FLIP_DETECTOR_L2_README.md); without it every output is unchanged")
-    ap.add_argument("--l2-tables", help="with --l2: comma list of registry tables to cover (default: all)")
     ap.add_argument("--allow-not-checked", action="store_true", help="exit 0 on verdict NOT_CHECKED (the NOT CHECKED items are still printed and recorded)")
     ap.add_argument("--i-know-dashas-are-not-compared", action="store_true",
                     help="required to combine --no-dashas / --no-daily with --require-lanes (the S-L1 window must compare dashas and daily)")
@@ -1457,14 +1021,6 @@ def main(argv=None):
         ap.error("exactly one of --snapshot / --compare / --validate-hooks")
     if a.against and not a.compare:
         ap.error("--against needs --compare")
-    if a.l2 and not (a.snapshot or a.compare):
-        ap.error("--l2 needs --snapshot or --compare")
-    if a.l2_tables is not None:
-        if not a.l2:
-            ap.error("--l2-tables needs --l2")
-        bad = [t for t in _csv(a.l2_tables) if t not in L2_TABLES]
-        if bad or not _csv(a.l2_tables):
-            ap.error(f"--l2-tables must name registry L2 tables; unknown: {bad}")
     if a.hooks_dir is not None and not a.hooks_dir.strip():
         ap.error("--hooks-dir must not be empty (omit it to use the default S-L1 hooks folder)")
     if a.require_lanes is not None and not _csv(a.require_lanes):
