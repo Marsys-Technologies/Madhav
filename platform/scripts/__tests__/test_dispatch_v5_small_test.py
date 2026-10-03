@@ -34,11 +34,9 @@ def _load_fresh():
 
 def test_refuses_without_both_steward_flags(monkeypatch):
     monkeypatch.delenv("DATABASE_URL", raising=False)
-    for argv in (
-        ["--horizon-start", "2026-01-01", "--horizon-end", "2026-02-01"],
-        ["--i-am-steward", "--horizon-start", "2026-01-01", "--horizon-end", "2026-02-01"],
-        ["--after-settled-1", "--horizon-start", "2026-01-01", "--horizon-end", "2026-02-01"],
-    ):
+    common = ["--run", "all_classes_1y", "--classes", "solar",
+              "--horizon-start", "2026-01-01", "--horizon-end", "2026-02-01"]
+    for argv in (common, ["--i-am-steward"] + common, ["--after-settled-1"] + common):
         with pytest.raises(SystemExit) as exc:
             _load_fresh().main(argv)
         assert exc.value.code == 2
@@ -46,38 +44,45 @@ def test_refuses_without_both_steward_flags(monkeypatch):
 
 # ── build_slice_marker ────────────────────────────────────────────────────────
 
-def test_slice_marker_all_classes():
-    m = dispatch.build_slice_marker(classes="all", horizon_start="2026-01-01", horizon_end="2026-02-01")
-    assert m == {"test_slice": True, "classes": "all",
-                 "horizon_start": "2026-01-01", "horizon_end": "2026-02-01"}
+MARKER = {"schema": "gochara_v5_test_slice/1", "run": "all_classes_1y",
+          "horizon": ["2026-01-01", "2026-02-01"], "classes": ["solar", "lunar", "eclipse"]}
 
 
-def test_slice_marker_class_list_is_parsed():
-    m = dispatch.build_slice_marker(classes="solar, lunar ,eclipse", horizon_start="2026-01-01",
-                                    horizon_end="2026-02-01")
-    assert m["classes"] == ["solar", "lunar", "eclipse"]
-    assert m["test_slice"] is True
+def test_slice_marker_shape_is_stream_as_definition():
+    m = dispatch.build_slice_marker(run="all_classes_1y", classes="solar, lunar ,eclipse",
+                                    horizon_start="2026-01-01", horizon_end="2026-02-01")
+    assert m == MARKER
+    assert set(m) == {"schema", "run", "horizon", "classes"}   # no extra fields, ever
+
+
+def test_slice_marker_rejects_an_unknown_run():
+    with pytest.raises(RuntimeError):
+        dispatch.build_slice_marker(run="everything", classes="solar",
+                                    horizon_start="2026-01-01", horizon_end="2026-02-01")
 
 
 def test_slice_marker_rejects_bad_horizons():
     with pytest.raises(RuntimeError):
-        dispatch.build_slice_marker(classes="all", horizon_start="jan", horizon_end="2026-02-01")
+        dispatch.build_slice_marker(run="one_class_full", classes="solar",
+                                    horizon_start="jan", horizon_end="2026-02-01")
     with pytest.raises(RuntimeError):
-        dispatch.build_slice_marker(classes="all", horizon_start="2026-02-01", horizon_end="2026-01-01")
+        dispatch.build_slice_marker(run="one_class_full", classes="solar",
+                                    horizon_start="2026-02-01", horizon_end="2026-01-01")
     with pytest.raises(RuntimeError):
-        dispatch.build_slice_marker(classes=" , ", horizon_start="2026-01-01", horizon_end="2026-02-01")
+        dispatch.build_slice_marker(run="one_class_full", classes=" , ",
+                                    horizon_start="2026-01-01", horizon_end="2026-02-01")
 
 
 def test_manifest_carries_the_slice_marker_and_digests_it():
     candidate = {"asset_id": "ka_gochara_v5", "scope": "per_chart", "depends_on": [],
                  "natural_key_partition": None, "has_cowriters": False}
-    marker = dispatch.build_slice_marker(classes="all", horizon_start="2026-01-01",
-                                         horizon_end="2026-02-01")
+    marker = dispatch.build_slice_marker(run="all_classes_1y", classes="solar,lunar,eclipse",
+                                         horizon_start="2026-01-01", horizon_end="2026-02-01")
     manifest, digest = dispatch.build_small_test_manifest(candidate=candidate, slice_marker=marker)
     assert manifest["version"] == "nirmana-run-manifest/v1"
     assert manifest["scope_target"] == "ka_gochara_v5"
     assert manifest["chart_id"] == CHART_ID
-    assert manifest["slice_marker"] == marker
+    assert manifest["gochara_v5_test_slice"] == marker
     import hashlib
     canonical = json.dumps(manifest, ensure_ascii=True, sort_keys=True, separators=(",", ":"))
     assert digest == hashlib.sha256(canonical.encode("utf-8")).hexdigest()
@@ -161,7 +166,8 @@ def _run_main(harness: _Harness, argv: list[str], capsys):
             os.environ["DATABASE_URL"] = prior_db_url
 
 
-BASE_ARGV = ["--i-am-steward", "--after-settled-1",
+BASE_ARGV = ["--i-am-steward", "--after-settled-1", "--run", "all_classes_1y",
+             "--classes", "solar,lunar,eclipse",
              "--horizon-start", "2026-01-01", "--horizon-end", "2026-02-01"]
 
 
@@ -182,8 +188,7 @@ def test_staging_is_one_transaction_ending_inert(capsys):
     assert params[1] == CHART_ID and params[2] == "ka_gochara_v5"
     assert params[-1] == "gochara-v5-small-test"
     manifest = json.loads(params[4])
-    assert manifest["slice_marker"] == {"test_slice": True, "classes": "all",
-                                        "horizon_start": "2026-01-01", "horizon_end": "2026-02-01"}
+    assert manifest["gochara_v5_test_slice"] == MARKER
     assert params[3] == json.dumps(["ka_gochara_v5"])
     # stdout carries ONLY the run_id
     run_id = out.out.strip()
@@ -192,14 +197,13 @@ def test_staging_is_one_transaction_ending_inert(capsys):
 
 def test_dry_run_rolls_back_and_prints_the_plan(capsys):
     h = _Harness()
-    out = _run_main(h, BASE_ARGV + ["--dry-run", "--classes", "solar,lunar"], capsys)
+    out = _run_main(h, BASE_ARGV + ["--dry-run"], capsys)
     assert not h.commits and len(h.rollbacks) == 1
     assert "[dry-run]" in out.err and "nothing written" in out.err
     plan = json.loads(out.out)
     assert plan["triggered_by"] == "gochara-v5-small-test"
     assert plan["asset_id"] == "ka_gochara_v5" and plan["chart_id"] == CHART_ID
-    assert plan["plan_manifest"]["slice_marker"]["classes"] == ["solar", "lunar"]
-    assert plan["plan_manifest"]["slice_marker"]["test_slice"] is True
+    assert plan["plan_manifest"]["gochara_v5_test_slice"] == MARKER
 
 
 def test_dependents_refuse_the_dispatch(capsys):

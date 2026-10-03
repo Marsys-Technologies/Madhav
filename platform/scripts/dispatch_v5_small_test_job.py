@@ -33,9 +33,19 @@ observes is_active=true under READ COMMITTED):
 
 The slice marker tells the (separately governed) writer that this run is a
 SMALL TEST: test_slice=true, classes (a list, or 'all'), horizon_start,
-horizon_end. Stream A defines how the writer reads it — the marker
-construction is deliberately ONE small function (build_slice_marker) so it
-can be adjusted in one place.
+horizon_end. The marker is Stream A's definition (EVENTS M20261003T181323-f9c7
+§3, accepted by the steward as the working definition):
+
+  plan_manifest["gochara_v5_test_slice"] = {
+      "schema":  "gochara_v5_test_slice/1",
+      "run":     "all_classes_1y" | "one_class_full",
+      "horizon": ["<start ISO>", "<end ISO>"],
+      "classes": ["<class>", ...],
+  }
+
+— exactly those four fields, no extras; the dispatch validates the shape and
+refuses anything else. The marker construction is deliberately ONE small
+function (build_slice_marker) so it can be adjusted in one place.
 
 The chart is the pinned canonical chart 482012f1-710e-4a25-994a-93821f5871aa
 ONLY — there is no chart argument; any other chart is refused by
@@ -56,7 +66,8 @@ script never deletes anything.
 Usage:
   cd <repo-root>/platform
   python3 scripts/dispatch_v5_small_test_job.py --i-am-steward --after-settled-1 \
-      [--classes all|class1,class2] --horizon-start YYYY-MM-DD --horizon-end YYYY-MM-DD [--dry-run]
+      --run all_classes_1y|one_class_full --classes class1,class2 \
+      --horizon-start YYYY-MM-DD --horizon-end YYYY-MM-DD [--dry-run]
   python3 scripts/dispatch_v5_small_test_job.py --help
 """
 from __future__ import annotations
@@ -169,11 +180,19 @@ def _validate_registry_row(cur) -> None:
                 "dispatching")
 
 
-def build_slice_marker(*, classes: str, horizon_start: str, horizon_end: str) -> dict:
-    """The small-test slice marker merged into plan_manifest. ONE small
-    function by design: Stream A defines how the writer reads it, so it can
-    be adjusted here without touching the staging flow. classes is 'all' or
-    a comma-separated list; the horizons are ISO dates."""
+SLICE_MARKER_SCHEMA = "gochara_v5_test_slice/1"
+SLICE_RUNS = ("all_classes_1y", "one_class_full")
+
+
+def build_slice_marker(*, run: str, classes: str, horizon_start: str, horizon_end: str) -> dict:
+    """The small-test slice marker merged into plan_manifest under the key
+    'gochara_v5_test_slice' — Stream A's definition (EVENTS
+    M20261003T181323-f9c7 §3): exactly the fields schema/run/horizon/classes,
+    NO extras; anything else is refused. ONE small function by design, so the
+    shape can be adjusted here without touching the staging flow. classes is a
+    comma-separated list; the horizons are ISO dates."""
+    if run not in SLICE_RUNS:
+        raise RuntimeError(f"--run must be one of {SLICE_RUNS}, got {run!r}")
     for label, value in (("horizon_start", horizon_start), ("horizon_end", horizon_end)):
         try:
             datetime.date.fromisoformat(value)
@@ -182,18 +201,14 @@ def build_slice_marker(*, classes: str, horizon_start: str, horizon_end: str) ->
     if horizon_end <= horizon_start:
         raise RuntimeError(
             f"horizon_end {horizon_end!r} must be after horizon_start {horizon_start!r}")
-    parsed: str | list[str]
-    if classes == "all":
-        parsed = "all"
-    else:
-        parsed = [c.strip() for c in classes.split(",") if c.strip()]
-        if not parsed:
-            raise RuntimeError("--classes must be 'all' or a non-empty comma-separated list")
+    parsed = [c.strip() for c in classes.split(",") if c.strip()]
+    if not parsed:
+        raise RuntimeError("--classes must be a non-empty comma-separated list")
     return {
-        "test_slice": True,
+        "schema": SLICE_MARKER_SCHEMA,
+        "run": run,
+        "horizon": [horizon_start, horizon_end],
         "classes": parsed,
-        "horizon_start": horizon_start,
-        "horizon_end": horizon_end,
     }
 
 
@@ -204,7 +219,7 @@ def build_small_test_manifest(*, candidate, slice_marker: dict) -> tuple[dict, s
         candidate=candidate,
         expected_code_digest=_load_writer_digest(ASSET_ID),
     )
-    manifest["slice_marker"] = slice_marker
+    manifest["gochara_v5_test_slice"] = slice_marker
     digest = hashlib.sha256(_canonical_json(manifest).encode("utf-8")).hexdigest()
     return manifest, digest
 
@@ -217,8 +232,10 @@ def _parse_args(argv: list[str]) -> argparse.Namespace:
                    help="required: you are the steward, acting on native authority")
     p.add_argument("--after-settled-1", action="store_true",
                    help="required: the protected window's settled-1 precondition has passed")
-    p.add_argument("--classes", default="all",
-                   help="'all' (default) or a comma-separated list of event classes")
+    p.add_argument("--run", required=True, choices=SLICE_RUNS,
+                   help="the small-test run identity: all_classes_1y or one_class_full")
+    p.add_argument("--classes", required=True,
+                   help="a non-empty comma-separated list of event classes")
     p.add_argument("--horizon-start", required=True, help="ISO date YYYY-MM-DD")
     p.add_argument("--horizon-end", required=True, help="ISO date YYYY-MM-DD")
     p.add_argument("--dry-run", action="store_true",
@@ -233,7 +250,8 @@ def main(argv: list[str] | None = None) -> None:
               "pass BOTH --i-am-steward and --after-settled-1", file=sys.stderr)
         sys.exit(2)
     slice_marker = build_slice_marker(
-        classes=args.classes, horizon_start=args.horizon_start, horizon_end=args.horizon_end)
+        run=args.run, classes=args.classes,
+        horizon_start=args.horizon_start, horizon_end=args.horizon_end)
 
     import psycopg
     import psycopg.rows
