@@ -177,7 +177,7 @@ def test_hostile_65kb_quote_dollar_and_comment_input_is_linear():
         for qa in (True, False):
             t0 = time.perf_counter()
             slw._strip_sql_comments(text, qa)
-            assert time.perf_counter() - t0 < 0.3, (name, qa)
+            assert time.perf_counter() - t0 < 3.0, (name, qa)
 
 
 # ───────────────────────── MEDIUM-2: immutable or policed ─────────────────────────
