@@ -740,6 +740,14 @@ def _evidence_pointer_ok(ev) -> bool:
         return False
 
 
+def _carriage_pointer_strict(label: str, ev) -> None:
+    """The S3 pointer rules for a carriage spec's evidence pointers (effect_clauses_evidence, condition_evidence, an escape hatch's, a repair's): no control / invisible character, a
+    `:LINE` inside the file, an `unverified:` pointer states a real description. They are not N/A releases (the carriage's own `evidence` is), so `unverified:` stays allowed."""
+    bad = _s3_evidence_problem(ev, allow_unverified=True)
+    if bad:
+        raise DeclarationsError(f"{label} {ev!r} {bad}")
+
+
 def validate_carriage_declaration(where: str, car: dict, e: dict) -> None:
     """Raises DeclarationsError when the asset's declared carriage CHECK is malformed or contradicts N-73's nature rule."""
     nature = car.get("nature")
@@ -753,6 +761,15 @@ def validate_carriage_declaration(where: str, car: dict, e: dict) -> None:
     if not _evidence_pointer_ok(car["evidence"]):
         raise DeclarationsError(f"{where}.carriage.evidence {car['evidence']!r} is not an existing repo-relative file (optionally with :line); a "
                                 f"pointer that cannot be checked must say so: 'unverified:<where it is recorded>'")
+    # E6.1 follow-up (S2 strictness, matching S3's `_s3_common`): the same text and pointer rules as vocab_alias / ldgr_source. `why` is a real one-line statement (no control or
+    # invisible character, at least 15 characters and 3 words, no placeholder word anywhere, except that a D1 / D2 / D3 sentence may mention `null` / `none`, as the latta's does; a ratified_judgment, which releases N/A, may not); `evidence` has no control character, a `:LINE` inside the file, and an `unverified:` pointer states
+    # a real description (10 characters, 2 words). A ratified_judgment carriage RELEASES Carr.D1-D3 to N/A, so (as an S3 N/A release) it may not rest on an `unverified:` pointer.
+    bad = _s3_text_problem(car["why"], min_chars=15, min_words=3, placeholder="any" if nature == RATIFIED_JUDGMENT else "prose")
+    if bad:
+        raise DeclarationsError(f"{where}.carriage.why {bad}")
+    bad = _s3_evidence_problem(car["evidence"], allow_unverified=nature != RATIFIED_JUDGMENT)
+    if bad:
+        raise DeclarationsError(f"{where}.carriage.evidence {car['evidence']!r} {bad}")
     if isinstance(e.get("terminal_by_construction"), str) and e["terminal_by_construction"].strip():
         raise DeclarationsError(f"{where}: a declared carriage check and terminal_by_construction contradict each other (an asset that "
                                 f"declares a carriage check carries something from a source; declare one or the other)")
@@ -788,10 +805,13 @@ def validate_carriage_declaration(where: str, car: dict, e: dict) -> None:
         if not _evidence_pointer_ok(spec["effect_clauses_evidence"]):
             raise DeclarationsError(f"{where}.carriage.spec.effect_clauses_evidence {spec['effect_clauses_evidence']!r} is not an existing "
                                     "repo-relative file (optionally :line) or 'unverified:<where>'")
+        _carriage_pointer_strict(f"{where}.carriage.spec.effect_clauses_evidence", spec["effect_clauses_evidence"])
         for ef in spec.get("extra_fields", []):
             if ef.get("kind") == "passage_text" and not _evidence_pointer_ok(ef["condition_evidence"]):
                 raise DeclarationsError(f"{where}.carriage.spec.extra_fields[{ef['column']}].condition_evidence {ef['condition_evidence']!r} is "
                                         "not an existing repo-relative file (optionally :line) or 'unverified:<where>' (existence only)")
+            if ef.get("kind") == "passage_text":
+                _carriage_pointer_strict(f"{where}.carriage.spec.extra_fields[{ef['column']}].condition_evidence", ef["condition_evidence"])
             hatches = []
             if ef.get("kind") == "passage_text":
                 for d in [ef["condition"], *ef.get("by_claimant", {}).values()]:
@@ -801,11 +821,13 @@ def validate_carriage_declaration(where: str, car: dict, e: dict) -> None:
                     raise DeclarationsError(f"{where}.carriage.spec.extra_fields[{ef['column']}] escape hatch {h['text']!r}: evidence "
                                             f"{h['evidence']!r} is not an existing repo-relative file (optionally :line) or "
                                             "'unverified:<where>' (existence only)")
+                _carriage_pointer_strict(f"{where}.carriage.spec.extra_fields[{ef['column']}] escape hatch {h['text']!r}: evidence", h["evidence"])
             for rp in ef.get("repairs", []) if ef.get("kind") == "passage_text" else []:
                 if not _evidence_pointer_ok(rp["evidence"]):
                     raise DeclarationsError(f"{where}.carriage.spec.extra_fields[{ef['column']}].repairs[{rp['from']!r}].evidence "
                                             f"{rp['evidence']!r} is not an existing repo-relative file (optionally :line) or "
                                             "'unverified:<where>' (existence only)")
+                _carriage_pointer_strict(f"{where}.carriage.spec.extra_fields[{ef['column']}].repairs[{rp['from']!r}].evidence", rp["evidence"])
 # E6 S3 (SS N-72 S3, N-73 (1)/(4), N-74 (b)): two more per-asset DECLARATIONS, each reviewed and carrying evidence and ONE line of reason. `vocab_alias`
 # declares the asset's alias class (measured against bg_ontology) or that it has none (`no_alias_class`); `ldgr_source` names the column that carries
 # the asset's classical source and the citation_state it stands on, or declares that the asset states no classical rule or cited fact
@@ -832,9 +854,16 @@ _S3_PLACEHOLDER_WORDS = frozenset({"tbd", "todo", "tba", "fixme", "xxx", "placeh
 _S3_WORD = re.compile(r"[^\W_]+(?:[./'-][^\W_]+)*")
 
 
-def _s3_text_problem(v, *, min_chars: int, min_words: int):
+_PROSE_MAY_MENTION = frozenset({"null", "none"})      # the only placeholder words a carriage `why` sentence may mention (the committed latta why says "content_sa is NULL")
+
+
+def _s3_text_problem(v, *, min_chars: int, min_words: int, placeholder: str = "any"):
     """None when `v` is a real one-line text: a str with no control / format / line-separator character (\\r, \\n, U+0085, U+2028/9, zero-width ...), at least
-    `min_chars` characters and `min_words` words once trimmed, and no placeholder word (TBD, todo, N/A ...); else why it is not."""
+    `min_chars` characters and `min_words` words once trimmed, and no placeholder word (TBD, todo, N/A ...); else why it is not.
+    `placeholder="any"` (S3's rule) refuses a placeholder word ANYWHERE. `placeholder="prose"` (the carriage `why` of a D1 / D2 / D3 check, E6.1 follow-up) is for a long explanatory
+    sentence that may legitimately MENTION the words `null` and `none` ("content_sa is NULL", "none of the rows has an effect clause"): ONLY those two are exempt; every other placeholder
+    word (tbd, todo, tba, fixme, xxx, placeholder, pending, n/a, unknown, nil, ...) is still refused anywhere, and the statement needs at least `min_words` REAL words (a word that is no
+    placeholder word at all: 'see tbd tbd tbd' and 'none none none none' have fewer than three). A ratified_judgment `why` (it releases Carr.D1-D3 to N/A) uses "any"."""
     if not isinstance(v, str):
         return "is not a string"
     if v != v.strip():
@@ -846,6 +875,13 @@ def _s3_text_problem(v, *, min_chars: int, min_words: int):
     words = _S3_WORD.findall(v)
     if len(v) < min_chars or len(words) < min_words:
         return f"is too short to be a real statement (need at least {min_chars} characters and {min_words} words)"
+    if placeholder == "prose":
+        bad = [w for w in words if w.casefold() in _S3_PLACEHOLDER_WORDS and w.casefold() not in _PROSE_MAY_MENTION]
+        if bad:
+            return f"contains a placeholder word ({bad[0]!r}: TBD / todo / pending / unknown / n/a ... are refused anywhere; only null / none may be mentioned in a sentence)"
+        if sum(1 for w in words if w.casefold() not in _S3_PLACEHOLDER_WORDS) < min_words:
+            return f"is mostly placeholder words (need at least {min_words} words that are none of: null, none, tbd, todo, ...)"
+        return None
     if any(w.casefold() in _S3_PLACEHOLDER_WORDS for w in words):
         return "contains a placeholder word (TBD / todo / placeholder / n/a ...)"
     return None
@@ -1037,6 +1073,30 @@ def prose_empty_d1_problem(entry):
     return None
 
 
+# NARR-GUARD required-coupling pin (E6.1 follow-up, L3). `prose_empty_d1_problem` binds a coupling to the D1 carriage it rests on by VALIDATION, but it keys on the
+# carriage being PRESENT: delete the `prose_coupling` AND the `carriage` block of bg_phaladeepika_latta (a double deletion) and what is left is `prose_fields []` on an asset with
+# no carriage, which is exactly what bg_doshas / bg_yogas / bg_ontology / bo_laksana_rerank declare, a plain R03 Narr N/A with no Carr.D1 behind it: a cheaper state reached by
+# deleting two declarations. This table names the assets whose N/A is ONLY ever the coupled one (the strategist ruling that made their text columns transcription, N-94): for
+# them the coupling is REQUIRED, so `prose_fields []` without a `prose_coupling` is refused by the validator, read NO_DETECTOR by the measure-time glue and flagged
+# `declared_prose_coupling_missing` for the rollup / gap ledger / certificate writer / E6.3 reader, whatever else the entry holds or whether it exists. A registry-side table, not
+# fingerprinted content (it adds no criterion, rule or cause and decides no cell where the coupling is present); adding an asset here is a ruling, not a convenience.
+PROSE_COUPLING_REQUIRED = {
+    "bg_phaladeepika_latta": "N-94: its effect / affliction strings are transcription of a cited passage whose fidelity only Carr.D1 measures",
+}
+
+
+def prose_coupling_required_problem(asset_id, entry):
+    """None unless `asset_id` is in PROSE_COUPLING_REQUIRED and its declaration carries no `prose_coupling` object (an absent entry, a null one, a malformed one: all missing); else why
+    its Narr N/A may not stand. Pure; ONE definition for the validator, the measure-time glue and `declared_facts`."""
+    why = PROSE_COUPLING_REQUIRED.get(asset_id) if isinstance(asset_id, str) else None
+    if why is None:
+        return None
+    if isinstance(entry, dict) and isinstance(entry.get("prose_coupling"), dict):
+        return None
+    return (f"{asset_id} requires a prose_coupling to carriage_d1 ({why}): without it a `prose_fields []` would be a plain no-prose N/A with no Carr.D1 behind it "
+            "(deleting the coupling together with the carriage must not make the asset cheaper)")
+
+
 def prose_coupling_unclassified(entry, table_columns, column_types) -> list:
     """The table's text-like columns that are neither listed in the entry's prose_coupling nor a column its D1 spec checks: the structural labels and provenance pointers the
     N/A does NOT claim to cover (R03 reads them as not narration). Named on the measured record so a reviewer sees them; never gated. [] when the entry has no coupling or the
@@ -1215,6 +1275,10 @@ def validate_declarations(doc, registry_ids=None) -> dict:
         bad = prose_empty_d1_problem(e)
         if bad:
             raise DeclarationsError(f"{where}.prose_coupling is missing: {bad}")
+        if e.get("prose_fields") == []:
+            bad = prose_coupling_required_problem(aid, e)
+            if bad:
+                raise DeclarationsError(f"{where}.prose_coupling is missing: {bad}")
         pf = e.get("prose_fields")
         if pf is not None:
             # null = undeclared; [] = declared "this writer composes no prose" (a positive claim); both need evidence
@@ -1354,6 +1418,8 @@ def declared_facts(declarations, asset_id, registry_kind=None, measured_dependen
     (the Dens.served verdict: a declared served_surface False against PASS/FAIL/PARTIAL, or True against N/A, is reported)."""
     facts: dict = {}
     e = (declarations or {}).get(asset_id)
+    if prose_coupling_required_problem(asset_id, e):
+        facts["declared_prose_coupling_missing"] = True      # a required coupling that is not declared (even an absent entry): no Narr N/A of this asset may stand
     if not isinstance(e, dict):
         return facts
     disagree = []
@@ -1397,7 +1463,7 @@ def declared_facts(declarations, asset_id, registry_kind=None, measured_dependen
         except (KeyError, TypeError, AttributeError, ValueError):
             covered = None
         facts["declared_prose_coupling"] = dict(to=pcp.get("to"), columns=cols, covered=covered)
-    elif prose_empty_d1_problem(e):
+    elif prose_empty_d1_problem(e) or prose_coupling_required_problem(asset_id, e):
         facts["declared_prose_coupling_missing"] = True      # [] + a D1 transcription carriage and NO coupling: no Narr N/A may stand (the rollup, the ledger and the reader read this)
     cw = e.get("cross_asset_writes")
     if isinstance(cw, list):
@@ -2793,6 +2859,11 @@ def grade_null_convention(spec: dict, columns, types, stats) -> dict:
         elif d.get("value") is not None and per[c]["nulls"] == 0 and not _same_constant(per[c].get("sole"), d["value"], kinds[c]):
             const_viol.append(c)
     unscoped = [c for c, n in nullable.items() if not n.get("scope") and per[c]["nulls"] > 0]
+    # PARTITION NOTE (E6.1 follow-up, STAMP LOW): fallback_checked / elements_not_inspected / fallback_not_applicable / stamp_columns partition `cols` (each column in exactly one group,
+    # pinned by test_e6_stamp_columns._partition) only while the catalog reads that feed them agree. `kinds` (null_fetch_column_kinds) and `stamp_facts` (null_fetch_stamp_facts) are two
+    # separate pg_catalog SELECTs and the table SELECT is a third, not one snapshot: a concurrent ALTER COLUMN .. TYPE between them can list one column in TWO groups (a stamp the kinds
+    # read still saw as text sits in fb_checked AND stamps) or in none. That is an accounting race only: the verdict is decided from the one table SELECT's numbers (`per`) plus the
+    # refusal of a non-timestamp stamp above, never from the group lists, and a rebuild re-reads. It is recorded rather than guarded (guarding needs one catalog snapshot).
     fb_possible = [c for c in cols if _null_fb_possible(kinds[c], c in nullable)]
     elem_not_inspected = [c for c in fb_possible if kinds[c] == "array_other"]            # only the EMPTY-array test runs: the element contents are not looked at
     fb_checked = [c for c in fb_possible if c not in elem_not_inspected]                  # what the PASS claim "no literal fallback" actually covers
@@ -3384,8 +3455,8 @@ def prose_checks(aid: str, decl, ctx: dict) -> dict:
         return {c: dict(v=NO_DET, measured=f"NO_DETECTOR — prose_fields is undeclared for {aid}: never read as 'no prose'")
                 for c in allc}
     if not pf:
-        bad = prose_empty_d1_problem(decl)
-        if bad:                           # NARR-GUARD (N-94): [] + a D1 transcription carriage with no coupling is never N/A, whatever the validator saw
+        bad = prose_empty_d1_problem(decl) or prose_coupling_required_problem(aid, decl)
+        if bad:                           # NARR-GUARD (N-94): [] + a D1 transcription carriage with no coupling is never N/A, whatever the validator saw; nor is [] on an asset whose coupling is required
             return {c: dict(v=NO_DET, measured=f"NO_DETECTOR — {aid}: {bad}") for c in allc}
         if not ctx.get("written"):       # None (unreadable) OR {} (the scan saw no write at all): neither proves "no narration write"
             return {c: dict(v=NO_DET, measured=f"NO_DETECTOR — {aid} declares prose_fields [] but its writes could not be "
@@ -8480,7 +8551,9 @@ def _emit_facts(a: dict, census: dict):
     try:
         decl = load_asset_declarations()
     except DeclarationsError:
-        return None
+        # unreadable declarations: the record's own block is all the guard has -- EXCEPT for an asset whose coupling is REQUIRED (PROSE_COUPLING_REQUIRED), keyed by asset id: no
+        # coupling can be shown, so none of its Narr N/A rows is released (E6.1 follow-up, LOW-2; stricter only, every other asset reads None as before)
+        return {"declared_prose_coupling_missing": True} if prose_coupling_required_problem(a.get("asset_id") if isinstance(a, dict) else None, None) else None
     return facts_for_asset(a, decl)
 
 
