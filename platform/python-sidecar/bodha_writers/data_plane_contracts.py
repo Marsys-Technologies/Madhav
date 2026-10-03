@@ -549,6 +549,21 @@ def _complete_partition(ctx: Any, observation: ProducerObservation, result: Any)
         )
 
 
+def _resolve_unqualified_names_to_real_tables(ctx: Any) -> None:
+    """After the writer is done, make unqualified table names mean the REAL ``public`` tables again.
+
+    ``bind_l2_exact_inputs`` creates ``ON COMMIT DROP`` temp shadows named like the protected tables (``chart_facts``,
+    ``bodha_msr_signals``, ...) holding only the rows of the exact input generations. ``pg_temp`` is searched FIRST, so for the rest of
+    the transaction every unqualified name resolves to a shadow. A light writer runs in ONE deferred-commit transaction (the shadows are
+    still alive) and the orchestrator then runs the registry's ``integrity_check_sql`` and ``count_sql`` on the same connection with
+    unqualified names (``asset_runner._probe_asset``): they would read the shadows, not the rows the writer just wrote, so a
+    ``NOT EXISTS`` conjunct could pass on an empty or unrelated shadow (a detector that cannot go red, CLAUDE.md N.8).
+    ``SET LOCAL`` ends with the transaction; the shadows themselves are untouched (they drop at commit).
+    """
+    with ctx.db_conn.cursor() as cur:
+        cur.execute("SET LOCAL search_path = public, pg_temp")
+
+
 def _writer_source_digest(asset_id: str) -> str:
     from pipeline.orchestrator.asset_runner import get_writer_source_hash
 
@@ -626,6 +641,7 @@ def l2_producer(asset_id: str) -> Callable[[T], T]:
                 result = original(self, ctx, *args, **kwargs)
                 setattr(result, "_l2_partition_key", partition_key)
                 _complete_partition(ctx, observation, result)
+                _resolve_unqualified_names_to_real_tables(ctx)
                 suffix = (
                     f"l2_generation={observation.generation_id} "
                     f"partition={partition_key} temporal=UNAVAILABLE_AT_L2"

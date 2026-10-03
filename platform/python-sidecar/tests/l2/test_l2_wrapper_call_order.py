@@ -25,6 +25,7 @@ _KINDS = (
     ("bind_l2_exact_inputs", "bind"),
     ("open_l2_data_plane_generation", "open"),
     ("complete_l2_data_plane_partition", "complete"),
+    ("SET LOCAL search_path = public, pg_temp", "search_path"),
 )
 
 
@@ -74,7 +75,7 @@ def _stubs(monkeypatch):
     monkeypatch.setattr(dpc, "_writer_source_digest", lambda _a: "a" * 64)
 
 
-def test_wrapper_binds_before_it_opens_and_completes_last():
+def test_wrapper_binds_before_it_opens_and_resets_name_resolution_last():
     class Probe:
         asset_id = "bo_arudha"
 
@@ -86,7 +87,7 @@ def test_wrapper_binds_before_it_opens_and_completes_last():
     conn = _RecordingConn()
     ctx = SimpleNamespace(build_id=BUILD, config={"chart_id": CHART}, db_conn=conn, dry_run=False)
     Wrapped().run(ctx)
-    assert conn.log == ["set_config", "bind", "open", "body", "complete"], conn.log
+    assert conn.log == ["set_config", "bind", "open", "body", "complete", "search_path"], conn.log
 
 
 def test_open_generation_issues_bind_strictly_before_open():

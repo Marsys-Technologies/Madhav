@@ -348,7 +348,7 @@ def test_heavy_writer_records_each_substep_partition_in_callers_transaction(monk
         def __exit__(self, *_args):
             return False
 
-        def execute(self, sql, params):
+        def execute(self, sql, params=None):
             executed.append((sql, params))
 
     class Conn:
