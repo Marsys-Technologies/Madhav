@@ -19,6 +19,9 @@ Covered:
   M5 --expect-registry-rows/--expect-writers;
 * C34c: R3-revoke-1302 (the 1302 ledger row, pinned sha) in pre-window, pre-train and pre-dispatch,
   and the ledger diff sorts BOTH sides LC_ALL=C (the unchanged-ledger false-STOP regression);
+* C44: W2a-recheck and W6-post sort BOTH sides LC_ALL=C before comm (non-C-ordered stub output on an
+  unchanged capture must PASS), a sorted capture is hashed into the MANIFEST exactly once (shasum -c
+  verifies), and the runner writes its own sha256 as RUNNER_SHA256 (the C43 evidence pack reads it);
 * one STOP per check -> exit 1 and 'STOP <id>' on stderr;
 * the read-only refusal: SHOW transaction_read_only != on -> exit 2;
 * the no-DSN guarantee: the stub's argv log carries no -d/--dbname/postgresql:// and the
@@ -119,6 +122,8 @@ BOUNDARY_ROW = ("kala_gochara_windows\tka_gochara_boundary_guard_x\tO\tpublic.ka
                 "\tCREATE TRIGGER ka_gochara_boundary_guard_x")
 GUARD_ROWS = "guard1\tt\tt\tt\nguard2\tt\tt\tt\nguard3\tt\tt\tt\nguard4\tt\tt\tt"
 W2A_ROW = "kala_gochara_coverage\tamjis_app\tf\tt\tt\tt\t"
+W2A_ROW2 = "kala_gochara_windows\tamjis_app\tf\tt\tt\tt\t"
+LEGACY_ROW2 = "kala_gochara_windows\tlegacy_tg2\tO\tpublic.legacy_fn2\tCREATE TRIGGER legacy_tg2"
 
 PRE_LEDGER = ["1153_a.sql", "1230_b.sql", "1243_ka_gochara_inert_registry_rows.sql"]
 POST_LEDGER = sorted(PRE_LEDGER + WINDOW_FILES)
@@ -434,6 +439,53 @@ def test_ledger_diff_passes_when_the_db_order_is_not_the_c_order(tmp_path: Path)
     assert r.returncode == 0, r.stderr
     assert "PASS R8-ledger-diff" in r.stdout
     assert "0 new" in r.stdout
+
+
+# ── C44: W2a-recheck / W6-post sort BOTH sides LC_ALL=C; RUNNER_SHA256 ───────
+
+def _manifest_verifies(out_dir: Path) -> bool:
+    p = subprocess.run(["shasum", "-a", "256", "-c", "MANIFEST.sha256"],
+                       cwd=out_dir, capture_output=True, text=True, timeout=60)
+    return p.returncode == 0
+
+
+def test_w2a_recheck_passes_when_the_db_order_is_not_the_c_order(tmp_path: Path) -> None:
+    # C44: the recheck capture comes back in the DATABASE collation; comm against the C-sorted
+    # baseline must not report phantom NEW holders on an UNCHANGED holder set.
+    scrambled = f"{W2A_ROW2}\n{W2A_ROW}"
+    r = run_script(tmp_path, "post-window", baseline_rows=[W6_ROW],
+                   overrides={"tbl_update": scrambled},
+                   w2a_baseline_rows=[W2A_ROW, W2A_ROW2])
+    assert r.returncode == 0, f"stdout:\n{r.stdout}\nstderr:\n{r.stderr}"
+    assert "PASS P9-w2a-recheck" in r.stdout
+    assert "no new UPDATE/DELETE holder" in r.stdout
+    assert _manifest_verifies(tmp_path / "out"), \
+        "MANIFEST.sha256 must verify (a sorted capture is hashed exactly once)"
+
+
+def test_w6_post_passes_when_the_db_order_is_not_the_c_order(tmp_path: Path) -> None:
+    # C44: same collation hazard for the post-window trigger capture, compared BOTH directions.
+    scrambled = f"{LEGACY_ROW2}\n{W6_ROW}"
+    r = run_script(tmp_path, "post-window",
+                   baseline_rows=[W6_ROW, LEGACY_ROW2],
+                   overrides={"pg_get_triggerdef": scrambled})
+    assert r.returncode == 0, f"stdout:\n{r.stdout}\nstderr:\n{r.stderr}"
+    assert "PASS W6-post" in r.stdout
+    assert "preservation empty both ways; 0 addition(s)" in r.stdout
+    assert _manifest_verifies(tmp_path / "out")
+
+
+def test_runner_sha256_is_written_into_the_evidence(tmp_path: Path) -> None:
+    r = run_script(tmp_path, "pre-train")
+    assert r.returncode == 0, r.stderr
+    runner_copy = tmp_path / "runner.sh"
+    want = hashlib.sha256(runner_copy.read_bytes()).hexdigest()
+    got = (tmp_path / "out" / "RUNNER_SHA256").read_text(encoding="utf-8").strip()
+    assert got == want, "RUNNER_SHA256 must name the sha256 of the runner script itself"
+    assert f"PASS RUNNER-sha256 self-check: {want}" in r.stdout
+    manifest = (tmp_path / "out" / "MANIFEST.sha256").read_text(encoding="utf-8")
+    assert "RUNNER_SHA256" in manifest
+    assert _manifest_verifies(tmp_path / "out")
 
 
 # ── M3: REVIEW -> exit 3 ─────────────────────────────────────────────────────

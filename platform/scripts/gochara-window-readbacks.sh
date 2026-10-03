@@ -35,7 +35,10 @@
 #   * prints one line per check: 'PASS <id> …', 'REVIEW <id> …' or 'STOP <id> … <observed vs expected>';
 #   * exit codes: 0 = all PASS · 1 = a STOP (first STOP, or all with --all) · 2 = a preflight REFUSAL ·
 #     3 = all checks ran clean but at least one REVIEW needs the steward's acknowledgement;
-#   * writes every raw output under --out plus a sha256 MANIFEST;
+#   * writes every raw output under --out plus a sha256 MANIFEST, and its OWN sha256 as RUNNER_SHA256
+#     (the C43 sitting-evidence pack reads that file);
+#   * C44: every comm comparison sorts BOTH sides LC_ALL=C, and a sorted capture is hashed into the
+#     MANIFEST exactly once (sort BEFORE _evidence — never evidence-then-sort-and-evidence-again);
 #   * NEVER issues a write: every statement here is SELECT/SHOW, and the session is read-only.
 #
 # MANUAL (not mechanical, by design — listed in the PR body): the ledger COUNT review (row 2's '919 names +
@@ -167,6 +170,23 @@ run_sql() {
   return 0
 }
 
+# run_sql_sorted <id> <sql> — like run_sql, but the output is sorted LC_ALL=C BEFORE it is hashed
+# into the evidence, so the MANIFEST names exactly the bytes a later comm comparison consumes.
+run_sql_sorted() {
+  local id="$1" sql="$2" out="$OUT/$1.out"
+  if ! "${PSQL[@]}" -c "$sql" > "$out.raw" 2> "$out.err"; then
+    _evidence "$id" "$id.out.err"
+    _stop "$id" "psql failed (see $id.out.err) — expected a clean read-only result"
+    return 1
+  fi
+  rm -f "$out.err"
+  LC_ALL=C sort "$out.raw" > "$out"
+  rm -f "$out.raw"
+  _evidence "$id" "$id.out"
+  cat "$out"
+  return 0
+}
+
 # run_file <id> <path> — same, for a PINNED SQL file (its bytes are verified BEFORE it is executed).
 run_file() {
   local id="$1" file="$2" out="$OUT/$1.out"
@@ -187,6 +207,11 @@ _finalize() { # idempotent — also runs from the EXIT trap
   if [ -f "$EVIDENCE_LOG.tmp" ]; then mv "$EVIDENCE_LOG.tmp" "$EVIDENCE_LOG"; fi
 }
 trap '_finalize' EXIT
+
+# self-check: the runner's own sha256 into the evidence (the C43 sitting-evidence pack reads this file)
+shasum -a 256 "$0" | awk '{print $1}' > "$OUT/RUNNER_SHA256"
+_evidence RUNNER "RUNNER_SHA256"
+echo "PASS RUNNER-sha256 self-check: $(cat "$OUT/RUNNER_SHA256")"
 
 # ── preflight: the session MUST be read-only ────────────────────────────────
 ro="$("${PSQL[@]}" -c "SHOW transaction_read_only" 2>/dev/null || true)"
@@ -333,11 +358,9 @@ check_w2a() { # runbook W2(a): effective UPDATE/DELETE holders — capture for t
 check_w2a_recheck() { # B4 (row 9): re-capture and diff against the pre-window capture; any NEW holder = STOP
   [ -n "$W2A_BASELINE" ] || { _stop P9-w2a-recheck "needs --w2a-baseline FILE (the pre-window W2(a) capture)"; return 0; }
   [ -f "$W2A_BASELINE" ] || { _stop P9-w2a-recheck "baseline not found: $W2A_BASELINE"; return 0; }
-  run_sql W2a-recheck "$W2A_SQL" > /dev/null || return 0
-  LC_ALL=C sort "$OUT/W2a-recheck.out" -o "$OUT/W2a-recheck.out"
-  _evidence W2a-recheck "W2a-recheck.out"
+  run_sql_sorted W2a-recheck "$W2A_SQL" > /dev/null || return 0
   local new
-  new="$(LC_ALL=C comm -13 <(LC_ALL=C sort "$W2A_BASELINE") "$OUT/W2a-recheck.out")"
+  new="$(LC_ALL=C comm -13 <(LC_ALL=C sort "$W2A_BASELINE") <(LC_ALL=C sort "$OUT/W2a-recheck.out"))"
   if [ -n "$new" ]; then
     _stop P9-w2a-recheck "NEW effective UPDATE/DELETE holder(s) since the pre-window capture: $(echo "$new" | head -3 | tr '\n' ' ')"
   else
@@ -377,11 +400,9 @@ check_w2c() { # runbook W2(c): no role-/db-level isolation overrides
 
 W6_SQL="SELECT c.relname, t.tgname, t.tgenabled, pn.nspname || '.' || p.proname AS fn, pg_get_triggerdef(t.oid) FROM pg_trigger t JOIN pg_class c ON c.oid = t.tgrelid JOIN pg_proc p ON p.oid = t.tgfoid JOIN pg_namespace pn ON pn.oid = p.pronamespace WHERE c.relnamespace = 'public'::regnamespace AND c.relname IN ('kala_gochara_coverage','kala_gochara_publication','kala_gochara_contacts','kala_gochara_windows') AND NOT t.tgisinternal ORDER BY 1, 2"
 
-check_w6_capture() { # <file-label> — capture production's actual legacy triggers, sorted LC_ALL=C
+check_w6_capture() { # <file-label> — capture production's actual legacy triggers, sorted LC_ALL=C (hashed once)
   local label="$1"
-  run_sql "W6-$label" "$W6_SQL" > /dev/null || return 1
-  LC_ALL=C sort "$OUT/W6-$label.out" -o "$OUT/W6-$label.out"
-  _evidence "W6-$label" "W6-$label.out"
+  run_sql_sorted "W6-$label" "$W6_SQL" > /dev/null || return 1
   return 0
 }
 
@@ -514,8 +535,8 @@ check_w6_post() { # row 9 W6 BOTH directions against --baseline
   [ -f "$BASELINE" ] || { _stop W6-post "baseline not found: $BASELINE"; return 0; }
   check_w6_capture post || { _stop W6-post "the post-window capture failed"; return 0; }
   local gone added bad_added
-  gone="$(LC_ALL=C comm -23 <(LC_ALL=C sort "$BASELINE") "$OUT/W6-post.out")"
-  added="$(LC_ALL=C comm -13 <(LC_ALL=C sort "$BASELINE") "$OUT/W6-post.out")"
+  gone="$(LC_ALL=C comm -23 <(LC_ALL=C sort "$BASELINE") <(LC_ALL=C sort "$OUT/W6-post.out"))"
+  added="$(LC_ALL=C comm -13 <(LC_ALL=C sort "$BASELINE") <(LC_ALL=C sort "$OUT/W6-post.out"))"
   echo "$added" > "$OUT/W6-additions.tsv"
   _evidence W6-post "W6-additions.tsv"
   bad_added="$(echo "$added" | grep -v $'\tka_gochara_boundary_' | grep -v '^$' || true)"
