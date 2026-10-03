@@ -1229,3 +1229,8 @@ def ambiguous_aliases() -> dict[str, list[tuple[str, str]]]:
 
 def vocabulary_release() -> dict:
     return _norm.vocabulary_release(ENTITIES, ONTOLOGY_OWNED_ENTITY_CLASSES)
+
+
+def served_ambiguous_aliases(extra_rows: list[dict] | None = None) -> dict[str, list[tuple[str, str]]]:
+    """Ambiguous aliases over the SERVED vocabulary (owned classes + dosha + dasha_system + static yoga rows, + `extra_rows`)."""
+    return _norm.ambiguous_aliases(_norm.served_vocabulary(ENTITIES, extra_rows))

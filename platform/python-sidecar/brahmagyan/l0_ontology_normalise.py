@@ -98,7 +98,49 @@ def vocabulary_release(entities: list[dict], owned_classes: frozenset[str]) -> d
          for e in entities if e["entity_class"] in owned_classes),
         key=lambda r: (r[0], r[1]),
     )
+    # the normalisation version is INSIDE the digest: changing the rule changes how every term resolves, so it must change the release
+    # even when no row changes (independent review L0A LOW-1). Synonym ORDER is part of the content identity (a reorder changes the id).
     digest = hashlib.sha256(
-        json.dumps(rows, ensure_ascii=False, separators=(",", ":")).encode("utf-8")).hexdigest()
+        json.dumps({"normalisation": NORMALISATION_VERSION, "rows": rows}, ensure_ascii=False, separators=(",", ":")).encode("utf-8")).hexdigest()
     return {"release_id": "bg_ontology-" + digest[:12], "content_sha256": digest, "owned_rows": len(rows),
             "normalisation": NORMALISATION_VERSION}
+
+
+# ── the SERVED vocabulary (independent review L0A MED-1) ───────────────────────────────────────────────────────
+# `ambiguous_aliases(ENTITIES)` only covered the rows bg_ontology itself owns (414). The vocabulary callers actually resolve against is
+# the whole `brahma_ontology` table: the owned rows PLUS the co-writer classes yoga (bg_yogas), dosha (bg_doshas), dasha_system
+# (bg_dasha_systems). On the live table the same rule gives 105+ ambiguous aliases, 35 of which the owned-only list missed (kumbha: sign
+# vs yoga; dhana, raja: domain vs yoga; kp: dasha_system vs school; sade_sati: concept vs dosha ...). `served_vocabulary` rebuilds the
+# co-writers' rows from their own modules (the same data their writers INSERT); yogas the corpus extractor adds at build time are not
+# static, so `extra_rows` takes them (or all of brahma_ontology) and `ambiguous_aliases_from_rows` recomputes the list from any rows.
+
+def served_vocabulary(owned_entities: list[dict], extra_rows: list[dict] | None = None) -> list[dict]:
+    """owned entities + dosha + dasha_system + static yoga rows, shaped like ENTITIES; `extra_rows` (e.g. corpus-extracted yogas) appended."""
+    from brahmagyan import l0_dasha_systems as _ds
+    from brahmagyan import l0_doshas as _dh
+    from brahmagyan import l0_yogas as _yg
+
+    out = list(owned_entities)
+    alias_sets = getattr(_dh, "DOSHA_ALIAS_SETS", {})
+    for d in _dh.DOSHAS:
+        out.append({"entity_class": "dosha", "canonical_id": d["canonical_id"], "canonical_name_en": d["name_en"],
+                    "canonical_name_sa": d["name_sa"], "synonyms": list(alias_sets.get(d["canonical_id"], []))})
+    for d in _ds.DASHA_SYSTEMS:
+        out.append({"entity_class": "dasha_system", "canonical_id": d["canonical_id"], "canonical_name_en": d["name_en"],
+                    "canonical_name_sa": d["name_sa"], "synonyms": list(_ds._synonyms(d["canonical_id"]))})
+    for y in list(_yg.YOGAS_CORE) + list(_yg.DETECTOR_YOGAS):
+        out.append({"entity_class": "yoga", "canonical_id": y["canonical_id"], "canonical_name_en": y["name_en"],
+                    "canonical_name_sa": y.get("name_sa"), "synonyms": list(_yg._yoga_synonyms(y))})
+    seen = {(e["entity_class"], e["canonical_id"]) for e in out}
+    for r in extra_rows or []:
+        if (r["entity_class"], r["canonical_id"]) not in seen:
+            out.append({"entity_class": r["entity_class"], "canonical_id": r["canonical_id"],
+                        "canonical_name_en": r["canonical_name_en"], "canonical_name_sa": r.get("canonical_name_sa"),
+                        "synonyms": list(r.get("synonyms") or [])})
+    return out
+
+
+def ambiguous_aliases_from_rows(rows: list[dict]) -> dict[str, list[tuple[str, str]]]:
+    """The ambiguous-alias list recomputed from any rows (e.g. SELECT ... FROM brahma_ontology): rows need entity_class, canonical_id,
+    canonical_name_en, canonical_name_sa and synonyms."""
+    return ambiguous_aliases([{**r, "synonyms": list(r.get("synonyms") or [])} for r in rows])

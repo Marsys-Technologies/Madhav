@@ -209,3 +209,64 @@ def test_real_seed_over_a_seeded_table_changes_no_stored_row_and_reports_the_rel
         conn.commit()
         assert second["inserted"] == 0, "a converged rerun changes nothing (the normalisation rule rewrites no stored id)"
         assert list(conn.execute("SELECT id,entity_class,canonical_id,canonical_name_en,canonical_name_sa,synonyms,description,source_citation FROM brahma_ontology ORDER BY entity_class,canonical_id")) == snap
+
+
+# ── independent review L0A MED-1 / LOW-1 ───────────────────────────────────────────────────────────────────────
+from brahmagyan import l0_ontology_normalise as NORM  # noqa: E402
+
+
+def test_served_ambiguity_list_covers_the_co_writer_classes_the_owned_only_list_missed():
+    owned = O.ambiguous_aliases()
+    served = O.served_ambiguous_aliases()
+    assert set(owned) <= set(served) and len(served) > len(owned)
+    # examples the review found missing from the owned-only list (dasha vs school, concept vs dosha, concept vs dasha); kumbha (sign vs a
+    # corpus-EXTRACTED yoga) is not static and is covered by the clone test below
+    for alias, classes in {"kp": {"dasha_system", "school"}, "sade_sati": {"concept", "dosha"},
+                           "narayana_dasha": {"concept", "dasha_system"}, "sthira_dasha": {"concept", "dasha_system"},
+                           "dhaiya": {"concept", "dosha"}, "balarishta": {"concept", "dosha"}}.items():
+        assert alias in served, alias
+        assert classes <= {c for c, _ in served[alias]}, (alias, served[alias])
+
+
+def test_the_list_is_recomputable_from_any_rows_and_equals_the_served_function_on_the_same_rows():
+    rows = NORM.served_vocabulary(O.ENTITIES)
+    assert NORM.ambiguous_aliases_from_rows(rows) == O.served_ambiguous_aliases()
+
+
+def test_release_is_sensitive_to_description_source_citation_and_the_rule_version(monkeypatch):
+    base = O.vocabulary_release()["content_sha256"]
+    saved = copy.deepcopy(O.ENTITIES)
+    try:
+        for field in ("description", "source_citation", "canonical_name_sa"):
+            O.ENTITIES[0][field] = (O.ENTITIES[0].get(field) or "") + " x"
+            assert O.vocabulary_release()["content_sha256"] != base, field
+            O.ENTITIES[:] = copy.deepcopy(saved)
+    finally:
+        O.ENTITIES[:] = saved
+    assert O.vocabulary_release()["content_sha256"] == base
+    monkeypatch.setattr(NORM, "NORMALISATION_VERSION", "nfkd+fold+casefold+underscore-v2")
+    assert O.vocabulary_release()["content_sha256"] != base, "changing the rule changes how terms resolve: it must change the release"
+
+
+# env-gated: the whole served table (a copy of production brahma_ontology on a disposable PG)
+import os as _os  # noqa: E402
+_CLONE = _os.environ.get("L0D_ONTOLOGY_CLONE_CONNINFO")
+
+
+@pytest.mark.skipif(not _CLONE, reason="L0D_ONTOLOGY_CLONE_CONNINFO not configured")
+def test_static_served_list_misses_only_aliases_that_involve_a_corpus_extracted_yoga():
+    import json as _json
+    import psycopg
+    from psycopg.rows import dict_row
+    info = _json.loads(_CLONE)
+    assert info["database"].endswith("_test")
+    with psycopg.connect(host=info["host"], port=info["port"], user=info["user"], dbname=info["database"], row_factory=dict_row) as c:
+        rows = [dict(r) for r in c.execute("SELECT entity_class, canonical_id, canonical_name_en, canonical_name_sa, synonyms FROM brahma_ontology")]
+    full = NORM.ambiguous_aliases_from_rows(rows)
+    static = O.served_ambiguous_aliases()
+    static_yoga_ids = {e["canonical_id"] for e in NORM.served_vocabulary(O.ENTITIES) if e["entity_class"] == "yoga"}
+    missing = {a: o for a, o in full.items() if a not in static}
+    for alias, owners in missing.items():
+        assert any(cls == "yoga" and cid not in static_yoga_ids for cls, cid in owners), (alias, owners)
+    # and the static list never invents an ambiguity the table does not have (modulo the stray jaimini_chara row TI-L0-13 removes)
+    assert {a for a in static if a not in full} <= {"jaimini_chara", "jaimini_chara_dasha"}
