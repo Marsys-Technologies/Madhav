@@ -25,6 +25,7 @@ import test_e6_a_na_causes as na_causes  # noqa: E402
 import test_e6_na_r01_03 as r13  # noqa: E402
 
 EVID = "00_ARCHITECTURE/briefs/suvarna/layers/L0/assets/bg_phaladeepika_latta_ELEVATION_BRIEF_v1_0.md"
+WHY = "a declared carriage check, with the one-line reason it applies to this asset"      # S2 strictness (E6.1 follow-up): a real why, as S3's
 FX = json.loads((HERE / "fixtures" / "phaladeepika_latta_d1_fixture.json").read_text(encoding="utf-8"))
 CHUNKS = {c["chunk_id"]: c for c in FX["classical_text_chunks"]}
 ROWS = FX["bg_phaladeepika_latta"]
@@ -1122,9 +1123,9 @@ def _bad(car, match, extra=None):
 
 def test_validator_accepts_the_latta_declaration_and_the_other_two_natures():
     ac.validate_declarations(_doc(copy.deepcopy(CAR_D1)))
-    ac.validate_declarations(_doc(dict(applies="D3", nature="computation", why="w", evidence=EVID)))
-    ac.validate_declarations(_doc(dict(applies="D2", nature="derivation", why="w", evidence=EVID)))
-    ac.validate_declarations(_doc(dict(nature="ratified_judgment", ruling="N-73", why="w", evidence=EVID)))
+    ac.validate_declarations(_doc(dict(applies="D3", nature="computation", why=WHY, evidence=EVID)))
+    ac.validate_declarations(_doc(dict(applies="D2", nature="derivation", why=WHY, evidence=EVID)))
+    ac.validate_declarations(_doc(dict(nature="ratified_judgment", ruling="N-73", why=WHY, evidence=EVID)))
     ac.validate_declarations(_doc(dict(served_surface=True, **{k: v for k, v in CAR_D1.items()}),
                                   dict(read_evidence="platform/src/x.ts:1", read_table="t")))      # served_surface coexists
 
@@ -1132,7 +1133,7 @@ def test_validator_accepts_the_latta_declaration_and_the_other_two_natures():
 @pytest.mark.parametrize("nature, applies", [("transcription", "D3"), ("transcription", "D2"), ("computation", "D1"), ("computation", "D2"),
                                              ("derivation", "D1"), ("derivation", "D3")])
 def test_validator_refuses_a_nature_check_mismatch(nature, applies):
-    car = dict(applies=applies, nature=nature, why="w", evidence=EVID, **({"citation_state": "sourced"} if nature == "transcription" else {}))
+    car = dict(applies=applies, nature=nature, why=WHY, evidence=EVID, **({"citation_state": "sourced"} if nature == "transcription" else {}))
     _bad(car, "requires applies")
 
 
@@ -1151,7 +1152,7 @@ def test_validator_refuses_missing_or_blank_parts():
 
 
 def test_validator_ratified_judgment_discipline():
-    ok = dict(nature="ratified_judgment", ruling="N-73", why="w", evidence=EVID)
+    ok = dict(nature="ratified_judgment", ruling="N-73", why=WHY, evidence=EVID)
     _bad({kk: v for kk, v in ok.items() if kk != "ruling"}, "ruling")
     _bad({**ok, "ruling": "yes"}, "ruling")
     _bad({**ok, "applies": "D1"}, "declares no check")
@@ -1160,7 +1161,7 @@ def test_validator_ratified_judgment_discipline():
 
 
 def test_validator_spec_only_for_d1_and_well_formed():
-    _bad(dict(applies="D3", nature="computation", why="w", evidence=EVID, spec=SPEC), "only defined for applies D1")
+    _bad(dict(applies="D3", nature="computation", why=WHY, evidence=EVID, spec=SPEC), "only defined for applies D1")
     for name, spec in {"unknown field": dict(SPEC, extra=1), "missing": {k: v for k, v in SPEC.items() if k != "chunk_ids"},
                        "matcher": dict(SPEC, matcher="nope"), "table": dict(SPEC, table="bad table"),
                        "empty chunks": dict(SPEC, chunk_ids=[]), "dup chunks": dict(SPEC, chunk_ids=[IDS[0], IDS[0]]),
