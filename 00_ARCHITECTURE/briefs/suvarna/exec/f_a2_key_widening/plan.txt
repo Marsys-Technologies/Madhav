@@ -204,4 +204,4 @@ ALTER TABLE public.l1_data_plane_trigger_attestations ENABLE TRIGGER l1_data_pla
 -- live definition: live_defs/l1_data_plane_capture_row.LIVE.sql sha256 0f8f42b6c93a9a5d2d25333cc2bd3cf52aed60e7cb7d51a87979ede92e74b9b8
 -- live definition: live_defs/capture_l1_data_plane_dasha_partition.LIVE.sql sha256 166928dd4d72ef82ceafd6bc48c6b66784d70a8c4326f769237e9f3eef83276f
 -- live definition: live_defs/complete_l1_data_plane_partition.LIVE.sql sha256 93bcb4afee1d568e885d83cc8eb58c1122dc429bfa201f90226b162a18cf5b4c
--- executor: d6_dataplane_capture_fa2_exec.py sha256 887688c0ceb634c892333488b4ab32b54385d52e985c6080cd057c1bad510f8f
+-- executor: d6_dataplane_capture_fa2_exec.py sha256 a6f185e53677baac17c842e4cb52a20d8755a44d913a54e4e16bba26c09e555b

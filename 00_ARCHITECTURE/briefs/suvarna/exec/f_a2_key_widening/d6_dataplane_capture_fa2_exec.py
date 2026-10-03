@@ -37,7 +37,8 @@ shas are BOUND (SS decision N-86, GATE_V2 revision 3, PR #2938 head 7f0db55c3). 
 frozen (the hunk set may still gain item 5, and the hash is computed once, at the freeze).
 
 outcome.json (status dry_run | applied | failed | commit_state_unknown) is written into the run's evidence directory in every mode
-(executor_standards.outcome_guard); commit_state_unknown means conn.commit() itself raised (the server MAY have committed: check the database first).
+(executor_standards.outcome_guard) with python_executable (sys.executable) and python_version (full sys.version): the dry run and the apply must use the SAME interpreter, and the
+source runs on Python 3.11 and 3.12+ (no f-string reuses its own quote type: tests/test_py311_and_interpreter.py); commit_state_unknown means conn.commit() itself raised (the server MAY have committed: check the database first).
 An under_test launch marker is refused (exit 93) in every mode outside pytest. A MISSING outcome.json means check the database. The administrator password is fetched from Secret Manager inside this process ONLY after the
 plan hash matched, never printed or saved; tests inject a disposable connection and never reach connect_admin().
 """
@@ -56,6 +57,7 @@ import re
 import signal
 import subprocess
 import sys
+import tempfile
 
 import psycopg
 
@@ -463,7 +465,7 @@ def render_plan(sha: str | None = None, pins: dict | None = None) -> str:
     n = 0
     for p in FUNCTION_PATCHES:
         n += 1
-        lines.append(f"-- {ITEM_LABELS.get(p.signature, "ITEM ? (add a label to ITEM_LABELS)")}: {n}. CREATE OR REPLACE FUNCTION public.{p.signature} with the live definition plus exactly these hunks:")
+        lines.append(f"-- {ITEM_LABELS.get(p.signature, 'ITEM ? (add a label to ITEM_LABELS)')}: {n}. CREATE OR REPLACE FUNCTION public.{p.signature} with the live definition plus exactly these hunks:")
         for name, old, new in p.hunks:
             lines.append(f"--   hunk {name}:")
             lines.append("--     - " + old.replace("\n", "\n--       "))
@@ -1057,6 +1059,30 @@ def write_evidence(run_dir: pathlib.Path, res: dict, result: dict) -> None:
 _SAFE_CLASS: dict = {}
 
 
+def add_interpreter_to_outcome(path):
+    """Records WHICH interpreter ran (sys.executable, the full sys.version) in outcome.json, in every status: the dry run and the apply must use the
+    SAME interpreter, and the operator compares the two files. The gate's executor_standards.py is pinned byte-for-byte (GATE_PINS), so the two
+    fields are added here, atomically (temp file + os.replace in the same directory, mode 0600), right after the standard write."""
+    with open(path) as f:
+        body = json.load(f)
+    body["python_executable"], body["python_version"] = sys.executable, sys.version
+    d = os.path.dirname(path)
+    fd, tmp = tempfile.mkstemp(prefix=".outcome.", dir=d)
+    try:
+        os.fchmod(fd, 0o600)
+        with os.fdopen(fd, "w") as f:
+            f.write(json.dumps(body, indent=2, sort_keys=True) + "\n")
+            f.flush()
+            os.fsync(f.fileno())
+        os.replace(tmp, path)
+    except BaseException:
+        try:
+            os.unlink(tmp)
+        except OSError:
+            pass
+        raise
+
+
 def safe_outcome_class(es):
     """executor_standards.outcome_guard whose own file write can never mask the real result, with a committed flag: after COMMIT an
     interruption records `applied` with a warning, never `failed`."""
@@ -1083,6 +1109,11 @@ def safe_outcome_class(es):
             except OSError as exc:
                 self.write_error = type(exc).__name__
                 self.done = True
+                return
+            try:
+                add_interpreter_to_outcome(self.path)
+            except (OSError, ValueError) as exc:        # the standard file exists but lacks the interpreter record: reported like a failed write
+                self.write_error = type(exc).__name__
 
         @staticmethod
         def _warn(text):

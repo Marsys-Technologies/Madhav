@@ -22,7 +22,8 @@ SRC = pathlib.Path(__file__).resolve().parent.parent
 REPO = SRC.parents[4]
 REL = SRC.relative_to(REPO)
 DESELECT = "not test_plan_txt_is_the_rendering_with_the_current_pins"      # it compares plan.txt with the (mutated) executor sha: a spurious red
-FAST = "tests/test_plan_and_wiring.py tests/test_plan_docs.py tests/test_combined_exec.py tests/test_capture_shapes.py tests/test_dasha_partition_patches.py"
+PY311 = "tests/test_py311_and_interpreter.py"
+FAST = "tests/test_plan_and_wiring.py tests/test_plan_docs.py tests/test_combined_exec.py tests/test_capture_shapes.py tests/test_dasha_partition_patches.py " + PY311
 
 # (name, file, old, new, kind, test files, -k expression or None)
 H3A_PRECEDENCE_OLD = """      IF v_value_num IS NOT NULL THEN
@@ -155,6 +156,8 @@ MUTATIONS = [
     ("limits: statement_timeout 120s raised (no sha pin needed)", EX, 'STATEMENT_TIMEOUT = "120s"\n', 'STATEMENT_TIMEOUT = "1200s"\n', None, LM, "documented or really_sets"),
     ("e2e: patch B no longer includes the vimshottari_kp rows (recomputed constants, database proof)", BC, "ARRAY['vimshottari','vimshottari_kp']::TEXT[]", "ARRAY['vimshottari']::TEXT[]", "recompute", DE, "B_after"),
     ("e2e: patch C post-pass block neutered (recomputed constants, database proof)", BC, "IF p_asset_id = 'ga_dashas' AND p_partition_key", "IF p_asset_id = 'ga_dashas_x' AND p_partition_key", "recompute", DE, "C_after"),
+    ("python 3.11 floor: the nested same-quote f-string re-introduced (line 466)", EX, "{ITEM_LABELS.get(p.signature, 'ITEM ? (add a label to ITEM_LABELS)')}", '{ITEM_LABELS.get(p.signature, "ITEM ? (add a label to ITEM_LABELS)")}', None, PY311, None),
+    ("interpreter record: outcome.json no longer gets python_executable / python_version", EX, "                add_interpreter_to_outcome(self.path)\n", "                pass\n", None, PY311, "interpreter"),
     ("verify SQL: the plan text no longer names the verification files", EX, '        + "; ".join(f"{n} sha256 {sha_file(HERE / n)}" for n in VERIFY_FILES),', '        + "",', None, WIRING, "verify_files"),
 ]
 

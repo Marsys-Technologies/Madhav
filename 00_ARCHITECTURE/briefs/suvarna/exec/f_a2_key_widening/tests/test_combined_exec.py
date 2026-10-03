@@ -8,6 +8,7 @@ import json
 import pathlib
 import re
 import subprocess
+import sys
 
 import psycopg
 import pytest
@@ -75,6 +76,7 @@ def test_dry_run_prints_the_diff_and_leaves_everything_identical(runner):
     o = outcome(res)
     assert o["status"] == "dry_run" and o["failed_checks"] == [] and o["evidence_digest"] == res["evidence_digest"]
     assert o["plan_hash"] == runner.m.plan_hash() and o["under_test"] is False
+    assert o["python_executable"] == sys.executable and o["python_version"] == sys.version        # the interpreter is recorded through the real run path
     ev = pathlib.Path(res["evidence_dir"])
     assert {f.name for f in ev.iterdir()} >= {"outcome.json", "report.txt", "result.json", "before_state.json", "fn_before_l1_data_plane_capture_row.sql"}
     assert (ev / "fn_before_l1_data_plane_capture_row.sql").read_text() == runner.m.CAPTURE_PATCH.live_def()
@@ -130,6 +132,7 @@ def test_apply_commits_exactly_the_expected_diff(runner, cluster, db, mod):
         or cluster.major > 15
     o = outcome(res)
     assert o["status"] == "applied" and o["failed_checks"] == []
+    assert o["python_executable"] == sys.executable and o["python_version"] == sys.version
 
 
 def test_attestation_drift_is_zero_and_the_gate_is_green_after_apply(runner, cluster, db, mod):
