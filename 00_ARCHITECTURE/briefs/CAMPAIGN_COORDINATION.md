@@ -8545,7 +8545,7 @@ Resume condition for everything downstream: a successful protected deploy with 1
 ## 2026-10-04 — Current portal map working-aid lease
 
 - Lease ID: L-PORTAL-CURRENT-MAP-20261004; holder: Codex desktop.
-- Started: 2026-10-03T21:25:18.480139+00:00; expiry: 2026-10-03T23:25:18.480139+00:00; status: ACTIVE.
+- Started: 2026-10-03T21:25:18.480139+00:00; expiry: 2026-10-03T23:25:18.480139+00:00; status: RELEASED at 2026-10-03T21:30:49.428277+00:00.
 - Worktree: `/Users/Dev/.codex/worktrees/portal-experience/Madhav`; branch `codex/portal-experience`.
 - Authority: native requested an understandable HTML or other artifact showing the current information architecture.
 - Scope: derivative current-state HTML, static overview image and task-local receipts under `00_ARCHITECTURE/briefs/portal_experience/CURRENT_*` and `Assets/screenshots/portal-experience/`. Existing audit evidence is reused.
