@@ -434,6 +434,7 @@ def match_ordinal_row(row: dict, seg: str, spec: dict) -> dict:
 
 
 MATCHER = "ordinal_count_direction_effect_v2"
+RESULT_KEYS = frozenset({"count", "direction", "effect"})     # the per-row result keys match_ordinal_row sets for the claim fields; an extra field may not reuse one
 MATCHERS = {MATCHER: match_ordinal_row}
 MATCHER_FIELDS = {MATCHER: ("claimant", "count", "direction", "effect")}
 MATCHING_RULE_TEXT = {
@@ -523,6 +524,9 @@ def validate_spec(spec, where: str) -> dict:
         raise SpecError(f"{where}.spec.extra_fields must be a list")
     cols = set(fl.values())
     for ef in efs:
+        if isinstance(ef, dict) and isinstance(ef.get("column"), str) and ef["column"] in RESULT_KEYS:    # a non-string column is refused just below, never an unhashable crash
+            raise SpecError(f"{where}.spec.extra_fields[{ef['column']}]: the column name collides with a result key of the matcher {sorted(RESULT_KEYS)} "
+                            "(its per-row result would overwrite that check's result, so the check would no longer be graded): rename the extra field")
         if not (isinstance(ef, dict) and isinstance(ef.get("column"), str) and _IDENT.fullmatch(ef["column"]) and ef["column"] not in cols
                 and ef.get("kind") in ("equals", "passage_text")):
             raise SpecError(f"{where}.spec.extra_fields entries need a new column identifier and kind equals|passage_text")
@@ -588,6 +592,22 @@ def validate_spec(spec, where: str) -> dict:
 def spec_columns(spec: dict) -> list:
     """The columns a D1 read must select: the claim fields and the declared extra columns."""
     return list(dict.fromkeys(list(spec["fields"].values()) + [ef["column"] for ef in spec.get("extra_fields", [])]))
+
+
+def prose_coverage(spec: dict) -> dict:
+    """{column: the key of that column's per-row result in `match_ordinal_row`} for every column the spec matches against PASSAGE TEXT: the effect column
+    (result key `effect`: each stored effect must equal its declared clause's effect, or be NULL where the passage gives none) and every `passage_text`
+    extra field (result key = the column). NOT in it: the claim fields (claimant / count / direction: structural values) and `equals` extras (a constant,
+    not a restatement of a passage clause). DERIVED from the spec, never declared: NARR-GUARD (N-94) reads it to say which text columns Carr.D1 really covers.
+    Raises KeyError / TypeError / AttributeError on a spec that is not shaped as validate_spec requires, and SpecError when an extra field's column collides with a matcher
+    result key (`effect` / `count` / `direction`: its result would overwrite that check's, so coverage could not be told from what D1 grades)."""
+    cov = {spec["fields"]["effect"]: "effect"}
+    for ef in spec.get("extra_fields", []):
+        if isinstance(ef["column"], str) and ef["column"] in RESULT_KEYS:
+            raise SpecError(f"extra field {ef['column']!r} collides with a matcher result key {sorted(RESULT_KEYS)}")
+        if ef["kind"] == "passage_text":
+            cov[ef["column"]] = ef["column"]
+    return cov
 
 
 # ───────────────────────── the measurement ─────────────────────────
