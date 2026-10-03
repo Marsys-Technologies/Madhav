@@ -75,11 +75,15 @@ import collections
 import datetime as dt
 import hashlib
 import json
+import math
 import os
 import re
+import secrets
 import subprocess
 import sys
 import tempfile
+import threading
+import time
 import unicodedata
 from pathlib import Path
 
@@ -168,7 +172,7 @@ CRITERION_REGISTRY: dict[str, dict] = {
     "Build.target":          dict(gate="Build", check="target",          applicability="always",                detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=2),
     "Build.dag":             dict(gate="Build", check="dag",              applicability="always",                detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=2),
     "Build.count_integrity": dict(gate="Build", check="count_integrity", applicability="always",                detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=1),
-    "Build.completion":      dict(gate="Build", check="completion",       applicability="a count_sql or view target exists", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=2),  # R99 bumped: a writer-backed empty table under target_floor=0 now reads PARTIAL, not the R52-era blanket PASS
+    "Build.completion":      dict(gate="Build", check="completion",       applicability="a count_sql or view target exists; PASS also requires, WHEN the asset declares an integrity_check_sql, that it holds: one read-only SELECT/WITH statement (conservative lexer and closed allow-list, run only as a subquery in a READ ONLY session, no bind parameters, at most 120000 bytes, the engine's own convention in asset_runner._probe_asset) whose first column of its first row is true (a boolean or a finite non-zero number); counts equal but the integrity SQL false, refused, oversize, errored or timed out reads PARTIAL naming which; an integrity SQL the census role is not permitted to read (SQLSTATE 42501 permission denied) reads NO_DETECTOR (not measurable under the census role: never PASS, never a verdict on the data); the text carries sha256(sql)[:12] and the elapsed seconds; no declared integrity_check_sql reads exactly as before", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=3),  # R99 bumped: a writer-backed empty table under target_floor=0 now reads PARTIAL, not the R52-era blanket PASS; N-99 bumped (rev 3): count equality alone no longer reads PASS when a declared integrity_check_sql does not hold
     "Build.exercised":       dict(gate="Build", check="exercised",        applicability="always",                detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=1),
     "Build.history":         dict(gate="Build", check="history",          applicability="has been exercised at least once", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=1),
     "Build.dep_liveness":     dict(gate="Build", check="dep_liveness",     applicability="declares at least one depends_on", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=1),
@@ -394,7 +398,7 @@ def validate_na_rule_decisions() -> None:
 
 # Registry revision: hand-bumped integer; registry_fingerprint() is the content hash a pin test binds to it, so the
 # revision cannot silently lag the content. Every gate cell carries both.
-REGISTRY_REVISION = 24     # 24 (provisional): C2(ii) Ldgr placeholder citations (SS ruling N-98 C2(ii), pre-approved STRICTER-ONLY): Ldgr.source_presence's legacy undeclared reading was `col IS NOT NULL`, so a placeholder counted as a source ('UNSOURCED - ...' on 6 bg_transit_rules rows, the bare tradition label 'classical_tradition' on the tradition-rooted bg_doshas rows, 'classical tradition (Jyotish)' on brahma_ontology / brahma_remedy_corpus rows, 'Vastu Shastra tradition (Nairitya corner)' on 1 bg_vastu_directions row, 1 bg_yogas row). It now reads `col IS NOT NULL AND NOT <the shared placeholder predicate>` (`ldgr_legacy_presence`, over `_ldgr_lacking(col, kind, any_element=False)`; ONE predicate with the declared ldgr_source check): `_ldgr_lacking_text` gains `citation=True` (every `_ldgr_lacking` caller: legacy AND declared Ldgr; N-98 named the legacy reading, the declared check shares the predicate on purpose and its grader text now names tradition labels / UNSOURCED) which also applies the closed LDGR_CITATION_PLACEHOLDERS ('classical_tradition', 'classical tradition (jyotish' = the normalised form of 'classical tradition (Jyotish)', 'vastu shastra tradition (nairitya corner') and the closed prefix list LDGR_CITATION_PLACEHOLDER_PREFIXES ('unsourced' followed by a separator); every spelling is justified by a writer file:line in the comment at LDGR_CITATION_PLACEHOLDERS, which also records the spellings deliberately NOT added (VASTU_TRAD_GENERAL, 'Tajaka tradition': not measured targets) and that '(unextracted)' stays a source; anything else (e.g. a bare 'classical tradition') stays a citation. The Null convention detector calls `_ldgr_lacking_text` with its default and grades every value exactly as before (no Null cell can move). The legacy read groups by value and evaluates the predicate once per DISTINCT value, weighted by the value's row count (the per-row form exceeded the production statement timeout on ga_dashas' chart_dashas, 1.46M rows: the placeholder-aware read cost 0.10 s against 0.12 s for IS NOT NULL on 1.5M rows over 10 distinct citations, and 9.9 s on 1.5M all-distinct values, the same as per row); a read that still times out reads PARTIAL with the text 'NOT measured', never PASS and never ERRORED; results are unchanged (differential tests). For the legacy count an array / JSON array lacks only when empty or when EVERY element lacks (a row that cites one real source beside a tradition label still names one); the declared check keeps ANY-element. A column whose type cannot carry text, or a name outside the identifier pattern, keeps `IS NOT NULL`; ONE verdict rule for every column type: PASS = every row names a source, FAIL = none (an all-NULL column now reads FAIL, it read PARTIAL; the declared grader's rule), PARTIAL otherwise; with no placeholder row the record text is the old `<col> populated on N/R rows`, with one it states the exact counts and carries an `ldgr_legacy` block. Ldgr.source_presence revision 4 (applicability text states the rule); the rollup (`_check_contribution`), the certificate writer and the E6.3 reader read the cell's verdict and citation_state and re-implement nothing (a FAIL reaches the Ldgr gate cell as FAIL, a PARTIAL as PARTIAL), so no consumer changes; NA_CAUSES / NA_RULE_DECISIONS unchanged; asset_declarations.json untouched. Cells can only move DOWN, and only where a row holds a listed placeholder or the column is all-NULL / has an empty or all-placeholder array; one incidental placeholder row demotes the whole asset PASS to PARTIAL (bg_yogas: exactly 1 of 233 rows). Revision 23 is the Dens tier PR #3037; 17-22 are held by other lanes. 23 (provisional): DENS-TIER-GUARD (SS ruling N-98, Dens memo item 3; STRICTER-ONLY): the Dens tier vocabulary is a CLOSED list. The old open `^(?:tier|\w+_tier|verification_pass_status)$` let ANY `*_tier` column count as a verification / confidence tier, among them `bg_remedies.cost_tier`, a price bucket, so a Dens lift on bg_remedies could have been a false PASS. A column now counts ONLY when (a) its name is exactly `tier` or `verification_pass_status`, or (b) the asset DECLARES it in the new optional `density_tier_columns: [{column, why, evidence}]` (the validator refuses a malformed list, a duplicate, more than 16, a weak `why` (S3's text rule, and it must say the column is a verification / confidence tier), an `evidence` that is not a real repo-relative file:LINE (the S3 helper `_s3_evidence_problem`, `unverified:` refused, a line required), and, at measure time with the catalog, a `why` that names a deny-listed word, an evidence file that does not mention the column (an optional `needle` on `_s3_evidence_problem`, default None: S3's behaviour unchanged), and, at measure time, a column that is not in the asset's table, and a declaration that cannot be checked (the asset has no target table, or the catalog lists no columns for the table, e.g. a view): Dens.served reads NO_DETECTOR with the disagreement reported, never PASS); and (c) its name carries no deny-listed word (cost, price, pricing, plan, access, subscription, billing, fee, tariff, in any spelling: underscores, digits, camelCase, plurals, run together with tier; fail-closed, case-insensitive): a deny-listed name never counts, and a declared `cost_tier` is REFUSED by the validator. Everything else (`severity_tier`, `signature_tier`, `access_tier`, ...) counts for nothing unless declared. ONE definition, `dens_tier_counts` (the old open regex constant is removed); `_select_tier` and `capability_scan` take the asset's declared names for its own target table. Dens.served revision 6 (applicability text states the closed list), so the fingerprint moves; NA_CAUSES / NA_RULE_DECISIONS unchanged; inert until an asset declares density_tier_columns (none does): asset_declarations.json 1.13.0 (schema key `density_tier_declaration_fields` + description only). Pin 23 is pre-allocated (pins 17-22 belong to other lanes). Measured (the six saved censuses, census_fresh/adb0db2, read only): the pure re-roll under revision 23 compares 1143 cells, zero move; re-scanning Dens.served over the committed 127-asset inputs (they reproduce the saved Dens text on 126 of 127 assets) moves exactly THREE cells DOWN, Dens PASS to PARTIAL: ga_medical and ga_vastu (ga_medical `indication_tier`, the constant 'jyotish_indication'; ga_vastu `indication_tier`, the constant 'traditional_vastu' (migration 286, CHECK in 741/924)) and mi_kula (`evidence_tier`), none declared; four FAIL cells (ka_bhavishya_lekha, ka_moorti_nirnaya, ka_sangam, ph_pratikara) keep FAIL and only lose the 'a tier column is selected without a contract' hint; nothing moves up. Reported for SS (declare, or accept PARTIAL). 16 (provisional): NARR-GUARD (strategist ruling N-94: prose_fields [] for bg_phaladeepika_latta under R03, the N/A kept coupled to Carr.D1): a declared `prose_coupling: {to: 'carriage_d1', columns, why, evidence}` beside prose_fields [] says the asset's text columns are transcription whose fidelity Carr.D1 already measures (same comparator, normalisation and repair list), so Narr (which measures GENERATED prose) is N/A for it ONLY WHILE that is true. The validator refuses a coupling unless prose_fields is exactly [], the asset declares a transcription carriage with applies D1 and a spec, the `why` cites carriage transcription and Carr.D1, `evidence` is a real repo file:line (never `unverified:`), and EVERY listed column is covered by the D1 spec (the covered set is DERIVED from the spec by carriage_d1.prose_coverage: the effect column and the passage_text extra fields; a claim field, an `equals` constant or a column the spec never checks is not coverage). At measure time the same check (`prose_coupling_problem`, one definition) runs again on the entry and the table's columns and types: a refusal reads the four Narr checks NO_DETECTOR with the disagreement reported, never N/A. A coupled Narr N/A record carries a `prose_coupling` block (columns, the covered result keys, the unclassified text-like columns it does NOT claim). The rollup (`narr_coupling_problem`, read by `_check_contribution`, `_na_released` (the gap ledger), the certificate writer and the E6.3 reader) honours that N/A only while the asset's EFFECTIVE Carr.D1 contribution (the census's own `_check_contribution` rule: verified chunk ledger, every row matched at the declared row count, citation_state not unsourced/refuted) reads PASS and the D1 record shows a per-row result for every coupled column; anything else reads NO_DETECTOR 'Narr N/A rests on Carr.D1 PASS (coupled): Carr.D1 reads X'. Narr.agree / Narr.checkable / Narr.fidelity_test / Narr.lint revision 2 (a new declared form changes what the detector does for an asset that declares it, as Vocab.alias rev 2 at pin 12 and Null.* rev 3 at pin 15); NA_CAUSES / NA_RULE_DECISIONS unchanged (the same four Narr.*#measured:no-prose rules, now conditional for a coupled asset); inert until an asset declares prose_coupling, so no undeclared asset's cell moves (all six saved censuses re-rolled up: 1143 cells, zero move); asset_declarations.json 1.12.0 (bg_phaladeepika_latta only). 15 (provisional): STAMP, the declared write-time stamp column (SS strategist ruling on the bg_phaladeepika_latta conflict): `null_convention.stamp_columns: [{column, why}]`, a declared word beside `nullable` and `constants`. A write-time stamp (created_at written in one seed transaction) can hold ONE value on every row, which the S1 constant test fails unless the column is declared constant, and declaring a stamp 'constant' is a claim known to be false in kind. The detector now requires a declared stamp column to be a timestamp / timestamptz (the catalog's pg_type name, domains resolved) AND NOT NULL (attnotnull, or a NOT NULL domain; one extra read-only pg_catalog SELECT, issued only when stamp_columns is declared) and to hold no NULL row and no sentinel timestamp, and EXEMPTS it from the constant test ONLY: nothing else is exempted, and the exemption is paid for: a stamp column holding a SENTINEL timestamp (infinity, -infinity, anything at or before the epoch plus one day: epoch, 1970-01-01, year 0001) is a FAIL, counted by one extra counter in the existing fetch and compared in the column's own type (a timestamp column's literal fallback in disguise, which the constant test used to catch when the column was undeclared; the stamp column is examined for it, so it is in neither 'not examined' group); every other column is graded exactly as before). A stamp column that is nullable or not a timestamp is refused at measure time as NO_DETECTOR with the disagreement reported (never PASS; a text / date stamp is refused before any SELECT from the information_schema data types); one holding a NULL row is a FAIL. The PASS text names stamp columns separately ('stamp columns (write-time, constant test exempted): ...'). The validator refuses a malformed list, a duplicate, more than 16, a weak `why`, and a column that is also nullable / constant / a scope key / an allowed_literals column / a declared prose field. The lift block carries `stamp_columns` (not part of `columns`, which stays the prose + nullable columns the two graders run over); `null_lift_earned` requires both sibling blocks to agree on it and the ELEVATED reader requires it to equal the ref declaration's stamp columns. Null.schema_default and Null.blank_rows revision 3 (a new declared form changes what the detector does for an asset that declares it, as Vocab.alias rev 2 at pin 12; applicability text names stamp_columns), so the fingerprint moves; NA_CAUSES / NA_RULE_DECISIONS unchanged; no asset declares a null_convention yet, so no census cell verdict changes (all six saved censuses re-rolled up: zero cells move); asset_declarations.json field list + description only (file version NOT bumped here: sequenced separately). 14 (provisional): Dens label-vs-select repair and the R02 amendment (SS N-74 item 5, N-74(a)): Dens.served rev 5 (the scan now tells a SELECT of the asset's table from a LABEL: a serving module that names the asset only in a provenance string, prose, a type name, an import path, a label-keyed array/value or a map key, in a module with no run-time table access, is no longer a reach, so an asset no served module selects rows from can read the no-served-surface N/A; every unclassifiable form (a bare name as a call/builder argument, in an unkeyed list, a name assembled at run time, SQL in the literal) stays a reach, comments keep the R51 reading, Python readers stay outside the served surface by design, the outside probe is unchanged), and R02's decision text is cause-keyed ("an asset no served module selects rows from; being named only as a provenance label is not a select", N-74(a)); NA_CAUSES unchanged, asset_declarations.json unchanged (1.9.0). 13 (provisional): S1 declared null convention (SS N-72 S1, N-73, N-74): Null.schema_default and Null.blank_rows rev 2 (an asset that DECLARES `null_convention`: its nullable columns each with what NULL means and an optional key scope, its declared constant columns, one-line why and checkable evidence, gets the declared form: the two checks also run over the convention columns, the detector verifies read-only that NULLs occur only in declared columns (and, with a key scope, only on / exactly on the declared keys), that no declared-nullable column holds a literal fallback in place of NULL and that no column is constant unless declared constant; the Null checks read PASS ONLY when schema_default and blank_rows are clean AND the convention verifies, a defect flips the cell to FAIL, and every other path keeps the cap exactly as before: the cap line is unchanged and the lift is a separate branch that needs the verified convention block on BOTH checks; no Null N/A rule (N-22 row 33 stands), NA_CAUSES unchanged; no asset declares one yet, so no census cell verdict changes; asset_declarations.json 1.9.0). ALSO IN 13, TOUCHING A MERGED PIN-12 CHECK (recorded explicitly, S1 review F2): the shared SQL predicate `_ldgr_lacking_text` (S3's placeholder / 'states no value' test, used by Ldgr.source_presence's declared source-column check via `_ldgr_lacking` and now also by the Null convention detector) additionally compares its normalised value WITH THE SPACES REMOVED against the same placeholder list (`replace(norm, ' ', '') IN (...)`), so 'N / A', 'n o n e' and 'not  found' are the placeholders they spell; the list, the normaliser and every other branch are unchanged. It reaches Ldgr.source_presence's placeholder detector (the declared `ldgr_source` check only: the legacy undeclared Ldgr measurement is an IS NOT NULL count and never calls it). No pin-12 criterion text or revision changed (Vocab.alias rev 2 and Ldgr.source_presence rev 3 are identical to the S3 merge), nor NA_CAUSES / NA_RULE_DECISIONS; the registry fingerprint covers criterion entries, N/A rules and causes, gates and rollup order, never detector SQL, so PINNED_FINGERPRINTS[12] (35b0e03e..., equal to the S3-merged module's fingerprint) is unaffected and the revision-13 fingerprint is the same with or without this change. Measured: all six saved censuses (census_fresh/1e5781a, read only) rolled up with and without the change: 1143 cells, zero move (verdicts and checks), and zero move against the saved verdicts; no asset declares ldgr_source, so no real Ldgr cell consumes the predicate. 12 (provisional): S3 declared Vocab.alias and Ldgr.source_presence (SS N-72 S3, N-73 (1)/(4), N-74 (b)): Vocab.alias rev 2 and Ldgr.source_presence rev 3 (an asset that DECLARES `vocab_alias` / `ldgr_source` gets the declared form: the alias class measured against bg_ontology class planet by canonical id and display name, plus the ontology synonyms when an alias column is declared; the Ldgr source column named with its citation_state, a declared unsourced / refuted state never reading PASS or PARTIAL; an undeclared asset reads exactly as before), NA_CAUSES gains Vocab.alias:no-alias-class and Ldgr.source_presence:no-classical-claim, and Vocab.alias#measured:no-alias-class / Ldgr.source_presence#measured:no-classical-claim are declared (declaration-keyed; refused where the table contradicts the declaration; inert until an asset declares); the columns_any patterns stay and still never make an N/A (A5); asset_declarations.json 1.8.0; nikasha_certify closes the legacy null-state Ldgr write path; no real asset declares either key yet, so no census cell verdict changes. 11 (provisional): S2 declared carriage (SS N-72 S2, N-73): Carr.D1 gets a detector (revision 2: the generic D1 engine for an asset that DECLARES D1 with a spec; undeclared assets read as before), NA_CAUSES gains Carr.D1/D2/D3:not-the-declared-carriage and :ratified_judgment, and Carr.D{1,2,3}#measured:not-the-declared-carriage are declared (inert until an asset declares a carriage check); asset_declarations.json 1.7.0; no real asset declares one yet, so no census cell changes. 10: NA_RULE_DECISIONS declares Build.dep_liveness#measured:no-declared-dependencies (S4, N-22 row 23 re-proposed; emitted only when the asset's declared dependency list is empty AND its Build.dag reads-match is PASS, else NO_DETECTOR) and Earn.service_state#measured:not-a-service (N-22 row 9; emitted only for a DECLARED non-service kind that the registry does not contradict); NA_CAUSES gains Earn.service_state:not-a-service; the registry criteria are unchanged (SS N-72; source of record /Users/Dev/suvarna/run/DECISIONS.jsonl). 9: NA_RULE_DECISIONS declares R01 Build.history#measured:never-run, R02 Dens.served#measured:no-served-surface and R03 Narr.{agree,checkable,fidelity_test,lint}#measured:no-prose (SS N-65, N-22/N-22a rows 20/19/17): +7 gate cells NO_DETECTOR to N/A on the saved censuses (Dens 3, Narr 4), no other cell moves; rollup_excluded now applies the same cause+rule check as the rollup (an undeclared N/A reads NO_DETECTOR there too); `never-run` is emitted only when the build history is present for the census scope (else NO_DETECTOR); an empty `written` scan reads NO_DETECTOR for a `prose_fields: []` asset; the registry criteria are unchanged. 8: Carr.detector RETIRED (E6 item i, SS A2): removed from the registry (32 to 31 entries; Carr is exactly D1-D3), measure() stops emitting it, RETIRED_CRITERIA records it and emit_gaps closes its OPEN rows (scoped runs close only in-scope assets' rows); no verdict moves. 7: E6 item (f): NA_CAUSES gains Carr.D1/D2/D3:no-carriage (N-22 principle 7, provisional until J1; SS strict definition: no DAG dependents AND no served-surface reach). The criterion registry is unchanged; the fingerprint moves because NA_CAUSES is fingerprinted content. No rule declared (NA_RULE_DECISIONS stays empty) and no asset declares terminal_by_construction, so no census cell changes. 6: E6 items (g)+(h): Build.target rev 2 (a declared service with no target_table, declared `service` by BOTH the registry and the declarations file, reads PASS by declaration, T4:274); Build.dag rev 2 (THREE clauses, each stated in the verdict text: every depends_on id is an active registry asset in ANY layer, the asset is on no dependency cycle, and reads-match — the writer's SQL reads against the declared edges, T4:275, aligned with pipeline/orchestrator/dag_edge_guard.py (SS 2026-10-01: L0 bedrock reads are exempt as `bedrock_exempt`, PROVISIONAL pending the J1 review; chart_facts is satisfied by any producer in the declared transitive closure); an undeclared read is a FAIL naming the missing edge, or a back-read when the edge would close a cycle; an incomplete parse is PARTIAL/NO_DETECTOR); Idem.pattern rev 2 (relative imports resolve against the importing package: ONE resolver for Idem.pattern and the reads scan — verdicts identical on the 127 saved writers, three notes changed: ka_dasha_kala, ka_gochara, ka_muhurta_seva). 5: E6 packet (c): Narr.agree/checkable/fidelity_test/lint and Null.schema_default/blank_rows registered; NA_CAUSES gains no-prose / no-prose-declared. 4: Dens.served rev 4 (contract AND a tier column in the served select; structural; cause no-served-surface). 3: NA_CAUSES gains Earn.build_record:no-registered-writer (E6 review fix 2). 2: N/A rule ids are cause-keyed (<criterion>#measured:<cause>); NA_CAUSES joins the content
+REGISTRY_REVISION = 25     # 25 (provisional): N-99 (SS ruling N-99, from the Track A L4 finding Q-L4-18; stricter-only): Build.completion revision 3 (applicability text): count equality alone no longer reads PASS when the asset DECLARES an `integrity_check_sql`. The declared SQL must ALSO hold (the engine's own convention, asset_runner._probe_asset: ONE statement, no bind parameters, first column of the first row true; a Postgres boolean or non-zero number; a value that is neither reads not-holding), else the cell reads PARTIAL naming which failed (false / refused / error / timeout). The SQL is registry-stored text the census did not write, so it is parsed against a closed allow-list BEFORE it runs (`integrity_sql_problem`: exactly one SELECT/WITH statement; no INSERT/UPDATE/DELETE/MERGE/INTO/SHARE; no write-capable or transaction-escaping function) and runs ONLY through `psql_read_only` (wrapped as `SELECT * FROM (<sql>\n) AS _integrity LIMIT 1` so the SERVER's parser rejects a `;`, COMMIT/BEGIN/SET, DML or second statement whatever the lexer missed, in a `SET default_transaction_read_only = on` + BEGIN READ ONLY + SET LOCAL statement_timeout session, then ROLLBACK, one shared psql runner; the lexer ends a `--` comment at \n or \r, refuses a `$` after any identifier character incl. non-ASCII, and refuses \r / NUL / non-ASCII / backslash outside literals and any quoted function name; an oversize SQL (> 120000 bytes, the OS caps one psql -c argument) is refused; the text carries sha256(sql)[:12] and the elapsed seconds); a refused, oversize, errored, timed-out or unreadable SQL is an outcome (PARTIAL with the reason; permission denied under the census role, SQLSTATE 42501, is NO_DETECTOR 'integrity not measurable under the census role'), never PASS and never an exception out of measure(). It is run ONLY when the cell would otherwise read PASS, so every FAIL / ERRORED / NO_DETECTOR / N/A branch is unchanged, and an asset with no declared integrity_check_sql reads exactly as before (zero move). Build.count_integrity (a presence check, revision 1) is untouched: it says the detector EXISTS, Build.completion now says it HOLDS; one helper (`_integrity_outcome`) is the only place the SQL is run. The registry read (`registry()`) now carries the declared SQL text (`integrity_sql`) beside `has_integrity`. NA_CAUSES / NA_RULE_DECISIONS unchanged. Pins 17-24 are other lanes' (this lane is pin 25; renumber at rebase). 24 (provisional): C2(ii) Ldgr placeholder citations (SS ruling N-98 C2(ii), pre-approved STRICTER-ONLY): Ldgr.source_presence's legacy undeclared reading was `col IS NOT NULL`, so a placeholder counted as a source ('UNSOURCED - ...' on 6 bg_transit_rules rows, the bare tradition label 'classical_tradition' on the tradition-rooted bg_doshas rows, 'classical tradition (Jyotish)' on brahma_ontology / brahma_remedy_corpus rows, 'Vastu Shastra tradition (Nairitya corner)' on 1 bg_vastu_directions row, 1 bg_yogas row). It now reads `col IS NOT NULL AND NOT <the shared placeholder predicate>` (`ldgr_legacy_presence`, over `_ldgr_lacking(col, kind, any_element=False)`; ONE predicate with the declared ldgr_source check): `_ldgr_lacking_text` gains `citation=True` (every `_ldgr_lacking` caller: legacy AND declared Ldgr; N-98 named the legacy reading, the declared check shares the predicate on purpose and its grader text now names tradition labels / UNSOURCED) which also applies the closed LDGR_CITATION_PLACEHOLDERS ('classical_tradition', 'classical tradition (jyotish' = the normalised form of 'classical tradition (Jyotish)', 'vastu shastra tradition (nairitya corner') and the closed prefix list LDGR_CITATION_PLACEHOLDER_PREFIXES ('unsourced' followed by a separator); every spelling is justified by a writer file:line in the comment at LDGR_CITATION_PLACEHOLDERS, which also records the spellings deliberately NOT added (VASTU_TRAD_GENERAL, 'Tajaka tradition': not measured targets) and that '(unextracted)' stays a source; anything else (e.g. a bare 'classical tradition') stays a citation. The Null convention detector calls `_ldgr_lacking_text` with its default and grades every value exactly as before (no Null cell can move). The legacy read groups by value and evaluates the predicate once per DISTINCT value, weighted by the value's row count (the per-row form exceeded the production statement timeout on ga_dashas' chart_dashas, 1.46M rows: the placeholder-aware read cost 0.10 s against 0.12 s for IS NOT NULL on 1.5M rows over 10 distinct citations, and 9.9 s on 1.5M all-distinct values, the same as per row); a read that still times out reads PARTIAL with the text 'NOT measured', never PASS and never ERRORED; results are unchanged (differential tests). For the legacy count an array / JSON array lacks only when empty or when EVERY element lacks (a row that cites one real source beside a tradition label still names one); the declared check keeps ANY-element. A column whose type cannot carry text, or a name outside the identifier pattern, keeps `IS NOT NULL`; ONE verdict rule for every column type: PASS = every row names a source, FAIL = none (an all-NULL column now reads FAIL, it read PARTIAL; the declared grader's rule), PARTIAL otherwise; with no placeholder row the record text is the old `<col> populated on N/R rows`, with one it states the exact counts and carries an `ldgr_legacy` block. Ldgr.source_presence revision 4 (applicability text states the rule); the rollup (`_check_contribution`), the certificate writer and the E6.3 reader read the cell's verdict and citation_state and re-implement nothing (a FAIL reaches the Ldgr gate cell as FAIL, a PARTIAL as PARTIAL), so no consumer changes; NA_CAUSES / NA_RULE_DECISIONS unchanged; asset_declarations.json untouched. Cells can only move DOWN, and only where a row holds a listed placeholder or the column is all-NULL / has an empty or all-placeholder array; one incidental placeholder row demotes the whole asset PASS to PARTIAL (bg_yogas: exactly 1 of 233 rows). Revision 23 is the Dens tier PR #3037; 17-22 are held by other lanes. 23 (provisional): DENS-TIER-GUARD (SS ruling N-98, Dens memo item 3; STRICTER-ONLY): the Dens tier vocabulary is a CLOSED list. The old open `^(?:tier|\w+_tier|verification_pass_status)$` let ANY `*_tier` column count as a verification / confidence tier, among them `bg_remedies.cost_tier`, a price bucket, so a Dens lift on bg_remedies could have been a false PASS. A column now counts ONLY when (a) its name is exactly `tier` or `verification_pass_status`, or (b) the asset DECLARES it in the new optional `density_tier_columns: [{column, why, evidence}]` (the validator refuses a malformed list, a duplicate, more than 16, a weak `why` (S3's text rule, and it must say the column is a verification / confidence tier), an `evidence` that is not a real repo-relative file:LINE (the S3 helper `_s3_evidence_problem`, `unverified:` refused, a line required), and, at measure time with the catalog, a `why` that names a deny-listed word, an evidence file that does not mention the column (an optional `needle` on `_s3_evidence_problem`, default None: S3's behaviour unchanged), and, at measure time, a column that is not in the asset's table, and a declaration that cannot be checked (the asset has no target table, or the catalog lists no columns for the table, e.g. a view): Dens.served reads NO_DETECTOR with the disagreement reported, never PASS); and (c) its name carries no deny-listed word (cost, price, pricing, plan, access, subscription, billing, fee, tariff, in any spelling: underscores, digits, camelCase, plurals, run together with tier; fail-closed, case-insensitive): a deny-listed name never counts, and a declared `cost_tier` is REFUSED by the validator. Everything else (`severity_tier`, `signature_tier`, `access_tier`, ...) counts for nothing unless declared. ONE definition, `dens_tier_counts` (the old open regex constant is removed); `_select_tier` and `capability_scan` take the asset's declared names for its own target table. Dens.served revision 6 (applicability text states the closed list), so the fingerprint moves; NA_CAUSES / NA_RULE_DECISIONS unchanged; inert until an asset declares density_tier_columns (none does): asset_declarations.json 1.13.0 (schema key `density_tier_declaration_fields` + description only). Pin 23 is pre-allocated (pins 17-22 belong to other lanes). Measured (the six saved censuses, census_fresh/adb0db2, read only): the pure re-roll under revision 23 compares 1143 cells, zero move; re-scanning Dens.served over the committed 127-asset inputs (they reproduce the saved Dens text on 126 of 127 assets) moves exactly THREE cells DOWN, Dens PASS to PARTIAL: ga_medical and ga_vastu (ga_medical `indication_tier`, the constant 'jyotish_indication'; ga_vastu `indication_tier`, the constant 'traditional_vastu' (migration 286, CHECK in 741/924)) and mi_kula (`evidence_tier`), none declared; four FAIL cells (ka_bhavishya_lekha, ka_moorti_nirnaya, ka_sangam, ph_pratikara) keep FAIL and only lose the 'a tier column is selected without a contract' hint; nothing moves up. Reported for SS (declare, or accept PARTIAL). 16 (provisional): NARR-GUARD (strategist ruling N-94: prose_fields [] for bg_phaladeepika_latta under R03, the N/A kept coupled to Carr.D1): a declared `prose_coupling: {to: 'carriage_d1', columns, why, evidence}` beside prose_fields [] says the asset's text columns are transcription whose fidelity Carr.D1 already measures (same comparator, normalisation and repair list), so Narr (which measures GENERATED prose) is N/A for it ONLY WHILE that is true. The validator refuses a coupling unless prose_fields is exactly [], the asset declares a transcription carriage with applies D1 and a spec, the `why` cites carriage transcription and Carr.D1, `evidence` is a real repo file:line (never `unverified:`), and EVERY listed column is covered by the D1 spec (the covered set is DERIVED from the spec by carriage_d1.prose_coverage: the effect column and the passage_text extra fields; a claim field, an `equals` constant or a column the spec never checks is not coverage). At measure time the same check (`prose_coupling_problem`, one definition) runs again on the entry and the table's columns and types: a refusal reads the four Narr checks NO_DETECTOR with the disagreement reported, never N/A. A coupled Narr N/A record carries a `prose_coupling` block (columns, the covered result keys, the unclassified text-like columns it does NOT claim). The rollup (`narr_coupling_problem`, read by `_check_contribution`, `_na_released` (the gap ledger), the certificate writer and the E6.3 reader) honours that N/A only while the asset's EFFECTIVE Carr.D1 contribution (the census's own `_check_contribution` rule: verified chunk ledger, every row matched at the declared row count, citation_state not unsourced/refuted) reads PASS and the D1 record shows a per-row result for every coupled column; anything else reads NO_DETECTOR 'Narr N/A rests on Carr.D1 PASS (coupled): Carr.D1 reads X'. Narr.agree / Narr.checkable / Narr.fidelity_test / Narr.lint revision 2 (a new declared form changes what the detector does for an asset that declares it, as Vocab.alias rev 2 at pin 12 and Null.* rev 3 at pin 15); NA_CAUSES / NA_RULE_DECISIONS unchanged (the same four Narr.*#measured:no-prose rules, now conditional for a coupled asset); inert until an asset declares prose_coupling, so no undeclared asset's cell moves (all six saved censuses re-rolled up: 1143 cells, zero move); asset_declarations.json 1.12.0 (bg_phaladeepika_latta only). 15 (provisional): STAMP, the declared write-time stamp column (SS strategist ruling on the bg_phaladeepika_latta conflict): `null_convention.stamp_columns: [{column, why}]`, a declared word beside `nullable` and `constants`. A write-time stamp (created_at written in one seed transaction) can hold ONE value on every row, which the S1 constant test fails unless the column is declared constant, and declaring a stamp 'constant' is a claim known to be false in kind. The detector now requires a declared stamp column to be a timestamp / timestamptz (the catalog's pg_type name, domains resolved) AND NOT NULL (attnotnull, or a NOT NULL domain; one extra read-only pg_catalog SELECT, issued only when stamp_columns is declared) and to hold no NULL row and no sentinel timestamp, and EXEMPTS it from the constant test ONLY: nothing else is exempted, and the exemption is paid for: a stamp column holding a SENTINEL timestamp (infinity, -infinity, anything at or before the epoch plus one day: epoch, 1970-01-01, year 0001) is a FAIL, counted by one extra counter in the existing fetch and compared in the column's own type (a timestamp column's literal fallback in disguise, which the constant test used to catch when the column was undeclared; the stamp column is examined for it, so it is in neither 'not examined' group); every other column is graded exactly as before). A stamp column that is nullable or not a timestamp is refused at measure time as NO_DETECTOR with the disagreement reported (never PASS; a text / date stamp is refused before any SELECT from the information_schema data types); one holding a NULL row is a FAIL. The PASS text names stamp columns separately ('stamp columns (write-time, constant test exempted): ...'). The validator refuses a malformed list, a duplicate, more than 16, a weak `why`, and a column that is also nullable / constant / a scope key / an allowed_literals column / a declared prose field. The lift block carries `stamp_columns` (not part of `columns`, which stays the prose + nullable columns the two graders run over); `null_lift_earned` requires both sibling blocks to agree on it and the ELEVATED reader requires it to equal the ref declaration's stamp columns. Null.schema_default and Null.blank_rows revision 3 (a new declared form changes what the detector does for an asset that declares it, as Vocab.alias rev 2 at pin 12; applicability text names stamp_columns), so the fingerprint moves; NA_CAUSES / NA_RULE_DECISIONS unchanged; no asset declares a null_convention yet, so no census cell verdict changes (all six saved censuses re-rolled up: zero cells move); asset_declarations.json field list + description only (file version NOT bumped here: sequenced separately). 14 (provisional): Dens label-vs-select repair and the R02 amendment (SS N-74 item 5, N-74(a)): Dens.served rev 5 (the scan now tells a SELECT of the asset's table from a LABEL: a serving module that names the asset only in a provenance string, prose, a type name, an import path, a label-keyed array/value or a map key, in a module with no run-time table access, is no longer a reach, so an asset no served module selects rows from can read the no-served-surface N/A; every unclassifiable form (a bare name as a call/builder argument, in an unkeyed list, a name assembled at run time, SQL in the literal) stays a reach, comments keep the R51 reading, Python readers stay outside the served surface by design, the outside probe is unchanged), and R02's decision text is cause-keyed ("an asset no served module selects rows from; being named only as a provenance label is not a select", N-74(a)); NA_CAUSES unchanged, asset_declarations.json unchanged (1.9.0). 13 (provisional): S1 declared null convention (SS N-72 S1, N-73, N-74): Null.schema_default and Null.blank_rows rev 2 (an asset that DECLARES `null_convention`: its nullable columns each with what NULL means and an optional key scope, its declared constant columns, one-line why and checkable evidence, gets the declared form: the two checks also run over the convention columns, the detector verifies read-only that NULLs occur only in declared columns (and, with a key scope, only on / exactly on the declared keys), that no declared-nullable column holds a literal fallback in place of NULL and that no column is constant unless declared constant; the Null checks read PASS ONLY when schema_default and blank_rows are clean AND the convention verifies, a defect flips the cell to FAIL, and every other path keeps the cap exactly as before: the cap line is unchanged and the lift is a separate branch that needs the verified convention block on BOTH checks; no Null N/A rule (N-22 row 33 stands), NA_CAUSES unchanged; no asset declares one yet, so no census cell verdict changes; asset_declarations.json 1.9.0). ALSO IN 13, TOUCHING A MERGED PIN-12 CHECK (recorded explicitly, S1 review F2): the shared SQL predicate `_ldgr_lacking_text` (S3's placeholder / 'states no value' test, used by Ldgr.source_presence's declared source-column check via `_ldgr_lacking` and now also by the Null convention detector) additionally compares its normalised value WITH THE SPACES REMOVED against the same placeholder list (`replace(norm, ' ', '') IN (...)`), so 'N / A', 'n o n e' and 'not  found' are the placeholders they spell; the list, the normaliser and every other branch are unchanged. It reaches Ldgr.source_presence's placeholder detector (the declared `ldgr_source` check only: the legacy undeclared Ldgr measurement is an IS NOT NULL count and never calls it). No pin-12 criterion text or revision changed (Vocab.alias rev 2 and Ldgr.source_presence rev 3 are identical to the S3 merge), nor NA_CAUSES / NA_RULE_DECISIONS; the registry fingerprint covers criterion entries, N/A rules and causes, gates and rollup order, never detector SQL, so PINNED_FINGERPRINTS[12] (35b0e03e..., equal to the S3-merged module's fingerprint) is unaffected and the revision-13 fingerprint is the same with or without this change. Measured: all six saved censuses (census_fresh/1e5781a, read only) rolled up with and without the change: 1143 cells, zero move (verdicts and checks), and zero move against the saved verdicts; no asset declares ldgr_source, so no real Ldgr cell consumes the predicate. 12 (provisional): S3 declared Vocab.alias and Ldgr.source_presence (SS N-72 S3, N-73 (1)/(4), N-74 (b)): Vocab.alias rev 2 and Ldgr.source_presence rev 3 (an asset that DECLARES `vocab_alias` / `ldgr_source` gets the declared form: the alias class measured against bg_ontology class planet by canonical id and display name, plus the ontology synonyms when an alias column is declared; the Ldgr source column named with its citation_state, a declared unsourced / refuted state never reading PASS or PARTIAL; an undeclared asset reads exactly as before), NA_CAUSES gains Vocab.alias:no-alias-class and Ldgr.source_presence:no-classical-claim, and Vocab.alias#measured:no-alias-class / Ldgr.source_presence#measured:no-classical-claim are declared (declaration-keyed; refused where the table contradicts the declaration; inert until an asset declares); the columns_any patterns stay and still never make an N/A (A5); asset_declarations.json 1.8.0; nikasha_certify closes the legacy null-state Ldgr write path; no real asset declares either key yet, so no census cell verdict changes. 11 (provisional): S2 declared carriage (SS N-72 S2, N-73): Carr.D1 gets a detector (revision 2: the generic D1 engine for an asset that DECLARES D1 with a spec; undeclared assets read as before), NA_CAUSES gains Carr.D1/D2/D3:not-the-declared-carriage and :ratified_judgment, and Carr.D{1,2,3}#measured:not-the-declared-carriage are declared (inert until an asset declares a carriage check); asset_declarations.json 1.7.0; no real asset declares one yet, so no census cell changes. 10: NA_RULE_DECISIONS declares Build.dep_liveness#measured:no-declared-dependencies (S4, N-22 row 23 re-proposed; emitted only when the asset's declared dependency list is empty AND its Build.dag reads-match is PASS, else NO_DETECTOR) and Earn.service_state#measured:not-a-service (N-22 row 9; emitted only for a DECLARED non-service kind that the registry does not contradict); NA_CAUSES gains Earn.service_state:not-a-service; the registry criteria are unchanged (SS N-72; source of record /Users/Dev/suvarna/run/DECISIONS.jsonl). 9: NA_RULE_DECISIONS declares R01 Build.history#measured:never-run, R02 Dens.served#measured:no-served-surface and R03 Narr.{agree,checkable,fidelity_test,lint}#measured:no-prose (SS N-65, N-22/N-22a rows 20/19/17): +7 gate cells NO_DETECTOR to N/A on the saved censuses (Dens 3, Narr 4), no other cell moves; rollup_excluded now applies the same cause+rule check as the rollup (an undeclared N/A reads NO_DETECTOR there too); `never-run` is emitted only when the build history is present for the census scope (else NO_DETECTOR); an empty `written` scan reads NO_DETECTOR for a `prose_fields: []` asset; the registry criteria are unchanged. 8: Carr.detector RETIRED (E6 item i, SS A2): removed from the registry (32 to 31 entries; Carr is exactly D1-D3), measure() stops emitting it, RETIRED_CRITERIA records it and emit_gaps closes its OPEN rows (scoped runs close only in-scope assets' rows); no verdict moves. 7: E6 item (f): NA_CAUSES gains Carr.D1/D2/D3:no-carriage (N-22 principle 7, provisional until J1; SS strict definition: no DAG dependents AND no served-surface reach). The criterion registry is unchanged; the fingerprint moves because NA_CAUSES is fingerprinted content. No rule declared (NA_RULE_DECISIONS stays empty) and no asset declares terminal_by_construction, so no census cell changes. 6: E6 items (g)+(h): Build.target rev 2 (a declared service with no target_table, declared `service` by BOTH the registry and the declarations file, reads PASS by declaration, T4:274); Build.dag rev 2 (THREE clauses, each stated in the verdict text: every depends_on id is an active registry asset in ANY layer, the asset is on no dependency cycle, and reads-match — the writer's SQL reads against the declared edges, T4:275, aligned with pipeline/orchestrator/dag_edge_guard.py (SS 2026-10-01: L0 bedrock reads are exempt as `bedrock_exempt`, PROVISIONAL pending the J1 review; chart_facts is satisfied by any producer in the declared transitive closure); an undeclared read is a FAIL naming the missing edge, or a back-read when the edge would close a cycle; an incomplete parse is PARTIAL/NO_DETECTOR); Idem.pattern rev 2 (relative imports resolve against the importing package: ONE resolver for Idem.pattern and the reads scan — verdicts identical on the 127 saved writers, three notes changed: ka_dasha_kala, ka_gochara, ka_muhurta_seva). 5: E6 packet (c): Narr.agree/checkable/fidelity_test/lint and Null.schema_default/blank_rows registered; NA_CAUSES gains no-prose / no-prose-declared. 4: Dens.served rev 4 (contract AND a tier column in the served select; structural; cause no-served-surface). 3: NA_CAUSES gains Earn.build_record:no-registered-writer (E6 review fix 2). 2: N/A rule ids are cause-keyed (<criterion>#measured:<cause>); NA_CAUSES joins the content 23 (provisional): DENS-TIER-GUARD (SS ruling N-98, Dens memo item 3; STRICTER-ONLY): the Dens tier vocabulary is a CLOSED list. The old open `^(?:tier|\w+_tier|verification_pass_status)$` let ANY `*_tier` column count as a verification / confidence tier, among them `bg_remedies.cost_tier`, a price bucket, so a Dens lift on bg_remedies could have been a false PASS. A column now counts ONLY when (a) its name is exactly `tier` or `verification_pass_status`, or (b) the asset DECLARES it in the new optional `density_tier_columns: [{column, why, evidence}]` (the validator refuses a malformed list, a duplicate, more than 16, a weak `why` (S3's text rule, and it must say the column is a verification / confidence tier), an `evidence` that is not a real repo-relative file:LINE (the S3 helper `_s3_evidence_problem`, `unverified:` refused, a line required), and, at measure time with the catalog, a `why` that names a deny-listed word, an evidence file that does not mention the column (an optional `needle` on `_s3_evidence_problem`, default None: S3's behaviour unchanged), and, at measure time, a column that is not in the asset's table, and a declaration that cannot be checked (the asset has no target table, or the catalog lists no columns for the table, e.g. a view): Dens.served reads NO_DETECTOR with the disagreement reported, never PASS); and (c) its name carries no deny-listed word (cost, price, pricing, plan, access, subscription, billing, fee, tariff, in any spelling: underscores, digits, camelCase, plurals, run together with tier; fail-closed, case-insensitive): a deny-listed name never counts, and a declared `cost_tier` is REFUSED by the validator. Everything else (`severity_tier`, `signature_tier`, `access_tier`, ...) counts for nothing unless declared. ONE definition, `dens_tier_counts` (the old open regex constant is removed); `_select_tier` and `capability_scan` take the asset's declared names for its own target table. Dens.served revision 6 (applicability text states the closed list), so the fingerprint moves; NA_CAUSES / NA_RULE_DECISIONS unchanged; inert until an asset declares density_tier_columns (none does): asset_declarations.json 1.13.0 (schema key `density_tier_declaration_fields` + description only). Pin 23 is pre-allocated (pins 17-22 belong to other lanes). Measured (the six saved censuses, census_fresh/adb0db2, read only): the pure re-roll under revision 23 compares 1143 cells, zero move; re-scanning Dens.served over the committed 127-asset inputs (they reproduce the saved Dens text on 126 of 127 assets) moves exactly THREE cells DOWN, Dens PASS to PARTIAL: ga_medical and ga_vastu (ga_medical `indication_tier`, the constant 'jyotish_indication'; ga_vastu `indication_tier`, the constant 'traditional_vastu' (migration 286, CHECK in 741/924)) and mi_kula (`evidence_tier`), none declared; four FAIL cells (ka_bhavishya_lekha, ka_moorti_nirnaya, ka_sangam, ph_pratikara) keep FAIL and only lose the 'a tier column is selected without a contract' hint; nothing moves up. Reported for SS (declare, or accept PARTIAL). 16 (provisional): NARR-GUARD (strategist ruling N-94: prose_fields [] for bg_phaladeepika_latta under R03, the N/A kept coupled to Carr.D1): a declared `prose_coupling: {to: 'carriage_d1', columns, why, evidence}` beside prose_fields [] says the asset's text columns are transcription whose fidelity Carr.D1 already measures (same comparator, normalisation and repair list), so Narr (which measures GENERATED prose) is N/A for it ONLY WHILE that is true. The validator refuses a coupling unless prose_fields is exactly [], the asset declares a transcription carriage with applies D1 and a spec, the `why` cites carriage transcription and Carr.D1, `evidence` is a real repo file:line (never `unverified:`), and EVERY listed column is covered by the D1 spec (the covered set is DERIVED from the spec by carriage_d1.prose_coverage: the effect column and the passage_text extra fields; a claim field, an `equals` constant or a column the spec never checks is not coverage). At measure time the same check (`prose_coupling_problem`, one definition) runs again on the entry and the table's columns and types: a refusal reads the four Narr checks NO_DETECTOR with the disagreement reported, never N/A. A coupled Narr N/A record carries a `prose_coupling` block (columns, the covered result keys, the unclassified text-like columns it does NOT claim). The rollup (`narr_coupling_problem`, read by `_check_contribution`, `_na_released` (the gap ledger), the certificate writer and the E6.3 reader) honours that N/A only while the asset's EFFECTIVE Carr.D1 contribution (the census's own `_check_contribution` rule: verified chunk ledger, every row matched at the declared row count, citation_state not unsourced/refuted) reads PASS and the D1 record shows a per-row result for every coupled column; anything else reads NO_DETECTOR 'Narr N/A rests on Carr.D1 PASS (coupled): Carr.D1 reads X'. Narr.agree / Narr.checkable / Narr.fidelity_test / Narr.lint revision 2 (a new declared form changes what the detector does for an asset that declares it, as Vocab.alias rev 2 at pin 12 and Null.* rev 3 at pin 15); NA_CAUSES / NA_RULE_DECISIONS unchanged (the same four Narr.*#measured:no-prose rules, now conditional for a coupled asset); inert until an asset declares prose_coupling, so no undeclared asset's cell moves (all six saved censuses re-rolled up: 1143 cells, zero move); asset_declarations.json 1.12.0 (bg_phaladeepika_latta only). 15 (provisional): STAMP, the declared write-time stamp column (SS strategist ruling on the bg_phaladeepika_latta conflict): `null_convention.stamp_columns: [{column, why}]`, a declared word beside `nullable` and `constants`. A write-time stamp (created_at written in one seed transaction) can hold ONE value on every row, which the S1 constant test fails unless the column is declared constant, and declaring a stamp 'constant' is a claim known to be false in kind. The detector now requires a declared stamp column to be a timestamp / timestamptz (the catalog's pg_type name, domains resolved) AND NOT NULL (attnotnull, or a NOT NULL domain; one extra read-only pg_catalog SELECT, issued only when stamp_columns is declared) and to hold no NULL row and no sentinel timestamp, and EXEMPTS it from the constant test ONLY: nothing else is exempted, and the exemption is paid for: a stamp column holding a SENTINEL timestamp (infinity, -infinity, anything at or before the epoch plus one day: epoch, 1970-01-01, year 0001) is a FAIL, counted by one extra counter in the existing fetch and compared in the column's own type (a timestamp column's literal fallback in disguise, which the constant test used to catch when the column was undeclared; the stamp column is examined for it, so it is in neither 'not examined' group); every other column is graded exactly as before). A stamp column that is nullable or not a timestamp is refused at measure time as NO_DETECTOR with the disagreement reported (never PASS; a text / date stamp is refused before any SELECT from the information_schema data types); one holding a NULL row is a FAIL. The PASS text names stamp columns separately ('stamp columns (write-time, constant test exempted): ...'). The validator refuses a malformed list, a duplicate, more than 16, a weak `why`, and a column that is also nullable / constant / a scope key / an allowed_literals column / a declared prose field. The lift block carries `stamp_columns` (not part of `columns`, which stays the prose + nullable columns the two graders run over); `null_lift_earned` requires both sibling blocks to agree on it and the ELEVATED reader requires it to equal the ref declaration's stamp columns. Null.schema_default and Null.blank_rows revision 3 (a new declared form changes what the detector does for an asset that declares it, as Vocab.alias rev 2 at pin 12; applicability text names stamp_columns), so the fingerprint moves; NA_CAUSES / NA_RULE_DECISIONS unchanged; no asset declares a null_convention yet, so no census cell verdict changes (all six saved censuses re-rolled up: zero cells move); asset_declarations.json field list + description only (file version NOT bumped here: sequenced separately). 14 (provisional): Dens label-vs-select repair and the R02 amendment (SS N-74 item 5, N-74(a)): Dens.served rev 5 (the scan now tells a SELECT of the asset's table from a LABEL: a serving module that names the asset only in a provenance string, prose, a type name, an import path, a label-keyed array/value or a map key, in a module with no run-time table access, is no longer a reach, so an asset no served module selects rows from can read the no-served-surface N/A; every unclassifiable form (a bare name as a call/builder argument, in an unkeyed list, a name assembled at run time, SQL in the literal) stays a reach, comments keep the R51 reading, Python readers stay outside the served surface by design, the outside probe is unchanged), and R02's decision text is cause-keyed ("an asset no served module selects rows from; being named only as a provenance label is not a select", N-74(a)); NA_CAUSES unchanged, asset_declarations.json unchanged (1.9.0). 13 (provisional): S1 declared null convention (SS N-72 S1, N-73, N-74): Null.schema_default and Null.blank_rows rev 2 (an asset that DECLARES `null_convention`: its nullable columns each with what NULL means and an optional key scope, its declared constant columns, one-line why and checkable evidence, gets the declared form: the two checks also run over the convention columns, the detector verifies read-only that NULLs occur only in declared columns (and, with a key scope, only on / exactly on the declared keys), that no declared-nullable column holds a literal fallback in place of NULL and that no column is constant unless declared constant; the Null checks read PASS ONLY when schema_default and blank_rows are clean AND the convention verifies, a defect flips the cell to FAIL, and every other path keeps the cap exactly as before: the cap line is unchanged and the lift is a separate branch that needs the verified convention block on BOTH checks; no Null N/A rule (N-22 row 33 stands), NA_CAUSES unchanged; no asset declares one yet, so no census cell verdict changes; asset_declarations.json 1.9.0). ALSO IN 13, TOUCHING A MERGED PIN-12 CHECK (recorded explicitly, S1 review F2): the shared SQL predicate `_ldgr_lacking_text` (S3's placeholder / 'states no value' test, used by Ldgr.source_presence's declared source-column check via `_ldgr_lacking` and now also by the Null convention detector) additionally compares its normalised value WITH THE SPACES REMOVED against the same placeholder list (`replace(norm, ' ', '') IN (...)`), so 'N / A', 'n o n e' and 'not  found' are the placeholders they spell; the list, the normaliser and every other branch are unchanged. It reaches Ldgr.source_presence's placeholder detector (the declared `ldgr_source` check only: the legacy undeclared Ldgr measurement is an IS NOT NULL count and never calls it). No pin-12 criterion text or revision changed (Vocab.alias rev 2 and Ldgr.source_presence rev 3 are identical to the S3 merge), nor NA_CAUSES / NA_RULE_DECISIONS; the registry fingerprint covers criterion entries, N/A rules and causes, gates and rollup order, never detector SQL, so PINNED_FINGERPRINTS[12] (35b0e03e..., equal to the S3-merged module's fingerprint) is unaffected and the revision-13 fingerprint is the same with or without this change. Measured: all six saved censuses (census_fresh/1e5781a, read only) rolled up with and without the change: 1143 cells, zero move (verdicts and checks), and zero move against the saved verdicts; no asset declares ldgr_source, so no real Ldgr cell consumes the predicate. 12 (provisional): S3 declared Vocab.alias and Ldgr.source_presence (SS N-72 S3, N-73 (1)/(4), N-74 (b)): Vocab.alias rev 2 and Ldgr.source_presence rev 3 (an asset that DECLARES `vocab_alias` / `ldgr_source` gets the declared form: the alias class measured against bg_ontology class planet by canonical id and display name, plus the ontology synonyms when an alias column is declared; the Ldgr source column named with its citation_state, a declared unsourced / refuted state never reading PASS or PARTIAL; an undeclared asset reads exactly as before), NA_CAUSES gains Vocab.alias:no-alias-class and Ldgr.source_presence:no-classical-claim, and Vocab.alias#measured:no-alias-class / Ldgr.source_presence#measured:no-classical-claim are declared (declaration-keyed; refused where the table contradicts the declaration; inert until an asset declares); the columns_any patterns stay and still never make an N/A (A5); asset_declarations.json 1.8.0; nikasha_certify closes the legacy null-state Ldgr write path; no real asset declares either key yet, so no census cell verdict changes. 11 (provisional): S2 declared carriage (SS N-72 S2, N-73): Carr.D1 gets a detector (revision 2: the generic D1 engine for an asset that DECLARES D1 with a spec; undeclared assets read as before), NA_CAUSES gains Carr.D1/D2/D3:not-the-declared-carriage and :ratified_judgment, and Carr.D{1,2,3}#measured:not-the-declared-carriage are declared (inert until an asset declares a carriage check); asset_declarations.json 1.7.0; no real asset declares one yet, so no census cell changes. 10: NA_RULE_DECISIONS declares Build.dep_liveness#measured:no-declared-dependencies (S4, N-22 row 23 re-proposed; emitted only when the asset's declared dependency list is empty AND its Build.dag reads-match is PASS, else NO_DETECTOR) and Earn.service_state#measured:not-a-service (N-22 row 9; emitted only for a DECLARED non-service kind that the registry does not contradict); NA_CAUSES gains Earn.service_state:not-a-service; the registry criteria are unchanged (SS N-72; source of record /Users/Dev/suvarna/run/DECISIONS.jsonl). 9: NA_RULE_DECISIONS declares R01 Build.history#measured:never-run, R02 Dens.served#measured:no-served-surface and R03 Narr.{agree,checkable,fidelity_test,lint}#measured:no-prose (SS N-65, N-22/N-22a rows 20/19/17): +7 gate cells NO_DETECTOR to N/A on the saved censuses (Dens 3, Narr 4), no other cell moves; rollup_excluded now applies the same cause+rule check as the rollup (an undeclared N/A reads NO_DETECTOR there too); `never-run` is emitted only when the build history is present for the census scope (else NO_DETECTOR); an empty `written` scan reads NO_DETECTOR for a `prose_fields: []` asset; the registry criteria are unchanged. 8: Carr.detector RETIRED (E6 item i, SS A2): removed from the registry (32 to 31 entries; Carr is exactly D1-D3), measure() stops emitting it, RETIRED_CRITERIA records it and emit_gaps closes its OPEN rows (scoped runs close only in-scope assets' rows); no verdict moves. 7: E6 item (f): NA_CAUSES gains Carr.D1/D2/D3:no-carriage (N-22 principle 7, provisional until J1; SS strict definition: no DAG dependents AND no served-surface reach). The criterion registry is unchanged; the fingerprint moves because NA_CAUSES is fingerprinted content. No rule declared (NA_RULE_DECISIONS stays empty) and no asset declares terminal_by_construction, so no census cell changes. 6: E6 items (g)+(h): Build.target rev 2 (a declared service with no target_table, declared `service` by BOTH the registry and the declarations file, reads PASS by declaration, T4:274); Build.dag rev 2 (THREE clauses, each stated in the verdict text: every depends_on id is an active registry asset in ANY layer, the asset is on no dependency cycle, and reads-match — the writer's SQL reads against the declared edges, T4:275, aligned with pipeline/orchestrator/dag_edge_guard.py (SS 2026-10-01: L0 bedrock reads are exempt as `bedrock_exempt`, PROVISIONAL pending the J1 review; chart_facts is satisfied by any producer in the declared transitive closure); an undeclared read is a FAIL naming the missing edge, or a back-read when the edge would close a cycle; an incomplete parse is PARTIAL/NO_DETECTOR); Idem.pattern rev 2 (relative imports resolve against the importing package: ONE resolver for Idem.pattern and the reads scan — verdicts identical on the 127 saved writers, three notes changed: ka_dasha_kala, ka_gochara, ka_muhurta_seva). 5: E6 packet (c): Narr.agree/checkable/fidelity_test/lint and Null.schema_default/blank_rows registered; NA_CAUSES gains no-prose / no-prose-declared. 4: Dens.served rev 4 (contract AND a tier column in the served select; structural; cause no-served-surface). 3: NA_CAUSES gains Earn.build_record:no-registered-writer (E6 review fix 2). 2: N/A rule ids are cause-keyed (<criterion>#measured:<cause>); NA_CAUSES joins the content
 
 def registry_fingerprint() -> str:
     """sha256 over the canonical JSON of everything that decides a cell: the registry, the declared N/A
@@ -3780,6 +3784,8 @@ def prose_checks(aid: str, decl, ctx: dict) -> dict:
 # at a much larger table than the ones this script was calibrated against can raise it without a
 # code change.
 PSQL_TIMEOUT_SECONDS = int(os.environ.get("NIKASHA_CENSUS_TIMEOUT_SECONDS", "180"))
+# N-99: the cap on one registry-stored `integrity_check_sql` run (client kill; the server `statement_timeout` is 90% of it).
+INTEGRITY_TIMEOUT_SECONDS = PSQL_TIMEOUT_SECONDS
 
 # R231 (A_REVIEW2 G4): 78 of 86 L1–L5 `count_sql` are chart-scoped (`WHERE chart_id = $1`). Run
 # standalone they cannot bind `$1`, so F2 correctly graded them ERRORED — and `Build.completion` was
@@ -3884,20 +3890,67 @@ def parse_psql_output(out: str, sep: str = "\x1f", width: int | None = None) -> 
     return rows
 
 
-def psql(sql: str, sep: str = "\x1f", timeout: int | None = None, width: int | None = None) -> list[list[str]]:
+class _Capped:
+    """A finished psql run whose stdout / stderr were read through a byte cap (what was beyond the cap was read and DISCARDED, never kept)."""
+    def __init__(self, returncode: int, stdout: bytes, stderr: bytes, over: bool):
+        self.returncode, self.stdout, self.stderr, self.over = returncode, stdout, stderr, over
+
+
+def _run_capped(argv: list[str], env: dict, limit: int, cap: int) -> _Capped:
+    """`subprocess.run` for SQL the census did not write: stdout and stderr are each kept up to `cap` bytes and the rest is drained and dropped, so a
+    value of hundreds of megabytes (`SELECT repeat('x', 400000000)`) cannot grow the census' memory. The wall-clock kill is the same (`limit`):
+    raises `subprocess.TimeoutExpired` after killing psql."""
+    p = subprocess.Popen(argv, stdout=subprocess.PIPE, stderr=subprocess.PIPE, env=env)
+    kept: dict[str, bytearray] = {"out": bytearray(), "err": bytearray()}
+    over = {"out": False, "err": False}
+
+    def drain(stream, key):
+        while True:
+            chunk = stream.read(65536)
+            if not chunk:
+                return
+            room = cap - len(kept[key])
+            if room > 0:
+                kept[key] += chunk[:room]
+            if len(chunk) > room:
+                over[key] = True
+    threads = [threading.Thread(target=drain, args=(p.stdout, "out"), daemon=True), threading.Thread(target=drain, args=(p.stderr, "err"), daemon=True)]
+    for t in threads:
+        t.start()
+    try:
+        p.wait(timeout=limit)
+    except subprocess.TimeoutExpired:
+        p.kill()
+        p.wait()
+        for t in threads:
+            t.join(5)
+        raise
+    for t in threads:
+        t.join(30)
+    return _Capped(p.returncode, bytes(kept["out"]), bytes(kept["err"]), over["out"])
+
+
+def _psql_run(cmds: list[str], sep: str, limit: int, width: int | None, quiet: bool = False, label: int = 0, verbose: bool = False,
+              cap: int | None = None) -> list[list[str]]:
+    """The ONE psql subprocess runner: `cmds` are sent as separate `-c` commands in one session (a single command for every ordinary
+    read). Timeout, error and parse handling are shared by `psql` and `psql_read_only`. `label` is the index of the command named in a timeout
+    message; `verbose` asks for error text carrying the SQLSTATE (`ERROR:  42501: ...`)."""
     env = dict(os.environ)
     env.setdefault("PGCONNECT_TIMEOUT", "10")
-    limit = timeout if timeout is not None else PSQL_TIMEOUT_SECONDS
+    argv = ["psql", "-qtAX" if quiet else "-tAX", "-F", sep, "-v", "ON_ERROR_STOP=1"] + (["-v", "VERBOSITY=verbose"] if verbose else [])
+    for c in cmds:
+        argv += ["-c", c]
     try:
         # bytes, decoded here: `text=True` would translate a lone CR (or CRLF) inside a value into a newline
-        p = subprocess.run(["psql", "-tAX", "-F", sep, "-v", "ON_ERROR_STOP=1", "-c", sql],
-                           capture_output=True, env=env, timeout=limit)
+        p = subprocess.run(argv, capture_output=True, env=env, timeout=limit) if cap is None else _run_capped(argv, env, limit, cap)
     except subprocess.TimeoutExpired as exc:
         raise CheckTimeout(f"client-side timeout after {limit}s (psql killed): "
-                           f"{' '.join(sql.split())[:120]}") from exc
+                           f"{' '.join(cmds[label].split())[:120]}") from exc
     if p.returncode != 0:
         err = p.stderr.decode("utf-8", errors="replace")
-        raise Unknown((err.strip().splitlines() or ["psql failed"])[0])
+        raise Unknown((err.strip().splitlines() or ["psql failed"])[0][:400])
+    if cap is not None and p.over:
+        raise ReadError(f"psql output exceeds the {cap}-byte cap; not read")
     try:
         out = p.stdout.decode("utf-8")
     except UnicodeDecodeError as exc:
@@ -3905,9 +3958,343 @@ def psql(sql: str, sep: str = "\x1f", timeout: int | None = None, width: int | N
     return parse_psql_output(out, sep, width)
 
 
+def psql(sql: str, sep: str = "\x1f", timeout: int | None = None, width: int | None = None) -> list[list[str]]:
+    limit = timeout if timeout is not None else PSQL_TIMEOUT_SECONDS
+    return _psql_run([sql], sep, limit, width)
+
+
+def _unique_dollar_tag(prefix: str, *texts: str) -> str:
+    """A dollar-quote tag such that, scanning `texts` followed by the closing delimiter `$tag$`, the FIRST occurrence of `$tag$` is the closing one (the
+    text neither contains the delimiter nor ends in a prefix of it that the closing `$` would complete). Needs no SQL lexer: the text is data and
+    cannot terminate its own quotation."""
+    body = "".join(texts)
+    for k in range(10_000):
+        tag = f"{prefix}{k}"
+        d = f"${tag}$"
+        if (body + d).find(d) == len(body):           # the FIRST `$tag$` after the opening delimiter is ours (so neither the text nor its edge can close early)
+            return tag
+    raise Unknown("no free dollar-quote tag")      # unreachable in practice
+
+
+INTEGRITY_VALUE_CHARS = 200        # the first value travels back truncated to this many characters (its full length too): never the whole value
+INTEGRITY_OUTPUT_CAP = 65_536      # psql stdout / stderr kept per run (bytes); the rest is drained and dropped
+
+
+def _integrity_first_value(rows: list[list[str]]) -> list[list[str]]:
+    """The result of `psql_read_only` as `_integrity_holds` reads it: [] for no row, else [[the FIRST column of the first row as text]]. The DO block
+    returns `row <length of the value's JSON text> <its first INTEGRITY_VALUE_CHARS characters>` (the value was read from `json_each(row_to_json(r))`,
+    which keeps column order), so a 400 MB value costs the census ~250 bytes. A value longer than the prefix comes back as its prefix with a `...`
+    marker and its length: it is never a boolean or a number."""
+    if not rows or not rows[0] or rows[0][0] == "none":
+        return []
+    head = rows[0][0]
+    m = re.fullmatch(r"row (\d+) (.*)", head, re.S)
+    if not m:
+        raise ReadError(f"unrecognised integrity read-back {head[:40]!r}")
+    n, text = int(m.group(1)), m.group(2)
+    if n == 0:
+        return [[]]
+    if n > INTEGRITY_VALUE_CHARS:
+        return [[text + f"... ({n} characters)"]]
+    try:
+        v = json.loads(text, parse_int=str, parse_float=str)
+    except ValueError as exc:
+        raise ReadError(f"integrity value is not JSON: {exc}") from exc
+    return [["t" if v is True else "f" if v is False else "" if v is None else v if isinstance(v, str) else json.dumps(v)]]
+
+
+def psql_read_only(sql: str, sep: str = "\x1f", timeout: int | None = None, width: int | None = None) -> list[list[str]]:
+    """N-99: the read-only path for SQL the census did NOT write itself (a registry-stored `integrity_check_sql`). Server-side guards, each enough on
+    its own against a different escape, none relying on a client-side lexer:
+      1. the text is wrapped `SELECT * FROM (<sql>\n) AS _integrity LIMIT 1` (the newline keeps a trailing `--` comment from swallowing the `)`):
+         inside parentheses a `;`, COMMIT / BEGIN / SET, DML or a second statement is a syntax error at the server;
+      2. the wrapped text is the DATA of `FOR r IN EXECUTE $unique-tag$...$unique-tag$` inside a DO block: a dynamic cursor query must be exactly ONE
+         statement (a multi-statement plan, or a non-SELECT, is refused by the server), the tags are chosen so the text cannot end its own quotation,
+         and a DO block is atomic, so no COMMIT / ROLLBACK / BEGIN in the text can end the surrounding transaction (this closes the one hole of 1: an
+         unbalanced `)` that closes the wrapper early and continues with its own statements);
+      3. `BEGIN READ ONLY` + `SET LOCAL statement_timeout` (writes, DDL, sequence advances, COPY FROM are refused by the server; a function that
+         resets the server timeout leaves only the client-side wall-clock kill, which `_run_capped` enforces);
+      4. `SET default_transaction_read_only = on` first, so even a transaction boundary that somehow got through opens the NEXT transaction read-only.
+    The first value of the first row comes back through a transaction-local setting whose NAME is a per-run random nonce (the stored text cannot
+    predict it), set to the sentinel `none` BEFORE the stored query runs and written AFTER it (so anything the stored query put there is overwritten
+    whatever the name), carrying only `row <length> <first 200 characters>`; psql's own output is read through a 64 KiB cap. Separate `-c`
+    commands in one session, never PGOPTIONS (a pooled connection refuses startup options), never `-f -` (psql would parse backslash commands).
+    OPERATIONAL NOTE: `SET default_transaction_read_only` is SESSION-level: safe on a direct connection (the census reader runs through a local
+    127.0.0.1 proxy, not a transaction-mode pooler); behind a transaction-mode pooler it would have to move inside the transaction (guards 1-3 do not
+    depend on it). Raises `Unknown` for oversize text (one `-c` argument is capped by the OS at 128 KiB on Linux: the limit is fixed, not host-dependent)."""
+    if not isinstance(sql, str) or len(sql.encode("utf-8", errors="replace")) > INTEGRITY_MAX_BYTES:
+        raise Unknown(f"integrity SQL too large to run via psql -c (> {INTEGRITY_MAX_BYTES} bytes)")
+    stmt = sql.rstrip()
+    while stmt.endswith(";"):
+        stmt = stmt[:-1].rstrip()
+    limit = timeout if timeout is not None else INTEGRITY_TIMEOUT_SECONDS
+    ms = max(1, int(limit * 900))
+    wrapped = f"SELECT * FROM ({stmt}\n) AS _integrity LIMIT 1"
+    guc = "n99.i_" + secrets.token_hex(12)
+    tag = _unique_dollar_tag("n99q", wrapped)
+    body = ("DECLARE r record; v text := 'none'; BEGIN PERFORM set_config('" + guc + "', 'none', true); FOR r IN EXECUTE $" + tag + "$" + wrapped + "$" + tag + "$ LOOP "
+            "v := 'row ' || coalesce((SELECT length(e.value::text)::text || ' ' || left(e.value::text, " + str(INTEGRITY_VALUE_CHARS) + ") "
+            "FROM json_each(row_to_json(r)) e LIMIT 1), '0 '); EXIT; END LOOP; PERFORM set_config('" + guc + "', v, true); END")
+    outer = _unique_dollar_tag("n99d", body)
+    run_sql = "DO $" + outer + "$ " + body + " $" + outer + "$"
+    read_back = f"SELECT coalesce(current_setting('{guc}', true), 'none')"
+    rows = _psql_run(["SET default_transaction_read_only = on", "BEGIN READ ONLY", f"SET LOCAL statement_timeout = {ms}", run_sql, read_back, "ROLLBACK"],
+                     sep, limit, width, quiet=True, label=3, verbose=True, cap=INTEGRITY_OUTPUT_CAP)
+    return _integrity_first_value(rows)
+
+
 def scalar(sql: str) -> str | None:
     r = psql(sql)
     return r[0][0] if r and r[0] else None
+
+
+# ─────────────────────── N-99: a declared integrity_check_sql must HOLD for Build.completion to PASS ───────────────────────
+# Convention (asset_runner.py `_probe_asset`, the engine's own definition; this is its one census-side restatement): the SQL is ONE statement
+# run with NO bind parameters; healthy = the FIRST column of the FIRST row is truthy; no row, a NULL, an error = unhealthy. The SQL is
+# registry-stored text the census did not write, so it is guarded THREE independent ways, none of which trusts the others:
+#   1. `integrity_sql_problem` (a conservative lexer + closed allow-list; refuses what it cannot read exactly);
+#   2. `psql_read_only` runs it ONLY wrapped as a subquery, `SELECT * FROM (<sql>\n) AS _integrity LIMIT 1`: the SERVER's parser then rejects
+#      a `;`, a COMMIT / BEGIN / SET, DML or a second statement as a syntax error whatever the lexer in (1) missed;
+#   3. the session is `SET default_transaction_read_only = on` + `BEGIN READ ONLY`: even a transaction boundary that somehow got through the
+#      parser opens the next transaction read-only, and a write / sequence advance / DDL is refused by the server.
+INTEGRITY_MAX_BYTES = 120_000      # < Linux MAX_ARG_STRLEN (128 KiB) for ONE psql -c argument: the verdict must not depend on the host OS
+_INTEGRITY_WRITE_WORDS = frozenset({"insert", "update", "delete", "merge", "into", "share"})   # data-modifying CTE, SELECT INTO, row locks
+_INTEGRITY_WRITE_FUNCS = frozenset({"nextval", "setval", "currval", "lastval", "set_config", "dblink", "query_to_xml", "query_to_xml_and_xmlschema",
+                                    "cursor_to_xml", "table_to_xml", "schema_to_xml", "database_to_xml", "lowrite", "lo_import", "lo_export",
+                                    "lo_create", "lo_creat", "lo_unlink", "lo_put", "lo_from_bytea", "lo_truncate", "lo_open", "lo_close",
+                                    "ts_stat", "ts_rewrite", "setseed", "txid_current", "current_query", "gin_clean_pending_list"})
+# prefixes of functions that change physical state or run SQL from a string even inside a READ ONLY transaction: index maintenance (brin_summarize_*,
+# brin_desummarize_range, gin_clean_pending_list), the contrib index / page inspectors, advisory locks, notifications, large objects, dblink
+_INTEGRITY_REFUSED_PREFIXES = ("lo_", "dblink", "pg_advisory", "pg_notify", "brin_", "gin_", "gist_", "bt_", "hash_", "heap_", "pgstat", "pgrowlocks")
+_INTEGRITY_PG_FUNCS_OK = frozenset({"pg_typeof", "pg_column_size", "pg_relation_size", "pg_table_size", "pg_total_relation_size",
+                                    "pg_size_pretty", "pg_input_is_valid"})   # every other pg_* call is refused (pg_sleep too); pg_get_* (catalog readers) is allowed
+
+
+def _ident_char(ch: str) -> bool:
+    """Postgres' identifier-continuation set: ASCII letters / digits / `_` / `$`, and EVERY non-ASCII character (a byte >= 0x80)."""
+    return (ch.isascii() and (ch.isalnum() or ch in "_$")) or ord(ch) >= 128
+
+
+def _integrity_mask(sql: str) -> str:
+    """LENGTH-PRESERVING masked copy of `sql` (index i of the result is index i of the text): a comment becomes spaces; a string literal or a
+    dollar-quoted string (delimiters included) becomes `'` + spaces + `'`; a quoted identifier becomes `"` + `Q`s + `"`. So a keyword or `;` inside
+    text is never read as SQL, and a position found in the mask is a position in the text. Fidelity to Postgres' lexer is conservative: a `--`
+    comment ends at `\\n` OR `\\r`; a `$` after any identifier character (including a digit, `$` and ANY non-ASCII character) is NOT a dollar-quote
+    opener and is refused as ambiguous; outside literals, comments and dollar bodies a carriage return, a non-ASCII character, a backslash, a NUL
+    and an unquoted `U&"` are refused. Raises `Unknown` (the reason) on any of these and on an unterminated literal / comment / quote."""
+    out: list[str] = []
+    i, n = 0, len(sql)
+    if "\x00" in sql:
+        raise Unknown("contains a NUL character")
+    while i < n:
+        c = sql[i]
+        if c == "-" and sql[i:i + 2] == "--":
+            j = i
+            while j < n and sql[j] not in "\n\r":
+                j += 1
+            out.append(" " * (j - i))
+            i = j
+        elif c == "/" and sql[i:i + 2] == "/*":
+            depth, j = 1, i + 2
+            while j < n and depth:
+                if sql[j:j + 2] == "/*":
+                    depth, j = depth + 1, j + 2
+                elif sql[j:j + 2] == "*/":
+                    depth, j = depth - 1, j + 2
+                else:
+                    j += 1
+            if depth:
+                raise Unknown("unterminated /* comment")
+            out.append(" " * (j - i))
+            i = j
+        elif c == "'":
+            esc = i > 0 and sql[i - 1] in "Ee" and (i < 2 or not _ident_char(sql[i - 2]))
+            j = i + 1
+            while True:
+                if j >= n:
+                    raise Unknown("unterminated string literal")
+                if esc and sql[j] == "\\":
+                    j += 2
+                    continue
+                if sql[j] == "'":
+                    if sql[j + 1:j + 2] == "'":
+                        j += 2
+                        continue
+                    break
+                j += 1
+            out.append("'" + " " * (j - i - 1) + "'")
+            i = j + 1
+        elif c == '"':
+            if sql[max(0, i - 2):i].lower() == "u&":
+                raise Unknown('contains a Unicode-escaped identifier (U&"...")')
+            j = i + 1
+            while True:
+                if j >= n:
+                    raise Unknown("unterminated quoted identifier")
+                if sql[j] == '"':
+                    if sql[j + 1:j + 2] == '"':
+                        j += 2
+                        continue
+                    break
+                j += 1
+            out.append('"' + "Q" * (j - i - 1) + '"')
+            i = j + 1
+        elif c == "$":
+            if i > 0 and _ident_char(sql[i - 1]):
+                raise Unknown("a '$' follows an identifier character (ambiguous dollar-quote / identifier); refused")
+            m = re.match(r"\$([A-Za-z_][A-Za-z0-9_]*)?\$", sql[i:i + 400])
+            if m:
+                tag = m.group(0)
+                j = sql.find(tag, i + len(tag))
+                if j < 0:
+                    raise Unknown(f"unterminated dollar-quoted string {tag}")
+                out.append("'" + " " * (j + len(tag) - i - 2) + "'")
+                i = j + len(tag)
+            else:
+                out.append(c)
+                i += 1
+        elif c == "\r":
+            raise Unknown("contains a carriage return outside a string literal")
+        elif c == "\\":
+            raise Unknown("contains a backslash outside a string literal")
+        elif ord(c) >= 128:
+            raise Unknown("contains a non-ASCII character outside a string literal or comment")
+        else:
+            out.append(c)
+            i += 1
+    return "".join(out)
+
+
+def _integrity_statement(sql) -> tuple[str | None, str]:
+    """(reason | None, the statement text to run). The text is `sql` cut at its single trailing `;` (anything after it is whitespace or comment,
+    dropped). The reason is None only for a single, parenthesis-balanced SELECT / WITH statement that passes the allow-list; the text is then
+    safe to hand to `psql_read_only`, which wraps it as a subquery (the server's own parser is the second reader of every rule here)."""
+    if not isinstance(sql, str) or not sql.strip():
+        return "integrity_check_sql is blank", ""
+    if len(sql.encode("utf-8", errors="replace")) > INTEGRITY_MAX_BYTES:
+        return f"integrity SQL too large to run via psql -c ({len(sql.encode('utf-8', errors='replace'))} bytes > {INTEGRITY_MAX_BYTES})", ""
+    try:
+        m = _integrity_mask(sql)
+    except Unknown as exc:
+        return f"not parseable ({exc}); refused", ""
+    semis = [k for k, ch in enumerate(m) if ch == ";"]
+    cut = sql
+    if semis:
+        if m[semis[0]:].replace(";", "").strip():
+            return "more than one statement (a ';' outside a string/comment with SQL after it); only a single SELECT/WITH is run", ""
+        cut, m = sql[:semis[0]], m[:semis[0]]
+    body = m.strip()
+    if not body:
+        return "integrity_check_sql holds no statement", ""
+    depth = 0
+    for ch in body:
+        depth += (ch == "(") - (ch == ")")
+        if depth < 0:
+            return "unbalanced parentheses (a ')' closes more than was opened); refused", ""
+    if depth:
+        return "unbalanced parentheses (a '(' is never closed); refused", ""
+    first = re.match(r"[\s(]*([A-Za-z_]+)", body)
+    if not first or first.group(1).lower() not in ("select", "with"):
+        return f"not a SELECT/WITH statement (starts with {body[:20]!r})", ""
+    if re.search(r'"Q*"\s*\(', body) or re.search(r'\.\s*"Q*"', body):
+        return "calls or qualifies a QUOTED identifier (a quoted function name hides what is called); refused", ""
+    words = re.findall(r"[A-Za-z_][A-Za-z0-9_]*", body)
+    bad = sorted({w.lower() for w in words if w.lower() in _INTEGRITY_WRITE_WORDS})
+    if bad:
+        return f"contains {', '.join(w.upper() for w in bad)} (data-modifying CTE, SELECT INTO or a row lock); read-only SELECT/WITH only", ""
+    for fn in re.findall(r"\b([A-Za-z_][A-Za-z0-9_]*)\s*\(", body):
+        f = fn.lower()
+        if f in _INTEGRITY_WRITE_FUNCS or f.startswith(_INTEGRITY_REFUSED_PREFIXES) or (
+                f.startswith("pg_") and f not in _INTEGRITY_PG_FUNCS_OK and not f.startswith("pg_get_")):
+            return f"calls {f}(), a function that writes, locks or leaves the read-only transaction; refused", ""
+    return None, cut
+
+
+def integrity_sql_problem(sql) -> str | None:
+    """None when `sql` is a single read-only SELECT/WITH statement by the conservative lexer and closed allow-list of `_integrity_statement`
+    (exactly one statement; first token SELECT / WITH; balanced parentheses; no INSERT/UPDATE/DELETE/MERGE/INTO/SHARE word; no call to a
+    function known to write or lock, no quoted function name; no oversize text); else the reason it is refused (never run). A user-defined
+    volatile function cannot be enumerated here: the wrapped-subquery form and the read-only session of `psql_read_only` are the server-side guards."""
+    return _integrity_statement(sql)[0]
+
+
+def _integrity_holds(rows: list[list[str]]) -> tuple[bool, str]:
+    """(holds, what it returned) for one result: the engine's convention (first column of the first row, truthy), with the census's stricter
+    readings — a value that is neither a Postgres boolean nor a FINITE number is NOT healthy (the engine's `bool("x")` and `bool(nan)` would call
+    it so), and a value spanning several lines is not a scalar. The wrapped statement returns at most ONE row, so more than one line of output
+    can only be a value containing a newline."""
+    if not rows or not rows[0]:
+        return False, "returned no rows"
+    if len(rows) > 1:
+        return False, "the first value spans several lines (not a boolean or a number)"
+    if "\n" in rows[0][0] or "\r" in rows[0][0]:
+        return False, "the first value spans several lines (not a boolean or a number)"
+    v = rows[0][0].strip()
+    low = v.lower()
+    shown = repr(v if len(v) <= 120 else v[:120] + "...")          # never a whole value in the census text (a 10 MB string must not become a 10 MB cell)
+    if low in ("t", "true"):
+        return True, f"first column of the first row = {shown}"
+    if low in ("f", "false"):
+        return False, f"first column of the first row = {shown}"
+    if v == "":
+        return False, "first column of the first row is empty (NULL or an empty string)"
+    try:
+        num = float(v)
+    except ValueError:
+        return False, f"first column of the first row = {shown}, which is neither a boolean nor a number"
+    if not math.isfinite(num):
+        return False, f"first column of the first row = {shown}, which is not a finite number"
+    return num != 0.0, f"first column of the first row = {shown}"
+
+
+_PERMISSION_DENIED = re.compile(r"^ERROR:\s+42501:\s+permission denied\b", re.I)
+
+
+def _integrity_outcome(sql: str) -> dict:
+    """The ONE place a registry-stored integrity_check_sql is run and graded. Returns dict(state, detail, sha, secs) with state one of
+    `holds` | `fails` | `refused` (never run) | `unrunnable` (oversize / error / timeout / unreadable) | `not_measurable` (the census role lacks
+    a privilege the SQL needs: SQLSTATE 42501). `sha` is the first 12 hex of sha256(sql) and `secs` the elapsed seconds, both for the audit trail.
+    Never raises: a SQL that cannot be run is an outcome, never an exception out of the census."""
+    t0 = time.monotonic()
+    sha = hashlib.sha256(sql.encode("utf-8", errors="replace")).hexdigest()[:12] if isinstance(sql, str) else "none"
+
+    def done(state, detail):
+        return dict(state=state, detail=detail, sha=sha, secs=round(time.monotonic() - t0, 2))
+    try:
+        why, _stmt = _integrity_statement(sql)
+        if why is not None:
+            return done("unrunnable" if why.startswith("integrity SQL too large") else "refused", why)
+        rows = psql_read_only(_stmt)
+    except Exception as exc:                    # Unknown / CheckTimeout / ReadError, and any runner surprise: degrade THIS check only
+        msg = " ".join(str(exc).split())[:240]
+        if isinstance(exc, Unknown) and _PERMISSION_DENIED.match(msg):
+            return done("not_measurable", msg)
+        return done("unrunnable", f"{type(exc).__name__}: {msg}")
+    ok, got = _integrity_holds(rows)
+    return done("holds" if ok else "fails", got)
+
+
+def _completion_integrity(rec: dict, r: dict) -> dict:
+    """N-99 (Build.completion rev 3): `rec` is a Build.completion record the count/record comparison has just graded PASS. When the asset
+    DECLARES an integrity_check_sql (`r['integrity_sql']` is not None) that SQL must also hold, else the cell reads PARTIAL naming which
+    failed; one the census role is not permitted to read (SQLSTATE 42501) reads NO_DETECTOR (not measurable, not a verdict on the data). An asset
+    with no declared integrity_check_sql returns `rec` untouched (zero move). The text carries sha256(sql)[:12] and the elapsed seconds, so a
+    swapped or deleted SQL is visible in the census output."""
+    sql = r.get("integrity_sql")
+    if rec.get("v") != PASS or sql is None:
+        return rec
+    o = _integrity_outcome(sql)
+    audit = f"[integrity_check_sql sha256:{o['sha']}, {o['secs']}s]"
+    if o["state"] == "holds":
+        return dict(rec, measured=rec["measured"] + f"; the declared integrity_check_sql holds ({o['detail']}) {audit}")
+    if o["state"] == "not_measurable":
+        return dict(v=NO_DET, measured=f"NO_DETECTOR — integrity not measurable under the census role: {o['detail']}; the asset's integrity SQL needs "
+                                       "objects the census role may not read (Track I: rewrite the check to need neither charts nor the identity "
+                                       f"function; do NOT widen the census role) {audit}; counts: {rec['measured']}")
+    what = {"fails": "does NOT hold", "refused": "was REFUSED (never run)", "unrunnable": "could NOT be run"}[o["state"]]
+    return dict(v=PARTIAL, measured=f"{rec['measured']}; but the declared integrity_check_sql {what}: {o['detail']} {audit} — count equality alone "
+                                    "is not a completion when the asset declares an integrity check (N-99)")
+
 
 
 # ─────────────────────────── code-side scans ───────────────────────────
@@ -6135,6 +6522,7 @@ def registry(layer_key: str) -> tuple[dict[str, dict], dict]:
         "SELECT coalesce(json_agg(json_build_object("
         "'asset_id',asset_id,'has_writer',coalesce(has_writer,false),'target_table',target_table,"
         "'count_sql',coalesce(count_sql,''),'has_integrity',(integrity_check_sql IS NOT NULL),"
+        "'integrity_sql',integrity_check_sql,"
         "'depends_on',coalesce(to_json(depends_on),'[]'::json),'target_floor',target_floor,"
         "'catalog_status',coalesce(catalog_status,''),'asset_kind',coalesce(asset_kind,''))"
         " ORDER BY asset_id)::text,'[]') "
@@ -6147,6 +6535,8 @@ def registry(layer_key: str) -> tuple[dict[str, dict], dict]:
             asset_id=r["asset_id"], has_writer=bool(r["has_writer"]),
             target_table=r["target_table"] or None, count_sql=r["count_sql"] or "",
             has_integrity=bool(r["has_integrity"]), depends_on=list(r["depends_on"] or []),
+            # N-99: the declared SQL text itself (None = no integrity_check_sql declared; '' = declared but blank), read once with the rest of the row
+            integrity_sql=(r["integrity_sql"] if r.get("integrity_sql") is not None and r["has_integrity"] else None),
             target_floor=(str(r["target_floor"]) if r["target_floor"] is not None else None),
             catalog_status=r["catalog_status"], asset_kind=r["asset_kind"])
     if not out:
@@ -8572,6 +8962,9 @@ def measure(layer_key: str, assets=None) -> dict:
                                          + ("; zero rows declared complete by target_floor=0 (has_writer=false "
                                             "— no writer at all, the signal honest enough to read as by-design)"
                                             if live == 0 else ""))
+            # N-99 (rev 3): count equality alone is not a completion when the asset DECLARES an integrity_check_sql — it must hold too.
+            # The only branch that can read PASS is this one, so the guard is here (downward-only); no declared SQL = the record is untouched.
+            m["Build.completion"] = _completion_integrity(m["Build.completion"], r)
 
         # D6 item 2 (W2-2): Earn/Cost are attributed to the latest STARTED build_run_assets attempt at
         # the build record's scope (`_attempt_timing`), and only then graded by the D6 classifier —
