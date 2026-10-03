@@ -141,6 +141,8 @@ export const PROTECTED_PUBLIC_SCHEMA_MIGRATIONS = new Set([
   '1155_gochara_relationship_record.sql',
   '1156_gochara_eval_window.sql',
   '1157_gochara_av_polarity_declaration.sql',
+  // Pravāha B (decision A, split of #2996): the staged-candidate evidence function needs CREATE on public — the protected window only.
+  '1235_ka_gochara_staged_candidate_evidence_function.sql',
 ])
 
 const AI_METERING_PROTECTED_PUBLIC_SCHEMA_MIGRATION = '1202_ai_metering_ledger.sql'
