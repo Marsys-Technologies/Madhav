@@ -96,7 +96,7 @@ MIGRATION_DIRS = ("platform/migrations", "platform/supabase/migrations")
 LIVE_INACTIVE_OVERRIDES = ("ka_gochara_v3_century_materialize",)
 # Seed-only inactive row: census L3 `phantom_registered`, not in the live registry total (23). Present so the family input's
 # `_notes.inactive` allowance verifies; never in the level map.
-SEED_ONLY_INACTIVE = ("ka_gochara_v4_41_candidate",)
+SEED_ONLY_INACTIVE = ("ka_gochara_v4_41_candidate", "ka_gochara_v5")   # v5: Pravaha's INERT A5.3 skeleton, seed row is_active false, no live registry row
 
 DRAFT_BASIS = (
     "DRAFT. DAG = the 127 active registry rows' depends_on: the repo's frozen live-registry reconstruction before migration "
