@@ -1,0 +1,1309 @@
+{
+ "schema": 1,
+ "registry_revision": 16,
+ "registry_fingerprint": "8b88e7b26f32fdf8f665533b96357c8c332fb142a7166a6468a0f64ec51cb97c",
+ "inspector_commit": "adb0db29d56d805ea34c2ce33fd7c7b704baf6ba",
+ "expected_cells": 54,
+ "covered_cells": 42,
+ "covered_cells_unit": "gate_x_layer cells whose every required criterion has an auto-measured detector or is declared per-asset-pending",
+ "uncovered_required_criteria": [
+  "Carr.D2",
+  "Carr.D3",
+  "Earn.service_state"
+ ],
+ "per_asset_pending": [],
+ "per_asset_pending_note": "declared in PER_ASSET_PENDING (empty until the separate pending file lands; not fingerprinted)",
+ "na_rules": [
+  {
+   "rule_id": "Build.dep_liveness#measured:no-declared-dependencies",
+   "decision": "N-22/N-22a row 23 (re-proposed: reads-match detector landed in revision 6, principle 3); N-72 (S4)"
+  },
+  {
+   "rule_id": "Build.history#measured:never-run",
+   "decision": "N-22/N-22a row 20 (APPROVED, principles 2-3); N-65 (R01)"
+  },
+  {
+   "rule_id": "Carr.D1#measured:not-the-declared-carriage",
+   "decision": "N-72 (S2, declaration-keyed); N-73 (2); N-22/N-22a row 15 (not-chosen stays refused)"
+  },
+  {
+   "rule_id": "Carr.D2#measured:not-the-declared-carriage",
+   "decision": "N-72 (S2, declaration-keyed); N-73 (2); N-22/N-22a row 15 (not-chosen stays refused)"
+  },
+  {
+   "rule_id": "Carr.D3#measured:not-the-declared-carriage",
+   "decision": "N-72 (S2, declaration-keyed); N-73 (2); N-22/N-22a row 15 (not-chosen stays refused)"
+  },
+  {
+   "rule_id": "Dens.served#measured:no-served-surface",
+   "decision": "N-22/N-22a row 19 (AMENDED, principles 1, 3, 4); N-65 (R02); amended by N-74(a): an asset no served module selects rows from; being named only as a provenance label is not a select. Dens 'served' means the served TS surface; a Python / sidecar reader of a table does not make it served (N/A means 'not served directly', not 'unused'). A service-kind asset named in a service_probe envelope is a reach, not a label."
+  },
+  {
+   "rule_id": "Earn.service_state#measured:not-a-service",
+   "decision": "N-22/N-22a row 9 (AMENDED, principles 2, 3, 5); N-72 (not-a-service keyed on the declared kind)"
+  },
+  {
+   "rule_id": "Ldgr.source_presence#measured:no-classical-claim",
+   "decision": "N-72 (S3, declaration-keyed no_classical_claim); N-73 (1): a source-status disclosure is not a source; N-22/N-22a (column-pattern N/A stays refused, A5)"
+  },
+  {
+   "rule_id": "Narr.agree#measured:no-prose",
+   "decision": "N-22/N-22a row 17 (AMENDED, principles 1, 3, 8); N-65 (R03)"
+  },
+  {
+   "rule_id": "Narr.checkable#measured:no-prose",
+   "decision": "N-22/N-22a row 17 (AMENDED, principles 1, 3, 8); N-65 (R03)"
+  },
+  {
+   "rule_id": "Narr.fidelity_test#measured:no-prose",
+   "decision": "N-22/N-22a row 17 (AMENDED, principles 1, 3, 8); N-65 (R03)"
+  },
+  {
+   "rule_id": "Narr.lint#measured:no-prose",
+   "decision": "N-22/N-22a row 17 (AMENDED, principles 1, 3, 8); N-65 (R03)"
+  },
+  {
+   "rule_id": "Vocab.alias#measured:no-alias-class",
+   "decision": "N-72 (S3, declaration-keyed no_alias_class); N-73 (4): not where a documented alias exists; N-22/N-22a (column-pattern N/A stays refused, A5)"
+  }
+ ],
+ "na_rules_note": "N/A rules are conditional (per asset); listed, never counted as coverage of a detector-NONE criterion",
+ "undeclared_na_pattern_ids": [
+  "Completeness.depth.dasha_link#columns_any",
+  "Earn.service_state#asset_kinds",
+  "Ldgr.source_presence#columns_any",
+  "Vocab.alias#columns_any"
+ ],
+ "undeclared_na_causes": [
+  "Build.completion#measured:no-writer-no-count-sql",
+  "Build.completion#measured:service-no-target-table-no-count-sql",
+  "Build.contract#measured:no-writer-registry-agrees",
+  "Build.count_integrity#measured:no-writer-no-count-sql",
+  "Build.exercised#measured:never-executed-no-writer",
+  "Build.exercised#measured:never-run-no-writer",
+  "Build.registered#measured:no-writer-registry-agrees",
+  "Build.target#measured:no-writer-no-target-table",
+  "Build.target#measured:service-no-target-table",
+  "Carr.D1#measured:no-carriage",
+  "Carr.D1#measured:ratified_judgment",
+  "Carr.D2#measured:no-carriage",
+  "Carr.D2#measured:ratified_judgment",
+  "Carr.D3#measured:no-carriage",
+  "Carr.D3#measured:ratified_judgment",
+  "Count.floor#measured:target-floor-zero",
+  "Earn.build_record#measured:before-completion-write",
+  "Earn.build_record#measured:healthy-non-execution",
+  "Earn.build_record#measured:never-attempted",
+  "Earn.build_record#measured:no-registered-writer",
+  "Idem.pattern#measured:no-writer-registry-agrees",
+  "Null.blank_rows#measured:no-prose-declared",
+  "Null.schema_default#measured:no-prose-declared"
+ ],
+ "non_core_detector_none": [
+  "Completeness.depth.dasha_link"
+ ],
+ "candidate_cell_counts": {
+  "gate_x_layer": {
+   "total": 54,
+   "pinned": true,
+   "with_auto_detector": 54,
+   "fully_covered": 42
+  },
+  "core_criterion_x_layer": {
+   "total": 150,
+   "pinned": false,
+   "auto_measured": 132,
+   "detector_none": 18
+  },
+  "gate_x_asset": {
+   "total": null,
+   "pinned": false,
+   "omitted_reason": "no committed registry-wide asset list offline (LEVEL_MAP.json is not committed, FAMILY_ASSETS.json is a 25-asset subset, asset_registry is database-only)"
+  }
+ },
+ "core_gates": [
+  "Ldgr",
+  "Idem",
+  "Earn",
+  "Null",
+  "Vocab",
+  "Carr",
+  "Narr",
+  "Dens",
+  "Build"
+ ],
+ "layers": [
+  "L0",
+  "L1",
+  "L2",
+  "L3",
+  "L4",
+  "L5"
+ ],
+ "cells": [
+  {
+   "gate": "Ldgr",
+   "layer": "L0",
+   "required": [
+    "Ldgr.source_presence"
+   ],
+   "auto_measured": [
+    "Ldgr.source_presence"
+   ],
+   "detector_none": [],
+   "per_asset_pending": [],
+   "uncovered": [],
+   "covered": true,
+   "declared_na_rules": [
+    "Ldgr.source_presence#measured:no-classical-claim"
+   ]
+  },
+  {
+   "gate": "Ldgr",
+   "layer": "L1",
+   "required": [
+    "Ldgr.source_presence"
+   ],
+   "auto_measured": [
+    "Ldgr.source_presence"
+   ],
+   "detector_none": [],
+   "per_asset_pending": [],
+   "uncovered": [],
+   "covered": true,
+   "declared_na_rules": [
+    "Ldgr.source_presence#measured:no-classical-claim"
+   ]
+  },
+  {
+   "gate": "Ldgr",
+   "layer": "L2",
+   "required": [
+    "Ldgr.source_presence"
+   ],
+   "auto_measured": [
+    "Ldgr.source_presence"
+   ],
+   "detector_none": [],
+   "per_asset_pending": [],
+   "uncovered": [],
+   "covered": true,
+   "declared_na_rules": [
+    "Ldgr.source_presence#measured:no-classical-claim"
+   ]
+  },
+  {
+   "gate": "Ldgr",
+   "layer": "L3",
+   "required": [
+    "Ldgr.source_presence"
+   ],
+   "auto_measured": [
+    "Ldgr.source_presence"
+   ],
+   "detector_none": [],
+   "per_asset_pending": [],
+   "uncovered": [],
+   "covered": true,
+   "declared_na_rules": [
+    "Ldgr.source_presence#measured:no-classical-claim"
+   ]
+  },
+  {
+   "gate": "Ldgr",
+   "layer": "L4",
+   "required": [
+    "Ldgr.source_presence"
+   ],
+   "auto_measured": [
+    "Ldgr.source_presence"
+   ],
+   "detector_none": [],
+   "per_asset_pending": [],
+   "uncovered": [],
+   "covered": true,
+   "declared_na_rules": [
+    "Ldgr.source_presence#measured:no-classical-claim"
+   ]
+  },
+  {
+   "gate": "Ldgr",
+   "layer": "L5",
+   "required": [
+    "Ldgr.source_presence"
+   ],
+   "auto_measured": [
+    "Ldgr.source_presence"
+   ],
+   "detector_none": [],
+   "per_asset_pending": [],
+   "uncovered": [],
+   "covered": true,
+   "declared_na_rules": [
+    "Ldgr.source_presence#measured:no-classical-claim"
+   ]
+  },
+  {
+   "gate": "Idem",
+   "layer": "L0",
+   "required": [
+    "Idem.pattern"
+   ],
+   "auto_measured": [
+    "Idem.pattern"
+   ],
+   "detector_none": [],
+   "per_asset_pending": [],
+   "uncovered": [],
+   "covered": true,
+   "declared_na_rules": []
+  },
+  {
+   "gate": "Idem",
+   "layer": "L1",
+   "required": [
+    "Idem.pattern"
+   ],
+   "auto_measured": [
+    "Idem.pattern"
+   ],
+   "detector_none": [],
+   "per_asset_pending": [],
+   "uncovered": [],
+   "covered": true,
+   "declared_na_rules": []
+  },
+  {
+   "gate": "Idem",
+   "layer": "L2",
+   "required": [
+    "Idem.pattern"
+   ],
+   "auto_measured": [
+    "Idem.pattern"
+   ],
+   "detector_none": [],
+   "per_asset_pending": [],
+   "uncovered": [],
+   "covered": true,
+   "declared_na_rules": []
+  },
+  {
+   "gate": "Idem",
+   "layer": "L3",
+   "required": [
+    "Idem.pattern"
+   ],
+   "auto_measured": [
+    "Idem.pattern"
+   ],
+   "detector_none": [],
+   "per_asset_pending": [],
+   "uncovered": [],
+   "covered": true,
+   "declared_na_rules": []
+  },
+  {
+   "gate": "Idem",
+   "layer": "L4",
+   "required": [
+    "Idem.pattern"
+   ],
+   "auto_measured": [
+    "Idem.pattern"
+   ],
+   "detector_none": [],
+   "per_asset_pending": [],
+   "uncovered": [],
+   "covered": true,
+   "declared_na_rules": []
+  },
+  {
+   "gate": "Idem",
+   "layer": "L5",
+   "required": [
+    "Idem.pattern"
+   ],
+   "auto_measured": [
+    "Idem.pattern"
+   ],
+   "detector_none": [],
+   "per_asset_pending": [],
+   "uncovered": [],
+   "covered": true,
+   "declared_na_rules": []
+  },
+  {
+   "gate": "Earn",
+   "layer": "L0",
+   "required": [
+    "Earn.build_record",
+    "Earn.service_state"
+   ],
+   "auto_measured": [
+    "Earn.build_record"
+   ],
+   "detector_none": [
+    "Earn.service_state"
+   ],
+   "per_asset_pending": [],
+   "uncovered": [
+    "Earn.service_state"
+   ],
+   "covered": false,
+   "declared_na_rules": [
+    "Earn.service_state#measured:not-a-service"
+   ]
+  },
+  {
+   "gate": "Earn",
+   "layer": "L1",
+   "required": [
+    "Earn.build_record",
+    "Earn.service_state"
+   ],
+   "auto_measured": [
+    "Earn.build_record"
+   ],
+   "detector_none": [
+    "Earn.service_state"
+   ],
+   "per_asset_pending": [],
+   "uncovered": [
+    "Earn.service_state"
+   ],
+   "covered": false,
+   "declared_na_rules": [
+    "Earn.service_state#measured:not-a-service"
+   ]
+  },
+  {
+   "gate": "Earn",
+   "layer": "L2",
+   "required": [
+    "Earn.build_record",
+    "Earn.service_state"
+   ],
+   "auto_measured": [
+    "Earn.build_record"
+   ],
+   "detector_none": [
+    "Earn.service_state"
+   ],
+   "per_asset_pending": [],
+   "uncovered": [
+    "Earn.service_state"
+   ],
+   "covered": false,
+   "declared_na_rules": [
+    "Earn.service_state#measured:not-a-service"
+   ]
+  },
+  {
+   "gate": "Earn",
+   "layer": "L3",
+   "required": [
+    "Earn.build_record",
+    "Earn.service_state"
+   ],
+   "auto_measured": [
+    "Earn.build_record"
+   ],
+   "detector_none": [
+    "Earn.service_state"
+   ],
+   "per_asset_pending": [],
+   "uncovered": [
+    "Earn.service_state"
+   ],
+   "covered": false,
+   "declared_na_rules": [
+    "Earn.service_state#measured:not-a-service"
+   ]
+  },
+  {
+   "gate": "Earn",
+   "layer": "L4",
+   "required": [
+    "Earn.build_record",
+    "Earn.service_state"
+   ],
+   "auto_measured": [
+    "Earn.build_record"
+   ],
+   "detector_none": [
+    "Earn.service_state"
+   ],
+   "per_asset_pending": [],
+   "uncovered": [
+    "Earn.service_state"
+   ],
+   "covered": false,
+   "declared_na_rules": [
+    "Earn.service_state#measured:not-a-service"
+   ]
+  },
+  {
+   "gate": "Earn",
+   "layer": "L5",
+   "required": [
+    "Earn.build_record",
+    "Earn.service_state"
+   ],
+   "auto_measured": [
+    "Earn.build_record"
+   ],
+   "detector_none": [
+    "Earn.service_state"
+   ],
+   "per_asset_pending": [],
+   "uncovered": [
+    "Earn.service_state"
+   ],
+   "covered": false,
+   "declared_na_rules": [
+    "Earn.service_state#measured:not-a-service"
+   ]
+  },
+  {
+   "gate": "Null",
+   "layer": "L0",
+   "required": [
+    "Null.blank_rows",
+    "Null.schema_default"
+   ],
+   "auto_measured": [
+    "Null.blank_rows",
+    "Null.schema_default"
+   ],
+   "detector_none": [],
+   "per_asset_pending": [],
+   "uncovered": [],
+   "covered": true,
+   "declared_na_rules": []
+  },
+  {
+   "gate": "Null",
+   "layer": "L1",
+   "required": [
+    "Null.blank_rows",
+    "Null.schema_default"
+   ],
+   "auto_measured": [
+    "Null.blank_rows",
+    "Null.schema_default"
+   ],
+   "detector_none": [],
+   "per_asset_pending": [],
+   "uncovered": [],
+   "covered": true,
+   "declared_na_rules": []
+  },
+  {
+   "gate": "Null",
+   "layer": "L2",
+   "required": [
+    "Null.blank_rows",
+    "Null.schema_default"
+   ],
+   "auto_measured": [
+    "Null.blank_rows",
+    "Null.schema_default"
+   ],
+   "detector_none": [],
+   "per_asset_pending": [],
+   "uncovered": [],
+   "covered": true,
+   "declared_na_rules": []
+  },
+  {
+   "gate": "Null",
+   "layer": "L3",
+   "required": [
+    "Null.blank_rows",
+    "Null.schema_default"
+   ],
+   "auto_measured": [
+    "Null.blank_rows",
+    "Null.schema_default"
+   ],
+   "detector_none": [],
+   "per_asset_pending": [],
+   "uncovered": [],
+   "covered": true,
+   "declared_na_rules": []
+  },
+  {
+   "gate": "Null",
+   "layer": "L4",
+   "required": [
+    "Null.blank_rows",
+    "Null.schema_default"
+   ],
+   "auto_measured": [
+    "Null.blank_rows",
+    "Null.schema_default"
+   ],
+   "detector_none": [],
+   "per_asset_pending": [],
+   "uncovered": [],
+   "covered": true,
+   "declared_na_rules": []
+  },
+  {
+   "gate": "Null",
+   "layer": "L5",
+   "required": [
+    "Null.blank_rows",
+    "Null.schema_default"
+   ],
+   "auto_measured": [
+    "Null.blank_rows",
+    "Null.schema_default"
+   ],
+   "detector_none": [],
+   "per_asset_pending": [],
+   "uncovered": [],
+   "covered": true,
+   "declared_na_rules": []
+  },
+  {
+   "gate": "Vocab",
+   "layer": "L0",
+   "required": [
+    "Vocab.alias",
+    "Vocab.identity"
+   ],
+   "auto_measured": [
+    "Vocab.alias",
+    "Vocab.identity"
+   ],
+   "detector_none": [],
+   "per_asset_pending": [],
+   "uncovered": [],
+   "covered": true,
+   "declared_na_rules": [
+    "Vocab.alias#measured:no-alias-class"
+   ]
+  },
+  {
+   "gate": "Vocab",
+   "layer": "L1",
+   "required": [
+    "Vocab.alias",
+    "Vocab.identity"
+   ],
+   "auto_measured": [
+    "Vocab.alias",
+    "Vocab.identity"
+   ],
+   "detector_none": [],
+   "per_asset_pending": [],
+   "uncovered": [],
+   "covered": true,
+   "declared_na_rules": [
+    "Vocab.alias#measured:no-alias-class"
+   ]
+  },
+  {
+   "gate": "Vocab",
+   "layer": "L2",
+   "required": [
+    "Vocab.alias",
+    "Vocab.identity"
+   ],
+   "auto_measured": [
+    "Vocab.alias",
+    "Vocab.identity"
+   ],
+   "detector_none": [],
+   "per_asset_pending": [],
+   "uncovered": [],
+   "covered": true,
+   "declared_na_rules": [
+    "Vocab.alias#measured:no-alias-class"
+   ]
+  },
+  {
+   "gate": "Vocab",
+   "layer": "L3",
+   "required": [
+    "Vocab.alias",
+    "Vocab.identity"
+   ],
+   "auto_measured": [
+    "Vocab.alias",
+    "Vocab.identity"
+   ],
+   "detector_none": [],
+   "per_asset_pending": [],
+   "uncovered": [],
+   "covered": true,
+   "declared_na_rules": [
+    "Vocab.alias#measured:no-alias-class"
+   ]
+  },
+  {
+   "gate": "Vocab",
+   "layer": "L4",
+   "required": [
+    "Vocab.alias",
+    "Vocab.identity"
+   ],
+   "auto_measured": [
+    "Vocab.alias",
+    "Vocab.identity"
+   ],
+   "detector_none": [],
+   "per_asset_pending": [],
+   "uncovered": [],
+   "covered": true,
+   "declared_na_rules": [
+    "Vocab.alias#measured:no-alias-class"
+   ]
+  },
+  {
+   "gate": "Vocab",
+   "layer": "L5",
+   "required": [
+    "Vocab.alias",
+    "Vocab.identity"
+   ],
+   "auto_measured": [
+    "Vocab.alias",
+    "Vocab.identity"
+   ],
+   "detector_none": [],
+   "per_asset_pending": [],
+   "uncovered": [],
+   "covered": true,
+   "declared_na_rules": [
+    "Vocab.alias#measured:no-alias-class"
+   ]
+  },
+  {
+   "gate": "Carr",
+   "layer": "L0",
+   "required": [
+    "Carr.D1",
+    "Carr.D2",
+    "Carr.D3"
+   ],
+   "auto_measured": [
+    "Carr.D1"
+   ],
+   "detector_none": [
+    "Carr.D2",
+    "Carr.D3"
+   ],
+   "per_asset_pending": [],
+   "uncovered": [
+    "Carr.D2",
+    "Carr.D3"
+   ],
+   "covered": false,
+   "declared_na_rules": [
+    "Carr.D1#measured:not-the-declared-carriage",
+    "Carr.D2#measured:not-the-declared-carriage",
+    "Carr.D3#measured:not-the-declared-carriage"
+   ]
+  },
+  {
+   "gate": "Carr",
+   "layer": "L1",
+   "required": [
+    "Carr.D1",
+    "Carr.D2",
+    "Carr.D3"
+   ],
+   "auto_measured": [
+    "Carr.D1"
+   ],
+   "detector_none": [
+    "Carr.D2",
+    "Carr.D3"
+   ],
+   "per_asset_pending": [],
+   "uncovered": [
+    "Carr.D2",
+    "Carr.D3"
+   ],
+   "covered": false,
+   "declared_na_rules": [
+    "Carr.D1#measured:not-the-declared-carriage",
+    "Carr.D2#measured:not-the-declared-carriage",
+    "Carr.D3#measured:not-the-declared-carriage"
+   ]
+  },
+  {
+   "gate": "Carr",
+   "layer": "L2",
+   "required": [
+    "Carr.D1",
+    "Carr.D2",
+    "Carr.D3"
+   ],
+   "auto_measured": [
+    "Carr.D1"
+   ],
+   "detector_none": [
+    "Carr.D2",
+    "Carr.D3"
+   ],
+   "per_asset_pending": [],
+   "uncovered": [
+    "Carr.D2",
+    "Carr.D3"
+   ],
+   "covered": false,
+   "declared_na_rules": [
+    "Carr.D1#measured:not-the-declared-carriage",
+    "Carr.D2#measured:not-the-declared-carriage",
+    "Carr.D3#measured:not-the-declared-carriage"
+   ]
+  },
+  {
+   "gate": "Carr",
+   "layer": "L3",
+   "required": [
+    "Carr.D1",
+    "Carr.D2",
+    "Carr.D3"
+   ],
+   "auto_measured": [
+    "Carr.D1"
+   ],
+   "detector_none": [
+    "Carr.D2",
+    "Carr.D3"
+   ],
+   "per_asset_pending": [],
+   "uncovered": [
+    "Carr.D2",
+    "Carr.D3"
+   ],
+   "covered": false,
+   "declared_na_rules": [
+    "Carr.D1#measured:not-the-declared-carriage",
+    "Carr.D2#measured:not-the-declared-carriage",
+    "Carr.D3#measured:not-the-declared-carriage"
+   ]
+  },
+  {
+   "gate": "Carr",
+   "layer": "L4",
+   "required": [
+    "Carr.D1",
+    "Carr.D2",
+    "Carr.D3"
+   ],
+   "auto_measured": [
+    "Carr.D1"
+   ],
+   "detector_none": [
+    "Carr.D2",
+    "Carr.D3"
+   ],
+   "per_asset_pending": [],
+   "uncovered": [
+    "Carr.D2",
+    "Carr.D3"
+   ],
+   "covered": false,
+   "declared_na_rules": [
+    "Carr.D1#measured:not-the-declared-carriage",
+    "Carr.D2#measured:not-the-declared-carriage",
+    "Carr.D3#measured:not-the-declared-carriage"
+   ]
+  },
+  {
+   "gate": "Carr",
+   "layer": "L5",
+   "required": [
+    "Carr.D1",
+    "Carr.D2",
+    "Carr.D3"
+   ],
+   "auto_measured": [
+    "Carr.D1"
+   ],
+   "detector_none": [
+    "Carr.D2",
+    "Carr.D3"
+   ],
+   "per_asset_pending": [],
+   "uncovered": [
+    "Carr.D2",
+    "Carr.D3"
+   ],
+   "covered": false,
+   "declared_na_rules": [
+    "Carr.D1#measured:not-the-declared-carriage",
+    "Carr.D2#measured:not-the-declared-carriage",
+    "Carr.D3#measured:not-the-declared-carriage"
+   ]
+  },
+  {
+   "gate": "Narr",
+   "layer": "L0",
+   "required": [
+    "Narr.agree",
+    "Narr.checkable",
+    "Narr.fidelity_test",
+    "Narr.lint"
+   ],
+   "auto_measured": [
+    "Narr.agree",
+    "Narr.checkable",
+    "Narr.fidelity_test",
+    "Narr.lint"
+   ],
+   "detector_none": [],
+   "per_asset_pending": [],
+   "uncovered": [],
+   "covered": true,
+   "declared_na_rules": [
+    "Narr.agree#measured:no-prose",
+    "Narr.checkable#measured:no-prose",
+    "Narr.fidelity_test#measured:no-prose",
+    "Narr.lint#measured:no-prose"
+   ]
+  },
+  {
+   "gate": "Narr",
+   "layer": "L1",
+   "required": [
+    "Narr.agree",
+    "Narr.checkable",
+    "Narr.fidelity_test",
+    "Narr.lint"
+   ],
+   "auto_measured": [
+    "Narr.agree",
+    "Narr.checkable",
+    "Narr.fidelity_test",
+    "Narr.lint"
+   ],
+   "detector_none": [],
+   "per_asset_pending": [],
+   "uncovered": [],
+   "covered": true,
+   "declared_na_rules": [
+    "Narr.agree#measured:no-prose",
+    "Narr.checkable#measured:no-prose",
+    "Narr.fidelity_test#measured:no-prose",
+    "Narr.lint#measured:no-prose"
+   ]
+  },
+  {
+   "gate": "Narr",
+   "layer": "L2",
+   "required": [
+    "Narr.agree",
+    "Narr.checkable",
+    "Narr.fidelity_test",
+    "Narr.lint"
+   ],
+   "auto_measured": [
+    "Narr.agree",
+    "Narr.checkable",
+    "Narr.fidelity_test",
+    "Narr.lint"
+   ],
+   "detector_none": [],
+   "per_asset_pending": [],
+   "uncovered": [],
+   "covered": true,
+   "declared_na_rules": [
+    "Narr.agree#measured:no-prose",
+    "Narr.checkable#measured:no-prose",
+    "Narr.fidelity_test#measured:no-prose",
+    "Narr.lint#measured:no-prose"
+   ]
+  },
+  {
+   "gate": "Narr",
+   "layer": "L3",
+   "required": [
+    "Narr.agree",
+    "Narr.checkable",
+    "Narr.fidelity_test",
+    "Narr.lint"
+   ],
+   "auto_measured": [
+    "Narr.agree",
+    "Narr.checkable",
+    "Narr.fidelity_test",
+    "Narr.lint"
+   ],
+   "detector_none": [],
+   "per_asset_pending": [],
+   "uncovered": [],
+   "covered": true,
+   "declared_na_rules": [
+    "Narr.agree#measured:no-prose",
+    "Narr.checkable#measured:no-prose",
+    "Narr.fidelity_test#measured:no-prose",
+    "Narr.lint#measured:no-prose"
+   ]
+  },
+  {
+   "gate": "Narr",
+   "layer": "L4",
+   "required": [
+    "Narr.agree",
+    "Narr.checkable",
+    "Narr.fidelity_test",
+    "Narr.lint"
+   ],
+   "auto_measured": [
+    "Narr.agree",
+    "Narr.checkable",
+    "Narr.fidelity_test",
+    "Narr.lint"
+   ],
+   "detector_none": [],
+   "per_asset_pending": [],
+   "uncovered": [],
+   "covered": true,
+   "declared_na_rules": [
+    "Narr.agree#measured:no-prose",
+    "Narr.checkable#measured:no-prose",
+    "Narr.fidelity_test#measured:no-prose",
+    "Narr.lint#measured:no-prose"
+   ]
+  },
+  {
+   "gate": "Narr",
+   "layer": "L5",
+   "required": [
+    "Narr.agree",
+    "Narr.checkable",
+    "Narr.fidelity_test",
+    "Narr.lint"
+   ],
+   "auto_measured": [
+    "Narr.agree",
+    "Narr.checkable",
+    "Narr.fidelity_test",
+    "Narr.lint"
+   ],
+   "detector_none": [],
+   "per_asset_pending": [],
+   "uncovered": [],
+   "covered": true,
+   "declared_na_rules": [
+    "Narr.agree#measured:no-prose",
+    "Narr.checkable#measured:no-prose",
+    "Narr.fidelity_test#measured:no-prose",
+    "Narr.lint#measured:no-prose"
+   ]
+  },
+  {
+   "gate": "Dens",
+   "layer": "L0",
+   "required": [
+    "Dens.served"
+   ],
+   "auto_measured": [
+    "Dens.served"
+   ],
+   "detector_none": [],
+   "per_asset_pending": [],
+   "uncovered": [],
+   "covered": true,
+   "declared_na_rules": [
+    "Dens.served#measured:no-served-surface"
+   ]
+  },
+  {
+   "gate": "Dens",
+   "layer": "L1",
+   "required": [
+    "Dens.served"
+   ],
+   "auto_measured": [
+    "Dens.served"
+   ],
+   "detector_none": [],
+   "per_asset_pending": [],
+   "uncovered": [],
+   "covered": true,
+   "declared_na_rules": [
+    "Dens.served#measured:no-served-surface"
+   ]
+  },
+  {
+   "gate": "Dens",
+   "layer": "L2",
+   "required": [
+    "Dens.served"
+   ],
+   "auto_measured": [
+    "Dens.served"
+   ],
+   "detector_none": [],
+   "per_asset_pending": [],
+   "uncovered": [],
+   "covered": true,
+   "declared_na_rules": [
+    "Dens.served#measured:no-served-surface"
+   ]
+  },
+  {
+   "gate": "Dens",
+   "layer": "L3",
+   "required": [
+    "Dens.served"
+   ],
+   "auto_measured": [
+    "Dens.served"
+   ],
+   "detector_none": [],
+   "per_asset_pending": [],
+   "uncovered": [],
+   "covered": true,
+   "declared_na_rules": [
+    "Dens.served#measured:no-served-surface"
+   ]
+  },
+  {
+   "gate": "Dens",
+   "layer": "L4",
+   "required": [
+    "Dens.served"
+   ],
+   "auto_measured": [
+    "Dens.served"
+   ],
+   "detector_none": [],
+   "per_asset_pending": [],
+   "uncovered": [],
+   "covered": true,
+   "declared_na_rules": [
+    "Dens.served#measured:no-served-surface"
+   ]
+  },
+  {
+   "gate": "Dens",
+   "layer": "L5",
+   "required": [
+    "Dens.served"
+   ],
+   "auto_measured": [
+    "Dens.served"
+   ],
+   "detector_none": [],
+   "per_asset_pending": [],
+   "uncovered": [],
+   "covered": true,
+   "declared_na_rules": [
+    "Dens.served#measured:no-served-surface"
+   ]
+  },
+  {
+   "gate": "Build",
+   "layer": "L0",
+   "required": [
+    "Build.completion",
+    "Build.contract",
+    "Build.count_integrity",
+    "Build.dag",
+    "Build.dep_liveness",
+    "Build.exercised",
+    "Build.history",
+    "Build.registered",
+    "Build.target"
+   ],
+   "auto_measured": [
+    "Build.completion",
+    "Build.contract",
+    "Build.count_integrity",
+    "Build.dag",
+    "Build.dep_liveness",
+    "Build.exercised",
+    "Build.history",
+    "Build.registered",
+    "Build.target"
+   ],
+   "detector_none": [],
+   "per_asset_pending": [],
+   "uncovered": [],
+   "covered": true,
+   "declared_na_rules": [
+    "Build.dep_liveness#measured:no-declared-dependencies",
+    "Build.history#measured:never-run"
+   ]
+  },
+  {
+   "gate": "Build",
+   "layer": "L1",
+   "required": [
+    "Build.completion",
+    "Build.contract",
+    "Build.count_integrity",
+    "Build.dag",
+    "Build.dep_liveness",
+    "Build.exercised",
+    "Build.history",
+    "Build.registered",
+    "Build.target"
+   ],
+   "auto_measured": [
+    "Build.completion",
+    "Build.contract",
+    "Build.count_integrity",
+    "Build.dag",
+    "Build.dep_liveness",
+    "Build.exercised",
+    "Build.history",
+    "Build.registered",
+    "Build.target"
+   ],
+   "detector_none": [],
+   "per_asset_pending": [],
+   "uncovered": [],
+   "covered": true,
+   "declared_na_rules": [
+    "Build.dep_liveness#measured:no-declared-dependencies",
+    "Build.history#measured:never-run"
+   ]
+  },
+  {
+   "gate": "Build",
+   "layer": "L2",
+   "required": [
+    "Build.completion",
+    "Build.contract",
+    "Build.count_integrity",
+    "Build.dag",
+    "Build.dep_liveness",
+    "Build.exercised",
+    "Build.history",
+    "Build.registered",
+    "Build.target"
+   ],
+   "auto_measured": [
+    "Build.completion",
+    "Build.contract",
+    "Build.count_integrity",
+    "Build.dag",
+    "Build.dep_liveness",
+    "Build.exercised",
+    "Build.history",
+    "Build.registered",
+    "Build.target"
+   ],
+   "detector_none": [],
+   "per_asset_pending": [],
+   "uncovered": [],
+   "covered": true,
+   "declared_na_rules": [
+    "Build.dep_liveness#measured:no-declared-dependencies",
+    "Build.history#measured:never-run"
+   ]
+  },
+  {
+   "gate": "Build",
+   "layer": "L3",
+   "required": [
+    "Build.completion",
+    "Build.contract",
+    "Build.count_integrity",
+    "Build.dag",
+    "Build.dep_liveness",
+    "Build.exercised",
+    "Build.history",
+    "Build.registered",
+    "Build.target"
+   ],
+   "auto_measured": [
+    "Build.completion",
+    "Build.contract",
+    "Build.count_integrity",
+    "Build.dag",
+    "Build.dep_liveness",
+    "Build.exercised",
+    "Build.history",
+    "Build.registered",
+    "Build.target"
+   ],
+   "detector_none": [],
+   "per_asset_pending": [],
+   "uncovered": [],
+   "covered": true,
+   "declared_na_rules": [
+    "Build.dep_liveness#measured:no-declared-dependencies",
+    "Build.history#measured:never-run"
+   ]
+  },
+  {
+   "gate": "Build",
+   "layer": "L4",
+   "required": [
+    "Build.completion",
+    "Build.contract",
+    "Build.count_integrity",
+    "Build.dag",
+    "Build.dep_liveness",
+    "Build.exercised",
+    "Build.history",
+    "Build.registered",
+    "Build.target"
+   ],
+   "auto_measured": [
+    "Build.completion",
+    "Build.contract",
+    "Build.count_integrity",
+    "Build.dag",
+    "Build.dep_liveness",
+    "Build.exercised",
+    "Build.history",
+    "Build.registered",
+    "Build.target"
+   ],
+   "detector_none": [],
+   "per_asset_pending": [],
+   "uncovered": [],
+   "covered": true,
+   "declared_na_rules": [
+    "Build.dep_liveness#measured:no-declared-dependencies",
+    "Build.history#measured:never-run"
+   ]
+  },
+  {
+   "gate": "Build",
+   "layer": "L5",
+   "required": [
+    "Build.completion",
+    "Build.contract",
+    "Build.count_integrity",
+    "Build.dag",
+    "Build.dep_liveness",
+    "Build.exercised",
+    "Build.history",
+    "Build.registered",
+    "Build.target"
+   ],
+   "auto_measured": [
+    "Build.completion",
+    "Build.contract",
+    "Build.count_integrity",
+    "Build.dag",
+    "Build.dep_liveness",
+    "Build.exercised",
+    "Build.history",
+    "Build.registered",
+    "Build.target"
+   ],
+   "detector_none": [],
+   "per_asset_pending": [],
+   "uncovered": [],
+   "covered": true,
+   "declared_na_rules": [
+    "Build.dep_liveness#measured:no-declared-dependencies",
+    "Build.history#measured:never-run"
+   ]
+  }
+ ]
+}
