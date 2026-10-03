@@ -99,6 +99,17 @@ def test_this_asset_alone_declares_the_three_blocks_and_its_created_at_is_a_stam
     nc = ENTRY["null_convention"]
     assert "created_at" not in [c["column"] for c in nc["constants"]]            # option A is refused: no created_at constant; it is a declared stamp column
     assert [c["column"] for c in nc["stamp_columns"]] == ["created_at"]
+    hits = []
+
+    def walk(x, path):
+        if isinstance(x, str) and "created_at" in x:
+            hits.append(path)
+        elif isinstance(x, dict):
+            [walk(v, f"{path}.{k}") for k, v in x.items()]
+        elif isinstance(x, list):
+            [walk(v, f"{path}[{i}]") for i, v in enumerate(x)]
+    walk(ENTRY, "entry")
+    assert "entry.null_convention.stamp_columns[0].column" in hits and all(h.startswith("entry.null_convention.stamp_columns[0].") for h in hits), hits   # created_at only ever under stamp_columns
 
 
 def test_the_entry_declares_what_the_strategist_ruled():
@@ -110,7 +121,11 @@ def test_the_entry_declares_what_the_strategist_ruled():
         assert needle in CAR["why"], needle
     assert "OCR-garbled" in LS["why"] and "Slokas 45-46" in LS["why"] and "no detector checks the sloka label" in LS["why"] and "PG339 only" in LS["why"]
     new_sentence = DECL["description"].split("Version 1.10.0", 1)[1].split(" REGISTRY_REVISION 15", 1)[0]   # the 1.10.0 sentence only (a later pin appends its own)
-    texts = [" ".join(_reasons(ENTRY)).lower(), new_sentence.lower()]            # every why of the entry and the 1.10.0 description sentence
+    whole = json.dumps(ENTRY, ensure_ascii=False).lower()                         # the WHOLE entry JSON, not only its prose strings
+    assert whole.count("exactly") == 1 and '"mode": "exactly"' in whole           # 'exactly' appears only as the null_convention scope mode value
+    whole = whole.replace('"mode": "exactly"', '"mode": "scope"')
+    next_sentence = DECL["description"].split("Version 1.11.0", 1)[1]
+    texts = [" ".join(_reasons(ENTRY)).lower(), new_sentence.lower(), whole, next_sentence.lower()]   # every why, the whole entry, the 1.10.0 and 1.11.0 description sentences
     for word in ("verbatim", "accurate", "exact"):
         assert not any(word in t for t in texts), word
     assert "read from classical_text_chunks by span; only the declared clause/condition strings are quoted" in new_sentence

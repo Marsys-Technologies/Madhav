@@ -1,8 +1,8 @@
 """test_e6_decl_latta_null.py: DECL-LATTA-NULL (declarations 1.11.0): bg_phaladeepika_latta declares its `null_convention`.
 
 The convention: effect_description is the one nullable column (reserved empty EXACTLY on Mars and Saturn: the passage gives them no effect clause); four constant
-columns (table_version, affliction_condition, source_citation, verse_ref) declared constant WITHOUT pinned values (the live values are read, so the corrected rebuild
-passes); created_at a declared write-time stamp column (NOT NULL timestamptz, one shared value allowed, sentinels FAIL), never a constant claim; no allowed_literals.
+columns (table_version, affliction_condition, source_citation, verse_ref) declared constant WITHOUT pinned values (the live values are read, so a SINGLE-VALUED corrected form
+still passes; a PER-ROW form FAILs the constant and the correction PR must flip this declaration atomically: see the F1 table test); created_at a declared write-time stamp column (NOT NULL timestamptz, one shared value allowed, sentinels FAIL), never a constant claim; no allowed_literals.
 
 Part 1 validator and pinned evidence lines. Part 2 REAL detectors on a disposable Postgres built from the 8 corpus rows: PASS with the earned lift only, the mutation
 tests (a NULL effect on a non-reserved graha, a populated Mars/Saturn, a placeholder, a varying constant, a sentinel/nullable stamp), the live-values tests, the
@@ -73,14 +73,21 @@ def test_the_convention_is_what_the_strategist_ruled():
     assert NC["table"] == AID and "allowed_literals" not in NC
     n, = NC["nullable"]
     assert n["column"] == "effect_description" and "Mars and Saturn" in n["means"] and "reserved empty" in n["means"]
+    assert "stored OCR English passage" in n["means"] and "was found" in n["means"] and "not an omission" not in n["means"]        # F2: the hedge, not a claim about the book
     assert n["scope"] == {"key_column": "graha", "null_for": ["Mars", "Saturn"], "mode": "exactly"}
     assert [c["column"] for c in NC["constants"]] == ["table_version", "affliction_condition", "source_citation", "verse_ref"]
-    assert all("value" not in c for c in NC["constants"])                  # live values are read, never pinned: the corrected rebuild must pass
+    assert all("value" not in c for c in NC["constants"])                  # live values are read, never pinned: a single-valued corrected form passes (a per-row one FAILs: F1 table)
     assert [c["column"] for c in NC["stamp_columns"]] == ["created_at"]
     st = NC["stamp_columns"][0]["why"]
-    assert "write time" in st and "one seed transaction" in st and "not a constant claim" in st
+    assert "first-insert time of the one seed transaction" in st and "ON CONFLICT DO UPDATE never touches created_at" in st and "not a constant claim" in st      # F2
     assert "created_at" not in [c["column"] for c in NC["constants"]] and "created_at" != n["column"]
     assert "Ketu has no row" in NC["why"] and "Mars and Saturn" in NC["why"]
+    cw = {c["column"]: c["why"] for c in NC["constants"]}
+    assert "_v02" in cw["table_version"] and "flip this declaration in the same change" in cw["table_version"]                                   # F3
+    assert "expected to be corrected by a later rebuild" in cw["source_citation"] and "recorded finding the rebuild corrects" not in cw["source_citation"]   # F2
+    assert all("flip this declaration in the same change" in cw[c] for c in ("source_citation", "verse_ref")) and "per-row" in cw["source_citation"] + cw["verse_ref"]   # F1
+    assert "single-valued corrected form" in DECL["description"].split("Version 1.11.0", 1)[1] and "same change" in DECL["description"].split("Version 1.11.0", 1)[1]
+    assert "No asset declares one yet" not in DECL["description"] and DECL["description"].count("As of 1.11.0 only bg_phaladeepika_latta declares one") == 2     # F6
     for word in ("verbatim", "accurate", "exact"):
         assert not any(word in t.lower() for t in dl._reasons(NC)), word
 
@@ -232,9 +239,9 @@ def test_REAL_MUTATION_source_citation_varying_across_rows_fails_the_constant(mo
         assert m[BR]["v"] == FAIL and f"declared constant column {col} varies" in _text(m), col
 
 
-# ── (e) LIVE VALUES: the constants are read, not pinned ──
+# ── (e) LIVE VALUES: the constants are read, not pinned (a SINGLE-VALUED corrected form passes; a per-row form is the F1 table below) ──
 
-def test_REAL_LIVE_VALUES_a_corrected_single_source_citation_and_verse_ref_still_read_pass(monkeypatch, disposable_pg):
+def test_REAL_LIVE_VALUES_a_single_valued_corrected_form_still_reads_pass(monkeypatch, disposable_pg):
     m = _measure(monkeypatch, disposable_pg, [f"UPDATE {AID} SET source_citation = '{OTHER_CITATION}', verse_ref = 'Adh.XXVI PG338-339 Slokas 42-46';"])
     assert m[SD]["v"] == PASS and m[BR]["v"] == PASS and ac.null_lift_earned(BR, m[BR], m)
     assert ac.rollup_asset("L0", m)["Null"]["v"] == PASS
@@ -245,6 +252,58 @@ def test_REAL_LIVE_VALUES_every_constant_may_change_to_another_single_value(monk
     m = _measure(monkeypatch, disposable_pg, [f"UPDATE {AID} SET affliction_condition = 'If the natal star falls on the Latta star, sickness and anguish follow.', "
                                                 f"table_version = 'phaladeepika_vedha_v02', source_citation = '{OTHER_CITATION}';"])
     assert m[BR]["v"] == PASS
+
+
+# ── F1: the documented table of corrected forms (a SINGLE-VALUED form passes; a PER-ROW form FAILs the constant loudly, never silently) ──
+
+EFFECT_ROWS = ("Sun", "Jupiter", "Venus", "Mercury", "Rahu", "Moon")        # the six rows whose effect sentences stand under the Slokas 45-46 heading
+NO_EFFECT_ROWS = ("Mars", "Saturn")
+SLOKA_4546 = "Adh.XXVI PG339 Slokas 45-46"
+CITE_338 = OTHER_CITATION.replace("PG338-339", "PG338")
+
+
+def _per_row_verse_ref():
+    return [f"UPDATE {AID} SET verse_ref = '{SLOKA_4546}' WHERE graha IN ({', '.join(repr(g) for g in EFFECT_ROWS)});"]
+
+
+def _per_row_citation():
+    return [f"UPDATE {AID} SET source_citation = '{CITE_338}' WHERE graha IN ({', '.join(repr(g) for g in NO_EFFECT_ROWS)});"]
+
+
+F1_TABLE = [
+    ("today's rows", [], PASS, ()),
+    ("all rows one new verse_ref and one new source_citation (a single-valued corrected form)",
+     [f"UPDATE {AID} SET verse_ref = 'Adh.XXVI PG338-339 Slokas 42-46', source_citation = '{OTHER_CITATION}';"], PASS, ()),
+    ("per-row verse_ref (45-46 on the six effect rows, 42-44 on Mars and Saturn)", _per_row_verse_ref(), FAIL, ("declared constant column verse_ref varies (2 distinct value(s), 0 NULL)",)),
+    ("per-row source_citation", _per_row_citation(), FAIL, ("declared constant column source_citation varies (2 distinct value(s), 0 NULL)",)),
+    ("both per-row", _per_row_verse_ref() + _per_row_citation(), FAIL,
+     ("declared constant column verse_ref varies (2 distinct value(s), 0 NULL)", "declared constant column source_citation varies (2 distinct value(s), 0 NULL)")),
+]
+
+
+@pytest.mark.parametrize("name, extra, verdict, texts", F1_TABLE, ids=[t[0] for t in F1_TABLE])
+def test_REAL_F1_table_a_single_valued_corrected_form_passes_and_a_per_row_form_fails_the_constant(monkeypatch, disposable_pg, name, extra, verdict, texts):
+    m = _measure(monkeypatch, disposable_pg, extra)
+    assert m[BR]["v"] == verdict and ac.rollup_asset("L0", m)["Null"]["v"] == verdict, name
+    for t in texts:
+        assert t in _text(m), (name, _text(m))
+    assert (ac.null_lift_earned(BR, m[BR], m) is True) == (verdict == PASS)
+
+
+def test_REAL_F1_a_per_row_verse_ref_breaks_the_carriage_d1_spec_too_which_pins_one_string(monkeypatch, disposable_pg):
+    s3._real(monkeypatch, disposable_pg, dl._setup() + _per_row_verse_ref())
+    r = ac.carriage_declared_checks(AID, ENTRY["carriage"], AID, False)["Carr.D1"]
+    assert r["v"] == PARTIAL and sorted(u["row"] for u in r["d1"]["unmatched"]) == sorted(EFFECT_ROWS)
+    assert all(u["failed"] == ["verse_ref"] for u in r["d1"]["unmatched"])
+    ef = [e for e in ENTRY["carriage"]["spec"]["extra_fields"] if e["column"] == "verse_ref"]
+    assert ef == [{"column": "verse_ref", "kind": "equals", "value": "Adh.XXVI PG338-339 Sloka 42-44"}]               # ONE string, so the correction PR flips both declarations
+
+
+def test_the_forced_rebuild_must_move_migration_611s_integrity_check_which_hashes_source_citation_and_verse_ref_over_exactly_8_rows():
+    sql = (ROOT / "platform/supabase/migrations/611_nirmana_l0_static_tables_integrity_contract.sql").read_text(encoding="utf-8")
+    block = sql.split("latta_check constant text := $check$", 1)[1].split("$check$", 1)[0]
+    assert "count(*) = 8 FROM bg_phaladeepika_latta" in block and "source_citation,verse_ref" in block and "sha256(" in block
+    assert re.search(r"'[0-9a-f]{64}'", block)                                         # a pinned digest of today's rows: any corrected value moves it
 
 
 # ── the stamp column ──
