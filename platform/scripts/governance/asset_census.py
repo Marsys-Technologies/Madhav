@@ -9583,7 +9583,7 @@ def emit_gaps_summary(census: dict, assets=None) -> dict:
     `CTRL/NIKASHA_WITHHOLDING.json` gets NO row of any kind: no OPEN, no RE-OPEN, no CLOSED credit, no supersede, even
     when the cell now reads PASS/N-A and an OPEN row exists; the suppressed ids come back in the summary's `withheld`
     (present only when the list has entries); entries that matched no measured cell of the emit come back in
-    `withheld_unmatched` (only when non-empty). An absent file changes nothing; a present file that is malformed,
+    `withheld_unmatched` (only when non-empty). The withholding check runs BEFORE the superseded and info-only (E6.4) checks: a withheld cell on an info-only family is reported in `withheld`, never in `info_only_suppressed`. An absent file changes nothing; a present file that is malformed,
     untracked, not at HEAD, or different from HEAD raises WithholdingRefused before the ledger is opened (see
     `load_withholding_entries` and the N-100 comment above it for exactly what "different" means and which lists are read). A scoped run applies the same filter. Withholding never touches RETIRED_CRITERIA closure:
     a withheld criterion must be a registry criterion, and the two sets are disjoint (import-time check).

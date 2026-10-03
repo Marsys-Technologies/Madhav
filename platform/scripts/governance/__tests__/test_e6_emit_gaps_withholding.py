@@ -140,7 +140,7 @@ def refuses(m, env, code, cen=None):
     """True iff emit_gaps_summary raises m.WithholdingRefused(code) AND the ledger is byte-identical afterwards."""
     cen = cen or census([(W_ASSET, W_CRIT, m.PASS), (O_ASSET, O_CRIT, m.PASS)])
     before = env.ledger()
-    with use_ctrl(m, env.ctrl):
+    with use_ctrl(m, env.ctrl, root=env.repo):
         try:
             m.emit_gaps_summary(cen)
         except m.WithholdingRefused as e:
@@ -151,7 +151,7 @@ def refuses(m, env, code, cen=None):
 
 
 def proceeds(m, env, cen=None):
-    with use_ctrl(m, env.ctrl):
+    with use_ctrl(m, env.ctrl, root=env.repo):
         return m.emit_gaps_summary(cen or census([(O_ASSET, O_CRIT, m.PASS)]))
 
 
@@ -187,6 +187,17 @@ def sc_withheld_fail_no_reopen(m, tmp):
     return env.ledger() == before and out["reopened"] == 0
 
 
+def sc_withheld_info_family_precedence(m, tmp):
+    """Precedence with E6.4: a withheld cell on an info-only family (Count.*) is reported as WITHHELD, not as
+    info_only_suppressed; an unwithheld info-family FAIL is still counted as info_only_suppressed."""
+    wh = wh_text({"bo_upaya-Count.floor": _entry(crit="Count.floor")})
+    env = Env(tmp, rows=[], wh=wh)
+    before = env.ledger()
+    out = proceeds(m, env, census([(W_ASSET, "Count.floor", m.FAIL), (W_ASSET, "Cost.baseline", m.FAIL)]))
+    return (env.ledger() == before and out["withheld"] == ["bo_upaya-Count.floor"]
+            and out.get("info_only_suppressed") == 1 and out["added"] == 0 and "withheld_unmatched" not in out)
+
+
 def sc_summary_key_only_with_list(m, tmp):
     env = Env(tmp, rows=[_row(O_ID)], wh=wh_text({}))
     return "withheld" not in proceeds(m, env)
@@ -211,10 +222,10 @@ def sc_scoped_filter(m, tmp):
     env = Env(tmp, rows=[_row(W_ID), _row(O_ID)], wh=wh_text())
     before = env.ledger()
     cen = census([(W_ASSET, W_CRIT, m.PASS), (O_ASSET, O_CRIT, m.PASS)], scope=[W_ASSET, O_ASSET])
-    with use_ctrl(m, env.ctrl):
+    with use_ctrl(m, env.ctrl, root=env.repo):
         out = m.emit_gaps_summary(cen, assets=[W_ASSET])           # scoped to the withheld asset only
     ok1 = env.ledger() == before and out["closed"] == 0 and out["withheld"] == [W_ID]
-    with use_ctrl(m, env.ctrl):
+    with use_ctrl(m, env.ctrl, root=env.repo):
         out = m.emit_gaps_summary(cen)                             # label-scoped (both assets)
     new = env.ledger()[len(before):].decode()
     return ok1 and out["withheld"] == [W_ID] and O_ID in new and W_ID not in new
@@ -510,10 +521,10 @@ def sc_unmatched_scoped(m, tmp):
     wh = wh_text({W_ID: _entry(), O_ID: _entry(asset=O_ASSET, crit=O_CRIT)})
     env = Env(tmp, rows=[], wh=wh)
     cen = census([(W_ASSET, W_CRIT, m.PASS)], scope=[W_ASSET])
-    with use_ctrl(m, env.ctrl):
+    with use_ctrl(m, env.ctrl, root=env.repo):
         out = m.emit_gaps_summary(cen)                          # O_ASSET is outside the scope: not a typo, not reported
     cen2 = census([(W_ASSET, "Build.dag", m.PASS)], scope=[W_ASSET])
-    with use_ctrl(m, env.ctrl):
+    with use_ctrl(m, env.ctrl, root=env.repo):
         out2 = m.emit_gaps_summary(cen2)                        # in scope but its criterion was not measured: reported
     return "withheld_unmatched" not in out and out2["withheld_unmatched"] == [W_ID]
 
@@ -683,7 +694,7 @@ def sc_valid_no_register_row(m, tmp):
 
 # ───────────────────────────── behaviour tests (real module) ─────────────────────────────
 
-POSITIVE = [sc_baseline, sc_withheld_pass_no_credit, sc_withheld_fail_no_open, sc_withheld_fail_no_reopen,
+POSITIVE = [sc_baseline, sc_withheld_info_family_precedence, sc_withheld_pass_no_credit, sc_withheld_fail_no_open, sc_withheld_fail_no_reopen,
             sc_summary_key_only_with_list, sc_absent_unchanged, sc_absent_no_git, sc_absent_git_unavailable_outside_checkout, sc_scoped_filter,
             sc_double_filter_idempotent, sc_valid_no_register_row,
             sc_symlinked_ledger_governed, sc_symlinked_dir_governed, sc_hardlinked_ledger_without_canonical_list_allowed,
@@ -924,6 +935,9 @@ MUTATIONS = {
     # the filter itself
     "filter_off": ("                if gid in withheld:\n                    suppressed.add(gid)\n                    continue",
                    "                if False:\n                    suppressed.add(gid)\n                    continue", [sc_withheld_pass_no_credit]),
+    "info_precedence_swapped": ("                if gid in withheld:\n                    suppressed.add(gid)",
+                                "                if gid in withheld and not (v in FAILING and crit.startswith(tuple(g + \".\" for g in INFO_ONLY_GATES))):\n                    suppressed.add(gid)",
+                                [sc_withheld_info_family_precedence]),
     "filter_no_continue": ("                    suppressed.add(gid)\n                    continue    # N-100",
                            "                    suppressed.add(gid)\n                    pass    # N-100", [sc_withheld_pass_no_credit]),
     "list_not_loaded": ("    withheld = load_withholding_entries()       # N-100",
