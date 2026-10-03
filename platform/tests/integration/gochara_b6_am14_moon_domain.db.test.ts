@@ -47,6 +47,7 @@ const WINDOW_FILES = [...CONTRACT_FILES, M1204, M1206, M1232, M1216] as const
 
 const BUILDER = 'data_plane_builder'
 const SEALER = 'gochara_sealer'
+const VERIFIER = 'gochara_verifier'   // PC-4: the independent re-derivation is written by this principal, never by the builder (the builder holds NO privilege on the verification table)
 // What migration 1206 §7 grants the builder EXECUTE on (12 own helpers + 5 contract functions its guards call).
 const BUILDER_OWN_FUNCTIONS = [
   'ka_gochara_sha256_hex(text)', 'ka_gochara_uuidv8(text)', 'ka_gochara_canonical_json(jsonb)',
@@ -60,6 +61,8 @@ const BUILDER_CONTRACT_FUNCTIONS = [
   'ka_gochara_lock_chart(uuid)', 'ka_gochara_lock_global_shared()', 'ka_gochara_generation_is_sealed(uuid, text)',
   'ka_gochara_generation_governed(text)', 'ka_gochara_horizon_finite_ok(tstzrange)',
 ] as const
+// the verifier's EXECUTE set: the guard chain of its one INSERT (same as the 1206 suite)
+const VERIFIER_FUNCTIONS = ['ka_gochara_lock_chart(uuid)', 'ka_gochara_generation_is_sealed(uuid, text)'] as const
 // The seal principal's functions (names; unique in the schema).
 const SEALER_FUNCTIONS = [
   'ka_gochara_lock_chart', 'ka_gochara_seal_generation', 'ka_gochara_generation_governed', 'ka_gochara_coverage_drift',
@@ -214,7 +217,7 @@ async function resetSchema(): Promise<void> {
 /** Roles are cluster-global: create each only if absent, and install the production default-privilege
  *  revocation (per database, idempotent). */
 async function ensureRoles(): Promise<void> {
-  for (const r of [OWNER, BUILDER, SEALER])
+  for (const r of [OWNER, BUILDER, SEALER, VERIFIER])
     await pool.query(`DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='${r}') THEN CREATE ROLE ${r} NOLOGIN; END IF; END $$`)
   await pool.query(`ALTER DEFAULT PRIVILEGES FOR ROLE ${OWNER} REVOKE EXECUTE ON FUNCTIONS FROM PUBLIC`)
 }
@@ -222,7 +225,7 @@ async function ensureRoles(): Promise<void> {
  *  other database on the cluster still needs. */
 async function dropRoles(): Promise<void> {
   await pool.query(`DROP SCHEMA IF EXISTS public CASCADE; CREATE SCHEMA public;`)
-  for (const r of [BUILDER, SEALER, OWNER]) {
+  for (const r of [BUILDER, SEALER, VERIFIER, OWNER]) {
     await pool.query(`DROP OWNED BY ${r} CASCADE`).catch(() => undefined)
     await pool.query(`DROP ROLE IF EXISTS ${r}`).catch(() => undefined)
   }
@@ -362,10 +365,18 @@ async function partition(c: Q, gen: string, o: { cls?: string; relations?: strin
      VALUES ($1,$2,'event_class',$3,$4,${h},${h},1.0,$5::text[],1,1,0,'{"resolved":1}','build-am5')`,
     [CHART, gen, o.cls ?? CLS, o.legacy ?? LEGACY_CONV, o.relations ?? ['residence']])
 }
+/** The verification row is written AS THE VERIFIER principal (the builder holds no privilege on the table); the role is switched inside the build
+ *  transaction and restored after, exactly as the 1206 suite does. */
 async function verify(c: Q, gen: string, digest: string, who = 'verifier-a', cls = CLS): Promise<void> {
-  await c.query(`INSERT INTO ka_gochara_search_inventory_verification
-     (chart_id, generation, event_class, verifier_id, verifier_version, rederived_inventory_digest) VALUES ($1,$2,$3,$4,'1',$5)`,
-    [CHART, gen, cls, who, digest])
+  const prev = (await c.query<{ u: string; s: string }>(`SELECT current_user AS u, session_user AS s`)).rows[0]!
+  await c.query(`SET LOCAL ROLE ${VERIFIER}`)
+  try {
+    await c.query(`INSERT INTO ka_gochara_search_inventory_verification
+       (chart_id, generation, event_class, verifier_id, verifier_version, rederived_inventory_digest) VALUES ($1,$2,$3,$4,'1',$5)`,
+      [CHART, gen, cls, who, digest])
+  } finally {
+    await c.query(prev.u === prev.s ? 'RESET ROLE' : `SET LOCAL ROLE ${prev.u}`).catch(() => undefined)
+  }
 }
 async function publishAndSeal(gen: string, opts: { role?: string; tz?: string } = {}): Promise<void> {
   if (!opts.role) opts = { ...opts, role: SEALER }   // every seal runs as the separately authorised principal
@@ -477,7 +488,7 @@ describe.skipIf(!TEST_DB_URL)('B6.0 R2 migration 1232 — AM-14 Moon-scope accou
     await window([M1216])          // the routine builder grants land before 1232 (the runner refuses to jump 1216)
     await window([M1232])
     await seedStatic()
-    await pool.query(`GRANT USAGE ON SCHEMA public TO ${BUILDER}, ${SEALER}`)
+    await pool.query(`GRANT USAGE ON SCHEMA public TO ${BUILDER}, ${SEALER}, ${VERIFIER}`)
     await pool.query(`
       GRANT SELECT, INSERT ON ka_gochara_generation_seal TO ${SEALER};
       GRANT SELECT, UPDATE ON kala_gochara_publication TO ${SEALER};
@@ -487,6 +498,10 @@ describe.skipIf(!TEST_DB_URL)('B6.0 R2 migration 1232 — AM-14 Moon-scope accou
         ka_gochara_search_path_pin, ka_gochara_search_obligation, ka_gochara_search_interval,
         ka_gochara_search_inventory_verification TO ${SEALER}`)
     await pool.query(`GRANT EXECUTE ON FUNCTION ${SEALER_FUNCTIONS.map(f => `public.${f}`).join(', ')} TO ${SEALER}`)
+    // The verifier principal (PC-4): writes the independent re-derivation, nothing else (never widen the builder: it holds no privilege on the table).
+    await pool.query(`GRANT SELECT, INSERT, DELETE ON ka_gochara_search_inventory_verification TO ${VERIFIER};
+      GRANT SELECT ON ka_gochara_search_inventory, ka_gochara_generation_seal TO ${VERIFIER}`)
+    await pool.query(`GRANT EXECUTE ON FUNCTION ${VERIFIER_FUNCTIONS.map(f => `public.${f}`).join(', ')} TO ${VERIFIER}`)
     await seedMoonDasha()
     // the builder's EXECUTE for the 1206 helpers comes from 1206 §7 itself (nothing new is granted by 1232)
   }, 180_000)
