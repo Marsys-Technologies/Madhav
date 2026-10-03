@@ -229,9 +229,9 @@ ENTITIES += [
     _e("dasha_system", "yogini", "Yogini Dasha", "Yogini",
        ["yogini", "yogini_dasha"],
        "36-year dasha system; eight yoginis"),
-    _e("dasha_system", "jaimini_chara", "Jaimini Chara Dasha", "Chara",
-       ["chara", "jaimini_chara", "char_dasha"],
-       "Sign-based Jaimini dasha system"),
+    # TI-L0-13 side fix: the stray co-writer row dasha_system|jaimini_chara was removed - the dasha catalogue's
+    # id is chara_jaimini (l0_dasha_systems.py), so a bg_ontology rebuild INSERTED this row (741 -> 742) and
+    # turned the bg_dasha_systems integrity check false (21 ontology dasha rows, sealed 20). Never live.
     _e("dasha_system", "kalachakra", "Kalachakra Dasha", "Kalachakra",
        ["kalachakra", "kala_chakra"],
        "Nakshatra-pada-based dasha system"),
@@ -650,7 +650,7 @@ ENTITIES += [
        "Mantreswara's Phaladeepika synthesis school"),
 ]
 
-# ── Classical texts (15) ──────────────────────────────────────────────────────
+# ── Classical texts (corpus manifest + jaimini_sutram; TI-L0-13) ──────────────
 
 ENTITIES += [
     _e("text", "bphs", "Brihat Parashara Hora Shastra", "Bṛhat Parāśara Horā Śāstra",
@@ -677,12 +677,12 @@ ENTITIES += [
        ["tajaka neelakanthi", "neelakanthi"], "Neelakantha's annual-chart text"),
     _e("text", "yavana_jataka", "Yavana Jataka", "Yavana Jātaka",
        ["yavana jataka"], "Sphujidhvaja's Greek-influenced natal text"),
-    _e("text", "bhrigu_samhita", "Bhrigu Samhita", "Bhṛgu Saṃhitā",
-       ["bhrigu samhita", "bhrigu"], "Bhrigu's predictive compendium (extracts)"),
+    # TI-L0-13: bhrigu_samhita no longer emitted (not a corpus text, no consumer; wave plan referrer
+    # census); lal_kitab_text likewise. The owned-class sweep removes both. See end of module.
     _e("text", "muhurta_chintamani", "Muhurta Chintamani", "Muhūrta Cintāmaṇi",
        ["muhurta chintamani"], "Rama's electional-astrology text"),
-    _e("text", "lal_kitab_text", "Lal Kitab", "Lāl Kitāb",
-       ["lal kitab text"], "The Lal Kitab remedial corpus"),
+    # The 3 corpus-only texts are DERIVED from the corpus manifest at the end of this module
+    # (brahmagyan/l0_ontology_texts.py); jaimini_sutram stays above: 17 catalogue citations use it.
 ]
 
 # ── Domains — additional entries to reach ≥40 total ──────────────────────────
@@ -1082,7 +1082,7 @@ def resolve(term: str) -> dict | None:
             return entity
         if entity["canonical_name_en"].lower().replace(" ", "_") == t:
             return entity
-        if entity.get("canonical_name_sa", "").lower().replace(" ", "_") == t:
+        if (entity.get("canonical_name_sa") or "").lower().replace(" ", "_") == t:
             return entity
         if t in [s.lower() for s in entity["synonyms"]]:
             return entity
@@ -1192,6 +1192,15 @@ def seed_ontology(conn, build_id: str | None = None, dry_run: bool = False,
         "deleted": deleted,
         "by_class": by_class,
     }
+
+
+# ══ Classical texts derived from the corpus manifest (TI-L0-13) ═══════════════════════════
+# Placed after the seed code on purpose: `asset_declarations.json` pins evidence lines in this
+# module (`l0_ontology.py:145 ... :1152`), so nothing above `seed_ontology`'s end may move.
+from brahmagyan import l0_ontology_texts as _texts  # noqa: E402
+
+ENTITIES += _texts.derive_missing_text_entities(ENTITIES)
+_texts.assert_text_class_matches_manifest(ENTITIES)
 
 
 def check_volume(conn) -> dict:
