@@ -21,7 +21,11 @@ BRAHMA-BG-0-5
 """
 from __future__ import annotations
 
+import hashlib
+import json
 import logging
+import re
+import unicodedata
 from datetime import datetime, timezone
 from typing import Any
 
@@ -1070,23 +1074,103 @@ ONTOLOGY_OWNED_ENTITY_CLASSES = frozenset(
 
 # ── Resolve function ───────────────────────────────────────────────────────────
 
-def resolve(term: str) -> dict | None:
+# ── Normalisation: the ONE rule (SS Q4 / CF-09 (b), TI-L0-11) ───────────────────
+#
+# bg_ontology is the identity authority; the normalisation rule lives here and consumers
+# (bg_remedies source ids, ephemeris_daily.body, resolve_entity) resolve THROUGH it - no stored
+# id is rewritten. The rule is: Unicode NFKD, combining marks removed (diacritic fold),
+# case-fold, strip, then every run of whitespace / hyphens becomes one underscore.
+#   'BPHS' -> 'bphs'   'Jupiter' -> 'jupiter'   'Sūrya' -> 'surya'   'Purva Bhadrapada' -> 'purva_bhadrapada'
+# A strict superset of the previous ad-hoc rule (lower, space->_, hyphen->_), so every term that
+# resolved before still resolves to the same entity.
+
+def normalise_term(term: str) -> str:
+    folded = "".join(c for c in unicodedata.normalize("NFKD", term) if not unicodedata.combining(c))
+    return re.sub(r"[\s\-]+", "_", folded.casefold().strip())
+
+
+def _entity_names(entity: dict) -> list[str]:
+    return [n for n in (entity["canonical_id"], entity["canonical_name_en"],
+                        entity.get("canonical_name_sa") or "", *entity["synonyms"]) if n]
+
+
+def _legacy_term(term: str) -> str:
+    """The pre-centralisation rule applied to the LOOKUP term (lower, space -> _, hyphen -> _)."""
+    return term.lower().replace(" ", "_").replace("-", "_")
+
+
+def _legacy_keys(entity: dict) -> set[str]:
+    """The strings the pre-centralisation `resolve` compared a term against, field by field:
+    canonical_id verbatim; name_en / name_sa lower-cased with spaces -> '_'; synonyms merely
+    lower-cased (a synonym containing a space therefore never matched a lookup term, which
+    always has its spaces replaced). Kept ONLY as the first precedence tier of `resolve`, so
+    every term that resolved before resolves to the same entity; folding diacritics can
+    otherwise hand a term to an EARLIER entity ('jaimini sutram' -> the school 'jaimini',
+    whose synonym 'Jaimini Sūtram' folds to it) instead of the text 'jaimini_sutram'."""
+    keys = {entity["canonical_id"],
+            entity["canonical_name_en"].lower().replace(" ", "_"),
+            (entity.get("canonical_name_sa") or "").lower().replace(" ", "_")}
+    keys |= {s.lower() for s in entity["synonyms"]}
+    keys.discard("")
+    return keys
+
+
+def _build_indexes() -> tuple[dict[str, list[int]], dict[str, list[int]]]:
+    legacy: dict[str, list[int]] = {}
+    folded: dict[str, list[int]] = {}
+    for pos, entity in enumerate(ENTITIES):
+        for key in _legacy_keys(entity):
+            legacy.setdefault(key, []).append(pos)
+        for key in {normalise_term(n) for n in _entity_names(entity)}:
+            folded.setdefault(key, []).append(pos)
+    return legacy, folded
+
+
+def resolve(term: str, entity_class: str | None = None) -> dict | None:
     """
-    Resolve any synonym/alias to its canonical entity.
-    Returns the entity dict or None.
-    Case-insensitive.
+    Resolve any synonym/alias to its canonical entity. Returns the entity dict or None.
+    Case- and diacritic-insensitive via `normalise_term`, with two precedence tiers: the exact
+    legacy form first (nothing that resolved before moves), then the normalised form.
+
+    `entity_class` restricts the match to one class (the class-aware form every consumer
+    should use: a bare term can belong to several classes - see `ambiguous_aliases`). Without
+    it the FIRST entity in ENTITIES order within the winning tier is returned.
     """
-    t = term.lower().replace(" ", "_").replace("-", "_")
-    for entity in ENTITIES:
-        if entity["canonical_id"] == t:
-            return entity
-        if entity["canonical_name_en"].lower().replace(" ", "_") == t:
-            return entity
-        if entity.get("canonical_name_sa", "").lower().replace(" ", "_") == t:
-            return entity
-        if t in [s.lower() for s in entity["synonyms"]]:
-            return entity
+    legacy, folded = _build_indexes()
+    for index, key in ((legacy, _legacy_term(term)), (folded, normalise_term(term))):
+        for pos in index.get(key, []):
+            if entity_class is None or ENTITIES[pos]["entity_class"] == entity_class:
+                return ENTITIES[pos]
     return None
+
+
+def ambiguous_aliases() -> dict[str, list[tuple[str, str]]]:
+    """normalised alias -> sorted [(entity_class, canonical_id), ...] for every alias that names
+    MORE THAN ONE (class, id) in the static vocabulary. The declared ambiguous-alias list: a
+    consumer must pass an entity_class for these, never rely on the first match."""
+    out: dict[str, list[tuple[str, str]]] = {}
+    for key, positions in _build_indexes()[1].items():
+        owners = sorted({(ENTITIES[p]["entity_class"], ENTITIES[p]["canonical_id"]) for p in positions})
+        if len(owners) > 1:
+            out[key] = owners
+    return dict(sorted(out.items()))
+
+
+def vocabulary_release() -> dict:
+    """Content identity of the vocabulary bg_ontology OWNS (co-writer classes yoga / dosha /
+    dasha_system are excluded: their rows come from sibling writers, so including them would make
+    this asset's release depend on a writer it does not own). Deterministic; additive metadata -
+    storing it is a separate, numbered migration (see the wave plan)."""
+    rows = sorted(
+        ([e["entity_class"], e["canonical_id"], e["canonical_name_en"], e.get("canonical_name_sa"),
+          list(e["synonyms"]), e.get("description"), e["source_citation"]]
+         for e in ENTITIES if e["entity_class"] in ONTOLOGY_OWNED_ENTITY_CLASSES),
+        key=lambda r: (r[0], r[1]),
+    )
+    digest = hashlib.sha256(
+        json.dumps(rows, ensure_ascii=False, separators=(",", ":")).encode("utf-8")).hexdigest()
+    return {"release_id": f"bg_ontology-{digest[:12]}", "content_sha256": digest, "owned_rows": len(rows),
+            "normalisation": "nfkd+fold+casefold+underscore-v1"}
 
 
 # ── Writer ─────────────────────────────────────────────────────────────────────
@@ -1106,7 +1190,7 @@ def seed_ontology(conn, build_id: str | None = None, dry_run: bool = False,
         for e in ENTITIES:
             by_class[e["entity_class"]] = by_class.get(e["entity_class"], 0) + 1
         return {"total": len(ENTITIES), "inserted": len(ENTITIES), "skipped": 0,
-                "by_class": by_class}
+                "by_class": by_class, "vocabulary_release": vocabulary_release()}
 
     now = datetime.now(timezone.utc)
     changed = 0
@@ -1191,6 +1275,7 @@ def seed_ontology(conn, build_id: str | None = None, dry_run: bool = False,
         "skipped": skipped,
         "deleted": deleted,
         "by_class": by_class,
+        "vocabulary_release": vocabulary_release(),
     }
 
 
