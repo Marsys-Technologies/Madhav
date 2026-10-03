@@ -8,8 +8,12 @@ Design: /Users/Dev/suvarna-evidence/E5.6/DESIGN.md. The cluster PROVISIONING scr
 
   A. connection policy        every database connection this harness opens goes through `connect_checked`: the rehearsal
                               URL guard (127.0.0.1:55432, db rehearsal*, no password) or, for `--self-test`, the disposable
-                              cluster's own loopback endpoint. A refused endpoint opens NO socket. The log of opened
-                              connections is what the `no_production_write` case is judged on.
+                              cluster's own loopback endpoint. The PG* / DATABASE_URL environment is scrubbed around the
+                              dial (hostaddr/passfile pinned), and the server that ANSWERED is verified (data_directory,
+                              address, port, database) before the connection is logged or returned. A refused endpoint opens
+                              NO socket; a wrong answering server is closed and logged as refused. The log of opened,
+                              verified connections is what the `no_production_write` case is judged on (policy and endpoint
+                              must agree; a rehearsal document may hold rehearsal-policy connections only).
   B. cluster lifecycle        init / start / stop / status / reap / adopt for a long-lived rehearsal data dir with an
                               ownership MARKER, an exclusive flock LOCKFILE, and a refusal to ever listen on or trust any
                               address other than 127.0.0.1 (+ the unix socket inside the root). Binaries run under `env -i`.
@@ -23,14 +27,24 @@ Design: /Users/Dev/suvarna-evidence/E5.6/DESIGN.md. The cluster PROVISIONING scr
                               the hold refusal (through the tracker's `hold_guard.evaluate`, when `--tracker-dir` names it),
                               and the connection log. Everything that needs the real orchestrator, the replayed schema, the
                               seed or a canary mechanism is a `NEEDS_*` case.
-  E. E5.7 comparison          `compare_fingerprint_sets`: pre/post semantic fingerprints (the SAME definition as E5.5), a
-                              difference is `explained` (closed reason code + text) or it is a failure.
+  E. E5.7 comparison          `compare_fingerprint_sets`: production vs rehearsal semantic fingerprints (the SAME definition
+                              as E5.5; inputs carry its marker) over a REQUIRED `expected_assets` list. Every difference
+                              needs an explanation (reason code valid for the difference kind, >= 40 characters, not
+                              repeated across assets) AND an SS-recorded decision id `N-<n>`; an uncovered or unexpected
+                              asset, or too large a share of differing assets, fails. The output embeds the inputs, hashes,
+                              commit and tool hash; `validate_drill` re-derives it.
+
+Evidence binding (what a forged file cannot do): `generated_by.tool_sha256` must equal the repo tool's sha256 (at the evidence
+commit when the repo has it); in `rehearsal` mode each measured case's first evidence pointer is the sha256 of the canonical
+record of ITS measured values, and `--evidence-root` re-reads that file. What the TRACKER can additionally require (mode,
+schema, a `commit_key`/`commit` pin, `max_age_hours`) is a plan_model.json change owned by Strategic Suvarna, not this tool.
 
 Usage:
   suvarna_rehearsal.py self-test --out PATH [--tracker-dir DIR] [--repo DIR]     (writes a self_test evidence document)
   suvarna_rehearsal.py validate PATH [--evidence-root DIR]                       (exit 0 valid, 2 invalid)
   suvarna_rehearsal.py cluster init|start|stop|status|reap|adopt [--root DIR] [--port N] [--pg-bin DIR] [--remove-data --confirm ROOT]
-  suvarna_rehearsal.py compare-fingerprints --pre pre.json --post post.json [--explained e.json]
+  suvarna_rehearsal.py compare-fingerprints --pre prod.json --post rehearsal.json --expected assets.json --commit SHA [--explained e.json] [--out drill.json]
+  suvarna_rehearsal.py validate-drill PATH
 Exit: 0 ok · 2 refused / invalid · 4 a measured case failed (self-test) · 5 error.
 """
 from __future__ import annotations
@@ -48,6 +62,7 @@ import socket
 import subprocess
 import sys
 import tempfile
+import threading
 import uuid
 from collections.abc import Callable, Mapping, Sequence
 from pathlib import Path
@@ -61,11 +76,14 @@ import rehearsal_guard as rg  # noqa: E402  (E5.6 phase 1: the one URL decision 
 
 REPO_ROOT = HERE.parents[2]
 TOOL_NAME = "suvarna_rehearsal.py"
+TOOL_REL = "platform/scripts/governance/suvarna_rehearsal.py"
 
 # ───────────────────────────── constants ─────────────────────────────
 
 LOOPBACK = rg.REHEARSAL_HOST                       # "127.0.0.1": the only host this harness ever targets
-DEFAULT_ROOT = "/Users/Dev/suvarna/rehearsal"      # the phase-1 layout: <root>/pg (data), <root>/sock, <root>/pg.log
+# The ONE place the rehearsal root is named (phase-1 layout: <root>/pg data, <root>/sock, <root>/pg.log). The environment
+# override exists so tests can use a temp root; production use never sets it.
+DEFAULT_ROOT = os.environ.get("E56_REHEARSAL_ROOT_FOR_TESTS") or "/Users/Dev/suvarna/rehearsal"
 DEFAULT_PORT = rg.REHEARSAL_PORT                   # 55432
 DEFAULT_PG_BIN = "/opt/homebrew/opt/postgresql@15/bin"
 FORBIDDEN_PORTS = frozenset({5432, 6432, 6543})    # production-shaped ports: never targeted, whatever the policy
@@ -162,9 +180,73 @@ def _endpoint(url: str) -> dict:
     return {"host": p.hostname or "", "port": p.port or 0, "database": p.path.lstrip("/")}
 
 
-def connect_checked(url: Any, policy: str, log: ConnectionLog, *, connect: Callable[..., Any] | None = None) -> Any:
-    """Open a connection ONLY to an endpoint the policy accepts; the NORMALISED url is what is dialled. A refused
-    endpoint raises EndpointRefused, is logged, and `connect` is never called."""
+_SCRUB_NAMES = ("DATABASE_URL", "POSTGRES_URL", "DIRECT_DATABASE_URL")
+_ENV_LOCK = threading.Lock()
+
+
+@contextlib.contextmanager
+def scrubbed_pg_env():
+    """libpq honours PGHOSTADDR / PGSERVICE / PGPASSFILE / PGOPTIONS ... for anything the URL leaves unset, and the URL itself
+    may be shadowed: every PG* variable and DATABASE_URL is removed around a connect and restored after."""
+    with _ENV_LOCK:
+        saved = {k: v for k, v in os.environ.items() if k.startswith("PG") or k in _SCRUB_NAMES}
+        for k in saved:
+            del os.environ[k]
+        try:
+            yield
+        finally:
+            os.environ.update(saved)
+
+
+def _psycopg_connect(url: str) -> Any:
+    import psycopg  # noqa: PLC0415
+    return psycopg.connect(url, hostaddr=LOOPBACK, passfile="/nonexistent/.pgpass", connect_timeout=10)
+
+
+def _psycopg_available() -> bool:
+    """True when the driver imports. Any failure to import it (not installed, blocked, broken) reads as unavailable."""
+    try:
+        __import__("psycopg")
+    except Exception:  # noqa: BLE001
+        return False
+    return True
+
+
+def _server_identity(conn: Any) -> dict:
+    row = conn.execute("SELECT current_setting('data_directory'), coalesce(host(inet_server_addr()), ''), "
+                       "coalesce(inet_server_port(), 0), current_database()").fetchone()
+    return {"data_directory": str(row[0]), "host": str(row[1]), "port": int(row[2]), "database": str(row[3])}
+
+
+def _same_path(a: str, b: str) -> bool:
+    return bool(a) and bool(b) and os.path.realpath(a) == os.path.realpath(b)
+
+
+def _identity_problem(policy: str, ident: Mapping, expect: Mapping | None) -> str | None:
+    """None when the server that ANSWERED is the one the policy allows, else why not."""
+    if ident["host"] != LOOPBACK or ident["port"] in FORBIDDEN_PORTS:
+        return "the server that answered is not on 127.0.0.1 or is on a forbidden port"
+    if policy == "rehearsal":
+        if ident["port"] != DEFAULT_PORT or not rg.DB_NAME_RE.fullmatch(ident["database"]):
+            return "the answering server is not the rehearsal port/database"
+        if not _same_path(ident["data_directory"], f"{DEFAULT_ROOT}/pg"):
+            return "the answering server's data_directory is not the rehearsal data dir"
+        return None
+    if policy != "disposable":
+        return f"no identity rule for policy {policy!r}"
+    if not (isinstance(expect, Mapping) and _same_path(ident["data_directory"], str(expect.get("data_directory", "")))
+            and ident["port"] == expect.get("port") and ident["database"].startswith("suvarna_disposable")):
+        return "the answering server is not the disposable cluster the fixture started"
+    return None
+
+
+def connect_checked(url: Any, policy: str, log: ConnectionLog, *, connect: Callable[..., Any] | None = None,
+                    expect: Mapping | None = None) -> Any:
+    """Open a connection ONLY to an endpoint the policy accepts, then VERIFY which server answered (data_directory, address,
+    port, database) before the connection is logged or returned. The NORMALISED url is what is dialled, with the PG*
+    environment scrubbed and hostaddr/passfile pinned. A refused endpoint, or an answering server that is not the allowed
+    one, raises EndpointRefused, is logged as refused and leaves no open connection. `expect` carries the disposable
+    cluster's own identity ({data_directory, port}) for the `disposable` policy."""
     if policy not in POLICIES:
         raise EndpointRefused(f"unknown connection policy {policy!r}")
     try:
@@ -176,11 +258,21 @@ def connect_checked(url: Any, policy: str, log: ConnectionLog, *, connect: Calla
     if ep["host"] != LOOPBACK or ep["port"] in FORBIDDEN_PORTS:        # belt and braces over the policy itself
         log.refused.append({"policy": policy, "reason": "host/port outside the allowed set"})
         raise EndpointRefused("endpoint is not loopback or is a forbidden port")
-    if connect is None:
-        import psycopg  # noqa: PLC0415
-        connect = psycopg.connect
-    conn = connect(normalised)
-    log.opened.append({**ep, "policy": policy})
+    dial = connect or _psycopg_connect
+    with scrubbed_pg_env():
+        conn = dial(normalised)
+    try:
+        ident = _server_identity(conn)
+        why = _identity_problem(policy, ident, expect)
+    except Exception as exc:  # noqa: BLE001 - an unreadable identity is a refusal, never a pass
+        ident, why = None, f"could not verify the answering server ({type(exc).__name__})"
+    if why is not None:
+        with contextlib.suppress(Exception):
+            conn.close()
+        log.refused.append({"policy": policy, "reason": why})
+        raise EndpointRefused(why)
+    log.opened.append({"host": ident["host"], "port": ident["port"], "database": ident["database"], "policy": policy,
+                       "data_directory": ident["data_directory"], "verified": True})
     return conn
 
 
@@ -308,12 +400,22 @@ def _bin(pg_bin: str, name: str) -> str:
     return str(p)
 
 
-_LISTEN_RE = re.compile(r"^\s*listen_addresses\s*=\s*(.*?)\s*(?:#.*)?$")
+_CONF_LINE = re.compile(r"^\s*([A-Za-z_][A-Za-z0-9_.]*)\s*=?\s*(.*)$")        # postgresql.conf: `name = value` or `name value`
+_CONF_INCLUDES = ("include", "include_if_exists", "include_dir")
+
+
+def _conf_value(raw: str) -> str:
+    raw = raw.strip()
+    if raw[:1] in ("'", '"'):
+        end = raw.find(raw[0], 1)
+        return raw[1:end] if end > 0 else raw[1:]
+    return re.split(r"[\s#]", raw, maxsplit=1)[0]
 
 
 def check_loopback_config(data_dir: Path) -> None:
     """Refuse to start a cluster whose config could listen on, or trust, any address but 127.0.0.1: every active
-    `listen_addresses` must be exactly '127.0.0.1', and every active pg_hba `host*` rule must be 127.0.0.1/32."""
+    `listen_addresses` (any case, `=` optional) must be exactly 127.0.0.1; `include*` and `hba_file` lines are refused (they
+    could re-open it elsewhere); every active pg_hba `host*` rule (any case) must be 127.0.0.1/32."""
     lines: list[str] = []
     for name, required in (("postgresql.conf", True), ("postgresql.auto.conf", False)):
         f = data_dir / name
@@ -323,11 +425,14 @@ def check_loopback_config(data_dir: Path) -> None:
             if required or f.exists():
                 raise LifecycleError(f"cannot read {f}: {exc}") from exc
     for ln in lines:
-        if re.match(r"^\s*include(_if_exists|_dir)?\s*=", ln):
-            raise LifecycleError(f"active config include {ln.strip()!r}: refusing (it could re-open listen_addresses)")
-        m = _LISTEN_RE.match(ln)
-        if m and not ln.lstrip().startswith("#") and m.group(1).strip("'\" ") != LOOPBACK:
-            raise LifecycleError(f"listen_addresses is {m.group(1)!r}, not exactly '{LOOPBACK}': refusing")
+        m = _CONF_LINE.match(ln)
+        if not m or ln.lstrip().startswith("#"):
+            continue
+        key = m.group(1).lower()
+        if key in _CONF_INCLUDES or key == "hba_file":
+            raise LifecycleError(f"active config line {ln.strip()!r}: refusing (it could re-open listen_addresses or pg_hba elsewhere)")
+        if key == "listen_addresses" and _conf_value(m.group(2)) != LOOPBACK:
+            raise LifecycleError(f"listen_addresses is {_conf_value(m.group(2))!r}, not exactly '{LOOPBACK}': refusing")
     hba = data_dir / "pg_hba.conf"
     try:
         hba_lines = hba.read_text(encoding="utf-8").splitlines()
@@ -337,9 +442,10 @@ def check_loopback_config(data_dir: Path) -> None:
         s = ln.split("#", 1)[0].split()
         if not s:
             continue
-        if s[0] == "local":
+        kind = s[0]                                              # pg_hba type keywords are lower-case; anything else is refused
+        if kind == "local":
             continue
-        if s[0].startswith("host"):
+        if kind.startswith("host"):
             addr = s[3] if len(s) > 3 else ""
             if addr != f"{LOOPBACK}/32":
                 raise LifecycleError(f"pg_hba.conf rule {ln.strip()!r} reaches an address other than {LOOPBACK}/32: refusing")
@@ -387,11 +493,15 @@ def status_cluster(root: str | Path) -> dict:
     return out
 
 
+def _check_port(port: Any) -> None:
+    if isinstance(port, bool) or not isinstance(port, int) or not 1024 <= port <= 65535 or port in FORBIDDEN_PORTS:
+        raise LifecycleError(f"port {port!r} is not allowed")
+
+
 def init_cluster(root: str | Path, *, port: int = DEFAULT_PORT, pg_bin: str = DEFAULT_PG_BIN) -> dict:
     """initdb a long-lived rehearsal data dir (idempotent). Writes the marker FIRST so a half-finished init is still ours."""
     lay = _Layout(root)
-    if isinstance(port, bool) or not isinstance(port, int) or not 1024 <= port <= 65535 or port in FORBIDDEN_PORTS:
-        raise LifecycleError(f"port {port!r} is not allowed")
+    _check_port(port)
     if len(str(lay.sock / ".s.PGSQL.00000")) > SOCK_PATH_LIMIT:
         raise LifecycleError("root path too long for a unix socket")
     _check_root(lay.root, create=True)
@@ -481,6 +591,10 @@ def reap_cluster(root: str | Path, *, pg_bin: str = DEFAULT_PG_BIN, remove_data:
         raise LifecycleError("no valid ownership marker: refusing to reap")
     if remove_data and confirm != str(lay.root):
         raise LifecycleError("--remove-data needs --confirm <the exact root path>")
+    if remove_data and str(lay.root) != DEFAULT_ROOT:
+        raise LifecycleError(f"--remove-data only ever deletes under the rehearsal root {DEFAULT_ROOT}")
+    if remove_data and not (lay.data / "PG_VERSION").is_file():
+        raise LifecycleError("--remove-data needs an initialised data dir (PG_VERSION): refusing to delete anything else")
     stopped = stop_cluster(root, pg_bin=pg_bin)
     removed: list[str] = []
     if remove_data:
@@ -502,6 +616,7 @@ def adopt_cluster(root: str | Path, *, port: int = DEFAULT_PORT) -> dict:
     """Put a marker on an EXISTING phase-1 cluster (`rehearsal_cluster.sh init`) after checking its config is loopback-only.
     Never changes the data dir."""
     lay = _Layout(root)
+    _check_port(port)                                              # BEFORE anything is written: no poison marker
     _check_root(lay.root, create=False)
     with _locked(lay):
         if read_marker(root) is not None:
@@ -585,7 +700,7 @@ def _judge_idempotent(m: Mapping) -> list[str]:
     if p:
         return p
     p = [f"{k} is not a sha256" for k in want[:5] if not _h64(m[k])]
-    if not (_is_int(m["rows_before"]) and m["rows_before"] > 0 and m["rows_after"] == m["rows_before"]):
+    if not (_is_int(m["rows_before"]) and _is_int(m["rows_after"]) and m["rows_before"] > 0 and m["rows_after"] == m["rows_before"]):
         p.append("row counts must be equal and positive")
     if m["volatile_columns_changed"] is not True:
         p.append("the rebuild did not change a volatile column: an unchanged table proves nothing")
@@ -599,25 +714,32 @@ def _judge_idempotent(m: Mapping) -> list[str]:
 
 
 def _judge_family(m: Mapping) -> list[str]:
-    want = ("intersecting_assets", "exit_code", "refusal_codes", "connect_calls", "dispatch_calls", "control_exit_code",
-            "control_refusal_codes", "control_connect_calls", "missing_file_committing_codes")
+    want = ("intersecting_assets", "refused_assets", "refused_via", "exit_code", "refusal_codes", "connect_calls", "dispatch_calls",
+            "control_exit_code", "control_refusal_codes", "control_connect_calls", "missing_file_committing_codes")
     p = _keys(m, want)
     if p:
         return p
-    if not (isinstance(m["intersecting_assets"], list) and m["intersecting_assets"]):
+    lists_ok = all(isinstance(m[k], list) for k in ("intersecting_assets", "refused_assets", "refused_via", "refusal_codes",
+                                                    "control_refusal_codes", "missing_file_committing_codes"))
+    if not lists_ok:
+        return p + ["a list-valued measurement is not a list"]
+    if not m["intersecting_assets"]:
         p.append("no family-intersecting asset was requested")
-    if m["exit_code"] != 4:
+    if not set(m["intersecting_assets"]) <= set(m["refused_assets"]):
+        p.append("a family-intersecting asset was not refused")
+    if not {"name_pattern", "family_set"} <= set(m["refused_via"]):
+        p.append("both refusal paths (name pattern and family_set) must be exercised and refused")
+    if not (_is_int(m["exit_code"]) and m["exit_code"] == 4):
         p.append("the refusal exit code is not 4")
-    if "FAMILY_ASSET" not in (m["refusal_codes"] or []):
+    if "FAMILY_ASSET" not in m["refusal_codes"]:
         p.append("no FAMILY_ASSET refusal")
-    if m["connect_calls"] != 0 or m["dispatch_calls"] != 0:
+    if not (_is_int(m["connect_calls"]) and _is_int(m["dispatch_calls"]) and m["connect_calls"] == 0 and m["dispatch_calls"] == 0):
         p.append("the refused request touched the database or dispatched")
-    codes = m["control_refusal_codes"] if isinstance(m["control_refusal_codes"], list) else []
-    if any(str(c).startswith(("FAMILY_", "SPLITS_")) for c in codes):
+    if any(str(c).startswith(("FAMILY_", "SPLITS_")) for c in m["control_refusal_codes"]):
         p.append("the non-family control was refused as a family request: the detector cannot tell")
-    if m["control_connect_calls"] is None or not _is_int(m["control_connect_calls"]):
+    if not _is_int(m["control_connect_calls"]):
         p.append("control_connect_calls missing")
-    if "FAMILY_FILE_MISSING" not in (m["missing_file_committing_codes"] or []):
+    if "FAMILY_FILE_MISSING" not in m["missing_file_committing_codes"]:
         p.append("a committing run with no family file was not refused (fail-open)")
     return p
 
@@ -671,7 +793,7 @@ def _judge_f3(m: Mapping) -> list[str]:
         p.append("the MSR delete/reinsert was refused")
     if not (_is_int(m["dangling_after_change"]) and m["dangling_after_change"] > 0):
         p.append("no dangling reference was recorded after a changed signal: the check is vacuous")
-    if m["dangling_after_downstream_rebuild"] != 0:
+    if not (_is_int(m["dangling_after_downstream_rebuild"]) and m["dangling_after_downstream_rebuild"] == 0):
         p.append("the downstream rebuild did not restore referential integrity")
     restored = m["referencing_rows_restored"]
     if not (isinstance(restored, Mapping) and set(restored) == set(t if isinstance(t, Mapping) else {}) and len(restored) == 7
@@ -707,6 +829,26 @@ def _judge_certify(m: Mapping) -> list[str]:
     return p
 
 
+def _entry_problem(e: Any) -> str | None:
+    """One opened connection: loopback, allowed port, VERIFIED, and consistent with its policy (a rehearsal entry is the
+    rehearsal port/database/data dir, a disposable one a suvarna_disposable* database on another port)."""
+    keys = ("host", "port", "database", "policy", "data_directory", "verified")
+    if not (isinstance(e, Mapping) and set(e) == set(keys)):
+        return f"an opened connection does not have exactly the keys {keys}"
+    if e["host"] != LOOPBACK or not _is_int(e["port"]) or e["port"] in FORBIDDEN_PORTS or e["policy"] not in POLICIES:
+        return f"an opened connection is not loopback/allowed: {dict(e)!r}"
+    if e["verified"] is not True or not (isinstance(e["data_directory"], str) and e["data_directory"]):
+        return "an opened connection was not verified against the answering server"
+    if not isinstance(e["database"], str):
+        return "database is not text"
+    if e["policy"] == "rehearsal":
+        if e["port"] != DEFAULT_PORT or not rg.DB_NAME_RE.fullmatch(e["database"]) or not _same_path(e["data_directory"], f"{DEFAULT_ROOT}/pg"):
+            return "a rehearsal-policy entry is not the rehearsal port/database/data directory"
+    elif e["port"] == DEFAULT_PORT or not e["database"].startswith("suvarna_disposable"):
+        return "a disposable-policy entry is not a suvarna_disposable* database on a non-rehearsal port"
+    return None
+
+
 def _judge_connections(m: Mapping) -> list[str]:
     want = ("opened", "refused_count", "probe_refused_without_socket")
     p = _keys(m, want)
@@ -715,10 +857,9 @@ def _judge_connections(m: Mapping) -> list[str]:
     opened = m["opened"]
     if not (isinstance(opened, list) and opened):
         return p + ["no connection was recorded: the log proves nothing"]
-    for e in opened:
-        if not (isinstance(e, Mapping) and e.get("host") == LOOPBACK and _is_int(e.get("port"))
-                and e["port"] not in FORBIDDEN_PORTS and e.get("policy") in POLICIES):
-            p.append(f"an opened connection is not loopback/allowed: {e!r}")
+    p += [x for x in (_entry_problem(e) for e in opened) if x]
+    if not _is_int(m["refused_count"]):
+        p.append("refused_count is not an integer")
     if m["probe_refused_without_socket"] is not True:
         p.append("a non-loopback probe was not refused without opening a socket")
     return p
@@ -745,10 +886,41 @@ def case_result(case_id: str, *, measured: Mapping, basis: str, fingerprints: Ma
     """A measured case record; its `result` is derived by `judge_case`, never chosen by the caller."""
     spec = CASE_CATALOG[case_id]
     result, _ = judge_case(case_id, measured)
-    return {"id": case_id, "title": spec["title"], "result": result, "basis": basis,
+    case = {"id": case_id, "title": spec["title"], "result": result, "basis": basis,
             "detector": {"name": spec["detector"], "claim": spec["claim"]}, "measured": dict(measured),
             "fingerprints": dict(fingerprints or {}), "evidence": [dict(e) for e in (evidence or [])],
             "unmeasured_reason": None}
+    if basis == "rehearsal_db":                       # the measurement itself is an evidence file, pinned by its sha256
+        case["evidence"].insert(0, measured_record_pointer(case))
+    return case
+
+
+def measured_record_text(case: Mapping) -> str:
+    """The canonical text of a case's measurement record. Its sha256 is the case's first evidence pointer, so the pointer
+    can only be satisfied by a file that CONTAINS the measured values the judge was run on."""
+    return json.dumps({"case": case["id"], "measured": case["measured"], "fingerprints": case["fingerprints"]},
+                      sort_keys=True, indent=2, ensure_ascii=True) + "\n"
+
+
+def measured_record_path(case_id: str) -> str:
+    return f"E5.6/{case_id}.measured.json"
+
+
+def measured_record_pointer(case: Mapping) -> dict:
+    return {"path": measured_record_path(case["id"]), "sha256": sha256_text(measured_record_text(case))}
+
+
+def write_measured_records(doc: Mapping, evidence_root: str | Path) -> list[str]:
+    """Write each measured case's record file under `evidence_root` (the files the first pointer names)."""
+    out = []
+    for c in doc["cases"]:
+        if c["result"] == "UNMEASURED":
+            continue
+        f = Path(evidence_root) / measured_record_path(c["id"])
+        f.parent.mkdir(parents=True, exist_ok=True)
+        f.write_text(measured_record_text(c), encoding="utf-8")
+        out.append(str(f))
+    return out
 
 
 def unmeasured_case(case_id: str, reason: str) -> dict:
@@ -762,7 +934,7 @@ def unmeasured_case(case_id: str, reason: str) -> dict:
 
 
 def derive_summary(cases: Sequence[Mapping]) -> dict:
-    by = {c.get("id"): c for c in cases if isinstance(c, Mapping)}
+    by = {c["id"]: c for c in cases if isinstance(c, Mapping) and isinstance(c.get("id"), str)}
     res = [by.get(i, {}).get("result", "UNMEASURED") for i in REQUIRED_CASES]
     return {"required": len(REQUIRED_CASES), "pass": res.count("PASS"), "fail": res.count("FAIL"),
             "unmeasured": res.count("UNMEASURED")}
@@ -798,7 +970,7 @@ def _validate_case(c: Any, mode: str) -> list[str]:
     if not isinstance(c, Mapping):
         return ["a case is not an object"]
     cid = c.get("id")
-    if cid not in CASE_CATALOG:
+    if not isinstance(cid, str) or cid not in CASE_CATALOG:
         return [f"unknown case id {cid!r}"]
     p = [f"{cid}: key set differs from the closed case schema"] if set(c) != set(CASE_KEYS) else []
     if p:
@@ -835,8 +1007,14 @@ def _validate_case(c: Any, mode: str) -> list[str]:
     if mode == "rehearsal" and c["result"] == "PASS":
         if c["basis"] != "rehearsal_db":
             p.append(f"{cid}: a rehearsal PASS needs basis rehearsal_db (a synthetic fixture is not the rehearsal)")
-        if not ev:
-            p.append(f"{cid}: a rehearsal PASS needs evidence pointers")
+    if mode == "rehearsal" and isinstance(ev, list) and isinstance(c["fingerprints"], Mapping):
+        want = measured_record_pointer(c)
+        if want not in ev:
+            p.append(f"{cid}: the measurement-record pointer {want['path']} is missing or its sha256 is not the record of THESE "
+                     "measured values")
+    if cid == "no_production_write" and mode == "rehearsal":
+        if any(isinstance(e, Mapping) and e.get("policy") != "rehearsal" for e in c["measured"].get("opened", [])):
+            p.append(f"{cid}: a rehearsal document may only contain rehearsal-policy connections")
     return p
 
 
@@ -845,9 +1023,28 @@ def _check_relpath(p: Any) -> bool:
             and ".." not in p.split("/") and "" not in p.split("/"))
 
 
-def validate_evidence(doc: Any) -> list[str]:
-    """Every problem found, [] when the document is valid. Re-derives every case result, the summary and the top-level
-    result; refuses any extra or missing key."""
+def tool_sha256_at_commit(repo: str | Path, commit: str) -> str | None:
+    """sha256 of this tool as committed at `commit` (None when the repo/commit/path is not available)."""
+    if not (isinstance(commit, str) and HEX40.fullmatch(commit)):
+        return None
+    try:
+        r = subprocess.run(["git", "-C", str(repo), "show", f"{commit}:{TOOL_REL}"], capture_output=True, timeout=30, env=_git_env(),
+                           stdin=subprocess.DEVNULL)
+    except (OSError, subprocess.SubprocessError):
+        return None
+    return hashlib.sha256(r.stdout).hexdigest() if r.returncode == 0 else None
+
+
+def validate_evidence(doc: Any, tool_sha: str | None = None) -> list[str]:
+    """Every problem found, [] when the document is valid. Never raises: a malformed document is a problem list.
+    `tool_sha` is the sha256 the document's `generated_by.tool_sha256` must equal (default: this running tool file)."""
+    try:
+        return _validate_evidence(doc, tool_sha if tool_sha is not None else tool_sha256())
+    except (KeyError, TypeError, AttributeError, ValueError, IndexError) as exc:
+        return [f"malformed document ({type(exc).__name__}: {str(exc)[:120]})"]
+
+
+def _validate_evidence(doc: Any, expected_tool_sha: str) -> list[str]:
     if not isinstance(doc, Mapping):
         return ["the document is not an object"]
     if set(doc) != set(TOP_KEYS):
@@ -864,11 +1061,14 @@ def validate_evidence(doc: Any) -> list[str]:
     gb = doc["generated_by"]
     if not (isinstance(gb, Mapping) and set(gb) == {"tool", "tool_sha256"} and gb["tool"] == TOOL_NAME and _h64(gb["tool_sha256"])):
         p.append("generated_by is malformed")
+    elif gb["tool_sha256"] != expected_tool_sha:
+        p.append("generated_by.tool_sha256 is not the sha256 of the repo tool (the document was not produced by this tool version)")
     cases = doc["cases"]
     if not isinstance(cases, list):
         return p + ["cases is not a list"]
-    ids = [c.get("id") if isinstance(c, Mapping) else None for c in cases]
-    if len(set(ids)) != len(ids):
+    ids = [c["id"] if isinstance(c, Mapping) and isinstance(c.get("id"), str) else None for c in cases]
+    named = [i for i in ids if i is not None]
+    if len(set(named)) != len(named):
         p.append("a case id occurs twice")
     missing = [i for i in REQUIRED_CASES if i not in ids]
     if missing:
@@ -876,7 +1076,7 @@ def validate_evidence(doc: Any) -> list[str]:
     for c in cases:
         p += _validate_case(c, mode)
         if (isinstance(c, Mapping) and c.get("id") == "find_fix_rebuild_certify" and c.get("result") == "PASS"
-                and c["measured"].get("evidence_commit") != doc["commit"]):
+                and isinstance(c.get("measured"), Mapping) and c["measured"].get("evidence_commit") != doc["commit"]):
             p.append("find_fix_rebuild_certify.evidence_commit differs from the document commit")
     summary = derive_summary(cases)
     if doc["summary"] != summary:
@@ -922,7 +1122,8 @@ def validate_evidence(doc: Any) -> list[str]:
 
 
 def check_pointers(doc: Mapping, evidence_root: str | Path) -> list[str]:
-    """Every evidence pointer names an existing file under `evidence_root` whose sha256 matches."""
+    """Every evidence pointer names an existing file under `evidence_root` whose sha256 matches; for each measured case the
+    measurement-record file must also PARSE to exactly the case's measured values (no file merely hashing right)."""
     root = Path(evidence_root)
     p: list[str] = []
     for c in doc.get("cases", []):
@@ -933,19 +1134,30 @@ def check_pointers(doc: Mapping, evidence_root: str | Path) -> list[str]:
                     p.append(f"{c['id']}: evidence file {e['path']} is missing or a symlink")
                 elif sha256_file(f) != e["sha256"]:
                     p.append(f"{c['id']}: evidence file {e['path']} does not match its recorded sha256")
-            except OSError as exc:
+                elif e["path"] == measured_record_path(c["id"]):
+                    rec = json.loads(f.read_text(encoding="utf-8"))
+                    if rec != {"case": c["id"], "measured": c["measured"], "fingerprints": c["fingerprints"]}:
+                        p.append(f"{c['id']}: the measurement-record file does not contain this case's measured values")
+            except (OSError, ValueError) as exc:
                 p.append(f"{c['id']}: evidence file {e['path']} unreadable ({exc})")
     return p
 
 
+def _is_detector_path(target: Path) -> bool:
+    """True for any spelling of the detector's evidence file: realpath'd, case-insensitive, or just that file name."""
+    real = os.path.realpath(target).replace(os.sep, "/").lower()
+    return real.endswith("/" + DETECTOR_EVIDENCE_PATH.lower()) or os.path.basename(real) == "rehearsal.json"
+
+
 def write_evidence(doc: Mapping, path: str | Path, *, evidence_root: str | Path | None = None) -> str:
     """Validate, then write atomically (canonical JSON, sorted keys, trailing newline). Refuses an invalid document, a
-    `self_test` document at the detector's path (E5.6/REHEARSAL.json), and (rehearsal mode) any dangling pointer."""
+    `self_test` document at the detector's path (E5.6/REHEARSAL.json, any case or symlinked spelling), and (rehearsal
+    mode) any pointer that does not verify."""
     problems = validate_evidence(doc)
     if problems:
         raise RehearsalError("refusing to write an invalid evidence document: " + "; ".join(problems[:5]))
     target = Path(path)
-    if doc["mode"] == "self_test" and target.as_posix().endswith(DETECTOR_EVIDENCE_PATH):
+    if doc["mode"] == "self_test" and _is_detector_path(target):
         raise RehearsalError(f"a self_test document may never be written to the detector's path ({DETECTOR_EVIDENCE_PATH})")
     if doc["mode"] == "rehearsal":
         if evidence_root is None:
@@ -963,44 +1175,167 @@ def write_evidence(doc: Mapping, path: str | Path, *, evidence_root: str | Path 
 
 # ═════════════════════════ E. E5.7: pre/post fingerprint comparison ═════════════════════════
 
-EXPLAIN_CODES = ("rolling_horizon", "embedding_equivalence_policy", "seeded_not_rebuilt", "source_unavailable_offline",
-                 "production_ahead_of_commit", "fixed_before_drill")
+FINGERPRINT_DEFINITION = "nikasha_stale_certs.table_fingerprint/1"     # E5.5's definition: the ONE fingerprint in this campaign
+EXPLAIN_CODES_BY_KIND = {
+    "fingerprint_differs": ("rolling_horizon", "embedding_equivalence_policy", "seeded_not_rebuilt", "production_ahead_of_commit",
+                            "fixed_before_drill"),
+    "missing_in_rehearsal": ("source_unavailable_offline",),
+    "missing_in_production": ("asset_new_at_commit",),
+}
+EXPLAIN_CODES = tuple(sorted({c for v in EXPLAIN_CODES_BY_KIND.values() for c in v}))
+MIN_DETAIL_CHARS = 40
+DEFAULT_LIMITS = (0.0, 0.25)                   # (max_undecided_share, max_difference_share)
+DRILL_KEYS = ("schema", "item", "result", "commit", "tool_sha256", "definition", "expected_assets", "production", "rehearsal",
+              "explained_input", "inputs", "equal", "differences", "unexplained", "uncovered", "unexpected",
+              "explanations_without_difference", "problems", "limits")
+_DECISION_ID = re.compile(r"N-[0-9]{1,6}")
+_ASSET_ID = re.compile(r"[a-z][a-z0-9_]*")
 
 
-def compare_fingerprint_sets(production: Mapping[str, str], rehearsal: Mapping[str, str],
-                             explained: Mapping[str, Mapping] | None = None) -> dict:
-    """E5.7: compare per-asset semantic fingerprints (E5.5's `fingerprint_rows` definition: one definition) of production
-    (read as suvarna_reader) with the rehearsal rebuild. An asset present on one side only, or with different fingerprints,
-    is a DIFFERENCE; it is explained only by {reason_code in EXPLAIN_CODES, detail non-blank}. PASS iff no unexplained
-    difference. An empty comparison is not PASS."""
-    explained = dict(explained or {})
-    for side, fp in (("production", production), ("rehearsal", rehearsal)):
-        if not isinstance(fp, Mapping) or not all(isinstance(k, str) and _h64(v) for k, v in fp.items()):
-            raise RehearsalError(f"{side} fingerprints must be an object of asset -> sha256")
-    assets = sorted(set(production) | set(rehearsal))
-    equal, diffs = [], []
-    for a in assets:
-        if a in production and a in rehearsal and production[a] == rehearsal[a]:
+def fingerprint_set(fingerprints: Mapping[str, str]) -> dict:
+    """The envelope a comparison input must have: the definition marker + {asset: sha256}."""
+    return {"definition": FINGERPRINT_DEFINITION, "fingerprints": dict(fingerprints)}
+
+
+def _check_envelope(side: str, env: Any) -> dict:
+    if not (isinstance(env, Mapping) and set(env) == {"definition", "fingerprints"}):
+        raise RehearsalError(f"{side} must be {{definition, fingerprints}} (use fingerprint_set)")
+    if env["definition"] != FINGERPRINT_DEFINITION:
+        raise RehearsalError(f"{side} was not made with {FINGERPRINT_DEFINITION}: one fingerprint definition only")
+    fp = env["fingerprints"]
+    if not (isinstance(fp, Mapping) and all(isinstance(k, str) and _ASSET_ID.fullmatch(k) and _h64(v) for k, v in fp.items())):
+        raise RehearsalError(f"{side}.fingerprints must be an object of asset id -> sha256")
+    return dict(fp)
+
+
+def _normal_detail(text: str) -> str:
+    return " ".join(text.lower().split())
+
+
+def _explanation_problem(kind: str, e: Any) -> str | None:
+    if not (isinstance(e, Mapping) and {"reason_code", "detail"} <= set(e) <= {"reason_code", "detail", "decision"}):
+        return "an explanation is exactly {reason_code, detail[, decision]}"
+    if e["reason_code"] not in EXPLAIN_CODES_BY_KIND[kind]:
+        return f"reason_code {e['reason_code']!r} is not valid for a {kind} difference (allowed: {EXPLAIN_CODES_BY_KIND[kind]})"
+    d = e["detail"]
+    if not (isinstance(d, str) and len(d.strip()) >= MIN_DETAIL_CHARS and not any(ord(ch) < 32 for ch in d)):
+        return f"detail must be text of at least {MIN_DETAIL_CHARS} characters"
+    if "decision" in e and not (isinstance(e["decision"], str) and _DECISION_ID.fullmatch(e["decision"])):
+        return "decision must be an SS-recorded decision id N-<n>"
+    return None
+
+
+def compare_fingerprint_sets(production: Any, rehearsal: Any, explained: Any = None, *, expected_assets: Any, commit: Any,
+                             max_undecided_share: float = DEFAULT_LIMITS[0], max_difference_share: float = DEFAULT_LIMITS[1]) -> dict:
+    """E5.7: compare per-asset semantic fingerprints (E5.5's definition; both inputs carry its marker) of production (read as
+    suvarna_reader) with the rehearsal rebuild, over the L0 assets the drill MUST cover (`expected_assets`, required).
+    FAIL if any expected asset is on neither side (`uncovered`), any compared asset is outside the expected list, any
+    difference is unexplained, an explanation has no difference, an explanation is malformed (reason code valid for the
+    difference kind, detail >= 40 characters and not repeated across assets), the share of EXPLAINED differences without an
+    SS-recorded decision id `N-<n>` exceeds `max_undecided_share` (default 0: every difference needs a decision), or the
+    share of differing assets exceeds `max_difference_share`. PASS only when none of those holds; the output document
+    embeds both fingerprint sets, the explanations, input hashes, the commit and the tool hash, and `validate_drill`
+    re-derives it."""
+    if not (isinstance(commit, str) and HEX40.fullmatch(commit)):
+        raise RehearsalError("commit must be 40-hex")
+    if isinstance(expected_assets, (str, bytes, Mapping)) or not isinstance(expected_assets, (list, tuple, set, frozenset)):
+        raise RehearsalError("expected_assets is required: the list of asset ids the drill must cover")
+    exp = list(expected_assets)
+    if not exp or not all(isinstance(a, str) and _ASSET_ID.fullmatch(a) for a in exp) or len(set(exp)) != len(exp):
+        raise RehearsalError("expected_assets must be a non-empty list of unique asset ids")
+    if explained is None:
+        explained = {}
+    if not isinstance(explained, Mapping):
+        raise RehearsalError("explained must be an object of asset id -> explanation")
+    for share, name in ((max_undecided_share, "max_undecided_share"), (max_difference_share, "max_difference_share")):
+        if isinstance(share, bool) or not isinstance(share, (int, float)) or not 0 <= share <= 1:
+            raise RehearsalError(f"{name} must be a number in [0, 1]")
+    prod, reh = _check_envelope("production", production), _check_envelope("rehearsal", rehearsal)
+    expected = sorted(exp)
+    uncovered = [a for a in expected if a not in prod and a not in reh]
+    unexpected = sorted((set(prod) | set(reh)) - set(expected))
+    equal, diffs, problems = [], [], []
+    for a in expected:
+        if a in uncovered:
+            continue
+        if a in prod and a in reh and prod[a] == reh[a]:
             equal.append(a)
             continue
-        kind = ("missing_in_rehearsal" if a not in rehearsal else "missing_in_production" if a not in production else "fingerprint_differs")
-        e = explained.get(a)
-        ok = (isinstance(e, Mapping) and set(e) == {"reason_code", "detail"} and e["reason_code"] in EXPLAIN_CODES
-              and isinstance(e["detail"], str) and bool(e["detail"].strip()))
-        diffs.append({"asset": a, "kind": kind, "production": production.get(a), "rehearsal": rehearsal.get(a),
-                      "explained": dict(e) if ok else None})
+        kind = "missing_in_rehearsal" if a not in reh else "missing_in_production" if a not in prod else "fingerprint_differs"
+        diffs.append({"asset": a, "kind": kind, "production": prod.get(a), "rehearsal": reh.get(a), "explained": None})
+    seen: dict[str, str] = {}
+    undecided = 0
+    for d in diffs:
+        e = explained.get(d["asset"])
+        if e is None:
+            continue
+        why = _explanation_problem(d["kind"], e)
+        if why:
+            problems.append(f"{d['asset']}: {why}")
+            continue
+        norm = _normal_detail(e["detail"])
+        if norm in seen:
+            problems.append(f"{d['asset']}: detail repeats the one given for {seen[norm]} (an explanation is per asset)")
+            continue
+        seen[norm] = d["asset"]
+        d["explained"] = dict(e)
+        if "decision" not in e:
+            undecided += 1
     stray = sorted(set(explained) - {d["asset"] for d in diffs})
     unexplained = [d["asset"] for d in diffs if d["explained"] is None]
-    result = "FAIL" if unexplained or stray else ("PASS" if assets else "UNMEASURED")
-    return {"schema": DRILL_SCHEMA, "result": result, "assets_compared": len(assets), "equal": equal, "differences": diffs,
-            "unexplained": unexplained, "explanations_without_difference": stray}
+    if expected and undecided / len(expected) > max_undecided_share:
+        problems.append(f"{undecided} explained difference(s) have no decision id: over the allowed share {max_undecided_share}")
+    if expected and len(diffs) / len(expected) > max_difference_share:
+        problems.append(f"{len(diffs)} of {len(expected)} expected assets differ: over the allowed share {max_difference_share}")
+    failed = bool(unexplained or stray or uncovered or unexpected or problems)
+    return {"schema": DRILL_SCHEMA, "item": "E5.7", "result": "FAIL" if failed else "PASS", "commit": commit,
+            "tool_sha256": tool_sha256(), "definition": FINGERPRINT_DEFINITION, "expected_assets": expected,
+            "production": fingerprint_set(prod), "rehearsal": fingerprint_set(reh), "explained_input": dict(explained),
+            "inputs": {"production_sha256": sha256_text(canonical_json(fingerprint_set(prod))),
+                       "rehearsal_sha256": sha256_text(canonical_json(fingerprint_set(reh))),
+                       "explained_sha256": sha256_text(canonical_json(dict(explained)))},
+            "equal": equal, "differences": diffs, "unexplained": unexplained, "uncovered": uncovered, "unexpected": unexpected,
+            "explanations_without_difference": stray, "problems": problems,
+            "limits": {"max_undecided_share": max_undecided_share, "max_difference_share": max_difference_share,
+                       "min_detail_chars": MIN_DETAIL_CHARS}}
+
+
+def validate_drill(doc: Any, tool_sha: str | None = None) -> list[str]:
+    """Problems with an E5.7 comparison document ([] = valid): closed keys, the repo tool's hash, and every derived field
+    (result, differences, coverage, problems, input hashes) re-derived from the embedded inputs. Never raises."""
+    try:
+        if not isinstance(doc, Mapping) or set(doc) != set(DRILL_KEYS):
+            return ["the drill document is not an object with exactly the closed keys"]
+        want_tool = tool_sha if tool_sha is not None else tool_sha256()
+        p = [] if doc["tool_sha256"] == want_tool else ["tool_sha256 is not the sha256 of the repo tool"]
+        lim = doc["limits"]
+        if not (isinstance(lim, Mapping) and set(lim) == {"max_undecided_share", "max_difference_share", "min_detail_chars"}):
+            return p + ["limits malformed"]
+        again = compare_fingerprint_sets(doc["production"], doc["rehearsal"], doc["explained_input"],
+                                         expected_assets=doc["expected_assets"], commit=doc["commit"],
+                                         max_undecided_share=lim["max_undecided_share"],
+                                         max_difference_share=lim["max_difference_share"])
+        again["tool_sha256"] = doc["tool_sha256"]
+        if lim["min_detail_chars"] != MIN_DETAIL_CHARS:
+            p.append("min_detail_chars differs from the tool's")
+        if (lim["max_undecided_share"], lim["max_difference_share"]) != DEFAULT_LIMITS:
+            p.append(f"limits were overridden away from the defaults {DEFAULT_LIMITS}: a drill that needs that is the strategist's call, "
+                     "not a PASS this validator can give")
+        if again != dict(doc):
+            p.append("the document differs from the comparison re-derived from its embedded inputs")
+        return p
+    except RehearsalError as exc:
+        return [f"drill inputs refused: {exc}"]
+    except (KeyError, TypeError, AttributeError, ValueError) as exc:
+        return [f"malformed drill document ({type(exc).__name__}: {str(exc)[:120]})"]
 
 
 # ═════════════════════════ D. self-test (disposable PG, synthetic data) ═════════════════════════
 
 def _git_commit(repo: str | Path) -> str | None:
     try:
-        p = subprocess.run(["git", "-C", str(repo), "rev-parse", "HEAD"], capture_output=True, text=True, timeout=30)
+        p = subprocess.run(["git", "-C", str(repo), "rev-parse", "HEAD"], capture_output=True, text=True, timeout=30,
+                           env=_git_env(), stdin=subprocess.DEVNULL)
     except (OSError, subprocess.SubprocessError):
         return None
     out = p.stdout.strip()
@@ -1055,8 +1390,11 @@ def measure_idempotent_rebuild(conn: Any) -> dict:
 
 
 def _git_env() -> dict:
-    return {**os.environ, "GIT_AUTHOR_NAME": "e56", "GIT_AUTHOR_EMAIL": "e56@invalid", "GIT_COMMITTER_NAME": "e56",
-            "GIT_COMMITTER_EMAIL": "e56@invalid", "GIT_CONFIG_GLOBAL": "/dev/null", "GIT_CONFIG_SYSTEM": "/dev/null"}
+    """A scrubbed environment for every git call: nothing inherited (no GIT_*, no user config, no prompts, no locale)."""
+    return {"PATH": "/usr/bin:/bin:/opt/homebrew/bin", "HOME": "/nonexistent", "LC_ALL": "C", "TZ": "UTC",
+            "GIT_CONFIG_GLOBAL": os.devnull, "GIT_CONFIG_SYSTEM": os.devnull, "GIT_CONFIG_NOSYSTEM": "1",
+            "GIT_TERMINAL_PROMPT": "0", "GIT_AUTHOR_NAME": "e56", "GIT_AUTHOR_EMAIL": "e56@invalid",
+            "GIT_COMMITTER_NAME": "e56", "GIT_COMMITTER_EMAIL": "e56@invalid"}
 
 
 def _fixture_repo(tmp: Path, family_doc: dict | None) -> Path:
@@ -1092,22 +1430,26 @@ def measure_family_refusal() -> dict:
         calls["dispatch"] += 1
         raise AssertionError("the refused request dispatched")
 
-    def run(repo: Path, assets: str, *, commit: bool) -> tuple[int, list[str]]:
+    def run(repo: Path, assets: str, *, commit: bool) -> tuple[int, list[dict]]:
         argv = ["--chart-id", str(uuid.uuid5(SYNTH_NS, "chart-a")), "--assets", assets, "--repo", str(repo),
                 "--family-ref", "main"] + (["--commit", "--mode", "single-run"] if commit else [])
         out = io.StringIO()
         code = slw.run_cli(slw.build_parser().parse_args(argv), connect=connect, git=_git_with_env, out=out, dispatch=dispatch)
         last = [json.loads(ln) for ln in out.getvalue().splitlines() if ln.strip().startswith("{")][-1]
-        return code, [str(r.get("code")) for r in last.get("refusals", [])]
+        return code, [dict(r) for r in last.get("refusals", [])]
 
     with tempfile.TemporaryDirectory(prefix="e56_family.") as td:
         with_file = _fixture_repo(Path(td) / "a", fam)
         no_file = _fixture_repo(Path(td) / "b", None)
-        code, codes = run(with_file, "bo_fixture_a,ka_fixture_gochara", commit=False)
+        code, refs = run(with_file, "bo_fixture_a,ka_fixture_gochara,ka_gochara_fixture", commit=False)
         connects_after_refusal, dispatches = calls["connect"], calls["dispatch"]
-        ctl_code, ctl_codes = run(with_file, "bo_fixture_a,bo_fixture_b", commit=False)
-        _mc, missing_codes = run(no_file, "bo_fixture_a", commit=True)
-    return {"intersecting_assets": ["ka_fixture_gochara"], "exit_code": code, "refusal_codes": sorted(set(codes)),
+        ctl_code, ctl_refs = run(with_file, "bo_fixture_a,bo_fixture_b", commit=False)
+        _mc, missing_refs = run(no_file, "bo_fixture_a", commit=True)
+    codes, ctl_codes, missing_codes = ([str(r.get("code")) for r in x] for x in (refs, ctl_refs, missing_refs))
+    famrefs = [r for r in refs if r.get("code") == "FAMILY_ASSET"]
+    return {"intersecting_assets": ["ka_fixture_gochara", "ka_gochara_fixture"],
+            "refused_assets": sorted({str(r.get("asset")) for r in famrefs}), "refused_via": sorted({str(r.get("via")) for r in famrefs}),
+            "exit_code": code, "refusal_codes": sorted(set(codes)),
             "connect_calls": connects_after_refusal, "dispatch_calls": dispatches, "control_exit_code": ctl_code,
             "control_refusal_codes": sorted(set(ctl_codes)), "control_connect_calls": calls["connect"] - connects_after_refusal,
             "missing_file_committing_codes": sorted(set(missing_codes))}
@@ -1177,21 +1519,35 @@ NEEDS_BY_CASE = {
 
 
 def run_self_test(*, tracker_dir: str | Path | None = None, repo: str | Path = REPO_ROOT,
-                  connect_url: str | None = None, pg_info: Mapping | None = None) -> dict:
-    """The cases that can run offline on a disposable PostgreSQL with synthetic data. `connect_url`/`pg_info` come from the
-    repo's `_disposable_pg` fixture when it is available; without them the database cases are UNMEASURED (NEEDS_DISPOSABLE_PG)."""
+                  connect_url: str | None = None, pg_info: Mapping | None = None,
+                  unavailable_reason: str = "NEEDS_DISPOSABLE_PG") -> dict:
+    """The cases that can run offline on a disposable PostgreSQL with synthetic data. `connect_url`/`pg_info` ({port,
+    data_directory}) come from the repo's `_disposable_pg` fixture; without them the database cases are UNMEASURED with
+    `unavailable_reason` (NEEDS_DISPOSABLE_PG, or NEEDS_PSYCOPG when the driver is not installed). Every connection goes
+    through `connect_checked` (scrubbed environment, answering-server identity verified, logged)."""
     log = ConnectionLog()
     cases: list[dict] = []
+    pg_version = ""
     if connect_url:
-        conn = connect_checked(connect_url, "disposable", log)
+        if not (isinstance(pg_info, Mapping) and pg_info.get("data_directory") and _is_int(pg_info.get("port"))):
+            raise RehearsalError("a disposable connection needs the fixture's identity {data_directory, port}")
+        conn = connect_checked(connect_url, "disposable", log,
+                               expect={"data_directory": pg_info["data_directory"], "port": pg_info["port"]})
         try:
-            cases.append(case_result("idempotent_rebuild_fingerprint_unchanged", measured=measure_idempotent_rebuild(conn),
-                                     basis="synthetic_fixture"))
+            pg_version = str(conn.execute("SHOW server_version").fetchone()[0])
+            try:
+                cases.append(case_result("idempotent_rebuild_fingerprint_unchanged", measured=measure_idempotent_rebuild(conn),
+                                         basis="synthetic_fixture"))
+            except ImportError:
+                cases.append(unmeasured_case("idempotent_rebuild_fingerprint_unchanged", "NEEDS_PYTHON_DEPENDENCIES"))
         finally:
             conn.close()
     else:
-        cases.append(unmeasured_case("idempotent_rebuild_fingerprint_unchanged", "NEEDS_DISPOSABLE_PG"))
-    cases.append(case_result("family_dispatch_refused", measured=measure_family_refusal(), basis="synthetic_fixture"))
+        cases.append(unmeasured_case("idempotent_rebuild_fingerprint_unchanged", unavailable_reason))
+    try:
+        cases.append(case_result("family_dispatch_refused", measured=measure_family_refusal(), basis="synthetic_fixture"))
+    except ImportError:
+        cases.append(unmeasured_case("family_dispatch_refused", "NEEDS_PYTHON_DEPENDENCIES"))
     if tracker_dir:
         cases.append(case_result("hold_refuses_dispatch", measured=measure_hold(tracker_dir), basis="synthetic_fixture"))
     else:
@@ -1199,18 +1555,19 @@ def run_self_test(*, tracker_dir: str | Path | None = None, repo: str | Path = R
     if log.opened:
         cases.append(case_result("no_production_write", measured=measure_connections(log), basis="synthetic_fixture"))
     else:
-        cases.append(unmeasured_case("no_production_write", "NEEDS_DISPOSABLE_PG"))
+        cases.append(unmeasured_case("no_production_write", unavailable_reason))
     for cid, reason in NEEDS_BY_CASE.items():
         cases.append(unmeasured_case(cid, reason))
-    info = (pg_info or {}) if connect_url else {}                  # port 0 = no cluster was started
+    info = pg_info if (connect_url and isinstance(pg_info, Mapping)) else {}          # port 0 = no cluster was started
     cluster = {"kind": "disposable", "host": LOOPBACK, "port": int(info.get("port", 0)),
-               "data_directory": str(info.get("data_directory", "")), "pg_version": str(info.get("pg_version", ""))}
+               "data_directory": str(info.get("data_directory", "")), "pg_version": pg_version}
     env = {"cluster": cluster, "schema_replay": None, "seed": None}
     return build_evidence(mode="self_test", commit=_git_commit(repo), cases=cases, environment=env)
 
 
 def _disposable_cluster() -> tuple[str, dict] | None:
-    """Start the repo's disposable cluster fixture (`__tests__/_disposable_pg.py`). None when no PostgreSQL binaries exist."""
+    """Start the repo's disposable cluster fixture (`__tests__/_disposable_pg.py`). None when no PostgreSQL binaries exist.
+    (The fixture's own CREATE DATABASE bootstrap uses its psql; every connection the HARNESS makes goes through the log.)"""
     sys.path.insert(0, str(HERE / "__tests__"))
     try:
         import _disposable_pg as dpg  # noqa: PLC0415
@@ -1220,8 +1577,7 @@ def _disposable_cluster() -> tuple[str, dict] | None:
         cl = dpg.get_cluster()
     except dpg.PGUnavailable:
         return None
-    ver = cl.psql("SHOW server_version")
-    return cl.url, {"port": cl.port, "data_directory": str(cl.data_dir), "pg_version": ver, "_cluster": cl}
+    return cl.url, {"port": cl.port, "data_directory": str(cl.data_dir), "_cluster": cl}
 
 
 # ═════════════════════════ CLI ═════════════════════════
@@ -1262,6 +1618,9 @@ def main(argv: Sequence[str] | None = None) -> int:
     v = sub.add_parser("validate")
     v.add_argument("path")
     v.add_argument("--evidence-root")
+    v.add_argument("--repo", default=str(REPO_ROOT))
+    vd = sub.add_parser("validate-drill")
+    vd.add_argument("path")
     c = sub.add_parser("cluster")
     c.add_argument("action", choices=("init", "start", "stop", "status", "reap", "adopt"))
     c.add_argument("--root", default=DEFAULT_ROOT)
@@ -1270,31 +1629,57 @@ def main(argv: Sequence[str] | None = None) -> int:
     c.add_argument("--remove-data", action="store_true")
     c.add_argument("--confirm")
     cf = sub.add_parser("compare-fingerprints")
-    cf.add_argument("--pre", required=True)
-    cf.add_argument("--post", required=True)
+    cf.add_argument("--pre", required=True, help="production envelope {definition, fingerprints}")
+    cf.add_argument("--post", required=True, help="rehearsal envelope {definition, fingerprints}")
+    cf.add_argument("--expected", required=True, help="JSON list of the L0 asset ids the drill must cover")
+    cf.add_argument("--commit", required=True)
     cf.add_argument("--explained")
+    cf.add_argument("--out")
     a = ap.parse_args(argv)
+    rd = lambda p: json.loads(Path(p).read_text(encoding="utf-8"))  # noqa: E731
     try:
         if a.cmd == "cluster":
             return _cmd_cluster(a)
         if a.cmd == "validate":
-            doc = json.loads(Path(a.path).read_text(encoding="utf-8"))
-            problems = validate_evidence(doc)
-            if not problems and a.evidence_root:
+            try:
+                doc = rd(a.path)
+            except (OSError, ValueError) as exc:
+                _print({"valid": False, "problems": [f"unreadable evidence file ({type(exc).__name__})"]})
+                return 2
+            commit = doc.get("commit") if isinstance(doc, Mapping) else None
+            problems = validate_evidence(doc, tool_sha256_at_commit(a.repo, commit))      # the tool as committed, else this file
+            if not problems and a.evidence_root and isinstance(doc, Mapping):
                 problems = check_pointers(doc, a.evidence_root)
-            if doc.get("mode") == "rehearsal" and not a.evidence_root:
+            if isinstance(doc, Mapping) and doc.get("mode") == "rehearsal" and not a.evidence_root:
                 problems.append("a rehearsal document is validated with --evidence-root")
             _print({"valid": not problems, "problems": problems})
             return 0 if not problems else 2
+        if a.cmd == "validate-drill":
+            try:
+                doc = rd(a.path)
+            except (OSError, ValueError) as exc:
+                _print({"valid": False, "problems": [f"unreadable drill file ({type(exc).__name__})"]})
+                return 2
+            commit = doc.get("commit") if isinstance(doc, Mapping) else None
+            problems = validate_drill(doc, tool_sha256_at_commit(REPO_ROOT, commit))
+            _print({"valid": not problems, "problems": problems})
+            return 0 if not problems else 2
         if a.cmd == "compare-fingerprints":
-            rd = lambda p: json.loads(Path(p).read_text(encoding="utf-8"))  # noqa: E731
-            out = compare_fingerprint_sets(rd(a.pre), rd(a.post), rd(a.explained) if a.explained else None)
+            out = compare_fingerprint_sets(rd(a.pre), rd(a.post), rd(a.explained) if a.explained else None,
+                                           expected_assets=rd(a.expected), commit=a.commit)
+            if a.out:
+                Path(a.out).parent.mkdir(parents=True, exist_ok=True)
+                Path(a.out).write_text(json.dumps(out, sort_keys=True, indent=2, ensure_ascii=True) + "\n", encoding="utf-8")
             _print(out)
             return 0 if out["result"] == "PASS" else 4
-        started = _disposable_cluster()
+        started, reason = None, "NEEDS_DISPOSABLE_PG"
+        if not _psycopg_available():
+            reason = "NEEDS_PSYCOPG"                       # the driver is not installed: UNMEASURED, not an error
+        else:
+            started = _disposable_cluster()
         try:
             doc = run_self_test(tracker_dir=a.tracker_dir, repo=a.repo, connect_url=started[0] if started else None,
-                                pg_info=started[1] if started else None)
+                                pg_info=started[1] if started else None, unavailable_reason=reason)
             write_evidence(doc, a.out)
         finally:
             if started:
