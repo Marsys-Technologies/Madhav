@@ -7,6 +7,10 @@
  * Clear must issue NO statement against chart_fact_identity, while a sibling asset in the same
  * scope is still cleared (so the test is not vacuous).
  *
+ * KNOWN RESIDUAL: chart_fact_identity.fact_id references chart_facts ON DELETE CASCADE (migration 552),
+ * so a Clear that deletes chart_facts rows still empties the index for those facts; this file asserts
+ * only that no statement of the Clear names chart_fact_identity.
+ *
  * The "nothing cleared" operator message channel for null specs comes from #3040
  * (mi_bhavisya append-only); this file pins only the no-DELETE guarantee.
  */
@@ -85,7 +89,7 @@ const deletesOf = (table: string) =>
 
 beforeEach(() => { vi.clearAllMocks() })
 
-describe('POST /api/cockpit/clear/execute - chart_fact_identity is never cleared', () => {
+describe('POST /api/cockpit/clear/execute - chart_fact_identity is never DIRECTLY deleted', () => {
   it('a LAYER Clear of the layer deletes the sibling but issues no statement against chart_fact_identity', async () => {
     setupMocks('client')
     const res = await EXECUTE(makeReq({

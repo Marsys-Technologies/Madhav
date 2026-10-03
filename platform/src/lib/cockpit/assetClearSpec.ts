@@ -291,10 +291,21 @@ export const EXPLICIT_CLEAR_OPS: Record<string, ClearOp[] | null> = {
   // that deleted it could not be undone by any build. Its registry count_sql
   // ('SELECT count(*) FROM chart_fact_identity WHERE chart_id = $1') would otherwise be turned by
   // deriveDeleteSqlFromCountSql() into 'DELETE FROM chart_fact_identity WHERE chart_id = $1' for a
-  // layer or global Clear (migration 1262's CLEAR note). null = nothing is cleared for this asset
-  // (skip cleanly); it is NEVER a DELETE. Operator message for this skip: 'ga_fact_identity is not
-  // build-restored (hand-run G-IDX): nothing cleared' (the message channel for null specs is the
-  // EXPLICIT_CLEAR_NOTICES map added by #3040; the entry for this asset follows once that lands).
+  // layer or global Clear (migration 1262's CLEAR note). null = this asset issues no statement of
+  // its own (skip cleanly): the index is never DIRECTLY deleted by a Clear.
+  //
+  // KNOWN RESIDUAL (not closed by this entry): chart_fact_identity.fact_id references chart_facts
+  // ON DELETE CASCADE (migration 552), so any Clear that deletes chart_facts rows (ga_structural
+  // above, the graha_avastha op under ga_condition, and any chart_facts-writing asset) still empties
+  // the index for those facts, and no build restores it until G-IDX is re-run. The index is a
+  // rebuildable cache (1262), so this is not data loss; it is not prevented here.
+  //
+  // Operator message: until #3040's EXPLICIT_CLEAR_NOTICES carries an entry for this asset
+  // ('ga_fact_identity is not build-restored (hand-run G-IDX): nothing cleared'), a Clear on it is
+  // a silent skip with no operator message.
+  // FAIL-CLOSED: if a later migration flips ga_fact_identity.has_writer to true, that migration's PR
+  // MUST also edit this entry (and the correction classification): a strict birth-detail correction
+  // throws CLEAR_SPEC_MISSING for a null spec on a writer asset.
   // Intentionally present BEFORE migration 1262 applies: an entry for an asset not yet in the
   // registry is inert, and merging it first means no window where the registry row exists unguarded.
   ga_fact_identity: null,

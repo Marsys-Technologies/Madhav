@@ -7,7 +7,8 @@ import { EXPLICIT_CLEAR_OPS, deriveDeleteSqlFromCountSql } from '@/lib/cockpit/a
  * G-IDX script fills it), so a cockpit Clear can destroy it and NO build can restore it.
  * Migration 1262's own CLEAR note: "A manual cockpit Clear at layer/global scope derives
  * `DELETE FROM chart_fact_identity WHERE chart_id = $1` from this count_sql ... not restored by
- * any build." The explicit null below is the guard; it is merged BEFORE 1262 applies, so the
+ * any build." The explicit null below stops the DIRECT delete only
+ * (the chart_facts ON DELETE CASCADE is a known residual); it is merged BEFORE 1262 applies, so the
  * entry names an asset that is not (yet) in the registry on purpose.
  */
 
@@ -20,13 +21,13 @@ describe('EXPLICIT_CLEAR_OPS — ga_fact_identity is an explicit null', () => {
     expect(EXPLICIT_CLEAR_OPS['ga_fact_identity']).toBeNull()
   })
 
-  it('the null is load-bearing: without it the registry-derived fallback WOULD delete the index', () => {
+  it('the null is load-bearing: without it the registry-derived fallback WOULD directly delete the index', () => {
     expect(deriveDeleteSqlFromCountSql(GA_FACT_IDENTITY_COUNT_SQL)).toBe(
       'DELETE FROM chart_fact_identity WHERE chart_id = $1',
     )
   })
 
-  it('no explicit clear op anywhere deletes or updates chart_fact_identity', () => {
+  it('no explicit clear op anywhere directly deletes or updates chart_fact_identity (the chart_facts ON DELETE CASCADE is a known residual, not asserted here)', () => {
     for (const [assetId, ops] of Object.entries(EXPLICIT_CLEAR_OPS)) {
       for (const op of ops ?? []) {
         expect(op.sql, `${assetId}: ${op.sql}`).not.toMatch(/chart_fact_identity/i)
