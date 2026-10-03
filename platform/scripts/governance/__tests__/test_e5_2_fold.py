@@ -1443,6 +1443,7 @@ def test_a_re_accept_whose_corrections_are_not_merged_does_not_count(reg, review
 
 MALFORMED = {
     "no frontmatter": "# just prose\nverdict: ACCEPT\n",
+    "closing line without an opener": "# junk\nrow: R01\nreviewed_sha: {sha}\nverdict: ACCEPT\nreviewer: r\n---\n",
     "not on line 1": "\n---\nrow: R01\nreviewed_sha: {sha}\nverdict: ACCEPT\nreviewer: r\n---\n",
     "unclosed": "---\nrow: R01\nreviewed_sha: {sha}\nverdict: ACCEPT\nreviewer: r\n",
     "unknown key": "---\nrow: R01\nreviewed_sha: {sha}\nverdict: ACCEPT\nreviewer: r\nstatus: done\n---\n",

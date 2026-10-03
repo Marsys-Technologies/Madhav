@@ -483,8 +483,8 @@ _BODY_VERDICT_VALUE = re.compile(r"(?i)^[\s*_:=\-—]*(ACCEPT_WITH_CORRECTIONS|A
 
 
 def _live_body_lines(body: list) -> list:
-    """The body lines a reader would take as the review's own prose: not inside a code fence, a multi-line
-    `<!-- -->` comment or a `>` quote."""
+    """The body lines a reader would take as the review's own prose: not inside a code fence or a multi-line
+    `<!-- -->` comment (a `>` quote is excluded by the verdict pattern itself)."""
     out, fenced = [], False
     for ln in body:
         if re.match(r"^ {0,3}(```|~~~)", ln):
@@ -493,7 +493,7 @@ def _live_body_lines(body: list) -> list:
         if not fenced:
             out.append(ln)
     text = re.sub(r"<!--.*?(-->|\Z)", "", "\n".join(out), flags=re.S)
-    return [ln for ln in text.split("\n") if not ln.lstrip().startswith(">")]
+    return text.split("\n")          # a `>` quote never matches _BODY_VERDICT (its prefix class excludes `>`)
 
 
 def parse_review(text: str) -> dict:

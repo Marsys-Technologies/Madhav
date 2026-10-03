@@ -144,6 +144,33 @@ Full runbook: `00_ARCHITECTURE/briefs/pariprashna_build/PB_SCHEMA_HASH_PIN_v1_0.
 
 ---
 
+### `nikasha_fold.py` ← **Suvarṇa E5.2 (fold script)**
+
+Register state transitions, withholding-aware `--emit-gaps`, computed tallies, fingerprints and drift for the Nikaṣa
+register and ledgers (full contract: the module docstring; tests `__tests__/test_e5_2_fold.py`). Exit codes: 0 ok · 1
+drift found · 2 refused (`REFUSED <code>`, nothing written) · 5 script error · 75 lock held.
+
+**Review records (SS ruling N-100).** `set-state … --review <file>` closes a row (CLOSED, DONE, CLOSED_ON_BRANCH,
+PARTIAL) only if the file is under `00_ARCHITECTURE/briefs/suvarna/reviews/`, tracked and clean at git HEAD, its
+frontmatter is exactly these keys (strict, closed; no duplicates, no other key, no blank or comment line), reviewed_sha is
+merged (ancestor of origin/main; HEAD for CLOSED_ON_BRANCH and PARTIAL) and touches one of the paths the register row
+declares in backticks (if it declares none, that is reported and not a refusal), and — for `ACCEPT_WITH_CORRECTIONS`,
+which closes nothing by itself — a second tracked, clean record with `verdict: RE_ACCEPTED` and a `corrections_sha` that
+descends from reviewed_sha exists for the same row. `REJECT` or any parse failure leaves the row open.
+
+```
+---
+row: R244
+reviewed_sha: 9f2c1ab
+verdict: ACCEPT
+reviewer: gate-reviewer
+---
+# Review of E4.2-build-001 ... (free text; a quoted `> verdict: REJECT` or a fenced one is ignored)
+```
+`verdict` is one of ACCEPT, ACCEPT_WITH_CORRECTIONS, REJECT (RE_ACCEPTED only in a re-accept record); no
+trailing comments are allowed on a frontmatter line. Re-accept record: the same four keys with `verdict: RE_ACCEPTED`, the original `reviewed_sha`, plus
+`corrections_sha: <commit descending from reviewed_sha>`.
+
 ## Shared library: `_ca_loader.py`
 
 Internal loader for `CANONICAL_ARTIFACTS_v1_0.md`. Imported by `drift_detector.py` and
