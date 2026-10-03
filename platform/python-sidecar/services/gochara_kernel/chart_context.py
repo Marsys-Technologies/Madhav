@@ -14,6 +14,8 @@ Read-only: this module never writes.
 """
 from __future__ import annotations
 
+from brahmagyan.graha_vocabulary import to_title
+
 from . import targets
 
 #: L1 subjects of the nine grahas (mean nodes — the pinned chart's node
@@ -25,11 +27,9 @@ NATAL_SUBJECTS = ("SUN", "MOON", "MAR", "MER", "JUP", "VEN", "SAT",
 #: The canonical chart's sidereal ayānāṃśa predicate (step06a precedent).
 CANONICAL_AYANAMSHA = "lahiri_chitrapaksha"
 
-_SUBJECT_TITLE = {
-    "SUN": "Sun", "MOON": "Moon", "MAR": "Mars", "MER": "Mercury",
-    "JUP": "Jupiter", "VEN": "Venus", "SAT": "Saturn",
-    "RAH_MEAN": "Rahu", "KET_MEAN": "Ketu",
-}
+#: subject code → Title-case long form, derived from the brahmagyan.graha_vocabulary SSoT (R17 adoption over
+#: addition — the local literal retired onto the SSoT helpers after the protected window).
+_SUBJECT_TITLE = {code: to_title(code) for code in NATAL_SUBJECTS}
 
 
 def fetch_chart_context(conn, chart_id: str,
