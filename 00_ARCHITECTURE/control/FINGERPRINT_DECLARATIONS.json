@@ -1,0 +1,1991 @@
+{
+ "schema": "suvarna-fingerprint-declarations/v1",
+ "fingerprint_definition": "nikasha_stale_certs.table_fingerprint/1",
+ "layer": "L0",
+ "scope": "global",
+ "source": {
+  "registry_snapshot": "00_ARCHITECTURE/briefs/nirmana/L0_ASSET_REGISTRY_SNAPSHOT_2026-09-04.json",
+  "registry_snapshot_sha256": "2ff1eb31a6c75b6622bddc160fad389ef4cb73d803784b0ed87e12da14315686",
+  "schema_dump": "S_L1/rehearsal_final/seed/prod_schema.sql",
+  "schema_dump_sha256": "f5639b432c84a4bc3db1f600fef7ea842643cf3b70f744fc96223168f2c6dd13",
+  "code_commit": "bbbd0fab3c6e2cb9bfc1550c87a7dbe99612321f"
+ },
+ "groups": {
+  "brahma_class_priors": {
+   "tables": [
+    {
+     "name": "brahma_class_priors",
+     "scope": "global",
+     "key": [
+      "prior_version",
+      "signal_type_class",
+      "fact_kind",
+      "source_subsystem",
+      "signal_tradition"
+     ],
+     "key_evidence": "primary_key:brahma_class_priors_pk",
+     "exclude": [
+      {
+       "column": "created_at",
+       "reason_code": "wall_clock_timestamp",
+       "reason": "created_at is DEFAULT now() or taken from the wall clock at insert time; it differs on every rebuild and carries no semantic content"
+      }
+     ],
+     "naive_utc_columns": [],
+     "write_evidence": [
+      "platform/python-sidecar/brahmagyan/l0_class_lifetime_counts.py:722",
+      "platform/python-sidecar/brahmagyan/l0_class_priors.py:320"
+     ]
+    }
+   ],
+   "members": {
+    "bg_class_lifetime_counts": [
+     "platform/python-sidecar/brahmagyan/l0_class_lifetime_counts.py:722"
+    ],
+    "bg_class_priors": [
+     "platform/python-sidecar/brahmagyan/l0_class_priors.py:320"
+    ]
+   },
+   "reproducibility": [
+    "deterministic"
+   ],
+   "seeded": false,
+   "notes": "Two writers upsert disjoint fact_kind / prior_basis rows into one table; both are rebuilt together and compared as one unit."
+  },
+  "brahma_ontology": {
+   "tables": [
+    {
+     "name": "brahma_ontology",
+     "scope": "global",
+     "key": [
+      "entity_class",
+      "canonical_id"
+     ],
+     "key_evidence": "unique:brahma_ontology_canonical_unique",
+     "exclude": [
+      {
+       "column": "id",
+       "reason_code": "surrogate_identity",
+       "reason": "id is a serial/identity/gen_random_uuid() surrogate assigned by the database at insert; it is not part of the natural key and differs after any delete-then-insert or fresh rebuild"
+      },
+      {
+       "column": "created_at",
+       "reason_code": "wall_clock_timestamp",
+       "reason": "created_at is DEFAULT now() or taken from the wall clock at insert time; it differs on every rebuild and carries no semantic content"
+      }
+     ],
+     "naive_utc_columns": [],
+     "write_evidence": [
+      "platform/python-sidecar/brahmagyan/l0_dasha_systems.py:767",
+      "platform/python-sidecar/brahmagyan/l0_doshas.py:1992",
+      "platform/python-sidecar/brahmagyan/l0_ontology.py:1144",
+      "platform/python-sidecar/brahmagyan/l0_yogas.py:2301"
+     ]
+    }
+   ],
+   "members": {
+    "bg_dasha_systems": [
+     "platform/python-sidecar/brahmagyan/l0_dasha_systems.py:727",
+     "platform/python-sidecar/brahmagyan/l0_dasha_systems.py:767"
+    ],
+    "bg_doshas": [
+     "platform/python-sidecar/brahmagyan/l0_doshas.py:1944",
+     "platform/python-sidecar/brahmagyan/l0_doshas.py:1992"
+    ],
+    "bg_ontology": [
+     "platform/python-sidecar/brahmagyan/l0_ontology.py:1144",
+     "platform/python-sidecar/brahmagyan/l0_ontology.py:1167"
+    ],
+    "bg_yogas": [
+     "platform/python-sidecar/brahmagyan/l0_yogas.py:2249",
+     "platform/python-sidecar/brahmagyan/l0_yogas.py:2301"
+    ]
+   },
+   "reproducibility": [
+    "deterministic"
+   ],
+   "seeded": false,
+   "notes": "Rows are partitioned by entity_class across four writers, each deleting and rewriting only its own slice; the drill compares the whole table as one unit."
+  },
+  "classical_text_chunks": {
+   "tables": [
+    {
+     "name": "classical_text_chunks",
+     "scope": "global",
+     "key": [
+      "chunk_id"
+     ],
+     "key_evidence": "unique:classical_text_chunks_chunk_id_key",
+     "exclude": [
+      {
+       "column": "id",
+       "reason_code": "surrogate_identity",
+       "reason": "id is a serial/identity/gen_random_uuid() surrogate assigned by the database at insert; it is not part of the natural key and differs after any delete-then-insert or fresh rebuild"
+      },
+      {
+       "column": "ingested_at",
+       "reason_code": "wall_clock_timestamp",
+       "reason": "ingested_at is set from datetime.now(timezone.utc) at insert time (bg_texts.py); it differs on every ingest and carries no text content"
+      }
+     ],
+     "naive_utc_columns": [],
+     "write_evidence": [
+      "platform/python-sidecar/pipeline/orchestrator/writers/bg_text_index.py:546",
+      "platform/python-sidecar/pipeline/orchestrator/writers/bg_texts.py:666"
+     ],
+     "embedding": [
+      {
+       "column": "embedding",
+       "source_columns": [
+        "content_en",
+        "content_sa"
+       ],
+       "model_id": "text-multilingual-embedding-002"
+      }
+     ],
+     "notes": "The embedding vector is not hashed (a float cloud): E5.5 fingerprints its source columns plus the pinned model id. The drill SEEDS this table from production rather than rebuilding it (bg_texts needs GCS and Vertex): the group is flagged `seeded`, shown in the drill, and never counts toward PASS (SS decision, round 3). Other columns (ocr_*, cleaned_*, translation_*) are written by non-orchestrated OCR/cleanup passes and are compared as they are."
+    }
+   ],
+   "members": {
+    "bg_text_index": [
+     "platform/python-sidecar/pipeline/orchestrator/writers/bg_text_index.py:546"
+    ],
+    "bg_texts": [
+     "platform/python-sidecar/pipeline/orchestrator/writers/bg_texts.py:666"
+    ]
+   },
+   "reproducibility": [
+    "deterministic"
+   ],
+   "seeded": true,
+   "notes": "bg_texts inserts the chunks (ON CONFLICT DO NOTHING); bg_text_index updates topic_tag in place; compared as one unit."
+  }
+ },
+ "assets": {
+  "bg_class_lifetime_counts": {
+   "status": "declared",
+   "fingerprint_definition": "nikasha_stale_certs.table_fingerprint/1",
+   "scope": "global",
+   "coverage": "full",
+   "reproducibility": [
+    "deterministic"
+   ],
+   "groups": [
+    "brahma_class_priors"
+   ],
+   "tables": [],
+   "not_covered_tables": []
+  },
+  "bg_class_priors": {
+   "status": "declared",
+   "fingerprint_definition": "nikasha_stale_certs.table_fingerprint/1",
+   "scope": "global",
+   "coverage": "full",
+   "reproducibility": [
+    "deterministic"
+   ],
+   "groups": [
+    "brahma_class_priors"
+   ],
+   "tables": [],
+   "not_covered_tables": []
+  },
+  "bg_cohort": {
+   "status": "declared",
+   "fingerprint_definition": "nikasha_stale_certs.table_fingerprint/1",
+   "scope": "global",
+   "coverage": "full",
+   "reproducibility": [
+    "platform_bound"
+   ],
+   "groups": [],
+   "tables": [
+    {
+     "name": "bg_synthetic_cohort",
+     "scope": "global",
+     "key": [
+      "synthetic_id"
+     ],
+     "key_evidence": "unique:bg_synthetic_cohort_synthetic_id_key",
+     "exclude": [
+      {
+       "column": "id",
+       "reason_code": "surrogate_identity",
+       "reason": "id is a serial/identity/gen_random_uuid() surrogate assigned by the database at insert; it is not part of the natural key and differs after any delete-then-insert or fresh rebuild"
+      },
+      {
+       "column": "build_id",
+       "reason_code": "build_identity",
+       "reason": "build_id is the orchestrator build id of the run that wrote the row; a new run writes a new id by construction"
+      },
+      {
+       "column": "computed_at",
+       "reason_code": "wall_clock_timestamp",
+       "reason": "computed_at is DEFAULT now() or taken from the wall clock at insert time; it differs on every rebuild and carries no semantic content"
+      }
+     ],
+     "naive_utc_columns": [],
+     "write_evidence": [
+      "platform/python-sidecar/pipeline/orchestrator/writers/bg_cohort.py:593",
+      "platform/python-sidecar/pipeline/orchestrator/writers/bg_cohort.py:642"
+     ],
+     "notes": "Fixed-seed random.Random sampling (bg_cohort.py:267) over swisseph positions; the writer refuses any runtime but Linux/x86_64 (bg_cohort.py:209-214), so a rehearsal fingerprint is only comparable when produced there."
+    },
+    {
+     "name": "bg_synthetic_cohort_md",
+     "scope": "global",
+     "key": [
+      "synthetic_id",
+      "md_index"
+     ],
+     "key_evidence": "unique:bg_synthetic_cohort_md_uk",
+     "exclude": [
+      {
+       "column": "id",
+       "reason_code": "surrogate_identity",
+       "reason": "id is a serial/identity/gen_random_uuid() surrogate assigned by the database at insert; it is not part of the natural key and differs after any delete-then-insert or fresh rebuild"
+      },
+      {
+       "column": "computed_at",
+       "reason_code": "wall_clock_timestamp",
+       "reason": "computed_at is DEFAULT now() or taken from the wall clock at insert time; it differs on every rebuild and carries no semantic content"
+      }
+     ],
+     "naive_utc_columns": [],
+     "write_evidence": [
+      "platform/python-sidecar/pipeline/orchestrator/writers/bg_cohort.py:588",
+      "platform/python-sidecar/pipeline/orchestrator/writers/bg_cohort.py:673"
+     ]
+    }
+   ],
+   "not_covered_tables": []
+  },
+  "bg_compendium_index": {
+   "status": "undeclared",
+   "reason_code": "no_plain_natural_key",
+   "reason": "The only unique key in the mirror dump is the expression index compendium_dedup_idx (text_id, COALESCE(chapter_num, -1), COALESCE(topic_id, '')) over two nullable columns; the plain key candidates are NULL-able (E5.5 refuses a NULL natural key) and index_id is a serial surrogate that a delete-then-insert rebuild renumbers.",
+   "tables_written": [
+    "brahma_compendium_index"
+   ],
+   "evidence": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/bg_compendium_index.py:168",
+    "platform/python-sidecar/pipeline/orchestrator/writers/bg_compendium_index.py:170"
+   ]
+  },
+  "bg_concordance": {
+   "status": "declared",
+   "fingerprint_definition": "nikasha_stale_certs.table_fingerprint/1",
+   "scope": "global",
+   "coverage": "full",
+   "reproducibility": [
+    "deterministic"
+   ],
+   "groups": [],
+   "tables": [
+    {
+     "name": "classical_attributions",
+     "scope": "global",
+     "key": [
+      "topic_id",
+      "school"
+     ],
+     "key_evidence": "unique:uq_topic_school",
+     "exclude": [
+      {
+       "column": "attribution_id",
+       "reason_code": "surrogate_identity",
+       "reason": "attribution_id is a serial/identity/gen_random_uuid() surrogate assigned by the database at insert; it is not part of the natural key and differs after any delete-then-insert or fresh rebuild"
+      },
+      {
+       "column": "created_at",
+       "reason_code": "wall_clock_timestamp",
+       "reason": "created_at is DEFAULT now() or taken from the wall clock at insert time; it differs on every rebuild and carries no semantic content"
+      }
+     ],
+     "naive_utc_columns": [],
+     "write_evidence": [
+      "platform/python-sidecar/pipeline/orchestrator/writers/bg_concordance.py:207",
+      "platform/python-sidecar/pipeline/orchestrator/writers/bg_concordance.py:218"
+     ],
+     "notes": "Derived from classical_text_chunks.topic_tag and sutravali_rules.rule_id (uuid5, sorted); equal only when those upstream tables are equal (the drill seeds classical_text_chunks from production)."
+    }
+   ],
+   "not_covered_tables": []
+  },
+  "bg_dasha_systems": {
+   "status": "declared",
+   "fingerprint_definition": "nikasha_stale_certs.table_fingerprint/1",
+   "scope": "global",
+   "coverage": "full",
+   "reproducibility": [
+    "deterministic"
+   ],
+   "groups": [
+    "brahma_ontology"
+   ],
+   "tables": [
+    {
+     "name": "reference_dasha_systems",
+     "scope": "global",
+     "key": [
+      "canonical_id"
+     ],
+     "key_evidence": "primary_key:reference_dasha_systems_pkey",
+     "exclude": [],
+     "naive_utc_columns": [],
+     "write_evidence": [
+      "platform/python-sidecar/brahmagyan/l0_dasha_systems.py:725",
+      "platform/python-sidecar/brahmagyan/l0_dasha_systems.py:786"
+     ]
+    },
+    {
+     "name": "brahma_dasha_systems",
+     "scope": "global",
+     "key": [
+      "canonical_id"
+     ],
+     "key_evidence": "primary_key:brahma_dasha_systems_pkey",
+     "exclude": [
+      {
+       "column": "created_at",
+       "reason_code": "wall_clock_timestamp",
+       "reason": "created_at is DEFAULT now() or taken from the wall clock at insert time; it differs on every rebuild and carries no semantic content"
+      }
+     ],
+     "naive_utc_columns": [],
+     "write_evidence": [
+      "platform/python-sidecar/brahmagyan/l0_dasha_systems.py:726",
+      "platform/python-sidecar/brahmagyan/l0_dasha_systems.py:735"
+     ],
+     "notes": "source_chunk_ids is not in the writer INSERT list and stays in the fingerprint."
+    }
+   ],
+   "not_covered_tables": []
+  },
+  "bg_dignity_reference": {
+   "status": "declared",
+   "fingerprint_definition": "nikasha_stale_certs.table_fingerprint/1",
+   "scope": "global",
+   "coverage": "full",
+   "reproducibility": [
+    "deterministic"
+   ],
+   "groups": [],
+   "tables": [
+    {
+     "name": "bg_dignity_reference",
+     "scope": "global",
+     "key": [
+      "graha"
+     ],
+     "key_evidence": "unique:bg_dignity_reference_graha_key",
+     "exclude": [
+      {
+       "column": "id",
+       "reason_code": "surrogate_identity",
+       "reason": "id is a serial/identity/gen_random_uuid() surrogate assigned by the database at insert; it is not part of the natural key and differs after any delete-then-insert or fresh rebuild"
+      }
+     ],
+     "naive_utc_columns": [],
+     "write_evidence": [
+      "platform/python-sidecar/pipeline/orchestrator/writers/bg_dignity_reference.py:413"
+     ]
+    },
+    {
+     "name": "bg_graha_naisargika_friendship",
+     "scope": "global",
+     "key": [
+      "graha",
+      "other_graha"
+     ],
+     "key_evidence": "unique:bg_graha_naisargika_friendship_graha_other_graha_key",
+     "exclude": [
+      {
+       "column": "id",
+       "reason_code": "surrogate_identity",
+       "reason": "id is a serial/identity/gen_random_uuid() surrogate assigned by the database at insert; it is not part of the natural key and differs after any delete-then-insert or fresh rebuild"
+      }
+     ],
+     "naive_utc_columns": [],
+     "write_evidence": [
+      "platform/python-sidecar/pipeline/orchestrator/writers/bg_dignity_reference.py:446"
+     ]
+    },
+    {
+     "name": "bg_avastha_schemes",
+     "scope": "global",
+     "key": [
+      "scheme_name",
+      "state_name"
+     ],
+     "key_evidence": "unique:bg_avastha_schemes_scheme_name_state_name_key",
+     "exclude": [
+      {
+       "column": "id",
+       "reason_code": "surrogate_identity",
+       "reason": "id is a serial/identity/gen_random_uuid() surrogate assigned by the database at insert; it is not part of the natural key and differs after any delete-then-insert or fresh rebuild"
+      }
+     ],
+     "naive_utc_columns": [],
+     "write_evidence": [
+      "platform/python-sidecar/pipeline/orchestrator/writers/bg_dignity_reference.py:461"
+     ]
+    },
+    {
+     "name": "bg_motion_state_thresholds",
+     "scope": "global",
+     "key": [
+      "graha",
+      "motion_state"
+     ],
+     "key_evidence": "unique:bg_motion_state_thresholds_graha_motion_state_key",
+     "exclude": [
+      {
+       "column": "id",
+       "reason_code": "surrogate_identity",
+       "reason": "id is a serial/identity/gen_random_uuid() surrogate assigned by the database at insert; it is not part of the natural key and differs after any delete-then-insert or fresh rebuild"
+      }
+     ],
+     "naive_utc_columns": [],
+     "write_evidence": [
+      "platform/python-sidecar/pipeline/orchestrator/writers/bg_dignity_reference.py:481"
+     ]
+    },
+    {
+     "name": "bg_combustion_orbs",
+     "scope": "global",
+     "key": [
+      "graha"
+     ],
+     "key_evidence": "unique:bg_combustion_orbs_graha_key",
+     "exclude": [
+      {
+       "column": "id",
+       "reason_code": "surrogate_identity",
+       "reason": "id is a serial/identity/gen_random_uuid() surrogate assigned by the database at insert; it is not part of the natural key and differs after any delete-then-insert or fresh rebuild"
+      }
+     ],
+     "naive_utc_columns": [],
+     "write_evidence": [
+      "platform/python-sidecar/pipeline/orchestrator/writers/bg_dignity_reference.py:505"
+     ]
+    }
+   ],
+   "not_covered_tables": []
+  },
+  "bg_doshas": {
+   "status": "declared",
+   "fingerprint_definition": "nikasha_stale_certs.table_fingerprint/1",
+   "scope": "global",
+   "coverage": "full",
+   "reproducibility": [
+    "deterministic"
+   ],
+   "groups": [
+    "brahma_ontology"
+   ],
+   "tables": [
+    {
+     "name": "reference_doshas",
+     "scope": "global",
+     "key": [
+      "canonical_id"
+     ],
+     "key_evidence": "primary_key:reference_doshas_pkey",
+     "exclude": [],
+     "naive_utc_columns": [],
+     "write_evidence": [
+      "platform/python-sidecar/brahmagyan/l0_doshas.py:1942",
+      "platform/python-sidecar/brahmagyan/l0_doshas.py:2014"
+     ]
+    },
+    {
+     "name": "brahma_dosha_catalog",
+     "scope": "global",
+     "key": [
+      "canonical_id"
+     ],
+     "key_evidence": "primary_key:brahma_dosha_catalog_pkey",
+     "exclude": [
+      {
+       "column": "created_at",
+       "reason_code": "wall_clock_timestamp",
+       "reason": "created_at is DEFAULT now() or taken from the wall clock at insert time; it differs on every rebuild and carries no semantic content"
+      }
+     ],
+     "naive_utc_columns": [],
+     "write_evidence": [
+      "platform/python-sidecar/brahmagyan/l0_doshas.py:1943",
+      "platform/python-sidecar/brahmagyan/l0_doshas.py:1952"
+     ]
+    }
+   ],
+   "not_covered_tables": []
+  },
+  "bg_ephemeris": {
+   "status": "declared",
+   "fingerprint_definition": "nikasha_stale_certs.table_fingerprint/1",
+   "scope": "global",
+   "coverage": "full",
+   "reproducibility": [
+    "deterministic"
+   ],
+   "groups": [],
+   "tables": [
+    {
+     "name": "ephemeris_daily",
+     "scope": "global",
+     "key": [
+      "date",
+      "body",
+      "ayanamsha_id"
+     ],
+     "key_evidence": "unique:ephemeris_daily_date_body_ayanamsha_id_key",
+     "exclude": [
+      {
+       "column": "id",
+       "reason_code": "surrogate_identity",
+       "reason": "id is a serial/identity/gen_random_uuid() surrogate assigned by the database at insert; it is not part of the natural key and differs after any delete-then-insert or fresh rebuild"
+      },
+      {
+       "column": "computed_at",
+       "reason_code": "wall_clock_timestamp",
+       "reason": "computed_at is DEFAULT now() or taken from the wall clock at insert time; it differs on every rebuild and carries no semantic content"
+      }
+     ],
+     "naive_utc_columns": [],
+     "write_evidence": [
+      "platform/python-sidecar/pipeline/orchestrator/writers/bg_ephemeris.py:126"
+     ],
+     "expected_difference": {
+      "columns": [
+       "node_mode",
+       "epoch_convention"
+      ],
+      "reference": "Exec held PR #3015 (bg_ephemeris writes node_mode and epoch_convention)",
+      "detail": "Production carries node_mode and epoch_convention from the legacy bootstrap (l0_ephemeris.py:333-334) but the orchestrated bg_ephemeris writer does not write them today, so a rebuild leaves them NULL and ephemeris_daily is EXPECTED to differ. SS decision 3: not an exclusion, the columns stay in the fingerprint and the difference needs an explanation with a decision id.",
+      "until": "PR #3015 merged to main: remove this record, the drill must then show equality for ephemeris_daily"
+     },
+     "notes": "Fixed range 1900-01-01..2150-12-31 (l0_ephemeris BUILD_START/BUILD_END), pinned .se1 corpus required (bg_ephemeris.py refuses the analytic fallback). node_mode and epoch_convention are NOT in the orchestrated writer INSERT list (bg_ephemeris.py) although the legacy bootstrap sets them (l0_ephemeris.py:333-334): if production carries them, a rebuild differs there and that difference is a real finding, deliberately not excluded."
+    }
+   ],
+   "not_covered_tables": []
+  },
+  "bg_ephemeris_engine": {
+   "status": "undeclared",
+   "reason_code": "no_table",
+   "reason": "A service asset (registry asset_kind=service, no target_table, has_writer=false): it computes on demand and owns no stored rows, so there is no table to fingerprint.",
+   "tables_written": [],
+   "evidence": []
+  },
+  "bg_formula_constants": {
+   "status": "declared",
+   "fingerprint_definition": "nikasha_stale_certs.table_fingerprint/1",
+   "scope": "global",
+   "coverage": "full",
+   "reproducibility": [
+    "deterministic"
+   ],
+   "groups": [],
+   "tables": [
+    {
+     "name": "brahma_formula_constants",
+     "scope": "global",
+     "key": [
+      "constant_id"
+     ],
+     "key_evidence": "primary_key:brahma_formula_constants_pkey",
+     "exclude": [
+      {
+       "column": "created_at",
+       "reason_code": "wall_clock_timestamp",
+       "reason": "created_at is DEFAULT now() or taken from the wall clock at insert time; it differs on every rebuild and carries no semantic content"
+      }
+     ],
+     "naive_utc_columns": [],
+     "write_evidence": [
+      "platform/python-sidecar/brahmagyan/l0_formula_constants.py:238"
+     ]
+    }
+   ],
+   "not_covered_tables": []
+  },
+  "bg_ghatana": {
+   "status": "declared",
+   "fingerprint_definition": "nikasha_stale_certs.table_fingerprint/1",
+   "scope": "global",
+   "coverage": "full",
+   "reproducibility": [
+    "deterministic"
+   ],
+   "groups": [],
+   "tables": [
+    {
+     "name": "brahma_event_ontology",
+     "scope": "global",
+     "key": [
+      "event_class_id"
+     ],
+     "key_evidence": "primary_key:brahma_event_ontology_pkey",
+     "exclude": [
+      {
+       "column": "created_at",
+       "reason_code": "wall_clock_timestamp",
+       "reason": "created_at is DEFAULT now() or taken from the wall clock at insert time; it differs on every rebuild and carries no semantic content"
+      },
+      {
+       "column": "kill_switch_criteria",
+       "reason_code": "not_written_by_writer",
+       "reason": "kill_switch_criteria is absent from the writer INSERT column list (platform/python-sidecar/brahmagyan/l0_ghatana.py:879) and the writer itself states it is a migration-owned column (platform/python-sidecar/brahmagyan/l0_ghatana.py:557); a schema-only mirror cannot reproduce migration-set values"
+      }
+     ],
+     "naive_utc_columns": [],
+     "write_evidence": [
+      "platform/python-sidecar/brahmagyan/l0_ghatana.py:879"
+     ],
+     "notes": "Only kill_switch_criteria is excluded (the writer states it is migration-owned, l0_ghatana.py:557). evidence_requirements, matching_rules and self_report_non_discriminating are not written by the writer either but stay IN the fingerprint (SS decision 2): a production value there is a real finding."
+    },
+    {
+     "name": "brahma_activity_ontology",
+     "scope": "global",
+     "key": [
+      "activity_class_id"
+     ],
+     "key_evidence": "primary_key:brahma_activity_ontology_pkey",
+     "exclude": [
+      {
+       "column": "created_at",
+       "reason_code": "wall_clock_timestamp",
+       "reason": "created_at is DEFAULT now() or taken from the wall clock at insert time; it differs on every rebuild and carries no semantic content"
+      }
+     ],
+     "naive_utc_columns": [],
+     "write_evidence": [
+      "platform/python-sidecar/brahmagyan/l0_ghatana.py:924"
+     ]
+    }
+   ],
+   "not_covered_tables": []
+  },
+  "bg_gochara_arcs": {
+   "status": "declared",
+   "fingerprint_definition": "nikasha_stale_certs.table_fingerprint/1",
+   "scope": "global",
+   "coverage": "full",
+   "reproducibility": [
+    "deterministic"
+   ],
+   "groups": [],
+   "tables": [
+    {
+     "name": "bg_gochara_arcs",
+     "scope": "global",
+     "key": [
+      "substrate_version",
+      "body",
+      "arc_index"
+     ],
+     "key_evidence": "primary_key:bg_gochara_arcs_pk",
+     "exclude": [
+      {
+       "column": "build_id",
+       "reason_code": "build_identity",
+       "reason": "build_id is the orchestrator build id of the run that wrote the row; a new run writes a new id by construction"
+      },
+      {
+       "column": "computed_at",
+       "reason_code": "wall_clock_timestamp",
+       "reason": "computed_at is DEFAULT now() or taken from the wall clock at insert time; it differs on every rebuild and carries no semantic content"
+      }
+     ],
+     "naive_utc_columns": [],
+     "write_evidence": [
+      "platform/python-sidecar/pipeline/orchestrator/writers/bg_gochara_arcs.py:149",
+      "platform/python-sidecar/pipeline/orchestrator/writers/bg_gochara_arcs.py:76"
+     ],
+     "notes": "Derived from ephemeris_daily; rows of prior substrate versions are retained by design (bg_gochara_arcs.py), so a production table may hold versions a fresh rebuild does not."
+    }
+   ],
+   "not_covered_tables": []
+  },
+  "bg_gochara_citation_resolution": {
+   "status": "undeclared",
+   "reason_code": "migration_owned_rows",
+   "reason": "No writer (registry has_writer=false): the 14 rows are seeded by migration 565 and corrected by migrations 630/631 (data_disposition RETAINED_AS_CAPITAL, a one-time capital seed per the W1 analysis); a rebuild cannot reproduce them and a schema-only mirror holds none. Ownership probe 2026-10-03: 14 rows in production.",
+   "tables_written": [
+    "bg_gochara_citation_resolution"
+   ],
+   "evidence": [
+    "00_ARCHITECTURE/briefs/nirmana/L0_W1_ANALYSIS_BATCH_E.md:104",
+    "00_ARCHITECTURE/control/FINGERPRINT_OWNERSHIP_PROBES_2026-10-03.txt:24"
+   ]
+  },
+  "bg_kota_chakra_rings": {
+   "status": "declared",
+   "fingerprint_definition": "nikasha_stale_certs.table_fingerprint/1",
+   "scope": "global",
+   "coverage": "full",
+   "reproducibility": [
+    "deterministic"
+   ],
+   "groups": [],
+   "tables": [
+    {
+     "name": "bg_kota_chakra_rings",
+     "scope": "global",
+     "key": [
+      "table_version",
+      "ring_position"
+     ],
+     "key_evidence": "primary_key:bg_kota_chakra_rings_pk",
+     "exclude": [
+      {
+       "column": "created_at",
+       "reason_code": "wall_clock_timestamp",
+       "reason": "created_at is DEFAULT now() or taken from the wall clock at insert time; it differs on every rebuild and carries no semantic content"
+      }
+     ],
+     "naive_utc_columns": [],
+     "write_evidence": [
+      "platform/python-sidecar/brahmagyan/l0_kota_chakra_rings.py:155"
+     ]
+    }
+   ],
+   "not_covered_tables": []
+  },
+  "bg_kp_sublord_division": {
+   "status": "declared",
+   "fingerprint_definition": "nikasha_stale_certs.table_fingerprint/1",
+   "scope": "global",
+   "coverage": "full",
+   "reproducibility": [
+    "deterministic"
+   ],
+   "groups": [],
+   "tables": [
+    {
+     "name": "bg_kp_sublord_division",
+     "scope": "global",
+     "key": [
+      "table_version",
+      "division_index"
+     ],
+     "key_evidence": "primary_key:bg_kp_sublord_division_pk",
+     "exclude": [
+      {
+       "column": "created_at",
+       "reason_code": "wall_clock_timestamp",
+       "reason": "created_at is DEFAULT now() or taken from the wall clock at insert time; it differs on every rebuild and carries no semantic content"
+      }
+     ],
+     "naive_utc_columns": [],
+     "write_evidence": [
+      "platform/python-sidecar/brahmagyan/l0_kp_sublord_division.py:317",
+      "platform/python-sidecar/brahmagyan/l0_kp_sublord_division.py:423"
+     ]
+    }
+   ],
+   "not_covered_tables": []
+  },
+  "bg_medical_mappings": {
+   "status": "declared",
+   "fingerprint_definition": "nikasha_stale_certs.table_fingerprint/1",
+   "scope": "global",
+   "coverage": "full",
+   "reproducibility": [
+    "deterministic"
+   ],
+   "groups": [],
+   "tables": [
+    {
+     "name": "bg_medical_mappings",
+     "scope": "global",
+     "key": [
+      "graha"
+     ],
+     "key_evidence": "unique:bg_medical_mappings_graha_key",
+     "exclude": [
+      {
+       "column": "id",
+       "reason_code": "surrogate_identity",
+       "reason": "id is a serial/identity/gen_random_uuid() surrogate assigned by the database at insert; it is not part of the natural key and differs after any delete-then-insert or fresh rebuild"
+      }
+     ],
+     "naive_utc_columns": [],
+     "write_evidence": [
+      "platform/python-sidecar/brahmagyan/l0_medical.py:422"
+     ]
+    }
+   ],
+   "not_covered_tables": []
+  },
+  "bg_muhurta_lattice": {
+   "status": "declared",
+   "fingerprint_definition": "nikasha_stale_certs.table_fingerprint/1",
+   "scope": "global",
+   "coverage": "full",
+   "reproducibility": [
+    "rolling_horizon"
+   ],
+   "groups": [],
+   "tables": [
+    {
+     "name": "bg_muhurta_lattice",
+     "scope": "global",
+     "key": [
+      "factor_family",
+      "factor_key",
+      "start_utc"
+     ],
+     "key_evidence": "unique:bg_muhurta_lattice_natural_key",
+     "exclude": [
+      {
+       "column": "id",
+       "reason_code": "surrogate_identity",
+       "reason": "id is a serial/identity/gen_random_uuid() surrogate assigned by the database at insert; it is not part of the natural key and differs after any delete-then-insert or fresh rebuild"
+      },
+      {
+       "column": "build_id",
+       "reason_code": "build_identity",
+       "reason": "build_id is the orchestrator build id of the run that wrote the row; a new run writes a new id by construction"
+      },
+      {
+       "column": "computed_at",
+       "reason_code": "wall_clock_timestamp",
+       "reason": "computed_at is DEFAULT now() or taken from the wall clock at insert time; it differs on every rebuild and carries no semantic content"
+      }
+     ],
+     "naive_utc_columns": [
+      "start_utc",
+      "end_utc"
+     ],
+     "write_evidence": [
+      "platform/python-sidecar/pipeline/orchestrator/writers/bg_muhurta_lattice.py:940"
+     ],
+     "notes": "Rolling forward horizon computed from date.today() at run time (compute_horizon, bg_muhurta_lattice.py:167-179) and upserted without delete: production holds every earlier horizon, a rebuild holds only [today, today+5y]. Pin the as-of window; a difference is explained with reason code rolling_horizon."
+    }
+   ],
+   "not_covered_tables": []
+  },
+  "bg_nakshatra": {
+   "status": "declared",
+   "fingerprint_definition": "nikasha_stale_certs.table_fingerprint/1",
+   "scope": "global",
+   "coverage": "full",
+   "reproducibility": [
+    "deterministic"
+   ],
+   "groups": [],
+   "tables": [
+    {
+     "name": "reference_nakshatra",
+     "scope": "global",
+     "key": [
+      "nakshatra_id"
+     ],
+     "key_evidence": "primary_key:reference_nakshatra_pkey",
+     "exclude": [
+      {
+       "column": "build_id",
+       "reason_code": "build_identity",
+       "reason": "build_id is the orchestrator build id of the run that wrote the row; a new run writes a new id by construction"
+      },
+      {
+       "column": "created_at",
+       "reason_code": "wall_clock_timestamp",
+       "reason": "created_at is DEFAULT now() or taken from the wall clock at insert time; it differs on every rebuild and carries no semantic content"
+      }
+     ],
+     "naive_utc_columns": [],
+     "write_evidence": [
+      "platform/python-sidecar/brahmagyan/l0_nakshatra.py:1397",
+      "platform/python-sidecar/brahmagyan/l0_nakshatra.py:1402"
+     ]
+    },
+    {
+     "name": "reference_nakshatra_pada",
+     "scope": "global",
+     "key": [
+      "pada_id"
+     ],
+     "key_evidence": "primary_key:reference_nakshatra_pada_pkey",
+     "exclude": [
+      {
+       "column": "build_id",
+       "reason_code": "build_identity",
+       "reason": "build_id is the orchestrator build id of the run that wrote the row; a new run writes a new id by construction"
+      },
+      {
+       "column": "created_at",
+       "reason_code": "wall_clock_timestamp",
+       "reason": "created_at is DEFAULT now() or taken from the wall clock at insert time; it differs on every rebuild and carries no semantic content"
+      }
+     ],
+     "naive_utc_columns": [],
+     "write_evidence": [
+      "platform/python-sidecar/brahmagyan/l0_nakshatra.py:1396",
+      "platform/python-sidecar/brahmagyan/l0_nakshatra.py:1445"
+     ]
+    },
+    {
+     "name": "reference_nakshatra_matrix",
+     "scope": "global",
+     "key": [
+      "matrix_type",
+      "from_key",
+      "to_key"
+     ],
+     "key_evidence": "unique:reference_nakshatra_matrix_matrix_type_from_key_to_key_key",
+     "exclude": [
+      {
+       "column": "id",
+       "reason_code": "surrogate_identity",
+       "reason": "id is a serial/identity/gen_random_uuid() surrogate assigned by the database at insert; it is not part of the natural key and differs after any delete-then-insert or fresh rebuild"
+      },
+      {
+       "column": "build_id",
+       "reason_code": "build_identity",
+       "reason": "build_id is the orchestrator build id of the run that wrote the row; a new run writes a new id by construction"
+      },
+      {
+       "column": "created_at",
+       "reason_code": "wall_clock_timestamp",
+       "reason": "created_at is DEFAULT now() or taken from the wall clock at insert time; it differs on every rebuild and carries no semantic content"
+      }
+     ],
+     "naive_utc_columns": [],
+     "write_evidence": [
+      "platform/python-sidecar/brahmagyan/l0_nakshatra.py:1395",
+      "platform/python-sidecar/brahmagyan/l0_nakshatra.py:1467"
+     ]
+    }
+   ],
+   "not_covered_tables": []
+  },
+  "bg_nakshatra_medical": {
+   "status": "declared",
+   "fingerprint_definition": "nikasha_stale_certs.table_fingerprint/1",
+   "scope": "global",
+   "coverage": "full",
+   "reproducibility": [
+    "deterministic"
+   ],
+   "groups": [],
+   "tables": [
+    {
+     "name": "bg_nakshatra_medical",
+     "scope": "global",
+     "key": [
+      "nakshatra_name"
+     ],
+     "key_evidence": "unique:bg_nakshatra_medical_nakshatra_name_key",
+     "exclude": [
+      {
+       "column": "id",
+       "reason_code": "surrogate_identity",
+       "reason": "id is a serial/identity/gen_random_uuid() surrogate assigned by the database at insert; it is not part of the natural key and differs after any delete-then-insert or fresh rebuild"
+      }
+     ],
+     "naive_utc_columns": [],
+     "write_evidence": [
+      "platform/python-sidecar/brahmagyan/l0_medical.py:454"
+     ]
+    }
+   ],
+   "not_covered_tables": []
+  },
+  "bg_ontology": {
+   "status": "declared",
+   "fingerprint_definition": "nikasha_stale_certs.table_fingerprint/1",
+   "scope": "global",
+   "coverage": "full",
+   "reproducibility": [
+    "deterministic"
+   ],
+   "groups": [
+    "brahma_ontology"
+   ],
+   "tables": [],
+   "not_covered_tables": []
+  },
+  "bg_panchanga": {
+   "status": "undeclared",
+   "reason_code": "no_table",
+   "reason": "A service asset (registry asset_kind=service, no target_table, has_writer=false): it computes on demand and owns no stored rows, so there is no table to fingerprint.",
+   "tables_written": [],
+   "evidence": []
+  },
+  "bg_parihara_rules": {
+   "status": "declared",
+   "fingerprint_definition": "nikasha_stale_certs.table_fingerprint/1",
+   "scope": "global",
+   "coverage": "full",
+   "reproducibility": [
+    "deterministic"
+   ],
+   "groups": [],
+   "tables": [
+    {
+     "name": "bg_parihara_rules",
+     "scope": "global",
+     "key": [
+      "dosha_canonical_id",
+      "cancellation_index"
+     ],
+     "key_evidence": "unique:bg_parihara_rules_natural_key",
+     "exclude": [
+      {
+       "column": "id",
+       "reason_code": "surrogate_identity",
+       "reason": "id is a serial/identity/gen_random_uuid() surrogate assigned by the database at insert; it is not part of the natural key and differs after any delete-then-insert or fresh rebuild"
+      },
+      {
+       "column": "build_id",
+       "reason_code": "build_identity",
+       "reason": "build_id is the orchestrator build id of the run that wrote the row; a new run writes a new id by construction"
+      },
+      {
+       "column": "computed_at",
+       "reason_code": "wall_clock_timestamp",
+       "reason": "computed_at is DEFAULT now() or taken from the wall clock at insert time; it differs on every rebuild and carries no semantic content"
+      }
+     ],
+     "naive_utc_columns": [],
+     "write_evidence": [
+      "platform/python-sidecar/pipeline/orchestrator/writers/bg_parihara_rules.py:624"
+     ],
+     "notes": "Reads brahma_dosha_catalog (upstream); extraction_context is not in the writer INSERT list and stays in the fingerprint."
+    },
+    {
+     "name": "bg_muhurta_activity_rules",
+     "scope": "global",
+     "key": [
+      "activity_class",
+      "factor_type",
+      "factor_id"
+     ],
+     "key_evidence": "unique:bg_muhurta_activity_rules_natural_key",
+     "exclude": [
+      {
+       "column": "id",
+       "reason_code": "surrogate_identity",
+       "reason": "id is a serial/identity/gen_random_uuid() surrogate assigned by the database at insert; it is not part of the natural key and differs after any delete-then-insert or fresh rebuild"
+      },
+      {
+       "column": "build_id",
+       "reason_code": "build_identity",
+       "reason": "build_id is the orchestrator build id of the run that wrote the row; a new run writes a new id by construction"
+      },
+      {
+       "column": "computed_at",
+       "reason_code": "wall_clock_timestamp",
+       "reason": "computed_at is DEFAULT now() or taken from the wall clock at insert time; it differs on every rebuild and carries no semantic content"
+      }
+     ],
+     "naive_utc_columns": [],
+     "write_evidence": [
+      "platform/python-sidecar/pipeline/orchestrator/writers/bg_parihara_rules.py:654"
+     ]
+    },
+    {
+     "name": "bg_muhurta_factor_census",
+     "scope": "global",
+     "key": [
+      "factor_family",
+      "factor_name"
+     ],
+     "key_evidence": "unique:bg_muhurta_factor_census_natural_key",
+     "exclude": [
+      {
+       "column": "id",
+       "reason_code": "surrogate_identity",
+       "reason": "id is a serial/identity/gen_random_uuid() surrogate assigned by the database at insert; it is not part of the natural key and differs after any delete-then-insert or fresh rebuild"
+      },
+      {
+       "column": "build_id",
+       "reason_code": "build_identity",
+       "reason": "build_id is the orchestrator build id of the run that wrote the row; a new run writes a new id by construction"
+      },
+      {
+       "column": "computed_at",
+       "reason_code": "wall_clock_timestamp",
+       "reason": "computed_at is DEFAULT now() or taken from the wall clock at insert time; it differs on every rebuild and carries no semantic content"
+      }
+     ],
+     "naive_utc_columns": [],
+     "write_evidence": [
+      "platform/python-sidecar/pipeline/orchestrator/writers/bg_parihara_rules.py:676"
+     ]
+    }
+   ],
+   "not_covered_tables": []
+  },
+  "bg_phaladeepika_latta": {
+   "status": "declared",
+   "fingerprint_definition": "nikasha_stale_certs.table_fingerprint/1",
+   "scope": "global",
+   "coverage": "full",
+   "reproducibility": [
+    "deterministic"
+   ],
+   "groups": [],
+   "tables": [
+    {
+     "name": "bg_phaladeepika_latta",
+     "scope": "global",
+     "key": [
+      "table_version",
+      "graha"
+     ],
+     "key_evidence": "primary_key:bg_phaladeepika_latta_pk",
+     "exclude": [
+      {
+       "column": "created_at",
+       "reason_code": "wall_clock_timestamp",
+       "reason": "created_at is DEFAULT now() or taken from the wall clock at insert time; it differs on every rebuild and carries no semantic content"
+      }
+     ],
+     "naive_utc_columns": [],
+     "write_evidence": [
+      "platform/python-sidecar/brahmagyan/l0_phaladeepika_vedha.py:181"
+     ]
+    }
+   ],
+   "not_covered_tables": []
+  },
+  "bg_prashna_rules": {
+   "status": "declared",
+   "fingerprint_definition": "nikasha_stale_certs.table_fingerprint/1",
+   "scope": "global",
+   "coverage": "full",
+   "reproducibility": [
+    "deterministic"
+   ],
+   "groups": [],
+   "tables": [
+    {
+     "name": "bg_prashna_lagna_methods",
+     "scope": "global",
+     "key": [
+      "method_id"
+     ],
+     "key_evidence": "unique:bg_prashna_lagna_methods_method_id_key",
+     "exclude": [
+      {
+       "column": "id",
+       "reason_code": "surrogate_identity",
+       "reason": "id is a serial/identity/gen_random_uuid() surrogate assigned by the database at insert; it is not part of the natural key and differs after any delete-then-insert or fresh rebuild"
+      }
+     ],
+     "naive_utc_columns": [],
+     "write_evidence": [
+      "platform/python-sidecar/brahmagyan/l0_prashna.py:808"
+     ]
+    },
+    {
+     "name": "bg_prashna_tajik_yogas",
+     "scope": "global",
+     "key": [
+      "yoga_id"
+     ],
+     "key_evidence": "unique:bg_prashna_tajik_yogas_yoga_id_key",
+     "exclude": [
+      {
+       "column": "id",
+       "reason_code": "surrogate_identity",
+       "reason": "id is a serial/identity/gen_random_uuid() surrogate assigned by the database at insert; it is not part of the natural key and differs after any delete-then-insert or fresh rebuild"
+      }
+     ],
+     "naive_utc_columns": [],
+     "write_evidence": [
+      "platform/python-sidecar/brahmagyan/l0_prashna.py:837"
+     ]
+    },
+    {
+     "name": "bg_prashna_significators",
+     "scope": "global",
+     "key": [
+      "question_class"
+     ],
+     "key_evidence": "unique:bg_prashna_significators_question_class_key",
+     "exclude": [
+      {
+       "column": "id",
+       "reason_code": "surrogate_identity",
+       "reason": "id is a serial/identity/gen_random_uuid() surrogate assigned by the database at insert; it is not part of the natural key and differs after any delete-then-insert or fresh rebuild"
+      }
+     ],
+     "naive_utc_columns": [],
+     "write_evidence": [
+      "platform/python-sidecar/brahmagyan/l0_prashna.py:866"
+     ]
+    },
+    {
+     "name": "bg_prashna_fructification_rules",
+     "scope": "global",
+     "key": [
+      "rule_id"
+     ],
+     "key_evidence": "unique:bg_prashna_fructification_rules_rule_id_key",
+     "exclude": [
+      {
+       "column": "id",
+       "reason_code": "surrogate_identity",
+       "reason": "id is a serial/identity/gen_random_uuid() surrogate assigned by the database at insert; it is not part of the natural key and differs after any delete-then-insert or fresh rebuild"
+      }
+     ],
+     "naive_utc_columns": [],
+     "write_evidence": [
+      "platform/python-sidecar/brahmagyan/l0_prashna.py:893"
+     ]
+    },
+    {
+     "name": "bg_prashna_special_techniques",
+     "scope": "global",
+     "key": [
+      "technique_id"
+     ],
+     "key_evidence": "unique:bg_prashna_special_techniques_technique_id_key",
+     "exclude": [
+      {
+       "column": "id",
+       "reason_code": "surrogate_identity",
+       "reason": "id is a serial/identity/gen_random_uuid() surrogate assigned by the database at insert; it is not part of the natural key and differs after any delete-then-insert or fresh rebuild"
+      }
+     ],
+     "naive_utc_columns": [],
+     "write_evidence": [
+      "platform/python-sidecar/brahmagyan/l0_prashna.py:915"
+     ]
+    }
+   ],
+   "not_covered_tables": []
+  },
+  "bg_reference": {
+   "status": "declared",
+   "fingerprint_definition": "nikasha_stale_certs.table_fingerprint/1",
+   "scope": "global",
+   "coverage": "full",
+   "reproducibility": [
+    "deterministic"
+   ],
+   "groups": [],
+   "tables": [
+    {
+     "name": "reference_planets",
+     "scope": "global",
+     "key": [
+      "planet_id"
+     ],
+     "key_evidence": "unique:reference_planets_planet_id_key",
+     "exclude": [
+      {
+       "column": "id",
+       "reason_code": "surrogate_identity",
+       "reason": "id is a serial/identity/gen_random_uuid() surrogate assigned by the database at insert; it is not part of the natural key and differs after any delete-then-insert or fresh rebuild"
+      },
+      {
+       "column": "created_at",
+       "reason_code": "wall_clock_timestamp",
+       "reason": "created_at is DEFAULT now() or taken from the wall clock at insert time; it differs on every rebuild and carries no semantic content"
+      }
+     ],
+     "naive_utc_columns": [],
+     "write_evidence": [
+      "platform/python-sidecar/brahmagyan/l0_reference.py:1316"
+     ],
+     "notes": "l0_reference.py also contains an `if False:` block for reference_nakshatras (superseded by bg_nakshatra): that table is NOT written by this asset and is not declared."
+    },
+    {
+     "name": "reference_signs",
+     "scope": "global",
+     "key": [
+      "sign_id"
+     ],
+     "key_evidence": "unique:reference_signs_sign_id_key",
+     "exclude": [
+      {
+       "column": "id",
+       "reason_code": "surrogate_identity",
+       "reason": "id is a serial/identity/gen_random_uuid() surrogate assigned by the database at insert; it is not part of the natural key and differs after any delete-then-insert or fresh rebuild"
+      },
+      {
+       "column": "created_at",
+       "reason_code": "wall_clock_timestamp",
+       "reason": "created_at is DEFAULT now() or taken from the wall clock at insert time; it differs on every rebuild and carries no semantic content"
+      }
+     ],
+     "naive_utc_columns": [],
+     "write_evidence": [
+      "platform/python-sidecar/brahmagyan/l0_reference.py:1363"
+     ]
+    },
+    {
+     "name": "reference_aspects",
+     "scope": "global",
+     "key": [
+      "planet_id",
+      "aspect_house"
+     ],
+     "key_evidence": "unique:reference_aspects_planet_id_aspect_house_key",
+     "exclude": [
+      {
+       "column": "id",
+       "reason_code": "surrogate_identity",
+       "reason": "id is a serial/identity/gen_random_uuid() surrogate assigned by the database at insert; it is not part of the natural key and differs after any delete-then-insert or fresh rebuild"
+      },
+      {
+       "column": "created_at",
+       "reason_code": "wall_clock_timestamp",
+       "reason": "created_at is DEFAULT now() or taken from the wall clock at insert time; it differs on every rebuild and carries no semantic content"
+      }
+     ],
+     "naive_utc_columns": [],
+     "write_evidence": [
+      "platform/python-sidecar/brahmagyan/l0_reference.py:1382"
+     ]
+    },
+    {
+     "name": "reference_vargas",
+     "scope": "global",
+     "key": [
+      "varga_id"
+     ],
+     "key_evidence": "unique:reference_vargas_varga_id_key",
+     "exclude": [
+      {
+       "column": "id",
+       "reason_code": "surrogate_identity",
+       "reason": "id is a serial/identity/gen_random_uuid() surrogate assigned by the database at insert; it is not part of the natural key and differs after any delete-then-insert or fresh rebuild"
+      },
+      {
+       "column": "created_at",
+       "reason_code": "wall_clock_timestamp",
+       "reason": "created_at is DEFAULT now() or taken from the wall clock at insert time; it differs on every rebuild and carries no semantic content"
+      }
+     ],
+     "naive_utc_columns": [],
+     "write_evidence": [
+      "platform/python-sidecar/brahmagyan/l0_reference.py:1402"
+     ]
+    },
+    {
+     "name": "reference_houses",
+     "scope": "global",
+     "key": [
+      "house_num"
+     ],
+     "key_evidence": "primary_key:reference_houses_pkey",
+     "exclude": [],
+     "naive_utc_columns": [],
+     "write_evidence": [
+      "platform/python-sidecar/brahmagyan/l0_reference.py:1444"
+     ]
+    },
+    {
+     "name": "reference_strength_systems",
+     "scope": "global",
+     "key": [
+      "strength_id"
+     ],
+     "key_evidence": "primary_key:reference_strength_systems_pkey",
+     "exclude": [],
+     "naive_utc_columns": [],
+     "write_evidence": [
+      "platform/python-sidecar/brahmagyan/l0_reference.py:1465"
+     ]
+    },
+    {
+     "name": "reference_karakas",
+     "scope": "global",
+     "key": [
+      "karaka_id"
+     ],
+     "key_evidence": "primary_key:reference_karakas_pkey",
+     "exclude": [],
+     "naive_utc_columns": [],
+     "write_evidence": [
+      "platform/python-sidecar/brahmagyan/l0_reference.py:1484"
+     ]
+    },
+    {
+     "name": "reference_upagrahas",
+     "scope": "global",
+     "key": [
+      "upagraha_id"
+     ],
+     "key_evidence": "primary_key:reference_upagrahas_pkey",
+     "exclude": [],
+     "naive_utc_columns": [],
+     "write_evidence": [
+      "platform/python-sidecar/brahmagyan/l0_reference.py:1503"
+     ]
+    },
+    {
+     "name": "reference_constants",
+     "scope": "global",
+     "key": [
+      "constant_id"
+     ],
+     "key_evidence": "primary_key:reference_constants_pkey",
+     "exclude": [],
+     "naive_utc_columns": [],
+     "write_evidence": [
+      "platform/python-sidecar/brahmagyan/l0_reference.py:1522"
+     ]
+    },
+    {
+     "name": "reference_topic_tags",
+     "scope": "global",
+     "key": [
+      "canonical_id"
+     ],
+     "key_evidence": "primary_key:reference_topic_tags_pkey",
+     "exclude": [],
+     "naive_utc_columns": [],
+     "write_evidence": [
+      "platform/python-sidecar/brahmagyan/l0_reference.py:1541"
+     ]
+    },
+    {
+     "name": "reference_glossary",
+     "scope": "global",
+     "key": [
+      "term_id"
+     ],
+     "key_evidence": "primary_key:reference_glossary_pkey",
+     "exclude": [],
+     "naive_utc_columns": [],
+     "write_evidence": [
+      "platform/python-sidecar/brahmagyan/l0_reference.py:1557"
+     ]
+    }
+   ],
+   "not_covered_tables": [],
+   "not_written_tables": [
+    {
+     "name": "reference_nakshatras",
+     "reason": "l0_reference.py holds an `if False:` block that would INSERT INTO reference_nakshatras (superseded by the bg_nakshatra writer); it never runs, so this asset does not write the table.",
+     "evidence": [
+      "platform/python-sidecar/brahmagyan/l0_reference.py:1288"
+     ]
+    }
+   ]
+  },
+  "bg_remedies": {
+   "status": "declared",
+   "fingerprint_definition": "nikasha_stale_certs.table_fingerprint/1",
+   "scope": "global",
+   "coverage": "partial",
+   "reproducibility": [
+    "deterministic"
+   ],
+   "groups": [],
+   "tables": [
+    {
+     "name": "brahma_remedy_corpus",
+     "scope": "global",
+     "key": [
+      "remedy_id"
+     ],
+     "key_evidence": "unique:brahma_remedy_corpus_remedy_id_key",
+     "exclude": [
+      {
+       "column": "id",
+       "reason_code": "surrogate_identity",
+       "reason": "id is a serial/identity/gen_random_uuid() surrogate assigned by the database at insert; it is not part of the natural key and differs after any delete-then-insert or fresh rebuild"
+      },
+      {
+       "column": "created_at",
+       "reason_code": "wall_clock_timestamp",
+       "reason": "created_at is DEFAULT now() or taken from the wall clock at insert time; it differs on every rebuild and carries no semantic content"
+      }
+     ],
+     "naive_utc_columns": [],
+     "write_evidence": [
+      "platform/python-sidecar/brahmagyan/l0_remedy_corpus.py:3463",
+      "platform/python-sidecar/brahmagyan/l0_remedy_corpus.py:3551",
+      "platform/python-sidecar/brahmagyan/l0_remedy_loader.py:189"
+     ]
+    }
+   ],
+   "not_covered_tables": [
+    {
+     "name": "remedy_review_queue",
+     "reason": "A review queue, not a build output: the loader converges only category='tantric' rows (l0_remedy_loader.py `DELETE FROM remedy_review_queue WHERE category = 'tantric'`), resets review_status to pending on conflict, and rows of other categories and review transitions belong to the review workflow, not to this writer.",
+     "evidence": [
+      "platform/python-sidecar/brahmagyan/l0_remedy_loader.py:128",
+      "platform/python-sidecar/brahmagyan/l0_remedy_loader.py:274"
+     ]
+    }
+   ]
+  },
+  "bg_rules": {
+   "status": "declared",
+   "fingerprint_definition": "nikasha_stale_certs.table_fingerprint/1",
+   "scope": "global",
+   "coverage": "full",
+   "reproducibility": [
+    "deterministic"
+   ],
+   "groups": [],
+   "tables": [
+    {
+     "name": "sutravali_rules",
+     "scope": "global",
+     "key": [
+      "rule_id"
+     ],
+     "key_evidence": "primary_key:sutravali_rules_pkey",
+     "exclude": [
+      {
+       "column": "created_at",
+       "reason_code": "wall_clock_timestamp",
+       "reason": "created_at is DEFAULT now() or taken from the wall clock at insert time; it differs on every rebuild and carries no semantic content"
+      }
+     ],
+     "naive_utc_columns": [],
+     "write_evidence": [
+      "platform/python-sidecar/brahmagyan/l0_rules.py:1559",
+      "platform/python-sidecar/brahmagyan/l0_rules.py:1609"
+     ],
+     "ownership_evidence": [
+      "00_ARCHITECTURE/control/FINGERPRINT_OWNERSHIP_PROBES_2026-10-03.txt:2"
+     ],
+     "notes": "Ownership probe 2026-10-03 (read-only, suvarna_reader): sutravali_rules holds ONLY extracted_by=python_regex_v2, 3002 rows, so the legacy extractor l0_sutravali_extractor.py leaves no rows in production. rule_id is a deterministic uuid5 (l0_rules.py _make_rule_id). extraction_pass_log embeds a classical_text_chunks.id (upstream surrogate): equal while that table is seeded from production."
+    }
+   ],
+   "not_covered_tables": []
+  },
+  "bg_sarvatobhadra_grid": {
+   "status": "undeclared",
+   "reason_code": "migration_owned_rows",
+   "reason": "No writer (registry has_writer=false): the table is created by migration 529 and registered deliberately empty (ADJUDICATION-11, 0 live rows); there is nothing to rebuild and nothing to fingerprint. Ownership probe 2026-10-03: count(*) = 0 in production.",
+   "tables_written": [
+    "bg_sarvatobhadra_grid"
+   ],
+   "evidence": [
+    "00_ARCHITECTURE/briefs/nirmana/L0_W1_ANALYSIS_BATCH_E.md:33",
+    "00_ARCHITECTURE/control/FINGERPRINT_OWNERSHIP_PROBES_2026-10-03.txt:26"
+   ]
+  },
+  "bg_sign_medical": {
+   "status": "declared",
+   "fingerprint_definition": "nikasha_stale_certs.table_fingerprint/1",
+   "scope": "global",
+   "coverage": "full",
+   "reproducibility": [
+    "deterministic"
+   ],
+   "groups": [],
+   "tables": [
+    {
+     "name": "bg_sign_medical",
+     "scope": "global",
+     "key": [
+      "sign_number"
+     ],
+     "key_evidence": "primary_key:bg_sign_medical_pkey",
+     "exclude": [],
+     "naive_utc_columns": [],
+     "write_evidence": [
+      "platform/python-sidecar/brahmagyan/l0_medical.py:480"
+     ]
+    }
+   ],
+   "not_covered_tables": []
+  },
+  "bg_sky_calendar": {
+   "status": "declared",
+   "fingerprint_definition": "nikasha_stale_certs.table_fingerprint/1",
+   "scope": "global",
+   "coverage": "full",
+   "reproducibility": [
+    "rolling_horizon",
+    "platform_bound"
+   ],
+   "groups": [],
+   "tables": [
+    {
+     "name": "bg_sky_calendar",
+     "scope": "global",
+     "key": [
+      "event_type",
+      "primary_body",
+      "secondary_body_key",
+      "event_jd"
+     ],
+     "key_evidence": "unique:bg_sky_events_natural_key",
+     "exclude": [
+      {
+       "column": "id",
+       "reason_code": "surrogate_identity",
+       "reason": "id is a serial/identity/gen_random_uuid() surrogate assigned by the database at insert; it is not part of the natural key and differs after any delete-then-insert or fresh rebuild"
+      },
+      {
+       "column": "build_id",
+       "reason_code": "build_identity",
+       "reason": "build_id is the orchestrator build id of the run that wrote the row; a new run writes a new id by construction"
+      },
+      {
+       "column": "computed_at",
+       "reason_code": "wall_clock_timestamp",
+       "reason": "computed_at is DEFAULT now() or taken from the wall clock at insert time; it differs on every rebuild and carries no semantic content"
+      }
+     ],
+     "naive_utc_columns": [
+      "event_datetime_utc"
+     ],
+     "write_evidence": [
+      "platform/python-sidecar/pipeline/orchestrator/writers/bg_sky_calendar.py:735"
+     ],
+     "notes": "Rolling forward horizon (today + FORWARD_HORIZON_YEARS=10 at run time, upsert without delete) and a Linux/x86_64-only DB-writing runtime (bg_sky_calendar.py:129,268-269). secondary_body_key is a generated column (COALESCE(secondary_body, ''))."
+    }
+   ],
+   "not_covered_tables": []
+  },
+  "bg_text_index": {
+   "status": "declared",
+   "fingerprint_definition": "nikasha_stale_certs.table_fingerprint/1",
+   "scope": "global",
+   "coverage": "full",
+   "reproducibility": [
+    "deterministic"
+   ],
+   "groups": [
+    "classical_text_chunks"
+   ],
+   "tables": [],
+   "not_covered_tables": []
+  },
+  "bg_texts": {
+   "status": "declared",
+   "fingerprint_definition": "nikasha_stale_certs.table_fingerprint/1",
+   "scope": "global",
+   "coverage": "partial",
+   "reproducibility": [
+    "deterministic"
+   ],
+   "groups": [
+    "classical_text_chunks"
+   ],
+   "tables": [],
+   "not_covered_tables": [
+    {
+     "name": "classical_texts",
+     "reason": "classical_texts is written by bg_texts (INSERT ... ON CONFLICT (text_id), ingested_at from the wall clock) and by the non-orchestrated legacy modules l0_texts.py, l0_text_chunker.py and l0_run_phase2.py; no probe shows production holds none of their rows, so the table is not fingerprinted for this asset.",
+     "evidence": [
+      "platform/python-sidecar/pipeline/orchestrator/writers/bg_texts.py:360",
+      "platform/python-sidecar/pipeline/orchestrator/writers/bg_texts.py:435"
+     ]
+    }
+   ]
+  },
+  "bg_transit_engine": {
+   "status": "declared",
+   "fingerprint_definition": "nikasha_stale_certs.table_fingerprint/1",
+   "scope": "global",
+   "coverage": "full",
+   "reproducibility": [
+    "deterministic"
+   ],
+   "groups": [],
+   "tables": [
+    {
+     "name": "bg_transit_engine",
+     "scope": "global",
+     "key": [
+      "graha"
+     ],
+     "key_evidence": "unique:bg_transit_engine_graha_key",
+     "exclude": [
+      {
+       "column": "id",
+       "reason_code": "surrogate_identity",
+       "reason": "id is a serial/identity/gen_random_uuid() surrogate assigned by the database at insert; it is not part of the natural key and differs after any delete-then-insert or fresh rebuild"
+      }
+     ],
+     "naive_utc_columns": [],
+     "write_evidence": [
+      "platform/python-sidecar/brahmagyan/l0_transit.py:1077"
+     ]
+    },
+    {
+     "name": "bg_transit_moorti",
+     "scope": "global",
+     "key": [
+      "nakshatra_offset"
+     ],
+     "key_evidence": "primary_key:bg_transit_moorti_pkey",
+     "exclude": [],
+     "naive_utc_columns": [],
+     "write_evidence": [
+      "platform/python-sidecar/brahmagyan/l0_transit.py:1186"
+     ],
+     "notes": "Written by the shared bg_transit_rules/bg_transit_engine writer (seed_transit_rules, l0_transit.py); the registry count_sql claims it for neither asset. Attached here because bg_transit_rules is undeclared."
+    }
+   ],
+   "not_covered_tables": []
+  },
+  "bg_transit_rules": {
+   "status": "undeclared",
+   "reason_code": "migration_owned_rows",
+   "reason": "bg_transit_rules holds rows the writer does not own: migration 397's 7 double_transit rows (title-case Jupiter/Saturn) and any vedha rule_type are structurally excluded from the writer's sweep (l0_transit.py `_owned_row_filter` comment, F-145); a schema-only mirror rebuilt by the writer cannot hold them, so the table fingerprint differs by construction. Ownership probe 2026-10-03 (read-only counts): bg_transit_rules holds 7 double_transit rows (Jupiter 5, Saturn 2) from migration 397 next to the writer's 19 favourable/unfavourable groups. bg_transit_moorti, written by the same writer, is attached to bg_transit_engine.",
+   "tables_written": [
+    "bg_transit_rules"
+   ],
+   "evidence": [
+    "00_ARCHITECTURE/control/FINGERPRINT_OWNERSHIP_PROBES_2026-10-03.txt:4",
+    "platform/python-sidecar/brahmagyan/l0_transit.py:1102",
+    "platform/python-sidecar/brahmagyan/l0_transit.py:985"
+   ]
+  },
+  "bg_vastu_directions": {
+   "status": "declared",
+   "fingerprint_definition": "nikasha_stale_certs.table_fingerprint/1",
+   "scope": "global",
+   "coverage": "full",
+   "reproducibility": [
+    "deterministic"
+   ],
+   "groups": [],
+   "tables": [
+    {
+     "name": "bg_vastu_directions",
+     "scope": "global",
+     "key": [
+      "direction"
+     ],
+     "key_evidence": "unique:bg_vastu_directions_direction_key",
+     "exclude": [
+      {
+       "column": "id",
+       "reason_code": "surrogate_identity",
+       "reason": "id is a serial/identity/gen_random_uuid() surrogate assigned by the database at insert; it is not part of the natural key and differs after any delete-then-insert or fresh rebuild"
+      }
+     ],
+     "naive_utc_columns": [],
+     "write_evidence": [
+      "platform/python-sidecar/brahmagyan/l0_vastu_directions.py:299"
+     ]
+    },
+    {
+     "name": "bg_vastu_direction_remedials",
+     "scope": "global",
+     "key": [
+      "direction",
+      "remedy_type"
+     ],
+     "key_evidence": "unique:bg_vastu_direction_remedials_direction_remedy_type_key",
+     "exclude": [
+      {
+       "column": "id",
+       "reason_code": "surrogate_identity",
+       "reason": "id is a serial/identity/gen_random_uuid() surrogate assigned by the database at insert; it is not part of the natural key and differs after any delete-then-insert or fresh rebuild"
+      }
+     ],
+     "naive_utc_columns": [],
+     "write_evidence": [
+      "platform/python-sidecar/brahmagyan/l0_vastu_directions.py:321"
+     ]
+    }
+   ],
+   "not_covered_tables": []
+  },
+  "bg_vedha_malefic_scale": {
+   "status": "declared",
+   "fingerprint_definition": "nikasha_stale_certs.table_fingerprint/1",
+   "scope": "global",
+   "coverage": "full",
+   "reproducibility": [
+    "deterministic"
+   ],
+   "groups": [],
+   "tables": [
+    {
+     "name": "bg_vedha_malefic_scale",
+     "scope": "global",
+     "key": [
+      "table_version",
+      "malefic_count"
+     ],
+     "key_evidence": "primary_key:bg_vedha_malefic_scale_pk",
+     "exclude": [
+      {
+       "column": "created_at",
+       "reason_code": "wall_clock_timestamp",
+       "reason": "created_at is DEFAULT now() or taken from the wall clock at insert time; it differs on every rebuild and carries no semantic content"
+      }
+     ],
+     "naive_utc_columns": [],
+     "write_evidence": [
+      "platform/python-sidecar/brahmagyan/l0_phaladeepika_vedha.py:150"
+     ]
+    }
+   ],
+   "not_covered_tables": []
+  },
+  "bg_vidhi_floors": {
+   "status": "declared",
+   "fingerprint_definition": "nikasha_stale_certs.table_fingerprint/1",
+   "scope": "global",
+   "coverage": "full",
+   "reproducibility": [
+    "deterministic"
+   ],
+   "groups": [],
+   "tables": [
+    {
+     "name": "vidhi_intent_floors",
+     "scope": "global",
+     "key": [
+      "intent"
+     ],
+     "key_evidence": "primary_key:vidhi_intent_floors_pkey",
+     "exclude": [
+      {
+       "column": "updated_at",
+       "reason_code": "wall_clock_timestamp",
+       "reason": "updated_at is set to now() by the writer on every upsert (bg_vidhi_floors.py); differs on every rebuild"
+      }
+     ],
+     "naive_utc_columns": [],
+     "write_evidence": [
+      "platform/python-sidecar/pipeline/orchestrator/writers/bg_vidhi_floors.py:550",
+      "platform/python-sidecar/pipeline/orchestrator/writers/bg_vidhi_floors.py:556"
+     ]
+    },
+    {
+     "name": "vidhi_floor_items",
+     "scope": "global",
+     "key": [
+      "intent",
+      "item_order"
+     ],
+     "key_evidence": "unique:vidhi_floor_items_intent_order_unique",
+     "exclude": [
+      {
+       "column": "id",
+       "reason_code": "surrogate_identity",
+       "reason": "id is a serial/identity/gen_random_uuid() surrogate assigned by the database at insert; it is not part of the natural key and differs after any delete-then-insert or fresh rebuild"
+      }
+     ],
+     "naive_utc_columns": [],
+     "write_evidence": [
+      "platform/python-sidecar/pipeline/orchestrator/writers/bg_vidhi_floors.py:569",
+      "platform/python-sidecar/pipeline/orchestrator/writers/bg_vidhi_floors.py:573"
+     ]
+    }
+   ],
+   "not_covered_tables": []
+  },
+  "bg_vidhi_primitives": {
+   "status": "declared",
+   "fingerprint_definition": "nikasha_stale_certs.table_fingerprint/1",
+   "scope": "global",
+   "coverage": "full",
+   "reproducibility": [
+    "deterministic"
+   ],
+   "groups": [],
+   "tables": [
+    {
+     "name": "vidhi_primitives",
+     "scope": "global",
+     "key": [
+      "primitive_id"
+     ],
+     "key_evidence": "primary_key:vidhi_primitives_pkey",
+     "exclude": [
+      {
+       "column": "updated_at",
+       "reason_code": "wall_clock_timestamp",
+       "reason": "updated_at is set to now() by the writer on every upsert (bg_vidhi_primitives.py); differs on every rebuild"
+      }
+     ],
+     "naive_utc_columns": [],
+     "write_evidence": [
+      "platform/python-sidecar/pipeline/orchestrator/writers/bg_vidhi_primitives.py:145",
+      "platform/python-sidecar/pipeline/orchestrator/writers/bg_vidhi_primitives.py:189"
+     ]
+    }
+   ],
+   "not_covered_tables": []
+  },
+  "bg_yogas": {
+   "status": "declared",
+   "fingerprint_definition": "nikasha_stale_certs.table_fingerprint/1",
+   "scope": "global",
+   "coverage": "full",
+   "reproducibility": [
+    "deterministic"
+   ],
+   "groups": [
+    "brahma_ontology"
+   ],
+   "tables": [
+    {
+     "name": "reference_yogas",
+     "scope": "global",
+     "key": [
+      "canonical_id"
+     ],
+     "key_evidence": "primary_key:reference_yogas_pkey",
+     "exclude": [],
+     "naive_utc_columns": [],
+     "write_evidence": [
+      "platform/python-sidecar/brahmagyan/l0_yogas.py:2245",
+      "platform/python-sidecar/brahmagyan/l0_yogas.py:2323"
+     ]
+    },
+    {
+     "name": "brahma_yoga_catalog",
+     "scope": "global",
+     "key": [
+      "canonical_id"
+     ],
+     "key_evidence": "primary_key:brahma_yoga_catalog_pkey",
+     "exclude": [
+      {
+       "column": "created_at",
+       "reason_code": "wall_clock_timestamp",
+       "reason": "created_at is DEFAULT now() or taken from the wall clock at insert time; it differs on every rebuild and carries no semantic content"
+      }
+     ],
+     "naive_utc_columns": [],
+     "write_evidence": [
+      "platform/python-sidecar/brahmagyan/l0_yogas.py:2247",
+      "platform/python-sidecar/brahmagyan/l0_yogas.py:2259"
+     ],
+     "notes": "bhanga_rules_jsonb, partial_formation_threshold, result_class and strength_formula_ref are not in the writer INSERT list (migration 239 added them) and stay in the fingerprint: a production value there is a real finding."
+    },
+    {
+     "name": "brahma_yoga_source_chunks",
+     "scope": "global",
+     "key": [
+      "canonical_id",
+      "source_chunk_id"
+     ],
+     "key_evidence": "primary_key:brahma_yoga_source_chunks_pkey",
+     "exclude": [],
+     "naive_utc_columns": [],
+     "write_evidence": [
+      "platform/python-sidecar/brahmagyan/l0_yogas.py:2244",
+      "platform/python-sidecar/brahmagyan/l0_yogas.py:2292"
+     ],
+     "notes": "source_chunk_id is a classical_text_chunks.id uuid (upstream surrogate): equal only while classical_text_chunks is seeded from production, not regenerated."
+    }
+   ],
+   "not_covered_tables": [],
+   "not_written_tables": [
+    {
+     "name": "yoga_families",
+     "reason": "l0_yogas.py defines seed_yoga_families(), which INSERTs INTO yoga_families, but nothing in the sidecar calls it (no caller in l0_yogas.seed_yogas, the bg_yogas writer or the orchestrator): this asset does not write the table.",
+     "evidence": [
+      "platform/python-sidecar/brahmagyan/l0_yogas.py:1875"
+     ]
+    }
+   ]
+  }
+ }
+}

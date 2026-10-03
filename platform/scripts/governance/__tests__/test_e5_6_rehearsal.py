@@ -1082,9 +1082,34 @@ def same_sets(n: int = 10) -> dict:
     return {a: fp(i + 1) for i, a in enumerate(ASSETS[:n])}
 
 
+def cov_(units=None, nd=None, **over):
+    """A coverage block: every unit declared, full and deterministic unless `nd` flags some (then the scope is declared_only)."""
+    units = sorted(units if units is not None else ASSETS)
+    nd = nd or {}
+    c = {"declarations_sha256": None, "units": units, "declared": units, "partial": {}, "undeclared": {}, "non_deterministic": nd, "groups": {},
+         "seeded": [], "expected_differences": [], "scope": "declared_only" if nd else "all_declared_full"}
+    c.update(over)
+    return c
+
+
+def rows_(prod, reh, n=5):
+    """Row counts for every unit that has a fingerprint on a side (n rows in a single table `t`)."""
+    p = prod.get("fingerprints", prod) if "definition" in prod else prod
+    r = reh.get("fingerprints", reh) if "definition" in reh else reh
+    return {a: {"production": {"t": n} if a in p else None, "rehearsal": {"t": n} if a in r else None} for a in sorted(set(p) | set(r))}
+
+
+CR = {"coverage": cov_(), "rows": rows_(same_sets(), same_sets())}
+
+
 def cmp_(prod, reh, explained=None, **kw):
     kw.setdefault("expected_assets", ASSETS)
     kw.setdefault("commit", SHA40)
+    if "coverage" not in kw:
+        nd = {a: [sr.CODE_REQUIRES_FLAG[e["reason_code"]]] for a, e in (explained or {}).items()
+              if isinstance(e, dict) and e.get("reason_code") in sr.CODE_REQUIRES_FLAG and a in kw["expected_assets"]} if isinstance(explained, dict) else {}
+        kw["coverage"] = cov_(kw["expected_assets"], nd)
+    kw.setdefault("rows", rows_(prod, reh))
     return sr.compare_fingerprint_sets(prod if "definition" in prod else env_(prod), reh if "definition" in reh else env_(reh),
                                        explained, **kw)
 
@@ -1110,10 +1135,10 @@ def test_compare_difference_needs_a_valid_explained_decided_reason():
     r = cmp_(prod, reh)
     assert r["result"] == "FAIL" and r["unexplained"] == ["bg_b"] and r["differences"][0]["kind"] == "fingerprint_differs"
     ok = cmp_(prod, reh, {"bg_b": explain()})
-    assert ok["result"] == "PASS" and ok["differences"][0]["explained"]["decision"] == "N-77" and sr.validate_drill(ok) == []
+    assert ok["result"] in sr.RESULTS_PASS and ok["differences"][0]["explained"]["decision"] == "N-77" and sr.validate_drill(ok) == []
     undecided = cmp_(prod, reh, {"bg_b": explain(decision=None)})
     assert undecided["result"] == "FAIL" and any("no decision id" in x for x in undecided["problems"])
-    assert cmp_(prod, reh, {"bg_b": explain(decision=None)}, max_undecided_share=0.2)["result"] == "PASS"
+    assert cmp_(prod, reh, {"bg_b": explain(decision=None)}, max_undecided_share=0.2)["result"] in sr.RESULTS_PASS
     for bad in ({"reason_code": "because", "detail": DETAIL}, {"reason_code": "rolling_horizon", "detail": "x"},
                 {"reason_code": "rolling_horizon", "detail": "  " + "x" * 10 + "  "}, {"reason_code": "rolling_horizon"},
                 {**explain(), "extra": 1}, {**explain(), "decision": "SS-1"}, {**explain(), "decision": "n-5"}, "text", None, 7, [explain()],
@@ -1132,7 +1157,7 @@ def test_the_reviewers_wave_through_cases_now_fail():
     distinct = {a: explain("seeded_not_rebuilt", i) for i, a in enumerate(ASSETS)}
     r = cmp_(prod, reh, distinct)
     assert r["result"] == "FAIL" and any("over the allowed share" in x for x in r["problems"])  # 10/10 assets differ: share cap
-    assert cmp_(prod, reh, distinct, max_difference_share=1.0)["result"] == "PASS"             # only a deliberate override
+    assert cmp_(prod, reh, distinct, max_difference_share=1.0)["result"] in sr.RESULTS_PASS             # only a deliberate override
     one = cmp_({"bg_a": fp(1)}, {"bg_a": fp(1)})                                                # one asset of ten compared
     assert one["result"] == "FAIL" and one["uncovered"] == ASSETS[1:]
 
@@ -1144,16 +1169,16 @@ def test_compare_coverage_unexpected_assets_and_kinds():
     miss = {k: v for k, v in full.items() if k != "bg_j"}
     r = cmp_(miss, full)
     assert r["differences"][0]["kind"] == "missing_in_production" and r["result"] == "FAIL"
-    assert cmp_(miss, full, {"bg_j": explain("asset_new_at_commit", 1)})["result"] == "PASS"
+    assert cmp_(miss, full, {"bg_j": explain("asset_new_at_commit", 1)})["result"] in sr.RESULTS_PASS
     assert cmp_(miss, full, {"bg_j": explain("rolling_horizon", 1)})["result"] == "FAIL"          # code not valid for this kind
     r = cmp_(full, miss)
     assert r["differences"][0]["kind"] == "missing_in_rehearsal"
-    assert cmp_(full, miss, {"bg_j": explain("source_unavailable_offline", 1)})["result"] == "PASS"
+    assert cmp_(full, miss, {"bg_j": explain("source_unavailable_offline", 1)})["result"] in sr.RESULTS_PASS
     assert cmp_(full, miss, {"bg_j": explain("asset_new_at_commit", 1)})["result"] == "FAIL"
     both_missing = cmp_(miss, miss)
     assert both_missing["result"] == "FAIL" and both_missing["uncovered"] == ["bg_j"]              # in neither set: never explainable
     diff = {**full, "bg_c": fp(77)}
-    assert cmp_(full, diff, {"bg_c": explain("seeded_not_rebuilt", 2)})["result"] == "PASS"
+    assert cmp_(full, diff, {"bg_c": explain("seeded_not_rebuilt", 2)})["result"] in sr.RESULTS_PASS
     assert cmp_(full, diff, {"bg_c": explain("source_unavailable_offline", 2)})["result"] == "FAIL"
     stray = cmp_(full, full, {"bg_a": explain()})
     assert stray["result"] == "FAIL" and stray["explanations_without_difference"] == ["bg_a"]
@@ -1163,26 +1188,26 @@ def test_compare_refuses_malformed_inputs_instead_of_raising_type_errors():
     ok = env_(same_sets())
     for bad_expl in ([], "x", 5, [("bg_a", {})], set()):
         with pytest.raises(sr.RehearsalError, match="explained"):
-            sr.compare_fingerprint_sets(ok, ok, bad_expl, expected_assets=ASSETS, commit=SHA40)
+            sr.compare_fingerprint_sets(ok, ok, bad_expl, expected_assets=ASSETS, commit=SHA40, **CR)
     for bad in ({"bg_a": fp(1)}, {"definition": "other/1", "fingerprints": {}}, {"definition": sr.FINGERPRINT_DEFINITION},
                 {"definition": sr.FINGERPRINT_DEFINITION, "fingerprints": {"bg_a": "short"}},
                 {"definition": sr.FINGERPRINT_DEFINITION, "fingerprints": {"Bad Id": fp(1)}},
                 {"definition": sr.FINGERPRINT_DEFINITION, "fingerprints": [("bg_a", fp(1))]}, None, [], "x"):
         with pytest.raises(sr.RehearsalError):
-            sr.compare_fingerprint_sets(bad, ok, expected_assets=ASSETS, commit=SHA40)
+            sr.compare_fingerprint_sets(bad, ok, expected_assets=ASSETS, commit=SHA40, **CR)
         with pytest.raises(sr.RehearsalError):
-            sr.compare_fingerprint_sets(ok, bad, expected_assets=ASSETS, commit=SHA40)
+            sr.compare_fingerprint_sets(ok, bad, expected_assets=ASSETS, commit=SHA40, **CR)
     for bad_exp in (None, [], "bg_a", {"bg_a": 1}, ["bg_a", "bg_a"], ["Bad"], [1], b"x"):
         with pytest.raises(sr.RehearsalError, match="expected_assets"):
-            sr.compare_fingerprint_sets(ok, ok, expected_assets=bad_exp, commit=SHA40)
+            sr.compare_fingerprint_sets(ok, ok, expected_assets=bad_exp, commit=SHA40, **CR)
     for bad_commit in (None, "abc", "G" * 40, 5):
         with pytest.raises(sr.RehearsalError, match="commit"):
-            sr.compare_fingerprint_sets(ok, ok, expected_assets=ASSETS, commit=bad_commit)
+            sr.compare_fingerprint_sets(ok, ok, expected_assets=ASSETS, commit=bad_commit, **CR)
     for share in (-0.1, 1.5, True, "0.2", None):
         with pytest.raises(sr.RehearsalError, match="share"):
-            sr.compare_fingerprint_sets(ok, ok, expected_assets=ASSETS, commit=SHA40, max_difference_share=share)
+            sr.compare_fingerprint_sets(ok, ok, expected_assets=ASSETS, commit=SHA40, **CR, max_difference_share=share)
         with pytest.raises(sr.RehearsalError, match="share"):
-            sr.compare_fingerprint_sets(ok, ok, expected_assets=ASSETS, commit=SHA40, max_undecided_share=share)
+            sr.compare_fingerprint_sets(ok, ok, expected_assets=ASSETS, commit=SHA40, **CR, max_undecided_share=share)
 
 
 def test_the_drill_document_validates_and_every_edit_is_caught():
@@ -1209,11 +1234,16 @@ def test_compare_cli_requires_expected_and_commit_and_writes_a_valid_drill(tmp_p
     (tmp_path / "pre.json").write_text(json.dumps(env_(same_sets())))
     (tmp_path / "post.json").write_text(json.dumps(env_({**same_sets(), "bg_a": fp(900)})))
     (tmp_path / "exp.json").write_text(json.dumps(ASSETS))
+    (tmp_path / "cov.json").write_text(json.dumps(cov_()))
+    (tmp_path / "rows.json").write_text(json.dumps(rows_(same_sets(), {**same_sets(), "bg_a": fp(900)})))
     base = ["compare-fingerprints", "--pre", str(tmp_path / "pre.json"), "--post", str(tmp_path / "post.json"),
-            "--expected", str(tmp_path / "exp.json"), "--commit", SHA40, "--out", str(tmp_path / "drill.json")]
+            "--expected", str(tmp_path / "exp.json"), "--coverage", str(tmp_path / "cov.json"), "--rows", str(tmp_path / "rows.json"),
+            "--commit", SHA40, "--out", str(tmp_path / "drill.json")]
     assert sr.main(base) == 4
     assert sr.main(["validate-drill", str(tmp_path / "drill.json")]) == 0
     (tmp_path / "ex.json").write_text(json.dumps({"bg_a": explain(n=3)}))
+    assert sr.main(base + ["--explained", str(tmp_path / "ex.json")]) == 4                    # rolling_horizon on a unit the coverage does not flag
+    (tmp_path / "cov.json").write_text(json.dumps(cov_(nd={"bg_a": ["rolling_horizon"]})))
     assert sr.main(base + ["--explained", str(tmp_path / "ex.json")]) == 0
     assert sr.main(["validate-drill", str(tmp_path / "drill.json")]) == 0
     doc = json.loads((tmp_path / "drill.json").read_text())
@@ -1222,6 +1252,242 @@ def test_compare_cli_requires_expected_and_commit_and_writes_a_valid_drill(tmp_p
     assert sr.main(["validate-drill", str(tmp_path / "bad.json")]) == 2
     assert sr.main(base[:-4] + ["--commit", "nope"]) == 2
     capsys.readouterr()
+
+
+# ── round 2: the drill document says what it covers (coverage), carries its row counts, and an empty table is never "equal" ──
+
+def test_drill_keys_gain_exactly_coverage_rows_empty_both_sides_and_seeded():
+    assert sr.DRILL_KEYS[-4:] == ("coverage", "rows", "empty_both_sides", "seeded")
+    r = cmp_(same_sets(), same_sets())
+    assert set(r) == set(sr.DRILL_KEYS) and r["coverage"] == cov_() and r["empty_both_sides"] == [] and r["seeded"] == {}
+    assert r["rows"]["bg_a"] == {"production": {"t": 5}, "rehearsal": {"t": 5}}
+
+
+def test_a_bare_pass_means_every_asset_is_declared_full_and_deterministic():
+    assert cmp_(same_sets(), same_sets())["result"] == "PASS"
+    for label, cov in (("partial", cov_(partial={"bg_x": ["t_unc"]})), ("undeclared", cov_(undeclared={"bg_y": "shared_table"})),
+                       ("non_deterministic", cov_(nd={"bg_c": ["platform_bound"]}))):
+        cov["scope"] = "declared_only"
+        r = cmp_(same_sets(), same_sets(), coverage=cov)
+        assert r["result"] == "PASS_DECLARED_ONLY" and r["coverage"]["scope"] == "declared_only", label
+        assert sr.validate_drill(r) == []
+    # a FAIL stays FAIL whatever the scope
+    r = cmp_(same_sets(), {**same_sets(), "bg_b": fp(99)}, coverage=cov_(undeclared={"bg_y": "shared_table"}, scope="declared_only"))
+    assert r["result"] == "FAIL"
+
+
+def test_the_coverage_scope_is_derived_not_trusted():
+    for cov in (cov_(undeclared={"bg_y": "shared_table"}),                         # claims all_declared_full while an asset is undeclared
+                cov_(nd={"bg_c": ["rolling_horizon"]}, scope="all_declared_full"), cov_(partial={"bg_x": ["t"]}, scope="all_declared_full")):
+        with pytest.raises(sr.RehearsalError, match="derived"):
+            cmp_(same_sets(), same_sets(), coverage=cov)
+    with pytest.raises(sr.RehearsalError, match="derived"):
+        cmp_(same_sets(), same_sets(), coverage=cov_(scope="declared_only"))        # and the other way round
+
+
+@pytest.mark.parametrize("bad", [
+    lambda c: c.pop("scope"), lambda c: c.update(extra=1), lambda c: c.update(units=ASSETS[:3]), lambda c: c.update(units=ASSETS + ["bg_z"]),
+    lambda c: c.update(declared="x"), lambda c: c.update(partial={"bg_x": []}), lambda c: c.update(partial={"bg_x": "t"}),
+    lambda c: c.update(undeclared={"bg_y": ""}), lambda c: c.update(non_deterministic={"bg_c": []}), lambda c: c.update(non_deterministic={"bg_c": ["sometimes"]}),
+    lambda c: c.update(non_deterministic={"bg_zzz": ["platform_bound"]}), lambda c: c.update(groups={"bg_a": ["only_one"]}),
+    lambda c: c.update(groups={"bg_zzz": ["a", "b"]}), lambda c: c.update(expected_differences=[{"unit": "bg_a"}]),
+    lambda c: c.update(expected_differences=[{"unit": "bg_zzz", "table": "t", "columns": ["c"], "reference": "PR #1"}]),
+    lambda c: c.update(declarations_sha256="short"), lambda c: c.update(expected_differences="x")])
+def test_coverage_blocks_are_closed_and_checked(bad):
+    cov = cov_()
+    bad(cov)
+    with pytest.raises(sr.RehearsalError):
+        cmp_(same_sets(), same_sets(), coverage=cov)
+
+
+def test_coverage_must_be_given_and_an_object():
+    for cov in (None, [], "x", 5):
+        with pytest.raises(sr.RehearsalError, match="coverage"):
+            cmp_(same_sets(), same_sets(), coverage=cov)
+    with pytest.raises(TypeError):
+        sr.compare_fingerprint_sets(env_(same_sets()), env_(same_sets()), expected_assets=ASSETS, commit=SHA40, rows=rows_(same_sets(), same_sets()))
+    with pytest.raises(TypeError):
+        sr.compare_fingerprint_sets(env_(same_sets()), env_(same_sets()), expected_assets=ASSETS, commit=SHA40, coverage=cov_())
+
+
+def test_an_explanation_code_is_only_for_a_unit_flagged_for_it():
+    prod, reh = same_sets(), {**same_sets(), "bg_b": fp(99)}
+    flagged = cmp_(prod, reh, {"bg_b": explain("rolling_horizon")}, coverage=cov_(nd={"bg_b": ["rolling_horizon"]}))
+    assert flagged["result"] == "PASS_DECLARED_ONLY" and flagged["differences"][0]["explained"]
+    for flags in ({}, {"bg_b": ["platform_bound"]}, {"bg_c": ["rolling_horizon"]}):
+        r = cmp_(prod, reh, {"bg_b": explain("rolling_horizon")}, coverage=cov_(nd=flags))
+        assert r["result"] == "FAIL" and r["unexplained"] == ["bg_b"] and any("needs the unit to be flagged rolling_horizon" in x for x in r["problems"]), flags
+    miss = {k: v for k, v in same_sets().items() if k != "bg_j"}
+    ok = cmp_(same_sets(), miss, {"bg_j": explain("source_unavailable_offline", 1)}, coverage=cov_(nd={"bg_j": ["platform_bound"]}))
+    assert ok["result"] == "PASS_DECLARED_ONLY"
+    bad = cmp_(same_sets(), miss, {"bg_j": explain("source_unavailable_offline", 1)}, coverage=cov_(nd={"bg_j": ["rolling_horizon"]}))
+    assert bad["result"] == "FAIL" and any("flagged platform_bound" in x for x in bad["problems"])
+    # codes with no flag requirement stay open to any unit
+    assert cmp_(prod, reh, {"bg_b": explain("seeded_not_rebuilt")})["result"] == "PASS"
+
+
+def test_an_empty_unit_is_never_equal_and_the_verdict_cannot_pass():
+    sets = same_sets()
+    rows = rows_(sets, sets)
+    rows["bg_d"] = {"production": {"t": 0}, "rehearsal": {"t": 0}}
+    r = cmp_(sets, sets, rows=rows)
+    assert r["result"] == "UNMEASURED" and r["empty_both_sides"] == ["bg_d"] and "bg_d" not in r["equal"] and len(r["equal"]) == 9
+    assert sr.validate_drill(r) == []
+    # one side empty with the same fingerprint is a contradiction, not equality
+    rows["bg_d"] = {"production": {"t": 0}, "rehearsal": {"t": 3}}
+    r2 = cmp_(sets, sets, rows=rows)
+    assert r2["result"] == "FAIL" and any("equal fingerprints but different row counts" in x for x in r2["problems"])
+    # a failure outranks the empty marker
+    rows["bg_d"] = {"production": {"t": 0}, "rehearsal": {"t": 0}}
+    assert cmp_(sets, {**sets, "bg_b": fp(99)}, rows=rows)["result"] == "FAIL"
+    # a table that is empty next to populated ones keeps the unit measured
+    rows["bg_d"] = {"production": {"t": 0, "u": 4}, "rehearsal": {"t": 0, "u": 4}}
+    assert cmp_(sets, sets, rows=rows)["result"] == "PASS"
+
+
+def test_equal_fingerprints_with_different_row_counts_are_refused():
+    sets = same_sets()
+    rows = rows_(sets, sets)
+    rows["bg_a"]["rehearsal"] = {"t": 6}
+    r = cmp_(sets, sets, rows=rows)
+    assert r["result"] == "FAIL" and "bg_a" not in r["equal"] and any("bg_a: equal fingerprints but different row counts" in x for x in r["problems"])
+
+
+@pytest.mark.parametrize("bad", [
+    lambda r: r.pop("bg_a"), lambda r: r["bg_a"].update(production=None), lambda r: r["bg_a"].update(rehearsal=None),
+    lambda r: r["bg_a"].update(production={"t": -1}), lambda r: r["bg_a"].update(production={"t": True}), lambda r: r["bg_a"].update(production={}),
+    lambda r: r["bg_a"].update(production={"t": 1.5}), lambda r: r.update({"Bad": r["bg_a"]}), lambda r: r["bg_a"].update(extra=1),
+    lambda r: r["bg_a"].pop("production")])
+def test_row_counts_are_required_closed_and_checked(bad):
+    sets = same_sets()
+    rows = rows_(sets, sets)
+    bad(rows)
+    with pytest.raises(sr.RehearsalError):
+        cmp_(sets, sets, rows=rows)
+    for junk in (None, [], "x", 5):
+        with pytest.raises(sr.RehearsalError, match="rows"):
+            cmp_(sets, sets, rows=junk)
+
+
+def test_a_side_without_a_unit_may_carry_null_rows_for_it():
+    full = same_sets()
+    miss = {k: v for k, v in full.items() if k != "bg_j"}
+    r = cmp_(full, miss, {"bg_j": explain("source_unavailable_offline", 1)}, coverage=cov_(nd={"bg_j": ["platform_bound"]}))
+    assert r["rows"]["bg_j"]["rehearsal"] is None and r["result"] == "PASS_DECLARED_ONLY" and sr.validate_drill(r) == []
+
+
+def test_validate_drill_rederives_the_new_fields_and_binds_the_declarations():
+    r = cmp_(same_sets(), same_sets(), coverage=cov_(undeclared={"bg_y": "shared_table"}, scope="declared_only"))
+    assert sr.validate_drill(r) == []
+    for label, edit in (("result_to_pass", lambda d: d.update(result="PASS")), ("scope", lambda d: d["coverage"].update(scope="all_declared_full")),
+                        ("undeclared_dropped", lambda d: d["coverage"].update(undeclared={})), ("rows", lambda d: d["rows"]["bg_a"].update(rehearsal={"t": 9})),
+                        ("empty_list", lambda d: d.update(empty_both_sides=["bg_a"])), ("coverage_null", lambda d: d.update(coverage=None)),
+                        ("rows_null", lambda d: d.update(rows=None)), ("drop_key", lambda d: d.pop("coverage"))):
+        d = copy.deepcopy(r)
+        edit(d)
+        assert sr.validate_drill(d), label
+    assert sr.validate_drill(r, declarations_coverage=r["coverage"]) == []
+    assert any("other declarations" in x for x in sr.validate_drill(r, declarations_coverage={**r["coverage"], "undeclared": {}}))
+
+
+def test_drill_expected_assets_and_coverage_come_from_the_declarations():
+    import fingerprint_declarations as fd
+    d = fd.load_declarations()
+    assert sr.drill_expected_assets() == d.expected_assets() and sr.drill_coverage() == d.drill_coverage()
+    assert len(sr.drill_expected_assets()) == 32 and sr.drill_coverage()["scope"] == "declared_only"
+    with pytest.raises(sr.RehearsalError, match="refused"):
+        sr.drill_coverage("/nonexistent/declarations.json")
+
+
+
+# ── round 3: SEEDED units are shown but never counted toward the rebuilt-equals-source claim ──
+
+def scov(seeded, units=None, **over):
+    """A declared_only coverage block whose `seeded` list is given."""
+    return cov_(units, seeded=sorted(seeded), scope="declared_only", **over)
+
+
+def test_an_equal_seeded_unit_is_shown_and_never_counted():
+    r = cmp_(same_sets(), same_sets(), coverage=scov(["bg_d"]))
+    assert r["result"] == "PASS_DECLARED_ONLY" and r["seeded"] == {"bg_d": "equal"} and "bg_d" not in r["equal"] and len(r["equal"]) == 9
+    assert r["empty_both_sides"] == [] and sr.validate_drill(r) == []
+
+
+def test_a_drill_whose_only_equal_units_are_seeded_is_unmeasured():
+    sets = {"bg_a": fp(1), "bg_b": fp(2)}
+    r = cmp_(sets, sets, expected_assets=["bg_a", "bg_b"], coverage=scov(["bg_a", "bg_b"], units=["bg_a", "bg_b"]))
+    assert r["result"] == "UNMEASURED" and r["equal"] == [] and r["seeded"] == {"bg_a": "equal", "bg_b": "equal"}
+    assert sr.validate_drill(r) == []
+    # one rebuilt unit equal next to a seeded one is enough
+    r2 = cmp_(sets, sets, expected_assets=["bg_a", "bg_b"], coverage=scov(["bg_b"], units=["bg_a", "bg_b"]))
+    assert r2["result"] == "PASS_DECLARED_ONLY" and r2["equal"] == ["bg_a"]
+    # a rebuilt unit that differs UNEXPLAINED does not make the seeded one count: FAIL
+    bad = cmp_(sets, {**sets, "bg_a": fp(9)}, expected_assets=["bg_a", "bg_b"], coverage=scov(["bg_b"], units=["bg_a", "bg_b"]))
+    assert bad["result"] == "FAIL" and bad["unexplained"] == ["bg_a"]
+    # an explained-different rebuilt unit counts as measured
+    ok = cmp_(sets, {**sets, "bg_a": fp(9)}, {"bg_a": explain("seeded_not_rebuilt")}, expected_assets=["bg_a", "bg_b"],
+              coverage=scov(["bg_b"], units=["bg_a", "bg_b"]), max_difference_share=1.0)
+    assert ok["result"] == "PASS_DECLARED_ONLY"
+
+
+def test_a_seeded_unit_that_differs_is_reported_but_does_not_fail_the_rebuild_claim():
+    prod, reh = same_sets(), {**same_sets(), "bg_d": fp(99)}
+    r = cmp_(prod, reh, coverage=scov(["bg_d"]))
+    assert r["result"] == "PASS_DECLARED_ONLY" and [d["asset"] for d in r["differences"]] == ["bg_d"] and r["unexplained"] == []
+    assert r["seeded"] == {"bg_d": "fingerprint_differs"} and r["problems"] == [] and sr.validate_drill(r) == []
+    # the share limits are about the rebuilt units only: three seeded differences (30%) are not "too many"
+    reh3 = {**same_sets(), "bg_d": fp(91), "bg_e": fp(92), "bg_f": fp(93)}
+    assert cmp_(prod, reh3, coverage=scov(["bg_d", "bg_e", "bg_f"]))["result"] == "PASS_DECLARED_ONLY"
+    # an explanation for it is still checked (a malformed one is a problem) and an undecided one is not counted
+    assert cmp_(prod, reh, {"bg_d": explain("seeded_not_rebuilt", decision=None)}, coverage=scov(["bg_d"]))["result"] == "PASS_DECLARED_ONLY"
+    assert cmp_(prod, reh, {"bg_d": {"reason_code": "because", "detail": DETAIL}}, coverage=scov(["bg_d"]))["result"] == "FAIL"
+    # a rebuilt unit differing next to it still fails
+    assert cmp_(prod, {**reh, "bg_b": fp(77)}, coverage=scov(["bg_d"]))["result"] == "FAIL"
+    # a seeded unit missing on one side is a difference too, not a failure
+    miss = {k: v for k, v in same_sets().items() if k != "bg_d"}
+    m = cmp_(same_sets(), miss, coverage=scov(["bg_d"]))
+    assert m["result"] == "PASS_DECLARED_ONLY" and m["seeded"] == {"bg_d": "missing_in_rehearsal"} and m["differences"][0]["kind"] == "missing_in_rehearsal"
+
+
+def test_a_seeded_unit_that_is_uncovered_or_empty_is_shown_without_failing():
+    miss = {k: v for k, v in same_sets().items() if k != "bg_d"}
+    r = cmp_(miss, miss, coverage=scov(["bg_d"]))
+    assert r["result"] == "PASS_DECLARED_ONLY" and r["seeded"] == {"bg_d": "uncovered"} and r["uncovered"] == []
+    sets = same_sets()
+    rows = rows_(sets, sets)
+    rows["bg_d"] = {"production": {"t": 0}, "rehearsal": {"t": 0}}
+    e = cmp_(sets, sets, rows=rows, coverage=scov(["bg_d"]))
+    assert e["result"] == "PASS_DECLARED_ONLY" and e["seeded"] == {"bg_d": "empty_both_sides"} and e["empty_both_sides"] == []
+    # but a non-seeded empty unit still makes the verdict UNMEASURED and a non-seeded uncovered one still fails
+    assert cmp_(sets, sets, rows=rows)["result"] == "UNMEASURED"
+    assert cmp_(miss, miss)["result"] == "FAIL"
+    # equal fingerprints with different rows are a contradiction even for a seeded unit
+    rows["bg_d"] = {"production": {"t": 0}, "rehearsal": {"t": 3}}
+    assert cmp_(sets, sets, rows=rows, coverage=scov(["bg_d"]))["result"] == "FAIL"
+
+
+def test_the_seeded_coverage_list_is_closed_sorted_and_part_of_the_derived_scope():
+    with pytest.raises(sr.RehearsalError, match="derived"):
+        cmp_(same_sets(), same_sets(), coverage=cov_(seeded=["bg_d"]))                 # seeded present but scope claims all_declared_full
+    for bad in ("bg_d", ["bg_zzz"], ["bg_e", "bg_d"], ["bg_d", "bg_d"], [1], None):
+        with pytest.raises(sr.RehearsalError, match="seeded"):
+            cmp_(same_sets(), same_sets(), coverage=cov_(seeded=bad, scope="declared_only"))
+    c = cov_()
+    c.pop("seeded")
+    with pytest.raises(sr.RehearsalError):
+        cmp_(same_sets(), same_sets(), coverage=c)
+
+
+def test_the_seeded_field_of_the_drill_is_rederived():
+    r = cmp_(same_sets(), {**same_sets(), "bg_d": fp(99)}, coverage=scov(["bg_d"]))
+    assert sr.validate_drill(r) == []
+    for label, edit in (("status", lambda d: d["seeded"].update(bg_d="equal")), ("dropped", lambda d: d["seeded"].clear()),
+                        ("added", lambda d: d["seeded"].update(bg_a="equal")), ("coverage", lambda d: d["coverage"].update(seeded=[])),
+                        ("result", lambda d: d.update(result="FAIL"))):
+        d = copy.deepcopy(r)
+        edit(d)
+        assert sr.validate_drill(d), label
+
 
 
 def test_e57_uses_the_e55_fingerprint_definition_not_a_second_one():
@@ -1759,20 +2025,23 @@ def invariants(m: types.ModuleType, tmp: pathlib.Path) -> list[str]:
     ex = lambda code, n, dec="N-77": {"reason_code": code, "detail": dtl(n), **({"decision": dec} if dec else {})}  # noqa: E731
 
     def cmp2(prod, reh, expl=None, **kw):
-        return m.compare_fingerprint_sets(envl(prod), envl(reh), expl, **{"expected_assets": ASSETS, "commit": SHA40, **kw})
+        nd = {a: [m.CODE_REQUIRES_FLAG[e["reason_code"]]] for a, e in (expl or {}).items()
+              if isinstance(e, dict) and e.get("reason_code") in m.CODE_REQUIRES_FLAG} if isinstance(expl, dict) else {}
+        return m.compare_fingerprint_sets(envl(prod), envl(reh), expl, **{"expected_assets": ASSETS, "commit": SHA40, "coverage": cov_(ASSETS, nd),
+                                                                           "rows": rows_(prod, reh), **kw})
     diff = {**full, "bg_b": fp(99)}
-    check("compare_equal_passes", lambda: cmp2(full, full)["result"] == "PASS")
+    check("compare_equal_passes", lambda: cmp2(full, full)["result"] in m.RESULTS_PASS)
     check("compare_unexplained_fails", lambda: cmp2(full, diff)["result"] == "FAIL")
-    check("compare_explained_passes", lambda: cmp2(full, diff, {"bg_b": ex("rolling_horizon", 1)})["result"] == "PASS")
+    check("compare_explained_passes", lambda: cmp2(full, diff, {"bg_b": ex("rolling_horizon", 1)})["result"] in m.RESULTS_PASS)
     check("compare_uncovered_fails", lambda: cmp2({"bg_a": fp(1)}, {"bg_a": fp(1)})["result"] == "FAIL")
     check("compare_unexpected_fails", lambda: cmp2({**full, "bg_zzz": fp(1)}, {**full, "bg_zzz": fp(1)})["result"] == "FAIL")
     check("compare_kind_restricted_codes", lambda: cmp2(full, diff, {"bg_b": ex("source_unavailable_offline", 1)})["result"] == "FAIL")
     miss = {k: v for k, v in full.items() if k != "bg_j"}
-    check("compare_missing_kind_codes", lambda: cmp2(miss, full, {"bg_j": ex("asset_new_at_commit", 1)})["result"] == "PASS" and cmp2(miss, full, {"bg_j": ex("rolling_horizon", 1)})["result"] == "FAIL")
+    check("compare_missing_kind_codes", lambda: cmp2(miss, full, {"bg_j": ex("asset_new_at_commit", 1)})["result"] in m.RESULTS_PASS and cmp2(miss, full, {"bg_j": ex("rolling_horizon", 1)})["result"] == "FAIL")
     check("compare_short_detail_fails", lambda: cmp2(full, diff, {"bg_b": {"reason_code": "rolling_horizon", "detail": "short", "decision": "N-1"}})["result"] == "FAIL")
     check("compare_bad_decision_fails", lambda: cmp2(full, diff, {"bg_b": ex("rolling_horizon", 1, "SS-1")})["result"] == "FAIL")
     check("compare_undecided_fails_by_default", lambda: cmp2(full, diff, {"bg_b": ex("rolling_horizon", 1, None)})["result"] == "FAIL")
-    check("compare_undecided_allowed_by_share", lambda: cmp2(full, diff, {"bg_b": ex("rolling_horizon", 1, None)}, max_undecided_share=0.2)["result"] == "PASS")
+    check("compare_undecided_allowed_by_share", lambda: cmp2(full, diff, {"bg_b": ex("rolling_horizon", 1, None)}, max_undecided_share=0.2)["result"] in m.RESULTS_PASS)
     check("compare_stray_explanation_fails", lambda: cmp2(full, full, {"bg_a": ex("rolling_horizon", 1)})["result"] == "FAIL")
     alld = {a: fp(500 + i) for i, a in enumerate(ASSETS)}
     check("compare_difference_share_cap", lambda: cmp2(full, alld, {a: ex("seeded_not_rebuilt", i) for i, a in enumerate(ASSETS)})["result"] == "FAIL")
@@ -1783,7 +2052,13 @@ def invariants(m: types.ModuleType, tmp: pathlib.Path) -> list[str]:
     check("compare_control_char_detail_fails", lambda: cmp2(full, diff, {"bg_b": {"reason_code": "rolling_horizon", "detail": dtl(1) + "\n", "decision": "N-1"}})["result"] == "FAIL")
     check("compare_neither_side_not_explainable", lambda: cmp2(miss, miss, {"bg_j": ex("source_unavailable_offline", 1)})["result"] == "FAIL")
     for label, bad_exp in (("empty", []), ("dup", ["bg_a", "bg_a"]), ("badid", ["Bad Id"])):
-        check(f"compare_expected_{label}_refused", lambda b=bad_exp: raises(m.RehearsalError, lambda: m.compare_fingerprint_sets(envl(full), envl(full), expected_assets=b, commit=SHA40)))
+        def refused_for_expected(b=bad_exp):
+            try:
+                m.compare_fingerprint_sets(envl(full), envl(full), expected_assets=b, commit=SHA40, **CR)
+            except m.RehearsalError as exc:
+                return "non-empty list of unique" in str(exc)                 # refused BECAUSE of the expected list, not by a later coverage check
+            return False
+        check(f"compare_expected_{label}_refused", refused_for_expected)
     os.environ["GIT_DIR"] = "/x"
     try:
         genv = m._git_env()
@@ -1791,11 +2066,15 @@ def invariants(m: types.ModuleType, tmp: pathlib.Path) -> list[str]:
         os.environ.pop("GIT_DIR", None)
     check("git_env_scrubbed", lambda: "GIT_DIR" not in genv and genv["HOME"] == "/nonexistent")
     check("compare_explained_non_mapping_refused", lambda: raises(m.RehearsalError, lambda: cmp2(full, full, [1])))
-    check("compare_marker_required", lambda: raises(m.RehearsalError, lambda: m.compare_fingerprint_sets(full, envl(full), expected_assets=ASSETS, commit=SHA40)))
-    check("compare_wrong_marker_refused", lambda: raises(m.RehearsalError, lambda: m.compare_fingerprint_sets({"definition": "x/1", "fingerprints": full}, envl(full), expected_assets=ASSETS, commit=SHA40)))
-    check("compare_expected_required", lambda: raises(m.RehearsalError, lambda: m.compare_fingerprint_sets(envl(full), envl(full), expected_assets=None, commit=SHA40)))
-    check("compare_commit_required", lambda: raises(m.RehearsalError, lambda: m.compare_fingerprint_sets(envl(full), envl(full), expected_assets=ASSETS, commit="x")))
-    drill = cmp2(full, diff, {"bg_b": ex("rolling_horizon", 1)})
+    check("compare_marker_required", lambda: raises(m.RehearsalError, lambda: m.compare_fingerprint_sets(full, envl(full), expected_assets=ASSETS, commit=SHA40, **CR)))
+    check("compare_wrong_marker_refused", lambda: raises(m.RehearsalError, lambda: m.compare_fingerprint_sets({"definition": "x/1", "fingerprints": full}, envl(full), expected_assets=ASSETS, commit=SHA40, **CR)))
+    check("compare_expected_required", lambda: raises(m.RehearsalError, lambda: m.compare_fingerprint_sets(envl(full), envl(full), expected_assets=None, commit=SHA40, **CR)))
+    check("compare_commit_required", lambda: raises(m.RehearsalError, lambda: m.compare_fingerprint_sets(envl(full), envl(full), expected_assets=ASSETS, commit="x", **CR)))
+    try:
+        drill = cmp2(full, diff, {"bg_b": ex("rolling_horizon", 1)})
+    except Exception:                                          # noqa: BLE001 - a mutant that refuses a good drill input is a failed invariant
+        drill = cmp2(full, full)
+        bad.append("drill_not_built")
     check("drill_valid", lambda: m.validate_drill(drill) == [])
     for label, edit in (("result", lambda d: d.update(result="FAIL")), ("tool", lambda d: d.update(tool_sha256=H)),
                         ("rehearsal", lambda d: d["rehearsal"]["fingerprints"].update(bg_b=fp(1))), ("limits", lambda d: d["limits"].update(max_difference_share=1.0)),
@@ -1805,6 +2084,52 @@ def invariants(m: types.ModuleType, tmp: pathlib.Path) -> list[str]:
             edit(d)
             return m.validate_drill(d) != []
         check(f"drill_tamper:{label}", tampered)
+    # round 2: scope label, flags, rows
+    check("scope_pass_bare", lambda: cmp2(full, full)["result"] == "PASS")
+    check("scope_declared_only", lambda: cmp2(full, full, coverage=cov_(ASSETS, {"bg_c": ["platform_bound"]}))["result"] == "PASS_DECLARED_ONLY")
+    check("scope_derived_refused", lambda: raises(m.RehearsalError, lambda: cmp2(full, full, coverage=cov_(ASSETS, {"bg_c": ["platform_bound"]}, scope="all_declared_full"))))
+    check("scope_derived_refused_reverse", lambda: raises(m.RehearsalError, lambda: cmp2(full, full, coverage=cov_(ASSETS, None, scope="declared_only"))))
+    check("coverage_units_must_match", lambda: raises(m.RehearsalError, lambda: cmp2(full, full, coverage=cov_(ASSETS[:3]))))
+    check("flag_required_rolling", lambda: cmp2(full, diff, {"bg_b": ex("rolling_horizon", 1)}, coverage=cov_(ASSETS))["result"] == "FAIL")
+    check("flag_required_platform", lambda: cmp2(full, miss, {"bg_j": ex("source_unavailable_offline", 1)}, coverage=cov_(ASSETS, {"bg_j": ["rolling_horizon"]}))["result"] == "FAIL")
+    check("flag_ok", lambda: cmp2(full, diff, {"bg_b": ex("rolling_horizon", 1)})["result"] == "PASS_DECLARED_ONLY")
+    erows = rows_(full, full)
+    erows["bg_d"] = {"production": {"t": 0}, "rehearsal": {"t": 0}}
+    check("empty_both_unmeasured", lambda: cmp2(full, full, rows=erows)["result"] == "UNMEASURED" and cmp2(full, full, rows=erows)["empty_both_sides"] == ["bg_d"])
+    check("empty_not_equal", lambda: "bg_d" not in cmp2(full, full, rows=erows)["equal"])
+    mrows = rows_(full, full)
+    mrows["bg_a"]["rehearsal"] = {"t": 6}
+    check("row_mismatch_fails", lambda: cmp2(full, full, rows=mrows)["result"] == "FAIL")
+    check("rows_required_per_side", lambda: raises(m.RehearsalError, lambda: cmp2(full, full, rows={k: v for k, v in rows_(full, full).items() if k != "bg_a"})))
+    try:
+        cdrill = cmp2(full, full, coverage=cov_(ASSETS, {"bg_c": ["platform_bound"]}))
+    except Exception:                                          # noqa: BLE001 - a mutant that refuses a good coverage is already caught above
+        cdrill = None
+        bad.append("coverage_drill_not_built")
+    if cdrill is not None:
+        check("drill_coverage_tamper", lambda: m.validate_drill({**copy.deepcopy(cdrill), "result": "PASS"}) != [])
+        check("drill_declarations_bound", lambda: m.validate_drill(cdrill, declarations_coverage={**cdrill["coverage"], "undeclared": {"x": "y"}}) != [])
+    # round 3: seeded
+    sd = lambda seeded, units=None, **o: cov_(units, seeded=sorted(seeded), scope="declared_only", **o)  # noqa: E731
+    check("seeded_equal_not_counted", lambda: cmp2(full, full, coverage=sd(["bg_d"]))["result"] == "PASS_DECLARED_ONLY" and "bg_d" not in cmp2(full, full, coverage=sd(["bg_d"]))["equal"])
+    two_ = {"bg_a": fp(1), "bg_b": fp(2)}
+    check("seeded_only_equal_unmeasured", lambda: cmp2(two_, two_, expected_assets=["bg_a", "bg_b"], coverage=sd(["bg_a", "bg_b"], ["bg_a", "bg_b"]))["result"] == "UNMEASURED")
+    check("seeded_one_rebuilt_equal_enough", lambda: cmp2(two_, two_, expected_assets=["bg_a", "bg_b"], coverage=sd(["bg_b"], ["bg_a", "bg_b"]))["result"] == "PASS_DECLARED_ONLY")
+    sdiff = {**full, "bg_d": fp(99)}
+    check("seeded_diff_reported_not_failing", lambda: cmp2(full, sdiff, coverage=sd(["bg_d"]))["result"] == "PASS_DECLARED_ONLY"
+          and cmp2(full, sdiff, coverage=sd(["bg_d"]))["unexplained"] == [] and [d["asset"] for d in cmp2(full, sdiff, coverage=sd(["bg_d"]))["differences"]] == ["bg_d"])
+    check("seeded_diff_status", lambda: cmp2(full, sdiff, coverage=sd(["bg_d"]))["seeded"] == {"bg_d": "fingerprint_differs"})
+    sdiff3 = {**full, "bg_d": fp(91), "bg_e": fp(92), "bg_f": fp(93)}
+    check("seeded_diffs_not_in_share", lambda: cmp2(full, sdiff3, coverage=sd(["bg_d", "bg_e", "bg_f"]))["result"] == "PASS_DECLARED_ONLY")
+    check("seeded_undecided_not_counted", lambda: cmp2(full, sdiff, {"bg_d": ex("seeded_not_rebuilt", 1, None)}, coverage=sd(["bg_d"]))["result"] == "PASS_DECLARED_ONLY")
+    check("rebuilt_diff_still_fails_next_to_seeded", lambda: cmp2(full, {**sdiff, "bg_b": fp(77)}, coverage=sd(["bg_d"]))["result"] == "FAIL")
+    check("seeded_uncovered_shown", lambda: cmp2(miss, miss, coverage=sd(["bg_j"]))["seeded"] == {"bg_j": "uncovered"} and cmp2(miss, miss, coverage=sd(["bg_j"]))["result"] == "PASS_DECLARED_ONLY")
+    four = ["bg_g", "bg_h", "bg_i", "bg_j"]
+    twod = {**full, "bg_a": fp(81), "bg_b": fp(82)}
+    check("seeded_not_in_share_denominator", lambda: cmp2(full, twod, {a: ex("seeded_not_rebuilt", i) for i, a in enumerate(("bg_a", "bg_b"))}, coverage=sd(four))["result"] == "FAIL")
+    check("share_denominator_without_seeded_ok", lambda: cmp2(full, twod, {a: ex("seeded_not_rebuilt", i) for i, a in enumerate(("bg_a", "bg_b"))}, coverage=cov_(ASSETS))["result"] in m.RESULTS_PASS)
+    check("seeded_scope_derived", lambda: raises(m.RehearsalError, lambda: cmp2(full, full, coverage=cov_(ASSETS, seeded=["bg_d"]))))
+    check("seeded_sorted_subset", lambda: raises(m.RehearsalError, lambda: cmp2(full, full, coverage=sd(["bg_zzz"]))) and raises(m.RehearsalError, lambda: cmp2(full, full, coverage=cov_(ASSETS, seeded=["bg_e", "bg_d"], scope="declared_only"))))
     check("drill_junk_never_raises", lambda: all(m.validate_drill(j) for j in (None, 5, [], {})))
     return bad
 
@@ -1815,6 +2140,29 @@ def test_invariant_suite_is_clean_on_the_unmutated_module(tmp_path):
 
 
 MUTANTS = [
+    ('            elif a in seeded:\n                seeded_status[a] = "empty_both_sides" if sum(rws[a]["production"].values()) == 0 else "equal"      # shown, never counted', '            elif False:\n                seeded_status[a] = "equal"'),
+    ('    measured = len(equal) + sum(1 for d in rebuilt_diffs if d["explained"] is not None)', '    measured = len(equal) + len(seeded_status) + sum(1 for d in rebuilt_diffs if d["explained"] is not None)'),
+    ('    measured = len(equal) + sum(1 for d in rebuilt_diffs if d["explained"] is not None)', '    measured = 1'),
+    ('    unexplained = [d["asset"] for d in rebuilt_diffs if d["explained"] is None]', '    unexplained = [d["asset"] for d in diffs if d["explained"] is None]'),
+    ('    rebuilt = [a for a in expected if a not in seeded]                    # the units the rebuilt-equals-source claim is about', '    rebuilt = list(expected)'),
+    ('    rebuilt_diffs = [d for d in diffs if d["asset"] not in seeded]', '    rebuilt_diffs = list(diffs)'),
+    ('        if "decision" not in e and d["asset"] not in seeded:', '        if "decision" not in e:'),
+    ('        if a in seeded:\n            seeded_status[a] = kind', '        if False:\n            seeded_status[a] = kind'),
+    ('            if a in seeded:\n                seeded_status[a] = "uncovered"', '            if False:\n                seeded_status[a] = "uncovered"'),
+    ('    uncovered = [a for a in uncovered_all if a not in seeded]', '    uncovered = list(uncovered_all)'),
+    ('c["partial"] or c["undeclared"] or c["non_deterministic"] or c["seeded"]) else "all_declared_full"', 'c["partial"] or c["undeclared"] or c["non_deterministic"]) else "all_declared_full"'),
+    ('c["seeded"] == sorted(c["seeded"])):', 'True):'),
+    ('set(c["seeded"]) <= set(c["units"]) and', 'True and'),
+    ('    result = ("FAIL" if failed else "UNMEASURED" if (empty or measured == 0)\n              else ("PASS" if cov["scope"] == "all_declared_full" else "PASS_DECLARED_ONLY"))', '    result = "FAIL" if failed else "UNMEASURED" if empty else "PASS"'),
+    ('    result = ("FAIL" if failed else "UNMEASURED" if (empty or measured == 0)\n              else ("PASS" if cov["scope"] == "all_declared_full" else "PASS_DECLARED_ONLY"))', '    result = "FAIL" if failed else ("PASS" if cov["scope"] == "all_declared_full" else "PASS_DECLARED_ONLY")'),
+    ('    if c["scope"] != scope:', '    if False:'),
+    ('    scope = "declared_only" if (c["partial"] or c["undeclared"] or c["non_deterministic"] or c["seeded"]) else "all_declared_full"', '    scope = "declared_only" if (c["partial"] or c["undeclared"]) else "all_declared_full"'),
+    ('c["units"] == sorted(expected)):', 'True):'),
+    ('        if need is not None and need not in cov["non_deterministic"].get(d["asset"], []):', '        if False:'),
+    ('            if rws[a]["production"] != rws[a]["rehearsal"]:', '            if False:'),
+    ('            elif sum(rws[a]["production"].values()) == 0:', '            elif False:'),
+    ('            if out.get(u, {}).get(side) is None:', '            if False:'),
+    ('        if declarations_coverage is not None and doc["coverage"] != dict(declarations_coverage):', '        if False:'),
     # judges
     ('if m["fingerprint_before"] != m["fingerprint_after_rebuild"]:\n        p.append("the fingerprint moved', 'if False:\n        p.append("the fingerprint moved'),
     ('if m["fingerprint_after_material_change"] == m["fingerprint_before"]:', 'if False:'),
@@ -1908,10 +2256,10 @@ MUTANTS = [
     ('if e["reason_code"] not in EXPLAIN_CODES_BY_KIND[kind]:', 'if False:'),
     ('if "decision" in e and not (isinstance(e["decision"], str) and _DECISION_ID.fullmatch(e["decision"])):', 'if False:'),
     ('if norm in seen:', 'if False:'),
-    ('if "decision" not in e:\n            undecided += 1', 'if False:\n            undecided += 1'),
-    ('if expected and undecided / len(expected) > max_undecided_share:', 'if False:'),
-    ('if expected and len(diffs) / len(expected) > max_difference_share:', 'if False:'),
-    ('uncovered = [a for a in expected if a not in prod and a not in reh]', 'uncovered = []'),
+    ('if "decision" not in e and d["asset"] not in seeded:\n            undecided += 1', 'if False:\n            undecided += 1'),
+    ('if rebuilt and undecided / len(rebuilt) > max_undecided_share:', 'if False:'),
+    ('if rebuilt and len(rebuilt_diffs) / len(rebuilt) > max_difference_share:', 'if False:'),
+    ('uncovered_all = [a for a in expected if a not in prod and a not in reh]', 'uncovered_all = []'),
     ('unexpected = sorted((set(prod) | set(reh)) - set(expected))', 'unexpected = []'),
     ('if env["definition"] != FINGERPRINT_DEFINITION:', 'if False:'),
     ('if not isinstance(explained, Mapping):', 'if False:'),
