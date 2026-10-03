@@ -1,0 +1,90 @@
+{
+ "carr_d_checks": [
+  "Carr.D1",
+  "Carr.D2",
+  "Carr.D3"
+ ],
+ "criteria": {
+  "Carr.D1": {
+   "applicability": "the asset DECLARES D1 (it transcribes cited classical content, N-73) with a spec: every row is matched against the declared passage of the English translation (carriage_d1.py); an asset with no declaration reads not measured",
+   "asset_kinds": null,
+   "check": "D1",
+   "columns_any": null,
+   "detector": "asset_census.py:measure()",
+   "gate": "Carr",
+   "layers": [
+    "L0",
+    "L1",
+    "L2",
+    "L3",
+    "L4",
+    "L5"
+   ],
+   "revision": 2
+  },
+  "Carr.D2": {
+   "applicability": "the asset carries two independent witnesses of the same fact",
+   "asset_kinds": null,
+   "check": "D2",
+   "columns_any": null,
+   "detector": "NONE",
+   "gate": "Carr",
+   "layers": [
+    "L0",
+    "L1",
+    "L2",
+    "L3",
+    "L4",
+    "L5"
+   ],
+   "revision": 1
+  },
+  "Carr.D3": {
+   "applicability": "the asset computes a value that a second method could re-derive",
+   "asset_kinds": null,
+   "check": "D3",
+   "columns_any": null,
+   "detector": "NONE",
+   "gate": "Carr",
+   "layers": [
+    "L0",
+    "L1",
+    "L2",
+    "L3",
+    "L4",
+    "L5"
+   ],
+   "revision": 1
+  }
+ },
+ "na_causes": {
+  "Carr.D1": [
+   "no-carriage",
+   "not-the-declared-carriage",
+   "ratified_judgment"
+  ],
+  "Carr.D2": [
+   "no-carriage",
+   "not-the-declared-carriage",
+   "ratified_judgment"
+  ],
+  "Carr.D3": [
+   "no-carriage",
+   "not-the-declared-carriage",
+   "ratified_judgment"
+  ]
+ },
+ "na_rule_decisions_note": [
+  "Carr.D1#measured:not-the-declared-carriage",
+  "Carr.D2#measured:not-the-declared-carriage",
+  "Carr.D3#measured:not-the-declared-carriage"
+ ],
+ "na_rules": {
+  "Carr.D1#measured:not-the-declared-carriage": "N-72 (S2, declaration-keyed); N-73 (2); N-22/N-22a row 15 (not-chosen stays refused)",
+  "Carr.D2#measured:not-the-declared-carriage": "N-72 (S2, declaration-keyed); N-73 (2); N-22/N-22a row 15 (not-chosen stays refused)",
+  "Carr.D3#measured:not-the-declared-carriage": "N-72 (S2, declaration-keyed); N-73 (2); N-22/N-22a row 15 (not-chosen stays refused)"
+ },
+ "retired": [
+  "Carr.detector"
+ ]
+}

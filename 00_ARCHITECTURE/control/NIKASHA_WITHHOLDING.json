@@ -1,0 +1,14 @@
+{
+  "version": 1,
+  "doc": "The withholding list (Suvarna E5.2; plan 6.3; register R244; ROLE_SCRIBE 'the current withholding list'). A withheld (asset, criterion) is removed from the census before nikasha_fold.py --emit-gaps runs asset_census.emit_gaps_summary, so the gap ledger gets no transition for it in either direction (no OPEN, no RE-OPEN, no CLOSED credit). `entries` is an OBJECT keyed by gap id `<asset>-<criterion>` so the tracker's membership test (`entry in data['entries']`, detectors.py _withholding_has_entry, TRACK_E E4.2r deferred_withholding_entry) matches the string entry. This file is changed only by a reviewed PR on a recorded Strategic Suvarna decision or an accepted packet that shows the entry's condition holds; nikasha_fold.py never adds or lifts an entry.",
+  "entries": {
+    "bo_upaya-Idem.pattern": {
+      "asset": "bo_upaya",
+      "criterion": "Idem.pattern",
+      "register_row": "R244",
+      "reason": "bo_upaya's Idem.pattern PASS is unearned on every chart: commit fa9857f00 (#2607) removed the delete of legacy bodha_rm_dasha_windowed_prescriptions rows, which hold a validated non-deferrable NO ACTION foreign key onto the prescriptions table bo_upaya still deletes, so every rebuild would raise a foreign-key violation; the detector still reads PASS (register R244, v2.5).",
+      "condition": "Lifts only when the bo_upaya fix (restore replace_prior_rm_dasha_windowed() before replace_prior_rm_prescriptions(), E4.2-build-001) is merged AND bo_upaya's own L2 wave (B.U) has rebuilt it live and the re-measure passes, shown by a recorded Strategic Suvarna decision or an accepted packet (ROLE_SCRIBE step 3; plan 4.2 row 5).",
+      "decided_by": "NIKASHA register R244 (v2.5 W2-3 fold, native ruling 2026-09-28 on the fix route); plan v1.5 6.3; Track E brief 7 row E5.2"
+    }
+  }
+}

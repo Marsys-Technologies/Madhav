@@ -24,6 +24,7 @@ sys.path.insert(0, str(HERE.parent))
 sys.path.insert(0, str(HERE))
 
 import asset_census as ac  # noqa: E402
+import _decl_version  # noqa: E402
 import _narr_writer_checks as nw  # noqa: E402
 
 FIXTURE = json.loads((HERE / "fixtures" / "census_cells_2026-09-30.json").read_text(encoding="utf-8"))
@@ -167,8 +168,8 @@ def test_a_wildcard_entry_round_trips_through_the_loader_and_the_fact(tmp_path):
             ac.validate_declarations(_doc(w=dict(prose_fields=[bad], evidence=PEV)))
 
 
-def test_the_file_version_is_1_12_0():
-    assert json.loads((HERE.parent / "asset_declarations.json").read_text(encoding="utf-8"))["version"] == "1.12.0"
+def test_the_file_version_is_the_current_one():
+    assert json.loads((HERE.parent / "asset_declarations.json").read_text(encoding="utf-8"))["version"] == _decl_version.CURRENT
 
 
 def test_empty_prose_list_is_a_valid_positive_declaration_distinct_from_null(tmp_path):
@@ -2461,7 +2462,7 @@ def test_citation_sites_scanner_sees_attribute_setdefault_variable_uppercase_key
 
 def test_the_declarations_file_states_the_fact_row_narr_rule_and_the_version():
     doc = json.loads((HERE.parent / "asset_declarations.json").read_text(encoding="utf-8"))
-    assert doc["version"] == "1.12.0"
+    assert doc["version"] == _decl_version.CURRENT
     d = doc["description"]
     for phrase in ("fact_value_text is the datum", "citation_human is the sentence", "verbalising an L1 fact value states a computed value",
                    "fact_value_text / formula_provenance_text columns stay undeclared", "[*]"):
