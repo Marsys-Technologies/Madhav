@@ -81,7 +81,8 @@ BEGIN
    WHERE d.refobjid = v_rel AND r.ev_class <> v_rel;
   IF v_x <> 0 THEN RAISE EXCEPTION 'sd8 precondition: % view/rule object(s) depend on phala_pramana', v_x; END IF;
   -- the roles: the delete role can DELETE, the read role cannot
-  IF NOT has_table_privilege('data_plane_builder', v_rel, 'SELECT,DELETE') OR has_table_privilege('data_plane_builder', v_rel, 'UPDATE,TRUNCATE') THEN
+  IF NOT (has_table_privilege('data_plane_builder', v_rel, 'SELECT') AND has_table_privilege('data_plane_builder', v_rel, 'DELETE'))
+     OR has_table_privilege('data_plane_builder', v_rel, 'UPDATE,TRUNCATE') THEN
     RAISE EXCEPTION 'sd8 precondition: data_plane_builder must hold SELECT and DELETE and no UPDATE/TRUNCATE on phala_pramana';
   END IF;
   IF has_table_privilege('suvarna_reader', v_rel, 'INSERT,UPDATE,DELETE,TRUNCATE') THEN

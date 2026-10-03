@@ -59,7 +59,8 @@ def test_the_mirror_is_production_shaped(cluster, db, runner):
     assert n(runner, FP_SQL, (CHART,)) == PROD_FP
     # roles: the builder holds exactly SELECT, INSERT, DELETE (no UPDATE / TRUNCATE); the reader nothing that writes; the administrator is CREATEROLE, not a superuser,
     # has no USAGE on public and is a member of none of the roles it will assume
-    assert n(runner, "SELECT has_table_privilege('data_plane_builder','public.phala_pramana','SELECT,INSERT,DELETE')") is True
+    for priv in ("SELECT", "INSERT", "DELETE"):                                  # one by one: a comma list means ANY of them
+        assert n(runner, f"SELECT has_table_privilege('data_plane_builder','public.phala_pramana','{priv}')") is True, priv
     assert n(runner, "SELECT has_table_privilege('data_plane_builder','public.phala_pramana','UPDATE')") is False
     assert n(runner, "SELECT has_table_privilege('data_plane_builder','public.phala_pramana','TRUNCATE')") is False
     assert n(runner, "SELECT has_table_privilege('suvarna_reader','public.phala_pramana','INSERT,UPDATE,DELETE,TRUNCATE')") is False
@@ -307,6 +308,8 @@ def test_a_changed_acl_for_the_delete_role_is_refused(runner):
                    setup=lambda: runner.su("GRANT UPDATE ON public.phala_pramana TO data_plane_builder", ))
     assert_refused(runner, ["pre_delete_role_can_delete_and_reader_cannot_write"],
                    setup=lambda: runner.su("REVOKE UPDATE ON public.phala_pramana FROM data_plane_builder; GRANT DELETE ON public.phala_pramana TO suvarna_reader"))
+    assert_refused(runner, ["pre_delete_role_can_delete_and_reader_cannot_write"],
+                   setup=lambda: runner.su("REVOKE DELETE ON public.phala_pramana FROM data_plane_builder, suvarna_reader"))      # the builder keeps SELECT but lost DELETE
 
 
 # ----------------------------------------------------------------------------------------------------------------- builds in flight
@@ -530,6 +533,8 @@ SQL_LAYER_ONLY = {
     "rule": "CREATE RULE sd8_r AS ON DELETE TO public.phala_pramana DO ALSO NOTHING",
     "inheritance_child": "CREATE TABLE public.sd8_kid () INHERITS (public.phala_pramana)",
     "builder_gained_update": "GRANT UPDATE ON public.phala_pramana TO data_plane_builder",
+    "builder_lost_delete": "REVOKE DELETE ON public.phala_pramana FROM data_plane_builder",
+    "builder_lost_select": "REVOKE SELECT ON public.phala_pramana FROM data_plane_builder",
     "reader_gained_delete": "GRANT DELETE ON public.phala_pramana TO suvarna_reader",
 }
 

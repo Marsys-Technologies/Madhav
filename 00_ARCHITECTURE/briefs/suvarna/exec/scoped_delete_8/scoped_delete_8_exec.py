@@ -295,9 +295,10 @@ def snap(cur) -> dict:
     d["memberships"] = {r: bool(one(cur, "SELECT pg_has_role(current_user, %s, 'MEMBER')", (r,))) for r in ASSUMED if d["roles_exist"].get(r)}
     d["table"] = one(cur, "SELECT pg_get_userbyid(c.relowner)::text, c.relkind::text, c.relrowsecurity, c.relforcerowsecurity, COALESCE(c.relacl::text, 'NULL') " + _REL,
                      (SCHEMA, TABLE))
-    d["privs"] = one(cur, "SELECT has_table_privilege(%s, c.oid, 'SELECT,DELETE'), has_table_privilege(%s, c.oid, 'UPDATE,TRUNCATE'), "
+    # has_table_privilege(role, rel, 'A,B') is true if the role holds ANY of the listed privileges: SELECT and DELETE are therefore tested one by one
+    d["privs"] = one(cur, "SELECT has_table_privilege(%s, c.oid, 'SELECT') AND has_table_privilege(%s, c.oid, 'DELETE'), has_table_privilege(%s, c.oid, 'UPDATE,TRUNCATE'), "
                           "has_table_privilege(%s, c.oid, 'INSERT,UPDATE,DELETE,TRUNCATE') " + _REL,
-                     (BUILDER, BUILDER, READER, SCHEMA, TABLE)) if d["roles_exist"][BUILDER] and d["roles_exist"][READER] else None
+                     (BUILDER, BUILDER, BUILDER, READER, SCHEMA, TABLE)) if d["roles_exist"][BUILDER] and d["roles_exist"][READER] else None
     d["fk_referencing"] = one(cur, "SELECT count(*) FROM pg_constraint k JOIN pg_class c ON c.oid = k.confrelid JOIN pg_namespace n ON n.oid = c.relnamespace "
                                    "WHERE n.nspname = %s AND c.relname = %s AND k.contype = 'f'", (SCHEMA, TABLE))
     # built from catalog columns, NOT pg_get_constraintdef: that text qualifies names by search_path visibility, which depends on the role's USAGE on public

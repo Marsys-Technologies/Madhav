@@ -44,6 +44,8 @@ MUTATIONS = [
      'ck.chk("m_pre_referencer_columns_are_the_known_set", True,', "test_a_new_column_that_can_refer_to_a_pramana_id_fails_closed"),
     ("build_in_flight_check_neutered", M, 'ck.chk("m_pre_no_build_in_flight", m["builds_in_flight_any"] == 0 and m["builds_in_flight_on_chart"] == 0,',
      'ck.chk("m_pre_no_build_in_flight", True,', "test_a_build_in_flight_is_refused"),
+    ("delete_role_privilege_check_neutered", M, 'ck.chk("pre_delete_role_can_delete_and_reader_cannot_write", p is not None and p[0] is True and p[1] is False and p[2] is False, p)',
+     'ck.chk("pre_delete_role_can_delete_and_reader_cannot_write", True, p)', "test_a_changed_acl_for_the_delete_role_is_refused"),
     ("foreign_key_check_neutered", M, 'ck.chk("pre_no_foreign_key_references_the_table", pre["fk_referencing"] == 0,',
      'ck.chk("pre_no_foreign_key_references_the_table", True,', "test_a_foreign_key_referencing_the_table_is_refused"),
     ("sql_bound_values_check_neutered", M, 'bound == {"chart": CHART, "ids": IDS_CSV, "fp": ROWS_FINGERPRINT},', 'True,',

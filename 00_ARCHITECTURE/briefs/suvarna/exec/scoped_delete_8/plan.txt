@@ -8,7 +8,7 @@ transaction: ONE, as the Cloud SQL administrator; SET LOCAL lock_timeout = 5s, s
 commit conditions: pre_server_major_is_15, pre_database_is_expected, pre_session_user_is_the_expected_administrator, pre_roles_exist, pre_admin_can_assume_the_roles, pre_sql_bound_values_equal_the_executor_bound_values, pre_table_is_an_ordinary_table_owned_by_amjis_app_without_rls, pre_delete_role_can_delete_and_reader_cannot_write, pre_no_foreign_key_references_the_table, pre_no_user_trigger_rule_view_or_inheritance_on_the_table, m_pre_measured, m_pre_referencer_columns_are_the_known_set, m_pre_dependents_are_zero, m_pre_no_build_in_flight, m_pre_exactly_8_rows_match_chart_and_marker, m_pre_matching_ids_equal_the_bound_ids, m_pre_fingerprint_equals_the_pinned_one, m_pre_no_matching_row_carries_a_life_event_payload, step_*, m_post_measured, m_post_the_8_ids_are_gone, m_post_no_chart_marker_row_left, m_post_chart_total_reduced_by_exactly_8, m_post_other_charts_counts_unchanged, m_post_other_charts_id_set_unchanged, m_post_chart_survivors_are_the_pre_image_minus_the_8, m_post_deleted_ids_equal_the_bound_ids, post_table_owner_acl_constraints_unchanged, post_no_new_trigger_or_rule, post_memberships_restored
 known columns that can refer to a pramana id: mimamsa_anchor_adjustment.derived_from_pramana_ids, mimamsa_convergence_adjustment.derived_from_pramana_ids, mimamsa_fact_adjustment.derived_from_pramana_ids, mimamsa_predictions.source_pramana_id, mimamsa_predictions__ssv_20260728b.source_pramana_id, mimamsa_signal_adjustment.derived_from_pramana_ids, phala_pramana.pramana_id, phala_pramana__ssv_20260728b.pramana_id
 restore: irreversible; rows regenerable by rebuilding ph_pramana for 1c826d5a after PR #3047
--- sql: sd8_delete_life_event_miss_phala_pramana.sql sha256 257efabb2f03528454a3527ed867d48c36c884c6e412726529022453133d38eb
+-- sql: sd8_delete_life_event_miss_phala_pramana.sql sha256 789f0bb0cf43dbb417ebc29b4003f5792feba2e31155ed35653e04cbe52c719d
 -- step s1_assume_roles
 -- Only the memberships GRANTED HERE are revoked again in s5 (tracked in transaction-local GUCs). The bound chart and id list live HERE ONLY
 -- (one literal, read by every later step through the GUC); the plan hash covers this file.
@@ -62,7 +62,8 @@ BEGIN
    WHERE d.refobjid = v_rel AND r.ev_class <> v_rel;
   IF v_x <> 0 THEN RAISE EXCEPTION 'sd8 precondition: % view/rule object(s) depend on phala_pramana', v_x; END IF;
   -- the roles: the delete role can DELETE, the read role cannot
-  IF NOT has_table_privilege('data_plane_builder', v_rel, 'SELECT,DELETE') OR has_table_privilege('data_plane_builder', v_rel, 'UPDATE,TRUNCATE') THEN
+  IF NOT (has_table_privilege('data_plane_builder', v_rel, 'SELECT') AND has_table_privilege('data_plane_builder', v_rel, 'DELETE'))
+     OR has_table_privilege('data_plane_builder', v_rel, 'UPDATE,TRUNCATE') THEN
     RAISE EXCEPTION 'sd8 precondition: data_plane_builder must hold SELECT and DELETE and no UPDATE/TRUNCATE on phala_pramana';
   END IF;
   IF has_table_privilege('suvarna_reader', v_rel, 'INSERT,UPDATE,DELETE,TRUNCATE') THEN
@@ -198,4 +199,4 @@ $sd8$;
 -- gate pin executor_standards.py: bbea69552a6a92e7aed3a75758b533868e3e3d2c5b47385ccc1bf6c0660dc135
 -- gate pin prerun_gate.py: 01ab1d70d0cffea015a64af5430f355dd8d419307aceeaeacf3a0cc4d715773e
 -- gate pin run_gated.sh: 305b4406bba57f85944bbb57cb269368287aaa6d6f782e986afa7f857606f076
--- executor: scoped_delete_8_exec.py sha256 5be619630007b52ecf9d81f53501aad630268ce804269f18d988619378409b44
+-- executor: scoped_delete_8_exec.py sha256 f433840cfdcaf734f6db2f0bf4c5736886a63ad0e29b52ad5f540070f39ab1bc
