@@ -21,7 +21,8 @@ in ``bodha_cgm_nodes``:
   * missing = key the builder would produce that has no live node (unbuilt; informational)
 
 Exit status: 0 when there are no orphans, 1 when there are (a FAIL naming each), 2 on usage or
-connection error. It only ever SELECTs, inside a transaction forced read-only. It does not prune:
+connection error OR when nothing was examined (no expected and no live node for the chart: a
+mistyped chart id, a chart never built, or the wrong database; printed as NOT EXAMINED, never PASS). It only ever SELECTs, inside a transaction forced read-only. It does not prune:
 a scoped prune is a writer change (FD-1) and a data change, held for the one L2 rebuild.
 
     DATABASE_URL=... python3 scripts/l2_node_orphan_census.py --chart-id <uuid> [--json]
@@ -39,7 +40,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 # The node types bo_karanajala writes into a table another asset owns, and the only ones this
 # census looks at (never the five types bo_bimba owns and deletes).
 CROSS_ASSET_NODE_TYPES = ("arudha", "special_lagna")
-SNAPSHOT_TYPE = "static_natal"  # bo_karanajala.SNAPSHOT_TYPE; asserted equal below when importable
+SNAPSHOT_TYPE = "static_natal"  # bo_karanajala.SNAPSHOT_TYPE; asserted equal in the unit test
 CANONICAL_AYAS = (
     "lahiri_chitrapaksha", "raman", "krishnamurti", "surya_siddhanta_classical", "true_chitra",
 )
@@ -100,17 +101,22 @@ def run_census(
         "node_types": list(CROSS_ASSET_NODE_TYPES),
         "ayanamshas": per_aya,
         "totals": {"expected": n_expected, "live": n_live, "orphans": n_orphans, "missing": n_missing},
-        "passed": n_orphans == 0,
+        # A census that saw no expected and no live node examined nothing: that is not a PASS.
+        "not_examined": n_expected == 0 and n_live == 0,
+        "passed": n_orphans == 0 and not (n_expected == 0 and n_live == 0),
     }
 
 
 def _connect_read_only(url: str):
     import psycopg
     import psycopg.rows
-    return psycopg.connect(
+    conn = psycopg.connect(
         url, row_factory=psycopg.rows.dict_row,
         options="-c default_transaction_read_only=on -c statement_timeout=60000",
     )
+    # belt and braces: do not rely on the startup option alone (a pooler may drop it)
+    conn.read_only = True
+    return conn
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -134,6 +140,9 @@ def main(argv: list[str] | None = None) -> int:
         conn.close()
     if args.json:
         print(json.dumps(result, indent=2, sort_keys=True))
+    elif result["not_examined"]:
+        print(f"chart {args.chart_id}: NOT EXAMINED (no expected and no live arudha/special_lagna node; "
+              "check the chart id and the database)")
     else:
         t = result["totals"]
         print(f"chart {args.chart_id}: expected {t['expected']}, live {t['live']}, "
@@ -143,6 +152,8 @@ def main(argv: list[str] | None = None) -> int:
                 print(f"  ORPHAN {aya} {nt} {ns}")
             for nt, ns in r["missing"]:
                 print(f"  missing {aya} {nt} {ns}")
+    if result["not_examined"]:
+        return 2
     return 0 if result["passed"] else 1
 
 

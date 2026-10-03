@@ -41,16 +41,33 @@ class FakeConn:
         self.facts = facts      # list of (fact_id, category, subject, key, text, num)
         self.nodes = nodes      # list of (ayanamsha, node_type, node_subject)
         self.statements: list[str] = []
+        self.node_params: list[list] = []
+        self.fact_params: list[list] = []
+        self.rolled_back = False
+        self.closed = False
+
+    def rollback(self):
+        self.rolled_back = True
+
+    def close(self):
+        self.closed = True
 
     def execute(self, sql, params=None):
         self.statements.append(" ".join(sql.split()))
         if "FROM chart_facts" in sql:
+            self.fact_params.append(list(params))
             return _Cur([
                 {"fact_id": f[0], "fact_category": f[1], "fact_subject": f[2], "fact_key": f[3],
                  "fact_value_text": f[4], "fact_value_num": f[5]}
                 for f in self.facts
             ])
         if "FROM bodha_cgm_nodes" in sql:
+            self.node_params.append(list(params))
+            # the fake answers only for the chart and snapshot the SQL was asked about, as the
+            # database would (a census that dropped either filter would then see foreign rows)
+            if ("chart_id = %s" not in sql or "snapshot_type = %s" not in sql
+                    or params[0] != CHART or params[2] != "static_natal"):
+                return _Cur([])
             aya = params[1]
             # honour the SQL the way the database would: the type filter applies only if the
             # statement carries it
@@ -80,6 +97,12 @@ NODES = [(AYA, "arudha", "A1"), (AYA, "arudha", "A5"), (AYA, "special_lagna", "G
 def test_compare_names_orphans_and_missing_sorted() -> None:
     out = census.compare_node_keys({("arudha", "A1"), ("arudha", "A2")}, {("arudha", "A1"), ("arudha", "A9"), ("arudha", "A3")})
     assert out == {"orphans": [("arudha", "A3"), ("arudha", "A9")], "missing": [("arudha", "A2")]}
+
+
+def test_compare_lists_are_sorted_over_many_keys() -> None:
+    live = {("arudha", f"A{i}") for i in range(12, 0, -1)}
+    out = census.compare_node_keys(set(), live)
+    assert out["orphans"] == sorted(live) and len(out["orphans"]) == 12
 
 
 def test_compare_identical_sets_is_clean() -> None:
@@ -185,21 +208,70 @@ def test_the_census_issues_only_selects() -> None:
 def _main_with(monkeypatch, facts, nodes, capsys):
     monkeypatch.setenv("DATABASE_URL", "postgresql://x")
     conn = FakeConn(facts, nodes)
-    conn.rollback = lambda: None
-    conn.close = lambda: None
     monkeypatch.setattr(census, "_connect_read_only", lambda url: conn)
     monkeypatch.setattr(census, "CANONICAL_AYAS", (AYA,))
     rc = census.main(["--chart-id", CHART])
-    return rc, capsys.readouterr().out
+    return rc, capsys.readouterr().out, conn
 
 
 def test_exit_0_on_pass_and_1_on_orphans_with_the_name_printed(monkeypatch, capsys) -> None:
-    rc, out = _main_with(monkeypatch, FACTS, NODES, capsys)
+    rc, out, _ = _main_with(monkeypatch, FACTS, NODES, capsys)
     assert rc == 0 and "PASS" in out
-    rc, out = _main_with(monkeypatch, _arudha(1) + _special("GHATI_LAGNA"), NODES, capsys)
+    rc, out, _ = _main_with(monkeypatch, _arudha(1) + _special("GHATI_LAGNA"), NODES, capsys)
     assert rc == 1 and "FAIL" in out and "ORPHAN" in out and "A5" in out
 
 
 def test_exit_2_without_database_url(monkeypatch) -> None:
     monkeypatch.delenv("DATABASE_URL", raising=False)
     assert census.main(["--chart-id", CHART]) == 2
+
+
+# -- nothing examined is not a PASS -----------------------------------------
+
+def test_a_chart_with_no_expected_and_no_live_node_is_not_examined() -> None:
+    r = census.run_census(FakeConn([], []), CHART, (AYA,))
+    assert r["not_examined"] is True and r["passed"] is False
+
+
+def test_not_examined_prints_so_and_exits_2_never_pass(monkeypatch, capsys) -> None:
+    rc, out, _ = _main_with(monkeypatch, [], [], capsys)
+    assert rc == 2 and "NOT EXAMINED" in out and "PASS" not in out
+
+
+def test_live_nodes_without_any_l1_fact_are_orphans_not_unexamined() -> None:
+    r = census.run_census(FakeConn([], NODES), CHART, (AYA,))
+    assert r["not_examined"] is False and r["passed"] is False
+    assert r["totals"]["orphans"] == 3
+
+
+def test_l1_facts_without_any_node_are_missing_not_unexamined() -> None:
+    r = census.run_census(FakeConn(FACTS, []), CHART, (AYA,))
+    assert r["not_examined"] is False and r["passed"] is True
+    assert r["totals"]["missing"] == 3
+
+
+# -- what the census asks the database ---------------------------------------
+
+def test_queries_are_scoped_to_the_chart_the_snapshot_and_the_node_types() -> None:
+    conn = FakeConn(FACTS, NODES)
+    census.run_census(conn, CHART, (AYA, "raman"))
+    assert [p[:3] for p in conn.node_params] == [[CHART, AYA, "static_natal"], [CHART, "raman", "static_natal"]]
+    assert all(p[3] == list(census.CROSS_ASSET_NODE_TYPES) for p in conn.node_params)
+    assert [p[:2] for p in conn.fact_params] == [[CHART, AYA], [CHART, "raman"]]
+
+
+def test_the_main_path_ends_the_read_only_transaction(monkeypatch, capsys) -> None:
+    _, _, conn = _main_with(monkeypatch, FACTS, NODES, capsys)
+    assert conn.rolled_back is True and conn.closed is True
+
+
+def test_connection_is_also_set_read_only_after_connect(monkeypatch) -> None:
+    import psycopg
+
+    class _C:
+        read_only = False
+
+    c = _C()
+    monkeypatch.setattr(psycopg, "connect", lambda url, **kw: c)
+    assert census._connect_read_only("postgresql://x") is c
+    assert c.read_only is True
