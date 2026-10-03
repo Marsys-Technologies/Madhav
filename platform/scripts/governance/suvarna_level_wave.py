@@ -1596,7 +1596,7 @@ _PH_OPEN, _PH_CLOSE = "\x01", "\x02"
 # instead of being half-read); a placeholder is \x01expr\x02. Literal text never carries \x01/\x02 (see _clean_literal).
 _NAME_PART = r'(?:"[^"\x01\x02]+"|[A-Za-z_][\w$]*|\x01[^\x02]*\x02)'
 # the lookahead refuses a name that continues ("public.{T}_x", "{A}{B}"): a partly-resolvable name is not guessed
-_TBL = rf"{_NAME_PART}(?:\.{_NAME_PART})?(?![\w$\".\x01])"
+_TBL = rf"{_NAME_PART}(?:\s*\.\s*{_NAME_PART})?(?![\w$\"&\x01]|\s*\.)"
 # INSERT / DELETE / UPDATE / COPY name ONE written table (a read after it -- DELETE .. USING b, UPDATE .. FROM b,
 # INSERT .. SELECT FROM b -- is not a write, and finditer keeps every statement / CTE write in one literal). TRUNCATE takes a
 # comma list and is parsed separately (_WriteScan._scan_truncate).
@@ -1617,27 +1617,86 @@ _TRAILING_WEAK_VERB = re.compile(r"\b(?:UPDATE|COPY)\s+\Z", re.IGNORECASE)   # n
 _UPDATE_WORD = re.compile(r"\bUPDATE\b", re.IGNORECASE)
 _COPY_WORD = re.compile(r"\bCOPY\b", re.IGNORECASE)
 _SET_WORD = re.compile(r"\bSET\b", re.IGNORECASE)
+_TO_WORD = re.compile(r"\bTO\b", re.IGNORECASE)
+_NAME_AFTER_VERB = re.compile(r'\s+(?:ONLY\s+)?(?P<n>[A-Za-z_"\x01])', re.IGNORECASE)
+# `UPDATE a`, `UPDATE ONLY a t`, `COPY a (x, y)` that END the text: the SET / FROM tail is joined on at runtime
+_UNFINISHED_TAIL = re.compile(
+    rf"\s+(?:ONLY\s+)?{_NAME_PART}(?:\s*\.\s*{_NAME_PART})?(?:\s*\*)?(?:\s+(?:AS\s+)?[A-Za-z_]\w*)?"
+    rf"(?:\s*\((?:[^()\x01]|\x01[^\x02]*\x02){{0,4000}}\))?(?:\s*\x01[^\x02]*\x02)*\s*\Z", re.IGNORECASE)
+# a savepoint statement: the whole statement is the verb and an identifier (a placeholder may sit inside the identifier)
+_TXN_CONTROL = re.compile(r"\s*(?:SAVEPOINT|RELEASE(?:\s+SAVEPOINT)?|ROLLBACK\s+TO(?:\s+SAVEPOINT)?)\s+"
+                          r"(?:[A-Za-z0-9_]|\x01[^\x02]*\x02)+\s*\Z", re.IGNORECASE)
+_PLAIN_QUOTED = re.compile(r'"[a-z_][a-z0-9_]*"')
+# a statement whose VERB is a runtime value / a name: `{V} FROM a`, `{V} {T} SET x`, `{V} INTO a`, `{V} TABLE a`
+_STMT_START_RUNTIME = re.compile(
+    r"(?:\A|;)\s*(?:\x01[^\x02]*\x02|\{[^}]*\}|%s)\s+(?:(?:ONLY\s+)?(?:FROM|INTO|TABLE)\b|\S+\s+(?:\S+\s+)?SET\b)")
 _FROM_WORD = re.compile(r"\bFROM\b", re.IGNORECASE)
 _NOT_A_STATEMENT_UPDATE_PREV = {"for", "do", "on", "key", "of", "before", "after", "or", "instead"}
-_SELECT_INTO_WORDS = re.compile(r"\b(SELECT|INTO|INSERT|FROM|UPDATE|DELETE)\b", re.IGNORECASE)
+_SELECT_INTO_WORDS = re.compile(r"\(|\)|;|\b(?:SELECT|INTO|INSERT|FROM|UPDATE|DELETE)\b", re.IGNORECASE)
 # a literal this long is not scanned at all (it bounds regex work, and no real statement is this long): not scanned
 MAX_SQL_LITERAL_CHARS = 64 * 1024
+_COMMENT_TOKEN = re.compile(r"/\*|\*/|--")
 
 
 def _select_into(text: str) -> bool:
-    """`SELECT ... INTO` (a table-creating form) with no INSERT/FROM/UPDATE/DELETE between the SELECT and the INTO.
-    One linear pass over the keywords (the earlier single regex rescanned to the end of the text from every SELECT)."""
-    armed = False
+    """`SELECT ... INTO <name>` (a table-creating form): an INTO at the same parenthesis depth as a SELECT, with no
+    FROM/INSERT/UPDATE/DELETE at that depth in between -- a FROM inside `EXTRACT(year FROM d)` is one level deeper and does not
+    disarm it. One linear pass over parentheses and keywords (the earlier regex rescanned to the end from every SELECT)."""
+    armed: list[bool] = [False]
     for m in _SELECT_INTO_WORDS.finditer(text):
-        w = m.group(1).upper()
-        if w == "SELECT":
-            armed = True
+        w = m.group().upper()
+        if w == "(":
+            armed.append(False)
+        elif w == ")":
+            if len(armed) > 1:
+                armed.pop()
+        elif w == ";":
+            armed = [False]
+        elif w == "SELECT":
+            armed[-1] = True
         elif w == "INTO":
-            if armed:
+            if armed[-1]:
                 return True
         else:
-            armed = False
+            armed[-1] = False
     return False
+
+
+def _strip_sql_comments(text: str) -> str:
+    """The text with `/* ... */` (nested) and `-- ...` comments replaced by one space each: the server reads a comment as
+    whitespace, so `INSERT /* c */ INTO a` is `INSERT INTO a`. One linear pass."""
+    out: list[str] = []
+    pos = last = depth = 0
+    n = len(text)
+    while pos < n:
+        m = _COMMENT_TOKEN.search(text, pos)
+        if m is None:
+            break
+        tok = m.group()
+        if depth == 0:
+            if tok == "/*":
+                out.append(text[last:m.start()])
+                out.append(" ")
+                depth, pos = 1, m.end()
+                continue
+            if tok == "--":
+                out.append(text[last:m.start()])
+                out.append(" ")
+                nl = text.find("\n", m.end())
+                pos = last = n if nl < 0 else nl
+                continue
+            pos = m.end()                                         # a stray */
+        else:
+            if tok == "/*":
+                depth += 1
+            elif tok == "*/":
+                depth -= 1
+                if depth == 0:
+                    last = m.end()
+            pos = m.end()
+    if depth == 0:
+        out.append(text[last:])
+    return "".join(out)
 
 
 # Write forms this scan does NOT analyse. Seeing one in a (non-docstring) string literal means the writer touches tables the
@@ -1651,15 +1710,24 @@ _TRIPWIRES = (
     ("DROP TABLE", re.compile(r"\bDROP\s+TABLE\b", re.IGNORECASE).search),
 )
 _SQL_COMPOSITION_ATTRS = {"SQL", "Identifier", "Composed", "Literal", "Placeholder"}
-_EXECUTE_ATTRS = {"execute", "executemany", "executescript", "copy", "copy_expert"}   # SQL text is argument 0 (or sql=/query=)
+# calls whose argument 0 (or sql= / query= / ...) is SQL text; execute_values / execute_batch take it as argument 1
+_EXECUTE_ATTRS = {"execute", "executemany", "executescript", "copy", "copy_expert", "fetch", "fetchrow", "fetchval",
+                  "fetchmany", "prepare", "exec_driver_sql", "run"}
 _SQL_SECOND_ARG_FUNCS = {"execute_values", "execute_batch"}                          # psycopg2.extras.f(cur, SQL, ...)
-_SQL_KEYWORDS = {"query", "sql", "statement"}
-_COPY_API_ATTRS = {"copy_from", "copy_records_to_table", "copy_to_table"}            # write a table with no SQL text at all
+_SQL_KEYWORDS = {"query", "sql", "statement", "operation", "stmt", "command", "text", "sql_text", "sql_query"}
+_COPY_API_ATTRS = {"copy_from", "copy_to", "copy_records_to_table", "copy_to_table"}  # write / move a table with no SQL text
+_DB_EXEC_NAMES = (_EXECUTE_ATTRS - {"copy", "run"}) | _COPY_API_ATTRS | {"copy_from_table", "copy_from_query"}
+_CONTAINER_MUTATORS = {"append", "extend", "insert", "update", "add", "setdefault", "appendleft", "extendleft"}
+_ITER_WRAPPERS = {"enumerate", "sorted", "reversed", "list", "tuple", "set", "frozenset", "iter", "zip"}
+# builtins whose result is a number / bool (no SQL text can pass through) and builtins whose result carries their arguments' text
+_NUMERIC_FUNCS = {"len", "int", "float", "bool", "abs", "round", "sum", "ord", "hash", "id", "any", "all", "isinstance",
+                  "issubclass", "callable", "range", "chr", "divmod", "pow", "bin", "hex", "oct"}
+_TEXT_FUNCS = {"str", "repr", "ascii", "format", "sorted", "list", "tuple", "set", "frozenset", "min", "max", "reversed",
+               "enumerate", "zip", "iter", "dict", "text", "dedent", "cleandoc"}
 _DYNAMIC_CODE_FUNCS = {"exec", "eval", "compile"}
 _GLOBALS_FUNCS = {"globals", "locals", "vars"}
-_STR_METHODS = {"format", "format_map", "strip", "lstrip", "rstrip", "lower", "upper", "casefold", "title", "capitalize",
+_STR_METHODS = {"join", "split", "rsplit", "splitlines", "partition", "rpartition", "format", "format_map", "strip", "lstrip", "rstrip", "lower", "upper", "casefold", "title", "capitalize",
                 "replace", "encode", "decode", "removeprefix", "removesuffix", "expandtabs", "zfill", "ljust", "rjust", "center"}
-_STR_WRAPPER_FUNCS = {"str", "text", "dedent", "cleandoc"}
 _FILE_READ_ATTRS = {"read", "read_text", "read_bytes", "readlines"}
 _SQL_FILE_LITERAL = re.compile(r"\A\s*[\w./~-]+\.sql\s*\Z")
 _BYTES_WRITE_FORM = re.compile(r"\b(?:INSERT\s+INTO|DELETE\s+FROM|TRUNCATE|UPDATE\s+\S+\s+SET|COPY\s+\S+\s+FROM|MERGE\s+INTO|"
@@ -1673,17 +1741,26 @@ WRITE_SCAN_LIMITATIONS = (
     "known idempotency helpers; a writer that also writes tables itself and delegates the rest reads as scanned",
     "triggers, rules, RLS and ON DELETE/UPDATE cascades are not writes the scan sees (the FK closure covers cascades)",
     "SQL built from runtime values, composed with psycopg sql.SQL/Identifier, or read from a file is reported as not scanned",
-    "an execute()/executemany()/copy_expert()/execute_values() argument that is an imported name or an attribute of an "
-    "imported module (imported_sql_constant), a call result, a subscript or an unbound/unassigned attribute, an f-string or "
-    "concatenation that starts with a runtime value, a bytes literal, or a dunder attribute (fn.__doc__) is reported as not "
-    "scanned; so are copy_from/copy_to_table/copy_records_to_table calls, exec/eval/compile, setattr, writes through "
-    "globals()/locals()/vars(), `from x import *`, getattr(...)(...) of an execute/copy attribute, and a literal "
-    "that ends in a write verb with no target (the table is joined on at runtime)",
-    "a dotted or attribute name ({cfg.T}, {self.T}) is never read as a table constant; a SQL literal over 64 KB is not scanned; "
-    "a source_paths list that is mutated (append/+=/extend/item assignment) is not followed",
+    "the default is CLOSED: the SQL handed to an execute-like call (execute/executemany/copy/copy_expert/execute_values/fetch/"
+    "fetchrow/fetchval/prepare/exec_driver_sql/...) reads as scanned only when it is provably made of this file's own literals "
+    "(a literal; an f-string/concatenation/format/join of such; a name every binding of which is such; a parameter whose in-file "
+    "call sites all pass such; a loop variable over such a container; a class attribute assigned once in its class body; a local "
+    "function that returns only such). An imported name or module attribute (imported_sql_constant), a call result, a subscript "
+    "of something unprovable, an unbound name or attribute, a parameter with no / an unprovable call site, *args/**kwargs, a "
+    "bytes literal, a dunder attribute (fn.__doc__), an execute method aliased or passed on (ex = cur.execute, partial, map) is "
+    "reported as not scanned; so are copy_from/copy_to/copy_to_table/copy_records_to_table calls, exec/eval/compile, setattr, "
+    "writes or aliases through globals()/locals()/vars()/sys.modules, `from x import *`, getattr(...)(...) of an execute/copy "
+    "attribute, and a literal that ends in a write verb with no target (the table is joined on at runtime)",
+    "an UPDATE / COPY whose SET / FROM tail or target is a placeholder or a runtime value, and a statement whose verb comes from "
+    "a name (f'{V} FROM a'), are reported as not scanned; SQL comments are whitespace (verbs are matched on the comment-free text "
+    "and the raw text is scanned too, so a comment only adds)",
+    "a dotted or attribute name ({cfg.T}, {self.T}) is never read as a table constant; a quoted name that is not a plain "
+    "lowercase identifier is not read; a SQL literal over 64 KB is not scanned; a file whose provenance resolution exceeds its "
+    "work cap (60,000 steps) is not scanned (resolver_work_cap); a source_paths list that is mutated or aliased (append/+=/"
+    "extend/item assignment/setattr/getattr/unpacking) is not followed",
     "SQL assembled from separately bound fragments (a list of keyword strings joined elsewhere, a verb in one name and its "
-    "target in another) is not reassembled: only literals, f-strings, + concatenation and a literal-separator "
-    "''.join([...]) of a list literal are rendered",
+    "target in another) is not reassembled, except that a statement starting with a name is not scanned: only literals, "
+    "f-strings, + concatenation and a literal-separator ''.join([...]) of a list literal are rendered",
 )
 
 
@@ -1761,27 +1838,69 @@ def _is_sql_composition(func: ast.AST) -> bool:
             and func.value.id == "sql") or (isinstance(func, ast.Name) and func.id in {"Identifier", "SQL", "Composed"})
 
 
+def _mentions_modules(node: ast.AST) -> bool:
+    """`sys.modules[...]` (or any `.modules` attribute) somewhere in the chain: a way to reach another module's namespace."""
+    return any(isinstance(n, ast.Attribute) and n.attr == "modules" for n in ast.walk(node))
+
+
+def _parent_map(tree: ast.AST) -> dict[int, ast.AST]:
+    return {id(c): p for p in ast.walk(tree) for c in ast.iter_child_nodes(p)}
+
+
 def _is_globals_call(node: ast.AST) -> bool:
     return isinstance(node, ast.Call) and isinstance(node.func, ast.Name) and node.func.id in _GLOBALS_FUNCS
 
 
+class _Budget(Exception):
+    """The provenance evaluation visited more bindings than the cap allows: the statement is not scanned."""
+
+
 class _WriteScan:
-    """What one parsed module shows: resolved write tables, unresolved reasons, parametric functions, helper calls."""
+    """What one parsed module shows: resolved write tables, unresolved reasons, parametric functions, helper calls.
+
+    The SQL text handed to an execute-like call is judged by a CLOSED allow-list (`_clean_expr`): it is `clean` only when it
+    is positively recognised as made of literals of THIS file -- a literal, an f-string / `+` / format / join of clean parts, a
+    name every binding of which is clean, a parameter whose in-file call sites all pass clean values, a loop variable over a
+    clean literal container, a class attribute assigned once in the same class body. Anything else is not scanned."""
+
+    MAX_RESOLVER_STEPS = 60_000          # bindings + expression nodes visited per file: past it the file is NOT scanned
 
     def __init__(self, tree: ast.Module, const_tree: ast.Module | None = None) -> None:
         self.tables: set[str] = set()
         self.unresolved: list[str] = []
         self.consts: dict[str, set[str]] = {}
-        self.assigns: dict[str, list[ast.AST]] = {}        # name / attribute name -> every value assigned to it
-        self.imported: set[str] = set()                    # names bound by `import x` / `from x import y`
+        self.bindings: dict[str, list[tuple]] = {}          # name -> every binding (scope-blind, whole module)
+        self.attr_bindings: dict[str, list[tuple]] = {}     # attribute name -> every `obj.attr = ...` binding in the module
+        self.class_attrs: dict[tuple[str, str], list[ast.AST]] = {}   # (class, name) -> values assigned in that class body
+        self.local_classes: set[str] = set()
+        self.func_defs: dict[str, list[ast.AST]] = {}       # def name -> every FunctionDef of that name
+        self.method_ids: set[int] = set()                   # ids of FunctionDef nodes that sit directly in a class body
+        self.imported: set[str] = set()                     # names bound by `import x` / `from x import y`
+        self.exec_aliases: dict[str, str] = {}              # `from m import execute_values as ev` -> {"ev": "execute_values"}
         self.params: set[str] = set()
-        self.local_defs: set[str] = set()                  # def / class names
+        self.local_defs: set[str] = set()                   # def / class names
         self.defined: set[str] = set()
         self.param_funcs: dict[str, list[tuple[str, int]]] = {}   # function -> [(param name, positional index)]
-        self.calls: list[ast.Call] = []
+        self.method_param_funcs: set[str] = set()           # param_funcs entries whose index already excludes self/cls
+        self.calls: list[ast.Call] = []                     # the calls of the scanned tree
+        self.calls_by_callee: dict[str, list[ast.Call]] = {}      # callee name (Name id or Attribute attr) -> calls, whole module
+        self.callee_ids: set[int] = set()
+        self.value_refs: set[str] = set()                   # names / attributes referenced other than as the callee of a call
+        self.node_class: dict[int, str | None] = {}         # Attribute node -> enclosing class
+        self._memo: dict[tuple, str | None] = {}
+        self._stack: set[tuple] = set()
+        self._cycle_hit = False
+        self._steps = 0
+        # scanning ONE function of a helper module (const_tree given): its own parameters are filled by the caller, which is
+        # where the table-parameter machinery (param_funcs / resolve_param_calls) resolves them
+        self._entry_funcs = {id(n) for n in ast.walk(tree) if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef))} \
+            if const_tree is not None else set()
         self._collect_constants(const_tree if const_tree is not None else tree)
+        self._index(const_tree if const_tree is not None else tree)
         self._walk(tree, [])
         self._tripwire_calls(tree)
+
+    # ---- bindings -------------------------------------------------------------------------------------------------
 
     def _bind(self, name: str, value: str | None) -> None:
         self.consts.setdefault(name, set()).add(value if value is not None else "\x00non-literal")
@@ -1799,69 +1918,199 @@ class _WriteScan:
         elif isinstance(target, ast.Starred):
             self._bind_target(target.value, None)
 
-    def _note_assigned(self, target: ast.AST, value: ast.AST) -> None:
+    def _add(self, name: str, binding: tuple) -> None:
+        self.bindings.setdefault(name, []).append(binding)
+
+    def _bind_value(self, target: ast.AST, value: ast.AST) -> None:
+        """`target = value`: elementwise for a literal tuple/list unpack of the same length, otherwise every name gets the
+        whole value as an iterable it was drawn from."""
         if isinstance(target, ast.Name):
-            self.assigns.setdefault(target.id, []).append(value)
+            self._add(target.id, ("expr", value))
         elif isinstance(target, ast.Attribute):
-            self.assigns.setdefault(target.attr, []).append(value)
+            self.attr_bindings.setdefault(target.attr, []).append(("expr", value))
+        elif isinstance(target, ast.Subscript):
+            root = _root_name(target.value)
+            if root:
+                self._add(root, ("elem", value))
+                self._add(root, ("subkey", target.slice))
+        elif isinstance(target, (ast.Tuple, ast.List)):
+            if (isinstance(value, (ast.Tuple, ast.List)) and len(value.elts) == len(target.elts)
+                    and not any(isinstance(e, ast.Starred) for e in list(value.elts) + list(target.elts))):
+                for t, v in zip(target.elts, value.elts):
+                    self._bind_value(t, v)
+            else:
+                for t in target.elts:
+                    self._bind_iter_target(t, value)
+        elif isinstance(target, ast.Starred):
+            self._bind_iter_target(target.value, value)
+
+    def _bind_iter_target(self, target: ast.AST, iter_node: ast.AST, tag: str = "iter") -> None:
+        if isinstance(target, ast.Name):
+            self._add(target.id, (tag, iter_node))
+        elif isinstance(target, ast.Attribute):
+            self.attr_bindings.setdefault(target.attr, []).append((tag, iter_node))
+        elif isinstance(target, ast.Subscript):
+            root = _root_name(target.value)
+            if root:
+                self._add(root, (tag, iter_node))
+        elif isinstance(target, (ast.Tuple, ast.List)):
+            for e in target.elts:
+                self._bind_iter_target(e, iter_node, "iter_values" if tag == "iter_values" else "iter")
+        elif isinstance(target, ast.Starred):
+            self._bind_iter_target(target.value, iter_node, tag)
+
+    def _bind_unknown(self, target: ast.AST, why: str) -> None:
+        if isinstance(target, ast.Name):
+            self._add(target.id, ("unknown", why))
+        elif isinstance(target, ast.Attribute):
+            self.attr_bindings.setdefault(target.attr, []).append(("unknown", why))
+        elif isinstance(target, (ast.Tuple, ast.List)):
+            for e in target.elts:
+                self._bind_unknown(e, why)
+        elif isinstance(target, ast.Starred):
+            self._bind_unknown(target.value, why)
+        elif isinstance(target, ast.Subscript):
+            root = _root_name(target.value)
+            if root:
+                self._add(root, ("unknown", why))
 
     def _collect_constants(self, tree: ast.Module) -> None:
         """name -> the set of values it is bound to ANYWHERE in the module (scope-blind on purpose: a name is a usable
         constant only if every binding of it is the same string literal). Any other binding of the name -- loop target,
         with/except/match target, comprehension target, augmented or walrus assignment, function parameter, import alias,
-        global/nonlocal, def/class name, del, tuple unpacking, attribute assignment -- makes it unresolved. Also records the
-        values assigned to each name, the imported names, parameters and local def/class names (for the execute() argument
-        check)."""
+        global/nonlocal, def/class name, del, tuple unpacking, attribute assignment -- makes it unresolved. Also records every
+        binding with what it was bound to (`self.bindings`) for the closed allow-list in `_clean_expr`."""
         for node in ast.walk(tree):
             if isinstance(node, ast.Assign):
                 lit = _string_const_value(node.value)
                 for t in node.targets:
                     self._bind_target(t, lit)
-                    self._note_assigned(t, node.value)
+                    self._bind_value(t, node.value)
             elif isinstance(node, ast.AnnAssign):
                 if node.value is not None:
                     self._bind_target(node.target, _string_const_value(node.value) if isinstance(node.target, ast.Name) else None)
-                    self._note_assigned(node.target, node.value)
+                    self._bind_value(node.target, node.value)
             elif isinstance(node, ast.AugAssign):
                 self._bind_target(node.target, None)
-                self._note_assigned(node.target, node.value)
+                self._bind_value(node.target, node.value)
             elif isinstance(node, ast.NamedExpr):
                 self._bind_target(node.target, None)
-                self._note_assigned(node.target, node.value)
+                self._bind_value(node.target, node.value)
             elif isinstance(node, (ast.For, ast.AsyncFor, ast.comprehension)):
                 self._bind_target(node.target, None)
+                it = node.iter
+                if (isinstance(node.target, (ast.Tuple, ast.List)) and len(node.target.elts) == 2
+                        and not any(isinstance(e, ast.Starred) for e in node.target.elts)
+                        and isinstance(it, ast.Call) and isinstance(it.func, ast.Attribute) and it.func.attr == "items" and not it.args):
+                    self._bind_iter_target(node.target.elts[0], it.func.value, "iter_keys")      # `for k, v in X.items()`
+                    self._bind_iter_target(node.target.elts[1], it.func.value, "iter_values")
+                else:
+                    self._bind_iter_target(node.target, node.iter)
             elif isinstance(node, (ast.With, ast.AsyncWith)):
                 for item in node.items:
                     if item.optional_vars is not None:
                         self._bind_target(item.optional_vars, None)
+                        self._bind_unknown(item.optional_vars, "bound by a with statement")
             elif isinstance(node, ast.ExceptHandler):
                 if node.name:
                     self._bind(node.name, None)
-            elif isinstance(node, ast.arg):
-                self._bind(node.arg, None)
-                self.params.add(node.arg)
+                    self._add(node.name, ("unknown", "bound by an except clause"))
+            elif isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.Lambda)):
+                a = node.args
+                positional = list(a.posonlyargs) + list(a.args)
+                defaults = [None] * (len(positional) - len(a.defaults)) + list(a.defaults)
+                for i, arg in enumerate(positional):
+                    self._bind(arg.arg, None)
+                    self.params.add(arg.arg)
+                    self._add(arg.arg, ("param", node, i, arg.arg, defaults[i]) if not isinstance(node, ast.Lambda)
+                              else ("unknown", "a lambda parameter"))
+                for arg, d in zip(a.kwonlyargs, a.kw_defaults):
+                    self._bind(arg.arg, None)
+                    self.params.add(arg.arg)
+                    self._add(arg.arg, ("param", node, None, arg.arg, d) if not isinstance(node, ast.Lambda)
+                              else ("unknown", "a lambda parameter"))
+                for arg in (a.vararg, a.kwarg):
+                    if arg is not None:
+                        self._bind(arg.arg, None)
+                        self.params.add(arg.arg)
+                        self._add(arg.arg, ("unknown", "a *args / **kwargs parameter"))
+                if not isinstance(node, ast.Lambda):
+                    self._bind(node.name, None)
+                    self.local_defs.add(node.name)
+                    self._add(node.name, ("def", node.name))
+                    self.func_defs.setdefault(node.name, []).append(node)
             elif isinstance(node, (ast.Import, ast.ImportFrom)):
                 for al in node.names:
                     bound = al.asname or al.name.split(".")[0]
                     self._bind(bound, None)
                     self.imported.add(bound)
+                    self._add(bound, ("import", bound))
+                    if isinstance(node, ast.ImportFrom) and al.asname and al.name in _SQL_SECOND_ARG_FUNCS:
+                        self.exec_aliases[al.asname] = al.name
             elif isinstance(node, (ast.Global, ast.Nonlocal)):
                 for n in node.names:
                     self._bind(n, None)
-            elif isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
+                    self._add(n, ("unknown", "declared global / nonlocal"))
+            elif isinstance(node, ast.ClassDef):
                 self._bind(node.name, None)
                 self.local_defs.add(node.name)
+                self.local_classes.add(node.name)
+                self._add(node.name, ("def", node.name))
+                for stmt in node.body:
+                    if isinstance(stmt, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                        self.method_ids.add(id(stmt))
+                    elif isinstance(stmt, ast.Assign):
+                        for t in stmt.targets:
+                            if isinstance(t, ast.Name):
+                                self.class_attrs.setdefault((node.name, t.id), []).append(stmt.value)
+                    elif isinstance(stmt, ast.AnnAssign) and stmt.value is not None and isinstance(stmt.target, ast.Name):
+                        self.class_attrs.setdefault((node.name, stmt.target.id), []).append(stmt.value)
             elif isinstance(node, ast.Delete):
                 for t in node.targets:
                     self._bind_target(t, None)
+                    self._bind_unknown(t, "deleted")
             elif isinstance(node, ast.MatchAs) and node.name:
                 self._bind(node.name, None)
+                self._add(node.name, ("unknown", "bound by a match pattern"))
             elif isinstance(node, ast.MatchStar) and node.name:
                 self._bind(node.name, None)
+                self._add(node.name, ("unknown", "bound by a match pattern"))
             elif isinstance(node, ast.MatchMapping) and node.rest:
                 self._bind(node.rest, None)
+                self._add(node.rest, ("unknown", "bound by a match pattern"))
             elif hasattr(ast, "TypeAlias") and isinstance(node, ast.TypeAlias):
                 self._bind_target(node.name, None)
+                self._bind_unknown(node.name, "a type alias")
+            elif isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute) and node.func.attr in _CONTAINER_MUTATORS:
+                root = _root_name(node.func.value)
+                if root:                                      # X.append(v) / X.update(...) adds v to the container X
+                    for a in list(node.args) + [k.value for k in node.keywords]:
+                        self._add(root, ("expr", a.value if isinstance(a, ast.Starred) else a))
+
+    def _index(self, tree: ast.Module) -> None:
+        """Whole-module indexes the provenance check needs: the enclosing class of each attribute reference, every call by
+        callee name, and every name/attribute used as a value rather than called (an alias, a partial(), a map())."""
+        todo: list[tuple[ast.AST, str | None]] = [(tree, None)]
+        while todo:
+            node, cls = todo.pop()
+            if isinstance(node, ast.ClassDef):
+                cls = node.name
+            if isinstance(node, ast.Attribute):
+                self.node_class[id(node)] = cls
+            if isinstance(node, ast.Call):
+                f = node.func
+                self.callee_ids.add(id(f))
+                if isinstance(f, ast.Name):
+                    self.calls_by_callee.setdefault(f.id, []).append(node)
+                elif isinstance(f, ast.Attribute):
+                    self.calls_by_callee.setdefault(f.attr, []).append(node)
+            for child in ast.iter_child_nodes(node):
+                todo.append((child, cls))
+        for node in ast.walk(tree):
+            if isinstance(node, ast.Name) and isinstance(node.ctx, ast.Load) and id(node) not in self.callee_ids:
+                self.value_refs.add(node.id)
+            elif isinstance(node, ast.Attribute) and isinstance(node.ctx, ast.Load) and id(node) not in self.callee_ids:
+                self.value_refs.add(node.attr)
 
     def _resolve_const(self, expr: str) -> str | None:
         """A plain identifier -> its single string value, else None. A dotted / attribute expression ('cfg.T', 'self.T') is
@@ -1872,6 +2121,266 @@ class _WriteScan:
             (only,) = vals
             return None if only == "\x00non-literal" else only
         return None
+
+    def _is_method(self, fn: ast.AST) -> bool:
+        """A def in a class body whose first parameter is self/cls (and is not a staticmethod): its positional arguments are
+        shifted by one at an `obj.method(...)` call."""
+        if id(fn) not in self.method_ids or not fn.args.args and not fn.args.posonlyargs:
+            return False
+        first = (list(fn.args.posonlyargs) + list(fn.args.args))[0].arg
+        static = any(isinstance(d, ast.Name) and d.id == "staticmethod" for d in fn.decorator_list)
+        return first in ("self", "cls") and not static
+
+    # ---- the closed allow-list: is this expression made only of this file's own literals? -------------------------------
+
+    def _memoised(self, key: tuple, compute) -> str | None:
+        """compute() once per key. A key met again while it is being computed is a cycle: assumed clean (a cycle adds no
+        new source), and any result that leaned on that assumption is not cached (a problem found is always definitive)."""
+        if key in self._memo:
+            return self._memo[key]
+        if key in self._stack:
+            self._cycle_hit = True
+            return None
+        self._stack.add(key)
+        saved, self._cycle_hit = self._cycle_hit, False
+        try:
+            result = compute()
+        finally:
+            self._stack.discard(key)
+        hit = self._cycle_hit
+        self._cycle_hit = saved or hit
+        if result is not None or not hit:
+            self._memo[key] = result
+        return result
+
+    def _step(self) -> None:
+        """One unit of provenance work; the cap makes a hostile file cost bounded time and fall back to NOT scanned."""
+        self._steps += 1
+        if self._steps > self.MAX_RESOLVER_STEPS:
+            raise _Budget(f"more than {self.MAX_RESOLVER_STEPS} bindings / expressions examined in this file")
+
+    def _clean_expr(self, node: ast.AST | None) -> str | None:
+        """None if `node` is provably built only from this file's literals, else the reason it is not."""
+        if node is None:
+            return None
+        self._step()
+        unp = lambda: ast.unparse(node)[:60]  # noqa: E731
+        if isinstance(node, ast.Constant):
+            return "bytes_sql_literal: SQL passed as bytes is not analysed" if isinstance(node.value, (bytes, bytearray)) else None
+        if isinstance(node, ast.JoinedStr):
+            for v in node.values:
+                if isinstance(v, ast.FormattedValue):
+                    p = self._clean_expr(v.value) or self._clean_expr(v.format_spec)
+                    if p:
+                        return p
+            return None
+        if isinstance(node, ast.BinOp):
+            return self._clean_expr(node.left) or self._clean_expr(node.right)
+        if isinstance(node, ast.UnaryOp):
+            return self._clean_expr(node.operand)
+        if isinstance(node, ast.BoolOp):
+            return next((p for p in (self._clean_expr(v) for v in node.values) if p), None)
+        if isinstance(node, ast.Compare):
+            return None                                           # a bool: no SQL text
+        if isinstance(node, ast.IfExp):
+            return self._clean_expr(node.body) or self._clean_expr(node.orelse)
+        if isinstance(node, ast.Name):
+            return self._clean_name(node.id)
+        if isinstance(node, ast.Attribute):
+            return self._clean_attribute(node)
+        if isinstance(node, ast.Subscript):
+            p = self._clean_expr(node.value)
+            if p is None:
+                return None                                       # a whole container of clean values, any index
+            return p if p.startswith("imported_sql_constant") else f"sql_from_subscript: {unp()} ({p})"
+        if isinstance(node, ast.Call):
+            return self._clean_call(node)
+        if isinstance(node, (ast.List, ast.Tuple, ast.Set)):
+            return next((p for p in (self._clean_expr(e) for e in node.elts) if p), None)
+        if isinstance(node, ast.Dict):
+            return next((p for p in (self._clean_expr(e) for e in list(node.keys) + list(node.values) if e is not None) if p), None)
+        if isinstance(node, (ast.ListComp, ast.SetComp, ast.GeneratorExp)):
+            return self._clean_expr(node.elt)
+        if isinstance(node, ast.DictComp):
+            return self._clean_expr(node.key) or self._clean_expr(node.value)
+        if isinstance(node, (ast.Starred, ast.Await, ast.NamedExpr)):
+            return self._clean_expr(node.value)
+        if isinstance(node, ast.Slice):
+            return None
+        return f"unresolved_sql_expression: {type(node).__name__}"
+
+    def _clean_name(self, name: str) -> str | None:
+        return self._memoised(("n", name), lambda: self._name_problem(name))
+
+    def _name_problem(self, name: str) -> str | None:
+        bound = self.bindings.get(name)
+        if not bound:
+            return f"unresolved_sql_name: {name} is not bound in this module"
+        for b in bound:
+            self._step()
+            p = self._binding_problem(name, b)
+            if p:
+                return p
+        return None
+
+    def _binding_problem(self, name: str, b: tuple) -> str | None:
+        tag = b[0]
+        if tag in ("expr", "elem"):
+            return self._clean_expr(b[1])
+        if tag == "iter":
+            return self._clean_iter(b[1])
+        if tag == "iter_values":
+            return self._clean_expr(b[1])
+        if tag == "iter_keys":
+            return self._clean_keys(b[1])
+        if tag == "subkey":
+            return self._clean_expr(b[1])
+        if tag == "import":
+            return f"imported_sql_constant: {name}"
+        if tag == "param":
+            return self._param_problem(name, *b[1:])
+        if tag == "def":
+            return f"unresolved_sql_name: {name} is bound to a function or class"
+        return f"unresolved_sql_name: {name} is {b[1]}"
+
+    def _clean_keys(self, node: ast.AST) -> str | None:
+        """The KEYS of a mapping are clean iff its literal keys and every `X[k] = v` key are; values may be anything (the
+        position-aware half of `for k, v in X.items()`)."""
+        if isinstance(node, ast.Dict):
+            return next((p for p in (self._clean_expr(k) for k in node.keys if k is not None) if p), None)
+        if not isinstance(node, ast.Name):
+            return self._clean_expr(node)
+
+        def compute() -> str | None:
+            bound = self.bindings.get(node.id)
+            if not bound:
+                return f"unresolved_sql_name: {node.id} is not bound in this module"
+            for b in bound:
+                self._step()
+                if b[0] == "elem":
+                    continue                                      # `X[k] = v`: v is a value, k is covered by its "subkey"
+                p = self._clean_keys(b[1]) if (b[0] == "expr" and isinstance(b[1], ast.Dict)) else self._binding_problem(node.id, b)
+                if p:
+                    return p
+            return None
+        return self._memoised(("k", node.id), compute)
+
+    def _clean_iter(self, node: ast.AST) -> str | None:
+        """Elements drawn from `node` (a loop / comprehension / unpacking source) are clean iff the container is."""
+        if isinstance(node, ast.Call):
+            f = node.func
+            if isinstance(f, ast.Attribute) and f.attr in ("items", "values", "keys", "copy") and not node.args:
+                return self._clean_expr(f.value)
+            if isinstance(f, ast.Name) and f.id == "range":
+                return None
+            if isinstance(f, ast.Name) and f.id in _ITER_WRAPPERS:
+                return next((p for p in (self._clean_iter(a) for a in node.args) if p), None)
+        return self._clean_expr(node)
+
+    def _param_problem(self, name: str, func: ast.AST, idx: int | None, pname: str, default: ast.AST | None) -> str | None:
+        """A parameter is clean iff every call site of its function in THIS file passes a clean value (a missing argument
+        falls back to the default, which must itself be clean); no call site, an aliased function, or a *args/**kwargs call
+        => not clean."""
+        method = self._is_method(func)
+        if (method and idx == 0) or id(func) in self._entry_funcs:
+            return None                                           # self / cls, or a helper's own parameter
+        if func.name in self.value_refs:
+            return f"unresolved_sql_parameter: {name} of {func.name}() -- the function is used as a value (alias / partial / map)"
+        sites = self.calls_by_callee.get(func.name)
+        if not sites:
+            return f"unresolved_sql_parameter: {name} of {func.name}() has no call site in this file"
+        for call in sites:
+            if any(isinstance(a, ast.Starred) for a in call.args) or any(k.arg is None for k in call.keywords):
+                return f"unresolved_sql_arguments: {func.name}() is called with *args / **kwargs"
+            arg = None
+            if idx is not None:
+                shift = 1 if (method and isinstance(call.func, ast.Attribute)
+                              and not (isinstance(call.func.value, ast.Name) and call.func.value.id in self.local_classes)) else 0
+                pos = idx - shift
+                if 0 <= pos < len(call.args):
+                    arg = call.args[pos]
+            if arg is None:
+                arg = next((k.value for k in call.keywords if k.arg == pname), None)
+            if arg is None:
+                arg = default
+                if arg is None:
+                    return f"unresolved_sql_parameter: {name} of {func.name}() is not passed at a call site and has no default"
+            p = self._clean_expr(arg)
+            if p:
+                return p
+        return None
+
+    def _clean_attribute(self, node: ast.Attribute) -> str | None:
+        unp = ast.unparse(node)[:60]
+        if node.attr.startswith("__") and node.attr.endswith("__"):
+            return f"sql_from_dunder_attribute: {unp}"
+        root = _root_name(node)
+        if root in self.imported:
+            return f"imported_sql_constant: {unp}"
+        base = node.value
+        cls = None
+        if isinstance(base, ast.Name):
+            if base.id in ("self", "cls"):
+                cls = self.node_class.get(id(node))
+            elif base.id in self.local_classes:
+                cls = base.id
+        if cls is None:
+            return f"unresolved_sql_attribute: {unp} is not self. / cls. / a class of this file"
+        vals = self.class_attrs.get((cls, node.attr))
+        if not vals or len(vals) != 1 or self.attr_bindings.get(node.attr):
+            return f"unresolved_sql_attribute: {unp} is not assigned exactly once in the body of class {cls}"
+        return self._memoised(("a", cls, node.attr), lambda: self._clean_expr(vals[0]))
+
+    def _clean_call(self, node: ast.Call) -> str | None:
+        f = node.func
+        unp = ast.unparse(node)[:60]
+        if _is_sql_composition(f):
+            return _SQL_COMPOSITION_REASON
+        # a function defined in this file: clean iff everything it returns is (its parameters are judged at their call sites)
+        local = None
+        if isinstance(f, ast.Name) and f.id in self.func_defs:
+            local = f.id
+            if any(b[0] != "def" for b in self.bindings.get(f.id, [])):
+                return f"sql_from_call_result: {unp} (the name is also bound to something else)"
+        elif (isinstance(f, ast.Attribute) and f.attr in self.func_defs and isinstance(f.value, ast.Name)
+              and (f.value.id in ("self", "cls") or f.value.id in self.local_classes)):
+            local = f.attr
+        if local is not None:
+            return self._memoised(("f", local), lambda: self._returns_problem(local))
+        if isinstance(f, ast.Attribute) and f.attr in _STR_METHODS:
+            parts = [f.value, *node.args, *(k.value for k in node.keywords)]
+            return next((p for p in (self._clean_expr(x) for x in parts) if p), None)
+        text_wrapper = (isinstance(f, ast.Name) and f.id in _TEXT_FUNCS) or (
+            isinstance(f, ast.Attribute) and f.attr in ("text", "dedent", "cleandoc") and _root_name(f) in self.imported)
+        if isinstance(f, ast.Name) and f.id in _NUMERIC_FUNCS:
+            return None                                           # len(x) / int(x) / ...: a number, no SQL text
+        if text_wrapper:                                          # str(x) / dedent(x) / text(x): carries its arguments' text
+            return next((p for p in (self._clean_expr(x) for x in [*node.args, *(k.value for k in node.keywords)]) if p), None)
+        return f"sql_from_call_result: {unp}"
+
+    def _returns_problem(self, name: str) -> str | None:
+        for fn in self.func_defs.get(name, []):
+            rets: list[ast.AST | None] = []
+            todo = list(fn.body)
+            while todo:
+                n = todo.pop()
+                if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef, ast.Lambda, ast.ClassDef)):
+                    continue
+                if isinstance(n, (ast.Yield, ast.YieldFrom)):
+                    return f"sql_from_call_result: {name}() is a generator"
+                if isinstance(n, ast.Return):
+                    rets.append(n.value)
+                todo.extend(ast.iter_child_nodes(n))
+            if not rets:
+                return f"sql_from_call_result: {name}() returns nothing"
+            for r in rets:
+                self._step()
+                p = self._clean_expr(r)
+                if p:
+                    return p
+        return None
+
+    # ---- literal scan -----------------------------------------------------------------------------------------------
 
     def _walk(self, node: ast.AST, fn_stack: list[ast.AST]) -> None:
         if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
@@ -1904,156 +2413,89 @@ class _WriteScan:
 
     # ---- execute()-argument and exotic-form checks -------------------------------------------------------------------
 
-    def _sql_arg_problem(self, node: ast.AST, seen: frozenset = frozenset()) -> str | None:
-        """Why the SQL text passed to an execute-like call is NOT visible in this module's string literals, else None.
-        Literal text is scanned where it is written, so a literal, an f-string, a concatenation, or a name bound to one is
-        fine; an imported name, a call result, a subscript or an attribute nothing here assigns is not."""
-        if len(seen) > 8:
-            return "unresolved_sql_expression: too deeply chained"
-        if isinstance(node, ast.Constant):
-            if isinstance(node.value, (bytes, bytearray)):
-                return "bytes_sql_literal: SQL passed as bytes is not analysed"
-            return None
-        if isinstance(node, ast.JoinedStr):
-            return self._first_problem(self._statement_start_operands(node), seen)
-        if isinstance(node, ast.BinOp):
-            if isinstance(node.op, ast.Add):
-                return self._first_problem(self._statement_start_operands(node), seen)
-            if isinstance(node.op, ast.Mod):
-                return self._sql_arg_problem(node.left, seen)
-            return f"unresolved_sql_expression: {type(node.op).__name__} expression"
-        if isinstance(node, ast.Name):
-            if node.id in self.imported:
-                return f"imported_sql_constant: {node.id}"
-            if node.id in seen:
-                return None
-            vals = self.assigns.get(node.id)
-            if vals:
-                for v in vals:
-                    p = self._sql_arg_problem(v, seen | {node.id})
-                    if p:
-                        return p
-                return None
-            if node.id in self.consts:
-                return None                                     # a parameter / loop variable / def: its literals are scanned at the source
-            return f"unresolved_sql_name: {node.id} is not bound in this module"
-        if isinstance(node, ast.Attribute):
-            if node.attr.startswith("__") and node.attr.endswith("__"):
-                return f"sql_from_dunder_attribute: {ast.unparse(node)[:60]}"
-            root = _root_name(node)
-            if root in self.imported:
-                return f"imported_sql_constant: {ast.unparse(node)[:60]}"
-            if node.attr in seen:
-                return None
-            vals = self.assigns.get(node.attr)
-            if vals:
-                for v in vals:
-                    p = self._sql_arg_problem(v, seen | {node.attr})
-                    if p:
-                        return p
-                return None
-            return f"unresolved_sql_attribute: {ast.unparse(node)[:60]} is never assigned in this module"
-        if isinstance(node, ast.Subscript):
-            root = _root_name(node)
-            if root in self.imported:
-                return f"imported_sql_constant: {ast.unparse(node)[:60]}"
-            vals = self.assigns.get(root or "")
-            if vals and root not in self.params and all(isinstance(v, (ast.Dict, ast.List, ast.Tuple, ast.Set)) for v in vals):
-                return None                                     # a container literal in this module: its strings are scanned
-            return f"sql_from_subscript: {ast.unparse(node)[:60]}"
-        if isinstance(node, ast.Call):
-            f = node.func
-            if isinstance(f, ast.Attribute) and f.attr == "join":
-                for a in node.args:
-                    p = self._sql_arg_problem(a, seen)
-                    if p:
-                        return p
-                return None
-            if isinstance(f, ast.Attribute) and f.attr in _STR_METHODS:
-                return self._sql_arg_problem(f.value, seen)
-            if ((isinstance(f, ast.Name) and f.id in _STR_WRAPPER_FUNCS) or (isinstance(f, ast.Attribute) and f.attr in _STR_WRAPPER_FUNCS)) \
-                    and node.args:
-                return self._sql_arg_problem(node.args[0], seen)
-            if _is_sql_composition(f):
-                return _SQL_COMPOSITION_REASON
-            local = (isinstance(f, ast.Name) and f.id in self.local_defs and f.id not in self.imported) or \
-                    (isinstance(f, ast.Attribute) and f.attr in self.local_defs and _root_name(f) not in self.imported)
-            if local:
-                return None                                     # a function defined here: its literals are scanned here
-            return f"sql_from_call_result: {ast.unparse(node)[:60]}"
-        if isinstance(node, (ast.List, ast.Tuple, ast.Set)):
-            for e in node.elts:
-                p = self._sql_arg_problem(e, seen)
-                if p:
-                    return p
-            return None
-        if isinstance(node, (ast.ListComp, ast.GeneratorExp, ast.SetComp)):
-            return self._sql_arg_problem(node.elt, seen)
-        if isinstance(node, ast.IfExp):
-            return self._sql_arg_problem(node.body, seen) or self._sql_arg_problem(node.orelse, seen)
-        if isinstance(node, ast.BoolOp):
-            for v in node.values:
-                p = self._sql_arg_problem(v, seen)
-                if p:
-                    return p
-            return None
-        if isinstance(node, ast.Await):
-            return self._sql_arg_problem(node.value, seen)
-        return f"unresolved_sql_expression: {type(node).__name__}"
-
-    def _first_problem(self, nodes: Sequence[ast.AST], seen: frozenset) -> str | None:
-        for n in nodes:
-            p = self._sql_arg_problem(n, seen)
-            if p:
-                return p
-        return None
-
-    @staticmethod
-    def _statement_start_operands(node: ast.AST) -> list[ast.AST]:
-        """The runtime parts of an f-string / `+` chain that sit where a STATEMENT begins (the start of the text, or right
-        after a `;`): there the runtime value is the verb itself, so it is classified like a whole-statement argument. A
-        runtime part in the middle of a literal statement (a column list, a placeholder run) is not."""
-        out: list[ast.AST] = []
-        at_start = True
-        if isinstance(node, ast.JoinedStr):
-            items = [(v.value, isinstance(v, ast.FormattedValue)) for v in node.values if isinstance(v, (ast.Constant, ast.FormattedValue))]
-        else:
-            flat: list[ast.AST] = []
-
-            def flatten(n: ast.AST) -> None:
-                if isinstance(n, ast.BinOp) and isinstance(n.op, ast.Add):
-                    flatten(n.left)
-                    flatten(n.right)
-                else:
-                    flat.append(n)
-            flatten(node)
-            items = [(n, not _is_str(n)) for n in flat]
-        for value, runtime in items:
-            if runtime:
-                if at_start:
-                    out.append(value)
-                at_start = False
-            else:
-                text = value if isinstance(value, str) else getattr(value, "value", "")
-                if isinstance(text, str) and text.strip():
-                    at_start = text.rstrip().endswith(";")
-        return out
+    def _check_execute_call(self, call: ast.Call, file_sql_names: set[str]) -> None:
+        f = call.func
+        idx = None
+        name = None
+        if isinstance(f, ast.Attribute):
+            name = f.attr
+            if f.attr in _SQL_SECOND_ARG_FUNCS:
+                idx = 1
+            elif f.attr in _EXECUTE_ATTRS:
+                idx = 0
+            if idx is not None and f.attr in ("copy", "run") and _root_name(f) in self.imported:
+                return                                            # copy.copy(x) / shutil.copy(a, b) / subprocess.run([...])
+        elif isinstance(f, ast.Name):
+            name = self.exec_aliases.get(f.id, f.id)
+            if name in _SQL_SECOND_ARG_FUNCS:
+                idx = 1
+        if idx is None:
+            return
+        if any(isinstance(a, ast.Starred) for a in call.args[:idx + 1]) or any(k.arg is None for k in call.keywords):
+            self.unresolved.append(f"unresolved_sql_arguments: {name}() is called with *args / **kwargs")
+            return
+        nodes = []
+        if len(call.args) > idx:
+            nodes.append(call.args[idx])
+        nodes += [k.value for k in call.keywords if k.arg in _SQL_KEYWORDS]
+        if not nodes:
+            if (call.args or call.keywords) and name not in ("copy", "fetchmany", "run"):
+                self.unresolved.append(f"unresolved_sql_arguments: no SQL argument of {name}() could be identified")
+            return
+        for arg in nodes:
+            if _reads_a_file(arg) or (isinstance(arg, ast.Name) and arg.id in file_sql_names):
+                self.unresolved.append("write_form_not_analysed: SQL read from a file feeds execute()")
+                return
+            rendered = _render_sql_node(arg)
+            if rendered is not None and _TXN_CONTROL.match(rendered):
+                continue                                          # SAVEPOINT / RELEASE / ROLLBACK TO <identifier>: writes no table
+            try:
+                problem = self._clean_expr(arg)
+            except _Budget as exc:
+                problem = f"resolver_work_cap: {exc}"
+            if problem:
+                self.unresolved.append(problem)
+                return
 
     def _tripwire_calls(self, tree: ast.Module) -> None:
         """Forms that name tables only at runtime or outside this file: psycopg sql composition, SQL read from a file, SQL
-        imported / called / subscripted into execute(), copy APIs with no SQL text, exec/eval, runtime rebinding."""
+        that is not provably this file's own literals reaching execute(), copy APIs with no SQL text, exec/eval, runtime
+        rebinding."""
         file_sql_names: set[str] = set()
+        parents: dict[int, ast.AST] | None = None
         for node in ast.walk(tree):
             if isinstance(node, ast.Assign) and _reads_a_file(node.value):
                 for t in node.targets:
                     if isinstance(t, ast.Name):
                         file_sql_names.add(t.id)
-            elif isinstance(node, ast.Constant) and isinstance(node.value, str) and _SQL_FILE_LITERAL.match(node.value):
+            if isinstance(node, ast.Constant) and isinstance(node.value, str) and _SQL_FILE_LITERAL.match(node.value):
                 self.unresolved.append(f"write_form_not_analysed: sql file reference {node.value.strip()[:60]!r}")
-            elif isinstance(node, ast.ImportFrom) and any(a.name == "*" for a in node.names):
-                self.unresolved.append(f"dynamic_binding: from {'.' * node.level}{node.module or ''} import *")
-            elif isinstance(node, ast.Subscript) and isinstance(node.ctx, (ast.Store, ast.Del)) and _is_globals_call(node.value):
-                self.unresolved.append("runtime_rebinding: item assignment on globals()/locals()/vars()")
+            elif isinstance(node, ast.ImportFrom):
+                if any(a.name == "*" for a in node.names):
+                    self.unresolved.append(f"dynamic_binding: from {'.' * node.level}{node.module or ''} import *")
+                for a in node.names:
+                    if a.name in _DB_EXEC_NAMES:
+                        self.unresolved.append(f"execute_function_imported: {a.name} is imported, its call shape is not analysed")
+            elif isinstance(node, ast.Subscript) and isinstance(node.ctx, (ast.Store, ast.Del)) and (
+                    _is_globals_call(node.value) or _mentions_modules(node.value)):
+                self.unresolved.append("runtime_rebinding: item assignment on globals()/locals()/vars()/sys.modules")
+            elif isinstance(node, ast.Attribute) and isinstance(node.ctx, (ast.Store, ast.Del)) and _mentions_modules(node.value):
+                self.unresolved.append("runtime_rebinding: attribute assignment on sys.modules[...]")
+            elif isinstance(node, ast.Attribute) and isinstance(node.ctx, ast.Load) and id(node) not in self.callee_ids and (
+                    node.attr in _EXECUTE_ATTRS or node.attr in _SQL_SECOND_ARG_FUNCS or node.attr in _COPY_API_ATTRS):
+                if not (node.attr in ("copy", "run") and _root_name(node) in self.imported):
+                    self.unresolved.append(f"execute_method_used_as_value: .{node.attr} is aliased / passed on, its calls are not analysed")
+            elif isinstance(node, ast.Name) and isinstance(node.ctx, ast.Load) and id(node) not in self.callee_ids and (
+                    node.id in _SQL_SECOND_ARG_FUNCS or node.id in self.exec_aliases):
+                self.unresolved.append(f"execute_method_used_as_value: {node.id} is aliased / passed on, its calls are not analysed")
+            elif isinstance(node, (ast.Call,)) and _is_globals_call(node):
+                parents = parents if parents is not None else _parent_map(tree)
+                par = parents.get(id(node))
+                ok = (isinstance(par, ast.Subscript) and isinstance(par.ctx, ast.Load)) or isinstance(par, (ast.keyword, ast.Starred, ast.Compare)) \
+                    or (isinstance(par, ast.Attribute) and par.attr in ("get", "keys", "values", "items", "copy", "__contains__", "__getitem__")) \
+                    or (isinstance(par, ast.Dict))
+                if not ok:
+                    self.unresolved.append("runtime_rebinding: the globals()/locals()/vars() dict is aliased or passed on")
         for call in self.calls:
             f = call.func
             if _is_sql_composition(f):
@@ -2062,42 +2504,46 @@ class _WriteScan:
                 self.unresolved.append(f"dynamic_code: {f.id}() builds code at runtime")
             if isinstance(f, ast.Name) and f.id == "setattr":
                 self.unresolved.append("runtime_rebinding: setattr() can rebind a SQL constant or a method at runtime")
-            if isinstance(f, ast.Attribute) and f.attr in {"update", "setdefault", "pop"} and _is_globals_call(f.value):
-                self.unresolved.append("runtime_rebinding: globals()/locals()/vars() mutated at runtime")
             if isinstance(f, ast.Attribute) and f.attr in _COPY_API_ATTRS:
                 self.unresolved.append(f"copy_api_without_sql_text: {f.attr}() writes a table with no SQL text to scan")
             # getattr(cur, 'execute')(...) / getattr(cur, name)(...): the callee is chosen at runtime
             if isinstance(f, ast.Call) and isinstance(f.func, ast.Name) and f.func.id == "getattr" and len(f.args) >= 2:
                 a = f.args[1]
-                if not _is_str(a) or a.value in _EXECUTE_ATTRS | _COPY_API_ATTRS:
+                if not _is_str(a) or a.value in _EXECUTE_ATTRS | _COPY_API_ATTRS | _SQL_SECOND_ARG_FUNCS:
                     self.unresolved.append("dynamic_attribute_call: getattr(...)(...) calls an attribute chosen at runtime")
             if isinstance(f, ast.Name) and f.id == "getattr" and len(call.args) >= 2 and _is_str(call.args[1]) \
-                    and call.args[1].value in _EXECUTE_ATTRS | _COPY_API_ATTRS:
+                    and call.args[1].value in _EXECUTE_ATTRS | _COPY_API_ATTRS | _SQL_SECOND_ARG_FUNCS:
                 self.unresolved.append(f"dynamic_attribute_call: getattr(.., {call.args[1].value!r}) fetches a SQL-running attribute by name")
-            # the SQL text handed to execute-like calls
-            idx = None
-            if isinstance(f, ast.Attribute) and f.attr in _EXECUTE_ATTRS:
-                idx = 0
-            elif (isinstance(f, ast.Name) and f.id in _SQL_SECOND_ARG_FUNCS) or \
-                    (isinstance(f, ast.Attribute) and f.attr in _SQL_SECOND_ARG_FUNCS):
-                idx = 1
-            if idx is not None:
-                arg = call.args[idx] if len(call.args) > idx else next((k.value for k in call.keywords if k.arg in _SQL_KEYWORDS), None)
-                if arg is not None and not isinstance(arg, ast.Starred):
-                    if _reads_a_file(arg) or (isinstance(arg, ast.Name) and arg.id in file_sql_names):
-                        self.unresolved.append("write_form_not_analysed: SQL read from a file feeds execute()")
-                    else:
-                        problem = self._sql_arg_problem(arg)
-                        if problem:
-                            self.unresolved.append(problem)
+            self._check_execute_call(call, file_sql_names)
+
+    # ---- statement text ---------------------------------------------------------------------------------------------
 
     def _scan_text(self, text: str, fn_stack: list[ast.AST]) -> None:
         if len(text) > MAX_SQL_LITERAL_CHARS:
             self.unresolved.append(f"sql_literal_too_long: {len(text)} characters (limit {MAX_SQL_LITERAL_CHARS}); not scanned")
             return
+        normalised = _strip_sql_comments(text) if ("/*" in text or "--" in text) else text
+        if normalised == text:
+            self._scan_variant(text, fn_stack)
+            return
+        # SQL comments are whitespace to the server (`INSERT /* c */ INTO a`, `TRUNCATE a -- c\n, b`): the verbs are matched on
+        # the comment-free text. The raw text is scanned too, but only for the tables it names and the unanalysed write forms
+        # (tripwires) -- so a comment can neither hide a verb nor, by its own punctuation, make a statement unparseable
+        self._scan_variant(normalised, fn_stack)
+        kept = self.unresolved
+        self.unresolved = []
+        try:
+            self._scan_variant(text, fn_stack)
+        finally:
+            tripwires = [r for r in self.unresolved if r.startswith("write_form_not_analysed")]
+            self.unresolved = kept + tripwires
+
+    def _scan_variant(self, text: str, fn_stack: list[ast.AST]) -> None:
         for label, hit in _TRIPWIRES:
             if hit(text):
                 self.unresolved.append(f"write_form_not_analysed: {label}")
+        if _STMT_START_RUNTIME.search(text):
+            self.unresolved.append("unparseable_write_target: a statement starts with a runtime value (its verb is not in this text)")
         verb_starts: set[int] = set()
         matched_spans: list[tuple[int, int]] = []
         for verb, rx in _WRITE_VERBS:
@@ -2119,7 +2565,7 @@ class _WriteScan:
         pos = head.end()
         while True:
             m = _TRUNCATE_ITEM.match(text, pos)
-            if m is None:
+            if m is None or m.group("t").lower().strip('"') in _SQL_WORDS:
                 self.unresolved.append(f"unparseable_write_target: {text[head.start():head.start() + 60]!r}")
                 return
             matched_spans.append(m.span("t"))
@@ -2133,7 +2579,8 @@ class _WriteScan:
 
     def _scan_unmatched_verbs(self, text: str, verb_starts: set[int]) -> None:
         """A write verb the verb regexes did not resolve to a target: a literal that ends in the verb (the table is joined on
-        at runtime), an UPDATE ... SET / COPY ... FROM whose target is not a recognisable name."""
+        at runtime), an UPDATE / COPY followed by a name or placeholder with no SET / FROM|TO behind it (the tail is joined
+        on at runtime), an UPDATE ... SET / COPY ... FROM whose target is not a recognisable name."""
         if _TRAILING_STRONG_VERB.search(text):
             self.unresolved.append("trailing_write_verb_without_target: a literal ends in a write verb (the table is joined on at runtime)")
         m = _TRAILING_WEAK_VERB.search(text)
@@ -2143,21 +2590,29 @@ class _WriteScan:
                 self.unresolved.append("trailing_write_verb_without_target: a literal ends in a write verb (the table is joined on at runtime)")
         last_set = max((x.start() for x in _SET_WORD.finditer(text)), default=-1)
         last_from = max((x.start() for x in _FROM_WORD.finditer(text)), default=-1)
+        last_to = max((x.start() for x in _TO_WORD.finditer(text)), default=-1)
         for m in _UPDATE_WORD.finditer(text):
             prev = text[max(0, m.start() - 30):m.start()].split()[-1:]
             if m.start() in verb_starts or (prev and prev[0].lower() in _NOT_A_STATEMENT_UPDATE_PREV):
                 continue
-            if last_set > m.end():
+            tail = _NAME_AFTER_VERB.match(text, m.end())
+            # SET behind it but the target is not a name; or no SET at all and either a placeholder follows the verb or the
+            # text ends right after a name (the tail is runtime). A Title-case "Update x ..." is prose
+            if last_set > m.end() or (tail and (tail.group("n") == _PH_OPEN or (m.group() in ("UPDATE", "update")
+                                                                                and _UNFINISHED_TAIL.match(text, m.end())))):
                 self.unresolved.append(f"unparseable_write_target: {text[m.start():m.start() + 60]!r}")
         for m in _COPY_WORD.finditer(text):
-            if m.start() in verb_starts or last_from <= m.end():
+            if m.start() in verb_starts:
                 continue
             if text[m.end():m.end() + 200].lstrip()[:1] == "(":
                 continue                                        # COPY (SELECT ...) TO: an export, a read
-            self.unresolved.append(f"unparseable_write_target: {text[m.start():m.start() + 60]!r}")
+            tail = _NAME_AFTER_VERB.match(text, m.end())
+            if last_from > m.end() or (tail and last_to <= m.end() and (tail.group("n") == _PH_OPEN or (
+                    m.group() == "COPY" and _UNFINISHED_TAIL.match(text, m.end())))):
+                self.unresolved.append(f"unparseable_write_target: {text[m.start():m.start() + 60]!r}")
 
     def _add_target(self, token: str, verb: str, fn_stack: list[ast.AST]) -> None:
-        if token.lower().strip('"') in _SQL_WORDS:
+        if verb != "TRUNCATE" and token.lower().strip('"') in _SQL_WORDS:
             return
         parts = re.findall(rf"{_NAME_PART}", token)
         resolved = []
@@ -2169,13 +2624,25 @@ class _WriteScan:
                     fn = fn_stack[-1] if fn_stack else None
                     params = [a.arg for a in fn.args.args] if fn is not None else []
                     if fn is not None and expr in params and len(parts) == 1:
-                        self.param_funcs.setdefault(fn.name, []).append((expr, params.index(expr)))
+                        idx = params.index(expr)
+                        if self._is_method(fn):
+                            if idx == 0:
+                                self.unresolved.append(f"unresolved_table_expression: {expr}")
+                                return
+                            idx -= 1
+                            self.method_param_funcs.add(fn.name)
+                        self.param_funcs.setdefault(fn.name, []).append((expr, idx))
                         return
                     self.unresolved.append(f"unresolved_table_expression: {expr}")
                     return
                 resolved.append(value)
-            else:
+            elif part.startswith('"'):
+                if not _PLAIN_QUOTED.fullmatch(part):             # "a.b", "Foo", "my table": quoted names keep case and dots
+                    self.unresolved.append(f"unresolved_table_expression: {token[:60]!r} (a quoted name that is not a plain lowercase identifier)")
+                    return
                 resolved.append(part.strip('"'))
+            else:
+                resolved.append(part)
         name = ".".join(resolved)
         if not re.fullmatch(r"[A-Za-z_][\w$]*(?:\.[A-Za-z_][\w$]*)?", name):
             self.unresolved.append(f"unresolved_table_expression: {token[:60]!r}")
@@ -2183,17 +2650,27 @@ class _WriteScan:
         self.tables.add(_norm_written_table(name))
 
     def resolve_param_calls(self, helper_params: Mapping[str, Sequence[tuple[str, int]]] | None = None) -> None:
-        """Fill the tables of parametric functions from their call sites; a parametric function nothing calls is unresolved."""
+        """Fill the tables of parametric functions from their call sites; a parametric function nothing calls, or one that is
+        aliased / passed on as a value, is unresolved."""
         merged: dict[str, list[tuple[str, int]]] = {k: list(v) for k, v in (helper_params or {}).items()}
         for k, v in self.param_funcs.items():
             merged.setdefault(k, []).extend(v)
         called: set[str] = set()
+        for fname in merged:
+            if fname in self.value_refs:
+                self.unresolved.append(f"unresolved_table_argument: {fname}() is used as a value (alias / partial / map)")
         for call in self.calls:
             fname = call.func.id if isinstance(call.func, ast.Name) else call.func.attr if isinstance(call.func, ast.Attribute) else None
             if fname not in merged:
                 continue
             called.add(fname)
             for pname, idx in merged[fname]:
+                if any(isinstance(a, ast.Starred) for a in call.args) or any(k.arg is None for k in call.keywords):
+                    self.unresolved.append(f"unresolved_table_argument: {fname}(*args / **kwargs)")
+                    continue
+                if (fname in self.method_param_funcs and isinstance(call.func, ast.Attribute)
+                        and isinstance(call.func.value, ast.Name) and call.func.value.id in self.local_classes):
+                    idx += 1                                      # Class.method(instance, ...): the instance is an argument
                 arg = call.args[idx] if idx < len(call.args) else next((k.value for k in call.keywords if k.arg == pname), None)
                 value = None
                 if arg is not None:
@@ -2240,45 +2717,63 @@ def helper_write_effects(repo: Path) -> dict[str, dict]:
     return out
 
 
-_SOURCE_PATHS_MUTATORS = {"append", "extend", "insert", "remove", "pop", "clear", "sort", "reverse",
-                          "__iadd__", "__imul__", "__setitem__", "__delitem__"}
-
-
 def _is_source_paths(node: ast.AST) -> bool:
     """`source_paths` as a bare name or as an attribute (`cls.source_paths`, `self.source_paths`)."""
     return (isinstance(node, ast.Name) and node.id == "source_paths") or (isinstance(node, ast.Attribute) and node.attr == "source_paths")
 
 
+_SOURCE_PATHS_READERS = {"len", "list", "tuple", "sorted", "set", "frozenset", "iter", "enumerate"}
+
+
+def _contains_source_paths(target: ast.AST) -> bool:
+    if _is_source_paths(target):
+        return True
+    if isinstance(target, (ast.Tuple, ast.List)):
+        return any(_contains_source_paths(e) for e in target.elts)
+    if isinstance(target, ast.Starred):
+        return _contains_source_paths(target.value)
+    return False
+
+
 def _source_paths_literal(tree: ast.Module) -> tuple[list[str], str | None]:
     """The string items of a `source_paths = [...]` (or tuple) assignment; nothing else is evaluated. The second value is a
-    reason when an assignment is not a plain list/tuple of string literals, or when the list is mutated anywhere
-    (`source_paths.append(...)`, `+=`, `.extend`, item assignment, setattr, walrus, del): the delegate list the writer really
-    runs with is then not the literal, so it cannot be followed."""
+    reason when an assignment is not a plain list/tuple of string literals, or when the list is touched in any way other than
+    being read for its length / iterated: a mutation (`.append`, `+=`, item assignment, setattr, walrus, del, tuple-unpack
+    assignment, getattr(..., 'source_paths')) or an alias (`x = source_paths`, `list.append(source_paths, ...)`) means the
+    list the writer really runs with is not the literal, so it cannot be followed."""
     paths: list[str] = []
+    mutated = (paths, "source_paths_mutated_at_runtime")
+    parents: dict[int, ast.AST] | None = None
     for node in ast.walk(tree):
         if isinstance(node, (ast.Assign, ast.AnnAssign)):
             targets = node.targets if isinstance(node, ast.Assign) else [node.target]
+            if any(isinstance(t, (ast.Tuple, ast.List, ast.Starred)) and _contains_source_paths(t) for t in targets):
+                return mutated
             if any(_is_source_paths(t) for t in targets):
                 v = node.value
                 if not isinstance(v, (ast.List, ast.Tuple)) or not all(_is_str(e) for e in v.elts):
                     return paths, "source_paths_not_a_literal_list_of_strings"
                 paths += [e.value for e in v.elts]
         elif isinstance(node, ast.AugAssign) and _is_source_paths(node.target):
-            return paths, "source_paths_mutated_at_runtime"
+            return mutated
         elif isinstance(node, ast.NamedExpr) and _is_source_paths(node.target):
-            return paths, "source_paths_mutated_at_runtime"
-        elif isinstance(node, ast.Delete) and any(_is_source_paths(t) or (isinstance(t, ast.Subscript) and _is_source_paths(t.value))
-                                                  for t in node.targets):
-            return paths, "source_paths_mutated_at_runtime"
-        elif isinstance(node, ast.Subscript) and isinstance(node.ctx, (ast.Store, ast.Del)) and _is_source_paths(node.value):
-            return paths, "source_paths_mutated_at_runtime"
-        elif isinstance(node, ast.Call):
-            f = node.func
-            if isinstance(f, ast.Attribute) and f.attr in _SOURCE_PATHS_MUTATORS and _is_source_paths(f.value):
-                return paths, "source_paths_mutated_at_runtime"
-            if isinstance(f, ast.Name) and f.id == "setattr" and len(node.args) >= 2 and _is_str(node.args[1]) \
-                    and node.args[1].value == "source_paths":
-                return paths, "source_paths_mutated_at_runtime"
+            return mutated
+        elif isinstance(node, ast.Delete) and any(_contains_source_paths(t) for t in node.targets):
+            return mutated
+        elif isinstance(node, (ast.For, ast.AsyncFor, ast.comprehension)) and _contains_source_paths(node.target):
+            return mutated
+        elif isinstance(node, ast.Constant) and node.value == "source_paths":
+            return mutated                                           # setattr / getattr / vars()[...] by name
+        elif _is_source_paths(node) and isinstance(getattr(node, "ctx", None), ast.Load):
+            parents = parents if parents is not None else _parent_map(tree)
+            par = parents.get(id(node))
+            ok = ((isinstance(par, ast.Call) and isinstance(par.func, ast.Name) and par.func.id in _SOURCE_PATHS_READERS
+                   and node in par.args)
+                  or (isinstance(par, (ast.For, ast.AsyncFor, ast.comprehension)) and par.iter is node)
+                  or isinstance(par, ast.Compare)
+                  or (isinstance(par, ast.Subscript) and par.value is node and isinstance(par.ctx, ast.Load)))
+            if not ok:
+                return mutated
     return paths, None
 
 

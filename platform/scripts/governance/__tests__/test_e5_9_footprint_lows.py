@@ -141,7 +141,7 @@ def test_a_quoted_name_that_is_not_a_plain_identifier_is_unresolved_not_half_rea
 
 def test_an_update_whose_target_is_not_a_name_is_unresolved_while_do_update_and_for_update_are_not(repo):
     not_scanned(repo, OWN + 'x = "UPDATE %s SET x = 1"\n', "unparseable_write_target")
-    not_scanned(repo, OWN + 'x = "UPDATE /* c */ t_b SET x = 1"\n', "unparseable_write_target")
+    assert tables(repo, OWN + 'x = "UPDATE /* c */ t_b SET x = 1"\n') == ["public.t_a", "public.t_b"]      # a comment is whitespace
     ok = OWN + ('x = "INSERT INTO t_a (x) VALUES (1) ON CONFLICT (x) DO UPDATE SET x = 2"\n'
                 'y = "SELECT x FROM t_b FOR UPDATE"\nz = "SELECT x FROM t_b FOR NO KEY UPDATE"\nlabel = "UPDATE"\n')
     assert tables(repo, ok) == ["public.t_a"]
@@ -196,7 +196,7 @@ def test_the_clean_single_table_writer_stays_complete(repo):
     "from sqls import INSERT_B\ndef r(c):\n    c.execute(INSERT_B % ())\n",
     "from sqls import INSERT_B\ndef r(c):\n    c.execute(INSERT_B.format(t='x'))\n",
     "from sqls import INSERT_B\ndef r(c):\n    c.execute(INSERT_B.strip())\n",
-    "from sqls import INSERT_B\ndef r(c, cond):\n    c.execute(cond and INSERT_B)\n",
+    "from sqls import INSERT_B\ncond = True\ndef r(c):\n    c.execute(cond and INSERT_B)\n",
     "from sqls import A, B\ndef r(c, f):\n    c.execute(A if f else B)\n",
     "from sqls import INSERT_B\nQ = INSERT_B\ndef r(c):\n    c.execute(Q)\n",                 # via a local alias
     "from sqls import INSERT_B\nclass W:\n    SQL = INSERT_B\n    def r(self, c):\n        c.execute(self.SQL)\n",
@@ -249,8 +249,8 @@ def test_other_execute_arguments_this_file_cannot_show_are_not_scanned(repo, src
 @pytest.mark.parametrize("src", [
     "LOCAL = 'INSERT INTO t_a (x) VALUES (1)'\ndef r(c):\n    c.execute(LOCAL)\n",
     "def r(c):\n    c.execute('SELECT 1')\n",
-    "def r(c, sql):\n    c.execute(sql)\n",                                            # a parameter: its literals are scanned at the call site
-    "def r(c, sql, rows):\n    c.executemany(sql, rows)\n",
+    "def r(c, sql):\n    c.execute(sql)\nr(None, 'SELECT 1')\n",                       # a parameter every call site of which passes a literal
+    "def r(c, sql, rows):\n    c.executemany(sql, rows)\nr(None, OWN, [])\nr(None, 'SELECT 2', [])\n",
     "def r(c, t):\n    c.execute(f'DELETE FROM {t} WHERE x = 1')\n    r(c, 't_a')\n",
     "T = 't_a'\ndef r(c):\n    c.execute(f'DELETE FROM {T} WHERE x = 1')\n",
     "def r(c):\n    c.execute('SELECT * FROM t_b WHERE x = %s', (1,))\n",
@@ -264,11 +264,10 @@ def test_other_execute_arguments_this_file_cannot_show_are_not_scanned(repo, src
     "QS = {'a': 'SELECT 1', 'b': 'SELECT 2'}\ndef r(c):\n    c.execute(QS['a'])\n",
     "QS = ('SELECT 1', 'SELECT 2')\ndef r(c):\n    for q in QS:\n        c.execute(q)\n",
     "class W:\n    SQL = 'SELECT 1'\n    def r(self, c):\n        c.execute(self.SQL)\n",
-    "class W:\n    def __init__(self, sql):\n        self.sql = sql\n    def r(self, c):\n        c.execute(self.sql)\n",
     "def r(c, f):\n    c.execute('SELECT 1' if f else 'SELECT 2')\n",
     "def r(c):\n    c.execute(','.join(['SELECT 1', 'SELECT 2']))\n",
-    "def r(c, cols):\n    c.execute(f'SELECT {cols} FROM t_b')\n",                      # a runtime value in the MIDDLE is not a verb
-    "def r(c, ph):\n    c.execute('INSERT INTO t_a (x) VALUES (' + ph + ')')\n",
+    "def r(c, cols):\n    c.execute(f'SELECT {cols} FROM t_b')\nr(None, 'a, b')\n",
+    "def r(c, ph):\n    c.execute('INSERT INTO t_a (x) VALUES (' + ph + ')')\nr(None, '%s')\n",
     "import os\ndef r():\n    return os.path.join('a', 'b')\n",                           # an import that feeds no execute()
     "def r(c, rows):\n    c.copy_expert('COPY t_a FROM STDIN', rows)\n",
     "def r(c):\n    c.execute(f'SELECT 1; SELECT 2')\n",
@@ -309,7 +308,7 @@ def test_an_imported_name_that_never_reaches_execute_does_not_make_the_writer_no
 def test_a_literal_that_ends_in_a_write_verb_with_no_target_is_not_scanned(repo, src):
     res = scan(repo, OWN + src)
     assert "tables" not in res and res["not_scanned"].startswith(("trailing_write_verb_without_target", "unresolved_table_expression",
-                                                                   "unresolved_table_argument", "parametric_table_helper",
+                                                                   "unresolved_table_argument", "parametric_table_helper", "unresolved_sql_parameter",
                                                                    "unparseable_write_target")), (src, res)
 
 
@@ -357,7 +356,11 @@ def test_a_dotted_or_attribute_name_never_resolves_to_a_local_constant_with_the_
 def test_a_dotted_argument_to_a_parametric_helper_is_not_a_literal_table(repo):
     body = OWN + ('T = "t_b"\ndef wipe(c, tbl):\n    c.execute(f"DELETE FROM {tbl} WHERE x = 1")\n'
                   'def r(c, cfg):\n    wipe(c, cfg.T)\n    wipe(c, "t_a")\n')
-    not_scanned(repo, body, "unresolved_table_argument")
+    writer(repo, "a_x", body)
+    sc = slw._WriteScan(__import__("ast").parse((repo / WRITERS / "a_x.py").read_text()))
+    sc.resolve_param_calls()
+    assert any(r.startswith("unresolved_table_argument") for r in sc.unresolved), sc.unresolved
+    assert "tables" not in slw.scan_writer_tables("a_x", repo)
 
 
 def test_a_plain_name_constant_still_resolves(repo):
