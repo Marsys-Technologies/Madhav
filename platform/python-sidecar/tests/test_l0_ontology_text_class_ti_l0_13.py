@@ -25,6 +25,7 @@ from pathlib import Path
 import pytest
 
 from brahmagyan import l0_ontology as O
+from brahmagyan import l0_ontology_texts as TXO
 from brahmagyan import l0_texts as TX
 from tests._l0d_pg import requires_pg, scratch_schema
 
@@ -81,12 +82,22 @@ def test_text_class_is_corpus_plus_the_one_ontology_only_id_with_a_consumer():
 def test_derivation_is_a_pure_function_of_the_manifest():
     fake = {"text_id": "zz_new_text", "title_en": "A New Text", "title_sa": None, "author": "Someone",
             "school": "parashari", "source_citation": "A New Text - Some Edition"}
-    out = {e["canonical_id"]: e for e in O.build_text_entities(list(TX.TEXTS) + [fake])}
-    assert "zz_new_text" in out and out["zz_new_text"]["source_citation"] == "A New Text - Some Edition"
+    out = {e["canonical_id"]: e for e in TXO.derive_missing_text_entities(O.ENTITIES, list(TX.TEXTS) + [fake])}
+    assert set(out) == {"zz_new_text"}, "only the manifest text the class lacks is derived"
+    assert out["zz_new_text"]["source_citation"] == "A New Text - Some Edition"
     assert out["zz_new_text"]["synonyms"] == ["a new text", "zz new text"]
-    # and dropping a text from the manifest drops it from the class (jaimini_sutram is the only manifest-independent id)
-    smaller = {e["canonical_id"] for e in O.build_text_entities([t for t in TX.TEXTS if t["text_id"] != "saravali"])}
-    assert "saravali" not in smaller and "jaimini_sutram" in smaller
+    # an empty class derives the whole manifest
+    assert {e["canonical_id"] for e in TXO.derive_missing_text_entities([], TX.TEXTS)} == CORPUS_IDS
+
+
+def test_the_class_cannot_drift_from_the_manifest_again():
+    TXO.assert_text_class_matches_manifest(O.ENTITIES)                      # holds today (also run at import)
+    fake = {"text_id": "zz_new_text", "title_en": "A", "title_sa": None, "author": "x", "school": "y", "source_citation": "z"}
+    with pytest.raises(ValueError, match="zz_new_text"):
+        TXO.assert_text_class_matches_manifest(O.ENTITIES, list(TX.TEXTS) + [fake])           # corpus-only id
+    with pytest.raises(ValueError, match="saravali"):
+        TXO.assert_text_class_matches_manifest(O.ENTITIES, [t for t in TX.TEXTS if t["text_id"] != "saravali"])  # ontology-only id, no consumer declared
+    assert TXO.TEXT_ONTOLOGY_ONLY_KEPT == {"jaimini_sutram"}
 
 
 @pytest.mark.parametrize("cid", sorted(NEW_IDS))
@@ -121,6 +132,7 @@ REPO = Path(__file__).resolve().parents[3]
 ALLOW_REMOVED = {  # files that may MENTION a removed id (prose, not a consumer)
     "platform/python-sidecar/brahmagyan/l0_texts.py",       # docstring: 'Dropped: lal_kitab, bhrigu_samhita'
     "platform/python-sidecar/brahmagyan/l0_ontology.py",    # the comment explaining the removal
+    "platform/python-sidecar/brahmagyan/l0_ontology_texts.py",    # the docstring explaining the removal
     "platform/python-sidecar/pipeline/orchestrator/writers/__tests__/test_bg_texts.py",
     "platform/python-sidecar/brahmagyan/l0_rechunk_phase2.py",
     "platform/python-sidecar/brahmagyan/l0_run_phase2.py",
