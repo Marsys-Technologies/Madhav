@@ -480,19 +480,23 @@ def narr_coupling_problem(crit: str, layer: str, meas, facts, all_meas) -> str |
         return None
     blk = meas.get("prose_coupling")
     fcp = facts.get("declared_prose_coupling") if isinstance(facts, dict) else None
+    if isinstance(facts, dict) and facts.get("declared_prose_coupling_missing") is True:
+        return ("Narr N/A rests on Carr.D1 PASS (coupled): the asset declares prose_fields [] with a D1 transcription carriage but no prose_coupling, so nothing ties the N/A to "
+                "Carr.D1 (N-94)")
     if blk is None and fcp is None:
         return None
     if not (isinstance(blk, dict) and blk.get("to") == PROSE_COUPLING_TO and isinstance(blk.get("columns"), list) and blk["columns"]
-            and isinstance(blk.get("covered"), dict)):
+            and isinstance(blk.get("covered"), dict) and set(blk["covered"]) == set(blk["columns"])):
         return ("Narr N/A rests on Carr.D1 PASS (coupled): the asset is coupled (declared or recorded) but this record carries no well-formed prose_coupling block, so what it "
                 "rests on cannot be read")
-    if fcp is not None and (fcp.get("to") != blk.get("to") or fcp.get("columns") != blk.get("columns")):
-        return "Narr N/A rests on Carr.D1 PASS (coupled): the record's prose_coupling block does not match the declared coupling"
+    if fcp is not None and (fcp.get("to") != blk.get("to") or fcp.get("columns") != blk.get("columns") or fcp.get("covered") != blk.get("covered")):
+        return ("Narr N/A rests on Carr.D1 PASS (coupled): the record's prose_coupling block (to / columns / covered) does not match the declared coupling and the D1 spec's own "
+                "coverage")
     d1m = all_meas.get("Carr.D1") if isinstance(all_meas, dict) else None
     try:
         eff = _check_contribution("Carr.D1", layer, d1m, facts, all_meas) if isinstance(d1m, dict) else None
-    except (KeyError, ValueError) as exc:
-        return f"Narr N/A rests on Carr.D1 PASS (coupled): Carr.D1 cannot be evaluated ({exc})"
+    except (KeyError, ValueError, TypeError, AttributeError) as exc:
+        return f"Narr N/A rests on Carr.D1 PASS (coupled): Carr.D1 cannot be evaluated ({type(exc).__name__}: {exc})"
     reading = eff["v"] if isinstance(eff, dict) else "not measured"
     if reading != PASS:
         extra = f" (the D1 record says {d1m.get('v')}: {eff['reason']})" if isinstance(eff, dict) and d1m.get("v") != reading else ""
@@ -997,8 +1001,8 @@ def prose_coupling_problem(entry, table_columns=None, column_types=None):
         cov = _carriage_d1().prose_coverage(spec)
         claim = set(spec["fields"].values())
         equals = {ef["column"] for ef in spec.get("extra_fields", []) if ef["kind"] == "equals"}
-    except (KeyError, TypeError, AttributeError):
-        return "the asset's D1 spec is malformed (the covered columns cannot be derived from it)"
+    except (KeyError, TypeError, AttributeError, ValueError) as exc:
+        return f"the asset's D1 spec is malformed or ambiguous (the covered columns cannot be derived from it: {type(exc).__name__}: {exc})"
     for c in cols:
         if c in cov:
             continue
@@ -1017,6 +1021,19 @@ def prose_coupling_problem(entry, table_columns=None, column_types=None):
         nontext = [c for c in cols if c in column_types and str(column_types[c]).strip().casefold() not in LDGR_TEXT_TYPES]
         if nontext:
             return f"column(s) {nontext} are not text columns (a prose coupling classifies TEXT columns: {[column_types[c] for c in nontext]})"
+    return None
+
+
+def prose_empty_d1_problem(entry):
+    """None, or why the entry is refused: it declares prose_fields [] AND a transcription carriage that applies D1, but no `prose_coupling` (N-94: such a declaration is
+    refused unless Carr.D1 covers its text columns, so the binding holds by VALIDATION, not by a test: deleting the coupling block must not turn the asset into a plain Narr N/A with
+    no Carr.D1 behind it). An asset with no D1-transcription carriage (bg_yogas, bg_doshas, bg_ontology, bo_laksana_rerank) is never touched by this."""
+    if not isinstance(entry, dict) or entry.get("prose_fields") != [] or entry.get("prose_coupling") is not None:
+        return None
+    car = entry.get("carriage")
+    if isinstance(car, dict) and car.get("nature") == "transcription" and car.get("applies") == "D1":
+        return ("prose_fields [] on an asset that declares a transcription carriage checked by D1 needs a `prose_coupling` to carriage_d1 naming the text columns Carr.D1 covers "
+                "(N-94): without it the Narr N/A would stand with no Carr.D1 behind it; declare the coupling (or declare the prose_fields the writer composes)")
     return None
 
 
@@ -1195,6 +1212,9 @@ def validate_declarations(doc, registry_ids=None) -> dict:
             validate_null_convention_declaration(where, e["null_convention"], e)
         if e.get("prose_coupling") is not None:
             validate_prose_coupling_declaration(where, e["prose_coupling"], e)
+        bad = prose_empty_d1_problem(e)
+        if bad:
+            raise DeclarationsError(f"{where}.prose_coupling is missing: {bad}")
         pf = e.get("prose_fields")
         if pf is not None:
             # null = undeclared; [] = declared "this writer composes no prose" (a positive claim); both need evidence
@@ -1369,7 +1389,16 @@ def declared_facts(declarations, asset_id, registry_kind=None, measured_dependen
     pcp = e.get("prose_coupling")
     if isinstance(pcp, dict):
         # NARR-GUARD (pin 16): the declared coupling of a prose N/A to Carr.D1; the rollup reads it so a record that dropped its own coupling block cannot slip an N/A through
-        facts["declared_prose_coupling"] = dict(to=pcp.get("to"), columns=list(pcp["columns"]) if isinstance(pcp.get("columns"), list) else None)
+        cols = list(pcp["columns"]) if isinstance(pcp.get("columns"), list) else None
+        covered = None                       # the D1 spec's own coverage of the listed columns, DERIVED here: a record's `covered` map is compared with it (never trusted)
+        try:
+            cov = _carriage_d1().prose_coverage(e["carriage"]["spec"])
+            covered = {c: cov[c] for c in cols} if cols is not None else None
+        except (KeyError, TypeError, AttributeError, ValueError):
+            covered = None
+        facts["declared_prose_coupling"] = dict(to=pcp.get("to"), columns=cols, covered=covered)
+    elif prose_empty_d1_problem(e):
+        facts["declared_prose_coupling_missing"] = True      # [] + a D1 transcription carriage and NO coupling: no Narr N/A may stand (the rollup, the ledger and the reader read this)
     cw = e.get("cross_asset_writes")
     if isinstance(cw, list):
         facts["declared_cross_asset_writes"] = list(cw)
@@ -3355,6 +3384,9 @@ def prose_checks(aid: str, decl, ctx: dict) -> dict:
         return {c: dict(v=NO_DET, measured=f"NO_DETECTOR — prose_fields is undeclared for {aid}: never read as 'no prose'")
                 for c in allc}
     if not pf:
+        bad = prose_empty_d1_problem(decl)
+        if bad:                           # NARR-GUARD (N-94): [] + a D1 transcription carriage with no coupling is never N/A, whatever the validator saw
+            return {c: dict(v=NO_DET, measured=f"NO_DETECTOR — {aid}: {bad}") for c in allc}
         if not ctx.get("written"):       # None (unreadable) OR {} (the scan saw no write at all): neither proves "no narration write"
             return {c: dict(v=NO_DET, measured=f"NO_DETECTOR — {aid} declares prose_fields [] but its writes could not be "
                                                "read (or the scan saw no write to its tables), so the declaration cannot be checked")
@@ -8435,10 +8467,21 @@ def _na_released(crit: str, rec: dict, all_meas=None, layer=None, facts=None) ->
         return False
     if not (cause in NA_CAUSES.get(crit, ()) and f"{crit}#measured:{cause}" in NA_RULE_DECISIONS):
         return False
-    if crit.startswith("Narr.") and (rec.get("prose_coupling") is not None or (isinstance(facts, dict) and facts.get("declared_prose_coupling") is not None)):
+    if crit.startswith("Narr.") and (rec.get("prose_coupling") is not None or (isinstance(facts, dict) and (facts.get("declared_prose_coupling") is not None
+                                                                                                          or facts.get("declared_prose_coupling_missing") is True))):
         # NARR-GUARD (pin 16): a coupled Narr N/A closes a ledger row only where the rollup would honour it; with no context to read the Carr.D1 cell it is not released
         return all_meas is not None and layer is not None and narr_coupling_problem(crit, layer, rec, facts, all_meas) is None
     return True
+
+
+def _emit_facts(a: dict, census: dict):
+    """The facts `facts_for_asset` derives for asset record `a` from the declarations file (so the ledger reads the same declared coupling the rollup does: a Narr N/A whose
+    record dropped its coupling block is not released). None when the declarations file is unreadable: the record's own block is then all the guard has."""
+    try:
+        decl = load_asset_declarations()
+    except DeclarationsError:
+        return None
+    return facts_for_asset(a, decl)
 
 
 def _emit_scope(census: dict, assets) -> frozenset | None:
@@ -8585,7 +8628,7 @@ def emit_gaps_summary(census: dict, assets=None) -> dict:
                 v = res["v"]
                 if v not in FAILING and v not in CLOSABLE:
                     continue  # NOT_GENERIC / UNKNOWN / errored / anything future: never a transition
-                if v == NA and not _na_released(crit, res, a["measurements"], a.get("layer") or census.get("layer")):
+                if v == NA and not _na_released(crit, res, a["measurements"], a.get("layer") or census.get("layer"), _emit_facts(a, census)):
                     # §N.8: the ledger records closure, so it may not honour an N/A the rollup refuses.
                     res = dict(res, measured=f"NO_DETECTOR — measured N/A not released by a declared rule "
                                              f"(cause={res.get('cause')!r}): {res['measured']}")

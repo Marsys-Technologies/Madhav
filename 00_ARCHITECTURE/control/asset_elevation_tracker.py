@@ -1255,7 +1255,7 @@ if out["has"]:
         cells = ac.rollup_asset(req["layer"], req["measurements"], facts)
         narr = {c["criterion"]: c for c in cells["Narr"]["checks"]}.get(req["criterion"], {})
         d1 = {c["criterion"]: c for c in cells["Carr"]["checks"]}.get("Carr.D1", {})
-        out["coupled"] = "declared_prose_coupling" in facts
+        out["coupled"] = "declared_prose_coupling" in facts or facts.get("declared_prose_coupling_missing") is True
         out["check"], out["d1"] = narr.get("v"), d1.get("v")
     except Exception as e:
         out["error"] = type(e).__name__ + ": " + str(e)[:200]
@@ -1281,7 +1281,12 @@ def _e63_narr_coupling_ok(repo, sha, rec, census_src):
     """True when the Narr N/A certificate `rec` may stand: its asset's declaration at the ref has NO prose_coupling (the declared rule alone decides, as before), or it has one and
     the ref's own census, run on the census the certificate cites, still reads this Narr check N/A with Carr.D1 PASS (see the block comment above). False otherwise."""
     ent = _e63_declared_entry(repo, sha, rec.get("asset"))
-    if ent is None or ent.get("prose_coupling") is None:
+    if ent is None:
+        return True
+    car = ent.get("carriage")
+    # the declaration at the ref decides WHETHER the ref's census is asked: a coupling, or a prose_fields [] beside a carriage check (a [] D1 asset with its coupling deleted must be refused
+    # by the ref's own census, never read as a plain N/A); the answer itself is the ref census's, this reader copies none of its rule
+    if ent.get("prose_coupling") is None and not (ent.get("prose_fields") == [] and isinstance(car, dict) and car.get("nature") is not None):
         return True
     got = _e63_null_census_record(repo, sha, rec)       # the generic lookup of the census a certificate cites (hash-checked, trusted root, one head, one asset)
     if got is None:
@@ -1292,7 +1297,7 @@ def _e63_narr_coupling_ok(repo, sha, rec, census_src):
     except ElevatedInputError:
         return False
     ms = {c: m for c, m in arec["measurements"].items() if c.startswith(("Narr.", "Carr."))}
-    entry = {k: ent.get(k) for k in ("prose_fields", "prose_coupling") if ent.get(k) is not None}
+    entry = {k: ent.get(k) for k in ("prose_fields", "prose_coupling", "carriage") if ent.get(k) is not None}
     req = json.dumps({"asset": rec["asset"], "layer": rec["layer"], "criterion": rec["criterion"], "entry": entry, "measurements": ms},
                      sort_keys=True, default=str).encode("utf-8")
     key = (sha, _e63_sha(census_src), _e63_sha(d1_src), _e63_sha(req), _e63_sha(_E63_NARR_DRIVER.encode("utf-8")))
@@ -1311,7 +1316,7 @@ def _e63_narr_coupling_ok(repo, sha, rec, census_src):
         return False
     return (rec.get("verdict") == "N/A" and head.get("registry_revision") == out.get("revision")
             and head.get("registry_fingerprint") == out.get("fingerprint")
-            and out.get("coupled") is True and out.get("check") == "N/A" and out.get("d1") == "PASS")
+            and out.get("check") == "N/A" and (ent.get("prose_coupling") is None or (out.get("coupled") is True and out.get("d1") == "PASS")))
 
 
 def _e63_parse_certs(records, facts):
