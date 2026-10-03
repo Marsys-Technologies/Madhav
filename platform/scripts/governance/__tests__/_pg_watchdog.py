@@ -24,18 +24,31 @@ import time
 from pathlib import Path
 
 OWNER_MARKER = ".suvarna_pg_owner.json"
+MARKER_VERSION = 2          # v2: start time read under LC_ALL=C/TZ=UTC; a marker without it (an earlier local-time stamp) is never reaped
 POLL_SECONDS = 2.0
-_PS_ENV = {"PATH": os.environ.get("PATH", "/usr/bin:/bin"), "LC_ALL": "C", "LANG": "C", "TZ": "UTC"}
+_PS_ENV = {"PATH": "/usr/bin:/bin", "LC_ALL": "C", "LANG": "C", "TZ": "UTC"}
+_PS = next((c for c in ("/bin/ps", "/usr/bin/ps") if os.path.exists(c)), "ps")      # not looked up on a caller-controlled PATH
 GONE = ""                    # proc_start: `ps` answered that there is no such process
 # proc_start returns None when `ps` could not answer conclusively (timeout, OS error, odd status/output): the caller must treat it as alive.
 
 
 def _ps(*args: str) -> tuple[int, str] | None:
     try:
-        p = subprocess.run(["ps", *args], capture_output=True, text=True, timeout=10, env=_PS_ENV)
+        p = subprocess.run([_PS, *args], capture_output=True, text=True, timeout=10, env=_PS_ENV)
     except (OSError, subprocess.SubprocessError, ValueError):
         return None
     return p.returncode, p.stdout
+
+
+def _pid_absent(pid: int) -> bool:
+    """True only when the kernel itself says there is no such process (`kill(pid, 0)` -> ESRCH); EPERM means it exists."""
+    try:
+        os.kill(pid, 0)
+    except ProcessLookupError:
+        return True
+    except OSError:
+        return False
+    return False
 
 
 def proc_start(pid: int) -> str | None:
@@ -51,7 +64,7 @@ def proc_start(pid: int) -> str | None:
     rc, out = r
     out = out.strip()
     if rc == 1 and not out:
-        return GONE                                    # ps exits 1 with nothing printed when the pid does not exist
+        return GONE if _pid_absent(pid) else None      # ps exits 1 with nothing printed when the pid does not exist: the kernel must agree
     if rc != 0 or not out:
         return None
     start, _, stat = out.rpartition(" ")
@@ -86,10 +99,13 @@ def _postmaster_state(data: Path) -> str:
     rc, out = r
     out = out.strip()
     if rc == 1 and not out:
-        return "none"
+        return "none" if _pid_absent(pid) else "unknown"
     if rc != 0:
         return "unknown"
-    return "ours" if ("postgres" in out and str(data) in out) else "foreign"
+    tok = out.split()
+    # the command line of a postmaster on THIS data dir: `<...>/postgres -D <data> ...` (token-wise, never a substring match)
+    ours = (bool(tok) and os.path.basename(tok[0]) == "postgres" and "-D" in tok[:-1] and tok[tok.index("-D") + 1] == str(data))
+    return "ours" if ours else "foreign"
 
 
 def read_marker(root: Path) -> dict | None:
@@ -98,7 +114,8 @@ def read_marker(root: Path) -> dict | None:
     except (OSError, ValueError):
         return None
     ok = (isinstance(m, dict) and isinstance(m.get("parent_pid"), int) and not isinstance(m.get("parent_pid"), bool)
-          and isinstance(m.get("parent_start"), str) and bool(m.get("parent_start")) and m.get("root") == str(root))
+          and isinstance(m.get("parent_start"), str) and bool(m.get("parent_start")) and m.get("root") == str(root)
+          and m.get("v") == MARKER_VERSION)
     return m if ok else None
 
 

@@ -46,7 +46,7 @@ def _mk(base: pathlib.Path, name: str, *, pid: int | None, start: str | None, ro
     r.mkdir()
     (r / "data").mkdir()
     if pid is not None:
-        (r / wd.OWNER_MARKER).write_text(json.dumps({"parent_pid": pid, "parent_start": start, "root": root_field or str(r), "created": 0}))
+        (r / wd.OWNER_MARKER).write_text(json.dumps({"parent_pid": pid, "parent_start": start, "root": root_field or str(r), "created": 0, "v": wd.MARKER_VERSION}))
     return r
 
 
@@ -91,7 +91,7 @@ def test_sweep_ignores_a_marker_that_names_another_root_and_entries_that_are_not
     base.mkdir()
     link = base / "suvarna_pg_link"
     link.symlink_to(keep)
-    (keep / wd.OWNER_MARKER).write_text(json.dumps({"parent_pid": pid, "parent_start": start, "root": str(link), "created": 0}))   # a VALID marker behind a symlink
+    (keep / wd.OWNER_MARKER).write_text(json.dumps({"parent_pid": pid, "parent_start": start, "root": str(link), "created": 0, "v": wd.MARKER_VERSION}))   # a VALID marker behind a symlink
     assert dpg.sweep_stale_clusters(base) == [] and dpg.sweep_stale_clusters(tmp_path) == []
     assert wrong.exists() and other.exists() and keep.exists() and (keep / "data").exists() and link.is_symlink()
 
@@ -234,7 +234,7 @@ def test_proc_start_tells_gone_from_alive_and_a_zombie_from_a_live_process():
 def test_a_marker_with_a_non_integer_pid_is_not_valid(tmp_path, bad):
     r = tmp_path / "suvarna_pg_badpid"
     r.mkdir()
-    (r / wd.OWNER_MARKER).write_text(json.dumps({"parent_pid": bad, "parent_start": "x", "root": str(r)}))
+    (r / wd.OWNER_MARKER).write_text(json.dumps({"parent_pid": bad, "parent_start": "x", "root": str(r), "v": wd.MARKER_VERSION}))
     assert wd.read_marker(r) is None
 
 
@@ -315,7 +315,7 @@ def test_a_symlinked_data_dir_is_never_stopped_or_followed(tmp_path):
     evil = tmp_path / "suvarna_pg_evil"
     evil.mkdir()
     (evil / "data").symlink_to(victim / "data")
-    (evil / wd.OWNER_MARKER).write_text(json.dumps({"parent_pid": pid, "parent_start": start, "root": str(evil), "created": 0}))
+    (evil / wd.OWNER_MARKER).write_text(json.dumps({"parent_pid": pid, "parent_start": start, "root": str(evil), "created": 0, "v": wd.MARKER_VERSION}))
     ctl, log = _fake_ctl(tmp_path)
     try:
         assert wd.reap(evil, ctl) is False and dpg.sweep_stale_clusters(tmp_path, ctl) == []
@@ -353,7 +353,7 @@ def test_reap_refuses_a_symlinked_or_foreign_root_itself(tmp_path):
     real = _mk(tmp_path, "real", pid=pid, start=start)
     link = tmp_path / "suvarna_pg_link"
     link.symlink_to(real)
-    (real / wd.OWNER_MARKER).write_text(json.dumps({"parent_pid": pid, "parent_start": start, "root": str(link), "created": 0}))
+    (real / wd.OWNER_MARKER).write_text(json.dumps({"parent_pid": pid, "parent_start": start, "root": str(link), "created": 0, "v": wd.MARKER_VERSION}))
     assert wd.reap(link, "/bin/false") is False and real.exists() and link.is_symlink()
 
 
@@ -389,3 +389,82 @@ def test_the_watchdog_is_detached_into_its_own_session():
         assert int(found[0][1]) != os.getpgrp(), "the watchdog shares this process group: a group kill would take it down too"
     finally:
         cl.stop()
+
+
+# ------------------------------------------------ review round 2 --------------------------------------------------------------------------
+
+def test_a_marker_from_an_earlier_stamp_format_is_never_reaped(tmp_path):
+    """Round 2 MEDIUM-1: a marker without the current version (an earlier local-time start stamp) must not read a live owner as dead."""
+    r = tmp_path / "suvarna_pg_oldstamp"
+    (r / "data").mkdir(parents=True)
+    (r / wd.OWNER_MARKER).write_text(json.dumps({"parent_pid": os.getpid(), "parent_start": "Mon Jan  1 00:00:00 2001", "root": str(r), "created": 0}))
+    assert wd.read_marker(r) is None and dpg.sweep_stale_clusters(tmp_path) == [] and r.exists()
+
+
+def test_the_stamp_the_fixture_writes_is_a_current_version_marker(tmp_path):
+    dpg._write_owner_marker(tmp_path)
+    m = json.loads((tmp_path / wd.OWNER_MARKER).read_text())
+    assert m["v"] == wd.MARKER_VERSION and m["parent_pid"] == os.getpid() and m["parent_start"] == wd.proc_start(os.getpid())
+
+
+def _cmdline_state(tmp_path: pathlib.Path, argv0: str) -> str:
+    data = tmp_path / "data"
+    data.mkdir(exist_ok=True)
+    p = subprocess.Popen(["bash", "-c", f'exec -a "{argv0.format(data=data)}" sleep 600'])
+    try:
+        for _ in range(100):
+            if wd._ps("-p", str(p.pid), "-o", "command=")[1].strip().startswith(argv0.split()[0].split("/")[-1][:4]):
+                break
+            time.sleep(0.05)
+        (data / "postmaster.pid").write_text(f"{p.pid}\n")
+        return wd._postmaster_state(data)
+    finally:
+        p.kill()
+        p.wait()
+
+
+def test_only_a_postgres_command_on_exactly_this_data_dir_is_ours(tmp_path):
+    other = tmp_path / "other_data"
+    assert _cmdline_state(tmp_path, "postgres -D {data} -p 5432") == "ours"
+    assert _cmdline_state(tmp_path, "/opt/homebrew/bin/postgres -D {data}") == "ours"
+    assert _cmdline_state(tmp_path, f"postgres -D {other}") == "foreign"                        # a live postmaster of ANOTHER data dir
+    assert _cmdline_state(tmp_path, "tail -f {data}/postgresql.log") == "foreign"               # names the data dir, is not a postmaster
+    assert _cmdline_state(tmp_path, "/opt/postgresql@15/bin/pg_ctl -D {data} stop") == "foreign"  # 'postgres' only as a substring
+    assert _cmdline_state(tmp_path, "postgres -D {data}x") == "foreign"                         # a data dir that only starts with ours
+
+
+def test_a_pid_file_naming_a_dead_process_reads_as_none_and_an_odd_ps_reply_as_unknown(tmp_path, monkeypatch):
+    data = tmp_path / "data"
+    data.mkdir()
+    dead, _ = _dead_pid()
+    (data / "postmaster.pid").write_text(f"{dead}\n")
+    assert wd._postmaster_state(data) == "none"
+    monkeypatch.setattr(wd, "_ps", lambda *a: (2, "garbled"))
+    assert wd._postmaster_state(data) == "unknown"
+
+
+def test_ps_saying_gone_is_confirmed_by_the_kernel(monkeypatch):
+    """Round 2 LOW-2: `ps` exit 1 with no output is only 'gone' when kill(pid, 0) agrees; a live pid under a lying ps is 'cannot tell'."""
+    monkeypatch.setattr(wd, "_ps", lambda *a: (1, ""))
+    assert wd.proc_start(os.getpid()) is None and wd.owner_alive(os.getpid(), "x") is True
+    dead, _ = _dead_pid()
+    assert wd.proc_start(dead) == wd.GONE
+
+
+def test_a_stopped_owner_is_alive_and_ps_is_not_looked_up_on_the_path():
+    s = subprocess.Popen(["sleep", "600"])
+    try:
+        os.kill(s.pid, signal.SIGSTOP)
+        time.sleep(0.2)
+        assert wd.proc_start(s.pid) not in (None, wd.GONE)
+    finally:
+        os.kill(s.pid, signal.SIGKILL)
+        s.wait()
+    assert os.path.isabs(wd._PS)
+
+
+def test_rc_zero_with_empty_output_and_rc_nonzero_with_output_are_both_cannot_tell(monkeypatch):
+    monkeypatch.setattr(wd, "_ps", lambda *a: (0, ""))
+    assert wd.proc_start(os.getpid()) is None
+    monkeypatch.setattr(wd, "_ps", lambda *a: (2, "Sat Oct  3 17:54:24 2026 S"))
+    assert wd.proc_start(os.getpid()) is None

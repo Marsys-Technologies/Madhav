@@ -173,7 +173,7 @@ def _write_owner_marker(root: Path) -> None:
     if not start:                                       # cannot identify this process: write no marker, so nothing can ever reap this root
         return
     (root / wd.OWNER_MARKER).write_text(json.dumps({"parent_pid": os.getpid(), "parent_start": start, "root": str(root),
-                                                   "created": time.time()}), encoding="utf-8")
+                                                   "created": time.time(), "v": wd.MARKER_VERSION}), encoding="utf-8")
 
 
 def _start_watchdog(cl: "Cluster") -> None:
