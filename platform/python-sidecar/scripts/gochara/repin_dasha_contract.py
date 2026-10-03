@@ -78,9 +78,14 @@ LEVELS_IN_SCOPE = (1, 2, 3)          # Vimśottarī Lahiri MD/AD/PD only (stewar
 
 # ── pure helpers (unit-tested) ───────────────────────────────────────────────
 def _t(s) -> datetime:
+    """Any instant -> UTC. A `datetime` object without tzinfo is UTC by this tool's convention (psycopg returns aware ones); a STRING without an offset is REFUSED by name — `fromisoformat(...).astimezone()` would
+    read it as MACHINE-LOCAL time (an IST machine turns `15:50:23` into `10:20:23Z`; Fable F-R19-4). Every stored or imported instant must carry `Z` or an explicit offset."""
     if isinstance(s, datetime):
         return s.astimezone(timezone.utc) if s.tzinfo else s.replace(tzinfo=timezone.utc)
-    return datetime.fromisoformat(s.replace("Z", "+00:00")).astimezone(timezone.utc)
+    d = datetime.fromisoformat(s.replace("Z", "+00:00"))
+    if d.tzinfo is None:
+        raise ValueError(f"instant without an offset: {s!r} (an ISO instant must end in 'Z' or carry an explicit offset such as '+00:00'; it is never read as local time)")
+    return d.astimezone(timezone.utc)
 
 
 def iso(s) -> str:
@@ -350,7 +355,9 @@ def _capture_digest(chart_id: str, build_id: str, rows: list[dict], natal: list[
 
 
 def row_contract_problems(rows: list[dict], build_id: str, label: str) -> list[str]:
-    """EVERY row against the build and the read contract: its own `build_id` is the expected build (no foreign or mixed build), system Vimśottarī, tier `two_pass_verified`, level 1–3 (Codex R18-1)."""
+    """EVERY row against the build and the read contract: its own `build_id` is the expected build (no foreign or mixed build), system Vimśottarī, tier `two_pass_verified`, level 1–3 (Codex R18-1).
+    NOT checkable per row: `ayanamsha_id` — the §4.0 reader does not return it. The ayanāṃśa is established by the SQL predicate of the capture, recorded in the selection contract (bound into the checksum) and
+    cross-checked indirectly: the ten `permission.py` reference ids exist in the capture with their lords, which a wrong-ayanāṃśa file would not satisfy."""
     out: list[str] = []
     tier = PERM.DASHA_READ_CONTRACT["tier"]
     for r in rows:
@@ -385,7 +392,8 @@ def build_capture(chart_id: str, build_id: str, rows: list[dict], natal: list[di
 
 def validate_capture(d: dict, chart_id: str, build_id: str) -> list[str]:
     """THE ONE validation, run at ACQUISITION (before anything is written) AND at LOAD (Codex R18-1/R18-2): identity, selection, checksum over identity + data, every row against the build and the
-    read contract, a well-formed tree, every reference-row id present with its lord, flags consistent, the ten natal rows, and the recorded per-level counts."""
+    read contract, a well-formed tree, every reference-row id present with its lord, flags consistent, at least one UNCLIPPED start and end at every in-scope level (R19-2), the ten natal rows, and the
+    recorded per-level counts."""
     out: list[str] = []
     if not isinstance(d, dict) or not d.get("rows"):
         return ["the capture is empty or not an object"]
@@ -402,7 +410,10 @@ def validate_capture(d: dict, chart_id: str, build_id: str) -> list[str]:
     if d.get("sha256") != _capture_digest(d.get("chart_id"), d.get("build_id"), d["rows"], d.get("natal")):
         out.append("the capture's sha256 does not match its identity, selection, rows and natal longitudes")
     out += row_contract_problems(d["rows"], build_id, "captured old rows")
-    out += capture_problems(d["rows"]) + natal_problems(d.get("natal") or [])
+    try:
+        out += capture_problems(d["rows"]) + coverage_problems(d["rows"]) + natal_problems(d.get("natal") or [])
+    except (ValueError, KeyError, TypeError) as exc:
+        out.append(f"the capture's rows cannot be read ({exc.__class__.__name__}: {exc})")                       # e.g. an instant without an offset: a named STOP, never a traceback
     counts = (d.get("meta") or {}).get("counts_by_level")
     if counts is not None and counts != {str(k): v for k, v in level_totals(d["rows"]).items()}:
         out.append("the capture's recorded per-level counts do not match its rows")
@@ -516,6 +527,19 @@ def capture_problems(rows: list[dict]) -> list[str]:
     return out
 
 
+def coverage_problems(rows: list[dict]) -> list[str]:
+    """Codex R19-2: a baseline that can NEVER support a clean comparison is refused at acquisition and at load, while a re-capture is still possible — every in-scope level must have at least ONE UNCLIPPED start
+    and ONE UNCLIPPED end (`edge_clipped`: the writer's flag OR the window-bound instant, so unflagged level-3 edges count correctly). If the edges are clipped there is no measurement; if they cease to be clipped
+    on the new build, the one-sided-clip rule refuses — waiting for replacement rows cannot repair such a baseline."""
+    out: list[str] = []
+    for lv in LEVELS_IN_SCOPE:
+        at = [r for r in rows if int(r["level_n"]) == lv]
+        for side in ("start", "end"):
+            if not any(not edge_clipped(r, side) for r in at):
+                out.append(f"level {LEVEL_NAME[lv]} has NO UNCLIPPED {side} boundary in the capture ({len(at)} row(s), every {side} edge clipped to the writer window or the level is empty): no {side} shift can ever be measured there")
+    return out
+
+
 NATAL_SUBJECTS = ("LAGNA", "SUN", "MOON", "MAR", "MER", "JUP", "VEN", "SAT", "RAH_MEAN", "KET_MEAN")
 
 
@@ -541,11 +565,69 @@ def natal_problems(natal: list[dict]) -> list[str]:
     return out
 
 
+def _w0_normalise(d: dict, old_id: str) -> tuple[list[dict], list[dict], list[str]]:
+    """Suvarṇa's W0 file -> (rows, natal, notes). Accepts BOTH the capture's field names and the database column names (Fable F-R19-3): per row `trunc_start` / `trunc_end` OR
+    `is_truncated_at_window_start` / `is_truncated_at_window_end` (they must agree when both are present); `system_id`, `verification_pass_status` and `build_id` are FILLED from the selection contract and the
+    pinned build when absent (a PRESENT wrong value is still refused by `row_contract_problems`); level-4 (and deeper) rows are DROPPED, counted; natal `longitude` OR `value` OR `fact_value_num`, and `tier`
+    OR `verification_pass_status`. Every fill / alias / drop is reported in `notes`. Raises ValueError (a named STOP) on anything it cannot interpret."""
+    tier = PERM.DASHA_READ_CONTRACT["tier"]
+    notes: list[str] = []
+    filled: dict[str, int] = {}
+    kept: list[dict] = []
+    dropped = 0
+    for r in d["rows"]:
+        if not isinstance(r, dict):
+            raise ValueError("a W0 row is not an object")
+        try:
+            lv = int(r["level_n"])
+        except (KeyError, TypeError, ValueError):
+            raise ValueError(f"W0 row {r.get('dasha_row_id')!r} has no integer level_n") from None
+        if lv > max(LEVELS_IN_SCOPE):
+            dropped += 1
+            continue
+        r = dict(r)
+        for key, default in (("system_id", CANONICAL_SYSTEM), ("verification_pass_status", tier), ("build_id", old_id)):
+            if r.get(key) is None:
+                r[key] = default
+                filled[key] = filled.get(key, 0) + 1
+        for short, long in (("trunc_start", "is_truncated_at_window_start"), ("trunc_end", "is_truncated_at_window_end")):
+            if short in r and long in r and bool(r[short]) != bool(r[long]):
+                raise ValueError(f"W0 row {r.get('dasha_row_id')!r}: {short} and {long} disagree")
+            if short not in r and long in r:
+                r[short] = bool(r[long])
+                filled[f"{short} (from {long})"] = filled.get(f"{short} (from {long})", 0) + 1
+        kept.append(r)
+    natal: list[dict] = []
+    for n in d["natal"]:
+        if not isinstance(n, dict):
+            raise ValueError("a W0 natal entry is not an object")
+        lon_key = next((k for k in ("longitude", "value", "fact_value_num") if n.get(k) not in (None, "")), None)
+        if lon_key not in (None, "longitude"):
+            filled[f"natal longitude (from {lon_key})"] = filled.get(f"natal longitude (from {lon_key})", 0) + 1
+        natal.append({"fact_id": None if n.get("fact_id") is None else str(n["fact_id"]), "fact_subject": n.get("fact_subject"),
+                      "longitude": None if lon_key is None else str(n[lon_key]), "tier": n.get("tier", n.get("verification_pass_status")),
+                      "build_id": None if n.get("build_id") is None else str(n["build_id"])})
+    if filled:
+        notes.append("filled / aliased: " + ", ".join(f"{k} on {v} row(s)" for k, v in sorted(filled.items())))
+    if dropped:
+        notes.append(f"dropped {dropped} row(s) at level 4 or deeper (out of scope)")
+    return kept, natal, notes
+
+
 def import_w0(path: str, checksum: str, out_path: str, chart_id: str) -> int:
-    """Suvarṇa's W0 FALLBACK baseline (Fable F-R18-4): a JSON file `{chart_id, build_id, rows: [{dasha_row_id, level_n, parent_row_id, lord_graha, start_iso, end_iso, trunc_start, trunc_end, ...}],
-    natal: [{fact_id, fact_subject, longitude, tier, build_id}]}` — the SAME fields as this tool's own capture — whose SHA-256 (of the file's bytes) is the checksum her SETTLED-1 names. The file is verified
-    against that checksum, validated exactly as a capture is (tree, every reference-row id present with its lord, flags consistent, the ten natal rows) and re-written in the tool's capture format with
-    `meta.source = "w0"`; the comparison then uses it through --old-rows. Any problem exits 3 and writes nothing."""
+    """Suvarṇa's W0 FALLBACK baseline (Fable F-R18-4 / F-R19-3): a JSON file whose SHA-256 (of the file's bytes) is the checksum her SETTLED-1 names. THE ACCEPTED SHAPE, exactly:
+
+        {"chart_id": "482012f1-710e-4a25-994a-93821f5871aa", "build_id": "<the OLD pinned build>",
+         "rows":  [{"dasha_row_id": "<uuid>", "level_n": 1, "parent_row_id": null, "lord_graha": "KETU",
+                    "start_iso": "1983-11-05T10:20:23Z", "end_iso": "1990-11-05T10:20:23Z", "trunc_start": false, "trunc_end": false}, ...],
+         "natal": [{"fact_id": "<uuid>", "fact_subject": "SUN", "longitude": "292.5", "tier": "single", "build_id": "<uuid>"}, ... exactly the ten subjects]}
+
+    Rows: levels 1–3 of the old build, `dasha_row_id` / `level_n` / `parent_row_id` / `lord_graha` / `start_iso` / `end_iso` required; every instant MUST carry `Z` or an offset (an offset-less instant is refused by
+    name, never read as local time); `trunc_start` / `trunc_end` may instead be the database names `is_truncated_at_window_start/end`; `system_id` ("vimshottari"), `verification_pass_status`
+    ("two_pass_verified") and `build_id` (the old pin) are filled in when absent (a present wrong value is refused); level-4+ rows are dropped (counted). Natal: `longitude` may be named `value` or
+    `fact_value_num`, `tier` may be `verification_pass_status`. Every fill/alias/drop is printed. The file is verified against the checksum, normalised, validated EXACTLY as a capture is (tree, every reference-row
+    id present with its lord, flags consistent, an unclipped start and end at every level, the ten natal rows) and re-written in the tool's capture format with `meta.source = "w0"`; the comparison then uses
+    it through --old-rows. Any problem exits 3 and writes nothing."""
     raw = Path(path).read_bytes()
     got = hashlib.sha256(raw).hexdigest()
     if got != checksum.lower():
@@ -554,15 +636,21 @@ def import_w0(path: str, checksum: str, out_path: str, chart_id: str) -> int:
     old_id = PERM.DASHA_READ_CONTRACT["build_id"]
     if d.get("chart_id") != chart_id or canon_uuid(d.get("build_id")) != old_id or not isinstance(d.get("rows"), list) or not isinstance(d.get("natal"), list):
         print("STOP — the W0 file is not {chart_id, build_id, rows, natal} for this chart and the pinned build", file=sys.stderr); return 3
-    rows = norm_rows(d["rows"])
-    for r_in, r_out in zip(d["rows"], rows):
+    try:
+        kept, natal, notes = _w0_normalise(d, old_id)
+        rows = norm_rows(kept)
+    except (ValueError, KeyError, TypeError) as exc:
+        print(f"STOP — the W0 file cannot be read ({exc.__class__.__name__}: {exc}); nothing written", file=sys.stderr); return 3
+    for r_in, r_out in zip(kept, rows):
         r_out["trunc_start"], r_out["trunc_end"] = bool(r_in.get("trunc_start")), bool(r_in.get("trunc_end"))
-    cap = build_capture(chart_id, old_id, rows, d["natal"], {"source": "w0", "w0_sha256": got, "imported_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"), "tool_commit": _tool_commit()})
+    cap = build_capture(chart_id, old_id, rows, natal, {"source": "w0", "w0_sha256": got, "imported_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"), "tool_commit": _tool_commit()})
     bad = validate_capture(cap, chart_id, old_id)
     if bad:
         print("STOP — the W0 baseline could not later be compared (nothing written): " + "; ".join(bad[:8]), file=sys.stderr); return 3
     write_capture(out_path, cap)
-    print(f"imported {len(rows)} daśā rows and {len(d['natal'])} natal longitudes from the W0 baseline (file sha256 {got}) -> {out_path}")
+    for line in notes:
+        print("W0 import: " + line)
+    print(f"imported {len(rows)} daśā rows and {len(natal)} natal longitudes from the W0 baseline (file sha256 {got}) -> {out_path}")
     print(f"sha256 {cap['sha256']}; whole-file sha256 {file_sha256(out_path)}")
     return 0
 
@@ -1017,7 +1105,7 @@ def main(argv=None, *, conn=None) -> int:
                 print(f"STOP — {exc}", file=sys.stderr); return 3
         else:
             old_rows = read_levels(conn, a.chart_id, old_id, "old build")
-        old_rows = [r for r in old_rows if int(r["level_n"]) in LEVELS_IN_SCOPE]        # a capture taken earlier may carry level 4: out of scope, never compared
+        # (a capture that carries level-4 rows is REFUSED at load by validate_capture — there is nothing to filter here; a W0 file's level-4 rows are dropped, with a count, at import)
         new_rows = read_levels(conn, a.chart_id, a.new_build_id, "new build")
     except ReaderRefused as exc:
         print(f"STOP — {exc}", file=sys.stderr); return 3

@@ -1278,3 +1278,108 @@ def test_uuids_are_compared_in_one_canonical_form_and_apply_is_refused_for_anoth
     assert n["new_build_id"] == NEWB                                                                  # the notice's id is canonicalised
     assert T.main(["--new-build-id", NEWB, "--apply", "--settled-received", "M1", "--chart-id", "11111111-0000-4000-8000-000000000000"], conn=_Boom()) == 2
     assert "canonical chart" in capsys.readouterr().err
+
+
+# ── Codex R19-2 / Fable F-R19-3 / F-R19-4 ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+class AllClippedMD(SpyConn):
+    """A pathological but valid-looking baseline: the sole reference MD carries BOTH window bounds (flagged at level 1), so level MD has no measurable boundary at all."""
+    def execute(self, sql, params=None):
+        if "is_truncated_at_window" in sql:
+            return type("C", (), {"fetchall": lambda s_: [(r[0], r[2] == 1, r[2] == 1) for r in ref_db_tuples(OLDB)]})()
+        if "chart_dashas" in sql and "is_truncated_at_window" not in sql and "count(*)" not in sql and "DISTINCT" not in sql and "FROM public.asset_throughput" not in sql:
+            self.calls.append(" ".join(sql.split())[:400])
+            rows = [(r[0], r[1], r[2], r[3], r[4], T._t(T.WINDOW_START_ISO) if r[2] == 1 else r[5], T._t(T.WINDOW_END_ISO) if r[2] == 1 else r[6], r[7], r[8]) for r in ref_db_tuples(OLDB)]
+            return type("C", (), {"fetchall": lambda s_: rows})()
+        return super().execute(sql, params)
+
+
+@real_reader
+def test_a_baseline_with_no_unclipped_boundary_at_a_level_is_refused_at_ACQUISITION_with_rollback_and_close_and_no_artifact(monkeypatch, tmp_path, capsys):
+    spy = AllClippedMD()
+    monkeypatch.setattr(T, "open_capture_connection", lambda: spy)
+    p = tmp_path / "cap.json"
+    assert T.main(["--capture-old", str(p)]) == 3 and not p.exists()                    # named exit 3, nothing written
+    err = capsys.readouterr().err
+    assert "level MD has NO UNCLIPPED start boundary" in err and "level MD has NO UNCLIPPED end boundary" in err
+    assert spy.rolled_back == 1 and spy.closed == 1 and spy.committed == 0              # the lifecycle is preserved on the refusal
+
+
+def test_coverage_counts_an_UNFLAGGED_level_3_edge_as_clipped_and_needs_only_one_unclipped_start_and_end_per_level():
+    rows = clipped_world("old")
+    assert T.coverage_problems(rows) == []                                              # writer-shaped: one unclipped start and end remain at every level
+    # make every PD start sit on the window bound with the flag False: the instant itself must count as clipped
+    pds = [r for r in rows if r["level_n"] == 3]
+    for r in pds:
+        r["start_iso"] = T.WINDOW_START_ISO
+    assert any("level PD has NO UNCLIPPED start" in x for x in T.coverage_problems(rows))
+    assert not any("level PD has NO UNCLIPPED end" in x for x in T.coverage_problems(rows))
+    assert any("level AD" in x for x in T.coverage_problems([r for r in rows if r["level_n"] != 2]))        # an EMPTY level has no boundary either
+
+
+def test_the_same_pathological_baseline_is_refused_at_LOAD_and_at_W0_import_without_an_artifact(tmp_path, capsys):
+    def clip_md(d):
+        for r in d["rows"]:
+            if r["level_n"] == 1:
+                r["start_iso"], r["end_iso"], r["trunc_start"], r["trunc_end"] = T.WINDOW_START_ISO, T.WINDOW_END_ISO, True, True
+    p, chk = _w0_file(tmp_path, clip_md)
+    out = tmp_path / "cap.json"
+    assert T.main(["--import-w0", str(p), "--w0-checksum", chk, "--w0-capture-out", str(out)]) == 3 and not out.exists()
+    assert "level MD has NO UNCLIPPED" in capsys.readouterr().err
+    rows = ref_rows("old")
+    for r in rows:
+        r["trunc_start"] = r["trunc_end"] = False
+        if r["level_n"] == 1:
+            r["start_iso"], r["end_iso"], r["trunc_start"], r["trunc_end"] = T.WINDOW_START_ISO, T.WINDOW_END_ISO, True, True
+    cap = T.build_capture(CHART, OLDB, rows, natal_dicts())
+    f = tmp_path / "hand.json"
+    import json as _j
+    f.write_text(_j.dumps(cap))
+    with pytest.raises(ValueError, match="level MD has NO UNCLIPPED"):
+        T.load_capture_full(str(f), CHART, OLDB)                                         # a hand-built file with a CORRECT checksum is still refused at load
+
+
+def test_a_W0_file_in_the_DOCUMENTED_shape_imports(tmp_path, capsys):
+    """Only the documented keys; instants with an offset; the database spelling of the flags; level-4 rows present; natal `value` instead of `longitude`; no system / tier / build on the rows."""
+    def documented(d):
+        keep = ("dasha_row_id", "level_n", "parent_row_id", "lord_graha", "start_iso", "end_iso")
+        d["rows"] = [{**{k: r[k] for k in keep}, "is_truncated_at_window_start": False, "is_truncated_at_window_end": False} for r in d["rows"]]
+        d["rows"][0]["start_iso"] = d["rows"][0]["start_iso"].replace("Z", "+00:00")                       # an explicit offset is as good as Z
+        d["rows"].append({"dasha_row_id": str(_uuid.uuid4()), "level_n": 4, "parent_row_id": d["rows"][-1]["dasha_row_id"], "lord_graha": "Venus",
+                          "start_iso": "2013-11-21T04:44:19Z", "end_iso": "2013-11-22T04:44:19Z"})
+        d["natal"] = [{"fact_id": n["fact_id"], "fact_subject": n["fact_subject"], "value": n["longitude"], "verification_pass_status": n["tier"], "build_id": n["build_id"]} for n in d["natal"]]
+    p, chk = _w0_file(tmp_path, documented)
+    out = tmp_path / "cap.json"
+    assert T.main(["--import-w0", str(p), "--w0-checksum", chk, "--w0-capture-out", str(out)]) == 0
+    text = capsys.readouterr().out
+    assert "dropped 1 row(s) at level 4" in text and "filled / aliased" in text and "system_id on 10 row(s)" in text and "natal longitude (from value) on 10 row(s)" in text
+    full = T.load_capture_full(str(out), CHART, OLDB)
+    assert len(full["rows"]) == 10 and all(r["system_id"] == "vimshottari" and r["verification_pass_status"] == TIER and r["build_id"] == OLDB for r in full["rows"])
+    # a PRESENT wrong value is still refused (the fill is only for what is absent)
+    def wrong(d):
+        documented(d)
+        d["rows"][1]["system_id"] = "kalachakra"
+    p2, chk2 = _w0_file(tmp_path, wrong)
+    assert T.main(["--import-w0", str(p2), "--w0-checksum", chk2, "--w0-capture-out", str(tmp_path / "x.json")]) == 3 and not (tmp_path / "x.json").exists()
+
+
+def test_an_instant_string_without_an_offset_is_REFUSED_by_name_on_any_machine_timezone(monkeypatch, tmp_path, capsys):
+    import time as _time
+    old_tz = _os.environ.get("TZ")
+    monkeypatch.setenv("TZ", "Asia/Kolkata")
+    _time.tzset()
+    try:
+        assert T._t("2010-08-18T15:50:23Z") == datetime(2010, 8, 18, 15, 50, 23, tzinfo=timezone.utc)
+        assert T._t("2010-08-18T21:20:23+05:30") == datetime(2010, 8, 18, 15, 50, 23, tzinfo=timezone.utc)     # an explicit offset is honoured
+        with pytest.raises(ValueError, match="instant without an offset"):
+            T._t("2010-08-18T15:50:23")                                                                           # NEVER read as machine-local time (IST would give 10:20:23Z)
+        assert T._t(datetime(2010, 8, 18, 15, 50, 23)) == datetime(2010, 8, 18, 15, 50, 23, tzinfo=timezone.utc)  # a naive datetime OBJECT is UTC by convention
+        def naive(d):
+            d["rows"][0]["start_iso"] = "2010-08-18T15:50:23"
+        p, chk = _w0_file(tmp_path, naive)
+        out = tmp_path / "cap.json"
+        assert T.main(["--import-w0", str(p), "--w0-checksum", chk, "--w0-capture-out", str(out)]) == 3 and not out.exists()
+        assert "instant without an offset" in capsys.readouterr().err
+    finally:
+        if old_tz is None:
+            _os.environ.pop("TZ", None)
+        _time.tzset()
