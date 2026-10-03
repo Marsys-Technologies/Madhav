@@ -55,6 +55,8 @@ GOLDEN = {
 }
 KETU_EQUIV = {("ketu", 1): OLD_BPHS, ("ketu", 4): OLD_BPHS, ("ketu", 8): OLD_BPHS,
               ("ketu", 2): OLD_PD, ("ketu", 7): OLD_PD}
+# the SUN sloka (and pages) the stated equivalence refers to, per Ketu house (independent of the module's table):
+KETU_SUN = {1: (9, "PG324:C1"), 2: (9, "PG324:C1"), 4: (9, "PG324:C1"), 7: (10, "PG324:C1"), 8: (10, "PG324:C1-PG325:C1")}
 KETU_12 = ("ketu", 12)
 
 
@@ -88,11 +90,14 @@ def test_golden_table_is_exactly_the_18_directly_stated_rows():
 
 
 @pytest.mark.parametrize("key", sorted(KETU_EQUIV))
-def test_ketu_rows_cite_the_equivalence_as_an_equivalence(key):
+def test_ketu_rows_cite_the_equivalence_as_an_equivalence_and_name_the_SUN_sloka(key):
     row = _rows()[key]
     assert row["rule_type"] == "unfavourable"
     c = row["classical_citation"]
-    assert "Sloka 2" in c and "PG321:C1" in c and "PG331:C1" in c
+    sloka, pages = KETU_SUN[key[1]]
+    assert "Sloka 2" in c and "PG321:C1" in c
+    assert f"SUN's Sloka {sloka} \u2014 phaladeepika:{pages}" in c, "the equivalence refers to the Sun's sloka, not Rahu's"
+    assert "PG331" not in c and "Sloka 24" not in c
     assert "BY STATED EQUIVALENCE" in c and "not a Ketu-specific sloka" in c
 
 
@@ -102,6 +107,7 @@ def test_ketu_12_stays_favourable_and_says_it_is_unsourced_and_contradicted():
     c = row["classical_citation"]
     assert c.startswith("UNSOURCED") and "refuted" in c and "points the other way" in c
     assert "BPHS Ch.29 (" not in c
+    assert "UNSOURCED" in row["rule_notes"] and "acharya decision pending" in row["rule_notes"], "NIT-1: phala/rule_notes no longer assert it unmarked"
 
 
 def test_node_vedha_rows_keep_their_honest_unsourced_marker():
@@ -179,6 +185,9 @@ def test_real_writer_changes_exactly_the_24_citation_cells_and_keeps_every_id():
             conn.execute("UPDATE bg_transit_rules SET classical_citation=%s WHERE graha=%s AND primary_house=%s",
                          (old, g, h))
         conn.execute("UPDATE bg_transit_rules SET classical_citation=%s WHERE graha='ketu' AND primary_house=12", (OLD_BPHS,))
+        # the live pre-state also lacks the inference markers in rule_notes
+        conn.execute("UPDATE bg_transit_rules SET rule_notes = NULLIF(replace(replace(COALESCE(rule_notes,''), %s, ''), %s, ''), '')",
+                     (T.PHALA_INFERENCE_NOTE, T.KETU_12_NOTE))
         ids = [r["id"] for r in conn.execute("SELECT id FROM bg_transit_rules WHERE graha IN ('sun','rahu','ketu') ORDER BY id")]
         for rid in ids[:6]:
             conn.execute("INSERT INTO gochara_resonance_map(source_rule_id,target_ref) VALUES (%s,'x')", (rid,))
@@ -201,7 +210,10 @@ def test_real_writer_changes_exactly_the_24_citation_cells_and_keeps_every_id():
             cols = [c for c in b if b[c] != a[c]]
             if cols:
                 diff.append((rid, b["graha"], b["primary_house"], cols, b["classical_citation"], a["classical_citation"]))
-        assert all(d[3] == ["classical_citation"] for d in diff), "only classical_citation may change"
+        assert all(set(d[3]) == {"classical_citation", "rule_notes"} for d in diff), "only classical_citation and rule_notes may change"
+        for rid in before:
+            if before[rid]["rule_type"] != "double_transit" and rid in {d[0] for d in diff}:
+                assert after[rid]["rule_notes"].startswith(before[rid]["rule_notes"] or ""), "rule_notes only gains the inference marker"
         assert len(diff) == 24
         assert sum(1 for r in after.values() if r["classical_citation"] in (OLD_BPHS, OLD_PD)) == 0
         assert conn.execute("SELECT count(*) AS n FROM gochara_resonance_map").fetchone()["n"] == 6
@@ -216,3 +228,39 @@ def test_real_writer_changes_exactly_the_24_citation_cells_and_keeps_every_id():
         T.seed_transit_rules(conn)
         conn.commit()
         assert _snapshot(conn) == after
+
+
+# ── frozen non-citation content (independent review L0A LOW-3) ───────────────────────────────────────────────
+# The real-PG test builds its pre-state from the same seed, so it cannot see a change to phala / vedha_house / rule_notes of the
+# untouched rows. These two digests were computed from the LIVE rows (reader SELECT, 2026-10-03, 69 non-double_transit rows):
+#   PHALA: (graha, rule_type, house, vedha_house, phala) of all 69 -> unchanged by this PR;
+#   UNCHANGED: (graha, rule_type, house, rule_notes, classical_citation) of the 45 rows whose citation this PR does not touch.
+import hashlib as _h
+
+FROZEN_PHALA_SHA = "16a6ea8abaac43add43a4735f5151646ca5f1eef227836414d927ba0dbfa6343"
+FROZEN_UNCHANGED_SHA = "d51d8233b22545c76e426f0c56b12af3b2d4338e54ff356fe18e8bc190011306"
+
+
+def _sha(obj) -> str:
+    return _h.sha256(json.dumps(obj, ensure_ascii=False, separators=(",", ":")).encode()).hexdigest()
+
+
+def _sorted_rows():
+    return sorted((r for r in T.BG_TRANSIT_RULES if r["rule_type"] != "double_transit"),
+                  key=lambda r: (r["graha"], r["rule_type"], r["primary_house"]))
+
+
+def test_phala_vedha_house_and_valence_of_all_69_rows_equal_the_live_rows():
+    assert _sha([[r["graha"], r["rule_type"], r["primary_house"], r["vedha_house"], r["phala"]] for r in _sorted_rows()]) == FROZEN_PHALA_SHA
+
+
+def test_the_45_rows_this_pr_does_not_touch_are_byte_identical_to_live():
+    touched = set(GOLDEN) | set(KETU_EQUIV) | {KETU_12}
+    rest = [r for r in _sorted_rows() if (r["graha"], r["primary_house"]) not in touched]
+    assert len(rest) == 45
+    assert _sha([[r["graha"], r["rule_type"], r["primary_house"], r["rule_notes"], r["classical_citation"]] for r in rest]) == FROZEN_UNCHANGED_SHA
+
+
+def test_the_24_touched_rows_carry_the_inference_or_unsourced_marker_in_rule_notes():
+    for key in set(GOLDEN) | set(KETU_EQUIV) | {KETU_12}:
+        assert "[L0A:" in _rows()[key]["rule_notes"], key

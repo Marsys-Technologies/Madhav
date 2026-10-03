@@ -123,18 +123,27 @@ PD_RESULT_CITATION: dict[tuple[str, int], str] = {
     ("rahu", 12): _pd_result(24, "PG331:C1"),
 }
 
-# Ketu has no sloka of its own in the served corpus; the text states the equivalence
-# (Adh. XXVI Sloka 2, PG321:C1: "Rahu and Ketu are similar to the Sun") and gives Rahu's
-# twelve results in Sloka 24 (PG331:C1). The five Ketu rows whose valence agrees with that
-# reading cite the equivalence HONESTLY as an equivalence, not as a Ketu-specific sloka.
-# An acharya must accept the equivalence (spot-check item); if not accepted these five
-# become UNSOURCED like the six node vedha rows above.
-KETU_BY_EQUIVALENCE_CITATION = (
-    "Phaladipika Adh. XXVI, Sloka 2 \u2014 phaladeepika:PG321:C1 (\"Rahu and Ketu are similar to "
-    "the Sun\"), read with Sloka 24 \u2014 phaladeepika:PG331:C1 (Rahu's twelve results). "
-    "BY STATED EQUIVALENCE, not a Ketu-specific sloka; acharya acceptance pending "
-    + _PD_ED
-)
+# Ketu has no sloka of its own in the served corpus. Adh. XXVI Sloka 2 (PG321:C1) states the equivalence ("Rahu and Ketu are
+# similar to the Sun"), so the five Ketu rows whose valence agrees with that reading cite the equivalence HONESTLY as an
+# equivalence AND name the SUN sloka it refers to for that house (not Rahu's Sloka 24: the equivalence equates Ketu with the Sun):
+# Sun 1st/2nd/4th = Sloka 9 (PG324:C1), Sun 7th = Sloka 10 (PG324:C1), Sun 8th = Sloka 10 (PG324:C1-PG325:C1). An acharya must
+# accept the equivalence (spot-check item); if not accepted these five become UNSOURCED like the six node vedha rows.
+_KETU_SUN_SLOKA: dict[int, tuple[int, str, str]] = {
+    1: (9, "PG324:C1", "1st"), 2: (9, "PG324:C1", "2nd"), 4: (9, "PG324:C1", "4th"),
+    7: (10, "PG324:C1", "7th"), 8: (10, "PG324:C1-PG325:C1", "8th"),
+}
+
+
+def _ketu_equivalence_citation(house: int) -> str:
+    sloka, pages, ordinal = _KETU_SUN_SLOKA[house]
+    return (
+        "Phaladipika Adh. XXVI, Sloka 2 \u2014 phaladeepika:PG321:C1 (\"Rahu and Ketu are similar to the Sun\"), "
+        f"read with the SUN's Sloka {sloka} \u2014 phaladeepika:{pages} for the {ordinal} house. "
+        "BY STATED EQUIVALENCE, not a Ketu-specific sloka; acharya acceptance pending " + _PD_ED
+    )
+
+
+KETU_BY_EQUIVALENCE_CITATION: dict[int, str] = {h: _ketu_equivalence_citation(h) for h in _KETU_SUN_SLOKA}
 
 # Ketu 12th is stored FAVOURABLE. The old "BPHS Ch.29" citation is refuted (BPHS page 29 is
 # Bhava Padas), and the corpus reading above points the OTHER way (Sun 12th: sorrow, loss of
@@ -942,7 +951,7 @@ BG_TRANSIT_RULES: list[dict[str, Any]] = [
         "primary_house": 1,
         "vedha_house": None,
         "phala": "Bodily affliction, confusion, spiritual restlessness; detachment from self",
-        "classical_citation": KETU_BY_EQUIVALENCE_CITATION,
+        "classical_citation": KETU_BY_EQUIVALENCE_CITATION[1],
         "rule_notes": "Ketu over natal Moon — dissociation and health disturbance.",
     },
     {
@@ -951,7 +960,7 @@ BG_TRANSIT_RULES: list[dict[str, Any]] = [
         "primary_house": 2,
         "vedha_house": None,
         "phala": "Financial loss, family separation, speech affliction",
-        "classical_citation": KETU_BY_EQUIVALENCE_CITATION,
+        "classical_citation": KETU_BY_EQUIVALENCE_CITATION[2],
         "rule_notes": "Ketu 2nd from Moon — kutumba and dhana affliction.",
     },
     {
@@ -960,7 +969,7 @@ BG_TRANSIT_RULES: list[dict[str, Any]] = [
         "primary_house": 4,
         "vedha_house": None,
         "phala": "Home disruption, loss of comforts, mother's health concerns",
-        "classical_citation": KETU_BY_EQUIVALENCE_CITATION,
+        "classical_citation": KETU_BY_EQUIVALENCE_CITATION[4],
         "rule_notes": "Ketu 4th from Moon — Kantaka-class; domestic troubles and vehicle accidents.",
     },
     {
@@ -969,7 +978,7 @@ BG_TRANSIT_RULES: list[dict[str, Any]] = [
         "primary_house": 7,
         "vedha_house": None,
         "phala": "Marital friction, separation, hidden adversary in partnership",
-        "classical_citation": KETU_BY_EQUIVALENCE_CITATION,
+        "classical_citation": KETU_BY_EQUIVALENCE_CITATION[7],
         "rule_notes": "Ketu 7th from Moon — kalatra affliction; relationships tested.",
     },
     {
@@ -978,10 +987,37 @@ BG_TRANSIT_RULES: list[dict[str, Any]] = [
         "primary_house": 8,
         "vedha_house": None,
         "phala": "Surgery, accidents, sudden health crisis; karmic debt activation",
-        "classical_citation": KETU_BY_EQUIVALENCE_CITATION,
+        "classical_citation": KETU_BY_EQUIVALENCE_CITATION[8],
         "rule_notes": "Ketu 8th from Moon — randhra + moksha karak: severe; karmic reckoning.",
     },
 ]
+
+# TI-L0-10 / independent review L0A LOW-2 + NIT-1: a sloka-level citation now sits beside a `phala` summary that, for several rows,
+# carries detail the cited sloka does not state (e.g. Moon 8th "Fear, sorrow, ill health" vs Sloka 12 "(8) untoward events"). Only the
+# VALENCE (rule_type) of a re-sourced row is sloka-supported. Rather than rewrite summaries without an acharya decision (which would
+# be inventing in the other direction), every re-sourced row says so in `rule_notes`. Ketu 12th's favourable valence is unsourced.
+PHALA_INFERENCE_NOTE = (
+    " [L0A: only the valence is supported by the cited sloka; any detail in `phala` beyond what that sloka states is INFERENCE, "
+    "not sloka-derived - acharya review pending]"
+)
+KETU_12_NOTE = (
+    " [L0A: the favourable valence of this row is UNSOURCED and the served Phaladeepika text points the other way (see "
+    "classical_citation); `phala` and this note record the earlier reading - acharya decision pending]"
+)
+
+
+def _annotate_resourced_rows(rules: list[dict[str, Any]]) -> None:
+    for r in rules:
+        key = (r["graha"], r["primary_house"])
+        if r["rule_type"] == "double_transit":
+            continue
+        if key == ("ketu", 12):
+            r["rule_notes"] = (r.get("rule_notes") or "") + KETU_12_NOTE
+        elif key in PD_RESULT_CITATION or (r["graha"] == "ketu" and r["rule_type"] == "unfavourable" and key[1] in _KETU_SUN_SLOKA):
+            r["rule_notes"] = (r.get("rule_notes") or "") + PHALA_INFERENCE_NOTE
+
+
+_annotate_resourced_rows(BG_TRANSIT_RULES)
 
 # ── §3 — BG_TRANSIT_MOORTI: Moorti Nirnaya (BA-P7A) ──────────────────────────
 #
