@@ -2,7 +2,7 @@
  "schema": 1,
  "registry_revision": 16,
  "registry_fingerprint": "8b88e7b26f32fdf8f665533b96357c8c332fb142a7166a6468a0f64ec51cb97c",
- "inspector_commit": "adb0db29d56d805ea34c2ce33fd7c7b704baf6ba",
+ "inspector_commit": "f4ad124ac374a38b1cb3903391824031713831cc",
  "expected_cells": 54,
  "covered_cells": 42,
  "covered_cells_unit": "gate_x_layer cells whose every required criterion has an auto-measured detector or is declared per-asset-pending",
@@ -13,6 +13,46 @@
  ],
  "per_asset_pending": [],
  "per_asset_pending_note": "declared in PER_ASSET_PENDING (empty until the separate pending file lands; not fingerprinted)",
+ "deferred_by_owner": [
+  {
+   "asset_id": "bg_gochara_citation_resolution",
+   "criterion_gate": "Carr",
+   "decision": "N-102",
+   "state": "deferred by owner (N-102)"
+  },
+  {
+   "asset_id": "bg_kota_chakra_rings",
+   "criterion_gate": "Carr",
+   "decision": "N-102",
+   "state": "deferred by owner (N-102)"
+  },
+  {
+   "asset_id": "bg_medical_mappings",
+   "criterion_gate": "Carr",
+   "decision": "N-102",
+   "state": "deferred by owner (N-102)"
+  },
+  {
+   "asset_id": "bg_nakshatra_medical",
+   "criterion_gate": "Carr",
+   "decision": "N-102",
+   "state": "deferred by owner (N-102)"
+  },
+  {
+   "asset_id": "bg_sign_medical",
+   "criterion_gate": "Carr",
+   "decision": "N-102",
+   "state": "deferred by owner (N-102)"
+  },
+  {
+   "asset_id": "bg_vastu_directions",
+   "criterion_gate": "Carr",
+   "decision": "N-102",
+   "state": "deferred by owner (N-102)"
+  }
+ ],
+ "owner_deferrals_sha256": "d7fdd1e3f485b6bc13e8ac412161d469f79254413f1ffb661d76e4407e46e318",
+ "deferred_by_owner_note": "owner-deferred assets (SS N-102): reported apart from `uncovered`; never fail the check, never counted as covered cells",
  "na_rules": [
   {
    "rule_id": "Build.dep_liveness#measured:no-declared-dependencies",

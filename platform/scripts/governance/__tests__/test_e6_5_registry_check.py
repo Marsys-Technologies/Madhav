@@ -180,6 +180,90 @@ def test_cli_check_requires_registry_check():
     assert p.returncode == 2 and "--registry-check" in p.stderr
 
 
+# ───────────────────────── owner deferrals (SS N-102) ─────────────────────────
+
+DEFERRED = ["bg_gochara_citation_resolution", "bg_kota_chakra_rings", "bg_medical_mappings", "bg_nakshatra_medical",
+            "bg_sign_medical", "bg_vastu_directions"]
+
+
+def _entry(aid="bg_sign_medical", **kw):
+    return {**dict(asset_id=aid, criterion_gate="Carr", decision="N-102", state="deferred by owner (N-102)"), **kw}
+
+
+def _write_deferrals(tmp_path, entries, monkeypatch):
+    p = tmp_path / "owner_deferrals.json"
+    p.write_text(json.dumps({"schema": 1, "deferrals": entries}), encoding="utf-8")
+    monkeypatch.setattr(ac, "OWNER_DEFERRALS_PATH", p)
+    return p
+
+
+def test_listed_deferrals_appear_exactly_and_apart_from_uncovered():
+    r = _report()
+    assert [d["asset_id"] for d in r["deferred_by_owner"]] == DEFERRED
+    assert all(d == _entry(d["asset_id"]) for d in r["deferred_by_owner"])
+    assert not set(DEFERRED) & set(r["uncovered_required_criteria"]) and r["covered_cells"] == 42
+    assert len(r["owner_deferrals_sha256"]) == 64
+
+
+def test_deferrals_never_fail_the_gate_or_count_as_cells():
+    allp = _report(pending={c: "SS-decision-x" for c in (D2, "Carr.D3", "Earn.service_state")})
+    assert allp["deferred_by_owner"] and ac.registry_report_problems(allp) == []
+    assert allp["candidate_cell_counts"]["gate_x_layer"]["total"] == 54 and allp["covered_cells"] == 54
+
+
+def test_unknown_asset_id_refuses(tmp_path, monkeypatch):
+    _write_deferrals(tmp_path, [_entry("bg_no_such_asset")], monkeypatch)
+    with pytest.raises(ValueError, match="bg_no_such_asset"):
+        _report()
+    assert ac.registry_check_main(str(tmp_path / "o.json"), False) == 5 and not (tmp_path / "o.json").exists()
+
+
+@pytest.mark.parametrize("bad", [
+    _entry(criterion_gate="Nope"), _entry(decision="102"), _entry(state=" "), {**_entry(), "extra": "x"},
+    {"asset_id": "bg_sign_medical"}, "bg_sign_medical", _entry(asset_id=7)])
+def test_malformed_entry_refuses(tmp_path, monkeypatch, bad):
+    _write_deferrals(tmp_path, [bad], monkeypatch)
+    with pytest.raises(ValueError):
+        _report()
+
+
+def test_duplicate_entry_refuses(tmp_path, monkeypatch):
+    _write_deferrals(tmp_path, [_entry(), _entry()], monkeypatch)
+    with pytest.raises(ValueError, match="duplicate"):
+        _report()
+
+
+def test_missing_or_invalid_file_refuses(tmp_path, monkeypatch):
+    monkeypatch.setattr(ac, "OWNER_DEFERRALS_PATH", tmp_path / "absent.json")
+    with pytest.raises(ValueError):
+        _report()
+    (tmp_path / "bad.json").write_text("{", encoding="utf-8")
+    monkeypatch.setattr(ac, "OWNER_DEFERRALS_PATH", tmp_path / "bad.json")
+    with pytest.raises(ValueError):
+        _report()
+    (tmp_path / "v2.json").write_text('{"schema": 2, "deferrals": []}', encoding="utf-8")
+    monkeypatch.setattr(ac, "OWNER_DEFERRALS_PATH", tmp_path / "v2.json")
+    with pytest.raises(ValueError):
+        _report()
+
+
+def test_removing_an_entry_changes_the_report_and_the_drift_check(tmp_path, monkeypatch):
+    base_text = _text(_report())
+    p = _write_deferrals(tmp_path, [_entry(a) for a in DEFERRED[:-1]], monkeypatch)
+    r = _report()
+    assert DEFERRED[-1] not in [d["asset_id"] for d in r["deferred_by_owner"]]
+    assert _text(r) != base_text and ac.registry_report_drift(base_text, _text(r))
+    # a byte-only edit of the file (same entries) is also drift: the report carries the file's sha256
+    p.write_text(p.read_text(encoding="utf-8") + "\n", encoding="utf-8")
+    assert _report()["owner_deferrals_sha256"] != r["owner_deferrals_sha256"]
+
+
+def test_committed_deferrals_file_matches_committed_report():
+    committed = json.loads(COMMITTED.read_text(encoding="utf-8"))
+    entries, sha = ac.load_owner_deferrals()
+    assert committed["deferred_by_owner"] == entries and committed["owner_deferrals_sha256"] == sha
+
+
 # ───────────────────────── drift: committed report == fresh regeneration ─────────────────────────
 
 def test_drift_detector_can_fail_and_only_normalises_inspector_commit():
