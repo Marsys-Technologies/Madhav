@@ -174,3 +174,18 @@ def test_real_writer_fills_79_of_79_alias_sets_and_changes_nothing_else():
         conn.commit()
         got2 = {r["canonical_id"]: list(r["synonyms"]) for r in conn.execute("SELECT canonical_id,synonyms FROM brahma_ontology WHERE entity_class='dosha'")}
         assert got2 == got
+
+
+# ── SS N-113 (a): the 7 names that are ALSO yoga names ──────────────────────────────────────────────────────
+# The alias sets are landed in full. Seven of their names (kemadruma, Kemadruma, daridra, Daridra, Rajju, Sakata Yoga,
+# Sarpa Yoga) are also names of a yoga in brahma_ontology. They stay in the dosha sets, but the SERVED winner for them
+# stays the yoga (resolve_entity's tie order puts a dosha last: PR TI-L0-14 / #3054) until the acharya batch rules.
+# This test pins the 7 so the hold is a visible, countable list; flipping them is the one-line switch documented in
+# resolve_entity.ts (TIE HOLD), not a change to these sets.
+HELD_YOGA_NAMES = {"kemadruma": "kemadruma", "Kemadruma": "kemadruma", "daridra": "daridra", "Daridra": "daridra",
+                   "Rajju": "rajju_dosha", "Sakata Yoga": "shakata", "Sarpa Yoga": "sarpa_yoga_dosha"}
+
+
+@pytest.mark.parametrize("alias,dosha_id", sorted(HELD_YOGA_NAMES.items()))
+def test_the_seven_yoga_colliding_names_are_in_the_dosha_alias_sets(alias, dosha_id):
+    assert alias in SETS[dosha_id]
