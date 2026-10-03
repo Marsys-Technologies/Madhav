@@ -63,6 +63,11 @@ DELTA_TOL_DEG = 0.001
 #               -0.0055 / -0.00004 arcsec); measured -2.65e-8 (true_chitra) and +1.15e-8 (surya_siddhanta)
 #               deg, exactly 0.0 on the other three. Band +/-1e-7 deg (3.6x the Lagna shift).
 # A move beyond a band, or any change of a class key / flag / provenance, FAILS C3.
+# SCOPE (SS ruling 2026-10-03): these bands are derived at the CANONICAL chart's birth instant (482012f1) and are
+# UNMEASURED for any other chart. In the S-L1 window C3 runs on 482012f1 ONLY; 1c826d5a and cb73cd3d are out of scope.
+# Measuring the Moshier -> .se1 shift at each chart's own birth instant (offline, like SE1_SHIFT_ANALYSIS) is a
+# PRECONDITION for any future rebuild of those charts; until then a failure of the banded check on another chart means
+# "band not derived for this chart", not "the rebuild is wrong".
 LONGITUDE_BAND_DEG = {"INDU_LAGNA": 0.00025, "SREE_LAGNA": 0.0055, "VARNADA_LAGNA": 1e-7}
 # (subject, ayanamsha) -> (before, after) of near_nakshatra_boundary_flag on all 7 keys
 EXPECTED_NAK_FLAG_FLIPS = {
