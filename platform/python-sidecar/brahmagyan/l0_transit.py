@@ -918,6 +918,75 @@ BG_TRANSIT_RULES: list[dict[str, Any]] = [
         "classical_citation": BPHS_CH29,
         "rule_notes": "Ketu 8th from Moon — randhra + moksha karak: severe; karmic reckoning.",
     },
+    # ── DOUBLE-TRANSIT (Jupiter + Saturn simultaneous gochara) — migration 397 rows, ADOPTED by the
+    # writer (SS addition to the L0 data batch: bg_transit_rules.graha is canonical lowercase in EVERY row). Values are
+    # VERBATIM from migration 397; only `graha` is lower-cased ('Jupiter'->'jupiter', 'Saturn'->'saturn').
+    # Their citations are NOT re-sourced here: the cited 'Phaladeepika ch.26 §double-gochara' section
+    # does not exist in the served corpus (WAVE_PLACEHOLDER_DISPOSITIONS §1) — that is an
+    # attribution_state decision (TI-L0-09), not a silent text edit.
+    {
+        "rule_type": "double_transit",
+        "graha": "jupiter",
+        "primary_house": 2,
+        "vedha_house": None,
+        "phala": "Jupiter + Saturn in 2H simultaneously: wealth and stability gains amplified; Dhana yoga catalyst.",
+        "classical_citation": "Phaladeepika ch.26 §double-gochara; Saravali ch.28",
+        "rule_notes": "Applies only when BOTH Jupiter and Saturn transit 2H from natal Moon within 30° window.",
+    },
+    {
+        "rule_type": "double_transit",
+        "graha": "jupiter",
+        "primary_house": 5,
+        "vedha_house": None,
+        "phala": "Jupiter + Saturn in 5H: putra karaka + karma lord in progeny house — children-related events, creative fruition.",
+        "classical_citation": "Phaladeepika ch.26 §double-gochara",
+        "rule_notes": "Saturn alone in 5H is unfavourable; Jupiter co-presence mitigates and transforms.",
+    },
+    {
+        "rule_type": "double_transit",
+        "graha": "jupiter",
+        "primary_house": 7,
+        "vedha_house": None,
+        "phala": "Jupiter + Saturn in 7H: relationship events crystallise; partnerships formalised or resolved.",
+        "classical_citation": "Phaladeepika ch.26 §double-gochara; BPHS ch.29",
+        "rule_notes": None,
+    },
+    {
+        "rule_type": "double_transit",
+        "graha": "jupiter",
+        "primary_house": 9,
+        "vedha_house": None,
+        "phala": "Jupiter + Saturn in 9H: dharmic milestones; pilgrimage, guru connection, institutional advancement.",
+        "classical_citation": "Phaladeepika ch.26 §double-gochara",
+        "rule_notes": "Most auspicious double-transit combination per classical consensus.",
+    },
+    {
+        "rule_type": "double_transit",
+        "graha": "jupiter",
+        "primary_house": 11,
+        "vedha_house": None,
+        "phala": "Jupiter + Saturn in 11H: significant gain period — labha amplified by both benefic + discipline.",
+        "classical_citation": "Phaladeepika ch.26 §double-gochara; Jataka Parijata",
+        "rule_notes": None,
+    },
+    {
+        "rule_type": "double_transit",
+        "graha": "saturn",
+        "primary_house": 4,
+        "vedha_house": None,
+        "phala": "Jupiter + Saturn in 4H: domestic disruption + karmic pressure; home/vehicle events likely.",
+        "classical_citation": "Phaladeepika ch.26 §double-gochara",
+        "rule_notes": "Jupiter mitigates isolation but Saturn delays resolution.",
+    },
+    {
+        "rule_type": "double_transit",
+        "graha": "saturn",
+        "primary_house": 8,
+        "vedha_house": None,
+        "phala": "Jupiter + Saturn in 8H: transformation event; inheritance, hidden matters, health threshold.",
+        "classical_citation": "Phaladeepika ch.26 §double-gochara; BPHS ch.29 §8H gochara",
+        "rule_notes": "Rare and intense. Jupiter here expands the 8H matters rather than protecting.",
+    },
 ]
 
 # ── §3 — BG_TRANSIT_MOORTI: Moorti Nirnaya (BA-P7A) ──────────────────────────
@@ -987,13 +1056,19 @@ BG_TRANSIT_MOORTI: list[dict[str, Any]] = [
 # corrupt live citations (see the seed_transit_rules docstring/comment below). The
 # ruled design instead scopes retirement to rows the writer actually OWNS: rows whose
 # (rule_type, graha) both appear somewhere in BG_TRANSIT_RULES today. Anything outside
-# that — migration 397's 7 `double_transit` rows (title-case 'Jupiter'/'Saturn'), and
-# any future 'vedha' rule_type row, since this writer has never emitted one — is
+# that — any future 'vedha' rule_type row, since this writer has never emitted one — is
 # structurally excluded from the SQL WHERE clause in `_owned_row_filter`, not merely
 # protected by a `lower()` coincidence: the ownership match below is deliberately
 # case-sensitive, against the literal graha/rule_type strings BG_TRANSIT_RULES itself
 # uses (always lowercase, by writer convention). A row belongs to this sweep only if
 # it matches one of those literal values exactly.
+#
+# SS ADDITION (L0 data batch): migration 397's 7 `double_transit` rows were stored with
+# title-case 'Jupiter'/'Saturn' beside 69 lowercase rows, and the exact-match ownership
+# rule above is precisely why the writer never touched them. They are now in
+# BG_TRANSIT_RULES (lowercase) and `_normalise_graha_case` converts the live rows IN PLACE
+# (id preserved: gochara_resonance_map.source_rule_id FK-references 6 of them) BEFORE the
+# upsert, so the upsert converges on them instead of inserting 7 duplicates.
 
 
 def _owned_categories(rules: list[dict[str, Any]]) -> tuple[set[str], set[str]]:
@@ -1040,6 +1115,21 @@ def compute_stale_rule_ids(
     ]
 
 
+def _normalise_graha_case(cur) -> int:
+    """Lower-case every `bg_transit_rules.graha` that is not already canonical, IN PLACE.
+
+    The canonical form is lowercase (the 69 original writer rows, `bg_transit_engine.graha`,
+    and every consumer that compares case-sensitively). Migration 397's seven double_transit
+    rows were stored 'Jupiter'/'Saturn'. UPDATE (never delete+insert) keeps `id`, which
+    `gochara_resonance_map.source_rule_id` FK-references. If a lowercase twin already exists
+    the UNIQUE (graha, rule_type, primary_house) key makes this statement raise
+    (UniqueViolation names the colliding key) and the orchestrator's savepoint rolls the
+    sub-step back: two rows are never merged silently. Returns the number of rows changed.
+    """
+    cur.execute("UPDATE bg_transit_rules SET graha = lower(graha) WHERE graha <> lower(graha)")
+    return cur.rowcount
+
+
 def seed_transit_rules(conn, *, dry_run: bool = False) -> dict[str, int]:
     """
     Seed bg_transit_engine, bg_transit_rules, and bg_transit_moorti reference tables.
@@ -1053,6 +1143,7 @@ def seed_transit_rules(conn, *, dry_run: bool = False) -> dict[str, int]:
             "bg_transit_engine": len(BG_TRANSIT_ENGINE),
             "bg_transit_rules": len(BG_TRANSIT_RULES),
             "bg_transit_rules_retired": 0,
+            "bg_transit_rules_graha_case_normalised": 0,
             "bg_transit_moorti": len(BG_TRANSIT_MOORTI),
             "total": len(BG_TRANSIT_ENGINE) + len(BG_TRANSIT_RULES) + len(BG_TRANSIT_MOORTI),
         }
@@ -1068,6 +1159,9 @@ def seed_transit_rules(conn, *, dry_run: bool = False) -> dict[str, int]:
     # post-insert sweep scoped to keys absent from BG_TRANSIT_RULES — it will
     # FK-fail loudly only when a genuinely-referenced rule is retired.
     logger.info("[transit] upserting bg_transit_engine, bg_transit_rules, bg_transit_moorti")
+
+    # ── SS addition: canonical lowercase graha, in place, before the upsert ───────
+    graha_case_normalised = _normalise_graha_case(cur)
 
     # ── Insert bg_transit_engine rows ─────────────────────────────────────────
     engine_count = 0
@@ -1211,6 +1305,7 @@ def seed_transit_rules(conn, *, dry_run: bool = False) -> dict[str, int]:
         "bg_transit_engine": engine_count,
         "bg_transit_rules": rules_count,
         "bg_transit_rules_retired": len(retired_ids),
+        "bg_transit_rules_graha_case_normalised": graha_case_normalised,
         "bg_transit_moorti": moorti_count,
         "total": engine_count + rules_count + moorti_count,
     }
