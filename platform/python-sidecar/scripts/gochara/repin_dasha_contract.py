@@ -34,9 +34,9 @@ MOSHIER → SWISS (Suvarṇa addendum 4; steward M20261002T222913-35c5): the sto
 row counts hold. So a MOVED boundary is not a flip: the STOP is a different lord (or a missing/extra row) at ANY matched (level, parent path, index) row (D7); the oracle instants whose lord
 differs only because an edge moved are reported as BOUNDARY-SENSITIVE (D8), and the per-level old → new shift is in the evidence.
 
-G6 (steward M20261002T223036-02f0): the §4.0 read accepts the pinned build WHILE ITS ROWS ARE PRESENT even if another build coexists (dasha_read.py:44–49). So the verdict is STOP unless
-chart_dashas holds EXACTLY ONE Vimśottarī build (Lahiri, levels 1–3, any tier) and it is the SETTLED-1 build; --apply asserts the re-pinned constant equals that build and the old pin is gone.
-(The writer-side refusal when more than one two_pass_verified build is present is a separate Stream A code change.)
+G6 (steward M20261002T223036-02f0): a mixed L1 state — more than one Vimśottarī build — is REFUSED by the writer AND the verifier since Stream A's 699638fbe (`dasha_builds_mixed` / `dasha_build_not_pinned`). This
+tool applies the same condition BEFORE the re-pin: the verdict is STOP unless chart_dashas holds EXACTLY ONE Vimśottarī build (Lahiri, levels 1–3, any tier) and it is the SETTLED-1 build; --apply asserts the
+re-pinned constant equals that build and the old pin is gone.
 SETTLED-1 mechanical guard (steward M20261002T224436-82bd; Suvarṇa addendum 6) — the pre-flight REFUSES unless, read-only for the chart: (ii) `chart_dashas` has exactly ONE distinct build_id (whole
 table, every system); (iii) the complete shape — 45 non-scope system×ayanāṃśa partitions + 1 scope-cap; (iv) `asset_throughput.state` = 'lit' for ga_dashas and ga_positions; (v) that single
 build id equals the SETTLED-1 build id (and --apply sets the constant to it and asserts so).
@@ -71,6 +71,8 @@ from services.gochara_rules import permission as PERM                       # no
 
 LEVEL_NAME = {1: "MD", 2: "AD", 3: "PD", 4: "L4"}
 MIN_TOLERANCE_SECONDS = 1
+WINDOW_START_ISO, WINDOW_END_ISO = "1950-01-01T00:00:00Z", "2100-12-31T00:00:00Z"      # the writer's calculation window (ga_dashas_writer.py:96–97): the first/last row of every level is CLIPPED to it
+CANONICAL_SYSTEM, CANONICAL_AYANAMSHA = "vimshottari", "lahiri_chitrapaksha"
 LEVELS_IN_SCOPE = (1, 2, 3)          # Vimśottarī Lahiri MD/AD/PD only (steward M20261002T230554 / Suvarṇa addendum 7): lords and row counts must be EQUAL here; level 4 is out of scope
 
 
@@ -209,14 +211,51 @@ def match(old: dict, new: dict) -> dict:
     return {"matched": sorted(keys_old & keys_new), "only_old": sorted(keys_old - keys_new), "only_new": sorted(keys_new - keys_old)}
 
 
+def edge_clipped(row: dict, side: str) -> bool:
+    """Is this row's start/end edge CLIPPED to the writer's window? True when the writer flagged it (`trunc_start` / `trunc_end`) OR the instant IS the window bound. The flags alone are not enough:
+    the writer passes them only at levels 1–2 — every level-3 row reads False although its first/last row is clipped at the same bounds (the independent verifier documents it as a confirmed
+    engine quirk) — so the bound instant is the cross-check that catches those."""
+    flag = bool(row.get("trunc_start" if side == "start" else "trunc_end"))
+    bound = WINDOW_START_ISO if side == "start" else WINDOW_END_ISO
+    return flag or _t(row["start_iso" if side == "start" else "end_iso"]) == _t(bound)
+
+
+def edge_report(old: dict, new: dict, matched: list) -> dict:
+    """Window-edge accounting for the matched pairs: per level the number of edges clipped on BOTH builds (EXCLUDED from the shift statistics — they must not move) and the PROBLEMS: an edge clipped on
+    ONE build only ('window-edge status changed'), a clipped edge whose instant moved, a flag set where the instant is not the bound."""
+    clipped: dict[int, dict[str, int]] = {}
+    problems: list[str] = []
+    for k in matched:
+        lv = k[0]
+        for side in ("start", "end"):
+            o, n = old[k], new[k]
+            co, cn = edge_clipped(o, side), edge_clipped(n, side)
+            bound = _t(WINDOW_START_ISO if side == "start" else WINDOW_END_ISO)
+            for label, row, c in (("old", o, co), ("new", n, cn)):
+                if bool(row.get("trunc_start" if side == "start" else "trunc_end")) and _t(row["start_iso" if side == "start" else "end_iso"]) != bound:
+                    problems.append(f"{LEVEL_NAME.get(lv, lv)} {side} edge of the {label} row is FLAGGED truncated but its instant is not the window bound")
+            if co and cn:
+                clipped.setdefault(lv, {"start": 0, "end": 0})[side] += 1
+                if _t(o["start_iso" if side == "start" else "end_iso"]) != _t(n["start_iso" if side == "start" else "end_iso"]):
+                    problems.append(f"{LEVEL_NAME.get(lv, lv)} {side} edge is clipped on both builds but its instant MOVED")
+            elif co != cn:
+                problems.append(f"window-edge status changed: the {LEVEL_NAME.get(lv, lv)} {side} edge of {k[1]} is clipped on the {'old' if co else 'new'} build only")
+    return {"clipped": {lv: clipped[lv] for lv in sorted(clipped)}, "problems": sorted(set(problems))}
+
+
 def shift_stats(old: dict, new: dict, matched: list) -> dict:
+    """Per-level start/end shift statistics over the UNCLIPPED edges only — an edge clipped to the window on BOTH builds shifts 0 s by construction and is excluded (see `edge_report`); a side with
+    no unclipped measurement is absent from the result (and `shift_problems` refuses it)."""
     per: dict[int, dict[str, list[float]]] = {}
     for k in matched:
         lv = k[0]
         d = per.setdefault(lv, {"start": [], "end": []})
-        d["start"].append((_t(new[k]["start_iso"]) - _t(old[k]["start_iso"])).total_seconds())
-        d["end"].append((_t(new[k]["end_iso"]) - _t(old[k]["end_iso"])).total_seconds())
-    return {lv: {side: {"min": min(v), "max": max(v), "mean": statistics.fmean(v), "n": len(v)} for side, v in d.items()}
+        for side in ("start", "end"):
+            key = "start_iso" if side == "start" else "end_iso"
+            if edge_clipped(old[k], side) and edge_clipped(new[k], side):
+                continue
+            d[side].append((_t(new[k][key]) - _t(old[k][key])).total_seconds())
+    return {lv: {side: {"min": min(v), "max": max(v), "mean": statistics.fmean(v), "n": len(v)} for side, v in d.items() if v}
             for lv, d in sorted(per.items())}
 
 
@@ -244,8 +283,8 @@ def lord_flips(old_rows: list[dict], new_rows: list[dict], instants: list[str]) 
 
 
 def fetch_vimshottari_builds(conn, chart_id: str, ayanamsha_id: str = "lahiri_chitrapaksha") -> dict[str, int]:
-    """READ-ONLY: every Vimśottarī build present for the chart at the Lahiri levels 1–3, ANY tier -> row count. The §4.0 read accepts the pinned build WHILE ITS ROWS ARE PRESENT even if
-    another build coexists (dasha_read.py:44–49), so after S-L1 a coexisting old build would be read silently — G6."""
+    """READ-ONLY: every Vimśottarī build present for the chart at the Lahiri levels 1–3, ANY tier -> row count. A mixed state (more than one build) is refused by the writer and the verifier since
+    `699638fbe`; the re-pin proceeds only when exactly ONE build, the SETTLED-1 one, is present — G6."""
     cur = conn.cursor()
     cur.execute("SELECT build_id::text, count(*) FROM public.chart_dashas WHERE chart_id = %s AND system_id = 'vimshottari' AND ayanamsha_id = %s AND level_n IN (1, 2, 3) GROUP BY 1 ORDER BY 1",
                 (chart_id, ayanamsha_id))
@@ -290,32 +329,101 @@ def build_problems(builds: dict[str, int], new_id: str) -> list[str]:
     """G6 (a): exactly ONE Vimśottarī build exists for the chart (Lahiri, levels 1–3) and it is the SETTLED-1 build."""
     if set(builds) == {new_id}:
         return []
-    return [f"chart_dashas holds Vimśottarī build(s) {sorted(builds)} (Lahiri levels 1–3); exactly ONE — the SETTLED-1 build {new_id} — must exist (G6: the read accepts the pinned OLD build while its rows are present, so a coexisting old build would be read silently)"]
+    return [f"chart_dashas holds Vimśottarī build(s) {sorted(builds)} (Lahiri levels 1–3); exactly ONE — the SETTLED-1 build {new_id} — must exist (G6: a mixed L1 state is refused by the writer and the verifier, and the re-pin proceeds only on a settled one)"]
 
 
 def _rows_digest(rows: list[dict]) -> str:
     return hashlib.sha256(json.dumps(rows, sort_keys=True, separators=(",", ":")).encode("utf-8")).hexdigest()
 
 
-def _capture_digest(rows: list[dict], natal: list[dict] | None) -> str:
-    return hashlib.sha256(json.dumps({"rows": rows, "natal": natal or []}, sort_keys=True, separators=(",", ":")).encode("utf-8")).hexdigest()
+def selection_contract() -> dict:
+    """The selection a capture is MADE UNDER — recorded in the capture and bound into its checksum: the Vimśottarī / Lahiri / `two_pass_verified` read of levels 1–3 and the ten natal longitudes."""
+    return {"system_id": CANONICAL_SYSTEM, "ayanamsha_id": CANONICAL_AYANAMSHA, "tier": PERM.DASHA_READ_CONTRACT["tier"], "levels": list(LEVELS_IN_SCOPE),
+            "natal": {"category": "graha_position", "key": "longitude_sidereal", "ayanamsha_id": CANONICAL_AYANAMSHA, "subjects": sorted(NATAL_SUBJECTS)}}
 
 
-def write_capture(path: str, chart_id: str, build_id: str, rows: list[dict], natal: list[dict] | None = None, meta: dict | None = None) -> str:
-    """The OLD build's rows (+ the ten natal longitudes), captured READ-ONLY BEFORE S-L1 (the old rows may no longer exist afterwards): {chart_id, build_id, rows, natal, meta, sha256} — `sha256` covers
-    `rows` AND `natal` (the canonical JSON); `meta` records how it was read (isolation, read-only, snapshot, elapsed). The file is the evidence the comparison uses."""
-    d = {"chart_id": chart_id, "build_id": build_id, "rows": rows, "natal": natal or [], "meta": meta or {}, "sha256": _capture_digest(rows, natal)}
+def _capture_digest(chart_id: str, build_id: str, rows: list[dict], natal: list[dict] | None) -> str:
+    """SHA-256 of the canonical JSON of the capture's IDENTITY (chart, pinned build, selection contract) AND its data (rows, natal) — Codex R18-1: the chart/build/selection can no longer be edited
+    without invalidating it. The timing/provenance in `meta` is deliberately outside it, so the same L1 state gives the same digest on every capture."""
+    body = {"chart_id": chart_id, "build_id": build_id, "selection": selection_contract(), "rows": rows, "natal": natal or []}
+    return hashlib.sha256(json.dumps(body, sort_keys=True, separators=(",", ":")).encode("utf-8")).hexdigest()
+
+
+def row_contract_problems(rows: list[dict], build_id: str, label: str) -> list[str]:
+    """EVERY row against the build and the read contract: its own `build_id` is the expected build (no foreign or mixed build), system Vimśottarī, tier `two_pass_verified`, level 1–3 (Codex R18-1)."""
+    out: list[str] = []
+    tier = PERM.DASHA_READ_CONTRACT["tier"]
+    for r in rows:
+        try:
+            b = canon_uuid(r.get("build_id"))
+        except ValueError:
+            b = None
+        if b != build_id:
+            out.append(f"{label}: row {r.get('dasha_row_id')} carries build {r.get('build_id')!r}, expected {build_id} (a foreign or mixed build)")
+        if r.get("system_id") != CANONICAL_SYSTEM:
+            out.append(f"{label}: row {r.get('dasha_row_id')} is system {r.get('system_id')!r}, expected {CANONICAL_SYSTEM!r}")
+        if r.get("verification_pass_status") != tier:
+            out.append(f"{label}: row {r.get('dasha_row_id')} is tier {r.get('verification_pass_status')!r}, expected {tier!r}")
+        try:
+            lv = int(r["level_n"])
+        except (KeyError, TypeError, ValueError):
+            lv = None
+        if lv not in LEVELS_IN_SCOPE:
+            out.append(f"{label}: row {r.get('dasha_row_id')} is level {r.get('level_n')!r}, expected one of {list(LEVELS_IN_SCOPE)}")
+    return out
+
+
+def build_capture(chart_id: str, build_id: str, rows: list[dict], natal: list[dict] | None, meta: dict | None = None) -> dict:
+    """The capture envelope: {chart_id, build_id, selection, rows, natal, meta, sha256} — `sha256` binds identity + selection + rows + natal (see `_capture_digest`); `meta` records provenance (tool commit,
+    per-level counts, the separate daśā and natal build ids, the census from the same snapshot, isolation, snapshot, timing)."""
+    meta = dict(meta or {})
+    meta.setdefault("counts_by_level", {str(k): v for k, v in level_totals(rows).items()})
+    meta.setdefault("dasha_build_ids", sorted({str(r.get("build_id")) for r in rows}))
+    meta.setdefault("natal_build_ids", sorted({str(n.get("build_id")) for n in (natal or [])}))
+    return {"chart_id": chart_id, "build_id": build_id, "selection": selection_contract(), "rows": rows, "natal": natal or [], "meta": meta, "sha256": _capture_digest(chart_id, build_id, rows, natal)}
+
+
+def validate_capture(d: dict, chart_id: str, build_id: str) -> list[str]:
+    """THE ONE validation, run at ACQUISITION (before anything is written) AND at LOAD (Codex R18-1/R18-2): identity, selection, checksum over identity + data, every row against the build and the
+    read contract, a well-formed tree, every reference-row id present with its lord, flags consistent, the ten natal rows, and the recorded per-level counts."""
+    out: list[str] = []
+    if not isinstance(d, dict) or not d.get("rows"):
+        return ["the capture is empty or not an object"]
+    if d.get("chart_id") != chart_id:
+        out.append(f"the capture is for chart {d.get('chart_id')!r}, expected {chart_id}")
+    try:
+        cb = canon_uuid(d.get("build_id"))
+    except ValueError:
+        cb = None
+    if cb != build_id:
+        out.append(f"the capture envelope names build {d.get('build_id')!r}, expected the pinned {build_id}")
+    if d.get("selection") != selection_contract():
+        out.append("the capture's selection contract is not the expected one (Vimśottarī / Lahiri / two_pass_verified / levels 1–3 / the ten natal subjects)")
+    if d.get("sha256") != _capture_digest(d.get("chart_id"), d.get("build_id"), d["rows"], d.get("natal")):
+        out.append("the capture's sha256 does not match its identity, selection, rows and natal longitudes")
+    out += row_contract_problems(d["rows"], build_id, "captured old rows")
+    out += capture_problems(d["rows"]) + natal_problems(d.get("natal") or [])
+    counts = (d.get("meta") or {}).get("counts_by_level")
+    if counts is not None and counts != {str(k): v for k, v in level_totals(d["rows"]).items()}:
+        out.append("the capture's recorded per-level counts do not match its rows")
+    return out
+
+
+def write_capture(path: str, d: dict) -> str:
+    """Writes a validated capture envelope; returns the DATA sha256. The whole-file checksum is a SEPARATE fact (printed by the caller from the written bytes; keep it with the file)."""
     Path(path).write_text(json.dumps(d, indent=1, sort_keys=True), encoding="utf-8")
     return d["sha256"]
 
 
+def file_sha256(path: str) -> str:
+    return hashlib.sha256(Path(path).read_bytes()).hexdigest()
+
+
 def load_capture_full(path: str, chart_id: str, build_id: str) -> dict:
     d = json.loads(Path(path).read_text(encoding="utf-8"))
-    if d.get("chart_id") != chart_id or d.get("build_id") != build_id or not d.get("rows") or d.get("sha256") != _capture_digest(d["rows"], d.get("natal")):
-        raise ValueError("the captured old-rows file is not for this chart and the pinned build, is empty, or its sha256 does not match its rows and natal longitudes")
-    bad = tree_problems(d["rows"], "captured old rows")
+    bad = validate_capture(d, chart_id, build_id)
     if bad:
-        raise ValueError("the captured old-rows file is malformed: " + "; ".join(bad[:6]))                  # Codex R17-4: a malformed old capture STOPS the comparison
+        raise ValueError("the captured old-rows file is invalid or malformed: " + "; ".join(bad[:8]))                  # Codex R17-4 / R18-1: a malformed or self-inconsistent capture STOPS the comparison
     return d
 
 
@@ -336,6 +444,15 @@ class _LogCollector(logging.Handler):
         self.messages.append(record.getMessage())
 
 
+def read_truncation(conn, chart_id: str, build_id: str) -> dict:
+    """`dasha_row_id -> (is_truncated_at_window_start, is_truncated_at_window_end)` for the build's Vimśottarī Lahiri levels 1–3 — a SECOND select in the SAME transaction (the reader's columns do not
+    carry the flags)."""
+    cur = conn.execute("SELECT dasha_row_id::text, is_truncated_at_window_start, is_truncated_at_window_end FROM public.chart_dashas"
+                       " WHERE chart_id = %s AND build_id = %s::uuid AND system_id = %s AND ayanamsha_id = %s AND level_n IN (1, 2, 3)",
+                       (chart_id, build_id, CANONICAL_SYSTEM, CANONICAL_AYANAMSHA))
+    return {str(r[0]): (bool(r[1]), bool(r[2])) for r in cur.fetchall()}
+
+
 def read_levels(conn, chart_id: str, build_id: str, label: str) -> list[dict]:
     """The Vimśottarī Lahiri levels 1–3 of ONE build through the REAL §4.0 reader — with three guards the reader itself does not give (Fable F-R17-1): (1) the connection must be psycopg (v3) — the reader
     calls `conn.execute()` and SWALLOWS any exception (an AttributeError on a psycopg2 connection included) into `[]`; (2) a `DashaReadConflict` is a named refusal; (3) an EMPTY read for any level the tool
@@ -354,6 +471,13 @@ def read_levels(conn, chart_id: str, build_id: str, label: str) -> list[dict]:
     finally:
         lg.removeHandler(collector); lg.setLevel(old_level)
     missing = [LEVEL_NAME[lv] for lv in LEVELS_IN_SCOPE if not any(int(r["level_n"]) == lv for r in rows)]
+    if not missing:
+        flags = read_truncation(conn, chart_id, build_id)
+        no_flags = [r["dasha_row_id"] for r in rows if r["dasha_row_id"] not in flags]
+        if no_flags:
+            raise ReaderRefused(f"{label}: the window-truncation flags are missing for {len(no_flags)} of {len(rows)} rows of build {build_id} (e.g. {no_flags[0]})")
+        for r in rows:
+            r["trunc_start"], r["trunc_end"] = flags[r["dasha_row_id"]]
     if missing:
         why = f" (reader log: {' | '.join(collector.messages)})" if collector.messages else ""
         extra = " — capture them BEFORE S-L1 with --capture-old and pass --old-rows" if label == "old build" else ""
@@ -367,6 +491,29 @@ def open_readonly_connection():
     conn = psycopg.connect(os.environ["DATABASE_URL"])
     conn.read_only = True
     return conn
+
+
+def canon_uuid(x) -> str:
+    """`str(uuid.UUID(x))` — one canonical lower-case hyphenated form before ANY comparison (Fable F-R18-5b)."""
+    return str(uuid.UUID(str(x)))
+
+
+def capture_problems(rows: list[dict]) -> list[str]:
+    """What the COMPARISON will later need, checked at CAPTURE time (Fable F-R18-2) — a useless capture must be found NOW, while a re-capture is still possible: a well-formed tree, every `permission.py`
+    reference-row id present with its lord, and no flag set off the window bound."""
+    out = tree_problems(rows, "captured old rows")
+    by_id = {r["dasha_row_id"]: r for r in rows}
+    for ref in PERM.MD_ROWS + PERM.AD_ROWS + PERM.PD_ROWS:
+        r = by_id.get(ref["row_id"])
+        if r is None:
+            out.append(f"reference row {ref['row_id']} ({ref['level']} {ref['lord']}) is NOT in the capture")
+        elif r["lord_graha"] != ref["lord"]:
+            out.append(f"reference row {ref['row_id']}: lord {r['lord_graha']} in the capture, {ref['lord']} in permission.py")
+    for r in rows:
+        for side in ("start", "end"):
+            if bool(r.get("trunc_start" if side == "start" else "trunc_end")) and _t(r["start_iso" if side == "start" else "end_iso"]) != _t(WINDOW_START_ISO if side == "start" else WINDOW_END_ISO):
+                out.append(f"row {r['dasha_row_id']}: flagged truncated at the window {side} but its {side} instant is not the window bound")
+    return out
 
 
 NATAL_SUBJECTS = ("LAGNA", "SUN", "MOON", "MAR", "MER", "JUP", "VEN", "SAT", "RAH_MEAN", "KET_MEAN")
@@ -385,6 +532,39 @@ def read_natal(conn, chart_id: str) -> list[dict]:
     if got != sorted(NATAL_SUBJECTS) or any(r["longitude"] is None for r in rows):
         raise NatalRefused(f"the natal read returned subjects {got}, expected exactly {sorted(NATAL_SUBJECTS)} each with a longitude")
     return rows
+
+
+def natal_problems(natal: list[dict]) -> list[str]:
+    got = sorted(n.get("fact_subject", "") for n in natal)
+    out = [] if got == sorted(NATAL_SUBJECTS) else [f"natal subjects {got}, expected exactly {sorted(NATAL_SUBJECTS)}"]
+    out += [f"natal row {n.get('fact_subject')} has no longitude" for n in natal if n.get("longitude") in (None, "")]
+    return out
+
+
+def import_w0(path: str, checksum: str, out_path: str, chart_id: str) -> int:
+    """Suvarṇa's W0 FALLBACK baseline (Fable F-R18-4): a JSON file `{chart_id, build_id, rows: [{dasha_row_id, level_n, parent_row_id, lord_graha, start_iso, end_iso, trunc_start, trunc_end, ...}],
+    natal: [{fact_id, fact_subject, longitude, tier, build_id}]}` — the SAME fields as this tool's own capture — whose SHA-256 (of the file's bytes) is the checksum her SETTLED-1 names. The file is verified
+    against that checksum, validated exactly as a capture is (tree, every reference-row id present with its lord, flags consistent, the ten natal rows) and re-written in the tool's capture format with
+    `meta.source = "w0"`; the comparison then uses it through --old-rows. Any problem exits 3 and writes nothing."""
+    raw = Path(path).read_bytes()
+    got = hashlib.sha256(raw).hexdigest()
+    if got != checksum.lower():
+        print(f"STOP — the W0 file's sha256 is {got}, not the checksum {checksum} named by SETTLED-1", file=sys.stderr); return 3
+    d = json.loads(raw.decode("utf-8"))
+    old_id = PERM.DASHA_READ_CONTRACT["build_id"]
+    if d.get("chart_id") != chart_id or canon_uuid(d.get("build_id")) != old_id or not isinstance(d.get("rows"), list) or not isinstance(d.get("natal"), list):
+        print("STOP — the W0 file is not {chart_id, build_id, rows, natal} for this chart and the pinned build", file=sys.stderr); return 3
+    rows = norm_rows(d["rows"])
+    for r_in, r_out in zip(d["rows"], rows):
+        r_out["trunc_start"], r_out["trunc_end"] = bool(r_in.get("trunc_start")), bool(r_in.get("trunc_end"))
+    cap = build_capture(chart_id, old_id, rows, d["natal"], {"source": "w0", "w0_sha256": got, "imported_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"), "tool_commit": _tool_commit()})
+    bad = validate_capture(cap, chart_id, old_id)
+    if bad:
+        print("STOP — the W0 baseline could not later be compared (nothing written): " + "; ".join(bad[:8]), file=sys.stderr); return 3
+    write_capture(out_path, cap)
+    print(f"imported {len(rows)} daśā rows and {len(d['natal'])} natal longitudes from the W0 baseline (file sha256 {got}) -> {out_path}")
+    print(f"sha256 {cap['sha256']}; whole-file sha256 {file_sha256(out_path)}")
+    return 0
 
 
 def open_capture_connection():
@@ -412,32 +592,43 @@ def _finite_number(v) -> bool:
 
 
 def load_notice(path: str) -> dict:
-    """Suvarṇa's SETTLED-1 notice as JSON: {"settled_1": true, "new_build_id": "<uuid>", "expected_shift_seconds": {"1": 6993, "2": 6993, "3": {"start": 6992, "end": 6994}}, "tolerance_seconds": 2}.
-    STRICT (Codex R17-3/R17-5): `new_build_id` is REQUIRED and a valid UUID; `expected_shift_seconds` names EXACTLY levels 1, 2 and 3, each a FINITE number or {start, end} of finite numbers (both
-    boundaries); `tolerance_seconds` is a FINITE number >= 1 (every instant on both sides is whole-second-formatted in the permission literals, and the notice's own are second-resolution) — NaN and
-    infinities are refused; the tolerance is STATED by the notice — there is no default. The notice's sha256 is recorded in the tool's output."""
+    """Suvarṇa's SETTLED-1 notice as JSON: {"settled_1": true, "source_message_id": "<id>", "system_id": "vimshottari", "ayanamsha_id": "lahiri_chitrapaksha", "new_build_id": "<uuid>",
+    "expected_shift_seconds": {"1": 6993, "2": 6993, "3": {"start": 6992, "end": 6994}}, "tolerance_seconds": 2}.
+    STRICT (Codex R17-3/R17-5, Fable F-R18-4): the notice is BOUND to what it describes — `system_id` must be `vimshottari`, `ayanamsha_id` `lahiri_chitrapaksha`, `source_message_id` non-empty (recorded in
+    the evidence), `new_build_id` a valid UUID (canonicalised); `expected_shift_seconds` MUST name levels 1, 2 and 3, each a FINITE number or {start, end} — **`{start, end}` are the START-boundary and
+    END-boundary shift expectations, NOT a range** — and ANY OTHER level (SETTLED-1 will declare level-4 deltas) is TOLERATED, echoed in the evidence and NEVER compared (this tool judges levels 1–3
+    only); `tolerance_seconds` is a FINITE number >= 1 — NaN and infinities are refused; the tolerance is STATED by the notice — there is no default. The notice's sha256 is recorded."""
     raw = Path(path).read_bytes()
     d = json.loads(raw.decode("utf-8"))
     problems = []
     if d.get("settled_1") is not True:
         problems.append("settled_1 must be true")
+    if d.get("system_id") != CANONICAL_SYSTEM:
+        problems.append(f"system_id must be {CANONICAL_SYSTEM!r} (this tool judges the Vimśottarī read only)")
+    if d.get("ayanamsha_id") != CANONICAL_AYANAMSHA:
+        problems.append(f"ayanamsha_id must be {CANONICAL_AYANAMSHA!r}")
+    if not isinstance(d.get("source_message_id"), str) or not d["source_message_id"].strip():
+        problems.append("source_message_id is required (the announcement the notice came with)")
     try:
-        uuid.UUID(str(d.get("new_build_id")))
+        d["new_build_id"] = canon_uuid(d.get("new_build_id"))
     except ValueError:
         problems.append("new_build_id is required and must be a valid UUID (the settlement build identifier)")
     exp = d.get("expected_shift_seconds")
-    if not isinstance(exp, dict) or set(exp) != {str(lv) for lv in LEVELS_IN_SCOPE}:
-        problems.append("expected_shift_seconds must name exactly levels 1, 2 and 3")
+    if not isinstance(exp, dict) or not {str(lv) for lv in LEVELS_IN_SCOPE} <= set(exp):
+        problems.append("expected_shift_seconds must name levels 1, 2 and 3")
     else:
-        for k, e in exp.items():
+        for k in (str(lv) for lv in LEVELS_IN_SCOPE):
+            e = exp[k]
             ok = _finite_number(e) or (isinstance(e, dict) and set(e) == {"start", "end"} and _finite_number(e["start"]) and _finite_number(e["end"]))
             if not ok:
-                problems.append(f"expected_shift_seconds[{k}] must be a finite number or {{start, end}} of finite numbers")
+                problems.append(f"expected_shift_seconds[{k}] must be a finite number or {{start, end}} of finite numbers (the two BOUNDARY expectations, not a range)")
     tol = d.get("tolerance_seconds")
     if not _finite_number(tol) or tol < MIN_TOLERANCE_SECONDS:
         problems.append(f"tolerance_seconds must be a FINITE number >= {MIN_TOLERANCE_SECONDS}")
     if problems:
         raise ValueError("the SETTLED-1 notice is invalid: " + "; ".join(problems))
+    d["_ignored_levels"] = sorted(k for k in exp if k not in {str(lv) for lv in LEVELS_IN_SCOPE})
+    d["expected_shift_seconds"] = {k: exp[k] for k in (str(lv) for lv in LEVELS_IN_SCOPE)}          # only levels 1–3 are ever compared
     d["_sha256"] = hashlib.sha256(raw).hexdigest()
     return d
 
@@ -456,6 +647,9 @@ def shift_problems(stats: dict, notice: dict | None) -> list[str]:
             out.append(f"level {LEVEL_NAME.get(lv, lv)}: measured but the notice states no expected shift"); continue
         want = {"start": e, "end": e} if isinstance(e, (int, float)) and not isinstance(e, bool) else e
         for side in ("start", "end"):
+            if side not in stats[lv]:
+                out.append(f"level {LEVEL_NAME.get(lv, lv)} {side}: ZERO unclipped measurements (every edge is clipped to the window) — nothing to judge the shift on")
+                continue
             for stat in ("min", "max"):
                 got = stats[lv][side][stat]
                 if not (abs(got - want[side]) <= tol):                                         # NaN-safe: a NaN fails the comparison instead of passing it
@@ -504,8 +698,8 @@ def remeasure_reference_rows(old: dict, new: dict) -> tuple[list[dict], list[str
 
 
 def decide(*, new_tier_ok: bool, new_integrity: dict, m: dict, flips: list, ref_problems: list, forensic_report: str | None, shift_issues: list[str] | None = None,
-           tree_issues: list[str] | None = None, old_totals: dict | None = None, new_totals: dict | None = None, refused_subtrees: list[dict] | None = None) -> list[str]:
-    stops = list(shift_issues or []) + list(tree_issues or [])
+           tree_issues: list[str] | None = None, old_totals: dict | None = None, new_totals: dict | None = None, refused_subtrees: list[dict] | None = None, edge_issues: list[str] | None = None) -> list[str]:
+    stops = list(shift_issues or []) + list(tree_issues or []) + list(edge_issues or [])
     for r in refused_subtrees or []:
         label = " → ".join(f"{l}#{k}" for l, k in r["parent"]) or "(roots)"
         stops.append(f"REFUSED SUBTREE under {label}: the child set differs (old {r['old']}, new {r['new']}) — never best-guessed; any count difference at levels 1–3 is UNEXPECTED")
@@ -592,6 +786,8 @@ def apply_repin(new_id: str, maps: list[dict], repo_root: Path, rulings: dict | 
         for side in ("start_iso", "end_iso"):
             literal = iso(n[side])          # whole-second UTC `…Z` — the permission.py literal form (measurement elsewhere keeps full precision)
             assert _WHOLE_SECOND_Z.fullmatch(literal), f"permission literal {literal!r} is not whole-second …Z (permission.py compares these lexicographically)"
+            if instants.get(o[side], literal) != literal:
+                raise VerifierPinMissing(f"literal conflict: the old instant {o[side]} maps to two different new instants ({instants[o[side]]} and {literal}) — nothing written")
             instants[o[side]] = literal
     ver = SIDECAR / "services" / "gochara_kernel" / "inventory_verifier.py"
     if not ver.is_file():
@@ -677,6 +873,12 @@ def _mode_error(a) -> str | None:
     if a.system != "vimshottari" or a.max_level != 3:
         return (f"--system {a.system} --max-level {a.max_level} REFUSED: this tool judges the Vimśottarī Lahiri levels 1–3 only (other systems and level 4 are out of scope; level-4 row counts "
                 "change by design at S-L1)")
+    if a.import_w0 or a.w0_checksum or a.w0_capture_out:
+        if not (a.import_w0 and a.w0_checksum and a.w0_capture_out):
+            return "--import-w0 needs --w0-checksum and --w0-capture-out (and only those)"
+        extra = [flag for flag, val in (("--new-build-id", a.new_build_id), ("--dry-run", a.dry_run), ("--apply", a.apply), ("--settled-notice", a.settled_notice), ("--old-rows", a.old_rows),
+                                        ("--rulings", a.rulings), ("--forensic-report", a.forensic_report), ("--out", a.out), ("--settled-received", a.settled_received), ("--capture-old", a.capture_old)) if val]
+        return f"--import-w0 is an import-only mode; it cannot be combined with {', '.join(extra)}" if extra else None
     if a.capture_old:
         extra = [flag for flag, val in (("--new-build-id", a.new_build_id), ("--dry-run", a.dry_run), ("--apply", a.apply), ("--settled-notice", a.settled_notice), ("--old-rows", a.old_rows),
                                         ("--rulings", a.rulings), ("--forensic-report", a.forensic_report), ("--out", a.out), ("--settled-received", a.settled_received)) if val]
@@ -686,9 +888,11 @@ def _mode_error(a) -> str | None:
     if not a.new_build_id:
         return "--new-build-id is required for comparison and application (it is not used by --capture-old)"
     try:
-        uuid.UUID(a.new_build_id)
+        a.new_build_id = canon_uuid(a.new_build_id)                                  # one canonical form before ANY comparison
     except ValueError:
         return f"--new-build-id {a.new_build_id!r} is not a valid UUID"
+    if a.apply and a.chart_id != PERM.DASHA_READ_CONTRACT["chart_id"]:
+        return f"--apply is refused for chart {a.chart_id}: the pin belongs to the canonical chart {PERM.DASHA_READ_CONTRACT['chart_id']}"
     if a.dry_run and a.apply:
         return "--dry-run and --apply are mutually exclusive (a dry run writes nothing)"
     if a.apply and not a.settled_received:
@@ -698,15 +902,34 @@ def _mode_error(a) -> str | None:
     return None
 
 
+def _tool_commit() -> str:
+    import subprocess
+    try:
+        return subprocess.run(["git", "-C", str(Path(__file__).resolve().parent), "rev-parse", "HEAD"], capture_output=True, text=True, timeout=10).stdout.strip() or "unknown"
+    except (OSError, subprocess.SubprocessError):
+        return "unknown"
+
+
+def capture_census(conn, chart_id: str) -> dict:
+    """The asset-state / build census for the chart from the SAME snapshot (psycopg3 `execute` only): distinct `chart_dashas` build ids (every system), the non-scope / scope-cap partition counts, the
+    `asset_throughput` state of ga_dashas and ga_positions, and the distinct natal build ids."""
+    builds = [str(r[0]) for r in conn.execute("SELECT DISTINCT build_id::text FROM public.chart_dashas WHERE chart_id = %s ORDER BY 1", (chart_id,)).fetchall()]
+    non_scope, scope = conn.execute("SELECT count(*) FILTER (WHERE system_id <> 'scope_cap'), count(*) FILTER (WHERE system_id = 'scope_cap') FROM (SELECT DISTINCT system_id, ayanamsha_id FROM public.chart_dashas WHERE chart_id = %s) p", (chart_id,)).fetchone()
+    states = {str(a): str(st) for a, st in conn.execute("SELECT asset_id, state FROM public.asset_throughput WHERE chart_id = %s AND asset_id IN ('ga_dashas', 'ga_positions') ORDER BY 1", (chart_id,)).fetchall()}
+    return {"chart_dashas_build_ids": builds, "partitions_non_scope": int(non_scope), "partitions_scope_cap": int(scope), "asset_throughput": states}
+
+
 def _capture_old(a, conn) -> int:
-    """ONE short read-only transaction (REPEATABLE READ, READ ONLY — one snapshot) reads the Vimśottarī Lahiri levels 1–3 of the pinned build AND the ten natal graha_position rows; writes the file
-    + sha256; the connection is closed (rolled back, never committed) BEFORE the tool returns; prints the elapsed time (Suvarṇa: run it in the hour BEFORE S-L1, never during the window)."""
+    """ONE short read-only transaction (REPEATABLE READ, READ ONLY — one snapshot) reads the Vimśottarī Lahiri levels 1–3 of the pinned build (with the window-truncation flags), the ten natal
+    graha_position rows and the asset-state/build census; the capture is VALIDATED — the same validation the comparison will apply — BEFORE anything is written (a malformed or unusable capture is a
+    named STOP with NO artifact); the connection is rolled back and closed BEFORE the file is written; prints the data sha256, the whole-file sha256 and the elapsed time (Suvarṇa: in the hour BEFORE S-L1)."""
     started = time.monotonic()
     old_id = PERM.DASHA_READ_CONTRACT["build_id"]
     own = conn is None
     if own:
         conn = open_capture_connection()
     meta: dict = {}
+    stop = None
     try:
         try:
             if own:
@@ -717,24 +940,35 @@ def _capture_old(a, conn) -> int:
                     raise ReaderRefused(f"the capture transaction is {meta['transaction_isolation']!r} / read_only {meta['transaction_read_only']!r}, not repeatable read / on")
             rows = read_levels(conn, a.chart_id, old_id, "pinned build (capture)")
             natal = read_natal(conn, a.chart_id)
+            meta["census"] = capture_census(conn, a.chart_id)
             if own:
                 meta["snapshot_end"] = conn.execute("SELECT pg_current_snapshot()::text").fetchone()[0]
                 if meta["snapshot_end"] != meta["snapshot_start"]:
                     raise ReaderRefused("the snapshot changed during the capture — it was NOT one transaction")
         except (ReaderRefused, NatalRefused) as exc:
-            print(f"STOP — {exc}", file=sys.stderr); return 3
+            stop = str(exc)
+        except Exception as exc:                     # a database error mid-capture is a NAMED STOP too (the transaction is rolled back and closed below)
+            stop = f"the capture read failed: {type(exc).__name__}: {exc}"
     finally:
         if own:
             try:
                 conn.rollback()                      # a read-only transaction is ended, never committed
             finally:
                 conn.close()
-    meta["captured_at"] = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
-    meta["elapsed_seconds"] = round(time.monotonic() - started, 3)
-    digest = write_capture(a.capture_old, a.chart_id, old_id, rows, natal, meta)
+    if stop:
+        print(f"STOP — {stop}", file=sys.stderr); return 3
+    meta.update({"captured_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"), "tool_commit": _tool_commit(), "tool_sha256": file_sha256(__file__),
+                 "natal_build_ids": sorted({n["build_id"] for n in natal}), "dasha_build_ids": sorted({r["build_id"] for r in rows})})
+    cap = build_capture(a.chart_id, old_id, rows, natal, meta)
+    bad = validate_capture(cap, a.chart_id, old_id)                  # THE loader's validation, at acquisition (Codex R18-2)
+    if bad:
+        print("STOP — this capture could NOT later be used (nothing written; fix and re-capture while the old rows exist): " + "; ".join(bad[:8]), file=sys.stderr); return 3
+    cap["meta"]["elapsed_seconds"] = round(time.monotonic() - started, 3)
+    write_capture(a.capture_old, cap)
     print(f"captured {len(rows)} daśā rows (levels 1–3) of {old_id} and {len(natal)} natal longitudes -> {a.capture_old}")
-    print(f"sha256 {digest}")
-    print(f"one {meta.get('transaction_isolation', 'injected')} read-only transaction, connection closed; elapsed {meta['elapsed_seconds']} s")
+    print(f"sha256 {cap['sha256']}   (data + identity + selection)")
+    print(f"whole-file sha256 {file_sha256(a.capture_old)}   (record it separately)")
+    print(f"one {meta.get('transaction_isolation', 'injected')} read-only transaction, connection closed; elapsed {cap['meta']['elapsed_seconds']} s")
     return 0
 
 
@@ -751,15 +985,22 @@ def main(argv=None, *, conn=None) -> int:
     ap.add_argument("--system", default="vimshottari", help="REFUSED unless vimshottari — the pin is the Vimśottarī read; other systems are out of scope")
     ap.add_argument("--max-level", type=int, default=3, help="REFUSED unless 3 — levels 1–3 (MD/AD/PD) only; level-4 counts change by design at S-L1")
     ap.add_argument("--capture-old", default=None, help="READ-ONLY: write the OLD (pinned) build's rows to this file BEFORE S-L1 and exit — the old rows may not exist afterwards")
+    ap.add_argument("--import-w0", default=None, help="Suvarṇa's W0 fallback baseline (JSON in this tool's capture fields); needs --w0-checksum and --w0-capture-out; re-written as a capture")
+    ap.add_argument("--w0-checksum", default=None, help="the SHA-256 of the W0 file named by SETTLED-1")
+    ap.add_argument("--w0-capture-out", default=None, help="where the imported capture is written")
     ap.add_argument("--old-rows", default=None, help="the file written by --capture-old: the old build's rows when the DB no longer holds them")
     ap.add_argument("--rulings", default=None, help="JSON {rewrite: [path:line…], keep: [path:line…]} — the steward's ruling on test literals that equal an old boundary")
     a = ap.parse_args(argv)
     bad = _mode_error(a)                     # BEFORE any capture, connection or read (Codex R17-7)
     if bad:
         print(bad, file=sys.stderr); return 2
+    if a.import_w0:
+        return import_w0(a.import_w0, a.w0_checksum, a.w0_capture_out, a.chart_id)
     if a.capture_old:
         return _capture_old(a, conn)
     old_id = PERM.DASHA_READ_CONTRACT["build_id"]
+    if a.chart_id != PERM.DASHA_READ_CONTRACT["chart_id"]:
+        print(f"WARNING: --chart-id {a.chart_id} is not the canonical chart {PERM.DASHA_READ_CONTRACT['chart_id']}; the comparison is for evidence only and --apply is refused", file=sys.stderr)
     if a.new_build_id == old_id:
         print("new build equals the current pin — nothing to re-pin", file=sys.stderr); return 2
     if a.forensic_report is not None:
@@ -782,11 +1023,13 @@ def main(argv=None, *, conn=None) -> int:
         print(f"STOP — {exc}", file=sys.stderr); return 3
     # tier is pinned IN the query (two_pass_verified): an empty result means the new build is absent or at another tier
     new_tier_ok = bool(new_rows) and all(r.get("verification_pass_status") == PERM.DASHA_READ_CONTRACT["tier"] for r in new_rows)
-    tree_issues = tree_problems(old_rows, "old build") + tree_problems(new_rows, "new build")          # Codex R17-4: well-formed trees BEFORE any comparison
+    tree_issues = (tree_problems(old_rows, "old build") + tree_problems(new_rows, "new build")           # Codex R17-4: well-formed trees BEFORE any comparison
+                   + row_contract_problems(old_rows, old_id, "old build") + row_contract_problems(new_rows, a.new_build_id, "new build"))        # Codex R18-1: every row against its build and the read contract
     old_idx, new_idx = index_paths(old_rows), index_paths(new_rows)
     m = match(old_idx, new_idx)
     refusals = subtree_refusals(old_idx, new_idx)
     m = {**m, "matched": [k for k in m["matched"] if not under_refused(k, refusals)]}                          # a refused subtree is not paired at all (no best guess)
+    edges = edge_report(old_idx, new_idx, m["matched"])                                # Fable F-R18-1: window-clipped edges are accounted, excluded from the statistics, required unchanged
     stats = shift_stats(old_idx, new_idx, m["matched"])
     flips = path_lord_flips(old_idx, new_idx, m["matched"])                       # D7: every matched row keeps its lord — the STOP
     sensitive = lord_flips(old_rows, new_rows, oracle_instants()) if new_rows else []   # instants whose lord differs because a boundary MOVED — reported, D8
@@ -799,13 +1042,14 @@ def main(argv=None, *, conn=None) -> int:
     extra_stops = build_problems(builds, a.new_build_id) + preflight_problems(fetch_preflight_facts(conn, a.chart_id), a.new_build_id)
     stops = decide(new_tier_ok=new_tier_ok, new_integrity=integrity(new_rows), m=m, flips=flips,
                    ref_problems=ref_problems, forensic_report=a.forensic_report, shift_issues=shift_problems(stats, notice),
-                   tree_issues=tree_issues, old_totals=level_totals(old_rows), new_totals=level_totals(new_rows), refused_subtrees=refusals)
+                   tree_issues=tree_issues, old_totals=level_totals(old_rows), new_totals=level_totals(new_rows), refused_subtrees=refusals, edge_issues=edges["problems"])
     stops += extra_stops
     if notice is not None and notice.get("new_build_id") != a.new_build_id:                         # Codex R17-5: notice == --new-build-id == the database readback (the builds check above)
         stops.append(f"the SETTLED-1 notice names build {notice.get('new_build_id')}, not {a.new_build_id}")
-    evidence = []
+    evidence = [f"window-clipped edges excluded from the shift statistics (clipped on BOTH builds, required unchanged), per level: "
+                + (", ".join(f"{LEVEL_NAME.get(lv, lv)} start {c['start']} / end {c['end']}" for lv, c in edges["clipped"].items()) or "none")]
     if notice is not None:
-        evidence.append(f"settled notice sha256: {notice['_sha256']}")
+        evidence.append(f"settled notice sha256: {notice['_sha256']}; source message {notice['source_message_id']}" + (f"; levels {notice['_ignored_levels']} in the notice were IGNORED (this tool judges levels 1–3 only)" if notice["_ignored_levels"] else ""))
     if a.forensic_report:
         evidence.append(f"forensic report sha256: {hashlib.sha256(Path(a.forensic_report).read_bytes()).hexdigest()} — this tool checks that the file EXISTS and is NON-EMPTY ONLY; CLEAN is NOT independent validation of the seven FORENSIC anchors (that evidence is the L1 owner's)")
     report = render(old_id=old_id, new_id=a.new_build_id, chart_id=a.chart_id, o_int=integrity(old_rows),
@@ -834,7 +1078,7 @@ def main(argv=None, *, conn=None) -> int:
             print(f"STOP (nothing written) — {exc}", file=sys.stderr); return 3
         print(f"re-pin PREPARED locally on 'SETTLED-1 received' per {a.settled_received}. ST-SL1-HOLD REMAINS IN FORCE for production Gochara work until this re-pin is reviewed and merged and the steward announces the hold lifted.")
         print("BOTH pin constants were rewritten and verified equal to the SETTLED-1 build: services/gochara_rules/permission.py DASHA_READ_CONTRACT['build_id'] AND services/gochara_kernel/inventory_verifier.py _C_BUILD.")
-        print("NEXT, in the SAME reviewed re-pin PR: regenerate the implementation lock — `python -m services.gochara_kernel.implementation_registry --write` (a changed governed module moves the implementation digest; the seal refuses an unregistered one).")
+        print("NEXT, in the SAME reviewed re-pin PR: regenerate the implementation lock — `python -m services.gochara_kernel.implementation_registry --write` (a changed governed module moves the implementation digest; the seal refuses an unregistered one) AND the golden brief fixtures that move with it — tests/l3/gochara/fixtures/golden_brief_stdout_1class.txt and golden_brief_log_entries_1class.json (regenerate them the way Stream A's tests document, then re-run the A5.3 suite).")
         for r in review:
             print("ruled:", r)
     return 0
