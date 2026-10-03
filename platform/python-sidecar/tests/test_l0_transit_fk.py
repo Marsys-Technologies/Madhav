@@ -167,23 +167,21 @@ def test_compute_stale_rule_ids_accepts_dict_rows_from_real_connect_factory():
     assert all(isinstance(i, int) for i in stale)
 
 
-def test_migration_owned_rows_never_classified_as_owned():
+def test_double_transit_rows_are_now_writer_owned_and_lowercase():
     """
-    Migration-owned rows (migration 397's 7 double_transit rows, title-case
-    'Jupiter'/'Saturn') must never be reachable via `_owned_categories` derived from
-    the real BG_TRANSIT_RULES — they never appear in it, so the SQL WHERE clause in
-    seed_transit_rules (rule_type = ANY(owned_types) AND graha = ANY(owned_grahas))
-    structurally never selects them as sweep candidates. This is a deliberate
-    case-sensitive exact-match design (BG_TRANSIT_RULES graha values are always
-    lowercase), not a `lower()` coincidence.
+    SS addition (L0 data batch): migration 397's 7 double_transit rows (formerly title-case
+    'Jupiter'/'Saturn', and for exactly that reason structurally excluded from the
+    case-sensitive ownership match) are now IN BG_TRANSIT_RULES with the canonical lowercase
+    graha. The old assertion here ("double_transit is never owned; 'Jupiter' not in the
+    owned grahas") described the outgoing design; the invariant that replaces it is: the
+    owned graha set is lowercase-only, 'vedha' is still unowned, and double_transit is owned
+    because the writer now emits it.
     """
     owned_types, owned_grahas = _owned_categories(BG_TRANSIT_RULES)
-    assert "double_transit" not in owned_types
     assert "vedha" not in owned_types
-    assert "Jupiter" not in owned_grahas
-    assert "Saturn" not in owned_grahas
-    # sanity: the writer really does own these two rule_types today
-    assert owned_types == {"favourable", "unfavourable"}
+    assert owned_types == {"favourable", "unfavourable", "double_transit"}
+    assert all(g == g.lower() for g in owned_grahas)
+    assert "Jupiter" not in owned_grahas and "Saturn" not in owned_grahas
 
 
 def test_reconciliation_sweep_deletes_owned_absent_row_scoped_by_id():
