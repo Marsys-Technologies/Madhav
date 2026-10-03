@@ -8518,3 +8518,16 @@ Resume condition for everything downstream: a successful protected deploy with 1
 - Local source remains uncommitted in `/Users/Dev/.codex/worktrees/ai-circle-acceptance/Madhav`, branch `codex/ai-circle-acceptance`, for owner review. Six-deliverable packet: `00_ARCHITECTURE/briefs/ai_circle_acceptance/REPORT.md`.
 - Final local evidence `verification/20261003T125952Z/results.json`: 322 enabled tests, 18 disposable PostgreSQL tests, 15,135 full mocked tests passed; lint/types/build/access checks and source stability passed. Skipped/live tests are not certified. Migration-guard reviewed 1302 safe with controlled traffic transition.
 - No paid-provider/CLI generation, deployment, production migration, credentials/IAM changes or protected merge occurred. Deployed full-circle/provider reconciliation remains pending; gap register and runbook specify remaining gates. This releases only this session's local source/test lease.
+
+
+---
+
+## 2026-10-04 — Portal Experience discovery and planning lease
+
+- Lease ID: L-PORTAL-EXPERIENCE-AUDIT-20261004; holder: Codex desktop.
+- Started: 2026-10-03T20:03:19.927893+00:00; expiry: 2026-10-04T00:03:19.927893+00:00; status: ACTIVE — READ-ONLY AUDIT AND LOCAL PLANNING.
+- Worktree: `/Users/Dev/.codex/worktrees/portal-experience/Madhav`; branch `codex/portal-experience`.
+- Authority: native requested an autonomous portal audit and recommendations, then directed inspection of the signed-in live portal; priorities are advanced direct users, desktop first, Paripraśna/chat, personalised chart Panchang and consumption.
+- Scope: source/route/endpoint/reference inventory, read-only signed-in browser inspection, local task-owned findings, IA/design/cleanup plan and session receipts under `00_ARCHITECTURE/briefs/portal_experience/`. No application changes or application commits/pushes.
+- No production write, AI request, build/rebuild, migration, deployment, permission/credential change, deletion or foreign campaign mutation. This read-only lane claims no production window. Prior expired ACTIVE rows are not revived.
+- Provenance: actual tool is Codex desktop; no named CLI profile is attested. Use the root CLAUDE §G equivalent in-session bootstrap check with the native current audit instruction recorded; do not edit the validator or pretend a CLI profile was selected.
