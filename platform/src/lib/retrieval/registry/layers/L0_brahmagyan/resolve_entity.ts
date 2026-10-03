@@ -54,8 +54,8 @@ export const resolveEntityCapability: CapabilityDescriptor = {
 
       const entityClass = typeof args.entity_class === 'string' && args.entity_class.trim() !== '' ? args.entity_class.trim() : null
       // Tie-break and class-aware resolution (TI-L0-14): full text in the NOTES block at the end of this file.
-      // The winner is chosen by the ORDER BY below exactly as before (varga first, then entity_class, then
-      // canonical_id), so no served id moves; the statement now also returns the other matching (class, id) rows
+      // The winner is chosen by the ORDER BY below exactly as before (see TIE HOLD in the NOTES block at the end of
+      // the file: two explicit preferences keep today's winners), so no served id moves; the statement now also returns the other matching (class, id) rows
       // so the response can say `ambiguous: true` and list them. `entity_class` (optional) restricts the match.
       // A name never silently picks one of several classes without saying so. The varga/concept tie on 'D9'
       // (ADHIṢṬHĀNA Lane A3) is the original case of this: varga wins it, and `candidates` now lists both.
@@ -68,7 +68,7 @@ export const resolveEntityCapability: CapabilityDescriptor = {
             OR lower(canonical_name_en) = lower($1)
             OR lower(canonical_name_sa) = lower($1))
            AND ($2::text IS NULL OR entity_class = $2)
-         ORDER BY (entity_class = 'varga') DESC, entity_class, canonical_id
+         ORDER BY (entity_class = 'varga') DESC, (entity_class = 'dosha'), entity_class, (canonical_id = 'jaimini_sutram') DESC, canonical_id
          LIMIT ${CANDIDATE_CAP}`,
         [name, entityClass],
       )
@@ -120,4 +120,16 @@ const CANDIDATE_CAP = 25
  * response says `ambiguous: true` with the full `candidates` list when more than one distinct (entity_class,
  * canonical_id) matched, so a caller can pass `entity_class` instead of trusting the tie-break. With `entity_class`
  * supplied the match is restricted to that class.
+ *
+ * TIE HOLD (SS N-113, until the acharya batch rules): the ORDER BY carries two explicit tie preferences so that NO
+ * served resolution changes while the data PRs land. (1) `(entity_class = 'dosha')` sorts a dosha row LAST in any
+ * tie: the dosha alias sets (TI-L0-12) make 7 names (kemadruma, Kemadruma, daridra, Daridra, Rajju, Sakata Yoga,
+ * Sarpa Yoga) match both a yoga and a dosha; today they resolve to the yoga and still do. Names only a dosha matches
+ * resolve to the dosha (newly resolvable). (2) `(canonical_id = 'jaimini_sutram') DESC`, applied AFTER entity_class
+ * (so it only orders text vs text), keeps 'Jaimini Sutram' / 'jaimini sutras' on jaimini_sutram now that the
+ * corpus text bphs_jaimini (TI-L0-13) also carries those names. THE FLIP IS A ONE-LINE SWITCH: after the ruling,
+ * delete `(entity_class = 'dosha'), ` (yoga -> dosha on the 7 names) and/or `(canonical_id = 'jaimini_sutram') DESC, `
+ * from this ORDER BY and from the same line in source_query_availability.ts (contract 'resolve-entity'), and
+ * update the HOLD tests in resolve_entity.class_aware.test.ts. `candidates` already lists both rows, so a caller
+ * is told about the other class regardless of the hold.
  */

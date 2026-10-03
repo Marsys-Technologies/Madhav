@@ -157,7 +157,7 @@ describe('binding availability contracts', () => {
   })
 
   it.each([
-    ['source-query:resolve-entity:v1', 'FROM brahma_ontology', "ORDER BY (entity_class = 'varga') DESC, entity_class, canonical_id"],
+    ['source-query:resolve-entity:v1', 'FROM brahma_ontology', "ORDER BY (entity_class = 'varga') DESC, (entity_class = 'dosha'), entity_class, (canonical_id = 'jaimini_sutram') DESC, canonical_id"],
     ['source-query:read-chapter:v1', 'FROM classical_text_chunks', 'ORDER BY verse_start, chunk_id'],
     ['source-query:read-sutravali-rule:v1', 'FROM sutravali_rules r', 'WHERE r.rule_id::text = NULL::text'],
     ['source-query:query-sutravali-rules:v1', 'FROM sutravali_rules r', "r.antecedent_jsonb->>'sign_canon' ILIKE NULL::text"],

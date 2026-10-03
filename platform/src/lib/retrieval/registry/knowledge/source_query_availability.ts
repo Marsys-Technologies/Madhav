@@ -644,7 +644,7 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
            WHERE (NULL::text = ANY(synonyms)
               OR lower(canonical_name_en) = lower(NULL::text)
               OR lower(canonical_name_sa) = lower(NULL::text)) AND (NULL::text IS NULL OR entity_class = NULL::text)
-           ORDER BY (entity_class = 'varga') DESC, entity_class, canonical_id
+           ORDER BY (entity_class = 'varga') DESC, (entity_class = 'dosha'), entity_class, (canonical_id = 'jaimini_sutram') DESC, canonical_id
            LIMIT 0`,
     source_refs: [
       'platform/src/lib/retrieval/registry/layers/L0_brahmagyan/resolve_entity.ts:50-102',
