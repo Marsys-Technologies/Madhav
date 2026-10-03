@@ -56,7 +56,7 @@ ledger_gap_ids: [ph_phaladesa-Build.dep_liveness, ph_phaladesa-Build.history, ph
 - **`narration_status='ready'` on 13 of 13 with `narration_model` and `narration_requested_at` NULL on 13** and `narration_jsonb.method='deterministic_template_v1'` on 13: honest as a template (the registry description still says 'Narration pending via Gemini/DeepSeek'). `mitigation_available` is true for 1 domain and `muhurta_available` for 7 of 13.
 - Build is `stale`; 1 of 7 declared dependencies lit.
 
-Build history for this asset (all charts, `build_run_assets`): 9 aborted, 35 complete, 30 error/blocked_dependency, 19 queued; the last complete canonical-chart run is `cbd6ea44` (2026-08-13), and the 26+ `error/blocked_dependency` rows are cascade skips, not writer errors. The only non-cascade errors on record: 1 error 2026-07-04 (`CheckViolation: phala_phaladesa_domain_canonical`, fixed by `47fbc08bf` / `fc9958821`) and 9 aborts.
+Build history for this asset (all charts, `build_run_assets`): 9 aborted, 35 complete, 30 error/blocked_dependency, 19 queued; the last complete canonical-chart run is `cbd6ea44` (2026-08-13), and the 26+ `error/blocked_dependency` rows are cascade skips, not writer errors. The only non-cascade errors on record: none visible through `suvarna_reader` on 2026-10-03 (9 aborts, last 2026-07-13). The census reports 1 error (a `CheckViolation` on `phala_phaladesa_domain_canonical`, 2026-07-04, quoted in section 1.3); that row is NOT reproducible through the reader's `build_run_assets` and is cited as a census statement only.
 
 ### 1.2 - Stored rows versus current code
 
@@ -124,13 +124,15 @@ Class vocabulary: **real** = a shortfall in code, rows, registry row or served s
 | ph_phaladesa-G08 | Build | design | Overlap with the serving read model (`query_domain_result` could compute the same from the base tables) - T2 6.5 investigation (Q-L4-16) |
 | ph_phaladesa-G09 | Vocab | real | `_ANCHOR_TO_PHALADESA_DOMAIN` keys are legacy words (`financial`, `spiritual`, `psychological`, `ph_phaladesa.py:53-57`), all dead since the anchor vocabulary converged |
 | ph_phaladesa-G10 | Null / Narr / Dens | detector | Null PARTIAL, Narr.fidelity_test PARTIAL, Narr.lint NO_DETECTOR; Dens.served FAIL; `narration_model` / `narration_requested_at` NEVER populated (by design); Earn, Carr, Vocab.alias NO_DETECTOR |
-| ph_phaladesa-G11 | Build | history | Build.history PARTIAL: 1 error (2026-07-04, fixed) + 9 aborts |
+| ph_phaladesa-G11 | Build | history | Build.history PARTIAL: the census reports 1 error (2026-07-04, a CheckViolation, since fixed) and 9 aborts; the reader's build history shows 0 errors and 9 aborts for this asset (not reconciled) |
 
 ## 3 - Disposition
 
 DISPOSITION: qualify
 
-EVIDENCE_POINTER: 00_ARCHITECTURE/briefs/suvarna/layers/L4/assets/ph_phaladesa_ELEVATION_BRIEF_v1_0.md (sections 1-4); receipts `_evidence/` (data/, upstream_receipts.json, rollup_L4.json, offline_checks.txt, rect_diag.txt); census `layers/census/census_L4.json` + fresh census `census_fresh/1e5781a/census_L4.json`
+EVIDENCE_POINTER: 00_ARCHITECTURE/briefs/suvarna/layers/L4/assets/_evidence/data/ph_phaladesa.json
+
+EVIDENCE_EXTRA: this brief sections 1-4; 00_ARCHITECTURE/briefs/suvarna/layers/L4/assets/_evidence/upstream_receipts.json; 00_ARCHITECTURE/briefs/suvarna/layers/L4/assets/_evidence/rollup_L4.json; 00_ARCHITECTURE/briefs/suvarna/layers/L4/assets/_evidence/offline_checks.txt; 00_ARCHITECTURE/briefs/suvarna/layers/L4/assets/_evidence/rect_diag.txt; 00_ARCHITECTURE/briefs/suvarna/layers/census/census_L4.json (saved 2026-09-30 census); fresh 2026-10-02 census at /Users/Dev/suvarna-evidence/census_fresh/1e5781a/census_L4.json (outside the repo)
 
 **qualify (Q) - make the summary derive only from rows that exist and the narration only from fields that mean what it says; the overlap with the serving read model is a question.** Qualify (Q): the asset is the layer's reader-facing summary and its mechanics are sound (13 rows by construction, empty domains stated, deterministic template, atomic replace), but it is the place where every upstream weakness becomes a sentence - an invented contradiction count, 'passed clean review', a confidence 'band', counts of rows that are not anchors. Its truthfulness is a function of the other eight, so it must be rebuilt last (wave 11) and its narration fixed first. T2 section 6.5's overlap investigation applies: whether a stored summary is needed beside the serving capability is Q-L4-16, not a proposal.
 

@@ -11,9 +11,9 @@ census_revision_used: "fresh census `/Users/Dev/suvarna-evidence/census_fresh/1e
 template_revision: "ASSET_ELEVATION_TEMPLATE_v2_0.md at 2289778be (campaign/nikasha-test; DRAFT_PENDING_REVIEW)"
 layer_instance: "00_ARCHITECTURE/briefs/suvarna/layers/L4/L4_LAYER_INSTANCE_v1_0.md (1.1, PROVISIONAL)"
 base_commit: "main 3de3f8b15"
-disposition: "keep (P) with one must-fix (chart-scope the life-event read) and a semantic question on what a "match" proves; rebuild"
+disposition: "qualify (Q) - chart-scope the life-event read and qualify what a match is called; kernel kept; rebuild of both built charts"
 disposition_proposal_approver: "Steward (G16); any output change to SS (R5)"
-disposition_value: keep
+disposition_value: qualify
 risk_class: "R3 (a cross-chart contamination path in the read; D5 scope questions)"
 decisions_applied: "none - SS has not answered the A.L4 questions (INDEX section 7); all dispositions and fix designs are proposals"
 ss_questions: [Q-L4-01, Q-L4-15, Q-L4-05]
@@ -117,7 +117,7 @@ Class vocabulary: **real** = a shortfall in code, rows, registry row or served s
 | ph_pramana-G03 | Vocab | real | 10 of 63 life-event categories unresolvable (`residential+travel`, `loss`, `other`, `creative`); `_normalize_domain` returns None and the event can never match |
 | ph_pramana-G04 | Null | real | Three columns can never be populated: `lel_entry_id` (uuid vs bigint), `lel_entry_jsonb` only on a match, `linked_sodhana_id` (never set) |
 | ph_pramana-G05 | Build | real | Five declared-unread sibling edges (ordering only); `life_events` has no producer asset to declare |
-| ph_pramana-G06 | Build | real-stored | Build record 139 vs live 4 (cascade of the anchors); pending/open statuses are calendar-dependent |
+| ph_pramana-G06 | Build | real-stored | Build record 139 vs live 4 (follows from the anchors being absent); pending/open statuses are calendar-dependent |
 | ph_pramana-G07 | Build | real | `rows_inserted += 1` unconditional (`ph_pramana.py:110`) |
 | ph_pramana-G08 | Narr | real | Registry description overclaims ("L5 onboarding contract + evaluation-staging + portfolio/reverse-calibration channel") against a one-row-per-anchor classifier; `_load_lel` docstring says there is no chart_id column |
 | ph_pramana-G09 | Null / Narr | detector | `prose_fields` undeclared: Null.* and Narr.* all NO_DETECTOR |
@@ -126,11 +126,13 @@ Class vocabulary: **real** = a shortfall in code, rows, registry row or served s
 
 ## 3 - Disposition
 
-DISPOSITION: keep
+DISPOSITION: qualify
 
-EVIDENCE_POINTER: 00_ARCHITECTURE/briefs/suvarna/layers/L4/assets/ph_pramana_ELEVATION_BRIEF_v1_0.md (sections 1-4); receipts `_evidence/` (data/, upstream_receipts.json, rollup_L4.json, offline_checks.txt, rect_diag.txt); census `layers/census/census_L4.json` + fresh census `census_fresh/1e5781a/census_L4.json`
+EVIDENCE_POINTER: 00_ARCHITECTURE/briefs/suvarna/layers/L4/assets/_evidence/data/ph_pramana.json
 
-**keep (P) with one must-fix (chart-scope the life-event read) and a semantic question on what a "match" proves; rebuild.** Keep (P): the asset is small, structural and its no-scoring rule is the best-protected in the layer (schema clause in SQL), and a falsifier registry is exactly what L5 needs to calibrate against. It keeps with one must-fix that is a data-isolation defect, not a style point (G01), and a question on what a 'match' may be called (G02). Nothing is proposed for consolidation: T2 section 6.5 lists it in the overlap investigation, but its responsibility (falsifier criteria + window state + evidence link) is not duplicated by the other five.
+EVIDENCE_EXTRA: this brief sections 1-4; 00_ARCHITECTURE/briefs/suvarna/layers/L4/assets/_evidence/upstream_receipts.json; 00_ARCHITECTURE/briefs/suvarna/layers/L4/assets/_evidence/rollup_L4.json; 00_ARCHITECTURE/briefs/suvarna/layers/L4/assets/_evidence/offline_checks.txt; 00_ARCHITECTURE/briefs/suvarna/layers/L4/assets/_evidence/rect_diag.txt; 00_ARCHITECTURE/briefs/suvarna/layers/census/census_L4.json (saved 2026-09-30 census); fresh 2026-10-02 census at /Users/Dev/suvarna-evidence/census_fresh/1e5781a/census_L4.json (outside the repo)
+
+**qualify (Q) - chart-scope the life-event read and qualify what a match is called; kernel kept; rebuild of both built charts.** Qualify (Q) (was keep in the first draft; changed after review): the asset is small, structural and its no-scoring rule is the best-protected in the layer (schema clause in SQL), and a falsifier registry is exactly what L5 needs to calibrate against, so the kernel is preserved. But the word keep would hide a data-isolation defect (G01: the life-event read is unscoped by chart and 8 stored refutations on the other chart rest on it), a rebuild of both built charts, and a question on what a 'match' may be called (G02): the stored output needs correcting, which is qualify under the rubric in INDEX section 6. Nothing is proposed for consolidation: T2 section 6.5 lists it in the overlap investigation, but its responsibility (falsifier criteria + window state + evidence link) is not duplicated by the other five.
 
 Approver under Track A brief section 10: **Steward (G16)** for keep/qualify/enrich; **SS** for any output change (R5). No disposition is applied by this brief.
 

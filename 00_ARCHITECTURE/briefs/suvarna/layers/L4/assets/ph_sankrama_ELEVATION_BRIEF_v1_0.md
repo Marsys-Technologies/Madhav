@@ -11,9 +11,9 @@ census_revision_used: "fresh census `/Users/Dev/suvarna-evidence/census_fresh/1e
 template_revision: "ASSET_ELEVATION_TEMPLATE_v2_0.md at 2289778be (campaign/nikasha-test; DRAFT_PENDING_REVIEW)"
 layer_instance: "00_ARCHITECTURE/briefs/suvarna/layers/L4/L4_LAYER_INSTANCE_v1_0.md (1.1, PROVISIONAL)"
 base_commit: "main 3de3f8b15"
-disposition: "enrich (E) - fix the ayanamsha fan-out, asymmetry, cascade and silent loader; rebuild"
+disposition: "qualify (Q) - fix the ayanamsha fan-out, unmeasured asymmetry, constant cascade and silent loader; rebuild"
 disposition_proposal_approver: "Steward (G16); any output change to SS (R5)"
-disposition_value: enrich
+disposition_value: qualify
 risk_class: "R3 (grain change and a possible ayanamsha column)"
 decisions_applied: "none - SS has not answered the A.L4 questions (INDEX section 7); all dispositions and fix designs are proposals"
 ss_questions: [Q-L4-01, Q-L4-05, Q-L4-14]
@@ -130,11 +130,13 @@ Class vocabulary: **real** = a shortfall in code, rows, registry row or served s
 
 ## 3 - Disposition
 
-DISPOSITION: enrich
+DISPOSITION: qualify
 
-EVIDENCE_POINTER: 00_ARCHITECTURE/briefs/suvarna/layers/L4/assets/ph_sankrama_ELEVATION_BRIEF_v1_0.md (sections 1-4); receipts `_evidence/` (data/, upstream_receipts.json, rollup_L4.json, offline_checks.txt, rect_diag.txt); census `layers/census/census_L4.json` + fresh census `census_fresh/1e5781a/census_L4.json`
+EVIDENCE_POINTER: 00_ARCHITECTURE/briefs/suvarna/layers/L4/assets/_evidence/data/ph_sankrama.json
 
-**enrich (E) - fix the ayanamsha fan-out, asymmetry, cascade and silent loader; rebuild.** Enrich (E): the idea (ground cross-domain effects in CDLM cells, state the mechanism, give a falsifier) is the right L4 use of L2 and the W3-3a fix restored the rows a bad map destroyed, but the table currently overstates its content 5-fold, presents an unmeasured asymmetry as zero, and its 'independent timing' and 'cascade' are fallbacks and a constant. No consolidation or retirement proposed: one capability and `ph_phaladesa` read it.
+EVIDENCE_EXTRA: this brief sections 1-4; 00_ARCHITECTURE/briefs/suvarna/layers/L4/assets/_evidence/upstream_receipts.json; 00_ARCHITECTURE/briefs/suvarna/layers/L4/assets/_evidence/rollup_L4.json; 00_ARCHITECTURE/briefs/suvarna/layers/L4/assets/_evidence/offline_checks.txt; 00_ARCHITECTURE/briefs/suvarna/layers/L4/assets/_evidence/rect_diag.txt; 00_ARCHITECTURE/briefs/suvarna/layers/census/census_L4.json (saved 2026-09-30 census); fresh 2026-10-02 census at /Users/Dev/suvarna-evidence/census_fresh/1e5781a/census_L4.json (outside the repo)
+
+**qualify (Q) - fix the ayanamsha fan-out, unmeasured asymmetry, constant cascade and silent loader; rebuild.** Qualify (Q) (was enrich in the first draft; aligned with ph_nimitta and ph_rectification, whose defects are of the same kind - values stored as measurements that are constants or unmeasured - after review): the idea (ground cross-domain effects in CDLM cells, state the mechanism, give a falsifier) is the right L4 use of L2 and the W3-3a fix restored the rows a bad map destroyed, but the table currently overstates its content 5-fold, presents an unmeasured asymmetry as zero, and its 'independent timing' and 'cascade' are fallbacks and a constant. No consolidation or retirement proposed: one capability and `ph_phaladesa` read it.
 
 Approver under Track A brief section 10: **Steward (G16)** for keep/qualify/enrich; **SS** for any output change (R5). No disposition is applied by this brief.
 

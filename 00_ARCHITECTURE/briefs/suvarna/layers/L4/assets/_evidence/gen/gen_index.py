@@ -75,7 +75,7 @@ CFS = [
 QS = [
  ('Q-L4-01', 'Rebuild authority, order and the frozen predictions', 'May Exec Suvarna run the canonical-chart L4 rebuild (waves 7-11) after the L3 waves, and what happens to the 139 frozen `mimamsa_predictions` (135 whose source anchors are gone)? Options: (A) leave them as historical records marked `source_retired`, re-freeze from the rebuilt anchors; (B) re-point by content identity where an anchor reappears; (C) retire them.', 'Rebuild after CF-L4-02 and the must-fix items; (A) because a rebuild must not reset chronology (T1 7.3).', 'SS (touches L5 frozen history)', 'all 9; mi_bhavisya'),
  ('Q-L4-02', 'Where does the L5->L4 reference check live?', '`ph_nimitta`\'s integrity SQL requires zero `mimamsa_predictions` without an anchor (135 now): it deadlocks any rebuild. Scope it to the chart and non-frozen rows, remove it, or move it into L5\'s own check?', 'Move it to `mi_bhavisya` (L5 owns those rows); scope the L4 term to the chart.', 'SS', 'ph_nimitta; mi_bhavisya'),
- ('Q-L4-03', 'May an L3 rebuild delete L4 rows?', '`phala_anchors.convergence_id ... ON DELETE CASCADE` removed 135 anchors and their children without any L4 writer running. Keep, SET NULL (as `bhavishya_id`), or drop the FK as F-3 did for MSR?', 'Drop or SET NULL and report orphans by function, as C13 does for `signal_id`.', 'SS (cross-layer)', 'ph_nimitta + 4 CASCADE children'),
+ ('Q-L4-03', 'May an L3 rebuild delete L4 rows?', 'The 135 absent anchors (and the absent rows of their CASCADE children) are consistent with `phala_anchors.convergence_id ... ON DELETE CASCADE` firing from the emptied `kala_convergence`; no delete event was read, and no `ph_*` build run is recorded after 2026-08-13, so no L4 writer is known to have run. Keep, SET NULL (as `bhavishya_id`), or drop the FK as F-3 did for MSR?', 'Drop or SET NULL and report orphans by function, as C13 does for `signal_id`.', 'SS (cross-layer)', 'ph_nimitta + 4 CASCADE children'),
  ('Q-L4-04', 'Rectification: grants, plan membership, the L3 reader', 'Grant `data_plane_builder` on `phala_rectification` / `_best`, add `ph_rectification` to the rebuild plan, and decide whether `ka_kshetra` may keep reading it (one-way rule).', 'Grant + plan membership after Q-L4-17; declare or remove the reader.', 'SS', 'ph_rectification; ka_kshetra'),
  ('Q-L4-05', 'Which L4 columns are scores, and what may they be called?', 'Classify `posterior`, the +/-0.05 confidence band, `composite_quality`, `panchanga_score`, `chart_personalization_score`, `linkage_strength`, `spillover_confidence`, `lel_fit_score`, rectification `confidence_*`: permitted structural score / rename / NULL until measured / remove (T1 11, T2 3.1, TG-L4-019). Does a D3 recompute-and-compare replace ph_sodhana\'s ceiling?', 'Keep as clearly named structural scores where the arithmetic is real (composite, linkage); NULL where nothing was measured (robustness, asymmetry, a zero fit); remove the decorative bands.', 'SS', 'ph_nimitta, ph_muhurta, ph_sodhana, ph_sankrama, ph_pramana (D5 scope), ph_rectification'),
  ('Q-L4-06', 'Floors and the DRAFT/CURRENT discipline', 'After the rebuild set `target_floor` = achieved count (CLAUDE.md N.4) for all assets that have one?', 'Yes.', 'Steward confirms; SS informed', 'CF-L4-12'),
@@ -280,6 +280,8 @@ def build(contents):
     w('')
     w('## 6 - Dispositions that differ from the layer instance (section 3.2), and who approves')
     w('')
+    w('**Rubric used for the codes (stated after review so the nine are comparable):** *keep* = nothing stored needs correcting; *qualify* = the asset is right in kind but what it stores or says must be corrected or fenced (including values stored as measurements that are constants or unmeasured); *enrich* = it must emit something it does not emit yet (coverage, non-empty content). By that rubric ph_pramana (isolation fix, rebuild of both charts) and ph_sankrama (same defect kind as ph_nimitta and ph_rectification) are *qualify*; ph_sodhana (coverage statement) and ph_pratikara (first non-empty programmes) are *enrich*. Both changes were made after the independent review of PR #3013.')
+    w('')
     w('The layer instance carries the companion register\'s provisional codes (T2c, status PROPOSED) as non-verdicts. This index proposes (Track A section 10; approver Steward, SS for output changes):')
     w('')
     w('| asset | T2c provisional code | this index | reason |')
@@ -289,11 +291,11 @@ def build(contents):
      'ph_nimitta': 'qualify - spine with real consumers; several emitted values are constants/proxies, stored state stale and orphaned',
      'ph_muhurta': 'qualify - keep the row set, qualify the muhurta claim (Q-L4-10)',
      'ph_pratikara': 'enrich - never produced a non-empty programme; cost tiering would label all remedies free',
-     'ph_sankrama': 'enrich - 5-fold fan-out, unmeasured asymmetry shown as 0, constant cascade depth',
+     'ph_sankrama': 'qualify - 5-fold fan-out, unmeasured asymmetry shown as 0, constant cascade depth (same kind of defect as nimitta / rectification)',
      'ph_sodhana': 'enrich - detectors silent below 5 anchors, mismatched ceiling; keep the firewall',
      'ph_suddha_sodhana': 'qualify - `clean` echoes upstream silence; approval has no durable home',
      'ph_rectification': 'qualify (not H): reads by L3 and a real stability map; scoring half never non-zero',
-     'ph_pramana': 'keep - small and structural; one isolation must-fix',
+     'ph_pramana': 'qualify - small and structural kernel kept, but a data-isolation must-fix and a rebuild of both charts make `keep` misleading',
      'ph_phaladesa': 'qualify - truthfulness is a function of the other eight; narration defects'}
     for a in ORDER:
         c = byid[a]
@@ -340,11 +342,13 @@ def build(contents):
         '**Which writer version production runs** (`built_against_writer_hash = unknown` on all nine); no writer was run, so the post-fix outputs quoted are from local calls to the repository\'s pure functions, not from production.',
         '**Whether the build environment can reach the live Moon-strength path** (`SE_EPHE_PATH`, N-28) for `ph_muhurta`, and whether PyJHora\'s ascendant agrees with the Swiss backend below sign level for `ph_rectification` (sign-level agreement at offset 0 was checked).',
         '**How many anchors a rebuild yields once L3 is rebuilt**: only the discovery-only case was emulated (about 2).',
-        '**Whether the 135 anchors were removed by the FK cascade**: consistent with the FK catalogue and empty parents, but no delete event was read (TG-L4-023).',
+        '**Whether the 135 anchors were removed by the FK cascade (a question of mechanism; their absence is observed)**: consistent with the FK catalogue and empty parents, but no delete event was read (TG-L4-023).',
         '**Whether the 8 `life_event_miss` rows on the other chart came from the unscoped read or from the old default** (the stored rows cannot tell); the code path is certain.',
         '**The producer of `bodha_contradictions`** (no registry `target_table` equals it), so `ph_nimitta`\'s edge for it cannot be classified.',
         '**Served behaviour** beyond static scans: no tool was called; density and tier carriage are the census\'s static readings.',
         '**Anything on L5 or on the 12 `mi_*` assets**: out of scope (N-96).',
+        '**Reproducibility of the evidence scripts:** `collect.py`, `tables.py`, `upstream_receipts.py`, `rect_diag.py`, `offline_rollup_L4.py`, `q.sh`, `readers.sh` and the generator hard-code `/Users/Dev/suvarna-evidence/` and `/Users/Dev/suvarna-al4/` paths and a local `~/.config/suvarna/pgenv.sh`; they run only on the author\'s machine and are not meant for CI (see `_evidence/README.txt`). The JSON and text receipts are the evidence.',
+        '**Census history versus the reader:** the census quotes build errors the reader\'s `build_run_assets` does not show (ph_phaladesa 1 vs 0; ph_sodhana 3 vs 2). Both are stated where used; the difference is not reconciled.',
     ]:
         w('- ' + t)
     w('')
@@ -354,5 +358,6 @@ def build(contents):
     w('- **Gap ids:** `ph_<asset>-Gnn` are this lane\'s; the ledger ids (`ph_<asset>-<Criterion>`) are listed in each brief\'s frontmatter from the census ledger copy `census_fresh/1e5781a/main_ledger.jsonl`, which is not on main.')
     w('- **Risk class:** R1 declaration/doc/test only; R2 writer code with no schema or served-number change; R3 schema, rebuild-visible or cross-asset semantics; R4 needs an SS ruling on layer doctrine or touches frozen L5 history.')
     w('- **Honesty rules applied:** no invented counts (each comes from a stated query or file:line); the native\'s birth data is not reproduced anywhere (the engine module that embeds it is cited by line only); other charts appear as counts only; nothing was fixed, nothing was written to production.')
+    w('- **Base:** briefs were written against main `3de3f8b15` (REGISTRY_REVISION 15); the branch was merged with origin/main `adb0db29` (REGISTRY_REVISION 16, `bg_phaladeepika_latta` coupling only) before the review corrections. No `ph_*` writer, engine or registry file changed between the two.')
     w('- **Frozen orchestrator:** every fix goes in an asset, a registry row or a declaration, never in the orchestrator (T4 4.2); the one place an orchestrator behaviour matters (a false post-write integrity check rolls the writer back, `asset_runner.py:1200-1210`) is used as written.')
     return '\n'.join(L)

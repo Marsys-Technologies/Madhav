@@ -14,7 +14,7 @@ base_commit: "main 3de3f8b15"
 disposition: "enrich (E) - fix the detectors' silence below 5 anchors and the mismatched ceiling; keep the leakage firewall; rebuild"
 disposition_proposal_approver: "Steward (G16); any output change to SS (R5)"
 disposition_value: enrich
-risk_class: "R3 (what "no anomaly" may be allowed to mean propagates to ph_suddha_sodhana and ph_phaladesa; the code change is small)"
+risk_class: "R3 (what \"no anomaly\" may be allowed to mean propagates to ph_suddha_sodhana and ph_phaladesa; the code change is small)"
 decisions_applied: "none - SS has not answered the A.L4 questions (INDEX section 7); all dispositions and fix designs are proposals"
 ss_questions: [Q-L4-01, Q-L4-05, Q-L4-12]
 track_i_items: [TI-L4-01, TI-L4-04, TI-L4-15, TI-L4-16, TI-L4-17, TI-L4-18]
@@ -115,11 +115,11 @@ Class vocabulary: **real** = a shortfall in code, rows, registry row or served s
 | ph_sodhana-G01 | Earn | real | Two chart-wide detectors return nothing below 5 anchors (`engine.py:300`); 4 identical anchors -> 0 rows. The 0-row table reads as a clean result (and feeds ph_suddha_sodhana `clean`) |
 | ph_sodhana-G02 | Earn | real | `confidence_inflation` ceiling is the superseded G-LADDER; flags 34/56 anchors on the other chart (`engine.py:39-52,116-138`) |
 | ph_sodhana-G03 | Earn | real | `falsifier_absent` uses `any` of two tokens though it says both (`:222`); `ledger_gap` can only fire if `anchor_source` is missing (`:58`) |
-| ph_sodhana-G04 | Build | real-stored | Build record 97 vs live 0 (consequence of the anchors' removal); other chart built before `ceiling_inputs_degenerate` existed |
+| ph_sodhana-G04 | Build | real-stored | Build record 97 vs live 0 (follows from the anchors being absent); other chart built before `ceiling_inputs_degenerate` existed |
 | ph_sodhana-G05 | Build | real | `rows_inserted += 1` unconditional beside `ON CONFLICT DO NOTHING` (`platform/python-sidecar/pipeline/orchestrator/writers/ph_sodhana.py:85-96`) |
 | ph_sodhana-G06 | Narr | real | Chart-wide records are attached to `anchors[0]` (`engine.py:327,381`), an arbitrary anchor |
 | ph_sodhana-G07 | Build | real | Declared edge `bo_laksana` with no table read |
-| ph_sodhana-G08 | Build | history | Build.history PARTIAL: 3 errors (two UUID TypeErrors 2026-07-11, fixed) + 9 aborts |
+| ph_sodhana-G08 | Build | history | Build.history PARTIAL: the census reports 3 errors; the reader's build history shows 2 (both UUID TypeErrors 2026-07-11, fixed) + 9 aborts (the third is not reproduced) |
 | ph_sodhana-G09 | Null / Narr | detector | prose_fields declared (`recommendation_text`) but Null.blank_rows / Narr.checkable INCONCLUSIVE on an empty table (0 checkable rows); Narr.fidelity_test PARTIAL |
 | ph_sodhana-G10 | Dens / Earn / Carr | detector | Dens.served FAIL (no `density_contract` on `query_phala_calibration.ts`); Earn, Carr, Vocab.alias NO_DETECTOR |
 | ph_sodhana-G11 | Count | information | No `target_floor` by design (a floor would reward fabricating findings, registry note); Count.floor gives no verdict |
@@ -128,7 +128,9 @@ Class vocabulary: **real** = a shortfall in code, rows, registry row or served s
 
 DISPOSITION: enrich
 
-EVIDENCE_POINTER: 00_ARCHITECTURE/briefs/suvarna/layers/L4/assets/ph_sodhana_ELEVATION_BRIEF_v1_0.md (sections 1-4); receipts `_evidence/` (data/, upstream_receipts.json, rollup_L4.json, offline_checks.txt, rect_diag.txt); census `layers/census/census_L4.json` + fresh census `census_fresh/1e5781a/census_L4.json`
+EVIDENCE_POINTER: 00_ARCHITECTURE/briefs/suvarna/layers/L4/assets/_evidence/data/ph_sodhana.json
+
+EVIDENCE_EXTRA: this brief sections 1-4; 00_ARCHITECTURE/briefs/suvarna/layers/L4/assets/_evidence/upstream_receipts.json; 00_ARCHITECTURE/briefs/suvarna/layers/L4/assets/_evidence/rollup_L4.json; 00_ARCHITECTURE/briefs/suvarna/layers/L4/assets/_evidence/offline_checks.txt; 00_ARCHITECTURE/briefs/suvarna/layers/L4/assets/_evidence/rect_diag.txt; 00_ARCHITECTURE/briefs/suvarna/layers/census/census_L4.json (saved 2026-09-30 census); fresh 2026-10-02 census at /Users/Dev/suvarna-evidence/census_fresh/1e5781a/census_L4.json (outside the repo)
 
 **enrich (E) - fix the detectors' silence below 5 anchors and the mismatched ceiling; keep the leakage firewall; rebuild.** Enrich (E): keep the leakage firewall and the five-detector architecture (it is the only place that can plainly read false for the no-calibration rule), and add what is missing so that 'no anomaly' is something the asset has earned: coverage below the 5-anchor floor must read as 'not assessable', not as clean (G01), the ceiling must be tied to the model it checks or retired (G02), and the near-tautological detectors tightened (G03). It is not a consolidation target on evidence: T2 section 6.5 asks for an overlap investigation of this and `ph_suddha_sodhana`; the evidence here is that `ph_suddha_sodhana` is a pure classification of this table's severity counts (see that brief), which would make a merge of the two a candidate - proposed as a question (Q-L4-12), not a disposition.
 

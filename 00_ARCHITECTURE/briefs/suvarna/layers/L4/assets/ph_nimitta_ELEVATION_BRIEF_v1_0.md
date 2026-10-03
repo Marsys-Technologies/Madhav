@@ -140,7 +140,9 @@ Class vocabulary: **real** = a shortfall in code, rows, registry row or served s
 
 DISPOSITION: qualify
 
-EVIDENCE_POINTER: 00_ARCHITECTURE/briefs/suvarna/layers/L4/assets/ph_nimitta_ELEVATION_BRIEF_v1_0.md (sections 1-4); receipts `_evidence/` (data/, upstream_receipts.json, rollup_L4.json, offline_checks.txt, rect_diag.txt); census `layers/census/census_L4.json` + fresh census `census_fresh/1e5781a/census_L4.json`
+EVIDENCE_POINTER: 00_ARCHITECTURE/briefs/suvarna/layers/L4/assets/_evidence/data/ph_nimitta.json
+
+EVIDENCE_EXTRA: this brief sections 1-4; 00_ARCHITECTURE/briefs/suvarna/layers/L4/assets/_evidence/upstream_receipts.json; 00_ARCHITECTURE/briefs/suvarna/layers/L4/assets/_evidence/rollup_L4.json; 00_ARCHITECTURE/briefs/suvarna/layers/L4/assets/_evidence/offline_checks.txt; 00_ARCHITECTURE/briefs/suvarna/layers/L4/assets/_evidence/rect_diag.txt; 00_ARCHITECTURE/briefs/suvarna/layers/census/census_L4.json (saved 2026-09-30 census); fresh 2026-10-02 census at /Users/Dev/suvarna-evidence/census_fresh/1e5781a/census_L4.json (outside the repo)
 
 **qualify (Q) - fix + rebuild; no consolidation or retirement proposed.** Qualify (Q) rather than keep: the asset is the spine every other L4 asset and the L5 freeze depend on, it has real consumers and a sound skeleton (deterministic identity, accepted-row count, gates, delete-then-insert, honest `no_evidence` default), but several of the values it emits are constants or proxies presented as measurements (G04-G08), its stored state is both stale and orphaned (G01-G03, G10), and one of its own integrity terms makes a rebuild unacceptable (G03). No consolidation candidate: the T2 section 6.5 overlap investigation (`ph_phaladesa`, `ph_nimitta`, `ph_sankrama`, `ph_sodhana`, `ph_suddha_sodhana`, `ph_pramana`) does not touch the anchor table's grain. Not retire: nine assets and the L5 freeze read it.
 
@@ -229,7 +231,7 @@ Approver under Track A brief section 10: **Steward (G16)** for keep/qualify/enri
 ### FD-7 - Decide the FK cascade and the discovery-window semantics
 
 - **Answers:** G07, G10; CF-L4-02
-- **Change:** (i) FK: keep CASCADE (L3 rebuild wipes L4 by design), or follow the F-3 precedent (`F3_MSR_FK_DROP_v1_0.md`: drop the FK, tolerate orphan pointers, report them by function) or SET NULL as `bhavishya_id` already does. (ii) Discovery anchors: either label the window in the ledger (`timing_basis: computed_at+90d`) and keep, or move discovery-seeded rows out of the prediction table.
+- **Change:** (i) FK: keep CASCADE (an L3 delete then removes L4 rows by design), or follow the F-3 precedent (`F3_MSR_FK_DROP_v1_0.md`: drop the FK, tolerate orphan pointers, report them by function) or SET NULL as `bhavishya_id` already does. (ii) Discovery anchors: either label the window in the ledger (`timing_basis: computed_at+90d`) and keep, or move discovery-seeded rows out of the prediction table.
 - **Files / declaration / migration:** migration (FK) / `platform/python-sidecar/pipeline/orchestrator/writers/ph_nimitta.py:692-712` (ledger label)
 - **Failing-first test and mutation:** failing-first: deleting a `kala_convergence` row leaves the anchor (FK dropped) / the row carries `timing_basis`; mutation: restore CASCADE -> row vanishes
 - **Output change:** additive (ledger key) or structural (table move)

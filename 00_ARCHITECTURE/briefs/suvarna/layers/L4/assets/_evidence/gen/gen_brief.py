@@ -24,6 +24,22 @@ def reg_line(a):
     return m.group(1) if m else None
 
 
+def yaml_safe_frontmatter(txt):
+    import re as _re
+    head, sep, rest = txt.partition('\n---\n')
+    # txt starts with '---\n'; frontmatter is between the first two '---' lines
+    parts = txt.split('\n---\n', 1)
+    fm, body = parts[0], parts[1]
+    out = []
+    for ln in fm.split('\n'):
+        m = _re.match(r'^(\w+): "(.*)"$', ln)
+        if m:
+            inner = m.group(2).replace('\\', '\\\\').replace('"', '\\"') if '\\"' not in m.group(2) else m.group(2)
+            ln = f'{m.group(1)}: "{inner}"'
+        out.append(ln)
+    return '\n'.join(out) + '\n---\n' + body
+
+
 def render(c):
     c = fixall(c)
     a = c['id']
@@ -129,7 +145,9 @@ def render(c):
     w('')
     w(f"DISPOSITION: {c['disp_value']}")
     w('')
-    w(f"EVIDENCE_POINTER: 00_ARCHITECTURE/briefs/suvarna/layers/L4/assets/{a}_ELEVATION_BRIEF_v1_0.md (sections 1-4); receipts `_evidence/` (data/, upstream_receipts.json, rollup_L4.json, offline_checks.txt, rect_diag.txt); census `layers/census/census_L4.json` + fresh census `census_fresh/1e5781a/census_L4.json`")
+    w(f"EVIDENCE_POINTER: 00_ARCHITECTURE/briefs/suvarna/layers/L4/assets/_evidence/data/{a}.json")
+    w('')
+    w(f"EVIDENCE_EXTRA: this brief sections 1-4; 00_ARCHITECTURE/briefs/suvarna/layers/L4/assets/_evidence/upstream_receipts.json; 00_ARCHITECTURE/briefs/suvarna/layers/L4/assets/_evidence/rollup_L4.json; 00_ARCHITECTURE/briefs/suvarna/layers/L4/assets/_evidence/offline_checks.txt; 00_ARCHITECTURE/briefs/suvarna/layers/L4/assets/_evidence/rect_diag.txt; 00_ARCHITECTURE/briefs/suvarna/layers/census/census_L4.json (saved 2026-09-30 census); fresh 2026-10-02 census at /Users/Dev/suvarna-evidence/census_fresh/1e5781a/census_L4.json (outside the repo)")
     w('')
     w(f"**{c['disp_code']}.** " + c['disp_text'])
     w('')
@@ -176,4 +194,4 @@ def render(c):
     w('')
     w('**Track I items arising (see INDEX section 8):** ' + ', '.join(c['tis']) + '.')
     w('')
-    return '\n'.join(L)
+    return yaml_safe_frontmatter('\n'.join(L))

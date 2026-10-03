@@ -11,7 +11,7 @@ census_revision_used: "fresh census `/Users/Dev/suvarna-evidence/census_fresh/1e
 template_revision: "ASSET_ELEVATION_TEMPLATE_v2_0.md at 2289778be (campaign/nikasha-test; DRAFT_PENDING_REVIEW)"
 layer_instance: "00_ARCHITECTURE/briefs/suvarna/layers/L4/L4_LAYER_INSTANCE_v1_0.md (1.1, PROVISIONAL)"
 base_commit: "main 3de3f8b15"
-disposition: "qualify (Q) - fix the "clean" semantics and the approval-state design; consolidation with ph_sodhana is a question (Q-L4-12), not proposed"
+disposition: "qualify (Q) - fix the \"clean\" semantics and the approval-state design; consolidation with ph_sodhana is a question (Q-L4-12), not proposed"
 disposition_proposal_approver: "Steward (G16); any output change to SS (R5)"
 disposition_value: qualify
 risk_class: "R3 (CHECK-constraint and approval-state design; propagates into ph_phaladesa narration)"
@@ -49,7 +49,7 @@ ledger_gap_ids: [ph_suddha_sodhana-Build.completion, ph_suddha_sodhana-Build.dep
 
 ### 1.1 - Live state on the canonical chart (read-only, 2026-10-03)
 
-- **4 rows**, one per surviving anchor, **all `clean`** with `critical/major/minor_flag_count = 0`, `flag_ids_jsonb`, `staged_revision_jsonb`, `confidence_delta_if_applied`, `magnitude_delta_if_applied` NULL and the D43 columns NULL (as required). Floor 139, build record 139 (Build.completion FAIL, Count.floor FAIL: both consequences of the 135 anchors' removal).
+- **4 rows**, one per surviving anchor, **all `clean`** with `critical/major/minor_flag_count = 0`, `flag_ids_jsonb`, `staged_revision_jsonb`, `confidence_delta_if_applied`, `magnitude_delta_if_applied` NULL and the D43 columns NULL (as required). Floor 139, build record 139 (Build.completion FAIL, Count.floor FAIL: both follow from the 135 anchors being absent).
 - **`clean` here means 'ph_sodhana wrote nothing'.** `phala_sodhana` is empty for the chart because its chart-wide detectors cannot fire on 4 anchors (see ph_sodhana brief); `classify_cleanliness` returns `clean` for zero counts (`platform/python-sidecar/services/ph_suddha_sodhana/engine.py:72-80`). The 4 anchors are in fact identical in confidence (0.372) and carry the constant `(0, 3)` ceiling inputs. On the other built chart the same asset reads 19 `clean`, 1 `flagged`, 36 `staged_revision` of 56.
 - **`magnitude_delta_if_applied` can never be populated**: it is computed only `if staged` (`platform/python-sidecar/services/ph_suddha_sodhana/engine.py:145-146`) and `staged` requires a major/critical flag, but the only detector that produces a magnitude flag (`magnitude_drift`) is severity `minor`. The census confirms the column NEVER populated.
 - **A native approval cannot survive.** `revision_approved_by` / `revision_applied_at` are on a table the writer empties per chart on every rebuild (`:56-57`), and the registry integrity SQL forbids any non-NULL value on the chart (`WHERE revision_approved_by IS NOT NULL OR revision_applied_at IS NOT NULL ... = false`). The D43 'future operator action after native sign-off' therefore has no place to be stored.
@@ -116,7 +116,7 @@ Class vocabulary: **real** = a shortfall in code, rows, registry row or served s
 | ph_suddha_sodhana-G01 | Earn | real | `clean` = no flag rows, with no way to say "not assessed"; 4 of 4 clean on a chart where the chart-wide checks could not run (Q-L4-12) |
 | ph_suddha_sodhana-G02 | Null | real | `magnitude_delta_if_applied` unreachable (`engine.py:145-146`); `mitigation_ref`-style dead column |
 | ph_suddha_sodhana-G03 | Carr | design | Native approval storage: columns live in a table emptied per rebuild and forbidden non-NULL by the integrity SQL (D43 rail vs persistence) |
-| ph_suddha_sodhana-G04 | Build | real-stored | Build record 139 vs live 4; floor 139 (consequences of the removed anchors) |
+| ph_suddha_sodhana-G04 | Build | real-stored | Build record 139 vs live 4; floor 139 (follows from the 135 anchors being absent) |
 | ph_suddha_sodhana-G05 | Vocab | real | `_estimate_confidence_delta` parses a number out of English text (`engine.py:106-125`); a text change silently turns the delta NULL |
 | ph_suddha_sodhana-G06 | Build | design | Overlap with `ph_sodhana`: the classification is a pure function of that table's severity counts (T2 6.5 asks for the investigation; Q-L4-12) |
 | ph_suddha_sodhana-G07 | Null / Narr | detector | `prose_fields` undeclared: Null.* and Narr.* all NO_DETECTOR ("never read as no prose"); the table has `staged_revision_jsonb` text fields |
@@ -127,7 +127,9 @@ Class vocabulary: **real** = a shortfall in code, rows, registry row or served s
 
 DISPOSITION: qualify
 
-EVIDENCE_POINTER: 00_ARCHITECTURE/briefs/suvarna/layers/L4/assets/ph_suddha_sodhana_ELEVATION_BRIEF_v1_0.md (sections 1-4); receipts `_evidence/` (data/, upstream_receipts.json, rollup_L4.json, offline_checks.txt, rect_diag.txt); census `layers/census/census_L4.json` + fresh census `census_fresh/1e5781a/census_L4.json`
+EVIDENCE_POINTER: 00_ARCHITECTURE/briefs/suvarna/layers/L4/assets/_evidence/data/ph_suddha_sodhana.json
+
+EVIDENCE_EXTRA: this brief sections 1-4; 00_ARCHITECTURE/briefs/suvarna/layers/L4/assets/_evidence/upstream_receipts.json; 00_ARCHITECTURE/briefs/suvarna/layers/L4/assets/_evidence/rollup_L4.json; 00_ARCHITECTURE/briefs/suvarna/layers/L4/assets/_evidence/offline_checks.txt; 00_ARCHITECTURE/briefs/suvarna/layers/L4/assets/_evidence/rect_diag.txt; 00_ARCHITECTURE/briefs/suvarna/layers/census/census_L4.json (saved 2026-09-30 census); fresh 2026-10-02 census at /Users/Dev/suvarna-evidence/census_fresh/1e5781a/census_L4.json (outside the repo)
 
 **qualify (Q) - fix the "clean" semantics and the approval-state design; consolidation with ph_sodhana is a question (Q-L4-12), not proposed.** Qualify (Q): the asset does what its name says mechanically and the D43 rail is enforced in SQL, but its only informative output ('clean') is currently an echo of an upstream silence, one column is unreachable, and the approval it exists to stage has no durable home. It is the clearest consolidation candidate in the layer on the evidence (its content is a function of `phala_sodhana` counts), proposed as a question rather than a disposition because `ph_phaladesa` and the `query_cleansed_anchors` capability read it by name.
 
