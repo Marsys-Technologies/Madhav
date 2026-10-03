@@ -8540,3 +8540,13 @@ Resume condition for everything downstream: a successful protected deploy with 1
 - Proposed structure: Jātakas, direct Consumption, owner Operations; chart workspace contains Paripraśna, personal Panchang, readings, review/life events and permitted computation/details. User-directed global Panchang relocation recorded. Preferred live Paripraśna design reference captured.
 - Application implementation is NOT_STARTED. No application commit/push, provider test/generation, build/rebuild, migration/deploy, permission/credential change or destructive action was initiated. Deployment SHA, guest/grantee runtime and successful AI serving remain unverified. The local package remains for native review; no shared canonical campaign is marked complete.
 - Exact page/handler inventory coverage, document links, map JavaScript syntax and task-only scope passed. Local HTML browser preview was blocked by URL policy and was not bypassed.
+
+
+## 2026-10-04 — Current portal map working-aid lease
+
+- Lease ID: L-PORTAL-CURRENT-MAP-20261004; holder: Codex desktop.
+- Started: 2026-10-03T21:25:18.480139+00:00; expiry: 2026-10-03T23:25:18.480139+00:00; status: ACTIVE.
+- Worktree: `/Users/Dev/.codex/worktrees/portal-experience/Madhav`; branch `codex/portal-experience`.
+- Authority: native requested an understandable HTML or other artifact showing the current information architecture.
+- Scope: derivative current-state HTML, static overview image and task-local receipts under `00_ARCHITECTURE/briefs/portal_experience/CURRENT_*` and `Assets/screenshots/portal-experience/`. Existing audit evidence is reused.
+- No application changes, production window, AI execution, migration, deployment, credentials, foreign campaign mutation or application commit/push. Truthful desktop provenance; root CLAUDE §G equivalent scope check; validator unchanged.
