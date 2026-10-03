@@ -8,7 +8,7 @@ D5 NO-SCORING gate: this writer NEVER inserts calibration_score,
 posterior_probability, accuracy_rate, hit_rate, or Brier_score.
 Raises D5ViolationError if any such column is attempted.
 
-Reads: phala_anchors · life_events (LEL)
+Reads: phala_anchors · life_events (LEL; THIS chart's rows only, via brahmagyan.phala.life_events_scope)
 Writes: phala_pramana (delete-then-insert per chart_id)
 """
 from __future__ import annotations
@@ -19,6 +19,7 @@ from datetime import date
 
 import psycopg
 
+from brahmagyan.phala.life_events_scope import fetch_chart_life_events
 from pipeline.orchestrator.writers import WriterBase, WriterResult, register
 from services.ph_pramana.engine import (
     AnchorForPramana,
@@ -157,63 +158,56 @@ class PhPramanaWriter(WriterBase):
                 ))
             return rows
 
-    def _load_lel(self, conn, chart_id: str) -> list[LelEntry]:
-        """Load life_events (LEL) entries.
+    def _load_lel(self, conn, chart_id) -> list[LelEntry]:
+        """Load THIS chart's life_events (LEL) entries, and only this chart's.
 
-        The real table is `life_events` (the prior `life_event_log` name never
-        existed). `life_events` is a global, single-native log: it carries no
-        chart_id column, so the load is not chart-scoped here. The table may be
-        absent on a fresh DB (seeded by the LEL ingest, not the L4 build), in
-        which case psycopg raises UndefinedTable; we narrow the except to that
-        case and roll back the SAVEPOINT so the outer transaction survives.
+        SS ruling N-105: `life_events` is people-entered, private and chart-scoped (`chart_id` NOT NULL since
+        migration 423). This loader used to read the WHOLE table (the old docstring called it "a global,
+        single-native log" with "no chart_id column": both false since migration 423), so every chart it built was
+        classified against every other chart's life events. It now goes through
+        `brahmagyan.phala.life_events_scope.fetch_chart_life_events`, the one door for L4 reads: chart-scoped by
+        the build's chart_id (UUID or str), via the chart-scoped security-barrier view where the role has it
+        (migration 1274) and the explicit `WHERE chart_id = %s` everywhere, with a runtime guard that a foreign
+        row can never be returned.
 
-        Column map (db_schema.json / live `life_events`):
-          id (uuid) · event_date (date) · domain (text) · category (text) ·
-          description -> event_summary · outcome_observed (bool) -> valence.
-        `id` is a uuid; `phala_pramana.lel_entry_id` is bigint, so the uuid is
-        carried in lel_jsonb (auditable) and lel_id is left unset (None).
+        The table may be absent on a fresh DB (seeded by the LEL ingest, not the L4 build), in which case psycopg
+        raises UndefinedTable; we narrow the except to that case (the helper has already rolled back its
+        SAVEPOINT, so the outer transaction survives). A privilege error is NOT an empty log: it propagates.
 
-        F2 (L4_W1_ANALYSIS_BATCH_D.md §ph_pramana): LelEntry.domain is built from
+        Column map (live `life_events`):
+          id (uuid) - event_date (date) - category (text) - description -> event_summary -
+          outcome_observed (bool) -> valence.
+        `id` is a uuid; `phala_pramana.lel_entry_id` is bigint, so the uuid is carried in lel_jsonb (auditable)
+        and lel_id is left unset (None).
+
+        F2 (L4_W1_ANALYSIS_BATCH_D.md section ph_pramana): LelEntry.domain is built from
         `category` here, NOT the raw `domain` column -- `domain` is a compound
         "<category>/<subtype>" slug (e.g. 'career/award_selection'); `category` is
         the coarse bucket already aligned with the canonical L4 domain vocabulary
         that the engine's `_normalize_domain()` compares against.
         """
         try:
-            with conn.cursor() as sp:
-                sp.execute("SAVEPOINT sp_pramana_lel")
-            with conn.cursor(row_factory=psycopg.rows.dict_row) as cur:
-                cur.execute(
-                    """
-                    SELECT id, event_date, category,
-                           description AS event_summary, outcome_observed
-                    FROM life_events
-                    ORDER BY event_date
-                    """,
-                )
-                entries: list[LelEntry] = []
-                for r in cur.fetchall():
-                    observed = r.get('outcome_observed')
-                    valence = ('observed' if observed
-                               else 'not_observed' if observed is False
-                               else None)
-                    entries.append(LelEntry(
-                        lel_id=None,
-                        event_date=r['event_date'],
-                        domain=str(r.get('category') or ''),
-                        event_summary=str(r.get('event_summary') or ''),
-                        outcome_valence=valence,
-                        lel_jsonb={'id': str(r['id']), 'event_date': str(r['event_date']),
-                                   'summary': str(r.get('event_summary') or '')},
-                    ))
-            with conn.cursor() as sp:
-                sp.execute("RELEASE SAVEPOINT sp_pramana_lel")
-            return entries
+            rows = fetch_chart_life_events(
+                conn, chart_id,
+                ("id", "event_date", "category", "description", "outcome_observed"),
+                order_by=("event_date",),
+            )
         except psycopg.errors.UndefinedTable as exc:
-            try:
-                with conn.cursor() as sp:
-                    sp.execute("ROLLBACK TO SAVEPOINT sp_pramana_lel")
-            except Exception:
-                pass
             logger.info("ph_pramana: life_events table absent — LEL load skipped: %s", exc)
             return []
+        entries: list[LelEntry] = []
+        for r in rows:
+            observed = r.get('outcome_observed')
+            valence = ('observed' if observed
+                       else 'not_observed' if observed is False
+                       else None)
+            entries.append(LelEntry(
+                lel_id=None,
+                event_date=r['event_date'],
+                domain=str(r.get('category') or ''),
+                event_summary=str(r.get('description') or ''),
+                outcome_valence=valence,
+                lel_jsonb={'id': str(r['id']), 'event_date': str(r['event_date']),
+                           'summary': str(r.get('description') or '')},
+            ))
+        return entries

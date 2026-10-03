@@ -22,6 +22,9 @@ import json
 import logging
 from datetime import datetime, timezone
 
+import psycopg
+
+from brahmagyan.phala.life_events_scope import ForeignChartRowError, fetch_chart_life_events
 from pipeline.orchestrator.birth_params import resolve_birth_params
 from pipeline.orchestrator.writers import WriterBase, WriterResult, register
 from services.mimamsa.lel_calibration import (
@@ -127,7 +130,10 @@ def _load_chart_training_events(conn, chart_id: str) -> list[TrainingEvent]:
     OWN chart_dashas — availability-driven (BA-P4 R2.2 / W2.2).
 
     Since migration 423 `life_events` is chart-scoped (`chart_id` NOT NULL), so
-    every chart reads ONLY its own events (`WHERE chart_id = %s`). There is no
+    every chart reads ONLY its own events (`WHERE chart_id = %s`, issued by
+    `brahmagyan.phala.life_events_scope.fetch_chart_life_events`: the chart-scoped
+    security-barrier view where the role has it, migration 1274, plus the explicit
+    predicate and a runtime foreign-row guard; SS ruling N-105). There is no
     chart-identity branch: a chart with recorded events is scored against them
     (LEL-fit); a chart with none yields [] — a clean, honest, lagna-stability-
     only rectification. A chart NEVER trains on another chart's history (the
@@ -136,28 +142,31 @@ def _load_chart_training_events(conn, chart_id: str) -> list[TrainingEvent]:
 
     Pre-migration-423 schema (no `chart_id` column) or a missing table yields []
     rather than crashing or silently reading a different chart's rows — the safe,
-    structural-only default. Events whose per-chart mahadasha lord can't be
+    structural-only default. A privilege error (the role can read neither the view
+    nor the table) is NOT that case: it propagates, because an unreadable log is
+    not an empty log. Events whose per-chart mahadasha lord can't be
     determined from this chart's chart_dashas are skipped (never fabricated)."""
     try:
-        with conn.cursor() as cur:
-            cur.execute(
-                """
-                SELECT event_id, event_date, category, domain
-                FROM life_events
-                WHERE chart_id = %s AND event_date IS NOT NULL
-                ORDER BY event_date
-                """,
-                (chart_id,),
-            )
-            rows = cur.fetchall()
+        rows = fetch_chart_life_events(
+            conn, chart_id, ("event_id", "event_date", "category", "domain"), order_by=("event_date",),
+        )
+    except psycopg.errors.InsufficientPrivilege:
+        # SS ruling N-105: an unreadable log is NOT an empty log. A role that can neither read the chart-scoped
+        # view (migration 1274) nor the table must fail the build loudly, not quietly degrade to a structural-only
+        # rectification whose basis says "no life events recorded".
+        raise
+    except (ValueError, TypeError, ForeignChartRowError):
+        raise                                  # a malformed chart_id, or a row of another chart, is a defect, never "no events"
     except Exception as e:
         # Pre-423 schema (no chart_id column) or missing table → no per-chart
         # training source → structural-only rectification. Never a hard failure.
+        # (The helper rolled back its own SAVEPOINT, so the transaction is still usable.)
         logger.warning(
             "ph_rectification: chart-scoped life_events read failed (%s); "
             "proceeding structural-only (no LEL training)", e,
         )
         return []
+    rows = [r for r in rows if r.get("event_date") is not None]
 
     events: list[TrainingEvent] = []
     for row in rows:

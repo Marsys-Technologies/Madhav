@@ -352,7 +352,7 @@ def test_load_training_events_chart_scoped_no_contamination():
     conn = _ScriptConn([
         # This chart has one own event; the WHERE chart_id filter scopes it.
         ("FROM life_events", [{"event_id": "EVT.2011.03.03", "event_date": datetime(2011, 3, 3),
-                                "category": "career", "domain": "career"}]),
+                                "category": "career", "domain": "career", "chart_id": other_chart}]),
         ("FROM chart_dashas", [{"lord_graha": "Venus"}]),
     ])
     evs = _load_chart_training_events(conn, other_chart)
@@ -368,12 +368,14 @@ def test_load_training_events_empty_when_no_life_events():
 
 def test_load_training_events_missing_column_is_structural_not_crash():
     """Pre-423 schema (no chart_id column) → the chart-scoped read raises; the
-    writer swallows it and returns [] (structural-only), never a hard failure."""
+    writer swallows it and returns [] (structural-only), never a hard failure.
+    (SS ruling N-105: only a SCHEMA gap degrades; a privilege error or a malformed
+    chart_id propagates -- see tests/test_life_events_scope.py.)"""
     from pipeline.orchestrator.writers.ph_rectification import _load_chart_training_events
     class _RaisingConn:
         def cursor(self, *a, **k):
             raise RuntimeError('column "chart_id" does not exist')
-    assert _load_chart_training_events(_RaisingConn(), "any-chart") == []
+    assert _load_chart_training_events(_RaisingConn(), _TEST_CHART_ID) == []
 
 
 def test_load_training_events_skips_event_when_no_own_md_lord():
@@ -382,7 +384,7 @@ def test_load_training_events_skips_event_when_no_own_md_lord():
     from pipeline.orchestrator.writers.ph_rectification import _load_chart_training_events
     conn = _ScriptConn([
         ("FROM life_events", [{"event_id": "EVT.2001.01.01", "event_date": datetime(2001, 1, 1),
-                                "category": "career", "domain": "career"}]),
+                                "category": "career", "domain": "career", "chart_id": _TEST_CHART_ID}]),
         ("FROM chart_dashas", []),  # no MD lord for this chart on that date
     ])
     assert _load_chart_training_events(conn, _TEST_CHART_ID) == []
@@ -392,7 +394,7 @@ def test_load_training_events_uses_this_charts_own_md_lord():
     from pipeline.orchestrator.writers.ph_rectification import _load_chart_training_events
     conn = _ScriptConn([
         ("FROM life_events", [{"event_id": "EVT.2001.01.01", "event_date": datetime(2001, 1, 1),
-                                "category": "career", "domain": "career"}]),
+                                "category": "career", "domain": "career", "chart_id": _TEST_CHART_ID}]),
         ("FROM chart_dashas", [{"lord_graha": "Jupiter"}]),  # THIS chart's own lord
     ])
     evs = _load_chart_training_events(conn, _TEST_CHART_ID)
@@ -556,7 +558,7 @@ def _run_writer_capture(n_events: int, n_min_row):
     life_rows = [
         {"event_id": f"EVT.19{90 + i:02d}.01.01",
          "event_date": _dt(1990 + i, 1, 1),
-         "category": "career", "domain": "career"}
+         "category": "career", "domain": "career", "chart_id": _TEST_CHART_ID}
         for i in range(n_events)
     ]
     script = [
