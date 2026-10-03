@@ -127,37 +127,37 @@ def _load_chart_training_events(conn, chart_id: str) -> list[TrainingEvent]:
     OWN chart_dashas — availability-driven (BA-P4 R2.2 / W2.2).
 
     Since migration 423 `life_events` is chart-scoped (`chart_id` NOT NULL), so
-    every chart reads ONLY its own events (`WHERE chart_id = %s`). There is no
-    chart-identity branch: a chart with recorded events is scored against them
-    (LEL-fit); a chart with none yields [] — a clean, honest, lagna-stability-
+    every chart reads ONLY its own events, through brahmagyan.phala.life_events_scope
+    (the chart-scoped view or `WHERE chart_id = %s`, plus a foreign-row guard; SS N-105).
+    There is no chart-identity branch: a chart with recorded events is scored against
+    them (LEL-fit); a chart with none yields [] — a clean, honest, lagna-stability-
     only rectification. A chart NEVER trains on another chart's history (the
     chart-scope filter IS the JL-017 contamination firewall). The engine still
     re-applies its own leakage firewall (pre-2020, exact/month-exact).
 
     Pre-migration-423 schema (no `chart_id` column) or a missing table yields []
-    rather than crashing or silently reading a different chart's rows — the safe,
-    structural-only default. Events whose per-chart mahadasha lord can't be
+    rather than crashing; a privilege error propagates (an unreadable log is not an
+    empty log). Events whose per-chart mahadasha lord can't be
     determined from this chart's chart_dashas are skipped (never fabricated)."""
+    import psycopg
+    from brahmagyan.phala.life_events_scope import fetch_chart_life_events
+    # (imported here, not at module top: the asset declarations pin line numbers of this file)
     try:
-        with conn.cursor() as cur:
-            cur.execute(
-                """
-                SELECT event_id, event_date, category, domain
-                FROM life_events
-                WHERE chart_id = %s AND event_date IS NOT NULL
-                ORDER BY event_date
-                """,
-                (chart_id,),
-            )
-            rows = cur.fetchall()
-    except Exception as e:
-        # Pre-423 schema (no chart_id column) or missing table → no per-chart
+        rows = fetch_chart_life_events(  # SAVEPOINT-wrapped: a failed read never aborts the build transaction
+            conn, chart_id, ("event_id", "event_date", "category", "domain"), order_by=("event_date",),
+        )
+    except (psycopg.errors.UndefinedTable, psycopg.errors.UndefinedColumn) as e:
+        # ONLY a schema gap degrades: pre-423 schema (no chart_id column) or missing table → no per-chart
         # training source → structural-only rectification. Never a hard failure.
+        # EVERYTHING else (privilege, timeout, deadlock, lost connection, aborted transaction, malformed chart_id,
+        # foreign row) propagates: an unreadable log is not an empty log (SS N-105 / N-112).
+        # (The helper already rolled back its own SAVEPOINT, so the build transaction is still usable.)
         logger.warning(
             "ph_rectification: chart-scoped life_events read failed (%s); "
             "proceeding structural-only (no LEL training)", e,
         )
         return []
+    rows = [r for r in rows if r.get("event_date") is not None]
 
     events: list[TrainingEvent] = []
     for row in rows:
