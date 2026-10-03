@@ -94,7 +94,7 @@ import {
   fetchWealthSpecialLagnas,
   fetchWealthYogiAvayogi,
   fetchTajakaSourceFence,
-  fetchWealthTajaka,
+  fetchWealthTajaka, unitsServedUnverifiedTier,
   fetchWealthReadingSourceFence,
   fetchNotablyAbsentYogas,
   vargaConfirmedMark,
@@ -102,6 +102,7 @@ import {
   type ChecklistUnit,
   type GocharaSweepWindow,
 } from './reading_checklist'
+import { resolveL2Lineage, l2LineageFlag } from '../../provenance/l2_lineage'
 import { resolvedBuildFenceIds, ExplicitEmptyBuildFenceError, resolveChartServedGeneration, resolvedRowsBuildId, servedGenerationIdentity, type BuildFence, type ChartServedGeneration, type UnresolvedAssetGeneration } from '../generation/served_generation'
 
 // F-119 (EKAVĀKYATĀ A-06): attach resolution_disclosure to gochara_sweep rows.
@@ -477,9 +478,10 @@ export const judgmentQueryCapability: CapabilityDescriptor = {
     'and Tajaka; it is exhaustive only when every unit is honestly settled in this response.',
     'Every resolution (bhava/lord/occupants/karaka, both frames) goes through the SAME address',
     'resolver W1/W2 built (design §19 single-source) — no parallel resolver logic here.',
-    'Honest gap: "notably-absent" yoga near-miss checking needs a data-plane addition (design §12 D3)',
-    'that does not exist yet. The receipt explicitly reports `notably_absent_yogas: not_computed`,',
-    'so it cannot manufacture closure; cancellation (bhaṅga) on fired yogas is handled separately.',
+    'Formation-gap ("notably absent") detection is NOT claimed: `notably_absent_yogas` is an empty array by design,',
+    'with `near_miss_capable_candidates: 0` and a `band_coverage` count of the six dhana candidates',
+    '(present/absent/indeterminate) derived at serve time from L1 facts; when that evidence is not served the unit',
+    'reads `source_unproven`, and non-wealth domains read `not_joined`. Cancellation (bhaṅga) on fired yogas is handled separately.',
     'chart_id is required — never defaulted (principle #14).',
   ].join(' '),
 
@@ -704,6 +706,13 @@ export const judgmentQueryCapability: CapabilityDescriptor = {
         'warning',
       ))
     }
+    // N-91 between-state disclosure: the fact_ids this response echoes come partly from L2 (MSR)
+    // rows. A REAL receipt-pin detector (provenance/l2_lineage.ts) says whether those L2 receipts
+    // were built against an L1 generation that has since been rebuilt; if so (or if the check could
+    // not run — fail closed) the flag makes the envelope's reading_contract take the NOT-anchored
+    // branch with the cause instead of the "grounded in N resolvable" count sentence.
+    const l2LineageDisclosure = l2LineageFlag(await resolveL2Lineage(chart_id))
+    if (l2LineageDisclosure) judgment_flags.push(l2LineageDisclosure)
     const fact_ids = new Set<string>()
 
     // ── F-57: domain-resolution disclosure (§N.6 pt 3 / §N.7 pt 6 / §N.8) ──────────────
@@ -1693,15 +1702,22 @@ export const judgmentQueryCapability: CapabilityDescriptor = {
             ? (wealthSourceFence?.ready ? (wealthSpecialLagnas?.state ?? 'source_unproven') : 'source_unproven')
             : 'not_joined',
           count: wealthSpecialLagnas?.rows.length ?? 0,
+          // TI-served-tier-legs: `count` is rows PRESENT; `verified_count` is the subset at a verified
+          // tier and `tier_breakdown` names every stored tier — presence is never read as verification.
+          ...(wealthSpecialLagnas?.state === 'served'
+            ? { tier_breakdown: wealthSpecialLagnas.tier_breakdown, verified_count: wealthSpecialLagnas.verified_count, evidence_tier: wealthSpecialLagnas.evidence_tier }
+            : {}),
+          ...(wealthSpecialLagnas?.incomplete_reason ? { incomplete_reason: wealthSpecialLagnas.incomplete_reason } : {}),
           detail: spec.signal_domain === 'wealth'
             ? (wealthSourceFence?.ready
-              ? 'fixed Indu/Sree/Hora complete atomic placement rows from ga_sensitive'
+              ? 'fixed Indu/Sree/Hora complete atomic placement rows from ga_sensitive; any rows served carry their own verification_pass_status (present is not verified — see tier_breakdown / verified_count)'
               : 'fresh/proven selected-build receipts are unavailable or a producer replacement is active')
             : DOMAIN_INDU_LAGNA.has(spec.signal_domain)
             // F-107: for wealth, Indu Lagna is not a generic "some lagna we skipped" — it is
-            // THE Jaimini wealth-strength lagna, stored two_pass_verified, and served by
-            // assess_wealth. Name it and where it is, so the gap is actionable.
-            ? 'Indu Lagna (Jaimini wealth-strength lagna) is computed + two_pass_verified for this chart but NOT folded into this verdict; Ārūḍha/Horā lagnas likewise'
+            // THE Jaimini wealth-strength lagna, stored (at its writer's honest tier) and served by
+            // assess_wealth. Name it and where it is, so the gap is actionable. No tier is claimed
+            // here: each served row carries its own verification_pass_status.
+            ? 'Indu Lagna (Jaimini wealth-strength lagna) is computed for this chart (see each row\'s own verification_pass_status) but NOT folded into this verdict; Ārūḍha/Horā lagnas likewise'
             : 'Indu/Ārūḍha/Hora lagnas not folded here',
           drill: DOMAIN_INDU_LAGNA.has(spec.signal_domain)
             ? `ganita_special_lagnas_get (categories=["special_lagna"]) / assess_${spec.signal_domain} (varga_analysis.indu_lagna)`
@@ -1715,9 +1731,13 @@ export const judgmentQueryCapability: CapabilityDescriptor = {
             ? (wealthSourceFence?.ready ? (wealthYogiAvayogi?.state ?? 'source_unproven') : 'source_unproven')
             : 'not_joined',
           count: wealthYogiAvayogi?.rows.length ?? 0,
+          ...(wealthYogiAvayogi?.state === 'served'
+            ? { tier_breakdown: wealthYogiAvayogi.tier_breakdown, verified_count: wealthYogiAvayogi.verified_count, evidence_tier: wealthYogiAvayogi.evidence_tier }
+            : {}),
+          ...(wealthYogiAvayogi?.incomplete_reason ? { incomplete_reason: wealthYogiAvayogi.incomplete_reason } : {}),
           detail: spec.signal_domain === 'wealth'
             ? (wealthSourceFence?.ready
-              ? 'fixed Yogi/Avayogi/Duplicate-Yogi/Sahayogi selected-build atom set'
+              ? 'fixed Yogi/Avayogi/Duplicate-Yogi/Sahayogi selected-build atom set; any rows served carry their own verification_pass_status (present is not verified — see tier_breakdown / verified_count)'
               : 'fresh/proven selected-build receipts are unavailable or a producer replacement is active')
             : 'yogi/avayogi/duplicate-yogi/sahayogi now computed (T6 / MC-029, fact_category sensitive_point_yogi) but not yet folded into this judgment',
           drill: 'ganita_sensitive_degrees_get',
@@ -1753,9 +1773,13 @@ export const judgmentQueryCapability: CapabilityDescriptor = {
             ? (tajakaSourceFence?.ready ? (wealthTajaka?.state ?? 'source_unproven') : 'source_unproven')
             : 'not_joined',
           count: wealthTajaka?.row === null ? 0 : (wealthTajaka?.row ? 1 : 0),
+          ...(wealthTajaka?.state === 'served'
+            ? { tier_breakdown: { [wealthTajaka.tier ?? 'unknown']: 1 }, verified_count: wealthTajaka.verified_count, evidence_tier: wealthTajaka.evidence_tier }
+            : {}),
+          ...(wealthTajaka?.incomplete_reason ? { incomplete_reason: wealthTajaka.incomplete_reason } : {}),
           detail: spec.signal_domain === 'wealth'
             ? (tajakaSourceFence?.ready
-              ? `fixed annual Vārṣaphala row containing as_of_date=${as_of_date}`
+              ? `fixed annual Vārṣaphala row containing as_of_date=${as_of_date}; a served row carries its own verification_pass_status (present is not verified)`
               : 'fresh/proven selected-build ga_tajaka receipt is unavailable or a producer replacement is active')
             : 'annual (varṣaphala/tājaka) not folded into the natal judgment',
           drill: 'ganita_tajaka_get',
@@ -1766,6 +1790,7 @@ export const judgmentQueryCapability: CapabilityDescriptor = {
         contract_id: JUDGMENT_READING_CHECKLIST_V2_CONTRACT.contract_id,
         units: reading_checklist_units,
         ...exhaustiveness,
+        units_served_unverified_tier: unitsServedUnverifiedTier(reading_checklist_units),
         required_units: JUDGMENT_READING_CHECKLIST_V2_CONTRACT.required_units,
         note: 'The classical bhāva-adhyāya checklist, served: each unit names whether THIS ' +
           'response carried it and — for every absent box — WHY. not_joined units carry a live ' +
@@ -1836,16 +1861,28 @@ export const judgmentQueryCapability: CapabilityDescriptor = {
               wealth_special_lagnas: {
                 state: wealthSpecialLagnas?.state ?? 'source_unproven',
                 rows: wealthSpecialLagnas?.rows ?? [],
+                tier_breakdown: wealthSpecialLagnas?.tier_breakdown ?? {},
+                verified_count: wealthSpecialLagnas?.verified_count ?? 0,
+                evidence_tier: wealthSpecialLagnas?.evidence_tier ?? null,
+                incomplete_reason: wealthSpecialLagnas?.incomplete_reason ?? null,
               },
               wealth_yogi_avayogi: {
                 state: wealthYogiAvayogi?.state ?? 'source_unproven',
                 rows: wealthYogiAvayogi?.rows ?? [],
+                tier_breakdown: wealthYogiAvayogi?.tier_breakdown ?? {},
+                verified_count: wealthYogiAvayogi?.verified_count ?? 0,
+                evidence_tier: wealthYogiAvayogi?.evidence_tier ?? null,
+                incomplete_reason: wealthYogiAvayogi?.incomplete_reason ?? null,
               },
               wealth_tajaka: {
                 source_fence: tajakaSourceFence,
                 state: wealthTajaka?.state ?? 'source_unproven',
                 as_of_date,
                 row: wealthTajaka?.row ?? null,
+                tier: wealthTajaka?.tier ?? null,
+                verified_count: wealthTajaka?.verified_count ?? 0,
+                evidence_tier: wealthTajaka?.evidence_tier ?? null,
+                incomplete_reason: wealthTajaka?.incomplete_reason ?? null,
               },
             }),
             // A3/R-3: bearing_yogas is now ga_yoga_firings-sourced (firings-authoritative — real

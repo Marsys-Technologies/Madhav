@@ -1,0 +1,72 @@
+{
+  "session_open": {
+    "session_id": "AI-CONSOLE-CATALOG-RELEASE-20261003",
+    "cowork_thread_name": "Madhav — AI Console production catalogue release",
+    "agent_name": "Codex",
+    "agent_version": "model identifier not exposed",
+    "tool": "Codex",
+    "tool_profile": "madhav-parity",
+    "worktree_path": "/Users/Dev/.codex/worktrees/ai-console-cli-role-effort/Madhav",
+    "step_number_or_layer": "Owner-authorized production release of PR 2977",
+    "predecessor_session": "AI-CONSOLE-CATALOG-REFRESH-20261002",
+    "coordination": {
+      "coordination_ref": "origin/campaign-coordination",
+      "lease_id": "MADHAV-AI-CONSOLE-CATALOG-RELEASE-20261003",
+      "lease_status_verified": true,
+      "lease_verified_at": "2026-10-02T19:20:00Z",
+      "remote_commit": "58621d8a3d41635bf14b1f157e48e0da4dd484f0",
+      "work_order_surface": "00_ARCHITECTURE/briefs/ai_console_catalog_refresh/IMPLEMENTATION_PLAN_v1_0.md"
+    },
+    "cross_tool_state_read": {
+      "cross_cutting_decision_register": true,
+      "stale_surfaces_disregarded": [
+        ".conductor-state.json",
+        ".gemini/project_state.md",
+        "CLAUDECODE_BRIEF.md"
+      ]
+    },
+    "mandatory_reading_confirmation": [
+      {
+        "file": "CLAUDE.md",
+        "fingerprint_sha256": "a364863fc3efcf416ca16773093dda72ea7b632d6d63cd1c13a387889121e12e",
+        "read_at": "2026-10-02T16:20:00Z"
+      },
+      {
+        "file": "00_ARCHITECTURE/CURRENT_STATE_v1_0.md",
+        "fingerprint_sha256": "f34a729c9b197511ec249f39c386fa5fac376105ae58db80592f8127aecdbc7b",
+        "read_at": "2026-10-02T16:32:00Z"
+      },
+      {
+        "file": "00_ARCHITECTURE/CROSS_CUTTING_DECISION_REGISTER_v1_0.md",
+        "fingerprint_sha256": "18e1e9912bd5494b647ff60035f4c03d7fecfa7d2241cdd54e11d4be359d79d1",
+        "read_at": "2026-10-02T16:24:00Z"
+      },
+      {
+        "file": "00_ARCHITECTURE/SESSION_OPEN_TEMPLATE_v1_0.md",
+        "fingerprint_sha256": "414807baef6ee57efc4db2f14e0d399c9afa5735c6240f40c5d87a1f81b51db6",
+        "read_at": "2026-10-02T16:24:00Z"
+      }
+    ],
+    "canonical_artifact_fingerprint_check": [],
+    "declared_scope": {
+      "may_touch": [
+        "00_ARCHITECTURE/briefs/ai_console_catalog_refresh/**",
+        "00_ARCHITECTURE/CURRENT_STATE_v1_0.md",
+        "00_ARCHITECTURE/SESSION_LOG.md"
+      ],
+      "must_not_touch": [
+        "01_FACTS_LAYER/**",
+        "025_HOLISTIC_SYNTHESIS/**",
+        "platform/python-sidecar/**",
+        "00_ARCHITECTURE/briefs/nirmana/**",
+        "CLAUDE.md",
+        "platform/src/lib/gochara/**",
+        "platform/supabase/migrations/1300_ai_console_role_effort.sql"
+      ]
+    },
+    "mirror_pair_freshness_check": [],
+    "native_directive_obligations": [],
+    "red_team_due": false,
+    "notes": "Continuation of the reviewed source session: native explicitly authorizes stopping isolated preview and production deployment. Source rebase is clean on origin/main 0bf602f33; migration 1301 reservation and protected checks revalidated. Runtime scope is paired bridge files on private VM plus normal protected production migration/web rollout, authenticated metadata-only refresh and UI inspection. No paid inference, role/default mutation, credentials/IAM/network changes, chart/build/rebuild or foreign worktree edits. Wait for predecessor production deploy and any successors before mutations; retained paired bridge backup enables rollback. No source policy or implementation change under this release milestone."
+  }
+}

@@ -55,10 +55,13 @@ import re
 from datetime import datetime, timezone, timedelta
 from typing import Any
 
+from panchang_engine.swiss_backend import ensure_swiss_backend
 from panchang_engine.swiss_state import serialized_swiss_state, swiss_state_scope
+from pyjhora_adapter._swiss_thread_scope import with_sidereal_mode
 
 from brahmagyan.graha_vocabulary import norm_graha
-from brahmagyan.verification_vocab import TWO_PASS_VERIFIED, UNVERIFIED_DEFAULT, assert_legal
+from brahmagyan.verification_vocab import UNVERIFIED_DEFAULT, assert_legal
+from brahmagyan.verification_tiers import DOCUMENTED_APPROXIMATION
 from ga_writers._idempotency import replace_prior_chart_facts
 from ga_writers._telemetry import update_asset_throughput
 
@@ -340,6 +343,38 @@ def _write_halt_log(gate_name: str, msg: str) -> None:
 # ── Swisseph Saturn transit detection ────────────────────────────────────────
 
 @serialized_swiss_state
+def _saturn_sign_at_jd(jd: float) -> int:
+    """Return Saturn's LAHIRI sidereal sign number (1=Aries ... 12=Pisces) at Julian day ``jd`` (UT).
+
+    A sign at a JD is ayanamsha-dependent (Lahiri vs Fagan-Bradley differ by ~0.88 deg, i.e. up to a
+    month of Saturn motion around an ingress), so the mode is selected HERE, on the calling thread
+    (swisseph keeps it per thread on Linux), not inherited from whichever function ran earlier.
+    Hoisted from a closure inside ``_detect_saturn_sign_changes`` (TI thread-fix lane) so it holds on
+    every path and is directly testable; behaviour is unchanged when the thread already holds Lahiri.
+    """
+    import swisseph as swe
+
+    with with_sidereal_mode("lahiri", jd):
+        result, _ = swe.calc_ut(jd, swe.SATURN, swe.FLG_SIDEREAL | swe.FLG_SPEED)
+    lon = result[0] % 360.0
+    return int(lon // 30) + 1  # 1-based sign num
+
+
+@serialized_swiss_state
+def _saturn_speed_at_jd(jd: float) -> float:
+    """Saturn's sidereal (Lahiri) longitude speed in deg/day at Julian day ``jd`` (UT).
+
+    Mode and ephemeris path are selected on the calling thread (see ``_saturn_sign_at_jd``); hoisted
+    from a closure inside ``_detect_saturn_retrogrades``.
+    """
+    import swisseph as swe
+
+    with with_sidereal_mode("lahiri", jd):
+        result, _ = swe.calc_ut(jd, swe.SATURN, swe.FLG_SIDEREAL | swe.FLG_SPEED)
+    return result[3]  # speed in deg/day
+
+
+@serialized_swiss_state
 def _detect_saturn_sign_changes(window_start: datetime, window_end: datetime) -> list[dict]:
     """
     Use swisseph (via panchanga_engine) to detect all Saturn sign-change events
@@ -363,27 +398,19 @@ def _detect_saturn_sign_changes(window_start: datetime, window_end: datetime) ->
         )
 
     # Lahiri ayanamsha as transit reference engine (GA9 brief §rails)
-    swe.set_ephe_path(os.environ.get("SWISSEPH_EPHE_PATH", "/usr/share/ephe"))
-    swe.set_sid_mode(swe.SIDM_LAHIRI)
-
     jd_start = swe.julday(
         window_start.year, window_start.month, window_start.day, 0.0
     )
     jd_end = swe.julday(
         window_end.year, window_end.month, window_end.day, 0.0
     )
+    # Backend + the whole scan window must be inside the corpus window (out_of_corpus_range).
+    ensure_swiss_backend(jd_start, jd_end)
+    swe.set_sid_mode(swe.SIDM_LAHIRI)
 
     changes: list[dict] = []
     STEP_DAYS = 5.0  # 5-day step for coarse scan
     REFINE_STEP = 0.25  # 6-hour refinement
-
-    SAT_ID = swe.SATURN
-
-    def _saturn_sign_at_jd(jd: float) -> int:
-        """Return Saturn's sidereal sign number (1=Aries … 12=Pisces) at Julian day."""
-        result, _ = swe.calc_ut(jd, SAT_ID, swe.FLG_SIDEREAL | swe.FLG_SPEED)
-        lon = result[0] % 360.0
-        return int(lon // 30) + 1  # 1-based sign num
 
     prev_sign = _saturn_sign_at_jd(jd_start)
     jd = jd_start + STEP_DAYS
@@ -436,21 +463,17 @@ def _detect_saturn_retrogrades(window_start: datetime, window_end: datetime) -> 
     except ImportError:
         return []  # Non-fatal; retrograde subset rows will be empty
 
-    swe.set_ephe_path(os.environ.get("SWISSEPH_EPHE_PATH", "/usr/share/ephe"))
-
     jd_start = swe.julday(
         window_start.year, window_start.month, window_start.day, 0.0
     )
     jd_end = swe.julday(
         window_end.year, window_end.month, window_end.day, 0.0
     )
+    # Backend + the whole scan window must be inside the corpus window.
+    ensure_swiss_backend(jd_start, jd_end)
 
     retros: list[dict] = []
     STEP = 3.0  # 3-day step
-
-    def _speed_at_jd(jd: float) -> float:
-        result, _ = swe.calc_ut(jd, swe.SATURN, swe.FLG_SIDEREAL | swe.FLG_SPEED)
-        return result[3]  # speed in deg/day
 
     def _jd_to_dt(jd: float) -> datetime:
         ut_parts = swe.jdut1_to_utc(jd, swe.GREG_CAL)
@@ -459,12 +482,12 @@ def _detect_saturn_retrogrades(window_start: datetime, window_end: datetime) -> 
             int(ut_parts[3]), int(ut_parts[4]), tzinfo=timezone.utc,
         )
 
-    in_retro = _speed_at_jd(jd_start) < 0
+    in_retro = _saturn_speed_at_jd(jd_start) < 0
     retro_start_jd: float | None = jd_start if in_retro else None
     jd = jd_start + STEP
 
     while jd <= jd_end:
-        speed = _speed_at_jd(jd)
+        speed = _saturn_speed_at_jd(jd)
         is_retro = speed < 0
         if is_retro and not in_retro:
             retro_start_jd = jd - STEP
@@ -629,17 +652,31 @@ def build_sade_sati_cycles(
 
 # ── Two-pass verification ────────────────────────────────────────────────────
 
+#: Marker `two_pass_verify_cycles` sets on a cycle dict that PASSED every invariant it examines.
+#: Records that the plausibility guard ran and passed for this cycle. SS ruling (S-L1 follow-up):
+#: the guard earns NO tier above `single` (see `two_pass_verify_cycles`), so `_emit_cycle_rows`
+#: stamps the examined keys `single` whether or not the marker is set; the marker is kept as an
+#: auditable record (and as the single place a future real comparison would hook a tier in).
+CYCLE_INVARIANTS_CHECKED_KEY = "_invariants_checked"
+
+
 def two_pass_verify_cycles(cycles: list[dict]) -> list[str]:
     """
-    Two-pass verification per A9 §6:
-    1. ~7.5y per cycle invariant (±30 days)
+    Invariant check per A9 §6 (historically named "two-pass"; it is a bounds/ordering check
+    over the engine's own output: a plausibility guard, neither a match against a classical
+    reference table nor an independent re-derivation, so it earns NO tier above `single`
+    (never `classical_match`, never `two_pass_verified` -- Q03 / SS N-62 + SS ruling, S-L1 follow-up):
+    1. ~7.5y per cycle invariant (±600 days)
     2. Cycle ordering: janma_entry > vishakha_entry, anumukha_entry > janma_entry
     3. Cycle count consistency
 
-    Returns list of divergence messages (empty = PASS).
+    Returns list of divergence messages (empty = PASS). Every cycle that passes all invariants
+    is marked with `CYCLE_INVARIANTS_CHECKED_KEY` (an audit record; it does not license a tier).
     """
     divergences: list[str] = []
     for cy in cycles:
+        n_before = len(divergences)
+        cy.pop(CYCLE_INVARIANTS_CHECKED_KEY, None)
         d = cy["duration_days"]
         if abs(d - CYCLE_DAYS_EXPECTED) > CYCLE_DAYS_TOLERANCE:
             divergences.append(
@@ -656,6 +693,8 @@ def two_pass_verify_cycles(cycles: list[dict]) -> list[str]:
                 f"Cycle {cy['cycle_id']}: anumukha_entry {cy['anumukha_entry']} "
                 f"not after janma_entry {cy['janma_entry']}"
             )
+        if len(divergences) == n_before:
+            cy[CYCLE_INVARIANTS_CHECKED_KEY] = True
     return divergences
 
 
@@ -884,27 +923,32 @@ def _emit_cycle_rows(
     # ordering. Everything else in this category (moon_sign_for_cycle, cycle_type,
     # the compound_with_* stubs) has no check behind it and falls to the R()
     # default (UNVERIFIED_DEFAULT).
+    # Q03 / SS N-62 + SS ruling (S-L1 follow-up): those invariants are a plausibility guard
+    # (a +/-600-day duration bound and date ordering) over the engine's own output: not a match
+    # against a classical reference table and not a second derivation, so they earn no tier above
+    # the honest `single` (a cycle outside the bound halts the build; it is never stamped).
+    checked = UNVERIFIED_DEFAULT
     cat = "sade_sati_cycle"
     dur_yrs = cycle["duration_days"] / 365.25
     rows += [
         R(cat, cy_id, "cycle_start_iso",
           value_text=vis_dt.isoformat(),
           citation_human=f"Sade Sati {cy_id} starts {vis_dt.date()} (Saturn enters {cycle['vis_sign']}, 12H from natal Moon in {moon_sign}, {ayanamsha_id}).",
-          verification=TWO_PASS_VERIFIED),
+          verification=checked),
         R(cat, cy_id, "cycle_end_iso",
           value_text=end_dt.isoformat(),
           citation_human=f"Sade Sati {cy_id} ends {end_dt.date()} (Saturn exits {cycle['anu_sign']}, {ayanamsha_id}).",
-          verification=TWO_PASS_VERIFIED),
+          verification=checked),
         R(cat, cy_id, "duration_days",
           value_num=round(cycle["duration_days"], 2),
           citation_human=f"Sade Sati {cy_id} duration: {cycle['duration_days']:.1f} days ({ayanamsha_id}).",
           unit="days",
-          verification=TWO_PASS_VERIFIED),
+          verification=checked),
         R(cat, cy_id, "duration_years",
           value_num=round(dur_yrs, 4),
           citation_human=f"Sade Sati {cy_id} duration: {dur_yrs:.2f} years ({ayanamsha_id}).",
           unit="years",
-          verification=TWO_PASS_VERIFIED),
+          verification=checked),
         R(cat, cy_id, "moon_sign_for_cycle",
           value_text=moon_sign,
           citation_human=f"Sade Sati {cy_id} natal Moon sign: {moon_sign} ({ayanamsha_id})."),
@@ -949,26 +993,26 @@ def _emit_cycle_rows(
         # phase_start_iso/phase_end_iso/duration_days/duration_years are the phase-
         # level counterparts of the same 4 genuine cycle keys above (ph_start/ph_end
         # are vis_dt/jan_dt/anu_dt/end_dt, the exact values two_pass_verify_cycles()
-        # examines) — same rationale, same explicit TWO_PASS_VERIFIED.
+        # examines) — same rationale, same `single`.
         rows += [
             R(cat_ph, subj, "phase_start_iso",
               value_text=ph_start.isoformat(),
               citation_human=f"Sade Sati {cy_id} {phase_name} phase starts {ph_start.date()} ({ayanamsha_id}).",
-              verification=TWO_PASS_VERIFIED),
+              verification=checked),
             R(cat_ph, subj, "phase_end_iso",
               value_text=ph_end.isoformat(),
               citation_human=f"Sade Sati {cy_id} {phase_name} phase ends {ph_end.date()} ({ayanamsha_id}).",
-              verification=TWO_PASS_VERIFIED),
+              verification=checked),
             R(cat_ph, subj, "duration_days",
               value_num=round(ph_dur_days, 2),
               unit="days",
               citation_human=f"Sade Sati {cy_id} {phase_name} phase duration: {ph_dur_days:.1f} days ({ayanamsha_id}).",
-              verification=TWO_PASS_VERIFIED),
+              verification=checked),
             R(cat_ph, subj, "duration_years",
               value_num=round(ph_dur_yrs, 4),
               unit="years",
               citation_human=f"Sade Sati {cy_id} {phase_name} phase duration: {ph_dur_yrs:.2f} years ({ayanamsha_id}).",
-              verification=TWO_PASS_VERIFIED),
+              verification=checked),
             # Saturn state (atomic keys)
             R(cat_ph, subj, "saturn_sign",
               value_text=ph_sign,
@@ -1017,7 +1061,7 @@ def _emit_cycle_rows(
             "concurrent_naisargika_age_bracket",
             "concurrent_mudda_lord",
         ]:
-            dasha_val = natal_facts.get(f"{dasha_key}_at_{phase_name.lower()}", "PENDING_GA7_LOOKUP")
+            dasha_val = natal_facts.get(f"{dasha_key}_at_{phase_name.lower()}")  # None: GA7 had no covering period
             # NAR-GA fix (P2 :974): citation_human previously narrated the raw
             # snake_case dasha_key verbatim ("concurrent_vimshottari_maha_lord
             # during ..."), a mislabel/drift against the sibling
@@ -1026,10 +1070,10 @@ def _emit_cycle_rows(
             # fact_key (the DB column) is correctly left as the machine key.
             rows.append(
                 R(cat_ph, subj, dasha_key,
-                  value_text=str(dasha_val),
+                  value_text=None if dasha_val is None else str(dasha_val),
                   citation_human=(
                       f"{CONCURRENT_DASHA_LABELS[dasha_key]} during {cy_id} "
-                      f"{phase_name}: {dasha_val} ({ayanamsha_id})."
+                      f"{phase_name}: {_ga7_shown(dasha_key, dasha_val)} ({ayanamsha_id})."
                   ),
                   verification=_verif_for_text(dasha_val))
             )
@@ -1087,11 +1131,11 @@ def _emit_cycle_rows(
 
         # Tara bala at Janma peak (Q9=A)
         if phase_name == "JANMA":
-            tara_val = natal_facts.get("tara_bala_at_janma_peak", "PENDING_GA4_LOOKUP")
+            tara_val = natal_facts.get("tara_bala_at_janma_peak")  # None: GA4 resolved no tara class
             rows.append(
                 R(cat_ph, subj, "tara_bala_during_peak",
-                  value_text=str(tara_val),
-                  citation_human=f"Tara bala at {cy_id} JANMA peak: {tara_val} ({ayanamsha_id}).",
+                  value_text=None if tara_val is None else str(tara_val),
+                  citation_human=f"Tara bala at {cy_id} JANMA peak: {_ga4_shown(tara_val)} ({ayanamsha_id}).",
                   verification=_verif_for_text(tara_val))
             )
 
@@ -1180,16 +1224,16 @@ def _emit_cycle_rows(
                 R(cat_q, q_subj, "quarter_start_iso",
                   value_text=q_start.isoformat(),
                   citation_human=f"Sade Sati {q_subj} starts {q_start.date()} ({ayanamsha_id}).",
-                  verification="documented_approximation"),
+                  verification=DOCUMENTED_APPROXIMATION),
                 R(cat_q, q_subj, "quarter_end_iso",
                   value_text=q_end.isoformat(),
                   citation_human=f"Sade Sati {q_subj} ends {q_end.date()} ({ayanamsha_id}).",
-                  verification="documented_approximation"),
+                  verification=DOCUMENTED_APPROXIMATION),
                 R(cat_q, q_subj, "duration_days",
                   value_num=round(q_dur_days, 2),
                   unit="days",
                   citation_human=f"Sade Sati {q_subj} duration: {q_dur_days:.1f} days ({ayanamsha_id}).",
-                  verification="documented_approximation"),
+                  verification=DOCUMENTED_APPROXIMATION),
                 # Atomic intensity key
                 R(cat_q, q_subj, "intensity_level",
                   value_text=intensity,
@@ -1284,11 +1328,11 @@ def _emit_cycle_rows(
         ("mudda_lord", "Mudda (annual) dasha lord at cycle start"),
     ]:
         dk, desc = dasha_key
-        val = natal_facts.get(f"concurrent_{dk}_at_cycle_start", "PENDING_GA7_LOOKUP")
+        val = natal_facts.get(f"concurrent_{dk}_at_cycle_start")  # None: GA7 had no covering period
         rows.append(
             R(cat_do, cy_id, f"concurrent_{dk}",
-              value_text=str(val),
-              citation_human=f"{desc} for {cy_id}: {val} ({ayanamsha_id}).",
+              value_text=None if val is None else str(val),
+              citation_human=f"{desc} for {cy_id}: {_ga7_shown(f'concurrent_{dk}', val)} ({ayanamsha_id}).",
               verification=_verif_for_text(val))
         )
 
@@ -1310,11 +1354,11 @@ def _emit_cycle_rows(
           citation_human=f"Argala matrix cross-ref for {cy_id}: {len(argala_subset)} activations ({ayanamsha_id}).")
     )
     # Tara bala baseline (from GA4)
-    tara = natal_facts.get("tara_bala_at_janma_peak", "PENDING_GA4_LOOKUP")
+    tara = natal_facts.get("tara_bala_at_janma_peak")  # None: GA4 resolved no tara class
     rows.append(
         R(cat_dx, cy_id, "tara_bala_baseline_ref",
-          value_text=str(tara),
-          citation_human=f"Tara bala baseline at {cy_id} Janma peak: {tara} ({ayanamsha_id}).",
+          value_text=None if tara is None else str(tara),
+          citation_human=f"Tara bala baseline at {cy_id} Janma peak: {_ga4_shown(tara)} ({ayanamsha_id}).",
           verification=_verif_for_text(tara))
     )
 
@@ -1592,10 +1636,10 @@ def _lookup_tara_bala_for_saturn_at(
         return None
 
     with swiss_state_scope():
-        swe.set_ephe_path(os.environ.get("SWISSEPH_EPHE_PATH", "/usr/share/ephe"))
-        swe.set_sid_mode(swe.SIDM_LAHIRI)
         jd = swe.julday(at_dt.year, at_dt.month, at_dt.day,
                         at_dt.hour + at_dt.minute / 60.0 + at_dt.second / 3600.0)
+        ensure_swiss_backend(jd)
+        swe.set_sid_mode(swe.SIDM_LAHIRI)
         result, _ = swe.calc_ut(jd, swe.SATURN, swe.FLG_SIDEREAL)
         lon = result[0] % 360.0
         nak_idx = int(lon // (360.0 / 27.0))  # 0-based nakshatra index
@@ -1878,17 +1922,110 @@ def _update_asset_throughput(chart_id: str, build_id: str, row_count: int) -> No
 
 # ── Materialized view refresh ─────────────────────────────────────────────────
 
-def _refresh_mv(conn: Any) -> None:
-    """Refresh mv_chart_sade_sati_lifetime_summary synchronously."""
+# ── GA7 concurrent-dasha value that GA7 could not supply ─────────────────────
+# (Defined here, not beside CONCURRENT_DASHA_LABELS, so no line-pinned site above it moves.)
+#
+# The writer used to store the literal string "PENDING_GA7_LOOKUP" as fact_value_text when the
+# real chart_dashas lookup returned nothing: a placeholder presented as a value (130 production
+# rows, every one concurrent_mudda_lord, where the mudda dasha table's horizon ends before the
+# Sade Sati phase date). An honest null beats an invented value (CLAUDE.md §N.7 item 6):
+# fact_value_text is NULL and the citation sentence carries the named reason. System and level
+# come from DASHA_LOOKUP_SPECS, the same table the lookup itself uses.
+GA7_NO_PERIOD_REASON = "no_ga7_period_covers_date"
+
+
+def _ga7_shown(concurrent_key: str, value: str | None) -> str:
+    """The value as narrated in citation_human: the real lord/sign, or the named reason."""
+    if value is not None:
+        return value
+    system_id, level_n = next(
+        (sys_id, lvl) for dk, sys_id, lvl in DASHA_LOOKUP_SPECS if f"concurrent_{dk}" == concurrent_key
+    )
+    return (
+        f"not available ({GA7_NO_PERIOD_REASON}: chart_dashas has no {system_id} "
+        f"level-{level_n} period covering this date)"
+    )
+
+
+GA4_NO_TARA_REASON = "ga4_tara_bala_unavailable"
+
+
+def _ga4_shown(value: str | None) -> str:
+    """Same treatment for the GA4 Tara-bala lookup (live stored rows carrying the old
+    PENDING_GA4_LOOKUP placeholder: 0 on every chart; fixed here so it can never be stored)."""
+    if value is not None:
+        return value
+    return (
+        f"not available ({GA4_NO_TARA_REASON}: no GA4 tara_bala_natal_baseline class resolved "
+        "for Saturn's transit nakshatra at this date)"
+    )
+
+
+SADE_SATI_MV = "mv_chart_sade_sati_lifetime_summary"
+
+
+def _conn_owns_matview(conn: Any, mv_name: str) -> tuple[bool, str | None]:
+    """(may_refresh, owner_role) for ``mv_name`` as seen by this connection.
+
+    REFRESH MATERIALIZED VIEW requires ownership of the view (directly or via
+    a role whose privileges the connection inherits) -- exactly what
+    ``pg_has_role(<relowner>, 'USAGE')`` answers for ``current_user``
+    (superusers answer true too, and may refresh).  The probe is a plain
+    catalog SELECT, so it can never abort the caller's transaction.  A view
+    that does not exist yields ``(False, None)``.
+    """
+    row = conn.execute(
+        "SELECT c.relowner::regrole::text AS owner_role, "
+        "       pg_has_role(c.relowner, 'USAGE') AS may_refresh "
+        "FROM pg_class c WHERE c.oid = to_regclass(%s) AND c.relkind = 'm'",
+        [mv_name],
+    ).fetchone()
+    if row is None:
+        return False, None
+    owner, may_refresh = (
+        (row["owner_role"], row["may_refresh"]) if isinstance(row, dict)
+        else (row[0], row[1])
+    )
+    return bool(may_refresh), owner
+
+
+def _refresh_mv(conn: Any) -> str:
+    """Refresh mv_chart_sade_sati_lifetime_summary synchronously -- but only
+    if this connection owns the view.
+
+    The S-L1 build job connects as ``data_plane_builder``, which is not a
+    member of the view's owner role (``amjis_app``).  A refresh attempt by a
+    non-owner fails with "must be owner of materialized view", and because
+    the writer shares the orchestrator's transaction (``ctx.db_conn``) the
+    swallowed failure left that transaction ABORTED -- deterministically
+    failing every build.  A writer that does not own the view must not try:
+    it skips (logged at INFO) and the view is refreshed afterwards by its
+    owner (runbook step W7, L1_MV_REFRESH_AFTER_REBUILD_v1_0.md).
+
+    Returns ``"refreshed"``, ``"refresh_failed"`` (owner path only; the
+    universal guard in data_plane_runtime.guarded then catches any resulting
+    aborted transaction) or ``"skipped_not_owner"`` (also when the view is
+    absent).
+    """
+    may_refresh, owner = _conn_owns_matview(conn, SADE_SATI_MV)
+    if not may_refresh:
+        logger.info(
+            "[ga_sade_sati_writer] MV %s NOT refreshed: this connection does not own it "
+            "(owner=%s) -- left stale for the post-build owner refresh (runbook W7)",
+            SADE_SATI_MV, owner or "<view absent>",
+        )
+        return "skipped_not_owner"
     try:
-        conn.execute("REFRESH MATERIALIZED VIEW CONCURRENTLY mv_chart_sade_sati_lifetime_summary")
-        logger.info("[ga_sade_sati_writer] MV mv_chart_sade_sati_lifetime_summary refreshed")
+        conn.execute(f"REFRESH MATERIALIZED VIEW CONCURRENTLY {SADE_SATI_MV}")
+        logger.info("[ga_sade_sati_writer] MV %s refreshed", SADE_SATI_MV)
     except Exception:
         try:
-            conn.execute("REFRESH MATERIALIZED VIEW mv_chart_sade_sati_lifetime_summary")
+            conn.execute(f"REFRESH MATERIALIZED VIEW {SADE_SATI_MV}")
             logger.info("[ga_sade_sati_writer] MV refreshed (non-concurrent)")
         except Exception as exc:
             logger.warning("[ga_sade_sati_writer] MV refresh failed (non-fatal): %s", exc)
+            return "refresh_failed"
+    return "refreshed"
 
 
 # ── Main build function ───────────────────────────────────────────────────────
@@ -1941,7 +2078,12 @@ def build_ga_sade_sati(
         "build_id": build_id,
         "ayanamshas": {},
         "total_chart_facts_rows": 0,
-        "two_pass_verified": True,
+        # SS ruling (S-L1 tier-honesty follow-up, CLAUDE.md §N.8): this was initialised to True
+        # before any check ran. `two_pass_verify_cycles` is a bounds/ordering invariant (it earns
+        # no tier above `single` on the rows it examines, never `two_pass_verified`), so there is no
+        # two-pass result to report: None ("not measured"). `divergent_flagged` is a real
+        # detector result (set True just before the build raises) and starts False honestly.
+        "two_pass_verified": None,
         "divergent_flagged": False,
         "upstream_check": {},
     }
@@ -2143,7 +2285,7 @@ def build_ga_sade_sati(
             conn.commit()
 
         # ── Step 5: Refresh MV ────────────────────────────────────────────────
-        _refresh_mv(conn)
+        summary["mv_refresh"] = _refresh_mv(conn)
         if owns_conn:
             conn.commit()
 

@@ -1,0 +1,100 @@
+{
+ "_source": {
+  "provenance_only": true,
+  "derived_from": "/Users/Dev/suvarna-evidence/engine/corpus/phaladeepika_latta_corpus_fixtures_v2.json (sha256 2c1b7e72d53de3543b686136fe28c46190024a777fa3a976ca0140bbe6370c24)",
+  "v1_original_export_sha256": "074fa5d7575ab5177eabbe72a53a67892d742147ccb4eb69e8138ea18eddf88d",
+  "note": "PROVENANCE ONLY: no test pins the export file's hash. The v2 file is the original export plus one `note` sentence and `_stored_hash_verified: true` on each chunk row (production session); nothing else changed. Tests pin the chunk CONTENT and the STORED content_sha256 (sha256(utf8(text_id + '::' + content_en)), bg_texts.py _sha256). This copy keeps the two declared chunks and the 8 rows of bg_phaladeepika_latta.",
+  "exported_by": "Exec Suvarna, read-only as suvarna_reader",
+  "exported_on": "2026-10-02"
+ },
+ "classical_text_chunks": [
+  {
+   "chunk_id": "phaladeepika_pg0338_c01",
+   "text_id": "phaladeepika",
+   "chapter": 338,
+   "verse_ref": "PG338:C1",
+   "content_en": "303\nSI- 30-40\nSloka 39-10.— SATURN, RAHU AND KETU\nNo.\nof\nReckoned from\nfcho\nParticular\nEffect\nBlurs\nnatal Blur\nlimb dwelt\n1\n1st\nFace\nGrief\n4\n2nd, 3rd, 4lh, 5lh\nRight hand\nHappiness\n3\n6th, 7th, 8th\nRight leg\nTravel\n3\n9th, 10th, 11th\nLeft leg\nLoss\n4\nJ2th, 13th, 14th, 15th Left hand\nGain\n5\n16th, 17 th, 18th,\n19th, 20th\nBelly\nSexual enjoyment\n3\n21st, 22nd, 23rd\nHead\nHappiness\n2\n24-th, 25th\n'Eyes\nHappiness\n2\n26th, 27th\n'\nBack\nDanger to life\nqqraqnsf^iqfqq: sgsati iV-Jcft ift^fTT\nI\ncrgcivsj me gw s?r*nft»?uiV<i?ft qnrftr gw\nna^ii\nSloka\n-11 .—Planets passing through Rasis containing\nmore benolic dots in the\nAshtakavarga produce good\neffect always.\nEvon when such Rasis happen to be the\n12th, 6th or 8th, the effect will be good and beneficial.\nii wtti't;®’ wfcTtwsi =q\nii\ngffiqspw\nI\njjds qrarc% =tg\nliaw.li\nteeter w ftte’trr <jswrrr: q€tr%err:\nI\nqrc\ng *ra*re[ na^ii\nTtfteg gqri Ira scimi w %wieh\ni\nqf%sT!sfiT%fcnqf 3r.-R^ sqm naan\nSloka 42-44 ,—The 12th asterism\ncounted from\nthat\noccupied by the Sun at the time, the\n3rd\nfrom\nthat\nof\nMars, the 6th from that of Jupiter, and the 8th from that\nof Saturn\nare termed ^tsrfTCi or forward\nLattas.\nThe\n5th star reckoned from that of Venus, the 7th from that",
+   "content_sa": null,
+   "content_sha256": "028354a7b1cf72de839bfe87ce2caa8dac5ac86bc09e45247b7131cb01cb5b60",
+   "source_citation": "[HIGH] Phaladeepika — Trans. V. Subrahmanya Sastri, 2nd Ed. 1950 (archive.org: Phaladeepika2ndEd.1950ByVSubrahmanyaSastri) | PG338",
+   "translator": "Trans. V. Subrahmanya Sastri, 2nd Ed. 1950, Aruna Press Bangalore"
+  },
+  {
+   "chunk_id": "phaladeepika_pg0339_c01",
+   "text_id": "phaladeepika",
+   "chapter": 339,
+   "verse_ref": "PG339:C1",
+   "content_en": "Adh. XXVI\nMX\nof Mercury;\nthe 9th from that of Rahu and\nthe 22nd\nfrom that of the Moon are called\nor rear Lattaa\nIf, when thus counting, the\ntJanmunukshatra.\nnatal star) happens to come as the Latta star,\nthere will\nbe sickness and anguish.\nwxw ^r?rw m\nm\ng\n\\\nwapwr 3\nit^n\nShkos 4\nl^ 4r>. -During the Sun's Latin there\nwill bo\nthe ruin of every business\nMisery will\nresult during\nthe Latta of Rahu and\nKetu.\nIn\nthe\nLatin\nof\nJupiter/\ndeath,\nruin\nof\nrelations and a\nsort of\ngeneral\nfear or\ninsecurity may\noccur\nThere\nwill be\nquarrel in\nthe\nLatta of Venus.\nIn Mercury's\nLatta\nwill\noccur loss of\nposition or similar untoward event.\nA great\nloss\nwill\nmark the Moon's\nLatta.\nThus the\nseparate\neffects\nof\nthe Lattas have been described,\n(\noTccrrati^ fjjjnrmsjorife^n\ni\ngnni CTSfrsfcrtf^r^^JTr^ iivmii\nSJoka 47. —When two or\nmore\nLattas\nsynchronise,\nthe cumulative effect will proportionately\nincrease\nin\nintensity being twice or thrice and one ought\nonly\nto\npredict evil as the outcome of the combination.\n«n<r%«n g-.^ercr\nerrs? ra?fr^ nacn\nSloka 48 .—The Vedhas pronounced\nas\nauspicious\nin the\n(Sarvatobhadrachakra) bring happi-\nness, while those declared as evil produce only misery.\nOne should note this also while considering\nthe\neffect\ncaused by transit (of a plauet).",
+   "content_sa": null,
+   "content_sha256": "870d228be22cf486c1224091ba359aac99bf22a6160dfaec741e4c8c8eb61e44",
+   "source_citation": "[HIGH] Phaladeepika — Trans. V. Subrahmanya Sastri, 2nd Ed. 1950 (archive.org: Phaladeepika2ndEd.1950ByVSubrahmanyaSastri) | PG339",
+   "translator": "Trans. V. Subrahmanya Sastri, 2nd Ed. 1950, Aruna Press Bangalore"
+  }
+ ],
+ "bg_phaladeepika_latta": [
+  {
+   "graha": "Jupiter",
+   "direction": "forward",
+   "count_from_graha": 6,
+   "effect_description": "Death, ruin of relations and a sort of general fear or insecurity may occur.",
+   "affliction_condition": "If, when thus counting, the Janma-nakshatra (natal star) happens to come as the Latta star, there will be sickness and anguish.",
+   "verse_ref": "Adh.XXVI PG338-339 Sloka 42-44"
+  },
+  {
+   "graha": "Mars",
+   "direction": "forward",
+   "count_from_graha": 3,
+   "effect_description": null,
+   "affliction_condition": "If, when thus counting, the Janma-nakshatra (natal star) happens to come as the Latta star, there will be sickness and anguish.",
+   "verse_ref": "Adh.XXVI PG338-339 Sloka 42-44"
+  },
+  {
+   "graha": "Mercury",
+   "direction": "backward",
+   "count_from_graha": 7,
+   "effect_description": "Loss of position or similar untoward event.",
+   "affliction_condition": "If, when thus counting, the Janma-nakshatra (natal star) happens to come as the Latta star, there will be sickness and anguish.",
+   "verse_ref": "Adh.XXVI PG338-339 Sloka 42-44"
+  },
+  {
+   "graha": "Moon",
+   "direction": "backward",
+   "count_from_graha": 22,
+   "effect_description": "A great loss.",
+   "affliction_condition": "If, when thus counting, the Janma-nakshatra (natal star) happens to come as the Latta star, there will be sickness and anguish.",
+   "verse_ref": "Adh.XXVI PG338-339 Sloka 42-44"
+  },
+  {
+   "graha": "Rahu",
+   "direction": "backward",
+   "count_from_graha": 9,
+   "effect_description": "Misery.",
+   "affliction_condition": "If, when thus counting, the Janma-nakshatra (natal star) happens to come as the Latta star, there will be sickness and anguish.",
+   "verse_ref": "Adh.XXVI PG338-339 Sloka 42-44"
+  },
+  {
+   "graha": "Saturn",
+   "direction": "forward",
+   "count_from_graha": 8,
+   "effect_description": null,
+   "affliction_condition": "If, when thus counting, the Janma-nakshatra (natal star) happens to come as the Latta star, there will be sickness and anguish.",
+   "verse_ref": "Adh.XXVI PG338-339 Sloka 42-44"
+  },
+  {
+   "graha": "Sun",
+   "direction": "forward",
+   "count_from_graha": 12,
+   "effect_description": "Ruin of every business.",
+   "affliction_condition": "If, when thus counting, the Janma-nakshatra (natal star) happens to come as the Latta star, there will be sickness and anguish.",
+   "verse_ref": "Adh.XXVI PG338-339 Sloka 42-44"
+  },
+  {
+   "graha": "Venus",
+   "direction": "backward",
+   "count_from_graha": 5,
+   "effect_description": "Quarrel.",
+   "affliction_condition": "If, when thus counting, the Janma-nakshatra (natal star) happens to come as the Latta star, there will be sickness and anguish.",
+   "verse_ref": "Adh.XXVI PG338-339 Sloka 42-44"
+  }
+ ]
+}

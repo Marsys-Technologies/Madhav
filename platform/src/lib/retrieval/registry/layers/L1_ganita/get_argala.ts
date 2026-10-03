@@ -62,7 +62,7 @@ export const getArgalaCapability: CapabilityDescriptor = {
   description:
     'Retrieve Argala (intervention) and Virodha Argala (obstruction) matrices for a chart. ' +
     'Argala measures which grahas intervene in the results of each house via 2nd/4th/5th/11th placements; ' +
-    'Virodha Argala measures which grahas block those interventions via 3rd/12th/10th/3rd (opposite). ' +
+    'Virodha Argala measures which grahas block those interventions via 12th/10th/9th/3rd. ' +
     'This is a per-varga × per-sign × per-offset matrix (all divisional charts, not just D1) — pass ' +
     '`varga` (e.g. "D1", "D9") to scope to one divisional chart; omit for all ~29 vargas at once ' +
     '(large — use offset/limit for pagination, and prefer a `varga` filter over raising limit). ' +

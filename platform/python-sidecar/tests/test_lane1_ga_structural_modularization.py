@@ -120,7 +120,11 @@ _PRE_REFACTOR_FIXTURE = {
     "yoga": {"count": 6, "digest": "ed0ebd7f288fdf302642def82fa39be1b4663794afc82a7bc4f8a1dda61fab4f"},
     "dosha": {"count": 2, "digest": "0c469d239bc0aa5cf6e77bd4de47f4378c537cb16eaf0644a135d9c9145cbcab"},
     "avastha": {"count": 36, "digest": "64e5d41fc3d19692bc4e2f066413ea7b53e307f565938869a85092d7fc2724ba"},
-    "composite_strength": {"count": 324, "digest": "b2737f55513a251d4484c1fb7bb536202531a249a76556aadf0d7faff39a4468"},
+    # composite_strength (golden updated 2026-10-02, SS ruling on the Sun required_rupa lane): the nodes
+    # (Rahu/Ketu) have no classical required shadbala, so their composite rows are honest floored
+    # nulls: ONE bphs_weighted row per house (2 x 12 = 24) instead of 3 keys (2 x 36 = 72):
+    # 324 - 72 + 24 = 276. The seven classical grahas' rows (252) are unchanged.
+    "composite_strength": {"count": 276, "digest": "d458c91ca491131e200c4a9bf60f87d28116f8ff08de2a0d771f57a848e8746b"},
     "functional_class": {"count": 21, "digest": "02a82e9544b8caba0063b93a528a07dece40c0c87f7f3e41929a6b24378060f7"},
     "karakatva": {"count": 72, "digest": "7d82ec3837e811abb0ef9e63c0a52fb93bbe00b65339bd16c339ee9c64249762"},
     "structural_relationship": {"count": 28, "digest": "412dd8ee3a376f92966e588c2741618568e409a89cc8f04949cf63f0ec60ae88"},

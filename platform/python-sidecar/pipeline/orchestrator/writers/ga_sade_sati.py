@@ -1,12 +1,14 @@
 """Orchestrator adapter for the L1 Gaṇita `ga_sade_sati` writer (light)."""
 from __future__ import annotations
 from ga_writers.data_plane_runtime import l1_producer_contract
+from panchang_engine.swiss_backend import records_swiss_backend
 
 from . import register, WriterBase, ContextSpec, WriterResult
 
 
 @register('ga_sade_sati')
 @l1_producer_contract
+@records_swiss_backend
 class GaSadeSatiWriter(WriterBase):
     asset_id = 'ga_sade_sati'
     source_paths = ['platform/python-sidecar/ga_writers/ga_sade_sati_writer.py']

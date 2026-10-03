@@ -7,20 +7,23 @@ import { checkRpm } from '@/lib/mcp/rate_limiter_core'
 import { AiConsoleError, AiErrorCodeSchema, normalizeAiError, type AiErrorCode } from '@/lib/ai-console/errors'
 import { listAiConsoleState, previewChoiceDependencies } from '@/lib/ai-console/repository'
 import {
-  AiChoiceRefSchema, AiRoleSchema, CliIdSchema, CustomConfigurationChoiceSchema, LocalCliChoiceSchema,
-  ProviderModelChoiceSchema, ProviderModelSchema, RoleAssignmentsSchema,
+  AiChoiceRefSchema, AiEffortSchema, AiRoleSchema, CliIdSchema, CustomConfigurationChoiceSchema, LocalCliChoiceSchema,
+  ProviderModelChoiceSchema, ProviderModelSchema, ProviderIdSchema, RoleAssignmentsSchema,
   RoleTargetSchema, SafeProviderConnectionSchema, type SafeProviderConnection,
 } from '@/lib/ai-console/types'
 import type { ValidationResult } from '@/lib/ai-console/validation'
 import { CLI_REGISTRY } from '@/lib/ai-console/cli/registry'
 import { configurationKindMatchesRoles } from '@/lib/ai-console/configuration-kind'
+import { providerEffortLevels } from '@/lib/ai-console/effort'
 
 export const VALIDATION_DISCLOSURE = 'Testing this connection makes a tiny generation request and may incur a tiny provider charge.'
 export const NameSchema = z.string().trim().min(1).max(120)
 export const IdSchema = z.string().uuid()
 // Persistence IDs are UUIDs even though the shared routing identity contract is more general.
 const ProviderInputSchema = ProviderModelChoiceSchema.extend({ connectionId: IdSchema })
-const RoleInputSchema = z.discriminatedUnion('kind', [ProviderInputSchema, LocalCliChoiceSchema])
+const RoleInputSchema = z.discriminatedUnion('kind', [
+  RoleTargetSchema.options[0].extend({ connectionId: IdSchema }), RoleTargetSchema.options[1],
+])
 export const ChoiceInputSchema = z.discriminatedUnion('kind', [ProviderInputSchema, LocalCliChoiceSchema,
   CustomConfigurationChoiceSchema.extend({ configurationId: IdSchema })])
 export const AssignmentsInputSchema = RoleAssignmentsSchema.extend({ synthesizer: RoleInputSchema,
@@ -238,13 +241,17 @@ function projectConnectionRow(row: Row) {
     maskedSuffix: row.masked_suffix, validationState: row.validation_state,
     confirmedValid: row.credential_validity === 'valid' } as SafeProviderConnection),
   lastValidatedAt: date(row.last_validated_at), lastCheckedAt: date(row.last_checked_at),
+  catalogRefreshedAt: date(row.catalog_refreshed_at), catalogAttemptedAt: date(row.catalog_attempted_at),
+  catalogErrorCode: nullableText(row.catalog_error_code),
   lastErrorCode: row.last_error_code == null ? null : AiErrorCodeSchema.parse(row.last_error_code), deletedAt: date(row.deleted_at) }
 }
 
 function projectRole(row: Row) {
   return RoleTargetSchema.parse(row.kind === 'provider_model'
-    ? { kind: row.kind, connectionId: row.connection_id, modelId: row.model_id }
-    : { kind: row.kind, cliId: row.cli_id, modelId: row.model_id })
+    ? { kind: row.kind, connectionId: row.connection_id, modelId: row.model_id,
+      ...(row.effort == null ? {} : { effort: row.effort }) }
+    : { kind: row.kind, cliId: row.cli_id, modelId: row.model_id,
+      ...(row.effort == null ? {} : { effort: row.effort }) })
 }
 export function projectConfiguration(input: { id: unknown; name: unknown; version: unknown; roles: unknown;
   configurationKind: unknown; ownerConnectionId: unknown; ownerCliId: unknown }) {
@@ -259,7 +266,7 @@ export function projectConfiguration(input: { id: unknown; name: unknown; versio
 export function projectState(state: ConsoleState) {
   return {
     connections: state.connections.map(projectConnectionRow),
-    models: state.models.map(row => ProviderModelSchema.parse({ connectionId: row.connection_id,
+    models: state.models.map(row => ({ ...ProviderModelSchema.parse({ connectionId: row.connection_id,
       modelId: row.model_id, displayName: row.display_name, compatibleRoles: row.compatible_roles,
       supportsTools: row.supports_tools, supportsStructuredOutput: row.supports_structured_output,
       available: row.available, userSelected: row.user_selected === true,
@@ -271,7 +278,8 @@ export function projectState(state: ConsoleState) {
       lastProbeInputTokens: row.last_probe_input_tokens == null ? null
         : z.coerce.number().int().nonnegative().parse(row.last_probe_input_tokens),
       lastProbeOutputTokens: row.last_probe_output_tokens == null ? null
-        : z.coerce.number().int().nonnegative().parse(row.last_probe_output_tokens) })),
+        : z.coerce.number().int().nonnegative().parse(row.last_probe_output_tokens) }),
+      ...projectProviderEffortMetadata(row, state) })),
     configurations: state.configurations.map(row => ({ ...projectConfiguration({ id: row.id, name: row.name, version: row.version,
       configurationKind: row.configuration_kind, ownerConnectionId: row.owner_connection_id, ownerCliId: row.owner_cli_id,
       roles: Object.fromEntries(state.roles.filter(role => role.configuration_id === row.id).map(role => [AiRoleSchema.parse(role.role), projectRole(role)])) }),
@@ -283,7 +291,9 @@ export function projectState(state: ConsoleState) {
         detectedProduct: granted ? nullableText(row.detected_product) : null,
         detectedVersion: granted ? nullableText(row.detected_version) : null,
         validationState: granted ? nullableText(row.validation_state) : null,
-        lastCheckedAt: granted ? date(row.last_checked_at) : null }
+        lastCheckedAt: granted ? date(row.last_checked_at) : null,
+        ...(granted ? { catalogRefreshedAt: date(row.catalog_refreshed_at), catalogAttemptedAt: date(row.catalog_attempted_at),
+          catalogErrorCode: nullableText(row.catalog_error_code) } : {}) }
     }),
     cliModels: state.cliModels.filter(model => CLI_REGISTRY[CliIdSchema.parse(model.cli_id)].execution
       && state.clis.some(cli => cli.cli_id === model.cli_id && cli.granted_at != null
@@ -292,9 +302,28 @@ export function projectState(state: ConsoleState) {
         compatibleRoles: z.array(AiRoleSchema).min(1).parse(row.compatible_roles), available: z.boolean().parse(row.available),
         supportsTools: z.boolean().parse(row.supports_tools),
         supportsStructuredOutput: z.boolean().parse(row.supports_structured_output),
-        isBuiltinDefault: z.boolean().parse(row.is_builtin_default) })),
+        isBuiltinDefault: z.boolean().parse(row.is_builtin_default), ...projectCliModelMetadata(row) })),
     validationDisclosure: VALIDATION_DISCLOSURE,
   }
+}
+
+function projectProviderEffortMetadata(row: Row, state: ConsoleState) {
+  const connection = state.connections.find(item => item.id === row.connection_id)
+  const advertised = Array.isArray(row.supported_efforts)
+  return {
+    supportedEfforts: advertised ? z.array(AiEffortSchema).max(16).parse(row.supported_efforts)
+      : connection ? [...providerEffortLevels(ProviderIdSchema.parse(connection.provider_id), text(row.model_id))] : [],
+    defaultEffort: null,
+    effortSource: advertised ? 'provider' as const : 'policy' as const,
+  }
+}
+
+function projectCliModelMetadata(row: Row) {
+  return { ...(row.is_catalog_discovered === true
+    ? { supportedEfforts: z.array(AiEffortSchema).max(16).parse(row.supported_efforts ?? []), effortSource: 'cli' as const }
+    : row.is_manual === true ? { supportedEfforts: [], effortSource: 'policy' as const } : {}),
+    defaultEffort: AiEffortSchema.nullable().parse(row.default_effort ?? null), isCatalogDiscovered: row.is_catalog_discovered === true,
+    isIndividuallyTested: row.is_manual === true }
 }
 
 export function projectCliCards(state: ConsoleState) {
@@ -306,17 +335,20 @@ export function projectCliCards(state: ConsoleState) {
     if (!granted) return { cliId, productName, state: 'not_granted' as const }
     const validationState = z.enum(['untested', 'validating', 'reachable', 'not_installed', 'auth_unavailable',
       'unreachable', 'needs_attention']).parse(row.validation_state ?? 'untested')
-    const models = executable && validationState === 'reachable'
+    const models = executable
       ? state.cliModels.filter(model => model.cli_id === cliId && model.available === true).map(model => ({
       modelId: model.is_builtin_default ? null : text(model.model_id), displayName: text(model.display_name),
       compatibleRoles: z.array(AiRoleSchema).min(1).parse(model.compatible_roles),
       supportsTools: z.boolean().parse(model.supports_tools),
       supportsStructuredOutput: z.boolean().parse(model.supports_structured_output),
       isBuiltinDefault: z.boolean().parse(model.is_builtin_default),
+      ...projectCliModelMetadata(model),
       })) : []
     return { cliId, productName, state: executable ? validationState : 'needs_attention' as const,
       detectedProduct: nullableText(row.detected_product),
-      detectedVersion: nullableText(row.detected_version), lastCheckedAt: date(row.last_checked_at), models }
+      detectedVersion: nullableText(row.detected_version), lastCheckedAt: date(row.last_checked_at),
+      catalogRefreshedAt: date(row.catalog_refreshed_at), catalogAttemptedAt: date(row.catalog_attempted_at),
+      catalogErrorCode: nullableText(row.catalog_error_code), models }
   })
 }
 

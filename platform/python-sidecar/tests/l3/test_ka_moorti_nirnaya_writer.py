@@ -234,6 +234,12 @@ class TestIngressSolverMethodRecorded:
         )
         result = moorti_writer.KaMoortiNirnayaWriter().run(ctx)
         assert result.rows_inserted > 0
-        assert f"ingress_solver_degraded={len(bodies)}" in result.notes
+        # Rahu/Ketu never reach the Swiss backend (their series is the TRUE node, the
+        # kernel's objective the MEAN node) — they are recorded under their own reason,
+        # not as backend-degraded; every other body is the backend failure under test
+        assert f"ingress_solver_degraded={len(bodies) - 2}" in result.notes
+        assert "ingress_solver_node_convention_unrefined=2" in result.notes
+        assert "Rahu:spline_unrefined|not_probed|node_convention_mismatch(series=true,kernel=mean)" \
+            in result.notes
         assert "Sun:spline_unrefined|moshier(retflag=4)" in result.notes
         assert "kernel_instant_graded_spline_unrefined=" in result.notes

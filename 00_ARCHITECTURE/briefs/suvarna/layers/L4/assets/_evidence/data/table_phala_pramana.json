@@ -1,0 +1,205 @@
+{
+ "table": "phala_pramana",
+ "columns": [
+  {
+   "column_name": "pramana_id",
+   "data_type": "uuid",
+   "is_nullable": "NO",
+   "column_default": "gen_random_uuid()"
+  },
+  {
+   "column_name": "chart_id",
+   "data_type": "uuid",
+   "is_nullable": "NO",
+   "column_default": ""
+  },
+  {
+   "column_name": "anchor_id",
+   "data_type": "uuid",
+   "is_nullable": "NO",
+   "column_default": ""
+  },
+  {
+   "column_name": "evidence_type",
+   "data_type": "text",
+   "is_nullable": "NO",
+   "column_default": ""
+  },
+  {
+   "column_name": "evidence_strength_label",
+   "data_type": "text",
+   "is_nullable": "NO",
+   "column_default": ""
+  },
+  {
+   "column_name": "falsifier_text",
+   "data_type": "text",
+   "is_nullable": "NO",
+   "column_default": ""
+  },
+  {
+   "column_name": "observable_criteria_jsonb",
+   "data_type": "jsonb",
+   "is_nullable": "NO",
+   "column_default": ""
+  },
+  {
+   "column_name": "window_status",
+   "data_type": "text",
+   "is_nullable": "NO",
+   "column_default": ""
+  },
+  {
+   "column_name": "lel_entry_id",
+   "data_type": "bigint",
+   "is_nullable": "YES",
+   "column_default": ""
+  },
+  {
+   "column_name": "lel_entry_jsonb",
+   "data_type": "jsonb",
+   "is_nullable": "YES",
+   "column_default": ""
+  },
+  {
+   "column_name": "linked_sodhana_id",
+   "data_type": "uuid",
+   "is_nullable": "YES",
+   "column_default": ""
+  },
+  {
+   "column_name": "derivation_ledger_jsonb",
+   "data_type": "jsonb",
+   "is_nullable": "NO",
+   "column_default": ""
+  },
+  {
+   "column_name": "source_citation",
+   "data_type": "text",
+   "is_nullable": "NO",
+   "column_default": ""
+  },
+  {
+   "column_name": "computed_at",
+   "data_type": "timestamp with time zone",
+   "is_nullable": "NO",
+   "column_default": "now()"
+  }
+ ],
+ "has_chart_id": true,
+ "rows_by_chart": [
+  {
+   "chart_id": "1c826d5a-41cb-4450-b4dc-59d440e5f75a",
+   "n": "56"
+  },
+  {
+   "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+   "n": "4"
+  }
+ ],
+ "chart_nonnull": {
+  "_total": "4",
+  "pramana_id": "4",
+  "chart_id": "4",
+  "anchor_id": "4",
+  "evidence_type": "4",
+  "evidence_strength_label": "4",
+  "falsifier_text": "4",
+  "observable_criteria_jsonb": "4",
+  "window_status": "4",
+  "lel_entry_id": "0",
+  "lel_entry_jsonb": "0",
+  "linked_sodhana_id": "0",
+  "derivation_ledger_jsonb": "4",
+  "source_citation": "4",
+  "computed_at": "4"
+ },
+ "value_counts": {
+  "evidence_type": [
+   {
+    "v": "pending_observation",
+    "n": "4"
+   }
+  ],
+  "evidence_strength_label": [
+   {
+    "v": "proxy",
+    "n": "4"
+   }
+  ],
+  "falsifier_text": [
+   {
+    "v": "REFUTED if no career event of magnitude \u2265 minor is independently documented by 2026-11-10. CONFIRMED if a career-domain event of matching magnitude is recorded in the Life-Event Log before 2026-11-10. Attestation: lel_entry.",
+    "n": "1"
+   },
+   {
+    "v": "REFUTED if no character event of magnitude \u2265 minor is independently documented by 2026-11-10. CONFIRMED if a character-domain event of matching magnitude is recorded in the Life-Event Log before 2026-11-10. Attestation: lel_entry.",
+    "n": "1"
+   },
+   {
+    "v": "REFUTED if no health event of magnitude \u2265 minor is independently documented by 2026-11-10. CONFIRMED if a health-domain event of matching magnitude is recorded in the Life-Event Log before 2026-11-10. Attestation: lel_entry.",
+    "n": "1"
+   },
+   {
+    "v": "REFUTED if no relationship event of magnitude \u2265 minor is independently documented by 2026-11-10. CONFIRMED if a relationship-domain event of matching magnitude is recorded in the Life-Event Log before 2026-11-10. Attestation: lel_entry.",
+    "n": "1"
+   }
+  ],
+  "window_status": [
+   {
+    "v": "open",
+    "n": "4"
+   }
+  ]
+ },
+ "constraints": [
+  {
+   "conname": "phala_pramana_evidence_strength_label_check",
+   "contype": "c",
+   "def": "CHECK ((evidence_strength_label = ANY (ARRAY['direct'::text, 'indirect'::text, 'proxy'::text])))"
+  },
+  {
+   "conname": "phala_pramana_evidence_type_check",
+   "contype": "c",
+   "def": "CHECK ((evidence_type = ANY (ARRAY['life_event_match'::text, 'life_event_miss'::text, 'proxy_indicator'::text, 'self_report'::text, 'pending_observation'::text, 'detector_unavailable'::text])))"
+  },
+  {
+   "conname": "phala_pramana_window_status_check",
+   "contype": "c",
+   "def": "CHECK ((window_status = ANY (ARRAY['pending'::text, 'open'::text, 'past_window'::text])))"
+  },
+  {
+   "conname": "phala_pramana_anchor_id_fkey",
+   "contype": "f",
+   "def": "FOREIGN KEY (anchor_id) REFERENCES phala_anchors(anchor_id) ON DELETE CASCADE"
+  },
+  {
+   "conname": "phala_pramana_pkey",
+   "contype": "p",
+   "def": "PRIMARY KEY (pramana_id)"
+  }
+ ],
+ "indexes": [
+  {
+   "indexname": "phala_pramana_pkey",
+   "indexdef": "CREATE UNIQUE INDEX phala_pramana_pkey ON public.phala_pramana USING btree (pramana_id)"
+  },
+  {
+   "indexname": "phala_pramana_chart_id",
+   "indexdef": "CREATE INDEX phala_pramana_chart_id ON public.phala_pramana USING btree (chart_id)"
+  },
+  {
+   "indexname": "phala_pramana_anchor_id",
+   "indexdef": "CREATE INDEX phala_pramana_anchor_id ON public.phala_pramana USING btree (anchor_id)"
+  },
+  {
+   "indexname": "phala_pramana_window_status",
+   "indexdef": "CREATE INDEX phala_pramana_window_status ON public.phala_pramana USING btree (chart_id, window_status)"
+  },
+  {
+   "indexname": "phala_pramana_natural_key",
+   "indexdef": "CREATE UNIQUE INDEX phala_pramana_natural_key ON public.phala_pramana USING btree (anchor_id, evidence_type, COALESCE(lel_entry_id, ('-1'::integer)::bigint))"
+  }
+ ],
+ "referenced_by": []
+}

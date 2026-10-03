@@ -38,6 +38,7 @@ import type { CapabilityDescriptor } from '../types'
 import { FINANCE_SCUS } from '../knowledge/editorial'
 import { query } from '@/lib/db/client'
 import { deriveDefect001Note } from '../../provenance/freshness_notes'
+import { resolveL2Lineage, l2LineageFlag } from '../../provenance/l2_lineage'
 import { resolveAddress } from '../../address_resolver'
 import { SHASTRA_MAP } from './register_d9_judgment'
 // F-166a: domain-resolution disclosure, mirroring judgment_query's F-57 mechanism (see
@@ -459,7 +460,9 @@ export async function buildVargaAnalysisDirect(
 // every clause is string-concatenation over real counts/labels already computed above, never
 // an LLM). Every clause states which real L1/L2 fact_ids it is grounded on; a clause that
 // describes an honest absence (no yogas fired, no contradictions) carries `grounded: false`
-// with an empty fact_ids array rather than a fabricated citation (B.10).
+// with an empty fact_ids array rather than a fabricated citation (B.10). One documented exception
+// (N-91): the overview clause keeps its cited ids but reads `grounded: false` while the L2 lineage
+// flag is served (stale/unchecked), because those ids are L2 echoes that may no longer resolve.
 /** F-175: stable, structural identity for each verdict clause. Added so a downstream
  *  composer (platform-mcp's assess_* Sāra kernel) can target a specific clause — e.g. the
  *  contradiction-absence certification the PACT promise gate must qualify — WITHOUT
@@ -504,6 +507,11 @@ interface VerdictLayerInputs {
   /** F-113: the D1 significator-condition leg. Optional so existing callers/tests that
    *  never assembled it keep their exact prior clause set (no silent behaviour change). */
   significatorCondition?: SignificatorCondition | null
+  /** N-91: set when a lineage flag is served (L2 receipts predate the current L1 rebuild, or the
+   *  lineage check could not run — fail closed). The overview clause's ids come from L2 (MSR)
+   *  signals, so its `grounded` boolean must not claim resolvable grounding then. Optional:
+   *  existing callers/fixtures keep their exact prior behaviour. */
+  lineageStale?: boolean
 }
 
 // F-113: the verdict layer is the ONLY assess_* surface that survives every budget pass —
@@ -525,7 +533,9 @@ export function buildVerdictLayer(inputs: VerdictLayerInputs): VerdictLayer {
       `signal(s) for this chart, cross-referenced against classical yoga firings, varga ` +
       'placements, contradictions, and dasha timing below.',
     fact_ids: top10FactIds,
-    grounded: top10FactIds.length > 0,
+    // N-91: the one documented exception to "grounded false implies empty fact_ids" — the ids are
+    // still cited (never dropped), but not claimed resolvable while the L2 lineage is stale/unchecked.
+    grounded: top10FactIds.length > 0 && !inputs.lineageStale,
     clause_id: 'overview',
   })
 
@@ -752,6 +762,11 @@ async function runAssessDomain(
         'warning',
       )]
     : []
+  // N-91 between-state disclosure: assess_* has no reading contract on the wire, so the flag lands
+  // in kernel.flags (KERNEL_FLOOR_FLAG_CODES keeps it through the 2 KB kernel trim). A REAL
+  // receipt-pin detector (provenance/l2_lineage.ts); a failed check is itself a flag (fail closed).
+  const l2LineageDisclosure = l2LineageFlag(await resolveL2Lineage(chart_id))
+  if (l2LineageDisclosure) generationFlags.push(l2LineageDisclosure)
 
   try {
     // ── Step 1: domain reading (L2 Bodha) ──────────────────────────────────
@@ -1380,6 +1395,7 @@ async function runAssessDomain(
       temporalOk: temporalResult.ok,
       stageTemporalCount: stageTemporal.length,
       significatorCondition,
+      lineageStale: l2LineageDisclosure !== null,
     })
 
     return {

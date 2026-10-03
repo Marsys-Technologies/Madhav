@@ -631,8 +631,16 @@ def build_ga_positions(
 
             # FORENSIC gate — native-anchored; asserted only for the native chart
             # (a non-native chart has no pre-verified anchor). Phase 3B.
-            if chart_id == CANONICAL_CHART_ID:
-                forensic_gate(chart_output, canonical_id)
+            # str(): the orchestrator hands a uuid.UUID, which never == the str constant, so the gate was skipped.
+            if str(chart_id) == CANONICAL_CHART_ID:
+                try:
+                    forensic_gate(chart_output, canonical_id)
+                except Exception:
+                    logger.error("FORENSIC gate ga_positions executed passed=False chart=canonical ayanamsha=%s", canonical_id)
+                    raise
+                logger.info("FORENSIC gate ga_positions executed passed=True chart=canonical ayanamsha=%s", canonical_id)
+            else:
+                logger.debug("FORENSIC gate ga_positions skipped chart=skipped-non-canonical ayanamsha=%s", canonical_id)
 
             summary["forensic_pass"] = True
 

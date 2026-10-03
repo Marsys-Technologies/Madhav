@@ -174,7 +174,8 @@ function stream(execution: ResolvedRoleExecution, descriptor: SafeProviderExecut
       callType: callType(execution.role), systemPrompt: request.systemPrompt,
       messages: request.messages, tools: request.tools, toolChoice: request.toolChoice,
       responseSchema: request.responseSchema, maxOutputTokens: request.maxOutputTokens,
-      temperature: request.temperature, reasoning: request.reasoning, multiStep: request.multiStep,
+      temperature: request.temperature, reasoning: request.reasoning,
+      effort: execution.target.effort ?? undefined, multiStep: request.multiStep,
       disableSdkRetry: true, abortSignal, runtimeBinding, runtimeDescriptor,
     })
     iterator = raw.result.fullStream[Symbol.asyncIterator]()

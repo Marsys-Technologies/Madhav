@@ -185,6 +185,14 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from common import connect, resolve_dsn, step_parser, write_evidence  # noqa: E402
 
 SIDECAR = Path(__file__).resolve().parents[2]
+# CLI robustness: several evaluator delegations below (ka_vedha_gochara.gate,
+# gochara_rules/*, gochara_intensity/*) import `services.*` lazily. When the
+# module runs as a SCRIPT the sidecar root is not on sys.path (only the
+# script's own dir, above) and those imports fail with ModuleNotFoundError —
+# the in-process pytest path never sees this because conftest already puts
+# the sidecar on sys.path. Insert it once, guarded, at import time.
+if str(SIDECAR) not in sys.path:
+    sys.path.insert(0, str(SIDECAR))
 _LEDGER_PATH = SIDECAR / "services" / "gochara_kernel" / "ledger.py"
 _LEGACY_PATH = SIDECAR / "services" / "gochara_kernel" / "legacy_semantics.py"
 
@@ -211,6 +219,16 @@ COARSE_STEP_DAYS_DEFAULT = 1.0
 # jd-sorted emission) are load-bearing here.
 WRITE_TIME_MIN_PEAK_SEPARATION_DAYS = 0.0
 PEAK_BASIS = "gochara_lambda_v3:m1_linear_no_box:step06b"
+# ASTRA v1.3 (amendment 1): a peak chosen by the horizon stand-in is a HORIZON-LIMITED SAMPLE, not a
+# located extremum — the activity's supremum is at the excluded end h1, outside [h0, h1). Such a row
+# is qualified in PERSISTED, consumer-visible fields, never left looking like an ordinary peak:
+#   * `peak_basis` carries the distinct suffix below (no CHECK constrains the column; migration 460
+#     only requires provenance on every served peak), and
+#   * `suppression_state.horizon_limited_sample` carries the selected instant, the excluded horizon
+#     end, the substitution rule and the reason (the table has no dedicated column; migrations are
+#     out of scope — the three-field valence rides the same JSON the same way).
+HORIZON_LIMITED_SAMPLE = "horizon_limited_sample"
+PEAK_BASIS_HORIZON_LIMITED = f"{PEAK_BASIS}:{HORIZON_LIMITED_SAMPLE}"
 SOURCE_LIVE = "live"
 SOURCE_REHEARSAL = "fixture"  # migration 460 CHECK: 'live' | 'fixture'
 
@@ -608,6 +626,10 @@ def frozen_permission_value(legacy_detail: dict, c5: dict) -> tuple[float, dict]
             sx["class_licence"] = c5["class_licence"]
             sx["detail"] = {lvl: c5["period_context"][lvl]
                             for lvl in ("md", "ad", "pd")}
+            if sx["active"]:
+                sx["state"] = "active"
+            elif sx.get("state") != "unavailable":
+                sx["state"] = "inactive"
         if sid in TESTIMONY_SYSTEMS:
             excluded.append({"system_id": sid, "reason": "testimony (N-15) — "
                              "annotates, never weights", "active": sx.get("active"),
@@ -629,6 +651,16 @@ def frozen_permission_value(legacy_detail: dict, c5: dict) -> tuple[float, dict]
         "systems_considered": [sx["system_id"] for sx in included],
         "system_count_active": sum(1 for sx in included if sx.get("active")),
         "systems_excluded": excluded,
+        # a system the read could not supply is UNAVAILABLE, never "inactive"
+        # (CLAUDE.md §N.7 item 6). The weight denominator is unchanged (it
+        # contributes 0 as it always has — DR-14 is silent), so the value is
+        # MARKED PARTIAL instead of silently lowered.
+        "systems_unavailable": [
+            {"system_id": sx["system_id"],
+             "reason": (sx.get("detail") or {}).get("reason")}
+            for sx in included if sx.get("state") == "unavailable"],
+        "permission_partial": any(
+            sx.get("state") == "unavailable" for sx in included),
         "permission_contract": PERMISSION_CONTRACT,
         "class_licence": c5["class_licence"],
         "admitted_paths": c5["admitted_paths"],
@@ -642,7 +674,8 @@ def frozen_permission_value(legacy_detail: dict, c5: dict) -> tuple[float, dict]
 def make_per_instant_permission_fn(conn, chart_id: str, event_class: str,
                                    dasha_periods: list[dict], chart: dict, *,
                                    pinned_build_id: str | None = None,
-                                   tier: str | None = None):
+                                   tier: str | None = None,
+                                   availability: dict | None = None):
     """permission_fn(t_jd) -> (permission, detail) for one event class:
     the frozen C5 licence (frozen_c5_permission_context) composed with the
     other DR-14 generators (gochara_intensity.permission.compute_permission
@@ -673,6 +706,15 @@ def make_per_instant_permission_fn(conn, chart_id: str, event_class: str,
                 swe, conn, chart_id, event_class, targets, t_jd,
                 dasha_periods=dasha_periods)
             detail = {**detail, "_legacy_permission": raw}
+            if availability:
+                # the class-context document knows WHY a system had no rows
+                # (none stored vs refused by the tier policy): state it
+                for sx in detail.get("systems") or []:
+                    if sx.get("state") == "unavailable":
+                        why = availability.get(sx["system_id"]) or {}
+                        sx["detail"] = {**(sx.get("detail") or {}),
+                                        "reason": why.get("reason") or (sx.get("detail") or {}).get("reason"),
+                                        "observed_rows_by_level_tier": why.get("observed_rows_by_level_tier")}
             cache[key] = frozen_permission_value(detail, c5)
         return cache[key]
 
@@ -709,10 +751,12 @@ def build_projection_class_context(conn, chart_id: str, event_class: str,
                 "§4.1) cannot be evaluated; regenerate the document with the "
                 "repaired step06a_class_context.py")
         contract = doc.get("_dasha_read_contract") or {}
+        extra = ({"availability": doc["_dasha_availability"]}
+                 if doc.get("_dasha_availability") else {})
         permission_fn = factory(
             conn, chart_id, event_class, dasha_rows, chart,
             pinned_build_id=contract.get("build_id"),
-            tier=contract.get("tier"))
+            tier=contract.get("tier"), **extra)
         if permission_fn is None:
             return None
     return ClassContext(
@@ -883,14 +927,16 @@ def three_field_valence(supportive_channel: float, afflicting_channel: float,
 
 # ── tārā: P6 testimony annotation on day rows (S-04, O-P6-TARA; ASTRA P1-6) ──
 
-NAKSHATRA_ARC_DEG = 360.0 / 27.0
 TARA_CONTRACT = "P6 tārā testimony (GOCHARA_DESIGN_SPECS_v1_4 §2.2 P6; S-04; D-PADMIT)"
 
 
 def nakshatra_index_1based(longitude_deg: float) -> int:
-    """1..27 (Aśvinī = 1) — the gochara_rules.p6.tara index convention."""
-    idx = int((float(longitude_deg) % 360.0) // NAKSHATRA_ARC_DEG) + 1
-    return max(1, min(27, idx))
+    """1..27 (Aśvinī = 1) — the gochara_rules.p6.tara index convention. EXACT boundary
+    membership (C13): the float `// (360/27)` put 15 of the 27 exact boundaries in the
+    preceding nakṣatra; the one exact helper (gochara_rules.kernel_factor.extent_index,
+    integer arcseconds) puts a boundary longitude in the FOLLOWING nakṣatra, seam-safe."""
+    from services.gochara_rules.kernel_factor import NAKSHATRA_ARCSEC, extent_index
+    return extent_index(float(longitude_deg), None, NAKSHATRA_ARCSEC)
 
 
 def make_tara_annotator(natal_moon_deg, planet_pos_fn):
@@ -1357,6 +1403,8 @@ def make_eval_fn(class_ctx: ClassContext, contacts: list[dict],
             "permission": permission,
             "permission_detail": permission_detail,
             "permission_systems_active": permission_detail["systems_active"],
+            "permission_systems_unavailable": permission_detail.get(
+                "systems_unavailable", []),
             "supportive": supportive,
             "afflicting": afflicting,
             "c2_positive": c2["positive"],
@@ -1426,6 +1474,55 @@ def find_components(eval_lambda, points: list[float], min_lambda: float):
     return components
 
 
+# The in-domain stand-in for the excluded horizon end (ASTRA v1.2 R1/R2). The horizon is
+# half-open [h0, h1): an instant ON h1 is outside the domain, but activity that is positive
+# in-domain and still rising toward h1 has its supremum AT h1. Such an interval is kept, with
+# its peak represented by a BOUNDARY-LIMITED SAMPLE: the evaluation at h1 minus the bisection
+# tolerance (8.64 s) — or at the interval start if that is later — never at h1 itself. It is a
+# chosen sample, NOT a located extremum (see HORIZON_LIMITED_RULE; the rows carrying it are
+# qualified in persisted fields).
+HORIZON_EDGE_EPS_DAYS = 1e-4  # == the tol_days of _bisect_above/_bisect_below
+
+
+def in_domain_peak_stand_in(h_limit: float, floor_jd: float) -> float:
+    """The horizon stand-in sample instant: `h_limit` minus the bisection tolerance, or `floor_jd`
+    if that is later (`floor_jd` must itself be < h_limit). A chosen sample inside [h0, h1) — not a
+    located extremum, and not the "latest in-domain instant" (that has no maximum on a half-open
+    interval)."""
+    return max(floor_jd, h_limit - HORIZON_EDGE_EPS_DAYS)
+
+
+HORIZON_LIMITED_RULE = (
+    "max(interval_start, h1 - 1e-4 d): a chosen sample 8.64 s (the bisection tolerance) inside the "
+    "half-open horizon [h0, h1), or the interval start if that is later; a boundary-limited SAMPLE "
+    "evaluated there, never a located extremum (the supremum lies at the excluded end h1)")
+HORIZON_LIMITED_REASONS = {
+    "only_above_threshold_sample_is_the_horizon_limit":
+        "R1: the interval's only above-threshold sample is the appended horizon limit",
+    "refined_peak_reached_the_excluded_end":
+        "R2: the refined peak is the horizon limit itself (outside [h0, h1))",
+}
+
+
+def horizon_limited_qualification(*, selected_jd: float, h_limit: float, reason: str) -> dict:
+    """The persisted qualification block for a stand-in peak (ASTRA v1.3 amendment 1)."""
+    assert reason in HORIZON_LIMITED_REASONS, reason
+    return {
+        "kind": HORIZON_LIMITED_SAMPLE,
+        "attained_extremum": False,
+        "reason": reason,
+        "reason_text": HORIZON_LIMITED_REASONS[reason],
+        "selected_instant_utc": datetime.fromtimestamp(
+            (selected_jd - JD_UNIX_EPOCH) * 86400.0, tz=UTC).isoformat(),
+        "selected_jd": selected_jd,
+        "excluded_horizon_end_utc": datetime.fromtimestamp(
+            (h_limit - JD_UNIX_EPOCH) * 86400.0, tz=UTC).isoformat(),
+        "excluded_horizon_end_jd": h_limit,
+        "offset_from_excluded_end_seconds": round((h_limit - selected_jd) * 86400.0, 3),
+        "substitution_rule": HORIZON_LIMITED_RULE,
+    }
+
+
 def project_class_windows(class_ctx: ClassContext, contacts: list[dict],
                           horizon_jd: tuple[float, float],
                           quality_gate_for_date, *,
@@ -1445,34 +1542,72 @@ def project_class_windows(class_ctx: ClassContext, contacts: list[dict],
     eval_lambda = lambda t: evaluate(t)["lambda_raw"]  # noqa: E731
     tara_annotator = make_tara_annotator(class_ctx.natal_moon_deg, planet_pos_fn)
 
+    # Half-open horizon (ASTRA A2.5 A2): the exclusive end instant is NOT a
+    # series point — a peak or day row ON the excluded end date is outside
+    # the domain. A window's exit may still EQUAL the horizon limit (an
+    # exclusive interval endpoint legitimately equals it).
     breakpoints = sorted({b for c in contacts
                           for b in (c["_t_in_jd"], c["_t_exact_jd"], c["_t_out_jd"])
-                          if b is not None and horizon_jd[0] <= b <= horizon_jd[1]})
+                          if b is not None and horizon_jd[0] <= b < horizon_jd[1]})
     grid = []
     t = horizon_jd[0]
-    while t <= horizon_jd[1]:
+    while t < horizon_jd[1]:
         grid.append(t)
         t += coarse_step_days
     series = sorted(set(grid) | set(breakpoints))
+    # The horizon LIMIT rides the series as a boundary point ONLY (ASTRA
+    # v1.1 A2): without it the last partial interval (final sample → h1) is
+    # unsampled and legitimate final-day truncated activity silently yields
+    # zero components. It is evaluated to close intervals — a window's exit
+    # may EQUAL it — but it is never eligible as a peak or day row (the
+    # excluded end stays excluded).
+    if series and series[-1] < horizon_jd[1]:
+        series.append(horizon_jd[1])
     if not series:
         return [], {"event_class": class_ctx.event_class,
                     **class_ctx.factors_record(),
                     "components": 0, "peaks_admitted": 0, "peaks_retained": 0,
                     "peaks_refined_outside_era": 0,
+                    "final_edge_components": 0, "peaks_clamped_to_horizon_limit": 0,
+                    "horizon_limited_rows": 0,
                     "era_windows": 0, "month_windows": 0, "day_windows": 0}
 
     rows: list[dict] = []
     admitted_total = 0
     retained_total = 0
     refined_outside_era = 0
+    final_edge_components = 0
+    peaks_clamped_to_horizon_limit = 0
+    horizon_limited_rows = 0
+    emitted_components = 0
     components = find_components(eval_lambda, series, min_lambda)
     gate_details_seen: dict[str, dict] = {}
 
+    h_limit = horizon_jd[1]
     for enter_jd, exit_jd, i0, i1 in components:
-        era_series = series[i0:i1 + 1]
-        era_values = [eval_lambda(t) for t in era_series]
-        peak_idx = max(range(len(era_series)), key=lambda k: era_values[k])
-        era_peak_jd = era_series[peak_idx]
+        # Peak/day candidates come only from IN-DOMAIN points (< h_limit);
+        # the appended horizon limit closes the interval but never peaks.
+        era_series = [t for t in series[i0:i1 + 1] if t < h_limit]
+        era_limited = None          # set only when the era peak is the horizon stand-in (R1)
+        if era_series:
+            era_values = [eval_lambda(t) for t in era_series]
+            peak_idx = max(range(len(era_series)), key=lambda k: era_values[k])
+            era_peak_jd = era_series[peak_idx]
+        else:
+            # The only above-threshold SAMPLE is the horizon limit itself (ASTRA v1.2 R1:
+            # activity begins within the last sampling step before h1). "No in-domain
+            # sample" is not "no in-domain activity": the interval [enter, h1] has positive
+            # in-domain extent whenever enter < h1, and is kept — its peak represented by the
+            # boundary-limited sample (and QUALIFIED as such), never by h1. An interval that opens AT h1 has no
+            # in-domain extent and is honestly dropped.
+            if not enter_jd < h_limit:
+                continue
+            era_values = []
+            era_peak_jd = in_domain_peak_stand_in(h_limit, enter_jd)
+            final_edge_components += 1
+            era_limited = horizon_limited_qualification(
+                selected_jd=era_peak_jd, h_limit=h_limit,
+                reason="only_above_threshold_sample_is_the_horizon_limit")
         era_peak = evaluate(era_peak_jd)
         era_key = f"era-{_uuid.uuid4()}"
         for gd in (era_peak["quality_gates_detail"],):
@@ -1491,10 +1626,12 @@ def project_class_windows(class_ctx: ClassContext, contacts: list[dict],
         admitted_total += len(admitted)
         retained_total += len(retained)
 
+        emitted_components += 1
+        horizon_limited_rows += 1 if era_limited else 0
         rows.append(_window_row(
             class_ctx, evaluate, window_key=era_key, parent_key=None,
             tier="era", enter_jd=enter_jd, exit_jd=exit_jd,
-            peak_jd=era_peak_jd))
+            peak_jd=era_peak_jd, horizon_limited=era_limited))
 
         for cand in retained:
             peak_jd_true, _lam = leg.refine_peak_to_day(eval_lambda, cand.jd)
@@ -1509,6 +1646,19 @@ def project_class_windows(class_ctx: ClassContext, contacts: list[dict],
             if not (enter_jd <= peak_jd_true <= exit_jd):
                 refined_outside_era += 1
                 continue
+            if peak_jd_true >= h_limit:
+                # Refinement reached the EXCLUDED end (ASTRA v1.2 R2): the refined peak is
+                # the horizon limit itself — outside [h0, h1) — while the interval around it
+                # is legitimate in-domain activity. Keep the month/day family with the
+                # in-domain stand-in (and count it) instead of emitting a peak on h1, which
+                # the writer's validator refuses and which would abort the whole substep.
+                peak_jd_true = in_domain_peak_stand_in(h_limit, enter_jd)
+                peaks_clamped_to_horizon_limit += 1
+                peak_limited = horizon_limited_qualification(
+                    selected_jd=peak_jd_true, h_limit=h_limit,
+                    reason="refined_peak_reached_the_excluded_end")
+            else:
+                peak_limited = None
             # calendar-month bounds of the refined peak, clipped to the era
             # (build_resolution_hierarchy, rh:621-632 + R8.6 clip — with the
             # E-020/ADK-0026 correction: bounds are midnight-UTC JDs, the true
@@ -1529,21 +1679,26 @@ def project_class_windows(class_ctx: ClassContext, contacts: list[dict],
                 tier="month",
                 enter_jd=max(_jd_of_date(month_start), enter_jd),
                 exit_jd=min(_jd_of_date(month_end), exit_jd),
-                peak_jd=peak_jd_true))
+                peak_jd=peak_jd_true, horizon_limited=peak_limited))
             rows.append(_window_row(
                 class_ctx, evaluate, window_key=f"day-{_uuid.uuid4()}",
                 parent_key=month_key, tier="day",
                 enter_jd=peak_jd_true, exit_jd=peak_jd_true,
-                peak_jd=peak_jd_true, tara_annotator=tara_annotator))
+                peak_jd=peak_jd_true, tara_annotator=tara_annotator,
+                horizon_limited=peak_limited))
+            horizon_limited_rows += 2 if peak_limited else 0
 
     report = {
         "event_class": class_ctx.event_class,
         **class_ctx.factors_record(),
-        "components": len(components),
+        "components": emitted_components,
         "peaks_admitted": admitted_total,
         "peaks_retained": retained_total,
         "peaks_refined_outside_era": refined_outside_era,
-        "era_windows": len(components),
+        "final_edge_components": final_edge_components,
+        "peaks_clamped_to_horizon_limit": peaks_clamped_to_horizon_limit,
+        "horizon_limited_rows": horizon_limited_rows,
+        "era_windows": emitted_components,
         "month_windows": retained_total - refined_outside_era,
         "day_windows": retained_total - refined_outside_era,
         "quality_gates_fired": sum(
@@ -1554,7 +1709,8 @@ def project_class_windows(class_ctx: ClassContext, contacts: list[dict],
 
 def _window_row(class_ctx: ClassContext, evaluate, *, window_key: str,
                 parent_key: str | None, tier: str, enter_jd: float,
-                exit_jd: float, peak_jd: float, tara_annotator=None) -> dict:
+                exit_jd: float, peak_jd: float, tara_annotator=None,
+                horizon_limited: dict | None = None) -> dict:
     peak = evaluate(peak_jd)
     # P6 tārā testimony: DAY rows only (P6 is the sole day-resolution
     # source, §2.3 inv 6); era/month rows carry the not-applicable record.
@@ -1642,8 +1798,11 @@ def _window_row(class_ctx: ClassContext, evaluate, *, window_key: str,
             # T0-7: full derivation disclosure (fields + breakdown, incl.
             # every named unresolved operand).
             "three_field_valence": tv,
+            # ASTRA v1.3 amendment 1: a stand-in peak is DISCLOSED here (and by the
+            # distinct peak_basis below) — absent for an ordinary located peak.
+            **({HORIZON_LIMITED_SAMPLE: horizon_limited} if horizon_limited else {}),
         },
-        "peak_basis": PEAK_BASIS,
+        "peak_basis": PEAK_BASIS_HORIZON_LIMITED if horizon_limited else PEAK_BASIS,
         "calibration_state": "structural_prior",
         "resolution": tier,
     }
@@ -1652,8 +1811,17 @@ def _window_row(class_ctx: ClassContext, evaluate, *, window_key: str,
 # ── DB surface ───────────────────────────────────────────────────────────────
 
 
+def _cell(row, index: int, name: str):
+    """row[name] on a dict row, row[index] on a tuple row (ASTRA A2.5 A1:
+    the governed runner's connection is dict_row; standalone CLI fixtures
+    use tuples — both are accepted through the whole projection chain)."""
+    if isinstance(row, dict):
+        return row[name]
+    return row[index]
+
+
 def _table_columns(conn, table: str) -> set[str]:
-    return {r[0] for r in conn.execute(
+    return {_cell(r, 0, "column_name") for r in conn.execute(
         "SELECT column_name FROM information_schema.columns "
         "WHERE table_name = %s", (table,)).fetchall()}
 
@@ -1671,8 +1839,21 @@ def fetch_contacts(conn, chart_id: str, generation: str) -> list[dict]:
         " WHERE chart_id = %s AND generation = %s",
         (chart_id, generation)).fetchall()
     out = []
-    for (cid, body, relation, ttype, tref, tlon, t_in, t_exact, t_out,
-         orb_max, completeness, aspect_deg, independence_group, branch) in rows:
+    for r in rows:
+        cid = _cell(r, 0, "contact_id")
+        body = _cell(r, 1, "body")
+        relation = _cell(r, 2, "relation")
+        ttype = _cell(r, 3, "target_type")
+        tref = _cell(r, 4, "target_ref")
+        tlon = _cell(r, 5, "target_longitude_deg")
+        t_in = _cell(r, 6, "t_in")
+        t_exact = _cell(r, 7, "t_exact")
+        t_out = _cell(r, 8, "t_out")
+        orb_max = _cell(r, 9, "orb_max_deg")
+        completeness = _cell(r, 10, "completeness_state")
+        aspect_deg = _cell(r, 11, "aspect_deg")
+        independence_group = _cell(r, 12, "independence_group")
+        branch = _cell(r, 13, "branch")
         out.append({
             "contact_id": cid, "body": body, "relation": relation,
             "target_type": ttype, "target_ref": tref,
@@ -1697,8 +1878,10 @@ def fetch_contacts(conn, chart_id: str, generation: str) -> list[dict]:
 
 def fetch_map_rows(conn, chart_id: str) -> list[dict]:
     return [
-        {"event_class": r[0], "target_type": r[1], "target_ref": r[2],
-         "weight": float(r[3])}
+        {"event_class": _cell(r, 0, "event_class"),
+         "target_type": _cell(r, 1, "target_type"),
+         "target_ref": _cell(r, 2, "target_ref"),
+         "weight": float(_cell(r, 3, "weight"))}
         for r in conn.execute(
             "SELECT event_class, target_type, target_ref, weight"
             " FROM gochara_resonance_map WHERE chart_id = %s"
@@ -1717,15 +1900,18 @@ def fetch_vedha_rows(conn, chart_id: str) -> list[dict]:
         return []
     has_fv = "formula_version" in cols
     sql = ("SELECT window_start, window_end, vedha_kind, graha, detail,"
-           " classical_citation" + (", formula_version" if has_fv else ", NULL")
+           " classical_citation"
+           + (", formula_version" if has_fv else ", NULL AS formula_version")
            + " FROM kala_vedha_gochara WHERE chart_id = %s")
     return [
-        {"window_start": str(r[0]), "window_end": str(r[1]),
-         "vedha_kind": r[2], "graha": r[3],
-         "detail": r[4] if isinstance(r[4], dict) else {},
-         "classical_citation": r[5],
+        {"window_start": str(_cell(r, 0, "window_start")),
+         "window_end": str(_cell(r, 1, "window_end")),
+         "vedha_kind": _cell(r, 2, "vedha_kind"),
+         "graha": _cell(r, 3, "graha"),
+         "detail": (lambda d: d if isinstance(d, dict) else {})(_cell(r, 4, "detail")),
+         "classical_citation": _cell(r, 5, "classical_citation"),
          # rule identity (the writer's FORMULA_VERSION) — ASTRA v1.2 P1-2
-         "formula_version": r[6]}
+         "formula_version": _cell(r, 6, "formula_version")}
         for r in conn.execute(sql, (chart_id,)).fetchall()
     ]
 
@@ -1733,12 +1919,14 @@ def fetch_vedha_rows(conn, chart_id: str) -> list[dict]:
 def fetch_malefic_scale(conn) -> dict[int, str]:
     if not _table_exists(conn, "bg_vedha_malefic_scale"):
         return {}
-    return {int(r[0]): r[1] for r in conn.execute(
+    return {int(_cell(r, 0, "malefic_count")): _cell(r, 1, "effect_grade")
+            for r in conn.execute(
         "SELECT malefic_count, effect_grade FROM bg_vedha_malefic_scale").fetchall()}
 
 
 def _table_exists(conn, table: str) -> bool:
-    return conn.execute("SELECT to_regclass(%s)", (table,)).fetchone()[0] is not None
+    row = conn.execute("SELECT to_regclass(%s)", (table,)).fetchone()
+    return _cell(row, 0, "to_regclass") is not None
 
 
 # ── vedha interval gate (GOCHARA_DESIGN_SPECS_v1_4 §5; ASTRA P1-3) ───────────
@@ -1841,7 +2029,11 @@ def write_windows(conn, chart_id: str, generation: str,
 
     # parents (era) first, then month, then day — the insert order resolves
     # the documentary parent linkage (migration 567).
-    ordered = sorted(rows, key=lambda r: {"era": 0, "month": 1, "day": 2}[r["resolution"]])
+    # (within a tier a horizon-limited row is inserted FIRST, so if it collides with an ordinary row
+    # on the natural key the qualification — not the unqualified duplicate — is what survives)
+    ordered = sorted(rows, key=lambda r: (
+        {"era": 0, "month": 1, "day": 2}[r["resolution"]],
+        0 if r["peak_basis"] == PEAK_BASIS_HORIZON_LIMITED else 1))
     # Adjacent components can each retain a peak whose refine_peak_to_day
     # lands on the same calendar day (and, clipped to era bounds, the same
     # month), producing rows identical under uq_kala_gochara_windows_natural_key
@@ -1863,7 +2055,7 @@ def write_windows(conn, chart_id: str, generation: str,
                 f"INSERT INTO kala_gochara_windows ({', '.join(cols)})"
                 f" VALUES ({placeholders}) RETURNING id",
                 _values(row))
-            rid = cur.fetchone()[0]
+            rid = _cell(cur.fetchone(), 0, "id")
             id_by_key[row["window_key"]] = rid
             seen_natural[natural] = rid
     if skipped_dupes:
@@ -1990,6 +2182,14 @@ def build_delta_report(*, chart_id: str, generation: str, baseline: str,
 # ── main ─────────────────────────────────────────────────────────────────────
 
 
+class StaleOverlayError(Exception):
+    """§12.9 overlay-freshness refusal (exit 7 at the CLI)."""
+
+
+class MissingInputError(Exception):
+    """Cannot proceed: no candidate manifest/contacts/map rows (exit 3)."""
+
+
 def _rehearsal_class_context(event_class: str) -> dict:
     """Disclosed synthetic class context for rehearsal ONLY: a fixed
     permission-system set (recorded as rehearsal-synthetic on every row and
@@ -2004,6 +2204,244 @@ def _rehearsal_class_context(event_class: str) -> dict:
         "valence_unresolved_operands": [],
         "context_source": "REHEARSAL-SYNTHETIC (not chart data)",
     }
+
+
+def project_windows_core(conn, *, chart_id: str, generation: str,
+                         baseline_generation: str,
+                         horizon_jd: tuple[float, float],
+                         horizon_start: str, horizon_end: str,
+                         orb_deg: float, min_lambda: float,
+                         coarse_step_days: float,
+                         class_contexts: dict[str, dict],
+                         context_source: str,
+                         rehearse_synthetic: bool = False,
+                         build_id: str | None = None,
+                         row_validator=None) -> dict:
+    """The whole windows projection on a CALLER-SUPPLIED connection: §12.9 gate
+    → candidate-manifest check → contact/map/overlay reads → per-class
+    projection → write_windows (delete-then-insert scoped chart × generation)
+    → manifest windows count. NEVER commits/rolls back/closes `conn`, never
+    opens its own — the caller owns the transaction (the CLI main() commits
+    exactly as before; the governed writer's orchestrator owns its savepoint).
+
+    `class_contexts` maps event_class → the step06a context entry (empty dict
+    under rehearsal, which synthesizes one per class). `row_validator`, when
+    given, is called with the full projected row list immediately BEFORE
+    write_windows — a caller-side honesty gate (the governed writer uses it to
+    refuse any row outside its pinned horizon); raising aborts before any DML.
+
+    Raises StaleOverlayError (exit 7), MissingInputError (exit 3) and the
+    ledger's PublishedGenerationRefusal (exit 6) — the CLI maps them to the
+    same messages/codes as before. Returns {"report", "delta_report"}.
+    """
+    if build_id is None:
+        build_id = f"wp10-step6b-windows-{int(time.time())}"
+
+    # §12.9 gate — BEFORE reading anything for the build. Same refusal the
+    # enumerator and step06 apply; skipped (NOT_RUN) under rehearsal.
+    if rehearse_synthetic:
+        fingerprints = {"house_vedha": "NOT_RUN: --rehearse-synthetic",
+                        "moorti": "NOT_RUN: --rehearse-synthetic"}
+    else:
+        if str(SIDECAR) not in sys.path:
+            sys.path.insert(0, str(SIDECAR))
+        from services.ka_vedha_gochara.freshness import (
+            check_overlay_freshness, gate_allows_overlays)
+        reports = check_overlay_freshness(conn, chart_id)
+        fingerprints = {
+            "house_vedha": reports["house_vedha"].current,
+            "moorti": reports["moorti"].current,
+            "house_vedha_state": reports["house_vedha"].state,
+            "moorti_state": reports["moorti"].state,
+        }
+        if not gate_allows_overlays(reports):
+            detail = "; ".join(f"{n}: {r.summary()}" for n, r in reports.items())
+            raise StaleOverlayError(detail)
+
+    # Plan §4.7 discipline: a candidate manifest must exist; published
+    # refuses (exit 6), missing means step 6 has not run (exit 3).
+    try:
+        ledger._candidate_manifest_id(conn, chart_id, generation)
+    except ValueError as exc:
+        raise MissingInputError(
+            f"{exc} — run step06_candidate_build.py first") from exc
+
+    contacts = fetch_contacts(conn, chart_id, generation)
+    if not contacts:
+        raise MissingInputError(
+            f"no kala_gochara_contacts rows for chart "
+            f"{chart_id} generation {generation!r} — run "
+            "step06_candidate_build.py first")
+    map_rows = fetch_map_rows(conn, chart_id)
+    if not map_rows:
+        raise MissingInputError(
+            f"no resolved gochara_resonance_map rows for chart "
+            f"{chart_id} — run ka_gochara_resonance first")
+    vedha_rows = fetch_vedha_rows(conn, chart_id)
+    malefic_scale = fetch_malefic_scale(conn)
+    baseline_rows = [
+        {"event_class": _cell(r, 0, "event_class"),
+         "peak_date": _cell(r, 1, "peak_date"),
+         "raw_intensity": float(_cell(r, 2, "raw_intensity")),
+         "signed_intensity": float(_cell(r, 3, "signed_intensity"))}
+        for r in conn.execute(
+            "SELECT event_class, peak_date, raw_intensity, signed_intensity"
+            " FROM kala_gochara_windows WHERE chart_id = %s AND generation = %s",
+            (chart_id, baseline_generation)).fetchall()
+    ] if _table_exists(conn, "kala_gochara_windows") else []
+    window_columns = _table_columns(conn, "kala_gochara_windows")
+
+    # contact -> classes join (map UNIQUE(chart, class, type, ref) makes
+    # the per-class weight unambiguous)
+    weight_by_class: dict[str, dict[str, float]] = {}
+    weights_all_by_class: dict[str, list[float]] = {}
+    for m in map_rows:
+        weight_by_class.setdefault(m["event_class"], {})[m["target_ref"]] = m["weight"]
+        weights_all_by_class.setdefault(m["event_class"], []).append(m["weight"])
+    contacts_by_class: dict[str, list[dict]] = {}
+    unmapped = 0
+    unmapped_relation = 0
+    for c in contacts:
+        primitive = RELATION_TO_PRIMITIVE.get(c["relation"])
+        if primitive is None:
+            unmapped_relation += 1
+            continue
+        joined = False
+        for m in map_rows:
+            if (m["target_type"] == c["target_type"]
+                    and m["target_ref"] == c["target_ref"]):
+                c2 = dict(c, _primitive=primitive)
+                contacts_by_class.setdefault(m["event_class"], []).append(c2)
+                joined = True
+        if not joined:
+            unmapped += 1
+
+    # §5 interval gate (ASTRA P1-3). bg_vedha_malefic_scale is read only
+    # for the run report — D-PG353: it is not a general grade source and
+    # no longer feeds scoring.
+    gate_for_date = make_vedha_gate(vedha_rows)
+    all_rows: list[dict] = []
+    class_reports: list[dict] = []
+    skipped_classes: list[dict] = []
+    for cls in sorted(weights_all_by_class):
+        cls_contacts = contacts_by_class.get(cls, [])
+        if not cls_contacts:
+            continue  # a class with no contacts honestly yields zero windows
+        ctx_dict = (class_contexts.get(cls) if class_contexts
+                    else _rehearsal_class_context(cls))
+        if ctx_dict is None:
+            skipped_classes.append({
+                "event_class": cls,
+                "reason": "no class context (permission systems) — honest "
+                          "skip, never a 0.0 stand-in (plan §4.6)",
+                "contacts_matched": len(cls_contacts),
+            })
+            continue
+        # T0-6 / ASTRA P1-2: the frozen C5 per-instant permission is
+        # INSTALLED here (build_projection_class_context) whenever the
+        # document carries _dasha_periods + _chart; None ⇒ the class's
+        # targets did not resolve ⇒ honest skip.
+        class_ctx = build_projection_class_context(
+            conn, chart_id, cls, ctx_dict,
+            class_contexts if class_contexts else None,
+            weights=weights_all_by_class[cls],
+            weight_by_target_ref=weight_by_class[cls],
+            context_source=context_source)
+        if class_ctx is None:
+            skipped_classes.append({
+                "event_class": cls,
+                "reason": "targets did not resolve for the per-instant "
+                          "permission (fetch_resonance_targets/"
+                          "enrich_targets empty) — honest skip",
+                "contacts_matched": len(cls_contacts),
+            })
+            continue
+        rows, rep = project_class_windows(
+            class_ctx, cls_contacts, horizon_jd, gate_for_date,
+            min_lambda=min_lambda,
+            coarse_step_days=coarse_step_days)
+        if rows:
+            gates_mean = sum(
+                r["suppression_state"]["quality_gates"] for r in rows
+                if r["resolution"] == "era") / max(1, sum(
+                    1 for r in rows if r["resolution"] == "era"))
+            rep["mean_quality_gates"] = gates_mean
+        all_rows.extend(rows)
+        class_reports.append(rep)
+
+    # Caller-side honesty gate (the governed writer's horizon refusal) —
+    # BEFORE any DML.
+    if row_validator is not None:
+        row_validator(all_rows)
+
+    source = SOURCE_REHEARSAL if rehearse_synthetic else SOURCE_LIVE
+    n_written, skipped_dupes = write_windows(
+        conn, chart_id, generation,
+        all_rows, source=source, window_columns=window_columns)
+    update_manifest_windows_count(conn, chart_id, generation, n_written)
+
+    flags = {**CANDIDATE_FLAGS, "orb_max_deg": orb_deg,
+             "min_lambda": min_lambda,
+             "coarse_step_days": coarse_step_days}
+    run_meta = {
+        "build_id": build_id,
+        "generated_at": datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "horizon": f"[{horizon_start},{horizon_end})",
+        "class_context_source": context_source,
+    }
+    delta_report = build_delta_report(
+        chart_id=chart_id, generation=generation,
+        baseline=baseline_generation, class_reports=class_reports,
+        window_rows=all_rows, baseline_rows=baseline_rows, flags=flags,
+        fingerprints=fingerprints, run_meta=run_meta)
+    report = {
+        "writer": "step06b_windows_projection",
+        "chart_id": chart_id, "generation": generation,
+        "build_id": build_id,
+        "source": source,
+        "flags": flags,
+        "upstream_fingerprints": fingerprints,
+        "contacts_read": len(contacts),
+        "vedha_overlay": {
+            "rows_read": len(vedha_rows),
+            "t0_8_rows": parse_vedha_overlay_rows(vedha_rows)["rows_total"]
+            - parse_vedha_overlay_rows(vedha_rows)["legacy_rows"],
+            "legacy_shape_rows_ignored": parse_vedha_overlay_rows(vedha_rows)["legacy_rows"],
+            "malefic_scale_rows": len(malefic_scale),
+            "malefic_scale_role": "report only — D-PG353 (no generalised PG353 attenuation)",
+        },
+        "contacts_unmapped_no_class": unmapped,
+        "contacts_unmapped_relation": unmapped_relation,
+        "classes_projected": len(class_reports),
+        "skipped_classes": skipped_classes,
+        "windows_written": n_written,
+        "windows_collapsed_dupes": skipped_dupes,
+        "windows_by_tier": {
+            tier: sum(1 for r in all_rows if r["resolution"] == tier)
+            for tier in ("era", "month", "day")},
+        # ASTRA v1.3 amendment 1: the stand-in disclosure, aggregated for the governed writer's
+        # notes/log (the per-row qualification itself is persisted on each affected row).
+        "horizon_limited": {
+            "rows_projected": sum(1 for r in all_rows if r["peak_basis"] == PEAK_BASIS_HORIZON_LIMITED),
+            "rows_basis": "pre-dedupe projection count, like windows_by_tier",
+            "final_edge_components": sum(r.get("final_edge_components", 0) for r in class_reports),
+            "peaks_clamped_to_horizon_limit": sum(
+                r.get("peaks_clamped_to_horizon_limit", 0) for r in class_reports),
+            "event_classes": sorted({
+                r["event_class"] for r in all_rows if r["peak_basis"] == PEAK_BASIS_HORIZON_LIMITED}),
+            "peak_basis": PEAK_BASIS_HORIZON_LIMITED,
+        },
+        "windows_by_tier_basis": "pre-dedupe projection counts; "
+            "windows_written is post-dedupe, so "
+            "sum(windows_by_tier) = windows_written + windows_collapsed_dupes",
+        "class_reports": class_reports,
+        "baseline_generation": baseline_generation,
+        "baseline_windows_read": len(baseline_rows),
+        "peak_retention": "H-5: count cap removed (all admitted peaks "
+                          "stored); N5: 90-day separation trim is serve-time "
+                          "(resolution_hierarchy.py), not applied at write",
+    }
+    return {"report": report, "delta_report": delta_report}
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -2054,164 +2492,29 @@ def main(argv: list[str] | None = None) -> int:
         context_source = "--class-context-json"
 
     conn = connect(resolve_dsn(args), step=6, autocommit=False)
-    build_id = f"wp10-step6b-windows-{int(time.time())}"
-    fingerprints = None
     try:
-        # §12.9 gate — BEFORE reading anything for the build. Same refusal the
-        # enumerator and step06 apply; skipped (NOT_RUN) under rehearsal.
-        if args.rehearse_synthetic:
-            fingerprints = {"house_vedha": "NOT_RUN: --rehearse-synthetic",
-                            "moorti": "NOT_RUN: --rehearse-synthetic"}
-        else:
-            if str(SIDECAR) not in sys.path:
-                sys.path.insert(0, str(SIDECAR))
-            from services.ka_vedha_gochara.freshness import (
-                check_overlay_freshness, gate_allows_overlays)
-            reports = check_overlay_freshness(conn, args.chart_id)
-            conn.rollback()  # the checks only read
-            fingerprints = {
-                "house_vedha": reports["house_vedha"].current,
-                "moorti": reports["moorti"].current,
-                "house_vedha_state": reports["house_vedha"].state,
-                "moorti_state": reports["moorti"].state,
-            }
-            if not gate_allows_overlays(reports):
-                detail = "; ".join(f"{n}: {r.summary()}" for n, r in reports.items())
-                print(f"REFUSED (§12.9): {detail}. A windows projection must not "
-                      "be built on stale overlay rows — rebuild ka_vedha_gochara "
-                      "and ka_moorti_nirnaya first.", file=sys.stderr)
-                conn.close()
-                return 7
-
-        # Plan §4.7 discipline: a candidate manifest must exist; published
-        # refuses (exit 6), missing means step 6 has not run (exit 3).
-        try:
-            ledger._candidate_manifest_id(conn, args.chart_id, args.generation)
-        except ledger.PublishedGenerationRefusal as exc:
-            conn.rollback()
-            print(f"REFUSED: {exc}", file=sys.stderr)
-            conn.close()
-            return 6
-        except ValueError as exc:
-            conn.rollback()
-            print(f"ERROR: {exc} — run step06_candidate_build.py first",
-                  file=sys.stderr)
-            conn.close()
-            return 3
-
-        contacts = fetch_contacts(conn, args.chart_id, args.generation)
-        if not contacts:
-            conn.rollback()
-            print(f"ERROR: no kala_gochara_contacts rows for chart "
-                  f"{args.chart_id} generation {args.generation!r} — run "
-                  "step06_candidate_build.py first", file=sys.stderr)
-            conn.close()
-            return 3
-        map_rows = fetch_map_rows(conn, args.chart_id)
-        if not map_rows:
-            conn.rollback()
-            print(f"ERROR: no resolved gochara_resonance_map rows for chart "
-                  f"{args.chart_id} — run ka_gochara_resonance first",
-                  file=sys.stderr)
-            conn.close()
-            return 3
-        vedha_rows = fetch_vedha_rows(conn, args.chart_id)
-        malefic_scale = fetch_malefic_scale(conn)
-        baseline_rows = [
-            {"event_class": r[0], "peak_date": r[1], "raw_intensity": float(r[2]),
-             "signed_intensity": float(r[3])}
-            for r in conn.execute(
-                "SELECT event_class, peak_date, raw_intensity, signed_intensity"
-                " FROM kala_gochara_windows WHERE chart_id = %s AND generation = %s",
-                (args.chart_id, args.baseline_generation)).fetchall()
-        ] if _table_exists(conn, "kala_gochara_windows") else []
-        window_columns = _table_columns(conn, "kala_gochara_windows")
-
-        # contact -> classes join (map UNIQUE(chart, class, type, ref) makes
-        # the per-class weight unambiguous)
-        weight_by_class: dict[str, dict[str, float]] = {}
-        weights_all_by_class: dict[str, list[float]] = {}
-        for m in map_rows:
-            weight_by_class.setdefault(m["event_class"], {})[m["target_ref"]] = m["weight"]
-            weights_all_by_class.setdefault(m["event_class"], []).append(m["weight"])
-        contacts_by_class: dict[str, list[dict]] = {}
-        unmapped = 0
-        unmapped_relation = 0
-        for c in contacts:
-            primitive = RELATION_TO_PRIMITIVE.get(c["relation"])
-            if primitive is None:
-                unmapped_relation += 1
-                continue
-            joined = False
-            for m in map_rows:
-                if (m["target_type"] == c["target_type"]
-                        and m["target_ref"] == c["target_ref"]):
-                    c2 = dict(c, _primitive=primitive)
-                    contacts_by_class.setdefault(m["event_class"], []).append(c2)
-                    joined = True
-            if not joined:
-                unmapped += 1
-
-        # §5 interval gate (ASTRA P1-3). bg_vedha_malefic_scale is read only
-        # for the run report — D-PG353: it is not a general grade source and
-        # no longer feeds scoring.
-        gate_for_date = make_vedha_gate(vedha_rows)
-        all_rows: list[dict] = []
-        class_reports: list[dict] = []
-        skipped_classes: list[dict] = []
-        for cls in sorted(weights_all_by_class):
-            cls_contacts = contacts_by_class.get(cls, [])
-            if not cls_contacts:
-                continue  # a class with no contacts honestly yields zero windows
-            ctx_dict = (class_contexts.get(cls) if class_contexts
-                        else _rehearsal_class_context(cls))
-            if ctx_dict is None:
-                skipped_classes.append({
-                    "event_class": cls,
-                    "reason": "no class context (permission systems) — honest "
-                              "skip, never a 0.0 stand-in (plan §4.6)",
-                    "contacts_matched": len(cls_contacts),
-                })
-                continue
-            # T0-6 / ASTRA P1-2: the frozen C5 per-instant permission is
-            # INSTALLED here (build_projection_class_context) whenever the
-            # document carries _dasha_periods + _chart; None ⇒ the class's
-            # targets did not resolve ⇒ honest skip.
-            class_ctx = build_projection_class_context(
-                conn, args.chart_id, cls, ctx_dict,
-                class_contexts if class_contexts else None,
-                weights=weights_all_by_class[cls],
-                weight_by_target_ref=weight_by_class[cls],
-                context_source=context_source)
-            if class_ctx is None:
-                skipped_classes.append({
-                    "event_class": cls,
-                    "reason": "targets did not resolve for the per-instant "
-                              "permission (fetch_resonance_targets/"
-                              "enrich_targets empty) — honest skip",
-                    "contacts_matched": len(cls_contacts),
-                })
-                continue
-            rows, rep = project_class_windows(
-                class_ctx, cls_contacts, horizon_jd, gate_for_date,
-                min_lambda=args.min_lambda,
-                coarse_step_days=args.coarse_step_days)
-            if rows:
-                gates_mean = sum(
-                    r["suppression_state"]["quality_gates"] for r in rows
-                    if r["resolution"] == "era") / max(1, sum(
-                        1 for r in rows if r["resolution"] == "era"))
-                rep["mean_quality_gates"] = gates_mean
-            all_rows.extend(rows)
-            class_reports.append(rep)
-
-        source = SOURCE_REHEARSAL if args.rehearse_synthetic else SOURCE_LIVE
-        n_written, skipped_dupes = write_windows(
-            conn, args.chart_id, args.generation,
-            all_rows, source=source, window_columns=window_columns)
-        update_manifest_windows_count(conn, args.chart_id, args.generation,
-                                      n_written)
+        out = project_windows_core(
+            conn, chart_id=args.chart_id, generation=args.generation,
+            baseline_generation=args.baseline_generation,
+            horizon_jd=horizon_jd,
+            horizon_start=args.horizon_start, horizon_end=args.horizon_end,
+            orb_deg=args.orb_deg, min_lambda=args.min_lambda,
+            coarse_step_days=args.coarse_step_days,
+            class_contexts=class_contexts, context_source=context_source,
+            rehearse_synthetic=args.rehearse_synthetic)
         conn.commit()
+    except StaleOverlayError as exc:
+        conn.rollback()
+        print(f"REFUSED (§12.9): {exc}. A windows projection must not "
+              "be built on stale overlay rows — rebuild ka_vedha_gochara "
+              "and ka_moorti_nirnaya first.", file=sys.stderr)
+        conn.close()
+        return 7
+    except MissingInputError as exc:
+        conn.rollback()
+        print(f"ERROR: {exc}", file=sys.stderr)
+        conn.close()
+        return 3
     except ledger.PublishedGenerationRefusal as exc:
         conn.rollback()
         print(f"REFUSED: {exc}", file=sys.stderr)
@@ -2227,23 +2530,13 @@ def main(argv: list[str] | None = None) -> int:
         except Exception:  # noqa: BLE001
             pass
 
-    flags = {**CANDIDATE_FLAGS, "orb_max_deg": args.orb_deg,
-             "min_lambda": args.min_lambda,
-             "coarse_step_days": args.coarse_step_days}
-    run_meta = {
-        "build_id": build_id,
-        "generated_at": datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ"),
-        "horizon": f"[{args.horizon_start},{args.horizon_end})",
-        "class_context_source": context_source,
-    }
-    delta_report = build_delta_report(
-        chart_id=args.chart_id, generation=args.generation,
-        baseline=args.baseline_generation, class_reports=class_reports,
-        window_rows=all_rows, baseline_rows=baseline_rows, flags=flags,
-        fingerprints=fingerprints, run_meta=run_meta)
+    report = out["report"]
+    report["delta_report_out"] = args.delta_report_out
     if args.delta_report_out:
-        Path(args.delta_report_out).write_text(delta_report)
+        Path(args.delta_report_out).write_text(out["delta_report"])
 
+    unmapped = report["contacts_unmapped_no_class"]
+    unmapped_relation = report["contacts_unmapped_relation"]
     if unmapped or unmapped_relation:
         print(f"WARNING: contacts excluded from the activity function — "
               f"contacts_unmapped_relation={unmapped_relation} (relation not in "
@@ -2251,42 +2544,6 @@ def main(argv: list[str] | None = None) -> int:
               f"(no resolved gochara_resonance_map row). A non-zero count is a "
               f"reviewable finding — disclose it in the step evidence, never "
               f"leave it silent.", file=sys.stderr)
-    report = {
-        "writer": "step06b_windows_projection",
-        "chart_id": args.chart_id, "generation": args.generation,
-        "build_id": build_id,
-        "source": source,
-        "flags": flags,
-        "upstream_fingerprints": fingerprints,
-        "contacts_read": len(contacts),
-        "vedha_overlay": {
-            "rows_read": len(vedha_rows),
-            "t0_8_rows": parse_vedha_overlay_rows(vedha_rows)["rows_total"]
-            - parse_vedha_overlay_rows(vedha_rows)["legacy_rows"],
-            "legacy_shape_rows_ignored": parse_vedha_overlay_rows(vedha_rows)["legacy_rows"],
-            "malefic_scale_rows": len(malefic_scale),
-            "malefic_scale_role": "report only — D-PG353 (no generalised PG353 attenuation)",
-        },
-        "contacts_unmapped_no_class": unmapped,
-        "contacts_unmapped_relation": unmapped_relation,
-        "classes_projected": len(class_reports),
-        "skipped_classes": skipped_classes,
-        "windows_written": n_written,
-        "windows_collapsed_dupes": skipped_dupes,
-        "windows_by_tier": {
-            tier: sum(1 for r in all_rows if r["resolution"] == tier)
-            for tier in ("era", "month", "day")},
-        "windows_by_tier_basis": "pre-dedupe projection counts; "
-            "windows_written is post-dedupe, so "
-            "sum(windows_by_tier) = windows_written + windows_collapsed_dupes",
-        "class_reports": class_reports,
-        "baseline_generation": args.baseline_generation,
-        "baseline_windows_read": len(baseline_rows),
-        "delta_report_out": args.delta_report_out,
-        "peak_retention": "H-5: count cap removed (all admitted peaks "
-                          "stored); N5: 90-day separation trim is serve-time "
-                          "(resolution_hierarchy.py), not applied at write",
-    }
     print(json.dumps(report, indent=2, default=str))
     if args.evidence:
         write_evidence(6, "WINDOWS-PROJECTION",
