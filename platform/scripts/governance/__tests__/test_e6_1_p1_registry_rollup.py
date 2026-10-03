@@ -80,6 +80,9 @@ PINNED_FINGERPRINTS = {
     # 24 (C2(ii), SS N-98; provisional; 23 is the Dens tier PR #3037, 17-22 belong to other lanes; the fingerprint carries both Dens.served rev 6 and Ldgr.source_presence rev 4): Ldgr.source_presence revision 4 (applicability text states the rule): the legacy undeclared
     # reading no longer counts a placeholder citation ('UNSOURCED ...', a tradition label, the closed no-source list) as a source; NA_CAUSES / NA_RULE_DECISIONS unchanged, asset_declarations.json untouched
     24: "11c95b0287421194cab6a609d3ac6dc7905a63f236ba139f3a9db41945d60640",
+    # 25 (N-99; provisional; stacked on pin 24 (C2 Ldgr) and pin 23 (DENS-TIER-GUARD)): Build.completion revision 3 (applicability text): count equality alone no longer reads PASS when the asset declares an
+    # integrity_check_sql that does not hold (false / refused / oversize / errored / timed out reads PARTIAL naming which; permission denied under the census role reads NO_DETECTOR); an undeclared asset is unchanged; NA_CAUSES / NA_RULE_DECISIONS unchanged
+    25: "0e78e228d140d04920cb12bcd8b5bd9c8b33ca59ac8f9105853a139b8289d698",
 }
 
 
