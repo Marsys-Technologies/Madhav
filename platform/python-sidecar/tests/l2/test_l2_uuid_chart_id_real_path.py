@@ -49,6 +49,7 @@ _CONTRACT_SQL = (
     "open_l2_data_plane_generation",
     "bind_l2_exact_inputs",
     "complete_l2_data_plane_partition",
+    "SET LOCAL search_path",  # the wrapper's post-completion name-resolution reset (integrity-vs-shadows fix)
 )
 
 
