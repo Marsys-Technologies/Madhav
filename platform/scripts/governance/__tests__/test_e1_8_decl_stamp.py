@@ -87,7 +87,7 @@ def test_the_stamp_does_not_move_the_registry_fingerprint_or_revision(monkeypatc
     p.write_bytes(REAL.read_bytes() + b" ")
     monkeypatch.setattr(ac, "DECLARATIONS_PATH", p)
     assert ac.census_stamp()["declarations_sha256"] != sha(REAL.read_bytes())
-    assert (ac.REGISTRY_REVISION, ac.registry_fingerprint()) == before == (16, before[1])
+    assert (ac.REGISTRY_REVISION, ac.registry_fingerprint()) == before == (23, before[1])
 
 
 # ───────────────────────── never a guess ─────────────────────────

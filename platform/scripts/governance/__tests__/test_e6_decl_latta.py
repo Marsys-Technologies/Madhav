@@ -87,7 +87,7 @@ def _refused(mutate, match):
 # ───────────────────────── Part 1: the committed entry ─────────────────────────
 
 def test_the_committed_file_is_1_10_0_and_the_validator_accepts_this_entry():
-    assert DECL["version"] == "1.12.0" and "bg_phaladeepika_latta" in DECL["description"].split("Version 1.10.0", 1)[1]      # 1.11.0 DECL-LATTA-NULL, 1.12.0 NARR-GUARD
+    assert DECL["version"] == "1.13.0" and "bg_phaladeepika_latta" in DECL["description"].split("Version 1.10.0", 1)[1]      # 1.11.0 DECL-LATTA-NULL, 1.12.0 NARR-GUARD
     ac.validate_declarations(DECL)
     assert ac.load_asset_declarations()[AID]["carriage"]["applies"] == "D1"
 
