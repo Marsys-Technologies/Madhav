@@ -60,6 +60,9 @@ def _assets():
             for L, assets in FIXTURE["layers"].items() for a, ms in assets.items()]
 
 
+NARR_GUARD_CLAUSE = ("; an asset that declares prose_fields [] WITH a prose_coupling to carriage_d1 (NARR-GUARD, pin 16, N-94) reads N/A only while its own Carr.D1 reads PASS, else NO_DETECTOR")
+
+
 def _restore_pre_retirement(monkeypatch):
     """Rebuild the revision-7 inspector around the real rollup code: the criterion back in the registry, nothing retired."""
     reg = dict(ac.CRITERION_REGISTRY)
@@ -68,10 +71,22 @@ def _restore_pre_retirement(monkeypatch):
                           applicability="the asset restates a value from a cited source (source correspondence)")
     monkeypatch.setattr(ac, "CRITERION_REGISTRY", reg)
     monkeypatch.setattr(ac, "RETIRED_CRITERIA", {}, raising=False)
-    reg["Narr.agree"] = dict(reg["Narr.agree"], applicability=NARR_AGREE_REV7)    # its text said "undecided" until revision 9
+    reg["Narr.agree"] = dict(reg["Narr.agree"], revision=1, applicability=NARR_AGREE_REV7)    # its text said "undecided" until revision 9; revision 16 (NARR-GUARD) re-worded and bumped all four Narr checks
+    for crit in ("Narr.checkable", "Narr.fidelity_test", "Narr.lint"):
+        reg[crit] = dict(reg[crit], revision=1, applicability=reg[crit]["applicability"].replace(NARR_GUARD_CLAUSE, ""))
     reg["Vocab.alias"] = dict(reg["Vocab.alias"], revision=1, applicability="the table declares an alias-bearing class census")     # revision 12 (S3) re-worded and bumped both
     reg["Ldgr.source_presence"] = dict(reg["Ldgr.source_presence"], revision=2,
                                        applicability="the target table carries a recognised citation column (R60: singular classical_citation included)")
+    for crit in ("Null.schema_default", "Null.blank_rows"):       # revision 13 (S1) re-worded and bumped both
+        was = "schema_default" if crit.endswith("default") else "blank_rows"
+        reg[crit] = dict(reg[crit], revision=1, applicability=("prose_fields declared non-empty; a non-NULL DEFAULT on a declared prose column; never PASS alone"
+                                                               if was == "schema_default" else
+                                                               "prose_fields declared non-empty; blank or placeholder rows standing in for NULL; never PASS alone"))
+    reg["Dens.served"] = dict(reg["Dens.served"], revision=4,                      # revision 14 (N-74(a)) re-worded and bumped it
+                              applicability="reaches a served capability module; PASS (structural) needs ONE capability entry (the object literal that declares density_contract) "
+                                            "whose own served read of the asset's table selects a tier column; a sibling entry, a sub-select, an INSERT...SELECT or a UNION "
+                                            "branch does not count")
+    reg["Build.completion"] = dict(reg["Build.completion"], revision=2, applicability="a count_sql or view target exists")     # revision 25 (N-99) re-worded and bumped it
     causes = dict(ac.NA_CAUSES)
     causes.pop("Earn.service_state", None)                 # revision 10 added `not-a-service`; revision 7 had no cause there
     causes.pop("Vocab.alias", None)                        # revision 12 (S3) added the two declaration-keyed causes

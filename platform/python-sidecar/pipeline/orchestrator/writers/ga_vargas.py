@@ -30,11 +30,19 @@ class GaVargasWriter(WriterBase):
         from ga_writers.ga_vargas_writer import build_ga_vargas
 
         s = build_ga_vargas(
-            chart_id=ctx.config['chart_id'],
+            # uuid.UUID from the real orchestrator (psycopg uuid decode); the writer's FORENSIC gate compares
+            # chart_id to a str constant, so convert at the boundary.
+            chart_id=str(ctx.config['chart_id']),
             build_id=ctx.build_id,
             conn=ctx.db_conn,
             birth_params=ctx.config.get('birth_params'),
             ayanamsha_subset=[step.key],
         )
+        if s.get('status') == 'FORENSIC_FAIL':
+            # build_ga_vargas reports a failed native-anchored gate as a returned summary (status FORENSIC_FAIL), not a
+            # raise: without this the orchestrator would record the sub-step as built with 0 rows (the gate "ran" but
+            # could never fail the run). Raise so the savepoint rolls back and the asset errors.
+            raise RuntimeError(
+                f"ga_vargas FORENSIC gate FAILED for ayanamsha {step.key}: {s.get('forensic_results', {}).get(step.key)}")
         return WriterResult(asset_id=self.asset_id,
                             rows_inserted=int(s.get('total_rows_written', 0)))

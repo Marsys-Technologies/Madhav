@@ -16,7 +16,7 @@ describe('private AI CLI bridge contract', () => {
     expect(bridge).toContain("path: join(HOME, '.local/bin/codex')")
     expect(bridge).toContain("path: join(HOME, '.local/bin/claude')")
     expect(bridge).toContain("path: join(HOME, '.local/bin/agy')")
-    expect(bridge).toContain("versions: ['1.2.12', '1.2.13']")
+    expect(bridge).toContain("versions: ['1.2.12', '1.2.13', '1.2.15']")
     expect(bridge).toContain('definition.versions.includes(payload.version)')
     expect(bridge).toContain("path: join(HOME, '.kimi-code/bin/kimi')")
     expect(bridge).not.toMatch(/raw\.(?:args|command|executable)/)
@@ -40,7 +40,7 @@ describe('private AI CLI bridge contract', () => {
   })
 
   it('smoke-tests every supported Antigravity version and confirms the detected one', () => {
-    expect(smoke).toContain("versions: ['1.2.12', '1.2.13']")
+    expect(smoke).toContain("versions: ['1.2.12', '1.2.13', '1.2.15']")
     expect(smoke).toContain('version: acceptedVersion')
   })
 

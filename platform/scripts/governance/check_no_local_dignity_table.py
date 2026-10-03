@@ -5,7 +5,7 @@ EKAVĀKYATĀ guard (F-62; B-01 class). Permanent CI enforcement that no file out
 the canonical dignity oracle defines its own dignity classification logic. The broken
 instances:
 
-  - ga_structural_writer.py:4872-4884  — 4-way if/elif (exalted/debilitated/own/neutral)
+  - ga_structural_writer.py:4891-4903  — 4-way if/elif (exalted/debilitated/own/neutral)
   - ga_vargas_writer.py::_compute_dignity  — file-local DIGNITY_TABLE dict
 
 The canonical oracle: brahmagyan/dignity_oracle.py (B-01 output). This lint ensures

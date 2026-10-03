@@ -56,6 +56,33 @@ PINNED_FINGERPRINTS = {
     # bg_ontology class planet; a declared source column with its citation_state), NA_CAUSES gains Vocab.alias:no-alias-class and
     # Ldgr.source_presence:no-classical-claim, and the two declaration-keyed rules are declared (inert until an asset declares); columns_any unchanged
     12: "35b0e03e412d0d36d8af2840bd3d4d612af2859e56035c90342266c98e33ed3d",
+    # 13 (SS N-72 S1, N-73, N-74; provisional): Null.schema_default / Null.blank_rows rev 2 (an asset that DECLARES `null_convention` gets the declared form:
+    # the Null cap lifts per asset only when schema_default and blank_rows are clean AND the detector verifies the convention; the cap line itself is unchanged);
+    # no N/A rule, NA_CAUSES unchanged, inert until an asset declares one
+    13: "fdee1861e969d88dc1139cbd0ff040d7b217710db3684313e00277c8150a85f1",
+    # 14 (SS N-74 item 5, N-74(a); provisional): Dens.served rev 5 (the scan tells a SELECT of the asset's table from a LABEL: an asset a serving module only
+    # names in a provenance string / prose / type name / import path / label-keyed value / map key is not reached, so it can read the no-served-surface N/A;
+    # every unclassifiable form stays a reach) and R02's decision text is cause-keyed ("an asset no served module selects rows from; being named only as a
+    # provenance label is not a select"; N/A = "not served directly", not "unused"); a service-kind asset named in a service_probe envelope is a REACH, not a label
+    # (bg_ephemeris_engine / bg_panchanga stay NO_DETECTOR); NA_CAUSES unchanged, asset_declarations.json unchanged
+    14: "f4af0c6c1e24fd25e41409f8f33ffeac8333411df2936bc9270d438ca20bc0f2",
+    # 15 (STAMP; provisional): `null_convention.stamp_columns: [{column, why}]`, a declared word for a write-time stamp column: the detector requires a NOT NULL timestamp /
+    # timestamptz with no NULL row and no sentinel timestamp and exempts it from the constant test ONLY (nothing else exempted); Null.schema_default / Null.blank_rows revision 3 (applicability text);
+    # NA_CAUSES / NA_RULE_DECISIONS unchanged, inert until an asset declares one
+    15: "ef64d8b9b8ec924d724a13e249e7e6a5f049beeb2d51932c10fb0be557985345",
+    # 16 (NARR-GUARD, N-94; provisional): `prose_coupling: {to: carriage_d1, columns, why, evidence}`, a declared word beside prose_fields []: the four Narr N/A releases of an asset that declares it stand
+    # only while its own Carr.D1 reads PASS (else NO_DETECTOR); Narr.agree / checkable / fidelity_test / lint revision 2 (applicability text); NA_CAUSES / NA_RULE_DECISIONS unchanged, inert until declared
+    16: "8b88e7b26f32fdf8f665533b96357c8c332fb142a7166a6468a0f64ec51cb97c",
+    # 23 (DENS-TIER-GUARD, N-98; provisional; pin 23 is pre-allocated, pins 17-22 belong to other lanes): the Dens tier vocabulary is a CLOSED list: a column counts as a tier only when it is exactly `tier` /
+    # `verification_pass_status`, or the asset declares it in density_tier_columns, and never when its name carries a deny-listed word (cost, price, pricing, plan, access, subscription, billing, fee, tariff);
+    # Dens.served revision 6 (applicability text); NA_CAUSES / NA_RULE_DECISIONS unchanged, inert until an asset declares density_tier_columns
+    23: "9a2b66cb84afcdf018a6ae0cde084756b42795d9e73b000c6526842bcaa855d4",
+    # 24 (C2(ii), SS N-98; provisional; 23 is the Dens tier PR #3037, 17-22 belong to other lanes; the fingerprint carries both Dens.served rev 6 and Ldgr.source_presence rev 4): Ldgr.source_presence revision 4 (applicability text states the rule): the legacy undeclared
+    # reading no longer counts a placeholder citation ('UNSOURCED ...', a tradition label, the closed no-source list) as a source; NA_CAUSES / NA_RULE_DECISIONS unchanged, asset_declarations.json untouched
+    24: "11c95b0287421194cab6a609d3ac6dc7905a63f236ba139f3a9db41945d60640",
+    # 25 (N-99; provisional; stacked on pin 24 (C2 Ldgr) and pin 23 (DENS-TIER-GUARD)): Build.completion revision 3 (applicability text): count equality alone no longer reads PASS when the asset declares an
+    # integrity_check_sql that does not hold (false / refused / oversize / errored / timed out reads PARTIAL naming which; permission denied under the census role reads NO_DETECTOR); an undeclared asset is unchanged; NA_CAUSES / NA_RULE_DECISIONS unchanged
+    25: "0e78e228d140d04920cb12bcd8b5bd9c8b33ca59ac8f9105853a139b8289d698",
 }
 
 
@@ -137,16 +164,19 @@ def test_measure_selects_the_first_of_citation_columns_when_a_table_has_two(monk
 
     def fake_psql(sql, sep="\x1f", timeout=None):
         seen.append(sql)
-        if "count(*)::text FROM bg_two WHERE" in sql:
-            return [["48"]]
+        if "format_type(a.atttypid" in sql:
+            return [["text"]]
+        if "jsonb_build_object('rows'" in sql and '"bg_two"' in sql:
+            return [['{"rows":48,"null":0,"placeholder":0}']]
         raise AssertionError(f"unexpected query: {sql[:100]}")
 
     monkeypatch.setattr(ac, "psql", fake_psql)
     census = ac.measure("L0")
     res = next(a for a in census["assets"] if a["asset_id"] == "bg_two")["measurements"]["Ldgr.source_presence"]
     assert res == dict(v=ac.PASS, measured=f"{first} populated on 48/48 rows")
-    cit_sql = [q for q in seen if "IS NOT NULL" in q]
-    assert cit_sql == [f"SELECT count(*)::text FROM bg_two WHERE {first} IS NOT NULL"]
+    cit_sql = [q for q in seen if "jsonb_build_object('rows'" in q]
+    assert cit_sql == [ac.ldgr_legacy_count_sql("bg_two", first, "text")]       # C2(ii): exactly one read, of the FIRST column of the table (the SQL builder is the one definition)
+    assert f'"{first}"::text AS v' in cit_sql[0] and f'"{later}"' not in cit_sql[0]
 
 
 # ───────────────────────── applicability ─────────────────────────

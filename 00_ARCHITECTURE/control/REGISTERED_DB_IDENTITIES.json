@@ -1,0 +1,17 @@
+{
+ "schema": "nikasha_registered_db_identities/1",
+ "_doc": "Registered cluster identities (E1.7(b), SS N-119): the non-secret identity stamped into every census head as `db_identity` (database name + domain-tagged sha256 of pg_control_system().system_identifier; no connection details or credentials of any kind). WHAT IT PROVES: the census was read from a cluster with this system identifier, i.e. the same physical cluster LINEAGE: a physical replica or physical restore of production keeps the same identifier, so a census read from a read replica would also match; a logically cloned or re-initialised cluster has a different identity and needs its own entry. It does not prove the live primary. Registration evidence is TWO independent reads of one value by two sessions through their approved read-only reader helpers (both used the role suvarna_reader against the same target: they attest the value, not that the target is production; that is the operators' recorded decision). Append-only by convention.",
+ "entries": [
+  {
+   "role": "production",
+   "database": "amjis",
+   "system_id_sha256": "dc44e6454be49742e4317b414a460f2f760c8470e6c05a7586e2eea8d23c1731",
+   "hash_definition": "sha256('nikasha-db-identity/1:' + system_identifier) as lowercase hex",
+   "decision": "SS N-119 / E1.7(b)",
+   "evidence": [
+    "read 1: Exec Suvarna Engine, role suvarna_reader (read-only), census helper asset_census._db_identity() (PR #3088), 2026-10-03: database=amjis, hash=dc44e645...1731",
+    "read 2: Exec Suvarna (madhav-bb), role suvarna_reader via its approved reader helper S_L1/rq.sh, two separate SELECTs, raw identifier hashed in-process and never printed, 2026-10-03: database=amjis, hash=dc44e645...1731 (MATCH)"
+   ]
+  }
+ ]
+}

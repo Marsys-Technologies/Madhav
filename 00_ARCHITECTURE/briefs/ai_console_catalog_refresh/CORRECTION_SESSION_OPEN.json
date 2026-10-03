@@ -1,0 +1,82 @@
+{
+  "session_open": {
+    "session_id": "AI-CONSOLE-CATALOG-CORRECTION-20261003",
+    "cowork_thread_name": "Madhav — AI Console catalogue release correction",
+    "agent_name": "Codex",
+    "agent_version": "model identifier not exposed",
+    "tool": "Codex",
+    "tool_profile": "madhav-parity",
+    "worktree_path": "/Users/Dev/.codex/worktrees/ai-console-cli-role-effort/Madhav",
+    "step_number_or_layer": "Scoped correction and requalification after production acceptance failure",
+    "predecessor_session": "AI-CONSOLE-CATALOG-RELEASE-20261003",
+    "coordination": {
+      "coordination_ref": "origin/campaign-coordination",
+      "lease_id": "MADHAV-AI-CONSOLE-CATALOG-CORRECTION-20261003",
+      "lease_status_verified": true,
+      "lease_verified_at": "2026-10-02T21:20:00Z",
+      "remote_commit": "5390d61401be6784eba590099690d38da2f66d42",
+      "work_order_surface": "00_ARCHITECTURE/briefs/ai_console_catalog_refresh/IMPLEMENTATION_PLAN_v1_0.md"
+    },
+    "cross_tool_state_read": {
+      "cross_cutting_decision_register": true,
+      "stale_surfaces_disregarded": [
+        ".conductor-state.json",
+        ".gemini/project_state.md",
+        "CLAUDECODE_BRIEF.md"
+      ]
+    },
+    "mandatory_reading_confirmation": [
+      {
+        "file": "CLAUDE.md",
+        "fingerprint_sha256": "a364863fc3efcf416ca16773093dda72ea7b632d6d63cd1c13a387889121e12e",
+        "read_at": "2026-10-02T16:20:00Z"
+      },
+      {
+        "file": "00_ARCHITECTURE/CURRENT_STATE_v1_0.md",
+        "fingerprint_sha256": "f34a729c9b197511ec249f39c386fa5fac376105ae58db80592f8127aecdbc7b",
+        "read_at": "2026-10-02T16:32:00Z"
+      },
+      {
+        "file": "00_ARCHITECTURE/CROSS_CUTTING_DECISION_REGISTER_v1_0.md",
+        "fingerprint_sha256": "18e1e9912bd5494b647ff60035f4c03d7fecfa7d2241cdd54e11d4be359d79d1",
+        "read_at": "2026-10-02T16:24:00Z"
+      },
+      {
+        "file": "00_ARCHITECTURE/SESSION_OPEN_TEMPLATE_v1_0.md",
+        "fingerprint_sha256": "414807baef6ee57efc4db2f14e0d399c9afa5735c6240f40c5d87a1f81b51db6",
+        "read_at": "2026-10-02T16:24:00Z"
+      }
+    ],
+    "canonical_artifact_fingerprint_check": [],
+    "declared_scope": {
+      "may_touch": [
+        "00_ARCHITECTURE/briefs/ai_console_catalog_refresh/**",
+        "00_ARCHITECTURE/CURRENT_STATE_v1_0.md",
+        "00_ARCHITECTURE/SESSION_LOG.md",
+        "platform/src/lib/ai-console/catalog-refresh.ts",
+        "platform/src/lib/ai-console/repository.ts",
+        "platform/src/lib/ai-console/__tests__/catalog-refresh*.test.ts",
+        "platform/src/lib/ai-console/cli/registry.ts",
+        "platform/src/lib/ai-console/cli/__tests__/**",
+        "platform/scripts/ai-cli-bridge/server.mjs",
+        "platform/scripts/ai-cli-bridge/smoke.mjs",
+        "platform/scripts/ai-cli-bridge/README.md",
+        "platform/src/lib/ai-console/__tests__/cli_bridge_contract.test.ts"
+      ],
+      "must_not_touch": [
+        "01_FACTS_LAYER/**",
+        "025_HOLISTIC_SYNTHESIS/**",
+        "platform/python-sidecar/**",
+        "00_ARCHITECTURE/briefs/nirmana/**",
+        "CLAUDE.md",
+        "platform/src/lib/gochara/**",
+        "platform/supabase/migrations/1300_ai_console_role_effort.sql",
+        "platform/supabase/migrations/1301_ai_console_catalog_refresh.sql"
+      ]
+    },
+    "mirror_pair_freshness_check": [],
+    "native_directive_obligations": [],
+    "red_team_due": true,
+    "notes": "Native-approved feature implementation/deployment continues after failed live acceptance. Original release halted and traffic restored to verified prior revision; applied additive migration 1301 remains immutable. Correct only discovered API metadata persistence and validated installed Antigravity version/protocol compatibility. Reproduce with regression tests before fix, independent review, protected merge/CI and exact-SHA deployment plus authenticated UI and 15-minute observation. No paid API generation, credentials/workspace replacement/disclosure, role/default changes, CLI install upgrades/downgrades, IAM/network or foreign campaign edits. Lease is fresh for four hours; no protection bypass."
+  }
+}

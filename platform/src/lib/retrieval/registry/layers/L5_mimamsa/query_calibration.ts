@@ -11,7 +11,7 @@
 
 import type { CapabilityDescriptor } from '../../index'
 import { query } from '@/lib/db/client'
-
+import { classifyCalibrationSet, labelCalibrationDerivedRow, summarizeGeneration, type GenerationVerdict } from './prefix_generation'
 /**
  * NIRMĀṆA L5 W3-3 — `mimamsa_qa_eval.status` is NOT a two-value {pass|FAIL} enum.
  * ==============================================================================
@@ -194,13 +194,44 @@ export const queryCalibrationCapability: CapabilityDescriptor = {
       ORDER BY status DESC, checked_at DESC
     `
 
+    // TI-l5-insight-prefix-label-001: the chart's calibration SET generation, read from the stamps on
+    // the stored rows (mi_pramana version label + base_rate IS NULL, the fix's own stamp). Reliability
+    // bins and multipliers carry no stamp of their own but are derived from this set in the same build.
+    // A failed or empty probe is classified pre-fix (fail-closed), never as clean.
+    const generationSql = `
+      SELECT scoring_formula_version, (base_rate IS NULL) AS base_rate_is_null, COUNT(*)::int AS n
+      FROM mimamsa_calibration
+      WHERE chart_id = $1
+      GROUP BY 1, 2
+    `
+
     try {
-      const [verdictResult, relResult, multResult, qaResult] = await Promise.all([
+      const [verdictResult, relResult, multResult, qaResult, generationGroups] = await Promise.all([
         query(verdictSql,      domain ? [chart_id, domain] : [chart_id]),
         query(reliabilitySql,  [chart_id]),
         query(multiplierSql,   [chart_id]),
         query(qaSql,           [chart_id]),
+        query(generationSql,   [chart_id]).then(
+          r => r.rows as Array<{ scoring_formula_version: unknown; base_rate_is_null: unknown; n?: unknown }>,
+          (): null => null,
+        ),
       ])
+      const calibration_generation: GenerationVerdict = classifyCalibrationSet(generationGroups)
+      const reliability_curve = (relResult.rows as Array<Record<string, unknown>>)
+        .map(r => labelCalibrationDerivedRow(r, calibration_generation, ['evidence_grade', 'held_out_validity']))
+      const multipliers_labelled = (multResult.rows as Array<Record<string, unknown>>)
+        .map(r => labelCalibrationDerivedRow(r, calibration_generation, []))
+      const generation_disclosure = {
+        ...summarizeGeneration(reliability_curve, ['calibration']),
+        flags: calibration_generation.pre_fix ? ['l5_rows_pre_fix_generation' as const] : [],
+        calibration_set: {
+          pre_fix: calibration_generation.pre_fix,
+          reason: calibration_generation.reason,
+          stamp: calibration_generation.stamp,
+          rows_by_stamp: generationGroups ?? null,
+        },
+        applies_to: ['verdict_distribution', 'reliability_curve', 'multipliers'],
+      }
 
       // Measured status histogram FIRST; the fail count is then derived from it, so the
       // number and the vocabulary it was derived from can never disagree.
@@ -248,8 +279,10 @@ export const queryCalibrationCapability: CapabilityDescriptor = {
           chart_id,
           verdict_distribution: verdictResult.rows,
           verdict_row_count,
-          reliability_curve:    relResult.rows,
-          multipliers:          multResult.rows,
+          reliability_curve,
+          multipliers:          multipliers_labelled,
+          generation_disclosure,
+          generation_flags:     generation_disclosure.flags,
           qa_results:           qaResult.rows,
           qa_summary: {
             total:      qaRows.length,
