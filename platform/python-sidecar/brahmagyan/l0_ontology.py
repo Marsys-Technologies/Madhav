@@ -1194,6 +1194,15 @@ def seed_ontology(conn, build_id: str | None = None, dry_run: bool = False,
     }
 
 
+# ══ Classical texts derived from the corpus manifest (TI-L0-13) ═══════════════════════════
+# Placed after the seed code on purpose: `asset_declarations.json` pins evidence lines in this
+# module (`l0_ontology.py:145 ... :1152`), so nothing above `seed_ontology`'s end may move.
+from brahmagyan import l0_ontology_texts as _texts  # noqa: E402
+
+ENTITIES += _texts.derive_missing_text_entities(ENTITIES)
+_texts.assert_text_class_matches_manifest(ENTITIES)
+
+
 def check_volume(conn) -> dict:
     """Check actual vs floor for brahma_ontology."""
     floor = 100
@@ -1205,12 +1214,3 @@ def check_volume(conn) -> dict:
             actual = 0
     status = "green" if actual >= floor else ("amber" if actual > 0 else "empty")
     return {"brahma_ontology": {"actual": actual, "floor": floor, "status": status}}
-
-
-# ══ Classical texts derived from the corpus manifest (TI-L0-13) ═══════════════════════════
-# Appended below the seed code on purpose: `asset_declarations.json` pins evidence lines in this
-# module (`l0_ontology.py:145 ... :1152`), so nothing above `check_volume` may move.
-from brahmagyan import l0_ontology_texts as _texts  # noqa: E402
-
-ENTITIES += _texts.derive_missing_text_entities(ENTITIES)
-_texts.assert_text_class_matches_manifest(ENTITIES)
