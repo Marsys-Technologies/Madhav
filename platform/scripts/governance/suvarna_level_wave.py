@@ -2376,6 +2376,12 @@ class _WriteScan:
             self._memo[key] = result
         return result
 
+    @property
+    def work_steps(self) -> int:
+        """Read-only view of the work counter `_step` increments (bindings + expression nodes visited so far). The deterministic cost
+        measure the tests bound (steps per source line, steps against MAX_RESOLVER_STEPS) instead of a wall-clock budget."""
+        return self._steps
+
     def _step(self) -> None:
         """One unit of provenance work; the cap makes a hostile file cost bounded time and fall back to NOT scanned."""
         self._steps += 1
