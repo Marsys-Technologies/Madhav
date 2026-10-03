@@ -1124,8 +1124,13 @@ def build_ga_vichara_substep(
     it is the build run's creation date (see `resolve_as_of`)."""
     logger.info("[ga_vichara_writer] substep start: chart=%s ayanamsha=%s", chart_id, ayanamsha_id)
 
-    if chart_id == CANONICAL_CHART_ID:
+    # str(): the orchestrator hands a uuid.UUID, which never == the str constant, so this branch was skipped.
+    # NOTE: this guard asserts nothing (it only logs); the log line below is the only evidence it ran.
+    if str(chart_id) == CANONICAL_CHART_ID:
         logger.info("[ga_vichara_writer] FORENSIC: native chart — applying forensic assertions")
+        logger.info("FORENSIC gate ga_vichara executed passed=True chart=canonical (no anchor assertion exists in this writer)")
+    else:
+        logger.debug("FORENSIC gate ga_vichara skipped chart=skipped-non-canonical")
 
     if dry_run:
         logger.info("[ga_vichara_writer] DRY_RUN — no writes")

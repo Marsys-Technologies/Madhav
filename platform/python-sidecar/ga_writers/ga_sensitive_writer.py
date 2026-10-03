@@ -2800,8 +2800,16 @@ def _build_all_sensitive_rows_for_ayanamsha(
     chart_data = compute_chart(inputs=birth_params, ayanamsha_id=ayanamsha_id)
 
     # FORENSIC gate — native-anchored; asserted only for the native (Phase 3B).
-    if chart_id == CANONICAL_CHART_ID:
-        forensic_gate(chart_data, ayanamsha_id)
+    # str(): the orchestrator hands a uuid.UUID, which never == the str constant, so the gate was skipped.
+    if str(chart_id) == CANONICAL_CHART_ID:
+        try:
+            forensic_gate(chart_data, ayanamsha_id)
+        except Exception:
+            logger.error("FORENSIC gate ga_sensitive executed passed=False chart=canonical ayanamsha=%s", ayanamsha_id)
+            raise
+        logger.info("FORENSIC gate ga_sensitive executed passed=True chart=canonical ayanamsha=%s", ayanamsha_id)
+    else:
+        logger.debug("FORENSIC gate ga_sensitive skipped chart=skipped-non-canonical ayanamsha=%s", ayanamsha_id)
 
     # canonical_id = ayanamsha_key; used for all row fact_subject/fact_key storage
     canonical_id = ayanamsha_key
@@ -3247,8 +3255,15 @@ def build_ga_sensitive(
     # to fail fast before looping all 5 ayanamshas.
     try:
         preflight_chart = compute_chart(inputs=birth_params, ayanamsha_id="lahiri")
-        if chart_id == CANONICAL_CHART_ID:
-            forensic_gate(preflight_chart, "lahiri")
+        if str(chart_id) == CANONICAL_CHART_ID:
+            try:
+                forensic_gate(preflight_chart, "lahiri")
+            except Exception:
+                logger.error("FORENSIC gate ga_sensitive preflight executed passed=False chart=canonical")
+                raise
+            logger.info("FORENSIC gate ga_sensitive preflight executed passed=True chart=canonical")
+        else:
+            logger.debug("FORENSIC gate ga_sensitive preflight skipped chart=skipped-non-canonical")
         summary["forensic_pass"] = True
     except BACKEND_FAILURE_ERRORS:
         # SwissBackendError is a RuntimeError: without this it would be reported as a FORENSIC gate

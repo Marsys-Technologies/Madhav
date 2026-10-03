@@ -821,8 +821,8 @@ def _verify_vimshottari(rows: list[dict], moon_sid: float,
     if not l1_rows:
         raise ValueError("Vimshottari: no L1 rows")
 
-    # Pass 2 (FORENSIC) — native-only regression guard.
-    if chart_id == CANONICAL_CHART_ID:
+    # Pass 2 (FORENSIC) — native-only regression guard. str(): a uuid.UUID never == the str constant (gate skipped).
+    if str(chart_id) == CANONICAL_CHART_ID:
         birth_date = date(1984, 2, 5)
         birth_period_lord: str | None = None
         for row in l1_rows:
@@ -842,7 +842,7 @@ def _verify_vimshottari(rows: list[dict], moon_sid: float,
     # for a reason other than a bug in itself, and it runs for the native chart only. Pass 1
     # below cannot fail at all — its tolerance comparison ends in a bare `pass`. So a non-native
     # chart reaching this point has had NOTHING contradicted, and must not claim otherwise.
-    verdict = TWO_PASS_VERIFIED if chart_id == CANONICAL_CHART_ID else UNVERIFIED_DEFAULT
+    verdict = TWO_PASS_VERIFIED if str(chart_id) == CANONICAL_CHART_ID else UNVERIFIED_DEFAULT
 
     # Pass 1: algebraic — each L1 period should have correct duration
     for row in l1_rows:
@@ -1272,7 +1272,7 @@ def compute_vimshottari(
     # FORENSIC HALT: native-anchored starting-lord check — asserted only for the
     # native chart (a non-native chart's starting lord is whatever its Moon yields).
     # Phase 3B writer generalization.
-    if chart_id == CANONICAL_CHART_ID and nak_lord != FORENSIC_VIMSHOTTARI_STARTING_LORD:
+    if str(chart_id) == CANONICAL_CHART_ID and nak_lord != FORENSIC_VIMSHOTTARI_STARTING_LORD:
         raise ValueError(
             f"FORENSIC HALT: Moon nakshatra lord={nak_lord!r}, "
             f"expected={FORENSIC_VIMSHOTTARI_STARTING_LORD!r}. "
@@ -3340,8 +3340,15 @@ def build_system(
     if system_id == "vimshottari":
         # FORENSIC assertion — native-anchored (Moon nak + starting lord); a
         # non-native chart has no pre-verified anchor, so it is not asserted.
-        if chart_id == CANONICAL_CHART_ID:
-            _assert_forensic_vimshottari([], moon_nak_name, moon_nak_lord)
+        if str(chart_id) == CANONICAL_CHART_ID:
+            try:
+                _assert_forensic_vimshottari([], moon_nak_name, moon_nak_lord)
+            except Exception:
+                logger.error("FORENSIC gate ga_dashas executed passed=False chart=canonical ayanamsha=%s", ayanamsha_id)
+                raise
+            logger.info("FORENSIC gate ga_dashas executed passed=True chart=canonical ayanamsha=%s", ayanamsha_id)
+        else:
+            logger.debug("FORENSIC gate ga_dashas skipped chart=skipped-non-canonical ayanamsha=%s", ayanamsha_id)
         rows = compute_vimshottari(moon_sid, birth_jd, ayanamsha_id, chart_id, build_id)
         # KP sub-periods (CRITICAL OVERRIDE 2)
         kp_rows = compute_kp_subperiods(rows, chart_id, build_id, ayanamsha_id)

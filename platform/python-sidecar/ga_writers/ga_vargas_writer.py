@@ -2945,7 +2945,9 @@ def build_ga_vargas(
         forensic_result = forensic_gate_vargas(all_vargas, ayan_id)
         summary["forensic_results"][ayan_id] = forensic_result
         # native-anchored (D1 Sun/Lagna); only HALTS for the native chart (Phase 3B).
-        if chart_id == CANONICAL_CHART_ID and forensic_result["result"] == "FAIL":
+        # str(): the orchestrator hands a uuid.UUID, which never == the str constant, so the halt was skipped.
+        if str(chart_id) == CANONICAL_CHART_ID and forensic_result["result"] == "FAIL":
+            logger.error("FORENSIC gate ga_vargas executed passed=False chart=canonical ayanamsha=%s", ayan_id)
             logger.error("[ga_vargas] FORENSIC FAIL: %s", forensic_result["findings"])
             _write_halt_log(
                 "GA6_FORENSIC_FAIL",
@@ -2953,6 +2955,10 @@ def build_ga_vargas(
             )
             summary["status"] = "FORENSIC_FAIL"
             return summary
+        if str(chart_id) == CANONICAL_CHART_ID:
+            logger.info("FORENSIC gate ga_vargas executed passed=True chart=canonical ayanamsha=%s", ayan_id)
+        else:
+            logger.debug("FORENSIC gate ga_vargas skipped chart=skipped-non-canonical ayanamsha=%s", ayan_id)
 
         d1_data = all_vargas.get("D1", {})
 

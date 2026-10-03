@@ -7269,8 +7269,16 @@ def build_ga_structural(
             _validate_chart_output_complete(chart_output)
 
             # FORENSIC gate — native-anchored; asserted only for the native (Phase 3B).
-            if chart_id == CANONICAL_CHART_ID:
-                forensic_gate(chart_output, canonical_id)
+            # str(): the orchestrator hands a uuid.UUID, which never == the str constant, so the gate was skipped.
+            if str(chart_id) == CANONICAL_CHART_ID:
+                try:
+                    forensic_gate(chart_output, canonical_id)
+                except Exception:
+                    logger.error("FORENSIC gate ga_structural executed passed=False chart=canonical ayanamsha=%s", canonical_id)
+                    raise
+                logger.info("FORENSIC gate ga_structural executed passed=True chart=canonical ayanamsha=%s", canonical_id)
+            else:
+                logger.debug("FORENSIC gate ga_structural skipped chart=skipped-non-canonical ayanamsha=%s", canonical_id)
             summary["forensic_pass"] = True
 
             # Build all rows
@@ -8511,8 +8519,16 @@ def build_ga_structural_substep(
     chart_output = compute_chart(inputs=bp, ayanamsha_id=adapter_id)
     _validate_chart_output_complete(chart_output)
 
-    if chart_id == CANONICAL_CHART_ID:
-        forensic_gate(chart_output, ayanamsha_id)
+    # str(): the orchestrator hands a uuid.UUID, which never == the str constant, so the gate was skipped.
+    if str(chart_id) == CANONICAL_CHART_ID:
+        try:
+            forensic_gate(chart_output, ayanamsha_id)
+        except Exception:
+            logger.error("FORENSIC gate ga_structural executed passed=False chart=canonical ayanamsha=%s", ayanamsha_id)
+            raise
+        logger.info("FORENSIC gate ga_structural executed passed=True chart=canonical ayanamsha=%s", ayanamsha_id)
+    else:
+        logger.debug("FORENSIC gate ga_structural skipped chart=skipped-non-canonical ayanamsha=%s", ayanamsha_id)
 
     if yoga_catalog is None:
         yoga_catalog = _load_yoga_catalog(conn)

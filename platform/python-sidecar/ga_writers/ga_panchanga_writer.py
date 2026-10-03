@@ -1434,8 +1434,16 @@ def build_ga_panchanga(
     pi = panchanga_instant(birth_dt, lat, lon, tz_min)
 
     # FORENSIC gate — native-anchored; asserted only for the native (Phase 3B).
-    if chart_id == CANONICAL_CHART_ID:
-        panchanga_forensic_gate(pi)
+    # str(): the orchestrator hands a uuid.UUID, which never == the str constant, so the gate was skipped.
+    if str(chart_id) == CANONICAL_CHART_ID:
+        try:
+            panchanga_forensic_gate(pi)
+        except Exception:
+            logger.error("FORENSIC gate ga_panchanga executed passed=False chart=canonical")
+            raise
+        logger.info("FORENSIC gate ga_panchanga executed passed=True chart=canonical")
+    else:
+        logger.debug("FORENSIC gate ga_panchanga skipped chart=skipped-non-canonical")
     summary["forensic_pass"] = True
 
     # ── Build INVARIANT rows ─────────────────────────────────────────────────

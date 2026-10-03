@@ -808,7 +808,7 @@ def build_ga_tajaka(chart_id: str,
                 row = _compute_one(conn, chart_id, canonical_aya, aya_adapter,
                                    v, natal, natal_sun, build_id, birth=bp)
                 # FORENSIC gate — native-anchored Muntha; only asserted for the native.
-                if (chart_id == CANONICAL_CHART_ID
+                if (str(chart_id) == CANONICAL_CHART_ID
                         and canonical_aya == FORENSIC_AYANAMSHA
                         and v == FORENSIC_VARSHA_YEAR):
                     fc = {
@@ -821,6 +821,7 @@ def build_ga_tajaka(chart_id: str,
                     if (fc["sign"] != FORENSIC_MUNTHA_SIGN
                             or fc["house"] != FORENSIC_MUNTHA_HOUSE
                             or fc["lord"] != FORENSIC_MUNTHA_LORD):
+                        logger.error("FORENSIC gate ga_tajaka executed passed=False chart=canonical")
                         raise RuntimeError(
                             f"FORENSIC HALT: ga_tajaka Muntha gate failed for varsha "
                             f"{v} ({canonical_aya}): got {fc['sign']}/{fc['house']}H/"
@@ -854,6 +855,10 @@ def build_ga_tajaka(chart_id: str,
     forensic_pass = bool(forensic_checks) and all(
         c["sign"] == FORENSIC_MUNTHA_SIGN and c["house"] == FORENSIC_MUNTHA_HOUSE
         and c["lord"] == FORENSIC_MUNTHA_LORD for c in forensic_checks)
+    if str(chart_id) == CANONICAL_CHART_ID:
+        logger.info("FORENSIC gate ga_tajaka executed passed=%s chart=canonical checks=%d", forensic_pass, len(forensic_checks))
+    else:
+        logger.debug("FORENSIC gate ga_tajaka skipped chart=skipped-non-canonical")
 
     summary = {
         "status": "PASS",

@@ -394,8 +394,16 @@ def _run_ayanamsha_pass(
 
     # FORENSIC gate — native chart only (chart_id matches canonical native)
     NATIVE_CHART_ID = "482012f1-710e-4a25-994a-93821f5871aa"
-    if chart_id == NATIVE_CHART_ID:
-        _forensic_gate(chart_output, canonical_id)
+    # str(): the orchestrator hands a uuid.UUID, which never == the str constant, so the gate was skipped.
+    if str(chart_id) == NATIVE_CHART_ID:
+        try:
+            _forensic_gate(chart_output, canonical_id)
+        except Exception:
+            logger.error("FORENSIC gate ga_nakshatra executed passed=False chart=canonical ayanamsha=%s", canonical_id)
+            raise
+        logger.info("FORENSIC gate ga_nakshatra executed passed=True chart=canonical ayanamsha=%s", canonical_id)
+    else:
+        logger.debug("FORENSIC gate ga_nakshatra skipped chart=skipped-non-canonical ayanamsha=%s", canonical_id)
 
     grahas = chart_output.get("grahas", [])
     asc    = chart_output.get("ascendant", {})
@@ -468,7 +476,8 @@ class NakshatraWriter(WriterBase):
             )
 
         nak_rows, pada_rows = _fetch_bg_nakshatra(ctx.db_conn)
-        chart_id    = ctx.config["chart_id"]
+        # uuid.UUID from the real orchestrator (psycopg uuid decode); the FORENSIC gate compares it to a str constant.
+        chart_id    = str(ctx.config["chart_id"])
         birth_params = ctx.config.get("birth_params")
 
         if step.key.startswith("ayanamsha:"):

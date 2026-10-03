@@ -2810,8 +2810,8 @@ def build_ga_yoga_substep(
     t0 = time.time()
     logger.info("[ga_yoga_writer] substep start: chart=%s ayanamsha=%s", chart_id, ayanamsha_id)
 
-    # FORENSIC guard
-    if chart_id == CANONICAL_CHART_ID:
+    # FORENSIC guard. str(): the orchestrator hands a uuid.UUID, which never == the str constant (guard skipped).
+    if str(chart_id) == CANONICAL_CHART_ID:
         logger.info("[ga_yoga_writer] FORENSIC: native chart — applying forensic assertions")
 
     if dry_run:
@@ -3061,8 +3061,15 @@ def build_ga_yoga_substep(
     )
 
     # FORENSIC assertion for native chart
-    if chart_id == CANONICAL_CHART_ID:
-        _forensic_assert(rows_inserted, ayanamsha_id)
+    if str(chart_id) == CANONICAL_CHART_ID:
+        try:
+            _forensic_assert(rows_inserted, ayanamsha_id)
+        except Exception:
+            logger.error("FORENSIC gate ga_yoga executed passed=False chart=canonical ayanamsha=%s", ayanamsha_id)
+            raise
+        logger.info("FORENSIC gate ga_yoga executed passed=True chart=canonical ayanamsha=%s", ayanamsha_id)
+    else:
+        logger.debug("FORENSIC gate ga_yoga skipped chart=skipped-non-canonical ayanamsha=%s", ayanamsha_id)
 
     return rows_inserted
 
