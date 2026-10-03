@@ -42,11 +42,13 @@ def _ps(*args: str) -> tuple[int, str] | None:
 
 def _pid_absent(pid: int) -> bool:
     """True only when the kernel itself says there is no such process (`kill(pid, 0)` -> ESRCH); EPERM means it exists."""
+    if not isinstance(pid, int) or isinstance(pid, bool) or pid <= 0:
+        return False                                   # kill(-n, 0) / kill(0, 0) address process GROUPS: never "absent"
     try:
         os.kill(pid, 0)
     except ProcessLookupError:
         return True
-    except OSError:
+    except (OSError, OverflowError, ValueError):       # EPERM (exists), or a pid that does not even fit a C long
         return False
     return False
 
@@ -89,6 +91,8 @@ def _postmaster_state(data: Path) -> str:
     try:
         first = (data / "postmaster.pid").read_text(encoding="utf-8", errors="replace").splitlines()[0].strip()
         pid = int(first)
+        if pid > 2**31 - 1:
+            return "foreign"                           # not a pid this kernel can have issued
     except (OSError, IndexError, ValueError):
         return "none"
     if pid <= 1:

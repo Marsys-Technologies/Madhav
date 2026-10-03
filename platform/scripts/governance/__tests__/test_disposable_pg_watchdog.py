@@ -468,3 +468,56 @@ def test_rc_zero_with_empty_output_and_rc_nonzero_with_output_are_both_cannot_te
     assert wd.proc_start(os.getpid()) is None
     monkeypatch.setattr(wd, "_ps", lambda *a: (2, "Sat Oct  3 17:54:24 2026 S"))
     assert wd.proc_start(os.getpid()) is None
+
+
+# ------------------------------------------------ review round 3 (LOW hardening + the unguarded mutants) --------------------------------------
+
+@pytest.mark.parametrize("pid", [2**31, 2**63, 10**30, -5, 0, True])
+def test_a_pid_that_cannot_exist_never_raises_and_never_reads_as_gone_by_kill(pid):
+    assert wd._pid_absent(pid) is False
+    if not isinstance(pid, bool):
+        assert wd.proc_start(pid) in (None, wd.GONE)           # no exception escapes the ownership decision
+        assert wd.owner_alive(pid, "x") in (True, False)
+
+
+def test_a_marker_naming_an_impossible_pid_does_not_abort_the_sweep(tmp_path):
+    bad = _mk(tmp_path, "suvarna_pg_a_hugepid", pid=10**30, start="Mon Jan  1 00:00:00 2001")
+    pid, start = _dead_pid()
+    good = _mk(tmp_path, "suvarna_pg_b_dead", pid=pid, start=start)
+    reaped = dpg.sweep_stale_clusters(tmp_path)
+    assert str(good) in reaped and not good.exists() and bad.exists()      # the bad marker reads alive (cannot tell), the sweep goes on
+
+
+def test_a_pid_file_with_an_impossible_pid_reads_foreign_not_an_exception(tmp_path):
+    data = tmp_path / "data"
+    data.mkdir()
+    (data / "postmaster.pid").write_text("99999999999999999999999\n")
+    assert wd._postmaster_state(data) == "foreign"
+
+
+def test_only_the_exact_postgres_basename_is_a_postmaster(tmp_path):
+    assert _cmdline_state(tmp_path, "/x/notpostgres -D {data}") == "foreign"
+    assert _cmdline_state(tmp_path, "/x/postgres -D {data}") == "ours"
+
+
+def test_a_lying_ps_about_a_live_pid_file_pid_is_cannot_tell_not_none(tmp_path, monkeypatch):
+    data = tmp_path / "data"
+    data.mkdir()
+    (data / "postmaster.pid").write_text(f"{os.getpid()}\n")           # a live pid
+    monkeypatch.setattr(wd, "_ps", lambda *a: (1, ""))                  # ps claims there is no such process
+    assert wd._postmaster_state(data) == "unknown"
+
+
+def test_the_postmaster_state_is_rechecked_after_the_stop(tmp_path, monkeypatch):
+    pid, start = _dead_pid()
+    r = _mk(tmp_path, "suvarna_pg_recheck", pid=pid, start=start)
+    pm = _fake_postmaster(r / "data")
+    ctl, _ = _fake_ctl(tmp_path)
+    try:
+        real = subprocess.run
+        monkeypatch.setattr(wd.subprocess, "run", lambda argv, *a, **k: None if argv[0] == ctl else real(argv, *a, **k))   # the stop does nothing at all
+        assert wd.reap(r, ctl) is False and r.exists() and _alive(pm.pid)
+    finally:
+        monkeypatch.undo()
+        pm.kill()
+        pm.wait()
