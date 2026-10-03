@@ -27,6 +27,7 @@ HERE = pathlib.Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE.parent))
 
 import asset_census as ac  # noqa: E402
+import _decl_version  # noqa: E402
 import carriage_d1 as d1  # noqa: E402
 import test_e6_s2_carriage as s2  # noqa: E402
 import test_e6_s3_alias_ldgr as s3  # noqa: E402
@@ -87,7 +88,7 @@ def _refused(mutate, match):
 # ───────────────────────── Part 1: the committed entry ─────────────────────────
 
 def test_the_committed_file_is_1_10_0_and_the_validator_accepts_this_entry():
-    assert DECL["version"] == "1.13.0" and "bg_phaladeepika_latta" in DECL["description"].split("Version 1.10.0", 1)[1]      # 1.11.0 DECL-LATTA-NULL, 1.12.0 NARR-GUARD
+    assert DECL["version"] == _decl_version.CURRENT and "bg_phaladeepika_latta" in DECL["description"].split("Version 1.10.0", 1)[1]      # 1.11.0 DECL-LATTA-NULL, 1.12.0 NARR-GUARD
     ac.validate_declarations(DECL)
     assert ac.load_asset_declarations()[AID]["carriage"]["applies"] == "D1"
 
@@ -330,7 +331,7 @@ def _setup():
 def _measure_all(monkeypatch, pg):
     s3._real(monkeypatch, pg, _setup())
     m = {}
-    m.update(ac.carriage_declared_checks(AID, CAR, AID, False))
+    m.update(ac.carriage_declared_checks(AID, CAR, AID, False, column_types=ac.carriage_fetch_column_types(AID), prose_columns=[]))
     m.update(ac.vocab_alias_declared_check(AID, VA, AID, COLS))
     m.update(ac.ldgr_source_declared_check(AID, LS, AID, COLS, [["table_version", "graha"]]))
     return m
@@ -379,7 +380,7 @@ def test_REAL_a_blank_verse_ref_on_one_row_makes_ldgr_partial(monkeypatch, dispo
 
 def test_REAL_a_wrong_row_in_the_table_is_a_d1_partial_naming_it(monkeypatch, disposable_pg):
     s3._real(monkeypatch, disposable_pg, _setup() + [f"UPDATE {AID} SET count_from_graha = 21 WHERE graha = 'Moon';"])
-    r = ac.carriage_declared_checks(AID, CAR, AID, False)["Carr.D1"]
+    r = ac.carriage_declared_checks(AID, CAR, AID, False, column_types=ac.carriage_fetch_column_types(AID), prose_columns=[])["Carr.D1"]
     assert r["v"] == PARTIAL and [u["row"] for u in r["d1"]["unmatched"]] == ["Moon"]
 
 

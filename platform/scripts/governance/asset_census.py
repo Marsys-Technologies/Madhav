@@ -697,11 +697,12 @@ CARRIAGE_FIELDS = ("served_surface",)
 # E6 S2 (SS N-72 S2, N-73): the `carriage` object also holds the asset's DECLARED CARRIAGE CHECK (declaration-keyed, reviewed):
 # ONE of D1/D2/D3 applies, chosen by the asset's NATURE, never by the caller of a rule: transcription of cited classical content
 # -> D1 (match to a cited source; N-73 (2)), computation -> D3 (re-derivation), derivation from another asset's stored facts ->
-# D2. The validator REFUSES a mismatch. The other two checks read N/A by the cause `not-the-declared-carriage`. A ratified
+# D3 (SS N-101 (a), C1-1: D2 is WITNESS carriage, "two independent witnesses of the same fact", as the registry and the menu define it; a
+# derivation is re-derived, it is not witnessed; no nature maps to D2 until a witness adopter exists, C1-7). The validator REFUSES a mismatch. The other two checks read N/A by the cause `not-the-declared-carriage`. A ratified
 # judgment seed (L0 Q13) declares nature `ratified_judgment` with a `ruling` id and no `applies`: all three read N/A by
 # `ratified_judgment`. An asset with no such declaration reads exactly as before.
 CARRIAGE_DECL_FIELDS = ("applies", "nature", "why", "evidence", "spec", "citation_state", "ruling")
-CARRIAGE_NATURE_CHECK = {"transcription": "D1", "computation": "D3", "derivation": "D2"}
+CARRIAGE_NATURE_CHECK = {"transcription": "D1", "computation": "D3", "derivation": "D3"}     # ONE definition (C1-1, N-101 (a)): the validator, its message and the comments above read this
 RATIFIED_JUDGMENT = "ratified_judgment"
 CITATION_STATES = ("sourced", "sourced_ocr_unverified", "unsourced", "refuted")
 CITATION_CAPPED_STATES = ("unsourced", "refuted")   # ONE cap for Carr.D1 (carriage_d1) and Ldgr.source_presence (grade_ldgr_source, _check_contribution), and nikasha CITATION_PASS_REFUSED
@@ -783,9 +784,9 @@ def validate_carriage_declaration(where: str, car: dict, e: dict) -> None:
         return
     want = CARRIAGE_NATURE_CHECK[nature]
     if car.get("applies") != want:
-        raise DeclarationsError(f"{where}.carriage: nature {nature!r} requires applies {want!r} (N-73: transcription -> D1 match to a "
-                                f"cited source; computation -> D3 re-derivation; derivation from another asset's stored facts -> D2), "
-                                f"got {car.get('applies')!r}")
+        raise DeclarationsError(f"{where}.carriage: nature {nature!r} requires applies {want!r} (N-73 / N-101 (a): transcription -> D1 match to a "
+                                f"cited source; computation -> D3 re-derivation; derivation from another asset's stored facts -> D3; D2 is witness "
+                                f"carriage and no nature maps to it yet), got {car.get('applies')!r}")
     if car.get("ruling") is not None:
         raise DeclarationsError(f"{where}.carriage.ruling is only for nature ratified_judgment")
     cs = car.get("citation_state")
@@ -802,32 +803,43 @@ def validate_carriage_declaration(where: str, car: dict, e: dict) -> None:
             _carriage_d1().validate_spec(spec, f"{where}.carriage")
         except ValueError as exc:
             raise DeclarationsError(str(exc)) from exc
-        if not _evidence_pointer_ok(spec["effect_clauses_evidence"]):
-            raise DeclarationsError(f"{where}.carriage.spec.effect_clauses_evidence {spec['effect_clauses_evidence']!r} is not an existing "
-                                    "repo-relative file (optionally :line) or 'unverified:<where>'")
-        _carriage_pointer_strict(f"{where}.carriage.spec.effect_clauses_evidence", spec["effect_clauses_evidence"])
-        for ef in spec.get("extra_fields", []):
-            if ef.get("kind") == "passage_text" and not _evidence_pointer_ok(ef["condition_evidence"]):
-                raise DeclarationsError(f"{where}.carriage.spec.extra_fields[{ef['column']}].condition_evidence {ef['condition_evidence']!r} is "
-                                        "not an existing repo-relative file (optionally :line) or 'unverified:<where>' (existence only)")
-            if ef.get("kind") == "passage_text":
-                _carriage_pointer_strict(f"{where}.carriage.spec.extra_fields[{ef['column']}].condition_evidence", ef["condition_evidence"])
-            hatches = []
-            if ef.get("kind") == "passage_text":
-                for d in [ef["condition"], *ef.get("by_claimant", {}).values()]:
-                    hatches += ([d["ocr_lost_stop"]] if "ocr_lost_stop" in d else []) + list(d.get("ocr_stops", []))
-            for h in hatches:
-                if not _evidence_pointer_ok(h["evidence"]):
-                    raise DeclarationsError(f"{where}.carriage.spec.extra_fields[{ef['column']}] escape hatch {h['text']!r}: evidence "
-                                            f"{h['evidence']!r} is not an existing repo-relative file (optionally :line) or "
-                                            "'unverified:<where>' (existence only)")
-                _carriage_pointer_strict(f"{where}.carriage.spec.extra_fields[{ef['column']}] escape hatch {h['text']!r}: evidence", h["evidence"])
-            for rp in ef.get("repairs", []) if ef.get("kind") == "passage_text" else []:
-                if not _evidence_pointer_ok(rp["evidence"]):
-                    raise DeclarationsError(f"{where}.carriage.spec.extra_fields[{ef['column']}].repairs[{rp['from']!r}].evidence "
-                                            f"{rp['evidence']!r} is not an existing repo-relative file (optionally :line) or "
-                                            "'unverified:<where>' (existence only)")
-                _carriage_pointer_strict(f"{where}.carriage.spec.extra_fields[{ef['column']}].repairs[{rp['from']!r}].evidence", rp["evidence"])
+        d1m = _carriage_d1()
+        for label, ev, suffix in d1m._kernel_of(spec)["evidence_pointers"](spec, f"{where}.carriage.spec"):      # the kernel names its own evidence pointers
+            if not _evidence_pointer_ok(ev):
+                raise DeclarationsError(f"{label} {ev!r} is not an existing repo-relative file (optionally :line) or 'unverified:<where>'{suffix}")
+            _carriage_pointer_strict(label, ev)
+        for x in spec.get("non_claim_columns", []):       # C1-1 column ledger: each declared non-claim needs a real one-line `why` (S3 rules), a real file:line pointer, and must NAME its column
+            lab = f"{where}.carriage.spec.non_claim_columns[{x['column']}]"
+            bad = _s3_text_problem(x["why"], min_chars=15, min_words=3)
+            if bad:
+                raise DeclarationsError(f"{lab}.why {bad}")
+            bad = _s3_evidence_problem(x["evidence"], allow_unverified=False)
+            if bad:
+                raise DeclarationsError(f"{lab}.evidence {x['evidence']!r} {bad}")
+            bad = _non_claim_names_column_problem(x)
+            if bad:
+                raise DeclarationsError(f"{lab}: {bad}")
+
+
+def _non_claim_names_column_problem(x: dict):
+    """None when a declared non-claim names its column as a whole token (case-insensitive) in its `why` OR in the evidence line it points at (so a generic reason with an unrelated
+    pointer cannot declare a prophecy column a label), else why not. `evidence` is `path:line` (the line must exist: `_s3_evidence_problem` ran first) or a bare existing file."""
+    tok = re.compile(r"(?<![A-Za-z0-9_])" + re.escape(x["column"]) + r"(?![A-Za-z0-9_])", re.IGNORECASE)
+    if tok.search(x["why"]):
+        return None
+    m = re.fullmatch(r"(.+):([0-9]+)", x["evidence"])
+    line = ""
+    if m:
+        try:
+            line = (ROOT / m.group(1)).read_text(encoding="utf-8").splitlines()[int(m.group(2)) - 1]
+        except (OSError, UnicodeDecodeError, IndexError):
+            line = ""
+    if tok.search(line):
+        return None
+    return (f"neither the `why` nor the evidence line {x['evidence']!r} names the column {x['column']!r} (whole token, case-insensitive): a non-claim must say which column it is "
+            "about and point at where that column is written")
+
+
 # E6 S3 (SS N-72 S3, N-73 (1)/(4), N-74 (b)): two more per-asset DECLARATIONS, each reviewed and carrying evidence and ONE line of reason. `vocab_alias`
 # declares the asset's alias class (measured against bg_ontology) or that it has none (`no_alias_class`); `ldgr_source` names the column that carries
 # the asset's classical source and the citation_state it stands on, or declares that the asset states no classical rule or cited fact
@@ -1775,13 +1787,27 @@ def d1_fetch_rows(table: str, columns, chart_id: str | None = None) -> list:
         raise Unknown(f"d1_fetch_rows: unparseable read of {table}: {exc}") from exc
 
 
-def carriage_declared_checks(aid: str, car, target_table, chart_scoped: bool = False) -> dict:
+# C1-1 (SS N-101 (c)): the COLUMN LEDGER (every text-like column of the table is matched, a declared constant, a declared non-claim or a Narr prose field, else D1 cannot read
+# PASS) always runs for a declared D1 carriage: there is no switch. The one asset that declares a carriage check, bg_phaladeepika_latta, has two text columns its D1 spec never checks
+# (`table_version`, `source_citation`); it declares both as `non_claim_columns` (declarations 1.13.0), so it reads PASS, and removing either declaration reads PARTIAL naming the
+# column. A clean ledger adds no key to the record. The column facts come from pg_catalog (`pg_column_type_facts`, the Null detector's one catalog read), not information_schema.
+
+
+def carriage_fetch_column_types(table: str) -> dict:
+    """{column: {t, c, ec, et}} for every column of `table`: the Carr column ledger's input (`pg_column_type_facts`). Raises Unknown on a failed read."""
+    return pg_column_type_facts(table)
+
+
+def carriage_declared_checks(aid: str, car, target_table, chart_scoped: bool = False, *, column_types, prose_columns) -> dict:
     """measure()'s Carr.D1/D2/D3 records for an asset that DECLARES its carriage check (SS N-72 S2): {} unless `car.nature` is
     declared (an undeclared asset emits nothing here, so its cell reads exactly as before).
 
     ratified_judgment: all three N/A, cause `ratified_judgment`. Otherwise the declared check (`applies`) is MEASURED (D1 by the
     generic engine in carriage_d1.py with a spec; D2/D3 have no detector yet: NO_DETECTOR, named) and the other two read N/A,
-    cause `not-the-declared-carriage`, released only by the declared rule (never by a caller's choice)."""
+    cause `not-the-declared-carriage`, released only by the declared rule (never by a caller's choice).
+
+    `column_types` (REQUIRED, no default: a caller cannot leave the column ledger off by forgetting it) is the table's pg_catalog column facts (`carriage_fetch_column_types`), or
+    None when they could not be read (the ledger then reads NO_DETECTOR, never PASS); `prose_columns` the columns the asset declares as Narr prose."""
     if not isinstance(car, dict) or car.get("nature") is None:
         return {}
     why = car.get("why") or ""
@@ -1807,10 +1833,37 @@ def carriage_declared_checks(aid: str, car, target_table, chart_scoped: bool = F
     try:
         chunks = d1_fetch_chunks(spec["chunk_ids"])
         rows = d1_fetch_rows(spec["table"], d1.spec_columns(spec), CHART_ID if chart_scoped else None)
-        out[own] = d1.d1_measure(spec, car.get("citation_state"), chunks, rows, target_table)
+        out[own] = d1.d1_measure(spec, car.get("citation_state"), chunks, rows, target_table,
+                                 ledger=dict(columns=column_types, prose_columns=list(prose_columns or ())))
     except Unknown as exc:                                  # R41: this check's failure degrades only this check
         out[own] = dict(v=ERRORED, measured=f"check errored: {exc}", citation_state=car.get("citation_state"))
     return out
+
+
+def _carriage_ledger_inputs(entry, tbl):
+    """(column_types, prose_columns) for measure()'s carriage_declared_checks: the table's pg_catalog column facts (read ONLY for an asset that declares a D1 carriage with a spec
+    on this table; None when the read failed: unreadable, never "no columns") and the asset's declared Narr prose columns."""
+    entry = entry if isinstance(entry, dict) else {}
+    car = entry.get("carriage")
+    types = None
+    if isinstance(car, dict) and car.get("applies") == "D1" and isinstance(car.get("spec"), dict) and car["spec"].get("table") == tbl and tbl:
+        try:
+            types = carriage_fetch_column_types(tbl)
+        except Unknown:
+            types = None
+    return types, _carriage_prose_columns(entry.get("prose_fields"))
+
+
+def _carriage_prose_columns(prose_fields) -> list:
+    """The columns an asset DECLARES as Narr prose (the first segment of each prose_fields entry: a column name, or `column.$.path`), for the column ledger's fourth class.
+    [] when none are declared (null or empty)."""
+    out = []
+    for e in prose_fields if isinstance(prose_fields, list) else []:
+        try:
+            out.append(parse_prose_field(e)[0])
+        except (DeclarationsError, ValueError, TypeError, IndexError):
+            continue
+    return list(dict.fromkeys(out))
 
 
 def carr_checks(record_facts) -> dict:
@@ -2682,12 +2735,15 @@ def _null_kind_from_catalog(typname, cat, elem_cat) -> str:
     return {"S": "text", "E": "text", "N": "num", "B": "bool"}.get(cat, "other")
 
 
-def null_fetch_column_kinds(table: str, columns) -> dict:
-    """{column: kind} for the declared table from ONE read-only pg_catalog SELECT (answered as one line of jsonb): a domain is resolved to its base type, an array to its
-    element's category. Identifiers are matched against a strict pattern. Raises Unknown on a malformed identifier, a failed read, or a column the catalog does not answer for."""
+def pg_column_type_facts(table: str, columns=None) -> dict:
+    """{column: {t, c, ec, et}} for the table from ONE read-only pg_catalog SELECT (answered as one line of jsonb): `t` / `c` are the pg_type name and typcategory of the column's BASE
+    type (a domain resolved to its base type), `ec` / `et` the typcategory and type name of an array's ELEMENT. The ONE catalog read behind the Null detector's column kinds
+    (`null_fetch_column_kinds`) and the Carr column ledger (`carriage_fetch_column_types`): information_schema.data_type is not used, it reports USER-DEFINED for an enum, citext
+    and a domain over citext. `columns` None = every column of the table; a list = those columns, and the catalog must answer for each of them. Identifiers are matched against
+    a strict pattern. Raises Unknown on a malformed identifier, a failed read, or a requested column the catalog does not answer for."""
     if not (isinstance(table, str) and _D1_SQL_IDENT.fullmatch(table)):
-        raise Unknown(f"null_fetch_column_kinds: malformed table {table!r}")
-    blob = scalar("SELECT coalesce(jsonb_object_agg(a.attname, jsonb_build_object('t', bt.typname, 'c', bt.typcategory, 'ec', et.typcategory)), '{}'::jsonb)::text "
+        raise Unknown(f"pg_column_type_facts: malformed table {table!r}")
+    blob = scalar("SELECT coalesce(jsonb_object_agg(a.attname, jsonb_build_object('t', bt.typname, 'c', bt.typcategory, 'ec', et.typcategory, 'et', et.typname)), '{}'::jsonb)::text "
                   "FROM pg_attribute a JOIN pg_type t ON t.oid = a.atttypid "
                   "JOIN pg_type bt ON bt.oid = CASE WHEN t.typtype = 'd' THEN t.typbasetype ELSE t.oid END "
                   "LEFT JOIN pg_type et ON et.oid = CASE WHEN bt.typcategory = 'A' THEN bt.typelem END "
@@ -2695,9 +2751,23 @@ def null_fetch_column_kinds(table: str, columns) -> dict:
     try:
         got = json.loads(blob or "")
     except (json.JSONDecodeError, TypeError) as exc:
-        raise Unknown(f"null_fetch_column_kinds: unparseable read of {table}: {exc}") from exc
-    if not (isinstance(got, dict) and all(isinstance(got.get(c), dict) for c in columns)):
-        raise Unknown(f"null_fetch_column_kinds: the catalog does not answer for every column of {table}")
+        raise Unknown(f"pg_column_type_facts: unparseable read of {table}: {exc}") from exc
+    if not isinstance(got, dict) or not got:
+        raise Unknown(f"pg_column_type_facts: the catalog returned no column of {table}")
+    if columns is not None and not all(isinstance(got.get(c), dict) for c in columns):
+        raise Unknown(f"pg_column_type_facts: the catalog does not answer for every column of {table}")
+    return {c: got[c] for c in (got if columns is None else columns)}
+
+
+def null_fetch_column_kinds(table: str, columns) -> dict:
+    """{column: kind} for the declared table: `pg_column_type_facts` (ONE read-only pg_catalog SELECT; a domain is resolved to its base type, an array to its element's category)
+    turned into the Null detector's kinds. Raises Unknown on a malformed identifier, a failed read, or a column the catalog does not answer for."""
+    if not (isinstance(table, str) and _D1_SQL_IDENT.fullmatch(table)):
+        raise Unknown(f"null_fetch_column_kinds: malformed table {table!r}")
+    try:
+        got = pg_column_type_facts(table, list(columns))
+    except Unknown as exc:
+        raise Unknown(str(exc).replace("pg_column_type_facts", "null_fetch_column_kinds")) from exc
     return {c: _null_kind_from_catalog(got[c].get("t"), got[c].get("c"), got[c].get("ec")) for c in columns}
 
 
@@ -7537,6 +7607,14 @@ def d1_evidence_problem(meas) -> str:
     if meas.get("v") == PASS and not (ev.get("unmatched") == [] and ev.get("rows_matched") == ev["rows_total"]
                                        and ev.get("row_count_ok") is True):
         return "PASS but not every row matched under the declared row count"
+    if meas.get("v") == PASS:
+        # C1-1 guards (row_scope, column ledger): a PASS record must show them clean wherever it says they ran. A record with neither key reads as before.
+        if "out_of_scope_rows" in ev and ev["out_of_scope_rows"] != 0:
+            return "PASS but rows lie outside the declared row_scope (they cap D1 at PARTIAL)"
+        if "row_scope" in ev and not (isinstance(ev.get("out_of_scope_rows"), int) and not isinstance(ev.get("out_of_scope_rows"), bool) and ev["out_of_scope_rows"] == 0):
+            return "PASS but the record declares a row_scope and does not show zero out-of-scope rows (rows outside the scope cap D1 at PARTIAL)"
+        if "column_ledger" in ev and not d1m.ledger_block_is_clean(ev["column_ledger"]):
+            return "PASS but the column ledger lists unclassified, unexaminable or absent columns (they cap D1 at PARTIAL)"
     return ""
 
 
@@ -8623,9 +8701,11 @@ def measure(layer_key: str, assets=None) -> dict:
 
         m["Complete.width"] = dict(v=NOT_GENERIC, measured="no declared universe for this asset — declaring one is the first width gap")
         # E6 item (f): Carr.D1-D3 `no-carriage` candidates, only for an asset that DECLARES terminal_by_construction
-        m.update(carriage_declared_checks(aid, ((declarations or {}).get(aid) or {}).get("carriage") if isinstance(declarations, dict) else None,
-                                          r["target_table"],
-                                          chart_scoped="chart_id" in (_target_columns_fact(r["target_table"], cat) or ())))
+        _decl_entry = (declarations or {}).get(aid) if isinstance(declarations, dict) else None
+        _ledger_types, _ledger_prose = _carriage_ledger_inputs(_decl_entry, r["target_table"])
+        m.update(carriage_declared_checks(aid, (_decl_entry or {}).get("carriage"), r["target_table"],
+                                          chart_scoped="chart_id" in (_target_columns_fact(r["target_table"], cat) or ()),
+                                          column_types=_ledger_types, prose_columns=_ledger_prose))
         m.update(carr_checks(dict(declared_facts(declarations, aid), blocking_radius=radius.get(aid),
                                   measured_served=m["Dens.served"]["v"])))
         if "Reach.fields" not in m:
