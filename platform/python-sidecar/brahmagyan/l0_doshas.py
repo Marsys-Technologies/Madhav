@@ -26,8 +26,6 @@ from __future__ import annotations
 
 import json
 import logging
-import re
-import unicodedata
 from datetime import datetime, timezone
 from typing import Any
 
@@ -1895,6 +1893,175 @@ assert len(DOSHAS) == 79, f"Expected 79 doshas, got {len(DOSHAS)}"
 
 # ── Seed function ──────────────────────────────────────────────────────────────
 
+def seed_doshas(
+    conn: Any,
+    build_id: str | None = None,
+    dry_run: bool = False,
+    autocommit: bool = True,
+) -> dict[str, int]:
+    """
+    Insert DOSHAS into brahma_dosha_catalog, brahma_ontology (entity_class='dosha'),
+    and reference_doshas.
+
+    Returns dict with:
+        catalog_inserted, ontology_inserted, ref_inserted, catalog_skipped
+
+    autocommit: if False, caller owns the transaction (pass False from asset_runner).
+    """
+    if dry_run:
+        logger.info("[L0/doshas] dry_run — would insert %d doshas", len(DOSHAS))
+        return {
+            "catalog_inserted": len(DOSHAS),
+            "ontology_inserted": len(DOSHAS),
+            "ref_inserted": len(DOSHAS),
+            "catalog_skipped": 0,
+        }
+
+    now = datetime.now(timezone.utc)
+    catalog_inserted = 0
+    ontology_inserted = 0
+    ref_inserted = 0
+    catalog_skipped = 0
+
+    with conn.cursor() as cur:
+        # Validate table exists
+        cur.execute(
+            "SELECT COUNT(*) FROM information_schema.tables "
+            "WHERE table_schema='public' AND table_name='brahma_dosha_catalog'"
+        )
+        if cur.fetchone()['count'] == 0:
+            raise RuntimeError(
+                "brahma_dosha_catalog table does not exist — cannot write bg_doshas. "
+                "Apply migration 176 first."
+            )
+
+        # All three projections are wholly owned by bg_doshas (the shared
+        # ontology delete is scoped to its entity class). The orchestrator owns
+        # the surrounding transaction/savepoint, so a failed replacement rolls
+        # back atomically.
+        cur.execute("DELETE FROM reference_doshas")
+        cur.execute("DELETE FROM brahma_dosha_catalog")
+        cur.execute("DELETE FROM brahma_ontology WHERE entity_class = 'dosha'")
+
+        for d in DOSHAS:
+            cid = d["canonical_id"]
+
+            # ── 1. brahma_dosha_catalog (catalog-first; FK anchor) ────────────
+            cur.execute(
+                """
+                INSERT INTO brahma_dosha_catalog (
+                    canonical_id, name_sa, name_en, category,
+                    formation_rule_jsonb, formation_text, effects_text,
+                    severity_grades, cancellation_conditions,
+                    classical_citations, source_chunk_ids,
+                    associated_remedies, school, created_at
+                ) VALUES (
+                    %s, %s, %s, %s,
+                    %s::jsonb, %s, %s,
+                    %s::jsonb, %s::jsonb,
+                    %s::jsonb, %s,
+                    %s, %s, %s
+                )
+                """,
+                (
+                    cid,
+                    d["name_sa"],
+                    d["name_en"],
+                    d["category"],
+                    json.dumps(d["formation_rule_jsonb"]),
+                    d["formation_text"],
+                    d["effects_text"],
+                    json.dumps(d.get("severity_grades") or {}),
+                    json.dumps(d.get("cancellation_conditions") or {}),
+                    json.dumps(d.get("classical_citations") or []),
+                    [],   # source_chunk_ids — BIGINT[] default
+                    [],   # associated_remedies — UUID[] seeded empty (Tier 3 fills)
+                    d["school"],
+                    now,
+                ),
+            )
+            if cur.rowcount > 0:
+                catalog_inserted += 1
+            else:
+                catalog_skipped += 1
+                logger.debug("[L0/doshas] skipped (conflict) catalog: %s", cid)
+
+            # ── 2. brahma_ontology (entity_class='dosha') ─────────────────────
+            cur.execute(
+                """
+                INSERT INTO brahma_ontology (
+                    entity_class, canonical_id, canonical_name_en, canonical_name_sa,
+                    synonyms, description, source_citation, created_at
+                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+                """,
+                (
+                    "dosha",
+                    cid,
+                    d["name_en"],
+                    d["name_sa"],
+                    DOSHA_ALIAS_SETS[cid],   # synonyms - closed alias sets (TI-L0-12), see end of module
+                    d["effects_text"][:200] if d.get("effects_text") else None,
+                    d.get("source_citation", CLASSICAL_TRADITION),
+                    now,
+                ),
+            )
+            if cur.rowcount > 0:
+                ontology_inserted += 1
+
+            # ── 3. reference_doshas pointer (catalog_id FK already satisfied) ─
+            cur.execute(
+                """
+                INSERT INTO reference_doshas (canonical_id, name_en, category)
+                VALUES (%s, %s, %s)
+                """,
+                (cid, d["name_en"], d["category"]),
+            )
+            if cur.rowcount > 0:
+                ref_inserted += 1
+
+        cur.execute(
+            """
+            SELECT
+              (SELECT count(*) FROM brahma_dosha_catalog) AS catalog_count,
+              (SELECT count(*) FROM brahma_ontology WHERE entity_class='dosha') AS ontology_count,
+              (SELECT count(*) FROM reference_doshas) AS reference_count
+            """
+        )
+        postflight = cur.fetchone()
+        actual = (
+            (
+                postflight["catalog_count"],
+                postflight["ontology_count"],
+                postflight["reference_count"],
+            )
+            if isinstance(postflight, dict)
+            else tuple(postflight)
+        )
+        expected = (len(DOSHAS),) * 3
+        if actual != expected:
+            raise RuntimeError(
+                f"bg_doshas exact postflight failed: expected {expected}, got {actual}"
+            )
+
+        logger.info(
+            "[L0/doshas] catalog: +%d inserted / %d skipped; ontology: +%d; ref: +%d",
+            catalog_inserted, catalog_skipped, ontology_inserted, ref_inserted,
+        )
+
+    if autocommit:
+        conn.commit()
+
+    return {
+        "catalog_inserted": catalog_inserted,
+        "ontology_inserted": ontology_inserted,
+        "ref_inserted": ref_inserted,
+        "catalog_skipped": catalog_skipped,
+    }
+
+
+import re  # noqa: E402  (TI-L0-12 appended below the seed so no pinned line number in this module moves)
+import unicodedata  # noqa: E402
+
 # ── TI-L0-12 (SS Q4, CF-09 (a)): closed dosha alias sets ─────────────────────────
 #
 # The other 15 ontology classes carry a non-empty synonym set; the 79 dosha rows carried
@@ -1997,169 +2164,5 @@ def dosha_alias_sets(doshas: list[dict], reserved: frozenset[str] | None = None)
     return out
 
 
-def seed_doshas(
-    conn: Any,
-    build_id: str | None = None,
-    dry_run: bool = False,
-    autocommit: bool = True,
-) -> dict[str, int]:
-    """
-    Insert DOSHAS into brahma_dosha_catalog, brahma_ontology (entity_class='dosha'),
-    and reference_doshas.
-
-    Returns dict with:
-        catalog_inserted, ontology_inserted, ref_inserted, catalog_skipped
-
-    autocommit: if False, caller owns the transaction (pass False from asset_runner).
-    """
-    if dry_run:
-        logger.info("[L0/doshas] dry_run — would insert %d doshas", len(DOSHAS))
-        return {
-            "catalog_inserted": len(DOSHAS),
-            "ontology_inserted": len(DOSHAS),
-            "ref_inserted": len(DOSHAS),
-            "catalog_skipped": 0,
-        }
-
-    now = datetime.now(timezone.utc)
-    catalog_inserted = 0
-    ontology_inserted = 0
-    ref_inserted = 0
-    catalog_skipped = 0
-
-    with conn.cursor() as cur:
-        # Validate table exists
-        cur.execute(
-            "SELECT COUNT(*) FROM information_schema.tables "
-            "WHERE table_schema='public' AND table_name='brahma_dosha_catalog'"
-        )
-        if cur.fetchone()['count'] == 0:
-            raise RuntimeError(
-                "brahma_dosha_catalog table does not exist — cannot write bg_doshas. "
-                "Apply migration 176 first."
-            )
-
-        # All three projections are wholly owned by bg_doshas (the shared
-        # ontology delete is scoped to its entity class). The orchestrator owns
-        # the surrounding transaction/savepoint, so a failed replacement rolls
-        # back atomically.
-        cur.execute("DELETE FROM reference_doshas")
-        cur.execute("DELETE FROM brahma_dosha_catalog")
-        cur.execute("DELETE FROM brahma_ontology WHERE entity_class = 'dosha'")
-
-        alias_sets = dosha_alias_sets(DOSHAS)
-
-        for d in DOSHAS:
-            cid = d["canonical_id"]
-
-            # ── 1. brahma_dosha_catalog (catalog-first; FK anchor) ────────────
-            cur.execute(
-                """
-                INSERT INTO brahma_dosha_catalog (
-                    canonical_id, name_sa, name_en, category,
-                    formation_rule_jsonb, formation_text, effects_text,
-                    severity_grades, cancellation_conditions,
-                    classical_citations, source_chunk_ids,
-                    associated_remedies, school, created_at
-                ) VALUES (
-                    %s, %s, %s, %s,
-                    %s::jsonb, %s, %s,
-                    %s::jsonb, %s::jsonb,
-                    %s::jsonb, %s,
-                    %s, %s, %s
-                )
-                """,
-                (
-                    cid,
-                    d["name_sa"],
-                    d["name_en"],
-                    d["category"],
-                    json.dumps(d["formation_rule_jsonb"]),
-                    d["formation_text"],
-                    d["effects_text"],
-                    json.dumps(d.get("severity_grades") or {}),
-                    json.dumps(d.get("cancellation_conditions") or {}),
-                    json.dumps(d.get("classical_citations") or []),
-                    [],   # source_chunk_ids — BIGINT[] default
-                    [],   # associated_remedies — UUID[] seeded empty (Tier 3 fills)
-                    d["school"],
-                    now,
-                ),
-            )
-            if cur.rowcount > 0:
-                catalog_inserted += 1
-            else:
-                catalog_skipped += 1
-                logger.debug("[L0/doshas] skipped (conflict) catalog: %s", cid)
-
-            # ── 2. brahma_ontology (entity_class='dosha') ─────────────────────
-            cur.execute(
-                """
-                INSERT INTO brahma_ontology (
-                    entity_class, canonical_id, canonical_name_en, canonical_name_sa,
-                    synonyms, description, source_citation, created_at
-                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
-                """,
-                (
-                    "dosha",
-                    cid,
-                    d["name_en"],
-                    d["name_sa"],
-                    alias_sets[cid],   # synonyms — closed alias set (TI-L0-12), dosha_alias_sets()
-                    d["effects_text"][:200] if d.get("effects_text") else None,
-                    d.get("source_citation", CLASSICAL_TRADITION),
-                    now,
-                ),
-            )
-            if cur.rowcount > 0:
-                ontology_inserted += 1
-
-            # ── 3. reference_doshas pointer (catalog_id FK already satisfied) ─
-            cur.execute(
-                """
-                INSERT INTO reference_doshas (canonical_id, name_en, category)
-                VALUES (%s, %s, %s)
-                """,
-                (cid, d["name_en"], d["category"]),
-            )
-            if cur.rowcount > 0:
-                ref_inserted += 1
-
-        cur.execute(
-            """
-            SELECT
-              (SELECT count(*) FROM brahma_dosha_catalog) AS catalog_count,
-              (SELECT count(*) FROM brahma_ontology WHERE entity_class='dosha') AS ontology_count,
-              (SELECT count(*) FROM reference_doshas) AS reference_count
-            """
-        )
-        postflight = cur.fetchone()
-        actual = (
-            (
-                postflight["catalog_count"],
-                postflight["ontology_count"],
-                postflight["reference_count"],
-            )
-            if isinstance(postflight, dict)
-            else tuple(postflight)
-        )
-        expected = (len(DOSHAS),) * 3
-        if actual != expected:
-            raise RuntimeError(
-                f"bg_doshas exact postflight failed: expected {expected}, got {actual}"
-            )
-
-        logger.info(
-            "[L0/doshas] catalog: +%d inserted / %d skipped; ontology: +%d; ref: +%d",
-            catalog_inserted, catalog_skipped, ontology_inserted, ref_inserted,
-        )
-
-    if autocommit:
-        conn.commit()
-
-    return {
-        "catalog_inserted": catalog_inserted,
-        "ontology_inserted": ontology_inserted,
-        "ref_inserted": ref_inserted,
-        "catalog_skipped": catalog_skipped,
-    }
+# Module-level constant (a subscript at the bind site, not a call): the closed alias sets of the 79 doshas.
+DOSHA_ALIAS_SETS: dict[str, list[str]] = dosha_alias_sets(DOSHAS)
