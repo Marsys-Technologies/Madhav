@@ -124,6 +124,7 @@ def test_dry_run_shows_exactly_the_8_ids_and_changes_nothing(runner, mod, capsys
     assert outcome["shadow_deleted_ids"] == SIDS and outcome["shadow_chart_total_before"] == 138 and outcome["shadow_chart_total_after"] == 122
     assert outcome["shadow_other_charts_before"] == outcome["shadow_other_charts_after"] == {OTHER_CHART: 3} and outcome["shadow_deleted_rows_nonprivate_fingerprint_sha256"] == PROD_SFP
     assert outcome["total_rows_deleted_in_transaction"] == 24
+    assert "INTENDED" in outcome["rollback_baseline_amendment"] and "deleting 16" in outcome["rollback_baseline_amendment"] and "138 -> 122" in outcome["rollback_baseline_amendment"]
     assert outcome["transaction_committed"] is False and outcome["irreversible"] is True and "PR #3047" in outcome["restore"]
     # NO private content anywhere: every private column of the synthetic rows holds a PRIVMARK, none of which may appear in a file or in the output
     assert "PRIVMARK" not in evidence_text(pathlib.Path(res["evidence_dir"]).parent)

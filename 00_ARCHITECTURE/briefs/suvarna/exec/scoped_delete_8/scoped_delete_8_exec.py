@@ -111,6 +111,9 @@ TARGETS = (
     {"key": "shadow", "sp": "shadow_", "table": SHADOW_TABLE, "ids": SHADOW_IDS, "fp": SHADOW_FINGERPRINT, "n": 16, "role": OWNER_ROLE, "guc": "madhav.sd8_deleted_shadow_ids",
      "step": STEP_DELETE_SHADOW},
 )
+# recorded in outcome.json so the evidence says the ŚUDDHA-VĀCA rollback baseline was amended on purpose (SS accepted the extension in design: deleting these rows is INTENDED)
+BASELINE_AMENDMENT = ("INTENDED, per SS ruling: the ŚUDDHA-VĀCA rollback baseline phala_pramana__ssv_20260728b (tag ssv_20260728b, 2026-07-28) is amended by deleting {n} "
+                      "contaminated life_event_miss rows of chart 1c826d5a (chart total {before} -> {after}); restoring that snapshot no longer re-introduces them")
 RESTORE_NOTE = ("irreversible; the 8 phala_pramana rows are regenerable by rebuilding ph_pramana for 1c826d5a after PR #3047; the 16 snapshot rows "
                 "(phala_pramana__ssv_20260728b) are the contaminated rows of a frozen baseline and are not regenerated")
 
@@ -272,6 +275,8 @@ def render_plan(sha: str | None = None, pins: dict | None = None) -> str:
         f"commit conditions: {', '.join(CHECKS)}",
         f"known columns that can refer to a pramana id: {', '.join(KNOWN_REFERENCERS)}",
         f"restore: {RESTORE_NOTE}",
+        "rollback baseline: the ŚUDDHA-VĀCA rollback baseline phala_pramana__ssv_20260728b is AMENDED ON PURPOSE (SS accepted the extension in design): 16 rows, chart total 138 -> 122; "
+        "outcome.json records it (rollback_baseline_amendment)",
         f"-- sql: {SQL_FORWARD.name} sha256 {f.sql_sha256}",
     ]
     for n, s in f.steps:
@@ -604,6 +609,8 @@ def outcome_extra(pre_m, post_m, deleted) -> dict:
     return {"target": f"{SCHEMA}.{TABLE}", "shadow_target": f"{SCHEMA}.{SHADOW_TABLE}", "bound_chart": CHART, "bound_ids": list(IDS), "bound_shadow_ids": list(SHADOW_IDS),
             "marker": MARKER, **main, **{"shadow_" + k: v for k, v in shadow.items()},
             "total_rows_deleted_in_transaction": main["rows_deleted_in_transaction"] + shadow["rows_deleted_in_transaction"],
+            "rollback_baseline_amendment": BASELINE_AMENDMENT.format(n=shadow["rows_deleted_in_transaction"], before=shadow["chart_total_before"],
+                                                                     after=shadow["chart_total_after"]),
             "after_is_measured_inside_the_transaction": True, "transaction_committed": False, "irreversible": True, "restore": RESTORE_NOTE}
 
 

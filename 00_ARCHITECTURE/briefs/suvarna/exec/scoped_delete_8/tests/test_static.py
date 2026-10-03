@@ -149,7 +149,7 @@ def test_the_plan_hash_binds_the_sql_the_gate_the_ids_and_the_executor(mod, monk
         assert i in text
     for pin in mod.GATE_PINS.values():
         assert pin in text
-    assert "irreversible" in text.lower() and "PR #3047" in text and "phala_pramana__ssv_20260728b" in text and "role_orchestrator" in text
+    assert "irreversible" in text.lower() and "PR #3047" in text and "phala_pramana__ssv_20260728b" in text and "role_orchestrator" in text and "AMENDED ON PURPOSE" in text and "138 -> 122" in text
     p = tmp_path / "f.sql"
     p.write_text(mod.SQL_FORWARD.read_text().replace("FROM ONLY", "FROM", 1))
     monkeypatch.setattr(mod, "SQL_FORWARD", p)
