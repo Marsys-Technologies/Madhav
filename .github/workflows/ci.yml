@@ -341,6 +341,26 @@ jobs:
         # any test file's DDL (which may have quietly drifted between the ~6 copies).
         run: npx vitest run tests/pariprashna/samiksha src/lib/pariprashna/samiksha --reporter=verbose --no-file-parallelism
 
+      - name: Pravāha F-1 — provision the Gochara disposable DB (migration 1206 live suite)
+        # A fourth throwaway database, named EXACTLY gochara_a51_test: the suite's own
+        # disposable-URL guard (tests/integration/gochara_a5_1_disposable_url.ts) refuses any
+        # other name. The suite creates the cluster roles it needs (data_plane_builder,
+        # gochara_sealer) and drops them again; this job runs it serially.
+        env:
+          PGPASSWORD: postgres
+        run: psql -h localhost -U postgres -v ON_ERROR_STOP=1 -c "CREATE DATABASE gochara_a51_test;"
+
+      - name: Pravāha F-1 — migration 1206 live-DB suite (REQUIRED, never skipped) + reproducible mutation evidence
+        # GOCHARA_REQUIRE_DB=1 turns a missing/blank URL into a FAILING test instead of the
+        # suite's usual silent skip (Codex v1.0 R5). The mutation harness neuters each 1206
+        # guard in turn and requires every mutation to be caught by >=1 failing test.
+        env:
+          GOCHARA_A51_TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/gochara_a51_test
+          GOCHARA_REQUIRE_DB: '1'
+        run: |
+          npx vitest run tests/integration/gochara_b6_am5_search_inventory.db.test.ts --reporter=verbose --no-file-parallelism
+          python3 scripts/gochara/mutation_check_1206.py
+
       - name: RATE-07 — provision the rate-limit bucket DB (migration 580, real file)
         # A third throwaway database, bare: migration 580 is self-contained
         # (CREATE TABLE IF NOT EXISTS, no FK to anything) and applying the REAL
