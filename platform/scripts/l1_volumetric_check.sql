@@ -43,10 +43,15 @@ GROUP BY re.model;
 -- Sanity gate in extractor is hard-coded to 30–40 (comment reads "expected ~36").
 -- EXPECTED: 36 rows (36 point events; the 46 estimate was based on incorrect assumptions)
 -- ---------------------------------------------------------------------------
-SELECT 'life_events total' AS check, COUNT(*) AS rows FROM life_events;
+-- life_events is people-entered, chart-scoped data (SS N-110 / F11): the EXPECTED figure above is
+-- the native's source corpus, so count the native chart only (an unscoped total would also
+-- count any other chart's events and report a false MISMATCH).
+SELECT 'life_events total' AS check, COUNT(*) AS rows FROM life_events
+WHERE chart_id = '482012f1-710e-4a25-994a-93821f5871aa';
 
 SELECT 'life_events by category' AS check, category, COUNT(*) AS rows
 FROM life_events
+WHERE chart_id = '482012f1-710e-4a25-994a-93821f5871aa'
 GROUP BY category
 ORDER BY rows DESC;
 
@@ -170,7 +175,7 @@ SELECT
 FROM (
   VALUES
     ('rag_chunks_l1',        (SELECT COUNT(*)::int FROM rag_chunks WHERE layer='L1' AND doc_type='l1_fact' AND is_stale=false),    102),
-    ('life_events',          (SELECT COUNT(*)::int FROM life_events),                                                               36),
+    ('life_events',          (SELECT COUNT(*)::int FROM life_events WHERE chart_id = '482012f1-710e-4a25-994a-93821f5871aa'),   36),
     ('sade_sati_phases',     (SELECT COUNT(*)::int FROM sade_sati_phases),                                                          46),
     ('chart_facts',          (SELECT COUNT(*)::int FROM chart_facts WHERE is_stale=false),                                         589),
     ('eclipses',             (SELECT COUNT(*)::int FROM eclipses),                                                                 913),

@@ -210,13 +210,19 @@ class MiJivanaghatanaWriter(WriterBase):
         col_names = {r["column_name"] for r in col_rows}
 
         with conn.cursor(row_factory=psycopg.rows.dict_row) as cur:
-            if "chart_id" in col_names:
-                cur.execute(
-                    "SELECT * FROM life_events WHERE chart_id = %s ORDER BY event_id",
-                    (chart_id,),
+            if "chart_id" not in col_names:
+                # life_events is people-entered, private, chart-scoped data
+                # (SS N-110 / F10). A table that cannot be chart-scoped must
+                # never be read unscoped (that would ingest every chart's
+                # events): fail loudly instead.
+                raise RuntimeError(
+                    "mi_jivanaghatana: life_events has no chart_id column; "
+                    "refusing an unscoped read of people-entered events"
                 )
-            else:
-                cur.execute("SELECT * FROM life_events ORDER BY event_id")
+            cur.execute(
+                "SELECT * FROM life_events WHERE chart_id = %s ORDER BY event_id",
+                (chart_id,),
+            )
             raw_events = [dict(r) for r in cur.fetchall()]
 
         logger.info(

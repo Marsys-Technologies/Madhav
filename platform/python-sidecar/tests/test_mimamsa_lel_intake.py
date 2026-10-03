@@ -413,7 +413,7 @@ class TestLelQueryMock:
         mock_conn = _make_mock_conn(rows, count=1)
 
         with patch.object(mod, '_get_conn', return_value=mock_conn):
-            result = mod.lel_query(limit=10)
+            result = mod.lel_query(limit=10, chart_id=_TEST_CHART_ID)
 
         assert "events" in result
         assert isinstance(result["events"], list)
@@ -425,7 +425,7 @@ class TestLelQueryMock:
         mock_conn = _make_mock_conn(rows, count=1)
 
         with patch.object(mod, '_get_conn', return_value=mock_conn):
-            result = mod.lel_query()
+            result = mod.lel_query(chart_id=_TEST_CHART_ID)
 
         for event in result["events"]:
             assert event["source_citation"], "source_citation must be non-empty"
@@ -436,7 +436,7 @@ class TestLelQueryMock:
         mock_conn = _make_mock_conn(rows, count=1)
 
         with patch.object(mod, '_get_conn', return_value=mock_conn):
-            result = mod.lel_query()
+            result = mod.lel_query(chart_id=_TEST_CHART_ID)
 
         env = result.get("provenance_envelope", {})
         assert env, "provenance_envelope must be present"
@@ -454,7 +454,7 @@ class TestLelQueryMock:
         mock_conn = _make_mock_conn(rows, count=1)
 
         with patch.object(mod, '_get_conn', return_value=mock_conn):
-            result = mod.lel_query()
+            result = mod.lel_query(chart_id=_TEST_CHART_ID)
 
         env = result["provenance_envelope"]
         assert "no_leakage_note" in env
@@ -466,7 +466,7 @@ class TestLelQueryMock:
         mock_conn = _make_mock_conn(rows, count=1)
 
         with patch.object(mod, '_get_conn', return_value=mock_conn):
-            result = mod.lel_query(domain="career", date_from="2023-01-01")
+            result = mod.lel_query(domain="career", date_from="2023-01-01", chart_id=_TEST_CHART_ID)
 
         fa = result["filter_applied"]
         assert fa["domain"] == "career"
@@ -483,7 +483,7 @@ class TestLelQueryMock:
         mock_conn = _make_mock_conn(rows, count=3)
 
         with patch.object(mod, '_get_conn', return_value=mock_conn):
-            result = mod.lel_query()
+            result = mod.lel_query(chart_id=_TEST_CHART_ID)
 
         for event in result["events"]:
             cs = event["convergence_score"]
@@ -498,7 +498,7 @@ class TestLelQueryMock:
         mock_conn = _make_mock_conn(rows, count=57)
 
         with patch.object(mod, '_get_conn', return_value=mock_conn):
-            result = mod.lel_query()
+            result = mod.lel_query(chart_id=_TEST_CHART_ID)
 
         assert result["total_count"] == 57
 
@@ -548,7 +548,7 @@ class TestAcceptanceGateMock:
                 "filter_applied": {},
                 "provenance_envelope": {},
             }):
-                result = mod.run_acceptance_gate()
+                result = mod.run_acceptance_gate(chart_id=_TEST_CHART_ID)
 
         assert "gate_passed" in result
         assert "checks" in result
@@ -569,7 +569,7 @@ class TestAcceptanceGateMock:
                 "filter_applied": {},
                 "provenance_envelope": {},
             }):
-                result = mod.run_acceptance_gate()
+                result = mod.run_acceptance_gate(chart_id=_TEST_CHART_ID)
 
         # AC1-AC4 should pass
         ac_ids = {c["id"]: c["passed"] for c in result["checks"]}
@@ -589,7 +589,7 @@ class TestAcceptanceGateMock:
                 "filter_applied": {},
                 "provenance_envelope": {},
             }):
-                result = mod.run_acceptance_gate()
+                result = mod.run_acceptance_gate(chart_id=_TEST_CHART_ID)
 
         ac_ids = {c["id"]: c["passed"] for c in result["checks"]}
         assert ac_ids.get("AC1") is False, "AC1 should fail with wrong count"
@@ -608,7 +608,7 @@ class TestAcceptanceGateMock:
                 "filter_applied": {},
                 "provenance_envelope": {},
             }):
-                result = mod.run_acceptance_gate()
+                result = mod.run_acceptance_gate(chart_id=_TEST_CHART_ID)
 
         ac_ids = {c["id"]: c["passed"] for c in result["checks"]}
         assert ac_ids.get("AC3") is False, "AC3 should fail with null citations"
@@ -624,7 +624,7 @@ class TestAcceptanceGateMock:
                 "filter_applied": {},
                 "provenance_envelope": {},
             }):
-                result = mod.run_acceptance_gate()
+                result = mod.run_acceptance_gate(chart_id=_TEST_CHART_ID)
 
         checks = result["checks"]
         assert isinstance(checks, list), "checks must be a list"

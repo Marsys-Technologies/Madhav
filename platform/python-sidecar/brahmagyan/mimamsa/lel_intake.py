@@ -29,20 +29,20 @@ Native: Abhisek Mohanty, born 1984-02-05, 10:43 IST, Bhubaneswar, Odisha, India
 Chart UUID: 482012f1-710e-4a25-994a-93821f5871aa
 
 Usage:
-    # Ingest all 57 events
-    python -m brahmagyan.mimamsa.lel_intake seed
+    # Ingest all 57 events into one chart
+    python -m brahmagyan.mimamsa.lel_intake seed --chart-id <uuid>
 
-    # Query events (all)
-    python -m brahmagyan.mimamsa.lel_intake query
+    # Query one chart's events (--chart-id is REQUIRED; there is no all-charts mode)
+    python -m brahmagyan.mimamsa.lel_intake query --chart-id <uuid>
 
-    # Query events by domain
-    python -m brahmagyan.mimamsa.lel_intake query --domain career
+    # Query by domain
+    python -m brahmagyan.mimamsa.lel_intake query --chart-id <uuid> --domain career
 
-    # Query events by date range
-    python -m brahmagyan.mimamsa.lel_intake query --from 2010-01-01 --to 2026-12-31
+    # Query by date range
+    python -m brahmagyan.mimamsa.lel_intake query --chart-id <uuid> --from 2010-01-01 --to 2026-12-31
 
-    # Run acceptance gate
-    python -m brahmagyan.mimamsa.lel_intake gate
+    # Run acceptance gate for one chart
+    python -m brahmagyan.mimamsa.lel_intake gate --chart-id <uuid>
 
 BRAHMA-MI-5-1
 """
@@ -70,6 +70,24 @@ _UUID_RE = re.compile(
     r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
     re.IGNORECASE,
 )
+
+
+def _require_chart_id(chart_id: Any) -> str:
+    """
+    Return `chart_id` iff it is a well-formed UUID string; otherwise raise ValueError.
+
+    `life_events` is people-entered, private, chart-scoped data (SS N-109). A query
+    with no chart predicate would return EVERY chart's rows, so an omitted / None /
+    empty / whitespace / malformed / non-string chart_id is REFUSED here, before any
+    database connection is opened. fullmatch (not match) so a trailing newline is
+    not accepted ('$' alone matches before a final newline).
+    """
+    if not isinstance(chart_id, str) or not _UUID_RE.fullmatch(chart_id):
+        raise ValueError(
+            f"chart_id is required and must be a valid UUID string, got: {chart_id!r}"
+        )
+    return chart_id
+
 
 # ── Pre-instrument recording sentinel ─────────────────────────────────────────
 #
@@ -1484,18 +1502,22 @@ def lel_query(
     chart_id: str | None = None,
 ) -> dict[str, Any]:
     """
-    Query LEL events by domain and/or date range.
+    Query LEL events for ONE chart, by domain and/or date range.
 
     Args:
         domain:     Case-insensitive substring filter on event_type or domain.
         date_from:  ISO date string lower bound (inclusive).
         date_to:    ISO date string upper bound (inclusive).
         limit:      Max rows to return (default 100).
-        chart_id:   Chart UUID. Since migration 423 (BA-LEL R2.2 Step 1)
-                    life_events is chart-scoped, so chart_id is a REAL filter:
-                    when provided, only that chart's events are returned, with
-                    an honest empty-with-reason envelope when the chart has no
-                    recorded events. Must be a valid UUID string when provided.
+        chart_id:   REQUIRED chart UUID. life_events is people-entered, private and
+                    chart-scoped (migration 423; SS N-109), so the query is ALWAYS
+                    filtered to this chart and there is no unscoped mode. The
+                    keyword keeps a `None` default only so omission is reported as
+                    a ValueError (not a TypeError) like every other bad value:
+                    omitted / None / empty / whitespace / non-UUID all raise
+                    ValueError BEFORE a database connection is opened. A valid
+                    chart with no recorded events returns an honest
+                    empty-with-reason envelope.
 
     Returns:
         {
@@ -1504,19 +1526,15 @@ def lel_query(
           "filter_applied": {...},
           "provenance_envelope": {...},
         }
-    """
-    # Validate chart_id format if provided (contract compliance — B.3 mandate)
-    if chart_id is not None:
-        if not _UUID_RE.match(chart_id):
-            raise ValueError(f"chart_id must be a valid UUID, got: {chart_id!r}")
-    with _get_conn() as conn:
-        params: list[Any] = []
-        conditions = []
 
-        # chart_id is a real per-chart filter since migration 423 (LEL is chart-scoped).
-        if chart_id is not None:
-            conditions.append("le.chart_id = %s::UUID")
-            params.append(chart_id)
+    Raises:
+        ValueError: chart_id missing or not a valid UUID string.
+    """
+    chart_id = _require_chart_id(chart_id)
+    with _get_conn() as conn:
+        params: list[Any] = [chart_id]
+        # The chart predicate is unconditional and always first (F2 fix).
+        conditions = ["le.chart_id = %s::UUID"]
 
         if domain:
             conditions.append(
@@ -1533,7 +1551,7 @@ def lel_query(
             conditions.append("le.event_date <= %s::DATE")
             params.append(date_to)
 
-        where_clause = ("WHERE " + " AND ".join(conditions)) if conditions else ""
+        where_clause = "WHERE " + " AND ".join(conditions)
 
         rows = conn.execute(
             f"""
@@ -1609,7 +1627,7 @@ def lel_query(
             "b3_compliant":    True,
             "empty_reason": (
                 "no LEL events recorded for this chart (structural/no-lel)"
-                if chart_id is not None and total_count == 0 else None
+                if total_count == 0 else None
             ),
             "queried_at":      datetime.now(timezone.utc).isoformat(),
         },
@@ -1618,23 +1636,30 @@ def lel_query(
 
 # ── Acceptance gate ───────────────────────────────────────────────────────────
 
-def run_acceptance_gate() -> dict[str, Any]:
+def run_acceptance_gate(chart_id: str | None = None) -> dict[str, Any]:
     """
-    Run the MI-5-1 acceptance gate.
+    Run the MI-5-1 acceptance gate for ONE chart.
 
-    Gate criteria:
+    `chart_id` is REQUIRED (ValueError otherwise): every count below is scoped to
+    that chart, so the gate never aggregates or reads another chart's
+    people-entered rows (SS N-110 / F2).
+
+    Gate criteria (all for `chart_id`):
       AC1: life_events row count == 57
       AC2: event_chart_state_index row count == 57
       AC3: 0 rows with null or empty source_citation in life_events
       AC4: 0 rows with null or empty source_citation in event_chart_state_index
-      AC5: lel_query() returns events list with non-zero length
-      AC6: lel_query(domain='career') returns >= 1 career events
+      AC5: lel_query(chart_id=...) returns events list with non-zero length
+      AC6: lel_query(chart_id=..., domain='career') returns >= 1 career events
     """
+    chart_id = _require_chart_id(chart_id)
     checks: list[dict[str, Any]] = []
 
     with _get_conn() as conn:
         # AC1: life_events count
-        row = conn.execute("SELECT COUNT(*) FROM life_events").fetchone()
+        row = conn.execute(
+            "SELECT COUNT(*) FROM life_events WHERE chart_id = %s::UUID", (chart_id,)
+        ).fetchone()
         le_count = int(row[0]) if row else 0
         checks.append({
             "id": "AC1",
@@ -1644,7 +1669,10 @@ def run_acceptance_gate() -> dict[str, Any]:
         })
 
         # AC2: event_chart_state_index count
-        row = conn.execute("SELECT COUNT(*) FROM event_chart_state_index").fetchone()
+        row = conn.execute(
+            "SELECT COUNT(*) FROM event_chart_state_index WHERE chart_id = %s::UUID",
+            (chart_id,),
+        ).fetchone()
         cs_count = int(row[0]) if row else 0
         checks.append({
             "id": "AC2",
@@ -1655,7 +1683,9 @@ def run_acceptance_gate() -> dict[str, Any]:
 
         # AC3: no null/empty source_citation in life_events
         row = conn.execute(
-            "SELECT COUNT(*) FROM life_events WHERE source_citation IS NULL OR source_citation = ''"
+            "SELECT COUNT(*) FROM life_events WHERE chart_id = %s::UUID "
+            "AND (source_citation IS NULL OR source_citation = '')",
+            (chart_id,),
         ).fetchone()
         null_citations = int(row[0]) if row else 0
         checks.append({
@@ -1667,7 +1697,9 @@ def run_acceptance_gate() -> dict[str, Any]:
 
         # AC4: no null/empty source_citation in event_chart_state_index
         row = conn.execute(
-            "SELECT COUNT(*) FROM event_chart_state_index WHERE source_citation IS NULL OR source_citation = ''"
+            "SELECT COUNT(*) FROM event_chart_state_index WHERE chart_id = %s::UUID "
+            "AND (source_citation IS NULL OR source_citation = '')",
+            (chart_id,),
         ).fetchone()
         null_cs_citations = int(row[0]) if row else 0
         checks.append({
@@ -1679,11 +1711,11 @@ def run_acceptance_gate() -> dict[str, Any]:
 
     # AC5: lel_query returns events
     try:
-        result = lel_query(limit=10)
+        result = lel_query(limit=10, chart_id=chart_id)
         events_returned = len(result.get("events", []))
         checks.append({
             "id": "AC5",
-            "desc": "lel_query() returns events list with non-zero length",
+            "desc": "lel_query(chart_id) returns events list with non-zero length",
             "passed": events_returned > 0,
             "value": events_returned,
         })
@@ -1697,7 +1729,7 @@ def run_acceptance_gate() -> dict[str, Any]:
 
     # AC6: lel_query(domain='career') returns career events
     try:
-        result = lel_query(domain="career", limit=100)
+        result = lel_query(domain="career", limit=100, chart_id=chart_id)
         career_count = len(result.get("events", []))
         checks.append({
             "id": "AC6",
@@ -1728,22 +1760,23 @@ def run_acceptance_gate() -> dict[str, Any]:
 #
 # Contract (BA-LEL R2.2 Step 1 — supersedes CHECK 5 remediation):
 #   The MCP tool mimamsa_lel_intake.ts forwards chart_id to this route.
-#   The route accepts chart_id, validates it, and passes it to lel_query().
-#   Since migration 423 life_events is chart-scoped, so chart_id is a REAL SQL
-#   filter: the query returns only that chart's events, with an honest
-#   empty-with-reason envelope when the chart has none. This closes the prior
-#   tool→SQL impedance mismatch (per_chart advertised but not enforced).
+#   The route REQUIRES chart_id (SS N-110 / F2: a missing chart_id used to return
+#   every chart's rows), validates it (422 when absent/empty/non-UUID), and passes
+#   it to lel_query(). Since migration 423 life_events is chart-scoped, so chart_id
+#   is an unconditional SQL filter: the query returns only that chart's events,
+#   with an honest empty-with-reason envelope when the chart has none.
 
 try:
-    from fastapi import APIRouter as _APIRouter
+    from fastapi import APIRouter as _APIRouter, HTTPException as _HTTPException
     from pydantic import BaseModel as _BaseModel, Field as _Field
 
     class _LelQueryRequest(_BaseModel):
-        chart_id: str | None = _Field(
-            default=None,
+        chart_id: str = _Field(
+            ...,
             description=(
-                "Chart UUID. Real per-chart filter since migration 423 — "
-                "life_events is chart-scoped; only this chart's events are returned."
+                "REQUIRED chart UUID. life_events is chart-scoped (migration 423) "
+                "and private: only this chart's events are returned; there is no "
+                "unscoped mode (omitted / empty / non-UUID is refused with 422)."
             ),
         )
         domain: str | None = _Field(default=None, description="Domain substring filter")
@@ -1758,18 +1791,22 @@ try:
         """
         POST /brahma/mimamsa/lel_query
 
-        Query the Life Event Log calibration corpus.
-        Since migration 423 life_events is chart-scoped: chart_id is a real
-        per-chart SQL filter; an unknown/empty chart returns an honest
+        Query the Life Event Log calibration corpus for ONE chart.
+        chart_id is REQUIRED (422 if omitted / empty / not a UUID): life_events is
+        people-entered, private and chart-scoped, so chart_id is an unconditional
+        per-chart SQL filter; a chart with no events returns an honest
         empty-with-reason envelope.
         """
-        return lel_query(
-            domain=body.domain,
-            date_from=body.date_from,
-            date_to=body.date_to,
-            limit=body.limit,
-            chart_id=body.chart_id,
-        )
+        try:
+            return lel_query(
+                domain=body.domain,
+                date_from=body.date_from,
+                date_to=body.date_to,
+                limit=body.limit,
+                chart_id=body.chart_id,
+            )
+        except ValueError as exc:
+            raise _HTTPException(status_code=422, detail=str(exc)) from exc
 
 except ImportError:
     # FastAPI not available (e.g. during CLI-only usage or test environments
@@ -1795,12 +1832,13 @@ def _cmd_query(args: argparse.Namespace) -> None:
         date_from=getattr(args, "date_from", None),
         date_to=getattr(args, "date_to", None),
         limit=getattr(args, "limit", 100),
+        chart_id=getattr(args, "chart_id", None),
     )
     print(json.dumps(result, indent=2))
 
 
 def _cmd_gate(args: argparse.Namespace) -> None:
-    result = run_acceptance_gate()
+    result = run_acceptance_gate(chart_id=getattr(args, "chart_id", None))
     print(json.dumps(result, indent=2))
     if not result["gate_passed"]:
         sys.exit(1)
@@ -1820,13 +1858,17 @@ def main() -> None:
     p_seed.add_argument("--dry-run", action="store_true", help="Compute but do not write to DB")
     p_seed.add_argument("--verbose", action="store_true", help="Log each row")
 
-    p_query = sub.add_parser("query", help="Query LEL events")
+    p_query = sub.add_parser("query", help="Query LEL events for one chart")
+    p_query.add_argument("--chart-id", dest="chart_id", required=True,
+                         help="Chart UUID to scope the query to (required)")
     p_query.add_argument("--domain", default=None, help="Domain filter (e.g. career, health)")
     p_query.add_argument("--from", dest="date_from", default=None, help="Date lower bound (YYYY-MM-DD)")
     p_query.add_argument("--to", dest="date_to", default=None, help="Date upper bound (YYYY-MM-DD)")
     p_query.add_argument("--limit", type=int, default=100, help="Max rows to return")
 
-    sub.add_parser("gate", help="Run acceptance gate (exits 1 if FAIL)")
+    p_gate = sub.add_parser("gate", help="Run acceptance gate for one chart (exits 1 if FAIL)")
+    p_gate.add_argument("--chart-id", dest="chart_id", required=True,
+                        help="Chart UUID to scope the gate to (required)")
 
     args = parser.parse_args()
     if args.command == "seed":
