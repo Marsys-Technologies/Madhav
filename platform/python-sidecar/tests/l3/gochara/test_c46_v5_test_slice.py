@@ -422,3 +422,75 @@ def test_verify_live_refuses_a_build_that_lost_its_slice(db, ephe):
                        files_probe=_dir_probe, series_probe=lambda e: "ab" * 32,
                        stored_scope=iv.STORED_SCOPE, test_slice=None)
     assert "stored_scope" in str(exc.value) and "test_slice" in str(exc.value)
+
+
+# ── R1 (Stream A's C46 review): the sliced build still runs the in-build ─────
+# ── independent check — on the SCOPE-NORMALISED copy, never skipped ──────────
+
+from .test_a53_am5_writer import make_ephe  # noqa: E402
+
+
+def _db_with_marker(db, marker, build_id="b-c46"):
+    with db.transaction():
+        db.execute("CREATE TABLE IF NOT EXISTS public.build_runs"
+                   " (id text PRIMARY KEY, plan_manifest jsonb)")
+    with db.transaction():
+        db.execute("INSERT INTO public.build_runs (id, plan_manifest)"
+                   " VALUES (%s, %s::jsonb)",
+                   (build_id, json.dumps({writer_mod.TEST_SLICE_KEY: marker})))
+
+
+def _run_substep(db, key, ephe, build_id="b-c46"):
+    ctx = ContextSpec(asset_id=writer_mod.ASSET_ID, build_id=build_id, db_conn=db,
+                      config={"chart_id": CHART_ID, "ephe_path": ephe}, dry_run=False)
+    with db.transaction():
+        return writer_mod.GocharaV5Writer().run_substep(ctx, SubStep(key=key, label=key))
+
+
+def test_a_sliced_build_runs_verify_inputs_on_the_scope_normalised_copy(db, tmp_path, monkeypatch):
+    """R1: the manifest substep under a slice still calls verify_inputs — exactly once, on a copy
+    whose scope is the default and which carries no test_slice key, with the ephemeris/registry
+    components IDENTICAL to the stored vector's; the stored vector keeps scope + marker so the
+    verification job still refuses it by name."""
+    from services.gochara_kernel.inventory_store import InventoryStore
+    ephe = make_ephe(tmp_path, monkeypatch)
+    monkeypatch.setattr(writer_mod, "calc_sidereal_lon", lambda body, jd, ephe: (10.0, 2))
+    _db_with_marker(db, _marker())
+    calls = []
+
+    def spy(conn, vector, **kw):
+        calls.append(vector)
+        return {"derived": [], "not_derived": []}
+
+    monkeypatch.setattr(writer_mod.gk_input_vector_verifier, "verify_inputs", spy)
+    _run_substep(db, writer_mod.MANIFEST_SUBSTEP, ephe)
+    assert len(calls) == 1
+    normalised = calls[0]
+    assert normalised["stored_scope"] == iv.STORED_SCOPE
+    assert "test_slice" not in normalised
+    with db.transaction():
+        stored = InventoryStore(db).manifest_vector(CHART_ID, writer_mod.GENERATION)
+    assert stored["stored_scope"] == writer_mod.TEST_SLICE_SCOPE
+    assert stored["test_slice"]["marker_digest"]
+    assert normalised["ephemeris"] == stored["ephemeris"]
+    assert normalised["registry"] == stored["registry"]
+
+
+def test_a_sliced_manifest_fails_by_name_when_the_ephemeris_is_wrong(db, tmp_path, monkeypatch):
+    """R1 mutation: the census the verifier derives disagrees with the bound one → the manifest
+    substep raises naming ephemeris.census and NO candidate manifest is published."""
+    from services.gochara_kernel import input_vector_verifier as ivv
+    from services.gochara_kernel.inventory_store import InventoryStore
+    import swisseph as swe
+    ephe = make_ephe(tmp_path, monkeypatch)
+    monkeypatch.setattr(writer_mod, "calc_sidereal_lon", lambda body, jd, ephe: (10.0, 2))
+    _db_with_marker(db, _marker())
+    monkeypatch.setattr(ivv, "derive_opened_file_census",
+                        lambda e, lo, hi: {"sepl_18.se1": "ff" * 32, "semo_18.se1": "ff" * 32})
+    monkeypatch.setattr(ivv, "derive_series_probe_digest", lambda e: "cd" * 32)
+    monkeypatch.setattr(ivv, "derive_backend_and_version", lambda e: ("swieph", swe.version))
+    monkeypatch.setattr(ivv, "derive_absolute_probe", lambda e: ivv.ABSOLUTE_PROBE_SUN_LAHIRI_DEG)
+    with pytest.raises(RuntimeError, match=r"ephemeris\.census"):
+        _run_substep(db, writer_mod.MANIFEST_SUBSTEP, ephe)
+    with db.transaction():
+        assert InventoryStore(db).manifest_vector(CHART_ID, writer_mod.GENERATION) is None

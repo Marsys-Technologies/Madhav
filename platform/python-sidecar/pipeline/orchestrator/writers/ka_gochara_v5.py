@@ -178,9 +178,13 @@ class TestSliceRefusal(Exception):
     but malformed (or conflicts with ctx.config) — refused by name, never
     guessed, never silently defaulted."""
 
+    __test__ = False      # not a pytest class (Stream A C46 review note a)
+
 
 @dataclasses.dataclass(frozen=True)
 class TestSlice:
+    __test__ = False      # not a pytest class (Stream A C46 review note a)
+
     run: str
     horizon: tuple
     classes: tuple                     # in SCORED_CLASSES order
@@ -300,6 +304,19 @@ def _slice_component(slice_: TestSlice) -> dict:
     return {"schema": TEST_SLICE_SCHEMA, "marker_digest": slice_.digest}
 
 
+def _scope_normalised(vector: dict) -> dict:
+    """The vector the in-build independent derivation check sees (Stream A C46 review R1):
+    identical in EVERY component, with only the slice's identity removed — stored_scope back
+    to the default and the test_slice key dropped. The STORED manifest vector keeps both, so
+    the verification JOB still refuses a sliced manifest by name, while the BUILD still proves
+    the ephemeris files, the library, the probe, L0, the registry and the implementation
+    against the real image."""
+    v = dict(vector)
+    v["stored_scope"] = gk_input_vector.STORED_SCOPE
+    v.pop("test_slice", None)
+    return v
+
+
 def _effective_horizon(ctx: ContextSpec, slice_: TestSlice | None) -> tuple:
     """The marker's horizon under a slice; else ctx.config's override or DEFAULT_HORIZON.
     A config horizon that CONTRADICTS a marker is ambiguous — refused, never guessed."""
@@ -351,15 +368,12 @@ def _verify_live_inputs(ctx: ContextSpec, chart_id: str) -> None:
         sky_convention_id=SkyEventStore(ctx.db_conn).register_convention(),
         ephe_path=ctx.config.get("ephe_path"), path_refs=gk_rule_registry.bound_path_refs(),
         rulings=_applicable_rulings())
-    if stored.get("stored_scope") == TEST_SLICE_SCOPE:
-        # the independent derivation check has no vocabulary for a test-slice scope — it would refuse by
-        # name (that refusal is the unsealability proof and belongs to the verification job, not to a
-        # build that is deliberately unsealable). verify_live above still pins every consumed input.
-        return
     # ... and every component that can be derived WITHOUT the builder's code is (registry + L0 + sky in
-    # Postgres, ephemeris files + runtime library + implementation by direct hashing)
+    # Postgres, ephemeris files + runtime library + implementation by direct hashing). Under a slice the
+    # check runs on the SCOPE-NORMALISED copy: the stored vector's unknown scope is the unsealability
+    # proof and belongs to the verification job — the build still proves the real image (R1).
     gk_input_vector_verifier.verify_inputs(
-        ctx.db_conn, stored, ephe_path=ctx.config.get("ephe_path"),
+        ctx.db_conn, _scope_normalised(stored), ephe_path=ctx.config.get("ephe_path"),
         modules=gk_input_vector.IMPLEMENTATION_MODULES, path_refs=gk_rule_registry.bound_path_refs())
 
 
@@ -638,14 +652,13 @@ class GocharaV5Writer(WriterBase):
                 stored_scope=TEST_SLICE_SCOPE if slice_ is not None else gk_input_vector.STORED_SCOPE,
                 test_slice=_slice_component(slice_) if slice_ is not None else None)
             # every component that can be derived without the builder's code is derived a SECOND way and the two
-            # must agree before the identity is bound — except under a test slice, whose scope the verifier
-            # REFUSES BY NAME (that refusal is the unsealability proof; verify_live in later substeps still
-            # pins every consumed input of the sliced build)
-            if slice_ is None:
-                gk_input_vector_verifier.verify_inputs(
-                    ctx.db_conn, vector, ephe_path=ephe_path, modules=gk_input_vector.IMPLEMENTATION_MODULES,
-                    path_refs=gk_rule_registry.bound_path_refs(),
-                    jd_range=gk_input_vector.consumed_jd_range(horizon))
+            # must agree before the identity is bound. Under a test slice the check runs on the SCOPE-NORMALISED
+            # copy (Stream A C46 review R1): the stored vector's scope is REFUSED BY NAME only at the verification
+            # job (the unsealability proof); the build still proves the ephemeris/registry/implementation.
+            gk_input_vector_verifier.verify_inputs(
+                ctx.db_conn, _scope_normalised(vector), ephe_path=ephe_path, modules=gk_input_vector.IMPLEMENTATION_MODULES,
+                path_refs=gk_rule_registry.bound_path_refs(),
+                jd_range=gk_input_vector.consumed_jd_range(horizon))
             jd = horizon[0].timestamp() / 86400.0 + _JD_UNIX_EPOCH
             _lon, retflag = calc_sidereal_lon("Sun", jd, ephe_path)
             if not (retflag & 2):
@@ -657,8 +670,8 @@ class GocharaV5Writer(WriterBase):
                 writer_asset_id=ASSET_ID)
             slice_note = (f"; TEST SLICE {slice_.run} (marker {slice_.digest[:12]}…): "
                           "stored_scope='test_slice' — unsealable by construction, the verifier "
-                          "refuses the scope by name; the in-build derivation check is skipped "
-                          "for this scope" if slice_ is not None else "")
+                          "refuses the scope by name; the in-build derivation check ran on the "
+                          "scope-normalised copy" if slice_ is not None else "")
             return WriterResult(asset_id=self.asset_id, rows_inserted=0,
                                 notes=f"candidate manifest {mid[:8]}… (input vector {gk_input_vector.VECTOR_SCHEMA}: "
                                       f"registry digest {vector['registry']['digest'][:12]}…, "
