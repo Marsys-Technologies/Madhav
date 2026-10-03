@@ -154,7 +154,9 @@ def test_the_committed_file_declares_neither_key_beyond_the_latta_and_lists_the_
     assert raw["vocab_alias_declaration_fields"] == list(ac.VOCAB_ALIAS_DECL_FIELDS)
     assert raw["ldgr_source_declaration_fields"] == list(ac.LDGR_SOURCE_DECL_FIELDS)
     # the per-asset review is the reviewed work: nothing is declared by pattern in this PR
-    assert [a for a, e in raw["assets"].items() if "vocab_alias" in e or "ldgr_source" in e] == ["bg_phaladeepika_latta"]
+    assert sorted(a for a, e in raw["assets"].items() if "vocab_alias" in e) == sorted(["bg_phaladeepika_latta", "bg_dignity_reference", "bg_transit_engine", "bg_transit_rules",
+                                                                                         "bg_vastu_directions", "bg_kp_sublord_division"])      # L0-WAVE batch 2 adds five identity_only planet declarations
+    assert [a for a, e in raw["assets"].items() if "ldgr_source" in e] == ["bg_phaladeepika_latta"]
     ac.load_asset_declarations()
 
 
