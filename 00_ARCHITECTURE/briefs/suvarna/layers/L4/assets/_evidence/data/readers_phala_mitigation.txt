@@ -1,0 +1,16 @@
+platform-mcp/src/lib/kala_upaya_diagnosis.ts
+platform-mcp/src/tools/kala_views/upaya.ts
+platform-mcp/src/tools/phala_mitigation_map.ts
+platform-mcp/src/tools/phala_outlook.ts
+platform/python-sidecar/brahmagyan/phala/l4_outlook.py
+platform/python-sidecar/brahmagyan/phala/mitigation.py
+platform/python-sidecar/pipeline/brahma_pipeline.py
+platform/python-sidecar/pipeline/orchestrator/dag_edge_guard.py
+platform/python-sidecar/pipeline/orchestrator/writers/ph_phaladesa.py
+platform/python-sidecar/pipeline/orchestrator/writers/ph_pratikara.py
+platform/python-sidecar/run_ph_pratikara_prod.py
+platform/src/lib/retrieval/registry/knowledge/source_query_availability.ts
+platform/src/lib/retrieval/registry/layers/L4_phala/index.ts
+platform/src/lib/retrieval/registry/layers/L4_phala/query_phala_calibration.ts
+platform/src/lib/retrieval/registry/layers/L4_phala/salience_order.ts
+platform/src/lib/retrieval/registry/tool_name_bridge.ts

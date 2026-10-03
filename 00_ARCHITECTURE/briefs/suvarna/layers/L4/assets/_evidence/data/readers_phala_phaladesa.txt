@@ -1,0 +1,6 @@
+platform/python-sidecar/brahmagyan/domain_vocabulary.py
+platform/python-sidecar/pipeline/orchestrator/writers/ph_phaladesa.py
+platform/python-sidecar/services/ph_phaladesa/engine.py
+platform/src/lib/retrieval/registry/knowledge/source_query_availability.ts
+platform/src/lib/retrieval/registry/layers/L4_phala/index.ts
+platform/src/lib/retrieval/registry/layers/L4_phala/query_domain_result.ts

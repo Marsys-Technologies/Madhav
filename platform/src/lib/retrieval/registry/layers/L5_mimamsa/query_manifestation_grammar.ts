@@ -12,7 +12,7 @@
 
 import type { CapabilityDescriptor } from '../../types'
 import { query } from '@/lib/db/client'
-
+import { labelGrammarRow, summarizeGeneration } from './prefix_generation'
 export const queryManifestationGrammarCapability: CapabilityDescriptor = {
   uri:   'marsys://tool/L5/query_manifestation_grammar',
   type:  'tool',
@@ -120,6 +120,10 @@ export const queryManifestationGrammarCapability: CapabilityDescriptor = {
         ),
       ])
       const total_matching = Number(countResult.rows[0]?.total ?? 0)
+      // TI-l5-insight-prefix-label-001: rows written by the pre-fix mi_sambandha (v1.0: propensity
+      // 0.0 with 0 scored outcomes, graded 'empirical') are relabelled from their own stamp.
+      const grammarRows = (result.rows as Array<Record<string, unknown>>).map(r => labelGrammarRow(r))
+      const generation_disclosure = summarizeGeneration(grammarRows, ['manifestation_grammar'])
       const originRefs = [...new Set(
         (result.rows as Array<{ origin_ref?: string }>).map(r => r.origin_ref).filter(Boolean) as string[]
       )]
@@ -127,8 +131,10 @@ export const queryManifestationGrammarCapability: CapabilityDescriptor = {
       return {
         content: {
           chart_id,
-          grammar_rows:  result.rows,
+          grammar_rows:  grammarRows,
           row_count:     result.rows.length,
+          generation_disclosure,
+          generation_flags: generation_disclosure.flags,
           total_matching,
           more_available: total_matching > result.rows.length,
           origin_refs:   originRefs,

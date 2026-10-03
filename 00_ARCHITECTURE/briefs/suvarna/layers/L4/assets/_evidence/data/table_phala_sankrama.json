@@ -1,0 +1,356 @@
+{
+ "table": "phala_sankrama",
+ "columns": [
+  {
+   "column_name": "sankrama_id",
+   "data_type": "uuid",
+   "is_nullable": "NO",
+   "column_default": "gen_random_uuid()"
+  },
+  {
+   "column_name": "chart_id",
+   "data_type": "uuid",
+   "is_nullable": "NO",
+   "column_default": ""
+  },
+  {
+   "column_name": "source_anchor_id",
+   "data_type": "uuid",
+   "is_nullable": "YES",
+   "column_default": ""
+  },
+  {
+   "column_name": "cdlm_cell_id",
+   "data_type": "uuid",
+   "is_nullable": "YES",
+   "column_default": ""
+  },
+  {
+   "column_name": "source_domain",
+   "data_type": "text",
+   "is_nullable": "NO",
+   "column_default": ""
+  },
+  {
+   "column_name": "target_domain",
+   "data_type": "text",
+   "is_nullable": "NO",
+   "column_default": ""
+  },
+  {
+   "column_name": "relationship_type",
+   "data_type": "text",
+   "is_nullable": "NO",
+   "column_default": ""
+  },
+  {
+   "column_name": "linkage_strength",
+   "data_type": "double precision",
+   "is_nullable": "YES",
+   "column_default": ""
+  },
+  {
+   "column_name": "asymmetry_score",
+   "data_type": "double precision",
+   "is_nullable": "YES",
+   "column_default": ""
+  },
+  {
+   "column_name": "bridge_path_jsonb",
+   "data_type": "jsonb",
+   "is_nullable": "YES",
+   "column_default": ""
+  },
+  {
+   "column_name": "mechanism_text",
+   "data_type": "text",
+   "is_nullable": "YES",
+   "column_default": ""
+  },
+  {
+   "column_name": "source_window_start",
+   "data_type": "date",
+   "is_nullable": "YES",
+   "column_default": ""
+  },
+  {
+   "column_name": "source_window_end",
+   "data_type": "date",
+   "is_nullable": "YES",
+   "column_default": ""
+  },
+  {
+   "column_name": "projected_window_start",
+   "data_type": "date",
+   "is_nullable": "YES",
+   "column_default": ""
+  },
+  {
+   "column_name": "projected_window_end",
+   "data_type": "date",
+   "is_nullable": "YES",
+   "column_default": ""
+  },
+  {
+   "column_name": "projected_peak_date",
+   "data_type": "date",
+   "is_nullable": "YES",
+   "column_default": ""
+  },
+  {
+   "column_name": "cascade_chain_jsonb",
+   "data_type": "jsonb",
+   "is_nullable": "YES",
+   "column_default": ""
+  },
+  {
+   "column_name": "cascade_depth",
+   "data_type": "smallint",
+   "is_nullable": "YES",
+   "column_default": ""
+  },
+  {
+   "column_name": "trajectory",
+   "data_type": "text",
+   "is_nullable": "YES",
+   "column_default": ""
+  },
+  {
+   "column_name": "mitigation_ref",
+   "data_type": "uuid",
+   "is_nullable": "YES",
+   "column_default": ""
+  },
+  {
+   "column_name": "spillover_confidence",
+   "data_type": "double precision",
+   "is_nullable": "YES",
+   "column_default": ""
+  },
+  {
+   "column_name": "confidence_basis",
+   "data_type": "text",
+   "is_nullable": "NO",
+   "column_default": "'structural_not_yet_empirical'::text"
+  },
+  {
+   "column_name": "falsifier",
+   "data_type": "text",
+   "is_nullable": "NO",
+   "column_default": ""
+  },
+  {
+   "column_name": "derivation_ledger_jsonb",
+   "data_type": "jsonb",
+   "is_nullable": "NO",
+   "column_default": ""
+  },
+  {
+   "column_name": "source_citation",
+   "data_type": "text",
+   "is_nullable": "NO",
+   "column_default": ""
+  },
+  {
+   "column_name": "computed_at",
+   "data_type": "timestamp with time zone",
+   "is_nullable": "NO",
+   "column_default": "now()"
+  }
+ ],
+ "has_chart_id": true,
+ "rows_by_chart": [
+  {
+   "chart_id": "1c826d5a-41cb-4450-b4dc-59d440e5f75a",
+   "n": "475"
+  },
+  {
+   "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+   "n": "155"
+  }
+ ],
+ "chart_nonnull": {
+  "_total": "155",
+  "sankrama_id": "155",
+  "chart_id": "155",
+  "source_anchor_id": "155",
+  "cdlm_cell_id": "155",
+  "source_domain": "155",
+  "target_domain": "155",
+  "relationship_type": "155",
+  "linkage_strength": "155",
+  "asymmetry_score": "155",
+  "bridge_path_jsonb": "155",
+  "mechanism_text": "155",
+  "source_window_start": "155",
+  "source_window_end": "155",
+  "projected_window_start": "155",
+  "projected_window_end": "155",
+  "projected_peak_date": "155",
+  "cascade_chain_jsonb": "135",
+  "cascade_depth": "155",
+  "trajectory": "155",
+  "mitigation_ref": "0",
+  "spillover_confidence": "155",
+  "confidence_basis": "155",
+  "falsifier": "155",
+  "derivation_ledger_jsonb": "155",
+  "source_citation": "155",
+  "computed_at": "155"
+ },
+ "value_counts": {
+  "source_domain": [
+   {
+    "v": "career",
+    "n": "55"
+   },
+   {
+    "v": "character",
+    "n": "45"
+   },
+   {
+    "v": "health",
+    "n": "30"
+   },
+   {
+    "v": "relationship",
+    "n": "25"
+   }
+  ],
+  "target_domain": [
+   {
+    "v": "spirituality",
+    "n": "20"
+   },
+   {
+    "v": "transition",
+    "n": "20"
+   },
+   {
+    "v": "wealth",
+    "n": "20"
+   },
+   {
+    "v": "relationship",
+    "n": "15"
+   },
+   {
+    "v": "progeny",
+    "n": "15"
+   },
+   {
+    "v": "residence",
+    "n": "15"
+   },
+   {
+    "v": "travel",
+    "n": "15"
+   },
+   {
+    "v": "education",
+    "n": "10"
+   },
+   {
+    "v": "family",
+    "n": "10"
+   },
+   {
+    "v": "health",
+    "n": "10"
+   },
+   {
+    "v": "character",
+    "n": "5"
+   }
+  ],
+  "relationship_type": [
+   {
+    "v": "contagion",
+    "n": "140"
+   },
+   {
+    "v": "conflict",
+    "n": "15"
+   }
+  ],
+  "cascade_depth": [
+   {
+    "v": "1",
+    "n": "155"
+   }
+  ],
+  "trajectory": [
+   {
+    "v": "stable",
+    "n": "155"
+   }
+  ],
+  "confidence_basis": [
+   {
+    "v": "structural_not_yet_empirical",
+    "n": "155"
+   }
+  ]
+ },
+ "constraints": [
+  {
+   "conname": "phala_sankrama_cascade_depth_check",
+   "contype": "c",
+   "def": "CHECK (((cascade_depth >= 1) AND (cascade_depth <= 3)))"
+  },
+  {
+   "conname": "phala_sankrama_relationship_type_check",
+   "contype": "c",
+   "def": "CHECK ((relationship_type = ANY (ARRAY['contagion'::text, 'conflict'::text])))"
+  },
+  {
+   "conname": "phala_sankrama_spillover_confidence_check",
+   "contype": "c",
+   "def": "CHECK (((spillover_confidence >= (0)::double precision) AND (spillover_confidence <= (0.80)::double precision)))"
+  },
+  {
+   "conname": "phala_sankrama_trajectory_check",
+   "contype": "c",
+   "def": "CHECK ((trajectory = ANY (ARRAY['strengthening'::text, 'stable'::text, 'weakening'::text])))"
+  },
+  {
+   "conname": "phala_sankrama_mitigation_ref_fkey",
+   "contype": "f",
+   "def": "FOREIGN KEY (mitigation_ref) REFERENCES phala_mitigation(mitigation_id) ON DELETE SET NULL"
+  },
+  {
+   "conname": "phala_sankrama_source_anchor_id_fkey",
+   "contype": "f",
+   "def": "FOREIGN KEY (source_anchor_id) REFERENCES phala_anchors(anchor_id) ON DELETE CASCADE"
+  },
+  {
+   "conname": "phala_sankrama_pkey",
+   "contype": "p",
+   "def": "PRIMARY KEY (sankrama_id)"
+  },
+  {
+   "conname": "phala_sankrama_natural_key",
+   "contype": "u",
+   "def": "UNIQUE (chart_id, source_anchor_id, cdlm_cell_id, target_domain, relationship_type)"
+  }
+ ],
+ "indexes": [
+  {
+   "indexname": "phala_sankrama_pkey",
+   "indexdef": "CREATE UNIQUE INDEX phala_sankrama_pkey ON public.phala_sankrama USING btree (sankrama_id)"
+  },
+  {
+   "indexname": "phala_sankrama_chart_idx",
+   "indexdef": "CREATE INDEX phala_sankrama_chart_idx ON public.phala_sankrama USING btree (chart_id)"
+  },
+  {
+   "indexname": "phala_sankrama_source_anchor_idx",
+   "indexdef": "CREATE INDEX phala_sankrama_source_anchor_idx ON public.phala_sankrama USING btree (source_anchor_id)"
+  },
+  {
+   "indexname": "phala_sankrama_natural_key",
+   "indexdef": "CREATE UNIQUE INDEX phala_sankrama_natural_key ON public.phala_sankrama USING btree (chart_id, source_anchor_id, cdlm_cell_id, target_domain, relationship_type)"
+  }
+ ],
+ "referenced_by": []
+}

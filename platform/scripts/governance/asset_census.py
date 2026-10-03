@@ -20,7 +20,7 @@ WHAT IT MEASURES, per asset, against the tier-4 template's nine gates:
   Build.completion      the build record agrees with the live count (rows_written=0 against a populated
                         table is a status with no measurement behind it)
   Earn.build_record     rows_per_second / last_built_at present — is the build instrumented at all
-  Ldgr.source_presence  for a reference layer: the rows carry a citation column and it is populated
+  Ldgr.source_presence  for a reference layer: the rows carry a citation column and it names a source (NULL and placeholder citations do not count; pin 24)
   Idem.pattern          the writer's idempotency pattern matches the layer convention (§N.3)
   Vocab.alias           per entity class, alias-set coverage (where the table has a synonyms column)
   Vocab.identity        uniqueness under the table's OWN DECLARED KEY, read from pg_constraint — never
@@ -186,8 +186,8 @@ CRITERION_REGISTRY: dict[str, dict] = {
     "Complete.width":        dict(gate="Complete", check="width",         applicability="always (declaring a universe is the first width gap where none exists)", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=1),
     "Vocab.identity":        dict(gate="Vocab", check="identity",         applicability="a declared key exists and the table is non-empty", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=1),
     "Vocab.alias":           dict(gate="Vocab", check="alias",            applicability="the table declares an alias-bearing class census (an undeclared asset with a `synonyms` column keeps the per-class empty-alias census); an asset's reviewed declaration `vocab_alias` makes it applicable by declaration, as a measured alias class against bg_ontology (class planet: canonical id, display name, and the ontology synonyms when an alias column is declared) or as `no_alias_class` (N/A, N-72 S3, N-73 (4)). A column pattern alone never makes it N/A", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=(ALIAS_COLUMN,), asset_kinds=None, revision=2),  # S3: declared form added; was rev 1
-    "Ldgr.source_presence":  dict(gate="Ldgr",  check="source_presence",  applicability="the target table carries a recognised citation column (R60: singular classical_citation included); an asset's reviewed declaration `ldgr_source` makes it applicable by declaration, naming the column that carries the source and the citation_state it stands on, or as `no_classical_claim` (N/A, N-72 S3, N-73 (1)). A column pattern alone never makes it N/A", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=CITATION_COLUMNS, asset_kinds=None, revision=3),  # S3: declared form + citation_state added; was rev 2
-    "Dens.served":           dict(gate="Dens",  check="served",           applicability="reaches a served capability module (one that SELECTS from the asset's table, or names it in a form the scan cannot classify; naming it only as a label, in a provenance string, prose, a type name or an import path, is not a reach; for a service-kind asset a service_probe envelope is a reach); PASS (structural) needs ONE capability entry (the object literal that declares density_contract) whose own served read of the asset's table selects a tier column; a sibling entry, a sub-select, an INSERT...SELECT or a UNION branch does not count", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=5),  # E6.1(d): was file-level 'declares density_contract anywhere' (rev 1); rev 5 (N-74(a)): select vs label
+    "Ldgr.source_presence":  dict(gate="Ldgr",  check="source_presence",  applicability="the target table carries a recognised citation column (R60: singular classical_citation included); an asset's reviewed declaration `ldgr_source` makes it applicable by declaration, naming the column that carries the source and the citation_state it stands on, or as `no_classical_claim` (N/A, N-72 S3, N-73 (1)). A column pattern alone never makes it N/A. A row of an UNDECLARED asset names a source only when its first recognised citation column is not NULL and not a placeholder (C2(ii), pin 24, N-98): NULL, punctuation-only, the closed no-source list ('not traced', 'n/a', 'none', ...), a bare tradition label ('classical_tradition', 'classical tradition (Jyotish)') and an 'UNSOURCED ...' disclosure are not a citation; an array / JSON array names a source unless empty or every element is one of those; PASS = every row names a source, FAIL = none does, PARTIAL = some do", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=CITATION_COLUMNS, asset_kinds=None, revision=4),  # C2(ii): legacy IS NOT NULL count replaced by the placeholder-aware shared predicate; was rev 3 (S3: declared form + citation_state)
+    "Dens.served":           dict(gate="Dens",  check="served",           applicability="reaches a served capability module (one that SELECTS from the asset's table, or names it in a form the scan cannot classify; naming it only as a label, in a provenance string, prose, a type name or an import path, is not a reach; for a service-kind asset a service_probe envelope is a reach); PASS (structural) needs ONE capability entry (the object literal that declares density_contract) whose own served read of the asset's table selects a tier column; a tier column is a CLOSED list: exactly `tier` or `verification_pass_status`, or a column the asset declares in density_tier_columns (a reviewed {column, why, evidence}), and never a name carrying a deny-listed word (cost, price, pricing, plan, access, subscription, billing, fee, tariff, in any spelling: split on underscores, digits and camelCase, plurals included, or run together with tier, fail-closed; declared or not); any other `<x>_tier` (severity_tier, cost_tier, access_tier, ...) is not a tier column; a sibling entry, a sub-select, an INSERT...SELECT or a UNION branch does not count", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=6),  # E6.1(d): was file-level 'declares density_contract anywhere' (rev 1); rev 5 (N-74(a)): select vs label; rev 6 (N-98): closed tier vocabulary
     "Narr.agree":            dict(gate="Narr",  check="agree",            applicability="prose_fields declared non-empty (null = undeclared: NO_DETECTOR; [] = declared no prose: measured N/A, cause no-prose, released by the declared rule Narr.agree#measured:no-prose, N-65); an asset that declares prose_fields [] WITH a prose_coupling to carriage_d1 (NARR-GUARD, pin 16, N-94) reads N/A only while its own Carr.D1 reads PASS, else NO_DETECTOR", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=2),  # E6 (c): the declaration and the table's columns agree
     "Narr.checkable":        dict(gate="Narr",  check="checkable",        applicability="prose_fields declared non-empty; zero checkable rows is INCONCLUSIVE, never PASS; an asset that declares prose_fields [] WITH a prose_coupling to carriage_d1 (NARR-GUARD, pin 16, N-94) reads N/A only while its own Carr.D1 reads PASS, else NO_DETECTOR", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=2),
     "Narr.fidelity_test":    dict(gate="Narr",  check="fidelity_test",    applicability="prose_fields declared non-empty; structural test discovery (N.7 item 5); never PASS; an asset that declares prose_fields [] WITH a prose_coupling to carriage_d1 (NARR-GUARD, pin 16, N-94) reads N/A only while its own Carr.D1 reads PASS, else NO_DETECTOR", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=2),
@@ -394,7 +394,7 @@ def validate_na_rule_decisions() -> None:
 
 # Registry revision: hand-bumped integer; registry_fingerprint() is the content hash a pin test binds to it, so the
 # revision cannot silently lag the content. Every gate cell carries both.
-REGISTRY_REVISION = 16     # 16 (provisional): NARR-GUARD (strategist ruling N-94: prose_fields [] for bg_phaladeepika_latta under R03, the N/A kept coupled to Carr.D1): a declared `prose_coupling: {to: 'carriage_d1', columns, why, evidence}` beside prose_fields [] says the asset's text columns are transcription whose fidelity Carr.D1 already measures (same comparator, normalisation and repair list), so Narr (which measures GENERATED prose) is N/A for it ONLY WHILE that is true. The validator refuses a coupling unless prose_fields is exactly [], the asset declares a transcription carriage with applies D1 and a spec, the `why` cites carriage transcription and Carr.D1, `evidence` is a real repo file:line (never `unverified:`), and EVERY listed column is covered by the D1 spec (the covered set is DERIVED from the spec by carriage_d1.prose_coverage: the effect column and the passage_text extra fields; a claim field, an `equals` constant or a column the spec never checks is not coverage). At measure time the same check (`prose_coupling_problem`, one definition) runs again on the entry and the table's columns and types: a refusal reads the four Narr checks NO_DETECTOR with the disagreement reported, never N/A. A coupled Narr N/A record carries a `prose_coupling` block (columns, the covered result keys, the unclassified text-like columns it does NOT claim). The rollup (`narr_coupling_problem`, read by `_check_contribution`, `_na_released` (the gap ledger), the certificate writer and the E6.3 reader) honours that N/A only while the asset's EFFECTIVE Carr.D1 contribution (the census's own `_check_contribution` rule: verified chunk ledger, every row matched at the declared row count, citation_state not unsourced/refuted) reads PASS and the D1 record shows a per-row result for every coupled column; anything else reads NO_DETECTOR 'Narr N/A rests on Carr.D1 PASS (coupled): Carr.D1 reads X'. Narr.agree / Narr.checkable / Narr.fidelity_test / Narr.lint revision 2 (a new declared form changes what the detector does for an asset that declares it, as Vocab.alias rev 2 at pin 12 and Null.* rev 3 at pin 15); NA_CAUSES / NA_RULE_DECISIONS unchanged (the same four Narr.*#measured:no-prose rules, now conditional for a coupled asset); inert until an asset declares prose_coupling, so no undeclared asset's cell moves (all six saved censuses re-rolled up: 1143 cells, zero move); asset_declarations.json 1.12.0 (bg_phaladeepika_latta only). 15 (provisional): STAMP, the declared write-time stamp column (SS strategist ruling on the bg_phaladeepika_latta conflict): `null_convention.stamp_columns: [{column, why}]`, a declared word beside `nullable` and `constants`. A write-time stamp (created_at written in one seed transaction) can hold ONE value on every row, which the S1 constant test fails unless the column is declared constant, and declaring a stamp 'constant' is a claim known to be false in kind. The detector now requires a declared stamp column to be a timestamp / timestamptz (the catalog's pg_type name, domains resolved) AND NOT NULL (attnotnull, or a NOT NULL domain; one extra read-only pg_catalog SELECT, issued only when stamp_columns is declared) and to hold no NULL row and no sentinel timestamp, and EXEMPTS it from the constant test ONLY: nothing else is exempted, and the exemption is paid for: a stamp column holding a SENTINEL timestamp (infinity, -infinity, anything at or before the epoch plus one day: epoch, 1970-01-01, year 0001) is a FAIL, counted by one extra counter in the existing fetch and compared in the column's own type (a timestamp column's literal fallback in disguise, which the constant test used to catch when the column was undeclared; the stamp column is examined for it, so it is in neither 'not examined' group); every other column is graded exactly as before). A stamp column that is nullable or not a timestamp is refused at measure time as NO_DETECTOR with the disagreement reported (never PASS; a text / date stamp is refused before any SELECT from the information_schema data types); one holding a NULL row is a FAIL. The PASS text names stamp columns separately ('stamp columns (write-time, constant test exempted): ...'). The validator refuses a malformed list, a duplicate, more than 16, a weak `why`, and a column that is also nullable / constant / a scope key / an allowed_literals column / a declared prose field. The lift block carries `stamp_columns` (not part of `columns`, which stays the prose + nullable columns the two graders run over); `null_lift_earned` requires both sibling blocks to agree on it and the ELEVATED reader requires it to equal the ref declaration's stamp columns. Null.schema_default and Null.blank_rows revision 3 (a new declared form changes what the detector does for an asset that declares it, as Vocab.alias rev 2 at pin 12; applicability text names stamp_columns), so the fingerprint moves; NA_CAUSES / NA_RULE_DECISIONS unchanged; no asset declares a null_convention yet, so no census cell verdict changes (all six saved censuses re-rolled up: zero cells move); asset_declarations.json field list + description only (file version NOT bumped here: sequenced separately). 14 (provisional): Dens label-vs-select repair and the R02 amendment (SS N-74 item 5, N-74(a)): Dens.served rev 5 (the scan now tells a SELECT of the asset's table from a LABEL: a serving module that names the asset only in a provenance string, prose, a type name, an import path, a label-keyed array/value or a map key, in a module with no run-time table access, is no longer a reach, so an asset no served module selects rows from can read the no-served-surface N/A; every unclassifiable form (a bare name as a call/builder argument, in an unkeyed list, a name assembled at run time, SQL in the literal) stays a reach, comments keep the R51 reading, Python readers stay outside the served surface by design, the outside probe is unchanged), and R02's decision text is cause-keyed ("an asset no served module selects rows from; being named only as a provenance label is not a select", N-74(a)); NA_CAUSES unchanged, asset_declarations.json unchanged (1.9.0). 13 (provisional): S1 declared null convention (SS N-72 S1, N-73, N-74): Null.schema_default and Null.blank_rows rev 2 (an asset that DECLARES `null_convention`: its nullable columns each with what NULL means and an optional key scope, its declared constant columns, one-line why and checkable evidence, gets the declared form: the two checks also run over the convention columns, the detector verifies read-only that NULLs occur only in declared columns (and, with a key scope, only on / exactly on the declared keys), that no declared-nullable column holds a literal fallback in place of NULL and that no column is constant unless declared constant; the Null checks read PASS ONLY when schema_default and blank_rows are clean AND the convention verifies, a defect flips the cell to FAIL, and every other path keeps the cap exactly as before: the cap line is unchanged and the lift is a separate branch that needs the verified convention block on BOTH checks; no Null N/A rule (N-22 row 33 stands), NA_CAUSES unchanged; no asset declares one yet, so no census cell verdict changes; asset_declarations.json 1.9.0). ALSO IN 13, TOUCHING A MERGED PIN-12 CHECK (recorded explicitly, S1 review F2): the shared SQL predicate `_ldgr_lacking_text` (S3's placeholder / 'states no value' test, used by Ldgr.source_presence's declared source-column check via `_ldgr_lacking` and now also by the Null convention detector) additionally compares its normalised value WITH THE SPACES REMOVED against the same placeholder list (`replace(norm, ' ', '') IN (...)`), so 'N / A', 'n o n e' and 'not  found' are the placeholders they spell; the list, the normaliser and every other branch are unchanged. It reaches Ldgr.source_presence's placeholder detector (the declared `ldgr_source` check only: the legacy undeclared Ldgr measurement is an IS NOT NULL count and never calls it). No pin-12 criterion text or revision changed (Vocab.alias rev 2 and Ldgr.source_presence rev 3 are identical to the S3 merge), nor NA_CAUSES / NA_RULE_DECISIONS; the registry fingerprint covers criterion entries, N/A rules and causes, gates and rollup order, never detector SQL, so PINNED_FINGERPRINTS[12] (35b0e03e..., equal to the S3-merged module's fingerprint) is unaffected and the revision-13 fingerprint is the same with or without this change. Measured: all six saved censuses (census_fresh/1e5781a, read only) rolled up with and without the change: 1143 cells, zero move (verdicts and checks), and zero move against the saved verdicts; no asset declares ldgr_source, so no real Ldgr cell consumes the predicate. 12 (provisional): S3 declared Vocab.alias and Ldgr.source_presence (SS N-72 S3, N-73 (1)/(4), N-74 (b)): Vocab.alias rev 2 and Ldgr.source_presence rev 3 (an asset that DECLARES `vocab_alias` / `ldgr_source` gets the declared form: the alias class measured against bg_ontology class planet by canonical id and display name, plus the ontology synonyms when an alias column is declared; the Ldgr source column named with its citation_state, a declared unsourced / refuted state never reading PASS or PARTIAL; an undeclared asset reads exactly as before), NA_CAUSES gains Vocab.alias:no-alias-class and Ldgr.source_presence:no-classical-claim, and Vocab.alias#measured:no-alias-class / Ldgr.source_presence#measured:no-classical-claim are declared (declaration-keyed; refused where the table contradicts the declaration; inert until an asset declares); the columns_any patterns stay and still never make an N/A (A5); asset_declarations.json 1.8.0; nikasha_certify closes the legacy null-state Ldgr write path; no real asset declares either key yet, so no census cell verdict changes. 11 (provisional): S2 declared carriage (SS N-72 S2, N-73): Carr.D1 gets a detector (revision 2: the generic D1 engine for an asset that DECLARES D1 with a spec; undeclared assets read as before), NA_CAUSES gains Carr.D1/D2/D3:not-the-declared-carriage and :ratified_judgment, and Carr.D{1,2,3}#measured:not-the-declared-carriage are declared (inert until an asset declares a carriage check); asset_declarations.json 1.7.0; no real asset declares one yet, so no census cell changes. 10: NA_RULE_DECISIONS declares Build.dep_liveness#measured:no-declared-dependencies (S4, N-22 row 23 re-proposed; emitted only when the asset's declared dependency list is empty AND its Build.dag reads-match is PASS, else NO_DETECTOR) and Earn.service_state#measured:not-a-service (N-22 row 9; emitted only for a DECLARED non-service kind that the registry does not contradict); NA_CAUSES gains Earn.service_state:not-a-service; the registry criteria are unchanged (SS N-72; source of record /Users/Dev/suvarna/run/DECISIONS.jsonl). 9: NA_RULE_DECISIONS declares R01 Build.history#measured:never-run, R02 Dens.served#measured:no-served-surface and R03 Narr.{agree,checkable,fidelity_test,lint}#measured:no-prose (SS N-65, N-22/N-22a rows 20/19/17): +7 gate cells NO_DETECTOR to N/A on the saved censuses (Dens 3, Narr 4), no other cell moves; rollup_excluded now applies the same cause+rule check as the rollup (an undeclared N/A reads NO_DETECTOR there too); `never-run` is emitted only when the build history is present for the census scope (else NO_DETECTOR); an empty `written` scan reads NO_DETECTOR for a `prose_fields: []` asset; the registry criteria are unchanged. 8: Carr.detector RETIRED (E6 item i, SS A2): removed from the registry (32 to 31 entries; Carr is exactly D1-D3), measure() stops emitting it, RETIRED_CRITERIA records it and emit_gaps closes its OPEN rows (scoped runs close only in-scope assets' rows); no verdict moves. 7: E6 item (f): NA_CAUSES gains Carr.D1/D2/D3:no-carriage (N-22 principle 7, provisional until J1; SS strict definition: no DAG dependents AND no served-surface reach). The criterion registry is unchanged; the fingerprint moves because NA_CAUSES is fingerprinted content. No rule declared (NA_RULE_DECISIONS stays empty) and no asset declares terminal_by_construction, so no census cell changes. 6: E6 items (g)+(h): Build.target rev 2 (a declared service with no target_table, declared `service` by BOTH the registry and the declarations file, reads PASS by declaration, T4:274); Build.dag rev 2 (THREE clauses, each stated in the verdict text: every depends_on id is an active registry asset in ANY layer, the asset is on no dependency cycle, and reads-match — the writer's SQL reads against the declared edges, T4:275, aligned with pipeline/orchestrator/dag_edge_guard.py (SS 2026-10-01: L0 bedrock reads are exempt as `bedrock_exempt`, PROVISIONAL pending the J1 review; chart_facts is satisfied by any producer in the declared transitive closure); an undeclared read is a FAIL naming the missing edge, or a back-read when the edge would close a cycle; an incomplete parse is PARTIAL/NO_DETECTOR); Idem.pattern rev 2 (relative imports resolve against the importing package: ONE resolver for Idem.pattern and the reads scan — verdicts identical on the 127 saved writers, three notes changed: ka_dasha_kala, ka_gochara, ka_muhurta_seva). 5: E6 packet (c): Narr.agree/checkable/fidelity_test/lint and Null.schema_default/blank_rows registered; NA_CAUSES gains no-prose / no-prose-declared. 4: Dens.served rev 4 (contract AND a tier column in the served select; structural; cause no-served-surface). 3: NA_CAUSES gains Earn.build_record:no-registered-writer (E6 review fix 2). 2: N/A rule ids are cause-keyed (<criterion>#measured:<cause>); NA_CAUSES joins the content
+REGISTRY_REVISION = 24     # 24 (provisional): C2(ii) Ldgr placeholder citations (SS ruling N-98 C2(ii), pre-approved STRICTER-ONLY): Ldgr.source_presence's legacy undeclared reading was `col IS NOT NULL`, so a placeholder counted as a source ('UNSOURCED - ...' on 6 bg_transit_rules rows, the bare tradition label 'classical_tradition' on the tradition-rooted bg_doshas rows, 'classical tradition (Jyotish)' on brahma_ontology / brahma_remedy_corpus rows, 'Vastu Shastra tradition (Nairitya corner)' on 1 bg_vastu_directions row, 1 bg_yogas row). It now reads `col IS NOT NULL AND NOT <the shared placeholder predicate>` (`ldgr_legacy_presence`, over `_ldgr_lacking(col, kind, any_element=False)`; ONE predicate with the declared ldgr_source check): `_ldgr_lacking_text` gains `citation=True` (every `_ldgr_lacking` caller: legacy AND declared Ldgr; N-98 named the legacy reading, the declared check shares the predicate on purpose and its grader text now names tradition labels / UNSOURCED) which also applies the closed LDGR_CITATION_PLACEHOLDERS ('classical_tradition', 'classical tradition (jyotish' = the normalised form of 'classical tradition (Jyotish)', 'vastu shastra tradition (nairitya corner') and the closed prefix list LDGR_CITATION_PLACEHOLDER_PREFIXES ('unsourced' followed by a separator); every spelling is justified by a writer file:line in the comment at LDGR_CITATION_PLACEHOLDERS, which also records the spellings deliberately NOT added (VASTU_TRAD_GENERAL, 'Tajaka tradition': not measured targets) and that '(unextracted)' stays a source; anything else (e.g. a bare 'classical tradition') stays a citation. The Null convention detector calls `_ldgr_lacking_text` with its default and grades every value exactly as before (no Null cell can move). The legacy read groups by value and evaluates the predicate once per DISTINCT value, weighted by the value's row count (the per-row form exceeded the production statement timeout on ga_dashas' chart_dashas, 1.46M rows: the placeholder-aware read cost 0.10 s against 0.12 s for IS NOT NULL on 1.5M rows over 10 distinct citations, and 9.9 s on 1.5M all-distinct values, the same as per row); a read that still times out reads PARTIAL with the text 'NOT measured', never PASS and never ERRORED; results are unchanged (differential tests). For the legacy count an array / JSON array lacks only when empty or when EVERY element lacks (a row that cites one real source beside a tradition label still names one); the declared check keeps ANY-element. A column whose type cannot carry text, or a name outside the identifier pattern, keeps `IS NOT NULL`; ONE verdict rule for every column type: PASS = every row names a source, FAIL = none (an all-NULL column now reads FAIL, it read PARTIAL; the declared grader's rule), PARTIAL otherwise; with no placeholder row the record text is the old `<col> populated on N/R rows`, with one it states the exact counts and carries an `ldgr_legacy` block. Ldgr.source_presence revision 4 (applicability text states the rule); the rollup (`_check_contribution`), the certificate writer and the E6.3 reader read the cell's verdict and citation_state and re-implement nothing (a FAIL reaches the Ldgr gate cell as FAIL, a PARTIAL as PARTIAL), so no consumer changes; NA_CAUSES / NA_RULE_DECISIONS unchanged; asset_declarations.json untouched. Cells can only move DOWN, and only where a row holds a listed placeholder or the column is all-NULL / has an empty or all-placeholder array; one incidental placeholder row demotes the whole asset PASS to PARTIAL (bg_yogas: exactly 1 of 233 rows). Revision 23 is the Dens tier PR #3037; 17-22 are held by other lanes. 23 (provisional): DENS-TIER-GUARD (SS ruling N-98, Dens memo item 3; STRICTER-ONLY): the Dens tier vocabulary is a CLOSED list. The old open `^(?:tier|\w+_tier|verification_pass_status)$` let ANY `*_tier` column count as a verification / confidence tier, among them `bg_remedies.cost_tier`, a price bucket, so a Dens lift on bg_remedies could have been a false PASS. A column now counts ONLY when (a) its name is exactly `tier` or `verification_pass_status`, or (b) the asset DECLARES it in the new optional `density_tier_columns: [{column, why, evidence}]` (the validator refuses a malformed list, a duplicate, more than 16, a weak `why` (S3's text rule, and it must say the column is a verification / confidence tier), an `evidence` that is not a real repo-relative file:LINE (the S3 helper `_s3_evidence_problem`, `unverified:` refused, a line required), and, at measure time with the catalog, a `why` that names a deny-listed word, an evidence file that does not mention the column (an optional `needle` on `_s3_evidence_problem`, default None: S3's behaviour unchanged), and, at measure time, a column that is not in the asset's table, and a declaration that cannot be checked (the asset has no target table, or the catalog lists no columns for the table, e.g. a view): Dens.served reads NO_DETECTOR with the disagreement reported, never PASS); and (c) its name carries no deny-listed word (cost, price, pricing, plan, access, subscription, billing, fee, tariff, in any spelling: underscores, digits, camelCase, plurals, run together with tier; fail-closed, case-insensitive): a deny-listed name never counts, and a declared `cost_tier` is REFUSED by the validator. Everything else (`severity_tier`, `signature_tier`, `access_tier`, ...) counts for nothing unless declared. ONE definition, `dens_tier_counts` (the old open regex constant is removed); `_select_tier` and `capability_scan` take the asset's declared names for its own target table. Dens.served revision 6 (applicability text states the closed list), so the fingerprint moves; NA_CAUSES / NA_RULE_DECISIONS unchanged; inert until an asset declares density_tier_columns (none does): asset_declarations.json 1.13.0 (schema key `density_tier_declaration_fields` + description only). Pin 23 is pre-allocated (pins 17-22 belong to other lanes). Measured (the six saved censuses, census_fresh/adb0db2, read only): the pure re-roll under revision 23 compares 1143 cells, zero move; re-scanning Dens.served over the committed 127-asset inputs (they reproduce the saved Dens text on 126 of 127 assets) moves exactly THREE cells DOWN, Dens PASS to PARTIAL: ga_medical and ga_vastu (ga_medical `indication_tier`, the constant 'jyotish_indication'; ga_vastu `indication_tier`, the constant 'traditional_vastu' (migration 286, CHECK in 741/924)) and mi_kula (`evidence_tier`), none declared; four FAIL cells (ka_bhavishya_lekha, ka_moorti_nirnaya, ka_sangam, ph_pratikara) keep FAIL and only lose the 'a tier column is selected without a contract' hint; nothing moves up. Reported for SS (declare, or accept PARTIAL). 16 (provisional): NARR-GUARD (strategist ruling N-94: prose_fields [] for bg_phaladeepika_latta under R03, the N/A kept coupled to Carr.D1): a declared `prose_coupling: {to: 'carriage_d1', columns, why, evidence}` beside prose_fields [] says the asset's text columns are transcription whose fidelity Carr.D1 already measures (same comparator, normalisation and repair list), so Narr (which measures GENERATED prose) is N/A for it ONLY WHILE that is true. The validator refuses a coupling unless prose_fields is exactly [], the asset declares a transcription carriage with applies D1 and a spec, the `why` cites carriage transcription and Carr.D1, `evidence` is a real repo file:line (never `unverified:`), and EVERY listed column is covered by the D1 spec (the covered set is DERIVED from the spec by carriage_d1.prose_coverage: the effect column and the passage_text extra fields; a claim field, an `equals` constant or a column the spec never checks is not coverage). At measure time the same check (`prose_coupling_problem`, one definition) runs again on the entry and the table's columns and types: a refusal reads the four Narr checks NO_DETECTOR with the disagreement reported, never N/A. A coupled Narr N/A record carries a `prose_coupling` block (columns, the covered result keys, the unclassified text-like columns it does NOT claim). The rollup (`narr_coupling_problem`, read by `_check_contribution`, `_na_released` (the gap ledger), the certificate writer and the E6.3 reader) honours that N/A only while the asset's EFFECTIVE Carr.D1 contribution (the census's own `_check_contribution` rule: verified chunk ledger, every row matched at the declared row count, citation_state not unsourced/refuted) reads PASS and the D1 record shows a per-row result for every coupled column; anything else reads NO_DETECTOR 'Narr N/A rests on Carr.D1 PASS (coupled): Carr.D1 reads X'. Narr.agree / Narr.checkable / Narr.fidelity_test / Narr.lint revision 2 (a new declared form changes what the detector does for an asset that declares it, as Vocab.alias rev 2 at pin 12 and Null.* rev 3 at pin 15); NA_CAUSES / NA_RULE_DECISIONS unchanged (the same four Narr.*#measured:no-prose rules, now conditional for a coupled asset); inert until an asset declares prose_coupling, so no undeclared asset's cell moves (all six saved censuses re-rolled up: 1143 cells, zero move); asset_declarations.json 1.12.0 (bg_phaladeepika_latta only). 15 (provisional): STAMP, the declared write-time stamp column (SS strategist ruling on the bg_phaladeepika_latta conflict): `null_convention.stamp_columns: [{column, why}]`, a declared word beside `nullable` and `constants`. A write-time stamp (created_at written in one seed transaction) can hold ONE value on every row, which the S1 constant test fails unless the column is declared constant, and declaring a stamp 'constant' is a claim known to be false in kind. The detector now requires a declared stamp column to be a timestamp / timestamptz (the catalog's pg_type name, domains resolved) AND NOT NULL (attnotnull, or a NOT NULL domain; one extra read-only pg_catalog SELECT, issued only when stamp_columns is declared) and to hold no NULL row and no sentinel timestamp, and EXEMPTS it from the constant test ONLY: nothing else is exempted, and the exemption is paid for: a stamp column holding a SENTINEL timestamp (infinity, -infinity, anything at or before the epoch plus one day: epoch, 1970-01-01, year 0001) is a FAIL, counted by one extra counter in the existing fetch and compared in the column's own type (a timestamp column's literal fallback in disguise, which the constant test used to catch when the column was undeclared; the stamp column is examined for it, so it is in neither 'not examined' group); every other column is graded exactly as before). A stamp column that is nullable or not a timestamp is refused at measure time as NO_DETECTOR with the disagreement reported (never PASS; a text / date stamp is refused before any SELECT from the information_schema data types); one holding a NULL row is a FAIL. The PASS text names stamp columns separately ('stamp columns (write-time, constant test exempted): ...'). The validator refuses a malformed list, a duplicate, more than 16, a weak `why`, and a column that is also nullable / constant / a scope key / an allowed_literals column / a declared prose field. The lift block carries `stamp_columns` (not part of `columns`, which stays the prose + nullable columns the two graders run over); `null_lift_earned` requires both sibling blocks to agree on it and the ELEVATED reader requires it to equal the ref declaration's stamp columns. Null.schema_default and Null.blank_rows revision 3 (a new declared form changes what the detector does for an asset that declares it, as Vocab.alias rev 2 at pin 12; applicability text names stamp_columns), so the fingerprint moves; NA_CAUSES / NA_RULE_DECISIONS unchanged; no asset declares a null_convention yet, so no census cell verdict changes (all six saved censuses re-rolled up: zero cells move); asset_declarations.json field list + description only (file version NOT bumped here: sequenced separately). 14 (provisional): Dens label-vs-select repair and the R02 amendment (SS N-74 item 5, N-74(a)): Dens.served rev 5 (the scan now tells a SELECT of the asset's table from a LABEL: a serving module that names the asset only in a provenance string, prose, a type name, an import path, a label-keyed array/value or a map key, in a module with no run-time table access, is no longer a reach, so an asset no served module selects rows from can read the no-served-surface N/A; every unclassifiable form (a bare name as a call/builder argument, in an unkeyed list, a name assembled at run time, SQL in the literal) stays a reach, comments keep the R51 reading, Python readers stay outside the served surface by design, the outside probe is unchanged), and R02's decision text is cause-keyed ("an asset no served module selects rows from; being named only as a provenance label is not a select", N-74(a)); NA_CAUSES unchanged, asset_declarations.json unchanged (1.9.0). 13 (provisional): S1 declared null convention (SS N-72 S1, N-73, N-74): Null.schema_default and Null.blank_rows rev 2 (an asset that DECLARES `null_convention`: its nullable columns each with what NULL means and an optional key scope, its declared constant columns, one-line why and checkable evidence, gets the declared form: the two checks also run over the convention columns, the detector verifies read-only that NULLs occur only in declared columns (and, with a key scope, only on / exactly on the declared keys), that no declared-nullable column holds a literal fallback in place of NULL and that no column is constant unless declared constant; the Null checks read PASS ONLY when schema_default and blank_rows are clean AND the convention verifies, a defect flips the cell to FAIL, and every other path keeps the cap exactly as before: the cap line is unchanged and the lift is a separate branch that needs the verified convention block on BOTH checks; no Null N/A rule (N-22 row 33 stands), NA_CAUSES unchanged; no asset declares one yet, so no census cell verdict changes; asset_declarations.json 1.9.0). ALSO IN 13, TOUCHING A MERGED PIN-12 CHECK (recorded explicitly, S1 review F2): the shared SQL predicate `_ldgr_lacking_text` (S3's placeholder / 'states no value' test, used by Ldgr.source_presence's declared source-column check via `_ldgr_lacking` and now also by the Null convention detector) additionally compares its normalised value WITH THE SPACES REMOVED against the same placeholder list (`replace(norm, ' ', '') IN (...)`), so 'N / A', 'n o n e' and 'not  found' are the placeholders they spell; the list, the normaliser and every other branch are unchanged. It reaches Ldgr.source_presence's placeholder detector (the declared `ldgr_source` check only: the legacy undeclared Ldgr measurement is an IS NOT NULL count and never calls it). No pin-12 criterion text or revision changed (Vocab.alias rev 2 and Ldgr.source_presence rev 3 are identical to the S3 merge), nor NA_CAUSES / NA_RULE_DECISIONS; the registry fingerprint covers criterion entries, N/A rules and causes, gates and rollup order, never detector SQL, so PINNED_FINGERPRINTS[12] (35b0e03e..., equal to the S3-merged module's fingerprint) is unaffected and the revision-13 fingerprint is the same with or without this change. Measured: all six saved censuses (census_fresh/1e5781a, read only) rolled up with and without the change: 1143 cells, zero move (verdicts and checks), and zero move against the saved verdicts; no asset declares ldgr_source, so no real Ldgr cell consumes the predicate. 12 (provisional): S3 declared Vocab.alias and Ldgr.source_presence (SS N-72 S3, N-73 (1)/(4), N-74 (b)): Vocab.alias rev 2 and Ldgr.source_presence rev 3 (an asset that DECLARES `vocab_alias` / `ldgr_source` gets the declared form: the alias class measured against bg_ontology class planet by canonical id and display name, plus the ontology synonyms when an alias column is declared; the Ldgr source column named with its citation_state, a declared unsourced / refuted state never reading PASS or PARTIAL; an undeclared asset reads exactly as before), NA_CAUSES gains Vocab.alias:no-alias-class and Ldgr.source_presence:no-classical-claim, and Vocab.alias#measured:no-alias-class / Ldgr.source_presence#measured:no-classical-claim are declared (declaration-keyed; refused where the table contradicts the declaration; inert until an asset declares); the columns_any patterns stay and still never make an N/A (A5); asset_declarations.json 1.8.0; nikasha_certify closes the legacy null-state Ldgr write path; no real asset declares either key yet, so no census cell verdict changes. 11 (provisional): S2 declared carriage (SS N-72 S2, N-73): Carr.D1 gets a detector (revision 2: the generic D1 engine for an asset that DECLARES D1 with a spec; undeclared assets read as before), NA_CAUSES gains Carr.D1/D2/D3:not-the-declared-carriage and :ratified_judgment, and Carr.D{1,2,3}#measured:not-the-declared-carriage are declared (inert until an asset declares a carriage check); asset_declarations.json 1.7.0; no real asset declares one yet, so no census cell changes. 10: NA_RULE_DECISIONS declares Build.dep_liveness#measured:no-declared-dependencies (S4, N-22 row 23 re-proposed; emitted only when the asset's declared dependency list is empty AND its Build.dag reads-match is PASS, else NO_DETECTOR) and Earn.service_state#measured:not-a-service (N-22 row 9; emitted only for a DECLARED non-service kind that the registry does not contradict); NA_CAUSES gains Earn.service_state:not-a-service; the registry criteria are unchanged (SS N-72; source of record /Users/Dev/suvarna/run/DECISIONS.jsonl). 9: NA_RULE_DECISIONS declares R01 Build.history#measured:never-run, R02 Dens.served#measured:no-served-surface and R03 Narr.{agree,checkable,fidelity_test,lint}#measured:no-prose (SS N-65, N-22/N-22a rows 20/19/17): +7 gate cells NO_DETECTOR to N/A on the saved censuses (Dens 3, Narr 4), no other cell moves; rollup_excluded now applies the same cause+rule check as the rollup (an undeclared N/A reads NO_DETECTOR there too); `never-run` is emitted only when the build history is present for the census scope (else NO_DETECTOR); an empty `written` scan reads NO_DETECTOR for a `prose_fields: []` asset; the registry criteria are unchanged. 8: Carr.detector RETIRED (E6 item i, SS A2): removed from the registry (32 to 31 entries; Carr is exactly D1-D3), measure() stops emitting it, RETIRED_CRITERIA records it and emit_gaps closes its OPEN rows (scoped runs close only in-scope assets' rows); no verdict moves. 7: E6 item (f): NA_CAUSES gains Carr.D1/D2/D3:no-carriage (N-22 principle 7, provisional until J1; SS strict definition: no DAG dependents AND no served-surface reach). The criterion registry is unchanged; the fingerprint moves because NA_CAUSES is fingerprinted content. No rule declared (NA_RULE_DECISIONS stays empty) and no asset declares terminal_by_construction, so no census cell changes. 6: E6 items (g)+(h): Build.target rev 2 (a declared service with no target_table, declared `service` by BOTH the registry and the declarations file, reads PASS by declaration, T4:274); Build.dag rev 2 (THREE clauses, each stated in the verdict text: every depends_on id is an active registry asset in ANY layer, the asset is on no dependency cycle, and reads-match — the writer's SQL reads against the declared edges, T4:275, aligned with pipeline/orchestrator/dag_edge_guard.py (SS 2026-10-01: L0 bedrock reads are exempt as `bedrock_exempt`, PROVISIONAL pending the J1 review; chart_facts is satisfied by any producer in the declared transitive closure); an undeclared read is a FAIL naming the missing edge, or a back-read when the edge would close a cycle; an incomplete parse is PARTIAL/NO_DETECTOR); Idem.pattern rev 2 (relative imports resolve against the importing package: ONE resolver for Idem.pattern and the reads scan — verdicts identical on the 127 saved writers, three notes changed: ka_dasha_kala, ka_gochara, ka_muhurta_seva). 5: E6 packet (c): Narr.agree/checkable/fidelity_test/lint and Null.schema_default/blank_rows registered; NA_CAUSES gains no-prose / no-prose-declared. 4: Dens.served rev 4 (contract AND a tier column in the served select; structural; cause no-served-surface). 3: NA_CAUSES gains Earn.build_record:no-registered-writer (E6 review fix 2). 2: N/A rule ids are cause-keyed (<criterion>#measured:<cause>); NA_CAUSES joins the content
 
 def registry_fingerprint() -> str:
     """sha256 over the canonical JSON of everything that decides a cell: the registry, the declared N/A
@@ -697,11 +697,12 @@ CARRIAGE_FIELDS = ("served_surface",)
 # E6 S2 (SS N-72 S2, N-73): the `carriage` object also holds the asset's DECLARED CARRIAGE CHECK (declaration-keyed, reviewed):
 # ONE of D1/D2/D3 applies, chosen by the asset's NATURE, never by the caller of a rule: transcription of cited classical content
 # -> D1 (match to a cited source; N-73 (2)), computation -> D3 (re-derivation), derivation from another asset's stored facts ->
-# D2. The validator REFUSES a mismatch. The other two checks read N/A by the cause `not-the-declared-carriage`. A ratified
+# D3 (SS N-101 (a), C1-1: D2 is WITNESS carriage, "two independent witnesses of the same fact", as the registry and the menu define it; a
+# derivation is re-derived, it is not witnessed; no nature maps to D2 until a witness adopter exists, C1-7). The validator REFUSES a mismatch. The other two checks read N/A by the cause `not-the-declared-carriage`. A ratified
 # judgment seed (L0 Q13) declares nature `ratified_judgment` with a `ruling` id and no `applies`: all three read N/A by
 # `ratified_judgment`. An asset with no such declaration reads exactly as before.
 CARRIAGE_DECL_FIELDS = ("applies", "nature", "why", "evidence", "spec", "citation_state", "ruling")
-CARRIAGE_NATURE_CHECK = {"transcription": "D1", "computation": "D3", "derivation": "D2"}
+CARRIAGE_NATURE_CHECK = {"transcription": "D1", "computation": "D3", "derivation": "D3"}     # ONE definition (C1-1, N-101 (a)): the validator, its message and the comments above read this
 RATIFIED_JUDGMENT = "ratified_judgment"
 CITATION_STATES = ("sourced", "sourced_ocr_unverified", "unsourced", "refuted")
 CITATION_CAPPED_STATES = ("unsourced", "refuted")   # ONE cap for Carr.D1 (carriage_d1) and Ldgr.source_presence (grade_ldgr_source, _check_contribution), and nikasha CITATION_PASS_REFUSED
@@ -740,6 +741,14 @@ def _evidence_pointer_ok(ev) -> bool:
         return False
 
 
+def _carriage_pointer_strict(label: str, ev) -> None:
+    """The S3 pointer rules for a carriage spec's evidence pointers (effect_clauses_evidence, condition_evidence, an escape hatch's, a repair's): no control / invisible character, a
+    `:LINE` inside the file, an `unverified:` pointer states a real description. They are not N/A releases (the carriage's own `evidence` is), so `unverified:` stays allowed."""
+    bad = _s3_evidence_problem(ev, allow_unverified=True)
+    if bad:
+        raise DeclarationsError(f"{label} {ev!r} {bad}")
+
+
 def validate_carriage_declaration(where: str, car: dict, e: dict) -> None:
     """Raises DeclarationsError when the asset's declared carriage CHECK is malformed or contradicts N-73's nature rule."""
     nature = car.get("nature")
@@ -753,6 +762,15 @@ def validate_carriage_declaration(where: str, car: dict, e: dict) -> None:
     if not _evidence_pointer_ok(car["evidence"]):
         raise DeclarationsError(f"{where}.carriage.evidence {car['evidence']!r} is not an existing repo-relative file (optionally with :line); a "
                                 f"pointer that cannot be checked must say so: 'unverified:<where it is recorded>'")
+    # E6.1 follow-up (S2 strictness, matching S3's `_s3_common`): the same text and pointer rules as vocab_alias / ldgr_source. `why` is a real one-line statement (no control or
+    # invisible character, at least 15 characters and 3 words, no placeholder word anywhere, except that a D1 / D2 / D3 sentence may mention `null` / `none`, as the latta's does; a ratified_judgment, which releases N/A, may not); `evidence` has no control character, a `:LINE` inside the file, and an `unverified:` pointer states
+    # a real description (10 characters, 2 words). A ratified_judgment carriage RELEASES Carr.D1-D3 to N/A, so (as an S3 N/A release) it may not rest on an `unverified:` pointer.
+    bad = _s3_text_problem(car["why"], min_chars=15, min_words=3, placeholder="any" if nature == RATIFIED_JUDGMENT else "prose")
+    if bad:
+        raise DeclarationsError(f"{where}.carriage.why {bad}")
+    bad = _s3_evidence_problem(car["evidence"], allow_unverified=nature != RATIFIED_JUDGMENT)
+    if bad:
+        raise DeclarationsError(f"{where}.carriage.evidence {car['evidence']!r} {bad}")
     if isinstance(e.get("terminal_by_construction"), str) and e["terminal_by_construction"].strip():
         raise DeclarationsError(f"{where}: a declared carriage check and terminal_by_construction contradict each other (an asset that "
                                 f"declares a carriage check carries something from a source; declare one or the other)")
@@ -766,9 +784,9 @@ def validate_carriage_declaration(where: str, car: dict, e: dict) -> None:
         return
     want = CARRIAGE_NATURE_CHECK[nature]
     if car.get("applies") != want:
-        raise DeclarationsError(f"{where}.carriage: nature {nature!r} requires applies {want!r} (N-73: transcription -> D1 match to a "
-                                f"cited source; computation -> D3 re-derivation; derivation from another asset's stored facts -> D2), "
-                                f"got {car.get('applies')!r}")
+        raise DeclarationsError(f"{where}.carriage: nature {nature!r} requires applies {want!r} (N-73 / N-101 (a): transcription -> D1 match to a "
+                                f"cited source; computation -> D3 re-derivation; derivation from another asset's stored facts -> D3; D2 is witness "
+                                f"carriage and no nature maps to it yet), got {car.get('applies')!r}")
     if car.get("ruling") is not None:
         raise DeclarationsError(f"{where}.carriage.ruling is only for nature ratified_judgment")
     cs = car.get("citation_state")
@@ -785,27 +803,43 @@ def validate_carriage_declaration(where: str, car: dict, e: dict) -> None:
             _carriage_d1().validate_spec(spec, f"{where}.carriage")
         except ValueError as exc:
             raise DeclarationsError(str(exc)) from exc
-        if not _evidence_pointer_ok(spec["effect_clauses_evidence"]):
-            raise DeclarationsError(f"{where}.carriage.spec.effect_clauses_evidence {spec['effect_clauses_evidence']!r} is not an existing "
-                                    "repo-relative file (optionally :line) or 'unverified:<where>'")
-        for ef in spec.get("extra_fields", []):
-            if ef.get("kind") == "passage_text" and not _evidence_pointer_ok(ef["condition_evidence"]):
-                raise DeclarationsError(f"{where}.carriage.spec.extra_fields[{ef['column']}].condition_evidence {ef['condition_evidence']!r} is "
-                                        "not an existing repo-relative file (optionally :line) or 'unverified:<where>' (existence only)")
-            hatches = []
-            if ef.get("kind") == "passage_text":
-                for d in [ef["condition"], *ef.get("by_claimant", {}).values()]:
-                    hatches += ([d["ocr_lost_stop"]] if "ocr_lost_stop" in d else []) + list(d.get("ocr_stops", []))
-            for h in hatches:
-                if not _evidence_pointer_ok(h["evidence"]):
-                    raise DeclarationsError(f"{where}.carriage.spec.extra_fields[{ef['column']}] escape hatch {h['text']!r}: evidence "
-                                            f"{h['evidence']!r} is not an existing repo-relative file (optionally :line) or "
-                                            "'unverified:<where>' (existence only)")
-            for rp in ef.get("repairs", []) if ef.get("kind") == "passage_text" else []:
-                if not _evidence_pointer_ok(rp["evidence"]):
-                    raise DeclarationsError(f"{where}.carriage.spec.extra_fields[{ef['column']}].repairs[{rp['from']!r}].evidence "
-                                            f"{rp['evidence']!r} is not an existing repo-relative file (optionally :line) or "
-                                            "'unverified:<where>' (existence only)")
+        d1m = _carriage_d1()
+        for label, ev, suffix in d1m._kernel_of(spec)["evidence_pointers"](spec, f"{where}.carriage.spec"):      # the kernel names its own evidence pointers
+            if not _evidence_pointer_ok(ev):
+                raise DeclarationsError(f"{label} {ev!r} is not an existing repo-relative file (optionally :line) or 'unverified:<where>'{suffix}")
+            _carriage_pointer_strict(label, ev)
+        for x in spec.get("non_claim_columns", []):       # C1-1 column ledger: each declared non-claim needs a real one-line `why` (S3 rules), a real file:line pointer, and must NAME its column
+            lab = f"{where}.carriage.spec.non_claim_columns[{x['column']}]"
+            bad = _s3_text_problem(x["why"], min_chars=15, min_words=3)
+            if bad:
+                raise DeclarationsError(f"{lab}.why {bad}")
+            bad = _s3_evidence_problem(x["evidence"], allow_unverified=False)
+            if bad:
+                raise DeclarationsError(f"{lab}.evidence {x['evidence']!r} {bad}")
+            bad = _non_claim_names_column_problem(x)
+            if bad:
+                raise DeclarationsError(f"{lab}: {bad}")
+
+
+def _non_claim_names_column_problem(x: dict):
+    """None when a declared non-claim names its column as a whole token (case-insensitive) in its `why` OR in the evidence line it points at (so a generic reason with an unrelated
+    pointer cannot declare a prophecy column a label), else why not. `evidence` is `path:line` (the line must exist: `_s3_evidence_problem` ran first) or a bare existing file."""
+    tok = re.compile(r"(?<![A-Za-z0-9_])" + re.escape(x["column"]) + r"(?![A-Za-z0-9_])", re.IGNORECASE)
+    if tok.search(x["why"]):
+        return None
+    m = re.fullmatch(r"(.+):([0-9]+)", x["evidence"])
+    line = ""
+    if m:
+        try:
+            line = (ROOT / m.group(1)).read_text(encoding="utf-8").splitlines()[int(m.group(2)) - 1]
+        except (OSError, UnicodeDecodeError, IndexError):
+            line = ""
+    if tok.search(line):
+        return None
+    return (f"neither the `why` nor the evidence line {x['evidence']!r} names the column {x['column']!r} (whole token, case-insensitive): a non-claim must say which column it is "
+            "about and point at where that column is written")
+
+
 # E6 S3 (SS N-72 S3, N-73 (1)/(4), N-74 (b)): two more per-asset DECLARATIONS, each reviewed and carrying evidence and ONE line of reason. `vocab_alias`
 # declares the asset's alias class (measured against bg_ontology) or that it has none (`no_alias_class`); `ldgr_source` names the column that carries
 # the asset's classical source and the citation_state it stands on, or declares that the asset states no classical rule or cited fact
@@ -832,9 +866,16 @@ _S3_PLACEHOLDER_WORDS = frozenset({"tbd", "todo", "tba", "fixme", "xxx", "placeh
 _S3_WORD = re.compile(r"[^\W_]+(?:[./'-][^\W_]+)*")
 
 
-def _s3_text_problem(v, *, min_chars: int, min_words: int):
+_PROSE_MAY_MENTION = frozenset({"null", "none"})      # the only placeholder words a carriage `why` sentence may mention (the committed latta why says "content_sa is NULL")
+
+
+def _s3_text_problem(v, *, min_chars: int, min_words: int, placeholder: str = "any"):
     """None when `v` is a real one-line text: a str with no control / format / line-separator character (\\r, \\n, U+0085, U+2028/9, zero-width ...), at least
-    `min_chars` characters and `min_words` words once trimmed, and no placeholder word (TBD, todo, N/A ...); else why it is not."""
+    `min_chars` characters and `min_words` words once trimmed, and no placeholder word (TBD, todo, N/A ...); else why it is not.
+    `placeholder="any"` (S3's rule) refuses a placeholder word ANYWHERE. `placeholder="prose"` (the carriage `why` of a D1 / D2 / D3 check, E6.1 follow-up) is for a long explanatory
+    sentence that may legitimately MENTION the words `null` and `none` ("content_sa is NULL", "none of the rows has an effect clause"): ONLY those two are exempt; every other placeholder
+    word (tbd, todo, tba, fixme, xxx, placeholder, pending, n/a, unknown, nil, ...) is still refused anywhere, and the statement needs at least `min_words` REAL words (a word that is no
+    placeholder word at all: 'see tbd tbd tbd' and 'none none none none' have fewer than three). A ratified_judgment `why` (it releases Carr.D1-D3 to N/A) uses "any"."""
     if not isinstance(v, str):
         return "is not a string"
     if v != v.strip():
@@ -846,12 +887,19 @@ def _s3_text_problem(v, *, min_chars: int, min_words: int):
     words = _S3_WORD.findall(v)
     if len(v) < min_chars or len(words) < min_words:
         return f"is too short to be a real statement (need at least {min_chars} characters and {min_words} words)"
+    if placeholder == "prose":
+        bad = [w for w in words if w.casefold() in _S3_PLACEHOLDER_WORDS and w.casefold() not in _PROSE_MAY_MENTION]
+        if bad:
+            return f"contains a placeholder word ({bad[0]!r}: TBD / todo / pending / unknown / n/a ... are refused anywhere; only null / none may be mentioned in a sentence)"
+        if sum(1 for w in words if w.casefold() not in _S3_PLACEHOLDER_WORDS) < min_words:
+            return f"is mostly placeholder words (need at least {min_words} words that are none of: null, none, tbd, todo, ...)"
+        return None
     if any(w.casefold() in _S3_PLACEHOLDER_WORDS for w in words):
         return "contains a placeholder word (TBD / todo / placeholder / n/a ...)"
     return None
 
 
-def _s3_evidence_problem(ev, *, allow_unverified: bool):
+def _s3_evidence_problem(ev, *, allow_unverified: bool, needle=None):
     """None when `ev` is acceptable evidence for an S3 declaration: an existing repo-relative file whose optional `:LINE` is within the file's real
     line count, or `unverified:<a real description, >= 10 characters and 2 words>` when `allow_unverified` (never for an N/A release)."""
     if not isinstance(ev, str) or not ev.strip():
@@ -873,6 +921,14 @@ def _s3_evidence_problem(ev, *, allow_unverified: bool):
             return "is not readable"
         if not 1 <= int(m.group(1)) <= n:
             return f"names line {m.group(1)} but the file has {n} line(s)"
+    if needle is not None:
+        # DENS-TIER-GUARD (F3): an optional extra, default None = S3's behaviour unchanged. The cited FILE must mention `needle` (case-insensitive), so the pointer is about it.
+        try:
+            body = (ROOT / re.sub(r":[0-9]+$", "", ev)).read_text(encoding="utf-8", errors="replace")
+        except OSError:
+            return "is not readable"
+        if str(needle).casefold() not in body.casefold():
+            return f"is a real file but does not mention {needle!r}: the evidence must be about the column it supports"
     return None
 
 
@@ -1037,6 +1093,30 @@ def prose_empty_d1_problem(entry):
     return None
 
 
+# NARR-GUARD required-coupling pin (E6.1 follow-up, L3). `prose_empty_d1_problem` binds a coupling to the D1 carriage it rests on by VALIDATION, but it keys on the
+# carriage being PRESENT: delete the `prose_coupling` AND the `carriage` block of bg_phaladeepika_latta (a double deletion) and what is left is `prose_fields []` on an asset with
+# no carriage, which is exactly what bg_doshas / bg_yogas / bg_ontology / bo_laksana_rerank declare, a plain R03 Narr N/A with no Carr.D1 behind it: a cheaper state reached by
+# deleting two declarations. This table names the assets whose N/A is ONLY ever the coupled one (the strategist ruling that made their text columns transcription, N-94): for
+# them the coupling is REQUIRED, so `prose_fields []` without a `prose_coupling` is refused by the validator, read NO_DETECTOR by the measure-time glue and flagged
+# `declared_prose_coupling_missing` for the rollup / gap ledger / certificate writer / E6.3 reader, whatever else the entry holds or whether it exists. A registry-side table, not
+# fingerprinted content (it adds no criterion, rule or cause and decides no cell where the coupling is present); adding an asset here is a ruling, not a convenience.
+PROSE_COUPLING_REQUIRED = {
+    "bg_phaladeepika_latta": "N-94: its effect / affliction strings are transcription of a cited passage whose fidelity only Carr.D1 measures",
+}
+
+
+def prose_coupling_required_problem(asset_id, entry):
+    """None unless `asset_id` is in PROSE_COUPLING_REQUIRED and its declaration carries no `prose_coupling` object (an absent entry, a null one, a malformed one: all missing); else why
+    its Narr N/A may not stand. Pure; ONE definition for the validator, the measure-time glue and `declared_facts`."""
+    why = PROSE_COUPLING_REQUIRED.get(asset_id) if isinstance(asset_id, str) else None
+    if why is None:
+        return None
+    if isinstance(entry, dict) and isinstance(entry.get("prose_coupling"), dict):
+        return None
+    return (f"{asset_id} requires a prose_coupling to carriage_d1 ({why}): without it a `prose_fields []` would be a plain no-prose N/A with no Carr.D1 behind it "
+            "(deleting the coupling together with the carriage must not make the asset cheaper)")
+
+
 def prose_coupling_unclassified(entry, table_columns, column_types) -> list:
     """The table's text-like columns that are neither listed in the entry's prose_coupling nor a column its D1 spec checks: the structural labels and provenance pointers the
     N/A does NOT claim to cover (R03 reads them as not narration). Named on the measured record so a reviewer sees them; never gated. [] when the entry has no coupling or the
@@ -1063,9 +1143,95 @@ def validate_prose_coupling_declaration(where: str, pc, e: dict) -> None:
         raise DeclarationsError(f"{where}.prose_coupling: {bad}")
 
 
+# DENS-TIER-GUARD (REGISTRY_REVISION 23, strategist ruling N-98 / Dens memo item 3). The Dens tier vocabulary is CLOSED (`dens_tier_counts`, above): an asset whose served select
+# carries a verification / confidence tier column that is not literally `tier` / `verification_pass_status` DECLARES it: `density_tier_columns: [{column, why, evidence}]`.
+# STRICTER-ONLY and inert until an asset declares one: no declaration, no change from the closed default. A deny-listed name (a price / plan / access bucket) is refused even when declared.
+DENSITY_TIER_WHY_WORDS = ("verification", "confidence")
+
+
+def density_tier_problem(entry, table_columns=None):
+    """None when `entry` (an asset's declaration) has no `density_tier_columns`, or has a sound one; else why it is refused. ONE definition: the validator
+    (validate_density_tier_declaration) and the measure-time glue both call it. Sound means: a non-empty list of at most DENS_TIER_MAX_DECLARED objects with exactly the fields
+    column / why / evidence; `column` an identifier, no duplicate (case-insensitive), never a deny-listed name (`cost_tier`: a price bucket is not verification, declared or not);
+    `why` a real one-line reason (S3's text rule) that says the column is a verification or confidence tier and names no deny-listed word; `evidence` a real repo-relative `file:LINE`
+    (the line within the file; the file mentions the column; never `unverified:`). With `table_columns` (the measure-time catalog; None = not supplied) every declared column must also be a column of the asset's table."""
+    if not isinstance(entry, dict) or entry.get("density_tier_columns") is None:
+        return None
+    dt = entry["density_tier_columns"]
+    if not isinstance(dt, list) or not dt:
+        return "density_tier_columns must be a non-empty list of {column, why, evidence} (omit the key to declare none)"
+    if len(dt) > DENS_TIER_MAX_DECLARED:
+        return f"density_tier_columns declares more than {DENS_TIER_MAX_DECLARED} columns: not a tier vocabulary"
+    seen: list = []
+    for i, d in enumerate(dt):
+        w = f"density_tier_columns[{i}]"
+        if not isinstance(d, dict):
+            return f"{w} must be an object {{column, why, evidence}}"
+        extra = sorted(set(d) - set(DENS_TIER_DECL_FIELDS))
+        if extra:
+            return f"{w}: unknown field(s) {extra}"
+        missing = [f for f in DENS_TIER_DECL_FIELDS if f not in d]
+        if missing:
+            return f"{w}: missing field(s) {missing}"
+        c = d["column"]
+        if not (isinstance(c, str) and _DECL_IDENT.fullmatch(c)):
+            return f"{w}.column must be a column name (an identifier), got {c!r}"
+        if c.casefold() in {x.casefold() for x in seen}:
+            return f"{w}.column {c!r} is declared twice (duplicate)"
+        dw = dens_tier_denied_word(c)
+        if dw:
+            return (f"{w}.column {c!r} carries the deny-listed word {dw!r} ({', '.join(sorted(DENS_TIER_DENY_WORDS))}): a cost / price / plan / access bucket is not a "
+                    "verification or confidence tier, and a deny-listed name never counts, declared or not")
+        seen.append(c)
+        bad = _s3_text_problem(d["why"], min_chars=15, min_words=3)
+        if bad:
+            return f"{w}.why {bad} (why this column is a verification / confidence tier)"
+        if not any(x in d["why"].casefold() for x in DENSITY_TIER_WHY_WORDS):
+            return f"{w}.why must say the column is a verification or confidence tier (the word 'verification' or 'confidence'): {d['why']!r}"
+        wdeny = next((x for x in DENS_TIER_DENY_WORDS for tk in re.findall(r"[a-z]+", d["why"].casefold()) if x in _dens_deny_stems(tk)), None)
+        if wdeny:
+            return (f"{w}.why contains the deny-listed word {wdeny!r}: a reason that talks about a cost / price / plan / access bucket does not establish a verification or "
+                    f"confidence tier, whatever else it says: {d['why']!r}")
+        ev = d["evidence"]
+        if isinstance(ev, str) and ev.startswith("unverified:"):
+            return f"{w}.evidence may not be `unverified:`: a tier declaration lifts a Dens cell, so it must point at a real file:line the reviewer read"
+        bad = _s3_evidence_problem(ev, allow_unverified=False, needle=c)
+        if bad:
+            return f"{w}.evidence {ev!r} {bad}"
+        if not re.search(r":[0-9]+$", ev):
+            return f"{w}.evidence {ev!r} must name a line (repo-relative file:LINE)"
+    if table_columns is not None:
+        have = {c.casefold() for c in table_columns if isinstance(c, str)}
+        absent = [d["column"] for d in dt if d["column"].casefold() not in have]
+        if absent:
+            return f"declared tier column(s) {absent} are not columns of the asset's table"
+    return None
+
+
+def density_tier_measure_problem(entry, table, table_columns):
+    """The measure-time form of `density_tier_problem` (ONE definition of the check, plus what only a measurement can say): None when the entry declares nothing; else why Dens.served
+    cannot trust the declaration. A declaration on an asset with NO target table, or on a table whose columns the catalog does not list (a view / materialized view / no column rows:
+    `table_columns` None), is UNVERIFIABLE and refused, never read as present."""
+    if not isinstance(entry, dict) or entry.get("density_tier_columns") is None:
+        return None
+    if not table:
+        return "the asset has no target table, so the declared tier columns cannot apply to any table (declaration unverifiable)"
+    if table_columns is None:
+        return f"table columns unknown for {table} (a view, or the catalog lists no columns for it), declaration unverifiable"
+    return density_tier_problem(entry, table_columns)
+
+
+def validate_density_tier_declaration(where: str, dt, e: dict) -> None:
+    """Raises DeclarationsError when an asset's `density_tier_columns` is malformed or unsound (see `density_tier_problem`). The validator has no database: that a declared
+    column IS a column of the table is the measure-time question (Dens.served reads NO_DETECTOR with the disagreement reported, never PASS)."""
+    bad = density_tier_problem(e)
+    if bad:
+        raise DeclarationsError(f"{where}.{bad}" if bad.startswith("density_tier_columns") else f"{where}.density_tier_columns: {bad}")
+
+
 _DECL_ENTRY_KEYS = ("kind", "carriage", "prose_fields", "terminal_by_construction", "cross_asset_writes",
                     "read_evidence", "read_table", "read_kind", "evidence", "evidence_kind", "vocab_alias", "ldgr_source", "null_convention",
-                    "prose_coupling")
+                    "prose_coupling", "density_tier_columns")
 _DECL_EVIDENCE_KEYS = ("kind", "carriage", "prose_fields", "cross_asset_writes")
 # prose_fields entries (SS ruling 2026-10-01; CLAUDE.md N.7 concerns GENERATED prose): a column name, or a JSON path into
 # a JSONB column, `column.$.seg(.seg)*` where a seg is an identifier key, optionally followed by ONE `[*]` (every element
@@ -1174,7 +1340,8 @@ def validate_declarations(doc, registry_ids=None) -> dict:
         raise DeclarationsError(f"`carriage_declaration_fields` must be exactly {list(CARRIAGE_DECL_FIELDS)}")
     for _fk, _fv in (("vocab_alias_declaration_fields", VOCAB_ALIAS_DECL_FIELDS), ("ldgr_source_declaration_fields", LDGR_SOURCE_DECL_FIELDS),
                      ("null_convention_declaration_fields", NULL_CONVENTION_DECL_FIELDS),
-                     ("prose_coupling_declaration_fields", PROSE_COUPLING_DECL_FIELDS)):
+                     ("prose_coupling_declaration_fields", PROSE_COUPLING_DECL_FIELDS),
+                     ("density_tier_declaration_fields", DENS_TIER_DECL_FIELDS)):
         if _fk in doc and doc[_fk] != list(_fv):
             raise DeclarationsError(f"`{_fk}` must be exactly {list(_fv)}")
     known = _registry_id_set(registry_ids)
@@ -1212,9 +1379,15 @@ def validate_declarations(doc, registry_ids=None) -> dict:
             validate_null_convention_declaration(where, e["null_convention"], e)
         if e.get("prose_coupling") is not None:
             validate_prose_coupling_declaration(where, e["prose_coupling"], e)
+        if e.get("density_tier_columns") is not None:
+            validate_density_tier_declaration(where, e["density_tier_columns"], e)
         bad = prose_empty_d1_problem(e)
         if bad:
             raise DeclarationsError(f"{where}.prose_coupling is missing: {bad}")
+        if e.get("prose_fields") == []:
+            bad = prose_coupling_required_problem(aid, e)
+            if bad:
+                raise DeclarationsError(f"{where}.prose_coupling is missing: {bad}")
         pf = e.get("prose_fields")
         if pf is not None:
             # null = undeclared; [] = declared "this writer composes no prose" (a positive claim); both need evidence
@@ -1354,6 +1527,8 @@ def declared_facts(declarations, asset_id, registry_kind=None, measured_dependen
     (the Dens.served verdict: a declared served_surface False against PASS/FAIL/PARTIAL, or True against N/A, is reported)."""
     facts: dict = {}
     e = (declarations or {}).get(asset_id)
+    if prose_coupling_required_problem(asset_id, e):
+        facts["declared_prose_coupling_missing"] = True      # a required coupling that is not declared (even an absent entry): no Narr N/A of this asset may stand
     if not isinstance(e, dict):
         return facts
     disagree = []
@@ -1397,7 +1572,7 @@ def declared_facts(declarations, asset_id, registry_kind=None, measured_dependen
         except (KeyError, TypeError, AttributeError, ValueError):
             covered = None
         facts["declared_prose_coupling"] = dict(to=pcp.get("to"), columns=cols, covered=covered)
-    elif prose_empty_d1_problem(e):
+    elif prose_empty_d1_problem(e) or prose_coupling_required_problem(asset_id, e):
         facts["declared_prose_coupling_missing"] = True      # [] + a D1 transcription carriage and NO coupling: no Narr N/A may stand (the rollup, the ledger and the reader read this)
     cw = e.get("cross_asset_writes")
     if isinstance(cw, list):
@@ -1612,13 +1787,27 @@ def d1_fetch_rows(table: str, columns, chart_id: str | None = None) -> list:
         raise Unknown(f"d1_fetch_rows: unparseable read of {table}: {exc}") from exc
 
 
-def carriage_declared_checks(aid: str, car, target_table, chart_scoped: bool = False) -> dict:
+# C1-1 (SS N-101 (c)): the COLUMN LEDGER (every text-like column of the table is matched, a declared constant, a declared non-claim or a Narr prose field, else D1 cannot read
+# PASS) always runs for a declared D1 carriage: there is no switch. The one asset that declares a carriage check, bg_phaladeepika_latta, has two text columns its D1 spec never checks
+# (`table_version`, `source_citation`); it declares both as `non_claim_columns` (declarations 1.13.0), so it reads PASS, and removing either declaration reads PARTIAL naming the
+# column. A clean ledger adds no key to the record. The column facts come from pg_catalog (`pg_column_type_facts`, the Null detector's one catalog read), not information_schema.
+
+
+def carriage_fetch_column_types(table: str) -> dict:
+    """{column: {t, c, ec, et}} for every column of `table`: the Carr column ledger's input (`pg_column_type_facts`). Raises Unknown on a failed read."""
+    return pg_column_type_facts(table)
+
+
+def carriage_declared_checks(aid: str, car, target_table, chart_scoped: bool = False, *, column_types, prose_columns) -> dict:
     """measure()'s Carr.D1/D2/D3 records for an asset that DECLARES its carriage check (SS N-72 S2): {} unless `car.nature` is
     declared (an undeclared asset emits nothing here, so its cell reads exactly as before).
 
     ratified_judgment: all three N/A, cause `ratified_judgment`. Otherwise the declared check (`applies`) is MEASURED (D1 by the
     generic engine in carriage_d1.py with a spec; D2/D3 have no detector yet: NO_DETECTOR, named) and the other two read N/A,
-    cause `not-the-declared-carriage`, released only by the declared rule (never by a caller's choice)."""
+    cause `not-the-declared-carriage`, released only by the declared rule (never by a caller's choice).
+
+    `column_types` (REQUIRED, no default: a caller cannot leave the column ledger off by forgetting it) is the table's pg_catalog column facts (`carriage_fetch_column_types`), or
+    None when they could not be read (the ledger then reads NO_DETECTOR, never PASS); `prose_columns` the columns the asset declares as Narr prose."""
     if not isinstance(car, dict) or car.get("nature") is None:
         return {}
     why = car.get("why") or ""
@@ -1644,10 +1833,37 @@ def carriage_declared_checks(aid: str, car, target_table, chart_scoped: bool = F
     try:
         chunks = d1_fetch_chunks(spec["chunk_ids"])
         rows = d1_fetch_rows(spec["table"], d1.spec_columns(spec), CHART_ID if chart_scoped else None)
-        out[own] = d1.d1_measure(spec, car.get("citation_state"), chunks, rows, target_table)
+        out[own] = d1.d1_measure(spec, car.get("citation_state"), chunks, rows, target_table,
+                                 ledger=dict(columns=column_types, prose_columns=list(prose_columns or ())))
     except Unknown as exc:                                  # R41: this check's failure degrades only this check
         out[own] = dict(v=ERRORED, measured=f"check errored: {exc}", citation_state=car.get("citation_state"))
     return out
+
+
+def _carriage_ledger_inputs(entry, tbl):
+    """(column_types, prose_columns) for measure()'s carriage_declared_checks: the table's pg_catalog column facts (read ONLY for an asset that declares a D1 carriage with a spec
+    on this table; None when the read failed: unreadable, never "no columns") and the asset's declared Narr prose columns."""
+    entry = entry if isinstance(entry, dict) else {}
+    car = entry.get("carriage")
+    types = None
+    if isinstance(car, dict) and car.get("applies") == "D1" and isinstance(car.get("spec"), dict) and car["spec"].get("table") == tbl and tbl:
+        try:
+            types = carriage_fetch_column_types(tbl)
+        except Unknown:
+            types = None
+    return types, _carriage_prose_columns(entry.get("prose_fields"))
+
+
+def _carriage_prose_columns(prose_fields) -> list:
+    """The columns an asset DECLARES as Narr prose (the first segment of each prose_fields entry: a column name, or `column.$.path`), for the column ledger's fourth class.
+    [] when none are declared (null or empty)."""
+    out = []
+    for e in prose_fields if isinstance(prose_fields, list) else []:
+        try:
+            out.append(parse_prose_field(e)[0])
+        except (DeclarationsError, ValueError, TypeError, IndexError):
+            continue
+    return list(dict.fromkeys(out))
 
 
 def carr_checks(record_facts) -> dict:
@@ -1858,6 +2074,28 @@ def vocab_alias_declared_check(aid: str, va, table, cols, keys=None) -> dict:
 LDGR_PLACEHOLDERS = ("", "not traced", "not traced yet", "untraced", "unsourced", "not sourced", "no source", "no sources", "no citation", "no reference",
                      "source unidentified", "source not identified", "unidentified", "unknown", "n/a", "n.a", "na", "nil", "none", "null", "nan", "not available",
                      "not applicable", "not found", "not given", "pending", "tbd", "tba", "todo", "to do", "to be added", "to be determined", "missing", "false", "0")
+# C2(ii) (REGISTRY_REVISION 24, SS N-98): the CITATION-only extension of the closed list, applied by `_ldgr_lacking` (every Ldgr caller, the legacy undeclared reading AND the declared
+# ldgr_source check: N-98 named the legacy reading; the declared check shares the one predicate on purpose, so declaring ldgr_source cannot escape the rule) and NEVER by the Null
+# convention detector (which calls `_ldgr_lacking_text` with its default, so a text column that legitimately holds the word elsewhere is not a Null fallback). Each entry is a spelling
+# the L0 writers are read to write INTO a citation column, stored here in its NORMALISED form (junk stripped at the ends, lower case):
+#   'classical_tradition'          the bare tradition label: brahma_dosha_catalog.classical_citations holds [{"text_id": "classical_tradition"}] on the tradition-rooted doshas
+#                                  (brahmagyan/l0_doshas.py:111 and 40-odd siblings, written by json.dumps at :1976), and the repo already treats that value as a non-citation
+#                                  (pipeline/orchestrator/writers/bg_parihara_rules.py:28 / :106 / :135: "real (non-placeholder) citation", `text_id <> 'classical_tradition'`);
+#                                  reference tables carry it as source_citation (brahmagyan/l0_reference.py:829-838, :926-961: reference_constants / reference_glossary, not measured targets).
+#   'classical tradition (jyotish'  the label "classical tradition (Jyotish)" as it normalises (the trailing ')' is junk and is stripped): brahma_ontology.source_citation on the dosha
+#                                  rows (l0_doshas.py:39, :1999) and brahma_remedy_corpus.source_citation (l0_remedy_corpus.py:46 SOURCE_CLASSICAL, used from :334).
+#   'vastu shastra tradition (nairitya corner'  VASTU_TRADITION = "Vastu Shastra tradition (Nairitya corner)" (brahmagyan/l0_vastu_directions.py:32), written to
+#                                  bg_vastu_directions.classical_citation on the Southwest row (:108, 1 of 8 rows): a tradition label, not a citation (a measured target).
+# DECIDED NOT TO ADD (each traced to the table it lands in): VASTU_TRAD_GENERAL "Vastu Shastra tradition" (l0_vastu_directions.py:33, written at :126-246) lands in
+# bg_vastu_direction_remedials, which is not any asset's target_table (bg_vastu_directions' target is bg_vastu_directions), so no measured Ldgr cell reads it; 'Tajaka tradition'
+# (l0_reference.py:954-958) is a reference_glossary citation (written at :1555), not a measured target either (bg_reference measures reference_planets). Add either only if a
+# measured Ldgr target ever holds it. '(unextracted)' (brahmagyan/l0_text_chunker.py:224, "<source_prefix> (unextracted)") STAYS a source: the source prefix is kept. A bare
+# 'classical tradition' (no underscore, no parenthesis) has no writer spelling here and stays a citation.
+# PREFIXES: a status word that LEADS a sentence disclosing there is no source: the six Rahu/Ketu house-vedha rows of bg_transit_rules carry "UNSOURCED - no house-transit vedha
+# doctrine ..." (brahmagyan/l0_transit.py:80-86, written at :764 and five siblings; migration 1079 counts them with LIKE 'UNSOURCED%'). The exact 'unsourced' is already in the list; the
+# prefix is the same word followed by a separator (so never inside a longer word; the bare word needs no prefix rule, the list has it).
+LDGR_CITATION_PLACEHOLDERS = ("classical_tradition", "classical tradition (jyotish", "vastu shastra tradition (nairitya corner")
+LDGR_CITATION_PLACEHOLDER_PREFIXES = ("unsourced",)
 # INVISIBLE characters are removed everywhere in the value (soft hyphen, combining grapheme joiner, Arabic letter mark, Hangul/Braille/Hangul-filler blanks, Mongolian
 # and zero-width/format/bidi controls, variation selectors, BOM, interlinear/tag characters): they print as nothing, so 'n<SHY>/a' is 'n/a'. JUNK is stripped from the
 # ends (whitespace, punctuation, dashes, quotes, dandas). Both are explicit sets (the database may be UTF8 with a C collation, where [[:alnum:]] / [[:punct:]] know ASCII only).
@@ -1868,37 +2106,107 @@ _LDGR_SPACE = r"[[:space:]\u00a0\u1680\u2000-\u200b\u2028\u2029\u202f\u205f\u300
 LDGR_TEXT_TYPES = ("text", "character varying", "character", "bpchar", "citext")
 
 
-def _ldgr_lacking_text(x: str) -> str:
+def _ldgr_lacking_text(x: str, citation: bool = False) -> str:
     """The SQL predicate 'the text expression `x` states no source': NULL, or after NFKC normalisation (fullwidth 'ＮＯＮＥ' -> 'NONE'; needs a UTF8 database, a
     non-UTF8 one raises and the check reads ERRORED), removal of INVISIBLE characters, stripping of JUNK at the ends, whitespace collapse and case folding, an empty
     value or one of LDGR_PLACEHOLDERS; or the fallback: no alphanumeric character at all in an all-ASCII value (control characters, stray symbols). A value with a
-    non-ASCII character outside the explicit sets (a Devanagari citation) is a source whatever the database locale classifies as alnum."""
-    n0 = f"regexp_replace(normalize({x}, NFKC), '{_LDGR_INVISIBLE}+', '', 'g')"
-    norm = f"lower(regexp_replace(regexp_replace({n0}, '^{_LDGR_JUNK}+|{_LDGR_JUNK}+$', '', 'g'), '{_LDGR_SPACE}+', ' ', 'g'))"
-    lst = ",".join("'" + w + "'" for w in LDGR_PLACEHOLDERS)
+    non-ASCII character outside the explicit sets (a Devanagari citation) is a source whatever the database locale classifies as alnum.
+    `citation=True` (C2(ii), pin 24: `_ldgr_lacking`, i.e. every Ldgr.source_presence reading, declared or not) ALSO applies LDGR_CITATION_PLACEHOLDERS (a bare tradition label is
+    a label, not a citation) and LDGR_CITATION_PLACEHOLDER_PREFIXES ('UNSOURCED - ...' discloses there is no source). The default (False) is the Null convention's fallback test:
+    it grades every value exactly as before pin 24.
+    COST: the normalised value is computed once per call in a derived table (OFFSET 0 stops the planner pulling the subquery up and re-evaluating the normalisation at each
+    comparison); measured on 400k-1.5M rows the effect on its own is between none and 2x, so the legacy Ldgr read does not rely on it: it evaluates this predicate once per DISTINCT
+    value (ldgr_legacy_count_sql). The grading is unchanged (the differential tests hold the old expression's results)."""
+    words = LDGR_PLACEHOLDERS + (LDGR_CITATION_PLACEHOLDERS if citation else ())
+    lst = ",".join("'" + w + "'" for w in words)
     # S1 (review F2): the SAME list is also compared with the spaces removed, so 'N / A', 'n o n e' and 'not  found' are the placeholders they spell; ONE definition for Ldgr and Null
-    lst_nospace = ",".join("'" + w + "'" for w in dict.fromkeys(w.replace(" ", "") for w in LDGR_PLACEHOLDERS))
-    return (f"({x} IS NULL OR {norm} IN ({lst}) OR replace({norm}, ' ', '') IN ({lst_nospace}) "
-            f"OR ({n0} !~ '[[:alnum:]]' AND {n0} !~ '[^\\x01-\\x7f]'))")
+    lst_nospace = ",".join("'" + w + "'" for w in dict.fromkeys(w.replace(" ", "") for w in words))
+    pre = (f" OR v.norm ~ '^({'|'.join(LDGR_CITATION_PLACEHOLDER_PREFIXES)}){_LDGR_JUNK}'" if citation else "")
+    inner = f"SELECT regexp_replace(normalize({x}, NFKC), '{_LDGR_INVISIBLE}+', '', 'g') AS n0 OFFSET 0"
+    mid = (f"SELECT a.n0, lower(regexp_replace(regexp_replace(a.n0, '^{_LDGR_JUNK}+|{_LDGR_JUNK}+$', '', 'g'), '{_LDGR_SPACE}+', ' ', 'g')) AS norm "
+           f"FROM ({inner}) a OFFSET 0")
+    return (f"({x} IS NULL OR (SELECT v.norm IN ({lst}) OR replace(v.norm, ' ', '') IN ({lst_nospace}){pre} "
+            f"OR (v.n0 !~ '[[:alnum:]]' AND v.n0 !~ '[^\\x01-\\x7f]') FROM ({mid}) v))")
 
 
-def _ldgr_lacking(col: str, kind: str) -> str:
+def _ldgr_lacking(col: str, kind: str, any_element: bool = True) -> str:
     """The SQL predicate 'this row's source column states no source' for a text / text[] / json(b) column. An array, or a JSON array, is lacking when empty or when ANY
-    element is. A JSON string is tested as text; a JSON object or array (also nested inside one) is lacking unless at least one STRING LEAF (any depth) passes the same text
-    test, so {"source":"not traced"}, {"a":null}, {"a":{}} and [{"src":"n/a"}] lack a source; numbers, booleans and nulls are never sources."""
+    element is (`any_element=True`, the declared ldgr_source reading: every cited element must be a source); with `any_element=False` (the legacy undeclared presence count,
+    C2(ii)) it is lacking when empty or when EVERY element is, so a row that cites one real source beside a tradition label still names a source. A JSON string is tested as
+    text; a JSON object or array (also nested inside one) is lacking unless at least one STRING LEAF (any depth) passes the same text
+    test, so {"source":"not traced"}, {"a":null}, {"a":{}} and [{"src":"n/a"}] lack a source; numbers, booleans and nulls are never sources.
+    The text test is `_ldgr_lacking_text(..., citation=True)`: the shared list plus the citation-only placeholders and prefixes (pin 24)."""
     c = f'"{col}"'
     if kind == "text":
-        return _ldgr_lacking_text(c)
+        return _ldgr_lacking_text(c, True)
     if kind == "array":
-        return f"({c} IS NULL OR cardinality({c}) = 0 OR EXISTS (SELECT 1 FROM unnest({c}) AS e(x) WHERE {_ldgr_lacking_text('e.x')}))"
+        el = f"EXISTS (SELECT 1 FROM unnest({c}) AS e(x) WHERE {_ldgr_lacking_text('e.x', True)})" if any_element else \
+             f"NOT EXISTS (SELECT 1 FROM unnest({c}) AS e(x) WHERE NOT {_ldgr_lacking_text('e.x', True)})"
+        return f"({c} IS NULL OR cardinality({c}) = 0 OR {el})"
 
     def elem(e):
         leaf = (f"NOT EXISTS (SELECT 1 FROM jsonb_path_query({e}, 'strict $.**') AS l(x) WHERE jsonb_typeof(l.x) = 'string' "
-                f"AND NOT {_ldgr_lacking_text('(l.x #>> ' + chr(39) + '{}' + chr(39) + ')')})")
-        return (f"(CASE jsonb_typeof({e}) WHEN 'string' THEN {_ldgr_lacking_text('(' + e + ' #>> ' + chr(39) + '{}' + chr(39) + ')')} "
+                f"AND NOT {_ldgr_lacking_text('(l.x #>> ' + chr(39) + '{}' + chr(39) + ')', True)})")
+        return (f"(CASE jsonb_typeof({e}) WHEN 'string' THEN {_ldgr_lacking_text('(' + e + ' #>> ' + chr(39) + '{}' + chr(39) + ')', True)} "
                 f"WHEN 'object' THEN {leaf} WHEN 'array' THEN {leaf} ELSE true END)")
-    return (f"({c} IS NULL OR (CASE jsonb_typeof({c}::jsonb) WHEN 'array' THEN (jsonb_array_length({c}::jsonb) = 0 OR EXISTS "
-            f"(SELECT 1 FROM jsonb_array_elements({c}::jsonb) AS je(x) WHERE {elem('je.x')})) ELSE {elem(c + '::jsonb')} END))")
+    arr = (f"EXISTS (SELECT 1 FROM jsonb_array_elements({c}::jsonb) AS je(x) WHERE {elem('je.x')})" if any_element else
+           f"NOT EXISTS (SELECT 1 FROM jsonb_array_elements({c}::jsonb) AS je(x) WHERE NOT {elem('je.x')})")
+    return (f"({c} IS NULL OR (CASE jsonb_typeof({c}::jsonb) WHEN 'array' THEN (jsonb_array_length({c}::jsonb) = 0 OR {arr}) "
+            f"ELSE {elem(c + '::jsonb')} END))")
+
+
+LDGR_KIND_CAST = {"text": "::text", "array": "::text[]", "json": "::jsonb"}
+
+
+def ldgr_legacy_count_sql(table: str, col: str, kind: str) -> str:
+    """The ONE read of the legacy Ldgr reading for a text-like column (`kind` is ldgr_column_kind): rows / NULL rows / placeholder rows as one line of jsonb, over the WHOLE table.
+    Identifiers must already match the strict pattern. DISTINCT VALUES, NOT ROWS: the table is grouped by the column's value first (a hash aggregate, one pass) and the shared
+    placeholder predicate runs ONCE PER DISTINCT VALUE, weighted by that value's row count: a 1.46M-row citation column with a handful of distinct citations costs a scan and a
+    hash aggregate, not 1.46M normalisations (the per-row form exceeded the production statement timeout on chart_dashas). Same predicate, same counts as the per-row form
+    (differential test). The column is cast to its comparison type first (text / text[] / jsonb: citext would otherwise group case-insensitively and a `json` column has no equality)."""
+    pred = _ldgr_lacking("v", kind, any_element=False)
+    return (f'WITH d AS (SELECT "{col}"{LDGR_KIND_CAST[kind]} AS v, count(*) AS n FROM "{table}" GROUP BY 1) '
+            f"SELECT jsonb_build_object('rows',coalesce(sum(n),0),'null',coalesce(sum(n) FILTER (WHERE v IS NULL),0),"
+            f"'placeholder',coalesce(sum(n) FILTER (WHERE v IS NOT NULL AND {pred}),0))::text FROM d")
+
+
+def ldgr_legacy_presence(table: str, col: str, rows: int) -> dict:
+    """The UNDECLARED asset's Ldgr.source_presence record (C2(ii), pin 24): {v, measured[, ldgr_legacy]} for its first recognised citation column `col` over `rows` rows
+    (the depth census count). A row names a source when the column is not NULL AND not a placeholder: `_ldgr_lacking(col, kind, any_element=False)`, the SAME shared predicate
+    as the declared ldgr_source check (NULL, junk, the closed LDGR_PLACEHOLDERS list, a bare tradition label, an 'UNSOURCED ...' disclosure; an array / JSON array lacks only when
+    empty or when EVERY element lacks). ONE verdict rule for every column type: PASS = every row names a source, FAIL = none does (this includes an all-NULL column, which read PARTIAL
+    before pin 24; it is the declared grader's rule), PARTIAL otherwise. A column whose type cannot carry text (integer, uuid, ...), or a table / column name outside the strict
+    identifier pattern, can hold no placeholder: it keeps the `col IS NOT NULL` count (and the same verdict rule). When no row is a placeholder the record text is the pre-pin-24
+    `<col> populated on N/R rows`; when some row is a placeholder the text states the exact counts and the record carries `ldgr_legacy` {source_column, rows, null, placeholder,
+    present}; a read that times out is PARTIAL with `ldgr_legacy.incomplete` and the text says it was not measured (a key distinct from the declared record's `ldgr`, which has a different shape). Raises Unknown on a failed read."""
+    ident = _D1_SQL_IDENT
+    kind = ldgr_column_kind(ldgr_fetch_column_type(table, col)) if (ident.fullmatch(table or "") and ident.fullmatch(col or "")) else None
+    if kind is None:
+        n = int(scalar(f"SELECT count(*)::text FROM {table} WHERE {col} IS NOT NULL"))
+        return dict(v=(PASS if n == rows else (FAIL if n == 0 else PARTIAL)), measured=f"{col} populated on {n}/{rows} rows")
+    try:
+        blob = scalar(ldgr_legacy_count_sql(table, col, kind))
+    except Unknown as exc:
+        if not (isinstance(exc, CheckTimeout) or "statement timeout" in str(exc)):
+            raise                                              # any other failure is ERRORED, as for every check
+        # the table is too large for the read to finish inside the timeout: nothing was measured, so the cell says exactly that: never PASS, never FAIL, never a silent ERRORED
+        return dict(v=PARTIAL, measured=(f"{col}: the placeholder-aware count could not complete within the timeout on {rows} rows ({'client' if isinstance(exc, CheckTimeout) else 'statement'} timeout): "
+                                         "NOT measured, so neither PASS nor FAIL"),
+                    ldgr_legacy=dict(source_column=col, rows=rows, incomplete="timeout"))
+    try:
+        got = json.loads(blob or "{}")
+    except json.JSONDecodeError as exc:
+        raise Unknown(f"ldgr_legacy_presence: unparseable read of {table}: {exc}") from exc
+    if not (isinstance(got, dict) and all(isinstance(got.get(k), int) for k in ("rows", "null", "placeholder"))):
+        raise Unknown(f"ldgr_legacy_presence: malformed answer for {table}.{col}")
+    nonnull, ph = got["rows"] - got["null"], got["placeholder"]
+    present = nonnull - ph
+    v = PASS if present == rows else (FAIL if present == 0 else PARTIAL)
+    if ph == 0:
+        return dict(v=v, measured=f"{col} populated on {nonnull}/{rows} rows")
+    return dict(v=v, measured=(f"{col} names a source on {present}/{rows} rows ({ph} placeholder row(s), which are not a citation: a status word, 'UNSOURCED ...' or a bare "
+                               f"tradition label such as 'classical_tradition'; {got['null']} NULL)"),
+                ldgr_legacy=dict(source_column=col, rows=rows, null=got["null"], placeholder=ph, present=present))
 
 
 def ldgr_column_kind(type_text) -> str | None:
@@ -1962,8 +2270,8 @@ def grade_ldgr_source(ls: dict, stats: dict, table: str) -> dict:
     where = ("; rows lacking one: " + json.dumps(sample, sort_keys=True, default=str) + (" (first 5)" if lacking > len(sample) else "")) if lacking and sample else \
             ("; row identity unavailable (no declared key)" if lacking else "")
     v = PASS if lacking == 0 else (FAIL if lacking == rows else PARTIAL)
-    text = (f"declared source column {col} names a source on {rows - lacking}/{rows} rows (NULL, blank, punctuation-only and 'not traced'-style placeholders do not "
-            f"count); citation_state {cs}{where}")
+    text = (f"declared source column {col} names a source on {rows - lacking}/{rows} rows (NULL, blank, punctuation-only, 'not traced'-style placeholders, a bare tradition label "
+            f"such as 'classical_tradition' and an 'UNSOURCED ...' disclosure do not count); citation_state {cs}{where}")
     if v in (PASS, PARTIAL) and cs in CITATION_CAPPED_STATES:
         return dict(v=NO_DET, declared=True, citation_state=cs, ldgr=dict(source_column=col, rows=rows, lacking=lacking, sample=sample),
                     measured=f"NO_DETECTOR — the column is populated as {text}, but the declared citation_state is {cs!r}: a source that is {cs} is never a PASS")
@@ -2519,12 +2827,15 @@ def _null_kind_from_catalog(typname, cat, elem_cat) -> str:
     return {"S": "text", "E": "text", "N": "num", "B": "bool"}.get(cat, "other")
 
 
-def null_fetch_column_kinds(table: str, columns) -> dict:
-    """{column: kind} for the declared table from ONE read-only pg_catalog SELECT (answered as one line of jsonb): a domain is resolved to its base type, an array to its
-    element's category. Identifiers are matched against a strict pattern. Raises Unknown on a malformed identifier, a failed read, or a column the catalog does not answer for."""
+def pg_column_type_facts(table: str, columns=None) -> dict:
+    """{column: {t, c, ec, et}} for the table from ONE read-only pg_catalog SELECT (answered as one line of jsonb): `t` / `c` are the pg_type name and typcategory of the column's BASE
+    type (a domain resolved to its base type), `ec` / `et` the typcategory and type name of an array's ELEMENT. The ONE catalog read behind the Null detector's column kinds
+    (`null_fetch_column_kinds`) and the Carr column ledger (`carriage_fetch_column_types`): information_schema.data_type is not used, it reports USER-DEFINED for an enum, citext
+    and a domain over citext. `columns` None = every column of the table; a list = those columns, and the catalog must answer for each of them. Identifiers are matched against
+    a strict pattern. Raises Unknown on a malformed identifier, a failed read, or a requested column the catalog does not answer for."""
     if not (isinstance(table, str) and _D1_SQL_IDENT.fullmatch(table)):
-        raise Unknown(f"null_fetch_column_kinds: malformed table {table!r}")
-    blob = scalar("SELECT coalesce(jsonb_object_agg(a.attname, jsonb_build_object('t', bt.typname, 'c', bt.typcategory, 'ec', et.typcategory)), '{}'::jsonb)::text "
+        raise Unknown(f"pg_column_type_facts: malformed table {table!r}")
+    blob = scalar("SELECT coalesce(jsonb_object_agg(a.attname, jsonb_build_object('t', bt.typname, 'c', bt.typcategory, 'ec', et.typcategory, 'et', et.typname)), '{}'::jsonb)::text "
                   "FROM pg_attribute a JOIN pg_type t ON t.oid = a.atttypid "
                   "JOIN pg_type bt ON bt.oid = CASE WHEN t.typtype = 'd' THEN t.typbasetype ELSE t.oid END "
                   "LEFT JOIN pg_type et ON et.oid = CASE WHEN bt.typcategory = 'A' THEN bt.typelem END "
@@ -2532,9 +2843,23 @@ def null_fetch_column_kinds(table: str, columns) -> dict:
     try:
         got = json.loads(blob or "")
     except (json.JSONDecodeError, TypeError) as exc:
-        raise Unknown(f"null_fetch_column_kinds: unparseable read of {table}: {exc}") from exc
-    if not (isinstance(got, dict) and all(isinstance(got.get(c), dict) for c in columns)):
-        raise Unknown(f"null_fetch_column_kinds: the catalog does not answer for every column of {table}")
+        raise Unknown(f"pg_column_type_facts: unparseable read of {table}: {exc}") from exc
+    if not isinstance(got, dict) or not got:
+        raise Unknown(f"pg_column_type_facts: the catalog returned no column of {table}")
+    if columns is not None and not all(isinstance(got.get(c), dict) for c in columns):
+        raise Unknown(f"pg_column_type_facts: the catalog does not answer for every column of {table}")
+    return {c: got[c] for c in (got if columns is None else columns)}
+
+
+def null_fetch_column_kinds(table: str, columns) -> dict:
+    """{column: kind} for the declared table: `pg_column_type_facts` (ONE read-only pg_catalog SELECT; a domain is resolved to its base type, an array to its element's category)
+    turned into the Null detector's kinds. Raises Unknown on a malformed identifier, a failed read, or a column the catalog does not answer for."""
+    if not (isinstance(table, str) and _D1_SQL_IDENT.fullmatch(table)):
+        raise Unknown(f"null_fetch_column_kinds: malformed table {table!r}")
+    try:
+        got = pg_column_type_facts(table, list(columns))
+    except Unknown as exc:
+        raise Unknown(str(exc).replace("pg_column_type_facts", "null_fetch_column_kinds")) from exc
     return {c: _null_kind_from_catalog(got[c].get("t"), got[c].get("c"), got[c].get("ec")) for c in columns}
 
 
@@ -2793,6 +3118,11 @@ def grade_null_convention(spec: dict, columns, types, stats) -> dict:
         elif d.get("value") is not None and per[c]["nulls"] == 0 and not _same_constant(per[c].get("sole"), d["value"], kinds[c]):
             const_viol.append(c)
     unscoped = [c for c, n in nullable.items() if not n.get("scope") and per[c]["nulls"] > 0]
+    # PARTITION NOTE (E6.1 follow-up, STAMP LOW): fallback_checked / elements_not_inspected / fallback_not_applicable / stamp_columns partition `cols` (each column in exactly one group,
+    # pinned by test_e6_stamp_columns._partition) only while the catalog reads that feed them agree. `kinds` (null_fetch_column_kinds) and `stamp_facts` (null_fetch_stamp_facts) are two
+    # separate pg_catalog SELECTs and the table SELECT is a third, not one snapshot: a concurrent ALTER COLUMN .. TYPE between them can list one column in TWO groups (a stamp the kinds
+    # read still saw as text sits in fb_checked AND stamps) or in none. That is an accounting race only: the verdict is decided from the one table SELECT's numbers (`per`) plus the
+    # refusal of a non-timestamp stamp above, never from the group lists, and a rebuild re-reads. It is recorded rather than guarded (guarding needs one catalog snapshot).
     fb_possible = [c for c in cols if _null_fb_possible(kinds[c], c in nullable)]
     elem_not_inspected = [c for c in fb_possible if kinds[c] == "array_other"]            # only the EMPTY-array test runs: the element contents are not looked at
     fb_checked = [c for c in fb_possible if c not in elem_not_inspected]                  # what the PASS claim "no literal fallback" actually covers
@@ -3384,8 +3714,8 @@ def prose_checks(aid: str, decl, ctx: dict) -> dict:
         return {c: dict(v=NO_DET, measured=f"NO_DETECTOR — prose_fields is undeclared for {aid}: never read as 'no prose'")
                 for c in allc}
     if not pf:
-        bad = prose_empty_d1_problem(decl)
-        if bad:                           # NARR-GUARD (N-94): [] + a D1 transcription carriage with no coupling is never N/A, whatever the validator saw
+        bad = prose_empty_d1_problem(decl) or prose_coupling_required_problem(aid, decl)
+        if bad:                           # NARR-GUARD (N-94): [] + a D1 transcription carriage with no coupling is never N/A, whatever the validator saw; nor is [] on an asset whose coupling is required
             return {c: dict(v=NO_DET, measured=f"NO_DETECTOR — {aid}: {bad}") for c in allc}
         if not ctx.get("written"):       # None (unreadable) OR {} (the scan saw no write at all): neither proves "no narration write"
             return {c: dict(v=NO_DET, measured=f"NO_DETECTOR — {aid} declares prose_fields [] but its writes could not be "
@@ -4538,10 +4868,66 @@ def _ts_code(src: str, blank_strings: bool = False) -> str:
 # nothing (R232 carried: a declaration needs a real value, not just the key).
 _DENSITY_DECL = re.compile(r"\bdensity_contract\s*\??\s*:\s*(?!(?:undefined|null|false|true)\b)(?=[{A-Za-z_$(\[])")
 
-# E6.1 (d) / N-22 ruling principle 4: the Dens scanner. A tier column is STRUCTURAL vocabulary: `tier`, any `<x>_tier`
-# (signature_tier, efficacy_tier, ...) and the L1 verification tier `verification_pass_status` — a column NAME, never a
-# value check. `confidence*` columns are deliberately not in it (open question to the lead, DESIGN_DENS.md Q1).
-DENS_TIER_COLUMN = re.compile(r"^(?:tier|\w+_tier|verification_pass_status)$", re.I)
+# E6.1 (d) / N-22 ruling principle 4: the Dens scanner. A tier column is STRUCTURAL vocabulary -- a column NAME, never a value check -- and, from
+# REGISTRY_REVISION 23 (SS ruling N-98, Dens memo item 3), a CLOSED one: the old open `\w+_tier` let `bg_remedies.cost_tier` (a price bucket) read as a
+# verification/confidence tier. A column counts as a tier ONLY when (a) its name is exactly `tier` or `verification_pass_status`, or (b) the asset DECLARES
+# it in `density_tier_columns` (a reviewed {column, why, evidence}); and (c) in NEITHER case does its name carry a deny-listed non-verification word (any
+# spelling, case-insensitive; fail-closed, see `dens_tier_denied_word`): a denied name never counts, declared or not. Everything else (`severity_tier`, `signature_tier`, `access_tier`, ...)
+# counts for nothing unless declared. `confidence*` columns are not in the vocabulary (open question to the lead, DESIGN_DENS.md Q1) except by declaration.
+# ONE definition: `dens_tier_counts` is the only place a name is classified; the validator, the measure-time refusal and the scan all call it.
+DENS_TIER_EXACT = frozenset({"tier", "verification_pass_status"})
+DENS_TIER_DENY_WORDS = frozenset({"cost", "price", "pricing", "plan", "access", "subscription", "billing", "fee", "tariff"})
+DENS_TIER_DECL_FIELDS = ("column", "why", "evidence")
+DENS_TIER_MAX_DECLARED = 16
+
+
+_DENS_CAMEL = re.compile(r"(?<=[a-z0-9])(?=[A-Z])")
+
+
+def _dens_deny_stems(word: str) -> set:
+    """`word` and its plural stems ('costs' -> 'cost', 'prices' -> 'price', 'accesses' -> 'access')."""
+    return {word} | ({word[:-1]} if word.endswith("s") else set()) | ({word[:-2]} if word.endswith("es") else set())
+
+
+def dens_tier_denied_word(name) -> str | None:
+    """The deny-listed word `name` carries, or None (case-insensitive). Fail-CLOSED, so a deny-listed meaning cannot hide in a spelling: the name is split into words on
+    underscores, digits and camelCase boundaries and each word (plural-stemmed: `costs`, `prices`, `plans`) is compared with the deny words; AND the name with every
+    non-letter removed (`c_o_s_t_tier` -> `costtier`, `CostTier`, `costTier`, `cost1_tier`) is tested with and without a leading / trailing `tier`: when it STARTS or ENDS
+    with a deny word (or its plural) it is denied (`pricetier`, `feetier`, `accesstier`, `costbucket_tier`). Deliberately over-blocking for a DECLARED name (`planet_tier`,
+    `feedback_tier` are denied too: declare a name that does not begin or end with a deny word); the exact names `tier` / `verification_pass_status` carry none."""
+    if not isinstance(name, str):
+        return None
+    toks = [t for t in re.split(r"[^a-z]+", _DENS_CAMEL.sub("_", name).casefold()) if t]
+    for t in toks:
+        hit = next((w for w in DENS_TIER_DENY_WORDS if w in _dens_deny_stems(t)), None)
+        if hit:
+            return hit
+    letters = "".join(toks)
+    cands = {letters}
+    for c in list(cands):
+        if c.startswith("tier"):
+            cands.add(c[4:])
+        if c.endswith("tier"):
+            cands.add(c[:-4])
+    if letters.startswith("tier") and letters.endswith("tier") and len(letters) > 8:
+        cands.add(letters[4:-4])
+    for c in sorted(cands):
+        for w in sorted(DENS_TIER_DENY_WORDS):
+            for suf in ("", "s", "es"):
+                if c and (c.startswith(w + suf) or c.endswith(w + suf)):
+                    return w
+    return None
+
+
+def dens_tier_counts(name, declared=()) -> bool:
+    """True when the column `name` counts as a verification / confidence tier: not deny-listed, and either exactly `tier` / `verification_pass_status`
+    or one of the asset's `declared` density tier columns (an iterable of names, matched case-insensitively). The ONE classifier."""
+    if not isinstance(name, str) or dens_tier_denied_word(name):
+        return False
+    n = name.casefold()
+    return n in DENS_TIER_EXACT or n in {d.casefold() for d in declared if isinstance(d, str)}
+
+
 TIER_YES, TIER_NO, TIER_UNKNOWN = "tier", "no-tier", "unknown"
 
 
@@ -5158,8 +5544,10 @@ def _flatten_select(clean: str) -> str:
     return "".join(out)
 
 
-def _select_tier(sel: str, alias: str | None, table: str, cols: list[str] | None) -> tuple[str, list[str]]:
+def _select_tier(sel: str, alias: str | None, table: str, cols: list[str] | None, declared=()) -> tuple[str, list[str]]:
     """Does this served select list carry a tier column? `(TIER_YES|TIER_NO|TIER_UNKNOWN, tier columns)`.
+    What IS a tier column is the CLOSED vocabulary of `dens_tier_counts` (REGISTRY_REVISION 23): exactly `tier` / `verification_pass_status`, or a column the asset
+    DECLARES in `density_tier_columns` (`declared`, this table's declared names), and never a deny-listed one (`cost_tier`, `access_tier`, ...).
     A tier column is carried only when a select ITEM is the column itself (`_plain_item`): `count(DISTINCT tier)`,
     `count(*) FILTER (WHERE tier = …)`, `lower(tier)`, `CASE … END AS tier` carry none. With the table's columns known
     (catalog) the item's name must also be one of them and `*` / `<alias>.*` expands to every column; with them
@@ -5185,13 +5573,13 @@ def _select_tier(sel: str, alias: str | None, table: str, cols: list[str] | None
         it = item.strip()
         if re.fullmatch(r"(?:DISTINCT\s+)?\*", it, re.I) or any(re.fullmatch(rf"{re.escape(m)}\.\*", it, re.I) for m in mine):
             star = True
-            got.update(c for c in lower if DENS_TIER_COLUMN.match(c))
+            got.update(c for c in lower if dens_tier_counts(c, declared))
             continue
         pi = _plain_item(it)
         if not pi:
             continue
         q, name = pi
-        if not DENS_TIER_COLUMN.match(name) or (cols and name.lower() not in lower):
+        if not dens_tier_counts(name, declared) or (cols and name.lower() not in lower):
             continue
         if q:
             if q.lower() in mine:
@@ -5211,7 +5599,8 @@ def _name(rel: Path, root: str, first: bool) -> str:
     return rel.as_posix() if first else f"{root}/{rel.as_posix()}"
 
 
-def capability_scan(caps_dirs, tables: list[str], shared=(), columns: dict | None = None, outside_roots=(), service: bool = False) -> dict:
+def capability_scan(caps_dirs, tables: list[str], shared=(), columns: dict | None = None, outside_roots=(), service: bool = False,
+                    tier_declared: dict | None = None) -> dict:
     """E6.1 (d): the Dens scanner, repaired (N-22 ruling principle 4). Structural: it reads source, not behaviour.
 
     SCOPE. `caps_dirs` (one path or several; `measure()` passes `CAPS_ROOTS`, R23's serving roots) are read
@@ -5234,6 +5623,10 @@ def capability_scan(caps_dirs, tables: list[str], shared=(), columns: dict | Non
     sub-select, an INSERT...SELECT or a UNION branch credits nothing. A serving-root file that names the asset but on
     which the string scanner loses sync (`_ts_desynced`) is returned in `unparsed` and grades NO_DETECTOR (never FAIL,
     never N/A; a PASS/PARTIAL earned in a clean file stands).
+
+    TIER VOCABULARY (SS N-98, REGISTRY_REVISION 23) -- a CLOSED LIST (`dens_tier_counts`): a tier column is exactly `tier` / `verification_pass_status`, or a
+    column the asset DECLARES in `density_tier_columns` (`tier_declared`: table (lower-case) -> declared names, only the asset's own target table), and never
+    a deny-listed name (cost, price, pricing, plan, access, subscription, billing, fee, tariff, in any spelling, `dens_tier_denied_word`). `severity_tier`, `cost_tier` ... count for nothing undeclared.
 
     SELECT VS LABEL (SS N-74(a), REGISTRY_REVISION 14) -- a CLOSED ALLOW-LIST. A module that references a token in code is a reach (`modules`)
     unless EVERY occurrence is a label and it carries no strict served select (then it is `label_only`: it names the asset, it does not read it).
@@ -5318,7 +5711,7 @@ def capability_scan(caps_dirs, tables: list[str], shared=(), columns: dict | Non
                     pos = mod["spans"][li][0]
                     d = _decl_of(mod, pos)
                     if d in refs:
-                        st = (_select_tier(sel, alias, t, columns.get(t.lower()) or columns.get(t))
+                        st = (_select_tier(sel, alias, t, columns.get(t.lower()) or columns.get(t), (tier_declared or {}).get(t.lower(), ()))
                               if sel is not None else (TIER_UNKNOWN, []))           # not the served read: credits nothing
                         sels.append((d, pos, st[0], st[1]))
                         served += 1
@@ -7306,6 +7699,14 @@ def d1_evidence_problem(meas) -> str:
     if meas.get("v") == PASS and not (ev.get("unmatched") == [] and ev.get("rows_matched") == ev["rows_total"]
                                        and ev.get("row_count_ok") is True):
         return "PASS but not every row matched under the declared row count"
+    if meas.get("v") == PASS:
+        # C1-1 guards (row_scope, column ledger): a PASS record must show them clean wherever it says they ran. A record with neither key reads as before.
+        if "out_of_scope_rows" in ev and ev["out_of_scope_rows"] != 0:
+            return "PASS but rows lie outside the declared row_scope (they cap D1 at PARTIAL)"
+        if "row_scope" in ev and not (isinstance(ev.get("out_of_scope_rows"), int) and not isinstance(ev.get("out_of_scope_rows"), bool) and ev["out_of_scope_rows"] == 0):
+            return "PASS but the record declares a row_scope and does not show zero out-of-scope rows (rows outside the scope cap D1 at PARTIAL)"
+        if "column_ledger" in ev and not d1m.ledger_block_is_clean(ev["column_ledger"]):
+            return "PASS but the column ledger lists unclassified, unexaminable or absent columns (they cap D1 at PARTIAL)"
     return ""
 
 
@@ -8304,9 +8705,8 @@ def measure(layer_key: str, assets=None) -> dict:
             if cit and dc.get("rows") and not _ls_declared:
                 col = cit[0]
                 try:
-                    n = scalar(f"SELECT count(*)::text FROM {tbl} WHERE {col} IS NOT NULL")
-                    m["Ldgr.source_presence"] = dict(v=(PASS if int(n) == dc["rows"] else PARTIAL),
-                                                     measured=f"{col} populated on {n}/{dc['rows']} rows")
+                    # C2(ii) (pin 24): a placeholder citation is not a source; ldgr_legacy_presence is the one reading (shared predicate with the declared ldgr_source check)
+                    m["Ldgr.source_presence"] = ldgr_legacy_presence(tbl, col, dc["rows"])
                 except Unknown as exc:
                     m["Ldgr.source_presence"] = dict(v=ERRORED, measured=f"check errored: {exc}")
         elif tbl:
@@ -8321,9 +8721,19 @@ def measure(layer_key: str, assets=None) -> dict:
         # serving root (R23's CAPS_ROOTS, recursive) plus the wider source probe. A table another active asset of this
         # layer also declares is SHARED: it names the table, not this asset, so it never attributes a module.
         dtoks = list(dict.fromkeys([t for t in ([tbl] if tbl else []) + list(ctables) + [aid] if t]))
+        # DENS-TIER-GUARD (REGISTRY_REVISION 23): the asset's declared tier columns (its own target table only). The same `density_tier_problem` the validator runs, now
+        # WITH the table's catalog columns: a refusal (a declared column the table lacks, a deny-listed name) reads Dens.served NO_DETECTOR with the disagreement reported,
+        # never PASS, and the scan then runs on the closed default only (the verdict below is replaced).
+        _dt_bad = density_tier_measure_problem(_sd, tbl, _target_columns_fact(tbl, cat) if tbl else None)
+        _dt = ({tbl.lower(): [d["column"] for d in _sd["density_tier_columns"]]}
+               if (tbl and not _dt_bad and isinstance(_sd.get("density_tier_columns"), list)) else None)
         cap = capability_scan(CAPS_ROOTS, dtoks, shared=dens_shared, columns=cat["cols"],
-                              outside_roots=DENS_OUTSIDE_ROOTS, service=(r.get("asset_kind") == "service"))
+                              outside_roots=DENS_OUTSIDE_ROOTS, service=(r.get("asset_kind") == "service"), tier_declared=_dt)
         m["Dens.served"] = _grade_dens(cap, tbl or aid)
+        if _dt_bad:
+            m["Dens.served"] = dict(v=NO_DET, measured=f"NO_DETECTOR — the declared density_tier_columns are refused ({_dt_bad}); never PASS: the tier vocabulary stays the closed "
+                                                       f"default (tier / verification_pass_status) until the declaration is sound (graded on that default: "
+                                                       f"{m['Dens.served']['v']})")
 
         # E6 packet (c): the Null and Narr checks (declarations file + catalog + writer scope + tests; fault-isolated)
         if isinstance(prose_decls, DeclarationsError):
@@ -8382,9 +8792,11 @@ def measure(layer_key: str, assets=None) -> dict:
 
         m["Complete.width"] = dict(v=NOT_GENERIC, measured="no declared universe for this asset — declaring one is the first width gap")
         # E6 item (f): Carr.D1-D3 `no-carriage` candidates, only for an asset that DECLARES terminal_by_construction
-        m.update(carriage_declared_checks(aid, ((declarations or {}).get(aid) or {}).get("carriage") if isinstance(declarations, dict) else None,
-                                          r["target_table"],
-                                          chart_scoped="chart_id" in (_target_columns_fact(r["target_table"], cat) or ())))
+        _decl_entry = (declarations or {}).get(aid) if isinstance(declarations, dict) else None
+        _ledger_types, _ledger_prose = _carriage_ledger_inputs(_decl_entry, r["target_table"])
+        m.update(carriage_declared_checks(aid, (_decl_entry or {}).get("carriage"), r["target_table"],
+                                          chart_scoped="chart_id" in (_target_columns_fact(r["target_table"], cat) or ()),
+                                          column_types=_ledger_types, prose_columns=_ledger_prose))
         m.update(carr_checks(dict(declared_facts(declarations, aid), blocking_radius=radius.get(aid),
                                   measured_served=m["Dens.served"]["v"])))
         if "Reach.fields" not in m:
@@ -8480,7 +8892,9 @@ def _emit_facts(a: dict, census: dict):
     try:
         decl = load_asset_declarations()
     except DeclarationsError:
-        return None
+        # unreadable declarations: the record's own block is all the guard has -- EXCEPT for an asset whose coupling is REQUIRED (PROSE_COUPLING_REQUIRED), keyed by asset id: no
+        # coupling can be shown, so none of its Narr N/A rows is released (E6.1 follow-up, LOW-2; stricter only, every other asset reads None as before)
+        return {"declared_prose_coupling_missing": True} if prose_coupling_required_problem(a.get("asset_id") if isinstance(a, dict) else None, None) else None
     return facts_for_asset(a, decl)
 
 
