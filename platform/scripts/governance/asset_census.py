@@ -1037,6 +1037,30 @@ def prose_empty_d1_problem(entry):
     return None
 
 
+# NARR-GUARD required-coupling pin (E6.1 follow-up, L3). `prose_empty_d1_problem` binds a coupling to the D1 carriage it rests on by VALIDATION, but it keys on the
+# carriage being PRESENT: delete the `prose_coupling` AND the `carriage` block of bg_phaladeepika_latta (a double deletion) and what is left is `prose_fields []` on an asset with
+# no carriage, which is exactly what bg_doshas / bg_yogas / bg_ontology / bo_laksana_rerank declare, a plain R03 Narr N/A with no Carr.D1 behind it: a cheaper state reached by
+# deleting two declarations. This table names the assets whose N/A is ONLY ever the coupled one (the strategist ruling that made their text columns transcription, N-94): for
+# them the coupling is REQUIRED, so `prose_fields []` without a `prose_coupling` is refused by the validator, read NO_DETECTOR by the measure-time glue and flagged
+# `declared_prose_coupling_missing` for the rollup / gap ledger / certificate writer / E6.3 reader, whatever else the entry holds or whether it exists. A registry-side table, not
+# fingerprinted content (it adds no criterion, rule or cause and decides no cell where the coupling is present); adding an asset here is a ruling, not a convenience.
+PROSE_COUPLING_REQUIRED = {
+    "bg_phaladeepika_latta": "N-94: its effect / affliction strings are transcription of a cited passage whose fidelity only Carr.D1 measures",
+}
+
+
+def prose_coupling_required_problem(asset_id, entry):
+    """None unless `asset_id` is in PROSE_COUPLING_REQUIRED and its declaration carries no `prose_coupling` object (an absent entry, a null one, a malformed one: all missing); else why
+    its Narr N/A may not stand. Pure; ONE definition for the validator, the measure-time glue and `declared_facts`."""
+    why = PROSE_COUPLING_REQUIRED.get(asset_id) if isinstance(asset_id, str) else None
+    if why is None:
+        return None
+    if isinstance(entry, dict) and isinstance(entry.get("prose_coupling"), dict):
+        return None
+    return (f"{asset_id} requires a prose_coupling to carriage_d1 ({why}): without it a `prose_fields []` would be a plain no-prose N/A with no Carr.D1 behind it "
+            "(deleting the coupling together with the carriage must not make the asset cheaper)")
+
+
 def prose_coupling_unclassified(entry, table_columns, column_types) -> list:
     """The table's text-like columns that are neither listed in the entry's prose_coupling nor a column its D1 spec checks: the structural labels and provenance pointers the
     N/A does NOT claim to cover (R03 reads them as not narration). Named on the measured record so a reviewer sees them; never gated. [] when the entry has no coupling or the
@@ -1215,6 +1239,10 @@ def validate_declarations(doc, registry_ids=None) -> dict:
         bad = prose_empty_d1_problem(e)
         if bad:
             raise DeclarationsError(f"{where}.prose_coupling is missing: {bad}")
+        if e.get("prose_fields") == []:
+            bad = prose_coupling_required_problem(aid, e)
+            if bad:
+                raise DeclarationsError(f"{where}.prose_coupling is missing: {bad}")
         pf = e.get("prose_fields")
         if pf is not None:
             # null = undeclared; [] = declared "this writer composes no prose" (a positive claim); both need evidence
@@ -1354,6 +1382,8 @@ def declared_facts(declarations, asset_id, registry_kind=None, measured_dependen
     (the Dens.served verdict: a declared served_surface False against PASS/FAIL/PARTIAL, or True against N/A, is reported)."""
     facts: dict = {}
     e = (declarations or {}).get(asset_id)
+    if prose_coupling_required_problem(asset_id, e):
+        facts["declared_prose_coupling_missing"] = True      # a required coupling that is not declared (even an absent entry): no Narr N/A of this asset may stand
     if not isinstance(e, dict):
         return facts
     disagree = []
@@ -1397,7 +1427,7 @@ def declared_facts(declarations, asset_id, registry_kind=None, measured_dependen
         except (KeyError, TypeError, AttributeError, ValueError):
             covered = None
         facts["declared_prose_coupling"] = dict(to=pcp.get("to"), columns=cols, covered=covered)
-    elif prose_empty_d1_problem(e):
+    elif prose_empty_d1_problem(e) or prose_coupling_required_problem(asset_id, e):
         facts["declared_prose_coupling_missing"] = True      # [] + a D1 transcription carriage and NO coupling: no Narr N/A may stand (the rollup, the ledger and the reader read this)
     cw = e.get("cross_asset_writes")
     if isinstance(cw, list):
@@ -3384,8 +3414,8 @@ def prose_checks(aid: str, decl, ctx: dict) -> dict:
         return {c: dict(v=NO_DET, measured=f"NO_DETECTOR — prose_fields is undeclared for {aid}: never read as 'no prose'")
                 for c in allc}
     if not pf:
-        bad = prose_empty_d1_problem(decl)
-        if bad:                           # NARR-GUARD (N-94): [] + a D1 transcription carriage with no coupling is never N/A, whatever the validator saw
+        bad = prose_empty_d1_problem(decl) or prose_coupling_required_problem(aid, decl)
+        if bad:                           # NARR-GUARD (N-94): [] + a D1 transcription carriage with no coupling is never N/A, whatever the validator saw; nor is [] on an asset whose coupling is required
             return {c: dict(v=NO_DET, measured=f"NO_DETECTOR — {aid}: {bad}") for c in allc}
         if not ctx.get("written"):       # None (unreadable) OR {} (the scan saw no write at all): neither proves "no narration write"
             return {c: dict(v=NO_DET, measured=f"NO_DETECTOR — {aid} declares prose_fields [] but its writes could not be "

@@ -401,6 +401,7 @@ E63_DECLARATIONS_PATH = "platform/scripts/governance/asset_declarations.json"   
 E63_CENSUS_DIR = E63_CONTROL_DIR + "/census/"      # the trusted root of the census files a certificate cites (E5.1's TRUSTED_CENSUS_ROOT; a drift only ever stays capped)
 E63_NULL_CHECKS = ("Null.schema_default", "Null.blank_rows")   # the two Null criteria the census may lift together (S1, pin 13)
 E63_NARR_CHECKS = ("Narr.agree", "Narr.checkable", "Narr.fidelity_test", "Narr.lint")   # the four Narr criteria a coupled prose N/A may release (NARR-GUARD, pin 16, N-94)
+E63_NARR_COUPLING_REQUIRED = frozenset({"bg_phaladeepika_latta"})   # assets whose Narr N/A is ONLY ever the coupled one (asset_census.PROSE_COUPLING_REQUIRED; a parity test pins the two equal)
 E63_CARRIAGE_D1_PATH = "platform/scripts/governance/carriage_d1.py"   # the census loads it as a sibling file: the ref's copy runs with the ref's census
 
 # FLOOR: how many criteria each core gate must have, per layer, in asset_census.CRITERION_REGISTRY. Pinned from the
@@ -1281,12 +1282,14 @@ def _e63_narr_coupling_ok(repo, sha, rec, census_src):
     """True when the Narr N/A certificate `rec` may stand: its asset's declaration at the ref has NO prose_coupling (the declared rule alone decides, as before), or it has one and
     the ref's own census, run on the census the certificate cites, still reads this Narr check N/A with Carr.D1 PASS (see the block comment above). False otherwise."""
     ent = _e63_declared_entry(repo, sha, rec.get("asset"))
+    required = rec.get("asset") in E63_NARR_COUPLING_REQUIRED
     if ent is None:
-        return True
+        return not required      # an asset whose coupling is REQUIRED has no declaration at the ref: nothing ties its N/A to Carr.D1, so it does not count (fail closed)
     car = ent.get("carriage")
     # the declaration at the ref decides WHETHER the ref's census is asked: a coupling, or a prose_fields [] beside a carriage check (a [] D1 asset with its coupling deleted must be refused
-    # by the ref's own census, never read as a plain N/A); the answer itself is the ref census's, this reader copies none of its rule
-    if ent.get("prose_coupling") is None and not (ent.get("prose_fields") == [] and isinstance(car, dict) and car.get("nature") is not None):
+    # by the ref's own census, never read as a plain N/A), or an asset whose coupling is REQUIRED (deleting its coupling AND its carriage leaves a bare `prose_fields []`: the ref's own
+    # census, which holds the same required table, must still refuse it); the answer itself is the ref census's, this reader copies none of its rule
+    if ent.get("prose_coupling") is None and not required and not (ent.get("prose_fields") == [] and isinstance(car, dict) and car.get("nature") is not None):
         return True
     got = _e63_null_census_record(repo, sha, rec)       # the generic lookup of the census a certificate cites (hash-checked, trusted root, one head, one asset)
     if got is None:
@@ -1316,7 +1319,7 @@ def _e63_narr_coupling_ok(repo, sha, rec, census_src):
         return False
     return (rec.get("verdict") == "N/A" and head.get("registry_revision") == out.get("revision")
             and head.get("registry_fingerprint") == out.get("fingerprint")
-            and out.get("check") == "N/A" and (ent.get("prose_coupling") is None or (out.get("coupled") is True and out.get("d1") == "PASS")))
+            and out.get("check") == "N/A" and ((ent.get("prose_coupling") is None and not required) or (out.get("coupled") is True and out.get("d1") == "PASS")))
 
 
 def _e63_parse_certs(records, facts):
