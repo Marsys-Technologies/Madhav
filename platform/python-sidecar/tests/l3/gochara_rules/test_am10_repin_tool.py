@@ -66,7 +66,7 @@ def test_a_count_difference_is_reported_not_hidden():
     o, n = build("old"), build("new")
     n = [x for x in n if not x["dasha_row_id"].endswith("a1")]
     m = T.match(T.index_paths(o), T.index_paths(n))
-    assert m["only_old"] == [(2, (0, 1))] and not m["only_new"]
+    assert m["only_old"] == [(2, (("Mercury", 0), ("Ketu", 0)))] and not m["only_new"]            # keyed by LORD, not by a bare index
 
 
 def test_lord_flip_at_an_instant_is_detected_and_a_shift_inside_a_period_is_not():
@@ -112,10 +112,10 @@ def test_reference_rows_are_remeasured_from_the_new_build_by_position():
     maps, problems = T.remeasure_reference_rows(old, new)
     assert problems == [] and len(maps) == len(PERM.MD_ROWS + PERM.AD_ROWS + PERM.PD_ROWS)
     assert all(x["new"]["dasha_row_id"].startswith("new-") for x in maps)
-    # a lord flip at a reference position is a problem, not a silent re-measure
+    # a different lord at a reference position is a problem (its structural key — which carries the LORD — has no counterpart), not a silent re-measure
     flipped = real_build("new", 6993); flipped[0]["lord_graha"] = "Venus"
     _, probs = T.remeasure_reference_rows(old, T.index_paths(flipped))
-    assert any("LORD FLIP" in p for p in probs)
+    assert any("no counterpart" in p for p in probs)
 
 
 def test_cli_refuses_the_current_pin_and_stops_without_a_forensic_report(monkeypatch, tmp_path):
@@ -185,15 +185,15 @@ def test_a_uniform_boundary_shift_with_every_lord_kept_is_CLEAN_and_the_moved_ed
     assert T.decide(**good, flips=T.path_lord_flips(oi, ni, m["matched"])) == []   # … but a moved boundary is NOT a STOP
 
 
-def test_a_lord_difference_at_ANY_matched_row_is_a_STOP_not_only_at_the_reference_rows():
+def test_a_lord_difference_at_ANY_row_is_a_REFUSED_SUBTREE_not_only_at_the_reference_rows():
     old, new = build("old"), build("new", shift_s=6993)
-    new[-1]["lord_graha"] = "Rahu"                              # a non-reference row's lord changes
+    new[-1]["lord_graha"] = "Rahu"                              # a non-reference row's lord changes (its sibling sequence differs)
     oi, ni = T.index_paths(old), T.index_paths(new)
-    m = T.match(oi, ni)
-    flips = T.path_lord_flips(oi, ni, m["matched"])
-    assert len(flips) == 1 and flips[0]["new"] == "Rahu"
-    good = dict(new_tier_ok=True, new_integrity={"orphans": [], "duplicates": 0}, m=m, ref_problems=[], forensic_report="f.md")
-    assert any("lord flip" in x for x in T.decide(**good, flips=flips))
+    refusals = T.subtree_refusals(oi, ni)
+    assert len(refusals) == 1 and refusals[0]["old"] == ["Mercury", "Ketu"] and refusals[0]["new"] == ["Mercury", "Rahu"]
+    m = {**T.match(oi, ni)}
+    good = dict(new_tier_ok=True, new_integrity={"orphans": [], "duplicates": 0}, m=m, ref_problems=[], forensic_report="f.md", flips=[])
+    assert any("REFUSED SUBTREE" in x and "never best-guessed" in x for x in T.decide(**good, refused_subtrees=refusals))
 
 
 def test_oracle_instants_carry_each_pinned_edge_plus_and_minus_one_second():
@@ -359,6 +359,7 @@ def test_the_cli_compares_against_a_captured_old_file_when_the_old_rows_are_gone
 
 def test_capture_old_writes_a_file_and_refuses_when_the_pinned_build_has_no_rows(monkeypatch, tmp_path):
     rows = T.norm_rows(build3("old"))
+    monkeypatch.setattr(T, "read_natal", lambda conn, chart: [{"fact_id": "f", "fact_subject": s_, "longitude": "1.0", "tier": "single", "build_id": "b"} for s_ in T.NATAL_SUBJECTS])
     monkeypatch.setattr(T.DD, "fetch_dasha_periods_multilevel", lambda conn, chart, **kw: rows)
     p = tmp_path / "cap.json"
     assert T.main(["--capture-old", str(p)], conn=FakeConn()) == 0 and p.exists()
@@ -436,15 +437,20 @@ def _db_tuples(prefix, build_id, shift_s=0):
     return out
 
 
+def natal_tuples(build_id=None):
+    b = build_id or "1c092ffb-72eb-4614-8422-552ca6eae985"
+    return [(f"fact-{s_}", s_, 100.0 + i, "single", b) for i, s_ in enumerate(sorted(T.NATAL_SUBJECTS))]
+
+
 class Psycopg3Shaped:
     """Exposes ONLY psycopg3's surface (`execute()` -> cursor with fetchall()) — the REAL reader (`DD.fetch_dasha_periods_multilevel`) is NOT mocked."""
-    def __init__(self, by_build):
-        self.by_build, self.sql = by_build, []
+    def __init__(self, by_build, natal=True):
+        self.by_build, self.sql, self.natal = by_build, [], natal
 
     def execute(self, sql, params=None):
         self.sql.append((sql, params))
         build = params[-1] if params else None
-        rows = self.by_build.get(str(build), [])
+        rows = (natal_tuples() if self.natal else []) if "chart_facts" in sql else self.by_build.get(str(build), [])
         class Cur:
             def fetchall(self_):
                 return list(rows)
@@ -461,9 +467,11 @@ def test_the_UNMOCKED_reader_through_a_psycopg3_shaped_connection_feeds_capture_
     conn = Psycopg3Shaped({OLDB: _db_tuples("old", OLDB)})
     p = tmp_path / "cap.json"
     assert T.main(["--capture-old", str(p)], conn=conn) == 0 and p.exists()
-    rows = T.load_capture(str(p), PERM.DASHA_READ_CONTRACT["chart_id"], OLDB)
+    full = T.load_capture_full(str(p), PERM.DASHA_READ_CONTRACT["chart_id"], OLDB)
+    rows = full["rows"]
     assert sorted({r["level_n"] for r in rows}) == [1, 2, 3] and len(rows) == 5
-    assert conn.sql and all("chart_dashas" in q for q, _ in conn.sql)                   # the real SELECT ran
+    assert [n["fact_subject"] for n in full["natal"]] == sorted(T.NATAL_SUBJECTS) and all(n["tier"] == "single" for n in full["natal"])         # the ten natal rows, same capture
+    assert conn.sql and any("chart_dashas" in q for q, _ in conn.sql) and any("chart_facts" in q for q, _ in conn.sql)                         # the real SELECTs ran
 
 
 def test_a_psycopg2_shaped_connection_STOPS_by_name_not_by_no_rows(tmp_path, capsys):
@@ -777,15 +785,175 @@ def test_the_NORMAL_cli_capture_path_against_a_disposable_database_without_a_pre
                            verification_pass_status text NOT NULL)""")
             for r in _db_tuples("old", OLDB):                                                           # BEFORE S-L1: the pinned (old) build is what the database holds
                 c.execute("INSERT INTO chart_dashas VALUES (%s,%s,'lahiri_chitrapaksha',%s,%s,%s,%s,%s,%s,%s,%s)", (r[0], chart, r[7], r[1], r[2], r[3], r[4], r[5], r[6], r[8]))
+            c.execute("""CREATE TABLE chart_facts (fact_id text PRIMARY KEY, chart_id uuid NOT NULL, ayanamsha_id text NOT NULL, build_id uuid NOT NULL, fact_category text NOT NULL,
+                           fact_subject text NOT NULL, fact_key text NOT NULL, fact_value_num numeric, verification_pass_status text)""")
+            for i, subj in enumerate(sorted(T.NATAL_SUBJECTS)):                                          # the ten natal rows (+ one other fact the capture must NOT take)
+                c.execute("INSERT INTO chart_facts VALUES (%s,%s,'lahiri_chitrapaksha','1c092ffb-72eb-4614-8422-552ca6eae985','graha_position',%s,'longitude_sidereal',%s,'single')", (f"f-{subj}", chart, subj, 100.123456789 + i))
+            c.execute("INSERT INTO chart_facts VALUES ('f-other',%s,'lahiri_chitrapaksha','1c092ffb-72eb-4614-8422-552ca6eae985','house_chalit','H1','cusp_lon',5,'single')", (chart,))
         monkeypatch.setenv("DATABASE_URL", dsn)
         cap = tmp_path / "old.json"
         assert T.main(["--capture-old", str(cap)]) == 0 and cap.exists()                                  # no conn=, no --new-build-id
-        rows = T.load_capture(str(cap), chart, OLDB)
+        out = capsys.readouterr().out
+        full = T.load_capture_full(str(cap), chart, OLDB)
+        rows = full["rows"]
         assert sorted({r["level_n"] for r in rows}) == [1, 2, 3] and len(rows) == 5 and T.tree_problems(rows, "captured") == []
-        # the connection the tool opened is READ ONLY: a write through the same helper fails
+        assert [n["fact_subject"] for n in full["natal"]] == sorted(T.NATAL_SUBJECTS) and all(n["tier"] == "single" and __import__("decimal").Decimal(n["longitude"]) == __import__("decimal").Decimal("100.123456789") + i for i, n in enumerate(full["natal"]))      # exact numeric text, full precision
+        # ONE repeatable-read read-only transaction: the same snapshot at the start and the end, recorded in the file; the sha256 and the elapsed time are printed
+        assert full["meta"]["snapshot_start"] == full["meta"]["snapshot_end"] and full["meta"]["transaction_isolation"] == "repeatable read" and full["meta"]["transaction_read_only"] == "on"
+        assert f"sha256 {full['sha256']}" in out and "connection closed; elapsed" in out
+        # NO LINGERING SESSION: the tool's connection (application_name repin_capture) is gone when main() returns
+        n = admin.execute("SELECT count(*) FROM pg_stat_activity WHERE application_name = 'repin_capture'").fetchone()[0]
+        assert n == 0, f"{n} lingering repin_capture session(s)"
+        # the READ-ONLY helper still refuses a write
         with T.open_readonly_connection() as ro:
             with pytest.raises(psycopg.errors.ReadOnlySqlTransaction):
                 ro.execute("INSERT INTO chart_dashas SELECT * FROM chart_dashas LIMIT 1")
     finally:
         admin.execute(f'DROP DATABASE IF EXISTS "{name}" WITH (FORCE)')
         admin.close()
+
+
+# ── pairing by STRUCTURE only (steward M20261003T003446-1f8d, -c27f; Suvarṇa): every dasha_row_id changes at S-L1; children are paired by LORD SEQUENCE; a differing child count REFUSES the subtree ──
+def _uuid_rows(prefix, shift_s=0, with_pd=True, drop_ad1=False):
+    rows = build3(prefix, shift_s) if with_pd else build(prefix, shift_s)
+    if drop_ad1:
+        rows = [r for r in rows if not r["dasha_row_id"].endswith("a1")]
+    ids = {r["dasha_row_id"]: str(_uuid.uuid4()) for r in rows}                                   # EVERY id is a fresh random uuid, different on each side
+    return [{**r, "dasha_row_id": ids[r["dasha_row_id"]], "parent_row_id": None if r["parent_row_id"] is None else ids[r["parent_row_id"]]} for r in rows]
+
+
+def test_every_id_differs_and_the_rows_still_pair_by_structure_alone():
+    old, new = _uuid_rows("old"), _uuid_rows("new", shift_s=6993)
+    assert not ({r["dasha_row_id"] for r in old} & {r["dasha_row_id"] for r in new})
+    oi, ni = T.index_paths(old), T.index_paths(new)
+    m = T.match(oi, ni)
+    assert len(m["matched"]) == len(old) and not m["only_old"] and not m["only_new"] and T.subtree_refusals(oi, ni) == []
+    assert T.shift_stats(oi, ni, m["matched"])[1]["start"]["min"] == 6993.0
+
+
+def test_the_reference_rows_are_found_by_structure_and_apply_rewrites_their_ids_from_the_pairing_when_every_id_differs(monkeypatch, tmp_path):
+    ref_rows = list(PERM.MD_ROWS + PERM.AD_ROWS + PERM.PD_ROWS)
+    def tree(prefix, shift):
+        out = []
+        for ref in ref_rows:
+            pid = ref["parent_row_id"]
+            out.append({"dasha_row_id": ref["row_id"] if prefix == "old" else str(_uuid.uuid4()), "level_n": {"MD": 1, "AD": 2, "PD": 3}[ref["level"]], "parent_row_id": pid,
+                        "lord_graha": ref["lord"],
+                        "start_iso": T.full_iso(datetime.fromtimestamp(T._t(ref["start_iso"]).timestamp() + shift, tz=timezone.utc)),
+                        "end_iso": T.full_iso(datetime.fromtimestamp(T._t(ref["end_iso"]).timestamp() + shift, tz=timezone.utc))})
+        if prefix == "new":                                                                       # re-link the parents to the NEW ids (every id differs, the structure does not)
+            newid = {ref["row_id"]: r["dasha_row_id"] for ref, r in zip(ref_rows, out)}
+            for r, ref in zip(out, ref_rows):
+                r["parent_row_id"] = None if ref["parent_row_id"] is None else newid[ref["parent_row_id"]]
+        return out
+    old, new = T.index_paths(tree("old", 0)), T.index_paths(tree("new", 6993))
+    maps, probs = T.remeasure_reference_rows(old, new)
+    assert probs == [] and len(maps) == len(ref_rows) and all(x["new"]["dasha_row_id"] != x["old"]["row_id"] for x in maps)
+    _apply = _apply_world(tmp_path)
+    monkeypatch.setattr(T, "SIDECAR", tmp_path)
+    T.apply_repin(NEWB, maps, tmp_path)
+    perm = (tmp_path / "services" / "gochara_rules" / "permission.py").read_text()
+    assert all(x["new"]["dasha_row_id"] in perm and x["old"]["row_id"] not in perm for x in maps)             # the ids were rewritten FROM THE STRUCTURAL PAIRING
+
+
+def test_a_parent_whose_child_count_changes_is_REFUSED_listed_and_never_paired():
+    old, new = _uuid_rows("old"), _uuid_rows("new", shift_s=6993, drop_ad1=True)                   # MD0 had two ADs, now one
+    oi, ni = T.index_paths(old), T.index_paths(new)
+    refusals = T.subtree_refusals(oi, ni)
+    assert [(r["parent"], r["old"], r["new"]) for r in refusals] == [((("Mercury", 0),), ["Mercury", "Ketu"], ["Mercury"])]
+    m = T.match(oi, ni)
+    kept = [k for k in m["matched"] if not T.under_refused(k, refusals)]
+    assert all(not (k[1][:1] == (("Mercury", 0),) and len(k[1]) > 1) for k in kept)                # nothing under the refused parent is paired (no best guess)
+    good = dict(new_tier_ok=True, new_integrity={"orphans": [], "duplicates": 0}, m=m, flips=[], ref_problems=[], forensic_report="f.md")
+    stops = T.decide(**good, refused_subtrees=refusals, old_totals=T.level_totals(old), new_totals=T.level_totals(new))
+    assert any("REFUSED SUBTREE under Mercury#0" in s for s in stops) and any("per-level row totals differ" in s for s in stops)
+
+
+def test_a_changed_lord_sequence_with_the_same_count_is_also_refused():
+    old, new = _uuid_rows("old"), _uuid_rows("new", shift_s=6993)
+    for r in new:
+        if r["lord_graha"] == "Ketu" and r["level_n"] == 2:
+            r["lord_graha"] = "Venus"
+    assert T.subtree_refusals(T.index_paths(old), T.index_paths(new))[0]["new"] == ["Mercury", "Venus"]
+
+
+# ── the pre-S-L1 CAPTURE (Suvarṇa via the steward): ONE REPEATABLE READ read-only transaction, daśā L1–3 AND the ten natal rows, file + sha256, connection closed, elapsed printed ─────────
+class SpyConn:
+    """psycopg3-shaped; records every statement and the lifecycle calls — proves ONE transaction (no commit), rolled back, then closed."""
+    def __init__(self, natal=True):
+        self.calls, self.closed, self.rolled_back, self.committed = [], 0, 0, 0
+        self.natal = natal
+        self.isolation_level = None
+        self.read_only = None
+
+    def execute(self, sql, params=None):
+        self.calls.append(" ".join(sql.split())[:400])
+        outer = self
+        if "pg_current_snapshot" in sql:
+            return type("C", (), {"fetchone": lambda s_: ("100:200:",)})()
+        if sql.strip().upper().startswith("SHOW TRANSACTION_ISOLATION"):
+            return type("C", (), {"fetchone": lambda s_: ("repeatable read",)})()
+        if sql.strip().upper().startswith("SHOW TRANSACTION_READ_ONLY"):
+            return type("C", (), {"fetchone": lambda s_: ("on",)})()
+        if "chart_facts" in sql:
+            return type("C", (), {"fetchall": lambda s_: natal_tuples()})()
+        return type("C", (), {"fetchall": lambda s_: _db_tuples("old", OLDB)})()
+
+    def commit(self): self.committed += 1
+    def rollback(self): self.rolled_back += 1
+    def close(self): self.closed += 1
+
+
+def test_the_capture_is_ONE_transaction_that_is_rolled_back_never_committed_and_the_connection_is_closed(monkeypatch, tmp_path, capsys):
+    spy = SpyConn()
+    monkeypatch.setattr(T, "open_capture_connection", lambda: spy)
+    p = tmp_path / "cap.json"
+    assert T.main(["--capture-old", str(p)]) == 0
+    assert spy.committed == 0 and spy.rolled_back == 1 and spy.closed == 1                        # one transaction, ended by rollback, then closed
+    assert spy.calls[0].startswith("SELECT pg_current_snapshot")                                   # the very first statement opens it
+    assert any("chart_dashas" in c for c in spy.calls) and any("chart_facts" in c for c in spy.calls) and spy.calls[-1].startswith("SELECT pg_current_snapshot")
+    out = capsys.readouterr().out
+    assert "sha256 " in out and "repeatable read read-only transaction, connection closed; elapsed" in out
+    full = T.load_capture_full(str(p), PERM.DASHA_READ_CONTRACT["chart_id"], OLDB)
+    assert full["meta"]["snapshot_start"] == full["meta"]["snapshot_end"] and full["meta"]["transaction_isolation"] == "repeatable read" and len(full["natal"]) == 10
+    assert full["sha256"] in out and full["meta"]["elapsed_seconds"] >= 0
+
+
+def test_a_snapshot_that_changes_during_the_capture_refuses_and_still_closes_the_connection(monkeypatch, tmp_path, capsys):
+    class Moving(SpyConn):
+        n = 0
+        def execute(self, sql, params=None):
+            if "pg_current_snapshot" in sql:
+                Moving.n += 1
+                return type("C", (), {"fetchone": lambda s_, n=Moving.n: (f"{n}:{n}:",)})()
+            return super().execute(sql, params)
+    spy = Moving()
+    monkeypatch.setattr(T, "open_capture_connection", lambda: spy)
+    p = tmp_path / "cap.json"
+    assert T.main(["--capture-old", str(p)]) == 3 and not p.exists()
+    assert "NOT one transaction" in capsys.readouterr().err and spy.closed == 1 and spy.rolled_back == 1 and spy.committed == 0
+
+
+def test_a_wrong_isolation_or_a_missing_natal_row_refuses(monkeypatch, tmp_path, capsys):
+    class ReadCommitted(SpyConn):
+        def execute(self, sql, params=None):
+            if sql.strip().upper().startswith("SHOW TRANSACTION_ISOLATION"):
+                return type("C", (), {"fetchone": lambda s_: ("read committed",)})()
+            return super().execute(sql, params)
+    spy = ReadCommitted(); monkeypatch.setattr(T, "open_capture_connection", lambda: spy)
+    assert T.main(["--capture-old", str(tmp_path / "a.json")], conn=None) == 3 and "not repeatable read" in capsys.readouterr().err and spy.closed == 1
+    spy2 = SpyConn(); monkeypatch.setattr(T, "open_capture_connection", lambda: spy2)
+    monkeypatch.setattr(T, "read_natal", lambda conn, chart: (_ for _ in ()).throw(T.NatalRefused("nine rows")))
+    assert T.main(["--capture-old", str(tmp_path / "b.json")]) == 3 and "nine rows" in capsys.readouterr().err and spy2.closed == 1 and not (tmp_path / "b.json").exists()
+
+
+def test_the_natal_read_demands_exactly_the_ten_subjects():
+    class C:
+        def __init__(self, rows): self.rows = rows
+        def execute(self, sql, params=None):
+            return type("Cur", (), {"fetchall": lambda s_: self.rows})()
+    assert len(T.read_natal(C(natal_tuples()), "c")) == 10
+    with pytest.raises(T.NatalRefused):
+        T.read_natal(C(natal_tuples()[:9]), "c")
+    with pytest.raises(T.NatalRefused):
+        T.read_natal(C(natal_tuples() + [("f", "RAH_TRUE", 1, "single", "b")]), "c")
