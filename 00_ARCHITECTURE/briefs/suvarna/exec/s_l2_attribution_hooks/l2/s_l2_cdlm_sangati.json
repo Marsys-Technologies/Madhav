@@ -1,0 +1,431 @@
+{
+  "lane": "s_l2_cdlm_sangati",
+  "ruling": "S-L2 Bodha synthesis: bo_sangati, bo_cdlm_summary, bo_drishti, bo_chart_gestalt",
+  "pr": "suvarna/land/TI-s-l2-prep-001",
+  "description": "These tables aggregate the MSR signals by domain/question and store arrays of signal ids (hundreds of thousands of cites). The sets are indexed by finite grids (13 domains, 12 question classes, 4 traditions, 5 ayanamshas), so the number of rows that can ever exist is bounded by the grid, whatever S-L1 does; the grids' current occupation is smaller, which is where the appeared bounds come from. A value change is bounded by the row count: a row changes only if a cited signal's id or a strength moves, and signal ids move only where the MSR lane declares it.",
+  "may_change": [
+    {
+      "table": "bodha_cdlm_cells",
+      "categories": [
+        "static_natal"
+      ],
+      "change_types": [
+        "appeared"
+      ],
+      "expected_count": {
+        "min": 0,
+        "max": 565
+      },
+      "note": "Row key = ordered domain pair (13 x 13) per ayanamsha: at most 13 x 13 x 5 = 845 cells, 280 exist. Source: section 3.5 (R10)."
+    },
+    {
+      "table": "bodha_cdlm_cells",
+      "categories": [
+        "static_natal"
+      ],
+      "change_types": [
+        "disappeared"
+      ],
+      "expected_count": {
+        "min": 0,
+        "max": 280
+      },
+      "note": "At most the cells that exist. Source: section 3.5 (R10)."
+    },
+    {
+      "table": "bodha_cdlm_cells",
+      "categories": [
+        "static_natal"
+      ],
+      "change_types": [
+        "value"
+      ],
+      "expected_count": {
+        "min": 0,
+        "max": 280
+      },
+      "note": "Shared-signal-id digest and counts move with the cited signals; at most every cell. Source: section 3.5 (R6)."
+    },
+    {
+      "table": "bodha_cdlm_cells",
+      "categories": [
+        "static_natal"
+      ],
+      "change_types": [
+        "tier"
+      ],
+      "expected_count": {
+        "min": 0,
+        "max": 280
+      },
+      "note": "verification_pass_status. Source: section 3.5 (R5)."
+    },
+    {
+      "table": "bodha_convergence",
+      "categories": [
+        "static_natal"
+      ],
+      "change_types": [
+        "appeared"
+      ],
+      "expected_count": {
+        "min": 0,
+        "max": 5
+      },
+      "note": "Row key = domain per ayanamsha: at most 65; 60 exist. Source: section 3.5 (R10)."
+    },
+    {
+      "table": "bodha_convergence",
+      "categories": [
+        "static_natal"
+      ],
+      "change_types": [
+        "disappeared"
+      ],
+      "expected_count": {
+        "min": 0,
+        "max": 60
+      },
+      "note": "At most the rows that exist. Source: section 3.5 (R10)."
+    },
+    {
+      "table": "bodha_convergence",
+      "categories": [
+        "static_natal"
+      ],
+      "change_types": [
+        "value"
+      ],
+      "expected_count": {
+        "min": 0,
+        "max": 60
+      },
+      "note": "Top-signal-id digest and counts; at most every row. Source: section 3.5 (R6)."
+    },
+    {
+      "table": "bodha_convergence",
+      "categories": [
+        "static_natal"
+      ],
+      "change_types": [
+        "tier"
+      ],
+      "expected_count": {
+        "min": 0,
+        "max": 60
+      },
+      "note": "verification_pass_status. Source: section 3.5 (R5)."
+    },
+    {
+      "table": "bodha_triangulation",
+      "categories": [
+        "career",
+        "character",
+        "education",
+        "family",
+        "health",
+        "progeny",
+        "relationship",
+        "residence",
+        "spirituality",
+        "transition",
+        "travel",
+        "wealth"
+      ],
+      "change_types": [
+        "appeared"
+      ],
+      "expected_count": {
+        "min": 0,
+        "max": 45
+      },
+      "note": "Row key = question class x tradition per ayanamsha: at most 12 x 4 x 5 = 240; 195 exist. Source: section 3.5 (R10)."
+    },
+    {
+      "table": "bodha_triangulation",
+      "categories": [
+        "career",
+        "character",
+        "education",
+        "family",
+        "health",
+        "progeny",
+        "relationship",
+        "residence",
+        "spirituality",
+        "transition",
+        "travel",
+        "wealth"
+      ],
+      "change_types": [
+        "disappeared"
+      ],
+      "expected_count": {
+        "min": 0,
+        "max": 195
+      },
+      "note": "At most the rows that exist. Source: section 3.5 (R10)."
+    },
+    {
+      "table": "bodha_triangulation",
+      "categories": [
+        "career",
+        "character",
+        "education",
+        "family",
+        "health",
+        "progeny",
+        "relationship",
+        "residence",
+        "spirituality",
+        "transition",
+        "travel",
+        "wealth"
+      ],
+      "change_types": [
+        "value"
+      ],
+      "expected_count": {
+        "min": 0,
+        "max": 195
+      },
+      "note": "Signal-id digest and verdict-input digest; at most every row. Source: section 3.5 (R6)."
+    },
+    {
+      "table": "bodha_triangulation",
+      "categories": [
+        "career",
+        "character",
+        "education",
+        "family",
+        "health",
+        "progeny",
+        "relationship",
+        "residence",
+        "spirituality",
+        "transition",
+        "travel",
+        "wealth"
+      ],
+      "change_types": [
+        "occurrence_count"
+      ],
+      "expected_count": {
+        "exact": 0
+      },
+      "note": "The key (question class, tradition) is unique per ayanamsha: no multiplicity change is possible. Source: section 3.5."
+    },
+    {
+      "table": "bodha_cdlm_chart_summary",
+      "categories": [
+        "summary"
+      ],
+      "change_types": [
+        "appeared",
+        "disappeared"
+      ],
+      "expected_count": {
+        "exact": 0
+      },
+      "note": "One summary per ayanamsha (5). Source: section 3.5 (R8)."
+    },
+    {
+      "table": "bodha_cdlm_chart_summary",
+      "categories": [
+        "summary"
+      ],
+      "change_types": [
+        "value"
+      ],
+      "expected_count": {
+        "min": 0,
+        "max": 5
+      },
+      "note": "Dominant/weakest domain arrays and cluster markers move with the signals. Source: section 3.5 (R6)."
+    },
+    {
+      "table": "bodha_cdlm_chart_summary",
+      "categories": [
+        "summary"
+      ],
+      "change_types": [
+        "tier"
+      ],
+      "expected_count": {
+        "min": 0,
+        "max": 5
+      },
+      "note": "verification_pass_status. Source: section 3.5 (R5)."
+    },
+    {
+      "table": "bodha_cdlm_domain_rollups",
+      "categories": [
+        "rollup"
+      ],
+      "change_types": [
+        "appeared"
+      ],
+      "expected_count": {
+        "min": 0,
+        "max": 5
+      },
+      "note": "Row key = domain per ayanamsha: at most 65; 60 exist. Source: section 3.5 (R10)."
+    },
+    {
+      "table": "bodha_cdlm_domain_rollups",
+      "categories": [
+        "rollup"
+      ],
+      "change_types": [
+        "disappeared"
+      ],
+      "expected_count": {
+        "min": 0,
+        "max": 60
+      },
+      "note": "At most the rows that exist. Source: section 3.5 (R10)."
+    },
+    {
+      "table": "bodha_cdlm_domain_rollups",
+      "categories": [
+        "rollup"
+      ],
+      "change_types": [
+        "value"
+      ],
+      "expected_count": {
+        "min": 0,
+        "max": 60
+      },
+      "note": "Counts and arrays move with the signals. Source: section 3.5 (R6)."
+    },
+    {
+      "table": "bodha_cdlm_domain_rollups",
+      "categories": [
+        "rollup"
+      ],
+      "change_types": [
+        "tier"
+      ],
+      "expected_count": {
+        "min": 0,
+        "max": 60
+      },
+      "note": "verification_pass_status. Source: section 3.5 (R5)."
+    },
+    {
+      "table": "bodha_cdlm_pattern_clusters",
+      "categories": [
+        "unclassified_linkage_cluster"
+      ],
+      "change_types": [
+        "appeared",
+        "disappeared"
+      ],
+      "expected_count": {
+        "min": 0
+      },
+      "optional": true,
+      "note": "Pattern clusters come from a graph clustering of the cells; their number is not bounded by a rule; attribution only. Source: section 3.5."
+    },
+    {
+      "table": "bodha_cdlm_pattern_clusters",
+      "categories": [
+        "unclassified_linkage_cluster"
+      ],
+      "change_types": [
+        "value"
+      ],
+      "expected_count": {
+        "min": 0,
+        "max": 5
+      },
+      "note": "Involved cell/signal digests; at most every cluster. Source: section 3.5 (R6)."
+    },
+    {
+      "table": "bodha_cdlm_pattern_clusters",
+      "categories": [
+        "unclassified_linkage_cluster"
+      ],
+      "change_types": [
+        "tier"
+      ],
+      "expected_count": {
+        "min": 0,
+        "max": 5
+      },
+      "note": "verification_pass_status. Source: section 3.5 (R5)."
+    },
+    {
+      "table": "bodha_question_lenses",
+      "categories": [
+        "lens"
+      ],
+      "change_types": [
+        "appeared",
+        "disappeared",
+        "occurrence_count"
+      ],
+      "expected_count": {
+        "exact": 0
+      },
+      "note": "12 question types x 5 ayanamshas = 60, a fixed template list. Source: section 3.5 (R8)."
+    },
+    {
+      "table": "bodha_question_lenses",
+      "categories": [
+        "lens"
+      ],
+      "change_types": [
+        "value"
+      ],
+      "expected_count": {
+        "min": 0,
+        "max": 60
+      },
+      "note": "Ranked relevant-signal and element digests carry signal ids; at most every lens. Source: section 3.5 (R6)."
+    },
+    {
+      "table": "bodha_question_lenses",
+      "categories": [
+        "lens"
+      ],
+      "change_types": [
+        "tier"
+      ],
+      "expected_count": {
+        "min": 0,
+        "max": 60
+      },
+      "note": "verification_pass_status. Source: section 3.5 (R5)."
+    },
+    {
+      "table": "bodha_chart_gestalt",
+      "categories": [
+        "gestalt"
+      ],
+      "change_types": [
+        "appeared",
+        "disappeared"
+      ],
+      "expected_count": {
+        "exact": 0
+      },
+      "note": "One gestalt per ayanamsha (5). Source: section 3.5 (R8)."
+    },
+    {
+      "table": "bodha_chart_gestalt",
+      "categories": [
+        "gestalt"
+      ],
+      "change_types": [
+        "value"
+      ],
+      "expected_count": {
+        "min": 0,
+        "max": 5
+      },
+      "note": "Threads/dynamics/pivot digests carry signal ids; at most one per ayanamsha. Source: section 3.5 (R6)."
+    }
+  ]
+}
