@@ -118,15 +118,17 @@ def census(cells, scope=None):
 
 
 class use_ctrl:
-    def __init__(self, m, path):
-        self.m, self.path = m, path
+    def __init__(self, m, path, root=None):
+        self.m, self.path, self.root = m, path, root
 
     def __enter__(self):
-        self.old = self.m.CTRL
+        self.old = self.m.CTRL, self.m.ROOT
         self.m.CTRL = pathlib.Path(self.path)
+        if self.root is not None:
+            self.m.ROOT = pathlib.Path(self.root)        # the "canonical" control dir is ROOT/00_ARCHITECTURE/control
 
     def __exit__(self, *a):
-        self.m.CTRL = self.old
+        self.m.CTRL, self.m.ROOT = self.old
 
 
 @pytest.fixture(scope="module")
@@ -307,14 +309,54 @@ def sc_deleted_via_git_rm(m, tmp):
     return refuses(m, env, "withholding_deleted")
 
 
-def sc_absent_git_unavailable(m, tmp):
-    env = Env(tmp, rows=[_row(O_ID)], wh=None)
+def _with_no_git(tmp, fn):
     old = os.environ.get("PATH")
-    os.environ["PATH"] = str(pathlib.Path(tmp) / "empty-bin")
+    os.environ["PATH"] = str(pathlib.Path(tmp) / "empty-bin")      # git cannot be found
     try:
-        return proceeds(m, env)["closed"] == 1
+        return fn()
     finally:
         os.environ["PATH"] = old
+
+
+def sc_absent_git_unavailable(m, tmp):
+    """F3: no list file at all, git cannot answer, and CTRL sits inside a checkout: refuse (a deleted tracked list is
+    indistinguishable from a never-existing one without git)."""
+    env = Env(tmp, rows=[_row(O_ID)], wh=None)
+    return _with_no_git(tmp, lambda: refuses(m, env, "withholding_git_unavailable", census([(O_ASSET, O_CRIT, m.PASS)])))
+
+
+def sc_absent_git_unavailable_deleted_tracked(m, tmp):
+    env = Env(tmp, rows=[_row(W_ID)], wh=wh_text())
+    env.wh.unlink()                                                # tracked list deleted, and git cannot say so
+    return _with_no_git(tmp, lambda: refuses(m, env, "withholding_git_unavailable"))
+
+
+def sc_absent_git_unavailable_outside_checkout(m, tmp):
+    d = pathlib.Path(tmp) / "plain"
+    d.mkdir(parents=True)
+    (d / "asset_gaps.jsonl").write_text(json.dumps(_row(O_ID)) + "\n", encoding="utf-8")
+
+    def go():
+        with use_ctrl(m, d):
+            return m.emit_gaps_summary(census([(O_ASSET, O_CRIT, m.PASS)]))["closed"] == 1
+    return _with_no_git(tmp, go)
+
+
+def sc_absent_broken_git(m, tmp):
+    """A `.git` entry git cannot read: rev-parse fails inside a checkout, so "not a repository" is not the answer."""
+    d = pathlib.Path(tmp) / "broken"
+    d.mkdir(parents=True)
+    (d / ".git").write_text("gitdir: /nonexistent/nowhere\n", encoding="utf-8")
+    (d / "asset_gaps.jsonl").write_text(json.dumps(_row(O_ID)) + "\n", encoding="utf-8")
+    before = (d / "asset_gaps.jsonl").read_bytes()
+    with use_ctrl(m, d):
+        try:
+            m.emit_gaps_summary(census([(O_ASSET, O_CRIT, m.PASS)]))
+        except m.WithholdingRefused as e:
+            return e.code == "withholding_git_unavailable" and (d / "asset_gaps.jsonl").read_bytes() == before
+        except Exception:  # noqa: BLE001
+            return False
+    return False
 
 
 def sc_symlink(m, tmp):
@@ -353,6 +395,259 @@ def sc_git_unavailable_present(m, tmp):
         os.environ["PATH"] = old
 
 
+# ── F1: a relocated ledger that is a link to the canonical one is still governed ──
+
+def _reloc(tmp, name):
+    d = pathlib.Path(tmp) / name
+    d.mkdir(parents=True)
+    return d
+
+
+def sc_symlinked_ledger_governed(m, tmp):
+    env = Env(pathlib.Path(tmp) / "c", rows=[_row(W_ID), _row(O_ID)], wh=wh_text())
+    d = _reloc(tmp, "reloc")
+    os.symlink(env.gaps, d / "asset_gaps.jsonl")
+    before = env.ledger()
+    with use_ctrl(m, d):
+        out = m.emit_gaps_summary(census([(W_ASSET, W_CRIT, m.PASS), (O_ASSET, O_CRIT, m.PASS)]))
+    new = env.ledger()[len(before):].decode()
+    return out["withheld"] == [W_ID] and out["closed"] == 1 and O_ID in new and W_ID not in new and env.ledger().startswith(before)
+
+
+def sc_symlinked_ledger_dirty_canonical_list_refuses(m, tmp):
+    env = Env(pathlib.Path(tmp) / "c", rows=[_row(W_ID)], wh=wh_text())
+    env.wh.write_text(wh_text({}), encoding="utf-8")           # the canonical list is dirty: same fail-closed rules there
+    d = _reloc(tmp, "reloc")
+    os.symlink(env.gaps, d / "asset_gaps.jsonl")
+    before = env.ledger()
+    with use_ctrl(m, d):
+        try:
+            m.emit_gaps_summary(census([(W_ASSET, W_CRIT, m.PASS)]))
+        except m.WithholdingRefused as e:
+            return e.code == "withholding_dirty" and env.ledger() == before
+        except Exception:  # noqa: BLE001
+            return False
+    return False
+
+
+def sc_symlinked_dir_governed(m, tmp):
+    env = Env(pathlib.Path(tmp) / "c", rows=[_row(W_ID)], wh=wh_text())
+    link = pathlib.Path(tmp) / "linkdir"
+    os.symlink(env.ctrl, link)
+    before = env.ledger()
+    with use_ctrl(m, link):
+        out = m.emit_gaps_summary(census([(W_ASSET, W_CRIT, m.PASS)]))
+    return out["withheld"] == [W_ID] and env.ledger() == before
+
+
+def sc_hardlinked_ledger_refused(m, tmp):
+    env = Env(pathlib.Path(tmp) / "c", rows=[_row(W_ID)], wh=wh_text())
+    d = _reloc(tmp, "reloc")
+    os.link(env.gaps, d / "asset_gaps.jsonl")
+    before = env.ledger()
+    with use_ctrl(m, d, root=env.repo):
+        try:
+            m.emit_gaps_summary(census([(W_ASSET, W_CRIT, m.PASS)]))
+        except m.WithholdingRefused as e:
+            return e.code == "withholding_ledger_hardlinked" and env.ledger() == before
+        except Exception:  # noqa: BLE001
+            return False
+    return False
+
+
+def sc_hardlinked_ledger_without_canonical_list_allowed(m, tmp):
+    """Nothing to bypass when the canonical list does not exist (the state of main before #3012)."""
+    env = Env(pathlib.Path(tmp) / "c", rows=[_row(O_ID)], wh=None)
+    d = _reloc(tmp, "reloc")
+    os.link(env.gaps, d / "asset_gaps.jsonl")
+    with use_ctrl(m, d, root=env.repo):
+        return m.emit_gaps_summary(census([(O_ASSET, O_CRIT, m.PASS)]))["closed"] == 1
+
+
+def sc_plain_copy_allowed(m, tmp):
+    env = Env(pathlib.Path(tmp) / "c", rows=[_row(O_ID)], wh=wh_text())
+    d = _reloc(tmp, "reloc")
+    (d / "asset_gaps.jsonl").write_bytes(env.ledger())         # a COPY is a separate ledger: allowed by design
+    before = env.ledger()
+    with use_ctrl(m, d, root=env.repo):
+        out = m.emit_gaps_summary(census([(O_ASSET, O_CRIT, m.PASS)]))
+    return out["closed"] == 1 and env.ledger() == before
+
+
+def sc_canonical_ledger_with_other_links_allowed(m, tmp):
+    """The canonical control dir's own ledger having a second link is not the relocated case."""
+    env = Env(pathlib.Path(tmp) / "c", rows=[_row(O_ID)], wh=wh_text())
+    os.link(env.gaps, pathlib.Path(tmp) / "backup_link.jsonl")
+    with use_ctrl(m, env.ctrl, root=env.repo):
+        return m.emit_gaps_summary(census([(O_ASSET, O_CRIT, m.PASS)]))["closed"] == 1
+
+
+# ── F2: a withheld entry that matches nothing is reported; a malformed asset id is refused ──
+
+TYPO = "bo_upayaa-Idem.pattern"
+
+
+def sc_unmatched_reported(m, tmp):
+    wh = wh_text({W_ID: _entry(), TYPO: _entry(asset="bo_upayaa")})
+    env = Env(tmp, rows=[_row(W_ID)], wh=wh)
+    out = proceeds(m, env, census([(W_ASSET, W_CRIT, m.PASS)]))
+    return out["withheld"] == [W_ID] and out["withheld_unmatched"] == [TYPO]
+
+
+def sc_unmatched_absent_when_all_match(m, tmp):
+    env = Env(tmp, rows=[_row(W_ID)], wh=wh_text())
+    return "withheld_unmatched" not in proceeds(m, env, census([(W_ASSET, W_CRIT, m.PASS)]))
+
+
+def sc_seen_but_not_suppressed_is_not_unmatched(m, tmp):
+    """The cell is measured (verdict NOT_GENERIC: never a transition), so the entry is neither suppressed nor unmatched."""
+    env = Env(tmp, rows=[_row(W_ID)], wh=wh_text())
+    out = proceeds(m, env, census([(W_ASSET, W_CRIT, m.NOT_GENERIC)]))
+    return out["withheld"] == [] and "withheld_unmatched" not in out
+
+
+def sc_unmatched_scoped(m, tmp):
+    wh = wh_text({W_ID: _entry(), O_ID: _entry(asset=O_ASSET, crit=O_CRIT)})
+    env = Env(tmp, rows=[], wh=wh)
+    cen = census([(W_ASSET, W_CRIT, m.PASS)], scope=[W_ASSET])
+    with use_ctrl(m, env.ctrl):
+        out = m.emit_gaps_summary(cen)                          # O_ASSET is outside the scope: not a typo, not reported
+    cen2 = census([(W_ASSET, "Build.dag", m.PASS)], scope=[W_ASSET])
+    with use_ctrl(m, env.ctrl):
+        out2 = m.emit_gaps_summary(cen2)                        # in scope but its criterion was not measured: reported
+    return "withheld_unmatched" not in out and out2["withheld_unmatched"] == [W_ID]
+
+
+def sc_asset_case_variant_refused(m, tmp):
+    env = Env(tmp, rows=[_row(W_ID)], wh=wh_text({"BO_UPAYA-Idem.pattern": _entry(asset="BO_UPAYA")}))
+    return refuses(m, env, "withholding_unknown_asset")
+
+
+def sc_asset_unknown_layer_refused(m, tmp):
+    env = Env(tmp, rows=[_row(W_ID)], wh=wh_text({"zz_upaya-Idem.pattern": _entry(asset="zz_upaya")}))
+    return refuses(m, env, "withholding_unknown_asset")
+
+
+def sc_asset_non_identifier_refused(m, tmp):
+    env = Env(tmp, rows=[_row(W_ID)], wh=wh_text({"bo_up aya-Idem.pattern": _entry(asset="bo_up aya")}))
+    return refuses(m, env, "withholding_unknown_asset")
+
+
+# ── F4: the fold's nesting-depth limit ──
+
+def _nested(n, extra_key="x"):
+    return '{"version": 1, "entries": {}, "%s": %s1%s}' % (extra_key, "[" * n, "]" * n)
+
+
+def _deep_case(n):
+    def _sc(m, tmp):
+        env = Env(tmp, rows=[_row(W_ID)], wh=_nested(n))
+        return refuses(m, env, "withholding_malformed")
+    _sc.__name__ = f"sc_depth_{n}_refused"
+    return _sc
+
+
+def sc_depth_64_accepted(m, tmp):
+    env = Env(tmp, rows=[_row(O_ID)], wh=_nested(63))           # top object + 63 arrays = depth 64 = the limit
+    return proceeds(m, env)["closed"] == 1
+
+
+def sc_depth_string_brackets_ignored(m, tmp):
+    doc = '{"version": 1, "entries": {}, "x": "%s", "y": "q\\"%s"}' % ("[" * 200, "[" * 200)
+    env = Env(tmp, rows=[_row(O_ID)], wh=doc)
+    return proceeds(m, env)["closed"] == 1
+
+
+def sc_recursion_error_is_a_refusal(m, tmp):
+    """Even when the depth pre-check lets a pathologically nested file through, json's RecursionError is a refusal."""
+    old = m._wh_max_depth
+    m._wh_max_depth = lambda text: 0
+    try:
+        env = Env(tmp, rows=[_row(W_ID)], wh=_nested(100000))
+        return refuses(m, env, "withholding_malformed")
+    finally:
+        m._wh_max_depth = old
+
+
+# ── the git-environment scrub ──
+
+def sc_git_env_scrubbed(m, tmp):
+    """GIT_DIR / GIT_WORK_TREE in the caller's environment must not redirect the reader to another repository."""
+    other = pathlib.Path(tmp) / "other"
+    other.mkdir(parents=True)
+    _git(other, "init", "-q")
+    env = Env(pathlib.Path(tmp) / "e", rows=[_row(W_ID)], wh=wh_text())
+    bad = Env(pathlib.Path(tmp) / "b", rows=[_row(W_ID)], wh=wh_text())
+    bad.wh.write_text(wh_text({}), encoding="utf-8")            # dirty: must still be refused
+    saved = {k: os.environ.get(k) for k in ("GIT_DIR", "GIT_WORK_TREE")}
+    os.environ["GIT_DIR"] = str(other / ".git")
+    os.environ["GIT_WORK_TREE"] = str(other)
+    try:
+        ok = proceeds(m, env, census([(W_ASSET, W_CRIT, m.PASS)]))["withheld"] == [W_ID]
+        return ok and refuses(m, bad, "withholding_dirty")
+    finally:
+        for k, v in saved.items():
+            if v is None:
+                os.environ.pop(k, None)
+            else:
+                os.environ[k] = v
+
+
+def sc_staged_edit_reverted_worktree_honours_head(m, tmp):
+    """A staged weakening whose work tree is reverted to HEAD's bytes is not an edit the reader can see: HEAD's list rules."""
+    env = Env(tmp, rows=[_row(W_ID)], wh=wh_text())
+    good = env.wh.read_bytes()
+    env.wh.write_text(wh_text({}), encoding="utf-8")
+    _git(env.repo, "add", WH_REL)
+    env.wh.write_bytes(good)
+    before = env.ledger()
+    out = proceeds(m, env, census([(W_ASSET, W_CRIT, m.PASS)]))
+    return out["withheld"] == [W_ID] and env.ledger() == before
+
+
+def sc_toplevel_elsewhere(m, tmp):
+    """core.worktree points git's work tree away from the control dir: the list cannot be located in that tree."""
+    env = Env(tmp, rows=[_row(W_ID)], wh=wh_text())
+    elsewhere = pathlib.Path(tmp) / "elsewhere"
+    elsewhere.mkdir()
+    _git(env.repo, "config", "core.worktree", str(elsewhere))
+    return refuses(m, env, "withholding_not_in_git")
+
+
+def sc_git_unavailable_present_outside_checkout(m, tmp):
+    d = pathlib.Path(tmp) / "plain"
+    d.mkdir(parents=True)
+    (d / "asset_gaps.jsonl").write_text(json.dumps(_row(W_ID)) + "\n", encoding="utf-8")
+    (d / "NIKASHA_WITHHOLDING.json").write_text(wh_text(), encoding="utf-8")
+    before = (d / "asset_gaps.jsonl").read_bytes()
+
+    def go():
+        with use_ctrl(m, d):
+            try:
+                m.emit_gaps_summary(census([(W_ASSET, W_CRIT, m.PASS)]))
+            except m.WithholdingRefused as e:
+                return e.code == "withholding_git_unavailable" and (d / "asset_gaps.jsonl").read_bytes() == before
+            except Exception:  # noqa: BLE001
+                return False
+        return False
+    return _with_no_git(tmp, go)
+
+
+def sc_no_ledger_yet_relocated(m, tmp):
+    """A relocated control dir with no ledger file yet (the append creates it) is not a hard-link case."""
+    env = Env(pathlib.Path(tmp) / "c", rows=[], wh=wh_text())
+    d = _reloc(tmp, "reloc")
+    with use_ctrl(m, d, root=env.repo):
+        out = m.emit_gaps_summary(census([(O_ASSET, O_CRIT, m.FAIL)]))
+    return out["added"] == 1 and (d / "asset_gaps.jsonl").exists()
+
+
+def sc_depth_siblings_accepted(m, tmp):
+    doc = '{"version": 1, "entries": {}, "x": [%s]}' % ",".join(["[]"] * 200)
+    env = Env(tmp, rows=[_row(O_ID)], wh=doc)
+    return proceeds(m, env)["closed"] == 1
+
+
 MALFORMED = {
     "not_json": "{ nope",
     "dup_key": '{"version": 1, "entries": {}, "entries": {}}',
@@ -389,11 +684,19 @@ def sc_valid_no_register_row(m, tmp):
 # ───────────────────────────── behaviour tests (real module) ─────────────────────────────
 
 POSITIVE = [sc_baseline, sc_withheld_pass_no_credit, sc_withheld_fail_no_open, sc_withheld_fail_no_reopen,
-            sc_summary_key_only_with_list, sc_absent_unchanged, sc_absent_no_git, sc_absent_git_unavailable, sc_scoped_filter,
-            sc_double_filter_idempotent, sc_valid_no_register_row]
+            sc_summary_key_only_with_list, sc_absent_unchanged, sc_absent_no_git, sc_absent_git_unavailable_outside_checkout, sc_scoped_filter,
+            sc_double_filter_idempotent, sc_valid_no_register_row,
+            sc_symlinked_ledger_governed, sc_symlinked_dir_governed, sc_hardlinked_ledger_without_canonical_list_allowed,
+            sc_plain_copy_allowed, sc_canonical_ledger_with_other_links_allowed, sc_unmatched_reported,
+            sc_unmatched_absent_when_all_match, sc_seen_but_not_suppressed_is_not_unmatched, sc_unmatched_scoped,
+            sc_depth_64_accepted, sc_depth_string_brackets_ignored, sc_depth_siblings_accepted, sc_no_ledger_yet_relocated, sc_git_env_scrubbed,
+            sc_staged_edit_reverted_worktree_honours_head]
 REFUSALS = [sc_untracked, sc_dirty_content, sc_dirty_staged_only, sc_dirty_mode_only, sc_dirty_hidden_by_assume_unchanged,
             sc_no_head, sc_not_in_git, sc_deleted_tracked, sc_deleted_staged_never_committed, sc_deleted_via_git_rm, sc_symlink, sc_directory,
-            sc_unreadable, sc_git_unavailable_present] + [sc_malformed(n) for n in MALFORMED]
+            sc_unreadable, sc_git_unavailable_present, sc_absent_git_unavailable, sc_absent_git_unavailable_deleted_tracked,
+            sc_absent_broken_git, sc_git_unavailable_present_outside_checkout, sc_toplevel_elsewhere, sc_symlinked_ledger_dirty_canonical_list_refuses, sc_hardlinked_ledger_refused,
+            sc_asset_case_variant_refused, sc_asset_unknown_layer_refused, sc_asset_non_identifier_refused,
+            sc_recursion_error_is_a_refusal] + [_deep_case(n) for n in (64, 69, 5000)] + [sc_malformed(n) for n in MALFORMED]
 
 
 @pytest.mark.parametrize("sc", POSITIVE, ids=lambda f: f.__name__)
@@ -514,6 +817,45 @@ def sc_cli_refusal_in_loop(m, tmp, monkeypatch):
     return rc == 7 and env.ledger() == before and bool(called) and not out.exists() and len(n) == 2 and real_load is not flaky
 
 
+def test_cli_warns_when_an_entry_matches_no_measured_cell(monkeypatch, tmp_path, capsys):
+    env = Env(tmp_path, rows=[_row(W_ID)], wh=wh_text({W_ID: _entry(), TYPO: _entry(asset="bo_upayaa")}))
+    _stub_main(monkeypatch, env, census([(W_ASSET, W_CRIT, ac.PASS)]))
+    assert ac.main() == 0
+    out = capsys.readouterr().out
+    assert f"WARNING — withholding entr(ies) matched no measured cell of this run" in out and TYPO in out
+    assert f"WITHHELD (no row of any kind written): {W_ID}" in out
+
+
+def test_cli_no_warning_when_every_entry_matched(monkeypatch, tmp_path, capsys):
+    env = Env(tmp_path, rows=[_row(W_ID)], wh=wh_text())
+    _stub_main(monkeypatch, env, census([(W_ASSET, W_CRIT, ac.PASS)]))
+    assert ac.main() == 0
+    assert "WARNING" not in capsys.readouterr().out
+
+
+def sc_cli_warning(m, tmp, monkeypatch):
+    """True iff the unmatched WARNING line is printed exactly when an entry matched nothing."""
+    import contextlib
+    import io
+    buf = io.StringIO()
+    env = Env(pathlib.Path(tmp) / "a", rows=[_row(W_ID)], wh=wh_text({W_ID: _entry(), TYPO: _entry(asset="bo_upayaa")}))
+    _stub_main(monkeypatch, env, census([(W_ASSET, W_CRIT, m.PASS)]), m)
+    try:
+        with contextlib.redirect_stdout(buf):
+            m.main()
+    except Exception:  # noqa: BLE001 — a mutant that crashes the CLI is a kill
+        return False
+    env2 = Env(pathlib.Path(tmp) / "b", rows=[_row(W_ID)], wh=wh_text())
+    _stub_main(monkeypatch, env2, census([(W_ASSET, W_CRIT, m.PASS)]), m)
+    buf2 = io.StringIO()
+    try:
+        with contextlib.redirect_stdout(buf2):
+            m.main()
+    except Exception:  # noqa: BLE001
+        return False
+    return "WARNING" in buf.getvalue() and "WARNING" not in buf2.getvalue()
+
+
 def test_cli_refuses_with_exit_7_before_measuring(monkeypatch, tmp_path, capsys):
     assert sc_cli_refusal(ac, tmp_path, monkeypatch) is True
     assert "withholding refused" in capsys.readouterr().err
@@ -539,6 +881,10 @@ def test_validator_parity_with_the_fold(tmp_path):
     cases["valid"] = wh_text()
     cases["valid_empty"] = wh_text({})
     cases["valid_no_register_row"] = wh_text({W_ID: {k: v for k, v in _entry().items() if k != "register_row"}})
+    for n in (62, 63, 64, 65, 69, 70, 5000):
+        cases[f"depth_{n}_extra"] = _nested(n)
+    cases["brackets_in_strings"] = '{"version": 1, "entries": {}, "x": "%s", "y": "q\\"%s"}' % ("[" * 200, "[" * 200)
+    cases["many_siblings"] = '{"version": 1, "entries": {}, "x": [%s]}' % ",".join(["[]"] * 200)
     for name, text in cases.items():
         p = tmp_path / f"{name}.json"
         p.write_text(text, encoding="utf-8")
@@ -555,9 +901,11 @@ def test_validator_parity_with_the_fold(tmp_path):
 
 # ───────────────────────────── mutation tests: one per guard ─────────────────────────────
 
-def _mutant(old: str, new: str):
-    assert SRC.count(old) == 1, f"mutation anchor must match exactly once: {old!r} ({SRC.count(old)})"
-    src = SRC.replace(old, new)
+def _mutant(old, new):
+    src = SRC
+    for o, n in (zip(old, new) if isinstance(old, list) else [(old, new)]):
+        assert src.count(o) == 1, f"mutation anchor must match exactly once: {o!r} ({src.count(o)})"
+        src = src.replace(o, n)
     m = types.ModuleType("asset_census_mutant")
     m.__file__ = str(SRC_PATH)
     sys.modules["asset_census_mutant"] = m
@@ -583,13 +931,48 @@ MUTATIONS = {
     "summary_key_always": ('    if withheld:\n        out["withheld"]', '    if True:\n        out["withheld"]', [sc_summary_key_only_with_list]),
     "summary_key_never": ('    if withheld:\n        out["withheld"]', '    if False:\n        out["withheld"]', [sc_withheld_pass_no_credit]),
     # absent-file handling
-    "absent_refused": ("        return {}                       # absent file, no git: nothing to prove deleted",
-                       "        raise WithholdingRefused('x', 'x')", [sc_absent_git_unavailable]),
+    "absent_refused": ("        return {}                       # absent file, not in a checkout, no git: nothing to prove deleted",
+                       "        raise WithholdingRefused('x', 'x')", [sc_absent_git_unavailable_outside_checkout]),
     "absent_not_repo_refused": ("        return {}                       # absent and not a repo: no withholding",
                                 "        raise WithholdingRefused('x', 'x')", [sc_absent_no_git]),
     # presence guards
-    "git_missing_ignored": ("    except WithholdingRefused:\n        if present:\n            raise\n",
-                            "    except WithholdingRefused:\n        if False:\n            raise\n", [sc_git_unavailable_present]),
+    "git_missing_ignored": ("        if present or _wh_git_ancestor(p.parent):\n            raise  ", "        if False:\n            raise  ", [sc_git_unavailable_present_outside_checkout, sc_absent_git_unavailable]),
+    "git_missing_present_dropped": ("        if present or _wh_git_ancestor(p.parent):\n            raise  ", "        if _wh_git_ancestor(p.parent):\n            raise  ", [sc_git_unavailable_present_outside_checkout]),
+    "git_missing_ancestor_dropped": ("        if present or _wh_git_ancestor(p.parent):\n            raise  ", "        if present:\n            raise  ", [sc_absent_git_unavailable, sc_absent_git_unavailable_deleted_tracked]),
+    "git_rc_ancestor_dropped": ("        if _wh_git_ancestor(p.parent):\n            raise WithholdingRefused(\"withholding_git_unavailable\", \"git cannot answer",
+                                "        if False:\n            raise WithholdingRefused(\"withholding_git_unavailable\", \"git cannot answer", [sc_absent_broken_git]),
+    "git_ancestor_parents_dropped": ("for q in (real, *real.parents))", "for q in (real,))", [sc_absent_git_unavailable]),
+    "git_ancestor_never": ("    return any(os.path.lexists(q / \".git\") for q in (real, *real.parents))", "    return False", [sc_absent_git_unavailable, sc_absent_broken_git]),
+    "toplevel_containment_off": ("    if not real_dir.is_relative_to(top):", "    if False:", [sc_toplevel_elsewhere]),
+    # F1
+    "ledger_realdir_ignored": ("    if real != here:\n        dirs.append(real)", "    if False:\n        dirs.append(real)", [sc_symlinked_ledger_governed, sc_symlinked_ledger_dirty_canonical_list_refuses]),
+    "hardlink_guard_off": ("        if nlink > 1:", "        if False:", [sc_hardlinked_ledger_refused]),
+    "hardlink_ge1": ("        if nlink > 1:", "        if nlink >= 1:", [sc_plain_copy_allowed]),
+    "hardlink_needs_no_canonical_list": ("    if here != canonical and os.path.lexists(canonical / WITHHOLDING_NAME):", "    if here != canonical:", [sc_hardlinked_ledger_without_canonical_list_allowed]),
+    "hardlink_applies_to_canonical": ("    if here != canonical and os.path.lexists(canonical / WITHHOLDING_NAME):", "    if os.path.lexists(canonical / WITHHOLDING_NAME):", [sc_canonical_ledger_with_other_links_allowed]),
+    "hardlink_missing_ledger_refused": ("            nlink = 1                   # no ledger yet", "            nlink = 2                   # no ledger yet", [sc_no_ledger_yet_relocated]),
+    # F2
+    "summary_lists_all_entries": ('out["withheld"] = sorted(suppressed)', 'out["withheld"] = sorted(withheld)', [sc_seen_but_not_suppressed_is_not_unmatched, sc_unmatched_reported]),
+    "unmatched_never": ("        if unmatched:", "        if False:", [sc_unmatched_reported]),
+    "unmatched_always": ("        if unmatched:", "        if True:", [sc_unmatched_absent_when_all_match]),
+    "unmatched_seen_not_recorded": ("                seen.add(f\"{a['asset_id']}-{crit}\")\n", "                pass\n", [sc_unmatched_absent_when_all_match]),
+    "unmatched_seen_only_if_suppressed": ([ "                seen.add(f\"{a['asset_id']}-{crit}\")\n", "                    suppressed.add(gid)\n"],
+                                          ["                pass\n", "                    suppressed.add(gid); seen.add(gid)\n"], [sc_seen_but_not_suppressed_is_not_unmatched]),
+    "unmatched_scope_ignored": ('(scope is None or e["asset"] in scope)', "True", [sc_unmatched_scoped]),
+    "asset_check_off": ('        if not (_ASSET_ID.fullmatch(asset) and any(asset.startswith(v["prefix"]) for v in LAYERS.values())):', "        if False:",
+                        [sc_asset_case_variant_refused, sc_asset_unknown_layer_refused, sc_asset_non_identifier_refused]),
+    "asset_format_off": ("_ASSET_ID.fullmatch(asset) and any(", "True and any(", [sc_asset_non_identifier_refused]),
+    "asset_prefix_off": ('any(asset.startswith(v["prefix"]) for v in LAYERS.values())', "True", [sc_asset_unknown_layer_refused]),
+    # F4
+    "depth_check_off": ("    if _wh_max_depth(text) > WH_MAX_JSON_DEPTH:", "    if False:", [_deep_case(64), _deep_case(69)]),
+    "depth_off_by_one": ("    if _wh_max_depth(text) > WH_MAX_JSON_DEPTH:", "    if _wh_max_depth(text) >= WH_MAX_JSON_DEPTH:", [sc_depth_64_accepted]),
+    "depth_limit_65": ("WH_MAX_JSON_DEPTH = 64 ", "WH_MAX_JSON_DEPTH = 65 ", [_deep_case(64)]),
+    "depth_strings_counted": ("        elif ch == '\"':\n            in_str = True", "        elif ch == '\"':\n            in_str = False", [sc_depth_string_brackets_ignored]),
+    "depth_escape_ignored": ('            elif ch == "\\\\":\n                esc = True', "            elif False:\n                esc = True", [sc_depth_string_brackets_ignored]),
+    "depth_close_ignored": ("            depth -= 1\n    return best", "            pass\n    return best", [sc_depth_siblings_accepted]),
+    "recursion_unguarded": ('    except RecursionError as exc:\n        raise ValueError("nesting too deep") from exc', '    except ZeroDivisionError as exc:\n        raise ValueError("nesting too deep") from exc', [sc_recursion_error_is_a_refusal]),
+    # git env
+    "git_env_not_scrubbed": ("capture_output=True, timeout=30, env=_git_env(), shell=False)", "capture_output=True, timeout=30, shell=False)", [sc_git_env_scrubbed]),
     "not_in_git_ignored": ('        if present:\n            raise WithholdingRefused("withholding_not_in_git", f"{WITHHOLDING_NAME} is present',
                            '        if False:\n            raise WithholdingRefused("withholding_not_in_git", f"{WITHHOLDING_NAME} is present', [sc_not_in_git]),
     "deleted_ignored": ("        if tracked or _wh_git(top, \"cat-file\", \"-e\", f\"HEAD:{rel}\").returncode == 0:",
@@ -641,6 +1024,8 @@ MUTATIONS = {
     "cli_exit_code": ("            return EXIT_WITHHOLDING\n\n    stamp = census_stamp()", "            return 0\n\n    stamp = census_stamp()", None),
     "cli_preflight_removed": ("            load_withholding_entries()      # N-100: refuse a bad withholding list before any measuring",
                               "            pass      # N-100", None),
+    "cli_warning_dropped": ("            if g.get(\"withheld_unmatched\"):\n", "            if False:\n", "warn"),
+    "cli_warning_always": ("            if g.get(\"withheld_unmatched\"):\n", "            if True:\n", "warn"),
     "cli_loop_catch_exit": ("                return EXIT_WITHHOLDING\n            print(f\"  ledger:", "                return 0\n            print(f\"  ledger:", "loop"),
 }
 
@@ -652,6 +1037,9 @@ def test_mutation_is_killed(name, tmp_path, monkeypatch):
     assert _alive(m, tmp_path), f"{name}: the mutant must still pass the baseline (else it is merely broken)"
     if scenarios is None:                                   # the CLI preflight
         assert sc_cli_refusal(m, tmp_path / "cli", monkeypatch) is False
+        return
+    if scenarios == "warn":                                 # the CLI unmatched warning
+        assert sc_cli_warning(m, tmp_path / "cli", monkeypatch) is False
         return
     if scenarios == "loop":                                 # the CLI per-layer catch
         assert sc_cli_refusal_in_loop(m, tmp_path / "cli", monkeypatch) is False

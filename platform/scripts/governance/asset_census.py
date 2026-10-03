@@ -9327,9 +9327,18 @@ def _emit_scope(census: dict, assets) -> frozenset | None:
 # write a CLOSED (credit) row for a withheld cell. The rule now lives here, where the rows are written: a withheld
 # gap id gets NO row of any kind (no OPEN, no RE-OPEN, no CLOSED, no supersede), whatever the cell now measures.
 # ABSENT file = no withholding. A PRESENT file that is not a regular file, malformed, not tracked, not at HEAD or
-# different from HEAD in any way (content, mode, index) makes the emit REFUSE before the ledger is opened; so does a
-# file that is tracked at HEAD but missing from the work tree (a deleted withholding list must not silently lift
-# every withholding). This reader is deliberately a minimal re-statement of nikasha_fold.load_withholding's schema
+# different from HEAD (its bytes read differ from `git show HEAD:<file>`, or `git diff --quiet HEAD` reports a content,
+# mode or staged difference) makes the emit REFUSE before the ledger is opened; so does a file that is tracked at HEAD
+# but missing from the work tree (a deleted withholding list must not silently lift every withholding). HEAD is
+# whatever is checked out: a COMMITTED weakening of the list on the current branch passes (the same as the fold; the
+# list is changed only by a reviewed PR). A staged edit whose work tree was reverted to HEAD's bytes is not detected
+# (the bytes read equal HEAD's and the committed content is what is honoured).
+# The list is read beside the ledger's CTRL AND beside the real directory of the ledger file (a ledger relocated by
+# NIKASHA_CONTROL_DIR that is a symlink to the canonical one is still governed by the canonical list), under the same
+# rules in each place; a relocated ledger with more than one hard link is refused when the canonical list exists (a
+# hard link cannot be traced to its twin); a plain COPY of the ledger is a separate ledger and stays allowed. An entry
+# naming an asset that is not a well-formed asset id of a known layer is refused; one that is well formed but matches
+# no measured cell of the emit (a typo that would silently withhold nothing) is reported in `withheld_unmatched`. This reader is deliberately a minimal re-statement of nikasha_fold.load_withholding's schema
 # (fold imports this module, so it cannot be imported from here); __tests__/test_e6_emit_gaps_withholding.py pins the
 # two to the same verdict whenever nikasha_fold.py exists.
 WITHHOLDING_NAME = "NIKASHA_WITHHOLDING.json"
@@ -9358,7 +9367,33 @@ def _wh_no_constant(c):
     raise ValueError(f"non-finite constant {c}")
 
 
+WH_MAX_JSON_DEPTH = 64      # = nikasha_certify.MAX_JSON_DEPTH, which the fold's strict_json_loads applies
+
+
+def _wh_max_depth(text: str) -> int:
+    depth = best = 0
+    in_str = esc = False
+    for ch in text:
+        if in_str:
+            if esc:
+                esc = False
+            elif ch == "\\":
+                esc = True
+            elif ch == '"':
+                in_str = False
+        elif ch == '"':
+            in_str = True
+        elif ch in "[{":
+            depth += 1
+            best = max(best, depth)
+        elif ch in "]}":
+            depth -= 1
+    return best
+
+
 def _wh_strict_json(text: str):
+    if _wh_max_depth(text) > WH_MAX_JSON_DEPTH:
+        raise ValueError(f"nesting deeper than {WH_MAX_JSON_DEPTH}")
     try:
         return json.loads(text, object_pairs_hook=_wh_no_dup_keys, parse_constant=_wh_no_constant)
     except RecursionError as exc:
@@ -9386,6 +9421,9 @@ def _wh_validate(raw: bytes) -> dict:
         asset, crit = e.get("asset"), e.get("criterion")
         if not (isinstance(asset, str) and asset and isinstance(crit, str) and crit):
             raise WithholdingRefused("withholding_malformed", f"entry {key!r} needs a non-empty asset and criterion")
+        if not (_ASSET_ID.fullmatch(asset) and any(asset.startswith(v["prefix"]) for v in LAYERS.values())):
+            raise WithholdingRefused("withholding_unknown_asset", f"entry {key!r}: {asset!r} is not a well-formed asset id of a known "
+                                     "layer (lower-case, <layer prefix>_...): a case variant or typo would silently withhold nothing")
         if key != f"{asset}-{crit}":
             raise WithholdingRefused("withholding_malformed", f"entry key {key!r} is not <asset>-<criterion> = {asset}-{crit}")
         if crit not in CRITERION_REGISTRY:
@@ -9400,23 +9438,32 @@ def _wh_validate(raw: bytes) -> dict:
     return data["entries"]
 
 
-def load_withholding_entries() -> dict:
-    """{gap_id: entry} for the withholding list beside the ledger (`CTRL / NIKASHA_WITHHOLDING.json`), {} when the
-    file is absent, WithholdingRefused when it is present (or tracked) and not provably good. Never writes."""
-    p = CTRL / WITHHOLDING_NAME
+def _wh_git_ancestor(d: Path) -> bool:
+    """True when `d` or one of its ancestors holds a `.git` entry (it sits inside a git checkout, so "git cannot answer"
+    is not the same as "not a repository")."""
+    real = Path(os.path.realpath(d))
+    return any(os.path.lexists(q / ".git") for q in (real, *real.parents))
+
+
+def _load_withholding_dir(dirpath) -> dict:
+    """The entries of `<dirpath>/NIKASHA_WITHHOLDING.json` ({} when absent), under the fail-closed rules described above."""
+    p = Path(dirpath) / WITHHOLDING_NAME
     present = os.path.lexists(p)
     if not present and not p.parent.is_dir():
         return {}
     try:
         r = _wh_git(p.parent, "rev-parse", "--show-toplevel")
     except WithholdingRefused:
-        if present:
-            raise
-        return {}                       # absent file, no git: nothing to prove deleted
+        if present or _wh_git_ancestor(p.parent):
+            raise                       # a file we cannot prove clean, or a checkout whose git will not answer: refuse
+        return {}                       # absent file, not in a checkout, no git: nothing to prove deleted
     if r.returncode != 0:
         if present:
             raise WithholdingRefused("withholding_not_in_git", f"{WITHHOLDING_NAME} is present but not inside a git work tree: "
                                      "it cannot be proven tracked and clean at HEAD")
+        if _wh_git_ancestor(p.parent):
+            raise WithholdingRefused("withholding_git_unavailable", "git cannot answer for a directory inside a git checkout: "
+                                     "a deleted withholding list could not be detected")
         return {}                       # absent and not a repo: no withholding
     top = Path(os.path.realpath(r.stdout.decode("utf-8", "replace").strip()))
     real_dir = Path(os.path.realpath(p.parent))
@@ -9441,11 +9488,37 @@ def load_withholding_entries() -> dict:
     if head.returncode != 0:
         raise WithholdingRefused("withholding_not_at_head", f"{rel} has no committed version at HEAD (no HEAD, or a shallow/odd checkout)")
     if _wh_git(top, "diff", "--quiet", "HEAD", "--", rel).returncode != 0:
-        raise WithholdingRefused("withholding_dirty", f"{rel} differs from HEAD (content, mode or index): commit it before emitting")
+        raise WithholdingRefused("withholding_dirty", f"{rel} differs from HEAD (a content, mode or staged difference): commit it before emitting")
     if head.stdout != raw:
         raise WithholdingRefused("withholding_dirty", f"{rel}: the bytes read differ from the committed bytes at HEAD "
                                  "(git is not reporting the change: assume-unchanged / skip-worktree?)")
     return _wh_validate(raw)
+
+
+def load_withholding_entries() -> dict:
+    """{gap_id: entry} for the withholding list beside the ledger (`CTRL / NIKASHA_WITHHOLDING.json`) and, when the ledger
+    file really lives elsewhere (a symlink, or a symlinked directory), beside its real directory too; {} when absent,
+    WithholdingRefused when a list is present (or tracked) and not provably good, or when a relocated ledger has more than
+    one hard link while the canonical list exists. Never writes."""
+    ledger = CTRL / "asset_gaps.jsonl"
+    here = Path(os.path.realpath(CTRL))
+    dirs = [CTRL]
+    real = Path(os.path.realpath(ledger)).parent
+    if real != here:
+        dirs.append(real)
+    canonical = Path(os.path.realpath(ROOT / "00_ARCHITECTURE" / "control"))
+    if here != canonical and os.path.lexists(canonical / WITHHOLDING_NAME):
+        try:
+            nlink = os.stat(ledger).st_nlink
+        except OSError:
+            nlink = 1                   # no ledger yet (or unreadable: the append will fail on its own)
+        if nlink > 1:
+            raise WithholdingRefused("withholding_ledger_hardlinked", f"{ledger} has {nlink} hard links and the canonical "
+                                     "withholding list exists: a hard link cannot be traced to its twin, so the ledger is not provably governed")
+    out: dict = {}
+    for d in dirs:
+        out.update(_load_withholding_dir(d))
+    return out
 
 
 def emit_gaps_summary(census: dict, assets=None) -> dict:
@@ -9509,9 +9582,10 @@ def emit_gaps_summary(census: dict, assets=None) -> dict:
     WITHHOLDING (SS ruling N-100). A (asset, criterion) cell whose gap id `<asset>-<criterion>` is an entry of
     `CTRL/NIKASHA_WITHHOLDING.json` gets NO row of any kind: no OPEN, no RE-OPEN, no CLOSED credit, no supersede, even
     when the cell now reads PASS/N-A and an OPEN row exists; the suppressed ids come back in the summary's `withheld`
-    (present only when the list has entries). An absent file changes nothing; a present file that is malformed,
+    (present only when the list has entries); entries that matched no measured cell of the emit come back in
+    `withheld_unmatched` (only when non-empty). An absent file changes nothing; a present file that is malformed,
     untracked, not at HEAD, or different from HEAD raises WithholdingRefused before the ledger is opened (see
-    `load_withholding_entries`). A scoped run applies the same filter. Withholding never touches RETIRED_CRITERIA closure:
+    `load_withholding_entries` and the N-100 comment above it for exactly what "different" means and which lists are read). A scoped run applies the same filter. Withholding never touches RETIRED_CRITERIA closure:
     a withheld criterion must be a registry criterion, and the two sets are disjoint (import-time check).
 
     SCOPE (E1.9). A census carrying `scope` (a scoped measure()), and/or `assets=[...]`, restricts the emit to those
@@ -9525,6 +9599,7 @@ def emit_gaps_summary(census: dict, assets=None) -> dict:
     validate_na_rule_decisions()
     withheld = load_withholding_entries()       # N-100: raises WithholdingRefused BEFORE the ledger is opened or read
     suppressed: set[str] = set()
+    seen: set[str] = set()          # every (asset, criterion) cell this emit looked at, whatever its verdict
     path = CTRL / "asset_gaps.jsonl"
     latest: dict[str, dict] = {}
     # F5 (A_REVIEW.md, non-blocking correction): `superseded_by` must be a PERMANENT flag on the
@@ -9578,6 +9653,7 @@ def emit_gaps_summary(census: dict, assets=None) -> dict:
             if scope is not None and a["asset_id"] not in scope:
                 continue  # E1.9: an asset outside the scope is never decided about, never written
             for crit, res in a["measurements"].items():
+                seen.add(f"{a['asset_id']}-{crit}")
                 if crit in RETIRED_CRITERIA:
                     continue  # a retired criterion never opens, re-opens or closes by measurement
                 v = res["v"]
@@ -9650,6 +9726,9 @@ def emit_gaps_summary(census: dict, assets=None) -> dict:
                **({"info_only_suppressed": info_suppressed} if info_suppressed else {}))
     if withheld:
         out["withheld"] = sorted(suppressed)    # only present when a withholding list is in force: the absent-file result is unchanged
+        unmatched = sorted(g for g, e in withheld.items() if g not in seen and (scope is None or e["asset"] in scope))
+        if unmatched:
+            out["withheld_unmatched"] = unmatched   # entries that matched no measured cell of this emit (a typo withholds nothing)
     return out
 
 
@@ -9765,6 +9844,9 @@ def main() -> int:
             if g.get("info_only_suppressed"):
                 print(f"  ledger: {g['info_only_suppressed']} failing cell(s) on info-only families "
                       f"({', '.join(INFO_ONLY_GATES)}) measured, not opened as gaps (E6.4)")
+            if g.get("withheld_unmatched"):
+                print(f"  ledger: WARNING — withholding entr(ies) matched no measured cell of this run (a typo or a stale entry "
+                      f"withholds nothing): {', '.join(g['withheld_unmatched'])}")
             if g.get("withheld"):
                 print(f"  ledger: WITHHELD (no row of any kind written): {', '.join(g['withheld'])}")
             if g["retired_opportunity_rows_left"]:
