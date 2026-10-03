@@ -159,3 +159,10 @@ Disposition accepted as proposed (Q10). Items marked (R) are PROVISIONAL until t
 3. CF-04: ANSWERED by SS 2026-10-01 (Q2): Dens applies wherever an asset reaches a served surface. A reference vocabulary of uniform authority declares `uniform_authority: true` in the declarations file and Dens then PASSes on `density_contract` facets without a tier column (R, PROVISIONAL until the J1 review); mixed-authority tables need a real tier. Re-measure first with the current inspector (done offline here, see INDEX section 9).
 
 **Track I items arising (see INDEX section 8):** TI-L0-03, TI-L0-05, TI-L0-06, TI-L0-20.
+
+
+## 8 · WAVE addendum (2026-10-03, Track I I.FL0; docs only, additive, PROVISIONAL like the rest of this brief)
+
+**Disposition note, N-102 (owner ruling): deferred by owner (N-102): source not held.** The owner ruled to leave classical texts the platform does not hold: this asset is NOT being provenance-confirmed now. It stays NO_DETECTOR on Carr and is not elevated in this campaign. This is an OWNER DECISION relayed by Exec Suvarna (the N-102 text itself was not available to this lane); it is not a finding about the corpus. No other disposition in this brief changes; the fix designs above stay valid but are not to be scheduled for Carr in this campaign.
+
+**Reconciliation with this brief:** this asset is itself a citation-to-chunk crosswalk of 14 mappings: 1 resolved to a served `classical_text_chunks` row and 13 recorded as honest corpus gaps (section 0). So it is not 'a source we do not hold' in one piece: the deferral is the owner's decision not to confirm its provenance now, and its existing resolved/unresolved split stays as recorded.
