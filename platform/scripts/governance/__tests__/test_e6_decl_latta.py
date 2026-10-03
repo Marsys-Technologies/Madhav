@@ -144,6 +144,12 @@ def test_the_entry_declares_what_the_strategist_ruled():
     assert LS["source_column"] == "verse_ref" and LS["citation_state"] == "sourced_ocr_unverified" and "na" not in LS
 
 
+def test_the_committed_latta_entry_carries_its_prose_coupling_and_deleting_it_is_refused():
+    """NARR-GUARD (N-94, review F1): prose_fields [] beside the D1 transcription carriage is valid only with the coupling to Carr.D1; the pin lives here as well as in test_e6_narr_guard.py."""
+    assert ENTRY["prose_fields"] == [] and ENTRY["prose_coupling"]["to"] == "carriage_d1" and ENTRY["prose_coupling"]["columns"] == ["effect_description", "affliction_condition"]
+    _refused(lambda e: e.pop("prose_coupling"), "prose_coupling is missing")
+
+
 def test_the_passage_is_never_copied_into_the_declaration():
     blob = " ".join(CHUNKS[i]["content_en"] for i in IDS)
     seg = d1.cut_span(d1._ws(blob), SPEC["span"])[0]

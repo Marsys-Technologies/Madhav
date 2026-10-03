@@ -486,7 +486,7 @@ def narr_coupling_problem(crit: str, layer: str, meas, facts, all_meas) -> str |
     if blk is None and fcp is None:
         return None
     if not (isinstance(blk, dict) and blk.get("to") == PROSE_COUPLING_TO and isinstance(blk.get("columns"), list) and blk["columns"]
-            and isinstance(blk.get("covered"), dict) and set(blk["covered"]) == set(blk["columns"])):
+            and all(isinstance(c, str) for c in blk["columns"]) and isinstance(blk.get("covered"), dict) and set(blk["covered"]) == set(blk["columns"])):
         return ("Narr N/A rests on Carr.D1 PASS (coupled): the asset is coupled (declared or recorded) but this record carries no well-formed prose_coupling block, so what it "
                 "rests on cannot be read")
     if fcp is not None and (fcp.get("to") != blk.get("to") or fcp.get("columns") != blk.get("columns") or fcp.get("covered") != blk.get("covered")):

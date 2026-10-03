@@ -44,7 +44,7 @@ PC = ENTRY["prose_coupling"]
 COLS, TYPES, CAT, R = dl.COLS, ln.TYPES, ln.CAT, ln.R
 NARR = list(ac.NARR_CHECKS)
 SAVED = dl.SAVED
-FACTS = {"declared_prose_coupling": {"to": PC["to"], "columns": list(PC["columns"])}}
+FACTS = {"declared_prose_coupling": {"to": PC["to"], "columns": list(PC["columns"]), "covered": {"effect_description": "effect", "affliction_condition": "affliction_condition"}}}
 FILES = ["bg_phaladeepika_vedha.py"]
 EXISTING_EMPTY = ["bg_doshas", "bg_ontology", "bg_yogas", "bo_laksana_rerank"]    # the four assets that declared prose_fields [] before this lane
 ROOT = ac.ROOT
@@ -226,7 +226,7 @@ def test_the_old_guards_still_come_first_unreadable_writes_and_a_narration_vocab
 
 def test_declared_facts_carry_the_coupling_only_for_the_asset_that_declares_it():
     decl = ac.load_asset_declarations()
-    assert ac.declared_facts(decl, AID)["declared_prose_coupling"] == dict(to="carriage_d1", columns=["effect_description", "affliction_condition"])
+    assert ac.declared_facts(decl, AID)["declared_prose_coupling"] == dict(to="carriage_d1", columns=["effect_description", "affliction_condition"], covered={"effect_description": "effect", "affliction_condition": "affliction_condition"})
     for a in EXISTING_EMPTY + ["bg_phaladeepika_latta_none"]:
         assert "declared_prose_coupling" not in ac.declared_facts(decl, a)
 
@@ -401,6 +401,106 @@ def test_the_narr_guard_never_touches_a_non_narr_criterion_or_a_non_na_record():
     assert ac.narr_coupling_problem("Null.blank_rows", "L0", dict(v=PASS), FACTS, ms) is None
     assert ac.narr_coupling_problem("Narr.agree", "L0", None, FACTS, ms) is None
     assert ac.narr_coupling_problem("Narr.agree", "L0", dict(v=FAIL, measured="x"), None, ms) is None
+
+
+# ───────────────────────── review F1-F5 (adversarial review of #2998) ─────────────────────────
+
+def _strip(e=ENTRY):
+    return {k: v for k, v in e.items() if k != "prose_coupling"}
+
+
+def test_F1_deleting_the_prose_coupling_block_is_refused_by_validation_and_names_the_missing_coupling():
+    with pytest.raises(ac.DeclarationsError, match="prose_coupling is missing.*needs a `prose_coupling` to carriage_d1"):
+        ac.validate_declarations(_doc(lambda e: e.pop("prose_coupling")))
+    assert ac.prose_empty_d1_problem(_strip()) and ac.prose_empty_d1_problem(ENTRY) is None
+    for nature, applies in (("computation", "D3"), ("derivation", "D2")):               # only a D1 transcription carriage triggers it
+        assert ac.prose_empty_d1_problem(dict(prose_fields=[], carriage=dict(nature=nature, applies=applies))) is None
+    assert ac.prose_empty_d1_problem(dict(prose_fields=[])) is None and ac.prose_empty_d1_problem(dict(prose_fields=None, carriage=ENTRY["carriage"])) is None
+
+
+def test_F1_the_four_earlier_empty_assets_are_not_touched_by_the_new_refusal():
+    decl = ac.load_asset_declarations()
+    for a in EXISTING_EMPTY:
+        assert decl[a]["prose_fields"] == [] and not isinstance(decl[a].get("carriage"), dict) or decl[a]["carriage"].get("nature") is None, a
+        assert ac.prose_empty_d1_problem(decl[a]) is None and "declared_prose_coupling_missing" not in ac.declared_facts(decl, a), a
+
+
+def test_F1_at_measure_time_a_stripped_entry_reads_no_detector_never_na():
+    out = ac.prose_checks(AID, _strip(), _ctx())
+    for c in ac.NARR_CHECKS + ac.NULL_CHECKS:
+        assert out[c]["v"] == NO_DET and "needs a `prose_coupling` to carriage_d1" in out[c]["measured"], c
+
+
+def test_F1_the_rollup_refuses_a_plain_narr_na_when_the_declaration_is_empty_prose_on_d1_without_its_coupling():
+    facts = ac.declared_facts({AID: _strip()}, AID)
+    assert facts["declared_prose_coupling_missing"] is True and "declared_prose_coupling" not in facts
+    plain = {c: ac._na("prose_fields [] declared", "no-prose") for c in NARR}
+    cell = ac.rollup_asset("L0", plain, facts)["Narr"]
+    assert cell["v"] == NO_DET and all("no prose_coupling" in c["reason"] for c in cell["checks"] if c["criterion"] in NARR)
+    assert ac.rollup_asset("L0", plain, {"declared_prose_fields": []})["Narr"]["v"] == NA
+
+
+def test_F2_the_gap_ledger_does_not_close_a_narr_row_for_a_hand_stripped_block_with_a_partial_d1(monkeypatch, tmp_path):
+    ms = _ms(_d1(rows=_one_word_off()), coupled=False)                          # the record dropped its block, D1 PARTIAL: the rollup reads NO_DETECTOR with the declared facts
+    (added, skipped, closed, reopened), states = _emit(monkeypatch, tmp_path, ms)
+    assert closed == 0 and set(states.values()) == {"OPEN"}
+    ms = _ms(_d1(), coupled=False)                                                # even with a PASS D1 the record must carry what it rests on
+    (added, skipped, closed, reopened), states = _emit(monkeypatch, tmp_path / "pass", ms)
+    assert closed == 0 and set(states.values()) == {"OPEN"}
+    ok = _emit(monkeypatch, tmp_path / "ok", _ms(_d1()))
+    assert ok[0][2] == 4 and set(ok[1].values()) == {"CLOSED"}
+
+
+def test_F3_a_forged_covered_map_is_not_honoured_the_declared_spec_coverage_decides():
+    ms = _ms(_d1())
+    assert _narr(ms, FACTS)[0]["v"] == NA
+    forged = {"effect_description": "effect", "affliction_condition": "effect"}      # points the second column at a result key that is True on every row
+    for c in NARR:
+        ms[c]["prose_coupling"]["covered"] = dict(forged)
+    cell, chk = _narr(ms, FACTS)
+    assert cell["v"] == NO_DET and "does not match the declared coupling and the D1 spec's own coverage" in chk["Narr.agree"]["reason"]
+    no_cov = dict(FACTS["declared_prose_coupling"])
+    no_cov.pop("covered")
+    assert _narr(_ms(_d1()), {"declared_prose_coupling": no_cov})[0]["v"] == NO_DET   # a declared fact without its coverage cannot vouch
+
+
+def test_F3_declared_facts_derive_the_coverage_from_the_spec():
+    decl = ac.load_asset_declarations()
+    assert ac.declared_facts(decl, AID)["declared_prose_coupling"]["covered"] == {"effect_description": "effect", "affliction_condition": "affliction_condition"}
+    e = copy.deepcopy(ENTRY)
+    e["carriage"]["spec"]["extra_fields"] = [x for x in e["carriage"]["spec"]["extra_fields"] if x["column"] != "affliction_condition"]
+    assert ac.declared_facts({AID: e}, AID)["declared_prose_coupling"]["covered"] is None
+
+
+@pytest.mark.parametrize("name", ["effect", "count", "direction"])
+def test_F4_an_extra_field_named_like_a_matcher_result_key_is_refused(name):
+    ef = {"column": name, "kind": "equals", "value": "x"}
+    with pytest.raises(ac.DeclarationsError, match="collides with a result key"):
+        ac.validate_declarations(_doc(lambda e: e["carriage"]["spec"]["extra_fields"].append(ef)))
+    spec = copy.deepcopy(SPEC)
+    spec["extra_fields"].append(dict(ef, kind="passage_text"))
+    with pytest.raises(d1.SpecError):
+        d1.prose_coverage(spec)
+    assert "collides" in (ac.prose_coupling_problem(dict(ENTRY, carriage=dict(CAR, spec=spec))) or "")
+
+
+def test_F5_a_d1_evaluation_error_is_not_swallowed_into_a_pass():
+    ms = _ms(_d1())
+    ms["Carr.D1"] = dict(ms["Carr.D1"], v="BOGUS")
+    bad = ac.narr_coupling_problem("Narr.agree", "L0", ms["Narr.agree"], FACTS, ms)
+    assert bad and "Carr.D1 cannot be evaluated" in bad
+    assert ac.narr_coupling_problem("Narr.agree", "NOPE", ms["Narr.agree"], FACTS, _ms(_d1())) is not None
+
+
+def test_F5_a_malformed_block_is_refused_not_a_crash():
+    for mut in (lambda b: b.__setitem__("columns", []), lambda b: b.pop("covered"), lambda b: b.__setitem__("columns", "effect_description"),
+                lambda b: b.__setitem__("covered", ["effect"]), lambda b: b.__setitem__("covered", {"effect_description": 1, "affliction_condition": None}),
+                lambda b: b.__setitem__("columns", [["x"]]), lambda b: b.clear()):
+        ms = _ms(_d1())
+        for c in NARR:
+            mut(ms[c]["prose_coupling"])
+        assert ac.narr_coupling_problem("Narr.agree", "L0", ms["Narr.agree"], FACTS, ms) is not None
+        assert _narr(ms, FACTS)[0]["v"] == NO_DET and _narr(ms)[0]["v"] == NO_DET
 
 
 # ───────────────────────── Part 4: REAL detectors on a disposable Postgres ─────────────────────────
@@ -591,7 +691,7 @@ def nworld(tmp_path, ms, *, entry=ENTRY, census_src=None, text=None, crits=(NCRI
     pathlib_tmp = pathlib.Path(tmp_path)
     pathlib_tmp.mkdir(parents=True, exist_ok=True)
     w = World(tmp_path, census=census_src or rd.CENSUS_TEXT)
-    ent = {k: entry.get(k) for k in ("prose_fields", "prose_coupling") if entry.get(k) is not None}
+    ent = {k: entry.get(k) for k in ("prose_fields", "prose_coupling", "carriage") if entry.get(k) is not None}
     w.declarations_text = json.dumps({"version": "1.0.0", "assets": {AID: ent}}, indent=2) + "\n"
     body = text if text is not None else json.dumps(_census_with(ms))
     w.raw[CFILE] = body
@@ -652,11 +752,37 @@ def test_the_reader_fails_closed_on_a_ref_whose_census_has_no_guard_and_leaves_a
     inert = rd.CENSUS_TEXT.replace('    blk = meas.get("prose_coupling")\n    fcp = facts.get', '    return None\n    blk = meas.get("prose_coupling")\n    fcp = facts.get')
     assert inert != rd.CENSUS_TEXT
     assert satisfied_narr(nworld(tmp_path / "inert_guard", _full(_d1(rows=_one_word_off())), census_src=inert)) == [False]       # a ref census whose guard never refuses: the reader's own D1 PASS requirement holds
-    plain = {c: dict(v=NA, measured="x", cause="no-prose") for c in NARR}               # a declaration with NO coupling: the declared rule alone decides, exactly as before
-    uncoupled = dict(ENTRY)
-    uncoupled.pop("prose_coupling")
-    assert satisfied_narr(nworld(tmp_path / "uncoupled", plain, entry=uncoupled)) == [True]
-    assert satisfied_narr(nworld(tmp_path / "uncoupled_nocensus", plain, entry=uncoupled, text="{}")) == [True]
+    plain = {c: dict(v=NA, measured="x", cause="no-prose") for c in NARR}               # a [] declaration with NO carriage check (bg_yogas shape): the declared rule alone decides, exactly as before
+    nocar = {"prose_fields": [], "evidence": ENTRY["evidence"]}
+    assert satisfied_narr(nworld(tmp_path / "nocarriage", plain, entry=nocar)) == [True]
+    assert satisfied_narr(nworld(tmp_path / "nocarriage_nocensus", plain, entry=nocar, text="{}")) == [True]
+
+
+def test_F1_the_reader_refuses_a_ref_declaration_that_is_empty_prose_on_a_d1_carriage_without_its_coupling(tmp_path):
+    """Delete the prose_coupling block, keep prose_fields [] and the D1 carriage: the declaration at the ref is refused (with a census that records a plain N/A, with the full
+    record and a D1 PASS, and with no census at all): never counted."""
+    stripped = {k: v for k, v in ENTRY.items() if k != "prose_coupling"}
+    plain = {c: dict(v=NA, measured="x", cause="no-prose") for c in NARR}
+    assert satisfied_narr(nworld(tmp_path / "plain", plain, entry=stripped)) == [False]
+    assert satisfied_narr(nworld(tmp_path / "pass", _full(_d1()), entry=stripped)) == [False]
+    assert satisfied_narr(nworld(tmp_path / "nocensus", plain, entry=stripped, text="{}")) == [False]
+    assert satisfied_narr(nworld(tmp_path / "coupled", _full(_d1()))) == [True]            # the committed (coupled) entry still counts
+
+
+def test_F5_a_driver_error_at_the_ref_fails_closed(tmp_path):
+    boom = rd.CENSUS_TEXT.replace('    blk = meas.get("prose_coupling")\n    fcp = facts.get', '    raise RuntimeError("boom")\n    blk = meas.get("prose_coupling")\n    fcp = facts.get')
+    assert boom != rd.CENSUS_TEXT
+    assert satisfied_narr(nworld(tmp_path / "boom", _full(_d1()), census_src=boom)) == [False]
+
+
+def test_F5_the_reader_cache_is_keyed_by_the_request_two_criteria_of_one_ref_do_not_share_an_answer(tmp_path):
+    ms = _full(_d1())
+    ms["Narr.lint"] = dict(v=NO_DET, measured="NO_DETECTOR - this record is not an N/A")             # same ref, same census, same asset: only the criterion differs
+    ms["Narr.lint"].pop("prose_coupling", None)
+    w = nworld(tmp_path / "two", ms, crits=("Narr.agree", "Narr.lint"))
+    assert satisfied_narr(w, ("Narr.agree", "Narr.lint")) == [True, False]
+    T._E63_NARR_CACHE.clear()
+    assert satisfied_narr(w, ("Narr.lint", "Narr.agree")) == [False, True]
 
 
 def test_the_reader_holds_no_copy_of_the_rule():
