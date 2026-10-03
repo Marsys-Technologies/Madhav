@@ -1,7 +1,8 @@
 """
 tests/l2/test_bo_cgm_paths_narr_golden.py -- Narr golden-value test for bo_cgm_paths
 
-Track I item TI-L2-11 (Track A A.L2 brief ``bo_cgm_paths_ELEVATION_BRIEF_v1_0.md`` FD-2,
+Track I item TI-L2-11 (Track A A.L2 brief ``bo_cgm_paths_ELEVATION_BRIEF_v1_0.md`` FD-2, which exists only on
+unmerged PR #2831;
 cross-asset fix CF-14): ``bodha_cgm_paths.path_label_human`` is narration. It is the
 sentence a reader sees for a dispositor chain, and ``is_final_dispositor`` is the
 structured fact next to it. A passing build says nothing about whether the two agree
@@ -106,13 +107,13 @@ def test_two_hop_chain_to_a_self_ruling_node_is_narrated_final() -> None:
     assert chains["n-merc"]["node_chain"] == ["n-merc"]
 
 
-def test_sun_in_capricorn_to_saturn_in_aquarius_is_final() -> None:
+def test_sun_in_libra_to_venus_in_taurus_is_final() -> None:
     nodes = [
-        _node("n-sun", "sun", "capricorn", "Sun"),
-        _node("n-sat", "saturn", "aquarius", "Saturn"),
+        _node("n-sun", "sun", "libra", "Sun"),
+        _node("n-ven", "venus", "taurus", "Venus"),
     ]
-    chains = _run(nodes, [_edge("e1", "n-sun", "n-sat")])
-    assert chains["n-sun"]["label"] == "Sun → Saturn (final dispositor)"
+    chains = _run(nodes, [_edge("e1", "n-sun", "n-ven")])
+    assert chains["n-sun"]["label"] == "Sun → Venus (final dispositor)"
     assert chains["n-sun"]["is_final_dispositor"] is True
 
 
@@ -135,16 +136,35 @@ def test_looped_chain_is_never_narrated_final() -> None:
 
 
 def test_unfinished_chain_is_not_narrated_final() -> None:
-    # Mars in Capricorn -> Saturn, but Saturn's own dispositor edge is absent and Saturn
-    # sits in Gemini (not a sign it rules): the chain stops, with no final claim.
+    # Mars in Virgo -> Mercury, but Mercury's own dispositor edge is absent and Mercury
+    # sits in Leo (not a sign it rules): the chain stops, with no final claim.
     nodes = [
-        _node("n-mars", "mars", "capricorn", "Mars"),
-        _node("n-sat", "saturn", "gemini", "Saturn"),
+        _node("n-mars", "mars", "virgo", "Mars"),
+        _node("n-merc", "mercury", "leo", "Mercury"),
     ]
-    chains = _run(nodes, [_edge("e1", "n-mars", "n-sat")])
-    assert chains["n-mars"]["label"] == "Mars → Saturn"
+    chains = _run(nodes, [_edge("e1", "n-mars", "n-merc")])
+    assert chains["n-mars"]["label"] == "Mars → Mercury"
     assert chains["n-mars"]["is_final_dispositor"] is False
-    assert "n-sat" not in chains  # Saturn has no hop and is not self-ruling: no chain
+    assert "n-merc" not in chains  # Mercury has no hop and is not self-ruling: no chain
+
+
+def test_unfinished_multi_hop_chain_is_not_narrated_final() -> None:
+    # Mars in Leo -> Sun; Sun in Pisces -> Jupiter; Jupiter in Gemini has no dispositor
+    # edge and is not in a sign it rules: a two-hop chain that stops unfinished.
+    nodes = [
+        _node("n-mars", "mars", "leo", "Mars"),
+        _node("n-sun", "sun", "pisces", "Sun"),
+        _node("n-jup", "jupiter", "gemini", "Jupiter"),
+    ]
+    edges = [_edge("e1", "n-mars", "n-sun"), _edge("e2", "n-sun", "n-jup")]
+    chains = _run(nodes, edges)
+    mars = chains["n-mars"]
+    assert mars["node_chain"] == ["n-mars", "n-sun", "n-jup"]
+    assert mars["label"] == "Mars → Sun → Jupiter"
+    assert mars["is_final_dispositor"] is False
+    assert chains["n-sun"]["label"] == "Sun → Jupiter"
+    assert chains["n-sun"]["is_final_dispositor"] is False
+    assert "n-jup" not in chains
 
 
 def test_label_follows_the_strongest_dispositor_edge() -> None:
@@ -164,9 +184,9 @@ def test_label_follows_the_strongest_dispositor_edge() -> None:
 
 
 def test_label_falls_back_to_node_subject_when_no_human_label() -> None:
-    nodes = [_node("n-sun", "sun", "capricorn", None), _node("n-sat", "saturn", "aquarius", None)]
-    chain = _run(nodes, [_edge("e1", "n-sun", "n-sat")])["n-sun"]
-    assert chain["label"] == "sun → saturn (final dispositor)"
+    nodes = [_node("n-sun", "sun", "libra", None), _node("n-ven", "venus", "taurus", None)]
+    chain = _run(nodes, [_edge("e1", "n-sun", "n-ven")])["n-sun"]
+    assert chain["label"] == "sun → venus (final dispositor)"
 
 
 def test_edge_to_a_node_missing_from_the_graph_is_not_narrated() -> None:
@@ -179,7 +199,7 @@ def test_edge_to_a_node_missing_from_the_graph_is_not_narrated() -> None:
 
 def test_label_agrees_with_structure_on_every_chain_of_a_mixed_graph() -> None:
     nodes = [
-        _node("n-sun", "sun", "capricorn", "Sun"),
+        _node("n-sun", "sun", "libra", "Sun"),
         _node("n-moon", "moon", "taurus", "Moon"),
         _node("n-mars", "mars", "cancer", "Mars"),
         _node("n-merc", "mercury", "gemini", "Mercury"),
@@ -188,7 +208,7 @@ def test_label_agrees_with_structure_on_every_chain_of_a_mixed_graph() -> None:
         _node("n-sat", "saturn", "aquarius", "Saturn"),
     ]
     edges = [
-        _edge("e-sun", "n-sun", "n-sat"),
+        _edge("e-sun", "n-sun", "n-ven"),
         _edge("e-moon", "n-moon", "n-ven"),
         _edge("e-ven", "n-ven", "n-merc"),
         _edge("e-mars", "n-mars", "n-moon"),      # Mars in Cancer -> Moon -> Venus -> Mercury

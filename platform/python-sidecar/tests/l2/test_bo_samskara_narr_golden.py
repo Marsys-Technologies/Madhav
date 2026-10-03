@@ -1,7 +1,8 @@
 """
 tests/l2/test_bo_samskara_narr_golden.py -- Narr golden-value test for bo_samskara
 
-Track I item TI-L2-11 (Track A A.L2 brief ``bo_samskara_ELEVATION_BRIEF_v1_0.md``,
+Track I item TI-L2-11 (Track A A.L2 brief ``bo_samskara_ELEVATION_BRIEF_v1_0.md``, which exists only on
+unmerged PR #2831,
 cross-asset fix CF-14): ``bodha_signal_embeddings.embedding_input_summary`` is the text
 that is embedded, stored next to the vector, and compared byte-for-byte to decide
 whether a prior embedding can be reused. It is composed from stored signal fields by
@@ -105,7 +106,7 @@ def test_configuration_key_order_cannot_change_the_text() -> None:
 
 def test_every_narrated_config_value_is_the_stored_value() -> None:
     cfg = {
-        "fact_key": "nakshatra", "fact_value_text": "Purva Bhadrapada",
+        "fact_key": "nakshatra", "fact_value_text": "Rohini",
         "graha": "Moon", "yoga": "vasi", "dosha": "kala_sarpa",
     }
     out = _build_input_summary(_sig(configuration_jsonb=cfg))
