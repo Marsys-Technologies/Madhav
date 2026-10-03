@@ -101,9 +101,12 @@ export interface NirmanaRegistryContractRow {
  * population — by ONE explicit, shape-conditioned rule (never "all inactive assets": retired identities belong to the frozen population).
  *
  * REMOVAL TRIGGER: when ka_gochara_v5 or ka_gochara_v4_41_candidate is ACTIVATED or RETIRED, its id is removed from this list IN THE SAME CHANGE.
- * A COMPLETED REAL RUN is ALSO a trigger: a successful run persists a provenance receipt that the v4.1 dispatch teardown does not delete, so
- * `has_runtime_evidence` stays true for good and the exclusion ends permanently (the monitor reads source_unavailable until the id is removed from this
- * list by retiring the asset or adjusting its frozen-population status — the authorised remedy; never a silent hand-delete of the receipt).
+ * EVERY REAL DISPATCH is ALSO a trigger, including a successful run: it leaves build_run_assets rows and (on success) a provenance receipt. Receipts
+ * survive the watchdog's pruning of old build runs, but `asset_provenance_receipts` has ON DELETE CASCADE to the registry row
+ * (supabase/migrations/596:12), so a receipt is NOT permanent evidence either — deleting the registry row cascades it away (the v4.1 teardown no longer
+ * deletes the row, #2997, but the cascade holds for any deletion). The exclusion therefore ends or silently resumes depending on what happened to the
+ * evidence rows; the rule that does not depend on that is the PROCEDURAL commitment: every real dispatch of either candidate, successful or not,
+ * requires its disposition (retire the asset or adjust its frozen-population status) and the removal of its id from this list IN THE SAME CHANGE.
  */
 export const NIRMANA_STAGED_INERT_CANDIDATES: ReadonlySet<string> = new Set(['ka_gochara_v4_41_candidate', 'ka_gochara_v5'])
 
@@ -139,11 +142,12 @@ export function excludeNirmanaStagedInertCandidates<T extends NirmanaRegistryCon
  * predicate — a cockpit refresh row is not a build, so it is not runtime evidence. NULL is "unknown" and is NEVER read as "no evidence":
  * `isNirmanaStagedInertCandidate` excludes only on `=== false`.
  *
- * KNOWN LIMIT (documented, Suvarṇa-approved fallback (b)): the cockpit watchdog PRUNES old build_run_assets / build_runs rows
- * (`app/api/cockpit/watchdog/route.ts:462-475`), and a FAILED run leaves no receipt — so a candidate whose only evidence was a pruned build row (plus a
- * throughput row nobody here may read) would look evidence-free again and be excluded. PROCEDURAL COMMITMENT that closes it: any REAL dispatch of
- * either candidate retires the asset or adjusts its frozen-population status IN THE SAME CHANGE (and removes its id from NIRMANA_STAGED_INERT_CANDIDATES).
- * A narrow SECURITY DEFINER function that also reads asset_throughput is prepared as a separate protected-class migration (draft); the loaders
+ * KNOWN LIMIT (documented, Suvarṇa-approved fallback (b)): the evidence is not permanent. The cockpit watchdog PRUNES old build_run_assets / build_runs
+ * rows (`app/api/cockpit/watchdog/route.ts:462-475`); a FAILED run leaves no receipt; and a receipt is deleted with its registry row
+ * (ON DELETE CASCADE, supabase/migrations/596:12). So a candidate whose only evidence was a pruned build row, or whose registry row was deleted and
+ * re-staged, can look evidence-free again and be excluded. PROCEDURAL COMMITMENT that closes it: EVERY real dispatch of either candidate — successful or
+ * not — retires the asset or adjusts its frozen-population status IN THE SAME CHANGE (and removes its id from NIRMANA_STAGED_INERT_CANDIDATES).
+ * A narrow SECURITY DEFINER function that also reads asset_throughput is prepared as a separate protected-class migration (draft, 1235); the loaders
  * switch to it in a later routine change, after that migration is applied.
  */
 export function runtimeEvidenceSql(alias: string): string {

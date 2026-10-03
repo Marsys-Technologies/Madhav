@@ -20,7 +20,7 @@ import { buildNirmanaBaselineCandidate, classifyNirmanaDivergence } from '../mon
 /**
  * PRAVĀHA #2996 (migration 1243) — the two staged inert Gochara candidates (ka_gochara_v4_41_candidate, ka_gochara_v5) hold asset_registry rows only
  * so the orchestrator's writer-gap pre-flight finds a row for every registered writer. They are excluded from the Nirmāṇa frozen population by ONE
- * shape-conditioned rule (Suvarṇa's conditions): inert shape AND positively no receipt / build-run / throughput evidence; never "all inactive".
+ * shape-conditioned rule (Suvarṇa's conditions): inert shape AND positively no receipt / build-run evidence; never "all inactive".
  * Both directions are asserted: inert ⇒ excluded and the monitor is healthy; any change of shape ⇒ NOT excluded and the monitor sees the row.
  */
 const V41 = 'ka_gochara_v4_41_candidate'
@@ -73,9 +73,9 @@ describe('staged inert Gochara candidates — excluded while inert, visible the 
   it.each([
     ['activated', { is_active: true }],
     ['gains a dependency', { depends_on: ['bg_reference'] }],
-    ['has a receipt / build-run / throughput row', { has_runtime_evidence: true }],
+    ['has a receipt / build-run row', { has_runtime_evidence: true }],
     ['the loader gave no evidence column', { has_runtime_evidence: undefined }],
-    ['the evidence function returned NULL (unknown)', { has_runtime_evidence: null }],
+    ['the evidence column is NULL (unknown)', { has_runtime_evidence: null }],
     ['lost its writer', { has_writer: false }],
     ['is RETIRED', { catalog_status: 'RETIRED' as const }],
   ])('v5 %s ⇒ NOT excluded, and the monitor sees it', (_name, over) => {
