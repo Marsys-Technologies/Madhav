@@ -138,6 +138,10 @@ def _apply(conn):
 
 def test_a_the_real_gap_check_reports_the_one_gap_before_and_none_after(world):
     conn, registered = world
+    # the guard is proven in ENFORCE mode: that is the code's default, so the mode in force is "enforce" unless the environment overrides it
+    from pipeline.orchestrator import runner
+    if not os.environ.get("ORCHESTRATOR_WRITER_GAP_CHECK"):
+        assert runner._WRITER_GAP_MODE == "enforce"
     assert V41 in registered, "ka_gochara_v4_41_candidate must be a registered writer on this tree"
     # before: the production defect, reproduced with the real check — on main exactly [V41]; on the a53 tree both inert writers are registered
     assert _gaps(conn, registered) == sorted({V41, V5} & registered)
