@@ -62,7 +62,7 @@ def _line(ptr_or_path, n=None):
 # ───────────────────────── Part 1: the entry ─────────────────────────
 
 def test_the_file_is_1_11_0_the_validator_accepts_it_and_only_this_asset_changed_its_entry_and_the_description_names_it():
-    assert DECL["version"] == "1.11.0"
+    assert DECL["version"] == "1.12.0"      # 1.11.0 added the null_convention; 1.12.0 (NARR-GUARD) the latta prose_fields [] + prose_coupling
     ac.validate_declarations(DECL)
     sentence = DECL["description"].split("Version 1.11.0 (DECL-LATTA-NULL)", 1)[1]
     assert "bg_phaladeepika_latta's entry ONLY" in sentence and "no other asset or structure changed" in sentence

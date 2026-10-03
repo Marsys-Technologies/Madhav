@@ -1113,6 +1113,12 @@ def build_record(*, asset, layer, criterion, evidence, verified_by, verdict=None
     if verdict == "N/A":
         if kind != "gate":
             _refuse("na_not_computed", "an addition has no registry applicability rule: its N/A cannot be computed")
+        if criterion in ac.NARR_CHECKS and meas is not None:
+            # NARR-GUARD (pin 16, N-94): the census's own coupling rule, not a copy. A Narr N/A of an asset coupled to Carr.D1 is certifiable only while the same census
+            # record reads Carr.D1 PASS (its effective contribution, with the verified passage evidence and a per-row result for every coupled column)
+            bad = ac.narr_coupling_problem(criterion, layer, meas, cfacts, (record or {}).get("measurements"))
+            if bad:
+                _refuse("na_coupling_unmet", bad)
         na = _computed_na(criterion, layer, cfacts, na_rule_id, meas)
 
     # R6: what lets the record go stale

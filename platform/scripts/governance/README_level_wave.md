@@ -81,14 +81,94 @@ table per asset. The report therefore carries `footprint_scope` (and `partial_re
 * `complete` only when none of those holds; `has_blockers` is then the computed boolean. The impact statement labels it
   `COMPLETE_PER_STATIC_SCAN`: a statement about the scan, not about production.
 
-Reasons a writer lands in `assets_not_scanned` (never guessed): writer file missing/unparseable/too deeply nested; a
-table named by a runtime value; a name that is bound anywhere in the module other than as one single string literal
-(loop/with/except/match targets, comprehension targets, augmented or walrus assignment, parameters, import aliases,
-global/nonlocal, def/class names, unpacking, attribute assignment, a second different value); no write statement visible
-at all (how a delegating adapter looks); a `source_paths` entry that is not a literal `.py` file or leaves the repo; and
-write forms the scan does not analyse: MERGE INTO, REFRESH MATERIALIZED VIEW, CREATE TABLE, SELECT ... INTO, ALTER TABLE,
-DROP TABLE, psycopg `sql.SQL`/`sql.Identifier` composition, SQL read from a file feeding `execute`, a `*.sql` file
-reference.
+The scan decides in two directions, and the default is CLOSED: the SQL handed to an execute-like call (`execute`,
+`executemany`, `executescript`, `copy`, `copy_expert`, `execute_values`, `execute_batch`, `fetch`, `fetchrow`, `fetchval`,
+`fetchmany`, `prepare`, `exec_driver_sql`, `run`) is read as complete ONLY when it is positively recognised as made of this
+file's own literals; everything else is not scanned. "Provably in-file" means one of: a string literal; an f-string, `+`,
+implicit concatenation, `%`, `.format`, `.join`, `.replace`/`.strip`/... of provably in-file parts; a name EVERY binding of which
+(anywhere in the module, scope-blind) is provably in-file; a parameter whose in-file call sites ALL pass provably in-file values
+(a missing argument falls back to a default that must itself be provable; no call site, an aliased/partial'd function, or a
+`*args`/`**kwargs` call is not provable); a loop / comprehension / unpacking variable over a provably in-file container
+(`for k, v in X.items()` is position-aware); a subscript of such a container; a class attribute (`self.X`, `cls.X`, `Cls.X`)
+assigned exactly once in that class body to a provable value and nowhere else in the file; a call to a function defined in the
+file that returns only provable values; `len/int/float/...` (a number carries no SQL text) and `str/text/dedent/cleandoc` of
+provable arguments; a savepoint statement (`SAVEPOINT|RELEASE [SAVEPOINT]|ROLLBACK TO <identifier>`), which writes no table.
+Attributes are never matched by their last segment. Two further disciplines close the hiding places for a mutation or an
+override:
+
+* **Containers.** A name is policed as a possible mutable container UNLESS it is provably an immutable value (str, bytes, number,
+  bool, None, or a tuple / frozenset of such, recursively; a call result of an in-file function counts only if the function returns
+  one on every path). A call result, a subscript, an attribute, `setdefault`/`get`/`pop`, a loop over a container of lists, a
+  tuple that holds a list: all are policed. A policed name is provable only while EVERY use of it is a read: iteration, a subscript load, `.items()/.values()/.keys()/.get()/.copy()`,
+  `len`, `in`, truthiness, an f-string, `str.join(...)`, a pure builtin (`sorted`, `list`, `enumerate`, ...), unpacking, or --
+  on the BARE name only -- a mutator call (`append`, `extend`, `update`, `setdefault`, ...) or an item store, whose values are
+  tracked as bindings. Aliasing it, passing it to a call, binding a method of it (`ap = L.append`), mutating it through an
+  attribute receiver (`self.L.append`, `W.L[0] = x`), returning, yielding or storing it elsewhere is `container_escapes`; so is
+  a container (or a tuple) holding another mutable container.
+* **Class attributes.** `self.X` / `cls.X` / `Cls.X` is provable only on a plain class (undecorated, no base but `object`, no
+  metaclass, no subclass in the file, never constructed with arguments, its name never rebound (`A = imported`, `from c import A`,
+  a parameter named `A`, a second `def A`), no `__dict__`/`__setattr__`/`__getattribute__` use or definition in the file, no
+  3-argument `type(...)` call, no `self.X = ...`
+  anywhere, no method called through the class with an explicit `self`) when `X` is an unannotated top-level `X = <value>`
+  assigned exactly once in the class body (not under `if`/`try`/`for`/`with`, not `+=`, not shadowed by a `def`/import).
+  Dataclass / NamedTuple / Enum fields and subclass overrides are therefore not provable.
+
+The first reason found is reported (always a named one):
+
+Reasons a writer lands in `assets_not_scanned`:
+writer file missing/unparseable/too deeply nested; a table named by a runtime value; a name that is bound anywhere in the
+module other than as one single string literal (loop/with/async-with/except/match targets, comprehension targets, augmented
+or walrus assignment, parameters, import aliases, global/nonlocal, def/async-def/class names, tuple/list/starred unpacking,
+attribute assignment, a second different value); a dotted or attribute name (`{cfg.T}`, `{self.T}`: never read as a table
+constant, so it can never resolve to an unrelated local `T`); a quoted identifier that is not a plain lowercase
+`"[a-z_][a-z0-9_]*"` (`"a.b"`, `"Foo"`, `U&"..."`, `"my table"`); a three-part name; no write statement visible at all (how a
+delegating adapter looks); a `source_paths` entry that is not a literal `.py` file or leaves the repo, or a `source_paths`
+that is touched in any way other than being measured/iterated (`.append`/`.extend`/`+=`/item assignment/`setattr`/`getattr`/walrus/
+`del`/tuple-unpack/alias: `source_paths_mutated_at_runtime`); and write forms the scan does not analyse:
+
+* MERGE INTO, REFRESH MATERIALIZED VIEW, CREATE TABLE, SELECT ... INTO (an INTO at the same parenthesis depth as its SELECT, so
+  `SELECT EXTRACT(year FROM d) INTO t` is caught), ALTER TABLE, DROP TABLE, psycopg `sql.SQL`/`sql.Identifier` composition, SQL read
+  from a file feeding `execute`, a `*.sql` file reference. SQL comments (`/* */` nested, `--`) are whitespace: verbs are matched on
+  the comment-free text; the stripper is quote-aware (`'--'`, `E'\\''`, `"--"`, `$$--$$` are text, a `\x01..\x02` placeholder is opaque), and THREE readings are UNIONED (the raw text, the quote-aware comment-free text, and the text with every comment marker stripped wherever it sits -- so a keyword split by a comment INSIDE a string or a `$$` body, `DO $$ BEGIN DELETE /*x*/ FROM t; END $$`, is read); `$` inside an identifier (`a$b$`) does not open a dollar quote and a dollar tag may be non-ASCII (`$é$`) -- every table and every not-scanned reason of either pass is kept -- so a comment can only add (a verb split by a comment is read by the comment-free pass; the raw pass defers to it when the very next token is a comment opener).
+* an execute-like argument that is not provably in-file: an imported name or an attribute of an imported module
+  (`imported_sql_constant`), a call result (`sql_from_call_result`), a subscript of something not provable (`sql_from_subscript`),
+  a name bound nowhere (`unresolved_sql_name`) or bound by something not provable, a parameter with no / an unprovable call site
+  (`unresolved_sql_parameter`), an attribute not assigned exactly once in its class body (`unresolved_sql_attribute`), a dunder
+  attribute such as `fn.__doc__` (`sql_from_dunder_attribute`), bytes (`bytes_sql_literal`), `*args`/`**kwargs`/an unidentifiable
+  SQL argument (`unresolved_sql_arguments`), an execute-like method used as a value (`ex = cur.execute`, `partial(cur.execute, Q)`,
+  `map(cur.execute, ...)`: `execute_method_used_as_value`), an imported execute-like function (`execute_function_imported`).
+* a literal that ENDS in a write verb with no target (`INSERT INTO`, `DELETE FROM`, `TRUNCATE [TABLE]`, `UPDATE `, `COPY `:
+  `trailing_write_verb_without_target`), an `UPDATE`/`COPY` whose SET/FROM tail or target is a placeholder, a name followed by
+  nothing (`'UPDATE a ' + clause`, `q = 'UPDATE a'; q += ' SET x=1'`), a statement whose verb comes from a name holding a bare verb (`V = 'DELETE'; f'{V} FROM a'`), or whose first token is a name followed by SQL words (`FROM|INTO|TABLE|SET|VALUES|SELECT`) or by a name holding a SQL keyword (`f'{V} {F} a'`; prose such as `f'{a} {b} house'` and a name holding a whole statement are not), a bytes literal carrying a write form, an `UPDATE ... SET`/`COPY ... FROM` whose target is not a plain name.
+* `copy_from`/`copy_to`/`copy_to_table`/`copy_records_to_table` calls (`copy_api_without_sql_text`), `exec`/`eval`/`compile`
+  (`dynamic_code`), `setattr`, item assignment on or aliasing of `globals()`/`locals()`/`vars()`, a write through `sys.modules[...]`
+  (`runtime_rebinding`), `from x import *` (`dynamic_binding`), `getattr(...)(...)` or `getattr(obj, 'execute')`
+  (`dynamic_attribute_call`). Dispatch by string is `dynamic_dispatch`: `getattr` with a runtime name, with a name that is a
+  local def/class or a SQL-running method, or whose result is called straight away (a 3-argument read of a literal attribute is a
+  plain read); ANY use of `globals()/locals()/vars()` or `__builtins__`, `gc.get_objects()`; `sys.modules`, `__import__`, `importlib`,
+  `builtins`, `__main__`, frames (`_getframe`, `currentframe`, `f_globals`), `operator.methodcaller`/`attrgetter`,
+  `__getattribute__`. A function with a foreign decorator (anything but `staticmethod`/`classmethod`/`property`) is unprovable as a
+  SQL source or as a parameter sink; a classmethod called through its class is indexed past `cls` (a regular method called
+  through its class is not).
+* a SQL literal longer than 64 KB (`sql_literal_too_long`) and a file whose provenance resolution would exceed its work cap of
+  60,000 bindings/expressions (`resolver_work_cap`): both fall to NOT scanned, never to complete.
+
+Every table of a `TRUNCATE a, b` list (with `TABLE`/`ONLY`/`*`/`RESTART IDENTITY`/`CASCADE`, schema-qualified with optional spaces
+around the dot, quoted) and every write of a multi-statement or `WITH ... INSERT/UPDATE/DELETE` literal is captured; a table only
+read (`DELETE ... USING`, `UPDATE ... FROM`, `INSERT ... SELECT FROM`) is not a write. A `''.join([...])` of a list literal is
+rendered like a concatenation. Not reassembled (so a verb and its target built from separately bound fragments goes unseen unless
+the verb comes from a name): fragments bound in different names and joined elsewhere. A table-parameter helper
+(`def wipe(c, t): ... {t}`) resolves from its call sites (`self`/`cls` are not counted); an aliased or `*args`-called helper is not
+resolved.
+
+A template made of this file's own constants is READ as the statement it runs: `'%s %s t' % (V, F)`, `'{} {} t'.format(V, F)`,
+`f'{V}ETE FROM t'`, `'DELETE FROM'.strip() + ' t'`, `'DELETE FROM x'.replace('x', 't')`, `v, f = 'DELETE', 'FROM'` are rendered
+with the constants written out (only `str` methods on literals are evaluated; nothing is imported or called) and scanned as well.
+
+Documented, not detected: `VACUUM FULL` / `CLUSTER` (they rewrite a table, they write no rows), `COPY ... TO` with a runtime target
+(an export), an instance of another module's class that is called instead of this file's class (an imported delegate), `__dict__`
+on an instance (it only matters for class attributes, which it already disables), and a name collision elsewhere that makes an
+in-file class attribute unknowable (the scan then says not scanned).
 
 The scan reads source text only (`ast.parse`, nothing imported or executed). It cannot see stored functions that write,
 triggers, rules, or a delegate in another module when the writer also writes tables itself (documented, not detected), and

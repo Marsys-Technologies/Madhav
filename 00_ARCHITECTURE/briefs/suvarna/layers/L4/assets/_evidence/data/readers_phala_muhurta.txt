@@ -1,0 +1,10 @@
+platform-mcp/src/tools/register_p1_synthesis.ts
+platform/python-sidecar/brahmagyan/phala/l4_outlook.py
+platform/python-sidecar/brahmagyan/phala/muhurta.py
+platform/python-sidecar/pipeline/orchestrator/writers/ph_muhurta.py
+platform/python-sidecar/pipeline/orchestrator/writers/ph_phaladesa.py
+platform/src/app/api/mcp/db/query/route.ts
+platform/src/lib/retrieval/registry/knowledge/source_query_availability.ts
+platform/src/lib/retrieval/registry/layers/L4_phala/index.ts
+platform/src/lib/retrieval/registry/layers/L4_phala/query_phala_calibration.ts
+platform/src/lib/retrieval/registry/layers/L4_phala/salience_order.ts
