@@ -107,6 +107,44 @@ def test_a_tracked_test_file_that_cannot_be_read_fails_closed(tmp_path, monkeypa
     assert ci_changes._pinned() == frozenset({"*"})                                      # the classifier's scan is strict: an unread test could hide a pin
 
 
+def _fixture_tree(tmp_path, monkeypatch):
+    """A tree whose tests name two documents; only OTHER.md still exists (GONE.md is what the change deletes / renames away)."""
+    (tmp_path / "t").mkdir()
+    (tmp_path / "t" / "test_a.py").write_text('open("00_ARCHITECTURE/briefs/x/GONE.md"); open("00_ARCHITECTURE/briefs/x/OTHER.md")')
+    monkeypatch.setattr(ci_changes, "tracked_files", lambda: ["t/test_a.py", "00_ARCHITECTURE/briefs/x/OTHER.md"])
+    monkeypatch.setattr(ci_changes, "HERE", tmp_path / "a" / "b" / "c")
+
+
+GONE = "00_ARCHITECTURE/briefs/x/GONE.md"
+
+
+def test_deleting_a_pinned_document_is_not_docs_only(tmp_path, monkeypatch):
+    """Review N-103 (H1): the checked-out tree no longer lists a document the change deletes, so a test token naming it matched nothing. The change's own
+    file list is part of the scan, so the deleted document stays pinned."""
+    _fixture_tree(tmp_path, monkeypatch)
+    assert ci_changes.docs_only([GONE]) is False
+    assert ci_changes.docs_only(["00_ARCHITECTURE/briefs/x/UNRELATED.md"]) is True            # a deleted/edited document no test names is still skippable
+
+
+def test_renaming_a_pinned_document_away_is_not_docs_only(tmp_path, monkeypatch):
+    _fixture_tree(tmp_path, monkeypatch)
+    assert ci_changes.docs_only([GONE, "00_ARCHITECTURE/briefs/x/GONE_renamed.md"]) is False  # `--no-renames` lists the old path as a deletion
+    assert ci_changes.docs_only(["00_ARCHITECTURE/briefs/x/UNRELATED.md", "00_ARCHITECTURE/briefs/x/UNRELATED_renamed.md"]) is True
+
+
+def test_the_change_file_list_cannot_shrink_the_pinned_set(tmp_path, monkeypatch):
+    _fixture_tree(tmp_path, monkeypatch)
+    assert ci_changes._pinned([]) <= ci_changes._pinned([GONE, "other/file.py"])
+    assert ci_changes._pinned([GONE, 7, None, ""]) >= {GONE}                                # junk entries are ignored, never fatal
+
+
+def test_scan_reads_ts_tests_and_matches_extensions_case_insensitively(tmp_path):
+    (tmp_path / "web").mkdir()
+    (tmp_path / "web" / "a.test.ts").write_text("readFileSync('00_ARCHITECTURE/briefs/x/Upper.MD')")
+    files = ["web/a.test.ts", "00_ARCHITECTURE/briefs/x/Upper.MD", "00_ARCHITECTURE/briefs/x/lower.txt"]
+    assert ci_changes.scan_pinned(tmp_path, files) == ["00_ARCHITECTURE/briefs/x/Upper.MD"]
+
+
 def test_there_is_no_committed_pinned_list():
     assert not (HERE.parent / "ci_docs_pinned.json").exists(), "the pinned set is computed at classify time; a committed copy would go stale and conflict"
     assert "PINNED_FILE" not in vars(ci_changes) and "pinned_document" not in vars(ci_changes)
@@ -126,6 +164,11 @@ def test_a_rename_from_code_to_md_is_not_docs_only():
     assert ci_changes.docs_only(["00_ARCHITECTURE/briefs/x/notes.md", "platform/x.py"], NO_PINS) is False
 
 
+# Built by concatenation on purpose: the classifier scans THIS file for document names, and a literal "<name>.md" would pin the fixture document in
+# the (real-repo) scan that the CLI tests run, which is the behaviour under test in the opposite direction.
+NOTE_NAME = "n" + ".md"
+
+
 def _git(repo, *a):
     return subprocess.run(["git", "-C", str(repo), *a], capture_output=True, text=True, check=True).stdout
 
@@ -136,7 +179,7 @@ def _repo(tmp_path):
     _git(tmp_path, "config", "user.name", "t")
     (tmp_path / "a.py").write_text("x = 1\n")
     (tmp_path / "00_ARCHITECTURE" / "briefs").mkdir(parents=True)
-    (tmp_path / "00_ARCHITECTURE" / "briefs" / "n.md").write_text("n\n")
+    (tmp_path / "00_ARCHITECTURE" / "briefs" / NOTE_NAME).write_text("n\n")
     _git(tmp_path, "add", ".")
     _git(tmp_path, "commit", "-qm", "base")
     return tmp_path
@@ -148,11 +191,11 @@ def _run(repo, *args):
 
 def test_cli_on_a_real_git_diff(tmp_path):
     r = _repo(tmp_path)
-    (r / "00_ARCHITECTURE" / "briefs" / "n.md").write_text("changed\n")
+    (r / "00_ARCHITECTURE" / "briefs" / NOTE_NAME).write_text("changed\n")
     _git(r, "commit", "-qam", "docs")
     assert _run(r, "--event", "pull_request", "--base", "HEAD^1", "--head", "HEAD").stdout.strip() == "docs_only=true"
     (r / "a.py").write_text("x = 2\n")
-    (r / "00_ARCHITECTURE" / "briefs" / "n.md").write_text("changed again\n")
+    (r / "00_ARCHITECTURE" / "briefs" / NOTE_NAME).write_text("changed again\n")
     _git(r, "commit", "-qam", "mixed")
     assert _run(r, "--event", "pull_request", "--base", "HEAD^1", "--head", "HEAD").stdout.strip() == "docs_only=false"
     _git(r, "mv", "a.py", "00_ARCHITECTURE/briefs/a_moved.md")                                                # a code file renamed to .md
@@ -162,7 +205,7 @@ def test_cli_on_a_real_git_diff(tmp_path):
 
 def test_cli_fails_closed(tmp_path):
     r = _repo(tmp_path)
-    (r / "00_ARCHITECTURE" / "briefs" / "n.md").write_text("changed\n")
+    (r / "00_ARCHITECTURE" / "briefs" / NOTE_NAME).write_text("changed\n")
     _git(r, "commit", "-qam", "docs")
     for event in ("push", "merge_group", "workflow_dispatch", "schedule"):
         p = _run(r, "--event", event)

@@ -35,11 +35,14 @@ TEST_FILE = re.compile(r"(^|/)(__tests__|tests?|fixtures)/|(^|/)test_[^/]*\.py$|
 DOC_TOKEN = re.compile(r"[A-Za-z0-9_./\-]+\.(?:md|txt)\b", re.I)
 
 
-def _pinned() -> frozenset[str]:
-    """The pinned set for THIS checkout, computed now. Fail closed: any error, or an empty result (a real tree always has tests that name documents,
-    so an empty scan means the scan did not see the tests), is the wildcard: nothing is provably unpinned."""
+def _pinned(extra: list[str] | tuple[str, ...] = ()) -> frozenset[str]:
+    """The pinned set for THIS checkout, computed now. `extra` is the change's own file list: a document the change DELETES or renames away is no
+    longer in the checked-out tree, so without it a test token naming that document would match nothing and the document would read as unpinned.
+    Fail closed: any error, or an empty result (a real tree always has tests that name documents, so an empty scan means the scan did not see
+    the tests), is the wildcard: nothing is provably unpinned."""
     try:
-        pins = frozenset(scan_pinned(strict=True))
+        files = list(dict.fromkeys([*tracked_files(), *(f for f in extra if isinstance(f, str) and f)]))
+        pins = frozenset(scan_pinned(files=files, strict=True))
     except Exception:                                    # noqa: BLE001 - fail closed on anything unexpected
         return frozenset({"*"})
     return pins if pins else frozenset({"*"})
@@ -59,7 +62,7 @@ def is_doc(path: str, pinned: frozenset[str] | None = None) -> bool:
 
 
 def docs_only(files: list[str], pinned: frozenset[str] | None = None) -> bool:
-    pins = _pinned() if pinned is None else pinned
+    pins = _pinned(files) if pinned is None else pinned
     return bool(files) and all(is_doc(f, pins) for f in files)
 
 
