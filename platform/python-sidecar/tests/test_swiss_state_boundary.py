@@ -106,6 +106,10 @@ EXPECTED_OPERATION_OWNERS = {
     # set_ephe_path / set_sid_mode mutations run inside SWISS_STATE_LOCK in
     # its own body.
     ("panchang_engine/swiss_thread_scope.py", "prepare_swiss_thread"),
+    # C31: fail-closed per-thread backend probe — same module, same lock: re-sets
+    # path + mode on the calling thread every call and probes Sun/TRUE_NODE flags
+    # (raises SwissThreadBackendError unless both are swieph).
+    ("panchang_engine/swiss_thread_scope.py", "ensure_swiss_thread_backend"),
     ("panchang_engine/angas.py", "_get_sun_moon_lon"),
     ("panchang_engine/angas.py", "compute_nakshatra"),
     ("panchang_engine/ayanamsha.py", "get_ayanamsha_value"),

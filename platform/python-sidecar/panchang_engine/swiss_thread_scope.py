@@ -70,3 +70,58 @@ def swiss_calc_scope(ephe_path: str | None, sid_mode: int) -> Iterator[None]:
     with SWISS_STATE_LOCK:
         prepare_swiss_thread(ephe_path, sid_mode)
         yield
+
+
+class SwissThreadBackendError(RuntimeError):
+    """The calling thread's Swiss computations would NOT be served by the .se1 files.
+
+    A server-side configuration fault (missing ephemeris path, or the library silently
+    substituting Moshier/JPL), never a client error — same disclosure class as
+    ``panchang_engine.swiss_backend.SwissBackendError``.
+    """
+
+
+_PROBE_JD_J2000 = 2451545.0
+
+
+def ensure_swiss_thread_backend(ephe_path: str | None, sid_mode: int) -> None:
+    """Fail-closed backend probe for the CALLING thread; path and mode re-set on EVERY call.
+
+    Converges this module's per-thread preparation with swiss_backend's backend honesty
+    (SS ruling N-28: Moshier is a fallback and must NEVER be silent) — for callers that
+    compute through ``prepare_swiss_thread`` / ``swiss_calc_scope`` rather than the L1
+    writer seam:
+
+    * the .se1 path MUST be set (a ``None``/blank ``ephe_path`` raises — pyswisseph
+      accepts any path string and silently substitutes Moshier, so an unconfigured path
+      can never be treated as "the files will be found");
+    * the path and the sidereal mode are re-asserted on the calling thread on EVERY call
+      (Linux: both are per-thread C state; a reused pool thread may carry another caller's
+      mode, and per Suvarṇa's S-L1 measurements "prepared earlier" is never a sound
+      assumption on a pooled worker);
+    * the backend is then PROBED on this thread: Sun (needs ``sepl_*.se1``) and TRUE_NODE
+      (computed from the Moon, so it needs ``semo_*.se1``) at J2000 with FLG_SWIEPH. The
+      returned flag is the discriminator — measured in swiss_backend's docstring: the
+      Moon's flag lies (reports SWIEPH while serving the Moshier Moon), TRUE_NODE's does
+      not, and MEAN_NODE is analytic. Anything other than swieph for BOTH raises
+      ``SwissThreadBackendError``.
+
+    The set + probe run under SWISS_STATE_LOCK like every other Swiss state mutation
+    (DP-SD-010); callers already holding it re-enter the same RLock.
+    """
+    if ephe_path is None or not str(ephe_path).strip():
+        raise SwissThreadBackendError(
+            "the .se1 ephemeris path is not set on this call; refusing to compute — "
+            "pyswisseph would silently fall back to the built-in Moshier ephemeris"
+        )
+    with SWISS_STATE_LOCK:
+        swe.set_ephe_path(ephe_path)
+        swe.set_sid_mode(sid_mode)
+        for body in (swe.SUN, swe.TRUE_NODE):
+            _xx, retflag = swe.calc_ut(_PROBE_JD_J2000, body, swe.FLG_SWIEPH | swe.FLG_SPEED)
+            if retflag & swe.FLG_JPLEPH or retflag & swe.FLG_MOSEPH or not retflag & swe.FLG_SWIEPH:
+                raise SwissThreadBackendError(
+                    f"the calling thread's backend is not swieph for body {body} "
+                    f"(retflag {retflag:#x}) at {ephe_path!r}: the result would NOT be served by the "
+                    "Swiss .se1 files (the library substitutes Moshier/JPL silently)"
+                )
