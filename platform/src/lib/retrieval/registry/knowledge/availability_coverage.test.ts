@@ -702,7 +702,7 @@ describe('first-slice availability coverage', () => {
       contractId: 'source-query:resolve-entity:v1',
       relation: 'brahma_ontology',
       sqlMarkers: ["ORDER BY (entity_class = 'varga') DESC", 'synonyms, description, source_citation'],
-      handlerRef: 'platform/src/lib/retrieval/registry/layers/L0_brahmagyan/resolve_entity.ts:45-92',
+      handlerRef: 'platform/src/lib/retrieval/registry/layers/L0_brahmagyan/resolve_entity.ts:50-102',
     },
     {
       scuId: 'scu.catalog.read_chapter',

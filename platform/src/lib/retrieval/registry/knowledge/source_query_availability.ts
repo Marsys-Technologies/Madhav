@@ -641,13 +641,13 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
     sql: `SELECT canonical_id, entity_class, canonical_name_en, canonical_name_sa,
                  synonyms, description, source_citation
             FROM brahma_ontology
-           WHERE NULL::text = ANY(synonyms)
+           WHERE (NULL::text = ANY(synonyms)
               OR lower(canonical_name_en) = lower(NULL::text)
-              OR lower(canonical_name_sa) = lower(NULL::text)
-           ORDER BY (entity_class = 'varga') DESC, entity_class, canonical_id
+              OR lower(canonical_name_sa) = lower(NULL::text)) AND (NULL::text IS NULL OR entity_class = NULL::text)
+           ORDER BY (entity_class = 'varga') DESC, (entity_class = 'dosha'), entity_class, (canonical_id = 'jaimini_sutram') DESC, canonical_id
            LIMIT 0`,
     source_refs: [
-      'platform/src/lib/retrieval/registry/layers/L0_brahmagyan/resolve_entity.ts:45-92',
+      'platform/src/lib/retrieval/registry/layers/L0_brahmagyan/resolve_entity.ts:50-102',
       'platform/migrations/ws2_l0_ontology.sql:15-37',
       'platform/python-sidecar/pipeline/orchestrator/writers/bg_ontology.py:15-30',
       'platform/python-sidecar/brahmagyan/l0_ontology.py:1094-1173',
