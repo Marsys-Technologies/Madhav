@@ -1,14 +1,14 @@
 ---
 artifact: L5_REFERENCE_RESOLUTION_LEDGER_DESIGN
 canonical_id: SUVARNA_L5_REFERENCE_RESOLUTION_LEDGER_DESIGN
-version: "1.0"
+version: "1.1"
 status: "DRAFT — HELD for SS review; design + tests-first only; nothing here is built, migrated or applied"
 produced_on: 2026-10-03
 produced_in: "Exec Suvarṇa"
 plan_item: "TI-l5-ledger-design-001 (SS ruling N-99; Q-L4-01 / Q-L4-02)"
 layer: L5 (Mīmāṃsā), reading L4 (Phala)
 chart_scope: 482012f1-710e-4a25-994a-93821f5871aa
-ruling_implemented: "N-99 — frozen mimamsa_predictions rows are never deleted or rewritten; dangling anchor references are RECORDED in a computed side ledger written by an L5-side process; an integrity check claims only what its own writer produces"
+ruling_implemented: "N-99 (frozen mimamsa_predictions rows never deleted or rewritten; dangling anchor references RECORDED in a computed side ledger written by an L5-side process; an integrity check claims only what its own writer produces) as renumbered/extended by N-104 (1259 widened to ph_nimitta AND mi_bhavisya; 1264 = this ledger; 1265 = DB-enforced immutability; mi_nirdesa approved; dangling predictions still COUNT toward calibration: disclose, do not exclude; mi_bhavisya append-only is a separate writer PR)"
 tests: platform/python-sidecar/tests/test_l5_reference_resolution_ledger_design.py
 evidence: "/Users/Dev/suvarna-evidence/S_L1/l5_ledger/ (prod_counts.py, prod_counts.json) and /Users/Dev/suvarna-evidence/S_L1/L5_LEDGER_DESIGN_REPORT.md"
 inputs_read:
@@ -17,37 +17,50 @@ inputs_read:
   - "00_ARCHITECTURE/L5_SEAL_AND_SHIP_REPORT_v1_0.md"
   - "platform/migrations/347, 680, 682, 990, 991, 1083; platform/scripts/governance/msr_dangling_signal_refs.py"
   - "production, reader role only (SELECT), 2026-10-03"
+  - "v1.1: /Users/Dev/suvarna-evidence/S_L1/REVIEW_3023.md (independent review, APPROVE WITH NITS); origin/main platform/scripts/migrate.ts (PROTECTED_PUBLIC_SCHEMA_MIGRATIONS), .github/workflows/deploy.yml (jataka-protected-migrations), /Users/Dev/suvarna-evidence/S_L1/W1_PRIVILEGE_AUDIT.md"
 changelog:
+  - "1.1 (2026-10-03): review fixes. MED-1 privilege/apply path: the routine migrate role (amjis_app) has USAGE but not CREATE on schema public, so the table DDL needs the protected public-schema window; routine-runnable DML split out (section 4.1, 6.1, 10). MED-2 count_sql placeholder is $1, tested against the repository registry convention. MED-3 DDL CHECK matrix is now exercised on a real throwaway Postgres and the Python twin is cross-validated against it; DDL mutants are killed. MED-4 staleness has ONE definition (hash change OR live-resolution drift) used by D1 and the reader SQL, tested for agreement. Brought to N-104 numbering and rulings. citation_ref is not a once-written witness (mi_bhavisya deletes all manifestation sets on rebuild). Reader hooks corrected (no judgment_flags host in query_predictions; summary over total_matching, not the returned page). reference_rewritten_since_freeze now means reference differs from the freeze id (a blanked reference is a rewrite). Migration hold now matches file CONTENT."
   - "1.0 (2026-10-03): first draft. Ledger table, resolution rules, detector, reader disclosure, migration needs, risks. Production counts measured read-only. Pure-function reference + tests-first in the test file named above."
 ---
 
-# L5 reference-resolution ledger — design v1.0
+# L5 reference-resolution ledger — design v1.1
 
 ## 1. Ruling, scope and non-goals
 
-**Ruling (SS N-99).** `mimamsa_predictions` rows are the calibration record of what was
-predicted. 135 of the 139 rows on the canonical chart cite anchors that are no longer in
-`phala_anchors`. Those rows are **never deleted and never rewritten** (N-46 mixed table: frozen
-rows are immutable). The gap must be **recorded**, by an **L5-side process**, in a **computed
-side ledger** every reader can see. An integrity check **claims only what its own writer
-produces**: the global `mimamsa_predictions` term leaves `ph_nimitta`'s integrity SQL
-(migration 1259, separate worker) and becomes an L5-side **reference-resolution detector** —
-reported, **not build-blocking**. No rebuild may cascade into the frozen rows (migration 1260,
-separate worker).
+**Ruling (SS N-99, as renumbered and extended by N-104).** `mimamsa_predictions` rows are the
+calibration record of what was predicted. 135 of the 139 rows on the canonical chart cite anchors that
+are no longer in `phala_anchors`. Those rows are **never deleted and never rewritten** (N-46 mixed
+table: frozen rows are immutable). The gap must be **recorded**, by an **L5-side process**, in a
+**computed side ledger** every reader can see. An integrity check **claims only what its own writer
+produces**. The N-104 numbering this document follows (taken from the coordinator's summary; I have
+not read N-104 itself):
+
+* **1259** (separate worker, widened) removes the global dangling-anchor term from **both**
+  `ph_nimitta`'s and `mi_bhavisya`'s integrity SQL; the term becomes this ledger's L5-side
+  **reference-resolution detector** — reported, **not build-blocking**.
+* **1264** = this ledger's table (additive new table; needs the protected apply path, §4.1).
+* **1265** (separate worker) = DB-enforced immutability of the frozen prediction rows.
+* The asset name **`mi_nirdesa`** is approved. Rule 3 (`superseded`) stays, labelled as weaker
+  evidence. Dangling predictions **still count** toward the calibration gate: this design discloses,
+  it does not exclude.
+* **`mi_bhavisya` append-only** (never delete/re-stamp a frozen row; manifestation sets too, §2.1) is a
+  **separate writer PR**, not this one. The former "1260 / no rebuild may cascade into the frozen rows"
+  is, as I read N-104, delivered by 1265 plus that writer PR.
 
 **In scope.** The ledger table; who writes it; the exact resolution rules
 (`resolved` / `superseded` / `vanished`) with production counts; the detector; how readers disclose
-the gap; the migrations this needs; risks and open questions.
+the gap; the migrations this needs and the privilege/apply path they can actually take; risks and open
+questions.
 
 **Not in scope (and not done here).** No writer, no migration file, no orchestrator extension, no
-change to `mimamsa_predictions`, `ph_nimitta`, `mi_bhavisya` or any reader. Migrations 1259/1260
+change to `mimamsa_predictions`, `ph_nimitta`, `mi_bhavisya` or any reader. Migrations 1259 and 1265
 belong to other workers. This PR is a design document plus a test file containing a *reference*
 pure function (test-file only) and strict-xfail holds.
 
 **Two things this design deliberately does not do:** it does not repair or re-point a dangling
 reference (a repair is a decision about what was predicted, which is not the ledger's to make), and
-it does not exclude dangling predictions from calibration (that is a calibration-policy decision,
-see open question 12).
+it does not exclude dangling predictions from calibration (ruled: they still count; disclose, do not
+exclude).
 
 ## 2. Evidence (production, reader role, read-only, 2026-10-03)
 
@@ -59,7 +72,13 @@ see open question 12).
 * **The anchor reference column is `source_pramana_id`** (it stores an anchor id under a
   pramana-shaped name; migration 680 header). `prediction_id` is `'pred_' || <anchor_id at freeze>`
   (`mi_bhavisya.py`). The manifestation set's `citation_ref->>'anchor_id'` also holds the
-  anchor id at freeze (139 of 139 equal the `prediction_id` suffix).
+  anchor id at freeze (139 of 139 equal the `prediction_id` suffix; 195 of 195 over both charts). **That
+  witness is not durable:** `mi_bhavisya` deletes *all* `mimamsa_manifestation_sets` of the chart on
+  every rebuild (`mi_bhavisya.py`, the unconditional `DELETE FROM mimamsa_manifestation_sets`) and
+  re-inserts only for current anchors, so a retained non-pending prediction would lose its
+  manifestation row. `prediction_id` itself (the primary key) is the durable witness; the ledger
+  prefers the citation when present and falls back to the suffix (§5.1). Manifestation sets must also
+  never be deleted — a requirement for the append-only writer PR, passed on by the coordinator.
 * **`frozen_bundle_hash` is `sha256(chart_id | prediction_id | emitted_at | formula_version)[:32]`**
   — it commits to the identifiers and a clock, not to the claim or the anchor content
   (A.L5 finding bhav-N2). It cannot be used to prove what an anchor said.
@@ -97,10 +116,10 @@ window_end, falsifier)`. Consequences:
 `mi_bhavisya` deletes `mimamsa_predictions` rows with `lifecycle_status IN ('pending','due')` for the
 chart and re-inserts from the *current* anchors. All 139 canonical rows are `pending`. **A routine
 `mi_bhavisya` rebuild today would silently replace the 139 frozen rows with 4.** The existing
-"irreplaceable outcome" guard protects only `confirmed/denied/partial` rows. That protection gap is
-migration 1260's job; this design **assumes 1260 lands before the ledger asset is built in
-production** (open question 7) and is written so the ledger is correct either way (it records the
-rows that exist at the moment it runs).
+"irreplaceable outcome" guard protects only `confirmed/denied/partial` rows. Closing that gap is the
+job of 1265 (DB-enforced immutability) and the separate `mi_bhavisya` append-only writer PR; this
+design **assumes both land before the ledger asset is built in production** (open question 3) and is
+written so the ledger is correct either way (it records the rows that exist at the moment it runs).
 
 ### 2.4 Current anchors (canonical chart)
 
@@ -185,7 +204,7 @@ COMMENT ON TABLE mimamsa_reference_resolution IS
   'COMPUTED side ledger (N-99). One row per frozen prediction: can the anchor it was frozen against still be found. '
   'Rebuildable state, not history. Never referenced by, never referencing, and never a writer of the frozen prediction table.';
 COMMENT ON COLUMN mimamsa_reference_resolution.anchor_id_at_freeze IS
-  'The anchor id the prediction was frozen against (manifestation citation, else the prediction_id suffix).';
+  'The anchor id the prediction was frozen against (manifestation citation when present, else the prediction_id suffix).';
 COMMENT ON COLUMN mimamsa_reference_resolution.anchor_id_referenced IS
   'The live reference column value (source_pramana_id) when the ledger was computed; may differ from the freeze id.';
 COMMENT ON COLUMN mimamsa_reference_resolution.claim_key IS
@@ -195,12 +214,15 @@ COMMENT ON COLUMN mimamsa_reference_resolution.claim_key IS
 **Column notes.**
 
 * `anchor_id_at_freeze` / `freeze_id_source`: the required `anchor_id_at_freeze` of N-99. Source
-  preference: `citation_ref` (written once at freeze, untouched by 680) → `prediction_id_suffix`
-  → `source_pramana_id` (last resort; then the two ids coincide by construction and
-  `reference_rewritten_since_freeze` is false). `text`, not `uuid`: it must hold whatever was
-  frozen, including a malformed value, without the ledger failing to record it.
+  preference: `citation_ref` (untouched by 680, but *not* durable — §2.1) → `prediction_id_suffix`
+  (the primary key, so durable) → `source_pramana_id` (last resort; then the two ids coincide by
+  construction and `reference_rewritten_since_freeze` is false). `text`, not `uuid`: it must hold
+  whatever was frozen, including a malformed value, without the ledger failing to record it. The
+  two witnesses are equal on 195/195 today, so the stored value does not depend on which one was
+  used; `freeze_id_source` says which it was.
 * `anchor_id_referenced` + `reference_rewritten_since_freeze`: makes the 680 rewrite
-  (191/195 rows) visible instead of buried.
+  (191/195 rows) visible instead of buried. The flag is true whenever the live reference **differs
+  from the freeze id** — including a reference that has been blanked, which is a rewrite too.
 * `resolved_anchor_id`: the *current* anchor that satisfied the match (resolved or superseded);
   `NULL` for vanished. `uuid`, so a non-uuid can never be reported as a found anchor.
 * `candidate_count`: how many current anchors share the prediction's claim key (evidence for
@@ -246,7 +268,7 @@ DDL block.
   `relrowsecurity = false` today. The ledger carries ids, counts, a domain, a window and a falsifier
   *hash* — no claim text, no outcome — so it is plausibly *not* C3, but its `claim_key` and
   `prediction_id` set describe the predictions. **Classification is an SS decision (open question
-  9).** The DDL below follows the sibling policy *shape* so the ledger is not the one table in the
+  5).** The DDL below follows the sibling policy *shape* so the ledger is not the one table in the
   family with no policy; if SS classes it C3 the migration must also join 576's wall pattern and the
   arm/disarm lists.
 
@@ -265,6 +287,70 @@ CREATE POLICY mimamsa_reference_resolution_g1c_unscoped ON mimamsa_reference_res
   FOR ALL TO role_orchestrator, role_ledger_write, role_jobs USING (true);
 ```
 
+The grants end with an assertion, because a `GRANT` issued by a role that cannot grant emits a WARNING
+and succeeds (W1 privilege audit P2): a migration that is a bare `GRANT` can be recorded as applied
+and grant nothing. Here `amjis_app` owns the table, so the grants do take effect, but the standing
+pattern of 1224/1255 is kept.
+
+```sql ddl
+DO $assert$
+BEGIN
+  IF NOT has_table_privilege('role_orchestrator', 'mimamsa_reference_resolution', 'INSERT')
+     OR NOT has_table_privilege('data_plane_builder', 'mimamsa_reference_resolution', 'DELETE')
+     OR NOT has_table_privilege('suvarna_reader', 'mimamsa_reference_resolution', 'SELECT') THEN
+    RAISE EXCEPTION 'mimamsa_reference_resolution: grants did not take effect';
+  END IF;
+END
+$assert$;
+```
+
+### 4.1 Privilege and apply path — the routine migration role cannot create this table
+
+**The problem.** The routine `Apply Routine DB Migrations` job connects as `amjis_app`. Measured
+(production, reader role, 2026-10-03; `W1_PRIVILEGE_AUDIT.md` P1; independently rehearsed in
+`REVIEW_3023.md`): `has_schema_privilege('amjis_app', 'public', 'CREATE')` is **false**; schema
+`public` is owned by `data_plane_schema_owner`, and `amjis_app` holds `USAGE` only. So a
+`CREATE TABLE` in `public` run by the routine runner fails with
+`permission denied for schema public`. A failing file stops the runner, later-sorting files never
+run, and every web/sidecar deploy that `needs` the migrate job is blocked. **The DDL blocks of §3–§4
+therefore cannot be applied by the routine runner.** (Superuser rehearsals — including this document's
+own earlier validation script — cannot see this; the real-Postgres test in this PR now reproduces the
+failure as `amjis_app` and the success inside the window, §9.)
+
+**The protected path (the one already used for 1153–1157 and 1202).**
+
+1. `platform/scripts/migrate.ts`: add the 1264 filename to `PROTECTED_PUBLIC_SCHEMA_MIGRATIONS` (with its
+   own window name in `assertGeneralRunnerMayApplyPublicSchema`'s message), so the routine runner
+   *refuses it loudly* instead of failing inside the file.
+2. `.github/workflows/deploy.yml`: a new `workflow_dispatch` boolean input for this window (proposed
+   `l5_reference_ledger_schema_migration`), added to the `if:` of the `jataka-protected-migrations`
+   job and to its ascending-order `migrations+=(…)` list, so the job runs
+   `migrate.ts --only 1264_…sql` **between** `jataka-schema-capability.ts grant` and `… revoke` (the
+   `revoke` step runs on `always()`).
+3. The window must be the **capability grant to `amjis_app`** (`DATA_PLANE_MIGRATOR_DATABASE_URL`
+   grants `CREATE ON SCHEMA public` temporarily), **not** an execution under an owner role: the ledger
+   must be owned by `amjis_app` like its sibling tables, because (a) grants by a non-owner silently
+   no-op (audit P2) and (b) the registry/cockpit machinery assumes that owner.
+4. **Sequencing consequence.** Once 1264 is in the protected set and merged, the routine runner refuses
+   it until the window is dispatched, which holds the `migrate` job (and so deploys) until then. Merge
+   and dispatch must be sequenced exactly as for 1153–1157 / 1202.
+
+**Alternatives that avoid `CREATE` — stated and rejected.** (a) run the DDL as the schema-owner role: the
+table would be owned by `data_plane_schema_owner`, so `amjis_app`'s later grants no-op (P2) and the
+ownership differs from every sibling; (b) store the rows in an existing `amjis_app`-owned table: it
+would mix computed side-state into a table with another contract (N-46 mixed-table lesson) and gives
+the ledger no table of its own to grant, count or clear; (c) a view: there is nothing to compute it
+from once the anchors are gone. The protected window is the recommendation.
+
+**What can run routinely, and what cannot.**
+
+| piece | needs `CREATE` on `public`? | path |
+|---|---|---|
+| `CREATE TABLE`, index, `COMMENT`, grants, policies, grant assertion (the `ddl` blocks) | yes (`CREATE TABLE`/`CREATE INDEX` in `public`) | **protected window**, migration 1264 |
+| `asset_registry` row for `mi_nirdesa`, `natural_key_partition` (the `registry` block) | no — DML on `asset_registry`, owned by `amjis_app` (W1 audit table: the same shape as 1221/1223/1243-rows) | **routine runner**, must sort after 1264 and guard `to_regclass('public.mimamsa_reference_resolution') IS NOT NULL` so a registry row never points at a missing table |
+| output-digest spec (990 pattern: DML on `asset_output_digest_specs`, owned by `amjis_app`) | no | **routine runner**, same guard |
+| the writer, the pure module, the reader and governance script | n/a (code) | normal PR |
+
 ## 5. Resolution rules
 
 Inputs, per chart: every `mimamsa_predictions` row (all lifecycle statuses, including
@@ -274,8 +360,10 @@ Inputs, per chart: every `mimamsa_predictions` row (all lifecycle statuses, incl
 ### 5.1 The freeze id
 
 `anchor_id_at_freeze` = first available of: `mimamsa_manifestation_sets.citation_ref->>'anchor_id'`
-(smallest `channel_id` for determinism) → the part of `prediction_id` after `pred_` →
-`source_pramana_id`. `freeze_id_source` records which.
+(smallest `channel_id` for determinism; present only while the manifestation set survives, §2.1) →
+the part of `prediction_id` after `pred_` (durable: it is the primary key) → `source_pramana_id`.
+`freeze_id_source` records which. Because the citation can disappear on a rebuild, the fallback to the
+suffix is a normal path, not an error, and the ledger value is the same either way (195/195 equal).
 
 ### 5.2 Decision order (first rule that fires wins)
 
@@ -309,7 +397,7 @@ falsifier hashed) so every superseded/ambiguous decision is auditable from the r
   would use to compare them match and nothing else competes. `event_type`, `direction`,
   `horizon_tier`, `peak_date`, `anchor_source` are not on the prediction and are not compared (§2.2);
   the implementation PR should consider also comparing the frozen `outcome_claim` against a
-  *shared* projection helper factored out of `mi_bhavisya` (open question 4), at the cost of a
+  *shared* projection helper factored out of `mi_bhavisya` (open question 2), at the cost of a
   second place that knows the freeze mapping.
   *Considered and rejected:* requiring the successor to be computed after the freeze
   (`computed_at > emitted_at`) — the 680 collision pairs are twin anchors that coexisted, and a twin
@@ -324,7 +412,8 @@ falsifier hashed) so every superseded/ambiguous decision is auditable from the r
 Deterministic, no clock, no randomness, no I/O; the same inputs in any order give the same output;
 inputs are never mutated and the output never aliases them; exactly one row per prediction; a
 duplicate prediction key is an error; output sorted by `(chart_id, prediction_id)`; every row
-satisfies the DDL `CHECK` matrix (Python twin `row_invariant_violations`); it takes no outcome,
+satisfies the DDL `CHECK` matrix (Python twin `ddl_check_violations`, cross-validated against a
+real Postgres, §9.2); it takes no outcome,
 calibration, lifecycle or event input (the calibration leak guard is unaffected by construction — it
 is a function of reference columns and the anchor table only).
 
@@ -332,8 +421,7 @@ is a function of reference columns and the anchor table only).
 
 ### 6.1 Asset proposal (frozen orchestrator contract; no orchestrator extension)
 
-* **A new asset, proposed id `mi_nirdesa`** (*nirdeśa*, "indication, reference"; the name needs SS
-  approval and must not be confused with `mi_sambandha` — open question 2). A `@register("mi_nirdesa")`
+* **A new asset, proposed id `mi_nirdesa`** (*nirdeśa*, "indication, reference"; name approved by N-104; do not confuse it with `mi_sambandha`). A `@register("mi_nirdesa")`
   `WriterBase` subclass with a light `run(ctx) -> WriterResult` (≤ a few hundred rows). It runs on
   `ctx.db_conn` and **never commits or closes it**; it does not write `asset_throughput`;
   `chart_id` comes from `ctx.config`; it honours `ctx.dry_run`. Idempotency: per-chart
@@ -348,11 +436,55 @@ is a function of reference columns and the anchor table only).
   computation; reference resolution is not calibration. A separate asset also gives the ledger its
   own `count_sql`, its own integrity SQL (§7.2) and an honest failure mode: if the ledger asset fails,
   nothing frozen is touched.
-* **Registry row (migration needed):** `target_table = mimamsa_reference_resolution`;
-  chart-scoped `count_sql` (`SELECT count(*) FROM mimamsa_reference_resolution WHERE chart_id = :chart_id`
-  — the cockpit reads `count_sql`, not `asset_throughput`); `clear_tables`;
-  `target_floor` = achieved count after the first build (aspirational, §N.4); `natural_key_partition`
-  and an output-digest spec following the 990/991 pattern.
+* **Registry row (routine migration; sketch below).** `target_table = mimamsa_reference_resolution`;
+  chart-scoped `count_sql` using **`$1`** for the chart (the cockpit reads `count_sql`, not
+  `asset_throughput`; the convention is a positional `$1`: **81 of the 83** production per-chart `count_sql` values
+  use `chart_id = $1`, and every one of the 70 `count_sql … chart_id =` statements in this repository's
+  migrations does; none uses `:chart_id` — a test pins the doc to that convention);
+  `clear_tables`; `target_floor` 0 at registration, set to the achieved count after the first build
+  (aspirational, §N.4); `natural_key_partition` and an output-digest spec following the 990/991
+  pattern. `sort_order` and the prose columns are provisional. The row's `integrity_check_sql` is the
+  §7.2 block verbatim (a test compares them). It lands with the writer PR (`has_writer = true`
+  requires the writer to exist), after 1264 has been applied via the window (§4.1).
+
+```sql registry
+INSERT INTO asset_registry (
+  asset_id, layer, sort_order, sanskrit_name, english_name, english_description,
+  storage_type, target_table, count_sql, size_sql, target_floor, expected_volume_formula,
+  volume_explanation, depends_on, scope, estimated_seconds, clear_tables, asset_type,
+  layer_name, layer_index, catalog_status, integrity_check_sql, has_writer, asset_kind,
+  domain, rung, writer_timeout_seconds
+) VALUES (
+  'mi_nirdesa', 'mimamsa', 15, 'Nirdeśa', 'Reference-resolution ledger',
+  'Computed side ledger: one row per frozen prediction recording whether the anchor it was frozen against can still be found and on what basis. Never modifies the frozen predictions.',
+  'postgres_table', 'mimamsa_reference_resolution',
+  'SELECT count(*) FROM mimamsa_reference_resolution WHERE chart_id = $1',
+  'SELECT pg_total_relation_size(''mimamsa_reference_resolution'')',
+  0, 'COUNT(mimamsa_predictions WHERE chart_id = $chart)',
+  'One row per mimamsa_predictions row of the chart, recomputed on every build.',
+  ARRAY['mi_bhavisya', 'ph_nimitta'], 'per_chart', 2, ARRAY['mimamsa_reference_resolution'], 'data',
+  'Mīmāṃsā', 'L5', 'DRAFT',
+  $integrity$
+SELECT NOT EXISTS (
+         SELECT 1 FROM mimamsa_reference_resolution
+          GROUP BY chart_id
+         HAVING count(DISTINCT build_id) <> 1 OR count(DISTINCT resolver_version) <> 1
+       )
+   AND NOT EXISTS (
+         SELECT 1 FROM mimamsa_reference_resolution r
+          WHERE NOT EXISTS (SELECT 1 FROM charts c WHERE c.id = r.chart_id)
+       )
+   AND NOT EXISTS (
+         SELECT 1 FROM mimamsa_reference_resolution WHERE btrim(prediction_frozen_bundle_hash) = ''
+       )
+$integrity$,
+  true, 'data', 'chart', 'R5', 600
+) ON CONFLICT (asset_id) DO NOTHING;
+
+UPDATE asset_registry
+   SET natural_key_partition = 'mimamsa_reference_resolution (chart_id, prediction_id) - MiNirdesaWriter (@register mi_nirdesa) is the sole build-time writer of this table'
+ WHERE asset_id = 'mi_nirdesa' AND natural_key_partition IS NULL;
+```
 
 ### 6.2 Pure module
 
@@ -405,11 +537,14 @@ exactly and an anchor with a NULL window simply never matches).
 The detector answers "how many frozen predictions cite an anchor that cannot be found, and is the
 ledger telling the truth about it". **It reports; it never fails a build.** A `vanished` count above
 zero is a *finding*, not an error, because the rows are a record and the gap is a property of L4's
-history. It replaces the global `mimamsa_predictions` term in `ph_nimitta`'s integrity SQL
-(currently a gate that is false whenever any frozen prediction dangles, on any chart: a rebuild of
-`ph_nimitta` rolls back on a fact it did not produce). The same dangling term also sits in
-**`mi_bhavisya`'s own integrity SQL, which evaluates to `false` on production right now** — it
-should be relocated by the same logic (open question 5).
+history. It takes over the job of the global `mimamsa_predictions` term that migration **1259**
+(widened by N-104) removes from **both** `ph_nimitta`'s and `mi_bhavisya`'s integrity SQL: that term
+is a gate that is false whenever any frozen prediction dangles, on any chart, so a rebuild of
+`ph_nimitta` rolls back on a fact it did not produce. Two facts from the independent review keep this
+honest: on `mi_bhavisya` that one conjunct is the *only* failing term (the review executed the registry
+text read-only: false as stored, true with that conjunct removed); on `ph_nimitta`, removing it does
+**not** by itself make the check true — the 1259 PR body records a separate L4 defect (conjunct a7:
+`phala_phaladesa.top_anchor_id` dangling on 6 of 7 rows).
 
 ```sql detector
 -- D1: per-chart status counts from the ledger, plus the three ways the ledger can be wrong about the
@@ -517,8 +652,8 @@ A prediction that is *deleted* leaves no row to examine (the limit `msr_dangling
 states for itself). The ledger lists only predictions that exist when it runs; D1's `orphan_ledger_rows`
 catches a ledger row left behind, but a ledger rebuilt *after* the deletion forgets it. The only
 control that can show a deleted frozen row is the **before/after frozen-set digest and row count**,
-which is why §7.3 item 3 makes it part of the pre/post check and why migration 1260 (no-cascade /
-no-delete protection) is a precondition, not an alternative.
+which is why §7.3 item 3 makes it part of the pre/post check and why migration 1265 (DB-enforced
+immutability) plus the `mi_bhavisya` append-only writer PR are preconditions, not alternatives.
 
 ```sql evidence
 SELECT chart_id, count(*) AS predictions,
@@ -537,15 +672,33 @@ frozen rows keep counting as the calibration record; readers say what they canno
 * **`query_predictions`** (`platform/src/lib/retrieval/registry/layers/L5_mimamsa/query_predictions.ts`,
   which already emits `source_pramana_id` and promises "emits_references"): `LEFT JOIN` the ledger and
   add per row `reference_resolution: { resolution_status, resolution_basis, resolved_anchor_id,
-  anchor_id_at_freeze, ledger_stale }`, or `null` when the prediction has no ledger row. Response
-  level: `reference_gap_summary: { ledgered, unledgered, resolved, superseded, vanished,
-  stale_ledger_rows }` and, in `judgment_flags`, `dangling_anchor_references_present` when
-  `vanished > 0`, `reference_ledger_absent` when nothing is ledgered, `reference_ledger_stale` when
-  `stale_ledger_rows > 0`.
-* **`mimamsa_calibration_get` / `query_calibration`**: the same `reference_gap_summary`, computed over
-  the predictions the returned calibration rows come from (join on `prediction_id`), plus the
-  note that the calibration still counts them. **When there is no ledger the counts are `null`, never
-  `0`** — a missing detector reads as "unknown", not "clean".
+  anchor_id_at_freeze, ledger_stale }`, or `null` when the prediction has no ledger row.
+  *Where the flags live (corrected after review).* This handler's `content` has **no
+  `judgment_flags` field** (it returns `chart_id, predictions, prediction_count, total_matching,
+  more_available, prediction_id_refs, sparse_note, empty_reason?, filters, provenance`), so the three
+  flags are carried as `reference_gap.flags: [...]` inside `content`; the implementation PR may mirror
+  them into the v3 envelope's `judgment_flags` where that envelope is built. Flags:
+  `dangling_anchor_references_present` when `vanished > 0`; `reference_ledger_absent` when
+  `ledgered = 0` (unknown, not clean); `reference_ledger_stale` when `stale_ledger_rows > 0`.
+* **The summary is computed over the whole matching population, not the returned page.** The tool is
+  paginated (`MAX_LIMIT` 200, `total_matching`, `more_available`), so `reference_gap` comes from its own
+  aggregate query built with the **same `where` and params as the existing `COUNT(*)` that produces
+  `total_matching`** (including `chart_context_stale_at IS NULL` unless `include_stale`), never from
+  the rows in the page: `reference_gap: { total_matching, ledgered, unledgered, resolved, superseded,
+  vanished, vanished_ambiguous, reference_rewritten, stale_ledger_rows, flags }`. It is a small fixed
+  object outside `predictions`, so it is registered as a protected (`hardFloor`) section against the
+  response-budget trimmer (§N.6): disclosure must not be the first thing trimmed.
+* **One definition of "stale".** A ledger row is **stale** iff its stored
+  `prediction_frozen_bundle_hash` differs from the live prediction's hash **or** its `resolved` /
+  not-`resolved` status disagrees with whether the live reference (or the stored freeze id) now
+  resolves against `phala_anchors`. That is exactly detector D1's `stale_ledger_rows`; the per-row
+  `ledger_stale` and the summary's `stale_ledger_rows` use the same predicate, and a test on a real
+  Postgres asserts that the reader SQL and D1 agree under the four perturbations (§9). The flag
+  `reference_ledger_stale` therefore names a detector that exists (§N.8).
+* **`mimamsa_calibration_get` / `query_calibration`**: the same `reference_gap` object, computed over
+  the predictions the returned calibration rows come from (join on `prediction_id`), plus the note that
+  the calibration **still counts them** (ruled: disclose, do not exclude). **When there is no ledger the
+  counts are `null`, never `0`** — a missing detector reads as "unknown", not "clean".
 * **Other readers that cite an anchor from a prediction** (`standing_predictions_read`, journal /
   outcome tools) carry the per-row object only.
 * **The calibration leak guard is unaffected.** The ledger holds no outcome, no Brier score, no
@@ -558,119 +711,171 @@ frozen rows keep counting as the calibration record; readers say what they canno
   fields above must be present.
 
 ```sql reader
--- query_predictions join (read-only): per-row disclosure, NULL when unledgered
+-- query_predictions per-row join (read-only). ledger_stale uses D1's predicate; NULL when unledgered.
 SELECT p.prediction_id, p.source_pramana_id, p.domain, p.lifecycle_status,
        r.resolution_status, r.resolution_basis, r.resolved_anchor_id, r.anchor_id_at_freeze,
-       (r.prediction_frozen_bundle_hash IS DISTINCT FROM p.frozen_bundle_hash) AS ledger_stale
+       CASE WHEN r.prediction_id IS NULL THEN NULL
+            ELSE (r.prediction_frozen_bundle_hash IS DISTINCT FROM p.frozen_bundle_hash
+                  OR (r.resolution_status = 'resolved') IS DISTINCT FROM EXISTS (
+                       SELECT 1 FROM phala_anchors a
+                        WHERE a.chart_id = p.chart_id
+                          AND a.anchor_id::text IN (lower(btrim(p.source_pramana_id)), r.anchor_id_at_freeze)))
+       END AS ledger_stale
   FROM mimamsa_predictions p
   LEFT JOIN mimamsa_reference_resolution r
          ON r.chart_id = p.chart_id AND r.prediction_id = p.prediction_id
- WHERE p.chart_id = %s
+ WHERE p.chart_id = %s AND p.chart_context_stale_at IS NULL
  ORDER BY p.prediction_id;
+
+-- reference_gap summary over the WHOLE matching population (same WHERE as the handler's total_matching
+-- COUNT; the handler appends its optional prediction_id / lifecycle_status / domain filters here too).
+SELECT count(*)                                                              AS total_matching,
+       count(r.prediction_id)                                                AS ledgered,
+       count(*) - count(r.prediction_id)                                     AS unledgered,
+       count(*) FILTER (WHERE r.resolution_status = 'resolved')              AS resolved,
+       count(*) FILTER (WHERE r.resolution_status = 'superseded')            AS superseded,
+       count(*) FILTER (WHERE r.resolution_status = 'vanished')              AS vanished,
+       count(*) FILTER (WHERE r.resolution_basis = 'claim_key_ambiguous')    AS vanished_ambiguous,
+       count(*) FILTER (WHERE r.reference_rewritten_since_freeze)            AS reference_rewritten,
+       count(*) FILTER (WHERE r.prediction_id IS NOT NULL
+                          AND (r.prediction_frozen_bundle_hash IS DISTINCT FROM p.frozen_bundle_hash
+                               OR (r.resolution_status = 'resolved') IS DISTINCT FROM EXISTS (
+                                    SELECT 1 FROM phala_anchors a
+                                     WHERE a.chart_id = p.chart_id
+                                       AND a.anchor_id::text IN (lower(btrim(p.source_pramana_id)), r.anchor_id_at_freeze))))
+                                                                             AS stale_ledger_rows
+  FROM mimamsa_predictions p
+  LEFT JOIN mimamsa_reference_resolution r
+         ON r.chart_id = p.chart_id AND r.prediction_id = p.prediction_id
+ WHERE p.chart_id = %s AND p.chart_context_stale_at IS NULL;
 ```
 
 ## 9. Tests-first (in this PR)
 
-`platform/python-sidecar/tests/test_l5_reference_resolution_ledger_design.py` — pure Python, no DB, no
-network, no production module imported:
+`platform/python-sidecar/tests/test_l5_reference_resolution_ledger_design.py`. No production module is
+imported. Two layers:
+
+**9.1 Pure-Python layer (always runs).**
 
 * Reference pure function (`resolve_references`) in the **test file only**, with table-driven scenarios
   for every status/basis, precedence, chart isolation, case folding, JSON/NULL falsifier
-  canonicalisation, many-to-one supersession, empty input, and the **139-prediction / 4-anchor
-  production shape** (4 resolved, 0 superseded, 135 vanished, 135 reference-rewritten).
+  canonicalisation, many-to-one supersession, empty input, an **empty/blank reference** (the flag
+  `reference_rewritten_since_freeze` is true when the reference differs from the freeze id, including a
+  blanked one), and the **139-prediction / 4-anchor production shape** (4 resolved, 0 superseded,
+  135 vanished, 135 reference-rewritten).
 * Contract properties: idempotent, order-independent, inputs not mutated, outputs not aliased,
-  generators accepted, one row per prediction, duplicate key rejected, 200-case seeded fuzz of the
-  DDL-twin invariants.
-* **Mutation proofs:** 18 source-level mutants of the resolver (chart scoping removed, ambiguity
-  treated as superseded, case-sensitive ids, claim key ignoring window / falsifier / domain, freeze id
+  generators accepted, one row per prediction, duplicate key rejected, 200-case seeded fuzz.
+* **Mutation proofs:** source-level mutants of the resolver (chart scoping removed, ambiguity treated
+  as superseded, case-sensitive ids, claim key ignoring window / falsifier / domain, freeze id
   ignored, precedence swapped, rows dropped, in-place sort, write into caller dicts, aliasing,
-  non-determinism, duplicate not rejected, lying counts, stale resolved id on a vanished row) —
-  every one must be killed by the contract; each mutation asserts its target text exists so none is
-  a silent no-op. 15 mutants of the document's SQL (extra `DELETE`/`UPDATE`/`INSERT`/`TRUNCATE`/
-  `ALTER`/`DROP`/`GRANT`/`CREATE POLICY`/trigger on the frozen table, FK to the frozen table or to
-  `phala_anchors`, unscoped ledger delete, DML smuggled into a detector or a CTE, `FOR UPDATE` on the
-  frozen table) — every one must be flagged.
+  non-determinism, duplicate not rejected, lying counts, stale resolved id on a vanished row, the
+  rewritten flag ignoring a blank reference) — each asserts its target text exists, so none is a silent
+  no-op, and every one must be killed.
 * **Static SQL check** over every ```` ```sql ```` block of this document: no
   `DELETE/UPDATE/INSERT/TRUNCATE/ALTER/DROP/MERGE/COPY/GRANT/REVOKE/CREATE POLICY/CREATE TRIGGER` and no
   `REFERENCES` against `mimamsa_predictions`; the ledger DDL contains no `REFERENCES`, `FOREIGN KEY`,
   `ON DELETE`, trigger, `INHERITS`, or mention of `phala_anchors`; the writer's only `DELETE` is
   `DELETE FROM mimamsa_reference_resolution WHERE chart_id = …` and its only `INSERT` targets the
-  ledger; detector/reader/evidence blocks are `SELECT`/`WITH` only.
-* A test that the resolver takes only the declared reference columns (no outcome / calibration /
-  lifecycle inputs), and the leak-key test of §8.
-* **Strict-xfail holds** (flip to XPASS = failure when the real thing lands, forcing a real test):
-  production module parity, writer registration under the frozen contract (`@register`, no
-  commit/close, no `asset_throughput`), the ledger-table migration file.
+  ledger; detector/reader/evidence blocks are `SELECT`/`WITH` only; `registry` blocks may only
+  `INSERT`/`UPDATE` `asset_registry` rows of `mi_nirdesa`. 18 SQL mutants and 19 resolver mutants are
+  all killed.
+* The registry `count_sql` placeholder is pinned to the repository's registry convention (`$1`; a scan
+  of every `count_sql … chart_id =` in `platform/migrations` and `platform/supabase/migrations`), the
+  registry block's `integrity_check_sql` is pinned equal to §7.2, and the proposed served field names
+  are checked against the calibration leak guard's key patterns (parsed from the TypeScript).
 
-### 9.1 The SQL in this document was executed, not only parsed
+**9.2 Real-Postgres layer (runs when PostgreSQL binaries are present).** The test file starts its own
+throwaway cluster (loopback TCP on a free port, no unix socket, temporary data directory, stopped by
+the recorded postmaster PID in the fixture finalizer) and skips with a reason when no
+`initdb`/`pg_ctl` is found (set `L5_LEDGER_REQUIRE_PG=1` to make that a failure instead of a skip). It
+builds the **production power structure** — schema `public` owned by `data_plane_schema_owner`, a
+non-superuser `amjis_app` with `USAGE` only, every role the grants name — and then:
 
-Every `ddl`, `writer`, `detector`, `reader` and `evidence` block above was run against a disposable
-local PostgreSQL 17 (unix socket only, started and stopped by recorded PID; not production) with stub
-copies of the three source tables: the DDL applies twice cleanly; no FK, trigger or policy exists on
-the frozen or anchor tables afterwards; the writer reproduces **4 / 0 / 135** on the production shape
-and is idempotent on rerun; detector D1 reads `unledgered = 1`, `stale = 1` (a vanished anchor id
-reappearing), `stale = 1` (a replaced prediction hash), `orphan = 1` (a deleted prediction) under
-the four matching perturbations and zero otherwise; the asset-integrity SQL goes `false` on a
-two-builds-in-one-chart partial write; all six incoherent status/basis rows are rejected by the
-`CHECK` matrix. Script and output: `/Users/Dev/suvarna-evidence/S_L1/l5_ledger/validate_sql_local.py`
-and `.out`. One defect found and fixed by this run: `CREATE POLICY` is not idempotent, so each is
-now preceded by `DROP POLICY IF EXISTS`.
+* reproduces **MED-1**: the doc's `ddl` blocks as `amjis_app` without the window fail with
+  `permission denied for schema public`; inside a `GRANT CREATE … / REVOKE CREATE` window they apply,
+  twice (idempotent), the table is owned by `amjis_app`, the ACL equals the doc's, `CREATE` is gone
+  afterwards;
+* **MED-3**: applies the doc's DDL and drives an exhaustive grid (status × basis × resolved-id
+  nullness × candidate count × current-anchor count × freeze source, including values outside the
+  vocabularies) through `INSERT`, asserting the database accepts a row **iff** the Python twin
+  (`ddl_check_violations`) finds no violation; then re-runs the same cross-validation against
+  **10 mutated DDLs** (every branch of the matrix loosened or tightened in turn — including the two that
+  survived review: `candidate_count = 1 → >= 0` and `resolved_anchor_id IS NULL → IS NOT NULL`) and
+  requires each mutant to be caught;
+* runs the writer, detector (D1/D2/D3), asset-integrity, reader and evidence SQL on the production
+  shape (4 / 0 / 135, idempotent rerun), perturbs the data four ways and asserts D1 moves exactly the
+  matching counter, and asserts the **reader's stale predicate agrees with D1** (**MED-4**);
+* runs the `registry` block as `amjis_app` **without** the window (the routine path works), then
+  executes its `count_sql` with a bound `$1`.
 
-## 10. Migrations needed (every number: **needs number from SS**)
+**9.3 Strict-xfail holds** (flip to XPASS = failure when the real thing lands, forcing a real test):
+production module parity; writer registration under the frozen contract (`@register`, no
+commit/close, no `asset_throughput`); the 1264 migration (matched by **file content** —
+`CREATE TABLE … mimamsa_reference_resolution` in any migration under either migrations directory —
+so the real filename flips it).
 
-| # | Purpose | Number |
-|---|---|---|
-| M-A | `CREATE TABLE mimamsa_reference_resolution` + index + comments + grants (incl. `data_plane_builder`) + sibling-shaped policies (§3, §4). Additive, new table, no existing object touched. | needs number from SS |
-| M-B | `asset_registry` row for `mi_nirdesa`: `depends_on`, `target_table`, chart-scoped `count_sql`, `clear_tables`, `integrity_check_sql` (§7.2), `has_writer`, scope. Plus a verified-applied check (CLAUDE.md §N.4: author surgically, verify it applied). | needs number from SS |
-| M-C | `natural_key_partition` and output-digest spec for `mi_nirdesa` (the 990/991 pattern), so freshness is not `unknown / partition_undeclared`. | needs number from SS |
-| M-D | **(other worker, 1259)** remove the global `mimamsa_predictions` term from `ph_nimitta`'s `integrity_check_sql`. Not authored here. | 1259 (reserved) |
-| M-E | **(other worker, 1260)** no rebuild may delete/cascade into frozen predictions. Precondition for building M-B in production. Not authored here. | 1260 (reserved) |
-| M-F | *(proposed, SS decision)* remove the same dangling term from `mi_bhavisya`'s `integrity_check_sql` (§7.1; currently `false`). | needs number from SS |
-| M-G | *(proposed, SS decision, likely inside 1260's scope)* an UPDATE-immutability guard on the frozen columns of `mimamsa_predictions` (all but `lifecycle_status`, `chart_context_*`, `contact_id`), and putting `mimamsa_predictions_builder_guard` (not in any file of this repository) into a migration so it is reproducible (the g1c policies are in 576). | needs number from SS |
+**9.4 What is still not in CI.** The `deploy.yml` / `migrate.ts` protected-window wiring (§4.1) is
+design only; it is exercised by no test here. A writer-under-`data_plane_builder` test belongs to the
+implementation PR (§4, pattern `tests/l3/_builder_role.py`).
+
+## 10. Migrations needed (numbers as per N-104; every unnumbered row: **needs number from SS**)
+
+| # | Purpose | Apply path | Number |
+|---|---|---|---|
+| M-A | `CREATE TABLE mimamsa_reference_resolution` + index + comments + grants (incl. `data_plane_builder`) + sibling-shaped policies + grant assertion (§3, §4). Additive new table; no existing object touched. **Plus the non-SQL wiring**: filename in `PROTECTED_PUBLIC_SCHEMA_MIGRATIONS`, a dispatch input, the job entry (§4.1). | **protected public-schema window** (`amjis_app` has no `CREATE` on `public`) | **1264** |
+| M-B | `asset_registry` row for `mi_nirdesa` and `natural_key_partition` (the `registry` block), guarded by `to_regclass(…) IS NOT NULL`; verified-applied check (CLAUDE.md §N.4). Lands with the writer PR. | routine runner (DML on `amjis_app`-owned `asset_registry`) | needs number from SS (must sort after 1264) |
+| M-C | output-digest spec for `mi_nirdesa` (990 pattern), same guard. | routine runner (DML on `asset_output_digest_specs`) | needs number from SS |
+| M-D | **(other worker)** remove the global dangling-anchor term from `ph_nimitta` **and** `mi_bhavisya` integrity SQL (N-104 widening). Not authored here. | routine runner | 1259 |
+| M-E | **(other worker)** DB-enforced immutability of the frozen `mimamsa_predictions` rows (all but `lifecycle_status`, `chart_context_*`, `contact_id`); should also bring `mimamsa_predictions_builder_guard` (in no file of this repository) under a migration. Precondition for building M-B in production. Not authored here. | per that worker | 1265 |
+
+Separate writer PR (no migration of mine): `mi_bhavisya` append-only — never delete or re-stamp a frozen
+row, and never delete manifestation sets (§2.1).
 
 No migration file is created by this PR.
 
 ## 11. Risks and open questions for SS
 
-1. **Host: new asset or an existing one?** Recommendation: a new asset (§6.1). Alternative `mi_pramana`
-   (calibration) is a poor semantic fit; `mi_bhavisya` couples the ledger to the hazard.
-2. **Name `mi_nirdesa`.** Needs SS approval (Sanskrit-naming convention; avoid confusion with `mi_sambandha`).
-3. **Rule 2 (resolve by freeze id when the reference column was rewritten away).** Keep? It exists to
+Closed by N-104 (kept for the record): **host** (new asset, §6.1); **name** `mi_nirdesa` (approved);
+**dangling predictions still count** toward the calibration gate (disclose, do not exclude);
+**`mi_bhavisya`'s identical integrity term** (folded into 1259); **DB-enforced immutability** (1265);
+**rule 3 stays**, labelled weaker evidence.
+
+Still open:
+
+1. **Rule 2 (resolve by freeze id when the reference column was rewritten away).** Keep? It exists to
    survive a repeat of the 680 failure mode; cost is one extra branch. Today it fires on 0 rows.
-4. **How strong must `superseded` be?** v1 = exact (domain, window, falsifier), unique, in-chart —
-   weak but disclosed. Option: also require equality of the frozen `outcome_claim` with the
-   successor's projection, which needs the freeze mapping factored into a *shared* helper
-   (`mi_bhavisya` and the resolver would then share one definition; touches production code).
-   Today it changes nothing (superseded = 0).
-5. **`mi_bhavisya`'s own integrity SQL has the same global dangling term and is `false` on production now.** Relocate to the
-   detector as well (M-F)? The ruling names `ph_nimitta`; this is the same defect one asset to the right.
-6. **680 already rewrote 191 of 195 frozen reference columns, and nothing prevents a repeat.** There is
-   no UPDATE guard on `mimamsa_predictions`, and the one trigger that exists is not in the repo. Is the
-   N-99 "immutable" to be enforced in the database (M-G) or only by convention?
-7. **Dependency on 1260.** Until 1260 lands, a routine `mi_bhavisya` rebuild still replaces all
-   `pending` rows (all 139). Building the ledger asset before 1260 is safe (it only reads the frozen
-   table) but does not protect anything. Confirm the ordering: 1260, then M-A/M-B.
-8. **State vs history.** Delete-then-insert means the ledger forgets what it once recorded about a
-   prediction that is later deleted. Accepted here (state, §4); the frozen-set digest carries the
-   history (§7.4). Alternative: an append-only history table. Recommendation: not now.
-9. **Data classification and RLS of the ledger.** C3-predictive (walled like `mimamsa_predictions` /
-   `mimamsa_calibration` in migration 576, to be added to the g1c arm/disarm lists) or a derived
-   table with the plain sibling ACL? The DDL assumes the second, with sibling-shaped policies; RLS is
+2. **How strong must `superseded` be?** v1 = exact (domain, window, falsifier), unique, in-chart —
+   weak but disclosed (independent review: domain-only would match 53 rows, so the key is already near
+   its safe edge). Option: also require equality of the frozen `outcome_claim` with the successor's
+   projection, which needs the freeze mapping factored into a *shared* helper (touches production
+   code). Today it changes nothing (superseded = 0).
+3. **Ordering and preconditions.** Until 1265 and the `mi_bhavisya` append-only PR land, a routine
+   `mi_bhavisya` rebuild still replaces all `pending` rows (all 139) and deletes all manifestation sets.
+   Building the ledger asset before then is safe (it only reads the frozen table) but protects
+   nothing. Confirm: 1265 + append-only PR, then M-A (window) and M-B.
+4. **State vs history.** Delete-then-insert means the ledger forgets what it once recorded about a
+   prediction that is later deleted. Acceptable **only because** 1265 makes deletion of frozen rows
+   impossible; the frozen-set digest carries the history (§7.4). Alternative: an append-only history
+   table. Recommendation: not now.
+5. **Data classification and RLS of the ledger.** C3-predictive (walled like `mimamsa_predictions` /
+   `mimamsa_calibration` in migration 576, to be added to the g1c arm/disarm lists) or a derived table
+   with the plain sibling ACL? The DDL assumes the second, with sibling-shaped policies; RLS is
    disarmed in production (operator-armed), so the choice changes nothing observable today.
-10. **Role that executes the writer.** `role_orchestrator` or `data_plane_builder`? The design grants both;
-    the implementation PR needs a builder-role test either way (the Q-L4-04 failure shape).
-11. **Other reference kinds.** `mimamsa_manifestation_sets.citation_ref` repeats the anchor id (no
-    separate ledger needed: same value); `driving_signals` (0 of 695 live per A.L5 CF-L5-02) is a
-    *different grain* (up to five ids per prediction) and should be its own table if wanted;
-    `brahma_mimamsa_prediction_ledger` / `brahma_prospective_ledger` cite L1 fact ids and a text
-    citation, not anchor ids. v1 = anchors only.
-12. **Do dangling predictions keep counting toward calibration and the activation gate?** This design
-    discloses and does not exclude. Whether a gate sample should count a prediction whose grounding can
-    no longer be traced is a calibration-policy decision (Q-L5-02 / Q-L5-11 territory), not the ledger's.
-13. **`resolved` is only as strong as identity.** For the 4 predictions on 680-collision-pair ids
-    (random, never remapped) identity cannot hold; they can only ever be `superseded` or `vanished`.
-14. **Risk: the ledger being read as a verdict.** A `resolved` row says an anchor with that id exists,
+6. **Role that executes the writer.** `role_orchestrator` or `data_plane_builder`? The design grants
+   both; the implementation PR needs a builder-role test either way (the Q-L4-04 failure shape).
+7. **Window wiring ownership.** The §4.1 changes touch `migrate.ts` and `deploy.yml`, which other lanes
+   also edit; who authors them, and may they ride in the same PR as the writer?
+8. **Other reference kinds.** `driving_signals` (0 of 695 live per A.L5 CF-L5-02) is a *different grain*
+   (up to five ids per prediction) and should be its own table if wanted;
+   `brahma_mimamsa_prediction_ledger` / `brahma_prospective_ledger` cite L1 fact ids and a text
+   citation, not anchor ids. v1 = anchors only.
+9. **`resolved` is only as strong as identity.** For the 4 predictions on 680-collision-pair ids
+   (random, never remapped) identity cannot hold; they can only ever be `superseded` or `vanished`.
+10. **Risk: the ledger being read as a verdict.** A `resolved` row says an anchor with that id exists,
     not that the anchor still carries the grade it had at freeze. Disclosure wording must not say
     "verified".
-15. **Chart `1c826d5a-…` resolves 56/56 today only because 680 remapped it and the L4 rebuild
+11. **Chart `1c826d5a-…` resolves 56/56 today only because 680 remapped it and the L4 rebuild
     reproduced the identities.** That is a statement about this moment; the detector is how it stays true.
+12. **Asset integrity SQL is true on an empty table and global rather than per-chart** (review NIT).
+    Global matches the registry convention (the freeze-time detector runs with no bind parameters);
+    coverage is deliberately delegated to D1 plus the INCONCLUSIVE exit (§7.3).

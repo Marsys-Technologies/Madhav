@@ -27,19 +27,35 @@ This file holds, and is the ONLY place that holds (no production module exists y
      `phala_anchors` at all (a computed side table must never reference-block, cascade
      into, or modify the frozen record).
   6. Strict-xfail HOLDS for the pieces that do not exist yet (production module, writer
-     registration, migration file).
+     registration, migration file -- matched by file CONTENT so the real filename flips it).
+  7. REAL-POSTGRES layer (section 7): the doc's SQL is executed on a throwaway cluster that
+     reproduces the production power structure (schema public owned by a schema-owner role,
+     `amjis_app` with USAGE only).  It proves the DDL needs the protected window, drives the
+     CHECK matrix exhaustively against the Python twin, kills mutated DDL, runs the writer /
+     detector / reader / registry SQL, and asserts the reader's stale predicate equals D1's.
+     Skips (with a reason) when no PostgreSQL binaries are found; L5_LEDGER_REQUIRE_PG=1 turns
+     that skip into a failure.
 
-No database, no network, no production module is imported.  Pure functions only.
+No production module is imported.  Sections 1-6 are pure functions; section 7 starts its own
+loopback-only throwaway Postgres and touches nothing else.
 """
 from __future__ import annotations
 
+import collections
 import copy
+import glob
 import hashlib
 import inspect
 import json
+import os
 import random
 import re
+import shutil
+import socket
+import subprocess
+import tempfile
 import textwrap
+import time
 import uuid
 from datetime import date
 from pathlib import Path
@@ -59,6 +75,7 @@ DESIGN_DOC = (
 )
 LEAK_GUARD_TS = _REPO_ROOT / "platform/src/lib/pariprashna/no_leakage/calibration_leak_guard.ts"
 MIGRATIONS_DIR = _REPO_ROOT / "platform/migrations"
+SUPABASE_MIGRATIONS_DIR = _REPO_ROOT / "platform/supabase/migrations"
 
 LEDGER_TABLE = "mimamsa_reference_resolution"
 FROZEN_TABLE = "mimamsa_predictions"
@@ -159,10 +176,11 @@ def freeze_anchor_id(
 ) -> tuple[str, str]:
     """The anchor id the prediction was FROZEN against, and where that came from.
 
-    Preference order (design doc 5.1): the manifestation-set citation (written once at
-    freeze, untouched by migration 680) -> the `pred_<anchor_id>` suffix of prediction_id
-    -> the live reference column as a last resort (then the two ids are the same by
-    construction and `reference_rewritten_since_freeze` is necessarily false).
+    Preference order (design doc 5.1): the manifestation-set citation (untouched by migration
+    680 but NOT durable: mi_bhavisya deletes every manifestation set on rebuild) -> the
+    `pred_<anchor_id>` suffix of prediction_id (durable: it is the primary key) -> the live
+    reference column as a last resort (then the two ids are the same by construction and
+    `reference_rewritten_since_freeze` is necessarily false).
     """
     cit = _norm_id(citation_anchor_id)
     if cit:
@@ -236,7 +254,7 @@ def resolve_references(
             "anchor_id_at_freeze": frz,
             "freeze_id_source": frz_src,
             "anchor_id_referenced": ref,
-            "reference_rewritten_since_freeze": bool(ref and frz and ref != frz),
+            "reference_rewritten_since_freeze": ref != frz,
             "resolution_status": status,
             "resolution_basis": basis,
             "resolved_anchor_id": resolved_anchor_id,
@@ -266,33 +284,45 @@ def summarize(rows: Iterable[Mapping[str, Any]]) -> dict[str, int]:
     return counts
 
 
-def row_invariant_violations(row: Mapping[str, Any]) -> list[str]:
-    """Python twin of the DDL CHECK constraints in the design doc (section 3)."""
-    v: list[str] = []
+DDL_CONSTRAINTS = ("status_chk", "freeze_src_chk", "counts_chk", "matrix_chk")
+
+
+def ddl_check_violations(row: Mapping[str, Any]) -> list[str]:
+    """Python twin of EXACTLY the four DDL CHECK constraints (design doc section 3).
+
+    Returns the suffixes of the violated constraints (mimamsa_reference_resolution_<name>).
+    Cross-validated against a real Postgres in section 7: the database must accept a row
+    iff this returns [].
+    """
     st, bs = row["resolution_status"], row["resolution_basis"]
-    if st not in STATUS_BASES:
-        v.append(f"unknown status {st!r}")
-        return v
-    if bs not in STATUS_BASES[st]:
-        v.append(f"basis {bs!r} not permitted for status {st!r}")
+    rid, n, cur = row["resolved_anchor_id"], row["candidate_count"], row["current_anchor_count"]
+    v: list[str] = []
+    if st not in STATUSES:
+        v.append("status_chk")
     if row["freeze_id_source"] not in FREEZE_SOURCES:
-        v.append(f"unknown freeze_id_source {row['freeze_id_source']!r}")
-    rid, n = row["resolved_anchor_id"], row["candidate_count"]
-    if st in (STATUS_RESOLVED, STATUS_SUPERSEDED) and not rid:
-        v.append("resolved/superseded rows must name resolved_anchor_id")
-    if st == STATUS_VANISHED and rid is not None:
-        v.append("vanished rows must have NULL resolved_anchor_id")
-    if st == STATUS_SUPERSEDED and n != 1:
-        v.append("superseded requires exactly one claim-key candidate")
-    if bs == BASIS_NO_MATCH and n != 0:
-        v.append("no_match requires zero candidates")
-    if bs == BASIS_CLAIM_AMBIGUOUS and n < 2:
-        v.append("claim_key_ambiguous requires >= 2 candidates")
-    if row["current_anchor_count"] < 0 or n < 0:
-        v.append("negative counts")
+        v.append("freeze_src_chk")
+    if not (n >= 0 and cur >= 0):
+        v.append("counts_chk")
+    matrix = (
+        (st == STATUS_RESOLVED and bs in STATUS_BASES[STATUS_RESOLVED] and rid is not None)
+        or (st == STATUS_SUPERSEDED and bs == BASIS_CLAIM_UNIQUE and rid is not None and n == 1)
+        or (st == STATUS_VANISHED and bs == BASIS_NO_MATCH and rid is None and n == 0)
+        or (st == STATUS_VANISHED and bs == BASIS_CLAIM_AMBIGUOUS and rid is None and n >= 2)
+    )
+    if not matrix:
+        v.append("matrix_chk")
+    return v
+
+
+def row_invariant_violations(row: Mapping[str, Any]) -> list[str]:
+    """DDL CHECKs (via `ddl_check_violations`) plus two Python-only semantic invariants."""
+    v: list[str] = list(ddl_check_violations(row))
+    if v:
+        return v
     if not row["anchor_id_at_freeze"] and row["freeze_id_source"] != FREEZE_SRC_REFERENCED:
         v.append("empty freeze id with non-fallback source")
-    if st == STATUS_VANISHED and row["current_anchor_count"] == 0 and n != 0:
+    if row["resolution_status"] == STATUS_VANISHED and row["current_anchor_count"] == 0 \
+            and row["candidate_count"] != 0:
         v.append("candidates cannot exist when the chart has no current anchors")
     return v
 
@@ -570,6 +600,34 @@ def _check_no_mutation_no_aliasing(fn: ResolverFn) -> None:
     assert len(gen_rows) == len(p0)
 
 
+def _check_rewritten_flag(fn: ResolverFn) -> None:
+    """reference_rewritten_since_freeze == (live reference differs from the freeze id).
+
+    Includes the BLANK reference: a blanked reference column is a rewrite too (review LOW-5).
+    """
+    f = _u(77)
+    same = pred(1, freeze=f, referenced=f)
+    diff = pred(2, freeze=_u(78), referenced=_u(79))
+    blank = pred(3, freeze=_u(80), referenced="")
+    g = _u(82)
+    blank_resolvable = pred(4, freeze=g, referenced="")
+    fallback = {**pred(5, freeze=_u(81)), "prediction_id": "weird", "citation_anchor_id": None}
+    rows = {r["prediction_id"]: r for r in fn(
+        copy.deepcopy([same, diff, blank, blank_resolvable, fallback]),
+        copy.deepcopy([anch(f), anch(g)]),
+    )}
+    assert rows[same["prediction_id"]]["reference_rewritten_since_freeze"] is False
+    assert rows[diff["prediction_id"]]["reference_rewritten_since_freeze"] is True
+    assert rows[blank["prediction_id"]]["reference_rewritten_since_freeze"] is True
+    assert rows[blank["prediction_id"]]["resolution_status"] == STATUS_VANISHED
+    br = rows[blank_resolvable["prediction_id"]]
+    assert br["reference_rewritten_since_freeze"] is True
+    assert (br["resolution_status"], br["resolution_basis"]) == (STATUS_RESOLVED, BASIS_ID_FREEZE)
+    fb = rows["weird"]
+    assert fb["freeze_id_source"] == FREEZE_SRC_REFERENCED
+    assert fb["reference_rewritten_since_freeze"] is False
+
+
 def _check_duplicate_rejected(fn: ResolverFn) -> None:
     p = pred(1)
     with pytest.raises(ValueError):
@@ -614,6 +672,7 @@ def contract_checks(fn: ResolverFn) -> None:
     _check_production_shape(fn)
     _check_idempotent_and_order_independent(fn)
     _check_no_mutation_no_aliasing(fn)
+    _check_rewritten_flag(fn)
     try:
         _check_duplicate_rejected(fn)
     except pytest.fail.Exception as exc:  # DID NOT RAISE -> a contract violation
@@ -641,6 +700,10 @@ def test_idempotent_and_order_independent():
 
 def test_inputs_not_mutated_outputs_not_aliased():
     _check_no_mutation_no_aliasing(resolve_references)
+
+
+def test_rewritten_flag_means_reference_differs_from_freeze_id():
+    _check_rewritten_flag(resolve_references)
 
 
 def test_duplicate_prediction_key_is_rejected():
@@ -815,6 +878,12 @@ MUTANTS: dict[str, dict[str, tuple[str, str]]] = {
     "duplicate_prediction_not_rejected": {
         "resolve_references": ('raise ValueError(f"duplicate prediction key {k!r}")', "pass")
     },
+    "rewritten_flag_ignores_blank_reference": {
+        "resolve_references": (
+            '"reference_rewritten_since_freeze": ref != frz,',
+            '"reference_rewritten_since_freeze": bool(ref and frz and ref != frz),',
+        )
+    },
     "candidate_count_lies": {
         "resolve_references": ('"candidate_count": len(cand),', '"candidate_count": 0,')
     },
@@ -844,6 +913,8 @@ def test_mutant_is_killed_by_the_contract(mutant):
 
 _FENCE = re.compile(r"^```sql[ \t]*([\w\-]*)[ \t]*\n(.*?)^```[ \t]*$", re.S | re.M)
 DDL_KIND, WRITER_KINDS, READ_KINDS = "ddl", ("writer",), ("detector", "reader", "evidence")
+REGISTRY_KIND = "registry"
+ASSET_ID = "mi_nirdesa"
 
 
 def _strip_sql_comments(sql: str) -> str:
@@ -895,7 +966,7 @@ def sql_violations(doc_text: str) -> list[str]:
     v: list[str] = []
     blocks = sql_blocks(doc_text)
     kinds = {k for k, _ in blocks}
-    for needed in (DDL_KIND, "writer", "detector"):
+    for needed in (DDL_KIND, "writer", "detector", REGISTRY_KIND):
         if needed not in kinds:
             v.append(f"design doc has no ```sql {needed} block")
     for kind, sql in blocks:
@@ -934,6 +1005,17 @@ def sql_violations(doc_text: str) -> list[str]:
                     re.sub(r"'[^']*'", "''", st)  # ignore words inside string literals
                 ):
                     v.append(f"[{kind}] read-only block contains non-SELECT content: {st[:70]!r}")
+        elif kind == REGISTRY_KIND:
+            for st in _statements(sql):
+                s_ = st.lower()
+                if re.match(r"\s*insert\s+into\s+asset_registry\b", s_):
+                    if f"'{ASSET_ID}'" not in s_.split("values", 1)[-1][:60]:
+                        v.append(f"[registry] INSERT must be the {ASSET_ID} row: {st[:70]!r}")
+                elif re.match(r"\s*update\s+asset_registry\b", s_):
+                    if not re.search(rf"where\s+asset_id\s*=\s*'{ASSET_ID}'", s_):
+                        v.append(f"[registry] UPDATE must be scoped to asset_id = '{ASSET_ID}': {st[:70]!r}")
+                else:
+                    v.append(f"[registry] only INSERT/UPDATE asset_registry for {ASSET_ID}: {st[:70]!r}")
         else:
             v.append(f"unknown sql block kind {kind!r}")
     return v
@@ -971,6 +1053,74 @@ def test_design_doc_frontmatter_and_sections():
     assert "needs number from SS" in text
 
 
+def _repo_count_sql_placeholder_styles() -> collections.Counter:
+    styles: collections.Counter = collections.Counter()
+    pat = re.compile(r"count_sql[^;]{0,400}?chart_id\s*=\s*(\$1|:chart_id|%s|\$\{[A-Za-z_]+\})", re.S)
+    for d in (MIGRATIONS_DIR, SUPABASE_MIGRATIONS_DIR):
+        for f in sorted(d.glob("*.sql")):
+            try:
+                txt = f.read_text(encoding="utf-8")
+            except OSError:
+                continue
+            for m in pat.finditer(txt):
+                styles[m.group(1)] += 1
+    return styles
+
+
+def _integrity_block(doc_text: str) -> str:
+    blocks = [sql for k, sql in sql_blocks(doc_text) if k == "detector" and "asset integrity" in sql.lower()]
+    raw = [m.group(2) for m in _FENCE.finditer(doc_text)
+           if m.group(1) == "detector" and "-- asset integrity" in m.group(2)]
+    assert len(raw) == 1, "expected exactly one asset-integrity detector block"
+    return _strip_sql_comments(raw[0])
+
+
+def _norm_sql(sql: str) -> str:
+    return re.sub(r"\s+", " ", sql).strip().rstrip(";").strip()
+
+
+def registry_violations(doc_text: str) -> list[str]:
+    """count_sql convention + integrity_check_sql identity for the registry block."""
+    v: list[str] = []
+    reg = [sql for k, sql in sql_blocks(doc_text) if k == REGISTRY_KIND]
+    if len(reg) != 1:
+        return [f"expected exactly one registry block, found {len(reg)}"]
+    m = re.search(
+        r"'SELECT count\(\*\) FROM mimamsa_reference_resolution WHERE chart_id = ([^']+)'", reg[0])
+    if not m:
+        v.append("registry block has no chart-scoped count_sql on the ledger table")
+    elif m.group(1) != "$1":
+        v.append(f"count_sql binds the chart as {m.group(1)!r}; the registry convention is '$1'")
+    lit = re.search(r"\$integrity\$(.*?)\$integrity\$", reg[0], re.S)
+    if not lit:
+        v.append("registry block has no $integrity$ literal")
+    elif _norm_sql(lit.group(1)) != _norm_sql(_integrity_block(doc_text)):
+        v.append("registry integrity_check_sql differs from the section 7.2 block")
+    for kind, sql in sql_blocks(doc_text):
+        if ":chart_id" in sql:
+            v.append(f"[{kind}] uses the ':chart_id' placeholder")
+    return v
+
+
+def test_count_sql_placeholder_matches_the_repo_registry_convention():
+    styles = _repo_count_sql_placeholder_styles()
+    assert styles.get("$1", 0) >= 20, f"could not establish the repo convention: {dict(styles)}"
+    assert set(styles) == {"$1"}, f"mixed count_sql placeholder styles in migrations: {dict(styles)}"
+    assert registry_violations(_doc_text()) == []
+
+
+@pytest.mark.parametrize("name,mut", [
+    ("colon_placeholder", lambda t: t.replace("WHERE chart_id = $1'", "WHERE chart_id = :chart_id'", 1)),
+    ("percent_placeholder", lambda t: t.replace("WHERE chart_id = $1'", "WHERE chart_id = %s'", 1)),
+    ("integrity_literal_drifts", lambda t: t.replace("btrim(prediction_frozen_bundle_hash) = ''", "btrim(prediction_frozen_bundle_hash) = 'x'", 1)),
+])
+def test_registry_checker_kills_mutant(name, mut):
+    text = _doc_text()
+    mutated = mut(text)
+    assert mutated != text, f"{name}: mutation was a no-op"
+    assert registry_violations(mutated), name
+
+
 # ---- mutation proofs for the static checker ------------------------------------------------
 
 _SQL_MUTANTS: dict[str, Callable[[str], str]] = {
@@ -993,6 +1143,9 @@ _SQL_MUTANTS: dict[str, Callable[[str], str]] = {
         f"DELETE FROM {LEDGER_TABLE} WHERE chart_id = %s", f"DELETE FROM {LEDGER_TABLE}", 1),
     "detector_gains_dml": lambda t: t + "\n```sql detector\nSELECT 1; DELETE FROM mimamsa_reference_resolution;\n```\n",
     "reader_gains_cte_delete": lambda t: t + "\n```sql reader\nWITH d AS (DELETE FROM mimamsa_predictions RETURNING 1) SELECT * FROM d;\n```\n",
+    "registry_block_updates_another_asset": lambda t: t + "\n```sql registry\nUPDATE asset_registry SET is_active = false WHERE asset_id = 'ph_nimitta';\n```\n",
+    "registry_block_deletes_registry_rows": lambda t: t + "\n```sql registry\nDELETE FROM asset_registry WHERE asset_id = 'mi_nirdesa';\n```\n",
+    "registry_block_unscoped_update": lambda t: t + "\n```sql registry\nUPDATE asset_registry SET natural_key_partition = 'x';\n```\n",
     "select_for_update_on_frozen": lambda t: t + "\n```sql detector\nSELECT * FROM mimamsa_predictions FOR UPDATE;\n```\n",
 }
 
@@ -1011,6 +1164,7 @@ def test_sql_checker_ignores_comments_that_merely_mention_the_frozen_table():
         "CREATE TABLE IF NOT EXISTS mimamsa_reference_resolution (chart_id uuid);\n```\n"
         "```sql writer\nDELETE FROM mimamsa_reference_resolution WHERE chart_id = %s;\n```\n"
         "```sql detector\nSELECT 1; /* UPDATE mimamsa_predictions */\n```\n"
+        "```sql registry\nUPDATE asset_registry SET is_active = true WHERE asset_id = 'mi_nirdesa';\n```\n"
     )
     assert sql_violations(benign) == []
 
@@ -1047,13 +1201,512 @@ def test_hold_writer_registered_under_the_frozen_orchestrator_contract():
         assert not re.search(pat, src.lower(), re.S), pat
 
 
-@pytest.mark.xfail(strict=True, reason="HOLD: ledger-table migration (number needs SS) not authored yet "
-                                       "(design doc 10)")
+def _migration_files_creating_ledger() -> list[Path]:
+    pat = re.compile(r"create\s+table\s+(if\s+not\s+exists\s+)?(public\.)?" + LEDGER_TABLE + r"\b", re.I)
+    out: list[Path] = []
+    for d in (MIGRATIONS_DIR, SUPABASE_MIGRATIONS_DIR):
+        for f in sorted(d.glob("*.sql")):
+            try:
+                if pat.search(_strip_sql_comments(f.read_text(encoding="utf-8"))):
+                    out.append(f)
+            except OSError:
+                continue
+    return out
+
+
+@pytest.mark.xfail(strict=True, reason="HOLD: ledger-table migration (1264, protected public-schema window) not "
+                                       "authored yet (design doc 4.1, 10); matched by file CONTENT so the real "
+                                       "filename flips it")
 def test_hold_ledger_migration_exists_and_matches_the_design_ddl():
-    files = sorted(MIGRATIONS_DIR.glob("*mimamsa_reference_resolution*.sql"))
+    files = _migration_files_creating_ledger()
     assert files, "no migration creating mimamsa_reference_resolution"
     body = _strip_sql_comments(files[0].read_text(encoding="utf-8")).lower()
-    assert f"create table if not exists {LEDGER_TABLE}" in body
     assert not re.search(r"\breferences\b|\bon\s+delete\b|create\s+trigger", body)
     for pat in _FROZEN_WRITE_PATTERNS:
         assert not re.search(pat, body, re.S), pat
+    protected = (_REPO_ROOT / "platform/scripts/migrate.ts").read_text(encoding="utf-8")
+    assert files[0].name in protected, "1264 must be listed in PROTECTED_PUBLIC_SCHEMA_MIGRATIONS (design doc 4.1)"
+
+
+# ===========================================================================
+# 7. REAL-POSTGRES LAYER
+# ===========================================================================
+# A throwaway cluster started by the fixture itself: loopback TCP on a free port, NO unix
+# socket, temporary data directory, stopped by the recorded postmaster PID.  Nothing but this
+# process's own cluster is ever started, stopped or touched.
+
+NOLOGIN_ROLES = (
+    "data_plane_schema_owner", "retrieval_census_ro", "role_web_serve", "role_jobs", "role_sidecar",
+    "nirmana_evidence_ingress_writer", "suvarna_reader", "role_orchestrator", "role_ledger_write",
+    "data_plane_builder",
+)
+LOGIN_ROLE = "amjis_app"
+
+# Copied from production (information_schema / pg_get_constraintdef, read-only, 2026-10-03).
+REGISTRY_STUB_DDL = """
+CREATE TABLE asset_registry (
+  asset_id text PRIMARY KEY, layer text NOT NULL, sort_order integer NOT NULL,
+  sanskrit_name text NOT NULL, english_name text NOT NULL, english_description text NOT NULL,
+  storage_type text NOT NULL, target_table text, count_sql text, size_sql text, target_floor integer,
+  expected_volume_formula text, expected_volume_inputs jsonb, volume_explanation text,
+  depends_on text[] DEFAULT ARRAY[]::text[], scope text NOT NULL, is_active boolean DEFAULT true,
+  estimated_seconds integer, created_at timestamptz DEFAULT now(), clear_tables text[],
+  asset_type text NOT NULL DEFAULT 'data', layer_name text, layer_index text, provides_apis jsonb,
+  health_probe jsonb, catalog_status text NOT NULL DEFAULT 'DRAFT',
+  rebuild_on_probe_fail boolean NOT NULL DEFAULT false, integrity_check_sql text,
+  has_substeps boolean NOT NULL DEFAULT false, asset_kind text NOT NULL DEFAULT 'data',
+  service_health text, last_invoked_at timestamptz, last_selftest_at timestamptz, selftest_detail jsonb,
+  has_writer boolean NOT NULL DEFAULT false, writer_timeout_seconds integer NOT NULL DEFAULT 600,
+  domain text, rung text, superseded_by text REFERENCES asset_registry (asset_id),
+  data_disposition text, natural_key_partition text, dead_flag boolean,
+  CONSTRAINT asset_registry_asset_kind_check CHECK (asset_kind = ANY (ARRAY['data','service','artifact'])),
+  CONSTRAINT asset_registry_asset_type_check CHECK (asset_type = ANY (ARRAY['data','service'])),
+  CONSTRAINT asset_registry_catalog_status_check CHECK (catalog_status = ANY (ARRAY['CURRENT','DRAFT','RETIRED'])),
+  CONSTRAINT asset_registry_domain_check CHECK (domain IS NULL OR domain = ANY (ARRAY['shared','chart'])),
+  CONSTRAINT asset_registry_layer_check CHECK (layer = ANY (ARRAY['brahmagyan','ganita','bodha','kala','phala','mimamsa'])),
+  CONSTRAINT asset_registry_natural_key_partition_needs_table CHECK (natural_key_partition IS NULL OR target_table IS NOT NULL),
+  CONSTRAINT asset_registry_natural_key_partition_nonblank CHECK (natural_key_partition IS NULL OR btrim(natural_key_partition) <> ''),
+  CONSTRAINT asset_registry_rung_check CHECK (rung IS NULL OR rung = ANY (ARRAY['R0','R1','R2','R3','R4','R5'])),
+  CONSTRAINT asset_registry_scope_check CHECK (scope = ANY (ARRAY['global','per_chart'])),
+  CONSTRAINT asset_registry_storage_type_check CHECK (storage_type = ANY (ARRAY['postgres_table','pgvector','postgres_view','gcs_jsonl','bigquery','tool_only','service']))
+);
+"""
+
+SOURCE_STUB_DDL = """
+CREATE TABLE charts (id uuid PRIMARY KEY);
+CREATE TABLE phala_anchors (anchor_id uuid PRIMARY KEY, chart_id uuid NOT NULL, domain text,
+  window_start date, window_end date, falsifier text);
+CREATE TABLE mimamsa_predictions (
+  chart_id uuid NOT NULL, prediction_id text NOT NULL, source_pramana_id text NOT NULL,
+  outcome_claim text NOT NULL DEFAULT 'x', domain text NOT NULL, observation_window daterange NOT NULL,
+  eval_date date NOT NULL DEFAULT '2030-01-01', confidence_band numrange NOT NULL DEFAULT '[0.4,0.7)',
+  magnitude_expected text NOT NULL DEFAULT 'm', falsifier_jsonb jsonb NOT NULL, base_rate numeric,
+  emitted_at timestamptz NOT NULL DEFAULT now(), lifecycle_status text NOT NULL DEFAULT 'pending',
+  driving_signals jsonb NOT NULL DEFAULT '[]', frozen_bundle_hash text NOT NULL,
+  bundle_formula_version text NOT NULL DEFAULT 'v', chart_context_stale_at timestamptz,
+  PRIMARY KEY (chart_id, prediction_id));
+CREATE TABLE mimamsa_manifestation_sets (chart_id uuid NOT NULL, prediction_id text NOT NULL,
+  channel_id text NOT NULL, citation_ref jsonb NOT NULL, PRIMARY KEY (chart_id, prediction_id, channel_id));
+CREATE FUNCTION app_chart_context() RETURNS uuid LANGUAGE sql AS $$ SELECT NULL::uuid $$;
+"""
+
+
+def _find_pg_bin() -> Path | None:
+    cands: list[Path] = []
+    w = shutil.which("initdb")
+    if w:
+        cands.append(Path(w).resolve().parent)
+    for pat in ("/usr/lib/postgresql/*/bin", "/opt/homebrew/opt/postgresql@*/bin", "/opt/homebrew/bin",
+                "/usr/local/opt/postgresql@*/bin", "/usr/local/bin"):
+        cands.extend(Path(d) for d in sorted(glob.glob(pat), reverse=True))
+    for d in cands:
+        if all((d / b).exists() for b in ("initdb", "pg_ctl", "postgres")):
+            return d
+    return None
+
+
+class _Pg:
+    def __init__(self, bindir: Path, datadir: Path, port: int, pid: int):
+        self.bindir, self.datadir, self.port, self.pid = bindir, datadir, port, pid
+
+    def connect(self, dbname: str = "postgres", user: str = "postgres", autocommit: bool = True):
+        import psycopg  # noqa: PLC0415
+
+        return psycopg.connect(host="127.0.0.1", port=self.port, user=user, dbname=dbname,
+                               autocommit=autocommit, connect_timeout=10)
+
+
+@pytest.fixture(scope="module")
+def pg():
+    pytest.importorskip("psycopg")
+    bindir = _find_pg_bin()
+    if bindir is None:
+        if os.environ.get("L5_LEDGER_REQUIRE_PG") == "1":
+            pytest.fail("L5_LEDGER_REQUIRE_PG=1 but no PostgreSQL binaries (initdb/pg_ctl/postgres) found")
+        pytest.skip("no PostgreSQL binaries found (initdb/pg_ctl/postgres); real-Postgres layer skipped")
+    datadir = Path(tempfile.mkdtemp(prefix="l5led_pg_"))
+    sock = socket.socket()
+    sock.bind(("127.0.0.1", 0))
+    port = sock.getsockname()[1]
+    sock.close()
+    log = datadir / "server.log"
+    try:
+        subprocess.run([str(bindir / "initdb"), "-D", str(datadir / "d"), "-U", "postgres", "-A", "trust",
+                        "-E", "UTF8", "--no-locale"], check=True, capture_output=True)
+        subprocess.run([str(bindir / "pg_ctl"), "-D", str(datadir / "d"), "-l", str(log), "-w", "-t", "60",
+                        "-o", f"-p {port} -c listen_addresses=127.0.0.1 -c unix_socket_directories='' "
+                              f"-c fsync=off -c synchronous_commit=off", "start"],
+                       check=True, capture_output=True)
+        pid = int((datadir / "d" / "postmaster.pid").read_text().splitlines()[0])
+    except (subprocess.CalledProcessError, OSError) as exc:
+        shutil.rmtree(datadir, ignore_errors=True)
+        detail = (getattr(exc, "stderr", b"") or b"").decode("utf-8", "replace")[-300:]
+        if os.environ.get("L5_LEDGER_REQUIRE_PG") == "1":
+            pytest.fail(f"could not start a throwaway PostgreSQL: {exc!r} {detail}")
+        pytest.skip(f"could not start a throwaway PostgreSQL ({exc!r}); real-Postgres layer skipped")
+    h = _Pg(bindir, datadir, port, pid)
+    try:
+        yield h
+    finally:
+        subprocess.run([str(bindir / "pg_ctl"), "-D", str(datadir / "d"), "-m", "fast", "-w", "-t", "60", "stop"],
+                       capture_output=True)
+        for _ in range(100):
+            try:
+                os.kill(pid, 0)
+            except ProcessLookupError:
+                break
+            time.sleep(0.1)
+        shutil.rmtree(datadir, ignore_errors=True)
+
+
+_DB_COUNTER = [0]
+
+
+def _ddl_blocks() -> list[str]:
+    return [sql for k, sql in sql_blocks(_doc_text()) if k == DDL_KIND]
+
+
+def _provision_db(h: _Pg, *, window_and_ddl: bool, stubs: bool = True) -> str:
+    """A fresh database shaped like production: schema public owned by data_plane_schema_owner,
+    `amjis_app` (LOGIN, NOINHERIT, not superuser) holding USAGE only; source tables owned by amjis_app."""
+    admin = h.connect()
+    if not admin.execute("SELECT 1 FROM pg_roles WHERE rolname = 'amjis_app'").fetchone():
+        for r in NOLOGIN_ROLES:
+            admin.execute(f"CREATE ROLE {r} NOLOGIN")
+        admin.execute(f"CREATE ROLE {LOGIN_ROLE} LOGIN NOINHERIT")
+    _DB_COUNTER[0] += 1
+    name = f"l5led_{_DB_COUNTER[0]}"
+    admin.execute(f"CREATE DATABASE {name}")
+    admin.close()
+    c = h.connect(name)
+    c.execute("DROP SCHEMA public CASCADE")
+    c.execute("CREATE SCHEMA public AUTHORIZATION data_plane_schema_owner")
+    c.execute("GRANT USAGE ON SCHEMA public TO amjis_app, role_web_serve, role_jobs, role_sidecar, "
+              "suvarna_reader, role_orchestrator, data_plane_builder")
+    if stubs:
+        c.execute(SOURCE_STUB_DDL)
+        c.execute(REGISTRY_STUB_DDL)
+        for t in ("charts", "phala_anchors", "mimamsa_predictions", "mimamsa_manifestation_sets",
+                  "asset_registry"):
+            c.execute(f"ALTER TABLE {t} OWNER TO amjis_app")
+    c.close()
+    if window_and_ddl:
+        _open_window(h, name)
+        a = h.connect(name, user=LOGIN_ROLE)
+        for blk in _ddl_blocks():
+            a.execute(blk)
+        a.close()
+        _close_window(h, name)
+    return name
+
+
+def _open_window(h: _Pg, db: str) -> None:
+    c = h.connect(db)
+    c.execute("GRANT CREATE ON SCHEMA public TO amjis_app")
+    c.close()
+
+
+def _close_window(h: _Pg, db: str) -> None:
+    c = h.connect(db)
+    c.execute("REVOKE CREATE ON SCHEMA public FROM amjis_app")
+    c.close()
+
+
+@pytest.fixture(scope="module")
+def ledger_db(pg):
+    return _provision_db(pg, window_and_ddl=True)
+
+
+def test_pg_routine_role_cannot_create_the_ledger_table_without_the_protected_window(pg):
+    import psycopg  # noqa: PLC0415
+
+    db = _provision_db(pg, window_and_ddl=False)
+    c = pg.connect(db)
+    assert c.execute("SELECT has_schema_privilege('amjis_app', 'public', 'CREATE')").fetchone()[0] is False
+    assert c.execute("SELECT has_schema_privilege('amjis_app', 'public', 'USAGE')").fetchone()[0] is True
+    c.close()
+    a = pg.connect(db, user=LOGIN_ROLE)
+    with pytest.raises(psycopg.errors.InsufficientPrivilege, match="permission denied for schema public"):
+        a.execute(_ddl_blocks()[0])
+    # re-running as the (future) owner does not help either: IF NOT EXISTS still needs CREATE only when absent,
+    # so assert the table really is absent and nothing half-applied
+    assert a.execute("SELECT to_regclass('public.mimamsa_reference_resolution')").fetchone()[0] is None
+
+
+def test_pg_ddl_applies_inside_the_window_idempotently_and_closes_it(pg, ledger_db):
+    h = pg
+    c = h.connect(ledger_db)
+    owner = c.execute("SELECT pg_get_userbyid(relowner) FROM pg_class WHERE relname = 'mimamsa_reference_resolution'").fetchone()[0]
+    assert owner == "amjis_app"
+    assert c.execute("SELECT has_schema_privilege('amjis_app', 'public', 'CREATE')").fetchone()[0] is False
+    acl = c.execute("SELECT relacl::text FROM pg_class WHERE relname = 'mimamsa_reference_resolution'").fetchone()[0]
+    for expect in ("role_orchestrator=arwd/amjis_app", "data_plane_builder=ard/amjis_app",
+                   "suvarna_reader=r/amjis_app", "role_web_serve=r/amjis_app", "role_sidecar=r/amjis_app",
+                   "role_jobs=r/amjis_app", "retrieval_census_ro=r/amjis_app",
+                   "nirmana_evidence_ingress_writer=r/amjis_app"):
+        assert expect in acl, (expect, acl)
+    assert "role_ledger_write" not in acl
+    pols = {r[0] for r in c.execute("SELECT polname FROM pg_policy WHERE polrelid = 'mimamsa_reference_resolution'::regclass")}
+    assert pols == {"mimamsa_reference_resolution_g1c_chart_context", "mimamsa_reference_resolution_g1c_unscoped"}
+    # nothing links the ledger to the frozen / anchor tables, and nothing was added to them
+    assert c.execute("""SELECT count(*) FROM pg_constraint
+                         WHERE contype = 'f' AND (conrelid = 'mimamsa_reference_resolution'::regclass
+                            OR confrelid IN ('mimamsa_predictions'::regclass, 'phala_anchors'::regclass))""").fetchone()[0] == 0
+    assert c.execute("SELECT count(*) FROM pg_trigger WHERE NOT tgisinternal AND tgrelid IN "
+                     "('mimamsa_predictions'::regclass, 'phala_anchors'::regclass)").fetchone()[0] == 0
+    assert c.execute("SELECT count(*) FROM pg_policy WHERE polrelid IN "
+                     "('mimamsa_predictions'::regclass, 'phala_anchors'::regclass)").fetchone()[0] == 0
+    c.close()
+    # idempotent: a second pass inside a fresh window succeeds
+    _open_window(h, ledger_db)
+    a = h.connect(ledger_db, user=LOGIN_ROLE)
+    for blk in _ddl_blocks():
+        a.execute(blk)
+    a.close()
+    _close_window(h, ledger_db)
+
+
+_LEDGER_COLS = ("chart_id, prediction_id, anchor_id_at_freeze, freeze_id_source, anchor_id_referenced, "
+                "reference_rewritten_since_freeze, resolution_status, resolution_basis, resolved_anchor_id, "
+                "candidate_count, current_anchor_count, claim_key, prediction_frozen_bundle_hash, "
+                "resolver_version, build_id, resolved_at")
+_GRID_RID = (None, "00000000-0000-0000-0000-0000000000aa")
+_GRID_STATUS = STATUSES + ("bogus",)
+_GRID_BASIS = tuple(b for bs in STATUS_BASES.values() for b in sorted(bs)) + ("bogus",)
+_GRID_CAND = (-1, 0, 1, 2, 3)
+_GRID_CUR = (-1, 0, 4)
+_GRID_SRC = FREEZE_SOURCES + ("bogus",)
+
+
+def cross_validate_check_matrix(conn, table: str = LEDGER_TABLE) -> list[str]:
+    """Drive the exhaustive grid through INSERT; return every disagreement with the Python twin."""
+    import psycopg  # noqa: PLC0415
+
+    mismatches: list[str] = []
+    i = 0
+    for st in _GRID_STATUS:
+        for bs in _GRID_BASIS:
+            for rid in _GRID_RID:
+                for n in _GRID_CAND:
+                    for cur in _GRID_CUR:
+                        for src in _GRID_SRC:
+                            i += 1
+                            row = {"resolution_status": st, "resolution_basis": bs, "resolved_anchor_id": rid,
+                                   "candidate_count": n, "current_anchor_count": cur, "freeze_id_source": src}
+                            twin = ddl_check_violations(row)
+                            try:
+                                conn.execute(
+                                    f"INSERT INTO {table} ({_LEDGER_COLS}) VALUES "
+                                    f"('{CANON}', %s, 'a', %s, 'a', false, %s, %s, %s, %s, %s, '{{}}', 'h', 'v', 'b', now())",
+                                    (f"g{i}", src, st, bs, rid, n, cur))
+                                db_ok, db_constraint = True, None
+                            except psycopg.errors.CheckViolation as exc:
+                                db_ok, db_constraint = False, (exc.diag.constraint_name or "").replace(f"{table}_", "")
+                            if db_ok != (not twin):
+                                mismatches.append(f"{row}: db_accepts={db_ok} twin_violations={twin}")
+                            elif not db_ok and db_constraint not in twin:
+                                mismatches.append(f"{row}: db rejected on {db_constraint} but twin says {twin}")
+    return mismatches
+
+
+def test_pg_check_matrix_agrees_with_the_python_twin_on_an_exhaustive_grid(ledger_db, pg):
+    c = pg.connect(ledger_db, user=LOGIN_ROLE)
+    try:
+        assert cross_validate_check_matrix(c) == []
+        # sanity: both outcomes were actually exercised
+        accepted = c.execute(f"SELECT count(*) FROM {LEDGER_TABLE}").fetchone()[0]
+        assert 0 < accepted < (len(_GRID_STATUS) * len(_GRID_BASIS) * len(_GRID_RID) * len(_GRID_CAND)
+                                * len(_GRID_CUR) * len(_GRID_SRC))
+        c.execute(f"DELETE FROM {LEDGER_TABLE}")
+    finally:
+        c.close()
+
+
+def _ddl_mutants(ddl0: str) -> dict[str, str]:
+    """Textual mutants of the CREATE TABLE block's CHECK matrix (each must change the text)."""
+    def sub(pattern: str, repl: str) -> str:
+        out, n = re.subn(pattern, repl, ddl0, count=1, flags=re.S)
+        assert n == 1, f"DDL mutation target not found: {pattern!r}"
+        return out
+
+    return {
+        "superseded_candidates_loosened": sub(r"(claim_key_unique'\s+AND resolved_anchor_id IS NOT NULL AND )candidate_count = 1", r"\1candidate_count >= 0"),
+        "no_match_requires_non_null_anchor": sub(r"(resolution_basis = 'no_match'\s+AND )resolved_anchor_id IS NULL", r"\1resolved_anchor_id IS NOT NULL"),
+        "ambiguous_threshold_loosened": sub(r"candidate_count >= 2", "candidate_count >= 0"),
+        "resolved_no_longer_needs_anchor": sub(r"(\('id_match_referenced', 'id_match_freeze'\))\s+AND resolved_anchor_id IS NOT NULL\)", r"\1)"),
+        "status_list_loses_superseded": sub(r"IN \('resolved', 'superseded', 'vanished'\)", "IN ('resolved', 'vanished')"),
+        "freeze_source_list_loses_one": sub(r"'prediction_id_suffix', 'source_pramana_id'\)", "'prediction_id_suffix')"),
+        "counts_check_drops_current_anchor": sub(r"CHECK \(candidate_count >= 0 AND current_anchor_count >= 0\)", "CHECK (candidate_count >= 0)"),
+        "resolved_branch_admits_vanished": sub(r"\(resolution_status = 'resolved'\s+AND resolution_basis IN", "(resolution_status IN ('resolved', 'vanished') AND resolution_basis IN"),
+        "no_match_admits_a_resolving_basis": sub(r"resolution_basis = 'no_match'", "resolution_basis IN ('no_match', 'id_match_referenced')"),
+        "superseded_branch_dropped": sub(r"OR \(resolution_status = 'superseded'\s+AND resolution_basis = 'claim_key_unique'\s+AND resolved_anchor_id IS NOT NULL AND candidate_count = 1\)", ""),
+    }
+
+
+def test_pg_ddl_mutants_are_caught_by_the_cross_validation(pg):
+    ddl0 = _ddl_blocks()[0]
+    mutants = _ddl_mutants(ddl0)
+    assert len(mutants) >= 10
+    survivors = []
+    for name, mutated in mutants.items():
+        assert mutated != ddl0, name
+        db = _provision_db(pg, window_and_ddl=False, stubs=False)
+        c = pg.connect(db)  # superuser: this test is about CHECK semantics, not privileges
+        c.execute(mutated)
+        mism = cross_validate_check_matrix(c)
+        c.close()
+        if not mism:
+            survivors.append(name)
+    assert survivors == [], f"DDL mutants that cross-validation failed to catch: {survivors}"
+
+
+def _load_production_shape(conn) -> tuple[list, list]:
+    from psycopg.types.json import Jsonb  # noqa: PLC0415
+
+    preds, anchors = production_shape()
+    other_p = [pred(900 + i, chart=OTHER, freeze=_u(9000 + i), referenced=_u(9500 + i)) for i in range(3)]
+    other_a = [anch(_u(9500 + i), chart=OTHER) for i in range(3)]
+    for ch in (CANON, OTHER):
+        conn.execute("INSERT INTO charts VALUES (%s) ON CONFLICT DO NOTHING", (ch,))
+    for p_ in preds + other_p:
+        conn.execute(
+            "INSERT INTO mimamsa_predictions (chart_id, prediction_id, source_pramana_id, domain, "
+            "observation_window, falsifier_jsonb, frozen_bundle_hash) VALUES (%s,%s,%s,%s,daterange(%s,%s),%s,%s)",
+            (p_["chart_id"], p_["prediction_id"], p_["source_pramana_id"], p_["domain"], p_["window_start"],
+             p_["window_end"], Jsonb(p_["falsifier_jsonb"]), p_["frozen_bundle_hash"]))
+        conn.execute("INSERT INTO mimamsa_manifestation_sets VALUES (%s,%s,'ch_x',%s)",
+                     (p_["chart_id"], p_["prediction_id"], Jsonb({"anchor_id": p_["citation_anchor_id"]})))
+    for a_ in anchors + other_a:
+        conn.execute("INSERT INTO phala_anchors VALUES (%s,%s,%s,%s,%s,%s)",
+                     (a_["anchor_id"], a_["chart_id"], a_["domain"], a_["window_start"], a_["window_end"], a_["falsifier"]))
+    return preds + other_p, anchors + other_a
+
+
+def _blocks_by_kind() -> dict[str, list[str]]:
+    out: dict[str, list[str]] = collections.defaultdict(list)
+    for k, sql in sql_blocks(_doc_text()):
+        out[k].append(sql)
+    return out
+
+
+def _run_writer(conn, chart: str) -> dict[str, int]:
+    import psycopg  # noqa: PLC0415
+    from psycopg.types.json import Jsonb  # noqa: PLC0415
+
+    sel_p, sel_a, delete, insert = _statements(_blocks_by_kind()["writer"][0])
+    conn.row_factory = psycopg.rows.dict_row
+    pr = conn.execute(sel_p, (chart,)).fetchall()
+    an = conn.execute(sel_a, (chart,)).fetchall()
+    conn.row_factory = psycopg.rows.tuple_row
+    rows = resolve_references(pr, an)
+    conn.execute(delete, (chart,))
+    for r in rows:
+        conn.execute(insert, (r["chart_id"], r["prediction_id"], r["anchor_id_at_freeze"], r["freeze_id_source"],
+                              r["anchor_id_referenced"], r["reference_rewritten_since_freeze"], r["resolution_status"],
+                              r["resolution_basis"], r["resolved_anchor_id"], r["candidate_count"],
+                              r["current_anchor_count"], Jsonb(r["claim_key"]), r["prediction_frozen_bundle_hash"],
+                              RESOLVER_VERSION, "build-1", "2026-10-03T00:00:00Z"))
+    return summarize(rows)
+
+
+def _d1(conn) -> dict[str, dict[str, int]]:
+    import psycopg  # noqa: PLC0415
+
+    d1 = _statements(_blocks_by_kind()["detector"][0])[0]
+    conn.row_factory = psycopg.rows.dict_row
+    rows = conn.execute(d1).fetchall()
+    conn.row_factory = psycopg.rows.tuple_row
+    return {str(r["chart_id"]): dict(r) for r in rows}
+
+
+def _reader_stats(conn, chart: str) -> tuple[dict[str, int], int]:
+    """(summary row, number of per-row ledger_stale = true) from the doc's reader SQL."""
+    import psycopg  # noqa: PLC0415
+
+    per_row, summary = _statements(_blocks_by_kind()["reader"][0])
+    conn.row_factory = psycopg.rows.dict_row
+    rows = conn.execute(per_row, (chart,)).fetchall()
+    summ = dict(conn.execute(summary, (chart,)).fetchone())
+    conn.row_factory = psycopg.rows.tuple_row
+    return summ, sum(1 for r in rows if r["ledger_stale"] is True)
+
+
+def test_pg_writer_detector_reader_registry_end_to_end(pg):
+    db = _provision_db(pg, window_and_ddl=True)
+    kinds = _blocks_by_kind()
+    conn = pg.connect(db, user=LOGIN_ROLE, autocommit=False)
+    _load_production_shape(conn)
+    conn.commit()
+    digest_sql = kinds["evidence"][0]
+    digest_before = conn.execute(digest_sql).fetchall()
+
+    assert _run_writer(conn, CANON) == {STATUS_RESOLVED: 4, STATUS_SUPERSEDED: 0, STATUS_VANISHED: 135, "total": 139}
+    assert _run_writer(conn, OTHER)["total"] == 3
+    assert _run_writer(conn, CANON)[STATUS_VANISHED] == 135  # idempotent rerun replaces, never accretes
+    conn.commit()
+    assert conn.execute(f"SELECT count(*) FROM {LEDGER_TABLE}").fetchone()[0] == 142
+
+    # D1 on the clean ledger; summary reader agrees with D1; nothing stale/unledgered/orphaned
+    d1 = _d1(conn)[CANON]
+    assert (d1["predictions"], d1["resolved"], d1["superseded"], d1["vanished"]) == (139, 4, 0, 135)
+    assert (d1["unledgered"], d1["orphan_ledger_rows"], d1["stale_ledger_rows"]) == (0, 0, 0)
+    summ, stale_rows = _reader_stats(conn, CANON)
+    assert (summ["total_matching"], summ["ledgered"], summ["unledgered"], summ["resolved"], summ["superseded"],
+            summ["vanished"], summ["vanished_ambiguous"], summ["reference_rewritten"],
+            summ["stale_ledger_rows"], stale_rows) == (139, 139, 0, 4, 0, 135, 0, 135, 0, 0)
+
+    # D2 / D3 / asset-integrity / per-row reader
+    det = kinds["detector"]
+    _d1_sql, d2, d3 = _statements(det[0])
+    assert len(conn.execute(d2, (CANON,)).fetchall()) == 135
+    d3rows = {str(r[0]): r[1:] for r in conn.execute(d3).fetchall()}
+    assert d3rows[CANON] == (139, 4, 135) and d3rows[OTHER] == (3, 3, 0)
+    assert conn.execute(det[1]).fetchone()[0] is True
+
+    # D1 must be able to read false: each perturbation moves exactly its counter, and the reader's
+    # stale predicate AGREES with D1 (MED-4: one definition of "stale").
+    vanished_ref = conn.execute(
+        "SELECT source_pramana_id FROM mimamsa_predictions WHERE chart_id = %s AND prediction_id IN "
+        "(SELECT prediction_id FROM mimamsa_reference_resolution WHERE chart_id = %s AND resolution_status = 'vanished') "
+        "ORDER BY prediction_id LIMIT 1", (CANON, CANON)).fetchone()[0]
+    first_pred = conn.execute("SELECT min(prediction_id) FROM mimamsa_predictions WHERE chart_id = %s", (CANON,)).fetchone()[0]
+    perturbations = {
+        "ledger row deleted": (f"DELETE FROM {LEDGER_TABLE} WHERE chart_id = '{CANON}' AND prediction_id = '{first_pred}'", "unledgered"),
+        "vanished anchor id reappears": (f"INSERT INTO phala_anchors VALUES ('{vanished_ref}', '{CANON}', 'x', NULL, NULL, NULL)", "stale_ledger_rows"),
+        "prediction replaced (hash)": (f"UPDATE mimamsa_predictions SET frozen_bundle_hash = 'zzz' WHERE chart_id = '{CANON}' AND prediction_id = '{first_pred}'", "stale_ledger_rows"),
+        "prediction deleted": (f"DELETE FROM mimamsa_predictions WHERE chart_id = '{CANON}' AND prediction_id = '{first_pred}'", "orphan_ledger_rows"),
+        "resolved anchor disappears": (f"DELETE FROM phala_anchors WHERE chart_id = '{CANON}' AND anchor_id = (SELECT resolved_anchor_id FROM {LEDGER_TABLE} WHERE chart_id = '{CANON}' AND resolution_status = 'resolved' ORDER BY prediction_id LIMIT 1)", "stale_ledger_rows"),
+    }
+    for label, (sql, counter) in perturbations.items():
+        try:
+            conn.execute(sql)
+            moved = _d1(conn)[CANON]
+            assert moved[counter] == 1, (label, moved)
+            others = {"unledgered", "orphan_ledger_rows", "stale_ledger_rows"} - {counter}
+            assert all(moved[o] == 0 for o in others), (label, moved)
+            summ, stale_rows = _reader_stats(conn, CANON)
+            assert summ["stale_ledger_rows"] == moved["stale_ledger_rows"] == stale_rows, (label, summ, moved, stale_rows)
+            assert summ["unledgered"] == moved["unledgered"], label
+        finally:
+            conn.rollback()
+
+    # the frozen-set digest is untouched by writer + detectors (the ledger never modifies the frozen table)
+    assert conn.execute(digest_sql).fetchall() == digest_before
+    conn.close()
+
+    # registry block: runs as the ROUTINE role with NO window (DML on an amjis_app-owned table), is
+    # idempotent, and its count_sql runs with a bound $1
+    c2 = pg.connect(db, user=LOGIN_ROLE)
+    assert c2.execute("SELECT has_schema_privilege('amjis_app', 'public', 'CREATE')").fetchone()[0] is False
+    for _ in range(2):
+        for st in _statements(kinds["registry"][0]):
+            c2.execute(st)
+    row = c2.execute("SELECT count_sql, depends_on, scope, natural_key_partition, integrity_check_sql, has_writer "
+                     "FROM asset_registry WHERE asset_id = 'mi_nirdesa'").fetchone()
+    assert row[1] == ["mi_bhavisya", "ph_nimitta"] and row[2] == "per_chart" and row[5] is True
+    assert c2.execute("SELECT count(*) FROM asset_registry").fetchone()[0] == 1
+    c2.execute(f"PREPARE cnt AS {row[0]}")
+    assert c2.execute(f"EXECUTE cnt('{CANON}')").fetchone()[0] == 139
+    assert _norm_sql(row[4]) == _norm_sql(_integrity_block(_doc_text()))
+    assert c2.execute(row[4]).fetchone()[0] is True
+    c2.close()
