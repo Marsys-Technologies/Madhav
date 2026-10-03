@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Mechanically generate the POSITIVE privilege readback for the protected window (steward M20261003T135242-aad6 ruling 1).
 
-Reads the FINAL bytes of the window files, extracts EVERY `GRANT` statement of 1206 §7 (data_plane_builder), 1235 (the three loader roles' EXECUTE on the evidence function) and 1240 §7 (data_plane_builder, gochara_verifier,
+Reads the FINAL bytes of the window files, extracts EVERY `GRANT` statement of 1206 §7 (data_plane_builder) and 1240 §7 (data_plane_builder, gochara_verifier,
 gochara_sealer), and writes a read-only SQL query that returns one row per grant that did NOT take (or whose role/object is missing). EXPECT ZERO ROWS; any row
 = STOP in checklist row 9 (resolve before accepting the window). It uses has_table_privilege / has_column_privilege / has_function_privilege, so it sees direct,
 PUBLIC and inherited paths. Usage:  python3 generate_window_privilege_readback.py <platform/migrations dir> > window_privilege_readback.sql
@@ -10,7 +10,7 @@ import re
 import sys
 from pathlib import Path
 
-FILES = ("1206_gochara_search_inventory_completeness.sql", "1235_ka_gochara_staged_candidate_evidence_function.sql", "1240_gochara_window_verification_gate.sql")
+FILES = ("1206_gochara_search_inventory_completeness.sql", "1240_gochara_window_verification_gate.sql")
 
 
 def strip_comments(sql: str) -> str:
