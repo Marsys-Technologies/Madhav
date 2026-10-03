@@ -1,0 +1,1659 @@
+{
+ "meta": {
+  "artifact": "L0_CURATION_LEDGER",
+  "version": "1.0-draft",
+  "status": "HELD DRAFT (N-101 curation; not canonical until SS review)",
+  "produced_by": "curation-lane (Exec Suvarna)",
+  "produced_on": "2026-10-03",
+  "branch": "suvarna/land/TI-curation-001",
+  "corpus": "classical_text_chunks via the read-only proxy (SELECT only); verse_ref / chapter are PAGE locators",
+  "states": [
+   "sourced_fact",
+   "sourced_inference",
+   "already_sourced_verified",
+   "unsourced_marked",
+   "text_not_held",
+   "contradicted",
+   "not_a_classical_claim",
+   "existing_citation_unverifiable"
+  ],
+  "sourced_states": [
+   "already_sourced_verified",
+   "sourced_fact",
+   "sourced_inference"
+  ],
+  "support_class": [
+   "FACT",
+   "INFERENCE",
+   "NONE",
+   "CONTRADICTS"
+  ],
+  "no_live_table_edited": true
+ },
+ "assets": {
+  "bg_transit_rules": {
+   "rows_total": 76,
+   "counts_by_state": {
+    "sourced_fact": 18,
+    "sourced_inference": 5,
+    "already_sourced_verified": 39,
+    "unsourced_marked": 13,
+    "text_not_held": 0,
+    "contradicted": 1,
+    "not_a_classical_claim": 0,
+    "existing_citation_unverifiable": 0
+   },
+   "counts_by_table": {
+    "bg_transit_rules": {
+     "sourced_fact": 18,
+     "sourced_inference": 5,
+     "contradicted": 1,
+     "already_sourced_verified": 39,
+     "unsourced_marked": 13
+    }
+   },
+   "entries_file": "assets/bg_transit_rules_ledger.json",
+   "entries_count": 76
+  },
+  "bg_transit_engine": {
+   "rows_total": 9,
+   "counts_by_state": {
+    "sourced_fact": 0,
+    "sourced_inference": 3,
+    "already_sourced_verified": 0,
+    "unsourced_marked": 6,
+    "text_not_held": 0,
+    "contradicted": 0,
+    "not_a_classical_claim": 0,
+    "existing_citation_unverifiable": 0
+   },
+   "counts_by_table": {
+    "bg_transit_engine": {
+     "sourced_inference": 3,
+     "unsourced_marked": 6
+    }
+   },
+   "entries_file": "assets/bg_transit_engine_ledger.json",
+   "entries_count": 9
+  },
+  "bg_dasha_systems": {
+   "rows_total": 60,
+   "counts_by_state": {
+    "sourced_fact": 18,
+    "sourced_inference": 4,
+    "already_sourced_verified": 0,
+    "unsourced_marked": 4,
+    "text_not_held": 2,
+    "contradicted": 12,
+    "not_a_classical_claim": 20,
+    "existing_citation_unverifiable": 0
+   },
+   "counts_by_table": {
+    "brahma_dasha_systems": {
+     "sourced_fact": 8,
+     "sourced_inference": 1,
+     "contradicted": 9,
+     "text_not_held": 1,
+     "unsourced_marked": 1
+    },
+    "reference_dasha_systems": {
+     "not_a_classical_claim": 20
+    },
+    "brahma_ontology": {
+     "sourced_fact": 10,
+     "unsourced_marked": 3,
+     "sourced_inference": 3,
+     "text_not_held": 1,
+     "contradicted": 3
+    }
+   },
+   "entries_file": "assets/bg_dasha_systems_ledger.json",
+   "entries_count": 60
+  },
+  "bg_dignity_reference": {
+   "rows_total": 151,
+   "counts_by_state": {
+    "sourced_fact": 74,
+    "sourced_inference": 8,
+    "already_sourced_verified": 0,
+    "unsourced_marked": 31,
+    "text_not_held": 0,
+    "contradicted": 38,
+    "not_a_classical_claim": 0,
+    "existing_citation_unverifiable": 0
+   },
+   "counts_by_table": {
+    "bg_dignity_reference": {
+     "sourced_fact": 9
+    },
+    "bg_graha_naisargika_friendship": {
+     "sourced_fact": 51,
+     "unsourced_marked": 16,
+     "contradicted": 5
+    },
+    "bg_avastha_schemes": {
+     "sourced_fact": 6,
+     "sourced_inference": 3,
+     "contradicted": 26
+    },
+    "bg_motion_state_thresholds": {
+     "unsourced_marked": 15,
+     "sourced_inference": 5,
+     "contradicted": 5,
+     "sourced_fact": 2
+    },
+    "bg_combustion_orbs": {
+     "sourced_fact": 6,
+     "contradicted": 2
+    }
+   },
+   "entries_file": "assets/bg_dignity_reference_ledger.json",
+   "entries_count": 151
+  },
+  "bg_doshas": {
+   "rows_total": 79,
+   "counts_by_state": {
+    "sourced_fact": 15,
+    "sourced_inference": 8,
+    "already_sourced_verified": 0,
+    "unsourced_marked": 52,
+    "text_not_held": 0,
+    "contradicted": 4,
+    "not_a_classical_claim": 0,
+    "existing_citation_unverifiable": 0
+   },
+   "counts_by_table": {
+    "brahma_dosha_catalog (+ reference_doshas + brahma_ontology[entity_class='dosha'])": {
+     "unsourced_marked": 52,
+     "sourced_fact": 15,
+     "sourced_inference": 8,
+     "contradicted": 4
+    }
+   },
+   "entries_file": "assets/bg_doshas_ledger.json",
+   "entries_count": 79
+  },
+  "bg_nakshatra": {
+   "rows_total": 2857,
+   "counts_by_state": {
+    "sourced_fact": 3,
+    "sourced_inference": 930,
+    "already_sourced_verified": 0,
+    "unsourced_marked": 1737,
+    "text_not_held": 0,
+    "contradicted": 187,
+    "not_a_classical_claim": 0,
+    "existing_citation_unverifiable": 0
+   },
+   "counts_by_table": {
+    "reference_nakshatra": {
+     "contradicted": 17,
+     "sourced_inference": 11
+    },
+    "reference_nakshatra_pada": {
+     "sourced_inference": 100,
+     "contradicted": 8
+    },
+    "reference_nakshatra_matrix": {
+     "sourced_fact": 3,
+     "sourced_inference": 819,
+     "unsourced_marked": 1737,
+     "contradicted": 162
+    }
+   },
+   "entries_file": "assets/bg_nakshatra_ledger.json",
+   "entries_count": 85
+  },
+  "bg_reference": {
+   "rows_total": 1242,
+   "counts_by_state": {
+    "sourced_fact": 374,
+    "sourced_inference": 146,
+    "already_sourced_verified": 0,
+    "unsourced_marked": 79,
+    "text_not_held": 2,
+    "contradicted": 30,
+    "not_a_classical_claim": 583,
+    "existing_citation_unverifiable": 28
+   },
+   "counts_by_table": {
+    "reference_planets": {
+     "sourced_fact": 8,
+     "sourced_inference": 1,
+     "not_a_classical_claim": 2
+    },
+    "reference_signs": {
+     "contradicted": 1,
+     "sourced_fact": 6,
+     "sourced_inference": 5
+    },
+    "reference_houses": {
+     "sourced_fact": 12
+    },
+    "reference_aspects": {
+     "sourced_fact": 15,
+     "sourced_inference": 2,
+     "unsourced_marked": 2
+    },
+    "reference_vargas": {
+     "sourced_fact": 16,
+     "sourced_inference": 1,
+     "unsourced_marked": 2
+    },
+    "reference_upagrahas": {
+     "sourced_fact": 6,
+     "contradicted": 1,
+     "sourced_inference": 4
+    },
+    "reference_strength_systems": {
+     "sourced_fact": 20,
+     "sourced_inference": 5,
+     "contradicted": 8
+    },
+    "reference_karakas": {
+     "sourced_fact": 17,
+     "sourced_inference": 26,
+     "contradicted": 3,
+     "unsourced_marked": 31
+    },
+    "reference_constants": {
+     "sourced_inference": 53,
+     "sourced_fact": 137,
+     "contradicted": 10,
+     "unsourced_marked": 1,
+     "not_a_classical_claim": 2
+    },
+    "reference_glossary": {
+     "sourced_inference": 49,
+     "unsourced_marked": 43,
+     "not_a_classical_claim": 98,
+     "sourced_fact": 137,
+     "existing_citation_unverifiable": 28,
+     "contradicted": 7,
+     "text_not_held": 2
+    },
+    "reference_topic_tags": {
+     "not_a_classical_claim": 481
+    }
+   },
+   "entries_file": "assets/bg_reference_ledger.json",
+   "entries_count": 496
+  },
+  "bg_prashna_rules": {
+   "rows_total": 41,
+   "counts_by_state": {
+    "sourced_fact": 3,
+    "sourced_inference": 17,
+    "already_sourced_verified": 0,
+    "unsourced_marked": 8,
+    "text_not_held": 5,
+    "contradicted": 8,
+    "not_a_classical_claim": 0,
+    "existing_citation_unverifiable": 0
+   },
+   "counts_by_table": {
+    "bg_prashna_lagna_methods": {
+     "sourced_fact": 1,
+     "text_not_held": 4
+    },
+    "bg_prashna_tajik_yogas": {
+     "sourced_inference": 3,
+     "sourced_fact": 2,
+     "contradicted": 7,
+     "unsourced_marked": 4
+    },
+    "bg_prashna_significators": {
+     "sourced_inference": 12
+    },
+    "bg_prashna_fructification_rules": {
+     "unsourced_marked": 4,
+     "contradicted": 1
+    },
+    "bg_prashna_special_techniques": {
+     "sourced_inference": 2,
+     "text_not_held": 1
+    }
+   },
+   "entries_file": "assets/bg_prashna_rules_ledger.json",
+   "entries_count": 41
+  }
+ },
+ "deferred_n102": [
+  {
+   "asset": "bg_medical_mappings",
+   "tables": {
+    "bg_medical_mappings": 21
+   },
+   "rows": 21,
+   "state": "deferred by owner (N-102): source not held"
+  },
+  {
+   "asset": "bg_nakshatra_medical",
+   "tables": {
+    "bg_nakshatra_medical": 27
+   },
+   "rows": 27,
+   "state": "deferred by owner (N-102): source not held"
+  },
+  {
+   "asset": "bg_sign_medical",
+   "tables": {
+    "bg_sign_medical": 12
+   },
+   "rows": 12,
+   "state": "deferred by owner (N-102): source not held"
+  },
+  {
+   "asset": "bg_vastu_directions",
+   "tables": {
+    "bg_vastu_directions": 8,
+    "bg_vastu_direction_remedials": 24
+   },
+   "rows": 32,
+   "state": "deferred by owner (N-102): source not held"
+  },
+  {
+   "asset": "bg_kota_chakra_rings",
+   "tables": {
+    "bg_kota_chakra_rings": 27
+   },
+   "rows": 27,
+   "state": "deferred by owner (N-102): source not held"
+  },
+  {
+   "asset": "bg_gochara_citation_resolution",
+   "tables": {
+    "bg_gochara_citation_resolution": 14
+   },
+   "rows": 14,
+   "state": "deferred by owner (N-102): source not held"
+  }
+ ],
+ "acharya_batch": [
+  {
+   "asset": "bg_transit_rules",
+   "question": "Confirm that 'untoward events' (Moon in the 8th, Phaladeepika Adh. XXVI sl. 12) is to be read as an unfavourable result; the stored phala 'Fear, sorrow, ill health' is not in the sloka.",
+   "rows": 1,
+   "example_keys": [
+    "id=14, graha=moon, rule_type=unfavourable, primary_house=8"
+   ]
+  },
+  {
+   "asset": "bg_transit_rules",
+   "question": "Accept the sloka-2 equivalence (Rahu and Ketu similar to the Sun) as sufficient to source Ketu's unfavourable gochara results in houses 1, 2, 4, 7, 8 (5 rows)? If not, these rows become UNSOURCED.",
+   "rows": 5,
+   "example_keys": [
+    "id=200, graha=ketu, rule_type=unfavourable, primary_house=1",
+    "id=201, graha=ketu, rule_type=unfavourable, primary_house=2",
+    "id=202, graha=ketu, rule_type=unfavourable, primary_house=4",
+    "id=203, graha=ketu, rule_type=unfavourable, primary_house=7",
+    "id=204, graha=ketu, rule_type=unfavourable, primary_house=8"
+   ]
+  },
+  {
+   "asset": "bg_transit_rules",
+   "question": "Ketu in the 12th from the Moon is stored FAVOURABLE ('moksha progress'). Phaladeepika Adh. XXVI sl. 2 puts Ketu with the Sun (good houses 6, 3, 10, 11) and sl. 11 / sl. 24 give the Sun and Rahu in the 12th as adverse (sorrow/loss of wealth; expenditure). Is there a classical gochara source (outside the held corpus) for a favourable Ketu-12 transit, or should the row become unfavourable / unsourced?",
+   "rows": 1,
+   "example_keys": [
+    "id=199, graha=ketu, rule_type=favourable, primary_house=12"
+   ]
+  },
+  {
+   "asset": "bg_transit_rules",
+   "question": "Sloka 2 (Phaladeepika Adh. XXVI) says Rahu and Ketu are similar to the Sun, whose good transit houses are 6, 3, 10 (and 11 for all planets). The table carries Rahu and Ketu favourable at houses 3, 6, 11 only (six rows, vedha pairs UNSOURCED) and has no 10th-house row. Is the missing 10th intentional, and does the Sun's vedha pairing (3-9, 6-12, 10-4, 11-5) apply to the nodes?",
+   "rows": 6,
+   "example_keys": [
+    "id=187, graha=rahu, rule_type=favourable, primary_house=3",
+    "id=188, graha=rahu, rule_type=favourable, primary_house=6",
+    "id=189, graha=rahu, rule_type=favourable, primary_house=11",
+    "id=196, graha=ketu, rule_type=favourable, primary_house=3",
+    "id=197, graha=ketu, rule_type=favourable, primary_house=6",
+    "id=198, graha=ketu, rule_type=favourable, primary_house=11"
+   ]
+  },
+  {
+   "asset": "bg_transit_engine",
+   "question": "sign_residence_days: the held text gives 'about one year per sign' (yavana_jataka verse 52.1); the stored value is the modern mean 361.05. Classical round figure or modern mean?",
+   "rows": 1,
+   "example_keys": [
+    "graha=jupiter"
+   ]
+  },
+  {
+   "asset": "bg_transit_engine",
+   "question": "Same as Rahu (Ketu moves with Rahu): source for 548 d per sign, or period/12?",
+   "rows": 1,
+   "example_keys": [
+    "graha=ketu"
+   ]
+  },
+  {
+   "asset": "bg_transit_engine",
+   "question": "sign_residence_days 45 is not period/12 (57.25) and is stated nowhere in the held corpus. Is there a classical source (book edition) for 1.5 months per sign, or should it become period/12 or unsourced?",
+   "rows": 1,
+   "example_keys": [
+    "graha=mars"
+   ]
+  },
+  {
+   "asset": "bg_transit_engine",
+   "question": "WAVE-1 defect, not curation: avg_daily_motion_deg 1.3833 and sign_residence_days 14 agree neither with the stored 87.97 d period (implies 4.0923 deg/d) nor with each other. Under which single rule (heliocentric period vs Sun-following geocentric mean) should the three cells be set, and what classical source (book edition) exists for any value kept?",
+   "rows": 1,
+   "example_keys": [
+    "graha=mercury"
+   ]
+  },
+  {
+   "asset": "bg_transit_engine",
+   "question": "(1) sarvartha_chintamani PG1:C301 (translator's note) prints the Moon's time per sign as '2 J days' in the OCR; confirm from the page image whether it reads 2 1/4 days. (2) yavana_jataka PG937 (commentary) derives the sidereal month as 27;24,18 d = 27.405 d; the stored zodiac_period_days is the modern 27.32. Which convention should the column carry?",
+   "rows": 1,
+   "example_keys": [
+    "graha=moon"
+   ]
+  },
+  {
+   "asset": "bg_transit_engine",
+   "question": "sign_residence_days 548 d (18 months) is not period/12 (566.12) and is stated nowhere in the held corpus. Classical source (book edition) for 18 months per sign, or period/12?",
+   "rows": 1,
+   "example_keys": [
+    "graha=rahu"
+   ]
+  },
+  {
+   "asset": "bg_transit_engine",
+   "question": "sign_residence_days: the held notes give '30 months' per sign and 'takes 900 days'; the stored 913.37 d is 30 x 30.446. Which convention, and is 900 or 913.37 intended?",
+   "rows": 1,
+   "example_keys": [
+    "graha=saturn"
+   ]
+  },
+  {
+   "asset": "bg_transit_engine",
+   "question": "sign_residence_days: the held notes (brihat_jataka PG96, jataka_parijata PG144) give the round classical figure '30 days' per sign; the stored value is the modern mean 30.44. Which should the column carry (SS decision, WAVE-1 Part A)?",
+   "rows": 1,
+   "example_keys": [
+    "graha=sun"
+   ]
+  },
+  {
+   "asset": "bg_transit_engine",
+   "question": "WAVE-1 defect, not curation: avg_daily_motion_deg 1.2000 and sign_residence_days 23 agree neither with the stored 224.70 d period (implies 1.6021 deg/d) nor with each other. Same question as Mercury.",
+   "rows": 1,
+   "example_keys": [
+    "graha=venus"
+   ]
+  },
+  {
+   "asset": "bg_dasha_systems",
+   "question": "Brahma Dasha: the held Jaimini text (Rao PG190:C1 Su.25) starts the dasas from the Brahma sign with each sign's years = the house-number of the lord of the 6th from it, so no fixed 120-year cycle is stated. What is the source of total_cycle_years = 120 for this system?",
+   "rows": 1,
+   "example_keys": [
+    "canonical_id=brahma_dasha"
+   ]
+  },
+  {
+   "asset": "bg_dasha_systems",
+   "question": "Chara dasa year-count: Jaimini (Rao PG46:C1 Adh.1 Pada 1 Su.28) counts the signs inclusive from the dasa-sign to its lord (Mesha with Mars in the 7th = 7 yrs); the row says 'count minus 1'. Which counting convention should the platform carry, and is the cycle really a fixed 144 years (the held text gives 144 only as 12 x 12 for sub-periods)? Also BPHS (PG547:C1 sl.167) ties direction to odd/even pada of the 9th-house sign, whereas the row says movable direct / fixed reverse.",
+   "rows": 1,
+   "example_keys": [
+    "canonical_id=chara_jaimini"
+   ]
+  },
+  {
+   "asset": "bg_dasha_systems",
+   "question": "Dwisaptati-sama applicability (BPHS Santhanam PG515:C1 sl.37-39; OCR legible only as 'the lord of the Ascendant is in the ... 7th'): is the condition 'lagna lord in the 7th (or 7th lord in lagna)' or a mutual exchange between them as the row states?",
+   "rows": 1,
+   "example_keys": [
+    "canonical_id=dwisaptati_sama"
+   ]
+  },
+  {
+   "asset": "bg_dasha_systems",
+   "question": "Kalachakra sign-year table: BPHS (Santhanam PG527:C1 sl.84) and Phaladeepika Adh. XXII sl.3 (PG281:C1) give Sun 5, Moon 21, Mars 7, Mercury 9, Jupiter 10, Venus 16, Saturn 4, so Leo (Sun's sign) = 5 years; the row carries 'Cancer/Leo 21'. Confirm Leo = 5.",
+   "rows": 1,
+   "example_keys": [
+    "canonical_id=kalachakra"
+   ]
+  },
+  {
+   "asset": "bg_dasha_systems",
+   "question": "Narayana Dasha is not named in any held text (searched all 15; 'Narayana' hits are the deity or personal names only). What source supports the start rule (Lagna if odd else 7th), always-zodiacal progression and the 144-year total?",
+   "rows": 1,
+   "example_keys": [
+    "canonical_id=narayana"
+   ]
+  },
+  {
+   "asset": "bg_dasha_systems",
+   "question": "Niryana Shoola total: both texts give the Sthira year table (7/8/9; BPHS PG557:C1 sl.181-182) for the shoola dasa, i.e. 96 yrs for twelve signs, and 108 is the Navamsa-dasa total (12 x 9); the row has total_cycle_years = 108 together with fixed_years 7/8/9. Which total is intended?",
+   "rows": 1,
+   "example_keys": [
+    "canonical_id=niryana_shoola"
+   ]
+  },
+  {
+   "asset": "bg_dasha_systems",
+   "question": "Shashtihayani (BPHS Santhanam PG517:C1 sl.40-41): the text lists 8 lords (Jupiter, Sun, Mars, Moon, Mercury, Venus, Saturn, Rahu) with no Ketu, and Sun/Mars/Jupiter 13 [or 10?] years, the other five 6 years. Should the row carry 8 lords without Ketu, and are the three long periods 10 years (total 60)?",
+   "rows": 1,
+   "example_keys": [
+    "canonical_id=shashtihayani"
+   ]
+  },
+  {
+   "asset": "bg_dasha_systems",
+   "question": "Shatabdika (BPHS Santhanam PG513:C1, sl. between 31 and 35): the printed text gives 7 lords Sun5, Moon5, Venus10, Mercury10, Jupiter20, Mars20, Saturn30 with Rahu/Ketu excluded; the row has 8 lords (Venus5, Sun5, Moon10, Mars10, Mercury10, Jupiter20, Saturn20, Rahu20). Which lord order and year table should the platform carry?",
+   "rows": 1,
+   "example_keys": [
+    "canonical_id=shatabdika"
+   ]
+  },
+  {
+   "asset": "bg_dasha_systems",
+   "question": "Shattrimsha-sama (BPHS Santhanam PG517:C1-C2 sl.42-43, PG519:C1): the text gives one order (Moon, Sun, Jupiter, Mars, Mercury, Saturn, Venus, Rahu; 1..8 yrs) and uses day-birth/Sun-Hora or night-birth/Moon-Hora only to decide whether the system applies. The row says the lord order itself flips (Sun-first by day, Moon-first by night). Which is correct for the platform?",
+   "rows": 1,
+   "example_keys": [
+    "canonical_id=shattrimsha_sama"
+   ]
+  },
+  {
+   "asset": "bg_dasha_systems",
+   "question": "Sthira dasa total: the held texts give 7/8/9 yrs for movable/fixed/dual signs (Jaimini Rao PG182:C1 Adh.2 Pada 3 Su.3; BPHS PG548-549 sl.168-169), i.e. 4x(7+8+9) = 96 yrs for twelve signs; the row says total_cycle_years = 86. Confirm 96.",
+   "rows": 1,
+   "example_keys": [
+    "canonical_id=sthira_dasha"
+   ]
+  },
+  {
+   "asset": "bg_dasha_systems",
+   "question": "Tara Dasa (BPHS Santhanam PG567:C1, sl. printed '207-249', OCR for ~207-209): the text starts it with the strongest planet in a kendra and uses it only when planets are in kendras; the row says it is reckoned from the Moon's nakshatra via the 9-tara cycle. Which start rule should the platform carry?",
+   "rows": 1,
+   "example_keys": [
+    "canonical_id=tara_dasha"
+   ]
+  },
+  {
+   "asset": "bg_dasha_systems",
+   "question": "Yogardha: BPHS (Santhanam PG552:C1 sl.174) and Jaimini (Rao PG201:C1 Adh.2 Pada 4 Su.19) both define it as a rashi dasha with each sign's years = half of (Chara + Sthira years), started from the stronger of Lagna/7th. The row defines it as the average of Vimshottari and Ashtottari lord-periods (108-yr, nakshatra_lord). Which definition should the platform carry?",
+   "rows": 1,
+   "example_keys": [
+    "canonical_id=yogardha_dasha"
+   ]
+  },
+  {
+   "asset": "bg_dasha_systems",
+   "question": "See brahma_dasha_systems niryana_shoola question (96 vs 108).",
+   "rows": 1,
+   "example_keys": [
+    "entity_class=dasha_system, canonical_id=niryana_shoola"
+   ]
+  },
+  {
+   "asset": "bg_dasha_systems",
+   "question": "See brahma_dasha_systems sthira_dasha question (86 vs 96).",
+   "rows": 1,
+   "example_keys": [
+    "entity_class=dasha_system, canonical_id=sthira_dasha"
+   ]
+  },
+  {
+   "asset": "bg_dasha_systems",
+   "question": "See brahma_dasha_systems yogardha_dasha question (definition: half of Chara+Sthira vs average of Vimshottari and Ashtottari).",
+   "rows": 1,
+   "example_keys": [
+    "entity_class=dasha_system, canonical_id=yogardha_dasha"
+   ]
+  },
+  {
+   "asset": "bg_dignity_reference",
+   "question": "Uttara Kalamrita (Sastri) p.28 prints the Moon's Moolatrikona as '4 to 20' degrees; Phaladeepika Sl.7 ('last 27 degrees of Vrishabha'), Hora Sara Sl.6 and Saravali Sl.21-24 give 3-30 (Moolatrikona 4-30). Please confirm 4-30 as canonical and that the UK figure is a misprint.",
+   "rows": 1,
+   "example_keys": [
+    "id=2, graha=Moon"
+   ]
+  },
+  {
+   "asset": "bg_dignity_reference",
+   "question": "Hora Sara (Santhanam) Sl.8 prints Jupiter's Moolatrikona as the first FIVE degrees of Sagittarius, whereas BPHS ('first one third'), Phaladeepika, Saravali and Uttara Kalamrita give the first 10. Is the Hora Sara figure a variant tradition or a misprint?",
+   "rows": 1,
+   "example_keys": [
+    "id=5, graha=Jupiter"
+   ]
+  },
+  {
+   "asset": "bg_dignity_reference",
+   "question": "The held texts give four different Moolatrikona extents for Venus in Libra: BPHS Sl.51-54 'first half' (0-15) and Uttara Kalamrita p.28 (0-15, OCR 'ISO'); Phaladeepika Sl.7 and Saravali Sl.21-24 'first five degrees'; Hora Sara Sl.6 'upto 20 degrees'. The table stores 0-15 (BPHS). Which extent is canonical, and should the others be recorded as variant traditions?",
+   "rows": 1,
+   "example_keys": [
+    "id=6, graha=Venus"
+   ]
+  },
+  {
+   "asset": "bg_dignity_reference",
+   "question": "BPHS Ch.47 Sl.34-39 states Rahu: exalted Taurus, debilitated Scorpio, Moolatrikona Gemini, own Aquarius (some: Virgo); Ketu: exalted Scorpio, Moolatrikona Sagittarius, own Scorpio (some: Pisces); Hora Sara p.19 lists further variants (Gemini/Sagittarius exaltation in Syama Sangraham). The rows store own_signs={} and no Moolatrikona, and label Gemini/Sagittarius as a 'Kerala school' view and an 'Exclusionist' view that no held text names. Should own_signs/Moolatrikona be populated from BPHS Ch.47, and which variant labels may stay?",
+   "rows": 2,
+   "example_keys": [
+    "id=8, graha=Rahu",
+    "id=9, graha=Ketu"
+   ]
+  },
+  {
+   "asset": "bg_dignity_reference",
+   "question": "Held texts disagree with each other and with the table on how Rahu/Ketu regard the planets: BPHS (Santhanam notes under Sl.55, PG40) says Rahu: Sun/Moon/Mars enemies, Jupiter/Venus/Saturn friends, Mercury neutral; Ketu: Sun and Moon enemies, Mars/Venus/Saturn friends, Mercury/Jupiter neutral; Sarvartha Chintamani Stanza 108 lists Venus, Jupiter, Saturn as friends of both. The table has Rahu->Mercury friend, Rahu->Mars neutral, Rahu->Jupiter neutral, Ketu->Sun neutral, Ketu->Moon neutral. The cited Uttara Kalamrita passage (contents p.151) is not in the held pages. Which source and which values are canonical for the node-to-graha direction, and are the 14 graha-to-node rows meant to mirror the node-to-graha rows?",
+   "rows": 7,
+   "example_keys": [
+    "id=7, graha=Sun, other_graha=Rahu",
+    "id=15, graha=Moon, other_graha=Rahu",
+    "id=59, graha=Rahu, other_graha=Mercury",
+    "id=62, graha=Rahu, other_graha=Mars",
+    "id=63, graha=Rahu, other_graha=Jupiter",
+    "id=68, graha=Ketu, other_graha=Sun"
+   ]
+  },
+  {
+   "asset": "bg_dignity_reference",
+   "question": "BPHS Sl.3 gives the Baladi sequence (Infant, Youthful, Adolescent, Old, Dead) at six degrees each in ODD signs and the REVERSE order in EVEN signs, but the stored rule is a bare degree range with no sign-parity field. Should the rule carry odd/even-sign reversal?",
+   "rows": 5,
+   "example_keys": [
+    "id=1, scheme_name=baladi, state_name=bala",
+    "id=2, scheme_name=baladi, state_name=kumara",
+    "id=3, scheme_name=baladi, state_name=yuva",
+    "id=4, scheme_name=baladi, state_name=vriddha",
+    "id=5, scheme_name=baladi, state_name=mrita"
+   ]
+  },
+  {
+   "asset": "bg_dignity_reference",
+   "question": "BPHS Sl.5 puts a planet in a NEUTRAL sign in the dreaming (svapna) state; the table maps neutral_sign to sushupti (deep sleep) and lists only friend/great-friend signs for svapna. Which is canonical?",
+   "rows": 1,
+   "example_keys": [
+    "id=7, scheme_name=jagradadi, state_name=svapna"
+   ]
+  },
+  {
+   "asset": "bg_dignity_reference",
+   "question": "BPHS Sl.5 restricts the sleeping (sushupti) state to enemy sign or debilitation; the table also maps neutral_sign to sushupti although BPHS puts neutral signs in the dreaming state. Which is canonical?",
+   "rows": 1,
+   "example_keys": [
+    "id=8, scheme_name=jagradadi, state_name=sushupti"
+   ]
+  },
+  {
+   "asset": "bg_dignity_reference",
+   "question": "Held texts give three different dignity-to-state maps for the Deepta-Swastha-Mudita group (BPHS Ch.45 Sl.8-10, Phaladeepika Adh. III Sl.18-20, Saravali Ch.5 Sl.2-4); none matches the table's map (deepta=exalted/own, swastha=friend sign, mudita=friend navamsa, shanta=neutral sign, shakta=conjunct benefic, dina=enemy sign, peedit=combust/conjunct malefic, khala=debilitated, vikala=retrograde in enemy). Which scheme is intended, and should the table follow one text row-for-row?",
+   "rows": 8,
+   "example_keys": [
+    "id=9, scheme_name=deeptaadi, state_name=deepta",
+    "id=10, scheme_name=deeptaadi, state_name=swastha",
+    "id=11, scheme_name=deeptaadi, state_name=mudita",
+    "id=12, scheme_name=deeptaadi, state_name=shanta",
+    "id=13, scheme_name=deeptaadi, state_name=shakta",
+    "id=15, scheme_name=deeptaadi, state_name=peedit"
+   ]
+  },
+  {
+   "asset": "bg_dignity_reference",
+   "question": "Is Dina = enemy sign (Phaladeepika) or neutral sign (BPHS)?",
+   "rows": 1,
+   "example_keys": [
+    "id=14, scheme_name=deeptaadi, state_name=dina"
+   ]
+  },
+  {
+   "asset": "bg_dignity_reference",
+   "question": "BPHS Ch.45 Sl.11-18 and Jataka Parijata (PG119) define Lajjita (5th house with Rahu/Ketu/Sun/Saturn/Mars), Garvita (exaltation or Moolatrikona), Kshudita (enemy sign / conjunct or aspected by enemy / with Saturn), Trushita (watery sign, aspected by a malefic, not by a benefic), Mudita (friendly sign or conjunct/aspected by benefic or Jupiter), Kshobhita (with the Sun and aspected by or conjunct a malefic / aspected by enemy). The table's conditions for Garvita, Trishita, Mudita and Kshobhita differ. Which version does the platform follow?",
+   "rows": 4,
+   "example_keys": [
+    "id=19, scheme_name=lajjitaadi, state_name=garvita",
+    "id=21, scheme_name=lajjitaadi, state_name=trishita",
+    "id=22, scheme_name=lajjitaadi, state_name=mudita",
+    "id=23, scheme_name=lajjitaadi, state_name=kshobhita"
+   ]
+  },
+  {
+   "asset": "bg_dignity_reference",
+   "question": "BPHS Ch.45 Sl.30-37 and Jataka Parijata (PG120-121) give the 12 Sayanadi avasthas in the order Sayana, Upavesana, Netrapani, Prakasana, Gamana(echcha), Gamana/Agamana, Sabha, Agama, Bhojana, Nrityalipsa, Kautuka, Nidra, and fix a planet's state by a formula (star number x planet order x navamsa number + birth star + ghatis + lagna, mod 12). The table's rule is 'count of planets in sign determines posture index' and its states 10-12 are kautuka, nidraksita, deeptamsa. Which method and which twelve names does the platform intend?",
+   "rows": 12,
+   "example_keys": [
+    "id=24, scheme_name=sayanadi, state_name=sayana",
+    "id=25, scheme_name=sayanadi, state_name=upavesana",
+    "id=26, scheme_name=sayanadi, state_name=netrapani",
+    "id=27, scheme_name=sayanadi, state_name=prakasana",
+    "id=28, scheme_name=sayanadi, state_name=gamana",
+    "id=29, scheme_name=sayanadi, state_name=agamana"
+   ]
+  },
+  {
+   "asset": "bg_dignity_reference",
+   "question": "BPHS Ch.27 (Shadbala, Cheshta Bala) names eight motions - Vakra (retrogression), Anuvakra (entering the previous sign in retrograde motion), Vikala (stationary), Manda, Mandatara, Sama, Chara, Atichara (entering the next sign in accelerated motion) - with no degrees-per-day thresholds. The table gives Anuvakra as 'station/slow 0-0.1 deg/day' and every other state a numeric speed band. Is Anuvakra to be the retrograde sign-ingress motion (BPHS) or the stationary-slow band, and are the numeric speed bands platform conventions rather than classical values?",
+   "rows": 7,
+   "example_keys": [
+    "id=2, graha=Sun, motion_state=atichara",
+    "id=4, graha=Moon, motion_state=atichara",
+    "id=6, graha=Mars, motion_state=anuvakra",
+    "id=11, graha=Mercury, motion_state=anuvakra",
+    "id=15, graha=Jupiter, motion_state=anuvakra",
+    "id=19, graha=Venus, motion_state=anuvakra"
+   ]
+  },
+  {
+   "asset": "bg_dignity_reference",
+   "question": "Held texts give direct orbs Moon 12, Mars 17, Mercury 14, Jupiter 11, Venus 10, Saturn 15 and retrograde orbs only for Mercury 12 and Venus 8 (UK, JP). The table's second column (deep_orb_degrees: Moon 10, Mars 15, Jupiter 9, Saturn 12, Rahu/Ketu 7) has no source in the held corpus, and BPHS says Rahu and Ketu are not to be treated as combust while the table gives them orbs 9/7. What does deep_orb_degrees mean, which values are sourced, and should the nodes carry orbs at all?",
+   "rows": 6,
+   "example_keys": [
+    "id=1, graha=Moon",
+    "id=2, graha=Mars",
+    "id=4, graha=Jupiter",
+    "id=6, graha=Saturn",
+    "id=7, graha=Rahu",
+    "id=8, graha=Ketu"
+   ]
+  },
+  {
+   "asset": "bg_doshas",
+   "question": "Batch question G41 (one question for 41 rows): for each of these 41 doshas of the Dosha catalogue that cite only the placeholder 'classical_tradition': Abhukta-Mula Dosha; Bhakoot Dosha; Chandal Yoga Dosha (Moon-Rahu); Chandra Grahan Dosha (Lunar Eclipse Dosha); Dhaiya / Small Panoti; Graha-Maitri Dosha; Grahan (Eclipse) Dosha; Kala Amrita Dosha; Kala Sarpa Dosha; Anant Kala Sarpa; Ghatak Kala Sarpa; Karkotak Kala Sarpa; Kulik Kala Sarpa; Mahapadma Kala Sarpa; Padma Kala Sarpa; Shankhachud Kala Sarpa; Shankhpal Kala Sarpa; Sheshnag Kala Sarpa; Takshak Kala Sarpa; Vasuki Kala Sarpa; Vishdhar Kala Sarpa; Kuja-from-Venus Manglik; Kuja Dosha (from Moon); Lagna Lord Grahan Dosha; Mool (Gandmool) Dosha; Mrityu-Bhaga Dosha; Naga Dosha (Rahu/Ketu in Kendra); Naga Dosha (Rahu in Lagna); Pitra Dosha (9th Lord Afflicted); Pitra Dosha (Sun in 12th with Malefic Aspect); Pitra Dosha (Sun-Rahu conjunction); Pitra Dosha (Sun-Saturn Conjunction); Punarphoo Dosha; Sade Sati; Shakata Dosha; Shrapit Dosha; Stree-Deergha Dosha; Surya Grahan Dosha (Solar Eclipse Dosha); Tara (Dina) Dosha; Vashya Dosha; Vish-Kanya Dosha. For each name, please state either (a) the classical text, chapter and sloka that states its formation rule (so it can be re-cited and checked against the corpus), or (b) that it is later tradition with no classical verse, so the row is marked unsourced. Where the worker found a candidate chunk (see undecided_candidates in each row; e.g. Shakata, Abhukta-Mula, Mool, Bhakoot, Graha-Maitri, Vashya, Tara, Vish-Kanya, Mrityu-Bhaga), please also say whether that chunk is the rule you mean.",
+   "rows": 41,
+   "example_keys": [
+    "canonical_id=abhukta_mula_dosha, brahma_dosha_catalog.canonical_id=abhukta_mula_dosha, ref",
+    "canonical_id=bhakoot_dosha, brahma_dosha_catalog.canonical_id=bhakoot_dosha, reference_dos",
+    "canonical_id=chandal_yoga_dosha, brahma_dosha_catalog.canonical_id=chandal_yoga_dosha, ref",
+    "canonical_id=chandra_grahan_dosha, brahma_dosha_catalog.canonical_id=chandra_grahan_dosha,",
+    "canonical_id=dhaiya, brahma_dosha_catalog.canonical_id=dhaiya, reference_doshas.canonical_",
+    "canonical_id=graha_maitri_dosha, brahma_dosha_catalog.canonical_id=graha_maitri_dosha, ref"
+   ]
+  },
+  {
+   "asset": "bg_doshas",
+   "question": "BPHS (Santhanam) Ch.50 (PG597-598, Narayana-dasa of rasis) prints sl.20-21 on Badhaka signs but the held chunk breaks off mid-sentence ('...are Badhake') and the next chunk resumes at '...moveable sign is its Badhaka house'. Does BPHS (or another classical text) give the 11th/9th/7th Badhaka-house rule AND the dosha 'Badhaka lord afflicts the lagna or its lord (hidden obstacles)', or is the lagna-affliction doctrine later tradition (the held BPHS context is only Badhaka house of a dasa-rasi)?",
+   "rows": 1,
+   "example_keys": [
+    "canonical_id=badhaka_dosha, brahma_dosha_catalog.canonical_id=badhaka_dosha, reference_dos"
+   ]
+  },
+  {
+   "asset": "bg_doshas",
+   "question": "BPHS Ch.9 sl.13-14 (PG110:C2, PG111:C1) defines the 'junction' birth as Sandhya = the twilight of 3 ghatikas around sunrise/sunset (a time junction), listed beside birth in the Moon's hora and birth in Gandanta, each requiring the Moon and malefics in angles. The row 'balarishta_sandhi' defines sandhi as a rashi/bhava (sign/house) junction. Should the row be re-defined as Sandhya (twilight) birth, with the sign-junction case left to gandanta_dosha, or is a bhava-sandhi balarishta a separate teaching?",
+   "rows": 1,
+   "example_keys": [
+    "canonical_id=balarishta_sandhi, brahma_dosha_catalog.canonical_id=balarishta_sandhi, refer"
+   ]
+  },
+  {
+   "asset": "bg_doshas",
+   "question": "Muhurta Chintamani v.30 (PG95:C1, Hindi tika) ranks Rakshasa-Manushya as death (groom Manushya + bride Rakshasa: groom's death), Deva-Rakshasa as quarrel, Deva-Manushya as middling. The gana_dosha row names 'Deva-bride & Rakshasa-groom' as worst. Which severity ordering should the row carry?",
+   "rows": 1,
+   "example_keys": [
+    "canonical_id=gana_dosha, brahma_dosha_catalog.canonical_id=gana_dosha, reference_doshas.ca"
+   ]
+  },
+  {
+   "asset": "bg_doshas",
+   "question": "BPHS Ch.79 sl.9 (PG942:C1): within 1 degree, Venus always conquers and among Mars/Mercury/Jupiter/Saturn the one in the North conquers, the Southern is defeated; the translator also cites 'lesser longitude wins' (PG124:C1). The row says the loser is the one with lower declination and omits the Venus rule. Which criterion should the row carry?",
+   "rows": 1,
+   "example_keys": [
+    "canonical_id=graha_yuddha_dosha, brahma_dosha_catalog.canonical_id=graha_yuddha_dosha, ref"
+   ]
+  },
+  {
+   "asset": "bg_doshas",
+   "question": "BPHS Ch.25 sl.62-73 (PG246-250) gives Gulika's effect house by house: adverse in the 1st, 2nd, 4th, 5th, 8th, 9th, 12th but favourable in the 3rd, 10th (sons, happy, meditation, sl.71) and 11th (sl.72). The row says Gulika in ANY kendra/trikona or conjunct a planet is a dosha. Is the row's kendra/trikona/conjunction rule a classical statement (which text?) or later tradition; should the 10th (a kendra) be excluded?",
+   "rows": 1,
+   "example_keys": [
+    "canonical_id=gulika_dosha, brahma_dosha_catalog.canonical_id=gulika_dosha, reference_dosha"
+   ]
+  },
+  {
+   "asset": "bg_doshas",
+   "question": "Is the Bhrigu Nandi Nadi translator's remark (PG188:C2) 'Jupiter and Rahu ... Guru Chandala Yoga is formed' acceptable as the source for Guru Chandal Dosha (formation only), or does the row stay unsourced until a classical verse is named?",
+   "rows": 1,
+   "example_keys": [
+    "canonical_id=guru_chandal, brahma_dosha_catalog.canonical_id=guru_chandal, reference_dosha"
+   ]
+  },
+  {
+   "asset": "bg_doshas",
+   "question": "BPHS Ch.37 sl.11-13 (PG385:C1) excludes only the Sun and counts an angle from the ASCENDANT. The row also excludes the nodes and adds 'none in kendra from the Moon'. Should the row's kendra-from-Moon cancellation and node exclusion be kept, attributed to another text, or aligned to BPHS?",
+   "rows": 1,
+   "example_keys": [
+    "canonical_id=kemadruma, brahma_dosha_catalog.canonical_id=kemadruma, reference_doshas.cano"
+   ]
+  },
+  {
+   "asset": "bg_doshas",
+   "question": "BPHS (Santhanam) Ch.80 sl.47 (PG956:C1) lists Mars in the 12th, 4th, 7th or 8th from the Ascendant ONLY; the 1st and 2nd houses (and the Moon/Venus reckoning in 'manglik') are not in the held text. Is there a classical verse (which text, which sloka) that adds the 1st/2nd, or should kuja_dosha_lagna_1st and _2nd (and the 1/2/4/7/8/12 set in 'manglik') be re-attributed from BPHS to later tradition?",
+   "rows": 2,
+   "example_keys": [
+    "canonical_id=kuja_dosha_lagna_1st, brahma_dosha_catalog.canonical_id=kuja_dosha_lagna_1st,",
+    "canonical_id=kuja_dosha_lagna_2nd, brahma_dosha_catalog.canonical_id=kuja_dosha_lagna_2nd,"
+   ]
+  },
+  {
+   "asset": "bg_doshas",
+   "question": "BPHS Ch.83 'Effects of curses in the previous birth' (contents list PG492:C1; sl.29-33 at PG981-982) gives 'curse of the father' yogas that cause lack of male issue (e.g. Sun debilitated in Saturn's navamsa hemmed between malefics in the 5th; Sun in 9th + Saturn in 5th + 5th lord with Rahu) with Gaya-shraddha remedies. The Pitru Dosha row defines a different formation (Sun / 9th house / 9th lord afflicted by Rahu, Ketu, Saturn). Is the row a rendering of the Ch.83 Pitru-shapa doctrine, or a later-tradition doshas that must stay unsourced?",
+   "rows": 1,
+   "example_keys": [
+    "canonical_id=pitru_dosha, brahma_dosha_catalog.canonical_id=pitru_dosha, reference_doshas."
+   ]
+  },
+  {
+   "asset": "bg_nakshatra",
+   "question": "Ashwini: BPHS PG1018 (Sloka 3) and Muhurta-Cintamani PG102 both include Ashwini (first 2 ghatikas) in nakshatra-gandanta, but is_gandanta=false for it while the other five junction stars are true. Set it true (gandanta is a junction condition on the first 2 ghatikas of Ashwini/Magha/Moola and last 2 of Revati/Ashlesha/Jyeshtha), or is the flag meant at whole-star level?",
+   "rows": 1,
+   "example_keys": [
+    "nakshatra_id=1, name_en=Ashwini"
+   ]
+  },
+  {
+   "asset": "bg_nakshatra",
+   "question": "Rohini: Muhurta-Cintamani PG96-97 (Sloka 34) places it in Antya nadi (Adya/Madhya/Antya grouping); the row says Adi. Which nadi allocation does the platform adopt, and should the whole 27-row nadi column be re-derived from the cited grouping?",
+   "rows": 1,
+   "example_keys": [
+    "nakshatra_id=4, name_en=Rohini"
+   ]
+  },
+  {
+   "asset": "bg_nakshatra",
+   "question": "Ardra: Muhurta-Cintamani PG96-97 (Sloka 34) places it in Adi nadi (Adya/Madhya/Antya grouping); the row says Antya. Which nadi allocation does the platform adopt, and should the whole 27-row nadi column be re-derived from the cited grouping?",
+   "rows": 1,
+   "example_keys": [
+    "nakshatra_id=6, name_en=Ardra"
+   ]
+  },
+  {
+   "asset": "bg_nakshatra",
+   "question": "Punarvasu: Muhurta-Cintamani PG54-55 (Sloka 59-60 tika) gives its form as makan (house); the row's symbol field lists 'Quiver of arrows / bow'. Which tradition's symbol does the platform want, and is the MC form to be added as an alternative?",
+   "rows": 1,
+   "example_keys": [
+    "nakshatra_id=7, name_en=Punarvasu"
+   ]
+  },
+  {
+   "asset": "bg_nakshatra",
+   "question": "Pushya: Muhurta-Cintamani PG54-55 (Sloka 59-60 tika) gives its form as baan (arrow); the row's symbol field lists 'Flower / circle / cow udder'. Which tradition's symbol does the platform want, and is the MC form to be added as an alternative?",
+   "rows": 1,
+   "example_keys": [
+    "nakshatra_id=8, name_en=Pushya"
+   ]
+  },
+  {
+   "asset": "bg_nakshatra",
+   "question": "Ashlesha: Muhurta-Cintamani PG54-55 (Sloka 59-60 tika) gives its form as chakra (wheel); the row's symbol field lists 'Coiled serpent'. Which tradition's symbol does the platform want, and is the MC form to be added as an alternative?",
+   "rows": 1,
+   "example_keys": [
+    "nakshatra_id=9, name_en=Ashlesha"
+   ]
+  },
+  {
+   "asset": "bg_nakshatra",
+   "question": "Magha: Muhurta-Cintamani PG96-97 (Sloka 34) places it in Antya nadi (Adya/Madhya/Antya grouping); the row says Adi. Which nadi allocation does the platform adopt, and should the whole 27-row nadi column be re-derived from the cited grouping? || Magha: Muhurta-Cintamani PG54-55 (Sloka 59-60 tika) gives its form as makan (house); the row's symbol field lists 'Royal throne / palanquin'. Which tradition's symbol does the platform want, and is the MC form to be added as an alternative?",
+   "rows": 1,
+   "example_keys": [
+    "nakshatra_id=10, name_en=Magha"
+   ]
+  },
+  {
+   "asset": "bg_nakshatra",
+   "question": "Uttara Phalguni: Muhurta-Cintamani PG96-97 (Sloka 34) places it in Adi nadi (Adya/Madhya/Antya grouping); the row says Antya. Which nadi allocation does the platform adopt, and should the whole 27-row nadi column be re-derived from the cited grouping?",
+   "rows": 1,
+   "example_keys": [
+    "nakshatra_id=12, name_en=Uttara Phalguni"
+   ]
+  },
+  {
+   "asset": "bg_nakshatra",
+   "question": "Vishakha: Muhurta-Cintamani PG96-97 (Sloka 34) places it in Antya nadi (Adya/Madhya/Antya grouping); the row says Adi. Which nadi allocation does the platform adopt, and should the whole 27-row nadi column be re-derived from the cited grouping?",
+   "rows": 1,
+   "example_keys": [
+    "nakshatra_id=16, name_en=Vishakha"
+   ]
+  },
+  {
+   "asset": "bg_nakshatra",
+   "question": "Anuradha: Muhurta-Cintamani PG94 (Sloka 25-26 tika) gives the yoni animal as harina (deer); the row says Hare (Shasha). Is 'Hare' an accepted equivalent, or should the row read Deer (Mriga)? || Anuradha: Muhurta-Cintamani PG54-55 (Sloka 59-60 tika) gives its form as bhat ka punj (heap of cooked rice); the row's symbol field lists 'Lotus / row of offerings'. Which tradition's symbol does the platform want, and is the MC form to be added as an alternative?",
+   "rows": 1,
+   "example_keys": [
+    "nakshatra_id=17, name_en=Anuradha"
+   ]
+  },
+  {
+   "asset": "bg_nakshatra",
+   "question": "Jyeshtha: Muhurta-Cintamani PG94 (Sloka 25-26 tika) gives the yoni animal as harina (deer); the row says Hare (Shasha). Is 'Hare' an accepted equivalent, or should the row read Deer (Mriga)? || Jyeshtha: Muhurta-Cintamani PG96-97 (Sloka 34) places it in Adi nadi (Adya/Madhya/Antya grouping); the row says Antya. Which nadi allocation does the platform adopt, and should the whole 27-row nadi column be re-derived from the cited grouping?",
+   "rows": 1,
+   "example_keys": [
+    "nakshatra_id=18, name_en=Jyeshtha"
+   ]
+  },
+  {
+   "asset": "bg_nakshatra",
+   "question": "Moola: Muhurta-Cintamani PG54-55 (Sloka 59-60 tika) gives its form as sher ki poonchh (lion tail); the row's symbol field lists 'Tied roots / tail of scorpion'. Which tradition's symbol does the platform want, and is the MC form to be added as an alternative?",
+   "rows": 1,
+   "example_keys": [
+    "nakshatra_id=19, name_en=Moola"
+   ]
+  },
+  {
+   "asset": "bg_nakshatra",
+   "question": "Uttara Ashadha: Muhurta-Cintamani PG54-55 (Sloka 59-60 tika) gives its form as mancha (couch); the row's symbol field lists 'Elephant tusk (Uttara) / fruit of the Jambu tree'. Which tradition's symbol does the platform want, and is the MC form to be added as an alternative?",
+   "rows": 1,
+   "example_keys": [
+    "nakshatra_id=21, name_en=Uttara Ashadha"
+   ]
+  },
+  {
+   "asset": "bg_nakshatra",
+   "question": "Shravana: Muhurta-Cintamani PG96-97 (Sloka 34) places it in Antya nadi (Adya/Madhya/Antya grouping); the row says Adi. Which nadi allocation does the platform adopt, and should the whole 27-row nadi column be re-derived from the cited grouping?",
+   "rows": 1,
+   "example_keys": [
+    "nakshatra_id=22, name_en=Shravana"
+   ]
+  },
+  {
+   "asset": "bg_nakshatra",
+   "question": "Shatabhisha: Muhurta-Cintamani PG96-97 (Sloka 34) places it in Adi nadi (Adya/Madhya/Antya grouping); the row says Antya. Which nadi allocation does the platform adopt, and should the whole 27-row nadi column be re-derived from the cited grouping?",
+   "rows": 1,
+   "example_keys": [
+    "nakshatra_id=24, name_en=Shatabhisha"
+   ]
+  },
+  {
+   "asset": "bg_nakshatra",
+   "question": "Uttara Bhadrapada: Muhurta-Cintamani PG96-97 (Sloka 34) places it in Madhya nadi (Adya/Madhya/Antya grouping); the row says Antya. Which nadi allocation does the platform adopt, and should the whole 27-row nadi column be re-derived from the cited grouping?",
+   "rows": 1,
+   "example_keys": [
+    "nakshatra_id=26, name_en=Uttara Bhadrapada"
+   ]
+  },
+  {
+   "asset": "bg_nakshatra",
+   "question": "Revati: Muhurta-Cintamani PG96-97 (Sloka 34) places it in Antya nadi (Adya/Madhya/Antya grouping); the row says Madhya. Which nadi allocation does the platform adopt, and should the whole 27-row nadi column be re-derived from the cited grouping?",
+   "rows": 1,
+   "example_keys": [
+    "nakshatra_id=27, name_en=Revati"
+   ]
+  },
+  {
+   "asset": "bg_nakshatra",
+   "question": "Abhijit: Muhurta-Cintamani PG94 (Sloka 25-26 tika) lists Abhijit in the mongoose (Nakula) yoni with Uttarashadha; the row has no yoni. Fill yoni_en=Mongoose / yoni_sa=Nakula, or keep Abhijit outside the 27-fold yoni/kuta scheme?",
+   "rows": 1,
+   "example_keys": [
+    "nakshatra_id=28, name_en=Abhijit"
+   ]
+  },
+  {
+   "asset": "bg_nakshatra",
+   "question": "Ardra: the Muhurta-Cintamani nakshatra-chakra (PG55) prints the syllables as Ku Gha Nga Chha; the pada rows say Ku Gha Da Na. Which syllables does the platform adopt for Ardra padas 3 and 4?",
+   "rows": 4,
+   "example_keys": [
+    "nakshatra_id=6, name_en=Ardra, pada_ids=[21, 22, 23, 24]"
+   ]
+  },
+  {
+   "asset": "bg_nakshatra",
+   "question": "Shravana: the Muhurta-Cintamani nakshatra-chakra (PG55) prints the syllables as Khi Khu Khe Kho; the pada rows say Ju Je Jo Sha. Which syllable school does the platform adopt (and should the other be recorded as an alternate)?",
+   "rows": 4,
+   "example_keys": [
+    "nakshatra_id=22, name_en=Shravana, pada_ids=[85, 86, 87, 88]"
+   ]
+  },
+  {
+   "asset": "bg_nakshatra",
+   "question": "Gana kuta Deva-Manushya: Muhurta-Cintamani PG95 (Sloka 30 tika) gives 5 but also a direction-specific 4 (bride Deva, groom Manushya). Should the matrix be asymmetric, and which of from_key/to_key is groom vs bride?",
+   "rows": 2,
+   "example_keys": [
+    "family=gana_dm, matrix_type=gana_kuta, id_min=16330, id_max=16331"
+   ]
+  },
+  {
+   "asset": "bg_nakshatra",
+   "question": "Gana kuta Rakshasa pairs: Muhurta-Cintamani PG95 (Sloka 30 tika) gives 0 but a direction-specific 2 for (bride Rakshasi, groom Deva). Should the Deva<->Rakshasa cell for that direction be 2 rather than 0?",
+   "rows": 4,
+   "example_keys": [
+    "family=gana_rak, matrix_type=gana_kuta, id_min=16332, id_max=16335"
+   ]
+  },
+  {
+   "asset": "bg_nakshatra",
+   "question": "Tara kuta: Muhurta-Cintamani PG93 (Sloka 24 tika) says only remainders 3/5/7 are inauspicious and all others yield the full 3 gunas. The rows give 2 (Sampat, Kshema, Mitra, Atimitra) and 1.5 (Sadhaka) per direction. Also: DB 'dist' is the 0-based difference (same star = position 9, next star = position 1 'Janma'); is tara counted inclusively (same star = 1) as is usual? What scale and what combination rule (sum of both directions? halves?) does the platform adopt, and from which source?",
+   "rows": 405,
+   "example_keys": [
+    "family=tara_good, matrix_type=tara_kuta, id_min=16541, id_max=17269"
+   ]
+  },
+  {
+   "asset": "bg_nakshatra",
+   "question": "Tara kuta Janma (remainder 1): Muhurta-Cintamani PG93 (Sloka 24 tika) says only remainders 3/5/7 are inauspicious ('anya shubh'), yet the rows score Janma 0. Is Janma tara to be scored 0 (another tradition), and from what authority?",
+   "rows": 81,
+   "example_keys": [
+    "family=tara_janma, matrix_type=tara_kuta, id_min=16542, id_max=17261"
+   ]
+  },
+  {
+   "asset": "bg_nakshatra",
+   "question": "Rajju grouping: not in the held corpus. The platform's groups (e.g. Padha = nakshatra 2,6,11,16,21,27) look unlike the commonly taught five-group scheme of 6/6/6/6/3 nakshatras; please confirm against the acharya's table and name the authority. (Outside-corpus remark, not a citation.)",
+   "rows": 27,
+   "example_keys": [
+    "family=rajju, matrix_type=rajju, id_min=17270, id_max=17296"
+   ]
+  },
+  {
+   "asset": "bg_nakshatra",
+   "question": "Vedha pairs: the rows follow a pure arithmetic pattern (1-16, 2-15, ... 8-9 and 17-27, 18-26, ... 21-23); Muhurta-Cintamani PG105-106 (Sloka 56-57) lists different pancha-/sapta-shalaka pairs. Which vedha scheme is intended (ashtakoota vedha vs shalaka-vedha) and what is its authority?",
+   "rows": 26,
+   "example_keys": [
+    "family=vedha, matrix_type=vedha, id_min=17539, id_max=17564"
+   ]
+  },
+  {
+   "asset": "bg_nakshatra",
+   "question": "Graha maitri, same lord: Muhurta-Cintamani PG94 (Sloka 27-28 tika) gives 5 gunas when the two rashi-lords are friends or one and the same planet (ekadhipatya). The 7 diagonal rows (sun-sun ... saturn-saturn) are scored 3. Should they be 5?",
+   "rows": 7,
+   "example_keys": [
+    "family=gm_same, matrix_type=graha_maitri_kuta, id_min=17346, id_max=17394"
+   ]
+  },
+  {
+   "asset": "bg_nakshatra",
+   "question": "Graha maitri scale: Muhurta-Cintamani PG94 (Sloka 27-28 tika, OCR-damaged) reads friend-enemy = 2 and neutral-enemy = 1, but the rows score friend-enemy 1 and neutral-enemy 0. Please read the printed table and say which scale the platform follows.",
+   "rows": 2,
+   "example_keys": [
+    "family=gm_fe, matrix_type=graha_maitri_kuta, id_min=17356, id_max=17368"
+   ]
+  },
+  {
+   "asset": "bg_nakshatra",
+   "question": "Graha maitri neutral-enemy (12 rows scored 0): Muhurta-Cintamani PG94 (Sloka 27-28 tika) appears to read 'sama-shatru 1'. Confirm 1 versus 0 from the printed text.",
+   "rows": 12,
+   "example_keys": [
+    "family=gm_ne, matrix_type=graha_maitri_kuta, id_min=17358, id_max=17390"
+   ]
+  },
+  {
+   "asset": "bg_nakshatra",
+   "question": "Bhakoot dosha pairs: every one of the 144 bhakoot rows is scored 7/7, because the writer's inauspicious set {(2,12),(5,9),(6,8)} is compared against 0-based sign differences and never matches. Muhurta-Cintamani PG96 (Sloka 31 tika) calls 2-12 (poverty) and 5-9 (loss of sons) inauspicious and shatru-shadashtaka 6-8 (death) inauspicious. Please confirm the intended scoring (0 for these three families, with the parihara of Sloka 32 applied or not) so the rows can be regenerated.",
+   "rows": 24,
+   "example_keys": [
+    "family=bk_212, matrix_type=bhakoot_kuta, id_min=17396, id_max=17537"
+   ]
+  },
+  {
+   "asset": "bg_nakshatra",
+   "question": "Bhakoot 5/9 (24 rows, relation_value 4/8 and 8/4, all scored 7): Muhurta-Cintamani PG96 (Sloka 31 tika) calls 5-9 inauspicious (loss of sons). Should these rows score 0?",
+   "rows": 24,
+   "example_keys": [
+    "family=bk_59, matrix_type=bhakoot_kuta, id_min=17399, id_max=17534"
+   ]
+  },
+  {
+   "asset": "bg_nakshatra",
+   "question": "Bhakoot shatru-shadashtaka (12 rows: relation 5/7 from an odd sign and 7/5 from an even sign, all scored 7): Muhurta-Cintamani PG95-96 (Sloka 31) calls it inauspicious (death). Should these rows score 0, with or without the Sloka 32 parihara for friendly/same lords?",
+   "rows": 12,
+   "example_keys": [
+    "family=bk_68_shatru, matrix_type=bhakoot_kuta, id_min=17400, id_max=17533"
+   ]
+  },
+  {
+   "asset": "bg_reference",
+   "question": "BPHS Ch.47 (bphs:PG574:C1) states Rahu own sign Aquarius and moolatrikona Gemini (some learned: Virgo own), and Ketu own sign Scorpio / moolatrikona Sagittarius (some: Pisces own); Hora Sara notes (hora_sara:PG19:C1) list other texts that differ. reference_planets stores own_signs={} and mooltrikona_sign=NULL for both nodes. Should the nodes carry sign-lordship per BPHS Ch.47 (and which variant), or does the platform deliberately hold the nodes without sign-lordship?",
+   "rows": 1,
+   "example_keys": [
+    "planet_id=rahu"
+   ]
+  },
+  {
+   "asset": "bg_reference",
+   "question": "Is Taurus an acceptable Ketu debilitation sign for the reference table? BPHS Ch.47 states only Ketu exalted in Scorpio; the Taurus fall is attested in held sources only via the Hora Sara note citing other works (hora_sara:PG19:C1), and Jataka Parijata/Jatakachintamani variants differ. See also the sign-lordship question on the Rahu row.",
+   "rows": 1,
+   "example_keys": [
+    "planet_id=ketu"
+   ]
+  },
+  {
+   "asset": "bg_reference",
+   "question": "reference_signs stores Aries (Mesha) with is_biped=true. BPHS Ch.4 sl.6-7 (bphs:PG49:C1) says \"It is a quadruped sign\" and Phaladipika Adh.I (phaladeepika:PG41:C1) lists Mesha as quadruped. Should Aries is_biped be false? (And is is_biped intended to mean \"human/biped sign\" as opposed to quadruped/centipede/footless?)",
+   "rows": 1,
+   "example_keys": [
+    "sign_id=1"
+   ]
+  },
+  {
+   "asset": "bg_reference",
+   "question": "reference_signs.significations for Taurus lists \"throat\"; BPHS Ch.4 and Phaladipika sl.4 name the 2nd sign's limb as \"face\". Keep \"throat\" (later Kalapurusha tradition: face and neck) or follow the held text?",
+   "rows": 1,
+   "example_keys": [
+    "sign_id=2"
+   ]
+  },
+  {
+   "asset": "bg_reference",
+   "question": "Sagittarius is stored is_biped=false, but BPHS Ch.4 sl.17-18 and Phaladipika Adh.I make the first half biped (human) and the second half quadruped. Should the boolean be NULL/mixed, or split by half?",
+   "rows": 1,
+   "example_keys": [
+    "sign_id=9"
+   ]
+  },
+  {
+   "asset": "bg_reference",
+   "question": "House 1 doctrine says \"lagnesha is the most important graha\" and tags it \"phaladeepika Ch.4 v.2\": no held chunk states this (Phaladipika Adh.IV sl.2 is about Cheshta/Uchcha/Dig bala; sl.6 says the Lagna strength equals its lord's). Is there a classical source, or should the string be marked unsourced?",
+   "rows": 1,
+   "example_keys": [
+    "house_num=1"
+   ]
+  },
+  {
+   "asset": "bg_reference",
+   "question": "reference_houses.karakas for house 2 lists ['jupiter', 'mercury'] in addition to the Phaladipika Adh.XV sl.17 / Jataka Parijata sl.51 karakas ['jupiter']. Which classical text (if any) supports the extra karaka(s) ['mercury'], or should they be marked as platform-added?",
+   "rows": 1,
+   "example_keys": [
+    "house_num=2"
+   ]
+  },
+  {
+   "asset": "bg_reference",
+   "question": "reference_houses.karakas for house 4 lists ['moon', 'mercury', 'mars'] in addition to the Phaladipika Adh.XV sl.17 / Jataka Parijata sl.51 karakas ['moon', 'mercury']. Which classical text (if any) supports the extra karaka(s) ['mars'], or should they be marked as platform-added?",
+   "rows": 1,
+   "example_keys": [
+    "house_num=4"
+   ]
+  },
+  {
+   "asset": "bg_reference",
+   "question": "reference_houses.karakas for house 12 lists ['saturn', 'ketu'] in addition to the Phaladipika Adh.XV sl.17 / Jataka Parijata sl.51 karakas ['saturn']. Which classical text (if any) supports the extra karaka(s) ['ketu'], or should they be marked as platform-added?",
+   "rows": 1,
+   "example_keys": [
+    "house_num=12"
+   ]
+  },
+  {
+   "asset": "bg_reference",
+   "question": "The held Uttara Kalamrita note (uttara_kalamrita:PG41:C1) attributes to Parasara: Rahu aspects the 5th, 7th, 9th and 12th fully, 2nd and 10th by half, 3rd and 6th by a quarter. reference_aspects holds Rahu 5/7/9 as full with the note \"per later tradition\" and has no 12th-house row. (a) Should the 12th full aspect be added for Rahu? (b) May the note \"per later tradition\" be replaced by \"per Parasara as cited in Uttara Kalamrita (translator's note)\"?",
+   "rows": 2,
+   "example_keys": [
+    "planet_id=rahu, aspect_house=5",
+    "planet_id=rahu, aspect_house=9"
+   ]
+  },
+  {
+   "asset": "bg_reference",
+   "question": "No held text states Ketu's 5th/9th aspects (the Uttara Kalamrita Parasara-attributed note and the BPHS translator note speak of Rahu only). Is there a classical source for Ketu's 5th and 9th aspects, or should these two rows stay marked \"unsourced (later tradition)\"?",
+   "rows": 2,
+   "example_keys": [
+    "planet_id=ketu, aspect_house=5",
+    "planet_id=ketu, aspect_house=9"
+   ]
+  },
+  {
+   "asset": "bg_reference",
+   "question": "BPHS Ch.6 sl.2-4 names 16 vargas and does not include D5 (Panchamsha), D6 (Shashthamsha) or D8 (Ashtamsha). Saravali sl.63 (saravali:PG136:C2) mentions a Panchamsa but treats it as a Trimsamsa-like 6-degree division. Should D5/D6/D8 stay in reference_vargas with a non-BPHS source, or be marked as unsourced later-tradition vargas?",
+   "rows": 1,
+   "example_keys": [
+    "varga_id=D5"
+   ]
+  },
+  {
+   "asset": "bg_reference",
+   "question": "BPHS Ch.6 sl.2-4 names 16 vargas and does not include D5, D6 (Shashthamsha) or D8 (Ashtamsha); no other held text names Shashthamsha. Should this varga stay in reference_vargas, and with what source (or marked later-tradition/unsourced)?",
+   "rows": 1,
+   "example_keys": [
+    "varga_id=D6"
+   ]
+  },
+  {
+   "asset": "bg_reference",
+   "question": "BPHS Ch.6 sl.2-4 names 16 vargas and does not include D5, D6 (Shashthamsha) or D8 (Ashtamsha); no other held text names Ashtamsha. Should this varga stay in reference_vargas, and with what source (or marked later-tradition/unsourced)?",
+   "rows": 1,
+   "example_keys": [
+    "varga_id=D8"
+   ]
+  },
+  {
+   "asset": "bg_reference",
+   "question": "DB gives D40 the signification \"Maternal ancestry; auspicious effects\". BPHS Ch.7 sl.1-8 says only \"auspicious and inauspicious effects from Khavedamsa\". Which classical source supports the ancestral/karmic signification, or should that part be marked as later-tradition?",
+   "rows": 1,
+   "example_keys": [
+    "varga_id=D40"
+   ]
+  },
+  {
+   "asset": "bg_reference",
+   "question": "DB gives D45 the signification \"Paternal ancestry; general indications\". BPHS Ch.7 sl.1-8 says only \"all indications from Akshavedamsa\". Which classical source supports the ancestral/karmic signification, or should that part be marked as later-tradition?",
+   "rows": 1,
+   "example_keys": [
+    "varga_id=D45"
+   ]
+  },
+  {
+   "asset": "bg_reference",
+   "question": "DB gives D60 the signification \"Past-life karma; most subtle influences\". BPHS Ch.7 sl.1-8 says only \"all indications from Shashtiamsa\". Which classical source supports the ancestral/karmic signification, or should that part be marked as later-tradition?",
+   "rows": 1,
+   "example_keys": [
+    "varga_id=D60"
+   ]
+  },
+  {
+   "asset": "bg_reference",
+   "question": "reference_upagrahas.significations.nature for Indrachapa reads \"mixed; sudden brilliance then fade\". BPHS Ch.3 sl.61-64 (bphs:PG42:C1) calls Indra Chapa \"also inauspicious\" and all five (Dhuma, Vyatipata, Parivesha, Chapa, Upaketu) \"malefics by nature\". Should the nature be recorded as malefic?",
+   "rows": 1,
+   "example_keys": [
+    "upagraha_id=indrachapa"
+   ]
+  },
+  {
+   "asset": "bg_reference",
+   "question": "reference_strength_systems.bhava_dig_bala is described as \"Based on the natural significator occupying the bhava\". BPHS Ch.27 sl.26-29 (bphs:PG285:C1) computes the bhava's directional strength from the bhava cusp's distance from the 7th/4th/1st/10th house cusp depending on the sign the bhava falls in (divided by 3). Should the description be corrected to the cusp-distance rule, with karaka occupancy treated as a separate strength?",
+   "rows": 1,
+   "example_keys": [
+    "strength_id=bhava_dig_bala"
+   ]
+  },
+  {
+   "asset": "bg_reference",
+   "question": "reference_strength_systems.sarvashtakavarga is defined as the sum of 7 bhinnashtakavargas (337 bindus, max 56 per sign, \">28 strong\"). The held BPHS (Ch.72, bphs:PG891:C1) forms the Samudaya total including the Ascendant's ashtakavarga (illustration: Sun 3 + Moon 4 + Mars 3 + Mercury 2 + Jupiter 6 + Venus 4 + Saturn 3 + Ascendant 5 = 30) and grades houses >30 strong, 25-30 medium, <25 damaged (bphs:PG890:C1). Which convention should the platform carry, the eight-chart BPHS Samudaya with 30/25 thresholds or the seven-planet 337 total with the 28 mean?",
+   "rows": 1,
+   "example_keys": [
+    "strength_id=sarvashtakavarga"
+   ]
+  },
+  {
+   "asset": "bg_reference",
+   "question": "reference_strength_systems.uchcha_bala formula_text reads \"60 x (180 - |long - debilitation_point|)/180\" while its interpretation says \"max at exact exaltation, zero at exact debilitation\". BPHS Ch.27 sl.1 (bphs:PG263:C1) says: deduct the debilitation point from the longitude, fold to <=180 degrees, and divide by 3 (i.e. 60 x D/180, D = distance from the debilitation point), which is maximal at exaltation. The stored formula is the inverse (maximal at debilitation). Should the formula be corrected to 60 x |long - debilitation_point|/180?",
+   "rows": 1,
+   "example_keys": [
+    "strength_id=uchcha_bala"
+   ]
+  },
+  {
+   "asset": "bg_reference",
+   "question": "reference_strength_systems.saptavargaja_bala lists great-friend 22.5, friend 15, neutral 7.5, enemy 3.75, great-enemy 1.875. The held BPHS Ch.27 sl.2-4 (bphs:PG264:C1) gives moolatrikona 45, own 30, extreme friend 20, friend 15, neutral 10, enemy 4, extreme enemy 2 virupas. Moolatrikona/own/friend agree; the other four values differ. Which table should the platform carry (the BPHS values as held, or the modern 22.5/7.5/3.75/1.875 convention)?",
+   "rows": 1,
+   "example_keys": [
+    "strength_id=saptavargaja_bala"
+   ]
+  },
+  {
+   "asset": "bg_reference",
+   "question": "reference_strength_systems.drekkana_bala says \"male planets in 1st drekkana, neutral in 2nd, female in 3rd\". BPHS Ch.27 sl.6 (bphs:PG265:C1/C2) says male, female and hermaphrodite planets respectively get the quarter Rupa in the first, second and third decanates (Male planet in 1st; Female planet in 2nd; Eunuch planet in 3rd). Should the 2nd/3rd assignment be swapped to female-2nd, neutral-3rd?",
+   "rows": 1,
+   "example_keys": [
+    "strength_id=drekkana_bala"
+   ]
+  },
+  {
+   "asset": "bg_reference",
+   "question": "reference_strength_systems (ayana_bala and cheshta_bala) say Ayana bala replaces Cheshta bala for the Sun AND the Moon. BPHS Ch.27 sl.18 (bphs:PG283:C1) says the Sun's Cheshta bala equals his Ayana bala but the Moon's Paksha bala is her Cheshta bala. Should the Moon's Cheshta-substitute be Paksha bala? (Also: the Sun's Ayana bala is doubled in BPHS, so max 60 holds for the other planets only.)",
+   "rows": 1,
+   "example_keys": [
+    "strength_id=ayana_bala"
+   ]
+  },
+  {
+   "asset": "bg_reference",
+   "question": "See ayana_bala: cheshta_bala says \"Sun/Moon use Ayana bala\"; BPHS Ch.27 sl.18 gives the Moon Paksha bala as her Cheshta bala. Correct the Moon?",
+   "rows": 1,
+   "example_keys": [
+    "strength_id=cheshta_bala"
+   ]
+  },
+  {
+   "asset": "bg_reference",
+   "question": "reference_strength_systems.ishta_phala formula is sqrt(Uchcha bala x Cheshta bala). BPHS Ch.28 sl.6 (bphs:PG289:C1) defines it as: reduce 1 from each of Cheshta Rasmi and Uchcha Rasmi, multiply by 10 and add, half of the sum is Ishta phala (Kashta = 60 - Ishta). The stored geometric-mean formula is the modern Shadbala-text formula. Which should the platform carry, and should the citation be Ch.28?",
+   "rows": 1,
+   "example_keys": [
+    "strength_id=ishta_phala"
+   ]
+  },
+  {
+   "asset": "bg_reference",
+   "question": "Held BPHS Ch.32 (8-karaka scheme) lists Atma, Amatya, Bhratru, Matru, Pitru, Putra, Gnati and Stree (= Dara) karakas: the 8th, 'Stree Karaka (next to Gnati Karaka)', is labelled 'Dara Karaka' in its worked table, i.e. Stree and Dara are ONE karaka, and a Pitrukaraka is rank 5. The row makes Strikaraka a separate 'co-spouse' significator at rank 8 and has no Pitrukaraka; held Jaimini (7-karaka scheme) has no 8th karaka at all. Should reference_karakas hold the 8-scheme as BPHS states it (adding pitrukaraka, folding strikaraka into darakaraka), or keep the 7-scheme only?",
+   "rows": 1,
+   "example_keys": [
+    "karaka_id=strikaraka"
+   ]
+  },
+  {
+   "asset": "bg_reference",
+   "question": "Held Jaimini Sutras notes (Su.24) assign the elder brothers' prosperity to Saturn; the platform row assigns elder siblings to Jupiter. Which significator does the platform adopt for elder siblings, and on what text?",
+   "rows": 1,
+   "example_keys": [
+    "karaka_id=karaka_elder_siblings"
+   ]
+  },
+  {
+   "asset": "bg_reference",
+   "question": "BPHS Ch.3 (planetary governances, Notes) ties 'knowledge and general happiness' to Jupiter. The row lists [moon, mercury, mars] for happiness and omits Jupiter. Which planets should the happiness karaka row carry?",
+   "rows": 1,
+   "example_keys": [
+    "karaka_id=karaka_happiness"
+   ]
+  },
+  {
+   "asset": "bg_reference",
+   "question": "Held texts name Mercury for the maternal uncle in three places (BPHS Ch.32 sl.18-24 and notes; Jaimini Su.21 and notes). The row assigns Mars (reachable only via the 6th-house chain). Should Mercury be the (or an additional) significator?",
+   "rows": 1,
+   "example_keys": [
+    "karaka_id=karaka_maternal_uncle"
+   ]
+  },
+  {
+   "asset": "bg_reference",
+   "question": "BPHS Ch.32 (31-34 Notes) states that for the 12th house's final emancipation 'Saturn is not the indicator but Ketu'. reference_karakas lists [ketu, saturn] for moksha. Should Saturn be removed from the moksha karaka row?",
+   "rows": 1,
+   "example_keys": [
+    "karaka_id=karaka_moksha"
+   ]
+  },
+  {
+   "asset": "bg_reference",
+   "question": "Same Mercury-AV 5th-house conflict (Saturn rekha in verse 51-52 vs Saturn dot in verse 28-30). Platform row Mercury-from-Saturn omits 5. Confirm.",
+   "rows": 1,
+   "example_keys": [
+    "constant_id=ashtakavarga_mercury_from_saturn"
+   ]
+  },
+  {
+   "asset": "bg_reference",
+   "question": "Within BPHS Ch.66 the Mercury AV is internally inconsistent at the 5th house: verse 51-52 lists 'Mercury, Saturn and Venus' as rekhapradas, while verse 28-30 lists 'Jupiter, Mars, the Moon, Saturn and the Ascendant' as dots. The platform rows follow the dot list (Sun rekha at 5, Saturn not). Is 'Saturn' in verse 51-52 a misprint for 'Sun'?",
+   "rows": 1,
+   "example_keys": [
+    "constant_id=ashtakavarga_mercury_from_sun"
+   ]
+  },
+  {
+   "asset": "bg_reference",
+   "question": "BPHS Ch.66 (Santhanam) says 'Jupiter and Mars in the 2nd' and 'No planet is Rekhaprada in the 12th' for the Moon's Ashtakavarga; platform row Moon-from-Jupiter = 1,4,7,8,10,11,12. Should the 12th be replaced by the 2nd (1,2,4,7,8,10,11) to match the held text?",
+   "rows": 1,
+   "example_keys": [
+    "constant_id=ashtakavarga_moon_from_jupiter"
+   ]
+  },
+  {
+   "asset": "bg_reference",
+   "question": "Same 9th-house line as Moon-from-Moon: the held text gives 'Venus and the Moon' in the 9th of the Moon AV, so Mars would NOT contribute a rekha at the 9th (platform row includes 9). Which reading is authoritative for Mars-to-Moon: 2,3,5,6,9,10,11 (platform) or 2,3,5,6,10,11 (held text)?",
+   "rows": 1,
+   "example_keys": [
+    "constant_id=ashtakavarga_moon_from_mars"
+   ]
+  },
+  {
+   "asset": "bg_reference",
+   "question": "In BPHS Ch.66 (Santhanam) the Moon's own Ashtakavarga lists 'Venus and the Moon' (OCR 'Mcon') as rekhapradas in the 9th, i.e. Moon-from-Moon = 1,3,6,7,9,10,11. The platform row has 1,3,6,7,10,11 (no 9th). Is the printed 'Moon' in the 9th a print/translation variant of 'Mars', or should the row follow the held text?",
+   "rows": 1,
+   "example_keys": [
+    "constant_id=ashtakavarga_moon_from_moon"
+   ]
+  },
+  {
+   "asset": "bg_reference",
+   "question": "BPHS Ch.66 (Santhanam) lists Mars among Venus-AV rekhapradas in the 4th and lists 'the Sun and Mars' as dots in the 5th; platform row Venus-from-Mars = 3,5,6,9,11,12. Which is correct: 3,4,6,9,11,12 (held text) or 3,5,6,9,11,12 (platform)?",
+   "rows": 1,
+   "example_keys": [
+    "constant_id=ashtakavarga_venus_from_mars"
+   ]
+  },
+  {
+   "asset": "bg_reference",
+   "question": "BPHS Ch.27 sloka 2-4 (Santhanam) prints the saptavargaja series 45, 30, 20, 15, 10, 4, 2 virupas (moolatrikona, own, extreme friend, friend, equal, enemy, extreme enemy), while the platform stores 45, 30, 22.5, 15, 7.5, 3.75, 1.875 and Ch.28 sloka 7-9 prints 60,45,30,22,15,?,4,2,0. Which series is canonical for the platform?",
+   "rows": 4,
+   "example_keys": [
+    "constant_id=saptavargaja_great_friend",
+    "constant_id=saptavargaja_neutral",
+    "constant_id=saptavargaja_enemy",
+    "constant_id=saptavargaja_great_enemy"
+   ]
+  },
+  {
+   "asset": "bg_reference",
+   "question": "Does the platform treat the D30 'divisor' of 30 as a count of equal parts? BPHS (Santhanam) divides each sign's 30 degrees into five unequal Trimsamsas (5,5,8,7,5 degrees), so a plain 'divide the sign into 30 parts' use would be non-classical.",
+   "rows": 1,
+   "example_keys": [
+    "constant_id=varga_divisor_d30"
+   ]
+  },
+  {
+   "asset": "bg_reference",
+   "question": "BPHS Ch.36 sloka 1-2: Asubha yoga = a malefic in the ascendant (or malefics in both 12th and 2nd from the ascendant); the glossary says 'Malefic in 2nd from Moon'. Which definition is canonical? || BPHS Ch.36 sloka 37 (Santhanam): Lagnadhi yoga = benefics in the 7th and 8th from the ascendant (no 6th). The glossary says 'Benefics 6/7/8 from lagna' (the Adhi-yoga-from-Moon pattern). Which is canonical? || BPHS Ch.36 sloka 1-2: Subha yoga = a benefic in the ascendant (or benefics in both the 12th and 2nd from the ascendant); the glossary says 'Benefic in 2nd from Moon'. Which definition is canonical?",
+   "rows": 3,
+   "example_keys": [
+    "classical_citation=classical_tradition, subfamily=ct-contradicted"
+   ]
+  },
+  {
+   "asset": "bg_reference",
+   "question": "In BPHS Ch.66 (Santhanam sloka 69 and 13-15) the bindu/dot (Karana) is INAUSPICIOUS and the rekha/line (Sthana) AUSPICIOUS. The glossary defines 'bindu: a benefic point' and 'rekha: a malefic mark' (reversed), and reference_constants labels benefic houses as 'bindu-houses'. Which terminology is canonical: the held classical one (rekha = benefic) or the modern bindu = benefic usage? || Same as bindu: held BPHS says rekha (Sthana) is auspicious, glossary says 'A malefic mark'.",
+   "rows": 2,
+   "example_keys": [
+    "classical_citation=BPHS Ch.66, subfamily=ch66-bindu-rekha"
+   ]
+  },
+  {
+   "asset": "bg_reference",
+   "question": "BPHS Ch.28 sloka 6 (Santhanam) gives Ishta phala as half the sum of (Uchcha rasmi-1)x10 and (Cheshta rasmi-1)x10 - an arithmetic mean, not sqrt(uccha x cheshta) as the glossary states. Which formula is canonical for the platform's ishta/kashta phala?",
+   "rows": 1,
+   "example_keys": [
+    "classical_citation=BPHS Ch.27, subfamily=ch27-ishta-kashta"
+   ]
+  },
+  {
+   "asset": "bg_reference",
+   "question": "In the held BPHS (Ch.32 sloka 25-30) 'Yogakaraka' means planets in mutual angles with exaltation/own/friendly dignity ('mutual co-workers'), not 'a graha lording both a kendra and a trikona' (the glossary's Ch.34 meaning). Should the glossary state the Ch.32 sense, the later lordship sense (with a text-free note), or both?",
+   "rows": 1,
+   "example_keys": [
+    "classical_citation=BPHS Ch.34, subfamily=ch34-yogakaraka"
+   ]
+  },
+  {
+   "asset": "bg_prashna_rules",
+   "question": "In Prashna Mārga's Āruḍha method, is the Prashna Lagna the sign fixed by the direction the querent faces/sits (East = Aries/Leo/Sagittarius ... via the trine-repeating direction lordship printed in Hora Sara Ch.2), or is Āruḍha Lagna simply the ascendant at the time of query as Hora Sara Ch.27 Sl.5 and Ch.5 state?",
+   "rows": 1,
+   "example_keys": [
+    "id=3, method_id=aarudha_based"
+   ]
+  },
+  {
+   "asset": "bg_prashna_rules",
+   "question": "Tājika Nīlakaṇṭhī (Ṣoḍaśa-yoga ch.) makes Ithaśāla a faster planet behind a slower one, both inside their dīptāṃśa; Uttara Kalāmṛta Ch.VII uses a flat 12-degree orb. Which orb convention should the platform state for the formation rule: per-planet dīptāṃśa with a pairwise (half-sum) moiety, or a flat figure?",
+   "rows": 1,
+   "example_keys": [
+    "id=1, yoga_id=ithasala"
+   ]
+  },
+  {
+   "asset": "bg_prashna_rules",
+   "question": "Tājika Nīlakaṇṭhī Sl.14 defines Yamayā as: lagna lord and karyesh have no mutual aspect, but a SLOWER planet aspects both, takes the faster one's light and hands it to the slower - success through another. The row defines Yamaya as parivartana (mutual sign exchange). Is the exchange definition from another school/text, and which should the platform keep?",
+   "rows": 1,
+   "example_keys": [
+    "id=4, yoga_id=yamaya"
+   ]
+  },
+  {
+   "asset": "bg_prashna_rules",
+   "question": "Tājika Nīlakaṇṭhī Sl.17-19 defines Maṇaū (मणऊ) as Mars or Saturn, placed near the faster significator, taking its light and not passing it to the slower one, so the Ithaśāla result is reversed (matter destroyed). The row defines Manaau as a 90-degree aspect between the significators. Should the platform's definition follow the printed Mars/Saturn light-stealing rule?",
+   "rows": 1,
+   "example_keys": [
+    "id=5, yoga_id=manaau"
+   ]
+  },
+  {
+   "asset": "bg_prashna_rules",
+   "question": "Tājika Nīlakaṇṭhī Sl.21-22: Kambūla needs the lagna lord and karyesh already in Ithaśāla AND the Moon in Ithaśāla with one or both (with sixteen Moon-dignity grades, uttamottama ... adhamādhama). Should the platform's formation rule add the precondition (lagna lord + karyesh already Ithaśāla) or is the looser 'Moon applies to either' deliberate?",
+   "rows": 1,
+   "example_keys": [
+    "id=6, yoga_id=kambula"
+   ]
+  },
+  {
+   "asset": "bg_prashna_rules",
+   "question": "Tājika Nīlakaṇṭhī Sl.38-44 defines Gairi-Kambūla through a 'śūnya-mārga/śūnyādhvaga' Moon (no own-sign, exaltation, decanate, navāṃśa or other dignity and no aspect from any planet) that is not in Ithaśāla with the significators: in one form the Moon is about to enter a sign where the dignified ruler/exaltee sits and at once makes Ithaśāla with it (fruit like Kambūla); in the other the Moon makes Ithaśāla with a void planet in its own sign (inauspicious). The row defines it as 'Moon already separated from the significator, inverse of Kambula'. Which definition is wanted?",
+   "rows": 1,
+   "example_keys": [
+    "id=7, yoga_id=gairi_kambula"
+   ]
+  },
+  {
+   "asset": "bg_prashna_rules",
+   "question": "In Tājika Nīlakaṇṭhī Sl.48-49 the yoga (Duttottha-Davīra/Dutthottha-divīra, ONE yoga) is read in the surviving tail as: weak (e.g. debilitated) lagna lord/karyesh, with a strong planet (fast-moving, in dignity) helping, still accomplishing the matter through someone else's help. The row defines Dutthottha as the significator in the 8th from its own sign and gives obstruction. Which is the intended yoga and outcome?",
+   "rows": 1,
+   "example_keys": [
+    "id=8, yoga_id=dutthottha"
+   ]
+  },
+  {
+   "asset": "bg_prashna_rules",
+   "question": "Tājika Nīlakaṇṭhī's Raddā (Sl.46-48) is partly preserved: the readable variant makes it an Ithaśāla between a kendra planet and an apoklima planet, fulfilment followed by destruction (or the reverse). The row says 'malefic interposed between the significators, blocking'. Which does the acharya want, and from what source?",
+   "rows": 1,
+   "example_keys": [
+    "id=9, yoga_id=rudda"
+   ]
+  },
+  {
+   "asset": "bg_prashna_rules",
+   "question": "Tājika Nīlakaṇṭhī Sl.3 defines Ikkavāla/Ikbāl as ALL planets in kendras (1,4,7,10) and paṇaphara (2,5,8,11) with none in an apoklima (3,6,9,12), giving royal comfort; its counterpart Induvāra is all planets in apoklimas (inauspicious). The row defines Ikbal as a recently direct planet applying to a significator. Should the row be restated to the printed definition?",
+   "rows": 1,
+   "example_keys": [
+    "id=12, yoga_id=ikbal"
+   ]
+  },
+  {
+   "asset": "bg_prashna_rules",
+   "question": "Tājika Nīlakaṇṭhī Sl.51-54 defines Kuttha as the Ithaśāla-making planet being strong ('कुत्थ' = a strong planet: lagna-seeing, kendra, own sign/exaltation, mid-motion etc.) - a favourable condition. The row defines Kuttha as a malefic that cuts the connection. Which is intended?",
+   "rows": 1,
+   "example_keys": [
+    "id=13, yoga_id=kuttha"
+   ]
+  },
+  {
+   "asset": "bg_prashna_rules",
+   "question": "The held Tājika Nīlakaṇṭhī lists sixteen yogas that include Induvāra and a single 'Duttottha-divīra' but no 'Dutthadhuta'. Is 'Dutthadhuta' an attested yoga in some other Tajika text, or should the platform's sixteen be reconciled with the printed list?",
+   "rows": 1,
+   "example_keys": [
+    "id=14, yoga_id=dutthadhuta"
+   ]
+  },
+  {
+   "asset": "bg_prashna_rules",
+   "question": "Tājika Nīlakaṇṭhī Sl.50 defines Tambīra as: lagna lord and karyesh not in Ithaśāla with each other, but one of them is about to change sign and will make a future Ithaśāla with a strong planet in the next sign, to which it gives its light - the matter is accomplished (worked example: Saturn at 29 deg Aquarius with Jupiter at 5 deg Pisces). The row defines it as Venus morning-star auspiciousness. Which is intended?",
+   "rows": 1,
+   "example_keys": [
+    "id=15, yoga_id=tambira"
+   ]
+  },
+  {
+   "asset": "bg_prashna_rules",
+   "question": "Tājika Nīlakaṇṭhī Sl.55-56 makes Duruppha the weakness of the Ithaśāla planet (twelfth place, enemy/fall sign, retrograde, combust, aspect-less, etc.) and says the Ithaśāla fruit is then not given. The row limits it to 'quesited significator retrograde' and allows fructification with delay. Which statement should the platform keep?",
+   "rows": 1,
+   "example_keys": [
+    "id=16, yoga_id=durupha"
+   ]
+  },
+  {
+   "asset": "bg_prashna_rules",
+   "question": "May the marriage row be re-cited to the Tājika Nīlakaṇṭhī Bhāva-nirṇaya (7th = wife/spouse, lagna lord with 7th lord Ithaśāla) while Venus/Jupiter karakas and the female-querent clause stay marked unsourced, or does the acharya hold a source for them?",
+   "rows": 1,
+   "example_keys": [
+    "id=1, question_class=marriage"
+   ]
+  },
+  {
+   "asset": "bg_prashna_rules",
+   "question": "The Tājika Nīlakaṇṭhī 10th-house chapter treats rājya-prāpti (authority/kingdom) with lagna lord or Moon in Ithaśāla with the 10th lord; may 'career' be re-cited there with the Saturn/Sun karakas and the 2nd/11th support left explicitly unsourced?",
+   "rows": 1,
+   "example_keys": [
+    "id=2, question_class=career"
+   ]
+  },
+  {
+   "asset": "bg_prashna_rules",
+   "question": "In Tājika Nīlakaṇṭhī the opponent in a vivāda is the 7th (Sl.7; PG244 Sl.21-23) while the 6th covers enemies/war. Should 'litigation_legal' keep the 6th lord as quesited, or move to (or add) the 7th lord with the 6th as secondary?",
+   "rows": 1,
+   "example_keys": [
+    "id=3, question_class=litigation_legal"
+   ]
+  },
+  {
+   "asset": "bg_prashna_rules",
+   "question": "For a lost object the Tājika Nīlakaṇṭhī nashta-dhana chapter uses lagna (article), 2nd/Moon (wealth), 4th (recovery), 7th (thief) and a decanate/Moon-based direction. Should the row be restated to that scheme or kept as the Prashna Mārga 2nd/4th movable-fixed split?",
+   "rows": 1,
+   "example_keys": [
+    "id=4, question_class=lost_object"
+   ]
+  },
+  {
+   "asset": "bg_prashna_rules",
+   "question": "Tājika Nīlakaṇṭhī's illness prashna (PG241 Sl.1-4) reads lagna/7th/10th/4th for patient/physician/disease/medicine and the 6th lord for 'will he fall ill'. Should the health row keep a single 6th-house frame with Saturn, or be restated?",
+   "rows": 1,
+   "example_keys": [
+    "id=5, question_class=health_illness"
+   ]
+  },
+  {
+   "asset": "bg_prashna_rules",
+   "question": "Tājika Nīlakaṇṭhī Sl.6 requires lagna lord, the Moon-sign lord and the 2nd lord in Ithaśāla (with benefic yoga/aspect) for dhana-lābha; may the finance row cite it for the 2nd-lord part while the Jupiter karaka and 12th-lord-loss clause stay unsourced?",
+   "rows": 1,
+   "example_keys": [
+    "id=6, question_class=finance_wealth"
+   ]
+  },
+  {
+   "asset": "bg_prashna_rules",
+   "question": "Tājika Nīlakaṇṭhī's journey chapter (PG261-268) turns on lagna lord/Moon with the 9th lord; may the row cite it for the 9th-lord part while the 12th-house foreign-travel and Mercury/Saturn karaka clauses stay unsourced?",
+   "rows": 1,
+   "example_keys": [
+    "id=7, question_class=travel_journey"
+   ]
+  },
+  {
+   "asset": "bg_prashna_rules",
+   "question": "May 'property_land' be re-cited to Tājika Nīlakaṇṭhī Sl.4 (4th: wells, fields, treasure, caves) as partial support, with the explicit 'home/land' wording and the Mars/Moon karakas left unsourced?",
+   "rows": 1,
+   "example_keys": [
+    "id=8, question_class=property_land"
+   ]
+  },
+  {
+   "asset": "bg_prashna_rules",
+   "question": "May the death_longevity row cite Tājika Nīlakaṇṭhī (8th; 8th lord with lagna lord/Moon in specified places = death in an illness prashna) while the Saturn karaka stays unsourced?",
+   "rows": 1,
+   "example_keys": [
+    "id=10, question_class=death_longevity"
+   ]
+  },
+  {
+   "asset": "bg_prashna_rules",
+   "question": "May the spiritual row cite Tājika Nīlakaṇṭhī Sl.9 (9th: dīkṣā, yātrā, maṭha, dharma-kārya) for the 9th-house part while the Jupiter karaka and the 5th/12th-lord support stay unsourced?",
+   "rows": 1,
+   "example_keys": [
+    "id=11, question_class=spiritual_religious"
+   ]
+  },
+  {
+   "asset": "bg_prashna_rules",
+   "question": "Tājika Nīlakaṇṭhī gives enemies/war to the 6th (Sl.6) yet its war prashna weighs lagna against the 7th. Should 'enemy_conflict' keep the 6th lord only, or add the 7th lord as the opposing party?",
+   "rows": 1,
+   "example_keys": [
+    "id=12, question_class=enemy_conflict"
+   ]
+  },
+  {
+   "asset": "bg_prashna_rules",
+   "question": "Tājika Nīlakaṇṭhī Sl.5-6 (commentary, PG53): take the difference of the two Ithaśāla planets' degrees, multiply by twelve, and that many days is when the Ithaśāla result comes ('ऐसे सर्वत्र जानना'). The row converts one degree to one day. Which conversion should the platform use, and does it depend on sign quality (movable/fixed/dual)?",
+   "rows": 1,
+   "example_keys": [
+    "id=2, rule_id=degree_to_days"
+   ]
+  },
+  {
+   "asset": "bg_prashna_rules",
+   "question": "Brihat Jataka Ch.XXVI, Hora Sara Ch.27 and Saravali derive the lost birth data from the query chart by rules (Jupiter, Ritu, Moon from the 5th/9th of the query lagna, etc.) rather than reading the query chart as the birth chart. Should the technique be restated as 'derive natal data from the query chart per these rules' instead of 'use the Prashna chart as a proxy natal chart'?",
+   "rows": 1,
+   "example_keys": [
+    "id=1, technique_id=nashta_jataka"
+   ]
+  },
+  {
+   "asset": "bg_prashna_rules",
+   "question": "The omen row's four example rules (east/north bird at sunrise, iron = Saturn, flowers = Venus, conch = Vishnu, drum = war) are not in Brihat Samhita as read. Should the examples be removed or each be traced to an explicit source before the row keeps 'only rules with explicit classical textual support are applied'?",
+   "rows": 1,
+   "example_keys": [
+    "id=3, technique_id=omen_nimitta"
+   ]
+  }
+ ]
+}

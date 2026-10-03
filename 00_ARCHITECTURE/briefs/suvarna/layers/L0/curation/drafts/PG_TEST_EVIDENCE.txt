@@ -1,0 +1,18 @@
+Real-PostgreSQL test of DRAFT_NEEDS_NUMBER_l0_transit_citation_curation.sql (disposable local PG 15, unix socket)
+run by tools/run_pg_test_draft_transit_curation.py
+
+P0 PASS replica fidelity: stored engine+rules contracts read t; engine/rules content hashes equal the pinned pre-state (e2dafc84d7fe.., 1dbdd265cf0e..)
+P1 PASS hash probe (rolled back): post-state engine 104aa45b4221.. rules d7f9f2459eff.. -> draft SQL regenerated with pins
+P2 PASS apply once: changed cells = 23 rules.classical_citation + 9 engine.classical_citation + 2 registry rows (integrity_check_sql, english_description); no other column of any table differs; stored contracts read t; counts 76/9/27; BPHS Ch.29 remains on 1 row; chapter-only Phaladeepika Ch.26 on 0; the 36 vedha-pair rows untouched
+P3 PASS idempotent: second apply raised NOTICE 'already applied: no-op' and changed nothing
+P4 PASS guard refuses on 'old citation of id 5 altered' and changed nothing (curation refuses: bg_transit_engine / bg_transit_rules content is not the pinned pre-state (engine e2dafc84d7fef9b8a05ad)
+P4 PASS guard refuses on 'phala of id 190 altered' and changed nothing (curation refuses: bg_transit_engine / bg_transit_rules content is not the pinned pre-state (engine e2dafc84d7fef9b8a05ad)
+P4 PASS guard refuses on 'engine value altered' and changed nothing (curation refuses: bg_transit_engine / bg_transit_rules content is not the pinned pre-state (engine 4e4db37ab7909a24f833a)
+P4 PASS guard refuses on 'registry contract drifted' and changed nothing (curation refuses: registry integrity_check_sql is not the pinned pre-state text (md5 mismatch))
+P4 PASS guard refuses on 'registry description drifted' and changed nothing (curation refuses: registry english_description has drifted from the pinned pre-state)
+P4b PASS row-level guard on its own: with the table-hash guard disabled, a row whose old citation differs makes the UPDATE match 22 not 23 -> raises 'expected 23 ... updated 22', nothing applied
+P5 PASS the reseal is necessary: the citation UPDATEs alone make both stored integrity contracts read f
+P6 PASS mutation: one altered sloka number in the draft is caught by the pinned post-state hash (post-flight raises, nothing applied)
+P7 PASS seed parity: UNPATCHED l0_transit.py == live pre-state (69 writer-owned rules x 4 columns, 9 engine rows x 4 columns); PATCHED module == post-curation tables; the 7 migration-owned double-transit rows are outside the module by design
+P8 PASS attribution_state with 1268 applied first (19 refuted + 6 unsourced): after the draft the 18 FACT rows are 'sourced', the 5 Ketu INFERENCE rows are NULL (3 reset from refuted, 2 were already NULL), Ketu 12th stays 'refuted', the 6 UNSOURCED rows stay 'unsourced'; stored contracts still read t; re-apply is a no-op. Without the column the block NOTICEs and skips (P2).
+P8b PASS a re-sourced row in an unexpected attribution_state ('unsourced') makes the whole file refuse (single transaction: nothing applied)

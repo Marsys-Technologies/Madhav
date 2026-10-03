@@ -1,0 +1,292 @@
+--- a/platform/python-sidecar/brahmagyan/l0_transit.py
++++ b/platform/python-sidecar/brahmagyan/l0_transit.py
+@@ -91,7 +91,8 @@
+ # avg_daily_motion_deg: classical average daily motion in degrees
+ # zodiac_period_days:   approximate time for one full zodiac traversal
+ # sign_residence_days:  average days spent per sign
+-# classical_citation:   textual source for motion parameters
++# classical_citation:   per-row source state (N-101 curation 2026-10: the periods coincide with modern mean sidereal periods;
++#                       'BPHS Ch.22' was refuted — each row says which cell, if any, the held corpus states)
+ 
+ BG_TRANSIT_ENGINE: list[dict[str, Any]] = [
+     {
+@@ -99,63 +100,63 @@
+         "avg_daily_motion_deg": 0.9856,
+         "zodiac_period_days": 365.25,
+         "sign_residence_days": 30.44,
+-        "classical_citation": BPHS_CH22,
++        "classical_citation": "PARTIALLY SOURCED — only sign_residence_days is stated in the held corpus, as the round figure '30 days' per sign (brihat_jataka:PG96:C1; jataka_parijata:PG144:C1, translator notes; stored 30.44 is read from it: INFERENCE). Motion and period values are not stated in the held corpus (the period coincides with the modern mean sidereal period). Former citation \"BPHS Ch.22 (Graha Gati)\" withdrawn as refuted: served bphs:PG22:C1 is Chapter 2 (incarnations) and the held corpus has no BPHS Graha Gati text.",
+     },
+     {
+         "graha": "moon",
+         "avg_daily_motion_deg": 13.1764,
+         "zodiac_period_days": 27.32,
+         "sign_residence_days": 2.28,
+-        "classical_citation": BPHS_CH22,
++        "classical_citation": "UNSOURCED — no value of this row is stated in the held corpus (sarvartha_chintamani:PG1:C301 has a translator note giving the Moon's time per sign, but the numeral is OCR-illegible and is not relied on). The period coincides with the modern mean sidereal period. Former citation \"BPHS Ch.22 (Graha Gati)\" withdrawn as refuted: served bphs:PG22:C1 is Chapter 2 (incarnations) and the held corpus has no BPHS Graha Gati text.",
+     },
+     {
+         "graha": "mars",
+         "avg_daily_motion_deg": 0.5240,
+         "zodiac_period_days": 686.97,
+         "sign_residence_days": 45.0,
+-        "classical_citation": BPHS_CH22,
++        "classical_citation": "UNSOURCED — no value of this row is stated in the held classical corpus (the period coincides with the modern mean sidereal period). Former citation \"BPHS Ch.22 (Graha Gati)\" withdrawn as refuted: served bphs:PG22:C1 is Chapter 2 (incarnations) and the held corpus has no BPHS Graha Gati text.",
+     },
+     {
+         "graha": "mercury",
+         "avg_daily_motion_deg": 1.3833,
+         "zodiac_period_days": 87.97,
+         "sign_residence_days": 14.0,
+-        "classical_citation": BPHS_CH22,
++        "classical_citation": "UNSOURCED — no value of this row is stated in the held classical corpus (the period coincides with the modern mean sidereal period). Former citation \"BPHS Ch.22 (Graha Gati)\" withdrawn as refuted: served bphs:PG22:C1 is Chapter 2 (incarnations) and the held corpus has no BPHS Graha Gati text.",
+     },
+     {
+         "graha": "jupiter",
+         "avg_daily_motion_deg": 0.0831,
+         "zodiac_period_days": 4332.59,
+         "sign_residence_days": 361.05,
+-        "classical_citation": BPHS_CH22,
++        "classical_citation": "PARTIALLY SOURCED — only sign_residence_days (about one year per sign) is stated in the held corpus: yavana_jataka:PG662:C1 ('at the rate of one sign a year'), yavana_jataka:PG900:C1, bphs:PG933:C1 (worked example); stored 361.05 is read from the round figure: INFERENCE. Motion and period values are not stated (the period coincides with the modern mean sidereal period). Former citation \"BPHS Ch.22 (Graha Gati)\" withdrawn as refuted: served bphs:PG22:C1 is Chapter 2 (incarnations) and the held corpus has no BPHS Graha Gati text.",
+     },
+     {
+         "graha": "venus",
+         "avg_daily_motion_deg": 1.2000,
+         "zodiac_period_days": 224.70,
+         "sign_residence_days": 23.0,
+-        "classical_citation": BPHS_CH22,
++        "classical_citation": "UNSOURCED — no value of this row is stated in the held classical corpus (the period coincides with the modern mean sidereal period). Former citation \"BPHS Ch.22 (Graha Gati)\" withdrawn as refuted: served bphs:PG22:C1 is Chapter 2 (incarnations) and the held corpus has no BPHS Graha Gati text.",
+     },
+     {
+         "graha": "saturn",
+         "avg_daily_motion_deg": 0.0335,
+         "zodiac_period_days": 10759.22,
+         "sign_residence_days": 913.37,
+-        "classical_citation": BPHS_CH22,
++        "classical_citation": "PARTIALLY SOURCED — only sign_residence_days is stated in the held corpus, as round figures: '30 months' per sign (brihat_jataka:PG96:C1; jataka_parijata:PG144:C1, translator notes) and 'takes 900 days to move in a sign' (sarvartha_chintamani:PG1:C301, translator note); stored 913.37 is read as 30 months: INFERENCE. Motion and period values are not stated (the period coincides with the modern mean sidereal period). Former citation \"BPHS Ch.22 (Graha Gati)\" withdrawn as refuted: served bphs:PG22:C1 is Chapter 2 (incarnations) and the held corpus has no BPHS Graha Gati text.",
+     },
+     {
+         "graha": "rahu",
+         "avg_daily_motion_deg": -0.0529,
+         "zodiac_period_days": 6793.50,
+         "sign_residence_days": 548.00,
+-        "classical_citation": BPHS_CH22,
++        "classical_citation": "UNSOURCED — no value of this row is stated in the held classical corpus (the period coincides with the modern mean sidereal period). Former citation \"BPHS Ch.22 (Graha Gati)\" withdrawn as refuted: served bphs:PG22:C1 is Chapter 2 (incarnations) and the held corpus has no BPHS Graha Gati text.",
+     },
+     {
+         "graha": "ketu",
+         "avg_daily_motion_deg": -0.0529,
+         "zodiac_period_days": 6793.50,
+         "sign_residence_days": 548.00,
+-        "classical_citation": BPHS_CH22,
++        "classical_citation": "UNSOURCED — no value of this row is stated in the held classical corpus (the period coincides with the modern mean sidereal period). Former citation \"BPHS Ch.22 (Graha Gati)\" withdrawn as refuted: served bphs:PG22:C1 is Chapter 2 (incarnations) and the held corpus has no BPHS Graha Gati text.",
+     },
+ ]
+ 
+@@ -233,7 +234,7 @@
+         "primary_house": 1,
+         "vedha_house": None,
+         "phala": "Ill health, loss of position, eye trouble",
+-        "classical_citation": BPHS_CH29,
++        "classical_citation": "Phaladipika Adh. XXVI, Sloka 9 — phaladeepika:PG324:C1 (Sastri trans. 1950) [supports: unfavourable valence; ill-health (diseases); remaining phala wording is not in the sloka]",
+         "rule_notes": "Generally inauspicious for health and status",
+     },
+     {
+@@ -242,7 +243,7 @@
+         "primary_house": 5,
+         "vedha_house": None,
+         "phala": "Trouble with children, loss of intelligence",
+-        "classical_citation": BPHS_CH29,
++        "classical_citation": "Phaladipika Adh. XXVI, Sloka 10 — phaladeepika:PG324:C1 (Sastri trans. 1950) [supports: unfavourable valence; ill-health, mental agitation; remaining phala wording is not in the sloka]",
+         "rule_notes": "Afflicts progeny and wisdom matters",
+     },
+     {
+@@ -251,7 +252,7 @@
+         "primary_house": 8,
+         "vedha_house": None,
+         "phala": "Disease, obstacle, conflict with authority",
+-        "classical_citation": BPHS_CH29,
++        "classical_citation": "Phaladipika Adh. XXVI, Sloka 10 (continued from PG324) — phaladeepika:PG325:C1 (Sastri trans. 1950) [supports: unfavourable valence; diseases; royal displeasure (conflict with authority); remaining phala wording is not in the sloka]",
+         "rule_notes": "Transit through 8th from Moon — serious affliction",
+     },
+     # ── MOON (Chandra) Gochara — BPHS Ch.29 ──────────────────────────────────
+@@ -345,7 +346,7 @@
+         "primary_house": 8,
+         "vedha_house": None,
+         "phala": "Fear, sorrow, ill health",
+-        "classical_citation": BPHS_CH29,
++        "classical_citation": "Phaladipika Adh. XXVI, Sloka 12 — phaladeepika:PG325:C1 (Sastri trans. 1950) [supports: unfavourable valence only (wording 'untoward events' is weak); remaining phala wording is not in the sloka]",
+         "rule_notes": "Moon in 8th from natal Moon is afflictive",
+     },
+     # ── MARS (Mangal) Gochara — BPHS Ch.29 ──────────────────────────────────
+@@ -382,7 +383,7 @@
+         "primary_house": 1,
+         "vedha_house": None,
+         "phala": "Fever, accidents, injury, quarrels",
+-        "classical_citation": BPHS_CH29,
++        "classical_citation": "Phaladipika Adh. XXVI, Sloka 13 — phaladeepika:PG326:C1 (Sastri trans. 1950) [supports: unfavourable valence; diseases from blood, bile or heat; remaining phala wording is not in the sloka]",
+         "rule_notes": "Mars transiting natal Moon sign — danger and conflict",
+     },
+     {
+@@ -391,7 +392,7 @@
+         "primary_house": 4,
+         "vedha_house": None,
+         "phala": "Domestic strife, trouble to mother, property loss",
+-        "classical_citation": BPHS_CH29,
++        "classical_citation": "Phaladipika Adh. XXVI, Sloka 13 — phaladeepika:PG326:C1 (Sastri trans. 1950) [supports: unfavourable valence; loss of position; sorrow through relations; remaining phala wording is not in the sloka]",
+         "rule_notes": "Mars 4th from Moon — family and home afflictions",
+     },
+     {
+@@ -400,7 +401,7 @@
+         "primary_house": 8,
+         "vedha_house": None,
+         "phala": "Danger, accidents, surgical risk",
+-        "classical_citation": BPHS_CH29,
++        "classical_citation": "Phaladipika Adh. XXVI, Sloka 15 (continued from PG326) — phaladeepika:PG327:C1 (Sastri trans. 1950) [supports: unfavourable valence; fever; loss of wealth and honour; remaining phala wording is not in the sloka]",
+         "rule_notes": "Mars 8th from Moon — severe affliction",
+     },
+     # ── MERCURY (Budha) Gochara — BPHS Ch.29 ─────────────────────────────────
+@@ -543,7 +544,7 @@
+         "primary_house": 4,
+         "vedha_house": None,
+         "phala": "Domestic trouble, loss of comforts, mother's illness",
+-        "classical_citation": BPHS_CH29,
++        "classical_citation": "Phaladipika Adh. XXVI, Sloka 18 — phaladeepika:PG328:C1 (Sastri trans. 1950) [supports: unfavourable valence; sorrow through relations; humiliation; remaining phala wording is not in the sloka]",
+         "rule_notes": "Ashtama Guru precedes the 5th favourable transit",
+     },
+     {
+@@ -552,7 +553,7 @@
+         "primary_house": 8,
+         "vedha_house": None,
+         "phala": "Obstacles, loss of position, health issues",
+-        "classical_citation": BPHS_CH29,
++        "classical_citation": "Phaladipika Adh. XXVI, Sloka 19 — phaladeepika:PG328:C1 (Sastri trans. 1950) [supports: unfavourable valence; loss of money; unlucky, miserable; remaining phala wording is not in the sloka]",
+         "rule_notes": "Jupiter 8th from Moon — significant affliction",
+     },
+     # ── VENUS (Shukra) Gochara — BPHS Ch.29 ──────────────────────────────────
+@@ -733,7 +734,7 @@
+         "primary_house": 1,
+         "vedha_house": None,
+         "phala": "Sade Sati peak — hardship, health issues, delays",
+-        "classical_citation": PD_CH26,
++        "classical_citation": "Phaladipika Adh. XXVI, Sloka 22 — phaladeepika:PG330:C1 (Sastri trans. 1950) [supports: unfavourable valence; disease; remaining phala wording is not in the sloka]",
+         "rule_notes": "Central phase of Sade Sati (7.5 year Saturn affliction cycle)",
+     },
+     {
+@@ -742,7 +743,7 @@
+         "primary_house": 4,
+         "vedha_house": None,
+         "phala": "Domestic troubles, loss of property, mother's illness",
+-        "classical_citation": BPHS_CH29,
++        "classical_citation": "Phaladipika Adh. XXVI, Sloka 22 — phaladeepika:PG330:C1 (Sastri trans. 1950) [supports: unfavourable valence; loss of wife, relation and wealth; remaining phala wording is not in the sloka]",
+         "rule_notes": "Kantaka Saturn (4th) — classic obstacle transit",
+     },
+     {
+@@ -751,7 +752,7 @@
+         "primary_house": 8,
+         "vedha_house": None,
+         "phala": "Serious illness, accidents, prolonged suffering",
+-        "classical_citation": BPHS_CH29,
++        "classical_citation": "Phaladipika Adh. XXVI, Sloka 22 — phaladeepika:PG330:C1 (Sastri trans. 1950) [supports: unfavourable valence; disease; loss of children, cattle, friends, wealth; remaining phala wording is not in the sloka]",
+         "rule_notes": "Ashtama Shani — worst Saturn transit position",
+     },
+     # ── RAHU Gochara — BPHS Ch.29 + Phaladeepika Ch.26 ──────────────────────
+@@ -788,7 +789,7 @@
+         "primary_house": 1,
+         "vedha_house": None,
+         "phala": "Ill health, confusion, loss of clarity; fear and anxiety",
+-        "classical_citation": BPHS_CH29,
++        "classical_citation": "Phaladipika Adh. XXVI, Sloka 24 — phaladeepika:PG331:C1 (Sastri trans. 1950) [supports: unfavourable valence; sickness or death; remaining phala wording is not in the sloka]",
+         "rule_notes": "Rahu over natal Moon — mental disturbance; Sade-Sati-class affliction for Rahu.",
+     },
+     {
+@@ -797,7 +798,7 @@
+         "primary_house": 2,
+         "vedha_house": None,
+         "phala": "Speech affliction, family disputes, financial drain",
+-        "classical_citation": BPHS_CH29,
++        "classical_citation": "Phaladipika Adh. XXVI, Sloka 24 — phaladeepika:PG331:C1 (Sastri trans. 1950) [supports: unfavourable valence; loss of wealth; remaining phala wording is not in the sloka]",
+         "rule_notes": "Rahu 2nd from Moon — kutumba and dhana affliction.",
+     },
+     {
+@@ -806,7 +807,7 @@
+         "primary_house": 4,
+         "vedha_house": None,
+         "phala": "Domestic troubles, property loss, mother's health affected",
+-        "classical_citation": BPHS_CH29,
++        "classical_citation": "Phaladipika Adh. XXVI, Sloka 24 — phaladeepika:PG331:C1 (Sastri trans. 1950) [supports: unfavourable valence; sorrow; remaining phala wording is not in the sloka]",
+         "rule_notes": "Rahu 4th from Moon — Kantaka-class obstruction; home and sukha affliction.",
+     },
+     {
+@@ -815,7 +816,7 @@
+         "primary_house": 7,
+         "vedha_house": None,
+         "phala": "Partnership conflicts, danger in travel, hidden adversaries",
+-        "classical_citation": PD_CH26,
++        "classical_citation": "Phaladipika Adh. XXVI, Sloka 24 — phaladeepika:PG331:C1 (Sastri trans. 1950) [supports: unfavourable valence; loss; remaining phala wording is not in the sloka]",
+         "rule_notes": "Rahu 7th from Moon — kalatra and travel affliction.",
+     },
+     {
+@@ -824,7 +825,7 @@
+         "primary_house": 8,
+         "vedha_house": None,
+         "phala": "Accidents, sudden illness, hidden dangers; fear of death",
+-        "classical_citation": BPHS_CH29,
++        "classical_citation": "Phaladipika Adh. XXVI, Sloka 24 — phaladeepika:PG331:C1 (Sastri trans. 1950) [supports: unfavourable valence; danger to life; remaining phala wording is not in the sloka]",
+         "rule_notes": "Rahu 8th from Moon — randhra affliction; severe; longevity concern.",
+     },
+     {
+@@ -833,7 +834,7 @@
+         "primary_house": 12,
+         "vedha_house": None,
+         "phala": "Hidden expenditure, foreign travel under duress, separation",
+-        "classical_citation": PD_CH26,
++        "classical_citation": "Phaladipika Adh. XXVI, Sloka 24 — phaladeepika:PG331:C1 (Sastri trans. 1950) [supports: unfavourable valence; expenditure; remaining phala wording is not in the sloka]",
+         "rule_notes": "Rahu 12th from Moon — vyaya affliction; loss and isolation.",
+     },
+     # ── KETU Gochara — BPHS Ch.29 + Phaladeepika Ch.26 ──────────────────────
+@@ -879,7 +880,7 @@
+         "primary_house": 1,
+         "vedha_house": None,
+         "phala": "Bodily affliction, confusion, spiritual restlessness; detachment from self",
+-        "classical_citation": BPHS_CH29,
++        "classical_citation": "Phaladipika Adh. XXVI, Sloka 2 (Rahu and Ketu are similar to the Sun) read with Sloka 9 (Sun, house 1) and Sloka 24 (Rahu, house 1) — phaladeepika:PG321:C1, phaladeepika:PG324:C1, phaladeepika:PG331:C1 (Sastri trans. 1950) [INFERENCE: no Ketu-specific verse; unfavourable valence only; remaining phala wording is not in the text]",
+         "rule_notes": "Ketu over natal Moon — dissociation and health disturbance.",
+     },
+     {
+@@ -888,7 +889,7 @@
+         "primary_house": 2,
+         "vedha_house": None,
+         "phala": "Financial loss, family separation, speech affliction",
+-        "classical_citation": PD_CH26,
++        "classical_citation": "Phaladipika Adh. XXVI, Sloka 2 (Rahu and Ketu are similar to the Sun) read with Sloka 9 (Sun, house 2) and Sloka 24 (Rahu, house 2) — phaladeepika:PG321:C1, phaladeepika:PG324:C1, phaladeepika:PG331:C1 (Sastri trans. 1950) [INFERENCE: no Ketu-specific verse; unfavourable valence only; remaining phala wording is not in the text]",
+         "rule_notes": "Ketu 2nd from Moon — kutumba and dhana affliction.",
+     },
+     {
+@@ -897,7 +898,7 @@
+         "primary_house": 4,
+         "vedha_house": None,
+         "phala": "Home disruption, loss of comforts, mother's health concerns",
+-        "classical_citation": BPHS_CH29,
++        "classical_citation": "Phaladipika Adh. XXVI, Sloka 2 (Rahu and Ketu are similar to the Sun) read with Sloka 9 (Sun, house 4) and Sloka 24 (Rahu, house 4) — phaladeepika:PG321:C1, phaladeepika:PG324:C1, phaladeepika:PG331:C1 (Sastri trans. 1950) [INFERENCE: no Ketu-specific verse; unfavourable valence only; remaining phala wording is not in the text]",
+         "rule_notes": "Ketu 4th from Moon — Kantaka-class; domestic troubles and vehicle accidents.",
+     },
+     {
+@@ -906,7 +907,7 @@
+         "primary_house": 7,
+         "vedha_house": None,
+         "phala": "Marital friction, separation, hidden adversary in partnership",
+-        "classical_citation": PD_CH26,
++        "classical_citation": "Phaladipika Adh. XXVI, Sloka 2 (Rahu and Ketu are similar to the Sun) read with Sloka 10 (Sun, house 7) and Sloka 24 (Rahu, house 7) — phaladeepika:PG321:C1, phaladeepika:PG324:C1, phaladeepika:PG331:C1 (Sastri trans. 1950) [INFERENCE: no Ketu-specific verse; unfavourable valence only; remaining phala wording is not in the text]",
+         "rule_notes": "Ketu 7th from Moon — kalatra affliction; relationships tested.",
+     },
+     {
+@@ -915,7 +916,7 @@
+         "primary_house": 8,
+         "vedha_house": None,
+         "phala": "Surgery, accidents, sudden health crisis; karmic debt activation",
+-        "classical_citation": BPHS_CH29,
++        "classical_citation": "Phaladipika Adh. XXVI, Sloka 2 (Rahu and Ketu are similar to the Sun) read with Sloka 10 (Sun, house 8) and Sloka 24 (Rahu, house 8) — phaladeepika:PG321:C1, phaladeepika:PG325:C1, phaladeepika:PG331:C1 (Sastri trans. 1950) [INFERENCE: no Ketu-specific verse; unfavourable valence only; remaining phala wording is not in the text]",
+         "rule_notes": "Ketu 8th from Moon — randhra + moksha karak: severe; karmic reckoning.",
+     },
+ ]
