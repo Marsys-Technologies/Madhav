@@ -19,9 +19,9 @@ falls through to `'neutral'` (`bo_laksana` and `bo_laksana_rerank`, one rebuild)
 
 ## Answer
 
-**No reader found breaks on NULL, so no ASK is triggered by breakage** (readers R-1 to R-15; R-14 is a gate that stops binding on NULL rows, see the addendum). Every Python and SQL reader is
-NULL-safe or counts NULL together with neutral; the TypeScript readers pass the value through as
-`string | null`. **One served field changes meaning** and SS should know before TI-L2-32 lands: the per-entity
+**No reader found breaks on NULL, so no ASK is triggered by breakage** (readers R-1 to R-15; R-14 is a gate that stops binding on NULL rows, see the addendum). Every Python and SQL reader found is
+NULL-safe, counts NULL together with neutral, or (the `bo_laksana` closed-set gate, R-14a) passes without checking the NULL rows; the TypeScript readers pass the value through as
+`string | null`. **One served field changes meaning, and one registry gate covers less,** and SS should know before TI-L2-32 lands: the per-entity
 `dominant_valence` in the hierarchical profiles (`orientation`) is a most-frequent-bucket count that
 skips NULL, so it would stop saying `neutral` for entities whose rows become NULL and could name a
 non-neutral valence from the few assessed rows (see R-7).
