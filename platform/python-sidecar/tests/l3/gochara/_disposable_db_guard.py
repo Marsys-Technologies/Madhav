@@ -71,15 +71,37 @@ def check_admin_dsn(dsn: str, env: Mapping[str, str] | None = None) -> dict[str,
     return parts
 
 
-def assert_loopback_server(conn: Any) -> str:
-    """After connecting, BEFORE any CREATE/DROP: the server answered from a loopback address (or a unix socket)."""
+_RFC1918_NETWORKS = tuple(ipaddress.ip_network(cidr) for cidr in ("10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16"))
+
+
+def assert_loopback_server(conn: Any, env: Mapping[str, str] | None = None) -> str:
+    """After connecting, BEFORE any CREATE/DROP: the server answered from a loopback address (or a unix socket).
+
+    The SAME policy as the shared guard `tests/l3/_disposable_db_guard.assert_disposable_connection` (steward ruling M20261002T174717-5721):
+    a v4-mapped IPv6 address is unwrapped before it is classified, and an RFC 1918 IPv4 address (EXACTLY 10/8, 172.16/12, 192.168/16) is
+    accepted ONLY inside GitHub Actions (GITHUB_ACTIONS == 'true') — CI runs Postgres as a service container, the runner connects to
+    localhost:5432, Docker port-forwards onto the bridge network and the server legitimately reports its own bridge address (e.g.
+    172.18.0.2). Everywhere else a private address is REFUSED, because on a developer machine a local cloud-sql-proxy on 127.0.0.1
+    forwarding to a remote (e.g. production) database reports exactly that shape. Everything else non-loopback is refused everywhere."""
+    env = os.environ if env is None else env
     row = conn.execute("SELECT inet_server_addr()").fetchone()
-    addr = row[0] if not isinstance(row, dict) else next(iter(row.values()))
-    if addr is None:
+    raw = row[0] if not isinstance(row, dict) else next(iter(row.values()))
+    if raw is None:
         return "unix-socket"
-    if not ipaddress.ip_address(str(addr).split("/")[0]).is_loopback:
-        raise UnsafeAdminDSN(f"the connected server's address is {addr}, not loopback — refusing every destructive statement")
-    return str(addr)
+    try:
+        addr = ipaddress.ip_interface(str(raw)).ip            # inet::text may carry a mask ('172.18.0.2/32')
+    except ValueError as exc:
+        raise UnsafeAdminDSN(f"unparseable inet_server_addr() {raw!r} — a server that cannot report a sane address is not trusted") from exc
+    addr = getattr(addr, "ipv4_mapped", None) or addr
+    if addr.is_loopback:
+        return str(addr)
+    if addr.version == 4 and any(addr in net for net in _RFC1918_NETWORKS):
+        if env.get("GITHUB_ACTIONS", "") == "true":
+            return str(addr)
+        raise UnsafeAdminDSN(f"the connected server's address is {addr}, a private address, not loopback — a local proxy to a remote database "
+                             "looks exactly like this (accepted only inside GitHub Actions, where Postgres is a Docker service container); "
+                             "refusing every destructive statement")
+    raise UnsafeAdminDSN(f"the connected server's address is {addr}, not loopback — refusing every destructive statement")
 
 
 def guarded_admin_connect(dsn: str, **kwargs):

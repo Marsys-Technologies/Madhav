@@ -77,13 +77,41 @@ class _Conn:
         return _R()
 
 
+NOT_CI = {"GITHUB_ACTIONS": "false"}
+IN_CI = {"GITHUB_ACTIONS": "true"}
+
+
 def test_the_connected_servers_address_must_be_loopback_or_a_unix_socket():
-    assert assert_loopback_server(_Conn(None)) == "unix-socket"
-    assert assert_loopback_server(_Conn("127.0.0.1")) == "127.0.0.1"
-    assert assert_loopback_server(_Conn("::1")) == "::1"
-    for remote in ("10.1.2.3", "203.0.113.9", "2001:db8::1"):
-        with pytest.raises(UnsafeAdminDSN, match="not loopback"):
-            assert_loopback_server(_Conn(remote))
+    assert assert_loopback_server(_Conn(None), NOT_CI) == "unix-socket"
+    assert assert_loopback_server(_Conn("127.0.0.1"), NOT_CI) == "127.0.0.1"
+    assert assert_loopback_server(_Conn("::1"), NOT_CI) == "::1"
+    assert assert_loopback_server(_Conn("127.0.0.1/32"), NOT_CI) == "127.0.0.1"          # inet::text carries a mask
+    for remote in ("203.0.113.9", "2001:db8::1", "8.8.8.8", "169.254.1.1", "0.0.0.0", "::ffff:8.8.8.8", "::ffff:203.0.113.9"):
+        for env in (NOT_CI, IN_CI):                                                     # public / link-local / unspecified: refused EVERYWHERE
+            with pytest.raises(UnsafeAdminDSN, match="not loopback"):
+                assert_loopback_server(_Conn(remote), env)
+
+
+@pytest.mark.parametrize("private", ["10.1.2.3", "172.18.0.2", "172.18.0.2/32", "192.168.5.5", "::ffff:10.0.0.1"])
+def test_a_private_server_address_is_refused_everywhere_except_inside_github_actions(private):
+    """A local cloud-sql-proxy on 127.0.0.1 forwarding to a remote database reports exactly this shape; CI's Postgres service container
+    legitimately reports its Docker bridge address (steward ruling M20261002T174717-5721) — the same policy as the shared guard."""
+    with pytest.raises(UnsafeAdminDSN, match="private address"):
+        assert_loopback_server(_Conn(private), NOT_CI)
+    with pytest.raises(UnsafeAdminDSN, match="private address"):
+        assert_loopback_server(_Conn(private), {})                                      # no GITHUB_ACTIONS at all: not CI
+    assert assert_loopback_server(_Conn(private), IN_CI)
+
+
+@pytest.mark.parametrize("not_rfc1918", ["172.15.255.255", "172.32.0.1", "100.64.0.1", "192.169.0.1", "11.0.0.1"])
+def test_only_the_exact_rfc1918_ranges_count_as_private_even_inside_github_actions(not_rfc1918):
+    with pytest.raises(UnsafeAdminDSN, match="not loopback"):
+        assert_loopback_server(_Conn(not_rfc1918), IN_CI)
+
+
+def test_an_unparseable_server_address_is_refused():
+    with pytest.raises(UnsafeAdminDSN, match="unparseable"):
+        assert_loopback_server(_Conn("not-an-address"), IN_CI)
 
 
 def test_every_a53_fixture_that_creates_or_drops_goes_through_the_guard():
