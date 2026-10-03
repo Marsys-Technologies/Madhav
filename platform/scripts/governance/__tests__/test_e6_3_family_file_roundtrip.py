@@ -77,6 +77,12 @@ def test_the_committed_family_file_is_byte_identical_to_the_generator_output_whe
         pytest.skip("FAMILY_ASSETS.json is not on this checkout (it lands with the family PR #2888): round trip of the "
                     "committed pair not run")
     cur = json.loads(committed.read_text(encoding="utf-8"))
-    doc = G.build_family_assets(G.load_family_input(inp), G.load_registry_from_seed(SEED_FILE), version=cur["version"],
-                                frozen_at=cur["frozen_at"], registry_revision=cur["registry_revision"])
+    # the registry is the committed draft registry input (the live active registry, see regenerate_draft_level_map.py; the seed
+    # is a stale stand-in that still holds ka_gochara_v3_century_materialize active), and the draft stamp is a generator note
+    reg = CTRL / "registry_input_draft.json"
+    if not reg.exists():
+        pytest.skip("registry_input_draft.json is not on this checkout")
+    notes = {"_stamp": cur["_stamp"]} if "_stamp" in cur else None
+    doc = G.build_family_assets(G.load_family_input(inp), G.load_registry_json(reg), version=cur["version"],
+                                frozen_at=cur["frozen_at"], registry_revision=cur["registry_revision"], notes=notes)
     assert json.dumps(doc, indent=2, ensure_ascii=False) + "\n" == committed.read_text(encoding="utf-8")

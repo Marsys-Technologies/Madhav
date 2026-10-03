@@ -226,10 +226,21 @@ The family set is what the WAVE tool refuses. Family assets and their readers ar
 production session with the single-asset dispatcher, each under a stage the strategist approves (Pravaha's own assets only by
 Pravaha). The wave tool is for level waves of non-family assets (first use: the 23 bo_* assets).
 
-`FAMILY_ASSETS.json` (draft `0.1-draft`, branch `suvarna/engine-E6.3-family`, 21 members) now includes, beyond the five R8 names
+`FAMILY_ASSETS.json` (draft `0.2-draft`, 25 members, regenerated at registry revision 16; see the draft level map below) includes, beyond the five R8 names
 and the 13 other readers: `ka_yojaka` (Sangam's stale prerequisite), `ka_gochara_v3_century_materialize` (Gochara's century
 writer) and `ka_moorti_nirnaya` (Pravaha's gochara writer, not covered by any name pattern). `ka_kota_chakra` is deliberately not
 in the set (that reader is ours by agreement). None of the 23 bo_* assets is a member; a test pins that.
+
+### The draft level map (SS ruling N-97 item 6; freeze at J1)
+
+`00_ARCHITECTURE/control/LEVEL_MAP.json` is a **draft** pre-J1 snapshot: `version` `0.2-draft` and a `_stamp` (status `DRAFT`, the registry
+revision and fingerprint it was generated at, the sha256 of its registry input). Levels are longest-path depth over the 127 active
+registry assets (27 levels, 0..26); a wave is a level range and its dispatch set is the level minus `family_set`. Both files are
+generated, never hand-edited: `python3 00_ARCHITECTURE/control/regenerate_draft_level_map.py --frozen-at <ISO-8601>` rewrites
+`registry_input_draft.json`, `LEVEL_MAP.json` and `FAMILY_ASSETS.json`; `--check` compares. The DAG is offline (the repo's frozen
+pre-1210 registry reconstruction plus migration 1210's edges), cross-checked against the E6 census; it is not a live export, so the
+strategist re-derives and freezes it from a live export at J1. `test_e6_3_draft_level_map.py` fails if a committed file differs from
+a regeneration or the stamp is stale (a `REGISTRY_REVISION` bump means: regenerate).
 
 ## Stop hook between waves
 

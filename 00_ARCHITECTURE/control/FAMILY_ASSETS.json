@@ -1,7 +1,7 @@
 {
-  "version": "0.1-draft",
-  "frozen_at": "2026-10-01T23:15:42+00:00",
-  "registry_revision": 7,
+  "version": "0.2-draft",
+  "frozen_at": "2026-10-03T13:00:00+00:00",
+  "registry_revision": 16,
   "family_gochara": [
     "bg_gochara_arcs",
     "bg_gochara_citation_resolution",
@@ -83,11 +83,15 @@
         "reason": "is_active false in the registry seed: retired Gochara sweep (generation=v1 rows are protected); kept in the refusal set because E5.3's ka_gochara name pattern already refuses it"
       },
       {
+        "asset": "ka_gochara_v3_century_materialize",
+        "reason": "is_active false in the live registry at origin/main adb0db29d (E6 census census_L3.json population_excluded_inactive, catalog_status CURRENT; the registry seed still says active); kept in the refusal set: Pravaha retires it in A6.2 and E5.3's ka_gochara name pattern already refuses it"
+      },
+      {
         "asset": "ka_gochara_v4_41_candidate",
         "reason": "is_active false in the registry seed (an engineering-proof candidate, never flipped); kept in the refusal set because E5.3's ka_gochara name pattern already refuses it and Pravaha alone rebuilds it"
       }
     ],
-    "seed": "Every member is an active asset in platform/scripts/seed/asset_registry_seed.ts at origin/main; if a member is later retired it may stay in the refusal set but must be listed in _notes.inactive with its reason.",
+    "seed": "Every member is an active asset in the registry (platform/scripts/seed/asset_registry_seed.ts at origin/main, and the live registry as measured by the E6 census at adb0db29d) except the ones listed in `inactive`; if a member is later retired it may stay in the refusal set but must be listed in _notes.inactive with its reason.",
     "name_patterns": "Every registered asset in the seed that E5.3's FAMILY_NAME_PATTERN matches (ka_gochara*, ka_vedha_gochara*, gochara_*, bg_gochara_*, kala_gochara_*) is a member, so the file and the patterns say the same thing; the pattern stays as a second line of defence."
   },
   "_semantics": "The family set is what the WAVE tool refuses. Family assets and their readers are rebuilt and certified ONE AT A TIME by the production session with the single-asset dispatcher, each under a stage the strategist approves (Pravaha's own assets only by Pravaha). The wave tool is for level waves of non-family assets (first use: the 23 bo_* assets). An L0 gochara asset being in the family set does not change who admits its L0 pin (Suvarna, N-71).",
@@ -95,5 +99,15 @@
     "Q1 (ruled): ka_sangam and ka_kshetra stay in the set.",
     "Q2 (ruled): ka_yojaka and ka_gochara_v3_century_materialize are added.",
     "Q3 (ruled): the split (family assets under their family keys; 13 other readers in the reader lists) is right."
-  ]
+  ],
+  "_stamp": {
+    "status": "DRAFT",
+    "freeze": "J1: the strategist freezes the final lists and the level map at J1 (SS ruling N-97 item 6)",
+    "registry_revision": 16,
+    "registry_fingerprint": "8b88e7b26f32fdf8f665533b96357c8c332fb142a7166a6468a0f64ec51cb97c",
+    "registry_input": "00_ARCHITECTURE/control/registry_input_draft.json",
+    "registry_input_sha256": "de07e7b8c49f89e40e66a22485d5dcf3ede32348f6c27ffdb81fe6ac4dae20d8",
+    "registry_basis": "DRAFT. DAG = the 127 active registry rows' depends_on: the repo's frozen live-registry reconstruction before migration 1210 (platform/python-sidecar/tests/fixtures/registry_depends_on_pre_1210.json) plus migration 1210's 12 edges; verified offline against the E6 census of origin/main adb0db29d (Build.dag declared-edge count and blocking_radius direct and transitive equal for all 127 assets). Not a live export: the strategist freezes the final files at J1 from a live export.",
+    "regenerate": "python3 00_ARCHITECTURE/control/regenerate_draft_level_map.py --frozen-at <ISO-8601 with timezone>"
+  }
 }
