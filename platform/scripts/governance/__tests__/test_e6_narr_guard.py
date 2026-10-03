@@ -28,6 +28,7 @@ sys.path.insert(0, str(HERE.parent))
 sys.path.insert(0, str(HERE))
 
 import asset_census as ac  # noqa: E402
+import _decl_version  # noqa: E402
 import carriage_d1 as d1  # noqa: E402
 import test_e6_decl_latta as dl  # noqa: E402
 import test_e6_decl_latta_null as ln  # noqa: E402
@@ -69,7 +70,7 @@ def _line(ptr):
 # ───────────────────────── Part 1: the committed entry ─────────────────────────
 
 def test_the_file_is_1_12_0_and_the_latta_declares_prose_fields_empty_with_a_coupling():
-    assert DECL["version"] == "1.13.0" and ac.validate_declarations(DECL)
+    assert DECL["version"] == _decl_version.CURRENT and ac.validate_declarations(DECL)
     assert ENTRY["prose_fields"] == [] and ENTRY["evidence_kind"] == "writer"
     ev = ENTRY["evidence"]["prose_fields"]
     cites = ac._EVIDENCE_ANY_CITE_RE.findall(ev)
@@ -84,7 +85,8 @@ def test_the_coupling_is_what_the_strategist_ruled_and_only_the_latta_declares_o
     assert DECL["prose_coupling_declaration_fields"] == list(ac.PROSE_COUPLING_DECL_FIELDS)
     assert PC["to"] == "carriage_d1" and PC["columns"] == ["effect_description", "affliction_condition"]
     assert "transcription" in PC["why"] and "Carr.D1" in PC["why"] and "N-94" in PC["why"] and "OCR English" in PC["why"] and "sourced_ocr_unverified" in PC["why"]
-    assert PC["evidence"] == "platform/scripts/governance/carriage_d1.py:398" and "def match_ordinal_row" in _line(PC["evidence"])
+    _mor = next(i for i, l in enumerate((ROOT / "platform/scripts/governance/carriage_d1.py").read_text(encoding="utf-8").splitlines(), 1) if l.startswith("def match_ordinal_row"))
+    assert PC["evidence"] == f"platform/scripts/governance/carriage_d1.py:{_mor}" and "def match_ordinal_row" in _line(PC["evidence"])        # the pointer follows the function, wherever it moves
     assert [a for a, e in DECL["assets"].items() if "prose_coupling" in e] == [AID]
     assert sorted(a for a, e in DECL["assets"].items() if e.get("prose_fields") == []) == sorted(EXISTING_EMPTY + [AID])
     for a in EXISTING_EMPTY:                                              # the four earlier [] assets declare no coupling: inert
@@ -139,7 +141,8 @@ def test_MUTATION_dropping_affliction_condition_from_the_d1_spec_refuses_the_cou
 
 
 def test_MUTATION_dropping_the_effect_mapping_or_the_clauses_refuses_the_coupling():
-    _refused(lambda e: e["carriage"]["spec"]["fields"].__setitem__("effect", "source_citation"), "column 'effect_description' is not covered by the D1 spec")
+    _refused(lambda e: (e["carriage"]["spec"].pop("non_claim_columns"), e["carriage"]["spec"]["fields"].__setitem__("effect", "source_citation")),     # C1-1: source_citation is a declared non-claim; drop it so the mutation reaches the coupling check
+             "column 'effect_description' is not covered by the D1 spec")
     with pytest.raises(ac.DeclarationsError, match="effect_clauses"):                    # the D1 spec cannot even be valid without its clauses
         ac.validate_declarations(_doc(lambda e: e["carriage"]["spec"].pop("effect_clauses")))
 
@@ -165,7 +168,7 @@ def test_a_coupling_needs_the_d1_transcription_carriage_it_rests_on():
     _refused(lambda e: e.update(carriage=judged, vocab_alias=None, ldgr_source=None, null_convention=None), "transcription' that applies 'D1'")
     comp = dict(nature="computation", applies="D3", why="a computation re-derived by D3", evidence="platform/scripts/governance/carriage_d1.py:1")
     _refused(lambda e: e.update(carriage=comp, vocab_alias=None, ldgr_source=None, null_convention=None), "transcription' that applies 'D1'")
-    deriv = dict(nature="derivation", applies="D2", why="a derivation checked by D2", evidence="platform/scripts/governance/carriage_d1.py:1")
+    deriv = dict(nature="derivation", applies="D3", why="a derivation re-derived by D3", evidence="platform/scripts/governance/carriage_d1.py:1")
     _refused(lambda e: e.update(carriage=deriv, vocab_alias=None, ldgr_source=None, null_convention=None), "transcription' that applies 'D1'")
 
 
@@ -510,7 +513,7 @@ def _real(monkeypatch, pg, extra=(), entry=None):
     s3._real(monkeypatch, pg, dl._setup() + list(extra))
     ent = entry or ENTRY
     m = {}
-    m.update(ac.carriage_declared_checks(AID, ent["carriage"], AID, False))
+    m.update(ac.carriage_declared_checks(AID, ent["carriage"], AID, False, column_types=ac.carriage_fetch_column_types(AID), prose_columns=[]))
     m.update(ac._measure_prose(AID, ent, R, FILES, CAT, [], set(), (), ac.prose_vocabulary(ac.load_asset_declarations())))
     return m
 
@@ -573,12 +576,19 @@ def test_REAL_MUTATION_dropping_affliction_condition_from_the_d1_spec_is_not_na_
     assert all(m[c]["v"] == NO_DET and "coupling is refused" in m[c]["measured"] for c in NARR)
     assert _cell(m)[0]["v"] == NO_DET
     full = _real(monkeypatch, disposable_pg)                                    # (3) the full Narr record over a D1 that never graded the column (the stale-record forgery)
-    stale = dict(full, **{"Carr.D1": ac.carriage_declared_checks(AID, ent["carriage"], AID, False)["Carr.D1"]})
-    assert stale["Carr.D1"]["v"] == PASS and _cell(stale)[0]["v"] == NO_DET
+    stale = dict(full, **{"Carr.D1": ac.carriage_declared_checks(AID, ent["carriage"], AID, False, column_types=ac.carriage_fetch_column_types(AID), prose_columns=[])["Carr.D1"]})
+    # C1-1: the column ledger now also names the dropped column (affliction_condition is a text column nothing matches), so D1 itself reads PARTIAL; the Narr guard still refuses
+    assert stale["Carr.D1"]["v"] == PARTIAL and stale["Carr.D1"]["d1"]["column_ledger"]["uncovered"] == ["affliction_condition"] and _cell(stale)[0]["v"] == NO_DET
+    ent2 = copy.deepcopy(ent)                                                       # the original forgery: declare the column a non-claim so D1 PASSes without ever grading it
+    ent2["carriage"]["spec"]["non_claim_columns"] = ent2["carriage"]["spec"]["non_claim_columns"] + [dict(
+        column="affliction_condition", why="affliction_condition is declared a non-claim here only to reproduce the forgery", evidence="platform/python-sidecar/brahmagyan/l0_phaladeepika_vedha.py:86")]
+    stale2 = dict(full, **{"Carr.D1": ac.carriage_declared_checks(AID, ent2["carriage"], AID, False, column_types=ac.carriage_fetch_column_types(AID), prose_columns=[])["Carr.D1"]})
+    assert stale2["Carr.D1"]["v"] == PASS and _cell(stale2)[0]["v"] == NO_DET
 
 
 def test_REAL_MUTATION_dropping_the_effect_mapping_is_not_na(monkeypatch, disposable_pg):
     ent = copy.deepcopy(ENTRY)
+    ent["carriage"]["spec"].pop("non_claim_columns")                              # C1-1: source_citation is a declared non-claim; drop it so the mutation reaches the coupling check
     ent["carriage"]["spec"]["fields"]["effect"] = "source_citation"
     with pytest.raises(ac.DeclarationsError, match="effect_description' is not covered"):
         ac.validate_declarations(_doc(lambda e: e.__setitem__("carriage", ent["carriage"])))
@@ -607,7 +617,7 @@ def test_REAL_cell_diff_across_all_40_l0_assets_only_the_latta_narr_checks_move(
     vocab = ac.prose_vocabulary(decl_after)
     s3._real(monkeypatch, disposable_pg, dl._setup())
     three = {}
-    three.update(ac.carriage_declared_checks(AID, ENTRY["carriage"], AID, False))
+    three.update(ac.carriage_declared_checks(AID, ENTRY["carriage"], AID, False, column_types=ac.carriage_fetch_column_types(AID), prose_columns=[]))
     three.update(ac.vocab_alias_declared_check(AID, ENTRY["vocab_alias"], AID, COLS))
     three.update(ac.ldgr_source_declared_check(AID, ENTRY["ldgr_source"], AID, COLS, [["table_version", "graha"]]))
     mb = ac._measure_prose(AID, before_ent, R, FILES, CAT, [], set(), (), vocab)

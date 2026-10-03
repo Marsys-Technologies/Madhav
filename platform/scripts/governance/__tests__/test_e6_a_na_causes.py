@@ -259,10 +259,10 @@ def test_every_registered_cause_is_observed_emitted_under_its_criterion(monkeypa
         for crit, rec in got.items():
             assert rec["v"] == NA, rec
             observed.add((crit, rec["cause"]))
-    for car in (dict(nature="derivation", applies="D2", why="w", evidence="e:1"),                           # S2: a declared carriage check
+    for car in (dict(nature="derivation", applies="D3", why="w", evidence="e:1"),                           # S2: a declared carriage check
                 dict(nature="transcription", applies="D1", citation_state="sourced", why="w", evidence="e:1"),
                 dict(nature="ratified_judgment", ruling="N-73", why="w", evidence="e:1")):
-        for crit, rec in ac.carriage_declared_checks("x", car, None).items():
+        for crit, rec in ac.carriage_declared_checks("x", car, None, column_types=None, prose_columns=[]).items():
             if rec["v"] == NA:
                 observed.add((crit, rec["cause"]))
     for crit, rec in ac.carr_checks(dict(declared_terminal_by_construction="writer x.py:1 writes nothing read",

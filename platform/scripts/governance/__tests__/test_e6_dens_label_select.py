@@ -41,6 +41,7 @@ HERE = pathlib.Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE.parent))
 
 import asset_census as ac  # noqa: E402
+import _decl_version  # noqa: E402
 import test_e6_1_dens_repair as dr  # noqa: E402
 import test_w2_1_earned_verdicts as w1  # noqa: E402
 
@@ -1127,7 +1128,7 @@ def test_dens_served_criterion_revision_5_states_the_select_reading():
 def test_registry_revision_is_at_least_14_and_the_declarations_file_is_at_the_decl_latta_version():
     assert ac.REGISTRY_REVISION >= 14          # pin 15 (STAMP) is stacked on this one
     # 1.9.0 at pin 14 (the Dens PR did not touch the file); 1.10.0 after DECL-LATTA, 1.11.0 after DECL-LATTA-NULL (bg_phaladeepika_latta's entry only)
-    assert json.loads((HERE.parent / "asset_declarations.json").read_text(encoding="utf-8"))["version"] == "1.13.0"
+    assert json.loads((HERE.parent / "asset_declarations.json").read_text(encoding="utf-8"))["version"] == _decl_version.CURRENT
 
 
 def test_only_dens_served_changed_in_the_criterion_registry_at_14():
