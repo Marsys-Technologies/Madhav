@@ -43,6 +43,28 @@ INSERT INTO public.mimamsa_anchor_adjustment (derived_from_pramana_ids) VALUES (
 INSERT INTO public.mimamsa_convergence_adjustment (derived_from_pramana_ids) VALUES ('["44444444-4444-4444-8444-444444444444"]'), ('{}');
 INSERT INTO public.mimamsa_fact_adjustment (derived_from_pramana_ids) VALUES ('["55555555-5555-4555-8555-555555555555", "66666666-6666-4666-8666-666666666666"]');
 INSERT INTO public.mimamsa_signal_adjustment (derived_from_pramana_ids) VALUES ('["77777777-7777-4777-8777-777777777777"]');
--- the shadow of phala_pramana: holds the 16 life_event_miss rows production's shadow holds (other ids), none of the bound ones
-INSERT INTO public.phala_pramana__ssv_20260728b (pramana_id, chart_id, evidence_type)
-  SELECT gen_random_uuid(), '1c826d5a-41cb-4450-b4dc-59d440e5f75a', 'life_event_miss' FROM generate_series(1, 16);
+-- the shadow of phala_pramana (the 2026-07-28 snapshot): 141 rows as in production: the 16 life_event_miss rows of the bound chart (production ids, anchor ids and NON-private
+-- values, so their fingerprint equals the pinned production one; every private column holds a PRIVMARK), 3 open + 119 pending rows of the same chart (label proxy) and
+-- 3 open rows of the other chart. None of the snapshot's anchor ids exists in phala_anchors (as in production).
+INSERT INTO public.phala_pramana__ssv_20260728b (pramana_id, chart_id, anchor_id, evidence_type, evidence_strength_label, falsifier_text, observable_criteria_jsonb, window_status,
+                                                 lel_entry_id, lel_entry_jsonb, derivation_ledger_jsonb, source_citation, computed_at)
+  SELECT v.pid::uuid, '1c826d5a-41cb-4450-b4dc-59d440e5f75a', v.aid::uuid, 'life_event_miss', 'indirect', 'PRIVMARK-sfalsifier-' || v.pid, ('{"raw": "PRIVMARK-sraw-' || v.pid || '"}')::jsonb,
+         'past_window', NULL, NULL, ('{"note": "PRIVMARK-sledger-' || v.pid || '"}')::jsonb, 'PRIVMARK-scite', '2026-07-28 05:01:29.614848+00'
+    FROM (VALUES
+      ('05a53e0a-54c9-4053-9ca2-b5a272d77019', '8ee9520a-8a5c-40f1-9e47-28c127f87945'), ('12cf1a40-a44e-4cfa-8676-17de3f400a43', '160097d6-46df-46e8-a73a-9021fa14ed0d'),
+      ('1fd500d1-e470-4059-95d7-15b7d318b96b', '80b3bb2c-d9d6-43a9-85ee-348305ce5ca1'), ('4649aa1b-20f4-4a7f-90a6-fbf43fb38574', 'bbd7247a-3adb-414e-af84-142c0f7fb673'),
+      ('60b833f7-0d0a-43ed-b904-a25450c3f114', 'e245ec8f-ac28-45ea-b9d1-0a0f24c03f08'), ('7af4a789-5f28-4b36-82a7-644a182411f7', '91a15c4e-17e7-4509-a7ea-de1eadd40c25'),
+      ('8b147ef7-3d7d-4657-9cf1-0dd652144ee9', '0b71277e-77f0-4492-a845-345b78d70d9f'), ('a2138a26-3f37-480e-bf71-da03931b147b', '443a087b-90d1-4dd5-ab0d-f64517619ad6'),
+      ('ac243a04-6c4e-4c80-92b9-5ca8999bd644', '433f5129-8ad5-404a-aabc-d2894cb54c35'), ('c89c4d65-c928-4011-928c-fd2288049bc0', '49f67d39-d190-41ac-b7be-51dc9176a1ee'),
+      ('cdd0ef46-6290-4cae-9241-efd89bb109a8', '81c36da1-9697-4f69-bf99-1447dbca59fd'), ('d6a2f982-a44b-4b6c-92e0-bed3fe44e884', 'dc62b08d-5f30-4664-83fe-9c13885cb323'),
+      ('e05205a8-44ae-4329-b363-f28dd1c55fb3', '791e3ea8-4b89-4842-96f7-dec60a37555d'), ('e16bb71a-7b1b-4021-a4ac-8f286d6411b6', 'e9a8704f-4ec9-4a49-9d3c-c101137217f4'),
+      ('ef1d58d6-03a3-47bb-a2aa-e32c40d2c642', '9af1676a-f485-48ac-a4fd-9c377e5b907a'), ('f9c0087b-529b-4673-a70f-dfc69dba2530', '3ac2f040-b44b-48e9-987c-dc7c3c23a918')
+    ) AS v(pid, aid);
+INSERT INTO public.phala_pramana__ssv_20260728b (pramana_id, chart_id, anchor_id, evidence_type, evidence_strength_label, falsifier_text, observable_criteria_jsonb, window_status,
+                                                 derivation_ledger_jsonb, source_citation, computed_at)
+  SELECT gen_random_uuid(), '1c826d5a-41cb-4450-b4dc-59d440e5f75a', gen_random_uuid(), 'pending_observation', 'proxy', 'PRIVMARK-sfalsifier-x', '{"raw": "PRIVMARK-sraw-x"}',
+         CASE WHEN g <= 3 THEN 'open' ELSE 'pending' END, '{"note": "PRIVMARK-sledger-x"}', 'PRIVMARK-scite', '2026-07-28 05:01:29.614848+00' FROM generate_series(1, 122) g;
+INSERT INTO public.phala_pramana__ssv_20260728b (pramana_id, chart_id, anchor_id, evidence_type, evidence_strength_label, falsifier_text, observable_criteria_jsonb, window_status,
+                                                 derivation_ledger_jsonb, source_citation, computed_at)
+  SELECT gen_random_uuid(), '482012f1-710e-4a25-994a-93821f5871aa', gen_random_uuid(), 'pending_observation', 'proxy', 'PRIVMARK-sfalsifier-y', '{"raw": "PRIVMARK-sraw-y"}',
+         'open', '{"note": "PRIVMARK-sledger-y"}', 'PRIVMARK-scite', '2026-07-28 05:01:29.614848+00' FROM generate_series(1, 3);

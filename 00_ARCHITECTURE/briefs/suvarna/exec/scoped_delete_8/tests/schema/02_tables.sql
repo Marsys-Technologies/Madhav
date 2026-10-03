@@ -32,12 +32,23 @@ CREATE INDEX phala_pramana_anchor_id ON public.phala_pramana USING btree (anchor
 CREATE INDEX phala_pramana_window_status ON public.phala_pramana USING btree (chart_id, window_status);
 CREATE UNIQUE INDEX phala_pramana_natural_key ON public.phala_pramana USING btree (anchor_id, evidence_type, COALESCE(lel_entry_id, ('-1'::integer)::bigint));
 
+-- the ŚUDDHA-VĀCA snapshot (tag ssv_20260728b): a plain CREATE TABLE AS heap as read from the catalog: all 14 columns NULLable, NO constraint, NO index, NO trigger,
+-- NO rule, NO policy, NO comment
 CREATE TABLE public.phala_pramana__ssv_20260728b (
-  pramana_id uuid NOT NULL,
-  chart_id uuid NOT NULL,
-  evidence_type text NOT NULL,
+  pramana_id uuid,
+  chart_id uuid,
+  anchor_id uuid,
+  evidence_type text,
+  evidence_strength_label text,
+  falsifier_text text,
+  observable_criteria_jsonb jsonb,
+  window_status text,
+  lel_entry_id bigint,
   lel_entry_jsonb jsonb,
-  CONSTRAINT phala_pramana__ssv_20260728b_pkey PRIMARY KEY (pramana_id)
+  linked_sodhana_id uuid,
+  derivation_ledger_jsonb jsonb,
+  source_citation text,
+  computed_at timestamptz
 );
 CREATE TABLE public.build_runs (
   id uuid DEFAULT gen_random_uuid() NOT NULL,
@@ -119,6 +130,13 @@ GRANT SELECT ON public.mimamsa_predictions TO nirmana_evidence_ingress_writer;
 GRANT SELECT ON public.mimamsa_predictions TO suvarna_reader;
 GRANT SELECT, INSERT, DELETE ON public.mimamsa_predictions TO data_plane_builder;
 GRANT SELECT ON public.mimamsa_predictions__ssv_20260728b TO suvarna_reader;
+-- phala_pramana__ssv_20260728b: {amjis_app=arwdDxt/amjis_app,retrieval_census_ro=r/amjis_app,role_web_serve=r/amjis_app,role_orchestrator=arwd/amjis_app,role_jobs=r/amjis_app,
+--                                role_sidecar=r/amjis_app,suvarna_reader=r/amjis_app}   (data_plane_builder: NOTHING)
+GRANT SELECT ON public.phala_pramana__ssv_20260728b TO retrieval_census_ro;
+GRANT SELECT ON public.phala_pramana__ssv_20260728b TO role_web_serve;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.phala_pramana__ssv_20260728b TO role_orchestrator;
+GRANT SELECT ON public.phala_pramana__ssv_20260728b TO role_jobs;
+GRANT SELECT ON public.phala_pramana__ssv_20260728b TO role_sidecar;
 GRANT SELECT ON public.phala_pramana__ssv_20260728b TO suvarna_reader;
 GRANT SELECT ON public.mimamsa_anchor_adjustment TO suvarna_reader;
 GRANT SELECT ON public.mimamsa_convergence_adjustment TO suvarna_reader;

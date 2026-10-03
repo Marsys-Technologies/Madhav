@@ -60,9 +60,10 @@ def test_the_header_says_it_is_never_run_by_migrate_ts_and_irreversible():
 # ------------------------------------------------------------------------------- the steps
 def test_steps_parse_and_the_header_is_not_executed(mod):
     s = mod.forward_leg().steps
-    assert [n for n, _ in s] == ["s1_assume_roles", "s2_preconditions_as_reader", "s3_delete_as_builder", "s4_post_assertions_as_reader", "s5_restore_memberships"]
+    assert [n for n, _ in s] == ["s1_assume_roles", "s2_preconditions_as_reader", "s3_delete_as_builder", "s4_delete_shadow_as_table_owner", "s5_post_assertions_as_reader",
+                                 "s6_restore_memberships"]
     assert not any("IRREVERSIBLE" in sql for _, sql in s)
-    assert mod.STEP_FIRST == s[0][0] and mod.STEP_DELETE == s[2][0] and mod.STEP_LAST == s[-1][0] and mod.COUNT_STEPS == (s[0][0], s[1][0])
+    assert mod.STEP_FIRST == s[0][0] and mod.STEP_DELETE == s[2][0] and mod.STEP_DELETE_SHADOW == s[3][0] and mod.STEP_LAST == s[-1][0] and mod.COUNT_STEPS == (s[0][0], s[1][0])
 
 
 def test_a_step_may_not_control_the_transaction(mod):
@@ -78,22 +79,26 @@ def code_lines(sql: str) -> str:
     return "\n".join(line for line in sql.splitlines() if not line.strip().startswith("--"))
 
 
-def test_the_sql_has_exactly_one_delete_and_writes_nothing_else():
+def test_the_sql_has_exactly_two_deletes_one_per_target_and_writes_nothing_else():
     code = code_lines(SQL_FILE.read_text())
     deletes = re.findall(r"(?is)\bDELETE\s+FROM\b[^;]*?RETURNING", code)
-    assert len(deletes) == 1 and "DELETE FROM ONLY public.phala_pramana" in deletes[0]
+    assert len(deletes) == 2
+    assert "DELETE FROM ONLY public.phala_pramana\n" in deletes[0]
     assert "chart_id = v_chart AND pramana_id = ANY (v_ids) AND evidence_type = 'life_event_miss'" in deletes[0]
-    assert len(re.findall(r"(?i)\bDELETE\s+FROM\b", code)) == 1
+    assert "DELETE FROM ONLY public.phala_pramana__ssv_20260728b\n" in deletes[1]
+    assert "chart_id = v_chart AND pramana_id = ANY (v_sids) AND evidence_type = 'life_event_miss'" in deletes[1]
+    assert len(re.findall(r"(?i)\bDELETE\s+FROM\b", code)) == 2
     bare = re.sub(r"'[^']*'", "''", code)                                    # string literals (privilege names, messages) are not statements
     assert not re.search(r"(?i)\b(INSERT\s+INTO|UPDATE\s+\w|TRUNCATE|DROP|ALTER|CREATE|COPY|VACUUM|ANALYZE)\b", bare)
     # the only GRANT / REVOKE are the transient role memberships, by format(); no privilege on any object is granted
     assert re.findall(r"(?i)\b(?:GRANT|REVOKE)\b[^;']*", code) == ["GRANT %I TO %I", "REVOKE %I FROM %I"]
-    # the delete runs as the least-privileged delete role, every read as the SELECT-only role
+    # each delete runs as the least-privileged role that can actually perform it, every read as the SELECT-only role
     roles = re.findall(r"SET LOCAL ROLE (\w+);", code)
-    assert roles == ["suvarna_reader", "data_plane_builder", "suvarna_reader"]
-    assert "pramana_id = ANY (v_ids)" in code and "FROM ONLY" in code
+    assert roles == ["suvarna_reader", "data_plane_builder", "amjis_app", "suvarna_reader"]
+    assert "FROM ONLY" in code and code.count("FROM ONLY") == 2
     # the bound values live in ONE place in the SQL
-    assert code.count("set_config('madhav.sd8_ids',") == 1 and code.count("set_config('madhav.sd8_chart',") == 1 and code.count("set_config('madhav.sd8_fp',") == 1
+    for g in ("ids", "chart", "fp", "shadow_ids", "shadow_fp"):
+        assert code.count(f"set_config('madhav.sd8_{g}',") == 1, g
 
 
 def test_the_bound_values_are_the_ones_ss_approved(mod):
@@ -103,7 +108,13 @@ def test_the_bound_values_are_the_ones_ss_approved(mod):
     assert mod.CHART == "1c826d5a-41cb-4450-b4dc-59d440e5f75a" and re.fullmatch(r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}", mod.CHART)
     assert mod.MARKER == "life_event_miss" and mod.SERVER_MAJOR == 15 and mod.EXPECTED_DATABASE == "amjis" and mod.EXPECTED_ADMIN == "postgres"
     assert mod.BUILDER == "data_plane_builder" and mod.READER == "suvarna_reader" and re.fullmatch(r"[0-9a-f]{64}", mod.ROWS_FINGERPRINT)
-    assert mod.sql_bound_values(SQL_FILE.read_text()) == {"chart": mod.CHART, "ids": ",".join(mod.IDS), "fp": mod.ROWS_FINGERPRINT}
+    assert len(mod.SHADOW_IDS) == 16 and len(set(mod.SHADOW_IDS)) == 16 and list(mod.SHADOW_IDS) == sorted(mod.SHADOW_IDS) and not set(mod.SHADOW_IDS) & set(mod.IDS)
+    for i in mod.SHADOW_IDS:
+        assert re.fullmatch(r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}", i)
+    assert re.fullmatch(r"[0-9a-f]{64}", mod.SHADOW_FINGERPRINT) and mod.SHADOW_FINGERPRINT != mod.ROWS_FINGERPRINT and mod.SHADOW_TABLE == "phala_pramana__ssv_20260728b"
+    assert mod.sql_bound_values(SQL_FILE.read_text()) == {"chart": mod.CHART, "ids": ",".join(mod.IDS), "fp": mod.ROWS_FINGERPRINT,
+                                                           "shadow_ids": ",".join(mod.SHADOW_IDS), "shadow_fp": mod.SHADOW_FINGERPRINT}
+    assert [(t["key"], t["table"], t["n"], t["role"]) for t in mod.TARGETS] == [("main", "phala_pramana", 8, "data_plane_builder"), ("shadow", "phala_pramana__ssv_20260728b", 16, "amjis_app")]
     assert "362f9f17" not in SQL_FILE.read_text() + (EXEC_DIR / "scoped_delete_8_exec.py").read_text()          # the dead phantom chart id (CLAUDE.md §B)
 
 
@@ -133,12 +144,12 @@ def test_the_plan_hash_binds_the_sql_the_gate_the_ids_and_the_executor(mod, monk
     base = mod.plan_hash()
     assert len(base) == 64 and base == mod.plan_hash() and mod.plan_hash_unbound() != base         # BOUND (gate shas folded in) vs UNBOUND
     text = mod.render_plan()
-    assert mod.forward_leg().sql_sha256 in text and mod.exec_sha() in text and mod.ROWS_FINGERPRINT in text and mod.CHART in text
-    for i in mod.IDS:
+    assert mod.forward_leg().sql_sha256 in text and mod.exec_sha() in text and mod.ROWS_FINGERPRINT in text and mod.SHADOW_FINGERPRINT in text and mod.CHART in text
+    for i in mod.IDS + mod.SHADOW_IDS:
         assert i in text
     for pin in mod.GATE_PINS.values():
         assert pin in text
-    assert "irreversible" in text.lower() and "PR #3047" in text
+    assert "irreversible" in text.lower() and "PR #3047" in text and "phala_pramana__ssv_20260728b" in text and "role_orchestrator" in text
     p = tmp_path / "f.sql"
     p.write_text(mod.SQL_FORWARD.read_text().replace("FROM ONLY", "FROM", 1))
     monkeypatch.setattr(mod, "SQL_FORWARD", p)

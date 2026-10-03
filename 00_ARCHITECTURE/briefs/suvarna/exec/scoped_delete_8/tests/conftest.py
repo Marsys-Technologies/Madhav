@@ -34,6 +34,8 @@ SCHEMA = HERE / "schema"
 ADMIN_USER = "postgres_mimic"
 CHART = "1c826d5a-41cb-4450-b4dc-59d440e5f75a"
 OTHER_CHART = "482012f1-710e-4a25-994a-93821f5871aa"
+PROD_SHADOW_ACL = ("{amjis_app=arwdDxt/amjis_app,retrieval_census_ro=r/amjis_app,role_web_serve=r/amjis_app,role_orchestrator=arwd/amjis_app,"
+                   "role_jobs=r/amjis_app,role_sidecar=r/amjis_app,suvarna_reader=r/amjis_app}")
 PROD_PHALA_PRAMANA_ACL = ("{amjis_app=arwdDxt/amjis_app,retrieval_census_ro=r/amjis_app,role_web_serve=r/amjis_app,role_orchestrator=arwd/amjis_app,"
                           "role_jobs=r/amjis_app,role_sidecar=r/amjis_app,nirmana_evidence_ingress_writer=r/amjis_app,suvarna_reader=r/amjis_app,"
                           "data_plane_builder=ard/amjis_app}")
@@ -199,8 +201,10 @@ class Runner:
                 "anchors": "SELECT md5(string_agg(t::text, '|' ORDER BY anchor_id)) FROM public.phala_anchors t",
                 "others": "SELECT md5(concat_ws('|', (SELECT md5(string_agg(t::text, '|' ORDER BY id)) FROM public.build_runs t), "
                           "(SELECT md5(string_agg(t::text, '|' ORDER BY id)) FROM public.mimamsa_predictions t), "
-                          "(SELECT md5(string_agg(t::text, '|' ORDER BY id)) FROM public.mimamsa_fact_adjustment t), "
-                          "(SELECT md5(string_agg(t::text, '|' ORDER BY pramana_id)) FROM public.phala_pramana__ssv_20260728b t)))",
+                          "(SELECT md5(string_agg(t::text, '|' ORDER BY id)) FROM public.mimamsa_fact_adjustment t)))",
+                "shadow_rows": "SELECT md5(string_agg(t::text, '|' ORDER BY pramana_id)) FROM public.phala_pramana__ssv_20260728b t",
+                "shadow_n": "SELECT count(*) FROM public.phala_pramana__ssv_20260728b",
+                "shadow_by_chart": "SELECT string_agg(chart_id::text||':'||n::text, ',' ORDER BY chart_id) FROM (SELECT chart_id, count(*) n FROM public.phala_pramana__ssv_20260728b GROUP BY 1) s",
             }.items():
                 cur.execute(q)
                 out[k] = cur.fetchone()[0]
