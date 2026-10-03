@@ -32,7 +32,22 @@ logger = logging.getLogger(__name__)
 
 BPHS_CH29 = "BPHS Ch.29 (Gochara Phala — Transit Results)"
 BPHS_CH28 = "BPHS Ch.28 (Nakshatra Gochara + Moorti Nirnaya)"
-BPHS_CH22 = "BPHS Ch.22 (Graha Gati — Planetary Motion)"
+# WAVE-1 (migration 1271): the former single citation for every bg_transit_engine row, BPHS_CH22 = "BPHS Ch.22 (Graha Gati -
+# Planetary Motion)", is REFUTED (corpus BPHS page 22 is the avatara passage) and is no longer written. The nine rows now carry an
+# honest attribution; the strings below MUST equal the ones migration 1271 writes and re-seals the integrity digest over
+# (tests/test_migration_1271_bg_transit_engine_honest_attribution.py proves module == migration == digest).
+TRANSIT_ENGINE_CITATION_UNSOURCED = (
+    "UNSOURCED - modern mean value; no classical statement of this figure was found in the served corpus "
+    "(searched across the 16 texts of classical_text_chunks on 2026-10-03). The former citation "
+    "'BPHS Ch.22 (Graha Gati)' is refuted: corpus BPHS page 22 is the avatara passage. Column convention "
+    "undeclared; internal checks in COMMENT ON TABLE bg_transit_engine."
+)
+TRANSIT_ENGINE_CITATION_JUPITER = (
+    "PARTLY SOURCED - 'about one year per sign' is classical (yavana_jataka PG900:C1 and PG662:C1; bphs PG933:C1); "
+    "the stored 0.0831 deg/day, 4332.59 days and 361.05 days are modern mean values, not stated in the corpus. "
+    "The former citation 'BPHS Ch.22 (Graha Gati)' is refuted: corpus BPHS page 22 is the avatara passage. "
+    "Column convention undeclared; internal checks in COMMENT ON TABLE bg_transit_engine."
+)
 PD_CH26   = "Phaladeepika Ch.26 (Gochara Vedha and Transit Phala)"
 SS_CH12   = "Saravali Ch.12 (Gochara Phala adhyaya)"
 UK_CH4    = "Uttara Kalamrita Ch.4 (Graha Bala — Gochara context)"
@@ -91,7 +106,7 @@ RAHU_KETU_HOUSE_VEDHA_UNSOURCED = (
 # avg_daily_motion_deg: classical average daily motion in degrees
 # zodiac_period_days:   approximate time for one full zodiac traversal
 # sign_residence_days:  average days spent per sign
-# classical_citation:   textual source for motion parameters
+# classical_citation:   attribution of the row (WAVE-1): UNSOURCED, or PARTLY SOURCED for jupiter; see the constants above
 
 BG_TRANSIT_ENGINE: list[dict[str, Any]] = [
     {
@@ -99,63 +114,63 @@ BG_TRANSIT_ENGINE: list[dict[str, Any]] = [
         "avg_daily_motion_deg": 0.9856,
         "zodiac_period_days": 365.25,
         "sign_residence_days": 30.44,
-        "classical_citation": BPHS_CH22,
+        "classical_citation": TRANSIT_ENGINE_CITATION_UNSOURCED,
     },
     {
         "graha": "moon",
         "avg_daily_motion_deg": 13.1764,
         "zodiac_period_days": 27.32,
         "sign_residence_days": 2.28,
-        "classical_citation": BPHS_CH22,
+        "classical_citation": TRANSIT_ENGINE_CITATION_UNSOURCED,
     },
     {
         "graha": "mars",
         "avg_daily_motion_deg": 0.5240,
         "zodiac_period_days": 686.97,
         "sign_residence_days": 45.0,
-        "classical_citation": BPHS_CH22,
+        "classical_citation": TRANSIT_ENGINE_CITATION_UNSOURCED,
     },
     {
         "graha": "mercury",
         "avg_daily_motion_deg": 1.3833,
         "zodiac_period_days": 87.97,
         "sign_residence_days": 14.0,
-        "classical_citation": BPHS_CH22,
+        "classical_citation": TRANSIT_ENGINE_CITATION_UNSOURCED,
     },
     {
         "graha": "jupiter",
         "avg_daily_motion_deg": 0.0831,
         "zodiac_period_days": 4332.59,
         "sign_residence_days": 361.05,
-        "classical_citation": BPHS_CH22,
+        "classical_citation": TRANSIT_ENGINE_CITATION_JUPITER,
     },
     {
         "graha": "venus",
         "avg_daily_motion_deg": 1.2000,
         "zodiac_period_days": 224.70,
         "sign_residence_days": 23.0,
-        "classical_citation": BPHS_CH22,
+        "classical_citation": TRANSIT_ENGINE_CITATION_UNSOURCED,
     },
     {
         "graha": "saturn",
         "avg_daily_motion_deg": 0.0335,
         "zodiac_period_days": 10759.22,
         "sign_residence_days": 913.37,
-        "classical_citation": BPHS_CH22,
+        "classical_citation": TRANSIT_ENGINE_CITATION_UNSOURCED,
     },
     {
         "graha": "rahu",
         "avg_daily_motion_deg": -0.0529,
         "zodiac_period_days": 6793.50,
         "sign_residence_days": 548.00,
-        "classical_citation": BPHS_CH22,
+        "classical_citation": TRANSIT_ENGINE_CITATION_UNSOURCED,
     },
     {
         "graha": "ketu",
         "avg_daily_motion_deg": -0.0529,
         "zodiac_period_days": 6793.50,
         "sign_residence_days": 548.00,
-        "classical_citation": BPHS_CH22,
+        "classical_citation": TRANSIT_ENGINE_CITATION_UNSOURCED,
     },
 ]
 
