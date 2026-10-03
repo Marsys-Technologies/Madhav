@@ -13,15 +13,20 @@ const layerPrefixes = { L0: 'bg_', L1: 'ga_', L2: 'bo_', L3: 'ka_', L4: 'ph_', L
 const layerRanks = { L0: 0, L1: 1, L2: 2, L3: 3, L4: 4, L5: 5 } as const
 const registryLayers = { brahmagyan: 'L0', ganita: 'L1', bodha: 'L2', kala: 'L3', phala: 'L4', mimamsa: 'L5' } as const
 const legacyLayerIdentityExceptions = new Map([['lel_events', 'L5']])
+// Suvarṇa ruling (their item B.FG): ka_gochara_v3_century_materialize is a RETIRED-PENDING legacy writer — the
+// plan retires it when '5.0' comes from the registered writer. Membership in this set is what relaxes the two
+// assertFreezableManifest gates for the retired-pending shape (the adjudicated pin and the successor/
+// data-disposition gate) — NEVER the disposition value alone, so any other current or future
+// retired_with_disposition entry keeps the STRICT gates. REMOVE the member (and its map entry below) with the
+// B.FG retirement.
+const AUDITED_RETIRED_PENDING: ReadonlySet<string> = new Set(['ka_gochara_v3_century_materialize'])
 const fixedNonBuildDispositions = new Map([
   ['bg_gochara_citation_resolution', 'static_acceptance'],
   ['bg_sarvatobhadra_grid', 'empty_acceptance'],
   ['lel_events', 'source_acceptance'],
-  // Suvarṇa ruling (their item B.FG): ka_gochara_v3_century_materialize is a RETIRED-PENDING legacy writer — the
-  // plan retires it when '5.0' comes from the registered writer. Until the B.FG retirement lands (catalog flip to
-  // RETIRED + superseded_by/data_disposition, which then satisfies the ordinary retired gate), its obligation is
-  // this audited disposition — NOT an exclusion and NOT a denominator change: the asset stays in the frozen
-  // population. REMOVE this entry with the B.FG retirement.
+  // Until the B.FG retirement lands (catalog flip to RETIRED + superseded_by/data_disposition, which then
+  // satisfies the ordinary retired gate), the retired-pending writer's obligation is this audited disposition —
+  // NOT an exclusion and NOT a denominator change: the asset stays in the frozen population.
   ['ka_gochara_v3_century_materialize', 'retired_with_disposition'],
 ])
 const fixedProducerCoverage = new Map([
@@ -347,10 +352,12 @@ export function assertFreezableManifest(manifest: NirmanaElevationManifest): voi
     }
     const fixedDisposition = fixedNonBuildDispositions.get(asset.asset_id)
     if (fixedDisposition !== undefined && asset.execution_obligation !== fixedDisposition) {
-      // A retired-PENDING adjudication binds only the audited CURRENT/inactive shape: the immutable historical
-      // T0 manifests froze ka_gochara_v3_century_materialize while it was still an ACTIVE build writer, and the
-      // eventual RETIRED row satisfies the ordinary retired gate instead.
-      const outsideAuditedShape = fixedDisposition === 'retired_with_disposition'
+      // A retired-PENDING adjudication binds only the audited CURRENT/inactive shape, and only for a member of
+      // AUDITED_RETIRED_PENDING: the immutable historical T0 manifests froze ka_gochara_v3_century_materialize
+      // while it was still an ACTIVE build writer, and the eventual RETIRED row satisfies the ordinary retired
+      // gate instead. Any OTHER retired_with_disposition map entry keeps the strict pin.
+      const outsideAuditedShape = AUDITED_RETIRED_PENDING.has(asset.asset_id)
+        && fixedDisposition === 'retired_with_disposition'
         && (asset.registry_contract.is_active || asset.registry_contract.catalog_status === 'RETIRED')
       if (!outsideAuditedShape) {
         throw new Error(`Asset ${asset.asset_id} must retain its adjudicated ${fixedDisposition} obligation.`)
@@ -373,10 +380,11 @@ export function assertFreezableManifest(manifest: NirmanaElevationManifest): voi
       throw new Error(`Probe asset ${asset.asset_id} must have either a service writer or a registry health probe.`)
     }
     if (asset.execution_obligation === 'retired_with_disposition') {
-      // An AUDITED retired-pending entry (fixedNonBuildDispositions) is adjudicated ahead of the catalog flip:
-      // the row is still CURRENT and its successor / data disposition land WITH the retirement, so only
-      // inactivity is enforced here. Organically retired rows keep the strict gate.
-      const auditedRetiredPending = fixedDisposition === 'retired_with_disposition'
+      // An AUDITED retired-pending asset (AUDITED_RETIRED_PENDING membership — never the disposition value
+      // alone) is adjudicated ahead of the catalog flip: the row is still CURRENT and its successor / data
+      // disposition land WITH the retirement, so only inactivity is enforced here. Every other
+      // retired_with_disposition asset — organically retired or under any other map entry — keeps the strict gate.
+      const auditedRetiredPending = AUDITED_RETIRED_PENDING.has(asset.asset_id)
         && asset.registry_contract.catalog_status !== 'RETIRED'
       const invalid = auditedRetiredPending
         ? asset.registry_contract.is_active

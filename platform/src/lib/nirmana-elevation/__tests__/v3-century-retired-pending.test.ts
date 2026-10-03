@@ -5,6 +5,7 @@ import { describe, expect, it, vi } from 'vitest'
 vi.mock('server-only', () => ({}))
 
 import type { NirmanaRegistryContractRow } from '../definitions'
+import { assertFreezableManifest, canonicalRegistryContractDigest } from '../definitions'
 import { buildNirmanaBaselineCandidate } from '../monitor'
 
 /**
@@ -56,5 +57,25 @@ describe('retired-pending legacy century writer (B.FG)', () => {
   it('an ACTIVE v3 row is refused even with the audited entry (retired-pending is not an active-writer disguise)', () => {
     const activated = productionRows.map((row) => (row.asset_id === V3 ? { ...row, is_active: true } : row))
     expect(() => buildNirmanaBaselineCandidate(activated)).toThrow(/Retired asset ka_gochara_v3_century_materialize/)
+  })
+
+  it('STRICT gate kept: any NON-set asset with retired_with_disposition and a non-RETIRED status is refused', () => {
+    // Suvarṇa's review: the relaxations key on AUDITED_RETIRED_PENDING membership, never on the disposition
+    // value — another asset under the same disposition (as any future map entry would be) must still hit the
+    // strict successor/data-disposition gate.
+    const candidate = buildNirmanaBaselineCandidate(productionRows)
+    const victim = candidate.manifest.assets.find((asset) => asset.asset_id !== V3 && asset.execution_obligation === 'build')
+    expect(victim).toBeDefined()
+    const mutatedContract = { ...victim!.registry_contract, is_active: false }
+    const mutated = {
+      ...victim!,
+      execution_obligation: 'retired_with_disposition' as const,
+      registry_contract: mutatedContract,
+      registry_fingerprint_sha256: canonicalRegistryContractDigest({
+        asset_id: victim!.asset_id, layer: victim!.layer, depends_on: victim!.depends_on, registry_contract: mutatedContract,
+      }),
+    }
+    const manifest = { ...candidate.manifest, assets: candidate.manifest.assets.map((a) => (a.asset_id === victim!.asset_id ? mutated : a) as typeof a) }
+    expect(() => assertFreezableManifest(manifest)).toThrow(/missing its successor or data disposition/)
   })
 })
