@@ -76,7 +76,7 @@ PINNED_FINGERPRINTS = {
     # 23 (DENS-TIER-GUARD, N-98; provisional; pin 23 is pre-allocated, pins 17-22 belong to other lanes): the Dens tier vocabulary is a CLOSED list: a column counts as a tier only when it is exactly `tier` /
     # `verification_pass_status`, or the asset declares it in density_tier_columns, and never when its name carries a deny-listed word (cost, price, pricing, plan, access, subscription, billing, fee, tariff);
     # Dens.served revision 6 (applicability text); NA_CAUSES / NA_RULE_DECISIONS unchanged, inert until an asset declares density_tier_columns
-    23: "06cc88848ff08aaa09bf5c30f3e0502b50710f90d6501ac5cd1134bdbc1b13e6",
+    23: "9a2b66cb84afcdf018a6ae0cde084756b42795d9e73b000c6526842bcaa855d4",
 }
 
 

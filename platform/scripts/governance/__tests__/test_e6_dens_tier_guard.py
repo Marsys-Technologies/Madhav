@@ -42,10 +42,13 @@ _REAL_CATALOG = ac.catalog                               # captured before any t
 OLD_OPEN = re.compile(r"^(?:tier|\w+_tier|verification_pass_status)$", re.I)      # the regex this guard replaces (mutant / witness only)
 
 WHY = "confidence tier of the served row: how well the claim is verified"
-EVID = "platform/scripts/governance/asset_census.py:100"
+EVID = "platform/scripts/governance/__tests__/test_e6_dens_tier_guard.py:1"       # a real file that names every column the valid declarations below use
 ENT = dict(column="confidence_tier", why=WHY, evidence=EVID)
 DENIED_NAMES = ["cost_tier", "price_tier", "pricing_tier", "plan_tier", "access_tier", "subscription_tier", "billing_tier", "fee_tier", "tariff_tier",
                 "tier_cost", "tier_price", "Cost_Tier", "ACCESS_TIER", "plan_cost_tier"]
+# F2 (review of PR 3037): the deny-listed meaning in every other SPELLING: run together, camelCase, digits, plurals, split letters, a deny word led / trailed by anything
+SPELLINGS = ["costtier", "CostTier", "costTier", "COSTTIER", "pricetier", "priceTier", "feetier", "accesstier", "costs_tier", "plans_tier", "prices_tier", "fees_tier", "cost1_tier",
+             "cost_1_tier", "costbucket_tier", "c_o_s_t_tier", "tier_costs", "tiercost", "unitcost_tier", "AccessTier", "tariffTier", "subscriptionsTier", "pricingTier", "billing2tier"]
 
 
 def _doc(entry_extra, aid="bg_x"):
@@ -75,8 +78,10 @@ def _v(cap):
     ("confidence_tier", ("confidence_tier",), True), ("Confidence_Tier", ("confidence_tier",), True), ("confidence_tier", ("CONFIDENCE_TIER",), True),
     ("severity_tier", ("confidence_tier",), False),                          # declaring one column does not open the others
     ("cost_tier", ("cost_tier",), False), ("access_tier", ("access_tier",), False),            # deny-listed: never, even declared
-    ("planet_tier", ("planet_tier",), True), ("accessory_tier", ("accessory_tier",), True),    # a WORD, not a substring: planet != plan, accessory != access
-    ("feedback_tier", ("feedback_tier",), True), ("prices_tier", ("prices_tier",), True),      # fee != feedback; the list is whole words (no plural stemming)
+    ("planet_tier", ("planet_tier",), False), ("accessory_tier", ("accessory_tier",), False),  # fail-closed: a name that BEGINS with a deny word is denied (declare another name)
+    ("feedback_tier", ("feedback_tier",), False), ("prices_tier", ("prices_tier",), False),    # F2: the plural is the deny word; it was pinned as counting before the review
+    ("costtier", ("costtier",), False), ("CostTier", ("CostTier",), False), ("c_o_s_t_tier", ("c_o_s_t_tier",), False),
+    ("evidence_grade_tier", ("evidence_grade_tier",), True), ("verified_tier", ("verified_tier",), True), ("soundness_tier", ("soundness_tier",), True),
     (None, ("tier",), False), (7, (), False),
 ])
 def test_the_classifier_table(name, declared, counts):
@@ -87,6 +92,20 @@ def test_the_classifier_table(name, declared, counts):
 def test_a_deny_listed_name_never_counts_declared_or_not(name):
     assert ac.dens_tier_denied_word(name) is not None
     assert not ac.dens_tier_counts(name) and not ac.dens_tier_counts(name, (name, name.lower(), name.upper()))
+
+
+@pytest.mark.parametrize("name", SPELLINGS)
+def test_F2_a_deny_listed_name_in_any_spelling_never_counts_and_is_refused_by_the_validator(name):
+    assert ac.dens_tier_denied_word(name) is not None, name
+    assert not ac.dens_tier_counts(name, (name, name.lower())), name
+    _bad([dict(ENT, column=name)], "deny-listed word")
+
+
+@pytest.mark.parametrize("name", ["tier", "verification_pass_status", "confidence_tier", "evidence_tier", "severity_tier", "quality_tier", "horizon_tier", "probability_tier",
+                                  "intensity_tier", "signature_tier", "grade_tier", "certainty_tier", "reliability_tier", "evidence_grade_tier", "soundness_tier", "verified_tier",
+                                  "confidenceTier", "VerificationTier"])
+def test_F2_the_fail_closed_match_does_not_deny_a_real_verification_name(name):
+    assert ac.dens_tier_denied_word(name) is None, name
 
 
 def test_the_deny_list_and_the_exact_names_are_the_ruled_ones():
@@ -221,6 +240,11 @@ def test_the_deny_list_message_names_the_word():
     (" confidence tier of the served row ", r"\.why"), (7, r"\.why"), (None, r"\.why"), ("x" * 1201, r"\.why"),
     ("a bucket of the served row for the viewer", "verification or confidence"),                           # a real sentence that says nothing about verification / confidence
     ("cost bucket the buyer pays for the row", "verification or confidence"),
+    # F3 (review of PR 3037): the keyword is present but the reason is about price / cost: refused on the deny word
+    ("price bucket the buyer pays, nothing to do with verification", "deny-listed word 'price'"),
+    ("cost band for the viewer, not a confidence tier of anything", "deny-listed word 'cost'"),
+    ("a verification tier, shown to the Plan viewers", "deny-listed word 'plan'"), ("confidence tier, Prices of the remedy", "deny-listed word 'price'"),
+    ("verification tier: which Subscription may read the row", "deny-listed word 'subscription'"), ("a confidence tier, not the access level", "deny-listed word 'access'"),
 ])
 def test_validator_refuses_a_weak_why(why, match):
     _bad([dict(ENT, why=why)], match)
@@ -234,7 +258,8 @@ def test_validator_accepts_a_why_that_says_verification_or_confidence(why):
 @pytest.mark.parametrize("ev, match", [
     ("unverified:somewhere I read it last week", "unverified"), ("unverified:", "unverified"),
     ("platform/scripts/governance/nonexistent_file_xyz.py:3", "not an existing repo-relative file"),
-    ("platform/scripts/governance/asset_census.py", "must name a line"),                                   # a real file, no line
+    ("platform/scripts/governance/__tests__/test_e6_dens_tier_guard.py", "must name a line"),                                   # a real file, no line
+    ("platform/scripts/governance/ci_shard.py:1", "does not mention 'confidence_tier'"),                   # F3: a real file:line that is about something else
     ("platform/scripts/governance/asset_census.py:0", "names line 0"), ("platform/scripts/governance/asset_census.py:99999999", "names line"),
     ("/etc/hosts:1", "not an existing repo-relative file"), ("../outside.py:1", "not an existing repo-relative file"),
     ("platform/scripts/governance/../governance/asset_census.py:1", "not an existing repo-relative file"),
@@ -248,9 +273,9 @@ def test_validator_refuses_an_unverifiable_evidence(ev, match):
 def test_the_evidence_standard_is_the_shared_helper_not_a_copy(monkeypatch):
     """ONE definition: a stub of the S3 helper changes this declaration's verdict, so the check is that helper's, not a private copy."""
     seen = []
-    monkeypatch.setattr(ac, "_s3_evidence_problem", lambda ev, *, allow_unverified: seen.append((ev, allow_unverified)) or "is rejected by the shared helper")
+    monkeypatch.setattr(ac, "_s3_evidence_problem", lambda ev, *, allow_unverified, needle=None: seen.append((ev, allow_unverified, needle)) or "is rejected by the shared helper")
     _bad([dict(ENT)], "rejected by the shared helper")
-    assert seen == [(EVID, False)]
+    assert seen == [(EVID, False, "confidence_tier")]
     src = inspect.getsource(ac.density_tier_problem)
     assert "_s3_evidence_problem" in src and "_s3_text_problem" in src and "_evidence_pointer_ok(" not in src
 
@@ -259,7 +284,7 @@ def test_MUTATION_the_validator_guards_each_bite(monkeypatch):
     """Switch a guard off and the declaration it exists to refuse is accepted."""
     bad_ev = dict(ENT, evidence="platform/scripts/governance/nonexistent_file_xyz.py:3")
     assert ac.density_tier_problem({"density_tier_columns": [bad_ev]})
-    monkeypatch.setattr(ac, "_s3_evidence_problem", lambda ev, *, allow_unverified: None)
+    monkeypatch.setattr(ac, "_s3_evidence_problem", lambda ev, *, allow_unverified, needle=None: None)
     assert ac.density_tier_problem({"density_tier_columns": [bad_ev]}) is None                              # evidence guard off: accepted
     weak = dict(ENT, why="N/A")
     monkeypatch.setattr(ac, "_s3_text_problem", lambda *a, **k: None)
@@ -330,6 +355,79 @@ def test_MUTATION_without_the_measure_time_refusal_a_refused_declaration_reads_P
     monkeypatch.setattr(ac, "density_tier_problem", lambda *a, **k: None)
     d = _measure_with(monkeypatch, tree, "SELECT fact_id, confidence_tier FROM t_x", ["fact_id"], entry)
     assert d["v"] == PARTIAL and "refused" not in d["measured"], d
+
+
+def test_F1_a_declared_column_on_a_table_with_no_catalog_columns_is_unverifiable_NO_DETECTOR(monkeypatch, tree):
+    """Review F1: a view / materialized view lists no columns in information_schema, so the existence check used to be skipped and a declared `no_such_col` read PASS."""
+    entry = dict(kind="data", density_tier_columns=[dict(ENT, column="no_such_col")])
+    tree.write(tree.layers / "L0_x", "q.ts", dr._cap("SELECT fact_id, no_such_col FROM t_x"))
+    monkeypatch.setattr(ac, "load_asset_declarations", lambda *a, **k: {"bg_x": entry})
+    d = dr._dens(dr._measure(monkeypatch, tree, {"bg_x": w1._reg_row("bg_x", "t_x")}, {"t_x": ([], [])}), "bg_x")
+    assert d["v"] == NO_DET and "table columns unknown" in d["measured"] and "declaration unverifiable" in d["measured"] and "never PASS" in d["measured"], d
+
+
+def test_F1_a_declaration_on_an_asset_with_no_target_table_says_so_never_silently_PARTIAL(monkeypatch, tree):
+    entry = dict(kind="service", density_tier_columns=[dict(ENT)])
+    tree.write(tree.layers / "L0_x", "q.ts", dr._cap("SELECT fact_id, confidence_tier FROM bg_x"))
+    monkeypatch.setattr(ac, "load_asset_declarations", lambda *a, **k: {"bg_x": entry})
+    d = dr._dens(dr._measure(monkeypatch, tree, {"bg_x": w1._reg_row("bg_x", None, asset_kind="service")}, {}), "bg_x")
+    assert d["v"] == NO_DET and "no target table" in d["measured"] and "declaration unverifiable" in d["measured"], d
+
+
+def test_F1_the_measure_problem_is_the_validators_check_plus_what_only_a_measurement_can_say():
+    e = {"density_tier_columns": [dict(ENT)]}
+    assert ac.density_tier_measure_problem({}, "t", ["id"]) is None and ac.density_tier_measure_problem(None, None, None) is None
+    assert "no target table" in ac.density_tier_measure_problem(e, None, ["confidence_tier"]) and "no target table" in ac.density_tier_measure_problem(e, "", None)
+    assert "table columns unknown" in ac.density_tier_measure_problem(e, "t", None)
+    assert "not columns of the asset's table" in ac.density_tier_measure_problem(e, "t", ["id"])
+    assert ac.density_tier_measure_problem(e, "t", ["confidence_tier"]) is None
+    assert "deny-listed" in ac.density_tier_measure_problem({"density_tier_columns": [dict(ENT, column="cost_tier")]}, "t", ["cost_tier"])
+
+
+def test_MUTATION_without_the_unknown_columns_refusal_the_declared_ghost_column_would_not_be_refused(monkeypatch):
+    e = {"density_tier_columns": [dict(ENT, column="no_such_col")]}
+    assert ac.density_tier_measure_problem(e, "t_x", None)                                               # the guard (F1)
+    monkeypatch.setattr(ac, "density_tier_measure_problem", lambda entry, table, cols: ac.density_tier_problem(entry, cols))
+    assert ac.density_tier_measure_problem(e, "t_x", None) is None                                       # the old glue: columns None skipped the check
+
+
+def test_F4_the_refusal_text_names_what_the_scan_graded_on_the_closed_default(monkeypatch, tree):
+    """M28: the NO_DETECTOR record says what the cell WOULD have read on the closed default, so a reviewer sees the refusal did not hide a verdict."""
+    entry = dict(kind="data", density_tier_columns=[dict(ENT)])
+    d = _measure_with(monkeypatch, tree, "SELECT fact_id, confidence_tier FROM t_x", ["fact_id"], entry)
+    assert d["v"] == NO_DET and "(graded on that default: PARTIAL)" in d["measured"], d
+    d = _measure_with(monkeypatch, tree, "SELECT fact_id, tier FROM t_x", ["fact_id", "tier"], dict(kind="data", density_tier_columns=[dict(ENT, column="no_such_col")]))
+    assert d["v"] == NO_DET and "(graded on that default: PASS)" in d["measured"], d
+
+
+def test_F4_the_deny_check_runs_on_every_entry_not_only_the_first():
+    """M31: a clean first entry must not let a deny-listed later entry through."""
+    ok = dict(ENT, column="evidence_grade_tier", why="verification grade of the row's evidence chain, a tier")
+    _bad([ok, dict(ENT, column="cost_tier")], r"density_tier_columns\[1\]\.column 'cost_tier' carries the deny-listed word 'cost'")
+    _bad([ok, dict(ENT), dict(ENT, column="priceTier")], r"density_tier_columns\[2\]\.column 'priceTier'")
+    _bad([ok, dict(ENT, why="cost band for the viewer, not a confidence tier of anything")], r"density_tier_columns\[1\]\.why contains the deny-listed word 'cost'")
+    _bad([ok, dict(ENT, evidence="platform/scripts/governance/ci_shard.py:1")], r"density_tier_columns\[1\]\.evidence")
+
+
+def test_F3_the_s3_helper_needle_is_optional_and_s3_behaviour_is_unchanged():
+    f = "platform/scripts/governance/ci_shard.py:1"
+    assert ac._s3_evidence_problem(f, allow_unverified=False) is None                                    # no needle: exactly S3's behaviour
+    assert ac._s3_evidence_problem(f, allow_unverified=False, needle="ci_shard") is None
+    assert "does not mention" in ac._s3_evidence_problem(f, allow_unverified=False, needle="confidence_tier")
+    assert ac._s3_evidence_problem(f, allow_unverified=False, needle="CI_SHARD") is None                 # case-insensitive
+    assert "not an existing" in ac._s3_evidence_problem("platform/scripts/governance/nope.py:1", allow_unverified=False, needle="x")   # S3's own checks first
+
+
+def test_MUTATION_without_the_needle_and_the_why_deny_a_price_declaration_is_accepted(monkeypatch):
+    e = {"density_tier_columns": [dict(ENT, column="bucket_tier", why="price bucket the buyer pays, nothing to do with verification")]}
+    assert "deny-listed word 'price'" in ac.density_tier_problem(e)
+    monkeypatch.setattr(ac, "DENS_TIER_DENY_WORDS", frozenset())
+    assert ac.density_tier_problem(e) is None                                                            # why guard off: accepted
+    other = {"density_tier_columns": [dict(ENT, evidence="platform/scripts/governance/ci_shard.py:1")]}
+    monkeypatch.undo()
+    assert "does not mention" in ac.density_tier_problem(other)
+    monkeypatch.setattr(ac, "_s3_evidence_problem", lambda ev, *, allow_unverified, needle=None: None)
+    assert ac.density_tier_problem(other) is None                                                        # needle guard off: accepted
 
 
 def test_measure_a_declaration_does_not_leak_to_another_asset(monkeypatch, tree):
