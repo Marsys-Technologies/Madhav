@@ -24,6 +24,7 @@ from services.gochara_kernel.inventory_store import InventoryStore, SnapshotUnbo
 from services.gochara_kernel.rule_registry import RuleRegistryStore
 
 from . import test_a53_record_store as base
+from ._migration_1241 import M1241_NAME, migration_1241_sql
 from .test_a53_record_store import MIGRATIONS, MIGRATION_CHAIN, ADMIN_DSN, DB_PREFIX
 
 UTC = timezone.utc
@@ -303,12 +304,15 @@ def _populate_am5_database(conn, faithful=False, apply_1240=True):
                 ["1232_gochara_search_moon_scope_domain.sql"] if faithful else []) + (
                 ["1240_gochara_window_verification_gate.sql"] if apply_1240 else []) + (
                 [f for f in BUILDER_GRANT_MIGRATIONS if apply_1240 or not f.startswith("1241")] if faithful else []):
-            if not (MIGRATIONS / fname).exists():
-                # (F-R13-3) 1241 is Stream B's, carried by PR #2949 only — this branch holds no copy of it. Until #2949 is on main the
-                # faithful mirror needs that file present in platform/migrations (check it out from the PR branch; never commit it here).
-                pytest.fail(f"{fname} is not in platform/migrations: the faithful mirror applies Stream B's REAL migration (PR #2949 "
-                            "pravaha/b6-1241-verifier-sealer-grants) and this branch carries no copy of it")
-            cur.execute((MIGRATIONS / fname).read_text())
+            if fname == M1241_NAME:
+                # 1241 is Stream B's (PR #2949). While it is not in platform/migrations on this branch
+                # (protected-window rule) the mirror applies the byte-exact, sha-pinned v7 fixture;
+                # when the real file is present the mirror applies it (same sha pin). See _migration_1241.py.
+                cur.execute(migration_1241_sql(MIGRATIONS))
+            elif not (MIGRATIONS / fname).exists():
+                pytest.fail(f"{fname} is not in platform/migrations: the faithful mirror applies the REAL migrations")
+            else:
+                cur.execute((MIGRATIONS / fname).read_text())
             cur.execute("INSERT INTO public._migrations_applied(filename)"
                         " VALUES (%s)",
                         (fname,))

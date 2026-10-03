@@ -369,8 +369,9 @@ def test_chronological_upgrade_a_generation_sealed_under_the_pre_1240_schema_the
         # BEFORE 1240: nothing stops a sealed manifest going back to 'candidate' (the R14-2 exposure) — and it can be put back
         conn.execute("UPDATE public.kala_gochara_publication SET status = 'candidate'")
         conn.execute("UPDATE public.kala_gochara_publication SET status = 'published'")
-        for fname in ("1240_gochara_window_verification_gate.sql", "1241_gochara_verifier_sealer_inventory_grants.sql"):
-            conn.execute((MIGRATIONS / fname).read_text())
+        from ._migration_1241 import migration_1241_sql
+        conn.execute((MIGRATIONS / "1240_gochara_window_verification_gate.sql").read_text())
+        conn.execute(migration_1241_sql(MIGRATIONS))
         # AFTER 1240
         with pytest.raises(psycopg.errors.CheckViolation, match="sealed lifecycle"):
             conn.execute("UPDATE public.kala_gochara_publication SET status = 'candidate'")                       # PROTECTED
