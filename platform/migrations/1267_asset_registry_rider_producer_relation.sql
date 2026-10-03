@@ -82,7 +82,7 @@ SET LOCAL lock_timeout = '5s';
 ALTER TABLE asset_registry ADD COLUMN IF NOT EXISTS producer_asset_id text;
 
 COMMENT ON COLUMN asset_registry.producer_asset_id IS
-    'Rider relation (SS Q6, TI-L0-08): NULL for an asset with its own build; for a RIDER, the asset_id whose writer class also registers and writes this asset, so the producer''s dispatch counts for it (producer_covered). Not a build-order edge (see depends_on) and not a lifecycle link (see superseded_by).';
+    'Rider relation (SS Q6, TI-L0-08): NULL for an asset with its own build; for a RIDER, the asset_id whose writer class also registers and writes this asset, so the producer''s dispatch counts for it (producer_covered). Not a build-order edge (see the dependency list column) and not a lifecycle link (see superseded_by).';
 
 DO $m1267$
 DECLARE
