@@ -807,6 +807,15 @@
     "active": false
   },
   {
+    "asset_id": "ka_gochara_v5",
+    "layer": "kala",
+    "depends_on": [
+      "ga_dashas",
+      "ga_positions"
+    ],
+    "active": false
+  },
+  {
     "asset_id": "ka_graha_sancara",
     "layer": "kala",
     "depends_on": [

@@ -140,8 +140,11 @@ const L0_CONTRACT_DEPENDENCIES: Record<string, string[]> = {
 // candidate-only writer, is_active: false in the seed (inert to all planners
 // — runPreparation.ts:183 / recalibrationEnqueue.ts:141 never select it) and
 // NOT an elevation-denominator identity; it ships so the steward dispatch can
-// stage its one governed run.
-const SUPPORTING_WRITER_IDS = ['bo_grounding', 'ka_gochara_v4_41_candidate'] as const
+// stage its one governed run. Pravāha C41 (steward-directed, 2026-10-03):
+// ka_gochara_v5 is the same shape — the A5.3 INERT skeleton, is_active: false,
+// already named in NIRMANA_STAGED_INERT_CANDIDATES (definitions.ts), its row
+// landed by migration 1243 and prepared for the small test by migration 1304.
+const SUPPORTING_WRITER_IDS = ['bo_grounding', 'ka_gochara_v4_41_candidate', 'ka_gochara_v5'] as const
 
 const SHARED_MSR_DAG_MIGRATION = readFileSync(
   new URL('../../migrations/1030_nirmana_l2_shared_msr_consumer_dependencies.sql', import.meta.url),
