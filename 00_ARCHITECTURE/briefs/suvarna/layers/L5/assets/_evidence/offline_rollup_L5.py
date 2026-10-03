@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""A.L1 offline rollup: main's asset_census.py (REGISTRY_REVISION 6) rollup rules applied to the SAVED L1 census
-(census_L5.json as of 2026-09-30, inspector 2a78ec64d, with the ga_prashna cells from after_reader_grant/).
-Not a re-measure; no DB. Also re-runs main's Dens.served rev-4 static scan over the real source tree (no DB)."""
+"""A.L5 offline rollup: main's asset_census.py (REGISTRY_REVISION 16) rollup rules applied to the SAVED L5 census
+(census_L5.json as of 2026-09-30, inspector 2a78ec64d). Not a re-measure; no DB. Also re-runs main's Dens.served
+static scan over the real source tree (no DB). Run with cwd = a checkout of main. Adapted from the A.L1 script."""
 import sys, json, collections, os
 from pathlib import Path
 LANE = Path(os.environ.get('LANE', '/Users/Dev/suvarna-al5'))
