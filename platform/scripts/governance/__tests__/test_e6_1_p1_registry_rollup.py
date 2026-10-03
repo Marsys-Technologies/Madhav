@@ -83,6 +83,9 @@ PINNED_FINGERPRINTS = {
     # 25 (N-99; provisional; stacked on pin 24 (C2 Ldgr) and pin 23 (DENS-TIER-GUARD)): Build.completion revision 3 (applicability text): count equality alone no longer reads PASS when the asset declares an
     # integrity_check_sql that does not hold (false / refused / oversize / errored / timed out reads PARTIAL naming which; permission denied under the census role reads NO_DETECTOR); an undeclared asset is unchanged; NA_CAUSES / NA_RULE_DECISIONS unchanged
     25: "0e78e228d140d04920cb12bcd8b5bd9c8b33ca59ac8f9105853a139b8289d698",
+    # 27 (TI-L0-04, SS Q2, R, provisional until J1; the number is a placeholder, SS allocates; 26 is reserved for TI-L0-02): Dens.served revision 7 (an asset that declares `uniform_authority: true` also reads PASS on a
+    # same-entry density_contract with non-empty facets and a real served read, without a tier column); NA_CAUSES / NA_RULE_DECISIONS unchanged, inert until an asset declares it
+    27: "7c72987f1da66c11bd6d8bc23ac18ee93520dbcac9953382e7627e270f9e9a0f",
 }
 
 
