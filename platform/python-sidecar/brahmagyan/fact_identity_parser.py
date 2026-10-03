@@ -147,6 +147,10 @@ _HYPHEN_GRAHA_ALT = "|".join(_HYPHEN_GRAHA_TOKENS)
 
 _SIGN_NAME_ALT = "|".join(SIGN_NAMES_IN_ORDER)
 
+# Ashtakavarga covers the seven classical grahas only (no Rahu/Ketu);
+# CHART_FACTS_SCHEMA.json `ashtakavarga_bindu_contributor.applies_to_subjects`.
+_AV_GRAHA_ALT = "SUN|MOON|MAR|MER|JUP|VEN|SAT"
+
 # 2-letter graha shorthand (SU/MO/MA/ME/JU/VE/SA/RA/KE) — a THIRD planet-
 # naming system observed only in the `ARUDHA_<code>` shape (graha-keyed
 # Jaimini arudha padas, e.g. `ARUDHA_JU` = the arudha computed with Jupiter
@@ -193,6 +197,14 @@ KNOWN_SPECIAL_POINTS = frozenset({
     "DHWAJA", "KANDANGA", "PATALA", "PIDAA", "VIGHNI",
     "GULIKA_LAHIRI", "MAANDI", "YAMAGANDA_SPHUTA", "GULIKA", "GULIKA_HINDU",
     "ARTHA_PRAHARA", "KALA_SUN", "MRITYU_SUN", "YAMAGHANTAKA", "KALA",
+    # YAMAKANTAKA (Phaladeepika XXV.1-3 Jupiter-son upagraha) is the spelling
+    # `ga_sensitive_writer` actually emits in `sensitive_point_gulika_mandi`
+    # (S-L1 rebuild; 7 keys x 5 ayanamshas = 35 rows on a built chart). It is
+    # the same family as GULIKA / MANDI above: one fixed sensitive point per
+    # chart whose sign / house / nakshatra live in the fact's VALUE columns
+    # (keys sign / house_d1 / ...), not smuggled into subject or key text.
+    # The older "YAMAGHANTAKA" spelling above is kept (never observed live).
+    "YAMAKANTAKA",
     # Special-lagna family (special_lagna) — each its own named lagna
     # variant, not a bhava/varga-indexed shape.
     "BHAVA_LAGNA", "GHATI_LAGNA", "HORA_LAGNA", "INDU_LAGNA", "SREE_LAGNA",
@@ -245,6 +257,29 @@ KNOWN_YOGA_DOSHA_LABELS = frozenset({
 })
 # Ayurdaya (longevity) calculation-method labels (ayurdaya category).
 KNOWN_AYURDAYA_LABELS = frozenset({"AMSAYU", "NISARGAYU", "PINDAYU"})
+# Panchanga special-yoga subjects (category `panchanga_special_yoga_combinations`,
+# `ga_panchanga_writer._emit_special_yoga_combinations`: subject is
+# `YOGA_<NAME.upper()>`). The names are the CLOSED catalogue
+# `panchang_engine/special_yogas.py` can emit (`_yoga_dict("<name>", ...)`),
+# pinned by tests/test_fact_identity_parser.py against that file's source, so
+# a new engine yoga is a visible gap (and a red test), never silently
+# identity-free. These are yoga-catalogue labels with no graha/house/varga/
+# sign digit in the text (same class as the pre-existing YOGA_UNKNOWN).
+# Closes the "YOGA_PANCHAKA gap" (S-L1 rehearsal P3: 15 rows on a built chart).
+KNOWN_PANCHANGA_SPECIAL_YOGA_SUBJECTS = frozenset({
+    "YOGA_SARVARTHA_SIDDHI", "YOGA_AMRIT_SIDDHI", "YOGA_RAVI_PUSHYA",
+    "YOGA_GURU_PUSHYA", "YOGA_TRIPUSHKAR", "YOGA_DWIPUSHKAR",
+    "YOGA_SIDDHA_YOGA", "YOGA_BHADRA", "YOGA_PANCHAKA",
+})
+# Scope-cap sentinels: a row whose whole meaning is "this layer is NOT
+# computed" (`ga_dashas_writer.write_dasha_scope_cap_sentinels`: category
+# `dasha_scope_cap`, subject PRANA_DASHA, key level_5_not_computed). It is a
+# declaration about L1's scope, not a placement of anything; hence its own
+# explicit identity-free reason (SS ruling 2026-10-03, W7 abort-rule
+# amendment). BOTH category and subject must match: any other subject in
+# that category is a gap, not a free pass.
+SCOPE_CAP_SENTINEL_REASON = "scope_cap_sentinel"
+KNOWN_SCOPE_CAP_SENTINELS = frozenset({("dasha_scope_cap", "PRANA_DASHA")})
 # Reference/lookup-table row keys: these enumerate a FIXED classification
 # table (all 27 nakshatras for tara-bala, all 12 signs in transliterated
 # Sanskrit for chandra-bala) attached per-chart for convenience — they are
@@ -529,6 +564,23 @@ def _r_graha_v_graha(m: re.Match) -> IdentityMatch:
     )
 
 
+def _r_ashtakavarga_contributor(m: re.Match) -> IdentityMatch | None:
+    # Per-contributor BAV matrix (category `ashtakavarga_bindu_contributor`,
+    # `ga_strength_writer`, G-10): subject `<GRAHA>-CONTRIBUTOR_<DONOR>-SIGN_<N>`
+    # = the bindu `<DONOR>` (a graha or LAGNA) donates to `<GRAHA>`'s BAV in
+    # absolute rasi N. The natural tuple (graha, contributor, sign) is in the
+    # text, so it is parsed. A sign outside 1..12 is declined (-> a visible gap)
+    # rather than inserted into a column whose CHECK would reject it.
+    planet, donor, sign = m.group(1), m.group(2), int(m.group(3))
+    if not 1 <= sign <= 12:
+        return None
+    return IdentityMatch(
+        entity_kind="graha_contributor_sign",
+        parse_rule="ashtakavarga_contributor_graha_sign",
+        graha_code=planet, graha_code_secondary=donor, sign_num=sign,
+    )
+
+
 def _r_bare_domain_word(m: re.Match) -> IdentityMatch | None:
     word = m.group(0)
     if word not in KNOWN_DOMAIN_WORDS:
@@ -552,6 +604,8 @@ _SUBJECT_RULES: list[tuple[str, re.Pattern, "callable"]] = [
     ("arudha_a_n", re.compile(r"^ARUDHA_A(L|\d{1,2})$"), _r_arudha_pada),
     ("arudha_graha_2letter", re.compile(rf"^ARUDHA_({_TWO_LETTER_GRAHA_ALT})$"), _r_arudha_graha_2letter),
     ("swamsa_house_n", re.compile(r"^SWAMSA_HOUSE_0*(\d{1,2})$"), _r_swamsa_house),
+    # AV has 7 grahas (no nodes); donors are those 7 plus LAGNA (CHART_FACTS_SCHEMA).
+    ("ashtakavarga_contributor_graha_sign", re.compile(rf"^({_AV_GRAHA_ALT})-CONTRIBUTOR_({_AV_GRAHA_ALT}|LAGNA)-SIGN_0*(\d{{1,2}})$"), _r_ashtakavarga_contributor),
     ("maitri_graha_pair", re.compile(rf"^MAITRI_({_UNDERSCORE_GRAHA_ALT})_({_UNDERSCORE_GRAHA_ALT})$"), _r_maitri_graha_pair),
     ("pakka_ghar_graha", re.compile(rf"^PAKKA_GHAR_({_UNDERSCORE_GRAHA_ALT})$"), _r_pakka_ghar_graha),
     ("hyphen_house", re.compile(r"^([A-Z_]+)-HOUSE_0*(\d{1,2})$"), _r_hyphen_house),
@@ -726,7 +780,11 @@ def classify_unparsed_subject(fact_subject: str, fact_category: str | None = Non
     """
     if fact_category in _OPEN_ENDED_CATALOG_LABEL_CATEGORIES:
         return f"{fact_category}_catalog_label"
+    if (fact_category, fact_subject) in KNOWN_SCOPE_CAP_SENTINELS:
+        return SCOPE_CAP_SENTINEL_REASON
     if fact_subject in KNOWN_SPECIAL_POINTS:
+        return "special_point_or_aggregate_marker"
+    if fact_subject in KNOWN_PANCHANGA_SPECIAL_YOGA_SUBJECTS:
         return "special_point_or_aggregate_marker"
     if fact_subject in KNOWN_KARAKA_ROLES:
         return "jaimini_karaka_role_label"
