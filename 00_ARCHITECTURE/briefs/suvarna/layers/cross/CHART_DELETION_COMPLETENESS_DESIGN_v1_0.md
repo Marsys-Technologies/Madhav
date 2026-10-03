@@ -29,7 +29,7 @@ Evidence tags used throughout: **[MEASURED]** read from the production catalogue
 4. **The target is one mechanism**: `DELETE FROM charts WHERE id = $1` inside one real transaction on one dedicated connection, with an `ON DELETE CASCADE` path from every per-chart table, a database-resident registry whose exemptions need a reason, a catalog-driven completeness detector (proved on a fixture, including a mutation), a guard-allowance function reused by every guard, and a post-delete residual count inside the same transaction that rolls everything back if it is not zero (section 5).
 5. **Size forces a job, not a request.** The canonical chart has about 11.2 million rows in live per-chart tables, 8.57 million of them in `kala_field` alone [MEASURED]. The pool sets `statement_timeout = 25 s` (`platform/src/lib/db/client.ts`). A 3-million-row, 3-index synthetic cascade took 8 to 14 s warm on a local SSD [FIXTURE]; the production figure must be re-measured on a production-sized mirror before the route's timeout is chosen (section 5.6).
 6. **Three decisions above engineering** are open: people-entered data (section 6, OPEN-FOR-OWNER), whether append-only safety and sealed-publication records survive subject deletion (section 7), and whether the "irreplaceable" `kala_gochara_windows_archive_20260805` v1 archive yields to a person's deletion.
-7. **Sequence**: app-side route repair and report-only detector first (no data-plane touch), then 1265 then 1275 as already planned, then the routine FK batches, then the L1 owner-path package after S-L1, then the L2 owner-path package before S-L2 (section 8). About 12 to 16 routine migrations, up to 3 owner-path packages, 3 to 4 application PRs. No numbers are picked here.
+7. **Sequence**: app-side route repair and report-only detector first (no data-plane touch), then the ruled chain S-L1, then #3040 + 1259, then 1265, then 1275, then the routine FK batches, then the L1 owner-path package after S-L1, then the L2 owner-path package before S-L2 (section 8). About 12 to 16 routine migrations, up to 3 owner-path packages, 3 to 4 application PRs. No numbers are picked here.
 
 ## 1. What was and was not done
 
@@ -97,7 +97,7 @@ Full table lists, one row per table with owner, row counts and notes, are in App
 |---|---:|---|---|
 | A cascade-ok-already | 26 (+9 children without `chart_id`) | FK path exists | guard allowance for `chart_divisionals` and `ga_prashna_judgment` (L1 guard); fix the two NO ACTION conversation children (2.2) |
 | R-1275 routine, in 1275 | 27 | owner `amjis_app` | nothing new; ships with #3064 behind #3033 |
-| R-other routine | 66 | owner `amjis_app`, no FK: `kala_*` 33, `chart_*` 9, `pariprashna_*` 7, `l25_*` 6, `brahma_*` ledgers 2, `build_*` 2, `ka_*` 2, `prashna_*` 2, `bodha_cdlm_evolution_gradients`, `gochara_resonance_map`, `lel_event_class_resolution` | `ADD CONSTRAINT ... ON DELETE CASCADE` (routine); other workstreams for kala/pariprashna/ka; exemption decisions for 4 consent tables |
+| R-other routine | 66 | owner `amjis_app`, no FK (the two `brahma_*` ledgers listed here are being added to 1275 per the coordinator and move to R-1275 when #3064's head shows it; #3064's PR text at head `91077ca3d` was seen to mention them, its SQL was not re-read): `kala_*` 33, `chart_*` 9, `pariprashna_*` 7, `l25_*` 6, `brahma_*` ledgers 2, `build_*` 2, `ka_*` 2, `prashna_*` 2, `bodha_cdlm_evolution_gradients`, `gochara_resonance_map`, `lel_event_class_resolution` | `ADD CONSTRAINT ... ON DELETE CASCADE` (routine); other workstreams for kala/pariprashna/ka; exemption decisions for 4 consent tables |
 | B blocked | 11 | direct FK that is not CASCADE: 9 NO ACTION (all `amjis_app`), 1 RESTRICT (`planner_inquiry_lifecycles`, `purna_inquiry_owner`), 1 SET NULL | relink to CASCADE per the section 6 and section 7 decisions |
 | O1 owner-path | 18 | `data_plane_l1_owner` (`chart_facts` 420k rows 699 MB, `chart_dashas` 1.46M rows 1.9 GB, `chart_vichara`, `ga_*`, `l1_data_plane_*`) | owner-path package: FKs + guard allowance |
 | O2 owner-path | 38 | `data_plane_l2_owner` (`bodha_*` 28, `l2_data_plane_*` 8, `data_plane_l2_producer_generations`, scorecard) | owner-path package: FKs + guard allowance |
@@ -159,7 +159,7 @@ Failure semantics: any error rolls back everything, including the receipt; the c
 
 ### 5.4 Guard interplay
 
-Use one authorization function, owned by a neutral role with SELECT on `charts`, `SECURITY DEFINER`, pinned `search_path`, fail-closed:
+Use one authorization function, `SECURITY DEFINER` with a pinned `search_path`, fail-closed. It must be SECURITY DEFINER because `charts` has row-level security: a guard running as an invoker that cannot see the chart row would read "chart absent" and wrongly authorize (or, fail-closed, wrongly refuse). The function's owner must be a role that can read `charts` under its RLS policies. Consequence stated as a constraint: **do not enable FORCE ROW LEVEL SECURITY on `charts`, or arm its RLS policies for more roles, without revisiting 1265's helper and this one**, because that would change what the owner (and `suvarna_reader`, `data_plane_builder`) see in `charts` (#3033 already records that arming RLS hides rows from the builder):
 
 ```sql
 chart_cascade_delete_authorizes(p_chart uuid) RETURNS boolean
@@ -171,7 +171,7 @@ This is the discriminator already proved in #3033 section C1b (named `l5_frozen_
 * L1 and L2 guards (owner-path, 5.5): add the call before the `session_user` test. Second-level children (for example `chart_fact_identity` via `chart_facts`) run at depth 3 and are covered by `>= 2`.
 * The per-chart `l1_/l2_data_plane_*` control tables (append-only history). Decision needed (section 7): either the allowance (they hold per-chart snapshots and row copies, `l1_data_plane_row_snapshots`, `l2_data_plane_row_snapshots`, `l2_data_plane_run_rows`) or an exemption that states why a copy of the rows may outlive the chart. Their row counts are unreadable to the reader role and the estimates are -1 (never analyzed), so whether they hold anything is not determined.
 * `pariprashna_*` append-only and `ka_gochara_*` sealed-generation guards: other workstreams (section 7).
-* 1265's four guards: already have it. 1265 must land before any FK is added to `brahma_*` ledgers, and the order 1265 then 1275 stands. The 1275 report's finding that "1265 as it stands refuses the chart delete" predates the C1b text now in #3033's body; I did not re-run it and the fixture below must be re-run at merge time.
+* 1265's four guards: already have it. The two `brahma_*` ledgers get their FKs in 1275 itself (coordinator), so 1265 must land first; the full ruled order is S-L1, then #3040 + 1259, then 1265, then 1275. The 1275 report's finding that "1265 as it stands refuses the chart delete" predates the C1b text now in #3033's body; I did not re-run it and the fixture below must be re-run at merge time.
 
 The withdrawal sweep needs a sibling exception (`consent_state = 'withdrawn'` and no open dispute, as 1265 already does for L5) in the L2 guard, or `bodha_*` stays undeletable by it (S3).
 
@@ -216,7 +216,7 @@ The 35 copies: 30 `__ssv_*` rollback snapshots taken for the SUDDHA-VACA rebuild
 
 ## 6. People-entered data (OPEN-FOR-OWNER)
 
-**Working assumption (stated, not decided):** N-46 forbids agents from changing or deleting people-entered data. A deletion the person initiates is their own act, so their events go with their chart. SS is confirming this with the owner; nothing below is built on it until that returns.
+**Working assumption (OPEN-FOR-OWNER until the owner confirms in Exec Suvarṇa's session; stated by the coordinator, not decided):** when a PERSON deletes their own chart, their life events go with it; N-46 governs agents, not the person's own act. N-46 forbids agents from changing or deleting people-entered data. A deletion the person initiates is their own act, so their events go with their chart. SS is confirming this with the owner; nothing below is built on it until that returns.
 
 Tables that hold people-entered or person-derived content and their current state [MEASURED unless marked]:
 
@@ -245,7 +245,7 @@ Recommendation: A with B's export step, C deferred until pooling is real. The an
 * **Paripraśna.** `pariprashna_*` append-only guards refuse every delete (PPR-26 "append-only"). Ask: are safety decisions, retractions and reviews about a subject erased with the subject, kept with the chart id as an opaque key, or kept with a redacted payload? Either answer needs a guard change by their owner; the registry records the decision.
 * **Planner (Pūrṇa, `purna_inquiry_owner`; Pravāha as named by SS).** Change `planner_inquiry_lifecycles.chart_id` from RESTRICT to CASCADE (children `planner_inquiry_action_reservations`, `planner_inquiry_evidence_receipts` already cascade from it); state whether `principal_uid ... RESTRICT` to `profiles` has a similar effect on account deletion (out of scope here). 25 rows over all charts.
 * **Data-plane owners (S-L1 / S-L2 lanes of Exec Suvarṇa).** The two owner-path packages (5.5), and a decision on the 14 append-only per-chart control tables and the producer-generations table (5.4).
-* **L5 (#3033, #3064).** `brahma_mimamsa_prediction_ledger` (5 canonical rows) and `brahma_prospective_ledger` (18) are per-chart with no link; 1275 excluded them as outside its list. They need FKs after 1265 and are covered by the allowance.
+* **L5 (#3033, #3064).** `brahma_mimamsa_prediction_ledger` (5 canonical rows) and `brahma_prospective_ledger` (18) are per-chart with no link; the 1275 report excluded them, and 1275 now adds them (coordinator). They depend on 1265's allowance, hence the order. Nothing further to ask.
 * **SS decisions.** The three owner questions in section 0 item 6; whether the consent sweep and chart delete share the registry (recommended); the timeout and job model after the mirror measurement.
 
 ## 8. Sequence and slots
@@ -256,7 +256,7 @@ Proposed order; SS decides.
 |---|---|---|---|---|
 | G0 | this document; owner answers on section 6; asks in section 7 sent | none | | |
 | G1 | route repair (dedicated client, correct statements, stable error codes, fence), registry/exemption/receipts tables, detector in report-only mode; no change to any existing table's behaviour. The repaired route still returns a clean 409 with the blocking table names until the FKs exist. | routine + app | 1 migration (new objects), 1 to 2 app PRs | none; can precede S-L1 |
-| G2 | 1265 then 1275 | already planned (#3033, #3064) | 0 new | after S-L1, as already ruled |
+| G2 | #3040 + 1259, then 1265, then 1275 (1275 now includes the two `brahma_*` ledgers) | already planned (#3040, #3033, #3064) | 0 new | after S-L1, in that ruled order |
 | G3 | routine FK batches: small/medium `amjis_app` tables; big tables NOT VALID then VALIDATE; relinks (`event_chart_state_index`, `life_events` per section 6, the four `ka_gochara_*` after their owner agrees); text-typed class; prashna second hop and soft-key FKs; amjis-owned guard allowances; `charts` fence column and the `role_orchestrator` revoke | routine | about 8 to 10 migrations | G2; independent of S-L1 except lock windows |
 | G4 | **L1 owner-path package**: 18 FKs + guard allowance, generated from the live body | owner-path | 1 package | after S-L1 closes (it patches the guard function S-L1 depends on and adds keys to tables S-L1 rebuilds) |
 | G5 | **L2 owner-path package**: 38 FKs + guard allowance + withdrawal exception | owner-path | 1 package | before S-L2 starts (so S-L2's verification runs against the final guard; a guard body is patched once, in a quiet window) |
