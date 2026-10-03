@@ -910,7 +910,7 @@ def test_the_declared_ldgr_check_checks_the_table_exists_in_the_measure_wiring(m
 
 def test_revision_12_pins_the_s3_content():
     assert ac.REGISTRY_REVISION >= 12
-    assert ac.CRITERION_REGISTRY[ALIAS]["revision"] == 2 and ac.CRITERION_REGISTRY[LDGR]["revision"] == 3
+    assert ac.CRITERION_REGISTRY[ALIAS]["revision"] == 2 and ac.CRITERION_REGISTRY[LDGR]["revision"] == 4      # 3 at the S3 merge (pin 12), 4 at pin 24 (C2(ii))
     assert r13.S3_IDS <= set(ac.NA_RULE_DECISIONS) and r13.S3_IDS <= r13.DECLARED_IDS
     for rid in r13.S3_IDS:
         why = ac.NA_RULE_DECISIONS[rid]
