@@ -284,4 +284,18 @@ export const EXPLICIT_CLEAR_OPS: Record<string, ClearOp[] | null> = {
     { sql: "DELETE FROM kala_gochara_windows_v2 WHERE chart_id = $1 AND generation = '2.0'" },
     { sql: "DELETE FROM kala_gochara_v2_build_state WHERE chart_id = $1 AND generation = '2.0'" },
   ],
+
+  // ── L1 Gaṇita — Fact Identity Index (migration 1262, asset_id `ga_fact_identity`) ─────────
+  // chart_fact_identity has NO producing build writer: it is filled by the hand-run G-IDX script
+  // (build_fact_identity_index.py, "NOT a WriterBase/@register orchestrator writer"), so a Clear
+  // that deleted it could not be undone by any build. Its registry count_sql
+  // ('SELECT count(*) FROM chart_fact_identity WHERE chart_id = $1') would otherwise be turned by
+  // deriveDeleteSqlFromCountSql() into 'DELETE FROM chart_fact_identity WHERE chart_id = $1' for a
+  // layer or global Clear (migration 1262's CLEAR note). null = nothing is cleared for this asset
+  // (skip cleanly); it is NEVER a DELETE. Operator message for this skip: 'ga_fact_identity is not
+  // build-restored (hand-run G-IDX): nothing cleared' (the message channel for null specs is the
+  // EXPLICIT_CLEAR_NOTICES map added by #3040; the entry for this asset follows once that lands).
+  // Intentionally present BEFORE migration 1262 applies: an entry for an asset not yet in the
+  // registry is inert, and merging it first means no window where the registry row exists unguarded.
+  ga_fact_identity: null,
 }
