@@ -12,11 +12,12 @@ nothing stops it, performs the single change.
         [--capture-old old.json]             # BEFORE S-L1 (read-only): save the pinned build's rows — the old rows may not exist afterwards; then pass --old-rows old.json
         [--old-rows old.json]                # the old rows come from this capture (sha256-checked) instead of the database
         [--dry-run]                          # print the full report and the test-literal matches; write NOTHING
-        [--apply --hold-lifted <steward message id> [--rulings rulings.json]]
+        [--apply --settled-received <steward message id> [--rulings rulings.json]]
 
-ST-SL1-HOLD (steward M20261002T223058-f6e4): from the start of Suvarṇa's S-L1 window until the steward announces 'SETTLED-1 received AND daśā re-pin merged', no Gochara build / verification /
-brief / resonance run / measurement extract runs against production chart 482012f1. --apply is REFUSED (exit 2) without --hold-lifted <the announcement's message id>. Test literals equal to
-an old boundary are listed and --apply STOPS before writing anything until --rulings classifies each `path:line` as rewrite or keep (the steward's ruling).
+ST-SL1-HOLD (steward M20261002T223058-f6e4; split by Codex R17-6): from the start of Suvarṇa's S-L1 window until the steward announces the hold LIFTED (after SETTLED-1 AND the reviewed re-pin is merged),
+no Gochara build / verification / brief / resonance run / measurement extract runs against production chart 482012f1. This tool is local PREPARATION: the read-only comparison and --apply (a local patch of the
+checkout) need only the steward's announcement that SETTLED-1 was RECEIVED (`--settled-received <message id>`); it does NOT lift the hold. Test literals equal to an old boundary are listed and --apply STOPS
+before writing anything until --rulings classifies each `path:line` as rewrite or keep (the steward's ruling).
 
 READ-ONLY against the database (the connection is set READ ONLY); --apply edits only
 files in this repository:
@@ -51,6 +52,8 @@ import argparse
 import hashlib
 import json
 import logging
+import math
+import uuid
 import os
 import re
 import statistics
@@ -78,15 +81,66 @@ def _t(s) -> datetime:
 
 
 def iso(s) -> str:
+    """WHOLE-SECOND UTC `…Z` — ONLY for the permission.py literals (their lexicographic comparison needs this form). Never used to measure."""
     return _t(s).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
+def full_iso(s) -> str:
+    """FULL-precision UTC `…Z` (microseconds kept when present) — captures and shift measurement (Codex R17-3: truncating before measuring can move an out-of-tolerance observation inside the interval)."""
+    t = _t(s)
+    return t.strftime("%Y-%m-%dT%H:%M:%S") + (f".{t.microsecond:06d}" if t.microsecond else "") + "Z"
+
+
 def norm_rows(rows: list[dict]) -> list[dict]:
-    """DB rows -> plain strings: UUIDs as text, instants as whole-second UTC `…Z` (the pinned-literal form)."""
+    """DB rows -> plain strings: UUIDs as text, instants as FULL-precision UTC `…Z` (the permission literals are whole-second-formatted separately, at --apply only)."""
     return [{**r, "dasha_row_id": str(r["dasha_row_id"]),
              "parent_row_id": None if r.get("parent_row_id") is None else str(r["parent_row_id"]),
-             "start_iso": iso(r["start_iso"]), "end_iso": iso(r["end_iso"]),
+             "start_iso": full_iso(r["start_iso"]), "end_iso": full_iso(r["end_iso"]),
+             "build_id": None if r.get("build_id") is None else str(r["build_id"]),            # a real row carries a uuid.UUID — JSON-serialisable text only
              "level_n": int(r["level_n"])} for r in rows]
+
+
+def tree_problems(rows: list[dict], label: str) -> list[str]:
+    """Codex R17-4: the §4.0 tree must be WELL-FORMED before any comparison — unique ids; level-1 rows are roots (no parent); a level-n row (n > 1) has a parent that EXISTS at level n−1; no
+    self-parenting; no cycle; every row reachable from a root; every in-scope row indexed EXACTLY once. A malformed side stops the comparison (a row unreachable from a root would otherwise
+    vanish from the row-count and lord-change checks)."""
+    out: list[str] = []
+    by_id: dict[str, dict] = {}
+    for r in rows:
+        if r["dasha_row_id"] in by_id:
+            out.append(f"{label}: duplicate row id {r['dasha_row_id']}")
+        by_id[r["dasha_row_id"]] = r
+        if int(r["level_n"]) not in LEVELS_IN_SCOPE:
+            out.append(f"{label}: row {r['dasha_row_id']} is at level {r['level_n']}, outside the in-scope levels {list(LEVELS_IN_SCOPE)}")
+    for r in rows:
+        lv, pid = int(r["level_n"]), r.get("parent_row_id")
+        if lv == 1:
+            if pid is not None:
+                out.append(f"{label}: level-1 row {r['dasha_row_id']} has a parent ({pid}); a level-1 row is a root")
+            continue
+        if pid is None:
+            out.append(f"{label}: level-{lv} row {r['dasha_row_id']} has NO parent (it is unreachable from any root)")
+        elif pid == r["dasha_row_id"]:
+            out.append(f"{label}: row {pid} is its own parent")
+        elif pid not in by_id:
+            out.append(f"{label}: level-{lv} row {r['dasha_row_id']} has a missing parent {pid}")
+        elif int(by_id[pid]["level_n"]) != lv - 1:
+            out.append(f"{label}: row {r['dasha_row_id']} (level {lv}) has a parent at level {by_id[pid]['level_n']}, expected {lv - 1}")
+    # cycles / reachability: walk every row up to a root with a bound
+    for r in rows:
+        seen, cur = set(), r
+        while cur is not None and cur.get("parent_row_id") is not None:
+            if cur["dasha_row_id"] in seen:
+                out.append(f"{label}: a parent cycle through {cur['dasha_row_id']}"); break
+            seen.add(cur["dasha_row_id"])
+            cur = by_id.get(cur["parent_row_id"])
+    if not out and len(index_paths(rows)) != len(rows):
+        out.append(f"{label}: {len(rows)} rows but {len(index_paths(rows))} reachable and indexed — every in-scope row must be indexed exactly once")
+    return out
+
+
+def level_totals(rows: list[dict]) -> dict[int, int]:
+    return {lv: sum(1 for r in rows if int(r["level_n"]) == lv) for lv in LEVELS_IN_SCOPE}
 
 
 def index_paths(rows: list[dict]) -> dict[tuple, dict]:
@@ -225,6 +279,9 @@ def load_capture(path: str, chart_id: str, build_id: str) -> list[dict]:
     d = json.loads(Path(path).read_text(encoding="utf-8"))
     if d.get("chart_id") != chart_id or d.get("build_id") != build_id or not d.get("rows") or d.get("sha256") != _rows_digest(d["rows"]):
         raise ValueError("the captured old-rows file is not for this chart and the pinned build, is empty, or its sha256 does not match its rows")
+    bad = tree_problems(d["rows"], "captured old rows")
+    if bad:
+        raise ValueError("the captured old-rows file is malformed: " + "; ".join(bad[:6]))                  # Codex R17-4: a malformed old capture STOPS the comparison
     return d["rows"]
 
 
@@ -285,12 +342,38 @@ class NeedsRuling(Exception):
         self.unclassified = unclassified
 
 
+def _finite_number(v) -> bool:
+    return isinstance(v, (int, float)) and not isinstance(v, bool) and math.isfinite(v)
+
+
 def load_notice(path: str) -> dict:
-    """Suvarṇa's SETTLED-1 notice as JSON: {"settled_1": true, "new_build_id": "<uuid>", "expected_shift_seconds": {"1": 6993, "2": 6993, "3": 6993}, "tolerance_seconds": 2}
-    (a level may instead give {"start": n, "end": n}). The tolerance is STATED by the notice — there is no default."""
-    d = json.loads(Path(path).read_text(encoding="utf-8"))
-    if d.get("settled_1") is not True or not isinstance(d.get("expected_shift_seconds"), dict) or not isinstance(d.get("tolerance_seconds"), (int, float)) or isinstance(d.get("tolerance_seconds"), bool) or d["tolerance_seconds"] < MIN_TOLERANCE_SECONDS:
-        raise ValueError(f"the SETTLED-1 notice must carry settled_1: true, expected_shift_seconds per level and a stated tolerance_seconds >= {MIN_TOLERANCE_SECONDS} (every instant on both sides is whole-second truncated, so a tolerance below 1 s could refuse an exact shift)")
+    """Suvarṇa's SETTLED-1 notice as JSON: {"settled_1": true, "new_build_id": "<uuid>", "expected_shift_seconds": {"1": 6993, "2": 6993, "3": {"start": 6992, "end": 6994}}, "tolerance_seconds": 2}.
+    STRICT (Codex R17-3/R17-5): `new_build_id` is REQUIRED and a valid UUID; `expected_shift_seconds` names EXACTLY levels 1, 2 and 3, each a FINITE number or {start, end} of finite numbers (both
+    boundaries); `tolerance_seconds` is a FINITE number >= 1 (every instant on both sides is whole-second-formatted in the permission literals, and the notice's own are second-resolution) — NaN and
+    infinities are refused; the tolerance is STATED by the notice — there is no default. The notice's sha256 is recorded in the tool's output."""
+    raw = Path(path).read_bytes()
+    d = json.loads(raw.decode("utf-8"))
+    problems = []
+    if d.get("settled_1") is not True:
+        problems.append("settled_1 must be true")
+    try:
+        uuid.UUID(str(d.get("new_build_id")))
+    except ValueError:
+        problems.append("new_build_id is required and must be a valid UUID (the settlement build identifier)")
+    exp = d.get("expected_shift_seconds")
+    if not isinstance(exp, dict) or set(exp) != {str(lv) for lv in LEVELS_IN_SCOPE}:
+        problems.append("expected_shift_seconds must name exactly levels 1, 2 and 3")
+    else:
+        for k, e in exp.items():
+            ok = _finite_number(e) or (isinstance(e, dict) and set(e) == {"start", "end"} and _finite_number(e["start"]) and _finite_number(e["end"]))
+            if not ok:
+                problems.append(f"expected_shift_seconds[{k}] must be a finite number or {{start, end}} of finite numbers")
+    tol = d.get("tolerance_seconds")
+    if not _finite_number(tol) or tol < MIN_TOLERANCE_SECONDS:
+        problems.append(f"tolerance_seconds must be a FINITE number >= {MIN_TOLERANCE_SECONDS}")
+    if problems:
+        raise ValueError("the SETTLED-1 notice is invalid: " + "; ".join(problems))
+    d["_sha256"] = hashlib.sha256(raw).hexdigest()
     return d
 
 
@@ -310,8 +393,8 @@ def shift_problems(stats: dict, notice: dict | None) -> list[str]:
         for side in ("start", "end"):
             for stat in ("min", "max"):
                 got = stats[lv][side][stat]
-                if abs(got - want[side]) > tol:
-                    out.append(f"level {LEVEL_NAME.get(lv, lv)} {side} {stat} shift {got:.0f} s is outside the notice's {want[side]} s ± {tol} s")
+                if not (abs(got - want[side]) <= tol):                                         # NaN-safe: a NaN fails the comparison instead of passing it
+                    out.append(f"level {LEVEL_NAME.get(lv, lv)} {side} {stat} shift {got:.3f} s is outside the notice's {want[side]} s ± {tol} s")
     return out
 
 
@@ -355,8 +438,11 @@ def remeasure_reference_rows(old: dict, new: dict) -> tuple[list[dict], list[str
     return maps, problems
 
 
-def decide(*, new_tier_ok: bool, new_integrity: dict, m: dict, flips: list, ref_problems: list, forensic_report: str | None, shift_issues: list[str] | None = None) -> list[str]:
-    stops = list(shift_issues or [])
+def decide(*, new_tier_ok: bool, new_integrity: dict, m: dict, flips: list, ref_problems: list, forensic_report: str | None, shift_issues: list[str] | None = None,
+           tree_issues: list[str] | None = None, old_totals: dict | None = None, new_totals: dict | None = None) -> list[str]:
+    stops = list(shift_issues or []) + list(tree_issues or [])
+    if old_totals is not None and new_totals is not None and old_totals != new_totals:
+        stops.append(f"per-level row totals differ (old {old_totals}, new {new_totals}); lords AND row counts must be EQUAL at levels 1–3")
     if not new_tier_ok:
         stops.append("new build is not tier two_pass_verified")
     if new_integrity["orphans"]:
@@ -374,11 +460,13 @@ def decide(*, new_tier_ok: bool, new_integrity: dict, m: dict, flips: list, ref_
 
 
 # ── rendering / applying ─────────────────────────────────────────────────────
-def render(*, old_id, new_id, chart_id, o_int, n_int, m, stats, flips, maps, stops, sensitive=()) -> str:
+def render(*, old_id, new_id, chart_id, o_int, n_int, m, stats, flips, maps, stops, sensitive=(), evidence=()) -> str:
     L = [f"# AM-10 re-pin evidence — chart {chart_id}", "",
          f"* old pin: `{old_id}`  →  new build: `{new_id}`", f"* verdict: **{'CLEAN' if not stops else 'STOP'}**", ""]
     if stops:
         L += ["## Stops", *[f"* {s}" for s in stops], ""]
+    if evidence:
+        L += ["## Evidence bound to this verdict", *[f"* {e}" for e in evidence], ""]
     L += ["## (b) rows per level", "| level | old | new |", "|---|---|---|"]
     for lv in sorted(set(o_int["by_level"]) | set(n_int["by_level"])):
         L.append(f"| {LEVEL_NAME.get(lv, lv)} | {o_int['by_level'].get(lv, 0)} | {n_int['by_level'].get(lv, 0)} |")
@@ -434,8 +522,9 @@ def apply_repin(new_id: str, maps: list[dict], repo_root: Path, rulings: dict | 
         o, n = x["old"], x["new"]
         ids[o["row_id"]] = n["dasha_row_id"]
         for side in ("start_iso", "end_iso"):
-            assert _WHOLE_SECOND_Z.fullmatch(n[side]), f"new instant {n[side]!r} is not whole-second …Z (permission.py compares these lexicographically)"
-            instants[o[side]] = n[side]
+            literal = iso(n[side])          # whole-second UTC `…Z` — the permission.py literal form (measurement elsewhere keeps full precision)
+            assert _WHOLE_SECOND_Z.fullmatch(literal), f"permission literal {literal!r} is not whole-second …Z (permission.py compares these lexicographically)"
+            instants[o[side]] = literal
     ver = SIDECAR / "services" / "gochara_kernel" / "inventory_verifier.py"
     if not ver.is_file():
         raise VerifierPinMissing(f"{ver} is absent: the verifier's INDEPENDENT pin (`_C_BUILD`) cannot be rewritten — run the re-pin on a tree that carries the '5.0' kernel")
@@ -515,6 +604,32 @@ def test_pin_is_the_new_build_and_the_old_one_is_refused():
 
 
 # ── CLI ──────────────────────────────────────────────────────────────────────
+def _mode_error(a) -> str | None:
+    """Every mode combination is validated here, BEFORE any capture, connection or read (Codex R17-7): a dry run never writes, and capture mode is capture-only."""
+    if a.system != "vimshottari" or a.max_level != 3:
+        return (f"--system {a.system} --max-level {a.max_level} REFUSED: this tool judges the Vimśottarī Lahiri levels 1–3 only (other systems and level 4 are out of scope; level-4 row counts "
+                "change by design at S-L1)")
+    if a.capture_old:
+        extra = [flag for flag, val in (("--new-build-id", a.new_build_id), ("--dry-run", a.dry_run), ("--apply", a.apply), ("--settled-notice", a.settled_notice), ("--old-rows", a.old_rows),
+                                        ("--rulings", a.rulings), ("--forensic-report", a.forensic_report), ("--out", a.out), ("--settled-received", a.settled_received)) if val]
+        if extra:
+            return f"--capture-old is a capture-only mode (read-only, writes only its own file); it cannot be combined with {', '.join(extra)}"
+        return None
+    if not a.new_build_id:
+        return "--new-build-id is required for comparison and application (it is not used by --capture-old)"
+    try:
+        uuid.UUID(a.new_build_id)
+    except ValueError:
+        return f"--new-build-id {a.new_build_id!r} is not a valid UUID"
+    if a.dry_run and a.apply:
+        return "--dry-run and --apply are mutually exclusive (a dry run writes nothing)"
+    if a.apply and not a.settled_received:
+        return "--apply refused: pass --settled-received <the steward's message id announcing 'SETTLED-1 received'> (local re-pin PREPARATION; production Gochara work stays held until the reviewed re-pin is merged and the steward lifts ST-SL1-HOLD)"
+    if a.rulings and not a.apply:
+        return "--rulings only applies with --apply"
+    return None
+
+
 def _capture_old(a, conn) -> int:
     old_id = PERM.DASHA_READ_CONTRACT["build_id"]
     if conn is None:
@@ -529,28 +644,25 @@ def _capture_old(a, conn) -> int:
 
 def main(argv=None, *, conn=None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
-    ap.add_argument("--new-build-id", required=True)
+    ap.add_argument("--new-build-id", default=None, help="the SETTLED-1 build — REQUIRED for comparison/application, REFUSED with --capture-old")
     ap.add_argument("--chart-id", default=PERM.DASHA_READ_CONTRACT["chart_id"])
     ap.add_argument("--out", default=None)
     ap.add_argument("--forensic-report", default=None)
     ap.add_argument("--apply", action="store_true")
     ap.add_argument("--dry-run", action="store_true", help="print the full report and the test-literal matches; write NOTHING (no --out, no --apply)")
     ap.add_argument("--settled-notice", default=None, help="JSON of Suvarṇa's SETTLED-1 notice: expected per-level shift + a stated tolerance (see load_notice)")
-    ap.add_argument("--hold-lifted", default=None, help="the steward's message id announcing 'SETTLED-1 received AND daśā re-pin merged' — ST-SL1-HOLD; REQUIRED for --apply")
+    ap.add_argument("--settled-received", default=None, help="the steward's message id announcing 'SETTLED-1 received' — REQUIRED for --apply (local patch PREPARATION). Production Gochara work stays held (ST-SL1-HOLD) until the reviewed re-pin is merged and the steward lifts the hold; this flag does NOT lift it")
     ap.add_argument("--system", default="vimshottari", help="REFUSED unless vimshottari — the pin is the Vimśottarī read; other systems are out of scope")
     ap.add_argument("--max-level", type=int, default=3, help="REFUSED unless 3 — levels 1–3 (MD/AD/PD) only; level-4 counts change by design at S-L1")
     ap.add_argument("--capture-old", default=None, help="READ-ONLY: write the OLD (pinned) build's rows to this file BEFORE S-L1 and exit — the old rows may not exist afterwards")
     ap.add_argument("--old-rows", default=None, help="the file written by --capture-old: the old build's rows when the DB no longer holds them")
     ap.add_argument("--rulings", default=None, help="JSON {rewrite: [path:line…], keep: [path:line…]} — the steward's ruling on test literals that equal an old boundary")
     a = ap.parse_args(argv)
-    if a.system != "vimshottari" or a.max_level != 3:
-        print(f"--system {a.system} --max-level {a.max_level} REFUSED: this tool judges the Vimśottarī Lahiri levels 1–3 only (other systems and level 4 are out of scope; level-4 row counts change by design at S-L1)", file=sys.stderr); return 2
+    bad = _mode_error(a)                     # BEFORE any capture, connection or read (Codex R17-7)
+    if bad:
+        print(bad, file=sys.stderr); return 2
     if a.capture_old:
         return _capture_old(a, conn)
-    if a.dry_run and a.apply:
-        print("--dry-run and --apply are mutually exclusive", file=sys.stderr); return 2
-    if a.apply and not a.hold_lifted:
-        print("--apply refused: ST-SL1-HOLD — pass --hold-lifted <steward message id> once the steward has announced 'SETTLED-1 received AND daśā re-pin merged'", file=sys.stderr); return 2
     old_id = PERM.DASHA_READ_CONTRACT["build_id"]
     if a.new_build_id == old_id:
         print("new build equals the current pin — nothing to re-pin", file=sys.stderr); return 2
@@ -574,6 +686,7 @@ def main(argv=None, *, conn=None) -> int:
         print(f"STOP — {exc}", file=sys.stderr); return 3
     # tier is pinned IN the query (two_pass_verified): an empty result means the new build is absent or at another tier
     new_tier_ok = bool(new_rows) and all(r.get("verification_pass_status") == PERM.DASHA_READ_CONTRACT["tier"] for r in new_rows)
+    tree_issues = tree_problems(old_rows, "old build") + tree_problems(new_rows, "new build")          # Codex R17-4: well-formed trees BEFORE any comparison
     old_idx, new_idx = index_paths(old_rows), index_paths(new_rows)
     m = match(old_idx, new_idx)
     stats = shift_stats(old_idx, new_idx, m["matched"])
@@ -587,12 +700,18 @@ def main(argv=None, *, conn=None) -> int:
     builds = fetch_vimshottari_builds(conn, a.chart_id)
     extra_stops = build_problems(builds, a.new_build_id) + preflight_problems(fetch_preflight_facts(conn, a.chart_id), a.new_build_id)
     stops = decide(new_tier_ok=new_tier_ok, new_integrity=integrity(new_rows), m=m, flips=flips,
-                   ref_problems=ref_problems, forensic_report=a.forensic_report, shift_issues=shift_problems(stats, notice))
+                   ref_problems=ref_problems, forensic_report=a.forensic_report, shift_issues=shift_problems(stats, notice),
+                   tree_issues=tree_issues, old_totals=level_totals(old_rows), new_totals=level_totals(new_rows))
     stops += extra_stops
-    if notice is not None and notice.get("new_build_id") not in (None, a.new_build_id):
+    if notice is not None and notice.get("new_build_id") != a.new_build_id:                         # Codex R17-5: notice == --new-build-id == the database readback (the builds check above)
         stops.append(f"the SETTLED-1 notice names build {notice.get('new_build_id')}, not {a.new_build_id}")
+    evidence = []
+    if notice is not None:
+        evidence.append(f"settled notice sha256: {notice['_sha256']}")
+    if a.forensic_report:
+        evidence.append(f"forensic report sha256: {hashlib.sha256(Path(a.forensic_report).read_bytes()).hexdigest()} — this tool checks that the file EXISTS and is NON-EMPTY ONLY; CLEAN is NOT independent validation of the seven FORENSIC anchors (that evidence is the L1 owner's)")
     report = render(old_id=old_id, new_id=a.new_build_id, chart_id=a.chart_id, o_int=integrity(old_rows),
-                    n_int=integrity(new_rows), m=m, stats=stats, flips=flips, sensitive=sensitive, maps=maps, stops=stops)
+                    n_int=integrity(new_rows), m=m, stats=stats, flips=flips, sensitive=sensitive, maps=maps, stops=stops, evidence=evidence)
     if a.out and not a.dry_run:
         Path(a.out).write_text(report, encoding="utf-8")
     print(report)
@@ -600,7 +719,7 @@ def main(argv=None, *, conn=None) -> int:
         print("STOP — not re-pinning.", file=sys.stderr); return 3
     if a.dry_run or not a.apply:
         # list every test literal equal to an old boundary so the ruling can be prepared (nothing is written)
-        inst = {x["old"][side]: x["new"][side] for x in maps for side in ("start_iso", "end_iso")}
+        inst = {x["old"][side]: iso(x["new"][side]) for x in maps for side in ("start_iso", "end_iso")}
         for p_, ln, a_, b_ in scan_test_literals(inst, SIDECAR.parents[1]):
             print(f"TEST LITERAL (needs ruling at --apply): {p_}:{ln} {a_} -> {b_}")
     if a.apply:
@@ -615,7 +734,7 @@ def main(argv=None, *, conn=None) -> int:
             print("STOP — test literals equal to an old boundary need the steward's ruling (--rulings).", file=sys.stderr); return 3
         except VerifierPinMissing as exc:
             print(f"STOP (nothing written) — {exc}", file=sys.stderr); return 3
-        print(f"ST-SL1-HOLD lifted per {a.hold_lifted}")
+        print(f"re-pin PREPARED locally on 'SETTLED-1 received' per {a.settled_received}. ST-SL1-HOLD REMAINS IN FORCE for production Gochara work until this re-pin is reviewed and merged and the steward announces the hold lifted.")
         print("BOTH pin constants were rewritten and verified equal to the SETTLED-1 build: services/gochara_rules/permission.py DASHA_READ_CONTRACT['build_id'] AND services/gochara_kernel/inventory_verifier.py _C_BUILD.")
         print("NEXT, in the SAME reviewed re-pin PR: regenerate the implementation lock — `python -m services.gochara_kernel.implementation_registry --write` (a changed governed module moves the implementation digest; the seal refuses an unregistered one).")
         for r in review:

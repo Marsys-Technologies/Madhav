@@ -23,7 +23,7 @@ def build(prefix, shift_s=0, lord_override=None):
         return {"dasha_row_id": f"{prefix}-{i}", "level_n": lvl, "parent_row_id": parent, "lord_graha": lord,
                 "start_iso": a, "end_iso": b, "verification_pass_status": TIER, "build_id": prefix}
     def sh(s_):
-        return T.iso(datetime.fromtimestamp(T._t(s_).timestamp() + shift_s, tz=timezone.utc))
+        return T.full_iso(datetime.fromtimestamp(T._t(s_).timestamp() + shift_s, tz=timezone.utc))      # FULL precision (the tool measures with it)
     rows = [r("m0", 1, None, "Mercury", sh("2000-01-01T00:00:00Z"), sh("2010-01-01T00:00:00Z")),
             r("m1", 1, None, "Ketu", sh("2010-01-01T00:00:00Z"), sh("2020-01-01T00:00:00Z")),
             r("a0", 2, f"{prefix}-m0", "Mercury", sh("2000-01-01T00:00:00Z"), sh("2005-01-01T00:00:00Z")),
@@ -211,15 +211,14 @@ def test_rewrite_is_ONE_pass_a_new_value_equal_to_a_later_old_value_is_not_repla
     assert T.rewrite_once("untouched", {}) == "untouched"
 
 
-def test_a_non_whole_second_new_instant_is_refused_by_apply(monkeypatch, tmp_path):
-    (tmp_path / "services" / "gochara_rules").mkdir(parents=True)
-    (tmp_path / "tests" / "l3").mkdir(parents=True)
-    (tmp_path / "services" / "gochara_rules" / "permission.py").write_text(pathlib.Path(PERM.__file__).read_text(encoding="utf-8"), encoding="utf-8")
+def test_apply_formats_the_permission_literals_whole_second_while_rows_keep_full_precision(monkeypatch, tmp_path):
+    maps = _apply_world(tmp_path)
+    maps[0]["new"]["start_iso"] = "2013-01-14T09:13:56.750000Z"                                       # a measured full-precision instant
     monkeypatch.setattr(T, "SIDECAR", tmp_path)
-    ref = PERM.AD_ROWS[0]
-    bad = [{"old": ref, "new": {"dasha_row_id": "99999999-9999-4999-8999-999999999999", "start_iso": "2013-01-14T09:13:56.5Z", "end_iso": "2014-01-11T14:11:56Z", "lord_graha": ref["lord"]}, "key": (2, (0,))}]
-    with pytest.raises(AssertionError, match="whole-second"):
-        T.apply_repin("22222222-2222-4222-8222-222222222222", bad, tmp_path)
+    T.apply_repin(NEWB, maps, tmp_path)
+    perm = (tmp_path / "services" / "gochara_rules" / "permission.py").read_text()
+    assert "2013-01-14T09:13:56Z" in perm and "09:13:56.75" not in perm                              # whole-second literal in permission.py only
+    assert T.full_iso("2013-01-14T09:13:56.750000Z") == "2013-01-14T09:13:56.750000Z" and T.iso("2013-01-14T09:13:56.750000Z") == "2013-01-14T09:13:56Z"
 
 
 def test_a_ruling_to_rewrite_changes_ONLY_the_ruled_line(monkeypatch, tmp_path):
@@ -252,22 +251,36 @@ def test_the_measured_shift_must_match_the_settled_notice_within_its_stated_tole
     assert T.shift_problems(stats, {**ok, "expected_shift_seconds": {"1": 6990, "2": 6993}, "tolerance_seconds": 2})   # 3 s off with ±2 ⇒ refuse
 
 
-def test_the_settled_notice_must_state_its_tolerance_and_settle_1(tmp_path):
-    good = tmp_path / "n.json"
-    good.write_text('{"settled_1": true, "expected_shift_seconds": {"1": 6993}, "tolerance_seconds": 2}', encoding="utf-8")
-    assert T.load_notice(str(good))["tolerance_seconds"] == 2
-    for bad in ('{"settled_1": true, "expected_shift_seconds": {"1": 6993}}', '{"settled_1": false, "expected_shift_seconds": {}, "tolerance_seconds": 1}',
-                '{"settled_1": true, "expected_shift_seconds": {"1": 1}, "tolerance_seconds": true}', '{"settled_1": true, "expected_shift_seconds": {"1": 1}, "tolerance_seconds": -1}'):
-        p = tmp_path / "b.json"; p.write_text(bad, encoding="utf-8")
-        with pytest.raises(ValueError):
-            T.load_notice(str(p))
+def _notice(tmp_path, **over):
+    d = {"settled_1": True, "new_build_id": "11111111-1111-4111-8111-111111111111", "expected_shift_seconds": {"1": 6993, "2": 6993, "3": 6993}, "tolerance_seconds": 2}
+    d.update(over)
+    p = tmp_path / "notice.json"
+    import json as _j
+    p.write_text(_j.dumps(d, allow_nan=True))
+    return str(p)
+
+
+def test_the_settled_notice_is_strict_finite_complete_and_bound_to_a_build(tmp_path):
+    good = T.load_notice(_notice(tmp_path))
+    assert good["tolerance_seconds"] == 2 and len(good["_sha256"]) == 64
+    assert T.load_notice(_notice(tmp_path, expected_shift_seconds={"1": 6993, "2": {"start": 6992, "end": 6994}, "3": 6993}))["expected_shift_seconds"]["2"] == {"start": 6992, "end": 6994}
+    bad = [dict(settled_1=False), dict(new_build_id=None), dict(new_build_id="not-a-uuid"), dict(expected_shift_seconds={"1": 6993, "2": 6993}),                    # a level missing
+           dict(expected_shift_seconds={"1": 6993, "2": 6993, "3": 6993, "4": 0}), dict(expected_shift_seconds={"1": 6993, "2": 6993, "3": {"start": 1}}),          # level 4; one boundary only
+           dict(expected_shift_seconds={"1": float("nan"), "2": 6993, "3": 6993}), dict(expected_shift_seconds={"1": float("inf"), "2": 6993, "3": 6993}),
+           dict(expected_shift_seconds={"1": True, "2": 6993, "3": 6993}), dict(expected_shift_seconds={"1": "6993", "2": 6993, "3": 6993}),
+           dict(tolerance_seconds=float("nan")), dict(tolerance_seconds=float("inf")), dict(tolerance_seconds=0.5), dict(tolerance_seconds=0), dict(tolerance_seconds=-1), dict(tolerance_seconds=True),
+           dict(tolerance_seconds=None)]
+    for over in bad:
+        with pytest.raises(ValueError, match="notice is invalid"):
+            T.load_notice(_notice(tmp_path, **over))
+
 
 
 def test_apply_is_refused_without_the_hold_lift_and_dry_run_excludes_apply_and_writes_nothing(monkeypatch, tmp_path, capsys):
     new = "11111111-1111-4111-8111-111111111111"
     assert T.main(["--new-build-id", new, "--apply"], conn=FakeConn()) == 2
     assert "ST-SL1-HOLD" in capsys.readouterr().err
-    assert T.main(["--new-build-id", new, "--apply", "--dry-run", "--hold-lifted", "M1"], conn=FakeConn()) == 2
+    assert T.main(["--new-build-id", new, "--apply", "--dry-run", "--settled-received", "M1"], conn=FakeConn()) == 2
     monkeypatch.setattr(T.DD, "fetch_dasha_periods_multilevel", lambda conn, chart, **kw: [])
     monkeypatch.setattr(T, "fetch_vimshottari_builds", lambda conn, chart: {})
     monkeypatch.setattr(T, "fetch_preflight_facts", lambda conn, chart: {"builds": [], "non_scope": 0, "scope": 0, "throughput": {}})
@@ -348,11 +361,11 @@ def test_capture_old_writes_a_file_and_refuses_when_the_pinned_build_has_no_rows
     rows = T.norm_rows(build3("old"))
     monkeypatch.setattr(T.DD, "fetch_dasha_periods_multilevel", lambda conn, chart, **kw: rows)
     p = tmp_path / "cap.json"
-    assert T.main(["--new-build-id", NEWB, "--capture-old", str(p)], conn=FakeConn()) == 0 and p.exists()
+    assert T.main(["--capture-old", str(p)], conn=FakeConn()) == 0 and p.exists()
     assert T.load_capture(str(p), PERM.DASHA_READ_CONTRACT["chart_id"], OLDB) == rows
     monkeypatch.setattr(T.DD, "fetch_dasha_periods_multilevel", lambda conn, chart, **kw: [])
     q = tmp_path / "none.json"
-    assert T.main(["--new-build-id", NEWB, "--capture-old", str(q)], conn=FakeConn()) == 3 and not q.exists()
+    assert T.main(["--capture-old", str(q)], conn=FakeConn()) == 3 and not q.exists()
 
 
 def test_the_settled_1_mechanical_guard_refuses_each_condition_separately():
@@ -396,7 +409,7 @@ def test_the_tool_refuses_another_system_or_level_4_and_reads_only_levels_1_to_3
     monkeypatch.setattr(T, "fetch_vimshottari_builds", lambda conn, chart: {})
     monkeypatch.setattr(T, "fetch_preflight_facts", lambda conn, chart: {"builds": [], "non_scope": 0, "scope": 0, "throughput": {}})
     T.main(["--new-build-id", new, "--dry-run"], conn=FakeConn())
-    T.main(["--new-build-id", new, "--capture-old", str(tmp_path / "c.json")], conn=FakeConn())
+    T.main(["--capture-old", str(tmp_path / "c.json")], conn=FakeConn())
     assert seen and all(lv == (1, 2, 3) for lv in seen), seen                         # never level 4
 
 
@@ -447,7 +460,7 @@ class Psycopg2Shaped:
 def test_the_UNMOCKED_reader_through_a_psycopg3_shaped_connection_feeds_capture_old(tmp_path):
     conn = Psycopg3Shaped({OLDB: _db_tuples("old", OLDB)})
     p = tmp_path / "cap.json"
-    assert T.main(["--new-build-id", NEWB, "--capture-old", str(p)], conn=conn) == 0 and p.exists()
+    assert T.main(["--capture-old", str(p)], conn=conn) == 0 and p.exists()
     rows = T.load_capture(str(p), PERM.DASHA_READ_CONTRACT["chart_id"], OLDB)
     assert sorted({r["level_n"] for r in rows}) == [1, 2, 3] and len(rows) == 5
     assert conn.sql and all("chart_dashas" in q for q, _ in conn.sql)                   # the real SELECT ran
@@ -455,7 +468,7 @@ def test_the_UNMOCKED_reader_through_a_psycopg3_shaped_connection_feeds_capture_
 
 def test_a_psycopg2_shaped_connection_STOPS_by_name_not_by_no_rows(tmp_path, capsys):
     p = tmp_path / "cap.json"
-    assert T.main(["--new-build-id", NEWB, "--capture-old", str(p)], conn=Psycopg2Shaped()) == 3
+    assert T.main(["--capture-old", str(p)], conn=Psycopg2Shaped()) == 3
     err = capsys.readouterr().err
     assert "not a psycopg (v3) connection" in err and "no rows" not in err.lower() and not p.exists()
 
@@ -464,11 +477,11 @@ def test_an_empty_level_is_a_STOP_that_quotes_the_readers_own_logged_reason(tmp_
     class Boom(Psycopg3Shaped):
         def execute(self, sql, params=None):
             raise RuntimeError("relation chart_dashas is unreachable")                 # the reader swallows this into []
-    assert T.main(["--new-build-id", NEWB, "--capture-old", str(tmp_path / "c.json")], conn=Boom({})) == 3
+    assert T.main(["--capture-old", str(tmp_path / "c.json")], conn=Boom({})) == 3
     err = capsys.readouterr().err
     assert "NO rows for level(s) ['MD', 'AD', 'PD']" in err and "relation chart_dashas is unreachable" in err
     only12 = Psycopg3Shaped({OLDB: [r for r in _db_tuples("old", OLDB) if r[2] in (1, 2)]})                 # a level missing, the others present
-    assert T.main(["--new-build-id", NEWB, "--capture-old", str(tmp_path / "d.json")], conn=only12) == 3
+    assert T.main(["--capture-old", str(tmp_path / "d.json")], conn=only12) == 3
     assert "['PD']" in capsys.readouterr().err
 
 
@@ -476,18 +489,15 @@ def test_a_dasha_read_conflict_is_a_named_refusal(monkeypatch, capsys):
     def boom(conn, chart, **kw):
         raise T.DD.DashaReadConflict("two rows, one identity, different contract fields")
     monkeypatch.setattr(T.DD, "fetch_dasha_periods_multilevel", boom)
-    assert T.main(["--new-build-id", NEWB, "--capture-old", "/nonexistent/x.json"], conn=FakeConn()) == 3
+    assert T.main(["--capture-old", "/nonexistent/x.json"], conn=FakeConn()) == 3
     assert "dasha read conflict" in capsys.readouterr().err
 
 
 def test_the_notice_tolerance_must_be_at_least_one_second(tmp_path):
-    for tol in ("0", "0.5", "-1"):
-        p = tmp_path / "n.json"
-        p.write_text('{"settled_1": true, "expected_shift_seconds": {"1": 6993}, "tolerance_seconds": %s}' % tol)
+    for tol in (0, 0.5, -1):
         with pytest.raises(ValueError, match=">= 1"):
-            T.load_notice(str(p))
-    p.write_text('{"settled_1": true, "expected_shift_seconds": {"1": 6993}, "tolerance_seconds": 1}')
-    assert T.load_notice(str(p))["tolerance_seconds"] == 1
+            T.load_notice(_notice(tmp_path, tolerance_seconds=tol))
+    assert T.load_notice(_notice(tmp_path, tolerance_seconds=1))["tolerance_seconds"] == 1
 
 
 def test_a_missing_or_empty_forensic_report_stops_before_any_read(tmp_path, capsys):
@@ -579,6 +589,203 @@ def test_end_to_end_against_a_disposable_database_with_real_chart_dashas_shaped_
                 c.execute("INSERT INTO chart_dashas VALUES (%s,%s,'lahiri_chitrapaksha',%s,%s,%s,%s,%s,%s,%s,%s)", (r[0], chart, r[7], r[1], r[2], r[3], r[4], r[5], r[6], r[8]))
         rc = T.main(["--new-build-id", NEWB, "--old-rows", str(cap), "--settled-notice", str(notice), "--forensic-report", str(fr), "--dry-run"])
         assert rc == 3 and "exactly ONE" in capsys.readouterr().out
+    finally:
+        admin.execute(f'DROP DATABASE IF EXISTS "{name}" WITH (FORCE)')
+        admin.close()
+
+
+# ── Codex R17-1 (rest) / R17-3 / R17-4 / R17-5 / R17-6 / R17-7 ────────────────────────────────────────────────────────────────────────────────
+import math as _math
+
+
+def _stats_for(shift):
+    old, new = T.index_paths(build3("old")), T.index_paths(build3("new", shift_s=shift))
+    return T.shift_stats(old, new, T.match(old, new)["matched"])
+
+
+def test_a_fractional_shift_just_inside_is_accepted_and_just_outside_is_refused_at_FULL_precision(tmp_path):
+    n = T.load_notice(_notice(tmp_path, tolerance_seconds=1))                      # 6993 s ± 1 s on levels 1–3
+    for ok in (6993.0, 6993.9, 6992.1, 6994.0, 6992.0):
+        assert T.shift_problems(_stats_for(ok), n) == [], ok
+    for bad in (6994.1, 6991.9, 6994.9, 6990.0, 6993 + 1e-3 + 1):
+        assert T.shift_problems(_stats_for(bad), n), bad                           # whole-second truncation used to hide these
+
+
+def test_a_NaN_or_infinite_measurement_is_refused_not_passed(tmp_path):
+    n = T.load_notice(_notice(tmp_path))
+    nan = {lv: {side: {"min": float("nan"), "max": float("nan"), "mean": 0, "n": 1} for side in ("start", "end")} for lv in (1, 2, 3)}
+    assert T.shift_problems(nan, n)
+    inf = {lv: {side: {"min": float("inf"), "max": float("inf"), "mean": 0, "n": 1} for side in ("start", "end")} for lv in (1, 2, 3)}
+    assert T.shift_problems(inf, n)
+
+
+def test_the_two_boundaries_are_checked_separately_when_the_notice_gives_start_and_end(tmp_path):
+    n = T.load_notice(_notice(tmp_path, expected_shift_seconds={"1": {"start": 6993, "end": 7500}, "2": 6993, "3": 6993}, tolerance_seconds=1))
+    probs = T.shift_problems(_stats_for(6993.0), n)
+    assert probs and all("MD end" in p for p in probs)                              # only the MD END boundary disagrees
+
+
+def test_full_precision_is_kept_in_the_rows_and_the_capture(tmp_path):
+    rows = T.norm_rows([{**r, "start_iso": T._t(r["start_iso"]).replace(microsecond=250000)} for r in build3("old")])
+    assert all(".250000Z" in r["start_iso"] for r in rows)
+    p = tmp_path / "c.json"; T.write_capture(str(p), PERM.DASHA_READ_CONTRACT["chart_id"], OLDB, rows)
+    assert T.load_capture(str(p), PERM.DASHA_READ_CONTRACT["chart_id"], OLDB) == rows
+
+
+def _row(i, lvl, parent, lord="Mercury"):
+    return {"dasha_row_id": i, "level_n": lvl, "parent_row_id": parent, "lord_graha": lord, "start_iso": "2000-01-01T00:00:00Z", "end_iso": "2001-01-01T00:00:00Z", "verification_pass_status": TIER, "build_id": "b"}
+
+
+@pytest.mark.parametrize("rows,needle", [
+    ([_row("m", 1, None), _row("a", 2, "a")], "its own parent"),                                        # self-parented
+    ([_row("m", 1, None), _row("a", 2, "b"), _row("b", 2, "a")], "level 2"),                            # a two-row cycle at one level: wrong parent level
+    ([_row("m", 1, None), _row("a", 2, None)], "NO parent"),                                            # unreachable from any root
+    ([_row("m", 1, None), _row("a", 2, "ghost")], "missing parent"),
+    ([_row("m", 1, None), _row("p", 3, "m")], "expected 2"),                                            # wrong parent level
+    ([_row("m", 1, "m")], "level-1 row"),                                                              # a root with a parent
+    ([_row("m", 1, None), _row("m", 1, None)], "duplicate row id"),
+    ([_row("m", 1, None), _row("q", 4, "m")], "outside the in-scope levels"),
+])
+def test_a_malformed_tree_is_reported_by_name(rows, needle):
+    probs = T.tree_problems(rows, "side")
+    assert any(needle in p for p in probs), probs
+
+
+def test_a_well_formed_tree_has_no_problems_and_every_row_is_indexed_exactly_once():
+    rows = build3("old")
+    assert T.tree_problems(rows, "side") == [] and len(T.index_paths(rows)) == len(rows)
+
+
+def test_codexs_two_counterexamples_now_stop(monkeypatch, tmp_path, capsys):
+    """(1) three old rows vs four new rows where the extra new row is self-parented; (2) four vs four where a lord changes on a row unreachable from a root."""
+    base = [("m", 1, None, "Mercury"), ("a", 2, "m", "Mercury"), ("p", 3, "a", "Mercury")]
+    def tup(prefix, extra=None, shift=0, drop=()):
+        rows = [(f"{prefix}-{i}", lvl, None if par is None else f"{prefix}-{par}", lord) for i, lvl, par, lord in base]
+        return rows + ([extra] if extra else [])
+    def make(prefix, spec, shift=0):
+        out = []
+        for i, lvl, par, lord in spec:
+            out.append({"dasha_row_id": i, "level_n": lvl, "parent_row_id": par, "lord_graha": lord,
+                        "start_iso": T.full_iso(datetime.fromtimestamp(T._t("2000-01-01T00:00:00Z").timestamp() + 100 * len(out) + shift, tz=timezone.utc)),
+                        "end_iso": T.full_iso(datetime.fromtimestamp(T._t("2001-01-01T00:00:00Z").timestamp() + 100 * len(out) + shift, tz=timezone.utc)),
+                        "verification_pass_status": TIER, "build_id": prefix})
+        return out
+    old = make("old", tup("old"))
+    new_bad = make("new", tup("new", extra=("new-x", 2, "new-x", "Venus")), shift=6993)                         # (1) an extra self-parented row
+    new_probs = T.tree_problems(new_bad, "new build")
+    assert any("its own parent" in p for p in new_probs)
+    old_unreach = make("old", tup("old", extra=("old-u", 2, None, "Mercury")))
+    new_unreach = make("new", tup("new", extra=("new-u", 2, None, "Venus")), shift=6993)                        # (2) the lord of an unreachable row changed
+    assert T.tree_problems(old_unreach, "old build") and T.tree_problems(new_unreach, "new build")
+    # the capture of a malformed OLD tree STOPS the comparison (load_capture refuses it)
+    p = tmp_path / "cap.json"
+    T.write_capture(str(p), PERM.DASHA_READ_CONTRACT["chart_id"], OLDB, T.norm_rows(old_unreach))
+    with pytest.raises(ValueError, match="malformed"):
+        T.load_capture(str(p), PERM.DASHA_READ_CONTRACT["chart_id"], OLDB)
+
+
+def test_per_level_row_totals_must_be_equal(tmp_path):
+    good = dict(new_tier_ok=True, new_integrity={"orphans": [], "duplicates": 0}, m={"matched": [], "only_old": [], "only_new": []}, flips=[], ref_problems=[], forensic_report="f")
+    assert T.decide(**good, old_totals={1: 2, 2: 2, 3: 1}, new_totals={1: 2, 2: 2, 3: 1}) == []
+    assert any("per-level row totals differ" in s for s in T.decide(**good, old_totals={1: 2, 2: 2, 3: 1}, new_totals={1: 2, 2: 3, 3: 1}))
+    assert any("own parent" in s for s in T.decide(**good, tree_issues=["new build: row x is its own parent"]))
+
+
+def test_the_notice_must_name_the_same_build_as_the_cli_and_the_output_binds_the_notice_and_forensic_hashes(monkeypatch, tmp_path, capsys):
+    rows_old, rows_new = T.norm_rows(build3("old")), T.norm_rows(build3("new", shift_s=6993))
+    cap = tmp_path / "old.json"; T.write_capture(str(cap), PERM.DASHA_READ_CONTRACT["chart_id"], OLDB, rows_old)
+    monkeypatch.setattr(T.DD, "fetch_dasha_periods_multilevel", lambda conn, chart, build_id=None, **kw: rows_new if build_id == NEWB else [])
+    monkeypatch.setattr(T, "fetch_vimshottari_builds", lambda conn, chart: {NEWB: 117})
+    monkeypatch.setattr(T, "fetch_preflight_facts", lambda conn, chart: GOODFACTS)
+    monkeypatch.setattr(T, "remeasure_reference_rows", lambda old, new: ([], []))
+    fr = tmp_path / "f.md"; fr.write_text("anchors")
+    args = lambda notice: ["--new-build-id", NEWB, "--old-rows", str(cap), "--settled-notice", notice, "--forensic-report", str(fr), "--dry-run"]
+    rc = T.main(args(_notice(tmp_path)), conn=FakeConn())
+    out = capsys.readouterr().out
+    assert rc == 0 and "verdict: **CLEAN**" in out
+    assert "settled notice sha256:" in out and "forensic report sha256:" in out and "EXISTS and is NON-EMPTY ONLY" in out and "NOT independent validation" in out
+    rc = T.main(args(_notice(tmp_path, new_build_id="22222222-2222-4222-8222-222222222222")), conn=FakeConn())
+    assert rc == 3 and "names build 22222222" in capsys.readouterr().out                    # notice != --new-build-id
+    rc = T.main(args(_notice(tmp_path, new_build_id=None)), conn=FakeConn())
+    assert rc == 3 and "new_build_id is required" in capsys.readouterr().err               # a notice without its build is refused outright
+
+
+def test_apply_needs_only_SETTLED_received_and_says_the_production_hold_stays(monkeypatch, tmp_path, capsys):
+    new = NEWB
+    assert T.main(["--new-build-id", new, "--apply"], conn=FakeConn()) == 2
+    assert "SETTLED-1 received" in capsys.readouterr().err
+    with pytest.raises(SystemExit) as exc:
+        T.main(["--new-build-id", new, "--apply", "--settled-received", "M1", "--hold-lifted", "M2"], conn=FakeConn())        # the old flag no longer exists (argparse error)
+    assert exc.value.code == 2
+
+
+class _Boom:
+    """Any use of the connection fails the test: mode validation must happen BEFORE a connection is used."""
+    def __getattr__(self, name):
+        raise AssertionError(f"the connection was touched ({name}) before mode validation")
+
+
+@pytest.mark.parametrize("argv", [
+    ["--capture-old", "{p}", "--dry-run"],
+    ["--capture-old", "{p}", "--apply"],
+    ["--capture-old", "{p}", "--apply", "--dry-run", "--settled-received", "M1"],
+    ["--capture-old", "{p}", "--new-build-id", NEWB],
+    ["--capture-old", "{p}", "--settled-notice", "x.json"],
+    ["--capture-old", "{p}", "--old-rows", "x.json"],
+    ["--capture-old", "{p}", "--rulings", "x.json"],
+    ["--capture-old", "{p}", "--forensic-report", "x.md"],
+    ["--capture-old", "{p}", "--out", "x.md"],
+    ["--capture-old", "{p}", "--settled-received", "M1"],
+    ["--dry-run"],                                                                       # compare mode without --new-build-id
+    ["--new-build-id", "not-a-uuid"],
+    ["--new-build-id", NEWB, "--apply", "--dry-run", "--settled-received", "M1"],
+    ["--new-build-id", NEWB, "--rulings", "r.json"],                                     # rulings without --apply
+    ["--new-build-id", NEWB, "--apply"],                                                 # apply without the announcement
+    ["--new-build-id", NEWB, "--system", "kalachakra"],
+    ["--new-build-id", NEWB, "--max-level", "4"],
+    ["--capture-old", "{p}", "--system", "yogini"],
+])
+def test_every_mode_combination_is_validated_BEFORE_any_capture_or_connection_and_writes_nothing(tmp_path, argv):
+    p = tmp_path / "cap.json"
+    args = [x.replace("{p}", str(p)) for x in argv]
+    assert T.main(args, conn=_Boom()) == 2
+    assert not p.exists() and not list(tmp_path.iterdir())                                # nothing written by any refused combination
+
+
+def test_a_dry_run_writes_nothing_on_every_dispatch_path(monkeypatch, tmp_path):
+    monkeypatch.setattr(T.DD, "fetch_dasha_periods_multilevel", lambda conn, chart, **kw: [])
+    out = tmp_path / "evidence.md"
+    assert T.main(["--new-build-id", NEWB, "--dry-run", "--out", str(out)], conn=FakeConn()) == 3
+    assert not out.exists() and not list(tmp_path.iterdir())
+
+
+@pytest.mark.skipif(not _PG, reason="needs GOCHARA_A51_TEST_DATABASE_URL (a disposable PostgreSQL server; the test creates and drops its own database)")
+def test_the_NORMAL_cli_capture_path_against_a_disposable_database_without_a_pre_S_L1_replacement_build(monkeypatch, tmp_path, capsys):
+    """Codex R17-1 (rest): `--capture-old` through `conn=None` — the REAL psycopg3 read-only connect and the REAL reader — with NO --new-build-id and no lambda reader."""
+    import psycopg
+    from psycopg.conninfo import conninfo_to_dict, make_conninfo
+    base = conninfo_to_dict(_PG)
+    admin = psycopg.connect(make_conninfo(**{**base, "dbname": "postgres"}), autocommit=True)
+    name = f"repin_cap_{_uuid.uuid4().hex[:10]}"
+    admin.execute(f'CREATE DATABASE "{name}"')
+    try:
+        dsn = make_conninfo(**{**base, "dbname": name})
+        chart = PERM.DASHA_READ_CONTRACT["chart_id"]
+        with psycopg.connect(dsn, autocommit=True) as c:
+            c.execute("""CREATE TABLE chart_dashas (dasha_row_id uuid PRIMARY KEY, chart_id uuid NOT NULL, ayanamsha_id text NOT NULL, build_id uuid NOT NULL, system_id text NOT NULL,
+                           level_n int NOT NULL, parent_row_id uuid, lord_graha text NOT NULL, start_iso timestamptz NOT NULL, end_iso timestamptz NOT NULL,
+                           verification_pass_status text NOT NULL)""")
+            for r in _db_tuples("old", OLDB):                                                           # BEFORE S-L1: the pinned (old) build is what the database holds
+                c.execute("INSERT INTO chart_dashas VALUES (%s,%s,'lahiri_chitrapaksha',%s,%s,%s,%s,%s,%s,%s,%s)", (r[0], chart, r[7], r[1], r[2], r[3], r[4], r[5], r[6], r[8]))
+        monkeypatch.setenv("DATABASE_URL", dsn)
+        cap = tmp_path / "old.json"
+        assert T.main(["--capture-old", str(cap)]) == 0 and cap.exists()                                  # no conn=, no --new-build-id
+        rows = T.load_capture(str(cap), chart, OLDB)
+        assert sorted({r["level_n"] for r in rows}) == [1, 2, 3] and len(rows) == 5 and T.tree_problems(rows, "captured") == []
+        # the connection the tool opened is READ ONLY: a write through the same helper fails
+        with T.open_readonly_connection() as ro:
+            with pytest.raises(psycopg.errors.ReadOnlySqlTransaction):
+                ro.execute("INSERT INTO chart_dashas SELECT * FROM chart_dashas LIMIT 1")
     finally:
         admin.execute(f'DROP DATABASE IF EXISTS "{name}" WITH (FORCE)')
         admin.close()
