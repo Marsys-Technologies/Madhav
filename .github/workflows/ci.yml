@@ -423,6 +423,106 @@ jobs:
           M1211_AUDIT_GRANT_TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/m1211_audit_grant_test
         run: npx vitest run tests/integration/asset_throughput_state_audit_grants.db.test.ts --reporter=verbose
 
+      - name: C3/1225 — provision the bg_transit_av_gates SELECT grant test DB
+        env:
+          PGPASSWORD: postgres
+        run: |
+          psql -h localhost -U postgres -v ON_ERROR_STOP=1 -c "CREATE DATABASE m1225_av_gates_grant_test;"
+
+      - name: C3/1225 — data_plane_builder SELECT grant fails-before/succeeds-after against real Postgres
+        # The C2-audit proof for migration 1225: a role with EXACTLY
+        # data_plane_builder's pre-1225 grants (USAGE on schema public, nothing
+        # on bg_transit_av_gates) hits 'permission denied for table
+        # bg_transit_av_gates' on SELECT before the migration, and succeeds
+        # after the REAL 1225 file is applied — plus idempotency and
+        # no-widening controls (§N.8). Table DDL from the REAL 397 file;
+        # bg_transit_rules stubbed (as in the 1216 suite).
+        env:
+          M1225_AV_GATES_GRANT_TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/m1225_av_gates_grant_test
+        run: npx vitest run tests/integration/bg_transit_av_gates_builder_select_grant.db.test.ts --reporter=verbose
+
+      - name: C9/1231 — provision the gochara_resonance_map grant-record test DB
+        env:
+          PGPASSWORD: postgres
+        run: |
+          psql -h localhost -U postgres -v ON_ERROR_STOP=1 -c "CREATE DATABASE m1231_resonance_map_grant_test;"
+
+      - name: C9/1231 — gochara_resonance_map builder grant-record fails-before/succeeds-after against real Postgres
+        # The C7-finding proof for migration 1231 (which RECORDS the existing
+        # production ACL): a role with EXACTLY data_plane_builder's pre-1231
+        # grants (USAGE on schema public, nothing on gochara_resonance_map)
+        # hits 'permission denied for table gochara_resonance_map' on
+        # SELECT/INSERT before the migration, and succeeds after the REAL 1231
+        # file is applied — plus idempotency, exact-ACL scope (arwd + sequence
+        # USAGE/SELECT, nothing wider) and role-absent guard controls (§N.8).
+        # Table DDL from the REAL 459 file; bg_transit_rules/asset_registry
+        # stubbed (as in the 1225 suite).
+        env:
+          M1231_RESONANCE_MAP_GRANT_TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/m1231_resonance_map_grant_test
+        run: npx vitest run tests/integration/gochara_resonance_map_builder_grant_record.db.test.ts --reporter=verbose
+
+      - name: C16/1237 — provision the kala_gochara_windows grant-record test DB
+        env:
+          PGPASSWORD: postgres
+        run: |
+          psql -h localhost -U postgres -v ON_ERROR_STOP=1 -c "CREATE DATABASE m1237_windows_grant_test;"
+
+      - name: C16/1237 — kala_gochara_windows builder grant-record fails-before/succeeds-after against real Postgres
+        # The C15-finding proof for migration 1237 (which RECORDS the existing
+        # production ACL): a role with EXACTLY data_plane_builder's pre-1237
+        # grants (USAGE on schema public, nothing on kala_gochara_windows)
+        # hits 'permission denied for table kala_gochara_windows' on
+        # SELECT/INSERT before the migration, and succeeds after the REAL 1237
+        # file is applied — plus idempotency, exact-ACL scope (arwd + sequence
+        # USAGE/SELECT, nothing wider) and role-absent guard controls (§N.8).
+        # Table DDL from the REAL 460 file; asset_registry stubbed (as in the
+        # 1231 suite).
+        env:
+          M1237_WINDOWS_GRANT_TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/m1237_windows_grant_test
+        run: npx vitest run tests/integration/gochara_windows_builder_grant_record.db.test.ts --reporter=verbose
+
+      - name: C18/1238 — provision the kala_gochara_windows_v2 grant-record test DB
+        env:
+          PGPASSWORD: postgres
+        run: |
+          psql -h localhost -U postgres -v ON_ERROR_STOP=1 -c "CREATE DATABASE m1238_windows_v2_grant_test;"
+
+      - name: C18/1238 — kala_gochara_windows_v2 builder grant-record fails-before/succeeds-after against real Postgres
+        # The C16-flag proof for migration 1238 (which RECORDS the existing
+        # production ACL): a role with EXACTLY data_plane_builder's pre-1238
+        # grants (USAGE on schema public, nothing on kala_gochara_windows_v2)
+        # hits 'permission denied for table kala_gochara_windows_v2' on
+        # SELECT/INSERT before the migration, and succeeds after the REAL 1238
+        # file is applied — plus idempotency, exact-ACL scope (arwd + sequence
+        # USAGE/SELECT, nothing wider) and role-absent guard controls (§N.8).
+        # Table DDL from the REAL 542 file (supabase/migrations);
+        # asset_registry/kala_gochara_v2_build_state stubbed (as in the 1237
+        # suite).
+        env:
+          M1238_WINDOWS_V2_GRANT_TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/m1238_windows_v2_grant_test
+        run: npx vitest run tests/integration/gochara_windows_v2_builder_grant_record.db.test.ts --reporter=verbose
+
+      - name: C19/1239 — provision the overlay-tables grant-record test DB
+        env:
+          PGPASSWORD: postgres
+        run: |
+          psql -h localhost -U postgres -v ON_ERROR_STOP=1 -c "CREATE DATABASE m1239_overlay_grant_test;"
+
+      - name: C19/1239 — overlay builder grant-record fails-before/succeeds-after against real Postgres
+        # The C18-gap-list proof for migration 1239 (which RECORDS the existing
+        # production ACLs): a role with EXACTLY data_plane_builder's pre-1239
+        # grants (USAGE on schema public, nothing on kala_gochara_v2_build_state
+        # / kala_moorti_nirnaya / kala_vedha_gochara) hits 'permission denied'
+        # on SELECT/INSERT before the migration, and succeeds after the REAL
+        # 1239 file is applied — plus idempotency, exact-ACL scope (arwd +
+        # sequence USAGE/SELECT on the two BIGSERIAL sequences, nothing wider)
+        # and role-absent guard controls (§N.8). Table DDL from the REAL
+        # 525/526/541 files (supabase/migrations); asset_registry stubbed (as
+        # in the 1237/1238 suites).
+        env:
+          M1239_OVERLAY_GRANT_TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/m1239_overlay_grant_test
+        run: npx vitest run tests/integration/gochara_overlay_builder_grant_record.db.test.ts --reporter=verbose
+
       - name: A2.5/1216 — provision the gochara contract grants test DB
         env:
           PGPASSWORD: postgres
@@ -441,6 +541,102 @@ jobs:
         env:
           M1216_GOCHARA_GRANT_TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/m1216_gochara_grant_test
         run: npx vitest run tests/integration/gochara_contract_builder_grants.db.test.ts --reporter=verbose
+
+      - name: Pravāha B/1220 — provision the gochara builder function-EXECUTE test DB
+        env:
+          PGPASSWORD: postgres
+        run: |
+          psql -h localhost -U postgres -v ON_ERROR_STOP=1 -c "CREATE DATABASE m1220_gochara_fn_execute_test;"
+
+      - name: Pravāha B/1220 — gochara builder function EXECUTE against a deployment-faithful role mirror
+        # The 1216 suite built its schema as the superuser (PUBLIC keeps function
+        # EXECUTE), so it could not see that production's builder holds EXECUTE on
+        # none of the ka_gochara_* functions. THIS suite applies the REAL
+        # 1081/1153–1157/1216/1220 files as a role named amjis_app with PUBLIC
+        # EXECUTE revoked by default (the governed bootstrap), and proves:
+        # fails before, succeeds after, exact 18-function set, each grant
+        # individually necessary, builder cannot seal.
+        env:
+          M1220_GOCHARA_FN_TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/m1220_gochara_fn_execute_test
+        run: npx vitest run tests/integration/gochara_contract_builder_function_execute.db.test.ts --reporter=verbose
+
+      - name: C7 — provision the builder-role fixture test DB
+        env:
+          PGPASSWORD: postgres
+        run: |
+          psql -h localhost -U postgres -v ON_ERROR_STOP=1 -c "CREATE DATABASE c7_builder_role_test;"
+
+      - name: C7 — ka_gochara_resonance writer row build + insert AS data_plane_builder against real Postgres
+        # Pravāha C7 (steward M20261001T234151-3592): four production builds
+        # failed on privileges the suites never exercised because they connected
+        # as a superuser. The shared fixture (python-sidecar/tests/l3/_builder_role.py)
+        # rebuilds the production power structure — schema public owned by a
+        # NOLOGIN amjis_app with the governed bootstrap's PUBLIC-EXECUTE revoke
+        # in force, and a LOGIN data_plane_builder holding only what the REAL
+        # grant migrations (1211, 1216, 1217, 1220, 1225) give it, applied
+        # verbatim as the owner — then runs the resonance writer's row build +
+        # insert path through an authenticated builder connection and asserts a
+        # forbidden op (CREATE TABLE in public) is refused.
+        # requirements-ci.txt is the governance-gates suite's verified slim
+        # install set; this test's imports (psycopg, the resonance writer's
+        # jhora/brahmagyan chain) are all within it.
+        env:
+          C7_BUILDER_ROLE_TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/c7_builder_role_test
+        run: |
+          pip install -r python-sidecar/requirements-ci.txt --quiet
+          cd python-sidecar
+          python -m pytest tests/l3/test_builder_role_resonance_writer.py -q --tb=short
+
+      - name: C15 — ka_gochara_v4_41_candidate writer SQL layer AS data_plane_builder against real Postgres
+        # Pravāha C15 (steward M20261002T040828-9e76): the '4.1' candidate
+        # writer (#2799) will soon run in production as data_plane_builder.
+        # This suite drives its SQL layer (ledger.register_convention /
+        # publish_candidate / write_contacts / write_coverage and step06b's
+        # write_windows + update_manifest_windows_count — the production
+        # functions, never re-implemented) through an authenticated builder
+        # connection on the same shared fixture's production power structure,
+        # over the REAL migrations creating the touched tables (460/527/540/
+        # 541/542/556/567/568/1081/1087) applied verbatim as the owner. The
+        # windows-substep test is a strict-xfail FINDING: no checked-in grant
+        # migration gives the builder any privilege on kala_gochara_windows.
+        env:
+          C7_BUILDER_ROLE_TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/c7_builder_role_test
+        run: |
+          pip install -r python-sidecar/requirements-ci.txt --quiet
+          cd python-sidecar
+          python -m pytest tests/l3/test_builder_role_v4_41_candidate.py -q --tb=short
+
+      - name: C19 — overlay writers' SQL layer AS data_plane_builder against real Postgres
+        # Pravāha C19 (steward M20261002T062943-356e): the ka_moorti_nirnaya
+        # and ka_vedha_gochara overlay writers will be rebuilt in production at
+        # node-series step 3. This suite drives their exact delete-then-insert
+        # SQL and the ka_gochara writer's build-state upsert (the production
+        # functions/SQL, never re-implemented) through an authenticated
+        # builder connection on the shared fixture's production power
+        # structure, proving migration 1239's recorded ACLs are sufficient.
+        env:
+          C7_BUILDER_ROLE_TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/c7_builder_role_test
+        run: |
+          pip install -r python-sidecar/requirements-ci.txt --quiet
+          cd python-sidecar
+          python -m pytest tests/l3/test_builder_role_overlay_writers.py -q --tb=short
+
+      - name: C21 — WP10 cutover rehearsal gate against the CI Postgres service
+        # Pravāha C21 (steward M20261002T080256-690e): this suite used to skip
+        # NOT_RUN in every CI run — its fixture pointed at a local disposable
+        # cluster (55434) CI does not have, so the file was green without ever
+        # being evidence (CLAUDE.md §N.8). The fixture now creates its own
+        # uniquely named disposable database per run on the admin DSN's
+        # cluster (never the shared wp6 database; the cluster-global role is
+        # created if absent and never dropped). GOCHARA_WP10_REQUIRE_DB=1
+        # turns an unreachable server into a hard FAIL, never a silent skip.
+        env:
+          GOCHARA_WP10_ADMIN_DSN: postgresql://postgres:postgres@localhost:5432/postgres
+          GOCHARA_WP10_REQUIRE_DB: "1"
+        run: |
+          pip install -r python-sidecar/requirements-ci.txt --quiet
+          cd python-sidecar
+          python -m pytest tests/l3/gochara/test_wp10_cutover.py -q --tb=short
 
       - name: Nirmāṇa T0 — provision the migration 599 DAG test DB
         env:
@@ -1259,17 +1455,22 @@ jobs:
         # fact-category-pin-lint for future honest exceptions, if any arise.
         run: python platform/scripts/governance/check_fact_subject_wellformedness.py
 
-  governance-tool-tests:
-    # Suvarṇa E4.1: runs platform/scripts/governance/__tests__ as a whole, so the landed Nikaṣa tools and the
-    # drift_detector/schema_validator tests are enforced, not just present. No DB, no network: tests that need a
-    # live DB skip on their own (PG*/DATABASE_URL unset), and tests pinning campaign artifacts that are not on
-    # this tree skip via __tests__/conftest.py (each skip names the missing input and disarms when it lands).
-    # Measured locally (py3.13): 348 passed, 77 skipped, ~8s.
-    name: Governance Tool Tests (pytest)
+  governance-tool-tests-shard:
+    # Suvarṇa E4.1 (sharded, Exec Suvarṇa): runs platform/scripts/governance/__tests__ as a whole, so the landed Nikaṣa tools and the
+    # drift_detector/schema_validator tests are enforced, not just present. No DB, no network: tests that need a live DB skip on their
+    # own (PG*/DATABASE_URL unset), and tests pinning campaign artifacts that are not on this tree skip via conftest.
+    # The single job outgrew its 10-minute ceiling (median ~8.5 min, max ~10 min on main), so the test files are split across 3 shards by
+    # platform/scripts/governance/ci_shard.py (deterministic, size-balanced, `--verify` fails if any file is in no shard or in two).
+    # The aggregate job below keeps the original job name; this one is test steps only.
+    name: Governance Tool Tests shard ${{ matrix.shard }}/3
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
       contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3]
 
     steps:
       - name: Checkout
@@ -1283,12 +1484,41 @@ jobs:
       - name: Install Python dependencies
         run: pip install pyyaml pytest
 
-      - name: pytest — governance tool tests
+      - name: Shard partition is complete and disjoint
+        run: python platform/scripts/governance/ci_shard.py --count 3 --verify
+
+      - name: pytest — governance tool tests (shard ${{ matrix.shard }}/3)
         # Env is deliberately scrubbed of DB settings so nothing can reach a database.
         env:
           DATABASE_URL: ''
           PGHOST: ''
-        run: python -m pytest platform/scripts/governance/__tests__ -q --no-header -rs
+        run: |
+          # a failing or empty ci_shard.py must stop here: `pytest $(…)` would swallow its exit status and collect the whole repo
+          mapfile -t FILES < <(python platform/scripts/governance/ci_shard.py --count 3 --index ${{ matrix.shard }})
+          [ "${#FILES[@]}" -gt 0 ] || { echo "::error::ci_shard.py returned no test files for shard ${{ matrix.shard }}"; exit 1; }
+          python -m pytest "${FILES[@]}" -q --no-header -rs
+
+  governance-tool-tests:
+    # The ORIGINAL job name, kept as ONE check: green only when every shard above is green (a cancelled, skipped or failed shard is not
+    # green). The Suvarṇa plan's `ci_job_passed` detectors name this job, so they keep meaning "the whole governance test directory
+    # passed". (It is not in the branch ruleset's required list today; that is unchanged.)
+    name: Governance Tool Tests (pytest)
+    needs: governance-tool-tests-shard
+    if: ${{ always() }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+
+    steps:
+      - name: Every shard passed
+        env:
+          SHARDS_RESULT: ${{ needs.governance-tool-tests-shard.result }}
+        run: |
+          if [ "$SHARDS_RESULT" != "success" ]; then
+            echo "::error::governance test shards finished '$SHARDS_RESULT', not 'success'"; exit 1
+          fi
+          echo "all governance test shards passed"
 
   governance-gates:
     # v1.2 follow-on (2026-05-28): four gates from session_queue.yaml that the
@@ -1521,6 +1751,25 @@ jobs:
         # 7 subtests passed — identical to the pre-change run. Any drift is a regression.
         run: |
           pip install -r platform/python-sidecar/requirements-ci.txt --quiet
+          # Swiss .se1 corpus (SS ruling N-28 / TI-ephemeris-fix-001): the sidecar's
+          # ephemeris helper fails closed without it (no silent Moshier fallback), so
+          # the suite runs on the same SHA-pinned files as Dockerfile.pipeline.
+          se1_dir="$(mktemp -d)"
+          for se1_file in sepl_18.se1 semo_18.se1 seas_18.se1; do
+            curl --fail --silent --show-error --location --retry 2 \
+              "https://storage.googleapis.com/madhav-ephemeris/se1/$se1_file" \
+              --output "$se1_dir/$se1_file"
+          done
+          (cd "$se1_dir" && printf '%s\n' \
+            'ca1393ceab3a44fbc895887cf789c68819ae6a1cbc9b22225872dbe4ccd99a66  sepl_18.se1' \
+            '1ca07bd67c24374d77226180c20a4f9996cba013697894810518e7eb582ca4f7  semo_18.se1' \
+            'a2cd8fc33807c78ca9a700c91c2e042258b12fc4796519e00781440b5ad8b2e2  seas_18.se1' \
+            | sha256sum -c -)
+          export SE_EPHE_PATH="$se1_dir"
+          # C22: the l3/gochara Swiss tests (e.g. test_a25_moon_file_backend_probe.py)
+          # read the corpus directory from SE_EPHE_PATH; the REQUIRE flag turns an
+          # absent corpus into a hard failure instead of a silent skip (§N.8).
+          export GOCHARA_SE1_REQUIRE=1
           cd platform/python-sidecar
           # Nirmana F0: this checked-in artefact is the web planner's source of
           # sidecar-owned writer hashes. Any Python writer change must regenerate
@@ -1528,7 +1777,7 @@ jobs:
           python -m pipeline.orchestrator.provenance_inventory --check
           # Nirmana analysis-receipt pins retired (NIRMANA-SUPERSESSION): the per-layer pins check and its tests no longer run;
           # the writer digest inventory check above stays (it keeps generated writer hashes honest).
-          pytest tests/ bodha_writers/__tests__ pipeline/orchestrator/tests/ \
+          pytest tests/ bodha_writers/__tests__ ga_writers/__tests__ pipeline/orchestrator/tests/ \
             pipeline/orchestrator/writers/tests/test_bg_sky_calendar.py \
             pipeline/orchestrator/writers/tests/test_bg_texts_metadata_upsert.py \
             pipeline/orchestrator/writers/tests/test_bg_texts_source_manifest.py \
@@ -1537,7 +1786,7 @@ jobs:
             --ignore=tests/extractors/test_cgm_extractor.py \
             --ignore=tests/test_l0_remedy_corpus.py \
             -m "not integration" \
-            -q --tb=short --no-header
+            -q -rs --tb=short --no-header
 
       - name: Nirmāṇa L0 — pinned Swiss Ephemeris corpus probe
         # This is a production-shaped positive probe, not the ordinary fallback-only
@@ -1553,7 +1802,116 @@ jobs:
               --output "$nirmana_ephe_dir/$nirmana_ephe_file"
           done
           cd platform/python-sidecar
-          SWE_EPHE_PATH="$nirmana_ephe_dir" pytest tests/test_service_probes.py -q
+          # test_swiss_backend_helper.py also needs the corpus (it skips without it):
+          # it proves the .se1 backend fails closed, survives the PyJHora import and
+          # holds under threads (SS ruling N-28 / TI-ephemeris-fix-001).
+          SWE_EPHE_PATH="$nirmana_ephe_dir" pytest tests/test_service_probes.py tests/test_swiss_backend_helper.py -q
+
+  governance-gates-gochara:
+    # C23 (Suvarṇa §N.8 finding; steward ruling M20261002T182324-6b9a): the four
+    # sidecar gochara test directories sat outside every pytest selection —
+    # green because never run. They run HERE, in a separate PARALLEL job, so the
+    # long-standing governance-gates job keeps its exact pre-C23 selection and
+    # ~11-minute duration. The dominant real-engine files (four files measuring
+    # 74-122s each locally) plus the previously marked slow tests run SHARDED
+    # over three slow legs (no pytest-xdist — the Swiss ephemeris lock is
+    # global); every leg targets < ~12 min wall. test_ci_slow_shard_coverage.py
+    # (in the fast leg) FAILS if any slow_real_ephemeris-marked file is in no
+    # shard, so a new slow file cannot be silently unrun. NOTE: until this job
+    # is added to the branch-protection required checks (a repository-settings
+    # act for the owner/steward) it RUNS on every PR but does not gate.
+    name: Governance Gates — gochara sidecar tests (C23)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - leg: fast
+          # Slow shards, balanced by measured local standalone time (Moshier):
+          # shard 1 ≈ 374s, shard 2 ≈ 270s, shard 3 ≈ 357s. Keep this list in
+          # sync with the slow_real_ephemeris marks —
+          # test_ci_slow_shard_coverage.py enforces it.
+          - leg: slow-1
+            shard_files: "services/gochara_v3/tests/test_lambda_v3_bounded.py services/gochara_v3/tests/test_mr23_w12_adverse_window_golden.py"
+          - leg: slow-2
+            shard_files: "services/gochara_v3/tests/test_direction_restored.py services/gochara_v3/tests/test_graded_suppression.py"
+          - leg: slow-3
+            shard_files: "services/gochara_v3/tests/test_v1_parity.py services/gochara_v3/tests/test_lambda_decomposition.py services/gochara_v3/tests/test_w2g_arc_substrate.py"
+          - leg: benchmark
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install Python dependencies
+        run: pip install -r platform/python-sidecar/requirements-ci.txt --quiet
+
+      - name: Swiss .se1 corpus (SHA-pinned)
+        # The same immutable public corpus the governance-gates job uses (SS
+        # ruling N-28 / TI-ephemeris-fix-001), so the goldens see the same
+        # SHA-pinned positions as every other CI consumer.
+        run: |
+          se1_dir="$(mktemp -d)"
+          echo "SE1_DIR=$se1_dir" >> "$GITHUB_ENV"
+          for se1_file in sepl_18.se1 semo_18.se1 seas_18.se1; do
+            curl --fail --silent --show-error --location --retry 2 \
+              "https://storage.googleapis.com/madhav-ephemeris/se1/$se1_file" \
+              --output "$se1_dir/$se1_file"
+          done
+          (cd "$se1_dir" && printf '%s\n' \
+            'ca1393ceab3a44fbc895887cf789c68819ae6a1cbc9b22225872dbe4ccd99a66  sepl_18.se1' \
+            '1ca07bd67c24374d77226180c20a4f9996cba013697894810518e7eb582ca4f7  semo_18.se1' \
+            'a2cd8fc33807c78ca9a700c91c2e042258b12fc4796519e00781440b5ad8b2e2  seas_18.se1' \
+            | sha256sum -c -)
+
+      - name: pytest — gochara fast dirs + unmarked gochara_v3 tests (required)
+        if: matrix.leg == 'fast'
+        timeout-minutes: 15
+        run: |
+          export SE_EPHE_PATH="$SE1_DIR"
+          cd platform/python-sidecar
+          # The whole gochara_v3/tests directory is selected, so a NEW file runs
+          # here by default unless it carries a marker. Includes
+          # test_ci_slow_shard_coverage.py — the shard-coverage guard.
+          pytest services/gochara_v3/mechanisms/tests \
+            services/ka_gochara_resonance/tests \
+            scripts/kala_admission/tests \
+            services/gochara_v3/tests \
+            -m "not integration and not slow_real_ephemeris and not benchmark" \
+            -q -rs --tb=short --no-header
+
+      - name: pytest — slow real-ephemeris shard ${{ matrix.leg }} (required; budget 20 min)
+        if: matrix.leg != 'fast' && matrix.leg != 'benchmark'
+        timeout-minutes: 20
+        run: |
+          export SE_EPHE_PATH="$SE1_DIR"
+          cd platform/python-sidecar
+          # Full-engine JD sweeps (200-1000 samples) with real Swiss positions per
+          # planet per JD (transit_search.py:249-251,337). REQUIRED — never
+          # continue-on-error.
+          pytest ${{ matrix.shard_files }} -m slow_real_ephemeris \
+            -q --tb=short --no-header
+
+      - name: pytest — non-gating benchmark (continue-on-error; NOT a gate)
+        if: matrix.leg == 'benchmark'
+        # test_speedup.py asserts TIMING RATIOS (v3-vs-v1 speedup, linear scaling)
+        # and is load-sensitive by construction — a red here can be runner load,
+        # not a regression. Visible but NON-GATING, never in a required step.
+        continue-on-error: true
+        timeout-minutes: 15
+        run: |
+          export SE_EPHE_PATH="$SE1_DIR"
+          cd platform/python-sidecar
+          pytest services/gochara_v3/tests -m benchmark \
+            -q --tb=short --no-header
 
   density-census:
     # doctrine-waves D-1.5b Lane B-7 (CLAUDE.md §N.6 — Serving Density Principle).

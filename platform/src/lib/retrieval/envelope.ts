@@ -1186,6 +1186,11 @@ export const JUDGMENT_FLAG_CODES = [
   // ── hollow-emitter honesty (register_p1_synthesis.ts / register_p1_reference.ts) ──
   'hollow_envelope_no_data_rows',
   'hollow_envelope_shape_not_evaluated',
+  // ── Āyurdāya (longevity) figure disclosure (L1_ganita/ayurdaya_unreduced_base.ts; SS N-62 Q10):
+  // a served ayurdaya year figure is an UNREDUCED BASE figure (no haranas applied) — or, when the
+  // served row's own harana_status cannot confirm that, a figure of unverified reduction status.
+  // Ethical Framework: never serve a bare "N-year" longevity total with no caveat. ──
+  'ayurdaya_unreduced_base_figures',
   // ── transitional catch-all for a bare string this migration cannot classify further ──
   'legacy_unstructured_flag',
 ] as const

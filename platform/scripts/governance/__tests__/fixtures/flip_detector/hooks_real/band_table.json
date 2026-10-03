@@ -1,0 +1,19 @@
+{
+  "lane": "band_table",
+  "ruling": "band table (SS N-62, Q-L1-16(c), I-28)",
+  "pr": "branch suvarna/land/TI-l1-band-x2-001",
+  "charts": ["482012f1"],
+  "description": "ONE band table over ga_condition_composite.condition_score (cut points 0.4 / 0.7, owner ga_condition, read by ga_medical and ga_vastu); a NULL score stores 'unknown', never 'neutral'. THE OUTPUTS THIS LANE CHANGES ARE NOT IN ANY TABLE THIS DETECTOR READS: ga_medical.indication_strength (canonical: 15 rows 'mild' -> 'moderate', the scores 0.6 to 0.7: Saturn x5 ayanamshas, Rahu x5, Ketu x4, Jupiter raman x1) and ga_vastu_planet_direction_map.direction_impact (canonical: 0 rows change; the NULL-score 'neutral' -> 'unknown' path is unreached on stored data). The detector's four tables (chart_facts, chart_divisionals, chart_dashas, panchanga_daily) therefore carry NO change from this lane. The entry below is a regression claim, not an attribution of a real change: the ga_condition re-run that precedes ga_medical/ga_vastu in S-L1 re-emits the two floored per-varga avastha categories listed (constant text, 45 rows, fact_key D_ALL) byte-identically. See BAND_X2_LANE_INTENT_v1_0.md section 6 (old-vs-new) and section 11 (detector coverage gap).",
+  "may_change": [
+    {
+      "table": "chart_facts",
+      "categories": ["graha_avastha_jagradadi_per_varga", "graha_avastha_sayanadi_per_varga"],
+      "fact_keys": ["D_ALL"],
+      "ayanamsha_ids": ["lahiri_chitrapaksha", "krishnamurti", "true_chitra", "raman", "surya_siddhanta_classical"],
+      "change_types": ["value", "appeared", "disappeared", "occurrence_count", "tier"],
+      "expected_direction": "none. These are the INTRINSICALLY_D1_AVASTHAS floor rows ga_condition writes (verification_pass_status 'floored', fact_value_text a fixed reason string): the band-table change does not touch ga_condition's chart_facts output.",
+      "expected_count": {"exact": 0},
+      "note": "Regression claim only. A nonzero count here would mean ga_condition's chart_facts emission changed, which this lane does not intend. Disjoint from ga_condition_fallback.json's category (graha_avastha_lajjitadi_per_varga) so the two lanes never co-claim a change."
+    }
+  ]
+}

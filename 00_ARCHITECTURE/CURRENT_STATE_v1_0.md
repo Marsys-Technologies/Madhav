@@ -1,6 +1,6 @@
 ---
 artifact: CURRENT_STATE_v1_0.md
-version: 6.91
+version: 6.93
 status: LIVE
 produced_during: STEP_10_SESSION_LOG_SCHEMA (Step 0 → Step 15 governance rebuild)
 produced_on: 2026-04-24
@@ -56,6 +56,15 @@ consumers:
     `session_close.session_id`
   - Every session-close checklist from Step 10 onward
 changelog:
+  - v6.93 (2026-10-03, AI-CONSOLE-CATALOG-CORRECTION-20261003): records the
+    first rollout's failed live acceptance/verified rollback and the corrected
+    catalogue-scope production qualification at runtime main 55a666f8943b.
+    Model/effort refresh and unsaved CLI role controls plus AGY validation passed;
+    full Pariprasna smoke and unrelated successor-main synchronization remain
+    separately qualified, not inferred from catalogue readiness.
+  - v6.92 (2026-10-02, AI-CONSOLE-CATALOG-REFRESH-20261002): records source-only
+    catalogue refresh implementation and verification; protected integration,
+    production migration/bridge release and live verification remain pending.
   - v6.91 (2026-09-27, L3-GOCHARA-WP0-7-ADK0018-20260927; renumbered from v6.89 at the 2026-09-29 origin/main merge — main independently used v6.87–v6.88 for the AI-CLI-VM-BRIDGE and NIRMANA-SUPERSESSION entries; earlier renumbered from v6.82 at the prior origin/main merge): §2 top banner replaced for the
     ADK-0018 final-runway session — (a) ADK-0017 carried block 4 CLOSED on-branch:
     step06a_class_context.py wires the step06b --class-context-json from the real L1
@@ -6146,6 +6155,21 @@ block (post-rebuild era), and proceeds.
 
 ## §2 — Canonical state block
 
+> **AI CONSOLE CATALOGUE REFRESH — CORRECTED PRODUCTION SCOPE VERIFIED (2026-10-03).**
+> PR #2985 released runtime main `55a666f8943bcda313f1e9bc52f3ea3d47916c96` through
+> protected CI/deployment. The paired private bridge matches reviewed source and
+> migration 1301 is applied and immutable. Authenticated OpenAI/Gemini/OpenRouter
+> refresh, Codex/Claude provider-locked and mixed unsaved role/effort controls, and
+> explicit AGY 1.2.15 subscription validation passed. Independent 22:28–22:43 UTC
+> observation: all 32 AI Console requests 200, zero server 5xx/ERROR. The first
+> PR #2977 rollout failed acceptance and was rolled back, not declared successful.
+> This is NOT full Pariprasna health or paid-API cost proof; the separate real-turn
+> smoke failed. Main advanced through unrelated PR #2982 to `b4c4b89fd7d4` while
+> qualifying; its automatic deployment `37073733578` is tracked separately.
+> No saved key, role or default changed. Scoped live receipt and remaining boundaries:
+> `briefs/ai_console_catalog_refresh/PRODUCTION_ACCEPTANCE.md`.
+> Other campaigns and their production state are unchanged.
+
 > ⛔ **NIRMĀṆA ELEVATION CAMPAIGN — SUPERSEDED (2026-09-28, native decision).** Off; will not
 > resume. Do not run its conductor or layer supervisors (`NIRMANA_HOLD` is set). Successor: the
 > **Nikaṣa engine** (`/Users/Dev/madhav-nikasha`, `campaign/nikasha-test`, PR #2736; state in
@@ -9717,10 +9741,13 @@ current_state:
   # updated but this dedicated pointer field was missed, which schema_validator.py's
   # current_state_last_session_id_disagreement check caught at this session's open. Fixed
   # here rather than carried forward as a second miss.)
-  last_session_id: MADHAV-AI-CLI-VM-BRIDGE-20260929
-  predecessor_session: JATAKA-CONTROLLED-PROD-ROLLOUT-20260927
+  last_session_id: AI-CONSOLE-CATALOG-CORRECTION-20261003
+  last_session_closed_at: "2026-10-02T22:52:57Z"
+  last_session_agent: Codex
+  last_session_cowork_thread_name: "Madhav — AI Console catalogue release correction"
+  predecessor_session: AI-CONSOLE-CATALOG-RELEASE-20261003
   last_product_strategy_session: MADHAV-DATA-PLANE-V2-20260913
-  last_session_drift_verdict: "AI Console VM CLI bridge production repair: the four CLIs were healthy on the companion VM, but the Cloud Run web service had no transport to them and correctly kept local child-process execution disabled. Added a private, token-authenticated, fixed-operation bridge on the VM and Direct VPC routing from Cloud Run while retaining the existing grant, limit, timeout, no-silent-fallback and validation-seal controls. Full CI passed (14,359 Vitest tests passed, 750 skipped, 2 todo; TypeScript 0 errors; ESLint 0 errors with 583 pre-existing warnings). PR #2753 merged and exact-SHA deployment run 36505937019 promoted the matching revision to 100% traffic. Direct VM smoke tests and authenticated production AI Console validation both prove Codex, Claude Code, Gemini/Antigravity and Kimi Code are reachable. Public bridge access is blocked; unauthenticated private access returns 401."
+  last_session_drift_verdict: "AI Console corrected catalogue scope production-verified at runtime 55a666f: 15,099 tests passed, 975 skipped, 2 todo; TypeScript/lint zero errors, 595 existing warnings; 22 guarded disposable-DB tests passed. Independent review and 15-minute live watch passed; all 32 AI Console requests returned 200, no 5xx/ERROR. Applied migration 1301 immutable, exact private bridge pair live, authenticated model/effort controls and AGY subscription validation passed. First rollout failed and was rolled back. Two LOW unrelated local chart-schema checks remain unqualified; minor AGY stale refresh hint booked. Main advanced through unrelated b4c4b89 and its deployment is tracked separately; separate full Pariprasna smoke failed. No saved roles/default/keys changed and no paid API generation test was run."
   product_definition: 00_ARCHITECTURE/MADHAV_PRODUCT_DEFINITION_v3_0.md
   data_plane_proposal: 00_ARCHITECTURE/briefs/nirmana/MADHAV_DATA_PLANE_VALUE_ARCHITECTURE_v2_0.md
   planner_knowledge_candidate: 00_ARCHITECTURE/briefs/nirmana/MADHAV_PLANNER_CAPABILITY_KNOWLEDGE_AND_INQUIRY_IMPLEMENTATION_v1_0.md

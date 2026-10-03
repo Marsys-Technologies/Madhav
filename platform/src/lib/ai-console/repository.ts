@@ -9,10 +9,11 @@ import { CLI_REGISTRY, validateCliModelId } from './cli/registry'
 import { CLI_BUILTIN_MODEL_DB_ID } from './cli/types'
 import { AiConsoleError, AiErrorCodeSchema, normalizeAiError } from './errors'
 import { configurationKindMatchesRoles, type ConfigurationKind } from './configuration-kind'
+import { cliEffortLevels, providerEffortLevels } from './effort'
 import {
-  AI_ROLES, CLI_IDS, AiChoiceRefSchema, AiRoleSchema, CliIdSchema, ConversationAiSelectionSchema,
+  AI_ROLES, CLI_IDS, AiChoiceRefSchema, AiRoleSchema, AiEffortSchema, CliIdSchema, ConversationAiSelectionSchema,
   ProviderIdSchema, RoleAssignmentsSchema, RoutingSnapshotSchema, SafeProviderConnectionSchema,
-  type AiChoiceRef, type AiRole, type RoleAssignments, type RoleTarget, type SafeProviderConnection,
+  type AiChoiceRef, type AiEffort, type AiRole, type RoleAssignments, type RoleTarget, type SafeProviderConnection,
 } from './types'
 
 type Client = Pick<PoolClient, 'query'>
@@ -43,7 +44,8 @@ async function assertAssignments(client: Client, userId: string, assignments: Ro
   const distinct = new Map<string, { target: RoleTarget; roles: AiRole[] }>()
   for (const role of AI_ROLES) {
     const target = assignments[role]
-    const key = JSON.stringify([target.kind, target.kind === 'provider_model' ? target.connectionId : target.cliId, target.modelId])
+    const key = JSON.stringify([target.kind, target.kind === 'provider_model' ? target.connectionId : target.cliId,
+      target.modelId, target.effort ?? null])
     const group = distinct.get(key) ?? { target, roles: [] }
     group.roles.push(role)
     distinct.set(key, group)
@@ -74,6 +76,12 @@ function rowChoice(row: Row): AiChoiceRef {
     ? { kind: row.kind, connectionId: row.connection_id, modelId: row.model_id }
     : row.kind === 'local_cli' ? { kind: row.kind, cliId: row.cli_id, modelId: row.model_id }
       : { kind: row.kind, configurationId: row.configuration_id })
+}
+function rowRole(row: Row): RoleTarget {
+  const choice = rowChoice(row)
+  if (choice.kind === 'custom_configuration') throw notFound()
+  return RoleAssignmentsSchema.shape.synthesizer.parse({ ...choice,
+    ...(row.effort == null ? {} : { effort: row.effort }) })
 }
 function assertChoiceUuid(choice: AiChoiceRef): void {
   const id = choice.kind === 'provider_model' ? choice.connectionId
@@ -108,7 +116,7 @@ async function assertTarget(client: Client, userId: string, target: RoleTarget, 
     const hasAuthority = connection.validation_state === 'validated'
       || (connection.validation_state === 'validating' && connection.credential_validity === 'valid')
     if (!hasAuthority) throw new AiConsoleError('AI_CONNECTION_INVALID')
-    const model = required((await client.query(`SELECT m.compatible_roles,m.available,m.user_selected,
+    const model = required((await client.query(`SELECT m.compatible_roles,m.available,m.user_selected,m.supported_efforts,
       m.plain_tested_at,m.tested_credential_version,c.credential_version FROM ai_connection_models m
       JOIN ai_provider_connections c ON c.id=m.connection_id
       WHERE c.user_id=$1 AND c.id=$2 AND m.model_id=$3 AND m.available=true`, [userId, target.connectionId, target.modelId])).rows)
@@ -116,50 +124,75 @@ async function assertTarget(client: Client, userId: string, target: RoleTarget, 
       || Number(model.tested_credential_version) !== Number(model.credential_version)) {
       throw new AiConsoleError('AI_MODEL_UNAVAILABLE')
     }
+    assertProviderEffort(target, connection, model)
     if (!roles.every(role => model.compatible_roles.includes(role))) throw new AiConsoleError('AI_ROLE_INCOMPATIBLE')
   } else {
     if (!CLI_REGISTRY[target.cliId].execution) throw new AiConsoleError('AI_CLI_UNREACHABLE')
-    const model = (await client.query(`SELECT m.compatible_roles FROM ai_cli_grants g
+    const model = (await client.query(`SELECT m.compatible_roles,m.supported_efforts,m.is_catalog_discovered,m.is_manual FROM ai_cli_grants g
       JOIN ai_cli_installations i ON i.cli_id=g.cli_id JOIN ai_cli_models m ON m.cli_id=g.cli_id
       WHERE g.user_id=$1 AND g.cli_id=$2 AND g.revoked_at IS NULL AND i.validation_state='reachable'
       AND m.available=true AND (($3::text IS NULL AND m.is_builtin_default) OR m.model_id=$3)
       FOR SHARE OF g,i,m`, [userId, target.cliId, target.modelId])).rows[0]
     if (!model) throw new AiConsoleError('AI_CLI_NOT_GRANTED')
+    assertCliEffort(target, model)
     if (!roles.every(role => model.compatible_roles.includes(role))) throw new AiConsoleError('AI_ROLE_INCOMPATIBLE')
+  }
+}
+
+function assertProviderEffort(target: RoleTarget, connection: Row, model: Row) {
+  if (target.kind !== 'provider_model' || !target.effort) return
+  const efforts = Array.isArray(model.supported_efforts)
+    ? z.array(AiEffortSchema).max(16).parse(model.supported_efforts)
+    : providerEffortLevels(ProviderIdSchema.parse(connection.provider_id), target.modelId)
+  if (!efforts.includes(target.effort)) throw new AiConsoleError('AI_ROLE_INCOMPATIBLE')
+}
+
+function assertCliEffort(target: RoleTarget, model: Row) {
+  if (target.kind !== 'local_cli' || !target.effort) return
+  const advertised = model.is_catalog_discovered === true
+    ? z.array(AiEffortSchema).max(16).parse(model.supported_efforts ?? [])
+    : model.is_manual === true ? [] : undefined
+  if (!cliEffortLevels(target.cliId, target.modelId, advertised).includes(target.effort)) {
+    throw new AiConsoleError('AI_ROLE_INCOMPATIBLE')
   }
 }
 async function assertChoice(client: Client, userId: string, choice: AiChoiceRef) {
   if (choice.kind !== 'custom_configuration') return assertTarget(client, userId, choice, AI_ROLES)
   required((await client.query(`SELECT id FROM ai_custom_configurations WHERE user_id=$1 AND id=$2
     AND deleted_at IS NULL FOR NO KEY UPDATE`, [userId, choice.configurationId])).rows)
-  const rows = (await client.query(`SELECT role,kind,connection_id,model_id,cli_id FROM ai_custom_configuration_roles
+  const rows = (await client.query(`SELECT role,kind,connection_id,model_id,cli_id,effort FROM ai_custom_configuration_roles
     WHERE user_id=$1 AND configuration_id=$2 ORDER BY role`, [userId, choice.configurationId])).rows
-  const assignments = RoleAssignmentsSchema.parse(Object.fromEntries(rows.map(row => [row.role, rowChoice(row)])))
+  const assignments = RoleAssignmentsSchema.parse(Object.fromEntries(rows.map(row => [row.role, rowRole(row)])))
   await assertAssignments(client, userId, assignments)
 }
 
 /** Explicit SQL projections also retain tombstones so broken references are explainable. */
 export async function listAiConsoleState(userId: string) {
-  const connections = await query(`SELECT ${safeColumns},credential_version,last_validated_at,last_checked_at,last_error_code,deleted_at
+  const connections = await query(`SELECT ${safeColumns},credential_version,last_validated_at,last_checked_at,last_error_code,deleted_at,
+    catalog_refreshed_at,catalog_attempted_at,catalog_error_code
     FROM ai_provider_connections WHERE user_id=$1 ORDER BY created_at,id`, [userId])
   const models = await query(`SELECT m.connection_id,m.model_id,m.display_name,m.compatible_roles,m.supports_tools,m.supports_structured_output,m.available,
     m.user_selected,m.plain_tested_at,m.tested_credential_version,m.last_probe_at,m.last_probe_error_code,
-    m.last_probe_input_tokens,m.last_probe_output_tokens,
+    m.last_probe_input_tokens,m.last_probe_output_tokens,m.supported_efforts,
     c.credential_version AS current_credential_version FROM ai_connection_models m
     JOIN ai_provider_connections c ON c.id=m.connection_id WHERE c.user_id=$1 ORDER BY m.connection_id,m.model_id`, [userId])
   const configurations = await query(`SELECT id,name,version,configuration_kind,owner_connection_id,owner_cli_id,deleted_at
     FROM ai_custom_configurations WHERE user_id=$1 ORDER BY created_at,id`, [userId])
-  const roles = await query(`SELECT configuration_id,role,kind,connection_id,model_id,cli_id FROM ai_custom_configuration_roles WHERE user_id=$1 ORDER BY configuration_id,role`, [userId])
+  const roles = await query(`SELECT configuration_id,role,kind,connection_id,model_id,cli_id,effort FROM ai_custom_configuration_roles WHERE user_id=$1 ORDER BY configuration_id,role`, [userId])
   const defaults = await query('SELECT kind,connection_id,model_id,configuration_id,cli_id FROM ai_user_defaults WHERE user_id=$1', [userId])
   const clis = await query(`SELECT cli.cli_id,
     CASE WHEN g.revoked_at IS NULL AND g.user_id IS NOT NULL THEN i.detected_product END AS detected_product,
     CASE WHEN g.revoked_at IS NULL AND g.user_id IS NOT NULL THEN i.detected_version END AS detected_version,
     CASE WHEN g.revoked_at IS NULL AND g.user_id IS NOT NULL THEN i.validation_state END AS validation_state,
     CASE WHEN g.revoked_at IS NULL AND g.user_id IS NOT NULL THEN i.last_checked_at END AS last_checked_at,
+    CASE WHEN g.revoked_at IS NULL AND g.user_id IS NOT NULL THEN i.catalog_refreshed_at END AS catalog_refreshed_at,
+    CASE WHEN g.revoked_at IS NULL AND g.user_id IS NOT NULL THEN i.catalog_attempted_at END AS catalog_attempted_at,
+    CASE WHEN g.revoked_at IS NULL AND g.user_id IS NOT NULL THEN i.catalog_error_code END AS catalog_error_code,
     g.granted_at,g.revoked_at FROM unnest($2::text[]) WITH ORDINALITY AS cli(cli_id,ord)
     LEFT JOIN ai_cli_installations i ON i.cli_id=cli.cli_id
     LEFT JOIN ai_cli_grants g ON g.cli_id=cli.cli_id AND g.user_id=$1 ORDER BY cli.ord`, [userId, CLI_IDS])
-  const cliModels = await query(`SELECT m.cli_id,m.model_id,m.display_name,m.compatible_roles,m.supports_tools,m.supports_structured_output,m.available,m.is_builtin_default
+  const cliModels = await query(`SELECT m.cli_id,m.model_id,m.display_name,m.compatible_roles,m.supports_tools,m.supports_structured_output,m.available,m.is_builtin_default,
+    m.supported_efforts,m.default_effort,m.is_catalog_discovered,m.is_manual
     FROM ai_cli_models m JOIN ai_cli_grants g ON g.cli_id=m.cli_id WHERE g.user_id=$1 AND g.revoked_at IS NULL ORDER BY m.cli_id,m.model_id`, [userId])
   return { connections: connections.rows, models: models.rows, configurations: configurations.rows,
     roles: roles.rows, defaultChoice: defaults.rows[0] ? rowChoice(defaults.rows[0]) : null,
@@ -172,6 +205,7 @@ export interface RoutingProviderTarget {
   providerId: z.infer<typeof ProviderIdSchema>
   credentialVersion: number
   modelId: string
+  effort?: AiEffort | null
   displayName: string
   compatibleRoles: AiRole[]
   supportsTools: boolean
@@ -181,6 +215,7 @@ export interface RoutingCliTarget {
   kind: 'local_cli'
   cliId: z.infer<typeof CliIdSchema>
   modelId: string | null
+  effort?: AiEffort | null
   displayName: string
   compatibleRoles: AiRole[]
   supportsTools: boolean
@@ -239,10 +274,11 @@ async function loadRoutingTarget(client: Client, userId: string, target: RoleTar
       && (connection.validation_state === 'validated' || connection.validation_state === 'validating')
     if (!confirmedUsable) throw notFound()
     const model = (await client.query(`SELECT m.model_id,m.display_name,m.compatible_roles,m.supports_tools,m.supports_structured_output,
-      m.available,m.plain_tested_at,m.tested_credential_version
+      m.available,m.plain_tested_at,m.tested_credential_version,m.supported_efforts
       FROM ai_connection_models m WHERE m.connection_id=$1 AND m.model_id=$2 FOR SHARE`,
     [target.connectionId, target.modelId])).rows[0]
     if (!model || model.available !== true) throw new AiConsoleError('AI_MODEL_UNAVAILABLE')
+    assertProviderEffort(target, connection, model)
     // Pre-probe saved choices are grandfathered. Any key or workspace edit
     // explicitly turns on exact-version model proof for this connection.
     if (connection.model_retest_required === true && (model.plain_tested_at == null
@@ -256,7 +292,8 @@ async function loadRoutingTarget(client: Client, userId: string, target: RoleTar
       kind: 'provider_model', connectionId: target.connectionId,
       providerId: ProviderIdSchema.parse(connection.provider_id),
       credentialVersion: z.coerce.number().int().positive().parse(connection.credential_version),
-      modelId: target.modelId, displayName: z.string().min(1).parse(model.display_name), compatibleRoles,
+      modelId: target.modelId, ...(target.effort ? { effort: target.effort } : {}),
+      displayName: z.string().min(1).parse(model.display_name), compatibleRoles,
       supportsTools: z.boolean().parse(model.supports_tools),
       supportsStructuredOutput: z.boolean().parse(model.supports_structured_output),
     }
@@ -271,15 +308,18 @@ async function loadRoutingTarget(client: Client, userId: string, target: RoleTar
   if (!installation || installation.validation_state === 'not_installed') throw new AiConsoleError('AI_CLI_NOT_INSTALLED')
   if (installation.validation_state === 'auth_unavailable') throw new AiConsoleError('AI_CLI_AUTH_UNAVAILABLE')
   if (installation.validation_state !== 'reachable') throw new AiConsoleError('AI_CLI_UNREACHABLE')
-  const model = (await client.query(`SELECT m.model_id,m.display_name,m.compatible_roles,m.supports_tools,m.supports_structured_output,m.available,m.is_builtin_default
+  const model = (await client.query(`SELECT m.model_id,m.display_name,m.compatible_roles,m.supports_tools,m.supports_structured_output,m.available,m.is_builtin_default,
+    m.supported_efforts,m.is_catalog_discovered,m.is_manual
     FROM ai_cli_models m WHERE m.cli_id=$1
       AND (($2::text IS NULL AND m.is_builtin_default=true) OR m.model_id=$2) FOR SHARE`,
   [target.cliId, target.modelId])).rows[0]
   if (!model || model.available !== true) throw new AiConsoleError('AI_MODEL_UNAVAILABLE')
+  assertCliEffort(target, model)
   const compatibleRoles = z.array(AiRoleSchema).min(1).parse(model.compatible_roles)
   const incompatible = firstIncompatibleRole(compatibleRoles, roles)
   if (incompatible) throw new AiConsoleError('AI_ROLE_INCOMPATIBLE', incompatible)
   return { kind: 'local_cli', cliId: target.cliId, modelId: target.modelId,
+    ...(target.effort ? { effort: target.effort } : {}),
     displayName: z.string().min(1).parse(model.display_name), compatibleRoles,
     supportsTools: z.boolean().parse(model.supports_tools),
     supportsStructuredOutput: z.boolean().parse(model.supports_structured_output) }
@@ -314,11 +354,11 @@ async function loadRoutingResolutionWithClient(
         WHERE user_id=$1 AND id=$2 AND deleted_at IS NULL FOR SHARE`,
       [userId, resolvedChoice.configurationId])).rows[0]
       if (!configuration) throw new AiConsoleError('AI_CHOICE_BROKEN')
-      const rows = (await client.query(`SELECT role,kind,connection_id,model_id,cli_id
+      const rows = (await client.query(`SELECT role,kind,connection_id,model_id,cli_id,effort
         FROM ai_custom_configuration_roles WHERE user_id=$1 AND configuration_id=$2 ORDER BY role FOR SHARE`,
       [userId, resolvedChoice.configurationId])).rows
-      let rawAssignments: Record<string, AiChoiceRef>
-      try { rawAssignments = Object.fromEntries(rows.map(row => [String(row.role), rowChoice(row)])) }
+      let rawAssignments: Record<string, RoleTarget>
+      try { rawAssignments = Object.fromEntries(rows.map(row => [String(row.role), rowRole(row)])) }
       catch { throw new AiConsoleError('AI_CHOICE_BROKEN') }
       const parsed = RoleAssignmentsSchema.safeParse(rawAssignments)
       if (!parsed.success) throw new AiConsoleError('AI_CHOICE_BROKEN')
@@ -331,7 +371,8 @@ async function loadRoutingResolutionWithClient(
     const grouped = new Map<string, { target: RoleTarget; roles: AiRole[] }>()
     for (const role of AI_ROLES) {
       const target = assignments[role]
-      const key = JSON.stringify([target.kind, target.kind === 'provider_model' ? target.connectionId : target.cliId, target.modelId])
+      const key = JSON.stringify([target.kind, target.kind === 'provider_model' ? target.connectionId : target.cliId,
+        target.modelId, target.effort ?? null])
       const current = grouped.get(key) ?? { target, roles: [] }
       current.roles.push(role)
       grouped.set(key, current)
@@ -342,7 +383,8 @@ async function loadRoutingResolutionWithClient(
     }
     const roles = Object.fromEntries(AI_ROLES.map(role => {
       const target = assignments[role]
-      const key = JSON.stringify([target.kind, target.kind === 'provider_model' ? target.connectionId : target.cliId, target.modelId])
+      const key = JSON.stringify([target.kind, target.kind === 'provider_model' ? target.connectionId : target.cliId,
+        target.modelId, target.effort ?? null])
       return [role, resolvedByKey.get(key)!]
     })) as Record<AiRole, RoutingTarget>
     return { resolvedChoice, configurationVersion, roles }
@@ -425,7 +467,9 @@ const ValidationSchema = z.object({
     'AI_PERMISSION_DENIED', 'AI_BILLING_UNAVAILABLE', 'AI_RATE_LIMITED', 'AI_EXECUTION_FAILED']).optional(),
   models: z.array(z.object({ modelId: z.string().min(1), displayName: z.string().min(1),
     compatibleRoles: z.array(AiRoleSchema).min(1), supportsTools: z.boolean(),
-    supportsStructuredOutput: z.boolean() }).strict()).optional(),
+    supportsStructuredOutput: z.boolean(), supportedEfforts: z.array(AiEffortSchema).max(16).optional(),
+    defaultEffort: AiEffortSchema.nullable().optional(),
+  }).strict()).optional(),
 }).strict().refine(v => v.state !== 'validated' || !!v.models?.length)
 export async function storeConnectionValidation(userId: string, connectionId: string, input: unknown) {
   const result = ValidationSchema.parse(input)
@@ -439,13 +483,14 @@ export async function storeConnectionValidation(userId: string, connectionId: st
     if (result.models !== undefined || result.state === 'invalid') {
       await invalidateCatalog(client, userId, connectionId)
       if (result.state !== 'invalid') for (const model of result.models ?? []) {
-        await client.query(`INSERT INTO ai_connection_models(connection_id,model_id,display_name,compatible_roles,supports_tools,supports_structured_output,available)
-          SELECT id,$3,$4,$5,$6,$7,true FROM ai_provider_connections WHERE user_id=$1 AND id=$2
+        await client.query(`INSERT INTO ai_connection_models(connection_id,model_id,display_name,compatible_roles,supports_tools,supports_structured_output,available,supported_efforts)
+          SELECT id,$3,$4,$5,$6,$7,true,$8 FROM ai_provider_connections WHERE user_id=$1 AND id=$2
           ON CONFLICT(connection_id,model_id) DO UPDATE SET display_name=excluded.display_name,
           compatible_roles=excluded.compatible_roles,supports_tools=excluded.supports_tools,
-          supports_structured_output=excluded.supports_structured_output,available=true,last_seen_at=now()`,
+          supports_structured_output=excluded.supports_structured_output,available=true,last_seen_at=now(),
+          supported_efforts=excluded.supported_efforts`,
         [userId, connectionId, model.modelId, model.displayName, model.compatibleRoles,
-          model.supportsTools, model.supportsStructuredOutput])
+          model.supportsTools, model.supportsStructuredOutput, model.supportedEfforts ?? null])
       }
     }
     await writeAiAudit(client, userId, result.state === 'validated'
@@ -454,6 +499,69 @@ export async function storeConnectionValidation(userId: string, connectionId: st
         ? { event: 'connection_validation_rejected', connectionId,
           errorCode: result.errorCode ?? 'AI_CONNECTION_INVALID' }
         : { event: 'connection_validated', connectionId })
+  })
+}
+
+/** Claim metadata work under the existing owner lock; never hold a transaction during HTTP. */
+export async function claimConnectionCatalogRefresh(userId: string, connectionId: string, force: boolean) {
+  z.boolean().parse(force)
+  return withUserTransaction(userId, async client => {
+    const connection = await ownedConnection(client, userId, connectionId)
+    if (connection.provider_id === 'kimi' || connection.credential_validity !== 'valid'
+      || !['validated', 'validating'].includes(String(connection.validation_state))) {
+      throw new AiConsoleError('AI_CONNECTION_INVALID')
+    }
+    const row = (await client.query(`UPDATE ai_provider_connections c SET
+      catalog_refresh_epoch=catalog_refresh_epoch+1,catalog_refresh_in_progress=true,
+      catalog_attempted_at=clock_timestamp()
+      WHERE c.user_id=$1 AND c.id=$2 AND c.deleted_at IS NULL
+      AND EXISTS (SELECT 1 FROM profiles p WHERE p.id=$1 AND p.status='active')
+      AND (catalog_attempted_at IS NULL OR catalog_attempted_at < clock_timestamp()-interval '60 seconds')
+      AND (NOT catalog_refresh_in_progress OR catalog_attempted_at < clock_timestamp()-interval '60 seconds')
+      AND ($3::boolean OR catalog_refreshed_at IS NULL OR catalog_refreshed_at < clock_timestamp()-interval '15 minutes')
+      RETURNING credential_version,provider_id,catalog_refresh_epoch::text AS epoch`,
+    [userId, connectionId, force])).rows[0]
+    return row ? { credentialVersion: z.coerce.number().int().positive().parse(row.credential_version),
+      providerId: ProviderIdSchema.parse(row.provider_id), epoch: z.string().regex(/^\d+$/).parse(row.epoch) } : null
+  })
+}
+
+/** Catalogue discovery does not create generation evidence or change any saved selection. */
+export async function storeConnectionCatalogRefresh(userId: string, connectionId: string, input: unknown): Promise<boolean> {
+  const data = z.object({ credentialVersion: z.number().int().positive(), epoch: z.string().regex(/^\d+$/),
+    errorCode: AiErrorCodeSchema.optional(), models: ValidationSchema.shape.models,
+  }).strict().refine(value => (value.models !== undefined) !== (value.errorCode !== undefined)).parse(input)
+  return withUserTransaction(userId, async client => {
+    const connection = await ownedConnection(client, userId, connectionId)
+    if (Number(connection.credential_version) !== data.credentialVersion) return false
+    const rejected = data.errorCode === 'AI_CONNECTION_INVALID'
+    const updated = await client.query(`UPDATE ai_provider_connections c SET
+      catalog_refresh_in_progress=false,catalog_error_code=$5,
+      catalog_refreshed_at=CASE WHEN $6::boolean THEN clock_timestamp() ELSE catalog_refreshed_at END,
+      credential_validity=CASE WHEN $7::boolean THEN 'invalid' ELSE credential_validity END,
+      validation_state=CASE WHEN $7::boolean THEN 'invalid' ELSE validation_state END,
+      last_error_code=CASE WHEN $7::boolean THEN $5 ELSE last_error_code END
+      WHERE c.user_id=$1 AND c.id=$2 AND c.credential_version=$3 AND c.catalog_refresh_epoch=$4::bigint
+      AND c.catalog_refresh_in_progress AND c.deleted_at IS NULL
+      AND EXISTS (SELECT 1 FROM profiles p WHERE p.id=$1 AND p.status='active') RETURNING id`,
+    [userId, connectionId, data.credentialVersion, data.epoch, data.errorCode ?? null, data.models !== undefined, rejected])
+    if (!updated.rowCount) return false
+    if (data.models !== undefined) {
+      await invalidateCatalog(client, userId, connectionId)
+      for (const model of data.models) {
+        await client.query(`INSERT INTO ai_connection_models
+          (connection_id,model_id,display_name,compatible_roles,supports_tools,supports_structured_output,available,supported_efforts)
+          SELECT id,$3,$4,$5,$6,$7,true,$8 FROM ai_provider_connections WHERE user_id=$1 AND id=$2
+          ON CONFLICT(connection_id,model_id) DO UPDATE SET display_name=excluded.display_name,
+          compatible_roles=excluded.compatible_roles,supports_tools=excluded.supports_tools,
+          supports_structured_output=excluded.supports_structured_output,available=true,
+          supported_efforts=excluded.supported_efforts,last_seen_at=now()`,
+        [userId, connectionId, model.modelId, model.displayName, model.compatibleRoles,
+          model.supportsTools, model.supportsStructuredOutput, model.supportedEfforts ?? null])
+      }
+    }
+    await writeAiAudit(client, userId, { event: 'connection_updated', connectionId })
+    return true
   })
 }
 
@@ -566,12 +674,12 @@ async function persistConfiguration(client: Client, userId: string, data: z.infe
       data.ownerConnectionId, data.ownerCliId])).rows)
   for (const role of AI_ROLES) {
     const target = data.roles[role]
-    await client.query(`INSERT INTO ai_custom_configuration_roles(configuration_id,user_id,role,kind,connection_id,model_id,cli_id)
-      SELECT id,user_id,$3,$4,$5,$6,$7 FROM ai_custom_configurations WHERE user_id=$1 AND id=$2
+    await client.query(`INSERT INTO ai_custom_configuration_roles(configuration_id,user_id,role,kind,connection_id,model_id,cli_id,effort)
+      SELECT id,user_id,$3,$4,$5,$6,$7,$8 FROM ai_custom_configurations WHERE user_id=$1 AND id=$2
       ON CONFLICT(configuration_id,role) DO UPDATE SET kind=excluded.kind,connection_id=excluded.connection_id,
-      model_id=excluded.model_id,cli_id=excluded.cli_id WHERE ai_custom_configuration_roles.user_id=$1`,
+      model_id=excluded.model_id,cli_id=excluded.cli_id,effort=excluded.effort WHERE ai_custom_configuration_roles.user_id=$1`,
     [userId, row.id, role, target.kind, target.kind === 'provider_model' ? target.connectionId : null, target.modelId,
-      target.kind === 'local_cli' ? target.cliId : null])
+      target.kind === 'local_cli' ? target.cliId : null, target.effort ?? null])
   }
   await writeAiAudit(client, userId, { event: duplicate ? 'configuration_duplicated' : data.id ? 'configuration_updated' : 'configuration_created', configurationId: row.id, configurationVersion: Number(row.version) })
   return { id: row.id as string, name: row.name as string, version: Number(row.version), roles: data.roles,
@@ -585,9 +693,9 @@ export async function duplicateConfiguration(userId: string, configurationId: st
   const parsed = nameSchema.parse(name)
   return withUserTransaction(userId, async client => {
     required((await client.query('SELECT id FROM ai_custom_configurations WHERE user_id=$1 AND id=$2 AND deleted_at IS NULL FOR NO KEY UPDATE', [userId, configurationId])).rows)
-    const rows = (await client.query('SELECT role,kind,connection_id,model_id,cli_id FROM ai_custom_configuration_roles WHERE user_id=$1 AND configuration_id=$2', [userId, configurationId])).rows
+    const rows = (await client.query('SELECT role,kind,connection_id,model_id,cli_id,effort FROM ai_custom_configuration_roles WHERE user_id=$1 AND configuration_id=$2', [userId, configurationId])).rows
     return persistConfiguration(client, userId, parseConfigurationInput({ name: parsed,
-      roles: RoleAssignmentsSchema.parse(Object.fromEntries(rows.map(row => [row.role, rowChoice(row)]))) }), true)
+      roles: RoleAssignmentsSchema.parse(Object.fromEntries(rows.map(row => [row.role, rowRole(row)]))) }), true)
   })
 }
 export async function setUserDefault(userId: string, input: unknown) {
@@ -744,6 +852,9 @@ export interface CliValidationWrite {
     supportsTools: boolean
     supportsStructuredOutput: boolean
     isBuiltinDefault: boolean
+    supportedEfforts?: readonly string[]
+    defaultEffort?: string | null
+    isCatalogDiscovered?: boolean
   }[]
 }
 
@@ -759,6 +870,7 @@ export interface CliValidationAttempt {
     readonly detectedVersion: string | null
     readonly lastCheckedAt: Date | null
     readonly errorCode: CliStoredErrorCode | null
+    readonly entrypointSha256?: string | null
   }
 }
 
@@ -774,7 +886,7 @@ export async function markCliValidationStarted(cliId: string): Promise<CliValida
     await client.query("SELECT pg_advisory_xact_lock(hashtextextended('ai-console:cli:' || $1::text, 0))", [cli])
     await client.query(`INSERT INTO ai_cli_installations(cli_id) VALUES($1) ON CONFLICT(cli_id) DO NOTHING`, [cli])
     const previous = required((await client.query(`SELECT validation_state,detected_product,detected_version,
-      last_checked_at,last_error_code FROM ai_cli_installations WHERE cli_id=$1 FOR UPDATE`, [cli])).rows)
+      last_checked_at,last_error_code,entrypoint_sha256 FROM ai_cli_installations WHERE cli_id=$1 FOR UPDATE`, [cli])).rows)
     const started = required((await client.query(`UPDATE ai_cli_installations SET
       validation_state=CASE WHEN validation_state='validating' THEN 'untested' ELSE validation_state END,
       detected_product=CASE WHEN validation_state='validating' THEN NULL ELSE detected_product END,
@@ -796,6 +908,8 @@ export async function markCliValidationStarted(cliId: string): Promise<CliValida
           : z.string().min(1).max(80).parse(previous.detected_version),
         lastCheckedAt: orphaned || previous.last_checked_at == null ? null : z.coerce.date().parse(previous.last_checked_at),
         errorCode: orphaned || previous.last_error_code == null ? null : cliStoredErrorSchema.parse(previous.last_error_code),
+        entrypointSha256: orphaned || previous.entrypoint_sha256 == null ? null
+          : z.string().regex(/^[a-f0-9]{64}$/).parse(previous.entrypoint_sha256),
       },
     }
   })
@@ -807,6 +921,36 @@ export async function assertCliValidationAuthorized(userId: string, cliId: strin
   const rows = await query(`SELECT g.cli_id FROM ai_cli_grants g JOIN profiles p ON p.id=g.user_id
     WHERE g.user_id=$1 AND g.cli_id=$2 AND g.revoked_at IS NULL AND p.status='active'`, [userId, cli])
   if (!rows.rows.length) throw new AiConsoleError('AI_CLI_NOT_GRANTED')
+}
+
+/** Host-wide refresh lease shared by granted users and server instances. */
+export async function claimCliCatalogRefresh(userId: string, cliId: string, force: boolean): Promise<string | null> {
+  const cli = CliIdSchema.parse(cliId)
+  z.boolean().parse(force)
+  return withTransaction(async client => {
+    await client.query("SELECT pg_advisory_xact_lock(hashtextextended('ai-console:cli:' || $1::text, 0))", [cli])
+    const grant = await client.query(`SELECT g.cli_id FROM ai_cli_grants g JOIN profiles p ON p.id=g.user_id
+      WHERE g.user_id=$1 AND g.cli_id=$2 AND g.revoked_at IS NULL AND p.status='active' FOR SHARE OF g,p`, [userId, cli])
+    if (!grant.rows.length) throw new AiConsoleError('AI_CLI_NOT_GRANTED')
+    await client.query(`INSERT INTO ai_cli_installations(cli_id) VALUES($1) ON CONFLICT(cli_id) DO NOTHING`, [cli])
+    const row = (await client.query(`UPDATE ai_cli_installations SET
+      catalog_refresh_epoch=catalog_refresh_epoch+1,catalog_refresh_in_progress=true,catalog_attempted_at=clock_timestamp()
+      WHERE cli_id=$1
+      AND (catalog_attempted_at IS NULL OR catalog_attempted_at < clock_timestamp()-interval '60 seconds')
+      AND (NOT catalog_refresh_in_progress OR catalog_attempted_at < clock_timestamp()-interval '180 seconds')
+      AND ($2::boolean OR catalog_refreshed_at IS NULL OR catalog_refreshed_at < clock_timestamp()-interval '15 minutes')
+      RETURNING catalog_refresh_epoch::text AS epoch`, [cli, force])).rows[0]
+    return row ? z.string().regex(/^\d+$/).parse(row.epoch) : null
+  })
+}
+
+export async function finishCliCatalogRefresh(cliId: string, epoch: string, errorCode?: string): Promise<boolean> {
+  const cli = CliIdSchema.parse(cliId)
+  const safeEpoch = z.string().regex(/^\d+$/).parse(epoch)
+  const code = errorCode === undefined ? null : AiErrorCodeSchema.parse(errorCode)
+  const result = await query(`UPDATE ai_cli_installations SET catalog_refresh_in_progress=false,catalog_error_code=$3
+    WHERE cli_id=$1 AND catalog_refresh_epoch=$2::bigint AND catalog_refresh_in_progress`, [cli, safeEpoch, code])
+  return (result.rowCount ?? 0) > 0
 }
 
 /** Global host state contains no user or authentication material. */
@@ -822,25 +966,35 @@ export async function storeCliValidation(cliId: string, input: CliValidationWrit
       'AI_CLI_TIMEOUT', 'AI_CLI_OUTPUT_LIMIT', 'AI_EXECUTION_FAILED']).optional(),
     models: z.array(z.object({ modelId: z.string().min(1).max(512), displayName: z.string().min(1).max(120),
       compatibleRoles: z.array(AiRoleSchema).min(1), supportsTools: z.boolean(), supportsStructuredOutput: z.boolean(),
-      isBuiltinDefault: z.boolean() }).strict()).optional(),
+      isBuiltinDefault: z.boolean(), supportedEfforts: z.array(AiEffortSchema).max(16).optional(),
+      defaultEffort: AiEffortSchema.nullable().optional(), isCatalogDiscovered: z.boolean().optional(),
+    }).strict()).optional(),
   }).strict().parse(input)
   return withTransaction(async client => {
     await client.query("SELECT pg_advisory_xact_lock(hashtextextended('ai-console:cli:' || $1::text, 0))", [cli])
     const updated = await client.query(`UPDATE ai_cli_installations SET detected_product=$2,detected_version=$3,
-      validation_state=$4,last_checked_at=clock_timestamp(),last_error_code=$5,updated_at=clock_timestamp()
+      validation_state=$4,last_checked_at=clock_timestamp(),last_error_code=$5,updated_at=clock_timestamp(),
+      entrypoint_sha256=COALESCE($7,entrypoint_sha256),
+      catalog_refreshed_at=CASE WHEN $8::boolean THEN clock_timestamp() ELSE catalog_refreshed_at END,
+      catalog_attempted_at=clock_timestamp(),catalog_error_code=$5
       WHERE cli_id=$1 AND xmin::text=$6 RETURNING xmin::text AS validation_epoch`,
-    [cli, data.detectedProduct ?? null, data.detectedVersion ?? null, data.state, data.errorCode ?? null, expectedEpoch])
+    [cli, data.detectedProduct ?? null, data.detectedVersion ?? null, data.state, data.errorCode ?? null,
+      expectedEpoch, data.entrypointSha256 ?? null, data.models !== undefined])
     if (!updated.rows.length) return null
-    await client.query('UPDATE ai_cli_models SET available=false WHERE cli_id=$1', [cli])
+    if (data.models !== undefined) await client.query(`UPDATE ai_cli_models SET available=false,
+      is_catalog_discovered=false,supported_efforts='{}',default_effort=NULL WHERE cli_id=$1`, [cli])
     for (const model of data.models ?? []) {
       await client.query(`INSERT INTO ai_cli_models
-        (cli_id,model_id,display_name,is_builtin_default,available,compatible_roles,supports_tools,supports_structured_output)
-        VALUES($1,$2,$3,$4,true,$5,$6,$7)
+        (cli_id,model_id,display_name,is_builtin_default,available,compatible_roles,supports_tools,supports_structured_output,
+         supported_efforts,default_effort,is_catalog_discovered)
+        VALUES($1,$2,$3,$4,true,$5,$6,$7,$8,$9,$10)
         ON CONFLICT(cli_id,model_id) DO UPDATE SET display_name=excluded.display_name,
         is_builtin_default=excluded.is_builtin_default,available=true,compatible_roles=excluded.compatible_roles,
-        supports_tools=excluded.supports_tools,supports_structured_output=excluded.supports_structured_output,last_seen_at=now()`,
+        supports_tools=excluded.supports_tools,supports_structured_output=excluded.supports_structured_output,last_seen_at=now(),
+        supported_efforts=excluded.supported_efforts,default_effort=excluded.default_effort,is_catalog_discovered=excluded.is_catalog_discovered`,
       [cli, model.modelId, model.displayName, model.isBuiltinDefault, model.compatibleRoles,
-        model.supportsTools, model.supportsStructuredOutput])
+        model.supportsTools, model.supportsStructuredOutput, model.supportedEfforts ?? [],
+        model.defaultEffort ?? null, model.isCatalogDiscovered ?? false])
     }
     if (data.state === 'reachable' && data.detectedVersion && data.entrypointSha256) {
       await client.query(`UPDATE ai_cli_models SET available=true WHERE cli_id=$1 AND is_manual=true
@@ -1085,8 +1239,10 @@ export async function prepareTurnRouting(input: unknown): Promise<PreparedTurnRo
         roles: Object.fromEntries(AI_ROLES.map(role => {
           const target = resolution.roles[role]
           return [role, target.kind === 'provider_model'
-            ? { kind: target.kind, connectionId: target.connectionId, providerId: target.providerId, modelId: target.modelId }
-            : { kind: target.kind, cliId: target.cliId, modelId: target.modelId }]
+            ? { kind: target.kind, connectionId: target.connectionId, providerId: target.providerId,
+              modelId: target.modelId, ...(target.effort ? { effort: target.effort } : {}) }
+            : { kind: target.kind, cliId: target.cliId, modelId: target.modelId,
+              ...(target.effort ? { effort: target.effort } : {}) }]
         })),
       })
 
@@ -1212,8 +1368,10 @@ async function loadPinnedMcpRouting(
   for (const roleName of AI_ROLES) {
     const pinned = safeSnapshot.roles[roleName]
     const target: RoleTarget = pinned.kind === 'provider_model'
-      ? { kind: pinned.kind, connectionId: pinned.connectionId, modelId: pinned.modelId }
-      : { kind: pinned.kind, cliId: pinned.cliId, modelId: pinned.modelId }
+      ? { kind: pinned.kind, connectionId: pinned.connectionId, modelId: pinned.modelId,
+        ...(pinned.effort ? { effort: pinned.effort } : {}) }
+      : { kind: pinned.kind, cliId: pinned.cliId, modelId: pinned.modelId,
+        ...(pinned.effort ? { effort: pinned.effort } : {}) }
     const key = JSON.stringify(target)
     const current = grouped.get(key) ?? { target, roles: [] }
     current.roles.push(roleName)
@@ -1226,14 +1384,17 @@ async function loadPinnedMcpRouting(
   const roles = Object.fromEntries(AI_ROLES.map(roleName => {
     const pinned = safeSnapshot.roles[roleName]
     const target: RoleTarget = pinned.kind === 'provider_model'
-      ? { kind: pinned.kind, connectionId: pinned.connectionId, modelId: pinned.modelId }
-      : { kind: pinned.kind, cliId: pinned.cliId, modelId: pinned.modelId }
+      ? { kind: pinned.kind, connectionId: pinned.connectionId, modelId: pinned.modelId,
+        ...(pinned.effort ? { effort: pinned.effort } : {}) }
+      : { kind: pinned.kind, cliId: pinned.cliId, modelId: pinned.modelId,
+        ...(pinned.effort ? { effort: pinned.effort } : {}) }
     const resolved = resolvedByKey.get(JSON.stringify(target))!
     const identityMatches = pinned.kind === 'provider_model' && resolved.kind === 'provider_model'
       ? pinned.connectionId === resolved.connectionId && pinned.providerId === resolved.providerId
-        && pinned.modelId === resolved.modelId
+        && pinned.modelId === resolved.modelId && (pinned.effort ?? null) === (resolved.effort ?? null)
       : pinned.kind === 'local_cli' && resolved.kind === 'local_cli'
         && pinned.cliId === resolved.cliId && pinned.modelId === resolved.modelId
+        && (pinned.effort ?? null) === (resolved.effort ?? null)
     if (!identityMatches) throw new AiConsoleError('AI_CHOICE_BROKEN')
     return [roleName, resolved]
   })) as Record<AiRole, RoutingTarget>
@@ -1276,8 +1437,10 @@ export async function prepareMcpRouting(input: unknown): Promise<PreparedMcpRout
       roles: Object.fromEntries(AI_ROLES.map(roleName => {
         const target = resolution.roles[roleName]
         return [roleName, target.kind === 'provider_model'
-          ? { kind: target.kind, connectionId: target.connectionId, providerId: target.providerId, modelId: target.modelId }
-          : { kind: target.kind, cliId: target.cliId, modelId: target.modelId }]
+          ? { kind: target.kind, connectionId: target.connectionId, providerId: target.providerId,
+            modelId: target.modelId, ...(target.effort ? { effort: target.effort } : {}) }
+          : { kind: target.kind, cliId: target.cliId, modelId: target.modelId,
+            ...(target.effort ? { effort: target.effort } : {}) }]
       })),
     })
     const snapshotId = await insertRoutingSnapshotWithClient(client, safeSnapshot)

@@ -55,6 +55,15 @@ UNRESOLVED = "unresolved"
 DISABLED = "disabled"
 
 
+def _valid_count(x) -> bool:
+    """A benefic-mark count, SAV total, piṇḍa or marks figure is a non-negative
+    INTEGER. A bool, string, float, NaN or negative figure is not a bindu: it is
+    an invalid operand → the form is `unqualified` with the operand named,
+    never a TypeError, a coerced value, or a silent band (CLAUDE.md §N.7
+    item 6: an honest null beats an invented judgment)."""
+    return isinstance(x, int) and not isinstance(x, bool) and x >= 0
+
+
 def p5a(transiting_graha: str, sign: str, bav_by_graha: dict | None) -> dict:
     """P5a — the operand is the TRANSITING graha's own BAV (#18, O-BP-1).
     Known zero ⇒ adverse; any nonzero comparison ⇒ unresolved with the
@@ -66,6 +75,10 @@ def p5a(transiting_graha: str, sign: str, bav_by_graha: dict | None) -> dict:
     if count is None:
         return {"form": "P5a", "state": UNQUALIFIED,
                 "operand": f"BAV({transiting_graha})({sign})"}
+    if not _valid_count(count):
+        return {"form": "P5a", "state": UNQUALIFIED,
+                "operand": f"BAV({transiting_graha})({sign})",
+                "reason": "invalid_operand"}
     if count == 0:
         return {"form": "P5a", "state": "adverse", "count": 0,
                 "rule": "known-zero doctrine, BPHS ch.70 vv.24-27 (D-RQ1)"}
@@ -81,6 +94,9 @@ def p5b(sign: str, sav_by_sign: dict | None) -> dict:
     if sav_by_sign is None or sign not in sav_by_sign:
         return {"form": "P5b", "state": UNQUALIFIED, "operand": f"SAV({sign})"}
     sav = sav_by_sign[sign]
+    if not _valid_count(sav):
+        return {"form": "P5b", "state": UNQUALIFIED, "operand": f"SAV({sign})",
+                "reason": "invalid_operand"}
     band = "favourable" if sav > 30 else "medium" if sav >= 25 else "adverse"
     return {"form": "P5b", "state": band, "sav": sav,
             "rule": "BPHS2:42332-42335"}
@@ -125,6 +141,10 @@ def p5d(pinda: int | None, marks: int | None) -> dict:
     if pinda is None or marks is None:
         return {"form": "P5d", "state": UNQUALIFIED,
                 "operand": "pinda" if pinda is None else "marks"}
+    if not _valid_count(pinda) or not _valid_count(marks):
+        return {"form": "P5d", "state": UNQUALIFIED,
+                "operand": "pinda" if not _valid_count(pinda) else "marks",
+                "reason": "invalid_operand"}
     remainder = (int(pinda) * int(marks)) % 27
     index = 27 if remainder == 0 else remainder
     return {"form": "P5d", "state": "resolved", "remainder": remainder,
@@ -160,3 +180,93 @@ def qualify_transit(transiting_graha: str, sign: str, *,
         "P5d": p5d(pinda, marks),
         "P5e": p5e(ingress_substrate),
     }
+
+
+# ── typed operand evidence + the AM-7 declaration read-back (O-BP-3) ─────────
+BINDU_UNIT = "bindus"
+
+
+class DeclarationReadBackRefused(ValueError):
+    """AM-7: the writer's read-back of the consumed AV polarity declaration
+    failed — the P5 record CANNOT be written. `reason` is one of:
+    declarations_unavailable, declaration_absent, category_not_governed,
+    operand_missing_from_extract, bindu_mismatch. Raised loudly; never a
+    stored `false`/`unknown` (draft §AM-7, PREREQUISITE_EVALUATION_ANSWER)."""
+
+    def __init__(self, reason: str, detail: dict):
+        self.reason = reason
+        self.detail = detail
+        super().__init__(f"P5 declaration read-back refused: {reason} {detail}")
+
+
+def typed_operands(transiting_graha: str, sign: str, *,
+                   bav_by_graha: dict | None = None,
+                   sav_by_sign: dict | None = None) -> list[dict]:
+    """The bindu operands a P5 transit reads, with the SELECTION rule pinned:
+    P5a reads the TRANSITING graha's OWN BAV in that sign (#18, O-BP-1 — never
+    another graha's row, never the SAV); P5b reads the SAV of that sign (#26).
+    Both are returned when both exist (competing BAV/SAV operands are both
+    recorded, AM-7 (b)); a missing operand is simply absent — each form's
+    missingness is independent (§2.2 matrix)."""
+    ops: list[dict] = []
+    own = (bav_by_graha or {}).get(transiting_graha)
+    if own is not None and own.get(sign) is not None:
+        ops.append({"kind": "BAV", "graha": transiting_graha, "sign": sign,
+                    "value": own[sign], "unit": BINDU_UNIT, "form": "P5a"})
+    if sav_by_sign is not None and sav_by_sign.get(sign) is not None:
+        ops.append({"kind": "SAV", "graha": None, "sign": sign,
+                    "value": sav_by_sign[sign], "unit": BINDU_UNIT, "form": "P5b"})
+    return ops
+
+
+def consume_declaration(declarations: dict | None, key: str, category: str,
+                        operands: list[dict], extract: dict | None) -> dict:
+    """The writer-side O-BP-3 / AM-7 read-back, as an evaluator path.
+
+    Refuses (raises DeclarationReadBackRefused) when: the declaration set is
+    unavailable; the named declaration key is ABSENT; the operands' fact
+    category is NOT in the declaration's `applies_to_fact_categories`; an
+    operand is missing from the L1 extract the declaration governs; or a
+    recorded bindu figure DISAGREES with that extract. On success returns the
+    accepted binding with typed evidence (value, unit 'bindus', provenance
+    copied through) — evidence only, never a score.
+
+    declarations = {key: {"applies_to_fact_categories": [...], ...}}
+    extract      = {"BAV": {graha: {sign: int}}, "SAV": {sign: int}}
+    """
+    if declarations is None:
+        raise DeclarationReadBackRefused("declarations_unavailable", {"key": key})
+    row = declarations.get(key)
+    if row is None:
+        raise DeclarationReadBackRefused("declaration_absent", {"key": key})
+    if category not in row.get("applies_to_fact_categories", []):
+        raise DeclarationReadBackRefused(
+            "category_not_governed",
+            {"key": key, "category": category,
+             "governed": list(row.get("applies_to_fact_categories", []))})
+    evidence = []
+    for op in operands:
+        kind, sign = op["kind"], op["sign"]
+        if kind == "BAV":
+            stored = ((extract or {}).get("BAV", {}).get(op.get("graha"), {})
+                      .get(sign))
+        elif kind == "SAV":
+            stored = (extract or {}).get("SAV", {}).get(sign)
+        else:
+            raise DeclarationReadBackRefused("operand_missing_from_extract",
+                                             {"operand": op})
+        if stored is None:
+            raise DeclarationReadBackRefused("operand_missing_from_extract",
+                                             {"operand": op})
+        if op.get("value") != stored:
+            raise DeclarationReadBackRefused(
+                "bindu_mismatch",
+                {"kind": kind, "graha": op.get("graha"), "sign": sign,
+                 "recorded": op.get("value"), "extract": stored})
+        evidence.append({"scored": False, "kind": "typed_operand_evidence",
+                         "operand": kind, "graha": op.get("graha"),
+                         "sign": sign, "value": stored, "unit": BINDU_UNIT,
+                         **{k: op[k] for k in ("fact_id", "build_id", "form")
+                            if k in op}})
+    return {"state": "accepted", "declaration": key, "governs": category,
+            "convention": row.get("convention", key), "evidence": evidence}

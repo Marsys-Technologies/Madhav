@@ -8,11 +8,13 @@ import { tmpdir } from 'node:os'
 import { isDeepStrictEqual } from 'node:util'
 import { StringDecoder } from 'node:string_decoder'
 import { z } from 'zod'
-import { AiConsoleError } from '../errors'
+import { AiConsoleError, AiErrorCodeSchema } from '../errors'
 import { withCliInvocationAuthorization, type CliInvocationHandle } from '../repository'
-import { CliIdSchema, type CliId } from '../types'
+import { AiEffortSchema, CliIdSchema, type AiEffort, type CliId } from '../types'
+import { cliEffortLevels } from '../effort'
 import { buildExecutionArgs, CLI_REGISTRY, isSupportedCliVersion, validateCliModelId, type CliDefinition } from './registry'
-import { parseCliModelCatalog, type CliDiscoveredModel } from './catalog'
+import { DiscoveredCliModelSchema, parseCliModelCatalog, type CliDiscoveredModel } from './catalog'
+import { startCatalogProcess } from '../../../../scripts/ai-cli-bridge/catalog-protocol.mjs'
 
 export interface CliProcessResult {
   readonly stdout: string
@@ -85,7 +87,7 @@ type CliRevalidator = (userId: string, cliId: CliId, signal: AbortSignal | undef
   runner: CliRunner, registry: Registry) => Promise<void>
 
 export interface CliRunner {
-  inspectInstallation(cliId: CliId): Promise<CliInstallationIdentity>
+  inspectInstallation(cliId: CliId, signal?: AbortSignal): Promise<CliInstallationIdentity>
   confirmValidation(cliId: CliId, identity: CliInstallationIdentity, version: string,
     modelIds: readonly (string | null)[]): Promise<void>
   runVersionValidation(userId: string, cliId: CliId, signal?: AbortSignal): Promise<CliProcessResult>
@@ -95,11 +97,13 @@ export interface CliRunner {
   runModelProbeValidation(userId: string, cliId: CliId, modelId: string, stdin: string, signal?: AbortSignal): Promise<CliProcessResult>
   confirmManualModel(cliId: CliId, identity: CliInstallationIdentity, modelId: string): Promise<void>
   runExecution(userId: string, cliId: CliId, input: { modelId: string | null; stdin: string;
-    responseSchema?: unknown; maxOutputTokens?: number; signal?: AbortSignal }): Promise<CliProcessResult>
+    effort?: AiEffort; responseSchema?: unknown; maxOutputTokens?: number; signal?: AbortSignal }): Promise<CliProcessResult>
   inspectForTests(): { active: number; queued: number }
 }
 
 type BridgeFetch = typeof fetch
+type ConfirmedCliInstallation = { identity: CliInstallationIdentity; version: string;
+  modelIds: ReadonlySet<string | null>; manualModelIds: ReadonlySet<string> }
 
 const BridgeErrorSchema = z.object({ error: z.enum([
   'AI_CLI_NOT_INSTALLED', 'AI_CLI_AUTH_UNAVAILABLE', 'AI_CLI_UNREACHABLE',
@@ -117,17 +121,17 @@ const BridgeIdentitySchema = z.object({
     mode: z.number().int().nonnegative(), uid: z.number().int().nonnegative(), sha256: z.string().regex(/^[a-f0-9]{64}$/),
   }).strict().optional(),
 }).strict()
-const BridgeModelsSchema = z.object({ models: z.array(z.object({
-  modelId: z.string().min(1).max(512), displayName: z.string().min(1).max(120),
-}).strict()).max(256) }).strict()
+const BridgeModelsSchema = z.object({ models: z.array(DiscoveredCliModelSchema).max(100) }).strict()
 
 class RemoteCliRunner implements CliRunner {
   private readonly endpoint: URL
   private readonly token: string
   private readonly fetchImpl: BridgeFetch
-  private readonly confirmed = new Map<CliId, { identity: CliInstallationIdentity; version: string;
-    modelIds: ReadonlySet<string | null> }>()
+  private readonly confirmed = new Map<CliId, ConfirmedCliInstallation>()
   private readonly revalidationFlights = new Map<string, Promise<void>>()
+  private readonly catalogRefreshFlights = new Map<string, Promise<void>>()
+  private readonly catalogModelIds = new Map<CliId, ReadonlySet<string>>()
+  private readonly catalogEfforts = new Map<CliId, ReadonlyMap<string, readonly string[]>>()
   private nextRequestId = 1_000_000
 
   constructor(options: { endpoint: string; token: string; fetchImpl?: BridgeFetch }) {
@@ -137,8 +141,8 @@ class RemoteCliRunner implements CliRunner {
     this.fetchImpl = options.fetchImpl ?? fetch
   }
 
-  async inspectInstallation(cliId: CliId): Promise<CliInstallationIdentity> {
-    const body = await this.request({ operation: 'inspect', cliId: CliIdSchema.parse(cliId) })
+  async inspectInstallation(cliId: CliId, signal?: AbortSignal): Promise<CliInstallationIdentity> {
+    const body = await this.request({ operation: 'inspect', cliId: CliIdSchema.parse(cliId) }, signal)
     const parsed = BridgeIdentitySchema.safeParse(body)
     if (!parsed.success) throw new AiConsoleError('AI_CLI_UNREACHABLE')
     return Object.freeze(parsed.data)
@@ -151,7 +155,9 @@ class RemoteCliRunner implements CliRunner {
     if (!validatedModels.length || !validatedModels.includes(null)
       || new Set(validatedModels).size !== validatedModels.length) throw new AiConsoleError('AI_CLI_UNREACHABLE')
     await this.request({ operation: 'confirm', cliId: id, identity, version, modelIds: validatedModels })
-    this.confirmed.set(id, Object.freeze({ identity, version, modelIds: new Set(validatedModels) }))
+    this.confirmed.set(id, Object.freeze({ identity, version, modelIds: new Set(validatedModels),
+      manualModelIds: confirmedManualModels(this.confirmed.get(id), identity, validatedModels,
+        this.catalogModelIds.get(id)) }))
   }
 
   runVersionValidation(userId: string, cliId: CliId, signal?: AbortSignal) {
@@ -167,6 +173,9 @@ class RemoteCliRunner implements CliRunner {
     const result = await this.runAuthorizedBody(userId, cliId, { operation: 'catalog', cliId }, signal, 'validation')
     const parsed = BridgeModelsSchema.safeParse(result)
     if (!parsed.success) throw new AiConsoleError('AI_CLI_UNREACHABLE')
+    this.catalogModelIds.set(cliId, new Set(parsed.data.models.map(model => model.modelId)))
+    this.catalogEfforts.set(cliId, new Map(parsed.data.models.map(model =>
+      [model.modelId, model.supportedEfforts ?? []])))
     return parsed.data.models
   }
 
@@ -183,23 +192,70 @@ class RemoteCliRunner implements CliRunner {
     const current = this.confirmed.get(cliId)
     if (!current || !isDeepStrictEqual(current.identity, identity)) throw new AiConsoleError('AI_CLI_UNREACHABLE')
     this.confirmed.set(cliId, Object.freeze({ ...current,
-      modelIds: new Set([...current.modelIds, validateConfirmedModelId(modelId)]) }))
+      modelIds: new Set([...current.modelIds, validateConfirmedModelId(modelId)]),
+      manualModelIds: new Set([...current.manualModelIds, modelId]) }))
   }
 
   async runExecution(userId: string, cliId: CliId, input: { modelId: string | null; stdin: string;
-    responseSchema?: unknown; maxOutputTokens?: number; signal?: AbortSignal }) {
+    effort?: AiEffort; responseSchema?: unknown; maxOutputTokens?: number; signal?: AbortSignal }) {
     const id = CliIdSchema.parse(cliId)
     await this.ensureConfirmed(userId, id, input.signal)
-    const confirmed = this.confirmed.get(id)
     const modelId = input.modelId === null ? null : validateConfirmedModelId(input.modelId)
+    if (!this.confirmed.get(id)?.modelIds.has(modelId)
+      || (input.effort && !cliEffortLevels(id, modelId,
+        modelId ? this.catalogEfforts.get(id)?.get(modelId) : undefined).includes(AiEffortSchema.parse(input.effort)))) {
+      await this.refreshConfirmedModels(userId, id, input.signal)
+    }
+    const confirmed = this.confirmed.get(id)
     if (!confirmed?.modelIds.has(modelId)) throw new AiConsoleError('AI_MODEL_UNAVAILABLE')
+    if (input.effort && !cliEffortLevels(id, modelId,
+      modelId ? this.catalogEfforts.get(id)?.get(modelId) : undefined).includes(AiEffortSchema.parse(input.effort))) {
+      throw new AiConsoleError('AI_ROLE_INCOMPATIBLE')
+    }
     return this.runAuthorized(userId, id, { operation: 'execute', cliId: id, modelId, stdin: input.stdin,
+      ...(input.effort ? { effort: input.effort } : {}),
       ...(input.responseSchema === undefined ? {} : { responseSchema: input.responseSchema }),
       ...(input.maxOutputTokens === undefined ? {} : { maxOutputTokens: input.maxOutputTokens }) },
     input.signal, 'execution')
   }
 
   inspectForTests() { return { active: 0, queued: 0 } }
+
+  private async refreshConfirmedModels(userId: string, cliId: CliId, signal?: AbortSignal): Promise<void> {
+    if (!CLI_REGISTRY[cliId].modelCatalog) return
+    const key = `${userId}:${cliId}`
+    let flight = this.catalogRefreshFlights.get(key)
+    if (!flight) {
+      flight = this.refreshConfirmedModelsOnce(userId, cliId, signal)
+      this.catalogRefreshFlights.set(key, flight)
+      void flight.finally(() => {
+        if (this.catalogRefreshFlights.get(key) === flight) this.catalogRefreshFlights.delete(key)
+      }).catch(() => undefined)
+    }
+    await flight
+    if (signal?.aborted) throw new AiConsoleError('AI_EXECUTION_FAILED')
+  }
+
+  private async refreshConfirmedModelsOnce(userId: string, cliId: CliId, signal?: AbortSignal): Promise<void> {
+    const previous = this.confirmed.get(cliId)
+    if (!previous) throw new AiConsoleError('AI_CLI_UNREACHABLE')
+    const deadline = AbortSignal.timeout(30_000)
+    const combined = signal ? AbortSignal.any([signal, deadline]) : deadline
+    try {
+      const models = await readUnchangedCatalog(this, userId, cliId, previous.identity, combined)
+      const current = this.confirmed.get(cliId)
+      if (!current || current.version !== previous.version
+        || !isDeepStrictEqual(current.identity, previous.identity)) throw new AiConsoleError('AI_CLI_UNREACHABLE')
+      const modelIds = new Set<string | null>([null, ...current.manualModelIds, ...models.map(model => model.modelId)])
+      await this.request({ operation: 'confirm', cliId, identity: current.identity,
+        version: current.version, modelIds: [...modelIds] }, combined)
+      if (combined.aborted) throw new AiConsoleError('AI_EXECUTION_FAILED')
+      this.confirmed.set(cliId, Object.freeze({ ...current, modelIds }))
+    } catch (error) {
+      if (deadline.aborted && !signal?.aborted) throw new AiConsoleError('AI_CLI_TIMEOUT')
+      throw error
+    }
+  }
 
   private async ensureConfirmed(userId: string, cliId: CliId, signal?: AbortSignal): Promise<void> {
     if (this.confirmed.has(cliId)) return
@@ -288,10 +344,12 @@ class GovernedCliRunner implements CliRunner {
   private readonly activeByCli = new Map<CliId, number>()
   private readonly queue: QueueItem[] = []
   private readonly validationIdentities = new Map<CliId, CliInstallationIdentity>()
-  private readonly confirmedIdentities = new Map<CliId, { identity: CliInstallationIdentity; version: string;
-    modelIds: ReadonlySet<string | null> }>()
+  private readonly confirmedIdentities = new Map<CliId, ConfirmedCliInstallation>()
   private readonly revalidationFlights = new Map<string, Promise<void>>()
+  private readonly catalogRefreshFlights = new Map<string, Promise<void>>()
+  private readonly catalogModelIds = new Map<CliId, ReadonlySet<string>>()
   private readonly revalidate: CliRevalidator
+  private readonly catalogEfforts = new Map<CliId, ReadonlyMap<string, readonly string[]>>()
 
   constructor(options: { registry?: Registry; limits?: Partial<CliRunLimits>; environment?: NodeJS.ProcessEnv;
     revalidate?: CliRevalidator } = {}) {
@@ -304,9 +362,11 @@ class GovernedCliRunner implements CliRunner {
     }
   }
 
-  async inspectInstallation(cliId: CliId): Promise<CliInstallationIdentity> {
+  async inspectInstallation(cliId: CliId, signal?: AbortSignal): Promise<CliInstallationIdentity> {
+    if (signal?.aborted) throw new AiConsoleError('AI_EXECUTION_FAILED')
     const definition = this.definition(cliId)
     const identity = await captureInstallationIdentity(definition)
+    if (signal?.aborted) throw new AiConsoleError('AI_EXECUTION_FAILED')
     this.validationIdentities.set(cliId, identity)
     return identity
   }
@@ -326,7 +386,9 @@ class GovernedCliRunner implements CliRunner {
     const validatedModels = modelIds.map(modelId => modelId === null ? null : validateConfirmedModelId(modelId))
     if (new Set(validatedModels).size !== validatedModels.length) throw new AiConsoleError('AI_CLI_UNREACHABLE')
     this.confirmedIdentities.set(cliId, Object.freeze({ identity, version,
-      modelIds: new Set(validatedModels) }))
+      modelIds: new Set(validatedModels),
+      manualModelIds: confirmedManualModels(this.confirmedIdentities.get(cliId), identity, validatedModels,
+        this.catalogModelIds.get(cliId)) }))
   }
 
   async runVersionValidation(userId: string, cliId: CliId, signal?: AbortSignal) {
@@ -339,6 +401,7 @@ class GovernedCliRunner implements CliRunner {
     const args = this.invocableDefinition(cliId).authStatusArgs
     if (!args) throw new AiConsoleError('AI_CLI_AUTH_UNAVAILABLE')
     const result = await this.runFixedAuthorized(userId, cliId, args, '', signal, undefined, 'validation')
+    assertSubscriptionAuth(cliId, result.stdout)
     // Auth-status output can contain account identity. Only its safe exit fact
     // crosses the dedicated runner boundary.
     return { ...result, stdout: '' }
@@ -347,11 +410,23 @@ class GovernedCliRunner implements CliRunner {
   async runModelCatalogValidation(userId: string, cliId: CliId, signal?: AbortSignal) {
     const catalog = this.invocableDefinition(cliId).modelCatalog
     if (!catalog) throw new AiConsoleError('AI_CLI_AUTH_UNAVAILABLE')
+    if (cliId === 'claude_code') await this.runAuthValidation(userId, cliId, signal)
+    const protocol = catalog.format === 'codex_app_server' || catalog.format === 'claude_control'
     const result = await this.runFixedAuthorized(userId, cliId, catalog.args, '', signal,
-      undefined, 'validation')
+      undefined, 'validation', protocol ? (prepared, invocationSignal) => startCatalogProcess({
+        cliId: cliId as 'codex' | 'claude_code', executable: prepared.executable,
+        args: prepared.processArgs, cwd: prepared.cwd, env: safeEnvironment(this.environment),
+        limits: this.limits, signal: invocationSignal,
+        error: code => new AiConsoleError(AiErrorCodeSchema.parse(code)),
+        cleanup: () => rm(prepared.cwd, { recursive: true, force: true }),
+      }) : undefined)
     // Provider-list output may contain credentials. Parse it inside the runner
     // boundary and return only validated identifiers and display names.
-    return parseCliModelCatalog(catalog.format, result.stdout)
+    const models = parseCliModelCatalog(catalog.format, result.stdout)
+    this.catalogModelIds.set(cliId, new Set(models.map(model => model.modelId)))
+    this.catalogEfforts.set(cliId, new Map(models.filter(model => model.supportedEfforts !== undefined)
+      .map(model => [model.modelId, model.supportedEfforts!])))
+    return models
   }
 
   async runProbeValidation(userId: string, cliId: CliId, stdin: string, signal?: AbortSignal) {
@@ -367,7 +442,9 @@ class GovernedCliRunner implements CliRunner {
 
   async runModelProbeValidation(userId: string, cliId: CliId, modelId: string, stdin: string, signal?: AbortSignal) {
     const definition = this.invocableDefinition(cliId)
-    if (definition.modelCatalog || !definition.authStatusArgs) throw new AiConsoleError('AI_MODEL_UNAVAILABLE')
+    if ((cliId !== 'codex' && cliId !== 'claude_code') || !definition.authStatusArgs) {
+      throw new AiConsoleError('AI_MODEL_UNAVAILABLE')
+    }
     return this.runFixedAuthorized(userId, cliId, buildExecutionArgs(definition, validateConfirmedModelId(modelId)),
       encodeCliStdin(definition, stdin), signal, undefined, 'validation')
   }
@@ -376,22 +453,35 @@ class GovernedCliRunner implements CliRunner {
     const current = this.confirmedIdentities.get(cliId)
     if (!current || !isDeepStrictEqual(current.identity, identity)) throw new AiConsoleError('AI_CLI_UNREACHABLE')
     this.confirmedIdentities.set(cliId, Object.freeze({ ...current,
-      modelIds: new Set([...current.modelIds, validateConfirmedModelId(modelId)]) }))
+      modelIds: new Set([...current.modelIds, validateConfirmedModelId(modelId)]),
+      manualModelIds: new Set([...current.manualModelIds, modelId]) }))
   }
 
   async runExecution(userId: string, cliId: CliId, input: { modelId: string | null; stdin: string;
-    responseSchema?: unknown; maxOutputTokens?: number; signal?: AbortSignal }) {
+    effort?: AiEffort; responseSchema?: unknown; maxOutputTokens?: number; signal?: AbortSignal }) {
     const definition = this.invocableDefinition(cliId)
     await this.ensureConfirmed(userId, cliId, input.signal)
+    const modelId = input.modelId === null ? null : validateConfirmedModelId(input.modelId)
+    if (definition.modelCatalog?.format === 'codex_app_server'
+      || !this.confirmedIdentities.get(cliId)?.modelIds.has(modelId)
+      || (input.effort && !cliEffortLevels(cliId, modelId,
+        modelId ? this.catalogEfforts.get(cliId)?.get(modelId) : undefined).includes(AiEffortSchema.parse(input.effort)))) {
+      // Authentication can change independently of the binary. Recheck the current
+      // subscription and model capabilities before inference, even for model default.
+      await this.refreshConfirmedModels(userId, cliId, input.signal)
+    } else if (definition.modelCatalog?.format === 'claude_control') {
+      await this.runAuthValidation(userId, cliId, input.signal)
+    }
     const confirmed = this.confirmedIdentities.get(cliId)
     if (!confirmed) throw new AiConsoleError('AI_CLI_UNREACHABLE')
-    if (!confirmed.modelIds.has(input.modelId)) throw new AiConsoleError('AI_MODEL_UNAVAILABLE')
+    if (!confirmed.modelIds.has(modelId)) throw new AiConsoleError('AI_MODEL_UNAVAILABLE')
     const schemaJson = input.responseSchema === undefined ? undefined : JSON.stringify(input.responseSchema)
     const schemaOption = schemaJson === undefined ? {}
       : definition.id === 'codex' ? { schemaPath: '__SCHEMA__' }
         : definition.id === 'claude_code' || definition.id === 'gemini_antigravity'
           ? { schemaPath: schemaJson } : {}
-    const args = buildExecutionArgs(definition, input.modelId, schemaOption)
+    const args = buildExecutionArgs(definition, input.modelId, { ...schemaOption, effort: input.effort,
+      supportedEfforts: input.modelId ? this.catalogEfforts.get(cliId)?.get(input.modelId) : undefined })
     if (definition.execution.transport === 'kimi_acp') {
       return await this.runFixedAuthorized(userId, cliId, args, input.stdin, input.signal,
         undefined, 'execution', (prepared, signal) => this.startKimiAcp(prepared, input.modelId, signal))
@@ -435,8 +525,43 @@ class GovernedCliRunner implements CliRunner {
   }
 
   private invalidateIdentity(cliId: CliId, identity: CliInstallationIdentity) {
+    this.catalogEfforts.delete(cliId)
+    this.catalogModelIds.delete(cliId)
     if (this.validationIdentities.get(cliId) === identity) this.validationIdentities.delete(cliId)
     if (this.confirmedIdentities.get(cliId)?.identity === identity) this.confirmedIdentities.delete(cliId)
+  }
+
+  private async refreshConfirmedModels(userId: string, cliId: CliId, signal?: AbortSignal): Promise<void> {
+    if (!this.definition(cliId).modelCatalog) return
+    const key = `${userId}:${cliId}`
+    let flight = this.catalogRefreshFlights.get(key)
+    if (!flight) {
+      flight = this.refreshConfirmedModelsOnce(userId, cliId, signal)
+      this.catalogRefreshFlights.set(key, flight)
+      void flight.finally(() => {
+        if (this.catalogRefreshFlights.get(key) === flight) this.catalogRefreshFlights.delete(key)
+      }).catch(() => undefined)
+    }
+    await flight
+    if (signal?.aborted) throw new AiConsoleError('AI_EXECUTION_FAILED')
+  }
+
+  private async refreshConfirmedModelsOnce(userId: string, cliId: CliId, signal?: AbortSignal): Promise<void> {
+    const previous = this.confirmedIdentities.get(cliId)
+    if (!previous) throw new AiConsoleError('AI_CLI_UNREACHABLE')
+    const deadline = AbortSignal.timeout(30_000)
+    const combined = signal ? AbortSignal.any([signal, deadline]) : deadline
+    try {
+      const models = await readUnchangedCatalog(this, userId, cliId, previous.identity, combined)
+      const current = this.confirmedIdentities.get(cliId)
+      if (!current || current.version !== previous.version
+        || !isDeepStrictEqual(current.identity, previous.identity)) throw new AiConsoleError('AI_CLI_UNREACHABLE')
+      await this.confirmValidation(cliId, current.identity, current.version,
+        [...new Set([null, ...current.manualModelIds, ...models.map(model => model.modelId)])])
+    } catch (error) {
+      if (deadline.aborted && !signal?.aborted) throw new AiConsoleError('AI_CLI_TIMEOUT')
+      throw error
+    }
   }
 
   private async ensureConfirmed(userId: string, cliId: CliId, signal?: AbortSignal): Promise<void> {
@@ -850,6 +975,20 @@ class GovernedCliRunner implements CliRunner {
   }
 }
 
+/** Exit zero from an auth-status command alone is not proof of subscription authentication. */
+function assertSubscriptionAuth(cliId: CliId, stdout: string): void {
+  // Codex auth is checked using the structured app-server account/read response;
+  // login/status writes its human-readable status to stderr.
+  if (cliId === 'claude_code') {
+    let auth: unknown
+    try { auth = JSON.parse(stdout) } catch { throw new AiConsoleError('AI_CLI_AUTH_UNAVAILABLE') }
+    if (!z.object({ loggedIn: z.literal(true), authMethod: z.literal('claude.ai'),
+      apiProvider: z.literal('firstParty') }).passthrough().safeParse(auth).success) {
+      throw new AiConsoleError('AI_CLI_AUTH_UNAVAILABLE')
+    }
+  }
+}
+
 async function captureInstallationIdentity(definition: CliDefinition): Promise<CliInstallationIdentity> {
   const entrypoint = await captureTrustedFile(definition.candidates, definition.allowedRealpathPrefixes)
   const interpreter = definition.interpreter
@@ -974,6 +1113,27 @@ async function revalidateCliForExecution(userId: string, cliId: CliId, signal: A
   const { validateCli } = await import('./validation')
   const result = await validateCli(userId, cliId, signal, { runner, registry })
   if (result.state !== 'reachable') throw new AiConsoleError('AI_CLI_UNREACHABLE')
+}
+
+/** Metadata can extend a tested binary's choices, but cannot confirm a replacement binary. */
+async function readUnchangedCatalog(runner: CliRunner, userId: string, cliId: CliId,
+  identity: CliInstallationIdentity, signal: AbortSignal): Promise<CliDiscoveredModel[]> {
+  if (signal.aborted) throw new AiConsoleError('AI_EXECUTION_FAILED')
+  const before = await runner.inspectInstallation(cliId, signal)
+  if (!isDeepStrictEqual(before, identity)) throw new AiConsoleError('AI_CLI_UNREACHABLE')
+  const models = await runner.runModelCatalogValidation(userId, cliId, signal)
+  if (signal.aborted) throw new AiConsoleError('AI_EXECUTION_FAILED')
+  const after = await runner.inspectInstallation(cliId, signal)
+  if (signal.aborted) throw new AiConsoleError('AI_EXECUTION_FAILED')
+  if (!isDeepStrictEqual(after, identity)) throw new AiConsoleError('AI_CLI_UNREACHABLE')
+  return models
+}
+
+function confirmedManualModels(previous: ConfirmedCliInstallation | undefined, identity: CliInstallationIdentity,
+  modelIds: readonly (string | null)[], catalogModelIds: ReadonlySet<string> | undefined): ReadonlySet<string> {
+  const previousManual = previous && isDeepStrictEqual(previous.identity, identity) ? previous.manualModelIds : undefined
+  return new Set(modelIds.filter((modelId): modelId is string => modelId !== null
+    && (previousManual?.has(modelId) || !catalogModelIds?.has(modelId))))
 }
 
 export function createCliRunner(options: ConstructorParameters<typeof GovernedCliRunner>[0] = {}): CliRunner {

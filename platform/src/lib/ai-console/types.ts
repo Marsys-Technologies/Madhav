@@ -11,6 +11,10 @@ export const CliIdSchema = z.enum(CLI_IDS)
 export type AiRole = z.infer<typeof AiRoleSchema>
 export type ProviderId = z.infer<typeof ProviderIdSchema>
 export type CliId = z.infer<typeof CliIdSchema>
+// CLI catalogues advertise model-specific effort names. Syntax is bounded here;
+// authorization below the route checks membership in the exact model's catalogue.
+export const AiEffortSchema = z.string().max(32).regex(/^[a-z][a-z0-9_]*$/)
+export type AiEffort = z.infer<typeof AiEffortSchema>
 
 const IdentifierSchema = z.string().min(1).regex(/\S/)
 export const ProviderModelChoiceSchema = z.object({
@@ -40,8 +44,12 @@ export const ConversationAiSelectionSchema = z.discriminatedUnion('kind', [
 ])
 export type ConversationAiSelection = z.infer<typeof ConversationAiSelectionSchema>
 
-// Configurations cannot recursively reference another configuration.
-export const RoleTargetSchema = z.discriminatedUnion('kind', [ProviderModelChoiceSchema, LocalCliChoiceSchema])
+// Configurations cannot recursively reference another configuration. An omitted
+// effort preserves the model's default for role setups saved before effort existed.
+export const RoleTargetSchema = z.discriminatedUnion('kind', [
+  ProviderModelChoiceSchema.extend({ effort: AiEffortSchema.nullable().optional() }).strict(),
+  LocalCliChoiceSchema.extend({ effort: AiEffortSchema.nullable().optional() }).strict(),
+])
 export type RoleTarget = z.infer<typeof RoleTargetSchema>
 export const RoleAssignmentsSchema = z.object({
   synthesizer: RoleTargetSchema,
@@ -77,6 +85,8 @@ export const ProviderModelSchema = z.object({
   supportsTools: z.boolean(),
   supportsStructuredOutput: z.boolean(),
   available: z.boolean(),
+  supportedEfforts: z.array(AiEffortSchema).max(16).optional(),
+  effortSource: z.enum(['provider', 'policy']).optional(),
   userSelected: z.boolean().optional(),
   plainTestedAt: z.string().nullable().optional(),
   lastProbeAt: z.string().nullable().optional(),
@@ -89,8 +99,8 @@ export type ProviderModel = z.infer<typeof ProviderModelSchema>
 export const AiSourceSchema = z.enum(['pariprashna', 'mcp', 'backend'])
 export type AiSource = z.infer<typeof AiSourceSchema>
 export const ResolvedRoleTargetSchema = z.discriminatedUnion('kind', [
-  ProviderModelChoiceSchema.extend({ providerId: ProviderIdSchema }).strict(),
-  LocalCliChoiceSchema,
+  ProviderModelChoiceSchema.extend({ providerId: ProviderIdSchema, effort: AiEffortSchema.nullable().optional() }).strict(),
+  LocalCliChoiceSchema.extend({ effort: AiEffortSchema.nullable().optional() }).strict(),
 ]).readonly()
 export type ResolvedRoleTarget = z.infer<typeof ResolvedRoleTargetSchema>
 

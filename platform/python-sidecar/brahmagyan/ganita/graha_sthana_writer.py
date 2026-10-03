@@ -26,6 +26,7 @@ import os
 from datetime import datetime, timezone
 from typing import Any
 
+from panchang_engine.swiss_backend import ensure_swiss_backend
 from panchang_engine.swiss_state import serialized_swiss_state
 
 logger = logging.getLogger(__name__)
@@ -64,15 +65,12 @@ def _compute_graha_sthana(
       - sensitive_points: upagrahas dict
       - dashas: vimshottari mahadasha chain
     """
-    # Set ephemeris path before importing PyJHora
-    ephe_path = os.environ.get("SWE_EPHE_PATH", "/app/ephe")
-    try:
-        import swisseph as swe
-        swe.set_ephe_path(ephe_path)
-    except Exception as exc:
-        logger.warning("[graha_sthana_writer] ephe path set failed: %s", exc)
-
     from pyjhora_adapter.compute import compute_chart
+
+    # Assert the Swiss .se1 backend AFTER the PyJHora import: importing jhora
+    # resets the swisseph path to its .se1-free wheel directory (the previous
+    # set-before-import order was inverted and silently lost).
+    ensure_swiss_backend()
 
     inputs = {
         "datetime_iso": datetime_iso,

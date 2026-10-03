@@ -1342,3 +1342,140 @@ def test_r2q3_swiss_sun_seam_crossings_once_per_year_2025_2035():
                         for e in eps if e.level_deg == 0.0)
     # horizon covers the March equinoxes of 2025 through 2035 inclusive
     assert seam_years == list(range(2025, 2036)), seam_years
+
+
+# ── Multi-revolution in-orb enumeration (steward ruling M20261001T172824-ebbd) ──
+#
+# The pre-fix in_orb_intervals resolved ONE unwrapped band representative per
+# segment (nearest the segment midpoint). A stationless body's segment spans
+# the whole domain, so every revolution's in-orb span but one was silently
+# ABSENT (N3-class). The fix enumerates every revolution band intersecting
+# the segment — the R3-class rule residence_spans already obeyed. These tests
+# run through the REAL solve_episodes.
+
+
+def _sweep_index(body: str, start_lon: float, rate: float, days: int,
+                 start: date = date(2025, 12, 20)):
+    """Monotone sweep λ = start_lon + rate·(jd − t0), daily noon knots; a
+    stationless body yields ONE segment over the whole window."""
+    t0 = swe.julday(start.year, start.month, start.day, 12.0)
+    jds, lons = daily_knots(start, start + timedelta(days=days),
+                            lambda jd: start_lon + rate * (jd - t0))
+    idx = arcs.build_arc_index(body, jds, lons,
+                               tolerance_arcsec=SYNTHETIC_TOL_ARCSEC)
+    return idx, t0, (jds[0], jds[-1])
+
+
+def test_sun_multi_revolution_both_episodes_emitted():
+    """The ruling's reproducer: Sun 1°/day from 100°, target 200° — exact
+    roots at +100d and +460d; solve_episodes must emit BOTH episodes (the
+    pre-fix code emitted only the one nearest the segment midpoint)."""
+    idx, t0, horizon = _sweep_index("Sun", 100.0, 1.0, 600)
+    eps = episodes.solve_episodes(
+        idx, "Sun", "conjunction", 200.0, horizon, "orb_conj_slow",
+        refine=False)
+    exacts = sorted(e.t_exact - t0 for e in eps if e.exact_crossing)
+    assert exacts == pytest.approx([100.0, 460.0], abs=1e-6)
+    # orb_conj_slow is 1°: at 1°/day each episode spans exact ± 1 day.
+    for e, te in zip(sorted(eps, key=lambda e: e.t_exact), (100.0, 460.0)):
+        assert e.t_in - t0 == pytest.approx(te - 1.0, abs=1e-6)
+        assert e.t_out - t0 == pytest.approx(te + 1.0, abs=1e-6)
+        assert e.truncated_at_horizon is None
+
+
+@pytest.mark.parametrize(
+    "body,rate,start_lon,target,days",
+    [
+        ("Sun", 1.0, 100.0, 200.0, 600),      # roots at +100, +460
+        ("Moon", 13.0, 0.0, 40.0, 200),       # ~7 revolutions
+        ("Mercury", 4.0, 10.0, 30.0, 300),    # fast body, ~3⅓ revolutions
+    ],
+    ids=["Sun", "Moon", "Mercury"],
+)
+def test_multi_revolution_every_occurrence_present(body, rate, start_lon,
+                                                   target, days):
+    """Every revolution's occurrence of the contact yields an episode with an
+    exact crossing at the analytic instant — none silently absent."""
+    idx, t0, horizon = _sweep_index(body, start_lon, rate, days)
+    eps = episodes.solve_episodes(
+        idx, body, "conjunction", target, horizon,
+        "orb_conj_slow" if body != "Moon" else "orb_conj_moon",
+        refine=False)
+    # analytic crossings: λ = target + 360k, k = 0.. while inside the horizon
+    want = []
+    k = 0
+    while True:
+        lam = target + 360.0 * k
+        d = (lam - start_lon) / rate
+        if d < -1e-9:
+            k += 1
+            continue
+        if t0 + d > horizon[1]:
+            break
+        want.append(d)
+        k += 1
+    exacts = sorted(e.t_exact - t0 for e in eps if e.exact_crossing)
+    assert exacts == pytest.approx(want, abs=1e-6)
+    # count identity: one exact episode per find_roots root (grouped by
+    # occurrence) — the solver's candidate set and the episodes agree 1:1.
+    roots = contacts.find_roots(idx, body, "conjunction", target, refine=False)
+    assert len(exacts) == len(roots) == len(want)
+
+
+def test_multi_revolution_retrograde_control_unchanged():
+    """Retrograde control: the fix must not alter the pinned station-complex
+    behaviour. Piecewise λ: rise 1°/day to 210° at d=210, fall to 190° at
+    d=230, rise again — target 200°, orb 1°. Three distinct in-orb intervals
+    ([199,201], [219,221], [239,241]) each with one exact root; the middle
+    crossing is on the internal retrograde leg (branch 'retrograde'), the
+    outer two 'direct' — exactly the pre-fix WP2 semantics."""
+    t0 = swe.julday(2026, 1, 1, 12.0)
+
+    def curve(jd):
+        d = jd - t0
+        if d <= 210.0:
+            return d
+        if d <= 230.0:
+            return 210.0 - (d - 210.0)
+        return 190.0 + (d - 230.0)
+
+    jds, lons = daily_knots(date(2025, 12, 20), date(2026, 9, 1), curve)
+    idx = arcs.build_arc_index("Mars", jds, lons,
+                               tolerance_arcsec=SYNTHETIC_TOL_ARCSEC)
+    eps = episodes.solve_episodes(
+        idx, "Mars", "conjunction", 200.0, (jds[0], jds[-1]),
+        "orb_conj_slow", refine=False)
+    assert len(eps) == 3
+    eps.sort(key=lambda e: e.t_exact)
+    want = [
+        (200.0, "direct", 199.0, 201.0),
+        (220.0, "retrograde", 219.0, 221.0),
+        (240.0, "direct", 239.0, 241.0),
+    ]
+    for e, (te, branch, tin, tout) in zip(eps, want):
+        assert e.t_exact - t0 == pytest.approx(te, abs=1e-6)
+        assert e.branch == branch
+        assert e.t_in - t0 == pytest.approx(tin, abs=1e-6)
+        assert e.t_out - t0 == pytest.approx(tout, abs=1e-6)
+    assert all(e.truncated_at_horizon is None for e in eps)
+
+
+def test_multi_revolution_retrograde_falling_sweep_all_revolutions():
+    """A falling (retrograde-direction) sweep crossing the same level once
+    per revolution: every revolution's band is enumerated on the direction-
+    aware path too (a falling segment enters at the band's UPPER edge)."""
+    idx, t0, horizon = _sweep_index("Mars", 700.0, -1.0, 700)
+    eps = episodes.solve_episodes(
+        idx, "Mars", "conjunction", 200.0, horizon, "orb_conj_slow",
+        refine=False)
+    exacts = sorted(e.t_exact - t0 for e in eps if e.exact_crossing)
+    # λ = 700 − d = 200 + 360k → d = 500 − 360k: k=1 → 140, k=0 → 500
+    # (k=−1 → 860 lies beyond the 700-day window).
+    assert exacts == pytest.approx([140.0, 500.0], abs=1e-6)
+    eps.sort(key=lambda e: e.t_exact)
+    for e, te in zip(eps, (140.0, 500.0)):
+        # falling: enters at the band's UPPER edge (201°), exits the lower
+        assert e.t_in - t0 == pytest.approx(te - 1.0, abs=1e-6)
+        assert e.t_out - t0 == pytest.approx(te + 1.0, abs=1e-6)
+        assert e.branch == "direct"  # bare falling stretch, station outside
+        assert e.truncated_at_horizon is None

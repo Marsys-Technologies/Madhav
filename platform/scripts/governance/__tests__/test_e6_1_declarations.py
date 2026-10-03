@@ -167,8 +167,8 @@ def test_a_wildcard_entry_round_trips_through_the_loader_and_the_fact(tmp_path):
             ac.validate_declarations(_doc(w=dict(prose_fields=[bad], evidence=PEV)))
 
 
-def test_the_file_version_is_1_6_0():
-    assert json.loads((HERE.parent / "asset_declarations.json").read_text(encoding="utf-8"))["version"] == "1.6.0"
+def test_the_file_version_is_1_13_0():
+    assert json.loads((HERE.parent / "asset_declarations.json").read_text(encoding="utf-8"))["version"] == "1.13.0"
 
 
 def test_empty_prose_list_is_a_valid_positive_declaration_distinct_from_null(tmp_path):
@@ -273,6 +273,7 @@ CITATION_EXTENDED_PRIOR = {"bo_arudha": ["citation_human"], "bo_laksana": ["cita
 # declared `[]` (writer composes no NARRATION; the evidence carries the AST-backed reason). SS ruling 2026-10-01: a composed
 # string is narration only if it states or grades a computed value; provenance pointers, ordinals, labels are not.
 NARR_EMPTY = ("bg_doshas", "bg_yogas", "bg_ontology", "bo_laksana_rerank")
+LATTA_EMPTY = ("bg_phaladeepika_latta",)     # 1.12.0 (NARR-GUARD, N-94): prose_fields [] with a prose_coupling to Carr.D1 (test_e6_narr_guard.py); the first [] asset with a carriage check
 # the 13 earlier declarations were re-audited against writer code (test_e6_1_narr_reaudit.py): 11 kept with writer evidence
 # (no `ddl` marker), 2 removed (null). The marker is gone from all 13.
 PRIOR_REAUDIT_NULLED = {"mi_bhavisya", "ph_pramana"}
@@ -299,10 +300,10 @@ NARR_CITES = {
     "bo_upaya": [(_WR + "bo_upaya.py", 1008, "reason = ("), (_WR + "bo_upaya.py", 1690, '"maraka_contraindication_verdict": maraka_verdict'),
                  (_L + "L2_bodha/query_remedies.ts", 404, "prescription_detail_jsonb"),
                  (_L + "L2_bodha/query_remedies.ts", 564, "marakaVerdictFrom(r['prescription_detail_jsonb'])")],
-    "ka_vighnakara": [(_WR + "ka_vighnakara.py", 639, "'reason': f\"Saturn in adversarial transit window"), (_WR + "ka_vighnakara.py", 691, "'reason': ("),
-                      (_WR + "ka_vighnakara.py", 748, "'reason': f\"Tithi"), (_WR + "ka_vighnakara.py", 825, "'reason': ("),
-                      (_WR + "ka_vighnakara.py", 904, "'reason': ("), (_WR + "ka_vighnakara.py", 960, "'reason': f\"{planet_str} combust"),
-                      (_WR + "ka_vighnakara.py", 288, "json.dumps(obs['detail'])"),
+    "ka_vighnakara": [(_WR + "ka_vighnakara.py", 641, "'reason': f\"Saturn in adversarial transit window"), (_WR + "ka_vighnakara.py", 693, "'reason': ("),
+                      (_WR + "ka_vighnakara.py", 750, "'reason': f\"Tithi"), (_WR + "ka_vighnakara.py", 827, "'reason': ("),
+                      (_WR + "ka_vighnakara.py", 906, "'reason': ("), (_WR + "ka_vighnakara.py", 962, "'reason': f\"{planet_str} combust"),
+                      (_WR + "ka_vighnakara.py", 290, "json.dumps(obs['detail'])"),
                       (_L + "L3_kala/query_obstruction_periods.ts", 80, "obstruction_detail")],
     "ka_avadhi": [(_WR + "ka_avadhi.py", 293, '"note": f"AD lord {lord} modulates MD lord {sublord}."'),
                   (_WR + "ka_avadhi.py", 303, '"dossier": json.dumps(dossier)'),
@@ -394,13 +395,13 @@ def test_the_committed_file_declares_exactly_the_narr_decisions_on_top_of_the_th
     got = {a: e["prose_fields"] for a, e in decl.items() if e["prose_fields"] is not None}
     for a, v in NARR_DECLARED.items():
         assert got[a] == v, a
-    assert sorted(a for a, v in got.items() if v == []) == sorted(NARR_EMPTY)
-    assert set(got) == (PRIOR_DDL - PRIOR_REAUDIT_NULLED) | set(NARR_DECLARED) | set(CITATION_NEW)
+    assert sorted(a for a, v in got.items() if v == []) == sorted(NARR_EMPTY + LATTA_EMPTY)
+    assert set(got) == (PRIOR_DDL - PRIOR_REAUDIT_NULLED) | set(NARR_DECLARED) | set(CITATION_NEW) | set(LATTA_EMPTY)
     for a in CITATION_NEW:
         assert got[a] == CITATION_NEW[a], a
     for a, extra in CITATION_EXTENDED_PRIOR.items():                  # prior (ddl) declarations extended with citation_human
         assert got[a][-len(extra):] == extra and len(got[a]) == len(extra) + 2, a
-    n = len(PRIOR_DDL) - len(PRIOR_REAUDIT_NULLED) + len(NARR_DECLARED) + len(CITATION_NEW)
+    n = len(PRIOR_DDL) - len(PRIOR_REAUDIT_NULLED) + len(NARR_DECLARED) + len(CITATION_NEW) + len(LATTA_EMPTY)
     assert len(got) == n and sum(e["prose_fields"] is None for e in decl.values()) == 127 - n
 
 
@@ -618,7 +619,7 @@ def test_ka_vighnakara_every_detector_reason_is_composed_except_the_two_constant
     roots = [v for d in ast.walk(tree) if isinstance(d, ast.Dict) for k, v in zip(d.keys, d.values)
              if isinstance(k, ast.Constant) and k.value == "detail"]
     composed, constant = _composed_lines(nw.composed_report(tree, roots, ("reason",)))
-    assert composed == [639, 691, 748, 825, 904, 960] and constant == [786, 861]
+    assert composed == [641, 693, 750, 827, 906, 962] and constant == [788, 863]
 
 
 def test_ka_avadhi_sublord_note_is_bound_into_the_dossier_json_and_composed():
@@ -1673,7 +1674,7 @@ CITATION_DECISIONS = json.loads(r"""
   ],
   "served": [
    "platform/src/lib/retrieval/registry/layers/register_d9_judgment.ts",
-   1489,
+   1490,
    "`SELECT mechanism_name, mech"
   ],
   "fields": [
@@ -1701,12 +1702,12 @@ CITATION_DECISIONS = json.loads(r"""
   "cites": [
    [
     "platform/python-sidecar/pipeline/orchestrator/writers/ga_nakshatra.py",
-    191,
+    192,
     "chum = f\"{subject} {key}: {v"
    ],
    [
     "platform/python-sidecar/pipeline/orchestrator/writers/ga_nakshatra.py",
-    193,
+    194,
     "chum = f\"{subject} {key}: {v"
    ]
   ],
@@ -1936,12 +1937,12 @@ CITATION_DECISIONS = json.loads(r"""
   "cites": [
    [
     "platform/python-sidecar/ga_writers/ga_sade_sati_writer.py",
-    892,
+    893,
     "citation_human=f\"Sade Sati {"
    ],
    [
     "platform/python-sidecar/ga_writers/ga_sade_sati_writer.py",
-    1239,
+    1240,
     "citation_human=f\"Sade Sati {"
    ]
   ],
@@ -2460,7 +2461,7 @@ def test_citation_sites_scanner_sees_attribute_setdefault_variable_uppercase_key
 
 def test_the_declarations_file_states_the_fact_row_narr_rule_and_the_version():
     doc = json.loads((HERE.parent / "asset_declarations.json").read_text(encoding="utf-8"))
-    assert doc["version"] == "1.6.0"
+    assert doc["version"] == "1.13.0"
     d = doc["description"]
     for phrase in ("fact_value_text is the datum", "citation_human is the sentence", "verbalising an L1 fact value states a computed value",
                    "fact_value_text / formula_provenance_text columns stay undeclared", "[*]"):
@@ -3099,8 +3100,9 @@ def test_terminal_by_construction_against_a_measured_dependent_is_reported():
 
 # ───────────────────────── (6) declarations are facts only: no verdict moves ─────────────────────────
 
-def test_no_na_rule_is_declared_and_no_criterion_reads_a_declared_key():
-    assert ac.NA_RULE_DECISIONS == {}
+def test_the_declared_rule_set_is_exactly_the_approved_one_and_no_criterion_reads_a_declared_key():
+    import test_e6_na_r01_03 as r13   # REGISTRY_REVISION 9 declares exactly the three approved rules (SS N-65)
+    assert set(ac.NA_RULE_DECISIONS) == r13.DECLARED_IDS
     facts = dict(asset_kind="service", declared_kind="static", declared_carriage=dict(served_surface=False),
                  declared_carries_downstream=False, declared_prose_fields=[])
     base = dict(asset_kind="service")

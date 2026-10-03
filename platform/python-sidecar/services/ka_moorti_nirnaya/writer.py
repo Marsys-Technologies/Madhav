@@ -47,6 +47,12 @@ from typing import Any
 import psycopg.rows
 
 from pipeline.orchestrator.writers import WriterBase, WriterResult, register
+from services.w2g.node_series import (
+    NODE_CONVENTION_MISMATCH_REASON,
+    NODE_SERIES_PREDICATE,
+    assert_one_row_per_date,
+    node_mode_differs_from_kernel,
+)
 from services.ka_graha_sancara.engine import NAKSHATRAS, NAK_SIZE_DEG, SIGNS
 from services.gochara_kernel.overlays import date_to_jd as _date_to_jd
 from services.ka_moorti_nirnaya.logic import (
@@ -88,10 +94,11 @@ WHERE chart_id = %s AND ayanamsha_id = %s
   AND fact_category = 'graha_position' AND fact_subject = 'MOON' AND fact_key = 'longitude_sidereal'
 """
 
-_FETCH_EPHEMERIS_RANGE_SQL = """
+_FETCH_EPHEMERIS_RANGE_SQL = f"""
 SELECT date, body, tropical_longitude
 FROM ephemeris_daily
 WHERE ayanamsha_id = 'tropical' AND date BETWEEN %s AND %s AND body = ANY(%s)
+  AND {NODE_SERIES_PREDICATE}
 ORDER BY body, date
 """
 
@@ -171,22 +178,49 @@ def _config_horizon_date(value: Any) -> date | None:
     return date.fromisoformat(str(value))
 
 
+# §N.8 — the method that produced each body's ingress roots is recorded, never
+# implied. 'swiss_refined' is only claimed when a Swiss-refined root was
+# actually produced (every refine call asserts retflag & 2); 'spline_unrefined'
+# is the kernel's own arc-spline root, used ONLY after the kernel reported its
+# ephemeris backend unavailable (EphemerisBackendError). A body with no ingress
+# root in the horizon never called Swiss, so it claims neither. 'spline_unrefined' is
+# ALSO recorded, with a `reason`, for a node body whose series convention differs from the
+# kernel's refinement convention (`node_convention_mismatch(series=true,kernel=mean)`):
+# Swiss is not called for it at all, so no backend is claimed ('not_probed').
+SOLVER_SWISS_REFINED = "swiss_refined"
+SOLVER_SPLINE_UNREFINED = "spline_unrefined"
+SOLVER_NO_ROOTS = "no_ingress_roots"
+
+
+def _backend_from_error(exc: Any) -> str:
+    """The ephemeris backend the kernel reported on a failed SWIEPH gate —
+    read from the error's own retflag (Moshier iff retflag & 4), never assumed."""
+    retflag = int(getattr(exc, "retflag", 0))
+    return f"{'moshier' if retflag & 4 else 'not_swieph'}(retflag={retflag})"
+
+
 def _build_kernel_arcs(
     daily_by_body: dict[str, list[tuple[date, float]]], bodies: tuple[str, ...],
-) -> tuple[dict[str, Any], dict[str, list[Any]]]:
+) -> tuple[dict[str, Any], dict[str, list[Any]], dict[str, dict[str, str]]]:
     """WP9 5.3: decompose each body's daily series into the kernel's arc
     substrate and solve its sign_ingress boundary roots — the TRUE ingress
     instants the instant-grade moorti path is graded at. Built from the SAME
     daily rows the day-grade path reads (no second data source). Roots are
-    Swiss-refined where the ephemeris backend is available; otherwise the
-    kernel's spline roots over its own arcs stand (still a solved sub-day
-    instant, never a civil-date claim). Per-body failures are honest
-    fallbacks (that body simply grades day-grain)."""
+    Swiss-refined where the ephemeris backend is available; when the kernel
+    reports the backend unavailable (EphemerisBackendError — and ONLY that),
+    the kernel's spline roots over its own arcs stand (still a solved sub-day
+    instant, never a civil-date claim) and the fallback is RECORDED in the
+    returned per-body solver map ({body: {"method", "backend"}}). Any other
+    failure while solving roots propagates — it is not a backend gap. A
+    per-body arc-build failure remains an honest day-grain fallback (that
+    body simply grades day-grain; its rows carry precision_regime='date_grain')."""
     from services.gochara_kernel import arcs as kernel_arcs
     from services.gochara_kernel.contacts import find_boundary_roots
+    from services.gochara_kernel.knots import EphemerisBackendError
 
     index_by_body: dict[str, Any] = {}
     roots_by_body: dict[str, list[Any]] = {}
+    solver_by_body: dict[str, dict[str, str]] = {}
     for body in bodies:
         daily = daily_by_body.get(body) or []
         if len(daily) < 4:
@@ -195,18 +229,73 @@ def _build_kernel_arcs(
         lons = [lon for _d, lon in daily]
         try:
             idx = kernel_arcs.build_arc_index(body, jds, lons)
-            try:
-                roots = find_boundary_roots(idx, body, "sign_ingress", refine=True)
-            except Exception:  # noqa: BLE001 — no Swiss backend in this env
-                roots = find_boundary_roots(idx, body, "sign_ingress", refine=False)
-            roots_by_body[body] = roots
-            index_by_body[body] = idx
         except Exception as exc:  # noqa: BLE001 — honest per-body fallback
             logger.warning(
                 "[ka_moorti_nirnaya] kernel arc build failed for %s: %s — "
                 "that body grades day-grain", body, exc,
             )
-    return index_by_body, roots_by_body
+            continue
+        if node_mode_differs_from_kernel(body):
+            # The daily series for this body is the TRUE node (what L0 stores); the kernel's
+            # Swiss objective for a node is the MEAN node (N-69). Refining a TRUE-series
+            # root against a MEAN objective measures a different curve — it lands up to
+            # ~10 days off and used to surface as a spurious "lost its bracket". Keep the
+            # roots of the series the arcs were built from, and RECORD that nothing was
+            # refined and why. Removed in step 3, when the series itself is MEAN.
+            roots = find_boundary_roots(idx, body, "sign_ingress", refine=False)
+            roots_by_body[body] = roots
+            index_by_body[body] = idx
+            solver_by_body[body] = {
+                "method": SOLVER_SPLINE_UNREFINED,
+                "backend": "not_probed",
+                "reason": NODE_CONVENTION_MISMATCH_REASON,
+            }
+            continue
+        try:
+            roots = find_boundary_roots(idx, body, "sign_ingress", refine=True)
+            solver = (
+                {"method": SOLVER_SWISS_REFINED, "backend": "swieph"}
+                if roots else {"method": SOLVER_NO_ROOTS, "backend": "not_probed"}
+            )
+        except EphemerisBackendError as exc:
+            logger.warning(
+                "[ka_moorti_nirnaya] Swiss refinement unavailable for %s (%s) — "
+                "ingress roots fall back to the kernel's UNREFINED spline roots "
+                "(recorded in the build notes)", body, exc,
+            )
+            roots = find_boundary_roots(idx, body, "sign_ingress", refine=False)
+            solver = {
+                "method": SOLVER_SPLINE_UNREFINED,
+                "backend": _backend_from_error(exc),
+            }
+        roots_by_body[body] = roots
+        index_by_body[body] = idx
+        solver_by_body[body] = solver
+    return index_by_body, roots_by_body, solver_by_body
+
+
+def _solver_notes(solver_by_body: dict[str, dict[str, str]]) -> str:
+    """Build-notes fragment recording, per body, the solver method that produced
+    its ingress roots and the ephemeris backend the kernel reported."""
+    per_body = ",".join(
+        f"{body}:{info['method']}|{info['backend']}"
+        + (f"|{info['reason']}" if info.get("reason") else "")
+        for body, info in sorted(solver_by_body.items())
+    )
+    # `degraded` = the BACKEND was unavailable; a node-convention mismatch is a different,
+    # separately counted reason for the same un-refined method
+    degraded = sum(
+        1 for info in solver_by_body.values()
+        if info["method"] == SOLVER_SPLINE_UNREFINED and not info.get("reason")
+    )
+    node_mismatch = sum(
+        1 for info in solver_by_body.values()
+        if info.get("reason") == NODE_CONVENTION_MISMATCH_REASON
+    )
+    notes = f"ingress_solver={per_body or 'none'};ingress_solver_degraded={degraded}"
+    if node_mismatch:
+        notes += f";ingress_solver_node_convention_unrefined={node_mismatch}"
+    return notes
 
 
 def _match_ingress_instant(
@@ -237,6 +326,7 @@ def _fetch_daily_sidereal_by_body(
     with conn.cursor(row_factory=psycopg.rows.dict_row) as cur:
         cur.execute(_FETCH_EPHEMERIS_RANGE_SQL, (horizon_start, horizon_end, list(bodies)))
         rows = cur.fetchall()
+    assert_one_row_per_date(rows, context="ka_moorti_nirnaya._fetch_daily_sidereal_by_body")
 
     by_body: dict[str, list[tuple[date, float]]] = {b: [] for b in bodies}
     for r in rows:
@@ -327,11 +417,13 @@ class KaMoortiNirnayaWriter(WriterBase):
 
         arc_index_by_body: dict[str, Any] = {}
         ingress_roots_by_body: dict[str, list[Any]] = {}
+        solver_by_body: dict[str, dict[str, str]] = {}
         if KERNEL_INSTANT_GRADING:
-            arc_index_by_body, ingress_roots_by_body = _build_kernel_arcs(
+            arc_index_by_body, ingress_roots_by_body, solver_by_body = _build_kernel_arcs(
                 daily_by_body, bodies_needed,
             )
         instant_graded = 0
+        instant_graded_unrefined = 0
         day_grade_misclassified = 0
 
         all_rows: list[dict] = []
@@ -400,6 +492,8 @@ class KaMoortiNirnayaWriter(WriterBase):
                         moon_nak_idx = int(moon_lon // NAK_SIZE_DEG) % 27
                         graded_regime = "instant_grain"
                         instant_graded += 1
+                        if (solver_by_body.get(graha) or {}).get("method") == SOLVER_SPLINE_UNREFINED:
+                            instant_graded_unrefined += 1
                         day_nak = moon_nak_by_date.get(run["start_date"])
                         if day_nak is not None and day_nak != moon_nak_idx:
                             day_grade_misclassified += 1
@@ -472,6 +566,8 @@ class KaMoortiNirnayaWriter(WriterBase):
                   f"moorti_computed={computed_count}/{len(all_rows)};"
                   f"horizon={horizon_start}..{horizon_end};"
                   f"kernel_instant_graded={instant_graded};"
+                  f"kernel_instant_graded_spline_unrefined={instant_graded_unrefined};"
+                  f"{_solver_notes(solver_by_body)};"
                   f"day_grade_misclassified={day_grade_misclassified};"
                   f"day_grade_misclassification_rate={misclass_rate:.4f}",
         )

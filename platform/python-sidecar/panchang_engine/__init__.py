@@ -19,6 +19,10 @@ from .exceptions import (
     PanchangEngineError, AyanamshaError, OutOfRangeError, ValidationError,
 )
 from .swiss_state import SWISS_STATE_LOCK, serialized_swiss_state, swiss_state_scope
+from .swiss_backend import (
+    OutOfCorpusRangeError, SwissBackendError, backend_name, ensure_swiss_backend,
+    panchang_sample_jds,
+)
 
 
 @serialized_swiss_state
@@ -66,9 +70,13 @@ def compute_panchang(date, lat: float, lon: float, tz_offset: int) -> "Panchang"
     if not (-180 <= lon <= 180):
         raise ValidationError(f"lon out of range: {lon}")
 
-    # Select the built-in/default ephemeris path and Lahiri under one critical
-    # section so a prior request's path cannot leak into this computation.
-    swe.set_ephe_path(None)
+    # Pin the Swiss .se1 backend (fail-closed, probed) and Lahiri under one
+    # critical section so a prior request's path cannot leak into this
+    # computation and Moshier can never substitute silently.  The JD span the panchang
+    # actually samples (sunrise search from local noon - 0.75 d, anga searches to +2 d past
+    # sunrise: panchang_sample_jds) is passed so a day whose samples would leave the corpus
+    # window raises out_of_corpus_range (disclosed 422).
+    ensure_swiss_backend(*panchang_sample_jds(swe.julday(date.year, date.month, date.day, 12.0)))
     set_ayanamsha("lahiri")
 
     # Sunrise / sunset
@@ -146,7 +154,6 @@ def compute_panchang(date, lat: float, lon: float, tz_offset: int) -> "Panchang"
     ]
 
     # ephemeris version
-    swe.set_ephe_path(None)
     ephe_ver = swe.version
 
     return Panchang(
@@ -247,9 +254,12 @@ def panchanga_instant(instant, lat: float, lon: float, tz_offset: int) -> "Panch
     if not (-180 <= lon <= 180):
         raise ValidationError(f"lon out of range: {lon}")
 
-    # Select the built-in/default ephemeris path and Lahiri under one critical
-    # section so a prior request's path cannot leak into this computation.
-    swe.set_ephe_path(None)
+    # Pin the Swiss .se1 backend (fail-closed, probed) and Lahiri under one
+    # critical section so a prior request's path cannot leak into this
+    # computation and Moshier can never substitute silently.  The JD span the instant's
+    # panchang actually samples (panchang_sample_jds) is passed so a moment whose samples
+    # would leave the corpus window raises out_of_corpus_range (disclosed 422).
+    ensure_swiss_backend(*panchang_sample_jds(swe.julday(instant.year, instant.month, instant.day, 12.0)))
     set_ayanamsha("lahiri")
 
     # Convert local instant to UTC
@@ -344,7 +354,6 @@ def panchanga_instant(instant, lat: float, lon: float, tz_offset: int) -> "Panch
         "tithi_attrs", "nakshatra_attrs",
     ]
 
-    swe.set_ephe_path(None)
     ephe_ver = swe.version
 
     return PanchangaInstant(

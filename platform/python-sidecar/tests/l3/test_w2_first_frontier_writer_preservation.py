@@ -56,6 +56,10 @@ class RecordingConnection:
         ]
 
 
+# a decorated (@records_swiss_backend) per-chart writer needs a checkable birth window (finding 3)
+_BIRTH = {"datetime_iso": "1984-02-05T10:43:00+05:30"}
+
+
 def _ctx(conn, *, birth_params=None):
     config = {"chart_id": "chart-1"}
     if birth_params is not None:
@@ -135,6 +139,14 @@ def _patch_daily_writer_dependencies(monkeypatch, module, daily_by_body):
             lambda *_: {1: {"moorti_name": "gold", "quality_tier": "high", "phala_brief": "fixture", "classical_citation": "fixture"}},
         )
         monkeypatch.setattr(module, "_fetch_daily_sidereal_by_body", lambda *_: daily_by_body)
+        # This fixture is a constant 0.0° series (every body on the Aries seam
+        # every day) — not a motion Swiss can ever bracket. These tests assert
+        # delete/insert ORDERING, not the kernel solver; the writer used to pass
+        # here only because a blanket `except Exception` turned the kernel's
+        # "lost its bracket" error into silently-unrefined roots (A5.4 removed
+        # that swallow). The kernel solver is covered in
+        # test_ka_moorti_nirnaya_writer.py::TestIngressSolverMethodRecorded.
+        monkeypatch.setattr(module, "KERNEL_INSTANT_GRADING", False)
     else:
         monkeypatch.setattr(module, "_fetch_janma_moon", lambda *_: (0, 0, "fact-1"))
         monkeypatch.setattr(
@@ -282,7 +294,7 @@ def test_computed_writers_preserve_partition_when_candidate_build_interrupts(mon
     monkeypatch.setattr(tithi, "DEFAULT_MAX_PRAVESHA_YEAR", 2)
     monkeypatch.setattr(tithi, "_compute_one_year", lambda *_: (_ for _ in ()).throw(RuntimeError("interrupted")))
     with pytest.raises(RuntimeError, match="interrupted"):
-        tithi.KaTithiPraveshaWriter().run(_ctx(conn))
+        tithi.KaTithiPraveshaWriter().run(_ctx(conn, birth_params=_BIRTH))
     assert conn.mutations == []
 
     conn = RecordingConnection()
@@ -309,7 +321,7 @@ def test_computed_writers_delete_only_after_complete_candidate(monkeypatch):
         "_compute_one_year",
         lambda *_: {"verification_pass_status": "passed", "graha_positions_jsonb": {}, "ephemeris_audit_jsonb": {}},
     )
-    result = tithi.KaTithiPraveshaWriter().run(_ctx(conn))
+    result = tithi.KaTithiPraveshaWriter().run(_ctx(conn, birth_params=_BIRTH))
     assert result.rows_inserted == 1
     assert conn.mutations[0][1].lstrip().upper().startswith("DELETE")
 

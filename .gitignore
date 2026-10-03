@@ -141,3 +141,6 @@ platform/scripts/probe/fixtures/p4k/*/report.json
 # Cowork context-upload bundles — re-tars of files already committed in this repo;
 # reproducible, never a source of truth
 /_cowork_tmp/
+
+# Suvarna E5.2 fold lock files (nikasha_fold.py: <register>.lock)
+*.md.lock

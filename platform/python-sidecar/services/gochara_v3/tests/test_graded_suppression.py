@@ -454,6 +454,7 @@ class TestSuppressionFactorForGrade:
 class TestV1ParityModeUnaffected:
     """AC4: v1_parity_mode=True must be completely unaffected by W1.3."""
 
+    @pytest.mark.slow_real_ephemeris  # C23: real-engine JD sweep; CI slow step
     def test_v1_parity_mode_unaffected_by_vedha_rows(self):
         """Feeding vedha_rows to context does NOT change v1_parity_mode results."""
         targets = [t for t in RM.build_fixture_targets(CHART_ID) if t.event_class == "marriage"]
@@ -493,6 +494,7 @@ class TestV1ParityModeUnaffected:
 class TestEvaluateLambdaWithSuppression:
     """Integration tests: quality_gates flowing through evaluate_lambda_vector."""
 
+    @pytest.mark.slow_real_ephemeris  # C23: real-engine JD sweep; CI slow step
     def test_lambda_identical_with_and_without_an_uncited_obstruction(self):
         """Reconciled: an active obstruction with no cited scale (the
         production engine cites none — D-PG353) is structure on the row,
@@ -518,6 +520,7 @@ class TestEvaluateLambdaWithSuppression:
             assert qgd["quality_gates"] == 1.0 and qgd["scoped_application"] == []
             assert r_no.x_t_detail["quality_gates_detail"]["state"] == "unavailable"
 
+    @pytest.mark.slow_real_ephemeris  # C23: real-engine JD sweep; CI slow step
     def test_lambda_v3_still_in_0_1_with_suppression(self):
         """AC3 + invariant: lambda_v3 stays in [0,1] even with multiple active vedhā."""
         rows = tuple(
@@ -565,6 +568,7 @@ class TestEvaluateLambdaWithSuppression:
         assert "fired_vedha" in qgd, "quality_gates_detail must carry fired_vedha"
         assert "quality_gates" in qgd, "quality_gates_detail must carry quality_gates"
 
+    @pytest.mark.slow_real_ephemeris  # C23: real-engine JD sweep; CI slow step
     def test_empty_vedha_table_backward_compat(self):
         """AC1: empty vedha table → lambda identical to pre-W1.3 (quality_gates=1.0)."""
         # With no vedha rows, quality_gates=1.0 so the formula is identical to W1.1.

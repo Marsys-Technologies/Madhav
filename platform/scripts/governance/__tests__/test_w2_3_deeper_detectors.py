@@ -513,7 +513,7 @@ def test_r241_the_real_writers_near_the_new_shapes_resolve_as_hand_verified():
     `_check_already_written` is pinned to the current build — neither is a hold, both PASS."""
     ids = {**ac.registered_ids("ka_"), **ac.registered_ids("mi_"), **ac.registered_ids("ga_")}
     v, n = ac.idem_scan("ka_kshetra", ids["ka_kshetra"], "delete_then_insert", ["kala_field"])
-    assert v == ac.FAIL and "services/ka_kshetra/writer.py:545 (raise KshetraReplacementHeld" in n[0], n
+    assert v == ac.FAIL and "services/ka_kshetra/writer.py:547 (raise KshetraReplacementHeld" in n[0], n
     v, n = ac.idem_scan("mi_jivanaghatana", ids["mi_jivanaghatana"], "delete_then_insert", ["mimamsa_event_provenance"] * 2)
     assert v == ac.PASS, n
     v, n = ac.idem_scan("ga_vargas", ids["ga_vargas"], "delete_then_insert", ["chart_divisionals"] * 2)
@@ -561,7 +561,9 @@ def test_r21_a_root_and_a_leaf_with_the_same_verdict_open_differently_weighted_b
     root, leaf = rows["bg_root-Build.completion"], rows["bg_leaf-Build.completion"]
     assert (root["blocking_radius"], root["severity_weight"]) == (3, 4), root
     assert (leaf["blocking_radius"], leaf["severity_weight"]) == (0, 1), leaf
-    assert "blocking_radius" not in rows["bg_root-Carr.detector"]
+    assert "bg_root-Carr.detector" not in rows          # E6 item i: the retired criterion opens no gap
+    nonbuild = [k for k in rows if k.startswith("bg_root-") and not k.startswith("bg_root-Build.")]
+    assert nonbuild and all("blocking_radius" not in rows[k] for k in nonbuild), nonbuild   # a non-Build gap carries no radius
 
 
 def test_r21_an_unreadable_dag_is_unmeasured_never_zero(monkeypatch, tmp_path):

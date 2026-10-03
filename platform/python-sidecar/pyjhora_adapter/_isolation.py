@@ -15,6 +15,16 @@ we PREFER 'fork' here. We fall back to 'forkserver'/'spawn' only if 'fork' is
 unavailable (the worker is module-level so it stays picklable for those cases).
 The package import in ._jhora guarantees swisseph is initialised in the parent
 before any fork.
+
+Swiss backend (TI-ephemeris-fix-001): on Linux the swisseph C state (ephemeris path, sidereal
+mode) is THREAD-local, and a forked worker inherits only whatever the forking thread had
+pinned, which nothing ever probed.  So the worker's first line (``_worker``) calls
+``ensure_swiss_backend(jd_ut)`` in the process/thread that computes (fail-closed: an unusable
+corpus or an out-of-window date raises in the worker and propagates through ``pool.map``).  It is
+the task, not a Pool ``initializer``, on purpose: an initializer that raises makes
+``multiprocessing.Pool`` respawn its workers forever (a hang), a task that raises just fails the
+map.  The Pool is created while holding the Swiss state lock, so no other thread can hold it at
+fork time (a fork-inherited, never-released lock would deadlock the child's ``ensure``).
 """
 from __future__ import annotations
 
@@ -23,12 +33,15 @@ from typing import Any, Callable
 
 # Ensure swisseph is initialised in the parent before any fork.
 from . import _jhora  # noqa: F401
+from panchang_engine.swiss_backend import ensure_swiss_backend
+from panchang_engine.swiss_state import swiss_state_scope
 
 AYANAMSHAS = ["lahiri", "true_chitra", "kp", "raman", "surya_siddhanta"]
 
 
 def _worker(args):
     fn, jd_ut, ayanamsha_id, kwargs = args
+    ensure_swiss_backend(jd_ut)  # this process/thread computes: pin + probe it here (module doc)
     return fn(jd_ut, ayanamsha_id=ayanamsha_id, **kwargs)
 
 
@@ -48,6 +61,8 @@ def per_ayanamsha(fn: Callable, jd_ut: float, **kwargs) -> dict[str, Any]:
     """
     ctx = _get_ctx()
     payload = [(fn, jd_ut, a, kwargs) for a in AYANAMSHAS]
-    with ctx.Pool(processes=5) as pool:
+    with swiss_state_scope():  # no other thread may hold the Swiss lock while the children fork
+        pool = ctx.Pool(processes=5)
+    with pool:
         results = pool.map(_worker, payload)
     return dict(zip(AYANAMSHAS, results))

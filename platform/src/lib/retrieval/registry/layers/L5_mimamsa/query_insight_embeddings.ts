@@ -36,6 +36,7 @@
 import type { CapabilityDescriptor } from '../../types'
 import { query } from '@/lib/db/client'
 import { EMPIRICALLY_CALIBRATED, redactEmbeddedNumericEvidence } from './query_insights'
+import { labelInsightUnit } from './prefix_generation'
 
 const MAX_LIMIT = 20
 
@@ -145,7 +146,8 @@ export const queryInsightEmbeddingsCapability: CapabilityDescriptor = {
 
         const sql = `
           SELECT n.insight_id, (n.embedding <=> s.embedding) AS cosine_distance,
-                 u.insight_type, u.statement, u.rank_consequence, u.evidence_grade
+                 u.insight_type, u.statement, u.rank_consequence, u.evidence_grade,
+                 u.leakage_status, u.surface_formula_version
           FROM mimamsa_insight_embeddings n
           JOIN mimamsa_insight_embeddings s
             ON s.chart_id = n.chart_id AND s.insight_id = $2
@@ -155,7 +157,13 @@ export const queryInsightEmbeddingsCapability: CapabilityDescriptor = {
           ORDER BY cosine_distance ASC
           LIMIT $3`
         const result = await query(sql, [chart_id, seedId, topK])
-        const rows = (result.rows as Array<Record<string, unknown>>).map(suppressNonCalibratedNeighbor)
+        // TI-l5-insight-prefix-label-001: a neighbour from the pre-fix generation is relabelled
+        // (and its 'empirical' grade downgraded) BEFORE the empirical-only pass-through below, with the
+        // same detector query_insights uses. A neighbour whose unit row is missing (LEFT JOIN null)
+        // has no stamp and is therefore classified pre-fix (fail-closed).
+        const rows = (result.rows as Array<Record<string, unknown>>)
+          .map(r => labelInsightUnit(r))
+          .map(suppressNonCalibratedNeighbor)
         return {
           content: {
             chart_id,
