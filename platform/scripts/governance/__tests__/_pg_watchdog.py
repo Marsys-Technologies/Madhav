@@ -34,7 +34,7 @@ GONE = ""                    # proc_start: `ps` answered that there is no such p
 
 def _ps(*args: str) -> tuple[int, str] | None:
     try:
-        p = subprocess.run([_PS, *args], capture_output=True, text=True, timeout=10, env=_PS_ENV)
+        p = subprocess.run([_PS, "-ww", *args], capture_output=True, text=True, timeout=10, env=_PS_ENV)
     except (OSError, subprocess.SubprocessError, ValueError):
         return None
     return p.returncode, p.stdout

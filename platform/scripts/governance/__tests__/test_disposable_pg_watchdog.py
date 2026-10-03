@@ -51,7 +51,7 @@ def _mk(base: pathlib.Path, name: str, *, pid: int | None, start: str | None, ro
 
 
 def _postgres_running_on(data_dir: pathlib.Path) -> bool:
-    out = subprocess.run(["ps", "-axo", "command="], capture_output=True, text=True).stdout
+    out = subprocess.run(["ps", "-ww", "-axo", "command="], capture_output=True, text=True).stdout
     return any("postgres" in ln and str(data_dir) in ln for ln in out.splitlines())
 
 
@@ -164,7 +164,7 @@ def test_the_sweep_reaps_a_real_leaked_cluster_of_a_dead_owner(tmp_path):
     child = subprocess.Popen([sys.executable, "-c", CHILD.format(here=str(HERE))], stdout=subprocess.PIPE, text=True)
     root = pathlib.Path(child.stdout.readline().strip())
     try:
-        out = subprocess.run(["ps", "-axo", "pid=,command="], capture_output=True, text=True).stdout
+        out = subprocess.run(["ps", "-ww", "-axo", "pid=,command="], capture_output=True, text=True).stdout
         for ln in out.splitlines():
             if "_pg_watchdog.py" in ln and str(root) in ln:
                 os.kill(int(ln.split()[0]), signal.SIGKILL)
@@ -380,7 +380,7 @@ def test_the_watchdog_is_detached_into_its_own_session():
     try:
         found = []
         for _ in range(50):
-            out = subprocess.run(["ps", "-axo", "pid=,pgid=,command="], capture_output=True, text=True).stdout
+            out = subprocess.run(["ps", "-ww", "-axo", "pid=,pgid=,command="], capture_output=True, text=True).stdout
             found = [ln.split(None, 2) for ln in out.splitlines() if "_pg_watchdog.py" in ln and str(cl.root) in ln]
             if found:
                 break
