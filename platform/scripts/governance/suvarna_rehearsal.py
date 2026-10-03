@@ -45,6 +45,8 @@ Usage:
   suvarna_rehearsal.py cluster init|start|stop|status|reap|adopt [--root DIR] [--port N] [--pg-bin DIR] [--remove-data --confirm ROOT]
   suvarna_rehearsal.py compare-fingerprints --pre prod.json --post rehearsal.json --expected assets.json --commit SHA [--explained e.json] [--out drill.json]
   suvarna_rehearsal.py validate-drill PATH
+  suvarna_rehearsal.py drill expected|reader-spec|baseline|validate-baseline|rehearsal-fingerprints|compare|status ...   (E5.7 mirror wiring, suvarna_mirror_drill.py)
+  (compare-fingerprints --expected declarations  = the DECLARED L0 assets of 00_ARCHITECTURE/control/FINGERPRINT_DECLARATIONS.json)
 Exit: 0 ok · 2 refused / invalid · 4 a measured case failed (self-test) · 5 error.
 """
 from __future__ import annotations
@@ -1330,6 +1332,20 @@ def validate_drill(doc: Any, tool_sha: str | None = None) -> list[str]:
         return [f"malformed drill document ({type(exc).__name__}: {str(exc)[:120]})"]
 
 
+def drill_expected_assets(declarations_path: str | Path | None = None) -> list[str]:
+    """The L0 assets an E5.7 drill must cover: the DECLARED assets of FINGERPRINT_DECLARATIONS.json (the loader validates the file against the
+    registry snapshot, the schema extract and the writer evidence). Undeclared assets are reported by `suvarna_mirror_drill.py expected`,
+    not silently dropped. The fingerprint definition is the declarations' own and must equal `FINGERPRINT_DEFINITION`."""
+    import fingerprint_declarations as fd  # noqa: PLC0415
+    if fd.FINGERPRINT_DEFINITION != FINGERPRINT_DEFINITION:
+        raise RehearsalError("fingerprint_declarations and the harness name different fingerprint definitions")
+    try:
+        d = fd.load_declarations(declarations_path) if declarations_path else fd.load_declarations()
+    except fd.DeclarationError as exc:
+        raise RehearsalError(f"the fingerprint declarations are refused: {exc}") from exc
+    return d.expected_assets()
+
+
 # ═════════════════════════ D. self-test (disposable PG, synthetic data) ═════════════════════════
 
 def _git_commit(repo: str | Path) -> str | None:
@@ -1628,13 +1644,19 @@ def main(argv: Sequence[str] | None = None) -> int:
     c.add_argument("--pg-bin", default=DEFAULT_PG_BIN)
     c.add_argument("--remove-data", action="store_true")
     c.add_argument("--confirm")
+    sub.add_parser("drill", add_help=False)                       # delegated to suvarna_mirror_drill.py (E5.7 mirror wiring)
     cf = sub.add_parser("compare-fingerprints")
     cf.add_argument("--pre", required=True, help="production envelope {definition, fingerprints}")
     cf.add_argument("--post", required=True, help="rehearsal envelope {definition, fingerprints}")
-    cf.add_argument("--expected", required=True, help="JSON list of the L0 asset ids the drill must cover")
+    cf.add_argument("--expected", required=True, help="JSON list of the L0 asset ids the drill must cover, or the word `declarations`")
     cf.add_argument("--commit", required=True)
     cf.add_argument("--explained")
     cf.add_argument("--out")
+    if argv is None:
+        argv = sys.argv[1:]
+    if argv and argv[0] == "drill":
+        import suvarna_mirror_drill as smd  # noqa: PLC0415
+        return smd.main(list(argv[1:]))
     a = ap.parse_args(argv)
     rd = lambda p: json.loads(Path(p).read_text(encoding="utf-8"))  # noqa: E731
     try:
@@ -1666,7 +1688,8 @@ def main(argv: Sequence[str] | None = None) -> int:
             return 0 if not problems else 2
         if a.cmd == "compare-fingerprints":
             out = compare_fingerprint_sets(rd(a.pre), rd(a.post), rd(a.explained) if a.explained else None,
-                                           expected_assets=rd(a.expected), commit=a.commit)
+                                           expected_assets=drill_expected_assets() if a.expected == "declarations" else rd(a.expected),
+                                           commit=a.commit)
             if a.out:
                 Path(a.out).parent.mkdir(parents=True, exist_ok=True)
                 Path(a.out).write_text(json.dumps(out, sort_keys=True, indent=2, ensure_ascii=True) + "\n", encoding="utf-8")
