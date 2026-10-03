@@ -83,6 +83,9 @@ PINNED_FINGERPRINTS = {
     # 25 (N-99; provisional; stacked on pin 24 (C2 Ldgr) and pin 23 (DENS-TIER-GUARD)): Build.completion revision 3 (applicability text): count equality alone no longer reads PASS when the asset declares an
     # integrity_check_sql that does not hold (false / refused / oversize / errored / timed out reads PARTIAL naming which; permission denied under the census role reads NO_DETECTOR); an undeclared asset is unchanged; NA_CAUSES / NA_RULE_DECISIONS unchanged
     25: "0e78e228d140d04920cb12bcd8b5bd9c8b33ca59ac8f9105853a139b8289d698",
+    # 26 (TI-L0-02, SS Q1 option A, R, provisional until J1; the number is a placeholder, SS allocates): Build.completion revision 4 (rows_written=0 against a populated table reads PASS only for an asset that declares
+    # the changed-rows convention AND whose Build.count_integrity and Count.floor PASS); NA_CAUSES / NA_RULE_DECISIONS unchanged, inert until an asset declares `rows_written_convention`
+    26: "8f71dd0a37a64b5eace4be59ddf5010171ae68dc778b0d8d8929836fc61bb06c",
 }
 
 
