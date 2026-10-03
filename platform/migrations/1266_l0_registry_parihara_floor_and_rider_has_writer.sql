@@ -24,15 +24,15 @@
 -- DECISION RECORD
 --   SS Q6 (2026-10-01): a sibling's dispatch counts (producer_covered) when the registry declares the rider
 --   relation, and "the R61 cascade may stand until the first L0 dispatch". The has_writer flip here is the half
---   of Q6 that fixes Build.registered. The rider relation itself is migration 1267 (TI-L0-08), NOT this file.
+--   of Q6 that fixes Build.registered. The rider relation itself stays in the declarations file (kind: rider) and the T0 manifest (producer_covered); SS N-111 returned the registry-column migration 1267 unused, so no registry column carries it.
 --
 -- EXPECTED CASCADE (recorded, not a regression): Nikasa R61. With has_writer = true the census reads
 -- Build.exercised FAIL ("registered with a writer and never dispatched") for bg_nakshatra_medical and
--- bg_transit_engine until the id is dispatched in a build run (or, once 1267 is read by the inspector, until its
--- producer is). Clearing it needs a production L0 dispatch: a REVIEW item for SS, not done here.
+-- bg_transit_engine until the id is dispatched in a build run (or until its producer is, if the inspector counts a
+-- producer's dispatch from the declarations/T0 relation). Clearing it needs a production L0 dispatch: a REVIEW item for SS, not done here.
 -- Also: has_writer = true makes the two ids selectable by the plan resolver (WHERE is_active AND has_writer) in
 -- a layer-scope L0 plan; they would then be planned as their own steps although their writer is a sibling's
--- class. That is the reason this file is held until SS has the rider relation (1267) decided.
+-- class. SS N-111 approved this file to merge at its slot after S-L1; schedule it with the L0 wave.
 --
 -- SERVING EFFECT AT APPLY
 --   * Fires trigger nirmana_registry_receipt_invalidation (AFTER UPDATE OF ... target_floor, has_writer ... WHEN
@@ -66,7 +66,7 @@
 --   * The seed literals in platform/scripts/seed/asset_registry_seed.ts (floor 449, has_writer) - that file is
 --     owned by PR #2984. The seed's ON CONFLICT clause keeps target_floor and has_writer migration-governed for an
 --     existing row, so a re-seed does not revert this file; the literals only matter for a fresh bootstrap.
---   * The rider relation (1267), the Build.exercised cascade (needs a dispatch), the other floors that sit below
+--   * The rider relation in the registry (returned unused), the Build.exercised cascade (needs a dispatch), the other floors that sit below
 --     the live count (bg_muhurta_lattice, bg_sky_calendar, bg_ontology: cosmetic, Count.floor still PASS).
 --   * Any change to the integrity check, count_sql or the data of any of the three assets.
 --
