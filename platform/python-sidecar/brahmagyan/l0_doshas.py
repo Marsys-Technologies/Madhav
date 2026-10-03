@@ -26,6 +26,8 @@ from __future__ import annotations
 
 import json
 import logging
+import re
+import unicodedata
 from datetime import datetime, timezone
 from typing import Any
 
@@ -1893,6 +1895,108 @@ assert len(DOSHAS) == 79, f"Expected 79 doshas, got {len(DOSHAS)}"
 
 # ── Seed function ──────────────────────────────────────────────────────────────
 
+# ── TI-L0-12 (SS Q4, CF-09 (a)): closed dosha alias sets ─────────────────────────
+#
+# The other 15 ontology classes carry a non-empty synonym set; the 79 dosha rows carried
+# `[]` ("empty for doshas"), which is the live Vocab.alias FAIL (79/79). The rule below
+# builds each set ONLY from names the entry itself carries (canonical_id, name_en, name_sa)
+# by three deterministic, reversible transforms - no alias is invented:
+#   T1  drop a trailing "Dosha"/"Doṣa"/"Dosa" token            ("Kala Sarpa Dosha" -> "Kala Sarpa")
+#   T2  split a trailing parenthetical off name_sa and keep both parts - an alternative
+#       NAME ("Maṅgala Doṣa (Kuja Doṣa)"). name_en parentheticals are qualifiers, not names
+#       ("Pitra Dosha (Sun-Rahu conjunction)"), so name_en is kept whole and never split.
+#   T3  diacritic-fold (NFKD, combining marks removed)          ("Kāla Sarpa Doṣa" -> "Kala Sarpa Dosa")
+# Order is fixed (canonical_id, name_en, name_sa, then derived in the order T2, T1, T3), exact
+# duplicates removed. A derived alias that more than one dosha would claim (case-/diacritic-
+# insensitively) is AMBIGUOUS and is given to NONE of them, and so is a derived alias that is
+# also a name (canonical_id / name_en / name_sa / synonym) of a class bg_ontology itself owns
+# (planet, nakshatra, concept, ... - `l0_ontology.ENTITIES`, a level-0 dependency of this
+# asset): "Kuja" would otherwise resolve to both the dosha and the planet Mars. The full
+# canonical_id, name_en and name_sa are always kept, because a collision among those is a
+# seed defect asserted absent by the tests, not silently dropped here. Classes owned by
+# SIBLING co-writers (yoga, dasha_system) are not consulted, so a writer-order dependency
+# between siblings cannot exist; the residual cross-class overlap with them is measured in
+# the wave plan, not hidden.
+_DOSHA_TRAILING_TOKEN = re.compile(r"\s+(?:Dosha|Do\u1e63a|Dosa)$")
+_DOSHA_TRAILING_PAREN = re.compile(r"^(.*?)\s*\((.*?)\)\s*$")
+
+
+def _fold_marks(text: str) -> str:
+    return "".join(c for c in unicodedata.normalize("NFKD", text) if not unicodedata.combining(c))
+
+
+def _match_key(alias: str) -> str:
+    return _fold_marks(alias).casefold()
+
+
+def _dosha_base_names(d: dict) -> list[str]:
+    out: list[str] = []
+    for name in (d["canonical_id"], d["name_en"], d["name_sa"]):
+        name = name.strip()
+        if name and name not in out:
+            out.append(name)
+    return out
+
+
+def _dosha_derived_names(d: dict) -> list[str]:
+    base = _dosha_base_names(d)
+    derived: list[str] = []
+
+    def add(x: str) -> None:
+        x = x.strip()
+        if x and x not in base and x not in derived:
+            derived.append(x)
+
+    for nm in (d["name_sa"],):                             # T2 (name_sa only)
+        m = _DOSHA_TRAILING_PAREN.match(nm)
+        if m:
+            add(m.group(1))
+            add(m.group(2))
+    for nm in list(base) + list(derived):                  # T1
+        stripped = _DOSHA_TRAILING_TOKEN.sub("", nm)
+        if stripped != nm:
+            add(stripped)
+    for nm in list(base) + list(derived):                  # T3
+        add(_fold_marks(nm))
+    return derived
+
+
+def _bg_ontology_owned_name_keys() -> frozenset[str]:
+    """Match keys of every name carried by a class bg_ontology owns (not the co-writer classes)."""
+    from brahmagyan.l0_ontology import ENTITIES, ONTOLOGY_OWNED_ENTITY_CLASSES
+
+    keys: set[str] = set()
+    for e in ENTITIES:
+        if e["entity_class"] not in ONTOLOGY_OWNED_ENTITY_CLASSES:
+            continue
+        for nm in [e["canonical_id"], e["canonical_name_en"], e.get("canonical_name_sa") or "", *e["synonyms"]]:
+            if nm:
+                keys.add(_match_key(nm))
+    return frozenset(keys)
+
+
+def dosha_alias_sets(doshas: list[dict], reserved: frozenset[str] | None = None) -> dict[str, list[str]]:
+    """canonical_id -> closed alias list (see the rule above). Pure and deterministic.
+
+    `reserved` = match keys a DERIVED alias may not take (default: every name of a class
+    bg_ontology owns)."""
+    if reserved is None:
+        reserved = _bg_ontology_owned_name_keys()
+    claims: dict[str, set[str]] = {}
+    for d in doshas:
+        for nm in _dosha_base_names(d) + _dosha_derived_names(d):
+            claims.setdefault(_match_key(nm), set()).add(d["canonical_id"])
+    out: dict[str, list[str]] = {}
+    for d in doshas:
+        keep = _dosha_base_names(d)
+        for nm in _dosha_derived_names(d):
+            key = _match_key(nm)
+            if len(claims[key]) == 1 and key not in reserved:
+                keep.append(nm)
+        out[d["canonical_id"]] = keep
+    return out
+
+
 def seed_doshas(
     conn: Any,
     build_id: str | None = None,
@@ -1942,6 +2046,8 @@ def seed_doshas(
         cur.execute("DELETE FROM reference_doshas")
         cur.execute("DELETE FROM brahma_dosha_catalog")
         cur.execute("DELETE FROM brahma_ontology WHERE entity_class = 'dosha'")
+
+        alias_sets = dosha_alias_sets(DOSHAS)
 
         for d in DOSHAS:
             cid = d["canonical_id"]
@@ -1999,7 +2105,7 @@ def seed_doshas(
                     cid,
                     d["name_en"],
                     d["name_sa"],
-                    [],   # synonyms — empty for doshas
+                    alias_sets[cid],   # synonyms — closed alias set (TI-L0-12), dosha_alias_sets()
                     d["effects_text"][:200] if d.get("effects_text") else None,
                     d.get("source_citation", CLASSICAL_TRADITION),
                     now,
