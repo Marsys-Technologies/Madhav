@@ -35,7 +35,12 @@ Sub-modules:
                          Dataset: brahma_l5_olap
                          Table:   mimamsa_export_log (tracks every export run)
                          Constraint: source_citation non-null on all rows; life_events
-                         CALIBRATION ONLY.
+                         is NEVER exported (people-entered, private; export refuses it).
+
+    l5_bigquery_export — mimamsa.bigquery_export (MI-5-5, legacy)
+                         DISABLED: refusing stub. It used to build event rows incl.
+                         free-text descriptions from the in-source corpus; it now
+                         raises BigQueryExportDisabled on every entry point.
 
     answer_quality     — mimamsa.answer_quality (MI-5-6)
                          Golden Q&A eval: B.11 compliance detection, layer coverage,
