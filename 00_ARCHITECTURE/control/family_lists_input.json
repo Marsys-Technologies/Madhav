@@ -46,7 +46,7 @@
     "bg_gochara_citation_resolution": "Strategist ruling: L0 asset, rebuilt one at a time in coordination with Pravaha; matched by E5.3's bg_gochara_ name pattern.",
     "ka_gochara_sweep": "Strategist ruling: matched by E5.3's ka_gochara name pattern; INACTIVE in the registry seed (retired Gochara sweep writer) and kept in the refusal set; see _notes.inactive.",
     "ka_gochara_v4_41_candidate": "Pravaha's v4.41 candidate asset (Pravaha #2799): matched by the family name pattern; rebuilt only by Pravaha.",
-    "ka_gochara_v5": "Pravāha INERT registered writer skeleton (A5.3); inactive; refusal-set membership only"
+    "ka_gochara_v5": "Pravāha INERT registered writer skeleton (A5.3); inactive; refusal-set membership only; also matched by the ka_gochara* name pattern"
   },
   "_notes": {
     "inactive": [

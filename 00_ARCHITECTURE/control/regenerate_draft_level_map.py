@@ -30,8 +30,9 @@ Where the DAG comes from, OFFLINE (no database, no credential; B.10: nothing is 
     and differs from the live registry on exactly five assets (pinned in a test).
   * inactive rows are present only so the family input's `_notes.inactive` allowance can be checked. ka_gochara_sweep (seed
     inactive, live inactive) and ka_gochara_v3_century_materialize (the seed says active; the live registry holds it inactive:
-    census L3 `population_excluded_inactive`) are live rows. ka_gochara_v4_41_candidate is a SEED-ONLY inactive row: the census
-    lists it under `phantom_registered` and the live L3 registry total (23) does not include it. It is NOT a live registry row.
+    census L3 `population_excluded_inactive`) are live rows. ka_gochara_v4_41_candidate and ka_gochara_v5 are LIVE INACTIVE rows
+    too: migration 1243 stages both as is_active false asset_registry rows (the engine's read-back: registry total 129 -> 131,
+    active still 127), so the census's old `phantom_registered` listing of ka_gochara_v4_41_candidate no longer applies.
     Inactive rows never enter the level map.
 
     python3 regenerate_draft_level_map.py --frozen-at 2026-10-03T00:00:00+00:00         # rewrite the three files (DRAFT)
@@ -94,9 +95,11 @@ MIGRATION_DIRS = ("platform/migrations", "platform/supabase/migrations")
 # Registry rows the seed calls active but the live registry holds inactive (evidence: E6 census at origin/main adb0db29d,
 # census_L3.json population_excluded_inactive: is_active False, catalog_status CURRENT).
 LIVE_INACTIVE_OVERRIDES = ("ka_gochara_v3_century_materialize",)
-# Seed-only inactive row: census L3 `phantom_registered`, not in the live registry total (23). Present so the family input's
-# `_notes.inactive` allowance verifies; never in the level map.
-SEED_ONLY_INACTIVE = ("ka_gochara_v4_41_candidate", "ka_gochara_v5")   # v5: Pravaha's INERT A5.3 skeleton, seed row is_active false, no live registry row
+# Formerly the seed-only inactive rows (census L3 `phantom_registered`). Migration 1243 stages ka_gochara_v4_41_candidate and
+# ka_gochara_v5 as inactive asset_registry rows, so both are live inactive rows now and nothing is seed-only: kept as an EMPTY tuple
+# (no logic reads it). Both ids stay in registry_input_draft.json as inactive rows: the family input's `_notes.inactive` allowance
+# (family_inactive_allowed) needs each listed family member to be an inactive row of the input; they never enter the level map.
+SEED_ONLY_INACTIVE: tuple[str, ...] = ()
 
 DRAFT_BASIS = (
     "DRAFT. DAG = the 127 active registry rows' depends_on: the repo's frozen live-registry reconstruction before migration "
