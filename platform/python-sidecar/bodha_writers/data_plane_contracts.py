@@ -554,6 +554,13 @@ def _writer_source_digest(asset_id: str) -> str:
 T = TypeVar("T")
 
 
+def _coerce_chart_id_to_str(ctx: Any) -> None:
+    """Write ``str(chart_id)`` back into ``ctx.config`` when it is a UUID."""
+    config = getattr(ctx, "config", None)
+    if isinstance(config, dict) and isinstance(config.get("chart_id"), uuid.UUID):
+        config["chart_id"] = str(config["chart_id"])
+
+
 def l2_producer(asset_id: str) -> Callable[[T], T]:
     """Adopt the common L2 contract without altering ``WriterBase``."""
     if asset_id not in CURRENT_WRITERS:
@@ -576,6 +583,12 @@ def l2_producer(asset_id: str) -> Callable[[T], T]:
         def wrap_entry(name: str, original: Callable[..., Any]) -> Callable[..., Any]:
             @functools.wraps(original)
             def contracted(self: Any, ctx: Any, *args: Any, **kwargs: Any) -> Any:
+                # The real orchestrator path hands ``chart_id`` over as the
+                # ``uuid.UUID`` psycopg decoded from ``build_runs.chart_id``.
+                # ``begin_observation`` and the writers' JSON payloads require
+                # the canonical string; normalise once, here, for every L2
+                # producer (str inputs are untouched).
+                _coerce_chart_id_to_str(ctx)
                 if getattr(ctx, "dry_run", False) or not _contract_sql_enabled(ctx.db_conn):
                     return original(self, ctx, *args, **kwargs)
                 partition_key = asset_id
