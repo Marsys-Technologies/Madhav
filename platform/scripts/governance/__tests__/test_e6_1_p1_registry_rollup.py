@@ -83,6 +83,9 @@ PINNED_FINGERPRINTS = {
     # 25 (N-99; provisional; stacked on pin 24 (C2 Ldgr) and pin 23 (DENS-TIER-GUARD)): Build.completion revision 3 (applicability text): count equality alone no longer reads PASS when the asset declares an
     # integrity_check_sql that does not hold (false / refused / oversize / errored / timed out reads PARTIAL naming which; permission denied under the census role reads NO_DETECTOR); an undeclared asset is unchanged; NA_CAUSES / NA_RULE_DECISIONS unchanged
     25: "0e78e228d140d04920cb12bcd8b5bd9c8b33ca59ac8f9105853a139b8289d698",
+    # 28 (TI-L0-24, SS Q11 / CF-10, R, provisional until J1; the number is a placeholder, SS allocates; 26 and 27 are reserved for TI-L0-02 and TI-L0-04): Build.history revision 2 (graded over the runs since the last
+    # git commit that touched the asset's writer code where git can date it; a window with no run keeps the whole-history verdict; a registry-row change is not dated); NA_CAUSES / NA_RULE_DECISIONS unchanged
+    28: "35634f6602fe7b7ce8553b838bb5681ae465919be4ee68cb0015e29c34e0bbca",
 }
 
 
