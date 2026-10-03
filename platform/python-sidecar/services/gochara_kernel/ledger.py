@@ -558,6 +558,28 @@ def publish_candidate(conn, chart_id: str, generation: str, convention_id: str,
     return str(row[0])
 
 
+def _candidate_boundary():
+    """The sibling `candidate_boundary` module. The a25 candidate writer loads this file BY PATH (no parent package), where a relative import
+    cannot resolve — so fall back to loading the sibling file the same way (the writer's `_load_module` precedent). In a package context the
+    ordinary relative import is used, so there is still exactly one module object there."""
+    try:
+        from . import candidate_boundary as cb  # type: ignore
+        return cb
+    except ImportError:
+        import importlib.util
+        import sys
+        from pathlib import Path
+        name = "gochara_ledger_bypath_candidate_boundary"
+        cached = sys.modules.get(name)
+        if cached is not None:
+            return cached
+        spec = importlib.util.spec_from_file_location(name, Path(__file__).with_name("candidate_boundary.py"))
+        module = importlib.util.module_from_spec(spec)
+        sys.modules[name] = module
+        spec.loader.exec_module(module)
+        return module
+
+
 def _canonical_row_set(conn, chart_id: str, generation: str) -> str:
     """sha256 over the canonical sorted row content of contacts + coverage —
     the manifest content_digest (plan §4.7)."""
@@ -569,7 +591,8 @@ def _canonical_row_set(conn, chart_id: str, generation: str) -> str:
     # R12-1: the publication boundary is the CANDIDATE boundary (`candidate_boundary`): for a governed (5.x) generation the
     # on-demand Moon receipts (AM-4: written at query time) are NOT part of the published content — the approval binds exactly
     # what this digest covers. Legacy (pre-5) generations keep every coverage row.
-    from .candidate_boundary import EXCLUDED_ON_DEMAND_KINDS, is_governed
+    cb = _candidate_boundary()
+    EXCLUDED_ON_DEMAND_KINDS, is_governed = cb.EXCLUDED_ON_DEMAND_KINDS, cb.is_governed
     if is_governed(generation):
         coverage_rows = conn.execute(
             "SELECT row_to_json(c.*) FROM kala_gochara_coverage c "

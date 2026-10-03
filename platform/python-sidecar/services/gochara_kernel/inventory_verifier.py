@@ -31,6 +31,8 @@ import hashlib
 from decimal import Decimal
 from typing import Any, Mapping, Sequence
 
+from brahmagyan.verification_vocab import TWO_PASS_VERIFIED as _TWO_PASS_VERIFIED   # the sanctioned vocabulary (TAP-6)
+
 VERIFIER_ID = "ka_gochara_inventory_verifier"
 VERIFIER_VERSION = "1.0"
 
@@ -660,7 +662,7 @@ def rederive_aspect_span_runs(
 
 _C_CHART = "482012f1-710e-4a25-994a-93821f5871aa"
 _C_BUILD = "1f89fd4c-7d1e-4f3a-b3ae-e7ff839a6feb"
-_C_AYANAMSHA, _C_SYSTEM, _C_TIER = "lahiri_chitrapaksha", "vimshottari", "two_pass_verified"
+_C_AYANAMSHA, _C_SYSTEM, _C_TIER = "lahiri_chitrapaksha", "vimshottari", _TWO_PASS_VERIFIED
 _C_LEVELS = (1, 2, 3)
 
 
