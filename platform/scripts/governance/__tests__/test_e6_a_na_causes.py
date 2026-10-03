@@ -61,6 +61,10 @@ def _stub_layer(monkeypatch, ctrl, reg, tables=None, *, registered=None, live=No
     monkeypatch.setattr(ac, "contract_scan", lambda a, f: ("PASS", []))
 
     def fake_psql(sql, sep="\x1f", timeout=None):
+        if "format_type(a.atttypid" in sql:                 # C2(ii): the citation column's type
+            return [["text"]]
+        if "jsonb_build_object('rows'" in sql:              # C2(ii): rows / NULL / placeholder counts, one read
+            return [['{"rows":48,"null":0,"placeholder":0}']]
         if "IS NOT NULL" in sql:
             return [["48"]]
         if "EXISTS" in sql:
