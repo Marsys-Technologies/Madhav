@@ -240,7 +240,7 @@ generated, never hand-edited: `python3 00_ARCHITECTURE/control/regenerate_draft_
 `registry_input_draft.json`, `LEVEL_MAP.json` and `FAMILY_ASSETS.json`; `--check` compares. The DAG is offline (the repo's frozen
 pre-1210 registry reconstruction plus migration 1210's edges), cross-checked against the E6 census; it is not a live export, so the
 strategist re-derives and freezes it from a live export at J1. `test_e6_3_draft_level_map.py` fails if a committed file differs from
-a regeneration or the stamp is stale (a `REGISTRY_REVISION` bump means: regenerate).
+a regeneration made at its own recorded stamp. A DRAFT whose stamp is behind `asset_census` is only STALE (a pytest warning; `--check` prints `STALE (draft)` and exits 0, `--check --strict` exits 1); once the status is not DRAFT (the J1 freeze) staleness fails.
 
 ## Stop hook between waves
 

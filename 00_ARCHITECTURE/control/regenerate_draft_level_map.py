@@ -29,8 +29,14 @@ Where the DAG comes from, OFFLINE (no database, no credential; B.10: nothing is 
 
     python3 regenerate_draft_level_map.py --frozen-at 2026-10-03T00:00:00+00:00         # rewrite the three files
     python3 regenerate_draft_level_map.py --check                                         # exit 1 if a committed file differs
+    python3 regenerate_draft_level_map.py --check --strict                                # ...and if a DRAFT stamp is stale
 
-Exit: 0 ok · 1 --check found a difference · 2 refused (LevelMapError) · 5 script error.
+Staleness. A file whose `_stamp.status` is DRAFT records the registry revision and fingerprint it was generated at; when
+asset_census moves on, the draft is STALE but still a valid draft: `--check` prints a `STALE (draft)` line and exits 0 (the
+other guards stay hard: the committed files must equal a regeneration made AT THE RECORDED stamp from the committed registry
+input). `--strict` makes a stale draft exit 1. Any status other than DRAFT (the J1 freeze) fails on staleness always.
+
+Exit: 0 ok · 1 --check found a difference (or staleness: always when not DRAFT, with --strict for a DRAFT) · 2 refused (LevelMapError) · 5 script error.
 """
 from __future__ import annotations
 
@@ -129,9 +135,10 @@ def registry_input_text(rows: list[dict]) -> str:
                   for r in rows])
 
 
-def make_stamp(*, registry_revision: int, registry_fingerprint: str, registry_input_sha256: str) -> dict:
+def make_stamp(*, registry_revision: int, registry_fingerprint: str, registry_input_sha256: str,
+               status: str = "DRAFT") -> dict:
     return {"_stamp": {
-        "status": "DRAFT",
+        "status": status,
         "freeze": "J1: the strategist freezes the final lists and the level map at J1 (SS ruling N-97 item 6)",
         "registry_revision": registry_revision,
         "registry_fingerprint": registry_fingerprint,
@@ -143,13 +150,13 @@ def make_stamp(*, registry_revision: int, registry_fingerprint: str, registry_in
 
 
 def render(*, frozen_at: str, registry_revision: int, registry_fingerprint: str, version: str = DRAFT_VERSION,
-           rows: list[dict] | None = None, family_input=None) -> dict[str, str]:
+           rows: list[dict] | None = None, family_input=None, status: str = "DRAFT") -> dict[str, str]:
     """{file name: exact text} for registry_input_draft.json, LEVEL_MAP.json and FAMILY_ASSETS.json. Pure: no clock, no I/O
     beyond reading the committed inputs when they are not injected."""
     rows = derive_registry_rows() if rows is None else rows
     reg_text = registry_input_text(rows)
     stamp = make_stamp(registry_revision=registry_revision, registry_fingerprint=registry_fingerprint,
-                       registry_input_sha256=hashlib.sha256(reg_text.encode("utf-8")).hexdigest())
+                       registry_input_sha256=hashlib.sha256(reg_text.encode("utf-8")).hexdigest(), status=status)
     if family_input is None:
         family_input = G.load_family_input(HERE / FAMILY_INPUT_FILE)
     lm = G.build_level_map(rows, version=version, frozen_at=frozen_at, registry_revision=registry_revision, notes=stamp)
@@ -167,23 +174,43 @@ def census_pin() -> tuple[int, str]:
     return mod.REGISTRY_REVISION, mod.registry_fingerprint()
 
 
+def staleness(doc: dict, pin: tuple[int, str]) -> list[str]:
+    """How a document's recorded registry revision / fingerprint differ from the current census pin (empty = current)."""
+    stamp = doc.get("_stamp") if isinstance(doc.get("_stamp"), dict) else {}
+    out = []
+    for what, have, want in (("registry_revision", doc.get("registry_revision"), pin[0]),
+                             ("_stamp.registry_revision", stamp.get("registry_revision"), pin[0]),
+                             ("_stamp.registry_fingerprint", stamp.get("registry_fingerprint"), pin[1])):
+        if have != want:
+            out.append(f"{what} is {have!r}, the census is at {want!r}")
+    return out
+
+
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description="Regenerate the DRAFT LEVEL_MAP.json / FAMILY_ASSETS.json (E6.3, N-97 item 6).")
     ap.add_argument("--frozen-at", default=None, help="ISO-8601 with timezone; --check reads it from the committed LEVEL_MAP.json")
     ap.add_argument("--version", default=DRAFT_VERSION)
     ap.add_argument("--out-dir", default=str(HERE))
-    ap.add_argument("--check", action="store_true", help="compare, write nothing; exit 1 on any difference")
+    ap.add_argument("--check", action="store_true", help="compare, write nothing; exit 1 on any difference; a stale DRAFT stamp "
+                    "prints 'STALE (draft)' and still exits 0 (a stale non-DRAFT stamp exits 1)")
+    ap.add_argument("--strict", action="store_true", help="with --check: a stale DRAFT stamp exits 1 too")
     a = ap.parse_args(argv)
     out = Path(a.out_dir)
+    if a.strict and not a.check:
+        print("REFUSED: --strict only applies to --check", file=sys.stderr)
+        return 2
     try:
         frozen_at, version = a.frozen_at, a.version
+        pin = census_pin()
+        rev, fp, status, cur = pin[0], pin[1], "DRAFT", None
         if a.check:
+            # a check regenerates AT THE RECORDED stamp, so a stale draft still byte-equals its own regeneration
             cur = G.strict_json_loads((out / G.LEVEL_MAP_FILE).read_text(encoding="utf-8"))
             frozen_at, version = frozen_at or cur["frozen_at"], cur["version"]
+            rev, fp, status = cur["registry_revision"], cur["_stamp"]["registry_fingerprint"], cur["_stamp"]["status"]
         if not frozen_at:
             raise G.LevelMapError("--frozen-at is required (a regeneration is reproducible only with a fixed timestamp)")
-        rev, fp = census_pin()
-        files = render(frozen_at=frozen_at, registry_revision=rev, registry_fingerprint=fp, version=version)
+        files = render(frozen_at=frozen_at, registry_revision=rev, registry_fingerprint=fp, version=version, status=status)
     except (G.LevelMapError, OSError, ValueError, KeyError) as e:
         print(f"REFUSED: {e}", file=sys.stderr)
         return 2
@@ -191,6 +218,13 @@ def main(argv=None) -> int:
         bad = [n for n, t in files.items() if not (out / n).exists() or (out / n).read_text(encoding="utf-8") != t]
         for n in bad:
             print(f"DIFFERS: {out / n} (regenerate with --frozen-at {frozen_at})", file=sys.stderr)
+        stale = staleness(cur, pin)
+        if stale and status == "DRAFT":
+            print(f"STALE (draft): {'; '.join(stale)} (regenerate before J1; --strict makes this an error)", file=sys.stderr)
+            return 1 if bad or a.strict else 0
+        if stale:
+            print(f"STALE ({status}): {'; '.join(stale)}", file=sys.stderr)
+            return 1
         return 1 if bad else 0
     for n, t in files.items():
         (out / n).write_text(t, encoding="utf-8")

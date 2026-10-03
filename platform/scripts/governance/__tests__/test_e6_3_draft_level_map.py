@@ -5,8 +5,11 @@ by 00_ARCHITECTURE/control/regenerate_draft_level_map.py from the committed regi
 family input (family_lists_input.json). What is guarded here:
 
   fresh regeneration  the committed files equal a regeneration byte for byte, and the generator's own CLI makes the same bytes
-  draft + stamp       both files say DRAFT and carry the registry revision AND fingerprint they were generated at; a stale
-                      revision, fingerprint or registry-input hash is a failure (regenerate)
+  draft + stamp       both files say DRAFT and carry the registry revision AND fingerprint they were generated at. A DRAFT
+                      whose recorded revision/fingerprint is behind asset_census is STALE: a pytest warning, never a failure
+                      (engine PRs bump the revision constantly); any other status (the J1 freeze) FAILS on staleness. The
+                      regeneration is made AT THE RECORDED stamp, so a stale draft still byte-equals it. A wrong registry-input
+                      hash stays a failure
   coverage            every one of the 127 active registry assets appears exactly once in the level map
   levels              level == longest-path depth: strictly above every dependency, contiguous from 0
   family              family assets are marked (FAMILY_ASSETS.json) and the wave dispatch set (level minus family_set) holds none
@@ -23,6 +26,7 @@ import json
 import pathlib
 import re
 import sys
+import warnings
 
 import pytest
 
@@ -58,8 +62,20 @@ PIN = R.census_pin()                                   # (REGISTRY_REVISION, reg
 
 # ───────────────────────── the checks (each one is mutated below) ─────────────────────────
 
-def level_map_problems(lm, rows, pin):
-    """Every defect of a level map against the registry rows it claims to be made from. Empty list = clean."""
+def staleness_failures(doc, pin):
+    """Staleness of a document's recorded registry revision/fingerprint against the census pin, as FAILURES. A DRAFT is only
+    warned about (the warning is the visible signal); every other status fails."""
+    stale = R.staleness(doc, pin)
+    status = (doc.get("_stamp") or {}).get("status")
+    if stale and status == "DRAFT":
+        warnings.warn("STALE (draft): " + "; ".join(stale) + " -- regenerate_draft_level_map.py before J1", UserWarning, stacklevel=2)
+        return []
+    return [f"stale registry stamp ({status}): {s}" for s in stale]
+
+
+def level_map_problems(lm, rows, pin=None):
+    """Every HARD defect of a level map against the registry rows it claims to be made from, plus staleness for a document
+    that is not a DRAFT. Empty list = clean."""
     out = []
     active = {r["asset_id"]: r for r in rows if r["active"]}
     levels = lm.get("levels", {})
@@ -68,10 +84,12 @@ def level_map_problems(lm, rows, pin):
     stamp = lm.get("_stamp", {})
     if stamp.get("status") != "DRAFT":
         out.append("_stamp.status is not DRAFT")
-    if lm.get("registry_revision") != pin[0] or stamp.get("registry_revision") != pin[0]:
-        out.append(f"stale registry revision: file {lm.get('registry_revision')}/{stamp.get('registry_revision')}, census {pin[0]}")
-    if stamp.get("registry_fingerprint") != pin[1]:
-        out.append("stale registry fingerprint")
+    if lm.get("registry_revision") != stamp.get("registry_revision"):
+        out.append("registry_revision and _stamp.registry_revision disagree")
+    if not re.fullmatch(r"[0-9a-f]{64}", str(stamp.get("registry_fingerprint"))):
+        out.append("_stamp.registry_fingerprint is not a sha256")
+    if pin is not None:
+        out += staleness_failures(lm, pin)
     missing, extra = sorted(set(active) - set(levels)), sorted(set(levels) - set(active))
     if missing:
         out.append(f"assets missing from the level map: {missing}")
@@ -149,7 +167,10 @@ def _migration_texts():
 
 
 def _fresh():
-    return R.render(frozen_at=LM["frozen_at"], registry_revision=PIN[0], registry_fingerprint=PIN[1], version=LM["version"])
+    """A regeneration AT THE RECORDED stamp (never the current census pin: that is the staleness check, which only warns)."""
+    st = LM["_stamp"]
+    return R.render(frozen_at=LM["frozen_at"], registry_revision=LM["registry_revision"],
+                    registry_fingerprint=st["registry_fingerprint"], version=LM["version"], status=st["status"])
 
 
 # ───────────────────────── the committed files ─────────────────────────
@@ -178,15 +199,18 @@ def test_the_generators_own_cli_makes_the_same_bytes(tmp_path):
 
 
 def test_the_check_mode_of_the_tool_agrees(capsys):
-    assert R.main(["--check"]) == 0
+    assert R.main(["--check"]) == 0                       # a stale DRAFT prints STALE (draft) and still exits 0
+    if R.staleness(LM, PIN):
+        assert "STALE (draft)" in capsys.readouterr().err
 
 
 def test_both_files_are_drafts_made_together_at_the_current_registry_revision_and_fingerprint():
     assert LM["version"] == FA["version"] and LM["version"].endswith("-draft")
     assert LM["frozen_at"] == FA["frozen_at"] and LM["registry_revision"] == FA["registry_revision"]
     assert LM["_stamp"] == FA["_stamp"] and LM["_stamp"]["status"] == "DRAFT"
-    assert level_map_problems(LM, ROWS, PIN) == []
-    assert FA["registry_revision"] == PIN[0] and FA["_stamp"]["registry_fingerprint"] == PIN[1]
+    assert level_map_problems(LM, ROWS, PIN) == []        # staleness of a DRAFT is a warning here, not a failure
+    assert FA["registry_revision"] == LM["registry_revision"] == FA["_stamp"]["registry_revision"]
+    assert staleness_failures(FA, PIN) == []
     assert LM["_stamp"]["registry_input_sha256"] == hashlib.sha256(REG_INPUT.read_bytes()).hexdigest()
 
 
@@ -311,16 +335,98 @@ def test_mutation_an_edge_to_an_inactive_asset_is_refused_by_the_generator():
                  rows=R.derive_registry_rows(fixture_edges=fx))
 
 
-def test_mutation_a_stale_registry_revision_is_a_failure():
-    lm = copy.deepcopy(LM)
-    lm["registry_revision"] = PIN[0] - 1
-    lm["_stamp"]["registry_revision"] = PIN[0] - 1
-    assert any("stale registry revision" in p for p in level_map_problems(lm, ROWS, PIN))
-    assert any("stale registry revision" in p for p in level_map_problems(LM, ROWS, (PIN[0] + 1, PIN[1])))   # the census moved on
+def _stale(doc, how):
+    doc = copy.deepcopy(doc)
+    if how == "revision":
+        doc["registry_revision"] = doc["_stamp"]["registry_revision"] = PIN[0] - 1
+    else:
+        doc["_stamp"]["registry_fingerprint"] = "0" * 64
+    return doc
 
 
-def test_mutation_a_stale_registry_fingerprint_is_a_failure():
-    assert any("stale registry fingerprint" in p for p in level_map_problems(LM, ROWS, (PIN[0], "0" * 64)))
+@pytest.mark.parametrize("how", ["revision", "fingerprint"])
+def test_a_stale_draft_warns_and_does_not_fail(how):
+    lm = _stale(LM, how)
+    with pytest.warns(UserWarning, match=r"STALE \(draft\)"):
+        assert level_map_problems(lm, ROWS, PIN) == []
+    with pytest.warns(UserWarning, match=r"STALE \(draft\)"):
+        assert staleness_failures(FA | {"_stamp": lm["_stamp"], "registry_revision": lm["registry_revision"]}, PIN) == []
+    with warnings.catch_warnings():                                  # a current draft is silent
+        warnings.simplefilter("error")
+        assert level_map_problems(LM, ROWS, (LM["registry_revision"], LM["_stamp"]["registry_fingerprint"])) == []
+
+
+@pytest.mark.parametrize("how", ["revision", "fingerprint"])
+@pytest.mark.parametrize("status", ["FROZEN", "J1", ""])
+def test_mutation_a_stale_stamp_on_anything_but_a_draft_is_a_failure(how, status):
+    lm = _stale(LM, how)
+    lm["_stamp"]["status"] = status
+    assert any("stale registry stamp" in p for p in level_map_problems(lm, ROWS, PIN))
+    fa = _stale(FA, how)
+    fa["_stamp"]["status"] = status
+    assert staleness_failures(fa, PIN)
+    cur = copy.deepcopy(LM)                                           # ... and the frozen copy at the CURRENT pin is clean
+    cur["_stamp"].update(status=status, registry_revision=PIN[0], registry_fingerprint=PIN[1])
+    cur["registry_revision"] = PIN[0]
+    assert not [p for p in level_map_problems(cur, ROWS, PIN) if "stale" in p]
+
+
+def test_the_committed_draft_survives_a_census_revision_bump(monkeypatch, capsys):
+    """The case this relaxation exists for: asset_census moves to a later revision/fingerprint. The committed draft must still
+    pass every hard guard (it equals its regeneration at its own stamp) and only warn."""
+    bumped = (PIN[0] + 1, "f" * 64)
+    with pytest.warns(UserWarning, match=r"STALE \(draft\)"):
+        assert level_map_problems(LM, ROWS, bumped) == [] and staleness_failures(FA, bumped) == []
+    monkeypatch.setattr(R, "census_pin", lambda: bumped)
+    assert R.main(["--check"]) == 0 and "STALE (draft)" in capsys.readouterr().err
+    assert R.main(["--check", "--strict"]) == 1
+
+
+def _write_copy(tmp_path, status, how=None, version=None):
+    """A temp copy of the three files regenerated at a (possibly stale) stamp and status."""
+    rev, fp = PIN[0] - (1 if how == "revision" else 0), ("0" * 64 if how == "fingerprint" else PIN[1])
+    files = R.render(frozen_at=LM["frozen_at"], registry_revision=rev, registry_fingerprint=fp,
+                     version=version or LM["version"], status=status)
+    for n, t in files.items():
+        (tmp_path / n).write_text(t, encoding="utf-8")
+    return tmp_path
+
+
+def test_check_mode_exit_codes_for_a_stale_draft(tmp_path, capsys):
+    _write_copy(tmp_path, "DRAFT", "revision")
+    assert R.main(["--check", "--out-dir", str(tmp_path)]) == 0
+    assert "STALE (draft)" in capsys.readouterr().err
+    assert R.main(["--check", "--strict", "--out-dir", str(tmp_path)]) == 1
+    assert "STALE (draft)" in capsys.readouterr().err
+
+
+def test_check_mode_is_clean_for_a_current_draft_even_with_strict(tmp_path, capsys):
+    _write_copy(tmp_path, "DRAFT")
+    assert R.main(["--check", "--strict", "--out-dir", str(tmp_path)]) == 0
+    assert "STALE" not in capsys.readouterr().err
+
+
+@pytest.mark.parametrize("how", ["revision", "fingerprint"])
+def test_mutation_check_mode_fails_a_stale_frozen_copy_without_strict(tmp_path, capsys, how):
+    _write_copy(tmp_path, "FROZEN", how, version="1.0")
+    assert R.main(["--check", "--out-dir", str(tmp_path)]) == 1
+    assert "STALE (FROZEN)" in capsys.readouterr().err
+    cur = tmp_path / "cur"
+    cur.mkdir()
+    _write_copy(cur, "FROZEN", None, version="1.0")                   # the same freeze at the current pin passes
+    assert R.main(["--check", "--out-dir", str(cur)]) == 0
+
+
+def test_a_stale_draft_whose_files_differ_from_their_regeneration_still_fails(tmp_path):
+    _write_copy(tmp_path, "DRAFT", "revision")
+    doc = json.loads((tmp_path / "LEVEL_MAP.json").read_text(encoding="utf-8"))
+    doc["levels"]["ga_positions"] = 1
+    (tmp_path / "LEVEL_MAP.json").write_text(R.dumps(doc), encoding="utf-8")
+    assert R.main(["--check", "--out-dir", str(tmp_path)]) == 1       # every other guard stays hard
+
+
+def test_strict_without_check_is_refused(capsys):
+    assert R.main(["--strict"]) == 2
 
 
 def test_mutation_a_missing_draft_marker_is_a_failure():
