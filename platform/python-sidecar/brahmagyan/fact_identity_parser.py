@@ -64,6 +64,7 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass, replace
 
+from brahmagyan import verification_tiers as _tiers
 from brahmagyan.graha_vocabulary import norm_graha
 
 # ── Canonical vocabularies ───────────────────────────────────────────────
@@ -285,7 +286,7 @@ KNOWN_PANCHANGA_SPECIAL_YOGA_SUBJECTS = frozenset({
 # explicit identity-free reason (SS ruling 2026-10-03, W7 abort-rule
 # amendment). BOTH category and subject must match: any other subject in
 # that category is a gap, not a free pass.
-SCOPE_CAP_SENTINEL_REASON = "scope_cap_sentinel"
+SCOPE_CAP_SENTINEL_REASON = _tiers.SCOPE_CAP_SENTINEL   # == "scope_cap_sentinel" (named constant, CLAUDE.md N.4)
 KNOWN_SCOPE_CAP_SENTINELS = frozenset({("dasha_scope_cap", "PRANA_DASHA")})
 # Reference/lookup-table row keys: these enumerate a FIXED classification
 # table (all 27 nakshatras for tara-bala, all 12 signs in transliterated
