@@ -26,10 +26,12 @@
 -- conformance gaps recorded in ka_gochara_v5_registry_conformance.test.ts are the activation step's to correct,
 -- by a later routine migration; this one adds no judgment of its own.
 --
--- NOT. No chart data, no other asset_registry row, no grant, no DDL, no other table. The post-check below
--- raises (rolling the migration back) if either row is missing or not inert, or if this transaction touched any
--- other asset_registry row (xmin = this transaction). A row that ALREADY exists is left exactly as it is
--- (DO NOTHING) and must satisfy the same inertness check.
+-- NOT. No chart data, no other asset_registry row, no grant, no DDL, no other table — that narrow write scope is established by the
+-- single INSERT below (and the table's one UPDATE trigger), not by the post-checks. The post-checks raise (rolling the migration back) if
+-- either row is missing or not inert, if anything depends on them, or if a SUPPLEMENTARY check of visible tuple versions (xmin = this
+-- transaction's id) finds another asset_registry row version written by this transaction. That last check is NOT proof that nothing else was
+-- touched (it cannot see deleted rows, subtransaction writes or other tables). A row that ALREADY exists is left exactly as it is (DO NOTHING)
+-- and must satisfy the same inertness check.
 
 DO $mig$
 DECLARE
@@ -106,7 +108,8 @@ BEGIN
   )
   ON CONFLICT (asset_id) DO NOTHING;
 
-  -- Post-check 1: nothing else in asset_registry was written by this transaction.
+  -- Post-check 1 (supplementary check of visible tuple versions, not proof that nothing else was touched): no other asset_registry row
+  -- version in this transaction.
   SELECT count(*) INTO v_touched_other
     FROM asset_registry
    WHERE xmin = pg_current_xact_id()::xid
