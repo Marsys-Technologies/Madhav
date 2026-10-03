@@ -112,12 +112,12 @@ def test_validator_a_stamp_column_is_not_a_declared_prose_field():
     ac.validate_null_convention_declaration("a", SSPEC(), dict(prose_fields=["effect_description"]))
 
 
-def test_the_declarations_file_lists_the_new_field_and_keeps_its_version_and_declares_nothing_yet():
+def test_the_declarations_file_lists_the_new_field_and_only_the_latta_declares_a_convention():
     raw = json.loads(ac.DECLARATIONS_PATH.read_text(encoding="utf-8"))
     assert raw["null_convention_declaration_fields"] == list(ac.NULL_CONVENTION_DECL_FIELDS) and "stamp_columns" in ac.NULL_CONVENTION_DECL_FIELDS
-    assert raw["version"] == "1.10.0"          # the file version moved with DECL-LATTA (#2991); this PR does not bump it
+    assert raw["version"] == "1.11.0"          # 1.10.0 with DECL-LATTA (#2991); 1.11.0 with DECL-LATTA-NULL (the first null_convention + stamp_columns)
     assert "stamp_columns" in raw["description"]
-    assert [a for a, e in raw["assets"].items() if "null_convention" in e] == []
+    assert [a for a, e in raw["assets"].items() if "null_convention" in e] == ["bg_phaladeepika_latta"]
     ac.load_asset_declarations()
 
 
@@ -557,9 +557,9 @@ SAVED = pathlib.Path("/Users/Dev/suvarna-evidence/census_fresh/1e5781a")
 
 @pytest.mark.skipif(not (SAVED / "census_L0.json").exists(), reason="the saved baseline census is not on this machine (CI)")
 def test_on_the_saved_censuses_pin_15_moves_no_cell_and_no_check():
-    """No asset declares a null_convention (so none a stamp): every one of the 1143 cells keeps its saved verdict AND the very same per-check verdicts as the revision-14 reading."""
+    """Only bg_phaladeepika_latta declares a null_convention with a stamp (1.11.0), and this rolls up the SAVED measurements (no re-measure): every one of the 1143 cells keeps its saved verdict AND the very same per-check verdicts as the revision-14 reading."""
     decl = ac.load_asset_declarations()
-    assert not [a for a, e in decl.items() if isinstance(e, dict) and (e.get("null_convention") or {}).get("stamp_columns")]
+    assert [a for a, e in decl.items() if isinstance(e, dict) and (e.get("null_convention") or {}).get("stamp_columns")] == ["bg_phaladeepika_latta"]
     n, moved = 0, []
     for L in ("L0", "L1", "L2", "L3", "L4", "L5"):
         d = json.loads((SAVED / f"census_{L}.json").read_text(encoding="utf-8"))
