@@ -247,6 +247,11 @@ KNOWN_HAS_WRITER_TRUE: frozenset[str] = frozenset({
     # writer. depends_on = ['ka_kshetra'] ONLY (KALA_W2_FIELD_DESIGN §7.5
     # acyclicity rule, mirrored from mi_bhara above).
     "mi_sankalpa",
+    # ── L0 Brahmagyan — TI-L0-20 (SS Q7 / Q21), HELD pending a migration number ─
+    # Step 1 (the migration setting has_writer=true) is the DRAFT_NEEDS_NUMBER_*
+    # file in the wave plan; the live-mode test below stays red until it is applied.
+    "bg_gochara_citation_resolution",   # R9: dispatch waits for SS after Pravaha is notified
+    "bg_sarvatobhadra_grid",            # asserts the ADJUDICATION-11 ruled empty state
 })
 
 # Sub-registrations that share a writer with their parent.
