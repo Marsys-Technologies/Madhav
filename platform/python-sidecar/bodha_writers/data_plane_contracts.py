@@ -549,6 +549,18 @@ def _complete_partition(ctx: Any, observation: ProducerObservation, result: Any)
         )
 
 
+def _restore_default_search_path_at_entry(ctx: Any) -> None:
+    """At wrapper ENTRY, undo what a previous contracted call in the same transaction did with ``_resolve_unqualified_names_to_real_tables``.
+
+    The end-of-call ``SET LOCAL search_path = public, pg_temp`` lasts until the transaction ends. A light writer runs in one deferred-commit
+    transaction, so a SECOND wrapped call on the same connection would otherwise start with ``pg_temp`` searched LAST: its writer would read
+    the real ``chart_facts`` / ``bodha_*`` tables instead of the exact-input shadows its own ``bind_l2_exact_inputs`` just created. Putting the
+    session default back (``pg_temp`` first, as for a first call) before the bind makes every contracted call behave the same.
+    """
+    with ctx.db_conn.cursor() as cur:
+        cur.execute("SET LOCAL search_path TO DEFAULT")
+
+
 def _resolve_unqualified_names_to_real_tables(ctx: Any) -> None:
     """After the writer is done, make unqualified table names mean the REAL ``public`` tables again.
 
@@ -618,6 +630,7 @@ def l2_producer(asset_id: str) -> Callable[[T], T]:
                 chart_id = str((ctx.config or {}).get("chart_id") or "")
                 if not chart_id:
                     raise ContractError("L2 runtime producer context requires chart_id")
+                _restore_default_search_path_at_entry(ctx)
                 source_digest = _writer_source_digest(asset_id)
                 vector, calculation_context = _resolve_upstream_context(
                     ctx.db_conn,

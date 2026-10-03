@@ -69,3 +69,61 @@ def test_real_wrapper_leaves_unqualified_names_on_the_real_table(fixtures_commit
         real = conn.execute("SELECT count(*) FROM public.bodha_msr_signals WHERE chart_id=%s AND signal_type_class='real_row_probe'", (CHART,)).fetchone()[0]
         assert (seen, real) == (1, 1)
         conn.rollback()
+
+
+RESOLVES_TO_TEMP = "SELECT c.relnamespace = pg_my_temp_schema() FROM pg_class c WHERE c.oid = %s::regclass"
+
+
+def test_second_wrapped_call_in_one_transaction_binds_and_reads_the_shadows_again(fixtures_committed):
+    """Two contracted calls on ONE connection/transaction (a light writer's deferred-commit transaction): the first ends with the
+    name-resolution reset, so without a reset at ENTRY the second call's body would resolve the protected names to the REAL tables while its
+    own bind just created fresh shadows. The body records which schema ``chart_facts`` resolves to: the shadow (the temp schema) both times.
+    ``regclass`` resolution needs no privilege on the table, so this runs under today's ACLs."""
+    seen: list[tuple[str, bool]] = []
+
+    class Probe:
+        asset_id = "bo_sudarshana"
+
+        def run(self, ctx):
+            seen.append(("chart_facts", ctx.db_conn.execute(RESOLVES_TO_TEMP, ("chart_facts",)).fetchone()[0]))
+            if len(seen) == 1:  # the second call re-enters the SAME content-addressed generation: a replay, it writes nothing
+                ctx.db_conn.execute(MSR_INSERT, (str(uuid.uuid4()), ctx.config["chart_id"], ctx.build_id))
+            return type("R", (), {"rows_inserted": 1, "rows_updated": 0, "rows_skipped": 0, "notes": ""})()
+
+    Wrapped = l2_producer("bo_sudarshana")(Probe)
+    with psycopg.connect(BUILDER) as conn:
+        run = _builder_txn_with_l1_head(conn)
+        ctx = ContextSpec(asset_id="bo_sudarshana", build_id=run, db_conn=conn, config={"chart_id": CHART, "birth_params": {}})
+        Wrapped().run(ctx)
+        assert conn.execute("SHOW search_path").fetchone()[0] == "public, pg_temp", "premise: the first call ended with the reset"
+        assert conn.execute(RESOLVES_TO_TEMP, ("chart_facts",)).fetchone()[0] is False
+        Wrapped().run(ctx)
+        assert conn.execute("SHOW search_path").fetchone()[0] == "public, pg_temp"
+        conn.rollback()
+    assert seen == [("chart_facts", True), ("chart_facts", True)], seen
+
+
+def test_true_bind_shadows_are_still_alive_but_unqualified_reads_hit_the_real_table_after_the_wrapper_returns(fixtures_committed):
+    """The shadows here are the REAL ones ``bind_l2_exact_inputs`` created (owned by ``data_plane_l2_owner``), not a builder-owned stand-in.
+    After the wrapper returns they still exist in this transaction's temp schema, yet an unqualified read must not touch them: under the
+    production ACLs reading one raises ``permission denied`` (and with a grant it would return the shadow's rows), so a successful read of the
+    real count proves name resolution went to ``public``. Reviewer probe: /Users/Dev/suvarna-evidence/S_L1/rv3008/probe_real_shadow.py."""
+    class Probe:
+        asset_id = "bo_sudarshana"
+
+        def run(self, ctx):
+            ctx.db_conn.execute(MSR_INSERT, (str(uuid.uuid4()), ctx.config["chart_id"], ctx.build_id))
+            return type("R", (), {"rows_inserted": 1, "rows_updated": 0, "rows_skipped": 0, "notes": ""})()
+
+    Wrapped = l2_producer("bo_sudarshana")(Probe)
+    with psycopg.connect(BUILDER) as conn:
+        run = _builder_txn_with_l1_head(conn)
+        ctx = ContextSpec(asset_id="bo_sudarshana", build_id=run, db_conn=conn, config={"chart_id": CHART, "birth_params": {}})
+        Wrapped().run(ctx)
+        owners = conn.execute(
+            "SELECT pg_get_userbyid(c.relowner) FROM pg_class c WHERE c.relnamespace = pg_my_temp_schema() AND c.relname = 'chart_facts'").fetchall()
+        assert owners == [("data_plane_l2_owner",)], f"premise: the true bind shadow of chart_facts is alive and not builder-owned: {owners}"
+        unqualified = conn.execute("SELECT count(*) FROM chart_facts WHERE chart_id = %s", (CHART,)).fetchone()[0]
+        real = conn.execute("SELECT count(*) FROM public.chart_facts WHERE chart_id = %s", (CHART,)).fetchone()[0]
+        assert unqualified == real and real >= 1, (unqualified, real)
+        conn.rollback()

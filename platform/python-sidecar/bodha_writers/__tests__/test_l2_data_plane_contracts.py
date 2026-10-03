@@ -381,7 +381,7 @@ def test_heavy_writer_records_each_substep_partition_in_callers_transaction(monk
     assert "open_l2_data_plane_generation" in sql
     assert "bind_l2_exact_inputs" in sql
     assert "complete_l2_data_plane_partition" in sql
-    assert any("lahiri" in tuple(str(value) for value in params) for _, params in executed)
+    assert any("lahiri" in tuple(str(value) for value in (params or ())) for _, params in executed)
 
 
 def test_slice_is_deterministic_complete_non_temporal_and_non_promotable():
