@@ -21,7 +21,16 @@ import re
 import pytest
 
 REPO = pathlib.Path(__file__).resolve().parents[4]
-MIGRATION = REPO / "platform/migrations/1222_nirmana_l1_ga_vargas_integrity_nonvacuity.sql"
+# Migration 1222's canonical file lives in PR #2943 (S-L1 W1), NOT here (SS ruling: this PR carries no migration
+# file; two different copies under one filename would collide in the migrate.ts checksum). The text-shape and
+# behaviour tests below read a BYTE-IDENTICAL vendored copy, pinned by sha256; the drift guard compares it with the
+# real file as soon as that file exists in the tree (after W1). Post-W1 item: delete the fixture and point
+# MIGRATION at CANONICAL_MIGRATION.
+CANONICAL_MIGRATION = REPO / "platform/migrations/1222_nirmana_l1_ga_vargas_integrity_nonvacuity.sql"
+CANONICAL_NAME = "1222_nirmana_l1_ga_vargas_integrity_nonvacuity.sql"
+MIGRATION_FIXTURE = pathlib.Path(__file__).resolve().parent / "fixtures" / "migration_1222_canonical_from_pr2943.sql"
+MIGRATION_FIXTURE_SHA256 = "10b6aac633287d10d13049baacc650a223f5f481f13417a02e02e167c87e3212"
+MIGRATION = MIGRATION_FIXTURE
 ACCEPTANCE = REPO / "00_ARCHITECTURE/briefs/suvarna/exec/f_a2_key_widening/s_l1_ga_vargas_acceptance_check.sql"
 BASE_884 = REPO / "platform/migrations/884_nirmana_l1_ga_vargas_integrity_check_scope.sql"
 CANON = "482012f1-710e-4a25-994a-93821f5871aa"
@@ -35,17 +44,32 @@ def _old_sql() -> str:
     return re.search(r"\$SQL\$(.*?)\$SQL\$", BASE_884.read_text(encoding="utf-8"), re.S).group(1)
 
 
+def test_vendored_migration_fixture_is_the_pinned_canonical_copy() -> None:
+    """The fixture must be byte-identical to PR #2943's 1222 (sha256 pinned), and -- once the real migration file
+    exists in the tree (after W1) -- byte-identical to it: any drift between the copy these tests read and the file
+    migrate.ts applies fails here, loudly."""
+    import hashlib
+    data = MIGRATION_FIXTURE.read_bytes()
+    assert hashlib.sha256(data).hexdigest() == MIGRATION_FIXTURE_SHA256
+    if CANONICAL_MIGRATION.exists():
+        assert CANONICAL_MIGRATION.read_bytes() == data, (
+            "platform/migrations/1222 exists now: the vendored fixture must equal it byte-for-byte; "
+            "delete the fixture and point MIGRATION at CANONICAL_MIGRATION"
+        )
+
+
 def test_migration_is_a_routine_guarded_asset_registry_update() -> None:
     text = MIGRATION.read_text(encoding="utf-8")
-    assert MIGRATION.name == "1222_nirmana_l1_ga_vargas_integrity_nonvacuity.sql"
+    assert CANONICAL_NAME == "1222_nirmana_l1_ga_vargas_integrity_nonvacuity.sql"
     assert not re.search(r"^\s*(BEGIN|COMMIT)\s*;", text, re.M | re.I), "transaction ownership belongs to migrate.ts"
     for needle in ("SET LOCAL lock_timeout", "$pre$", "$post$", "WHERE asset_id = 'ga_vargas'",
-                   "NOT applied by this change"):
+                   "MERGE = APPLY"):
         assert needle in text
     # touches asset_registry and nothing else: no DDL, no other table
     assert not re.search(r"\b(ALTER|CREATE|DROP|GRANT|REVOKE|TRUNCATE|DELETE)\b", re.sub(r"--[^\n]*", "", text.split("$ck$")[0]
                                                                                        + text.split("$ck$")[-1]), re.I)
-    assert len(re.findall(r"UPDATE asset_registry", text)) == 1
+    # exactly ONE UPDATE statement (count on the comment-stripped text: the canonical header mentions it in prose)
+    assert len(re.findall(r"UPDATE asset_registry", re.sub(r"--[^\n]*", "", text))) == 1
 
 
 def test_new_check_is_the_old_check_plus_exactly_conjunct_e() -> None:
@@ -63,7 +87,11 @@ def test_the_md5_guards_match_the_texts() -> None:
     import hashlib
     text = MIGRATION.read_text(encoding="utf-8")
     assert hashlib.md5(_old_sql().encode()).hexdigest() == "255af7c5194553e19f7009c1e8774d8a"
-    assert text.count(hashlib.md5(_new_sql().encode()).hexdigest()) == 1, "the post-check names the new text's md5"
+    code = re.sub(r"--[^\n]*", "", text)  # executable SQL only; the canonical header also documents the md5s in prose
+    new_md5 = hashlib.md5(_new_sql().encode()).hexdigest()
+    # canonical (PR #2943) shape: the pre-check names the new md5 once (idempotent skip) and the post-check once
+    assert code.count(new_md5) == 2, "the pre-check (idempotent skip) and the post-check name the new text's md5"
+    assert "IF v_md5 IS DISTINCT FROM '%s'" % new_md5 in code, "the post-check compares against the new md5"
     assert text.count("255af7c5194553e19f7009c1e8774d8a") >= 2, "the pre-check and the header name the base md5"
 
 
@@ -221,7 +249,9 @@ def test_acceptance_script_passes_complete_data_and_names_what_failed(pg, built_
 
 
 @needs_pg
-def test_migration_applies_once_and_refuses_a_second_run(pg) -> None:
+def test_migration_applies_once_is_idempotent_and_refuses_an_unexpected_text(pg) -> None:
+    """Canonical 1222 (PR #2943): apply once; a second run is a no-op (the new text is already in place);
+    any OTHER text (neither the base nor the new one) is refused and left untouched."""
     import psycopg
     conn, cur = pg
     cur.execute("INSERT INTO asset_registry VALUES ('ga_vargas', %s)", (_old_sql(),))
@@ -229,6 +259,10 @@ def test_migration_applies_once_and_refuses_a_second_run(pg) -> None:
     cur.execute(body)
     cur.execute("SELECT integrity_check_sql FROM asset_registry WHERE asset_id='ga_vargas'")
     assert cur.fetchone()[0] == _new_sql()
+    cur.execute(body)  # second run: idempotent no-op, must not raise and must not change the text
+    cur.execute("SELECT integrity_check_sql FROM asset_registry WHERE asset_id='ga_vargas'")
+    assert cur.fetchone()[0] == _new_sql()
+    cur.execute("UPDATE asset_registry SET integrity_check_sql = 'SELECT true AS integrity_passed' WHERE asset_id='ga_vargas'")
     with pytest.raises(psycopg.errors.RaiseException, match="not the text this migration was written against"):
         cur.execute("SAVEPOINT s")
         cur.execute(body)
