@@ -645,3 +645,175 @@ def test_span_scanner_matches_the_parser_on_awkward_json():
         assert json.loads(text[s:en]) == e["fingerprint"]
     s, en = ents[0]["nested"]
     assert json.loads(text[s:en]) == parsed["entries"][0]["nested"]
+
+
+# ───────────────────── E5.4 review fixes: UTC stamp, root-shape disclosure, symlink / lock / temp hygiene ─────────────────────
+
+import datetime as _dt  # noqa: E402
+import re as _re  # noqa: E402
+import time as _time  # noqa: E402
+
+FIXED_NOW = _dt.datetime(2026, 10, 3, 12, 34, 56, 789000, tzinfo=_dt.timezone.utc)
+
+
+@pytest.fixture
+def frozen_utc(monkeypatch):
+    monkeypatch.setattr(mf, "_utcnow", lambda: FIXED_NOW)
+
+
+@pytest.fixture
+def kolkata_tz(monkeypatch):
+    """A machine whose local zone is +05:30: the old stamp (local offset) would differ from the UTC stamp here."""
+    monkeypatch.setenv("TZ", "Asia/Kolkata")
+    _time.tzset()
+    yield
+    monkeypatch.undo()
+    _time.tzset()
+
+
+def _set_generated_at(root, value):
+    t = mfst(root).read_text(encoding="utf-8")
+    old = json.loads(t)["generated_at"]
+    mfst(root).write_text(t.replace(f'"{old}"', f'"{value}"', 1), encoding="utf-8")
+
+
+def _generated_at(root):
+    return json.loads(mfst(root).read_text(encoding="utf-8"))["generated_at"]
+
+
+def test_rotate_stamps_generated_at_in_utc_build_shape_regardless_of_machine_timezone(tmp_path, frozen_utc, kolkata_tz):
+    make_repo(tmp_path)
+    _set_generated_at(tmp_path, "2026-09-14T12:39:30.000Z")      # the shape the real manifest carries
+    (tmp_path / "docs/a.md").write_bytes(b"a2\n")
+    assert cli("--rotate", *args_for(tmp_path))[0] == 0
+    assert _generated_at(tmp_path) == "2026-10-03T12:34:56.789Z"   # UTC, not 18:04:56+05:30
+    assert not _re.search(r"[+-]\d\d:\d\d$", _generated_at(tmp_path))
+
+
+def test_generated_at_follows_the_shape_the_file_carries(tmp_path, frozen_utc):
+    make_repo(tmp_path)
+    _set_generated_at(tmp_path, "2026-09-14T12:39:30Z")            # seconds-only Z shape
+    (tmp_path / "docs/a.md").write_bytes(b"a2\n")
+    cli("--rotate", *args_for(tmp_path))
+    assert _generated_at(tmp_path) == "2026-10-03T12:34:56Z"
+    (tmp_path / "docs/a.md").write_bytes(b"a3\n")
+    _set_generated_at(tmp_path, "2026-09-14T18:09:30+05:30")       # an offset form is NOT propagated: back to the build.ts shape
+    cli("--rotate", *args_for(tmp_path))
+    assert _generated_at(tmp_path) == "2026-10-03T12:34:56.789Z"
+
+
+def test_write_mode_also_stamps_utc(tmp_path, frozen_utc, kolkata_tz):
+    make_repo(tmp_path)
+    assert cli("--write", "--manifest", mfst(tmp_path))[0] == 0
+    assert _generated_at(tmp_path) == "2026-10-03T12:34:56.789Z"
+
+
+def test_rotate_restamps_a_64_hex_root_to_the_documented_16_hex_shape(tmp_path):
+    """The one-time shape change of the real root (build.ts writes full 64-hex sha256 of JSON.stringify(entries))."""
+    make_repo(tmp_path)
+    text = mfst(tmp_path).read_text(encoding="utf-8")
+    mfst(tmp_path).write_text(text.replace(json.loads(text)["fingerprint"], "ab" * 32), encoding="utf-8")
+    assert cli("--rotate", *args_for(tmp_path))[0] == 0
+    fp = json.loads(mfst(tmp_path).read_text(encoding="utf-8"))["fingerprint"]
+    assert len(fp) == 16 and _re.fullmatch(r"[0-9a-f]{16}", fp)
+
+
+def test_docstring_states_the_root_shape_difference_from_manifest_build():
+    doc = mf.__doc__
+    for needle in ("manifest:build", "changes it back", "platform/src/scripts/manifest/build.ts", "64-hex", "16", "opaque", "manifest_reader.ts",
+                   "parity_validator.ts", "UTC"):
+        assert needle in doc, needle
+    for needle in ("--entry ID", "B.10", "SKIPS a directory entry"):     # LOW-3: the deliberate strictness is documented
+        assert needle in doc, needle
+
+
+def test_symlinked_manifest_is_refused_and_the_link_survives(tmp_path):
+    make_repo(tmp_path)
+    (tmp_path / "docs/a.md").write_bytes(b"a2\n")
+    real = mfst(tmp_path)
+    link = tmp_path / "link.json"
+    link.symlink_to(real)
+    before = real.read_bytes()
+    rc, out, err = cli("--rotate", "--manifest", link, "--repo-root", tmp_path)
+    assert rc == 5 and "symlink" in err
+    assert link.is_symlink() and real.read_bytes() == before
+    assert not list(tmp_path.glob(".manifest-rotate-*"))
+
+
+def test_stray_temp_from_a_crashed_run_is_swept_but_foreign_entries_are_not(tmp_path):
+    make_repo(tmp_path)
+    d = mfst(tmp_path).parent
+    (d / ".manifest-rotate-crashed1").write_bytes(b"{partial")
+    (d / "keep.txt").write_bytes(b"mine")
+    outside = tmp_path / "outside.txt"
+    outside.write_bytes(b"o")
+    (d / ".manifest-rotate-link").symlink_to(outside)            # a symlink with our prefix is not ours to delete
+    (tmp_path / "docs/a.md").write_bytes(b"a2\n")
+    rc, out, _ = cli("--rotate", *args_for(tmp_path))
+    assert rc == 0 and "removed stray temp file" in out and ".manifest-rotate-crashed1" in out
+    assert sorted(p.name for p in d.iterdir()) == [".manifest-rotate-link", "CAPABILITY_MANIFEST.json", "keep.txt"]
+    assert outside.read_bytes() == b"o"
+
+
+def test_check_rotation_is_read_only_and_does_not_sweep(tmp_path):
+    make_repo(tmp_path)
+    d = mfst(tmp_path).parent
+    (d / ".manifest-rotate-x").write_bytes(b"x")
+    assert cli("--check-rotation", *args_for(tmp_path))[0] == 0
+    assert (d / ".manifest-rotate-x").exists()
+
+
+def test_a_held_lock_refuses_the_rotation_and_sweeps_nothing(tmp_path):
+    import fcntl
+    make_repo(tmp_path)
+    d = mfst(tmp_path).parent
+    (d / ".manifest-rotate-live").write_bytes(b"another run's temp")
+    (tmp_path / "docs/a.md").write_bytes(b"a2\n")
+    before = mfst(tmp_path).read_bytes()
+    fd = os.open(str(d), os.O_RDONLY)
+    try:
+        fcntl.flock(fd, fcntl.LOCK_EX)
+        rc, _out, err = cli("--rotate", *args_for(tmp_path))
+        assert rc == 5 and "holds the lock" in err
+        assert mfst(tmp_path).read_bytes() == before
+        assert (d / ".manifest-rotate-live").exists(), "a live writer's temp file must not be swept"
+    finally:
+        os.close(fd)
+    assert cli("--rotate", *args_for(tmp_path))[0] == 0           # lock released -> proceeds
+    assert not (d / ".manifest-rotate-live").exists()
+
+
+def test_failure_after_temp_creation_leaves_no_temp(tmp_path, monkeypatch):
+    make_repo(tmp_path)
+    (tmp_path / "docs/a.md").write_bytes(b"a2\n")
+
+    seen = []
+
+    def boom(fd, mode):
+        seen.append(fd)
+        raise OSError("fdopen failed")
+    monkeypatch.setattr(mf.os, "fdopen", boom)
+    with pytest.raises(OSError):
+        mf.main(["--rotate", *map(str, args_for(tmp_path))])
+    assert [p.name for p in mfst(tmp_path).parent.iterdir()] == ["CAPABILITY_MANIFEST.json"]
+    assert len(seen) == 1
+    with pytest.raises(OSError):                      # the temp file's descriptor was closed, not leaked
+        os.fstat(seen[0])
+
+
+def test_entry_scopes_around_per_file_refusals_but_not_structural_ones(tmp_path):
+    """LOW-3, documented behaviour pinned: `--entry` scopes around another entry's missing/unreadable file, never around a
+    duplicate path or malformed path anywhere in the manifest."""
+    make_repo(tmp_path)
+    (tmp_path / "docs/a.md").write_bytes(b"a2\n")
+    (tmp_path / "docs/c.md").unlink()
+    assert cli("--rotate", *args_for(tmp_path))[0] == 5                              # whole-manifest: C's missing file refuses
+    rc, out, _ = cli("--rotate", *args_for(tmp_path, "--entry", "A"))
+    assert rc == 0 and "ROTATED A" in out                                            # scoped: C is not read
+    # structural refusal is NOT scoped
+    def dup(files):
+        return [_entry("A", "docs/a.md", files["docs/a.md"]), _entry("B", "docs/a.md", files["docs/a.md"])]
+    other = tmp_path / "other"
+    other.mkdir()
+    make_repo(other, entries_fn=dup)
+    assert cli("--rotate", *args_for(other, "--entry", "A"))[0] == 5

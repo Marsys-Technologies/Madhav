@@ -49,6 +49,29 @@ submodule blob; an unknown `--entry`; a bad `--ref`. Unlike drift_detector (whic
 entries), rotation refuses a directory: it has no file bytes to fingerprint and inventing a value
 would be B.10.
 
+Deliberate strictness (E5.4 review, LOW-3): drift_detector SKIPS a directory entry, an entry whose path is empty,
+and (via its _FUTURE_ARTIFACTS allowlist) a not-yet-existing file; `--rotate` REFUSES them, and refuses duplicate
+ids/paths. That is intentional: a skipped entry keeps whatever hash it has, but a rotation that wrote a hash it could not
+compute would be inventing a fingerprint (B.10 / §N.8). `--entry ID` scopes AROUND the per-file refusals (missing,
+unreadable, directory, outside-symlink pointer of an entry you did not name are not read and not reported). It does NOT
+scope around whole-manifest structural refusals (corrupt JSON, duplicate id, duplicate path, malformed/absolute/escaping
+path, an unknown id): those make the entry set itself untrustworthy.
+
+ROOT SHAPE, stated plainly (E5.4 review, MEDIUM-1). The root `fingerprint` this tool stamps is
+sha256(canonical_json(entries))[:16]. `platform/src/scripts/manifest/build.ts` (`npm run manifest:build`) stamps a
+DIFFERENT shape: the full 64-hex sha256 of JSON.stringify(entries) (insertion order, not sorted). The first rotation of
+the real manifest therefore changes the root's shape once (64-hex -> 16-hex), accepted by Suvarna Strategic; the next
+`manifest:build` changes it back. Nothing consumes the root's shape: the review of this change found manifest_reader.ts
+(cache key), bundle_hydrator, consult/route.ts, the audit_event/bundle schemas and parity_validator.ts all treat it as an
+opaque string. `generated_at` is stamped in UTC with the shape the file already carries (build.ts writes
+`new Date().toISOString()`, i.e. `YYYY-MM-DDTHH:MM:SS.mmmZ`, which is also the default here); it never depends on the
+machine's timezone.
+
+Concurrency/safety of the write: `--rotate` refuses a manifest path that is a symlink (it would replace the link with a
+regular file), takes an exclusive non-blocking flock on the manifest's DIRECTORY around read -> compare -> replace (the
+manifest's own inode is replaced, so locking the file would not work), and, holding that lock, removes stray
+`.manifest-rotate-*` temp files left by a crashed earlier run (under the lock no live writer can own one).
+
 The manifest is edited SURGICALLY: only the bytes of the changed fingerprint values and the three
 root stamp values are replaced; key order, indentation, line endings and every other byte are
 preserved (so an unrelated entry's diff is empty). The patched text is re-parsed and verified
@@ -75,18 +98,26 @@ import hashlib
 import json
 import os
 import posixpath
+import re
 import shutil
 import subprocess
 import sys
 import tempfile
+from contextlib import contextmanager
 from collections import OrderedDict
 from pathlib import Path
+
+try:  # POSIX only; on a platform without it the lock is skipped, everything else still applies
+    import fcntl
+except ImportError:  # pragma: no cover
+    fcntl = None
 
 MANIFEST = Path(__file__).resolve().parents[3] / "00_ARCHITECTURE" / "CAPABILITY_MANIFEST.json"
 
 # Per-entry fingerprint keys, in the reader's precedence order (manifest_reader.load_manifest_as_ca).
 ENTRY_FP_KEYS = ("fingerprint_sha256", "fingerprint")
 ROOT_STAMP_KEYS = ("fingerprint", "entry_count", "generated_at")
+TEMP_PREFIX = ".manifest-rotate-"
 
 
 class RotationError(Exception):
@@ -98,8 +129,20 @@ def canonical_fingerprint(entries: list) -> str:
     return hashlib.sha256(blob.encode("utf-8")).hexdigest()[:16]
 
 
-def _now_stamp() -> str:
-    return dt.datetime.now(dt.timezone.utc).astimezone().isoformat(timespec="seconds")
+def _utcnow() -> dt.datetime:
+    """Seam for tests: the single source of 'now' (always timezone-aware UTC)."""
+    return dt.datetime.now(dt.timezone.utc)
+
+
+_SECONDS_Z = re.compile(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$")
+
+
+def _now_stamp(current=None) -> str:
+    """UTC, build.ts shape `YYYY-MM-DDTHH:MM:SS.mmmZ` (default); if the file carries the seconds-only `...SSZ` shape, that."""
+    now = _utcnow().astimezone(dt.timezone.utc)
+    if isinstance(current, str) and _SECONDS_Z.match(current):
+        return now.strftime("%Y-%m-%dT%H:%M:%SZ")
+    return now.strftime("%Y-%m-%dT%H:%M:%S.") + f"{now.microsecond // 1000:03d}Z"
 
 
 # --------------------------------------------------------------------------------------
@@ -394,9 +437,14 @@ def _fmt_errors(errors):
 def _atomic_write(path: Path, data: bytes, expected_old: bytes) -> None:
     if path.read_bytes() != expected_old:
         raise RotationError("manifest changed on disk while rotating; nothing written (re-run)")
-    fd, tmp = tempfile.mkstemp(prefix=".manifest-rotate-", dir=str(path.parent))
+    fd, tmp = tempfile.mkstemp(prefix=TEMP_PREFIX, dir=str(path.parent))
     try:
-        with os.fdopen(fd, "wb") as fh:
+        try:
+            fh = os.fdopen(fd, "wb")
+        except BaseException:
+            os.close(fd)
+            raise
+        with fh:
             fh.write(data)
             fh.flush()
             os.fsync(fh.fileno())
@@ -408,6 +456,39 @@ def _atomic_write(path: Path, data: bytes, expected_old: bytes) -> None:
         except OSError:
             pass
         raise
+
+
+@contextmanager
+def _directory_lock(directory: Path):
+    """Exclusive non-blocking flock on the manifest's DIRECTORY (the manifest inode itself is replaced by os.replace, so a
+    lock on the file would protect nothing). Raises RotationError if another rotation holds it."""
+    if fcntl is None:  # pragma: no cover
+        yield
+        return
+    fd = os.open(str(directory), os.O_RDONLY)
+    try:
+        try:
+            fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except OSError as exc:
+            raise RotationError(f"another rotation holds the lock on {directory}; nothing written") from exc
+        yield
+    finally:
+        os.close(fd)  # closing releases the flock
+
+
+def _sweep_stale_temps(directory: Path) -> list:
+    """Called WITH the lock held: any `.manifest-rotate-*` regular file is an orphan of a crashed run (a live writer
+    would hold the lock). Symlinks and directories with that prefix are not ours and are left alone."""
+    removed = []
+    for p in sorted(directory.glob(TEMP_PREFIX + "*")):
+        if p.is_symlink() or not p.is_file():
+            continue
+        try:
+            p.unlink()
+            removed.append(p.name)
+        except OSError:
+            pass
+    return removed
 
 
 def build_rotated_text(raw_text: str, manifest, changes, stamp_root: bool):
@@ -434,7 +515,7 @@ def build_rotated_text(raw_text: str, manifest, changes, stamp_root: bool):
         new_root = {
             "fingerprint": canonical_fingerprint(new_entries),
             "entry_count": len(new_entries),
-            "generated_at": _now_stamp(),
+            "generated_at": _now_stamp(manifest.get("generated_at")),
         }
         for k, v in new_root.items():
             s, e = root_spans[k]
@@ -502,6 +583,16 @@ def mode_check_rotation(args) -> int:
 
 def mode_rotate(args) -> int:
     path = Path(args.manifest)
+    if path.is_symlink():
+        raise RotationError(f"manifest path {path} is a symlink; os.replace would swap the link for a regular file. "
+                            "Point --manifest at the real file")
+    with _directory_lock(path.resolve().parent):
+        for name in _sweep_stale_temps(path.resolve().parent):
+            print(f"removed stray temp file from a crashed earlier run: {name}")
+        return _rotate_locked(args, path)
+
+
+def _rotate_locked(args, path: Path) -> int:
     raw, text, manifest = _load_text(path)
     repo_root = _repo_root_for(path, args.repo_root)
     changes, errors, checked, virtual = plan_rotation(manifest, repo_root, args.ref, args.entry)
@@ -572,7 +663,7 @@ def main(argv=None) -> int:
 
     manifest["entry_count"] = len(entries)
     manifest["fingerprint"] = observed
-    manifest["generated_at"] = _now_stamp()
+    manifest["generated_at"] = _now_stamp(manifest.get("generated_at"))
     path.write_text(json.dumps(manifest, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
     print(f"stamped: entry_count={len(entries)} fingerprint={observed} (was {declared or '<none>'})")
     return 0
