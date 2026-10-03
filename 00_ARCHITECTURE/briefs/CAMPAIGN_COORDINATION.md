@@ -8562,3 +8562,13 @@ Resume condition for everything downstream: a successful protected deploy with 1
 - No production writes, deployment, paid AI, chart rebuild, applied-migration edit, corpus edit or unrelated campaign mutation. Preserve shared services, review/calibration data and historical readings. Desktop provenance truthful; root CLAUDE §G equivalent scoped bootstrap; validators unchanged.
 
 - Outcome: first increment only — global Audit/Performance menu cleanup and 23 exclusive dead files removed locally, 93 targeted tests/type/lint passed; 181 retained service files byte-identical. Remaining approved chart retirements, Life Events text, return links and operator relocation are recorded, not implemented. No source commit/push/deployment. Review packet: `00_ARCHITECTURE/briefs/portal_cleanup/DECISIONS_AND_SEQUENCE.md` in the task worktree.
+
+
+## 2026-10-04 — Portal desktop design review lease
+
+- Lease ID: L-PORTAL-DESKTOP-REVIEW-20261004; holder: Codex desktop.
+- Started: 2026-10-03T22:38:29.325308+00:00; expiry: 2026-10-04T02:38:29.325308+00:00; status: ACTIVE.
+- Worktree: `/Users/Dev/.codex/worktrees/portal-cleanup/Madhav`; existing local cleanup changes remain untouched.
+- Authority: native requested reviewing page UIs before further implementation.
+- Scope: task-owned desktop prototype/review packet under `00_ARCHITECTURE/briefs/portal_desktop_review/`, screenshot/brand-asset working copies under `Assets/screenshots/portal-desktop-review/`, and new MagicPath design project with illustrative records only.
+- No application-source writes, production changes, new provider execution, migration/rebuild/deploy, credential changes, or publishing real chart/life-event data. Existing local cleanup stays unchanged; hold further application work for visual review. Truthful desktop provenance with root CLAUDE §G equivalent scoped handshake; validators unchanged.
