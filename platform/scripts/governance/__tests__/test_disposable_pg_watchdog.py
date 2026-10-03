@@ -5,7 +5,10 @@
   * the SWEEP only reaps what it can attribute: a directory with a valid ownership marker whose owner process (pid + start time) is gone;
     never a directory without a marker, with a live owner, whose recorded pid was RECYCLED (different start time = dead owner: reaped),
     a symlink, a marker naming another root, or an entry that is not `suvarna_pg_*`;
-  * the watchdog exits quietly (and touches nothing) once the cluster was stopped normally.
+  * the watchdog exits quietly (and touches nothing) once the cluster was stopped normally;
+  * a dead owner is concluded ONLY from a conclusive `ps` answer: another timezone / locale, a `ps` timeout or OS error, or an empty start
+    time never reads as dead (review round 1, HIGH); `data` must be a real directory inside the root (a symlink is never stopped); only a pid
+    file naming a live postgres on THIS data dir is ever signalled (a recycled pid is not); a postmaster still up is never deleted under.
 """
 from __future__ import annotations
 
@@ -175,3 +178,214 @@ def test_the_sweep_reaps_a_real_leaked_cluster_of_a_dead_owner(tmp_path):
             child.kill()
         if root.exists():
             wd.reap(root, str(BIN / "pg_ctl"))
+
+
+# ---------------------------------------------------------------- review round 1: the "dead owner" decision must be conclusive -------------
+
+def test_a_live_owner_stays_alive_under_another_timezone_or_locale(tmp_path, monkeypatch):
+    r = _mk(tmp_path, "suvarna_pg_live_tz", pid=os.getpid(), start=wd.proc_start(os.getpid()))
+    for env in ({"TZ": "Asia/Kolkata"}, {"TZ": "America/Los_Angeles"}, {"LC_ALL": "de_DE.UTF-8", "TZ": "Pacific/Auckland"}):
+        for k, v in env.items():
+            monkeypatch.setenv(k, v)
+        assert dpg.sweep_stale_clusters(tmp_path) == [] and r.exists(), env
+
+
+def test_an_inconclusive_ps_reads_the_owner_as_alive(tmp_path, monkeypatch):
+    r = _mk(tmp_path, "suvarna_pg_ps_fail", pid=os.getpid(), start=wd.proc_start(os.getpid()))
+    for exc in (subprocess.TimeoutExpired("ps", 10), OSError("ps vanished")):
+        def boom(*a, _exc=exc, **k):
+            raise _exc
+        monkeypatch.setattr(wd.subprocess, "run", boom)
+        assert wd.proc_start(os.getpid()) is None and wd.owner_alive(os.getpid(), "anything") is True
+        assert dpg.sweep_stale_clusters(tmp_path) == [] and r.exists()
+    monkeypatch.undo()
+
+    class Odd:                                                    # a non-zero, non-"no such process" exit is also "cannot tell"
+        returncode, stdout = 2, "garbled"
+    monkeypatch.setattr(wd.subprocess, "run", lambda *a, **k: Odd())
+    assert wd.proc_start(os.getpid()) is None and wd.owner_alive(os.getpid(), "x") is True
+
+
+def test_a_marker_without_a_start_time_never_proves_the_owner_dead(tmp_path):
+    pid, _ = _dead_pid()
+    r = _mk(tmp_path, "suvarna_pg_empty_start", pid=pid, start="")
+    assert wd.read_marker(r) is None and dpg.sweep_stale_clusters(tmp_path) == [] and r.exists()
+    assert wd.owner_alive(pid, "") is True
+    p = subprocess.run([sys.executable, str(HERE / "_pg_watchdog.py"), str(os.getpid()), "", str(r), "/bin/false"], capture_output=True, timeout=60)
+    assert p.returncode == 2 and r.exists()                       # the watchdog refuses an empty start time and touches nothing
+
+
+def test_proc_start_tells_gone_from_alive_and_a_zombie_from_a_live_process():
+    pid, start = _dead_pid()
+    assert wd.proc_start(pid) == wd.GONE and wd.owner_alive(pid, start) is False
+    assert wd.proc_start(os.getpid()) not in (None, wd.GONE)
+    z = subprocess.Popen([sys.executable, "-c", "pass"])           # an exited child not yet waited for is a zombie: its owner is gone
+    for _ in range(100):
+        if wd._ps("-p", str(z.pid), "-o", "stat=")[1].strip().startswith("Z"):
+            break
+        time.sleep(0.05)
+    try:
+        assert wd.proc_start(z.pid) == wd.GONE
+    finally:
+        z.wait()
+
+
+@pytest.mark.parametrize("bad", [True, "123", 1.5, None, [1]])
+def test_a_marker_with_a_non_integer_pid_is_not_valid(tmp_path, bad):
+    r = tmp_path / "suvarna_pg_badpid"
+    r.mkdir()
+    (r / wd.OWNER_MARKER).write_text(json.dumps({"parent_pid": bad, "parent_start": "x", "root": str(r)}))
+    assert wd.read_marker(r) is None
+
+
+def test_a_file_named_like_a_cluster_dir_is_ignored(tmp_path):
+    f = tmp_path / "suvarna_pg_file"
+    f.write_text("x")
+    assert dpg.sweep_stale_clusters(tmp_path) == [] and f.exists()
+
+
+# ------------------------------------------------ review round 1: what `pg_ctl stop` may be aimed at (fake postmaster + fake pg_ctl) -----------
+
+FAKE_PG_CTL = """#!/bin/bash
+echo "$@" >> "{log}"
+if [ "$7" = "stop" ] || [ "$8" = "stop" ] || [[ " $* " == *" stop"* ]]; then
+  pid=$(head -1 "$2/postmaster.pid")
+  kill "$pid" 2>/dev/null
+fi
+exit {rc}
+"""
+
+
+def _fake_postmaster(data: pathlib.Path) -> subprocess.Popen:
+    """A process whose command line reads `postgres -D <data>`, with a pid file naming it."""
+    p = subprocess.Popen(["bash", "-c", f'exec -a "postgres -D {data}" sleep 600'])
+    for _ in range(100):
+        if str(data) in (wd._ps("-p", str(p.pid), "-o", "command=")[1]):
+            break
+        time.sleep(0.05)
+    (data / "postmaster.pid").write_text(f"{p.pid}\n{data}\n")
+    return p
+
+
+def _fake_ctl(tmp_path: pathlib.Path, rc: int = 0) -> tuple[str, pathlib.Path]:
+    log = tmp_path / "ctl.log"
+    script = tmp_path / "fake_pg_ctl"
+    script.write_text(FAKE_PG_CTL.format(log=log, rc=rc))
+    script.chmod(0o755)
+    return str(script), log
+
+
+def _alive(pid: int) -> bool:
+    return wd.proc_start(pid) not in (None, wd.GONE)
+
+
+def test_reap_stops_our_postmaster_with_the_immediate_mode_on_the_roots_own_data_dir(tmp_path):
+    pid, start = _dead_pid()
+    r = _mk(tmp_path, "suvarna_pg_ours", pid=pid, start=start)
+    pm = _fake_postmaster(r / "data")
+    ctl, log = _fake_ctl(tmp_path)
+    try:
+        assert wd.reap(r, ctl) is True and not r.exists()
+        argv = log.read_text().split()
+        assert argv[:2] == ["-D", str(r / "data")] and "-m" in argv and argv[argv.index("-m") + 1] == "immediate" and argv[-1] == "stop"
+    finally:
+        pm.kill()
+        pm.wait()
+
+
+def test_a_stale_pid_file_naming_an_unrelated_live_process_is_never_signalled(tmp_path):
+    pid, start = _dead_pid()
+    r = _mk(tmp_path, "suvarna_pg_stalepid", pid=pid, start=start)
+    bystander = subprocess.Popen(["sleep", "600"])                # a recycled pid: alive, but not a postmaster on this data dir
+    (r / "data" / "postmaster.pid").write_text(f"{bystander.pid}\n")
+    ctl, log = _fake_ctl(tmp_path)
+    try:
+        assert wd.reap(r, ctl) is True and not r.exists()          # the directory goes, nothing is signalled
+        assert not log.exists() and _alive(bystander.pid)
+    finally:
+        bystander.kill()
+        bystander.wait()
+
+
+def test_a_symlinked_data_dir_is_never_stopped_or_followed(tmp_path):
+    pid, start = _dead_pid()
+    victim = tmp_path / "victim"
+    (victim / "data").mkdir(parents=True)
+    pm = _fake_postmaster(victim / "data")
+    evil = tmp_path / "suvarna_pg_evil"
+    evil.mkdir()
+    (evil / "data").symlink_to(victim / "data")
+    (evil / wd.OWNER_MARKER).write_text(json.dumps({"parent_pid": pid, "parent_start": start, "root": str(evil), "created": 0}))
+    ctl, log = _fake_ctl(tmp_path)
+    try:
+        assert wd.reap(evil, ctl) is False and dpg.sweep_stale_clusters(tmp_path, ctl) == []
+        assert evil.exists() and _alive(pm.pid) and not log.exists() and (victim / "data" / "postmaster.pid").exists()
+    finally:
+        pm.kill()
+        pm.wait()
+
+
+def test_a_postmaster_that_will_not_stop_keeps_its_directory(tmp_path):
+    pid, start = _dead_pid()
+    r = _mk(tmp_path, "suvarna_pg_stubborn", pid=pid, start=start)
+    pm = _fake_postmaster(r / "data")
+    ctl = tmp_path / "noop_ctl"
+    ctl.write_text("#!/bin/bash\nexit 1\n")                       # a pg_ctl that does not stop anything
+    ctl.chmod(0o755)
+    try:
+        assert wd.reap(r, str(ctl)) is False and r.exists() and _alive(pm.pid)
+        assert wd.reap(r, None) is False and r.exists()            # a running postmaster and no pg_ctl at all
+    finally:
+        pm.kill()
+        pm.wait()
+
+
+def test_reap_does_nothing_when_ps_cannot_tell_whether_a_postmaster_runs(tmp_path, monkeypatch):
+    pid, start = _dead_pid()
+    r = _mk(tmp_path, "suvarna_pg_unknown", pid=pid, start=start)
+    (r / "data" / "postmaster.pid").write_text("12345\n")
+    monkeypatch.setattr(wd, "_ps", lambda *a: None)
+    assert wd.reap(r, "/bin/false") is False and r.exists()
+
+
+def test_reap_refuses_a_symlinked_or_foreign_root_itself(tmp_path):
+    pid, start = _dead_pid()
+    real = _mk(tmp_path, "real", pid=pid, start=start)
+    link = tmp_path / "suvarna_pg_link"
+    link.symlink_to(real)
+    (real / wd.OWNER_MARKER).write_text(json.dumps({"parent_pid": pid, "parent_start": start, "root": str(link), "created": 0}))
+    assert wd.reap(link, "/bin/false") is False and real.exists() and link.is_symlink()
+
+
+# ------------------------------------------------ review round 1: the wiring that the fixture promises (surviving mutants M14/M19/M21/M22) ----
+
+@NEEDS_PG
+def test_start_cluster_sweeps_first_with_its_own_pg_ctl_and_survives_a_failing_sweep(monkeypatch):
+    calls = []
+
+    def spy(base=None, pg_ctl=None):
+        calls.append(pg_ctl)
+        raise RuntimeError("housekeeping blew up")                # housekeeping must never fail a test run
+    monkeypatch.setattr(dpg, "sweep_stale_clusters", spy)
+    cl = dpg.start_cluster(BIN)
+    try:
+        assert len(calls) == 1 and calls[0] == str(BIN / "pg_ctl")
+    finally:
+        cl.stop()
+
+
+@NEEDS_PG
+def test_the_watchdog_is_detached_into_its_own_session():
+    cl = dpg.start_cluster(BIN)
+    try:
+        found = []
+        for _ in range(50):
+            out = subprocess.run(["ps", "-axo", "pid=,pgid=,command="], capture_output=True, text=True).stdout
+            found = [ln.split(None, 2) for ln in out.splitlines() if "_pg_watchdog.py" in ln and str(cl.root) in ln]
+            if found:
+                break
+            time.sleep(0.1)
+        assert found, "no watchdog process for this cluster"
+        assert int(found[0][1]) != os.getpgrp(), "the watchdog shares this process group: a group kill would take it down too"
+    finally:
+        cl.stop()

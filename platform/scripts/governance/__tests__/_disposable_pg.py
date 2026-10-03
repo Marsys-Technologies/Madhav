@@ -169,7 +169,10 @@ def _write_owner_marker(root: Path) -> None:
     """Record WHO owns this root (this pytest process: pid + start time) so a watchdog or a later session's sweep can tell an orphan from
     a live run, and never touches a directory it cannot attribute."""
     import _pg_watchdog as wd
-    (root / wd.OWNER_MARKER).write_text(json.dumps({"parent_pid": os.getpid(), "parent_start": wd.proc_start(os.getpid()), "root": str(root),
+    start = wd.proc_start(os.getpid())
+    if not start:                                       # cannot identify this process: write no marker, so nothing can ever reap this root
+        return
+    (root / wd.OWNER_MARKER).write_text(json.dumps({"parent_pid": os.getpid(), "parent_start": start, "root": str(root),
                                                    "created": time.time()}), encoding="utf-8")
 
 
@@ -177,8 +180,11 @@ def _start_watchdog(cl: "Cluster") -> None:
     """A detached process (own session) that stops the cluster and deletes its root once THIS pytest process is gone, however it died."""
     import _pg_watchdog as wd
     script = Path(wd.__file__).resolve()
+    start = wd.proc_start(os.getpid())
+    if not start:
+        return
     try:
-        subprocess.Popen([sys.executable, str(script), str(os.getpid()), wd.proc_start(os.getpid()), str(cl.root), str(cl.bin_dir / "pg_ctl")],
+        subprocess.Popen([sys.executable, str(script), str(os.getpid()), start, str(cl.root), str(cl.bin_dir / "pg_ctl")],
                          stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, start_new_session=True, close_fds=True)
     except OSError:
         pass                                            # best effort: the atexit/finalizer path still covers a normal exit

@@ -6,6 +6,11 @@ by design: it polls the owning pytest process (pid AND its start time, so a recy
 process is gone, stops the cluster it was told about and deletes its root. It acts ONLY on a root that carries the ownership marker
 this very pytest process wrote (`OWNER_MARKER`), and only on a postmaster whose data directory is `<root>/data`.
 
+A "dead owner" is only ever concluded from a CONCLUSIVE `ps` answer (no such process, or a zombie). A timeout, an OS error, an unexpected
+exit status or an empty start time is "cannot tell" and reads ALIVE: reaping a live run's cluster is the one unrecoverable mistake here.
+`ps` is always run with a fixed locale and timezone (LC_ALL=C, TZ=UTC) so a start time written by one process matches the one read by
+another session, CI job or a machine whose timezone changed.
+
 argv: parent_pid parent_start root pg_ctl_path
 """
 from __future__ import annotations
@@ -20,20 +25,71 @@ from pathlib import Path
 
 OWNER_MARKER = ".suvarna_pg_owner.json"
 POLL_SECONDS = 2.0
+_PS_ENV = {"PATH": os.environ.get("PATH", "/usr/bin:/bin"), "LC_ALL": "C", "LANG": "C", "TZ": "UTC"}
+GONE = ""                    # proc_start: `ps` answered that there is no such process
+# proc_start returns None when `ps` could not answer conclusively (timeout, OS error, odd status/output): the caller must treat it as alive.
 
 
-def proc_start(pid: int) -> str:
-    """The process start time as `ps` prints it ('' when no such process): with the pid it identifies one process, not a recycled pid."""
+def _ps(*args: str) -> tuple[int, str] | None:
     try:
-        p = subprocess.run(["ps", "-p", str(int(pid)), "-o", "lstart="], capture_output=True, text=True, timeout=10)
+        p = subprocess.run(["ps", *args], capture_output=True, text=True, timeout=10, env=_PS_ENV)
     except (OSError, subprocess.SubprocessError, ValueError):
-        return ""
-    return p.stdout.strip() if p.returncode == 0 else ""
+        return None
+    return p.returncode, p.stdout
+
+
+def proc_start(pid: int) -> str | None:
+    """The process start time as `ps` prints it under a fixed locale/timezone: with the pid it identifies one process, not a recycled pid.
+    '' (GONE) when there is no such process or it is a zombie; None when `ps` could not answer conclusively."""
+    try:
+        pid = int(pid)
+    except (TypeError, ValueError):
+        return None
+    r = _ps("-p", str(pid), "-o", "lstart=,stat=")
+    if r is None:
+        return None
+    rc, out = r
+    out = out.strip()
+    if rc == 1 and not out:
+        return GONE                                    # ps exits 1 with nothing printed when the pid does not exist
+    if rc != 0 or not out:
+        return None
+    start, _, stat = out.rpartition(" ")
+    if not start.strip():
+        return None
+    return GONE if stat.startswith("Z") else start.strip()
 
 
 def owner_alive(pid: int, start: str) -> bool:
+    """False ONLY on a conclusive answer: the process is gone, a zombie, or a different process generation (start time differs)."""
+    if not isinstance(start, str) or not start:
+        return True                                    # a marker without a start time cannot prove the owner dead
     cur = proc_start(pid)
-    return bool(cur) and cur == start
+    if cur is None:
+        return True
+    return cur != GONE and cur == start
+
+
+def _postmaster_state(data: Path) -> str:
+    """'none' (no pid file / no such process), 'ours' (the pid file names a live postgres whose command line carries this data dir),
+    'foreign' (the pid is alive but is not that postmaster: a recycled pid), 'unknown' (could not tell)."""
+    try:
+        first = (data / "postmaster.pid").read_text(encoding="utf-8", errors="replace").splitlines()[0].strip()
+        pid = int(first)
+    except (OSError, IndexError, ValueError):
+        return "none"
+    if pid <= 1:
+        return "foreign"
+    r = _ps("-p", str(pid), "-o", "command=")
+    if r is None:
+        return "unknown"
+    rc, out = r
+    out = out.strip()
+    if rc == 1 and not out:
+        return "none"
+    if rc != 0:
+        return "unknown"
+    return "ours" if ("postgres" in out and str(data) in out) else "foreign"
 
 
 def read_marker(root: Path) -> dict | None:
@@ -41,27 +97,46 @@ def read_marker(root: Path) -> dict | None:
         m = json.loads((root / OWNER_MARKER).read_text(encoding="utf-8"))
     except (OSError, ValueError):
         return None
-    ok = (isinstance(m, dict) and isinstance(m.get("parent_pid"), int) and isinstance(m.get("parent_start"), str)
-          and m.get("root") == str(root))
+    ok = (isinstance(m, dict) and isinstance(m.get("parent_pid"), int) and not isinstance(m.get("parent_pid"), bool)
+          and isinstance(m.get("parent_start"), str) and bool(m.get("parent_start")) and m.get("root") == str(root))
     return m if ok else None
 
 
 def reap(root: Path, pg_ctl: str | None = None) -> bool:
     """Stop the cluster under `root` (when one runs) and delete the root, but ONLY for a root with a valid ownership marker."""
+    try:
+        if root.is_symlink() or not root.is_dir() or root.stat().st_uid != os.getuid():
+            return False
+    except OSError:
+        return False
     if read_marker(root) is None:
         return False
     data = root / "data"
-    if pg_ctl and (data / "postmaster.pid").exists():
+    if data.exists() or data.is_symlink():
+        # `data` must be a real directory inside this root: a symlink would aim `pg_ctl stop` at somebody else's cluster
+        if data.is_symlink() or not data.is_dir() or os.path.realpath(data) != os.path.join(os.path.realpath(root), "data"):
+            return False
+    state = _postmaster_state(data)
+    if state == "unknown":
+        return False                                   # cannot tell whether a postmaster runs here: touch nothing
+    if state == "ours" and pg_ctl:
+        # only a pid file that names a live postgres on THIS data dir is ever signalled (pg_ctl signals whatever pid the file holds)
         try:
             subprocess.run([pg_ctl, "-D", str(data), "-m", "immediate", "-w", "-t", "30", "stop"], capture_output=True, timeout=60)
         except (OSError, subprocess.SubprocessError):
             pass
+        if _postmaster_state(data) in ("ours", "unknown"):
+            return False                               # the postmaster is still up: never delete a running cluster's directory
+    elif state == "ours":
+        return False                                   # a running postmaster and no pg_ctl to stop it
     shutil.rmtree(root, ignore_errors=True)
     return True
 
 
 def main(argv: list[str]) -> int:
     pid, start, root, pg_ctl = int(argv[1]), argv[2], Path(argv[3]), argv[4]
+    if not start:
+        return 2                                       # no start time = no way to prove the owner dead: do nothing
     while True:
         if not root.exists():
             return 0                                   # the fixture stopped the cluster normally
