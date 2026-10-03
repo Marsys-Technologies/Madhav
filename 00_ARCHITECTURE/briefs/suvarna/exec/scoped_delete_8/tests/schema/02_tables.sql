@@ -50,6 +50,75 @@ CREATE TABLE public.phala_pramana__ssv_20260728b (
   source_citation text,
   computed_at timestamptz
 );
+-- phala_phaladesa (live) as read from the catalog: NOT NULL set, PK, CHECKs; no FK, no trigger, no rule, no policy
+CREATE TABLE public.phala_phaladesa (
+  phaladesa_id uuid DEFAULT gen_random_uuid() NOT NULL,
+  chart_id uuid NOT NULL,
+  domain text NOT NULL,
+  anchor_count smallint NOT NULL,
+  clean_anchor_count smallint NOT NULL,
+  staged_revision_count smallint NOT NULL,
+  anomaly_flag_count smallint NOT NULL,
+  top_anchor_id uuid,
+  prediction_window_start date,
+  prediction_window_end date,
+  peak_date date,
+  magnitude text,
+  confidence_low double precision,
+  confidence_high double precision,
+  malleability text,
+  spillover_domains_jsonb jsonb,
+  incoming_spillover_count smallint,
+  mitigation_available boolean NOT NULL,
+  muhurta_available boolean NOT NULL,
+  pramana_window_status text,
+  evidence_type text,
+  precedent_refs_jsonb jsonb,
+  contradiction_summary_jsonb jsonb,
+  derivation_summary_jsonb jsonb NOT NULL,
+  narration_status text NOT NULL,
+  narration_requested_at timestamptz,
+  narration_model text,
+  narration_jsonb jsonb,
+  derivation_ledger_jsonb jsonb NOT NULL,
+  source_citation text NOT NULL,
+  computed_at timestamptz DEFAULT now() NOT NULL,
+  CONSTRAINT phala_phaladesa_pkey PRIMARY KEY (phaladesa_id),
+  CONSTRAINT phala_phaladesa_magnitude_check CHECK (magnitude = ANY (ARRAY['pivotal', 'major', 'moderate', 'minor'])),
+  CONSTRAINT phala_phaladesa_malleability_check CHECK (malleability = ANY (ARRAY['fated', 'semi_influenceable', 'influenceable'])),
+  CONSTRAINT phala_phaladesa_pramana_window_status_check CHECK (pramana_window_status = ANY (ARRAY['pending', 'open', 'past_window'])),
+  CONSTRAINT phala_phaladesa_narration_status_check CHECK (narration_status = ANY (ARRAY['pending', 'ready', 'failed'])),
+  CONSTRAINT phala_phaladesa_domain_canonical CHECK (domain = ANY (ARRAY['career', 'wealth', 'relationship', 'progeny', 'health', 'education', 'family', 'residence', 'travel', 'spirituality', 'character', 'transition', 'general']))
+);
+-- its 2026-07-28 snapshot: a plain CTAS heap, 31 NULLable columns, no constraint / index / trigger / rule / policy / comment
+CREATE TABLE public.phala_phaladesa__ssv_20260728b (
+  phaladesa_id uuid, chart_id uuid, domain text, anchor_count smallint, clean_anchor_count smallint, staged_revision_count smallint, anomaly_flag_count smallint,
+  top_anchor_id uuid, prediction_window_start date, prediction_window_end date, peak_date date, magnitude text, confidence_low double precision, confidence_high double precision,
+  malleability text, spillover_domains_jsonb jsonb, incoming_spillover_count smallint, mitigation_available boolean, muhurta_available boolean, pramana_window_status text,
+  evidence_type text, precedent_refs_jsonb jsonb, contradiction_summary_jsonb jsonb, derivation_summary_jsonb jsonb, narration_status text, narration_requested_at timestamptz,
+  narration_model text, narration_jsonb jsonb, derivation_ledger_jsonb jsonb, source_citation text, computed_at timestamptz
+);
+ALTER TABLE public.phala_phaladesa OWNER TO amjis_app;
+ALTER TABLE public.phala_phaladesa__ssv_20260728b OWNER TO amjis_app;
+SET ROLE amjis_app;
+-- phala_phaladesa: {amjis_app=arwdDxt, retrieval_census_ro=r, role_web_serve=r, role_orchestrator=arwd, role_jobs=r, role_sidecar=r, nirmana_evidence_ingress_writer=r, suvarna_reader=r, data_plane_builder=arwd}
+GRANT SELECT ON public.phala_phaladesa TO retrieval_census_ro;
+GRANT SELECT ON public.phala_phaladesa TO role_web_serve;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.phala_phaladesa TO role_orchestrator;
+GRANT SELECT ON public.phala_phaladesa TO role_jobs;
+GRANT SELECT ON public.phala_phaladesa TO role_sidecar;
+GRANT SELECT ON public.phala_phaladesa TO nirmana_evidence_ingress_writer;
+GRANT SELECT ON public.phala_phaladesa TO suvarna_reader;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.phala_phaladesa TO data_plane_builder;
+-- the snapshot: the same ACL as phala_pramana__ssv_20260728b (the builder has NOTHING; role_orchestrator arwd but no schema USAGE)
+GRANT SELECT ON public.phala_phaladesa__ssv_20260728b TO retrieval_census_ro;
+GRANT SELECT ON public.phala_phaladesa__ssv_20260728b TO role_web_serve;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.phala_phaladesa__ssv_20260728b TO role_orchestrator;
+GRANT SELECT ON public.phala_phaladesa__ssv_20260728b TO role_jobs;
+GRANT SELECT ON public.phala_phaladesa__ssv_20260728b TO role_sidecar;
+GRANT SELECT ON public.phala_phaladesa__ssv_20260728b TO suvarna_reader;
+RESET ROLE;
+
 CREATE TABLE public.build_runs (
   id uuid DEFAULT gen_random_uuid() NOT NULL,
   chart_id uuid NOT NULL,

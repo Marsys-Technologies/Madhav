@@ -29,6 +29,8 @@ SIDS = ["05a53e0a-54c9-4053-9ca2-b5a272d77019", "12cf1a40-a44e-4cfa-8676-17de3f4
         "c89c4d65-c928-4011-928c-fd2288049bc0", "cdd0ef46-6290-4cae-9241-efd89bb109a8", "d6a2f982-a44b-4b6c-92e0-bed3fe44e884",
         "e05205a8-44ae-4329-b363-f28dd1c55fb3", "e16bb71a-7b1b-4021-a4ac-8f286d6411b6", "ef1d58d6-03a3-47bb-a2aa-e32c40d2c642",
         "f9c0087b-529b-4673-a70f-dfc69dba2530"]
+PIDS = ["908e3c82-bb53-4457-8642-bf0d5e71460c"]
+PROD_PFP = "56ba0669611f56ed4322e665ad6513f8e5b26492709a12c5ab00ab14e993c981"
 PROD_FP = "bf270a4b5b3612827e5ea85885538a99ca4147fd62f1a86882c831c0ff21a4b6"
 PROD_SFP = "fe1dc5647a643981b4cfb170e5ded5082125b1bbbe0a1aa0a9c8a84e15264724"
 FP_SQL_T = ("SELECT encode(sha256(convert_to(string_agg(concat_ws('|', pramana_id::text, chart_id::text, anchor_id::text, evidence_type, evidence_strength_label, window_status, "
@@ -36,6 +38,8 @@ FP_SQL_T = ("SELECT encode(sha256(convert_to(string_agg(concat_ws('|', pramana_i
           "FROM public.{t} WHERE chart_id = %s AND evidence_type = 'life_event_miss'")
 FP_SQL = FP_SQL_T.format(t="phala_pramana")
 FP_SQL_SHADOW = FP_SQL_T.format(t="phala_pramana__ssv_20260728b")
+FP_SQL_PHD = ("SELECT encode(sha256(convert_to(string_agg(concat_ws('|', phaladesa_id::text, chart_id::text, domain, top_anchor_id::text, evidence_type, pramana_window_status, narration_status, "
+              "extract(epoch FROM computed_at)::text), E'\\n' ORDER BY phaladesa_id), 'UTF8')), 'hex') FROM public.phala_phaladesa__ssv_20260728b WHERE chart_id = %s AND evidence_type = 'life_event_miss'")
 
 
 def n(runner, sql, params=None):
@@ -96,6 +100,16 @@ def test_the_mirror_is_production_shaped(cluster, db, runner):
     assert n(runner, "SELECT has_schema_privilege('role_orchestrator','public','USAGE')") is False
     assert n(runner, f"SELECT has_table_privilege('amjis_app','{S}','DELETE') AND has_schema_privilege('amjis_app','public','USAGE')") is True
     assert n(runner, f"SELECT has_table_privilege('suvarna_reader','{S}','INSERT,UPDATE,DELETE,TRUNCATE')") is False
+    # the phaladesa snapshot: same shape and ACL as the pramana snapshot; 14 rows (7 + 7); the target row's fingerprint equals the value measured on PRODUCTION; the live table holds 26 rows, none (chart, miss)
+    P = "public.phala_phaladesa__ssv_20260728b"
+    assert n(runner, f"SELECT relacl::text FROM pg_class WHERE oid='{P}'::regclass") == PROD_SHADOW_ACL
+    assert n(runner, f"SELECT count(*) FROM pg_constraint WHERE conrelid='{P}'::regclass") == 0 and n(runner, f"SELECT count(*) FROM pg_index WHERE indrelid='{P}'::regclass") == 0
+    assert n(runner, f"SELECT has_table_privilege('data_plane_builder','{P}','SELECT,INSERT,UPDATE,DELETE,TRUNCATE')") is False
+    assert n(runner, FP_SQL_PHD, (CHART,)) == PROD_PFP
+    assert n(runner, "SELECT string_agg(chart_id::text||':'||n::text, ',' ORDER BY chart_id) FROM (SELECT chart_id, count(*) n FROM public.phala_phaladesa__ssv_20260728b GROUP BY 1) s") == f"{CHART}:7,{OTHER_CHART}:7"
+    assert n(runner, "SELECT count(*) FROM public.phala_phaladesa") == 26
+    assert n(runner, "SELECT count(*) FROM public.phala_phaladesa WHERE chart_id=%s AND evidence_type='life_event_miss'", (CHART,)) == 0
+    assert n(runner, "SELECT count(*) FROM public.phala_phaladesa WHERE chart_id=%s AND evidence_type='life_event_miss'", (OTHER_CHART,)) == 1
 
 
 # ------------------------------------------------------------------------------------------------------------------- dry run / apply
@@ -111,7 +125,11 @@ def test_dry_run_shows_exactly_the_8_ids_and_changes_nothing(runner, mod, capsys
     assert res["shadow_deleted_ids"] == SIDS and res["shadow_rows_deleted_in_transaction"] == 16          # and exactly the 16 of the snapshot
     assert (res["shadow_chart_total_before"], res["shadow_chart_total_after"]) == (138, 122)
     assert res["shadow_other_charts_before"] == res["shadow_other_charts_after"] == {OTHER_CHART: 3}
-    assert res["shadow_deleted_rows_nonprivate_fingerprint_sha256"] == PROD_SFP and res["total_rows_deleted_in_transaction"] == 24
+    assert res["shadow_deleted_rows_nonprivate_fingerprint_sha256"] == PROD_SFP and res["total_rows_deleted_in_transaction"] == 25
+    assert res["phaladesa_snapshot_deleted_ids"] == PIDS and res["phaladesa_snapshot_rows_deleted_in_transaction"] == 1                  # and the 1 phaladesa snapshot row
+    assert (res["phaladesa_snapshot_chart_total_before"], res["phaladesa_snapshot_chart_total_after"]) == (7, 6)
+    assert res["phaladesa_snapshot_other_charts_before"] == res["phaladesa_snapshot_other_charts_after"] == {OTHER_CHART: 7}
+    assert res["phaladesa_snapshot_deleted_rows_nonprivate_fingerprint_sha256"] == PROD_PFP
     assert runner.state() == before                                  # ROLLBACK: nothing at all moved
     assert len(res["evidence_digest"]) == 64
     outcome = json.loads((pathlib.Path(res["evidence_dir"]) / "outcome.json").read_text())
@@ -123,17 +141,23 @@ def test_dry_run_shows_exactly_the_8_ids_and_changes_nothing(runner, mod, capsys
     assert outcome["deleted_rows_nonprivate_fingerprint_sha256"] == PROD_FP
     assert outcome["shadow_deleted_ids"] == SIDS and outcome["shadow_chart_total_before"] == 138 and outcome["shadow_chart_total_after"] == 122
     assert outcome["shadow_other_charts_before"] == outcome["shadow_other_charts_after"] == {OTHER_CHART: 3} and outcome["shadow_deleted_rows_nonprivate_fingerprint_sha256"] == PROD_SFP
-    assert outcome["total_rows_deleted_in_transaction"] == 24
+    assert outcome["total_rows_deleted_in_transaction"] == 25 and outcome["phaladesa_snapshot_deleted_ids"] == PIDS
+    assert outcome["phaladesa_snapshot_chart_total_before"] == 7 and outcome["phaladesa_snapshot_chart_total_after"] == 6
+    assert outcome["live_phaladesa_before"] == outcome["live_phaladesa_after"] and outcome["live_phaladesa_before"]["match_n"] == 0
     assert "INTENDED" in outcome["rollback_baseline_amendment"] and "deleting 16" in outcome["rollback_baseline_amendment"] and "138 -> 122" in outcome["rollback_baseline_amendment"]
+    assert "phala_phaladesa__ssv_20260728b by deleting 1 derived" in outcome["rollback_baseline_amendment"] and "7 -> 6" in outcome["rollback_baseline_amendment"]
+    assert "migration 1288" in outcome["operator_ordering"] and "rolsuper" in outcome["operator_ordering"]
     assert outcome["transaction_committed"] is False and outcome["irreversible"] is True and "PR #3047" in outcome["restore"]
     # NO private content anywhere: every private column of the synthetic rows holds a PRIVMARK, none of which may appear in a file or in the output
     assert "PRIVMARK" not in evidence_text(pathlib.Path(res["evidence_dir"]).parent)
     cap = capsys.readouterr()
     assert "PRIVMARK" not in cap.out + cap.err
     names = set(res["checks"])
-    for expected in ("step_s1_assume_roles", "step_s2_preconditions_as_reader", "step_s3_delete_as_builder", "step_s4_delete_shadow_as_table_owner", "step_s5_post_assertions_as_reader",
-                     "step_s6_restore_memberships", "m_pre_fingerprint_equals_the_pinned_one", "m_post_the_8_ids_are_gone", "m_pre_shadow_exactly_16_rows_match_chart_and_marker",
-                     "m_post_shadow_the_16_ids_are_gone", "m_post_shadow_other_charts_counts_unchanged", "post_memberships_restored"):
+    for expected in ("step_s1_assume_roles", "step_s2_preconditions_as_reader", "step_s3_delete_as_builder", "step_s4_delete_shadow_as_table_owner", "step_s6_post_assertions_as_reader",
+                     "step_s7_restore_memberships", "m_pre_fingerprint_equals_the_pinned_one", "m_post_the_8_ids_are_gone", "m_pre_shadow_exactly_16_rows_match_chart_and_marker",
+                     "m_post_shadow_the_16_ids_are_gone", "m_post_shadow_other_charts_counts_unchanged", "post_memberships_restored",
+                     "step_s5_delete_phaladesa_snapshot_as_table_owner", "m_pre_phd_exactly_1_rows_match_chart_and_marker", "m_post_phd_the_id_is_gone",
+                     "m_pre_live_phaladesa_has_no_matching_row_and_not_the_bound_id", "m_post_live_phaladesa_unchanged"):
         assert expected in names, expected
 
 
@@ -143,6 +167,9 @@ def test_apply_deletes_exactly_the_8_and_nothing_else_moves(runner, mod, capsys)
     assert code == 0 and res["status"] == "COMMITTED", (res.get("failed_checks"), res.get("details"))
     after = runner.state()
     assert after["pramana_n"] == before["pramana_n"] - 8 and after["shadow_n"] == before["shadow_n"] - 16 == 125
+    assert after["phd_n"] == before["phd_n"] - 1 == 13 and after["phd_by_chart"] == f"{CHART}:6,{OTHER_CHART}:7"
+    assert after["live_phd"] == before["live_phd"] and after["live_phd_n"] == before["live_phd_n"] == 26                                      # the LIVE phaladesa is untouched
+    assert n(runner, "SELECT count(*) FROM public.phala_phaladesa__ssv_20260728b WHERE phaladesa_id = ANY(%s::uuid[])", (PIDS,)) == 0
     assert n(runner, "SELECT count(*) FROM public.phala_pramana WHERE pramana_id = ANY(%s::uuid[])", (IDS,)) == 0
     assert n(runner, "SELECT count(*) FROM public.phala_pramana__ssv_20260728b WHERE pramana_id = ANY(%s::uuid[])", (SIDS,)) == 0
     assert n(runner, "SELECT count(*) FROM public.phala_pramana__ssv_20260728b WHERE chart_id=%s AND evidence_type='life_event_miss'", (CHART,)) == 0
@@ -155,7 +182,7 @@ def test_apply_deletes_exactly_the_8_and_nothing_else_moves(runner, mod, capsys)
     outcome = json.loads((pathlib.Path(res["evidence_dir"]) / "outcome.json").read_text())
     assert outcome["status"] == "applied" and outcome["transaction_committed"] is True and outcome["after_is_measured_inside_the_transaction"] is False
     assert outcome["deleted_ids"] == IDS and outcome["chart_total_before"] == 56 and outcome["chart_total_after"] == 48
-    assert outcome["shadow_deleted_ids"] == SIDS and outcome["shadow_chart_total_before"] == 138 and outcome["shadow_chart_total_after"] == 122 and outcome["total_rows_deleted_in_transaction"] == 24
+    assert outcome["shadow_deleted_ids"] == SIDS and outcome["shadow_chart_total_before"] == 138 and outcome["shadow_chart_total_after"] == 122 and outcome["total_rows_deleted_in_transaction"] == 25
     assert outcome["other_charts_before"] == outcome["other_charts_after"] == {OTHER_CHART: 4}
     assert outcome["deleted_rows_nonprivate_fingerprint_sha256"] == PROD_FP
     assert "PRIVMARK" not in evidence_text(pathlib.Path(res["evidence_dir"]).parent)
@@ -474,17 +501,17 @@ def test_mutation_b_marker_only_delete_without_the_delete_step_checks_is_refused
     src = cut(src.replace(DELETE_PREDICATE, "WHERE evidence_type = 'life_event_miss'\n    RETURNING", 1), S3_CHECKS_START, S3_CHECKS_END)
     set_sql(mod, monkeypatch, tmp_path, src)
     other_chart_miss_decoy(runner)
-    assert_refused(runner, ["step_s5_post_assertions_as_reader"])
+    assert_refused(runner, ["step_s6_post_assertions_as_reader"])
 
 
 def test_mutation_c_without_any_sql_check_the_python_post_measurement_refuses(runner, mod, monkeypatch, tmp_path):
     src = sql_text(mod)
     src = cut(src.replace(DELETE_PREDICATE, "WHERE evidence_type = 'life_event_miss'\n    RETURNING", 1), S3_CHECKS_START, S3_CHECKS_END)
-    src = cut(src, "-- @@STEP s5_post_assertions_as_reader", "-- @@STEP s6_restore_memberships", "-- @@STEP s5_post_assertions_as_reader\nSELECT 1;\n\n")
+    src = cut(src, "-- @@STEP s6_post_assertions_as_reader", "-- @@STEP s7_restore_memberships", "-- @@STEP s6_post_assertions_as_reader\nSELECT 1;\n\n")
     set_sql(mod, monkeypatch, tmp_path, src)
     other_chart_miss_decoy(runner)
     dry = assert_refused(runner, ["m_post_other_charts_counts_unchanged", "m_post_deleted_ids_equal_the_bound_ids"])
-    assert "step_s5_post_assertions_as_reader" not in dry["failed_checks"]      # the SQL layer was neutered; the python layer alone caught it
+    assert "step_s6_post_assertions_as_reader" not in dry["failed_checks"]      # the SQL layer was neutered; the python layer alone caught it
 
 
 def test_mutation_c2_the_python_measurement_does_not_trust_the_recorded_deleted_ids(runner, mod, monkeypatch, tmp_path):
@@ -492,10 +519,10 @@ def test_mutation_c2_the_python_measurement_does_not_trust_the_recorded_deleted_
     src = sql_text(mod)
     src = cut(src.replace("WHERE chart_id = v_chart AND pramana_id = ANY (v_ids) AND evidence_type = 'life_event_miss'\n    RETURNING",
                           "WHERE chart_id = v_chart\n    RETURNING", 1), S3_CHECKS_START, "END\n$sd8$;\nRESET ROLE;\n\n-- @@STEP s4_delete_shadow_as_table_owner")
-    src = cut(src, "-- @@STEP s5_post_assertions_as_reader", "-- @@STEP s6_restore_memberships", "-- @@STEP s5_post_assertions_as_reader\nSELECT 1;\n\n")
+    src = cut(src, "-- @@STEP s6_post_assertions_as_reader", "-- @@STEP s7_restore_memberships", "-- @@STEP s6_post_assertions_as_reader\nSELECT 1;\n\n")
     set_sql(mod, monkeypatch, tmp_path, src)
     dry = assert_refused(runner, ["m_post_chart_total_reduced_by_exactly_8", "m_post_chart_survivors_are_the_pre_image_minus_the_8", "m_post_deleted_ids_equal_the_bound_ids"])
-    assert "step_s3_delete_as_builder" not in dry["failed_checks"] and "step_s5_post_assertions_as_reader" not in dry["failed_checks"]
+    assert "step_s3_delete_as_builder" not in dry["failed_checks"] and "step_s6_post_assertions_as_reader" not in dry["failed_checks"]
 
 
 def test_mutation_d_chart_only_delete_is_refused(runner, mod, monkeypatch, tmp_path):
@@ -840,7 +867,7 @@ def test_mutation_snapshot_id_only_delete_is_refused(runner, mod, monkeypatch, t
     monkeypatch.setattr(mod, "pre_checks", lambda leg, pre, ck: ck.chk("pre_checks_neutered_by_the_test", True))
     src = sql_text(mod)
     src = src.replace(S4_DELETE_PREDICATE, "WHERE pramana_id = ANY (v_sids)\n    RETURNING", 1)
-    a, b = src.index("  SELECT count(*) INTO v_x FROM public.phala_pramana__ssv_20260728b WHERE pramana_id = ANY (v_sids);"), src.index("  -- pre-images, compared again in s5")
+    a, b = src.index("  SELECT count(*) INTO v_x FROM public.phala_pramana__ssv_20260728b WHERE pramana_id = ANY (v_sids);"), src.index("  -- TABLE 3, phala_phaladesa__ssv_20260728b")
     set_sql(mod, monkeypatch, tmp_path, src[:a] + src[b:])
     monkeypatch.setattr(mod, "pre_measure_checks", lambda m, ck: ck.chk("m_pre_measured", True))
     dry = assert_refused(runner, ["step_s4_delete_shadow_as_table_owner"])
@@ -852,18 +879,18 @@ def test_mutation_snapshot_without_the_step_checks_the_sql_post_assertions_refus
     a, b = src.index("  IF v_n <> 16 THEN RAISE EXCEPTION 'sd8 shadow delete:"), src.index("  PERFORM set_config('madhav.sd8_deleted_shadow_ids'")
     set_sql(mod, monkeypatch, tmp_path, src[:a] + src[b:])
     insert_shadow(runner, "d2000008-0000-4000-8000-000000000008", OTHER_CHART, "life_event_miss")
-    assert_refused(runner, ["step_s5_post_assertions_as_reader"])
+    assert_refused(runner, ["step_s6_post_assertions_as_reader"])
 
 
 def test_mutation_snapshot_without_any_sql_check_the_python_post_measurement_refuses(runner, mod, monkeypatch, tmp_path):
     src = sql_text(mod).replace(S4_DELETE_PREDICATE, "WHERE evidence_type = 'life_event_miss'\n    RETURNING", 1)
     a, b = src.index("  IF v_n <> 16 THEN RAISE EXCEPTION 'sd8 shadow delete:"), src.index("  PERFORM set_config('madhav.sd8_deleted_shadow_ids'")
     src = src[:a] + src[b:]
-    src = cut(src, "-- @@STEP s5_post_assertions_as_reader", "-- @@STEP s6_restore_memberships", "-- @@STEP s5_post_assertions_as_reader\nSELECT 1;\n\n")
+    src = cut(src, "-- @@STEP s6_post_assertions_as_reader", "-- @@STEP s7_restore_memberships", "-- @@STEP s6_post_assertions_as_reader\nSELECT 1;\n\n")
     set_sql(mod, monkeypatch, tmp_path, src)
     insert_shadow(runner, "d2000008-0000-4000-8000-000000000008", OTHER_CHART, "life_event_miss")
     dry = assert_refused(runner, ["m_post_shadow_other_charts_counts_unchanged", "m_post_shadow_deleted_ids_equal_the_bound_ids"])
-    assert "step_s5_post_assertions_as_reader" not in dry["failed_checks"] and "step_s4_delete_shadow_as_table_owner" not in dry["failed_checks"]
+    assert "step_s6_post_assertions_as_reader" not in dry["failed_checks"] and "step_s4_delete_shadow_as_table_owner" not in dry["failed_checks"]
 
 
 def test_mutation_snapshot_sql_preconditions_removed_the_python_ones_still_refuse(runner, mod, monkeypatch, tmp_path):
@@ -889,3 +916,253 @@ def test_only_the_two_target_tables_are_ever_written(runner):
     after = runner.state()
     for k in ("schema_acl", "table_acls", "memberships", "constraints", "triggers", "objects", "anchors", "others"):
         assert after[k] == before[k], k
+
+
+# ================================================================================================ the PHALADESA snapshot (SS ruling N-120: +1 row, 25 in all)
+PHD = "public.phala_phaladesa__ssv_20260728b"
+LIVE_PHD = "public.phala_phaladesa"
+S5_DELETE_PREDICATE = "WHERE chart_id = v_chart AND phaladesa_id = ANY (v_pids) AND evidence_type = 'life_event_miss'\n    RETURNING"
+
+
+def insert_phd(runner, pid, chart, evidence_type, window="past_window", table=PHD):
+    runner.su(f"INSERT INTO {table} (phaladesa_id, chart_id, domain, derivation_summary_jsonb, narration_status, evidence_type, pramana_window_status, top_anchor_id, "
+              + ("anchor_count, clean_anchor_count, staged_revision_count, anomaly_flag_count, mitigation_available, muhurta_available, derivation_ledger_jsonb, source_citation, computed_at) "
+                 if table == LIVE_PHD else "computed_at) ")
+              + "VALUES (%s, %s, 'career', '{}', 'ready', %s, %s, gen_random_uuid(), "
+              + ("1, 1, 0, 0, false, false, '{}', 'PRIVMARK', now())" if table == LIVE_PHD else "now())"), (pid, chart, evidence_type, window))
+
+
+def test_matching_looking_phaladesa_snapshot_rows_are_not_deleted(runner):
+    """Another chart with the marker (the canonical chart has one in the seed), the same chart with another marker, a NULL chart with the marker: none is touched."""
+    insert_phd(runner, "d3000001-0000-4000-8000-000000000001", CHART, "detector_unavailable")
+    insert_phd(runner, "d3000001-0000-4000-8000-000000000002", CHART, "life_event_match")
+    runner.su(f"INSERT INTO {PHD} (phaladesa_id, chart_id, evidence_type) VALUES ('d3000001-0000-4000-8000-000000000003', NULL, 'life_event_miss')")
+    before = runner.state()
+    code, res = runner.run("apply")
+    assert code == 0 and res["status"] == "COMMITTED", (res.get("failed_checks"), res.get("details"))
+    assert res["phaladesa_snapshot_deleted_ids"] == PIDS and (res["phaladesa_snapshot_chart_total_before"], res["phaladesa_snapshot_chart_total_after"]) == (9, 8)
+    after = runner.state()
+    assert after["phd_n"] == before["phd_n"] - 1
+    for i in range(1, 4):
+        assert n(runner, f"SELECT count(*) FROM {PHD} WHERE phaladesa_id = %s", (f"d3000001-0000-4000-8000-00000000000{i}",)) == 1, i
+    assert n(runner, f"SELECT count(*) FROM {PHD} WHERE chart_id = %s AND evidence_type = 'life_event_miss'", (OTHER_CHART,)) == 1       # the canonical chart's own miss row survives
+
+
+def test_the_canonical_charts_own_miss_rows_survive_in_every_table(runner):
+    assert runner.run("apply")[0] == 0
+    assert n(runner, f"SELECT count(*) FROM {PHD} WHERE chart_id = %s AND evidence_type = 'life_event_miss'", (OTHER_CHART,)) == 1
+    assert n(runner, f"SELECT count(*) FROM {LIVE_PHD} WHERE chart_id = %s AND evidence_type = 'life_event_miss'", (OTHER_CHART,)) == 1
+
+
+# ------------------------------------------------------------------------------------------------------------------- row-set refusals
+def test_zero_matching_phaladesa_snapshot_rows_are_refused(runner):
+    assert_refused(runner, ["m_pre_phd_exactly_1_rows_match_chart_and_marker", "step_s2_preconditions_as_reader"],
+                   setup=lambda: runner.su(f"DELETE FROM {PHD} WHERE phaladesa_id = %s", (PIDS[0],)))
+
+
+def test_two_matching_phaladesa_snapshot_rows_are_refused(runner):
+    assert_refused(runner, ["m_pre_phd_exactly_1_rows_match_chart_and_marker", "step_s2_preconditions_as_reader"],
+                   setup=lambda: insert_phd(runner, "d3000009-0000-4000-8000-000000000009", CHART, "life_event_miss"))
+
+
+def test_a_different_phaladesa_snapshot_id_is_refused(runner):
+    assert_refused(runner, ["m_pre_phd_matching_ids_equal_the_bound_ids", "m_pre_phd_fingerprint_equals_the_pinned_one", "step_s2_preconditions_as_reader"],
+                   setup=lambda: runner.su(f"UPDATE {PHD} SET phaladesa_id = 'e3000009-0000-4000-8000-000000000009' WHERE phaladesa_id = %s", (PIDS[0],)))
+
+
+@pytest.mark.parametrize("col,val", [("domain", "'career'"), ("pramana_window_status", "'open'"), ("narration_status", "'failed'"), ("top_anchor_id", "gen_random_uuid()"),
+                                     ("computed_at", "now()")])
+def test_a_changed_non_private_phaladesa_snapshot_value_is_refused(col, val, runner):
+    assert_refused(runner, ["m_pre_phd_fingerprint_equals_the_pinned_one", "step_s2_preconditions_as_reader"],
+                   setup=lambda: runner.su(f"UPDATE {PHD} SET {col} = {val} WHERE phaladesa_id = %s", (PIDS[0],)))
+
+
+def test_a_duplicate_of_the_bound_phaladesa_snapshot_id_elsewhere_is_refused(runner):
+    dry = assert_refused(runner, ["m_pre_phd_no_other_row_carries_a_bound_id", "step_s2_preconditions_as_reader"],
+                         setup=lambda: runner.su(f"INSERT INTO {PHD} (phaladesa_id, chart_id, evidence_type) VALUES (%s, %s, 'pending_observation')", (PIDS[0], OTHER_CHART)))
+    assert dry["phaladesa_snapshot_rows_deleted_in_transaction"] == 0
+
+
+def test_a_live_phaladesa_miss_row_for_the_chart_is_refused(runner):
+    """The precondition added by N-120: the LIVE phala_phaladesa must hold 0 (chart, life_event_miss) rows."""
+    dry = assert_refused(runner, ["m_pre_live_phaladesa_has_no_matching_row_and_not_the_bound_id", "step_s2_preconditions_as_reader"],
+                         setup=lambda: insert_phd(runner, "d3000007-0000-4000-8000-000000000007", CHART, "life_event_miss", table=LIVE_PHD))
+    assert dry["rows_deleted_in_transaction"] == 0 and dry["phaladesa_snapshot_rows_deleted_in_transaction"] == 0
+
+
+def test_a_live_phaladesa_row_carrying_the_bound_id_is_refused(runner):
+    assert_refused(runner, ["m_pre_live_phaladesa_has_no_matching_row_and_not_the_bound_id", "step_s2_preconditions_as_reader"],
+                   setup=lambda: insert_phd(runner, PIDS[0], OTHER_CHART, "pending_observation", window="open", table=LIVE_PHD))
+
+
+def test_a_pramana_dependent_carrying_the_phaladesa_id_is_refused(runner):
+    assert_refused(runner, ["m_pre_dependents_are_zero", "step_s2_preconditions_as_reader"],
+                   setup=lambda: runner.su("INSERT INTO public.mimamsa_fact_adjustment (derived_from_pramana_ids) VALUES (%s::jsonb)", (f'["{PIDS[0]}"]',)))
+
+
+def test_a_new_column_that_can_refer_to_a_phaladesa_id_fails_closed(runner):
+    assert_refused(runner, ["m_pre_phaladesa_referencer_columns_are_the_known_set", "step_s2_preconditions_as_reader"],
+                   setup=lambda: runner.su("ALTER TABLE public.build_runs ADD COLUMN phaladesa_id uuid"))
+
+
+PHD_GUARDS = {
+    "foreign_key": ("pre_phd_no_foreign_key_references_the_table", f"ALTER TABLE {PHD} ADD PRIMARY KEY (phaladesa_id); CREATE TABLE public.sd8_pchild (id serial PRIMARY KEY, pid uuid REFERENCES {PHD}(phaladesa_id))"),
+    "dependent_view": ("pre_phd_no_user_trigger_rule_view_policy_or_inheritance_on_the_table", f"CREATE VIEW public.sd8_pv AS SELECT phaladesa_id FROM {PHD}"),
+    "freeze_guard_trigger": ("pre_phd_no_user_trigger_rule_view_policy_or_inheritance_on_the_table",
+                             "CREATE FUNCTION public.sd8_pguard() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'snapshot is frozen'; END $$; "
+                             f"CREATE TRIGGER sd8_pfreeze BEFORE DELETE ON {PHD} FOR EACH ROW EXECUTE FUNCTION public.sd8_pguard()"),
+    "rule": ("pre_phd_no_user_trigger_rule_view_policy_or_inheritance_on_the_table", f"CREATE RULE sd8_pr AS ON DELETE TO {PHD} DO INSTEAD NOTHING"),
+    "inheritance_child": ("pre_phd_no_user_trigger_rule_view_policy_or_inheritance_on_the_table", f"CREATE TABLE public.sd8_pkid () INHERITS ({PHD})"),
+    "policy": ("pre_phd_no_user_trigger_rule_view_policy_or_inheritance_on_the_table", f"CREATE POLICY sd8_pp ON {PHD} FOR ALL USING (true)"),
+    "rls": ("pre_phd_table_is_an_ordinary_table_owned_by_amjis_app_without_rls", f"ALTER TABLE {PHD} ENABLE ROW LEVEL SECURITY"),
+    "owner_changed": ("pre_phd_table_is_an_ordinary_table_owned_by_amjis_app_without_rls", f"ALTER TABLE {PHD} OWNER TO data_plane_builder"),
+    "builder_gained_a_privilege": ("pre_phd_delete_role_can_delete_and_reader_cannot_write", f"GRANT SELECT ON {PHD} TO data_plane_builder"),
+    "reader_gained_delete": ("pre_phd_delete_role_can_delete_and_reader_cannot_write", f"GRANT DELETE ON {PHD} TO suvarna_reader"),
+    "reader_gained_write_on_the_live_table": ("pre_phd_delete_role_can_delete_and_reader_cannot_write", f"GRANT UPDATE ON {LIVE_PHD} TO suvarna_reader"),
+    "owner_lost_delete": ("pre_phd_delete_role_can_delete_and_reader_cannot_write", f"REVOKE DELETE ON {PHD} FROM amjis_app"),
+}
+
+
+@pytest.mark.parametrize("name", sorted(PHD_GUARDS))
+def test_a_phaladesa_snapshot_guard_or_shape_change_is_refused_and_nothing_is_bypassed(name, runner):
+    check, ddl = PHD_GUARDS[name]
+    dry = assert_refused(runner, [check], setup=lambda: runner.su(ddl))
+    assert dry["rows_deleted_in_transaction"] == 0 and dry["phaladesa_snapshot_rows_deleted_in_transaction"] == 0 and "step_s3_delete_as_builder" not in dry["checks"]
+
+
+@pytest.mark.parametrize("name", ["freeze_guard_trigger", "rule", "policy", "rls", "owner_lost_delete", "builder_gained_a_privilege", "dependent_view", "inheritance_child",
+                                  "reader_gained_write_on_the_live_table"])
+def test_the_phaladesa_snapshot_sql_preconditions_refuse_on_their_own(name, runner, mod, monkeypatch):
+    monkeypatch.setattr(mod, "pre_checks", lambda leg, pre, ck: ck.chk("pre_checks_neutered_by_the_test", True))
+    dry = assert_refused(runner, ["step_s2_preconditions_as_reader"], setup=lambda: runner.su(PHD_GUARDS[name][1]))
+    assert dry["rows_deleted_in_transaction"] == 0 and "step_s3_delete_as_builder" not in dry["checks"]
+
+
+def test_the_sql_refuses_a_live_phaladesa_miss_row_on_its_own(runner, mod, monkeypatch):
+    monkeypatch.setattr(mod, "pre_measure_checks", lambda m, ck: ck.chk("m_pre_measured", True))
+    dry = assert_refused(runner, ["step_s2_preconditions_as_reader"], setup=lambda: insert_phd(runner, "d3000007-0000-4000-8000-000000000007", CHART, "life_event_miss", table=LIVE_PHD))
+    assert "step_s3_delete_as_builder" not in dry["checks"]
+
+
+# ------------------------------------------------------------------------------------------------------------------------- ATOMICITY (3 tables)
+def test_a_failure_in_the_phaladesa_snapshot_delete_rolls_BOTH_earlier_deletes_back(runner, mod, monkeypatch, tmp_path):
+    """s3 and s4 delete 8 + 16 rows, then s5 fails (nonexistent table): the dry run and the apply are refused and all three tables are untouched."""
+    set_sql(mod, monkeypatch, tmp_path, sql_text(mod).replace("    DELETE FROM ONLY public.phala_phaladesa__ssv_20260728b\n", "    DELETE FROM ONLY public.no_such_phd_x\n", 1))
+    before = runner.state()
+    code, dry = runner.execute(runner.args("dry-run"))
+    assert code == 2 and dry["failed_checks"] == ["step_s5_delete_phaladesa_snapshot_as_table_owner"], dry["failed_checks"]
+    code, res = runner.execute(runner.args("apply", expect_evidence=dry["evidence_digest"]))
+    assert code == 1 and res["status"] == "REFUSED_ROLLED_BACK" and runner.state() == before
+    assert n(runner, "SELECT count(*) FROM public.phala_pramana WHERE pramana_id = ANY(%s::uuid[])", (IDS,)) == 8
+    assert n(runner, f"SELECT count(*) FROM {SHADOW} WHERE pramana_id = ANY(%s::uuid[])", (SIDS,)) == 16
+
+
+def test_a_guard_that_refuses_the_phaladesa_delete_at_run_time_rolls_everything_back(runner, mod, monkeypatch):
+    runner.su("CREATE FUNCTION public.sd8_pguard() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'phd snapshot is frozen'; END $$; "
+              f"CREATE TRIGGER sd8_pfreeze BEFORE DELETE ON {PHD} FOR EACH ROW EXECUTE FUNCTION public.sd8_pguard()")
+    monkeypatch.setattr(mod, "pre_checks", lambda leg, pre, ck: ck.chk("pre_checks_neutered_by_the_test", True))
+    src = mod.SQL_FORWARD.read_text()
+    a, b = src.index("  SELECT count(*) INTO v_x FROM pg_trigger"), src.index("  SELECT count(*) INTO v_x FROM pg_rewrite")
+    import pathlib as _pl
+    p = _pl.Path(runner.tmp) / "noguardcheck3.sql"
+    p.write_text(src[:a] + src[b:])
+    monkeypatch.setattr(mod, "SQL_FORWARD", p)
+    before = runner.state()
+    code, dry = runner.execute(runner.args("dry-run"))
+    assert code == 2 and dry["failed_checks"] == ["step_s5_delete_phaladesa_snapshot_as_table_owner"], dry["failed_checks"]
+    assert "phd snapshot is frozen" in dry["details"]["step_s5_delete_phaladesa_snapshot_as_table_owner"]
+    code, res = runner.execute(runner.args("apply", expect_evidence=dry["evidence_digest"]))
+    assert code == 1 and runner.state() == before
+
+
+def test_a_failed_pramana_precondition_leaves_the_phaladesa_snapshot_untouched(runner):
+    runner.su("DELETE FROM public.phala_pramana WHERE pramana_id = %s", (IDS[0],))
+    before = runner.state()
+    assert runner.run("apply")[0] in (1, 2) and runner.state() == before
+    assert n(runner, f"SELECT count(*) FROM {PHD} WHERE phaladesa_id = ANY(%s::uuid[])", (PIDS,)) == 1
+
+
+def test_a_failed_phaladesa_precondition_leaves_the_other_two_tables_untouched(runner):
+    runner.su(f"DELETE FROM {PHD} WHERE phaladesa_id = %s", (PIDS[0],))
+    before = runner.state()
+    assert runner.run("apply")[0] in (1, 2) and runner.state() == before
+    assert n(runner, "SELECT count(*) FROM public.phala_pramana WHERE pramana_id = ANY(%s::uuid[])", (IDS,)) == 8
+
+
+# ------------------------------------------------------------------------------------------------------------------------------ roles / mutations
+@pytest.mark.parametrize("role", ["data_plane_builder", "suvarna_reader", "role_orchestrator"])
+def test_mutation_a_phaladesa_delete_run_as_the_wrong_role_is_refused(role, cluster, db, runner, mod, monkeypatch, tmp_path):
+    cluster.su(db, f"GRANT {role} TO {ADMIN_USER}")
+    src = sql_text(mod)
+    a = src.index("-- @@STEP s5_delete_phaladesa_snapshot_as_table_owner"); b = src.index("-- @@STEP s6_post_assertions_as_reader")
+    seg = src[a:b].replace("SET LOCAL ROLE amjis_app;", f"SET LOCAL ROLE {role};", 1)
+    set_sql(mod, monkeypatch, tmp_path, src[:a] + seg + src[b:])
+    dry = assert_refused(runner, ["step_s5_delete_phaladesa_snapshot_as_table_owner"])
+    assert "must run as amjis_app" in dry["details"]["step_s5_delete_phaladesa_snapshot_as_table_owner"]
+
+
+def test_mutation_phaladesa_marker_only_delete_is_refused_by_the_step_count_check(runner, mod, monkeypatch, tmp_path):
+    src = sql_text(mod)
+    assert S5_DELETE_PREDICATE in src
+    set_sql(mod, monkeypatch, tmp_path, src.replace(S5_DELETE_PREDICATE, "WHERE evidence_type = 'life_event_miss'\n    RETURNING", 1))
+    dry = assert_refused(runner, ["step_s5_delete_phaladesa_snapshot_as_table_owner"])
+    assert "2 rows deleted" in dry["details"]["step_s5_delete_phaladesa_snapshot_as_table_owner"]       # the canonical chart's own miss row would have gone too
+
+
+def test_mutation_phaladesa_chart_only_delete_is_refused(runner, mod, monkeypatch, tmp_path):
+    set_sql(mod, monkeypatch, tmp_path, sql_text(mod).replace(S5_DELETE_PREDICATE, "WHERE chart_id = v_chart\n    RETURNING", 1))
+    dry = assert_refused(runner, ["step_s5_delete_phaladesa_snapshot_as_table_owner"])
+    assert "7 rows deleted" in dry["details"]["step_s5_delete_phaladesa_snapshot_as_table_owner"]
+
+
+def test_mutation_phaladesa_without_the_step_check_the_sql_post_assertions_refuse(runner, mod, monkeypatch, tmp_path):
+    src = sql_text(mod).replace(S5_DELETE_PREDICATE, "WHERE evidence_type = 'life_event_miss'\n    RETURNING", 1)
+    a, b = src.index("  IF v_n <> 1 THEN RAISE EXCEPTION 'sd8 phaladesa delete:"), src.index("  PERFORM set_config('madhav.sd8_deleted_phd_ids'")
+    set_sql(mod, monkeypatch, tmp_path, src[:a] + src[b:])
+    assert_refused(runner, ["step_s6_post_assertions_as_reader"])
+
+
+def test_mutation_phaladesa_without_any_sql_check_the_python_post_measurement_refuses(runner, mod, monkeypatch, tmp_path):
+    src = sql_text(mod).replace(S5_DELETE_PREDICATE, "WHERE evidence_type = 'life_event_miss'\n    RETURNING", 1)
+    a, b = src.index("  IF v_n <> 1 THEN RAISE EXCEPTION 'sd8 phaladesa delete:"), src.index("  PERFORM set_config('madhav.sd8_deleted_phd_ids'")
+    src = src[:a] + src[b:]
+    src = cut(src, "-- @@STEP s6_post_assertions_as_reader", "-- @@STEP s7_restore_memberships", "-- @@STEP s6_post_assertions_as_reader\nSELECT 1;\n\n")
+    set_sql(mod, monkeypatch, tmp_path, src)
+    dry = assert_refused(runner, ["m_post_phd_other_charts_counts_unchanged", "m_post_phd_deleted_ids_equal_the_bound_ids"])
+    assert "step_s6_post_assertions_as_reader" not in dry["failed_checks"] and "step_s5_delete_phaladesa_snapshot_as_table_owner" not in dry["failed_checks"]
+
+
+def test_mutation_a_write_to_the_live_phaladesa_is_refused_by_the_sql_post_assertion(runner, mod, monkeypatch, tmp_path):
+    """s5 also deletes a LIVE phala_phaladesa row (as the owner): the SQL post assertion refuses (the id-set digest of the live table moved)."""
+    src = sql_text(mod)
+    old = "  PERFORM set_config('madhav.sd8_deleted_phd_ids', array_to_string(v_got, ','), true);"
+    assert old in src
+    set_sql(mod, monkeypatch, tmp_path, src.replace(old, old + "\n  DELETE FROM public.phala_phaladesa WHERE phaladesa_id = (SELECT phaladesa_id FROM public.phala_phaladesa LIMIT 1);", 1))
+    dry = assert_refused(runner, ["step_s6_post_assertions_as_reader"])
+    assert "LIVE phala_phaladesa changed" in dry["details"]["step_s6_post_assertions_as_reader"]
+
+
+def test_mutation_a_write_to_the_live_phaladesa_is_refused_by_the_python_layer_alone(runner, mod, monkeypatch, tmp_path):
+    """Same, with the SQL post assertions removed: the python re-measure refuses (m_post_live_phaladesa_unchanged)."""
+    src = sql_text(mod)
+    old = "  PERFORM set_config('madhav.sd8_deleted_phd_ids', array_to_string(v_got, ','), true);"
+    src = src.replace(old, old + "\n  DELETE FROM public.phala_phaladesa WHERE phaladesa_id = (SELECT phaladesa_id FROM public.phala_phaladesa LIMIT 1);", 1)
+    src = cut(src, "-- @@STEP s6_post_assertions_as_reader", "-- @@STEP s7_restore_memberships", "-- @@STEP s6_post_assertions_as_reader\nSELECT 1;\n\n")
+    set_sql(mod, monkeypatch, tmp_path, src)
+    dry = assert_refused(runner, ["m_post_live_phaladesa_unchanged"])
+    assert "step_s6_post_assertions_as_reader" not in dry["failed_checks"]
+
+
+def test_the_phaladesa_sql_values_edited_are_refused_by_the_executors_own_copy(runner, mod, monkeypatch, tmp_path):
+    src = sql_text(mod)
+    set_sql(mod, monkeypatch, tmp_path, src.replace(PIDS[0], PIDS[0][:-1] + "0", 1), "pid.sql")
+    assert_refused(runner, ["pre_sql_bound_values_equal_the_executor_bound_values"])
+    set_sql(mod, monkeypatch, tmp_path, src.replace(PROD_PFP, "0" * 64, 1), "pfp.sql")
+    assert_refused(runner, ["pre_sql_bound_values_equal_the_executor_bound_values"])
+
+
+def test_the_builder_has_nothing_on_the_phaladesa_snapshot(cluster, db):
+    with cluster.conn(db, user="data_plane_builder", autocommit=True) as c:
+        for stmt in (f"DELETE FROM {PHD} WHERE false", f"SELECT 1 FROM {PHD}"):
+            with pytest.raises(psycopg.errors.InsufficientPrivilege):
+                c.execute(stmt)

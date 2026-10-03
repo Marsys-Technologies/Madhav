@@ -204,6 +204,11 @@ class Runner:
                           "(SELECT md5(string_agg(t::text, '|' ORDER BY id)) FROM public.mimamsa_fact_adjustment t)))",
                 "shadow_rows": "SELECT md5(string_agg(t::text, '|' ORDER BY pramana_id)) FROM public.phala_pramana__ssv_20260728b t",
                 "shadow_n": "SELECT count(*) FROM public.phala_pramana__ssv_20260728b",
+                "phd_rows": "SELECT md5(string_agg(t::text, '|' ORDER BY phaladesa_id)) FROM public.phala_phaladesa__ssv_20260728b t",
+                "phd_n": "SELECT count(*) FROM public.phala_phaladesa__ssv_20260728b",
+                "phd_by_chart": "SELECT string_agg(chart_id::text||':'||n::text, ',' ORDER BY chart_id) FROM (SELECT chart_id, count(*) n FROM public.phala_phaladesa__ssv_20260728b GROUP BY 1) s",
+                "live_phd": "SELECT md5(string_agg(t::text, '|' ORDER BY phaladesa_id)) FROM public.phala_phaladesa t",
+                "live_phd_n": "SELECT count(*) FROM public.phala_phaladesa",
                 "shadow_by_chart": "SELECT string_agg(chart_id::text||':'||n::text, ',' ORDER BY chart_id) FROM (SELECT chart_id, count(*) n FROM public.phala_pramana__ssv_20260728b GROUP BY 1) s",
             }.items():
                 cur.execute(q)

@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Gated ONE-SHOT executor: delete exactly the 8 `life_event_miss` phala_pramana rows of chart 1c826d5a AND the 16 `life_event_miss` rows of the same chart in its
-frozen ŚUDDHA-VĀCA snapshot phala_pramana__ssv_20260728b, in ONE all-or-nothing transaction (SS ruling N-109 and its extension). DRAFT, HELD, NEVER RUN against any
+frozen ŚUDDHA-VĀCA snapshot phala_pramana__ssv_20260728b, AND the 1 `life_event_miss` row of that chart in the frozen snapshot phala_phaladesa__ssv_20260728b (a derivative of the
+contaminated pramana), 25 rows in ONE all-or-nothing transaction (SS ruling N-109, its extension and N-120). DRAFT, HELD, NEVER RUN against any
 real system by its author, NEVER APPLIED.
 
 WHY. L4 step ph_pramana read the private, chart-scoped `life_events` WITHOUT a chart filter, so chart 1c826d5a (no life events of its own) holds 8
@@ -9,7 +10,10 @@ phala_pramana rows classified `life_event_miss` (and its 2026-07-28 snapshot tab
 data is untouched).
 
 IRREVERSIBLE BY DESIGN. There is NO rollback leg and the rows are NOT copied (their jsonb could be derived from private text). The 8 live rows are regenerable:
-rebuild ph_pramana for 1c826d5a after PR #3047. The 16 snapshot rows are the contaminated rows of a frozen baseline and are deliberately dropped, not regenerated.
+rebuild ph_pramana for 1c826d5a after PR #3047. The 17 snapshot rows (16 + 1) are the contaminated rows of a frozen baseline and are deliberately dropped, not regenerated.
+ORDER (runbook, bound into the plan text): the delete flips ph_pramana's registered integrity check FALSE (global, one pramana row per anchor) until ph_pramana is rebuilt for
+1c826d5a; migration 1288 (chart-scoped check) lands FIRST, then this delete, both at the #3047 + 1274 slot after S-L1; rebuild ph_pramana for 1c826d5a before any ph_pramana
+build for another chart. Pre-flight for the operator: `select rolsuper from pg_roles where rolname = 'postgres'` must read f (the executor pins the NAME, not the flag).
 
 WHAT IT DOES, in ONE transaction as the Cloud SQL administrator (`postgres`: CREATEROLE, not a superuser), COMMIT only if every check holds:
   s1  GRANT the administrator transient membership of suvarna_reader (SELECT-only reads), data_plane_builder (the least-privileged role that can DELETE from
@@ -21,10 +25,12 @@ WHAT IT DOES, in ONE transaction as the Cloud SQL administrator (`postgres`: CRE
   s3  as data_plane_builder: DELETE FROM ONLY phala_pramana WHERE chart_id = <bound> AND pramana_id = ANY(<the 8 ids>) AND evidence_type = 'life_event_miss'
       RETURNING pramana_id; exactly 8 rows with exactly the bound ids, else RAISE
   s4  as amjis_app (the table owner): the same on phala_pramana__ssv_20260728b with the 16 ids; exactly 16, else RAISE
-  s5  ASSERTING post-checks as suvarna_reader (RAISE, never WARN), per table: the ids gone, no (chart, marker) row left, the chart total is pre - 8 / pre - 16, the
+  s5  as amjis_app: the same on phala_phaladesa__ssv_20260728b with the 1 bound phaladesa_id; exactly 1, else RAISE (the LIVE phala_phaladesa is not written; it must hold 0
+      (chart, life_event_miss) rows and not the bound id)
+  s6  ASSERTING post-checks as suvarna_reader (RAISE, never WARN), per table: the ids gone, no (chart, marker) row left, the chart total is pre - 8 / pre - 16, the
       OTHER charts' counts and id-set digest are unchanged, the surviving rows of the chart are exactly the pre-image minus the deleted ones
   --  the executor re-measures the post-state itself (python) and applies its own commit conditions, independent of the SQL assertions
-  s6  revoke the memberships granted in s1
+  s7  revoke the memberships granted in s1
 MODES (every mode needs --expect-plan: the in-process administrator credential is fetched only for a plan hash the operator names)
   --count                          preconditions only (s1, s2 + python pre-measure), always ROLLBACK, nothing deleted
   --dry-run                        the whole transaction incl. both deletes and every commit condition, prints the evidence digest, ROLLBACK
@@ -79,6 +85,8 @@ EXPECTED_ADMIN = "postgres"              # the Cloud SQL administrator; the iden
 SERVER_MAJOR = 15                        # production is 15.18; any other major fails closed
 SCHEMA, TABLE = "public", "phala_pramana"
 SHADOW_TABLE = "phala_pramana__ssv_20260728b"
+PHD_TABLE = "phala_phaladesa__ssv_20260728b"
+LIVE_PHD_TABLE = "phala_phaladesa"
 MARKER = "life_event_miss"
 CHART = "1c826d5a-41cb-4450-b4dc-59d440e5f75a"
 IDS = ("649c5828-ba9c-4ca8-9a7f-6ace81fad2e3", "767b84b4-4090-4383-a9a9-ada59a509b1d", "a3c855bb-9698-4c43-bb6b-c85ad1ec0a84",
@@ -94,6 +102,9 @@ SHADOW_IDS = ("05a53e0a-54c9-4053-9ca2-b5a272d77019", "12cf1a40-a44e-4cfa-8676-1
 # lel_entry_jsonb IS NULL, epoch(computed_at)), '|'-joined per row, rows '\n'-joined in pramana_id order. Measured read-only on production 2026-10-03.
 ROWS_FINGERPRINT = "bf270a4b5b3612827e5ea85885538a99ca4147fd62f1a86882c831c0ff21a4b6"
 SHADOW_FINGERPRINT = "fe1dc5647a643981b4cfb170e5ded5082125b1bbbe0a1aa0a9c8a84e15264724"
+# the phaladesa snapshot row: phaladesa_id, chart_id, domain, top_anchor_id, evidence_type, pramana_window_status, narration_status, epoch(computed_at), '|'-joined (non-private columns only)
+PHD_IDS = ("908e3c82-bb53-4457-8642-bf0d5e71460c",)
+PHD_FINGERPRINT = "56ba0669611f56ed4322e665ad6513f8e5b26492709a12c5ab00ab14e993c981"
 OWNER_ROLE = "amjis_app"
 BUILDER = "data_plane_builder"
 READER = "suvarna_reader"
@@ -103,19 +114,27 @@ KNOWN_REFERENCERS = ("mimamsa_anchor_adjustment.derived_from_pramana_ids", "mima
                      "mimamsa_fact_adjustment.derived_from_pramana_ids", "mimamsa_predictions.source_pramana_id",
                      "mimamsa_predictions__ssv_20260728b.source_pramana_id", "mimamsa_signal_adjustment.derived_from_pramana_ids",
                      "phala_pramana.pramana_id", "phala_pramana__ssv_20260728b.pramana_id")
-STEP_FIRST, STEP_DELETE, STEP_DELETE_SHADOW, STEP_LAST = "s1_assume_roles", "s3_delete_as_builder", "s4_delete_shadow_as_table_owner", "s6_restore_memberships"
+STEP_FIRST, STEP_DELETE, STEP_DELETE_SHADOW, STEP_DELETE_PHD, STEP_LAST = ("s1_assume_roles", "s3_delete_as_builder", "s4_delete_shadow_as_table_owner",
+                                                                        "s5_delete_phaladesa_snapshot_as_table_owner", "s7_restore_memberships")
 COUNT_STEPS = ("s1_assume_roles", "s2_preconditions_as_reader")
 # the two targets: sp = prefix of the shadow table's check names; role = the least-privileged role that can DELETE there; guc = where the SQL step records the deleted ids
 TARGETS = (
-    {"key": "main", "sp": "", "table": TABLE, "ids": IDS, "fp": ROWS_FINGERPRINT, "n": 8, "role": BUILDER, "guc": "madhav.sd8_deleted_ids", "step": STEP_DELETE},
+    {"key": "main", "sp": "", "table": TABLE, "ids": IDS, "fp": ROWS_FINGERPRINT, "n": 8, "role": BUILDER, "guc": "madhav.sd8_deleted_ids", "step": STEP_DELETE,
+     "idcol": "pramana_id", "payload": True, "fp_cols": "pramana_id::text, chart_id::text, anchor_id::text, evidence_type, evidence_strength_label, window_status, (lel_entry_id IS NULL)::text, (lel_entry_jsonb IS NULL)::text, extract(epoch FROM computed_at)::text"},
     {"key": "shadow", "sp": "shadow_", "table": SHADOW_TABLE, "ids": SHADOW_IDS, "fp": SHADOW_FINGERPRINT, "n": 16, "role": OWNER_ROLE, "guc": "madhav.sd8_deleted_shadow_ids",
-     "step": STEP_DELETE_SHADOW},
+     "step": STEP_DELETE_SHADOW, "idcol": "pramana_id", "payload": True, "fp_cols": "pramana_id::text, chart_id::text, anchor_id::text, evidence_type, evidence_strength_label, window_status, (lel_entry_id IS NULL)::text, (lel_entry_jsonb IS NULL)::text, extract(epoch FROM computed_at)::text"},
+    {"key": "phd", "sp": "phd_", "table": PHD_TABLE, "ids": PHD_IDS, "fp": PHD_FINGERPRINT, "n": 1, "role": OWNER_ROLE, "guc": "madhav.sd8_deleted_phd_ids",
+     "step": STEP_DELETE_PHD, "idcol": "phaladesa_id", "payload": False, "fp_cols": "phaladesa_id::text, chart_id::text, domain, top_anchor_id::text, evidence_type, pramana_window_status, narration_status, extract(epoch FROM computed_at)::text"},
 )
 # recorded in outcome.json so the evidence says the ŚUDDHA-VĀCA rollback baseline was amended on purpose (SS accepted the extension in design: deleting these rows is INTENDED)
 BASELINE_AMENDMENT = ("INTENDED, per SS ruling: the ŚUDDHA-VĀCA rollback baseline phala_pramana__ssv_20260728b (tag ssv_20260728b, 2026-07-28) is amended by deleting {n} "
-                      "contaminated life_event_miss rows of chart 1c826d5a (chart total {before} -> {after}); restoring that snapshot no longer re-introduces them")
-RESTORE_NOTE = ("irreversible; the 8 phala_pramana rows are regenerable by rebuilding ph_pramana for 1c826d5a after PR #3047; the 16 snapshot rows "
-                "(phala_pramana__ssv_20260728b) are the contaminated rows of a frozen baseline and are not regenerated")
+                      "contaminated life_event_miss rows of chart 1c826d5a (chart total {before} -> {after}), and phala_phaladesa__ssv_20260728b by deleting {pn} derived life_event_miss "
+                      "row of that chart (chart total {pbefore} -> {pafter}); restoring those snapshots no longer re-introduces them")
+RESTORE_NOTE = ("irreversible; the 8 phala_pramana rows are regenerable by rebuilding ph_pramana for 1c826d5a after PR #3047; the 16 + 1 snapshot rows "
+                "(phala_pramana__ssv_20260728b, phala_phaladesa__ssv_20260728b) are the contaminated rows of a frozen baseline and are not regenerated")
+ORDERING_NOTE = ("ORDER: migration 1288 (chart-scoped ph_pramana integrity check) FIRST, then this scoped delete, both at the #3047 + 1274 slot after S-L1; this delete flips the REGISTERED "
+                 "ph_pramana integrity check (global: one pramana row per anchor) to FALSE until ph_pramana is rebuilt for 1c826d5a, so rebuild ph_pramana for 1c826d5a BEFORE any "
+                 "ph_pramana build for another chart. Operator pre-flight: select rolsuper from pg_roles where rolname = 'postgres' must read f (the executor pins the name, not the flag)")
 
 # ------------------------------------------------------------------------------------------------------ gate wiring (GATE_V2)
 GATE_TBD = "TBD_BIND_AT_GATE_REVISION_3"        # the marker for an UNBOUND pin: launch_gate refuses while any pin is this value
@@ -222,21 +241,22 @@ def sql_bound_values(text: str) -> dict:
     def lit(name):
         m = re.search(r"set_config\('madhav\.sd8_" + name + r"', '([^']*)'", text)
         return None if m is None else m.group(1)
-    return {"chart": lit("chart"), "ids": lit("ids"), "fp": lit("fp"), "shadow_ids": lit("shadow_ids"), "shadow_fp": lit("shadow_fp")}
+    return {"chart": lit("chart"), "ids": lit("ids"), "fp": lit("fp"), "shadow_ids": lit("shadow_ids"), "shadow_fp": lit("shadow_fp"), "phd_ids": lit("phd_ids"), "phd_fp": lit("phd_fp")}
 
 
 def pre_names(t: dict) -> list:
     sp, n = t["sp"], t["n"]
     base = [f"pre_{sp}table_is_an_ordinary_table_owned_by_amjis_app_without_rls", f"pre_{sp}delete_role_can_delete_and_reader_cannot_write",
             f"pre_{sp}no_foreign_key_references_the_table", f"pre_{sp}no_user_trigger_rule_view_policy_or_inheritance_on_the_table",
-            f"m_pre_{sp}exactly_{n}_rows_match_chart_and_marker", f"m_pre_{sp}matching_ids_equal_the_bound_ids", f"m_pre_{sp}fingerprint_equals_the_pinned_one",
-            f"m_pre_{sp}no_matching_row_carries_a_life_event_payload", f"m_pre_{sp}no_other_row_carries_a_bound_id"]
-    return base
+            f"m_pre_{sp}exactly_{n}_rows_match_chart_and_marker", f"m_pre_{sp}matching_ids_equal_the_bound_ids", f"m_pre_{sp}fingerprint_equals_the_pinned_one"]
+    if t["payload"]:
+        base.append(f"m_pre_{sp}no_matching_row_carries_a_life_event_payload")        # the phaladesa snapshot has no lel_* columns: no such detector, so no such check (§N.8)
+    return base + [f"m_pre_{sp}no_other_row_carries_a_bound_id"]
 
 
 def post_names(t: dict) -> list:
     sp, n = t["sp"], t["n"]
-    return [f"m_post_{sp}the_{n}_ids_are_gone", f"m_post_{sp}no_chart_marker_row_left", f"m_post_{sp}chart_total_reduced_by_exactly_{n}",
+    return [f"m_post_{sp}the_{n}_ids_are_gone" if n > 1 else f"m_post_{sp}the_id_is_gone", f"m_post_{sp}no_chart_marker_row_left", f"m_post_{sp}chart_total_reduced_by_exactly_{n}",
             f"m_post_{sp}other_charts_counts_unchanged", f"m_post_{sp}other_charts_id_set_unchanged", f"m_post_{sp}chart_survivors_are_the_pre_image_minus_the_{n}",
             f"m_post_{sp}deleted_ids_equal_the_bound_ids", f"post_{sp}table_owner_acl_constraints_unchanged", f"post_{sp}no_new_trigger_or_rule"]
 
@@ -246,9 +266,10 @@ CHECKS = (
     ("pre_server_major_is_15", "pre_database_is_expected", "pre_session_user_is_the_expected_administrator", "pre_roles_exist",
      "pre_admin_can_assume_the_roles", "pre_sql_bound_values_equal_the_executor_bound_values", "pre_no_event_trigger_exists")
     + tuple(x for t in TARGETS for x in pre_names(t)[:4])
-    + ("m_pre_measured", "m_pre_referencer_columns_are_the_known_set", "m_pre_dependents_are_zero", "m_pre_no_build_in_flight")
+    + ("m_pre_measured", "m_pre_referencer_columns_are_the_known_set", "m_pre_phaladesa_referencer_columns_are_the_known_set", "m_pre_dependents_are_zero",
+       "m_pre_live_phaladesa_has_no_matching_row_and_not_the_bound_id", "m_pre_no_build_in_flight")
     + tuple(x for t in TARGETS for x in pre_names(t)[4:])
-    + ("step_*", "m_post_measured")
+    + ("step_*", "m_post_measured", "m_post_live_phaladesa_unchanged")
     + tuple(x for t in TARGETS for x in post_names(t))
     + ("post_memberships_restored",)
 )
@@ -259,24 +280,29 @@ def render_plan(sha: str | None = None, pins: dict | None = None) -> str:
     sha = sha or exec_sha()
     f = forward_leg()
     lines = [
-        "PLAN scoped_delete_8 (SS ruling N-109 + extension): one-shot scoped DELETE of the 8 derived life_event_miss phala_pramana rows AND the 16 life_event_miss rows of "
-        "phala_pramana__ssv_20260728b, chart 1c826d5a, ONE all-or-nothing transaction. IRREVERSIBLE; rows are NOT copied.",
+        "PLAN scoped_delete_8 (SS rulings N-109, its extension and N-120): one-shot scoped DELETE of 25 derived life_event_miss rows of chart 1c826d5a: 8 in phala_pramana, 16 in "
+        "phala_pramana__ssv_20260728b and 1 in phala_phaladesa__ssv_20260728b, ONE all-or-nothing transaction. IRREVERSIBLE; rows are NOT copied.",
         f"target 1: {SCHEMA}.{TABLE} WHERE chart_id = {CHART} AND evidence_type = '{MARKER}' AND pramana_id = ANY(the 8 ids below); DELETE FROM ONLY as {BUILDER}",
         f"target 2: {SCHEMA}.{SHADOW_TABLE} WHERE chart_id = {CHART} AND evidence_type = '{MARKER}' AND pramana_id = ANY(the 16 ids below); DELETE FROM ONLY as {OWNER_ROLE}",
+        f"target 3: {SCHEMA}.{PHD_TABLE} WHERE chart_id = {CHART} AND evidence_type = '{MARKER}' AND phaladesa_id = ANY(the 1 id below); DELETE FROM ONLY as {OWNER_ROLE}",
+        f"the LIVE {SCHEMA}.{LIVE_PHD_TABLE} is NOT written: it must hold 0 ({MARKER}) rows for the chart and not the bound id (precondition), and is unchanged after",
         "nothing else is written",
         f"bound ids target 1 ({len(IDS)}): {', '.join(IDS)}",
         f"bound ids target 2 ({len(SHADOW_IDS)}): {', '.join(SHADOW_IDS)}",
+        f"bound id target 3 ({len(PHD_IDS)}): {', '.join(PHD_IDS)}",
         f"non-private rows fingerprint target 1 (sha256, pinned): {ROWS_FINGERPRINT}",
         f"non-private rows fingerprint target 2 (sha256, pinned): {SHADOW_FINGERPRINT}",
-        f"server: PostgreSQL major {SERVER_MAJOR}, database {EXPECTED_DATABASE}, session user {EXPECTED_ADMIN} (CREATEROLE, not a superuser)",
-        f"roles: reads as {READER} (SELECT only); the delete of target 1 as {BUILDER} (table ACL ard: the least-privileged role that can DELETE); the delete of target 2 "
-        f"as {OWNER_ROLE} (the table owner; the only role with DELETE on it AND USAGE on schema public: the builder has no privilege on it and role_orchestrator, which holds DELETE, has no USAGE on schema public); transient membership, revoked in the last step",
+        f"non-private rows fingerprint target 3 (sha256, pinned): {PHD_FINGERPRINT}",
+        f"server: PostgreSQL major {SERVER_MAJOR}, database {EXPECTED_DATABASE}, session user {EXPECTED_ADMIN} (CREATEROLE, not a superuser: the executor pins the NAME; the operator pre-flight reads the flag)",
+        f"roles: reads as {READER} (SELECT only); the delete of target 1 as {BUILDER} (table ACL ard: the least-privileged role that can DELETE); the deletes of targets 2 and 3 "
+        f"as {OWNER_ROLE} (the table owner; the only role with DELETE on them AND USAGE on schema public: the builder has no privilege on them and role_orchestrator, which holds DELETE, has no USAGE on schema public); transient membership, revoked in the last step",
+        f"ORDERING: {ORDERING_NOTE}",
+        "rollback baseline: the ŚUDDHA-VĀCA rollback baseline is AMENDED ON PURPOSE (SS accepted the extension in design): phala_pramana__ssv_20260728b 16 rows, chart total 138 -> 122; "
+        "phala_phaladesa__ssv_20260728b 1 row, chart total 7 -> 6; outcome.json records it (rollback_baseline_amendment)",
         f"transaction: ONE, as the Cloud SQL administrator; SET LOCAL lock_timeout = {LOCK_TIMEOUT}, statement_timeout = {STATEMENT_TIMEOUT}; COMMIT only if every check holds",
         f"commit conditions: {', '.join(CHECKS)}",
         f"known columns that can refer to a pramana id: {', '.join(KNOWN_REFERENCERS)}",
         f"restore: {RESTORE_NOTE}",
-        "rollback baseline: the ŚUDDHA-VĀCA rollback baseline phala_pramana__ssv_20260728b is AMENDED ON PURPOSE (SS accepted the extension in design): 16 rows, chart total 138 -> 122; "
-        "outcome.json records it (rollback_baseline_amendment)",
         f"-- sql: {SQL_FORWARD.name} sha256 {f.sql_sha256}",
     ]
     for n, s in f.steps:
@@ -325,7 +351,8 @@ _REL = ("FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace WHERE n.n
 ROLES_USED = (OWNER_ROLE, BUILDER, READER)
 IDS_CSV = ",".join(IDS)
 SHADOW_IDS_CSV = ",".join(SHADOW_IDS)
-ALL_IDS_REGEX = "|".join(IDS + SHADOW_IDS)
+PHD_IDS_CSV = ",".join(PHD_IDS)
+ALL_IDS_REGEX = "|".join(IDS + SHADOW_IDS + PHD_IDS)
 
 
 def rel_facts(cur, table: str) -> dict:
@@ -365,17 +392,20 @@ def snap(cur) -> dict:
     d["role_is_super"] = {r: bool(one(cur, "SELECT COALESCE((SELECT rolsuper FROM pg_roles WHERE rolname = %s), false)", (r,))) for r in ROLES_USED}
     d["memberships"] = {r: bool(one(cur, "SELECT pg_has_role(current_user, %s, 'MEMBER')", (r,))) for r in ASSUMED if d["roles_exist"].get(r)}
     d["event_triggers"] = one(cur, "SELECT count(*) FROM pg_event_trigger")
-    d["main"], d["shadow"] = rel_facts(cur, TABLE), rel_facts(cur, SHADOW_TABLE)
+    d["main"], d["shadow"], d["phd"] = rel_facts(cur, TABLE), rel_facts(cur, SHADOW_TABLE), rel_facts(cur, PHD_TABLE)
     ok = all(d["roles_exist"][r] for r in (BUILDER, OWNER_ROLE, READER))
     # has_table_privilege(role, rel, 'A,B') is true if the role holds ANY of the listed privileges: SELECT and DELETE are therefore tested one by one
     # (delete-ok, then the privileges the plan says the delete role must NOT hold, then the read role's write privileges, [shadow: and any builder privilege])
     d["main"]["privs"] = one(cur, "SELECT has_table_privilege(%s, c.oid, 'SELECT') AND has_table_privilege(%s, c.oid, 'DELETE') AND has_schema_privilege(%s, 'public', 'USAGE'), has_table_privilege(%s, c.oid, 'UPDATE,TRUNCATE'), "
                                   "has_table_privilege(%s, c.oid, 'INSERT,UPDATE,DELETE,TRUNCATE') " + _REL,
                              (BUILDER, BUILDER, BUILDER, BUILDER, READER, SCHEMA, TABLE)) if ok else None
-    # the owner is the delete role of the snapshot (role_orchestrator holds DELETE there but has NO USAGE on schema public); it also holds TRUNCATE, which is why that is not tested
-    d["shadow"]["privs"] = one(cur, "SELECT has_table_privilege(%s, c.oid, 'SELECT') AND has_table_privilege(%s, c.oid, 'DELETE') AND has_schema_privilege(%s, 'public', 'USAGE'), "
-                                    "has_table_privilege(%s, c.oid, 'INSERT,UPDATE,DELETE,TRUNCATE'), has_table_privilege(%s, c.oid, 'SELECT,INSERT,UPDATE,DELETE,TRUNCATE') " + _REL,
-                               (OWNER_ROLE, OWNER_ROLE, OWNER_ROLE, READER, BUILDER, SCHEMA, SHADOW_TABLE)) if ok else None
+    # the owner is the delete role of the snapshots (role_orchestrator holds DELETE there but has NO USAGE on schema public); it also holds TRUNCATE, which is why that is not tested
+    for key, table in (("shadow", SHADOW_TABLE), ("phd", PHD_TABLE)):
+        d[key]["privs"] = one(cur, "SELECT has_table_privilege(%s, c.oid, 'SELECT') AND has_table_privilege(%s, c.oid, 'DELETE') AND has_schema_privilege(%s, 'public', 'USAGE'), "
+                                   "has_table_privilege(%s, c.oid, 'INSERT,UPDATE,DELETE,TRUNCATE'), has_table_privilege(%s, c.oid, 'SELECT,INSERT,UPDATE,DELETE,TRUNCATE') " + _REL,
+                              (OWNER_ROLE, OWNER_ROLE, OWNER_ROLE, READER, BUILDER, SCHEMA, table)) if ok else None
+    # the LIVE phala_phaladesa is never written: nobody we use may write it (the reader in particular)
+    d["live_phd_reader_write"] = one(cur, "SELECT has_table_privilege(%s, c.oid, 'INSERT,UPDATE,DELETE,TRUNCATE') " + _REL, (READER, SCHEMA, LIVE_PHD_TABLE)) if ok else None
     return d
 
 
@@ -404,7 +434,7 @@ def pre_checks(leg: Leg, pre: dict, ck: Checks) -> None:
     ck.chk("pre_admin_can_assume_the_roles", can, f"admin={who[0]} super={who[2]} createrole={who[3]} server_version_num={who[4]}")
     bound = sql_bound_values(leg.text())
     ck.chk("pre_sql_bound_values_equal_the_executor_bound_values",
-           bound == {"chart": CHART, "ids": IDS_CSV, "fp": ROWS_FINGERPRINT, "shadow_ids": SHADOW_IDS_CSV, "shadow_fp": SHADOW_FINGERPRINT},
+           bound == {"chart": CHART, "ids": IDS_CSV, "fp": ROWS_FINGERPRINT, "shadow_ids": SHADOW_IDS_CSV, "shadow_fp": SHADOW_FINGERPRINT, "phd_ids": PHD_IDS_CSV, "phd_fp": PHD_FINGERPRINT},
            "the chart / id lists / fingerprint literals in the SQL file differ from the executor's own")
     ck.chk("pre_no_event_trigger_exists", pre["event_triggers"] == 0, pre["event_triggers"])
     for t in TARGETS:
@@ -413,7 +443,8 @@ def pre_checks(leg: Leg, pre: dict, ck: Checks) -> None:
         ck.chk(f"pre_{sp}table_is_an_ordinary_table_owned_by_amjis_app_without_rls",
                tb is not None and tb[0] == OWNER_ROLE and tb[1] == "r" and tb[2] is False and tb[3] is False, None if tb is None else (tb[0], tb[1], tb[2], tb[3]))
         pv = f["privs"]
-        ck.chk(f"pre_{sp}delete_role_can_delete_and_reader_cannot_write", pv is not None and pv[0] is True and not any(pv[1:]), pv)
+        ck.chk(f"pre_{sp}delete_role_can_delete_and_reader_cannot_write", pv is not None and pv[0] is True and not any(pv[1:]) and (t["key"] != "phd" or pre["live_phd_reader_write"] is False),
+               (pv, pre["live_phd_reader_write"] if t["key"] == "phd" else None))
         ck.chk(f"pre_{sp}no_foreign_key_references_the_table", f["fk_referencing"] == 0, f["fk_referencing"])
         ck.chk(f"pre_{sp}no_user_trigger_rule_view_policy_or_inheritance_on_the_table",
                f["user_triggers"] == 0 and f["rules"] == 0 and f["policies"] == 0 and f["dependent_views"] == 0 and f["inheritance"] == 0,
@@ -431,12 +462,14 @@ DEPENDENT_QUERIES = {
     # the two target tables must not carry each other's ids
     "phala_pramana_has_shadow_ids": "SELECT count(*) FROM public.phala_pramana t WHERE t.pramana_id = ANY (string_to_array(%(sids)s, ',')::uuid[])",
     "phala_pramana__ssv_20260728b": "SELECT count(*) FROM public.phala_pramana__ssv_20260728b t WHERE t.pramana_id = ANY (string_to_array(%(ids)s, ',')::uuid[])",
+    # the live phala_phaladesa must not carry the bound phaladesa snapshot id
+    "phala_phaladesa_has_snapshot_id": "SELECT count(*) FROM public.phala_phaladesa t WHERE t.phaladesa_id = ANY (string_to_array(%(pids)s, ',')::uuid[])",
 }
 
 
 def measure_table(cur, t: dict) -> dict:
-    """Counts and ids only (never a private column) for ONE target table. The table name is a module constant, never input."""
-    tb = f"public.{t['table']}"
+    """Counts and ids only (never a private column) for ONE target table. The table, id column and fingerprint columns are module constants, never input."""
+    tb, idc = f"public.{t['table']}", t["idcol"]
     p = {"chart": CHART, "ids": ",".join(t["ids"]), "marker": MARKER}
     m: dict = {}
     cur.execute(f"SELECT COALESCE(chart_id::text, 'NULL'), count(*) FROM {tb} GROUP BY 1 ORDER BY 1")
@@ -444,20 +477,19 @@ def measure_table(cur, t: dict) -> dict:
     m["by_chart"] = by_chart
     m["chart_total"] = by_chart.get(CHART, 0)
     m["other_by_chart"] = {k: v for k, v in by_chart.items() if k != CHART}
-    cur.execute("SELECT count(*), COALESCE(array_agg(pramana_id::text ORDER BY pramana_id), '{}'::text[]), "
-                "count(*) FILTER (WHERE lel_entry_id IS NOT NULL OR lel_entry_jsonb IS NOT NULL), "
-                "encode(sha256(convert_to(string_agg(concat_ws('|', pramana_id::text, chart_id::text, anchor_id::text, evidence_type, evidence_strength_label, "
-                "window_status, (lel_entry_id IS NULL)::text, (lel_entry_jsonb IS NULL)::text, extract(epoch FROM computed_at)::text), E'\\n' "
-                f"ORDER BY pramana_id), 'UTF8')), 'hex') FROM {tb} WHERE chart_id = %(chart)s::uuid AND evidence_type = %(marker)s", p)
-    n, ids, payload, fp = cur.fetchone()
-    m["match_n"], m["match_ids"], m["match_payload_n"], m["match_fingerprint"] = int(n), list(ids), int(payload), fp
-    cur.execute(f"SELECT count(*) FROM {tb} WHERE pramana_id = ANY (string_to_array(%(ids)s, ',')::uuid[])", p)
+    payload = "count(*) FILTER (WHERE lel_entry_id IS NOT NULL OR lel_entry_jsonb IS NOT NULL)" if t["payload"] else "0"        # the phaladesa snapshot has no lel_* columns
+    cur.execute(f"SELECT count(*), COALESCE(array_agg({idc}::text ORDER BY {idc}), '{{}}'::text[]), {payload}, "
+                f"encode(sha256(convert_to(string_agg(concat_ws('|', {t['fp_cols']}), E'\\n' ORDER BY {idc}), 'UTF8')), 'hex') "
+                f"FROM {tb} WHERE chart_id = %(chart)s::uuid AND evidence_type = %(marker)s", p)
+    n, ids, pay, fp = cur.fetchone()
+    m["match_n"], m["match_ids"], m["match_payload_n"], m["match_fingerprint"] = int(n), list(ids), int(pay), fp
+    cur.execute(f"SELECT count(*) FROM {tb} WHERE {idc} = ANY (string_to_array(%(ids)s, ',')::uuid[])", p)
     m["bound_ids_present_n"] = int(cur.fetchone()[0])
-    cur.execute("SELECT encode(sha256(convert_to(COALESCE(string_agg(pramana_id::text, ',' ORDER BY pramana_id), ''), 'UTF8')), 'hex') "
+    cur.execute(f"SELECT encode(sha256(convert_to(COALESCE(string_agg({idc}::text, ',' ORDER BY {idc}), ''), 'UTF8')), 'hex') "
                 f"FROM {tb} WHERE chart_id IS DISTINCT FROM %(chart)s::uuid", p)
     m["other_ids_digest"] = cur.fetchone()[0]
-    cur.execute("SELECT encode(sha256(convert_to(COALESCE(string_agg(pramana_id::text, ',' ORDER BY pramana_id), ''), 'UTF8')), 'hex') "
-                f"FROM {tb} WHERE chart_id = %(chart)s::uuid AND NOT (pramana_id = ANY (string_to_array(%(ids)s, ',')::uuid[]))", p)
+    cur.execute(f"SELECT encode(sha256(convert_to(COALESCE(string_agg({idc}::text, ',' ORDER BY {idc}), ''), 'UTF8')), 'hex') "
+                f"FROM {tb} WHERE chart_id = %(chart)s::uuid AND NOT ({idc} = ANY (string_to_array(%(ids)s, ',')::uuid[]))", p)
     m["chart_rest_ids_digest"] = cur.fetchone()[0]
     return m
 
@@ -467,13 +499,23 @@ def measure(cur, with_dependents: bool = True) -> dict:
     cur.execute("SET LOCAL ROLE " + READER)
     try:
         m: dict = {t["key"]: measure_table(cur, t) for t in TARGETS}
-        p = {"chart": CHART, "ids": IDS_CSV, "sids": SHADOW_IDS_CSV, "rx": ALL_IDS_REGEX}
+        p = {"chart": CHART, "ids": IDS_CSV, "sids": SHADOW_IDS_CSV, "pids": PHD_IDS_CSV, "rx": ALL_IDS_REGEX}
         cur.execute("SELECT count(*) FILTER (WHERE chart_id = %(chart)s::uuid), count(*) FROM public.build_runs WHERE state IN ('planned', 'running', 'paused')", p)
         m["builds_in_flight_on_chart"], m["builds_in_flight_any"] = (int(x) for x in cur.fetchone())
         cur.execute("SELECT COALESCE(string_agg(c.relname || '.' || a.attname, ',' ORDER BY c.relname COLLATE \"C\", a.attname COLLATE \"C\"), '') FROM pg_attribute a JOIN pg_class c ON c.oid = a.attrelid "
                     "WHERE c.relnamespace = 'public'::regnamespace AND c.relkind IN ('r', 'p', 'v', 'm', 'f') AND a.attnum > 0 AND NOT a.attisdropped "
                     "AND a.attname ~ 'pramana_ids?$'")
         m["referencer_columns"] = cur.fetchone()[0]
+        cur.execute("SELECT COALESCE(string_agg(c.relname || '.' || a.attname, ',' ORDER BY c.relname COLLATE \"C\", a.attname COLLATE \"C\"), '') FROM pg_attribute a JOIN pg_class c ON c.oid = a.attrelid "
+                    "WHERE c.relnamespace = 'public'::regnamespace AND c.relkind IN ('r', 'p', 'v', 'm', 'f') AND a.attnum > 0 AND NOT a.attisdropped "
+                    "AND a.attname ~ 'phaladesa_ids?$'")
+        m["phd_referencer_columns"] = cur.fetchone()[0]
+        # the LIVE phala_phaladesa: never written; it must hold no (chart, marker) row and not the bound id; its id-set digest must not move
+        cur.execute("SELECT count(*), count(*) FILTER (WHERE chart_id = %(chart)s::uuid AND evidence_type = 'life_event_miss'), "
+                    "count(*) FILTER (WHERE phaladesa_id = ANY (string_to_array(%(pids)s, ',')::uuid[])), "
+                    "encode(sha256(convert_to(COALESCE(string_agg(phaladesa_id::text, ',' ORDER BY phaladesa_id), ''), 'UTF8')), 'hex') FROM public.phala_phaladesa", p)
+        tot, mt, idp, dg = cur.fetchone()
+        m["live_phd"] = {"total": int(tot), "match_n": int(mt), "id_present_n": int(idp), "ids_digest": dg}
         if with_dependents:
             m["dependents"] = {}
             for name, q in DEPENDENT_QUERIES.items():
@@ -487,6 +529,10 @@ def measure(cur, with_dependents: bool = True) -> dict:
 def pre_measure_checks(m: dict, ck: Checks) -> None:
     ck.chk("m_pre_measured", True)
     ck.chk("m_pre_referencer_columns_are_the_known_set", m["referencer_columns"] == ",".join(sorted(KNOWN_REFERENCERS)), m["referencer_columns"])
+    ck.chk("m_pre_phaladesa_referencer_columns_are_the_known_set", m["phd_referencer_columns"] == "phala_phaladesa.phaladesa_id,phala_phaladesa__ssv_20260728b.phaladesa_id",
+           m["phd_referencer_columns"])
+    lp = m["live_phd"]
+    ck.chk("m_pre_live_phaladesa_has_no_matching_row_and_not_the_bound_id", lp["match_n"] == 0 and lp["id_present_n"] == 0, f"live phala_phaladesa: {lp['match_n']} (chart, {MARKER}) rows, {lp['id_present_n']} carry the bound id")
     dep = m["dependents"]
     ck.chk("m_pre_dependents_are_zero", all(v == 0 for v in dep.values()) and set(dep) == set(DEPENDENT_QUERIES), {k: v for k, v in dep.items() if v})
     ck.chk("m_pre_no_build_in_flight", m["builds_in_flight_any"] == 0 and m["builds_in_flight_on_chart"] == 0,
@@ -496,7 +542,8 @@ def pre_measure_checks(m: dict, ck: Checks) -> None:
         ck.chk(f"m_pre_{sp}exactly_{n}_rows_match_chart_and_marker", x["match_n"] == len(t["ids"]) == n, f"{x['match_n']} rows match (chart, {MARKER}), expected exactly {n}")
         ck.chk(f"m_pre_{sp}matching_ids_equal_the_bound_ids", x["match_ids"] == sorted(t["ids"]), f"matching ids: {x['match_ids']}")
         ck.chk(f"m_pre_{sp}fingerprint_equals_the_pinned_one", x["match_fingerprint"] == t["fp"], x["match_fingerprint"])
-        ck.chk(f"m_pre_{sp}no_matching_row_carries_a_life_event_payload", x["match_payload_n"] == 0, f"{x['match_payload_n']} matching row(s) carry lel_entry_id/lel_entry_jsonb")
+        if t["payload"]:
+            ck.chk(f"m_pre_{sp}no_matching_row_carries_a_life_event_payload", x["match_payload_n"] == 0, f"{x['match_payload_n']} matching row(s) carry lel_entry_id/lel_entry_jsonb")
         # the delete is by id: no row outside the matching set may carry a bound id (pramana_id is the primary key of phala_pramana; the snapshot has no constraint)
         ck.chk(f"m_pre_{sp}no_other_row_carries_a_bound_id", x["bound_ids_present_n"] == n, f"{x['bound_ids_present_n']} rows of the table carry a bound id, expected {n}")
 
@@ -506,7 +553,7 @@ def post_measure_checks(pre_m: dict, m: dict, deleted: dict, ck: Checks) -> None
     for t in TARGETS:
         k, sp, n = t["key"], t["sp"], t["n"]
         x, y = m[k], pre_m[k]
-        ck.chk(f"m_post_{sp}the_{n}_ids_are_gone", x["bound_ids_present_n"] == 0, f"{x['bound_ids_present_n']} of the bound ids still present")
+        ck.chk(f"m_post_{sp}the_{n}_ids_are_gone" if n > 1 else f"m_post_{sp}the_id_is_gone", x["bound_ids_present_n"] == 0, f"{x['bound_ids_present_n']} of the bound ids still present")
         ck.chk(f"m_post_{sp}no_chart_marker_row_left", x["match_n"] == 0, f"{x['match_n']} (chart, {MARKER}) rows left")
         ck.chk(f"m_post_{sp}chart_total_reduced_by_exactly_{n}", x["chart_total"] == y["chart_total"] - n, f"{y['chart_total']} -> {x['chart_total']}")
         ck.chk(f"m_post_{sp}other_charts_counts_unchanged", x["other_by_chart"] == y["other_by_chart"], {"pre": y["other_by_chart"], "post": x["other_by_chart"]})
@@ -514,6 +561,7 @@ def post_measure_checks(pre_m: dict, m: dict, deleted: dict, ck: Checks) -> None
         ck.chk(f"m_post_{sp}chart_survivors_are_the_pre_image_minus_the_{n}",
                x["chart_rest_ids_digest"] == y["chart_rest_ids_digest"] and x["chart_total"] == y["chart_total"] - n)
         ck.chk(f"m_post_{sp}deleted_ids_equal_the_bound_ids", deleted[k] == sorted(t["ids"]), f"deleted ids: {deleted[k]}")
+    ck.chk("m_post_live_phaladesa_unchanged", m["live_phd"] == pre_m["live_phd"], {"pre": pre_m["live_phd"], "post": m["live_phd"]})
 
 
 def post_checks(pre: dict, post: dict, ck: Checks) -> None:
@@ -547,7 +595,7 @@ def run_leg(conn, leg: Leg, mode: str, out) -> dict:
         steps = [s for s in leg.steps if full or s[0] in COUNT_STEPS]
         complete = True
         for name, sql in steps:
-            if name in (STEP_DELETE, STEP_DELETE_SHADOW) and ck.failed:
+            if name in (STEP_DELETE, STEP_DELETE_SHADOW, STEP_DELETE_PHD) and ck.failed:
                 complete = False
                 break
             if name == STEP_LAST:
@@ -585,7 +633,8 @@ def run_leg(conn, leg: Leg, mode: str, out) -> dict:
             post = snap(cur)
             post_checks(pre, post, ck)
     parts = {"leg": leg.name, "sql_sha256": leg.sql_sha256,
-             "bound": {"chart": CHART, "ids": list(IDS), "fingerprint": ROWS_FINGERPRINT, "shadow_ids": list(SHADOW_IDS), "shadow_fingerprint": SHADOW_FINGERPRINT},
+             "bound": {"chart": CHART, "ids": list(IDS), "fingerprint": ROWS_FINGERPRINT, "shadow_ids": list(SHADOW_IDS), "shadow_fingerprint": SHADOW_FINGERPRINT,
+                       "phd_ids": list(PHD_IDS), "phd_fingerprint": PHD_FINGERPRINT},
              "pre": pre, "post": post, "pre_measure": pre_m, "post_measure": post_m, "deleted_ids": deleted,
              "checks": [[n, ok] for n, ok, _ in ck.items], "runtime": runtime_record()}
     digest = hashlib.sha256(canonical(parts).encode()).hexdigest()
@@ -605,12 +654,15 @@ def table_summary(pre_m, post_m, deleted, key: str) -> dict:
 
 def outcome_extra(pre_m, post_m, deleted) -> dict:
     """Counts, ids and a hash of NON-private columns only, per table; added to outcome.json (never any row content)."""
-    main, shadow = table_summary(pre_m, post_m, deleted, "main"), table_summary(pre_m, post_m, deleted, "shadow")
-    return {"target": f"{SCHEMA}.{TABLE}", "shadow_target": f"{SCHEMA}.{SHADOW_TABLE}", "bound_chart": CHART, "bound_ids": list(IDS), "bound_shadow_ids": list(SHADOW_IDS),
-            "marker": MARKER, **main, **{"shadow_" + k: v for k, v in shadow.items()},
-            "total_rows_deleted_in_transaction": main["rows_deleted_in_transaction"] + shadow["rows_deleted_in_transaction"],
-            "rollback_baseline_amendment": BASELINE_AMENDMENT.format(n=shadow["rows_deleted_in_transaction"], before=shadow["chart_total_before"],
-                                                                     after=shadow["chart_total_after"]),
+    main, shadow, phd = (table_summary(pre_m, post_m, deleted, k) for k in ("main", "shadow", "phd"))
+    return {"target": f"{SCHEMA}.{TABLE}", "shadow_target": f"{SCHEMA}.{SHADOW_TABLE}", "phaladesa_snapshot_target": f"{SCHEMA}.{PHD_TABLE}", "bound_chart": CHART,
+            "bound_ids": list(IDS), "bound_shadow_ids": list(SHADOW_IDS), "bound_phaladesa_snapshot_ids": list(PHD_IDS),
+            "marker": MARKER, **main, **{"shadow_" + k: v for k, v in shadow.items()}, **{"phaladesa_snapshot_" + k: v for k, v in phd.items()},
+            "total_rows_deleted_in_transaction": sum(x["rows_deleted_in_transaction"] for x in (main, shadow, phd)),
+            "live_phaladesa_before": (pre_m or {}).get("live_phd"), "live_phaladesa_after": (post_m or {}).get("live_phd"),
+            "rollback_baseline_amendment": BASELINE_AMENDMENT.format(n=shadow["rows_deleted_in_transaction"], before=shadow["chart_total_before"], after=shadow["chart_total_after"],
+                                                                     pn=phd["rows_deleted_in_transaction"], pbefore=phd["chart_total_before"], pafter=phd["chart_total_after"]),
+            "operator_ordering": ORDERING_NOTE,
             "after_is_measured_inside_the_transaction": True, "transaction_committed": False, "irreversible": True, "restore": RESTORE_NOTE}
 
 
@@ -890,7 +942,7 @@ def execute(args, connect, now=None, gate_fp=None):
                 res["commit_ok"] = False
             result = {"plan_hash": phash, "executor_sha256": sha, "mode": args.mode, "evidence_digest": digest,
                       "failed_checks": ck.failed, "checks": {n: ok for n, ok, _ in ck.items}, "runtime": runtime_record(),
-                      **{k: v for k, v in res["outcome_extra"].items() if k.startswith(("deleted_", "rows_", "chart_total", "other_charts", "shadow_deleted", "shadow_rows", "shadow_chart", "shadow_other", "total_"))}, "restore": RESTORE_NOTE,
+                      **{k: v for k, v in res["outcome_extra"].items() if k.startswith(("deleted_", "rows_", "chart_total", "other_charts", "shadow_deleted", "shadow_rows", "shadow_chart", "shadow_other", "phaladesa_snapshot_deleted", "phaladesa_snapshot_rows", "phaladesa_snapshot_chart", "phaladesa_snapshot_other", "total_"))}, "restore": RESTORE_NOTE,
                       "details": {n: d for n, ok, d in ck.items if d and not ok}, "log": lines + res["report"], "evidence_dir": str(run_dir)}
             if args.mode == "apply" and res["commit_ok"]:
                 signal.pthread_sigmask(signal.SIG_BLOCK, _HELD_SIGNALS)       # SIGTERM/SIGHUP/SIGINT wait until the COMMIT is recorded

@@ -68,3 +68,35 @@ INSERT INTO public.phala_pramana__ssv_20260728b (pramana_id, chart_id, anchor_id
                                                  derivation_ledger_jsonb, source_citation, computed_at)
   SELECT gen_random_uuid(), '482012f1-710e-4a25-994a-93821f5871aa', gen_random_uuid(), 'pending_observation', 'proxy', 'PRIVMARK-sfalsifier-y', '{"raw": "PRIVMARK-sraw-y"}',
          'open', '{"note": "PRIVMARK-sledger-y"}', 'PRIVMARK-scite', '2026-07-28 05:01:29.614848+00' FROM generate_series(1, 3);
+
+-- phala_phaladesa (live, 26 rows as in production: 13 per chart) and its snapshot (14 rows: 7 per chart). The ONE target row of the snapshot carries production's id, top anchor,
+-- domain, enums and timestamp (so its non-private fingerprint equals the pinned production one); every private column (jsonb, source_citation) holds a PRIVMARK. The canonical chart
+-- legitimately has a life_event_miss row in BOTH tables (its own events): it must survive.
+INSERT INTO public.phala_phaladesa__ssv_20260728b (phaladesa_id, chart_id, domain, anchor_count, clean_anchor_count, staged_revision_count, anomaly_flag_count, top_anchor_id,
+    magnitude, malleability, spillover_domains_jsonb, mitigation_available, muhurta_available, pramana_window_status, evidence_type, precedent_refs_jsonb, contradiction_summary_jsonb,
+    derivation_summary_jsonb, narration_status, narration_model, narration_jsonb, derivation_ledger_jsonb, source_citation, computed_at)
+  VALUES ('908e3c82-bb53-4457-8642-bf0d5e71460c', '1c826d5a-41cb-4450-b4dc-59d440e5f75a', 'relationship', 1, 1, 0, 0, 'bbd7247a-3adb-414e-af84-142c0f7fb673',
+          'moderate', 'influenceable', '["relationship", "PRIVMARK-spill"]', false, false, 'past_window', 'life_event_miss', '[]', '{}', '{"note": "PRIVMARK-dsum"}', 'ready', NULL,
+          '{"text": "PRIVMARK-narration", "model": "x"}', '{"note": "PRIVMARK-pledger"}', 'PRIVMARK-pcite', '2026-07-28 05:01:51.208762+00');
+INSERT INTO public.phala_phaladesa__ssv_20260728b (phaladesa_id, chart_id, domain, anchor_count, clean_anchor_count, staged_revision_count, anomaly_flag_count, top_anchor_id,
+    mitigation_available, muhurta_available, pramana_window_status, evidence_type, derivation_summary_jsonb, narration_status, narration_jsonb, derivation_ledger_jsonb, source_citation, computed_at)
+  SELECT gen_random_uuid(), c.chart_id, 'career', 1, 1, 0, 0, gen_random_uuid(), false, false, w.ws, w.et, '{"note": "PRIVMARK-dsum-x"}', 'ready', '{"text": "PRIVMARK-narration-x"}',
+         '{"note": "PRIVMARK-pledger-x"}', 'PRIVMARK-pcite-x', '2026-07-28 05:01:51.208762+00'
+    FROM (VALUES ('1c826d5a-41cb-4450-b4dc-59d440e5f75a'::uuid), ('482012f1-710e-4a25-994a-93821f5871aa'::uuid)) AS c(chart_id),
+         (VALUES ('open', 'pending_observation'), ('pending', 'pending_observation'), ('pending', 'pending_observation'), ('pending', 'pending_observation'),
+                 ('pending', 'pending_observation'), (NULL, NULL)) AS w(ws, et);
+INSERT INTO public.phala_phaladesa__ssv_20260728b (phaladesa_id, chart_id, domain, derivation_summary_jsonb, narration_status, evidence_type, pramana_window_status, top_anchor_id, computed_at)
+  VALUES (gen_random_uuid(), '482012f1-710e-4a25-994a-93821f5871aa', 'career', '{}', 'ready', 'life_event_miss', 'past_window', gen_random_uuid(), '2026-07-28 05:01:51.208762+00');
+INSERT INTO public.phala_phaladesa (phaladesa_id, chart_id, domain, anchor_count, clean_anchor_count, staged_revision_count, anomaly_flag_count, top_anchor_id, mitigation_available,
+    muhurta_available, pramana_window_status, evidence_type, derivation_summary_jsonb, narration_status, narration_jsonb, derivation_ledger_jsonb, source_citation)
+  SELECT gen_random_uuid(), c.chart_id, 'career', 1, 1, 0, 0, gen_random_uuid(), false, false, w.ws, w.et, '{"note": "PRIVMARK-dsum-live"}', 'ready', '{"text": "PRIVMARK-narration-live"}',
+         '{"note": "PRIVMARK-pledger-live"}', 'PRIVMARK-pcite-live'
+    FROM (VALUES ('1c826d5a-41cb-4450-b4dc-59d440e5f75a'::uuid), ('482012f1-710e-4a25-994a-93821f5871aa'::uuid)) AS c(chart_id),
+         (VALUES ('open', 'pending_observation'), ('pending', 'pending_observation'), ('pending', 'pending_observation'), ('pending', 'pending_observation'),
+                 ('pending', 'pending_observation'), ('pending', 'pending_observation'), (NULL, NULL), (NULL, NULL), (NULL, NULL), (NULL, NULL), (NULL, NULL), (NULL, NULL)) AS w(ws, et);
+INSERT INTO public.phala_phaladesa (phaladesa_id, chart_id, domain, anchor_count, clean_anchor_count, staged_revision_count, anomaly_flag_count, mitigation_available,
+    muhurta_available, derivation_summary_jsonb, narration_status, derivation_ledger_jsonb, source_citation)
+  VALUES (gen_random_uuid(), '1c826d5a-41cb-4450-b4dc-59d440e5f75a', 'career', 1, 1, 0, 0, false, false, '{}', 'ready', '{}', 'PRIVMARK');
+INSERT INTO public.phala_phaladesa (phaladesa_id, chart_id, domain, anchor_count, clean_anchor_count, staged_revision_count, anomaly_flag_count, top_anchor_id, mitigation_available,
+    muhurta_available, pramana_window_status, evidence_type, derivation_summary_jsonb, narration_status, derivation_ledger_jsonb, source_citation)
+  VALUES (gen_random_uuid(), '482012f1-710e-4a25-994a-93821f5871aa', 'career', 1, 1, 0, 0, gen_random_uuid(), false, false, 'past_window', 'life_event_miss', '{}', 'ready', '{}', 'PRIVMARK');
