@@ -1193,7 +1193,7 @@ def test_validator_doc_level_field_list_must_match():
 
 def test_the_committed_file_declares_one_carriage_check_the_latta_and_lists_the_fields():
     raw = json.loads(ac.DECLARATIONS_PATH.read_text(encoding="utf-8"))
-    assert raw["version"] == "1.12.0" and raw["carriage_declaration_fields"] == list(ac.CARRIAGE_DECL_FIELDS)
+    assert raw["version"] == "1.13.0" and raw["carriage_declaration_fields"] == list(ac.CARRIAGE_DECL_FIELDS)
     assert [a for a, e in raw["assets"].items() if any(k in (e.get("carriage") or {}) for k in ac.CARRIAGE_DECL_FIELDS)] == ["bg_phaladeepika_latta"]   # DECL-LATTA: the first declared D1
     ac.load_asset_declarations()
 

@@ -115,7 +115,7 @@ def test_validator_a_stamp_column_is_not_a_declared_prose_field():
 def test_the_declarations_file_lists_the_new_field_and_only_the_latta_declares_a_convention():
     raw = json.loads(ac.DECLARATIONS_PATH.read_text(encoding="utf-8"))
     assert raw["null_convention_declaration_fields"] == list(ac.NULL_CONVENTION_DECL_FIELDS) and "stamp_columns" in ac.NULL_CONVENTION_DECL_FIELDS
-    assert raw["version"] == "1.12.0"          # 1.10.0 with DECL-LATTA (#2991); 1.11.0 with DECL-LATTA-NULL (the first null_convention + stamp_columns)
+    assert raw["version"] == "1.13.0"          # 1.10.0 with DECL-LATTA (#2991); 1.11.0 with DECL-LATTA-NULL (the first null_convention + stamp_columns)
     assert "stamp_columns" in raw["description"]
     assert [a for a, e in raw["assets"].items() if "null_convention" in e] == ["bg_phaladeepika_latta"]
     ac.load_asset_declarations()

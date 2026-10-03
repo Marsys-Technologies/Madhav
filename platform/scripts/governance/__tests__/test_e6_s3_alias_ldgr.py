@@ -149,7 +149,7 @@ def test_validator_doc_level_field_lists_must_match_when_present():
 
 def test_the_committed_file_declares_neither_key_beyond_the_latta_and_lists_the_fields():
     raw = json.loads(ac.DECLARATIONS_PATH.read_text(encoding="utf-8"))
-    assert raw["version"] == "1.12.0"          # DECL-LATTA: bg_phaladeepika_latta is the first (and only) asset to declare them
+    assert raw["version"] == "1.13.0"          # DECL-LATTA: bg_phaladeepika_latta is the first (and only) asset to declare them
     assert raw["vocab_alias_declaration_fields"] == list(ac.VOCAB_ALIAS_DECL_FIELDS)
     assert raw["ldgr_source_declaration_fields"] == list(ac.LDGR_SOURCE_DECL_FIELDS)
     # the per-asset review is the reviewed work: nothing is declared by pattern in this PR

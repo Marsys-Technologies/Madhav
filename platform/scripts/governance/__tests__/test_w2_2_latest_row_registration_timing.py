@@ -826,7 +826,7 @@ def test_r54_a_clean_alias_census_passes_with_severity_zero(monkeypatch, tmp_pat
 # ─────────────────────────── R232: Dens.served reads a declared field, never a comment ───────────────────────────
 
 # E6.1 (d): the served select carries a tier column, so a REAL declaration can reach PASS (contract AND tier column)
-_SERVES = "export const cap = {\n  run: () => query(`SELECT id, signature_tier FROM t_x`),\n"
+_SERVES = "export const cap = {\n  run: () => query(`SELECT id, tier FROM t_x`),\n"
 
 
 @pytest.mark.parametrize("extra, declares", [
