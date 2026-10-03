@@ -8510,3 +8510,11 @@ Resume condition for everything downstream: a successful protected deploy with 1
 - Authority: user requested implementing the agreed full-circle acceptance programme and fixing its gaps.
 - Scope: AI Console execution, metering ownership/receipts, user usage/Observatory reconciliation, execution-path inventory, acceptance tests, task-owned evidence and runbook. All source changes remain local and reviewable.
 - No production deployment, live provider/CLI generation, credential/IAM/network change, protected merge, chart/build/rebuild, applied migration edit, foreign worktree edit or unrelated campaign state mutation. Existing ACTIVE-labelled older entries are expired and are not revived.
+
+
+## 2026-10-03 — AI full-circle local acceptance lease release
+
+- Lease ID: L-AI-CIRCLE-ACCEPTANCE-20261003; holder: Codex; status: RELEASED at 2026-10-03T13:06:54.114153+00:00.
+- Local source remains uncommitted in `/Users/Dev/.codex/worktrees/ai-circle-acceptance/Madhav`, branch `codex/ai-circle-acceptance`, for owner review. Six-deliverable packet: `00_ARCHITECTURE/briefs/ai_circle_acceptance/REPORT.md`.
+- Final local evidence `verification/20261003T125952Z/results.json`: 322 enabled tests, 18 disposable PostgreSQL tests, 15,135 full mocked tests passed; lint/types/build/access checks and source stability passed. Skipped/live tests are not certified. Migration-guard reviewed 1302 safe with controlled traffic transition.
+- No paid-provider/CLI generation, deployment, production migration, credentials/IAM changes or protected merge occurred. Deployed full-circle/provider reconciliation remains pending; gap register and runbook specify remaining gates. This releases only this session's local source/test lease.
