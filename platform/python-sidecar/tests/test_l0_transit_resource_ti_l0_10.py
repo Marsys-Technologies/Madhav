@@ -168,6 +168,9 @@ def test_real_writer_changes_exactly_the_24_citation_cells_and_keeps_every_id():
         # pre-state: the writer's own rows, then the old citations put back, plus migration 397's
         # seven double_transit rows executed verbatim from the migration file.
         T.seed_transit_rules(conn)
+        # live shape: the seven double_transit rows are migration 397's (whatever the seed also carries
+        # of them is replaced), so this test holds with or without the SS case-fix PR (TI-l0data-35).
+        conn.execute("DELETE FROM bg_transit_rules WHERE rule_type='double_transit'")
         conn.execute(_migration_397_double_transit_insert())
         for (g, h), (_rt, old, *_r) in GOLDEN.items():
             conn.execute("UPDATE bg_transit_rules SET classical_citation=%s WHERE graha=%s AND primary_house=%s",
@@ -192,6 +195,8 @@ def test_real_writer_changes_exactly_the_24_citation_cells_and_keeps_every_id():
         assert set(before) == set(after), "ids must be stable (gochara_resonance_map FK)"
         diff = []
         for rid in before:
+            if before[rid]["rule_type"] == "double_transit":
+                continue            # the double_transit rows belong to the graha-case change, not to this one
             b, a = before[rid], after[rid]
             cols = [c for c in b if b[c] != a[c]]
             if cols:
