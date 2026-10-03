@@ -1658,3 +1658,83 @@ def test_attack_the_sealed_manifest_guard_refuses_even_a_role_that_HOLDS_the_col
     finally:
         w.conn.execute(f"REVOKE UPDATE (input_generation_vector) ON public.kala_gochara_publication FROM {cw.SEALER}")
     assert w.conn.execute(q, (CHART_ID, GEN)).fetchone()[0] == before
+
+
+
+# ── Codex R17-2: the AM-10 re-pin moves BOTH pin declarations together ─────────────────────────────────────────────────────────────────────────────
+_REPIN_PROBE = r"""
+import json, sys
+sys.path.insert(0, sys.argv[1])
+import psycopg
+from services.gochara_kernel import dasha_read, inventory_verifier as inv
+chart, gen, dsn = sys.argv[2], sys.argv[3], sys.argv[4]
+conn = psycopg.connect(dsn, autocommit=True)
+out = {}
+try:
+    dasha_read.assert_single_pinned_build(conn, chart); out["writer"] = "ACCEPT"
+except Exception as e:
+    out["writer"] = getattr(e, "code", type(e).__name__)
+try:
+    inv.validate_consumed_dasha_population(conn, chart_id=chart, generation=gen); out["verifier"] = "ACCEPT"
+except Exception as e:
+    msg = str(e)
+    out["verifier"] = msg.split(":")[0] if "dasha_build" in msg else "OTHER:" + msg[:160]
+print(json.dumps(out))
+"""
+
+
+def test_the_repin_moves_the_writers_pin_AND_the_verifiers_independent_pin_together(cbuilt, tmp_path, monkeypatch):
+    """R17-2: with only `permission.py` re-pinned the writer accepts the new build and the verifier refuses `dasha_build_not_pinned` (Codex's own probe); after the tool's `apply_repin` BOTH accept the
+    new build and BOTH reject the old one. The re-pin runs on a scratch COPY of the sidecar (the real tree is never touched); both sides are exercised in a fresh interpreter against the real database."""
+    import importlib.util
+    import json as _json
+    import pathlib
+    import shutil
+    import subprocess
+    import sys as _sys
+    w = cbuilt
+    sidecar = pathlib.Path(__file__).resolve().parents[3]
+    spec = importlib.util.spec_from_file_location("repin_tool_composed", sidecar / "scripts" / "gochara" / "repin_dasha_contract.py")
+    tool = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(tool)
+    dsn = w.conn.info.dsn
+    NEW = "33333333-3333-4333-8333-333333333333"
+    OLD = tool.PERM.DASHA_READ_CONTRACT["build_id"]
+    assert OLD == PINNED_BUILD
+
+    def tree(name):
+        d = tmp_path / name
+        shutil.copytree(sidecar / "services", d / "services", ignore=shutil.ignore_patterns("__pycache__"))
+        (d / "tests" / "l3" / "gochara_rules").mkdir(parents=True)
+        return d
+
+    def probe(root):
+        r = subprocess.run([_sys.executable, "-c", _REPIN_PROBE, str(root), CHART_ID, GEN, dsn], capture_output=True, text=True, timeout=120, env={**os.environ, "PYTHONDONTWRITEBYTECODE": "1"})
+        assert r.returncode == 0, r.stderr[-800:]
+        return _json.loads(r.stdout.strip().splitlines()[-1])
+
+    shifted = lambda s_: tool.iso(__import__("datetime").datetime.fromtimestamp(tool._t(s_).timestamp() + 6993, tz=__import__("datetime").timezone.utc))
+    maps = [{"old": ref, "new": {"dasha_row_id": str(__import__("uuid").uuid5(__import__("uuid").NAMESPACE_URL, ref["row_id"])), "start_iso": shifted(ref["start_iso"]), "end_iso": shifted(ref["end_iso"]),
+                                  "lord_graha": ref["lord"]}, "key": None}
+            for rows in (tool.PERM.MD_ROWS, tool.PERM.AD_ROWS, tool.PERM.PD_ROWS) for ref in rows]
+    def repin(root):
+        monkeypatch.setattr(tool, "SIDECAR", root)
+        tool.apply_repin(NEW, maps, root, rulings={"keep": []})
+
+    # 0. before S-L1: one pinned build; both sides accept
+    assert probe(sidecar) == {"writer": "ACCEPT", "verifier": "ACCEPT"}
+    # 1. the settled L1 state: the same rows, the NEW build
+    w.conn.execute("UPDATE public.chart_dashas SET build_id = %s::uuid WHERE chart_id = %s", (NEW, CHART_ID))
+    assert probe(sidecar) == {"writer": "dasha_build_not_pinned", "verifier": "dasha_build_not_pinned"}          # nothing re-pinned: both refuse the new build
+    # 2. ONLY permission.py re-pinned (Codex's probe): the writer accepts, the verifier still refuses
+    half = tree("half")
+    repin(half)
+    shutil.copyfile(sidecar / "services" / "gochara_kernel" / "inventory_verifier.py", half / "services" / "gochara_kernel" / "inventory_verifier.py")
+    assert probe(half) == {"writer": "ACCEPT", "verifier": "dasha_build_not_pinned"}
+    # 3. the tool's apply_repin: BOTH pins move
+    both = tree("both")
+    repin(both)
+    assert f'_C_BUILD = "{NEW}"' in (both / "services" / "gochara_kernel" / "inventory_verifier.py").read_text()
+    assert probe(both) == {"writer": "ACCEPT", "verifier": "ACCEPT"}                                           # both ACCEPT the new build …
+    w.conn.execute("UPDATE public.chart_dashas SET build_id = %s::uuid WHERE chart_id = %s", (OLD, CHART_ID))
+    assert probe(both) == {"writer": "dasha_build_not_pinned", "verifier": "dasha_build_not_pinned"}          # … and BOTH reject the old one
