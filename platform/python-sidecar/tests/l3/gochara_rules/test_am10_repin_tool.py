@@ -35,6 +35,24 @@ def build(prefix, shift_s=0, lord_override=None):
     return rows
 
 
+class FakeConn:
+    """A connection stand-in that LOOKS like psycopg3 (has `execute`) — used where the reader itself is monkeypatched."""
+    def execute(self, *a, **k):
+        raise AssertionError("the reader is mocked in this test")
+
+    def cursor(self):
+        raise AssertionError("not used")
+
+
+def build3(prefix, shift_s=0):
+    """build() plus a level-3 (PD) row, so every level the tool expects (1–3) is present."""
+    rows = build(prefix, shift_s)
+    a0 = next(x for x in rows if x["dasha_row_id"].endswith("a0"))
+    rows.append({"dasha_row_id": f"{prefix}-p0", "level_n": 3, "parent_row_id": a0["dasha_row_id"], "lord_graha": "Mercury",
+                 "start_iso": a0["start_iso"], "end_iso": a0["end_iso"], "verification_pass_status": TIER, "build_id": prefix})
+    return rows
+
+
 def test_paths_match_by_level_parent_index_across_builds_with_different_ids():
     old, new = T.index_paths(build("old")), T.index_paths(build("new", shift_s=6993))
     m = T.match(old, new)
@@ -101,17 +119,21 @@ def test_reference_rows_are_remeasured_from_the_new_build_by_position():
 
 
 def test_cli_refuses_the_current_pin_and_stops_without_a_forensic_report(monkeypatch, tmp_path):
-    assert T.main(["--new-build-id", PERM.DASHA_READ_CONTRACT["build_id"]], conn=object()) == 2
+    assert T.main(["--new-build-id", PERM.DASHA_READ_CONTRACT["build_id"]], conn=FakeConn()) == 2
     # the DB stand-in: no rows for the new build ⇒ the new build is absent ⇒ STOP (exit 3), nothing applied
     monkeypatch.setattr(T.DD, "fetch_dasha_periods_multilevel", lambda conn, chart, **kw: [])
     monkeypatch.setattr(T, "fetch_vimshottari_builds", lambda conn, chart: {})
     monkeypatch.setattr(T, "fetch_preflight_facts", lambda conn, chart: {"builds": [], "non_scope": 0, "scope": 0, "throughput": {}})
-    out = tmp_path / "evidence.md"
-    assert T.main(["--new-build-id", "11111111-1111-4111-8111-111111111111", "--out", str(out)], conn=object()) == 3
-    assert "STOP" in out.read_text()
+    assert T.main(["--new-build-id", "11111111-1111-4111-8111-111111111111"], conn=FakeConn()) == 3          # an EMPTY read is a STOP (never 'nothing changed')
+
+
+def _stub_verifier(tmp_path, build_id=None):
+    d = tmp_path / "services" / "gochara_kernel"; d.mkdir(parents=True, exist_ok=True)
+    (d / "inventory_verifier.py").write_text(f'"""stub of Stream A\'s verifier"""\n_C_BUILD = "{build_id or PERM.DASHA_READ_CONTRACT["build_id"]}"\n', encoding="utf-8")
 
 
 def test_apply_rewrites_the_pin_the_reference_rows_and_literals_and_generates_the_refusal_test(monkeypatch, tmp_path):
+    _stub_verifier(tmp_path)
     # a scratch copy of the files --apply may touch
     perm_src = pathlib.Path(PERM.__file__)
     (tmp_path / "services" / "gochara_rules").mkdir(parents=True)
@@ -147,7 +169,7 @@ def test_apply_rewrites_the_pin_the_reference_rows_and_literals_and_generates_th
     assert "OTHER = \"2099-01-01T00:00:00Z\"" in text                        # unrelated literals untouched
     gen = tmp_path / "tests" / "l3" / "gochara_rules" / "test_am10_repin_22222222.py"
     assert gen.exists() and PERM.DASHA_READ_CONTRACT["build_id"] in gen.read_text(encoding="utf-8") and "DashaReadConflict" in gen.read_text(encoding="utf-8")
-    assert any(c.endswith("permission.py") for c in changed) and len(changed) == 3
+    assert any(c.endswith("permission.py") for c in changed) and any(c.endswith("inventory_verifier.py") for c in changed) and len(changed) == 4
 
 
 # ── Moshier → Swiss (≈ 1.94 h boundary shift; steward M20261002T222913-35c5, D7/D8) ─────────────────────────────────────────────────
@@ -201,6 +223,7 @@ def test_a_non_whole_second_new_instant_is_refused_by_apply(monkeypatch, tmp_pat
 
 
 def test_a_ruling_to_rewrite_changes_ONLY_the_ruled_line(monkeypatch, tmp_path):
+    _stub_verifier(tmp_path)
     (tmp_path / "services" / "gochara_rules").mkdir(parents=True)
     (tmp_path / "tests" / "l3" / "gochara_rules").mkdir(parents=True)
     (tmp_path / "services" / "gochara_rules" / "permission.py").write_text(pathlib.Path(PERM.__file__).read_text(encoding="utf-8"), encoding="utf-8")
@@ -242,14 +265,14 @@ def test_the_settled_notice_must_state_its_tolerance_and_settle_1(tmp_path):
 
 def test_apply_is_refused_without_the_hold_lift_and_dry_run_excludes_apply_and_writes_nothing(monkeypatch, tmp_path, capsys):
     new = "11111111-1111-4111-8111-111111111111"
-    assert T.main(["--new-build-id", new, "--apply"], conn=object()) == 2
+    assert T.main(["--new-build-id", new, "--apply"], conn=FakeConn()) == 2
     assert "ST-SL1-HOLD" in capsys.readouterr().err
-    assert T.main(["--new-build-id", new, "--apply", "--dry-run", "--hold-lifted", "M1"], conn=object()) == 2
+    assert T.main(["--new-build-id", new, "--apply", "--dry-run", "--hold-lifted", "M1"], conn=FakeConn()) == 2
     monkeypatch.setattr(T.DD, "fetch_dasha_periods_multilevel", lambda conn, chart, **kw: [])
     monkeypatch.setattr(T, "fetch_vimshottari_builds", lambda conn, chart: {})
     monkeypatch.setattr(T, "fetch_preflight_facts", lambda conn, chart: {"builds": [], "non_scope": 0, "scope": 0, "throughput": {}})
     out = tmp_path / "evidence.md"
-    assert T.main(["--new-build-id", new, "--dry-run", "--out", str(out)], conn=object()) == 3        # absent build ⇒ STOP, and …
+    assert T.main(["--new-build-id", new, "--dry-run", "--out", str(out)], conn=FakeConn()) == 3        # absent build ⇒ STOP, and …
     assert not out.exists()                                                                          # … a dry run writes no file
 
 
@@ -295,8 +318,8 @@ def test_capture_and_load_round_trip_and_refuse_a_wrong_or_altered_file(tmp_path
 
 
 def test_the_cli_compares_against_a_captured_old_file_when_the_old_rows_are_gone_and_stops_on_coexistence(monkeypatch, tmp_path, capsys):
-    rows_old = T.norm_rows(build("old"))
-    rows_new = T.norm_rows(build("new", shift_s=6993))
+    rows_old = T.norm_rows(build3("old"))
+    rows_new = T.norm_rows(build3("new", shift_s=6993))
     cap = tmp_path / "old.json"
     T.write_capture(str(cap), PERM.DASHA_READ_CONTRACT["chart_id"], OLDB, rows_old)
     monkeypatch.setattr(T.DD, "fetch_dasha_periods_multilevel", lambda conn, chart, build_id=None, **kw: rows_new if build_id == NEWB else [])    # the old build is GONE from the DB
@@ -304,31 +327,32 @@ def test_the_cli_compares_against_a_captured_old_file_when_the_old_rows_are_gone
     monkeypatch.setattr(T, "fetch_preflight_facts", lambda conn, chart: GOODFACTS)
     monkeypatch.setattr(T, "remeasure_reference_rows", lambda old, new: ([], []))      # the reference rows are covered by their own test; this fixture is not the pinned data
     notice = tmp_path / "n.json"
-    notice.write_text('{"settled_1": true, "new_build_id": "%s", "expected_shift_seconds": {"1": 6993, "2": 6993}, "tolerance_seconds": 1}' % NEWB)
+    notice.write_text('{"settled_1": true, "new_build_id": "%s", "expected_shift_seconds": {"1": 6993, "2": 6993, "3": 6993}, "tolerance_seconds": 1}' % NEWB)
     fr = tmp_path / "f.md"; fr.write_text("anchors ok")
     args = ["--new-build-id", NEWB, "--old-rows", str(cap), "--settled-notice", str(notice), "--forensic-report", str(fr), "--dry-run"]
-    rc = T.main(args, conn=object())
+    rc = T.main(args, conn=FakeConn())
     out = capsys.readouterr().out
     assert rc == 0 and "verdict: **CLEAN**" in out, out[-800:]
     # without the capture the old rows are absent ⇒ STOP with the instruction
-    rc = T.main([x for x in args if x not in ("--old-rows", str(cap))], conn=object())
-    assert rc == 3 and "--capture-old" in capsys.readouterr().out
+    rc = T.main([x for x in args if x not in ("--old-rows", str(cap))], conn=FakeConn())
+    err = capsys.readouterr().err
+    assert rc == 3 and "--capture-old" in err and "NO rows" in err
     # coexistence of the old build ⇒ STOP even though the comparison is otherwise clean
     monkeypatch.setattr(T, "fetch_vimshottari_builds", lambda conn, chart: {OLDB: 117, NEWB: 117})
     monkeypatch.setattr(T, "fetch_preflight_facts", lambda conn, chart: {**GOODFACTS, "builds": [OLDB, NEWB]})
-    rc = T.main(args, conn=object())
+    rc = T.main(args, conn=FakeConn())
     assert rc == 3 and "exactly ONE" in capsys.readouterr().out
 
 
 def test_capture_old_writes_a_file_and_refuses_when_the_pinned_build_has_no_rows(monkeypatch, tmp_path):
-    rows = T.norm_rows(build("old"))
+    rows = T.norm_rows(build3("old"))
     monkeypatch.setattr(T.DD, "fetch_dasha_periods_multilevel", lambda conn, chart, **kw: rows)
     p = tmp_path / "cap.json"
-    assert T.main(["--new-build-id", NEWB, "--capture-old", str(p)], conn=object()) == 0 and p.exists()
+    assert T.main(["--new-build-id", NEWB, "--capture-old", str(p)], conn=FakeConn()) == 0 and p.exists()
     assert T.load_capture(str(p), PERM.DASHA_READ_CONTRACT["chart_id"], OLDB) == rows
     monkeypatch.setattr(T.DD, "fetch_dasha_periods_multilevel", lambda conn, chart, **kw: [])
     q = tmp_path / "none.json"
-    assert T.main(["--new-build-id", NEWB, "--capture-old", str(q)], conn=object()) == 3 and not q.exists()
+    assert T.main(["--new-build-id", NEWB, "--capture-old", str(q)], conn=FakeConn()) == 3 and not q.exists()
 
 
 def test_the_settled_1_mechanical_guard_refuses_each_condition_separately():
@@ -363,14 +387,198 @@ def test_the_facts_fetch_is_three_read_only_selects():
 
 def test_the_tool_refuses_another_system_or_level_4_and_reads_only_levels_1_to_3(monkeypatch, tmp_path):
     new = "11111111-1111-4111-8111-111111111111"
-    assert T.main(["--new-build-id", new, "--system", "kalachakra", "--dry-run"], conn=object()) == 2
-    assert T.main(["--new-build-id", new, "--max-level", "4", "--dry-run"], conn=object()) == 2
+    assert T.main(["--new-build-id", new, "--system", "kalachakra", "--dry-run"], conn=FakeConn()) == 2
+    assert T.main(["--new-build-id", new, "--max-level", "4", "--dry-run"], conn=FakeConn()) == 2
     seen = []
     def fake(conn, chart, **kw):
         seen.append(kw.get("levels")); return []
     monkeypatch.setattr(T.DD, "fetch_dasha_periods_multilevel", fake)
     monkeypatch.setattr(T, "fetch_vimshottari_builds", lambda conn, chart: {})
     monkeypatch.setattr(T, "fetch_preflight_facts", lambda conn, chart: {"builds": [], "non_scope": 0, "scope": 0, "throughput": {}})
-    T.main(["--new-build-id", new, "--dry-run"], conn=object())
-    T.main(["--new-build-id", new, "--capture-old", str(tmp_path / "c.json")], conn=object())
+    T.main(["--new-build-id", new, "--dry-run"], conn=FakeConn())
+    T.main(["--new-build-id", new, "--capture-old", str(tmp_path / "c.json")], conn=FakeConn())
     assert seen and all(lv == (1, 2, 3) for lv in seen), seen                         # never level 4
+
+
+# ── Fable F-R17-1/2/5/6: the REAL reader, psycopg3, an empty read, the verifier's independent pin ────────────────────────────────────────────
+import uuid as _uuid
+from datetime import datetime as _dt, timezone as _tz
+
+_NS = _uuid.UUID("12345678-1234-5678-1234-567812345678")
+_KEYS = ["dasha_row_id", "system_id", "level_n", "parent_row_id", "lord_graha", "start_iso", "end_iso", "build_id", "verification_pass_status"]
+
+
+def _uid(prefix, name):
+    return str(_uuid.uuid5(_NS, f"{prefix}-{name}"))
+
+
+def _db_tuples(prefix, build_id, shift_s=0):
+    """build3() as the tuples a psycopg3 cursor returns for the reader's SELECT (real uuid ids, tz-aware datetimes, the reader's column order)."""
+    out = []
+    for r in build3(prefix, shift_s):
+        name = r["dasha_row_id"].split("-", 1)[1]
+        parent = r["parent_row_id"]
+        out.append((_uid(prefix, name), "vimshottari", r["level_n"], None if parent is None else _uid(prefix, parent.split("-", 1)[1]), r["lord_graha"],
+                    T._t(r["start_iso"]), T._t(r["end_iso"]), build_id, TIER))
+    return out
+
+
+class Psycopg3Shaped:
+    """Exposes ONLY psycopg3's surface (`execute()` -> cursor with fetchall()) — the REAL reader (`DD.fetch_dasha_periods_multilevel`) is NOT mocked."""
+    def __init__(self, by_build):
+        self.by_build, self.sql = by_build, []
+
+    def execute(self, sql, params=None):
+        self.sql.append((sql, params))
+        build = params[-1] if params else None
+        rows = self.by_build.get(str(build), [])
+        class Cur:
+            def fetchall(self_):
+                return list(rows)
+        return Cur()
+
+
+class Psycopg2Shaped:
+    """Exposes ONLY psycopg2's surface (`cursor()`): the reader would raise AttributeError and swallow it into []."""
+    def cursor(self):
+        raise AssertionError("never reached: the tool must STOP by name before reading")
+
+
+def test_the_UNMOCKED_reader_through_a_psycopg3_shaped_connection_feeds_capture_old(tmp_path):
+    conn = Psycopg3Shaped({OLDB: _db_tuples("old", OLDB)})
+    p = tmp_path / "cap.json"
+    assert T.main(["--new-build-id", NEWB, "--capture-old", str(p)], conn=conn) == 0 and p.exists()
+    rows = T.load_capture(str(p), PERM.DASHA_READ_CONTRACT["chart_id"], OLDB)
+    assert sorted({r["level_n"] for r in rows}) == [1, 2, 3] and len(rows) == 5
+    assert conn.sql and all("chart_dashas" in q for q, _ in conn.sql)                   # the real SELECT ran
+
+
+def test_a_psycopg2_shaped_connection_STOPS_by_name_not_by_no_rows(tmp_path, capsys):
+    p = tmp_path / "cap.json"
+    assert T.main(["--new-build-id", NEWB, "--capture-old", str(p)], conn=Psycopg2Shaped()) == 3
+    err = capsys.readouterr().err
+    assert "not a psycopg (v3) connection" in err and "no rows" not in err.lower() and not p.exists()
+
+
+def test_an_empty_level_is_a_STOP_that_quotes_the_readers_own_logged_reason(tmp_path, capsys):
+    class Boom(Psycopg3Shaped):
+        def execute(self, sql, params=None):
+            raise RuntimeError("relation chart_dashas is unreachable")                 # the reader swallows this into []
+    assert T.main(["--new-build-id", NEWB, "--capture-old", str(tmp_path / "c.json")], conn=Boom({})) == 3
+    err = capsys.readouterr().err
+    assert "NO rows for level(s) ['MD', 'AD', 'PD']" in err and "relation chart_dashas is unreachable" in err
+    only12 = Psycopg3Shaped({OLDB: [r for r in _db_tuples("old", OLDB) if r[2] in (1, 2)]})                 # a level missing, the others present
+    assert T.main(["--new-build-id", NEWB, "--capture-old", str(tmp_path / "d.json")], conn=only12) == 3
+    assert "['PD']" in capsys.readouterr().err
+
+
+def test_a_dasha_read_conflict_is_a_named_refusal(monkeypatch, capsys):
+    def boom(conn, chart, **kw):
+        raise T.DD.DashaReadConflict("two rows, one identity, different contract fields")
+    monkeypatch.setattr(T.DD, "fetch_dasha_periods_multilevel", boom)
+    assert T.main(["--new-build-id", NEWB, "--capture-old", "/nonexistent/x.json"], conn=FakeConn()) == 3
+    assert "dasha read conflict" in capsys.readouterr().err
+
+
+def test_the_notice_tolerance_must_be_at_least_one_second(tmp_path):
+    for tol in ("0", "0.5", "-1"):
+        p = tmp_path / "n.json"
+        p.write_text('{"settled_1": true, "expected_shift_seconds": {"1": 6993}, "tolerance_seconds": %s}' % tol)
+        with pytest.raises(ValueError, match=">= 1"):
+            T.load_notice(str(p))
+    p.write_text('{"settled_1": true, "expected_shift_seconds": {"1": 6993}, "tolerance_seconds": 1}')
+    assert T.load_notice(str(p))["tolerance_seconds"] == 1
+
+
+def test_a_missing_or_empty_forensic_report_stops_before_any_read(tmp_path, capsys):
+    new = NEWB
+    assert T.main(["--new-build-id", new, "--forensic-report", str(tmp_path / "nope.md"), "--dry-run"], conn=FakeConn()) == 3
+    assert "FORENSIC" in capsys.readouterr().err
+    empty = tmp_path / "e.md"; empty.write_text("")
+    assert T.main(["--new-build-id", new, "--forensic-report", str(empty), "--dry-run"], conn=FakeConn()) == 3
+
+
+def _apply_world(tmp_path, ver_line=None, with_verifier=True):
+    (tmp_path / "services" / "gochara_rules").mkdir(parents=True)
+    (tmp_path / "tests" / "l3" / "gochara_rules").mkdir(parents=True)
+    (tmp_path / "services" / "gochara_rules" / "permission.py").write_text(pathlib.Path(PERM.__file__).read_text(encoding="utf-8"), encoding="utf-8")
+    if with_verifier:
+        d = tmp_path / "services" / "gochara_kernel"; d.mkdir(parents=True)
+        (d / "inventory_verifier.py").write_text(ver_line if ver_line is not None else f'_C_BUILD = "{OLDB}"\n', encoding="utf-8")
+    ref = PERM.AD_ROWS[0]
+    return [{"old": ref, "new": {"dasha_row_id": "99999999-9999-4999-8999-999999999999", "start_iso": "2013-01-14T09:13:56Z", "end_iso": "2014-01-11T14:11:56Z", "lord_graha": ref["lord"]}, "key": (2, (0,))}]
+
+
+def test_apply_rewrites_BOTH_pin_constants_and_the_generated_test_asserts_they_are_equal(monkeypatch, tmp_path):
+    maps = _apply_world(tmp_path)
+    monkeypatch.setattr(T, "SIDECAR", tmp_path)
+    changed = T.apply_repin(NEWB, maps, tmp_path)
+    assert (tmp_path / "services" / "gochara_kernel" / "inventory_verifier.py").read_text() == f'_C_BUILD = "{NEWB}"\n'
+    assert f'"build_id": "{NEWB}"' in (tmp_path / "services" / "gochara_rules" / "permission.py").read_text()
+    assert any(c.endswith("inventory_verifier.py") for c in changed)
+    gen = (tmp_path / "tests" / "l3" / "gochara_rules" / f"test_am10_repin_{NEWB[:8]}.py").read_text()
+    assert "inventory_verifier._C_BUILD == DASHA_READ_CONTRACT" in gen
+
+
+@pytest.mark.parametrize("ver_line,with_verifier", [(None, False), (f'_C_BUILD = "{OLDB}"\n_C_BUILD = "{OLDB}"\n', True), ('_C_BUILD = "someone-else"\n', True)])
+def test_apply_STOPS_writing_nothing_when_the_verifiers_pin_cannot_be_rewritten(monkeypatch, tmp_path, ver_line, with_verifier):
+    maps = _apply_world(tmp_path, ver_line=ver_line, with_verifier=with_verifier)
+    monkeypatch.setattr(T, "SIDECAR", tmp_path)
+    perm_before = (tmp_path / "services" / "gochara_rules" / "permission.py").read_text()
+    with pytest.raises(T.VerifierPinMissing):
+        T.apply_repin(NEWB, maps, tmp_path)
+    assert (tmp_path / "services" / "gochara_rules" / "permission.py").read_text() == perm_before          # nothing was written
+    assert not list((tmp_path / "tests" / "l3").rglob("test_am10_repin_*.py"))
+
+
+# ── ONE end-to-end test against a DISPOSABLE PostgreSQL with chart_dashas-SHAPED rows: real psycopg3 connection (read-only), the real reader, the real builds / pre-flight queries ─────────
+import os as _os
+
+_PG = _os.environ.get("GOCHARA_A51_TEST_DATABASE_URL")
+
+
+@pytest.mark.skipif(not _PG, reason="needs GOCHARA_A51_TEST_DATABASE_URL (a disposable PostgreSQL server; the test creates and drops its own database)")
+def test_end_to_end_against_a_disposable_database_with_real_chart_dashas_shaped_rows(monkeypatch, tmp_path, capsys):
+    import psycopg
+    from psycopg.conninfo import conninfo_to_dict, make_conninfo
+    base = conninfo_to_dict(_PG)
+    admin = psycopg.connect(make_conninfo(**{**base, "dbname": "postgres"}), autocommit=True)
+    name = f"repin_tool_{_uuid.uuid4().hex[:10]}"
+    admin.execute(f'CREATE DATABASE "{name}"')
+    try:
+        dsn = make_conninfo(**{**base, "dbname": name})
+        with psycopg.connect(dsn, autocommit=True) as c:
+            c.execute("""CREATE TABLE chart_dashas (dasha_row_id uuid PRIMARY KEY, chart_id uuid NOT NULL, ayanamsha_id text NOT NULL, build_id uuid NOT NULL, system_id text NOT NULL,
+                           level_n int NOT NULL, parent_row_id uuid, lord_graha text NOT NULL, start_iso timestamptz NOT NULL, end_iso timestamptz NOT NULL,
+                           verification_pass_status text NOT NULL)""")
+            c.execute("CREATE TABLE asset_throughput (chart_id uuid, asset_id text, state text)")
+            chart = PERM.DASHA_READ_CONTRACT["chart_id"]
+            for r in _db_tuples("new", NEWB, 6993):                                                      # the SETTLED-1 build: vimshottari / lahiri, levels 1–3
+                c.execute("INSERT INTO chart_dashas VALUES (%s,%s,'lahiri_chitrapaksha',%s,%s,%s,%s,%s,%s,%s,%s)", (r[0], chart, r[7], r[1], r[2], r[3], r[4], r[5], r[6], r[8]))
+            # every other partition of the 45 + the scope-cap, one row each, the SAME build (the complete shape the guard requires)
+            for system in ("vimshottari", "vimshottari_kp", "yogini", "ashtottari", "kalachakra", "mudda", "narayana", "naisargika", "chara_karaka"):
+                for ay in ("lahiri_chitrapaksha", "true_chitra", "krishnamurti", "raman", "surya_siddhanta"):
+                    if (system, ay) == ("vimshottari", "lahiri_chitrapaksha"):
+                        continue
+                    c.execute("INSERT INTO chart_dashas VALUES (%s,%s,%s,%s,%s,1,NULL,'Sun','2000-01-01','2010-01-01','two_pass_verified')", (str(_uuid.uuid4()), chart, ay, NEWB, system))
+            c.execute("INSERT INTO chart_dashas VALUES (%s,%s,'lahiri_chitrapaksha',%s,'scope_cap',1,NULL,'Sun','2000-01-01','2010-01-01','two_pass_verified')", (str(_uuid.uuid4()), chart, NEWB))
+            c.execute("INSERT INTO asset_throughput VALUES (%s,'ga_dashas','lit'), (%s,'ga_positions','lit')", (chart, chart))
+        cap = tmp_path / "old.json"
+        T.write_capture(str(cap), chart, OLDB, T.norm_rows(build3("old")))                              # the old build is GONE from the database; its rows were captured BEFORE
+        notice = tmp_path / "n.json"
+        notice.write_text('{"settled_1": true, "new_build_id": "%s", "expected_shift_seconds": {"1": 6993, "2": 6993, "3": 6993}, "tolerance_seconds": 1}' % NEWB)
+        fr = tmp_path / "f.md"; fr.write_text("the seven FORENSIC anchors hold")
+        monkeypatch.setenv("DATABASE_URL", dsn)
+        monkeypatch.setattr(T, "remeasure_reference_rows", lambda old, new: ([], []))                      # the pinned reference rows are covered by their own test; this DB holds toy rows
+        rc = T.main(["--new-build-id", NEWB, "--old-rows", str(cap), "--settled-notice", str(notice), "--forensic-report", str(fr), "--dry-run"])        # conn=None ⇒ the REAL read-only psycopg3 connect
+        out = capsys.readouterr()
+        assert rc == 0 and "verdict: **CLEAN**" in out.out, (out.out[-900:], out.err[-400:])
+        # and the same database with the OLD build coexisting is refused by the G6 guard through the real queries
+        with psycopg.connect(dsn, autocommit=True) as c:
+            for r in _db_tuples("old", OLDB):
+                c.execute("INSERT INTO chart_dashas VALUES (%s,%s,'lahiri_chitrapaksha',%s,%s,%s,%s,%s,%s,%s,%s)", (r[0], chart, r[7], r[1], r[2], r[3], r[4], r[5], r[6], r[8]))
+        rc = T.main(["--new-build-id", NEWB, "--old-rows", str(cap), "--settled-notice", str(notice), "--forensic-report", str(fr), "--dry-run"])
+        assert rc == 3 and "exactly ONE" in capsys.readouterr().out
+    finally:
+        admin.execute(f'DROP DATABASE IF EXISTS "{name}" WITH (FORCE)')
+        admin.close()

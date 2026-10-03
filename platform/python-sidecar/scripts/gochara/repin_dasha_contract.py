@@ -20,6 +20,7 @@ an old boundary are listed and --apply STOPS before writing anything until --rul
 
 READ-ONLY against the database (the connection is set READ ONLY); --apply edits only
 files in this repository:
+  * services/gochara_kernel/inventory_verifier.py: the verifier's INDEPENDENT pin `_C_BUILD` (the second site — Fable F-R17-2; --apply STOPS naming it if the file is absent or the line is not unique);
   * services/gochara_rules/permission.py: DASHA_READ_CONTRACT['build_id'] and the MD/AD/PD
     reference-row tuples (re-measured from the new build, matched by (level, parent path, index));
   * tests/l3/**/*.py: ONLY the reference rows' ids and the old pin's build id (exact-string, ONE pass). An old boundary INSTANT in a test is NOT rewritten — it may be an event date
@@ -49,6 +50,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import logging
 import os
 import re
 import statistics
@@ -64,6 +66,7 @@ from services.gochara_grammar import dasha_data as DD                       # no
 from services.gochara_rules import permission as PERM                       # noqa: E402
 
 LEVEL_NAME = {1: "MD", 2: "AD", 3: "PD", 4: "L4"}
+MIN_TOLERANCE_SECONDS = 1
 LEVELS_IN_SCOPE = (1, 2, 3)          # Vimśottarī Lahiri MD/AD/PD only (steward M20261002T230554 / Suvarṇa addendum 7): lords and row counts must be EQUAL here; level 4 is out of scope
 
 
@@ -225,6 +228,56 @@ def load_capture(path: str, chart_id: str, build_id: str) -> list[dict]:
     return d["rows"]
 
 
+class ReaderRefused(Exception):
+    """The §4.0 reader cannot be trusted for this read: a STOP by NAME (never by 'no rows')."""
+
+
+class _LogCollector(logging.Handler):
+    def __init__(self):
+        super().__init__(level=logging.INFO)
+        self.messages: list[str] = []
+
+    def emit(self, record):
+        self.messages.append(record.getMessage())
+
+
+def read_levels(conn, chart_id: str, build_id: str, label: str) -> list[dict]:
+    """The Vimśottarī Lahiri levels 1–3 of ONE build through the REAL §4.0 reader — with three guards the reader itself does not give (Fable F-R17-1): (1) the connection must be psycopg (v3) — the reader
+    calls `conn.execute()` and SWALLOWS any exception (an AttributeError on a psycopg2 connection included) into `[]`; (2) a `DashaReadConflict` is a named refusal; (3) an EMPTY read for any level the tool
+    expects is a STOP quoting the reader's own logged reason — an empty read must never look like 'nothing changed'."""
+    if not hasattr(conn, "execute"):
+        raise ReaderRefused(f"{label}: the connection is not a psycopg (v3) connection (it has no execute()); the §4.0 reader is psycopg3-only and would turn that into an empty read")
+    collector = _LogCollector()
+    lg = logging.getLogger("services.gochara_grammar.dasha_data")
+    old_level = lg.level
+    lg.addHandler(collector); lg.setLevel(logging.INFO)
+    try:
+        try:
+            rows = norm_rows(DD.fetch_dasha_periods_multilevel(conn, chart_id, systems=["vimshottari"], build_id=build_id, levels=LEVELS_IN_SCOPE))
+        except DD.DashaReadConflict as exc:
+            raise ReaderRefused(f"{label}: dasha read conflict for build {build_id}: {exc}") from exc
+    finally:
+        lg.removeHandler(collector); lg.setLevel(old_level)
+    missing = [LEVEL_NAME[lv] for lv in LEVELS_IN_SCOPE if not any(int(r["level_n"]) == lv for r in rows)]
+    if missing:
+        why = f" (reader log: {' | '.join(collector.messages)})" if collector.messages else ""
+        extra = " — capture them BEFORE S-L1 with --capture-old and pass --old-rows" if label == "old build" else ""
+        raise ReaderRefused(f"{label}: the reader returned NO rows for level(s) {missing} of build {build_id}; an empty read is never 'nothing changed'{why}{extra}")
+    return rows
+
+
+def open_readonly_connection():
+    """psycopg (v3), READ ONLY — the connection the §4.0 reader requires."""
+    import psycopg
+    conn = psycopg.connect(os.environ["DATABASE_URL"])
+    conn.read_only = True
+    return conn
+
+
+class VerifierPinMissing(Exception):
+    """--apply cannot rewrite/assert the verifier's independent pin: nothing was written."""
+
+
 class NeedsRuling(Exception):
     """--apply found test literals nobody has ruled on: nothing was written."""
     def __init__(self, unclassified: list[str]):
@@ -236,8 +289,8 @@ def load_notice(path: str) -> dict:
     """Suvarṇa's SETTLED-1 notice as JSON: {"settled_1": true, "new_build_id": "<uuid>", "expected_shift_seconds": {"1": 6993, "2": 6993, "3": 6993}, "tolerance_seconds": 2}
     (a level may instead give {"start": n, "end": n}). The tolerance is STATED by the notice — there is no default."""
     d = json.loads(Path(path).read_text(encoding="utf-8"))
-    if d.get("settled_1") is not True or not isinstance(d.get("expected_shift_seconds"), dict) or not isinstance(d.get("tolerance_seconds"), (int, float)) or isinstance(d.get("tolerance_seconds"), bool) or d["tolerance_seconds"] < 0:
-        raise ValueError("the SETTLED-1 notice must carry settled_1: true, expected_shift_seconds per level and a stated tolerance_seconds >= 0")
+    if d.get("settled_1") is not True or not isinstance(d.get("expected_shift_seconds"), dict) or not isinstance(d.get("tolerance_seconds"), (int, float)) or isinstance(d.get("tolerance_seconds"), bool) or d["tolerance_seconds"] < MIN_TOLERANCE_SECONDS:
+        raise ValueError(f"the SETTLED-1 notice must carry settled_1: true, expected_shift_seconds per level and a stated tolerance_seconds >= {MIN_TOLERANCE_SECONDS} (every instant on both sides is whole-second truncated, so a tolerance below 1 s could refuse an exact shift)")
     return d
 
 
@@ -383,6 +436,13 @@ def apply_repin(new_id: str, maps: list[dict], repo_root: Path, rulings: dict | 
         for side in ("start_iso", "end_iso"):
             assert _WHOLE_SECOND_Z.fullmatch(n[side]), f"new instant {n[side]!r} is not whole-second …Z (permission.py compares these lexicographically)"
             instants[o[side]] = n[side]
+    ver = SIDECAR / "services" / "gochara_kernel" / "inventory_verifier.py"
+    if not ver.is_file():
+        raise VerifierPinMissing(f"{ver} is absent: the verifier's INDEPENDENT pin (`_C_BUILD`) cannot be rewritten — run the re-pin on a tree that carries the '5.0' kernel")
+    ver_txt = ver.read_text(encoding="utf-8")
+    ver_old_line = f'_C_BUILD = "{old_id}"'
+    if ver_txt.count(ver_old_line) != 1:
+        raise VerifierPinMissing(f"{ver}: expected exactly ONE `{ver_old_line}` line, found {ver_txt.count(ver_old_line)} (the verifier's pin is a second site; it must equal the permission.py pin before and after)")
     matches = scan_test_literals(instants, repo_root)
     ruled = {**{k: "rewrite" for k in (rulings or {}).get("rewrite", [])}, **{k: "keep" for k in (rulings or {}).get("keep", [])}}
     unclassified = [f"{p}:{ln} {a_} -> {b_}" for p, ln, a_, b_ in matches if f"{p}:{ln}" not in ruled]
@@ -392,8 +452,12 @@ def apply_repin(new_id: str, maps: list[dict], repo_root: Path, rulings: dict | 
         raise NeedsRuling(unclassified)                                              # nothing has been written
     s = rewrite_once(s, {**ids, **instants, f'"build_id": "{old_id}"': f'"build_id": "{new_id}"'})
     assert s.count(f'"build_id": "{new_id}"') == 1 and f'"build_id": "{old_id}"' not in s, "the re-pin constant must equal the SETTLED-1 build and the old pin must be gone (G6 b)"
+    new_ver = rewrite_once(ver_txt, {ver_old_line: f'_C_BUILD = "{new_id}"'})
+    assert new_ver.count(f'_C_BUILD = "{new_id}"') == 1 and ver_old_line not in new_ver, "the verifier's _C_BUILD must equal the SETTLED-1 build and the old pin must be gone"
     perm.write_text(s, encoding="utf-8")
+    ver.write_text(new_ver, encoding="utf-8")
     changed.append(str(perm.relative_to(repo_root)))
+    changed.append(str(ver.relative_to(repo_root)))
     by_file: dict[str, dict[int, dict[str, str]]] = {}
     for p, ln, a_, b_ in matches:
         if ruled.get(f"{p}:{ln}") == "rewrite":
@@ -421,6 +485,7 @@ import sys
 import pytest
 
 from services.gochara_grammar.dasha_data import DashaReadConflict
+from services.gochara_kernel import inventory_verifier
 from services.gochara_rules.permission import DASHA_READ_CONTRACT
 
 _P = pathlib.Path(__file__).resolve().parents[3] / "scripts" / "kala_gochara_cutover" / "step06a_class_context.py"
@@ -437,6 +502,10 @@ def rows(build):
     return [{{"system_id": "vimshottari", "build_id": build, "level_n": 1}}]
 
 
+def test_the_verifiers_independent_pin_equals_the_read_contract_pin():
+    assert inventory_verifier._C_BUILD == DASHA_READ_CONTRACT["build_id"] == NEW
+
+
 def test_pin_is_the_new_build_and_the_old_one_is_refused():
     assert DASHA_READ_CONTRACT["build_id"] == NEW
     assert select_dasha_read_contract(DASHA_READ_CONTRACT["chart_id"], rows(NEW))["build_id"] == NEW
@@ -449,11 +518,11 @@ def test_pin_is_the_new_build_and_the_old_one_is_refused():
 def _capture_old(a, conn) -> int:
     old_id = PERM.DASHA_READ_CONTRACT["build_id"]
     if conn is None:
-        import psycopg2
-        conn = psycopg2.connect(os.environ["DATABASE_URL"]); conn.set_session(readonly=True)
-    rows = norm_rows(DD.fetch_dasha_periods_multilevel(conn, a.chart_id, systems=["vimshottari"], build_id=old_id, levels=LEVELS_IN_SCOPE))
-    if not rows:
-        print(f"STOP — the pinned build {old_id} has no rows to capture", file=sys.stderr); return 3
+        conn = open_readonly_connection()
+    try:
+        rows = read_levels(conn, a.chart_id, old_id, "pinned build (capture)")
+    except ReaderRefused as exc:
+        print(f"STOP — {exc}", file=sys.stderr); return 3
     print(f"captured {len(rows)} rows of {old_id} -> {a.capture_old} sha256 {write_capture(a.capture_old, a.chart_id, old_id, rows)}")
     return 0
 
@@ -485,18 +554,24 @@ def main(argv=None, *, conn=None) -> int:
     old_id = PERM.DASHA_READ_CONTRACT["build_id"]
     if a.new_build_id == old_id:
         print("new build equals the current pin — nothing to re-pin", file=sys.stderr); return 2
+    if a.forensic_report is not None:
+        fr = Path(a.forensic_report)
+        if not fr.is_file() or fr.stat().st_size == 0:
+            print(f"STOP — --forensic-report {a.forensic_report} does not exist or is empty (evidence item (e): the seven FORENSIC anchors)", file=sys.stderr); return 3
     if conn is None:
-        import psycopg2
-        conn = psycopg2.connect(os.environ["DATABASE_URL"]); conn.set_session(readonly=True)
-    if a.old_rows:
-        try:
-            old_rows = load_capture(a.old_rows, a.chart_id, old_id)
-        except (OSError, ValueError) as exc:
-            print(f"STOP — {exc}", file=sys.stderr); return 3
-    else:
-        old_rows = norm_rows(DD.fetch_dasha_periods_multilevel(conn, a.chart_id, systems=["vimshottari"], build_id=old_id, levels=LEVELS_IN_SCOPE))
-    old_rows = [r for r in old_rows if int(r["level_n"]) in LEVELS_IN_SCOPE]        # a capture taken earlier may carry level 4: out of scope, never compared
-    new_rows = norm_rows(DD.fetch_dasha_periods_multilevel(conn, a.chart_id, systems=["vimshottari"], build_id=a.new_build_id, levels=LEVELS_IN_SCOPE))
+        conn = open_readonly_connection()
+    try:
+        if a.old_rows:
+            try:
+                old_rows = load_capture(a.old_rows, a.chart_id, old_id)
+            except (OSError, ValueError) as exc:
+                print(f"STOP — {exc}", file=sys.stderr); return 3
+        else:
+            old_rows = read_levels(conn, a.chart_id, old_id, "old build")
+        old_rows = [r for r in old_rows if int(r["level_n"]) in LEVELS_IN_SCOPE]        # a capture taken earlier may carry level 4: out of scope, never compared
+        new_rows = read_levels(conn, a.chart_id, a.new_build_id, "new build")
+    except ReaderRefused as exc:
+        print(f"STOP — {exc}", file=sys.stderr); return 3
     # tier is pinned IN the query (two_pass_verified): an empty result means the new build is absent or at another tier
     new_tier_ok = bool(new_rows) and all(r.get("verification_pass_status") == PERM.DASHA_READ_CONTRACT["tier"] for r in new_rows)
     old_idx, new_idx = index_paths(old_rows), index_paths(new_rows)
@@ -511,8 +586,6 @@ def main(argv=None, *, conn=None) -> int:
         print(f"STOP — {exc}", file=sys.stderr); return 3
     builds = fetch_vimshottari_builds(conn, a.chart_id)
     extra_stops = build_problems(builds, a.new_build_id) + preflight_problems(fetch_preflight_facts(conn, a.chart_id), a.new_build_id)
-    if not old_rows:
-        extra_stops.append("the OLD build's rows are absent from the database and no --old-rows capture was supplied (capture them BEFORE S-L1 with --capture-old)")
     stops = decide(new_tier_ok=new_tier_ok, new_integrity=integrity(new_rows), m=m, flips=flips,
                    ref_problems=ref_problems, forensic_report=a.forensic_report, shift_issues=shift_problems(stats, notice))
     stops += extra_stops
@@ -540,7 +613,11 @@ def main(argv=None, *, conn=None) -> int:
             for r in exc.unclassified:
                 print("NEEDS RULING (nothing written):", r, file=sys.stderr)
             print("STOP — test literals equal to an old boundary need the steward's ruling (--rulings).", file=sys.stderr); return 3
+        except VerifierPinMissing as exc:
+            print(f"STOP (nothing written) — {exc}", file=sys.stderr); return 3
         print(f"ST-SL1-HOLD lifted per {a.hold_lifted}")
+        print("BOTH pin constants were rewritten and verified equal to the SETTLED-1 build: services/gochara_rules/permission.py DASHA_READ_CONTRACT['build_id'] AND services/gochara_kernel/inventory_verifier.py _C_BUILD.")
+        print("NEXT, in the SAME reviewed re-pin PR: regenerate the implementation lock — `python -m services.gochara_kernel.implementation_registry --write` (a changed governed module moves the implementation digest; the seal refuses an unregistered one).")
         for r in review:
             print("ruled:", r)
     return 0
