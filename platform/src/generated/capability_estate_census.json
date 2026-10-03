@@ -6,7 +6,7 @@
     "A reviewed output-digest specification establishes deterministic output hashing, not semantic value, population, planner reachability, or empirical validity.",
     "The full MCP profile is registration-gated by the reviewed route authority; its real registration set is exact-set tested independently."
   ],
-  "content_sha256": "feda504d88593859cd4e10637c54916d5ce692ab81bdcb167c1ca20cea49fb58",
+  "content_sha256": "59961e00ce0a56001cdce7d6359069f05f10496ceb6e2f8428d5b9ec47550e4a",
   "denominators": {
     "descriptor_route_contracts": {
       "by_public_route_disposition": {
@@ -20966,7 +20966,7 @@
       ]
     }
   },
-  "generated_at": "2026-10-03T13:42:46.000Z",
+  "generated_at": "2026-10-03T14:01:01.000Z",
   "provenance": {
     "method": "DB-free source census with recursively key-sorted canonical JSON and SHA-256 fingerprints",
     "sources": [
@@ -21509,7 +21509,7 @@
           },
           {
             "path": "platform-mcp/src/tools/register_p1_synthesis.ts",
-            "sha256": "4365b59def50ebaa019b4034acc12c73581ea64cbbaf63f3e28fbca35c7eff92"
+            "sha256": "8893f20181e2ee78c1176833119b03b921b26c9d049000f79404928795397e4a"
           },
           {
             "path": "platform-mcp/src/tools/register_p2_dasha_lord.ts",
@@ -21569,7 +21569,7 @@
           }
         ],
         "path": "platform-mcp/src/tools/**/*.ts (excluding tests)",
-        "sha256": "0113fc5d919426d7e93a69d098f1747a0d523e006206648edb6ff8543b8cf8a7"
+        "sha256": "45daeb8492dd4934354b073d769633a63199bf1f2e6737ce7715f57f6d16baa4"
       },
       {
         "id": "registrar_bridge_extractor",
@@ -22259,7 +22259,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L5_mimamsa/prefix_generation.ts",
-            "sha256": "8f4b34a0d121d6c357e875c5ab9b223788a11a664224c6da2025bffccc2e079c"
+            "sha256": "ae979acb424e33a663bb5080c504d4420d7958c416dc198089178c675db9679a"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L5_mimamsa/query_attribution.ts",
@@ -22267,7 +22267,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L5_mimamsa/query_calibration.ts",
-            "sha256": "db9952a27a44a79407a09aaf647d909e422754a9ecef7f22081acca3f5e62a29"
+            "sha256": "f5919ffb3752efe1c4a6bf24640bc4b93a2cecf279d8a57840db8959f61b2d31"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L5_mimamsa/query_insight_embeddings.ts",
@@ -22275,7 +22275,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L5_mimamsa/query_insights.ts",
-            "sha256": "b1adf7cbc45cd7c20cb5f1dbfb6b8dc6dce6b014a7c676660c87f359713cabe8"
+            "sha256": "1fcb8c2c3808cb6f7076fb5e0e33eb785751f127569ec6fee1a5c8cbe158804c"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L5_mimamsa/query_journal.ts",
@@ -22287,11 +22287,11 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L5_mimamsa/query_load_bearing.ts",
-            "sha256": "94fc79d823b67e6d11adfd8717769204c614afd662313049f7bdf0804a2657b4"
+            "sha256": "029e3d886de3d02fbf8a38002e28f11c35778ff589fd2805ed1b136ffa909b39"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L5_mimamsa/query_manifestation_grammar.ts",
-            "sha256": "8d7b24d7a31d14b1734de737bde927f81dc63b028fe991c31eafe9980f41ca9c"
+            "sha256": "1e66fe3d4c81455ce450d112a961240aa1e5ce8a81b19aeb3e47e524311d8e91"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L5_mimamsa/query_manifestation_sets.ts",
@@ -22303,7 +22303,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L5_mimamsa/query_mimamsa_discoveries.ts",
-            "sha256": "5a2e30949dbbd4546ea786de3c4581685f4055b0d277cdd7b03128c304d63032"
+            "sha256": "e9a9e031776800f269c3302e1d89a5f1b18fe6992e61066073c212395beadb51"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L5_mimamsa/query_predictions.ts",
@@ -22407,7 +22407,7 @@
           }
         ],
         "path": "platform/src/lib/retrieval/{registry,synthesis}/**/*.ts (excluding tests)",
-        "sha256": "7f45e8b6464667a52a07a4781f612fb8da0871f321ece4fd79aea007ca1ad67b"
+        "sha256": "7ea144e6f9af544c427825c9266b703e753e4c0a4cd89229b7b389734f136d52"
       },
       {
         "id": "service_effect_contracts",
@@ -22432,5 +22432,5 @@
     ]
   },
   "schema_version": "capability-estate-census/v1.2",
-  "source_revision": "6758c39b10d3b1eef466d1c280e8769255d6d589"
+  "source_revision": "02cad574984a3d52ba0a294e6061e3fb925a718b"
 }
