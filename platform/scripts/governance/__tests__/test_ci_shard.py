@@ -116,3 +116,18 @@ def test_no_other_job_still_runs_the_whole_directory_as_one_pytest_call(jobs):
     for name, j in jobs.items():
         for s in j.get("steps", []):
             assert "pytest platform/scripts/governance/__tests__ " not in str(s.get("run", "")) + " ", name
+
+
+@pytest.mark.parametrize("result,ok", [("success", True), ("skipped", False), ("cancelled", False), ("failure", False), ("", False)])
+def test_a_skipped_or_cancelled_or_failed_shard_fails_the_aggregate(jobs, result, ok):
+    """N-98 A: run the aggregate job's own script with each possible `needs.<shard>.result`: only `success` may pass."""
+    script = jobs["governance-tool-tests"]["steps"][0]["run"]
+    p = subprocess.run(["bash", "-c", script], env={"SHARDS_RESULT": result, "PATH": "/usr/bin:/bin"}, capture_output=True, text=True)
+    assert (p.returncode == 0) is ok, (result, p.stdout, p.stderr)
+    assert ("::error::" in p.stdout) is (not ok)
+
+
+def test_the_aggregate_script_fails_when_the_result_is_not_even_set(jobs):
+    script = jobs["governance-tool-tests"]["steps"][0]["run"]
+    p = subprocess.run(["bash", "-c", script], env={"PATH": "/usr/bin:/bin"}, capture_output=True, text=True)
+    assert p.returncode != 0
