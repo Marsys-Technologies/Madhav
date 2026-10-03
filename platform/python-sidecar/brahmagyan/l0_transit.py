@@ -169,6 +169,18 @@ BG_TRANSIT_ENGINE: list[dict[str, Any]] = [
 # classical_citation: source
 # rule_notes:         clarifying note (vedha exceptions, nakshatra nuances, etc.)
 
+# Independent review L0A MED-2: the seven migration-397 double_transit rows cite "Phaladeepika ch.26 section double-gochara" (and two
+# of them "BPHS ch.29", refuted: BPHS page 29 is Bhava Padas). Corpus search over all 16 texts finds no Jupiter+Saturn double-transit
+# passage, so the cited section does not exist. B.10: not re-sourced and not left reading as sourced - marked UNSOURCED with the original
+# citation kept for the record. (The machine-readable attribution_state is TI-L0-09, a migration.)
+def _double_transit_unsourced(original: str) -> str:
+    refuted = " The cited BPHS ch.29 is refuted (BPHS page 29 in the served corpus is Bhava Padas)." if "BPHS" in original else ""
+    return (
+        "UNSOURCED \u2014 the cited section (\"Phaladeepika ch.26 \u00a7double-gochara\") does not exist in the served corpus: a search of "
+        "all 16 texts finds no Jupiter+Saturn double-transit passage." + refuted + " Original citation, kept for the record only: " + original
+    )
+
+
 BG_TRANSIT_RULES: list[dict[str, Any]] = [
     # ── SUN (Surya) Gochara — BPHS Ch.29 ────────────────────────────────────
     {
@@ -930,7 +942,7 @@ BG_TRANSIT_RULES: list[dict[str, Any]] = [
         "primary_house": 2,
         "vedha_house": None,
         "phala": "Jupiter + Saturn in 2H simultaneously: wealth and stability gains amplified; Dhana yoga catalyst.",
-        "classical_citation": "Phaladeepika ch.26 §double-gochara; Saravali ch.28",
+        "classical_citation": _double_transit_unsourced("Phaladeepika ch.26 §double-gochara; Saravali ch.28"),
         "rule_notes": "Applies only when BOTH Jupiter and Saturn transit 2H from natal Moon within 30° window.",
     },
     {
@@ -939,7 +951,7 @@ BG_TRANSIT_RULES: list[dict[str, Any]] = [
         "primary_house": 5,
         "vedha_house": None,
         "phala": "Jupiter + Saturn in 5H: putra karaka + karma lord in progeny house — children-related events, creative fruition.",
-        "classical_citation": "Phaladeepika ch.26 §double-gochara",
+        "classical_citation": _double_transit_unsourced("Phaladeepika ch.26 §double-gochara"),
         "rule_notes": "Saturn alone in 5H is unfavourable; Jupiter co-presence mitigates and transforms.",
     },
     {
@@ -948,7 +960,7 @@ BG_TRANSIT_RULES: list[dict[str, Any]] = [
         "primary_house": 7,
         "vedha_house": None,
         "phala": "Jupiter + Saturn in 7H: relationship events crystallise; partnerships formalised or resolved.",
-        "classical_citation": "Phaladeepika ch.26 §double-gochara; BPHS ch.29",
+        "classical_citation": _double_transit_unsourced("Phaladeepika ch.26 §double-gochara; BPHS ch.29"),
         "rule_notes": None,
     },
     {
@@ -957,7 +969,7 @@ BG_TRANSIT_RULES: list[dict[str, Any]] = [
         "primary_house": 9,
         "vedha_house": None,
         "phala": "Jupiter + Saturn in 9H: dharmic milestones; pilgrimage, guru connection, institutional advancement.",
-        "classical_citation": "Phaladeepika ch.26 §double-gochara",
+        "classical_citation": _double_transit_unsourced("Phaladeepika ch.26 §double-gochara"),
         "rule_notes": "Most auspicious double-transit combination per classical consensus.",
     },
     {
@@ -966,7 +978,7 @@ BG_TRANSIT_RULES: list[dict[str, Any]] = [
         "primary_house": 11,
         "vedha_house": None,
         "phala": "Jupiter + Saturn in 11H: significant gain period — labha amplified by both benefic + discipline.",
-        "classical_citation": "Phaladeepika ch.26 §double-gochara; Jataka Parijata",
+        "classical_citation": _double_transit_unsourced("Phaladeepika ch.26 §double-gochara; Jataka Parijata"),
         "rule_notes": None,
     },
     {
@@ -975,7 +987,7 @@ BG_TRANSIT_RULES: list[dict[str, Any]] = [
         "primary_house": 4,
         "vedha_house": None,
         "phala": "Jupiter + Saturn in 4H: domestic disruption + karmic pressure; home/vehicle events likely.",
-        "classical_citation": "Phaladeepika ch.26 §double-gochara",
+        "classical_citation": _double_transit_unsourced("Phaladeepika ch.26 §double-gochara"),
         "rule_notes": "Jupiter mitigates isolation but Saturn delays resolution.",
     },
     {
@@ -984,7 +996,7 @@ BG_TRANSIT_RULES: list[dict[str, Any]] = [
         "primary_house": 8,
         "vedha_house": None,
         "phala": "Jupiter + Saturn in 8H: transformation event; inheritance, hidden matters, health threshold.",
-        "classical_citation": "Phaladeepika ch.26 §double-gochara; BPHS ch.29 §8H gochara",
+        "classical_citation": _double_transit_unsourced("Phaladeepika ch.26 §double-gochara; BPHS ch.29 §8H gochara"),
         "rule_notes": "Rare and intense. Jupiter here expands the 8H matters rather than protecting.",
     },
 ]

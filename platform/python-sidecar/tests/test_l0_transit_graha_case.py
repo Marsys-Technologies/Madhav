@@ -54,14 +54,29 @@ def test_every_seed_graha_is_lowercase_canonical():
     assert bad == [], f"non-canonical graha values in the seed: {bad}"
 
 
-def test_the_seven_double_transit_seed_rows_equal_migration_397_except_graha_case():
+def test_the_seven_double_transit_seed_rows_equal_migration_397_except_graha_case_and_the_unsourced_marker():
     mig = _mig397_rows()
     assert len(mig) == 7, "parsed migration 397 double_transit rows"
     seed = sorted(((r["graha"], r["primary_house"], r["phala"], r["classical_citation"], r["rule_notes"])
                    for r in T.BG_TRANSIT_RULES if r["rule_type"] == "double_transit"))
     want = sorted(((g.lower(), h, p, c, n) for g, h, p, c, n in mig))
-    assert seed == want
+    assert [(a[0], a[1], a[2], a[4]) for a in seed] == [(w[0], w[1], w[2], w[4]) for w in want], "everything but the citation is verbatim"
+    # the citation: marked UNSOURCED (review L0A MED-2) with the original kept for the record; BPHS ch.29 flagged refuted
+    for (g, h, ph, cit, nt), (_g, _h, _p, orig, _n) in zip(seed, want):
+        assert cit.startswith("UNSOURCED") and cit.endswith(orig), (g, h)
+        assert ("refuted" in cit) == ("BPHS" in orig)
+        assert "does not exist in the served corpus" in cit
     assert {g for g, *_ in mig} == {"Jupiter", "Saturn"}, "the defect the migration carries"
+
+
+def test_no_double_transit_row_reads_as_sourced_to_the_refuted_bphs_ch29():
+    # (the 19 favourable/unfavourable rows that cite it are re-sourced by TI-L0-10, PR #3049)
+    for r in T.BG_TRANSIT_RULES:
+        if r["rule_type"] != "double_transit":
+            continue
+        c = r["classical_citation"]
+        if re.search(r"BPHS\s*ch\.?\s*29", c, re.I):
+            assert c.startswith("UNSOURCED"), (r["graha"], r["rule_type"], r["primary_house"])
 
 
 def test_seed_total_is_76_and_unique_on_the_table_key():
@@ -126,6 +141,10 @@ EXACT_LOWERCASE_UNFILTERED = {  # these CAN gain rows; the test asserts the gain
 }
 
 
+def a_cit_ok(new: str, old: str) -> bool:
+    return new.startswith("UNSOURCED") and new.endswith(old)
+
+
 def _ids(conn, sql):
     return [r["id"] for r in conn.execute(sql)]
 
@@ -167,7 +186,8 @@ def test_real_writer_normalises_in_place_and_every_value_is_lowercase_canonical(
         # (c) only graha changed on those rows
         for rid, b in dt_before.items():
             changed = [c for c in b if b[c] != dt_after[rid][c]]
-            assert changed == ["graha"], (rid, changed)
+            assert changed == ["graha", "classical_citation"], (rid, changed)
+            assert a_cit_ok(dt_after[rid]["classical_citation"], b["classical_citation"])
             assert dt_after[rid]["graha"] == b["graha"].lower()
         # (d) no duplicate / no other row touched
         assert conn.execute("SELECT count(*) AS n FROM bg_transit_rules").fetchone()["n"] == 76
