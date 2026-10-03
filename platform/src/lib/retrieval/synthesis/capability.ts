@@ -14,6 +14,7 @@
 import type { CapabilityDescriptor } from '../registry/types'
 import { buildRetrievalEnvelope, buildCoverageStamp, resolveEnvelopeFormat } from '../envelope'
 import { composeLargeN } from './instrument'
+import { resolveL2LineageFlag } from '../provenance/l2_lineage'
 
 export const synthComposeLargeNCapability: CapabilityDescriptor = {
   uri:   'marsys://tool/synthesis/compose_large_n',
@@ -81,6 +82,12 @@ export const synthComposeLargeNCapability: CapabilityDescriptor = {
         totalUniverse,
       )
 
+      // N-91: grounding.fact_ids below come from the derivation ledger (L2-derived ids). Under the
+      // v3 envelope the reading_contract would say "grounded in N resolvable L1 fact reference(s)"
+      // over them; the L2 lineage detector (provenance/l2_lineage.ts) discloses a stale/unchecked
+      // lineage so that sentence takes the not-anchored branch instead. Never throws.
+      const { flag: l2LineageDisclosure } = await resolveL2LineageFlag(chart_id)
+
       const format = resolveEnvelopeFormat(args['response_format'])
       const envelope = buildRetrievalEnvelope({
         tool: 'compose_large_n',
@@ -88,6 +95,7 @@ export const synthComposeLargeNCapability: CapabilityDescriptor = {
         query_class: 'per_chart_synthesis',
         insight_type: 'large_n_composition',
         coverage,
+        judgment_flags: l2LineageDisclosure ? [l2LineageDisclosure] : [],
         grounding: {
           fact_ids: Array.from(new Set(answer.derivation_ledger.flatMap(e => e.fact_ids))),
           citations: [],
