@@ -18,13 +18,17 @@
 -- byte-for-byte unchanged afterwards) and creates the view itself. The view therefore reads the table with the table owner's rights
 -- (no security_invoker), so the builder needs no table privilege.
 --
--- COLUMNS (each one is read by an L4 reader; no other column of life_events is exposed):
---   id, event_date, category, description, outcome_observed  <- ph_pramana   (description is private free text; it is required to keep
---                                                                              phala_pramana.lel_entry_jsonb byte-identical)
---   event_id, event_date, category, domain                   <- ph_rectification
---   chart_id                                                 <- the explicit WHERE chart_id = %s of every reader + the runtime guard
--- NOT exposed: significance, chart_state, source_section, build_id, provenance, event_type, source_citation, recorded_at, pool_consent,
+-- COLUMNS (7; each one is read by an L4 reader; no other column of life_events is exposed):
+--   id, event_date, category, outcome_observed  <- ph_pramana   (id = the reference stored in phala_pramana.lel_entry_jsonb)
+--   event_id, event_date, category, domain      <- ph_rectification
+--   chart_id                                    <- the explicit WHERE chart_id = %s of every reader + the runtime guard
+-- NOT exposed: description (SS N-109, DATA MINIMISATION: private free text is never copied into a derived L4 row; ph_pramana stores the
+--   life_events id reference and the text is resolved on demand, chart-scoped, by an entitled role), significance, chart_state, source_section, build_id, provenance, event_type, source_citation, recorded_at, pool_consent,
 --   contributed_to_pool_at, shape, date_confidence, interval_*, chain_parent_event_id, milestone_label, date_tightened_*, superseded_by_chain_note.
+--
+-- ACCEPTED LIMIT (SS N-109): the scoping stops ACCIDENTAL cross-chart reads, not a HOSTILE builder session: app.chart_context is a session-settable GUC,
+-- so a builder session that deliberately names another chart sees that chart's rows (those 7 columns, never free text). The builder is a shared pipeline
+-- identity, not an untrusted one; this is documented, tested for the accidental case, and accepted.
 --
 -- N-46 untouched: the view is read-only for the builder (SELECT only; asserted), and nothing here changes or deletes a life_events row.
 -- REVOKE nothing existing: the only REVOKEs are on the NEW view (the default-ACL grant to retrieval_census_ro and PUBLIC) and the
@@ -68,8 +72,8 @@ BEGIN
   SELECT string_agg(a.attname || ':' || format_type(a.atttypid, a.atttypmod), ',' ORDER BY a.attname) INTO v_cols
     FROM pg_attribute a
    WHERE a.attrelid = 'public.life_events'::regclass AND a.attnum > 0 AND NOT a.attisdropped
-     AND a.attname IN ('id','event_id','event_date','category','domain','description','outcome_observed','chart_id');
-  IF v_cols IS DISTINCT FROM 'category:text,chart_id:uuid,description:text,domain:text,event_date:date,event_id:text,id:uuid,outcome_observed:boolean' THEN
+     AND a.attname IN ('id','event_id','event_date','category','domain','outcome_observed','chart_id');
+  IF v_cols IS DISTINCT FROM 'category:text,chart_id:uuid,domain:text,event_date:date,event_id:text,id:uuid,outcome_observed:boolean' THEN
     RAISE EXCEPTION 'm1274 precondition: life_events column set/type differs from the plan: %', v_cols;
   END IF;
   -- the accessor exists, is owned by amjis_app and still reads app.chart_context
@@ -109,14 +113,14 @@ RESET ROLE;
 -- @@STEP s4_create_view_as_table_owner
 SET LOCAL ROLE amjis_app;
 CREATE VIEW public.life_events_chart_scoped WITH (security_barrier = true) AS
-  SELECT id, event_id, event_date, category, domain, description, outcome_observed, chart_id
+  SELECT id, event_id, event_date, category, domain, outcome_observed, chart_id
     FROM public.life_events
    WHERE chart_id = public.app_chart_context();
 -- the default ACL of amjis_app in public grants SELECT on every new relation to retrieval_census_ro: not wanted on this view
 REVOKE ALL ON public.life_events_chart_scoped FROM PUBLIC, retrieval_census_ro;
 GRANT SELECT ON public.life_events_chart_scoped TO data_plane_builder;
 COMMENT ON VIEW public.life_events_chart_scoped IS
-  'Chart-scoped (chart_id = app_chart_context(); GUC app.chart_context; unset = zero rows), read-only, security-barrier window on life_events for the shared builder (SS ruling N-105, migration 1274). Only the columns the L4 readers need. Owner amjis_app; SELECT granted to data_plane_builder only.';
+  'Chart-scoped (chart_id = app_chart_context(); GUC app.chart_context; unset = zero rows), read-only, security-barrier window on life_events for the shared builder (SS ruling N-105, migration 1274). Only the 7 columns the L4 readers need (no free text). Owner amjis_app; SELECT granted to data_plane_builder only.';
 RESET ROLE;
 
 -- @@STEP s5_revoke_transient_create
@@ -251,12 +255,12 @@ BEGIN
   IF v_opts IS DISTINCT FROM ARRAY['security_barrier=true']::text[] THEN RAISE EXCEPTION 'm1274 assert: reloptions are % (expected only security_barrier=true)', v_opts; END IF;
   IF (SELECT relkind FROM pg_class WHERE oid = v_view) <> 'v' THEN RAISE EXCEPTION 'm1274 assert: not a plain view'; END IF;
   IF (SELECT pg_get_userbyid(relowner) FROM pg_class WHERE oid = v_view) <> 'amjis_app' THEN RAISE EXCEPTION 'm1274 assert: view owner is not amjis_app'; END IF;
-  -- the view's own definition: chart-scoped by app_chart_context() and exposing exactly the eight columns
+  -- the view's own definition: chart-scoped by app_chart_context() and exposing exactly the seven columns
   IF position('app_chart_context()' IN pg_get_viewdef(v_view)) = 0 OR position('chart_id' IN pg_get_viewdef(v_view)) = 0 THEN
     RAISE EXCEPTION 'm1274 assert: the view definition is not chart-scoped by app_chart_context()';
   END IF;
   IF (SELECT string_agg(attname, ',' ORDER BY attnum) FROM pg_attribute WHERE attrelid = v_view AND attnum > 0 AND NOT attisdropped)
-       IS DISTINCT FROM 'id,event_id,event_date,category,domain,description,outcome_observed,chart_id' THEN
+       IS DISTINCT FROM 'id,event_id,event_date,category,domain,outcome_observed,chart_id' THEN
     RAISE EXCEPTION 'm1274 assert: the view column list differs from the plan';
   END IF;
   -- the builder STILL has no direct privilege on the table

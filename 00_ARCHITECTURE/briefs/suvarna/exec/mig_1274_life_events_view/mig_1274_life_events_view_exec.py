@@ -4,7 +4,7 @@
 
 WHAT IT DOES (forward leg), in ONE transaction as the Cloud SQL administrator (`postgres`: CREATEROLE, not a superuser), COMMIT only if every check holds:
   s1  GRANT the administrator membership of data_plane_schema_owner / amjis_app / data_plane_builder (only those it lacks; revoked again in s9)
-  s2  preconditions (SQL, raising): life_events owner amjis_app, RLS off, the eight exposed columns and types, app_chart_context() is the G1c accessor,
+  s2  preconditions (SQL, raising): life_events owner amjis_app, RLS off, the seven exposed columns and types, app_chart_context() is the G1c accessor,
       data_plane_builder holds NO privilege on life_events, schema public owned by data_plane_schema_owner, amjis_app has no CREATE on it, pre-images taken
   s3  data_plane_schema_owner: GRANT CREATE ON SCHEMA public TO amjis_app          (transient: one statement's worth)
   s4  amjis_app (the table owner): CREATE VIEW ... WITH (security_barrier = true) ... WHERE chart_id = app_chart_context(); REVOKE ALL FROM PUBLIC,
@@ -75,10 +75,10 @@ SCHEMA_OWNER = "data_plane_schema_owner"
 BUILDER = "data_plane_builder"
 ASSUMED_FORWARD = (SCHEMA_OWNER, OWNER_ROLE, BUILDER)
 ASSUMED_ROLLBACK = (SCHEMA_OWNER, OWNER_ROLE)
-VIEW_COLUMNS = ("id", "event_id", "event_date", "category", "domain", "description", "outcome_observed", "chart_id")
+VIEW_COLUMNS = ("id", "event_id", "event_date", "category", "domain", "outcome_observed", "chart_id")      # 7: no free text (SS N-109)
 # sha256 of pg_get_viewdef(view) with whitespace collapsed, as measured on the PostgreSQL 15.17 mirror (the text is stable within a major version); a different text on production (a different minor
 # version) fails the commit condition `post_view_definition_equals_plan` at the DRY RUN, before any apply.
-VIEW_DEF_SHA256 = "41427f20bf3ceb94d7541c765a025ed7f21df4a24219dac6f24081d65ea75d05"
+VIEW_DEF_SHA256 = "df02c05e9dd989f99e0f7e8fef6d5b0c5b317df1227bcc38cb6fabae30aa164d"
 
 
 # ------------------------------------------------------------------------------------------------------ gate wiring (GATE_V2)
@@ -213,6 +213,7 @@ def render_plan(sha: str | None = None, pins: dict | None = None) -> str:
         "PLAN mig_1274_life_events_view (SS ruling N-105): chart-scoped, read-only, security-barrier view over life_events for data_plane_builder",
         f"object: {SCHEMA}.{VIEW_NAME} WITH (security_barrier = true); columns: {', '.join(VIEW_COLUMNS)}; owner {OWNER_ROLE}; SELECT to {BUILDER} ONLY",
         f"scoping: chart_id = {SCHEMA}.app_chart_context() (GUC app.chart_context; unset or malformed = NULL = zero rows)",
+        "accepted limit (SS N-109): the scoping stops ACCIDENTAL cross-chart reads, not a HOSTILE builder session (the GUC is session-settable); no free-text column is exposed",
         f"transaction: ONE, as the Cloud SQL administrator; SET LOCAL lock_timeout = {LOCK_TIMEOUT}, statement_timeout = {STATEMENT_TIMEOUT}; COMMIT only if every check holds",
         f"view definition sha256 (whitespace collapsed): {VIEW_DEF_SHA256}",
         f"forward commit conditions: {', '.join(FORWARD_CHECKS)}",

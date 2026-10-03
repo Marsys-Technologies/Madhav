@@ -108,12 +108,22 @@ def test_apply_commits_and_the_builder_reads_only_its_own_chart(cluster, db, run
         with pytest.raises(psycopg.errors.InsufficientPrivilege):
             with builder(cluster, db) as c:
                 c.execute(stmt)
-    # the view exposes exactly the eight columns, none of the private ones
+    # the view exposes exactly the seven columns, none of the private ones (no free text)
     with builder(cluster, db) as c:
         cols = [d.name for d in c.execute("SELECT * FROM public.life_events_chart_scoped LIMIT 0").description]
     assert cols == list(mod_columns())
-    for private in ("provenance", "chart_state", "significance", "source_citation", "recorded_at", "pool_consent"):
+    for private in ("description", "provenance", "chart_state", "significance", "source_citation", "recorded_at", "pool_consent"):
         assert private not in cols
+    # SS N-109 data minimisation: no free text reachable through the view, whatever the pinned chart
+    with pytest.raises(psycopg.errors.UndefinedColumn):
+        with builder(cluster, db) as c:
+            c.execute("SELECT description FROM public.life_events_chart_scoped")
+    with builder(cluster, db) as c:
+        c.execute("BEGIN")
+        c.execute("SELECT set_config('app.chart_context', %s, true)", (CHART_A,))
+        dump = json.dumps([list(map(str, r)) for r in c.execute("SELECT * FROM public.life_events_chart_scoped").fetchall()])
+        c.execute("ROLLBACK")
+    assert "SYNTHETIC" not in dump and "PRIVATE" not in dump
     # nobody else gained anything: PUBLIC and retrieval_census_ro (the default-ACL grantee) have nothing; the ACL is {owner, builder SELECT}
     acl = scalar(cluster, db, "SELECT relacl::text FROM pg_class WHERE oid='public.life_events_chart_scoped'::regclass")
     assert acl == "{amjis_app=arwdDxt/amjis_app,data_plane_builder=r/amjis_app}", acl
@@ -238,8 +248,10 @@ MUTANTS = {
     "chart_filter_removed": ("WHERE chart_id = public.app_chart_context();", "WHERE true;"),
     "filter_on_a_constant_not_the_guc": ("WHERE chart_id = public.app_chart_context();", "WHERE chart_id = 'aaaaaaaa-1111-4222-8333-00000000000a'::uuid;"),
     "transient_create_never_revoked": ("REVOKE CREATE ON SCHEMA public FROM amjis_app;", "-- (revoke removed)"),
-    "extra_column_exposed": ("SELECT id, event_id, event_date, category, domain, description, outcome_observed, chart_id\n    FROM public.life_events",
-                             "SELECT id, event_id, event_date, category, domain, description, outcome_observed, chart_id, provenance\n    FROM public.life_events"),
+    "extra_column_exposed": ("SELECT id, event_id, event_date, category, domain, outcome_observed, chart_id\n    FROM public.life_events",
+                             "SELECT id, event_id, event_date, category, domain, outcome_observed, chart_id, provenance\n    FROM public.life_events"),
+    "description_free_text_exposed": ("SELECT id, event_id, event_date, category, domain, outcome_observed, chart_id\n    FROM public.life_events",
+                                      "SELECT id, event_id, event_date, category, domain, description, outcome_observed, chart_id\n    FROM public.life_events"),
     "builder_also_granted_the_table": ("GRANT SELECT ON public.life_events_chart_scoped TO data_plane_builder;",
                                        "GRANT SELECT ON public.life_events_chart_scoped TO data_plane_builder; GRANT SELECT ON public.life_events TO data_plane_builder;"),
     "builder_granted_write_on_view": ("GRANT SELECT ON public.life_events_chart_scoped TO data_plane_builder;",

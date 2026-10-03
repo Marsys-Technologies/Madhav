@@ -1,11 +1,12 @@
 PLAN mig_1274_life_events_view (SS ruling N-105): chart-scoped, read-only, security-barrier view over life_events for data_plane_builder
-object: public.life_events_chart_scoped WITH (security_barrier = true); columns: id, event_id, event_date, category, domain, description, outcome_observed, chart_id; owner amjis_app; SELECT to data_plane_builder ONLY
+object: public.life_events_chart_scoped WITH (security_barrier = true); columns: id, event_id, event_date, category, domain, outcome_observed, chart_id; owner amjis_app; SELECT to data_plane_builder ONLY
 scoping: chart_id = public.app_chart_context() (GUC app.chart_context; unset or malformed = NULL = zero rows)
+accepted limit (SS N-109): the scoping stops ACCIDENTAL cross-chart reads, not a HOSTILE builder session (the GUC is session-settable); no free-text column is exposed
 transaction: ONE, as the Cloud SQL administrator; SET LOCAL lock_timeout = 5s, statement_timeout = 120s; COMMIT only if every check holds
-view definition sha256 (whitespace collapsed): 41427f20bf3ceb94d7541c765a025ed7f21df4a24219dac6f24081d65ea75d05
+view definition sha256 (whitespace collapsed): df02c05e9dd989f99e0f7e8fef6d5b0c5b317df1227bcc38cb6fabae30aa164d
 forward commit conditions: pre_roles_exist, pre_table_owner_and_rls, pre_view_absent, pre_builder_has_no_table_privilege, pre_schema_owner, pre_owner_role_has_no_create_on_public, pre_accessor_function_present, pre_admin_can_assume_the_roles, step_*, post_view_is_a_plain_security_barrier_view_owned_by_the_table_owner, post_view_definition_equals_plan, post_builder_select_on_view, post_builder_select_only_on_view, post_view_acl_is_exactly_owner_plus_builder_select, post_builder_has_no_table_privilege, post_table_acl_unchanged, post_schema_acl_unchanged, post_owner_role_has_no_create_on_public, post_accessor_function_unchanged, post_memberships_restored
 rollback commit conditions: pre_roles_exist, pre_view_present, pre_admin_can_assume_the_roles, step_*, post_view_absent, post_builder_has_no_table_privilege, post_table_acl_unchanged, post_schema_acl_unchanged, post_accessor_function_unchanged, post_memberships_restored
--- forward sql: 1274_life_events_chart_scoped_view.sql sha256 c76c1dab283bd5277da85637aa1d3c04e22a5760bf264a453d7301813e764df4
+-- forward sql: 1274_life_events_chart_scoped_view.sql sha256 82de04116926dc42bd99daa2e341f1b4b5451f5d5dcc38def27b392e9975f1a5
 -- step s1_assume_owner_roles
 -- The administrator (Cloud SQL `postgres`: CREATEROLE, not a superuser, no USAGE on schema public) needs membership of the roles it SETs.
 -- Only the memberships GRANTED HERE are revoked again in s9 (tracked in transaction-local GUCs).
@@ -40,8 +41,8 @@ BEGIN
   SELECT string_agg(a.attname || ':' || format_type(a.atttypid, a.atttypmod), ',' ORDER BY a.attname) INTO v_cols
     FROM pg_attribute a
    WHERE a.attrelid = 'public.life_events'::regclass AND a.attnum > 0 AND NOT a.attisdropped
-     AND a.attname IN ('id','event_id','event_date','category','domain','description','outcome_observed','chart_id');
-  IF v_cols IS DISTINCT FROM 'category:text,chart_id:uuid,description:text,domain:text,event_date:date,event_id:text,id:uuid,outcome_observed:boolean' THEN
+     AND a.attname IN ('id','event_id','event_date','category','domain','outcome_observed','chart_id');
+  IF v_cols IS DISTINCT FROM 'category:text,chart_id:uuid,domain:text,event_date:date,event_id:text,id:uuid,outcome_observed:boolean' THEN
     RAISE EXCEPTION 'm1274 precondition: life_events column set/type differs from the plan: %', v_cols;
   END IF;
   -- the accessor exists, is owned by amjis_app and still reads app.chart_context
@@ -79,14 +80,14 @@ RESET ROLE;
 -- step s4_create_view_as_table_owner
 SET LOCAL ROLE amjis_app;
 CREATE VIEW public.life_events_chart_scoped WITH (security_barrier = true) AS
-  SELECT id, event_id, event_date, category, domain, description, outcome_observed, chart_id
+  SELECT id, event_id, event_date, category, domain, outcome_observed, chart_id
     FROM public.life_events
    WHERE chart_id = public.app_chart_context();
 -- the default ACL of amjis_app in public grants SELECT on every new relation to retrieval_census_ro: not wanted on this view
 REVOKE ALL ON public.life_events_chart_scoped FROM PUBLIC, retrieval_census_ro;
 GRANT SELECT ON public.life_events_chart_scoped TO data_plane_builder;
 COMMENT ON VIEW public.life_events_chart_scoped IS
-  'Chart-scoped (chart_id = app_chart_context(); GUC app.chart_context; unset = zero rows), read-only, security-barrier window on life_events for the shared builder (SS ruling N-105, migration 1274). Only the columns the L4 readers need. Owner amjis_app; SELECT granted to data_plane_builder only.';
+  'Chart-scoped (chart_id = app_chart_context(); GUC app.chart_context; unset = zero rows), read-only, security-barrier window on life_events for the shared builder (SS ruling N-105, migration 1274). Only the 7 columns the L4 readers need (no free text). Owner amjis_app; SELECT granted to data_plane_builder only.';
 RESET ROLE;
 -- step s5_revoke_transient_create
 SET LOCAL ROLE data_plane_schema_owner;
@@ -217,12 +218,12 @@ BEGIN
   IF v_opts IS DISTINCT FROM ARRAY['security_barrier=true']::text[] THEN RAISE EXCEPTION 'm1274 assert: reloptions are % (expected only security_barrier=true)', v_opts; END IF;
   IF (SELECT relkind FROM pg_class WHERE oid = v_view) <> 'v' THEN RAISE EXCEPTION 'm1274 assert: not a plain view'; END IF;
   IF (SELECT pg_get_userbyid(relowner) FROM pg_class WHERE oid = v_view) <> 'amjis_app' THEN RAISE EXCEPTION 'm1274 assert: view owner is not amjis_app'; END IF;
-  -- the view's own definition: chart-scoped by app_chart_context() and exposing exactly the eight columns
+  -- the view's own definition: chart-scoped by app_chart_context() and exposing exactly the seven columns
   IF position('app_chart_context()' IN pg_get_viewdef(v_view)) = 0 OR position('chart_id' IN pg_get_viewdef(v_view)) = 0 THEN
     RAISE EXCEPTION 'm1274 assert: the view definition is not chart-scoped by app_chart_context()';
   END IF;
   IF (SELECT string_agg(attname, ',' ORDER BY attnum) FROM pg_attribute WHERE attrelid = v_view AND attnum > 0 AND NOT attisdropped)
-       IS DISTINCT FROM 'id,event_id,event_date,category,domain,description,outcome_observed,chart_id' THEN
+       IS DISTINCT FROM 'id,event_id,event_date,category,domain,outcome_observed,chart_id' THEN
     RAISE EXCEPTION 'm1274 assert: the view column list differs from the plan';
   END IF;
   -- the builder STILL has no direct privilege on the table
@@ -338,4 +339,4 @@ $m1274$;
 -- gate pin executor_standards.py: bbea69552a6a92e7aed3a75758b533868e3e3d2c5b47385ccc1bf6c0660dc135
 -- gate pin prerun_gate.py: 01ab1d70d0cffea015a64af5430f355dd8d419307aceeaeacf3a0cc4d715773e
 -- gate pin run_gated.sh: 305b4406bba57f85944bbb57cb269368287aaa6d6f782e986afa7f857606f076
--- executor: mig_1274_life_events_view_exec.py sha256 f0c8519f8508be318e20ef0276a087b9901a2048feda56ac66a8fd3a387f030a
+-- executor: mig_1274_life_events_view_exec.py sha256 cf28ac661449dbe0ed3fec28037242b7e50e681eb6e8d1c2df324003b6e80a61

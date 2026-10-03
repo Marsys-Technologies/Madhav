@@ -177,3 +177,16 @@ def test_no_reused_quote_inside_an_fstring_replacement_field():
 def test_plan_txt_is_the_rendered_plan(mod):
     """plan.txt is what the operator reads and approves; it must be exactly what the plan hash covers (regenerate with make_plan.py --write)."""
     assert (EXEC_DIR / "plan.txt").read_text() == mod.render_plan() + "\n"
+
+
+def test_the_accepted_limit_is_stated_in_the_sql_and_in_the_plan(mod):
+    """SS N-109 accepted limit: the GUC scoping stops accidental cross-chart reads, not a hostile builder session. It must stay written down."""
+    head = (EXEC_DIR / "1274_life_events_chart_scoped_view.sql").read_text().split("-- @@STEP")[0]
+    assert "ACCEPTED LIMIT" in head and "HOSTILE builder session" in head
+    assert "accepted limit" in mod.render_plan() and "HOSTILE builder session" in mod.render_plan()
+
+
+def test_the_view_has_seven_columns_and_no_free_text(mod):
+    assert mod.VIEW_COLUMNS == ("id", "event_id", "event_date", "category", "domain", "outcome_observed", "chart_id")
+    assert "description" not in (EXEC_DIR / "1274_life_events_chart_scoped_view.sql").read_text().split("-- @@STEP s4")[1].split("-- @@STEP s5")[0].replace(
+        "-- NOT exposed", "").split("COMMENT")[0]
