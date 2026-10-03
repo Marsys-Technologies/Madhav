@@ -233,14 +233,58 @@ in the set (that reader is ours by agreement). None of the 23 bo_* assets is a m
 
 ### The draft level map (SS ruling N-97 item 6; freeze at J1)
 
-`00_ARCHITECTURE/control/LEVEL_MAP.json` is a **draft** pre-J1 snapshot: `version` `0.2-draft` and a `_stamp` (status `DRAFT`, the registry
-revision and fingerprint it was generated at, the sha256 of its registry input). Levels are longest-path depth over the 127 active
-registry assets (27 levels, 0..26); a wave is a level range and its dispatch set is the level minus `family_set`. Both files are
-generated, never hand-edited: `python3 00_ARCHITECTURE/control/regenerate_draft_level_map.py --frozen-at <ISO-8601>` rewrites
-`registry_input_draft.json`, `LEVEL_MAP.json` and `FAMILY_ASSETS.json`; `--check` compares. The DAG is offline (the repo's frozen
-pre-1210 registry reconstruction plus migration 1210's edges), cross-checked against the E6 census; it is not a live export, so the
-strategist re-derives and freezes it from a live export at J1. `test_e6_3_draft_level_map.py` fails if a committed file differs from
-a regeneration made at its own recorded stamp. A DRAFT whose stamp is behind `asset_census` is only STALE (a pytest warning; `--check` prints `STALE (draft)` and exits 0, `--check --strict` exits 1); once the status is not DRAFT (the J1 freeze) staleness fails.
+`00_ARCHITECTURE/control/LEVEL_MAP.json` is a **draft** pre-J1 snapshot of the dependency levels of the 127 active registry assets
+(`version` `0.2-draft`, `_stamp.status` `DRAFT`). `FAMILY_ASSETS.json` is regenerated with it. Both are generated, never hand-edited:
+`python3 00_ARCHITECTURE/control/regenerate_draft_level_map.py --frozen-at <ISO-8601>` rewrites `registry_input_draft.json`,
+`LEVEL_MAP.json` and `FAMILY_ASSETS.json` all-or-nothing, and refuses (exit 2) to overwrite a set that is not a plain DRAFT unless
+`--force`. `--check` compares all three files with a regeneration made at the recorded stamp.
+
+**What the stamp binds.** `_stamp.registry_revision` / `registry_fingerprint` are `asset_census.REGISTRY_REVISION` and
+`registry_fingerprint()`: they hash the **census criteria registry, not the `asset_registry` dependency graph**. A stale census stamp
+says nothing about whether the DAG moved. The DAG is bound by `_stamp.registry_input_sha256` (the committed input rows) and
+`_stamp.dag_sha256` (the active edges). A DRAFT whose census stamp is behind is only STALE: a pytest warning, and `--check` prints
+`STALE (draft)` and exits 0 (`--check --strict` exits 1), so engine PRs that bump the census revision do not churn these files. A
+stamp whose status is not DRAFT fails on staleness. Because a status can be relabelled, **`--check --pre-freeze` is the J1 gate**: it
+fails on any DRAFT and on any stale census stamp.
+
+**Levels are dependency depth, not dispatch wave indices.** Level = longest path in the registry dependency DAG (27 levels, 0 to
+26). A wave band is a level range: W0 0-2, W1 3-5, W2 6-11, W3 12-16, W4 17-21, W5 22-26. The counts 65/13/14/17/9/9 are band sizes
+and **include family assets**. The dispatch set of a band is the band minus `family_set`, as measured on this map:
+
+| Band | Levels | In band | Dispatchable (non-family) |
+|---|---|---|---|
+| W0 | 0-2 | 65 | 60 |
+| W1 | 3-5 | 13 | 12 |
+| W2 | 6-11 | 14 | 14 |
+| W3 | 12-16 | 17 | 5 |
+| W4 | 17-21 | 9 | 6 |
+| W5 | 22-26 | 9 | 8 |
+
+The dispatcher's own wave index (`derive_waves` over the non-family set) differs from the level for 14 `ph_*` / `mi_*` assets (6
+`ph_*`, 8 `mi_*`), because the family assets they depend on drop out of the set: W4 and W5 depend on the family assets `ph_muhurta`,
+`ph_nimitta`, `ph_pratikara` and `mi_adhilepa`. Use the level for dependency depth and `derive_waves` for dispatch order.
+
+**Who reads these files.** The dispatcher (`suvarna_level_wave.py`) never reads `LEVEL_MAP.json`; it reads `FAMILY_ASSETS.json` only
+for the six lists and `family_set` and ignores `_stamp`. The E6.3 tracker's `_e63_registry_assets` unions the keys of
+`LEVEL_MAP.levels` into the registry asset ids it knows (beside the seed), so the level map's ids are treated as registry assets.
+
+**Where the DAG comes from (offline, no database).** The repo's frozen pre-1210 reconstruction of the live registry plus migration
+1210's 12 edges (`regenerate_draft_level_map.py` docstring has the full provenance). It is not a live export. The seed's own
+`depends_on` is bootstrap-only and differs from this DAG on exactly five assets (`bo_nakshatra_semantic`, `ka_kshetra`, `ka_sangam`,
+`ka_muhurta_seva`, `ka_vighnakara`; pinned in a test). The exact set of migrations in both runner directories
+(`platform/migrations`, `platform/supabase/migrations`) whose SQL mentions `depends_on` is pinned in
+`registry_depends_on_migrations.json`; a new or removed entry fails the test until the registry input and the pin are updated
+(`--write-migration-pin`). The cross-check against the E6 census of `adb0db29d` lives outside the repo
+(`/Users/Dev/suvarna-evidence/census_fresh/adb0db2`); its result, recorded here so it does not rest on that path: 127 assets, and for
+all 127 the census's declared-edge count and blocking-radius direct and transitive counts equal this DAG's (census registry revision
+16, fingerprint `8b88e7b2...cb97c`). `ka_gochara_sweep` and `ka_gochara_v3_century_materialize` are live inactive rows;
+`ka_gochara_v4_41_candidate` is a seed-only inactive row that the census lists under `phantom_registered`, not a live registry row.
+
+**The J1 freeze.** `regenerate_draft_level_map.py --freeze --registry-export <live asset_registry export json> --frozen-at <ISO>`
+(the export is a JSON list of `{asset_id, layer, depends_on, active}` taken read-only by whoever holds the reader login). The
+export's active ids and edges must equal `registry_input_draft.json`'s, otherwise the differences are printed and nothing is written.
+On a match the three files are written with status `FROZEN`, version `1.0` and a stamp at the current census pin;
+`--check --pre-freeze` then passes. The tool does not merge or push anything.
 
 ## Stop hook between waves
 

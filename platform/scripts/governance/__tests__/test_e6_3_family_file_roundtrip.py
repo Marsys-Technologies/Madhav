@@ -80,8 +80,7 @@ def test_the_committed_family_file_is_byte_identical_to_the_generator_output_whe
     # the registry is the committed draft registry input (the live active registry, see regenerate_draft_level_map.py; the seed
     # is a stale stand-in that still holds ka_gochara_v3_century_materialize active), and the draft stamp is a generator note
     reg = CTRL / "registry_input_draft.json"
-    if not reg.exists():
-        pytest.skip("registry_input_draft.json is not on this checkout")
+    assert reg.exists(), "registry_input_draft.json must be committed beside FAMILY_ASSETS.json (a skip would hide a missing input)"
     notes = {"_stamp": cur["_stamp"]} if "_stamp" in cur else None
     doc = G.build_family_assets(G.load_family_input(inp), G.load_registry_json(reg), version=cur["version"],
                                 frozen_at=cur["frozen_at"], registry_revision=cur["registry_revision"], notes=notes)

@@ -149,28 +149,38 @@ def seed_problems(seed_rows, rows):
     return out
 
 
-def later_depends_on_writers(files):
-    """Names of migrations numbered after 1210 whose SQL (comments stripped) mentions depends_on."""
-    bad = []
-    for name, text in sorted(files.items()):
-        m = re.match(r"(\d+)_", name)
-        if not m or int(m.group(1)) <= 1210:
-            continue
-        code = re.sub(r"/\*.*?\*/", "", re.sub(r"--[^\n]*", "", text), flags=re.S)
-        if re.search(r"\bdepends_on\b", code):
-            bad.append(name)
-    return bad
+def migration_pin_problems(found, pinned):
+    """Differences between the migrations that mention depends_on (both dirs the runner applies) and the committed pin, plus
+    non-vacuity: migration 1210 must have been seen and both directories must hold migrations."""
+    out = []
+    if "1210_asset_registry_direct_edges.sql" not in found.get("platform/migrations", []):
+        out.append("non-vacuity: migration 1210 was not seen (the scan reads the wrong place)")
+    if set(found) != set(R.MIGRATION_DIRS):
+        out.append(f"scanned directories {sorted(found)} != {sorted(R.MIGRATION_DIRS)}")
+    for d in sorted(set(found) | set(pinned)):
+        new = sorted(set(found.get(d, [])) - set(pinned.get(d, [])))
+        gone = sorted(set(pinned.get(d, [])) - set(found.get(d, [])))
+        if new:
+            out.append(f"{d}: migration(s) mention depends_on but are not pinned: {new}")
+        if gone:
+            out.append(f"{d}: pinned migration(s) no longer mention depends_on or are gone: {gone}")
+    return out
 
 
 def _migration_texts():
-    return {p.name: p.read_text(encoding="utf-8") for p in MIGRATIONS.glob("*.sql")}
+    return {d: {p.name: p.read_text(encoding="utf-8", errors="replace") for p in (REPO / d).glob("*.sql")} for d in R.MIGRATION_DIRS}
 
 
-def _fresh():
-    """A regeneration AT THE RECORDED stamp (never the current census pin: that is the staleness check, which only warns)."""
+PIN_FILE = CTRL / R.MIGRATION_PIN_FILE
+
+
+def _fresh(rows=None):
+    """A regeneration from the COMMITTED registry input, AT THE RECORDED stamp (never the current census pin: that is the
+    staleness check, which only warns)."""
     st = LM["_stamp"]
     return R.render(frozen_at=LM["frozen_at"], registry_revision=LM["registry_revision"],
-                    registry_fingerprint=st["registry_fingerprint"], version=LM["version"], status=st["status"])
+                    registry_fingerprint=st["registry_fingerprint"], version=LM["version"], status=st["status"],
+                    rows=ROWS if rows is None else rows)
 
 
 # ───────────────────────── the committed files ─────────────────────────
@@ -181,8 +191,24 @@ def test_committed_files_equal_a_fresh_regeneration_byte_for_byte():
         assert path.read_text(encoding="utf-8") == fresh[name], f"{name} differs from a regeneration (run regenerate_draft_level_map.py)"
 
 
-def test_regeneration_is_deterministic():
-    assert _fresh() == _fresh()
+@pytest.mark.parametrize("seed", ["0", "1", "4242"])
+def test_regeneration_is_identical_across_processes_and_hash_seeds(tmp_path, seed):
+    import os
+    import subprocess
+    out = tmp_path / "out"
+    out.mkdir()
+    env = dict(os.environ, PYTHONHASHSEED=seed)
+    proc = subprocess.run([sys.executable, str(CTRL / "regenerate_draft_level_map.py"), "--out-dir", str(out),
+                           "--frozen-at", LM["frozen_at"]], env=env, capture_output=True, text=True, timeout=120)
+    assert proc.returncode == 0, proc.stderr
+    for n in (R.REGISTRY_INPUT_FILE, "LEVEL_MAP.json", "FAMILY_ASSETS.json"):
+        got = (out / n).read_text(encoding="utf-8")
+        committed = (CTRL / n).read_text(encoding="utf-8")
+        if R.staleness(LM, PIN):                     # a stale draft: the new write is at the CURRENT pin; compare the registry input only
+            if n == R.REGISTRY_INPUT_FILE:
+                assert got == committed
+        else:
+            assert got == committed, f"{n} differs under PYTHONHASHSEED={seed}"
 
 
 def test_the_generators_own_cli_makes_the_same_bytes(tmp_path):
@@ -269,8 +295,38 @@ def test_migration_1210_added_twelve_edges_and_all_are_in_the_registry_input():
     assert all(d in by[a] for a, d in edges)
 
 
-def test_no_migration_after_1210_rewrites_depends_on():
-    assert later_depends_on_writers(_migration_texts()) == []
+def test_the_set_of_migrations_that_mention_depends_on_is_the_pinned_set_in_both_directories():
+    found = R.depends_on_migrations()
+    pinned = json.loads(PIN_FILE.read_text(encoding="utf-8"))["migrations"]
+    assert migration_pin_problems(found, pinned) == []
+    assert "1210_asset_registry_direct_edges.sql" in found["platform/migrations"]          # non-vacuity
+    assert len(found["platform/migrations"]) > 20 and len(found["platform/supabase/migrations"]) > 20
+    assert PIN_FILE.read_text(encoding="utf-8") == R.migration_pin_text(found)               # the pin is what the tool writes
+
+
+def test_the_seed_and_the_input_differ_on_exactly_five_assets_in_exactly_these_edges():
+    seed = {r["asset_id"]: set(r["depends_on"]) for r in G.parse_seed_text((REPO / "platform/scripts/seed/asset_registry_seed.ts").read_text(encoding="utf-8"))}
+    diff = {r["asset_id"]: (sorted(set(r["depends_on"]) - seed[r["asset_id"]]), sorted(seed[r["asset_id"]] - set(r["depends_on"])))
+            for r in ROWS if r["active"] and set(r["depends_on"]) != seed[r["asset_id"]]}
+    assert diff == {
+        "bo_nakshatra_semantic": (["ga_structural"], []),
+        "ka_kshetra": (["ka_vedha_gochara"], []),
+        "ka_muhurta_seva": ([], ["ka_graha_sancara"]),
+        "ka_sangam": (["ka_vedha_gochara"], []),
+        "ka_vighnakara": (["bg_dignity_reference", "ka_yojaka"], ["ka_gochara"]),
+    }
+
+
+def test_the_inactive_rows_are_pinned_and_the_seed_only_one_is_not_a_live_row():
+    assert sorted(r["asset_id"] for r in ROWS if not r["active"]) == [
+        "ka_gochara_sweep", "ka_gochara_v3_century_materialize", "ka_gochara_v4_41_candidate"]
+    assert set(R.SEED_ONLY_INACTIVE) == {"ka_gochara_v4_41_candidate"} and set(R.LIVE_INACTIVE_OVERRIDES) == {"ka_gochara_v3_century_materialize"}
+
+
+def test_the_stamp_binds_the_dag_and_says_the_census_fields_are_not_the_dag():
+    st = LM["_stamp"]
+    assert st["dag_sha256"] == R.dag_sha256(ROWS) and len(st["dag_sha256"]) == 64
+    assert "CENSUS CRITERIA registry" in st["registry_stamp_scope"] and "not the asset_registry dependency graph" in st["registry_stamp_scope"]
 
 
 # ───────────────────────── mutation tests: each guard fails ─────────────────────────
@@ -478,12 +534,53 @@ def test_mutation_a_new_active_seed_asset_the_registry_input_lacks_is_a_failure(
     assert any("ka_new_asset" in p for p in seed_problems(seed, ROWS))
 
 
-def test_mutation_a_later_migration_that_writes_depends_on_is_a_failure():
-    files = _migration_texts()
-    files["1299_x.sql"] = "-- depends_on in a comment is fine\nUPDATE asset_registry SET depends_on = ARRAY['a'] WHERE asset_id = 'b';"
-    assert later_depends_on_writers(files) == ["1299_x.sql"]
-    files["1299_x.sql"] = "-- depends_on in a comment is fine\n/* depends_on */ SELECT 1;"
-    assert later_depends_on_writers(files) == []
+WRITER = "UPDATE asset_registry SET depends_on = ARRAY['a'] WHERE asset_id = 'b';"
+
+
+def _scan_with(extra):
+    texts = _migration_texts()
+    for d, name, sql in extra:
+        texts[d][name] = sql
+    return R.depends_on_migrations(texts)
+
+
+PINNED = json.loads(PIN_FILE.read_text(encoding="utf-8"))["migrations"]
+
+
+@pytest.mark.parametrize("d,name", [
+    ("platform/migrations", "1299_new_edge.sql"),                  # M12: a new high-numbered writer
+    ("platform/supabase/migrations", "1299_new_edge.sql"),         # M14: the OTHER directory the runner applies
+    ("platform/migrations", "0100_old_number.sql"),                # M15: a low number (the old '> 1210' rule would miss it)
+    ("platform/supabase/migrations", "0100_old_number.sql"),
+])
+def test_mutation_a_new_migration_mentioning_depends_on_in_either_directory_fails_the_pin(d, name):
+    found = _scan_with([(d, name, WRITER)])
+    assert any(name in p and "not pinned" in p for p in migration_pin_problems(found, PINNED))
+    found = _scan_with([(d, name, WRITER.replace("depends_on", "DEPENDS_ON"))])          # case is not an escape
+    assert any(name in p for p in migration_pin_problems(found, PINNED))
+
+
+def test_mutation_a_comment_only_mention_is_not_a_writer():
+    found = _scan_with([("platform/migrations", "1299_c.sql", "-- depends_on in a comment\n/* depends_on */ SELECT 1;")])
+    assert migration_pin_problems(found, PINNED) == []
+
+
+def test_mutation_a_pinned_migration_that_vanishes_or_stops_mentioning_it_fails_the_pin():
+    texts = _migration_texts()
+    victim = PINNED["platform/supabase/migrations"][0]
+    del texts["platform/supabase/migrations"][victim]
+    assert any(victim in p and "no longer" in p for p in migration_pin_problems(R.depends_on_migrations(texts), PINNED))
+    texts = _migration_texts()
+    texts["platform/migrations"]["913_bo_nakshatra_semantic_add_ga_structural_dep.sql"] = "SELECT 1;"
+    assert any("913_bo_nakshatra" in p for p in migration_pin_problems(R.depends_on_migrations(texts), PINNED))
+
+
+def test_mutation_a_scan_that_cannot_see_migration_1210_is_a_failure_not_a_pass():
+    texts = _migration_texts()
+    del texts["platform/migrations"]["1210_asset_registry_direct_edges.sql"]
+    pinned = {d: [n for n in v if n != "1210_asset_registry_direct_edges.sql"] for d, v in PINNED.items()}
+    assert any("non-vacuity" in p for p in migration_pin_problems(R.depends_on_migrations(texts), pinned))
+    assert any("scanned directories" in p for p in migration_pin_problems({"platform/migrations": PINNED["platform/migrations"]}, PINNED))
 
 
 def test_mutation_the_check_mode_reports_a_changed_committed_file(tmp_path, capsys):
@@ -495,3 +592,244 @@ def test_mutation_the_check_mode_reports_a_changed_committed_file(tmp_path, caps
     (tmp_path / "LEVEL_MAP.json").write_text(R.dumps(doc), encoding="utf-8")
     assert R.main(["--check", "--out-dir", str(tmp_path)]) == 1
     assert "DIFFERS" in capsys.readouterr().err
+
+
+# ───────────────────────── --check compares all three files; staleness fields; the pre-freeze gate ─────────────────────────
+
+def _copy_set(tmp_path):
+    for p in (LEVEL_MAP, FAMILY, REG_INPUT):
+        (tmp_path / p.name).write_bytes(p.read_bytes())
+    return tmp_path
+
+
+@pytest.mark.parametrize("name", [R.REGISTRY_INPUT_FILE, "LEVEL_MAP.json", "FAMILY_ASSETS.json"])
+def test_mutation_check_compares_all_three_files(tmp_path, capsys, name):
+    _copy_set(tmp_path)
+    assert R.main(["--check", "--out-dir", str(tmp_path)]) == 0
+    path = tmp_path / name
+    doc = json.loads(path.read_text(encoding="utf-8"))
+    if name == R.REGISTRY_INPUT_FILE:
+        path.write_text(json.dumps(doc, indent=4) + "\n", encoding="utf-8")            # same rows, other bytes
+    else:
+        doc["_stamp"]["freeze"] = "edited by hand"                                      # the check inputs are untouched
+        path.write_text(R.dumps(doc), encoding="utf-8")
+    assert R.main(["--check", "--out-dir", str(tmp_path)]) == 1
+    err = capsys.readouterr().err
+    assert f"DIFFERS: {path}" in err and err.count("DIFFERS") == 1
+
+
+def test_a_missing_file_is_a_difference_not_a_pass(tmp_path):
+    _copy_set(tmp_path)
+    (tmp_path / "FAMILY_ASSETS.json").unlink()
+    assert R.main(["--check", "--out-dir", str(tmp_path)]) == 1
+
+
+def test_staleness_compares_the_top_level_revision_and_the_stamp_fields_separately():
+    base = (LM["registry_revision"], LM["_stamp"]["registry_fingerprint"])
+    assert R.staleness(LM, base) == []
+    top = copy.deepcopy(LM)
+    top["registry_revision"] = base[0] - 1                       # only the top-level field is behind
+    assert [x.split(" ")[0] for x in R.staleness(top, base)] == ["registry_revision"]
+    st = copy.deepcopy(LM)
+    st["_stamp"]["registry_revision"] = base[0] - 1
+    assert [x.split(" ")[0] for x in R.staleness(st, base)] == ["_stamp.registry_revision"]
+    fp = copy.deepcopy(LM)
+    fp["_stamp"]["registry_fingerprint"] = "0" * 64
+    assert [x.split(" ")[0] for x in R.staleness(fp, base)] == ["_stamp.registry_fingerprint"]
+    assert R.staleness({}, base) and R.staleness({"_stamp": "x"}, base)                   # no stamp is stale, never a crash
+    frozen = copy.deepcopy(top)
+    frozen["_stamp"]["status"] = "FROZEN"
+    assert staleness_failures(frozen, base)                                               # a top-level lag alone fails a freeze
+
+
+def test_pre_freeze_is_the_gate_a_relabelled_stale_draft_passes_check_but_fails_it(tmp_path, capsys):
+    _write_copy(tmp_path, "FROZEN", "revision", version="1.0")
+    assert R.main(["--check", "--out-dir", str(tmp_path)]) == 1                             # honest: stale AND not a draft
+    # the same stale content relabelled DRAFT (status and version edited, regenerated consistently)
+    _write_copy(tmp_path, "DRAFT", "revision")
+    capsys.readouterr()
+    assert R.main(["--check", "--out-dir", str(tmp_path)]) == 0                             # only warned ...
+    assert "STALE (draft)" in capsys.readouterr().err
+    assert R.main(["--check", "--pre-freeze", "--out-dir", str(tmp_path)]) == 1             # ... the gate fails it
+    assert "PRE-FREEZE FAIL" in capsys.readouterr().err
+
+
+def test_pre_freeze_fails_every_draft_even_a_current_one(tmp_path, capsys):
+    _write_copy(tmp_path, "DRAFT")
+    assert R.main(["--check", "--strict", "--out-dir", str(tmp_path)]) == 0
+    assert R.main(["--check", "--pre-freeze", "--out-dir", str(tmp_path)]) == 1
+    assert "status is DRAFT" in capsys.readouterr().err
+
+
+def test_pre_freeze_passes_only_a_current_frozen_set_and_fails_a_stale_one(tmp_path, capsys):
+    _write_copy(tmp_path, "FROZEN", version="1.0")
+    assert R.main(["--check", "--pre-freeze", "--out-dir", str(tmp_path)]) == 0
+    stale = tmp_path / "stale"
+    stale.mkdir()
+    _write_copy(stale, "FROZEN", "fingerprint", version="1.0")
+    assert R.main(["--check", "--pre-freeze", "--out-dir", str(stale)]) == 1
+
+
+def test_pre_freeze_and_registry_export_are_refused_outside_their_modes(capsys):
+    assert R.main(["--pre-freeze"]) == 2
+    assert R.main(["--registry-export", "x.json"]) == 2
+    assert R.main(["--check", "--freeze"]) == 2
+
+
+def test_a_draft_version_must_say_draft_and_a_freeze_must_not():
+    with pytest.raises(G.LevelMapError):
+        R.render(frozen_at=LM["frozen_at"], registry_revision=PIN[0], registry_fingerprint=PIN[1], version="1.0", status="DRAFT")
+    with pytest.raises(G.LevelMapError):
+        R.render(frozen_at=LM["frozen_at"], registry_revision=PIN[0], registry_fingerprint=PIN[1], version="0.2-draft", status="FROZEN")
+    with pytest.raises(G.LevelMapError):
+        R.render(frozen_at=LM["frozen_at"], registry_revision=PIN[0], registry_fingerprint=PIN[1], status="J1")
+
+
+# ───────────────────────── F1: a write never clobbers a frozen set; the three files are all-or-nothing ─────────────────────────
+
+NOW = "2026-12-01T00:00:00+00:00"
+
+
+def _bytes(d):
+    return {n: (d / n).read_bytes() for n in (R.REGISTRY_INPUT_FILE, "LEVEL_MAP.json", "FAMILY_ASSETS.json")}
+
+
+def test_a_write_refuses_to_overwrite_a_frozen_set(tmp_path, capsys):
+    _write_copy(tmp_path, "FROZEN", version="1.0")                   # the reviewer's repro: version 1.0 + status FROZEN
+    before = _bytes(tmp_path)
+    assert R.main(["--out-dir", str(tmp_path), "--frozen-at", NOW]) == 2
+    assert _bytes(tmp_path) == before and "refusing to overwrite" in capsys.readouterr().err
+    assert R.main(["--out-dir", str(tmp_path), "--frozen-at", NOW, "--force"]) == 0
+    assert json.loads((tmp_path / "LEVEL_MAP.json").read_text(encoding="utf-8"))["_stamp"]["status"] == "DRAFT"
+
+
+@pytest.mark.parametrize("which", ["LEVEL_MAP.json", "FAMILY_ASSETS.json"])
+@pytest.mark.parametrize("how", ["frozen", "nostamp", "garbage"])
+def test_a_write_refuses_when_either_existing_file_is_not_a_plain_draft(tmp_path, which, how):
+    _write_copy(tmp_path, "DRAFT")
+    path = tmp_path / which
+    doc = json.loads(path.read_text(encoding="utf-8"))
+    if how == "frozen":
+        doc["_stamp"]["status"] = "FROZEN"
+        doc["version"] = "1.0"
+    elif how == "nostamp":
+        del doc["_stamp"]
+    path.write_text("{" if how == "garbage" else R.dumps(doc), encoding="utf-8")
+    before = _bytes(tmp_path)
+    assert R.main(["--out-dir", str(tmp_path), "--frozen-at", NOW]) == 2
+    assert _bytes(tmp_path) == before
+    assert R.main(["--out-dir", str(tmp_path), "--frozen-at", NOW, "--force"]) == 0
+
+
+def test_a_write_over_a_plain_draft_or_an_empty_directory_is_allowed(tmp_path):
+    assert R.main(["--out-dir", str(tmp_path), "--frozen-at", NOW]) == 0
+    assert R.main(["--out-dir", str(tmp_path), "--frozen-at", NOW]) == 0
+
+
+@pytest.mark.parametrize("fail_on", [1, 2, 3])
+def test_a_failure_part_way_through_the_replace_restores_the_originals(tmp_path, monkeypatch, capsys, fail_on):
+    import os
+    _write_copy(tmp_path, "DRAFT", "revision")
+    before = _bytes(tmp_path)
+    real, calls = os.replace, {"n": 0}
+
+    def flaky(src, dst):
+        calls["n"] += 1
+        if calls["n"] == fail_on:
+            raise OSError("disk full (injected)")
+        return real(src, dst)
+
+    monkeypatch.setattr(R, "_replace", flaky)
+    assert R.main(["--out-dir", str(tmp_path), "--frozen-at", NOW]) == 5
+    assert _bytes(tmp_path) == before
+    assert sorted(p.name for p in tmp_path.iterdir()) == sorted(before)                  # no stage or restore temp left behind
+    assert "originals restored" in capsys.readouterr().err
+
+
+def test_a_failure_while_staging_leaves_the_originals_and_a_fresh_directory_empty(tmp_path, monkeypatch):
+    import tempfile
+    _write_copy(tmp_path, "DRAFT", "revision")
+    before = _bytes(tmp_path)
+    real, calls = tempfile.mkstemp, {"n": 0}
+
+    def flaky(*a, **k):
+        calls["n"] += 1
+        if calls["n"] == 3:
+            raise OSError("no space (injected)")
+        return real(*a, **k)
+
+    monkeypatch.setattr(tempfile, "mkstemp", flaky)
+    assert R.main(["--out-dir", str(tmp_path), "--frozen-at", NOW]) == 5
+    assert _bytes(tmp_path) == before and sorted(p.name for p in tmp_path.iterdir()) == sorted(before)
+    calls["n"] = 0
+    fresh = tmp_path / "fresh"
+    fresh.mkdir()
+    assert R.main(["--out-dir", str(fresh), "--frozen-at", NOW]) == 5
+    assert list(fresh.iterdir()) == []
+
+
+# ───────────────────────── F2: the J1 freeze path ─────────────────────────
+
+def _export(tmp_path, mutate=None):
+    rows = [dict(asset_id=r["asset_id"], layer=r["layer"], depends_on=list(r["depends_on"]), active=r["active"]) for r in ROWS]
+    if mutate:
+        mutate(rows)
+    f = tmp_path / "live_export.json"
+    f.write_text(json.dumps(rows), encoding="utf-8")
+    return f
+
+
+def _row(rows, aid):
+    return next(r for r in rows if r["asset_id"] == aid)
+
+
+def test_freeze_writes_a_frozen_set_from_a_matching_live_export_and_passes_the_gate(tmp_path, capsys):
+    work = tmp_path / "w"
+    work.mkdir()
+    _write_copy(work, "DRAFT")
+    exp = _export(tmp_path)
+    assert R.main(["--freeze", "--registry-export", str(exp), "--out-dir", str(work), "--frozen-at", NOW]) == 0
+    lm = json.loads((work / "LEVEL_MAP.json").read_text(encoding="utf-8"))
+    fa = json.loads((work / "FAMILY_ASSETS.json").read_text(encoding="utf-8"))
+    assert lm["_stamp"]["status"] == fa["_stamp"]["status"] == "FROZEN"
+    assert lm["version"] == fa["version"] == "1.0" and not lm["version"].endswith("-draft")
+    assert lm["registry_revision"] == PIN[0] and lm["_stamp"]["registry_fingerprint"] == PIN[1]
+    assert lm["levels"] == LM["levels"] and lm["_stamp"]["dag_sha256"] == LM["_stamp"]["dag_sha256"]
+    assert "FROZEN at J1" in lm["_stamp"]["registry_basis"] and "DRAFT" not in lm["_stamp"]["registry_basis"]
+    assert R.main(["--check", "--pre-freeze", "--out-dir", str(work)]) == 0                   # the gate passes the frozen set
+    assert R.main(["--out-dir", str(work), "--frozen-at", NOW]) == 2                          # a draft write cannot clobber it
+    assert R.main(["--freeze", "--registry-export", str(exp), "--out-dir", str(work), "--frozen-at", NOW]) == 2
+    assert R.main(["--freeze", "--registry-export", str(exp), "--out-dir", str(work), "--frozen-at", NOW, "--force"]) == 0
+
+
+@pytest.mark.parametrize("what,mutate,needle", [
+    ("an extra edge", lambda rows: _row(rows, "bg_texts")["depends_on"].append("bg_ontology"), "bg_texts: edge only in the export: bg_ontology"),
+    ("a dropped edge", lambda rows: _row(rows, "ga_condition")["depends_on"].remove("ga_dashas"), "ga_condition: edge only in the draft input: ga_dashas"),
+    ("an active asset missing", lambda rows: rows.remove(_row(rows, "lel_events")), "active asset only in the draft input: lel_events"),
+    ("an extra active asset", lambda rows: rows.append(dict(asset_id="ka_new_asset", layer="kala", depends_on=[], active=True)),
+     "active asset only in the export: ka_new_asset"),
+])
+def test_freeze_refuses_an_export_whose_active_edges_differ_and_prints_the_diff(tmp_path, capsys, what, mutate, needle):
+    work = tmp_path / "w"
+    work.mkdir()
+    _write_copy(work, "DRAFT")
+    before = _bytes(work)
+    assert R.main(["--freeze", "--registry-export", str(_export(tmp_path, mutate)), "--out-dir", str(work), "--frozen-at", NOW]) == 2
+    err = capsys.readouterr().err
+    assert needle in err and "nothing written" in err, what
+    assert _bytes(work) == before
+
+
+def test_freeze_needs_an_export_and_a_timestamp(tmp_path):
+    work = tmp_path / "w"
+    work.mkdir()
+    _write_copy(work, "DRAFT")
+    assert R.main(["--freeze", "--out-dir", str(work), "--frozen-at", NOW]) == 2
+    assert R.main(["--freeze", "--registry-export", str(_export(tmp_path)), "--out-dir", str(work)]) == 2
+
+
+def test_export_diff_ignores_inactive_rows_and_row_order():
+    rows = [dict(r) for r in ROWS]
+    assert R.export_diff(ROWS, list(reversed(rows))) == []
+    inactive = [r for r in rows if not r["active"]]
+    assert R.export_diff(ROWS, [r for r in rows if r["active"]]) == [] and inactive
