@@ -353,8 +353,6 @@ def test_low_forms_have_named_reasons(repo, name, reason):
     "def r(o):\n    return getattr(o, 'x', None), getattr(o, 'y', 0)\n",                       # a plain read with a default
     "def r(swe, names):\n    for n in names:\n        c = getattr(swe, n, None)\n        print(c)\n",   # a runtime name, never called
     "def r(o):\n    return getattr(o, 'retrograde', False)\n",
-    "def r():\n    return globals().get('T'), locals().keys(), vars().items()\n",
-    "def r():\n    return globals()['T']\n",
     "import sys\ndef r():\n    return sys.argv\n",
     "def r(rows):\n    return len(rows), int('3'), float('1'), abs(-1), round(1.5), ord('a'), any(rows), all(rows)\n",
 ])

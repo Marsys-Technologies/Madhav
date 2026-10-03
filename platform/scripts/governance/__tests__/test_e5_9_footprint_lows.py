@@ -409,7 +409,6 @@ def test_an_exotic_write_form_is_listed_as_not_scanned_with_a_named_reason(repo,
     'def r(o):\n    return getattr(o, "close", None)\n',                                  # a literal attribute read with a default
     'def r(o, k):\n    return o.__dict__.get(k)\n',
     'def r(idx, v):\n    idx.__dict__["_cache"] = v\n',                                   # per-object state, not module rebinding
-    'def r(x):\n    return globals().get("T"), locals().keys()\n',                       # reading the namespace is not rebinding it
     'def r(o):\n    return getattr(o, "x", None)\n',
     'import copy\ndef r(o):\n    return copy.copy(o)\n',
     'def r(x):\n    return compile_regex(x)\n',

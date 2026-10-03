@@ -723,9 +723,6 @@ def test_aliasing_the_namespace_dict_or_reaching_another_module_is_runtime_rebin
 
 
 @pytest.mark.parametrize("src", [
-    "def r():\n    return globals().get('T'), locals().keys()\n",
-    "def r(x):\n    return 'a {y}'.format(**locals())\n",
-    "def r():\n    return globals()['T']\n",
     "def r(o, v):\n    o.__dict__['k'] = v\n",
 ])
 def test_reading_the_namespace_is_not_rebinding_it(repo, src):

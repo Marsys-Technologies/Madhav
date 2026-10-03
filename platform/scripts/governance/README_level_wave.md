@@ -96,15 +96,19 @@ provable arguments; a savepoint statement (`SAVEPOINT|RELEASE [SAVEPOINT]|ROLLBA
 Attributes are never matched by their last segment. Two further disciplines close the hiding places for a mutation or an
 override:
 
-* **Containers.** A name or attribute bound to a mutable container (list/dict/set, a comprehension, a copy or a combination of
-  one) is provable only while EVERY use of it is a read: iteration, a subscript load, `.items()/.values()/.keys()/.get()/.copy()`,
+* **Containers.** A name is policed as a possible mutable container UNLESS it is provably an immutable value (str, bytes, number,
+  bool, None, or a tuple / frozenset of such, recursively; a call result of an in-file function counts only if the function returns
+  one on every path). A call result, a subscript, an attribute, `setdefault`/`get`/`pop`, a loop over a container of lists, a
+  tuple that holds a list: all are policed. A policed name is provable only while EVERY use of it is a read: iteration, a subscript load, `.items()/.values()/.keys()/.get()/.copy()`,
   `len`, `in`, truthiness, an f-string, `str.join(...)`, a pure builtin (`sorted`, `list`, `enumerate`, ...), unpacking, or --
   on the BARE name only -- a mutator call (`append`, `extend`, `update`, `setdefault`, ...) or an item store, whose values are
   tracked as bindings. Aliasing it, passing it to a call, binding a method of it (`ap = L.append`), mutating it through an
   attribute receiver (`self.L.append`, `W.L[0] = x`), returning, yielding or storing it elsewhere is `container_escapes`; so is
-  a container holding another mutable container.
+  a container (or a tuple) holding another mutable container.
 * **Class attributes.** `self.X` / `cls.X` / `Cls.X` is provable only on a plain class (undecorated, no base but `object`, no
-  metaclass, no subclass in the file, never constructed with arguments, no `__dict__` use in the file, no `self.X = ...`
+  metaclass, no subclass in the file, never constructed with arguments, its name never rebound (`A = imported`, `from c import A`,
+  a parameter named `A`, a second `def A`), no `__dict__`/`__setattr__`/`__getattribute__` use or definition in the file, no
+  3-argument `type(...)` call, no `self.X = ...`
   anywhere, no method called through the class with an explicit `self`) when `X` is an unannotated top-level `X = <value>`
   assigned exactly once in the class body (not under `if`/`try`/`for`/`with`, not `+=`, not shadowed by a `def`/import).
   Dataclass / NamedTuple / Enum fields and subclass overrides are therefore not provable.
@@ -125,7 +129,7 @@ that is touched in any way other than being measured/iterated (`.append`/`.exten
 * MERGE INTO, REFRESH MATERIALIZED VIEW, CREATE TABLE, SELECT ... INTO (an INTO at the same parenthesis depth as its SELECT, so
   `SELECT EXTRACT(year FROM d) INTO t` is caught), ALTER TABLE, DROP TABLE, psycopg `sql.SQL`/`sql.Identifier` composition, SQL read
   from a file feeding `execute`, a `*.sql` file reference. SQL comments (`/* */` nested, `--`) are whitespace: verbs are matched on
-  the comment-free text; the stripper is quote-aware (`'--'`, `E'\\''`, `"--"`, `$$--$$` are text, a `\x01..\x02` placeholder is opaque), and the raw and the comment-free passes are UNIONED -- every table and every not-scanned reason of either pass is kept -- so a comment can only add (a verb split by a comment is read by the comment-free pass; the raw pass defers to it when the very next token is a comment opener).
+  the comment-free text; the stripper is quote-aware (`'--'`, `E'\\''`, `"--"`, `$$--$$` are text, a `\x01..\x02` placeholder is opaque), and THREE readings are UNIONED (the raw text, the quote-aware comment-free text, and the text with every comment marker stripped wherever it sits -- so a keyword split by a comment INSIDE a string or a `$$` body, `DO $$ BEGIN DELETE /*x*/ FROM t; END $$`, is read); `$` inside an identifier (`a$b$`) does not open a dollar quote and a dollar tag may be non-ASCII (`$é$`) -- every table and every not-scanned reason of either pass is kept -- so a comment can only add (a verb split by a comment is read by the comment-free pass; the raw pass defers to it when the very next token is a comment opener).
 * an execute-like argument that is not provably in-file: an imported name or an attribute of an imported module
   (`imported_sql_constant`), a call result (`sql_from_call_result`), a subscript of something not provable (`sql_from_subscript`),
   a name bound nowhere (`unresolved_sql_name`) or bound by something not provable, a parameter with no / an unprovable call site
@@ -141,7 +145,7 @@ that is touched in any way other than being measured/iterated (`.append`/`.exten
   (`runtime_rebinding`), `from x import *` (`dynamic_binding`), `getattr(...)(...)` or `getattr(obj, 'execute')`
   (`dynamic_attribute_call`). Dispatch by string is `dynamic_dispatch`: `getattr` with a runtime name, with a name that is a
   local def/class or a SQL-running method, or whose result is called straight away (a 3-argument read of a literal attribute is a
-  plain read); `globals()/locals()/vars()` looked up and called, aliased or passed on; `sys.modules`, `__import__`, `importlib`,
+  plain read); ANY use of `globals()/locals()/vars()` or `__builtins__`, `gc.get_objects()`; `sys.modules`, `__import__`, `importlib`,
   `builtins`, `__main__`, frames (`_getframe`, `currentframe`, `f_globals`), `operator.methodcaller`/`attrgetter`,
   `__getattribute__`. A function with a foreign decorator (anything but `staticmethod`/`classmethod`/`property`) is unprovable as a
   SQL source or as a parameter sink; a classmethod called through its class is indexed past `cls` (a regular method called
@@ -156,6 +160,15 @@ rendered like a concatenation. Not reassembled (so a verb and its target built f
 the verb comes from a name): fragments bound in different names and joined elsewhere. A table-parameter helper
 (`def wipe(c, t): ... {t}`) resolves from its call sites (`self`/`cls` are not counted); an aliased or `*args`-called helper is not
 resolved.
+
+A template made of this file's own constants is READ as the statement it runs: `'%s %s t' % (V, F)`, `'{} {} t'.format(V, F)`,
+`f'{V}ETE FROM t'`, `'DELETE FROM'.strip() + ' t'`, `'DELETE FROM x'.replace('x', 't')`, `v, f = 'DELETE', 'FROM'` are rendered
+with the constants written out (only `str` methods on literals are evaluated; nothing is imported or called) and scanned as well.
+
+Documented, not detected: `VACUUM FULL` / `CLUSTER` (they rewrite a table, they write no rows), `COPY ... TO` with a runtime target
+(an export), an instance of another module's class that is called instead of this file's class (an imported delegate), `__dict__`
+on an instance (it only matters for class attributes, which it already disables), and a name collision elsewhere that makes an
+in-file class attribute unknowable (the scan then says not scanned).
 
 The scan reads source text only (`ast.parse`, nothing imported or executed). It cannot see stored functions that write,
 triggers, rules, or a delegate in another module when the writer also writes tables itself (documented, not detected), and
