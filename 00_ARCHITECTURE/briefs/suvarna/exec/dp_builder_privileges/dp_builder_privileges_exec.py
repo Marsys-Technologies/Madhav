@@ -31,6 +31,8 @@ LAUNCH (GATE_V2). Never started directly: `exec/gate_v2/run_gated.sh <python3> d
 run and the apply). main() calls launch_gate() FIRST: exit 93 without a verifying GATE_V2_LAUNCH marker or if a pin differs. outcome.json (dry_run | applied | failed
 | commit_state_unknown) is written in every mode with python_executable, python_version, psycopg_version and libpq_version, which are also bound into the evidence
 digest: --apply / --rollback refuse (exit 92, before any connection) under a different interpreter or driver than the matching dry run. Python 3.11 and 3.12+.
+OTHER EXIT CODES: 94 = the connection is not the expected administrator / database / server major version, or is a superuser (checked first, before any other statement); 96 = commit() itself
+raised (state unknown: read the database; outcome.json says commit_state_unknown); 92 interpreter; 93 launch gate; 95 test variable outside pytest.
 """
 from __future__ import annotations
 
@@ -147,9 +149,9 @@ BIND_PATCH = FunctionPatch(
     owner=OWNER_L2, secdef=True, config='{"search_path=pg_catalog, public, pg_temp"}',
     acl="{data_plane_l2_owner=X/data_plane_l2_owner,data_plane_builder=X/data_plane_l2_owner}",
     hunks=tuple(bp.BIND_HUNKS),
-    patched_md5="fe428d35f24ba8e54602b89ad76f3472",
-    patched_sha256="2d161048f05cebeef89548084db00306e517cd309a219a342de284de690a797a",
-    diff_sha256="fd150202203caf92c2ec890a7a709fdc7b89b83dd8171a0480396fd477bbcb98", diff_hunks=1)
+    patched_md5="44c7e524a082ada7c919afd8d325ba8a",
+    patched_sha256="ebcb13b44746bef2f9c8b89dcfb75cb68766592d4328295c0babd62938683252",
+    diff_sha256="f39b6e211e0a72da8bf0c52497b9518a06504658f28a71fbe25044e2ee4c0241", diff_hunks=2)
 
 # B4: the eight identity functions (all owned by amjis_app, not SECURITY DEFINER, no proconfig). ACL read 2026-10-03.
 _EV = "{amjis_app=X/amjis_app,nirmana_evidence_ingress_writer=X/amjis_app}"
@@ -165,6 +167,17 @@ IDENTITY_FUNCTIONS = (
     ("bodha_signal_identity_namespace()", _EV),
 )
 IDENTITY_OWNER = APP_OWNER
+# NIT-2: md5(pg_get_functiondef) of the eight, read from production 2026-10-03 as suvarna_reader. A GRANT cannot change a body; the guard makes "unchanged" literal.
+IDENTITY_BODY_MD5 = {
+    "bodha_cgm_edge_identity(uuid,text,text,text,uuid,uuid)": "27687d64d968ca4ea1cf816325aea9a6",
+    "bodha_cgm_edge_identity_namespace()": "118b01c9d6c5607f294b3f5ac3eeed79",
+    "bodha_cgm_node_identity(uuid,text,text,text)": "f783e24eebfcbad004bf83f4314c2db3",
+    "bodha_cgm_node_identity_namespace()": "6ae5e390130f560449f91167afd64922",
+    "bodha_contradiction_identity(uuid,text,uuid,uuid)": "ebc7ad85bc4a4df56bf0c60df08cbb87",
+    "bodha_contradiction_identity_namespace()": "e9ceb71f71e2b7ee12a5f5ad57e7bc7c",
+    "bodha_signal_identity(uuid,text,text,text,jsonb)": "fee6184131bcee9c00865626b972719d",
+    "bodha_signal_identity_namespace()": "50e7c33f10f8b546a7709e42d8711fa3",
+}
 
 
 def acl_set(text: str) -> frozenset:
@@ -207,6 +220,8 @@ PYTEST_ENV = "PYTEST_CURRENT_TEST"
 EXIT_NO_LAUNCH = 93
 EXIT_TEST_ENV = 95
 EXIT_INTERPRETER = 92
+EXIT_WRONG_TARGET = 94       # connected as the wrong role / to the wrong database / to the wrong server major version / as a superuser: before anything else
+EXIT_COMMIT_UNKNOWN = 96     # commit() itself raised: the change may or may not be committed (distinct from every refusal)
 MODES = ("count", "dry-run", "apply", "rollback-dry-run", "rollback")
 
 
@@ -300,9 +315,9 @@ def render_plan(sha: str | None = None, pins: dict | None = None) -> str:
         f"SET LOCAL lock_timeout = '{LOCK_TIMEOUT}'",
         f"SET LOCAL statement_timeout = '{STATEMENT_TIMEOUT}'",
         "-- FORWARD (--dry-run / --apply):",
-        f"-- preconditions (read only; any failure = refuse + ROLLBACK): no build_runs planned/running/paused on ANY chart (as {APP_OWNER}); no L1 generation 'building' (as {OWNER_L2}); no {BUILDER} session active/idle-in-transaction; public.digest(text,text) resolves; the deploy gate's own three queries green BEFORE the plan; "
+        f"-- preconditions (read only; any failure = refuse + ROLLBACK): no build_runs planned/running/paused on ANY chart (as {APP_OWNER}); no L1 generation 'building' (as {OWNER_L2}); the administrator is a member of pg_read_all_stats (asserted and printed; production `postgres` is a pg_monitor member through cloudsqlsuperuser) and no {BUILDER} session is hidden, active or idle-in-transaction; public.digest(text,text) resolves; the deploy gate's own three queries green BEFORE the plan; "
         f"{p.signature}: EXISTS, owner {p.owner}, SECURITY DEFINER {p.secdef}, proconfig {p.config}, ACL {p.acl}; pg_get_functiondef equals BYTE-FOR-BYTE the shipped pre-state (md5 {p.live_md5}, {p.live_len} chars, live_defs/{p.short}.LIVE.sql); its attestation row EXISTS exactly once with digest {p.live_sha256}; "
-        f"each of the eight identity functions EXISTS, owner {IDENTITY_OWNER}, not SECURITY DEFINER, no proconfig, with the bound ACL and without any {BUILDER} EXECUTE.",
+        f"each of the eight identity functions EXISTS, owner {IDENTITY_OWNER}, not SECURITY DEFINER, no proconfig, md5(pg_get_functiondef) as bound, with the bound ACL and without any {BUILDER} EXECUTE.",
         f"-- STEP B3 (1272), as {OWNER_L2}: CREATE OR REPLACE FUNCTION public.{p.signature} with the live definition plus exactly these hunks:",
     ]
     for name, old, new in p.hunks:
@@ -315,6 +330,7 @@ def render_plan(sha: str | None = None, pins: dict | None = None) -> str:
               f"-- STEP B4 (1273), as {IDENTITY_OWNER} (the owner of the eight functions):"]
     lines += [grant_stmt(s, False) for s, _ in IDENTITY_FUNCTIONS]
     lines += [
+        f"-- FIRST, on a new connection and before any other statement (exit {EXIT_WRONG_TARGET} otherwise): current_user = session_user = {PRODUCTION_TARGET.user}, current_database = {PRODUCTION_TARGET.database}, server major version {PRODUCTION_TARGET.server_major}, NOT a superuser, CREATEROLE; the facts are printed.",
         "-- ASSERTING post-checks (DO blocks that RAISE; the transaction is rolled back if any fails): has_function_privilege(data_plane_builder, <each of the eight>, 'EXECUTE') is true; "
         "the grant-mechanics probe (a temp table created as data_plane_l2_owner and granted with the patched body's statement): has_table_privilege true for data_plane_builder and false for every other role.",
         "-- commit only if ALL hold (EXPECTED_DIFF): across a before/after snapshot of every public data-plane function (definition md5, owner, secdef, config, ACL), the identity functions' ACLs, both function attestation tables, "
@@ -328,6 +344,8 @@ def render_plan(sha: str | None = None, pins: dict | None = None) -> str:
         "-- every mode needs --expect-plan: the in-process administrator credential is fetched only after the plan hash matched.",
         "-- gate files (exec/gate_v2; pins BOUND, GATE_V2 revision 3): prerun_gate.py sha256 %s; run_gated.sh sha256 %s; executor_standards.py sha256 %s" % (pins["prerun_gate.py"], pins["run_gated.sh"], pins["executor_standards.py"]),
         "-- plan hash = bind_gate_into_plan_hash(sha256(plan text + \"\\n\" + json(EXPECTED_DIFF)), prerun_gate.py pin, run_gated.sh pin)",
+        "-- gate table lists (parsed at run time from platform/scripts/data-plane-ownership-preflight.ts; bound here BY CONTENT): " + "; ".join(
+            f"{k} ({len(v)}) sha256 {hashlib.sha256(','.join(v).encode()).hexdigest()} [{','.join(v)}]" for k, v in load_gate_lists().items()),
         "-- bind patch module: bind_patch.py sha256 %s" % sha_file(HERE / "bind_patch.py"),
         "-- live definition: live_defs/%s.LIVE.sql sha256 %s" % (p.short, sha_file(p.live_file)),
         "-- history SQL (never run by migrate.ts): " + "; ".join(f"{n} sha256 {sha_file(HERE / n)}" for n in SQL_FILES),
@@ -352,6 +370,37 @@ def secret(name: str) -> str:
     if r.returncode != 0:
         raise SystemExit("secret access failed")
     return r.stdout.rstrip("\r\n")
+
+
+@dataclasses.dataclass(frozen=True)
+class Target:
+    """Who and where the administrator connection must be. Production values below; tests pass a mirror target to execute() (there is NO environment route)."""
+    user: str = "postgres"
+    database: str = "amjis"
+    server_major: int = 15
+
+
+PRODUCTION_TARGET = Target()
+
+
+class CommitStateUnknown(Exception):
+    def __init__(self, exc_name: str) -> None:
+        super().__init__(exc_name)
+        self.exc_name = exc_name
+
+
+def check_target(conn, target: Target) -> tuple[bool, list[str]]:
+    """LOW-1. The very first statements on a new connection: current_user = session_user = the named administrator, current_database = the named database,
+    server major version, NOT a superuser (the plan is written for a CREATEROLE administrator with transient membership), and CREATEROLE. -> (ok, facts)."""
+    cur = conn.cursor()
+    cur.execute("SELECT current_user, session_user, current_database(), current_setting('server_version_num')::int / 10000, r.rolsuper, r.rolcreaterole, "
+                "pg_has_role(current_user, 'pg_monitor', 'MEMBER'), pg_has_role(current_user, 'pg_read_all_stats', 'MEMBER') "
+                "FROM pg_roles r WHERE r.rolname = current_user")
+    cu, su, db, major, sup, crt, mon, stats = cur.fetchone()
+    conn.rollback()
+    facts = [f"target: current_user={cu} session_user={su} database={db} server_major={major} superuser={sup} createrole={crt} pg_monitor={mon} pg_read_all_stats={stats}"]
+    ok = (cu, su, db, major) == (target.user, target.user, target.database, target.server_major) and not sup and crt
+    return ok, facts
 
 
 def connect_admin():
@@ -502,8 +551,8 @@ WHERE a.function_signature=%s
 """
 
 
-def load_gate_tables(root: pathlib.Path = REPO_ROOT) -> list[str]:
-    """L1_ACTIVE_TABLES + L2_ACTIVE_TABLES parsed from the gate's own source (12 + 29), asserted so the gate mirror can never be vacuously green."""
+def load_gate_lists(root: pathlib.Path = REPO_ROOT) -> dict[str, list[str]]:
+    """L1_ACTIVE_TABLES and L2_ACTIVE_TABLES parsed from the gate's own source (12 + 29), asserted so the gate mirror can never be vacuously green."""
     text = (root / "platform/scripts/data-plane-ownership-preflight.ts").read_text(encoding="utf-8")
     text = re.sub(r"/\*.*?\*/", "", text, flags=re.S)
     text = re.sub(r"//[^\n]*", "", text)
@@ -515,6 +564,11 @@ def load_gate_tables(root: pathlib.Path = REPO_ROOT) -> list[str]:
         lists[name] = re.findall(r"'([a-z0-9_]+)'", m.group(1))
     if (len(lists["L1_ACTIVE_TABLES"]), len(lists["L2_ACTIVE_TABLES"])) != (12, 29):
         raise SystemExit("unexpected gate table counts (expected 12 + 29); the gate's lists changed: re-review this plan")
+    return lists
+
+
+def load_gate_tables(root: pathlib.Path = REPO_ROOT) -> list[str]:
+    lists = load_gate_lists(root)
     return lists["L1_ACTIVE_TABLES"] + lists["L2_ACTIVE_TABLES"]
 
 
@@ -555,12 +609,17 @@ def preconditions(cur, leg: Leg, ck: Checks, out) -> None:
     building = cur.fetchone()[0]
     cur.execute("RESET ROLE")
     ck.chk("pre_no_building_generation", building == 0, "an L1 data-plane generation is still 'building'" if building else None)
-    cur.execute("SELECT count(*) FILTER (WHERE state IN ('active','idle in transaction','idle in transaction (aborted)')), count(*) FILTER (WHERE state IS NULL) "
-                "FROM pg_stat_activity WHERE usename = %s AND pid <> pg_backend_pid()", (BUILDER,))
-    busy, hidden = cur.fetchone()
-    if hidden:
-        out(f"WARNING: {hidden} {BUILDER} session(s) have a hidden state (no pg_read_all_stats); only build_runs guards them")
-    ck.chk("pre_no_builder_session", busy == 0, f"a {BUILDER} session is active or idle-in-transaction" if busy else None)
+    # MED-1: the builder-session check is only a detector if the administrator CAN see other sessions' state. Fail closed: assert the fact, print it, and also
+    # refuse when any builder session's state is hidden. (Production `postgres` is a member of pg_monitor via cloudsqlsuperuser; read 2026-10-03.)
+    cur.execute("SELECT pg_has_role(current_user, 'pg_monitor', 'MEMBER'), pg_has_role(current_user, 'pg_read_all_stats', 'MEMBER')")
+    mon, stats = cur.fetchone()
+    out(f"administrator {'is' if stats else 'is NOT'} a member of pg_read_all_stats (pg_monitor member: {mon}): the {BUILDER} session check {'can' if stats else 'CANNOT'} see other sessions")
+    ck.chk("pre_admin_can_see_all_sessions", bool(stats), None if stats else "the administrator lacks pg_read_all_stats: the builder-session check would pass blind")
+    # a session whose state is hidden (NULL) counts as busy: unknown is never read as idle
+    cur.execute("SELECT count(*) FROM pg_stat_activity WHERE usename = %s AND pid <> pg_backend_pid() "
+                "AND (state IS NULL OR state IN ('active','idle in transaction','idle in transaction (aborted)'))", (BUILDER,))
+    busy = cur.fetchone()[0]
+    ck.chk("pre_no_builder_session", busy == 0, f"{busy} {BUILDER} session(s) active, idle-in-transaction or with a hidden state" if busy else None)
     cur.execute("SELECT to_regprocedure('public.digest(text,text)') IS NOT NULL")
     ck.chk("pre_pgcrypto_digest_resolves", cur.fetchone()[0], "public.digest(text,text) does not resolve")
     cur.execute("SELECT pg_get_userbyid(p.proowner), p.prosecdef, COALESCE(p.proconfig::text,''), COALESCE(p.proacl::text,''), pg_get_functiondef(p.oid) "
@@ -586,6 +645,8 @@ def preconditions(cur, leg: Leg, ck: Checks, out) -> None:
         owner, secdef, config, acl, builder_exec = row
         base_ok = (owner, secdef, config) == (IDENTITY_OWNER, False, "")
         ck.chk(f"pre_{short}_owner_secdef_config", base_ok, (owner, secdef, config))
+        cur.execute("SELECT md5(pg_get_functiondef(to_regprocedure(%s::text)))", ("public." + sig,))
+        ck.chk(f"pre_{short}_body_is_the_bound_body", cur.fetchone()[0] == IDENTITY_BODY_MD5[sig], f"md5 differs from the bound {IDENTITY_BODY_MD5[sig]}")
         if leg.name == "forward":
             ck.chk(f"pre_{short}_acl_bound_no_builder", acl_set(acl) == acl_set(acl_want) and not builder_exec, (acl, builder_exec))
         else:
@@ -661,6 +722,12 @@ def check_after(cur, leg: Leg, before: dict, after: dict, plan: dict, ck: Checks
         if acl_set(a[4]) != want:
             bad.append(sig)
     ck.chk("post_each_identity_acl_changed_by_exactly_the_builder_item_and_nothing_else", not bad, bad)
+    changed_bodies = []
+    for sig, want_md5 in IDENTITY_BODY_MD5.items():
+        cur.execute("SELECT md5(pg_get_functiondef(to_regprocedure(%s::text)))", ("public." + sig,))
+        if cur.fetchone()[0] != want_md5:
+            changed_bodies.append(sig)
+    ck.chk("post_identity_function_bodies_unchanged", not changed_bodies, changed_bodies)
     gained = after["execute_pairs"] - before["execute_pairs"]
     lost = before["execute_pairs"] - after["execute_pairs"]
     pairs = {(BUILDER, "public." + s) for s, _ in IDENTITY_FUNCTIONS}
@@ -674,7 +741,9 @@ def check_after(cur, leg: Leg, before: dict, after: dict, plan: dict, ck: Checks
         ck.chk("post_no_other_role_gains_execute_on_any_identity_function", got_gained == pairs and not got_lost, f"gained={sorted(got_gained - pairs)} lost={sorted(got_lost)}")
     else:
         ck.chk("post_no_other_role_loses_execute_on_any_identity_function", got_lost == pairs and not got_gained, f"gained={sorted(got_gained)} lost={sorted(got_lost - pairs)}")
-    for key in ("other_function_acl", "acl", "membership", "rls", "policy", "immutable_triggers"):
+    # LOW-2: membership is NOT compared here: inside the transaction the administrator holds the transient owner roles. The real comparison is
+    # post_membership_equals_pre_state_after_revoke (a fresh query after the REVOKE, compared with the pre-state).
+    for key in ("other_function_acl", "acl", "rls", "policy", "immutable_triggers"):
         ck.chk(f"post_{key}_identical", before[key] == after[key])
     cur.execute(f"SET LOCAL ROLE {OWNER_L2}")
     cur.execute("SELECT pg_get_functiondef(p.oid), pg_get_userbyid(p.proowner), p.prosecdef, COALESCE(p.proconfig::text,''), COALESCE(p.proacl::text,'') "
@@ -782,7 +851,6 @@ def run_leg(conn, leg: Leg, mode: str, out, gate_tables=None, expect_evidence: s
     before["membership"] = membership_before
     plan = apply_leg(cur, leg)
     after = snap(cur)
-    after["membership"] = membership_before
     try:
         asserting_post_checks(cur, leg)
         ck.chk("post_asserting_privilege_checks_hold", True)
@@ -1028,8 +1096,16 @@ def install_signal_handlers() -> None:
         signal.signal(sig, _on_terminate)
 
 
-def execute(args, connect, now=None, gate_fp=None, gate_tables=None):
-    """Returns (exit_code, result). `connect` is the only door to a database and is called ONLY after the plan hash matched."""
+def refuse_target(o, facts: list[str]):
+    """LOW-1: distinct exit code, own check name in outcome.json, before anything else touches the database."""
+    o.fail(["connected_to_the_wrong_target"])
+    o._warn("REFUSED (target): the connection is not the expected administrator on the expected database/server: " + " | ".join(facts) + "\n")
+    raise SystemExit(EXIT_WRONG_TARGET)
+
+
+def execute(args, connect, now=None, gate_fp=None, gate_tables=None, target=None):
+    """Returns (exit_code, result). `connect` is the only door to a database and is called ONLY after the plan hash matched. `target` defaults to the production
+    administrator/database/major version; only tests pass another (there is no environment or command-line route)."""
     now = now or dt.datetime.now(dt.timezone.utc)
     es = standards()
     evidence_root = resolve_evidence_root(getattr(args, "evidence_root", None))
@@ -1054,6 +1130,10 @@ def execute(args, connect, now=None, gate_fp=None, gate_tables=None):
             interpreter_precheck(o, evidence_root, args.expect_evidence, lines)
         conn = connect()                         # the administrator credential is fetched here, never earlier
         try:
+            target_ok, target_facts = check_target(conn, target or PRODUCTION_TARGET)
+            lines.extend(target_facts)
+            if not target_ok:
+                refuse_target(o, target_facts)
             try:
                 res = run_leg(conn, leg, args.mode if args.mode != "rollback-dry-run" else "dry-run", lines.append, gate_tables, args.expect_evidence)
             except Exception:
@@ -1070,6 +1150,8 @@ def execute(args, connect, now=None, gate_fp=None, gate_tables=None):
                         conn.commit()
                     except BaseException as exc:
                         o.mark_commit_unknown(digest, type(exc).__name__)
+                        if isinstance(exc, Exception):
+                            raise CommitStateUnknown(type(exc).__name__) from exc    # NIT-3: its own exit code in main()
                         raise
                     o.mark_committed(digest)
                 finally:
@@ -1131,6 +1213,10 @@ def main(argv=None) -> int:
         code, result = execute(args, connect_admin, gate_fp=gate_fp)
     except SystemExit:
         raise
+    except CommitStateUnknown as exc:
+        print("COMMIT STATE UNKNOWN (%s raised by commit()): the change may or may not be committed; outcome.json records commit_state_unknown. "
+              "CHECK THE DATABASE before doing anything else." % exc.exc_name)
+        return EXIT_COMMIT_UNKNOWN
     except Exception as exc:
         print("failed: %s %s" % (type(exc).__name__, str(exc)[:200].replace("\n", " ")))
         return 1

@@ -6,36 +6,39 @@ data_plane_l2_owner and carry no ACL, so the pipeline login data_plane_builder, 
 first), gets `permission denied for table chart_facts` on its first read. Reproduced on a disposable PostgreSQL 15 with the production schema, owners
 and ACLs (BO_UUID_FIX_REPORT_2.md B3).
 
-THE MINIMAL CORRECT CHANGE (one hunk). After both shadow loops, before the bind receipt is created: GRANT SELECT on every shadow THIS function created
-(owned by the function owner; never a temp table the caller made) to data_plane_builder, the one login this function already requires
-(session_user = 'data_plane_builder' is checked at its top). Not granted: the bind receipt (open_l2_data_plane_generation() trusts it only when it is
-owned by the function owner; the builder has no reason to read it), any other role, any other privilege. Temp tables are
-visible only through their session's pg_temp schema and drop at commit, so no other session or role gains access to anything.
+THE MINIMAL CORRECT CHANGE (two hunks, one statement each). Immediately after each of the function's two CREATE TEMP TABLE loops creates a shadow, GRANT
+SELECT on THAT shadow, BY NAME (the loop variable the function has just used to create it), to data_plane_builder, the one login this function already
+requires (session_user = 'data_plane_builder' is checked at its top). Review LOW-4: the first draft granted on every temp table the function owner owned in
+the session's temp schema; a pre-existing owner-owned temp table (for example l2_data_plane_msr_delete_receipt, created by assert_l2_msr_delete_safe) would
+have been granted too. Granting by name right after each CREATE can only ever touch a table this very call created (the function DROPs any same-named temp
+table first). Not granted: the bind receipt (open_l2_data_plane_generation() trusts it only when it is owned by the function owner; the builder has no reason
+to read it), any other role, any other privilege. Temp tables are visible only through their session's pg_temp schema and drop at commit, so no other
+session or role gains access to anything.
 """
 from __future__ import annotations
 
 import difflib
 import hashlib
 
-HUNK_NAME = "B3_grant_select_on_shadows_to_the_builder"
-HUNK_OLD = "  v_vector_digest := encode(digest(p_dependency_vector::text, 'sha256'), 'hex');\n  DROP TABLE IF EXISTS pg_temp.l2_data_plane_bind_receipt;"
-HUNK_NEW = (
-    "  -- 1272: the pipeline login must be able to READ the shadows this function creates (they are owned by the function owner and carry no ACL).\n"
-    "  -- The grant goes to the one login this function already requires (session_user = data_plane_builder); other sessions cannot see these temp\n"
-    "  -- tables and they drop at commit. The bind receipt is NOT granted.\n"
-    "  FOR v_table IN\n"
-    "    SELECT c.relname FROM pg_class c\n"
-    "    WHERE c.relnamespace = pg_my_temp_schema() AND c.relkind = 'r'\n"
-    "      AND pg_get_userbyid(c.relowner) = current_user\n"
-    "      AND c.relname <> 'l2_data_plane_bind_receipt'\n"
-    "    ORDER BY c.relname\n"
-    "  LOOP\n"
-    "    EXECUTE format('GRANT SELECT ON pg_temp.%I TO data_plane_builder', v_table);\n"
-    "  END LOOP;\n"
-    "  v_vector_digest := encode(digest(p_dependency_vector::text, 'sha256'), 'hex');\n"
-    "  DROP TABLE IF EXISTS pg_temp.l2_data_plane_bind_receipt;"
+_GRANT = "EXECUTE format('GRANT SELECT ON pg_temp.%I TO data_plane_builder', v_table);\n"
+HUNK_NAME_A = "B3_grant_select_on_each_l1_shadow_the_moment_it_is_created"
+HUNK_OLD_A = "    END IF;\n  END LOOP;\n\n  FOR v_table IN\n    SELECT DISTINCT source_table"
+HUNK_NEW_A = (
+    "    END IF;\n"
+    "    -- 1272: the pipeline login must be able to READ the shadow this loop pass has just created (owned by the function owner, no ACL).\n"
+    "    -- Granted BY NAME, to the one login this function already requires (session_user = data_plane_builder); nothing pre-existing is touched.\n"
+    "    " + _GRANT +
+    "  END LOOP;\n\n  FOR v_table IN\n    SELECT DISTINCT source_table"
 )
-BIND_HUNKS = ((HUNK_NAME, HUNK_OLD, HUNK_NEW),)
+HUNK_NAME_B = "B3_grant_select_on_each_l2_shadow_the_moment_it_is_created"
+HUNK_OLD_B = "    );\n  END LOOP;\n  v_vector_digest := encode(digest(p_dependency_vector::text, 'sha256'), 'hex');"
+HUNK_NEW_B = (
+    "    );\n"
+    "    -- 1272: as above, for the L2 shadows. The bind receipt created below is NOT granted.\n"
+    "    " + _GRANT +
+    "  END LOOP;\n  v_vector_digest := encode(digest(p_dependency_vector::text, 'sha256'), 'hex');"
+)
+BIND_HUNKS = ((HUNK_NAME_A, HUNK_OLD_A, HUNK_NEW_A), (HUNK_NAME_B, HUNK_OLD_B, HUNK_NEW_B))
 
 
 def apply_hunks(definition: str, hunks) -> str:

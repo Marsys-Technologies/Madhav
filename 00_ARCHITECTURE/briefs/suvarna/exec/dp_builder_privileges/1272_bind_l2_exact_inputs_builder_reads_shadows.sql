@@ -5,9 +5,9 @@
 -- by dp_builder_privileges_exec.py (gated owner path: transient membership, SET LOCAL ROLE data_plane_l2_owner, re-attestation of the function row in the SAME
 -- transaction, plan hash approved by SS). Applying it any other way leaves l2_data_plane_function_attestations stale and turns the deploy gate RED.
 --
--- bind_l2_exact_inputs(uuid, jsonb) after this change differs from the live definition by exactly ONE hunk (bind_patch.py): GRANT SELECT on every pg_temp shadow the
--- function created (owned by the function owner) to data_plane_builder, before the bind receipt is created. The full definition follows.
--- live md5 7bf8987517a7b76bd7ffae1c2bcf32ee -> patched md5 fe428d35f24ba8e54602b89ad76f3472; patched sha256 (= the new attestation digest) 2d161048f05cebeef89548084db00306e517cd309a219a342de284de690a797a
+-- bind_l2_exact_inputs(uuid, jsonb) after this change differs from the live definition by exactly TWO hunks (bind_patch.py): immediately after each of its two CREATE TEMP TABLE loops creates a shadow,
+-- GRANT SELECT on THAT shadow, by name, to data_plane_builder (nothing pre-existing is touched; the bind receipt is not granted). The full definition follows.
+-- live md5 7bf8987517a7b76bd7ffae1c2bcf32ee -> patched md5 44c7e524a082ada7c919afd8d325ba8a; patched sha256 (= the new attestation digest) ebcb13b44746bef2f9c8b89dcfb75cb68766592d4328295c0babd62938683252
 --
 -- STATEMENT (run as data_plane_l2_owner), followed by the re-attestation:
 CREATE OR REPLACE FUNCTION public.bind_l2_exact_inputs(p_chart_id uuid, p_dependency_vector jsonb)
@@ -96,6 +96,9 @@ BEGIN
         v_table, v_table, p_dependency_vector::text, p_chart_id::text, v_table
       );
     END IF;
+    -- 1272: the pipeline login must be able to READ the shadow this loop pass has just created (owned by the function owner, no ACL).
+    -- Granted BY NAME, to the one login this function already requires (session_user = data_plane_builder); nothing pre-existing is touched.
+    EXECUTE format('GRANT SELECT ON pg_temp.%I TO data_plane_builder', v_table);
   END LOOP;
 
   FOR v_table IN
@@ -123,17 +126,7 @@ BEGIN
       ' ORDER BY s.row_identity, s.captured_at DESC, s.snapshot_id DESC) latest',
       v_table, v_table, p_dependency_vector::text, p_chart_id::text, v_table
     );
-  END LOOP;
-  -- 1272: the pipeline login must be able to READ the shadows this function creates (they are owned by the function owner and carry no ACL).
-  -- The grant goes to the one login this function already requires (session_user = data_plane_builder); other sessions cannot see these temp
-  -- tables and they drop at commit. The bind receipt is NOT granted.
-  FOR v_table IN
-    SELECT c.relname FROM pg_class c
-    WHERE c.relnamespace = pg_my_temp_schema() AND c.relkind = 'r'
-      AND pg_get_userbyid(c.relowner) = current_user
-      AND c.relname <> 'l2_data_plane_bind_receipt'
-    ORDER BY c.relname
-  LOOP
+    -- 1272: as above, for the L2 shadows. The bind receipt created below is NOT granted.
     EXECUTE format('GRANT SELECT ON pg_temp.%I TO data_plane_builder', v_table);
   END LOOP;
   v_vector_digest := encode(digest(p_dependency_vector::text, 'sha256'), 'hex');

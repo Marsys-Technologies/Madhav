@@ -19,27 +19,31 @@ def test_live_definition_and_patched_definition_are_the_bound_ones(ex):
     assert hashlib.md5(live.encode()).hexdigest() == p.live_md5 and len(live) == p.live_len
     assert hashlib.sha256(live.encode()).hexdigest() == p.live_sha256     # equals production's l2_data_plane_function_attestations digest, read 2026-10-03
     assert hashlib.md5(new.encode()).hexdigest() == p.patched_md5 and hashlib.sha256(new.encode()).hexdigest() == p.patched_sha256
-    assert len(ex.bp.unified_hunks(live, new)) == 1 and ex.bp.diff_digest(live, new) == p.diff_sha256
+    assert len(ex.bp.unified_hunks(live, new)) == 2 == p.diff_hunks and ex.bp.diff_digest(live, new) == p.diff_sha256
 
 
-def test_the_patched_body_differs_from_the_live_body_only_by_the_one_hunk(ex):
+def test_the_patched_body_differs_from_the_live_body_only_by_the_two_insertions(ex):
+    import difflib
     live, new = ex.BIND_PATCH.live_def(), ex.BIND_PATCH.patched_def()
     live_lines, new_lines = live.splitlines(), new.splitlines()
-    assert [ln for ln in live_lines if ln not in new_lines] == []                      # nothing removed or changed
-    start = new_lines.index("  -- 1272: the pipeline login must be able to READ the shadows this function creates (they are owned by the function owner and carry no ACL).")
-    block = new_lines[start:start + 12]
-    assert new_lines[:start] + new_lines[start + 12:] == live_lines                    # removing the 12 added lines gives back the live body exactly
-    text = "\n".join(block)
-    # the grant goes to exactly the builder, on shadows owned by the function owner, never on the bind receipt
-    assert text.count("GRANT SELECT") == 1 and "TO data_plane_builder" in text
-    assert "pg_get_userbyid(c.relowner) = current_user" in text and "c.relname <> 'l2_data_plane_bind_receipt'" in text
-    assert "PUBLIC" not in text.replace("pg_catalog", "")
+    ops = [o for o in difflib.SequenceMatcher(None, live_lines, new_lines, autojunk=False).get_opcodes() if o[0] != "equal"]
+    assert [o[0] for o in ops] == ["insert", "insert"], ops                      # nothing removed or changed: two pure insertions
+    inserted = ["\n".join(new_lines[o[3]:o[4]]) for o in ops]
+    assert [new_lines[:ops[0][3]] + new_lines[ops[0][4]:ops[1][3]] + new_lines[ops[1][4]:]] == [live_lines]
+    for text in inserted:
+        # the grant goes to exactly the builder, BY NAME (the loop variable that just created the shadow), never PUBLIC, never a pg_class scan (review LOW-4)
+        assert text.count("GRANT SELECT") == 1 and "TO data_plane_builder', v_table" in text
+        assert "pg_class" not in text and "relowner" not in text and "PUBLIC" not in text.replace("pg_catalog", "")
+    # each grant sits directly after the END of a CREATE TEMP TABLE pass, inside the loop, and before the receipt
+    assert new.index("TO data_plane_builder', v_table") < new.index("CREATE TEMP TABLE l2_data_plane_bind_receipt")
+    assert new.count("GRANT SELECT ON pg_temp.%I TO data_plane_builder") == 2 and live.count("GRANT") == 0
+    assert "l2_data_plane_bind_receipt" not in "".join(inserted), "the bind receipt is never granted"
 
 
 def test_hunk_refuses_a_missing_anchor_and_a_second_application(ex):
     live = ex.BIND_PATCH.live_def()
     with pytest.raises(ValueError):
-        ex.bp.apply_hunks(live.replace("DROP TABLE IF EXISTS pg_temp.l2_data_plane_bind_receipt;", "DROP TABLE x;"), ex.BIND_PATCH.hunks)
+        ex.bp.apply_hunks(live.replace("SELECT DISTINCT source_table", "SELECT DISTINCT zz_source_table"), ex.BIND_PATCH.hunks)
     with pytest.raises(ValueError):
         ex.bp.apply_hunks(ex.BIND_PATCH.patched_def(), ex.BIND_PATCH.hunks)
 
@@ -200,3 +204,70 @@ def test_cli_parser_requires_expect_plan_and_evidence(ex):
 
 def test_acl_set_parsing(ex):
     assert ex.acl_set("{a=X/b,c=X/d}") == {"a=X/b", "c=X/d"} and ex.acl_set("") == frozenset() and ex.acl_set(None) == frozenset()
+
+
+# ------------------------------------------------------------------------------------------------ review of PR #3045: pure tests of the re-bound executor
+def test_identity_body_guards_cover_exactly_the_eight_functions(ex):
+    assert set(ex.IDENTITY_BODY_MD5) == {s for s, _ in ex.IDENTITY_FUNCTIONS} and len(ex.IDENTITY_BODY_MD5) == 8
+    assert all(len(m) == 32 for m in ex.IDENTITY_BODY_MD5.values())
+
+
+def test_plan_hash_binds_the_gate_table_lists_by_content(ex, monkeypatch):
+    """LOW-3: a changed list in the gate's own source changes the plan hash (it used to be read at run time without being bound)."""
+    base = ex.plan_hash_unbound()
+    real = ex.load_gate_lists
+    monkeypatch.setattr(ex, "load_gate_lists", lambda root=None: {k: (v[:-1] + ["zz_extra_table"] if k == "L2_ACTIVE_TABLES" else v) for k, v in real().items()})
+    assert ex.plan_hash_unbound() != base
+    text = ex.render_plan()
+    assert "L2_ACTIVE_TABLES (29) sha256" in text and "L1_ACTIVE_TABLES (12) sha256" in text
+
+
+def test_the_plan_text_states_the_new_checks(ex):
+    text = ex.render_plan()
+    for needle in ("pg_read_all_stats", f"exit {ex.EXIT_WRONG_TARGET}", "md5(pg_get_functiondef) as bound", "two"[:0] + "GRANT SELECT ON pg_temp.%I TO data_plane_builder"):
+        assert needle in text, needle
+
+
+class _FakeCur:
+    def __init__(self, row): self.row = row
+    def execute(self, *a, **k): pass
+    def fetchone(self): return self.row
+
+
+class _FakeConn:
+    def __init__(self, row): self.row = row; self.rolled_back = 0
+    def cursor(self): return _FakeCur(self.row)
+    def rollback(self): self.rolled_back += 1
+
+
+@pytest.mark.parametrize("row,ok", [
+    (("postgres", "postgres", "amjis", 15, False, True, True, True), True),
+    (("postgres", "postgres", "amjis", 15, True, True, True, True), False),          # superuser
+    (("postgres", "postgres", "amjis", 15, False, False, True, True), False),        # no CREATEROLE
+    (("postgres", "postgres", "other", 15, False, True, True, True), False),         # wrong database
+    (("somebody", "somebody", "amjis", 15, False, True, True, True), False),         # wrong administrator
+    (("postgres", "other_session_user", "amjis", 15, False, True, True, True), False),  # SET ROLE'd connection
+    (("postgres", "postgres", "amjis", 16, False, True, True, True), False),         # wrong major version
+])
+def test_check_target_accepts_only_the_production_administrator(ex, row, ok):
+    conn = _FakeConn(row)
+    got, facts = ex.check_target(conn, ex.PRODUCTION_TARGET)
+    assert got is ok and facts[0].startswith("target: current_user=") and conn.rolled_back == 1
+
+
+def test_main_maps_a_commit_state_unknown_to_its_own_exit_code(ex, monkeypatch, capsys):
+    monkeypatch.setattr(ex, "launch_gate", lambda environ=None: {"under_test": False})
+    monkeypatch.setattr(ex, "install_signal_handlers", lambda: None)
+
+    def boom(*a, **k):
+        raise ex.CommitStateUnknown("OperationalError")
+    monkeypatch.setattr(ex, "execute", boom)
+    assert ex.main(["--count", "--expect-plan", "x"]) == ex.EXIT_COMMIT_UNKNOWN == 96
+    assert "COMMIT STATE UNKNOWN" in capsys.readouterr().out
+    monkeypatch.setattr(ex, "execute", lambda *a, **k: (_ for _ in ()).throw(RuntimeError("x")))
+    assert ex.main(["--count", "--expect-plan", "x"]) == 1                       # an ordinary failure keeps exit 1
+
+
+def test_the_distinct_exit_codes_do_not_collide(ex):
+    codes = [ex.EXIT_INTERPRETER, ex.EXIT_NO_LAUNCH, ex.EXIT_WRONG_TARGET, ex.EXIT_TEST_ENV, ex.EXIT_COMMIT_UNKNOWN]
+    assert len(set(codes)) == 5 and sorted(codes) == [92, 93, 94, 95, 96]

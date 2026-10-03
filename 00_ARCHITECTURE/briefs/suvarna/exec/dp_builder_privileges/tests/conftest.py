@@ -44,6 +44,21 @@ def pytest_configure(config):
     config.addinivalue_line("markers", "mirror: needs the disposable production-mirrored PostgreSQL")
 
 
+def _conninfo(url):
+    import psycopg.conninfo
+    return psycopg.conninfo.conninfo_to_dict(url)
+
+
+def admin_user():
+    return _conninfo(ADMIN)["user"]
+
+
+def mirror_target(ex, **override):
+    """The executor's expected target for the mirror: the administrator and database of DPBP_MIRROR_ADMIN_URL, PostgreSQL 15."""
+    d = _conninfo(ADMIN)
+    return ex.Target(**{"user": d["user"], "database": d["dbname"], "server_major": 15, **override})
+
+
 def reset_database(ex):
     """Back to the production pre-state for B3/B4: the shipped live bind definition + its live attestation digest, no builder EXECUTE on the identity functions."""
     import psycopg
@@ -59,6 +74,9 @@ def reset_database(ex):
         for sig, _ in ex.IDENTITY_FUNCTIONS:
             cur.execute(f"REVOKE EXECUTE ON FUNCTION public.{sig} FROM {ex.BUILDER}")
         cur.execute("UPDATE build_runs SET state='completed' WHERE state IN ('planned','running','paused')")
+        # the mirror administrator mirrors production `postgres`: non-superuser, CREATEROLE, member of pg_monitor (via cloudsqlsuperuser in production). Review MED-1:
+        # without pg_monitor the builder-session check is blind, so the rehearsal's green result for it would be vacuous.
+        cur.execute(f"GRANT pg_monitor TO {admin_user()}")
 
 
 @pytest.fixture
@@ -80,9 +98,9 @@ class Args:
         self.mode, self.expect_plan, self.expect_evidence, self.evidence_root = mode, expect_plan, expect_evidence, evidence_root
 
 
-def run_mode(ex, mode, expect_evidence=None, plan=None, connect=None):
+def run_mode(ex, mode, expect_evidence=None, plan=None, connect=None, target=None):
     import psycopg
 
     def default_connect():
         return psycopg.connect(ADMIN)
-    return ex.execute(Args(mode, plan or ex.plan_hash(), expect_evidence), connect or default_connect)
+    return ex.execute(Args(mode, plan or ex.plan_hash(), expect_evidence), connect or default_connect, target=target or mirror_target(ex))

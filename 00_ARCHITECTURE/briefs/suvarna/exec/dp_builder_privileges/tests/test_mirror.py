@@ -44,10 +44,10 @@ def builder_can_execute(ex):
         return res
 
 
-def test_the_administrator_is_a_non_superuser_with_createrole():
+def test_the_administrator_is_a_non_superuser_with_createrole_and_pg_monitor(db):
     with psycopg.connect(ADMIN) as c:
-        row = c.execute("SELECT rolsuper, rolcreaterole, session_user FROM pg_roles WHERE rolname=session_user").fetchone()
-    assert row[0] is False and row[1] is True
+        row = c.execute("SELECT rolsuper, rolcreaterole, session_user, pg_has_role(session_user, 'pg_read_all_stats', 'MEMBER') FROM pg_roles WHERE rolname=session_user").fetchone()
+    assert row[0] is False and row[1] is True and row[3] is True, "the mirror administrator mirrors production postgres (CREATEROLE, pg_monitor)"
 
 
 def test_count_is_read_only_and_ok(ex, db, evidence):
@@ -68,8 +68,12 @@ def test_dry_run_holds_every_check_and_changes_nothing(ex, db, evidence):
     assert all(k in body for k in ex.RUNTIME_KEYS)
     names = set(res["checks"])
     for must in ("post_asserting_privilege_checks_hold", "post_no_other_role_gains_execute_on_any_identity_function", "post_grant_probe_no_other_role_can_select",
-                 "post_exactly_1_function_attestation_row_changed", "post_deploy_gate_green", "post_membership_equals_pre_state_after_revoke"):
+                 "post_exactly_1_function_attestation_row_changed", "post_deploy_gate_green", "post_membership_equals_pre_state_after_revoke",
+                 "pre_admin_can_see_all_sessions", "pre_id8_signal_ns_body_is_the_bound_body", "post_identity_function_bodies_unchanged"):
         assert must in names and res["checks"][must] is True, must
+    assert "post_membership_identical" not in names, "LOW-2: the vacuous membership check is gone"
+    assert any(l.startswith("administrator is a member of pg_read_all_stats") for l in res["log"]), "the dry run prints the pg_monitor fact"
+    assert any(l.startswith("target: current_user=") and "superuser=False" in l for l in res["log"]), "the dry run prints the connection facts"
 
 
 def test_apply_commits_exactly_the_planned_change(ex, db, evidence):
