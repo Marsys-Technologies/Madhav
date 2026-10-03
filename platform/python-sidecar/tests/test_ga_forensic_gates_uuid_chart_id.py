@@ -281,6 +281,9 @@ def r_vargas(mp, chart_id, good, via):
     mp.setattr(gvw, "_compute_varga_positions", lambda *a, **k: ({"D1": d1}, {}))
     mp.setattr(gvw, "_read_jaimini_karakas", _stop)
     mp.setattr(gvw, "_write_halt_log", lambda *a, **k: None)
+    # F-A2: the writer reads the live unique-index definition before it writes; this test is about the FORENSIC gate, not the index grain
+    # (the index-grain guard has its own tests in ga_writers/__tests__/test_ga_vargas_key_widening.py), so the recording conn need not answer it.
+    mp.setattr(gvw, "assert_unique_key_grain", lambda conn: None)
     if via == "writer":
         return _drive(res, lambda: gvw.build_ga_vargas(
             chart_id, BUILD_ID, conn=_RecConn(), birth_params=dict(BIRTH), ayanamsha_subset=[AYA]))

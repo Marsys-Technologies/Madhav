@@ -938,7 +938,7 @@ export const judgmentQueryCapability: CapabilityDescriptor = {
           if (!res.is_error) {
             const c = res.content as Record<string, unknown>
             const rows = (c['rows'] as Record<string, unknown>[]) ?? []
-            for (const r of rows) vargaConfirmation.push({ role, ...r })
+            for (const r of orderVargaConfirmationRows(rows)) vargaConfirmation.push({ role, ...r })
             if (rows.length > 0) vargaPlacementsPresent = true
           }
         }
@@ -1972,6 +1972,18 @@ export const judgmentQueryCapability: CapabilityDescriptor = {
       return { content: { error: String(err), chart_id }, is_error: true }
     }
   },
+}
+
+/**
+ * F-A2 reader fix: since the chart_divisionals key widened to fact_subject, a graha's rows in the operative
+ * varga include its 12 per-sign `varga_ashtakavarga` bindus rows, which the category-ascending page order
+ * (get_divisionals) puts FIRST. A head-keeping response-budget trim would then cut the placement / dignity /
+ * vargottama rows that actually confirm the varga before it cut bindus. Stable partition: every row that is
+ * not an ashtakavarga bindus row keeps its served order and comes first; the bindus rows follow in served order.
+ */
+export function orderVargaConfirmationRows(rows: Record<string, unknown>[]): Record<string, unknown>[] {
+  const isBindus = (r: Record<string, unknown>) => r['fact_category'] === 'varga_ashtakavarga'
+  return [...rows.filter(r => !isBindus(r)), ...rows.filter(isBindus)]
 }
 
 /**

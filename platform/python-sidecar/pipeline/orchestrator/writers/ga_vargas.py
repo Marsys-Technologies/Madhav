@@ -44,5 +44,19 @@ class GaVargasWriter(WriterBase):
             # could never fail the run). Raise so the savepoint rolls back and the asset errors.
             raise RuntimeError(
                 f"ga_vargas FORENSIC gate FAILED for ayanamsha {step.key}: {s.get('forensic_results', {}).get(step.key)}")
+        # rows_inserted counts rows the database actually stored, never rows
+        # attempted; anything that did not land is surfaced, not absorbed (F-A2).
+        not_landed = int(s.get('rows_attempted', 0)) - int(s.get('rows_landed', 0))
+        notes = ''
+        if not_landed > 0 or s.get('rows_collided') or s.get('rows_failed'):
+            notes = (
+                f"{not_landed} of {s.get('rows_attempted', 0)} rows did not land: "
+                f"{s.get('rows_collided', 0)} unique-key collisions within the run, "
+                f"{s.get('rows_db_skipped', 0)} skipped on conflict, "
+                f"{s.get('rows_failed', 0)} rejected; "
+                f"first colliding keys: {s.get('collision_samples', [])[:3]}"
+            )
         return WriterResult(asset_id=self.asset_id,
-                            rows_inserted=int(s.get('total_rows_written', 0)))
+                            rows_inserted=int(s.get('total_rows_written', 0)),
+                            rows_skipped=max(not_landed, 0),
+                            notes=notes)
