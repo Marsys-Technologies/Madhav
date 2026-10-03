@@ -132,10 +132,12 @@ def test_the_guards_read_no_setting_and_test_no_role_name():
         b = body(FW, tag)
         assert "current_setting" not in b and not re.search(r"current_user\s*=|session_user\s*=|rolsuper|usesuper", b), tag
     cas = body(FW, "cascade")
-    assert "pg_trigger_depth() < 2" in cas and "NOT EXISTS (SELECT 1 FROM public.charts c WHERE c.id = p_chart)" in cas
+    assert "NOT EXISTS (SELECT 1 FROM public.charts c WHERE c.id = p_chart)" in cas
+    assert not re.search(r"pg_trigger_depth\(\)", code(cas)) or "pg_trigger_depth" not in "\n".join(l for l in cas.splitlines() if not l.lstrip().startswith("--")), "the discriminator never uses trigger depth (spoofable)"
+    assert "SECURITY DEFINER\n SET search_path = pg_catalog, pg_temp\nAS $cascade$" in FW, "SECURITY DEFINER because charts has row-level security"
     for tag in ("predictions", "prospective", "manifestation", "bmpl"):
         b = body(FW, tag)
-        assert b.index("l5_frozen_withdrawal_authorizes") < b.index("l5_frozen_chart_cascade_authorizes") < b.index("cannot be deleted")
+        assert b.index("IF public.l5_frozen_chart_cascade_authorizes") < b.index("IF public.l5_frozen_withdrawal_authorizes") < b.rindex("cannot be deleted")
 
 
 def test_allow_lists_are_exactly_the_decided_columns_and_everything_else_fails_closed():
@@ -162,7 +164,7 @@ def test_header_states_the_decisions_privilege_order_exceptions_and_what_is_not_
     h = flat(FW)
     for n in ("OWNER-PATH SQL, NOT A MIGRATION", "must never be placed under platform/migrations", "N-104 and N-107", "ASSERT-AND-RECORD",
               "data_plane_builder holds exactly SELECT, INSERT, DELETE", "never issues a GRANT",
-              "TWO data-driven exceptions (SS N-107 and N-108)", "pg_trigger_depth() >= 2", "frozen = every row, pending included",
+              "TWO data-driven exceptions (SS N-107 and N-108)", "no charts row with that id", "frozen = every row, pending included",
               "NOT guarded by ruling: mimamsa_calibration and mimamsa_calibration_snapshot", "ORDER: after S-L1", "RLS is NOT armed",
               "Break-glass", "CAN disable a trigger"):
         assert n in h, n

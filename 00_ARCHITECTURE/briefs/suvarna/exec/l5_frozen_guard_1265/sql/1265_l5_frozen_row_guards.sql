@@ -22,8 +22,8 @@
 --   C. GUARDS (every role, owners and superusers included; ENABLE ALWAYS so session_replication_role = replica does not
 --      bypass; SECURITY INVOKER; pinned search_path; no PUBLIC execute on a trigger function). TRUNCATE is refused on all four.
 --      DELETE is refused on all four EXCEPT through TWO data-driven exceptions (SS N-107 and N-108). (i) the cascade of deleting the CHART
---      itself (charts(id) ON DELETE CASCADE, migration 1275): public.l5_frozen_chart_cascade_authorizes(chart) = pg_trigger_depth() >= 2 AND
---      no charts row with that id (a direct DELETE is depth 1; section C1b). (ii) the consent sweep, public.l5_frozen_withdrawal_authorizes(chart):
+--      itself (charts(id) ON DELETE CASCADE, migration 1275): public.l5_frozen_chart_cascade_authorizes(chart) = no charts row with that id
+--      (inside the RI cascade the parent is already deleted; SECURITY DEFINER because charts has RLS on; section C1b), checked BEFORE the consent sweep, public.l5_frozen_withdrawal_authorizes(chart):
 --      the chart's subject has chart_subject_consent.consent_state = 'withdrawn' AND no chart_subject_deletion_disputes row in
 --      open/reopened/escalated; that is exactly the condition of the consent sweep (consent/withdrawal.ts), which deletes
 --      chart_id = $1 from every subject-scoped table (all four are) and leaves its own hash-chained event and per-table
@@ -230,11 +230,11 @@ DECLARE
 BEGIN
   FOR rec IN SELECT * FROM (VALUES
       ('l5_frozen_withdrawal_authorizes(uuid)', '3ec94f3a5b54fdb701e56db53cb59ca3'),
-      ('l5_frozen_chart_cascade_authorizes(uuid)', '1c2fb1d0e8d0acfa39b3554f1ea37377'),
-      ('mimamsa_predictions_frozen_row_guard()', '5f55fe7cf0df358060a35920274aab64'),
-      ('brahma_prospective_ledger_frozen_row_guard()', '534824492a0e7e33890052513d12b8e1'),
-      ('mimamsa_manifestation_sets_frozen_row_guard()', 'dff9cfbc1d10df4f427b9a7379e6ff51'),
-      ('brahma_mimamsa_prediction_ledger_delete_guard()', '9250b082084b156828dd97a9c264888b')) AS v(sig, want) LOOP
+      ('l5_frozen_chart_cascade_authorizes(uuid)', '4617dbe262a6527a8173fb9e71badb0c'),
+      ('mimamsa_predictions_frozen_row_guard()', 'c70f89cc3be0ce3891e59d4b10f1852d'),
+      ('brahma_prospective_ledger_frozen_row_guard()', '0e2abf47bc0b16acfdde5783e9689941'),
+      ('mimamsa_manifestation_sets_frozen_row_guard()', 'e362add1186640c49dc4700dfd94c670'),
+      ('brahma_mimamsa_prediction_ledger_delete_guard()', '53bd3d5578281090adee5b253346dc17')) AS v(sig, want) LOOP
     IF EXISTS (SELECT 1 FROM pg_proc p WHERE p.oid = to_regprocedure('public.' || rec.sig) AND md5(p.prosrc) <> rec.want) THEN
       RAISE EXCEPTION '1265: live public.% differs from this file''s body (md5 %); refusing to overwrite a changed live guard', rec.sig, rec.want;
     END IF;
@@ -276,23 +276,27 @@ COMMENT ON FUNCTION public.l5_frozen_withdrawal_authorizes(uuid) IS
 
 -- C1b. The chart-deletion allowance (SS N-108): deleting a CHART is the strongest form of consent withdrawal, so the RI cascade of
 -- charts(id) ON DELETE CASCADE (migration 1275) may remove the rows of that chart; every other DELETE stays refused. Discriminator:
--- pg_trigger_depth() >= 2 (the child delete runs as an action of the parent's AFTER trigger; a direct DELETE is depth 1) AND the chart row is
--- gone in the cascade's snapshot. Proved on PostgreSQL 15 and 17 by the tests; reusable: any guard calls public.l5_frozen_chart_cascade_authorizes(OLD.chart_id).
+-- the chart row is gone (inside the RI cascade the parent is already deleted; for a direct delete of a row whose chart exists it never is). SECURITY
+-- DEFINER on purpose: public.charts has row-level security ON, so under the invoker's rights a role no policy lets see the chart would read "absent".
+-- NOT pg_trigger_depth(): it is 2 in the cascade and in any trigger a role can create. Proved on PostgreSQL 15 and 17 by the tests; reusable: any guard
+-- calls public.l5_frozen_chart_cascade_authorizes(OLD.chart_id), before the consent-withdrawal exception.
 CREATE OR REPLACE FUNCTION public.l5_frozen_chart_cascade_authorizes(p_chart uuid)
  RETURNS boolean
  LANGUAGE plpgsql
  STABLE
- SECURITY INVOKER
+ SECURITY DEFINER
  SET search_path = pg_catalog, pg_temp
 AS $cascade$
 DECLARE
   v_gone boolean := false;
 BEGIN
-  -- Inside the RI cascade of "DELETE FROM charts" the child delete runs as an action of the parent's AFTER trigger, so the child's BEFORE DELETE
-  -- trigger runs at trigger depth >= 2, and the parent row is already deleted (the cascade query sees the chart gone). A DIRECT delete of a
-  -- prediction runs at depth 1 whether or not the chart exists. Both conditions are required: depth alone is reachable from any user trigger,
-  -- chart-absence alone is true for orphan rows. No setting, role name or session state is consulted (nothing a session can SET).
-  IF p_chart IS NULL OR pg_trigger_depth() < 2 OR to_regclass('public.charts') IS NULL THEN
+  -- The discriminator of the chart-deletion allowance (SS N-108): inside the RI cascade of "DELETE FROM charts" the parent row is already deleted,
+  -- so the chart is not there; for a DIRECT delete of a row whose chart exists it always is. This function is SECURITY DEFINER (owner = the owner
+  -- of public.charts, which bypasses row security): charts has row-level security ON, and under the INVOKER's rights a role that no policy lets
+  -- see the chart would read "no such chart" and be authorized. It reads nothing but the existence of one id and returns a boolean.
+  -- No setting, role name or session state is consulted. pg_trigger_depth() is deliberately NOT used (it is 2 in the cascade AND in any trigger a
+  -- role can create).
+  IF p_chart IS NULL OR to_regclass('public.charts') IS NULL THEN
     RETURN false;
   END IF;
   BEGIN
@@ -305,7 +309,7 @@ END
 $cascade$;
 
 COMMENT ON FUNCTION public.l5_frozen_chart_cascade_authorizes(uuid) IS
-  'N-108 / 1265: true only inside the RI cascade of deleting the chart itself: trigger depth >= 2 and no row of public.charts with that id. Fails closed (false) when public.charts is absent or unreadable by the invoker. Residual: reachable from a user-created trigger for a chart id that does not exist.';
+  'N-108 / 1265: true when no row of public.charts has that id, i.e. inside the RI cascade of deleting the chart itself (the parent is already deleted). SECURITY DEFINER so row-level security on charts cannot make an existing chart look absent. Residual: orphan rows (chart never existed / deleted without the cascade) and rows of a chart deleted earlier in the same transaction are deletable.';
 
 -- C2. mimamsa_predictions
 CREATE OR REPLACE FUNCTION public.mimamsa_predictions_frozen_row_guard()
@@ -371,13 +375,13 @@ BEGIN
 
   -- DELETE. The one exception: the chart's subject has withdrawn consent and no deletion dispute is open (see
   -- public.l5_frozen_withdrawal_authorizes; the consent sweep records the withdrawal and a per-table tombstone).
-  IF public.l5_frozen_withdrawal_authorizes(OLD.chart_id) THEN
-    RAISE LOG 'mimamsa_predictions_frozen_row_guard: DELETE authorized by subject withdrawal (consent withdrawn, no open dispute); chart_id=%, prediction_id=%, user=%',
+  IF public.l5_frozen_chart_cascade_authorizes(OLD.chart_id) THEN
+    RAISE LOG 'mimamsa_predictions_frozen_row_guard: DELETE authorized as the cascade of deleting the chart itself; chart_id=%, prediction_id=%, user=%',
       OLD.chart_id, OLD.prediction_id, session_user;
     RETURN OLD;
   END IF;
-  IF public.l5_frozen_chart_cascade_authorizes(OLD.chart_id) THEN
-    RAISE LOG 'mimamsa_predictions_frozen_row_guard: DELETE authorized as the cascade of deleting the chart itself; chart_id=%, prediction_id=%, user=%',
+  IF public.l5_frozen_withdrawal_authorizes(OLD.chart_id) THEN
+    RAISE LOG 'mimamsa_predictions_frozen_row_guard: DELETE authorized by subject withdrawal (consent withdrawn, no open dispute); chart_id=%, prediction_id=%, user=%',
       OLD.chart_id, OLD.prediction_id, session_user;
     RETURN OLD;
   END IF;
@@ -466,14 +470,14 @@ BEGIN
     RETURN NEW;
   END IF;
 
-  -- DELETE. Two exceptions: a recorded subject withdrawal with no open dispute, and the cascade of deleting the chart itself.
-  IF public.l5_frozen_withdrawal_authorizes(OLD.chart_id) THEN
-    RAISE LOG 'brahma_prospective_ledger_frozen_row_guard: DELETE authorized by subject withdrawal (consent withdrawn, no open dispute); chart_id=%, prediction_id=%, user=%',
+  -- DELETE. Two exceptions: the cascade of deleting the chart itself (the chart row is gone), and a recorded subject withdrawal with no open dispute.
+  IF public.l5_frozen_chart_cascade_authorizes(OLD.chart_id) THEN
+    RAISE LOG 'brahma_prospective_ledger_frozen_row_guard: DELETE authorized as the cascade of deleting the chart itself; chart_id=%, prediction_id=%, user=%',
       OLD.chart_id, OLD.prediction_id, session_user;
     RETURN OLD;
   END IF;
-  IF public.l5_frozen_chart_cascade_authorizes(OLD.chart_id) THEN
-    RAISE LOG 'brahma_prospective_ledger_frozen_row_guard: DELETE authorized as the cascade of deleting the chart itself; chart_id=%, prediction_id=%, user=%',
+  IF public.l5_frozen_withdrawal_authorizes(OLD.chart_id) THEN
+    RAISE LOG 'brahma_prospective_ledger_frozen_row_guard: DELETE authorized by subject withdrawal (consent withdrawn, no open dispute); chart_id=%, prediction_id=%, user=%',
       OLD.chart_id, OLD.prediction_id, session_user;
     RETURN OLD;
   END IF;
@@ -512,14 +516,14 @@ BEGIN
     RETURN NEW;
   END IF;
 
-  -- DELETE. Two exceptions: a recorded subject withdrawal with no open dispute, and the cascade of deleting the chart itself.
-  IF public.l5_frozen_withdrawal_authorizes(OLD.chart_id) THEN
-    RAISE LOG 'mimamsa_manifestation_sets_frozen_row_guard: DELETE authorized by subject withdrawal (consent withdrawn, no open dispute); chart_id=%, prediction_id=%, channel_id=%, user=%',
+  -- DELETE. Two exceptions: the cascade of deleting the chart itself (the chart row is gone), and a recorded subject withdrawal with no open dispute.
+  IF public.l5_frozen_chart_cascade_authorizes(OLD.chart_id) THEN
+    RAISE LOG 'mimamsa_manifestation_sets_frozen_row_guard: DELETE authorized as the cascade of deleting the chart itself; chart_id=%, prediction_id=%, channel_id=%, user=%',
       OLD.chart_id, OLD.prediction_id, OLD.channel_id, session_user;
     RETURN OLD;
   END IF;
-  IF public.l5_frozen_chart_cascade_authorizes(OLD.chart_id) THEN
-    RAISE LOG 'mimamsa_manifestation_sets_frozen_row_guard: DELETE authorized as the cascade of deleting the chart itself; chart_id=%, prediction_id=%, channel_id=%, user=%',
+  IF public.l5_frozen_withdrawal_authorizes(OLD.chart_id) THEN
+    RAISE LOG 'mimamsa_manifestation_sets_frozen_row_guard: DELETE authorized by subject withdrawal (consent withdrawn, no open dispute); chart_id=%, prediction_id=%, channel_id=%, user=%',
       OLD.chart_id, OLD.prediction_id, OLD.channel_id, session_user;
     RETURN OLD;
   END IF;
@@ -543,14 +547,14 @@ BEGIN
       USING ERRCODE = '42501';
   END IF;
 
-  -- DELETE. Two exceptions: a recorded subject withdrawal with no open dispute, and the cascade of deleting the chart itself.
-  IF public.l5_frozen_withdrawal_authorizes(OLD.chart_id) THEN
-    RAISE LOG 'brahma_mimamsa_prediction_ledger_delete_guard: DELETE authorized by subject withdrawal (consent withdrawn, no open dispute); chart_id=%, id=%, user=%',
+  -- DELETE. Two exceptions: the cascade of deleting the chart itself (the chart row is gone), and a recorded subject withdrawal with no open dispute.
+  IF public.l5_frozen_chart_cascade_authorizes(OLD.chart_id) THEN
+    RAISE LOG 'brahma_mimamsa_prediction_ledger_delete_guard: DELETE authorized as the cascade of deleting the chart itself; chart_id=%, id=%, user=%',
       OLD.chart_id, OLD.id, session_user;
     RETURN OLD;
   END IF;
-  IF public.l5_frozen_chart_cascade_authorizes(OLD.chart_id) THEN
-    RAISE LOG 'brahma_mimamsa_prediction_ledger_delete_guard: DELETE authorized as the cascade of deleting the chart itself; chart_id=%, id=%, user=%',
+  IF public.l5_frozen_withdrawal_authorizes(OLD.chart_id) THEN
+    RAISE LOG 'brahma_mimamsa_prediction_ledger_delete_guard: DELETE authorized by subject withdrawal (consent withdrawn, no open dispute); chart_id=%, id=%, user=%',
       OLD.chart_id, OLD.id, session_user;
     RETURN OLD;
   END IF;
@@ -659,8 +663,10 @@ DECLARE
 BEGIN
   IF to_regclass('public.charts') IS NOT NULL THEN
     EXECUTE 'SELECT id FROM public.charts ORDER BY id LIMIT 1' INTO pc;
-  END IF;
-  IF pc IS NULL THEN
+    IF pc IS NULL THEN
+      RAISE EXCEPTION '1265 self-test cannot run: public.charts has no row to hang the probes on (a probe whose chart is missing would be deletable by the chart-deletion allowance, and with the 1275 foreign keys it could not be inserted)';
+    END IF;
+  ELSE
     pc := gen_random_uuid();
   END IF;
   BEGIN
@@ -770,11 +776,11 @@ BEGIN
   FOR rec IN SELECT * FROM (VALUES
       ('mimamsa_predictions_builder_guard()', '46c23854275c2712b30860a2b174adb2'),
       ('l5_frozen_withdrawal_authorizes(uuid)', '3ec94f3a5b54fdb701e56db53cb59ca3'),
-      ('l5_frozen_chart_cascade_authorizes(uuid)', '1c2fb1d0e8d0acfa39b3554f1ea37377'),
-      ('mimamsa_predictions_frozen_row_guard()', '5f55fe7cf0df358060a35920274aab64'),
-      ('brahma_prospective_ledger_frozen_row_guard()', '534824492a0e7e33890052513d12b8e1'),
-      ('mimamsa_manifestation_sets_frozen_row_guard()', 'dff9cfbc1d10df4f427b9a7379e6ff51'),
-      ('brahma_mimamsa_prediction_ledger_delete_guard()', '9250b082084b156828dd97a9c264888b')) AS v(sig, want) LOOP
+      ('l5_frozen_chart_cascade_authorizes(uuid)', '4617dbe262a6527a8173fb9e71badb0c'),
+      ('mimamsa_predictions_frozen_row_guard()', 'c70f89cc3be0ce3891e59d4b10f1852d'),
+      ('brahma_prospective_ledger_frozen_row_guard()', '0e2abf47bc0b16acfdde5783e9689941'),
+      ('mimamsa_manifestation_sets_frozen_row_guard()', 'e362add1186640c49dc4700dfd94c670'),
+      ('brahma_mimamsa_prediction_ledger_delete_guard()', '53bd3d5578281090adee5b253346dc17')) AS v(sig, want) LOOP
     IF (SELECT md5(prosrc) FROM pg_proc WHERE oid = to_regprocedure('public.' || rec.sig)) IS DISTINCT FROM rec.want THEN
       RAISE EXCEPTION '1265 post-check: public.% is not this file''s body', rec.sig;
     END IF;
@@ -798,8 +804,17 @@ BEGIN
        AND (prosecdef OR has_function_privilege('public', oid, 'EXECUTE'))) THEN
     RAISE EXCEPTION '1265 post-check: a trigger guard function is SECURITY DEFINER or executable by PUBLIC';
   END IF;
-  IF EXISTS (SELECT 1 FROM pg_proc WHERE oid IN (to_regprocedure('public.l5_frozen_withdrawal_authorizes(uuid)'), to_regprocedure('public.l5_frozen_chart_cascade_authorizes(uuid)')) AND prosecdef) THEN
-    RAISE EXCEPTION '1265 post-check: a withdrawal / cascade helper is SECURITY DEFINER';
+  IF (SELECT prosecdef FROM pg_proc WHERE oid = to_regprocedure('public.l5_frozen_withdrawal_authorizes(uuid)')) THEN
+    RAISE EXCEPTION '1265 post-check: the withdrawal helper is SECURITY DEFINER';
+  END IF;
+  IF NOT (SELECT prosecdef FROM pg_proc WHERE oid = to_regprocedure('public.l5_frozen_chart_cascade_authorizes(uuid)')) THEN
+    RAISE EXCEPTION '1265 post-check: the chart-cascade helper must be SECURITY DEFINER (row-level security on charts)';
+  END IF;
+  IF to_regclass('public.charts') IS NOT NULL AND NOT EXISTS (
+       SELECT 1 FROM pg_proc p JOIN pg_class c ON c.oid = 'public.charts'::regclass JOIN pg_roles r ON r.oid = p.proowner
+        WHERE p.oid = to_regprocedure('public.l5_frozen_chart_cascade_authorizes(uuid)')
+          AND (p.proowner = c.relowner OR r.rolsuper OR r.rolbypassrls)) THEN
+    RAISE EXCEPTION '1265 post-check: the chart-cascade helper is not owned by the owner of public.charts (or a role that bypasses row security), so row-level security could hide a chart from it';
   END IF;
 END
 $post$;

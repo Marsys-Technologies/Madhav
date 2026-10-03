@@ -84,11 +84,11 @@ TABLES = ("mimamsa_predictions", "brahma_prospective_ledger", "mimamsa_manifesta
 BUILDER_SIG, BUILDER_MD5, BUILDER_LEN = "mimamsa_predictions_builder_guard()", "46c23854275c2712b30860a2b174adb2", 1084
 NEW_FUNCTIONS = {                       # signature -> (dollar-quote tag in the sql script, md5 of the body)
     "l5_frozen_withdrawal_authorizes(uuid)": ("helper", "3ec94f3a5b54fdb701e56db53cb59ca3"),
-    "l5_frozen_chart_cascade_authorizes(uuid)": ("cascade", "1c2fb1d0e8d0acfa39b3554f1ea37377"),
-    "mimamsa_predictions_frozen_row_guard()": ("predictions", "5f55fe7cf0df358060a35920274aab64"),
-    "brahma_prospective_ledger_frozen_row_guard()": ("prospective", "534824492a0e7e33890052513d12b8e1"),
-    "mimamsa_manifestation_sets_frozen_row_guard()": ("manifestation", "dff9cfbc1d10df4f427b9a7379e6ff51"),
-    "brahma_mimamsa_prediction_ledger_delete_guard()": ("bmpl", "9250b082084b156828dd97a9c264888b"),
+    "l5_frozen_chart_cascade_authorizes(uuid)": ("cascade", "4617dbe262a6527a8173fb9e71badb0c"),
+    "mimamsa_predictions_frozen_row_guard()": ("predictions", "c70f89cc3be0ce3891e59d4b10f1852d"),
+    "brahma_prospective_ledger_frozen_row_guard()": ("prospective", "0e2abf47bc0b16acfdde5783e9689941"),
+    "mimamsa_manifestation_sets_frozen_row_guard()": ("manifestation", "e362add1186640c49dc4700dfd94c670"),
+    "brahma_mimamsa_prediction_ledger_delete_guard()": ("bmpl", "53bd3d5578281090adee5b253346dc17"),
 }
 NEW_TRIGGERS = (                        # (table, trigger, tgtype, tgenabled, function)
     ("mimamsa_predictions", "mimamsa_predictions_frozen_row_guard", 27, "A", "mimamsa_predictions_frozen_row_guard"),
@@ -168,7 +168,7 @@ def expected_diff() -> dict:
                       "RLS flags (relrowsecurity / relforcerowsecurity) of the four tables", "row data of the four tables (count + md5 of every row)",
                       "asset_registry and every freshness/receipt table (no registry trigger fires)"],
         "exception": ["DELETE only through l5_frozen_withdrawal_authorizes: consent_state = 'withdrawn' and no open/reopened/escalated dispute; fail closed",
-                      "DELETE only through l5_frozen_chart_cascade_authorizes (SS N-108): pg_trigger_depth() >= 2 AND no charts row with that id, i.e. the RI cascade of deleting the chart itself; a direct DELETE (depth 1) is refused whether or not the chart exists"],
+                      "DELETE only through l5_frozen_chart_cascade_authorizes (SS N-108), checked first: no charts row with that id, i.e. inside the RI cascade of deleting the chart itself the parent is already gone; SECURITY DEFINER because charts has row-level security on; pg_trigger_depth() is deliberately not used; a direct DELETE of a row whose chart exists is refused"],
         "not_guarded_by_ruling": ["mimamsa_calibration", "mimamsa_calibration_snapshot"],
         "rls": "NOT armed (assessed: unsound for the live role set; see the PR)",
         "rollback": "drops the 8 triggers and 6 functions; the captured builder guard and the existing repo triggers stay; no CREATE capability needed",
@@ -482,7 +482,8 @@ def preconditions(cur, leg: Leg, ck: Checks, out, expected_db: str) -> None:
     else:
         for sig, (tag, md5) in NEW_FUNCTIONS.items():
             r = fn_row(cur, sig)
-            ck.chk("pre_installed_function_" + sig.split("(")[0], bool(r) and r[0] == md5 and r[2] == APP_OWNER and r[3] is False, r[0] if r else "absent")
+            ck.chk("pre_installed_function_" + sig.split("(")[0], bool(r) and r[0] == md5 and r[2] == APP_OWNER and r[3] is sig.startswith("l5_frozen_chart_cascade"),
+                   r[0] if r else "absent")
         for tbl, name, ttype, en, fn in NEW_TRIGGERS:
             tr = trigger_row(cur, tbl, name)
             ck.chk("pre_installed_trigger_" + name, bool(tr) and tr[0] == ttype and tr[1] == en, tr)
@@ -506,8 +507,9 @@ def accounting(leg: Leg, before: dict, after: dict) -> list:
     md5s = {r[0].split("(")[0]: r[1] for r in want_f}
     ck_md5 = all(md5s.get(s.split("(")[0]) == m for s, (_, m) in NEW_FUNCTIONS.items())
     out.append(("post_function_md5s_equal_the_bound_ones", ck_md5, md5s))
-    out.append(("post_new_functions_owned_by_app_owner_invoker_rights_no_public_exec",
-                all(r[2] == APP_OWNER and r[3] == "false" for r in want_f)
+    out.append(("post_new_functions_owner_definer_flags_and_acl_as_planned",
+                all(r[2] == APP_OWNER for r in want_f)
+                and all(r[3] == ("true" if r[0].startswith("l5_frozen_chart_cascade_authorizes") else "false") for r in want_f)
                 and all(r[5] == "{amjis_app=X/amjis_app}" for r in want_f if not r[0].startswith("l5_frozen_")),
                 sorted((r[0], r[2], r[3], r[5]) for r in want_f)))
     got_t = {(r[0], r[1], r[2], r[3]) for r in want_t}

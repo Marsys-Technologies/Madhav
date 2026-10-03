@@ -4,17 +4,17 @@ SET LOCAL search_path = public, pg_catalog; SET LOCAL lock_timeout = '5s'; SET L
 -- STEP (transient role membership, part of the plan): GRANT data_plane_schema_owner TO CURRENT_USER and GRANT amjis_app TO CURRENT_USER, each only if the administrator is not already a member; REVOKEd before COMMIT; the memberships are compared with the pre-state.
 -- FORWARD (--dry-run / --apply). preconditions (read only; any failure = refuse + ROLLBACK): the database is amjis; no build_runs planned/running/paused on ANY chart; no data_plane_builder session active/idle-in-transaction; schema public: owner data_plane_schema_owner, amjis_app has USAGE and NO CREATE (an already open window is refused); the four tables are owned by amjis_app; the captured builder guard is live as captured (md5 46c23854275c2712b30860a2b174adb2, 1084 bytes, secdef false, owner amjis_app, ACL {amjis_app=X/amjis_app}, trigger tgtype 15 enabled O); NONE of the 6 new functions or 8 new triggers exists; the repo objects it builds beside are the repo's (bmpl_freeze_confirmed() md5 70c2ddb261d703fa6a33a4feaf39c99c; brahma_prospective_ledger_enforce_shape() md5 acc7ec0121fa1fe0752ae938d9edfafe; their triggers); data_plane_builder holds exactly DELETE,INSERT,SELECT (grantor amjis_app) on mimamsa_predictions and mimamsa_manifestation_sets; --writer-commit: full 40-hex sha, the pipeline job image tag equals it, and at that commit platform/python-sidecar/pipeline/orchestrator/writers/mi_bhavisya.py and platform/src/lib/cockpit/assetClearSpec.ts contain no DELETE FROM mimamsa_predictions / mimamsa_manifestation_sets.
 -- 1. SET LOCAL ROLE data_plane_schema_owner; GRANT CREATE ON SCHEMA public TO amjis_app  (transient; closed in step 3)
--- 2. SET LOCAL ROLE amjis_app; execute sql/1265_l5_frozen_row_guards.sql (sha256 727dd875247b363ce419b7e99cb8bb7a6bdb4348f7623d81f5c8121c0d6f9111):
---    A capture of the builder guard (md5 guard), B assert-and-record of the builder grants (raises, never grants) and of the repo objects, C the 6 new functions (brahma_mimamsa_prediction_ledger_delete_guard() md5 9250b082084b156828dd97a9c264888b, brahma_prospective_ledger_frozen_row_guard() md5 534824492a0e7e33890052513d12b8e1, l5_frozen_chart_cascade_authorizes(uuid) md5 1c2fb1d0e8d0acfa39b3554f1ea37377, l5_frozen_withdrawal_authorizes(uuid) md5 3ec94f3a5b54fdb701e56db53cb59ca3, mimamsa_manifestation_sets_frozen_row_guard() md5 dff9cfbc1d10df4f427b9a7379e6ff51, mimamsa_predictions_frozen_row_guard() md5 5f55fe7cf0df358060a35920274aab64) and the 8 triggers (ENABLE ALWAYS), D per-table self-test with rolled-back probe rows, E asserting post-check.
+-- 2. SET LOCAL ROLE amjis_app; execute sql/1265_l5_frozen_row_guards.sql (sha256 e25adefbb8b21eaca8302e97fa3407c0dfe89f89ff0d1c69c6b2674c14599b15):
+--    A capture of the builder guard (md5 guard), B assert-and-record of the builder grants (raises, never grants) and of the repo objects, C the 6 new functions (brahma_mimamsa_prediction_ledger_delete_guard() md5 53bd3d5578281090adee5b253346dc17, brahma_prospective_ledger_frozen_row_guard() md5 0e2abf47bc0b16acfdde5783e9689941, l5_frozen_chart_cascade_authorizes(uuid) md5 4617dbe262a6527a8173fb9e71badb0c, l5_frozen_withdrawal_authorizes(uuid) md5 3ec94f3a5b54fdb701e56db53cb59ca3, mimamsa_manifestation_sets_frozen_row_guard() md5 e362add1186640c49dc4700dfd94c670, mimamsa_predictions_frozen_row_guard() md5 c70f89cc3be0ce3891e59d4b10f1852d) and the 8 triggers (ENABLE ALWAYS), D per-table self-test with rolled-back probe rows, E asserting post-check.
 -- 3. SET LOCAL ROLE data_plane_schema_owner; REVOKE CREATE ON SCHEMA public FROM amjis_app; then REVOKE the transient memberships.
 -- commit only if ALL hold (EXPECTED_DIFF): before/after snapshots of every public function, trigger, constraint, index and policy, the four tables' ACL, owner and RLS flags, the schema ACL, the memberships and the row digest (count + md5 of every row) of the four tables differ in EXACTLY the planned objects (6 functions, 8 triggers added; the captured builder guard unchanged); the schema ACL and memberships equal the pre-state; amjis_app has no CREATE on public; every function md5 equals its bound md5 and none is SECURITY DEFINER; --expect-plan == plan hash; --expect-evidence == this run's evidence digest (apply).
--- ROLLBACK (--rollback-dry-run / --rollback): the inverse as amjis_app (no CREATE capability needed): precondition = every installed body and trigger is exactly as installed; drops the 8 triggers and the 6 functions (sql/1265_l5_frozen_row_guards.ROLLBACK.sql, sha256 7ba9ce00989ae4f5ed180dedc69eda6691d92dee9c32cb9b3e771a2c9dc1b306); the captured builder guard and the existing triggers stay; asserting post-check; the snapshot equals the pre-forward state.
+-- ROLLBACK (--rollback-dry-run / --rollback): the inverse as amjis_app (no CREATE capability needed): precondition = every installed body and trigger is exactly as installed; drops the 8 triggers and the 6 functions (sql/1265_l5_frozen_row_guards.ROLLBACK.sql, sha256 b1a2d9aee19aa8da1c39d3fd6c2274ea8843e07abcdb774643ff45cd824832d2); the captured builder guard and the existing triggers stay; asserting post-check; the snapshot equals the pre-forward state.
 -- the real run is started ONLY through exec/gate_v2/run_gated.sh <python3.11> <this file> <args> (GATE_V2): the executor REFUSES (exit 93) unless the marker verifies against the gate files pinned below; exit 92 when --apply / --rollback run under a different interpreter or driver than the matching dry run; it writes outcome.json (dry_run | applied | failed | commit_state_unknown) in every mode.
 -- every mode needs --expect-plan: the in-process administrator credential is fetched only after the plan hash matched.
 -- gate files (exec/gate_v2; GATE_V2 revision 3, bound by SS N-86): prerun_gate.py sha256 01ab1d70d0cffea015a64af5430f355dd8d419307aceeaeacf3a0cc4d715773e; run_gated.sh sha256 305b4406bba57f85944bbb57cb269368287aaa6d6f782e986afa7f857606f076; executor_standards.py sha256 bbea69552a6a92e7aed3a75758b533868e3e3d2c5b47385ccc1bf6c0660dc135
 -- plan hash = bind_gate_into_plan_hash(sha256(plan text + "\n" + json(EXPECTED_DIFF)), prerun_gate.py pin, run_gated.sh pin)
 -- verification SQL (read only, run by the operator as the reader; named in the hashed plan text): verify_before_apply.sql sha256 6987ecbc6b7edd2e7e491a2bd26acfc65e4a97e3c5c32e0488d9e4aef4b85829; verify_after_apply.sql sha256 0fe2aa4a368d4c95976b9735350543f23ef9f90fb3010572e4736308e8e67ebd
--- executor: l5_frozen_guard_exec.py sha256 001abac007293985d07f0e18a446afca161c005e6e63478fdf044a2cc8831d78
+-- executor: l5_frozen_guard_exec.py sha256 90cedbb3ab75b7983676948b6b3c97e498245fb9540efa1159f1fc4e9eaa33c2
 
 -- EXPECTED_DIFF
 {
@@ -33,7 +33,7 @@ SET LOCAL search_path = public, pg_catalog; SET LOCAL lock_timeout = '5s'; SET L
  },
  "exception": [
   "DELETE only through l5_frozen_withdrawal_authorizes: consent_state = 'withdrawn' and no open/reopened/escalated dispute; fail closed",
-  "DELETE only through l5_frozen_chart_cascade_authorizes (SS N-108): pg_trigger_depth() >= 2 AND no charts row with that id, i.e. the RI cascade of deleting the chart itself; a direct DELETE (depth 1) is refused whether or not the chart exists"
+  "DELETE only through l5_frozen_chart_cascade_authorizes (SS N-108), checked first: no charts row with that id, i.e. inside the RI cascade of deleting the chart itself the parent is already gone; SECURITY DEFINER because charts has row-level security on; pg_trigger_depth() is deliberately not used; a direct DELETE of a row whose chart exists is refused"
  ],
  "existing_repo_objects_asserted": {
   "functions": {
@@ -64,12 +64,12 @@ SET LOCAL search_path = public, pg_catalog; SET LOCAL lock_timeout = '5s'; SET L
   "mimamsa_predictions_frozen_row_guard()"
  ],
  "functions_md5": {
-  "brahma_mimamsa_prediction_ledger_delete_guard()": "9250b082084b156828dd97a9c264888b",
-  "brahma_prospective_ledger_frozen_row_guard()": "534824492a0e7e33890052513d12b8e1",
-  "l5_frozen_chart_cascade_authorizes(uuid)": "1c2fb1d0e8d0acfa39b3554f1ea37377",
+  "brahma_mimamsa_prediction_ledger_delete_guard()": "53bd3d5578281090adee5b253346dc17",
+  "brahma_prospective_ledger_frozen_row_guard()": "0e2abf47bc0b16acfdde5783e9689941",
+  "l5_frozen_chart_cascade_authorizes(uuid)": "4617dbe262a6527a8173fb9e71badb0c",
   "l5_frozen_withdrawal_authorizes(uuid)": "3ec94f3a5b54fdb701e56db53cb59ca3",
-  "mimamsa_manifestation_sets_frozen_row_guard()": "dff9cfbc1d10df4f427b9a7379e6ff51",
-  "mimamsa_predictions_frozen_row_guard()": "5f55fe7cf0df358060a35920274aab64"
+  "mimamsa_manifestation_sets_frozen_row_guard()": "e362add1186640c49dc4700dfd94c670",
+  "mimamsa_predictions_frozen_row_guard()": "c70f89cc3be0ce3891e59d4b10f1852d"
  },
  "grants_asserted_not_issued": {
   "grantor": "amjis_app",

@@ -536,3 +536,4 @@ def test_dry_run_apply_and_rollback_work_with_the_1275_foreign_keys_already_pres
     assert code == 0
     code, rb = run(world, "rollback", expect_evidence=rdry["evidence_digest"])
     assert code == 0
+

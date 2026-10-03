@@ -11,11 +11,11 @@ DECLARE
 BEGIN
   FOR rec IN SELECT * FROM (VALUES
       ('l5_frozen_withdrawal_authorizes(uuid)', '3ec94f3a5b54fdb701e56db53cb59ca3'),
-      ('l5_frozen_chart_cascade_authorizes(uuid)', '1c2fb1d0e8d0acfa39b3554f1ea37377'),
-      ('mimamsa_predictions_frozen_row_guard()', '5f55fe7cf0df358060a35920274aab64'),
-      ('brahma_prospective_ledger_frozen_row_guard()', '534824492a0e7e33890052513d12b8e1'),
-      ('mimamsa_manifestation_sets_frozen_row_guard()', 'dff9cfbc1d10df4f427b9a7379e6ff51'),
-      ('brahma_mimamsa_prediction_ledger_delete_guard()', '9250b082084b156828dd97a9c264888b'),
+      ('l5_frozen_chart_cascade_authorizes(uuid)', '4617dbe262a6527a8173fb9e71badb0c'),
+      ('mimamsa_predictions_frozen_row_guard()', 'c70f89cc3be0ce3891e59d4b10f1852d'),
+      ('brahma_prospective_ledger_frozen_row_guard()', '0e2abf47bc0b16acfdde5783e9689941'),
+      ('mimamsa_manifestation_sets_frozen_row_guard()', 'e362add1186640c49dc4700dfd94c670'),
+      ('brahma_mimamsa_prediction_ledger_delete_guard()', '53bd3d5578281090adee5b253346dc17'),
       ('mimamsa_predictions_builder_guard()', '46c23854275c2712b30860a2b174adb2')) AS v(sig, want) LOOP
     IF (SELECT md5(prosrc) FROM pg_proc WHERE oid = to_regprocedure('public.' || rec.sig)) IS DISTINCT FROM rec.want THEN
       RAISE EXCEPTION '1265 rollback: public.% is absent or not the body this plan installed; refusing', rec.sig;

@@ -141,6 +141,7 @@ def test_a_fresh_replay_as_superuser_creates_the_captured_function_too(pg_cluste
     w = make_world(pg_cluster, builder_guard=False, seed=False)
     try:
         w.exec("INSERT INTO brahma_event_ontology VALUES ('ec_x','interval'), ('ec_chain','chain')")
+        w.exec("INSERT INTO charts VALUES (%s, 'a')", (CHART_A,))
         w.apply_sql(REAL, role="postgres", window=False)
         assert w.query("SELECT md5(prosrc) FROM pg_proc WHERE proname = 'mimamsa_predictions_builder_guard'") == [("46c23854275c2712b30860a2b174adb2",)]
         assert w.query("SELECT count(*) FROM pg_trigger WHERE tgrelid = 'mimamsa_predictions'::regclass AND NOT tgisinternal") == [(3,)]
@@ -427,28 +428,28 @@ def test_a_direct_delete_of_a_row_whose_chart_still_exists_is_refused_in_all_fou
         refused(shared, role, "DELETE FROM brahma_mimamsa_prediction_ledger WHERE chart_id = %s", (CHART_A,), prefix=P_BMPL)
 
 
-def test_a_direct_delete_after_the_chart_row_is_gone_in_the_same_transaction_is_still_refused(shared):
-    """The chart's cascade already removes the rows; a SEPARATE direct statement at depth 1 is not the cascade (and the chart-absence alone is not enough)."""
-    psy = shared.pg["psycopg"]
+def test_rows_of_a_chart_deleted_earlier_in_the_same_transaction_can_be_deleted_directly_pinned(shared):
+    """PINNED (same effect as the cascade; the chart is gone): once the charts row is deleted in this transaction, a direct delete of its rows is allowed
+    (with the 1275 FK the cascade has already removed them; here the FK is dropped in the transaction to leave the rows)."""
     with shared.connect("amjis_app") as c:
-        c.execute("ALTER TABLE mimamsa_predictions DROP CONSTRAINT mimamsa_predictions_chart_id_fkey")      # rows now orphan-able in this txn only
+        c.execute("ALTER TABLE mimamsa_predictions DROP CONSTRAINT mimamsa_predictions_chart_id_fkey")
         c.execute("DELETE FROM charts WHERE id = %s", (CHART_C,))
-        with pytest.raises(psy.errors.InsufficientPrivilege, match=P_PRED):
-            c.execute("DELETE FROM mimamsa_predictions WHERE chart_id = %s", (CHART_C,))
+        assert c.execute("DELETE FROM mimamsa_predictions WHERE chart_id = %s", (CHART_C,)).rowcount == 1
         c.rollback()
+    assert counts(shared, CHART_C)["mimamsa_predictions"] == 1
 
 
-def test_orphan_rows_whose_chart_never_existed_cannot_be_deleted_directly(world):
+def test_orphan_rows_whose_chart_does_not_exist_are_deletable_directly_pinned_residual_and_existing_charts_are_not(world):
+    """DOCUMENTED RESIDUAL of the NOT EXISTS discriminator (SS N-108 / coordinator ruling): a row whose chart is not in public.charts (never existed, or deleted
+    without the cascade) is deletable directly. The 1275 FKs leave no such rows; rows of a chart that EXISTS are never deletable this way."""
     world.apply_sql(REAL)
     world.exec(pred_row(ORPHAN, "pred_orphan"))
     world.exec("INSERT INTO mimamsa_manifestation_sets VALUES (%s, 'pred_orphan', 'ch', 'career', 'phala_anchors', '{}', true, now())", (ORPHAN,))
     world.exec(pros_row(ORPHAN, "interval", "open", "00000000-0000-4000-8000-0000000000c1"))
     world.exec("INSERT INTO brahma_mimamsa_prediction_ledger (chart_id, claim_text) VALUES (%s, 'orphan')", (ORPHAN,))
-    for role in ("amjis_app", "postgres"):
-        refused(world, role, "DELETE FROM mimamsa_predictions WHERE chart_id = %s", (ORPHAN,), prefix=P_PRED)
-        refused(world, role, "DELETE FROM mimamsa_manifestation_sets WHERE chart_id = %s", (ORPHAN,), prefix=P_MAN)
-        refused(world, role, "DELETE FROM brahma_prospective_ledger WHERE chart_id = %s", (ORPHAN,), prefix=P_PRO)
-        refused(world, role, "DELETE FROM brahma_mimamsa_prediction_ledger WHERE chart_id = %s", (ORPHAN,), prefix=P_BMPL)
+    for t_ in CASCADE_TABLES:
+        assert passes(world, "amjis_app", "DELETE FROM " + t_ + " WHERE chart_id = %s", (ORPHAN,)) == 1, t_
+        refused(world, "amjis_app", "DELETE FROM " + t_ + " WHERE chart_id = %s", (CHART_A,))
 
 
 @pytest.mark.parametrize("fake", [
@@ -472,7 +473,7 @@ def test_faking_the_condition_with_a_setting_a_role_or_a_set_local_does_not_open
 
 
 def test_a_user_function_cannot_open_it_by_deleting_the_chart_it_needs_one_that_really_goes(shared):
-    """A SECURITY DEFINER function, a DO block and a function called from SELECT all run at trigger depth 1: refused, chart present or gone."""
+    """A SECURITY DEFINER function and a DO block issuing a direct DELETE for a chart that exists are refused."""
     psy = shared.pg["psycopg"]
     with shared.connect("postgres") as c:
         c.execute("CREATE FUNCTION pg_temp.del_pred(uuid) RETURNS void LANGUAGE plpgsql SECURITY DEFINER AS $$ BEGIN DELETE FROM public.mimamsa_predictions WHERE chart_id = $1; END $$")
@@ -485,27 +486,34 @@ def test_a_user_function_cannot_open_it_by_deleting_the_chart_it_needs_one_that_
         c.rollback()
 
 
-def test_the_discriminator_itself_depth_one_is_false_depth_two_in_the_cascade_is_true(shared):
-    """The helper, called directly (depth 0) and from a trigger at depth 1, is false even for an absent chart; only the cascade makes it true."""
+def test_the_discriminator_itself_false_while_the_chart_exists_true_when_it_is_gone(shared):
     assert shared.query("SELECT public.l5_frozen_chart_cascade_authorizes(%s), public.l5_frozen_chart_cascade_authorizes(%s), public.l5_frozen_chart_cascade_authorizes(NULL)",
-                        (CHART_A, ORPHAN)) == [(False, False, False)]
+                        (CHART_A, ORPHAN)) == [(False, True, False)]
+    # the same answer for a role that no row-level-security policy lets see any chart (SECURITY DEFINER): it must say the chart exists
+    assert shared.query("SELECT public.l5_frozen_chart_cascade_authorizes(%s)", (CHART_A,), role="data_plane_builder") == [(False,)]
+    assert shared.query("SELECT count(*) FROM charts", role="data_plane_builder") == [(0,)], "the builder is blind to charts (RLS), which is why the helper is SECURITY DEFINER"
 
 
-def test_known_limit_a_user_created_trigger_can_reach_depth_two_for_a_chart_id_that_does_not_exist(world):
-    """DOCUMENTED RESIDUAL, pinned so a change is noticed: depth >= 2 is also reached from a trigger a role creates itself; the guard then still
-    requires the chart to be ABSENT. So (a) a chart that exists can never be bypassed this way, (b) an orphan row (no chart) can, by someone who can
-    CREATE a trigger (DDL). Mitigation: the cascade FKs of 1275 leave no orphans; DDL is owner-only."""
+def test_the_decoy_trigger_attack_deletes_nothing_while_the_chart_exists(world):
+    """The attack that defeats a pg_trigger_depth() discriminator (depth is 2 inside any trigger): a role that may create a trigger and holds DELETE on the
+    table fires a direct DELETE from its own AFTER INSERT trigger. The chart exists, so it is refused; for a role blind to charts (RLS) too."""
     world.apply_sql(REAL)
     add_chart_fks(world)
-    world.exec("CREATE TABLE bait (id int); GRANT ALL ON bait TO amjis_app; CREATE FUNCTION bait_fn() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN DELETE FROM public.mimamsa_predictions "
-               "WHERE chart_id = '" + CHART_A + "'; RETURN NULL; END $$; CREATE TRIGGER tb AFTER INSERT ON bait FOR EACH ROW EXECUTE FUNCTION bait_fn()")
-    refused(world, "amjis_app", "INSERT INTO bait VALUES (1)", prefix=P_PRED)                       # (a) the chart exists: refused even at depth 2
-    assert counts(world, CHART_A)["mimamsa_predictions"] == 7
-    world.exec("ALTER TABLE mimamsa_predictions DROP CONSTRAINT mimamsa_predictions_chart_id_fkey", role="amjis_app")
-    world.exec("DELETE FROM charts WHERE id = %s", (CHART_A,), role="amjis_app")                    # the chart is really gone, its rows stay (no FK)
-    assert counts(world, CHART_A)["mimamsa_predictions"] == 7
-    world.exec("INSERT INTO bait VALUES (1)", role="amjis_app")                                     # (b) pinned residual: allowed
-    assert counts(world, CHART_A)["mimamsa_predictions"] == 0
+    world.exec("CREATE ROLE atk_t NOLOGIN")
+    try:
+        world.exec("GRANT USAGE ON SCHEMA public TO atk_t; GRANT SELECT, DELETE ON mimamsa_predictions TO atk_t; GRANT SELECT ON charts TO atk_t; "
+                   "CREATE SCHEMA atk AUTHORIZATION atk_t; CREATE TABLE atk.decoy (id int); ALTER TABLE atk.decoy OWNER TO atk_t; "
+                   "CREATE FUNCTION atk.fire() RETURNS trigger LANGUAGE plpgsql AS $f$ BEGIN DELETE FROM public.mimamsa_predictions WHERE chart_id = '" + CHART_A + "'; RETURN NEW; END $f$; "
+                   "ALTER FUNCTION atk.fire() OWNER TO atk_t; CREATE TRIGGER decoy_fire AFTER INSERT ON atk.decoy FOR EACH ROW EXECUTE FUNCTION atk.fire()")
+        psy = world.pg["psycopg"]
+        with world.connect("postgres") as c:
+            c.execute("SET ROLE atk_t")
+            with pytest.raises(psy.errors.InsufficientPrivilege, match=P_PRED):
+                c.execute("INSERT INTO atk.decoy VALUES (1)")
+            c.rollback()
+        assert counts(world, CHART_A)["mimamsa_predictions"] == 7
+    finally:
+        world.exec("DROP SCHEMA atk CASCADE; REVOKE ALL ON mimamsa_predictions, charts FROM atk_t; REVOKE USAGE ON SCHEMA public FROM atk_t; DROP ROLE atk_t")
 
 
 def test_truncating_charts_cascade_is_refused_by_the_truncate_guard(shared):
@@ -811,42 +819,31 @@ def run_probes(w: World) -> list:
         c.execute("UPDATE mimamsa_predictions SET chart_context_stale_at = now(), chart_context_stale_reason = 'chart_details_changed' WHERE chart_id = %s", (CHART_C,))
         c.commit()
     must_refuse("pred stale marker cleared", "amjis_app", "UPDATE mimamsa_predictions SET chart_context_stale_at = NULL, chart_context_stale_reason = NULL WHERE chart_id = %s", (CHART_C,))
-    # orphan rows (chart never existed) cannot be deleted directly: absence of the chart alone is not the cascade
-    with w.connect("amjis_app") as c:
+    # a role that NO row-level-security policy lets see any chart must still be refused for a chart that exists (the helper is SECURITY DEFINER)
+    with w.connect("postgres") as c:
         try:
-            c.execute("ALTER TABLE mimamsa_predictions DROP CONSTRAINT mimamsa_predictions_chart_id_fkey")
-            c.execute(pred_row("99999999-8888-4777-8666-555555555555", "pred_orphan"))
-            c.execute("DELETE FROM mimamsa_predictions WHERE chart_id = '99999999-8888-4777-8666-555555555555'")
-            failed.append("orphan direct delete: not refused")
+            c.execute("CREATE ROLE probe_blind NOLOGIN; GRANT USAGE ON SCHEMA public TO probe_blind; GRANT SELECT, DELETE ON mimamsa_predictions TO probe_blind; GRANT SELECT ON charts TO probe_blind")
+            c.execute("SET ROLE probe_blind")
+            n_seen = c.execute("SELECT count(*) FROM charts").fetchone()[0]
+            if n_seen != 0:
+                failed.append("fixture: probe_blind should be blind to charts, sees %d" % n_seen)
+            c.execute("DELETE FROM mimamsa_predictions WHERE chart_id = %s", (CHART_A,))
+            failed.append("delete by a role blind to charts (RLS): not refused")
         except psy.errors.InsufficientPrivilege as e:
             if P_PRED.rstrip(":") not in str(e):
-                failed.append("orphan direct delete: refused by something else")
+                failed.append("delete by a role blind to charts: refused by something else: " + str(e).splitlines()[0][:80])
         finally:
             c.rollback()
-    # depth >= 2 alone is reachable from a user trigger: for a chart that EXISTS the delete must still be refused
+    # the decoy trigger (depth 2 from any trigger a role can create) must not open a delete of an existing chart's rows
     with w.connect("postgres") as c:
         try:
             c.execute("CREATE TABLE bait (id int); CREATE FUNCTION bait_fn() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN DELETE FROM public.mimamsa_predictions WHERE chart_id = '"
                       + CHART_A + "'; RETURN NULL; END $$; CREATE TRIGGER tb AFTER INSERT ON bait FOR EACH ROW EXECUTE FUNCTION bait_fn()")
             c.execute("INSERT INTO bait VALUES (1)")
-            failed.append("nested delete of an existing chart: not refused")
+            failed.append("decoy trigger delete of an existing chart: not refused")
         except psy.errors.InsufficientPrivilege as e:
             if P_PRED.rstrip(":") not in str(e):
-                failed.append("nested delete of an existing chart: refused by something else")
-        finally:
-            c.rollback()
-    # the same nested delete by a role that cannot read public.charts must fail CLOSED (not open)
-    with w.connect("postgres") as c:
-        try:
-            c.execute("CREATE ROLE probe_nc NOLOGIN; GRANT USAGE ON SCHEMA public TO probe_nc; GRANT SELECT, DELETE ON mimamsa_predictions TO probe_nc; "
-                      "CREATE TABLE bait (id int); GRANT INSERT ON bait TO probe_nc; CREATE FUNCTION bait_fn() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN DELETE FROM public.mimamsa_predictions "
-                      "WHERE chart_id = '" + CHART_A + "'; RETURN NULL; END $$; CREATE TRIGGER tb AFTER INSERT ON bait FOR EACH ROW EXECUTE FUNCTION bait_fn()")
-            c.execute("SET LOCAL ROLE probe_nc")
-            c.execute("INSERT INTO bait VALUES (1)")
-            failed.append("nested delete by a role that cannot read charts: not refused")
-        except psy.errors.InsufficientPrivilege as e:
-            if P_PRED.rstrip(":") not in str(e):
-                failed.append("nested delete by a role that cannot read charts: refused by something else: " + str(e).splitlines()[0][:80])
+                failed.append("decoy trigger delete of an existing chart: refused by something else")
         finally:
             c.rollback()
     # chart delete: the cascade works, in every table, for the right chart only; a direct delete beside it is refused
@@ -942,10 +939,8 @@ MUTANTS = [
     ("withdrawal helper ignores the consent state", lambda: mutate("helper", "WHERE c.chart_id = p_chart AND c.consent_state = 'withdrawn')", "WHERE c.chart_id = p_chart)")),
     ("withdrawal helper ignores open disputes", lambda: mutate("helper", "\n       AND NOT EXISTS (SELECT 1 FROM public.chart_subject_deletion_disputes d\n                        WHERE d.chart_id = p_chart AND d.status IN ('open', 'reopened', 'escalated'))", "")),
     ("withdrawal helper fails open", lambda: mutate("helper", "    v_authorized := false;\n  END;", "    v_authorized := true;\n  END;")),
-    ("cascade: depth test removed (chart-absence alone)", lambda: mutate("cascade", "p_chart IS NULL OR pg_trigger_depth() < 2 OR", "p_chart IS NULL OR")),
-    ("cascade: chart-absence test removed (depth alone)", lambda: mutate("cascade", "SELECT NOT EXISTS (SELECT 1 FROM public.charts c WHERE c.id = p_chart) INTO v_gone;", "SELECT true INTO v_gone;")),
-    ("cascade: depth threshold 1 (direct delete passes for an absent chart)", lambda: mutate("cascade", "pg_trigger_depth() < 2", "pg_trigger_depth() < 1")),
-    ("cascade: fails open on an unreadable charts table", lambda: mutate("cascade", "    v_gone := false;\n  END;", "    v_gone := true;\n  END;")),
+    ("cascade: the helper authorizes everything", lambda: mutate("cascade", "SELECT NOT EXISTS (SELECT 1 FROM public.charts c WHERE c.id = p_chart) INTO v_gone;", "SELECT true INTO v_gone;")),
+    ("cascade: the helper authorizes when the chart exists (inverted)", lambda: mutate("cascade", "SELECT NOT EXISTS (SELECT 1 FROM public.charts c WHERE c.id = p_chart) INTO v_gone;", "SELECT EXISTS (SELECT 1 FROM public.charts c WHERE c.id = p_chart) INTO v_gone;")),
     ("cascade: cascade allowance removed from the guards", lambda: REAL.replace("IF public.l5_frozen_chart_cascade_authorizes(OLD.chart_id) THEN", "IF false AND public.l5_frozen_chart_cascade_authorizes(OLD.chart_id) THEN")),
 ]
 # the last mutant edits four guard bodies at once: re-pin each
@@ -1211,14 +1206,56 @@ def test_applying_with_the_1275_foreign_keys_already_present_the_self_test_hangs
         drop_world(pg_cluster, w)
 
 
-def test_with_the_foreign_keys_present_and_no_chart_at_all_the_self_test_cannot_run_and_the_file_fails_closed(pg_cluster):
+def test_with_no_chart_at_all_the_self_test_cannot_run_and_the_file_fails_closed(pg_cluster):
     w = make_world(pg_cluster, seed=False)
     try:
         w.exec("INSERT INTO brahma_event_ontology VALUES ('ec_x','interval')")
         add_chart_fks(w)
         psy = pg_cluster["psycopg"]
-        with pytest.raises(psy.errors.ForeignKeyViolation):
+        with pytest.raises(psy.errors.RaiseException, match="self-test cannot run: public.charts has no row"):
             w.apply_sql(REAL)
         assert w.query("SELECT count(*) FROM pg_proc WHERE proname LIKE '%frozen%'") == [(0,)]
+    finally:
+        drop_world(pg_cluster, w)
+
+
+# ================================================================ K. the discriminator's own failure modes
+
+def test_the_discriminator_fails_closed_when_its_owner_can_no_longer_read_charts(pg_cluster):
+    w = make_world(pg_cluster)
+    try:
+        w.apply_sql(REAL)
+        w.exec("REVOKE SELECT ON charts FROM amjis_app", role="amjis_app")
+        assert w.query("SELECT public.l5_frozen_chart_cascade_authorizes(%s)", (ORPHAN,)) == [(False,)]
+        w.exec(pred_row(ORPHAN, "pred_orphan"))
+        refused(w, "amjis_app", "DELETE FROM mimamsa_predictions WHERE chart_id = %s", (ORPHAN,), prefix=P_PRED)
+    finally:
+        drop_world(pg_cluster, w)
+
+
+def test_mutant_fail_open_discriminator_is_caught_by_the_same_probe(pg_cluster):
+    w = make_world(pg_cluster)
+    try:
+        w.apply_sql(_strip_selftest(mutate("cascade", "    v_gone := false;\n  END;", "    v_gone := true;\n  END;")))
+        w.exec("REVOKE SELECT ON charts FROM amjis_app", role="amjis_app")
+        w.exec(pred_row(ORPHAN, "pred_orphan"))
+        assert passes(w, "amjis_app", "DELETE FROM mimamsa_predictions WHERE chart_id = %s", (ORPHAN,)) == 1, "the mutant authorizes when it cannot read charts"
+    finally:
+        drop_world(pg_cluster, w)
+
+
+def test_mutant_invoker_rights_discriminator_is_defeated_by_row_level_security_on_charts(pg_cluster):
+    """Why the helper is SECURITY DEFINER: charts has RLS on; under the invoker's rights a role no policy lets see the chart reads 'absent' and is authorized."""
+    mutant = REAL.replace(" STABLE\n SECURITY DEFINER\n SET search_path = pg_catalog, pg_temp\nAS $cascade$", " STABLE\n SECURITY INVOKER\n SET search_path = pg_catalog, pg_temp\nAS $cascade$")
+    assert mutant != REAL
+    mutant = mutant.replace("  IF NOT (SELECT prosecdef FROM pg_proc WHERE oid = to_regprocedure('public.l5_frozen_chart_cascade_authorizes(uuid)')) THEN", "  IF false THEN")
+    w = make_world(pg_cluster)
+    try:
+        psy = pg_cluster["psycopg"]
+        with pytest.raises(psy.errors.RaiseException, match="must be SECURITY DEFINER"):
+            w.apply_sql(_strip_selftest(REAL.replace(" STABLE\n SECURITY DEFINER\n SET search_path = pg_catalog, pg_temp\nAS $cascade$", " STABLE\n SECURITY INVOKER\n SET search_path = pg_catalog, pg_temp\nAS $cascade$")))
+        w.apply_sql(_strip_selftest(mutant))
+        add_chart_fks(w)
+        assert any("blind to charts" in f for f in run_probes(w)), "the probe for a role blind to charts must catch the invoker-rights helper"
     finally:
         drop_world(pg_cluster, w)
