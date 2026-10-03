@@ -590,6 +590,19 @@ def spec_columns(spec: dict) -> list:
     return list(dict.fromkeys(list(spec["fields"].values()) + [ef["column"] for ef in spec.get("extra_fields", [])]))
 
 
+def prose_coverage(spec: dict) -> dict:
+    """{column: the key of that column's per-row result in `match_ordinal_row`} for every column the spec matches against PASSAGE TEXT: the effect column
+    (result key `effect`: each stored effect must equal its declared clause's effect, or be NULL where the passage gives none) and every `passage_text`
+    extra field (result key = the column). NOT in it: the claim fields (claimant / count / direction: structural values) and `equals` extras (a constant,
+    not a restatement of a passage clause). DERIVED from the spec, never declared: NARR-GUARD (N-94) reads it to say which text columns Carr.D1 really covers.
+    Raises KeyError / TypeError / AttributeError on a spec that is not shaped as validate_spec requires."""
+    cov = {spec["fields"]["effect"]: "effect"}
+    for ef in spec.get("extra_fields", []):
+        if ef["kind"] == "passage_text":
+            cov[ef["column"]] = ef["column"]
+    return cov
+
+
 # ───────────────────────── the measurement ─────────────────────────
 
 def _claims(citation_state, content_sa_all_null: bool, n_chunks: int, preimages_used: list) -> str:

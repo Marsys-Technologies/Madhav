@@ -188,10 +188,10 @@ CRITERION_REGISTRY: dict[str, dict] = {
     "Vocab.alias":           dict(gate="Vocab", check="alias",            applicability="the table declares an alias-bearing class census (an undeclared asset with a `synonyms` column keeps the per-class empty-alias census); an asset's reviewed declaration `vocab_alias` makes it applicable by declaration, as a measured alias class against bg_ontology (class planet: canonical id, display name, and the ontology synonyms when an alias column is declared) or as `no_alias_class` (N/A, N-72 S3, N-73 (4)). A column pattern alone never makes it N/A", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=(ALIAS_COLUMN,), asset_kinds=None, revision=2),  # S3: declared form added; was rev 1
     "Ldgr.source_presence":  dict(gate="Ldgr",  check="source_presence",  applicability="the target table carries a recognised citation column (R60: singular classical_citation included); an asset's reviewed declaration `ldgr_source` makes it applicable by declaration, naming the column that carries the source and the citation_state it stands on, or as `no_classical_claim` (N/A, N-72 S3, N-73 (1)). A column pattern alone never makes it N/A", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=CITATION_COLUMNS, asset_kinds=None, revision=3),  # S3: declared form + citation_state added; was rev 2
     "Dens.served":           dict(gate="Dens",  check="served",           applicability="reaches a served capability module (one that SELECTS from the asset's table, or names it in a form the scan cannot classify; naming it only as a label, in a provenance string, prose, a type name or an import path, is not a reach; for a service-kind asset a service_probe envelope is a reach); PASS (structural) needs ONE capability entry (the object literal that declares density_contract) whose own served read of the asset's table selects a tier column; a sibling entry, a sub-select, an INSERT...SELECT or a UNION branch does not count", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=5),  # E6.1(d): was file-level 'declares density_contract anywhere' (rev 1); rev 5 (N-74(a)): select vs label
-    "Narr.agree":            dict(gate="Narr",  check="agree",            applicability="prose_fields declared non-empty (null = undeclared: NO_DETECTOR; [] = declared no prose: measured N/A, cause no-prose, released by the declared rule Narr.agree#measured:no-prose, N-65)", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=1),  # E6 (c): the declaration and the table's columns agree
-    "Narr.checkable":        dict(gate="Narr",  check="checkable",        applicability="prose_fields declared non-empty; zero checkable rows is INCONCLUSIVE, never PASS", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=1),
-    "Narr.fidelity_test":    dict(gate="Narr",  check="fidelity_test",    applicability="prose_fields declared non-empty; structural test discovery (N.7 item 5); never PASS", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=1),
-    "Narr.lint":             dict(gate="Narr",  check="lint",             applicability="prose_fields declared non-empty; the fact-category-pin and raw-token narration lints over the writer scope", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=1),
+    "Narr.agree":            dict(gate="Narr",  check="agree",            applicability="prose_fields declared non-empty (null = undeclared: NO_DETECTOR; [] = declared no prose: measured N/A, cause no-prose, released by the declared rule Narr.agree#measured:no-prose, N-65); an asset that declares prose_fields [] WITH a prose_coupling to carriage_d1 (NARR-GUARD, pin 16, N-94) reads N/A only while its own Carr.D1 reads PASS, else NO_DETECTOR", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=2),  # E6 (c): the declaration and the table's columns agree
+    "Narr.checkable":        dict(gate="Narr",  check="checkable",        applicability="prose_fields declared non-empty; zero checkable rows is INCONCLUSIVE, never PASS; an asset that declares prose_fields [] WITH a prose_coupling to carriage_d1 (NARR-GUARD, pin 16, N-94) reads N/A only while its own Carr.D1 reads PASS, else NO_DETECTOR", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=2),
+    "Narr.fidelity_test":    dict(gate="Narr",  check="fidelity_test",    applicability="prose_fields declared non-empty; structural test discovery (N.7 item 5); never PASS; an asset that declares prose_fields [] WITH a prose_coupling to carriage_d1 (NARR-GUARD, pin 16, N-94) reads N/A only while its own Carr.D1 reads PASS, else NO_DETECTOR", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=2),
+    "Narr.lint":             dict(gate="Narr",  check="lint",             applicability="prose_fields declared non-empty; the fact-category-pin and raw-token narration lints over the writer scope; an asset that declares prose_fields [] WITH a prose_coupling to carriage_d1 (NARR-GUARD, pin 16, N-94) reads N/A only while its own Carr.D1 reads PASS, else NO_DETECTOR", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=2),
     "Null.schema_default":   dict(gate="Null",  check="schema_default",   applicability="prose_fields declared non-empty, or a declared null_convention; a non-NULL DEFAULT on a declared prose or nullable column; never PASS alone: PASS only for an asset whose declared null_convention the detector verifies (S1, pin 13), the cap otherwise; a declared stamp_columns word (pin 15) exempts a NOT NULL timestamp column that holds no NULL and no sentinel timestamp (epoch, 1970-01-01, infinity, -infinity, year 0001) from the constant test only", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=3),
     "Null.blank_rows":       dict(gate="Null",  check="blank_rows",       applicability="prose_fields declared non-empty, or a declared null_convention; blank or placeholder rows standing in for NULL; never PASS alone: PASS only for an asset whose declared null_convention the detector verifies (S1, pin 13), the cap otherwise; a declared stamp_columns word (pin 15) exempts a NOT NULL timestamp column that holds no NULL and no sentinel timestamp (epoch, 1970-01-01, infinity, -infinity, year 0001) from the constant test only", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=3),
     "Reach.fields":          dict(gate="Reach", check="fields",           applicability="a served capability module selects specific columns", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=1),
@@ -394,7 +394,7 @@ def validate_na_rule_decisions() -> None:
 
 # Registry revision: hand-bumped integer; registry_fingerprint() is the content hash a pin test binds to it, so the
 # revision cannot silently lag the content. Every gate cell carries both.
-REGISTRY_REVISION = 15     # 15 (provisional): STAMP, the declared write-time stamp column (SS strategist ruling on the bg_phaladeepika_latta conflict): `null_convention.stamp_columns: [{column, why}]`, a declared word beside `nullable` and `constants`. A write-time stamp (created_at written in one seed transaction) can hold ONE value on every row, which the S1 constant test fails unless the column is declared constant, and declaring a stamp 'constant' is a claim known to be false in kind. The detector now requires a declared stamp column to be a timestamp / timestamptz (the catalog's pg_type name, domains resolved) AND NOT NULL (attnotnull, or a NOT NULL domain; one extra read-only pg_catalog SELECT, issued only when stamp_columns is declared) and to hold no NULL row and no sentinel timestamp, and EXEMPTS it from the constant test ONLY: nothing else is exempted, and the exemption is paid for: a stamp column holding a SENTINEL timestamp (infinity, -infinity, anything at or before the epoch plus one day: epoch, 1970-01-01, year 0001) is a FAIL, counted by one extra counter in the existing fetch and compared in the column's own type (a timestamp column's literal fallback in disguise, which the constant test used to catch when the column was undeclared; the stamp column is examined for it, so it is in neither 'not examined' group); every other column is graded exactly as before). A stamp column that is nullable or not a timestamp is refused at measure time as NO_DETECTOR with the disagreement reported (never PASS; a text / date stamp is refused before any SELECT from the information_schema data types); one holding a NULL row is a FAIL. The PASS text names stamp columns separately ('stamp columns (write-time, constant test exempted): ...'). The validator refuses a malformed list, a duplicate, more than 16, a weak `why`, and a column that is also nullable / constant / a scope key / an allowed_literals column / a declared prose field. The lift block carries `stamp_columns` (not part of `columns`, which stays the prose + nullable columns the two graders run over); `null_lift_earned` requires both sibling blocks to agree on it and the ELEVATED reader requires it to equal the ref declaration's stamp columns. Null.schema_default and Null.blank_rows revision 3 (a new declared form changes what the detector does for an asset that declares it, as Vocab.alias rev 2 at pin 12; applicability text names stamp_columns), so the fingerprint moves; NA_CAUSES / NA_RULE_DECISIONS unchanged; no asset declares a null_convention yet, so no census cell verdict changes (all six saved censuses re-rolled up: zero cells move); asset_declarations.json field list + description only (file version NOT bumped here: sequenced separately). 14 (provisional): Dens label-vs-select repair and the R02 amendment (SS N-74 item 5, N-74(a)): Dens.served rev 5 (the scan now tells a SELECT of the asset's table from a LABEL: a serving module that names the asset only in a provenance string, prose, a type name, an import path, a label-keyed array/value or a map key, in a module with no run-time table access, is no longer a reach, so an asset no served module selects rows from can read the no-served-surface N/A; every unclassifiable form (a bare name as a call/builder argument, in an unkeyed list, a name assembled at run time, SQL in the literal) stays a reach, comments keep the R51 reading, Python readers stay outside the served surface by design, the outside probe is unchanged), and R02's decision text is cause-keyed ("an asset no served module selects rows from; being named only as a provenance label is not a select", N-74(a)); NA_CAUSES unchanged, asset_declarations.json unchanged (1.9.0). 13 (provisional): S1 declared null convention (SS N-72 S1, N-73, N-74): Null.schema_default and Null.blank_rows rev 2 (an asset that DECLARES `null_convention`: its nullable columns each with what NULL means and an optional key scope, its declared constant columns, one-line why and checkable evidence, gets the declared form: the two checks also run over the convention columns, the detector verifies read-only that NULLs occur only in declared columns (and, with a key scope, only on / exactly on the declared keys), that no declared-nullable column holds a literal fallback in place of NULL and that no column is constant unless declared constant; the Null checks read PASS ONLY when schema_default and blank_rows are clean AND the convention verifies, a defect flips the cell to FAIL, and every other path keeps the cap exactly as before: the cap line is unchanged and the lift is a separate branch that needs the verified convention block on BOTH checks; no Null N/A rule (N-22 row 33 stands), NA_CAUSES unchanged; no asset declares one yet, so no census cell verdict changes; asset_declarations.json 1.9.0). ALSO IN 13, TOUCHING A MERGED PIN-12 CHECK (recorded explicitly, S1 review F2): the shared SQL predicate `_ldgr_lacking_text` (S3's placeholder / 'states no value' test, used by Ldgr.source_presence's declared source-column check via `_ldgr_lacking` and now also by the Null convention detector) additionally compares its normalised value WITH THE SPACES REMOVED against the same placeholder list (`replace(norm, ' ', '') IN (...)`), so 'N / A', 'n o n e' and 'not  found' are the placeholders they spell; the list, the normaliser and every other branch are unchanged. It reaches Ldgr.source_presence's placeholder detector (the declared `ldgr_source` check only: the legacy undeclared Ldgr measurement is an IS NOT NULL count and never calls it). No pin-12 criterion text or revision changed (Vocab.alias rev 2 and Ldgr.source_presence rev 3 are identical to the S3 merge), nor NA_CAUSES / NA_RULE_DECISIONS; the registry fingerprint covers criterion entries, N/A rules and causes, gates and rollup order, never detector SQL, so PINNED_FINGERPRINTS[12] (35b0e03e..., equal to the S3-merged module's fingerprint) is unaffected and the revision-13 fingerprint is the same with or without this change. Measured: all six saved censuses (census_fresh/1e5781a, read only) rolled up with and without the change: 1143 cells, zero move (verdicts and checks), and zero move against the saved verdicts; no asset declares ldgr_source, so no real Ldgr cell consumes the predicate. 12 (provisional): S3 declared Vocab.alias and Ldgr.source_presence (SS N-72 S3, N-73 (1)/(4), N-74 (b)): Vocab.alias rev 2 and Ldgr.source_presence rev 3 (an asset that DECLARES `vocab_alias` / `ldgr_source` gets the declared form: the alias class measured against bg_ontology class planet by canonical id and display name, plus the ontology synonyms when an alias column is declared; the Ldgr source column named with its citation_state, a declared unsourced / refuted state never reading PASS or PARTIAL; an undeclared asset reads exactly as before), NA_CAUSES gains Vocab.alias:no-alias-class and Ldgr.source_presence:no-classical-claim, and Vocab.alias#measured:no-alias-class / Ldgr.source_presence#measured:no-classical-claim are declared (declaration-keyed; refused where the table contradicts the declaration; inert until an asset declares); the columns_any patterns stay and still never make an N/A (A5); asset_declarations.json 1.8.0; nikasha_certify closes the legacy null-state Ldgr write path; no real asset declares either key yet, so no census cell verdict changes. 11 (provisional): S2 declared carriage (SS N-72 S2, N-73): Carr.D1 gets a detector (revision 2: the generic D1 engine for an asset that DECLARES D1 with a spec; undeclared assets read as before), NA_CAUSES gains Carr.D1/D2/D3:not-the-declared-carriage and :ratified_judgment, and Carr.D{1,2,3}#measured:not-the-declared-carriage are declared (inert until an asset declares a carriage check); asset_declarations.json 1.7.0; no real asset declares one yet, so no census cell changes. 10: NA_RULE_DECISIONS declares Build.dep_liveness#measured:no-declared-dependencies (S4, N-22 row 23 re-proposed; emitted only when the asset's declared dependency list is empty AND its Build.dag reads-match is PASS, else NO_DETECTOR) and Earn.service_state#measured:not-a-service (N-22 row 9; emitted only for a DECLARED non-service kind that the registry does not contradict); NA_CAUSES gains Earn.service_state:not-a-service; the registry criteria are unchanged (SS N-72; source of record /Users/Dev/suvarna/run/DECISIONS.jsonl). 9: NA_RULE_DECISIONS declares R01 Build.history#measured:never-run, R02 Dens.served#measured:no-served-surface and R03 Narr.{agree,checkable,fidelity_test,lint}#measured:no-prose (SS N-65, N-22/N-22a rows 20/19/17): +7 gate cells NO_DETECTOR to N/A on the saved censuses (Dens 3, Narr 4), no other cell moves; rollup_excluded now applies the same cause+rule check as the rollup (an undeclared N/A reads NO_DETECTOR there too); `never-run` is emitted only when the build history is present for the census scope (else NO_DETECTOR); an empty `written` scan reads NO_DETECTOR for a `prose_fields: []` asset; the registry criteria are unchanged. 8: Carr.detector RETIRED (E6 item i, SS A2): removed from the registry (32 to 31 entries; Carr is exactly D1-D3), measure() stops emitting it, RETIRED_CRITERIA records it and emit_gaps closes its OPEN rows (scoped runs close only in-scope assets' rows); no verdict moves. 7: E6 item (f): NA_CAUSES gains Carr.D1/D2/D3:no-carriage (N-22 principle 7, provisional until J1; SS strict definition: no DAG dependents AND no served-surface reach). The criterion registry is unchanged; the fingerprint moves because NA_CAUSES is fingerprinted content. No rule declared (NA_RULE_DECISIONS stays empty) and no asset declares terminal_by_construction, so no census cell changes. 6: E6 items (g)+(h): Build.target rev 2 (a declared service with no target_table, declared `service` by BOTH the registry and the declarations file, reads PASS by declaration, T4:274); Build.dag rev 2 (THREE clauses, each stated in the verdict text: every depends_on id is an active registry asset in ANY layer, the asset is on no dependency cycle, and reads-match — the writer's SQL reads against the declared edges, T4:275, aligned with pipeline/orchestrator/dag_edge_guard.py (SS 2026-10-01: L0 bedrock reads are exempt as `bedrock_exempt`, PROVISIONAL pending the J1 review; chart_facts is satisfied by any producer in the declared transitive closure); an undeclared read is a FAIL naming the missing edge, or a back-read when the edge would close a cycle; an incomplete parse is PARTIAL/NO_DETECTOR); Idem.pattern rev 2 (relative imports resolve against the importing package: ONE resolver for Idem.pattern and the reads scan — verdicts identical on the 127 saved writers, three notes changed: ka_dasha_kala, ka_gochara, ka_muhurta_seva). 5: E6 packet (c): Narr.agree/checkable/fidelity_test/lint and Null.schema_default/blank_rows registered; NA_CAUSES gains no-prose / no-prose-declared. 4: Dens.served rev 4 (contract AND a tier column in the served select; structural; cause no-served-surface). 3: NA_CAUSES gains Earn.build_record:no-registered-writer (E6 review fix 2). 2: N/A rule ids are cause-keyed (<criterion>#measured:<cause>); NA_CAUSES joins the content
+REGISTRY_REVISION = 16     # 16 (provisional): NARR-GUARD (strategist ruling N-94: prose_fields [] for bg_phaladeepika_latta under R03, the N/A kept coupled to Carr.D1): a declared `prose_coupling: {to: 'carriage_d1', columns, why, evidence}` beside prose_fields [] says the asset's text columns are transcription whose fidelity Carr.D1 already measures (same comparator, normalisation and repair list), so Narr (which measures GENERATED prose) is N/A for it ONLY WHILE that is true. The validator refuses a coupling unless prose_fields is exactly [], the asset declares a transcription carriage with applies D1 and a spec, the `why` cites carriage transcription and Carr.D1, `evidence` is a real repo file:line (never `unverified:`), and EVERY listed column is covered by the D1 spec (the covered set is DERIVED from the spec by carriage_d1.prose_coverage: the effect column and the passage_text extra fields; a claim field, an `equals` constant or a column the spec never checks is not coverage). At measure time the same check (`prose_coupling_problem`, one definition) runs again on the entry and the table's columns and types: a refusal reads the four Narr checks NO_DETECTOR with the disagreement reported, never N/A. A coupled Narr N/A record carries a `prose_coupling` block (columns, the covered result keys, the unclassified text-like columns it does NOT claim). The rollup (`narr_coupling_problem`, read by `_check_contribution`, `_na_released` (the gap ledger), the certificate writer and the E6.3 reader) honours that N/A only while the asset's EFFECTIVE Carr.D1 contribution (the census's own `_check_contribution` rule: verified chunk ledger, every row matched at the declared row count, citation_state not unsourced/refuted) reads PASS and the D1 record shows a per-row result for every coupled column; anything else reads NO_DETECTOR 'Narr N/A rests on Carr.D1 PASS (coupled): Carr.D1 reads X'. Narr.agree / Narr.checkable / Narr.fidelity_test / Narr.lint revision 2 (a new declared form changes what the detector does for an asset that declares it, as Vocab.alias rev 2 at pin 12 and Null.* rev 3 at pin 15); NA_CAUSES / NA_RULE_DECISIONS unchanged (the same four Narr.*#measured:no-prose rules, now conditional for a coupled asset); inert until an asset declares prose_coupling, so no undeclared asset's cell moves (all six saved censuses re-rolled up: 1143 cells, zero move); asset_declarations.json 1.12.0 (bg_phaladeepika_latta only). 15 (provisional): STAMP, the declared write-time stamp column (SS strategist ruling on the bg_phaladeepika_latta conflict): `null_convention.stamp_columns: [{column, why}]`, a declared word beside `nullable` and `constants`. A write-time stamp (created_at written in one seed transaction) can hold ONE value on every row, which the S1 constant test fails unless the column is declared constant, and declaring a stamp 'constant' is a claim known to be false in kind. The detector now requires a declared stamp column to be a timestamp / timestamptz (the catalog's pg_type name, domains resolved) AND NOT NULL (attnotnull, or a NOT NULL domain; one extra read-only pg_catalog SELECT, issued only when stamp_columns is declared) and to hold no NULL row and no sentinel timestamp, and EXEMPTS it from the constant test ONLY: nothing else is exempted, and the exemption is paid for: a stamp column holding a SENTINEL timestamp (infinity, -infinity, anything at or before the epoch plus one day: epoch, 1970-01-01, year 0001) is a FAIL, counted by one extra counter in the existing fetch and compared in the column's own type (a timestamp column's literal fallback in disguise, which the constant test used to catch when the column was undeclared; the stamp column is examined for it, so it is in neither 'not examined' group); every other column is graded exactly as before). A stamp column that is nullable or not a timestamp is refused at measure time as NO_DETECTOR with the disagreement reported (never PASS; a text / date stamp is refused before any SELECT from the information_schema data types); one holding a NULL row is a FAIL. The PASS text names stamp columns separately ('stamp columns (write-time, constant test exempted): ...'). The validator refuses a malformed list, a duplicate, more than 16, a weak `why`, and a column that is also nullable / constant / a scope key / an allowed_literals column / a declared prose field. The lift block carries `stamp_columns` (not part of `columns`, which stays the prose + nullable columns the two graders run over); `null_lift_earned` requires both sibling blocks to agree on it and the ELEVATED reader requires it to equal the ref declaration's stamp columns. Null.schema_default and Null.blank_rows revision 3 (a new declared form changes what the detector does for an asset that declares it, as Vocab.alias rev 2 at pin 12; applicability text names stamp_columns), so the fingerprint moves; NA_CAUSES / NA_RULE_DECISIONS unchanged; no asset declares a null_convention yet, so no census cell verdict changes (all six saved censuses re-rolled up: zero cells move); asset_declarations.json field list + description only (file version NOT bumped here: sequenced separately). 14 (provisional): Dens label-vs-select repair and the R02 amendment (SS N-74 item 5, N-74(a)): Dens.served rev 5 (the scan now tells a SELECT of the asset's table from a LABEL: a serving module that names the asset only in a provenance string, prose, a type name, an import path, a label-keyed array/value or a map key, in a module with no run-time table access, is no longer a reach, so an asset no served module selects rows from can read the no-served-surface N/A; every unclassifiable form (a bare name as a call/builder argument, in an unkeyed list, a name assembled at run time, SQL in the literal) stays a reach, comments keep the R51 reading, Python readers stay outside the served surface by design, the outside probe is unchanged), and R02's decision text is cause-keyed ("an asset no served module selects rows from; being named only as a provenance label is not a select", N-74(a)); NA_CAUSES unchanged, asset_declarations.json unchanged (1.9.0). 13 (provisional): S1 declared null convention (SS N-72 S1, N-73, N-74): Null.schema_default and Null.blank_rows rev 2 (an asset that DECLARES `null_convention`: its nullable columns each with what NULL means and an optional key scope, its declared constant columns, one-line why and checkable evidence, gets the declared form: the two checks also run over the convention columns, the detector verifies read-only that NULLs occur only in declared columns (and, with a key scope, only on / exactly on the declared keys), that no declared-nullable column holds a literal fallback in place of NULL and that no column is constant unless declared constant; the Null checks read PASS ONLY when schema_default and blank_rows are clean AND the convention verifies, a defect flips the cell to FAIL, and every other path keeps the cap exactly as before: the cap line is unchanged and the lift is a separate branch that needs the verified convention block on BOTH checks; no Null N/A rule (N-22 row 33 stands), NA_CAUSES unchanged; no asset declares one yet, so no census cell verdict changes; asset_declarations.json 1.9.0). ALSO IN 13, TOUCHING A MERGED PIN-12 CHECK (recorded explicitly, S1 review F2): the shared SQL predicate `_ldgr_lacking_text` (S3's placeholder / 'states no value' test, used by Ldgr.source_presence's declared source-column check via `_ldgr_lacking` and now also by the Null convention detector) additionally compares its normalised value WITH THE SPACES REMOVED against the same placeholder list (`replace(norm, ' ', '') IN (...)`), so 'N / A', 'n o n e' and 'not  found' are the placeholders they spell; the list, the normaliser and every other branch are unchanged. It reaches Ldgr.source_presence's placeholder detector (the declared `ldgr_source` check only: the legacy undeclared Ldgr measurement is an IS NOT NULL count and never calls it). No pin-12 criterion text or revision changed (Vocab.alias rev 2 and Ldgr.source_presence rev 3 are identical to the S3 merge), nor NA_CAUSES / NA_RULE_DECISIONS; the registry fingerprint covers criterion entries, N/A rules and causes, gates and rollup order, never detector SQL, so PINNED_FINGERPRINTS[12] (35b0e03e..., equal to the S3-merged module's fingerprint) is unaffected and the revision-13 fingerprint is the same with or without this change. Measured: all six saved censuses (census_fresh/1e5781a, read only) rolled up with and without the change: 1143 cells, zero move (verdicts and checks), and zero move against the saved verdicts; no asset declares ldgr_source, so no real Ldgr cell consumes the predicate. 12 (provisional): S3 declared Vocab.alias and Ldgr.source_presence (SS N-72 S3, N-73 (1)/(4), N-74 (b)): Vocab.alias rev 2 and Ldgr.source_presence rev 3 (an asset that DECLARES `vocab_alias` / `ldgr_source` gets the declared form: the alias class measured against bg_ontology class planet by canonical id and display name, plus the ontology synonyms when an alias column is declared; the Ldgr source column named with its citation_state, a declared unsourced / refuted state never reading PASS or PARTIAL; an undeclared asset reads exactly as before), NA_CAUSES gains Vocab.alias:no-alias-class and Ldgr.source_presence:no-classical-claim, and Vocab.alias#measured:no-alias-class / Ldgr.source_presence#measured:no-classical-claim are declared (declaration-keyed; refused where the table contradicts the declaration; inert until an asset declares); the columns_any patterns stay and still never make an N/A (A5); asset_declarations.json 1.8.0; nikasha_certify closes the legacy null-state Ldgr write path; no real asset declares either key yet, so no census cell verdict changes. 11 (provisional): S2 declared carriage (SS N-72 S2, N-73): Carr.D1 gets a detector (revision 2: the generic D1 engine for an asset that DECLARES D1 with a spec; undeclared assets read as before), NA_CAUSES gains Carr.D1/D2/D3:not-the-declared-carriage and :ratified_judgment, and Carr.D{1,2,3}#measured:not-the-declared-carriage are declared (inert until an asset declares a carriage check); asset_declarations.json 1.7.0; no real asset declares one yet, so no census cell changes. 10: NA_RULE_DECISIONS declares Build.dep_liveness#measured:no-declared-dependencies (S4, N-22 row 23 re-proposed; emitted only when the asset's declared dependency list is empty AND its Build.dag reads-match is PASS, else NO_DETECTOR) and Earn.service_state#measured:not-a-service (N-22 row 9; emitted only for a DECLARED non-service kind that the registry does not contradict); NA_CAUSES gains Earn.service_state:not-a-service; the registry criteria are unchanged (SS N-72; source of record /Users/Dev/suvarna/run/DECISIONS.jsonl). 9: NA_RULE_DECISIONS declares R01 Build.history#measured:never-run, R02 Dens.served#measured:no-served-surface and R03 Narr.{agree,checkable,fidelity_test,lint}#measured:no-prose (SS N-65, N-22/N-22a rows 20/19/17): +7 gate cells NO_DETECTOR to N/A on the saved censuses (Dens 3, Narr 4), no other cell moves; rollup_excluded now applies the same cause+rule check as the rollup (an undeclared N/A reads NO_DETECTOR there too); `never-run` is emitted only when the build history is present for the census scope (else NO_DETECTOR); an empty `written` scan reads NO_DETECTOR for a `prose_fields: []` asset; the registry criteria are unchanged. 8: Carr.detector RETIRED (E6 item i, SS A2): removed from the registry (32 to 31 entries; Carr is exactly D1-D3), measure() stops emitting it, RETIRED_CRITERIA records it and emit_gaps closes its OPEN rows (scoped runs close only in-scope assets' rows); no verdict moves. 7: E6 item (f): NA_CAUSES gains Carr.D1/D2/D3:no-carriage (N-22 principle 7, provisional until J1; SS strict definition: no DAG dependents AND no served-surface reach). The criterion registry is unchanged; the fingerprint moves because NA_CAUSES is fingerprinted content. No rule declared (NA_RULE_DECISIONS stays empty) and no asset declares terminal_by_construction, so no census cell changes. 6: E6 items (g)+(h): Build.target rev 2 (a declared service with no target_table, declared `service` by BOTH the registry and the declarations file, reads PASS by declaration, T4:274); Build.dag rev 2 (THREE clauses, each stated in the verdict text: every depends_on id is an active registry asset in ANY layer, the asset is on no dependency cycle, and reads-match — the writer's SQL reads against the declared edges, T4:275, aligned with pipeline/orchestrator/dag_edge_guard.py (SS 2026-10-01: L0 bedrock reads are exempt as `bedrock_exempt`, PROVISIONAL pending the J1 review; chart_facts is satisfied by any producer in the declared transitive closure); an undeclared read is a FAIL naming the missing edge, or a back-read when the edge would close a cycle; an incomplete parse is PARTIAL/NO_DETECTOR); Idem.pattern rev 2 (relative imports resolve against the importing package: ONE resolver for Idem.pattern and the reads scan — verdicts identical on the 127 saved writers, three notes changed: ka_dasha_kala, ka_gochara, ka_muhurta_seva). 5: E6 packet (c): Narr.agree/checkable/fidelity_test/lint and Null.schema_default/blank_rows registered; NA_CAUSES gains no-prose / no-prose-declared. 4: Dens.served rev 4 (contract AND a tier column in the served select; structural; cause no-served-surface). 3: NA_CAUSES gains Earn.build_record:no-registered-writer (E6 review fix 2). 2: N/A rule ids are cause-keyed (<criterion>#measured:<cause>); NA_CAUSES joins the content
 
 def registry_fingerprint() -> str:
     """sha256 over the canonical JSON of everything that decides a cell: the registry, the declared N/A
@@ -467,6 +467,47 @@ def rollup_verdicts(verdicts) -> str:
     return min(graded, key=ROLLUP_ORDER.index)
 
 
+def narr_coupling_problem(crit: str, layer: str, meas, facts, all_meas) -> str | None:
+    """NARR-GUARD (pin 16, N-94). None when the Narr check `crit` is not COUPLED (no `prose_coupling` block on its record and none declared in `facts`: every asset that does not
+    declare one, exactly as before) or is coupled and honoured; else why its N/A is NOT honoured (the rollup then reads NO_DETECTOR). ONE definition, read by `_check_contribution`,
+    `_na_released` (the gap ledger), the certificate writer and the E6.3 reader (run from the ref's own copy of this module).
+
+    A coupled N/A stands only while (1) the record carries a well-formed block (`to` carriage_d1, `columns`, the D1 result key of each in `covered`) matching the declared coupling
+    when `facts` carry one (a record that dropped its own block cannot slip through: the declaration is read independently), (2) the asset's EFFECTIVE Carr.D1 contribution, by this
+    census's own `_check_contribution` rule (verified chunk ledger and digest, every row matched at the declared row count, a citation_state that is not unsourced / refuted), reads
+    PASS, and (3) the D1 record shows a passing per-row result for every coupled column (what D1 MEASURED, independent of what any declaration says)."""
+    if not (isinstance(crit, str) and crit.startswith("Narr.")) or not isinstance(meas, dict):
+        return None
+    blk = meas.get("prose_coupling")
+    fcp = facts.get("declared_prose_coupling") if isinstance(facts, dict) else None
+    if blk is None and fcp is None:
+        return None
+    if not (isinstance(blk, dict) and blk.get("to") == PROSE_COUPLING_TO and isinstance(blk.get("columns"), list) and blk["columns"]
+            and isinstance(blk.get("covered"), dict)):
+        return ("Narr N/A rests on Carr.D1 PASS (coupled): the asset is coupled (declared or recorded) but this record carries no well-formed prose_coupling block, so what it "
+                "rests on cannot be read")
+    if fcp is not None and (fcp.get("to") != blk.get("to") or fcp.get("columns") != blk.get("columns")):
+        return "Narr N/A rests on Carr.D1 PASS (coupled): the record's prose_coupling block does not match the declared coupling"
+    d1m = all_meas.get("Carr.D1") if isinstance(all_meas, dict) else None
+    try:
+        eff = _check_contribution("Carr.D1", layer, d1m, facts, all_meas) if isinstance(d1m, dict) else None
+    except (KeyError, ValueError) as exc:
+        return f"Narr N/A rests on Carr.D1 PASS (coupled): Carr.D1 cannot be evaluated ({exc})"
+    reading = eff["v"] if isinstance(eff, dict) else "not measured"
+    if reading != PASS:
+        extra = f" (the D1 record says {d1m.get('v')}: {eff['reason']})" if isinstance(eff, dict) and d1m.get("v") != reading else ""
+        return f"Narr N/A rests on Carr.D1 PASS (coupled): Carr.D1 reads {reading}{extra}"
+    rows = (d1m.get("d1") or {}).get("rows") if isinstance(d1m.get("d1"), dict) else None
+    if not (isinstance(rows, list) and rows):
+        return "Narr N/A rests on Carr.D1 PASS (coupled): the D1 record carries no per-row results, so no coupled column is shown to have been matched"
+    for col in blk["columns"]:
+        key = blk["covered"].get(col)
+        if not isinstance(key, str) or any(not (isinstance(r, dict) and isinstance(r.get("result"), dict) and r["result"].get(key) in (True, "NULL-ok")) for r in rows):
+            return (f"Narr N/A rests on Carr.D1 PASS (coupled): the D1 record shows no passing per-row result for the coupled column {col!r} (result key {key!r}): "
+                    "Carr.D1 did not measure that column")
+    return None
+
+
 def _check_contribution(crit: str, layer: str, meas: dict | None, facts: dict | None, all_meas: dict | None = None) -> dict | None:
     """One criterion's contribution to its gate cell, or None when it is out of layer and unmeasured. `all_meas` (the asset's whole `measurements`
     mapping; rollup_asset passes it) lets a Null check see its sibling: the Null cap lifts only when BOTH Null checks carry the verified convention (S1)."""
@@ -492,6 +533,9 @@ def _check_contribution(crit: str, layer: str, meas: dict | None, facts: dict | 
                             reason=f"measured N/A with cause {cause!r}, which is not a registered cause of {crit}: "
                                    "never honoured")
             if rid in NA_RULE_DECISIONS:
+                bad = narr_coupling_problem(crit, layer, meas, facts, all_meas)       # NARR-GUARD (pin 16): a coupled Narr N/A needs its Carr.D1 PASS
+                if bad:
+                    return dict(criterion=crit, v=NO_DET, state="MEASURED", rule_id=rid, cause=cause, reason=bad)
                 return dict(criterion=crit, v=NA, state="MEASURED", rule_id=rid, cause=cause,
                             decision=NA_RULE_DECISIONS[rid], reason="measured N/A under a declared rule")
             return dict(criterion=crit, v=NO_DET, state="MEASURED", rule_id=rid, cause=cause,
@@ -906,8 +950,105 @@ def validate_ldgr_source_declaration(where: str, ls, e: dict) -> None:
                                 f"{ls.get('citation_state')!r}")
 
 
+# NARR-GUARD (REGISTRY_REVISION 16, strategist ruling N-94). Narr measures GENERATED prose; an asset whose text columns are TRANSCRIPTION of a cited passage declares
+# `prose_fields: []` (R03), and the claim a Narr check would measure (each stored string faithfully restates its passage clause) already has a real detector, Carr.D1.
+# `prose_coupling` keeps the two honest: it names the text columns so classified, and the Narr N/A stands ONLY while the asset's own Carr.D1 reads PASS and its spec
+# covers every one of them. The declaration CLASSIFIES; the guard VERIFIES the classified columns (the covered set is derived from the D1 spec, never from the declaration).
+# Inert until an asset declares it: no declaration, no change in any cell.
+PROSE_COUPLING_DECL_FIELDS = ("to", "columns", "why", "evidence")
+PROSE_COUPLING_TO = "carriage_d1"
+PROSE_COUPLING_MAX_COLUMNS = 16
+_COUPLING_D1_WORD = re.compile(r"\bD1\b")
+
+
+def prose_coupling_problem(entry, table_columns=None, column_types=None):
+    """None when `entry` (an asset's declaration) has no `prose_coupling`, or has a sound one; else why it is refused. ONE definition: the validator
+    (validate_prose_coupling_declaration) and the measure-time glue (prose_checks) both call it. Sound means: `to` is 'carriage_d1'; `columns` is a non-empty list of at most
+    PROSE_COUPLING_MAX_COLUMNS distinct column identifiers; the entry declares prose_fields EXACTLY [] (a coupling only qualifies a []); the entry declares a transcription carriage
+    that applies D1 with a spec; the `why` cites carriage transcription and D1; and EVERY listed column is covered by the D1 spec (carriage_d1.prose_coverage: derived from the spec).
+    With `table_columns` / `column_types` (the measure-time catalog; None = not supplied) every listed column must also be a column of the table and of a text type."""
+    if not isinstance(entry, dict) or entry.get("prose_coupling") is None:
+        return None
+    pc = entry["prose_coupling"]
+    if not isinstance(pc, dict):
+        return "prose_coupling must be an object"
+    if pc.get("to") != PROSE_COUPLING_TO:
+        return f"`to` must be {PROSE_COUPLING_TO!r} (the only detector a prose N/A can rest on), got {pc.get('to')!r}"
+    cols = pc.get("columns")
+    if not (isinstance(cols, list) and cols and len(cols) <= PROSE_COUPLING_MAX_COLUMNS
+            and all(isinstance(c, str) and _DECL_IDENT.fullmatch(c) for c in cols) and len(set(cols)) == len(cols)):
+        return (f"`columns` must be a non-empty list of at most {PROSE_COUPLING_MAX_COLUMNS} distinct column identifiers (the text columns classified as "
+                f"transcription), got {cols!r}")
+    pf = entry.get("prose_fields")
+    if not (isinstance(pf, list) and pf == []):
+        return f"a prose_coupling only qualifies a declared prose_fields [] (this asset declares prose_fields {pf!r})"
+    why = pc.get("why")
+    if not (isinstance(why, str) and "transcription" in why.casefold() and _COUPLING_D1_WORD.search(why)):
+        return "`why` must cite carriage transcription and Carr.D1 (the words 'transcription' and 'D1'): the N/A rests on that detector, say so"
+    car = entry.get("carriage")
+    if not (isinstance(car, dict) and car.get("nature") == "transcription" and car.get("applies") == "D1"):
+        return ("the asset must declare a carriage check of nature 'transcription' that applies 'D1': the coupling rests on Carr.D1, so there must "
+                "be one (this asset's carriage declares "
+                f"nature {car.get('nature') if isinstance(car, dict) else None!r}, applies {car.get('applies') if isinstance(car, dict) else None!r})")
+    spec = car.get("spec")
+    if not isinstance(spec, dict):
+        return "the asset's D1 carriage declares no `spec`: nothing is matched against the passage, so no column is covered"
+    try:
+        cov = _carriage_d1().prose_coverage(spec)
+        claim = set(spec["fields"].values())
+        equals = {ef["column"] for ef in spec.get("extra_fields", []) if ef["kind"] == "equals"}
+    except (KeyError, TypeError, AttributeError):
+        return "the asset's D1 spec is malformed (the covered columns cannot be derived from it)"
+    for c in cols:
+        if c in cov:
+            continue
+        if c in claim:
+            return (f"column {c!r} is not covered by the D1 spec as prose: it is a claim field (claimant / count / direction), a structural value, not text matched "
+                    "against a passage clause")
+        if c in equals:
+            return f"column {c!r} is not covered by the D1 spec as prose: it is checked only against a constant (kind equals), not against passage text"
+        return (f"column {c!r} is not covered by the D1 spec: the spec checks the effect column and its passage_text extra fields {sorted(cov)}, never {c!r}; "
+                "a text column D1 does not check cannot be released to N/A by D1")
+    if table_columns is not None:
+        absent = [c for c in cols if c not in table_columns]
+        if absent:
+            return f"column(s) {absent} are not columns of the asset's table"
+    if column_types is not None:
+        nontext = [c for c in cols if c in column_types and str(column_types[c]).strip().casefold() not in LDGR_TEXT_TYPES]
+        if nontext:
+            return f"column(s) {nontext} are not text columns (a prose coupling classifies TEXT columns: {[column_types[c] for c in nontext]})"
+    return None
+
+
+def prose_coupling_unclassified(entry, table_columns, column_types) -> list:
+    """The table's text-like columns that are neither listed in the entry's prose_coupling nor a column its D1 spec checks: the structural labels and provenance pointers the
+    N/A does NOT claim to cover (R03 reads them as not narration). Named on the measured record so a reviewer sees them; never gated. [] when the entry has no coupling or the
+    catalog is unavailable."""
+    if not isinstance(entry, dict) or not isinstance(entry.get("prose_coupling"), dict) or not isinstance(table_columns, (list, tuple, set)) or not isinstance(column_types, dict):
+        return []
+    try:
+        d1cols = set(_carriage_d1().spec_columns(entry["carriage"]["spec"]))
+    except (KeyError, TypeError, AttributeError):
+        d1cols = set()
+    listed = set(entry["prose_coupling"].get("columns") or [])
+    return sorted(c for c in table_columns if isinstance(c, str) and c not in listed and c not in d1cols
+                  and str(column_types.get(c, "")).strip().casefold() in LDGR_TEXT_TYPES)
+
+
+def validate_prose_coupling_declaration(where: str, pc, e: dict) -> None:
+    """Raises DeclarationsError when an asset's `prose_coupling` is malformed or unsound: shape, a real `why` and a real `evidence` (S3's text rules; `unverified:` is refused, this releases
+    an N/A), then `prose_coupling_problem` (prose_fields exactly [], a transcription D1 carriage with a spec, every listed column covered by it)."""
+    if not isinstance(pc, dict):
+        raise DeclarationsError(f"{where}.prose_coupling must be an object or null")
+    _s3_common(where, "prose_coupling", pc, PROSE_COUPLING_DECL_FIELDS, na=True)
+    bad = prose_coupling_problem(e)
+    if bad:
+        raise DeclarationsError(f"{where}.prose_coupling: {bad}")
+
+
 _DECL_ENTRY_KEYS = ("kind", "carriage", "prose_fields", "terminal_by_construction", "cross_asset_writes",
-                    "read_evidence", "read_table", "read_kind", "evidence", "evidence_kind", "vocab_alias", "ldgr_source", "null_convention")
+                    "read_evidence", "read_table", "read_kind", "evidence", "evidence_kind", "vocab_alias", "ldgr_source", "null_convention",
+                    "prose_coupling")
 _DECL_EVIDENCE_KEYS = ("kind", "carriage", "prose_fields", "cross_asset_writes")
 # prose_fields entries (SS ruling 2026-10-01; CLAUDE.md N.7 concerns GENERATED prose): a column name, or a JSON path into
 # a JSONB column, `column.$.seg(.seg)*` where a seg is an identifier key, optionally followed by ONE `[*]` (every element
@@ -1015,7 +1156,8 @@ def validate_declarations(doc, registry_ids=None) -> dict:
     if "carriage_declaration_fields" in doc and doc["carriage_declaration_fields"] != list(CARRIAGE_DECL_FIELDS):
         raise DeclarationsError(f"`carriage_declaration_fields` must be exactly {list(CARRIAGE_DECL_FIELDS)}")
     for _fk, _fv in (("vocab_alias_declaration_fields", VOCAB_ALIAS_DECL_FIELDS), ("ldgr_source_declaration_fields", LDGR_SOURCE_DECL_FIELDS),
-                     ("null_convention_declaration_fields", NULL_CONVENTION_DECL_FIELDS)):
+                     ("null_convention_declaration_fields", NULL_CONVENTION_DECL_FIELDS),
+                     ("prose_coupling_declaration_fields", PROSE_COUPLING_DECL_FIELDS)):
         if _fk in doc and doc[_fk] != list(_fv):
             raise DeclarationsError(f"`{_fk}` must be exactly {list(_fv)}")
     known = _registry_id_set(registry_ids)
@@ -1051,6 +1193,8 @@ def validate_declarations(doc, registry_ids=None) -> dict:
             validate_ldgr_source_declaration(where, e["ldgr_source"], e)
         if e.get("null_convention") is not None:
             validate_null_convention_declaration(where, e["null_convention"], e)
+        if e.get("prose_coupling") is not None:
+            validate_prose_coupling_declaration(where, e["prose_coupling"], e)
         pf = e.get("prose_fields")
         if pf is not None:
             # null = undeclared; [] = declared "this writer composes no prose" (a positive claim); both need evidence
@@ -1222,6 +1366,10 @@ def declared_facts(declarations, asset_id, registry_kind=None, measured_dependen
     pf = e.get("prose_fields")
     if isinstance(pf, list):
         facts["declared_prose_fields"] = list(pf)
+    pcp = e.get("prose_coupling")
+    if isinstance(pcp, dict):
+        # NARR-GUARD (pin 16): the declared coupling of a prose N/A to Carr.D1; the rollup reads it so a record that dropped its own coupling block cannot slip an N/A through
+        facts["declared_prose_coupling"] = dict(to=pcp.get("to"), columns=list(pcp["columns"]) if isinstance(pcp.get("columns"), list) else None)
     cw = e.get("cross_asset_writes")
     if isinstance(cw, list):
         facts["declared_cross_asset_writes"] = list(cw)
@@ -3219,6 +3367,24 @@ def prose_checks(aid: str, decl, ctx: dict) -> dict:
             return out
         why = ("prose_fields [] declared and no write to a column the declarations treat as narration (write-column "
                "names only; the composed-string proof is the declaration tests')")
+        if isinstance(decl, dict) and decl.get("prose_coupling") is not None:
+            # NARR-GUARD (pin 16, N-94): the N/A is coupled to Carr.D1. The SAME check the validator runs, here with the table's columns and types: a refusal is NO_DETECTOR with the
+            # disagreement reported, never N/A. The coupling to the D1 READING itself is the rollup's (narr_coupling_problem): it sees both cells.
+            own = _own3(ctx).get(ctx.get("table")) or (next(iter(_own3(ctx).values()), None))
+            tcols = own[0] if own and isinstance(own[0], (list, tuple, set)) else None
+            ttypes = own[1] if own and isinstance(own[1], dict) else None
+            bad = prose_coupling_problem(decl, tcols, ttypes)
+            if bad:
+                return {c: dict(v=NO_DET, measured=f"NO_DETECTOR — {aid} declares prose_fields [] with a prose_coupling to Carr.D1, but the coupling is refused: {bad}")
+                        for c in allc}
+            cov = _carriage_d1().prose_coverage(decl["carriage"]["spec"])
+            pcols = list(decl["prose_coupling"]["columns"])
+            block = dict(to=decl["prose_coupling"]["to"], columns=pcols, covered={c: cov[c] for c in pcols},
+                         unclassified_text_columns=prose_coupling_unclassified(decl, tcols, ttypes))
+            note = (f"{why}; the text column(s) {', '.join(pcols)} are declared transcription (prose_coupling to Carr.D1, N-94): this N/A rests on Carr.D1 PASS (coupled), "
+                    f"which the rollup re-reads on every cell; not claimed by the coupling (text-like, neither listed nor checked by the D1 spec): "
+                    f"{', '.join(block['unclassified_text_columns']) or 'none'}")
+            return {c: (dict(_na(note, "no-prose"), prose_coupling=dict(block)) if c.startswith("Narr.") else _na(why, "no-prose-declared")) for c in allc}
         return {c: _na(why, "no-prose" if c.startswith("Narr.") else "no-prose-declared") for c in allc}
     ev = (decl.get("evidence") or {}).get("prose_fields") if isinstance(decl.get("evidence"), dict) else None
     out = {}
@@ -8253,7 +8419,7 @@ FAILING = (FAIL, PARTIAL, NO_DET)
 LIVE_GAP_STATES = ("OPEN", "IN_PROGRESS")
 
 
-def _na_released(crit: str, rec: dict) -> bool:
+def _na_released(crit: str, rec: dict, all_meas=None, layer=None, facts=None) -> bool:
     """May this measured record CLOSE a gap? True only for a verdict PASS, or for an N/A whose cause is a
     registered cause of `crit` (NA_CAUSES) AND whose rule id `<crit>#measured:<cause>` is declared in
     NA_RULE_DECISIONS — the same release the rollup applies (`_check_contribution`). Any other N/A (no cause, a
@@ -8267,7 +8433,12 @@ def _na_released(crit: str, rec: dict) -> bool:
     cause = rec.get("cause")
     if not (isinstance(cause, str) and _CAUSE_SLUG.fullmatch(cause)):
         return False
-    return cause in NA_CAUSES.get(crit, ()) and f"{crit}#measured:{cause}" in NA_RULE_DECISIONS
+    if not (cause in NA_CAUSES.get(crit, ()) and f"{crit}#measured:{cause}" in NA_RULE_DECISIONS):
+        return False
+    if crit.startswith("Narr.") and (rec.get("prose_coupling") is not None or (isinstance(facts, dict) and facts.get("declared_prose_coupling") is not None)):
+        # NARR-GUARD (pin 16): a coupled Narr N/A closes a ledger row only where the rollup would honour it; with no context to read the Carr.D1 cell it is not released
+        return all_meas is not None and layer is not None and narr_coupling_problem(crit, layer, rec, facts, all_meas) is None
+    return True
 
 
 def _emit_scope(census: dict, assets) -> frozenset | None:
@@ -8414,7 +8585,7 @@ def emit_gaps_summary(census: dict, assets=None) -> dict:
                 v = res["v"]
                 if v not in FAILING and v not in CLOSABLE:
                     continue  # NOT_GENERIC / UNKNOWN / errored / anything future: never a transition
-                if v == NA and not _na_released(crit, res):
+                if v == NA and not _na_released(crit, res, a["measurements"], a.get("layer") or census.get("layer")):
                     # §N.8: the ledger records closure, so it may not honour an N/A the rollup refuses.
                     res = dict(res, measured=f"NO_DETECTOR — measured N/A not released by a declared rule "
                                              f"(cause={res.get('cause')!r}): {res['measured']}")

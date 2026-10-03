@@ -70,6 +70,9 @@ PINNED_FINGERPRINTS = {
     # timestamptz with no NULL row and no sentinel timestamp and exempts it from the constant test ONLY (nothing else exempted); Null.schema_default / Null.blank_rows revision 3 (applicability text);
     # NA_CAUSES / NA_RULE_DECISIONS unchanged, inert until an asset declares one
     15: "ef64d8b9b8ec924d724a13e249e7e6a5f049beeb2d51932c10fb0be557985345",
+    # 16 (NARR-GUARD, N-94; provisional): `prose_coupling: {to: carriage_d1, columns, why, evidence}`, a declared word beside prose_fields []: the four Narr N/A releases of an asset that declares it stand
+    # only while its own Carr.D1 reads PASS (else NO_DETECTOR); Narr.agree / checkable / fidelity_test / lint revision 2 (applicability text); NA_CAUSES / NA_RULE_DECISIONS unchanged, inert until declared
+    16: "8b88e7b26f32fdf8f665533b96357c8c332fb142a7166a6468a0f64ec51cb97c",
 }
 
 

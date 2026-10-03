@@ -87,7 +87,7 @@ def _refused(mutate, match):
 # ───────────────────────── Part 1: the committed entry ─────────────────────────
 
 def test_the_committed_file_is_1_10_0_and_the_validator_accepts_this_entry():
-    assert DECL["version"] == "1.11.0" and "bg_phaladeepika_latta" in DECL["description"].split("Version 1.10.0", 1)[1]
+    assert DECL["version"] == "1.12.0" and "bg_phaladeepika_latta" in DECL["description"].split("Version 1.10.0", 1)[1]      # 1.11.0 DECL-LATTA-NULL, 1.12.0 NARR-GUARD
     ac.validate_declarations(DECL)
     assert ac.load_asset_declarations()[AID]["carriage"]["applies"] == "D1"
 
@@ -379,11 +379,13 @@ def test_REAL_a_wrong_row_in_the_table_is_a_d1_partial_naming_it(monkeypatch, di
 
 # ───────────────────────── Part 3: the cells this declaration changes, and the ones it does not ─────────────────────────
 
-def test_the_narr_checks_are_untouched_by_this_declaration():
-    """No prose_fields: the four Narr checks read exactly NO_DETECTOR (undeclared). (Null is declared by 1.11.0: test_e6_decl_latta_null.py.)"""
+def test_the_narr_checks_are_untouched_by_this_declarations_three_blocks():
+    """The three blocks measured here (carriage, vocab_alias, ldgr_source) do not touch Narr: with no prose_fields declared the four Narr checks read exactly NO_DETECTOR (undeclared).
+    (Null is declared by 1.11.0: test_e6_decl_latta_null.py; prose_fields [] + prose_coupling arrive with 1.12.0, NARR-GUARD: test_e6_narr_guard.py, which measures them.)"""
     cat = dict(exists={AID}, cols={AID: COLS}, keys={AID: [["table_version", "graha"]]}, views=set(), types={AID: {c: "text" for c in COLS}},
                defaults={AID: {}}, types_error=None)
-    m = ac._measure_prose(AID, dict(ENTRY, null_convention=None), dict(target_table=AID, count_sql=f"SELECT count(*) FROM {AID}"), None, cat, [], set(), (), set())
+    undeclared = dict(ENTRY, null_convention=None, prose_fields=None, prose_coupling=None, evidence_kind=None, evidence=dict(ENTRY["evidence"], prose_fields=None))
+    m = ac._measure_prose(AID, undeclared, dict(target_table=AID, count_sql=f"SELECT count(*) FROM {AID}"), None, cat, [], set(), (), set())
     assert {c: m[c]["v"] for c in ac.NARR_CHECKS} == {c: NO_DET for c in ac.NARR_CHECKS}
     assert all("prose_fields is undeclared" in m[c]["measured"] for c in ac.NARR_CHECKS)
 
