@@ -107,3 +107,13 @@ INSERT INTO public.fact_category_ownership(fact_category,owning_asset_id) VALUES
 INSERT INTO public.fact_category_ownership(fact_category,owning_asset_id) VALUES ('tajik_triraashipathi','ga_sensitive') ON CONFLICT DO NOTHING;
 INSERT INTO public.fact_category_ownership(fact_category,owning_asset_id) VALUES ('tajik_vargottama_specific','ga_sensitive') ON CONFLICT DO NOTHING;
 INSERT INTO public.fact_category_ownership(fact_category,owning_asset_id) VALUES ('upagraha_position','ga_sensitive') ON CONFLICT DO NOTHING;
+
+-- migration 1219 ownership rows for ga_structural that the seeds above lack (category/owner pairs from platform/migrations/1219_nirmana_l1_ga_structural_argala_graha_natal_ownership_and_count_sql.sql,
+-- same ON CONFLICT (fact_category, owning_asset_id) DO NOTHING shape). Needed since the integration: ga_structural writes argala_graha_natal and the capture guard refuses a category with no ownership row.
+INSERT INTO public.fact_category_ownership(fact_category,owning_asset_id) VALUES ('argala_graha_natal','ga_structural') ON CONFLICT (fact_category, owning_asset_id) DO NOTHING;
+INSERT INTO public.fact_category_ownership(fact_category,owning_asset_id) VALUES ('ashtakavarga_anubindu','ga_structural') ON CONFLICT (fact_category, owning_asset_id) DO NOTHING;
+INSERT INTO public.fact_category_ownership(fact_category,owning_asset_id) VALUES ('combustion_relationship','ga_structural') ON CONFLICT (fact_category, owning_asset_id) DO NOTHING;
+INSERT INTO public.fact_category_ownership(fact_category,owning_asset_id) VALUES ('dosha_label','ga_structural') ON CONFLICT (fact_category, owning_asset_id) DO NOTHING;
+INSERT INTO public.fact_category_ownership(fact_category,owning_asset_id) VALUES ('graha_yuddha','ga_structural') ON CONFLICT (fact_category, owning_asset_id) DO NOTHING;
+INSERT INTO public.fact_category_ownership(fact_category,owning_asset_id) VALUES ('parivartana_pairs','ga_structural') ON CONFLICT (fact_category, owning_asset_id) DO NOTHING;
+INSERT INTO public.fact_category_ownership(fact_category,owning_asset_id) VALUES ('yoga_label','ga_structural') ON CONFLICT (fact_category, owning_asset_id) DO NOTHING;

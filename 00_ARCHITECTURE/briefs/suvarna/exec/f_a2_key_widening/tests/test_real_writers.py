@@ -71,7 +71,9 @@ def test_ga_vargas_all_five_ayanamshas_pass_capture_and_completion_and_the_f_a2_
     run, out, exc = run_substeps(cluster, db, "ga_vargas")
     assert exc is None, exc
     assert sorted(out) == ["krishnamurti", "lahiri_chitrapaksha", "raman", "surya_siddhanta_classical", "true_chitra"]
-    assert set(out.values()) == {7724} and sum(out.values()) == 38620            # attempted == landed per partition (6 sentinels re-inserted per call)
+    # attempted == landed per partition. Main's writer (TI-l1-writer-fixes-001) emits the 6 ayanamsha-independent INVARIANT sentinels in the FIRST
+    # ayanamsha pass only (it used to re-insert them in every pass: 5 x 7724 = 38620), so one partition reports 7724 and four report 7718: 38596 = stored rows.
+    assert sorted(out.values()) == [7718, 7718, 7718, 7718, 7724] and sum(out.values()) == 38596
     assert cluster.su(db, "SELECT count(*) FROM chart_divisionals")[0][0] == 38596
     # every partition completed through the real completion function, and the generation is complete
     assert cluster.su(db, "SELECT status FROM l1_data_plane_generations WHERE generation_id=%s AND asset_id='ga_vargas'", (run,)) == [("complete",)]
