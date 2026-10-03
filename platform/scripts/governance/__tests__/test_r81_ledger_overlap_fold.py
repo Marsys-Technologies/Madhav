@@ -6,7 +6,9 @@ form (never a hand G-numbered id kept as survivor), hand `change`/`owner`/`gate`
 new row, the old id(s) superseded via `superseded_by` (append-only: a NEW line, nothing edited or
 deleted). Group 8 (bg_panchanga) is the one partial overlap — its hand row is re-keyed to its own
 criterion `Earn.service_state` and is never folded onto a timing id; its census siblings
-(`Earn.build_record`, `Cost.baseline`) are untouched.
+(`Earn.build_record`, `Cost.baseline`) are untouched. E6.4 amendment: once the
+E6.4 info re-key is applied, `Cost.baseline` is superseded BY its `#info` id (the rule is superseded
+for the four info prefixes); the R81 fold itself still never touches it, and `Earn.build_record` stays untouched.
 
 `fold_overlap_pairs()` never opens a file — it is a pure function over an in-memory list of
 already-parsed rows, returning only the NEW rows to append. Every test here runs against synthetic
@@ -217,13 +219,20 @@ def test_real_ledger_all_11_pairs_old_ids_are_now_superseded():
 
 
 def test_real_ledger_bg_panchanga_partial_overlap_left_its_census_siblings_untouched():
-    """Group 8's own rule: bg_panchanga-Earn.build_record and bg_panchanga-Cost.baseline must NOT
-    be superseded — only bg_panchanga-G01 was re-keyed."""
+    """Group 8's own rule, as amended by E6.4: R81 never supersedes bg_panchanga's census siblings. `Earn.build_record` (a gate
+    criterion) is never superseded; `Cost.baseline` is an info-family row, so it is superseded ONLY by the E6.4 `#info` id (checked on
+    the ledger with the E6.4 migration applied; before it is applied nothing supersedes it). Holds in both states of the real ledger."""
+    import ledger_e6_4_info_rekey as rk
     rows = _real_rows()
-    _, ever = mig._latest_and_superseded(rows)
-    assert "bg_panchanga-Earn.build_record" not in ever
-    assert "bg_panchanga-Cost.baseline" not in ever
-    assert "bg_panchanga-G01" in ever
+    for state in (rows, rows + rk.fold_info_rekeys(rows, "2026-10-03T12:00:00+05:30")):
+        latest, ever = mig._latest_and_superseded(state)
+        assert "bg_panchanga-Earn.build_record" not in ever
+        assert "bg_panchanga-G01" in ever
+        sup = latest["bg_panchanga-Cost.baseline"].get("superseded_by")
+        assert sup in (None, "bg_panchanga-Cost.baseline#info")                      # never superseded by anything but the E6.4 id
+        assert ("bg_panchanga-Cost.baseline" in ever) == (sup is not None)
+    after = rows + rk.fold_info_rekeys(rows, "2026-10-03T12:00:00+05:30")
+    assert mig._latest_and_superseded(after)[0]["bg_panchanga-Cost.baseline"]["superseded_by"] == "bg_panchanga-Cost.baseline#info"
 
 
 def test_real_ledger_migration_is_now_a_confirmed_no_op():

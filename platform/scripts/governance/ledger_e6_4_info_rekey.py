@@ -22,7 +22,23 @@ Usage (a COPY first; the canonical ledger only after review):
   ledger_e6_4_info_rekey.py --src <canonical> --dst <canonical> --ts ISO       # in place: appends only the new lines
 The canonical ledger path (nikasha_fold.GAPS_REL of a git work tree) as --dst requires --src to be the SAME file and
 nikasha_fold.git_preflight to pass (tracked, HEAD bytes a prefix, no uncommitted change, E4.3 cut-over landed).
-Exit: 0 ok (also "nothing to do") - 2 refused (stderr `REFUSED <code>: ...`, nothing written) - 5 script error.
+Also refused: a --ts that is not timezone-aware; a --dst that is hard-linked (st_nlink > 1) or shares an inode with the
+canonical ledger; a different EXISTING --dst whose bytes are neither --src's nor the planned output (never silently
+overwritten); an in-place run while another holds the census lock (SUVARNA_CENSUS_LOCK or --lock-file; exit 75).
+Provenance: migration-written rows keep the census detector/owner/gate of the row they re-key; they are marked by `rekey`
+(and `rekeyed_from` on the info row), `superseded_by` on the superseding copy, and ts = the migration ts.
+
+APPLY RUNBOOK (after review, never before):
+  1. Run the governance suite on the MIGRATED COPY committed in a scratch repo BEFORE committing the apply: the six
+     ledger-reading files (test_r15_r29_hand_row_census_run_id, test_r80_schema_superseded_by_field, test_r81_apply_script,
+     test_r81_ledger_overlap_fold, test_e4_3_cutover, test_e5_2_fold) + test_e6_3_* + test_e6_4_info_rekey.
+     (test_e6_4_info_rekey.py::test_ledger_reading_suite_on_the_migrated_real_ledger does this offline for the ledger-readers
+     that accept a ledger path; the rest need the file in a checkout.)
+  2. Dry run: --dry-run (expect 219 rekeyed = Cost.baseline 123, Complete.depth 57, Count.floor 39, Reach 0, +438 lines).
+  3. Apply in place (clean tracked ledger, E4.3 cut-over landed), then commit the one file; a second run writes nothing.
+E6.4 supersedes R81 group 8's rule for the four info prefixes: bg_panchanga-Cost.baseline is now superseded BY its E6.4
+`#info` id (its other census sibling, Earn.build_record, is untouched).
+Exit: 0 ok (also "nothing to do") - 2 refused (stderr `REFUSED <code>: ...`, nothing written) - 5 script error - 75 lock held.
 """
 from __future__ import annotations
 
@@ -35,13 +51,14 @@ import hashlib
 import json
 import os
 import sys
+import stat
 import tempfile
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import nikasha_fold as nf  # noqa: E402  (ONE definition of the canonical-ledger path and its git preconditions)
 
-INFO_PREFIXES = ("Cost.", "Count.", "Complete.", "Reach.")           # == the plan detector's criteria_prefixes
+INFO_PREFIXES = tuple(g + "." for g in nf.ac.INFO_ONLY_GATES)     # ONE definition (asset_census.INFO_ONLY_GATES) == the plan detector's criteria_prefixes
 LIVE_STATES = frozenset({"OPEN", "IN_PROGRESS", "RE-OPENED"})       # emit's live states + the detector's RE-OPENED
 INFO_SUFFIX = "#info"
 RULING = "E6.4 / SS N-97(4): non-gate family re-keyed to kind info (static census snapshot)"
@@ -222,12 +239,14 @@ def plan(src_bytes: bytes, ts: str) -> dict:
                 open_after=len(detector_open(old_rows + new_rows)), rows_before=len(old_rows))
 
 
-def _atomic_write(path: Path, data: bytes) -> None:
+def _atomic_write(path: Path, data: bytes, mode: int | None = None) -> None:
     fd, tmp = tempfile.mkstemp(prefix=path.name + ".", suffix=".e64tmp", dir=str(path.parent))
     try:
         with os.fdopen(fd, "wb") as f:
             f.write(data)
             f.flush()
+            if mode is not None:
+                os.fchmod(f.fileno(), mode)
             os.fsync(f.fileno())
         os.replace(tmp, path)
     except BaseException:
@@ -264,8 +283,44 @@ def _is_canonical(path: Path) -> bool:
     return bool(info and info["canonical"])
 
 
-def run(src, dst, *, ts: str, dry_run: bool = False) -> dict:
+def _canonical_candidates() -> list:
+    """The canonical ledger paths this run could be aliasing: this script's repo's and the current directory's repo's."""
+    cands = [nf.repo_root() / nf.GAPS_REL]
+    top = nf.git_top(Path.cwd())
+    if top is not None:
+        cands.append(top / nf.GAPS_REL)
+    return cands
+
+
+def aliases_canonical(path: Path) -> bool:
+    """True when `path` is a DIFFERENT name for the inode of a canonical ledger (a hard link: realpath-based checks cannot see it).
+    The same file under its own (real) path is not an alias; that case is `_is_canonical`'s."""
+    if _is_canonical(path):
+        return False
+    try:
+        st, me = os.stat(path), os.path.realpath(path)
+    except OSError:
+        return False
+    for c in _canonical_candidates():
+        with contextlib.suppress(OSError):
+            cs = os.stat(c)
+            if (cs.st_dev, cs.st_ino) == (st.st_dev, st.st_ino) and os.path.realpath(c) != me:
+                return True
+    return False
+
+
+def _require_tz_aware(ts: str) -> None:
+    try:
+        t = dt.datetime.fromisoformat(ts)
+    except (TypeError, ValueError):
+        _refuse("bad_ts", f"--ts {ts!r} is not an ISO timestamp")
+    if t.tzinfo is None or t.utcoffset() is None:
+        _refuse("bad_ts", f"--ts {ts!r} is not timezone-aware (the ledger's timestamps carry an offset)")
+
+
+def run(src, dst, *, ts: str, dry_run: bool = False, lock_file=None) -> dict:
     """Migrate `src` into `dst` (src == dst: in place, appending only the new lines). Returns a report dict."""
+    _require_tz_aware(ts)
     sp, dp = Path(src), Path(dst)
     if not sp.is_file() or sp.is_symlink():
         _refuse("src_missing", f"{sp} is not a regular file")
@@ -273,17 +328,29 @@ def run(src, dst, *, ts: str, dry_run: bool = False) -> dict:
         _refuse("dst_invalid", f"{dp} is a symlink or a directory")
     if not dp.parent.is_dir():
         _refuse("dst_dir_missing", f"{dp.parent} is not a directory")
+    with nf.census_lock(None if dry_run else lock_file):
+        return _run_locked(sp, dp, ts=ts, dry_run=dry_run)
+
+
+def _run_locked(sp: Path, dp: Path, *, ts: str, dry_run: bool) -> dict:
     same = dp.exists() and os.path.realpath(sp) == os.path.realpath(dp)
     orig = sp.read_bytes()
     pl = plan(orig, ts)
     canonical = _is_canonical(dp) or _is_canonical(sp)
+    writing = bool(pl["new_rows"]) and not dry_run
+    if writing and dp.exists():
+        if aliases_canonical(dp) or (dp.stat().st_nlink > 1):
+            _refuse("dst_hardlinked", f"{dp} is hard-linked (or an alias of the canonical ledger's inode): a write through it would "
+                                       "bypass the canonical-ledger protections; use a plain file")
     # the canonical ledger: only in place, only after the fold's own git preconditions (ONE definition, nikasha_fold). Nothing to do
     # writes nothing, so it needs no precondition (a second run on an already-migrated, not yet committed ledger is a clean no-op).
-    if canonical and not dry_run and pl["new_rows"]:
+    if canonical and writing:
         if not same:
             _refuse("canonical_path", "the canonical ledger is migrated in place only (--src == --dst): it is never the --dst of "
                                        "a different --src (that would overwrite it) nor the --src of a different --dst")
         nf.git_preflight(dp, allow_dirty=False, dry_run=False)
+    if writing and dp.exists() and not same and dp.read_bytes() not in (orig, pl["out_bytes"]):
+        _refuse("dst_exists_different", f"{dp} exists and is neither the source nor the planned output: it is not silently overwritten")
     rep = dict(src=str(sp), dst=str(dp), dry_run=dry_run, in_place=same, ts=ts, rows_before=pl["rows_before"],
                sha256_before=_sha(orig), open_gaps_before=pl["open_before"], open_gaps_after=pl["open_after"],
                rekeyed=len(pl["new_rows"]) // 2, by_criterion=pl["by_criterion"], by_prefix=pl["by_prefix"],
@@ -299,7 +366,8 @@ def run(src, dst, *, ts: str, dry_run: bool = False) -> dict:
     if same:
         _append(dp, orig, pl["new_bytes"])
     else:
-        _atomic_write(dp, pl["out_bytes"])
+        mode = stat.S_IMODE((dp if dp.exists() else sp).stat().st_mode)           # keep the file's mode (a new copy takes the source's)
+        _atomic_write(dp, pl["out_bytes"], mode)
     rep.update(status="migrated", sha256_after=_sha(dp.read_bytes()))
     return rep
 
@@ -310,6 +378,7 @@ def _parser() -> argparse.ArgumentParser:
     ap.add_argument("--dst", required=True, help="ledger to write (== --src for in place)")
     ap.add_argument("--dry-run", action="store_true", help="report only; write nothing")
     ap.add_argument("--ts", default=None, help="the migration timestamp (ISO, tz-aware); default now")
+    ap.add_argument("--lock-file", default=None, help=f"census lock file (default: ${nf.ENV_LOCK}); exit 75 when held")
     return ap
 
 
@@ -317,15 +386,13 @@ def main(argv=None) -> int:
     a = _parser().parse_args(argv)
     ts = a.ts or dt.datetime.now().astimezone().isoformat(timespec="seconds")
     try:
-        dt.datetime.fromisoformat(ts)
-    except ValueError:
-        print(f"REFUSED bad_ts: --ts {ts!r} is not an ISO timestamp", file=sys.stderr)
-        return EX_REFUSED
-    try:
-        rep = run(a.src, a.dst, ts=ts, dry_run=a.dry_run)
+        rep = run(a.src, a.dst, ts=ts, dry_run=a.dry_run, lock_file=a.lock_file or os.environ.get(nf.ENV_LOCK))
     except nf.FoldRefused as e:
         print(f"REFUSED {e.code}: {e.message}", file=sys.stderr)
         return EX_REFUSED
+    except nf.LockHeld as e:
+        print(f"LOCK HELD: {e}", file=sys.stderr)
+        return nf.EX_TEMPFAIL
     except Exception as e:  # noqa: BLE001 - one stderr line, like the fold
         print(f"ERROR {type(e).__name__}: {e}"[:300], file=sys.stderr)
         return EX_ERROR

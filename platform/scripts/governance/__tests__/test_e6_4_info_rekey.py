@@ -19,8 +19,12 @@ import inspect
 import json
 import os
 import pathlib
+import shutil
+import stat
 import subprocess
 import sys
+import threading
+import time
 
 import pytest
 
@@ -325,7 +329,7 @@ def test_in_place_refuses_when_the_ledger_changes_under_it(tmp_path, monkeypatch
 
 def test_mutant_unknown_criterion_prefix_is_never_matched():
     """Completeness.* / Reachability / Costly.* / bare `Count` do not start with the four prefixes (`<Family>.`)."""
-    assert not any(rk._is_target(dict(criterion=c)) for c in ("Completeness.depth.dasha_link", "Reachability", "Costly.x", "Count", "Cost",
+    assert not any(rk._is_target(dict(criterion=c)) for c in ("Completeness.depth.dasha_link", "Reachability", "Costly.x", "Counter.x", "Build.Cost.x", "Earn.Count.floor", "Count", "Cost",
                                                               "Earn.build_record", "Narr.x", "", None, 7))
     assert all(rk._is_target(dict(criterion=c)) for c in ("Cost.baseline", "Count.floor", "Complete.depth", "Reach.fields", "Complete.width"))
     assert rk.INFO_PREFIXES == ("Cost.", "Count.", "Complete.", "Reach.")
@@ -473,7 +477,19 @@ def detector_view_any(rows):
     return latest_rows(rows)
 
 
-TRACKER_DETECTORS = pathlib.Path(os.environ.get("SUVARNA_TRACKER_DIR", "/Users/Dev/madhav-suvarna-plan/platform/scripts/governance"))
+def _find_tracker():
+    """The governance dir holding suvarna_tracker/: $SUVARNA_TRACKER_DIR, else any worktree of this repository (as the E5.2 parity test)."""
+    env = os.environ.get("SUVARNA_TRACKER_DIR")
+    cands = [pathlib.Path(env)] if env else []
+    r = subprocess.run(["git", "-C", str(REPO), "worktree", "list", "--porcelain"], capture_output=True, text=True)
+    for ln in r.stdout.splitlines():
+        if ln.startswith("worktree "):
+            cands.append(pathlib.Path(ln[9:]) / "platform/scripts/governance")
+    cands.append(REPO / "platform/scripts/governance")
+    return next((c for c in cands if (c / "suvarna_tracker" / "detectors.py").is_file()), None)
+
+
+TRACKER_DETECTORS = _find_tracker()
 
 
 def tracker_detector_result(tmp_path, ledger_bytes):
@@ -495,7 +511,7 @@ def tracker_detector_result(tmp_path, ledger_bytes):
     return cls(cfg).d_ledger_no_open_gap_on(dict(criteria_prefixes=["Cost.", "Count.", "Complete.", "Reach."]))
 
 
-@pytest.mark.skipif(not (TRACKER_DETECTORS / "suvarna_tracker/detectors.py").is_file(), reason="the Suvarna tracker checkout is not present")
+@pytest.mark.skipif(TRACKER_DETECTORS is None, reason="suvarna_tracker is on no worktree of this repository and $SUVARNA_TRACKER_DIR is unset")
 def test_the_trackers_own_detector_goes_pending_to_done(tmp_path):
     p = rk.plan(led(*world_rows()), TS)
     assert tracker_detector_result(tmp_path / "a", led(*world_rows())).status == "pending"
@@ -621,3 +637,205 @@ def test_info_only_gates_are_registry_gates_and_none_is_a_core_gate():
     assert tuple(g + "." for g in ac.INFO_ONLY_GATES) == rk.INFO_PREFIXES
     assert set(ac.INFO_ONLY_GATES) <= gates | {"Reach"} and not set(ac.INFO_ONLY_GATES) & set(ac.CELL_GATES)
     assert ac.LIVE_GAP_STATES == ("OPEN", "IN_PROGRESS")
+
+
+# ═══════════════════════════════ review round (E6.4): H1, M1-M3, survivors, L1, L6 ═══════════════════════════════
+
+def test_prefix_match_is_startswith_not_substring_at_plan_level():
+    """M22: `Build.Cost.x`, `Earn.Count.floor`, `Costly.*`, `Counter.*` are never re-keyed, even when OPEN."""
+    rows = [row("bg_a", c) for c in ("Build.Cost.x", "Earn.Count.floor", "Costly.x", "Counter.x", "Completeness.depth", "Reachability.f")]
+    assert rk.plan(led(*rows), TS)["new_rows"] == []
+
+
+def test_the_prefixes_are_derived_from_the_one_emit_constant():
+    assert rk.INFO_PREFIXES == tuple(g + "." for g in ac.INFO_ONLY_GATES)
+    fams = {e["gate"] for e in ac.CRITERION_REGISTRY.values()}
+    assert set(ac.INFO_ONLY_GATES) <= fams - set(ac.CELL_GATES)          # each is a registry NON-gate family
+    # `Completeness` is also a non-gate registry family; it stays a GAP family per the plan's four prefixes (an SS question, see the PR)
+    assert "Completeness" in fams - set(ac.CELL_GATES) and "Completeness" not in ac.INFO_ONLY_GATES
+
+
+# ── M2: --ts must be tz-aware ──
+
+@pytest.mark.parametrize("ts", ["2026-10-03T12:00:00", "2026-10-03", "yesterday", ""])
+def test_a_naive_or_malformed_ts_is_refused_and_nothing_is_written(tmp_path, ts):
+    src = write(tmp_path / "src.jsonl", *world_rows())
+    with pytest.raises(rk.RekeyRefused) as e:
+        rk.run(src, tmp_path / "dst.jsonl", ts=ts)
+    assert e.value.code == "bad_ts" and not (tmp_path / "dst.jsonl").exists()
+    assert rk.main(["--src", str(src), "--dst", str(tmp_path / "dst.jsonl"), "--ts", ts or "x"]) == rk.EX_REFUSED
+    assert rk.run(src, tmp_path / "dst.jsonl", ts="2026-10-03T12:00:00Z", dry_run=True)["status"] == "dry_run"
+
+
+# ── M3: a hard link must not bypass the canonical protections ──
+
+def test_a_hardlink_alias_of_the_canonical_ledger_is_refused(tmp_path, monkeypatch):
+    repo, p = make_repo(tmp_path)
+    monkeypatch.chdir(repo)                                           # the operator runs from the repository: its canonical ledger is known
+    p.write_bytes(p.read_bytes() + b'{"asset": "bg_z", "gap_id": "bg_z-x", "kind": "gap", "criterion": "Earn.x", "state": "OPEN"}\n')   # dirty
+    hard = tmp_path / "hard.jsonl"
+    os.link(p, hard)
+    before = p.read_bytes()
+    assert rk.aliases_canonical(hard) is True and rk.aliases_canonical(p) is False
+    with pytest.raises(rk.RekeyRefused) as e:
+        rk.run(hard, hard, ts=TS)                                     # the dirty canonical, reached through an alias: no preflight would run
+    assert e.value.code == "dst_hardlinked" and p.read_bytes() == before and hard.read_bytes() == before
+    with pytest.raises(rk.RekeyRefused) as e:
+        rk.run(p, hard, ts=TS)
+    assert e.value.code == "dst_hardlinked"
+
+
+def test_any_hardlinked_dst_is_refused_and_a_plain_copy_is_not(tmp_path):
+    src = write(tmp_path / "src.jsonl", *world_rows())
+    a = write(tmp_path / "a.jsonl", *world_rows())
+    os.link(a, tmp_path / "b.jsonl")
+    with pytest.raises(rk.RekeyRefused) as e:
+        rk.run(src, a, ts=TS)
+    assert e.value.code == "dst_hardlinked"
+    assert rk.run(src, tmp_path / "c.jsonl", ts=TS)["status"] == "migrated"
+
+
+# ── L6: a different existing dst is not silently overwritten; the mode is kept ──
+
+def test_a_different_existing_dst_is_refused_but_an_identical_one_is_allowed(tmp_path):
+    src = write(tmp_path / "src.jsonl", *world_rows())
+    dst = tmp_path / "dst.jsonl"
+    dst.write_bytes(b'{"asset": "_schema"}\nsomething else\n')
+    before = dst.read_bytes()
+    with pytest.raises(rk.RekeyRefused) as e:
+        rk.run(src, dst, ts=TS)
+    assert e.value.code == "dst_exists_different" and dst.read_bytes() == before
+    dst.write_bytes(src.read_bytes())                                  # identical to the source: allowed
+    assert rk.run(src, dst, ts=TS)["status"] == "migrated"
+    out = dst.read_bytes()
+    assert rk.run(src, dst, ts=TS)["status"] == "migrated" and dst.read_bytes() == out        # identical to the planned output: allowed, same bytes
+
+
+def test_the_file_mode_is_preserved(tmp_path):
+    src = write(tmp_path / "src.jsonl", *world_rows())
+    os.chmod(src, 0o640)
+    new = tmp_path / "new.jsonl"
+    rk.run(src, new, ts=TS)
+    assert stat.S_IMODE(new.stat().st_mode) == 0o640                     # a new copy takes the source's mode
+    ex = tmp_path / "ex.jsonl"
+    ex.write_bytes(src.read_bytes())
+    os.chmod(ex, 0o604)
+    rk.run(src, ex, ts=TS)
+    assert stat.S_IMODE(ex.stat().st_mode) == 0o604                      # an existing dst keeps its own
+
+
+# ── M11: a failed in-place write restores the ledger ──
+
+def test_a_failed_append_truncates_the_torn_bytes_away(tmp_path, monkeypatch):
+    p = write(tmp_path / "l.jsonl", *world_rows())
+    before = p.read_bytes()
+    real_write = os.write
+    n = {"calls": 0}
+
+    def torn(fd, data):
+        n["calls"] += 1
+        if n["calls"] == 1:
+            return real_write(fd, bytes(data)[:50])                       # a torn partial write ...
+        raise OSError("disk full")                                         # ... then the failure
+    monkeypatch.setattr(os, "write", torn)
+    with pytest.raises(rk.RekeyRefused) as e:
+        rk.run(p, p, ts=TS)
+    monkeypatch.undo()
+    assert e.value.code == "ledger_write_failed" and p.read_bytes() == before
+
+
+# ── M31: the append is serialised by flock; parallel in-place runs migrate exactly once ──
+
+def test_append_waits_for_a_held_flock(tmp_path):
+    import fcntl
+    p = write(tmp_path / "l.jsonl", *world_rows())
+    orig = p.read_bytes()
+    holder = os.open(str(p), os.O_RDWR)
+    fcntl.flock(holder, fcntl.LOCK_EX)
+    done = threading.Event()
+    t = threading.Thread(target=lambda: (rk._append(p, orig, b'{"x": 1}\n'), done.set()))
+    t.start()
+    time.sleep(0.6)
+    blocked = not done.is_set()
+    fcntl.flock(holder, fcntl.LOCK_UN)
+    os.close(holder)
+    t.join(10)
+    assert blocked, "_append did not wait for the exclusive flock"
+    assert p.read_bytes() == orig + b'{"x": 1}\n'
+
+
+def test_five_parallel_in_place_runs_migrate_exactly_once(tmp_path):
+    p = write(tmp_path / "l.jsonl", *world_rows())
+    orig = p.read_bytes()
+    script = pathlib.Path(rk.__file__)
+    procs = [subprocess.Popen([sys.executable, str(script), "--src", str(p), "--dst", str(p), "--ts", TS],
+                              stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True) for _ in range(5)]
+    outs = [(q.wait(), q.stdout.read(), q.stderr.read()) for q in procs]
+    migrated = [o for o in outs if '"status": "migrated"' in o[1]]
+    assert len(migrated) == 1, outs
+    assert all(o[0] in (0, rk.EX_REFUSED) for o in outs)
+    assert p.read_bytes() == orig + rk.plan(orig, TS)["new_bytes"]        # exactly one set of new lines, no duplicate
+
+
+# ── L1: the census lock ──
+
+def test_a_held_census_lock_stops_a_write_but_not_a_dry_run(tmp_path):
+    lock = tmp_path / "census.lock"
+    src = write(tmp_path / "src.jsonl", *world_rows())
+    with nf.census_lock(lock):
+        with pytest.raises(nf.LockHeld):
+            rk.run(src, tmp_path / "d.jsonl", ts=TS, lock_file=lock)
+        assert not (tmp_path / "d.jsonl").exists()
+        assert rk.run(src, tmp_path / "d.jsonl", ts=TS, dry_run=True, lock_file=lock)["status"] == "dry_run"
+        assert rk.main(["--src", str(src), "--dst", str(tmp_path / "d.jsonl"), "--ts", TS, "--lock-file", str(lock)]) == nf.EX_TEMPFAIL
+    assert rk.run(src, tmp_path / "d.jsonl", ts=TS, lock_file=lock)["status"] == "migrated"      # released
+
+
+# ── H1: the ledger-reading suite on the MIGRATED real ledger ──
+
+def test_ledger_reading_suite_on_the_migrated_real_ledger(tmp_path):
+    """The R81 test that broke when the migration was applied (bg_panchanga-Cost.baseline superseded) is exactly what this catches: copy the
+    governance directory and the REAL ledger to a scratch tree, migrate the ledger there, run the ledger-reading tests that take a path-relative
+    ledger. (test_e4_3_cutover / test_e5_2_fold / test_e6_3_* read git history: the apply runbook runs them on a committed scratch repo.)"""
+    tree = tmp_path / "tree"
+    (tree / "00_ARCHITECTURE/control").mkdir(parents=True)
+    shutil.copytree(REPO / "platform/scripts/governance", tree / "platform/scripts/governance",
+                    ignore=shutil.ignore_patterns("__pycache__", ".pytest_cache"))
+    led_copy = tree / nf.GAPS_REL
+    shutil.copyfile(REAL_LEDGER, led_copy)
+    rep = rk.run(led_copy, led_copy, ts=TS)
+    assert rep["status"] == "migrated" and rep["rekeyed"] == 219
+    gov = tree / "platform/scripts/governance/__tests__"
+    files = [gov / n for n in ("test_r15_r29_hand_row_census_run_id.py", "test_r80_schema_superseded_by_field.py",
+                               "test_r81_apply_script.py", "test_r81_ledger_overlap_fold.py")]
+    assert all(f.is_file() for f in files)
+    r = subprocess.run([sys.executable, "-m", "pytest", "-q", "-p", "no:cacheprovider", *map(str, files)], cwd=tree,
+                       capture_output=True, text=True, env=dict(os.environ, PYTHONHASHSEED="0"))
+    assert r.returncode == 0, r.stdout[-2000:] + r.stderr[-500:]
+
+
+# ── M1 / E03 / E06: the emit rule's counter and its family matching ──
+
+def test_info_only_suppression_is_its_own_counter_not_skipped(ctrl):
+    write(ctrl / "asset_gaps.jsonl", row("bg_c", "Cost.baseline", state="CLOSED"), row("bg_o", "Earn.build_record"))
+    s = ac.emit_gaps_summary(census(("bg_c", "Cost.baseline", ac.FAIL), ("bg_new", "Count.floor", ac.PARTIAL), ("bg_new", "Complete.depth", ac.NO_DET),
+                                    ("bg_o", "Earn.build_record", ac.FAIL)))
+    assert s["info_only_suppressed"] == 3 and s["skipped"] == 1 and s["added"] == 0     # the one skip is the already-open gate row
+    assert ac.emit_gaps(census(("bg_c", "Cost.baseline", ac.FAIL)))[1] == 0              # the historical tuple's `skipped` stays honest too
+    s2 = ac.emit_gaps_summary(census(("bg_o", "Earn.build_record", ac.FAIL)))
+    assert "info_only_suppressed" not in s2                                             # present only when non-empty
+
+
+@pytest.mark.parametrize("crit", ["Completeness.depth.dasha_link", "Costly.x", "Counter.x", "Reachability", "Reach", "CompleteX.depth"])
+def test_family_matching_is_exact_near_misses_are_still_gaps(ctrl, crit):
+    write(ctrl / "asset_gaps.jsonl")
+    s = ac.emit_gaps_summary(census(("bg_n", crit, ac.FAIL)))
+    assert s["added"] == 1 and "info_only_suppressed" not in s
+    assert [r["state"] for r in ledger_rows(ctrl / "asset_gaps.jsonl")[1:]] == ["OPEN"]
+
+
+def test_the_cli_prints_a_distinct_line_for_the_suppressed_cells(monkeypatch, capsys):
+    src = pathlib.Path(ac.__file__).read_text(encoding="utf-8")
+    assert "info_only_suppressed" in src.split("def main()", 1)[1]
+    doc = ac.emit_gaps_summary.__doc__
+    assert "info_only_suppressed" in doc and "INFO_ONLY_GATES" in doc
