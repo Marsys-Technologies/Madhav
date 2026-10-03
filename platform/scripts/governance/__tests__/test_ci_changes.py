@@ -203,6 +203,18 @@ def test_cli_on_a_real_git_diff(tmp_path):
     assert _run(r, "--event", "pull_request", "--base", "HEAD^1", "--head", "HEAD").stdout.strip() == "docs_only=false"
 
 
+def test_cli_a_real_git_rename_of_a_pinned_document_is_not_docs_only(tmp_path):
+    """Review N-103 round 2: `--no-renames` makes git report the OLD path of a rename too. The scan pins 00_ARCHITECTURE/AGENTS.md (a real test names it),
+    so moving it must not take the fast path; without --no-renames git would report only the new, unpinned path (the new name is concatenated so this file does not pin it)."""
+    r = _repo(tmp_path)
+    (r / "00_ARCHITECTURE" / "AGENTS.md").write_text("agents\n")
+    _git(r, "add", ".")
+    _git(r, "commit", "-qm", "add pinned doc")
+    _git(r, "mv", "00_ARCHITECTURE/AGENTS.md", "00_ARCHITECTURE/briefs/AGENTS_zz_moved" + ".md")
+    _git(r, "commit", "-qm", "rename")
+    assert _run(r, "--event", "pull_request", "--base", "HEAD^1", "--head", "HEAD").stdout.strip() == "docs_only=false"
+
+
 def test_cli_fails_closed(tmp_path):
     r = _repo(tmp_path)
     (r / "00_ARCHITECTURE" / "briefs" / NOTE_NAME).write_text("changed\n")
