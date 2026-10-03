@@ -605,7 +605,7 @@ def test_3_default_hooks_dir_is_the_slhooks_folder():
 
 
 # ----------------------------------------------------------------------------------------------- real hook files
-REAL_LANES = sorted(f.stem for f in REAL_HOOKS.glob("*.json"))  # the integration's 22 hook files + fa2_ga_vargas (pending, see PENDING_HOOKS)
+REAL_LANES = sorted(f.stem for f in REAL_HOOKS.glob("*.json"))  # the integration's 23 hook files + fa2_ga_vargas (pending, see PENDING_HOOKS)
 PENDING_HOOKS = ("fa2_ga_vargas.json",)  # F-A2 (PR 2858) adds this file to the hook directory later: allowed absent from the repo directory, byte-equal when present
 INTEGRATION_LANES = [n for n in REAL_LANES if n + ".json" not in PENDING_HOOKS]
 
@@ -641,6 +641,7 @@ def real_hooks(tmp_path, lanes, patch=None):
 
 
 GOLDEN_LANES = ["argala", "gandanta", "sun_required_rupa", "tiers"]
+SE1_LANE = "ephemeris_backend_shift"
 
 
 def golden_before():
@@ -705,7 +706,9 @@ def golden_cases(tmp_path):
     stripped = real_hooks(tmp_path, GOLDEN_LANES, patch={lane: strip_counts for lane in GOLDEN_LANES})
     all_hooks, errs = F.load_hooks(str(REAL_HOOKS), REAL_LANES)
     assert not errs
-    out = {"all_23_hooks_unchanged_native_chart": summarize(run(base_state(), base_state(), all_hooks)),
+    wo_se1 = [h for h in all_hooks if h["lane"] != SE1_LANE]                                # the 22 integration hooks that predate ephemeris_backend_shift + pending fa2: the original case, unchanged
+    out = {"all_23_hooks_unchanged_native_chart": summarize(run(base_state(), base_state(), wo_se1)),
+           "all_24_hooks_unchanged_native_chart": summarize(run(base_state(), base_state(), all_hooks)),   # + ephemeris_backend_shift: its 4 non-optional dasha_shift entries read DECLARED_BUT_ABSENT by design
            "four_lanes_verbatim_synthetic_changes": summarize(run(golden_before(), golden_after(), verbatim)),
            "four_lanes_counts_stripped": summarize(run(golden_before(), golden_after(), stripped))}
 
@@ -745,6 +748,16 @@ def test_golden_semantics_read_by_a_human(tmp_path):
     n = cases["noisy_counts_stripped"]
     assert n["verdict"] == "FAIL" and n["failure_counts"]["UNDECLARED_CHANGE"] == 1
     assert n["failure_counts"]["KIND_MISMATCH"] == 5 and n["failure_counts"]["DASHA_SHIFT_UNDECLARED"] == 1
+    # all 24 files = the 23 above + ephemeris_backend_shift: the ONLY change in the report is the se1 hook's own entries (a rebuild that did not run on se1 fails)
+    w = cases["all_24_hooks_unchanged_native_chart"]
+    assert [x.split(": the hook declares")[0] for x in w["absent"]] == [f"DECLARED BUT ABSENT ephemeris_backend_shift[{i}] (chart_dashas:{sysid})" for i, sysid in
+                                                                          enumerate(("vimshottari", "vimshottari_kp", "kalachakra", "kalachakra"))]
+    assert w["verdict"] == "FAIL" and w["failure_counts"]["DECLARED_BUT_ABSENT"] == 4 and w["changes_total"] == 0
+    assert w["failure_counts"]["EXPECTATION_MISMATCH"] == u["failure_counts"]["EXPECTATION_MISMATCH"] + 20   # the 20 exact per-ayanamsha level-4 membership entries; entry 26 (exact 0) holds
+    assert sum(v for k, v in w["failure_counts"].items() if k not in ("EXPECTATION_MISMATCH", "DECLARED_BUT_ABSENT")) == 0
+    assert w["not_checked"] == u["not_checked"] and w["by_table_category_change_lane"] == u["by_table_category_change_lane"] == []
+    assert [x.split(" (")[0] for x in w["warnings"]] == ["OPTIONAL_ABSENT ephemeris_backend_shift[4]", "OPTIONAL_ABSENT ephemeris_backend_shift[5]"] and u["warnings"] == []
+    assert w["exit_default"] == 2 and w["exit_allow_not_checked"] == 2
     for case in cases.values():
         assert [x[0] for x in case["not_checked"]][:2] == ["chart_dashas.tier", "l1_tajik_varsha_year_lords.tier"]
         if case["verdict"] == "FAIL":
@@ -759,17 +772,95 @@ def test_golden_clean_run_attributes_every_change(tmp_path):
     assert all(c["lanes"] for c in rep["changes"])
 
 
-def test_every_integration_hook_states_its_absence_rule(tmp_path):
-    """Every entry of every shipped hook either declares an expected_count, is optional, is a dasha_shift (judged by shifted rows), or is an entry the detector
-    cannot observe: none would read DECLARED_BUT_ABSENT on an unchanged chart (the review finding that drove the lane authors' fixes)."""
+# The ONLY entries that read DECLARED_BUT_ABSENT on an unchanged chart, on purpose (SS ruling 2026-10-03, S-L1 integration): the four non-optional dasha_shift entries of
+# ephemeris_backend_shift. They declare that the rebuild ran on the canonical Swiss .se1 backend, which moves the Moon and so translates the Moon-anchored dasha timelines
+# (Vimshottari, its KP sub-periods, Kalachakra). A rebuild that did NOT run on se1 shifts nothing, and these entries are the proof that such a rebuild FAILS.
+# The set is pinned by (lane, entry index, systems, ayanamsha_ids): any other non-optional dasha_shift entry, or any other absent entry, is a failure of this test.
+EXPECTED_SHIFT_PROOF_ENTRIES = (
+    ("ephemeris_backend_shift", 0, ["vimshottari"], None),
+    ("ephemeris_backend_shift", 1, ["vimshottari_kp"], None),
+    ("ephemeris_backend_shift", 2, ["kalachakra"], ["lahiri_chitrapaksha", "krishnamurti", "raman", "true_chitra"]),
+    ("ephemeris_backend_shift", 3, ["kalachakra"], ["surya_siddhanta_classical"]),
+)
+
+
+def shift_proof_labels(hooks):
+    by_lane = {h["lane"]: h for h in hooks}
+    return [f"DECLARED BUT ABSENT {lane}[{i}] (chart_dashas:{','.join(by_lane[lane]['may_change'][i]['systems'])})" for lane, i, _s, _a in EXPECTED_SHIFT_PROOF_ENTRIES]
+
+
+def test_the_four_se1_shift_proof_entries_exist_and_are_non_optional():
+    """The four entries that must read DECLARED_BUT_ABSENT on an unchanged chart exist, are chart_dashas dasha_shift entries, are NOT optional and carry a shift range,
+    and they are the ONLY non-optional dasha_shift entries in the whole shipped hook set (so the exemption below cannot quietly widen)."""
     hooks, errs = F.load_hooks(str(REAL_HOOKS), REAL_LANES)
     assert not errs
-    for chart in (NATIVE, OTHER, "cb73cd3d-9eba-4220-9902-0de91566e980"):
+    by_lane = {h["lane"]: h for h in hooks}
+    for lane, i, systems, ayans in EXPECTED_SHIFT_PROOF_ENTRIES:
+        e = by_lane[lane]["may_change"][i]
+        assert e["table"] == "chart_dashas" and e["kind"] == "dasha_shift" and e["systems"] == systems, (lane, i)
+        assert e.get("optional", False) is False, f"{lane}[{i}] must be non-optional: it is the proof that a rebuild that did not run on se1 fails"
+        assert e.get("ayanamsha_ids") == ayans and "expected_count" not in e and len(e["shift_range_sec"]) == 2 and e["shift_range_sec"][0] > 0, (lane, i)
+    non_optional = sorted((h["lane"], i) for h in hooks for i, e in enumerate(h["may_change"]) if e.get("kind") == "dasha_shift" and not e.get("optional"))
+    assert non_optional == sorted((lane, i) for lane, i, _s, _a in EXPECTED_SHIFT_PROOF_ENTRIES)
+    assert 4 == len(EXPECTED_SHIFT_PROOF_ENTRIES) and by_lane["ephemeris_backend_shift"]["charts"] == ["482012f1"]
+
+
+def test_every_integration_hook_states_its_absence_rule(tmp_path):
+    """Every entry of every shipped hook either declares an expected_count, is optional, is a dasha_shift marked optional, or is an entry the detector cannot observe:
+    none reads DECLARED_BUT_ABSENT on an unchanged chart (the review finding that drove the lane authors' fixes), EXCEPT the four non-optional dasha_shift entries of
+    ephemeris_backend_shift on the native chart, which read DECLARED_BUT_ABSENT by design (see EXPECTED_SHIFT_PROOF_ENTRIES). Nothing else is exempt."""
+    hooks, errs = F.load_hooks(str(REAL_HOOKS), REAL_LANES)
+    assert not errs
+    for chart in (OTHER, "cb73cd3d-9eba-4220-9902-0de91566e980"):
         rep = run(base_state(), base_state(), hooks, chart=chart, standing_not_checked=NO_STANDING)
-        assert rep["failures"]["DECLARED_BUT_ABSENT"] == [], (chart, rep["failures"]["DECLARED_BUT_ABSENT"])
+        assert rep["failures"]["DECLARED_BUT_ABSENT"] == [], (chart, rep["failures"]["DECLARED_BUT_ABSENT"])   # the se1 hook is scoped to the native chart only
     nat = run(base_state(), base_state(), hooks, standing_not_checked=NO_STANDING)
+    got = nat["failures"]["DECLARED_BUT_ABSENT"]
+    want = [w + ": the hook declares this change and nothing changed" for w in shift_proof_labels(hooks)]
+    assert len(got) == len(want) == 4 and sorted(m.split(" (mark the entry")[0] for m in got) == sorted(want), (got, want)   # exactly the four named entries, no more, no fewer
     assert any(m.startswith("EXPECTATION MISMATCH tiers[3]") for m in nat["failures"]["EXPECTATION_MISMATCH"])  # exact 245 special_lagna tier changes, none happened here
     assert "tiers[1]" in [n["id"] for n in nat["not_checked"]]  # the chart_dashas tier-only entry is NOT CHECKED, never absent
+    # the rule is not weakened for any other hook: without the se1 hook loaded no entry of the remaining 23 files reads absent on the native chart
+    others = [h for h in hooks if h["lane"] != "ephemeris_backend_shift"]
+    rest = run(base_state(), base_state(), others, standing_not_checked=NO_STANDING)
+    assert rest["failures"]["DECLARED_BUT_ABSENT"] == []
+
+
+def se1_shifted_pair(unshifted=()):
+    """A before / after pair in which the dasha rows the four shift-proof entries watch really moved by the measured se1 amounts (Vimshottari and its KP sub-periods
+    +6,992 s; Kalachakra +145,090 s, Surya Siddhanta +150,309 s), on top of base_state(). `unshifted` names systems whose rows stay put (a rebuild that did not move them)."""
+    before, after = base_state(), base_state()
+    for system, ay, level, sec in (("vimshottari", "lahiri_chitrapaksha", 4, 6992), ("vimshottari_kp", "lahiri_chitrapaksha", 3, 6992),
+                                   ("kalachakra", "raman", 4, 145090), ("kalachakra", "surya_siddhanta_classical", 4, 150309)):
+        for j in range(3):
+            start = F.ts_parse(f"2010-0{j + 1}-01T00:00:00+00:00")
+            end = start + timedelta(days=20)
+            moved = 0 if (system, ay) in unshifted or system in unshifted else sec + j
+            before["dashas"].append([ay, system, level, f"/L{j}", start.isoformat(), end.isoformat()])
+            after["dashas"].append([ay, system, level, f"/L{j}", (start + timedelta(seconds=moved)).isoformat(), (end + timedelta(seconds=moved)).isoformat()])
+    return before, after
+
+
+def test_the_four_se1_shift_proof_entries_read_present_when_the_rows_really_shifted():
+    """The pair of the exemption above: on a chart whose Moon-anchored dasha rows moved by the measured amounts the same four entries are NOT absent, so the
+    exemption cannot hide a hook that never fires. And each of the four reads absent on its own when only ITS rows stay put."""
+    hooks, errs = F.load_hooks(str(REAL_HOOKS), REAL_LANES)
+    assert not errs
+    se1 = [h for h in hooks if h["lane"] == SE1_LANE]
+    before, after = se1_shifted_pair()
+    rep = run(before, after, se1, standing_not_checked=NO_STANDING)
+    assert rep["failures"]["DECLARED_BUT_ABSENT"] == [] and rep["failure_counts"]["DASHA_SHIFT_UNDECLARED"] == 0
+    assert not any(m.startswith(f"EXPECTATION MISMATCH {SE1_LANE}[{i}]") for m in rep["failures"]["EXPECTATION_MISMATCH"] for i in (0, 1, 2, 3))
+    moved = {k: v for k, v in rep["dashas"].items() if v.get("rows_shifted")}
+    assert sorted(moved) == ["lahiri_chitrapaksha|vimshottari", "lahiri_chitrapaksha|vimshottari_kp", "raman|kalachakra", "surya_siddhanta_classical|kalachakra"]
+    assert all(v["lanes"] == [SE1_LANE] and v["rows_outside_every_declared_range"] == 0 for v in moved.values()), moved
+    # each entry, taken alone, can still read absent: leave exactly one watched group unshifted and exactly that entry fails
+    for (system, ay), idx in ((("vimshottari", "lahiri_chitrapaksha"), 0), (("vimshottari_kp", "lahiri_chitrapaksha"), 1),
+                              (("kalachakra", "raman"), 2), (("kalachakra", "surya_siddhanta_classical"), 3)):
+        before, after = se1_shifted_pair(unshifted=((system, ay),))
+        rep = run(before, after, se1, standing_not_checked=NO_STANDING)
+        absent = rep["failures"]["DECLARED_BUT_ABSENT"]
+        assert len(absent) == 1 and absent[0].startswith(f"DECLARED BUT ABSENT {SE1_LANE}[{idx}] "), (system, ay, absent)
 
 
 # ----------------------------------------------------------------------------------------------- unchanged safety properties
@@ -1546,9 +1637,20 @@ def test_f12_pending_files_may_be_absent_but_never_hide_drift(tmp_path):
     assert hook_dir_differences(src, fx, ("p.json",)) == ["only in the real hook directory: r.json", "only in hooks_real fixtures: q.json"]
 
 
+# The 23 stems the integration's hook directory carries today, by name (not a count): a hook added, dropped or renamed is a deliberate edit of this tuple.
+INTEGRATION_STEMS = (
+    "argala", "argala_other_charts", "ashtakavarga_bindu_contributor", "band_table", "chandra_bala_birth_moon_sign", "dasha_scope_cap", "ephemeris_backend_shift",
+    "ga_condition_fallback", "ga_strength_invariant_rows", "ga_structural_chart_geometry", "ga_vargas_invariant_sentinels", "gandanta", "karaka_dasha_roles",
+    "karaka_roles", "karaka_web_order", "karaka_web_order_other_charts", "sade_sati_placeholder_null", "special_lagna_offset", "special_lagna_offset_other_charts",
+    "sun_required_rupa", "tiers", "tiers_other_charts", "yamakantaka")
+
+
 def test_f12_the_pending_list_is_short_and_explicit():
     assert PENDING_HOOKS == ("fa2_ga_vargas.json",)
-    assert (REAL_HOOKS / "fa2_ga_vargas.json").exists() and len(list(REAL_HOOKS.glob("*.json"))) == 23
+    assert (REAL_HOOKS / "fa2_ga_vargas.json").exists()
+    assert len(INTEGRATION_STEMS) == 23 and len(set(INTEGRATION_STEMS)) == 23
+    assert sorted(f.stem for f in REAL_HOOKS.glob("*.json")) == sorted(INTEGRATION_STEMS + ("fa2_ga_vargas",))   # 24 files = the 23 named stems + the one pending F-A2 hook
+    assert sorted(INTEGRATION_LANES) == sorted(INTEGRATION_STEMS)
 
 
 def test_f12_hooks_real_are_byte_copies_of_the_integration_hook_directory():
@@ -1579,9 +1681,9 @@ def test_ss_the_readme_w7_command_is_complete_and_its_lanes_validate(capsys):
     assert "--no-dashas" not in block and "--no-daily" not in block
     assert "--hooks-dir 00_ARCHITECTURE/briefs/suvarna/exec/s_l1_attribution_hooks" in block and "--compare" in block
     lanes = re.search(r"--require-lanes (\S+)", block).group(1)
-    assert len(lanes.split(",")) == 22 and sorted(lanes.split(",")) == sorted(INTEGRATION_LANES)
+    assert len(lanes.split(",")) == 23 and "ephemeris_backend_shift" in lanes.split(",") and sorted(lanes.split(",")) == sorted(INTEGRATION_LANES)
     assert F.main(["--validate-hooks", "--hooks-dir", str(REAL_HOOKS), "--require-lanes", lanes]) == 0
-    assert F.main(["--validate-hooks", "--hooks-dir", str(REAL_HOOKS), "--require-lanes", lanes + ",fa2_ga_vargas"]) == 0   # the 23-name list once #2858 lands
+    assert F.main(["--validate-hooks", "--hooks-dir", str(REAL_HOOKS), "--require-lanes", lanes + ",fa2_ga_vargas"]) == 0   # the 24-name list once #2858 lands
     after = text.split("### The W7 command (S-L1 window), written in full", 1)[1]
     assert "only once PR 2858 lands" in after and "fa2_ga_vargas" in after
     capsys.readouterr()
