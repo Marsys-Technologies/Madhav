@@ -965,3 +965,11 @@ def test_a_wrong_absolute_probe_is_refused_by_name_through_the_real_input_check_
     with pytest.raises(RuntimeError, match="ephemeris_absolute_probe_mismatch"):
         _ivv(db, stored, ephe, absolute_probe=lambda e: ivv.ABSOLUTE_PROBE_SUN_LAHIRI_DEG + offset)
 
+
+
+@pytest.mark.parametrize("bad", [float("nan"), float("inf"), float("-inf"), None])
+def test_a_non_finite_absolute_probe_is_refused_by_name_through_the_real_input_check(db, ephe, bad):
+    """R17-H1: NaN compares False against the tolerance, so without a finiteness check a NaN probe would PASS."""
+    stored = _vector(db, ephe)
+    with pytest.raises(RuntimeError, match="ephemeris_absolute_probe_mismatch"):
+        _ivv(db, stored, ephe, absolute_probe=lambda e: bad)

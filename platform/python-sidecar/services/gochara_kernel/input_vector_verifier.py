@@ -12,6 +12,8 @@ builder's output.
 """
 from __future__ import annotations
 
+import math
+
 _AUDIT = ["created_at", "sealed_at"]
 _SCHEMA = "ka_gochara_registry_digest/1"
 
@@ -304,9 +306,11 @@ def verify_inputs(conn, stored: dict, *, ephe_path: str, modules: dict, path_ref
     derived.append("ephemeris.probe")
     # (d) the ABSOLUTE probe: a constant, not a writer-vs-verifier comparison
     sun_now = (absolute_probe or derive_absolute_probe)(ephe_path)
-    if abs(sun_now - ABSOLUTE_PROBE_SUN_LAHIRI_DEG) > ABSOLUTE_PROBE_TOLERANCE_DEG:
+    # R17-H1: NaN compares False against every bound, so `abs(nan - ref) > tol` would PASS — a non-finite (or non-numeric) result is a mismatch
+    finite = isinstance(sun_now, (int, float)) and not isinstance(sun_now, bool) and math.isfinite(sun_now)
+    if not finite or abs(sun_now - ABSOLUTE_PROBE_SUN_LAHIRI_DEG) > ABSOLUTE_PROBE_TOLERANCE_DEG:
         problems.append(f"ephemeris_absolute_probe_mismatch: the Sun's Lahiri sidereal longitude at JD {ABSOLUTE_PROBE_JD} is {sun_now!r}, the pinned "
-                        f"reference is {ABSOLUTE_PROBE_SUN_LAHIRI_DEG!r} (|difference| > {ABSOLUTE_PROBE_TOLERANCE_DEG} deg) — a wrong sidereal mode, "
+                        f"reference is {ABSOLUTE_PROBE_SUN_LAHIRI_DEG!r} (|difference| > {ABSOLUTE_PROBE_TOLERANCE_DEG} deg, or not a finite number) — a wrong sidereal mode, "
                         "ephemeris path or corpus")
     derived.append("ephemeris.absolute_probe")
     # the schema, scope and policy are NAMED members of this verifier's own vocabularies (their semantics are not derived)
