@@ -774,6 +774,7 @@ def build_ga_tajaka(chart_id: str,
     specific past build (tests, backfills).
     """
     from contextlib import nullcontext
+    chart_id = str(chart_id)  # uuid.UUID from the real orchestrator path; stable_uuid("tajaka_varsha", ...) hashes canonical JSON, which refuses a UUID (REHEARSAL-LINUX P1)
     if build_id is None:
         build_id = str(uuid.uuid4())
     owns_conn = conn is None

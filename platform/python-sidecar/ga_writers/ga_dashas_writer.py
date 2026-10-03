@@ -3283,6 +3283,11 @@ def build_system(
     The native-anchored FORENSIC assertion runs only for the native chart.
     """
     from contextlib import nullcontext
+    # The orchestrator hands chart_id over exactly as psycopg decodes build_runs.chart_id: a uuid.UUID. Every
+    # identity below (stable_uuid / stabilize_hierarchical_uuids use canonical JSON, which refuses a UUID),
+    # every `chart_id == CANONICAL_CHART_ID` guard and every (chart_id, ayanamsha) cache key is a str
+    # contract, so normalise once on entry (REHEARSAL-LINUX P1; the str form is the canonical text of the UUID).
+    chart_id = str(chart_id)
     if build_id is None:
         build_id = str(uuid.uuid4())
 
@@ -3525,6 +3530,7 @@ def write_dasha_scope_cap_sentinels(chart_id: str, build_id: str, *, conn: Any =
     """
     from contextlib import nullcontext
 
+    chart_id = str(chart_id)  # uuid.UUID from the real orchestrator path; stable_uuid below hashes canonical JSON, which refuses a UUID (REHEARSAL-LINUX P1)
     common_fields = {
         "chart_id": chart_id,
         "ayanamsha_id": "INVARIANT",
