@@ -17,7 +17,6 @@
 import type { CapabilityDescriptor } from '../../types'
 import { query } from '@/lib/db/client'
 import { labelDiscoveryRow, summarizeGeneration } from './prefix_generation'
-
 const MAX_LIMIT = 50
 
 export const queryMimamsaDiscoveriesCapability: CapabilityDescriptor = {

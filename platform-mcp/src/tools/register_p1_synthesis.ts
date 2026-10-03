@@ -15,9 +15,8 @@ import type { Principal } from '../types.js'
 import { remoteAuthorize } from '../lib/authz.js'
 import { describeProxyFailure } from './registry_bridge.js'
 import { applyAutoBudgetToEnvelope } from '../lib/response_budget.js'
-import { labelInsightUnit, summarizeGeneration, UNVALIDATED_PREFIX_GRADE } from '../lib/l5_prefix_generation.js'
 import { judgmentFlag, type JudgmentFlagEntry } from '../generated/envelope.js'
-
+import { labelInsightUnit, summarizeGeneration, UNVALIDATED_PREFIX_GRADE } from '../lib/l5_prefix_generation.js'
 // W3-L2 (RETRIEVAL_IMPLEMENTATION_MASTER_BRIEF §E W3 item 2 "d8/hollow-emitter migration"):
 // this file's local `envelope()` is the documented "hollow envelope" precedent (envelope.ts's
 // own module doc calls it out by name) — every legacy field including `judgment_flags` was
@@ -356,19 +355,14 @@ function buildDissentFlags(verdicts: Record<string, unknown>[]): { dissent_flags
 
 function hedgeForGrade(evidenceGrade: unknown): string | null {
   const g = typeof evidenceGrade === 'string' ? evidenceGrade : ''
-  if (g === 'prior_only' || g === 'documented_approximation') {
-    return 'provisional — thin evidential base'
+  if (g === 'prior_only' || g === 'documented_approximation' || g === UNVALIDATED_PREFIX_GRADE) { // TI-l5-insight-prefix-label-001: downgraded pre-fix 'empirical'
+    return g === UNVALIDATED_PREFIX_GRADE ? 'provisional — pre-fix generation, not validated' : 'provisional — thin evidential base'
   }
   // F-143: 'assignment_only' means a row has enough ASSIGNMENTS to look well-supported but
   // fewer than 5 outcome-adjudicated matches behind it. Left unhedged it would read exactly
   // like a calibrated row to a caller who only sees the theme text.
   if (g === 'assignment_only') {
     return 'provisional — assignments only, no scored outcomes behind it'
-  }
-  // TI-l5-insight-prefix-label-001: a stored 'empirical' grade downgraded because the row was written by
-  // a pre-fix L5 writer (detector: lib/l5_prefix_generation.ts).
-  if (g === UNVALIDATED_PREFIX_GRADE) {
-    return 'provisional — pre-fix generation, not validated'
   }
   return null
 }
@@ -647,9 +641,7 @@ export function registerP1SynthesisTools(server: McpServer, principal: Principal
         const wrapped = {
           calibration_status: 'prior_only',
           mode: 'STRUCTURAL',
-          note: 'L5 Mīmāṃsā is SEALED in STRUCTURAL mode. Empirical calibration accrues as outcome data is recorded. ' +
-            'calibration_status/mode describe the layer, not any unit: each unit\'s own evidence_grade and generation_status govern, ' +
-            'and units from the pre-fix generation are graded "unvalidated_prefix" (see generation_disclosure).',
+          note: 'L5 Mīmāṃsā is SEALED in STRUCTURAL mode. Empirical calibration accrues as outcome data is recorded. calibration_status/mode describe the layer, not any unit: each unit\'s own evidence_grade and generation_status govern; units from the pre-fix generation are graded "unvalidated_prefix" (see generation_disclosure).',
           ...inner,
         }
         return dualOutput(envelope(wrapped, 'mimamsa_insight_get', 'synthesis_calibration'))
@@ -898,11 +890,7 @@ export function registerP1SynthesisTools(server: McpServer, principal: Principal
           LIMIT $2
         `, [chart_id, discLimit], principal)
 
-        // TI-l5-insight-prefix-label-001: same detector as marsys://tool/L5/query_insights (byte-identical
-        // copy, parity-tested). Rows from the pre-fix generation lose their stored 'empirical' grade and
-        // have the unearned wording relabelled; verdict rows are otherwise untouched.
-        const rows = insightResult.rows.map(r => labelInsightUnit(r as Record<string, unknown>))
-        const generation_disclosure = summarizeGeneration(rows, ['insight_unit'])
+        const rows = insightResult.rows.map(r => labelInsightUnit(r as Record<string, unknown>)); const generation_disclosure = summarizeGeneration(rows, ['insight_unit']) // TI-l5-insight-prefix-label-001: same detector as L5 query_insights (mirror, parity-tested)
         const verdicts     = rows.filter(r => r['insight_type'] === 'verdict_object')
         const loadBearing  = rows.filter(r => r['insight_type'] === 'load_bearing')
         const calibrated   = rows.filter(r => r['insight_type'] === 'calibrated_outlook')
@@ -941,9 +929,7 @@ export function registerP1SynthesisTools(server: McpServer, principal: Principal
             [...new Set(rows.map(r => r['surface_formula_version']).filter(Boolean))].join(', ') ||
             'none — no insight units for this chart',
           calibration_mode: 'STRUCTURAL',
-          calibration_note: 'L5 SEALED — empirical scores accrue as outcome data is recorded.',
-          generation_disclosure,
-          generation_flags: generation_disclosure.flags,
+          calibration_note: 'L5 SEALED — empirical scores accrue as outcome data is recorded.', generation_disclosure, generation_flags: generation_disclosure.flags,
           topics_covered: rows.length,
           domains_covered: domains,
           coverage_receipt,

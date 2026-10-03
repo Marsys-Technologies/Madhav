@@ -13,7 +13,6 @@
 import type { CapabilityDescriptor } from '../../types'
 import { query } from '@/lib/db/client'
 import { labelGrammarRow, summarizeGeneration } from './prefix_generation'
-
 export const queryManifestationGrammarCapability: CapabilityDescriptor = {
   uri:   'marsys://tool/L5/query_manifestation_grammar',
   type:  'tool',

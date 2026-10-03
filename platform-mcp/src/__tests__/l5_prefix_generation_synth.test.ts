@@ -25,6 +25,7 @@ const ROWS = [
   { ...base, ...PRE, insight_id: 'v1', insight_type: 'verdict_object', statement: 'Career: promised (grade 8.8/10). Strong evidence.', n_support: 5, evidence_grade: 'structural' },
   { ...base, ...PRE, insight_id: 'co_pre', insight_type: 'calibrated_outlook', statement: 'Career outlook: observed outcome rate is 62.0% (n=9).', n_support: 9, evidence_grade: 'empirical' },
   { ...base, ...POST, insight_id: 'co_post', insight_type: 'calibrated_outlook', statement: 'Career outlook: observed outcome rate is 62.0% (n=9).', n_support: 9, evidence_grade: 'empirical' },
+  { ...base, ...PRE, insight_id: 'v_emp', insight_type: 'verdict_object', question_lens: 'wealth', statement: 'Wealth: promised (grade 7.5/10). Strong evidence.', n_support: 5, evidence_grade: 'empirical' },
   { ...base, ...PRE, insight_id: 'lb', insight_type: 'load_bearing', statement: "Signal 'fam_yoga' is load_bearing for conclusion 'c' (sensitivity=0.70). Removing this signal would materially alter the reading.", n_support: 1, evidence_grade: 'structural' },
 ]
 
@@ -74,7 +75,7 @@ describe('platform-mcp: pre-fix generation label', () => {
     expect(post.evidence_grade).toBe('empirical')
     expect(post.generation_status).toBe('post_fix')
     expect(c.generation_flags).toEqual(['l5_rows_pre_fix_generation'])
-    expect(c.generation_disclosure).toMatchObject({ pre_fix_rows: 3, post_fix_rows: 1, empirical_downgraded_rows: 1 })
+    expect(c.generation_disclosure).toMatchObject({ pre_fix_rows: 4, post_fix_rows: 1, empirical_downgraded_rows: 2 })
     const lb = (c.load_bearing_signals as Array<Record<string, any>>)[0]!
     expect(lb.statement).not.toContain('Removing this signal would materially alter the reading.')
     expect(lb.statement).toContain('no signal-removal analysis was run')
@@ -82,6 +83,10 @@ describe('platform-mcp: pre-fix generation label', () => {
     const v = (c.verdict_summary as Array<Record<string, any>>)[0]!
     expect(v.statement).toContain('promised (grade 8.8/10)')
     expect(c.calibration_mode).toBe('STRUCTURAL')
+    // a pre-fix verdict row whose stored grade was 'empirical' is hedged in the narrated themes
+    const themes = c.ranked_themes as { strengths: string[]; weaknesses: string[]; open_questions: string[] }
+    const sentence = [...themes.strengths, ...themes.weaknesses, ...themes.open_questions].find(t => t.startsWith('Wealth'))
+    expect(sentence).toContain('pre-fix generation, not validated')
   })
 
   it('mimamsa_insight_get: layer constants stay prior_only/STRUCTURAL, note defers to unit-level grade, inner disclosure passes through', async () => {

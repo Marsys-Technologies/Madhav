@@ -17,7 +17,6 @@
 import type { CapabilityDescriptor } from '../../types'
 import { query } from '@/lib/db/client'
 import { labelLoadBearingRow, summarizeGeneration } from './prefix_generation'
-
 const MAX_LIMIT = 100
 
 export const queryLoadBearingCapability: CapabilityDescriptor = {

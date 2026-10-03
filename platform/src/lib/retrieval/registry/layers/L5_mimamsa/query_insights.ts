@@ -14,13 +14,7 @@
 
 import type { CapabilityDescriptor } from '../../index'
 import { query } from '@/lib/db/client'
-import {
-  UNVALIDATED_PREFIX_GRADE,
-  PREFIX_LABEL,
-  labelInsightUnit,
-  summarizeGeneration,
-} from './prefix_generation'
-
+import { PREFIX_GRADE_LEGEND, labelInsightUnit, summarizeGeneration } from './prefix_generation'
 export const EMPIRICALLY_CALIBRATED = 'empirical'
 
 // GA-5 review finding on #1386 (rounds 2-3): mi_darshana.py embeds a suppressed numeric
@@ -56,11 +50,6 @@ const EMBEDDED_NUMERIC_EVIDENCE_PATTERNS: Array<{ pattern: RegExp; replacement: 
   { pattern: /\(prior-based estimate: [\d.]+%\)/gi, replacement: '(prior-based estimate suppressed — see tier_suppression_note)' },
   { pattern: /mean credit=[\d.]+/gi, replacement: 'mean credit=[suppressed — see tier_suppression_note]' },
   { pattern: /\(mean=[\d.]+,\s*n=\d+\)/gi, replacement: '(mean credit suppressed — see tier_suppression_note)' },
-  // TI-l5-insight-prefix-label-001: the pre-fix (v1.0) manifestation_grammar template prints the
-  // channel propensity as 'fires with N% propensity' (a literal 0% on the canonical chart's 7 rows
-  // with 0 scored outcomes). Only non-empirical rows reach this redactor, so the number is never an
-  // earned measurement.
-  { pattern: /fires with [\d.]+% propensity/gi, replacement: 'has a propensity [suppressed — see tier_suppression_note]' },
 ]
 
 // F-143: evidence_grade is a TIERED vocabulary, not a boolean. Served verbatim per row and
@@ -79,10 +68,6 @@ export const EVIDENCE_GRADE_LEGEND: Record<string, string> = {
   structural:
     'deterministically derived from chart structure or from an unadjudicated probe ' +
     '(e.g. retrodiction rows: an anchor match is not a scored hit). Numerics suppressed.',
-  [UNVALIDATED_PREFIX_GRADE]:
-    `stored grade was "empirical" but the row was written by a pre-fix L5 writer (${PREFIX_LABEL}): ` +
-    'its stamps show it predates the honesty fixes, so the grade is not served as evidence. ' +
-    'Numerics suppressed. Cleared by an L5 rebuild from writers carrying the fixes.',
 }
 
 export function redactEmbeddedNumericEvidence(statement: string): string {
@@ -277,7 +262,7 @@ export const queryInsightsCapability: CapabilityDescriptor = {
 
       // TI-l5-insight-prefix-label-001: classify each row's generation from its own stored stamps
       // BEFORE anything is graded or counted, so a pre-fix 'empirical' row is never counted or
-      // served as empirical. Stricter-only: a row can only move to a lower grade.
+      // served as empirical (stricter-only; see prefix_generation.ts for the detector).
       const labelled = (insightResult.rows as Array<Record<string, unknown>>).map(r => labelInsightUnit(r))
       const generation_disclosure = summarizeGeneration(labelled, ['insight_unit'])
 
@@ -291,7 +276,7 @@ export const queryInsightsCapability: CapabilityDescriptor = {
       // imply a tier this response does not contain.
       const evidence_grade_legend: Record<string, string> = {}
       for (const g of Object.keys(evidence_grade_counts)) {
-        evidence_grade_legend[g] = EVIDENCE_GRADE_LEGEND[g] ?? 'unrecognized tier — treated as not-calibrated (fail-closed: numerics suppressed).'
+        evidence_grade_legend[g] = EVIDENCE_GRADE_LEGEND[g] ?? PREFIX_GRADE_LEGEND[g] ?? 'unrecognized tier — treated as not-calibrated (fail-closed: numerics suppressed).'
       }
 
       return {

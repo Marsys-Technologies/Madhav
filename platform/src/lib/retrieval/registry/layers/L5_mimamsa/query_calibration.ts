@@ -11,13 +11,7 @@
 
 import type { CapabilityDescriptor } from '../../index'
 import { query } from '@/lib/db/client'
-import {
-  classifyCalibrationSet,
-  labelCalibrationDerivedRow,
-  summarizeGeneration,
-  type GenerationVerdict,
-} from './prefix_generation'
-
+import { classifyCalibrationSet, labelCalibrationDerivedRow, summarizeGeneration, type GenerationVerdict } from './prefix_generation'
 /**
  * NIRMĀṆA L5 W3-3 — `mimamsa_qa_eval.status` is NOT a two-value {pass|FAIL} enum.
  * ==============================================================================

@@ -43,6 +43,14 @@
 export const UNVALIDATED_PREFIX_GRADE = 'unvalidated_prefix'
 export const PREFIX_LABEL = 'pre-fix generation, not validated'
 
+/** Legend entry for the downgraded grade (query_insights merges it into evidence_grade_legend). */
+export const PREFIX_GRADE_LEGEND: Record<string, string> = {
+  [UNVALIDATED_PREFIX_GRADE]:
+    `stored grade was "empirical" but the row was written by a pre-fix L5 writer (${PREFIX_LABEL}): ` +
+    'its stamps show it predates the honesty fixes, so the grade is not served as evidence. ' +
+    'Numerics suppressed. Cleared by an L5 rebuild from writers carrying the fixes.',
+}
+
 /** Closed vocabulary of machine-readable flags this module can raise (L5-local; not the envelope vocab). */
 export const L5_GENERATION_FLAGS = ['l5_rows_pre_fix_generation'] as const
 export type L5GenerationFlag = (typeof L5_GENERATION_FLAGS)[number]
@@ -218,6 +226,9 @@ export function relabelPrefixStatement(statement: string, insightType: unknown):
     `(${PREFIX_LABEL}; stored n=$1 is an assignment count, not scored outcomes)`,
   )
   s = s.replace(/empirical learning/gi, PREFIX_LABEL)
+  // The v1.0 grammar template prints the propensity as 'fires with N% propensity' (a literal 0% on the
+  // canonical chart's 7 rows with 0 scored outcomes); the number was never a measurement.
+  s = s.replace(/fires with [\d.]+% propensity/gi, 'has a propensity [suppressed: unvalidated pre-fix value]')
   // 'Blind retrodiction ... with T-90d cutoff <date>': the cutoff was declared, never applied.
   s = s.replace(/Blind retrodiction/g, `Retrodiction probe (${PREFIX_LABEL})`)
   s = s.replace(/with T[−-]90d cutoff \d{4}-\d{2}-\d{2}/g, 'with a declared-but-unenforced T−90d cutoff')
