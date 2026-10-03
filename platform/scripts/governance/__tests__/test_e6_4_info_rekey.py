@@ -804,7 +804,10 @@ def test_ledger_reading_suite_on_the_migrated_real_ledger(tmp_path):
     led_copy = tree / nf.GAPS_REL
     shutil.copyfile(REAL_LEDGER, led_copy)
     rep = rk.run(led_copy, led_copy, ts=TS)
-    assert rep["status"] == "migrated" and rep["rekeyed"] == 219
+    if rep["status"] == "migrated":
+        assert rep["rekeyed"] == 219                                  # (the committed ledger is not yet migrated)
+    else:
+        assert rep["status"] == "unchanged" and not detector_view(lines(REAL_LEDGER.read_bytes()))      # (after the apply: nothing left to do)
     gov = tree / "platform/scripts/governance/__tests__"
     files = [gov / n for n in ("test_r15_r29_hand_row_census_run_id.py", "test_r80_schema_superseded_by_field.py",
                                "test_r81_apply_script.py", "test_r81_ledger_overlap_fold.py")]
