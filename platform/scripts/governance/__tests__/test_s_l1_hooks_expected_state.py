@@ -66,8 +66,8 @@ PHASE3_HOOKS = {
 
 
 # The EXACT set of hook lanes (HOOKS_W7_HAND_READBACK Part 1): deleting or adding a hook file must fail a test, not just shrink
-# the parametrised suites (these 23 lanes x the generic per-hook proofs + the static / scenario tests; fa2_ga_vargas is still pending
-# on PR #2858 and is NOT in this set: PENDING_HOOKS is unchanged).
+# the parametrised suites (these 24 lanes x the generic per-hook proofs + the static / scenario tests; fa2_ga_vargas, the 24th, landed
+# with the F-A2 hook commit, schema-valid in the detector's own schema: it was the one PENDING_HOOKS lane).
 EXPECTED_HOOK_STEMS = frozenset({
     "argala",
     "argala_other_charts",
@@ -76,6 +76,7 @@ EXPECTED_HOOK_STEMS = frozenset({
     "chandra_bala_birth_moon_sign",
     "dasha_scope_cap",
     "ephemeris_backend_shift",
+    "fa2_ga_vargas",
     "ga_condition_fallback",
     "ga_strength_invariant_rows",
     "ga_structural_chart_geometry",
@@ -302,7 +303,7 @@ def test_hook_directory_shape():
     assert hooks, "the hook directory has no top-level *.json"
     assert {p.stem for p in _hook_files()} == EXPECTED_HOOK_STEMS, (
         sorted(EXPECTED_HOOK_STEMS - {p.stem for p in _hook_files()}), sorted({p.stem for p in _hook_files()} - EXPECTED_HOOK_STEMS))
-    assert len(_hook_files()) == 23
+    assert len(_hook_files()) == 24
     for stem, h in hooks.items():
         assert h.get("lane") == stem, f"{stem}.json: lane must equal the file stem"
         for i, e in enumerate(h["may_change"]):
@@ -701,6 +702,8 @@ PINNED_ENTRY_COUNTS = {
                                + [{'exact': 216}, {'exact': 213}, {'exact': 198}, {'exact': 198}, {'exact': 227}, {'exact': 217}, {'exact': 193}, {'exact': 201}, {'exact': 269}, {'exact': 289}] + [{'exact': 0}]
                                # entries 27 to 29: the COMPOSITE (label, number) rows, count bounds derived from the shift table and the rounding steps (EB-CV tests)
                                + [{'min': 900, 'max': 1140}, {'min': 10, 'max': 74}, {'min': 0, 'max': 120}],
+    # fa2_ga_vargas (F-A2, spec-derived): ashtakavarga occurrence_count 1,200 and its 1,200 pairing-artifact value changes, house_lord 750, d30 50, scope_cap 1, then two explicit-zero entries
+    'fa2_ga_vargas': [{'exact': 1200}, {'exact': 1200}, {'exact': 750}, {'exact': 50}, {'exact': 1}, {'exact': 0}, {'exact': 0}],
     'ga_condition_fallback': [{'exact': 0}],
     'ga_strength_invariant_rows': [{'exact': 0}],
     'ga_structural_chart_geometry': [{'min': 0, 'max': 45}, {'min': 0, 'max': 30}, {'min': 0, 'max': 315}, {'min': 0, 'max': 15}, {'min': 0, 'max': 85}],
