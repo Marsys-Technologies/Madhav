@@ -22,10 +22,11 @@ from __future__ import annotations
 
 import time
 
-from pipeline.orchestrator.writers import register, WriterBase, ContextSpec, WriterResult
+from pipeline.orchestrator.writers import WriterBase, ContextSpec, WriterResult
+from pipeline.orchestrator.writers._l0_static_gate import register_when_enabled
 
 
-@register('bg_sarvatobhadra_grid')
+@register_when_enabled('bg_sarvatobhadra_grid')   # gated: see _l0_static_gate.py (registry flips first)
 class SarvatobhadraGridWriter(WriterBase):
     asset_id = 'bg_sarvatobhadra_grid'
 

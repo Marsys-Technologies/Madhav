@@ -10,11 +10,12 @@ from __future__ import annotations
 
 import time
 
-from pipeline.orchestrator.writers import register, WriterBase, ContextSpec, WriterResult
+from pipeline.orchestrator.writers import WriterBase, ContextSpec, WriterResult
+from pipeline.orchestrator.writers._l0_static_gate import register_when_enabled
 from brahmagyan.l0_gochara_citation_resolution import seed_gochara_citation_resolution
 
 
-@register('bg_gochara_citation_resolution')
+@register_when_enabled('bg_gochara_citation_resolution')   # gated: see _l0_static_gate.py (registry flips first)
 class GocharaCitationResolutionWriter(WriterBase):
     asset_id = 'bg_gochara_citation_resolution'
 

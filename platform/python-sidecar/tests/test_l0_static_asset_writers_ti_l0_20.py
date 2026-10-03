@@ -49,13 +49,42 @@ def test_seed_obeys_the_honest_gap_rules():
     assert [r["chunk_id"] for r in G.ROWS if r["status"] == "resolved"] == ["phaladeepika_pg0353_c01"]
 
 
-def test_both_writers_are_registered_under_the_frozen_contract():
-    assert get_writer("bg_gochara_citation_resolution") is GocharaCitationResolutionWriter
-    assert get_writer("bg_sarvatobhadra_grid") is SarvatobhadraGridWriter
-    for cls in (GocharaCitationResolutionWriter, SarvatobhadraGridWriter):
+def test_both_writers_are_registered_under_the_frozen_contract_only_when_the_gate_is_on(monkeypatch):
+    """Registry-first ordering (review L0C H-1): the writers are unreachable until ORCHESTRATOR_L0_STATIC_WRITERS is on."""
+    import importlib
+    from pipeline.orchestrator import writers as W
+    from pipeline.orchestrator.writers import _l0_static_gate as gate
+    from pipeline.orchestrator.writers import bg_gochara_citation_resolution as m1, bg_sarvatobhadra_grid as m2
+
+    ids = ("bg_gochara_citation_resolution", "bg_sarvatobhadra_grid")
+    for i in ids:
+        W._REGISTRY.pop(i, None)
+    monkeypatch.delenv(gate.ENV_VAR, raising=False)
+    importlib.reload(m1); importlib.reload(m2)
+    assert not gate.enabled() and all(get_writer(i) is None for i in ids), "gate OFF: not registered, the writer-gap pre-flight sees nothing new"
+    for i in ids:
+        W._REGISTRY.pop(i, None)
+    monkeypatch.setenv(gate.ENV_VAR, "1")
+    importlib.reload(m1); importlib.reload(m2)
+    assert gate.enabled()
+    assert get_writer("bg_gochara_citation_resolution") is m1.GocharaCitationResolutionWriter
+    assert get_writer("bg_sarvatobhadra_grid") is m2.SarvatobhadraGridWriter
+    for cls in (m1.GocharaCitationResolutionWriter, m2.SarvatobhadraGridWriter):
         src = Path(__import__(cls.__module__, fromlist=["x"]).__file__).read_text(encoding="utf-8")
         code = "\n".join(l for l in src.splitlines() if not l.strip().startswith(("#", '"""')))
         assert ".commit(" not in code and ".close(" not in code and "INSERT INTO asset_throughput" not in code
+    # leave the process-wide registry as the default (gate off) found it
+    for i in ids:
+        W._REGISTRY.pop(i, None)
+    monkeypatch.delenv(gate.ENV_VAR, raising=False)
+    importlib.reload(m1); importlib.reload(m2)
+
+
+@pytest.mark.parametrize("raw,on", [("1", True), ("true", True), ("YES", True), ("on", True), ("", False), ("0", False), ("no", False), ("off", False)])
+def test_gate_values(monkeypatch, raw, on):
+    from pipeline.orchestrator.writers import _l0_static_gate as gate
+    monkeypatch.setenv(gate.ENV_VAR, raw)
+    assert gate.enabled() is on
 
 
 def test_dry_runs_touch_nothing():

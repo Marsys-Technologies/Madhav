@@ -251,8 +251,13 @@ KNOWN_HAS_WRITER_TRUE: frozenset[str] = frozenset({
     # Step 1 (the migration setting has_writer=true) is the DRAFT_NEEDS_NUMBER_*
     # file in the wave plan; the live-mode test below stays red until it is applied.
     "bg_gochara_citation_resolution",   # R9: dispatch waits for SS after Pravaha is notified
-    "bg_sarvatobhadra_grid",            # asserts the ADJUDICATION-11 ruled empty state
+    "bg_sarvatobhadra_grid",            # reports the ADJUDICATION-11 ruled empty state
 })
+
+# Writers whose @register is GATED (pipeline/orchestrator/writers/_l0_static_gate.py): they are in the registry only when
+# ORCHESTRATOR_L0_STATIC_WRITERS is on, i.e. after migration 1280 (has_writer = true) is verified in production. Until then they
+# are legitimately absent from WRITER_REGISTRY; the phantom check below tolerates exactly these two ids and ONLY while the gate is off.
+GATED_L0_STATIC_WRITERS: frozenset[str] = frozenset({"bg_gochara_citation_resolution", "bg_sarvatobhadra_grid"})
 
 # Sub-registrations that share a writer with their parent.
 # They have no independent asset_registry row and are not plan-level assets.
@@ -669,6 +674,9 @@ class TestOfflineHasWriterCompleteness:
         registry = self._registry()
         all_known_ids = set(registry.keys())
         phantoms = KNOWN_HAS_WRITER_TRUE - all_known_ids
+        from pipeline.orchestrator.writers._l0_static_gate import enabled as _gate_on
+        if not _gate_on():
+            phantoms -= GATED_L0_STATIC_WRITERS
         assert not phantoms, (
             f"KNOWN_HAS_WRITER_TRUE contains asset_ids with NO corresponding "
             f"@register() writer. Remove them from KNOWN_HAS_WRITER_TRUE: "
