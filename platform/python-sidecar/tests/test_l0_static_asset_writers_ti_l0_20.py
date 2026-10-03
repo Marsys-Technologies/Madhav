@@ -9,8 +9,7 @@ Proves
   real PG   (env-gated) the writer turns a damaged table (stray row, edited row, missing row)
             back into exactly the 14 rows, and the migration-631 integrity digest - extracted
             from the real migration file and evaluated inside PostgreSQL - reads TRUE; a rerun
-            is a no-op. The grid writer empties a table of non-confirmed rows and NEVER touches a
-            native_confirmed row (N-46: native-entered data).
+            is a no-op. The grid writer empties the table and NEVER deletes a row (confirmed or staged, N-46).
 """
 from __future__ import annotations
 
@@ -124,20 +123,18 @@ def test_real_citation_writer_restores_exactly_the_14_sealed_rows_from_a_damaged
 
 
 @requires_pg
-def test_real_grid_writer_asserts_the_empty_state_and_never_touches_native_confirmed_rows():
+def test_real_grid_writer_reports_the_state_and_deletes_nothing_native_confirmed_or_staged():
     with scratch_schema(GRID_DDL) as conn:
         r = SarvatobhadraGridWriter().run(ctx("bg_sarvatobhadra_grid", conn))
         conn.commit()
-        assert r.rows_inserted == 0 and conn.execute("SELECT count(*) AS n FROM bg_sarvatobhadra_grid").fetchone()["n"] == 0
+        assert r.rows_inserted == 0 and "0 row(s)" in r.notes and "NOT in the ruled empty state" not in r.notes
         conn.execute("INSERT INTO bg_sarvatobhadra_grid(school_tag,cell_index,cell_kind,cell_value,table_version,native_confirmed) "
                      "VALUES ('s1',1,'vedha_pair','a','v1',false),('s1',2,'vedha_pair','b','v1',false),('s2',1,'vedha_pair','c','v1',true)")
         conn.commit()
+        before = [dict(x) for x in conn.execute("SELECT * FROM bg_sarvatobhadra_grid ORDER BY id")]
         r = SarvatobhadraGridWriter().run(ctx("bg_sarvatobhadra_grid", conn))
         conn.commit()
-        left = [(x["school_tag"], x["cell_value"], x["native_confirmed"]) for x in conn.execute("SELECT * FROM bg_sarvatobhadra_grid")]
-        assert left == [("s2", "c", True)], "non-confirmed rows removed, the native-confirmed row preserved"
-        assert "1 native-confirmed row(s) preserved" in r.notes and "2 non-native-confirmed" in r.notes
-        before = [dict(x) for x in conn.execute("SELECT * FROM bg_sarvatobhadra_grid")]
-        SarvatobhadraGridWriter().run(ctx("bg_sarvatobhadra_grid", conn))
-        conn.commit()
-        assert [dict(x) for x in conn.execute("SELECT * FROM bg_sarvatobhadra_grid")] == before
+        assert [dict(x) for x in conn.execute("SELECT * FROM bg_sarvatobhadra_grid ORDER BY id")] == before, \
+            "N-46: confirmed AND staged rows are never touched (review L0C LOW: staged rows used to be deleted on every rebuild)"
+        assert "3 row(s)" in r.notes and "1 native-confirmed, 2 staged" in r.notes and "NOT in the ruled empty state" in r.notes
+        assert r.rows_inserted == 0
