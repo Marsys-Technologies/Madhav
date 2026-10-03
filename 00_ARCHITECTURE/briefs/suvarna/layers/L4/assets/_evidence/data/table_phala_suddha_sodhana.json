@@ -1,0 +1,205 @@
+{
+ "table": "phala_suddha_sodhana",
+ "columns": [
+  {
+   "column_name": "entry_id",
+   "data_type": "uuid",
+   "is_nullable": "NO",
+   "column_default": "gen_random_uuid()"
+  },
+  {
+   "column_name": "chart_id",
+   "data_type": "uuid",
+   "is_nullable": "NO",
+   "column_default": ""
+  },
+  {
+   "column_name": "anchor_id",
+   "data_type": "uuid",
+   "is_nullable": "NO",
+   "column_default": ""
+  },
+  {
+   "column_name": "cleanliness_status",
+   "data_type": "text",
+   "is_nullable": "NO",
+   "column_default": ""
+  },
+  {
+   "column_name": "critical_flag_count",
+   "data_type": "smallint",
+   "is_nullable": "NO",
+   "column_default": "0"
+  },
+  {
+   "column_name": "major_flag_count",
+   "data_type": "smallint",
+   "is_nullable": "NO",
+   "column_default": "0"
+  },
+  {
+   "column_name": "minor_flag_count",
+   "data_type": "smallint",
+   "is_nullable": "NO",
+   "column_default": "0"
+  },
+  {
+   "column_name": "flag_ids_jsonb",
+   "data_type": "jsonb",
+   "is_nullable": "YES",
+   "column_default": ""
+  },
+  {
+   "column_name": "staged_revision_jsonb",
+   "data_type": "jsonb",
+   "is_nullable": "YES",
+   "column_default": ""
+  },
+  {
+   "column_name": "revision_approved_by",
+   "data_type": "text",
+   "is_nullable": "YES",
+   "column_default": ""
+  },
+  {
+   "column_name": "revision_applied_at",
+   "data_type": "timestamp with time zone",
+   "is_nullable": "YES",
+   "column_default": ""
+  },
+  {
+   "column_name": "confidence_delta_if_applied",
+   "data_type": "double precision",
+   "is_nullable": "YES",
+   "column_default": ""
+  },
+  {
+   "column_name": "magnitude_delta_if_applied",
+   "data_type": "text",
+   "is_nullable": "YES",
+   "column_default": ""
+  },
+  {
+   "column_name": "derivation_ledger_jsonb",
+   "data_type": "jsonb",
+   "is_nullable": "NO",
+   "column_default": ""
+  },
+  {
+   "column_name": "source_citation",
+   "data_type": "text",
+   "is_nullable": "NO",
+   "column_default": ""
+  },
+  {
+   "column_name": "computed_at",
+   "data_type": "timestamp with time zone",
+   "is_nullable": "NO",
+   "column_default": "now()"
+  }
+ ],
+ "has_chart_id": true,
+ "rows_by_chart": [
+  {
+   "chart_id": "1c826d5a-41cb-4450-b4dc-59d440e5f75a",
+   "n": "56"
+  },
+  {
+   "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+   "n": "4"
+  }
+ ],
+ "chart_nonnull": {
+  "_total": "4",
+  "entry_id": "4",
+  "chart_id": "4",
+  "anchor_id": "4",
+  "cleanliness_status": "4",
+  "critical_flag_count": "4",
+  "major_flag_count": "4",
+  "minor_flag_count": "4",
+  "flag_ids_jsonb": "0",
+  "staged_revision_jsonb": "0",
+  "revision_approved_by": "0",
+  "revision_applied_at": "0",
+  "confidence_delta_if_applied": "0",
+  "magnitude_delta_if_applied": "0",
+  "derivation_ledger_jsonb": "4",
+  "source_citation": "4",
+  "computed_at": "4"
+ },
+ "value_counts": {
+  "cleanliness_status": [
+   {
+    "v": "clean",
+    "n": "4"
+   }
+  ],
+  "critical_flag_count": [
+   {
+    "v": "0",
+    "n": "4"
+   }
+  ],
+  "major_flag_count": [
+   {
+    "v": "0",
+    "n": "4"
+   }
+  ],
+  "minor_flag_count": [
+   {
+    "v": "0",
+    "n": "4"
+   }
+  ],
+  "revision_approved_by": [
+   {
+    "v": "",
+    "n": "4"
+   }
+  ],
+  "magnitude_delta_if_applied": [
+   {
+    "v": "",
+    "n": "4"
+   }
+  ]
+ },
+ "constraints": [
+  {
+   "conname": "phala_suddha_sodhana_cleanliness_status_check",
+   "contype": "c",
+   "def": "CHECK ((cleanliness_status = ANY (ARRAY['clean'::text, 'flagged'::text, 'staged_revision'::text])))"
+  },
+  {
+   "conname": "phala_suddha_sodhana_anchor_id_fkey",
+   "contype": "f",
+   "def": "FOREIGN KEY (anchor_id) REFERENCES phala_anchors(anchor_id) ON DELETE CASCADE"
+  },
+  {
+   "conname": "phala_suddha_sodhana_pkey",
+   "contype": "p",
+   "def": "PRIMARY KEY (entry_id)"
+  }
+ ],
+ "indexes": [
+  {
+   "indexname": "idx_phala_suddha_sodhana_anchor_id_fk",
+   "indexdef": "CREATE INDEX idx_phala_suddha_sodhana_anchor_id_fk ON public.phala_suddha_sodhana USING btree (anchor_id)"
+  },
+  {
+   "indexname": "phala_suddha_sodhana_pkey",
+   "indexdef": "CREATE UNIQUE INDEX phala_suddha_sodhana_pkey ON public.phala_suddha_sodhana USING btree (entry_id)"
+  },
+  {
+   "indexname": "phala_suddha_sodhana_anchor_key",
+   "indexdef": "CREATE UNIQUE INDEX phala_suddha_sodhana_anchor_key ON public.phala_suddha_sodhana USING btree (chart_id, anchor_id)"
+  },
+  {
+   "indexname": "phala_suddha_sodhana_status",
+   "indexdef": "CREATE INDEX phala_suddha_sodhana_status ON public.phala_suddha_sodhana USING btree (chart_id, cleanliness_status)"
+  }
+ ],
+ "referenced_by": []
+}
