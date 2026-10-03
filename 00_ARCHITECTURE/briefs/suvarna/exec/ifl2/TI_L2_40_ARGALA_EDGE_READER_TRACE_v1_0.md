@@ -1,11 +1,12 @@
 ---
-version: 1.0
+version: 1.1
 status: CURRENT
 lane: TI-i-fl2-006
 item: TI-L2-40 (reader trace before TI-L2-37 / -38 / -39)
 branch: suvarna/land/TI-i-fl2-006
 basis: origin/main adb0db29d (code read); production DB read 2026-10-03, reader-only SELECT, chart 482012f1
 changelog:
+  - 1.1 -- records the SS disposition of finding 1 (E-3): held for the S-L3 review.
   - 1.0 -- trace of every reader found of L2 argala edges and bodha_cgm_edges.cancelled_flag, with what TI-L2-37 (cancelled_flag semantics for argala end; `undetermined` its own state) does to each. Evidence only.
 ---
 
@@ -55,6 +56,8 @@ edge id), `bo_drishti.py:129, :197` (`underlying_msr_signal_ids_array`, empty on
 (`flip_detector/hooks_old_schema/argala.json`, `dens_scan_inputs_2026-10-02.json`) are not readers.
 
 ## Findings for SS / the batch (nothing built here)
+
+**Disposition (SS, relayed by Exec Suvarna): TI-L2-40 / TI-L2-37 as they affect the Kāla promise filter (`stage2_promise.py:330-340`, E-3) are HELD for the S-L3 review. The change alters Kāla behaviour and lands with the L3 rebuild, not before.**
 
 1. **E-3 is the one cross-layer consequence**: the Kāla promise graph currently drops exactly the 10 cancelled edges.
    TI-L2-37's "cancelled_flag semantics for argala end" would put them back. The batch needs a decision on how Kāla
