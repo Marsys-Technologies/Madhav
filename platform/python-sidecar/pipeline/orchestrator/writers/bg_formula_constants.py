@@ -5,7 +5,9 @@ house weights, attention budget, calibration constants).
 
 Source data: brahmagyan.l0_formula_constants — W1 seed package §7.
 
-§N.3: L0 idempotency — ON CONFLICT DO UPDATE (global, not per-chart).
+§N.3: L0 idempotency — ON CONFLICT DO UPDATE (global, not per-chart), except that a
+calibratable constant is seed-once (see brahmagyan.l0_formula_constants: a diverged
+live value and its version are kept).
 §N.2: Frozen orchestrator contract — run(ctx) → WriterResult, never commits.
 """
 from __future__ import annotations

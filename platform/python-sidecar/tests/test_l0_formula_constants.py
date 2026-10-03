@@ -194,3 +194,58 @@ def test_rebuild_keeps_a_calibrated_value_and_still_repairs_a_classical_one() ->
             assert len(after) == len(CONSTANTS)
         finally:
             conn.rollback()
+
+
+# ── Pinned consequences of the seed-once rule (review MED-3016-1, LOW-3016-1) ──────────
+# These tests record DELIBERATE behaviour; if the rule is ever changed they must be edited.
+
+@pytest.mark.skipif(not _PG, reason="FORMULA_CONSTANTS_TEST_DATABASE_URL not configured")
+def test_pinned_a_seed_correction_in_code_does_not_reach_a_calibratable_row_but_its_citation_does() -> None:
+    """The guard cannot tell a calibrated value from a still-old seed: a row holding the OLD seed
+    keeps it after the seed is corrected in code, while the citation takes the new text."""
+    import psycopg
+    from psycopg.rows import dict_row
+
+    assert _PG.rsplit("/", 1)[-1].endswith("_test"), "refusing to run: database name must end with _test"
+    cid = "magnitude_tiers"
+    with psycopg.connect(_PG, row_factory=dict_row) as conn:
+        try:
+            conn.execute(_DDL)
+            seed_formula_constants(conn, autocommit=False)
+            # live = an OLD seed (different from the current CONSTANTS value), stale citation text
+            conn.execute(
+                "UPDATE brahma_formula_constants SET value_jsonb='{\"major\": 0.65}'::jsonb, "
+                "citation_or_ratification='OLD ratification text' WHERE constant_id=%s", (cid,))
+            seed_formula_constants(conn, autocommit=False)
+            row = conn.execute("SELECT * FROM brahma_formula_constants WHERE constant_id=%s", (cid,)).fetchone()
+            assert row["value_jsonb"] == {"major": 0.65}                       # old value NOT corrected
+            assert row["citation_or_ratification"] == next(
+                r for r in CONSTANTS if r["constant_id"] == cid)["citation_or_ratification"]   # citation IS
+        finally:
+            conn.rollback()
+
+
+@pytest.mark.skipif(not _PG, reason="FORMULA_CONSTANTS_TEST_DATABASE_URL not configured")
+def test_pinned_a_version_bump_on_an_unchanged_value_is_reset_to_the_seed_version() -> None:
+    import psycopg
+    from psycopg.rows import dict_row
+
+    assert _PG.rsplit("/", 1)[-1].endswith("_test"), "refusing to run: database name must end with _test"
+    cid = "house_weights"
+    with psycopg.connect(_PG, row_factory=dict_row) as conn:
+        try:
+            conn.execute(_DDL)
+            seed_formula_constants(conn, autocommit=False)
+            conn.execute("UPDATE brahma_formula_constants SET version='2.0' WHERE constant_id=%s", (cid,))
+            seed_formula_constants(conn, autocommit=False)
+            assert conn.execute("SELECT version FROM brahma_formula_constants WHERE constant_id=%s",
+                                (cid,)).fetchone()["version"] == "1.0"
+        finally:
+            conn.rollback()
+
+
+def test_the_module_docstring_states_the_seed_correction_limit() -> None:
+    """The consequence is documented where a maintainer will look (no DB needed, runs in CI)."""
+    doc = " ".join(ffc.__doc__.split())
+    assert "seed CORRECTION" in doc and "does NOT reach an existing row" in doc
+    assert "equals the current seed" in doc

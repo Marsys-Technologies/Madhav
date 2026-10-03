@@ -21,6 +21,22 @@ value and its `version` belong to whoever changed it and are kept. The
 descriptive columns (class, consumer_assets, citation, calibratable, bounds)
 always refresh. A non-calibratable constant (classical / engineering) is always
 fully converged to the seed.
+
+Known consequences of the rule (pinned by tests, deliberate):
+  * The guard compares the live value with the CURRENT seed. It cannot tell
+    "calibrated by someone" from "still the OLD seed". So a deliberate seed
+    CORRECTION made in this file to a calibratable constant does NOT reach an
+    existing row: the live value stays, while the descriptive columns (citation,
+    bounds) take the new seed's text. A seed correction to a calibratable
+    constant therefore needs a migration (or an explicit reset), and until then
+    the row cites a ratification for a value it does not hold. (The brief,
+    FD-2, wrote "equals the PREVIOUS seed"; the writer cannot know the previous
+    seed, so the implemented rule is "equals the current seed".)
+  * If the live value equals the seed but its version was bumped (a calibration
+    job re-confirming the same number), the rebuild resets version to '1.0'.
+  * The migration-615 integrity digest covers value and version of all 17 rows,
+    so a kept (diverged) value makes that integrity check read false until it is
+    re-sealed; that is loud by design, not a silent revert.
 """
 from __future__ import annotations
 
