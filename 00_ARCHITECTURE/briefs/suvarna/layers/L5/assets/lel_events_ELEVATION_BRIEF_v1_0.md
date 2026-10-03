@@ -11,7 +11,7 @@ census_revision_used: "saved census `00_ARCHITECTURE/briefs/suvarna/layers/censu
 template_revision: "ASSET_ELEVATION_TEMPLATE_v2_0.md at 2289778be (campaign/nikasha-test; DRAFT_PENDING_REVIEW)"
 layer_instance: "00_ARCHITECTURE/briefs/suvarna/layers/L5/L5_LAYER_INSTANCE_v1_0.md (1.1, PROVISIONAL)"
 base_commit: "main adb0db29d"
-disposition: "keep (P)"
+disposition: "keep"
 disposition_proposal_approver: "Steward (G16); cross-layer reads and write-path guards to Strategic Suvarṇa (R5)"
 risk_class: "medium (people data; writer-code guards only, no data change)"
 decisions_applied: "none for L5 yet (no L5 decision sheet answered). L0-L3 rulings are cited by analogy only where a brief says so, PROVISIONAL until J1"
@@ -105,7 +105,7 @@ Class vocabulary: **real** = a shortfall in the asset's rows, writer, registry r
 | new: lel-N2 | Build.completion | detector | the no-writer N/A is a decision (N-14.R236), not yet a declared `NA_RULE_DECISIONS` rule: the inspector reads FAIL; needs the E6 applicability rule for a `user_data` asset (an Earn rule for `no-registered-writer` exists; Build.completion has none) — SS approval for the rule (CF-L5-12) |
 | new: lel-N3 | leakage / scope | real + SS question | L4 `ph_pramana.py:190` loads every `life_events` row with no chart filter and turns each into a `LelEntry` that decides `life_event_match` / `life_event_miss` evidence on L4 anchors (`services/ph_pramana/engine.py:152-231`). Today only one chart has rows (`le_by_chart`), so no contamination is observable, but (a) the read is latent cross-chart and (b) the calibration corpus enters prospective L4 generation, against T1 section 8.1 and T2 section 6.6 (Q-L5-18). Owner: the A.L4 brief; recorded here because it is a consumer of this asset |
 | new: lel-N4 | write path (N-46) | real | `brahmagyan/mimamsa/lel_intake.py:1342/1386/1421` and `lel_event_writer.ts:178` are `ON CONFLICT (chart_id, event_id) DO UPDATE SET event_date, description, domain, ...`: re-running the seed, or repeating an API call with the same id, overwrites a row the native has since tightened (8 rows carry `date_tightened_at`; no code checks it). `recorded_at` is protected (never in the SET list), the rest is not |
-| new: lel-N5 | identity | real | API-entered ids are `uuid5(chart : event_class : event_date : description)` (`lel_event_writer.ts:124-127`): correcting the date or description through the same call creates a different id and orphans everything that referenced the old one. Observed consequence of some such change: 4 `mimamsa_calibration` rows reference event `5278d97c-e769-529a-b0c2-be1e965c2d6b`, which exists in neither `life_events` nor `mimamsa_event_provenance` (`cal_orphan_event`); the cause was not established here |
+| new: lel-N5 | identity | real | API-entered ids are `uuid5(chart : event_class : event_date : description)` (`lel_event_writer.ts:124-127`): correcting the date or description through the same call creates a different id and orphans everything that referenced the old one. Observed, possibly related (cause not established): 4 `mimamsa_calibration` rows reference event `5278d97c-e769-529a-b0c2-be1e965c2d6b`, which exists in neither `life_events` nor `mimamsa_event_provenance` (`cal_orphan_event`); the cause was not established here |
 | new: lel-N6 | data | information | `recorded_at` is 2000-01-01 on 57/63 rows (a named sentinel, `lel_calibration.py:125`): it means "recorded before any prediction" and says nothing about when the native learned of an event relative to a forecast (T1 section 7.3). The inventory counts 57 seed events; the table holds 63 (layer instance F-11) |
 | new: lel-N7 | vocab | real | three event vocabularies on one table (`category` 13 values, compound `domain` slug on 62/63, `event_type`) and no `event_class` column (`prediction_lifecycle_sweep.ts` header says so): `mimamsa_event_provenance.event_class_id` is NULL on 63/63 for this reason (CF-L5-06) |
 | new: lel-N8 | Null / Narr | detector | declarations 1.12.0 carries `prose_fields: None`: the free-text `description` is native-typed testimony, not generated prose, so Narr is N/A by cause `no-prose`; propose `prose_fields: []` with that note and Carr N/A by cause (CF-L5-14) |
@@ -134,9 +134,15 @@ Question asked of each: what does the signal claim, and what code path would hav
 
 ## 3 · Disposition
 
-**keep (P)** — the table is the outcome ground truth and is native-entered; nothing in it is proposed for change. The defects are in its readers (undeclared edges, one unscoped L4 read) and in two write paths (overwrite risk, content-derived ids), all code or declaration fixes. Enrichment (E) is limited to declarations and an optional additive learned-at column.
+DISPOSITION: keep
 
-Approver under Track A brief section 10: **Steward (G16); cross-layer reads and write-path guards to Strategic Suvarṇa (R5)**. Risk class: **medium (people data; writer-code guards only, no data change)**. SS decision: none yet (provisional proposal; the layer instance assigns no disposition, TG-L5-023).
+EVIDENCE_POINTER: 00_ARCHITECTURE/briefs/suvarna/layers/L5/assets/_evidence/data/lel_events.json
+
+EVIDENCE_EXTRA: this brief sections 0-4; 00_ARCHITECTURE/briefs/suvarna/layers/L5/assets/_evidence/facts.json; 00_ARCHITECTURE/briefs/suvarna/layers/L5/assets/_evidence/facts2.json; 00_ARCHITECTURE/briefs/suvarna/layers/L5/assets/_evidence/rollup_saved_L5.json; 00_ARCHITECTURE/briefs/suvarna/layers/census/census_L5.json
+
+**keep (P)** — keep is justified explicitly: the asset has no writer and no rebuild, its 63 rows are native-entered and nothing in it is proposed for change; every finding is in its readers (five undeclared edges, one unscoped L4 read) or in two write paths (overwrite risk, content-derived ids), all of which are declaration or guard fixes outside the asset's own rows, with no output change and no rebuild. If SS wants the write-path guards counted as a must-fix of this asset, the disposition becomes qualify; no other element changes. Enrichment (E) is limited to declarations and an optional additive learned-at column.
+
+Approver under Track A brief section 10: **Steward (G16); cross-layer reads and write-path guards to Strategic Suvarṇa (R5)**. Risk class: **medium (people data; writer-code guards only, no data change)**. SS decision: none yet (provisional proposal; the layer instance assigns no disposition, TG-L5-023). No disposition is applied by this brief.
 
 ## 4 · Fix designs (one per real gap; `needs production rebuild` is a REVIEW item for Strategic Suvarṇa)
 

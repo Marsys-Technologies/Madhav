@@ -11,7 +11,7 @@ census_revision_used: "saved census `00_ARCHITECTURE/briefs/suvarna/layers/censu
 template_revision: "ASSET_ELEVATION_TEMPLATE_v2_0.md at 2289778be (campaign/nikasha-test; DRAFT_PENDING_REVIEW)"
 layer_instance: "00_ARCHITECTURE/briefs/suvarna/layers/L5/L5_LAYER_INSTANCE_v1_0.md (1.1, PROVISIONAL)"
 base_commit: "main adb0db29d"
-disposition: "keep (P)"
+disposition: "keep"
 disposition_proposal_approver: "Steward (G16); a decision to retire or bind it to the exporter goes to Strategic Suvarṇa (R5)"
 risk_class: "low (no rows; exporter schema alignment is a code change on a manual CLI)"
 decisions_applied: "none for L5 yet (no L5 decision sheet answered). L0-L3 rulings are cited by analogy only where a brief says so, PROVISIONAL until J1"
@@ -132,9 +132,15 @@ Question asked of each: what does the signal claim, and what code path would hav
 
 ## 3 · Disposition
 
-**keep (P)** — a small honest verifier; the fix is to give it something real to verify (a working exporter path against the live schema, or an explicit `not_built` state), not to remove it.
+DISPOSITION: keep
 
-Approver under Track A brief section 10: **Steward (G16); a decision to retire or bind it to the exporter goes to Strategic Suvarṇa (R5)**. Risk class: **low (no rows; exporter schema alignment is a code change on a manual CLI)**. SS decision: none yet (provisional proposal; the layer instance assigns no disposition, TG-L5-023).
+EVIDENCE_POINTER: 00_ARCHITECTURE/briefs/suvarna/layers/L5/assets/_evidence/data/mi_vistara.json
+
+EVIDENCE_EXTRA: this brief sections 0-4; 00_ARCHITECTURE/briefs/suvarna/layers/L5/assets/_evidence/facts.json; 00_ARCHITECTURE/briefs/suvarna/layers/L5/assets/_evidence/facts2.json; 00_ARCHITECTURE/briefs/suvarna/layers/L5/assets/_evidence/rollup_saved_L5.json; 00_ARCHITECTURE/briefs/suvarna/layers/census/census_L5.json
+
+**keep (P)** — keep is justified explicitly: the asset writes no rows, has no rebuild, and nothing it emits is served or consumed; its verifier is honest (raises on a missing table). The findings (a phantom-schema exporter on a manual CLI, a completion signal that reads complete on existence, a digest spec for a no-output asset) are fixes outside the asset's own output: an exporter alignment and a declaration. No output changes and no rebuild, so no must-fix attaches to the asset itself. The risk of keep: its success signal stays an existence check until the exporter or the `not_built` state lands.
+
+Approver under Track A brief section 10: **Steward (G16); a decision to retire or bind it to the exporter goes to Strategic Suvarṇa (R5)**. Risk class: **low (no rows; exporter schema alignment is a code change on a manual CLI)**. SS decision: none yet (provisional proposal; the layer instance assigns no disposition, TG-L5-023). No disposition is applied by this brief.
 
 ## 4 · Fix designs (one per real gap; `needs production rebuild` is a REVIEW item for Strategic Suvarṇa)
 

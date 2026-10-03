@@ -11,7 +11,7 @@ census_revision_used: "saved census `00_ARCHITECTURE/briefs/suvarna/layers/censu
 template_revision: "ASSET_ELEVATION_TEMPLATE_v2_0.md at 2289778be (campaign/nikasha-test; DRAFT_PENDING_REVIEW)"
 layer_instance: "00_ARCHITECTURE/briefs/suvarna/layers/L5/L5_LAYER_INSTANCE_v1_0.md (1.1, PROVISIONAL)"
 base_commit: "main adb0db29d"
-disposition: "keep (P)"
+disposition: "qualify"
 disposition_proposal_approver: "Steward (G16); envelope and DDL changes to Strategic Suvarṇa (R5)"
 risk_class: "medium (served `calibration_maturity` fields; DDL for nullable skill columns)"
 decisions_applied: "none for L5 yet (no L5 decision sheet answered). L0-L3 rulings are cited by analogy only where a brief says so, PROVISIONAL until J1"
@@ -139,9 +139,15 @@ Question asked of each: what does the signal claim, and what code path would hav
 
 ## 3 · Disposition
 
-**keep (P)** — a careful, honest kernel (deterministic nulls, named degradations, circularity guard, no pretended refit). Defects are consumer-visible noise values, a mis-attributed count, a registry row that under-declares its writes, and an unverified production failure. Keep and fix.
+DISPOSITION: qualify
 
-Approver under Track A brief section 10: **Steward (G16); envelope and DDL changes to Strategic Suvarṇa (R5)**. Risk class: **medium (served `calibration_maturity` fields; DDL for nullable skill columns)**. SS decision: none yet (provisional proposal; the layer instance assigns no disposition, TG-L5-023).
+EVIDENCE_POINTER: 00_ARCHITECTURE/briefs/suvarna/layers/L5/assets/_evidence/data/mi_bhara.json
+
+EVIDENCE_EXTRA: this brief sections 0-4; 00_ARCHITECTURE/briefs/suvarna/layers/L5/assets/_evidence/facts.json; 00_ARCHITECTURE/briefs/suvarna/layers/L5/assets/_evidence/facts2.json; 00_ARCHITECTURE/briefs/suvarna/layers/L5/assets/_evidence/rollup_saved_L5.json; 00_ARCHITECTURE/briefs/suvarna/layers/census/census_L5.json
+
+**qualify (Q)** — not keep: this brief states must-fix defects with a rebuild or data migration (float-noise `skill_score` / p-values stored and served on `underpowered` rows, bhara-N1/N2; a chart-wide `n_prospective` attributed to every class, bhara-N3; a registry row that under-declares five written tables). The kernel is careful and honest (deterministic nulls, named degradations, circularity guard, no pretended refit), so the change is a light qualify: keep the asset, null the numbers its own state column says are not established.
+
+Approver under Track A brief section 10: **Steward (G16); envelope and DDL changes to Strategic Suvarṇa (R5)**. Risk class: **medium (served `calibration_maturity` fields; DDL for nullable skill columns)**. SS decision: none yet (provisional proposal; the layer instance assigns no disposition, TG-L5-023). No disposition is applied by this brief.
 
 ## 4 · Fix designs (one per real gap; `needs production rebuild` is a REVIEW item for Strategic Suvarṇa)
 

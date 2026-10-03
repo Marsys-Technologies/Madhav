@@ -11,8 +11,8 @@ census_revision_used: "saved census `00_ARCHITECTURE/briefs/suvarna/layers/censu
 template_revision: "ASSET_ELEVATION_TEMPLATE_v2_0.md at 2289778be (campaign/nikasha-test; DRAFT_PENDING_REVIEW)"
 layer_instance: "00_ARCHITECTURE/briefs/suvarna/layers/L5/L5_LAYER_INSTANCE_v1_0.md (1.1, PROVISIONAL)"
 base_commit: "main adb0db29d"
-disposition: "keep (P)"
-disposition_proposal_approver: "Steward (G16)"
+disposition: "qualify"
+disposition_proposal_approver: "Steward (G16); label changes to Strategic Suvarṇa (R5)"
 risk_class: "low (declaration and label work; the silent-fallback fix is writer code, no output change while the registry is readable)"
 decisions_applied: "none for L5 yet (no L5 decision sheet answered). L0-L3 rulings are cited by analogy only where a brief says so, PROVISIONAL until J1"
 track_i_items: [TI-L5-09, TI-L5-10, TI-L5-11]
@@ -132,9 +132,15 @@ Question asked of each: what does the signal claim, and what code path would hav
 
 ## 3 · Disposition
 
-**keep (P)** — a small deterministic catalog with the right honesty about its calibration status; the defects are unverified citations (a label claiming more than the repo holds), a literal status that cannot update, and a silent fallback path.
+DISPOSITION: qualify
 
-Approver under Track A brief section 10: **Steward (G16)**. Risk class: **low (declaration and label work; the silent-fallback fix is writer code, no output change while the registry is readable)**. SS decision: none yet (provisional proposal; the layer instance assigns no disposition, TG-L5-023).
+EVIDENCE_POINTER: 00_ARCHITECTURE/briefs/suvarna/layers/L5/assets/_evidence/data/mi_kula.json
+
+EVIDENCE_EXTRA: this brief sections 0-4; 00_ARCHITECTURE/briefs/suvarna/layers/L5/assets/_evidence/facts.json; 00_ARCHITECTURE/briefs/suvarna/layers/L5/assets/_evidence/facts2.json; 00_ARCHITECTURE/briefs/suvarna/layers/L5/assets/_evidence/rollup_saved_L5.json; 00_ARCHITECTURE/briefs/suvarna/layers/census/census_L5.json
+
+**qualify (Q)** — not keep: this brief states a must-fix (7 families labelled `CLASSICAL_CITED` on citations typed in the writer and verified nowhere, kula-N1) whose fix changes stored labels and needs a (global, idempotent) rebuild, plus a literal `calibration_status` that cannot update and a silent fallback to weights that differ from the registry. The catalog itself is small, deterministic and honest about calibration (`prior_only`, harness columns NULL), so this is a light qualify.
+
+Approver under Track A brief section 10: **Steward (G16); label changes to Strategic Suvarṇa (R5)**. Risk class: **low (declaration and label work; the silent-fallback fix is writer code, no output change while the registry is readable)**. SS decision: none yet (provisional proposal; the layer instance assigns no disposition, TG-L5-023). No disposition is applied by this brief.
 
 ## 4 · Fix designs (one per real gap; `needs production rebuild` is a REVIEW item for Strategic Suvarṇa)
 

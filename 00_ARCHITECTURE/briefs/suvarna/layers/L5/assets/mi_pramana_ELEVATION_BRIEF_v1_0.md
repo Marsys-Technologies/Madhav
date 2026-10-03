@@ -11,7 +11,7 @@ census_revision_used: "saved census `00_ARCHITECTURE/briefs/suvarna/layers/censu
 template_revision: "ASSET_ELEVATION_TEMPLATE_v2_0.md at 2289778be (campaign/nikasha-test; DRAFT_PENDING_REVIEW)"
 layer_instance: "00_ARCHITECTURE/briefs/suvarna/layers/L5/L5_LAYER_INSTANCE_v1_0.md (1.1, PROVISIONAL)"
 base_commit: "main adb0db29d"
-disposition: "qualify (Q)"
+disposition: "qualify"
 disposition_proposal_approver: "Strategic Suvarṇa (R5: verdicts and labels change)"
 risk_class: "high (output change; rebuild; consumed by the activation gate and four writers)"
 decisions_applied: "none for L5 yet (no L5 decision sheet answered). L0-L3 rulings are cited by analogy only where a brief says so, PROVISIONAL until J1"
@@ -144,9 +144,15 @@ Question asked of each: what does the signal claim, and what code path would hav
 
 ## 3 · Disposition
 
+DISPOSITION: qualify
+
+EVIDENCE_POINTER: 00_ARCHITECTURE/briefs/suvarna/layers/L5/assets/_evidence/data/mi_pramana.json
+
+EVIDENCE_EXTRA: this brief sections 0-4; 00_ARCHITECTURE/briefs/suvarna/layers/L5/assets/_evidence/facts.json; 00_ARCHITECTURE/briefs/suvarna/layers/L5/assets/_evidence/facts2.json; 00_ARCHITECTURE/briefs/suvarna/layers/L5/assets/_evidence/rollup_saved_L5.json; 00_ARCHITECTURE/briefs/suvarna/layers/census/census_L5.json
+
 **qualify (Q)** — keep the matching/scoring machinery, but the headline labels (`clean`, `empirical`, `pass`, observed rate, base rate) are not earned and the calibration rows are not prospective. Qualify = restrict what these rows may claim to what the chronology and denominators support, and fix the denominators.
 
-Approver under Track A brief section 10: **Strategic Suvarṇa (R5: verdicts and labels change)**. Risk class: **high (output change; rebuild; consumed by the activation gate and four writers)**. SS decision: none yet (provisional proposal; the layer instance assigns no disposition, TG-L5-023).
+Approver under Track A brief section 10: **Strategic Suvarṇa (R5: verdicts and labels change)**. Risk class: **high (output change; rebuild; consumed by the activation gate and four writers)**. SS decision: none yet (provisional proposal; the layer instance assigns no disposition, TG-L5-023). No disposition is applied by this brief.
 
 ## 4 · Fix designs (one per real gap; `needs production rebuild` is a REVIEW item for Strategic Suvarṇa)
 

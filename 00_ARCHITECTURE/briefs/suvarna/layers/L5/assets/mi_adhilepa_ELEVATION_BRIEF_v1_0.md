@@ -11,7 +11,7 @@ census_revision_used: "saved census `00_ARCHITECTURE/briefs/suvarna/layers/censu
 template_revision: "ASSET_ELEVATION_TEMPLATE_v2_0.md at 2289778be (campaign/nikasha-test; DRAFT_PENDING_REVIEW)"
 layer_instance: "00_ARCHITECTURE/briefs/suvarna/layers/L5/L5_LAYER_INSTANCE_v1_0.md (1.1, PROVISIONAL)"
 base_commit: "main adb0db29d"
-disposition: "qualify (Q)"
+disposition: "qualify"
 disposition_proposal_approver: "Strategic Suvarṇa (R5; any retirement of the overlay tables is R5)"
 risk_class: "high (largest row count in L5; label removal; possible retirement)"
 decisions_applied: "none for L5 yet (no L5 decision sheet answered). L0-L3 rulings are cited by analogy only where a brief says so, PROVISIONAL until J1"
@@ -102,7 +102,7 @@ Class vocabulary: **real** = a shortfall in the asset's rows, writer, registry r
 | gap id | gate | class | note |
 |---|---|---|---|
 | new: adh-N1 | Earn / narration | real (central) | `mimamsa_load_bearing` ranks **family prior weights**, not signal sensitivity: the 4 rows are `fam_yoga` (0.7, `load_bearing`), `fam_msr_signal` (0.7, `supporting`), `fam_convergence` (0.6, `supporting`), `fam_dasha_period` (0.575, `redundant`), i.e. `sensitivity = applied_multiplier / 2` (:346) of the n = 0 classical priors 1.4 / 1.4 / 1.2 / 1.15; the `signal_id` column holds a family id; `role` is the rank position (:347); the two 0.7 are a tie broken by dict order. `mi_darshana.py:402` then serves this as "Signal 'fam_yoga' is load_bearing for conclusion 'concl_fam_yoga' ... Removing this signal would materially alter the reading." No ablation, perturbation or sensitivity run exists behind it (the `mi_pariksha` ablation is a `structural_proxy`). A causal sentence with no detector (§N.7 item 5, §N.8) |
-| new: adh-N2 | dangling | stale + real | 100% of overlay rows reference ids that no longer resolve (CF-L5-02): `bo_laksana` replaced the MSR set on 2026-09-08, `chart_facts` ids differ, `kala_convergence` was emptied by the cascade, `phala_anchors` fell from 139 to 4. There are no foreign keys, so nothing failed. The overlay is stale until a coherent rebuild (CF-L5-01) |
+| new: adh-N2 | dangling | stale + real | 100% of overlay rows reference ids that no longer resolve (CF-L5-02). Observed: the live MSR set is dated 2026-09-11 (the L3 index records that `bo_laksana` replaced it on 2026-09-08), the live `chart_facts` ids differ from the stored ones, the chart has 0 `kala_convergence` rows, `phala_anchors` holds 4 rows against 139 at build time. That these changes (and the cascade keys the L3 index describes) are what orphaned the overlay is an inference from timestamps and counts, not traced. There are no foreign keys, so nothing failed. The overlay is stale relative to its sources until a coherent rebuild (CF-L5-01) |
 | new: adh-N3 | design / consumer | real + SS question | the four overlay tables hold 112,266 rows with no served reader (GATED) and a per-object expansion of what is a 9-row family table: every signal of a family receives the same scalar. As materialised data it adds no information beyond `mimamsa_multipliers` + a join at serve time (Q-L5-08) |
 | new: adh-N4 | Earn (applies_to_reading) | real | `applies_to_reading` = `kill_switch_state == "active"` (:164) is true for prior-only multipliers (n = 0) as well as learned ones; "applies to reading" reads as "a learned calibration applies", while 174 signal rows apply an unlearned 1.4 and the learned ones are 0.9924 / 0.9643 (within 1% of neutral) |
 | new: adh-N5 | honest label (the model case) | information | `leakage_status = "not_assessed"` (:163) — an honest named state replacing a former `clean`; the writer comment records why (migration 547). The tests pin the label. The label is not a detector: it states that none ran |
@@ -138,9 +138,15 @@ Question asked of each: what does the signal claim, and what code path would hav
 
 ## 3 · Disposition
 
+DISPOSITION: qualify
+
+EVIDENCE_POINTER: 00_ARCHITECTURE/briefs/suvarna/layers/L5/assets/_evidence/data/mi_adhilepa.json
+
+EVIDENCE_EXTRA: this brief sections 0-4; 00_ARCHITECTURE/briefs/suvarna/layers/L5/assets/_evidence/facts.json; 00_ARCHITECTURE/briefs/suvarna/layers/L5/assets/_evidence/facts2.json; 00_ARCHITECTURE/briefs/suvarna/layers/L5/assets/_evidence/rollup_saved_L5.json; 00_ARCHITECTURE/briefs/suvarna/layers/census/census_L5.json
+
 **qualify (Q)** — the expansion is mechanical and idempotent, but the asset materialises 112k rows nothing reads, labels a prior-weight ranking as sensitivity, and is 100% dangling. Qualify with a retire-the-expansion option for SS (Q-L5-08): keep the family table, derive per-object weights at serve time if ever served, and keep or remove `mimamsa_load_bearing` depending on whether a real sensitivity method is built.
 
-Approver under Track A brief section 10: **Strategic Suvarṇa (R5; any retirement of the overlay tables is R5)**. Risk class: **high (largest row count in L5; label removal; possible retirement)**. SS decision: none yet (provisional proposal; the layer instance assigns no disposition, TG-L5-023).
+Approver under Track A brief section 10: **Strategic Suvarṇa (R5; any retirement of the overlay tables is R5)**. Risk class: **high (largest row count in L5; label removal; possible retirement)**. SS decision: none yet (provisional proposal; the layer instance assigns no disposition, TG-L5-023). No disposition is applied by this brief.
 
 ## 4 · Fix designs (one per real gap; `needs production rebuild` is a REVIEW item for Strategic Suvarṇa)
 

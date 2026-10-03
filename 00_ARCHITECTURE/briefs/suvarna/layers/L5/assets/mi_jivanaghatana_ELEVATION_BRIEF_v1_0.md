@@ -11,7 +11,7 @@ census_revision_used: "saved census `00_ARCHITECTURE/briefs/suvarna/layers/censu
 template_revision: "ASSET_ELEVATION_TEMPLATE_v2_0.md at 2289778be (campaign/nikasha-test; DRAFT_PENDING_REVIEW)"
 layer_instance: "00_ARCHITECTURE/briefs/suvarna/layers/L5/L5_LAYER_INSTANCE_v1_0.md (1.1, PROVISIONAL)"
 base_commit: "main adb0db29d"
-disposition: "qualify (Q)"
+disposition: "qualify"
 disposition_proposal_approver: "Steward (G16); label and flag changes to Strategic Suvarṇa (R5)"
 risk_class: "high (output change: reason text and possibly `admissible_clean` / `held_out` on 63 rows; downstream re-score)"
 decisions_applied: "none for L5 yet (no L5 decision sheet answered). L0-L3 rulings are cited by analogy only where a brief says so, PROVISIONAL until J1"
@@ -29,7 +29,7 @@ ledger_gap_ids: ["mi_jivanaghatana-Earn.build_record", "mi_jivanaghatana-Cost.ba
 
 LIGHT writer (`run(ctx)`, :184). Reads the chart's `life_events` rows (`SELECT * ... WHERE chart_id = %s`, :215), builds one `mimamsa_event_provenance` row per event (63 for the canonical chart) and replaces the chart's rows (delete-then-insert, :356). The columns it computes: `shaped_predictor` (:310), `disclosure_timing` (:305), `admissible_clean` + `admissibility_reason` (`_admissibility`, :100-107), `held_out` (`MD5(event_id) mod 10 >= 8`, `_held_out`, :94-98), `event_class_id` (a documented declared NULL, :124-169). It is the root of the L5 calibration loop: `mi_pramana`, `mi_pariksha`, `mi_bhavisya` and `mi_darshana` declare it as a dependency. It raises when the chart has LEL rows but built zero provenance rows (A8, :244) and when every event was dropped (A9, :368) — a real detector, not a note.
 
-**Canonical chart state (read-only, 2026-10-03).** 63 provenance rows for 63 `life_events` rows, one-to-one in both directions (`prov_vs_le_ids`: 0 unmatched). `admissible_clean` true 63/63; `held_out` 13 (20.6%); `shaped_predictor` false 63/63; `disclosure_timing` `unknown` 63/63; `event_class_id` NULL 63/63; `event_magnitude` NULL 63/63; one distinct `admissibility_reason` for all 63 (`prov`). Built 2026-09-06 — after the 2026-08-13 downstream L5 builds, which matched against the earlier provenance generation (4 calibration rows now point at an event id absent from both tables, CF-L5-02).
+**Canonical chart state (read-only, 2026-10-03).** 63 provenance rows for 63 `life_events` rows, one-to-one in both directions (`prov_vs_le_ids`: 0 unmatched). `admissible_clean` true 63/63; `held_out` 13 (20.6%); `shaped_predictor` false 63/63; `disclosure_timing` `unknown` 63/63; `event_class_id` NULL 63/63; `event_magnitude` NULL 63/63; one distinct `admissibility_reason` for all 63 (`prov`). Built 2026-09-06, i.e. after the 2026-08-13 downstream L5 builds, so those rows were built against an earlier provenance generation (inferred from timestamps; 4 calibration rows now point at an event id absent from both tables, CF-L5-02).
 
 | field | value | source |
 |---|---|---|
@@ -136,9 +136,15 @@ Question asked of each: what does the signal claim, and what code path would hav
 
 ## 3 · Disposition
 
+DISPOSITION: qualify
+
+EVIDENCE_POINTER: 00_ARCHITECTURE/briefs/suvarna/layers/L5/assets/_evidence/data/mi_jivanaghatana.json
+
+EVIDENCE_EXTRA: this brief sections 0-4; 00_ARCHITECTURE/briefs/suvarna/layers/L5/assets/_evidence/facts.json; 00_ARCHITECTURE/briefs/suvarna/layers/L5/assets/_evidence/facts2.json; 00_ARCHITECTURE/briefs/suvarna/layers/L5/assets/_evidence/rollup_saved_L5.json; 00_ARCHITECTURE/briefs/suvarna/layers/census/census_L5.json
+
 **qualify (Q)** — the projection is deterministic, chart-scoped and raises on a wrongly empty build, but its two headline flags (`admissible_clean`, `held_out`) claim more than the code can know. Qualify = keep the asset, make the flags say what they establish.
 
-Approver under Track A brief section 10: **Steward (G16); label and flag changes to Strategic Suvarṇa (R5)**. Risk class: **high (output change: reason text and possibly `admissible_clean` / `held_out` on 63 rows; downstream re-score)**. SS decision: none yet (provisional proposal; the layer instance assigns no disposition, TG-L5-023).
+Approver under Track A brief section 10: **Steward (G16); label and flag changes to Strategic Suvarṇa (R5)**. Risk class: **high (output change: reason text and possibly `admissible_clean` / `held_out` on 63 rows; downstream re-score)**. SS decision: none yet (provisional proposal; the layer instance assigns no disposition, TG-L5-023). No disposition is applied by this brief.
 
 ## 4 · Fix designs (one per real gap; `needs production rebuild` is a REVIEW item for Strategic Suvarṇa)
 

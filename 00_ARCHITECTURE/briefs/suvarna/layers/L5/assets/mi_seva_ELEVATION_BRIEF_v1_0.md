@@ -11,7 +11,7 @@ census_revision_used: "saved census `00_ARCHITECTURE/briefs/suvarna/layers/censu
 template_revision: "ASSET_ELEVATION_TEMPLATE_v2_0.md at 2289778be (campaign/nikasha-test; DRAFT_PENDING_REVIEW)"
 layer_instance: "00_ARCHITECTURE/briefs/suvarna/layers/L5/L5_LAYER_INSTANCE_v1_0.md (1.1, PROVISIONAL)"
 base_commit: "main adb0db29d"
-disposition: "retire (R) proposed"
+disposition: "retire"
 disposition_proposal_approver: "Strategic Suvarṇa (R5: retirement)"
 risk_class: "low (no rows; registry/DAG change; the table `mimamsa_preferences` stays unless SS also retires it)"
 decisions_applied: "none for L5 yet (no L5 decision sheet answered). L0-L3 rulings are cited by analogy only where a brief says so, PROVISIONAL until J1"
@@ -133,9 +133,15 @@ Question asked of each: what does the signal claim, and what code path would hav
 
 ## 3 · Disposition
 
+DISPOSITION: retire
+
+EVIDENCE_POINTER: 00_ARCHITECTURE/briefs/suvarna/layers/L5/assets/_evidence/data/mi_seva.json
+
+EVIDENCE_EXTRA: this brief sections 0-4; 00_ARCHITECTURE/briefs/suvarna/layers/L5/assets/_evidence/facts.json; 00_ARCHITECTURE/briefs/suvarna/layers/L5/assets/_evidence/facts2.json; 00_ARCHITECTURE/briefs/suvarna/layers/L5/assets/_evidence/rollup_saved_L5.json; 00_ARCHITECTURE/briefs/suvarna/layers/census/census_L5.json
+
 **retire (R) proposed** — the asset verifies four tables exist and describes a handler that does not exist and, as described, would conflict with the collect-only doctrine. Proposal: retire the asset and keep the existence check as a layer self-test inside `mi_vistara` / `mi_abhilekha` or the census; SS decides (Q-L5-13). If SS prefers to keep it, the minimum is renaming it a readiness check and declaring it so.
 
-Approver under Track A brief section 10: **Strategic Suvarṇa (R5: retirement)**. Risk class: **low (no rows; registry/DAG change; the table `mimamsa_preferences` stays unless SS also retires it)**. SS decision: none yet (provisional proposal; the layer instance assigns no disposition, TG-L5-023).
+Approver under Track A brief section 10: **Strategic Suvarṇa (R5: retirement)**. Risk class: **low (no rows; registry/DAG change; the table `mimamsa_preferences` stays unless SS also retires it)**. SS decision: none yet (provisional proposal; the layer instance assigns no disposition, TG-L5-023). No disposition is applied by this brief.
 
 ## 4 · Fix designs (one per real gap; `needs production rebuild` is a REVIEW item for Strategic Suvarṇa)
 
