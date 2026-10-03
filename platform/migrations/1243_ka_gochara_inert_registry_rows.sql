@@ -26,12 +26,22 @@
 -- conformance gaps recorded in ka_gochara_v5_registry_conformance.test.ts are the activation step's to correct,
 -- by a later routine migration; this one adds no judgment of its own.
 --
--- NOT. No chart data, no other asset_registry row, no grant, no DDL, no other table — that narrow write scope is established by the
+-- SECOND PART (Codex R20-1; Suvarṇa's six conditions): ONE narrow SECURITY DEFINER boolean function,
+--   public.ka_gochara_staged_candidate_has_runtime_evidence(p_asset_id text) RETURNS boolean
+-- used by the Nirmāṇa elevation loaders (monitor, snapshot, the five definitions loaders) to decide whether a staged candidate still has the inert
+-- shape. It answers "is there ANY receipt / build_run_assets / asset_throughput row for this id" without granting any role SELECT on those tables
+-- (the control writer has none on asset_throughput; the watchdog PRUNES old build_run_assets, so build evidence alone is not permanent; a cockpit
+-- refresh inserts throughput with no build run). Owner amjis_app; REVOKE ALL FROM PUBLIC; EXECUTE only amjis_app and
+-- nirmana_campaign_control_writer; search_path pinned (pg_catalog, pg_temp) with schema-qualified tables; STABLE; returns boolean only; ANY id other
+-- than ka_gochara_v4_41_candidate / ka_gochara_v5 RAISES. A role that does not exist in a fresh environment is skipped (production has both; the
+-- readback asserts the ACL).
+--
+-- NOT (first part). No chart data, no other asset_registry row, no other table — that narrow write scope is established by the
 -- single INSERT below (and the table's one UPDATE trigger), not by the post-checks. The post-checks raise (rolling the migration back) if
 -- either row is missing or not inert, if anything depends on them, or if a SUPPLEMENTARY check of visible tuple versions (xmin = this
 -- transaction's id) finds another asset_registry row version written by this transaction. That last check is NOT proof that nothing else was
 -- touched (it cannot see deleted rows, subtransaction writes or other tables). A row that ALREADY exists is left exactly as it is (DO NOTHING)
--- and must satisfy the same inertness check.
+-- and must satisfy the same inertness check. The second part's only objects are the one function and its ACL (no grant on any table).
 
 DO $mig$
 DECLARE
@@ -138,3 +148,69 @@ BEGIN
   END IF;
 END
 $mig$;
+
+-- ── Part 2: the evidence function ─────────────────────────────────────────────────────────────────────────────────────────────────────────────
+CREATE OR REPLACE FUNCTION public.ka_gochara_staged_candidate_has_runtime_evidence(p_asset_id text)
+RETURNS boolean
+LANGUAGE plpgsql
+STABLE
+SECURITY DEFINER
+SET search_path = pg_catalog, pg_temp
+AS $fn$
+BEGIN
+  IF p_asset_id IS NULL OR p_asset_id NOT IN ('ka_gochara_v4_41_candidate', 'ka_gochara_v5') THEN
+    RAISE EXCEPTION 'ka_gochara_staged_candidate_has_runtime_evidence: % is not a staged Gochara candidate', p_asset_id
+      USING ERRCODE = 'invalid_parameter_value';
+  END IF;
+  RETURN EXISTS (SELECT 1 FROM public.asset_provenance_receipts WHERE asset_id = p_asset_id)
+      OR EXISTS (SELECT 1 FROM public.build_run_assets WHERE asset_id = p_asset_id)
+      OR EXISTS (SELECT 1 FROM public.asset_throughput WHERE asset_id = p_asset_id);
+END
+$fn$;
+
+REVOKE ALL ON FUNCTION public.ka_gochara_staged_candidate_has_runtime_evidence(text) FROM PUBLIC;
+
+DO $acl$
+DECLARE
+  v_fn  regprocedure := 'public.ka_gochara_staged_candidate_has_runtime_evidence(text)'::regprocedure;
+  v_owner name;
+  v_bad int;
+BEGIN
+  -- EXECUTE for exactly amjis_app (the app / monitor / snapshot role) and nirmana_campaign_control_writer (the definitions loaders).
+  IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'amjis_app') THEN
+    GRANT EXECUTE ON FUNCTION public.ka_gochara_staged_candidate_has_runtime_evidence(text) TO amjis_app;
+  END IF;
+  IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'nirmana_campaign_control_writer') THEN
+    GRANT EXECUTE ON FUNCTION public.ka_gochara_staged_candidate_has_runtime_evidence(text) TO nirmana_campaign_control_writer;
+  END IF;
+
+  -- Post-checks (each raises, rolling the migration back whole).
+  SELECT pg_get_userbyid(proowner) INTO v_owner FROM pg_proc WHERE oid = v_fn;
+  IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'amjis_app') AND v_owner <> 'amjis_app' THEN
+    RAISE EXCEPTION '1243: the evidence function is owned by %, expected amjis_app', v_owner;
+  END IF;
+  IF NOT (SELECT prosecdef FROM pg_proc WHERE oid = v_fn) THEN
+    RAISE EXCEPTION '1243: the evidence function is not SECURITY DEFINER';
+  END IF;
+  IF (SELECT proconfig FROM pg_proc WHERE oid = v_fn) IS DISTINCT FROM ARRAY['search_path=pg_catalog, pg_temp']::text[] THEN
+    RAISE EXCEPTION '1243: the evidence function search_path is not pinned to pg_catalog, pg_temp (found %)', (SELECT proconfig FROM pg_proc WHERE oid = v_fn);
+  END IF;
+  -- ACL: no PUBLIC entry (grantee 0) and no grantee outside {owner, amjis_app, nirmana_campaign_control_writer}.
+  SELECT count(*) INTO v_bad
+    FROM pg_proc p, LATERAL aclexplode(COALESCE(p.proacl, acldefault('f', p.proowner))) a
+   WHERE p.oid = v_fn
+     AND (a.grantee = 0 OR a.privilege_type <> 'EXECUTE'
+          OR pg_get_userbyid(a.grantee) NOT IN (v_owner::text, 'amjis_app', 'nirmana_campaign_control_writer'));
+  IF v_bad <> 0 THEN
+    RAISE EXCEPTION '1243: the evidence function ACL has % unexpected entr(y/ies) (PUBLIC or a non-approved grantee)', v_bad;
+  END IF;
+  -- It runs, and it refuses any other id.
+  PERFORM public.ka_gochara_staged_candidate_has_runtime_evidence('ka_gochara_v5');
+  BEGIN
+    PERFORM public.ka_gochara_staged_candidate_has_runtime_evidence('bg_texts');
+    RAISE EXCEPTION '1243: the evidence function accepted an id that is not a staged candidate';
+  EXCEPTION WHEN invalid_parameter_value THEN
+    NULL;
+  END;
+END
+$acl$;

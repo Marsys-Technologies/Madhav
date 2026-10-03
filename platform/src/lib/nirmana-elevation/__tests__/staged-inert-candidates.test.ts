@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs'
+import path from 'node:path'
 import { describe, expect, it, vi } from 'vitest'
 
 vi.mock('server-only', () => ({}))
@@ -73,6 +75,7 @@ describe('staged inert Gochara candidates — excluded while inert, visible the 
     ['gains a dependency', { depends_on: ['bg_reference'] }],
     ['has a receipt / build-run / throughput row', { has_runtime_evidence: true }],
     ['the loader gave no evidence column', { has_runtime_evidence: undefined }],
+    ['the evidence function returned NULL (unknown)', { has_runtime_evidence: null }],
     ['lost its writer', { has_writer: false }],
     ['is RETIRED', { catalog_status: 'RETIRED' as const }],
   ])('v5 %s ⇒ NOT excluded, and the monitor sees it', (_name, over) => {
@@ -128,14 +131,43 @@ describe('staged inert Gochara candidates — excluded while inert, visible the 
     expect(JSON.stringify(a)).not.toContain('has_runtime_evidence')
   })
 
-  it('the evidence SQL names receipts and build runs for every role and asset_throughput only where the role may read it', () => {
-    const without = runtimeEvidenceSql('asset_registry', false)
-    const withThroughput = runtimeEvidenceSql('registry', true)
-    expect(without).toContain('asset_provenance_receipts')
-    expect(without).toContain('build_run_assets')
-    expect(without).not.toContain('asset_throughput')
-    expect(withThroughput).toContain('asset_throughput')
-    expect(withThroughput).toContain('registry.asset_id')
-    expect(without).toMatch(/AS has_runtime_evidence$/)
+  it('the evidence expression calls ONLY the narrow SECURITY DEFINER function, and only for the two ids (NULL otherwise)', () => {
+    const sql = runtimeEvidenceSql('registry')
+    expect(sql).toContain('public.ka_gochara_staged_candidate_has_runtime_evidence(registry.asset_id)')
+    expect(sql).toContain("registry.asset_id IN ('ka_gochara_v4_41_candidate', 'ka_gochara_v5')")
+    expect(sql).toMatch(/AS has_runtime_evidence$/)
+    for (const table of ['asset_provenance_receipts', 'build_run_assets', 'asset_throughput']) expect(sql).not.toContain(table)   // no role needs SELECT on them
+  })
+
+  it('EVERY registry loader (monitor, snapshot, and all five definitions loaders) selects the evidence column — one predicate everywhere', () => {
+    const dir = path.resolve(__dirname, '..')
+    const loaders: Array<[string, number]> = [['monitor.ts', 1], ['snapshot.ts', 1], ['definitions.ts', 5]]
+    for (const [file, expected] of loaders) {
+      const source = readFileSync(path.join(dir, file), 'utf8')
+      const selects = [...source.matchAll(/SELECT[^`]*?dead_flag[^`]*?FROM asset_registry\b(?! registry)/g)].map((m) => m[0])
+      expect(selects, file).toHaveLength(expected)
+      for (const select of selects) expect(select, `${file}: ${select.slice(0, 60)}`).toContain("runtimeEvidenceSql('asset_registry')")
+    }
+  })
+
+  describe('R20-2 — the candidate rule sees the COMPLETE registry before supporting writers are removed (actual callers)', () => {
+    const grounding = (active: boolean, dependsOn: string[] = []) => registryRow('bo_grounding', { layer: 'bodha', sort_order: 25, catalog_status: 'DRAFT', is_active: active, depends_on: dependsOn })
+    it.each([[V41, true], [V41, false], [V5, true], [V5, false]])('bo_grounding depending on %s (active=%s) keeps the candidate in the denominator: NOT excluded in the baseline or either comparison', (id, active) => {
+      const rows = [...population, staged(id as string), grounding(active as boolean, [id as string])]
+      expect(excludeNirmanaStagedInertCandidates(rows).map((r) => r.asset_id)).toContain(id)
+      expect(() => buildNirmanaBaselineCandidate(rows)).toThrow()                                            // the candidate stays in the denominator ⇒ 'unresolved' ⇒ fails closed
+      expect(() => assertManifestMatchesRegistryIdentity(frozen().manifest, rows)).toThrow(/Frozen manifest contains 3 assets but the live registry contains 4/)
+      expect(() => assertManifestMatchesRegistry(frozen().manifest, rows)).toThrow(/Frozen manifest contains 3 assets but the live registry contains 4/)
+    })
+    it('a bo_grounding with NO dependency on a candidate stays OUT of the denominator and the inert candidates stay excluded', () => {
+      const rows = [...population, staged(V41), staged(V5), grounding(true)]
+      expect(buildNirmanaBaselineCandidate(rows)).toEqual(frozen())
+      expect(() => assertManifestMatchesRegistryIdentity(frozen().manifest, rows)).not.toThrow()
+      expect(() => assertManifestMatchesRegistry(frozen().manifest, rows)).not.toThrow()
+      expect(buildNirmanaBaselineCandidate(rows).manifest.assets.map((a) => a.asset_id)).not.toContain('bo_grounding')
+    })
+    it('retired identities are retained alongside', () => {
+      expect(buildNirmanaBaselineCandidate([...population, staged(V41), grounding(true)]).manifest.assets.map((a) => a.asset_id)).toContain('ka_gochara_sweep')
+    })
   })
 })

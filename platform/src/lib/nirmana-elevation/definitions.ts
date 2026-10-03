@@ -90,10 +90,10 @@ export interface NirmanaRegistryContractRow {
   data_disposition: 'RETAINED_AS_CAPITAL' | 'SUPERSEDED_IN_PLACE' | 'DROPPABLE' | null
   dead_flag: boolean | null
   /**
-   * Whether ANY receipt / build-run / throughput row exists for the asset (see `runtimeEvidenceSql`). Read only by
-   * `isNirmanaStagedInertCandidate`; absent (undefined) is NOT "none" — a row without the evidence column is never excluded.
+   * Whether ANY receipt / build-run / throughput row exists for the asset (see `runtimeEvidenceSql`; the narrow SECURITY DEFINER function of
+   * migration 1243). Read only by `isNirmanaStagedInertCandidate`; null / undefined is NOT "none" — only `=== false` excludes.
    */
-  has_runtime_evidence?: boolean
+  has_runtime_evidence?: boolean | null
 }
 
 /**
@@ -130,15 +130,17 @@ export function excludeNirmanaStagedInertCandidates<T extends NirmanaRegistryCon
 }
 
 /**
- * SQL boolean expression `has_runtime_evidence` for a registry row aliased `alias`: a provenance receipt, a build-run asset row and — where the
- * connecting role may read it — an asset_throughput row. (nirmana_campaign_control_writer has no SELECT on asset_throughput; every asset_throughput
- * row is written by a build run, which also leaves a build_run_assets row, so the build-run test stands in for it there.)
+ * SQL expression `has_runtime_evidence` for a registry row aliased `alias`: the result of the narrow SECURITY DEFINER function
+ * `public.ka_gochara_staged_candidate_has_runtime_evidence` (migration 1243), which checks asset_provenance_receipts, build_run_assets AND
+ * asset_throughput for the id without granting the connecting role SELECT on any of them. The function RAISES for any id other than the two staged
+ * candidates, so it is evaluated ONLY for those two ids (NULL for every other row — which is never consulted). NULL is "unknown" and is NEVER
+ * read as "no evidence": `isNirmanaStagedInertCandidate` excludes only on `=== false`. If the function is missing, denied or errors, the statement
+ * fails and the whole registry read fails closed (a failed statement aborts the enclosing transaction; the candidate is never silently excluded).
+ * ONE predicate for every loader (monitor, snapshot, all five definitions loaders).
  */
-export function runtimeEvidenceSql(alias: string, withThroughput: boolean): string {
-  return `(EXISTS (SELECT 1 FROM asset_provenance_receipts rcpt WHERE rcpt.asset_id = ${alias}.asset_id)
-        OR EXISTS (SELECT 1 FROM build_run_assets bra WHERE bra.asset_id = ${alias}.asset_id)${withThroughput
-    ? `
-        OR EXISTS (SELECT 1 FROM asset_throughput thr WHERE thr.asset_id = ${alias}.asset_id)` : ''}) AS has_runtime_evidence`
+export function runtimeEvidenceSql(alias: string): string {
+  return `CASE WHEN ${alias}.asset_id IN ('ka_gochara_v4_41_candidate', 'ka_gochara_v5')
+              THEN public.ka_gochara_staged_candidate_has_runtime_evidence(${alias}.asset_id) END AS has_runtime_evidence`
 }
 
 export type NirmanaExecutionObligation = Exclude<
@@ -398,7 +400,9 @@ export function parseFreezableNirmanaElevationManifest(manifest: unknown): Nirma
  * fails closed: the filtered registry view reports it as absent.
  */
 function elevationDenominatorRegistryRows(rows: NirmanaRegistryContractRow[]): NirmanaRegistryContractRow[] {
-  return excludeNirmanaStagedInertCandidates(rows.filter((row) => !NIRMANA_SUPPORTING_WRITERS.has(row.asset_id)))
+  // R20-2: the candidate rule sees the COMPLETE registry first (a supporting writer that depends on a candidate must keep it in the denominator),
+  // and only then are the supporting writers removed.
+  return excludeNirmanaStagedInertCandidates(rows).filter((row) => !NIRMANA_SUPPORTING_WRITERS.has(row.asset_id))
 }
 
 export function assertManifestMatchesRegistry(
@@ -668,7 +672,7 @@ export async function acceptNirmanaBaselineCandidate(
               sort_order, scope, asset_kind, catalog_status, is_active, has_writer,
               target_table, count_sql, integrity_check_sql, health_probe,
               natural_key_partition, superseded_by, data_disposition, dead_flag,
-              ${runtimeEvidenceSql('asset_registry', false)}
+              ${runtimeEvidenceSql('asset_registry')}
          FROM asset_registry
         ORDER BY asset_id`,
     )
@@ -813,7 +817,7 @@ export async function freezeNirmanaElevationDefinition(input: FreezeNirmanaEleva
             sort_order, scope, asset_kind, catalog_status, is_active, has_writer,
             target_table, count_sql, integrity_check_sql, health_probe,
             natural_key_partition, superseded_by, data_disposition, dead_flag,
-              ${runtimeEvidenceSql('asset_registry', false)}
+              ${runtimeEvidenceSql('asset_registry')}
        FROM asset_registry
       ORDER BY asset_id`,
   )
@@ -967,7 +971,7 @@ export async function supersedeNirmanaElevationDefinition(
       `SELECT asset_id, layer, COALESCE(depends_on, '{}') AS depends_on, sanskrit_name, english_name, english_description,
               sort_order, scope, asset_kind, catalog_status, is_active, has_writer, target_table, count_sql,
               integrity_check_sql, health_probe, natural_key_partition, superseded_by, data_disposition, dead_flag,
-              ${runtimeEvidenceSql('asset_registry', false)}
+              ${runtimeEvidenceSql('asset_registry')}
          FROM asset_registry ORDER BY asset_id`,
     )
     const { buildNirmanaBaselineCandidate } = await import('./monitor')
@@ -1140,7 +1144,7 @@ export async function supersedeNirmanaElevationDefinitionMidCampaign(
       `SELECT asset_id, layer, COALESCE(depends_on, '{}') AS depends_on, sanskrit_name, english_name, english_description,
               sort_order, scope, asset_kind, catalog_status, is_active, has_writer, target_table, count_sql,
               integrity_check_sql, health_probe, natural_key_partition, superseded_by, data_disposition, dead_flag,
-              ${runtimeEvidenceSql('asset_registry', false)}
+              ${runtimeEvidenceSql('asset_registry')}
          FROM asset_registry ORDER BY asset_id`,
     )
     const { buildNirmanaBaselineCandidate } = await import('./monitor')
@@ -2787,7 +2791,7 @@ async function loadCurrentRegistryRows(client: PoolClient): Promise<NirmanaRegis
             sort_order, scope, asset_kind, catalog_status, is_active, has_writer,
             target_table, count_sql, integrity_check_sql, health_probe,
             natural_key_partition, superseded_by, data_disposition, dead_flag,
-              ${runtimeEvidenceSql('asset_registry', false)}
+              ${runtimeEvidenceSql('asset_registry')}
        FROM asset_registry
       ORDER BY asset_id`,
   )

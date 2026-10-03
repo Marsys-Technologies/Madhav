@@ -220,7 +220,9 @@ export function buildNirmanaBaselineCandidate(rows: NirmanaRegistryContractRow[]
   // denominator the D-NATIVE-13 flip and the stage-spine guards hard-assert.
   // PRAVĀHA #2996 (migration 1243): the two staged inert Gochara candidates are excluded by ONE explicit, shape-conditioned rule
   // (definitions.ts isNirmanaStagedInertCandidate) — never "all inactive assets": retired identities stay in the frozen population.
-  const orderedRows = orderedRegistryRows(excludeNirmanaStagedInertCandidates(rows.filter((row) => !NIRMANA_SUPPORTING_WRITERS.has(row.asset_id))))
+  // R20-2: the candidate rule sees the COMPLETE registry first (a supporting writer depending on a candidate keeps it in the denominator), then
+  // the supporting writers are removed.
+  const orderedRows = orderedRegistryRows(excludeNirmanaStagedInertCandidates(rows).filter((row) => !NIRMANA_SUPPORTING_WRITERS.has(row.asset_id)))
   const manifestWithoutWaves = NirmanaElevationManifestSchema.parse({
     chart_id: CANONICAL_NIRMANA_CHART_ID,
     assets: orderedRows.map((row) => {
@@ -456,7 +458,7 @@ async function loadMonitorInputs(client: MonitorReadClient): Promise<{
             target_table, count_sql, integrity_check_sql, health_probe,
             natural_key_partition, superseded_by, data_disposition, dead_flag,
             sanskrit_name, english_name, english_description,
-            ${runtimeEvidenceSql('asset_registry', true)}
+            ${runtimeEvidenceSql('asset_registry')}
        FROM asset_registry
       ORDER BY layer, sort_order, asset_id`,
   )

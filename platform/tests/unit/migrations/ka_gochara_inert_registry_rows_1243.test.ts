@@ -161,14 +161,33 @@ describe('migration 1243 — the two inert Gochara registry rows (static contrac
     }
   })
 
-  it('is one idempotent INSERT … ON CONFLICT (asset_id) DO NOTHING and nothing that could change anything else', () => {
+  it('is ONE idempotent INSERT … ON CONFLICT (asset_id) DO NOTHING plus the one evidence function and its ACL — nothing else that could change anything', () => {
     expect(CODE.match(/ON CONFLICT \(asset_id\) DO NOTHING/g)).toHaveLength(1)
     expect(CODE).not.toMatch(/\bDO UPDATE\b/i)
-    // The only statement is the DO block; strip string literals and look for any other verb.
-    const noStrings = CODE.replace(/'(?:[^']|'')*'/g, "''")
-    expect(noStrings).not.toMatch(/\b(UPDATE|DELETE|DROP|ALTER|GRANT|REVOKE|TRUNCATE|CREATE|COPY|SET\s+ROLE|COMMIT|ROLLBACK)\b/i)
+    // Strip string literals and the function's dollar-quoted body; what remains is the migration's own statements.
+    const noStrings = CODE.replace(/\$fn\$[\s\S]*?\$fn\$/g, '$fn$ $fn$').replace(/'(?:[^']|'')*'/g, "''")
+    expect(noStrings).not.toMatch(/\b(UPDATE|DELETE|DROP|ALTER|TRUNCATE|COPY|SET\s+ROLE|COMMIT|ROLLBACK)\b/i)
     expect(noStrings.match(/\bINSERT INTO\b/gi)).toHaveLength(1)
     expect(noStrings).toMatch(/INSERT INTO asset_registry/)
+    expect(noStrings.match(/\bCREATE\b/gi)).toHaveLength(1)                                   // exactly: CREATE OR REPLACE FUNCTION
+    expect(CODE).toMatch(/CREATE OR REPLACE FUNCTION public\.ka_gochara_staged_candidate_has_runtime_evidence\(p_asset_id text\)/)
+    // Every GRANT is EXECUTE on that one function, to exactly the two approved roles; one REVOKE ALL FROM PUBLIC; no table privilege anywhere.
+    const grants = noStrings.match(/\bGRANT\b[^;]*;/gi) ?? []
+    expect(grants.map((g) => g.replace(/\s+/g, ' '))).toEqual([
+      'GRANT EXECUTE ON FUNCTION public.ka_gochara_staged_candidate_has_runtime_evidence(text) TO amjis_app;',
+      'GRANT EXECUTE ON FUNCTION public.ka_gochara_staged_candidate_has_runtime_evidence(text) TO nirmana_campaign_control_writer;',
+    ])
+    expect((noStrings.match(/\bREVOKE\b[^;]*;/gi) ?? []).map((g) => g.replace(/\s+/g, ' '))).toEqual(['REVOKE ALL ON FUNCTION public.ka_gochara_staged_candidate_has_runtime_evidence(text) FROM PUBLIC;'])
+    expect(noStrings).not.toMatch(/\bON TABLE\b|\bGRANT\s+(SELECT|INSERT|ALL)\b|WITH GRANT OPTION/i)
+  })
+
+  it('the evidence function is SECURITY DEFINER, STABLE, search_path pinned, boolean, refuses any other id, and its three tables are schema-qualified', () => {
+    const fn = CODE.match(/\$fn\$([\s\S]*?)\$fn\$/)![1]
+    expect(CODE).toMatch(/RETURNS boolean\s+LANGUAGE plpgsql\s+STABLE\s+SECURITY DEFINER\s+SET search_path = pg_catalog, pg_temp/)
+    expect(fn).toMatch(/NOT IN \('ka_gochara_v4_41_candidate', 'ka_gochara_v5'\)/)
+    expect(fn).toMatch(/RAISE EXCEPTION/)
+    for (const table of ['asset_provenance_receipts', 'build_run_assets', 'asset_throughput']) expect(fn).toContain(`public.${table}`)
+    expect(fn).not.toMatch(/\b(FROM|JOIN)\s+(?!public\.)[a-z_]+/i)
   })
 
   it('carries the three post-checks (nothing else touched, both rows exist and inert, no dependents) and raises on failure', () => {
