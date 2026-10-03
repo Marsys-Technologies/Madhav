@@ -1,0 +1,17 @@
+{
+ "schema": "nikasha_registered_db_identities/1",
+ "_doc": "Registered cluster identities (E1.7(b), SS N-119): the non-secret identity stamped into every census head as `db_identity` (database name + domain-tagged sha256 of pg_control_system().system_identifier; never a host, user, password or URL). A census whose db_identity equals a registered entry's was read from that cluster. Registration evidence is TWO INDEPENDENT READS of one value by two sessions through their approved read-only reader helpers. Append-only by convention: a restored/cloned cluster has a different identity and needs its own entry.",
+ "entries": [
+  {
+   "role": "production",
+   "database": "amjis",
+   "system_id_sha256": "dc44e6454be49742e4317b414a460f2f760c8470e6c05a7586e2eea8d23c1731",
+   "hash_definition": "sha256('nikasha-db-identity/1:' + system_identifier) as lowercase hex",
+   "decision": "SS N-119 / E1.7(b)",
+   "evidence": [
+    "read 1: Exec Suvarna Engine, role suvarna_reader (read-only), census helper asset_census._db_identity() (PR #3088), 2026-10-03: database=amjis, hash=dc44e645...1731",
+    "read 2: Exec Suvarna (madhav-bb), role suvarna_reader via its approved reader helper S_L1/rq.sh, two separate SELECTs, raw identifier hashed in-process and never printed, 2026-10-03: database=amjis, hash=dc44e645...1731 (MATCH)"
+   ]
+  }
+ ]
+}
