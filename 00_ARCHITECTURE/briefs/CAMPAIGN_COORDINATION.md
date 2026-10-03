@@ -8525,9 +8525,18 @@ Resume condition for everything downstream: a successful protected deploy with 1
 ## 2026-10-04 — Portal Experience discovery and planning lease
 
 - Lease ID: L-PORTAL-EXPERIENCE-AUDIT-20261004; holder: Codex desktop.
-- Started: 2026-10-03T20:03:19.927893+00:00; expiry: 2026-10-04T00:03:19.927893+00:00; status: ACTIVE — READ-ONLY AUDIT AND LOCAL PLANNING.
+- Started: 2026-10-03T20:03:19.927893+00:00; expiry: 2026-10-04T00:03:19.927893+00:00; status: RELEASED at 2026-10-03T20:27:14.214738+00:00.
 - Worktree: `/Users/Dev/.codex/worktrees/portal-experience/Madhav`; branch `codex/portal-experience`.
 - Authority: native requested an autonomous portal audit and recommendations, then directed inspection of the signed-in live portal; priorities are advanced direct users, desktop first, Paripraśna/chat, personalised chart Panchang and consumption.
 - Scope: source/route/endpoint/reference inventory, read-only signed-in browser inspection, local task-owned findings, IA/design/cleanup plan and session receipts under `00_ARCHITECTURE/briefs/portal_experience/`. No application changes or application commits/pushes.
 - No production write, AI request, build/rebuild, migration, deployment, permission/credential change, deletion or foreign campaign mutation. This read-only lane claims no production window. Prior expired ACTIVE rows are not revived.
 - Provenance: actual tool is Codex desktop; no named CLI profile is attested. Use the root CLAUDE §G equivalent in-session bootstrap check with the native current audit instruction recorded; do not edit the validator or pretend a CLI profile was selected.
+
+
+### 2026-10-04 — Portal Experience discovery close
+
+- Lease ID: L-PORTAL-EXPERIENCE-AUDIT-20261004; holder: Codex desktop; read-only audit/local-draft lease released.
+- Outcome: local draft review packet in `/Users/Dev/.codex/worktrees/portal-experience/Madhav/00_ARCHITECTURE/briefs/portal_experience/REPORT.md`, branch `codex/portal-experience`, source `e9e96d759cc430d68f33d18f34b5d9b085c6886b`. Complete source inventory: 50 page routes (18 redirects) and 201 handlers (8 explicit 410 tombstones); 18 existing route entries checked live, plus 2 live 404 destinations.
+- Proposed structure: Jātakas, direct Consumption, owner Operations; chart workspace contains Paripraśna, personal Panchang, readings, review/life events and permitted computation/details. User-directed global Panchang relocation recorded. Preferred live Paripraśna design reference captured.
+- Application implementation is NOT_STARTED. No application commit/push, provider test/generation, build/rebuild, migration/deploy, permission/credential change or destructive action was initiated. Deployment SHA, guest/grantee runtime and successful AI serving remain unverified. The local package remains for native review; no shared canonical campaign is marked complete.
+- Exact page/handler inventory coverage, document links, map JavaScript syntax and task-only scope passed. Local HTML browser preview was blocked by URL policy and was not bypassed.
