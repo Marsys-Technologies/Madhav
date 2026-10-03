@@ -5,7 +5,7 @@
 -- no object is created, altered or dropped, no data is touched, no registry row, function, sequence or role membership.
 --
 -- HELD. Own draft PR (suvarna/land/TI-mig-1261-001). Number 1261 allocated by SS. Merge only AFTER S-L1 and only on
--- SS's review (see ORDERING below: SS may want it after S-L3). MERGE = APPLY at the next deploy (migrate.ts runs on
+-- SS's review; APPLY after the S-L3 ka_kshetra build and before S-L4 (see SIDE EFFECTS AND TIMING). MERGE = APPLY at the next deploy (migrate.ts runs on
 -- every deploy, before that deploy's images roll). Precondition of S-L4 (a ph_rectification build).
 --
 -- WHY. `data_plane_builder` (migration 1070; the dedicated identity of the build pipeline job) holds NO privilege on the
@@ -43,29 +43,31 @@
 -- anyone else is, in PostgreSQL, a WARNING and a silent no-op, never an error): guard below, and the post-check proves
 -- the privilege actually took.
 --
--- SIDE EFFECTS TO DECIDE (read before merging). `data_plane_builder` is ONE role shared by every asset the pipeline job
+-- SIDE EFFECTS AND TIMING (SS ruling N-105: timing ACCEPTED). `data_plane_builder` is ONE role shared by every asset the pipeline job
 -- builds, so a grant to it is a grant to every writer that runs as it, not only ph_rectification:
---   (1) ka_kshetra (L3) reads phala_rectification live (services/ka_kshetra/uncertainty.py:185-191 fetch_sigma_t_days,
---       to derive sigma_T). Today that read is denied for the builder; after this migration it succeeds. Migration 1073
---       DELIBERATELY withheld this exact grant ("Strategy 6.2 forbids admitting an event-derived L4 rectification
---       posterior as a live L3 input") and carries an assertion that raised if the builder held it (an applied file,
---       never re-run, and not edited here). Q-L4-04 asks SS whether ka_kshetra may keep that reader. Today the stored
---       posterior has lel_fit_score 0 on every row, so compute_sigma_t_days falls back to the 120 s default either way
---       (fewer than 2 usable candidates), i.e. no numeric change TODAY; but the L3 -> L4 read becomes possible. ORDERING
---       CHOICE FOR SS: apply this migration AFTER the S-L3 ka_kshetra build and BEFORE the S-L4 ph_rectification build,
---       or settle Q-L4-04 first.
---   (2) Same role, same table, DELETE/INSERT: only ph_rectification writes these tables; no other writer names them.
+--   (1) ka_kshetra (L3) reads phala_rectification live (services/ka_kshetra/uncertainty.py:185-191 fetch_sigma_t_days, to derive
+--       sigma_T). Today that read is denied for the builder; after this migration it succeeds. TIMING (accepted): APPLY THIS
+--       MIGRATION AFTER THE S-L3 ka_kshetra BUILD AND BEFORE S-L4 (the ph_rectification build). The upward L3 -> L4 read stays a
+--       DECLARED J1 VIOLATION (Q-L4-04's open "may ka_kshetra keep that reader"); this migration does not decide it. Today the stored
+--       posterior has lel_fit_score 0 on every row, so compute_sigma_t_days falls back to the 120 s default either way (fewer than
+--       2 usable candidates): no numeric change today.
+--   (2) MIGRATION 1073's ASSERTION. Migration 1073 deliberately withheld this exact grant ("Strategy 6.2 forbids admitting an
+--       event-derived L4 rectification posterior as a live L3 input") and ends with a DO block that RAISES if data_plane_builder
+--       holds SELECT on phala_rectification. 1073 is an applied file (recorded by filename, never re-run in production, and NEVER
+--       EDITED here), so it does not fire at deploy. But if 1073 is RE-RUN after 1261 in a rehearsal or replay against a database
+--       that already carries 1261, that assertion WILL RAISE: expect it, and do not "fix" it by editing 1073; skip or re-order it
+--       in the rehearsal harness. In a from-scratch replay in numeric order 1073 runs before 1261 and is unaffected.
+--   (3) Same role, same tables, DELETE/INSERT: only ph_rectification writes these tables; no other writer names them.
 --
--- NOT SUFFICIENT BY ITSELF (found while reading the writer; NOT fixed here, SS ruled exactly these two tables): the
--- ph_rectification writer also SELECTs from public.life_events (_load_chart_training_events, __init__.py:143-147) and
--- data_plane_builder has NO SELECT on life_events (has_table_privilege false, 2026-10-03; ACL: amjis_app arwdDxt,
--- retrieval_census_ro r, role_web_serve r, role_orchestrator arwd, role_jobs r, nirmana_evidence_ingress_writer r,
--- suvarna_reader r; no role_sidecar entry). That read is wrapped in try/except returning [] (structural-only
--- rectification), but the denied statement aborts the surrounding transaction, so the NEXT statement (the chart_facts
--- read, __init__.py:186) fails with InFailedSqlTransaction and ph_rectification ends in error (the failure mode
--- described in 1255). ph_pramana also reads life_events. life_events is chart-scoped private event data, so granting
--- the builder SELECT on it is a decision for SS, not a side effect of this migration. The other reads of
--- ph_rectification (brahma_formula_constants, chart_dashas, chart_facts, charts) are already granted.
+-- NOT SUFFICIENT BY ITSELF (found while reading the writer; NOT fixed here): the ph_rectification writer also SELECTs from
+-- public.life_events (_load_chart_training_events, __init__.py:143-147) and data_plane_builder has NO SELECT on life_events
+-- (has_table_privilege false, 2026-10-03). That read is wrapped in try/except returning [] (structural-only rectification), but the
+-- denied statement aborts the surrounding transaction, so the NEXT statement (the chart_facts read, __init__.py:186) fails with
+-- InFailedSqlTransaction and ph_rectification ends in error (the failure mode described in 1255). ph_pramana also reads life_events.
+-- SS RULING (N-105): NO DIRECT TABLE GRANT on life_events to the builder, here or anywhere. life_events (chart-scoped private event
+-- data) is handled by migration 1274 plus reader fixes, which are SEPARATE work by another worker. This migration therefore
+-- unblocks only the two phala_rectification* tables; S-L4 needs 1274 as well. The other reads of ph_rectification
+-- (brahma_formula_constants, chart_dashas, chart_facts, charts) are already granted.
 --
 -- SERVING EFFECT AT APPLY: none. Evidence: a GRANT changes only pg_class.relacl; no asset_registry column is touched, so the
 -- live trigger nirmana_registry_receipt_invalidation does not fire and no asset_freshness row changes (no ph_* freshness
@@ -92,7 +94,7 @@
 -- LOCK TIMEOUT (pattern: migration 1218/1255). SET LOCAL lock_timeout = '5s': a GRANT waits on any other uncommitted ACL change
 -- to the same table (proved in the live test), and a blocked migrate job must fail fast, not hang a shared deploy.
 --
--- NOT DONE HERE: SELECT on life_events (see above); any UPDATE/TRUNCATE; any plan/registry change (adding ph_rectification to
+-- NOT DONE HERE: SELECT on life_events (forbidden by SS N-105; migration 1274, another worker); any UPDATE/TRUNCATE; any plan/registry change (adding ph_rectification to
 -- the rebuild plan, the ga_dashas edge, the ka_kshetra reader declaration are TI-L4-44's other parts); any REVOKE; the
 -- ph_rectification writer's two lel_fit defects (A.L4 finding 5); any rebuild.
 --

@@ -52,7 +52,7 @@ describe('migration 1261 — static contract', () => {
 
   it('states the header facts: writer verbs, no sequences, grantor, the ka_kshetra / 1073 side effect, the life_events gap', () => {
     for (const n of ['HELD', 'AFTER S-L1', "on SS's review", 'WHAT THE WRITER ACTUALLY NEEDS', 'SEQUENCES: none', 'WHO ISSUES THE GRANT',
-      'data_plane_builder=ard/amjis_app', 'SIDE EFFECTS TO DECIDE', 'Migration 1073', 'ka_kshetra', 'NOT SUFFICIENT BY ITSELF',
+      'data_plane_builder=ard/amjis_app', 'Migration 1073', 'SIDE EFFECTS AND TIMING', 'AFTER THE S-L3 ka_kshetra BUILD AND BEFORE S-L4', 'DECLARED J1 VIOLATION', 'WILL RAISE', 'NO DIRECT TABLE GRANT on life_events', 'migration 1274', 'ka_kshetra', 'NOT SUFFICIENT BY ITSELF',
       'life_events', 'SERVING EFFECT AT APPLY: none', 'never REVOKE', 'VERIFICATION AFTER APPLY', 'Q-L4-04']) expect(FLAT).toContain(n)
   })
 

@@ -90,8 +90,10 @@ def test_static_guards_and_postchecks_present():
 
 def test_static_header_states_the_facts():
     for needle in ("HELD", "AFTER S-L1", "on SS's review", "WHAT THE WRITER ACTUALLY NEEDS", "RETURNING id", "SEQUENCES: none",
-                   "gen_random_uuid()", "WHO ISSUES THE GRANT", "amjis_app", "data_plane_builder=ard/amjis_app", "SIDE EFFECTS TO DECIDE",
+                   "gen_random_uuid()", "WHO ISSUES THE GRANT", "amjis_app", "data_plane_builder=ard/amjis_app", "SIDE EFFECTS AND TIMING",
                    "Migration 1073", "Strategy 6.2", "ka_kshetra", "uncertainty.py:185-191", "NOT SUFFICIENT BY ITSELF", "life_events",
+                   "SIDE EFFECTS AND TIMING", "AFTER THE S-L3 ka_kshetra BUILD AND BEFORE S-L4", "DECLARED J1 VIOLATION", "MIGRATION 1073's ASSERTION",
+                   "RE-RUN after 1261", "WILL RAISE", "NEVER EDITED here", "NO DIRECT TABLE GRANT on life_events", "migration 1274",
                    "InFailedSqlTransaction", "SERVING EFFECT AT APPLY: none", "nirmana_registry_receipt_invalidation", "POST-CHECK",
                    "NOINHERIT", "MAINTAIN", "LOCK TIMEOUT", "NOT DONE HERE", "never REVOKE", "VERIFICATION AFTER APPLY",
                    "Q-L4-04", "TI-L4-44", "retrieval_census_ro", "nirmana_evidence_ingress_writer", "UPDATE on phala_phaladesa"):
