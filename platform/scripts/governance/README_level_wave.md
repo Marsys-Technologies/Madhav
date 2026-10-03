@@ -56,6 +56,44 @@ Output is JSON lines, flushed per event: `run_committed` (with the run_id, the m
 line that also lists every run committed so far. A database error or any exception ends in that JSON line, never a
 traceback, so the operator can always find a running run by its run_id.
 
+## DEPS_SQL parity with the frozen runner
+
+`DEPS_SQL` is a copy of the statement in `asset_runner.deps_unsatisfied`. `extract_runner_deps_sql(text)` pulls that
+statement out of the runner source by `ast` (nothing is imported) and `deps_sql_matches_runner(text)` compares it with
+`DEPS_SQL` modulo whitespace (not case, not token spacing). `runner_text_at_ref(repo, ref)` reads the COMMITTED runner
+(`git show`, local objects only). `__tests__/test_e5_3_deps_sql_parity.py` pins it at `HEAD`; an unextractable runner
+(unparseable, function missing or duplicated, zero or several candidate statements, f-string or `+`-built statement)
+raises `RunnerSqlExtractionError` and fails the test -- it never skips. If the runner's query is changed (a deliberate
+runner change), update `DEPS_SQL` in the same commit.
+
+## --with-footprint: scope is "complete" or "partial"
+
+The E5.9 footprint is computed over the registry `target_table` of the assets in the set, and the registry holds one
+table per asset. The report therefore carries `footprint_scope` (and `partial_reasons`, `fk_closure_status`):
+
+* `partial` when ANY of: no assets in the set; `assets_without_target_table` (null/empty target_table);
+  `assets_whose_writer_writes_other_tables` (a static scan of `pipeline/orchestrator/writers/<asset_id>.py` -- plus any
+  `source_paths` files it lists -- found INSERT/DELETE/UPDATE/TRUNCATE/COPY targets beyond the registry table and beyond
+  the wave's write set; labelled *indicative*); `assets_not_scanned`; or the FK closure over the write set is not
+  COMPLETE (no FK edges in the catalog, or a write table the catalog does not know). Then `has_blockers` (report level
+  and inside `footprint`) is `"unknown"`, never false; the value computed over the known part is kept as
+  `has_blockers_known_subset`. The footprint `schema` is `.../3` because `has_blockers` is `bool | "unknown"`.
+* `complete` only when none of those holds; `has_blockers` is then the computed boolean. The impact statement labels it
+  `COMPLETE_PER_STATIC_SCAN`: a statement about the scan, not about production.
+
+Reasons a writer lands in `assets_not_scanned` (never guessed): writer file missing/unparseable/too deeply nested; a
+table named by a runtime value; a name that is bound anywhere in the module other than as one single string literal
+(loop/with/except/match targets, comprehension targets, augmented or walrus assignment, parameters, import aliases,
+global/nonlocal, def/class names, unpacking, attribute assignment, a second different value); no write statement visible
+at all (how a delegating adapter looks); a `source_paths` entry that is not a literal `.py` file or leaves the repo; and
+write forms the scan does not analyse: MERGE INTO, REFRESH MATERIALIZED VIEW, CREATE TABLE, SELECT ... INTO, ALTER TABLE,
+DROP TABLE, psycopg `sql.SQL`/`sql.Identifier` composition, SQL read from a file feeding `execute`, a `*.sql` file
+reference.
+
+The scan reads source text only (`ast.parse`, nothing imported or executed). It cannot see stored functions that write,
+triggers, rules, or a delegate in another module when the writer also writes tables itself (documented, not detected), and
+it can over-report a table named in an unexecuted string.
+
 ## Exit codes
 
 | code | meaning |

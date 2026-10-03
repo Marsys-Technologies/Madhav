@@ -42,4 +42,19 @@ describe('CLI model catalog parser', () => {
     expect(() => parseCliModelCatalog('kimi_provider_json', JSON.stringify({ providers: {}, models: {} })))
       .toThrow()
   })
+
+  it('retains advertised effort metadata and rejects unsafe or inconsistent protocol output', () => {
+    const model = { modelId: 'gpt-current', displayName: 'Current GPT', supportedEfforts: ['low', 'ultra'],
+      defaultEffort: 'low', isCatalogDiscovered: true, isDefault: true }
+    expect(parseCliModelCatalog('codex_app_server', JSON.stringify([model]))).toEqual([model])
+    expect(() => parseCliModelCatalog('codex_app_server', JSON.stringify([
+      { ...model, defaultEffort: 'medium' },
+    ]))).toThrow()
+    expect(() => parseCliModelCatalog('claude_control', JSON.stringify([
+      { ...model, supportedEfforts: ['low', '--danger'] },
+    ]))).toThrow()
+    expect(() => parseCliModelCatalog('codex_app_server', JSON.stringify([
+      { ...model, providerCredentials: 'secret' },
+    ]))).toThrow()
+  })
 })

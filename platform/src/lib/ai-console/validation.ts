@@ -90,8 +90,9 @@ export async function validateConnection(userId: string, connectionId: string,
   await storeConnectionValidation(userId, connectionId, { credentialVersion: connection.credentialVersion,
     state: result.state, ...(result.error ? { errorCode: result.error.code } : {}),
     ...(result.state === 'validated' || models?.length === 0 ? {
-      models: models!.map(({ modelId, displayName, compatibleRoles, supportsTools, supportsStructuredOutput }) =>
-        ({ modelId, displayName, compatibleRoles, supportsTools, supportsStructuredOutput })),
+      models: models!.map(({ modelId, displayName, compatibleRoles, supportsTools, supportsStructuredOutput, supportedEfforts }) =>
+        ({ modelId, displayName, compatibleRoles, supportsTools, supportsStructuredOutput,
+          ...(supportedEfforts === undefined ? {} : { supportedEfforts }) })),
     } : {}) })
   return result
 }

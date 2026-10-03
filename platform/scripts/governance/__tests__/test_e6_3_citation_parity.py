@@ -27,7 +27,8 @@ GOV = pathlib.Path(__file__).resolve().parents[1]
 
 
 def _e51_dir():
-    for cand in (os.environ.get("E6_3_E51_CITATION_DIR"), "/Users/Dev/suvarna-engine-lane-e5-1b/platform/scripts/governance", str(GOV)):
+    # the checkout's OWN E5.1 first: a machine-local sibling worktree (an older E5.1) once masked a CI failure here (S3, 2026-10-03)
+    for cand in (os.environ.get("E6_3_E51_CITATION_DIR"), str(GOV)):
         if cand and (pathlib.Path(cand) / "nikasha_certify.py").exists() and \
                 "CITATION_STRICT" in (pathlib.Path(cand) / "nikasha_certify.py").read_text(encoding="utf-8"):
             return pathlib.Path(cand)

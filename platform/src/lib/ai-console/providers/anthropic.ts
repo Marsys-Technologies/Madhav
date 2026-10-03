@@ -3,6 +3,31 @@ import { createAnthropic } from '@ai-sdk/anthropic'
 import { filterCatalog, safeModelId } from './catalog-policy'
 import { fail, MAX_CATALOG_PAGES, object, PROBE_OUTPUT_TOKENS, PROBE_PROMPT, PROVIDER_BASE_URLS, providerJson, runtimeBinding, tokenCount, type ProviderValidationAdapter } from './types'
 
+// The authenticated Models API advertises these exact capability fields:
+// https://platform.claude.com/docs/en/api/models/list
+// Read only known boolean support flags; never infer an unseen model's effort
+// levels from its family name or arbitrary keys returned by the provider.
+const EFFORT_LEVELS = ['low', 'medium', 'high', 'xhigh', 'max'] as const
+function advertisedEfforts(row: unknown): string[] | undefined {
+  const effort = object(object(row).capabilities).effort
+  if (!effort || typeof effort !== 'object' || Array.isArray(effort)) return undefined
+  const support = object(effort)
+  if (support.supported === false) return []
+  return EFFORT_LEVELS.filter(level => object(support[level]).supported === true)
+}
+
+function anthropicCatalog(rows: unknown[], apiKey: string) {
+  const efforts = new Map<string, string[] | undefined>()
+  for (const row of rows) {
+    const id = object(row).id
+    if (safeModelId(id)) efforts.set(id, advertisedEfforts(row))
+  }
+  return filterCatalog('anthropic', rows, apiKey).map(model => {
+    const supportedEfforts = efforts.get(model.modelId)
+    return supportedEfforts === undefined ? model : { ...model, supportedEfforts, defaultEffort: null }
+  })
+}
+
 export const anthropicAdapter: ProviderValidationAdapter = Object.freeze({
   providerId: 'anthropic',
   async discover(apiKey, signal, preflight, workspaceId) {
@@ -12,7 +37,7 @@ export const anthropicAdapter: ProviderValidationAdapter = Object.freeze({
       const data = await providerJson('anthropic', apiKey, `/models?limit=1000${cursor ? `&after_id=${encodeURIComponent(cursor)}` : ''}`, signal, undefined, preflight, workspaceId)
       if (!Array.isArray(data.data)) throw fail()
       rows.push(...data.data)
-      if (data.has_more !== true) return filterCatalog('anthropic', rows, apiKey)
+      if (data.has_more !== true) return anthropicCatalog(rows, apiKey)
       if (!safeModelId(data.last_id) || data.last_id === cursor) throw fail()
       cursor = data.last_id
     }

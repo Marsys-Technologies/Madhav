@@ -32,8 +32,10 @@ export function providerEffortLevels(providerId: ProviderId, modelId: string): r
   return NONE
 }
 
-export function cliEffortLevels(cliId: CliId, modelId: string | null): readonly AiEffort[] {
+export function cliEffortLevels(cliId: CliId, modelId: string | null,
+  advertised?: readonly AiEffort[]): readonly AiEffort[] {
   if (!modelId) return NONE // the built-in default has no known model-specific capability
+  if (advertised !== undefined) return advertised
   if (cliId === 'codex') return openAiReasoningModel(modelId) ? LEVELS : NONE
   if (cliId === 'claude_code') return claudeEffortModel(modelId) ? LEVELS : NONE
   // Antigravity model variants encode thinking level in the selected model ID;
