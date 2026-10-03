@@ -27,6 +27,7 @@ def test_writer_checks_all_three_projection_counts_after_replacement() -> None:
         def execute(self, sql, params=None):
             self.sql = " ".join(sql.split())
             self.owner.sql.append(self.sql)
+        def fetchall(self): return []   # attribution_state capture (SS N-111): no row carries a state in this fake
         def fetchone(self):
             if "information_schema.tables" in self.sql:
                 return {"count": 1}
