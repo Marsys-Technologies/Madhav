@@ -527,7 +527,7 @@ def test_the_pin_the_revision_the_criterion_and_the_declarations_file():
     assert ac.REGISTRY_REVISION >= 23 and 23 in p1.PINNED_FINGERPRINTS
     assert p1.PINNED_FINGERPRINTS[23] and len(p1.PINNED_FINGERPRINTS[23]) == 64
     e = ac.CRITERION_REGISTRY["Dens.served"]
-    assert e["revision"] == 6
+    assert e["revision"] == 7        # 6 at pin 23; 7 at pin 27 (TI-L0-04, uniform_authority) re-worded and bumped it
     for phrase in ("CLOSED list", "exactly `tier` or `verification_pass_status`", "density_tier_columns", "deny-listed", "cost, price, pricing, plan, access, subscription, billing, fee, tariff",
                    "severity_tier, cost_tier, access_tier"):
         assert phrase.replace("CLOSED list", "closed list") in e["applicability"] or phrase in e["applicability"], phrase
@@ -540,7 +540,7 @@ def test_the_pin_the_revision_the_criterion_and_the_declarations_file():
 
 
 def test_only_dens_served_changed_in_the_criterion_registry_at_23():
-    assert {k for k, v in ac.CRITERION_REGISTRY.items() if v["revision"] == 6} == {"Dens.served"}
+    assert {k for k, v in ac.CRITERION_REGISTRY.items() if v["revision"] == 7} == {"Dens.served"}      # 6 at pin 23; 7 at pin 27 (TI-L0-04)
     assert set(ac.NA_CAUSES["Dens.served"]) == {"no-served-surface"} and list(r for r in ac.NA_RULE_DECISIONS if r.startswith("Dens.served")) == ["Dens.served#measured:no-served-surface"]
 
 
