@@ -251,6 +251,9 @@ SELECT
   MIN(event_date) AS earliest,
   MAX(event_date) AS latest
 FROM life_events
+-- chart-scoped (SS N-110 / F11): life_events is people-entered, private, per-chart data;
+-- this probe reads the native chart only. Substitute another chart id to probe that chart.
+WHERE chart_id = '482012f1-710e-4a25-994a-93821f5871aa'
 GROUP BY category
 ORDER BY events DESC;
 

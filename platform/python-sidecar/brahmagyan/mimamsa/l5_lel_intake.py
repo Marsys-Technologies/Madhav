@@ -334,8 +334,10 @@ def lel_query(
         training_only: Return only training-partition events (< 2020-01-01).
         holdout_only:  Return only hold-out events (>= 2020-01-01).
         limit:         Max rows to return.
-        chart_id:      Chart UUID — real per-chart filter since migration 423
-                       (LEL is chart-scoped). Forwarded to the base query.
+        chart_id:      REQUIRED chart UUID (ValueError if omitted / empty /
+                       non-UUID — enforced by the base query before any DB
+                       access). life_events is chart-scoped and private; there
+                       is no unscoped mode. Forwarded to the base query.
 
     Returns:
         {events:[...], total_count, split, filter_applied, provenance_envelope}
