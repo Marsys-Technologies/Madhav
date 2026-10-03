@@ -1,6 +1,6 @@
 ---
 artifact: CURRENT_STATE_v1_0.md
-version: 6.91
+version: 6.92
 status: LIVE
 produced_during: STEP_10_SESSION_LOG_SCHEMA (Step 0 → Step 15 governance rebuild)
 produced_on: 2026-04-24
@@ -56,6 +56,9 @@ consumers:
     `session_close.session_id`
   - Every session-close checklist from Step 10 onward
 changelog:
+  - v6.92 (2026-10-02, AI-CONSOLE-CATALOG-REFRESH-20261002): records source-only
+    catalogue refresh implementation and verification; protected integration,
+    production migration/bridge release and live verification remain pending.
   - v6.91 (2026-09-27, L3-GOCHARA-WP0-7-ADK0018-20260927; renumbered from v6.89 at the 2026-09-29 origin/main merge — main independently used v6.87–v6.88 for the AI-CLI-VM-BRIDGE and NIRMANA-SUPERSESSION entries; earlier renumbered from v6.82 at the prior origin/main merge): §2 top banner replaced for the
     ADK-0018 final-runway session — (a) ADK-0017 carried block 4 CLOSED on-branch:
     step06a_class_context.py wires the step06b --class-context-json from the real L1
@@ -6146,6 +6149,15 @@ block (post-rebuild era), and proceeds.
 
 ## §2 — Canonical state block
 
+> **AI CONSOLE CATALOGUE REFRESH — SOURCE VERIFIED, RELEASE PENDING (2026-10-02).**
+> Isolated branch `codex/ai-console-catalog-refresh` adds metadata-only API/CLI
+> refresh icons, stale-on-entry refresh, installed-version discovery, model-specific
+> efforts and safe cached-choice preservation. Migration 1301 is disposable-DB tested,
+> not production-applied. No paid API inference or production mutation in this work.
+> Source evidence and remaining release requirements:
+> `briefs/ai_console_catalog_refresh/VERIFICATION_NOTE.md`.
+> Other campaigns and their production state are unchanged.
+
 > ⛔ **NIRMĀṆA ELEVATION CAMPAIGN — SUPERSEDED (2026-09-28, native decision).** Off; will not
 > resume. Do not run its conductor or layer supervisors (`NIRMANA_HOLD` is set). Successor: the
 > **Nikaṣa engine** (`/Users/Dev/madhav-nikasha`, `campaign/nikasha-test`, PR #2736; state in
@@ -9717,10 +9729,10 @@ current_state:
   # updated but this dedicated pointer field was missed, which schema_validator.py's
   # current_state_last_session_id_disagreement check caught at this session's open. Fixed
   # here rather than carried forward as a second miss.)
-  last_session_id: MADHAV-AI-CLI-VM-BRIDGE-20260929
-  predecessor_session: JATAKA-CONTROLLED-PROD-ROLLOUT-20260927
+  last_session_id: AI-CONSOLE-CATALOG-REFRESH-20261002
+  predecessor_session: MADHAV-AI-CLI-VM-BRIDGE-20260929
   last_product_strategy_session: MADHAV-DATA-PLANE-V2-20260913
-  last_session_drift_verdict: "AI Console VM CLI bridge production repair: the four CLIs were healthy on the companion VM, but the Cloud Run web service had no transport to them and correctly kept local child-process execution disabled. Added a private, token-authenticated, fixed-operation bridge on the VM and Direct VPC routing from Cloud Run while retaining the existing grant, limit, timeout, no-silent-fallback and validation-seal controls. Full CI passed (14,359 Vitest tests passed, 750 skipped, 2 todo; TypeScript 0 errors; ESLint 0 errors with 583 pre-existing warnings). PR #2753 merged and exact-SHA deployment run 36505937019 promoted the matching revision to 100% traffic. Direct VM smoke tests and authenticated production AI Console validation both prove Codex, Claude Code, Gemini/Antigravity and Kimi Code are reachable. Public bridge access is blocked; unauthenticated private access returns 401."
+  last_session_drift_verdict: "AI Console catalogue refresh source verified: 15,095 tests passed, 975 skipped, 2 todo; TypeScript 0 errors; ESLint 0 errors with 595 warnings; disposable database 35 passed, 2 skipped. Independent migration and integrated reviews repaired reported blockers. Two LOW live chart-schema drift checks remain unqualified because the unrelated local database did not provide authentication. Protected integration, paired private-VM bridge rollout, migration 1301 application and live verification remain pending. No paid API inference or production mutation in this source work."
   product_definition: 00_ARCHITECTURE/MADHAV_PRODUCT_DEFINITION_v3_0.md
   data_plane_proposal: 00_ARCHITECTURE/briefs/nirmana/MADHAV_DATA_PLANE_VALUE_ARCHITECTURE_v2_0.md
   planner_knowledge_candidate: 00_ARCHITECTURE/briefs/nirmana/MADHAV_PLANNER_CAPABILITY_KNOWLEDGE_AND_INQUIRY_IMPLEMENTATION_v1_0.md

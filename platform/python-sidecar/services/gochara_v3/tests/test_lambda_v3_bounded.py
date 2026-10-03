@@ -191,6 +191,7 @@ class TestLambdaBoundedInvariant:
                 f"[{i}] raw_lambda={r.raw_lambda!r} > 1.0 with PROMISE=1.0"
             )
 
+    @pytest.mark.slow_real_ephemeris  # C23: real-engine JD sweep; CI slow step
     def test_lambda_in_0_1_random_sweep_1000(self):
         """Manual random sweep: 1000 randomly chosen JDs all produce lambda in [0,1].
 

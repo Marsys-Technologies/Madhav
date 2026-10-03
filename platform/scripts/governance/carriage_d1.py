@@ -42,6 +42,7 @@ import unicodedata
 import re
 
 CITATION_STATES = ("sourced", "sourced_ocr_unverified", "unsourced", "refuted")
+CITATION_CAPPED_STATES = ("unsourced", "refuted")    # a PASS/PARTIAL resting on one is capped at NO_DETECTOR (shared by name with asset_census.CITATION_CAPPED_STATES; a test pins agreement)
 _IDENT = re.compile(r"[A-Za-z_][A-Za-z0-9_]*")
 _CHUNK_ID = re.compile(r"[a-z0-9][a-z0-9_]*")
 _STEM = re.compile(r"[A-Za-z]{2,24}")
@@ -667,7 +668,7 @@ def d1_measure(spec: dict, citation_state, chunks_by_id: dict, rows, table) -> d
             unmatched.append(dict(row=label, failed=failed))
     count_ok = len(rows) == spec["expected_rows"]
     ev.update(rows_total=len(rows), rows_matched=len(rows) - len(unmatched), unmatched=unmatched, rows=results, row_count_ok=count_ok)
-    if citation_state not in CITATION_STATES or citation_state in ("unsourced", "refuted"):
+    if citation_state not in CITATION_STATES or citation_state in CITATION_CAPPED_STATES:
         return out(NO_DET, f"NO_DETECTOR: {len(rows) - len(unmatched)} of {len(rows)} row(s) matched the declared passage, but the "
                            f"citation_state is {citation_state!r}: anchor matching cannot tell a contradicted source from one not "
                            f"found, so the match is not evidence. {claims}", **ev)

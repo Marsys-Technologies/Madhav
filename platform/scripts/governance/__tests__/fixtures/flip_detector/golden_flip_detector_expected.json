@@ -1,0 +1,558 @@
+{
+ "all_23_hooks_unchanged_native_chart": {
+  "absent": [],
+  "by_table_category_change_lane": [],
+  "changes_total": 0,
+  "exit_allow_not_checked": 2,
+  "exit_default": 2,
+  "failure_counts": {
+   "DASHA_SHIFT_UNDECLARED": 0,
+   "DECLARED_BUT_ABSENT": 0,
+   "EMPTY_READ": 0,
+   "EXPECTATION_MISMATCH": 27,
+   "HOOK_ERROR": 0,
+   "KIND_MISMATCH": 0,
+   "UNDECLARED_CHANGE": 0
+  },
+  "not_checked": [
+   [
+    "chart_dashas.tier",
+    [
+     "tiers"
+    ]
+   ],
+   [
+    "l1_tajik_varsha_year_lords.tier",
+    [
+     "tiers"
+    ]
+   ],
+   [
+    "chart_vichara",
+    []
+   ],
+   [
+    "ga_yoga_firings.strength",
+    []
+   ],
+   [
+    "bodha_msr_signals",
+    []
+   ],
+   [
+    "bodha_rm_resonances",
+    []
+   ],
+   [
+    "ga_condition_composite",
+    []
+   ],
+   [
+    "ga_medical",
+    []
+   ],
+   [
+    "ga_vastu_*",
+    []
+   ],
+   [
+    "ga_prashna_*",
+    []
+   ],
+   [
+    "prashna_charts",
+    []
+   ],
+   [
+    "tiers[1]",
+    [
+     "tiers"
+    ]
+   ],
+   [
+    "tiers[2]",
+    [
+     "tiers"
+    ]
+   ]
+  ],
+  "verdict": "FAIL",
+  "warnings": []
+ },
+ "four_lanes_counts_stripped": {
+  "absent": [],
+  "by_table_category_change_lane": [
+   [
+    [
+     "chart_facts",
+     "kp_cuspal_significators",
+     "tier",
+     "tiers"
+    ],
+    300
+   ],
+   [
+    [
+     "chart_facts",
+     "special_lagna",
+     "tier",
+     "tiers"
+    ],
+    245
+   ],
+   [
+    [
+     "chart_facts",
+     "graha_gandanta",
+     "occurrence_count",
+     "gandanta"
+    ],
+    50
+   ],
+   [
+    [
+     "chart_facts",
+     "argala_natal_matrix",
+     "value",
+     "argala"
+    ],
+    5
+   ],
+   [
+    [
+     "chart_facts",
+     "graha_shadbala_cheshta",
+     "tier",
+     "tiers"
+    ],
+    5
+   ],
+   [
+    [
+     "chart_facts",
+     "graha_shadbala_total",
+     "tier",
+     "tiers"
+    ],
+    5
+   ],
+   [
+    [
+     "chart_facts",
+     "graha_shadbala_total",
+     "value",
+     "sun_required_rupa"
+    ],
+    1
+   ]
+  ],
+  "changes_total": 611,
+  "exit_allow_not_checked": 0,
+  "exit_default": 4,
+  "failure_counts": {
+   "DASHA_SHIFT_UNDECLARED": 0,
+   "DECLARED_BUT_ABSENT": 0,
+   "EMPTY_READ": 0,
+   "EXPECTATION_MISMATCH": 0,
+   "HOOK_ERROR": 0,
+   "KIND_MISMATCH": 0,
+   "UNDECLARED_CHANGE": 0
+  },
+  "not_checked": [
+   [
+    "chart_dashas.tier",
+    [
+     "tiers"
+    ]
+   ],
+   [
+    "l1_tajik_varsha_year_lords.tier",
+    [
+     "tiers"
+    ]
+   ],
+   [
+    "chart_vichara",
+    []
+   ],
+   [
+    "ga_yoga_firings.strength",
+    []
+   ],
+   [
+    "bodha_msr_signals",
+    []
+   ],
+   [
+    "bodha_rm_resonances",
+    []
+   ],
+   [
+    "ga_condition_composite",
+    []
+   ],
+   [
+    "ga_medical",
+    []
+   ],
+   [
+    "ga_vastu_*",
+    []
+   ],
+   [
+    "ga_prashna_*",
+    []
+   ],
+   [
+    "prashna_charts",
+    []
+   ],
+   [
+    "tiers[1]",
+    [
+     "tiers"
+    ]
+   ],
+   [
+    "tiers[2]",
+    [
+     "tiers"
+    ]
+   ]
+  ],
+  "verdict": "NOT_CHECKED",
+  "warnings": [
+   "OPTIONAL_ABSENT argala[0] (chart_facts:argala_graha_natal): optional entry observed no change",
+   "OPTIONAL_ABSENT argala[2] (chart_facts:argala_natal_matrix,virodha_argala_natal_matrix): optional entry observed no change",
+   "OPTIONAL_ABSENT argala[3] (chart_facts:virodha_argala_natal_matrix): optional entry observed no change",
+   "OPTIONAL_ABSENT argala[4] (chart_facts:argala_graha_natal): optional entry observed no change",
+   "OPTIONAL_ABSENT gandanta[1] (chart_facts:graha_gandanta): optional entry observed no change",
+   "OPTIONAL_ABSENT gandanta[2] (chart_facts:graha_gandanta): optional entry observed no change",
+   "OPTIONAL_ABSENT sun_required_rupa[1] (chart_facts:graha_shadbala_total): optional entry observed no change",
+   "OPTIONAL_ABSENT sun_required_rupa[2] (chart_facts:graha_in_house_composite_strength): optional entry observed no change",
+   "OPTIONAL_ABSENT sun_required_rupa[3] (chart_facts:graha_in_house_composite_strength): optional entry observed no change",
+   "OPTIONAL_ABSENT sun_required_rupa[4] (chart_facts:graha_in_house_composite_strength): optional entry observed no change",
+   "OPTIONAL_ABSENT sun_required_rupa[5] (chart_facts:graha_in_house_composite_strength): optional entry observed no change",
+   "OPTIONAL_ABSENT sun_required_rupa[6] (chart_facts:graha_in_house_composite_strength): optional entry observed no change"
+  ]
+ },
+ "four_lanes_verbatim_synthetic_changes": {
+  "absent": [],
+  "by_table_category_change_lane": [
+   [
+    [
+     "chart_facts",
+     "kp_cuspal_significators",
+     "tier",
+     "tiers"
+    ],
+    300
+   ],
+   [
+    [
+     "chart_facts",
+     "special_lagna",
+     "tier",
+     "tiers"
+    ],
+    245
+   ],
+   [
+    [
+     "chart_facts",
+     "graha_gandanta",
+     "occurrence_count",
+     "gandanta"
+    ],
+    50
+   ],
+   [
+    [
+     "chart_facts",
+     "argala_natal_matrix",
+     "value",
+     "argala"
+    ],
+    5
+   ],
+   [
+    [
+     "chart_facts",
+     "graha_shadbala_cheshta",
+     "tier",
+     "tiers"
+    ],
+    5
+   ],
+   [
+    [
+     "chart_facts",
+     "graha_shadbala_total",
+     "tier",
+     "tiers"
+    ],
+    5
+   ],
+   [
+    [
+     "chart_facts",
+     "graha_shadbala_total",
+     "value",
+     "sun_required_rupa"
+    ],
+    1
+   ]
+  ],
+  "changes_total": 611,
+  "exit_allow_not_checked": 2,
+  "exit_default": 2,
+  "failure_counts": {
+   "DASHA_SHIFT_UNDECLARED": 0,
+   "DECLARED_BUT_ABSENT": 0,
+   "EMPTY_READ": 0,
+   "EXPECTATION_MISMATCH": 6,
+   "HOOK_ERROR": 0,
+   "KIND_MISMATCH": 0,
+   "UNDECLARED_CHANGE": 0
+  },
+  "not_checked": [
+   [
+    "chart_dashas.tier",
+    [
+     "tiers"
+    ]
+   ],
+   [
+    "l1_tajik_varsha_year_lords.tier",
+    [
+     "tiers"
+    ]
+   ],
+   [
+    "chart_vichara",
+    []
+   ],
+   [
+    "ga_yoga_firings.strength",
+    []
+   ],
+   [
+    "bodha_msr_signals",
+    []
+   ],
+   [
+    "bodha_rm_resonances",
+    []
+   ],
+   [
+    "ga_condition_composite",
+    []
+   ],
+   [
+    "ga_medical",
+    []
+   ],
+   [
+    "ga_vastu_*",
+    []
+   ],
+   [
+    "ga_prashna_*",
+    []
+   ],
+   [
+    "prashna_charts",
+    []
+   ],
+   [
+    "tiers[1]",
+    [
+     "tiers"
+    ]
+   ],
+   [
+    "tiers[2]",
+    [
+     "tiers"
+    ]
+   ]
+  ],
+  "verdict": "FAIL",
+  "warnings": []
+ },
+ "noisy_counts_stripped": {
+  "absent": [],
+  "by_table_category_change_lane": [
+   [
+    [
+     "chart_facts",
+     "kp_cuspal_significators",
+     "tier",
+     "tiers"
+    ],
+    300
+   ],
+   [
+    [
+     "chart_facts",
+     "special_lagna",
+     "tier",
+     "tiers"
+    ],
+    245
+   ],
+   [
+    [
+     "chart_facts",
+     "graha_gandanta",
+     "occurrence_count",
+     "gandanta"
+    ],
+    50
+   ],
+   [
+    [
+     "chart_facts",
+     "argala_natal_matrix",
+     "value",
+     "argala"
+    ],
+    5
+   ],
+   [
+    [
+     "chart_facts",
+     "graha_shadbala_cheshta",
+     "tier",
+     "tiers"
+    ],
+    5
+   ],
+   [
+    [
+     "chart_facts",
+     "graha_shadbala_cheshta",
+     "value",
+     "UNATTRIBUTED"
+    ],
+    5
+   ],
+   [
+    [
+     "chart_facts",
+     "graha_shadbala_total",
+     "tier",
+     "tiers"
+    ],
+    5
+   ],
+   [
+    [
+     "chart_facts",
+     "graha_position",
+     "value",
+     "UNATTRIBUTED"
+    ],
+    1
+   ],
+   [
+    [
+     "chart_facts",
+     "graha_shadbala_total",
+     "value",
+     "sun_required_rupa"
+    ],
+    1
+   ]
+  ],
+  "changes_total": 617,
+  "exit_allow_not_checked": 2,
+  "exit_default": 2,
+  "failure_counts": {
+   "DASHA_SHIFT_UNDECLARED": 1,
+   "DECLARED_BUT_ABSENT": 0,
+   "EMPTY_READ": 0,
+   "EXPECTATION_MISMATCH": 0,
+   "HOOK_ERROR": 0,
+   "KIND_MISMATCH": 5,
+   "UNDECLARED_CHANGE": 1
+  },
+  "not_checked": [
+   [
+    "chart_dashas.tier",
+    [
+     "tiers"
+    ]
+   ],
+   [
+    "l1_tajik_varsha_year_lords.tier",
+    [
+     "tiers"
+    ]
+   ],
+   [
+    "chart_vichara",
+    []
+   ],
+   [
+    "ga_yoga_firings.strength",
+    []
+   ],
+   [
+    "bodha_msr_signals",
+    []
+   ],
+   [
+    "bodha_rm_resonances",
+    []
+   ],
+   [
+    "ga_condition_composite",
+    []
+   ],
+   [
+    "ga_medical",
+    []
+   ],
+   [
+    "ga_vastu_*",
+    []
+   ],
+   [
+    "ga_prashna_*",
+    []
+   ],
+   [
+    "prashna_charts",
+    []
+   ],
+   [
+    "tiers[1]",
+    [
+     "tiers"
+    ]
+   ],
+   [
+    "tiers[2]",
+    [
+     "tiers"
+    ]
+   ]
+  ],
+  "verdict": "FAIL",
+  "warnings": [
+   "OPTIONAL_ABSENT argala[0] (chart_facts:argala_graha_natal): optional entry observed no change",
+   "OPTIONAL_ABSENT argala[2] (chart_facts:argala_natal_matrix,virodha_argala_natal_matrix): optional entry observed no change",
+   "OPTIONAL_ABSENT argala[3] (chart_facts:virodha_argala_natal_matrix): optional entry observed no change",
+   "OPTIONAL_ABSENT argala[4] (chart_facts:argala_graha_natal): optional entry observed no change",
+   "OPTIONAL_ABSENT gandanta[1] (chart_facts:graha_gandanta): optional entry observed no change",
+   "OPTIONAL_ABSENT gandanta[2] (chart_facts:graha_gandanta): optional entry observed no change",
+   "OPTIONAL_ABSENT sun_required_rupa[1] (chart_facts:graha_shadbala_total): optional entry observed no change",
+   "OPTIONAL_ABSENT sun_required_rupa[2] (chart_facts:graha_in_house_composite_strength): optional entry observed no change",
+   "OPTIONAL_ABSENT sun_required_rupa[3] (chart_facts:graha_in_house_composite_strength): optional entry observed no change",
+   "OPTIONAL_ABSENT sun_required_rupa[4] (chart_facts:graha_in_house_composite_strength): optional entry observed no change",
+   "OPTIONAL_ABSENT sun_required_rupa[5] (chart_facts:graha_in_house_composite_strength): optional entry observed no change",
+   "OPTIONAL_ABSENT sun_required_rupa[6] (chart_facts:graha_in_house_composite_strength): optional entry observed no change"
+  ]
+ }
+}
