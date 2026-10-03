@@ -1,0 +1,282 @@
+{
+ "asset_id": "ph_nimitta",
+ "collected_utc": "2026-10-03T12:24:31.048465Z",
+ "chart": "482012f1-710e-4a25-994a-93821f5871aa",
+ "registry": {
+  "rung": "R4",
+  "layer": "phala",
+  "scope": "per_chart",
+  "domain": "chart",
+  "asset_id": "ph_nimitta",
+  "size_sql": "SELECT pg_total_relation_size('phala_anchors')",
+  "count_sql": "SELECT count(*) FROM phala_anchors WHERE chart_id = $1",
+  "dead_flag": null,
+  "is_active": true,
+  "asset_kind": "artifact",
+  "asset_type": "data",
+  "created_at": "2026-06-05T21:58:20.383982+00:00",
+  "depends_on": [
+   "ka_sangam",
+   "ka_bhavishya_lekha",
+   "bo_bimba",
+   "bo_samskara",
+   "bo_karanajala",
+   "bo_sangati",
+   "bo_anveshana",
+   "bo_cgm_paths",
+   "bo_laksana"
+  ],
+  "has_writer": true,
+  "layer_name": "Phala",
+  "sort_order": 1,
+  "layer_index": "L4",
+  "clear_tables": null,
+  "english_name": "Predictive anchors",
+  "has_substeps": false,
+  "health_probe": null,
+  "storage_type": "postgres_table",
+  "target_floor": 139,
+  "target_table": "phala_anchors",
+  "provides_apis": null,
+  "sanskrit_name": "Nimitta",
+  "superseded_by": null,
+  "catalog_status": "CURRENT",
+  "service_health": null,
+  "last_invoked_at": null,
+  "selftest_detail": null,
+  "data_disposition": null,
+  "last_selftest_at": null,
+  "estimated_seconds": 3,
+  "volume_explanation": "One row per derived predictive anchor, after the T-5 clip gate and the CR-46 content dedup -- roughly 460 candidates derive and 139 survive on the canonical chart, an ~70% rejection rate that is currently logged to stdout only. anchor_id is deterministic from the anchor's grade-free event tuple (migration 680, D-CND-04 / issue #1732). Detector is chart-PARTITIONED per D-CND-03 (GROUP BY chart_id HAVING ...), so a violation names the chart it belongs to rather than reporting that some chart is affected. SIGNAL_ID DISPOSITION (C13): phala_anchors.signal_id has NO foreign key, by design. It records the bodha_msr_signals generation an anchor was derived from, and bo_laksana mints signal_id with uuid4 per build (#1748), so an L2 MSR rebuild legitimately strands these pointers. Orphaning is TOLERATED -- a stale pointer is the honest record of a real derivation, and re-aiming it would assert one that never happened -- but it is never silent: phala_anchor_signal_provenance() reports the orphan count per chart. Adding a FK with ON DELETE SET NULL would be more honest still, but it would make an L2 rebuild write to phala_anchors and so enlarge L2's blast radius; under C13 that is an adjudication, not a unilateral change.",
+  "english_description": "Predictive anchors: 8 derivation axes (graph-causal, discovery-seeded, embedding-precedent, d\u0101\u015b\u0101+school consensus, ayan\u0101\u1e43\u015ba-robustness, subsystem) + 5 elevations (magnitude, ranged-confidence, karmic-arc, actionability, contradiction); inherits kala_bhavishya",
+  "integrity_check_sql": "\nSELECT\n  -- (a) referential integrity: no reference to a non-existent anchor, in any of the\n  --     8 columns verified to hold an anchor_id.\n  (SELECT count(*) FROM phala_suddha_sodhana c LEFT JOIN phala_anchors a USING (anchor_id) WHERE c.anchor_id IS NOT NULL AND a.anchor_id IS NULL) = 0\n  AND (SELECT count(*) FROM phala_sodhana c LEFT JOIN phala_anchors a USING (anchor_id) WHERE c.anchor_id IS NOT NULL AND a.anchor_id IS NULL) = 0\n  AND (SELECT count(*) FROM phala_pramana c LEFT JOIN phala_anchors a USING (anchor_id) WHERE c.anchor_id IS NOT NULL AND a.anchor_id IS NULL) = 0\n  AND (SELECT count(*) FROM phala_sankrama c LEFT JOIN phala_anchors a ON a.anchor_id = c.source_anchor_id WHERE c.source_anchor_id IS NOT NULL AND a.anchor_id IS NULL) = 0\n  AND (SELECT count(*) FROM phala_muhurta c LEFT JOIN phala_anchors a ON a.anchor_id = c.linked_anchor_id WHERE c.linked_anchor_id IS NOT NULL AND a.anchor_id IS NULL) = 0\n  AND (SELECT count(*) FROM phala_mitigation c LEFT JOIN phala_anchors a ON a.anchor_id = c.linked_anchor_id WHERE c.linked_anchor_id IS NOT NULL AND a.anchor_id IS NULL) = 0\n  AND (SELECT count(*) FROM phala_phaladesa c LEFT JOIN phala_anchors a ON a.anchor_id = c.top_anchor_id WHERE c.top_anchor_id IS NOT NULL AND a.anchor_id IS NULL) = 0\n  AND (SELECT count(*) FROM mimamsa_predictions p LEFT JOIN phala_anchors a ON a.anchor_id::text = p.source_pramana_id WHERE p.source_pramana_id IS NOT NULL AND a.anchor_id IS NULL) = 0\n  -- (b) D-CND-04 itself: every anchor's stored id must equal its computed identity.\n  --     A row that fails this was written by a path that bypassed the deterministic\n  --     key -- which is the specific regression this asset must never have again.\n  --     The <= 4 allowance is the named, escalated exception (issue #1748): 2 pairs\n  --     of rows that are content-identical apart from a grade, whose merge re-points\n  --     L5 rows and is therefore not this session's decision alone. It is an explicit\n  --     counted allowance, not a silent skip, and it must SHRINK, never grow.\n  AND (SELECT count(*) FROM phala_anchors a\n        WHERE a.anchor_id <> phala_anchor_identity(a.chart_id, a.anchor_source, a.event_type,\n              a.direction, a.domain, a.horizon_tier, a.window_start, a.peak_date,\n              a.window_end, a.falsifier)) <= 4\n  -- (c) the anchor->pramana->prediction chain is 1:1 where it exists at all.\n  AND (SELECT count(*) FROM (SELECT anchor_id FROM phala_pramana GROUP BY anchor_id HAVING count(*) > 1) d) = 0\n\n  -- C13 / #1748: an anchor may cite a signal that no longer exists (orphan-tolerant by\n  -- disposition -- see phala_anchor_signal_provenance()), but it must NEVER cite a signal\n  -- belonging to a DIFFERENT CHART. That is cross-chart contamination (the JL-017 class),\n  -- not staleness, and nothing else detects it.\n  AND NOT EXISTS (\n    SELECT 1 FROM phala_anchors a\n      JOIN bodha_msr_signals s ON s.signal_id::text = a.signal_id::text\n     WHERE a.signal_id IS NOT NULL AND s.chart_id <> a.chart_id\n     GROUP BY a.chart_id HAVING count(*) > 0)\n",
+  "natural_key_partition": "ph_nimitta writes exactly one table, phala_anchors, via a chart-scoped delete-then-insert (PhNimittaWriter, @register('ph_nimitta')). Sole-writer confirmed by tree-wide grep for INSERT/UPDATE/DELETE against phala_anchors (excluding tests): only ph_nimitta.py's own delete-then-insert and run_ka_sangam_prod.py's pre-delete (a standalone operator utility for ka_sangam reruns that only DELETEs anchor_source='convergence' rows to avoid an FK-cascade/unique-index conflict -- it never INSERTs into phala_anchors, and any orchestrator-driven build supersedes its effect with ph_nimitta's own full rebuild). Natural key: anchor_id -- the table's own PRIMARY KEY, computed deterministically by phala_anchor_identity() (migration 680, IMMUTABLE SQL function, uuid_v5 over chart_id/anchor_source/event_type/direction/domain/horizon_tier/window_start/peak_date/window_end/falsifier) called inline by the writer's INSERT. Being the live PRIMARY KEY, it needs no fleet-wide duplicate check (structurally impossible) -- it is the strongest possible key declaration, stronger than the table's secondary phala_anchors_natural_key UNIQUE constraint (which serves a different purpose, ON CONFLICT-safety against upstream FK churn, and omits several identity-bearing columns). anchor_id live-verified NOT NULL on every row via the real compute_output_digest NULL-reviewed-key preflight (migration 1014 rehearsal) -- no vacuous key candidacy. chart_id scoped via where_equals in the digest spec per the standard convention.",
+  "rebuild_on_probe_fail": false,
+  "expected_volume_inputs": {
+   "discovery_cap": 100,
+   "bhavishya_rows": "SELECT count(*) FROM kala_bhavishya WHERE chart_id = $1",
+   "discovery_rows": "SELECT count(*) FROM bodha_discoveries WHERE chart_id = $1",
+   "per_domain_cap": 50,
+   "convergence_candidates_per_domain": "SELECT domain, count(*) FROM kala_convergence WHERE chart_id = $1 GROUP BY 1"
+  },
+  "writer_timeout_seconds": 10800,
+  "expected_volume_formula": "sum over domains of least(50, count(kala_convergence for that domain)) + count(kala_bhavishya) + least(100, count(bodha_discoveries)), less T-5 clip-gate and CR-46 dedup attrition"
+ },
+ "throughput": {
+  "state": "stale",
+  "history": [],
+  "asset_id": "ph_nimitta",
+  "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+  "last_error": null,
+  "rows_written": 139,
+  "expected_rows": null,
+  "last_built_at": "2026-08-13T01:16:00.435155+00:00",
+  "rows_per_second": null,
+  "duration_seconds": null,
+  "last_measured_at": null,
+  "measurement_count": 0,
+  "last_measured_build_id": null,
+  "built_against_writer_hash": "unknown",
+  "built_against_upstream_hash": "d262d67b0474fb50"
+ },
+ "runs_summary": [
+  {
+   "n": 9,
+   "last": "2026-07-13T21:13:41.719555+00:00",
+   "state": "aborted",
+   "disposition": null
+  },
+  {
+   "n": 38,
+   "last": "2026-08-13T01:16:00.435155+00:00",
+   "state": "complete",
+   "disposition": null
+  },
+  {
+   "n": 26,
+   "last": "2026-08-12T23:44:41.446572+00:00",
+   "state": "error",
+   "disposition": "blocked_dependency"
+  },
+  {
+   "n": 1,
+   "last": "2026-07-10T20:58:36.381731+00:00",
+   "state": "error",
+   "disposition": null
+  },
+  {
+   "n": 19,
+   "last": null,
+   "state": "queued",
+   "disposition": null
+  }
+ ],
+ "last_runs": [
+  {
+   "error": null,
+   "scope": "asset_set",
+   "state": "complete",
+   "run_id": "cbd6ea44-3c09-4ce5-9b21-d22fb0eeccf6",
+   "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+   "ended_at": "2026-08-13T01:16:00.435155+00:00",
+   "started_at": "2026-08-13T01:15:55.360004+00:00",
+   "disposition": null,
+   "output_changed": null
+  },
+  {
+   "error": null,
+   "scope": "asset_set",
+   "state": "complete",
+   "run_id": "51eaa05c-7604-42cc-a3db-e7fa6d9c3f7c",
+   "chart_id": "1c826d5a-41cb-4450-b4dc-59d440e5f75a",
+   "ended_at": "2026-08-12T17:10:09.740689+00:00",
+   "started_at": "2026-08-12T17:09:29.365945+00:00",
+   "disposition": null,
+   "output_changed": null
+  },
+  {
+   "error": null,
+   "scope": "global",
+   "state": "complete",
+   "run_id": "9fc3e49d-8c24-4be7-80f0-29c8cff726e8",
+   "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+   "ended_at": "2026-08-07T23:44:05.210914+00:00",
+   "started_at": "2026-08-07T23:43:25.365874+00:00",
+   "disposition": null,
+   "output_changed": null
+  },
+  {
+   "error": null,
+   "scope": "global",
+   "state": "complete",
+   "run_id": "a17e9167-03c0-4664-998b-ed52f8d1f481",
+   "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+   "ended_at": "2026-08-07T21:01:15.308795+00:00",
+   "started_at": "2026-08-07T21:00:16.558714+00:00",
+   "disposition": null,
+   "output_changed": null
+  },
+  {
+   "error": null,
+   "scope": "asset_set",
+   "state": "complete",
+   "run_id": "d33b44ce-5e42-4e90-9e54-6f7445652931",
+   "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+   "ended_at": "2026-08-07T18:57:10.392512+00:00",
+   "started_at": "2026-08-07T18:56:22.597527+00:00",
+   "disposition": null,
+   "output_changed": null
+  },
+  {
+   "error": null,
+   "scope": "asset_set",
+   "state": "complete",
+   "run_id": "5940f325-63b5-48ce-b9de-3472a5746af4",
+   "chart_id": "1c826d5a-41cb-4450-b4dc-59d440e5f75a",
+   "ended_at": "2026-07-28T10:57:41.583276+00:00",
+   "started_at": "2026-07-28T10:57:19.803046+00:00",
+   "disposition": null,
+   "output_changed": null
+  },
+  {
+   "error": null,
+   "scope": "asset_set",
+   "state": "complete",
+   "run_id": "08b895f3-b3dc-4d75-b672-6bca077e28a0",
+   "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+   "ended_at": "2026-07-28T10:17:45.37051+00:00",
+   "started_at": "2026-07-28T10:17:09.259109+00:00",
+   "disposition": null,
+   "output_changed": null
+  },
+  {
+   "error": null,
+   "scope": "asset_set",
+   "state": "complete",
+   "run_id": "0faf6c66-8dad-4bcf-8478-fd92f3171b66",
+   "chart_id": "1c826d5a-41cb-4450-b4dc-59d440e5f75a",
+   "ended_at": "2026-07-28T04:58:58.802521+00:00",
+   "started_at": "2026-07-28T04:58:13.046967+00:00",
+   "disposition": null,
+   "output_changed": null
+  }
+ ],
+ "last_runs_canonical": [
+  {
+   "error": null,
+   "state": "complete",
+   "run_id": "cbd6ea44-3c09-4ce5-9b21-d22fb0eeccf6",
+   "ended_at": "2026-08-13T01:16:00.435155+00:00",
+   "started_at": "2026-08-13T01:15:55.360004+00:00",
+   "disposition": null,
+   "output_changed": null
+  },
+  {
+   "error": null,
+   "state": "complete",
+   "run_id": "9fc3e49d-8c24-4be7-80f0-29c8cff726e8",
+   "ended_at": "2026-08-07T23:44:05.210914+00:00",
+   "started_at": "2026-08-07T23:43:25.365874+00:00",
+   "disposition": null,
+   "output_changed": null
+  },
+  {
+   "error": null,
+   "state": "complete",
+   "run_id": "a17e9167-03c0-4664-998b-ed52f8d1f481",
+   "ended_at": "2026-08-07T21:01:15.308795+00:00",
+   "started_at": "2026-08-07T21:00:16.558714+00:00",
+   "disposition": null,
+   "output_changed": null
+  },
+  {
+   "error": null,
+   "state": "complete",
+   "run_id": "d33b44ce-5e42-4e90-9e54-6f7445652931",
+   "ended_at": "2026-08-07T18:57:10.392512+00:00",
+   "started_at": "2026-08-07T18:56:22.597527+00:00",
+   "disposition": null,
+   "output_changed": null
+  },
+  {
+   "error": null,
+   "state": "complete",
+   "run_id": "08b895f3-b3dc-4d75-b672-6bca077e28a0",
+   "ended_at": "2026-07-28T10:17:45.37051+00:00",
+   "started_at": "2026-07-28T10:17:09.259109+00:00",
+   "disposition": null,
+   "output_changed": null
+  },
+  {
+   "error": null,
+   "state": "complete",
+   "run_id": "ed26e2d3-6dfa-43a4-936e-a815f7fc5309",
+   "ended_at": "2026-07-28T03:28:07.315894+00:00",
+   "started_at": "2026-07-28T03:27:15.975557+00:00",
+   "disposition": null,
+   "output_changed": null
+  },
+  {
+   "error": null,
+   "state": "complete",
+   "run_id": "60f05804-9e1a-41c7-a96e-27597825fd70",
+   "ended_at": "2026-07-27T06:03:25.970564+00:00",
+   "started_at": "2026-07-27T06:03:23.047206+00:00",
+   "disposition": null,
+   "output_changed": null
+  },
+  {
+   "error": null,
+   "state": "complete",
+   "run_id": "42720d15-f943-42af-8b76-e4f97f3bfd3f",
+   "ended_at": "2026-07-24T11:11:53.22133+00:00",
+   "started_at": "2026-07-24T11:11:48.070644+00:00",
+   "disposition": null,
+   "output_changed": null
+  }
+ ],
+ "live_count": "count\n4\n(1 row)",
+ "integrity_check_result": {
+  "error": "ERROR:  permission denied for function phala_anchor_identity"
+ }
+}
