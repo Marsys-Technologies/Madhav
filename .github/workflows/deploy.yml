@@ -67,7 +67,7 @@ on:
         required: false
         default: false
       gochara_contracts_schema_migration:
-        description: 'Explicitly authorize the temporary protected schema window for exact Gochara contract migrations 1153-1157 (Pravāha A5.1)'
+        description: 'Explicitly authorize the temporary protected schema window for exact Gochara contract migrations 1153-1157, 1204, 1206, 1232, 1233, 1240 (Pravāha A5.1 + B6.0 v1.5 amendment AM-7 + AM-5 search-completeness storage)'
         type: boolean
         required: false
         default: false
@@ -950,11 +950,12 @@ jobs:
           DATABASE_URL: ${{ secrets.DATA_PLANE_MIGRATOR_DATABASE_URL }}
         run: cd platform && test "$(npx tsx scripts/data-plane-ownership-status.ts)" = marked
 
-  # JATAKA CCD-019 / AI Console BYOK / Gochara B1 / Pravāha A5.1: migrations 1071,
-  # 1120-1125, 1153-1157, 1158, and 1202 alter application-owned tables but also create
+  # JATAKA CCD-019 / AI Console BYOK / Gochara B1 / Pravāha A5.1+B6.0: migrations 1071,
+  # 1120-1125, 1153-1157, 1158, 1202, 1204, and 1206 alter application-owned tables but also create
   # objects in the protected public schema (1071: a generation-guard function and
   # two triggers on kala_gochara_windows; 1153-1157: the FROZEN Gochara contract
-  # tables, functions and triggers — the routine runner refuses them, migrate.ts
+  # tables, functions and triggers; 1204: the v1.5 contract amendment
+  # AM-7; 1206: the AM-5 search-completeness tables, functions and seal trigger — the routine runner refuses them, migrate.ts
   # PROTECTED_PUBLIC_SCHEMA_MIGRATIONS).
   # The ordinary migration role intentionally has USAGE without CREATE. This
   # exact-set, manual-only protected job opens the minimum capability window and
@@ -1076,6 +1077,30 @@ jobs:
             migrations+=(1155_gochara_relationship_record.sql)
             migrations+=(1156_gochara_eval_window.sql)
             migrations+=(1157_gochara_av_polarity_declaration.sql)
+            # Pravāha B6.0 v1.5 amendment AM-7 — 1204, in order, same window.
+            # (AM-8's 1205 was SPLIT OUT after ASTRA_REVIEW_A5_5_SPEC_AMENDMENTS_v1_0:
+            # the shared-validator arm would have admitted unresolved 'inherited'
+            # frames on arbitrary paths incl. scored rows; the P6 testimony
+            # template returns as its own designed migration with day_on_demand.)
+            migrations+=(1204_gochara_av_qualifier_object_role.sql)
+            # Pravāha B6.0 AM-5 search-completeness storage + seal checks — 1206, after
+            # 1204, SAME window (steward M20261001T201843-f8e5 item 3). New tables/
+            # functions/trigger only; 1153-1157 are never edited.
+            migrations+=(1206_gochara_search_inventory_completeness.sql)
+            # Pravāha B6.0 AM-14 Moon-scope accounting for period-role obligations — 1232, after 1206,
+            # SAME window (Codex round 6 R2). Adds one interval state, two functions and replaces the
+            # 1206 completeness function with exactly two edits; nothing else is touched.
+            migrations+=(1232_gochara_search_moon_scope_domain.sql)
+            # Pravāha B6.0 AM-21 part 2 P1 period anchor on the relationship record — 1233, after 1232, SAME window
+            # (Codex round 8). Two nullable columns + three CHECKs on a 1155 table; refuses to apply over existing P1 rows.
+            migrations+=(1233_gochara_p1_period_anchor.sql)
+            # Pravāha A5.3 window verification result + seal-time candidate gate (Codex round 8 R8-4) — 1240, after 1233, SAME
+            # window. Adds the window provenance columns to ka_gochara_eval_window, ONE verification table, the digest/violation
+            # functions and one additive seal trigger; the builder is granted NOTHING on the new table (the VERIFIER role writes it).
+            # PRECONDITION (migrate.ts --only refuses unselected unapplied files numbered <= the highest selected): every routine
+            # migration numbered below 1240 (1234 builder grants, and any of 1235/1236 that exist) must ALREADY be applied by an
+            # ordinary deploy BEFORE this window is dispatched.
+            migrations+=(1240_gochara_window_verification_gate.sql)
           fi
           if [ "$APPLY_AI_METERING_SCHEMA_MIGRATION" = "true" ]; then
             migrations+=(1202_ai_metering_ledger.sql)

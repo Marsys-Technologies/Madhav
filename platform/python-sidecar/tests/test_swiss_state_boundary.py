@@ -149,6 +149,9 @@ EXPECTED_OPERATION_OWNERS = {
     ("pyjhora_adapter/vargas.py", "compute_vargas"),
     ("scripts/validate_data_plane_l3_w0_baselines.py", "_transit_ephemeris_context"),
     ("routers/ephemeris.py", "_calculate_sidereal_positions"),
+    ("services/gochara_kernel/input_vector.py", "probe_opened_files"),
+    ("services/gochara_kernel/input_vector_verifier.py", "_probe"),                # R9-3: the verifier's own census/probe/backend
+    ("services/gochara_kernel/input_vector.py", "probe_series_digest"),
     ("services/gochara_kernel/knots.py", "_assert_moon_file_backend"),
     ("services/gochara_kernel/knots.py", "calc_sidereal_lon"),
     ("services/gochara_v3/engine.py", "_evaluate_single_from_context"),
