@@ -1,0 +1,108 @@
+/**
+ * Suvarna / migration 1275 — STATIC contract (chart_id -> charts(id) ON DELETE CASCADE on phala_muhurta, phala_mitigation,
+ * phala_phaladesa and 24 mimamsa_* tables: every per-chart row leaves when its chart is deleted). The live proof (a disposable
+ * PostgreSQL 15 and 17 cluster, run as amjis_app on a production-mirrored layout: the delete-route scenario over all 29 tables,
+ * 1265's frozen-row guard in three variants, the discriminator and spoof tests, guards, active-run guard, lock_timeout, and 15
+ * mutants) is python-sidecar/tests/test_migration_1275_chart_delete_per_chart_tables.py. This file pins the text so a drive-by edit
+ * (a 28th table, an excluded table, a NOT VALID link, a data write) is a deliberate, reviewed change.
+ */
+import { describe, it, expect } from 'vitest'
+import fs from 'fs'
+import path from 'path'
+import { PROTECTED_PUBLIC_SCHEMA_MIGRATIONS } from '../../../scripts/migrate'
+
+const MIG = path.resolve(__dirname, '../../../migrations')
+const FILE = '1275_chart_delete_reaches_phala_and_mimamsa_per_chart_tables.sql'
+const SQL = fs.readFileSync(path.join(MIG, FILE), 'utf8')
+const CODE = SQL.split('\n').filter(l => !l.trim().startsWith('--')).join('\n')
+const FLAT = SQL.replace(/^--/gm, ' ').replace(/\s+/g, ' ')
+
+const TABLES = [
+  'phala_muhurta', 'phala_mitigation', 'phala_phaladesa',
+  'mimamsa_adjudication_log', 'mimamsa_anchor_adjustment', 'mimamsa_attribution', 'mimamsa_calibration',
+  'mimamsa_calibration_snapshot', 'mimamsa_convergence_adjustment', 'mimamsa_discoveries', 'mimamsa_event_provenance',
+  'mimamsa_export_log', 'mimamsa_fact_adjustment', 'mimamsa_insight_embeddings', 'mimamsa_insight_units',
+  'mimamsa_intervention_ledger', 'mimamsa_journal', 'mimamsa_load_bearing', 'mimamsa_manifestation_grammar',
+  'mimamsa_manifestation_sets', 'mimamsa_multipliers', 'mimamsa_predictions', 'mimamsa_qa_eval', 'mimamsa_reliability',
+  'mimamsa_resonance_feedback', 'mimamsa_signal_adjustment', 'mimamsa_snapshot_cosign',
+  'brahma_prospective_ledger', 'brahma_mimamsa_prediction_ledger',
+]
+const EXCLUDED = ['mimamsa_preferences', 'mimamsa_negative_controls', 'mimamsa_signal_families',
+  '__ssv_', 'chart_facts', 'bodha_', 'chart_dashas']
+
+describe('migration 1275 — static contract', () => {
+  it('has ONE table list: exactly the 29 named tables, in order, each appearing once', () => {
+    const arrays = CODE.match(/\btables text\[\] := ARRAY\[([\s\S]*?)\];/g) ?? []
+    expect(arrays).toHaveLength(1)
+    const first = arrays[0]
+    if (first === undefined) throw new Error('Expected the asserted single table list')
+    expect([...first.matchAll(/'([a-z_]+)'/g)].map(m => m[1])).toEqual(TABLES)
+    expect(TABLES).toHaveLength(29)
+    for (const t of TABLES) expect(CODE.match(new RegExp(`'${t}'`, 'g'))).toHaveLength(1)
+  })
+
+  it('keeps every excluded table out of the executable SQL', () => {
+    for (const t of EXCLUDED) expect(CODE).not.toContain(t)
+  })
+
+  it('has ONE relink list: exactly mimamsa_pool_contributions, with the exact old NO ACTION definition, dropped then re-added', () => {
+    const arrays = CODE.match(/\brelink text\[\] := ARRAY\[([\s\S]*?)\];/g) ?? []
+    expect(arrays).toHaveLength(1)
+    expect([...(arrays[0] ?? '').matchAll(/'([a-z_]+)'/g)].map(m => m[1])).toEqual(['mimamsa_pool_contributions'])
+    expect(CODE).toContain("relink_old constant text := 'FOREIGN KEY (chart_id) REFERENCES charts(id)'")
+    expect(CODE.match(/DROP CONSTRAINT/g)).toHaveLength(1)
+    expect(CODE.indexOf("%I DROP CONSTRAINT")).toBeLessThan(CODE.indexOf("%I ADD CONSTRAINT"))
+  })
+
+  it('adds validated cascading chart links only: no object, no data, no grant, no NOT VALID, no drop, no transaction control', () => {
+    expect(CODE.match(/EXECUTE format\('ALTER TABLE/g)).toHaveLength(2) // the relink's drop and the add
+    expect(CODE).toContain('FOREIGN KEY (chart_id) REFERENCES public.charts(id) ON DELETE CASCADE')
+    expect(CODE).not.toMatch(/NOT VALID|SET NULL|INITIALLY DEFERRED/)
+    expect(CODE).not.toMatch(/\bCREATE\s+(OR\s+REPLACE\s+)?(VIEW|FUNCTION|TABLE|INDEX|TRIGGER|SCHEMA|EXTENSION)\b/i)
+    expect(CODE).not.toMatch(/\b(INSERT INTO|DELETE FROM|TRUNCATE|GRANT|REVOKE)\b/i)
+    expect(CODE).not.toMatch(/\bUPDATE\s+\w+\s+SET\b/i)
+    expect(CODE).not.toMatch(/^\s*(BEGIN|COMMIT|ROLLBACK)\s*;/m)
+  })
+
+  it('starts with the transaction-local 5s lock_timeout and enforces the active-run guard', () => {
+    expect(CODE.match(/\bSET LOCAL lock_timeout\b/g)).toHaveLength(1)
+    expect(CODE.trimStart().startsWith("SET LOCAL lock_timeout = '5s';")).toBe(true)
+    expect(CODE).toContain('$runs$')
+    expect(CODE).toContain("r.state NOT IN ('completed', 'failed', 'stopped')")
+    expect(CODE).toContain("LIKE 'mi\\_%'")
+    for (const a of ['ph_muhurta', 'ph_pratikara', 'ph_phaladesa']) expect(CODE).toContain(`'${a}'`)
+  })
+
+  it('STOPs rather than inventing: owner, chart_id presence, NOT NULL, unresolved rows, exact existing definition', () => {
+    for (const n of ['pg_has_role(current_user, owner, \'USAGE\')', 'owner-path item', 'has no chart_id column',
+      'will not invent a derivation', 'chart_id is nullable', 'has no charts row; report, do not backfill',
+      'is not the expected chart link', 'primary key not found']) expect(CODE).toContain(n)
+  })
+
+  it('asserts in the post-check: present, validated, ON DELETE CASCADE, not deferrable, on chart_id -> charts(id); FK count exact', () => {
+    for (const n of ['c.convalidated AND c.confdeltype = \'c\'', 'NOT c.condeferrable', 'is missing, not validated, not ON DELETE CASCADE',
+      'fk_before + added - dropped', 'something else changed']) expect(CODE).toContain(n)
+  })
+
+  it('states the header facts: the gap, the 29 and the exclusions with reasons, the 1265 requirement and discriminator, locks', () => {
+    for (const n of ['PRIVACY GAP', 'N-108', 'THE RELINK', 'NO ACTION -> CASCADE', 'LAND TOGETHER WITH 1265', 'THE GAP', 'THE 29', 'EXCLUDED', 'NULLABLE', 'OWNER-PATH', 'THE 1265 REQUIREMENT', 'NOT EXISTS (SELECT 1 FROM public.charts WHERE id = OLD.chart_id)',
+      'pg_trigger_depth() is NOT a safe discriminator', 'session_replication_role = replica', 'MEASURED', 'ACTIVE RUNS (ENFORCED',
+      'SERVING EFFECT AT APPLY: none', 'NOT DONE HERE', 'VERIFICATION BY PRODUCTION STRUCTURE', 'ROLLBACK', 'HELD', 'AFTER S-L1',
+      "on SS's review", 'charts/[id]/route.ts:87-107']) expect(FLAT).toContain(n)
+  })
+
+  it('checks charts relforcerowsecurity is false (SS standing constraint: no FORCE RLS on charts without revisiting the 1265 guard)', () => {
+    expect(CODE).toContain("SELECT relforcerowsecurity FROM pg_class WHERE oid = 'public.charts'::regclass")
+    expect(CODE).toContain('FORCE ROW LEVEL SECURITY')
+    expect(FLAT).toContain('STANDING CONSTRAINT (SS): NO FORCE ROW LEVEL SECURITY ON charts WITHOUT FIRST REVISITING THE 1265 GUARD')
+    expect(FLAT).toContain('ORDER (hard): S-L1 -> PR #3040 (append-only mi_bhavisya writer) + migration 1259 -> 1265')
+  })
+
+  it('is a ROUTINE migration (not protected), unique, in the 1200-1299 range', () => {
+    expect(PROTECTED_PUBLIC_SCHEMA_MIGRATIONS.has(FILE)).toBe(false)
+    const n = Number(FILE.slice(0, 4))
+    expect(n).toBeGreaterThanOrEqual(1200)
+    expect(n).toBeLessThanOrEqual(1299)
+    expect(fs.readdirSync(MIG).filter(f => /^1275_/.test(f) && f !== FILE)).toEqual([])
+  })
+})
