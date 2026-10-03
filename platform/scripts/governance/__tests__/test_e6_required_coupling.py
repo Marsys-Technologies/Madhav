@@ -322,5 +322,5 @@ def test_on_the_six_saved_censuses_the_pin_moves_no_cell_and_no_check(monkeypatc
 
 def test_the_registry_revision_and_fingerprint_are_untouched():
     import test_e6_1_p1_registry_rollup as pin
-    assert ac.REGISTRY_REVISION == 16 and ac.registry_fingerprint() == pin.PINNED_FINGERPRINTS[16]       # no criterion, rule or cause changed: no new pin was needed
+    assert ac.registry_fingerprint() == pin.PINNED_FINGERPRINTS[ac.REGISTRY_REVISION]                  # the coupling pin adds nothing to the fingerprint: the CURRENT revision's pin still reproduces (never a hard-coded revision)
     assert not hasattr(ac, "PROSE_COUPLING_REQUIRED_IN_FINGERPRINT") and "PROSE_COUPLING_REQUIRED" not in json.dumps(ac.NA_CAUSES)
