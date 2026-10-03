@@ -611,6 +611,8 @@ verified_by · verified_on
 verdict ∈ { PASS | FAIL | PARTIAL | NO_DETECTOR | N/A }     — closed set, these spellings exactly
 ```
 
+A `[TRANSFERS]-pending` record (§5.4 test 4) is an annotation written beside a verdict, never a verdict: the set above is unchanged.
+
 A revised criterion invalidates **only** the records for that criterion, across affected assets; it
 never re-opens the rest. An asset is *elevated* when every criterion its layer requires has a current
 record with a passing verdict. A definition revision that changes no criterion changes nothing.

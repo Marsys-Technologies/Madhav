@@ -19,9 +19,9 @@ seal:
     ruling, and the reopen is recorded in this changelog as such, with the ruling named. Correcting a
     typo is not a reopen; changing an obligation, a contract, a count or a scope is.
   still_open_below_the_seal: ["layer instance (L0-L5)", "asset template", "asset instance (per-asset briefs)"]
-  review_backing: "the review recorded in this document's 2026-09-24 changelog entry (its file, briefs/reviews/REVIEW_PRODUCT_DEFINITION_v3_1.md, is not located — see review_record) — verdict ACCEPT, 11 MAJOR + 14 MINOR folded as recorded there; the two 2026-09-25 elevations (§1.3 planes and compositional identity; §14 Domain correctness with its owner named) are native-directed content, recorded in the changelog below"
+  review_backing: "the review recorded in this document's 2026-09-24 changelog entry (its file, briefs/reviews/REVIEW_PRODUCT_DEFINITION_v3_1.md, is not located — see document_reviews) — verdict ACCEPT, 11 MAJOR + 14 MINOR folded as recorded there; the two 2026-09-25 elevations (§1.3 planes and compositional identity; §14 Domain correctness with its owner named) are native-directed content, recorded in the changelog below"
 produced_on: 2026-09-24
-review_record: []   # independent reviews OF this document
+document_reviews: []   # independent reviews OF this document (T2's field name)
 # NOT LOCATED: briefs/reviews/REVIEW_PRODUCT_DEFINITION_v3_1.md does not exist in the repository (checked on
 # origin/campaign/nikasha-test and origin/main, 2026-10-02; register R72). "ACCEPT, 11 MAJOR + 14 MINOR, all folded"
 # is carried from this document's own 2026-09-24 changelog entry and cannot be re-verified. The independent review
