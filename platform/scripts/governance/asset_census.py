@@ -73,6 +73,7 @@ import ast
 import bisect
 import collections
 import datetime as dt
+import functools
 import hashlib
 import json
 import math
@@ -8454,6 +8455,11 @@ def _measure_prose(aid, decl, r, files, cat, ctables, shared, ptests, vocab) -> 
 # population refuses it (`require_full_census`). An unscoped run writes no `scope` key at all, so its output is
 # byte-identical to what it was before this flag existed.
 EXIT_SCOPE = 6
+# ONE table of this tool's exit codes. 0 clean · 2 a measured FAIL (and argparse usage errors) · 3 PARTIAL/NO_DETECTOR/ERRORED · 4 UNKNOWN
+# (an unreachable instrument) · 5 script error · 6 scope error · 7 RESERVED for the emit_gaps withholding guard (EXIT_WITHHOLDING, PR #3041;
+# not defined here) · E6.5 --registry-check: 9 `--check` drift · 10 gate x layer cell count != 54 · 11 uncovered required criteria
+# (`--require-covered`; deliberately not 3, whose meaning is PARTIAL/ERRORED) · 12 a registry-declared detector never emitted.
+EXIT_REG_DRIFT, EXIT_REG_CELLS, EXIT_REG_UNCOVERED, EXIT_REG_PARITY = 9, 10, 11, 12
 _ASSET_ID = re.compile(r"[a-z][a-z0-9_]*")
 
 
@@ -9739,31 +9745,44 @@ def emit_gaps(census: dict, assets=None) -> tuple[int, int, int, int]:
 
 
 # ─────────────────────────── E6.5: --registry-check (registry-only coverage report) ───────────────────────────
-# Offline by construction: reads CRITERION_REGISTRY / NA_RULE_DECISIONS / NA_CAUSES only, never psql. The report answers one
-# question per core gate x layer cell: does every REQUIRED criterion have an auto-measured detector? A declared N/A rule is
-# CONDITIONAL (cause- or pattern-keyed: it releases only the assets whose measurement or declaration says so), so it never
-# covers a detector-NONE criterion for the assets it does not release; rules are listed, never counted as coverage (§N.8).
+# Offline by construction: reads CRITERION_REGISTRY / NA_RULE_DECISIONS / NA_CAUSES and this file's own source, never psql. The
+# report answers one question per core gate x layer cell: does every REQUIRED criterion have a REGISTRY-DECLARED detector? That is a
+# registry label and says nothing about whether the detector emits a verdict for any given asset (Carr.D1 is declared for every
+# layer yet emitted for the few assets that declare a carriage check). A declared N/A rule is CONDITIONAL (cause- or pattern-keyed:
+# it releases only the assets whose measurement or declaration says so), so it never covers a detector-NONE criterion for the assets
+# it does not release; rules are listed, never counted as coverage (§N.8). A criterion declared per-asset-pending is excluded from
+# `uncovered_required_criteria` but is NOT counted covered: 54 of 54 is reachable only by real detectors.
 REGISTRY_COVERAGE_REPORT_REL = "00_ARCHITECTURE/control/registry_coverage_report.json"
-REGISTRY_COVERAGE_SCHEMA = 1
+REGISTRY_COVERAGE_SCHEMA = 2
 EXPECTED_GATE_LAYER_CELLS = 54          # SS ruling N-97(1): the pinned unit is gate x layer (9 x 6); 150 and 1143 are information
-# E6.5 hook for "required, per-asset detector pending" criteria (plan 2.1): criterion id -> decision id. Empty today and NOT
-# fingerprinted content (no revision bump): a later, separate file feeds it. Until then those criteria are reported UNCOVERED.
+# The CLOSED set of detector bindings a registry entry may carry. Anything else (a typo, "bogus") is refused, never counted as a detector.
+KNOWN_DETECTORS = ("NONE", "asset_census.py:measure()")
+_DECISION_ID = re.compile(r"N-[0-9]{1,6}")
+# E6.5 hook for "required, per-asset detector pending" criteria (plan 2.1): criterion id -> decision id ('N-<n>'). Empty today and NOT
+# fingerprinted content (no revision bump): a later, separate file feeds it. Until then those criteria are reported UNCOVERED. The
+# report carries the decision per criterion (`per_asset_pending_decisions`), so the hook's contents are part of the checked bytes.
 PER_ASSET_PENDING: dict[str, str] = {}
-# SS N-102 (owner decision): assets the OWNER deferred on a gate (their classical sources are not held). They live in a small committed
-# input file, never in this module. Schema (schema 1): {"schema": 1, "deferrals": [{"asset_id", "criterion_gate", "decision", "state"}]}:
-# `asset_id` must be an active asset id of the committed registry seed (the same offline source the E6.3 reader uses; the seed is not
-# production, a stand-in for the live registry), `criterion_gate` one of CELL_GATES, `decision` 'N-<n>', `state` non-blank; no other
-# key, no duplicate (asset, gate). A malformed entry or unknown id refuses the whole --registry-check. Reported apart from `uncovered`.
+# SS N-102 (owner decision): the six L0 assets the OWNER deferred on Carr (their classical sources are not held). They live in a small
+# committed input file, never in this module, but the loader pins the gate, the ruling and the EXACT id set: a free-form list would be a
+# masking vector, so a further deferral needs a new ruling AND a change here. Schema (schema 1): {"schema": 1, "deferrals":
+# [{"asset_id", "criterion_gate", "decision", "state"}]}; every id an ACTIVE asset of the committed registry seed (the same offline
+# source the E6.3 reader uses; the seed is a stand-in for the live registry); no other key, no duplicate. A malformed entry, an
+# unknown / inactive id, a different gate / ruling / state or a missing or extra id refuses the whole --registry-check.
+OWNER_DEFERRAL_GATE, OWNER_DEFERRAL_DECISION = "Carr", "N-102"
+OWNER_DEFERRAL_STATE = f"deferred by owner ({OWNER_DEFERRAL_DECISION})"
+OWNER_DEFERRAL_IDS = ("bg_gochara_citation_resolution", "bg_kota_chakra_rings", "bg_medical_mappings", "bg_nakshatra_medical",
+                      "bg_sign_medical", "bg_vastu_directions")
 OWNER_DEFERRALS_PATH = Path(__file__).resolve().parents[3] / "00_ARCHITECTURE" / "control" / "owner_deferrals.json"
 REGISTRY_SEED_PATH = Path(__file__).resolve().parents[1] / "seed" / "asset_registry_seed.ts"
 _DEFERRAL_KEYS = ("asset_id", "criterion_gate", "decision", "state")
-EXIT_REG_UNCOVERED, EXIT_REG_DRIFT, EXIT_REG_CELLS = 3, 7, 8
 _INSPECTOR_LINE = re.compile(r'("inspector_commit": )(?:"([^"]*)"|null)')
 
 
 def _inspector_commit() -> str | None:
-    """The last commit touching this tool file (a report cannot name the commit that contains it), from a scrubbed git
-    environment; None when git cannot say (the generator then refuses: the tracker reads a null commit as an error)."""
+    """The last commit touching this tool file when the report was generated (a report cannot name the commit that contains it), from
+    a scrubbed git environment; None when git cannot say (the generator then refuses: the tracker reads a null commit as an error).
+    A provenance pointer, not a reachability claim: after a squash or rebase it may name a commit no longer on any branch, and
+    `--check` never compares its value."""
     try:
         here = Path(__file__).resolve()
         p = subprocess.run(["git", "log", "-1", "--format=%H", "--", str(here)], capture_output=True, text=True,
@@ -9772,6 +9791,47 @@ def _inspector_commit() -> str | None:
         return None
     sha = p.stdout.strip()
     return sha if p.returncode == 0 and _GIT_SHA.fullmatch(sha) else None
+
+
+_CRIT_LITERAL = re.compile(r"[A-Za-z]+\.[A-Za-z0-9_.]+")
+
+
+@functools.lru_cache(maxsize=1)
+def _emission_sites() -> dict:
+    return _emission_sites_from(Path(__file__).read_text(encoding="utf-8"))
+
+
+def _emission_sites_from(source: str) -> dict:
+    """Static registry -> emission parity: {string literal that looks like a criterion id: sorted names of the top-level functions that
+    contain it AND are reachable from `measure()` by name (a call or a reference, transitively)}. A criterion whose id appears in no
+    such function is never emitted by any code path of the census; one that does is merely EMITTABLE (this says nothing about how many
+    assets it is emitted for). `_emission_sites()` reads this file's own source, so it cannot drift from it."""
+    tree = ast.parse(source)
+    top = {n.name: n for n in tree.body if isinstance(n, ast.FunctionDef)}
+    refs = {name: {x.id for x in ast.walk(fn) if isinstance(x, ast.Name) and x.id in top}
+            | {x.attr for x in ast.walk(fn) if isinstance(x, ast.Attribute) and x.attr in top} for name, fn in top.items()}
+    reach, todo = set(), ["measure"]
+    while todo:
+        f = todo.pop()
+        if f in top and f not in reach:
+            reach.add(f)
+            todo.extend(refs[f])
+    # module-level tuples/lists/sets made only of criterion ids (CARR_D_CHECKS): a reachable function that names one emits those ids
+    bundles = {}
+    for n in tree.body:
+        if (isinstance(n, ast.Assign) and len(n.targets) == 1 and isinstance(n.targets[0], ast.Name)
+                and isinstance(n.value, (ast.Tuple, ast.List, ast.Set)) and n.value.elts
+                and all(isinstance(e, ast.Constant) and isinstance(e.value, str) and _CRIT_LITERAL.fullmatch(e.value) for e in n.value.elts)):
+            bundles[n.targets[0].id] = [e.value for e in n.value.elts]
+    out: dict[str, set] = {}
+    for f in reach:
+        for x in ast.walk(top[f]):
+            if isinstance(x, ast.Constant) and isinstance(x.value, str) and _CRIT_LITERAL.fullmatch(x.value):
+                out.setdefault(x.value, set()).add(f)
+            elif isinstance(x, ast.Name) and x.id in bundles:
+                for v in bundles[x.id]:
+                    out.setdefault(v, set()).add(f)
+    return {k: tuple(sorted(v)) for k, v in sorted(out.items())}
 
 
 def _seed_active_asset_ids() -> set[str]:
@@ -9786,7 +9846,7 @@ def _seed_active_asset_ids() -> set[str]:
 
 
 def load_owner_deferrals(path=None, registry_ids=None) -> tuple[list[dict], str]:
-    """(entries sorted by asset_id then gate, sha256 of the file's bytes). ValueError on anything malformed (the schema above)."""
+    """(entries sorted by asset_id, sha256 of the file's bytes). ValueError on anything malformed or off-ruling (the schema above)."""
     p = Path(OWNER_DEFERRALS_PATH if path is None else path)
     try:
         raw = p.read_bytes()
@@ -9807,35 +9867,42 @@ def load_owner_deferrals(path=None, registry_ids=None) -> tuple[list[dict], str]
             continue
         if d["asset_id"] not in ids:
             errs.append(f"entry {i}: {d['asset_id']!r} is not an active registry asset id")
-        if d["criterion_gate"] not in CELL_GATES:
-            errs.append(f"entry {i}: criterion_gate {d['criterion_gate']!r} is not one of {list(CELL_GATES)}")
-        if not re.fullmatch(r"N-\d+", d["decision"]):
-            errs.append(f"entry {i}: decision {d['decision']!r} is not an 'N-<n>' ruling id")
-        if (d["asset_id"], d["criterion_gate"]) in seen:
-            errs.append(f"entry {i}: duplicate ({d['asset_id']}, {d['criterion_gate']})")
-        seen.add((d["asset_id"], d["criterion_gate"]))
+        for key, want in (("criterion_gate", OWNER_DEFERRAL_GATE), ("decision", OWNER_DEFERRAL_DECISION), ("state", OWNER_DEFERRAL_STATE)):
+            if d[key] != want:
+                errs.append(f"entry {i}: {key} {d[key]!r} must be {want!r} (SS {OWNER_DEFERRAL_DECISION})")
+        if d["asset_id"] in seen:
+            errs.append(f"entry {i}: duplicate {d['asset_id']}")
+        seen.add(d["asset_id"])
         out.append({k: d[k] for k in _DEFERRAL_KEYS})
+    if not errs and sorted(seen) != list(OWNER_DEFERRAL_IDS):
+        errs.append(f"the deferred set must be exactly {list(OWNER_DEFERRAL_IDS)} (missing {sorted(set(OWNER_DEFERRAL_IDS) - seen)}, "
+                    f"extra {sorted(seen - set(OWNER_DEFERRAL_IDS))}); a different set needs a new ruling and a change to this module")
     if errs:
         raise ValueError(f"owner deferrals file {p.name} refused: " + "; ".join(errs))
-    return sorted(out, key=lambda d: (d["asset_id"], d["criterion_gate"])), hashlib.sha256(raw).hexdigest()
+    return sorted(out, key=lambda d: d["asset_id"]), hashlib.sha256(raw).hexdigest()
 
 
-def registry_coverage_report(pending=None, deferrals=None) -> dict:
+def registry_coverage_report(pending=None, deferrals=None, emission=None) -> dict:
     """Deterministic (sorted, no timestamps) registry coverage report; `inspector_commit` is filled by the caller. `pending`
-    defaults to PER_ASSET_PENDING. Raises ValueError on a registry the inspector cannot read (bad N/A ids, a pending id that
-    is not a required detector-NONE criterion)."""
+    defaults to PER_ASSET_PENDING, `emission` to the static emission table. Raises ValueError on a registry the inspector cannot read
+    (a detector outside KNOWN_DETECTORS, bad N/A ids, a pending entry that is not a core detector-NONE criterion with an 'N-<n>'
+    decision, a bad deferrals file)."""
     validate_na_rule_decisions()
+    badd = sorted(c for c, e in CRITERION_REGISTRY.items() if e["detector"] not in KNOWN_DETECTORS)
+    if badd:
+        raise ValueError(f"detector binding outside the closed set {list(KNOWN_DETECTORS)}: {badd!r}")
     deferred, deferred_sha = load_owner_deferrals() if deferrals is None else deferrals
+    emission = _emission_sites() if emission is None else emission
     pending = dict(PER_ASSET_PENDING if pending is None else pending)
     core = {c: e for c, e in CRITERION_REGISTRY.items() if e["gate"] in CELL_GATES}
     bad = sorted(c for c in pending if c not in core or core[c]["detector"] != "NONE"
-                 or not (isinstance(pending[c], str) and pending[c].strip()))
+                 or not (isinstance(pending[c], str) and _DECISION_ID.fullmatch(pending[c])))
     if bad:
-        raise ValueError(f"per-asset-pending declaration must name a core criterion with detector NONE and a decision id: {bad!r}")
+        raise ValueError(f"per-asset-pending declaration must name a core criterion with detector NONE and an 'N-<n>' decision: {bad!r}")
     rules_by_crit: dict[str, list[str]] = {}
     for rid in sorted(NA_RULE_DECISIONS):
         rules_by_crit.setdefault(rid.partition("#")[0], []).append(rid)
-    cells, uncovered, pend_seen = [], set(), set()
+    cells, uncovered = [], set()
     for gate in CELL_GATES:
         for layer in LAYERS:
             req = sorted(c for c, e in core.items() if e["gate"] == gate and layer in e["layers"])
@@ -9844,9 +9911,9 @@ def registry_coverage_report(pending=None, deferrals=None) -> dict:
             pend = [c for c in none if c in pending]
             unc = [c for c in none if c not in pending]
             uncovered.update(unc)
-            pend_seen.update(pend)
-            cells.append(dict(gate=gate, layer=layer, required=req, auto_measured=auto, detector_none=none,
-                              per_asset_pending=pend, uncovered=unc, covered=not unc and bool(req),
+            status = "uncovered" if unc else ("pending" if pend else "covered")
+            cells.append(dict(gate=gate, layer=layer, status=status, required=req, auto_measured=auto, detector_none=none,
+                              per_asset_pending=pend, uncovered=unc,
                               declared_na_rules=[r for c in req for r in rules_by_crit.get(c, [])]))
     n_cr = sum(len(c["required"]) for c in cells)
     n_none = sum(len(c["detector_none"]) for c in cells)
@@ -9857,20 +9924,33 @@ def registry_coverage_report(pending=None, deferrals=None) -> dict:
     return dict(
         schema=REGISTRY_COVERAGE_SCHEMA,
         registry_revision=REGISTRY_REVISION, registry_fingerprint=registry_fingerprint(), inspector_commit=None,
-        expected_cells=EXPECTED_GATE_LAYER_CELLS, covered_cells=sum(1 for c in cells if c["covered"]),
-        covered_cells_unit="gate_x_layer cells whose every required criterion has an auto-measured detector or is declared per-asset-pending",
+        inspector_commit_note="the last commit touching asset_census.py when this report was generated; a provenance pointer, not a "
+                              "reachability claim (it may be unreachable after a squash or rebase); --check never compares it",
+        expected_cells=EXPECTED_GATE_LAYER_CELLS, covered_cells=sum(1 for c in cells if c["status"] == "covered"),
+        covered_cells_unit="gate_x_layer cells whose every required criterion has a registry-declared detector (a registry label; says "
+                           "nothing about per-asset emission); per-asset-pending cells are reported separately and never counted covered",
+        pending_cells=sum(1 for c in cells if c["status"] == "pending"),
         uncovered_required_criteria=sorted(uncovered),
-        per_asset_pending=sorted(pend_seen),
-        per_asset_pending_note="declared in PER_ASSET_PENDING (empty until the separate pending file lands; not fingerprinted)",
+        per_asset_pending=sorted(pending), per_asset_pending_decisions=dict(sorted(pending.items())),
+        per_asset_pending_note="declared in PER_ASSET_PENDING (empty until the separate pending file lands; not fingerprinted); "
+                               "excluded from uncovered_required_criteria, never counted as covered",
+        declared_detector_never_emitted=sorted(c for c, e in CRITERION_REGISTRY.items() if e["detector"] != "NONE" and not emission.get(c)),
+        criterion_emission=[dict(criterion=c, detector=CRITERION_REGISTRY[c]["detector"], emitted_by_measure=bool(emission.get(c)),
+                                 sites=list(emission.get(c, ()))) for c in sorted(CRITERION_REGISTRY)],
+        criterion_emission_note="static reachability from measure(): 'emitted_by_measure' means the id appears in a function measure() reaches; "
+                                "it says nothing about how many assets the criterion is emitted for",
         deferred_by_owner=deferred, owner_deferrals_sha256=deferred_sha,
         deferred_by_owner_note="owner-deferred assets (SS N-102): reported apart from `uncovered`; never fail the check, never counted as covered cells",
         na_rules=[dict(rule_id=r, decision=NA_RULE_DECISIONS[r]) for r in sorted(NA_RULE_DECISIONS)],
         na_rules_note="N/A rules are conditional (per asset); listed, never counted as coverage of a detector-NONE criterion",
         undeclared_na_pattern_ids=undeclared_patterns, undeclared_na_causes=undeclared_causes,
         non_core_detector_none=sorted(c for c, e in CRITERION_REGISTRY.items() if e["gate"] not in CELL_GATES and e["detector"] == "NONE"),
+        non_core_detector_none_note="the plan's 'no required criterion with detector NONE' is not gate-scoped; a non-core criterion with "
+                                    "detector NONE is information here, not uncovered (SS decision, behaviour unchanged)",
         candidate_cell_counts=dict(
             gate_x_layer=dict(total=len(cells), pinned=True, with_auto_detector=sum(1 for c in cells if c["auto_measured"]),
-                              fully_covered=sum(1 for c in cells if c["covered"])),
+                              fully_covered=sum(1 for c in cells if c["status"] == "covered"),
+                              pending_only=sum(1 for c in cells if c["status"] == "pending")),
             core_criterion_x_layer=dict(total=n_cr, pinned=False, auto_measured=n_cr - n_none, detector_none=n_none),
             gate_x_asset=dict(total=None, pinned=False,
                               omitted_reason="no committed registry-wide asset list offline (LEVEL_MAP.json is not committed, "
@@ -9882,16 +9962,20 @@ def registry_report_text(report: dict) -> str:
     return json.dumps(report, indent=1, sort_keys=False) + "\n"
 
 
-def registry_report_problems(report: dict) -> list[str]:
-    """The gating conditions (SS N-97(1)): the gate x layer cell count must equal the pinned 54, and no required criterion may
-    stay uncovered (detector NONE and not declared per-asset-pending)."""
+def registry_report_problems(report: dict) -> list[tuple[int, str]]:
+    """(exit code, message) per gating condition. SS N-97(1): the gate x layer cell count must equal the pinned 54 (EXIT_REG_CELLS);
+    a registry-declared detector must be emitted by some code path of measure() (EXIT_REG_PARITY); and no required criterion may stay
+    uncovered, i.e. detector NONE and not declared per-asset-pending (EXIT_REG_UNCOVERED, enforced only under --require-covered)."""
     out = []
     n = report["candidate_cell_counts"]["gate_x_layer"]["total"]
     if n != report["expected_cells"] or n != EXPECTED_GATE_LAYER_CELLS:
-        out.append(f"gate x layer cell count {n} != pinned {EXPECTED_GATE_LAYER_CELLS}")
+        out.append((EXIT_REG_CELLS, f"gate x layer cell count {n} != pinned {EXPECTED_GATE_LAYER_CELLS}"))
+    if report["declared_detector_never_emitted"]:
+        out.append((EXIT_REG_PARITY, "registry-declared detector never emitted by any code path of measure(): "
+                    + ", ".join(report["declared_detector_never_emitted"])))
     if report["uncovered_required_criteria"]:
-        out.append("required criteria with detector NONE and no per-asset-pending declaration: "
-                   + ", ".join(report["uncovered_required_criteria"]))
+        out.append((EXIT_REG_UNCOVERED, "required criteria with detector NONE and no per-asset-pending declaration: "
+                    + ", ".join(report["uncovered_required_criteria"])))
     return out
 
 
@@ -9908,7 +9992,10 @@ def registry_report_drift(committed_text: str, fresh_text: str) -> str | None:
     return None
 
 
-def registry_check_main(out_path: str, verify: bool) -> int:
+def registry_check_main(out_path: str, verify: bool, require_covered: bool = False) -> int:
+    """Write (or, with `verify`, check) the report. Exit: 0 clean; EXIT_REG_DRIFT (9) `verify` found drift (DRIFT ONLY: coverage is not
+    consulted for the verdict of --check); EXIT_REG_CELLS (10) cell count != 54; EXIT_REG_PARITY (12) a declared detector is never
+    emitted; EXIT_REG_UNCOVERED (11) uncovered required criteria, only with `require_covered`; 5 script error."""
     try:
         rep = registry_coverage_report()
         rep["inspector_commit"] = _inspector_commit()
@@ -9920,11 +10007,10 @@ def registry_check_main(out_path: str, verify: bool) -> int:
     except Exception as exc:  # noqa: BLE001
         print(f"asset_census: registry-check failed — {type(exc).__name__}: {exc}", file=sys.stderr)
         return 5
-    problems = registry_report_problems(rep)
     if verify:
         try:
             committed = Path(out_path).read_text(encoding="utf-8")
-        except OSError as exc:
+        except (OSError, UnicodeDecodeError) as exc:
             print(f"asset_census: registry-check --check: cannot read {out_path}: {type(exc).__name__}", file=sys.stderr)
             return EXIT_REG_DRIFT
         why = registry_report_drift(committed, text)
@@ -9933,22 +10019,27 @@ def registry_check_main(out_path: str, verify: bool) -> int:
             return EXIT_REG_DRIFT
         print(f"registry report matches a fresh regeneration: {out_path}")
     else:
-        _write_atomic(out_path, text)
+        try:
+            _write_atomic(out_path, text)
+        except OSError as exc:
+            print(f"asset_census: registry-check could not write {out_path}: {type(exc).__name__}", file=sys.stderr)
+            return 5
         print(f"registry coverage report written: {out_path}")
     cc = rep["candidate_cell_counts"]
     print(f"  revision {rep['registry_revision']} · gate x layer {cc['gate_x_layer']['total']} (pinned {rep['expected_cells']}, "
-          f"fully covered {rep['covered_cells']}) · core criterion x layer {cc['core_criterion_x_layer']['total']} · gate x asset omitted offline"
-          f" · owner-deferred {len(rep['deferred_by_owner'])}")
-    for pr in problems:
-        print(f"  !! {pr}")
-    if rep["candidate_cell_counts"]["gate_x_layer"]["total"] != EXPECTED_GATE_LAYER_CELLS:
-        return EXIT_REG_CELLS
-    return EXIT_REG_UNCOVERED if rep["uncovered_required_criteria"] else 0
-
+          f"detector-covered {rep['covered_cells']}, pending {rep['pending_cells']}) · core criterion x layer "
+          f"{cc['core_criterion_x_layer']['total']} · gate x asset omitted offline · owner-deferred {len(rep['deferred_by_owner'])}")
+    codes = []
+    for code, msg in registry_report_problems(rep):
+        gating = code != EXIT_REG_UNCOVERED or require_covered
+        print(f"  {'!!' if gating else '..'} {msg}" + ("" if gating else "  (informational: --require-covered gates it)"))
+        if gating:
+            codes.append(code)
+    return min(codes, key=(EXIT_REG_CELLS, EXIT_REG_PARITY, EXIT_REG_UNCOVERED).index) if codes else 0
 
 def main() -> int:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--layer", default="L0")
+    ap.add_argument("--layer", default=None, help="default: L0")
     ap.add_argument("--emit-gaps", action="store_true")
     ap.add_argument("--rollup", action="store_true",
                     help="also write the nine-gate cells per asset (key `rollup`) and the non-nine gates as "
@@ -9962,13 +10053,23 @@ def main() -> int:
                     help="E6.5: registry-only coverage report (no database): per core gate x layer, which required criteria "
                          "have an auto-measured detector; writes --out (default <control>/registry_coverage_report.json)")
     ap.add_argument("--check", action="store_true",
-                    help="with --registry-check: verify --out equals a fresh regeneration (exit 7 on drift) instead of writing")
+                    help="with --registry-check: verify --out equals a fresh regeneration instead of writing (DRIFT ONLY: exit 0 on a "
+                         "match, 9 on drift)")
+    ap.add_argument("--require-covered", action="store_true",
+                    help="with --registry-check: exit 11 when a required criterion is uncovered (detector NONE and not declared "
+                         "per-asset-pending); without it coverage is reported, not gated")
     ap.add_argument("--out", default=None, help="default: <control>/asset_census.json (scoped: asset_census_scoped.json)")
     a = ap.parse_args()
-    if a.check and not a.registry_check:
-        ap.error("--check requires --registry-check")
+    if (a.check or a.require_covered) and not a.registry_check:
+        ap.error("--check / --require-covered require --registry-check")
     if a.registry_check:
-        return registry_check_main(a.out if a.out is not None else str(CTRL / "registry_coverage_report.json"), a.check)
+        clash = [f for f, v in (("--emit-gaps", a.emit_gaps), ("--rollup", a.rollup), ("--assets", a.assets is not None),
+                                ("--layer", a.layer is not None)) if v]
+        if clash:
+            ap.error(f"--registry-check is registry-only and cannot be combined with {', '.join(clash)}")
+        return registry_check_main(a.out if a.out is not None else str(CTRL / "registry_coverage_report.json"), a.check, a.require_covered)
+    if a.layer is None:
+        a.layer = "L0"
     keys = list(LAYERS) if a.layer.lower() == "all" else [k.strip().upper() for k in a.layer.split(",")]
     for k in keys:
         if k not in LAYERS:

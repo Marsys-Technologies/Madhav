@@ -1,18 +1,290 @@
 {
- "schema": 1,
+ "schema": 2,
  "registry_revision": 16,
  "registry_fingerprint": "8b88e7b26f32fdf8f665533b96357c8c332fb142a7166a6468a0f64ec51cb97c",
- "inspector_commit": "f4ad124ac374a38b1cb3903391824031713831cc",
+ "inspector_commit": "b60d438d9bdc867c1abc3175924240b5d8bde708",
+ "inspector_commit_note": "the last commit touching asset_census.py when this report was generated; a provenance pointer, not a reachability claim (it may be unreachable after a squash or rebase); --check never compares it",
  "expected_cells": 54,
  "covered_cells": 42,
- "covered_cells_unit": "gate_x_layer cells whose every required criterion has an auto-measured detector or is declared per-asset-pending",
+ "covered_cells_unit": "gate_x_layer cells whose every required criterion has a registry-declared detector (a registry label; says nothing about per-asset emission); per-asset-pending cells are reported separately and never counted covered",
+ "pending_cells": 0,
  "uncovered_required_criteria": [
   "Carr.D2",
   "Carr.D3",
   "Earn.service_state"
  ],
  "per_asset_pending": [],
- "per_asset_pending_note": "declared in PER_ASSET_PENDING (empty until the separate pending file lands; not fingerprinted)",
+ "per_asset_pending_decisions": {},
+ "per_asset_pending_note": "declared in PER_ASSET_PENDING (empty until the separate pending file lands; not fingerprinted); excluded from uncovered_required_criteria, never counted as covered",
+ "declared_detector_never_emitted": [],
+ "criterion_emission": [
+  {
+   "criterion": "Build.completion",
+   "detector": "asset_census.py:measure()",
+   "emitted_by_measure": true,
+   "sites": [
+    "measure"
+   ]
+  },
+  {
+   "criterion": "Build.contract",
+   "detector": "asset_census.py:measure()",
+   "emitted_by_measure": true,
+   "sites": [
+    "measure"
+   ]
+  },
+  {
+   "criterion": "Build.count_integrity",
+   "detector": "asset_census.py:measure()",
+   "emitted_by_measure": true,
+   "sites": [
+    "measure"
+   ]
+  },
+  {
+   "criterion": "Build.dag",
+   "detector": "asset_census.py:measure()",
+   "emitted_by_measure": true,
+   "sites": [
+    "measure"
+   ]
+  },
+  {
+   "criterion": "Build.dep_liveness",
+   "detector": "asset_census.py:measure()",
+   "emitted_by_measure": true,
+   "sites": [
+    "measure"
+   ]
+  },
+  {
+   "criterion": "Build.exercised",
+   "detector": "asset_census.py:measure()",
+   "emitted_by_measure": true,
+   "sites": [
+    "measure"
+   ]
+  },
+  {
+   "criterion": "Build.history",
+   "detector": "asset_census.py:measure()",
+   "emitted_by_measure": true,
+   "sites": [
+    "measure"
+   ]
+  },
+  {
+   "criterion": "Build.registered",
+   "detector": "asset_census.py:measure()",
+   "emitted_by_measure": true,
+   "sites": [
+    "measure"
+   ]
+  },
+  {
+   "criterion": "Build.target",
+   "detector": "asset_census.py:measure()",
+   "emitted_by_measure": true,
+   "sites": [
+    "measure"
+   ]
+  },
+  {
+   "criterion": "Carr.D1",
+   "detector": "asset_census.py:measure()",
+   "emitted_by_measure": true,
+   "sites": [
+    "carr_checks",
+    "carriage_declared_checks"
+   ]
+  },
+  {
+   "criterion": "Carr.D2",
+   "detector": "NONE",
+   "emitted_by_measure": true,
+   "sites": [
+    "carr_checks",
+    "carriage_declared_checks"
+   ]
+  },
+  {
+   "criterion": "Carr.D3",
+   "detector": "NONE",
+   "emitted_by_measure": true,
+   "sites": [
+    "carr_checks",
+    "carriage_declared_checks"
+   ]
+  },
+  {
+   "criterion": "Complete.depth",
+   "detector": "asset_census.py:measure()",
+   "emitted_by_measure": true,
+   "sites": [
+    "measure"
+   ]
+  },
+  {
+   "criterion": "Complete.width",
+   "detector": "asset_census.py:measure()",
+   "emitted_by_measure": true,
+   "sites": [
+    "measure"
+   ]
+  },
+  {
+   "criterion": "Completeness.depth.dasha_link",
+   "detector": "NONE",
+   "emitted_by_measure": false,
+   "sites": []
+  },
+  {
+   "criterion": "Cost.baseline",
+   "detector": "asset_census.py:measure()",
+   "emitted_by_measure": true,
+   "sites": [
+    "measure"
+   ]
+  },
+  {
+   "criterion": "Count.floor",
+   "detector": "asset_census.py:measure()",
+   "emitted_by_measure": true,
+   "sites": [
+    "measure"
+   ]
+  },
+  {
+   "criterion": "Dens.served",
+   "detector": "asset_census.py:measure()",
+   "emitted_by_measure": true,
+   "sites": [
+    "measure"
+   ]
+  },
+  {
+   "criterion": "Earn.build_record",
+   "detector": "asset_census.py:measure()",
+   "emitted_by_measure": true,
+   "sites": [
+    "measure"
+   ]
+  },
+  {
+   "criterion": "Earn.service_state",
+   "detector": "NONE",
+   "emitted_by_measure": true,
+   "sites": [
+    "measure"
+   ]
+  },
+  {
+   "criterion": "Idem.pattern",
+   "detector": "asset_census.py:measure()",
+   "emitted_by_measure": true,
+   "sites": [
+    "measure"
+   ]
+  },
+  {
+   "criterion": "Ldgr.source_presence",
+   "detector": "asset_census.py:measure()",
+   "emitted_by_measure": true,
+   "sites": [
+    "ldgr_source_declared_check",
+    "measure"
+   ]
+  },
+  {
+   "criterion": "Narr.agree",
+   "detector": "asset_census.py:measure()",
+   "emitted_by_measure": true,
+   "sites": [
+    "_measure_prose",
+    "measure",
+    "prose_checks"
+   ]
+  },
+  {
+   "criterion": "Narr.checkable",
+   "detector": "asset_census.py:measure()",
+   "emitted_by_measure": true,
+   "sites": [
+    "_measure_prose",
+    "measure",
+    "prose_checks"
+   ]
+  },
+  {
+   "criterion": "Narr.fidelity_test",
+   "detector": "asset_census.py:measure()",
+   "emitted_by_measure": true,
+   "sites": [
+    "measure",
+    "prose_checks"
+   ]
+  },
+  {
+   "criterion": "Narr.lint",
+   "detector": "asset_census.py:measure()",
+   "emitted_by_measure": true,
+   "sites": [
+    "measure",
+    "prose_checks"
+   ]
+  },
+  {
+   "criterion": "Null.blank_rows",
+   "detector": "asset_census.py:measure()",
+   "emitted_by_measure": true,
+   "sites": [
+    "_measure_null_convention",
+    "_measure_prose",
+    "earn_null_lift",
+    "measure",
+    "prose_checks"
+   ]
+  },
+  {
+   "criterion": "Null.schema_default",
+   "detector": "asset_census.py:measure()",
+   "emitted_by_measure": true,
+   "sites": [
+    "_measure_null_convention",
+    "_measure_prose",
+    "earn_null_lift",
+    "measure",
+    "prose_checks"
+   ]
+  },
+  {
+   "criterion": "Reach.fields",
+   "detector": "asset_census.py:measure()",
+   "emitted_by_measure": true,
+   "sites": [
+    "measure"
+   ]
+  },
+  {
+   "criterion": "Vocab.alias",
+   "detector": "asset_census.py:measure()",
+   "emitted_by_measure": true,
+   "sites": [
+    "measure",
+    "vocab_alias_declared_check"
+   ]
+  },
+  {
+   "criterion": "Vocab.identity",
+   "detector": "asset_census.py:measure()",
+   "emitted_by_measure": true,
+   "sites": [
+    "measure"
+   ]
+  }
+ ],
+ "criterion_emission_note": "static reachability from measure(): 'emitted_by_measure' means the id appears in a function measure() reaches; it says nothing about how many assets the criterion is emitted for",
  "deferred_by_owner": [
   {
    "asset_id": "bg_gochara_citation_resolution",
@@ -142,12 +414,14 @@
  "non_core_detector_none": [
   "Completeness.depth.dasha_link"
  ],
+ "non_core_detector_none_note": "the plan's 'no required criterion with detector NONE' is not gate-scoped; a non-core criterion with detector NONE is information here, not uncovered (SS decision, behaviour unchanged)",
  "candidate_cell_counts": {
   "gate_x_layer": {
    "total": 54,
    "pinned": true,
    "with_auto_detector": 54,
-   "fully_covered": 42
+   "fully_covered": 42,
+   "pending_only": 0
   },
   "core_criterion_x_layer": {
    "total": 150,
@@ -184,6 +458,7 @@
   {
    "gate": "Ldgr",
    "layer": "L0",
+   "status": "covered",
    "required": [
     "Ldgr.source_presence"
    ],
@@ -193,7 +468,6 @@
    "detector_none": [],
    "per_asset_pending": [],
    "uncovered": [],
-   "covered": true,
    "declared_na_rules": [
     "Ldgr.source_presence#measured:no-classical-claim"
    ]
@@ -201,6 +475,7 @@
   {
    "gate": "Ldgr",
    "layer": "L1",
+   "status": "covered",
    "required": [
     "Ldgr.source_presence"
    ],
@@ -210,7 +485,6 @@
    "detector_none": [],
    "per_asset_pending": [],
    "uncovered": [],
-   "covered": true,
    "declared_na_rules": [
     "Ldgr.source_presence#measured:no-classical-claim"
    ]
@@ -218,6 +492,7 @@
   {
    "gate": "Ldgr",
    "layer": "L2",
+   "status": "covered",
    "required": [
     "Ldgr.source_presence"
    ],
@@ -227,7 +502,6 @@
    "detector_none": [],
    "per_asset_pending": [],
    "uncovered": [],
-   "covered": true,
    "declared_na_rules": [
     "Ldgr.source_presence#measured:no-classical-claim"
    ]
@@ -235,6 +509,7 @@
   {
    "gate": "Ldgr",
    "layer": "L3",
+   "status": "covered",
    "required": [
     "Ldgr.source_presence"
    ],
@@ -244,7 +519,6 @@
    "detector_none": [],
    "per_asset_pending": [],
    "uncovered": [],
-   "covered": true,
    "declared_na_rules": [
     "Ldgr.source_presence#measured:no-classical-claim"
    ]
@@ -252,6 +526,7 @@
   {
    "gate": "Ldgr",
    "layer": "L4",
+   "status": "covered",
    "required": [
     "Ldgr.source_presence"
    ],
@@ -261,7 +536,6 @@
    "detector_none": [],
    "per_asset_pending": [],
    "uncovered": [],
-   "covered": true,
    "declared_na_rules": [
     "Ldgr.source_presence#measured:no-classical-claim"
    ]
@@ -269,6 +543,7 @@
   {
    "gate": "Ldgr",
    "layer": "L5",
+   "status": "covered",
    "required": [
     "Ldgr.source_presence"
    ],
@@ -278,7 +553,6 @@
    "detector_none": [],
    "per_asset_pending": [],
    "uncovered": [],
-   "covered": true,
    "declared_na_rules": [
     "Ldgr.source_presence#measured:no-classical-claim"
    ]
@@ -286,6 +560,7 @@
   {
    "gate": "Idem",
    "layer": "L0",
+   "status": "covered",
    "required": [
     "Idem.pattern"
    ],
@@ -295,12 +570,12 @@
    "detector_none": [],
    "per_asset_pending": [],
    "uncovered": [],
-   "covered": true,
    "declared_na_rules": []
   },
   {
    "gate": "Idem",
    "layer": "L1",
+   "status": "covered",
    "required": [
     "Idem.pattern"
    ],
@@ -310,12 +585,12 @@
    "detector_none": [],
    "per_asset_pending": [],
    "uncovered": [],
-   "covered": true,
    "declared_na_rules": []
   },
   {
    "gate": "Idem",
    "layer": "L2",
+   "status": "covered",
    "required": [
     "Idem.pattern"
    ],
@@ -325,12 +600,12 @@
    "detector_none": [],
    "per_asset_pending": [],
    "uncovered": [],
-   "covered": true,
    "declared_na_rules": []
   },
   {
    "gate": "Idem",
    "layer": "L3",
+   "status": "covered",
    "required": [
     "Idem.pattern"
    ],
@@ -340,12 +615,12 @@
    "detector_none": [],
    "per_asset_pending": [],
    "uncovered": [],
-   "covered": true,
    "declared_na_rules": []
   },
   {
    "gate": "Idem",
    "layer": "L4",
+   "status": "covered",
    "required": [
     "Idem.pattern"
    ],
@@ -355,12 +630,12 @@
    "detector_none": [],
    "per_asset_pending": [],
    "uncovered": [],
-   "covered": true,
    "declared_na_rules": []
   },
   {
    "gate": "Idem",
    "layer": "L5",
+   "status": "covered",
    "required": [
     "Idem.pattern"
    ],
@@ -370,12 +645,12 @@
    "detector_none": [],
    "per_asset_pending": [],
    "uncovered": [],
-   "covered": true,
    "declared_na_rules": []
   },
   {
    "gate": "Earn",
    "layer": "L0",
+   "status": "uncovered",
    "required": [
     "Earn.build_record",
     "Earn.service_state"
@@ -390,7 +665,6 @@
    "uncovered": [
     "Earn.service_state"
    ],
-   "covered": false,
    "declared_na_rules": [
     "Earn.service_state#measured:not-a-service"
    ]
@@ -398,6 +672,7 @@
   {
    "gate": "Earn",
    "layer": "L1",
+   "status": "uncovered",
    "required": [
     "Earn.build_record",
     "Earn.service_state"
@@ -412,7 +687,6 @@
    "uncovered": [
     "Earn.service_state"
    ],
-   "covered": false,
    "declared_na_rules": [
     "Earn.service_state#measured:not-a-service"
    ]
@@ -420,6 +694,7 @@
   {
    "gate": "Earn",
    "layer": "L2",
+   "status": "uncovered",
    "required": [
     "Earn.build_record",
     "Earn.service_state"
@@ -434,7 +709,6 @@
    "uncovered": [
     "Earn.service_state"
    ],
-   "covered": false,
    "declared_na_rules": [
     "Earn.service_state#measured:not-a-service"
    ]
@@ -442,6 +716,7 @@
   {
    "gate": "Earn",
    "layer": "L3",
+   "status": "uncovered",
    "required": [
     "Earn.build_record",
     "Earn.service_state"
@@ -456,7 +731,6 @@
    "uncovered": [
     "Earn.service_state"
    ],
-   "covered": false,
    "declared_na_rules": [
     "Earn.service_state#measured:not-a-service"
    ]
@@ -464,6 +738,7 @@
   {
    "gate": "Earn",
    "layer": "L4",
+   "status": "uncovered",
    "required": [
     "Earn.build_record",
     "Earn.service_state"
@@ -478,7 +753,6 @@
    "uncovered": [
     "Earn.service_state"
    ],
-   "covered": false,
    "declared_na_rules": [
     "Earn.service_state#measured:not-a-service"
    ]
@@ -486,6 +760,7 @@
   {
    "gate": "Earn",
    "layer": "L5",
+   "status": "uncovered",
    "required": [
     "Earn.build_record",
     "Earn.service_state"
@@ -500,7 +775,6 @@
    "uncovered": [
     "Earn.service_state"
    ],
-   "covered": false,
    "declared_na_rules": [
     "Earn.service_state#measured:not-a-service"
    ]
@@ -508,6 +782,7 @@
   {
    "gate": "Null",
    "layer": "L0",
+   "status": "covered",
    "required": [
     "Null.blank_rows",
     "Null.schema_default"
@@ -519,12 +794,12 @@
    "detector_none": [],
    "per_asset_pending": [],
    "uncovered": [],
-   "covered": true,
    "declared_na_rules": []
   },
   {
    "gate": "Null",
    "layer": "L1",
+   "status": "covered",
    "required": [
     "Null.blank_rows",
     "Null.schema_default"
@@ -536,12 +811,12 @@
    "detector_none": [],
    "per_asset_pending": [],
    "uncovered": [],
-   "covered": true,
    "declared_na_rules": []
   },
   {
    "gate": "Null",
    "layer": "L2",
+   "status": "covered",
    "required": [
     "Null.blank_rows",
     "Null.schema_default"
@@ -553,12 +828,12 @@
    "detector_none": [],
    "per_asset_pending": [],
    "uncovered": [],
-   "covered": true,
    "declared_na_rules": []
   },
   {
    "gate": "Null",
    "layer": "L3",
+   "status": "covered",
    "required": [
     "Null.blank_rows",
     "Null.schema_default"
@@ -570,12 +845,12 @@
    "detector_none": [],
    "per_asset_pending": [],
    "uncovered": [],
-   "covered": true,
    "declared_na_rules": []
   },
   {
    "gate": "Null",
    "layer": "L4",
+   "status": "covered",
    "required": [
     "Null.blank_rows",
     "Null.schema_default"
@@ -587,12 +862,12 @@
    "detector_none": [],
    "per_asset_pending": [],
    "uncovered": [],
-   "covered": true,
    "declared_na_rules": []
   },
   {
    "gate": "Null",
    "layer": "L5",
+   "status": "covered",
    "required": [
     "Null.blank_rows",
     "Null.schema_default"
@@ -604,12 +879,12 @@
    "detector_none": [],
    "per_asset_pending": [],
    "uncovered": [],
-   "covered": true,
    "declared_na_rules": []
   },
   {
    "gate": "Vocab",
    "layer": "L0",
+   "status": "covered",
    "required": [
     "Vocab.alias",
     "Vocab.identity"
@@ -621,7 +896,6 @@
    "detector_none": [],
    "per_asset_pending": [],
    "uncovered": [],
-   "covered": true,
    "declared_na_rules": [
     "Vocab.alias#measured:no-alias-class"
    ]
@@ -629,6 +903,7 @@
   {
    "gate": "Vocab",
    "layer": "L1",
+   "status": "covered",
    "required": [
     "Vocab.alias",
     "Vocab.identity"
@@ -640,7 +915,6 @@
    "detector_none": [],
    "per_asset_pending": [],
    "uncovered": [],
-   "covered": true,
    "declared_na_rules": [
     "Vocab.alias#measured:no-alias-class"
    ]
@@ -648,6 +922,7 @@
   {
    "gate": "Vocab",
    "layer": "L2",
+   "status": "covered",
    "required": [
     "Vocab.alias",
     "Vocab.identity"
@@ -659,7 +934,6 @@
    "detector_none": [],
    "per_asset_pending": [],
    "uncovered": [],
-   "covered": true,
    "declared_na_rules": [
     "Vocab.alias#measured:no-alias-class"
    ]
@@ -667,6 +941,7 @@
   {
    "gate": "Vocab",
    "layer": "L3",
+   "status": "covered",
    "required": [
     "Vocab.alias",
     "Vocab.identity"
@@ -678,7 +953,6 @@
    "detector_none": [],
    "per_asset_pending": [],
    "uncovered": [],
-   "covered": true,
    "declared_na_rules": [
     "Vocab.alias#measured:no-alias-class"
    ]
@@ -686,6 +960,7 @@
   {
    "gate": "Vocab",
    "layer": "L4",
+   "status": "covered",
    "required": [
     "Vocab.alias",
     "Vocab.identity"
@@ -697,7 +972,6 @@
    "detector_none": [],
    "per_asset_pending": [],
    "uncovered": [],
-   "covered": true,
    "declared_na_rules": [
     "Vocab.alias#measured:no-alias-class"
    ]
@@ -705,6 +979,7 @@
   {
    "gate": "Vocab",
    "layer": "L5",
+   "status": "covered",
    "required": [
     "Vocab.alias",
     "Vocab.identity"
@@ -716,7 +991,6 @@
    "detector_none": [],
    "per_asset_pending": [],
    "uncovered": [],
-   "covered": true,
    "declared_na_rules": [
     "Vocab.alias#measured:no-alias-class"
    ]
@@ -724,6 +998,7 @@
   {
    "gate": "Carr",
    "layer": "L0",
+   "status": "uncovered",
    "required": [
     "Carr.D1",
     "Carr.D2",
@@ -741,7 +1016,6 @@
     "Carr.D2",
     "Carr.D3"
    ],
-   "covered": false,
    "declared_na_rules": [
     "Carr.D1#measured:not-the-declared-carriage",
     "Carr.D2#measured:not-the-declared-carriage",
@@ -751,6 +1025,7 @@
   {
    "gate": "Carr",
    "layer": "L1",
+   "status": "uncovered",
    "required": [
     "Carr.D1",
     "Carr.D2",
@@ -768,7 +1043,6 @@
     "Carr.D2",
     "Carr.D3"
    ],
-   "covered": false,
    "declared_na_rules": [
     "Carr.D1#measured:not-the-declared-carriage",
     "Carr.D2#measured:not-the-declared-carriage",
@@ -778,6 +1052,7 @@
   {
    "gate": "Carr",
    "layer": "L2",
+   "status": "uncovered",
    "required": [
     "Carr.D1",
     "Carr.D2",
@@ -795,7 +1070,6 @@
     "Carr.D2",
     "Carr.D3"
    ],
-   "covered": false,
    "declared_na_rules": [
     "Carr.D1#measured:not-the-declared-carriage",
     "Carr.D2#measured:not-the-declared-carriage",
@@ -805,6 +1079,7 @@
   {
    "gate": "Carr",
    "layer": "L3",
+   "status": "uncovered",
    "required": [
     "Carr.D1",
     "Carr.D2",
@@ -822,7 +1097,6 @@
     "Carr.D2",
     "Carr.D3"
    ],
-   "covered": false,
    "declared_na_rules": [
     "Carr.D1#measured:not-the-declared-carriage",
     "Carr.D2#measured:not-the-declared-carriage",
@@ -832,6 +1106,7 @@
   {
    "gate": "Carr",
    "layer": "L4",
+   "status": "uncovered",
    "required": [
     "Carr.D1",
     "Carr.D2",
@@ -849,7 +1124,6 @@
     "Carr.D2",
     "Carr.D3"
    ],
-   "covered": false,
    "declared_na_rules": [
     "Carr.D1#measured:not-the-declared-carriage",
     "Carr.D2#measured:not-the-declared-carriage",
@@ -859,6 +1133,7 @@
   {
    "gate": "Carr",
    "layer": "L5",
+   "status": "uncovered",
    "required": [
     "Carr.D1",
     "Carr.D2",
@@ -876,7 +1151,6 @@
     "Carr.D2",
     "Carr.D3"
    ],
-   "covered": false,
    "declared_na_rules": [
     "Carr.D1#measured:not-the-declared-carriage",
     "Carr.D2#measured:not-the-declared-carriage",
@@ -886,6 +1160,7 @@
   {
    "gate": "Narr",
    "layer": "L0",
+   "status": "covered",
    "required": [
     "Narr.agree",
     "Narr.checkable",
@@ -901,7 +1176,6 @@
    "detector_none": [],
    "per_asset_pending": [],
    "uncovered": [],
-   "covered": true,
    "declared_na_rules": [
     "Narr.agree#measured:no-prose",
     "Narr.checkable#measured:no-prose",
@@ -912,6 +1186,7 @@
   {
    "gate": "Narr",
    "layer": "L1",
+   "status": "covered",
    "required": [
     "Narr.agree",
     "Narr.checkable",
@@ -927,7 +1202,6 @@
    "detector_none": [],
    "per_asset_pending": [],
    "uncovered": [],
-   "covered": true,
    "declared_na_rules": [
     "Narr.agree#measured:no-prose",
     "Narr.checkable#measured:no-prose",
@@ -938,6 +1212,7 @@
   {
    "gate": "Narr",
    "layer": "L2",
+   "status": "covered",
    "required": [
     "Narr.agree",
     "Narr.checkable",
@@ -953,7 +1228,6 @@
    "detector_none": [],
    "per_asset_pending": [],
    "uncovered": [],
-   "covered": true,
    "declared_na_rules": [
     "Narr.agree#measured:no-prose",
     "Narr.checkable#measured:no-prose",
@@ -964,6 +1238,7 @@
   {
    "gate": "Narr",
    "layer": "L3",
+   "status": "covered",
    "required": [
     "Narr.agree",
     "Narr.checkable",
@@ -979,7 +1254,6 @@
    "detector_none": [],
    "per_asset_pending": [],
    "uncovered": [],
-   "covered": true,
    "declared_na_rules": [
     "Narr.agree#measured:no-prose",
     "Narr.checkable#measured:no-prose",
@@ -990,6 +1264,7 @@
   {
    "gate": "Narr",
    "layer": "L4",
+   "status": "covered",
    "required": [
     "Narr.agree",
     "Narr.checkable",
@@ -1005,7 +1280,6 @@
    "detector_none": [],
    "per_asset_pending": [],
    "uncovered": [],
-   "covered": true,
    "declared_na_rules": [
     "Narr.agree#measured:no-prose",
     "Narr.checkable#measured:no-prose",
@@ -1016,6 +1290,7 @@
   {
    "gate": "Narr",
    "layer": "L5",
+   "status": "covered",
    "required": [
     "Narr.agree",
     "Narr.checkable",
@@ -1031,7 +1306,6 @@
    "detector_none": [],
    "per_asset_pending": [],
    "uncovered": [],
-   "covered": true,
    "declared_na_rules": [
     "Narr.agree#measured:no-prose",
     "Narr.checkable#measured:no-prose",
@@ -1042,6 +1316,7 @@
   {
    "gate": "Dens",
    "layer": "L0",
+   "status": "covered",
    "required": [
     "Dens.served"
    ],
@@ -1051,7 +1326,6 @@
    "detector_none": [],
    "per_asset_pending": [],
    "uncovered": [],
-   "covered": true,
    "declared_na_rules": [
     "Dens.served#measured:no-served-surface"
    ]
@@ -1059,6 +1333,7 @@
   {
    "gate": "Dens",
    "layer": "L1",
+   "status": "covered",
    "required": [
     "Dens.served"
    ],
@@ -1068,7 +1343,6 @@
    "detector_none": [],
    "per_asset_pending": [],
    "uncovered": [],
-   "covered": true,
    "declared_na_rules": [
     "Dens.served#measured:no-served-surface"
    ]
@@ -1076,6 +1350,7 @@
   {
    "gate": "Dens",
    "layer": "L2",
+   "status": "covered",
    "required": [
     "Dens.served"
    ],
@@ -1085,7 +1360,6 @@
    "detector_none": [],
    "per_asset_pending": [],
    "uncovered": [],
-   "covered": true,
    "declared_na_rules": [
     "Dens.served#measured:no-served-surface"
    ]
@@ -1093,6 +1367,7 @@
   {
    "gate": "Dens",
    "layer": "L3",
+   "status": "covered",
    "required": [
     "Dens.served"
    ],
@@ -1102,7 +1377,6 @@
    "detector_none": [],
    "per_asset_pending": [],
    "uncovered": [],
-   "covered": true,
    "declared_na_rules": [
     "Dens.served#measured:no-served-surface"
    ]
@@ -1110,6 +1384,7 @@
   {
    "gate": "Dens",
    "layer": "L4",
+   "status": "covered",
    "required": [
     "Dens.served"
    ],
@@ -1119,7 +1394,6 @@
    "detector_none": [],
    "per_asset_pending": [],
    "uncovered": [],
-   "covered": true,
    "declared_na_rules": [
     "Dens.served#measured:no-served-surface"
    ]
@@ -1127,6 +1401,7 @@
   {
    "gate": "Dens",
    "layer": "L5",
+   "status": "covered",
    "required": [
     "Dens.served"
    ],
@@ -1136,7 +1411,6 @@
    "detector_none": [],
    "per_asset_pending": [],
    "uncovered": [],
-   "covered": true,
    "declared_na_rules": [
     "Dens.served#measured:no-served-surface"
    ]
@@ -1144,6 +1418,7 @@
   {
    "gate": "Build",
    "layer": "L0",
+   "status": "covered",
    "required": [
     "Build.completion",
     "Build.contract",
@@ -1169,7 +1444,6 @@
    "detector_none": [],
    "per_asset_pending": [],
    "uncovered": [],
-   "covered": true,
    "declared_na_rules": [
     "Build.dep_liveness#measured:no-declared-dependencies",
     "Build.history#measured:never-run"
@@ -1178,6 +1452,7 @@
   {
    "gate": "Build",
    "layer": "L1",
+   "status": "covered",
    "required": [
     "Build.completion",
     "Build.contract",
@@ -1203,7 +1478,6 @@
    "detector_none": [],
    "per_asset_pending": [],
    "uncovered": [],
-   "covered": true,
    "declared_na_rules": [
     "Build.dep_liveness#measured:no-declared-dependencies",
     "Build.history#measured:never-run"
@@ -1212,6 +1486,7 @@
   {
    "gate": "Build",
    "layer": "L2",
+   "status": "covered",
    "required": [
     "Build.completion",
     "Build.contract",
@@ -1237,7 +1512,6 @@
    "detector_none": [],
    "per_asset_pending": [],
    "uncovered": [],
-   "covered": true,
    "declared_na_rules": [
     "Build.dep_liveness#measured:no-declared-dependencies",
     "Build.history#measured:never-run"
@@ -1246,6 +1520,7 @@
   {
    "gate": "Build",
    "layer": "L3",
+   "status": "covered",
    "required": [
     "Build.completion",
     "Build.contract",
@@ -1271,7 +1546,6 @@
    "detector_none": [],
    "per_asset_pending": [],
    "uncovered": [],
-   "covered": true,
    "declared_na_rules": [
     "Build.dep_liveness#measured:no-declared-dependencies",
     "Build.history#measured:never-run"
@@ -1280,6 +1554,7 @@
   {
    "gate": "Build",
    "layer": "L4",
+   "status": "covered",
    "required": [
     "Build.completion",
     "Build.contract",
@@ -1305,7 +1580,6 @@
    "detector_none": [],
    "per_asset_pending": [],
    "uncovered": [],
-   "covered": true,
    "declared_na_rules": [
     "Build.dep_liveness#measured:no-declared-dependencies",
     "Build.history#measured:never-run"
@@ -1314,6 +1588,7 @@
   {
    "gate": "Build",
    "layer": "L5",
+   "status": "covered",
    "required": [
     "Build.completion",
     "Build.contract",
@@ -1339,7 +1614,6 @@
    "detector_none": [],
    "per_asset_pending": [],
    "uncovered": [],
-   "covered": true,
    "declared_na_rules": [
     "Build.dep_liveness#measured:no-declared-dependencies",
     "Build.history#measured:never-run"
