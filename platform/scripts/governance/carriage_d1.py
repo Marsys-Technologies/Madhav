@@ -524,7 +524,7 @@ def validate_spec(spec, where: str) -> dict:
         raise SpecError(f"{where}.spec.extra_fields must be a list")
     cols = set(fl.values())
     for ef in efs:
-        if isinstance(ef, dict) and ef.get("column") in RESULT_KEYS:
+        if isinstance(ef, dict) and isinstance(ef.get("column"), str) and ef["column"] in RESULT_KEYS:    # a non-string column is refused just below, never an unhashable crash
             raise SpecError(f"{where}.spec.extra_fields[{ef['column']}]: the column name collides with a result key of the matcher {sorted(RESULT_KEYS)} "
                             "(its per-row result would overwrite that check's result, so the check would no longer be graded): rename the extra field")
         if not (isinstance(ef, dict) and isinstance(ef.get("column"), str) and _IDENT.fullmatch(ef["column"]) and ef["column"] not in cols
@@ -603,7 +603,7 @@ def prose_coverage(spec: dict) -> dict:
     result key (`effect` / `count` / `direction`: its result would overwrite that check's, so coverage could not be told from what D1 grades)."""
     cov = {spec["fields"]["effect"]: "effect"}
     for ef in spec.get("extra_fields", []):
-        if ef["column"] in RESULT_KEYS:
+        if isinstance(ef["column"], str) and ef["column"] in RESULT_KEYS:
             raise SpecError(f"extra field {ef['column']!r} collides with a matcher result key {sorted(RESULT_KEYS)}")
         if ef["kind"] == "passage_text":
             cov[ef["column"]] = ef["column"]

@@ -803,3 +803,12 @@ def test_the_registry_revision_and_the_four_narr_criteria_carry_the_new_declared
         assert e["revision"] == 2 and "prose_coupling to carriage_d1" in e["applicability"] and "NARR-GUARD" in e["applicability"], c
     assert ac.NA_CAUSES["Narr.agree"] == ("no-prose",) and all(f"{c}#measured:no-prose" in ac.NA_RULE_DECISIONS for c in NARR)
     assert "16 (provisional): NARR-GUARD" in pathlib.Path(ac.__file__).read_text(encoding="utf-8").split("REGISTRY_REVISION = 16", 1)[1][:200]
+
+
+@pytest.mark.parametrize("bad", [["effect"], {"a": 1}, 7, None])
+def test_a_non_string_extra_field_column_is_a_spec_error_never_an_unhashable_crash(bad):
+    """Re-review L1: `ef.get("column") in RESULT_KEYS` raised TypeError for a list/dict column (it was a SpecError before the collision check)."""
+    spec = json.loads(json.dumps(SPEC))
+    spec["extra_fields"] = list(spec.get("extra_fields", [])) + [{"column": bad, "kind": "passage_text"}]
+    with pytest.raises(d1.SpecError):
+        d1.validate_spec(spec, "x")
