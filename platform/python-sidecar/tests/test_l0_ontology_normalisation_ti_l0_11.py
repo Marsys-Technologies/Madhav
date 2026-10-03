@@ -10,8 +10,8 @@ Proves
   2. the declared ambiguous-alias list is exact (every ambiguous alias names >1 (class,id) and
      is resolvable class-aware to each owner).
   3. the SS-stated prediction for the remedy source ids, computed from a read-only production
-     census fixture: exact 52 / normalised-only 204 / unresolved 85 against the CURRENT text
-     class (TI-L0-13 later moves 2 of the unresolved to exact).
+     census fixture: exact 52 / normalised-only 204 / unresolved 85 against the text class on main
+     (54 / 204 / 83 once TI-L0-13 has landed).
   4. `ephemeris_daily.body` (stored 'Jupiter', 'Moon', ...) resolves class-aware to the planet
      ids, with NO stored value rewritten.
   5. the release id is deterministic, sensitive to a vocabulary edit, and blind to co-writer
@@ -139,7 +139,10 @@ def test_remedy_source_id_prediction_52_204_85():
     for sid, n in FIX.items():
         tally[classify(sid)] += n
     assert sum(tally.values()) == 341
-    assert tally == {"exact": 52, "normalised_only": 204, "unresolved": 85}, tally
+    # 52/204/85 against the text class as it is on main; TI-L0-13 (which adds bphs_jaimini and
+    # nadi_navamsa_patel to the class) moves exactly those two ids from unresolved to exact: 54/204/83.
+    assert tally in ({"exact": 52, "normalised_only": 204, "unresolved": 85},
+                     {"exact": 54, "normalised_only": 204, "unresolved": 83}), tally
     assert classify("classical_tradition") == "unresolved"       # not provenance (SS Q3): never resolves
     assert classify("Tajaka") == "unresolved"                      # 'tajaka' is the SCHOOL; class-aware resolution does not take it for a text
 
