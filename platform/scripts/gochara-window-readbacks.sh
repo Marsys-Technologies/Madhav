@@ -53,7 +53,6 @@ MIGRATIONS_DIR="platform/migrations"
 BASELINE=""
 LEDGER_SNAPSHOT=""
 W2A_BASELINE=""
-ACCEPT_DORMANT=""
 EXPECT_DB=""
 EXPECT_REGISTRY_ROWS="131"
 EXPECT_WRITERS="124"
@@ -62,7 +61,7 @@ RUN_ALL=0
 usage() {
   echo "usage: $0 <pre-window|pre-train|pre-dispatch|post-window> --out DIR [--sql-dir DIR] [--migrations-dir DIR]" >&2
   echo "          [--baseline FILE] [--ledger-snapshot FILE] [--w2a-baseline FILE] [--expect-db NAME]" >&2
-  echo "          [--expect-registry-rows N] [--expect-writers N] [--accept-dormant-holder ROLE] [--all]" >&2
+  echo "          [--expect-registry-rows N] [--expect-writers N] [--all]" >&2
   exit 2
 }
 
@@ -78,17 +77,12 @@ while [ $# -gt 0 ]; do
     --expect-db) EXPECT_DB="${2:?--expect-db needs a database name}"; shift ;;
     --expect-registry-rows) EXPECT_REGISTRY_ROWS="${2:?}"; shift ;;
     --expect-writers) EXPECT_WRITERS="${2:?}"; shift ;;
-    --accept-dormant-holder) ACCEPT_DORMANT="${2:?--accept-dormant-holder needs a role name}"; shift ;;
     --all) RUN_ALL=1 ;;
     *) usage ;;
   esac
   shift
 done
 [ -n "$PHASE" ] && [ -n "$OUT" ] || usage
-if [ -n "$ACCEPT_DORMANT" ] && ! [[ "$ACCEPT_DORMANT" =~ ^[a-z_][a-z0-9_]*$ ]]; then
-  echo "REFUSAL: --accept-dormant-holder '$ACCEPT_DORMANT' is not a simple role identifier" >&2
-  exit 2
-fi
 
 mkdir -p "$OUT"
 EVIDENCE_LOG="$OUT/MANIFEST.sha256"
@@ -117,6 +111,9 @@ PINNED_SHA256_EXPECTED_WINDOW_TRIGGER_MANIFEST_tsv="2a00af09f3db783f4975c03ea925
 WINDOW_FILES="1204_gochara_av_qualifier_object_role.sql 1206_gochara_search_inventory_completeness.sql 1232_gochara_search_moon_scope_domain.sql 1233_gochara_p1_period_anchor.sql 1240_gochara_window_verification_gate.sql"
 
 SHA_1243="88be3ed59aaa0685d65e9b8b6607f3787c3ae65a5e8fb96d51f09ebe63798321"
+# Row 3: 1302 (revoke role_orchestrator's windows DML) is applied BEFORE the row-2 ledger snapshot,
+# so it belongs to the baseline — and the page precondition is its ledger record.
+SHA_1302="35af45d0d545f7705f9bd8fd91635f715a2f27c288c83e999a5cd98c7983cb9e"
 CANON_CHART="482012f1-710e-4a25-994a-93821f5871aa"
 LEGACY_RELATIONS="'public.kala_gochara_coverage'::regclass, 'public.kala_gochara_publication'::regclass, 'public.kala_gochara_contacts'::regclass, 'public.kala_gochara_windows'::regclass"
 
@@ -240,6 +237,16 @@ check_ledger_1243() { # row 2 release gate: the ROWS-ONLY 1243 is in the ledger 
   fi
 }
 
+check_revoke_1302() { # row 3 page precondition: the revoke migration is recorded in the ledger (pre-window, pre-train, pre-dispatch)
+  local got
+  got="$(run_sql R3-revoke-1302 "SELECT filename, sha256 FROM public._migrations_applied WHERE filename = '1302_revoke_role_orchestrator_windows_dml.sql'")" || return 0
+  if [ "$got" = "1302_revoke_role_orchestrator_windows_dml.sql	$SHA_1302" ]; then
+    _pass R3-revoke-1302 "1302 applied, sha256 matches the pinned value"
+  else
+    _stop R3-revoke-1302 "observed '${got:-<no row>}' vs expected '1302_revoke_role_orchestrator_windows_dml.sql <TAB> $SHA_1302'"
+  fi
+}
+
 check_1206_absent() { # row 2: 1206 must NOT be applied before the window
   local n reg
   n="$(run_sql R2-1206-ledger "SELECT count(*) FROM public._migrations_applied WHERE filename LIKE '1206%'")" || return 0
@@ -355,20 +362,7 @@ check_w2b() { # runbook W2(b): every (a) holder can EXECUTE ka_gochara_lock_char
     _pass W2b-lock-execute "every holder can EXECUTE ka_gochara_lock_chart"
     return 0
   fi
-  local failing
-  failing="$(echo "$out" | awk -F '\t' '$2 != "t" {print $1}' | tr '\n' ' ')"; failing="${failing% }"
-  if [ -n "$ACCEPT_DORMANT" ] && [ "$failing" = "$ACCEPT_DORMANT" ]; then
-    local facts
-    facts="$(run_sql W2b-dormant-facts "SELECT (NOT r.rolcanlogin), (SELECT count(*) FROM pg_auth_members m WHERE m.roleid = r.oid), (SELECT count(*) FROM pg_class c WHERE c.relowner = r.oid), (SELECT count(*) FROM pg_stat_activity a WHERE a.usename = r.rolname) FROM pg_roles r WHERE r.rolname = '$ACCEPT_DORMANT'")" || return 0
-    if [ "$facts" = "t	0	0	0" ]; then
-      echo "WARN W2b-lock-execute — accepted dormant holder $ACCEPT_DORMANT (re-verified at run time: NOLOGIN, 0 members, owns nothing, 0 sessions)"
-      _pass W2b-lock-execute "every holder can EXECUTE except the accepted dormant $ACCEPT_DORMANT (WARN printed)"
-    else
-      _stop W2b-lock-execute "--accept-dormant-holder $ACCEPT_DORMANT but the re-verified dormant facts are '${facts:-<no such role>}' vs expected NOLOGIN, 0 members, owns nothing, 0 sessions"
-    fi
-  else
-    _stop W2b-lock-execute "a holder lacks EXECUTE on ka_gochara_lock_chart: $(echo "$out" | awk -F '\t' '$2 != "t"' | tr '\n' ' ')— the default is STOP; --accept-dormant-holder ROLE excepts ONE named dormant role, re-verified at run time"
-  fi
+  _stop W2b-lock-execute "a holder lacks EXECUTE on ka_gochara_lock_chart: $(echo "$out" | awk -F '\t' '$2 != "t"' | tr '\n' ' ')— always a STOP (there is no dormant-holder exception)"
 }
 
 check_w2c() { # runbook W2(c): no role-/db-level isolation overrides
@@ -472,7 +466,7 @@ check_ledger_diff() { # B3d (rows 8 + 9) <id>: new ledger entries vs the row-2 s
   [ -f "$LEDGER_SNAPSHOT" ] || { _stop "$id" "snapshot not found: $LEDGER_SNAPSHOT"; return 0; }
   run_sql "$id-current" "SELECT filename FROM public._migrations_applied ORDER BY 1" > /dev/null || return 0
   local new bad
-  new="$(LC_ALL=C comm -13 <(LC_ALL=C sort "$LEDGER_SNAPSHOT") "$OUT/$id-current.out")"
+  new="$(LC_ALL=C comm -13 <(LC_ALL=C sort "$LEDGER_SNAPSHOT") <(LC_ALL=C sort "$OUT/$id-current.out"))"
   echo "$new" > "$OUT/$id-new-entries.tsv"
   _evidence "$id" "$id-new-entries.tsv"
   bad="$(echo "$new" | grep -Ev '^(1204_gochara_av_qualifier_object_role|1206_gochara_search_inventory_completeness|1232_gochara_search_moon_scope_domain|1233_gochara_p1_period_anchor|1240_gochara_window_verification_gate)[.]sql$' | grep . || true)"
@@ -549,6 +543,7 @@ case "$PHASE" in
     run_check check_w3                        # M6: W3 FIRST, as the runbook says
     run_check check_ledger_snapshot
     run_check check_ledger_1243
+    run_check check_revoke_1302               # row 3 page precondition
     run_check check_1206_absent
     run_check check_registry_1243
     run_check check_preread_refusals          # B1
@@ -568,6 +563,7 @@ case "$PHASE" in
     run_check check_w4
     run_check check_1206_absent
     run_check check_ledger_1243
+    run_check check_revoke_1302               # row 3 page precondition
     run_check check_registry_1243             # M1: all three release-gate items re-read at the sitting
     ;;
   pre-dispatch)                               # M7: row 8 preconditions
@@ -576,6 +572,7 @@ case "$PHASE" in
     run_check check_roles_exist
     run_check check_ledger_diff R8-ledger-diff
     run_check check_ledger_1243
+    run_check check_revoke_1302               # row 3 page precondition
     ;;
   post-window)
     run_check check_privilege_readback

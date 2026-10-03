@@ -13,9 +13,12 @@ Covered:
   B3a/B3b/B3c/B3d post-window readbacks, B4 W2(a) recheck against the pre-window baseline,
   B5 pin/backslash refusals (the tampered file is never executed), B6 session identity +
   --expect-db refusal;
-* M2 --accept-dormant-holder (WARN only when the re-verified facts say dormant, STOP otherwise),
+* M2 REMOVED (C34c): --accept-dormant-holder no longer exists (usage refusal, exit 2) — a holder
+  without EXECUTE is always a STOP;
   M3 REVIEW -> exit 3 (W5 production-only lines, W6 ka_gochara_boundary_* additions),
   M5 --expect-registry-rows/--expect-writers;
+* C34c: R3-revoke-1302 (the 1302 ledger row, pinned sha) in pre-window, pre-train and pre-dispatch,
+  and the ledger diff sorts BOTH sides LC_ALL=C (the unchanged-ledger false-STOP regression);
 * one STOP per check -> exit 1 and 'STOP <id>' on stderr;
 * the read-only refusal: SHOW transaction_read_only != on -> exit 2;
 * the no-DSN guarantee: the stub's argv log carries no -d/--dbname/postgresql:// and the
@@ -39,6 +42,7 @@ import pytest
 REPO = Path(__file__).resolve().parents[3]
 SCRIPT = REPO / "platform/scripts/gochara-window-readbacks.sh"
 SHA_1243 = "88be3ed59aaa0685d65e9b8b6607f3787c3ae65a5e8fb96d51f09ebe63798321"
+SHA_1302 = "35af45d0d545f7705f9bd8fd91635f715a2f27c288c83e999a5cd98c7983cb9e"
 
 sys.path.insert(0, str(REPO / "platform/scripts/governance/__tests__"))
 try:
@@ -133,6 +137,8 @@ def default_answers(ledger: list[str]) -> list[tuple[str, str]]:
     return [
         ("= '1243_ka_gochara_inert_registry_rows.sql'",
          f"1243_ka_gochara_inert_registry_rows.sql\t{SHA_1243}"),
+        ("= '1302_revoke_role_orchestrator_windows_dml.sql'",
+         f"1302_revoke_role_orchestrator_windows_dml.sql\t{SHA_1302}"),
         ("SELECT filename FROM public._migrations_applied", "\n".join(sorted(ledger))),
         ("SHOW transaction_read_only", "on"),
         ("SHOW default_transaction_read_only", "on"),
@@ -275,6 +281,7 @@ def test_pre_window_all_pass_w3_first(tmp_path: Path) -> None:
         "PASS W3-legacy-relations",
         "PASS R2-ledger-snapshot",
         "PASS R2-ledger-1243",
+        "PASS R3-revoke-1302",
         "PASS R2-1206-absent",
         "PASS R2-registry-1243",
         "PASS R-preread-refusals",
@@ -304,6 +311,7 @@ def test_pre_train_all_pass(tmp_path: Path) -> None:
         "PASS W4-sealer-connect",
         "PASS R2-1206-absent",
         "PASS R2-ledger-1243",
+        "PASS R3-revoke-1302",
         "PASS R2-registry-1243",
     ):
         assert check in r.stdout, f"{check} missing\n{r.stdout}\n{r.stderr}"
@@ -318,6 +326,7 @@ def test_pre_dispatch_all_pass(tmp_path: Path) -> None:
         "PASS R7-roles-exist",
         "PASS R8-ledger-diff",
         "PASS R2-ledger-1243",
+        "PASS R3-revoke-1302",
     ):
         assert check in r.stdout, f"{check} missing\n{r.stdout}\n{r.stderr}"
     assert "5 new" in r.stdout   # only the five window files are new vs the row-2 snapshot
@@ -392,7 +401,7 @@ def test_backslash_line_is_refused(tmp_path: Path) -> None:
     assert "window_preread_refusals.sql" not in argv_log(tmp_path)
 
 
-# ── M2: --accept-dormant-holder ───────────────────────────────────────────────
+# ── W2b: a holder without EXECUTE is always a STOP (no dormant exception) ─────
 
 LOCK_OVERRIDES = {
     "to_regprocedure('public.ka_gochara_lock_chart(uuid)')": "ka_gochara_lock_chart",
@@ -400,27 +409,31 @@ LOCK_OVERRIDES = {
 }
 
 
-def test_dormant_holder_stops_by_default(tmp_path: Path) -> None:
+def test_holder_without_lock_execute_stops(tmp_path: Path) -> None:
     r = run_script(tmp_path, "pre-window", overrides=dict(LOCK_OVERRIDES))
     assert r.returncode == 1
     assert "STOP W2b-lock-execute " in r.stderr
-    assert "the default is STOP" in r.stderr
+    assert "always a STOP" in r.stderr
 
 
-def test_accept_dormant_holder_warns_when_facts_confirm(tmp_path: Path) -> None:
+def test_accept_dormant_holder_option_is_gone(tmp_path: Path) -> None:
     r = run_script(tmp_path, "pre-window", overrides=dict(LOCK_OVERRIDES),
                    extra_args=["--accept-dormant-holder", "role_orchestrator"])
+    assert r.returncode == 2                      # usage refusal: the option no longer exists
+
+
+# ── B3d: the ledger diff sorts BOTH sides LC_ALL=C (C34c regression) ──────────
+
+def test_ledger_diff_passes_when_the_db_order_is_not_the_c_order(tmp_path: Path) -> None:
+    # Stream B's C34b review: on production the ledger comes back in the DATABASE collation, and
+    # comm against the C-sorted snapshot reported 3 phantom "new" entries on an UNCHANGED ledger.
+    # The stub emits the row-2 names in a non-C order; an unchanged ledger must PASS with 0 new.
+    scrambled = ["1243_ka_gochara_inert_registry_rows.sql", "1153_a.sql", "1230_b.sql"]
+    r = run_script(tmp_path, "pre-dispatch",
+                   overrides={"SELECT filename FROM public._migrations_applied": "\n".join(scrambled)})
     assert r.returncode == 0, r.stderr
-    assert "WARN W2b-lock-execute — accepted dormant holder role_orchestrator" in r.stdout
-
-
-def test_accept_dormant_holder_stops_when_facts_differ(tmp_path: Path) -> None:
-    r = run_script(tmp_path, "pre-window",
-                   overrides={**LOCK_OVERRIDES, "pg_stat_activity": "f\t0\t0\t0"},
-                   extra_args=["--accept-dormant-holder", "role_orchestrator"])
-    assert r.returncode == 1
-    assert "STOP W2b-lock-execute " in r.stderr
-    assert "re-verified dormant facts" in r.stderr
+    assert "PASS R8-ledger-diff" in r.stdout
+    assert "0 new" in r.stdout
 
 
 # ── M3: REVIEW -> exit 3 ─────────────────────────────────────────────────────
@@ -462,6 +475,8 @@ def test_w2a_recheck_stops_on_a_new_holder(tmp_path: Path) -> None:
 
 STOP_CASES = [
     ("pre-window", {"= '1243_ka_gochara_inert_registry_rows.sql'": "1243_ka_gochara_inert_registry_rows.sql\tdeadbeef"}, "R2-ledger-1243"),
+    ("pre-window", {"= '1302_revoke_role_orchestrator_windows_dml.sql'": ""}, "R3-revoke-1302"),
+    ("pre-train", {"= '1302_revoke_role_orchestrator_windows_dml.sql'": "1302_revoke_role_orchestrator_windows_dml.sql\tdeadbeef"}, "R3-revoke-1302"),
     ("pre-window", {"filename LIKE '1206%'": "1"}, "R2-1206-absent"),
     ("pre-window", {"SELECT count(*) FROM public.asset_registry": "130"}, "R2-registry-1243"),
     ("pre-window", {"to_regclass('public.kala_gochara_coverage')": "kala_gochara_coverage\t\tkala_gochara_contacts\tkala_gochara_windows"}, "W3-legacy-relations"),
