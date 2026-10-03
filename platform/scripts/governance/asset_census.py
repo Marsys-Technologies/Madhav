@@ -2292,7 +2292,7 @@ def validate_null_convention_declaration(where: str, nc, e: dict) -> None:
             raise DeclarationsError(f"{w}.column {a['column']!r} is declared twice (duplicate)")
         a_cols.append(a["column"])
     if set(a_cols) & set(s_cols):
-        raise DeclarationsError(f"{where}.null_convention: {sorted(set(a_cols) & set(s_cols))} are stamp columns (a timestamp, checked for sentinel timestamps instead): an allowed literal there has no meaning")
+        raise DeclarationsError(f"{where}.null_convention: {sorted(set(a_cols) & set(s_cols))} are stamp columns (a timestamp, checked for infinity, -infinity or a value at or before epoch + 1 day instead): an allowed literal there has no meaning")
     if set(a_cols) & set(n_cols):
         raise DeclarationsError(f"{where}.null_convention: {sorted(set(a_cols) & set(n_cols))} are nullable, where NULL is the only way to say 'absent': an allowed literal there is the fallback itself")
 
@@ -2634,7 +2634,7 @@ def grade_null_convention(spec: dict, columns, types, stats) -> dict:
     if stamp_nulls:
         problems.append("NULL in declared stamp column(s) " + ", ".join(f"{c} ({n} row(s))" for c, n in sorted(stamp_nulls.items())) + " (a write-time stamp column must hold no NULL)")
     if stamp_sentinels:
-        problems.append("sentinel timestamp (infinity, -infinity, the epoch / 1970-01-01, or year 0001: a placeholder, not a write time) in declared stamp column(s) "
+        problems.append("sentinel timestamp: infinity, -infinity or any value at or before epoch + 1 day (epoch, 1970-01-01, year 0001 and earlier; a placeholder, not a write time) in declared stamp column(s) "
                         + ", ".join(f"{c} ({n} row(s))" for c, n in sorted(stamp_sentinels.items())))
     if fallbacks:
         problems.append("literal fallback (S3's placeholder definition: blank, N/A, none, 0 ... after normalisation) standing in for a value or for NULL in column(s) "
@@ -2664,7 +2664,7 @@ def grade_null_convention(spec: dict, columns, types, stats) -> dict:
                          + (f", verified on keys: {'; '.join(scoped)}" if scoped else "")
                          + f"; no literal fallback in the {len(fb_checked)} text-like / declared-nullable column(s) checked ({', '.join(fb_checked) or 'none'})"
                          + f"; {len(consts)} declared constant column(s) constant, no other column constant" + (" except the stamp column(s) named next" if stamps else "")
-                         + (f"; stamp columns (write-time, constant test exempted; checked instead: NOT NULL timestamp, no NULL row, no sentinel timestamp): " + ", ".join(f"{c} ({got['stamp_facts'][c]['type']}, NOT NULL, {per[c]['distinct']} distinct value(s) over {rows} row(s))" for c in stamps) if stamps else "")
+                         + (f"; stamp columns (write-time, constant test exempted; checked instead: NOT NULL timestamp, no NULL row, no infinity, -infinity or value at or before epoch + 1 day): " + ", ".join(f"{c} ({got['stamp_facts'][c]['type']}, NOT NULL, {per[c]['distinct']} distinct value(s) over {rows} row(s))" for c in stamps) if stamps else "")
                          + (f"; allowed literals in force (declared exemptions): " + "; ".join(f"{a['column']} {a['values']} ({a['why']})" for a in allowed_in_force) if allowed_in_force else "")
                          + (f"; NOT examined for a literal fallback (the type cannot hold one): " + ", ".join(f"{c} ({types.get(c) or kinds[c]})" for c in fb_na) if fb_na else "")
                          + (f"; NOT examined (element contents not inspected; only an empty array is a fallback): " + ", ".join(f"{c} ({types.get(c) or kinds[c]})" for c in elem_not_inspected) if elem_not_inspected else "")

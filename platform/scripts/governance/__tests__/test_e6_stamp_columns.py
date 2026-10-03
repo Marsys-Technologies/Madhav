@@ -26,7 +26,7 @@ from _disposable_pg import disposable_pg  # noqa: E402,F401  (the session fixtur
 NA, NO_DET, PASS, FAIL, PARTIAL, ERRORED = ac.NA, ac.NO_DET, ac.PASS, ac.FAIL, ac.PARTIAL, ac.ERRORED
 SD, BR = s1.SD, s1.BR
 EV = s1.EV
-STAMP_TEXT = ("stamp columns (write-time, constant test exempted; checked instead: NOT NULL timestamp, no NULL row, no sentinel timestamp): "
+STAMP_TEXT = ("stamp columns (write-time, constant test exempted; checked instead: NOT NULL timestamp, no NULL row, no infinity, -infinity or value at or before epoch + 1 day): "
               "created_at (timestamptz, NOT NULL, 1 distinct value(s) over 8 row(s))")
 STAMP_WHY = "written by the seed transaction, one shared write time"
 STAMP = dict(column="created_at", why=STAMP_WHY)
@@ -657,7 +657,8 @@ def test_the_partition_holds_without_a_stamp_too_and_the_wording_is_unchanged_th
 
 def test_the_stamp_wording_no_longer_claims_a_stamp_cannot_hold_a_placeholder():
     r = _grade()
-    assert "no sentinel timestamp" in r["measured"]
+    assert "no infinity, -infinity or value at or before epoch + 1 day" in r["measured"]                           # the PASS claims exactly what was checked: the bound is named
+    assert "no sentinel timestamp" not in r["measured"]
     assert "the type cannot hold one): created_at" not in r["measured"] and ", created_at (" not in r["measured"].split("NOT examined for a literal fallback")[-1]
 
 
@@ -729,3 +730,22 @@ def test_REAL_SQL_the_whole_chain_a_sentinel_stamp_never_lifts_the_cap(monkeypat
     r = dict(target_table="latta_t", count_sql="SELECT count(*) FROM latta_t")
     m = ac._measure_prose("bg_phaladeepika_latta", dict(null_convention=dict(SSPEC(), table="latta_t"), prose_fields=None), r, None, cat, [], set(), (), set())
     assert ac.rollup_asset("L0", m)["Null"]["v"] == FAIL and "sentinel timestamp" in m[BR]["measured"], m[BR]["measured"]
+
+
+def test_the_pass_and_fail_texts_name_the_exact_bound_in_the_verdict_and_in_the_block():
+    bound = "no infinity, -infinity or value at or before epoch + 1 day"
+    r = _grade()
+    assert bound in r["measured"]
+    ann = ac._null_annotation(r)                                                                                    # the block text a Null record carries is the same string
+    assert bound in ann["measured"] and "sentinel timestamp" not in ann["measured"]
+    f = _grade(stats=SSTATS(created_at=dict(sentinel=2)))
+    want = "infinity, -infinity or any value at or before epoch + 1 day (epoch, 1970-01-01, year 0001 and earlier"
+    assert want in f["measured"] and "created_at (2 row(s))" in f["measured"], f["measured"]
+    assert want in ac._null_annotation(f)["measured"]
+    raw = json.loads(ac.DECLARATIONS_PATH.read_text(encoding="utf-8"))["description"]
+    assert "no infinity, -infinity or value at or before epoch + 1 day" in raw and "no sentinel timestamp (infinity" not in raw
+
+
+def test_through_measure_prose_the_record_text_names_the_bound(monkeypatch):
+    m = s1._prose(monkeypatch, dict(null_convention=SSPEC(), prose_fields=None), stats=SSTATS())
+    assert "no infinity, -infinity or value at or before epoch + 1 day" in m[SD]["measured"] and "no infinity, -infinity or value at or before epoch + 1 day" in m[BR]["null_convention"]["convention"]
