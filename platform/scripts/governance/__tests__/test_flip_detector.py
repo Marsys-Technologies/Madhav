@@ -707,8 +707,12 @@ def golden_cases(tmp_path):
     all_hooks, errs = F.load_hooks(str(REAL_HOOKS), REAL_LANES)
     assert not errs
     wo_se1 = [h for h in all_hooks if h["lane"] != SE1_LANE]                                # the 22 integration hooks that predate ephemeris_backend_shift + pending fa2: the original case, unchanged
+    # the lane as the original 24-hook case saw it: entries 0 to 26 (six dasha_shift, the 20 per-ayanamsha level-4 counts, the exact-0 row-set entry). Entries 27 to 29 (the
+    # composite label+number COUNT bounds, added after the P4 finding of the Linux rehearsal) are a separate case below, so the golden stays add-only.
+    pre_composite = [dict(h, may_change=h["may_change"][:27]) if h["lane"] == SE1_LANE else h for h in all_hooks]
     out = {"all_23_hooks_unchanged_native_chart": summarize(run(base_state(), base_state(), wo_se1)),
-           "all_24_hooks_unchanged_native_chart": summarize(run(base_state(), base_state(), all_hooks)),   # + ephemeris_backend_shift: its 4 non-optional dasha_shift entries read DECLARED_BUT_ABSENT by design
+           "all_24_hooks_unchanged_native_chart": summarize(run(base_state(), base_state(), pre_composite)),   # + ephemeris_backend_shift (entries 0 to 26): its 4 non-optional dasha_shift entries read DECLARED_BUT_ABSENT by design
+           "all_24_hooks_unchanged_native_chart_with_composite_entries": summarize(run(base_state(), base_state(), all_hooks)),   # + entries 27 to 29: two more EXPECTATION_MISMATCH (their minimum is positive: varga_position 900, sensitive_degree_check 10)
            "four_lanes_verbatim_synthetic_changes": summarize(run(golden_before(), golden_after(), verbatim)),
            "four_lanes_counts_stripped": summarize(run(golden_before(), golden_after(), stripped))}
 
@@ -758,6 +762,12 @@ def test_golden_semantics_read_by_a_human(tmp_path):
     assert w["not_checked"] == u["not_checked"] and w["by_table_category_change_lane"] == u["by_table_category_change_lane"] == []
     assert [x.split(" (")[0] for x in w["warnings"]] == ["OPTIONAL_ABSENT ephemeris_backend_shift[4]", "OPTIONAL_ABSENT ephemeris_backend_shift[5]"] and u["warnings"] == []
     assert w["exit_default"] == 2 and w["exit_allow_not_checked"] == 2
+    # the same 24 hooks with the lane's composite entries 27 to 29 (count bounds on rows that carry a label AND a number): the ONLY differences are the two entries with a
+    # positive minimum (27: varga_position min 900, 28: sensitive_degree_check min 10; 29: ayurdaya allows 0) reading EXPECTATION_MISMATCH on an unchanged chart
+    wc = cases["all_24_hooks_unchanged_native_chart_with_composite_entries"]
+    assert wc["failure_counts"]["EXPECTATION_MISMATCH"] == w["failure_counts"]["EXPECTATION_MISMATCH"] + 2
+    assert {k: v for k, v in wc["failure_counts"].items() if k != "EXPECTATION_MISMATCH"} == {k: v for k, v in w["failure_counts"].items() if k != "EXPECTATION_MISMATCH"}
+    assert wc["absent"] == w["absent"] and wc["warnings"] == w["warnings"] and wc["changes_total"] == 0 and wc["verdict"] == "FAIL"
     for case in cases.values():
         assert [x[0] for x in case["not_checked"]][:2] == ["chart_dashas.tier", "l1_tajik_varsha_year_lords.tier"]
         if case["verdict"] == "FAIL":

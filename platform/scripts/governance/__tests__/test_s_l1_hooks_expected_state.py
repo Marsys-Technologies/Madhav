@@ -45,6 +45,8 @@ import pathlib
 
 import pytest
 
+import _composite_shift_fixture as CSF
+
 HERE = pathlib.Path(__file__).resolve().parent
 REPO = pathlib.Path(__file__).resolve().parents[4]
 HOOKS_DIR = REPO / "00_ARCHITECTURE" / "briefs" / "suvarna" / "exec" / "s_l1_attribution_hooks"
@@ -696,7 +698,9 @@ PINNED_ENTRY_COUNTS = {
     # ephemeris_backend_shift: six dasha_shift entries (no count), then Vimshottari appeared / disappeared per ayanamsha in the order
     # lahiri, true_chitra, krishnamurti, raman, surya_siddhanta, then Kalachakra the same, then the exact-zero entry for every other system
     'ephemeris_backend_shift': [None] * 6 + [{'exact': 29}, {'exact': 17}, {'exact': 40}, {'exact': 38}, {'exact': 29}, {'exact': 28}, {'exact': 21}, {'exact': 30}, {'exact': 27}, {'exact': 33}]
-                               + [{'exact': 216}, {'exact': 213}, {'exact': 198}, {'exact': 198}, {'exact': 227}, {'exact': 217}, {'exact': 193}, {'exact': 201}, {'exact': 269}, {'exact': 289}] + [{'exact': 0}],
+                               + [{'exact': 216}, {'exact': 213}, {'exact': 198}, {'exact': 198}, {'exact': 227}, {'exact': 217}, {'exact': 193}, {'exact': 201}, {'exact': 269}, {'exact': 289}] + [{'exact': 0}]
+                               # entries 27 to 29: the COMPOSITE (label, number) rows, count bounds derived from the shift table and the rounding steps (EB-CV tests)
+                               + [{'min': 900, 'max': 1140}, {'min': 10, 'max': 74}, {'min': 0, 'max': 120}],
     'ga_condition_fallback': [{'exact': 0}],
     'ga_strength_invariant_rows': [{'exact': 0}],
     'ga_structural_chart_geometry': [{'min': 0, 'max': 45}, {'min': 0, 'max': 30}, {'min': 0, 'max': 315}, {'min': 0, 'max': 15}, {'min': 0, 'max': 85}],
@@ -763,7 +767,7 @@ def test_karaka_dasha_roles_is_narrowed_to_the_systems_the_backend_does_not_touc
     e = hooks["karaka_dasha_roles"]["may_change"][0]
     assert e["categories"] == ["ashtottari", "mudda", "naisargika"]
     assert e["expected_count"] == {"exact": 0} and e["change_types"] == ["appeared", "disappeared"]
-    eb_counted = {c for x in hooks["ephemeris_backend_shift"]["may_change"] if x.get("expected_count") and x["expected_count"] != {"exact": 0} for c in x["categories"]}
+    eb_counted = {c for x in hooks["ephemeris_backend_shift"]["may_change"] if x["table"] == "chart_dashas" and x.get("expected_count") and x["expected_count"] != {"exact": 0} for c in x["categories"]}
     assert eb_counted == {"vimshottari", "kalachakra"} and not eb_counted & set(e["categories"])
 
 
@@ -777,6 +781,7 @@ EB_KAL_L4_DELTA = {"lahiri_chitrapaksha": 3, "true_chitra": 0, "krishnamurti": 1
 EB_SHIFT_BANDS = {"vimshottari": [6955, 7030], "vimshottari_kp": [3, 7030], "mudda": [-65, -3]}
 EB_ALL_SYSTEMS = ["vimshottari", "vimshottari_kp", "kalachakra", "yogini", "ashtottari", "chara_karaka", "narayana", "naisargika", "mudda"]
 EB_STEM = "ephemeris_backend_shift"
+EB_COMPOSITE_MOVED = 932  # REHEARSAL-LINUX P4: 900 varga_position + 20 sensitive_degree_check + 12 ayurdaya `value` changes the detector counted as undeclared
 
 
 def _eb_hook():
@@ -818,7 +823,8 @@ def test_EB_static_shape_every_system_declared_and_no_five_ayanamsha_total():
             assert entries[_eb_index(system, ay, "disappeared")]["expected_count"] == {"exact": d}, (system, ay)
         counted = [e for e in entries if e.get("categories") and system in e["categories"] and e.get("expected_count")]
         assert len(counted) == 10 and all(len(e["ayanamsha_ids"]) == 1 for e in counted), system
-    assert entries[-1]["categories"] == ["vimshottari_kp", "yogini", "ashtottari", "chara_karaka", "narayana", "naisargika", "mudda"] and entries[-1]["expected_count"] == {"exact": 0}
+    assert len(entries) == 30  # 6 dasha_shift + 20 per-ayanamsha level-4 counts + the exact-0 row-set entry (26) + the three composite entries (27 to 29)
+    assert entries[26]["categories"] == ["vimshottari_kp", "yogini", "ashtottari", "chara_karaka", "narayana", "naisargika", "mudda"] and entries[26]["expected_count"] == {"exact": 0}
     d = h["description"]
     for needle in ("nearest-start pairing within 10 days mis-pairs systems whose shift exceeds the spacing of their periods", "FLIP_DETECTOR_KNOWN_LIMITS",
                    "never as a five-ayanamsha total", "Saturn", "1,044 s", "+6,992 s", "+145,089 to +145,111 s", "+150,309 s", "-43 s", "Levels 1-3"):
@@ -841,10 +847,17 @@ def _rowset(st, system, ay, appeared, disappeared, level=4):
         st.das_b.append([ay, system, level, f"/RD{st.n}", "2012-05-01T00:00:00+00:00", "2012-05-01T09:00:00+00:00"])
 
 
-def _eb_state(vim_shift=6992, kp_shift=6992, kal_shift=145090, kal_ss_shift=150309, mudda_tc_shift=-43, other_shift=0, vim=None, kal=None):
+def _eb_state(vim_shift=6992, kp_shift=6992, kal_shift=145090, kal_ss_shift=150309, mudda_tc_shift=-43, other_shift=0, vim=None, kal=None, composite=True):
     """A synthetic Moshier-before / se1-after chart_dashas pair reproducing the measured shifts and per-ayanamsha level-4 deltas.
-    `vim_shift` may be an int or {ayanamsha: seconds}. Every group that the detector reads as moving carries 3 paired rows (shifts differ by 1 s)."""
+    `vim_shift` may be an int or {ayanamsha: seconds}. Every group that the detector reads as moving carries 3 paired rows (shifts differ by 1 s).
+    `composite`: True = the measured composite (label, number) moves of the rehearsal (900 varga_position, 20 sensitive_degree_check, 12 ayurdaya);
+    False = those rows exist and did NOT move; None = the rows are not in the state at all; a dict is passed to _composite_shift_fixture.composite_pair."""
     st = State(CANON)
+    if composite is not None:
+        kw = {} if composite is True else ({"varga_moved": False, "sdc_moved": False, "ayu_moved": False} if composite is False else composite)
+        cb, ca = CSF.composite_pair(**kw)
+        st.facts_b += cb["chart_facts"]; st.facts_a += ca["chart_facts"]
+        st.div_b += cb["divisionals"]; st.div_a += ca["divisionals"]
     vim = EB_VIM if vim is None else vim
     kal = EB_KAL if kal is None else kal
     for ay in AYS:
@@ -906,7 +919,7 @@ def test_EB_without_the_hook_the_same_rebuild_fails_as_the_analysis_measured():
     hs = _load_hooks()
     old = [h for stem, h in hs.items() if stem not in (EB_STEM, "karaka_dasha_roles")] + [_old_karaka_dasha_roles()]
     rep = _eb_compare(_eb_state(), old)
-    assert rep["failure_counts"]["UNDECLARED_CHANGE"] == 2221 == sum(EB_KAL[a][0] + EB_KAL[a][1] for a in AYS)
+    assert rep["failure_counts"]["UNDECLARED_CHANGE"] == 2221 + EB_COMPOSITE_MOVED == sum(EB_KAL[a][0] + EB_KAL[a][1] for a in AYS) + 932
     assert rep["failure_counts"]["DASHA_SHIFT_UNDECLARED"] == 16
     # (the other hooks' own positive counts read EXPECTATION_MISMATCH on this chart-dashas-only pair; only karaka_dasha_roles concerns the dasha data)
     kmm = [m for m in rep["failures"]["EXPECTATION_MISMATCH"] if m.startswith("EXPECTATION MISMATCH karaka_dasha_roles")]
@@ -914,7 +927,7 @@ def test_EB_without_the_hook_the_same_rebuild_fails_as_the_analysis_measured():
     assert sum(a + d for a, d in EB_VIM.values()) == 292
     # with the narrowed karaka_dasha_roles but still WITHOUT the ephemeris hook: Vimshottari row sets are undeclared (292) and the shifts too
     rep2 = _eb_compare(_eb_state(), [h for stem, h in hs.items() if stem != EB_STEM])
-    assert rep2["failure_counts"]["UNDECLARED_CHANGE"] == 2221 + 292 and rep2["failure_counts"]["DASHA_SHIFT_UNDECLARED"] == 16
+    assert rep2["failure_counts"]["UNDECLARED_CHANGE"] == 2221 + 292 + EB_COMPOSITE_MOVED and rep2["failure_counts"]["DASHA_SHIFT_UNDECLARED"] == 16
     assert not [m for m in rep2["failures"]["EXPECTATION_MISMATCH"] if m.startswith("EXPECTATION MISMATCH karaka_dasha_roles")]
 
 
@@ -971,10 +984,13 @@ def test_EB_mutation_a_level4_count_outside_the_declared_per_ayanamsha_delta_fai
 def test_EB_mutation_a_rebuild_that_did_not_run_on_se1_fails():
     """No dasha start moves and no level-4 row crosses midnight: the rebuild ran on the same backend as the baseline. Every non-optional
     dasha_shift entry reads DECLARED_BUT_ABSENT and every per-ayanamsha count reads observed 0."""
-    st = _eb_state(vim_shift=0, kp_shift=0, kal_shift=0, kal_ss_shift=0, mudda_tc_shift=0, vim={a: (0, 0) for a in AYS}, kal={a: (0, 0) for a in AYS})
+    st = _eb_state(vim_shift=0, kp_shift=0, kal_shift=0, kal_ss_shift=0, mudda_tc_shift=0, vim={a: (0, 0) for a in AYS}, kal={a: (0, 0) for a in AYS}, composite=False)
     rep = _eb_compare(st, _eb_hooks())
     assert _absent_labels(rep) == {f"{EB_STEM}[{i}]" for i in range(4)}
-    assert rep["failure_counts"]["EXPECTATION_MISMATCH"] == 20 and rep["verdict"] == "FAIL"
+    # 20 per-ayanamsha level-4 counts + the two composite entries whose minimum is positive (27: varga_position, 28: sensitive_degree_check); entry 29 (ayurdaya) allows 0
+    assert rep["failure_counts"]["EXPECTATION_MISMATCH"] == 22 and rep["verdict"] == "FAIL"
+    assert {m.split(" ")[2] for m in rep["failures"]["EXPECTATION_MISMATCH"]} >= {f"{EB_STEM}[27]", f"{EB_STEM}[28]"}
+    assert f"{EB_STEM}[29]" not in {m.split(" ")[2] for m in rep["failures"]["EXPECTATION_MISMATCH"]}
 
 
 @needs_detector
@@ -1021,3 +1037,166 @@ def test_EB_the_four_rewordings_name_the_backend_move_and_say_what_their_lane_le
 def test_EB_sade_sati_hook_names_the_saturn_ingress_shift_it_cannot_declare():
     d = _load_hooks()["sade_sati_placeholder_null"]["description"]
     assert "about 17 minutes" in d and "1,044 s" in d and "no hook declares a sade_sati date" in d
+
+
+# ----------------------------------------------------------------------------------------------- T-EB-CV: the composite (label, number) entries
+# The detector classes a row that carries BOTH a label and a number as `class_text`, so any move of the number is a `value` change and it cannot
+# separate the two. ephemeris_backend_shift entries 27 to 29 therefore declare only a COUNT bound per scope, DERIVED here from the shift table and the
+# rounding steps (not from the rehearsal), and scoped to the numeric fact_keys so the class rows of the same categories stay undeclared. The label
+# check and the per-row numeric bound are evidence/composite_shift_check.py (HOOKS_W7_HAND_READBACK H24; tests in test_composite_shift_check.py).
+EB_CV = {"varga_position": 27, "sensitive_degree_check": 28, "ayurdaya": 29}
+
+
+def _independent_count_bounds():
+    """min / max of changed rows per family, re-derived from the transcribed table (CSF.TABLE) and the three rounding steps."""
+    arc_deg = 3600.0
+    low, high = 0.00005, None   # the table is rounded to 4 decimals of an arcsecond
+    sure = lambda ay, g, step, slope=1.0: abs(CSF.TABLE[ay][CSF.COLUMN[g]]) > 0 and slope * (abs(CSF.TABLE[ay][CSF.COLUMN[g]]) - low) / arc_deg >= step
+    poss = lambda ay, g: CSF.TABLE[ay][CSF.COLUMN[g]] != 0
+    varga = (sum(30 for ay in AYS for g in CSF.GRAHAS if sure(ay, g, 1e-6)), sum(30 for ay in AYS for g in CSF.GRAHAS if poss(ay, g)))
+    nine = [g for g in CSF.GRAHAS if g != "Lagna"]
+    sdc = (2 * sum(1 for ay in AYS for g in nine if sure(ay, g, 1e-4)), 2 * sum(1 for ay in AYS for g in nine if poss(ay, g)))
+    # ayurdaya: the largest slope is nisargayu Saturn 50/360 y/deg and amsayu 0.3 y/deg; times the largest shift (Moon 0.6648" = 1.85e-4 deg) is 5.5e-5 y < 1e-4: nothing is sure
+    biggest = max(0.3, 50 / 360.0) * (0.6648 / arc_deg)
+    assert biggest < 1e-4
+    seven = [g for g in CSF.GRAHAS if g in ("Sun", "Moon", "Mars", "Mercury", "Jupiter", "Venus", "Saturn")]
+    ayu = (0, sum(3 for ay in AYS for g in seven if poss(ay, g)) + 3 * len(AYS))
+    return {"varga_position": varga, "sensitive_degree_check": sdc, "ayurdaya": ayu}
+
+
+def test_EB_CV_static_shape_and_the_bounds_are_derived_not_fitted():
+    entries = _eb_hook()["may_change"]
+    want = _independent_count_bounds()
+    assert want == {"varga_position": (900, 1140), "sensitive_degree_check": (10, 74), "ayurdaya": (0, 120)}
+    for fam, i in EB_CV.items():
+        e = entries[i]
+        assert e["categories"] == [fam] and e["change_types"] == ["value"] and not e.get("optional"), fam
+        assert e["expected_count"] == {"min": want[fam][0], "max": want[fam][1]}, fam
+        assert "source" in e["note"].lower() and "DETECTOR LIMIT" in e["note"] and "composite_shift_check.py" in e["note"]
+    # scoped to the numeric keys: the class keys of the same categories are NOT named, so a flip there is undeclared
+    assert entries[27]["table"] == "chart_divisionals" and entries[27]["fact_keys"] == ["degree_in_sign"]
+    assert entries[28]["table"] == "chart_facts" and entries[28]["fact_keys"] == ["mrityu_bhaga", "pushkara"]
+    assert entries[29]["table"] == "chart_facts" and set(entries[29]["fact_keys"]) == {"total_years", "amsayu_contribution_years", "nisargayu_contribution_years", "pindayu_contribution_years"}
+    assert "applicable_method" not in entries[29]["fact_keys"] and "maraka_grahas" not in entries[29]["fact_keys"]
+    for needle in ("(5) COMPOSITE (label, number) rows", "932 in all", "H24"):
+        assert needle in _eb_hook()["description"], needle
+    # the evidence script derives the very same numbers from its own copy of the table
+    import importlib.util as _u
+    spec = _u.spec_from_file_location("composite_shift_check", HOOKS_DIR / "evidence" / "composite_shift_check.py")
+    mod = _u.module_from_spec(spec); spec.loader.exec_module(mod)
+    assert mod.derive_count_bounds() == want
+
+
+@needs_detector
+def test_EB_CV_with_the_hook_the_measured_composite_rebuild_is_clean_and_without_the_entries_it_reads_932_undeclared():
+    rep = _eb_compare(_eb_state(), _eb_hooks())
+    assert not _failures(rep), (_failures(rep), {k: v[:3] for k, v in rep["failures"].items() if v})
+    obs = {r["entry"]: r["observed"] for r in rep["expectations"] if r["lane"] == EB_STEM}
+    assert (obs[27], obs[28], obs[29]) == (900, 20, 12)                       # PRESENT / MATCH: the rehearsal's own figures
+    assert 900 + 20 + 12 == EB_COMPOSITE_MOVED
+    for c in rep["changes"]:
+        if c["category"] in EB_CV:
+            assert c["lanes"] == [EB_STEM] and c["change"] == "value", c
+    # the lane WITHOUT entries 27 to 29 (what fa010c9fd shipped): the same rebuild fails with exactly the P4 finding
+    h = json.loads(json.dumps(_eb_hook()))
+    h["may_change"] = h["may_change"][:27]
+    old = _eb_compare(_eb_state(), [h, _load_hooks()["karaka_dasha_roles"]])
+    assert old["failure_counts"]["UNDECLARED_CHANGE"] == 932 and old["verdict"] == "FAIL"
+    assert collections.Counter((c["category"], c["fact_key"]) for c in old["changes"] if not c["lanes"]) == collections.Counter(
+        {("varga_position", "degree_in_sign"): 900, ("sensitive_degree_check", "mrityu_bhaga"): 10, ("sensitive_degree_check", "pushkara"): 10,
+         ("ayurdaya", "total_years"): 6, ("ayurdaya", "amsayu_contribution_years"): 5, ("ayurdaya", "nisargayu_contribution_years"): 1})
+
+
+@needs_detector
+def test_EB_CV_a_rebuild_that_did_not_move_the_composites_fails_the_two_entries_with_a_positive_minimum():
+    rep = _eb_compare(_eb_state(composite=False), _eb_hooks())
+    msgs = rep["failures"]["EXPECTATION_MISMATCH"]
+    assert [m.split(" ")[2] for m in msgs] == [f"{EB_STEM}[27]", f"{EB_STEM}[28]"] and "observed 0" in msgs[0] and "observed 0" in msgs[1]
+    assert rep["verdict"] == "FAIL"
+    # entry 29 allows 0 by design (no ayurdaya value is guaranteed to cross a 1e-4 y rounding boundary): the dasha_shift entries are the proof of a non-se1 build
+    st = _eb_state(composite={"varga_moved": True, "sdc_moved": True, "ayu_moved": False})
+    assert not _failures(_eb_compare(st, _eb_hooks()))
+
+
+@needs_detector
+def test_EB_CV_the_count_bounds_pass_at_the_edges_and_fail_one_beyond():
+    # varga_position: the Sun crossing a rounding boundary (1,050) and the physical maximum (1,140: Sun + Rahu / Ketu / Lagna on True Chitra) pass
+    for kw, n in (({"varga_sun_crosses": True}, 1050), ({"varga_all_possible": True}, 1140)):
+        rep = _eb_compare(_eb_state(composite=kw), _eb_hooks())
+        assert not _failures(rep), (kw, _failures(rep))
+        assert {r["entry"]: r["observed"] for r in rep["expectations"] if r["lane"] == EB_STEM}[27] == n
+    # one beyond the physical maximum: a node on Lahiri (a body whose input shift is exactly 0) moving by one stored step is the 1,141st changed row
+    st = _eb_state(composite={"varga_all_possible": True})
+    row = next(r for r in st.div_a if r[0] == "lahiri_chitrapaksha" and r[2] == "Rahu" and r[4] == "degree_in_sign" and r[1] == "D9")
+    row[6] = format(float(row[6]) + 1e-6, ".6f")
+    rep = _eb_compare(st, _eb_hooks())
+    assert [m.split(" ")[2] for m in rep["failures"]["EXPECTATION_MISMATCH"]] == [f"{EB_STEM}[27]"] and "observed 1141" in rep["failures"]["EXPECTATION_MISMATCH"][0]
+
+    # sensitive_degree_check: 10 (Moon x 2 keys x 5 ayanamshas, the only rows guaranteed to cross) passes, 9 fails; 74 passes, 75 fails
+    def sdc_state(n_rows, order):
+        st = _eb_state(composite={"sdc_moved": False})
+        todo = [r for r in order(st)][:n_rows]
+        for r in todo:
+            r[5] = format(float(r[5]) + 0.0001, ".4f")
+        return st
+
+    def moon_first(st):
+        rows = [r for r in st.facts_a if r[1] == "sensitive_degree_check" and r[3] in ("mrityu_bhaga", "pushkara")]
+        possible = [r for r in rows if r[2] not in ("RAH_MEAN", "KET_MEAN") or r[0] == "true_chitra"]
+        impossible = [r for r in rows if r not in possible]
+        return sorted(possible, key=lambda r: r[2] != "MOON") + impossible
+
+    for n, ok in ((9, False), (10, True), (74, True), (75, False)):
+        rep = _eb_compare(sdc_state(n, moon_first), _eb_hooks())
+        got = [m.split(" ")[2] for m in rep["failures"]["EXPECTATION_MISMATCH"]]
+        assert (got == []) is ok and (ok or got == [f"{EB_STEM}[28]"]), (n, got)
+    # ayurdaya: all 120 composite rows moving passes (the upper bound), nothing else is counted against it
+    st = _eb_state(composite={"ayu_moved": False})
+    for r in st.facts_a:
+        if r[1] == "ayurdaya" and r[5] != "":
+            r[5] = format(float(r[5]) + 0.0001, ".4f")
+    rep = _eb_compare(st, _eb_hooks())
+    assert not _failures(rep) and {r["entry"]: r["observed"] for r in rep["expectations"] if r["lane"] == EB_STEM}[29] == 120
+
+
+@needs_detector
+def test_EB_CV_a_flip_of_any_class_row_stays_undeclared():
+    def flipped(mutate):
+        st = _eb_state()
+        mutate(st)
+        return _eb_compare(st, _eb_hooks())
+    # (a) the varga SIGN rows (the label the x n amplification acts on): sign, sign_id, sign_lord, house_from_varga_lagna
+    for key, col, value in (("sign", 5, "Taurus"), ("sign_id", 6, "2"), ("sign_lord", 5, "Venus"), ("house_from_varga_lagna", 6, "4")):
+        def m(st, key=key, col=col, value=value):
+            next(r for r in st.div_a if r[2] == "Mars" and r[1] == "D60" and r[0] == "raman" and r[4] == key)[col] = value
+        rep = flipped(m)
+        assert rep["failure_counts"]["UNDECLARED_CHANGE"] == 1 and rep["verdict"] == "FAIL", key
+    # (b) the ayurdaya class rows and a text-only sensitive_degree_check key
+    for cat, subj, key, value in (("ayurdaya", "CHART", "applicable_method", "amsayu"), ("ayurdaya", "CHART", "maraka_grahas", "Mars,Venus,Saturn"),
+                                  ("sensitive_degree_check", "MOON", "gandanta", "gandanta")):
+        def m(st, cat=cat, subj=subj, key=key, value=value):
+            next(r for r in st.facts_a if r[0] == "krishnamurti" and r[1] == cat and r[2] == subj and r[3] == key)[4] = value
+        rep = flipped(m)
+        assert rep["failure_counts"]["UNDECLARED_CHANGE"] == 1, (cat, key)
+    # (c) a row of the family appearing or disappearing is a KIND the entries do not declare
+    st = _eb_state()
+    st.facts_a = [r for r in st.facts_a if not (r[1] == "ayurdaya" and r[2] == "SUN" and r[3] == "amsayu_contribution_years" and r[0] == "raman")]
+    rep = _eb_compare(st, _eb_hooks())
+    assert rep["failure_counts"]["KIND_MISMATCH"] == 1
+
+
+@needs_detector
+def test_EB_CV_documented_limit_a_label_flip_on_a_row_whose_number_also_moved_is_counted_not_caught():
+    """THE limit, pinned: mrityu_bhaga 'not_fired' -> 'fired' on a row that also moved by 0.0002 is one more `value` change inside the declared
+    bound, so the DETECTOR passes it. composite_shift_check.py CS2 is what catches it (HOOKS_W7_HAND_READBACK H24, required at W7)."""
+    import importlib.util as _u
+    spec = _u.spec_from_file_location("composite_shift_check", HOOKS_DIR / "evidence" / "composite_shift_check.py")
+    mod = _u.module_from_spec(spec); spec.loader.exec_module(mod)
+    st = _eb_state()
+    row = next(r for r in st.facts_a if r[0] == "lahiri_chitrapaksha" and r[2] == "MOON" and r[3] == "mrityu_bhaga")   # a row that moved by -0.0002
+    assert row[4] == "not_fired"
+    row[4] = "fired"
+    rep = _eb_compare(st, _eb_hooks())
+    assert not _failures(rep), _failures(rep)                                     # the detector cannot see it
+    bad, _stats = mod.check({"chart_facts": st.facts_b, "divisionals": st.div_b}, {"chart_facts": st.facts_a, "divisionals": st.div_a})
+    assert [b.split(" ")[0] for b in bad] == ["CS2"] and "'not_fired' -> 'fired'" in bad[0]
