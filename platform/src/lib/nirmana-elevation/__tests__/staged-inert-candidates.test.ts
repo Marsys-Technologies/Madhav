@@ -3,6 +3,8 @@ import { describe, expect, it, vi } from 'vitest'
 vi.mock('server-only', () => ({}))
 
 import {
+  canonicalRegistryContractDigest,
+  registryContractFingerprintInput,
   assertManifestMatchesRegistry,
   assertManifestMatchesRegistryIdentity,
   excludeNirmanaStagedInertCandidates,
@@ -106,6 +108,24 @@ describe('staged inert Gochara candidates — excluded while inert, visible the 
     expect(excludeNirmanaStagedInertCandidates([...population, dormant, staged(V41)]).map((r) => r.asset_id)).toEqual(['bg_reference', 'bg_texts', 'ka_gochara_sweep', 'bg_dormant'])
     expect(isNirmanaStagedInertCandidate(population[2])).toBe(false)
     expect(isNirmanaStagedInertCandidate(dormant)).toBe(false)
+  })
+
+  it('DIGEST STABILITY: the new column enters no digest — a 128-row frozen population is byte-identical with and without has_runtime_evidence', () => {
+    const rows128: NirmanaRegistryContractRow[] = Array.from({ length: 128 }, (_, i) => registryRow(`bg_asset_${String(i).padStart(3, '0')}`, {
+      sort_order: i + 1, depends_on: i === 0 ? [] : [`bg_asset_${String(i - 1).padStart(3, '0')}`],
+    }))
+    const withColumn = rows128.map((r, i) => ({ ...r, has_runtime_evidence: i % 2 === 0 }))            // present, with varying values
+    const withoutColumn = rows128.map((r) => ({ ...r }))                                                // absent
+    for (let i = 0; i < 128; i++) {
+      expect(registryContractFingerprintInput(withColumn[i])).toEqual(registryContractFingerprintInput(withoutColumn[i]))
+      expect(canonicalRegistryContractDigest(registryContractFingerprintInput(withColumn[i])))
+        .toBe(canonicalRegistryContractDigest(registryContractFingerprintInput(withoutColumn[i])))
+    }
+    const a = buildNirmanaBaselineCandidate(withColumn)
+    const b = buildNirmanaBaselineCandidate(withoutColumn)
+    expect(a.manifest.assets).toHaveLength(128)
+    expect(JSON.stringify(a)).toBe(JSON.stringify(b))                                                    // manifest, labels and all four digests, byte for byte
+    expect(JSON.stringify(a)).not.toContain('has_runtime_evidence')
   })
 
   it('the evidence SQL names receipts and build runs for every role and asset_throughput only where the role may read it', () => {
