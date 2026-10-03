@@ -2,7 +2,7 @@
  * Suvarna / migration 1265 — STATIC contract (capture of the live-only mimamsa_predictions_builder_guard + the
  * UPDATE/DELETE/TRUNCATE guard on frozen mimamsa_predictions rows, SS ruling N-104).
  * The live proof (a disposable PostgreSQL cluster with production's role set: privilege determination, every guard
- * behaviour, md5 guard refusals, idempotent re-run, RLS assessment, 21 mutants) is
+ * behaviour, md5 guard refusals, idempotent re-run, RLS assessment, 20 mutants) is
  * python-sidecar/tests/test_migration_1265_l5_frozen_row_guard.py. This file pins the text so a drive-by edit (a wider
  * allow-list, a dropped trigger, a GUC bypass, a changed captured body) is a deliberate, reviewed change, and it
  * carries the HOLD: the file creates a function in schema public, which the routine runner cannot do, so it must not
