@@ -1,6 +1,6 @@
 ---
 artifact: HOOKS_W7_HAND_READBACK
-version: 1.6
+version: 1.7
 status: DRAFT-FOR-REVIEW
 produced_by: exec-suvarna (integration-hooks worker, S-L1 phase 3)
 decision: SS 2026-10-02 flip_detector condition 2 (W7 hand read-back for everything the tool cannot observe); W7 report = two parts, machine verdict plus hand checks each with expected and actual
@@ -8,6 +8,7 @@ scope: documentation only. Every query is a single read-only SELECT for a SELECT
 evidence:
   - /Users/Dev/suvarna-evidence/Ephemeris/SE1_SHIFT_ANALYSIS.md (sha256 22564b863fc7cb3713e5d4b5d88ca5dc7376532fd93a9faa6461c99689ac3403)
 changelog:
+  - "1.7 (2026-10-03): H25 (H-TIER) added (REQUIRED): the chart_dashas TIER CENSUS on the canonical chart per (system, ayanamsha, level, tier), with the 2026-10-03 production baseline read as suvarna_reader, the EXPECTED AFTER-STATE and an ABORT rule for any other movement, plus a one-query violation check (expected after: 0 rows; today it returns exactly the six declared level-1 groups, 731 rows). Reason: flip_detector.py NEVER compares chart_dashas tiers (NOT CHECKED chart_dashas.tier), so this read-back is the only guard on them; teaching the detector to compare them is a post-window item. H25 also records the limits of the independent vimshottari verifier (what two_pass_verified on vimshottari non-KP does and does not cover) and the post-window mislabel of verification_method. Source: /Users/Dev/suvarna-evidence/S_L1/DASHA_TIER_CHECK.md (SS approval 2026-10-03). No hook, no detector change."
   - "1.6 (2026-10-03): H24 added (REQUIRED; CS6 label-margin derivation, x n per varga, added in the same version): the composite (label, number) rows the Moshier-to-.se1 move shifts (chart_divisionals varga_position/degree_in_sign, chart_facts sensitive_degree_check mrityu_bhaga + pushkara, chart_facts ayurdaya). The flip detector reads every move of their number as a `value` change and cannot separate the label from the number; ephemeris_backend_shift.json entries 27 to 29 declare COUNT bounds only (min 900 / max 1,140; 10 / 74; 0 / 120), so the label check (three SQL digests, validated read-only against production 2026-10-03: current production equals the rehearsal baseline) and the per-row physical bound (evidence/composite_shift_check.py CS1 to CS5, run on two detector snapshots) are hand checks. Rehearsal-measured: 900 / 20 / 12 rows move, 0 labels change, all inside their bounds."
   - "1.5 (2026-10-03): (a) H5 (special_lagna_offset): the expected text said INDU, SREE and VARNADA are untouched; corrected to class-unchanged with the longitude number inside its own band (INDU +/-0.00025 deg, SREE +/-0.0055 deg, VARNADA +/-1e-7 deg, from the measured Moshier to .se1 shifts; script C3, F-2 of the PR #2984 delta review). (b) H11b added: the role columns of vimshottari and vimshottari_kp are visible to no detector (karaka_dasha_roles.json narrows its row-set entry to ashtottari, mudda, naisargika), so W7 reads them explicitly; queries validated read-only against production 2026-10-03 and the baseline counts recorded."
   - "1.4 (2026-10-03): citations only, no content change: every citation of SE1_SHIFT_ANALYSIS.md now names the read-only evidence copy /Users/Dev/suvarna-evidence/Ephemeris/SE1_SHIFT_ANALYSIS.md (sha256 22564b863fc7cb3713e5d4b5d88ca5dc7376532fd93a9faa6461c99689ac3403); the file lived only in a session scratchpad before. The analysis itself is unchanged."
@@ -465,3 +466,58 @@ python3 00_ARCHITECTURE/briefs/suvarna/exec/s_l1_attribution_hooks/evidence/comp
 ```
 
 Expected after: `composite_shift_check: PASS`, exit 0, with the changed-row counts inside 900..1,140, 10..74 and 0..120 (rehearsal: `{'varga_position': 900, 'sensitive_degree_check': 20, 'ayurdaya': 12}`). Its checks: CS1 the row sets are identical; CS2 every label is identical on every paired row; CS3 every moved number is within |after - before| <= slope x (the body's measured Moshier-to-.se1 shift + the 0.00005 arcsec table slack) + one rounding step (varga_position: slope 1, step 1e-6 deg, the NATAL degree stored identically in all 30 vargas; sensitive_degree_check: slope 1, step 1e-4 deg; ayurdaya: 0.3 y/deg for amsayu, full_longevity/360 for pindayu and nisargayu, step 1e-4 y, totals the sum of the seven plus the Lagna at 1/30); CS4 every non-composite row of the three families is unchanged; CS5 the changed-row count is inside the derived bound; CS6 (added 1.6, on the BEFORE snapshot) the 'label unchanged' expectation of CS2 is itself derived row by row: every composite label lies further from its class boundary than the physical shift can carry it. varga_position, PER VARGA in varga degrees: margin = distance of n x lambda to a multiple of 30 (every one of the 30 vargas puts its sign boundaries at multiples of 30/n of the D1 longitude), bound = n x (the body's shift + the table slack + the 5e-7 deg rounding of the stored D1 degree), so D2700 is bounded by 2700 x shift; sensitive_degree_check: |orb - the graha's mrityu tolerance|, |bhaga orb - 0.5| and the D1 degree's distance to both pushkara-navamsa edges, against the shift + the stored rounding; ayurdaya total_years: distance to 32 / 64 years against the total's CS3 bound. A label within its bound is a CS6 failure for a human (CS2's strictness would there be an assumption, not physics). `--margins <BEFORE.json.gz>` runs CS6 alone. Measured 2026-10-03 on today's production state (read-only reader snapshot, chart_facts 143,299 / chart_divisionals 24,392 rows, the rehearsal's baseline counts): 0 of 1,500 varga labels, 0 of 135 sensitive_degree_check margins and 0 of 15 ayurdaya class margins within bound; tightest margin/bound ratios: varga 1.76 (D2700), sensitive_degree_check 93, ayurdaya 6,713. Exit 2 lists every violation; a longitude within its shift of a mod-12 wrap (amsayu) or a 180-degree branch (pindayu / nisargayu) would show as a CS3 violation for a human to read (it did not occur on the rehearsal). The bounds are derived at the canonical chart's instant and are unmeasured for any other chart: the script refuses (exit 6) a snapshot of another chart. After-values: to be filled at W7.
+
+### H25. H-TIER: the chart_dashas tier census, and what `two_pass_verified` on vimshottari does and does not cover (lanes tiers, karaka_dasha_roles, ephemeris_backend_shift; REQUIRED)
+
+**Why this item exists.** `flip_detector.py` NEVER compares `chart_dashas.verification_pass_status` (it is the standing NOT CHECKED item `chart_dashas.tier`; when `chart_dashas` is compared at all it compares row sets and start shifts), and the tier hooks (`tiers.json`) are declared for completeness only. So a tier that moves where it should not, or fails to move where it should, produces a clean detector report. **This read-back is the only guard on the dasha tiers.** (Teaching the detector to compare them is a post-window item, below.)
+
+**Query (read-only SELECT, canonical chart, validated on the reader 2026-10-03 12:32Z; 161 rows):**
+
+```sql
+SELECT system_id, ayanamsha_id, level_n, verification_pass_status AS tier, count(*) AS n FROM chart_dashas WHERE chart_id='482012f1-710e-4a25-994a-93821f5871aa' GROUP BY 1,2,3,4 ORDER BY 1,2,3,4
+```
+
+**Baseline (today, 2026-10-03, summed over the five ayanamshas; 483,870 rows in one build, `1f89fd4c`).** The full 161-row output is kept at `/Users/Dev/suvarna-evidence/S_L1/H_TIER_BASELINE_2026-10-03.tsv` (sha256 `515cfe9ab0c2e964c844e91b3346e42af3ecf1330e90e3cdbd341e1d6b900353`; tab-separated, the columns above).
+
+| system | level (n) and tier before |
+|---|---|
+| `vimshottari` (non-KP) | L1 63 / L2 515 / L3 4,576 / L4 40,510 = **45,664, all `two_pass_verified`** |
+| `vimshottari_kp` | L2 567 / L3 5,103 = **5,670 `single`** |
+| `mudda` | L1 240 `two_pass_verified`; L2 2,160 / L3 19,430 / L4 80,545 `single` |
+| `narayana` | L1 105 `two_pass_verified`; L2 1,222 `single` |
+| `yogini` | L1 175 `classical_match`; L2-4 83,565 `single` |
+| `ashtottari` | L1 65 `classical_match`; L2-4 32,895 `single` |
+| `chara_karaka` | L1 106 `classical_match`; L2-4 155,029 `single` |
+| `naisargika` | L1 40 `classical_match`; L2-4 21,905 `single` |
+| `kalachakra` | L1-4 35,053 `single` (45 / 405 / 3,645 / 30,958) |
+| `scope_cap` (sentinel) | L4 1 `scope_cap_sentinel` |
+
+Totals by tier: `single` 437,474; `two_pass_verified` 46,009 (45,664 vimshottari + 240 mudda + 105 narayana); `classical_match` 386; `scope_cap_sentinel` 1.
+
+**Expected after the rebuild (the DECLARED changes and nothing else):**
+
+* `vimshottari` non-KP: **ALL `two_pass_verified`**, at every level (45,664 in total; the five ayanamshas' level-4 nets cancel to 0, the per-ayanamsha level-4 deltas are H10's).
+* `vimshottari_kp`: **5,670 `single`** (unchanged).
+* The declared tier changes, level 1 only: **`mudda` 240 `two_pass_verified` to `classical_match`**; **`narayana` 105 `two_pass_verified` to `single`**; **`yogini` 175, `ashtottari` 65, `chara_karaka` 106, `naisargika` 40 `classical_match` to `single`**.
+* Everything else unchanged: `mudda` L2-4, `narayana` L2, `yogini`/`ashtottari`/`chara_karaka`/`naisargika` L2-4 and all `kalachakra` stay `single`; the `scope_cap_sentinel` row stays.
+* Row counts `n`: exact for every (system, ayanamsha, level) except the declared row-set moves: vimshottari level 4 by H10's per-ayanamsha deltas (net 0) and kalachakra by the `ephemeris_backend_shift` entries (appeared minus disappeared per ayanamsha: lahiri +3, true_chitra 0, krishnamurti +10, raman -8, surya_siddhanta -20).
+
+**ANY OTHER MOVEMENT = ABORT** (a tier that differs from the list above at any (system, level), a `divergent_flagged` or any tier value not in the baseline, a system that appears or vanishes, an `n` outside the declared moves): stop, do not declare the window complete, tell SS.
+
+**One-query check (expected after: NO rows).** It returns every row whose tier is not the expected one for its (system, level). Validated on the reader 2026-10-03 12:32Z: today it returns exactly the six declared level-1 groups, **ashtottari L1 classical_match 65, chara_karaka L1 classical_match 106, mudda L1 two_pass_verified 240, naisargika L1 classical_match 40, narayana L1 two_pass_verified 105, yogini L1 classical_match 175 (731 rows)**, which is the declared change set and nothing else:
+
+```sql
+WITH exp(system_id, lo, hi, tier) AS (VALUES ('vimshottari',1,4,'two_pass_verified'),('vimshottari_kp',2,3,'single'),('mudda',1,1,'classical_match'),('mudda',2,4,'single'),('narayana',1,2,'single'),('yogini',1,4,'single'),('ashtottari',1,4,'single'),('chara_karaka',1,4,'single'),('naisargika',1,4,'single'),('kalachakra',1,4,'single'),('scope_cap',4,4,'scope_cap_sentinel')) SELECT d.system_id, d.level_n, d.verification_pass_status AS tier, count(*) AS n FROM chart_dashas d WHERE d.chart_id='482012f1-710e-4a25-994a-93821f5871aa' AND NOT EXISTS (SELECT 1 FROM exp e WHERE e.system_id=d.system_id AND d.level_n BETWEEN e.lo AND e.hi AND e.tier=d.verification_pass_status) GROUP BY 1,2,3 ORDER BY 1,2,3
+```
+
+Run the census before and after; the after census must differ from the baseline ONLY by the declared tier moves and the declared row-set moves above. For Kiran (`cb73cd3d`, not the canonical chart) a rebuild would additionally move 27,634 non-KP vimshottari rows from `single` to `two_pass_verified` (the stale 2026-07-27 build `984e5eab`; production read 2026-10-03): see `tiers_other_charts.json`.
+
+**What `two_pass_verified` on vimshottari non-KP levels 1-4 covers, and what it does not (the verifier's limits; DASHA_TIER_CHECK section (b)).** The stored vimshottari tier comes only from `_apply_vimshottari_independent_verification` (ga_dashas_writer.py) and `ga_writers/_vimshottari_independent_verifier.py`: a separate re-implementation compared per row, lord, start and end within 5 s. It earns "the Vimshottari recursion arithmetic (lords, proportions, boundaries) of the rows that were stored agree with an independent re-implementation". It does NOT cover:
+
+1. **The Moon input, the ayanamsha, the birth instant or the ephemeris backend.** At the write path both implementations are fed the SAME `moon_sid` and `birth_jd`, so a wrong Moon longitude or ayanamsha is invisible to it (the standalone `verify_chart_vimshottari` reads the Moon from `chart_facts`, but it is not what the writer calls). This is why the Moshier-to-.se1 move, which shifts the Moon, leaves the tier `two_pass_verified` while every start moves by about +6,992 s.
+2. **The rows that were never stored.** The verifier deliberately REPLICATES the writer's collapsed-civil-date row drop (`_collapses_to_same_civil_date`), so it cannot see the 148,347 never-stored periods (`Dasha/DASHA_OMISSION_COUNT.md`: 23.68 percent of the generated non-KP classical periods; vimshottari 1.36 percent). Row existence is judged by the same drop rule on both sides. It also shares the 365.25-day year, the 1950-01-01..2100-12-31 window and the nakshatra span.
+3. **Anything beyond lord, start and end.** The extended columns (role and karaka columns, dignity, sandhi flag, post-pass columns) are not compared at the write path (`derive_extended_columns` is not called there).
+
+**The FORENSIC gates are not the tier.** `_verify_vimshottari`'s return value (now `classical_match` for the native, see the ga_dashas commit of this lane) is never stored on a row; it reaches only the INFO logs and the returned summary dict. A rebuild's gates PASSING or HALTING does not move any stored tier.
+
+**Post-window item (do NOT fix inside the window): `verification_method` is a mislabel on rows stored as `single`.** `_build_row` writes the constant `two_pass_classical_reconstruction` as `verification_method` on every ordinary row, including the 437,474 rows whose `verification_pass_status` is `single` and the 386 `classical_match` rows (only 46,009 rows carry a tier that matches the method). The method column therefore contradicts the tier column on about 90 percent of the table (437,860 of 483,870 rows): a narration-fidelity defect of the kind CLAUDE.md N.7 names. Fix later, in a separate lane, by setting the method per row to match the tier; also post-window: teach `flip_detector.py` to compare `chart_dashas.verification_pass_status` so this item stops being the only guard.
