@@ -2811,8 +2811,10 @@ def build_ga_yoga_substep(
     logger.info("[ga_yoga_writer] substep start: chart=%s ayanamsha=%s", chart_id, ayanamsha_id)
 
     # FORENSIC guard. str(): the orchestrator hands a uuid.UUID, which never == the str constant (guard skipped).
+    # This early guard asserts NOTHING (it only logs); the one real assertion is the post-insert _forensic_assert gate
+    # below. Per CLAUDE.md N.8 a gate that asserts nothing must never read as passed: `assertion=none`.
     if str(chart_id) == CANONICAL_CHART_ID:
-        logger.info("[ga_yoga_writer] FORENSIC: native chart — applying forensic assertions")
+        logger.info("FORENSIC gate ga_yoga executed assertion=none chart=canonical")
 
     if dry_run:
         logger.info("[ga_yoga_writer] DRY_RUN — no writes")

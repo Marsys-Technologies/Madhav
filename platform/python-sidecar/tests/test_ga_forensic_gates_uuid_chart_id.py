@@ -15,6 +15,9 @@ nakshatra, transit_anchors) these tests drive the real code with a uuid.UUID, a 
   ``passed=False``;
 * non-canonical: the gate is skipped silently (nothing at INFO, the run is not halted by the altered anchor).
 
+Two gates assert NOTHING (ga_vichara, and ga_yoga's early guard): their line is ``executed assertion=none`` and never
+``passed=True`` (CLAUDE.md N.8, SS ruling); they have dedicated tests and no stored/returned pass flag.
+
 ``via='writer'`` calls the writer entry point directly (so it fails if the gate-site ``str()`` is reverted);
 ``via='adapter'`` drives the REAL registered orchestrator adapter with the UUID in ``ctx.config`` (so it fails if BOTH the
 adapter and gate-site ``str()`` are reverted); the dedicated ``test_adapter_hands_the_writer_a_str`` tests fail if only the
@@ -459,7 +462,9 @@ GATES: list[tuple[str, str, Callable, list[str], bool, bool]] = [
     ("dashas_verify",      None,                r_dashas_verify,        WRITER_ONLY,   True,  False),
     ("dashas_compute",     None,                r_dashas_compute,       WRITER_ONLY,   True,  False),
     ("tajaka",             "ga_tajaka",         r_tajaka,               ALL,           True,  False),
-    ("vichara",            "ga_vichara",        r_vichara,              ALL,           False, False),
+    # vichara asserts nothing: its log line is `assertion=none`, never `passed=True`, so the generic passed=True/False log
+    # checks are off for it (asset=None) and the dedicated assertion=none tests below own its log contract.
+    ("vichara",            None,                r_vichara,              ALL,           False, False),
     ("yoga_assert",        "ga_yoga",           r_yoga_assert,          ALL,           True,  True),
     ("nakshatra",          "ga_nakshatra",      r_nakshatra,            ALL,           True,  True),
     ("transit_anchors",    "ga_transit_anchors", r_transit_anchors,     ADAPTER_ONLY,  True,  False),
@@ -597,13 +602,84 @@ def test_adapter_nakshatra_gate_runs_on_the_str_the_adapter_hands_over(monkeypat
 
 # ── log-line format + the two sites that previously only logged ───────────────────────────────────────
 
-def test_ga_vichara_guard_asserts_nothing_and_says_so(monkeypatch, caplog):
-    """Honesty pin: ga_vichara's 'FORENSIC' branch has no anchor assertion; its log line must not claim one."""
+def r_yoga_guard(mp, chart_id, good, via):
+    """ga_yoga's EARLY guard (before dry_run): only logs, asserts nothing. dry_run returns right after it, so the real
+    post-insert `_forensic_assert` gate never runs here and cannot contribute a `passed=` line."""
+    res = Result()
+    _spy(mp, gyw, "_forensic_assert", res)
+    if via == "writer":
+        return _drive(res, lambda: gyw.build_ga_yoga_substep(chart_id, BUILD_ID, AYA, _RecConn(), dry_run=True))
+    discover_all()
+    return _drive(res, lambda: get_writer("ga_yoga")().run_substep(
+        _ctx("ga_yoga", chart_id, dry_run=True), SubStep(key=f"ayanamsha_{AYA}")))
+
+
+#: the two gates that assert nothing (SS ruling, CLAUDE.md N.8): (asset, runner)
+NO_ASSERTION_GATES = [("ga_vichara", r_vichara), ("ga_yoga", r_yoga_guard)]
+_NA_CASES = [(a, r, v) for a, r in NO_ASSERTION_GATES for v in ALL]
+_NA_IDS = [f"{a}-{v}" for a, _r, v in _NA_CASES]
+
+
+def _gate_msgs(caplog, asset) -> list[tuple[int, str]]:
+    return [(r.levelno, r.getMessage()) for r in caplog.records if r.getMessage().startswith(f"FORENSIC gate {asset} ")]
+
+
+@pytest.mark.parametrize("chart_kind", ["uuid", "str"])
+@pytest.mark.parametrize("asset,runner,via", _NA_CASES, ids=_NA_IDS)
+def test_no_assertion_gate_says_assertion_none_never_passed(asset, runner, via, chart_kind, monkeypatch, caplog):
+    """A gate that asserts nothing must never read as passed (CLAUDE.md N.8)."""
+    caplog.set_level(logging.DEBUG)
+    chart_id = CANON_UUID if chart_kind == "uuid" else CANON
+    res = runner(monkeypatch, chart_id, True, via)
+    assert res.exc is None and res.past_gate
+    msgs = _gate_msgs(caplog, asset)
+    assert msgs == [(logging.INFO, f"FORENSIC gate {asset} executed assertion=none chart=canonical")], msgs
+    assert not any("passed=" in m for _lvl, m in msgs)
+    assert not any("passed=True" in r.getMessage() for r in caplog.records), "nothing may claim passed=True"
+    assert res.gate_calls == 0, "the (real) post-insert yoga assertion must not run in this path"
+
+
+@pytest.mark.parametrize("asset,runner,via", _NA_CASES, ids=_NA_IDS)
+def test_no_assertion_gate_returns_and_stores_no_pass_flag(asset, runner, via, monkeypatch):
+    """No stored/returned pass signal: the builder returns a plain row count, the adapter's WriterResult carries no
+    forensic/pass field and no truthy forensic-ish value (None / absent is the only allowed state)."""
+    import dataclasses
+    box: dict[str, Any] = {}
+    conn = _RecConn()
+    monkeypatch.setattr(gyw, "_forensic_assert", lambda *a, **k: box.setdefault("assert_called", True))
+    if via == "writer":
+        fn = gvichw.build_ga_vichara_substep if asset == "ga_vichara" else gyw.build_ga_yoga_substep
+        out = fn(CANON_UUID, BUILD_ID, AYA, conn, dry_run=True)
+        assert type(out) is int and out == 0
+    else:
+        discover_all()
+        out = get_writer(asset)().run_substep(_ctx(asset, CANON_UUID, dry_run=True, conn=conn), SubStep(key=f"ayanamsha_{AYA}"))
+        fields = dataclasses.asdict(out)
+        assert set(fields) == {"asset_id", "rows_inserted", "rows_updated", "rows_skipped", "duration_seconds", "notes"}
+        assert not any(k for k in fields if "forensic" in k or "pass" in k)
+        assert "forensic" not in str(fields["notes"]).lower() and "pass" not in str(fields["notes"]).lower()
+    assert "assert_called" not in box
+    stored = [sql for sql, _a in conn.statements if "forensic" in str(sql).lower()]
+    assert stored == [], "no row/column/dict key may store a forensic pass signal"
+
+
+@pytest.mark.parametrize("asset,runner,via", _NA_CASES, ids=_NA_IDS)
+def test_no_assertion_gate_non_canonical_unchanged_silent_skip(asset, runner, via, monkeypatch, caplog):
+    caplog.set_level(logging.DEBUG)
+    res = runner(monkeypatch, OTHER_UUID, False, via)
+    assert res.exc is None and not res.failed and res.past_gate
+    assert [m for lvl, m in _gate_msgs(caplog, asset) if lvl >= logging.INFO] == []
+    assert not any("assertion=none" in r.getMessage() and r.levelno >= logging.INFO for r in caplog.records)
+
+
+def test_real_yoga_assertion_still_reports_passed_true_distinct_from_the_none_guard(monkeypatch, caplog):
+    """The yoga post-insert gate is a REAL assertion: it still says passed=True; the early guard says assertion=none."""
     caplog.set_level(logging.INFO)
-    res = r_vichara(monkeypatch, CANON_UUID, False, "writer")
-    assert res.exc is None
-    msgs = [r.getMessage() for r in caplog.records if r.getMessage().startswith("FORENSIC gate ga_vichara executed")]
-    assert msgs and "no anchor assertion exists" in msgs[0]
+    res = r_yoga_assert(monkeypatch, CANON_UUID, True, "writer")
+    assert res.exc is None and res.gate_calls == 1
+    msgs = [m for _l, m in _gate_msgs(caplog, "ga_yoga")]
+    assert "FORENSIC gate ga_yoga executed assertion=none chart=canonical" in msgs
+    assert any(m.startswith("FORENSIC gate ga_yoga executed passed=True chart=canonical") for m in msgs)
 
 
 def test_gate_log_line_format_is_exactly_the_documented_one(monkeypatch, caplog):

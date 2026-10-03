@@ -1125,10 +1125,10 @@ def build_ga_vichara_substep(
     logger.info("[ga_vichara_writer] substep start: chart=%s ayanamsha=%s", chart_id, ayanamsha_id)
 
     # str(): the orchestrator hands a uuid.UUID, which never == the str constant, so this branch was skipped.
-    # NOTE: this guard asserts nothing (it only logs); the log line below is the only evidence it ran.
+    # This guard asserts NOTHING (it only logs). Per CLAUDE.md N.8 a gate that asserts nothing must never read as
+    # passed: the line says `assertion=none`, and no pass flag is set, stored or returned from here.
     if str(chart_id) == CANONICAL_CHART_ID:
-        logger.info("[ga_vichara_writer] FORENSIC: native chart — applying forensic assertions")
-        logger.info("FORENSIC gate ga_vichara executed passed=True chart=canonical (no anchor assertion exists in this writer)")
+        logger.info("FORENSIC gate ga_vichara executed assertion=none chart=canonical")
     else:
         logger.debug("FORENSIC gate ga_vichara skipped chart=skipped-non-canonical")
 
