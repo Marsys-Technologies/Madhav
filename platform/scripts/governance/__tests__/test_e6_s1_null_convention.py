@@ -174,12 +174,12 @@ def test_validator_doc_level_field_list_must_match_when_present():
             ac.validate_declarations(ok)
 
 
-def test_the_committed_file_is_1_10_0_declares_no_null_convention_yet_and_lists_the_fields():
+def test_the_committed_file_is_1_11_0_declares_a_null_convention_only_for_the_latta_and_lists_the_fields():
     raw = json.loads(ac.DECLARATIONS_PATH.read_text(encoding="utf-8"))
-    assert raw["version"] == "1.10.0"          # DECL-LATTA (no null_convention: option C)
+    assert raw["version"] == "1.11.0"          # DECL-LATTA-NULL: bg_phaladeepika_latta is the first (and only) asset to declare one
     assert raw["null_convention_declaration_fields"] == list(ac.NULL_CONVENTION_DECL_FIELDS)
     # the per-asset review is the reviewed work: nothing is declared by pattern in this PR
-    assert [a for a, e in raw["assets"].items() if "null_convention" in e] == []
+    assert [a for a, e in raw["assets"].items() if "null_convention" in e] == ["bg_phaladeepika_latta"]
     ac.load_asset_declarations()
 
 
@@ -757,10 +757,11 @@ SAVED = pathlib.Path("/Users/Dev/suvarna-evidence/census_fresh/1e5781a")
 
 @pytest.mark.skipif(not (SAVED / "census_L0.json").exists(), reason="the saved baseline census is not on this machine (CI)")
 def test_on_the_saved_census_and_the_committed_declarations_no_cell_moves():
-    """No asset declares `null_convention` in the committed file, so every one of the 1143 cells keeps its saved verdict (Null: 92 NO_DETECTOR, 35 PARTIAL)."""
+    """Only bg_phaladeepika_latta declares `null_convention` (1.11.0), and this rolls up the SAVED measurements (no re-measure), so every one of the 1143 cells keeps its saved
+    verdict (Null: 92 NO_DETECTOR, 35 PARTIAL); the latta's Null change comes from a fresh measurement (test_e6_decl_latta_null.py)."""
     from collections import Counter
     decl = ac.load_asset_declarations()
-    assert not [a for a, e in decl.items() if isinstance(e, dict) and e.get("null_convention")]
+    assert [a for a, e in decl.items() if isinstance(e, dict) and e.get("null_convention")] == ["bg_phaladeepika_latta"]
     null, moved, n = Counter(), [], 0
     for L in ("L0", "L1", "L2", "L3", "L4", "L5"):
         d = json.loads((SAVED / f"census_{L}.json").read_text(encoding="utf-8"))

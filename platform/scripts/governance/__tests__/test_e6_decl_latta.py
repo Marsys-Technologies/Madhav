@@ -7,8 +7,8 @@ bg_phaladeepika_latta's entry in asset_declarations.json (1.10.0) declares THREE
   * vocab_alias: planet class on `graha`, identity_only (the table carries no alias column);
   * ldgr_source: `verse_ref` (accurate: Adh.XXVI PG338-339 Sloka 42-44) at sourced_ocr_unverified. The per-row `source_citation` names PG339 only
     (a recorded finding, to be corrected at the next writer change).
-It declares NO null_convention (option C: a later PR, after pin 15 adds stamp_columns) and NO created_at constant (all 8 rows share one write
-timestamp; declaring it constant would be a claim that flips on the next row set). Every other cell (Null, Narr x4, Earn.build_record, Dens) is unchanged.
+At 1.10.0 it declared NO null_convention; 1.11.0 (DECL-LATTA-NULL, test_e6_decl_latta_null.py) adds it, with created_at as a stamp column and NO created_at constant
+(all 8 rows share one write timestamp). The cells measured HERE are Carr, Vocab and Ldgr; Narr x4, Earn.build_record and Dens are unchanged.
 
 Part 1 is offline (validator + pure detectors, seeded defects). Part 2 runs the REAL detectors on a disposable Postgres built from the corpus
 export (8 rows + both chunks; the committed fixture + the three known constant columns where the export file is absent, e.g. CI) and a
@@ -61,6 +61,18 @@ CHUNK_LIST, ROWS, SOURCE = _data()
 CHUNKS = {c["chunk_id"]: c for c in CHUNK_LIST}
 
 
+def _reasons(x):
+    """Every `why` / `means` / `identity_only_why` string of an entry (the prose the review reads; structural words such as mode `exactly` are not prose)."""
+    out = []
+    if isinstance(x, dict):
+        for k, v in x.items():
+            out += [v] if k in ("why", "means", "identity_only_why") and isinstance(v, str) else _reasons(v)
+    elif isinstance(x, list):
+        for v in x:
+            out += _reasons(v)
+    return out
+
+
 def _doc(mutate):
     d = copy.deepcopy(DECL)
     mutate(d["assets"][AID])
@@ -75,16 +87,29 @@ def _refused(mutate, match):
 # ───────────────────────── Part 1: the committed entry ─────────────────────────
 
 def test_the_committed_file_is_1_10_0_and_the_validator_accepts_this_entry():
-    assert DECL["version"] == "1.10.0" and "bg_phaladeepika_latta" in DECL["description"].split("Version 1.10.0", 1)[1]
+    assert DECL["version"] == "1.11.0" and "bg_phaladeepika_latta" in DECL["description"].split("Version 1.10.0", 1)[1]
     ac.validate_declarations(DECL)
     assert ac.load_asset_declarations()[AID]["carriage"]["applies"] == "D1"
 
 
-def test_this_asset_alone_declares_the_three_blocks_and_nobody_declares_a_null_convention_or_a_created_at_constant():
+def test_this_asset_alone_declares_the_three_blocks_and_its_created_at_is_a_stamp_never_a_constant():
     decl = [a for a, e in DECL["assets"].items() if any(k in (e.get("carriage") or {}) for k in ac.CARRIAGE_DECL_FIELDS) or "vocab_alias" in e or "ldgr_source" in e]
     assert decl == [AID]
-    assert [a for a, e in DECL["assets"].items() if "null_convention" in e] == []
-    assert "created_at" not in json.dumps(ENTRY)                       # option A is refused: no created_at constant (nor any created_at mention)
+    assert [a for a, e in DECL["assets"].items() if "null_convention" in e] == [AID]                  # DECL-LATTA-NULL (1.11.0)
+    nc = ENTRY["null_convention"]
+    assert "created_at" not in [c["column"] for c in nc["constants"]]            # option A is refused: no created_at constant; it is a declared stamp column
+    assert [c["column"] for c in nc["stamp_columns"]] == ["created_at"]
+    hits = []
+
+    def walk(x, path):
+        if isinstance(x, str) and "created_at" in x:
+            hits.append(path)
+        elif isinstance(x, dict):
+            [walk(v, f"{path}.{k}") for k, v in x.items()]
+        elif isinstance(x, list):
+            [walk(v, f"{path}[{i}]") for i, v in enumerate(x)]
+    walk(ENTRY, "entry")
+    assert "entry.null_convention.stamp_columns[0].column" in hits and all(h.startswith("entry.null_convention.stamp_columns[0].") for h in hits), hits   # created_at only ever under stamp_columns
 
 
 def test_the_entry_declares_what_the_strategist_ruled():
@@ -96,7 +121,11 @@ def test_the_entry_declares_what_the_strategist_ruled():
         assert needle in CAR["why"], needle
     assert "OCR-garbled" in LS["why"] and "Slokas 45-46" in LS["why"] and "no detector checks the sloka label" in LS["why"] and "PG339 only" in LS["why"]
     new_sentence = DECL["description"].split("Version 1.10.0", 1)[1].split(" REGISTRY_REVISION 15", 1)[0]   # the 1.10.0 sentence only (a later pin appends its own)
-    texts = [json.dumps(ENTRY).lower(), new_sentence.lower()]                    # every why of the entry and the 1.10.0 description sentence
+    whole = json.dumps(ENTRY, ensure_ascii=False).lower()                         # the WHOLE entry JSON, not only its prose strings
+    assert whole.count("exactly") == 1 and '"mode": "exactly"' in whole           # 'exactly' appears only as the null_convention scope mode value
+    whole = whole.replace('"mode": "exactly"', '"mode": "scope"')
+    next_sentence = DECL["description"].split("Version 1.11.0", 1)[1]
+    texts = [" ".join(_reasons(ENTRY)).lower(), new_sentence.lower(), whole, next_sentence.lower()]   # every why, the whole entry, the 1.10.0 and 1.11.0 description sentences
     for word in ("verbatim", "accurate", "exact"):
         assert not any(word in t for t in texts), word
     assert "read from classical_text_chunks by span; only the declared clause/condition strings are quoted" in new_sentence
@@ -180,10 +209,10 @@ def test_a_malformed_declaration_is_refused():
     _refused(lambda e: e["vocab_alias"].update(na="no_alias_class"), "vocab_alias")
 
 
-def test_a_created_at_constant_is_not_declared_and_a_null_convention_without_it_would_fail_so_none_is_declared():
-    """Option C: the committed entry carries no null_convention. (The detector reads created_at, one value on all 8 rows, as an undeclared
-    constant: a convention WITHOUT it FAILs the Null cell, one WITH it makes a claim that flips on the next row set: so neither is declared.)"""
-    assert "null_convention" not in ENTRY
+def test_a_convention_without_the_stamp_declaration_would_fail_on_created_at_the_reason_it_is_declared_a_stamp():
+    """History (option C, 1.10.0): the detector reads created_at, one value on all 8 rows, as an undeclared constant, so a convention WITHOUT a
+    stamp declaration FAILs the Null cell (pure grader, below); 1.11.0 declares created_at as a stamp column instead (test_e6_decl_latta_null.py)."""
+    assert "null_convention" in ENTRY
     stats = dict(rows=8, cols={c: dict(nulls=0, distinct=8, fallback=0) for c in COLS})
     for c in ("table_version", "affliction_condition", "source_citation", "verse_ref", "created_at"):
         stats["cols"][c] = dict(nulls=0, distinct=1, sole="x", fallback=0)
@@ -350,13 +379,13 @@ def test_REAL_a_wrong_row_in_the_table_is_a_d1_partial_naming_it(monkeypatch, di
 
 # ───────────────────────── Part 3: the cells this declaration changes, and the ones it does not ─────────────────────────
 
-def test_the_null_and_narr_checks_are_untouched_by_this_declaration():
-    """No prose_fields and no null_convention: the six Null/Narr checks read exactly NO_DETECTOR (undeclared), as today."""
+def test_the_narr_checks_are_untouched_by_this_declaration():
+    """No prose_fields: the four Narr checks read exactly NO_DETECTOR (undeclared). (Null is declared by 1.11.0: test_e6_decl_latta_null.py.)"""
     cat = dict(exists={AID}, cols={AID: COLS}, keys={AID: [["table_version", "graha"]]}, views=set(), types={AID: {c: "text" for c in COLS}},
                defaults={AID: {}}, types_error=None)
-    m = ac._measure_prose(AID, ENTRY, dict(target_table=AID, count_sql=f"SELECT count(*) FROM {AID}"), None, cat, [], set(), (), set())
-    assert {c: m[c]["v"] for c in ac.NARR_CHECKS + ac.NULL_CHECKS} == {c: NO_DET for c in ac.NARR_CHECKS + ac.NULL_CHECKS}
-    assert all("prose_fields is undeclared" in m[c]["measured"] for c in ac.NARR_CHECKS + ac.NULL_CHECKS)
+    m = ac._measure_prose(AID, dict(ENTRY, null_convention=None), dict(target_table=AID, count_sql=f"SELECT count(*) FROM {AID}"), None, cat, [], set(), (), set())
+    assert {c: m[c]["v"] for c in ac.NARR_CHECKS} == {c: NO_DET for c in ac.NARR_CHECKS}
+    assert all("prose_fields is undeclared" in m[c]["measured"] for c in ac.NARR_CHECKS)
 
 
 @pytest.mark.skipif(not (SAVED / "census_L0.json").exists(), reason="the saved baseline census is not on this machine (CI)")
@@ -369,7 +398,7 @@ def test_REAL_cells_before_and_after_on_the_saved_census(monkeypatch, disposable
     after = ac.rollup_asset("L0", meas)
     b, a = {g: c["v"] for g, c in before.items()}, {g: c["v"] for g, c in after.items()}
     assert (b["Carr"], a["Carr"]) == (NO_DET, PASS) and (b["Vocab"], a["Vocab"]) == (NO_DET, PASS) and (b["Ldgr"], a["Ldgr"]) == (PASS, PASS)
-    for g in ("Null", "Narr", "Earn", "Dens"):                      # unchanged: still NO_DETECTOR, for the reasons in DESIGN.md
+    for g in ("Null", "Narr", "Earn", "Dens"):                      # unchanged BY THESE THREE BLOCKS (this test measures no Null record; Null is 1.11.0's: test_e6_decl_latta_null.py)
         assert b[g] == a[g] == NO_DET, g
     for g in ("Idem", "Build"):
         assert b[g] == a[g] == PASS, g
