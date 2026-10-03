@@ -20,38 +20,85 @@ CI = ROOT / ".github" / "workflows" / "ci.yml"
 SCRIPT = HERE.parent / "ci_changes.py"
 
 
+NO_PINS = frozenset()
+
+
 @pytest.mark.parametrize("files,expected", [
-    (["README.md"], True),
-    (["00_ARCHITECTURE/CURRENT_STATE_v1_0.md", "00_ARCHITECTURE/SESSION_LOG.md"], True),
     (["00_ARCHITECTURE/briefs/suvarna/exec/NOTE.md", "00_ARCHITECTURE/briefs/x/plan.txt"], True),
+    (["00_ARCHITECTURE/SOME_NEW_NOTE_v1_0.md"], True),
     (["99_ARCHIVE/old/report.md"], True),
-    (["docs/guide.txt", "notes.md"], True),
-    # any code / data / config / workflow file => everything runs
-    (["platform/scripts/governance/asset_census.py"], False),
-    (["platform/src/lib/x.ts"], False),
-    (["platform/supabase/migrations/900_x.sql"], False),
-    ([".github/workflows/ci.yml"], False), ([".github/pull_request_template.md"], False), ([".github/CODEOWNERS"], False),
-    (["00_ARCHITECTURE/control/asset_dispositions.jsonl"], False),
-    (["00_ARCHITECTURE/control/NOTES.md"], False),                                 # control dir is read by the governance tests
-    (["00_ARCHITECTURE/CAPABILITY_MANIFEST.json"], False),
-    (["00_ARCHITECTURE/briefs/x/data.json"], False),
-    (["00_ARCHITECTURE/briefs/x/data.yaml"], False),
-    (["platform/scripts/governance/README.md"], False),                            # md next to code can be read by tests
-    (["services/gochara_v3/README.md"], False),
+    (["00_ARCHITECTURE/briefs/x/NOTE.MD"], True),                                   # extension compared case-insensitively
+    # anything else never skips: markdown beside code, canonical corpora (read by the unit tests), root files, outside the docs roots
+    (["README.md"], False), (["CLAUDE.md"], False), (["docs/guide.txt"], False), (["notes.md"], False),
+    (["025_HOLISTIC_SYNTHESIS/MSR_v5_0.md"], False), (["01_FACTS_LAYER/LIFE_EVENT_LOG_v1_2.md"], False),
+    (["platform/scripts/governance/README.md"], False), (["services/gochara_v3/README.md"], False),
     (["platform/scripts/governance/__tests__/NOTES.md"], False),
+    # code / data / config / workflow
+    (["platform/scripts/governance/asset_census.py"], False), (["platform/src/lib/x.ts"], False), (["platform/supabase/migrations/900_x.sql"], False),
+    ([".github/workflows/ci.yml"], False), ([".github/pull_request_template.md"], False), ([".github/CODEOWNERS"], False),
     (["package.json"], False), (["Dockerfile"], False), (["x.sh"], False),
+    # each deny rule isolated (a docs-looking md that only ONE rule excludes)
+    (["00_ARCHITECTURE/control/NOTES.md"], False),                                  # control dir
+    (["00_ARCHITECTURE/autonomy/NOTES.md"], False),                                 # autonomy dir
+    (["00_ARCHITECTURE/briefs/x/tests/a.md"], False), (["00_ARCHITECTURE/briefs/x/Tests/a.md"], False),
+    (["00_ARCHITECTURE/briefs/x/__tests__/a.md"], False), (["00_ARCHITECTURE/briefs/x/fixtures/a.md"], False),
+    (["00_ARCHITECTURE/briefs/x/migrations/a.md"], False), (["00_ARCHITECTURE/briefs/x/node_modules/a.md"], False),
+    # extension rules under the docs roots: only md/txt
+    (["00_ARCHITECTURE/briefs/x/run"], False), (["00_ARCHITECTURE/briefs/x/data.jsonl"], False), (["00_ARCHITECTURE/briefs/x/data.json"], False),
+    (["00_ARCHITECTURE/briefs/x/tool.py"], False), (["00_ARCHITECTURE/briefs/x/tool.PY"], False), (["00_ARCHITECTURE/briefs/x/tool.pl"], False),
+    (["99_ARCHIVE/x/data.xlsx"], False), (["99_ARCHIVE/x/script.bash"], False),
+    # exact names (no stripping): a trailing/leading space is not a docs file
+    (["00_ARCHITECTURE/briefs/x/a.md "], False), ([" 00_ARCHITECTURE/briefs/x/a.md"], False),
     # mixed => everything runs
-    (["README.md", "platform/src/a.ts"], False), (["a.md", "b.py"], False), (["a.md", ".github/workflows/ci.yml"], False),
+    (["00_ARCHITECTURE/briefs/x/a.md", "platform/src/a.ts"], False), (["00_ARCHITECTURE/briefs/a.md", "b.py"], False),
+    (["00_ARCHITECTURE/briefs/a.md", ".github/workflows/ci.yml"], False),
     # fail closed
-    ([], False), ([""], False), (["../etc/passwd.md"], False), (["/abs/path.md"], False), (["a/../b.md"], False), ([" "], False),
+    ([], False), ([""], False), (["../etc/passwd.md"], False), (["/abs/path.md"], False), (["00_ARCHITECTURE/../b.md"], False),
+    (["00_ARCHITECTURE//a.md"], False), (["00_ARCHITECTURE/./a.md"], False), (["00_ARCHITECTURE\\a.md"], False),
 ])
 def test_classification(files, expected):
-    assert ci_changes.docs_only(files) is expected
+    assert ci_changes.docs_only(files, NO_PINS) is expected
+
+
+def test_a_document_a_test_names_is_never_skippable():
+    f = "00_ARCHITECTURE/briefs/x/PINNED_NOTE.md"
+    assert ci_changes.docs_only([f], NO_PINS) is True
+    assert ci_changes.docs_only([f], frozenset({f})) is False
+    assert ci_changes.docs_only([f, "00_ARCHITECTURE/briefs/x/other.md"], frozenset({f})) is False
+    assert ci_changes.docs_only([f], frozenset({"*"})) is False                      # the wildcard sentinel: nothing is provably unpinned
+
+
+def test_an_unreadable_pinned_list_fails_closed(tmp_path, monkeypatch):
+    monkeypatch.setattr(ci_changes, "PINNED_FILE", tmp_path / "missing.json")
+    assert ci_changes._pinned() == frozenset({"*"}) and ci_changes.docs_only(["00_ARCHITECTURE/briefs/x/a.md"]) is False
+    (tmp_path / "bad.json").write_text("{not json")
+    monkeypatch.setattr(ci_changes, "PINNED_FILE", tmp_path / "bad.json")
+    assert ci_changes.docs_only(["00_ARCHITECTURE/briefs/x/a.md"]) is False
+
+
+def test_the_pinned_list_covers_every_document_a_test_names():
+    """Review N-103: the committed list must contain (at least) every docs-eligible md/txt that any test file names. A stale EXTRA entry is harmless."""
+    try:
+        fresh = set(ci_changes.scan_pinned())
+    except (OSError, subprocess.SubprocessError):
+        pytest.skip("not a git checkout")
+    committed = set(ci_changes._pinned())
+    missing = sorted(fresh - committed)
+    assert not missing, f"run `python3 platform/scripts/governance/ci_changes.py --regen-pinned`; tests now name: {missing[:5]}"
+
+
+def test_scan_pinned_resolves_paths_and_basenames(tmp_path):
+    (tmp_path / "t").mkdir()
+    (tmp_path / "t" / "test_a.py").write_text('open("00_ARCHITECTURE/briefs/x/A.md"); read("B.md"); read("sub/C.txt"); "unrelated.md"')
+    files = ["t/test_a.py", "00_ARCHITECTURE/briefs/x/A.md", "00_ARCHITECTURE/B.md", "00_ARCHITECTURE/z/B.md", "00_ARCHITECTURE/sub/C.txt",
+             "00_ARCHITECTURE/briefs/other.md", "platform/x/B.md"]
+    got = ci_changes.scan_pinned(tmp_path, files)
+    assert got == ["00_ARCHITECTURE/B.md", "00_ARCHITECTURE/briefs/x/A.md", "00_ARCHITECTURE/sub/C.txt", "00_ARCHITECTURE/z/B.md"]
 
 
 def test_a_rename_from_code_to_md_is_not_docs_only():
-    """`--no-renames` lists the OLD path too: moving platform/x.py to notes.md deletes code."""
-    assert ci_changes.docs_only(["notes.md", "platform/x.py"]) is False
+    """`--no-renames` lists the OLD path too: moving platform/x.py to a doc deletes code."""
+    assert ci_changes.docs_only(["00_ARCHITECTURE/briefs/x/notes.md", "platform/x.py"], NO_PINS) is False
 
 
 def _git(repo, *a):
@@ -63,7 +110,8 @@ def _repo(tmp_path):
     _git(tmp_path, "config", "user.email", "t@t")
     _git(tmp_path, "config", "user.name", "t")
     (tmp_path / "a.py").write_text("x = 1\n")
-    (tmp_path / "n.md").write_text("n\n")
+    (tmp_path / "00_ARCHITECTURE" / "briefs").mkdir(parents=True)
+    (tmp_path / "00_ARCHITECTURE" / "briefs" / "n.md").write_text("n\n")
     _git(tmp_path, "add", ".")
     _git(tmp_path, "commit", "-qm", "base")
     return tmp_path
@@ -75,21 +123,21 @@ def _run(repo, *args):
 
 def test_cli_on_a_real_git_diff(tmp_path):
     r = _repo(tmp_path)
-    (r / "n.md").write_text("changed\n")
+    (r / "00_ARCHITECTURE" / "briefs" / "n.md").write_text("changed\n")
     _git(r, "commit", "-qam", "docs")
     assert _run(r, "--event", "pull_request", "--base", "HEAD^1", "--head", "HEAD").stdout.strip() == "docs_only=true"
     (r / "a.py").write_text("x = 2\n")
-    (r / "n.md").write_text("changed again\n")
+    (r / "00_ARCHITECTURE" / "briefs" / "n.md").write_text("changed again\n")
     _git(r, "commit", "-qam", "mixed")
     assert _run(r, "--event", "pull_request", "--base", "HEAD^1", "--head", "HEAD").stdout.strip() == "docs_only=false"
-    _git(r, "mv", "a.py", "a_moved.md")                                                # a code file renamed to .md
+    _git(r, "mv", "a.py", "00_ARCHITECTURE/briefs/a_moved.md")                                                # a code file renamed to .md
     _git(r, "commit", "-qm", "rename")
     assert _run(r, "--event", "pull_request", "--base", "HEAD^1", "--head", "HEAD").stdout.strip() == "docs_only=false"
 
 
 def test_cli_fails_closed(tmp_path):
     r = _repo(tmp_path)
-    (r / "n.md").write_text("changed\n")
+    (r / "00_ARCHITECTURE" / "briefs" / "n.md").write_text("changed\n")
     _git(r, "commit", "-qam", "docs")
     for event in ("push", "merge_group", "workflow_dispatch", "schedule"):
         p = _run(r, "--event", event)
@@ -153,3 +201,72 @@ def test_the_trigger_set_is_unchanged_so_push_and_merge_group_still_run_everythi
 def test_every_job_in_ci_yml_is_classified_here_so_a_new_heavy_job_is_a_conscious_choice(jobs):
     unknown = set(jobs) - set(HEAVY) - set(NEVER_SKIPPED) - {"census-battery"}
     assert not unknown, f"classify these jobs as HEAVY (skipped on docs-only) or NEVER_SKIPPED: {sorted(unknown)}"
+
+
+# ---------------------------------------------------------------- the classify STEP itself, run for real (review N-103: Y4/Y5/Y6/Y9) -------
+
+def _step_script():
+    yaml = pytest.importorskip("yaml")
+    if not CI.is_file():
+        pytest.skip("no ci.yml on this tree")
+    ch = yaml.safe_load(CI.read_text())["jobs"]["changes"]
+    return next(st["run"] for st in ch["steps"] if st.get("id") == "classify")
+
+
+def _run_step(tmp_path, event, *, files, script_text=None):
+    """Run the workflow's own classify script in a throwaway repo whose HEAD^1..HEAD diff touches `files` (relative path -> content)."""
+    import os
+    repo = tmp_path
+    _git(repo, "init", "-q")
+    _git(repo, "config", "user.email", "t@t")
+    _git(repo, "config", "user.name", "t")
+    gov = repo / "platform" / "scripts" / "governance"
+    gov.mkdir(parents=True)
+    (gov / "ci_changes.py").write_text(script_text if script_text is not None else SCRIPT.read_text())
+    (gov / "ci_docs_pinned.json").write_text('{"pinned": []}')
+    (repo / "base.txt").write_text("b")
+    _git(repo, "add", ".")
+    _git(repo, "commit", "-qm", "base")
+    for rel, content in files.items():
+        (repo / rel).parent.mkdir(parents=True, exist_ok=True)
+        (repo / rel).write_text(content)
+    _git(repo, "add", ".")
+    _git(repo, "commit", "-qm", "change")
+    out = repo / "gh_output"
+    out.write_text("")
+    env = {"GITHUB_EVENT_NAME": event, "GITHUB_OUTPUT": str(out), "PATH": os.environ["PATH"], "HOME": str(tmp_path)}
+    p = subprocess.run(["bash", "-e", "-c", _step_script()], cwd=repo, env=env, capture_output=True, text=True)
+    return p.returncode, out.read_text().strip()
+
+
+DOC = {"00_ARCHITECTURE/briefs/x/NOTE.md": "n"}
+CODE = {"platform/scripts/governance/x.py": "x = 1"}
+
+
+def test_the_step_classifies_a_docs_only_pull_request_as_true(tmp_path):
+    assert _run_step(tmp_path, "pull_request", files=DOC) == (0, "docs_only=true")
+
+
+def test_the_step_runs_everything_for_code_mixed_and_non_pull_request_events(tmp_path_factory):
+    assert _run_step(tmp_path_factory.mktemp("a"), "pull_request", files=CODE) == (0, "docs_only=false")
+    assert _run_step(tmp_path_factory.mktemp("b"), "pull_request", files={**DOC, **CODE}) == (0, "docs_only=false")
+    for ev in ("merge_group", "push", "workflow_dispatch"):
+        assert _run_step(tmp_path_factory.mktemp(ev), ev, files=DOC) == (0, "docs_only=false"), ev       # a hard-coded pull_request would say true
+
+
+def test_the_step_fails_closed_when_the_classifier_breaks_or_prints_garbage(tmp_path_factory):
+    assert _run_step(tmp_path_factory.mktemp("crash"), "pull_request", files=DOC, script_text="import sys\nsys.exit(3)\n") == (0, "docs_only=false")
+    assert _run_step(tmp_path_factory.mktemp("syntax"), "pull_request", files=DOC, script_text="def (:\n") == (0, "docs_only=false")
+    assert _run_step(tmp_path_factory.mktemp("garbage"), "pull_request", files=DOC, script_text='print("docs_only=maybe")\n') == (0, "docs_only=false")
+    assert _run_step(tmp_path_factory.mktemp("empty"), "pull_request", files=DOC, script_text="") == (0, "docs_only=false")
+    assert _run_step(tmp_path_factory.mktemp("liar"), "pull_request", files=CODE, script_text='print("docs_only=true")\n') == (0, "docs_only=true")   # the step trusts a well-formed answer (the classifier is what is tested)
+
+
+def test_the_step_diffs_the_merge_commit_against_its_first_parent(tmp_path):
+    """A mutant that diffs HEAD against HEAD classifies an empty diff (false); a docs change must come out true."""
+    assert _run_step(tmp_path, "pull_request", files=DOC)[1] == "docs_only=true"
+
+
+def test_the_classifier_has_no_unhandled_exception_path(monkeypatch):
+    monkeypatch.setattr(ci_changes, "changed_files", lambda *a: (_ for _ in ()).throw(RuntimeError("boom")))
+    assert ci_changes.main(["--event", "pull_request"]) == 0
