@@ -48,7 +48,7 @@ def cluster(tmp_path_factory):
     data = tmp_path_factory.mktemp("pgscram") / "data"
     sock = Path(tempfile.mkdtemp(prefix="b6pg"))
     pwfile = tmp_path_factory.mktemp("pgpw") / "pw"
-    pwfile.write_text("superpw")
+    pwfile.write_text("testsuperpw")
     with socket.socket() as sk:
         sk.bind(("127.0.0.1", 0))
         port = sk.getsockname()[1]
@@ -56,7 +56,7 @@ def cluster(tmp_path_factory):
     subprocess.run([str(BIN / "initdb"), "-D", str(data), "-U", "postgres", "-A", "scram-sha-256", f"--pwfile={pwfile}", "-E", "UTF8"], check=True, capture_output=True, env=env)
     subprocess.run([str(BIN / "pg_ctl"), "-D", str(data), "-o", f"-p {port} -k {sock} -c listen_addresses=127.0.0.1", "-l", str(data.parent / "log"), "-w", "start"],
                    check=True, capture_output=True, env=env)
-    SUDSN = f"postgresql://postgres:superpw@127.0.0.1:{port}/postgres"
+    SUDSN = f"postgresql://postgres:testsuperpw@127.0.0.1:{port}/postgres"
     ADMIN_URL = f"postgresql://pgadmin:{ADMIN_PW}@127.0.0.1:{port}/postgres"
     DSN = ADMIN_URL
     try:
