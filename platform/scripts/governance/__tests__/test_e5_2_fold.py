@@ -343,6 +343,22 @@ def test_a_pipe_in_the_reason_cannot_break_the_row(reg, reviews):
     assert reg_after["rows"]["R01"].state_class == "IN_PROGRESS"
 
 
+def test_set_state_refuses_a_recompute_that_moves_another_row_or_leaves_the_header_drifted(reg, reviews, monkeypatch):
+    """The self-checks run before anything is written: no other row's cells may move; the header must be consistent."""
+    real = nf.apply_tally
+    before = reg.read_bytes()
+    monkeypatch.setattr(nf, "apply_tally", lambda t: real(t).replace("change R03", "change R03 moved"))
+    assert refused(fold, reg, "R01", "PARTIAL", reviews) == "self_check_failed"
+    monkeypatch.setattr(nf, "apply_tally", lambda t: t)                  # a recompute that did nothing
+    assert refused(fold, reg, "R01", "PARTIAL", reviews) == "self_check_failed"
+    # the target row must classify as the target (header kept consistent so only THIS check can fire)
+    monkeypatch.setattr(nf, "apply_tally", lambda t: real(t.replace("PARTIAL — because the evidence says so", "OPEN")))
+    with pytest.raises(nf.FoldRefused) as e:
+        fold(reg, "R01", "PARTIAL", reviews)
+    assert e.value.code == "self_check_failed" and "would classify as OPEN, not PARTIAL" in e.value.message
+    assert reg.read_bytes() == before
+
+
 def test_dry_run_writes_nothing(reg, reviews):
     before = reg.read_bytes()
     r = fold(reg, "R01", "IN_PROGRESS", reviews, write=False)
@@ -406,6 +422,14 @@ def test_a_hand_edited_tally_is_drift_and_a_recompute_restores_it(tmp_path, what
     nf.main(["--register", str(p), "tally", "--write"])
     assert p.read_text() == good                                     # byte-identical to the independently built header
     assert nf.header_drift(p.read_text()) == []
+
+
+def test_a_state_class_with_rows_but_no_header_row_is_drift(tmp_path):
+    p = tmp_path / "R.md"
+    p.write_text(make_register().replace("| CLOSED_ON_BRANCH | 1 |\n", ""))
+    assert ("state CLOSED_ON_BRANCH", "no header row", 1) in nf.header_drift(p.read_text())
+    nf.tally(p, write=True)
+    assert nf.header_drift(p.read_text()) == [] and "| CLOSED_ON_BRANCH | 1 |" in p.read_text()
 
 
 def test_tally_write_is_idempotent(reg):
@@ -830,6 +854,17 @@ def test_a_writer_that_rewrites_old_bytes_is_refused(led, tmp_path, monkeypatch)
     assert led.read_bytes() == before
 
 
+def test_a_writer_that_emits_a_non_object_line_is_refused(led, tmp_path, monkeypatch):
+    def evil(c, assets=None):
+        with (ac.CTRL / "asset_gaps.jsonl").open("a") as f:
+            f.write("[1, 2]\n")
+        return dict(added=1, skipped=0, closed=0, reopened=0, retired_opportunity_rows_left=0)
+    monkeypatch.setattr(ac, "emit_gaps_summary", evil)
+    before = led.read_bytes()
+    assert refused(emit, led, tmp_path, {"bo_other": {"Idem.pattern": "PASS"}}) == "staged_row_invalid"
+    assert led.read_bytes() == before
+
+
 def test_a_writer_that_emits_a_non_json_line_is_refused(led, tmp_path, monkeypatch):
     def evil(c, assets=None):
         with (ac.CTRL / "asset_gaps.jsonl").open("a") as f:
@@ -875,7 +910,7 @@ def test_a_held_census_lock_blocks_the_emit_with_exit_75(led, tmp_path):
             nf.emit_gaps_withheld(census({"bo_x": {"Build.registered": "FAIL"}}), led, nf.load_withholding(wh), lock_file=lock)
         assert led.read_bytes() == before
         assert nf.main(["--gaps", str(led), "--lock-file", str(lock), "--register", str(tmp_path / "r.md"),
-                        "set-state", "R01", "--to", "OPEN", "--reason", "x"]) == nf.EX_TEMPFAIL
+                        "set-state", "R01", "--to", "OPEN", "--reason", "x"]) == 75
     finally:
         fcntl.flock(fd, fcntl.LOCK_UN)
         os.close(fd)
@@ -934,6 +969,15 @@ def test_a_ledger_whose_committed_bytes_are_not_a_prefix_is_refused(gitrepo, tmp
     led.write_text(led.read_text().replace("bo_other", "bo_renamed"))       # rewrote a committed line
     assert refused(nf.emit_gaps_withheld, census({"bo_x": {"Build.registered": "FAIL"}}), led, withholding(tmp_path),
                    allow_dirty=True) == "ledger_not_append_only"
+
+
+def test_a_tracked_ledger_with_no_committed_version_is_refused(tmp_path):
+    repo = tmp_path / "fresh"
+    repo.mkdir()
+    led = write_ledger(repo / "asset_gaps.jsonl", [])
+    git(repo, "init", "-q")
+    git(repo, "add", "-A")                                  # staged, never committed: no HEAD
+    assert refused(nf.git_preflight, led) == "ledger_not_at_head"
 
 
 def test_an_untracked_ledger_inside_a_repo_is_refused(gitrepo, tmp_path):
@@ -1048,6 +1092,15 @@ def test_open_gap_metrics_follow_the_ledgers_own_semantics(tmp_path):
     assert m["open_gaps"] == 3                      # b, c, h
     assert m["open_gaps_tracker_view"] == 2         # b, d (the tracker reads the latest row only; no IN_PROGRESS)
     assert m["gap_ids"] == 7
+
+
+def test_certification_record_count_excludes_event_lines(tmp_path):
+    g = write_ledger(tmp_path / "g.jsonl", [])
+    c = tmp_path / "c.jsonl"
+    c.write_text(json.dumps({"asset": "_schema", "_doc": "t"}) + "\n")
+    nc.append_records(c, [{"asset": "_ledger", "type": "watermark"}])
+    assert len(nc.read_records(c)) >= 1
+    assert nf.ledger_metrics(g, c)["certification_records"] == 0           # an event is not a certificate
 
 
 def test_certification_record_count_comes_from_the_chained_reader(tmp_path):

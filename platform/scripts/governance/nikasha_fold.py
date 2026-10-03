@@ -412,9 +412,7 @@ def set_state(register_path, row_id: str, to: str, reason: str, *, evidence: str
         _refuse("bad_row_id", f"{row_id!r} is not a register row id (R<number>)")
     if row_id not in reg["rows"]:
         _refuse("unknown_row", f"{row_id} is not in the register")
-    if reg["duplicates"]:
-        _refuse("register_duplicate_rows", f"duplicate row ids {sorted(set(reg['duplicates']))}")
-    row = reg["rows"][row_id]
+    row = reg["rows"][row_id]          # a duplicated id is refused by apply_tally below (`register_duplicate_rows`)
     if row.malformed:
         _refuse("row_malformed", f"{row_id} has a cell count that differs from its table header: fix it by hand first")
     if to not in STATE_CLASSES or to == "MEASURED":
