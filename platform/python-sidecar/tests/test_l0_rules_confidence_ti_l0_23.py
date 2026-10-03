@@ -146,3 +146,10 @@ def test_real_writer_nulls_only_the_confidence_column_and_is_idempotent():
         rows2 = list(conn.execute("SELECT * FROM sutravali_rules ORDER BY rule_id"))
         strip = lambda rows: [{k: v for k, v in r.items() if k != "created_at"} for r in rows]
         assert strip(rows2) == strip(snap)
+
+
+# ── review L0C LOW: the second reader of sutravali_rules.confidence (l0_sutravali_extractor.py) ───────────────
+def test_the_extractor_module_neither_orders_by_nor_float_casts_the_nulled_column():
+    src = (SIDECAR / "brahmagyan" / "l0_sutravali_extractor.py").read_text(encoding="utf-8")
+    assert "ORDER BY confidence" not in src
+    assert not re.search(r'"confidence":\s*float\((?:r|row)\[\d\]\),', src), "float(None) on a NULL confidence"
