@@ -55,7 +55,7 @@ describe('query_insights — P3-b tier-suppression (F-69)', () => {
   })
 
   it('evidence_grade=empirical → numeric fields pass through unchanged (honest-conditional C3 case preserved)', async () => {
-    queryMock.mockResolvedValueOnce({ rows: [row({ insight_type: 'emergent_law', evidence_grade: 'empirical', n_support: 7 })] })
+    queryMock.mockResolvedValueOnce({ rows: [row({ insight_type: 'emergent_law', evidence_grade: 'empirical', n_support: 7, surface_formula_version: 'mi_darshana_v1.2', leakage_status: 'not_assessed' })] })
     queryMock.mockResolvedValueOnce({ rows: [{}] })
     const result = await queryInsightsCapability.handler({ chart_id: NATIVE_CHART_ID }, undefined) as {
       content: { insight_units: Array<Record<string, unknown>> }
@@ -106,6 +106,7 @@ describe('query_insights — P3-b tier-suppression (F-69)', () => {
     queryMock.mockResolvedValueOnce({
       rows: [row({
         insight_type: 'load_bearing', evidence_grade: 'structural',
+        surface_formula_version: 'mi_darshana_v1.2', leakage_status: 'not_assessed',
         statement: 'Career Setback is load-bearing for this reading (sensitivity=0.60). Removing this signal would materially alter the reading.',
       })],
     })
@@ -117,7 +118,11 @@ describe('query_insights — P3-b tier-suppression (F-69)', () => {
     expect(String(unit.statement)).not.toMatch(/0\.60/)
     expect(String(unit.statement)).not.toMatch(/\(sensitivity=[\d.]+\)/i)
     expect(String(unit.statement)).toContain('load-bearing for this reading')
-    expect(String(unit.statement)).toContain('Removing this signal would materially alter the reading.')
+    // TI-l5-insight-prefix-label-001: the sentence claims a signal-removal analysis nobody ran
+    // (sensitivity = rescaled classical prior weight, mi_adhilepa); it is relabelled in every generation.
+    expect(String(unit.statement)).not.toContain('Removing this signal would materially alter the reading.')
+    expect(String(unit.statement)).toContain('no signal-removal analysis was run')
+    expect(unit.generation_reason).toBe('no_validated_generation_exists')
   })
 
   it('evidence_grade=prior_only, calibrated_outlook template → the embedded outcome-rate value is ALSO redacted', async () => {

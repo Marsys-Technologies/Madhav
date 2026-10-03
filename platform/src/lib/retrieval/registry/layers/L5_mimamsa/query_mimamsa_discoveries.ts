@@ -16,6 +16,7 @@
  */
 import type { CapabilityDescriptor } from '../../types'
 import { query } from '@/lib/db/client'
+import { labelDiscoveryRow, summarizeGeneration } from './prefix_generation'
 
 const MAX_LIMIT = 50
 
@@ -97,10 +98,17 @@ export const queryMimamsaDiscoveriesCapability: CapabilityDescriptor = {
         query<{ total: string }>(`SELECT COUNT(*)::text AS total FROM mimamsa_discoveries WHERE ${where}`, params),
       ])
       const total_matching = Number(countRes.rows[0]?.total ?? 0)
+      // TI-l5-insight-prefix-label-001: pre-fix discovery rows (no n_scored_matches / cutoff_enforced
+      // marker, mi_pariksha < v2.1/v2.2) are flagged and their 'Blind retrodiction ... T-90d cutoff'
+      // wording relabelled; stored rows are unchanged.
+      const labelledRows = (rowsRes.rows as Array<Record<string, unknown>>).map(r => labelDiscoveryRow(r))
+      const generation_disclosure = summarizeGeneration(labelledRows, ['discovery_retrodiction', 'discovery_emergent_law'])
       return {
         content: {
           chart_id,
-          rows: rowsRes.rows,
+          rows: labelledRows,
+          generation_disclosure,
+          generation_flags: generation_disclosure.flags,
           count: rowsRes.rows.length,
           total_matching,
           more_available: total_matching > rowsRes.rows.length,

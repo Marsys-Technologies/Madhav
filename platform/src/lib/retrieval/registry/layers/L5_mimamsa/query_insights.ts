@@ -14,6 +14,12 @@
 
 import type { CapabilityDescriptor } from '../../index'
 import { query } from '@/lib/db/client'
+import {
+  UNVALIDATED_PREFIX_GRADE,
+  PREFIX_LABEL,
+  labelInsightUnit,
+  summarizeGeneration,
+} from './prefix_generation'
 
 export const EMPIRICALLY_CALIBRATED = 'empirical'
 
@@ -50,6 +56,11 @@ const EMBEDDED_NUMERIC_EVIDENCE_PATTERNS: Array<{ pattern: RegExp; replacement: 
   { pattern: /\(prior-based estimate: [\d.]+%\)/gi, replacement: '(prior-based estimate suppressed — see tier_suppression_note)' },
   { pattern: /mean credit=[\d.]+/gi, replacement: 'mean credit=[suppressed — see tier_suppression_note]' },
   { pattern: /\(mean=[\d.]+,\s*n=\d+\)/gi, replacement: '(mean credit suppressed — see tier_suppression_note)' },
+  // TI-l5-insight-prefix-label-001: the pre-fix (v1.0) manifestation_grammar template prints the
+  // channel propensity as 'fires with N% propensity' (a literal 0% on the canonical chart's 7 rows
+  // with 0 scored outcomes). Only non-empirical rows reach this redactor, so the number is never an
+  // earned measurement.
+  { pattern: /fires with [\d.]+% propensity/gi, replacement: 'has a propensity [suppressed — see tier_suppression_note]' },
 ]
 
 // F-143: evidence_grade is a TIERED vocabulary, not a boolean. Served verbatim per row and
@@ -68,6 +79,10 @@ export const EVIDENCE_GRADE_LEGEND: Record<string, string> = {
   structural:
     'deterministically derived from chart structure or from an unadjudicated probe ' +
     '(e.g. retrodiction rows: an anchor match is not a scored hit). Numerics suppressed.',
+  [UNVALIDATED_PREFIX_GRADE]:
+    `stored grade was "empirical" but the row was written by a pre-fix L5 writer (${PREFIX_LABEL}): ` +
+    'its stamps show it predates the honesty fixes, so the grade is not served as evidence. ' +
+    'Numerics suppressed. Cleared by an L5 rebuild from writers carrying the fixes.',
 }
 
 export function redactEmbeddedNumericEvidence(statement: string): string {
@@ -260,8 +275,14 @@ export const queryInsightsCapability: CapabilityDescriptor = {
 
       const calibration_summary = (calResult.rows[0] ?? {}) as Record<string, unknown>
 
+      // TI-l5-insight-prefix-label-001: classify each row's generation from its own stored stamps
+      // BEFORE anything is graded or counted, so a pre-fix 'empirical' row is never counted or
+      // served as empirical. Stricter-only: a row can only move to a lower grade.
+      const labelled = (insightResult.rows as Array<Record<string, unknown>>).map(r => labelInsightUnit(r))
+      const generation_disclosure = summarizeGeneration(labelled, ['insight_unit'])
+
       const evidence_grade_counts: Record<string, number> = {}
-      for (const row of insightResult.rows as Array<Record<string, unknown>>) {
+      for (const row of labelled) {
         const g = String(row.evidence_grade ?? 'unknown')
         evidence_grade_counts[g] = (evidence_grade_counts[g] ?? 0) + 1
       }
@@ -276,10 +297,12 @@ export const queryInsightsCapability: CapabilityDescriptor = {
       return {
         content: {
           chart_id,
-          insight_units:       insightResult.rows.map(suppressIfNotCalibrated),
+          insight_units:       labelled.map(suppressIfNotCalibrated),
           calibration_summary,
           evidence_grade_counts,
           evidence_grade_legend,
+          generation_disclosure,
+          generation_flags:    generation_disclosure.flags,
           filters:             { insight_type, domain, min_rank, top_k, include_neg },
           total_returned:      insightResult.rows.length,
           total_matching,
