@@ -145,16 +145,24 @@ def test_scan_resolves_module_and_class_constants_in_f_strings(repo):
     assert "not_scanned" in res
 
 
-def test_scan_resolves_constants_with_schema_prefix_and_class_attr(repo):
+def test_scan_resolves_plain_constants_with_schema_prefix_but_never_a_dotted_attribute(repo):
     writer(repo, "a_x", '''
         TABLE = "t_mod"
         class W:
             CLS_TABLE = "t_cls"
             def run(self, conn):
                 conn.execute(f"DELETE FROM {TABLE} WHERE x = 1")
-                conn.execute(f"INSERT INTO public.{self.CLS_TABLE} (x) VALUES (1)")
+                conn.execute(f"INSERT INTO public.{CLS_TABLE} (x) VALUES (1)")
         ''')
     assert slw.scan_writer_tables("a_x", repo)["tables"] == ["public.t_cls", "public.t_mod"]
+    # FP2 item 4: a dotted / attribute name is never a table constant (it used to resolve by its last segment)
+    writer(repo, "a_y", '''
+        class W:
+            CLS_TABLE = "t_cls"
+            def run(self, conn):
+                conn.execute(f"INSERT INTO public.{self.CLS_TABLE} (x) VALUES (1)")
+        ''')
+    assert "unresolved_table_expression" in slw.scan_writer_tables("a_y", repo)["not_scanned"]
 
 
 def test_scan_ambiguous_constant_is_not_scanned(repo):
