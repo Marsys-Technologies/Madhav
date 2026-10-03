@@ -8,19 +8,56 @@ the judgement (gate verdict, which state a row earns) is an input, never somethi
 What it writes, and the only ways it can write it:
 
   * the register (`NIKASHA_CHANGE_REGISTER_v2_0.md`): `set-state` edits exactly ONE row's state cell (a transition from
-    the TRANSITIONS table, a reason, evidence, and — for the forward states — the gate reviewer's committed ACCEPT) and
-    recomputes the header tallies in the same atomic write; `tally --write` recomputes the header alone. A header
-    count is NEVER typed: it is derived from the rows (the register-tally drift of 2.7 was a typed number).
+    the TRANSITIONS table, a reason, evidence, the previous cell kept as `[was: ...]`, and — for the forward states — a
+    review record that passes every N-100 check below) and recomputes the header tallies in the same atomic write;
+    `tally --write` recomputes the header alone. A header count is NEVER typed: it is derived from the rows. The register
+    is read and written byte-exact (CRLF kept) and parsed with `str.splitlines` semantics like the tracker's parse.
+    set-state / tally --write / fingerprint --out hold an exclusive lock (`<register>.lock`, `--lock-file` overrides;
+    the loser exits 75); a --dry-run or a read never creates the lock file.
   * the gap ledger (`asset_gaps.jsonl`): ONLY by `emit-gaps`, which runs `asset_census.emit_gaps_summary` — the one
     ledger writer — over a census with every WITHHELD (asset, criterion) cell removed first, on a staging COPY, checks
     the staged result (old bytes an exact prefix, nothing for a withheld gap id), and only then appends the new bytes
     to the real ledger under an exclusive lock. A withheld pair gets no transition in either direction: no OPEN, no
     RE-OPEN and, above all, no CLOSED credit from a PASS the register says is unearned (R244: bo_upaya's Idem.pattern).
+    For the CANONICAL ledger the withholding file must be the canonical one, tracked and clean against git HEAD: a local
+    edit or an empty copy cannot lift a withholding (an alternative --withholding path is for a ledger COPY only).
   * never `asset_certs.jsonl` (E5.1's `nikasha_certify.append_records` is the one write path for certificates), never
     the withholding list (a lift or an addition is a reviewed PR on a recorded SS decision), never the manifest.
 
 `asset_gaps.jsonl` is append-only but NOT hash-chained (only `asset_certs.jsonl` is); append-only is therefore checked as
-byte-prefix preservation, against the staging copy and, for a ledger inside a git work tree, against HEAD.
+byte-prefix preservation, against the staging copy and, for a ledger inside a git work tree, against HEAD (`drift` also
+checks it against HEAD and the E4.3 CUTOVER.json and says `append-only: NOT CHECKED` when it has no baseline).
+
+REVIEW RECORDS (SS ruling N-100). A register row is closed (CLOSED, DONE, CLOSED_ON_BRANCH, PARTIAL) ONLY if ALL hold:
+  1. `--review` is a file under the ONE fixed reviews root `00_ARCHITECTURE/briefs/suvarna/reviews/` of the repo, tracked
+     and clean at git HEAD (a path outside the root, a `..` trick, a symlink, an untracked or modified file: refused);
+  2. its frontmatter is STRICT and CLOSED: it opens on line 1 with `---`, closes with `---`, and holds exactly
+     `key: value` lines for these keys, each at most once, no other key, no blank/comment line:
+         row: R244                       the register row this record is about (must be the row being folded)
+         reviewed_sha: <7-40 hex>        the commit the reviewer reviewed
+         verdict: ACCEPT | ACCEPT_WITH_CORRECTIONS | REJECT      (RE_ACCEPTED only in a re-accept record)
+         reviewer: <role>                e.g. gate-reviewer
+         corrections_sha: <7-40 hex>     only in a RE_ACCEPTED record
+     Any unknown verdict token, missing field, duplicate key or malformed line refuses. A body line that starts with
+     `verdict` (outside a `>` quote, a code fence or a `<!-- -->` comment) must parse and must equal the frontmatter
+     verdict; one that does not parse, or disagrees, refuses;
+  3. reviewed_sha is merged: an ancestor of (or equal to) origin/main (HEAD when there is no origin/main) for CLOSED and
+     DONE, of HEAD for CLOSED_ON_BRANCH and PARTIAL (the branch fix is on the fold lane, not yet on main); and when the
+     register row declares paths (backticked tokens containing `/` in its cells) at least one of them is touched by
+     reviewed_sha's own diff (first-parent); a row that declares none is reported (`paths_declared: []`) and passes;
+  4. ACCEPT_WITH_CORRECTIONS closes NOTHING by itself: a second tracked, clean record for the same row with
+     `verdict: RE_ACCEPTED`, the same `reviewed_sha` and a `corrections_sha` that is a strict descendant of reviewed_sha
+     (and merged as in 3) must exist under the same root;
+  5. REJECT, RE_ACCEPTED given as the primary record, or ANY parse failure leaves the row open: the fold is refused
+     (`REFUSED review_*`) and nothing is written.
+Example (`.../reviews/E4.2-build-001_REVIEW_1.md`):
+         ---
+         row: R244
+         reviewed_sha: 9f2c1ab
+         verdict: ACCEPT
+         reviewer: gate-reviewer
+         ---
+         # Review ... (free text; may quote `verdict: REJECT` inside a > quote or a code fence)
 
 `NIKASHA_WITHHOLDING.json` (no written spec existed; chosen for compatibility with the tracker's membership test
 `entry in data["entries"]`, detectors.py:_withholding_has_entry):
@@ -31,12 +68,13 @@ byte-prefix preservation, against the staging copy and, for a ledger inside a gi
 
 Usage (every path is overridable; tests and rehearsals run on copies):
   nikasha_fold.py set-state R244 --to DEFERRED --reason "..." --evidence "<decision id>"
+  nikasha_fold.py set-state R12 --to CLOSED --reason "..." --evidence "<PR>" --review <reviews/..._REVIEW_1.md>
   nikasha_fold.py tally [--write | --check]
   nikasha_fold.py emit-gaps --census <file under the trusted census root> [--layer L2] [--assets a,b] [--dry-run]
   nikasha_fold.py fingerprint [--out FILE]      nikasha_fold.py verify FILE
   nikasha_fold.py drift [--census FILE]         nikasha_fold.py withholding --check
 Exit: 0 ok · 1 drift / verify mismatch / tally drift found (stdout JSON) · 2 refused (stderr `REFUSED <code>: ...`,
-nothing written) · 5 script error · 75 lock held (EX_TEMPFAIL).
+nothing written) · 5 script error (any uncaught exception; one stderr line) · 75 lock held (EX_TEMPFAIL).
 """
 
 from __future__ import annotations
@@ -65,6 +103,7 @@ CERTS_REL = "00_ARCHITECTURE/control/asset_certs.jsonl"
 WITHHOLDING_REL = "00_ARCHITECTURE/control/NIKASHA_WITHHOLDING.json"
 CUTOVER_REL = "00_ARCHITECTURE/control/E4.3/CUTOVER.json"
 REVIEWS_REL = "00_ARCHITECTURE/briefs/suvarna/reviews/"
+EX_ERROR = 5
 ENV_LOCK = "SUVARNA_CENSUS_LOCK"
 EX_TEMPFAIL = 75
 
@@ -130,6 +169,24 @@ def _md5(b: bytes) -> str:
     return hashlib.md5(b).hexdigest()
 
 
+def read_text(path) -> str:
+    """The file's text byte-exact (CRLF and every other line ending kept: no universal-newline translation)."""
+    return Path(path).read_bytes().decode("utf-8")
+
+
+# Every character `str.splitlines` splits on. The tracker's parse_register uses splitlines, so a register row that
+# contains one of these is TWO rows to the tracker; the fold parses the same way and refuses to WRITE one.
+LINE_SEPS = "\n\r\v\f\x1c\x1d\x1e\x85\u2028\u2029"
+
+
+def check_text(name: str, s: str) -> str:
+    bad = [c for c in s if c in LINE_SEPS]
+    if bad:
+        _refuse("bad_text", f"{name} contains a line separator ({bad[0]!r}): the register is a one-row-per-line table "
+                            "and `str.splitlines` (the tracker's parse) splits on it")
+    return s
+
+
 # ───────────────────────────── register parsing ─────────────────────────────
 
 def classify_state(cell: str) -> str:
@@ -148,11 +205,23 @@ class Row:
             setattr(self, k, v)
 
 
+def split_lines(text: str) -> tuple[list, list]:
+    """(lines, eols) with `str.splitlines` semantics (as the tracker's parse); `"".join(l + e)` round-trips the text."""
+    keep = text.splitlines(keepends=True)
+    lines = text.splitlines()
+    return lines, [k[len(l):] for k, l in zip(keep, lines)]
+
+
+def join_lines(lines: list, eols: list) -> str:
+    return "".join(l + e for l, e in zip(lines, eols))
+
+
 def parse_register(text: str) -> dict:
     """Rows keyed by id (header-aware exactly as the tracker's parse: the severity and state columns are located by
     name in the most recent `| # |` table header, a row whose cell count differs from its header is malformed), plus
-    `lines`, the malformed ids, duplicate ids and `order`. Only rows in the `## 2` register section are rows."""
-    lines = text.split("\n")
+    `lines`/`eols` (splitlines semantics), the malformed ids, duplicate ids and `order`. As in the tracker, a
+    `| R<n> |` line ANYWHERE outside the `### 0.1` tally block is a row (not only those in the `## 2` section)."""
+    lines, eols = split_lines(text)
     rows: dict[str, Row] = {}
     order, malformed, dups = [], [], []
     layout = {"n": 9, "severity": 4, "state": 7}
@@ -187,7 +256,7 @@ def parse_register(text: str) -> dict:
         if bad:
             malformed.append(rid)
         rows[rid] = r
-    return dict(rows=rows, order=order, lines=lines, malformed=malformed, duplicates=dups)
+    return dict(rows=rows, order=order, lines=lines, eols=eols, malformed=malformed, duplicates=dups)
 
 
 def _rid_key(rid: str) -> int:
@@ -223,9 +292,11 @@ _OPEN_LINE = re.compile(r"^All (\d+) rows, every state\. \*\*Open rows only \((\
 
 
 def read_header(lines: list) -> dict:
-    """What the register's header currently claims (`state`: label -> n, `total`, `severity`, `total_line`, `open_line`)."""
-    h = dict(state={}, total=None, severity={}, total_line=None, open_line=None, open_line_text=None)
+    """What the register's header currently claims (`state`: label -> n, `total`, `severity`, `total_line`, `open_line`),
+    plus `dups`: every header row / line that appears more than once (a duplicate is never silently the first one)."""
+    h = dict(state={}, total=None, severity={}, total_line=None, open_line=None, open_line_text=None, dups=[])
     sec = None
+    n_total_rows = n_total_lines = n_open_lines = 0
     for line in lines:
         if line.startswith("### 0.1"):
             sec = "state"
@@ -238,22 +309,38 @@ def read_header(lines: list) -> dict:
         if sec == "state":
             m = _TOTAL_ROW.match(line)
             if m:
+                n_total_rows += 1
                 h["total"] = int(m.group(2))
                 continue
             m = _STATE_ROW.match(line)
             if m and m.group(2).strip().lower() != "state":
-                h["state"][m.group(2).strip()] = int(m.group(4))
+                label = m.group(2).strip()
+                if label in h["state"]:
+                    h["dups"].append(f"state row {label}")
+                h["state"][label] = int(m.group(4))
         elif sec == "sev":
             m = _SEV_ROW.match(line)
             if m:
+                if m.group(2) in h["severity"]:
+                    h["dups"].append(f"severity row {m.group(2)}")
                 h["severity"][m.group(2)] = int(m.group(4))
         m = _TOTAL_LINE.search(line)
-        if m and h["total_line"] is None:
-            h["total_line"] = int(m.group(1))
+        if m:
+            n_total_lines += 1
+            if h["total_line"] is None:
+                h["total_line"] = int(m.group(1))
         m = _OPEN_LINE.match(line)
         if m:
-            h["open_line"] = (int(m.group(1)), int(m.group(2)))
-            h["open_line_text"] = line
+            n_open_lines += 1
+            if h["open_line"] is None:
+                h["open_line"] = (int(m.group(1)), int(m.group(2)))
+                h["open_line_text"] = line
+    if n_total_rows > 1:
+        h["dups"].append("state-table total row")
+    if n_total_lines > 1:
+        h["dups"].append("`Total rows:` line")
+    if n_open_lines > 1:
+        h["dups"].append("open-rows line")
     return h
 
 
@@ -263,6 +350,8 @@ def header_drift(text: str) -> list:
     c = computed_counts(reg)
     h = read_header(reg["lines"])
     out = []
+    for d in h["dups"]:
+        out.append((f"duplicate header {d}", "appears more than once", "exactly once"))
     if not h["state"]:
         out.append(("state table", "missing", "required"))
     for label, n in h["state"].items():
@@ -294,6 +383,10 @@ def apply_tally(text: str) -> str:
     reg = parse_register(text)
     if reg["duplicates"]:
         _refuse("register_duplicate_rows", f"duplicate row ids {sorted(set(reg['duplicates']))}: a tally over them is meaningless")
+    dups = read_header(reg["lines"])["dups"]
+    if dups:
+        _refuse("header_duplicate_rows", f"the header repeats {dups}: remove the duplicate by hand, a recompute cannot "
+                                         "know which copy is the real one")
     c = computed_counts(reg)
     unknown_sev = sorted(s for s in c["by_severity"] if s not in SEVERITIES)
     if unknown_sev:
@@ -301,9 +394,9 @@ def apply_tally(text: str) -> str:
     other = sorted(r.id for r in reg["rows"].values() if r.state_class == "OTHER")
     if other:
         _refuse("unclassifiable_state", f"rows {other} have a state the tracker cannot classify")
-    lines = list(reg["lines"])
+    lines, eols = list(reg["lines"]), list(reg["eols"])
     sec = None
-    seen_state_labels, total_at, last_state_row = set(), None, None
+    seen_state_labels, total_at = set(), None
     seen_open_line = seen_total_line = False
     for i, line in enumerate(lines):
         if line.startswith("### 0.1"):
@@ -328,7 +421,6 @@ def apply_tally(text: str) -> str:
                     _refuse("header_label_unknown", f"state-table label {label!r} is not a known state class")
                 lines[i] = f"{m.group(1)}{m.group(2)}{m.group(3)}{c['by_state'].get(cls, 0)}{m.group(5)}"
                 seen_state_labels.add(cls)
-                last_state_row = i
         elif sec == "sev":
             m = _SEV_ROW.match(line)
             if m:
@@ -346,36 +438,223 @@ def apply_tally(text: str) -> str:
     missing = [cls for cls in STATE_DISPLAY_ORDER if c["by_state"].get(cls) and cls not in seen_state_labels]
     for cls in reversed(missing):
         lines.insert(total_at, f"| {STATE_LABEL[cls]} | {c['by_state'][cls]} |")
-    return "\n".join(lines)
+        eols.insert(total_at, eols[total_at] or "\n")
+    return join_lines(lines, eols)
 
 
-# ───────────────────────────── set-state ─────────────────────────────
+# ───────────────────────────── git helpers ─────────────────────────────
 
-_VERDICT = re.compile(r"(?im)^[\s>#*_\-]*verdict\b[\s*_:=\-—]*(ACCEPT_WITH_CORRECTIONS|ACCEPT|REJECT)\b")
+def _git(cwd, *args):
+    return subprocess.run(["git", "-C", str(cwd), *args], capture_output=True)
 
 
-def check_review(path, reviews_root: Path) -> str:
-    """The gate reviewer's committed file: under the one review path (arch §12.6), whose LAST `verdict:` line is
-    ACCEPT or ACCEPT_WITH_CORRECTIONS. Returns the verdict. (Format: design question Q3.)"""
-    if not path:
-        _refuse("review_required", "a forward state needs the gate reviewer's review file (--review): no verdict, no fold")
+def git_top(path) -> Path | None:
     p = Path(path)
-    root = Path(os.path.realpath(reviews_root))
+    d = p if p.is_dir() else p.parent
+    r = _git(d, "rev-parse", "--show-toplevel")
+    return Path(os.path.realpath(r.stdout.decode().strip())) if r.returncode == 0 else None
+
+
+def require_tracked_clean(top: Path, file: Path, what: str) -> str:
+    """`file` (inside the repo at `top`) is tracked and its bytes equal its git HEAD blob (no local edit, not merely
+    staged). Returns its repo-relative posix path; refuses `<what>_untracked` / `<what>_not_at_head` / `<what>_dirty`."""
+    try:
+        rel = Path(os.path.realpath(file)).relative_to(top).as_posix()
+    except ValueError:
+        _refuse(f"{what}_untracked", f"{file} resolves outside this repository")
+    if _git(top, "ls-files", "--error-unmatch", "--", rel).returncode != 0:
+        _refuse(f"{what}_untracked", f"{rel} is not tracked by git")
+    h = _git(top, "show", f"HEAD:{rel}")
+    if h.returncode != 0:
+        _refuse(f"{what}_not_at_head", f"{rel} has no committed version at HEAD")
+    if Path(file).read_bytes() != h.stdout:
+        _refuse(f"{what}_dirty", f"{rel} differs from its committed (HEAD) version")
+    return rel
+
+
+# ───────────────────────────── review records (SS ruling N-100) ─────────────────────────────
+
+REVIEW_KEYS = ("row", "reviewed_sha", "verdict", "reviewer", "corrections_sha")
+REVIEW_VERDICTS = ("ACCEPT", "ACCEPT_WITH_CORRECTIONS", "REJECT", "RE_ACCEPTED")
+_FM_LINE = re.compile(r"^([a-z_]+): (\S.*)$")
+_SHA = re.compile(r"^[0-9a-f]{7,40}$")
+_BODY_VERDICT = re.compile(r"(?i)^[\s#*_\-]*verdict\b(.*)$")
+_BODY_VERDICT_VALUE = re.compile(r"(?i)^[\s*_:=\-—]*(ACCEPT_WITH_CORRECTIONS|ACCEPT|REJECT|RE_ACCEPTED)[\s*_.!]*$")
+
+
+def _live_body_lines(body: list) -> list:
+    """The body lines a reader would take as the review's own prose: not inside a code fence, a multi-line
+    `<!-- -->` comment or a `>` quote."""
+    out, fenced = [], False
+    for ln in body:
+        if re.match(r"^ {0,3}(```|~~~)", ln):
+            fenced = not fenced
+            continue
+        if not fenced:
+            out.append(ln)
+    text = re.sub(r"<!--.*?(-->|\Z)", "", "\n".join(out), flags=re.S)
+    return [ln for ln in text.split("\n") if not ln.lstrip().startswith(">")]
+
+
+def parse_review(text: str) -> dict:
+    """Strict, closed frontmatter + body-consistency check. Returns the fields (dict). Refuses `review_malformed`,
+    `review_verdict_unparseable` or `review_verdict_conflict`."""
+    lines = text.splitlines()
+    if not lines or lines[0] != "---":
+        _refuse("review_malformed", "the record must open with a `---` frontmatter line on line 1")
+    try:
+        end = lines.index("---", 1)
+    except ValueError:
+        _refuse("review_malformed", "the frontmatter is never closed with a `---` line")
+    fields: dict = {}
+    for ln in lines[1:end]:
+        m = _FM_LINE.match(ln)
+        if not m:
+            _refuse("review_malformed", f"frontmatter line {ln[:60]!r} is not `key: value`")
+        k, v = m.group(1), m.group(2).strip()
+        if k not in REVIEW_KEYS:
+            _refuse("review_malformed", f"unknown frontmatter key {k!r} (closed set: {REVIEW_KEYS})")
+        if k in fields:
+            _refuse("review_malformed", f"duplicate frontmatter key {k!r}")
+        fields[k] = v
+    for k in ("row", "reviewed_sha", "verdict", "reviewer"):
+        if k not in fields:
+            _refuse("review_malformed", f"missing frontmatter field {k!r}")
+    if not re.fullmatch(r"R\d+", fields["row"]):
+        _refuse("review_malformed", f"row {fields['row']!r} is not R<number>")
+    if fields["verdict"] not in REVIEW_VERDICTS:
+        _refuse("review_malformed", f"unknown verdict token {fields['verdict']!r} (one of {REVIEW_VERDICTS})")
+    for k in ("reviewed_sha", "corrections_sha"):
+        if k in fields and not _SHA.match(fields[k]):
+            _refuse("review_malformed", f"{k} {fields[k]!r} is not a 7-40 hex commit id")
+    if not re.fullmatch(r"[A-Za-z0-9_. \-]{1,64}", fields["reviewer"]):
+        _refuse("review_malformed", "reviewer must be a short role name")
+    if (fields["verdict"] == "RE_ACCEPTED") != ("corrections_sha" in fields):
+        _refuse("review_malformed", "corrections_sha belongs to a RE_ACCEPTED record, and only to it")
+    for ln in _live_body_lines(lines[end + 1:]):
+        m = _BODY_VERDICT.match(ln)
+        if not m:
+            continue
+        v = _BODY_VERDICT_VALUE.match(m.group(1))
+        if not v:
+            _refuse("review_verdict_unparseable", f"a body line starting with `verdict` does not parse: {ln[:80]!r}")
+        if v.group(1).upper() != fields["verdict"]:
+            _refuse("review_verdict_conflict", f"the body says {v.group(1).upper()}, the frontmatter says {fields['verdict']}")
+    return fields
+
+
+def _resolve_commit(top: Path, sha: str) -> str | None:
+    r = _git(top, "rev-parse", "--verify", "--quiet", f"{sha}^{{commit}}")
+    return r.stdout.decode().strip() if r.returncode == 0 and r.stdout.strip() else None
+
+
+def _is_ancestor(top: Path, anc: str, desc: str) -> bool:
+    return _git(top, "merge-base", "--is-ancestor", anc, desc).returncode == 0
+
+
+def _touched_paths(top: Path, sha: str) -> set:
+    r = _git(top, "diff-tree", "--no-commit-id", "--name-only", "-r", "-m", "--first-parent", "--root", sha)
+    return {x for x in r.stdout.decode().splitlines() if x}
+
+
+def declared_paths(cells) -> list:
+    """The repo paths a register row declares: backticked tokens that contain `/` (a trailing `:line` is dropped)."""
+    out = []
+    for c in cells:
+        for tok in re.findall(r"`([^`\s]+)`", c):
+            tok = tok.split(":")[0]
+            if "/" in tok and "*" not in tok and "://" not in tok and not tok.startswith(("-", "~")) and tok not in out:
+                out.append(tok.strip("/"))
+    return out
+
+
+def _path_touched(declared: str, touched: set) -> bool:
+    return any(x == declared or x.startswith(declared + "/") for x in touched)
+
+
+def _integration_ref(top: Path, to: str) -> str:
+    if to in ("CLOSED", "DONE") and _git(top, "rev-parse", "--verify", "--quiet", "origin/main").returncode == 0:
+        return "origin/main"
+    return "HEAD"
+
+
+def verify_review(review_path, row_id: str, to: str, *, repo: Path, row_cells=()) -> dict:
+    """The N-100 checks (module docstring). Returns what was verified; any failure refuses (`review_*`)."""
+    if not review_path:
+        _refuse("review_required", "a forward state needs a review record (--review): no verdict, no fold")
+    top = git_top(repo)
+    if top is None:
+        _refuse("review_repo", f"{repo} is not inside a git work tree: a review record is verified against git")
+    root = Path(os.path.realpath(top / REVIEWS_REL))
+    p = Path(review_path)
+    if p.is_symlink():
+        _refuse("review_untrusted", f"{p} is a symlink")
     rp = Path(os.path.realpath(p))
     try:
         rp.relative_to(root)
     except ValueError:
-        _refuse("review_untrusted", f"{rp} is not under the review path {root}")
+        _refuse("review_untrusted", f"{rp} is not under the one reviews root {root}")
     if not rp.is_file():
         _refuse("review_missing", f"{rp} is not a file")
-    found = _VERDICT.findall(rp.read_text(encoding="utf-8", errors="replace"))
-    if not found:
-        _refuse("review_no_verdict", f"{rp} carries no `verdict: ACCEPT|ACCEPT_WITH_CORRECTIONS|REJECT` line")
-    v = found[-1].upper()
-    if v == "REJECT":
-        _refuse("review_rejected", f"{rp}: the last verdict is REJECT")
-    return v
+    rel = require_tracked_clean(top, rp, "review")
+    fields = parse_review(read_text(rp))
+    if fields["row"] != row_id:
+        _refuse("review_row_mismatch", f"{rel} is about {fields['row']}, not {row_id}")
+    verdict = fields["verdict"]
+    if verdict == "REJECT":
+        _refuse("review_rejected", f"{rel}: verdict REJECT — the row stays open")
+    if verdict == "RE_ACCEPTED":
+        _refuse("review_not_primary", f"{rel} is a RE_ACCEPTED record: pass the original review as --review")
+    sha = _resolve_commit(top, fields["reviewed_sha"])
+    if sha is None:
+        _refuse("review_sha_unknown", f"reviewed_sha {fields['reviewed_sha']} is not a commit in this repository")
+    ref = _integration_ref(top, to)
+    if not _is_ancestor(top, sha, ref):
+        _refuse("review_sha_not_merged", f"reviewed_sha {sha[:10]} is not an ancestor of {ref}: the fix is not merged")
+    paths = declared_paths(row_cells)
+    touched = _touched_paths(top, sha)
+    if paths and not any(_path_touched(d, touched) for d in paths):
+        _refuse("review_sha_untouched_paths", f"{row_id} declares {paths} but reviewed_sha {sha[:10]} touches none of them")
+    out = dict(record=rel, verdict=verdict, reviewer=fields["reviewer"], reviewed_sha=sha, integration_ref=ref,
+               paths_declared=paths, re_accepted=None)
+    if verdict == "ACCEPT_WITH_CORRECTIONS":
+        problems = []
+        for other in _git(top, "ls-files", "--", REVIEWS_REL).stdout.decode().splitlines():
+            if other == rel or not other.endswith(".md"):
+                continue
+            try:
+                of = top / other
+                if of.is_symlink():
+                    continue
+                f2 = parse_review(read_text(of))
+            except (FoldRefused, UnicodeDecodeError, OSError):
+                continue
+            if f2["verdict"] != "RE_ACCEPTED" or f2["row"] != row_id:
+                continue
+            if _resolve_commit(top, f2["reviewed_sha"]) != sha:
+                problems.append(f"{other}: reviewed_sha is not the original review's")
+                continue
+            try:
+                require_tracked_clean(top, of, "review")
+            except FoldRefused as e:
+                problems.append(f"{other}: {e.code}")
+                continue
+            cs = _resolve_commit(top, f2["corrections_sha"])
+            if cs is None or cs == sha or not _is_ancestor(top, sha, cs):
+                problems.append(f"{other}: corrections_sha does not descend from reviewed_sha")
+                continue
+            if not _is_ancestor(top, cs, ref):
+                problems.append(f"{other}: corrections_sha is not an ancestor of {ref}")
+                continue
+            out["re_accepted"] = dict(record=other, corrections_sha=cs, reviewer=f2["reviewer"])
+            break
+        if out["re_accepted"] is None:
+            _refuse("review_needs_reaccept", f"{rel} is ACCEPT_WITH_CORRECTIONS, which closes nothing by itself: a valid "
+                                             f"RE_ACCEPTED record for {row_id} is required" + (f" ({'; '.join(problems)})" if problems else ""))
+    return out
 
+
+# ───────────────────────────── set-state ─────────────────────────────
 
 def _atomic_write(path: Path, data: bytes) -> None:
     path = Path(path)
@@ -394,79 +673,101 @@ def _atomic_write(path: Path, data: bytes) -> None:
         raise
 
 
-def _state_text(to: str, reason: str, evidence: str | None, review_verdict: str | None) -> str:
+def _state_text(to: str, reason: str, evidence: str | None, gate: str | None, was: str) -> str:
     t = f"{to} — {reason}"
     if evidence:
         t += f" [evidence: {evidence}]"
-    if review_verdict:
-        t += f" [gate: {review_verdict}]"
-    return t
+    if gate:
+        t += f" [gate: {gate}]"
+    old = was.strip()
+    if len(old) > 160:
+        old = old[:160].rstrip("\\") + "…"
+    return t + f" [was: {old}]"
+
+
+def register_lock_path(register_path) -> Path:
+    p = Path(register_path)
+    return p.with_name(p.name + ".lock")
 
 
 def set_state(register_path, row_id: str, to: str, reason: str, *, evidence: str | None = None, review=None,
-              reviews_root: Path | None = None, write: bool = True) -> dict:
+              repo: Path | None = None, write: bool = True, lock_file=None) -> dict:
     p = Path(register_path)
-    text = p.read_text(encoding="utf-8")
-    reg = parse_register(text)
-    if not re.fullmatch(r"R\d+", row_id or ""):
-        _refuse("bad_row_id", f"{row_id!r} is not a register row id (R<number>)")
-    if row_id not in reg["rows"]:
-        _refuse("unknown_row", f"{row_id} is not in the register")
-    row = reg["rows"][row_id]          # a duplicated id is refused by apply_tally below (`register_duplicate_rows`)
-    if row.malformed:
-        _refuse("row_malformed", f"{row_id} has a cell count that differs from its table header: fix it by hand first")
-    if to not in STATE_CLASSES or to == "MEASURED":
-        _refuse("bad_target_state", f"{to!r} is not a state a fold may set (one of {sorted(TRANSITIONS['OPEN'] | {'OPEN'})})")
-    frm = row.state_class
-    if frm == to:
-        _refuse("no_change", f"{row_id} is already {to}")
-    if to not in TRANSITIONS.get(frm, frozenset()):
-        _refuse("illegal_transition", f"{row_id}: {frm} -> {to} is not an allowed transition "
-                                      f"(from {frm}: {sorted(TRANSITIONS.get(frm, ()))})")
-    reason = (reason or "").replace("\n", " ").strip()
-    if not reason:
-        _refuse("reason_required", "a state change carries its reason")
-    evidence = (evidence or "").replace("\n", " ").strip() or None
-    if to in NEEDS_EVIDENCE and not evidence:
-        _refuse("evidence_required", f"{to} needs evidence (a commit, PR, path or decision id): --evidence")
-    verdict = None
-    if to in NEEDS_REVIEW:
-        verdict = check_review(review, reviews_root if reviews_root is not None else repo_root() / REVIEWS_REL)
-    new_cell = " " + _state_text(to, reason, evidence, verdict).replace("|", "\\|") + " "
-    line = reg["lines"][row.idx]
-    # cells[0] is the empty text before the first pipe, so cell i lies between pipes[i-1] and pipes[i]
-    a, b = row.pipes[row.state_col - 1], row.pipes[row.state_col]
-    new_line = line[: a + 1] + new_cell + line[b:]
-    lines = list(reg["lines"])
-    lines[row.idx] = new_line
-    before_drift = header_drift(text)
-    new_text = apply_tally("\n".join(lines))
-    # self-checks before anything is written: the target row now classifies as `to`, no other row's cells moved.
-    after = parse_register(new_text)
-    if after["rows"][row_id].state_class != to:
-        _refuse("self_check_failed", f"{row_id} would classify as {after['rows'][row_id].state_class}, not {to}")
-    for rid, r in reg["rows"].items():
-        if rid != row_id and (after["rows"][rid].cells != r.cells):
-            _refuse("self_check_failed", f"row {rid} would change")
-    if header_drift(new_text):
-        _refuse("self_check_failed", f"header still drifts after the recompute: {header_drift(new_text)}")
-    if write:
-        _atomic_write(p, new_text.encode("utf-8"))
-    return dict(row=row_id, from_state=frm, to_state=to, header_was_drifted=bool(before_drift),
-                counts=computed_counts(after)["by_state"], written=bool(write))
+    reason = check_text("reason", (reason or "").strip())
+    evidence = check_text("evidence", (evidence or "").strip()) or None
+    # the lock is ON by default for a write (`<register>.lock`; --lock-file overrides); a dry run never creates it
+    with census_lock((lock_file or register_lock_path(p)) if write else None):
+        text = read_text(p)
+        reg = parse_register(text)
+        if not re.fullmatch(r"R\d+", row_id or ""):
+            _refuse("bad_row_id", f"{row_id!r} is not a register row id (R<number>)")
+        if row_id not in reg["rows"]:
+            _refuse("unknown_row", f"{row_id} is not in the register")
+        row = reg["rows"][row_id]          # a duplicated id is refused by apply_tally below (`register_duplicate_rows`)
+        if row.malformed:
+            _refuse("row_malformed", f"{row_id} has a cell count that differs from its table header: fix it by hand first")
+        if to not in STATE_CLASSES or to == "MEASURED":
+            _refuse("bad_target_state", f"{to!r} is not a state a fold may set (one of {sorted(TRANSITIONS['OPEN'] | {'OPEN'})})")
+        frm = row.state_class
+        if frm == to:
+            _refuse("no_change", f"{row_id} is already {to}")
+        if to not in TRANSITIONS.get(frm, frozenset()):
+            _refuse("illegal_transition", f"{row_id}: {frm} -> {to} is not an allowed transition "
+                                          f"(from {frm}: {sorted(TRANSITIONS.get(frm, ()))})")
+        if not reason:
+            _refuse("reason_required", "a state change carries its reason")
+        if to in NEEDS_EVIDENCE and not evidence:
+            _refuse("evidence_required", f"{to} needs evidence (a commit, PR, path or decision id): --evidence")
+        rv = None
+        if to in NEEDS_REVIEW:
+            rv = verify_review(review, row_id, to, repo=repo if repo is not None else repo_root(), row_cells=row.cells)
+        gate = None
+        if rv:
+            gate = f"{rv['verdict']} {rv['reviewed_sha'][:10]} by {rv['reviewer']}"
+            if rv["re_accepted"]:
+                gate += f", RE_ACCEPTED {rv['re_accepted']['corrections_sha'][:10]}"
+        raw_cell = _state_text(to, reason, evidence, gate, row.state_cell)
+        new_cell = " " + re.sub(r"(?<!\\)\|", r"\\|", raw_cell) + " "
+        line = reg["lines"][row.idx]
+        # cells[0] is the empty text before the first pipe, so cell i lies between pipes[i-1] and pipes[i]
+        a, b = row.pipes[row.state_col - 1], row.pipes[row.state_col]
+        lines = list(reg["lines"])
+        lines[row.idx] = line[: a + 1] + new_cell + line[b:]
+        before_drift = header_drift(text)
+        new_text = apply_tally(join_lines(lines, reg["eols"]))
+        # self-checks before anything is written: the target row now classifies as `to`, no other row's cells moved.
+        after = parse_register(new_text)
+        if after["rows"][row_id].state_class != to:
+            _refuse("self_check_failed", f"{row_id} would classify as {after['rows'][row_id].state_class}, not {to}")
+        for rid, r in reg["rows"].items():
+            if rid != row_id and (after["rows"][rid].cells != r.cells):
+                _refuse("self_check_failed", f"row {rid} would change")
+        if header_drift(new_text):
+            _refuse("self_check_failed", f"header still drifts after the recompute: {header_drift(new_text)}")
+        if write:
+            _atomic_write(p, new_text.encode("utf-8"))
+        return dict(row=row_id, from_state=frm, to_state=to, was=row.state_cell, header_was_drifted=bool(before_drift),
+                    counts=computed_counts(after)["by_state"], written=bool(write), review=rv)
 
 
-def tally(register_path, *, write: bool) -> dict:
+def tally(register_path, *, write: bool, lock_file=None) -> dict:
     p = Path(register_path)
-    text = p.read_text(encoding="utf-8")
-    drift = header_drift(text)
-    new_text = apply_tally(text) if (write or not drift) else text
-    changed = new_text != text
-    if write and changed:
-        _atomic_write(p, new_text.encode("utf-8"))
-    reg = parse_register(new_text if write else text)
-    return dict(drift=[dict(what=w, claimed=a, computed=b) for w, a, b in drift], written=bool(write and changed),
-                counts=computed_counts(reg))
+    with census_lock((lock_file or register_lock_path(p)) if write else None):
+        text = read_text(p)
+        drift = header_drift(text)
+        if write:
+            new_text = apply_tally(text)
+            would_change = new_text != text
+        else:
+            try:
+                would_change = apply_tally(text) != text
+            except FoldRefused:
+                would_change = False                      # a write would refuse, not change; the drift list says why
+        if write and would_change:
+            _atomic_write(p, new_text.encode("utf-8"))
+        reg = parse_register(new_text if write else text)
+        return dict(drift=[dict(what=w, claimed=a, computed=b) for w, a, b in drift], would_change=would_change,
+                    written=bool(write and would_change), counts=computed_counts(reg))
 
 
 # ───────────────────────────── withholding ─────────────────────────────
@@ -581,19 +882,23 @@ def _stage_emit(census: dict, ledger_bytes: bytes, assets) -> tuple[dict, bytes]
         return summary, sp.read_bytes()
 
 
-def _git(cwd, *args):
-    return subprocess.run(["git", "-C", str(cwd), *args], capture_output=True)
-
-
-def git_preflight(ledger: Path, *, allow_dirty: bool = False) -> dict | None:
-    """For a ledger inside a git work tree: tracked, its HEAD bytes a prefix of the file, no uncommitted change (one
-    emit = one reviewable commit), and — for the canonical ledger path — the E4.3 cut-over landed. None outside git."""
+def canonical_info(ledger: Path) -> dict | None:
+    """(top, rel) when the ledger lies inside a git work tree, else None (a copy outside any repo)."""
     lp = Path(os.path.realpath(ledger))
-    r = _git(lp.parent, "rev-parse", "--show-toplevel")
-    if r.returncode != 0:
+    top = git_top(lp)
+    if top is None:
         return None
-    top = Path(os.path.realpath(r.stdout.decode().strip()))
-    rel = lp.relative_to(top).as_posix()
+    return dict(top=top, rel=lp.relative_to(top).as_posix(), canonical=lp.relative_to(top).as_posix() == GAPS_REL)
+
+
+def git_preflight(ledger: Path, *, allow_dirty: bool = False, dry_run: bool = False) -> dict | None:
+    """For a ledger inside a git work tree: tracked, its HEAD bytes a prefix of the file, no uncommitted change (one
+    emit = one reviewable commit), and — for the canonical ledger path — the E4.3 cut-over landed. None outside git.
+    A dry run only identifies the ledger (it writes nothing), so it skips these checks."""
+    info = canonical_info(ledger)
+    if info is None or dry_run:
+        return info
+    lp, top, rel = Path(os.path.realpath(ledger)), info["top"], info["rel"]
     if _git(top, "ls-files", "--error-unmatch", "--", rel).returncode != 0:
         _refuse("ledger_untracked", f"{rel} is not tracked: a ledger a fold appends to is committed so the append is a diff")
     h = _git(top, "show", f"HEAD:{rel}")
@@ -604,9 +909,21 @@ def git_preflight(ledger: Path, *, allow_dirty: bool = False) -> dict | None:
         _refuse("ledger_not_append_only", f"{rel}: the committed (HEAD) bytes are not a prefix of the working file")
     if cur != h.stdout and not allow_dirty:
         _refuse("ledger_dirty", f"{rel} has uncommitted changes: commit the previous emit first (one emit per commit)")
-    if rel == GAPS_REL and not (top / CUTOVER_REL).is_file():
+    if info["canonical"] and not (top / CUTOVER_REL).is_file():
         _refuse("cutover_not_landed", f"{CUTOVER_REL} is not on this checkout: no --emit-gaps before the E4.3 cut-over lands")
-    return dict(top=str(top), rel=rel)
+    return info
+
+
+def check_canonical_withholding(info: dict, withholding) -> None:
+    """For the canonical ledger the withholding list is the canonical file, tracked and clean at HEAD: a local edit or
+    an empty copy must not lift a withholding. (A ledger COPY may take any --withholding path.)"""
+    top = info["top"]
+    if (top / WITHHOLDING_REL).is_symlink():
+        _refuse("withholding_not_canonical", f"{WITHHOLDING_REL} is a symlink: the canonical list is a plain tracked file")
+    if isinstance(withholding, dict) or Path(os.path.realpath(withholding)) != Path(os.path.realpath(top / WITHHOLDING_REL)):
+        _refuse("withholding_not_canonical", f"the canonical ledger takes only {WITHHOLDING_REL} of this repo as its "
+                                             "withholding list; another path is for a ledger copy")
+    require_tracked_clean(top, Path(withholding), "withholding")
 
 
 @contextlib.contextmanager
@@ -640,12 +957,13 @@ def emit_gaps_withheld(census: dict, ledger, withholding, *, assets=None, dry_ru
     lp = Path(ledger)
     if not lp.is_file() or lp.is_symlink():
         _refuse("ledger_missing", f"{lp} is not a regular file")
+    info = git_preflight(lp, allow_dirty=allow_dirty, dry_run=dry_run)
+    if info is not None and info["canonical"]:
+        check_canonical_withholding(info, withholding)
     wh = withholding if isinstance(withholding, dict) else load_withholding(withholding)
     entries = wh["entries"]
     withheld_ids = set(entries)
-    if not dry_run:
-        git_preflight(lp, allow_dirty=allow_dirty)
-    with census_lock(lock_file):
+    with census_lock(None if dry_run else lock_file):
         orig = lp.read_bytes()
         if orig and not orig.endswith(b"\n"):
             _refuse("ledger_no_trailing_newline", "the ledger's last line is unterminated: an append would glue onto it")
@@ -675,8 +993,17 @@ def emit_gaps_withheld(census: dict, ledger, withholding, *, assets=None, dry_ru
                 fcntl.flock(fd, fcntl.LOCK_EX)
                 if lp.read_bytes() != orig:
                     _refuse("ledger_changed_during_fold", "the ledger changed between staging and append: re-run")
-                os.write(fd, new)
-                os.fsync(fd)
+                try:
+                    view = memoryview(new)
+                    while len(view):
+                        n = os.write(fd, view)
+                        if n <= 0:
+                            raise OSError("short write")
+                        view = view[n:]
+                    os.fsync(fd)
+                except OSError as e:
+                    os.ftruncate(fd, len(orig))                    # never leave a torn tail on the ledger
+                    _refuse("ledger_write_failed", f"the append failed ({e}); the ledger was restored")
             finally:
                 with contextlib.suppress(OSError):
                     fcntl.flock(fd, fcntl.LOCK_UN)
@@ -733,7 +1060,7 @@ def fingerprints(paths: dict) -> dict:
     out = {}
     rp = Path(paths["register"])
     if rp.is_file():
-        text = rp.read_text(encoding="utf-8")
+        text = read_text(rp)
         fp, per = row_fingerprint(text)
         out["register"] = dict(rows=len(per), row_fingerprint=fp, row_hashes=per, **_file_fp(rp))
     else:
@@ -777,6 +1104,38 @@ def verify_fingerprints(recorded: dict, paths: dict) -> list:
 
 # ───────────────────────────── drift ─────────────────────────────
 
+def append_only_status(gp) -> tuple[str, str]:
+    """Is the ledger's history intact? ("ok" | "VIOLATED" | "NOT CHECKED", detail). Baselines: the committed HEAD bytes
+    must be a prefix of the file; and, where CUTOVER.json is present in the repo, the first `new_bytes` bytes must hash
+    to its `new_md5`. With no baseline at all the answer is NOT CHECKED, never ok."""
+    info = canonical_info(Path(gp))
+    cur = Path(gp).read_bytes()
+    checked, problems = [], []
+    if info is not None:
+        top, rel = info["top"], info["rel"]
+        h = _git(top, "show", f"HEAD:{rel}") if _git(top, "ls-files", "--error-unmatch", "--", rel).returncode == 0 else None
+        if h is not None and h.returncode == 0:
+            checked.append("HEAD")
+            if not cur.startswith(h.stdout):
+                problems.append(f"the committed (HEAD) bytes of {rel} are not a prefix of the file")
+        cp = top / CUTOVER_REL
+        if cp.is_file() and info["canonical"]:
+            try:
+                rec = json.loads(cp.read_text(encoding="utf-8"))["files"][GAPS_REL]
+                nb, nm = rec["new_bytes"], rec["new_md5"]
+                if isinstance(nb, int) and isinstance(nm, str):
+                    checked.append("CUTOVER.json")
+                    if len(cur) < nb or _md5(cur[:nb]) != nm:
+                        problems.append(f"the first {nb} bytes no longer hash to the E4.3 cut-over md5 {nm[:12]}…")
+            except (OSError, ValueError, KeyError, TypeError):
+                pass
+    if problems:
+        return "VIOLATED", "; ".join(problems)
+    if not checked:
+        return "NOT CHECKED", "no git HEAD version and no CUTOVER.json baseline for this ledger"
+    return "ok", "prefix intact against " + " and ".join(checked)
+
+
 def drift(paths: dict, census: dict | None = None) -> list:
     """Register vs ledger vs withholding vs census disagreements. Each finding: dict(code, level ERROR|NOTE, detail)."""
     f = []
@@ -789,17 +1148,22 @@ def drift(paths: dict, census: dict | None = None) -> list:
     if not rp.is_file():
         add("register_missing", "ERROR", str(rp))
     else:
-        text = rp.read_text(encoding="utf-8")
-        reg = parse_register(text)
-        for w, a, b in header_drift(text):
-            add("tally_drift", "ERROR", f"{w}: header {a!r} vs rows {b!r}")
-        if reg["malformed"]:
-            add("register_malformed_rows", "ERROR", ", ".join(reg["malformed"]))
-        if reg["duplicates"]:
-            add("register_duplicate_rows", "ERROR", ", ".join(sorted(set(reg["duplicates"]))))
-        other = sorted(r.id for r in reg["rows"].values() if r.state_class == "OTHER")
-        if other:
-            add("register_unclassifiable_state", "ERROR", ", ".join(other))
+        try:
+            text = read_text(rp)
+        except UnicodeDecodeError as e:
+            text = None
+            add("register_unreadable", "ERROR", f"{rp} is not valid UTF-8 ({e.reason} at byte {e.start})")
+        if text is not None:
+            reg = parse_register(text)
+            for w, a, b in header_drift(text):
+                add("tally_drift", "ERROR", f"{w}: header {a!r} vs rows {b!r}")
+            if reg["malformed"]:
+                add("register_malformed_rows", "ERROR", ", ".join(reg["malformed"]))
+            if reg["duplicates"]:
+                add("register_duplicate_rows", "ERROR", ", ".join(sorted(set(reg["duplicates"]))))
+            other = sorted(r.id for r in reg["rows"].values() if r.state_class == "OTHER")
+            if other:
+                add("register_unclassifiable_state", "ERROR", ", ".join(other))
     wh = None
     try:
         wh = load_withholding(paths["withholding"], must_exist=True)
@@ -820,6 +1184,11 @@ def drift(paths: dict, census: dict | None = None) -> list:
         bad = sorted({str(r.get("state")) for r in g["latest"].values()} - set(LEDGER_STATES))
         if bad:
             add("gaps_ledger_unknown_state", "ERROR", ", ".join(bad))
+        status, detail = append_only_status(gp)
+        if status == "VIOLATED":
+            add("gaps_ledger_not_append_only", "ERROR", detail)
+        elif status == "NOT CHECKED":
+            add("append_only_not_checked", "NOTE", "append-only: NOT CHECKED — " + detail)
         m = ledger_metrics(gp)
         if m["open_gaps"] != m["open_gaps_tracker_view"]:
             add("open_gaps_view_differs", "NOTE", f"emit_gaps semantics {m['open_gaps']} vs tracker view "
@@ -869,7 +1238,7 @@ def _parser() -> argparse.ArgumentParser:
     ap.add_argument("--repo", default=None, help="repo root for the default paths (default: this checkout)")
     for k in ("register", "gaps", "certs", "withholding"):
         ap.add_argument(f"--{k}", default=None)
-    ap.add_argument("--lock-file", default=None, help=f"census lock (default ${ENV_LOCK}); exit 75 when held")
+    ap.add_argument("--lock-file", default=None, help=f"lock file (default: <register>.lock for set-state / tally --write / fingerprint --out; ${ENV_LOCK} for emit-gaps); exit 75 when held")
     sub = ap.add_subparsers(dest="cmd", required=True)
     s = sub.add_parser("set-state")
     s.add_argument("row")
@@ -877,7 +1246,6 @@ def _parser() -> argparse.ArgumentParser:
     s.add_argument("--reason", default="")
     s.add_argument("--evidence", default=None)
     s.add_argument("--review", default=None)
-    s.add_argument("--reviews-root", default=None)
     s.add_argument("--dry-run", action="store_true")
     t = sub.add_parser("tally")
     g = t.add_mutually_exclusive_group()
@@ -913,62 +1281,71 @@ def _out(obj) -> None:
     print(json.dumps(obj, indent=1, ensure_ascii=False))
 
 
-def main(argv=None) -> int:
-    a = _parser().parse_args(sys.argv[1:] if argv is None else list(argv))
-    p = _paths(a)
-    lock = a.lock_file or os.environ.get(ENV_LOCK)
-    try:
-        if a.cmd == "set-state":
-            with census_lock(lock):
-                r = set_state(p["register"], a.row, a.to.upper(), a.reason, evidence=a.evidence, review=a.review,
-                              reviews_root=Path(a.reviews_root) if a.reviews_root else None, write=not a.dry_run)
-            r["next_steps"] = ["manifest_fingerprint.py --write then --check", "drift_detector.py", "nikasha_fold.py drift"]
-            _out(r)
-            return 0
-        if a.cmd == "tally":
-            r = tally(p["register"], write=a.write)
-            _out(r)
-            return 1 if (r["drift"] and not a.write) else 0
-        if a.cmd == "emit-gaps":
-            c = load_trusted_census(a.census, a.layer)
-            assets = [x for x in a.assets.split(",") if x] if a.assets else None
-            r = emit_gaps_withheld(c, p["gaps"], p["withholding"], assets=assets, dry_run=a.dry_run,
-                                   allow_dirty=a.allow_dirty, lock_file=lock)
-            r["next_steps"] = ["git commit -- 00_ARCHITECTURE/control/asset_gaps.jsonl (one emit per commit)",
-                               "nikasha_fold.py fingerprint", "nikasha_fold.py drift"]
-            _out(r)
-            return 0
-        if a.cmd == "fingerprint":
+def _run(a, p) -> int:
+    lock = a.lock_file
+    if a.cmd == "set-state":
+        r = set_state(p["register"], a.row, a.to.upper(), a.reason, evidence=a.evidence, review=a.review,
+                      repo=Path(a.repo) if a.repo else None, write=not a.dry_run, lock_file=lock)
+        r["next_steps"] = ["manifest_fingerprint.py --write then --check", "drift_detector.py", "nikasha_fold.py drift"]
+        _out(r)
+        return 0
+    if a.cmd == "tally":
+        r = tally(p["register"], write=a.write, lock_file=lock)
+        _out(r)
+        return 1 if ((r["drift"] or r["would_change"]) and not a.write) else 0
+    if a.cmd == "emit-gaps":
+        c = load_trusted_census(a.census, a.layer)
+        assets = [x for x in a.assets.split(",") if x] if a.assets else None
+        r = emit_gaps_withheld(c, p["gaps"], p["withholding"], assets=assets, dry_run=a.dry_run,
+                               allow_dirty=a.allow_dirty, lock_file=lock or os.environ.get(ENV_LOCK))
+        r["next_steps"] = ["git commit -- 00_ARCHITECTURE/control/asset_gaps.jsonl (one emit per commit)",
+                           "nikasha_fold.py fingerprint", "nikasha_fold.py drift"]
+        _out(r)
+        return 0
+    if a.cmd == "fingerprint":
+        with census_lock((lock or register_lock_path(p["register"])) if a.out else None):
             doc = fingerprints(p)
             if a.out:
                 _atomic_write(Path(a.out), (json.dumps(doc, indent=1, sort_keys=True) + "\n").encode())
-            _out(doc)
-            return 0
-        if a.cmd == "verify":
-            try:
-                rec = nc.strict_json_loads(Path(a.file).read_text(encoding="utf-8"))
-            except (OSError, ValueError) as e:
-                _refuse("bad_fingerprint_file", f"{a.file}: {e}")
-            diffs = verify_fingerprints(rec, p)
-            _out(dict(identical=not diffs, differences=[dict(what=k, detail=d) for k, d in diffs]))
-            return 1 if diffs else 0
-        if a.cmd == "drift":
-            c = load_trusted_census(a.census, a.layer) if a.census else None
-            fl = drift(p, c)
-            _out(dict(findings=fl, errors=sum(1 for x in fl if x["level"] == "ERROR"),
-                      metrics=ledger_metrics(p["gaps"], p["certs"]) if Path(p["gaps"]).is_file() else None))
-            return 1 if any(x["level"] == "ERROR" for x in fl) else 0
-        if a.cmd == "withholding":
-            wh = load_withholding(p["withholding"])
-            _out(dict(ok=True, entries=sorted(wh["entries"])))
-            return 0
+        _out(doc)
+        return 0
+    if a.cmd == "verify":
+        try:
+            rec = nc.strict_json_loads(Path(a.file).read_text(encoding="utf-8"))
+        except (OSError, ValueError) as e:
+            _refuse("bad_fingerprint_file", f"{a.file}: {e}")
+        diffs = verify_fingerprints(rec, p)
+        _out(dict(identical=not diffs, differences=[dict(what=k, detail=d) for k, d in diffs]))
+        return 1 if diffs else 0
+    if a.cmd == "drift":
+        c = load_trusted_census(a.census, a.layer) if a.census else None
+        fl = drift(p, c)
+        _out(dict(findings=fl, errors=sum(1 for x in fl if x["level"] == "ERROR"),
+                  append_only=append_only_status(p["gaps"])[0] if Path(p["gaps"]).is_file() else None,
+                  metrics=ledger_metrics(p["gaps"], p["certs"]) if Path(p["gaps"]).is_file() else None))
+        return 1 if any(x["level"] == "ERROR" for x in fl) else 0
+    if a.cmd == "withholding":
+        wh = load_withholding(p["withholding"])
+        _out(dict(ok=True, entries=sorted(wh["entries"])))
+        return 0
+    return EX_ERROR
+
+
+def main(argv=None) -> int:
+    """Exit 0 ok · 1 drift found · 2 refused · 5 script error (EVERY uncaught exception, one stderr line — never 1, which
+    means drift) · 75 lock held."""
+    a = _parser().parse_args(sys.argv[1:] if argv is None else list(argv))
+    try:
+        return _run(a, _paths(a))
     except FoldRefused as e:
         print(f"REFUSED {e.code}: {e.message}", file=sys.stderr)
         return 2
     except LockHeld as e:
         print(f"census lock held: {e}", file=sys.stderr)
         return EX_TEMPFAIL
-    return 5
+    except Exception as e:  # noqa: BLE001 — a crash is a script error (5), never drift (1)
+        print(f"ERROR {type(e).__name__}: {str(e).splitlines()[0] if str(e) else ''}"[:300], file=sys.stderr)
+        return EX_ERROR
 
 
 if __name__ == "__main__":
