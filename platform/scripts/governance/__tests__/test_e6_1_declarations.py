@@ -1698,18 +1698,19 @@ CITATION_DECISIONS = json.loads(r"""
    "platform/python-sidecar/pipeline/orchestrator/writers/ga_nakshatra.py",
    [
     "chart_facts",
+    "chart_facts",
     "chart_facts"
    ]
   ],
   "cites": [
    [
     "platform/python-sidecar/pipeline/orchestrator/writers/ga_nakshatra.py",
-    192,
+    212,
     "chum = f\"{subject} {key}: {v"
    ],
    [
     "platform/python-sidecar/pipeline/orchestrator/writers/ga_nakshatra.py",
-    194,
+    214,
     "chum = f\"{subject} {key}: {v"
    ]
   ],
@@ -1775,12 +1776,12 @@ CITATION_DECISIONS = json.loads(r"""
   "cites": [
    [
     "platform/python-sidecar/ga_writers/ga_condition_writer.py",
-    1117,
+    1270,
     "\"citation_human\":          f"
    ],
    [
     "platform/python-sidecar/ga_writers/ga_condition_writer.py",
-    1391,
+    1554,
     "f\"{graha} lajjitadi avastha "
    ]
   ],
@@ -1797,9 +1798,9 @@ CITATION_DECISIONS = json.loads(r"""
   "decision": "decline",
   "sites": {
    "platform/python-sidecar/ga_writers/ga_dashas_writer.py": [
-    29,
+    30,
     2,
-    1,
+    0,
     0
    ]
   },
@@ -1813,7 +1814,7 @@ CITATION_DECISIONS = json.loads(r"""
   "cites": [
    [
     "platform/python-sidecar/ga_writers/ga_dashas_writer.py",
-    1160,
+    1312,
     "human = f\"Vimshottari {' > '"
    ]
   ],
@@ -1860,12 +1861,12 @@ CITATION_DECISIONS = json.loads(r"""
   "cites": [
    [
     "platform/python-sidecar/ga_writers/ga_panchanga_writer.py",
-    368,
+    362,
     "citation_human=f\"Tithi numbe"
    ],
    [
     "platform/python-sidecar/ga_writers/ga_panchanga_writer.py",
-    534,
+    528,
     "citation_human=f\"Sun's arc i"
    ]
   ],
@@ -1939,12 +1940,12 @@ CITATION_DECISIONS = json.loads(r"""
   "cites": [
    [
     "platform/python-sidecar/ga_writers/ga_sade_sati_writer.py",
-    893,
+    936,
     "citation_human=f\"Sade Sati {"
    ],
    [
     "platform/python-sidecar/ga_writers/ga_sade_sati_writer.py",
-    1240,
+    1283,
     "citation_human=f\"Sade Sati {"
    ]
   ],
@@ -1962,9 +1963,9 @@ CITATION_DECISIONS = json.loads(r"""
   "sites": {
    "platform/python-sidecar/ga_writers/ga_sensitive_degree_writer.py": [
     0,
-    23,
+    22,
     1,
-    0
+    1
    ]
   },
   "insert": [
@@ -1976,7 +1977,7 @@ CITATION_DECISIONS = json.loads(r"""
   "cites": [
    [
     "platform/python-sidecar/ga_writers/ga_sensitive_degree_writer.py",
-    677,
+    672,
     "\"citation_human\": citation,"
    ]
   ],
@@ -2007,7 +2008,7 @@ CITATION_DECISIONS = json.loads(r"""
   "cites": [
    [
     "platform/python-sidecar/ga_writers/ga_sensitive_writer.py",
-    246,
+    270,
     "return f\"{category}.{subject"
    ]
   ],
@@ -2039,12 +2040,12 @@ CITATION_DECISIONS = json.loads(r"""
   "cites": [
    [
     "platform/python-sidecar/ga_writers/ga_strength_writer.py",
-    845,
+    959,
     "f\"{graha_name} required shad"
    ],
    [
     "platform/python-sidecar/ga_writers/ga_strength_writer.py",
-    880,
+    996,
     "f\"{graha_name} shadbala rati"
    ]
   ],
@@ -2061,7 +2062,7 @@ CITATION_DECISIONS = json.loads(r"""
   "decision": "declare",
   "sites": {
    "platform/python-sidecar/ga_writers/ga_structural_writer.py": [
-    189,
+    191,
     5,
     0,
     6
@@ -2077,17 +2078,17 @@ CITATION_DECISIONS = json.loads(r"""
   "cites": [
    [
     "platform/python-sidecar/ga_writers/ga_structural_writer.py",
-    1303,
+    1390,
     "citation_human=f\"House {h} r"
    ],
    [
     "platform/python-sidecar/ga_writers/ga_structural_writer.py",
-    1702,
+    1789,
     "f\"House {h} strength classif"
    ],
    [
     "platform/python-sidecar/ga_writers/ga_structural_writer.py",
-    4659,
+    4855,
     "f\"{g_name} effective dignity"
    ]
   ],
@@ -2119,7 +2120,7 @@ CITATION_DECISIONS = json.loads(r"""
   "cites": [
    [
     "platform/python-sidecar/ga_writers/ga_tajaka_writer.py",
-    621,
+    635,
     "citation_human = ("
    ]
   ],
@@ -2152,12 +2153,12 @@ CITATION_DECISIONS = json.loads(r"""
   "cites": [
    [
     "platform/python-sidecar/ga_writers/ga_vargas_writer.py",
-    1202,
+    1234,
     "\"citation_human\": f\"{body} v"
    ],
    [
     "platform/python-sidecar/ga_writers/ga_vargas_writer.py",
-    1651,
+    1683,
     "\"citation_human\": (f\"{body} "
    ]
   ],
@@ -2326,16 +2327,16 @@ def test_citation_composed_values_are_really_stated_in_the_declared_assets():
             ("bo_karanajala", _WR + "bo_karanajala.py", 708, "sign_num"),
             ("bo_upaya", _WR + "bo_upaya.py", 1798, "len(resonances)"),
             ("bo_yantra_mechanism", _WR + "bo_yantra_mechanism.py", 571, "verdict.valence"),
-            ("ga_strength", _GW + "ga_strength_writer.py", 880, "ratio"),
-            ("ga_panchanga", _GW + "ga_panchanga_writer.py", 368, "tithi_num"),
-            ("ga_structural", _GW + "ga_structural_writer.py", 4659, "effective_dignity_score")):
+            ("ga_strength", _GW + "ga_strength_writer.py", 996, "ratio"),
+            ("ga_panchanga", _GW + "ga_panchanga_writer.py", 362, "tithi_num"),
+            ("ga_structural", _GW + "ga_structural_writer.py", 4855, "effective_dignity_score")):
         sites = [x for x in nw.citation_sites(_ctree(path)) if x[0] == ln and x[2] == "composed"]
         assert sites, (asset, path, ln)
         got = {e for x in ast.walk(ast.parse(sites[0][3], mode="eval")) if isinstance(x, ast.JoinedStr)
                for e, _ in nw.fstring_interpolations(x)}
         assert expr in got, (asset, ln, sorted(got))
-    # numbers shaped into the text by a format spec (ga_structural :4659, ga_strength :880)
-    for path, ln in ((_GW + "ga_structural_writer.py", 4659), (_GW + "ga_strength_writer.py", 880)):
+    # numbers shaped into the text by a format spec (ga_structural :4855, ga_strength :996)
+    for path, ln in ((_GW + "ga_structural_writer.py", 4855), (_GW + "ga_strength_writer.py", 996)):
         site = next(x for x in nw.citation_sites(_ctree(path)) if x[0] == ln)
         specs = [sp for x in ast.walk(ast.parse(site[3], mode="eval")) if isinstance(x, ast.JoinedStr)
                  for _, sp in nw.fstring_interpolations(x)]

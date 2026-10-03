@@ -1,0 +1,53 @@
+{
+  "lane": "ga_structural_chart_geometry",
+  "ruling": "SS rehearsal-final decision 2026-10-02 (chart-dependent categories)",
+  "pr": "main emitters in ga_structural_writer.py (not changed by any S-L1 lane); first built for the canonical chart by the S-L1 ga_structural rebuild",
+  "description": "Five ga_structural categories that the current emitter writes ONLY when the chart's geometry produces them: bhava_chalit_rasi_divergence, combustion_relationship, graha_yuddha, parivartana_pairs, retrograde_aspect_modification. Production's canonical chart (482012f1) holds none of them, because its stored ga_structural generation predates the emitters (never built under the current emitter). The rebuild writes whichever the chart's geometry yields, and the synthetic rehearsal chart produced all five (26 / 10 / 15 / 5 / 15 rows). Which appear, and how many, depends on the chart, so each entry is optional with the emitter's structural upper bound. They are the only categories present in the rehearsal's final build, absent from production's canonical chart, and not attributable to a lane.",
+  "may_change": [
+    {
+      "table": "chart_facts",
+      "categories": ["bhava_chalit_rasi_divergence"],
+      "change_types": ["appeared"],
+      "optional": true,
+      "expected_count": {"min": 0, "max": 45},
+      "expected_direction": "emitted only when the geometry exists; category has never been built for this chart under the current emitter (production holds no bhava_chalit_rasi_divergence row on the canonical chart).",
+      "note": "OPTIONAL (SS rehearsal-final decision 2026-10-02: chart-dependent appearance). source: the emitter in ga_structural_writer.py for the upper bound 45: one row per graha (9 grahas) whose bhava-chalit house differs from its rasi house: at most 9 x 5 ayanamshas = 45 (ga_structural_writer.py around line 8256); rehearsal-synthetic (19-lane rehearsal, flip_detector v2.3 compare against the origin/main baseline build on the same synthetic chart; HOOKS_COMPLETENESS_v1_0.md, Source evidence) for the 26 rows seen on the synthetic chart. The W7 hand read-back lists whichever of these appeared, with counts. The bound is the entry's expected_count (min 0), so an absent category reads silently, not as DECLARED_BUT_ABSENT."
+    },
+    {
+      "table": "chart_facts",
+      "categories": ["combustion_relationship"],
+      "change_types": ["appeared"],
+      "optional": true,
+      "expected_count": {"min": 0, "max": 30},
+      "expected_direction": "emitted only when the geometry exists; category has never been built for this chart under the current emitter (production holds no combustion_relationship row on the canonical chart).",
+      "note": "OPTIONAL (SS rehearsal-final decision 2026-10-02: chart-dependent appearance). source: the emitter in ga_structural_writer.py for the upper bound 30: one row per non-Sun graha inside its combustion orb: the six grahas with an orb (Moon, Mars, Mercury, Jupiter, Venus, Saturn) x 5 ayanamshas = 30 (_build_combustion_retrograde_relationship_rows); rehearsal-synthetic (19-lane rehearsal, flip_detector v2.3 compare against the origin/main baseline build on the same synthetic chart; HOOKS_COMPLETENESS_v1_0.md, Source evidence) for the 10 rows seen on the synthetic chart. The W7 hand read-back lists whichever of these appeared, with counts. The bound is the entry's expected_count (min 0), so an absent category reads silently, not as DECLARED_BUT_ABSENT."
+    },
+    {
+      "table": "chart_facts",
+      "categories": ["graha_yuddha"],
+      "change_types": ["appeared"],
+      "optional": true,
+      "expected_count": {"min": 0, "max": 315},
+      "expected_direction": "emitted only when the geometry exists; category has never been built for this chart under the current emitter (production holds no graha_yuddha row on the canonical chart).",
+      "note": "OPTIONAL (SS rehearsal-final decision 2026-10-02: chart-dependent appearance). source: the emitter in ga_structural_writer.py for the upper bound 315: 3 rows (winner, loser, orb_deg) per pair of classical grahas within 1 degree in one sign: at most C(7,2) = 21 pairs x 3 keys x 5 ayanamshas = 315 (_build_graha_yuddha_rows; in practice a handful); rehearsal-synthetic (19-lane rehearsal, flip_detector v2.3 compare against the origin/main baseline build on the same synthetic chart; HOOKS_COMPLETENESS_v1_0.md, Source evidence) for the 15 rows seen on the synthetic chart. The W7 hand read-back lists whichever of these appeared, with counts. The bound is the entry's expected_count (min 0), so an absent category reads silently, not as DECLARED_BUT_ABSENT."
+    },
+    {
+      "table": "chart_facts",
+      "categories": ["parivartana_pairs"],
+      "change_types": ["appeared"],
+      "optional": true,
+      "expected_count": {"min": 0, "max": 15},
+      "expected_direction": "emitted only when the geometry exists; category has never been built for this chart under the current emitter (production holds no parivartana_pairs row on the canonical chart).",
+      "note": "OPTIONAL (SS rehearsal-final decision 2026-10-02: chart-dependent appearance). source: the emitter in ga_structural_writer.py for the upper bound 15: one row per mutual-reception pair; a graha belongs to at most one pair (a sign has one lord), so at most 3 pairs among 7 classical lords: 3 x 5 ayanamshas = 15; rehearsal-synthetic (19-lane rehearsal, flip_detector v2.3 compare against the origin/main baseline build on the same synthetic chart; HOOKS_COMPLETENESS_v1_0.md, Source evidence) for the 5 rows seen on the synthetic chart. The W7 hand read-back lists whichever of these appeared, with counts. The bound is the entry's expected_count (min 0), so an absent category reads silently, not as DECLARED_BUT_ABSENT."
+    },
+    {
+      "table": "chart_facts",
+      "categories": ["retrograde_aspect_modification"],
+      "change_types": ["appeared"],
+      "optional": true,
+      "expected_count": {"min": 0, "max": 85},
+      "expected_direction": "emitted only when the geometry exists; category has never been built for this chart under the current emitter (production holds no retrograde_aspect_modification row on the canonical chart).",
+      "note": "OPTIONAL (SS rehearsal-final decision 2026-10-02: chart-dependent appearance). source: the emitter in ga_structural_writer.py for the upper bound 85: one row per Parashari aspect cast by each retrograde graha: Mars 3, Mercury 1, Jupiter 3, Venus 1, Saturn 3, plus the nodes (3 + 3) if the input ever flags them retrograde = 17 per ayanamsha x 5 = 85 (the rehearsal had Saturn only: 3 x 5 = 15); rehearsal-synthetic (19-lane rehearsal, flip_detector v2.3 compare against the origin/main baseline build on the same synthetic chart; HOOKS_COMPLETENESS_v1_0.md, Source evidence) for the 15 rows seen on the synthetic chart. The W7 hand read-back lists whichever of these appeared, with counts. The bound is the entry's expected_count (min 0), so an absent category reads silently, not as DECLARED_BUT_ABSENT."
+    }
+  ]
+}

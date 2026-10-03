@@ -74,6 +74,9 @@ import psycopg.rows
 
 from jhora import const as _jconst
 from brahmagyan.graha_vocabulary import norm_graha
+from brahmagyan.verification_tiers import (
+    DIVERGENT_FLAGGED, PENDING_W3_VERIFICATION, SINGLE,
+)
 from ga_writers._idempotency import replace_prior_chart_facts
 
 logger = logging.getLogger(__name__)
@@ -192,37 +195,16 @@ def check_pushkara(sign_num: int, degree_in_sign: float) -> dict:
 
 
 # ── gandanta (water→fire sandhi; nakshatra-gandanta junctions) ────────────────────
-# Water signs Cancer(3), Scorpio(7), Pisces(11); fire signs Leo(4), Sag(8), Aries(0).
-# Gandanta = last 3°20' of a water sign + first 3°20' of the following fire sign =
-# the Ashlesha–Magha / Jyeshtha–Mula / Revati–Ashwini nakshatra junctions.
-GANDANTA_ARC = 30.0 / 9.0  # 3°20'
-_WATER_SIGNS = {3, 7, 11}
-_FIRE_SIGNS = {4, 8, 0}
-GANDANTA_CITATION = (
-    "Classical gandanta (BPHS / Sarvartha Chintamani): last 3°20' of a water sign "
-    "and first 3°20' of the succeeding fire sign — the Ashlesha-Magha, Jyeshtha-Mula "
-    "and Revati-Ashwini nakshatra sandhi."
+# The width (3°20' each side), the three water|fire junctions, the citation and the zone
+# test live in ONE shared module, `brahmagyan.gandanta` (decision sheet A-4 / X1, SS N-62,
+# I-22). They are re-exported here under their historical names so every existing importer
+# (`ga_structural`, `ka_vighnakara`, the unit tests) keeps working with no change in shape
+# or value: `GANDANTA_ARC`, `GANDANTA_CITATION`, `check_gandanta`.
+from brahmagyan.gandanta import (  # noqa: E402,F401  (shared definition; do not re-declare here)
+    GANDANTA_ARC,
+    GANDANTA_CITATION,
+    check_gandanta,
 )
-
-
-def check_gandanta(sign_num: int, degree_in_sign: float) -> dict:
-    """Proximity to nearest gandanta point (junction). Fired iff within a gandanta arc."""
-    dist = None
-    zone = None
-    if sign_num in _WATER_SIGNS and degree_in_sign >= (30.0 - GANDANTA_ARC):
-        dist = 30.0 - degree_in_sign          # distance to the sign-end junction
-        zone = f"end_of_{SIGNS[sign_num]}"
-    elif sign_num in _FIRE_SIGNS and degree_in_sign <= GANDANTA_ARC:
-        dist = degree_in_sign                  # distance from the sign-start junction
-        zone = f"start_of_{SIGNS[sign_num]}"
-    return {
-        "fired": dist is not None,
-        "gandanta_zone": zone,
-        "distance_to_junction_deg": round(dist, 4) if dist is not None else None,
-        "gandanta_arc_deg": round(GANDANTA_ARC, 4),
-        "graha_deg_in_sign": round(degree_in_sign, 4),
-        "sign": SIGNS[sign_num],
-    }
 
 
 # ── kartari (papa / shubha hemming from the graha) ────────────────────────────────
@@ -424,6 +406,19 @@ def _load_yogi_nakshatra_lords(conn: Any) -> list[str]:
     return list(_YOGI_FALLBACK_NAK_LORDS)
 
 
+def _yogi_pass_tier(agrees: bool) -> str:
+    """Tier for a Yogi-system row whose Pass A / Pass B comparison `agrees`.
+
+    `single` on agreement, NOT `classical_match` or `two_pass_verified` (Q03 / SS N-62 + SS tier
+    rule, audit AUDIT_L1_TIERS_PER_EMITTER_v1_0.md §2.2): Pass B is the same sum in integer
+    arcseconds over the same Sun and Moon longitudes, so a wrong offset or a wrong rule in the
+    shared formula is carried identically into both, and no classical reference table is
+    compared. The check is real (it catches float/rounding and wrap-around slips, and a
+    disagreement is stored `divergent_flagged`) but arithmetic agreement earns nothing above `single`.
+    """
+    return SINGLE if agrees else DIVERGENT_FLAGGED
+
+
 def _yogi_point_two_pass(sun_long: float, moon_long: float) -> tuple[float, float, bool]:
     """Two INDEPENDENTLY-WRITTEN code paths for the Yogi Sphuta longitude (mirrors the
     ga_tajaka_writer ephemeris_audit_jsonb two-pass discipline):
@@ -505,11 +500,11 @@ def build_yogi_points_rows(
 
     yogi_deg, yogi_div_asec, yogi_ok = _yogi_point_two_pass(sun_long, moon_long)
     yogi_nak, yogi_graha, yogi_sign_idx = _yogi_nakshatra_of(yogi_deg, nak_lords)
-    yogi_status = "two_pass_verified" if yogi_ok else "divergent_flagged"
+    yogi_status = _yogi_pass_tier(yogi_ok)
 
     avayogi_deg, avayogi_div_asec, avayogi_ok = _avayogi_point_two_pass(yogi_deg)
     avayogi_nak, avayogi_graha, avayogi_sign_idx = _yogi_nakshatra_of(avayogi_deg, nak_lords)
-    avayogi_status = "two_pass_verified" if avayogi_ok else "divergent_flagged"
+    avayogi_status = _yogi_pass_tier(avayogi_ok)
 
     # Duplicate-Yogi / Sahayogi two-pass: agree iff (a) the Yogi point itself two-pass
     # verified AND (b) the sign index re-derived from the independent arcsecond pass
@@ -521,7 +516,7 @@ def build_yogi_points_rows(
     yogi_asec_b = (sun_asec + moon_asec + offset_asec) % (360 * 3600)
     sign_idx_b = int((yogi_asec_b / 3600.0) / 30.0) % 12
     duplicate_ok = yogi_ok and (sign_idx_b == yogi_sign_idx)
-    duplicate_status = "two_pass_verified" if duplicate_ok else "divergent_flagged"
+    duplicate_status = _yogi_pass_tier(duplicate_ok)
     duplicate_yogi_graha = sign_lords[yogi_sign_idx]
 
     rows: list[dict] = [
@@ -660,7 +655,7 @@ def _ayanamsha_offset_deg(conn: Any, ayanamsha_id: str) -> Optional[float]:
 # ── row builder ────────────────────────────────────────────────────────────────────
 
 def _row(chart_id, ayanamsha_id, build_id, subject, key, num, text, jsonb,
-         citation, computed_at, provenance="single", category: str = FACT_CATEGORY) -> dict:
+         citation, computed_at, provenance=SINGLE, category: str = FACT_CATEGORY) -> dict:
     return {
         "fact_id": _fact_id(subject, key, chart_id, ayanamsha_id, build_id, category),
         "chart_id": chart_id,
@@ -745,7 +740,7 @@ def build_sensitive_degree_rows(
                              "ayanamsha_offset_unresolved",
                              {"longitude_sidereal": lon_sid,
                               "note": "tropical longitude unresolvable at build; W3 refinement"},
-                             KRANTI_CITATION, now, provenance="pending_w3_verification"))
+                             KRANTI_CITATION, now, provenance=PENDING_W3_VERIFICATION))
 
         # 2. neecha bhanga — only meaningful for the 7 grahas
         if detect_neecha_bhanga is not None and graha in SEVEN_GRAHAS:
@@ -765,7 +760,7 @@ def build_sensitive_degree_rows(
                 rows.append(_row(chart_id, ayanamsha_id, build_id, subject, "neecha_bhanga",
                                  None, "detector_unavailable", {"error": str(exc)[:200]},
                                  "BPHS Neecha Bhanga Raja Yoga", now,
-                                 provenance="pending_w3_verification"))
+                                 provenance=PENDING_W3_VERIFICATION))
 
     # 5. khareshwara — chart-level (Lagna + Moon)
     lag = positions.get("Lagna")
@@ -789,7 +784,7 @@ def build_sensitive_degree_rows(
                          None, "nakshatra_occupancy_recorded", {"nakshatra_by_graha": nak_occ},
                          "Sarvatobhadra Chakra vedha (Prasna Marga): natal nakshatra occupancy "
                          "recorded; full rekha/kona/vithi vedha adjudicated at W3.", now,
-                         provenance="pending_w3_verification"))
+                         provenance=PENDING_W3_VERIFICATION))
     return rows
 
 

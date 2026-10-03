@@ -53,6 +53,7 @@ CRITICAL RECONCILIATION (GA3 overlap avoidance):
     - graha_effective_dignity_modified_by_aspects (M/Y)
     - argala_natal_matrix (N — 144 atomic rows)
     - virodha_argala_natal_matrix (N — 144 atomic rows)
+    - argala_graha_natal (N2 — graha-level argala, D1 only, SS N-61)
     - pranic_strength_per_graha (O/AJ)
     - jaimini_tri_deva_role_per_graha (O/AK)
     - graha_tri_deva_role_strength (O)
@@ -99,8 +100,15 @@ from typing import Any, Callable
 import psycopg.rows
 from pyjhora_adapter.compute import compute_chart
 from pyjhora_adapter.version import ENGINE_VERSION
+from brahmagyan.verification_tiers import (
+    COMPUTED_EXTENSION,
+    DOCUMENTED_APPROXIMATION,
+    FLOORED,
+    emit_tier,
+)
 from brahmagyan.verification_vocab import DIVERGENT_FLAGGED, UNVERIFIED_DEFAULT, assert_legal
 from brahmagyan.dignity_oracle import classify_dignity
+from brahmagyan.natural_malefics import NATURAL_MALEFIC_PLANET_IDS, NODE_PLANET_IDS
 from brahmagyan.aspects import get_graha_aspects
 from ga_writers._idempotency import replace_prior_chart_facts
 from ga_writers._telemetry import update_asset_throughput
@@ -114,6 +122,10 @@ from ga_writers.ga_positions_writer import (
     _conn,
 )
 from brahmagyan.graha_vocabulary import norm_graha
+# ONE shared Gandanta definition (3°20' each side) — imported, never re-declared here
+# (decision sheet A-4 / X1, SS N-62, I-22). Imported at module level so a wiring error
+# fails loudly at import time instead of silently reporting "no gandanta".
+from brahmagyan.gandanta import check_gandanta as _shared_check_gandanta
 from brahmagyan.l0_upapada_maitri_rules import (
     UPAPADA_RULES,
     TEMPORAL_FRIEND_HOUSES,
@@ -533,7 +545,7 @@ def _get_functional_class_dynamic(planet: str, lagna_sign: str) -> str:
     trikona         = {1, 5, 9}
     dusthana        = {6, 8, 12}
     upachaya        = {3, 11}
-    natural_malefics = {"Sun", "Mars", "Saturn"}
+    natural_malefics = {pid.capitalize() for pid in NATURAL_MALEFIC_PLANET_IDS}   # L0, BPHS Ch. 3 (no nodes here)
 
     is_kendra   = bool(houses & kendra)
     is_trikona  = bool(houses & trikona)
@@ -570,7 +582,7 @@ MAHAPURUSHA_STRENGTH_BONUS: dict[str, float] = {
 _BENEFIC_FUNCTIONAL_CLASSES = {"functional_benefic", "yogakaraka", "temporal_benefic"}
 _MALEFIC_FUNCTIONAL_CLASSES = {"temporal_malefic", "functional_malefic"}
 _NATURAL_BENEFICS = {"Jupiter", "Venus", "Mercury", "Moon"}
-_NATURAL_MALEFICS = {"Saturn", "Mars", "Sun", "Rahu", "Ketu"}
+_NATURAL_MALEFICS = {pid.capitalize() for pid in NATURAL_MALEFIC_PLANET_IDS + NODE_PLANET_IDS}   # L0 constant
 
 
 def _graha_aspects_house(aspector: str, source_h: int, target_h: int) -> float:
@@ -611,9 +623,61 @@ TRI_DEVA_ROLES = {
     "shiva": ["Mars", "Saturn", "Rahu"],           # Rajasic-tamasic
 }
 
-# Argala positions (1-based offsets from target sign, per Jaimini Sutram)
-ARGALA_OFFSETS: list[int] = [2, 4, 5, 11]    # These positions have argala on the sign
-VIRODHA_OFFSETS: list[int] = [12, 10, 9, 3]  # Counter-argala positions
+# Argala / obstruction (virodha) pairing — the ONE L1 definition (SS N-61, AR-1 / AR-6).
+# (argala offset, the offset whose occupants obstruct it), 1-based from the reference.
+# 2-12, 4-10 and 11-3 are the BPHS (Santhanam) Ch. 31 worked example, `bphs_pg0312_c01`
+# ("Mars in the 4th countered by Saturn in the 10th; Sun-Mercury in the 2nd by Venus in the
+# 12th; Jupiter in the 11th by Moon-Rahu in the 3rd"); 5-9 is `bphs_pg0311_c01` ("The 5th is
+# also an Argala place where the planet in the 9th will counteract such Argala"); Jaimini
+# Su. 7-9 gives the same sets, `bphs_jaimini_pg0023_c01`. sourced_ocr_unverified.
+ARGALA_OBSTRUCTION_PAIRS: tuple[tuple[int, int], ...] = ((2, 12), (4, 10), (5, 9), (11, 3))
+ARGALA_OFFSETS: list[int] = [a for a, _ in ARGALA_OBSTRUCTION_PAIRS]    # [2, 4, 5, 11]
+VIRODHA_OFFSETS: list[int] = [v for _, v in ARGALA_OBSTRUCTION_PAIRS]   # [12, 10, 9, 3]
+# Named filter, never a second definition: the BPHS / Jaimini basic set (exclude the 5th and its 9th).
+ARGALA_BASIC_OFFSETS: frozenset[int] = frozenset({2, 4, 11})
+# AR-2: argala and obstruction are counted in reverse when the REFERENCE is a node (both nodes;
+# Ketu-only is the named stricter variant, not built). bphs_pg0311_c01, bphs_pg0312_c01.
+ARGALA_REVERSED_REFERENCES: frozenset[str] = frozenset({"Rahu", "Ketu"})
+# AR-1 outcome vocabulary. BPHS and Jaimini state the test as DISJUNCTIVE: the argala prevails if its
+# planets are stronger OR more numerous than the obstructors (bphs_pg0311_c01; Jaimini Su. 8). Only the
+# numeric half is computable here ("stronger" has no sourced measure and stays null), so by count alone
+# exactly ONE outcome is certain. TWO named readings are stored, neither hidden inside the other:
+#   outcome_by_count (CANONICAL, carried by fact_value_text):
+#     unobstructed     no obstructor stands in the paired sign;
+#     argala_prevails  more causing grahas than obstructors (certain: the "more numerous" half holds);
+#     undetermined     obstructors are not fewer: a defeat needs the strength comparison, which is null.
+#     `obstructed` is NOT emitted by this field while strength_comparison is null.
+#   outcome_any_obstructor (named variant): `obstructed` whenever any obstructor stands in the paired
+#     sign, else `unobstructed`: the reading of the worked example's "countered" (bphs_pg0312_c01) and
+#     of today's L1 virodha score.
+ARGALA_OUTCOME_UNOBSTRUCTED = "unobstructed"
+ARGALA_OUTCOME_PREVAILS = "argala_prevails"
+ARGALA_OUTCOME_UNDETERMINED = "undetermined"
+ARGALA_OUTCOME_OBSTRUCTED = "obstructed"     # the VARIANT field only, never the canonical one
+# `count_relation`: the plain count fact (obstructors against causing grahas).
+ARGALA_COUNT_MORE = "obstructors_more"
+ARGALA_COUNT_EQUAL = "obstructors_equal"
+ARGALA_COUNT_FEWER = "obstructors_fewer"
+# `outcome_reason`: why the canonical field reads as it does.
+ARGALA_REASON_NO_OBSTRUCTOR = "no_obstructor"
+ARGALA_REASON_OUTNUMBERED = "argala_outnumbers_obstructors"
+ARGALA_REASON_STRENGTH_NOT_COMPARED = "obstructors_not_fewer_strength_not_compared"
+ARGALA_REASON_VIPAREETA = "vipareeta_condition"
+# VIPAREETA (bphs_pg0311_c01: "If there are 3 or more malefics in the 3rd, they will cause vipareeta
+# Argala ... harmless and very favourable"; Jaimini Su. 6): when three or more natural malefics (the L0
+# constant: Sun, Mars, Saturn; the nodes are stated separately and are not counted) stand in the 3rd from
+# the reference, the 11th/3rd pair is never read as obstruction. Flagged, not modelled: full vipareeta
+# modelling is post-J1.
+ARGALA_VIPAREETA_OBSTRUCTION_OFFSET = 3
+ARGALA_VIPAREETA_MALEFIC_MIN = 3
+# AR-4 / AR-5: provenance. The computation is inline in this module (there is no
+# pyjhora_adapter argala module), so the source names the real writer function.
+ARGALA_CITATION_BLOCK = (
+    "BPHS (Santhanam trans.) Ch. 31 'Argala or Planetary Intervention': bphs_pg0310_c01, "
+    "bphs_pg0311_c01, bphs_pg0311_c02, bphs_pg0312_c01; Jaimini Sutras (Suryanarain Rao trans.) "
+    "Su. 5-10: bphs_jaimini_pg0023_c01, bphs_jaimini_pg0028_c01, bphs_jaimini_pg0028_c02. "
+    "Grade: sourced_ocr_unverified."
+)
 
 # Pranic strength (Nadi tradition — two formula approach)
 PRANIC_BASE_SCORES: dict[str, float] = {
@@ -778,7 +842,8 @@ def _base_row(category: str, subject: str, key: str,
               verif: str = UNVERIFIED_DEFAULT,
               source: str = "pyjhora_adapter.structural",
               citation_human: str = "",
-              constituent_facts_array: list[str] | None = None) -> dict[str, Any]:
+              constituent_facts_array: list[str] | None = None,
+              provenance_text: str | None = None) -> dict[str, Any]:
     row = {
         "fact_id": _fact_id(category, subject, key, chart_id, ayanamsha_id, build_id),
         "chart_id": chart_id,
@@ -800,6 +865,9 @@ def _base_row(category: str, subject: str, key: str,
     }
     if constituent_facts_array is not None:
         row["constituent_facts_array"] = constituent_facts_array
+    if provenance_text is not None:
+        # chart_facts.formula_provenance_text: the classical-source / convention sentence for the row.
+        row["formula_provenance_text"] = provenance_text
     return row
 
 
@@ -875,6 +943,25 @@ def check_upstream_presence(conn: Any, chart_id: str) -> dict[str, Any]:
 
 # ── Chart state extractor ─────────────────────────────────────────────────────
 
+def _ascendant_longitude(ascendant: dict[str, Any]) -> float:
+    """Return the ascendant's sidereal longitude from the adapter's output.
+
+    ``pyjhora_adapter.houses.compute_ascendant`` carries the ascendant longitude
+    under ``longitude_deg`` ONLY (the L2.5 key every other L1 consumer reads);
+    the graha rows carry both ``longitude_deg`` and ``longitude``.  This writer
+    historically read ``ascendant["longitude"]`` -- absent on real adapter
+    output -- which (a) silently defaulted LAGNA / the bhava-chalit cusps to 0.0
+    before the completeness validator, and (b) after the validator, made the
+    build unable to start.  Read the L2.5 key; accept the legacy alias; never
+    default.
+    """
+    for key in ("longitude_deg", "longitude"):
+        raw = ascendant.get(key)
+        if raw is not None:
+            return float(raw)
+    raise RuntimeError("ga_structural: ascendant 'longitude_deg' missing")
+
+
 def _validate_chart_output_complete(chart_output: dict[str, Any]) -> None:
     """Reject incomplete numerical state before any structural family can run.
 
@@ -885,10 +972,10 @@ def _validate_chart_output_complete(chart_output: dict[str, Any]) -> None:
     ascendant = chart_output.get("ascendant")
     if not isinstance(ascendant, dict):
         raise RuntimeError("ga_structural: ascendant object missing")
-    for key in ("sign", "sign_id", "longitude"):
+    for key in ("sign", "sign_id"):
         if ascendant.get(key) is None:
             raise RuntimeError(f"ga_structural: ascendant {key!r} missing")
-    asc_longitude = float(ascendant["longitude"])
+    asc_longitude = _ascendant_longitude(ascendant)
     if not math.isfinite(asc_longitude) or not 0 <= asc_longitude < 360:
         raise RuntimeError("ga_structural: ascendant longitude is non-finite or outside [0, 360)")
     if not 1 <= int(ascendant["sign_id"]) <= 12:
@@ -926,7 +1013,7 @@ def _extract_chart_state(chart_output: dict[str, Any]) -> dict[str, Any]:
     # Lagna
     lagna_sign = ascendant["sign"]
     lagna_sign_num = ascendant["sign_id"]
-    _lagna_long = float(ascendant["longitude"])
+    _lagna_long = _ascendant_longitude(ascendant)
     state["LAGNA"] = {
         "sign": lagna_sign, "sign_num": int(lagna_sign_num),
         "house": 1, "longitude": _lagna_long, "degree": _lagna_long % 30.0,
@@ -1278,7 +1365,7 @@ def _build_aspect_rows(
                     chart_id, ayanamsha_id, build_id, computed_at, eng_ver,
                     value_num=round(orb, 4),
                     unit="deg",
-                    verif="single",
+                    verif=UNVERIFIED_DEFAULT,
                     source=f"pyjhora_adapter.conjunction/{eng_ver}",
                     citation_human=(
                         f"{g1} conjunct {g2} within {orb:.2f}° orb ({ayanamsha_id})."
@@ -2477,12 +2564,12 @@ def _build_yoga_rows(
                 # Y-7 fix: this is a single catalog-rule evaluation against L1 facts,
                 # not the redundant two-pass cross-check the rest of this writer's
                 # categories perform — it must not claim the top verification tier.
-                # "single_pass" is verification_vocab.py's declared spelling alias of
-                # "single" (both resolve to formulas.py VERIFICATION_RESCALE = 0.85,
-                # vs 1.00 for two_pass_verified — #1729/D-CND-05), so this correctly
-                # demotes catalog label rows in bo_laksana's salience_formula_v2
-                # rather than inventing a new fabricated status string.
-                verif="single_pass",
+                # UNVERIFIED_DEFAULT ("single") is the canonical spelling; the former alias
+                # "single_pass" is deprecated for writers (Q-L1-16(a)). Both resolve to
+                # formulas.py VERIFICATION_RESCALE = 0.85, vs 1.00 for two_pass_verified
+                # (#1729/D-CND-05), so this correctly demotes catalog label rows in
+                # bo_laksana's salience_formula_v2 rather than inventing a new status.
+                verif=UNVERIFIED_DEFAULT,
                 source=f"brahma_yoga_catalog.label_pass/{eng_ver}",
                 citation_human=(
                     f"Yoga {name_en} ({yoga_name}) labels chart {str(chart_id)[:8]} "
@@ -3253,8 +3340,8 @@ def _build_dosha_rows(
                 },
                 # Y-7 fix: same rationale as the yoga_label site above — single
                 # catalog-rule evaluation, not the writer's two-pass cross-check;
-                # demoted to the already-wired "single_pass" verification tier.
-                verif="single_pass",
+                # demoted to the already-wired UNVERIFIED_DEFAULT ("single") tier.
+                verif=UNVERIFIED_DEFAULT,
                 source=f"brahma_dosha_catalog.label_pass/{eng_ver}",
                 citation_human=citation_human,
             ))
@@ -3362,30 +3449,40 @@ def _build_dosha_rows(
         elif name in ("GANDANTA_DOSHA", "MRITYU_BHAGA_DOSHA"):
             # WP-2.5/LCA-10: fire from ga_sensitive_degree's cited classical checks,
             # computed inline over the grahas already loaded (no cross-asset dependency).
+            _at = "start"  # what was being evaluated, for the error message
             try:
-                from ga_writers.ga_sensitive_degree_writer import (
-                    check_gandanta, check_mrityu_bhaga,
-                )
+                if name == "GANDANTA_DOSHA":
+                    _check = None  # the shared module's check_gandanta is used below
+                else:
+                    from ga_writers.ga_sensitive_degree_writer import check_mrityu_bhaga
+                    _check = check_mrityu_bhaga
                 afflicted: list[str] = []
                 for _g in grahas_data:
                     _gn = _g.get("name")
                     if _gn in (None, "Lagna"):
                         continue
-                    _lon = float(_g.get("longitude", 0.0))
+                    _at = f"graha {_gn!r}"
+                    _lon = float(_g["longitude"])  # a missing longitude is an error, never 0.0
                     _sn = int(_lon // 30) % 12
                     _deg = _lon % 30.0
                     if name == "GANDANTA_DOSHA":
-                        if check_gandanta(_sn, _deg)["fired"]:
+                        if _shared_check_gandanta(_sn, _deg)["fired"]:
                             afflicted.append(_gn)
                     else:
-                        if check_mrityu_bhaga(_gn, _sn, _deg).get("fired"):
+                        if _check(_gn, _sn, _deg).get("fired"):
                             afflicted.append(_gn)
                 if afflicted:
                     fires = True
                     _label = "gandanta sandhi" if name == "GANDANTA_DOSHA" else "mrityu-bhaga"
                     reason = f"{_label}: {', '.join(sorted(set(afflicted)))}"
-            except Exception:
-                fires = False  # never regress the dosha pass on a wiring error
+            except Exception as exc:
+                # A failed evaluation is NOT "no gandanta": reporting `fires = False` here
+                # would be an invented negative (CLAUDE.md N.7 item 6; SS ruling on PR #2892).
+                # Fail the build loudly, naming the dosha, the item being evaluated and the cause.
+                raise RuntimeError(
+                    f"ga_structural legacy dosha fallback: {name} could not be evaluated "
+                    f"({_at}, chart {chart_id}, {ayanamsha_id}): {type(exc).__name__}: {exc}"
+                ) from exc
 
         if fires:
             _primary = name.split("_")[0]
@@ -3832,7 +3929,8 @@ def _load_shadbala_and_bhava_fact_ids(
     achieved/required, 'required_rupa' INVARIANT-only) — an unpinned selection let
     Postgres's unordered row return silently decide which variant survived the
     dict-overwrite below. Pinned to 'rupa' (the raw achieved value this function's
-    own caller normalizes against _COMPOSITE_SHADBALA_REQUIRED), matching the same
+    own caller normalizes against the L1 'required_rupa' fact read by
+    `_load_required_rupa_map`), matching the same
     convention already established by the bo_laksana.py (P0-5) and
     registry_bridge.ts (P0-1..4) fixes. `house_bhava_bala_total` has only one
     fact_key ('total') live today but is pinned too, defensively, per the N.7
@@ -3840,43 +3938,82 @@ def _load_shadbala_and_bhava_fact_ids(
     """
     shadbala: dict[str, tuple[float, str]] = {}
     bhava_bala: dict[str, tuple[float, str]] = {}
-    try:
-        with conn.cursor(row_factory=psycopg.rows.tuple_row) as cur:
-            cur.execute("""
-                SELECT fact_subject, fact_value_num, fact_id
-                FROM chart_facts
-                WHERE chart_id = %s AND ayanamsha_id = %s
-                  AND fact_category = 'graha_shadbala_total'
-                  AND fact_key = 'rupa'
-            """, (chart_id, ayanamsha_id))
-            for subj, val, fid in cur.fetchall():
-                if val is not None:
-                    shadbala[subj] = (float(val), str(fid))
-            cur.execute("""
-                SELECT fact_subject, fact_value_num, fact_id
-                FROM chart_facts
-                WHERE chart_id = %s AND ayanamsha_id = %s
-                  AND fact_category = 'house_bhava_bala_total'
-                  AND fact_key = 'total'
-            """, (chart_id, ayanamsha_id))
-            for subj, val, fid in cur.fetchall():
-                if val is not None:
-                    bhava_bala[subj] = (float(val), str(fid))
-    except Exception as exc:
-        logger.warning("[ga_structural] shadbala/bhava_bala lookup failed: %s", exc)
+    # A FAILED SELECT is not a MISSING fact: a database error propagates (SS ruling,
+    # PR #2892/#2893: a failed evaluation must raise, never degrade into "no facts" and
+    # floor every composite row). Only a genuinely absent fact — the SELECT succeeds and
+    # returns no row for that subject — leaves the map entry out, and the caller floors
+    # that row with a NAMED reason.
+    with conn.cursor(row_factory=psycopg.rows.tuple_row) as cur:
+        cur.execute("""
+            SELECT fact_subject, fact_value_num, fact_id
+            FROM chart_facts
+            WHERE chart_id = %s AND ayanamsha_id = %s
+              AND fact_category = 'graha_shadbala_total'
+              AND fact_key = 'rupa'
+        """, (chart_id, ayanamsha_id))
+        for subj, val, fid in cur.fetchall():
+            if val is not None:
+                shadbala[subj] = (float(val), str(fid))
+        cur.execute("""
+            SELECT fact_subject, fact_value_num, fact_id
+            FROM chart_facts
+            WHERE chart_id = %s AND ayanamsha_id = %s
+              AND fact_category = 'house_bhava_bala_total'
+              AND fact_key = 'total'
+        """, (chart_id, ayanamsha_id))
+        for subj, val, fid in cur.fetchall():
+            if val is not None:
+                bhava_bala[subj] = (float(val), str(fid))
     return shadbala, bhava_bala
 
 
 
-# Classical required shadbala (rupa) per graha — mirrors ga_strength_writer's
-# SHADBALA_REQUIRED (kept as a separate module-local copy; no cross-import
-# between L1 writers). Used to normalize the now-real shadbala_total (post
-# lane-1a PyJHora delegation, M-1) into a 0-1 sthana-equivalent: "how many
-# multiples of the classically-required minimum has this graha attained".
-_COMPOSITE_SHADBALA_REQUIRED: dict[str, float] = {
-    "Sun": 5.0, "Moon": 6.0, "Mars": 5.0, "Mercury": 7.0,
-    "Jupiter": 6.5, "Venus": 5.5, "Saturn": 5.0,
-}
+def _load_required_rupa_map(
+    conn: Any, chart_id: str
+) -> dict[str, tuple[float, str]]:
+    """Load the classical required (minimum) shadbala per graha from the L1
+    `graha_shadbala_total|required_rupa` fact — the SINGLE source of truth, owned
+    by ga_strength_writer (SHADBALA_REQUIRED). Returns {fact_subject: (value_num,
+    fact_id)}. The row is stored under ayanamsha_id='INVARIANT' (a classical
+    constant, not ayanamsha-dependent) — same convention as the existing reader
+    ga_yoga_writer._load_shadbala_map. fact_key is pinned and the ORDER BY is total
+    (CLAUDE.md §N.7 item 2).
+
+    This replaces a module-local shadow copy (_COMPOSITE_SHADBALA_REQUIRED) that
+    had drifted from the classical figure for the Sun (5.0 vs BPHS ch.27's 390
+    virupa = 6.5 rupa) — §N.7 item 3: no wrapper-local constant may shadow an
+    L1-computed or sourced value. ga_structural already depends on ga_strength in
+    asset_registry, so the INVARIANT row is guaranteed to exist before this runs.
+    """
+    required: dict[str, tuple[float, str]] = {}
+    # A FAILED SELECT is not a MISSING fact: a database error propagates (SS ruling:
+    # a failed evaluation must raise). Only a genuinely absent L1 fact — the SELECT
+    # succeeds and returns no row for a graha — leaves it out of the map, and the
+    # composite builder then floors that graha's rows with the named reason
+    # `missing_l1_required_rupa_fact`.
+    with conn.cursor(row_factory=psycopg.rows.tuple_row) as cur:
+        cur.execute("""
+            SELECT fact_subject, fact_value_num, fact_id
+            FROM chart_facts
+            WHERE chart_id = %s AND ayanamsha_id = 'INVARIANT'
+              AND fact_category = 'graha_shadbala_total'
+              AND fact_key = 'required_rupa'
+            ORDER BY fact_subject, fact_id
+        """, (chart_id,))
+        for subj, val, fid in cur.fetchall():
+            if val is not None:
+                required[subj] = (float(val), str(fid))
+    return required
+
+
+# Rahu/Ketu carry a total-shadbala `rupa` fact but NO classical minimum: neither BPHS
+# ch.27 nor Phaladīpikā IV.22-23 gives a requirement for the nodes (and L1 stores no
+# `required_rupa` / `ratio` for them). The composite formula used to normalise the nodes'
+# rupa by an invented flat 5.0 (`_NODE_LEGACY_COMPOSITE_REQUIRED`, SS ruling 2026-10-02:
+# removed — CLAUDE.md §N.7 item 6, an honest null beats an invented normaliser). The
+# nodes' composite rows are now FLOORED (value_num NULL, verification 'floored') with this
+# NAMED reason; their dignity/bhava inputs are not consumed without a normaliser.
+NODE_NO_CLASSICAL_REQUIRED_REASON = "no_classical_required_value_for_node"
 # NOTE: house_bhava_bala_total (GA3 ga_strength_writer._derive_bhava_bala) is
 # itself a hand-rolled, non-classically-scaled composite (adhipati_bala =
 # lord's shadbala rupa × 30, + a flat 10/15/20 digbala, + 10+5×occupant-count
@@ -3888,6 +4025,41 @@ _COMPOSITE_SHADBALA_REQUIRED: dict[str, float] = {
 # ayanamsha (ratio to the max observed value) — an honest, chart-relative
 # "how strong is this house compared to this native's strongest house"
 # reading, not an absolute claim against an uncited threshold.
+
+
+def _composite_floor_detail(
+    *, required_missing: bool, shadbala_missing: bool, bhava_missing: bool,
+    node_has_no_required: bool = False,
+) -> tuple[str, str]:
+    """(machine reason, human phrase) for a floored composite row, naming EVERY cause.
+    `no_classical_required_value_for_node` = a node (Rahu/Ketu): no classical minimum
+    exists, so there is no normaliser; `missing_l1_required_rupa_fact` = the L1
+    graha_shadbala_total|required_rupa fact is absent; `missing_ga3_shadbala_or_bhava_
+    bala_fact` = the GA3 shadbala `rupa` and/or house bhava_bala `total` fact is absent.
+    A node returns ONLY the node reason; for a classical graha several causes are joined
+    with '+' (required first)."""
+    if node_has_no_required:
+        # A node's single clean reason: there is no classical required value, whatever
+        # else is or is not present. No missing-fact suffix (SS ruling 2026-10-02).
+        return (NODE_NO_CLASSICAL_REQUIRED_REASON,
+                "no classical required shadbala value exists for the nodes")
+    reasons: list[str] = []
+    clauses: list[str] = []
+    missing: list[str] = []
+    if required_missing:
+        reasons.append("missing_l1_required_rupa_fact")
+        missing.append("the L1 required_rupa fact")
+    if shadbala_missing or bhava_missing:
+        reasons.append("missing_ga3_shadbala_or_bhava_bala_fact")
+        if shadbala_missing:
+            missing.append("the GA3 shadbala fact")
+        if bhava_missing:
+            missing.append("the GA3 bhava_bala fact")
+    if missing:
+        clauses.append("missing " + " and ".join(missing))
+    if not reasons:  # defensive: callers only floor when an input is missing
+        raise ValueError("composite floor requested but no cause was named")
+    return "+".join(reasons), "; ".join(clauses)
 
 
 def _build_composite_strength_rows(
@@ -3919,6 +4091,7 @@ def _build_composite_strength_rows(
     grahas_data = chart_output.get("grahas", [])
 
     shadbala_map, bhava_bala_map = _load_shadbala_and_bhava_fact_ids(conn, chart_id, ayanamsha_id)
+    required_map = _load_required_rupa_map(conn, chart_id)
     bhava_bala_ceiling = max(
         (v for v, _fid in bhava_bala_map.values()), default=0.0
     )
@@ -3939,7 +4112,18 @@ def _build_composite_strength_rows(
         sthana = dignity_to_strength.get(g_dignity, 0.5)
 
         sb_entry = shadbala_map.get(subject)
-        required = _COMPOSITE_SHADBALA_REQUIRED.get(g_name, 5.0)
+        # Classical grahas: required = the L1 `required_rupa` fact (read, never a
+        # local constant); a missing fact floors the row (honest null — never a
+        # substituted default). Nodes: no classical minimum exists (see
+        # NODE_NO_CLASSICAL_REQUIRED_REASON), so there is no normaliser and the row is
+        # floored with that named reason — never a labelled invented constant.
+        required_fact_id: str | None = None
+        required: float | None = None
+        node_has_no_required = g_name not in CLASSICAL_GRAHAS
+        if not node_has_no_required:
+            req_entry = required_map.get(subject)
+            if req_entry is not None:
+                required, required_fact_id = req_entry
         shadbala_ratio: float | None = None
         shadbala_fact_id: str | None = None
         if sb_entry is not None:
@@ -3957,21 +4141,33 @@ def _build_composite_strength_rows(
                 bhava_val, bhava_fact_id = bb_entry
                 bhava_ratio = round(min(1.0, bhava_val / bhava_bala_ceiling), 4)
 
-            constituent_ids = [fid for fid in (shadbala_fact_id, bhava_fact_id) if fid]
+            constituent_ids = [
+                fid for fid in (shadbala_fact_id, required_fact_id, bhava_fact_id) if fid
+            ]
 
             if shadbala_ratio is None or bhava_ratio is None:
-                # Canonical-or-floor: no real GA3 shadbala/bhava_bala row for
-                # this graha/house — floor rather than fabricate a proxy.
+                # Canonical-or-floor: a required input fact is genuinely absent for
+                # this graha/house — floor rather than fabricate a proxy. The reason
+                # (and the citation text) names EVERY input that is missing.
+                floor_reason, floor_phrase = _composite_floor_detail(
+                    node_has_no_required=node_has_no_required,
+                    required_missing=(not node_has_no_required) and not required,
+                    shadbala_missing=sb_entry is None,
+                    bhava_missing=bhava_ratio is None,
+                )
                 rows.append(_base_row(
                     "graha_in_house_composite_strength", comp_subject, "bphs_weighted",
                     chart_id, ayanamsha_id, build_id, computed_at, eng_ver,
                     value_num=None,
-                    value_jsonb={"floored": True, "reason": "missing_ga3_shadbala_or_bhava_bala_fact"},
-                    verif="floored",
+                    value_jsonb={
+                        "floored": True,
+                        "reason": floor_reason,
+                    },
+                    verif=FLOORED,
                     source=f"ga_structural.composite_strength_bphs/{eng_ver}",
                     citation_human=(
                         f"{g_name} in house {h}: composite strength floored — "
-                        f"missing real shadbala/bhava_bala GA3 fact ({ayanamsha_id})."
+                        f"{floor_phrase} ({ayanamsha_id})."
                     ),
                     constituent_facts_array=constituent_ids or None,
                 ))
@@ -4037,7 +4233,7 @@ def _build_composite_strength_rows(
                 source=f"ga_structural.composite_strength_simple/{eng_ver}",
                 citation_human=(
                     f"{g_name} in house {h}: simple composite strength {simple_score:.4f} "
-                    f"(shadbala_ratio={shadbala_ratio:.4f}, bhava_ratio={bhava_ratio:.4f}) ({ayanamsha_id})."
+                    f"(dignity_weight={sthana:.3f}, bhava_ratio={bhava_ratio:.4f}) ({ayanamsha_id})."
                 ),
                 constituent_facts_array=constituent_ids or None,
             ))
@@ -4050,7 +4246,7 @@ def _build_composite_strength_rows(
                 # DIVERGENT_FLAGGED, CLASSICAL_MATCH are named), so this uses the
                 # literal string, matching the existing convention in
                 # ga_condition_writer.py / ga_strength_writer.py / ga_yoga_writer.py.
-                verif="computed_extension",
+                verif=COMPUTED_EXTENSION,
                 source=f"ga_structural.composite_strength_div/{eng_ver}",
                 citation_human=f"{g_name} in house {h}: formula divergence {divergence:.4f} ({ayanamsha_id}).",
                 constituent_facts_array=constituent_ids or None,
@@ -4088,7 +4284,7 @@ def _build_functional_class_rows(
         # (CLAUDE.md §N.8). Only the Aries branch changes; the non-Aries
         # documented_approximation branch is a real, already-correctly-tiered
         # methodological approximation and is untouched.
-        fc_verif = UNVERIFIED_DEFAULT if lagna_sign == "Aries" else "documented_approximation"
+        fc_verif = UNVERIFIED_DEFAULT if lagna_sign == "Aries" else DOCUMENTED_APPROXIMATION
 
         rows.append(_base_row(
             "graha_functional_class_per_ascendant", subject, "bphs_canonical",
@@ -4461,7 +4657,7 @@ def _build_structural_relationship_rows(
             "graha_composite_state_classification", subject, "classification",
             chart_id, ayanamsha_id, build_id, computed_at, eng_ver,
             value_text=classification,
-            verif="single_pass",
+            verif=UNVERIFIED_DEFAULT,
             source=f"pyjhora_adapter.composite_state/{eng_ver}",
             citation_human=(
                 f"{g_name} composite state: {classification} "
@@ -4685,6 +4881,13 @@ def _build_argala_rows(
     varga_sign_occupants: pre-built {sign_name: [graha_name, ...]} for non-D1 vargas.
     When None (default), builds from chart_output (D1 natal occupancy).
     Rows are tagged with varga prefix in fact_subject (e.g., D9_SIGN_4).
+
+    SIGN-LEVEL, FORWARD-ONLY (SS N-61, AR-2): this matrix counts forward from every sign and has no
+    graha reference, so it cannot carry the reversed count for Rahu/Ketu as the reference, and
+    stores 0.0 for a forward offset that is not an argala offset. Pairing, obstruction counts, the
+    outcome and the node reversal live in the graha-level family (`_build_argala_graha_rows`).
+    An argala-offset cell whose source sign holds no graha is NULL with fact_value_text
+    'no_occupant' (AR-3), not a score; occupied cells keep the 1.0 / 0.25 project convention.
     """
     rows: list[dict[str, Any]] = []
     varga_prefix = f"{varga}_"
@@ -4701,7 +4904,9 @@ def _build_argala_rows(
                 sign_occupants[g_sign].append(g["name"])
 
     # Use module-level ARGALA_OFFSETS and VIRODHA_OFFSETS constants
-    malefics_set = {"Saturn", "Mars", "Sun", "Rahu", "Ketu"}
+    # The score convention's malefic set is READ from L0 (natural malefics Sun, Saturn, Mars per BPHS
+    # Ch. 3, plus the nodes, which L0 states separately), never a local set (SS N-61).
+    malefics_set = {pid.capitalize() for pid in NATURAL_MALEFIC_PLANET_IDS + NODE_PLANET_IDS}
 
     # Full 12×12 matrix: every (target_sign, source_sign) pair gets ONE atomic row per category.
     # Argala score = 0.0 for non-argala positions; non-zero only when offset is in ARGALA_OFFSETS.
@@ -4717,13 +4922,19 @@ def _build_argala_rows(
             occupants_in_source = sign_occupants.get(source_sign, [])
 
             # ── Argala matrix row (all 12×12 cells; 0.0 for non-argala positions) ──
+            argala_text: str | None = None
             if offset in ARGALA_OFFSETS:
-                # Natural malefics in argala positions produce negative/inauspicious argala
-                net_argala = 1.0
-                for occ in occupants_in_source:
-                    if occ in malefics_set:
-                        net_argala -= 0.25
-                net_argala = round(max(net_argala, -1.0), 4)
+                if occupants_in_source:
+                    # Natural malefics in argala positions produce negative/inauspicious argala
+                    net_argala: float | None = 1.0
+                    for occ in occupants_in_source:
+                        if occ in malefics_set:
+                            net_argala -= 0.25
+                    net_argala = round(max(net_argala, -1.0), 4)
+                else:
+                    # AR-3: an empty source sign makes no argala claim.
+                    net_argala = None
+                    argala_text = "no_occupant"
             else:
                 net_argala = 0.0  # Position not in argala set → no argala
 
@@ -4733,13 +4944,23 @@ def _build_argala_rows(
                 f"from_sign_{source_sign_num}_offset_{offset}",
                 chart_id, ayanamsha_id, build_id, computed_at, eng_ver,
                 value_num=net_argala,
+                value_text=argala_text,
                 unit="argala_score",
                 verif=UNVERIFIED_DEFAULT,
-                source=f"pyjhora_adapter.argala/{eng_ver}",
+                source=f"ga_structural_writer._build_argala_rows/{eng_ver}",
                 citation_human=(
+                    f"{varga} {target_sign} argala from {source_sign} "
+                    f"(offset {offset}): no occupant in the source sign, no argala claim ({ayanamsha_id})."
+                    if argala_text is not None else
                     f"{varga} {target_sign} argala from {source_sign} "
                     f"(offset {offset}): score {net_argala:.2f} "
                     f"({'argala' if offset in ARGALA_OFFSETS else 'no_argala'}) ({ayanamsha_id})."
+                ),
+                provenance_text=(
+                    "BPHS Ch. 31 bphs_pg0311_c01, bphs_pg0312_c01; Jaimini Su. 5-10 bphs_jaimini_pg0023_c01; "
+                    "sourced_ocr_unverified. Score 1.0 less 0.25 per occupant in the L0 natural-malefic set "
+                    "(natural_malefics.py, plus the nodes): unsourced project convention. NULL = no_occupant. "
+                    "Sign-level, FORWARD-ONLY; see argala_graha_natal."
                 ),
             ))
 
@@ -4757,11 +4978,16 @@ def _build_argala_rows(
                 value_num=virodha_score,
                 unit="virodha_score",
                 verif=UNVERIFIED_DEFAULT,
-                source=f"pyjhora_adapter.virodha_argala/{eng_ver}",
+                source=f"ga_structural_writer._build_argala_rows/{eng_ver}",
                 citation_human=(
                     f"{varga} {target_sign} virodha from {source_sign} "
                     f"(offset {offset}): score {virodha_score:.2f} "
                     f"({'virodha' if offset in VIRODHA_OFFSETS else 'no_virodha'}) ({ayanamsha_id})."
+                ),
+                provenance_text=(
+                    "BPHS Ch. 31 bphs_pg0311_c01, bphs_pg0312_c01; Jaimini Su. 5-10 bphs_jaimini_pg0023_c01; "
+                    "sourced_ocr_unverified. Score 1.0 if the obstructing-offset sign holds any graha, else 0.0. "
+                    "Sign-level, FORWARD-ONLY, unpaired; pairing and outcome in argala_graha_natal."
                 ),
             ))
 
@@ -4781,6 +5007,202 @@ def _build_argala_rows(
         )
         raise RuntimeError(f"Virodha count assertion failed: {virodha_count} != 144")
 
+    return rows
+
+
+# ── Group N2: graha-level argala (D1) ─────────────────────────────────────────
+
+def _argala_source_sign_num(ref_sign_num: int, offset: int, reverse: bool) -> int:
+    """1-based sign number `offset` places from `ref_sign_num` (the reference sign is offset 1).
+
+    Counted forward through the zodiac, or backward when `reverse` (AR-2: a node as the
+    reference counts argala and obstruction in reverse, `bphs_pg0311_c01`, `bphs_pg0312_c01`).
+    """
+    step = offset - 1
+    if reverse:
+        return (ref_sign_num - 1 - step) % 12 + 1
+    return (ref_sign_num - 1 + step) % 12 + 1
+
+
+def _argala_count_relation(argala_count: int, obstructor_count: int) -> str:
+    """The plain count fact: are the obstructors more, equal or fewer than the causing grahas."""
+    if obstructor_count > argala_count:
+        return ARGALA_COUNT_MORE
+    if obstructor_count == argala_count:
+        return ARGALA_COUNT_EQUAL
+    return ARGALA_COUNT_FEWER
+
+
+def _argala_vipareeta_condition(obstruction_offset: int, obstructors: list[str]) -> bool:
+    """Three or more natural malefics (Sun, Mars, Saturn from the L0 constant; nodes not counted) in the
+    3rd from the reference: the 11th/3rd pair is then not read as obstruction. Flagged, not modelled."""
+    if obstruction_offset != ARGALA_VIPAREETA_OBSTRUCTION_OFFSET:
+        return False
+    return sum(1 for g in obstructors if g.lower() in NATURAL_MALEFIC_PLANET_IDS) >= ARGALA_VIPAREETA_MALEFIC_MIN
+
+
+def _argala_outcome(argala_count: int, obstructor_count: int, vipareeta_condition: bool = False) -> tuple[str, str]:
+    """AR-1 (SS, disjunctive rule): the canonical outcome by count, and its reason.
+
+    unobstructed (no obstructor); argala_prevails only when the causing grahas outnumber the obstructors
+    (certain); otherwise undetermined, because a defeat needs the strength comparison, which is null.
+    `obstructed` is never returned. A vipareeta condition forces undetermined (reason vipareeta_condition)."""
+    if vipareeta_condition:
+        return ARGALA_OUTCOME_UNDETERMINED, ARGALA_REASON_VIPAREETA
+    if obstructor_count == 0:
+        return ARGALA_OUTCOME_UNOBSTRUCTED, ARGALA_REASON_NO_OBSTRUCTOR
+    if argala_count > obstructor_count:
+        return ARGALA_OUTCOME_PREVAILS, ARGALA_REASON_OUTNUMBERED
+    return ARGALA_OUTCOME_UNDETERMINED, ARGALA_REASON_STRENGTH_NOT_COMPARED
+
+
+def _argala_outcome_any_obstructor(obstruction_present: bool) -> str:
+    """The named variant: obstructed whenever any obstructor stands in the paired sign, else
+    unobstructed (the worked example's "countered"; today's L1 virodha score). Not the canonical reading."""
+    return ARGALA_OUTCOME_OBSTRUCTED if obstruction_present else ARGALA_OUTCOME_UNOBSTRUCTED
+
+
+def _argala_reading(
+    ref_sign_num: int,
+    reverse: bool,
+    occupants_by_sign_num: dict[int, list[str]],
+) -> list[dict[str, Any]]:
+    """The argala reading from ONE reference sign (pure; no I/O).
+
+    For each (argala offset, obstruction offset) pair of ARGALA_OBSTRUCTION_PAIRS, in pair
+    order: the grahas standing in the argala sign (a pair with none is not an argala and is
+    omitted), the grahas standing in the paired obstruction sign, both counts, `obstruction_present`,
+    `count_relation`, `vipareeta_condition`, and BOTH named outcomes (`outcome_by_count` with its
+    `outcome_reason`, canonical; `outcome_any_obstructor`, variant). Grahas are listed in ALL_GRAHAS order. Obstruction applies to every
+    argala, benefic or malefic (BPHS: an obstructed argala "will go astray").
+    """
+    order = {name: i for i, name in enumerate(ALL_GRAHAS)}
+
+    def _occ(sign_num: int) -> list[str]:
+        return sorted(occupants_by_sign_num.get(sign_num, []), key=lambda g: order.get(g, len(order)))
+
+    out: list[dict[str, Any]] = []
+    for argala_offset, obstruction_offset in ARGALA_OBSTRUCTION_PAIRS:
+        argala_sign = _argala_source_sign_num(ref_sign_num, argala_offset, reverse)
+        obstruction_sign = _argala_source_sign_num(ref_sign_num, obstruction_offset, reverse)
+        argala_grahas = _occ(argala_sign)
+        if not argala_grahas:
+            continue
+        obstructors = _occ(obstruction_sign)
+        vipareeta = _argala_vipareeta_condition(obstruction_offset, obstructors)
+        outcome, reason = _argala_outcome(len(argala_grahas), len(obstructors), vipareeta)
+        out.append({
+            "argala_offset": argala_offset,
+            "obstruction_offset": obstruction_offset,
+            "argala_sign_num": argala_sign,
+            "obstruction_sign_num": obstruction_sign,
+            "argala_grahas": argala_grahas,
+            "argala_count": len(argala_grahas),
+            "obstructor_grahas": obstructors,
+            "obstructor_count": len(obstructors),
+            "obstruction_present": bool(obstructors),
+            "count_relation": _argala_count_relation(len(argala_grahas), len(obstructors)),
+            "vipareeta_condition": vipareeta,
+            "outcome_by_count": outcome,
+            "outcome_reason": reason,
+            "outcome_any_obstructor": _argala_outcome_any_obstructor(bool(obstructors)),
+        })
+    return out
+
+
+def _build_argala_graha_rows(
+    varga_state: dict[str, Any],
+    varga: str,
+    chart_id: str, build_id: str, ayanamsha_id: str,
+    computed_at: str, eng_ver: str,
+) -> list[dict[str, Any]]:
+    """Graha-level argala (SS N-61, AR-1/AR-2/AR-6): one row per (target graha, source graha)
+    where the source stands in an argala sign of the target, D1 only.
+
+    The row carries the paired obstruction offset, the obstructing grahas, both counts, the
+    `count_direction` (reverse for a node as the target) and the count-only outcome. No row is
+    written for a pair outside the argala offsets or for an empty argala sign. Classification of a
+    graha as benefic or malefic is deliberately NOT stored (one L0 definition, read by L2).
+    """
+    if varga != "D1":
+        raise ValueError(f"argala_graha_natal is D1 only (AR-6); got varga={varga!r}")
+
+    occupants_by_sign: dict[int, list[str]] = {}
+    sign_of: dict[str, int] = {}
+    for g_name in ALL_GRAHAS:
+        gdata = varga_state.get(g_name)
+        if not gdata or not gdata.get("sign_num"):
+            continue
+        sign_of[g_name] = int(gdata["sign_num"])
+        occupants_by_sign.setdefault(sign_of[g_name], []).append(g_name)
+
+    rows: list[dict[str, Any]] = []
+    for target in ALL_GRAHAS:
+        if target not in sign_of:
+            continue
+        reverse = target in ARGALA_REVERSED_REFERENCES
+        direction = "reverse" if reverse else "forward"
+        t_code = PLANET_TO_SUBJECT.get(target, target.upper())
+        for reading in _argala_reading(sign_of[target], reverse, occupants_by_sign):
+            for source in reading["argala_grahas"]:
+                s_code = PLANET_TO_SUBJECT.get(source, source.upper())
+                offset = reading["argala_offset"]
+                rows.append(_base_row(
+                    "argala_graha_natal",
+                    f"{varga}_{t_code}",
+                    f"from_{s_code}_offset_{offset}",
+                    chart_id, ayanamsha_id, build_id, computed_at, eng_ver,
+                    value_num=float(reading["argala_count"]),
+                    value_text=reading["outcome_by_count"],       # the canonical reading
+                    value_jsonb={
+                        "varga": varga,
+                        "ayanamsha_id": ayanamsha_id,
+                        "target_graha": target,
+                        "source_graha": source,
+                        "target_sign_num": sign_of[target],
+                        "argala_offset": offset,
+                        "obstruction_offset": reading["obstruction_offset"],
+                        "argala_sign_num": reading["argala_sign_num"],
+                        "obstruction_sign_num": reading["obstruction_sign_num"],
+                        "count_direction": direction,
+                        "argala_grahas": reading["argala_grahas"],
+                        "argala_count": reading["argala_count"],
+                        "obstructor_grahas": reading["obstructor_grahas"],
+                        "obstructor_count": reading["obstructor_count"],
+                        "obstruction_present": reading["obstruction_present"],
+                        "count_relation": reading["count_relation"],
+                        "vipareeta_condition": reading["vipareeta_condition"],
+                        "outcome_by_count": reading["outcome_by_count"],
+                        "outcome_reason": reading["outcome_reason"],
+                        "outcome_any_obstructor": reading["outcome_any_obstructor"],
+                        "canonical_outcome": "outcome_by_count",
+                        "strength_comparison": None,
+                        "offset_class": "basic" if offset in ARGALA_BASIC_OFFSETS else "extended",
+                        "pair_rule": "2-12,4-10,11-3,5-9",
+                    },
+                    unit="graha_count",
+                    verif=UNVERIFIED_DEFAULT,
+                    source=f"ga_structural_writer._build_argala_graha_rows/{eng_ver}",
+                    citation_human=(
+                        f"{varga} {target} argala from {source} (offset {offset}, {direction} count): "
+                        f"{reading['argala_count']} causing, {reading['obstructor_count']} obstructing at offset "
+                        f"{reading['obstruction_offset']}: {reading['outcome_by_count']} ({ayanamsha_id})."
+                    ),
+                    provenance_text=(
+                        f"{ARGALA_CITATION_BLOCK} Canonical outcome (fact_value_text) is outcome_by_count. BPHS and "
+                        "Jaimini state the test as disjunctive: the argala prevails if its planets are stronger OR more "
+                        "numerous than the obstructors (bphs_pg0311_c01; Jaimini Su. 8). Only the numeric half is "
+                        "computable here, so the canonical field asserts a defeat never: unobstructed (no obstructor), "
+                        "argala_prevails (more causing grahas than obstructors, certain), otherwise undetermined "
+                        "(obstructors not fewer: a defeat needs the strength comparison, which is null, no sourced "
+                        "measure). count_relation is the plain count fact. vipareeta_condition (three or more natural "
+                        "malefics in the 3rd from the reference, bphs_pg0311_c01, Su. 6) forces undetermined; full "
+                        "vipareeta modelling is post-J1. outcome_any_obstructor (obstructed whenever obstruction_present, "
+                        "else unobstructed) is the named variant matching the worked example's 'countered' "
+                        "(bphs_pg0312_c01) and L1's virodha score. A node as the target counts argala and obstruction in "
+                        "reverse. Single derivation, no second pass."
+                    ),
+                ))
     return rows
 
 
@@ -4874,7 +5296,7 @@ _CF_INSERT_COLS = [
     "fact_value_text", "fact_value_num", "fact_value_jsonb",
     "unit", "citation_ref", "citation_human",
     "source_calculation", "verification_pass_status",
-    "engine_version", "computed_at",
+    "engine_version", "computed_at", "formula_provenance_text",
 ]
 
 _CF_INSERT_SQL = """
@@ -4884,8 +5306,8 @@ _CF_INSERT_SQL = """
        fact_value_text, fact_value_num, fact_value_jsonb,
        unit, citation_ref, citation_human,
        source_calculation, verification_pass_status,
-       engine_version, computed_at)
-    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+       engine_version, computed_at, formula_provenance_text)
+    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
     ON CONFLICT (chart_id, ayanamsha_id, fact_category, fact_subject, fact_key, build_id)
     WHERE formula_id IS NULL
     DO UPDATE SET
@@ -4897,11 +5319,16 @@ _CF_INSERT_SQL = """
       citation_human   = EXCLUDED.citation_human,
       verification_pass_status = EXCLUDED.verification_pass_status,
       engine_version   = EXCLUDED.engine_version,
-      computed_at      = EXCLUDED.computed_at
+      computed_at      = EXCLUDED.computed_at,
+      formula_provenance_text = EXCLUDED.formula_provenance_text
 """
 
 
 def _insert_chart_facts_rows(conn: Any, rows: list[dict[str, Any]]) -> int:
+    # Q-L1-16(a) choke point: reject a deprecated-alias / out-of-vocabulary tier BEFORE any
+    # delete or insert, however the string was built (literal, concatenation, constant).
+    for _r in rows:
+        emit_tier(_r["verification_pass_status"], table="chart_facts")
     # Idempotency: replace this chart's prior rows for the scope being written so a
     # rebuild under a new build_id replaces instead of accreting.
     replace_prior_chart_facts(conn, rows)
@@ -5678,12 +6105,24 @@ def _build_karaka_web_rows(
     reckoning — kn_rao_rahu_included (8-karaka, matching ga_sensitive's own
     _build_karaka_rows) — so the map is a coherent single-school 8→8 permutation.
     The dual-school karaka DATA itself is preserved intact at ga_sensitive.
+
+    ORDER INDEPENDENCE + DIRECTIONALITY (S-L1 karaka-web order fix): the old
+    builder read the karaka rows with no ORDER BY and tested the aspect only from
+    the earlier planet to the later one in that arbitrary order, so whether an
+    aspect row existed, and on which planet's subject, depended on read order.
+    Now: total ORDER BY on the read; planets visited in the fixed ALL_GRAHAS
+    order; every ORDERED pair is evaluated (row on subject X, key aspect_Y means
+    "X aspects Y"; conjunction, being symmetric, is emitted on both subjects).
     """
     rows: list[dict[str, Any]] = []
     _CANONICAL_KARAKA_SCHOOL = "kn_rao_rahu_included"
 
     try:
         with conn.cursor(row_factory=psycopg.rows.tuple_row) as cur:
+            # Total ORDER BY (fact_subject, fact_id): the stored role rows must
+            # reach Python in a fixed order, never in heap/plan order. This is
+            # the read-order half of the S-L1 karaka-web order fix (the pair
+            # loop below is independent of this order as well; belt and braces).
             cur.execute(
                 """
                 SELECT fact_subject, fact_value_text, fact_value_num, fact_value_jsonb
@@ -5693,6 +6132,7 @@ def _build_karaka_web_rows(
                   AND fact_category = 'karaka_chara_position'
                   AND fact_key = 'assigned_graha'
                   AND formula_id = %s
+                ORDER BY fact_subject, fact_id
                 """,
                 (chart_id, ayanamsha_id, _CANONICAL_KARAKA_SCHOOL),
             )
@@ -5704,24 +6144,53 @@ def _build_karaka_web_rows(
     if not karaka_rows:
         return rows
 
-    # Build role → planet mapping (single canonical school → 8 distinct planets)
+    # Build role → planet mapping (single canonical school → 8 distinct planets).
+    # Rows are re-sorted here on (role, planet) so the map and the planet→role
+    # label choice below are a pure function of the SET of stored rows, whatever
+    # order the driver (or a test stub) returned them in.
     karaka_map: dict[str, str] = {}
-    for row in karaka_rows:
+    for row in sorted(karaka_rows, key=lambda r: (str(r[0] or ""), str(r[1] or ""))):
         role = row[0]   # fact_subject = role name (ATMAKARAKA, etc.)
         planet = row[1]  # fact_value_text = planet name
         if role and planet:
             karaka_map[role] = planet
 
-    # Defensive: dedupe planets while preserving order — a single school is a
-    # clean 8→8 permutation, but a residual degree-tie must never re-introduce a
-    # duplicate-fact_id halt (the pair-loop keys rows on planet, not role).
-    karaka_planets = list(dict.fromkeys(karaka_map.values()))
+    # Defensive: dedupe planets — a single school is a clean 8→8 permutation, but
+    # a residual degree-tie must never re-introduce a duplicate-fact_id halt (the
+    # pair-loop keys rows on planet, not role).
+    #
+    # CANONICAL PAIR ORDER (S-L1 karaka-web order fix): planets are visited in the
+    # fixed nine-graha order ALL_GRAHAS (Sun, Moon, Mars, Mercury, Jupiter, Venus,
+    # Saturn, Rahu, Ketu); any name outside it sorts after, alphabetically. The
+    # output is therefore independent of the read order of the karaka rows.
+    _graha_rank = {g: i for i, g in enumerate(ALL_GRAHAS)}
+    karaka_planets = sorted(
+        set(karaka_map.values()),
+        key=lambda g: (_graha_rank.get(g, len(ALL_GRAHAS)), g),
+    )
     if len(karaka_planets) < 2:
         return rows
 
-    # Check each pair for conjunction or aspect in this varga
-    for i, p_a in enumerate(karaka_planets):
-        for p_b in karaka_planets[i + 1:]:
+    # Role label per planet: the alphabetically first role mapped to it (map is
+    # built in sorted-role order, so this is deterministic even in the degenerate
+    # two-roles-one-planet case).
+    planet_role: dict[str, str] = {}
+    for _role, _planet in karaka_map.items():
+        planet_role.setdefault(_planet, _role)
+
+    # DIRECTED relationships. Parashari graha-drishti is NOT symmetric (Mars 4/8,
+    # Jupiter 5/9, Saturn 3/10, nodes 5/9 cast aspects their targets do not cast
+    # back), so every ORDERED pair (p_a, p_b), p_a != p_b, is evaluated on its
+    # own: the row on subject p_a with key "aspect_<p_b>" means "p_a aspects
+    # p_b". A conjunction (same sign) is symmetric and is emitted on BOTH
+    # subjects (one row per ordered pair, key "conjunction_<other>"), so a
+    # per-subject read sees it whichever planet it starts from. Each ordered pair
+    # yields at most one row (conjunction wins over aspect, as before), so
+    # (subject, key) — hence fact_id — is unique by construction.
+    for p_a in karaka_planets:
+        for p_b in karaka_planets:
+            if p_a == p_b:
+                continue
             data_a = varga_state.get(p_a)
             data_b = varga_state.get(p_b)
             if not data_a or not data_b:
@@ -5737,7 +6206,7 @@ def _build_karaka_web_rows(
             if sign_a and sign_a == sign_b:
                 relationship = "conjunction"
             else:
-                # Check Parashari aspect from A to B.
+                # Parashari aspect cast BY p_a ONTO p_b (directional).
                 asp_offsets = get_graha_aspects(p_a)
                 for offset in asp_offsets:
                     target_house = ((house_a - 1 + offset - 1) % 12) + 1
@@ -5746,10 +6215,14 @@ def _build_karaka_web_rows(
                         break
 
             if relationship:
-                role_a = next((r for r, p in karaka_map.items() if p == p_a), p_a)
-                role_b = next((r for r, p in karaka_map.items() if p == p_b), p_b)
+                role_a = planet_role.get(p_a, p_a)
+                role_b = planet_role.get(p_b, p_b)
                 subj_a = PLANET_TO_SUBJECT.get(p_a, p_a.upper())
                 subj_b = PLANET_TO_SUBJECT.get(p_b, p_b.upper())
+                if relationship == "aspect":
+                    statement = f"{role_a} ({p_a}) aspects {role_b} ({p_b})"
+                else:
+                    statement = f"{role_a} ({p_a}) conjunct {role_b} ({p_b})"
                 rows.append(_base_row(
                     "karaka_web_per_varga",
                     f"{varga}_{subj_a}",
@@ -5763,6 +6236,7 @@ def _build_karaka_web_rows(
                         "role_a": role_a,
                         "role_b": role_b,
                         "relationship": relationship,
+                        "direction": "a_to_b" if relationship == "aspect" else "symmetric",
                         "house_a": house_a,
                         "house_b": house_b,
                         "ayanamsha_id": ayanamsha_id,
@@ -5770,10 +6244,7 @@ def _build_karaka_web_rows(
                     },
                     verif=UNVERIFIED_DEFAULT,
                     source=f"ga_structural.karaka_web_per_varga/{eng_ver}",
-                    citation_human=(
-                        f"{role_a} ({p_a}) {relationship} with {role_b} ({p_b}) "
-                        f"in {varga} ({ayanamsha_id})."
-                    ),
+                    citation_human=f"{statement} in {varga} ({ayanamsha_id}).",
                 ))
 
     return rows
@@ -6798,8 +7269,16 @@ def build_ga_structural(
             _validate_chart_output_complete(chart_output)
 
             # FORENSIC gate — native-anchored; asserted only for the native (Phase 3B).
-            if chart_id == CANONICAL_CHART_ID:
-                forensic_gate(chart_output, canonical_id)
+            # str(): the orchestrator hands a uuid.UUID, which never == the str constant, so the gate was skipped.
+            if str(chart_id) == CANONICAL_CHART_ID:
+                try:
+                    forensic_gate(chart_output, canonical_id)
+                except Exception:
+                    logger.error("FORENSIC gate ga_structural executed passed=False chart=canonical ayanamsha=%s", canonical_id)
+                    raise
+                logger.info("FORENSIC gate ga_structural executed passed=True chart=canonical ayanamsha=%s", canonical_id)
+            else:
+                logger.debug("FORENSIC gate ga_structural skipped chart=skipped-non-canonical ayanamsha=%s", canonical_id)
             summary["forensic_pass"] = True
 
             # Build all rows
@@ -6824,6 +7303,9 @@ def build_ga_structural(
             all_rows.extend(_build_esoteric_rows(chart_output, chart_id, build_id, canonical_id, computed_at, eng_ver))
             # _build_varga_aspect_rows includes argala/virodha per varga (all 30)
             all_rows.extend(_build_varga_aspect_rows(ay_conn, chart_output, chart_id, build_id, canonical_id, computed_at, eng_ver))
+            all_rows.extend(_build_argala_graha_rows(
+                _extract_chart_state(chart_output), "D1", chart_id, build_id, canonical_id, computed_at, eng_ver
+            ))
             all_rows.extend(_build_special_point_relationship_rows(
                 ay_conn, chart_output, chart_id, build_id, canonical_id, computed_at, eng_ver
             ))
@@ -7717,7 +8199,7 @@ def _build_bhava_chalit_divergence_rows(
     rows = []
 
     asc = chart_output.get("ascendant", {})
-    asc_long = float(asc.get("longitude", 0.0))
+    asc_long = _ascendant_longitude(asc)
 
     # 12 equal-bhava cusps: cusp k = (asc_long + (k-1)*30) % 360
     cusp_starts = [(asc_long + i * 30.0) % 360.0 for i in range(12)]
@@ -7977,6 +8459,7 @@ STRUCTURAL_SUB_BUILDERS: list[tuple[str, Callable[..., list[dict[str, Any]]], st
     ("special_state", _build_special_state_rows, "top_level", None),
     ("esoteric", _build_esoteric_rows, "top_level", None),
     ("varga_aspect", _build_varga_aspect_rows, "top_level", None),
+    ("argala_graha", _build_argala_graha_rows, "top_level", None),
     ("special_point_relationship", _build_special_point_relationship_rows, "top_level", None),
     ("graha_yuddha", _build_graha_yuddha_rows, "top_level", None),
     ("combustion_retrograde_relationship", _build_combustion_retrograde_relationship_rows, "top_level", None),
@@ -8036,8 +8519,16 @@ def build_ga_structural_substep(
     chart_output = compute_chart(inputs=bp, ayanamsha_id=adapter_id)
     _validate_chart_output_complete(chart_output)
 
-    if chart_id == CANONICAL_CHART_ID:
-        forensic_gate(chart_output, ayanamsha_id)
+    # str(): the orchestrator hands a uuid.UUID, which never == the str constant, so the gate was skipped.
+    if str(chart_id) == CANONICAL_CHART_ID:
+        try:
+            forensic_gate(chart_output, ayanamsha_id)
+        except Exception:
+            logger.error("FORENSIC gate ga_structural executed passed=False chart=canonical ayanamsha=%s", ayanamsha_id)
+            raise
+        logger.info("FORENSIC gate ga_structural executed passed=True chart=canonical ayanamsha=%s", ayanamsha_id)
+    else:
+        logger.debug("FORENSIC gate ga_structural skipped chart=skipped-non-canonical ayanamsha=%s", ayanamsha_id)
 
     if yoga_catalog is None:
         yoga_catalog = _load_yoga_catalog(conn)
@@ -8072,6 +8563,10 @@ def build_ga_structural_substep(
         "esoteric": lambda: _build_esoteric_rows(chart_output, chart_id, build_id, ayanamsha_id, computed_at, eng_ver),
         # _build_varga_aspect_rows includes argala/virodha per varga (all 30)
         "varga_aspect": lambda: _build_varga_aspect_rows(conn, chart_output, chart_id, build_id, ayanamsha_id, computed_at, eng_ver),
+        # graha-level argala (SS N-61): D1 only, from the same D1 state the sign matrix reads
+        "argala_graha": lambda: _build_argala_graha_rows(
+            d1_varga_state, "D1", chart_id, build_id, ayanamsha_id, computed_at, eng_ver
+        ),
         "special_point_relationship": lambda: _build_special_point_relationship_rows(
             conn, chart_output, chart_id, build_id, ayanamsha_id, computed_at, eng_ver
         ),
