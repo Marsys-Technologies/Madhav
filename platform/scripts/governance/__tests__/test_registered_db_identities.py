@@ -31,5 +31,19 @@ def test_schema_and_entries_are_closed_and_well_formed():
 
 def test_no_secret_shaped_content():
     raw = FILE.read_text(encoding="utf-8").lower()
-    for bad in ("password", "postgres://", "postgresql://", "host=", "pgpassword", "@127.0.0.1", ".sql.goog"):
+    for bad in ("password", "postgres://", "postgresql://", "host=", "pgpassword", "@127.0.0.1", ".sql.goog", "user=", "sslmode", "port="):
         assert bad not in raw
+    assert not re.search(r"\b\d{12,}\b", raw), "a long digit run (a raw system identifier?) must never be committed"
+    assert not re.search(r"\b\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\b", raw), "an IP address must never be committed"
+
+
+def test_one_production_entry_per_database_and_the_evidence_abbreviation_matches_the_hash():
+    d = _doc()
+    prod = [e for e in d["entries"] if e["role"] == "production"]
+    assert len({e["database"] for e in prod}) == len(prod), "two production entries for one database"
+    for e in prod:
+        h = e["system_id_sha256"]
+        abbr = f"{h[:8]}...{h[-4:]}"
+        assert sum(abbr in line for line in e["evidence"]) >= 2, "each independent read must quote the registered hash (abbreviated)"
+        assert len(set(e["evidence"])) == len(e["evidence"]), "identical evidence lines are not two independent reads"
+        assert e["hash_definition"] == "sha256('nikasha-db-identity/1:' + system_identifier) as lowercase hex"
