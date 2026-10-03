@@ -740,6 +740,14 @@ def _evidence_pointer_ok(ev) -> bool:
         return False
 
 
+def _carriage_pointer_strict(label: str, ev) -> None:
+    """The S3 pointer rules for a carriage spec's evidence pointers (effect_clauses_evidence, condition_evidence, an escape hatch's, a repair's): no control / invisible character, a
+    `:LINE` inside the file, an `unverified:` pointer states a real description. They are not N/A releases (the carriage's own `evidence` is), so `unverified:` stays allowed."""
+    bad = _s3_evidence_problem(ev, allow_unverified=True)
+    if bad:
+        raise DeclarationsError(f"{label} {ev!r} {bad}")
+
+
 def validate_carriage_declaration(where: str, car: dict, e: dict) -> None:
     """Raises DeclarationsError when the asset's declared carriage CHECK is malformed or contradicts N-73's nature rule."""
     nature = car.get("nature")
@@ -753,6 +761,15 @@ def validate_carriage_declaration(where: str, car: dict, e: dict) -> None:
     if not _evidence_pointer_ok(car["evidence"]):
         raise DeclarationsError(f"{where}.carriage.evidence {car['evidence']!r} is not an existing repo-relative file (optionally with :line); a "
                                 f"pointer that cannot be checked must say so: 'unverified:<where it is recorded>'")
+    # E6.1 follow-up (S2 strictness, matching S3's `_s3_common`): the same text and pointer rules as vocab_alias / ldgr_source. `why` is a real one-line statement (no control or
+    # invisible character, at least 15 characters and 3 words, not led or dominated by a placeholder word: a long sentence may mention NULL, as the latta's does); `evidence` has no control character, a `:LINE` inside the file, and an `unverified:` pointer states
+    # a real description (10 characters, 2 words). A ratified_judgment carriage RELEASES Carr.D1-D3 to N/A, so (as an S3 N/A release) it may not rest on an `unverified:` pointer.
+    bad = _s3_text_problem(car["why"], min_chars=15, min_words=3, placeholder="lead")
+    if bad:
+        raise DeclarationsError(f"{where}.carriage.why {bad}")
+    bad = _s3_evidence_problem(car["evidence"], allow_unverified=nature != RATIFIED_JUDGMENT)
+    if bad:
+        raise DeclarationsError(f"{where}.carriage.evidence {car['evidence']!r} {bad}")
     if isinstance(e.get("terminal_by_construction"), str) and e["terminal_by_construction"].strip():
         raise DeclarationsError(f"{where}: a declared carriage check and terminal_by_construction contradict each other (an asset that "
                                 f"declares a carriage check carries something from a source; declare one or the other)")
@@ -788,10 +805,13 @@ def validate_carriage_declaration(where: str, car: dict, e: dict) -> None:
         if not _evidence_pointer_ok(spec["effect_clauses_evidence"]):
             raise DeclarationsError(f"{where}.carriage.spec.effect_clauses_evidence {spec['effect_clauses_evidence']!r} is not an existing "
                                     "repo-relative file (optionally :line) or 'unverified:<where>'")
+        _carriage_pointer_strict(f"{where}.carriage.spec.effect_clauses_evidence", spec["effect_clauses_evidence"])
         for ef in spec.get("extra_fields", []):
             if ef.get("kind") == "passage_text" and not _evidence_pointer_ok(ef["condition_evidence"]):
                 raise DeclarationsError(f"{where}.carriage.spec.extra_fields[{ef['column']}].condition_evidence {ef['condition_evidence']!r} is "
                                         "not an existing repo-relative file (optionally :line) or 'unverified:<where>' (existence only)")
+            if ef.get("kind") == "passage_text":
+                _carriage_pointer_strict(f"{where}.carriage.spec.extra_fields[{ef['column']}].condition_evidence", ef["condition_evidence"])
             hatches = []
             if ef.get("kind") == "passage_text":
                 for d in [ef["condition"], *ef.get("by_claimant", {}).values()]:
@@ -801,11 +821,13 @@ def validate_carriage_declaration(where: str, car: dict, e: dict) -> None:
                     raise DeclarationsError(f"{where}.carriage.spec.extra_fields[{ef['column']}] escape hatch {h['text']!r}: evidence "
                                             f"{h['evidence']!r} is not an existing repo-relative file (optionally :line) or "
                                             "'unverified:<where>' (existence only)")
+                _carriage_pointer_strict(f"{where}.carriage.spec.extra_fields[{ef['column']}] escape hatch {h['text']!r}: evidence", h["evidence"])
             for rp in ef.get("repairs", []) if ef.get("kind") == "passage_text" else []:
                 if not _evidence_pointer_ok(rp["evidence"]):
                     raise DeclarationsError(f"{where}.carriage.spec.extra_fields[{ef['column']}].repairs[{rp['from']!r}].evidence "
                                             f"{rp['evidence']!r} is not an existing repo-relative file (optionally :line) or "
                                             "'unverified:<where>' (existence only)")
+                _carriage_pointer_strict(f"{where}.carriage.spec.extra_fields[{ef['column']}].repairs[{rp['from']!r}].evidence", rp["evidence"])
 # E6 S3 (SS N-72 S3, N-73 (1)/(4), N-74 (b)): two more per-asset DECLARATIONS, each reviewed and carrying evidence and ONE line of reason. `vocab_alias`
 # declares the asset's alias class (measured against bg_ontology) or that it has none (`no_alias_class`); `ldgr_source` names the column that carries
 # the asset's classical source and the citation_state it stands on, or declares that the asset states no classical rule or cited fact
@@ -832,9 +854,12 @@ _S3_PLACEHOLDER_WORDS = frozenset({"tbd", "todo", "tba", "fixme", "xxx", "placeh
 _S3_WORD = re.compile(r"[^\W_]+(?:[./'-][^\W_]+)*")
 
 
-def _s3_text_problem(v, *, min_chars: int, min_words: int):
+def _s3_text_problem(v, *, min_chars: int, min_words: int, placeholder: str = "any"):
     """None when `v` is a real one-line text: a str with no control / format / line-separator character (\\r, \\n, U+0085, U+2028/9, zero-width ...), at least
-    `min_chars` characters and `min_words` words once trimmed, and no placeholder word (TBD, todo, N/A ...); else why it is not."""
+    `min_chars` characters and `min_words` words once trimmed, and no placeholder word (TBD, todo, N/A ...); else why it is not.
+    `placeholder="any"` (S3's rule) refuses a placeholder word ANYWHERE. `placeholder="lead"` (the carriage `why`, E6.1 follow-up) is for a long explanatory sentence that may
+    legitimately MENTION a word like NULL or none ("content_sa is NULL"): it refuses a statement that LEADS with a placeholder word or whose words, placeholders taken out, fall
+    below `min_words` (so 'TBD later', 'N/A', 'tbd tbd tbd' and 'TODO fill this in' are still refused)."""
     if not isinstance(v, str):
         return "is not a string"
     if v != v.strip():
@@ -846,6 +871,11 @@ def _s3_text_problem(v, *, min_chars: int, min_words: int):
     words = _S3_WORD.findall(v)
     if len(v) < min_chars or len(words) < min_words:
         return f"is too short to be a real statement (need at least {min_chars} characters and {min_words} words)"
+    if placeholder == "lead":
+        real = [w for w in words if w.casefold() not in _S3_PLACEHOLDER_WORDS]
+        if words and (words[0].casefold() in _S3_PLACEHOLDER_WORDS or len(real) < min_words):
+            return "is a placeholder, not a reason (it leads with a placeholder word or is mostly placeholder words: TBD / todo / placeholder / n/a ...)"
+        return None
     if any(w.casefold() in _S3_PLACEHOLDER_WORDS for w in words):
         return "contains a placeholder word (TBD / todo / placeholder / n/a ...)"
     return None
