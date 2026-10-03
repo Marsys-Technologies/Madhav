@@ -1,0 +1,556 @@
+{
+ "table": "phala_anchors",
+ "columns": [
+  {
+   "column_name": "anchor_id",
+   "data_type": "uuid",
+   "is_nullable": "NO",
+   "column_default": ""
+  },
+  {
+   "column_name": "chart_id",
+   "data_type": "uuid",
+   "is_nullable": "NO",
+   "column_default": ""
+  },
+  {
+   "column_name": "anchor_source",
+   "data_type": "text",
+   "is_nullable": "NO",
+   "column_default": ""
+  },
+  {
+   "column_name": "convergence_id",
+   "data_type": "bigint",
+   "is_nullable": "YES",
+   "column_default": ""
+  },
+  {
+   "column_name": "discovery_id",
+   "data_type": "uuid",
+   "is_nullable": "YES",
+   "column_default": ""
+  },
+  {
+   "column_name": "bhavishya_id",
+   "data_type": "bigint",
+   "is_nullable": "YES",
+   "column_default": ""
+  },
+  {
+   "column_name": "signal_id",
+   "data_type": "uuid",
+   "is_nullable": "YES",
+   "column_default": ""
+  },
+  {
+   "column_name": "subsystem_source",
+   "data_type": "text",
+   "is_nullable": "YES",
+   "column_default": ""
+  },
+  {
+   "column_name": "event_type",
+   "data_type": "text",
+   "is_nullable": "YES",
+   "column_default": ""
+  },
+  {
+   "column_name": "direction",
+   "data_type": "text",
+   "is_nullable": "NO",
+   "column_default": ""
+  },
+  {
+   "column_name": "domain",
+   "data_type": "text",
+   "is_nullable": "NO",
+   "column_default": ""
+  },
+  {
+   "column_name": "horizon_tier",
+   "data_type": "text",
+   "is_nullable": "YES",
+   "column_default": ""
+  },
+  {
+   "column_name": "window_start",
+   "data_type": "date",
+   "is_nullable": "YES",
+   "column_default": ""
+  },
+  {
+   "column_name": "peak_date",
+   "data_type": "date",
+   "is_nullable": "YES",
+   "column_default": ""
+  },
+  {
+   "column_name": "window_end",
+   "data_type": "date",
+   "is_nullable": "YES",
+   "column_default": ""
+  },
+  {
+   "column_name": "magnitude",
+   "data_type": "text",
+   "is_nullable": "YES",
+   "column_default": ""
+  },
+  {
+   "column_name": "magnitude_basis",
+   "data_type": "text",
+   "is_nullable": "YES",
+   "column_default": ""
+  },
+  {
+   "column_name": "confidence_low",
+   "data_type": "double precision",
+   "is_nullable": "YES",
+   "column_default": ""
+  },
+  {
+   "column_name": "confidence_high",
+   "data_type": "double precision",
+   "is_nullable": "YES",
+   "column_default": ""
+  },
+  {
+   "column_name": "confidence_basis",
+   "data_type": "text",
+   "is_nullable": "NO",
+   "column_default": "'structural_not_yet_empirical'::text"
+  },
+  {
+   "column_name": "karmic_frame",
+   "data_type": "text",
+   "is_nullable": "YES",
+   "column_default": ""
+  },
+  {
+   "column_name": "karmic_note",
+   "data_type": "text",
+   "is_nullable": "YES",
+   "column_default": ""
+  },
+  {
+   "column_name": "malleability",
+   "data_type": "text",
+   "is_nullable": "YES",
+   "column_default": ""
+  },
+  {
+   "column_name": "counterfactual_jsonb",
+   "data_type": "jsonb",
+   "is_nullable": "YES",
+   "column_default": ""
+  },
+  {
+   "column_name": "contradiction_jsonb",
+   "data_type": "jsonb",
+   "is_nullable": "YES",
+   "column_default": ""
+  },
+  {
+   "column_name": "causal_chain_jsonb",
+   "data_type": "jsonb",
+   "is_nullable": "YES",
+   "column_default": ""
+  },
+  {
+   "column_name": "precedent_refs_jsonb",
+   "data_type": "jsonb",
+   "is_nullable": "YES",
+   "column_default": ""
+  },
+  {
+   "column_name": "dasha_consensus_count",
+   "data_type": "smallint",
+   "is_nullable": "YES",
+   "column_default": ""
+  },
+  {
+   "column_name": "school_consensus_jsonb",
+   "data_type": "jsonb",
+   "is_nullable": "YES",
+   "column_default": ""
+  },
+  {
+   "column_name": "ayanamsha_robustness",
+   "data_type": "smallint",
+   "is_nullable": "YES",
+   "column_default": ""
+  },
+  {
+   "column_name": "falsifier",
+   "data_type": "text",
+   "is_nullable": "NO",
+   "column_default": ""
+  },
+  {
+   "column_name": "derivation_ledger_jsonb",
+   "data_type": "jsonb",
+   "is_nullable": "NO",
+   "column_default": ""
+  },
+  {
+   "column_name": "source_citation",
+   "data_type": "text",
+   "is_nullable": "NO",
+   "column_default": ""
+  },
+  {
+   "column_name": "computed_at",
+   "data_type": "timestamp with time zone",
+   "is_nullable": "NO",
+   "column_default": "now()"
+  },
+  {
+   "column_name": "posterior",
+   "data_type": "double precision",
+   "is_nullable": "YES",
+   "column_default": ""
+  },
+  {
+   "column_name": "lift_vector_jsonb",
+   "data_type": "jsonb",
+   "is_nullable": "YES",
+   "column_default": ""
+  },
+  {
+   "column_name": "structured_falsifier_jsonb",
+   "data_type": "jsonb",
+   "is_nullable": "YES",
+   "column_default": ""
+  }
+ ],
+ "has_chart_id": true,
+ "rows_by_chart": [
+  {
+   "chart_id": "1c826d5a-41cb-4450-b4dc-59d440e5f75a",
+   "n": "56"
+  },
+  {
+   "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+   "n": "4"
+  }
+ ],
+ "chart_nonnull": {
+  "_total": "4",
+  "anchor_id": "4",
+  "chart_id": "4",
+  "anchor_source": "4",
+  "convergence_id": "0",
+  "discovery_id": "4",
+  "bhavishya_id": "0",
+  "signal_id": "0",
+  "subsystem_source": "0",
+  "event_type": "4",
+  "direction": "4",
+  "domain": "4",
+  "horizon_tier": "4",
+  "window_start": "4",
+  "peak_date": "0",
+  "window_end": "4",
+  "magnitude": "4",
+  "magnitude_basis": "4",
+  "confidence_low": "4",
+  "confidence_high": "4",
+  "confidence_basis": "4",
+  "karmic_frame": "0",
+  "karmic_note": "0",
+  "malleability": "4",
+  "counterfactual_jsonb": "4",
+  "contradiction_jsonb": "4",
+  "causal_chain_jsonb": "4",
+  "precedent_refs_jsonb": "4",
+  "dasha_consensus_count": "4",
+  "school_consensus_jsonb": "4",
+  "ayanamsha_robustness": "4",
+  "falsifier": "4",
+  "derivation_ledger_jsonb": "4",
+  "source_citation": "4",
+  "computed_at": "4",
+  "posterior": "4",
+  "lift_vector_jsonb": "4",
+  "structured_falsifier_jsonb": "4"
+ },
+ "value_counts": {
+  "anchor_source": [
+   {
+    "v": "discovery",
+    "n": "4"
+   }
+  ],
+  "subsystem_source": [
+   {
+    "v": "",
+    "n": "4"
+   }
+  ],
+  "event_type": [
+   {
+    "v": "career_discovery_event",
+    "n": "1"
+   },
+   {
+    "v": "character_discovery_event",
+    "n": "1"
+   },
+   {
+    "v": "health_discovery_event",
+    "n": "1"
+   },
+   {
+    "v": "relationship_discovery_event",
+    "n": "1"
+   }
+  ],
+  "direction": [
+   {
+    "v": "elevated",
+    "n": "4"
+   }
+  ],
+  "domain": [
+   {
+    "v": "career",
+    "n": "1"
+   },
+   {
+    "v": "character",
+    "n": "1"
+   },
+   {
+    "v": "health",
+    "n": "1"
+   },
+   {
+    "v": "relationship",
+    "n": "1"
+   }
+  ],
+  "horizon_tier": [
+   {
+    "v": "near",
+    "n": "4"
+   }
+  ],
+  "magnitude": [
+   {
+    "v": "minor",
+    "n": "4"
+   }
+  ],
+  "magnitude_basis": [
+   {
+    "v": "rarity_years=1.0yr \u00d7 effective_score=0.928 = 0.093 \u2192 minor",
+    "n": "2"
+   },
+   {
+    "v": "rarity_years=1.0yr \u00d7 effective_score=1.080 = 0.108 \u2192 minor",
+    "n": "1"
+   },
+   {
+    "v": "rarity_years=1.0yr \u00d7 effective_score=1.200 = 0.120 \u2192 minor",
+    "n": "1"
+   }
+  ],
+  "confidence_basis": [
+   {
+    "v": "structural_not_yet_empirical",
+    "n": "4"
+   }
+  ],
+  "karmic_frame": [
+   {
+    "v": "",
+    "n": "4"
+   }
+  ],
+  "karmic_note": [
+   {
+    "v": "",
+    "n": "4"
+   }
+  ],
+  "malleability": [
+   {
+    "v": "influenceable",
+    "n": "2"
+   },
+   {
+    "v": "semi_influenceable",
+    "n": "2"
+   }
+  ],
+  "dasha_consensus_count": [
+   {
+    "v": "0",
+    "n": "4"
+   }
+  ],
+  "ayanamsha_robustness": [
+   {
+    "v": "3",
+    "n": "4"
+   }
+  ],
+  "falsifier": [
+   {
+    "v": "REFUTED if no career event of magnitude \u2265 minor is independently documented by 2026-11-10. CONFIRMED if a career-domain event of matching magnitude is recorded in the Life-Event Log before 2026-11-10. Attestation: lel_entry.",
+    "n": "1"
+   },
+   {
+    "v": "REFUTED if no character event of magnitude \u2265 minor is independently documented by 2026-11-10. CONFIRMED if a character-domain event of matching magnitude is recorded in the Life-Event Log before 2026-11-10. Attestation: lel_entry.",
+    "n": "1"
+   },
+   {
+    "v": "REFUTED if no health event of magnitude \u2265 minor is independently documented by 2026-11-10. CONFIRMED if a health-domain event of matching magnitude is recorded in the Life-Event Log before 2026-11-10. Attestation: lel_entry.",
+    "n": "1"
+   },
+   {
+    "v": "REFUTED if no relationship event of magnitude \u2265 minor is independently documented by 2026-11-10. CONFIRMED if a relationship-domain event of matching magnitude is recorded in the Life-Event Log before 2026-11-10. Attestation: lel_entry.",
+    "n": "1"
+   }
+  ]
+ },
+ "constraints": [
+  {
+   "conname": "phala_anchors_anchor_source_check",
+   "contype": "c",
+   "def": "CHECK ((anchor_source = ANY (ARRAY['convergence'::text, 'discovery'::text, 'bhavishya'::text, 'subsystem'::text])))"
+  },
+  {
+   "conname": "phala_anchors_ayanamsha_robustness_check",
+   "contype": "c",
+   "def": "CHECK (((ayanamsha_robustness >= 0) AND (ayanamsha_robustness <= 5)))"
+  },
+  {
+   "conname": "phala_anchors_confidence_high_check",
+   "contype": "c",
+   "def": "CHECK (((confidence_high >= (0.0)::double precision) AND (confidence_high <= (0.80)::double precision)))"
+  },
+  {
+   "conname": "phala_anchors_confidence_low_check",
+   "contype": "c",
+   "def": "CHECK (((confidence_low >= (0.0)::double precision) AND (confidence_low <= (0.80)::double precision)))"
+  },
+  {
+   "conname": "phala_anchors_direction_check",
+   "contype": "c",
+   "def": "CHECK ((direction = ANY (ARRAY['elevated'::text, 'suppressed'::text, 'mixed'::text])))"
+  },
+  {
+   "conname": "phala_anchors_domain_canonical",
+   "contype": "c",
+   "def": "CHECK ((domain = ANY (ARRAY['career'::text, 'wealth'::text, 'relationship'::text, 'progeny'::text, 'health'::text, 'education'::text, 'family'::text, 'residence'::text, 'travel'::text, 'spirituality'::text, 'character'::text, 'transition'::text, 'general'::text])))"
+  },
+  {
+   "conname": "phala_anchors_horizon_tier_check",
+   "contype": "c",
+   "def": "CHECK ((horizon_tier = ANY (ARRAY['near'::text, 'lifetime'::text])))"
+  },
+  {
+   "conname": "phala_anchors_magnitude_check",
+   "contype": "c",
+   "def": "CHECK ((magnitude = ANY (ARRAY['minor'::text, 'moderate'::text, 'major'::text, 'pivotal'::text])))"
+  },
+  {
+   "conname": "phala_anchors_malleability_check",
+   "contype": "c",
+   "def": "CHECK ((malleability = ANY (ARRAY['fated'::text, 'semi_influenceable'::text, 'influenceable'::text])))"
+  },
+  {
+   "conname": "phala_anchors_posterior_check",
+   "contype": "c",
+   "def": "CHECK (((posterior >= (0.0)::double precision) AND (posterior <= (1.0)::double precision)))"
+  },
+  {
+   "conname": "phala_anchors_subsystem_source_check",
+   "contype": "c",
+   "def": "CHECK ((subsystem_source = ANY (ARRAY['medical'::text, 'vastu'::text, 'nakshatra'::text, 'yoga'::text, 'sade_sati'::text, 'tajaka'::text])))"
+  },
+  {
+   "conname": "phala_anchors_bhavishya_id_fkey",
+   "contype": "f",
+   "def": "FOREIGN KEY (bhavishya_id) REFERENCES kala_bhavishya(id) ON DELETE SET NULL"
+  },
+  {
+   "conname": "phala_anchors_convergence_id_fkey",
+   "contype": "f",
+   "def": "FOREIGN KEY (convergence_id) REFERENCES kala_convergence(convergence_id) ON DELETE CASCADE"
+  },
+  {
+   "conname": "phala_anchors_pkey",
+   "contype": "p",
+   "def": "PRIMARY KEY (anchor_id)"
+  }
+ ],
+ "indexes": [
+  {
+   "indexname": "idx_phala_anchors_convergence_id_fk",
+   "indexdef": "CREATE INDEX idx_phala_anchors_convergence_id_fk ON public.phala_anchors USING btree (convergence_id)"
+  },
+  {
+   "indexname": "phala_anchors_pkey",
+   "indexdef": "CREATE UNIQUE INDEX phala_anchors_pkey ON public.phala_anchors USING btree (anchor_id)"
+  },
+  {
+   "indexname": "phala_anchors_natural_key",
+   "indexdef": "CREATE UNIQUE INDEX phala_anchors_natural_key ON public.phala_anchors USING btree (chart_id, anchor_source, domain, COALESCE(convergence_id, ('-1'::integer)::bigint), COALESCE(discovery_id, '00000000-0000-0000-0000-000000000000'::uuid), COALESCE(bhavishya_id, ('-1'::integer)::bigint))"
+  },
+  {
+   "indexname": "phala_anchors_chart_idx",
+   "indexdef": "CREATE INDEX phala_anchors_chart_idx ON public.phala_anchors USING btree (chart_id)"
+  },
+  {
+   "indexname": "phala_anchors_domain_idx",
+   "indexdef": "CREATE INDEX phala_anchors_domain_idx ON public.phala_anchors USING btree (chart_id, domain)"
+  },
+  {
+   "indexname": "phala_anchors_peak_date_idx",
+   "indexdef": "CREATE INDEX phala_anchors_peak_date_idx ON public.phala_anchors USING btree (chart_id, peak_date)"
+  },
+  {
+   "indexname": "phala_anchors_malleability_idx",
+   "indexdef": "CREATE INDEX phala_anchors_malleability_idx ON public.phala_anchors USING btree (chart_id, malleability) WHERE (malleability = 'influenceable'::text)"
+  },
+  {
+   "indexname": "idx_phala_anchors_domain",
+   "indexdef": "CREATE INDEX idx_phala_anchors_domain ON public.phala_anchors USING btree (chart_id, domain)"
+  }
+ ],
+ "referenced_by": [
+  {
+   "tbl": "phala_muhurta",
+   "conname": "phala_muhurta_linked_anchor_id_fkey",
+   "def": "FOREIGN KEY (linked_anchor_id) REFERENCES phala_anchors(anchor_id) ON DELETE SET NULL"
+  },
+  {
+   "tbl": "phala_sankrama",
+   "conname": "phala_sankrama_source_anchor_id_fkey",
+   "def": "FOREIGN KEY (source_anchor_id) REFERENCES phala_anchors(anchor_id) ON DELETE CASCADE"
+  },
+  {
+   "tbl": "phala_suddha_sodhana",
+   "conname": "phala_suddha_sodhana_anchor_id_fkey",
+   "def": "FOREIGN KEY (anchor_id) REFERENCES phala_anchors(anchor_id) ON DELETE CASCADE"
+  },
+  {
+   "tbl": "phala_mitigation",
+   "conname": "phala_mitigation_linked_anchor_id_fkey",
+   "def": "FOREIGN KEY (linked_anchor_id) REFERENCES phala_anchors(anchor_id) ON DELETE SET NULL"
+  },
+  {
+   "tbl": "phala_sodhana",
+   "conname": "phala_sodhana_anchor_id_fkey",
+   "def": "FOREIGN KEY (anchor_id) REFERENCES phala_anchors(anchor_id) ON DELETE CASCADE"
+  },
+  {
+   "tbl": "phala_pramana",
+   "conname": "phala_pramana_anchor_id_fkey",
+   "def": "FOREIGN KEY (anchor_id) REFERENCES phala_anchors(anchor_id) ON DELETE CASCADE"
+  }
+ ]
+}

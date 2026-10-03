@@ -1,6 +1,6 @@
 {
- "version": "1.8.0",
- "description": "Per-asset declared FACTS for the asset census (N-22 ruling; SS decisions 2026-09-30). A kind is a fact, never a rule: it never makes a gate N/A by itself. null = UNKNOWN, never a value; prose_fields null = undeclared (Null/Narr read NO_DETECTOR), never 'no prose'; an empty list [] is a positive declaration (this asset's writer composes no prose, e.g. a reference corpus that stores source text as loaded) and, like every declared prose_fields, needs an evidence.prose_fields pointer to the writer code read (file:line); a JSONB narrative is declared as 'column.$.key' paths, where a key may carry one [*] for every element of an array ('column.$.items[*].reason'; file 1.6.0; no index numbers, no [*][*]) (Narr concerns GENERATED prose, CLAUDE.md N.7; SS ruling 2026-10-01). evidence.prose_fields must cite writer code as path:line (py/ts/tsx; a .sql line or a test path is rejected) and every non-null prose_fields declaration carries evidence_kind 'writer' (the 13 earlier DDL-evidence declarations were re-audited against writer code: 11 now carry writer evidence, 2 are null; none carries 'ddl'); an orphan evidence pointer on a null prose_fields is rejected. carriage.served_surface: true ONLY with read_evidence (repo-relative path:line of a real non-test SQL FROM/JOIN read of the asset's own table, in a served capability/tool; for a shared table the served query must filter that asset's rows) + read_table; a comment, label, allow-list entry or stub is not a read, null where the only evidence is a negative scan, a comment, a provenance label or an unavailable stub (a negative scan is not proof; CLAUDE.md N.8/N.7.6); never false without proof. dag_dependents is NOT declared (measured: census blocking_radius). terminal_by_construction (a string pointer; none declared yet) is the only basis for a downstream-carriage False. cross_asset_writes: list of 'table.column' an asset writes outside its own table ([] = declared none; null = unknown). Narr rule for L1 fact rows (SS 2026-10-01): fact_value_text is the datum; citation_human is the sentence; verbalising an L1 fact value states a computed value, so a writer that composes citation_human from a fact value is declared (per writer, with the composed sites cited); the shared fact_value_text / formula_provenance_text columns stay undeclared (their strings are mixed values and labels). A citation that is only an identity (an entity name, a period lord-chain/level/ayanamsha, a fixed ordinal) is not narration. Version 1.7.0 (SS N-72 S2, N-73): the per-asset `carriage` object may also declare the asset's ONE carriage check ({applies: D1|D2|D3, nature: transcription|computation|derivation|ratified_judgment, why, evidence, spec (D1), citation_state (transcription), ruling (ratified_judgment)}); the validator refuses a nature/check mismatch (transcription -> D1, computation -> D3, derivation -> D2). No asset declares one yet: an asset without it reads exactly as before. Version 1.8.0 (SS N-72 S3, N-73 (1)/(4), N-74 (b)): two more optional per-asset objects, each reviewed and carrying `why` (ONE line) and `evidence` (an existing repo-relative file[:line], or `unverified:<where>`). `vocab_alias` is {na: no_alias_class} (the asset has no vocabulary that could carry synonyms; refused at measure time where the table carries the documented alias column `synonyms`, N-73 (4)) or {class: planet, vocab_column, alias_column?} (the vocabulary column is measured against bg_ontology: canonical id and display name, and the ontology synonyms when an alias column is declared; without an alias_column the check reads at most PARTIAL, identity only, unless the declaration states `identity_only: true` with an `identity_only_why`; refused beside an alias-like column such as `synonyms`). `ldgr_source` is {na: no_classical_claim} (the asset states no classical rule or cited fact; refused where the asset declares a transcription carriage or the table carries a recognised citation column) or {source_column, citation_state: sourced|sourced_ocr_unverified|unsourced|refuted} (the column that carries the source and the state it stands on; an unsourced or refuted state can never read PASS, and a placeholder such as `not traced` is not a source, N-73 (1)). `why` must be a real one-line reason (at least 15 characters and 3 words, no placeholder word, no control or line-separator character); `evidence` a line within the real line count of an existing repo file, or `unverified:<a real description>` (never for an N/A release). The declared Ldgr check reads the whole table (every chart of a chart-scoped asset; for a shared table, rows other assets wrote), and only a text, varchar, text[] or json(b) column can carry a source. N/A is reached only through these declared words, never from a column pattern. No asset declares either yet: an asset without them reads exactly as before.",
+ "version": "1.13.0",
+ "description": "Per-asset declared FACTS for the asset census (N-22 ruling; SS decisions 2026-09-30). A kind is a fact, never a rule: it never makes a gate N/A by itself. null = UNKNOWN, never a value; prose_fields null = undeclared (Null/Narr read NO_DETECTOR), never 'no prose'; an empty list [] is a positive declaration (this asset's writer composes no prose, e.g. a reference corpus that stores source text as loaded) and, like every declared prose_fields, needs an evidence.prose_fields pointer to the writer code read (file:line); a JSONB narrative is declared as 'column.$.key' paths, where a key may carry one [*] for every element of an array ('column.$.items[*].reason'; file 1.6.0; no index numbers, no [*][*]) (Narr concerns GENERATED prose, CLAUDE.md N.7; SS ruling 2026-10-01). evidence.prose_fields must cite writer code as path:line (py/ts/tsx; a .sql line or a test path is rejected) and every non-null prose_fields declaration carries evidence_kind 'writer' (the 13 earlier DDL-evidence declarations were re-audited against writer code: 11 now carry writer evidence, 2 are null; none carries 'ddl'); an orphan evidence pointer on a null prose_fields is rejected. carriage.served_surface: true ONLY with read_evidence (repo-relative path:line of a real non-test SQL FROM/JOIN read of the asset's own table, in a served capability/tool; for a shared table the served query must filter that asset's rows) + read_table; a comment, label, allow-list entry or stub is not a read, null where the only evidence is a negative scan, a comment, a provenance label or an unavailable stub (a negative scan is not proof; CLAUDE.md N.8/N.7.6); never false without proof. dag_dependents is NOT declared (measured: census blocking_radius). terminal_by_construction (a string pointer; none declared yet) is the only basis for a downstream-carriage False. cross_asset_writes: list of 'table.column' an asset writes outside its own table ([] = declared none; null = unknown). Narr rule for L1 fact rows (SS 2026-10-01): fact_value_text is the datum; citation_human is the sentence; verbalising an L1 fact value states a computed value, so a writer that composes citation_human from a fact value is declared (per writer, with the composed sites cited); the shared fact_value_text / formula_provenance_text columns stay undeclared (their strings are mixed values and labels). A citation that is only an identity (an entity name, a period lord-chain/level/ayanamsha, a fixed ordinal) is not narration. Version 1.7.0 (SS N-72 S2, N-73): the per-asset `carriage` object may also declare the asset's ONE carriage check ({applies: D1|D2|D3, nature: transcription|computation|derivation|ratified_judgment, why, evidence, spec (D1), citation_state (transcription), ruling (ratified_judgment)}); the validator refuses a nature/check mismatch (transcription -> D1, computation -> D3, derivation -> D2). As of 1.10.0 only bg_phaladeepika_latta declares one: an asset without it reads exactly as before. Version 1.8.0 (SS N-72 S3, N-73 (1)/(4), N-74 (b)): two more optional per-asset objects, each reviewed and carrying `why` (ONE line) and `evidence` (an existing repo-relative file[:line], or `unverified:<where>`). `vocab_alias` is {na: no_alias_class} (the asset has no vocabulary that could carry synonyms; refused at measure time where the table carries the documented alias column `synonyms`, N-73 (4)) or {class: planet, vocab_column, alias_column?} (the vocabulary column is measured against bg_ontology: canonical id and display name, and the ontology synonyms when an alias column is declared; without an alias_column the check reads at most PARTIAL, identity only, unless the declaration states `identity_only: true` with an `identity_only_why`; refused beside an alias-like column such as `synonyms`). `ldgr_source` is {na: no_classical_claim} (the asset states no classical rule or cited fact; refused where the asset declares a transcription carriage or the table carries a recognised citation column) or {source_column, citation_state: sourced|sourced_ocr_unverified|unsourced|refuted} (the column that carries the source and the state it stands on; an unsourced or refuted state can never read PASS, and a placeholder such as `not traced` is not a source, N-73 (1)). `why` must be a real one-line reason (at least 15 characters and 3 words, no placeholder word, no control or line-separator character); `evidence` a line within the real line count of an existing repo file, or `unverified:<a real description>` (never for an N/A release). The declared Ldgr check reads the whole table (every chart of a chart-scoped asset; for a shared table, rows other assets wrote), and only a text, varchar, text[] or json(b) column can carry a source. N/A is reached only through these declared words, never from a column pattern. As of 1.10.0 only bg_phaladeepika_latta declares either: an asset without them reads exactly as before. 1.9.0 (E6 S1, SS N-72 S1, N-73, N-74; REGISTRY_REVISION 13): one more optional per-asset object, `null_convention`, reviewed and carrying `why` (ONE line) and `evidence` (an existing repo-relative file[:line], or `unverified:<where>`): {table (an owned table), nullable: [{column, means (what NULL means, not a placeholder), scope?: {key_column, null_for: [key values], mode: only|exactly}}], constants: [{column, why, value?}], allowed_literals?: [{column, values, why}] (a value that looks like a placeholder but is a real value of a NON-nullable column)}. `no literal fallbacks` uses S3's placeholder definition on every text-like column of the table (text, varchar, citext, enum labels, domains over text; arrays element-wise, with allowed_literals compared per element), and on JSON columns at EVERY depth: a JSON null, an empty object or array, or any nested JSON null or string leaf that is a placeholder ({\"src\":\"N/A\"}, [\"none\"], {\"a\":null}, [null]) is a fallback; numeric and boolean arrays are not (an empty array is, and a 0 element only in a declared-nullable numeric array); an array whose element contents are not inspected (jsonb[], composite[], inet[], bytea[], uuid[], date[]) is tested for emptiness only and is listed as NOT examined (never counted in the 'no literal fallback' claim); boolean, date and timestamp columns cannot hold a literal fallback and are listed as not examined for it. The verdict also names every allowed_literals exemption in force and the columns whose constants were not examined (json, bytea / tsvector / vector, numeric arrays: cost). The Null cap lifts for the asset only when schema_default and blank_rows are clean and the detector verifies, read-only, that NULLs occur only in declared columns (and only on / exactly on the declared keys), that no declared-nullable column holds a literal fallback in place of NULL, and that no column is constant unless declared constant; a defect flips the Null cell to FAIL, anything else keeps the cap. As of 1.11.0 only bg_phaladeepika_latta declares one: an asset without it reads exactly as before. Version 1.10.0 (DECL-LATTA): bg_phaladeepika_latta's entry ONLY gains three reviewed declarations on the shapes S2/S3 verified: `carriage` (D1, transcription, citation_state sourced_ocr_unverified: both chunk ids, the Sloka 42-44 span, the per-claimant {clause, effect} pairs side by side; the passage is read from classical_text_chunks by span; only the declared clause/condition strings are quoted), `vocab_alias` (planet class on graha, identity_only) and `ldgr_source` (verse_ref, sourced_ocr_unverified; verse_ref names the counting-rule sloka range, it is not effect-precise); no null_convention and no other asset or structure changed. REGISTRY_REVISION 15 (STAMP; the file version is NOT bumped by this change, sequenced separately): `null_convention` may also carry `stamp_columns: [{column, why}]` (optional, at most 16; `why` a real one-line reason), a declared word for a WRITE-TIME stamp column (e.g. created_at, one seed transaction, one value on every row). The detector requires each stamp column to be a timestamp or timestamptz (the catalog type, domains resolved) AND NOT NULL (catalog constraint) with no NULL row and no infinity, -infinity or value at or before epoch + 1 day (epoch, 1970-01-01, year 0001 and earlier; counted in the column's own type), and exempts it from the constant test ONLY; nothing else is exempted (every other column is graded exactly as before, the literal-fallback test included). A stamp column that is nullable or not a timestamp is refused (the census reads NO_DETECTOR with the disagreement, never PASS); one holding a NULL row, infinity, -infinity or a value at or before epoch + 1 day fails the convention. A column may be declared once across nullable, constants and stamp_columns, and may not be a scope key_column, an allowed_literals column or a declared prose field. As of 1.11.0 only bg_phaladeepika_latta declares one: an asset without it reads exactly as before. Version 1.11.0 (DECL-LATTA-NULL): bg_phaladeepika_latta's entry ONLY gains `null_convention` (nullable effect_description, reserved empty only on Mars and Saturn; four declared constant columns table_version, affliction_condition, source_citation, verse_ref with no pinned values, which hold only for a single-valued corrected form: a per-row form FAILs the constant and the correction must flip this declaration in the same change; created_at as a stamp_columns write-time stamp, not a constant claim); no other asset or structure changed. Version 1.12.0 (NARR-GUARD, N-94): bg_phaladeepika_latta's entry ONLY declares prose_fields [] (evidence_kind writer; its text columns are hand-typed restatements of passage clauses, not generated prose) together with `prose_coupling: {to, columns, why, evidence}`, a new optional per-asset object (field list `prose_coupling_declaration_fields`). `to` is `carriage_d1`, the only detector a prose N/A may rest on; `columns` lists the text columns classified as transcription; `why` must cite carriage transcription and Carr.D1; `evidence` must be an existing repo file:line (`unverified:` is refused). The validator refuses a coupling unless prose_fields is declared as an empty list ([]), the asset declares a transcription carriage that applies D1 with a spec, and every listed column is covered by that spec (derived from the spec, not from the declaration: the effect column and the passage_text extra fields; a claim field, an `equals` constant or a column the spec never checks is not coverage). The census then reads the four Narr checks N/A for such an asset only while its own Carr.D1 reads PASS; Carr.D1 PARTIAL, FAIL, NO_DETECTOR or ERRORED (a citation_state unsourced or refuted included) reads Narr NO_DETECTOR, never N/A. The coupling is inert for an asset that does not declare it (the four earlier prose_fields [] assets are unchanged); no other asset or structure changed. The coupling is bound by validation: an entry that declares prose_fields [] beside a transcription carriage checked by D1 is refused unless it also carries prose_coupling (the four earlier [] assets declare no carriage check and are untouched). Classification completeness is the declarer's: the columns listed in prose_coupling are the ones the guard verifies against the D1 spec and Carr.D1's per-row results; a text column the declaration leaves unlisted is only reported on the measured record (unclassified_text_columns), never gated, and the pin test on the committed entry is what guards the list. DENS-TIER-GUARD (1.13.0, SS ruling N-98): an entry may carry `density_tier_columns`, a list of {column, why, evidence} (field list `density_tier_declaration_fields`) naming the verification or confidence tier columns the asset's served select carries. The Dens tier vocabulary is a CLOSED list: a column counts as a tier only when it is named `tier` or `verification_pass_status`, or the asset declares it here, and never when its name carries a deny-listed word (cost, price, pricing, plan, access, subscription, billing, fee, tariff, in any spelling): a declared `cost_tier` is refused. The validator refuses a malformed list, a duplicate, more than 16, a weak `why` (it must say the column is a verification or confidence tier), an `evidence` that is not a real repo-relative file:LINE (never `unverified:`), a `why` naming a deny-listed word, an evidence file that does not mention the column, and, at measure time, a column that is not in the asset's table or a declaration that cannot be checked (no target table, or the catalog lists no columns): Dens.served reads NO_DETECTOR. A deny-listed word is matched in any spelling (underscores, digits, camelCase, plurals, run together with tier). The key is inert until an asset declares it.",
  "kind_enum": [
   "data",
   "service",
@@ -36,6 +36,26 @@
   "na",
   "source_column",
   "citation_state",
+  "why",
+  "evidence"
+ ],
+ "null_convention_declaration_fields": [
+  "table",
+  "nullable",
+  "constants",
+  "stamp_columns",
+  "allowed_literals",
+  "why",
+  "evidence"
+ ],
+ "prose_coupling_declaration_fields": [
+  "to",
+  "columns",
+  "why",
+  "evidence"
+ ],
+ "density_tier_declaration_fields": [
+  "column",
   "why",
   "evidence"
  ],
@@ -440,9 +460,128 @@
   "bg_phaladeepika_latta": {
    "kind": "data",
    "carriage": {
-    "served_surface": null
+    "served_surface": null,
+    "applies": "D1",
+    "nature": "transcription",
+    "why": "eight rows from Phaladeepika Adh. XXVI Sloka 42-44 (chunks PG338 + PG339), anchor-matched, OCR-repaired against the ENGLISH translation only (content_sa is NULL); the passage is OCR text not checked against the printed book; the stored chunk hashes verified with the text_id-prefixed preimage as of 2026-10-02 (the detector also accepts the bare preimage); the six effect sentences stand under an OCR-garbled heading that reads as Slokas 45-46, and the span has no end so its digest also covers Sloka 47-48; Mars and Saturn carry a counting rule but no effect clause (their effect is reserved empty) and Ketu has no row because the passage gives it no counting rule (negative claims over OCR text)",
+    "evidence": "platform/python-sidecar/brahmagyan/l0_phaladeepika_vedha.py:122",
+    "citation_state": "sourced_ocr_unverified",
+    "spec": {
+     "matcher": "ordinal_count_direction_effect_v2",
+     "table": "bg_phaladeepika_latta",
+     "chunk_ids": [
+      "phaladeepika_pg0338_c01",
+      "phaladeepika_pg0339_c01"
+     ],
+     "span": {
+      "start": "Sloka 42-44"
+     },
+     "fields": {
+      "claimant": "graha",
+      "count": "count_from_graha",
+      "direction": "direction",
+      "effect": "effect_description"
+     },
+     "direction_words": {
+      "forward": "forward",
+      "backward": "rear"
+     },
+     "anchor_stems": [
+      "Latt",
+      "Latin"
+     ],
+     "effect_marker": "Shkos",
+     "effect_end": "Thus the separate effects",
+     "effect_frame_words": [
+      "will",
+      "may",
+      "in",
+      "during",
+      "be",
+      "bo",
+      "occur",
+      "the",
+      "there",
+      "a",
+      "result",
+      "mark"
+     ],
+     "effect_clauses": {
+      "Sun": {
+       "clause": "During the Sun's Latin there will bo the ruin of every business",
+       "effect": "Ruin of every business."
+      },
+      "Rahu": {
+       "clause": "Misery will result during the Latta of Rahu and Ketu",
+       "effect": "Misery."
+      },
+      "Jupiter": {
+       "clause": "In the Latin of Jupiter/ death, ruin of relations and a sort of general fear or insecurity may occur",
+       "effect": "Death, ruin of relations and a sort of general fear or insecurity may occur."
+      },
+      "Venus": {
+       "clause": "There will be quarrel in the Latta of Venus",
+       "effect": "Quarrel."
+      },
+      "Mercury": {
+       "clause": "In Mercury's Latta will occur loss of position or similar untoward event",
+       "effect": "Loss of position or similar untoward event."
+      },
+      "Moon": {
+       "clause": "A great loss will mark the Moon's Latta",
+       "effect": "A great loss."
+      }
+     },
+     "effect_clauses_evidence": "platform/scripts/governance/__tests__/fixtures/phaladeepika_latta_d1_fixture.json:27",
+     "expected_rows": 8,
+     "extra_fields": [
+      {
+       "column": "affliction_condition",
+       "kind": "passage_text",
+       "anchors": [
+        "when thus counting",
+        "natal star",
+        "Latta star",
+        "sickness and anguish"
+       ],
+       "condition": {
+        "text": "If, when thus counting, the tJanmunukshatra. natal star) happens to come as the Latta star, there will be sickness and anguish.",
+        "start": "If, when thus counting",
+        "end": "sickness and anguish.",
+        "ocr_lost_stop": {
+         "text": "or rear Lattaa",
+         "evidence": "platform/scripts/governance/__tests__/fixtures/phaladeepika_latta_d1_fixture.json:27",
+         "observed_garble": "the OCR dropped the full stop after 'rear Lattaa'"
+        },
+        "ocr_stops": [
+         {
+          "text": "tJanmunukshatra.",
+          "evidence": "platform/scripts/governance/__tests__/fixtures/phaladeepika_latta_d1_fixture.json:27",
+          "observed_garble": "the OCR turned 'Janma-nakshatra (' into 'tJanmunukshatra. '"
+         }
+        ]
+       },
+       "condition_evidence": "platform/scripts/governance/__tests__/fixtures/phaladeepika_latta_d1_fixture.json:27",
+       "sentence_openers": [
+        "If"
+       ],
+       "repairs": [
+        {
+         "from": "Janma-nakshatra",
+         "to": "tJanmunukshatra",
+         "evidence": "platform/scripts/governance/__tests__/fixtures/phaladeepika_latta_d1_fixture.json:27"
+        }
+       ]
+      },
+      {
+       "column": "verse_ref",
+       "kind": "equals",
+       "value": "Adh.XXVI PG338-339 Sloka 42-44"
+      }
+     ]
+    }
    },
-   "prose_fields": null,
+   "prose_fields": [],
    "terminal_by_construction": null,
    "cross_asset_writes": null,
    "read_evidence": null,
@@ -451,7 +590,74 @@
    "evidence": {
     "kind": "registry kind data (seed, T0 data); writer-backed own table(s) bg_phaladeepika_latta; census Idem.pattern PASS: INSERT … ON CONFLICT into the asset's own table(s) (upsert):",
     "carriage": "served_surface null (unknown): provenance LABEL only (query_vedha_gochara.ts:169-170); the query reads kala_vedha_gochara only; Dens.served N/A.",
-    "prose_fields": null
+    "prose_fields": "[] = no generated narration under the SS definition of 2026-10-01 (a composed string that states or grades a computed value): the latta stores hand-typed restatements of passage clauses. The six effect strings are the string constants of LATTA_ROWS (platform/python-sidecar/brahmagyan/l0_phaladeepika_vedha.py:122; Mars and Saturn are None), the shared affliction sentence is the single string constant AFFLICTION_CONDITION (platform/python-sidecar/brahmagyan/l0_phaladeepika_vedha.py:86), and the INSERT binds those constants and the two citation constants to the row without building any text (platform/python-sidecar/brahmagyan/l0_phaladeepika_vedha.py:181); no count, score, dignity or grade is interpolated. Ruled N-94: Narr is N/A here under R03 and the N/A stays coupled to Carr.D1 (prose_coupling), which is the detector for the claim a Narr check would measure."
+   },
+   "evidence_kind": "writer",
+   "vocab_alias": {
+    "class": "planet",
+    "vocab_column": "graha",
+    "identity_only": true,
+    "identity_only_why": "the table carries no alias or synonym column: graha holds one canonical display name per row, so only identity is measurable",
+    "why": "graha is the planet vocabulary of the Latta rule: each of its 8 stored values must resolve to one bg_ontology planet entity (Ketu is absent: no counting rule in the passage)",
+    "evidence": "platform/supabase/migrations/528_bg_phaladeepika_vedha.sql:106"
+   },
+   "ldgr_source": {
+    "source_column": "verse_ref",
+    "citation_state": "sourced_ocr_unverified",
+    "why": "verse_ref names the counting-rule sloka range and the page span PG338-339 holds; it is not effect-precise: the six effect sentences stand under an OCR-garbled heading that reads as Slokas 45-46, and no detector checks the sloka label against the passage (D1 compares verse_ref to a constant string); the per-row source_citation names PG339 only (8 of 8 rows, recorded finding); the text is OCR English not checked against the printed book",
+    "evidence": "platform/python-sidecar/brahmagyan/l0_phaladeepika_vedha.py:84"
+   },
+   "null_convention": {
+    "table": "bg_phaladeepika_latta",
+    "nullable": [
+     {
+      "column": "effect_description",
+      "means": "no effect clause was found in the stored OCR English passage for Mars and Saturn (their effect is reserved empty: a disclosed gap)",
+      "scope": {
+       "key_column": "graha",
+       "null_for": [
+        "Mars",
+        "Saturn"
+       ],
+       "mode": "exactly"
+      }
+     }
+    ],
+    "constants": [
+     {
+      "column": "table_version",
+      "why": "the table holds one seed version of one rule, so every row shares the same version string; a future _v02 row set (for example adding Ketu) makes it vary and FAILs the constant, so any revision must flip this declaration in the same change"
+     },
+     {
+      "column": "affliction_condition",
+      "why": "the passage states one shared affliction sentence for all the lattas, stored as one identical string on every row"
+     },
+     {
+      "column": "source_citation",
+      "why": "one citation string is stored on every row (it names PG339 only today, a recorded finding expected to be corrected by a later rebuild): the claim holds only while every row carries one shared string, not today's text; a per-row form FAILs the constant, so the correction must flip this declaration in the same change"
+     },
+     {
+      "column": "verse_ref",
+      "why": "every row cites the one passage span of the rule, so the column holds one shared string (the span label is a recorded finding, not pinned here); a per-row label FAILs the constant (the carriage D1 spec pins one string too), so the correction must flip this declaration in the same change"
+     }
+    ],
+    "stamp_columns": [
+     {
+      "column": "created_at",
+      "why": "first-insert time of the one seed transaction (the writer's ON CONFLICT DO UPDATE never touches created_at): a non-empty timestamptz set once per row set, so one shared value is expected and this is not a constant claim"
+     }
+    ],
+    "why": "effect_description is empty only on Mars and Saturn (a counting rule without an effect clause) and Ketu has no row because the passage gives it no counting rule; the row-creation timestamp is a declared write-time stamp column, not a constant",
+    "evidence": "platform/supabase/migrations/528_bg_phaladeepika_vedha.sql:109"
+   },
+   "prose_coupling": {
+    "to": "carriage_d1",
+    "columns": [
+     "effect_description",
+     "affliction_condition"
+    ],
+    "why": "effect_description and affliction_condition are hand-normalised restatements of passage clauses (transcription of the stored OCR English passage), not generated prose, so Narr, which measures generated prose, has nothing to measure; the claim a Narr check would measure, that each stored string faithfully restates its passage clause, already has a real detector, Carr.D1 (the same comparator, normalisation and declared repair list, with a per-row result for each of these two columns), so the release of Narr stands only while Carr.D1 reads PASS on the asset's own rows and its spec covers both columns (strategist ruling N-94); the fidelity is against the OCR English (citation_state sourced_ocr_unverified), not the printed book",
+    "evidence": "platform/scripts/governance/carriage_d1.py:398"
    }
   },
   "bg_prashna_rules": {

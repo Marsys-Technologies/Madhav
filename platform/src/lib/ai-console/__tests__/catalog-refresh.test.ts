@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import type { Pool } from 'pg'
 import { AiConsoleError } from '../errors'
 
 const mocks = vi.hoisted(() => ({ claim: vi.fn(), load: vi.fn(), store: vi.fn(), authorize: vi.fn(),
@@ -141,5 +142,51 @@ describe('provider catalogue metadata refresh', () => {
     expect(await refreshProviderCatalog('owner', id)).toEqual({ status: 'refreshed', modelCount: 1 })
     expect(mocks.store.mock.calls[0][2].models[0]).toMatchObject({ modelId: 'claude-new-model',
       supportedEfforts: ['high', 'max'], defaultEffort: null })
+  })
+
+  // Keep provider decoding and DAO validation real: only external HTTP and the
+  // PostgreSQL transport are substituted. Truncated discovery fixtures missed
+  // this production failure because Gemini/OpenRouter advertise capacity fields.
+  it.each([
+    { providerId: 'google' as const, payload: { models: [{ name: 'models/gemini-2.5-flash',
+      displayName: 'Gemini 2.5 Flash', supportedGenerationMethods: ['generateContent'],
+      inputTokenLimit: 1048576, outputTokenLimit: 65536 }] },
+    modelId: 'gemini-2.5-flash', displayName: 'Gemini 2.5 Flash', tools: true },
+    { providerId: 'openrouter' as const, payload: { data: [{ id: 'google/gemini-2.5-flash',
+      name: 'Google: Gemini 2.5 Flash', architecture: { output_modalities: ['text'] },
+      supported_parameters: ['tools', 'structured_outputs'], context_length: 1048576,
+      top_provider: { max_completion_tokens: 65536 } }] },
+    modelId: 'google/gemini-2.5-flash', displayName: 'Google: Gemini 2.5 Flash', tools: false },
+  ])('persists $providerId discovery containing capacity metadata through the real DAO', async fixture => {
+    const providers = await vi.importActual<typeof import('../providers')>('../providers')
+    const repository = await vi.importActual<typeof import('../repository')>('../repository')
+    const globals = globalThis as typeof globalThis & { __pgPool?: Pool }
+    const previousPool = globals.__pgPool
+    const writes: { sql: string; params: unknown[] }[] = []
+    const query = vi.fn(async (sql: string, params: unknown[] = []) => {
+      writes.push({ sql, params })
+      const rows = sql.startsWith('SELECT') && sql.includes('FROM ai_provider_connections')
+        ? [{ id, provider_id: fixture.providerId, credential_version: 2 }]
+        : sql.startsWith('UPDATE ai_provider_connections') ? [{ id }] : []
+      return { rows, rowCount: rows.length }
+    })
+    globals.__pgPool = { connect: async () => ({ query, release() {} }) } as unknown as Pool
+    mocks.claim.mockResolvedValue({ ...claim, epoch: '12', providerId: fixture.providerId })
+    mocks.discover.mockImplementation(providers.discoverConnectionModels)
+    mocks.store.mockImplementation(repository.storeConnectionCatalogRefresh)
+    const http = vi.fn().mockResolvedValue(Response.json(fixture.payload))
+    vi.stubGlobal('fetch', http)
+    try {
+      expect(await refreshProviderCatalog('owner', id)).toEqual({ status: 'refreshed', modelCount: 1 })
+      const insert = writes.find(write => write.sql.startsWith('INSERT INTO ai_connection_models'))
+      expect(insert?.params).toEqual(['owner', id, fixture.modelId, fixture.displayName,
+        ['synthesizer', 'planner', 'deep_planner', 'worker'], fixture.tools, true, null])
+      expect(writes.at(-1)?.sql).toBe('COMMIT')
+      expect(writes.some(write => /ai_user_defaults|ai_custom_configuration_roles/.test(write.sql))).toBe(false)
+      expect(http).toHaveBeenCalledOnce()
+      expect(http.mock.calls[0][1]).toMatchObject({ method: 'GET' })
+      expect(http.mock.calls[0][1].body).toBeUndefined()
+      expect(mocks.probe).not.toHaveBeenCalled()
+    } finally { globals.__pgPool = previousPool }
   })
 })

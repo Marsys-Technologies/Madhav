@@ -1,0 +1,12 @@
+platform-mcp/src/tools/phala_mitigation_map.ts
+platform/python-sidecar/pipeline/orchestrator/dag_edge_guard.py
+platform/python-sidecar/pipeline/orchestrator/writers/ph_pratikara.py
+platform/python-sidecar/pipeline/orchestrator/writers/ph_suddha_sodhana.py
+platform/python-sidecar/run_ph_pratikara_prod.py
+platform/python-sidecar/services/ka_tulana/ranker.py
+platform/python-sidecar/services/ph_pratikara/engine.py
+platform/src/lib/jyotish/asset_names.ts
+platform/src/lib/retrieval/registry/knowledge/producer_editorial_review.ts
+platform/src/lib/retrieval/registry/layers/L4_phala/index.ts
+platform/src/lib/retrieval/registry/layers/L4_phala/query_phala_calibration.ts
+platform/src/lib/retrieval/registry/layers/L4_phala/salience_order.ts
