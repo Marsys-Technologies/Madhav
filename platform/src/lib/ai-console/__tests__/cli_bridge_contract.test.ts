@@ -26,7 +26,8 @@ describe('private AI CLI bridge contract', () => {
   })
 
   it('limits execution effort to known CLI model IDs and fixed arguments', () => {
-    expect(bridge).toContain("const SAFE_EFFORT = new Set(['low', 'medium', 'high'])")
+    expect(bridge).toContain('const SAFE_EFFORT = /^[a-z][a-z0-9_]{0,31}$/')
+    expect(bridge).toContain('models.get(modelId)?.includes(effort)')
     expect(bridge).toContain("if (effort) args.push('-c', `model_reasoning_effort=${effort}`)")
     expect(bridge).toContain("if (effort) args.push('--effort', effort)")
     expect(bridge).toContain("!['codex', 'claude_code'].includes(cliId)")

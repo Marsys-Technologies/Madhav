@@ -191,6 +191,11 @@
 .pp-root .aic-card-menu { display: flex; flex-wrap: wrap; gap: 5px; }
 .pp-root .aic-icon-button { display: inline-grid; width: 44px; min-width: 44px; padding: 9px; place-items: center; }
 .pp-root .aic-icon-button svg { width: 15px; height: 15px; }
+.pp-root .aic-catalog-refresh-line { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 8px; }
+.pp-root .aic-catalog-refresh-line .aic-meta { margin: 0; }
+.pp-root .aic-refresh-spinning { animation: aic-refresh-spin 1s linear infinite; }
+@keyframes aic-refresh-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .pp-root .aic-refresh-spinning { animation: none; } }
 
 .pp-root .aic-button:focus-visible,
 .pp-root .aic-group-summary:focus-visible,

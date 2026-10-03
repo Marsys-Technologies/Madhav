@@ -69,8 +69,13 @@ def _restore_pre_retirement(monkeypatch):
     monkeypatch.setattr(ac, "CRITERION_REGISTRY", reg)
     monkeypatch.setattr(ac, "RETIRED_CRITERIA", {}, raising=False)
     reg["Narr.agree"] = dict(reg["Narr.agree"], applicability=NARR_AGREE_REV7)    # its text said "undecided" until revision 9
+    reg["Vocab.alias"] = dict(reg["Vocab.alias"], revision=1, applicability="the table declares an alias-bearing class census")     # revision 12 (S3) re-worded and bumped both
+    reg["Ldgr.source_presence"] = dict(reg["Ldgr.source_presence"], revision=2,
+                                       applicability="the target table carries a recognised citation column (R60: singular classical_citation included)")
     causes = dict(ac.NA_CAUSES)
     causes.pop("Earn.service_state", None)                 # revision 10 added `not-a-service`; revision 7 had no cause there
+    causes.pop("Vocab.alias", None)                        # revision 12 (S3) added the two declaration-keyed causes
+    causes.pop("Ldgr.source_presence", None)
     for c in D_CHECKS:                                      # revision 11 added the two declaration-keyed Carr causes
         causes[c] = ("no-carriage",)
     monkeypatch.setattr(ac, "NA_CAUSES", causes)

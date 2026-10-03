@@ -523,6 +523,7 @@ class TestAC1AffligingConfigurationProducesAdverseValence:
             f"context.valence={context.valence!r}"
         )
 
+    @pytest.mark.slow_real_ephemeris  # C23: real-engine JD sweep; CI slow step
     def test_v3_mode_produces_adverse_when_all_weights_negative(self):
         """v3 path: all-negative weights => valence='adverse' in IntensityResult.
 
@@ -700,6 +701,7 @@ class TestAC3V1ParityModeUnaffected:
       - exp_term is computed via exp(beta * X(t)) as before
     """
 
+    @pytest.mark.slow_real_ephemeris  # C23: real-engine JD sweep; CI slow step
     def test_v1_valence_equals_class_prior(self):
         """v1 mode: result.valence == context.valence always."""
         targets = [
@@ -742,6 +744,7 @@ class TestAC3V1ParityModeUnaffected:
             "v1 mode: x_t_detail must NOT carry 'signed_channels' (v3-only)"
         )
 
+    @pytest.mark.slow_real_ephemeris  # C23: real-engine JD sweep; CI slow step
     def test_v1_exp_term_formula_preserved(self):
         """v1 mode: exp_term = exp(beta * X(t)) as before W1.2."""
         targets = [
@@ -846,6 +849,7 @@ class TestAC4I2NoGrammarModulesModified:
 class TestAC5V3DetailFieldsCarryW12Data:
     """AC5: Full v3 result carries W1.2 evidence in x_t_detail."""
 
+    @pytest.mark.slow_real_ephemeris  # C23: real-engine JD sweep; CI slow step
     def test_all_w12_fields_present_in_x_t_detail(self):
         """Every v3 result has 'signed_channels', 'valence_v3', 'valence_tension' in x_t_detail."""
         targets = [
@@ -875,6 +879,7 @@ class TestAC5V3DetailFieldsCarryW12Data:
             assert 0.0 <= sc["supportive_channel"] <= 1.0
             assert 0.0 <= sc["afflicting_channel"] <= 1.0
 
+    @pytest.mark.slow_real_ephemeris  # C23: real-engine JD sweep; CI slow step
     def test_v3_valence_is_boolean_adverseness_consistent(self):
         """result.is_adverse is consistent with result.valence in v3 mode."""
         targets = [
@@ -899,6 +904,7 @@ class TestAC5V3DetailFieldsCarryW12Data:
             # class-prior fallbacks (e.g. 'gain', 'loss', 'neutral') are
             # consistent by construction via context.is_adverse
 
+    @pytest.mark.slow_real_ephemeris  # C23: real-engine JD sweep; CI slow step
     def test_v3_lambda_in_0_1_with_signed_channels(self):
         """W1.2 does not break the W1.1 [0,1] invariant on raw_lambda."""
         targets = [

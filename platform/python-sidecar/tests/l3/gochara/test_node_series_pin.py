@@ -18,12 +18,22 @@ Three layers, none of which re-implements the rule it checks:
 from __future__ import annotations
 
 import os
+import sys
 import uuid
 from datetime import date, timedelta
+from pathlib import Path
 from urllib.parse import urlsplit, urlunsplit
 
 import psycopg
 import pytest
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
+from _disposable_db_guard import (  # noqa: E402
+    RefusedError,
+    assert_disposable_connection,
+    validate_disposable_dsn,
+)
 
 from services.gochara_kernel import contacts as kernel_contacts
 from services.gochara_kernel.overlays import date_to_jd
@@ -106,6 +116,7 @@ def node_db():
     maint.execute(f'CREATE DATABASE "{name}"')
     dsn = urlunsplit(parts._replace(path="/" + name))
     conn = psycopg.connect(dsn, autocommit=True)
+    assert_disposable_connection(conn, name)
     try:
         conn.execute(_DDL)
         _seed(conn.cursor())

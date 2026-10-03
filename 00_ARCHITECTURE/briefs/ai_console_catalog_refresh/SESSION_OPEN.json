@@ -1,0 +1,33 @@
+{
+  "session_open": {
+    "session_id": "AI-CONSOLE-CATALOG-REFRESH-20261002",
+    "cowork_thread_name": "Madhav — AI Console catalogue refresh",
+    "agent_name": "Codex", "agent_version": "model identifier not exposed", "tool": "Codex",
+    "tool_profile": "madhav-parity",
+    "worktree_path": "/Users/Dev/.codex/worktrees/ai-console-cli-role-effort/Madhav",
+    "step_number_or_layer": "AI Console catalogue refresh, continuing the existing AI Console session",
+    "predecessor_session": "MADHAV-AI-CONSOLE-USABILITY-RETRY-20261002",
+    "coordination": {
+      "coordination_ref": "origin/campaign-coordination",
+      "lease_id": "MADHAV-AI-CONSOLE-CATALOG-REFRESH-20261002",
+      "lease_status_verified": true, "lease_verified_at": "2026-10-02T16:27:00Z",
+      "remote_commit": "7b9d982eb679b7c8cf5b3a4948e2b9c573274c8e",
+      "work_order_surface": "00_ARCHITECTURE/briefs/ai_console_catalog_refresh/IMPLEMENTATION_PLAN_v1_0.md"
+    },
+    "cross_tool_state_read": {"cross_cutting_decision_register": true,
+      "stale_surfaces_disregarded": [".conductor-state.json", ".gemini/project_state.md", "CLAUDECODE_BRIEF.md"]},
+    "mandatory_reading_confirmation": [
+      {"file":"CLAUDE.md","fingerprint_sha256":"a364863fc3efcf416ca16773093dda72ea7b632d6d63cd1c13a387889121e12e","read_at":"2026-10-02T16:20:00Z"},
+      {"file":"00_ARCHITECTURE/CURRENT_STATE_v1_0.md","fingerprint_sha256":"f34a729c9b197511ec249f39c386fa5fac376105ae58db80592f8127aecdbc7b","read_at":"2026-10-02T16:32:00Z"},
+      {"file":"00_ARCHITECTURE/CROSS_CUTTING_DECISION_REGISTER_v1_0.md","fingerprint_sha256":"18e1e9912bd5494b647ff60035f4c03d7fecfa7d2241cdd54e11d4be359d79d1","read_at":"2026-10-02T16:24:00Z"},
+      {"file":"00_ARCHITECTURE/SESSION_OPEN_TEMPLATE_v1_0.md","fingerprint_sha256":"414807baef6ee57efc4db2f14e0d399c9afa5735c6240f40c5d87a1f81b51db6","read_at":"2026-10-02T16:24:00Z"}
+    ],
+    "canonical_artifact_fingerprint_check": [],
+    "declared_scope": {
+      "may_touch": ["00_ARCHITECTURE/briefs/ai_console_catalog_refresh/**", "00_ARCHITECTURE/CURRENT_STATE_v1_0.md", "00_ARCHITECTURE/SESSION_LOG.md", "platform/src/lib/ai-console/**", "platform/src/app/api/ai-console/**", "platform/src/components/ai-console/**", "platform/scripts/ai-cli-bridge/**", "platform/supabase/migrations/1301_ai_console_catalog_refresh.sql", "platform/src/lib/adapters/types.ts", "platform/scripts/__tests__/**", "platform/docs/runbooks/ai-console-local-cutover.md", "platform/tests/unit/migrations/builder_reference_tables_1255_select_grants_static.test.ts"],
+      "must_not_touch": ["01_FACTS_LAYER/**", "025_HOLISTIC_SYNTHESIS/**", "platform/python-sidecar/**", "00_ARCHITECTURE/briefs/nirmana/**", "CLAUDE.md", "platform/src/lib/gochara/**", "platform/supabase/migrations/1300_ai_console_role_effort.sql"]
+    },
+    "mirror_pair_freshness_check": [], "native_directive_obligations": [], "red_team_due": true,
+    "notes": "Continuing the already opened AI Console conversation; confirms refreshed orientation reads for this additive work order. Read timestamps are approximate session-open registration times. Parallel workers own CLI discovery, API metadata refresh and UI, with the parent owning persistence, contracts, migration and verification. No paid provider generation in refresh. Scope includes required source-only close provenance, not modification of another campaign's state."
+  }
+}

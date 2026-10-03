@@ -15,6 +15,9 @@ export interface CliModelCatalogEntry {
   readonly supportsTools: boolean
   readonly supportsStructuredOutput: boolean
   readonly isBuiltinDefault: boolean
+  readonly supportedEfforts?: readonly string[]
+  readonly defaultEffort?: string | null
+  readonly isCatalogDiscovered?: boolean
 }
 
 export interface SafeCliCard {
@@ -37,6 +40,9 @@ export const CliModelCatalogEntrySchema = z.object({
   supportsTools: z.boolean(),
   supportsStructuredOutput: z.boolean(),
   isBuiltinDefault: z.boolean(),
+  supportedEfforts: z.array(z.string().regex(/^[a-z][a-z0-9_]{0,31}$/)).max(16).optional(),
+  defaultEffort: z.string().regex(/^[a-z][a-z0-9_]{0,31}$/).nullable().optional(),
+  isCatalogDiscovered: z.boolean().optional(),
 }).strict()
 
 export const CliRouteIdSchema = CliIdSchema
