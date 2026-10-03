@@ -59,6 +59,7 @@ const GOCHARA_CONTRACT_MIGRATIONS = [
   '1155_gochara_relationship_record.sql',
   '1156_gochara_eval_window.sql',
   '1157_gochara_av_polarity_declaration.sql',
+  '1235_ka_gochara_staged_candidate_evidence_function.sql',
 ]
 
 describe('Protected public-schema temporary capability', () => {

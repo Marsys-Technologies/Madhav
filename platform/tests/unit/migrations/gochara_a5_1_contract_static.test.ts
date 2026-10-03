@@ -429,7 +429,8 @@ describe('A5.1 migrations 1153–1157 — static contract (round 7, corrected lo
 
   // ── Ruling 4: the deploy route ───────────────────────────────────────────
   it('ruling 4 (N3): the routine runner refuses 1153–1157; the --only window may apply them', () => {
-    expect([...PROTECTED_PUBLIC_SCHEMA_MIGRATIONS].sort()).toEqual(Object.values(MIGRATIONS).sort())
+    // + the staged-candidate evidence function (1235, protected-class: needs CREATE on public; applies only in the window)
+    expect([...PROTECTED_PUBLIC_SCHEMA_MIGRATIONS].sort()).toEqual([...Object.values(MIGRATIONS), '1235_ka_gochara_staged_candidate_evidence_function.sql'].sort())
     for (const f of Object.values(MIGRATIONS)) {
       expect(() => assertGeneralRunnerMayApplyPublicSchema(f, false)).toThrow(/gochara_contracts_schema_migration=true/)
       expect(() => assertGeneralRunnerMayApplyPublicSchema(f, true)).not.toThrow()
