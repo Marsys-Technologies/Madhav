@@ -9749,6 +9749,14 @@ EXPECTED_GATE_LAYER_CELLS = 54          # SS ruling N-97(1): the pinned unit is 
 # E6.5 hook for "required, per-asset detector pending" criteria (plan 2.1): criterion id -> decision id. Empty today and NOT
 # fingerprinted content (no revision bump): a later, separate file feeds it. Until then those criteria are reported UNCOVERED.
 PER_ASSET_PENDING: dict[str, str] = {}
+# SS N-102 (owner decision): assets the OWNER deferred on a gate (their classical sources are not held). They live in a small committed
+# input file, never in this module. Schema (schema 1): {"schema": 1, "deferrals": [{"asset_id", "criterion_gate", "decision", "state"}]}:
+# `asset_id` must be an active asset id of the committed registry seed (the same offline source the E6.3 reader uses; the seed is not
+# production, a stand-in for the live registry), `criterion_gate` one of CELL_GATES, `decision` 'N-<n>', `state` non-blank; no other
+# key, no duplicate (asset, gate). A malformed entry or unknown id refuses the whole --registry-check. Reported apart from `uncovered`.
+OWNER_DEFERRALS_PATH = Path(__file__).resolve().parents[3] / "00_ARCHITECTURE" / "control" / "owner_deferrals.json"
+REGISTRY_SEED_PATH = Path(__file__).resolve().parents[1] / "seed" / "asset_registry_seed.ts"
+_DEFERRAL_KEYS = ("asset_id", "criterion_gate", "decision", "state")
 EXIT_REG_UNCOVERED, EXIT_REG_DRIFT, EXIT_REG_CELLS = 3, 7, 8
 _INSPECTOR_LINE = re.compile(r'("inspector_commit": )(?:"([^"]*)"|null)')
 
@@ -9766,11 +9774,58 @@ def _inspector_commit() -> str | None:
     return sha if p.returncode == 0 and _GIT_SHA.fullmatch(sha) else None
 
 
-def registry_coverage_report(pending=None) -> dict:
+def _seed_active_asset_ids() -> set[str]:
+    """Active asset ids of the committed registry seed, parsed by generate_level_map.parse_seed_text (the E6.3 reader's own source)."""
+    import importlib.util
+    path = Path(__file__).resolve().parents[3] / "00_ARCHITECTURE" / "control" / "generate_level_map.py"
+    spec = importlib.util.spec_from_file_location("_e65_generate_level_map", path)
+    mod = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = mod        # registered before exec so any typing/dataclass lookup in that module resolves
+    spec.loader.exec_module(mod)
+    return {r["asset_id"] for r in mod.parse_seed_text(REGISTRY_SEED_PATH.read_text(encoding="utf-8")) if r["active"]}
+
+
+def load_owner_deferrals(path=None, registry_ids=None) -> tuple[list[dict], str]:
+    """(entries sorted by asset_id then gate, sha256 of the file's bytes). ValueError on anything malformed (the schema above)."""
+    p = Path(OWNER_DEFERRALS_PATH if path is None else path)
+    try:
+        raw = p.read_bytes()
+    except OSError as exc:
+        raise ValueError(f"owner deferrals file {p.name} cannot be read ({type(exc).__name__}); it is a required input") from exc
+    try:
+        doc = json.loads(raw.decode("utf-8"))
+    except (UnicodeDecodeError, ValueError) as exc:
+        raise ValueError(f"owner deferrals file {p.name} is not valid JSON") from exc
+    if not (isinstance(doc, dict) and doc.get("schema") == 1 and isinstance(doc.get("deferrals"), list)):
+        raise ValueError(f"owner deferrals file {p.name}: expected an object with schema 1 and a `deferrals` list")
+    ids = _seed_active_asset_ids() if registry_ids is None else set(registry_ids)
+    out, seen, errs = [], set(), []
+    for i, d in enumerate(doc["deferrals"]):
+        if not (isinstance(d, dict) and tuple(sorted(d)) == tuple(sorted(_DEFERRAL_KEYS))
+                and all(isinstance(d[k], str) and d[k].strip() for k in _DEFERRAL_KEYS)):
+            errs.append(f"entry {i}: must be an object with exactly the non-blank string keys {list(_DEFERRAL_KEYS)}")
+            continue
+        if d["asset_id"] not in ids:
+            errs.append(f"entry {i}: {d['asset_id']!r} is not an active registry asset id")
+        if d["criterion_gate"] not in CELL_GATES:
+            errs.append(f"entry {i}: criterion_gate {d['criterion_gate']!r} is not one of {list(CELL_GATES)}")
+        if not re.fullmatch(r"N-\d+", d["decision"]):
+            errs.append(f"entry {i}: decision {d['decision']!r} is not an 'N-<n>' ruling id")
+        if (d["asset_id"], d["criterion_gate"]) in seen:
+            errs.append(f"entry {i}: duplicate ({d['asset_id']}, {d['criterion_gate']})")
+        seen.add((d["asset_id"], d["criterion_gate"]))
+        out.append({k: d[k] for k in _DEFERRAL_KEYS})
+    if errs:
+        raise ValueError(f"owner deferrals file {p.name} refused: " + "; ".join(errs))
+    return sorted(out, key=lambda d: (d["asset_id"], d["criterion_gate"])), hashlib.sha256(raw).hexdigest()
+
+
+def registry_coverage_report(pending=None, deferrals=None) -> dict:
     """Deterministic (sorted, no timestamps) registry coverage report; `inspector_commit` is filled by the caller. `pending`
     defaults to PER_ASSET_PENDING. Raises ValueError on a registry the inspector cannot read (bad N/A ids, a pending id that
     is not a required detector-NONE criterion)."""
     validate_na_rule_decisions()
+    deferred, deferred_sha = load_owner_deferrals() if deferrals is None else deferrals
     pending = dict(PER_ASSET_PENDING if pending is None else pending)
     core = {c: e for c, e in CRITERION_REGISTRY.items() if e["gate"] in CELL_GATES}
     bad = sorted(c for c in pending if c not in core or core[c]["detector"] != "NONE"
@@ -9807,6 +9862,8 @@ def registry_coverage_report(pending=None) -> dict:
         uncovered_required_criteria=sorted(uncovered),
         per_asset_pending=sorted(pend_seen),
         per_asset_pending_note="declared in PER_ASSET_PENDING (empty until the separate pending file lands; not fingerprinted)",
+        deferred_by_owner=deferred, owner_deferrals_sha256=deferred_sha,
+        deferred_by_owner_note="owner-deferred assets (SS N-102): reported apart from `uncovered`; never fail the check, never counted as covered cells",
         na_rules=[dict(rule_id=r, decision=NA_RULE_DECISIONS[r]) for r in sorted(NA_RULE_DECISIONS)],
         na_rules_note="N/A rules are conditional (per asset); listed, never counted as coverage of a detector-NONE criterion",
         undeclared_na_pattern_ids=undeclared_patterns, undeclared_na_causes=undeclared_causes,
@@ -9880,7 +9937,8 @@ def registry_check_main(out_path: str, verify: bool) -> int:
         print(f"registry coverage report written: {out_path}")
     cc = rep["candidate_cell_counts"]
     print(f"  revision {rep['registry_revision']} · gate x layer {cc['gate_x_layer']['total']} (pinned {rep['expected_cells']}, "
-          f"fully covered {rep['covered_cells']}) · core criterion x layer {cc['core_criterion_x_layer']['total']} · gate x asset omitted offline")
+          f"fully covered {rep['covered_cells']}) · core criterion x layer {cc['core_criterion_x_layer']['total']} · gate x asset omitted offline"
+          f" · owner-deferred {len(rep['deferred_by_owner'])}")
     for pr in problems:
         print(f"  !! {pr}")
     if rep["candidate_cell_counts"]["gate_x_layer"]["total"] != EXPECTED_GATE_LAYER_CELLS:
