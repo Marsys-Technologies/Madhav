@@ -8861,6 +8861,11 @@ FAILING = (FAIL, PARTIAL, NO_DET)
 # is resolved; anything else (WITHDRAWN, or a state string this script has never written) is left
 # alone rather than re-opened by inference.
 LIVE_GAP_STATES = ("OPEN", "IN_PROGRESS")
+# E6.4 (N-97(4)): the four NON-GATE families (not among CELL_GATES: the reader's `info_families`) are measurements, never gaps. The
+# ledger rows they once opened were re-keyed `kind: info` by ledger_e6_4_info_rekey.py; so that a later emit cannot open them again (a new
+# asset, or a CLOSED row that regresses), a FAILING verdict on one of these families appends no OPEN / RE-OPEN row. Stricter only: closure
+# by PASS / released N/A, retirement, every gate criterion and every other family are unchanged.
+INFO_ONLY_GATES = ("Cost", "Count", "Complete", "Reach")
 
 
 def _na_released(crit: str, rec: dict, all_meas=None, layer=None, facts=None) -> bool:
@@ -9052,6 +9057,9 @@ def emit_gaps_summary(census: dict, assets=None) -> dict:
                 if gid in ever_superseded:
                     continue  # a superseded id is never resurrected, whatever is measured now,
                               # and whatever any LATER row (with no superseded_by of its own) says
+                if v in FAILING and crit.split(".", 1)[0] in INFO_ONLY_GATES:
+                    skipped += 1
+                    continue  # E6.4: an info-only family is measured, never opened as a gap (no OPEN, no RE-OPEN)
                 prior_state = (prior or {}).get("state", "OPEN").upper()
                 # Carry hand metadata forward; only the very first OPEN row for a gid has none
                 # to carry, so it alone falls back to the census's own defaults.
