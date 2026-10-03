@@ -5,6 +5,7 @@ import {
   canonicalManifestDigest,
   canonicalNirmanaRebuildEvidenceDigest,
   canonicalRegistryContractDigest,
+  runtimeEvidenceSql,
   NirmanaProducerCoverageEvidenceSchema,
   NirmanaRebuildEvidenceSchema,
   parseFreezableNirmanaElevationManifest,
@@ -145,7 +146,8 @@ export async function loadNirmanaElevationRawSources(): Promise<NirmanaElevation
   const registry = await loadSource('asset_registry', `SELECT asset_id, sanskrit_name, english_name, english_description, layer, scope, sort_order, has_writer,
     asset_type, asset_kind, catalog_status, is_active, COALESCE(depends_on, '{}') AS depends_on,
     target_table, count_sql, integrity_check_sql, health_probe, natural_key_partition,
-    superseded_by, data_disposition, dead_flag
+    superseded_by, data_disposition, dead_flag,
+    ${runtimeEvidenceSql('asset_registry')}
     FROM asset_registry ORDER BY layer, sort_order, asset_id`)
   const throughput = await loadSource('asset_throughput', `SELECT DISTINCT ON (asset_id, chart_id) asset_id, chart_id, state, last_built_at FROM asset_throughput ORDER BY asset_id, chart_id, last_built_at DESC NULLS LAST`)
   const runs = await loadSource('build_runs', `SELECT id, chart_id, action, state, current_asset_id, created_at, started_at, triggered_by,

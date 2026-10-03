@@ -110,7 +110,7 @@ def test_a_placeholder_word_anywhere_is_refused_for_every_nature(why):
     _refused(_car(why=why), r"carriage\.why .*placeholder")
     _refused(dict(RJ, why=why), r"carriage\.why .*placeholder")
     _refused(dict(applies="D3", nature="computation", why=why, evidence=EVID), r"carriage\.why .*placeholder")
-    _refused(dict(applies="D2", nature="derivation", why=why, evidence=EVID), r"carriage\.why .*placeholder")
+    _refused(dict(applies="D3", nature="derivation", why=why, evidence=EVID), r"carriage\.why .*placeholder")
 
 
 @pytest.mark.parametrize("why", ["none none none none", "null null none null", "see none none none", "none or null none"])
@@ -156,7 +156,7 @@ def test_a_ratified_judgment_may_not_rest_on_an_unverified_pointer_because_it_re
     _refused(dict(RJ, evidence="unverified:recorded in the L0 elevation brief, section 4"), r"carriage\.evidence .*may not be `unverified:` for an N/A release")
     # a D1 / D2 / D3 check does not release anything: its `unverified:` stays allowed (an honest, described pointer)
     _ok(dict(applies="D3", nature="computation", why=s2.WHY, evidence="unverified:recorded in the L0 elevation brief, section 4"))
-    _ok(dict(applies="D2", nature="derivation", why=s2.WHY, evidence="unverified:recorded in the L0 elevation brief, section 4"))
+    _ok(dict(applies="D3", nature="derivation", why=s2.WHY, evidence="unverified:recorded in the L0 elevation brief, section 4"))
 
 
 # ───────────────────────── the spec's own pointers ─────────────────────────

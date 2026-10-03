@@ -77,6 +77,9 @@ PINNED_FINGERPRINTS = {
     # `verification_pass_status`, or the asset declares it in density_tier_columns, and never when its name carries a deny-listed word (cost, price, pricing, plan, access, subscription, billing, fee, tariff);
     # Dens.served revision 6 (applicability text); NA_CAUSES / NA_RULE_DECISIONS unchanged, inert until an asset declares density_tier_columns
     23: "9a2b66cb84afcdf018a6ae0cde084756b42795d9e73b000c6526842bcaa855d4",
+    # 24 (C2(ii), SS N-98; provisional; 23 is the Dens tier PR #3037, 17-22 belong to other lanes; the fingerprint carries both Dens.served rev 6 and Ldgr.source_presence rev 4): Ldgr.source_presence revision 4 (applicability text states the rule): the legacy undeclared
+    # reading no longer counts a placeholder citation ('UNSOURCED ...', a tradition label, the closed no-source list) as a source; NA_CAUSES / NA_RULE_DECISIONS unchanged, asset_declarations.json untouched
+    24: "11c95b0287421194cab6a609d3ac6dc7905a63f236ba139f3a9db41945d60640",
 }
 
 
@@ -158,16 +161,19 @@ def test_measure_selects_the_first_of_citation_columns_when_a_table_has_two(monk
 
     def fake_psql(sql, sep="\x1f", timeout=None):
         seen.append(sql)
-        if "count(*)::text FROM bg_two WHERE" in sql:
-            return [["48"]]
+        if "format_type(a.atttypid" in sql:
+            return [["text"]]
+        if "jsonb_build_object('rows'" in sql and '"bg_two"' in sql:
+            return [['{"rows":48,"null":0,"placeholder":0}']]
         raise AssertionError(f"unexpected query: {sql[:100]}")
 
     monkeypatch.setattr(ac, "psql", fake_psql)
     census = ac.measure("L0")
     res = next(a for a in census["assets"] if a["asset_id"] == "bg_two")["measurements"]["Ldgr.source_presence"]
     assert res == dict(v=ac.PASS, measured=f"{first} populated on 48/48 rows")
-    cit_sql = [q for q in seen if "IS NOT NULL" in q]
-    assert cit_sql == [f"SELECT count(*)::text FROM bg_two WHERE {first} IS NOT NULL"]
+    cit_sql = [q for q in seen if "jsonb_build_object('rows'" in q]
+    assert cit_sql == [ac.ldgr_legacy_count_sql("bg_two", first, "text")]       # C2(ii): exactly one read, of the FIRST column of the table (the SQL builder is the one definition)
+    assert f'"{first}"::text AS v' in cit_sql[0] and f'"{later}"' not in cit_sql[0]
 
 
 # ───────────────────────── applicability ─────────────────────────

@@ -6,6 +6,7 @@
       "1084_wp7_k1_v1_registry_edges.sql",
       "1091_wp10_ka_gochara_registry_repin.sql",
       "1210_asset_registry_direct_edges.sql",
+      "1243_ka_gochara_inert_registry_rows.sql",
       "154_build_dependencies.sql",
       "240_ga_yoga.sql",
       "252_asset_registry_ga_condition.sql",

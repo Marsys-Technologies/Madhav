@@ -24,6 +24,7 @@ sys.path.insert(0, str(HERE.parent))
 sys.path.insert(0, str(HERE))
 
 import asset_census as ac  # noqa: E402
+import _decl_version  # noqa: E402
 import _narr_writer_checks as nw  # noqa: E402
 
 FIXTURE = json.loads((HERE / "fixtures" / "census_cells_2026-09-30.json").read_text(encoding="utf-8"))
@@ -167,8 +168,8 @@ def test_a_wildcard_entry_round_trips_through_the_loader_and_the_fact(tmp_path):
             ac.validate_declarations(_doc(w=dict(prose_fields=[bad], evidence=PEV)))
 
 
-def test_the_file_version_is_1_13_0():
-    assert json.loads((HERE.parent / "asset_declarations.json").read_text(encoding="utf-8"))["version"] == "1.13.0"
+def test_the_file_version_is_the_current_one():
+    assert json.loads((HERE.parent / "asset_declarations.json").read_text(encoding="utf-8"))["version"] == _decl_version.CURRENT
 
 
 def test_empty_prose_list_is_a_valid_positive_declaration_distinct_from_null(tmp_path):
@@ -273,6 +274,7 @@ CITATION_EXTENDED_PRIOR = {"bo_arudha": ["citation_human"], "bo_laksana": ["cita
 # declared `[]` (writer composes no NARRATION; the evidence carries the AST-backed reason). SS ruling 2026-10-01: a composed
 # string is narration only if it states or grades a computed value; provenance pointers, ordinals, labels are not.
 NARR_EMPTY = ("bg_doshas", "bg_yogas", "bg_ontology", "bo_laksana_rerank")
+BATCH2_EMPTY = ("bg_transit_engine", "bg_kp_sublord_division")     # L0-WAVE batch 2 (test_e6_l0_batch2_declarations.py): [] with no carriage
 LATTA_EMPTY = ("bg_phaladeepika_latta",)     # 1.12.0 (NARR-GUARD, N-94): prose_fields [] with a prose_coupling to Carr.D1 (test_e6_narr_guard.py); the first [] asset with a carriage check
 # the 13 earlier declarations were re-audited against writer code (test_e6_1_narr_reaudit.py): 11 kept with writer evidence
 # (no `ddl` marker), 2 removed (null). The marker is gone from all 13.
@@ -395,13 +397,13 @@ def test_the_committed_file_declares_exactly_the_narr_decisions_on_top_of_the_th
     got = {a: e["prose_fields"] for a, e in decl.items() if e["prose_fields"] is not None}
     for a, v in NARR_DECLARED.items():
         assert got[a] == v, a
-    assert sorted(a for a, v in got.items() if v == []) == sorted(NARR_EMPTY + LATTA_EMPTY)
-    assert set(got) == (PRIOR_DDL - PRIOR_REAUDIT_NULLED) | set(NARR_DECLARED) | set(CITATION_NEW) | set(LATTA_EMPTY)
+    assert sorted(a for a, v in got.items() if v == []) == sorted(NARR_EMPTY + LATTA_EMPTY + BATCH2_EMPTY)
+    assert set(got) == (PRIOR_DDL - PRIOR_REAUDIT_NULLED) | set(NARR_DECLARED) | set(CITATION_NEW) | set(LATTA_EMPTY) | set(BATCH2_EMPTY)
     for a in CITATION_NEW:
         assert got[a] == CITATION_NEW[a], a
     for a, extra in CITATION_EXTENDED_PRIOR.items():                  # prior (ddl) declarations extended with citation_human
         assert got[a][-len(extra):] == extra and len(got[a]) == len(extra) + 2, a
-    n = len(PRIOR_DDL) - len(PRIOR_REAUDIT_NULLED) + len(NARR_DECLARED) + len(CITATION_NEW) + len(LATTA_EMPTY)
+    n = len(PRIOR_DDL) - len(PRIOR_REAUDIT_NULLED) + len(NARR_DECLARED) + len(CITATION_NEW) + len(LATTA_EMPTY) + len(BATCH2_EMPTY)
     assert len(got) == n and sum(e["prose_fields"] is None for e in decl.values()) == 127 - n
 
 
@@ -2461,7 +2463,7 @@ def test_citation_sites_scanner_sees_attribute_setdefault_variable_uppercase_key
 
 def test_the_declarations_file_states_the_fact_row_narr_rule_and_the_version():
     doc = json.loads((HERE.parent / "asset_declarations.json").read_text(encoding="utf-8"))
-    assert doc["version"] == "1.13.0"
+    assert doc["version"] == _decl_version.CURRENT
     d = doc["description"]
     for phrase in ("fact_value_text is the datum", "citation_human is the sentence", "verbalising an L1 fact value states a computed value",
                    "fact_value_text / formula_provenance_text columns stay undeclared", "[*]"):
