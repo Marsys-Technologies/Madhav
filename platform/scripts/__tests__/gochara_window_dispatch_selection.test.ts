@@ -6,7 +6,7 @@ import path from 'node:path'
 
 /**
  * Pravāha B6.0 / Codex round 19 R19-1 — the owner's dispatch (`gh workflow run deploy.yml -f gochara_contracts_schema_migration=true`) must
- * hand `migrate.ts --only` EXACTLY the Gochara protected window: 1153–1157 and the five pending files 1204, 1206, 1232, 1233, 1240, in
+ * hand `migrate.ts --only` EXACTLY the Gochara protected window: 1153–1157 and the six pending files 1204, 1206, 1232, 1233, 1235, 1240, in
  * ascending order, and never 1241 (1241 is a routine file that waits for SETTLED-1).
  *
  * This test does not grep: it EXTRACTS the real shell block of the step "Apply exact protected public-schema migrations" from
@@ -32,9 +32,10 @@ export const WINDOW_FILES = [
   '1206_gochara_search_inventory_completeness.sql',
   '1232_gochara_search_moon_scope_domain.sql',
   '1233_gochara_p1_period_anchor.sql',
+  '1235_ka_gochara_staged_candidate_evidence_function.sql',
   '1240_gochara_window_verification_gate.sql',
 ]
-const PENDING_FIVE = WINDOW_FILES.slice(5)
+const PENDING_SIX = WINDOW_FILES.slice(5)
 
 /** The `run: |` block scalar of the named step, de-indented — extracted by indentation, no YAML library needed. */
 function stepScript(name: string): string {
@@ -85,15 +86,15 @@ function run(inputs: Record<string, string>): Outcome {
 }
 
 describe('owner dispatch — the protected window selection, executed from deploy.yml', () => {
-  it('gochara_contracts_schema_migration=true selects exactly 1153–1157 then 1204, 1206, 1232, 1233, 1240, in that order', () => {
+  it('gochara_contracts_schema_migration=true selects exactly 1153–1157 then 1204, 1206, 1232, 1233, 1235, 1240, in that order', () => {
     const r = run({ APPLY_GOCHARA_CONTRACTS_SCHEMA_MIGRATION: 'true' })
     expect(r.status, r.out).toBe(0)
     expect(r.only).toEqual(WINDOW_FILES)
   })
 
-  it('the ordered pending five are the last five of the selection and are strictly ascending by number', () => {
+  it('the ordered pending six are the last six of the selection and are strictly ascending by number', () => {
     const r = run({ APPLY_GOCHARA_CONTRACTS_SCHEMA_MIGRATION: 'true' })
-    expect(r.only!.slice(-5)).toEqual(PENDING_FIVE)
+    expect(r.only!.slice(-6)).toEqual(PENDING_SIX)
     const nums = r.only!.map((f) => Number(f.split('_')[0]))
     expect(nums).toEqual([...nums].sort((a, b) => a - b))
   })

@@ -1100,6 +1100,8 @@ jobs:
             # Pravāha B6.0 AM-21 part 2 P1 period anchor on the relationship record — 1233, after 1232, SAME window
             # (Codex round 8). Two nullable columns + three CHECKs on a 1155 table; refuses to apply over existing P1 rows.
             migrations+=(1233_gochara_p1_period_anchor.sql)
+            # Pravāha B (decision A, split of #2996) — the staged-candidate evidence function, 1235: protected-class (needs CREATE on public), after 1233, SAME
+            # window. One SECURITY DEFINER boolean function and its ACL; no table, no data. Below 1240, so the --only predecessor rule needs nothing new.
             migrations+=(1235_ka_gochara_staged_candidate_evidence_function.sql)
             # Pravāha A5.3 window verification result + seal-time candidate gate (Codex round 8 R8-4) — 1240, after 1233, SAME
             # window. Adds the window provenance columns to ka_gochara_eval_window, ONE verification table, the digest/violation
