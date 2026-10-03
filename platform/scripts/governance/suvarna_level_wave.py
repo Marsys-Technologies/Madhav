@@ -1575,9 +1575,13 @@ def insert_run(connect, *, chart_id: str, manifest: Mapping[str, Any], digest: s
 # UPDATE .. SET / TRUNCATE / COPY .. FROM targets in its string literals (docstrings excluded). Forms it resolves: a
 # literal name, a module/class string constant ({TABLE}), a table passed as a literal argument to a parametric helper
 # (ga_writers/_idempotency.clear_table_for_chart), and the tables a known idempotency helper (replace_prior_*) writes. A
-# thin adapter that lists `source_paths = [...]` is followed one level into those files. Anything else -- a table named
-# by a runtime value, a writer that shows no write statement at all (it delegates, or it is read-only: the two are not
-# distinguishable here), an unreadable or unparseable file, a missing writer file -- goes to assets_not_scanned. The scan is
+# thin adapter that lists `source_paths = [...]` (never mutated) is followed one level into those files. Every table of a
+# TRUNCATE a, b list and every write of a multi-statement / CTE literal is captured; a read (USING, FROM, SELECT) is not a
+# write. Anything else -- a table named by a runtime value or a dotted/attribute name, SQL handed to execute() that this file
+# does not show (an imported constant, a call result, a subscript, bytes, __doc__), a literal that ends in a write verb with
+# no target, copy_from & co, exec/eval, runtime rebinding, `import *`, a literal over 64 KB, a writer that shows no write
+# statement at all (it delegates, or it is read-only: the two are not distinguishable here), an unreadable or unparseable
+# file, a missing writer file -- goes to assets_not_scanned with a named reason. The scan is
 # INDICATIVE: it can both over-report (a table named in a string that is not run) and under-report (SQL loaded from a file,
 # a delegate in another module), which is why any non-empty list makes the footprint scope "partial", never "complete".
 
@@ -1588,34 +1592,78 @@ FOOTPRINT_SCAN_LABEL = "indicative_static_scan"
 _ASSET_ID_RE = re.compile(r"^[a-z][a-z0-9_]*$")
 
 _PH_OPEN, _PH_CLOSE = "\x01", "\x02"
-_NAME_PART = r'(?:"?[A-Za-z_][\w$]*"?|\x01[^\x02]*\x02)'
+# a quoted identifier is one whole "..." token (a quoted name with spaces/odd characters is then refused by _add_target
+# instead of being half-read); a placeholder is \x01expr\x02. Literal text never carries \x01/\x02 (see _clean_literal).
+_NAME_PART = r'(?:"[^"\x01\x02]+"|[A-Za-z_][\w$]*|\x01[^\x02]*\x02)'
 # the lookahead refuses a name that continues ("public.{T}_x", "{A}{B}"): a partly-resolvable name is not guessed
 _TBL = rf"{_NAME_PART}(?:\.{_NAME_PART})?(?![\w$\".\x01])"
+# INSERT / DELETE / UPDATE / COPY name ONE written table (a read after it -- DELETE .. USING b, UPDATE .. FROM b,
+# INSERT .. SELECT FROM b -- is not a write, and finditer keeps every statement / CTE write in one literal). TRUNCATE takes a
+# comma list and is parsed separately (_WriteScan._scan_truncate).
 _WRITE_VERBS = (
     ("INSERT", re.compile(rf"\bINSERT\s+INTO\s+(?:ONLY\s+)?(?P<t>{_TBL})", re.IGNORECASE)),
     ("DELETE", re.compile(rf"\bDELETE\s+FROM\s+(?:ONLY\s+)?(?P<t>{_TBL})", re.IGNORECASE)),
-    ("UPDATE", re.compile(rf"\bUPDATE\s+(?:ONLY\s+)?(?P<t>{_TBL})\s+(?:(?:AS\s+)?[A-Za-z_]\w*\s+)?SET\b", re.IGNORECASE)),
-    ("TRUNCATE", re.compile(rf"\bTRUNCATE\s+(?:TABLE\s+)?(?:ONLY\s+)?(?P<t>{_TBL})", re.IGNORECASE)),
-    ("COPY", re.compile(rf"\bCOPY\s+(?P<t>{_TBL})\s*(?:\([^)]*\)\s*)?FROM\b", re.IGNORECASE)),
+    ("UPDATE", re.compile(rf"\bUPDATE\s+(?:ONLY\s+)?(?P<t>{_TBL})(?:\s*\*)?\s+(?:(?:AS\s+)?[A-Za-z_]\w*\s+)?SET\b", re.IGNORECASE)),
+    ("COPY", re.compile(rf"\bCOPY\s+(?P<t>{_TBL})\s*(?:\((?:[^()\x01]|\x01[^\x02]*\x02){{0,4000}}\)\s*)?FROM\b", re.IGNORECASE)),
 )
+_TRUNCATE_HEAD = re.compile(r"\bTRUNCATE(?:\s+TABLE\b)?(?=\s)\s*", re.IGNORECASE)
+_TRUNCATE_ITEM = re.compile(rf"(?:ONLY\s+)?(?P<t>{_TBL})\s*(?:\*\s*)?", re.IGNORECASE)
 # A verb whose target is not a recognisable name ("INSERT INTO %s", "DELETE FROM {}") cannot be resolved: not scanned.
 _VERB_ANY = re.compile(r"\b(?:INSERT\s+INTO|DELETE\s+FROM|TRUNCATE(?:\s+TABLE)?)\s+(?P<rest>\S+)", re.IGNORECASE)
 _SQL_WORDS = {"select", "set", "values", "only", "table", "from", "where", "default", "using"}
+# a literal that ENDS in a write verb has no target token: the target is joined on at runtime (" ".join([verb, tbl]), verb + tbl)
+_TRAILING_STRONG_VERB = re.compile(r"\b(?:INSERT\s+INTO|DELETE\s+FROM|TRUNCATE(?:\s+TABLE)?)\s*\Z", re.IGNORECASE)
+_TRAILING_WEAK_VERB = re.compile(r"\b(?:UPDATE|COPY)\s+\Z", re.IGNORECASE)   # needs a trailing space: a bare "UPDATE" is a label
+_UPDATE_WORD = re.compile(r"\bUPDATE\b", re.IGNORECASE)
+_COPY_WORD = re.compile(r"\bCOPY\b", re.IGNORECASE)
+_SET_WORD = re.compile(r"\bSET\b", re.IGNORECASE)
+_FROM_WORD = re.compile(r"\bFROM\b", re.IGNORECASE)
+_NOT_A_STATEMENT_UPDATE_PREV = {"for", "do", "on", "key", "of", "before", "after", "or", "instead"}
+_SELECT_INTO_WORDS = re.compile(r"\b(SELECT|INTO|INSERT|FROM|UPDATE|DELETE)\b", re.IGNORECASE)
+# a literal this long is not scanned at all (it bounds regex work, and no real statement is this long): not scanned
+MAX_SQL_LITERAL_CHARS = 64 * 1024
+
+
+def _select_into(text: str) -> bool:
+    """`SELECT ... INTO` (a table-creating form) with no INSERT/FROM/UPDATE/DELETE between the SELECT and the INTO.
+    One linear pass over the keywords (the earlier single regex rescanned to the end of the text from every SELECT)."""
+    armed = False
+    for m in _SELECT_INTO_WORDS.finditer(text):
+        w = m.group(1).upper()
+        if w == "SELECT":
+            armed = True
+        elif w == "INTO":
+            if armed:
+                return True
+        else:
+            armed = False
+    return False
+
 
 # Write forms this scan does NOT analyse. Seeing one in a (non-docstring) string literal means the writer touches tables the
 # scan cannot name, so the writer goes to assets_not_scanned instead of reading as a clean single-table writer.
 _TRIPWIRES = (
-    ("MERGE INTO", re.compile(r"\bMERGE\s+INTO\b", re.IGNORECASE)),
-    ("REFRESH MATERIALIZED VIEW", re.compile(r"\bREFRESH\s+MATERIALIZED\s+VIEW\b", re.IGNORECASE)),
-    ("CREATE TABLE", re.compile(r"\bCREATE\s+(?:(?:GLOBAL\s+|LOCAL\s+)?(?:TEMP|TEMPORARY)\s+|UNLOGGED\s+)?TABLE\b", re.IGNORECASE)),
-    ("SELECT ... INTO", re.compile(r"\bSELECT\b(?:(?!\b(?:INSERT|FROM|UPDATE|DELETE)\b)[\s\S])*?\bINTO\b", re.IGNORECASE)),
-    ("ALTER TABLE", re.compile(r"\bALTER\s+TABLE\b", re.IGNORECASE)),
-    ("DROP TABLE", re.compile(r"\bDROP\s+TABLE\b", re.IGNORECASE)),
+    ("MERGE INTO", re.compile(r"\bMERGE\s+INTO\b", re.IGNORECASE).search),
+    ("REFRESH MATERIALIZED VIEW", re.compile(r"\bREFRESH\s+MATERIALIZED\s+VIEW\b", re.IGNORECASE).search),
+    ("CREATE TABLE", re.compile(r"\bCREATE\s+(?:(?:GLOBAL\s+|LOCAL\s+)?(?:TEMP|TEMPORARY)\s+|UNLOGGED\s+)?TABLE\b", re.IGNORECASE).search),
+    ("SELECT ... INTO", _select_into),
+    ("ALTER TABLE", re.compile(r"\bALTER\s+TABLE\b", re.IGNORECASE).search),
+    ("DROP TABLE", re.compile(r"\bDROP\s+TABLE\b", re.IGNORECASE).search),
 )
 _SQL_COMPOSITION_ATTRS = {"SQL", "Identifier", "Composed", "Literal", "Placeholder"}
-_EXECUTE_ATTRS = {"execute", "executemany", "executescript", "copy", "copy_expert"}
+_EXECUTE_ATTRS = {"execute", "executemany", "executescript", "copy", "copy_expert"}   # SQL text is argument 0 (or sql=/query=)
+_SQL_SECOND_ARG_FUNCS = {"execute_values", "execute_batch"}                          # psycopg2.extras.f(cur, SQL, ...)
+_SQL_KEYWORDS = {"query", "sql", "statement"}
+_COPY_API_ATTRS = {"copy_from", "copy_records_to_table", "copy_to_table"}            # write a table with no SQL text at all
+_DYNAMIC_CODE_FUNCS = {"exec", "eval", "compile"}
+_GLOBALS_FUNCS = {"globals", "locals", "vars"}
+_STR_METHODS = {"format", "format_map", "strip", "lstrip", "rstrip", "lower", "upper", "casefold", "title", "capitalize",
+                "replace", "encode", "decode", "removeprefix", "removesuffix", "expandtabs", "zfill", "ljust", "rjust", "center"}
+_STR_WRAPPER_FUNCS = {"str", "text", "dedent", "cleandoc"}
 _FILE_READ_ATTRS = {"read", "read_text", "read_bytes", "readlines"}
 _SQL_FILE_LITERAL = re.compile(r"\A\s*[\w./~-]+\.sql\s*\Z")
+_BYTES_WRITE_FORM = re.compile(r"\b(?:INSERT\s+INTO|DELETE\s+FROM|TRUNCATE|UPDATE\s+\S+\s+SET|COPY\s+\S+\s+FROM|MERGE\s+INTO|"
+                               r"REFRESH\s+MATERIALIZED|CREATE\s+(?:\w+\s+)?TABLE|ALTER\s+TABLE|DROP\s+TABLE)\b", re.IGNORECASE)
 
 # What the scan cannot see by construction (printed with the impact statement; a `complete` scope is a statement about the
 # scan, not about production).
@@ -1625,6 +1673,17 @@ WRITE_SCAN_LIMITATIONS = (
     "known idempotency helpers; a writer that also writes tables itself and delegates the rest reads as scanned",
     "triggers, rules, RLS and ON DELETE/UPDATE cascades are not writes the scan sees (the FK closure covers cascades)",
     "SQL built from runtime values, composed with psycopg sql.SQL/Identifier, or read from a file is reported as not scanned",
+    "an execute()/executemany()/copy_expert()/execute_values() argument that is an imported name or an attribute of an "
+    "imported module (imported_sql_constant), a call result, a subscript or an unbound/unassigned attribute, an f-string or "
+    "concatenation that starts with a runtime value, a bytes literal, or a dunder attribute (fn.__doc__) is reported as not "
+    "scanned; so are copy_from/copy_to_table/copy_records_to_table calls, exec/eval/compile, setattr, writes through "
+    "globals()/locals()/vars(), `from x import *`, getattr(...)(...) of an execute/copy attribute, and a literal "
+    "that ends in a write verb with no target (the table is joined on at runtime)",
+    "a dotted or attribute name ({cfg.T}, {self.T}) is never read as a table constant; a SQL literal over 64 KB is not scanned; "
+    "a source_paths list that is mutated (append/+=/extend/item assignment) is not followed",
+    "SQL assembled from separately bound fragments (a list of keyword strings joined elsewhere, a verb in one name and its "
+    "target in another) is not reassembled: only literals, f-strings, + concatenation and a literal-separator "
+    "''.join([...]) of a list literal are rendered",
 )
 
 
@@ -1637,16 +1696,21 @@ def _is_str(node: ast.AST) -> bool:
     return isinstance(node, ast.Constant) and isinstance(node.value, str)
 
 
+def _clean_literal(value: str) -> str:
+    """Literal text never carries the placeholder control characters (a literal \\x01 must not read as an expression)."""
+    return value.replace(_PH_OPEN, " ").replace(_PH_CLOSE, " ")
+
+
 def _render_sql_node(node: ast.AST) -> str | None:
     """The text of a string-building expression with every non-literal part as a \\x01expr\\x02 placeholder; None if the
     node is not string-building at all (a plain str constant is handled by the caller)."""
     if _is_str(node):
-        return node.value
+        return _clean_literal(node.value)
     if isinstance(node, ast.JoinedStr):
         out = []
         for v in node.values:
             if _is_str(v):
-                out.append(v.value)
+                out.append(_clean_literal(v.value))
             elif isinstance(v, ast.FormattedValue):
                 out.append(f"{_PH_OPEN}{ast.unparse(v.value)}{_PH_CLOSE}")
         return "".join(out)
@@ -1656,6 +1720,15 @@ def _render_sql_node(node: ast.AST) -> str | None:
             return None
         return (left if left is not None else f"{_PH_OPEN}{ast.unparse(node.left)}{_PH_CLOSE}") + \
                (right if right is not None else f"{_PH_OPEN}{ast.unparse(node.right)}{_PH_CLOSE}")
+    if (isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute) and node.func.attr == "join"
+            and _is_str(node.func.value) and len(node.args) == 1 and not node.keywords
+            and isinstance(node.args[0], (ast.List, ast.Tuple))
+            and not any(isinstance(e, ast.Starred) for e in node.args[0].elts)):
+        parts = []
+        for e in node.args[0].elts:
+            r = _render_sql_node(e)
+            parts.append(r if r is not None else f"{_PH_OPEN}{ast.unparse(e)}{_PH_CLOSE}")
+        return _clean_literal(node.func.value.value).join(parts)
     return None
 
 
@@ -1673,6 +1746,25 @@ def _reads_a_file(node: ast.AST) -> bool:
     return False
 
 
+def _root_name(node: ast.AST) -> str | None:
+    """The Name at the root of an attribute/subscript/call chain (a.b[c].d -> a), else None."""
+    while isinstance(node, (ast.Attribute, ast.Subscript, ast.Call)):
+        node = node.func if isinstance(node, ast.Call) else node.value
+    return node.id if isinstance(node, ast.Name) else None
+
+
+_SQL_COMPOSITION_REASON = "write_form_not_analysed: sql.SQL / sql.Identifier composition"
+
+
+def _is_sql_composition(func: ast.AST) -> bool:
+    return (isinstance(func, ast.Attribute) and func.attr in _SQL_COMPOSITION_ATTRS and isinstance(func.value, ast.Name)
+            and func.value.id == "sql") or (isinstance(func, ast.Name) and func.id in {"Identifier", "SQL", "Composed"})
+
+
+def _is_globals_call(node: ast.AST) -> bool:
+    return isinstance(node, ast.Call) and isinstance(node.func, ast.Name) and node.func.id in _GLOBALS_FUNCS
+
+
 class _WriteScan:
     """What one parsed module shows: resolved write tables, unresolved reasons, parametric functions, helper calls."""
 
@@ -1680,6 +1772,10 @@ class _WriteScan:
         self.tables: set[str] = set()
         self.unresolved: list[str] = []
         self.consts: dict[str, set[str]] = {}
+        self.assigns: dict[str, list[ast.AST]] = {}        # name / attribute name -> every value assigned to it
+        self.imported: set[str] = set()                    # names bound by `import x` / `from x import y`
+        self.params: set[str] = set()
+        self.local_defs: set[str] = set()                  # def / class names
         self.defined: set[str] = set()
         self.param_funcs: dict[str, list[tuple[str, int]]] = {}   # function -> [(param name, positional index)]
         self.calls: list[ast.Call] = []
@@ -1703,23 +1799,35 @@ class _WriteScan:
         elif isinstance(target, ast.Starred):
             self._bind_target(target.value, None)
 
+    def _note_assigned(self, target: ast.AST, value: ast.AST) -> None:
+        if isinstance(target, ast.Name):
+            self.assigns.setdefault(target.id, []).append(value)
+        elif isinstance(target, ast.Attribute):
+            self.assigns.setdefault(target.attr, []).append(value)
+
     def _collect_constants(self, tree: ast.Module) -> None:
         """name -> the set of values it is bound to ANYWHERE in the module (scope-blind on purpose: a name is a usable
         constant only if every binding of it is the same string literal). Any other binding of the name -- loop target,
         with/except/match target, comprehension target, augmented or walrus assignment, function parameter, import alias,
-        global/nonlocal, def/class name, del, tuple unpacking, attribute assignment -- makes it unresolved."""
+        global/nonlocal, def/class name, del, tuple unpacking, attribute assignment -- makes it unresolved. Also records the
+        values assigned to each name, the imported names, parameters and local def/class names (for the execute() argument
+        check)."""
         for node in ast.walk(tree):
             if isinstance(node, ast.Assign):
                 lit = _string_const_value(node.value)
                 for t in node.targets:
                     self._bind_target(t, lit)
+                    self._note_assigned(t, node.value)
             elif isinstance(node, ast.AnnAssign):
                 if node.value is not None:
                     self._bind_target(node.target, _string_const_value(node.value) if isinstance(node.target, ast.Name) else None)
+                    self._note_assigned(node.target, node.value)
             elif isinstance(node, ast.AugAssign):
                 self._bind_target(node.target, None)
+                self._note_assigned(node.target, node.value)
             elif isinstance(node, ast.NamedExpr):
                 self._bind_target(node.target, None)
+                self._note_assigned(node.target, node.value)
             elif isinstance(node, (ast.For, ast.AsyncFor, ast.comprehension)):
                 self._bind_target(node.target, None)
             elif isinstance(node, (ast.With, ast.AsyncWith)):
@@ -1731,14 +1839,18 @@ class _WriteScan:
                     self._bind(node.name, None)
             elif isinstance(node, ast.arg):
                 self._bind(node.arg, None)
+                self.params.add(node.arg)
             elif isinstance(node, (ast.Import, ast.ImportFrom)):
                 for al in node.names:
-                    self._bind((al.asname or al.name.split(".")[0]), None)
+                    bound = al.asname or al.name.split(".")[0]
+                    self._bind(bound, None)
+                    self.imported.add(bound)
             elif isinstance(node, (ast.Global, ast.Nonlocal)):
                 for n in node.names:
                     self._bind(n, None)
             elif isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
                 self._bind(node.name, None)
+                self.local_defs.add(node.name)
             elif isinstance(node, ast.Delete):
                 for t in node.targets:
                     self._bind_target(t, None)
@@ -1752,8 +1864,9 @@ class _WriteScan:
                 self._bind_target(node.name, None)
 
     def _resolve_const(self, expr: str) -> str | None:
-        """'TABLE' / 'self.TABLE' / 'Cls.TABLE' -> its single string value, else None."""
-        name = expr.strip().split(".")[-1] if re.fullmatch(r"[A-Za-z_]\w*(?:\.[A-Za-z_]\w*)?", expr.strip()) else None
+        """A plain identifier -> its single string value, else None. A dotted / attribute expression ('cfg.T', 'self.T') is
+        NEVER a table constant: resolving it by its last segment would read `{cfg.T}` as an unrelated local T."""
+        name = expr.strip() if re.fullmatch(r"[A-Za-z_]\w*", expr.strip()) else None
         vals = self.consts.get(name or "")
         if vals and len(vals) == 1:
             (only,) = vals
@@ -1766,8 +1879,13 @@ class _WriteScan:
             fn_stack = fn_stack + [node]
         if isinstance(node, ast.Call):
             self.calls.append(node)
+            joined = _render_sql_node(node)                    # '' .join([...]) of a list literal; children are walked too
+            if joined is not None:
+                self._scan_text(joined, fn_stack)
         if isinstance(node, ast.Expr) and _is_str(node.value):
             return                                              # docstring / bare prose string: not SQL
+        if isinstance(node, ast.Constant) and isinstance(node.value, (bytes, bytearray)):
+            self._scan_bytes(bytes(node.value))
         if isinstance(node, (ast.Constant, ast.JoinedStr, ast.BinOp)):
             text = _render_sql_node(node)
             if text is not None:
@@ -1777,8 +1895,153 @@ class _WriteScan:
         for child in ast.iter_child_nodes(node):
             self._walk(child, fn_stack)
 
+    def _scan_bytes(self, data: bytes) -> None:
+        """SQL held as bytes is not analysed: a bytes literal that carries a write form is reported, not read."""
+        if len(data) > MAX_SQL_LITERAL_CHARS:
+            self.unresolved.append(f"sql_literal_too_long: bytes literal of {len(data)} bytes (limit {MAX_SQL_LITERAL_CHARS})")
+        elif _BYTES_WRITE_FORM.search(data.decode("latin-1")):
+            self.unresolved.append("bytes_sql_literal: a write form in a bytes literal is not analysed")
+
+    # ---- execute()-argument and exotic-form checks -------------------------------------------------------------------
+
+    def _sql_arg_problem(self, node: ast.AST, seen: frozenset = frozenset()) -> str | None:
+        """Why the SQL text passed to an execute-like call is NOT visible in this module's string literals, else None.
+        Literal text is scanned where it is written, so a literal, an f-string, a concatenation, or a name bound to one is
+        fine; an imported name, a call result, a subscript or an attribute nothing here assigns is not."""
+        if len(seen) > 8:
+            return "unresolved_sql_expression: too deeply chained"
+        if isinstance(node, ast.Constant):
+            if isinstance(node.value, (bytes, bytearray)):
+                return "bytes_sql_literal: SQL passed as bytes is not analysed"
+            return None
+        if isinstance(node, ast.JoinedStr):
+            return self._first_problem(self._statement_start_operands(node), seen)
+        if isinstance(node, ast.BinOp):
+            if isinstance(node.op, ast.Add):
+                return self._first_problem(self._statement_start_operands(node), seen)
+            if isinstance(node.op, ast.Mod):
+                return self._sql_arg_problem(node.left, seen)
+            return f"unresolved_sql_expression: {type(node.op).__name__} expression"
+        if isinstance(node, ast.Name):
+            if node.id in self.imported:
+                return f"imported_sql_constant: {node.id}"
+            if node.id in seen:
+                return None
+            vals = self.assigns.get(node.id)
+            if vals:
+                for v in vals:
+                    p = self._sql_arg_problem(v, seen | {node.id})
+                    if p:
+                        return p
+                return None
+            if node.id in self.consts:
+                return None                                     # a parameter / loop variable / def: its literals are scanned at the source
+            return f"unresolved_sql_name: {node.id} is not bound in this module"
+        if isinstance(node, ast.Attribute):
+            if node.attr.startswith("__") and node.attr.endswith("__"):
+                return f"sql_from_dunder_attribute: {ast.unparse(node)[:60]}"
+            root = _root_name(node)
+            if root in self.imported:
+                return f"imported_sql_constant: {ast.unparse(node)[:60]}"
+            if node.attr in seen:
+                return None
+            vals = self.assigns.get(node.attr)
+            if vals:
+                for v in vals:
+                    p = self._sql_arg_problem(v, seen | {node.attr})
+                    if p:
+                        return p
+                return None
+            return f"unresolved_sql_attribute: {ast.unparse(node)[:60]} is never assigned in this module"
+        if isinstance(node, ast.Subscript):
+            root = _root_name(node)
+            if root in self.imported:
+                return f"imported_sql_constant: {ast.unparse(node)[:60]}"
+            vals = self.assigns.get(root or "")
+            if vals and root not in self.params and all(isinstance(v, (ast.Dict, ast.List, ast.Tuple, ast.Set)) for v in vals):
+                return None                                     # a container literal in this module: its strings are scanned
+            return f"sql_from_subscript: {ast.unparse(node)[:60]}"
+        if isinstance(node, ast.Call):
+            f = node.func
+            if isinstance(f, ast.Attribute) and f.attr == "join":
+                for a in node.args:
+                    p = self._sql_arg_problem(a, seen)
+                    if p:
+                        return p
+                return None
+            if isinstance(f, ast.Attribute) and f.attr in _STR_METHODS:
+                return self._sql_arg_problem(f.value, seen)
+            if ((isinstance(f, ast.Name) and f.id in _STR_WRAPPER_FUNCS) or (isinstance(f, ast.Attribute) and f.attr in _STR_WRAPPER_FUNCS)) \
+                    and node.args:
+                return self._sql_arg_problem(node.args[0], seen)
+            if _is_sql_composition(f):
+                return _SQL_COMPOSITION_REASON
+            local = (isinstance(f, ast.Name) and f.id in self.local_defs and f.id not in self.imported) or \
+                    (isinstance(f, ast.Attribute) and f.attr in self.local_defs and _root_name(f) not in self.imported)
+            if local:
+                return None                                     # a function defined here: its literals are scanned here
+            return f"sql_from_call_result: {ast.unparse(node)[:60]}"
+        if isinstance(node, (ast.List, ast.Tuple, ast.Set)):
+            for e in node.elts:
+                p = self._sql_arg_problem(e, seen)
+                if p:
+                    return p
+            return None
+        if isinstance(node, (ast.ListComp, ast.GeneratorExp, ast.SetComp)):
+            return self._sql_arg_problem(node.elt, seen)
+        if isinstance(node, ast.IfExp):
+            return self._sql_arg_problem(node.body, seen) or self._sql_arg_problem(node.orelse, seen)
+        if isinstance(node, ast.BoolOp):
+            for v in node.values:
+                p = self._sql_arg_problem(v, seen)
+                if p:
+                    return p
+            return None
+        if isinstance(node, ast.Await):
+            return self._sql_arg_problem(node.value, seen)
+        return f"unresolved_sql_expression: {type(node).__name__}"
+
+    def _first_problem(self, nodes: Sequence[ast.AST], seen: frozenset) -> str | None:
+        for n in nodes:
+            p = self._sql_arg_problem(n, seen)
+            if p:
+                return p
+        return None
+
+    @staticmethod
+    def _statement_start_operands(node: ast.AST) -> list[ast.AST]:
+        """The runtime parts of an f-string / `+` chain that sit where a STATEMENT begins (the start of the text, or right
+        after a `;`): there the runtime value is the verb itself, so it is classified like a whole-statement argument. A
+        runtime part in the middle of a literal statement (a column list, a placeholder run) is not."""
+        out: list[ast.AST] = []
+        at_start = True
+        if isinstance(node, ast.JoinedStr):
+            items = [(v.value, isinstance(v, ast.FormattedValue)) for v in node.values if isinstance(v, (ast.Constant, ast.FormattedValue))]
+        else:
+            flat: list[ast.AST] = []
+
+            def flatten(n: ast.AST) -> None:
+                if isinstance(n, ast.BinOp) and isinstance(n.op, ast.Add):
+                    flatten(n.left)
+                    flatten(n.right)
+                else:
+                    flat.append(n)
+            flatten(node)
+            items = [(n, not _is_str(n)) for n in flat]
+        for value, runtime in items:
+            if runtime:
+                if at_start:
+                    out.append(value)
+                at_start = False
+            else:
+                text = value if isinstance(value, str) else getattr(value, "value", "")
+                if isinstance(text, str) and text.strip():
+                    at_start = text.rstrip().endswith(";")
+        return out
+
     def _tripwire_calls(self, tree: ast.Module) -> None:
-        """Forms that name tables only at runtime or outside this file: psycopg sql composition, SQL read from a file."""
+        """Forms that name tables only at runtime or outside this file: psycopg sql composition, SQL read from a file, SQL
+        imported / called / subscripted into execute(), copy APIs with no SQL text, exec/eval, runtime rebinding."""
         file_sql_names: set[str] = set()
         for node in ast.walk(tree):
             if isinstance(node, ast.Assign) and _reads_a_file(node.value):
@@ -1787,28 +2050,111 @@ class _WriteScan:
                         file_sql_names.add(t.id)
             elif isinstance(node, ast.Constant) and isinstance(node.value, str) and _SQL_FILE_LITERAL.match(node.value):
                 self.unresolved.append(f"write_form_not_analysed: sql file reference {node.value.strip()[:60]!r}")
+            elif isinstance(node, ast.ImportFrom) and any(a.name == "*" for a in node.names):
+                self.unresolved.append(f"dynamic_binding: from {'.' * node.level}{node.module or ''} import *")
+            elif isinstance(node, ast.Subscript) and isinstance(node.ctx, (ast.Store, ast.Del)) and _is_globals_call(node.value):
+                self.unresolved.append("runtime_rebinding: item assignment on globals()/locals()/vars()")
         for call in self.calls:
             f = call.func
-            if (isinstance(f, ast.Attribute) and f.attr in _SQL_COMPOSITION_ATTRS and isinstance(f.value, ast.Name)
-                    and f.value.id == "sql") or (isinstance(f, ast.Name) and f.id in {"Identifier", "SQL", "Composed"}):
-                self.unresolved.append("write_form_not_analysed: sql.SQL / sql.Identifier composition")
-            if isinstance(f, ast.Attribute) and f.attr in _EXECUTE_ATTRS and call.args:
-                first = call.args[0]
-                if _reads_a_file(first) or (isinstance(first, ast.Name) and first.id in file_sql_names):
-                    self.unresolved.append("write_form_not_analysed: SQL read from a file feeds execute()")
+            if _is_sql_composition(f):
+                self.unresolved.append(_SQL_COMPOSITION_REASON)
+            if isinstance(f, ast.Name) and f.id in _DYNAMIC_CODE_FUNCS:
+                self.unresolved.append(f"dynamic_code: {f.id}() builds code at runtime")
+            if isinstance(f, ast.Name) and f.id == "setattr":
+                self.unresolved.append("runtime_rebinding: setattr() can rebind a SQL constant or a method at runtime")
+            if isinstance(f, ast.Attribute) and f.attr in {"update", "setdefault", "pop"} and _is_globals_call(f.value):
+                self.unresolved.append("runtime_rebinding: globals()/locals()/vars() mutated at runtime")
+            if isinstance(f, ast.Attribute) and f.attr in _COPY_API_ATTRS:
+                self.unresolved.append(f"copy_api_without_sql_text: {f.attr}() writes a table with no SQL text to scan")
+            # getattr(cur, 'execute')(...) / getattr(cur, name)(...): the callee is chosen at runtime
+            if isinstance(f, ast.Call) and isinstance(f.func, ast.Name) and f.func.id == "getattr" and len(f.args) >= 2:
+                a = f.args[1]
+                if not _is_str(a) or a.value in _EXECUTE_ATTRS | _COPY_API_ATTRS:
+                    self.unresolved.append("dynamic_attribute_call: getattr(...)(...) calls an attribute chosen at runtime")
+            if isinstance(f, ast.Name) and f.id == "getattr" and len(call.args) >= 2 and _is_str(call.args[1]) \
+                    and call.args[1].value in _EXECUTE_ATTRS | _COPY_API_ATTRS:
+                self.unresolved.append(f"dynamic_attribute_call: getattr(.., {call.args[1].value!r}) fetches a SQL-running attribute by name")
+            # the SQL text handed to execute-like calls
+            idx = None
+            if isinstance(f, ast.Attribute) and f.attr in _EXECUTE_ATTRS:
+                idx = 0
+            elif (isinstance(f, ast.Name) and f.id in _SQL_SECOND_ARG_FUNCS) or \
+                    (isinstance(f, ast.Attribute) and f.attr in _SQL_SECOND_ARG_FUNCS):
+                idx = 1
+            if idx is not None:
+                arg = call.args[idx] if len(call.args) > idx else next((k.value for k in call.keywords if k.arg in _SQL_KEYWORDS), None)
+                if arg is not None and not isinstance(arg, ast.Starred):
+                    if _reads_a_file(arg) or (isinstance(arg, ast.Name) and arg.id in file_sql_names):
+                        self.unresolved.append("write_form_not_analysed: SQL read from a file feeds execute()")
+                    else:
+                        problem = self._sql_arg_problem(arg)
+                        if problem:
+                            self.unresolved.append(problem)
 
     def _scan_text(self, text: str, fn_stack: list[ast.AST]) -> None:
-        for label, rx in _TRIPWIRES:
-            if rx.search(text):
+        if len(text) > MAX_SQL_LITERAL_CHARS:
+            self.unresolved.append(f"sql_literal_too_long: {len(text)} characters (limit {MAX_SQL_LITERAL_CHARS}); not scanned")
+            return
+        for label, hit in _TRIPWIRES:
+            if hit(text):
                 self.unresolved.append(f"write_form_not_analysed: {label}")
-        matched_spans = []
+        verb_starts: set[int] = set()
+        matched_spans: list[tuple[int, int]] = []
         for verb, rx in _WRITE_VERBS:
             for m in rx.finditer(text):
+                verb_starts.add(m.start())
                 matched_spans.append(m.span("t"))
                 self._add_target(m.group("t"), verb, fn_stack)
+        for head in _TRUNCATE_HEAD.finditer(text):
+            self._scan_truncate(text, head, matched_spans, fn_stack)
+        matched_starts = {a for a, _ in matched_spans}            # a set: a list scan per verb is quadratic on hostile input
         for m in _VERB_ANY.finditer(text):
-            if not any(a <= m.start("rest") < b for a, b in matched_spans) and m.group("rest").lower().strip('"') not in _SQL_WORDS:
+            if m.start("rest") not in matched_starts and m.group("rest").lower().strip('"') not in _SQL_WORDS:
                 self.unresolved.append(f"unparseable_write_target: {m.group(0)[:60]!r}")
+        self._scan_unmatched_verbs(text, verb_starts)
+
+    def _scan_truncate(self, text: str, head: re.Match, matched_spans: list[tuple[int, int]], fn_stack: list[ast.AST]) -> None:
+        """TRUNCATE [TABLE] [ONLY] a [*] [, [ONLY] b [*] ...] [RESTART|CONTINUE IDENTITY] [CASCADE|RESTRICT]: every table in the
+        comma list is written; a list item that is not a recognisable name makes the statement unresolved."""
+        pos = head.end()
+        while True:
+            m = _TRUNCATE_ITEM.match(text, pos)
+            if m is None:
+                self.unresolved.append(f"unparseable_write_target: {text[head.start():head.start() + 60]!r}")
+                return
+            matched_spans.append(m.span("t"))
+            self._add_target(m.group("t"), "TRUNCATE", fn_stack)
+            pos = m.end()
+            if text[pos:pos + 1] != ",":
+                return
+            pos += 1
+            while pos < len(text) and text[pos].isspace():
+                pos += 1
+
+    def _scan_unmatched_verbs(self, text: str, verb_starts: set[int]) -> None:
+        """A write verb the verb regexes did not resolve to a target: a literal that ends in the verb (the table is joined on
+        at runtime), an UPDATE ... SET / COPY ... FROM whose target is not a recognisable name."""
+        if _TRAILING_STRONG_VERB.search(text):
+            self.unresolved.append("trailing_write_verb_without_target: a literal ends in a write verb (the table is joined on at runtime)")
+        m = _TRAILING_WEAK_VERB.search(text)
+        if m:
+            prev = text[max(0, m.start() - 30):m.start()].split()[-1:]
+            if not (prev and prev[0].lower() in _NOT_A_STATEMENT_UPDATE_PREV):
+                self.unresolved.append("trailing_write_verb_without_target: a literal ends in a write verb (the table is joined on at runtime)")
+        last_set = max((x.start() for x in _SET_WORD.finditer(text)), default=-1)
+        last_from = max((x.start() for x in _FROM_WORD.finditer(text)), default=-1)
+        for m in _UPDATE_WORD.finditer(text):
+            prev = text[max(0, m.start() - 30):m.start()].split()[-1:]
+            if m.start() in verb_starts or (prev and prev[0].lower() in _NOT_A_STATEMENT_UPDATE_PREV):
+                continue
+            if last_set > m.end():
+                self.unresolved.append(f"unparseable_write_target: {text[m.start():m.start() + 60]!r}")
+        for m in _COPY_WORD.finditer(text):
+            if m.start() in verb_starts or last_from <= m.end():
+                continue
+            if text[m.end():m.end() + 200].lstrip()[:1] == "(":
+                continue                                        # COPY (SELECT ...) TO: an export, a read
+            self.unresolved.append(f"unparseable_write_target: {text[m.start():m.start() + 60]!r}")
 
     def _add_target(self, token: str, verb: str, fn_stack: list[ast.AST]) -> None:
         if token.lower().strip('"') in _SQL_WORDS:
@@ -1851,7 +2197,7 @@ class _WriteScan:
                 arg = call.args[idx] if idx < len(call.args) else next((k.value for k in call.keywords if k.arg == pname), None)
                 value = None
                 if arg is not None:
-                    value = _string_const_value(arg) or (self._resolve_const(ast.unparse(arg)) if isinstance(arg, (ast.Name, ast.Attribute)) else None)
+                    value = _string_const_value(arg) or (self._resolve_const(ast.unparse(arg)) if isinstance(arg, ast.Name) else None)
                 if value is None or not re.fullmatch(r"[A-Za-z_][\w$]*(?:\.[A-Za-z_][\w$]*)?", value):
                     self.unresolved.append(f"unresolved_table_argument: {fname}({pname}=...)")
                 else:
@@ -1894,18 +2240,45 @@ def helper_write_effects(repo: Path) -> dict[str, dict]:
     return out
 
 
+_SOURCE_PATHS_MUTATORS = {"append", "extend", "insert", "remove", "pop", "clear", "sort", "reverse",
+                          "__iadd__", "__imul__", "__setitem__", "__delitem__"}
+
+
+def _is_source_paths(node: ast.AST) -> bool:
+    """`source_paths` as a bare name or as an attribute (`cls.source_paths`, `self.source_paths`)."""
+    return (isinstance(node, ast.Name) and node.id == "source_paths") or (isinstance(node, ast.Attribute) and node.attr == "source_paths")
+
+
 def _source_paths_literal(tree: ast.Module) -> tuple[list[str], str | None]:
     """The string items of a `source_paths = [...]` (or tuple) assignment; nothing else is evaluated. The second value is a
-    reason when an assignment is not a plain list/tuple of string literals (the delegate cannot be followed)."""
+    reason when an assignment is not a plain list/tuple of string literals, or when the list is mutated anywhere
+    (`source_paths.append(...)`, `+=`, `.extend`, item assignment, setattr, walrus, del): the delegate list the writer really
+    runs with is then not the literal, so it cannot be followed."""
     paths: list[str] = []
     for node in ast.walk(tree):
         if isinstance(node, (ast.Assign, ast.AnnAssign)):
             targets = node.targets if isinstance(node, ast.Assign) else [node.target]
-            if any(isinstance(t, ast.Name) and t.id == "source_paths" for t in targets):
+            if any(_is_source_paths(t) for t in targets):
                 v = node.value
                 if not isinstance(v, (ast.List, ast.Tuple)) or not all(_is_str(e) for e in v.elts):
                     return paths, "source_paths_not_a_literal_list_of_strings"
                 paths += [e.value for e in v.elts]
+        elif isinstance(node, ast.AugAssign) and _is_source_paths(node.target):
+            return paths, "source_paths_mutated_at_runtime"
+        elif isinstance(node, ast.NamedExpr) and _is_source_paths(node.target):
+            return paths, "source_paths_mutated_at_runtime"
+        elif isinstance(node, ast.Delete) and any(_is_source_paths(t) or (isinstance(t, ast.Subscript) and _is_source_paths(t.value))
+                                                  for t in node.targets):
+            return paths, "source_paths_mutated_at_runtime"
+        elif isinstance(node, ast.Subscript) and isinstance(node.ctx, (ast.Store, ast.Del)) and _is_source_paths(node.value):
+            return paths, "source_paths_mutated_at_runtime"
+        elif isinstance(node, ast.Call):
+            f = node.func
+            if isinstance(f, ast.Attribute) and f.attr in _SOURCE_PATHS_MUTATORS and _is_source_paths(f.value):
+                return paths, "source_paths_mutated_at_runtime"
+            if isinstance(f, ast.Name) and f.id == "setattr" and len(node.args) >= 2 and _is_str(node.args[1]) \
+                    and node.args[1].value == "source_paths":
+                return paths, "source_paths_mutated_at_runtime"
     return paths, None
 
 
@@ -1955,7 +2328,7 @@ def scan_writer_tables(asset_id: str, repo: str | Path, helpers: Mapping[str, di
         if sc.unresolved:
             return {"not_scanned": sc.unresolved[0]}
         tables |= sc.tables
-        scanned.append(str(f.relative_to(repo)) if f.resolve().is_relative_to(repo) else str(f))
+        scanned.append(f.relative_to(repo).as_posix() if f.resolve().is_relative_to(repo) else str(f))
     if not tables:
         return {"not_scanned": "no_write_statement_found (delegates to another module, or read-only: not distinguishable)"}
     return {"tables": sorted(tables), "files": scanned}

@@ -81,14 +81,39 @@ table per asset. The report therefore carries `footprint_scope` (and `partial_re
 * `complete` only when none of those holds; `has_blockers` is then the computed boolean. The impact statement labels it
   `COMPLETE_PER_STATIC_SCAN`: a statement about the scan, not about production.
 
-Reasons a writer lands in `assets_not_scanned` (never guessed): writer file missing/unparseable/too deeply nested; a
-table named by a runtime value; a name that is bound anywhere in the module other than as one single string literal
-(loop/with/except/match targets, comprehension targets, augmented or walrus assignment, parameters, import aliases,
-global/nonlocal, def/class names, unpacking, attribute assignment, a second different value); no write statement visible
-at all (how a delegating adapter looks); a `source_paths` entry that is not a literal `.py` file or leaves the repo; and
-write forms the scan does not analyse: MERGE INTO, REFRESH MATERIALIZED VIEW, CREATE TABLE, SELECT ... INTO, ALTER TABLE,
-DROP TABLE, psycopg `sql.SQL`/`sql.Identifier` composition, SQL read from a file feeding `execute`, a `*.sql` file
-reference.
+Reasons a writer lands in `assets_not_scanned` (never guessed; the first reason found is reported, always a named one):
+writer file missing/unparseable/too deeply nested; a table named by a runtime value; a name that is bound anywhere in the
+module other than as one single string literal (loop/with/async-with/except/match targets, comprehension targets, augmented
+or walrus assignment, parameters, import aliases, global/nonlocal, def/async-def/class names, tuple/list/starred unpacking,
+attribute assignment, a second different value); a dotted or attribute name (`{cfg.T}`, `{self.T}`: never read as a table
+constant, so it can never resolve to an unrelated local `T`); no write statement visible at all (how a delegating adapter
+looks); a `source_paths` entry that is not a literal `.py` file or leaves the repo, or a `source_paths` list that is mutated
+(`.append`/`.extend`/`+=`/item assignment/`setattr`/walrus/`del`: `source_paths_mutated_at_runtime`); and write forms the
+scan does not analyse:
+
+* MERGE INTO, REFRESH MATERIALIZED VIEW, CREATE TABLE, SELECT ... INTO, ALTER TABLE, DROP TABLE, psycopg
+  `sql.SQL`/`sql.Identifier` composition, SQL read from a file feeding `execute`, a `*.sql` file reference.
+* SQL handed to `execute`/`executemany`/`executescript`/`copy`/`copy_expert`/`execute_values`/`execute_batch` that this file
+  does not show: an imported name or an attribute of an imported module (`imported_sql_constant`), a call result
+  (`sql_from_call_result`, except a function defined in the file, a string method, `str`/`text`/`dedent`), a subscript
+  (`sql_from_subscript`, except a dict/list literal defined in the file), a name bound nowhere (`unresolved_sql_name`), an
+  attribute nothing in the file assigns (`unresolved_sql_attribute`), a dunder attribute such as `fn.__doc__`
+  (`sql_from_dunder_attribute`), bytes (`bytes_sql_literal`), and an f-string or `+` chain that STARTS (or restarts after a
+  `;`) with a runtime part that is itself one of those. A parameter, a name bound to a literal or to a clean expression, and
+  a runtime value in the middle of a literal statement (a column list) are fine.
+* a literal that ENDS in a write verb with no target (`INSERT INTO`, `DELETE FROM`, `TRUNCATE [TABLE]`, `UPDATE `, `COPY `:
+  `trailing_write_verb_without_target`: the table is joined on at runtime), an `UPDATE ... SET` / `COPY ... FROM` whose target
+  is not a plain name, a bytes literal carrying a write form, a quoted identifier that is not a plain name (`"my table"`).
+* `copy_from`/`copy_to_table`/`copy_records_to_table` calls (`copy_api_without_sql_text`), `exec`/`eval`/`compile`
+  (`dynamic_code`), `setattr`, item assignment or `update` on `globals()`/`locals()`/`vars()` (`runtime_rebinding`),
+  `from x import *` (`dynamic_binding`), `getattr(...)(...)` or `getattr(obj, 'execute')` (`dynamic_attribute_call`).
+* a SQL literal longer than 64 KB (`sql_literal_too_long`: it bounds the regex work; no real statement is that long).
+
+Every table of a `TRUNCATE a, b` list (with `TABLE`/`ONLY`/`*`/`RESTART IDENTITY`/`CASCADE`, schema-qualified, quoted) and
+every write of a multi-statement or `WITH ... INSERT/UPDATE/DELETE` literal is captured; a table only read (`DELETE ... USING`,
+`UPDATE ... FROM`, `INSERT ... SELECT FROM`) is not a write. A `''.join([...])` of a list literal is rendered like a
+concatenation. Not reassembled (so a verb and its target built from separately bound fragments goes unseen): fragments
+bound in different names and joined elsewhere.
 
 The scan reads source text only (`ast.parse`, nothing imported or executed). It cannot see stored functions that write,
 triggers, rules, or a delegate in another module when the writer also writes tables itself (documented, not detected), and
