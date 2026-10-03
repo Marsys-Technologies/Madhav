@@ -272,3 +272,28 @@ def test_real_bg_ontology_rebuild_keeps_the_row_count_and_the_dasha_class_at_20(
             assert conn.execute("SELECT count(*) AS n FROM brahma_ontology").fetchone()["n"] == before, "rebuild must KEEP the row count"
             assert conn.execute("SELECT count(*) AS n FROM brahma_ontology WHERE entity_class='dasha_system'").fetchone()["n"] == 20
         assert out["deleted"] == 0 and out["inserted"] == 0
+
+
+# ── COUPLING (independent review L0B #1): the Jaimini winner hold lives in the resolver ─────────────────────────
+RESOLVER = REPO / "platform" / "src" / "lib" / "retrieval" / "registry" / "layers" / "L0_brahmagyan" / "resolve_entity.ts"
+
+
+def test_the_derived_bphs_jaimini_row_may_only_land_in_a_tree_whose_resolver_keeps_jaimini_sutram_first_in_text_ties():
+    """bphs_jaimini carries the names 'Jaimini Sutras' / 'Jaimini Sutram' that jaimini_sutram carries; with main's ORDER BY (canonical_id
+    ascending) 'Jaimini Sutram' and 'jaimini sutras' would flip to bphs_jaimini. PR #3054 adds `(canonical_id = 'jaimini_sutram') DESC` to the
+    ORDER BY. Red until that line is in the tree: #3054 must be merged before (or with) this PR and before the level-0 rebuild."""
+    order = re.search(r"ORDER BY[^`]*", RESOLVER.read_text(encoding="utf-8"))
+    assert order and "(canonical_id = 'jaimini_sutram') DESC" in order.group(0), \
+        "resolve_entity.ts has no jaimini_sutram tie preference: merge PR #3054 (TI-L0-14) first"
+
+
+EXPECTED_STOP_RESOLVING = ["Bhrigu Samhita", "Bhṛgu Saṃhitā", "bhrigu", "bhrigu samhita", "lal kitab text"]
+
+
+def test_the_inputs_that_stop_resolving_are_exactly_the_names_of_the_two_removed_text_ids():
+    removed = {"bhrigu_samhita": ["Bhrigu Samhita", "Bhṛgu Saṃhitā", "bhrigu", "bhrigu samhita"], "lal_kitab_text": ["lal kitab text", "Lal Kitab", "Lāl Kitāb"]}
+    names = {n for v in removed.values() for n in v}
+    survivors = {n for e in O.ENTITIES for n in [e["canonical_id"], e["canonical_name_en"], e.get("canonical_name_sa") or "", *e["synonyms"]]}
+    gone = sorted(n for n in names if n not in survivors)
+    # 'Lal Kitab' / 'Lāl Kitāb' remain because the SCHOOL lal_kitab carries them; the others no longer resolve anywhere
+    assert gone == sorted(EXPECTED_STOP_RESOLVING)
