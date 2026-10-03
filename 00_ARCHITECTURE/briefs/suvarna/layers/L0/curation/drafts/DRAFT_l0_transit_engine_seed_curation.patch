@@ -1,0 +1,85 @@
+--- a/platform/python-sidecar/brahmagyan/l0_transit.py
++++ b/platform/python-sidecar/brahmagyan/l0_transit.py
+@@ -91,7 +91,8 @@
+ # avg_daily_motion_deg: classical average daily motion in degrees
+ # zodiac_period_days:   approximate time for one full zodiac traversal
+ # sign_residence_days:  average days spent per sign
+-# classical_citation:   textual source for motion parameters
++# classical_citation:   per-row source state (N-101 curation 2026-10: the periods coincide with modern mean sidereal periods;
++#                       'BPHS Ch.22' was refuted — each row says which cell, if any, the held corpus states)
+ 
+ BG_TRANSIT_ENGINE: list[dict[str, Any]] = [
+     {
+@@ -99,63 +100,63 @@
+         "avg_daily_motion_deg": 0.9856,
+         "zodiac_period_days": 365.25,
+         "sign_residence_days": 30.44,
+-        "classical_citation": BPHS_CH22,
++        "classical_citation": "PARTIALLY SOURCED — only sign_residence_days is stated in the held corpus, as the round figure '30 days' per sign (brihat_jataka:PG96:C1; jataka_parijata:PG144:C1, translator notes; stored 30.44 is read from it: INFERENCE). Motion and period values are not stated in the held corpus (the period coincides with the modern mean sidereal period). Former citation \"BPHS Ch.22 (Graha Gati)\" withdrawn as refuted: served bphs:PG22:C1 is Chapter 2 (incarnations) and the held corpus has no BPHS Graha Gati text.",
+     },
+     {
+         "graha": "moon",
+         "avg_daily_motion_deg": 13.1764,
+         "zodiac_period_days": 27.32,
+         "sign_residence_days": 2.28,
+-        "classical_citation": BPHS_CH22,
++        "classical_citation": "UNSOURCED — no value of this row is stated in the held corpus (sarvartha_chintamani:PG1:C301 has a translator note giving the Moon's time per sign, but the numeral is OCR-illegible and is not relied on). The period coincides with the modern mean sidereal period. Former citation \"BPHS Ch.22 (Graha Gati)\" withdrawn as refuted: served bphs:PG22:C1 is Chapter 2 (incarnations) and the held corpus has no BPHS Graha Gati text.",
+     },
+     {
+         "graha": "mars",
+         "avg_daily_motion_deg": 0.5240,
+         "zodiac_period_days": 686.97,
+         "sign_residence_days": 45.0,
+-        "classical_citation": BPHS_CH22,
++        "classical_citation": "UNSOURCED — no value of this row is stated in the held classical corpus (the period coincides with the modern mean sidereal period). Former citation \"BPHS Ch.22 (Graha Gati)\" withdrawn as refuted: served bphs:PG22:C1 is Chapter 2 (incarnations) and the held corpus has no BPHS Graha Gati text.",
+     },
+     {
+         "graha": "mercury",
+         "avg_daily_motion_deg": 1.3833,
+         "zodiac_period_days": 87.97,
+         "sign_residence_days": 14.0,
+-        "classical_citation": BPHS_CH22,
++        "classical_citation": "UNSOURCED — no value of this row is stated in the held classical corpus (the period coincides with the modern mean sidereal period). Former citation \"BPHS Ch.22 (Graha Gati)\" withdrawn as refuted: served bphs:PG22:C1 is Chapter 2 (incarnations) and the held corpus has no BPHS Graha Gati text.",
+     },
+     {
+         "graha": "jupiter",
+         "avg_daily_motion_deg": 0.0831,
+         "zodiac_period_days": 4332.59,
+         "sign_residence_days": 361.05,
+-        "classical_citation": BPHS_CH22,
++        "classical_citation": "PARTIALLY SOURCED — only sign_residence_days (about one year per sign) is stated in the held corpus: yavana_jataka:PG662:C1 ('at the rate of one sign a year'), yavana_jataka:PG900:C1, bphs:PG933:C1 (worked example); stored 361.05 is read from the round figure: INFERENCE. Motion and period values are not stated (the period coincides with the modern mean sidereal period). Former citation \"BPHS Ch.22 (Graha Gati)\" withdrawn as refuted: served bphs:PG22:C1 is Chapter 2 (incarnations) and the held corpus has no BPHS Graha Gati text.",
+     },
+     {
+         "graha": "venus",
+         "avg_daily_motion_deg": 1.2000,
+         "zodiac_period_days": 224.70,
+         "sign_residence_days": 23.0,
+-        "classical_citation": BPHS_CH22,
++        "classical_citation": "UNSOURCED — no value of this row is stated in the held classical corpus (the period coincides with the modern mean sidereal period). Former citation \"BPHS Ch.22 (Graha Gati)\" withdrawn as refuted: served bphs:PG22:C1 is Chapter 2 (incarnations) and the held corpus has no BPHS Graha Gati text.",
+     },
+     {
+         "graha": "saturn",
+         "avg_daily_motion_deg": 0.0335,
+         "zodiac_period_days": 10759.22,
+         "sign_residence_days": 913.37,
+-        "classical_citation": BPHS_CH22,
++        "classical_citation": "PARTIALLY SOURCED — only sign_residence_days is stated in the held corpus, as round figures: '30 months' per sign (brihat_jataka:PG96:C1; jataka_parijata:PG144:C1, translator notes) and 'takes 900 days to move in a sign' (sarvartha_chintamani:PG1:C301, translator note); stored 913.37 is read as 30 months: INFERENCE. Motion and period values are not stated (the period coincides with the modern mean sidereal period). Former citation \"BPHS Ch.22 (Graha Gati)\" withdrawn as refuted: served bphs:PG22:C1 is Chapter 2 (incarnations) and the held corpus has no BPHS Graha Gati text.",
+     },
+     {
+         "graha": "rahu",
+         "avg_daily_motion_deg": -0.0529,
+         "zodiac_period_days": 6793.50,
+         "sign_residence_days": 548.00,
+-        "classical_citation": BPHS_CH22,
++        "classical_citation": "UNSOURCED — no value of this row is stated in the held classical corpus (the period coincides with the modern mean sidereal period). Former citation \"BPHS Ch.22 (Graha Gati)\" withdrawn as refuted: served bphs:PG22:C1 is Chapter 2 (incarnations) and the held corpus has no BPHS Graha Gati text.",
+     },
+     {
+         "graha": "ketu",
+         "avg_daily_motion_deg": -0.0529,
+         "zodiac_period_days": 6793.50,
+         "sign_residence_days": 548.00,
+-        "classical_citation": BPHS_CH22,
++        "classical_citation": "UNSOURCED — no value of this row is stated in the held classical corpus (the period coincides with the modern mean sidereal period). Former citation \"BPHS Ch.22 (Graha Gati)\" withdrawn as refuted: served bphs:PG22:C1 is Chapter 2 (incarnations) and the held corpus has no BPHS Graha Gati text.",
+     },
+ ]
+ 

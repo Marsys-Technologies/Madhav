@@ -1,0 +1,78 @@
+{
+ "bphs_pg0022_c01": {
+  "id": "c7dd5619-cc12-4c5c-9742-a162ca4dd159",
+  "content_sha256": "562faf43056f44efcebe281b61225d6ad28703f13f8b3fff0399e76560a28053"
+ },
+ "bphs_pg0933_c01": {
+  "id": "26da5f90-bf44-44c3-b394-764d5213e872",
+  "content_sha256": "d18a3dbc350df86e90cc4a30bc20de40591064c05a52e352fa62c5f387ae3fb8"
+ },
+ "brihat_jataka_pg0096_c01": {
+  "id": "5d961204-ef18-4ce5-a039-8c6b5b942bb1",
+  "content_sha256": "b7ff5fe1bd8a3cd55bbe8e62301d013d890c262e7040eed3add7e40cc6efccfd"
+ },
+ "jataka_parijata_pg0144_c01": {
+  "id": "e6379c13-79e7-4df7-8920-bd7661c6c138",
+  "content_sha256": "ddfc5036b159a890bb904b4e52706d5c4026032ff30ed8781182f20feb324c0d"
+ },
+ "phaladeepika_pg0321_c01": {
+  "id": "265722b7-ca68-49a9-b45e-48320bbae923",
+  "content_sha256": "62b6abc92d7287dcbc7f4309efe38ab1e5f134ad27031e06b411d4a29069a198"
+ },
+ "phaladeepika_pg0322_c01": {
+  "id": "806f7e7a-265a-4994-a0b5-cd4ca435ac77",
+  "content_sha256": "41bbb3e43b6ef87458e970021a55af77b910930728be966439fb4e9bc3f6da07"
+ },
+ "phaladeepika_pg0323_c01": {
+  "id": "97ad3a83-5434-4f2b-8984-971c0fcc69f9",
+  "content_sha256": "4681950adce9e7e121b036b596df9113816befc1fef3b57700393606bb26b75d"
+ },
+ "phaladeepika_pg0324_c01": {
+  "id": "1589f64b-8ee1-428b-a009-22a1b71ad3a8",
+  "content_sha256": "537ba00b9b06ac54370981194ad197e5d2acdc588af147edca4d5f7aa1ff3c25"
+ },
+ "phaladeepika_pg0325_c01": {
+  "id": "f1fdd1bb-d4ff-4aad-9915-bd7c02ebe01c",
+  "content_sha256": "8406be46d8d63716b930fbc05e7c984f4d2bf6ac800bc59e8a457f34f4324c64"
+ },
+ "phaladeepika_pg0326_c01": {
+  "id": "1be0e41b-bece-48d5-b86c-d51d1756b3d6",
+  "content_sha256": "2dca3c226f5c4ea855dc72b43c58ce5e61cf272c1bf256b155fcd132f75258ba"
+ },
+ "phaladeepika_pg0327_c01": {
+  "id": "b43cbdfc-87ca-4798-bce5-e45d79f2e49b",
+  "content_sha256": "c160144636626f2c38c13bf4a55429957e02f8d54e10e9c2ed08c0c500b9d93c"
+ },
+ "phaladeepika_pg0328_c01": {
+  "id": "972ffe09-74ee-41f8-acf1-6f3ed5724025",
+  "content_sha256": "3d82a9188e4f57e2b34bb4e83ee4e9bb0a9321cab133e24bb0139222c6c9ac5b"
+ },
+ "phaladeepika_pg0329_c01": {
+  "id": "311cdae8-06dd-4849-98dd-d62e9890ed2a",
+  "content_sha256": "3d4230f4e5ef3ed081718e2e1e13a89e82ef85def6585224010d49fcbcc456e7"
+ },
+ "phaladeepika_pg0330_c01": {
+  "id": "852d18ba-b14e-4c93-9970-32bdd7a47f09",
+  "content_sha256": "b2878180ee8d0bff2cf3cbaa306c6ae297f6185a0e633a5b3737d1bc91d5a737"
+ },
+ "phaladeepika_pg0331_c01": {
+  "id": "5ffcecb1-752c-495f-8549-5657b576eed2",
+  "content_sha256": "d981f19ca485efac14a760aa5e5c8c0a5ce5e9681938fceb6230893f94875115"
+ },
+ "sarvartha_chintamani_pg0001_c301": {
+  "id": "dc495682-8bfb-4000-9877-37fe3169d000",
+  "content_sha256": "8aec20a11e5c18dc3285cf925002de501cb8af48de1f41527d029827679705d3"
+ },
+ "yavana_jataka_pg0662_c01": {
+  "id": "e0f66e2a-537b-4ec5-9d72-a8d48865375a",
+  "content_sha256": "d10bcce8883b678afeeea40a6383e236f340d165962385b18b72be79a2f8894e"
+ },
+ "yavana_jataka_pg0900_c01": {
+  "id": "dd0eebd8-69dd-4394-bb23-1106f6c6b81a",
+  "content_sha256": "89fee7fe022915c0f2952e614f258c34f9ede69b65a988c031a7984842d27137"
+ },
+ "yavana_jataka_pg0937_c01": {
+  "id": "c7e0b695-e8cc-4818-a4c6-de83f5bb5c77",
+  "content_sha256": "a9e22c79d2c1f2a3ae07ce90c8ea765ee368e39bd25515cf7cd7a16ec6eb048f"
+ }
+}

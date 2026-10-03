@@ -1,0 +1,1749 @@
+[
+ {
+  "asset": "bg_dasha_systems",
+  "table": "brahma_dasha_systems",
+  "row_key": {
+   "canonical_id": "ashtottari"
+  },
+  "row_count": 1,
+  "claim": "Ashtottari: eight lords Sun6 Moon15 Mars8 Mercury17 Saturn10 Jupiter19 Rahu12 Venus21 = 108; conditional (Rahu placement; paksha rules); Ketu excluded.",
+  "current_citation": "classical_citations=[{\"chapter\": 48, \"text_id\": \"bphs\"}]; source_chunk_ids={}",
+  "state": "sourced_fact",
+  "support_class": "FACT",
+  "corpus": [
+   {
+    "text_id": "bphs",
+    "chunk_id": "bphs_pg0506_c01",
+    "page": "PG506",
+    "sloka_printed": "17-20",
+    "quote": "Sun, the Moon, Mars, Mercury, Saturn, Jupiter, Rahu and Venus are 6, 15"
+   },
+   {
+    "text_id": "bphs",
+    "chunk_id": "bphs_pg0506_c01",
+    "page": "PG506",
+    "sloka_printed": "17-20",
+    "quote": "only 8 planets play the role of Dasa lords, Ketu having been denied"
+   },
+   {
+    "text_id": "bphs",
+    "chunk_id": "bphs_pg0505_c01",
+    "page": "PG505",
+    "sloka_printed": "17-20",
+    "quote": "Astottari Dasa, when Rahu not being in Lagna, in any other Kendra"
+   },
+   {
+    "text_id": "bphs",
+    "chunk_id": "bphs_pg0508_c01",
+    "page": "PG508",
+    "sloka_printed": "23",
+    "quote": "adopt the Astottari Dasa if the birth be in the day ... Shukla Paksha"
+   }
+  ],
+  "inference_step": "Total 108 is the arithmetic sum of the printed years (6+15+8+17+10+19+12+21). The paksha clause (sl.23) is only partly legible in the OCR ('...in Shukla Paksha'); the Krishna/day half is not legible, so only the Rahu-placement rule is claimed as FACT.",
+  "proposed_citation": "BPHS Ch. 46 (Dasas (Periods) of planets), Sloka 17-20 as printed — bphs:PG505:C1 (Santhanam trans.); PG506:C1 for years",
+  "proposed_action": "recite",
+  "acharya_question": null,
+  "note": "Existing cite 'BPHS Ch.48' is wrong for this corpus: Ch.48 is 'Distinctive effects of the Nakshatra Dasa' (TOC PG483); Ashtottari is defined in Ch.46."
+ },
+ {
+  "asset": "bg_dasha_systems",
+  "table": "brahma_dasha_systems",
+  "row_key": {
+   "canonical_id": "brahma_dasha"
+  },
+  "row_count": 1,
+  "claim": "Brahma Dasha (Jaimini): 120-yr; rashi dasha reckoned from the Brahma graha; longevity/maraka analysis.",
+  "current_citation": "classical_citations=[{\"chapter\": 1, \"text_id\": \"jaimini_sutram\"}]; source_chunk_ids={}",
+  "state": "sourced_inference",
+  "support_class": "INFERENCE",
+  "corpus": [
+   {
+    "text_id": "bphs_jaimini",
+    "chunk_id": "bphs_jaimini_pg0190_c01",
+    "page": "PG190",
+    "sloka_printed": "25",
+    "quote": "Dasas or periods commence from the sign occupied by the Brahma"
+   },
+   {
+    "text_id": "bphs_jaimini",
+    "chunk_id": "bphs_jaimini_pg0190_c01",
+    "page": "PG190",
+    "sloka_printed": "25",
+    "quote": "that number will be the extent in years of that Dasa"
+   },
+   {
+    "text_id": "bphs_jaimini",
+    "chunk_id": "bphs_jaimini_pg0191_c01",
+    "page": "PG191",
+    "sloka_printed": "26",
+    "quote": "in even signs the Dasas commence from the 7th Rasi from the sign"
+   }
+  ],
+  "inference_step": "Identifies the row's 'Brahma Dasha' with the Jaimini Adh.2 Pada 3 Su.25-26 dasa that starts from the Brahma sign (the held text does not name it 'Brahma Dasha'). The 120-yr total_cycle_years is NOT stated: the text gives per-sign years = house-number of the 6th lord, so the cycle is chart-dependent.",
+  "proposed_citation": "Jaimini Sutras (Rao), Adhyaya 2 Pada 3, Su. 25-26 as printed - bphs_jaimini:PG190:C1 and PG191:C1 (Suryanarain Rao trans. 1949); total_cycle_years 120 unsourced",
+  "proposed_action": "mark_unsourced",
+  "acharya_question": "Brahma Dasha: the held Jaimini text (Rao PG190:C1 Su.25) starts the dasas from the Brahma sign with each sign's years = the house-number of the lord of the 6th from it, so no fixed 120-year cycle is stated. What is the source of total_cycle_years = 120 for this system?",
+  "note": "Existing cite 'jaimini_sutram Ch.1': not a corpus text_id; Brahma dasa is at Adhyaya 2 Pada 3."
+ },
+ {
+  "asset": "bg_dasha_systems",
+  "table": "brahma_dasha_systems",
+  "row_key": {
+   "canonical_id": "chara_jaimini"
+  },
+  "row_count": 1,
+  "claim": "Chara (Jaimini): 144-yr; starts from lagna; odd/even direction (movable direct, fixed reverse); years per sign = count to the lord's sign minus 1 (1-12).",
+  "current_citation": "classical_citations=[{\"chapter\": 1, \"text_id\": \"jaimini_sutram\"}]; source_chunk_ids={}",
+  "state": "contradicted",
+  "support_class": "CONTRADICTS",
+  "corpus": [
+   {
+    "text_id": "bphs_jaimini",
+    "chunk_id": "bphs_jaimini_pg0046_c01",
+    "page": "PG46",
+    "sloka_printed": "28",
+    "quote": "found in the 7th house from Mesha. Therefore Mesha Dasa extends for 7 years"
+   },
+   {
+    "text_id": "bphs_jaimini",
+    "chunk_id": "bphs_jaimini_pg0046_c01",
+    "page": "PG46",
+    "sloka_printed": "28",
+    "quote": "Count from Mesha to Simha we get 5. This will be the number of years"
+   },
+   {
+    "text_id": "bphs",
+    "chunk_id": "bphs_pg0545_c01",
+    "page": "PG545",
+    "sloka_printed": "155-156",
+    "quote": "reckoned from the Rasi up to the house in which its lord is posited"
+   },
+   {
+    "text_id": "bphs",
+    "chunk_id": "bphs_pg0546_c01",
+    "page": "PG546",
+    "sloka_printed": "158-166",
+    "quote": "their Dasa will be of 12 years"
+   },
+   {
+    "text_id": "bphs",
+    "chunk_id": "bphs_pg0547_c01",
+    "page": "PG547",
+    "sloka_printed": "167",
+    "quote": "The counting would be in the reverse order if the pada be even"
+   }
+  ],
+  "inference_step": "Held Jaimini (Rao) counts the signs from the dasa-sign to its lord's sign as the years with NO subtraction (lord 7th from Mesha = 7 yrs; 5th = 5 yrs), plus a +1 / -1 rule for exaltation / debilitation (PG48) and 12 yrs for both Scorpio/Aquarius lords in own sign; the row says 'minus 1'. Direction: BPHS makes it depend on odd/even pada of the 9th-house sign (sl.167), not movable/fixed as in the row. 144 is not stated as a cycle length (PG55 Su.34 only says 12 signs x 12 = 144 for the sub-period arithmetic); actual cycle = sum of 12 counts, chart-dependent.",
+  "proposed_citation": null,
+  "proposed_action": "acharya",
+  "acharya_question": "Chara dasa year-count: Jaimini (Rao PG46:C1 Adh.1 Pada 1 Su.28) counts the signs inclusive from the dasa-sign to its lord (Mesha with Mars in the 7th = 7 yrs); the row says 'count minus 1'. Which counting convention should the platform carry, and is the cycle really a fixed 144 years (the held text gives 144 only as 12 x 12 for sub-periods)? Also BPHS (PG547:C1 sl.167) ties direction to odd/even pada of the 9th-house sign, whereas the row says movable direct / fixed reverse.",
+  "note": "Existing cite 'jaimini_sutram Ch.1': 'jaimini_sutram' is not a corpus text_id (held Jaimini = bphs_jaimini, Rao trans.); the rasi-dasa sutra is Adhyaya 1 Pada 1 Su.28 so 'Ch.1' is right in grain only."
+ },
+ {
+  "asset": "bg_dasha_systems",
+  "table": "brahma_dasha_systems",
+  "row_key": {
+   "canonical_id": "chaturashiti_sama"
+  },
+  "row_count": 1,
+  "claim": "Chaturashiti-sama: 7 lords x 12 years = 84 (Sun, Moon, Mars, Mercury, Jupiter, Venus, Saturn); conditional on 10th-lord-in-10th charts.",
+  "current_citation": "classical_citations=[{\"chapter\": 49, \"text_id\": \"bphs\"}]; source_chunk_ids={}",
+  "state": "sourced_fact",
+  "support_class": "FACT",
+  "corpus": [
+   {
+    "text_id": "bphs",
+    "chunk_id": "bphs_pg0515_c01",
+    "page": "PG515",
+    "sloka_printed": null,
+    "quote": "Count from Swati to the Janma Nakshatra and divide this number by 7"
+   },
+   {
+    "text_id": "bphs",
+    "chunk_id": "bphs_pg0515_c01",
+    "page": "PG515",
+    "sloka_printed": null,
+    "quote": "The Sun, The Moon, Mars, Mercury, Jupiter Venus and Saturn"
+   },
+   {
+    "text_id": "bphs",
+    "chunk_id": "bphs_pg0515_c01",
+    "page": "PG515",
+    "sloka_printed": null,
+    "quote": "The Dasa of each planet is of 12 years"
+   }
+  ],
+  "inference_step": "84 = 7 x 12 (arithmetic). The applicability clause ('10th-lord-in-10th') is NOT legible in the held text: the English of the sloka's first half is missing (only the Sanskrit line survives), so that clause is left unsourced (not contradicted). Sloka number not printed.",
+  "proposed_citation": "BPHS Ch. 46 (Dasas (Periods) of planets), p.515 — bphs:PG515:C1 (Santhanam trans.); conditions_for_use clause remains unsourced",
+  "proposed_action": "recite",
+  "acharya_question": null,
+  "note": "Existing cite 'BPHS Ch.49' wrong for this corpus (Ch.49 = Effects of Kalachakra Dasa; definition is Ch.46)."
+ },
+ {
+  "asset": "bg_dasha_systems",
+  "table": "brahma_dasha_systems",
+  "row_key": {
+   "canonical_id": "dwadashottari"
+  },
+  "row_count": 1,
+  "claim": "Dwadashottari: Sun7 Jupiter9 Ketu11 Mercury13 Rahu15 Mars17 Saturn19 Moon21 = 112; conditional nakshatra dasha.",
+  "current_citation": "classical_citations=[{\"chapter\": 48, \"text_id\": \"bphs\"}]; source_chunk_ids={}",
+  "state": "sourced_fact",
+  "support_class": "FACT",
+  "corpus": [
+   {
+    "text_id": "bphs",
+    "chunk_id": "bphs_pg0511_c01",
+    "page": "PG511",
+    "sloka_printed": "27-28",
+    "quote": "The Dasa order is the Sun, Jupiter, Ketu, Mercury, Rahu, Mars, Saturn, Moon"
+   },
+   {
+    "text_id": "bphs",
+    "chunk_id": "bphs_pg0511_c01",
+    "page": "PG511",
+    "sloka_printed": "27-28",
+    "quote": "The Dasas wiil be of 7,9,11, 13, 15,17, 19 and 21 years"
+   }
+  ],
+  "inference_step": "Total 112 = arithmetic sum of printed years. Applicability sentence (Venus navamsa condition) is garbled in the OCR; the row's generic 'conditional' wording is not contradicted.",
+  "proposed_citation": "BPHS Ch. 46 (Dasas (Periods) of planets), Sloka 27-28 as printed — bphs:PG511:C1 (Santhanam trans.)",
+  "proposed_action": "recite",
+  "acharya_question": null,
+  "note": "Existing cite 'BPHS Ch.48' wrong for this corpus (defined in Ch.46)."
+ },
+ {
+  "asset": "bg_dasha_systems",
+  "table": "brahma_dasha_systems",
+  "row_key": {
+   "canonical_id": "dwisaptati_sama"
+  },
+  "row_count": 1,
+  "claim": "Dwisaptati-sama: 8 lords x 9 years = 72 (Sun, Moon, Mars, Mercury, Jupiter, Venus, Saturn, Rahu); conditional on lagna-lord/7th-lord exchange.",
+  "current_citation": "classical_citations=[{\"chapter\": 49, \"text_id\": \"bphs\"}]; source_chunk_ids={}",
+  "state": "sourced_fact",
+  "support_class": "FACT",
+  "corpus": [
+   {
+    "text_id": "bphs",
+    "chunk_id": "bphs_pg0515_c01",
+    "page": "PG515",
+    "sloka_printed": "37-39",
+    "quote": "The Sun. the Moon, Mars, Mercury, Jupiter, Venus, Saturn and Rahu"
+   },
+   {
+    "text_id": "bphs",
+    "chunk_id": "bphs_pg0515_c01",
+    "page": "PG515",
+    "sloka_printed": "37-39",
+    "quote": "all the eight planetr have Dasa of 9 years each"
+   },
+   {
+    "text_id": "bphs",
+    "chunk_id": "bphs_pg0515_c01",
+    "page": "PG515",
+    "sloka_printed": "37-39",
+    "quote": "lord of the Ascendant is in the ... 7th"
+   }
+  ],
+  "inference_step": "72 = 8 x 9. Applicability: the OCR prints only 'the lord of the Ascendant is in the [garbled] ... 7th'; the row's 'lagna-lord/7th-lord exchange' (mutual) is a stronger condition than the legible fragment and is not confirmable here.",
+  "proposed_citation": "BPHS Ch. 46 (Dasas (Periods) of planets), Sloka 37-39 as printed — bphs:PG515:C1 (Santhanam trans.)",
+  "proposed_action": "recite",
+  "acharya_question": "Dwisaptati-sama applicability (BPHS Santhanam PG515:C1 sl.37-39; OCR legible only as 'the lord of the Ascendant is in the ... 7th'): is the condition 'lagna lord in the 7th (or 7th lord in lagna)' or a mutual exchange between them as the row states?",
+  "note": "Existing cite 'BPHS Ch.49' wrong for this corpus (defined in Ch.46)."
+ },
+ {
+  "asset": "bg_dasha_systems",
+  "table": "brahma_dasha_systems",
+  "row_key": {
+   "canonical_id": "kalachakra"
+  },
+  "row_count": 1,
+  "claim": "Kalachakra: 100-yr; sign sequence savya/apasavya from Moon's nakshatra-pada; sign years Aries/Scorpio7 Taurus/Libra16 Gemini/Virgo9 Cancer/Leo21 Cap/Aqu4 Sag/Pis10.",
+  "current_citation": "classical_citations=[{\"chapter\": 49, \"text_id\": \"bphs\"}]; source_chunk_ids={}",
+  "state": "contradicted",
+  "support_class": "CONTRADICTS",
+  "corpus": [
+   {
+    "text_id": "bphs",
+    "chunk_id": "bphs_pg0527_c01",
+    "page": "PG527",
+    "sloka_printed": "84",
+    "quote": "Dasa spans of the Sun, Moon, Mars, Mercury, Jupiter, Venus and Saturn in that order"
+   },
+   {
+    "text_id": "phaladeepika",
+    "chunk_id": "phaladeepika_pg0281_c01",
+    "page": "PG281",
+    "sloka_printed": "3",
+    "quote": "5, 21, 7, 9, 10, 16 and 4 are the numbers representing the"
+   },
+   {
+    "text_id": "phaladeepika",
+    "chunk_id": "phaladeepika_pg0281_c01",
+    "page": "PG281",
+    "sloka_printed": "2",
+    "quote": "years assigned to a planet constitute the Dasa-period of the Rasi owned by that planet"
+   },
+   {
+    "text_id": "bphs",
+    "chunk_id": "bphs_pg0529_c01",
+    "page": "PG529",
+    "sloka_printed": "89",
+    "quote": "For the Amsa in Aries 100 Years"
+   }
+  ],
+  "inference_step": "Planet years (Sun5 Moon21 Mars7 Mercury9 Jupiter10 Venus16 Saturn4; OCR prints 's' for 5, Phaladeepika prints 5) give each sign the years of its lord, so Leo = Sun = 5, but the row assigns Leo 21 (with Cancer). Every other sign pair in the row agrees. The row's 100-yr total is the Aries-amsa 'Poorna Ayu'; Taurus/Gemini/Cancer amsas are 85/83/86 per sl.89 (the cycle length depends on the Deha amsa).",
+  "proposed_citation": null,
+  "proposed_action": "acharya",
+  "acharya_question": "Kalachakra sign-year table: BPHS (Santhanam PG527:C1 sl.84) and Phaladeepika Adh. XXII sl.3 (PG281:C1) give Sun 5, Moon 21, Mars 7, Mercury 9, Jupiter 10, Venus 16, Saturn 4, so Leo (Sun's sign) = 5 years; the row carries 'Cancer/Leo 21'. Confirm Leo = 5.",
+  "note": "Existing cite 'BPHS Ch.49' wrong for this corpus: Ch.49 = Effects of the Kalachakra Dasa; Kalachakra is defined at Ch.46 sl.52-122 (PG521-PG539). Kalachakra is listed as the 100-year dasha; total cycle varies by amsa (100/85/83/86...)."
+ },
+ {
+  "asset": "bg_dasha_systems",
+  "table": "brahma_dasha_systems",
+  "row_key": {
+   "canonical_id": "kp"
+  },
+  "row_count": 1,
+  "claim": "KP sub-period system: 120-yr proportional subdivision of the Vimshottari windows (Ketu7...Mercury17); Placidus cusps; judgment method independent.",
+  "current_citation": "classical_citations=[{\"note\": \"proportional constants (Vimshottari year table + fixed order) — TIER-I, ingested\", \"chapter\": 46, \"text_id\": \"bphs\"}, {\"note\": \"the KP-specific conventions — TIER-III, NOT ingested in this corpus; corpus gap FILED\", \"source\": \"K. S. Krishnamurti, KP Reader I-III (Stellar Astrology)\", \"text_id\": null}]; source_chunk_ids={}",
+  "state": "text_not_held",
+  "support_class": "NONE",
+  "corpus": [
+   {
+    "text_id": "bphs",
+    "chunk_id": "bphs_pg0499_c01",
+    "page": "PG499",
+    "sloka_printed": "12-15",
+    "quote": "Sun, the Moon, Mars, Rahu, Jupiter. Saturn, Mercury, Ketu and Venus in that order"
+   },
+   {
+    "text_id": "bphs",
+    "chunk_id": "bphs_pg0499_c01",
+    "page": "PG499",
+    "sloka_printed": "15",
+    "quote": "Meicury. Ketu and Venus are 6,lO, 7,"
+   },
+   {
+    "text_id": "bphs",
+    "chunk_id": "bphs_pg0499_c02",
+    "page": "PG499",
+    "sloka_printed": "15",
+    "quote": "18, 16, 19,l'1,7 and20 in thai order"
+   }
+  ],
+  "inference_step": "The BPHS part of the citation (Vimshottari constants, TIER-I) is verified: lord order and years match. The KP-specific conventions (sub-lord division, Placidus cusps, significator method) cite K. S. Krishnamurti, KP Reader I-III, which the corpus does not hold (the row itself says so, text_id null).",
+  "proposed_citation": null,
+  "proposed_action": "none",
+  "acharya_question": null,
+  "note": "Row's second citation already honestly marks the KP Reader as not ingested."
+ },
+ {
+  "asset": "bg_dasha_systems",
+  "table": "brahma_dasha_systems",
+  "row_key": {
+   "canonical_id": "narayana"
+  },
+  "row_count": 1,
+  "claim": "Narayana Dasha: 144-yr; starts from Lagna if odd else 7th; always zodiacal; years = count to lord's sign (1-12).",
+  "current_citation": "classical_citations=[{\"chapter\": 1, \"text_id\": \"jaimini_sutram\"}]; source_chunk_ids={}",
+  "state": "unsourced_marked",
+  "support_class": "NONE",
+  "corpus": [],
+  "inference_step": null,
+  "proposed_citation": null,
+  "proposed_action": "mark_unsourced",
+  "acharya_question": "Narayana Dasha is not named in any held text (searched all 15; 'Narayana' hits are the deity or personal names only). What source supports the start rule (Lagna if odd else 7th), always-zodiacal progression and the 144-year total?",
+  "note": "Existing cite 'jaimini_sutram Ch.1' does not resolve: not a corpus text_id and the held Rao Jaimini never names a Narayana dasa (its Navamsa dasa, Adh.2 Pada 3, uses a different start rule). The row's own conditions text records the variant-commentary caveat."
+ },
+ {
+  "asset": "bg_dasha_systems",
+  "table": "brahma_dasha_systems",
+  "row_key": {
+   "canonical_id": "niryana_shoola"
+  },
+  "row_count": 1,
+  "claim": "Niryana Shoola (Jaimini): 108-yr; trikona-based, longevity/maraka timing; fixed_years movable7 / fixed8 / dual9.",
+  "current_citation": "classical_citations=[{\"chapter\": 1, \"text_id\": \"jaimini_sutram\"}]; source_chunk_ids={}",
+  "state": "contradicted",
+  "support_class": "CONTRADICTS",
+  "corpus": [
+   {
+    "text_id": "bphs",
+    "chunk_id": "bphs_pg0557_c01",
+    "page": "PG557",
+    "sloka_printed": "181-182",
+    "quote": "The Dasa years in this system are as adopted for the Sthira Dasa"
+   },
+   {
+    "text_id": "bphs",
+    "chunk_id": "bphs_pg0557_c01",
+    "page": "PG557",
+    "sloka_printed": "181-182",
+    "quote": "des-igned the'Shoola Dasa for determining the"
+   },
+   {
+    "text_id": "bphs_jaimini",
+    "chunk_id": "bphs_jaimini_pg0200_c01",
+    "page": "PG200",
+    "sloka_printed": "16",
+    "quote": "Shoola Dasas are marked as death inflicting"
+   }
+  ],
+  "inference_step": "Years 7/8/9 (as Sthira) and the death/maraka purpose agree; BPHS starts it from the stronger of the 2nd/8th, Jaimini takes trikona (1,5,9) shoola rasis. But 12 signs at 7/8/9 = 96, not 108 (108 = 12 x 9, the Navamsa-dasa total, Jaimini Adh.2 Pada 3 Su.1 PG181).",
+  "proposed_citation": null,
+  "proposed_action": "acharya",
+  "acharya_question": "Niryana Shoola total: both texts give the Sthira year table (7/8/9; BPHS PG557:C1 sl.181-182) for the shoola dasa, i.e. 96 yrs for twelve signs, and 108 is the Navamsa-dasa total (12 x 9); the row has total_cycle_years = 108 together with fixed_years 7/8/9. Which total is intended?",
+  "note": "Existing cite 'jaimini_sutram Ch.1': not a corpus text_id; Shoola dasa discussion is Adhyaya 2 Pada 2-4 (and BPHS Ch.46 sl.181-182)."
+ },
+ {
+  "asset": "bg_dasha_systems",
+  "table": "brahma_dasha_systems",
+  "row_key": {
+   "canonical_id": "panchottari"
+  },
+  "row_count": 1,
+  "claim": "Panchottari: Sun12 Mercury13 Saturn14 Mars15 Venus16 Moon17 Jupiter18 = 105; conditional nakshatra dasha.",
+  "current_citation": "classical_citations=[{\"chapter\": 48, \"text_id\": \"bphs\"}]; source_chunk_ids={}",
+  "state": "sourced_fact",
+  "support_class": "FACT",
+  "corpus": [
+   {
+    "text_id": "bphs",
+    "chunk_id": "bphs_pg0511_c01",
+    "page": "PG511",
+    "sloka_printed": "29-31",
+    "quote": "The order of the Dasa lords is the Sun, Mercury, Saturn, Mars, Venus, Moon and Jupiter"
+   },
+   {
+    "text_id": "bphs",
+    "chunk_id": "bphs_pg0511_c01",
+    "page": "PG511",
+    "sloka_printed": "29-31",
+    "quote": "The Dasa of the planets are of 12,13,14,15,16,17"
+   },
+   {
+    "text_id": "bphs",
+    "chunk_id": "bphs_pg0511_c02",
+    "page": "PG511",
+    "sloka_printed": null,
+    "quote": "and l8 years in the aforesaid'order"
+   }
+  ],
+  "inference_step": "Total 105 = arithmetic sum of printed years. Printed applicability: Ascendant Cancer and Cancer Dwadasamsa; row's generic 'conditional' is not contradicted.",
+  "proposed_citation": "BPHS Ch. 46 (Dasas (Periods) of planets), Sloka 29-31 as printed — bphs:PG511:C1 (Santhanam trans.); PG511:C2 for the last year",
+  "proposed_action": "recite",
+  "acharya_question": null,
+  "note": "Existing cite 'BPHS Ch.48' wrong for this corpus (defined in Ch.46)."
+ },
+ {
+  "asset": "bg_dasha_systems",
+  "table": "brahma_dasha_systems",
+  "row_key": {
+   "canonical_id": "shashtihayani"
+  },
+  "row_count": 1,
+  "claim": "Shashtihayani: Sun-centric 60-year scheme; lords listed Sun, Moon, Mars, Mercury, Jupiter, Venus, Saturn, Rahu, Ketu (9 lords); conditional on Sun-dominant charts.",
+  "current_citation": "classical_citations=[{\"chapter\": 49, \"text_id\": \"bphs\"}]; source_chunk_ids={}",
+  "state": "contradicted",
+  "support_class": "CONTRADICTS",
+  "corpus": [
+   {
+    "text_id": "bphs",
+    "chunk_id": "bphs_pg0517_c01",
+    "page": "PG517",
+    "sloka_printed": "40-41",
+    "quote": "Jupiter, the Sun, Mars, the Moon, Mercury, Venus, Saturn and Rahu"
+   },
+   {
+    "text_id": "bphs",
+    "chunk_id": "bphs_pg0517_c01",
+    "page": "PG517",
+    "sloka_printed": "40-41",
+    "quote": "adopted in cases where the Sun is posited in the Ascendant"
+   },
+   {
+    "text_id": "bphs",
+    "chunk_id": "bphs_pg0517_c01",
+    "page": "PG517",
+    "sloka_printed": "40-41",
+    "quote": "The remaining planets have Dasas of 6 years each"
+   }
+  ],
+  "inference_step": "BPHS names 8 lords (no Ketu); the row's lords array adds Ketu (9). Also the OCR prints 'Jupiter, the Sun and Mars are of 13 years' but the worked example deducts from '10 years' for the Sun; 3x10+5x6 = 60 fits the row's 60-year total, 3x13+5x6 = 69 does not - the '13' is probably an OCR error but is unconfirmed.",
+  "proposed_citation": null,
+  "proposed_action": "acharya",
+  "acharya_question": "Shashtihayani (BPHS Santhanam PG517:C1 sl.40-41): the text lists 8 lords (Jupiter, Sun, Mars, Moon, Mercury, Venus, Saturn, Rahu) with no Ketu, and Sun/Mars/Jupiter 13 [or 10?] years, the other five 6 years. Should the row carry 8 lords without Ketu, and are the three long periods 10 years (total 60)?",
+  "note": "Condition 'Sun-dominant' ~ 'Sun in the Ascendant' (consistent). Existing cite 'BPHS Ch.49' wrong for this corpus (Ch.46)."
+ },
+ {
+  "asset": "bg_dasha_systems",
+  "table": "brahma_dasha_systems",
+  "row_key": {
+   "canonical_id": "shatabdika"
+  },
+  "row_count": 1,
+  "claim": "Shatabdika: eight lords Venus5 Sun5 Moon10 Mars10 Mercury10 Jupiter20 Saturn20 Rahu20 = 100; nadi tradition.",
+  "current_citation": "classical_citations=[{\"chapter\": 48, \"text_id\": \"bphs\"}]; source_chunk_ids={}",
+  "state": "contradicted",
+  "support_class": "CONTRADICTS",
+  "corpus": [
+   {
+    "text_id": "bphs",
+    "chunk_id": "bphs_pg0513_c01",
+    "page": "PG513",
+    "sloka_printed": null,
+    "quote": "Sun, the Moon, Venus, Mercury, Jupiter, Mars and saturn"
+   },
+   {
+    "text_id": "bphs",
+    "chunk_id": "bphs_pg0513_c01",
+    "page": "PG513",
+    "sloka_printed": null,
+    "quote": "of 5,5,10,1il,20,20 and 30 years"
+   },
+   {
+    "text_id": "bphs",
+    "chunk_id": "bphs_pg0513_c01",
+    "page": "PG513",
+    "sloka_printed": null,
+    "quote": "Rahu and Ketu do not have a place in this Dasa system"
+   }
+  ],
+  "inference_step": "BPHS prints seven lords in the order Sun, Moon, Venus, Mercury, Jupiter, Mars, Saturn with years 5,5,10,10,20,20,30 (sum 100; the OCR garbles one '10') and states Rahu/Ketu are excluded. Row has 8 lords incl. Rahu 20, Mars 10, Saturn 20. Only the 100-yr total agrees. Sloka number is not printed for this system (between sl.29-31 and the later 35-36).",
+  "proposed_citation": null,
+  "proposed_action": "acharya",
+  "acharya_question": "Shatabdika (BPHS Santhanam PG513:C1, sl. between 31 and 35): the printed text gives 7 lords Sun5, Moon5, Venus10, Mercury10, Jupiter20, Mars20, Saturn30 with Rahu/Ketu excluded; the row has 8 lords (Venus5, Sun5, Moon10, Mars10, Mercury10, Jupiter20, Saturn20, Rahu20). Which lord order and year table should the platform carry?",
+  "note": "'nadi tradition' in conditions_for_use is not stated; printed applicability fragment is 'lagna ... in the same rasi' (OCR; reads like a vargottama-type condition). Existing cite 'BPHS Ch.48' wrong for this corpus (Ch.46)."
+ },
+ {
+  "asset": "bg_dasha_systems",
+  "table": "brahma_dasha_systems",
+  "row_key": {
+   "canonical_id": "shattrimsha_sama"
+  },
+  "row_count": 1,
+  "claim": "Shattrimsha-sama: 36-year cycle; lord order depends on day vs night birth (Sun-first by day, Moon-first by night).",
+  "current_citation": "classical_citations=[{\"chapter\": 49, \"text_id\": \"bphs\"}]; source_chunk_ids={}",
+  "state": "contradicted",
+  "support_class": "CONTRADICTS",
+  "corpus": [
+   {
+    "text_id": "bphs",
+    "chunk_id": "bphs_pg0517_c01",
+    "page": "PG517",
+    "sloka_printed": "42-43",
+    "quote": "The Moon, the Sun, Jupiter, Mars, Mercury, Saturn, Venus and Rahu"
+   },
+   {
+    "text_id": "bphs",
+    "chunk_id": "bphs_pg0517_c02",
+    "page": "PG517",
+    "sloka_printed": "42-43",
+    "quote": "Their Dasas will be 1, 2, 3, 4, 5, 6, 7, 8 years in that order"
+   },
+   {
+    "text_id": "bphs",
+    "chunk_id": "bphs_pg0519_c01",
+    "page": "PG519",
+    "sloka_printed": null,
+    "quote": "birth is at night and the Ascendant be in the Hora of the Moon"
+   }
+  ],
+  "inference_step": "BPHS prints ONE fixed order starting with the Moon (no day/night order flip). Day-birth-with-Sun-Hora vs night-birth-with-Moon-Hora is printed as the APPLICABILITY condition for choosing this system, not as a change of lord order. Total 36 = 1+..+8 agrees.",
+  "proposed_citation": null,
+  "proposed_action": "acharya",
+  "acharya_question": "Shattrimsha-sama (BPHS Santhanam PG517:C1-C2 sl.42-43, PG519:C1): the text gives one order (Moon, Sun, Jupiter, Mars, Mercury, Saturn, Venus, Rahu; 1..8 yrs) and uses day-birth/Sun-Hora or night-birth/Moon-Hora only to decide whether the system applies. The row says the lord order itself flips (Sun-first by day, Moon-first by night). Which is correct for the platform?",
+  "note": "Existing cite 'BPHS Ch.49' wrong for this corpus (Ch.46)."
+ },
+ {
+  "asset": "bg_dasha_systems",
+  "table": "brahma_dasha_systems",
+  "row_key": {
+   "canonical_id": "shodashottari"
+  },
+  "row_count": 1,
+  "claim": "Shodashottari: Sun11 Mars12 Jupiter13 Saturn14 Ketu15 Moon16 Mercury17 Venus18 = 116; conditional (paksha + lagna rules).",
+  "current_citation": "classical_citations=[{\"chapter\": 48, \"text_id\": \"bphs\"}]; source_chunk_ids={}",
+  "state": "sourced_fact",
+  "support_class": "FACT",
+  "corpus": [
+   {
+    "text_id": "bphs",
+    "chunk_id": "bphs_pg0509_c01",
+    "page": "PG509",
+    "sloka_printed": "24-26",
+    "quote": "Dasas of the Sun, Mars, Jupiter, Saturn, Ketu, Moon, Mercury and Venus"
+   },
+   {
+    "text_id": "bphs",
+    "chunk_id": "bphs_pg0509_c01",
+    "page": "PG509",
+    "sloka_printed": "24-26",
+    "quote": "arc of 11, l:, t3, 14, 15,16,17 and 18 years"
+   },
+   {
+    "text_id": "bphs",
+    "chunk_id": "bphs_pg0509_c01",
+    "page": "PG509",
+    "sloka_printed": null,
+    "quote": "birth is in Shukla Paksha and the Ascendant is in the Hora of the Sun"
+   }
+  ],
+  "inference_step": "Total 116 = arithmetic sum of printed years. The worked example states the Shukla-paksha + Sun-hora condition; the sloka's own wording is OCR-garbled.",
+  "proposed_citation": "BPHS Ch. 46 (Dasas (Periods) of planets), Sloka 24-26 as printed — bphs:PG509:C1 (Santhanam trans.)",
+  "proposed_action": "recite",
+  "acharya_question": null,
+  "note": "Existing cite 'BPHS Ch.48' wrong for this corpus (defined in Ch.46)."
+ },
+ {
+  "asset": "bg_dasha_systems",
+  "table": "brahma_dasha_systems",
+  "row_key": {
+   "canonical_id": "sthira_dasha"
+  },
+  "row_count": 1,
+  "claim": "Sthira (Jaimini): 86-yr cycle; sign periods fixed movable 7 / fixed 8 / dual 9.",
+  "current_citation": "classical_citations=[{\"chapter\": 1, \"text_id\": \"jaimini_sutram\"}]; source_chunk_ids={}",
+  "state": "contradicted",
+  "support_class": "CONTRADICTS",
+  "corpus": [
+   {
+    "text_id": "bphs_jaimini",
+    "chunk_id": "bphs_jaimini_pg0182_c01",
+    "page": "PG182",
+    "sloka_printed": "3",
+    "quote": "movable sign Dasa will be 7, the fixed Dasa will be 8 years"
+   },
+   {
+    "text_id": "bphs_jaimini",
+    "chunk_id": "bphs_jaimini_pg0182_c01",
+    "page": "PG182",
+    "sloka_printed": "3",
+    "quote": "the Dasa of the common Rasi will extend to 9 years"
+   },
+   {
+    "text_id": "bphs_jaimini",
+    "chunk_id": "bphs_jaimini_pg0182_c01",
+    "page": "PG182",
+    "sloka_printed": "4",
+    "quote": "The Sthira Dasa commences from the Rasi occupied by Brahma"
+   },
+   {
+    "text_id": "bphs",
+    "chunk_id": "bphs_pg0549_c01",
+    "page": "PG549",
+    "sloka_printed": "168-169",
+    "quote": "are the Dasa spans of the movable, fixed and dual signs"
+   }
+  ],
+  "inference_step": "Per-sign years 7/8/9 agree with both texts (the row's own fixed_years also say so). But 12 signs = 4 x (7+8+9) = 96, not 86; the held texts do not state 86, and 86 is inconsistent with the row's own sequence. Likely a transcription slip for 96.",
+  "proposed_citation": null,
+  "proposed_action": "acharya",
+  "acharya_question": "Sthira dasa total: the held texts give 7/8/9 yrs for movable/fixed/dual signs (Jaimini Rao PG182:C1 Adh.2 Pada 3 Su.3; BPHS PG548-549 sl.168-169), i.e. 4x(7+8+9) = 96 yrs for twelve signs; the row says total_cycle_years = 86. Confirm 96.",
+  "note": "Existing cite 'jaimini_sutram Ch.1': 'jaimini_sutram' is not a corpus text_id (held = bphs_jaimini); the Sthira sutra is Adhyaya 2 Pada 3 Su.3-4, not Ch.1."
+ },
+ {
+  "asset": "bg_dasha_systems",
+  "table": "brahma_dasha_systems",
+  "row_key": {
+   "canonical_id": "tara_dasha"
+  },
+  "row_count": 1,
+  "claim": "Tara Dasha: 120-yr; reckoned via the 9-tara cycle from Moon's nakshatra; used in nakshatra/tarabala timing.",
+  "current_citation": "classical_citations=[{\"chapter\": 47, \"text_id\": \"bphs\"}]; source_chunk_ids={}",
+  "state": "contradicted",
+  "support_class": "CONTRADICTS",
+  "corpus": [
+   {
+    "text_id": "bphs",
+    "chunk_id": "bphs_pg0567_c01",
+    "page": "PG567",
+    "sloka_printed": "207-249 [sic]",
+    "quote": "Tara Dasa which is like Vimsottari Dasa"
+   },
+   {
+    "text_id": "bphs",
+    "chunk_id": "bphs_pg0567_c01",
+    "page": "PG567",
+    "sloka_printed": "207-249 [sic]",
+    "quote": "aprrlied in those casesonlv 'here there are planets in kendras"
+   },
+   {
+    "text_id": "bphs",
+    "chunk_id": "bphs_pg0567_c01",
+    "page": "PG567",
+    "sloka_printed": "207-249 [sic]",
+    "quote": "first Dasa will belong to the strongest amongst them"
+   },
+   {
+    "text_id": "bphs",
+    "chunk_id": "bphs_pg0567_c01",
+    "page": "PG567",
+    "sloka_printed": null,
+    "quote": "Dasa years will be the same as prescribed for Vimsottari Dasa"
+   }
+  ],
+  "inference_step": "Supported: 120 yrs (same years as Vimshottari) and the nine tara names (Janma, Sampat, Vipat, Kshema, Pratyak, Sadhana, Naidhana/Vadha, Maitra, Atimaitra in the table). Differs: BPHS starts the Tara Dasa with the strongest planet in a kendra (planets in kendras take the tara names), not from the Moon's nakshatra, and applies it only when planets occupy kendras; 'nakshatra/tarabala timing' use is not stated. Sloka number is OCR'd '207-249' (sic).",
+  "proposed_citation": null,
+  "proposed_action": "acharya",
+  "acharya_question": "Tara Dasa (BPHS Santhanam PG567:C1, sl. printed '207-249', OCR for ~207-209): the text starts it with the strongest planet in a kendra and uses it only when planets are in kendras; the row says it is reckoned from the Moon's nakshatra via the 9-tara cycle. Which start rule should the platform carry?",
+  "note": "Existing cite 'BPHS Ch.47' wrong for this corpus (Ch.47 = Effects of Dasas; definition is Ch.46)."
+ },
+ {
+  "asset": "bg_dasha_systems",
+  "table": "brahma_dasha_systems",
+  "row_key": {
+   "canonical_id": "vimshottari"
+  },
+  "row_count": 1,
+  "claim": "Vimshottari: nine lords Ketu-Venus-Sun-Moon-Mars-Rahu-Jupiter-Saturn-Mercury, 7/20/6/10/7/18/16/19/17 yrs, 120-yr cycle, reckoned from Moon's nakshatra, universal default.",
+  "current_citation": "classical_citations=[{\"chapter\": 46, \"text_id\": \"bphs\"}]; source_chunk_ids={}",
+  "state": "sourced_fact",
+  "support_class": "FACT",
+  "corpus": [
+   {
+    "text_id": "bphs",
+    "chunk_id": "bphs_pg0499_c01",
+    "page": "PG499",
+    "sloka_printed": "12-14",
+    "quote": "Sun, the Moon, Mars, Rahu, Jupiter. Saturn, Mercury, Ketu and Venus in that order"
+   },
+   {
+    "text_id": "bphs",
+    "chunk_id": "bphs_pg0499_c01",
+    "page": "PG499",
+    "sloka_printed": "15",
+    "quote": "Meicury. Ketu and Venus are 6,lO, 7,"
+   },
+   {
+    "text_id": "bphs",
+    "chunk_id": "bphs_pg0499_c02",
+    "page": "PG499",
+    "sloka_printed": "15",
+    "quote": "18, 16, 19,l'1,7 and20 in thai order"
+   },
+   {
+    "text_id": "bphs",
+    "chunk_id": "bphs_pg0499_c01",
+    "page": "PG499",
+    "sloka_printed": null,
+    "quote": "natural life span of a human being is generally taken as 120 years"
+   },
+   {
+    "text_id": "bphs",
+    "chunk_id": "bphs_pg0500_c01",
+    "page": "PG500",
+    "sloka_printed": null,
+    "quote": "Makha, Moola and Aswini"
+   },
+   {
+    "text_id": "bphs",
+    "chunk_id": "bphs_pg0519_c01",
+    "page": "PG519",
+    "sloka_printed": null,
+    "quote": "Vimsottari is the main-Dasa system applicable to all"
+   }
+  ],
+  "inference_step": null,
+  "proposed_citation": "BPHS Ch. 46 (Dasas (Periods) of planets), Sloka 12-15 as printed — bphs:PG499:C1 (Santhanam trans.)",
+  "proposed_action": "recite",
+  "acharya_question": null,
+  "note": "Existing cite 'BPHS Ch.46' is correct (Chapter 46 'Dasas (Periods) of planets' is printed at PG497:C1 and PG499:C1). BPHS prints the cycle from Krittika/Sun; the row lists the same cyclic order starting at Ketu (Asvini's lord per the PG500 table) - presentation rotation only, no value differs. Year sum 7+20+6+10+7+18+16+19+17 = 120."
+ },
+ {
+  "asset": "bg_dasha_systems",
+  "table": "brahma_dasha_systems",
+  "row_key": {
+   "canonical_id": "yogardha_dasha"
+  },
+  "row_count": 1,
+  "claim": "Yogardha: 108-yr; average (half-sum) of Vimshottari and Ashtottari period-lengths per lord; Ketu carries the Vimshottari value.",
+  "current_citation": "classical_citations=[{\"chapter\": 48, \"text_id\": \"bphs\"}]; source_chunk_ids={}",
+  "state": "contradicted",
+  "support_class": "CONTRADICTS",
+  "corpus": [
+   {
+    "text_id": "bphs",
+    "chunk_id": "bphs_pg0552_c01",
+    "page": "PG552",
+    "sloka_printed": "174",
+    "quote": "half of the total of the of Chara and Sthira Dasas"
+   },
+   {
+    "text_id": "bphs_jaimini",
+    "chunk_id": "bphs_jaimini_pg0201_c01",
+    "page": "PG201",
+    "sloka_printed": "19",
+    "quote": "extent of yogardhadasa will be half of the two Dasas combined"
+   },
+   {
+    "text_id": "bphs",
+    "chunk_id": "bphs_pg0552_c01",
+    "page": "PG552",
+    "sloka_printed": "174",
+    "quote": "commence from the sign of the Ascendant or the seventh house whichever is stronger"
+   }
+  ],
+  "inference_step": "Both held texts define Yogardha as a RASI dasha: each sign's period is half the sum of its Chara and Sthira years, starting from the stronger of Lagna/7th. Neither mentions an average of Vimshottari and Ashtottari lord-periods, nor a 108-yr cycle. The row's definition, base_unit (nakshatra_lord), method and school (parashari, nakshatra-based) do not match.",
+  "proposed_citation": null,
+  "proposed_action": "acharya",
+  "acharya_question": "Yogardha: BPHS (Santhanam PG552:C1 sl.174) and Jaimini (Rao PG201:C1 Adh.2 Pada 4 Su.19) both define it as a rashi dasha with each sign's years = half of (Chara + Sthira years), started from the stronger of Lagna/7th. The row defines it as the average of Vimshottari and Ashtottari lord-periods (108-yr, nakshatra_lord). Which definition should the platform carry?",
+  "note": "Existing cite 'BPHS Ch.48' wrong for this corpus (Yogardha is in Ch.46)."
+ },
+ {
+  "asset": "bg_dasha_systems",
+  "table": "brahma_dasha_systems",
+  "row_key": {
+   "canonical_id": "yogini"
+  },
+  "row_count": 1,
+  "claim": "Yogini: Moon1 Sun2 Jupiter3 Mars4 Mercury5 Saturn6 Venus7 Rahu8 (Mangala..Sankata) = 36; short-cycle dasha used for timing and muhurta.",
+  "current_citation": "classical_citations=[{\"chapter\": 50, \"text_id\": \"bphs\"}]; source_chunk_ids={}",
+  "state": "sourced_fact",
+  "support_class": "FACT",
+  "corpus": [
+   {
+    "text_id": "bphs",
+    "chunk_id": "bphs_pg0564_c01",
+    "page": "PG564",
+    "sloka_printed": "195-199",
+    "quote": "Mangala, Pingala, Dhanya, Bhramari, Bhadrika, Ulka, Siddha and Sankata"
+   },
+   {
+    "text_id": "bphs",
+    "chunk_id": "bphs_pg0564_c01",
+    "page": "PG564",
+    "sloka_printed": "195-199",
+    "quote": "Moon, the Sun, Jupiter, Mars, Mercury, Saturn, Venus and Rahu, are born from Mangala"
+   },
+   {
+    "text_id": "bphs",
+    "chunk_id": "bphs_pg0564_c01",
+    "page": "PG564",
+    "sloka_printed": "195-199",
+    "quote": "are of 1,2,3,4,5,6,7 and 8 years respectively"
+   }
+  ],
+  "inference_step": "Total 36 = 1+..+8. 'especially for timing and muhurta' in conditions_for_use is not stated in the held text (BPHS only says add 3 to the nakshatra number and divide by 8); the descriptive wording is left unsourced.",
+  "proposed_citation": "BPHS Ch. 46 (Dasas (Periods) of planets), Sloka 195-199 as printed — bphs:PG564:C1 (Santhanam trans.)",
+  "proposed_action": "recite",
+  "acharya_question": null,
+  "note": "Existing cite 'BPHS Ch.50' wrong for this corpus (Ch.50 = Effects of Chara etc. Dasas; Yogini is defined in Ch.46)."
+ },
+ {
+  "asset": "bg_dasha_systems",
+  "table": "reference_dasha_systems",
+  "row_key": {
+   "canonical_id": "ashtottari"
+  },
+  "row_count": 1,
+  "claim": "Identity row: canonical_id/name_en/school = Ashtottari Dasha / parashari; platform vocabulary, no classical assertion.",
+  "current_citation": "no citation/source column in reference_dasha_systems",
+  "state": "not_a_classical_claim",
+  "support_class": "NONE",
+  "corpus": [],
+  "inference_step": null,
+  "proposed_citation": null,
+  "proposed_action": "none",
+  "acharya_question": null,
+  "note": "reference_dasha_systems has only (canonical_id, name_en, school) - no citation/source column. 'school' is a platform classification (not a dated textual claim); the classical content is in the brahma_dasha_systems row of the same id."
+ },
+ {
+  "asset": "bg_dasha_systems",
+  "table": "reference_dasha_systems",
+  "row_key": {
+   "canonical_id": "brahma_dasha"
+  },
+  "row_count": 1,
+  "claim": "Identity row: canonical_id/name_en/school = Brahma Dasha (Jaimini) / jaimini; platform vocabulary, no classical assertion.",
+  "current_citation": "no citation/source column in reference_dasha_systems",
+  "state": "not_a_classical_claim",
+  "support_class": "NONE",
+  "corpus": [],
+  "inference_step": null,
+  "proposed_citation": null,
+  "proposed_action": "none",
+  "acharya_question": null,
+  "note": "reference_dasha_systems has only (canonical_id, name_en, school) - no citation/source column. 'school' is a platform classification (not a dated textual claim); the classical content is in the brahma_dasha_systems row of the same id."
+ },
+ {
+  "asset": "bg_dasha_systems",
+  "table": "reference_dasha_systems",
+  "row_key": {
+   "canonical_id": "chara_jaimini"
+  },
+  "row_count": 1,
+  "claim": "Identity row: canonical_id/name_en/school = Chara Dasha (Jaimini) / jaimini; platform vocabulary, no classical assertion.",
+  "current_citation": "no citation/source column in reference_dasha_systems",
+  "state": "not_a_classical_claim",
+  "support_class": "NONE",
+  "corpus": [],
+  "inference_step": null,
+  "proposed_citation": null,
+  "proposed_action": "none",
+  "acharya_question": null,
+  "note": "reference_dasha_systems has only (canonical_id, name_en, school) - no citation/source column. 'school' is a platform classification (not a dated textual claim); the classical content is in the brahma_dasha_systems row of the same id."
+ },
+ {
+  "asset": "bg_dasha_systems",
+  "table": "reference_dasha_systems",
+  "row_key": {
+   "canonical_id": "chaturashiti_sama"
+  },
+  "row_count": 1,
+  "claim": "Identity row: canonical_id/name_en/school = Chaturashiti-sama Dasha / parashari; platform vocabulary, no classical assertion.",
+  "current_citation": "no citation/source column in reference_dasha_systems",
+  "state": "not_a_classical_claim",
+  "support_class": "NONE",
+  "corpus": [],
+  "inference_step": null,
+  "proposed_citation": null,
+  "proposed_action": "none",
+  "acharya_question": null,
+  "note": "reference_dasha_systems has only (canonical_id, name_en, school) - no citation/source column. 'school' is a platform classification (not a dated textual claim); the classical content is in the brahma_dasha_systems row of the same id."
+ },
+ {
+  "asset": "bg_dasha_systems",
+  "table": "reference_dasha_systems",
+  "row_key": {
+   "canonical_id": "dwadashottari"
+  },
+  "row_count": 1,
+  "claim": "Identity row: canonical_id/name_en/school = Dwadashottari Dasha / parashari; platform vocabulary, no classical assertion.",
+  "current_citation": "no citation/source column in reference_dasha_systems",
+  "state": "not_a_classical_claim",
+  "support_class": "NONE",
+  "corpus": [],
+  "inference_step": null,
+  "proposed_citation": null,
+  "proposed_action": "none",
+  "acharya_question": null,
+  "note": "reference_dasha_systems has only (canonical_id, name_en, school) - no citation/source column. 'school' is a platform classification (not a dated textual claim); the classical content is in the brahma_dasha_systems row of the same id."
+ },
+ {
+  "asset": "bg_dasha_systems",
+  "table": "reference_dasha_systems",
+  "row_key": {
+   "canonical_id": "dwisaptati_sama"
+  },
+  "row_count": 1,
+  "claim": "Identity row: canonical_id/name_en/school = Dwisaptati-sama Dasha / parashari; platform vocabulary, no classical assertion.",
+  "current_citation": "no citation/source column in reference_dasha_systems",
+  "state": "not_a_classical_claim",
+  "support_class": "NONE",
+  "corpus": [],
+  "inference_step": null,
+  "proposed_citation": null,
+  "proposed_action": "none",
+  "acharya_question": null,
+  "note": "reference_dasha_systems has only (canonical_id, name_en, school) - no citation/source column. 'school' is a platform classification (not a dated textual claim); the classical content is in the brahma_dasha_systems row of the same id."
+ },
+ {
+  "asset": "bg_dasha_systems",
+  "table": "reference_dasha_systems",
+  "row_key": {
+   "canonical_id": "kalachakra"
+  },
+  "row_count": 1,
+  "claim": "Identity row: canonical_id/name_en/school = Kalachakra Dasha / parashari; platform vocabulary, no classical assertion.",
+  "current_citation": "no citation/source column in reference_dasha_systems",
+  "state": "not_a_classical_claim",
+  "support_class": "NONE",
+  "corpus": [],
+  "inference_step": null,
+  "proposed_citation": null,
+  "proposed_action": "none",
+  "acharya_question": null,
+  "note": "reference_dasha_systems has only (canonical_id, name_en, school) - no citation/source column. 'school' is a platform classification (not a dated textual claim); the classical content is in the brahma_dasha_systems row of the same id."
+ },
+ {
+  "asset": "bg_dasha_systems",
+  "table": "reference_dasha_systems",
+  "row_key": {
+   "canonical_id": "kp"
+  },
+  "row_count": 1,
+  "claim": "Identity row: canonical_id/name_en/school = KP (Krishnamurti Paddhati) Sub-Period System / kp; platform vocabulary, no classical assertion.",
+  "current_citation": "no citation/source column in reference_dasha_systems",
+  "state": "not_a_classical_claim",
+  "support_class": "NONE",
+  "corpus": [],
+  "inference_step": null,
+  "proposed_citation": null,
+  "proposed_action": "none",
+  "acharya_question": null,
+  "note": "reference_dasha_systems has only (canonical_id, name_en, school) - no citation/source column. 'school' is a platform classification (not a dated textual claim); the classical content is in the brahma_dasha_systems row of the same id."
+ },
+ {
+  "asset": "bg_dasha_systems",
+  "table": "reference_dasha_systems",
+  "row_key": {
+   "canonical_id": "narayana"
+  },
+  "row_count": 1,
+  "claim": "Identity row: canonical_id/name_en/school = Narayana Dasha / jaimini; platform vocabulary, no classical assertion.",
+  "current_citation": "no citation/source column in reference_dasha_systems",
+  "state": "not_a_classical_claim",
+  "support_class": "NONE",
+  "corpus": [],
+  "inference_step": null,
+  "proposed_citation": null,
+  "proposed_action": "none",
+  "acharya_question": null,
+  "note": "reference_dasha_systems has only (canonical_id, name_en, school) - no citation/source column. 'school' is a platform classification (not a dated textual claim); the classical content is in the brahma_dasha_systems row of the same id."
+ },
+ {
+  "asset": "bg_dasha_systems",
+  "table": "reference_dasha_systems",
+  "row_key": {
+   "canonical_id": "niryana_shoola"
+  },
+  "row_count": 1,
+  "claim": "Identity row: canonical_id/name_en/school = Niryana Shoola Dasha / jaimini; platform vocabulary, no classical assertion.",
+  "current_citation": "no citation/source column in reference_dasha_systems",
+  "state": "not_a_classical_claim",
+  "support_class": "NONE",
+  "corpus": [],
+  "inference_step": null,
+  "proposed_citation": null,
+  "proposed_action": "none",
+  "acharya_question": null,
+  "note": "reference_dasha_systems has only (canonical_id, name_en, school) - no citation/source column. 'school' is a platform classification (not a dated textual claim); the classical content is in the brahma_dasha_systems row of the same id."
+ },
+ {
+  "asset": "bg_dasha_systems",
+  "table": "reference_dasha_systems",
+  "row_key": {
+   "canonical_id": "panchottari"
+  },
+  "row_count": 1,
+  "claim": "Identity row: canonical_id/name_en/school = Panchottari Dasha / parashari; platform vocabulary, no classical assertion.",
+  "current_citation": "no citation/source column in reference_dasha_systems",
+  "state": "not_a_classical_claim",
+  "support_class": "NONE",
+  "corpus": [],
+  "inference_step": null,
+  "proposed_citation": null,
+  "proposed_action": "none",
+  "acharya_question": null,
+  "note": "reference_dasha_systems has only (canonical_id, name_en, school) - no citation/source column. 'school' is a platform classification (not a dated textual claim); the classical content is in the brahma_dasha_systems row of the same id."
+ },
+ {
+  "asset": "bg_dasha_systems",
+  "table": "reference_dasha_systems",
+  "row_key": {
+   "canonical_id": "shashtihayani"
+  },
+  "row_count": 1,
+  "claim": "Identity row: canonical_id/name_en/school = Shashtihayani Dasha / parashari; platform vocabulary, no classical assertion.",
+  "current_citation": "no citation/source column in reference_dasha_systems",
+  "state": "not_a_classical_claim",
+  "support_class": "NONE",
+  "corpus": [],
+  "inference_step": null,
+  "proposed_citation": null,
+  "proposed_action": "none",
+  "acharya_question": null,
+  "note": "reference_dasha_systems has only (canonical_id, name_en, school) - no citation/source column. 'school' is a platform classification (not a dated textual claim); the classical content is in the brahma_dasha_systems row of the same id."
+ },
+ {
+  "asset": "bg_dasha_systems",
+  "table": "reference_dasha_systems",
+  "row_key": {
+   "canonical_id": "shatabdika"
+  },
+  "row_count": 1,
+  "claim": "Identity row: canonical_id/name_en/school = Shatabdika Dasha / parashari; platform vocabulary, no classical assertion.",
+  "current_citation": "no citation/source column in reference_dasha_systems",
+  "state": "not_a_classical_claim",
+  "support_class": "NONE",
+  "corpus": [],
+  "inference_step": null,
+  "proposed_citation": null,
+  "proposed_action": "none",
+  "acharya_question": null,
+  "note": "reference_dasha_systems has only (canonical_id, name_en, school) - no citation/source column. 'school' is a platform classification (not a dated textual claim); the classical content is in the brahma_dasha_systems row of the same id."
+ },
+ {
+  "asset": "bg_dasha_systems",
+  "table": "reference_dasha_systems",
+  "row_key": {
+   "canonical_id": "shattrimsha_sama"
+  },
+  "row_count": 1,
+  "claim": "Identity row: canonical_id/name_en/school = Shattrimsha-sama Dasha / parashari; platform vocabulary, no classical assertion.",
+  "current_citation": "no citation/source column in reference_dasha_systems",
+  "state": "not_a_classical_claim",
+  "support_class": "NONE",
+  "corpus": [],
+  "inference_step": null,
+  "proposed_citation": null,
+  "proposed_action": "none",
+  "acharya_question": null,
+  "note": "reference_dasha_systems has only (canonical_id, name_en, school) - no citation/source column. 'school' is a platform classification (not a dated textual claim); the classical content is in the brahma_dasha_systems row of the same id."
+ },
+ {
+  "asset": "bg_dasha_systems",
+  "table": "reference_dasha_systems",
+  "row_key": {
+   "canonical_id": "shodashottari"
+  },
+  "row_count": 1,
+  "claim": "Identity row: canonical_id/name_en/school = Shodashottari Dasha / parashari; platform vocabulary, no classical assertion.",
+  "current_citation": "no citation/source column in reference_dasha_systems",
+  "state": "not_a_classical_claim",
+  "support_class": "NONE",
+  "corpus": [],
+  "inference_step": null,
+  "proposed_citation": null,
+  "proposed_action": "none",
+  "acharya_question": null,
+  "note": "reference_dasha_systems has only (canonical_id, name_en, school) - no citation/source column. 'school' is a platform classification (not a dated textual claim); the classical content is in the brahma_dasha_systems row of the same id."
+ },
+ {
+  "asset": "bg_dasha_systems",
+  "table": "reference_dasha_systems",
+  "row_key": {
+   "canonical_id": "sthira_dasha"
+  },
+  "row_count": 1,
+  "claim": "Identity row: canonical_id/name_en/school = Sthira Dasha (Jaimini) / jaimini; platform vocabulary, no classical assertion.",
+  "current_citation": "no citation/source column in reference_dasha_systems",
+  "state": "not_a_classical_claim",
+  "support_class": "NONE",
+  "corpus": [],
+  "inference_step": null,
+  "proposed_citation": null,
+  "proposed_action": "none",
+  "acharya_question": null,
+  "note": "reference_dasha_systems has only (canonical_id, name_en, school) - no citation/source column. 'school' is a platform classification (not a dated textual claim); the classical content is in the brahma_dasha_systems row of the same id."
+ },
+ {
+  "asset": "bg_dasha_systems",
+  "table": "reference_dasha_systems",
+  "row_key": {
+   "canonical_id": "tara_dasha"
+  },
+  "row_count": 1,
+  "claim": "Identity row: canonical_id/name_en/school = Tara Dasha / parashari; platform vocabulary, no classical assertion.",
+  "current_citation": "no citation/source column in reference_dasha_systems",
+  "state": "not_a_classical_claim",
+  "support_class": "NONE",
+  "corpus": [],
+  "inference_step": null,
+  "proposed_citation": null,
+  "proposed_action": "none",
+  "acharya_question": null,
+  "note": "reference_dasha_systems has only (canonical_id, name_en, school) - no citation/source column. 'school' is a platform classification (not a dated textual claim); the classical content is in the brahma_dasha_systems row of the same id."
+ },
+ {
+  "asset": "bg_dasha_systems",
+  "table": "reference_dasha_systems",
+  "row_key": {
+   "canonical_id": "vimshottari"
+  },
+  "row_count": 1,
+  "claim": "Identity row: canonical_id/name_en/school = Vimshottari Dasha / parashari; platform vocabulary, no classical assertion.",
+  "current_citation": "no citation/source column in reference_dasha_systems",
+  "state": "not_a_classical_claim",
+  "support_class": "NONE",
+  "corpus": [],
+  "inference_step": null,
+  "proposed_citation": null,
+  "proposed_action": "none",
+  "acharya_question": null,
+  "note": "reference_dasha_systems has only (canonical_id, name_en, school) - no citation/source column. 'school' is a platform classification (not a dated textual claim); the classical content is in the brahma_dasha_systems row of the same id."
+ },
+ {
+  "asset": "bg_dasha_systems",
+  "table": "reference_dasha_systems",
+  "row_key": {
+   "canonical_id": "yogardha_dasha"
+  },
+  "row_count": 1,
+  "claim": "Identity row: canonical_id/name_en/school = Yogardha Dasha / parashari; platform vocabulary, no classical assertion.",
+  "current_citation": "no citation/source column in reference_dasha_systems",
+  "state": "not_a_classical_claim",
+  "support_class": "NONE",
+  "corpus": [],
+  "inference_step": null,
+  "proposed_citation": null,
+  "proposed_action": "none",
+  "acharya_question": null,
+  "note": "reference_dasha_systems has only (canonical_id, name_en, school) - no citation/source column. 'school' is a platform classification (not a dated textual claim); the classical content is in the brahma_dasha_systems row of the same id."
+ },
+ {
+  "asset": "bg_dasha_systems",
+  "table": "reference_dasha_systems",
+  "row_key": {
+   "canonical_id": "yogini"
+  },
+  "row_count": 1,
+  "claim": "Identity row: canonical_id/name_en/school = Yogini Dasha / parashari; platform vocabulary, no classical assertion.",
+  "current_citation": "no citation/source column in reference_dasha_systems",
+  "state": "not_a_classical_claim",
+  "support_class": "NONE",
+  "corpus": [],
+  "inference_step": null,
+  "proposed_citation": null,
+  "proposed_action": "none",
+  "acharya_question": null,
+  "note": "reference_dasha_systems has only (canonical_id, name_en, school) - no citation/source column. 'school' is a platform classification (not a dated textual claim); the classical content is in the brahma_dasha_systems row of the same id."
+ },
+ {
+  "asset": "bg_dasha_systems",
+  "table": "brahma_ontology",
+  "row_key": {
+   "entity_class": "dasha_system",
+   "canonical_id": "ashtottari"
+  },
+  "row_count": 1,
+  "claim": "Ashtottari is a 108-year parashari dasha system.",
+  "current_citation": "BPHS Ch.48 (Conditional Nakshatra Dashas)",
+  "state": "sourced_fact",
+  "support_class": "FACT",
+  "corpus": [
+   {
+    "text_id": "bphs",
+    "chunk_id": "bphs_pg0506_c01",
+    "page": "PG506",
+    "sloka_printed": "17-20",
+    "quote": "Sun, the Moon, Mars, Mercury, Saturn, Jupiter, Rahu and Venus are 6, 15"
+   }
+  ],
+  "inference_step": "108 = sum of printed years.",
+  "proposed_citation": "BPHS Ch. 46 (Dasas (Periods) of planets), Sloka 17-20 as printed — bphs:PG505:C1 (Santhanam trans.); PG506:C1",
+  "proposed_action": "recite",
+  "acharya_question": null,
+  "note": "Current 'BPHS Ch.48 (Conditional Nakshatra Dashas)': chapter and title are not what the corpus prints; Ch.46 is the defining chapter."
+ },
+ {
+  "asset": "bg_dasha_systems",
+  "table": "brahma_ontology",
+  "row_key": {
+   "entity_class": "dasha_system",
+   "canonical_id": "brahma_dasha"
+  },
+  "row_count": 1,
+  "claim": "Brahma Dasha is a 120-year jaimini dasha system.",
+  "current_citation": "Jaimini Sutram Ch.1 (Upadesa Sutra — Rashi Dasha systems)",
+  "state": "unsourced_marked",
+  "support_class": "NONE",
+  "corpus": [
+   {
+    "text_id": "bphs_jaimini",
+    "chunk_id": "bphs_jaimini_pg0190_c01",
+    "page": "PG190",
+    "sloka_printed": "25",
+    "quote": "that number will be the extent in years of that Dasa"
+   }
+  ],
+  "inference_step": "No held text states a 120-year Brahma Dasha cycle (per-sign years are chart-dependent house numbers).",
+  "proposed_citation": null,
+  "proposed_action": "mark_unsourced",
+  "acharya_question": null,
+  "note": "Current 'Jaimini Sutram Ch.1 (Upadesa Sutra - Rashi Dasha systems)': wrong grain (Adhyaya 2 Pada 3)."
+ },
+ {
+  "asset": "bg_dasha_systems",
+  "table": "brahma_ontology",
+  "row_key": {
+   "entity_class": "dasha_system",
+   "canonical_id": "chara_jaimini"
+  },
+  "row_count": 1,
+  "claim": "Chara is a 144-year jaimini dasha system.",
+  "current_citation": "Jaimini Sutram Ch.1 (Upadesa Sutra — Rashi Dasha systems)",
+  "state": "unsourced_marked",
+  "support_class": "NONE",
+  "corpus": [
+   {
+    "text_id": "bphs_jaimini",
+    "chunk_id": "bphs_jaimini_pg0055_c01",
+    "page": "PG55",
+    "sloka_printed": "34",
+    "quote": "All the Rasis put together at 12 each will come up to 144"
+   }
+  ],
+  "inference_step": "144 appears only as 12 signs x 12 for the antardasha arithmetic, not as a Chara cycle length; no held text states a 144-year Chara cycle.",
+  "proposed_citation": null,
+  "proposed_action": "mark_unsourced",
+  "acharya_question": null,
+  "note": "Current 'Jaimini Sutram Ch.1 (Upadesa Sutra - Rashi Dasha systems)': 'Upadesa Sutra' is not a printed title in the held Rao translation."
+ },
+ {
+  "asset": "bg_dasha_systems",
+  "table": "brahma_ontology",
+  "row_key": {
+   "entity_class": "dasha_system",
+   "canonical_id": "chaturashiti_sama"
+  },
+  "row_count": 1,
+  "claim": "Chaturashiti-sama is an 84-year parashari dasha system.",
+  "current_citation": "BPHS Ch.49 (Kalachakra & Conditional Dashas)",
+  "state": "sourced_fact",
+  "support_class": "FACT",
+  "corpus": [
+   {
+    "text_id": "bphs",
+    "chunk_id": "bphs_pg0515_c01",
+    "page": "PG515",
+    "sloka_printed": null,
+    "quote": "The Dasa of each planet is of 12 years"
+   }
+  ],
+  "inference_step": "84 = 7 x 12.",
+  "proposed_citation": "BPHS Ch. 46 (Dasas (Periods) of planets), p.515 — bphs:PG515:C1 (Santhanam trans.)",
+  "proposed_action": "recite",
+  "acharya_question": null,
+  "note": "Current 'BPHS Ch.49 (Kalachakra & Conditional Dashas)': Ch.49 in this corpus is 'Effects of the Kalachakra Dasa'."
+ },
+ {
+  "asset": "bg_dasha_systems",
+  "table": "brahma_ontology",
+  "row_key": {
+   "entity_class": "dasha_system",
+   "canonical_id": "dwadashottari"
+  },
+  "row_count": 1,
+  "claim": "Dwadashottari is a 112-year parashari dasha system.",
+  "current_citation": "BPHS Ch.48 (Conditional Nakshatra Dashas)",
+  "state": "sourced_fact",
+  "support_class": "FACT",
+  "corpus": [
+   {
+    "text_id": "bphs",
+    "chunk_id": "bphs_pg0511_c01",
+    "page": "PG511",
+    "sloka_printed": "27-28",
+    "quote": "The Dasas wiil be of 7,9,11, 13, 15,17, 19 and 21 years"
+   }
+  ],
+  "inference_step": "112 = sum of printed years.",
+  "proposed_citation": "BPHS Ch. 46 (Dasas (Periods) of planets), Sloka 27-28 as printed — bphs:PG511:C1 (Santhanam trans.)",
+  "proposed_action": "recite",
+  "acharya_question": null,
+  "note": "Current 'BPHS Ch.48 (Conditional Nakshatra Dashas)' - Ch.46 is the defining chapter."
+ },
+ {
+  "asset": "bg_dasha_systems",
+  "table": "brahma_ontology",
+  "row_key": {
+   "entity_class": "dasha_system",
+   "canonical_id": "dwisaptati_sama"
+  },
+  "row_count": 1,
+  "claim": "Dwisaptati-sama is a 72-year parashari dasha system.",
+  "current_citation": "BPHS Ch.49 (Kalachakra & Conditional Dashas)",
+  "state": "sourced_fact",
+  "support_class": "FACT",
+  "corpus": [
+   {
+    "text_id": "bphs",
+    "chunk_id": "bphs_pg0515_c01",
+    "page": "PG515",
+    "sloka_printed": "37-39",
+    "quote": "all the eight planetr have Dasa of 9 years each"
+   }
+  ],
+  "inference_step": "72 = 8 x 9.",
+  "proposed_citation": "BPHS Ch. 46 (Dasas (Periods) of planets), Sloka 37-39 as printed — bphs:PG515:C1 (Santhanam trans.)",
+  "proposed_action": "recite",
+  "acharya_question": null,
+  "note": "Current 'BPHS Ch.49 (Kalachakra & Conditional Dashas)': Ch.49 in this corpus is Effects of Kalachakra Dasa."
+ },
+ {
+  "asset": "bg_dasha_systems",
+  "table": "brahma_ontology",
+  "row_key": {
+   "entity_class": "dasha_system",
+   "canonical_id": "kalachakra"
+  },
+  "row_count": 1,
+  "claim": "Kalachakra is a 100-year parashari dasha system.",
+  "current_citation": "BPHS Ch.49 (Kalachakra & Conditional Dashas)",
+  "state": "sourced_inference",
+  "support_class": "INFERENCE",
+  "corpus": [
+   {
+    "text_id": "bphs",
+    "chunk_id": "bphs_pg0529_c01",
+    "page": "PG529",
+    "sloka_printed": "89",
+    "quote": "For the Amsa in Aries 100 Years"
+   },
+   {
+    "text_id": "bphs",
+    "chunk_id": "bphs_pg0529_c01",
+    "page": "PG529",
+    "sloka_printed": "89",
+    "quote": "For the Asma in Taurus 85 years"
+   }
+  ],
+  "inference_step": "'100-year' is the maximum Poorna Ayu (Aries-type amsa); the text gives different totals for other amsas (85, 83, 86), so 100 is not the universal cycle length.",
+  "proposed_citation": "BPHS Ch. 46 (Dasas (Periods) of planets), Sloka 89 as printed — bphs:PG529:C1 (Santhanam trans.)",
+  "proposed_action": "recite",
+  "acharya_question": null,
+  "note": "Current 'BPHS Ch.49 (Kalachakra & Conditional Dashas)': Kalachakra definition is in Ch.46."
+ },
+ {
+  "asset": "bg_dasha_systems",
+  "table": "brahma_ontology",
+  "row_key": {
+   "entity_class": "dasha_system",
+   "canonical_id": "kp"
+  },
+  "row_count": 1,
+  "claim": "KP is a 120-year kp dasha system (BPHS Ch.46 constants; KP Reader).",
+  "current_citation": "BPHS Ch.46 proportional constants; K. S. Krishnamurti, KP Reader I-III (KP conventions not ingested)",
+  "state": "text_not_held",
+  "support_class": "NONE",
+  "corpus": [
+   {
+    "text_id": "bphs",
+    "chunk_id": "bphs_pg0499_c01",
+    "page": "PG499",
+    "sloka_printed": "15",
+    "quote": "Meicury. Ketu and Venus are 6,lO, 7,"
+   },
+   {
+    "text_id": "bphs",
+    "chunk_id": "bphs_pg0499_c02",
+    "page": "PG499",
+    "sloka_printed": "15",
+    "quote": "18, 16, 19,l'1,7 and20 in thai order"
+   }
+  ],
+  "inference_step": "Constants verified at BPHS Ch.46; KP Reader not held.",
+  "proposed_citation": null,
+  "proposed_action": "none",
+  "acharya_question": null,
+  "note": "Citation already states 'KP conventions not ingested'."
+ },
+ {
+  "asset": "bg_dasha_systems",
+  "table": "brahma_ontology",
+  "row_key": {
+   "entity_class": "dasha_system",
+   "canonical_id": "narayana"
+  },
+  "row_count": 1,
+  "claim": "Narayana is a 144-year jaimini dasha system.",
+  "current_citation": "Jaimini Sutram Ch.1 (Upadesa Sutra — Rashi Dasha systems)",
+  "state": "unsourced_marked",
+  "support_class": "NONE",
+  "corpus": [],
+  "inference_step": null,
+  "proposed_citation": null,
+  "proposed_action": "mark_unsourced",
+  "acharya_question": null,
+  "note": "Not in the held corpus; same as brahma_dasha_systems row."
+ },
+ {
+  "asset": "bg_dasha_systems",
+  "table": "brahma_ontology",
+  "row_key": {
+   "entity_class": "dasha_system",
+   "canonical_id": "niryana_shoola"
+  },
+  "row_count": 1,
+  "claim": "Niryana Shoola is a 108-year jaimini dasha system.",
+  "current_citation": "Jaimini Sutram Ch.1 (Upadesa Sutra — Rashi Dasha systems)",
+  "state": "contradicted",
+  "support_class": "CONTRADICTS",
+  "corpus": [
+   {
+    "text_id": "bphs",
+    "chunk_id": "bphs_pg0557_c01",
+    "page": "PG557",
+    "sloka_printed": "181-182",
+    "quote": "The Dasa years in this system are as adopted for the Sthira Dasa"
+   }
+  ],
+  "inference_step": "Same as brahma_dasha_systems row: 96 by the Sthira table, not 108.",
+  "proposed_citation": null,
+  "proposed_action": "acharya",
+  "acharya_question": "See brahma_dasha_systems niryana_shoola question (96 vs 108).",
+  "note": "Current 'Jaimini Sutram Ch.1 (Upadesa Sutra - Rashi Dasha systems)': wrong grain (Adhyaya 2)."
+ },
+ {
+  "asset": "bg_dasha_systems",
+  "table": "brahma_ontology",
+  "row_key": {
+   "entity_class": "dasha_system",
+   "canonical_id": "panchottari"
+  },
+  "row_count": 1,
+  "claim": "Panchottari is a 105-year parashari dasha system.",
+  "current_citation": "BPHS Ch.48 (Conditional Nakshatra Dashas)",
+  "state": "sourced_fact",
+  "support_class": "FACT",
+  "corpus": [
+   {
+    "text_id": "bphs",
+    "chunk_id": "bphs_pg0511_c01",
+    "page": "PG511",
+    "sloka_printed": "29-31",
+    "quote": "The Dasa of the planets are of 12,13,14,15,16,17"
+   }
+  ],
+  "inference_step": "105 = sum of printed years.",
+  "proposed_citation": "BPHS Ch. 46 (Dasas (Periods) of planets), Sloka 29-31 as printed — bphs:PG511:C1 (Santhanam trans.)",
+  "proposed_action": "recite",
+  "acharya_question": null,
+  "note": "Current 'BPHS Ch.48 (Conditional Nakshatra Dashas)' - Ch.46 is the defining chapter."
+ },
+ {
+  "asset": "bg_dasha_systems",
+  "table": "brahma_ontology",
+  "row_key": {
+   "entity_class": "dasha_system",
+   "canonical_id": "shashtihayani"
+  },
+  "row_count": 1,
+  "claim": "Shashtihayani is a 60-year parashari dasha system.",
+  "current_citation": "BPHS Ch.49 (Kalachakra & Conditional Dashas)",
+  "state": "sourced_inference",
+  "support_class": "INFERENCE",
+  "corpus": [
+   {
+    "text_id": "bphs",
+    "chunk_id": "bphs_pg0517_c01",
+    "page": "PG517",
+    "sloka_printed": "40-41",
+    "quote": "The remaining planets have Dasas of 6 years each"
+   },
+   {
+    "text_id": "bphs",
+    "chunk_id": "bphs_pg0517_c01",
+    "page": "PG517",
+    "sloka_printed": null,
+    "quote": "deducting the result form l0 years, we will get the balance"
+   }
+  ],
+  "inference_step": "60 follows only if Jupiter/Sun/Mars carry 10 years (the worked example) and not the printed '13'; 3x10 + 5x6 = 60. The BPHS text does not print the number 60.",
+  "proposed_citation": "BPHS Ch. 46 (Dasas (Periods) of planets), Sloka 40-41 as printed — bphs:PG517:C1 (Santhanam trans.); total 60 by arithmetic from example (acharya to confirm 10 vs 13)",
+  "proposed_action": "recite",
+  "acharya_question": null,
+  "note": "Current 'BPHS Ch.49 (Kalachakra & Conditional Dashas)': Ch.46 is the defining chapter."
+ },
+ {
+  "asset": "bg_dasha_systems",
+  "table": "brahma_ontology",
+  "row_key": {
+   "entity_class": "dasha_system",
+   "canonical_id": "shatabdika"
+  },
+  "row_count": 1,
+  "claim": "Shatabdika is a 100-year dasha system.",
+  "current_citation": "BPHS Ch.48 (Conditional Nakshatra Dashas)",
+  "state": "sourced_fact",
+  "support_class": "FACT",
+  "corpus": [
+   {
+    "text_id": "bphs",
+    "chunk_id": "bphs_pg0513_c01",
+    "page": "PG513",
+    "sloka_printed": null,
+    "quote": "of 5,5,10,1il,20,20 and 30 years"
+   }
+  ],
+  "inference_step": "100 = sum of printed years 5+5+10+10+20+20+30.",
+  "proposed_citation": "BPHS Ch. 46 (Dasas (Periods) of planets), p.513 — bphs:PG513:C1 (Santhanam trans.)",
+  "proposed_action": "recite",
+  "acharya_question": null,
+  "note": "Only the total is checked here; the description does not carry the lord table. The synonym '100-year conditional dasha' is consistent. See the brahma_dasha_systems row for the contradicted sequence."
+ },
+ {
+  "asset": "bg_dasha_systems",
+  "table": "brahma_ontology",
+  "row_key": {
+   "entity_class": "dasha_system",
+   "canonical_id": "shattrimsha_sama"
+  },
+  "row_count": 1,
+  "claim": "Shattrimsha-sama is a 36-year dasha system.",
+  "current_citation": "BPHS Ch.49 (Kalachakra & Conditional Dashas)",
+  "state": "sourced_fact",
+  "support_class": "FACT",
+  "corpus": [
+   {
+    "text_id": "bphs",
+    "chunk_id": "bphs_pg0517_c02",
+    "page": "PG517",
+    "sloka_printed": "42-43",
+    "quote": "Their Dasas will be 1, 2, 3, 4, 5, 6, 7, 8 years in that order"
+   }
+  ],
+  "inference_step": "36 = 1+2+...+8.",
+  "proposed_citation": "BPHS Ch. 46 (Dasas (Periods) of planets), Sloka 42-43 as printed — bphs:PG517:C1 (Santhanam trans.); PG517:C2",
+  "proposed_action": "recite",
+  "acharya_question": null,
+  "note": "Current 'BPHS Ch.49 (Kalachakra & Conditional Dashas)': Ch.46 is the defining chapter."
+ },
+ {
+  "asset": "bg_dasha_systems",
+  "table": "brahma_ontology",
+  "row_key": {
+   "entity_class": "dasha_system",
+   "canonical_id": "shodashottari"
+  },
+  "row_count": 1,
+  "claim": "Shodashottari is a 116-year parashari dasha system.",
+  "current_citation": "BPHS Ch.48 (Conditional Nakshatra Dashas)",
+  "state": "sourced_fact",
+  "support_class": "FACT",
+  "corpus": [
+   {
+    "text_id": "bphs",
+    "chunk_id": "bphs_pg0509_c01",
+    "page": "PG509",
+    "sloka_printed": "24-26",
+    "quote": "arc of 11, l:, t3, 14, 15,16,17 and 18 years"
+   }
+  ],
+  "inference_step": "116 = sum of printed years.",
+  "proposed_citation": "BPHS Ch. 46 (Dasas (Periods) of planets), Sloka 24-26 as printed — bphs:PG509:C1 (Santhanam trans.)",
+  "proposed_action": "recite",
+  "acharya_question": null,
+  "note": "Current 'BPHS Ch.48 (Conditional Nakshatra Dashas)' - Ch.46 is the defining chapter in this corpus."
+ },
+ {
+  "asset": "bg_dasha_systems",
+  "table": "brahma_ontology",
+  "row_key": {
+   "entity_class": "dasha_system",
+   "canonical_id": "sthira_dasha"
+  },
+  "row_count": 1,
+  "claim": "Sthira is an 86-year jaimini dasha system.",
+  "current_citation": "Jaimini Sutram Ch.1 (Upadesa Sutra — Rashi Dasha systems)",
+  "state": "contradicted",
+  "support_class": "CONTRADICTS",
+  "corpus": [
+   {
+    "text_id": "bphs_jaimini",
+    "chunk_id": "bphs_jaimini_pg0182_c01",
+    "page": "PG182",
+    "sloka_printed": "3",
+    "quote": "movable sign Dasa will be 7, the fixed Dasa will be 8 years"
+   }
+  ],
+  "inference_step": "Same as the brahma_dasha_systems row: 4x(7+8+9) = 96, not 86.",
+  "proposed_citation": null,
+  "proposed_action": "acharya",
+  "acharya_question": "See brahma_dasha_systems sthira_dasha question (86 vs 96).",
+  "note": "Current 'Jaimini Sutram Ch.1 (Upadesa Sutra - Rashi Dasha systems)': Sthira is in Adhyaya 2 Pada 3."
+ },
+ {
+  "asset": "bg_dasha_systems",
+  "table": "brahma_ontology",
+  "row_key": {
+   "entity_class": "dasha_system",
+   "canonical_id": "tara_dasha"
+  },
+  "row_count": 1,
+  "claim": "Tara Dasha is a 120-year parashari dasha system.",
+  "current_citation": "BPHS Ch.47 (Tara Chakra & Nakshatra Dashas)",
+  "state": "sourced_inference",
+  "support_class": "INFERENCE",
+  "corpus": [
+   {
+    "text_id": "bphs",
+    "chunk_id": "bphs_pg0567_c01",
+    "page": "PG567",
+    "sloka_printed": null,
+    "quote": "Dasa years will be the same as prescribed for Vimsottari Dasa"
+   }
+  ],
+  "inference_step": "120 follows from 'same years as Vimsottari' (9 lords, 120-yr total).",
+  "proposed_citation": "BPHS Ch. 46 (Dasas (Periods) of planets), Sloka 207-249 [sic] as printed — bphs:PG567:C1 (Santhanam trans.)",
+  "proposed_action": "recite",
+  "acharya_question": null,
+  "note": "Current 'BPHS Ch.47 (Tara Chakra & Nakshatra Dashas)' - title not printed; Ch.47 is Effects of Dasas. 'tara chakra dasha' / 'nakshatra tara' synonyms are not in the held text."
+ },
+ {
+  "asset": "bg_dasha_systems",
+  "table": "brahma_ontology",
+  "row_key": {
+   "entity_class": "dasha_system",
+   "canonical_id": "vimshottari"
+  },
+  "row_count": 1,
+  "claim": "Vimshottari is a 120-year parashari dasha system (ontology description).",
+  "current_citation": "BPHS Ch.46 (Vimshottari Dasha)",
+  "state": "sourced_fact",
+  "support_class": "FACT",
+  "corpus": [
+   {
+    "text_id": "bphs",
+    "chunk_id": "bphs_pg0499_c01",
+    "page": "PG499",
+    "sloka_printed": null,
+    "quote": "natural life span of a human being is generally taken as 120 years"
+   }
+  ],
+  "inference_step": null,
+  "proposed_citation": "BPHS Ch. 46 (Dasas (Periods) of planets), Sloka 12-15 as printed — bphs:PG499:C1 (Santhanam trans.)",
+  "proposed_action": "recite",
+  "acharya_question": null,
+  "note": "Current 'BPHS Ch.46 (Vimshottari Dasha)': chapter number correct; the parenthetical chapter title is not the printed title ('Dasas (Periods) of planets')."
+ },
+ {
+  "asset": "bg_dasha_systems",
+  "table": "brahma_ontology",
+  "row_key": {
+   "entity_class": "dasha_system",
+   "canonical_id": "yogardha_dasha"
+  },
+  "row_count": 1,
+  "claim": "Yogardha is a 108-year parashari dasha; synonym 'vimshottari ashtottari mean'.",
+  "current_citation": "BPHS Ch.48 (Conditional Nakshatra Dashas)",
+  "state": "contradicted",
+  "support_class": "CONTRADICTS",
+  "corpus": [
+   {
+    "text_id": "bphs",
+    "chunk_id": "bphs_pg0552_c01",
+    "page": "PG552",
+    "sloka_printed": "174",
+    "quote": "half of the total of the of Chara and Sthira Dasas"
+   }
+  ],
+  "inference_step": "Same contradiction: held definition is a rashi dasha (half of Chara+Sthira); the '108-year' and 'vimshottari ashtottari mean' synonym are not in the held text.",
+  "proposed_citation": null,
+  "proposed_action": "acharya",
+  "acharya_question": "See brahma_dasha_systems yogardha_dasha question (definition: half of Chara+Sthira vs average of Vimshottari and Ashtottari).",
+  "note": "Current 'BPHS Ch.48 (Conditional Nakshatra Dashas)' - wrong chapter for this corpus."
+ },
+ {
+  "asset": "bg_dasha_systems",
+  "table": "brahma_ontology",
+  "row_key": {
+   "entity_class": "dasha_system",
+   "canonical_id": "yogini"
+  },
+  "row_count": 1,
+  "claim": "Yogini is a 36-year parashari dasha system.",
+  "current_citation": "BPHS Ch.50 (Yogini Dasha)",
+  "state": "sourced_fact",
+  "support_class": "FACT",
+  "corpus": [
+   {
+    "text_id": "bphs",
+    "chunk_id": "bphs_pg0564_c01",
+    "page": "PG564",
+    "sloka_printed": "195-199",
+    "quote": "are of 1,2,3,4,5,6,7 and 8 years respectively"
+   }
+  ],
+  "inference_step": "36 = 1+..+8.",
+  "proposed_citation": "BPHS Ch. 46 (Dasas (Periods) of planets), Sloka 195-199 as printed — bphs:PG564:C1 (Santhanam trans.)",
+  "proposed_action": "recite",
+  "acharya_question": null,
+  "note": "Current 'BPHS Ch.50 (Yogini Dasha)': chapter number wrong for this corpus (Ch.46)."
+ }
+]

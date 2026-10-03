@@ -1,0 +1,3221 @@
+[
+ {
+  "asset": "bg_transit_rules",
+  "table": "bg_transit_rules",
+  "row_key": {
+   "id": 5,
+   "graha": "sun",
+   "rule_type": "unfavourable",
+   "primary_house": 1
+  },
+  "row_count": 1,
+  "claim": "sun transiting house 1 from the natal Moon gives an unfavourable result",
+  "current_citation": "BPHS Ch.29 (Gochara Phala — Transit Results)",
+  "state": "sourced_fact",
+  "support_class": "FACT",
+  "corpus": [
+   {
+    "text_id": "phaladeepika",
+    "chunk_id": "phaladeepika_pg0324_c01",
+    "chunk_uuid": "1589f64b-8ee1-428b-a009-22a1b71ad3a8",
+    "chunk_content_sha256": "537ba00b9b06ac54370981194ad197e5d2acdc588af147edca4d5f7aa1ff3c25",
+    "page": "PG324",
+    "sloka_printed": "9",
+    "quote": "fatigue and loss of wealth ... suffer from diseases",
+    "sloka_numeral_basis": "printed",
+    "role": "states the house result"
+   }
+  ],
+  "inference_step": null,
+  "phala_as_stored": "Ill health, loss of position, eye trouble",
+  "phala_supported_by_chunk": "unfavourable valence; ill-health (diseases)",
+  "phala_not_in_chunk": "loss of position; eye trouble",
+  "weak_wording": false,
+  "proposed_citation": "Phaladipika Adh. XXVI, Sloka 9 — phaladeepika:PG324:C1 (Sastri trans. 1950) [supports: unfavourable valence; ill-health (diseases); remaining phala wording is not in the sloka]",
+  "proposed_action": "recite",
+  "acharya_question": null
+ },
+ {
+  "asset": "bg_transit_rules",
+  "table": "bg_transit_rules",
+  "row_key": {
+   "id": 6,
+   "graha": "sun",
+   "rule_type": "unfavourable",
+   "primary_house": 5
+  },
+  "row_count": 1,
+  "claim": "sun transiting house 5 from the natal Moon gives an unfavourable result",
+  "current_citation": "BPHS Ch.29 (Gochara Phala — Transit Results)",
+  "state": "sourced_fact",
+  "support_class": "FACT",
+  "corpus": [
+   {
+    "text_id": "phaladeepika",
+    "chunk_id": "phaladeepika_pg0324_c01",
+    "chunk_uuid": "1589f64b-8ee1-428b-a009-22a1b71ad3a8",
+    "chunk_content_sha256": "537ba00b9b06ac54370981194ad197e5d2acdc588af147edca4d5f7aa1ff3c25",
+    "page": "PG324",
+    "sloka_printed": "10",
+    "quote": "Mental agitation, ill-health and embarrassment",
+    "sloka_numeral_basis": "running-head+sequence (OCR 'iO')",
+    "role": "states the house result"
+   }
+  ],
+  "inference_step": null,
+  "phala_as_stored": "Trouble with children, loss of intelligence",
+  "phala_supported_by_chunk": "unfavourable valence; ill-health, mental agitation",
+  "phala_not_in_chunk": "trouble with children; loss of intelligence",
+  "weak_wording": false,
+  "proposed_citation": "Phaladipika Adh. XXVI, Sloka 10 — phaladeepika:PG324:C1 (Sastri trans. 1950) [supports: unfavourable valence; ill-health, mental agitation; remaining phala wording is not in the sloka]",
+  "proposed_action": "recite",
+  "acharya_question": null
+ },
+ {
+  "asset": "bg_transit_rules",
+  "table": "bg_transit_rules",
+  "row_key": {
+   "id": 7,
+   "graha": "sun",
+   "rule_type": "unfavourable",
+   "primary_house": 8
+  },
+  "row_count": 1,
+  "claim": "sun transiting house 8 from the natal Moon gives an unfavourable result",
+  "current_citation": "BPHS Ch.29 (Gochara Phala — Transit Results)",
+  "state": "sourced_fact",
+  "support_class": "FACT",
+  "corpus": [
+   {
+    "text_id": "phaladeepika",
+    "chunk_id": "phaladeepika_pg0325_c01",
+    "chunk_uuid": "f1fdd1bb-d4ff-4aad-9915-bd7c02ebe01c",
+    "chunk_content_sha256": "8406be46d8d63716b930fbc05e7c984f4d2bf6ac800bc59e8a457f34f4324c64",
+    "page": "PG325",
+    "sloka_printed": "10",
+    "quote": "suffer from fear, and diseases ... incur royal displeasure",
+    "sloka_numeral_basis": "running-head+sequence (OCR 'iO')",
+    "role": "states the house result",
+    "note": "sloka begins on PG324"
+   }
+  ],
+  "inference_step": null,
+  "phala_as_stored": "Disease, obstacle, conflict with authority",
+  "phala_supported_by_chunk": "unfavourable valence; diseases; royal displeasure (conflict with authority)",
+  "phala_not_in_chunk": "obstacle",
+  "weak_wording": false,
+  "proposed_citation": "Phaladipika Adh. XXVI, Sloka 10 (continued from PG324) — phaladeepika:PG325:C1 (Sastri trans. 1950) [supports: unfavourable valence; diseases; royal displeasure (conflict with authority); remaining phala wording is not in the sloka]",
+  "proposed_action": "recite",
+  "acharya_question": null
+ },
+ {
+  "asset": "bg_transit_rules",
+  "table": "bg_transit_rules",
+  "row_key": {
+   "id": 14,
+   "graha": "moon",
+   "rule_type": "unfavourable",
+   "primary_house": 8
+  },
+  "row_count": 1,
+  "claim": "moon transiting house 8 from the natal Moon gives an unfavourable result",
+  "current_citation": "BPHS Ch.29 (Gochara Phala — Transit Results)",
+  "state": "sourced_fact",
+  "support_class": "FACT",
+  "corpus": [
+   {
+    "text_id": "phaladeepika",
+    "chunk_id": "phaladeepika_pg0325_c01",
+    "chunk_uuid": "f1fdd1bb-d4ff-4aad-9915-bd7c02ebe01c",
+    "chunk_content_sha256": "8406be46d8d63716b930fbc05e7c984f4d2bf6ac800bc59e8a457f34f4324c64",
+    "page": "PG325",
+    "sloka_printed": "12",
+    "quote": "(8) untoward events",
+    "sloka_numeral_basis": "printed",
+    "role": "states the house result"
+   }
+  ],
+  "inference_step": null,
+  "phala_as_stored": "Fear, sorrow, ill health",
+  "phala_supported_by_chunk": "unfavourable valence only (wording 'untoward events' is weak)",
+  "phala_not_in_chunk": "fear; sorrow; ill health",
+  "weak_wording": true,
+  "proposed_citation": "Phaladipika Adh. XXVI, Sloka 12 — phaladeepika:PG325:C1 (Sastri trans. 1950) [supports: unfavourable valence only (wording 'untoward events' is weak); remaining phala wording is not in the sloka]",
+  "proposed_action": "recite",
+  "acharya_question": "Confirm that 'untoward events' (Moon in the 8th, Phaladeepika Adh. XXVI sl. 12) is to be read as an unfavourable result; the stored phala 'Fear, sorrow, ill health' is not in the sloka."
+ },
+ {
+  "asset": "bg_transit_rules",
+  "table": "bg_transit_rules",
+  "row_key": {
+   "id": 18,
+   "graha": "mars",
+   "rule_type": "unfavourable",
+   "primary_house": 1
+  },
+  "row_count": 1,
+  "claim": "mars transiting house 1 from the natal Moon gives an unfavourable result",
+  "current_citation": "BPHS Ch.29 (Gochara Phala — Transit Results)",
+  "state": "sourced_fact",
+  "support_class": "FACT",
+  "corpus": [
+   {
+    "text_id": "phaladeepika",
+    "chunk_id": "phaladeepika_pg0326_c01",
+    "chunk_uuid": "1be0e41b-bece-48d5-b86c-d51d1756b3d6",
+    "chunk_content_sha256": "2dca3c226f5c4ea855dc72b43c58ce5e61cf272c1bf256b155fcd132f75258ba",
+    "page": "PG326",
+    "sloka_printed": "13",
+    "quote": "diseases caused by (impurity of) blood, bile or heat",
+    "sloka_numeral_basis": "printed",
+    "role": "states the house result"
+   }
+  ],
+  "inference_step": null,
+  "phala_as_stored": "Fever, accidents, injury, quarrels",
+  "phala_supported_by_chunk": "unfavourable valence; diseases from blood, bile or heat",
+  "phala_not_in_chunk": "accidents; injury; quarrels",
+  "weak_wording": false,
+  "proposed_citation": "Phaladipika Adh. XXVI, Sloka 13 — phaladeepika:PG326:C1 (Sastri trans. 1950) [supports: unfavourable valence; diseases from blood, bile or heat; remaining phala wording is not in the sloka]",
+  "proposed_action": "recite",
+  "acharya_question": null
+ },
+ {
+  "asset": "bg_transit_rules",
+  "table": "bg_transit_rules",
+  "row_key": {
+   "id": 19,
+   "graha": "mars",
+   "rule_type": "unfavourable",
+   "primary_house": 4
+  },
+  "row_count": 1,
+  "claim": "mars transiting house 4 from the natal Moon gives an unfavourable result",
+  "current_citation": "BPHS Ch.29 (Gochara Phala — Transit Results)",
+  "state": "sourced_fact",
+  "support_class": "FACT",
+  "corpus": [
+   {
+    "text_id": "phaladeepika",
+    "chunk_id": "phaladeepika_pg0326_c01",
+    "chunk_uuid": "1be0e41b-bece-48d5-b86c-d51d1756b3d6",
+    "chunk_content_sha256": "2dca3c226f5c4ea855dc72b43c58ce5e61cf272c1bf256b155fcd132f75258ba",
+    "page": "PG326",
+    "sloka_printed": "13",
+    "quote": "loss of position ... sorrow through relations",
+    "sloka_numeral_basis": "printed",
+    "role": "states the house result"
+   }
+  ],
+  "inference_step": null,
+  "phala_as_stored": "Domestic strife, trouble to mother, property loss",
+  "phala_supported_by_chunk": "unfavourable valence; loss of position; sorrow through relations",
+  "phala_not_in_chunk": "trouble to mother; property loss",
+  "weak_wording": false,
+  "proposed_citation": "Phaladipika Adh. XXVI, Sloka 13 — phaladeepika:PG326:C1 (Sastri trans. 1950) [supports: unfavourable valence; loss of position; sorrow through relations; remaining phala wording is not in the sloka]",
+  "proposed_action": "recite",
+  "acharya_question": null
+ },
+ {
+  "asset": "bg_transit_rules",
+  "table": "bg_transit_rules",
+  "row_key": {
+   "id": 20,
+   "graha": "mars",
+   "rule_type": "unfavourable",
+   "primary_house": 8
+  },
+  "row_count": 1,
+  "claim": "mars transiting house 8 from the natal Moon gives an unfavourable result",
+  "current_citation": "BPHS Ch.29 (Gochara Phala — Transit Results)",
+  "state": "sourced_fact",
+  "support_class": "FACT",
+  "corpus": [
+   {
+    "text_id": "phaladeepika",
+    "chunk_id": "phaladeepika_pg0327_c01",
+    "chunk_uuid": "b43cbdfc-87ca-4798-bce5-e45d79f2e49b",
+    "chunk_content_sha256": "c160144636626f2c38c13bf4a55429957e02f8d54e10e9c2ed08c0c500b9d93c",
+    "page": "PG327",
+    "sloka_printed": "15",
+    "quote": "In the 8th house, the native will suffer from fever",
+    "sloka_numeral_basis": "running-head+sequence (OCR 'Shka JG' opens sl. 16)",
+    "role": "states the house result",
+    "note": "sloka begins on PG326"
+   }
+  ],
+  "inference_step": null,
+  "phala_as_stored": "Danger, accidents, surgical risk",
+  "phala_supported_by_chunk": "unfavourable valence; fever; loss of wealth and honour",
+  "phala_not_in_chunk": "danger; accidents; surgical risk",
+  "weak_wording": false,
+  "proposed_citation": "Phaladipika Adh. XXVI, Sloka 15 (continued from PG326) — phaladeepika:PG327:C1 (Sastri trans. 1950) [supports: unfavourable valence; fever; loss of wealth and honour; remaining phala wording is not in the sloka]",
+  "proposed_action": "recite",
+  "acharya_question": null
+ },
+ {
+  "asset": "bg_transit_rules",
+  "table": "bg_transit_rules",
+  "row_key": {
+   "id": 31,
+   "graha": "jupiter",
+   "rule_type": "unfavourable",
+   "primary_house": 4
+  },
+  "row_count": 1,
+  "claim": "jupiter transiting house 4 from the natal Moon gives an unfavourable result",
+  "current_citation": "BPHS Ch.29 (Gochara Phala — Transit Results)",
+  "state": "sourced_fact",
+  "support_class": "FACT",
+  "corpus": [
+   {
+    "text_id": "phaladeepika",
+    "chunk_id": "phaladeepika_pg0328_c01",
+    "chunk_uuid": "972ffe09-74ee-41f8-acf1-6f3ed5724025",
+    "chunk_content_sha256": "3d82a9188e4f57e2b34bb4e83ee4e9bb0a9321cab133e24bb0139222c6c9ac5b",
+    "page": "PG328",
+    "sloka_printed": "18",
+    "quote": "sorrow through relations; the person will suffer humiliation",
+    "sloka_numeral_basis": "running-head+sequence (OCR 'Shka in')",
+    "role": "states the house result"
+   }
+  ],
+  "inference_step": null,
+  "phala_as_stored": "Domestic trouble, loss of comforts, mother's illness",
+  "phala_supported_by_chunk": "unfavourable valence; sorrow through relations; humiliation",
+  "phala_not_in_chunk": "loss of comforts; mother's illness",
+  "weak_wording": false,
+  "proposed_citation": "Phaladipika Adh. XXVI, Sloka 18 — phaladeepika:PG328:C1 (Sastri trans. 1950) [supports: unfavourable valence; sorrow through relations; humiliation; remaining phala wording is not in the sloka]",
+  "proposed_action": "recite",
+  "acharya_question": null
+ },
+ {
+  "asset": "bg_transit_rules",
+  "table": "bg_transit_rules",
+  "row_key": {
+   "id": 32,
+   "graha": "jupiter",
+   "rule_type": "unfavourable",
+   "primary_house": 8
+  },
+  "row_count": 1,
+  "claim": "jupiter transiting house 8 from the natal Moon gives an unfavourable result",
+  "current_citation": "BPHS Ch.29 (Gochara Phala — Transit Results)",
+  "state": "sourced_fact",
+  "support_class": "FACT",
+  "corpus": [
+   {
+    "text_id": "phaladeepika",
+    "chunk_id": "phaladeepika_pg0328_c01",
+    "chunk_uuid": "972ffe09-74ee-41f8-acf1-6f3ed5724025",
+    "chunk_content_sha256": "3d82a9188e4f57e2b34bb4e83ee4e9bb0a9321cab133e24bb0139222c6c9ac5b",
+    "page": "PG328",
+    "sloka_printed": "19",
+    "quote": "will be unlucky, suffer loss of money and will be miserable",
+    "sloka_numeral_basis": "running-head+sequence (OCR 'SJoka 79')",
+    "role": "states the house result"
+   }
+  ],
+  "inference_step": null,
+  "phala_as_stored": "Obstacles, loss of position, health issues",
+  "phala_supported_by_chunk": "unfavourable valence; loss of money; unlucky, miserable",
+  "phala_not_in_chunk": "obstacles; loss of position; health issues",
+  "weak_wording": false,
+  "proposed_citation": "Phaladipika Adh. XXVI, Sloka 19 — phaladeepika:PG328:C1 (Sastri trans. 1950) [supports: unfavourable valence; loss of money; unlucky, miserable; remaining phala wording is not in the sloka]",
+  "proposed_action": "recite",
+  "acharya_question": null
+ },
+ {
+  "asset": "bg_transit_rules",
+  "table": "bg_transit_rules",
+  "row_key": {
+   "id": 39,
+   "graha": "saturn",
+   "rule_type": "unfavourable",
+   "primary_house": 1
+  },
+  "row_count": 1,
+  "claim": "saturn transiting house 1 from the natal Moon gives an unfavourable result",
+  "current_citation": "Phaladeepika Ch.26 (Gochara Vedha and Transit Phala)",
+  "state": "sourced_fact",
+  "support_class": "FACT",
+  "corpus": [
+   {
+    "text_id": "phaladeepika",
+    "chunk_id": "phaladeepika_pg0330_c01",
+    "chunk_uuid": "852d18ba-b14e-4c93-9970-32bdd7a47f09",
+    "chunk_content_sha256": "b2878180ee8d0bff2cf3cbaa306c6ae297f6185a0e633a5b3737d1bc91d5a737",
+    "page": "PG330",
+    "sloka_printed": "22",
+    "quote": "the native will suffer from disease",
+    "sloka_numeral_basis": "printed",
+    "role": "states the house result"
+   }
+  ],
+  "inference_step": null,
+  "phala_as_stored": "Sade Sati peak — hardship, health issues, delays",
+  "phala_supported_by_chunk": "unfavourable valence; disease",
+  "phala_not_in_chunk": "'Sade Sati peak' framing; delays",
+  "weak_wording": false,
+  "proposed_citation": "Phaladipika Adh. XXVI, Sloka 22 — phaladeepika:PG330:C1 (Sastri trans. 1950) [supports: unfavourable valence; disease; remaining phala wording is not in the sloka]",
+  "proposed_action": "recite",
+  "acharya_question": null
+ },
+ {
+  "asset": "bg_transit_rules",
+  "table": "bg_transit_rules",
+  "row_key": {
+   "id": 40,
+   "graha": "saturn",
+   "rule_type": "unfavourable",
+   "primary_house": 4
+  },
+  "row_count": 1,
+  "claim": "saturn transiting house 4 from the natal Moon gives an unfavourable result",
+  "current_citation": "BPHS Ch.29 (Gochara Phala — Transit Results)",
+  "state": "sourced_fact",
+  "support_class": "FACT",
+  "corpus": [
+   {
+    "text_id": "phaladeepika",
+    "chunk_id": "phaladeepika_pg0330_c01",
+    "chunk_uuid": "852d18ba-b14e-4c93-9970-32bdd7a47f09",
+    "chunk_content_sha256": "b2878180ee8d0bff2cf3cbaa306c6ae297f6185a0e633a5b3737d1bc91d5a737",
+    "page": "PG330",
+    "sloka_printed": "22",
+    "quote": "loss of wife, relation and wealth",
+    "sloka_numeral_basis": "printed",
+    "role": "states the house result"
+   }
+  ],
+  "inference_step": null,
+  "phala_as_stored": "Domestic troubles, loss of property, mother's illness",
+  "phala_supported_by_chunk": "unfavourable valence; loss of wife, relation and wealth",
+  "phala_not_in_chunk": "mother's illness; property loss as such",
+  "weak_wording": false,
+  "proposed_citation": "Phaladipika Adh. XXVI, Sloka 22 — phaladeepika:PG330:C1 (Sastri trans. 1950) [supports: unfavourable valence; loss of wife, relation and wealth; remaining phala wording is not in the sloka]",
+  "proposed_action": "recite",
+  "acharya_question": null
+ },
+ {
+  "asset": "bg_transit_rules",
+  "table": "bg_transit_rules",
+  "row_key": {
+   "id": 41,
+   "graha": "saturn",
+   "rule_type": "unfavourable",
+   "primary_house": 8
+  },
+  "row_count": 1,
+  "claim": "saturn transiting house 8 from the natal Moon gives an unfavourable result",
+  "current_citation": "BPHS Ch.29 (Gochara Phala — Transit Results)",
+  "state": "sourced_fact",
+  "support_class": "FACT",
+  "corpus": [
+   {
+    "text_id": "phaladeepika",
+    "chunk_id": "phaladeepika_pg0330_c01",
+    "chunk_uuid": "852d18ba-b14e-4c93-9970-32bdd7a47f09",
+    "chunk_content_sha256": "b2878180ee8d0bff2cf3cbaa306c6ae297f6185a0e633a5b3737d1bc91d5a737",
+    "page": "PG330",
+    "sloka_printed": "22",
+    "quote": "loss in children, cattle, friends and wealth",
+    "sloka_numeral_basis": "printed",
+    "role": "states the house result"
+   }
+  ],
+  "inference_step": null,
+  "phala_as_stored": "Serious illness, accidents, prolonged suffering",
+  "phala_supported_by_chunk": "unfavourable valence; disease; loss of children, cattle, friends, wealth",
+  "phala_not_in_chunk": "accidents; prolonged suffering",
+  "weak_wording": false,
+  "proposed_citation": "Phaladipika Adh. XXVI, Sloka 22 — phaladeepika:PG330:C1 (Sastri trans. 1950) [supports: unfavourable valence; disease; loss of children, cattle, friends, wealth; remaining phala wording is not in the sloka]",
+  "proposed_action": "recite",
+  "acharya_question": null
+ },
+ {
+  "asset": "bg_transit_rules",
+  "table": "bg_transit_rules",
+  "row_key": {
+   "id": 190,
+   "graha": "rahu",
+   "rule_type": "unfavourable",
+   "primary_house": 1
+  },
+  "row_count": 1,
+  "claim": "rahu transiting house 1 from the natal Moon gives an unfavourable result",
+  "current_citation": "BPHS Ch.29 (Gochara Phala — Transit Results)",
+  "state": "sourced_fact",
+  "support_class": "FACT",
+  "corpus": [
+   {
+    "text_id": "phaladeepika",
+    "chunk_id": "phaladeepika_pg0331_c01",
+    "chunk_uuid": "5ffcecb1-752c-495f-8549-5657b576eed2",
+    "chunk_content_sha256": "d981f19ca485efac14a760aa5e5c8c0a5ce5e9681938fceb6230893f94875115",
+    "page": "PG331",
+    "sloka_printed": "24",
+    "quote": "(1) sickness or death",
+    "sloka_numeral_basis": "printed",
+    "role": "states the house result"
+   }
+  ],
+  "inference_step": null,
+  "phala_as_stored": "Ill health, confusion, loss of clarity; fear and anxiety",
+  "phala_supported_by_chunk": "unfavourable valence; sickness or death",
+  "phala_not_in_chunk": "confusion; loss of clarity; fear and anxiety",
+  "weak_wording": false,
+  "proposed_citation": "Phaladipika Adh. XXVI, Sloka 24 — phaladeepika:PG331:C1 (Sastri trans. 1950) [supports: unfavourable valence; sickness or death; remaining phala wording is not in the sloka]",
+  "proposed_action": "recite",
+  "acharya_question": null
+ },
+ {
+  "asset": "bg_transit_rules",
+  "table": "bg_transit_rules",
+  "row_key": {
+   "id": 191,
+   "graha": "rahu",
+   "rule_type": "unfavourable",
+   "primary_house": 2
+  },
+  "row_count": 1,
+  "claim": "rahu transiting house 2 from the natal Moon gives an unfavourable result",
+  "current_citation": "BPHS Ch.29 (Gochara Phala — Transit Results)",
+  "state": "sourced_fact",
+  "support_class": "FACT",
+  "corpus": [
+   {
+    "text_id": "phaladeepika",
+    "chunk_id": "phaladeepika_pg0331_c01",
+    "chunk_uuid": "5ffcecb1-752c-495f-8549-5657b576eed2",
+    "chunk_content_sha256": "d981f19ca485efac14a760aa5e5c8c0a5ce5e9681938fceb6230893f94875115",
+    "page": "PG331",
+    "sloka_printed": "24",
+    "quote": "(2) loss oi wealth",
+    "sloka_numeral_basis": "printed",
+    "role": "states the house result",
+    "note": "quote as printed, OCR: oi = of"
+   }
+  ],
+  "inference_step": null,
+  "phala_as_stored": "Speech affliction, family disputes, financial drain",
+  "phala_supported_by_chunk": "unfavourable valence; loss of wealth",
+  "phala_not_in_chunk": "speech affliction; family disputes",
+  "weak_wording": false,
+  "proposed_citation": "Phaladipika Adh. XXVI, Sloka 24 — phaladeepika:PG331:C1 (Sastri trans. 1950) [supports: unfavourable valence; loss of wealth; remaining phala wording is not in the sloka]",
+  "proposed_action": "recite",
+  "acharya_question": null
+ },
+ {
+  "asset": "bg_transit_rules",
+  "table": "bg_transit_rules",
+  "row_key": {
+   "id": 192,
+   "graha": "rahu",
+   "rule_type": "unfavourable",
+   "primary_house": 4
+  },
+  "row_count": 1,
+  "claim": "rahu transiting house 4 from the natal Moon gives an unfavourable result",
+  "current_citation": "BPHS Ch.29 (Gochara Phala — Transit Results)",
+  "state": "sourced_fact",
+  "support_class": "FACT",
+  "corpus": [
+   {
+    "text_id": "phaladeepika",
+    "chunk_id": "phaladeepika_pg0331_c01",
+    "chunk_uuid": "5ffcecb1-752c-495f-8549-5657b576eed2",
+    "chunk_content_sha256": "d981f19ca485efac14a760aa5e5c8c0a5ce5e9681938fceb6230893f94875115",
+    "page": "PG331",
+    "sloka_printed": "24",
+    "quote": "(4) sorrow",
+    "sloka_numeral_basis": "printed",
+    "role": "states the house result"
+   }
+  ],
+  "inference_step": null,
+  "phala_as_stored": "Domestic troubles, property loss, mother's health affected",
+  "phala_supported_by_chunk": "unfavourable valence; sorrow",
+  "phala_not_in_chunk": "domestic troubles; property loss; mother's health",
+  "weak_wording": false,
+  "proposed_citation": "Phaladipika Adh. XXVI, Sloka 24 — phaladeepika:PG331:C1 (Sastri trans. 1950) [supports: unfavourable valence; sorrow; remaining phala wording is not in the sloka]",
+  "proposed_action": "recite",
+  "acharya_question": null
+ },
+ {
+  "asset": "bg_transit_rules",
+  "table": "bg_transit_rules",
+  "row_key": {
+   "id": 193,
+   "graha": "rahu",
+   "rule_type": "unfavourable",
+   "primary_house": 7
+  },
+  "row_count": 1,
+  "claim": "rahu transiting house 7 from the natal Moon gives an unfavourable result",
+  "current_citation": "Phaladeepika Ch.26 (Gochara Vedha and Transit Phala)",
+  "state": "sourced_fact",
+  "support_class": "FACT",
+  "corpus": [
+   {
+    "text_id": "phaladeepika",
+    "chunk_id": "phaladeepika_pg0331_c01",
+    "chunk_uuid": "5ffcecb1-752c-495f-8549-5657b576eed2",
+    "chunk_content_sha256": "d981f19ca485efac14a760aa5e5c8c0a5ce5e9681938fceb6230893f94875115",
+    "page": "PG331",
+    "sloka_printed": "24",
+    "quote": "(7) loss",
+    "sloka_numeral_basis": "printed",
+    "role": "states the house result"
+   }
+  ],
+  "inference_step": null,
+  "phala_as_stored": "Partnership conflicts, danger in travel, hidden adversaries",
+  "phala_supported_by_chunk": "unfavourable valence; loss",
+  "phala_not_in_chunk": "partnership conflicts; danger in travel; hidden adversaries",
+  "weak_wording": false,
+  "proposed_citation": "Phaladipika Adh. XXVI, Sloka 24 — phaladeepika:PG331:C1 (Sastri trans. 1950) [supports: unfavourable valence; loss; remaining phala wording is not in the sloka]",
+  "proposed_action": "recite",
+  "acharya_question": null
+ },
+ {
+  "asset": "bg_transit_rules",
+  "table": "bg_transit_rules",
+  "row_key": {
+   "id": 194,
+   "graha": "rahu",
+   "rule_type": "unfavourable",
+   "primary_house": 8
+  },
+  "row_count": 1,
+  "claim": "rahu transiting house 8 from the natal Moon gives an unfavourable result",
+  "current_citation": "BPHS Ch.29 (Gochara Phala — Transit Results)",
+  "state": "sourced_fact",
+  "support_class": "FACT",
+  "corpus": [
+   {
+    "text_id": "phaladeepika",
+    "chunk_id": "phaladeepika_pg0331_c01",
+    "chunk_uuid": "5ffcecb1-752c-495f-8549-5657b576eed2",
+    "chunk_content_sha256": "d981f19ca485efac14a760aa5e5c8c0a5ce5e9681938fceb6230893f94875115",
+    "page": "PG331",
+    "sloka_printed": "24",
+    "quote": "8) danger to life",
+    "sloka_numeral_basis": "printed",
+    "role": "states the house result",
+    "note": "quote as printed, OCR: opening parenthesis lost in OCR"
+   }
+  ],
+  "inference_step": null,
+  "phala_as_stored": "Accidents, sudden illness, hidden dangers; fear of death",
+  "phala_supported_by_chunk": "unfavourable valence; danger to life",
+  "phala_not_in_chunk": "accidents; sudden illness; hidden dangers",
+  "weak_wording": false,
+  "proposed_citation": "Phaladipika Adh. XXVI, Sloka 24 — phaladeepika:PG331:C1 (Sastri trans. 1950) [supports: unfavourable valence; danger to life; remaining phala wording is not in the sloka]",
+  "proposed_action": "recite",
+  "acharya_question": null
+ },
+ {
+  "asset": "bg_transit_rules",
+  "table": "bg_transit_rules",
+  "row_key": {
+   "id": 195,
+   "graha": "rahu",
+   "rule_type": "unfavourable",
+   "primary_house": 12
+  },
+  "row_count": 1,
+  "claim": "rahu transiting house 12 from the natal Moon gives an unfavourable result",
+  "current_citation": "Phaladeepika Ch.26 (Gochara Vedha and Transit Phala)",
+  "state": "sourced_fact",
+  "support_class": "FACT",
+  "corpus": [
+   {
+    "text_id": "phaladeepika",
+    "chunk_id": "phaladeepika_pg0331_c01",
+    "chunk_uuid": "5ffcecb1-752c-495f-8549-5657b576eed2",
+    "chunk_content_sha256": "d981f19ca485efac14a760aa5e5c8c0a5ce5e9681938fceb6230893f94875115",
+    "page": "PG331",
+    "sloka_printed": "24",
+    "quote": "(12) expenditure",
+    "sloka_numeral_basis": "printed",
+    "role": "states the house result"
+   }
+  ],
+  "inference_step": null,
+  "phala_as_stored": "Hidden expenditure, foreign travel under duress, separation",
+  "phala_supported_by_chunk": "unfavourable valence; expenditure",
+  "phala_not_in_chunk": "foreign travel under duress; separation",
+  "weak_wording": false,
+  "proposed_citation": "Phaladipika Adh. XXVI, Sloka 24 — phaladeepika:PG331:C1 (Sastri trans. 1950) [supports: unfavourable valence; expenditure; remaining phala wording is not in the sloka]",
+  "proposed_action": "recite",
+  "acharya_question": null
+ },
+ {
+  "asset": "bg_transit_rules",
+  "table": "bg_transit_rules",
+  "row_key": {
+   "id": 200,
+   "graha": "ketu",
+   "rule_type": "unfavourable",
+   "primary_house": 1
+  },
+  "row_count": 1,
+  "claim": "ketu transiting house 1 from the natal Moon gives an unfavourable result",
+  "current_citation": "BPHS Ch.29 (Gochara Phala — Transit Results)",
+  "state": "sourced_inference",
+  "support_class": "INFERENCE",
+  "corpus": [
+   {
+    "text_id": "phaladeepika",
+    "chunk_id": "phaladeepika_pg0321_c01",
+    "chunk_uuid": "265722b7-ca68-49a9-b45e-48320bbae923",
+    "chunk_content_sha256": "62b6abc92d7287dcbc7f4309efe38ab1e5f134ad27031e06b411d4a29069a198",
+    "page": "PG321",
+    "sloka_printed": "2",
+    "quote": "Hahu and Ketu are similar to the Sun",
+    "sloka_numeral_basis": "printed",
+    "role": "equivalence statement (FACT)",
+    "note": "quote as printed: OCR 'Hahu' = Rahu"
+   },
+   {
+    "text_id": "phaladeepika",
+    "chunk_id": "phaladeepika_pg0324_c01",
+    "chunk_uuid": "1589f64b-8ee1-428b-a009-22a1b71ad3a8",
+    "chunk_content_sha256": "537ba00b9b06ac54370981194ad197e5d2acdc588af147edca4d5f7aa1ff3c25",
+    "page": "PG324",
+    "sloka_printed": "9",
+    "quote": "suffer from diseases",
+    "sloka_numeral_basis": "printed/running-head",
+    "role": "Sun's result for house 1 (FACT about the Sun)"
+   },
+   {
+    "text_id": "phaladeepika",
+    "chunk_id": "phaladeepika_pg0331_c01",
+    "chunk_uuid": "5ffcecb1-752c-495f-8549-5657b576eed2",
+    "chunk_content_sha256": "d981f19ca485efac14a760aa5e5c8c0a5ce5e9681938fceb6230893f94875115",
+    "page": "PG331",
+    "sloka_printed": "24",
+    "quote": "(1) sickness or death",
+    "sloka_numeral_basis": "printed",
+    "role": "Rahu's result for house 1 (FACT about Rahu)"
+   }
+  ],
+  "inference_step": "No verse names Ketu's house results. Sloka 2 states Rahu and Ketu are 'similar to the Sun'; the Sun's own result for house 1 and Rahu's sloka-24 result for house 1 are both adverse; the Ketu valence is read from that equivalence.",
+  "phala_as_stored": "Bodily affliction, confusion, spiritual restlessness; detachment from self",
+  "phala_supported_by_chunk": "unfavourable valence only",
+  "phala_not_in_chunk": "all phala wording",
+  "proposed_citation": "Phaladipika Adh. XXVI, Sloka 2 (Rahu and Ketu are similar to the Sun) read with Sloka 9 (Sun, house 1) and Sloka 24 (Rahu, house 1) — phaladeepika:PG321:C1, phaladeepika:PG324:C1, phaladeepika:PG331:C1 (Sastri trans. 1950) [INFERENCE: no Ketu-specific verse; unfavourable valence only; remaining phala wording is not in the text]",
+  "proposed_action": "recite",
+  "acharya_question": "Accept the sloka-2 equivalence (Rahu and Ketu similar to the Sun) as sufficient to source Ketu's unfavourable gochara results in houses 1, 2, 4, 7, 8 (5 rows)? If not, these rows become UNSOURCED."
+ },
+ {
+  "asset": "bg_transit_rules",
+  "table": "bg_transit_rules",
+  "row_key": {
+   "id": 201,
+   "graha": "ketu",
+   "rule_type": "unfavourable",
+   "primary_house": 2
+  },
+  "row_count": 1,
+  "claim": "ketu transiting house 2 from the natal Moon gives an unfavourable result",
+  "current_citation": "Phaladeepika Ch.26 (Gochara Vedha and Transit Phala)",
+  "state": "sourced_inference",
+  "support_class": "INFERENCE",
+  "corpus": [
+   {
+    "text_id": "phaladeepika",
+    "chunk_id": "phaladeepika_pg0321_c01",
+    "chunk_uuid": "265722b7-ca68-49a9-b45e-48320bbae923",
+    "chunk_content_sha256": "62b6abc92d7287dcbc7f4309efe38ab1e5f134ad27031e06b411d4a29069a198",
+    "page": "PG321",
+    "sloka_printed": "2",
+    "quote": "Hahu and Ketu are similar to the Sun",
+    "sloka_numeral_basis": "printed",
+    "role": "equivalence statement (FACT)",
+    "note": "quote as printed: OCR 'Hahu' = Rahu"
+   },
+   {
+    "text_id": "phaladeepika",
+    "chunk_id": "phaladeepika_pg0324_c01",
+    "chunk_uuid": "1589f64b-8ee1-428b-a009-22a1b71ad3a8",
+    "chunk_content_sha256": "537ba00b9b06ac54370981194ad197e5d2acdc588af147edca4d5f7aa1ff3c25",
+    "page": "PG324",
+    "sloka_printed": "9",
+    "quote": "there will be loss of wealth",
+    "sloka_numeral_basis": "printed/running-head",
+    "role": "Sun's result for house 2 (FACT about the Sun)"
+   },
+   {
+    "text_id": "phaladeepika",
+    "chunk_id": "phaladeepika_pg0331_c01",
+    "chunk_uuid": "5ffcecb1-752c-495f-8549-5657b576eed2",
+    "chunk_content_sha256": "d981f19ca485efac14a760aa5e5c8c0a5ce5e9681938fceb6230893f94875115",
+    "page": "PG331",
+    "sloka_printed": "24",
+    "quote": "(2) loss oi wealth",
+    "sloka_numeral_basis": "printed",
+    "role": "Rahu's result for house 2 (FACT about Rahu)"
+   }
+  ],
+  "inference_step": "No verse names Ketu's house results. Sloka 2 states Rahu and Ketu are 'similar to the Sun'; the Sun's own result for house 2 and Rahu's sloka-24 result for house 2 are both adverse; the Ketu valence is read from that equivalence.",
+  "phala_as_stored": "Financial loss, family separation, speech affliction",
+  "phala_supported_by_chunk": "unfavourable valence only",
+  "phala_not_in_chunk": "all phala wording",
+  "proposed_citation": "Phaladipika Adh. XXVI, Sloka 2 (Rahu and Ketu are similar to the Sun) read with Sloka 9 (Sun, house 2) and Sloka 24 (Rahu, house 2) — phaladeepika:PG321:C1, phaladeepika:PG324:C1, phaladeepika:PG331:C1 (Sastri trans. 1950) [INFERENCE: no Ketu-specific verse; unfavourable valence only; remaining phala wording is not in the text]",
+  "proposed_action": "recite",
+  "acharya_question": "Accept the sloka-2 equivalence (Rahu and Ketu similar to the Sun) as sufficient to source Ketu's unfavourable gochara results in houses 1, 2, 4, 7, 8 (5 rows)? If not, these rows become UNSOURCED."
+ },
+ {
+  "asset": "bg_transit_rules",
+  "table": "bg_transit_rules",
+  "row_key": {
+   "id": 202,
+   "graha": "ketu",
+   "rule_type": "unfavourable",
+   "primary_house": 4
+  },
+  "row_count": 1,
+  "claim": "ketu transiting house 4 from the natal Moon gives an unfavourable result",
+  "current_citation": "BPHS Ch.29 (Gochara Phala — Transit Results)",
+  "state": "sourced_inference",
+  "support_class": "INFERENCE",
+  "corpus": [
+   {
+    "text_id": "phaladeepika",
+    "chunk_id": "phaladeepika_pg0321_c01",
+    "chunk_uuid": "265722b7-ca68-49a9-b45e-48320bbae923",
+    "chunk_content_sha256": "62b6abc92d7287dcbc7f4309efe38ab1e5f134ad27031e06b411d4a29069a198",
+    "page": "PG321",
+    "sloka_printed": "2",
+    "quote": "Hahu and Ketu are similar to the Sun",
+    "sloka_numeral_basis": "printed",
+    "role": "equivalence statement (FACT)",
+    "note": "quote as printed: OCR 'Hahu' = Rahu"
+   },
+   {
+    "text_id": "phaladeepika",
+    "chunk_id": "phaladeepika_pg0324_c01",
+    "chunk_uuid": "1589f64b-8ee1-428b-a009-22a1b71ad3a8",
+    "chunk_content_sha256": "537ba00b9b06ac54370981194ad197e5d2acdc588af147edca4d5f7aa1ff3c25",
+    "page": "PG324",
+    "sloka_printed": "9",
+    "quote": "the Sun will cause diseases",
+    "sloka_numeral_basis": "printed/running-head",
+    "role": "Sun's result for house 4 (FACT about the Sun)"
+   },
+   {
+    "text_id": "phaladeepika",
+    "chunk_id": "phaladeepika_pg0331_c01",
+    "chunk_uuid": "5ffcecb1-752c-495f-8549-5657b576eed2",
+    "chunk_content_sha256": "d981f19ca485efac14a760aa5e5c8c0a5ce5e9681938fceb6230893f94875115",
+    "page": "PG331",
+    "sloka_printed": "24",
+    "quote": "(4) sorrow",
+    "sloka_numeral_basis": "printed",
+    "role": "Rahu's result for house 4 (FACT about Rahu)"
+   }
+  ],
+  "inference_step": "No verse names Ketu's house results. Sloka 2 states Rahu and Ketu are 'similar to the Sun'; the Sun's own result for house 4 and Rahu's sloka-24 result for house 4 are both adverse; the Ketu valence is read from that equivalence.",
+  "phala_as_stored": "Home disruption, loss of comforts, mother's health concerns",
+  "phala_supported_by_chunk": "unfavourable valence only",
+  "phala_not_in_chunk": "all phala wording",
+  "proposed_citation": "Phaladipika Adh. XXVI, Sloka 2 (Rahu and Ketu are similar to the Sun) read with Sloka 9 (Sun, house 4) and Sloka 24 (Rahu, house 4) — phaladeepika:PG321:C1, phaladeepika:PG324:C1, phaladeepika:PG331:C1 (Sastri trans. 1950) [INFERENCE: no Ketu-specific verse; unfavourable valence only; remaining phala wording is not in the text]",
+  "proposed_action": "recite",
+  "acharya_question": "Accept the sloka-2 equivalence (Rahu and Ketu similar to the Sun) as sufficient to source Ketu's unfavourable gochara results in houses 1, 2, 4, 7, 8 (5 rows)? If not, these rows become UNSOURCED."
+ },
+ {
+  "asset": "bg_transit_rules",
+  "table": "bg_transit_rules",
+  "row_key": {
+   "id": 203,
+   "graha": "ketu",
+   "rule_type": "unfavourable",
+   "primary_house": 7
+  },
+  "row_count": 1,
+  "claim": "ketu transiting house 7 from the natal Moon gives an unfavourable result",
+  "current_citation": "Phaladeepika Ch.26 (Gochara Vedha and Transit Phala)",
+  "state": "sourced_inference",
+  "support_class": "INFERENCE",
+  "corpus": [
+   {
+    "text_id": "phaladeepika",
+    "chunk_id": "phaladeepika_pg0321_c01",
+    "chunk_uuid": "265722b7-ca68-49a9-b45e-48320bbae923",
+    "chunk_content_sha256": "62b6abc92d7287dcbc7f4309efe38ab1e5f134ad27031e06b411d4a29069a198",
+    "page": "PG321",
+    "sloka_printed": "2",
+    "quote": "Hahu and Ketu are similar to the Sun",
+    "sloka_numeral_basis": "printed",
+    "role": "equivalence statement (FACT)",
+    "note": "quote as printed: OCR 'Hahu' = Rahu"
+   },
+   {
+    "text_id": "phaladeepika",
+    "chunk_id": "phaladeepika_pg0324_c01",
+    "chunk_uuid": "1589f64b-8ee1-428b-a009-22a1b71ad3a8",
+    "chunk_content_sha256": "537ba00b9b06ac54370981194ad197e5d2acdc588af147edca4d5f7aa1ff3c25",
+    "page": "PG324",
+    "sloka_printed": "10",
+    "quote": "wearisome travelling, diseases of the stomach",
+    "sloka_numeral_basis": "printed/running-head",
+    "role": "Sun's result for house 7 (FACT about the Sun)"
+   },
+   {
+    "text_id": "phaladeepika",
+    "chunk_id": "phaladeepika_pg0331_c01",
+    "chunk_uuid": "5ffcecb1-752c-495f-8549-5657b576eed2",
+    "chunk_content_sha256": "d981f19ca485efac14a760aa5e5c8c0a5ce5e9681938fceb6230893f94875115",
+    "page": "PG331",
+    "sloka_printed": "24",
+    "quote": "(7) loss",
+    "sloka_numeral_basis": "printed",
+    "role": "Rahu's result for house 7 (FACT about Rahu)"
+   }
+  ],
+  "inference_step": "No verse names Ketu's house results. Sloka 2 states Rahu and Ketu are 'similar to the Sun'; the Sun's own result for house 7 and Rahu's sloka-24 result for house 7 are both adverse; the Ketu valence is read from that equivalence.",
+  "phala_as_stored": "Marital friction, separation, hidden adversary in partnership",
+  "phala_supported_by_chunk": "unfavourable valence only",
+  "phala_not_in_chunk": "all phala wording",
+  "proposed_citation": "Phaladipika Adh. XXVI, Sloka 2 (Rahu and Ketu are similar to the Sun) read with Sloka 10 (Sun, house 7) and Sloka 24 (Rahu, house 7) — phaladeepika:PG321:C1, phaladeepika:PG324:C1, phaladeepika:PG331:C1 (Sastri trans. 1950) [INFERENCE: no Ketu-specific verse; unfavourable valence only; remaining phala wording is not in the text]",
+  "proposed_action": "recite",
+  "acharya_question": "Accept the sloka-2 equivalence (Rahu and Ketu similar to the Sun) as sufficient to source Ketu's unfavourable gochara results in houses 1, 2, 4, 7, 8 (5 rows)? If not, these rows become UNSOURCED."
+ },
+ {
+  "asset": "bg_transit_rules",
+  "table": "bg_transit_rules",
+  "row_key": {
+   "id": 204,
+   "graha": "ketu",
+   "rule_type": "unfavourable",
+   "primary_house": 8
+  },
+  "row_count": 1,
+  "claim": "ketu transiting house 8 from the natal Moon gives an unfavourable result",
+  "current_citation": "BPHS Ch.29 (Gochara Phala — Transit Results)",
+  "state": "sourced_inference",
+  "support_class": "INFERENCE",
+  "corpus": [
+   {
+    "text_id": "phaladeepika",
+    "chunk_id": "phaladeepika_pg0321_c01",
+    "chunk_uuid": "265722b7-ca68-49a9-b45e-48320bbae923",
+    "chunk_content_sha256": "62b6abc92d7287dcbc7f4309efe38ab1e5f134ad27031e06b411d4a29069a198",
+    "page": "PG321",
+    "sloka_printed": "2",
+    "quote": "Hahu and Ketu are similar to the Sun",
+    "sloka_numeral_basis": "printed",
+    "role": "equivalence statement (FACT)",
+    "note": "quote as printed: OCR 'Hahu' = Rahu"
+   },
+   {
+    "text_id": "phaladeepika",
+    "chunk_id": "phaladeepika_pg0325_c01",
+    "chunk_uuid": "f1fdd1bb-d4ff-4aad-9915-bd7c02ebe01c",
+    "chunk_content_sha256": "8406be46d8d63716b930fbc05e7c984f4d2bf6ac800bc59e8a457f34f4324c64",
+    "page": "PG325",
+    "sloka_printed": "10",
+    "quote": "the native will suffer from fear, and diseases",
+    "sloka_numeral_basis": "printed/running-head",
+    "role": "Sun's result for house 8 (FACT about the Sun)"
+   },
+   {
+    "text_id": "phaladeepika",
+    "chunk_id": "phaladeepika_pg0331_c01",
+    "chunk_uuid": "5ffcecb1-752c-495f-8549-5657b576eed2",
+    "chunk_content_sha256": "d981f19ca485efac14a760aa5e5c8c0a5ce5e9681938fceb6230893f94875115",
+    "page": "PG331",
+    "sloka_printed": "24",
+    "quote": "8) danger to life",
+    "sloka_numeral_basis": "printed",
+    "role": "Rahu's result for house 8 (FACT about Rahu)"
+   }
+  ],
+  "inference_step": "No verse names Ketu's house results. Sloka 2 states Rahu and Ketu are 'similar to the Sun'; the Sun's own result for house 8 and Rahu's sloka-24 result for house 8 are both adverse; the Ketu valence is read from that equivalence.",
+  "phala_as_stored": "Surgery, accidents, sudden health crisis; karmic debt activation",
+  "phala_supported_by_chunk": "unfavourable valence only",
+  "phala_not_in_chunk": "all phala wording",
+  "proposed_citation": "Phaladipika Adh. XXVI, Sloka 2 (Rahu and Ketu are similar to the Sun) read with Sloka 10 (Sun, house 8) and Sloka 24 (Rahu, house 8) — phaladeepika:PG321:C1, phaladeepika:PG325:C1, phaladeepika:PG331:C1 (Sastri trans. 1950) [INFERENCE: no Ketu-specific verse; unfavourable valence only; remaining phala wording is not in the text]",
+  "proposed_action": "recite",
+  "acharya_question": "Accept the sloka-2 equivalence (Rahu and Ketu similar to the Sun) as sufficient to source Ketu's unfavourable gochara results in houses 1, 2, 4, 7, 8 (5 rows)? If not, these rows become UNSOURCED."
+ },
+ {
+  "asset": "bg_transit_rules",
+  "table": "bg_transit_rules",
+  "row_key": {
+   "id": 199,
+   "graha": "ketu",
+   "rule_type": "favourable",
+   "primary_house": 12
+  },
+  "row_count": 1,
+  "claim": "ketu transiting the 12th from the natal Moon gives a FAVOURABLE result (moksha progress)",
+  "current_citation": "BPHS Ch.29 (Gochara Phala — Transit Results)",
+  "state": "contradicted",
+  "support_class": "CONTRADICTS",
+  "corpus": [
+   {
+    "text_id": "phaladeepika",
+    "chunk_id": "phaladeepika_pg0321_c01",
+    "chunk_uuid": "265722b7-ca68-49a9-b45e-48320bbae923",
+    "chunk_content_sha256": "62b6abc92d7287dcbc7f4309efe38ab1e5f134ad27031e06b411d4a29069a198",
+    "page": "PG321",
+    "sloka_printed": "2",
+    "quote": "Hahu and Ketu are similar to the Sun",
+    "sloka_numeral_basis": "printed",
+    "role": "equivalence; Sun's good houses are 6, 3, 10 (and 11 for all planets), not 12",
+    "note": "quote as printed: OCR 'Hahu' = Rahu"
+   },
+   {
+    "text_id": "phaladeepika",
+    "chunk_id": "phaladeepika_pg0325_c01",
+    "chunk_uuid": "f1fdd1bb-d4ff-4aad-9915-bd7c02ebe01c",
+    "chunk_content_sha256": "8406be46d8d63716b930fbc05e7c984f4d2bf6ac800bc59e8a457f34f4324c64",
+    "page": "PG325",
+    "sloka_printed": "11",
+    "quote": "the 12th house, there will be sorrow, loss of wealth",
+    "sloka_numeral_basis": "printed",
+    "role": "Sun in the 12th is adverse"
+   },
+   {
+    "text_id": "phaladeepika",
+    "chunk_id": "phaladeepika_pg0331_c01",
+    "chunk_uuid": "5ffcecb1-752c-495f-8549-5657b576eed2",
+    "chunk_content_sha256": "d981f19ca485efac14a760aa5e5c8c0a5ce5e9681938fceb6230893f94875115",
+    "page": "PG331",
+    "sloka_printed": "24",
+    "quote": "(12) expenditure",
+    "sloka_numeral_basis": "printed",
+    "role": "Rahu in the 12th is adverse"
+   }
+  ],
+  "inference_step": "The contradiction itself reads Ketu through the sloka-2 equivalence (INFERENCE); no verse names Ketu in the 12th.",
+  "phala_as_stored": "Spiritual liberation, moksha progress, renunciation; retreat and deep contemplation",
+  "proposed_citation": null,
+  "proposed_action": "acharya",
+  "row_note": "Row NOT changed (SS ruling). Its citation 'BPHS Ch.29' stays refuted.",
+  "acharya_question": "Ketu in the 12th from the Moon is stored FAVOURABLE ('moksha progress'). Phaladeepika Adh. XXVI sl. 2 puts Ketu with the Sun (good houses 6, 3, 10, 11) and sl. 11 / sl. 24 give the Sun and Rahu in the 12th as adverse (sorrow/loss of wealth; expenditure). Is there a classical gochara source (outside the held corpus) for a favourable Ketu-12 transit, or should the row become unfavourable / unsourced?"
+ },
+ {
+  "asset": "bg_transit_rules",
+  "table": "bg_transit_rules",
+  "row_key": {
+   "id": 4,
+   "graha": "sun",
+   "rule_type": "favourable",
+   "primary_house": 11
+  },
+  "row_count": 1,
+  "claim": "sun house 11 favourable unless vedha house 5 is occupied",
+  "current_citation": "Phaladipika Adh. XXVI, Sloka 3 — phaladeepika:PG322:C1 (Sastri trans. 1950)",
+  "state": "already_sourced_verified",
+  "support_class": "FACT",
+  "corpus": [
+   {
+    "text_id": "phaladeepika",
+    "chunk_id": "phaladeepika_pg0322_c01",
+    "chunk_uuid": "806f7e7a-265a-4994-a0b5-cd4ca435ac77",
+    "chunk_content_sha256": "41bbb3e43b6ef87458e970021a55af77b910930728be966439fb4e9bc3f6da07",
+    "page": "PG322",
+    "sloka_printed": "3",
+    "quote": "the 5th, 9th, 4th and 12th respectively",
+    "sloka_numeral_basis": "printed",
+    "role": "vedha-house list containing house 5 (pair for primary house 11, order as printed)"
+   },
+   {
+    "text_id": "phaladeepika",
+    "chunk_id": "phaladeepika_pg0321_c01",
+    "chunk_uuid": "265722b7-ca68-49a9-b45e-48320bbae923",
+    "chunk_content_sha256": "62b6abc92d7287dcbc7f4309efe38ab1e5f134ad27031e06b411d4a29069a198",
+    "page": "PG321",
+    "sloka_printed": "2",
+    "quote": "good results ... in the 11th",
+    "sloka_numeral_basis": "printed",
+    "role": "favourable-house set"
+   }
+  ],
+  "inference_step": null,
+  "proposed_citation": null,
+  "proposed_action": "none",
+  "verification": {
+   "method": "pair (primary, vedha) transcribed from the chunk and diffed against the live row; favourable house checked against the sloka-2 set",
+   "pair_matches": true,
+   "house_in_sloka2_favourable_set": true,
+   "citation_token_matches_page": true
+  }
+ },
+ {
+  "asset": "bg_transit_rules",
+  "table": "bg_transit_rules",
+  "row_key": {
+   "id": 1,
+   "graha": "sun",
+   "rule_type": "favourable",
+   "primary_house": 3
+  },
+  "row_count": 1,
+  "claim": "sun house 3 favourable unless vedha house 9 is occupied",
+  "current_citation": "Phaladipika Adh. XXVI, Sloka 3 — phaladeepika:PG322:C1 (Sastri trans. 1950)",
+  "state": "already_sourced_verified",
+  "support_class": "FACT",
+  "corpus": [
+   {
+    "text_id": "phaladeepika",
+    "chunk_id": "phaladeepika_pg0322_c01",
+    "chunk_uuid": "806f7e7a-265a-4994-a0b5-cd4ca435ac77",
+    "chunk_content_sha256": "41bbb3e43b6ef87458e970021a55af77b910930728be966439fb4e9bc3f6da07",
+    "page": "PG322",
+    "sloka_printed": "3",
+    "quote": "the 5th, 9th, 4th and 12th respectively",
+    "sloka_numeral_basis": "printed",
+    "role": "vedha-house list containing house 9 (pair for primary house 3, order as printed)"
+   },
+   {
+    "text_id": "phaladeepika",
+    "chunk_id": "phaladeepika_pg0321_c01",
+    "chunk_uuid": "265722b7-ca68-49a9-b45e-48320bbae923",
+    "chunk_content_sha256": "62b6abc92d7287dcbc7f4309efe38ab1e5f134ad27031e06b411d4a29069a198",
+    "page": "PG321",
+    "sloka_printed": "2",
+    "quote": "good results ... in the 11th",
+    "sloka_numeral_basis": "printed",
+    "role": "favourable-house set"
+   }
+  ],
+  "inference_step": null,
+  "proposed_citation": null,
+  "proposed_action": "none",
+  "verification": {
+   "method": "pair (primary, vedha) transcribed from the chunk and diffed against the live row; favourable house checked against the sloka-2 set",
+   "pair_matches": true,
+   "house_in_sloka2_favourable_set": true,
+   "citation_token_matches_page": true
+  }
+ },
+ {
+  "asset": "bg_transit_rules",
+  "table": "bg_transit_rules",
+  "row_key": {
+   "id": 3,
+   "graha": "sun",
+   "rule_type": "favourable",
+   "primary_house": 10
+  },
+  "row_count": 1,
+  "claim": "sun house 10 favourable unless vedha house 4 is occupied",
+  "current_citation": "Phaladipika Adh. XXVI, Sloka 3 — phaladeepika:PG322:C1 (Sastri trans. 1950)",
+  "state": "already_sourced_verified",
+  "support_class": "FACT",
+  "corpus": [
+   {
+    "text_id": "phaladeepika",
+    "chunk_id": "phaladeepika_pg0322_c01",
+    "chunk_uuid": "806f7e7a-265a-4994-a0b5-cd4ca435ac77",
+    "chunk_content_sha256": "41bbb3e43b6ef87458e970021a55af77b910930728be966439fb4e9bc3f6da07",
+    "page": "PG322",
+    "sloka_printed": "3",
+    "quote": "the 5th, 9th, 4th and 12th respectively",
+    "sloka_numeral_basis": "printed",
+    "role": "vedha-house list containing house 4 (pair for primary house 10, order as printed)"
+   },
+   {
+    "text_id": "phaladeepika",
+    "chunk_id": "phaladeepika_pg0321_c01",
+    "chunk_uuid": "265722b7-ca68-49a9-b45e-48320bbae923",
+    "chunk_content_sha256": "62b6abc92d7287dcbc7f4309efe38ab1e5f134ad27031e06b411d4a29069a198",
+    "page": "PG321",
+    "sloka_printed": "2",
+    "quote": "good results ... in the 11th",
+    "sloka_numeral_basis": "printed",
+    "role": "favourable-house set"
+   }
+  ],
+  "inference_step": null,
+  "proposed_citation": null,
+  "proposed_action": "none",
+  "verification": {
+   "method": "pair (primary, vedha) transcribed from the chunk and diffed against the live row; favourable house checked against the sloka-2 set",
+   "pair_matches": true,
+   "house_in_sloka2_favourable_set": true,
+   "citation_token_matches_page": true
+  }
+ },
+ {
+  "asset": "bg_transit_rules",
+  "table": "bg_transit_rules",
+  "row_key": {
+   "id": 2,
+   "graha": "sun",
+   "rule_type": "favourable",
+   "primary_house": 6
+  },
+  "row_count": 1,
+  "claim": "sun house 6 favourable unless vedha house 12 is occupied",
+  "current_citation": "Phaladipika Adh. XXVI, Sloka 3 — phaladeepika:PG322:C1 (Sastri trans. 1950)",
+  "state": "already_sourced_verified",
+  "support_class": "FACT",
+  "corpus": [
+   {
+    "text_id": "phaladeepika",
+    "chunk_id": "phaladeepika_pg0322_c01",
+    "chunk_uuid": "806f7e7a-265a-4994-a0b5-cd4ca435ac77",
+    "chunk_content_sha256": "41bbb3e43b6ef87458e970021a55af77b910930728be966439fb4e9bc3f6da07",
+    "page": "PG322",
+    "sloka_printed": "3",
+    "quote": "the 5th, 9th, 4th and 12th respectively",
+    "sloka_numeral_basis": "printed",
+    "role": "vedha-house list containing house 12 (pair for primary house 6, order as printed)"
+   },
+   {
+    "text_id": "phaladeepika",
+    "chunk_id": "phaladeepika_pg0321_c01",
+    "chunk_uuid": "265722b7-ca68-49a9-b45e-48320bbae923",
+    "chunk_content_sha256": "62b6abc92d7287dcbc7f4309efe38ab1e5f134ad27031e06b411d4a29069a198",
+    "page": "PG321",
+    "sloka_printed": "2",
+    "quote": "good results ... in the 11th",
+    "sloka_numeral_basis": "printed",
+    "role": "favourable-house set"
+   }
+  ],
+  "inference_step": null,
+  "proposed_citation": null,
+  "proposed_action": "none",
+  "verification": {
+   "method": "pair (primary, vedha) transcribed from the chunk and diffed against the live row; favourable house checked against the sloka-2 set",
+   "pair_matches": true,
+   "house_in_sloka2_favourable_set": true,
+   "citation_token_matches_page": true
+  }
+ },
+ {
+  "asset": "bg_transit_rules",
+  "table": "bg_transit_rules",
+  "row_key": {
+   "id": 11,
+   "graha": "moon",
+   "rule_type": "favourable",
+   "primary_house": 7
+  },
+  "row_count": 1,
+  "claim": "moon house 7 favourable unless vedha house 2 is occupied",
+  "current_citation": "Phaladipika Adh. XXVI, Sloka 4 — phaladeepika:PG322:C1 (Sastri trans. 1950)",
+  "state": "already_sourced_verified",
+  "support_class": "FACT",
+  "corpus": [
+   {
+    "text_id": "phaladeepika",
+    "chunk_id": "phaladeepika_pg0322_c01",
+    "chunk_uuid": "806f7e7a-265a-4994-a0b5-cd4ca435ac77",
+    "chunk_content_sha256": "41bbb3e43b6ef87458e970021a55af77b910930728be966439fb4e9bc3f6da07",
+    "page": "PG322",
+    "sloka_printed": "4",
+    "quote": "2nd, 5th, 12th, 8th, 4th and the 9th",
+    "sloka_numeral_basis": "printed",
+    "role": "vedha-house list containing house 2 (pair for primary house 7, order as printed)"
+   },
+   {
+    "text_id": "phaladeepika",
+    "chunk_id": "phaladeepika_pg0321_c01",
+    "chunk_uuid": "265722b7-ca68-49a9-b45e-48320bbae923",
+    "chunk_content_sha256": "62b6abc92d7287dcbc7f4309efe38ab1e5f134ad27031e06b411d4a29069a198",
+    "page": "PG321",
+    "sloka_printed": "2",
+    "quote": "good results ... in the 11th",
+    "sloka_numeral_basis": "printed",
+    "role": "favourable-house set"
+   }
+  ],
+  "inference_step": null,
+  "proposed_citation": null,
+  "proposed_action": "none",
+  "verification": {
+   "method": "pair (primary, vedha) transcribed from the chunk and diffed against the live row; favourable house checked against the sloka-2 set",
+   "pair_matches": true,
+   "house_in_sloka2_favourable_set": true,
+   "citation_token_matches_page": true
+  }
+ },
+ {
+  "asset": "bg_transit_rules",
+  "table": "bg_transit_rules",
+  "row_key": {
+   "id": 8,
+   "graha": "moon",
+   "rule_type": "favourable",
+   "primary_house": 1
+  },
+  "row_count": 1,
+  "claim": "moon house 1 favourable unless vedha house 5 is occupied",
+  "current_citation": "Phaladipika Adh. XXVI, Sloka 4 — phaladeepika:PG322:C1 (Sastri trans. 1950)",
+  "state": "already_sourced_verified",
+  "support_class": "FACT",
+  "corpus": [
+   {
+    "text_id": "phaladeepika",
+    "chunk_id": "phaladeepika_pg0322_c01",
+    "chunk_uuid": "806f7e7a-265a-4994-a0b5-cd4ca435ac77",
+    "chunk_content_sha256": "41bbb3e43b6ef87458e970021a55af77b910930728be966439fb4e9bc3f6da07",
+    "page": "PG322",
+    "sloka_printed": "4",
+    "quote": "2nd, 5th, 12th, 8th, 4th and the 9th",
+    "sloka_numeral_basis": "printed",
+    "role": "vedha-house list containing house 5 (pair for primary house 1, order as printed)"
+   },
+   {
+    "text_id": "phaladeepika",
+    "chunk_id": "phaladeepika_pg0321_c01",
+    "chunk_uuid": "265722b7-ca68-49a9-b45e-48320bbae923",
+    "chunk_content_sha256": "62b6abc92d7287dcbc7f4309efe38ab1e5f134ad27031e06b411d4a29069a198",
+    "page": "PG321",
+    "sloka_printed": "2",
+    "quote": "good results ... in the 11th",
+    "sloka_numeral_basis": "printed",
+    "role": "favourable-house set"
+   }
+  ],
+  "inference_step": null,
+  "proposed_citation": null,
+  "proposed_action": "none",
+  "verification": {
+   "method": "pair (primary, vedha) transcribed from the chunk and diffed against the live row; favourable house checked against the sloka-2 set",
+   "pair_matches": true,
+   "house_in_sloka2_favourable_set": true,
+   "citation_token_matches_page": true
+  }
+ },
+ {
+  "asset": "bg_transit_rules",
+  "table": "bg_transit_rules",
+  "row_key": {
+   "id": 10,
+   "graha": "moon",
+   "rule_type": "favourable",
+   "primary_house": 6
+  },
+  "row_count": 1,
+  "claim": "moon house 6 favourable unless vedha house 12 is occupied",
+  "current_citation": "Phaladipika Adh. XXVI, Sloka 4 — phaladeepika:PG322:C1 (Sastri trans. 1950)",
+  "state": "already_sourced_verified",
+  "support_class": "FACT",
+  "corpus": [
+   {
+    "text_id": "phaladeepika",
+    "chunk_id": "phaladeepika_pg0322_c01",
+    "chunk_uuid": "806f7e7a-265a-4994-a0b5-cd4ca435ac77",
+    "chunk_content_sha256": "41bbb3e43b6ef87458e970021a55af77b910930728be966439fb4e9bc3f6da07",
+    "page": "PG322",
+    "sloka_printed": "4",
+    "quote": "2nd, 5th, 12th, 8th, 4th and the 9th",
+    "sloka_numeral_basis": "printed",
+    "role": "vedha-house list containing house 12 (pair for primary house 6, order as printed)"
+   },
+   {
+    "text_id": "phaladeepika",
+    "chunk_id": "phaladeepika_pg0321_c01",
+    "chunk_uuid": "265722b7-ca68-49a9-b45e-48320bbae923",
+    "chunk_content_sha256": "62b6abc92d7287dcbc7f4309efe38ab1e5f134ad27031e06b411d4a29069a198",
+    "page": "PG321",
+    "sloka_printed": "2",
+    "quote": "good results ... in the 11th",
+    "sloka_numeral_basis": "printed",
+    "role": "favourable-house set"
+   }
+  ],
+  "inference_step": null,
+  "proposed_citation": null,
+  "proposed_action": "none",
+  "verification": {
+   "method": "pair (primary, vedha) transcribed from the chunk and diffed against the live row; favourable house checked against the sloka-2 set",
+   "pair_matches": true,
+   "house_in_sloka2_favourable_set": true,
+   "citation_token_matches_page": true
+  }
+ },
+ {
+  "asset": "bg_transit_rules",
+  "table": "bg_transit_rules",
+  "row_key": {
+   "id": 13,
+   "graha": "moon",
+   "rule_type": "favourable",
+   "primary_house": 11
+  },
+  "row_count": 1,
+  "claim": "moon house 11 favourable unless vedha house 8 is occupied",
+  "current_citation": "Phaladipika Adh. XXVI, Sloka 4 — phaladeepika:PG322:C1 (Sastri trans. 1950)",
+  "state": "already_sourced_verified",
+  "support_class": "FACT",
+  "corpus": [
+   {
+    "text_id": "phaladeepika",
+    "chunk_id": "phaladeepika_pg0322_c01",
+    "chunk_uuid": "806f7e7a-265a-4994-a0b5-cd4ca435ac77",
+    "chunk_content_sha256": "41bbb3e43b6ef87458e970021a55af77b910930728be966439fb4e9bc3f6da07",
+    "page": "PG322",
+    "sloka_printed": "4",
+    "quote": "2nd, 5th, 12th, 8th, 4th and the 9th",
+    "sloka_numeral_basis": "printed",
+    "role": "vedha-house list containing house 8 (pair for primary house 11, order as printed)"
+   },
+   {
+    "text_id": "phaladeepika",
+    "chunk_id": "phaladeepika_pg0321_c01",
+    "chunk_uuid": "265722b7-ca68-49a9-b45e-48320bbae923",
+    "chunk_content_sha256": "62b6abc92d7287dcbc7f4309efe38ab1e5f134ad27031e06b411d4a29069a198",
+    "page": "PG321",
+    "sloka_printed": "2",
+    "quote": "good results ... in the 11th",
+    "sloka_numeral_basis": "printed",
+    "role": "favourable-house set"
+   }
+  ],
+  "inference_step": null,
+  "proposed_citation": null,
+  "proposed_action": "none",
+  "verification": {
+   "method": "pair (primary, vedha) transcribed from the chunk and diffed against the live row; favourable house checked against the sloka-2 set",
+   "pair_matches": true,
+   "house_in_sloka2_favourable_set": true,
+   "citation_token_matches_page": true
+  }
+ },
+ {
+  "asset": "bg_transit_rules",
+  "table": "bg_transit_rules",
+  "row_key": {
+   "id": 12,
+   "graha": "moon",
+   "rule_type": "favourable",
+   "primary_house": 10
+  },
+  "row_count": 1,
+  "claim": "moon house 10 favourable unless vedha house 4 is occupied",
+  "current_citation": "Phaladipika Adh. XXVI, Sloka 4 — phaladeepika:PG322:C1 (Sastri trans. 1950)",
+  "state": "already_sourced_verified",
+  "support_class": "FACT",
+  "corpus": [
+   {
+    "text_id": "phaladeepika",
+    "chunk_id": "phaladeepika_pg0322_c01",
+    "chunk_uuid": "806f7e7a-265a-4994-a0b5-cd4ca435ac77",
+    "chunk_content_sha256": "41bbb3e43b6ef87458e970021a55af77b910930728be966439fb4e9bc3f6da07",
+    "page": "PG322",
+    "sloka_printed": "4",
+    "quote": "2nd, 5th, 12th, 8th, 4th and the 9th",
+    "sloka_numeral_basis": "printed",
+    "role": "vedha-house list containing house 4 (pair for primary house 10, order as printed)"
+   },
+   {
+    "text_id": "phaladeepika",
+    "chunk_id": "phaladeepika_pg0321_c01",
+    "chunk_uuid": "265722b7-ca68-49a9-b45e-48320bbae923",
+    "chunk_content_sha256": "62b6abc92d7287dcbc7f4309efe38ab1e5f134ad27031e06b411d4a29069a198",
+    "page": "PG321",
+    "sloka_printed": "2",
+    "quote": "good results ... in the 11th",
+    "sloka_numeral_basis": "printed",
+    "role": "favourable-house set"
+   }
+  ],
+  "inference_step": null,
+  "proposed_citation": null,
+  "proposed_action": "none",
+  "verification": {
+   "method": "pair (primary, vedha) transcribed from the chunk and diffed against the live row; favourable house checked against the sloka-2 set",
+   "pair_matches": true,
+   "house_in_sloka2_favourable_set": true,
+   "citation_token_matches_page": true
+  }
+ },
+ {
+  "asset": "bg_transit_rules",
+  "table": "bg_transit_rules",
+  "row_key": {
+   "id": 9,
+   "graha": "moon",
+   "rule_type": "favourable",
+   "primary_house": 3
+  },
+  "row_count": 1,
+  "claim": "moon house 3 favourable unless vedha house 9 is occupied",
+  "current_citation": "Phaladipika Adh. XXVI, Sloka 4 — phaladeepika:PG322:C1 (Sastri trans. 1950)",
+  "state": "already_sourced_verified",
+  "support_class": "FACT",
+  "corpus": [
+   {
+    "text_id": "phaladeepika",
+    "chunk_id": "phaladeepika_pg0322_c01",
+    "chunk_uuid": "806f7e7a-265a-4994-a0b5-cd4ca435ac77",
+    "chunk_content_sha256": "41bbb3e43b6ef87458e970021a55af77b910930728be966439fb4e9bc3f6da07",
+    "page": "PG322",
+    "sloka_printed": "4",
+    "quote": "2nd, 5th, 12th, 8th, 4th and the 9th",
+    "sloka_numeral_basis": "printed",
+    "role": "vedha-house list containing house 9 (pair for primary house 3, order as printed)"
+   },
+   {
+    "text_id": "phaladeepika",
+    "chunk_id": "phaladeepika_pg0321_c01",
+    "chunk_uuid": "265722b7-ca68-49a9-b45e-48320bbae923",
+    "chunk_content_sha256": "62b6abc92d7287dcbc7f4309efe38ab1e5f134ad27031e06b411d4a29069a198",
+    "page": "PG321",
+    "sloka_printed": "2",
+    "quote": "good results ... in the 11th",
+    "sloka_numeral_basis": "printed",
+    "role": "favourable-house set"
+   }
+  ],
+  "inference_step": null,
+  "proposed_citation": null,
+  "proposed_action": "none",
+  "verification": {
+   "method": "pair (primary, vedha) transcribed from the chunk and diffed against the live row; favourable house checked against the sloka-2 set",
+   "pair_matches": true,
+   "house_in_sloka2_favourable_set": true,
+   "citation_token_matches_page": true
+  }
+ },
+ {
+  "asset": "bg_transit_rules",
+  "table": "bg_transit_rules",
+  "row_key": {
+   "id": 15,
+   "graha": "mars",
+   "rule_type": "favourable",
+   "primary_house": 3
+  },
+  "row_count": 1,
+  "claim": "mars house 3 favourable unless vedha house 12 is occupied",
+  "current_citation": "Phaladipika Adh. XXVI, Sloka 5 — phaladeepika:PG322:C1 (Sastri trans. 1950)",
+  "state": "already_sourced_verified",
+  "support_class": "FACT",
+  "corpus": [
+   {
+    "text_id": "phaladeepika",
+    "chunk_id": "phaladeepika_pg0322_c01",
+    "chunk_uuid": "806f7e7a-265a-4994-a0b5-cd4ca435ac77",
+    "chunk_content_sha256": "41bbb3e43b6ef87458e970021a55af77b910930728be966439fb4e9bc3f6da07",
+    "page": "PG322",
+    "sloka_printed": "5",
+    "quote": "if the 12th, 5th and 9th places respectively are free",
+    "sloka_numeral_basis": "printed",
+    "role": "vedha-house list containing house 12 (pair for primary house 3, order as printed)"
+   },
+   {
+    "text_id": "phaladeepika",
+    "chunk_id": "phaladeepika_pg0321_c01",
+    "chunk_uuid": "265722b7-ca68-49a9-b45e-48320bbae923",
+    "chunk_content_sha256": "62b6abc92d7287dcbc7f4309efe38ab1e5f134ad27031e06b411d4a29069a198",
+    "page": "PG321",
+    "sloka_printed": "2",
+    "quote": "good results ... in the 11th",
+    "sloka_numeral_basis": "printed",
+    "role": "favourable-house set"
+   }
+  ],
+  "inference_step": null,
+  "proposed_citation": null,
+  "proposed_action": "none",
+  "verification": {
+   "method": "pair (primary, vedha) transcribed from the chunk and diffed against the live row; favourable house checked against the sloka-2 set",
+   "pair_matches": true,
+   "house_in_sloka2_favourable_set": true,
+   "citation_token_matches_page": true
+  }
+ },
+ {
+  "asset": "bg_transit_rules",
+  "table": "bg_transit_rules",
+  "row_key": {
+   "id": 17,
+   "graha": "mars",
+   "rule_type": "favourable",
+   "primary_house": 11
+  },
+  "row_count": 1,
+  "claim": "mars house 11 favourable unless vedha house 5 is occupied",
+  "current_citation": "Phaladipika Adh. XXVI, Sloka 5 — phaladeepika:PG322:C1 (Sastri trans. 1950)",
+  "state": "already_sourced_verified",
+  "support_class": "FACT",
+  "corpus": [
+   {
+    "text_id": "phaladeepika",
+    "chunk_id": "phaladeepika_pg0322_c01",
+    "chunk_uuid": "806f7e7a-265a-4994-a0b5-cd4ca435ac77",
+    "chunk_content_sha256": "41bbb3e43b6ef87458e970021a55af77b910930728be966439fb4e9bc3f6da07",
+    "page": "PG322",
+    "sloka_printed": "5",
+    "quote": "if the 12th, 5th and 9th places respectively are free",
+    "sloka_numeral_basis": "printed",
+    "role": "vedha-house list containing house 5 (pair for primary house 11, order as printed)"
+   },
+   {
+    "text_id": "phaladeepika",
+    "chunk_id": "phaladeepika_pg0321_c01",
+    "chunk_uuid": "265722b7-ca68-49a9-b45e-48320bbae923",
+    "chunk_content_sha256": "62b6abc92d7287dcbc7f4309efe38ab1e5f134ad27031e06b411d4a29069a198",
+    "page": "PG321",
+    "sloka_printed": "2",
+    "quote": "good results ... in the 11th",
+    "sloka_numeral_basis": "printed",
+    "role": "favourable-house set"
+   }
+  ],
+  "inference_step": null,
+  "proposed_citation": null,
+  "proposed_action": "none",
+  "verification": {
+   "method": "pair (primary, vedha) transcribed from the chunk and diffed against the live row; favourable house checked against the sloka-2 set",
+   "pair_matches": true,
+   "house_in_sloka2_favourable_set": true,
+   "citation_token_matches_page": true
+  }
+ },
+ {
+  "asset": "bg_transit_rules",
+  "table": "bg_transit_rules",
+  "row_key": {
+   "id": 16,
+   "graha": "mars",
+   "rule_type": "favourable",
+   "primary_house": 6
+  },
+  "row_count": 1,
+  "claim": "mars house 6 favourable unless vedha house 9 is occupied",
+  "current_citation": "Phaladipika Adh. XXVI, Sloka 5 — phaladeepika:PG322:C1 (Sastri trans. 1950)",
+  "state": "already_sourced_verified",
+  "support_class": "FACT",
+  "corpus": [
+   {
+    "text_id": "phaladeepika",
+    "chunk_id": "phaladeepika_pg0322_c01",
+    "chunk_uuid": "806f7e7a-265a-4994-a0b5-cd4ca435ac77",
+    "chunk_content_sha256": "41bbb3e43b6ef87458e970021a55af77b910930728be966439fb4e9bc3f6da07",
+    "page": "PG322",
+    "sloka_printed": "5",
+    "quote": "if the 12th, 5th and 9th places respectively are free",
+    "sloka_numeral_basis": "printed",
+    "role": "vedha-house list containing house 9 (pair for primary house 6, order as printed)"
+   },
+   {
+    "text_id": "phaladeepika",
+    "chunk_id": "phaladeepika_pg0321_c01",
+    "chunk_uuid": "265722b7-ca68-49a9-b45e-48320bbae923",
+    "chunk_content_sha256": "62b6abc92d7287dcbc7f4309efe38ab1e5f134ad27031e06b411d4a29069a198",
+    "page": "PG321",
+    "sloka_printed": "2",
+    "quote": "good results ... in the 11th",
+    "sloka_numeral_basis": "printed",
+    "role": "favourable-house set"
+   }
+  ],
+  "inference_step": null,
+  "proposed_citation": null,
+  "proposed_action": "none",
+  "verification": {
+   "method": "pair (primary, vedha) transcribed from the chunk and diffed against the live row; favourable house checked against the sloka-2 set",
+   "pair_matches": true,
+   "house_in_sloka2_favourable_set": true,
+   "citation_token_matches_page": true
+  }
+ },
+ {
+  "asset": "bg_transit_rules",
+  "table": "bg_transit_rules",
+  "row_key": {
+   "id": 36,
+   "graha": "saturn",
+   "rule_type": "favourable",
+   "primary_house": 3
+  },
+  "row_count": 1,
+  "claim": "saturn house 3 favourable unless vedha house 12 is occupied",
+  "current_citation": "Phaladipika Adh. XXVI, Sloka 5 — phaladeepika:PG322:C1 (Sastri trans. 1950)",
+  "state": "already_sourced_verified",
+  "support_class": "FACT",
+  "corpus": [
+   {
+    "text_id": "phaladeepika",
+    "chunk_id": "phaladeepika_pg0322_c01",
+    "chunk_uuid": "806f7e7a-265a-4994-a0b5-cd4ca435ac77",
+    "chunk_content_sha256": "41bbb3e43b6ef87458e970021a55af77b910930728be966439fb4e9bc3f6da07",
+    "page": "PG322",
+    "sloka_printed": "5",
+    "quote": "if the 12th, 5th and 9th places respectively are free",
+    "sloka_numeral_basis": "printed",
+    "role": "vedha-house list containing house 12 (pair for primary house 3, order as printed)"
+   },
+   {
+    "text_id": "phaladeepika",
+    "chunk_id": "phaladeepika_pg0321_c01",
+    "chunk_uuid": "265722b7-ca68-49a9-b45e-48320bbae923",
+    "chunk_content_sha256": "62b6abc92d7287dcbc7f4309efe38ab1e5f134ad27031e06b411d4a29069a198",
+    "page": "PG321",
+    "sloka_printed": "2",
+    "quote": "good results ... in the 11th",
+    "sloka_numeral_basis": "printed",
+    "role": "favourable-house set"
+   }
+  ],
+  "inference_step": null,
+  "proposed_citation": null,
+  "proposed_action": "none",
+  "verification": {
+   "method": "pair (primary, vedha) transcribed from the chunk and diffed against the live row; favourable house checked against the sloka-2 set",
+   "pair_matches": true,
+   "house_in_sloka2_favourable_set": true,
+   "citation_token_matches_page": true
+  }
+ },
+ {
+  "asset": "bg_transit_rules",
+  "table": "bg_transit_rules",
+  "row_key": {
+   "id": 38,
+   "graha": "saturn",
+   "rule_type": "favourable",
+   "primary_house": 11
+  },
+  "row_count": 1,
+  "claim": "saturn house 11 favourable unless vedha house 5 is occupied",
+  "current_citation": "Phaladipika Adh. XXVI, Sloka 5 — phaladeepika:PG322:C1 (Sastri trans. 1950)",
+  "state": "already_sourced_verified",
+  "support_class": "FACT",
+  "corpus": [
+   {
+    "text_id": "phaladeepika",
+    "chunk_id": "phaladeepika_pg0322_c01",
+    "chunk_uuid": "806f7e7a-265a-4994-a0b5-cd4ca435ac77",
+    "chunk_content_sha256": "41bbb3e43b6ef87458e970021a55af77b910930728be966439fb4e9bc3f6da07",
+    "page": "PG322",
+    "sloka_printed": "5",
+    "quote": "if the 12th, 5th and 9th places respectively are free",
+    "sloka_numeral_basis": "printed",
+    "role": "vedha-house list containing house 5 (pair for primary house 11, order as printed)"
+   },
+   {
+    "text_id": "phaladeepika",
+    "chunk_id": "phaladeepika_pg0321_c01",
+    "chunk_uuid": "265722b7-ca68-49a9-b45e-48320bbae923",
+    "chunk_content_sha256": "62b6abc92d7287dcbc7f4309efe38ab1e5f134ad27031e06b411d4a29069a198",
+    "page": "PG321",
+    "sloka_printed": "2",
+    "quote": "good results ... in the 11th",
+    "sloka_numeral_basis": "printed",
+    "role": "favourable-house set"
+   }
+  ],
+  "inference_step": null,
+  "proposed_citation": null,
+  "proposed_action": "none",
+  "verification": {
+   "method": "pair (primary, vedha) transcribed from the chunk and diffed against the live row; favourable house checked against the sloka-2 set",
+   "pair_matches": true,
+   "house_in_sloka2_favourable_set": true,
+   "citation_token_matches_page": true
+  }
+ },
+ {
+  "asset": "bg_transit_rules",
+  "table": "bg_transit_rules",
+  "row_key": {
+   "id": 37,
+   "graha": "saturn",
+   "rule_type": "favourable",
+   "primary_house": 6
+  },
+  "row_count": 1,
+  "claim": "saturn house 6 favourable unless vedha house 9 is occupied",
+  "current_citation": "Phaladipika Adh. XXVI, Sloka 5 — phaladeepika:PG322:C1 (Sastri trans. 1950)",
+  "state": "already_sourced_verified",
+  "support_class": "FACT",
+  "corpus": [
+   {
+    "text_id": "phaladeepika",
+    "chunk_id": "phaladeepika_pg0322_c01",
+    "chunk_uuid": "806f7e7a-265a-4994-a0b5-cd4ca435ac77",
+    "chunk_content_sha256": "41bbb3e43b6ef87458e970021a55af77b910930728be966439fb4e9bc3f6da07",
+    "page": "PG322",
+    "sloka_printed": "5",
+    "quote": "if the 12th, 5th and 9th places respectively are free",
+    "sloka_numeral_basis": "printed",
+    "role": "vedha-house list containing house 9 (pair for primary house 6, order as printed)"
+   },
+   {
+    "text_id": "phaladeepika",
+    "chunk_id": "phaladeepika_pg0321_c01",
+    "chunk_uuid": "265722b7-ca68-49a9-b45e-48320bbae923",
+    "chunk_content_sha256": "62b6abc92d7287dcbc7f4309efe38ab1e5f134ad27031e06b411d4a29069a198",
+    "page": "PG321",
+    "sloka_printed": "2",
+    "quote": "good results ... in the 11th",
+    "sloka_numeral_basis": "printed",
+    "role": "favourable-house set"
+   }
+  ],
+  "inference_step": null,
+  "proposed_citation": null,
+  "proposed_action": "none",
+  "verification": {
+   "method": "pair (primary, vedha) transcribed from the chunk and diffed against the live row; favourable house checked against the sloka-2 set",
+   "pair_matches": true,
+   "house_in_sloka2_favourable_set": true,
+   "citation_token_matches_page": true
+  }
+ },
+ {
+  "asset": "bg_transit_rules",
+  "table": "bg_transit_rules",
+  "row_key": {
+   "id": 21,
+   "graha": "mercury",
+   "rule_type": "favourable",
+   "primary_house": 2
+  },
+  "row_count": 1,
+  "claim": "mercury house 2 favourable unless vedha house 5 is occupied",
+  "current_citation": "Phaladipika Adh. XXVI, Sloka 6 — phaladeepika:PG323:C1 (Sastri trans. 1950)",
+  "state": "already_sourced_verified",
+  "support_class": "FACT",
+  "corpus": [
+   {
+    "text_id": "phaladeepika",
+    "chunk_id": "phaladeepika_pg0323_c01",
+    "chunk_uuid": "97ad3a83-5434-4f2b-8984-971c0fcc69f9",
+    "chunk_content_sha256": "4681950adce9e7e121b036b596df9113816befc1fef3b57700393606bb26b75d",
+    "page": "PG323",
+    "sloka_printed": "6",
+    "quote": "3rd, 9th, 1st, 8th and 12th",
+    "sloka_numeral_basis": "printed",
+    "role": "vedha-house list containing house 5 (pair for primary house 2, order as printed)"
+   },
+   {
+    "text_id": "phaladeepika",
+    "chunk_id": "phaladeepika_pg0321_c01",
+    "chunk_uuid": "265722b7-ca68-49a9-b45e-48320bbae923",
+    "chunk_content_sha256": "62b6abc92d7287dcbc7f4309efe38ab1e5f134ad27031e06b411d4a29069a198",
+    "page": "PG321",
+    "sloka_printed": "2",
+    "quote": "good results ... in the 11th",
+    "sloka_numeral_basis": "printed",
+    "role": "favourable-house set"
+   }
+  ],
+  "inference_step": null,
+  "proposed_citation": null,
+  "proposed_action": "none",
+  "verification": {
+   "method": "pair (primary, vedha) transcribed from the chunk and diffed against the live row; favourable house checked against the sloka-2 set",
+   "pair_matches": true,
+   "house_in_sloka2_favourable_set": true,
+   "citation_token_matches_page": true
+  }
+ },
+ {
+  "asset": "bg_transit_rules",
+  "table": "bg_transit_rules",
+  "row_key": {
+   "id": 22,
+   "graha": "mercury",
+   "rule_type": "favourable",
+   "primary_house": 4
+  },
+  "row_count": 1,
+  "claim": "mercury house 4 favourable unless vedha house 3 is occupied",
+  "current_citation": "Phaladipika Adh. XXVI, Sloka 6 — phaladeepika:PG323:C1 (Sastri trans. 1950)",
+  "state": "already_sourced_verified",
+  "support_class": "FACT",
+  "corpus": [
+   {
+    "text_id": "phaladeepika",
+    "chunk_id": "phaladeepika_pg0323_c01",
+    "chunk_uuid": "97ad3a83-5434-4f2b-8984-971c0fcc69f9",
+    "chunk_content_sha256": "4681950adce9e7e121b036b596df9113816befc1fef3b57700393606bb26b75d",
+    "page": "PG323",
+    "sloka_printed": "6",
+    "quote": "3rd, 9th, 1st, 8th and 12th",
+    "sloka_numeral_basis": "printed",
+    "role": "vedha-house list containing house 3 (pair for primary house 4, order as printed)"
+   },
+   {
+    "text_id": "phaladeepika",
+    "chunk_id": "phaladeepika_pg0321_c01",
+    "chunk_uuid": "265722b7-ca68-49a9-b45e-48320bbae923",
+    "chunk_content_sha256": "62b6abc92d7287dcbc7f4309efe38ab1e5f134ad27031e06b411d4a29069a198",
+    "page": "PG321",
+    "sloka_printed": "2",
+    "quote": "good results ... in the 11th",
+    "sloka_numeral_basis": "printed",
+    "role": "favourable-house set"
+   }
+  ],
+  "inference_step": null,
+  "proposed_citation": null,
+  "proposed_action": "none",
+  "verification": {
+   "method": "pair (primary, vedha) transcribed from the chunk and diffed against the live row; favourable house checked against the sloka-2 set",
+   "pair_matches": true,
+   "house_in_sloka2_favourable_set": true,
+   "citation_token_matches_page": true
+  }
+ },
+ {
+  "asset": "bg_transit_rules",
+  "table": "bg_transit_rules",
+  "row_key": {
+   "id": 23,
+   "graha": "mercury",
+   "rule_type": "favourable",
+   "primary_house": 6
+  },
+  "row_count": 1,
+  "claim": "mercury house 6 favourable unless vedha house 9 is occupied",
+  "current_citation": "Phaladipika Adh. XXVI, Sloka 6 — phaladeepika:PG323:C1 (Sastri trans. 1950)",
+  "state": "already_sourced_verified",
+  "support_class": "FACT",
+  "corpus": [
+   {
+    "text_id": "phaladeepika",
+    "chunk_id": "phaladeepika_pg0323_c01",
+    "chunk_uuid": "97ad3a83-5434-4f2b-8984-971c0fcc69f9",
+    "chunk_content_sha256": "4681950adce9e7e121b036b596df9113816befc1fef3b57700393606bb26b75d",
+    "page": "PG323",
+    "sloka_printed": "6",
+    "quote": "3rd, 9th, 1st, 8th and 12th",
+    "sloka_numeral_basis": "printed",
+    "role": "vedha-house list containing house 9 (pair for primary house 6, order as printed)"
+   },
+   {
+    "text_id": "phaladeepika",
+    "chunk_id": "phaladeepika_pg0321_c01",
+    "chunk_uuid": "265722b7-ca68-49a9-b45e-48320bbae923",
+    "chunk_content_sha256": "62b6abc92d7287dcbc7f4309efe38ab1e5f134ad27031e06b411d4a29069a198",
+    "page": "PG321",
+    "sloka_printed": "2",
+    "quote": "good results ... in the 11th",
+    "sloka_numeral_basis": "printed",
+    "role": "favourable-house set"
+   }
+  ],
+  "inference_step": null,
+  "proposed_citation": null,
+  "proposed_action": "none",
+  "verification": {
+   "method": "pair (primary, vedha) transcribed from the chunk and diffed against the live row; favourable house checked against the sloka-2 set",
+   "pair_matches": true,
+   "house_in_sloka2_favourable_set": true,
+   "citation_token_matches_page": true
+  }
+ },
+ {
+  "asset": "bg_transit_rules",
+  "table": "bg_transit_rules",
+  "row_key": {
+   "id": 569,
+   "graha": "mercury",
+   "rule_type": "favourable",
+   "primary_house": 8
+  },
+  "row_count": 1,
+  "claim": "mercury house 8 favourable unless vedha house 1 is occupied",
+  "current_citation": "Phaladipika Adh. XXVI, Sloka 6 — phaladeepika:PG323:C1 (Sastri trans. 1950)",
+  "state": "already_sourced_verified",
+  "support_class": "FACT",
+  "corpus": [
+   {
+    "text_id": "phaladeepika",
+    "chunk_id": "phaladeepika_pg0323_c01",
+    "chunk_uuid": "97ad3a83-5434-4f2b-8984-971c0fcc69f9",
+    "chunk_content_sha256": "4681950adce9e7e121b036b596df9113816befc1fef3b57700393606bb26b75d",
+    "page": "PG323",
+    "sloka_printed": "6",
+    "quote": "3rd, 9th, 1st, 8th and 12th",
+    "sloka_numeral_basis": "printed",
+    "role": "vedha-house list containing house 1 (pair for primary house 8, order as printed)"
+   },
+   {
+    "text_id": "phaladeepika",
+    "chunk_id": "phaladeepika_pg0321_c01",
+    "chunk_uuid": "265722b7-ca68-49a9-b45e-48320bbae923",
+    "chunk_content_sha256": "62b6abc92d7287dcbc7f4309efe38ab1e5f134ad27031e06b411d4a29069a198",
+    "page": "PG321",
+    "sloka_printed": "2",
+    "quote": "good results ... in the 11th",
+    "sloka_numeral_basis": "printed",
+    "role": "favourable-house set"
+   }
+  ],
+  "inference_step": null,
+  "proposed_citation": null,
+  "proposed_action": "none",
+  "verification": {
+   "method": "pair (primary, vedha) transcribed from the chunk and diffed against the live row; favourable house checked against the sloka-2 set",
+   "pair_matches": true,
+   "house_in_sloka2_favourable_set": true,
+   "citation_token_matches_page": true
+  }
+ },
+ {
+  "asset": "bg_transit_rules",
+  "table": "bg_transit_rules",
+  "row_key": {
+   "id": 24,
+   "graha": "mercury",
+   "rule_type": "favourable",
+   "primary_house": 10
+  },
+  "row_count": 1,
+  "claim": "mercury house 10 favourable unless vedha house 8 is occupied",
+  "current_citation": "Phaladipika Adh. XXVI, Sloka 6 — phaladeepika:PG323:C1 (Sastri trans. 1950)",
+  "state": "already_sourced_verified",
+  "support_class": "FACT",
+  "corpus": [
+   {
+    "text_id": "phaladeepika",
+    "chunk_id": "phaladeepika_pg0323_c01",
+    "chunk_uuid": "97ad3a83-5434-4f2b-8984-971c0fcc69f9",
+    "chunk_content_sha256": "4681950adce9e7e121b036b596df9113816befc1fef3b57700393606bb26b75d",
+    "page": "PG323",
+    "sloka_printed": "6",
+    "quote": "3rd, 9th, 1st, 8th and 12th",
+    "sloka_numeral_basis": "printed",
+    "role": "vedha-house list containing house 8 (pair for primary house 10, order as printed)"
+   },
+   {
+    "text_id": "phaladeepika",
+    "chunk_id": "phaladeepika_pg0321_c01",
+    "chunk_uuid": "265722b7-ca68-49a9-b45e-48320bbae923",
+    "chunk_content_sha256": "62b6abc92d7287dcbc7f4309efe38ab1e5f134ad27031e06b411d4a29069a198",
+    "page": "PG321",
+    "sloka_printed": "2",
+    "quote": "good results ... in the 11th",
+    "sloka_numeral_basis": "printed",
+    "role": "favourable-house set"
+   }
+  ],
+  "inference_step": null,
+  "proposed_citation": null,
+  "proposed_action": "none",
+  "verification": {
+   "method": "pair (primary, vedha) transcribed from the chunk and diffed against the live row; favourable house checked against the sloka-2 set",
+   "pair_matches": true,
+   "house_in_sloka2_favourable_set": true,
+   "citation_token_matches_page": true
+  }
+ },
+ {
+  "asset": "bg_transit_rules",
+  "table": "bg_transit_rules",
+  "row_key": {
+   "id": 25,
+   "graha": "mercury",
+   "rule_type": "favourable",
+   "primary_house": 11
+  },
+  "row_count": 1,
+  "claim": "mercury house 11 favourable unless vedha house 12 is occupied",
+  "current_citation": "Phaladipika Adh. XXVI, Sloka 6 — phaladeepika:PG323:C1 (Sastri trans. 1950)",
+  "state": "already_sourced_verified",
+  "support_class": "FACT",
+  "corpus": [
+   {
+    "text_id": "phaladeepika",
+    "chunk_id": "phaladeepika_pg0323_c01",
+    "chunk_uuid": "97ad3a83-5434-4f2b-8984-971c0fcc69f9",
+    "chunk_content_sha256": "4681950adce9e7e121b036b596df9113816befc1fef3b57700393606bb26b75d",
+    "page": "PG323",
+    "sloka_printed": "6",
+    "quote": "3rd, 9th, 1st, 8th and 12th",
+    "sloka_numeral_basis": "printed",
+    "role": "vedha-house list containing house 12 (pair for primary house 11, order as printed)"
+   },
+   {
+    "text_id": "phaladeepika",
+    "chunk_id": "phaladeepika_pg0321_c01",
+    "chunk_uuid": "265722b7-ca68-49a9-b45e-48320bbae923",
+    "chunk_content_sha256": "62b6abc92d7287dcbc7f4309efe38ab1e5f134ad27031e06b411d4a29069a198",
+    "page": "PG321",
+    "sloka_printed": "2",
+    "quote": "good results ... in the 11th",
+    "sloka_numeral_basis": "printed",
+    "role": "favourable-house set"
+   }
+  ],
+  "inference_step": null,
+  "proposed_citation": null,
+  "proposed_action": "none",
+  "verification": {
+   "method": "pair (primary, vedha) transcribed from the chunk and diffed against the live row; favourable house checked against the sloka-2 set",
+   "pair_matches": true,
+   "house_in_sloka2_favourable_set": true,
+   "citation_token_matches_page": true
+  }
+ },
+ {
+  "asset": "bg_transit_rules",
+  "table": "bg_transit_rules",
+  "row_key": {
+   "id": 26,
+   "graha": "jupiter",
+   "rule_type": "favourable",
+   "primary_house": 2
+  },
+  "row_count": 1,
+  "claim": "jupiter house 2 favourable unless vedha house 12 is occupied",
+  "current_citation": "Phaladipika Adh. XXVI, Sloka 7 — phaladeepika:PG323:C1 (Sastri trans. 1950)",
+  "state": "already_sourced_verified",
+  "support_class": "FACT",
+  "corpus": [
+   {
+    "text_id": "phaladeepika",
+    "chunk_id": "phaladeepika_pg0323_c01",
+    "chunk_uuid": "97ad3a83-5434-4f2b-8984-971c0fcc69f9",
+    "chunk_content_sha256": "4681950adce9e7e121b036b596df9113816befc1fef3b57700393606bb26b75d",
+    "page": "PG323",
+    "sloka_printed": "7",
+    "quote": "12th, 8th, 10th, 4th and 3rd are void of planets",
+    "sloka_numeral_basis": "printed",
+    "role": "vedha-house list containing house 12 (pair for primary house 2, order as printed)"
+   },
+   {
+    "text_id": "phaladeepika",
+    "chunk_id": "phaladeepika_pg0321_c01",
+    "chunk_uuid": "265722b7-ca68-49a9-b45e-48320bbae923",
+    "chunk_content_sha256": "62b6abc92d7287dcbc7f4309efe38ab1e5f134ad27031e06b411d4a29069a198",
+    "page": "PG321",
+    "sloka_printed": "2",
+    "quote": "good results ... in the 11th",
+    "sloka_numeral_basis": "printed",
+    "role": "favourable-house set"
+   }
+  ],
+  "inference_step": null,
+  "proposed_citation": null,
+  "proposed_action": "none",
+  "verification": {
+   "method": "pair (primary, vedha) transcribed from the chunk and diffed against the live row; favourable house checked against the sloka-2 set",
+   "pair_matches": true,
+   "house_in_sloka2_favourable_set": true,
+   "citation_token_matches_page": true
+  }
+ },
+ {
+  "asset": "bg_transit_rules",
+  "table": "bg_transit_rules",
+  "row_key": {
+   "id": 30,
+   "graha": "jupiter",
+   "rule_type": "favourable",
+   "primary_house": 11
+  },
+  "row_count": 1,
+  "claim": "jupiter house 11 favourable unless vedha house 8 is occupied",
+  "current_citation": "Phaladipika Adh. XXVI, Sloka 7 — phaladeepika:PG323:C1 (Sastri trans. 1950)",
+  "state": "already_sourced_verified",
+  "support_class": "FACT",
+  "corpus": [
+   {
+    "text_id": "phaladeepika",
+    "chunk_id": "phaladeepika_pg0323_c01",
+    "chunk_uuid": "97ad3a83-5434-4f2b-8984-971c0fcc69f9",
+    "chunk_content_sha256": "4681950adce9e7e121b036b596df9113816befc1fef3b57700393606bb26b75d",
+    "page": "PG323",
+    "sloka_printed": "7",
+    "quote": "12th, 8th, 10th, 4th and 3rd are void of planets",
+    "sloka_numeral_basis": "printed",
+    "role": "vedha-house list containing house 8 (pair for primary house 11, order as printed)"
+   },
+   {
+    "text_id": "phaladeepika",
+    "chunk_id": "phaladeepika_pg0321_c01",
+    "chunk_uuid": "265722b7-ca68-49a9-b45e-48320bbae923",
+    "chunk_content_sha256": "62b6abc92d7287dcbc7f4309efe38ab1e5f134ad27031e06b411d4a29069a198",
+    "page": "PG321",
+    "sloka_printed": "2",
+    "quote": "good results ... in the 11th",
+    "sloka_numeral_basis": "printed",
+    "role": "favourable-house set"
+   }
+  ],
+  "inference_step": null,
+  "proposed_citation": null,
+  "proposed_action": "none",
+  "verification": {
+   "method": "pair (primary, vedha) transcribed from the chunk and diffed against the live row; favourable house checked against the sloka-2 set",
+   "pair_matches": true,
+   "house_in_sloka2_favourable_set": true,
+   "citation_token_matches_page": true
+  }
+ },
+ {
+  "asset": "bg_transit_rules",
+  "table": "bg_transit_rules",
+  "row_key": {
+   "id": 29,
+   "graha": "jupiter",
+   "rule_type": "favourable",
+   "primary_house": 9
+  },
+  "row_count": 1,
+  "claim": "jupiter house 9 favourable unless vedha house 10 is occupied",
+  "current_citation": "Phaladipika Adh. XXVI, Sloka 7 — phaladeepika:PG323:C1 (Sastri trans. 1950)",
+  "state": "already_sourced_verified",
+  "support_class": "FACT",
+  "corpus": [
+   {
+    "text_id": "phaladeepika",
+    "chunk_id": "phaladeepika_pg0323_c01",
+    "chunk_uuid": "97ad3a83-5434-4f2b-8984-971c0fcc69f9",
+    "chunk_content_sha256": "4681950adce9e7e121b036b596df9113816befc1fef3b57700393606bb26b75d",
+    "page": "PG323",
+    "sloka_printed": "7",
+    "quote": "12th, 8th, 10th, 4th and 3rd are void of planets",
+    "sloka_numeral_basis": "printed",
+    "role": "vedha-house list containing house 10 (pair for primary house 9, order as printed)"
+   },
+   {
+    "text_id": "phaladeepika",
+    "chunk_id": "phaladeepika_pg0321_c01",
+    "chunk_uuid": "265722b7-ca68-49a9-b45e-48320bbae923",
+    "chunk_content_sha256": "62b6abc92d7287dcbc7f4309efe38ab1e5f134ad27031e06b411d4a29069a198",
+    "page": "PG321",
+    "sloka_printed": "2",
+    "quote": "good results ... in the 11th",
+    "sloka_numeral_basis": "printed",
+    "role": "favourable-house set"
+   }
+  ],
+  "inference_step": null,
+  "proposed_citation": null,
+  "proposed_action": "none",
+  "verification": {
+   "method": "pair (primary, vedha) transcribed from the chunk and diffed against the live row; favourable house checked against the sloka-2 set",
+   "pair_matches": true,
+   "house_in_sloka2_favourable_set": true,
+   "citation_token_matches_page": true
+  }
+ },
+ {
+  "asset": "bg_transit_rules",
+  "table": "bg_transit_rules",
+  "row_key": {
+   "id": 27,
+   "graha": "jupiter",
+   "rule_type": "favourable",
+   "primary_house": 5
+  },
+  "row_count": 1,
+  "claim": "jupiter house 5 favourable unless vedha house 4 is occupied",
+  "current_citation": "Phaladipika Adh. XXVI, Sloka 7 — phaladeepika:PG323:C1 (Sastri trans. 1950)",
+  "state": "already_sourced_verified",
+  "support_class": "FACT",
+  "corpus": [
+   {
+    "text_id": "phaladeepika",
+    "chunk_id": "phaladeepika_pg0323_c01",
+    "chunk_uuid": "97ad3a83-5434-4f2b-8984-971c0fcc69f9",
+    "chunk_content_sha256": "4681950adce9e7e121b036b596df9113816befc1fef3b57700393606bb26b75d",
+    "page": "PG323",
+    "sloka_printed": "7",
+    "quote": "12th, 8th, 10th, 4th and 3rd are void of planets",
+    "sloka_numeral_basis": "printed",
+    "role": "vedha-house list containing house 4 (pair for primary house 5, order as printed)"
+   },
+   {
+    "text_id": "phaladeepika",
+    "chunk_id": "phaladeepika_pg0321_c01",
+    "chunk_uuid": "265722b7-ca68-49a9-b45e-48320bbae923",
+    "chunk_content_sha256": "62b6abc92d7287dcbc7f4309efe38ab1e5f134ad27031e06b411d4a29069a198",
+    "page": "PG321",
+    "sloka_printed": "2",
+    "quote": "good results ... in the 11th",
+    "sloka_numeral_basis": "printed",
+    "role": "favourable-house set"
+   }
+  ],
+  "inference_step": null,
+  "proposed_citation": null,
+  "proposed_action": "none",
+  "verification": {
+   "method": "pair (primary, vedha) transcribed from the chunk and diffed against the live row; favourable house checked against the sloka-2 set",
+   "pair_matches": true,
+   "house_in_sloka2_favourable_set": true,
+   "citation_token_matches_page": true
+  }
+ },
+ {
+  "asset": "bg_transit_rules",
+  "table": "bg_transit_rules",
+  "row_key": {
+   "id": 28,
+   "graha": "jupiter",
+   "rule_type": "favourable",
+   "primary_house": 7
+  },
+  "row_count": 1,
+  "claim": "jupiter house 7 favourable unless vedha house 3 is occupied",
+  "current_citation": "Phaladipika Adh. XXVI, Sloka 7 — phaladeepika:PG323:C1 (Sastri trans. 1950)",
+  "state": "already_sourced_verified",
+  "support_class": "FACT",
+  "corpus": [
+   {
+    "text_id": "phaladeepika",
+    "chunk_id": "phaladeepika_pg0323_c01",
+    "chunk_uuid": "97ad3a83-5434-4f2b-8984-971c0fcc69f9",
+    "chunk_content_sha256": "4681950adce9e7e121b036b596df9113816befc1fef3b57700393606bb26b75d",
+    "page": "PG323",
+    "sloka_printed": "7",
+    "quote": "12th, 8th, 10th, 4th and 3rd are void of planets",
+    "sloka_numeral_basis": "printed",
+    "role": "vedha-house list containing house 3 (pair for primary house 7, order as printed)"
+   },
+   {
+    "text_id": "phaladeepika",
+    "chunk_id": "phaladeepika_pg0321_c01",
+    "chunk_uuid": "265722b7-ca68-49a9-b45e-48320bbae923",
+    "chunk_content_sha256": "62b6abc92d7287dcbc7f4309efe38ab1e5f134ad27031e06b411d4a29069a198",
+    "page": "PG321",
+    "sloka_printed": "2",
+    "quote": "good results ... in the 11th",
+    "sloka_numeral_basis": "printed",
+    "role": "favourable-house set"
+   }
+  ],
+  "inference_step": null,
+  "proposed_citation": null,
+  "proposed_action": "none",
+  "verification": {
+   "method": "pair (primary, vedha) transcribed from the chunk and diffed against the live row; favourable house checked against the sloka-2 set",
+   "pair_matches": true,
+   "house_in_sloka2_favourable_set": true,
+   "citation_token_matches_page": true
+  }
+ },
+ {
+  "asset": "bg_transit_rules",
+  "table": "bg_transit_rules",
+  "row_key": {
+   "id": 33,
+   "graha": "venus",
+   "rule_type": "favourable",
+   "primary_house": 1
+  },
+  "row_count": 1,
+  "claim": "venus house 1 favourable unless vedha house 8 is occupied",
+  "current_citation": "Phaladipika Adh. XXVI, Sloka 8 — phaladeepika:PG323:C1 (Sastri trans. 1950)",
+  "state": "already_sourced_verified",
+  "support_class": "FACT",
+  "corpus": [
+   {
+    "text_id": "phaladeepika",
+    "chunk_id": "phaladeepika_pg0323_c01",
+    "chunk_uuid": "97ad3a83-5434-4f2b-8984-971c0fcc69f9",
+    "chunk_content_sha256": "4681950adce9e7e121b036b596df9113816befc1fef3b57700393606bb26b75d",
+    "page": "PG323",
+    "sloka_printed": "8",
+    "quote": "8th, 7th, 1st, 10th, 9th, 5th, 11th, 6th and 3rd respectively",
+    "sloka_numeral_basis": "printed",
+    "role": "vedha-house list containing house 8 (pair for primary house 1, order as printed)"
+   },
+   {
+    "text_id": "phaladeepika",
+    "chunk_id": "phaladeepika_pg0321_c01",
+    "chunk_uuid": "265722b7-ca68-49a9-b45e-48320bbae923",
+    "chunk_content_sha256": "62b6abc92d7287dcbc7f4309efe38ab1e5f134ad27031e06b411d4a29069a198",
+    "page": "PG321",
+    "sloka_printed": "2",
+    "quote": "good results ... in the 11th",
+    "sloka_numeral_basis": "printed",
+    "role": "favourable-house set"
+   }
+  ],
+  "inference_step": null,
+  "proposed_citation": null,
+  "proposed_action": "none",
+  "verification": {
+   "method": "pair (primary, vedha) transcribed from the chunk and diffed against the live row; favourable house checked against the sloka-2 set",
+   "pair_matches": true,
+   "house_in_sloka2_favourable_set": true,
+   "citation_token_matches_page": true
+  }
+ },
+ {
+  "asset": "bg_transit_rules",
+  "table": "bg_transit_rules",
+  "row_key": {
+   "id": 34,
+   "graha": "venus",
+   "rule_type": "favourable",
+   "primary_house": 2
+  },
+  "row_count": 1,
+  "claim": "venus house 2 favourable unless vedha house 7 is occupied",
+  "current_citation": "Phaladipika Adh. XXVI, Sloka 8 — phaladeepika:PG323:C1 (Sastri trans. 1950)",
+  "state": "already_sourced_verified",
+  "support_class": "FACT",
+  "corpus": [
+   {
+    "text_id": "phaladeepika",
+    "chunk_id": "phaladeepika_pg0323_c01",
+    "chunk_uuid": "97ad3a83-5434-4f2b-8984-971c0fcc69f9",
+    "chunk_content_sha256": "4681950adce9e7e121b036b596df9113816befc1fef3b57700393606bb26b75d",
+    "page": "PG323",
+    "sloka_printed": "8",
+    "quote": "8th, 7th, 1st, 10th, 9th, 5th, 11th, 6th and 3rd respectively",
+    "sloka_numeral_basis": "printed",
+    "role": "vedha-house list containing house 7 (pair for primary house 2, order as printed)"
+   },
+   {
+    "text_id": "phaladeepika",
+    "chunk_id": "phaladeepika_pg0321_c01",
+    "chunk_uuid": "265722b7-ca68-49a9-b45e-48320bbae923",
+    "chunk_content_sha256": "62b6abc92d7287dcbc7f4309efe38ab1e5f134ad27031e06b411d4a29069a198",
+    "page": "PG321",
+    "sloka_printed": "2",
+    "quote": "good results ... in the 11th",
+    "sloka_numeral_basis": "printed",
+    "role": "favourable-house set"
+   }
+  ],
+  "inference_step": null,
+  "proposed_citation": null,
+  "proposed_action": "none",
+  "verification": {
+   "method": "pair (primary, vedha) transcribed from the chunk and diffed against the live row; favourable house checked against the sloka-2 set",
+   "pair_matches": true,
+   "house_in_sloka2_favourable_set": true,
+   "citation_token_matches_page": true
+  }
+ },
+ {
+  "asset": "bg_transit_rules",
+  "table": "bg_transit_rules",
+  "row_key": {
+   "id": 35,
+   "graha": "venus",
+   "rule_type": "favourable",
+   "primary_house": 3
+  },
+  "row_count": 1,
+  "claim": "venus house 3 favourable unless vedha house 1 is occupied",
+  "current_citation": "Phaladipika Adh. XXVI, Sloka 8 — phaladeepika:PG323:C1 (Sastri trans. 1950)",
+  "state": "already_sourced_verified",
+  "support_class": "FACT",
+  "corpus": [
+   {
+    "text_id": "phaladeepika",
+    "chunk_id": "phaladeepika_pg0323_c01",
+    "chunk_uuid": "97ad3a83-5434-4f2b-8984-971c0fcc69f9",
+    "chunk_content_sha256": "4681950adce9e7e121b036b596df9113816befc1fef3b57700393606bb26b75d",
+    "page": "PG323",
+    "sloka_printed": "8",
+    "quote": "8th, 7th, 1st, 10th, 9th, 5th, 11th, 6th and 3rd respectively",
+    "sloka_numeral_basis": "printed",
+    "role": "vedha-house list containing house 1 (pair for primary house 3, order as printed)"
+   },
+   {
+    "text_id": "phaladeepika",
+    "chunk_id": "phaladeepika_pg0321_c01",
+    "chunk_uuid": "265722b7-ca68-49a9-b45e-48320bbae923",
+    "chunk_content_sha256": "62b6abc92d7287dcbc7f4309efe38ab1e5f134ad27031e06b411d4a29069a198",
+    "page": "PG321",
+    "sloka_printed": "2",
+    "quote": "good results ... in the 11th",
+    "sloka_numeral_basis": "printed",
+    "role": "favourable-house set"
+   }
+  ],
+  "inference_step": null,
+  "proposed_citation": null,
+  "proposed_action": "none",
+  "verification": {
+   "method": "pair (primary, vedha) transcribed from the chunk and diffed against the live row; favourable house checked against the sloka-2 set",
+   "pair_matches": true,
+   "house_in_sloka2_favourable_set": true,
+   "citation_token_matches_page": true
+  }
+ },
+ {
+  "asset": "bg_transit_rules",
+  "table": "bg_transit_rules",
+  "row_key": {
+   "id": 42,
+   "graha": "venus",
+   "rule_type": "favourable",
+   "primary_house": 4
+  },
+  "row_count": 1,
+  "claim": "venus house 4 favourable unless vedha house 10 is occupied",
+  "current_citation": "Phaladipika Adh. XXVI, Sloka 8 — phaladeepika:PG323:C1 (Sastri trans. 1950)",
+  "state": "already_sourced_verified",
+  "support_class": "FACT",
+  "corpus": [
+   {
+    "text_id": "phaladeepika",
+    "chunk_id": "phaladeepika_pg0323_c01",
+    "chunk_uuid": "97ad3a83-5434-4f2b-8984-971c0fcc69f9",
+    "chunk_content_sha256": "4681950adce9e7e121b036b596df9113816befc1fef3b57700393606bb26b75d",
+    "page": "PG323",
+    "sloka_printed": "8",
+    "quote": "8th, 7th, 1st, 10th, 9th, 5th, 11th, 6th and 3rd respectively",
+    "sloka_numeral_basis": "printed",
+    "role": "vedha-house list containing house 10 (pair for primary house 4, order as printed)"
+   },
+   {
+    "text_id": "phaladeepika",
+    "chunk_id": "phaladeepika_pg0321_c01",
+    "chunk_uuid": "265722b7-ca68-49a9-b45e-48320bbae923",
+    "chunk_content_sha256": "62b6abc92d7287dcbc7f4309efe38ab1e5f134ad27031e06b411d4a29069a198",
+    "page": "PG321",
+    "sloka_printed": "2",
+    "quote": "good results ... in the 11th",
+    "sloka_numeral_basis": "printed",
+    "role": "favourable-house set"
+   }
+  ],
+  "inference_step": null,
+  "proposed_citation": null,
+  "proposed_action": "none",
+  "verification": {
+   "method": "pair (primary, vedha) transcribed from the chunk and diffed against the live row; favourable house checked against the sloka-2 set",
+   "pair_matches": true,
+   "house_in_sloka2_favourable_set": true,
+   "citation_token_matches_page": true
+  }
+ },
+ {
+  "asset": "bg_transit_rules",
+  "table": "bg_transit_rules",
+  "row_key": {
+   "id": 43,
+   "graha": "venus",
+   "rule_type": "favourable",
+   "primary_house": 5
+  },
+  "row_count": 1,
+  "claim": "venus house 5 favourable unless vedha house 9 is occupied",
+  "current_citation": "Phaladipika Adh. XXVI, Sloka 8 — phaladeepika:PG323:C1 (Sastri trans. 1950)",
+  "state": "already_sourced_verified",
+  "support_class": "FACT",
+  "corpus": [
+   {
+    "text_id": "phaladeepika",
+    "chunk_id": "phaladeepika_pg0323_c01",
+    "chunk_uuid": "97ad3a83-5434-4f2b-8984-971c0fcc69f9",
+    "chunk_content_sha256": "4681950adce9e7e121b036b596df9113816befc1fef3b57700393606bb26b75d",
+    "page": "PG323",
+    "sloka_printed": "8",
+    "quote": "8th, 7th, 1st, 10th, 9th, 5th, 11th, 6th and 3rd respectively",
+    "sloka_numeral_basis": "printed",
+    "role": "vedha-house list containing house 9 (pair for primary house 5, order as printed)"
+   },
+   {
+    "text_id": "phaladeepika",
+    "chunk_id": "phaladeepika_pg0321_c01",
+    "chunk_uuid": "265722b7-ca68-49a9-b45e-48320bbae923",
+    "chunk_content_sha256": "62b6abc92d7287dcbc7f4309efe38ab1e5f134ad27031e06b411d4a29069a198",
+    "page": "PG321",
+    "sloka_printed": "2",
+    "quote": "good results ... in the 11th",
+    "sloka_numeral_basis": "printed",
+    "role": "favourable-house set"
+   }
+  ],
+  "inference_step": null,
+  "proposed_citation": null,
+  "proposed_action": "none",
+  "verification": {
+   "method": "pair (primary, vedha) transcribed from the chunk and diffed against the live row; favourable house checked against the sloka-2 set",
+   "pair_matches": true,
+   "house_in_sloka2_favourable_set": true,
+   "citation_token_matches_page": true
+  }
+ },
+ {
+  "asset": "bg_transit_rules",
+  "table": "bg_transit_rules",
+  "row_key": {
+   "id": 44,
+   "graha": "venus",
+   "rule_type": "favourable",
+   "primary_house": 8
+  },
+  "row_count": 1,
+  "claim": "venus house 8 favourable unless vedha house 5 is occupied",
+  "current_citation": "Phaladipika Adh. XXVI, Sloka 8 — phaladeepika:PG323:C1 (Sastri trans. 1950)",
+  "state": "already_sourced_verified",
+  "support_class": "FACT",
+  "corpus": [
+   {
+    "text_id": "phaladeepika",
+    "chunk_id": "phaladeepika_pg0323_c01",
+    "chunk_uuid": "97ad3a83-5434-4f2b-8984-971c0fcc69f9",
+    "chunk_content_sha256": "4681950adce9e7e121b036b596df9113816befc1fef3b57700393606bb26b75d",
+    "page": "PG323",
+    "sloka_printed": "8",
+    "quote": "8th, 7th, 1st, 10th, 9th, 5th, 11th, 6th and 3rd respectively",
+    "sloka_numeral_basis": "printed",
+    "role": "vedha-house list containing house 5 (pair for primary house 8, order as printed)"
+   },
+   {
+    "text_id": "phaladeepika",
+    "chunk_id": "phaladeepika_pg0321_c01",
+    "chunk_uuid": "265722b7-ca68-49a9-b45e-48320bbae923",
+    "chunk_content_sha256": "62b6abc92d7287dcbc7f4309efe38ab1e5f134ad27031e06b411d4a29069a198",
+    "page": "PG321",
+    "sloka_printed": "2",
+    "quote": "good results ... in the 11th",
+    "sloka_numeral_basis": "printed",
+    "role": "favourable-house set"
+   }
+  ],
+  "inference_step": null,
+  "proposed_citation": null,
+  "proposed_action": "none",
+  "verification": {
+   "method": "pair (primary, vedha) transcribed from the chunk and diffed against the live row; favourable house checked against the sloka-2 set",
+   "pair_matches": true,
+   "house_in_sloka2_favourable_set": true,
+   "citation_token_matches_page": true
+  }
+ },
+ {
+  "asset": "bg_transit_rules",
+  "table": "bg_transit_rules",
+  "row_key": {
+   "id": 45,
+   "graha": "venus",
+   "rule_type": "favourable",
+   "primary_house": 9
+  },
+  "row_count": 1,
+  "claim": "venus house 9 favourable unless vedha house 11 is occupied",
+  "current_citation": "Phaladipika Adh. XXVI, Sloka 8 — phaladeepika:PG323:C1 (Sastri trans. 1950)",
+  "state": "already_sourced_verified",
+  "support_class": "FACT",
+  "corpus": [
+   {
+    "text_id": "phaladeepika",
+    "chunk_id": "phaladeepika_pg0323_c01",
+    "chunk_uuid": "97ad3a83-5434-4f2b-8984-971c0fcc69f9",
+    "chunk_content_sha256": "4681950adce9e7e121b036b596df9113816befc1fef3b57700393606bb26b75d",
+    "page": "PG323",
+    "sloka_printed": "8",
+    "quote": "8th, 7th, 1st, 10th, 9th, 5th, 11th, 6th and 3rd respectively",
+    "sloka_numeral_basis": "printed",
+    "role": "vedha-house list containing house 11 (pair for primary house 9, order as printed)"
+   },
+   {
+    "text_id": "phaladeepika",
+    "chunk_id": "phaladeepika_pg0321_c01",
+    "chunk_uuid": "265722b7-ca68-49a9-b45e-48320bbae923",
+    "chunk_content_sha256": "62b6abc92d7287dcbc7f4309efe38ab1e5f134ad27031e06b411d4a29069a198",
+    "page": "PG321",
+    "sloka_printed": "2",
+    "quote": "good results ... in the 11th",
+    "sloka_numeral_basis": "printed",
+    "role": "favourable-house set"
+   }
+  ],
+  "inference_step": null,
+  "proposed_citation": null,
+  "proposed_action": "none",
+  "verification": {
+   "method": "pair (primary, vedha) transcribed from the chunk and diffed against the live row; favourable house checked against the sloka-2 set",
+   "pair_matches": true,
+   "house_in_sloka2_favourable_set": true,
+   "citation_token_matches_page": true
+  }
+ },
+ {
+  "asset": "bg_transit_rules",
+  "table": "bg_transit_rules",
+  "row_key": {
+   "id": 180,
+   "graha": "venus",
+   "rule_type": "favourable",
+   "primary_house": 12
+  },
+  "row_count": 1,
+  "claim": "venus house 12 favourable unless vedha house 6 is occupied",
+  "current_citation": "Phaladipika Adh. XXVI, Sloka 8 — phaladeepika:PG323:C1 (Sastri trans. 1950)",
+  "state": "already_sourced_verified",
+  "support_class": "FACT",
+  "corpus": [
+   {
+    "text_id": "phaladeepika",
+    "chunk_id": "phaladeepika_pg0323_c01",
+    "chunk_uuid": "97ad3a83-5434-4f2b-8984-971c0fcc69f9",
+    "chunk_content_sha256": "4681950adce9e7e121b036b596df9113816befc1fef3b57700393606bb26b75d",
+    "page": "PG323",
+    "sloka_printed": "8",
+    "quote": "8th, 7th, 1st, 10th, 9th, 5th, 11th, 6th and 3rd respectively",
+    "sloka_numeral_basis": "printed",
+    "role": "vedha-house list containing house 6 (pair for primary house 12, order as printed)"
+   },
+   {
+    "text_id": "phaladeepika",
+    "chunk_id": "phaladeepika_pg0321_c01",
+    "chunk_uuid": "265722b7-ca68-49a9-b45e-48320bbae923",
+    "chunk_content_sha256": "62b6abc92d7287dcbc7f4309efe38ab1e5f134ad27031e06b411d4a29069a198",
+    "page": "PG321",
+    "sloka_printed": "2",
+    "quote": "good results ... in the 11th",
+    "sloka_numeral_basis": "printed",
+    "role": "favourable-house set"
+   }
+  ],
+  "inference_step": null,
+  "proposed_citation": null,
+  "proposed_action": "none",
+  "verification": {
+   "method": "pair (primary, vedha) transcribed from the chunk and diffed against the live row; favourable house checked against the sloka-2 set",
+   "pair_matches": true,
+   "house_in_sloka2_favourable_set": true,
+   "citation_token_matches_page": true
+  }
+ },
+ {
+  "asset": "bg_transit_rules",
+  "table": "bg_transit_rules",
+  "row_key": {
+   "id": 179,
+   "graha": "venus",
+   "rule_type": "favourable",
+   "primary_house": 11
+  },
+  "row_count": 1,
+  "claim": "venus house 11 favourable unless vedha house 3 is occupied",
+  "current_citation": "Phaladipika Adh. XXVI, Sloka 8 — phaladeepika:PG323:C1 (Sastri trans. 1950)",
+  "state": "already_sourced_verified",
+  "support_class": "FACT",
+  "corpus": [
+   {
+    "text_id": "phaladeepika",
+    "chunk_id": "phaladeepika_pg0323_c01",
+    "chunk_uuid": "97ad3a83-5434-4f2b-8984-971c0fcc69f9",
+    "chunk_content_sha256": "4681950adce9e7e121b036b596df9113816befc1fef3b57700393606bb26b75d",
+    "page": "PG323",
+    "sloka_printed": "8",
+    "quote": "8th, 7th, 1st, 10th, 9th, 5th, 11th, 6th and 3rd respectively",
+    "sloka_numeral_basis": "printed",
+    "role": "vedha-house list containing house 3 (pair for primary house 11, order as printed)"
+   },
+   {
+    "text_id": "phaladeepika",
+    "chunk_id": "phaladeepika_pg0321_c01",
+    "chunk_uuid": "265722b7-ca68-49a9-b45e-48320bbae923",
+    "chunk_content_sha256": "62b6abc92d7287dcbc7f4309efe38ab1e5f134ad27031e06b411d4a29069a198",
+    "page": "PG321",
+    "sloka_printed": "2",
+    "quote": "good results ... in the 11th",
+    "sloka_numeral_basis": "printed",
+    "role": "favourable-house set"
+   }
+  ],
+  "inference_step": null,
+  "proposed_citation": null,
+  "proposed_action": "none",
+  "verification": {
+   "method": "pair (primary, vedha) transcribed from the chunk and diffed against the live row; favourable house checked against the sloka-2 set",
+   "pair_matches": true,
+   "house_in_sloka2_favourable_set": true,
+   "citation_token_matches_page": true
+  }
+ },
+ {
+  "asset": "bg_transit_rules",
+  "table": "bg_transit_rules",
+  "row_key": {
+   "id": 46,
+   "graha": "venus",
+   "rule_type": "unfavourable",
+   "primary_house": 6
+  },
+  "row_count": 1,
+  "claim": "venus house 6 unfavourable",
+  "current_citation": "Phaladeepika Adh. XXVI, Slokas 2, 8 & 21 (Gochara — Sastri trans. 1950)",
+  "state": "already_sourced_verified",
+  "support_class": "FACT",
+  "corpus": [
+   {
+    "text_id": "phaladeepika",
+    "chunk_id": "phaladeepika_pg0329_c01",
+    "chunk_uuid": "311cdae8-06dd-4849-98dd-d62e9890ed2a",
+    "chunk_content_sha256": "3d4230f4e5ef3ed081718e2e1e13a89e82ef85def6585224010d49fcbcc456e7",
+    "page": "PG329",
+    "sloka_printed": "21",
+    "quote": "mishap in the 6th",
+    "sloka_numeral_basis": "printed",
+    "role": "adverse result"
+   },
+   {
+    "text_id": "phaladeepika",
+    "chunk_id": "phaladeepika_pg0321_c01",
+    "chunk_uuid": "265722b7-ca68-49a9-b45e-48320bbae923",
+    "chunk_content_sha256": "62b6abc92d7287dcbc7f4309efe38ab1e5f134ad27031e06b411d4a29069a198",
+    "page": "PG321",
+    "sloka_printed": "2",
+    "quote": "Venus in all places other than the 10th, 7th and 6th",
+    "sloka_numeral_basis": "printed",
+    "role": "complement of the good set"
+   }
+  ],
+  "inference_step": null,
+  "proposed_citation": null,
+  "proposed_action": "none",
+  "row_note": "Existing citation is sloka-grain (no PG anchors); a page anchor (PG321, PG323, PG329) could be added in a later pass.",
+  "verification": {
+   "adverse_result_stated_in_sloka_21": true,
+   "excluded_from_sloka_2_good_set": true
+  }
+ },
+ {
+  "asset": "bg_transit_rules",
+  "table": "bg_transit_rules",
+  "row_key": {
+   "id": 47,
+   "graha": "venus",
+   "rule_type": "unfavourable",
+   "primary_house": 7
+  },
+  "row_count": 1,
+  "claim": "venus house 7 unfavourable",
+  "current_citation": "Phaladeepika Adh. XXVI, Slokas 2, 8 & 21 (Gochara — Sastri trans. 1950)",
+  "state": "already_sourced_verified",
+  "support_class": "FACT",
+  "corpus": [
+   {
+    "text_id": "phaladeepika",
+    "chunk_id": "phaladeepika_pg0329_c01",
+    "chunk_uuid": "311cdae8-06dd-4849-98dd-d62e9890ed2a",
+    "chunk_content_sha256": "3d4230f4e5ef3ed081718e2e1e13a89e82ef85def6585224010d49fcbcc456e7",
+    "page": "PG329",
+    "sloka_printed": "21",
+    "quote": "trouble to wife in the 7th",
+    "sloka_numeral_basis": "printed",
+    "role": "adverse result"
+   },
+   {
+    "text_id": "phaladeepika",
+    "chunk_id": "phaladeepika_pg0321_c01",
+    "chunk_uuid": "265722b7-ca68-49a9-b45e-48320bbae923",
+    "chunk_content_sha256": "62b6abc92d7287dcbc7f4309efe38ab1e5f134ad27031e06b411d4a29069a198",
+    "page": "PG321",
+    "sloka_printed": "2",
+    "quote": "Venus in all places other than the 10th, 7th and 6th",
+    "sloka_numeral_basis": "printed",
+    "role": "complement of the good set"
+   }
+  ],
+  "inference_step": null,
+  "proposed_citation": null,
+  "proposed_action": "none",
+  "row_note": "Existing citation is sloka-grain (no PG anchors); a page anchor (PG321, PG323, PG329) could be added in a later pass.",
+  "verification": {
+   "adverse_result_stated_in_sloka_21": true,
+   "excluded_from_sloka_2_good_set": true
+  }
+ },
+ {
+  "asset": "bg_transit_rules",
+  "table": "bg_transit_rules",
+  "row_key": {
+   "id": 48,
+   "graha": "venus",
+   "rule_type": "unfavourable",
+   "primary_house": 10
+  },
+  "row_count": 1,
+  "claim": "venus house 10 unfavourable",
+  "current_citation": "Phaladeepika Adh. XXVI, Slokas 2, 8 & 21 (Gochara — Sastri trans. 1950)",
+  "state": "already_sourced_verified",
+  "support_class": "FACT",
+  "corpus": [
+   {
+    "text_id": "phaladeepika",
+    "chunk_id": "phaladeepika_pg0329_c01",
+    "chunk_uuid": "311cdae8-06dd-4849-98dd-d62e9890ed2a",
+    "chunk_content_sha256": "3d4230f4e5ef3ed081718e2e1e13a89e82ef85def6585224010d49fcbcc456e7",
+    "page": "PG329",
+    "sloka_printed": "21",
+    "quote": "quarrel in the 10th",
+    "sloka_numeral_basis": "printed",
+    "role": "adverse result"
+   },
+   {
+    "text_id": "phaladeepika",
+    "chunk_id": "phaladeepika_pg0321_c01",
+    "chunk_uuid": "265722b7-ca68-49a9-b45e-48320bbae923",
+    "chunk_content_sha256": "62b6abc92d7287dcbc7f4309efe38ab1e5f134ad27031e06b411d4a29069a198",
+    "page": "PG321",
+    "sloka_printed": "2",
+    "quote": "Venus in all places other than the 10th, 7th and 6th",
+    "sloka_numeral_basis": "printed",
+    "role": "complement of the good set"
+   }
+  ],
+  "inference_step": null,
+  "proposed_citation": null,
+  "proposed_action": "none",
+  "row_note": "Existing citation is sloka-grain (no PG anchors); a page anchor (PG321, PG323, PG329) could be added in a later pass.",
+  "verification": {
+   "adverse_result_stated_in_sloka_21": true,
+   "excluded_from_sloka_2_good_set": true
+  }
+ },
+ {
+  "asset": "bg_transit_rules",
+  "table": "bg_transit_rules",
+  "row_key": {
+   "id": 187,
+   "graha": "rahu",
+   "rule_type": "favourable",
+   "primary_house": 3
+  },
+  "row_count": 1,
+  "claim": "rahu house 3 favourable with vedha house 9",
+  "current_citation": "UNSOURCED — no house-transit vedha doctrine for Rahu/Ketu found anywhere in the served corpus (Phaladipika Adh. XXVI slo...",
+  "state": "unsourced_marked",
+  "support_class": "NONE",
+  "corpus": [
+   {
+    "text_id": "phaladeepika",
+    "chunk_id": "phaladeepika_pg0321_c01",
+    "chunk_uuid": "265722b7-ca68-49a9-b45e-48320bbae923",
+    "chunk_content_sha256": "62b6abc92d7287dcbc7f4309efe38ab1e5f134ad27031e06b411d4a29069a198",
+    "page": "PG321",
+    "sloka_printed": "2",
+    "quote": "Hahu and Ketu are similar to the Sun",
+    "sloka_numeral_basis": "printed",
+    "role": "supports the favourable-house set only, not any vedha pairing",
+    "note": "quote as printed: OCR 'Hahu' = Rahu"
+   }
+  ],
+  "inference_step": null,
+  "proposed_citation": null,
+  "proposed_action": "none",
+  "row_note": "Already honestly marked in the row text. attribution_state column (TI-L0-09) not yet available.",
+  "acharya_question": "Sloka 2 (Phaladeepika Adh. XXVI) says Rahu and Ketu are similar to the Sun, whose good transit houses are 6, 3, 10 (and 11 for all planets). The table carries Rahu and Ketu favourable at houses 3, 6, 11 only (six rows, vedha pairs UNSOURCED) and has no 10th-house row. Is the missing 10th intentional, and does the Sun's vedha pairing (3-9, 6-12, 10-4, 11-5) apply to the nodes?"
+ },
+ {
+  "asset": "bg_transit_rules",
+  "table": "bg_transit_rules",
+  "row_key": {
+   "id": 188,
+   "graha": "rahu",
+   "rule_type": "favourable",
+   "primary_house": 6
+  },
+  "row_count": 1,
+  "claim": "rahu house 6 favourable with vedha house 12",
+  "current_citation": "UNSOURCED — no house-transit vedha doctrine for Rahu/Ketu found anywhere in the served corpus (Phaladipika Adh. XXVI slo...",
+  "state": "unsourced_marked",
+  "support_class": "NONE",
+  "corpus": [
+   {
+    "text_id": "phaladeepika",
+    "chunk_id": "phaladeepika_pg0321_c01",
+    "chunk_uuid": "265722b7-ca68-49a9-b45e-48320bbae923",
+    "chunk_content_sha256": "62b6abc92d7287dcbc7f4309efe38ab1e5f134ad27031e06b411d4a29069a198",
+    "page": "PG321",
+    "sloka_printed": "2",
+    "quote": "Hahu and Ketu are similar to the Sun",
+    "sloka_numeral_basis": "printed",
+    "role": "supports the favourable-house set only, not any vedha pairing",
+    "note": "quote as printed: OCR 'Hahu' = Rahu"
+   }
+  ],
+  "inference_step": null,
+  "proposed_citation": null,
+  "proposed_action": "none",
+  "row_note": "Already honestly marked in the row text. attribution_state column (TI-L0-09) not yet available.",
+  "acharya_question": "Sloka 2 (Phaladeepika Adh. XXVI) says Rahu and Ketu are similar to the Sun, whose good transit houses are 6, 3, 10 (and 11 for all planets). The table carries Rahu and Ketu favourable at houses 3, 6, 11 only (six rows, vedha pairs UNSOURCED) and has no 10th-house row. Is the missing 10th intentional, and does the Sun's vedha pairing (3-9, 6-12, 10-4, 11-5) apply to the nodes?"
+ },
+ {
+  "asset": "bg_transit_rules",
+  "table": "bg_transit_rules",
+  "row_key": {
+   "id": 189,
+   "graha": "rahu",
+   "rule_type": "favourable",
+   "primary_house": 11
+  },
+  "row_count": 1,
+  "claim": "rahu house 11 favourable with vedha house 5",
+  "current_citation": "UNSOURCED — no house-transit vedha doctrine for Rahu/Ketu found anywhere in the served corpus (Phaladipika Adh. XXVI slo...",
+  "state": "unsourced_marked",
+  "support_class": "NONE",
+  "corpus": [
+   {
+    "text_id": "phaladeepika",
+    "chunk_id": "phaladeepika_pg0321_c01",
+    "chunk_uuid": "265722b7-ca68-49a9-b45e-48320bbae923",
+    "chunk_content_sha256": "62b6abc92d7287dcbc7f4309efe38ab1e5f134ad27031e06b411d4a29069a198",
+    "page": "PG321",
+    "sloka_printed": "2",
+    "quote": "Hahu and Ketu are similar to the Sun",
+    "sloka_numeral_basis": "printed",
+    "role": "supports the favourable-house set only, not any vedha pairing",
+    "note": "quote as printed: OCR 'Hahu' = Rahu"
+   }
+  ],
+  "inference_step": null,
+  "proposed_citation": null,
+  "proposed_action": "none",
+  "row_note": "Already honestly marked in the row text. attribution_state column (TI-L0-09) not yet available.",
+  "acharya_question": "Sloka 2 (Phaladeepika Adh. XXVI) says Rahu and Ketu are similar to the Sun, whose good transit houses are 6, 3, 10 (and 11 for all planets). The table carries Rahu and Ketu favourable at houses 3, 6, 11 only (six rows, vedha pairs UNSOURCED) and has no 10th-house row. Is the missing 10th intentional, and does the Sun's vedha pairing (3-9, 6-12, 10-4, 11-5) apply to the nodes?"
+ },
+ {
+  "asset": "bg_transit_rules",
+  "table": "bg_transit_rules",
+  "row_key": {
+   "id": 196,
+   "graha": "ketu",
+   "rule_type": "favourable",
+   "primary_house": 3
+  },
+  "row_count": 1,
+  "claim": "ketu house 3 favourable with vedha house 9",
+  "current_citation": "UNSOURCED — no house-transit vedha doctrine for Rahu/Ketu found anywhere in the served corpus (Phaladipika Adh. XXVI slo...",
+  "state": "unsourced_marked",
+  "support_class": "NONE",
+  "corpus": [
+   {
+    "text_id": "phaladeepika",
+    "chunk_id": "phaladeepika_pg0321_c01",
+    "chunk_uuid": "265722b7-ca68-49a9-b45e-48320bbae923",
+    "chunk_content_sha256": "62b6abc92d7287dcbc7f4309efe38ab1e5f134ad27031e06b411d4a29069a198",
+    "page": "PG321",
+    "sloka_printed": "2",
+    "quote": "Hahu and Ketu are similar to the Sun",
+    "sloka_numeral_basis": "printed",
+    "role": "supports the favourable-house set only, not any vedha pairing",
+    "note": "quote as printed: OCR 'Hahu' = Rahu"
+   }
+  ],
+  "inference_step": null,
+  "proposed_citation": null,
+  "proposed_action": "none",
+  "row_note": "Already honestly marked in the row text. attribution_state column (TI-L0-09) not yet available.",
+  "acharya_question": "Sloka 2 (Phaladeepika Adh. XXVI) says Rahu and Ketu are similar to the Sun, whose good transit houses are 6, 3, 10 (and 11 for all planets). The table carries Rahu and Ketu favourable at houses 3, 6, 11 only (six rows, vedha pairs UNSOURCED) and has no 10th-house row. Is the missing 10th intentional, and does the Sun's vedha pairing (3-9, 6-12, 10-4, 11-5) apply to the nodes?"
+ },
+ {
+  "asset": "bg_transit_rules",
+  "table": "bg_transit_rules",
+  "row_key": {
+   "id": 197,
+   "graha": "ketu",
+   "rule_type": "favourable",
+   "primary_house": 6
+  },
+  "row_count": 1,
+  "claim": "ketu house 6 favourable with vedha house 12",
+  "current_citation": "UNSOURCED — no house-transit vedha doctrine for Rahu/Ketu found anywhere in the served corpus (Phaladipika Adh. XXVI slo...",
+  "state": "unsourced_marked",
+  "support_class": "NONE",
+  "corpus": [
+   {
+    "text_id": "phaladeepika",
+    "chunk_id": "phaladeepika_pg0321_c01",
+    "chunk_uuid": "265722b7-ca68-49a9-b45e-48320bbae923",
+    "chunk_content_sha256": "62b6abc92d7287dcbc7f4309efe38ab1e5f134ad27031e06b411d4a29069a198",
+    "page": "PG321",
+    "sloka_printed": "2",
+    "quote": "Hahu and Ketu are similar to the Sun",
+    "sloka_numeral_basis": "printed",
+    "role": "supports the favourable-house set only, not any vedha pairing",
+    "note": "quote as printed: OCR 'Hahu' = Rahu"
+   }
+  ],
+  "inference_step": null,
+  "proposed_citation": null,
+  "proposed_action": "none",
+  "row_note": "Already honestly marked in the row text. attribution_state column (TI-L0-09) not yet available.",
+  "acharya_question": "Sloka 2 (Phaladeepika Adh. XXVI) says Rahu and Ketu are similar to the Sun, whose good transit houses are 6, 3, 10 (and 11 for all planets). The table carries Rahu and Ketu favourable at houses 3, 6, 11 only (six rows, vedha pairs UNSOURCED) and has no 10th-house row. Is the missing 10th intentional, and does the Sun's vedha pairing (3-9, 6-12, 10-4, 11-5) apply to the nodes?"
+ },
+ {
+  "asset": "bg_transit_rules",
+  "table": "bg_transit_rules",
+  "row_key": {
+   "id": 198,
+   "graha": "ketu",
+   "rule_type": "favourable",
+   "primary_house": 11
+  },
+  "row_count": 1,
+  "claim": "ketu house 11 favourable with vedha house 5",
+  "current_citation": "UNSOURCED — no house-transit vedha doctrine for Rahu/Ketu found anywhere in the served corpus (Phaladipika Adh. XXVI slo...",
+  "state": "unsourced_marked",
+  "support_class": "NONE",
+  "corpus": [
+   {
+    "text_id": "phaladeepika",
+    "chunk_id": "phaladeepika_pg0321_c01",
+    "chunk_uuid": "265722b7-ca68-49a9-b45e-48320bbae923",
+    "chunk_content_sha256": "62b6abc92d7287dcbc7f4309efe38ab1e5f134ad27031e06b411d4a29069a198",
+    "page": "PG321",
+    "sloka_printed": "2",
+    "quote": "Hahu and Ketu are similar to the Sun",
+    "sloka_numeral_basis": "printed",
+    "role": "supports the favourable-house set only, not any vedha pairing",
+    "note": "quote as printed: OCR 'Hahu' = Rahu"
+   }
+  ],
+  "inference_step": null,
+  "proposed_citation": null,
+  "proposed_action": "none",
+  "row_note": "Already honestly marked in the row text. attribution_state column (TI-L0-09) not yet available.",
+  "acharya_question": "Sloka 2 (Phaladeepika Adh. XXVI) says Rahu and Ketu are similar to the Sun, whose good transit houses are 6, 3, 10 (and 11 for all planets). The table carries Rahu and Ketu favourable at houses 3, 6, 11 only (six rows, vedha pairs UNSOURCED) and has no 10th-house row. Is the missing 10th intentional, and does the Sun's vedha pairing (3-9, 6-12, 10-4, 11-5) apply to the nodes?"
+ },
+ {
+  "asset": "bg_transit_rules",
+  "table": "bg_transit_rules",
+  "row_key": {
+   "id": 133,
+   "graha": "Jupiter",
+   "rule_type": "double_transit",
+   "primary_house": 2
+  },
+  "row_count": 1,
+  "claim": "Jupiter+Saturn double transit in house 2",
+  "current_citation": "Phaladeepika ch.26 §double-gochara; Saravali ch.28",
+  "state": "unsourced_marked",
+  "support_class": "NONE",
+  "corpus": [],
+  "inference_step": null,
+  "proposed_citation": null,
+  "proposed_action": "mark_unsourced",
+  "row_note": "Full-text probe over all held texts for double-transit / double-gochara / jointly transit / Jupiter+Saturn simultaneous: 0 hits, so the cited 'Phaladeepika ch.26 section double-gochara' does not exist in the held text. Saravali ch.28 / Jataka Parijata have no locator.",
+  "acharya_question": null
+ },
+ {
+  "asset": "bg_transit_rules",
+  "table": "bg_transit_rules",
+  "row_key": {
+   "id": 134,
+   "graha": "Jupiter",
+   "rule_type": "double_transit",
+   "primary_house": 5
+  },
+  "row_count": 1,
+  "claim": "Jupiter+Saturn double transit in house 5",
+  "current_citation": "Phaladeepika ch.26 §double-gochara",
+  "state": "unsourced_marked",
+  "support_class": "NONE",
+  "corpus": [],
+  "inference_step": null,
+  "proposed_citation": null,
+  "proposed_action": "mark_unsourced",
+  "row_note": "Full-text probe over all held texts for double-transit / double-gochara / jointly transit / Jupiter+Saturn simultaneous: 0 hits, so the cited 'Phaladeepika ch.26 section double-gochara' does not exist in the held text. Saravali ch.28 / Jataka Parijata have no locator.",
+  "acharya_question": null
+ },
+ {
+  "asset": "bg_transit_rules",
+  "table": "bg_transit_rules",
+  "row_key": {
+   "id": 135,
+   "graha": "Jupiter",
+   "rule_type": "double_transit",
+   "primary_house": 7
+  },
+  "row_count": 1,
+  "claim": "Jupiter+Saturn double transit in house 7",
+  "current_citation": "Phaladeepika ch.26 §double-gochara; BPHS ch.29",
+  "state": "unsourced_marked",
+  "support_class": "NONE",
+  "corpus": [],
+  "inference_step": null,
+  "proposed_citation": null,
+  "proposed_action": "mark_unsourced",
+  "row_note": "Full-text probe over all held texts for double-transit / double-gochara / jointly transit / Jupiter+Saturn simultaneous: 0 hits, so the cited 'Phaladeepika ch.26 section double-gochara' does not exist in the held text. Saravali ch.28 / Jataka Parijata have no locator. also cites 'BPHS ch.29', refuted: no BPHS transit chapter in the held edition (bphs:PG29:C1 is Bhava Padas)",
+  "acharya_question": null
+ },
+ {
+  "asset": "bg_transit_rules",
+  "table": "bg_transit_rules",
+  "row_key": {
+   "id": 136,
+   "graha": "Jupiter",
+   "rule_type": "double_transit",
+   "primary_house": 9
+  },
+  "row_count": 1,
+  "claim": "Jupiter+Saturn double transit in house 9",
+  "current_citation": "Phaladeepika ch.26 §double-gochara",
+  "state": "unsourced_marked",
+  "support_class": "NONE",
+  "corpus": [],
+  "inference_step": null,
+  "proposed_citation": null,
+  "proposed_action": "mark_unsourced",
+  "row_note": "Full-text probe over all held texts for double-transit / double-gochara / jointly transit / Jupiter+Saturn simultaneous: 0 hits, so the cited 'Phaladeepika ch.26 section double-gochara' does not exist in the held text. Saravali ch.28 / Jataka Parijata have no locator.",
+  "acharya_question": null
+ },
+ {
+  "asset": "bg_transit_rules",
+  "table": "bg_transit_rules",
+  "row_key": {
+   "id": 137,
+   "graha": "Jupiter",
+   "rule_type": "double_transit",
+   "primary_house": 11
+  },
+  "row_count": 1,
+  "claim": "Jupiter+Saturn double transit in house 11",
+  "current_citation": "Phaladeepika ch.26 §double-gochara; Jataka Parijata",
+  "state": "unsourced_marked",
+  "support_class": "NONE",
+  "corpus": [],
+  "inference_step": null,
+  "proposed_citation": null,
+  "proposed_action": "mark_unsourced",
+  "row_note": "Full-text probe over all held texts for double-transit / double-gochara / jointly transit / Jupiter+Saturn simultaneous: 0 hits, so the cited 'Phaladeepika ch.26 section double-gochara' does not exist in the held text. Saravali ch.28 / Jataka Parijata have no locator.",
+  "acharya_question": null
+ },
+ {
+  "asset": "bg_transit_rules",
+  "table": "bg_transit_rules",
+  "row_key": {
+   "id": 138,
+   "graha": "Saturn",
+   "rule_type": "double_transit",
+   "primary_house": 4
+  },
+  "row_count": 1,
+  "claim": "Jupiter+Saturn double transit in house 4",
+  "current_citation": "Phaladeepika ch.26 §double-gochara",
+  "state": "unsourced_marked",
+  "support_class": "NONE",
+  "corpus": [],
+  "inference_step": null,
+  "proposed_citation": null,
+  "proposed_action": "mark_unsourced",
+  "row_note": "Full-text probe over all held texts for double-transit / double-gochara / jointly transit / Jupiter+Saturn simultaneous: 0 hits, so the cited 'Phaladeepika ch.26 section double-gochara' does not exist in the held text. Saravali ch.28 / Jataka Parijata have no locator.",
+  "acharya_question": null
+ },
+ {
+  "asset": "bg_transit_rules",
+  "table": "bg_transit_rules",
+  "row_key": {
+   "id": 139,
+   "graha": "Saturn",
+   "rule_type": "double_transit",
+   "primary_house": 8
+  },
+  "row_count": 1,
+  "claim": "Jupiter+Saturn double transit in house 8",
+  "current_citation": "Phaladeepika ch.26 §double-gochara; BPHS ch.29 §8H gochara",
+  "state": "unsourced_marked",
+  "support_class": "NONE",
+  "corpus": [],
+  "inference_step": null,
+  "proposed_citation": null,
+  "proposed_action": "mark_unsourced",
+  "row_note": "Full-text probe over all held texts for double-transit / double-gochara / jointly transit / Jupiter+Saturn simultaneous: 0 hits, so the cited 'Phaladeepika ch.26 section double-gochara' does not exist in the held text. Saravali ch.28 / Jataka Parijata have no locator. also cites 'BPHS ch.29', refuted: no BPHS transit chapter in the held edition (bphs:PG29:C1 is Bhava Padas)",
+  "acharya_question": null
+ }
+]
