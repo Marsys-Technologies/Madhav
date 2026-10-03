@@ -52,6 +52,24 @@ PINNED_FINGERPRINTS = {
     # 11 (SS N-72 S2, N-73; provisional): Carr.D1 gets a detector (revision 2), NA_CAUSES gains Carr.D1/D2/D3:not-the-declared-carriage and
     # :ratified_judgment, and the three not-the-declared-carriage rules are declared (inert until an asset declares a carriage check)
     11: "c066a88e36b61827422796ae98f59a679458bbcb8ba88e2d80d351d582a39940",
+    # 12 (SS N-72 S3, N-73 (1)/(4), N-74 (b); provisional): Vocab.alias rev 2 / Ldgr.source_presence rev 3 (declared forms: an alias class measured against
+    # bg_ontology class planet; a declared source column with its citation_state), NA_CAUSES gains Vocab.alias:no-alias-class and
+    # Ldgr.source_presence:no-classical-claim, and the two declaration-keyed rules are declared (inert until an asset declares); columns_any unchanged
+    12: "35b0e03e412d0d36d8af2840bd3d4d612af2859e56035c90342266c98e33ed3d",
+    # 13 (SS N-72 S1, N-73, N-74; provisional): Null.schema_default / Null.blank_rows rev 2 (an asset that DECLARES `null_convention` gets the declared form:
+    # the Null cap lifts per asset only when schema_default and blank_rows are clean AND the detector verifies the convention; the cap line itself is unchanged);
+    # no N/A rule, NA_CAUSES unchanged, inert until an asset declares one
+    13: "fdee1861e969d88dc1139cbd0ff040d7b217710db3684313e00277c8150a85f1",
+    # 14 (SS N-74 item 5, N-74(a); provisional): Dens.served rev 5 (the scan tells a SELECT of the asset's table from a LABEL: an asset a serving module only
+    # names in a provenance string / prose / type name / import path / label-keyed value / map key is not reached, so it can read the no-served-surface N/A;
+    # every unclassifiable form stays a reach) and R02's decision text is cause-keyed ("an asset no served module selects rows from; being named only as a
+    # provenance label is not a select"; N/A = "not served directly", not "unused"); a service-kind asset named in a service_probe envelope is a REACH, not a label
+    # (bg_ephemeris_engine / bg_panchanga stay NO_DETECTOR); NA_CAUSES unchanged, asset_declarations.json unchanged
+    14: "f4af0c6c1e24fd25e41409f8f33ffeac8333411df2936bc9270d438ca20bc0f2",
+    # 15 (STAMP; provisional): `null_convention.stamp_columns: [{column, why}]`, a declared word for a write-time stamp column: the detector requires a NOT NULL timestamp /
+    # timestamptz with no NULL row and no sentinel timestamp and exempts it from the constant test ONLY (nothing else exempted); Null.schema_default / Null.blank_rows revision 3 (applicability text);
+    # NA_CAUSES / NA_RULE_DECISIONS unchanged, inert until an asset declares one
+    15: "ef64d8b9b8ec924d724a13e249e7e6a5f049beeb2d51932c10fb0be557985345",
 }
 
 

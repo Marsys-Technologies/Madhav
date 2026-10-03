@@ -62,18 +62,25 @@ TEARDOWN (--teardown): ONE transaction, chart/run-scoped, fail-closed —
          AND chart_id = '<pinned>';
        DELETE FROM asset_throughput WHERE asset_id = 'ka_gochara_v4_41_candidate'
          AND chart_id = '<pinned>';
-       DELETE FROM asset_registry   WHERE asset_id = 'ka_gochara_v4_41_candidate';
        -- candidate rows for the PINNED CHART ONLY, generation '4.1' only —
        -- never another chart's '4.1', never 'v1'/'3.0':
        DELETE FROM kala_gochara_windows   WHERE chart_id = '<pinned>' AND generation = '4.1';
        DELETE FROM kala_gochara_contacts  WHERE chart_id = '<pinned>' AND generation = '4.1';
        DELETE FROM kala_gochara_coverage  WHERE chart_id = '<pinned>' AND generation = '4.1';
        DELETE FROM kala_gochara_publication WHERE chart_id = '<pinned>' AND generation = '4.1';
+  3. then, in the SAME transaction, the asset_registry row is LEFT IN PLACE
+     (migration 1243 inserts it permanently — deleting it would fail the
+     orchestrator's writer-gap preflight, runner.py:159–205, on EVERY build
+     run) and RESTORED to its inert state:
+       UPDATE asset_registry SET is_active = false
+         WHERE asset_id = 'ka_gochara_v4_41_candidate';
+     and verified field by field with _validate_registry_row (the row must
+     exist and match EXPECTED_REGISTRY_ROW after teardown).
 
 Usage:
   cd <repo-root>/platform
   python3 scripts/dispatch_a25_v41_candidate_job.py          # stages + prints run_id
-  python3 scripts/dispatch_a25_v41_candidate_job.py --teardown  # refuse-or-delete (above)
+  python3 scripts/dispatch_a25_v41_candidate_job.py --teardown  # refuse-or-teardown (above; keeps the registry row)
   python3 scripts/dispatch_a25_v41_candidate_job.py --help   # this text
 """
 from __future__ import annotations
@@ -181,7 +188,10 @@ def _validate_registry_row(cur) -> None:
 
 
 # A4: candidate-row teardown, chart/run-scoped, ONE transaction, fail-closed.
-# The DELETE list is executed only after every refusal check passes.
+# The DELETE list is executed only after every refusal check passes. The
+# asset_registry row is NOT deleted — migration 1243 inserts it permanently;
+# teardown only restores its inert state (is_active = false) and verifies it
+# with _validate_registry_row in the same transaction.
 TEARDOWN_DELETES = (
     # build bookkeeping for THIS asset on THIS chart staged by THIS dispatch
     """DELETE FROM build_run_assets WHERE run_id IN
@@ -189,7 +199,6 @@ TEARDOWN_DELETES = (
             AND chart_id = %s)""",
     "DELETE FROM build_runs WHERE triggered_by = %s AND chart_id = %s",
     "DELETE FROM asset_throughput WHERE asset_id = %s AND chart_id = %s",
-    "DELETE FROM asset_registry WHERE asset_id = %s",
     # candidate rows for the PINNED CHART ONLY, generation '4.1' only —
     # never another chart's '4.1', never 'v1'/'3.0'
     "DELETE FROM kala_gochara_windows   WHERE chart_id = %s AND generation = '4.1'",
@@ -257,18 +266,27 @@ def teardown() -> None:
                 cur.execute(sql, (TRIGGERED_BY, CHART_ID))
             elif "asset_throughput" in sql:
                 cur.execute(sql, (ASSET_ID, CHART_ID))
-            elif "asset_registry" in sql:
-                cur.execute(sql, (ASSET_ID,))
             else:
                 cur.execute(sql, (CHART_ID,))
+        # The asset_registry row is permanent (migration 1243) and must NOT
+        # be deleted — the orchestrator's writer-gap preflight
+        # (runner.py:159–205, enforce) fails every build run if it is
+        # missing. Restore its inert state and verify the landed row field
+        # by field in the same transaction.
+        cur.execute(
+            "UPDATE asset_registry SET is_active = false WHERE asset_id = %s",
+            (ASSET_ID,),
+        )
+        _validate_registry_row(cur)
         conn.commit()
     except Exception:
         conn.rollback()
         conn.close()
         raise
     conn.close()
-    print(f"[teardown] removed staged run bookkeeping, registry row and ALL "
-          f"'4.1' candidate rows for chart {CHART_ID} in one transaction",
+    print(f"[teardown] removed staged run bookkeeping and ALL '4.1' "
+          f"candidate rows for chart {CHART_ID}; asset_registry row kept and "
+          f"restored to inert (is_active=false) — one transaction",
           file=sys.stderr)
 
 

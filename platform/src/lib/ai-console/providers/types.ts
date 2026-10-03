@@ -12,6 +12,10 @@ export interface DiscoveredModel {
   supportsStructuredOutput: boolean
   contextWindow?: number
   outputLimit?: number
+  // Omitted means the provider did not advertise effort metadata. An explicit
+  // empty list means it advertised no supported levels, so no fallback applies.
+  supportedEfforts?: string[]
+  defaultEffort?: null
 }
 export interface ProbeUsage { inputTokens: number | null; outputTokens: number | null; reasoningTokens?: number }
 export interface RuntimeModelBinding {

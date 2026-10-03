@@ -45,6 +45,13 @@ from pathlib import Path
 import psycopg
 import pytest
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
+from _disposable_db_guard import (  # noqa: E402
+    assert_disposable_connection,
+    validate_disposable_dsn,
+)
+
 # C21 (steward M20261002T080256-690e): the fixture takes its ADMIN DSN from
 # GOCHARA_WP10_ADMIN_DSN (the shared disposable cluster's admin database
 # locally, the CI Postgres service in CI) and creates its OWN uniquely named
@@ -296,9 +303,15 @@ def db():
     the current database only; create the role only if absent; drop only the
     database this fixture itself created). Refuses by construction to run
     against a database it did not create: the name is unique per run, so
-    CREATE DATABASE fails rather than touch anyone else's database."""
+    CREATE DATABASE fails rather than touch anyone else's database.
+    C24: the admin DSN itself passes the ONE shared guard
+    (tests/l3/_disposable_db_guard.py) — every host/hostaddr entry loopback,
+    no multi-host failover, no libpq environment overrides — and the created
+    database's connection proves current_database()/inet_server_addr() before
+    the first DDL."""
     global DSN
     try:
+        validate_disposable_dsn(ADMIN_DSN, None)
         admin = guarded_admin_connect(ADMIN_DSN, autocommit=True, connect_timeout=3)
     except UnsafeAdminDSN:
         raise                    # a hostile admin DSN is a configuration ERROR, never a skip
@@ -315,6 +328,7 @@ def db():
     DSN = psycopg.conninfo.make_conninfo(**parts)
     admin.close()
     conn = psycopg.connect(DSN, autocommit=True)
+    assert_disposable_connection(conn, dbname)
     with conn.cursor() as cur:
         cur.execute(DDL)
         cur.execute(SEED)

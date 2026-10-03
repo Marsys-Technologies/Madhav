@@ -884,7 +884,7 @@ _COUNT_KEYS = {"write_tables", "delete_cascades", "set_null", "set_default", "re
 
 
 def test_json_schema_contract_pins_every_key_set():
-    assert slw.SCHEMA == "suvarna.e5_9.transitive_footprint/2"
+    assert slw.SCHEMA == "suvarna.e5_9.transitive_footprint/3"
     edges = (FIXTURE_2026_09_30 + [E("s.n", "s.a", "SET NULL", ["x"], not_null=["x"]),
                                    E("s.r", "s.a", "RESTRICT", ["x"]),
                                    dict(E("s.d", "s.a", "NO ACTION", ["x"]), deferrable=True),
