@@ -20,7 +20,6 @@ const EXPECTED_TABLES: Record<string, string[]> = {
   ],
   bo_anveshana: ['bodha_anomalies', 'bodha_discoveries'],
   // L5 Mīmāṃsā
-  mi_bhavisya: ['mimamsa_manifestation_sets', 'mimamsa_predictions'],
   mi_pramana: ['mimamsa_reliability', 'mimamsa_calibration'],
   mi_pariksha: ['mimamsa_attribution', 'mimamsa_discoveries', 'mimamsa_qa_eval'],
   mi_darshana: ['mimamsa_insight_embeddings', 'mimamsa_insight_units'],
@@ -70,18 +69,25 @@ describe('EXPLICIT_CLEAR_OPS — multi-table writer completeness', () => {
     expect(ops![0].sql).toMatch(/answered_at IS NULL/)
   })
 
-  it('mi_bhavisya preserves recorded prediction outcomes (JL-020 IRREPLACEABLE)', () => {
-    // R6 fix: `outcome_observed` never existed on the live schema (mimamsa_predictions was
-    // dropped and recreated by migration 347 with a different column set) — this DELETE threw
-    // on every real execution and, sharing a savepoint with the manifestation_sets delete,
-    // silently rolled that back too. The real "recorded outcome" signal on the current schema
-    // is lifecycle_status leaving 'pending'/'due' (mi_abhilekha.py is the sole writer that
-    // transitions a row to 'confirmed'/'denied').
-    const ops = EXPLICIT_CLEAR_OPS['mi_bhavisya'] ?? []
-    const predictionsOp = ops.find(op => /mimamsa_predictions/.test(op.sql))
-    expect(predictionsOp, 'mi_bhavisya must clear mimamsa_predictions').toBeTruthy()
-    expect(predictionsOp!.sql).not.toMatch(/outcome_observed/)
-    expect(predictionsOp!.sql).toMatch(/lifecycle_status IN \('pending', 'due'\)/)
+  it('mi_bhavisya is an explicit null: a clear never deletes predictions or manifestation sets (SS N-104)', () => {
+    expect('mi_bhavisya' in EXPLICIT_CLEAR_OPS).toBe(true)
+    expect(EXPLICIT_CLEAR_OPS['mi_bhavisya']).toBeNull()
+    // Without the explicit null the registry-derived fallback WOULD delete: prove the null is load-bearing.
+    const derived = deriveDeleteSqlFromCountSql(
+      'SELECT count(*) FROM mimamsa_predictions WHERE chart_id = $1',
+    )
+    expect(derived).toMatch(/^DELETE FROM mimamsa_predictions/)
+  })
+
+  it('no explicit clear op anywhere deletes or updates mimamsa_predictions / mimamsa_manifestation_sets', () => {
+    for (const [assetId, ops] of Object.entries(EXPLICIT_CLEAR_OPS)) {
+      for (const op of ops ?? []) {
+        expect(op.sql, `${assetId}: ${op.sql}`).not.toMatch(/mimamsa_(predictions|manifestation_sets)/i)
+        for (const c of op.guard?.cascade ?? []) {
+          expect(c, `${assetId} cascade: ${c}`).not.toMatch(/mimamsa_(predictions|manifestation_sets)/i)
+        }
+      }
+    }
   })
 
   it('ga_structural clears its owned chart_facts categories via the ownership subquery (not a broken JOIN)', () => {

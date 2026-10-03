@@ -14,6 +14,8 @@ files:
   - platform/python-sidecar/pipeline/orchestrator/writers/mi_bhavisya.py
   - platform/python-sidecar/tests/test_mi_bhavisya_append_only.py
   - platform/python-sidecar/tests/test_mi_bhavisya_irreplaceable_outcome_guard.py
+  - platform/src/lib/cockpit/assetClearSpec.ts
+  - platform/src/lib/build/assetInvalidation.ts
   - platform/src/generated/nirmana-writer-digests.json
 changelog:
   - "1.0 (2026-10-03): first version. Writer made append-only; natural key; tests both ways on a fake and a disposable PostgreSQL; mutation proofs; what the asset's count and integrity read after a rebuild."
@@ -94,7 +96,23 @@ What a rebuild used to do: delete every set and re-create one per CURRENT anchor
 
 Not done, on purpose: adding a missing set for an EXISTING prediction. Its `citation_ref` would have to name the current anchor, not the freeze-time one, which is exactly the overwrite this ruling forbids; production has 139/139 and 56/56, so nothing is missing today.
 
-Found, not changed (a second delete path outside the writer): `platform/src/lib/cockpit/assetClearSpec.ts` lists `DELETE FROM mimamsa_manifestation_sets WHERE chart_id = $1` and `DELETE FROM mimamsa_predictions ... lifecycle_status IN ('pending','due')` as the cockpit "clear" for `mi_bhavisya`. That is a web-side action, not this writer, and it carries the same hazard N-104 closes; it needs its own ruling and change.
+Second delete path, changed in this PR: `platform/src/lib/cockpit/assetClearSpec.ts` had `DELETE FROM mimamsa_manifestation_sets WHERE chart_id = $1` and `DELETE FROM mimamsa_predictions ... lifecycle_status IN ('pending','due')` as the cockpit "clear" for `mi_bhavisya` (also used by the correction invalidation, `assetInvalidation.ts`). `EXPLICIT_CLEAR_OPS.mi_bhavisya` is now `null` (skip cleanly: no statement of any kind, under the operator and the strict-correction policies), and `mi_bhavisya` is classified in `CORRECTION_PRESERVATION` (a null that is unclassified throws `CLEAR_SPEC_MISSING` in strict mode). A birth-details correction marks the rows stale (`chartContextStaleness.ts`, migration 1122) instead of deleting them. This is a no-op, not a visible "blocked" message: the execute route has no message channel for a null spec. The null is load-bearing: without it the registry-derived fallback (`count_sql` or `target_table`) would emit a DELETE. After migration 1265 (which, per the 1265 report, makes the old clear spec fail loudly) this removes the failing path. Tests: `assetClearSpec.test.ts` and `assetInvalidation.test.ts` (null; no statement under either policy; no explicit op anywhere mentions the two tables), mutation (restoring the old DELETE fails 5 tests). The file is not in PR #2984's diff.
+
+## 5b. Every DELETE / UPDATE / TRUNCATE on the two tables (git grep, whole repo, 2026-10-03)
+
+Production code (after this PR):
+
+| where | statement | verdict |
+|---|---|---|
+| `python-sidecar/.../writers/mi_abhilekha.py:70` | `UPDATE mimamsa_predictions SET lifecycle_status` (pending to confirmed/denied, `AND lifecycle_status = 'pending'`) | sanctioned outcome write; does not touch `emitted_at` or the claim |
+| `platform/src/lib/retrieval/registry/layers/L5_mimamsa/prediction_lifecycle_sweep.ts:348` | `UPDATE mimamsa_predictions SET lifecycle_status = 'expired'` | status transition on a pending row; not a rewrite of the claim; unguarded by the DB (no UPDATE trigger) |
+| `platform/src/lib/charts/chartContextStaleness.ts:62` | templated `UPDATE ${table} SET chart_context_stale_at ...` over `mimamsa_predictions` (and others) | sanctioned stale marker, only `WHERE chart_context_stale_at IS NULL` |
+| `platform/migrations/brahma_mimamsa_prediction_ledger.sql:159`, `platform/supabase/migrations/0001_brahma_baseline.sql:211`, `_pre_squash_schema_snapshot.psql:195` | `UPDATE public.mimamsa_predictions` inside the legacy `mimamsa_record_outcome` function (columns that no longer exist on the live table) | dead legacy; listed, not changed |
+| `platform/migrations/680_phala_anchor_deterministic_identity.sql:202` | `UPDATE mimamsa_predictions p SET source_pramana_id` | applied once; the event this ruling responds to |
+| `python-sidecar/.../writers/mi_bhavisya.py` | none (was two DELETEs) | this PR |
+| `assetClearSpec.ts` | none (was two DELETEs) | this PR |
+
+Tests only (not production): `safety_predictions_grant_narrowing.db.test.ts` (grant tests; its header comment still names the removed cockpit DELETE as a live caller, and one case asserts amjis_app can run that DELETE shape; a grant fact, left alone), `prediction_lifecycle_sweep.test.ts`, `test_purna_anvesana_service_effect_contracts.py`, `nirmana_l4_anchor_deterministic_identity.test.ts`. Not reachable by grep: the generic `DELETE FROM ${target_table}` fallbacks in `assetInvalidation.ts` and the clear routes, which no longer apply to `mi_bhavisya` because of the explicit null; and any role that holds DELETE on the tables (`data_plane_builder` and `role_orchestrator` do today; the builder-guard trigger only refuses non-pending/due deletes).
 
 ## 6. Verification
 

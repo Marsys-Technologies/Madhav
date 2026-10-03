@@ -45,7 +45,7 @@ function recorder(fail?: RegExp) {
 
 describe('correction preservation boundary', () => {
   it('names exactly the governed skip-clean assets that hold non-regenerable data, with a reason each', () => {
-    expect(Object.keys(CORRECTION_PRESERVATION).sort()).toEqual(['lel_events', 'mi_seva', 'mi_vistara'])
+    expect(Object.keys(CORRECTION_PRESERVATION).sort()).toEqual(['lel_events', 'mi_bhavisya', 'mi_seva', 'mi_vistara'])
     for (const id of Object.keys(CORRECTION_PRESERVATION)) {
       expect(EXPLICIT_CLEAR_OPS[id]).toBeNull()
       expect(CORRECTION_PRESERVATION[id as keyof typeof CORRECTION_PRESERVATION].length).toBeGreaterThan(10)
@@ -65,10 +65,13 @@ describe('correction preservation boundary', () => {
     expect(calls.map((c) => c.sql)).toEqual(['DELETE FROM mimamsa_journal WHERE chart_id = $1 AND answered_at IS NULL'])
   })
 
-  it('confirmed/denied outcomes survive: mi_bhavisya uses its governed scoped operations', async () => {
-    const { db, calls } = recorder()
-    await invalidateAssets({ db, chartId: CHART, assets: [asset('mi_bhavisya', { layer: 'mimamsa' })], policy: 'chart-correction-strict' })
-    expect(calls.map((c) => c.sql)).toEqual((EXPLICIT_CLEAR_OPS.mi_bhavisya ?? []).map((op) => op.sql))
+  it('predictions and manifestation sets survive a correction: mi_bhavisya issues no statement at all (SS N-104)', async () => {
+    for (const policy of ['chart-correction-strict', 'operator-best-effort'] as const) {
+      const { db, calls } = recorder()
+      const result = await invalidateAssets({ db, chartId: CHART, assets: [asset('mi_bhavisya', { layer: 'mimamsa' })], policy })
+      expect(calls, policy).toEqual([])
+      expect(result.clearedAssetIds, policy).toEqual([])
+    }
   })
 
   it('service-only writers with no chart rows require no destructive clear', async () => {

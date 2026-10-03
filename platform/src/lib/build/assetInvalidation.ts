@@ -21,7 +21,8 @@ import type { ClearPolicy, Queryable, RegistryEntryWithScope } from '@/lib/build
  * Preservation boundary for a correction: data that no build regenerates is
  * never erased — the governed skip-clean assets listed below, and any per-chart
  * asset with no writer. Answered journal rows and confirmed/denied outcomes
- * survive through the governed scoped operations for mi_abhilekha/mi_bhavisya.
+ * survive through the governed scoped operation for mi_abhilekha; mi_bhavisya's predictions and
+ * manifestation sets are append-only history and are never deleted (SS N-104).
  * Ownership, grants and consent live outside the asset registry and are never
  * touched here.
  */
@@ -30,6 +31,7 @@ export const CORRECTION_PRESERVATION = {
   lel_events: 'user-authored life events and chart-state index',
   mi_seva: 'user preferences are not chart-derived output',
   mi_vistara: 'global append-only export log',
+  mi_bhavisya: 'frozen predictions and their manifestation sets are append-only calibration history (SS N-104)',
 } as const
 
 export const CORRECTION_NOTHING_TO_CLEAR = {
