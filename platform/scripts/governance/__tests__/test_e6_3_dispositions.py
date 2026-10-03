@@ -16,7 +16,7 @@ import pytest
 sys.path.insert(0, os.path.dirname(__file__))
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 import asset_dispositions as ad  # noqa: E402
-from _e6_3_fixtures import DISP, REPO, World, chained, disp, load_tracker, mini_patch, sha  # noqa: E402
+from _e6_3_fixtures import DISP, REPO, World, chained, disp, git, load_tracker, mini_patch, sha  # noqa: E402
 
 T = load_tracker()
 EV = "briefs/B.md#s1"
@@ -358,14 +358,15 @@ def test_a_missing_base_copy_means_every_row_is_new_and_its_evidence_is_checked(
     p = new_ledger(tmp_path, w)
     app(p, w, "ga_alpha")
     put(p, lines(p)[:1] + [json.dumps(json.loads(lines(p)[1]) | dict(evidence="briefs/gone.md"))])
-    out = check(p, w, base="HEAD")       # the fixture's HEAD holds a different ledger at the canonical path: a prefix problem too
+    out = check(p, w, base="HEAD", rel_path=DISP)       # the fixture's HEAD holds a different ledger at the canonical path
     assert has(out, "history rewritten") or has(out, "does not exist")
     assert has(check(p, w, base="HEAD", rel_path="00_ARCHITECTURE/control/not_committed.jsonl"), "does not exist")
 
 
 def test_an_unresolvable_base_ref_is_a_problem(w, tmp_path):
     p = new_ledger(tmp_path, w)
-    assert has(check(p, w, base="refs/heads/nope"), "base 'refs/heads/nope'")
+    out = check(p, w, base="refs/heads/nope", rel_path=DISP)
+    assert has(out, "base 'refs/heads/nope'") and not has(out, "NOT CHECKED: the path")
 
 
 # ═══════════════ append helper ═══════════════
@@ -408,7 +409,7 @@ def test_append_refuses_a_duplicate_and_a_silent_end_of_a_terminal_disposition(w
     before = p.read_bytes()
     with pytest.raises(ad.DispositionError, match="duplicate"):
         app(p, w, "ka_gamma", "retire", reason="gone")
-    with pytest.raises(ad.DispositionError, match="terminal retire"):
+    with pytest.raises(ad.DispositionError, match="ends ka_gamma's terminal retire"):
         app(p, w, "ka_gamma", "keep", decision_id=None)
     assert p.read_bytes() == before
     app(p, w, "ka_gamma", "keep", decision_id="N-99")
@@ -559,3 +560,315 @@ def test_cli_check_against_git_base_of_the_canonical_path(w, tmp_path, capsys):
     assert cli(w, "--check", str(f), "--no-base") == 0
     assert cli(w, "--check", str(f), "--base", "HEAD") == 1
     assert "history rewritten" in capsys.readouterr().out
+
+
+# ═══════════════ review fixes (F1-F8 and the surviving mutants) ═══════════════
+
+def cli_out(w, capsys, *args):
+    capsys.readouterr()
+    code = cli(w, *args)
+    o = capsys.readouterr()
+    return code, o.out + o.err
+
+
+# ---- F1: the terminal-revert rule tests whether the NEW row is itself terminal ----
+
+@pytest.mark.parametrize("kind", ["retire", "consolidate"])
+@pytest.mark.parametrize("over,needle", [
+    (dict(decision_id=None), "would silently drop"),
+    (dict(reason=""), "visible reason"),
+    (dict(reason="​", decision_id="N-99"), "visible reason"),
+    (dict(reason=None, decision_id="N-99"), "visible reason"),
+    (dict(reason="...", decision_id="N-99"), "visible reason"),
+])
+def test_f1_a_terminal_kind_row_that_is_not_itself_terminal_is_refused_after_a_terminal_one(w, kind, over, needle):
+    rows = [row("ka_gamma", kind, reason="gone"), row("ka_gamma", kind, **{"reason": "still gone", **over})]
+    assert has(probs(w, rows), needle)
+
+
+def test_f1_the_bypass_rows_really_do_drop_the_asset_in_the_reader_and_the_validator_refuses_them(w):
+    good = [row("ka_gamma", "retire", reason="gone")]
+    bypass = good + [row("ka_gamma", "retire", reason="still gone", decision_id=None)]
+    w.raw[DISP] = chained(good)
+    w.commit("g")
+    assert "ka_gamma" in T.elevated_assets(w.last, str(w.repo))
+    w.raw[DISP] = chained(bypass)
+    w.commit("b")
+    assert "ka_gamma" not in T.elevated_assets(w.last, str(w.repo))
+    assert probs(w, bypass)
+
+
+def test_f1_a_change_of_terminal_kind_needs_a_new_decision_and_says_so(w):
+    out = probs(w, [row("ka_gamma", "retire", reason="gone"), row("ka_gamma", "consolidate", reason="folded")])
+    assert has(out, "changes ka_gamma's terminal kind retire -> consolidate") and not has(out, "ends ka_gamma's terminal")
+    assert probs(w, [row("ka_gamma", "retire", reason="gone"), row("ka_gamma", "consolidate", reason="folded", decision_id="N-99")]) == []
+
+
+def test_f1_ending_a_terminal_disposition_by_a_new_decision_and_restating_it_stay_legitimate(w):
+    assert probs(w, [row("ka_gamma", "retire", reason="gone"), row("ka_gamma", "keep", decision_id="N-99")]) == []
+    assert probs(w, [row("ka_gamma", "retire", reason="gone"), row("ka_gamma", "retire", reason="gone, in other words")]) == []
+    assert has(probs(w, [row("ka_gamma", "retire", reason="gone"), row("ka_gamma", "keep")]), "ends ka_gamma's terminal retire")
+
+
+# ---- F7: a terminal row needs a visible reason, in the file and at append ----
+
+@pytest.mark.parametrize("kind", ["retire", "consolidate"])
+@pytest.mark.parametrize("reason", [None, "", "   ", "​", "ㅤ", "...", "⠀"])
+def test_f7_a_terminal_kind_row_without_a_visible_reason_is_refused_by_the_validator_and_by_append(w, tmp_path, kind, reason):
+    assert has(probs(w, [row("ka_gamma", kind, reason=reason)]), "needs a visible reason")
+    assert has(probs(w, [row("ka_gamma", kind, reason=reason, decision_id=None)]), "needs a visible reason")
+    p = new_ledger(tmp_path, w)
+    before = p.read_bytes()
+    with pytest.raises(ad.DispositionError, match="visible reason"):
+        app(p, w, "ka_gamma", kind, reason=reason)
+    assert p.read_bytes() == before
+
+
+# ---- F4: malformed field types are problems, never a traceback ----
+
+@pytest.mark.parametrize("over", [dict(disposition=["keep"]), dict(disposition={"a": 1}), dict(decision_id=["N-1"]),
+                                  dict(reason=["x"]), dict(additions=[["x"]]), dict(additions="D-X"), dict(asset=["ga_alpha"]),
+                                  dict(evidence={"p": 1}), dict(decided_on=["2026-01-01T00:00:00+00:00"])])
+def test_f4_a_malformed_field_type_is_reported_as_a_problem_in_any_position(w, over):
+    assert probs(w, [{**row("ga_alpha"), **over}])
+    assert probs(w, [row("ga_alpha", disposition="retire", reason="gone"), {**row("ga_alpha"), **over}])
+
+
+def test_f4_the_cli_reports_an_unhashable_disposition_as_a_problem_with_exit_1_and_no_traceback(w, tmp_path, capsys):
+    p = tmp_path / "bad.jsonl"
+    p.write_text(chained([row("ga_alpha", disposition=["keep"])]), encoding="utf-8")
+    code, out = cli_out(w, capsys, "--check", str(p))
+    assert code == 1 and "PROBLEM:" in out and "Traceback" not in out
+
+
+# ---- F5: evidence files are regular, tracked or staged ----
+
+def test_f5_an_evidence_symlink_is_refused(w):
+    (w.repo / "briefs/link.md").symlink_to("/etc/hosts")
+    git(w.repo, "add", "-A")
+    assert has(probs(w, [row("ga_alpha", evidence="briefs/link.md")], new_from_seq=1), "symlink")
+
+
+def test_f5_a_file_reached_through_a_symlinked_directory_is_refused(w, tmp_path):
+    out_dir = tmp_path / "elsewhere"
+    out_dir.mkdir()
+    (out_dir / "b.md").write_text("x", encoding="utf-8")
+    (w.repo / "linkdir").symlink_to(out_dir)
+    git(w.repo, "add", "-A")
+    assert has(probs(w, [row("ga_alpha", evidence="linkdir/b.md")], new_from_seq=1), "symlink")
+
+
+def test_f5_an_untracked_evidence_file_is_refused_until_it_is_staged(w):
+    (w.repo / "briefs/new.md").write_text("x", encoding="utf-8")
+    r = [row("ga_alpha", evidence="briefs/new.md#a")]
+    assert has(probs(w, r, new_from_seq=1), "neither tracked nor staged")
+    git(w.repo, "add", "briefs/new.md")
+    assert probs(w, r, new_from_seq=1) == []
+
+
+def test_f5_a_directory_is_not_evidence(w):
+    assert has(probs(w, [row("ga_alpha", evidence="briefs")], new_from_seq=1), "not a regular file")
+
+
+def test_f5_append_applies_the_same_evidence_rules(w, tmp_path):
+    p = new_ledger(tmp_path, w)
+    (w.repo / "briefs/u.md").write_text("x", encoding="utf-8")
+    with pytest.raises(ad.DispositionError, match="neither tracked nor staged"):
+        app(p, w, evidence="briefs/u.md")
+    git(w.repo, "add", "briefs/u.md")
+    assert app(p, w, evidence="briefs/u.md")["evidence"] == "briefs/u.md"
+
+
+# ---- F6: rows are written ASCII-only; a raw separator in a file is refused ----
+
+def test_f6_append_escapes_non_ascii_so_no_line_separator_reaches_the_file(w, tmp_path):
+    p = new_ledger(tmp_path, w)
+    r = app(p, w, reason="a b\u0085c é ㅤx")
+    raw = p.read_bytes()
+    assert raw.isascii()
+    txt = raw.decode("ascii")
+    assert len(txt.splitlines()) == len(txt.split("\n")) - 1 == 2
+    assert json.loads(txt.splitlines()[1])["reason"] == r["reason"] == "a b\u0085c é ㅤx"
+    assert check(p, w) == []
+
+
+@pytest.mark.parametrize("ch", [" ", " ", "\u0085"])
+def test_f6_mutation_a_raw_line_separator_inside_a_row_is_refused(w, ch):
+    text = chained([row("ga_alpha", reason=f"a{ch}b")])
+    assert ch in text
+    assert has(ad.validate(text, repo=w.repo, ref=w.last, reader=T), "raw line-separator")
+
+
+# ---- F2: the git rule reports its real status and never skips silently ----
+
+def test_f2_the_ok_line_prints_the_real_status_of_the_base_check(w, tmp_path, capsys):
+    p = new_ledger(tmp_path, w)
+    app(p, w)
+    f = committed(w, p.read_text(encoding="utf-8"))
+    code, out = cli_out(w, capsys, "--check", str(f), "--base", "HEAD")
+    assert code == 0 and f"prefix rule checked against {w.last[:12]}" in out
+    code, out = cli_out(w, capsys, "--check", str(f), "--no-base")
+    assert code == 0 and "git rule: not requested" in out
+
+
+def test_f2_a_base_where_the_ledger_does_not_exist_is_reported_as_not_applicable(w, tmp_path, capsys):
+    w.raw[DISP] = None
+    w.commit("no ledger")
+    p = new_ledger(tmp_path, w)
+    (w.repo / DISP).write_bytes(p.read_bytes())
+    code, out = cli_out(w, capsys, "--check", str(w.repo / DISP), "--base", "HEAD")
+    assert code == 0 and "no ledger at base" in out and "prefix rule not applicable" in out
+
+
+def test_f2_a_symlinked_canonical_ledger_pointing_outside_the_repo_is_refused(w, tmp_path, capsys):
+    p = new_ledger(tmp_path, w)
+    app(p, w)
+    f = committed(w, p.read_text(encoding="utf-8"))
+    outside = tmp_path / "outside.jsonl"
+    outside.write_text(chained([row("ga_alpha", reason="a different history")]), encoding="utf-8")
+    f.unlink()
+    f.symlink_to(outside)
+    assert has(ad.validate(f, repo=w.repo, ref=w.last, base="HEAD", reader=T), "symlink")
+    code, out = cli_out(w, capsys, "--check", "--base", "HEAD")
+    assert code == 1 and "symlink" in out
+    with pytest.raises(ad.DispositionError, match="symlink"):
+        ad.append(f, dict(asset="bg_beta", disposition="keep", evidence=EV), repo=w.repo, ref=w.last, base="HEAD", reader=T)
+
+
+def test_f2_a_ledger_path_outside_the_toplevel_is_NOT_CHECKED_and_non_zero_when_a_base_is_passed(w, tmp_path, capsys):
+    p = new_ledger(tmp_path, w)
+    code, out = cli_out(w, capsys, "--check", str(p), "--base", "HEAD")
+    assert code == 1 and "NOT CHECKED" in out and "outside the repository toplevel" in out
+    code, out = cli_out(w, capsys, "--check", str(p))              # no explicit base, not the canonical path: reported, exit 0
+    assert code == 0 and "NOT CHECKED" in out
+
+
+def test_f2_a_non_canonical_in_repo_copy_is_NOT_CHECKED(w, tmp_path, capsys):
+    p = new_ledger(tmp_path, w)
+    (w.repo / "copy.jsonl").write_bytes(p.read_bytes())
+    code, out = cli_out(w, capsys, "--check", str(w.repo / "copy.jsonl"), "--base", "HEAD")
+    assert code == 1 and "NOT CHECKED" in out and "not the canonical ledger path" in out
+    assert ad.validate(w.repo / "copy.jsonl", repo=w.repo, ref=w.last, base="HEAD", require_base=False, reader=T) == []
+
+
+def test_f2_the_canonical_ledger_behind_a_symlinked_directory_is_NOT_CHECKED_even_without_an_explicit_base(w, tmp_path, capsys):
+    p = new_ledger(tmp_path, w)
+    app(p, w)
+    committed(w, p.read_text(encoding="utf-8"))
+    moved = tmp_path / "control_moved"
+    (w.repo / "00_ARCHITECTURE/control").rename(moved)
+    (w.repo / "00_ARCHITECTURE/control").symlink_to(moved)
+    code, out = cli_out(w, capsys, "--check")
+    assert code == 1 and "NOT CHECKED" in out
+
+
+def test_f2_an_append_with_a_base_that_cannot_be_applied_is_refused_and_writes_nothing(w, tmp_path, capsys):
+    p = new_ledger(tmp_path, w)
+    before = p.read_bytes()
+    code, out = cli_out(w, capsys, "--append", "--asset", "ga_alpha", "--disposition", "keep", "--evidence", EV, str(p), "--base", "HEAD")
+    assert code == 1 and "NOT CHECKED" in out and p.read_bytes() == before
+
+
+# ---- F3: the CLI default base is meaningful; the reader override hook is test-only ----
+
+def test_f3_the_default_base_is_the_merge_base_with_origin_main_and_catches_a_rewrite_that_head_hides(w, tmp_path, capsys):
+    p = new_ledger(tmp_path, w)
+    app(p, w)
+    f = committed(w, p.read_text(encoding="utf-8"))
+    git(w.repo, "update-ref", "refs/remotes/origin/main", w.last)
+    f.write_text(chained([row("ga_alpha", reason="a different history")]), encoding="utf-8")
+    git(w.repo, "add", "-A")
+    git(w.repo, "commit", "-q", "-m", "rewrite")
+    base, note = ad.default_base(T, str(w.repo))
+    assert base == w.last and "merge-base" in note
+    code, out = cli_out(w, capsys, "--check")
+    assert code == 1 and "history rewritten" in out
+    code, out = cli_out(w, capsys, "--check", "--base", "HEAD")        # HEAD already holds the rewrite: vacuous
+    assert code == 0
+
+
+def test_f3_without_origin_main_the_default_falls_back_to_head_and_says_it_is_vacuous(w, tmp_path, capsys):
+    base, note = ad.default_base(T, str(w.repo))
+    assert base == "HEAD" and "VACUOUS" in note
+    p = new_ledger(tmp_path, w)
+    app(p, w)
+    f = committed(w, p.read_text(encoding="utf-8"))
+    code, out = cli_out(w, capsys, "--check", str(f))
+    assert code == 0 and "VACUOUS" in out
+
+
+def test_f3_the_tracker_override_env_is_ignored_outside_pytest(monkeypatch, tmp_path):
+    monkeypatch.setattr(ad, "_READER", None)
+    monkeypatch.setenv("E6_3_TRACKER_UNDER_TEST", str(tmp_path / "evil_tracker.py"))
+    monkeypatch.delenv("PYTEST_CURRENT_TEST", raising=False)
+    R = ad.load_reader()
+    assert os.path.samefile(R.__file__, ad.READER_PATH)
+    monkeypatch.setattr(ad, "_READER", None)
+    monkeypatch.setenv("PYTEST_CURRENT_TEST", "x")
+    with pytest.raises(FileNotFoundError):             # under pytest the hook is honoured
+        ad.load_reader()
+
+
+# ---- F8: the documented torn-tail recovery works ----
+
+def test_f8_a_torn_tail_is_reported_and_the_documented_truncation_recovers_it(w, tmp_path):
+    p = new_ledger(tmp_path, w)
+    app(p, w, "ga_alpha")
+    good = p.read_bytes()
+    p.write_bytes(good + b'{"asset": "bg_beta", "disposi')
+    assert check(p, w)
+    b = p.read_bytes()
+    p.write_bytes(b[:b.rfind(b"\n") + 1])             # the recipe in the module docstring
+    assert p.read_bytes() == good and check(p, w) == []
+    app(p, w, "bg_beta")
+    assert check(p, w) == []
+
+
+def test_f8_the_readme_and_the_docstring_carry_the_documented_caveats():
+    readme = open(os.path.join(os.path.dirname(os.path.dirname(__file__)), "README.md"), encoding="utf-8").read()
+    for needle in ("committed snapshot", "torn", "NOT CHECKED", "no CI caller"):
+        assert needle in readme, needle
+    assert "COMMITTED SNAPSHOT" in ad.__doc__ and "TORN TAIL" in ad.__doc__
+
+
+# ---- surviving mutants ----
+
+def test_m08_a_write_that_does_not_read_back_is_truncated_and_raises(w, tmp_path, monkeypatch):
+    p = new_ledger(tmp_path, w)
+    app(p, w, "ga_alpha")
+    before = p.read_bytes()
+    real, calls = ad._read_fd, []
+
+    def lying(fd):
+        calls.append(1)
+        data = real(fd)
+        return data if len(calls) == 1 else data[:-3] + b"xyz"      # the readback after the write disagrees
+    monkeypatch.setattr(ad, "_read_fd", lying)
+    with pytest.raises(OSError, match="read back"):
+        app(p, w, "bg_beta")
+    assert p.read_bytes() == before
+
+
+@pytest.mark.parametrize("hdr", [{"asset": "_schema"}, {"asset": "_schema", "_doc": ""}, {"asset": "_schema", "_doc": "  "},
+                                 {"asset": "_schema", "_doc": 5}])
+def test_m10_a_header_without_a_non_blank_doc_is_refused(w, hdr):
+    line = json.dumps(hdr)
+    assert has(ad.validate(line + "\n", repo=w.repo, ref=w.last, reader=T), "non-blank `_doc`")
+
+
+def test_m18_the_duplicate_signature_ignores_the_order_of_additions(w):
+    out = probs(w, [row("bg_beta", additions=["D-TIME", "D-GROUNDING"]), row("bg_beta", additions=["D-GROUNDING", "D-TIME"])])
+    assert has(out, "duplicate of line 2")
+    assert not has(probs(w, [row("bg_beta", additions=["D-TIME"]), row("bg_beta", additions=["D-GROUNDING"])]), "duplicate")
+
+
+def test_m12_the_prefix_rule_accepts_a_base_without_a_trailing_newline_only_when_the_next_byte_is_one(w):
+    base = chained([row("ga_alpha")]).rstrip("\n").encode()
+    w.raw[DISP] = base
+    w.commit("no trailing newline")
+    f = w.repo / DISP
+    nxt = json.dumps(dict(row("bg_beta"), seq=2, prev_sha256=sha(base.split(b"\n")[-1])))
+    f.write_bytes(base + b"\n" + nxt.encode() + b"\n")
+    assert not has(check(f, w, base="HEAD"), "history rewritten")
+    f.write_bytes(base + b"X" + nxt.encode() + b"\n")
+    assert has(check(f, w, base="HEAD"), "history rewritten")

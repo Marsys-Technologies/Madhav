@@ -25,6 +25,12 @@ accepting PR (J1) appends the row that carries the decision id. A retire or cons
 id AND a reason. The LATEST row per asset governs; `additions` are the union over all of an asset's rows. A row that
 ends a terminal disposition must cite a different decision id, and an exact repeat of the latest row is refused.
 Run `--check --base origin/main` before pushing: it also proves you only appended to what main already has.
+With no `--base`, `--check` compares against the merge-base with origin/main when that ref exists; otherwise it falls
+back to HEAD and SAYS the prefix check is vacuous (HEAD already holds what you committed). The OK line prints the real
+status of the git rule: "prefix rule checked against <sha>", "no ledger at base: prefix rule not applicable" or
+"NOT CHECKED: <why>" (a path outside the repo toplevel, not the canonical ledger path, ...). NOT CHECKED exits 1 when
+you passed --base yourself or are checking the canonical path. There is no CI caller yet (the workflow files are shared
+and not touched here): wire `--check --base origin/main` into a lane's CI when one is added.
 
 THE FILE. Line 1 is the header {"asset": "_schema", "_doc": ...}; then one JSON object per line with `seq` 1..N and
 `prev_sha256` (sha256 of the previous line's bytes, newline excluded; the header line's for seq 1), plus asset,
@@ -37,10 +43,17 @@ membership, vocabulary, decision-id and decided_on shape, additions. This module
 no-op duplicate rows, no silent end of a terminal disposition, and (with --base, default HEAD) the git append-only
 rule: the committed bytes must be an exact byte-prefix of the file. The registry snapshot is read OFFLINE from the
 committed seed (and LEVEL_MAP.json when present) and asset_census.py at --ref (default HEAD) through the reader's own
-loaders; if it cannot be read the validator fails closed and says so.
+loaders; if it cannot be read the validator fails closed and says so. --ref is a COMMITTED SNAPSHOT: an asset removed
+from the registry at HEAD but present at an older --ref passes here while the reader at HEAD rejects it, so keep --ref at
+the commit the reader will be run against.
+
+TORN TAIL. A process killed mid-append (SIGKILL, power loss) can leave a partial last line; --check then reports it as
+not strict JSON. Remove ONLY that partial line, never a complete one: truncate the file back to its last newline, e.g.
+python3 -c "p='<path>'; b=open(p,'rb').read(); open(p,'wb').write(b[:b.rfind(b'\\n')+1])", then run --check and re-run
+your --append.
 
 CLI (exit 0 ok, 1 problems found or an append refused, 2 usage / I/O error):
-    asset_dispositions.py --check [path] [--repo R] [--ref HEAD] [--base HEAD | --no-base]
+    asset_dispositions.py --check [path] [--repo R] [--ref HEAD] [--base REF | --no-base]
     asset_dispositions.py --append --asset A --disposition D --evidence P [...] [path]
     asset_dispositions.py --init [path]       (create the header-only file; refuses to overwrite)
     asset_dispositions.py --schema
@@ -81,10 +94,12 @@ class DispositionError(ValueError):
 
 def load_reader():
     """The reader module (asset_elevation_tracker.py), loaded by path once. `E6_3_TRACKER_UNDER_TEST` overrides the path
-    (the same hook the E6.3 test fixtures honour). The reader never imports this module, so there is no cycle."""
+    (the same hook the E6.3 test fixtures honour), honoured ONLY under pytest (PYTEST_CURRENT_TEST set); a production
+    run ignores it, so the validator can never be pointed at a different reader. The reader never imports this module."""
     global _READER
     if _READER is None:
-        path = Path(os.environ.get("E6_3_TRACKER_UNDER_TEST") or READER_PATH)
+        override = os.environ.get("E6_3_TRACKER_UNDER_TEST") if os.environ.get("PYTEST_CURRENT_TEST") else None
+        path = Path(override or READER_PATH)
         name = "asset_elevation_tracker_for_dispositions"
         spec = importlib.util.spec_from_file_location(name, path)
         mod = importlib.util.module_from_spec(spec)
@@ -132,7 +147,7 @@ def header_line(reader=None) -> str:
         "platform/scripts/governance/asset_dispositions.py (--append) in a strategist-approved PR; never edited, deleted "
         "or reordered. Validate with: python3 platform/scripts/governance/asset_dispositions.py --check --base origin/main."
     )
-    return json.dumps({"asset": "_schema", "_doc": doc}, ensure_ascii=False, allow_nan=False)
+    return json.dumps({"asset": "_schema", "_doc": doc}, ensure_ascii=True, allow_nan=False)
 
 
 # ---- reading --------------------------------------------------------------------------------------------------
@@ -155,6 +170,30 @@ def _toplevel(T, repo):
         return str(repo)
 
 
+def _locate(path, T, repo):
+    """(path relative to the repo toplevel or None, why the git base check cannot apply or None). The directory is
+    resolved (so a symlinked directory that leaves the repo is seen); the file itself is judged separately (a symlink)."""
+    root = os.path.realpath(_toplevel(T, repo))
+    absp = os.path.abspath(str(path))
+    rel = os.path.relpath(os.path.join(os.path.realpath(os.path.dirname(absp)), os.path.basename(absp)), root)
+    if rel == ".." or rel.startswith(".." + os.sep):
+        return None, "the path resolves outside the repository toplevel"
+    if rel != T.E63_DISPOSITIONS_PATH:
+        return rel, f"{rel} is not the canonical ledger path {T.E63_DISPOSITIONS_PATH}"
+    return rel, None
+
+
+def default_base(T, repo):
+    """(ref, note): the merge-base of HEAD with origin/main when that ref exists, else HEAD with an explicit vacuous note."""
+    try:
+        sha = T._e63_git(repo, ["merge-base", "HEAD", "origin/main"], "merge-base").decode("ascii", "replace").strip()
+        if sha:
+            return sha, f"merge-base of HEAD and origin/main ({sha[:12]})"
+    except T.ElevatedInputError:
+        pass
+    return "HEAD", "HEAD: no origin/main here, so the prefix check is VACUOUS for committed content (pass --base <ref>)"
+
+
 def _record_count(data: bytes) -> int:
     return max(0, sum(1 for ln in data.split(b"\n") if ln.strip()) - 1)
 
@@ -167,6 +206,11 @@ def _first_diff_line(a: bytes, b: bytes) -> int:
     return min(len(la), len(lb))
 
 
+def _in(v, vocab):
+    """Membership that never raises on an unhashable value (a list/dict `disposition`)."""
+    return isinstance(v, str) and v in vocab
+
+
 def _evidence_problem(ev, T):
     if not isinstance(ev, str) or not ev.strip():
         return "evidence is required: a repo-relative path[#anchor] of the brief that grounds this row"
@@ -175,53 +219,94 @@ def _evidence_problem(ev, T):
     return None
 
 
+def _evidence_file_problem(T, root, ev):
+    """For a NEW row: the evidence file must exist as a regular file reached through no symlink, and be tracked or staged."""
+    rel = ev.split("#", 1)[0]
+    real_root = os.path.realpath(root)
+    target = os.path.join(real_root, rel)
+    if not os.path.lexists(target):
+        return f"evidence file {rel!r} does not exist in the working tree"
+    if os.path.realpath(target) != target or os.path.islink(target):
+        return f"evidence file {rel!r} is, or is reached through, a symlink"
+    if not os.path.isfile(target):
+        return f"evidence {rel!r} is not a regular file"
+    try:
+        listed = T._e63_git(real_root, ["--literal-pathspecs", "ls-files", "--", rel], "ls-files")
+    except T.ElevatedInputError as e:
+        return f"evidence file {rel!r}: cannot ask git whether it is tracked ({e.message})"
+    if not listed.strip():
+        return f"evidence file {rel!r} is neither tracked nor staged in git (git add it with the row)"
+    return None
+
+
 def _sig(r):
+    adds = r.get("additions")
     return json.dumps([r.get("disposition"), r.get("reason"), r.get("decision_id"),
-                       sorted(r["additions"]) if isinstance(r.get("additions"), list) and
-                       all(isinstance(x, str) for x in r["additions"]) else r.get("additions"), r.get("evidence")],
-                      sort_keys=True, default=str)
+                       sorted(adds) if isinstance(adds, list) and all(isinstance(x, str) for x in adds) else adds,
+                       r.get("evidence")], sort_keys=True, default=str)
+
+
+def _visible(T, reason):
+    return bool(T._e63_visible_reason(reason)) if isinstance(reason, str) else False
+
+
+def _is_terminal(T, r):
+    """The reader's definition of a TERMINAL row: retire/consolidate with a decision id AND a visible reason."""
+    return _in(r.get("disposition"), T.E63_TERMINAL_DISPOSITIONS) and r.get("decision_id") is not None and _visible(T, r.get("reason"))
 
 
 # ---- validation -----------------------------------------------------------------------------------------------
-def validate(source, *, repo=None, ref="HEAD", base=None, rel_path=None, new_from_seq=None, reader=None) -> list:
-    """The problems found in a disposition ledger, [] when it is valid. `source`: a path, bytes, text or a list of lines.
-
-    repo/ref: the git repository and ref whose committed registry snapshot (seed, LEVEL_MAP.json, asset_census.py) the
-    reader's loaders read OFFLINE. base: a git ref whose committed copy of the ledger (at `rel_path`, default the
-    canonical path) must be an exact byte-prefix of `source` (append-only against git); None skips that rule.
-    new_from_seq: rows with record number >= this must name an evidence file that exists in the working tree (default:
-    the rows beyond the base copy; none when there is no base)."""
+def _validate(source, *, repo=None, ref="HEAD", base=None, rel_path=None, new_from_seq=None, require_base=True, reader=None):
+    """-> (problems, base_status). base_status is the REAL state of the git rule: "not requested", "prefix rule checked
+    against <sha>", "no ledger at base <sha>: prefix rule not applicable" or "NOT CHECKED: <why>"."""
     T = reader or load_reader()
     repo = str(repo or REPO)
     data, _path = _read_source(source)
-    rel = rel_path or T.E63_DISPOSITIONS_PATH
     problems = []
+    base_status, unchecked, already_reported = "not requested", None, False
 
-    # (a) git append-only: the committed bytes are a prefix of the file
+    # (a) the ledger must be a regular file (a symlink could be rewritten behind git's back)
+    if _path is not None and os.path.islink(_path):
+        problems.append(f"{_path} is a symlink: the ledger must be a regular file inside the repository")
+
+    # (b) git append-only: the committed bytes are a prefix of the file
     if base is not None:
-        try:
-            bsha = T._e63_resolve_ref(base, repo)
-            bdata = T._e63_show(repo, bsha, rel) if T._e63_exists(repo, bsha, rel) else None
-        except T.ElevatedInputError as e:
-            problems.append(f"base {base!r}: {e.message}")
-            bdata = None
-        if bdata is not None:
-            ok = data.startswith(bdata) and (len(data) == len(bdata) or bdata.endswith(b"\n") or data[len(bdata):][:1] == b"\n")
-            if not ok:
-                problems.append(f"history rewritten: {rel} at {base} is not a byte-prefix of this file (first differing "
-                                f"line {_first_diff_line(bdata, data)}); the ledger is append-only")
-            if new_from_seq is None:
-                new_from_seq = _record_count(bdata) + 1
-        elif new_from_seq is None:
-            new_from_seq = 1
+        if rel_path is not None or _path is None:
+            rel = rel_path or T.E63_DISPOSITIONS_PATH
+        else:
+            rel, unchecked = _locate(_path, T, repo)
+        if unchecked is None:
+            try:
+                bsha = T._e63_resolve_ref(base, repo)
+                bdata = T._e63_show(repo, bsha, rel) if T._e63_exists(repo, bsha, rel) else None
+            except T.ElevatedInputError as e:
+                problems.append(f"base {base!r}: {e.message}")
+                unchecked, already_reported, bdata = f"base {base!r} cannot be read", True, None
+            else:
+                if bdata is None:
+                    base_status = f"no ledger at base {bsha[:12]}: prefix rule not applicable"
+                    if new_from_seq is None:
+                        new_from_seq = 1
+                else:
+                    base_status = f"prefix rule checked against {bsha[:12]}"
+                    ok = data.startswith(bdata) and (len(data) == len(bdata) or bdata.endswith(b"\n") or data[len(bdata):][:1] == b"\n")
+                    if not ok:
+                        problems.append(f"history rewritten: {rel} at {base} is not a byte-prefix of this file (first differing "
+                                        f"line {_first_diff_line(bdata, data)}); the ledger is append-only")
+                    if new_from_seq is None:
+                        new_from_seq = _record_count(bdata) + 1
+        if unchecked is not None:
+            base_status = f"NOT CHECKED: {unchecked}"
+            if require_base and not already_reported:
+                problems.append(f"base {base!r}: NOT CHECKED: {unchecked}")
 
-    # (b) parse (the reader's strict loader; a torn or non-object line stops everything)
+    # (c) parse (the reader's strict loader; a torn or non-object line stops everything)
     try:
         rows = T._e63_lines(data, T.E63_DISPOSITIONS_PATH)
     except T.ElevatedInputError as e:
-        return problems + [f"reader: {e.message}"]
+        return problems + [f"reader: {e.message}"], base_status
 
-    # (c) this module's own rules
+    # (d) this module's own rules
     hdr = rows[0][2]
     extra = sorted(set(hdr) - HEADER_KEYS)
     if extra:
@@ -229,37 +314,51 @@ def validate(source, *, repo=None, ref="HEAD", base=None, rel_path=None, new_fro
     if not T._e63_nonblank(hdr.get("_doc")):
         problems.append(f"line {rows[0][0]}: the header needs a non-blank `_doc`")
     root = _toplevel(T, repo)
+    for n, raw, _r in rows:
+        if len(raw.decode("utf-8").splitlines()) != 1:
+            problems.append(f"line {n}: contains a raw line-separator character (U+2028, U+0085, ...) that splits it for "
+                            "line-oriented readers; rows are written with escaped non-ASCII")
     latest, seen_chain = {}, set()
     prev, nrec = T._e63_sha(rows[0][1]), 0
     chain_broken = False
     for n, raw, r in rows[1:]:
         k = nrec + 1
         where = f"line {n}"
-        unknown = sorted(set(r) - ALLOWED_ROW_KEYS)
-        if unknown:
-            problems.append(f"{where}: unknown key(s) {unknown} (closed set: {sorted(ALLOWED_ROW_KEYS)})")
-        ev = _evidence_problem(r.get("evidence"), T)
-        if ev:
-            problems.append(f"{where}: {ev}")
-        elif new_from_seq is not None and k >= new_from_seq:
-            target = Path(root) / r["evidence"].split("#", 1)[0]
-            if not target.is_file():
-                problems.append(f"{where}: evidence file {r['evidence'].split('#', 1)[0]!r} does not exist in the working tree")
-        asset = r.get("asset")
-        if isinstance(asset, str):
-            before = latest.get(asset)
-            if before is not None:
-                bn, br = before
-                if _sig(r) == _sig(br):
-                    problems.append(f"{where}: duplicate of line {bn} for {asset}: the latest row already says exactly this")
-                else:
-                    was_terminal = (br.get("disposition") in T.E63_TERMINAL_DISPOSITIONS and br.get("decision_id") is not None
-                                    and bool(T._e63_visible_reason(br["reason"] if isinstance(br.get("reason"), str) else "")))
-                    if was_terminal and r.get("disposition") != br.get("disposition") and \
-                            (r.get("decision_id") is None or r.get("decision_id") == br.get("decision_id")):
-                        problems.append(f"{where}: conflicts with line {bn}: it ends {asset}'s terminal "
-                                        f"{br.get('disposition')} ({br.get('decision_id')}) without citing a different decision_id")
-            latest[asset] = (n, r)
+        try:
+            unknown = sorted(set(r) - ALLOWED_ROW_KEYS)
+            if unknown:
+                problems.append(f"{where}: unknown key(s) {unknown} (closed set: {sorted(ALLOWED_ROW_KEYS)})")
+            ev = _evidence_problem(r.get("evidence"), T)
+            if ev:
+                problems.append(f"{where}: {ev}")
+            elif new_from_seq is not None and k >= new_from_seq:
+                fp = _evidence_file_problem(T, root, r["evidence"])
+                if fp:
+                    problems.append(f"{where}: {fp}")
+            disp_, dec, asset = r.get("disposition"), r.get("decision_id"), r.get("asset")
+            if _in(disp_, T.E63_TERMINAL_DISPOSITIONS) and not _visible(T, r.get("reason")):
+                problems.append(f"{where}: a {disp_} row needs a visible reason (text with at least one letter or digit)")
+            if isinstance(asset, str):
+                before = latest.get(asset)
+                if before is not None:
+                    bn, br = before
+                    if _sig(r) == _sig(br):
+                        problems.append(f"{where}: duplicate of line {bn} for {asset}: the latest row already says exactly this")
+                    elif _is_terminal(T, br):
+                        bd = br.get("disposition")
+                        if not _is_terminal(T, r):
+                            if _in(disp_, T.E63_TERMINAL_DISPOSITIONS):
+                                problems.append(f"{where}: would silently drop {asset}'s terminal {bd} ({br.get('decision_id')}, "
+                                                f"line {bn}): a {disp_} row is terminal only with a decision_id AND a visible reason")
+                            elif dec is None or dec == br.get("decision_id"):
+                                problems.append(f"{where}: ends {asset}'s terminal {bd} ({br.get('decision_id')}, line {bn}) "
+                                                "without citing a different decision_id")
+                        elif disp_ != bd and dec == br.get("decision_id"):
+                            problems.append(f"{where}: changes {asset}'s terminal kind {bd} -> {disp_} under the same decision "
+                                            f"{dec} (line {bn}); a change of terminal kind needs a new decision_id")
+                latest[asset] = (n, r)
+        except Exception as e:                   # noqa: BLE001 - a malformed row must be a problem, never a traceback
+            problems.append(f"{where}: could not be analysed ({type(e).__name__}: {e})")
         try:                                     # the reader's own chain rule, so a break reads the same on both sides
             if not chain_broken:
                 T._e63_chain_check(r, f"{T.E63_DISPOSITIONS_PATH} line {n}", nrec, prev)
@@ -269,7 +368,7 @@ def validate(source, *, repo=None, ref="HEAD", base=None, rel_path=None, new_fro
             chain_broken = True
         prev, nrec = T._e63_sha(raw), nrec + 1
 
-    # (d) the reader's own parser, against the offline registry snapshot
+    # (e) the reader's own parser, against the offline registry snapshot
     try:
         sha = T._e63_resolve_ref(ref, repo)
         facts = T._e63_registry_facts(repo, sha)
@@ -286,7 +385,24 @@ def validate(source, *, repo=None, ref="HEAD", base=None, rel_path=None, new_fro
         except T.ElevatedInputError as e:
             if e.message not in seen_chain:
                 problems.append(f"reader: {e.message}")
-    return problems
+        except Exception as e:                   # noqa: BLE001 - the reader itself crashing on a malformed field type
+            problems.append(f"reader: crashed on a malformed row ({type(e).__name__}: {e}); the reader at this commit would "
+                            "not accept the file")
+    return problems, base_status
+
+
+def validate(source, *, repo=None, ref="HEAD", base=None, rel_path=None, new_from_seq=None, require_base=True, reader=None) -> list:
+    """The problems found in a disposition ledger, [] when it is valid. `source`: a path, bytes, text or a list of lines.
+
+    repo/ref: the git repository and ref whose COMMITTED registry snapshot (seed, LEVEL_MAP.json, asset_census.py) the
+    reader's loaders read OFFLINE. base: a git ref whose committed copy of the ledger (at `rel_path`; for a path source
+    the path's own location in the repo, which must be the canonical ledger path; for text the canonical path) must be an
+    exact byte-prefix of `source`; None skips that rule. With require_base (default) a base that cannot be applied
+    (path outside the repo toplevel, not the canonical path, unresolvable ref) is itself a problem.
+    new_from_seq: rows with record number >= this must name an evidence file that exists, is no symlink and is tracked or
+    staged (default: the rows beyond the base copy; none when there is no base)."""
+    return _validate(source, repo=repo, ref=ref, base=base, rel_path=rel_path, new_from_seq=new_from_seq,
+                     require_base=require_base, reader=reader)[0]
 
 
 # ---- writing --------------------------------------------------------------------------------------------------
@@ -319,15 +435,25 @@ def _read_fd(fd):
         off += len(b)
 
 
-def append(path, entry, *, repo=None, ref="HEAD", base="HEAD", rel_path=None, reader=None) -> dict:
+def append(path, entry, *, repo=None, ref="HEAD", base="HEAD", rel_path=None, require_base=True, reader=None) -> dict:
     """Append one correctly chained row; return it. Never rewrites history: the existing bytes are validated first (and
     against `base` in git), the would-be file is validated in memory (the evidence file must exist), then ONE line is
     written at the end under an exclusive lock and fsynced; a failed write is truncated back to the old size. `entry`:
     asset, disposition, evidence (required); reason, decision_id, decided_on, additions (optional; decided_on defaults to
-    now, UTC). Raises DispositionError (nothing written) when anything is wrong."""
+    now, UTC). Raises DispositionError (nothing written) when anything is wrong. The path must not be a symlink. With a
+    base, the ledger's own location decides which committed copy it is compared with (`_locate`); a base that cannot
+    be applied refuses the append when require_base, else the git rule is skipped (the append itself never rewrites)."""
     T = reader or load_reader()
     repo = str(repo or REPO)
     path = str(path)
+    if os.path.islink(path):
+        raise DispositionError(f"{path} is a symlink: the ledger must be a regular file inside the repository")
+    if base is not None and rel_path is None:
+        rel_path, why = _locate(path, T, repo)
+        if why is not None:
+            if require_base:
+                raise DispositionError(f"base {base!r}: NOT CHECKED: {why}")
+            base = None
     bad = sorted(set(entry) - {"asset", "disposition", "reason", "decision_id", "decided_on", "additions", "evidence"})
     miss = [k for k in APPEND_REQUIRED if k not in entry]
     if bad or miss:
@@ -350,7 +476,7 @@ def append(path, entry, *, repo=None, ref="HEAD", base="HEAD", rel_path=None, re
                "additions": list(entry.get("additions") or []), "evidence": entry["evidence"],
                "seq": seq, "prev_sha256": T._e63_sha(rows[-1][1])}
         try:
-            payload = (b"" if old.endswith(b"\n") else b"\n") + json.dumps(row, ensure_ascii=False, allow_nan=False).encode("utf-8") + b"\n"
+            payload = (b"" if old.endswith(b"\n") else b"\n") + json.dumps(row, ensure_ascii=True, allow_nan=False).encode("ascii") + b"\n"
         except (TypeError, ValueError) as e:
             raise DispositionError(f"the entry is not JSON-serialisable ({e})") from None
         probs = validate(old + payload, repo=repo, ref=ref, base=base, rel_path=rel_path, new_from_seq=seq, reader=T)
@@ -386,7 +512,8 @@ def _parser():
     p.add_argument("--repo", help="git repository (default: this one)")
     p.add_argument("--ref", default="HEAD", help="git ref whose committed registry snapshot is read offline (default HEAD)")
     g = p.add_mutually_exclusive_group()
-    g.add_argument("--base", default="HEAD", help="git ref whose committed ledger must be a byte-prefix (default HEAD)")
+    g.add_argument("--base", default=None, help="git ref whose committed ledger must be a byte-prefix (default: the "
+                   "merge-base with origin/main, else HEAD with a vacuous note)")
     g.add_argument("--no-base", action="store_true", help="skip the git append-only rule")
     p.add_argument("--asset")
     p.add_argument("--disposition")
@@ -411,10 +538,15 @@ def main(argv=None, reader=None) -> int:
             init(path, reader=T)
             print(f"created {path} (header only)")
             return 0
-        top = os.path.realpath(_toplevel(T, repo))
-        rel = os.path.relpath(os.path.realpath(path), top)
-        rel = None if rel.startswith("..") else rel
-        base = None if (a.no_base or rel is None) else a.base
+        explicit = a.base is not None
+        if a.no_base:
+            base, note = None, "git rule skipped (--no-base)"
+        elif explicit:
+            base, note = a.base, f"base {a.base} (explicit)"
+        else:
+            base, note = default_base(T, repo)
+            note = "default base: " + note
+        strict = explicit or a.path is None        # a base the user asked for, or the canonical ledger itself, must be checkable
         if a.append:
             if not (a.asset and a.disposition and a.evidence):
                 print("--append needs --asset, --disposition and --evidence", file=sys.stderr)
@@ -423,10 +555,10 @@ def main(argv=None, reader=None) -> int:
                      "decision_id": a.decision_id, "additions": a.additions}
             if a.decided_on:
                 entry["decided_on"] = a.decided_on
-            row = append(path, entry, repo=repo, ref=a.ref, base=base, rel_path=rel, reader=T)
+            row = append(path, entry, repo=repo, ref=a.ref, base=base, require_base=strict, reader=T)
             print(f"appended seq {row['seq']}: {row['asset']} -> {row['disposition']}")
             return 0
-        problems = validate(Path(path), repo=repo, ref=a.ref, base=base, rel_path=rel, reader=T)
+        problems, status = _validate(Path(path), repo=repo, ref=a.ref, base=base, require_base=strict, reader=T)
     except DispositionError as e:
         print(f"REFUSED: {e}", file=sys.stderr)
         return 1
@@ -436,9 +568,9 @@ def main(argv=None, reader=None) -> int:
     if problems:
         for pr in problems:
             print(f"PROBLEM: {pr}")
-        print(f"FAIL: {len(problems)} problem(s) in {path}")
+        print(f"FAIL: {len(problems)} problem(s) in {path} ({status})")
         return 1
-    print(f"OK: {path} ({_record_count(Path(path).read_bytes())} record(s); base {base or 'not checked'})")
+    print(f"OK: {path} ({_record_count(Path(path).read_bytes())} record(s); git rule: {status}; {note})")
     return 0
 
 

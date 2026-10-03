@@ -162,6 +162,21 @@ python3 platform/scripts/governance/asset_dispositions.py --check --base origin/
 python3 platform/scripts/governance/asset_dispositions.py --schema                      # vocabulary and patterns
 ```
 
+`--check` prints the real status of the git append-only rule in its OK line: "prefix rule checked against
+<sha>", "no ledger at base: prefix rule not applicable" or "NOT CHECKED: <why>" (path outside the repo
+toplevel, not the canonical ledger path, unresolvable base). NOT CHECKED exits 1 when `--base` was passed or
+the canonical ledger is being checked. With no `--base` the default is the merge-base with `origin/main`;
+with no `origin/main` it is HEAD and the line says the check is VACUOUS. There is no CI caller yet (the
+workflow files are shared and not touched here); wire `--check --base origin/main` into a lane's CI when one is
+added.
+
+Caveats. `--ref` is a committed snapshot of the registry: an asset removed at HEAD but present at an older
+`--ref` passes the validator while the reader at HEAD rejects it, so keep `--ref` at the commit the reader will
+read. A process killed mid-append (SIGKILL, power loss) can leave a torn partial last line; `--check` reports
+it as not strict JSON. Remove only that partial line by truncating the file back to its last newline
+(`python3 -c "p='<path>'; b=open(p,'rb').read(); open(p,'wb').write(b[:b.rfind(b'\n')+1])"`), re-run
+`--check`, then re-run your `--append`.
+
 Tests: `__tests__/test_e6_3_dispositions.py`.
 
 ---
