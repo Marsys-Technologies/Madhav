@@ -1,7 +1,7 @@
--- 1256_revoke_orchestrator_kala_gochara_windows_write.sql
+-- 1302_revoke_role_orchestrator_windows_dml.sql
 --
 -- Pravāha (C39, 2026-10-03): REVOKE the dormant role `role_orchestrator`'s unused WRITE privileges
--- (UPDATE, DELETE — table-level and any column-level UPDATE) on public.kala_gochara_windows.
+-- (UPDATE, DELETE, INSERT — table-level and any column-level UPDATE/INSERT) on public.kala_gochara_windows.
 --
 -- WHY. The pre-window readback W2(b) on 2026-10-03 found `role_orchestrator` among the effective
 -- UPDATE/DELETE holders of the legacy Gochara relations. The role is dormant: NOLOGIN, a member of
@@ -12,7 +12,7 @@
 -- code path uses.
 --
 -- SCOPE: exactly one table (public.kala_gochara_windows) and exactly one role (role_orchestrator),
--- exactly two privileges (UPDATE, DELETE) plus any column-level UPDATE. No GRANT, no CREATE/ALTER/
+-- exactly three privileges (UPDATE, DELETE, INSERT) plus any column-level UPDATE/INSERT. No GRANT, no CREATE/ALTER/
 -- DROP, no data touched, no other role, no other table, nothing touching ka_gochara_* functions.
 -- A read-only SELECT anywhere is unaffected.
 --
@@ -24,7 +24,9 @@
 -- POST-CHECK (raises, never a silent skip): after the revokes,
 --   has_table_privilege('role_orchestrator', 'public.kala_gochara_windows', 'UPDATE')  = false
 --   has_table_privilege('role_orchestrator', 'public.kala_gochara_windows', 'DELETE')  = false
+--   has_table_privilege('role_orchestrator', 'public.kala_gochara_windows', 'INSERT')  = false
 --   has_any_column_privilege('role_orchestrator', 'public.kala_gochara_windows', 'UPDATE') = false
+--   has_any_column_privilege('role_orchestrator', 'public.kala_gochara_windows', 'INSERT') = false
 -- has_table_privilege reports EFFECTIVE privilege (direct, PUBLIC, inherited); if any path still
 -- shows the privilege the migration fails and rolls back rather than looking migrated.
 --
@@ -33,8 +35,10 @@
 -- shared deploy.
 --
 -- ORDERING: an ordinary ROUTINE migration — it is NOT in PROTECTED_PUBLIC_SCHEMA_MIGRATIONS
--- (platform/scripts/migrate.ts) and deploys by the routine path. It may merge and apply at any time
--- before the Gochara 5 window opens.
+-- (platform/scripts/migrate.ts) and deploys by the routine path. It must be MERGED AND APPLIED (an ordinary
+-- deploy) BEFORE the protected train's first merge (sitting checklist row 7): once 1204 is on main the routine
+-- runner refuses at it by name and nothing numbered above it can apply. The number 1302 is above every
+-- migration on main and in any open PR, so it is not a <=1240 predecessor of the protected window.
 --
 -- SERVING EFFECT AT APPLY: none (no code executes as role_orchestrator; no registry/freshness/trigger
 -- touched).
@@ -50,34 +54,39 @@ DECLARE
     col record;
 BEGIN
     IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'role_orchestrator') THEN
-        RAISE NOTICE '1256: role role_orchestrator does not exist; no-op';
+        RAISE NOTICE '1302: role role_orchestrator does not exist; no-op';
         RETURN;
     END IF;
 
     IF rel IS NULL THEN
-        RAISE EXCEPTION '1256: public.kala_gochara_windows does not exist';
+        RAISE EXCEPTION '1302: public.kala_gochara_windows does not exist';
     END IF;
 
     -- Table-level write privileges (no-op where not held).
-    EXECUTE 'REVOKE UPDATE, DELETE ON TABLE public.kala_gochara_windows FROM role_orchestrator';
+    EXECUTE 'REVOKE UPDATE, DELETE, INSERT ON TABLE public.kala_gochara_windows FROM role_orchestrator';
 
-    -- Column-level UPDATE grants, if any exist (a table-level REVOKE does not remove them).
+    -- Column-level UPDATE/INSERT grants, if any exist (a table-level REVOKE does not remove them). Read from the
+    -- catalog ACL (pg_attribute.attacl), which lists every column grant regardless of who made it.
     FOR col IN
-        SELECT column_name
-          FROM information_schema.column_privileges
-         WHERE table_schema = 'public'
-           AND table_name = 'kala_gochara_windows'
-           AND grantee = 'role_orchestrator'
-           AND privilege_type = 'UPDATE'
+        SELECT a.attname AS column_name
+          FROM pg_attribute a, aclexplode(a.attacl) x
+         WHERE a.attrelid = rel
+           AND a.attnum > 0
+           AND NOT a.attisdropped
+           AND x.grantee = 'role_orchestrator'::regrole
+           AND x.privilege_type IN ('UPDATE', 'INSERT')
+         GROUP BY a.attname
     LOOP
-        EXECUTE format('REVOKE UPDATE (%I) ON TABLE public.kala_gochara_windows FROM role_orchestrator',
-                       col.column_name);
+        EXECUTE format('REVOKE UPDATE (%I), INSERT (%I) ON TABLE public.kala_gochara_windows FROM role_orchestrator',
+                       col.column_name, col.column_name);
     END LOOP;
 
     -- Post-check: no effective UPDATE or DELETE path may remain (see the header for what these see).
     IF has_table_privilege('role_orchestrator', 'public.kala_gochara_windows', 'UPDATE')
        OR has_table_privilege('role_orchestrator', 'public.kala_gochara_windows', 'DELETE')
-       OR has_any_column_privilege('role_orchestrator', 'public.kala_gochara_windows', 'UPDATE') THEN
-        RAISE EXCEPTION '1256: role_orchestrator still holds a write privilege on public.kala_gochara_windows after the revokes';
+       OR has_table_privilege('role_orchestrator', 'public.kala_gochara_windows', 'INSERT')
+       OR has_any_column_privilege('role_orchestrator', 'public.kala_gochara_windows', 'UPDATE')
+       OR has_any_column_privilege('role_orchestrator', 'public.kala_gochara_windows', 'INSERT') THEN
+        RAISE EXCEPTION '1302: role_orchestrator still holds a write privilege on public.kala_gochara_windows after the revokes';
     END IF;
 END $$;

@@ -1,4 +1,4 @@
-"""Migration 1256 (Pravāha C39): REVOKE role_orchestrator's UPDATE/DELETE (table- and column-level)
+"""Migration 1302 (Pravāha C39): REVOKE role_orchestrator's UPDATE/DELETE/INSERT (table- and column-level)
 on public.kala_gochara_windows, no-op where the role is absent, with a raising post-check.
 
 LIVE test on a DISPOSABLE PostgreSQL cluster (initdb in a temp dir, unix socket only, torn down at the
@@ -12,7 +12,7 @@ What it proves:
                        SELECT and every other role's privileges are untouched, and a SECOND apply is a clean
                        no-op (same end state, no error);
   * role_absent        where pg_roles has no role_orchestrator the whole migration is a NOTICE no-op;
-  * assertion_fires    a mutant with the REVOKE statements stripped must RAISE the migration's own 1256
+  * assertion_fires    a mutant with the REVOKE statements stripped must RAISE the migration's own 1302
                        exception and roll back (the privileges survive) — the post-check is load-bearing;
   * only_writes        role_orchestrator's SELECT on the table and an unrelated role's ALL grant survive.
 """
@@ -30,7 +30,7 @@ import psycopg
 import pytest
 
 _REPO = Path(__file__).resolve().parents[3]
-MIGRATION = _REPO / "platform" / "migrations" / "1256_revoke_orchestrator_kala_gochara_windows_write.sql"
+MIGRATION = _REPO / "platform" / "migrations" / "1302_revoke_role_orchestrator_windows_dml.sql"
 REAL_SQL = MIGRATION.read_text(encoding="utf-8")
 
 SOCKDIR_ROOT = os.environ.get("SUVARNA_PG_SOCKDIR", "/tmp")
@@ -58,7 +58,7 @@ def _free_port() -> int:
 class Cluster:
     def __init__(self, version: str, bindir: Path):
         self.version, self.bindir = version, bindir
-        self.data = tempfile.mkdtemp(prefix=f"m1256pg{version}_")
+        self.data = tempfile.mkdtemp(prefix=f"m1302pg{version}_")
         self.sock = tempfile.mkdtemp(prefix="p", dir=SOCKDIR_ROOT)
         self.port = _free_port()
         self._n = 0
@@ -128,8 +128,8 @@ class Env:
             c.execute("INSERT INTO public.kala_gochara_windows VALUES (1, 'x', 'y')")
             c.execute("GRANT ALL ON public.kala_gochara_windows TO control_role")
             if with_role:
-                c.execute("GRANT UPDATE, DELETE ON public.kala_gochara_windows TO role_orchestrator")
-                c.execute("GRANT UPDATE (note) ON public.kala_gochara_windows TO role_orchestrator")
+                c.execute("GRANT UPDATE, DELETE, INSERT ON public.kala_gochara_windows TO role_orchestrator")
+                c.execute("GRANT UPDATE (note), INSERT (note) ON public.kala_gochara_windows TO role_orchestrator")
                 c.execute("GRANT SELECT ON public.kala_gochara_windows TO role_orchestrator")
 
     def apply(self, sql: str, notices: list[str] | None = None):
@@ -152,10 +152,12 @@ class Env:
                 "       has_table_privilege('role_orchestrator', 'public.kala_gochara_windows', 'DELETE'),"
                 "       has_any_column_privilege('role_orchestrator', 'public.kala_gochara_windows', 'UPDATE'),"
                 "       has_table_privilege('role_orchestrator', 'public.kala_gochara_windows', 'SELECT'),"
+                "       has_table_privilege('role_orchestrator', 'public.kala_gochara_windows', 'INSERT'),"
+                "       has_any_column_privilege('role_orchestrator', 'public.kala_gochara_windows', 'INSERT'),"
                 "       has_table_privilege('control_role', 'public.kala_gochara_windows', 'UPDATE'),"
                 "       has_table_privilege('control_role', 'public.kala_gochara_windows', 'DELETE')"
             ).fetchone()
-        keys = ("orch_update", "orch_delete", "orch_col_update", "orch_select", "ctrl_update", "ctrl_delete")
+        keys = ("orch_update", "orch_delete", "orch_col_update", "orch_select", "orch_insert", "orch_col_insert", "ctrl_update", "ctrl_delete")
         return dict(zip(keys, row))
 
     def drop(self) -> None:
@@ -175,12 +177,15 @@ def env(cluster):
 def test_apply_twice_revokes_every_write_path_and_keeps_the_rest(env):
     before = env.privs()
     assert before == {"orch_update": True, "orch_delete": True, "orch_col_update": True,
-                      "orch_select": True, "ctrl_update": True, "ctrl_delete": True}
+                      "orch_select": True, "orch_insert": True, "orch_col_insert": True,
+                      "ctrl_update": True, "ctrl_delete": True}
     env.apply(REAL_SQL)
     after = env.privs()
     assert after["orch_update"] is False
     assert after["orch_delete"] is False
     assert after["orch_col_update"] is False
+    assert after["orch_insert"] is False
+    assert after["orch_col_insert"] is False
     assert after["orch_select"] is True          # only the WRITE privileges go
     assert after["ctrl_update"] is True and after["ctrl_delete"] is True
     # a SECOND apply is a clean no-op: same end state, no error
@@ -208,6 +213,6 @@ def test_assertion_fires_when_the_revokes_are_stripped(env):
     mutant = re.sub(r"EXECUTE (?:format\()?[^;]*REVOKE[^;]*;", "", REAL_SQL)
     code = "\n".join(l for l in mutant.splitlines() if not l.strip().startswith("--"))
     assert "REVOKE" not in code
-    with pytest.raises(Exception, match="1256: role_orchestrator still holds a write privilege"):
+    with pytest.raises(Exception, match="1302: role_orchestrator still holds a write privilege"):
         env.apply(mutant)
     assert env.privs()["orch_update"] is True    # rolled back: nothing was revoked
