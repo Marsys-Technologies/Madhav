@@ -1,6 +1,6 @@
 ---
 artifact: S_L1_BETWEEN_STATE
-version: 1.4
+version: 1.5
 status: DRAFT-FOR-REVIEW
 produced_by: exec-suvarna (integration-docs worker)
 produced_on: 2026-10-03
@@ -13,6 +13,7 @@ evidence:
   - /Users/Dev/suvarna-evidence/OwnerDecisions/N-91_between_state_ruling_v1_0.md
   - /Users/Dev/suvarna-evidence/Ephemeris/SE1_SHIFT_ANALYSIS.md (sha256 22564b863fc7cb3713e5d4b5d88ca5dc7376532fd93a9faa6461c99689ac3403)
 changelog:
+  - "1.5 (2026-10-03): section 4 corrected (REHEARSAL-FINAL P3): G-IDX runs ONCE, at the START of W7 after ALL builds (not after W2), as role amjis_app or role_orchestrator (NOT data_plane_builder: no privilege on the table); the index is NOT 1,205 rows afterwards (1,205 is what survives the cascade, the ga_positions-only count). Every later ga_* delete-then-insert empties the rows of the facts it replaces, so a refill after W2 is undone by W3 to W6 (measured: 129,421 after W2, back to 1,205 after W6). The acceptance is the corrected check printed by the script (rows == parsed, partition sums, gap == 0, coverage >= 99.98 percent, identity_free reason set == the 14 + scope_cap_sentinel), run with --check."
   - "1.4 (2026-10-03): (a) section 5.1 corrected to the MEASURED Linux/amd64 rehearsal of the real orchestrator path (REHEARSAL-LINUX P5, 147,751 rows): n_uuid36 = 1 (NOT 0: the UUID5 `dasha_scope_cap_fact` row `level_5_not_computed`, written by ga_dashas_writer with stable_uuid, a 36-character id by design) and n_formula_match = n_rows - 1 (NOT n_rows - 7: the seven `graha_shadbala_total.required_rupa` rows MATCH the formula); today's production figures re-read 2026-10-03: 143299|1205|2925, and the seven required_rupa rows today match 0 of 7. (b) section 7 gains items 9 to 11, three window preconditions found by that rehearsal: the writer-gap preflight blocker (ka_gochara_v4_41_candidate: ORCHESTRATOR_WRITER_GAP_CHECK is unset in the live job, so enforce; the precondition is that Pravāha's inert v4_41 + v5 asset_registry rows EXIST, not the warn env), the D6 executor interpreter (RESOLVED: 3.11-compatible; the same explicit interpreter for dry run and apply), and the ga_dashas / ga_tajaka uuid.UUID chart_id fix that must be in the job image. No other section changed."
   - "1.3 (2026-10-03): citations only, no content change: every citation of SE1_SHIFT_ANALYSIS.md now names the read-only evidence copy /Users/Dev/suvarna-evidence/Ephemeris/SE1_SHIFT_ANALYSIS.md (sha256 22564b863fc7cb3713e5d4b5d88ca5dc7376532fd93a9faa6461c99689ac3403); the file lived only in a session scratchpad before. The analysis itself is unchanged."
   - "1.2 (2026-10-03): the ephemeris statements corrected to the measured truth (/Users/Dev/suvarna-evidence/Ephemeris/SE1_SHIFT_ANALYSIS.md (sha256 22564b863fc7cb3713e5d4b5d88ca5dc7376532fd93a9faa6461c99689ac3403); SS 2026-10-03 decision): 'about two hours on Vimshottari boundaries' and 'fact_ids, row counts and tiers are unaffected' replaced. Measured: Vimshottari +6,990..+6,994 s (about +1 h 56 m), Kalachakra +145,089..+145,111 s (about +40 h 18 m; Surya Siddhanta +150,309 s, about +41 h 45 m), Yogini / Ashtottari / Chara / Narayana / Naisargika exactly 0, Mudda 0..+1 s plus one -43 s bisection step (True Chitra 2001 varsha), Saturn ingress up to about 17 minutes. chart_dashas levels 1-3 are exact; level 4 changes by declared per-ayanamsha deltas (Vimshottari +12 / +2 / +1 / -9 / -6, Kalachakra +3 / 0 / +10 / -8 / -20); the five-ayanamsha total is not a check. chart_facts and chart_divisionals row counts and every fact_id are unaffected. Pointers to the W2/W6 backend-evidence rule and POST_WINDOW_FINDINGS (HOOKS_COMPLETENESS sections 10 and 11)."
@@ -71,17 +72,17 @@ The state is quiet degradation, not an error. Sources: FACTID_SERVED_IMPACT_REPO
 
 What the owner does not see: no wrong chart value, no data loss, no error status. Everything that cites by natural key keeps working.
 
-## 4. `chart_fact_identity`: cascade-emptied, then refilled (G-IDX)
+## 4. `chart_fact_identity`: cascade-emptied, refilled once at the start of W7 (G-IDX)
 
 `chart_fact_identity.fact_id` is a foreign key to `chart_facts` ON DELETE CASCADE, and the `ga_positions` rebuild is a delete then insert (`replace_prior_chart_facts`). The 1,205 identity rows (all `ga_positions` categories) are therefore deleted by the cascade at the `ga_positions` rebuild even though the ids come back identical. The index is built by a standalone script, not a registered asset: `platform/python-sidecar/scripts/build_fact_identity_index.py` (delete-then-insert per chart; consumed by `bo_pratijna` and `brahmagyan/chart_reader_v4.py`).
 
-**G-IDX, immediately after W2 (`ga_positions`):** run `build_fact_identity_index.py` for the chart and verify **1,205 rows**. Serving that joins through the index is affected between the cascade and the refill.
+**G-IDX, at the START of W7, after ALL builds (W2 to W6) have finished:** run `build_fact_identity_index.py --chart-id 482012f1-710e-4a25-994a-93821f5871aa --check` as role `amjis_app` or `role_orchestrator` (NOT `data_plane_builder`: it has no privilege on the table). It must NOT run earlier: every later `ga_*` delete-then-insert cascades away the identity rows of the facts it replaces (rehearsal: 129,421 rows after W2, back to 1,205 after W3 to W6). The script prints the corrected check; the run is accepted only on `CHECK: PASS` (exit 0; exit 4 means the check failed and the chart was rolled back): `rows == parsed`; `parsed + identity_free + gap == total`; `gap == 0`; coverage >= 99.98 percent; the identity_free reason set equals the 14 measured reasons plus `scope_cap_sentinel` (any other reason aborts). Serving that joins through the index (`bo_pratijna` provenance, `ChartReaderV4.lord_of`) is affected from the first cascade until this run.
 
 ```sql
 SELECT count(*) AS identity_rows FROM chart_fact_identity i JOIN chart_facts f USING (fact_id) WHERE f.chart_id='482012f1-710e-4a25-994a-93821f5871aa'
 ```
 
-Before (2026-10-02): 1,205. Expected: 0 after the `ga_positions` rebuild until the refill, **1,205 after G-IDX** (and at W7). After-value: ______.
+Before (2026-10-02): 1,205. Expected: 0 after the `ga_positions` rebuild, then whatever the intermediate builds leave (**1,205 at the end of W6 if nothing was run in between: that is the `ga_positions` count that survives the cascade, not the G-IDX result**), then **equal to the `parsed` count the script prints after the W7-start G-IDX** (rehearsal-projected 133,832 on the canonical chart for the fixed parser: 130,472 measured at the rehearsal end state plus the 3,360 `ashtakavarga_bindu_contributor` rows now parsed; the printed `parsed` is the value that counts). After-value: ______.
 
 ## 5. The W7 id check (S-L1 acceptance; N-91 condition 4)
 

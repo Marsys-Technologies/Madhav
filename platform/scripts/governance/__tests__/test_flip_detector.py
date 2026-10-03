@@ -605,8 +605,8 @@ def test_3_default_hooks_dir_is_the_slhooks_folder():
 
 
 # ----------------------------------------------------------------------------------------------- real hook files
-REAL_LANES = sorted(f.stem for f in REAL_HOOKS.glob("*.json"))  # the integration's 23 hook files + fa2_ga_vargas (landed in the hook directory with the F-A2 hook commit; still listed in PENDING_HOOKS)
-PENDING_HOOKS = ("fa2_ga_vargas.json",)  # F-A2 (PR 2858): LANDED in the hook directory (byte-equal to hooks_real, enforced by test_f12). Kept in the tuple on purpose: the tuple is pinned by test_f12 and by the README W7 lane-list tests (23 lanes), which the doc pass updates; emptying it is that pass's edit
+REAL_LANES = sorted(f.stem for f in REAL_HOOKS.glob("*.json"))  # the integration's 24 hook files (fa2_ga_vargas, the 24th, landed in the hook directory with the F-A2 hook commit)
+PENDING_HOOKS = ()  # empty: F-A2 (PR 2858) LANDED, so no hook file may be absent from the hook directory; test_f12 enforces hooks_real == the hook directory byte for byte, with no exception
 INTEGRATION_LANES = [n for n in REAL_LANES if n + ".json" not in PENDING_HOOKS]
 
 
@@ -1647,26 +1647,26 @@ def test_f12_pending_files_may_be_absent_but_never_hide_drift(tmp_path):
     assert hook_dir_differences(src, fx, ("p.json",)) == ["only in the real hook directory: r.json", "only in hooks_real fixtures: q.json"]
 
 
-# The 23 stems the integration's hook directory carries today, by name (not a count): a hook added, dropped or renamed is a deliberate edit of this tuple.
+# The 24 stems the integration's hook directory carries today, by name (not a count): a hook added, dropped or renamed is a deliberate edit of this tuple.
 INTEGRATION_STEMS = (
     "argala", "argala_other_charts", "ashtakavarga_bindu_contributor", "band_table", "chandra_bala_birth_moon_sign", "dasha_scope_cap", "ephemeris_backend_shift",
-    "ga_condition_fallback", "ga_strength_invariant_rows", "ga_structural_chart_geometry", "ga_vargas_invariant_sentinels", "gandanta", "karaka_dasha_roles",
+    "fa2_ga_vargas", "ga_condition_fallback", "ga_strength_invariant_rows", "ga_structural_chart_geometry", "ga_vargas_invariant_sentinels", "gandanta", "karaka_dasha_roles",
     "karaka_roles", "karaka_web_order", "karaka_web_order_other_charts", "sade_sati_placeholder_null", "special_lagna_offset", "special_lagna_offset_other_charts",
     "sun_required_rupa", "tiers", "tiers_other_charts", "yamakantaka")
 
 
 def test_f12_the_pending_list_is_short_and_explicit():
-    assert PENDING_HOOKS == ("fa2_ga_vargas.json",)
+    assert PENDING_HOOKS == ()
     assert (REAL_HOOKS / "fa2_ga_vargas.json").exists()
-    assert len(INTEGRATION_STEMS) == 23 and len(set(INTEGRATION_STEMS)) == 23
-    assert sorted(f.stem for f in REAL_HOOKS.glob("*.json")) == sorted(INTEGRATION_STEMS + ("fa2_ga_vargas",))   # 24 files = the 23 named stems + the one pending F-A2 hook
+    assert len(INTEGRATION_STEMS) == 24 and len(set(INTEGRATION_STEMS)) == 24 and "fa2_ga_vargas" in INTEGRATION_STEMS
+    assert sorted(f.stem for f in REAL_HOOKS.glob("*.json")) == sorted(INTEGRATION_STEMS)   # 24 files = the 24 named stems (fa2_ga_vargas landed)
     assert sorted(INTEGRATION_LANES) == sorted(INTEGRATION_STEMS)
 
 
 def test_f12_hooks_real_are_byte_copies_of_the_integration_hook_directory():
     """LIVE when the directory exists. FLIP_INTEGRATION_HOOKS_DIR (explicit path) must exist; otherwise the repo's own s_l1_attribution_hooks/ is used.
     Skipped ONLY when that repo directory is not in the tree yet (nothing to compare). Once it exists this never skips, in CI or locally.
-    PENDING_HOOKS (fa2_ga_vargas.json) may be absent from that directory until PR 2858 lands, and must be byte-equal once present.
+    PENDING_HOOKS is empty (fa2_ga_vargas.json landed with PR 2858's hook): every file must be present in both places and byte-equal.
     Refresh procedure: FLIP_DETECTOR_README.md section 'Refreshing hooks_real'."""
     env = os.environ.get("FLIP_INTEGRATION_HOOKS_DIR")
     real = pathlib.Path(env) if env else pathlib.Path(F.DEFAULT_HOOKS_DIR)
@@ -1691,11 +1691,10 @@ def test_ss_the_readme_w7_command_is_complete_and_its_lanes_validate(capsys):
     assert "--no-dashas" not in block and "--no-daily" not in block
     assert "--hooks-dir 00_ARCHITECTURE/briefs/suvarna/exec/s_l1_attribution_hooks" in block and "--compare" in block
     lanes = re.search(r"--require-lanes (\S+)", block).group(1)
-    assert len(lanes.split(",")) == 23 and "ephemeris_backend_shift" in lanes.split(",") and sorted(lanes.split(",")) == sorted(INTEGRATION_LANES)
+    assert len(lanes.split(",")) == 24 and "fa2_ga_vargas" in lanes.split(",") and "ephemeris_backend_shift" in lanes.split(",") and sorted(lanes.split(",")) == sorted(INTEGRATION_LANES)
     assert F.main(["--validate-hooks", "--hooks-dir", str(REAL_HOOKS), "--require-lanes", lanes]) == 0
-    assert F.main(["--validate-hooks", "--hooks-dir", str(REAL_HOOKS), "--require-lanes", lanes + ",fa2_ga_vargas"]) == 0   # the 24-name list once #2858 lands
     after = text.split("### The W7 command (S-L1 window), written in full", 1)[1]
-    assert "only once PR 2858 lands" in after and "fa2_ga_vargas" in after
+    assert "24 hook files" in after and "fa2_ga_vargas" in after and "LANDED" in after
     capsys.readouterr()
 
 

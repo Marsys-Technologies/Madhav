@@ -1,11 +1,12 @@
 ---
 artifact: FLIP_DETECTOR_README
-version: 2.5
+version: 2.6
 status: DRAFT-FOR-REVIEW
 produced_by: exec-suvarna
 decision: SS N-64 (S-L1 acceptance criterion); verdict-deciding tool, one independent review required before the S-L1 integration PR relies on it
 scope: tooling and tests only. The detector is read-only and never writes to the database.
 changelog:
+  - "2.6 (2026-10-03): fa2_ga_vargas LANDED as the 24th hook file in the integration's hook directory (commit 8455632a9, independent review APPROVE WITH NITS; schema-valid in the detector's own schema, replacing the earlier patch copy 406437e05eba): the W7 lane list names all 24 stems, PENDING_HOOKS is empty, hooks_real is byte-equal to the hook directory with no exception, and the hook limits section lists what the fa2 hook cannot detect (row counts inside a key, bindu values in new rows, non-first-row value changes, fact_subject/build_id/sign-column differences, other charts). Tooling code unchanged."
   - "2.5 (2026-10-03): hooks_real refreshed to the integration's 23 hook files (04249fdc1; adds ephemeris_backend_shift, the Moshier to Swiss .se1 backend shift hook) + the pending F-A2 hook. The W7 lane list names all 23 stems. The four non-optional dasha_shift entries of ephemeris_backend_shift read DECLARED_BUT_ABSENT on an unchanged native chart BY DESIGN (a rebuild that did not run on se1 fails); the tests pin exactly those four, pair them with a shifted fixture where they read present, and keep the absence rule for every other entry. Golden gains one case (all_24_hooks_unchanged_native_chart); every existing case is byte-identical. Tooling code unchanged."
   - "2.4 (2026-10-03): hooks_real refreshed as byte copies of the S-L1 integration's 22 hook files (c3213fc98) + the pending F-A2 hook; live byte-equality test with an explicit PENDING list; a snapshot of an empty read is refused (exit 5) and nothing is written (atomic write); operator steps and known limits (post-window hardening list) from review R-T3."
   - "2.3 (2026-10-02): second independent review (R-T2) and SS rulings. A table that was not compared (flag or missing snapshot section) is a conditional NOT CHECKED row, flags and skipped sections are recorded in meta, no green ok line for it. --no-dashas / --no-daily with --require-lanes is REFUSED (exit 6) without --i-know-dashas-are-not-compared; the W7 command is written in full below. Reads are ONE REPEATABLE READ READ ONLY transaction; PGOPTIONS read-only and a proven read-only session; timeout; READ_ERROR exit 5 with a report; error text scrubbed. --snapshot never overwrites; the .sha256 is verified on compare. Sort includes the tier. Standing NOT CHECKED registry extended. Full ISO timestamp match. expected_count rejected on dasha_shift; exact must not be a boolean; min <= max. Phantom chart id refused. hooks_real are byte copies of the hook directory with a live comparison and a documented refresh. Empty current native is EMPTY_READ, not ALERT."
@@ -151,18 +152,18 @@ Operator steps, in this order:
 3. **Take the W0 baseline** (`--snapshot native`), then **check its row counts** (`chart_facts`, `chart_divisionals`, `chart_dashas`, `panchanga_daily`: the `counts:` line it prints, and per chart) **against the expected before-counts in `HOOKS_W7_HAND_READBACK_v1_0.md` and against the reader's own COUNT queries, before W1 is merged**: once W1 applies, the "before" state is gone and a bad baseline cannot be re-taken. A snapshot of an empty read is now refused (exit 5, nothing written), but a partial or wrong-chart read is saved with a `.sha256` and is never overwritten: **a bad baseline is sticky; re-take it under a new name** (`--out`).
 4. Run the command below after the rebuild, then the W7 hand read-backs, then the same command with `--allow-not-checked`.
 
-Dashas and daily are compared; **no `--no-dashas` / `--no-daily`**. The hook directory is the integration's (`00_ARCHITECTURE/briefs/suvarna/exec/s_l1_attribution_hooks`, the default). The lane list is the 23 hook files the integration carries (`TI-s-l1-integration-001` at 04249fdc1; 22 at c3213fc98, plus `ephemeris_backend_shift`).
+Dashas and daily are compared; **no `--no-dashas` / `--no-daily`**. The hook directory is the integration's (`00_ARCHITECTURE/briefs/suvarna/exec/s_l1_attribution_hooks`, the default). The lane list is the **24 hook files** the integration carries (`TI-s-l1-integration-001`; 22 at c3213fc98, plus `ephemeris_backend_shift` at 04249fdc1, plus `fa2_ga_vargas`).
 
 ```
 python3 platform/scripts/governance/flip_detector.py \
   --compare <PRE_REBUILD_SNAPSHOT.json.gz> \
   --hooks-dir 00_ARCHITECTURE/briefs/suvarna/exec/s_l1_attribution_hooks \
-  --require-lanes argala,argala_other_charts,ashtakavarga_bindu_contributor,band_table,chandra_bala_birth_moon_sign,dasha_scope_cap,ephemeris_backend_shift,ga_condition_fallback,ga_strength_invariant_rows,ga_structural_chart_geometry,ga_vargas_invariant_sentinels,gandanta,karaka_dasha_roles,karaka_roles,karaka_web_order,karaka_web_order_other_charts,sade_sati_placeholder_null,special_lagna_offset,special_lagna_offset_other_charts,sun_required_rupa,tiers,tiers_other_charts,yamakantaka \
+  --require-lanes argala,argala_other_charts,ashtakavarga_bindu_contributor,band_table,chandra_bala_birth_moon_sign,dasha_scope_cap,ephemeris_backend_shift,fa2_ga_vargas,ga_condition_fallback,ga_strength_invariant_rows,ga_structural_chart_geometry,ga_vargas_invariant_sentinels,gandanta,karaka_dasha_roles,karaka_roles,karaka_web_order,karaka_web_order_other_charts,sade_sati_placeholder_null,special_lagna_offset,special_lagna_offset_other_charts,sun_required_rupa,tiers,tiers_other_charts,yamakantaka \
   --out <REPORT.json>
 # after the W7 hand read-backs are done and recorded, the same command plus:  --allow-not-checked
 ```
 
-**`fa2_ga_vargas` is required only once PR 2858 lands.** Its hook file (`fa2_ga_vargas.json`) does not exist in the repo's hook directory until then, and naming it in `--require-lanes` before that is a `HOOK_ERROR`. The command above is therefore valid in both states. When #2858 has landed, append `,fa2_ga_vargas` (24 names). `hooks_real` already carries the F-A2 hook (a copy of the F-A2 patch file, sha256 `406437e05eba54afbbeed4ffae126e67d1a7472b807517399e244d89517337f5`) so the CI test for the lane list passes in both states; see "Refreshing hooks_real".
+**`fa2_ga_vargas` is LANDED (PR 2858's hook, the 24th stem) and required.** Its hook file is in the hook directory and the command above names it. The hook counts keys only: pair it with the F-A2 acceptance SQL C1 to C6 and the Aries bindus hand read-back (`HOOKS_W7_HAND_READBACK_v1_0.md` H26). `hooks_real` carries a byte copy (sha256 `996cd63078cef2ef4ad1a026a10d104e1d404e3854207817ceac410184382c23`); the earlier patch copy (sha256 `406437e05eba54afbbeed4ffae126e67d1a7472b807517399e244d89517337f5`) is superseded.
 
 **`ephemeris_backend_shift` and `DECLARED_BUT_ABSENT` (by design).** Its four non-optional `dasha_shift` entries (indices 0 to 3: Vimshottari, Vimshottari KP sub-periods, Kalachakra for four ayanamshas, Kalachakra for Surya Siddhanta) declare that the rebuild ran on the canonical Swiss `.se1` backend, which moves the Moon and so translates the Moon-anchored dasha timelines by the measured amounts. On an UNCHANGED native chart (a rebuild that did not run on se1, or a compare of a state against itself) those four read `DECLARED_BUT_ABSENT` and the verdict is FAIL: that is the proof that such a rebuild fails, not a defect. The hook is scoped to chart `482012f1` only, so no other chart reads them. The tests pin exactly these four entries (`EXPECTED_SHIFT_PROOF_ENTRIES`), assert that they read present on a fixture whose rows really shifted, and keep the absence rule for every other entry of every hook.
 
@@ -266,18 +267,16 @@ Repeat the same shape for `ga_condition_composite`, `ga_medical`, the `ga_vastu_
 
 ## Refreshing hooks_real
 
-`__tests__/fixtures/flip_detector/hooks_real/` holds **byte copies** of the integration's hook files: the 23 top-level `*.json` of `00_ARCHITECTURE/briefs/suvarna/exec/s_l1_attribution_hooks/` on branch `suvarna/land/TI-s-l1-integration-001` at **04249fdc1** (byte copies; the first copy was the 22 files at **c3213fc98**, each verified against its git blob sha, and `ephemeris_backend_shift.json` was added since), plus **`fa2_ga_vargas.json`**, a copy of the F-A2 patch file (PR 2858; sha256 `406437e05eba54afbbeed4ffae126e67d1a7472b807517399e244d89517337f5`) that PR will add to the same directory.
+`__tests__/fixtures/flip_detector/hooks_real/` holds **byte copies** of the integration's hook files: the 24 top-level `*.json` of `00_ARCHITECTURE/briefs/suvarna/exec/s_l1_attribution_hooks/` on branch `suvarna/land/TI-s-l1-integration-001` (byte copies; the first copy was the 22 files at **c3213fc98**, each verified against its git blob sha, then `ephemeris_backend_shift.json` at **04249fdc1**, then **`fa2_ga_vargas.json`**, PR 2858's hook, sha256 `996cd63078cef2ef4ad1a026a10d104e1d404e3854207817ceac410184382c23`, which replaced the earlier patch copy `406437e05eba54afbbeed4ffae126e67d1a7472b807517399e244d89517337f5`).
 
-`test_f12_hooks_real_are_byte_copies_of_the_integration_hook_directory` compares them live with the repo's hook directory (or `FLIP_INTEGRATION_HOOKS_DIR`) and fails on any drift, missing or extra file, **except** the names in the short explicit `PENDING_HOOKS` list at the top of the test file (initially `fa2_ga_vargas.json`): a pending file may be ABSENT from the repo directory (until #2858 lands) and must be byte-equal when present; pending never excuses a present file that differs, and a pending file present in the directory but missing from `hooks_real` is drift. When #2858 lands, empty `PENDING_HOOKS` (and make the lane list 24 names in the command above).
+`test_f12_hooks_real_are_byte_copies_of_the_integration_hook_directory` compares them live with the repo's hook directory (or `FLIP_INTEGRATION_HOOKS_DIR`) and fails on any drift, missing or extra file, with **no exception**: the `PENDING_HOOKS` list at the top of the test file is EMPTY now that `fa2_ga_vargas.json` has landed (PR 2858), so a file missing from either place, or a present file that differs, is drift. The lane list in the command above is the 24 stems.
 
 Refresh procedure, from the repo root with the integration's tree checked out (or `FLIP_INTEGRATION_HOOKS_DIR` set to its `s_l1_attribution_hooks/` directory); to refresh from the integration branch without checking it out, use `git show <sha>:<path>` per file instead of `cp`:
 
 ```
 HOOKS=00_ARCHITECTURE/briefs/suvarna/exec/s_l1_attribution_hooks          # or the path in FLIP_INTEGRATION_HOOKS_DIR
 FX=platform/scripts/governance/__tests__/fixtures/flip_detector/hooks_real
-cp "$FX"/fa2_ga_vargas.json /tmp/fa2_ga_vargas.json                        # keep the pending F-A2 copy while #2858 is open
 rm -f "$FX"/*.json && cp "$HOOKS"/*.json "$FX"/                           # top-level *.json only; evidence/ is never copied
-[ -f "$FX"/fa2_ga_vargas.json ] || cp /tmp/fa2_ga_vargas.json "$FX"/      # only while fa2_ga_vargas is still pending
 python3 platform/scripts/governance/flip_detector.py --validate-hooks --hooks-dir "$FX"
 FLIP_DETECTOR_REGEN_GOLDEN=1 python3 -m pytest platform/scripts/governance/__tests__/test_flip_detector.py -q   # regenerates golden_flip_detector_expected.json
 git diff -- platform/scripts/governance/__tests__/fixtures   # READ the golden diff: it must be explained by the hook changes
@@ -293,6 +292,8 @@ Then update `GOLDEN_LANES` in the test file if its lanes changed. Once the repo'
 * **Hand-edited snapshots.** A snapshot is trusted for its shape beyond the checks above (types of numbers and levels as written by `--snapshot`); a hand-edited snapshot with other JSON types can crash or mis-pair. Do not edit snapshots; the `.sha256` sidecar exists to catch it.
 * **`chart_divisionals` text versus sign.** The comparison value is `fact_value_text` when present, else `sign`. The ga_vargas writer sets both (`ga_vargas_writer.py`, rows built around lines 994 and 1072), so a change in `sign` alone with an unchanged `fact_value_text` is invisible. Whether every other writer fills both has not been verified.
 * **Continuous to integral** is invisible (see the direction limit above).
+
+* **The `fa2_ga_vargas` hook counts KEYS, not rows.** It cannot detect: row counts inside a key (the 1 to 12, 1 to 2, 1 to 6 and 1 to 5 gains; pair it with the F-A2 acceptance SQL C1 to C6); any bindu value in the 11 new rows per key, or a real change to the surviving Aries row (the hook's `value 1,200` entry is a derived pairing artifact: read the Aries row by hand, H26); value changes in the non-first rows of `varga_house_lord` / `varga_d30_lord_per_amsa` keys (only the first sorted row is paired); `fact_subject`, `build_id` or `sign`-column differences (not part of the key or the value); other charts (the hook is canonical-chart only).
 
 ## Known limits (post-window hardening list)
 
