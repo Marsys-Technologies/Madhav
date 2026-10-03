@@ -192,8 +192,8 @@ CRITERION_REGISTRY: dict[str, dict] = {
     "Narr.checkable":        dict(gate="Narr",  check="checkable",        applicability="prose_fields declared non-empty; zero checkable rows is INCONCLUSIVE, never PASS", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=1),
     "Narr.fidelity_test":    dict(gate="Narr",  check="fidelity_test",    applicability="prose_fields declared non-empty; structural test discovery (N.7 item 5); never PASS", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=1),
     "Narr.lint":             dict(gate="Narr",  check="lint",             applicability="prose_fields declared non-empty; the fact-category-pin and raw-token narration lints over the writer scope", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=1),
-    "Null.schema_default":   dict(gate="Null",  check="schema_default",   applicability="prose_fields declared non-empty, or a declared null_convention; a non-NULL DEFAULT on a declared prose or nullable column; never PASS alone: PASS only for an asset whose declared null_convention the detector verifies (S1, pin 13), the cap otherwise", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=2),
-    "Null.blank_rows":       dict(gate="Null",  check="blank_rows",       applicability="prose_fields declared non-empty, or a declared null_convention; blank or placeholder rows standing in for NULL; never PASS alone: PASS only for an asset whose declared null_convention the detector verifies (S1, pin 13), the cap otherwise", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=2),
+    "Null.schema_default":   dict(gate="Null",  check="schema_default",   applicability="prose_fields declared non-empty, or a declared null_convention; a non-NULL DEFAULT on a declared prose or nullable column; never PASS alone: PASS only for an asset whose declared null_convention the detector verifies (S1, pin 13), the cap otherwise; a declared stamp_columns word (pin 15) exempts a NOT NULL timestamp column that holds no NULL and no sentinel timestamp (epoch, 1970-01-01, infinity, -infinity, year 0001) from the constant test only", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=3),
+    "Null.blank_rows":       dict(gate="Null",  check="blank_rows",       applicability="prose_fields declared non-empty, or a declared null_convention; blank or placeholder rows standing in for NULL; never PASS alone: PASS only for an asset whose declared null_convention the detector verifies (S1, pin 13), the cap otherwise; a declared stamp_columns word (pin 15) exempts a NOT NULL timestamp column that holds no NULL and no sentinel timestamp (epoch, 1970-01-01, infinity, -infinity, year 0001) from the constant test only", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=3),
     "Reach.fields":          dict(gate="Reach", check="fields",           applicability="a served capability module selects specific columns", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=1),
     # ── registered, hand-observed only (detector NONE — D4 finding #5's honest, visible form) ──
     # These are the specific criteria R81's migration re-keys the 11 T5_LEDGER_DRIFT.md §A pairs
@@ -394,7 +394,7 @@ def validate_na_rule_decisions() -> None:
 
 # Registry revision: hand-bumped integer; registry_fingerprint() is the content hash a pin test binds to it, so the
 # revision cannot silently lag the content. Every gate cell carries both.
-REGISTRY_REVISION = 14     # 14 (provisional): Dens label-vs-select repair and the R02 amendment (SS N-74 item 5, N-74(a)): Dens.served rev 5 (the scan now tells a SELECT of the asset's table from a LABEL: a serving module that names the asset only in a provenance string, prose, a type name, an import path, a label-keyed array/value or a map key, in a module with no run-time table access, is no longer a reach, so an asset no served module selects rows from can read the no-served-surface N/A; every unclassifiable form (a bare name as a call/builder argument, in an unkeyed list, a name assembled at run time, SQL in the literal) stays a reach, comments keep the R51 reading, Python readers stay outside the served surface by design, the outside probe is unchanged), and R02's decision text is cause-keyed ("an asset no served module selects rows from; being named only as a provenance label is not a select", N-74(a)); NA_CAUSES unchanged, asset_declarations.json unchanged (1.9.0). 13 (provisional): S1 declared null convention (SS N-72 S1, N-73, N-74): Null.schema_default and Null.blank_rows rev 2 (an asset that DECLARES `null_convention`: its nullable columns each with what NULL means and an optional key scope, its declared constant columns, one-line why and checkable evidence, gets the declared form: the two checks also run over the convention columns, the detector verifies read-only that NULLs occur only in declared columns (and, with a key scope, only on / exactly on the declared keys), that no declared-nullable column holds a literal fallback in place of NULL and that no column is constant unless declared constant; the Null checks read PASS ONLY when schema_default and blank_rows are clean AND the convention verifies, a defect flips the cell to FAIL, and every other path keeps the cap exactly as before: the cap line is unchanged and the lift is a separate branch that needs the verified convention block on BOTH checks; no Null N/A rule (N-22 row 33 stands), NA_CAUSES unchanged; no asset declares one yet, so no census cell verdict changes; asset_declarations.json 1.9.0). ALSO IN 13, TOUCHING A MERGED PIN-12 CHECK (recorded explicitly, S1 review F2): the shared SQL predicate `_ldgr_lacking_text` (S3's placeholder / 'states no value' test, used by Ldgr.source_presence's declared source-column check via `_ldgr_lacking` and now also by the Null convention detector) additionally compares its normalised value WITH THE SPACES REMOVED against the same placeholder list (`replace(norm, ' ', '') IN (...)`), so 'N / A', 'n o n e' and 'not  found' are the placeholders they spell; the list, the normaliser and every other branch are unchanged. It reaches Ldgr.source_presence's placeholder detector (the declared `ldgr_source` check only: the legacy undeclared Ldgr measurement is an IS NOT NULL count and never calls it). No pin-12 criterion text or revision changed (Vocab.alias rev 2 and Ldgr.source_presence rev 3 are identical to the S3 merge), nor NA_CAUSES / NA_RULE_DECISIONS; the registry fingerprint covers criterion entries, N/A rules and causes, gates and rollup order, never detector SQL, so PINNED_FINGERPRINTS[12] (35b0e03e..., equal to the S3-merged module's fingerprint) is unaffected and the revision-13 fingerprint is the same with or without this change. Measured: all six saved censuses (census_fresh/1e5781a, read only) rolled up with and without the change: 1143 cells, zero move (verdicts and checks), and zero move against the saved verdicts; no asset declares ldgr_source, so no real Ldgr cell consumes the predicate. 12 (provisional): S3 declared Vocab.alias and Ldgr.source_presence (SS N-72 S3, N-73 (1)/(4), N-74 (b)): Vocab.alias rev 2 and Ldgr.source_presence rev 3 (an asset that DECLARES `vocab_alias` / `ldgr_source` gets the declared form: the alias class measured against bg_ontology class planet by canonical id and display name, plus the ontology synonyms when an alias column is declared; the Ldgr source column named with its citation_state, a declared unsourced / refuted state never reading PASS or PARTIAL; an undeclared asset reads exactly as before), NA_CAUSES gains Vocab.alias:no-alias-class and Ldgr.source_presence:no-classical-claim, and Vocab.alias#measured:no-alias-class / Ldgr.source_presence#measured:no-classical-claim are declared (declaration-keyed; refused where the table contradicts the declaration; inert until an asset declares); the columns_any patterns stay and still never make an N/A (A5); asset_declarations.json 1.8.0; nikasha_certify closes the legacy null-state Ldgr write path; no real asset declares either key yet, so no census cell verdict changes. 11 (provisional): S2 declared carriage (SS N-72 S2, N-73): Carr.D1 gets a detector (revision 2: the generic D1 engine for an asset that DECLARES D1 with a spec; undeclared assets read as before), NA_CAUSES gains Carr.D1/D2/D3:not-the-declared-carriage and :ratified_judgment, and Carr.D{1,2,3}#measured:not-the-declared-carriage are declared (inert until an asset declares a carriage check); asset_declarations.json 1.7.0; no real asset declares one yet, so no census cell changes. 10: NA_RULE_DECISIONS declares Build.dep_liveness#measured:no-declared-dependencies (S4, N-22 row 23 re-proposed; emitted only when the asset's declared dependency list is empty AND its Build.dag reads-match is PASS, else NO_DETECTOR) and Earn.service_state#measured:not-a-service (N-22 row 9; emitted only for a DECLARED non-service kind that the registry does not contradict); NA_CAUSES gains Earn.service_state:not-a-service; the registry criteria are unchanged (SS N-72; source of record /Users/Dev/suvarna/run/DECISIONS.jsonl). 9: NA_RULE_DECISIONS declares R01 Build.history#measured:never-run, R02 Dens.served#measured:no-served-surface and R03 Narr.{agree,checkable,fidelity_test,lint}#measured:no-prose (SS N-65, N-22/N-22a rows 20/19/17): +7 gate cells NO_DETECTOR to N/A on the saved censuses (Dens 3, Narr 4), no other cell moves; rollup_excluded now applies the same cause+rule check as the rollup (an undeclared N/A reads NO_DETECTOR there too); `never-run` is emitted only when the build history is present for the census scope (else NO_DETECTOR); an empty `written` scan reads NO_DETECTOR for a `prose_fields: []` asset; the registry criteria are unchanged. 8: Carr.detector RETIRED (E6 item i, SS A2): removed from the registry (32 to 31 entries; Carr is exactly D1-D3), measure() stops emitting it, RETIRED_CRITERIA records it and emit_gaps closes its OPEN rows (scoped runs close only in-scope assets' rows); no verdict moves. 7: E6 item (f): NA_CAUSES gains Carr.D1/D2/D3:no-carriage (N-22 principle 7, provisional until J1; SS strict definition: no DAG dependents AND no served-surface reach). The criterion registry is unchanged; the fingerprint moves because NA_CAUSES is fingerprinted content. No rule declared (NA_RULE_DECISIONS stays empty) and no asset declares terminal_by_construction, so no census cell changes. 6: E6 items (g)+(h): Build.target rev 2 (a declared service with no target_table, declared `service` by BOTH the registry and the declarations file, reads PASS by declaration, T4:274); Build.dag rev 2 (THREE clauses, each stated in the verdict text: every depends_on id is an active registry asset in ANY layer, the asset is on no dependency cycle, and reads-match — the writer's SQL reads against the declared edges, T4:275, aligned with pipeline/orchestrator/dag_edge_guard.py (SS 2026-10-01: L0 bedrock reads are exempt as `bedrock_exempt`, PROVISIONAL pending the J1 review; chart_facts is satisfied by any producer in the declared transitive closure); an undeclared read is a FAIL naming the missing edge, or a back-read when the edge would close a cycle; an incomplete parse is PARTIAL/NO_DETECTOR); Idem.pattern rev 2 (relative imports resolve against the importing package: ONE resolver for Idem.pattern and the reads scan — verdicts identical on the 127 saved writers, three notes changed: ka_dasha_kala, ka_gochara, ka_muhurta_seva). 5: E6 packet (c): Narr.agree/checkable/fidelity_test/lint and Null.schema_default/blank_rows registered; NA_CAUSES gains no-prose / no-prose-declared. 4: Dens.served rev 4 (contract AND a tier column in the served select; structural; cause no-served-surface). 3: NA_CAUSES gains Earn.build_record:no-registered-writer (E6 review fix 2). 2: N/A rule ids are cause-keyed (<criterion>#measured:<cause>); NA_CAUSES joins the content
+REGISTRY_REVISION = 15     # 15 (provisional): STAMP, the declared write-time stamp column (SS strategist ruling on the bg_phaladeepika_latta conflict): `null_convention.stamp_columns: [{column, why}]`, a declared word beside `nullable` and `constants`. A write-time stamp (created_at written in one seed transaction) can hold ONE value on every row, which the S1 constant test fails unless the column is declared constant, and declaring a stamp 'constant' is a claim known to be false in kind. The detector now requires a declared stamp column to be a timestamp / timestamptz (the catalog's pg_type name, domains resolved) AND NOT NULL (attnotnull, or a NOT NULL domain; one extra read-only pg_catalog SELECT, issued only when stamp_columns is declared) and to hold no NULL row and no sentinel timestamp, and EXEMPTS it from the constant test ONLY: nothing else is exempted, and the exemption is paid for: a stamp column holding a SENTINEL timestamp (infinity, -infinity, anything at or before the epoch plus one day: epoch, 1970-01-01, year 0001) is a FAIL, counted by one extra counter in the existing fetch and compared in the column's own type (a timestamp column's literal fallback in disguise, which the constant test used to catch when the column was undeclared; the stamp column is examined for it, so it is in neither 'not examined' group); every other column is graded exactly as before). A stamp column that is nullable or not a timestamp is refused at measure time as NO_DETECTOR with the disagreement reported (never PASS; a text / date stamp is refused before any SELECT from the information_schema data types); one holding a NULL row is a FAIL. The PASS text names stamp columns separately ('stamp columns (write-time, constant test exempted): ...'). The validator refuses a malformed list, a duplicate, more than 16, a weak `why`, and a column that is also nullable / constant / a scope key / an allowed_literals column / a declared prose field. The lift block carries `stamp_columns` (not part of `columns`, which stays the prose + nullable columns the two graders run over); `null_lift_earned` requires both sibling blocks to agree on it and the ELEVATED reader requires it to equal the ref declaration's stamp columns. Null.schema_default and Null.blank_rows revision 3 (a new declared form changes what the detector does for an asset that declares it, as Vocab.alias rev 2 at pin 12; applicability text names stamp_columns), so the fingerprint moves; NA_CAUSES / NA_RULE_DECISIONS unchanged; no asset declares a null_convention yet, so no census cell verdict changes (all six saved censuses re-rolled up: zero cells move); asset_declarations.json field list + description only (file version NOT bumped here: sequenced separately). 14 (provisional): Dens label-vs-select repair and the R02 amendment (SS N-74 item 5, N-74(a)): Dens.served rev 5 (the scan now tells a SELECT of the asset's table from a LABEL: a serving module that names the asset only in a provenance string, prose, a type name, an import path, a label-keyed array/value or a map key, in a module with no run-time table access, is no longer a reach, so an asset no served module selects rows from can read the no-served-surface N/A; every unclassifiable form (a bare name as a call/builder argument, in an unkeyed list, a name assembled at run time, SQL in the literal) stays a reach, comments keep the R51 reading, Python readers stay outside the served surface by design, the outside probe is unchanged), and R02's decision text is cause-keyed ("an asset no served module selects rows from; being named only as a provenance label is not a select", N-74(a)); NA_CAUSES unchanged, asset_declarations.json unchanged (1.9.0). 13 (provisional): S1 declared null convention (SS N-72 S1, N-73, N-74): Null.schema_default and Null.blank_rows rev 2 (an asset that DECLARES `null_convention`: its nullable columns each with what NULL means and an optional key scope, its declared constant columns, one-line why and checkable evidence, gets the declared form: the two checks also run over the convention columns, the detector verifies read-only that NULLs occur only in declared columns (and, with a key scope, only on / exactly on the declared keys), that no declared-nullable column holds a literal fallback in place of NULL and that no column is constant unless declared constant; the Null checks read PASS ONLY when schema_default and blank_rows are clean AND the convention verifies, a defect flips the cell to FAIL, and every other path keeps the cap exactly as before: the cap line is unchanged and the lift is a separate branch that needs the verified convention block on BOTH checks; no Null N/A rule (N-22 row 33 stands), NA_CAUSES unchanged; no asset declares one yet, so no census cell verdict changes; asset_declarations.json 1.9.0). ALSO IN 13, TOUCHING A MERGED PIN-12 CHECK (recorded explicitly, S1 review F2): the shared SQL predicate `_ldgr_lacking_text` (S3's placeholder / 'states no value' test, used by Ldgr.source_presence's declared source-column check via `_ldgr_lacking` and now also by the Null convention detector) additionally compares its normalised value WITH THE SPACES REMOVED against the same placeholder list (`replace(norm, ' ', '') IN (...)`), so 'N / A', 'n o n e' and 'not  found' are the placeholders they spell; the list, the normaliser and every other branch are unchanged. It reaches Ldgr.source_presence's placeholder detector (the declared `ldgr_source` check only: the legacy undeclared Ldgr measurement is an IS NOT NULL count and never calls it). No pin-12 criterion text or revision changed (Vocab.alias rev 2 and Ldgr.source_presence rev 3 are identical to the S3 merge), nor NA_CAUSES / NA_RULE_DECISIONS; the registry fingerprint covers criterion entries, N/A rules and causes, gates and rollup order, never detector SQL, so PINNED_FINGERPRINTS[12] (35b0e03e..., equal to the S3-merged module's fingerprint) is unaffected and the revision-13 fingerprint is the same with or without this change. Measured: all six saved censuses (census_fresh/1e5781a, read only) rolled up with and without the change: 1143 cells, zero move (verdicts and checks), and zero move against the saved verdicts; no asset declares ldgr_source, so no real Ldgr cell consumes the predicate. 12 (provisional): S3 declared Vocab.alias and Ldgr.source_presence (SS N-72 S3, N-73 (1)/(4), N-74 (b)): Vocab.alias rev 2 and Ldgr.source_presence rev 3 (an asset that DECLARES `vocab_alias` / `ldgr_source` gets the declared form: the alias class measured against bg_ontology class planet by canonical id and display name, plus the ontology synonyms when an alias column is declared; the Ldgr source column named with its citation_state, a declared unsourced / refuted state never reading PASS or PARTIAL; an undeclared asset reads exactly as before), NA_CAUSES gains Vocab.alias:no-alias-class and Ldgr.source_presence:no-classical-claim, and Vocab.alias#measured:no-alias-class / Ldgr.source_presence#measured:no-classical-claim are declared (declaration-keyed; refused where the table contradicts the declaration; inert until an asset declares); the columns_any patterns stay and still never make an N/A (A5); asset_declarations.json 1.8.0; nikasha_certify closes the legacy null-state Ldgr write path; no real asset declares either key yet, so no census cell verdict changes. 11 (provisional): S2 declared carriage (SS N-72 S2, N-73): Carr.D1 gets a detector (revision 2: the generic D1 engine for an asset that DECLARES D1 with a spec; undeclared assets read as before), NA_CAUSES gains Carr.D1/D2/D3:not-the-declared-carriage and :ratified_judgment, and Carr.D{1,2,3}#measured:not-the-declared-carriage are declared (inert until an asset declares a carriage check); asset_declarations.json 1.7.0; no real asset declares one yet, so no census cell changes. 10: NA_RULE_DECISIONS declares Build.dep_liveness#measured:no-declared-dependencies (S4, N-22 row 23 re-proposed; emitted only when the asset's declared dependency list is empty AND its Build.dag reads-match is PASS, else NO_DETECTOR) and Earn.service_state#measured:not-a-service (N-22 row 9; emitted only for a DECLARED non-service kind that the registry does not contradict); NA_CAUSES gains Earn.service_state:not-a-service; the registry criteria are unchanged (SS N-72; source of record /Users/Dev/suvarna/run/DECISIONS.jsonl). 9: NA_RULE_DECISIONS declares R01 Build.history#measured:never-run, R02 Dens.served#measured:no-served-surface and R03 Narr.{agree,checkable,fidelity_test,lint}#measured:no-prose (SS N-65, N-22/N-22a rows 20/19/17): +7 gate cells NO_DETECTOR to N/A on the saved censuses (Dens 3, Narr 4), no other cell moves; rollup_excluded now applies the same cause+rule check as the rollup (an undeclared N/A reads NO_DETECTOR there too); `never-run` is emitted only when the build history is present for the census scope (else NO_DETECTOR); an empty `written` scan reads NO_DETECTOR for a `prose_fields: []` asset; the registry criteria are unchanged. 8: Carr.detector RETIRED (E6 item i, SS A2): removed from the registry (32 to 31 entries; Carr is exactly D1-D3), measure() stops emitting it, RETIRED_CRITERIA records it and emit_gaps closes its OPEN rows (scoped runs close only in-scope assets' rows); no verdict moves. 7: E6 item (f): NA_CAUSES gains Carr.D1/D2/D3:no-carriage (N-22 principle 7, provisional until J1; SS strict definition: no DAG dependents AND no served-surface reach). The criterion registry is unchanged; the fingerprint moves because NA_CAUSES is fingerprinted content. No rule declared (NA_RULE_DECISIONS stays empty) and no asset declares terminal_by_construction, so no census cell changes. 6: E6 items (g)+(h): Build.target rev 2 (a declared service with no target_table, declared `service` by BOTH the registry and the declarations file, reads PASS by declaration, T4:274); Build.dag rev 2 (THREE clauses, each stated in the verdict text: every depends_on id is an active registry asset in ANY layer, the asset is on no dependency cycle, and reads-match — the writer's SQL reads against the declared edges, T4:275, aligned with pipeline/orchestrator/dag_edge_guard.py (SS 2026-10-01: L0 bedrock reads are exempt as `bedrock_exempt`, PROVISIONAL pending the J1 review; chart_facts is satisfied by any producer in the declared transitive closure); an undeclared read is a FAIL naming the missing edge, or a back-read when the edge would close a cycle; an incomplete parse is PARTIAL/NO_DETECTOR); Idem.pattern rev 2 (relative imports resolve against the importing package: ONE resolver for Idem.pattern and the reads scan — verdicts identical on the 127 saved writers, three notes changed: ka_dasha_kala, ka_gochara, ka_muhurta_seva). 5: E6 packet (c): Narr.agree/checkable/fidelity_test/lint and Null.schema_default/blank_rows registered; NA_CAUSES gains no-prose / no-prose-declared. 4: Dens.served rev 4 (contract AND a tier column in the served select; structural; cause no-served-surface). 3: NA_CAUSES gains Earn.build_record:no-registered-writer (E6 review fix 2). 2: N/A rule ids are cause-keyed (<criterion>#measured:<cause>); NA_CAUSES joins the content
 
 def registry_fingerprint() -> str:
     """sha256 over the canonical JSON of everything that decides a cell: the registry, the declared N/A
@@ -2107,7 +2107,10 @@ def grade_null_blank_rows(entries, counts) -> dict:
 # KIND json, blob (bytea / tsvector / tsquery / xml / vector ...) or array_num (numeric / float arrays, e.g. embeddings) are therefore NOT distinct-counted unless declared constant;
 # the verdict names them as not examined. An array whose ELEMENT contents are not inspected (kind array_other: jsonb[], composite[], inet[], bytea[], uuid[], date[] ...) gets only the
 # empty-array fallback test, so it is NOT counted in the "no literal fallback in the N column(s) checked" claim: it is listed under "NOT examined (element contents not inspected)".
-NULL_CONVENTION_DECL_FIELDS = ("table", "nullable", "constants", "allowed_literals", "why", "evidence")
+NULL_CONVENTION_DECL_FIELDS = ("table", "nullable", "constants", "stamp_columns", "allowed_literals", "why", "evidence")
+NULL_STAMP_FIELDS = ("column", "why")
+NULL_MAX_STAMPS = 16
+NULL_STAMP_TYPES = ("timestamp", "timestamptz")     # pg_type names (domains resolved): `date`, `time`, text and everything else is NOT a write-time stamp
 NULL_NULLABLE_FIELDS = ("column", "means", "scope")
 NULL_SCOPE_FIELDS = ("key_column", "null_for", "mode")
 NULL_CONSTANT_FIELDS = ("column", "why", "value")
@@ -2136,6 +2139,43 @@ def _null_placeholder_text(v: str) -> bool:
     flat = re.sub(r"\s+", " ", v.strip()).casefold()
     core = re.sub(r"^[\W_]+|[\W_]+$", "", flat)
     return flat in LDGR_PLACEHOLDERS or core in LDGR_PLACEHOLDERS
+
+
+def _validate_stamp_columns(where: str, nc: dict, e: dict) -> list:
+    """The declared `stamp_columns` of a null_convention, validated (the declaration shape only: the validator has no database, so whether a column IS a NOT NULL timestamp is the
+    detector's question, refused at measure time). Optional; a list of at most NULL_MAX_STAMPS {column, why} entries: `column` an identifier, `why` a real one-line reason (S1's text
+    rule), no duplicate, and never a column the asset declares as a prose field (a stamp is not narration). Returns the column names in declared order."""
+    st = nc.get("stamp_columns")
+    if st is None and "stamp_columns" not in nc:
+        return []
+    if not isinstance(st, list):
+        raise DeclarationsError(f"{where}.null_convention.stamp_columns must be a list (omit the key when the table declares none)")
+    if len(st) > NULL_MAX_STAMPS:
+        raise DeclarationsError(f"{where}.null_convention.stamp_columns declares more than {NULL_MAX_STAMPS} columns: not a convention")
+    prose = set()
+    for p in (e.get("prose_fields") if isinstance(e, dict) else None) or []:
+        try:
+            prose.add(parse_prose_field(p)[0])
+        except DeclarationsError:
+            continue
+    cols = []
+    for i, c in enumerate(st):
+        w = f"{where}.null_convention.stamp_columns[{i}]"
+        if not isinstance(c, dict):
+            raise DeclarationsError(f"{where}.null_convention stamp_columns entry {i} must be an object")
+        extra = sorted(set(c) - set(NULL_STAMP_FIELDS))
+        if extra:
+            raise DeclarationsError(f"{w}: unknown field(s) {extra}")
+        _s3_ident(where, "null_convention", f"stamp_columns[{i}].column", c.get("column"))
+        bad = _s3_text_problem(c.get("why"), min_chars=15, min_words=3)
+        if bad:
+            raise DeclarationsError(f"{w}.why {bad} (why this column is a write-time stamp)")
+        if c["column"] in cols:
+            raise DeclarationsError(f"{w}.column {c['column']!r} is declared twice (duplicate)")
+        if c["column"] in prose:
+            raise DeclarationsError(f"{w}.column {c['column']!r} is also a declared prose field: a write-time stamp is not narration")
+        cols.append(c["column"])
+    return cols
 
 
 def validate_null_convention_declaration(where: str, nc, e: dict) -> None:
@@ -2211,15 +2251,20 @@ def validate_null_convention_declaration(where: str, nc, e: dict) -> None:
         if c["column"] in c_cols:
             raise DeclarationsError(f"{w}.column {c['column']!r} is declared twice (duplicate)")
         c_cols.append(c["column"])
+    s_cols = _validate_stamp_columns(where, nc, e)
     both = sorted(set(n_cols) & set(c_cols))
     if both:
         raise DeclarationsError(f"{where}.null_convention: {both} are both nullable and constant (a column that is NULL on every row is a dead column, not a convention)")
-    bad = sorted((set(k_cols) & set(c_cols)) | (set(k_cols) & set(n_cols)))
+    both = sorted(set(s_cols) & (set(n_cols) | set(c_cols)))
+    if both:
+        raise DeclarationsError(f"{where}.null_convention: {both} are declared as a stamp column AND as nullable or constant: a stamp column is NOT NULL and exempt from the constant test only; "
+                                "it cannot also be one of the other two words")
+    bad = sorted((set(k_cols) & set(c_cols)) | (set(k_cols) & set(n_cols)) | (set(k_cols) & set(s_cols)))
     if bad:
-        raise DeclarationsError(f"{where}.null_convention: {bad} are used as a scope key_column, which must be a non-NULL identity (neither nullable nor constant)")
+        raise DeclarationsError(f"{where}.null_convention: {bad} are used as a scope key_column, which must be a non-NULL identity (neither nullable, constant nor a stamp column)")
     al = nc.get("allowed_literals")
     if al is None:
-        return
+        al = []
     if not isinstance(al, list) or len(al) > NULL_MAX_ALLOWED:
         raise DeclarationsError(f"{where}.null_convention.allowed_literals must be a list of at most {NULL_MAX_ALLOWED} entries")
     a_cols = []
@@ -2246,6 +2291,8 @@ def validate_null_convention_declaration(where: str, nc, e: dict) -> None:
         if a["column"] in a_cols:
             raise DeclarationsError(f"{w}.column {a['column']!r} is declared twice (duplicate)")
         a_cols.append(a["column"])
+    if set(a_cols) & set(s_cols):
+        raise DeclarationsError(f"{where}.null_convention: {sorted(set(a_cols) & set(s_cols))} are stamp columns (a timestamp, checked for infinity, -infinity or a value at or before epoch + 1 day instead): an allowed literal there has no meaning")
     if set(a_cols) & set(n_cols):
         raise DeclarationsError(f"{where}.null_convention: {sorted(set(a_cols) & set(n_cols))} are nullable, where NULL is the only way to say 'absent': an allowed literal there is the fallback itself")
 
@@ -2314,6 +2361,44 @@ def null_fetch_column_kinds(table: str, columns) -> dict:
     return {c: _null_kind_from_catalog(got[c].get("t"), got[c].get("c"), got[c].get("ec")) for c in columns}
 
 
+def null_fetch_stamp_facts(table: str, columns) -> dict:
+    """{column: {type, notnull}} for the declared STAMP columns of `table` from ONE read-only pg_catalog SELECT (answered as one line of jsonb): `type` is the pg_type name of the
+    column's base type (a domain resolved to its base: timestamp / timestamptz are the only stamp types), `notnull` is true when the catalog itself guarantees the column non-NULL
+    (attnotnull, or a domain declared NOT NULL). Issued only for an asset that declares stamp_columns. Raises Unknown on a malformed identifier, a failed read, or a column the
+    catalog does not answer for (never a guess)."""
+    cols = list(columns or ())
+    if not (isinstance(table, str) and _D1_SQL_IDENT.fullmatch(table)) or not all(isinstance(c, str) and _D1_SQL_IDENT.fullmatch(c) for c in cols):
+        raise Unknown(f"null_fetch_stamp_facts: malformed identifier(s) {[table] + cols!r}")
+    blob = scalar("SELECT coalesce(jsonb_object_agg(a.attname, jsonb_build_object('t', bt.typname, 'nn', (a.attnotnull OR t.typnotnull))), '{}'::jsonb)::text "
+                  "FROM pg_attribute a JOIN pg_type t ON t.oid = a.atttypid "
+                  "JOIN pg_type bt ON bt.oid = CASE WHEN t.typtype = 'd' THEN t.typbasetype ELSE t.oid END "
+                  f"WHERE a.attrelid = to_regclass('\"{table}\"') AND a.attnum > 0 AND NOT a.attisdropped")
+    try:
+        got = json.loads(blob or "")
+    except (json.JSONDecodeError, TypeError) as exc:
+        raise Unknown(f"null_fetch_stamp_facts: unparseable read of {table}: {exc}") from exc
+    if not (isinstance(got, dict) and all(isinstance(got.get(c), dict) and isinstance(got[c].get("t"), str) and isinstance(got[c].get("nn"), bool) for c in cols)):
+        raise Unknown(f"null_fetch_stamp_facts: the catalog does not answer for every stamp column of {table}")
+    return {c: dict(type=got[c]["t"], notnull=got[c]["nn"]) for c in cols}
+
+
+def _null_stamp_sentinel_sql(col: str, typname: str) -> str:
+    """The SQL predicate 'this row's stamp column holds a SENTINEL timestamp': 'infinity', '-infinity', or anything at or before one day after the epoch (so 'epoch',
+    1970-01-01 00:00 UTC, year 0001 and every default-ish 1970 placeholder), compared in the column's OWN type (timestamptz against the epoch as timestamptz; timestamp without time zone
+    against the epoch as timestamp, never through a session-time-zone cast). A real write time is neither: this is the literal fallback of a timestamp column (a disguise a constant test
+    used to catch when the stamp was undeclared). `typname` is the catalog's base type name (timestamp / timestamptz); anything else has no such predicate."""
+    if typname not in NULL_STAMP_TYPES:
+        raise Unknown(f"null_convention: {typname!r} is not a stamp type")
+    q = f'"{col}"'
+    return f"{q} = 'infinity' OR {q} = '-infinity' OR {q} <= 'epoch'::{typname} + interval '1 day'"
+
+
+def _null_stamp_type_ok(data_type) -> bool:
+    """True when an information_schema data_type STRING names a timestamp (with or without time zone): the early, no-SELECT screen; the catalog's pg_type name decides."""
+    t = re.sub(r"\(.*?\)", "", str(data_type or "")).strip().lower()
+    return t in ("timestamp without time zone", "timestamp with time zone", "timestamp", "timestamptz")
+
+
 def _null_fb_possible(kind: str, nullable: bool) -> bool:
     """Can a column of this kind hold a literal fallback the detector tests? text / arrays / json always; a numeric scalar only when declared nullable (the 0 sentinel);
     boolean, dates, timestamps, uuid, enums-as-other, blobs never."""
@@ -2324,6 +2409,7 @@ def _null_declared_columns(spec: dict) -> list:
     """Every column name the declaration refers to (nullable, constants, scope keys, allowed literals), in a stable order."""
     out = [n["column"] for n in spec.get("nullable") or []] + [c["column"] for c in spec.get("constants") or []]
     out += [n["scope"]["key_column"] for n in spec.get("nullable") or [] if n.get("scope")] + [a["column"] for a in spec.get("allowed_literals") or []]
+    out += [x["column"] for x in spec.get("stamp_columns") or []]
     return list(dict.fromkeys(out))
 
 
@@ -2378,6 +2464,8 @@ def null_convention_fetch(table: str, columns, types, spec: dict, tail: str = ""
     if any(c not in types for c in cols):
         raise Unknown("null_convention_fetch: the data type of a column is unknown")
     kinds = null_fetch_column_kinds(table, cols)
+    stamp_cols = [x["column"] for x in spec.get("stamp_columns") or []]
+    stamp_facts = null_fetch_stamp_facts(table, stamp_cols) if stamp_cols else {}      # read FIRST: the sentinel counter is built only for a column the catalog says is a timestamp
     parts = []
     for c in cols:
         qc = f'"{c}"'
@@ -2390,6 +2478,8 @@ def null_convention_fetch(table: str, columns, types, spec: dict, tail: str = ""
             f.append("'distinct', NULL")
         if c in consts:
             f.append(f"'sole', min({qc}{'' if numeric else '::text'})::text")
+        if c in stamp_facts and stamp_facts[c]["type"] in NULL_STAMP_TYPES:
+            f.append(f"'sentinel', count(*) FILTER (WHERE {_null_stamp_sentinel_sql(c, stamp_facts[c]['type'])})")
         n = nullable.get(c)
         pred = _null_fallback_sql(c, kind, bool(n), allowed.get(c, ()))
         if pred:
@@ -2412,7 +2502,9 @@ def null_convention_fetch(table: str, columns, types, spec: dict, tail: str = ""
         raise Unknown(f"null_convention_fetch: unparseable read of {table}: {exc}") from exc
     if isinstance(got, dict):
         got["kinds"] = kinds
-    return _checked_null_stats(got, table, cols, nullable, consts, types)
+        if stamp_cols:
+            got["stamp_facts"] = stamp_facts
+    return _checked_null_stats(got, table, cols, nullable, consts, types, stamp_cols)
 
 
 def _isint(x) -> bool:
@@ -2425,7 +2517,7 @@ def _null_kinds(got, cols, types) -> dict:
     return {c: (k[c] if isinstance(k, dict) and isinstance(k.get(c), str) else _null_type_kind((types or {}).get(c))) for c in cols}
 
 
-def _checked_null_stats(got, table: str, cols, nullable: dict, consts: dict, types=None) -> dict:
+def _checked_null_stats(got, table: str, cols, nullable: dict, consts: dict, types=None, stamps=()) -> dict:
     """The fetched / supplied stats, shape-checked: a malformed answer is Unknown, never a PASS on missing numbers. `distinct` is None exactly for a column whose kind is
     skipped (json / blob / numeric array) and is not declared constant; `fallback` is an int exactly where the column kind can hold a literal fallback (`_null_fb_possible`) and is
     not required for a boolean, a date, a timestamp, an enum-as-other, a blob or a non-nullable number."""
@@ -2447,6 +2539,11 @@ def _checked_null_stats(got, table: str, cols, nullable: dict, consts: dict, typ
                     ok = _isint(d.get("null_outside")) and isinstance(d.get("null_outside_keys"), list)
                     if ok and sc["mode"] == "exactly":
                         ok = _isint(d.get("nonnull_inside")) and isinstance(d.get("nonnull_inside_keys"), list)
+    if ok and stamps:                  # a declared stamp column needs the catalog's own answer (its type and NOT NULL): never a PASS on a fact nobody read
+        sf = got.get("stamp_facts")
+        ok = isinstance(sf, dict) and all(isinstance(sf.get(c), dict) and isinstance(sf[c].get("type"), str) and isinstance(sf[c].get("notnull"), bool) for c in stamps)
+        # a stamp the catalog says is a timestamp needs its sentinel count (a refused one is never graded, so it has none)
+        ok = ok and all(_isint(got["cols"][c].get("sentinel")) for c in stamps if sf[c]["type"] in NULL_STAMP_TYPES)
     if not ok:
         raise Unknown(f"null_convention: malformed or incomplete statistics for {table}")
     return got
@@ -2474,19 +2571,30 @@ def grade_null_convention(spec: dict, columns, types, stats) -> dict:
     table = spec["table"]
     nullable = {n["column"]: n for n in spec["nullable"]}
     consts = {c["column"]: c for c in spec["constants"]}
+    stamps = [x["column"] for x in spec.get("stamp_columns") or []]
     cols = list(columns)
     types = types or {}
     absent = sorted({c for c in _null_declared_columns(spec) if c not in cols})
     if absent:
         return dict(v=FAIL, declared=True, convention=dict(table=table, absent=absent),
                     measured=f"declared column(s) {', '.join(absent)} are not columns of {table}: the declaration names columns the table does not carry")
-    got = _checked_null_stats(stats, table, cols, nullable, consts, types)
+    got = _checked_null_stats(stats, table, cols, nullable, consts, types, stamps)
     rows, per = got["rows"], got["cols"]
     kinds = _null_kinds(got, cols, types)
+    # a stamp column must be a timestamp / timestamptz AND NOT NULL by the CATALOG: a declaration the table contradicts is refused (NO_DETECTOR, never PASS), before any row is graded
+    refused = [dict(field=f"null_convention.stamp_columns.{c}", declared="a NOT NULL timestamp / timestamptz write-time stamp",
+                    measured=f"type {got['stamp_facts'][c]['type']}, {'NOT NULL' if got['stamp_facts'][c]['notnull'] else 'nullable'}")
+               for c in stamps if got["stamp_facts"][c]["type"] not in NULL_STAMP_TYPES or not got["stamp_facts"][c]["notnull"]]
+    if refused:
+        return dict(v=NO_DET, declared=True, convention=dict(table=table, rows=rows, stamp_refused=[r["field"].rsplit(".", 1)[1] for r in refused]), declaration_disagreements=refused,
+                    measured=f"NO_DETECTOR — the declared stamp column(s) are refused, the table contradicts the declaration (a stamp column must be a NOT NULL timestamp / timestamptz): "
+                             + "; ".join(f"{r['field'].rsplit('.', 1)[1]} is {r['measured']}" for r in refused))
     if rows < 2:
         return dict(v=NO_DET, declared=True, convention=dict(table=table, rows=rows),
                     measured=f"NO_DETECTOR — {table} has {rows} row(s): constants and variation cannot be shown on fewer than 2 rows (vacuous)")
-    undecl_nulls = {c: per[c]["nulls"] for c in cols if c not in nullable and per[c]["nulls"]}
+    undecl_nulls = {c: per[c]["nulls"] for c in cols if c not in nullable and c not in stamps and per[c]["nulls"]}
+    stamp_nulls = {c: per[c]["nulls"] for c in stamps if per[c]["nulls"]}                   # a stamp column is checked instead of exempted: it must hold no NULL
+    stamp_sentinels = {c: per[c]["sentinel"] for c in stamps if per[c]["sentinel"]}         # ... and no sentinel timestamp (infinity, -infinity, epoch, 1970-01-01, year 0001): its literal fallback
     fallbacks = {c: per[c]["fallback"] for c in cols if _null_fb_possible(kinds[c], c in nullable) and per[c].get("fallback")}
     scope_viol: dict = {}
     for c, n in nullable.items():
@@ -2500,7 +2608,7 @@ def grade_null_convention(spec: dict, columns, types, stats) -> dict:
             scope_viol.setdefault(c, {})["valued_reserved"] = dict(rows=d["nonnull_inside"], keys=list(d["nonnull_inside_keys"]))
     not_examined = [c for c in cols if per[c]["distinct"] is None]
     one_value = {c: per[c]["distinct"] + (1 if per[c]["nulls"] else 0) <= 1 for c in cols if per[c]["distinct"] is not None}   # NULL counts as a value: {NULL, 'x'} varies
-    undecl_consts = [c for c in cols if c not in consts and one_value.get(c)]
+    undecl_consts = [c for c in cols if c not in consts and c not in stamps and one_value.get(c)]       # the ONE exemption a stamp column gets: a write-time stamp may be one value
     const_viol = []
     for c, d in consts.items():
         if not one_value[c]:
@@ -2511,11 +2619,11 @@ def grade_null_convention(spec: dict, columns, types, stats) -> dict:
     fb_possible = [c for c in cols if _null_fb_possible(kinds[c], c in nullable)]
     elem_not_inspected = [c for c in fb_possible if kinds[c] == "array_other"]            # only the EMPTY-array test runs: the element contents are not looked at
     fb_checked = [c for c in fb_possible if c not in elem_not_inspected]                  # what the PASS claim "no literal fallback" actually covers
-    fb_na = [c for c in cols if c not in fb_possible]
+    fb_na = [c for c in cols if c not in fb_possible and c not in stamps]                 # a stamp column is examined (NOT NULL, no sentinel): it is in neither not-examined group
     allowed_all = [dict(column=a["column"], values=list(a["values"]), why=a["why"]) for a in spec.get("allowed_literals") or []]
     allowed_in_force = [a for a in allowed_all if kinds[a["column"]] in NULL_ALLOWED_EFFECT_KINDS]          # an exemption on a boolean / number / numeric array changes nothing
     allowed_no_effect = [a["column"] for a in allowed_all if kinds[a["column"]] not in NULL_ALLOWED_EFFECT_KINDS]
-    block = dict(table=table, rows=rows, undeclared_nulls=undecl_nulls, fallbacks=fallbacks, scope_violations=scope_viol,
+    block = dict(table=table, rows=rows, undeclared_nulls=undecl_nulls, stamp_columns=list(stamps), stamp_nulls=stamp_nulls, stamp_sentinels=stamp_sentinels, fallbacks=fallbacks, scope_violations=scope_viol,
                  undeclared_constants=undecl_consts, constant_violations=const_viol, unscoped_null_columns=unscoped,
                  fallback_checked_columns=fb_checked, fallback_not_applicable=fb_na, elements_not_inspected=elem_not_inspected, constants_not_examined=not_examined,
                  allowed_literals_in_force=allowed_in_force, allowed_literals_no_effect=allowed_no_effect)
@@ -2523,6 +2631,11 @@ def grade_null_convention(spec: dict, columns, types, stats) -> dict:
     if undecl_nulls:
         problems.append("undeclared NULL in column(s) " + ", ".join(f"{c} ({n} row(s))" for c, n in sorted(undecl_nulls.items()))
                         + " (a NULL is permitted only in a declared nullable column)")
+    if stamp_nulls:
+        problems.append("NULL in declared stamp column(s) " + ", ".join(f"{c} ({n} row(s))" for c, n in sorted(stamp_nulls.items())) + " (a write-time stamp column must hold no NULL)")
+    if stamp_sentinels:
+        problems.append("sentinel timestamp: infinity, -infinity or any value at or before epoch + 1 day (epoch, 1970-01-01, year 0001 and earlier; a placeholder, not a write time) in declared stamp column(s) "
+                        + ", ".join(f"{c} ({n} row(s))" for c, n in sorted(stamp_sentinels.items())))
     if fallbacks:
         problems.append("literal fallback (S3's placeholder definition: blank, N/A, none, 0 ... after normalisation) standing in for a value or for NULL in column(s) "
                         + ", ".join(f"{c} ({n} row(s){'' if c in nullable else '; not declared nullable'})" for c, n in sorted(fallbacks.items())))
@@ -2550,7 +2663,8 @@ def grade_null_convention(spec: dict, columns, types, stats) -> dict:
                 measured=f"{table} ({rows} row(s)): NULL only in the declared nullable column(s) {', '.join(nullable) or 'none'}"
                          + (f", verified on keys: {'; '.join(scoped)}" if scoped else "")
                          + f"; no literal fallback in the {len(fb_checked)} text-like / declared-nullable column(s) checked ({', '.join(fb_checked) or 'none'})"
-                         + f"; {len(consts)} declared constant column(s) constant, no other column constant"
+                         + f"; {len(consts)} declared constant column(s) constant, no other column constant" + (" except the stamp column(s) named next" if stamps else "")
+                         + (f"; stamp columns (write-time, constant test exempted; checked instead: NOT NULL timestamp, no NULL row, no infinity, -infinity or value at or before epoch + 1 day): " + ", ".join(f"{c} ({got['stamp_facts'][c]['type']}, NOT NULL, {per[c]['distinct']} distinct value(s) over {rows} row(s))" for c in stamps) if stamps else "")
                          + (f"; allowed literals in force (declared exemptions): " + "; ".join(f"{a['column']} {a['values']} ({a['why']})" for a in allowed_in_force) if allowed_in_force else "")
                          + (f"; NOT examined for a literal fallback (the type cannot hold one): " + ", ".join(f"{c} ({types.get(c) or kinds[c]})" for c in fb_na) if fb_na else "")
                          + (f"; NOT examined (element contents not inspected; only an empty array is a fallback): " + ", ".join(f"{c} ({types.get(c) or kinds[c]})" for c in elem_not_inspected) if elem_not_inspected else "")
@@ -2582,6 +2696,12 @@ def null_convention_check(nc: dict, own: dict, exists, scope) -> dict:
         return grade_null_convention(nc, cols, types, None)           # a declaration naming what the table does not carry: FAIL before any SELECT
     if not isinstance(types, dict) or any(c not in types for c in cols):
         return dict(v=NO_DET, declared=True, measured=f"NO_DETECTOR — the data types of the columns of {table} were not read: a literal fallback cannot be tested without them")
+    not_ts = [x["column"] for x in nc.get("stamp_columns") or [] if not _null_stamp_type_ok(types[x["column"]])]
+    if not_ts:                                                    # the early screen: a declared stamp the table's own data types say is not a timestamp is refused before any SELECT
+        return dict(v=NO_DET, declared=True,
+                    declaration_disagreements=[dict(field=f"null_convention.stamp_columns.{c}", declared="a NOT NULL timestamp / timestamptz write-time stamp", measured=f"type {types[c]}") for c in not_ts],
+                    measured=f"NO_DETECTOR — the declared stamp column(s) {', '.join(not_ts)} are not timestamp columns of {table} ({', '.join(f'{c} is {types[c]}' for c in not_ts)}): "
+                             "the declaration is refused, nothing read")
     if scope is None:
         return dict(v=NO_DET, declared=True,
                     measured=f"NO_DETECTOR — the rows of {table} cannot be scoped to this asset (shared table, count_sql not a plain count): the scope is unknown")
@@ -2622,7 +2742,8 @@ def earn_null_lift(entries, sd: dict, br: dict, conv: dict, decl: dict) -> dict:
         return out
     if (cv == PASS and entries and sd.get("v") == PARTIAL and sd.get("clean") is True and br.get("v") == PARTIAL and br.get("clean") is True):
         table = (conv.get("convention") or {}).get("table")
-        block = dict(declared=True, verified=True, v=PASS, table=table, columns=list(entries), evidence=decl.get("evidence"), why=decl.get("why"),
+        block = dict(declared=True, verified=True, v=PASS, table=table, columns=list(entries), stamp_columns=[x["column"] for x in decl.get("stamp_columns") or []],
+                     evidence=decl.get("evidence"), why=decl.get("why"),
                      schema_default_clean=True, blank_rows_clean=True, convention=conv.get("measured"))
         return {"Null.schema_default": dict(sd, v=PASS, null_convention=dict(block),
                                             measured=f"PASS earned by the declared null convention: {sd['measured']}; {conv['measured']}"),
@@ -2647,6 +2768,9 @@ def null_lift_problem(meas) -> str | None:
     cols = nc.get("columns")
     if not (isinstance(cols, list) and cols and all(isinstance(c, str) and c for c in cols)):
         return "the block names no covered column"
+    st = nc.get("stamp_columns", [])
+    if not (isinstance(st, list) and all(isinstance(c, str) and c for c in st) and len(set(st)) == len(st) and not set(st) & set(cols)):
+        return "the block's stamp_columns is not a list of distinct column names outside the covered columns"
     if nc.get("schema_default_clean") is not True or nc.get("blank_rows_clean") is not True:
         return "schema_default and blank_rows are not both clean"
     if meas.get("inconclusive") or meas.get("basis") is not None or meas.get("v") != PASS:
@@ -2662,7 +2786,7 @@ def null_lift_earned(crit: str, meas, all_meas) -> bool:
     if null_lift_problem(sib) is not None:
         return False
     a, b = meas["null_convention"], sib["null_convention"]
-    return a["table"] == b["table"] and a["columns"] == b["columns"]
+    return a["table"] == b["table"] and a["columns"] == b["columns"] and a.get("stamp_columns", []) == b.get("stamp_columns", [])
 
 
 _SIDECAR_PREFIX = "platform/python-sidecar/"

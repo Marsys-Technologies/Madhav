@@ -95,7 +95,7 @@ def test_the_entry_declares_what_the_strategist_ruled():
                    "reserved empty", "Ketu has no row"):                       # the ruling's mandatory statements are pinned
         assert needle in CAR["why"], needle
     assert "OCR-garbled" in LS["why"] and "Slokas 45-46" in LS["why"] and "no detector checks the sloka label" in LS["why"] and "PG339 only" in LS["why"]
-    new_sentence = DECL["description"].split("Version 1.10.0", 1)[1]
+    new_sentence = DECL["description"].split("Version 1.10.0", 1)[1].split(" REGISTRY_REVISION 15", 1)[0]   # the 1.10.0 sentence only (a later pin appends its own)
     texts = [json.dumps(ENTRY).lower(), new_sentence.lower()]                    # every why of the entry and the 1.10.0 description sentence
     for word in ("verbatim", "accurate", "exact"):
         assert not any(word in t for t in texts), word

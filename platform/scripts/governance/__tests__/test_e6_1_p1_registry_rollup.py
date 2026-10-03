@@ -66,6 +66,10 @@ PINNED_FINGERPRINTS = {
     # provenance label is not a select"; N/A = "not served directly", not "unused"); a service-kind asset named in a service_probe envelope is a REACH, not a label
     # (bg_ephemeris_engine / bg_panchanga stay NO_DETECTOR); NA_CAUSES unchanged, asset_declarations.json unchanged
     14: "f4af0c6c1e24fd25e41409f8f33ffeac8333411df2936bc9270d438ca20bc0f2",
+    # 15 (STAMP; provisional): `null_convention.stamp_columns: [{column, why}]`, a declared word for a write-time stamp column: the detector requires a NOT NULL timestamp /
+    # timestamptz with no NULL row and no sentinel timestamp and exempts it from the constant test ONLY (nothing else exempted); Null.schema_default / Null.blank_rows revision 3 (applicability text);
+    # NA_CAUSES / NA_RULE_DECISIONS unchanged, inert until an asset declares one
+    15: "ef64d8b9b8ec924d724a13e249e7e6a5f049beeb2d51932c10fb0be557985345",
 }
 
 

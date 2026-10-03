@@ -54,7 +54,10 @@ def census_obj(ms, *, revision=None, fingerprint=None, asset=ASSET, layer=LAYER,
 def decl_text_for(ms, asset=ASSET):
     """The declarations file the ref holds: it declares the null_convention the (lifted) measurements' block names, table / evidence / why (L2)."""
     blk = (ms.get(SD) or {}).get("null_convention") or {}
-    ent = {"null_convention": dict({k: blk.get(k) for k in ("table", "evidence", "why")}, nullable=[{"column": c} for c in blk.get("columns") or []])} if blk.get("table") else {}
+    nc = dict({k: blk.get(k) for k in ("table", "evidence", "why")}, nullable=[{"column": c} for c in blk.get("columns") or []])
+    if blk.get("stamp_columns"):                                                    # REGISTRY_REVISION 15: the declared stamp columns (kept apart from the covered columns)
+        nc["stamp_columns"] = [{"column": c, "why": "written by the seed transaction"} for c in blk["stamp_columns"]]
+    ent = {"null_convention": nc} if blk.get("table") else {}
     return json.dumps({"version": "1.0.0", "assets": {asset: ent}}, indent=2) + "\n"
 
 
@@ -567,3 +570,72 @@ def test_L5_the_blocks_columns_must_be_the_declared_prose_fields_plus_nullable_c
         d = json.loads(decl_text_for(ms))
         d["assets"][ASSET]["null_convention"]["nullable"] = bad
         assert satisfied(world(tmp_path / f"m{i}", ms, decl=json.dumps(d) + "\n")) == [False, False], bad
+
+
+# ───────────────────────── REGISTRY_REVISION 15: stamp columns are bound to the declaration at the ref ─────────────────────────
+# Stamp columns are NOT among the covered columns (the prose + nullable columns the graders run over, as for constants): they are compared on their own, strictly.
+
+def _stamp_lifted(stamps=("created_at",)):
+    import test_e6_stamp_columns as st
+    return copy.deepcopy(st._earn(list(stamps)))
+
+
+def test_an_earned_lift_with_a_stamp_column_the_declaration_names_satisfies_both_certificates(tmp_path):
+    ms = _stamp_lifted()
+    assert ms[SD]["null_convention"]["stamp_columns"] == ["created_at"]
+    assert satisfied(world(tmp_path, ms)) == [True, True]
+    assert satisfied(world(tmp_path / "two", _stamp_lifted(("created_at", "updated_at")))) == [True, True]
+
+
+def test_the_stamp_free_lift_is_unchanged_declaration_and_block_both_empty(tmp_path):
+    assert satisfied(world(tmp_path, _stamp_lifted(()))) == [True, True]
+
+
+def test_a_stamp_the_block_claims_but_the_declaration_does_not_name_stays_capped(tmp_path):
+    ms = _stamp_lifted()
+    plain = decl_text_for(_stamp_lifted(()))                      # the ref declares the convention with no stamp column
+    assert satisfied(world(tmp_path, ms, decl=plain)) == [False, False]
+
+
+def test_a_stamp_the_declaration_names_but_the_block_omits_stays_capped(tmp_path):
+    ms = _stamp_lifted()
+    for c in (SD, BR):
+        ms[c]["null_convention"]["stamp_columns"] = []
+    assert satisfied(world(tmp_path / "empty", ms, decl=decl_text_for(_stamp_lifted()))) == [False, False]
+    for c in (SD, BR):
+        del ms[c]["null_convention"]["stamp_columns"]
+    assert satisfied(world(tmp_path / "absent", ms, decl=decl_text_for(_stamp_lifted()))) == [False, False]
+
+
+def test_a_different_or_reordered_or_extra_stamp_column_stays_capped(tmp_path):
+    decl = decl_text_for(_stamp_lifted(("created_at", "updated_at")))
+    assert satisfied(world(tmp_path / "a", _stamp_lifted(("created_at",)), decl=decl)) == [False, False]                          # the block covers fewer
+    assert satisfied(world(tmp_path / "b", _stamp_lifted(("updated_at", "created_at")), decl=decl)) == [False, False]            # another order
+    assert satisfied(world(tmp_path / "c", _stamp_lifted(("created_at", "updated_at", "x_at")), decl=decl)) == [False, False]      # the block covers more
+    assert satisfied(world(tmp_path / "d", _stamp_lifted(("other_at",)), decl=decl_text_for(_stamp_lifted()))) == [False, False]   # another name
+
+
+def test_a_malformed_stamp_declaration_at_the_ref_stays_capped(tmp_path):
+    ms = _stamp_lifted()
+    for bad in ("created_at", [7], [{"why": "x"}], {"column": "created_at"}):
+        doc = json.loads(decl_text_for(ms))
+        doc["assets"][ASSET]["null_convention"]["stamp_columns"] = bad
+        assert satisfied(world(tmp_path / str(abs(hash(json.dumps(bad)))), ms, decl=json.dumps(doc))) == [False, False], bad
+
+
+def test_a_stamp_column_among_the_covered_columns_is_not_an_earned_block(tmp_path):
+    ms = _stamp_lifted()
+    for c in (SD, BR):
+        ms[c]["null_convention"]["stamp_columns"] = ["effect_description"]            # a covered column cannot also be a stamp (null_lift_problem)
+    assert satisfied(world(tmp_path, ms)) == [False, False]
+
+
+def test_M37_a_malformed_stamp_declaration_at_the_ref_with_a_block_that_has_no_stamp_list_stays_capped(tmp_path):
+    for i, bad in enumerate(("created_at", [7], [{"why": "x"}], {"column": "created_at"}, None)):
+        ms = _stamp_lifted(())                                                         # a stamp-free lift: block stamp_columns == []
+        doc = json.loads(decl_text_for(ms))
+        doc["assets"][ASSET]["null_convention"]["stamp_columns"] = bad
+        assert satisfied(world(tmp_path / f"a{i}", ms, decl=json.dumps(doc))) == [False, False], bad
+        for c in (SD, BR):                                                              # ... and with the key absent from the block altogether
+            ms[c]["null_convention"].pop("stamp_columns", None)
+        assert satisfied(world(tmp_path / f"b{i}", ms, decl=json.dumps(doc))) == [False, False], bad
