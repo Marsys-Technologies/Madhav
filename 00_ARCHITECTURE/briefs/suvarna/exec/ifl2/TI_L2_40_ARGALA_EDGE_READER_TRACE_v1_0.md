@@ -1,11 +1,12 @@
 ---
-version: 1.1
+version: 1.2
 status: CURRENT
 lane: TI-i-fl2-006
 item: TI-L2-40 (reader trace before TI-L2-37 / -38 / -39)
 branch: suvarna/land/TI-i-fl2-006
 basis: origin/main adb0db29d (code read); production DB read 2026-10-03, reader-only SELECT, chart 482012f1
 changelog:
+  - 1.2 -- review-ifl2b: the 10 cancelled edges are the chart-wide total (2 per ayanamsha x 5); Kāla reads one ayanamsha, so each promise graph loses 2; one line on two audit ledgers that mention the flag.
   - 1.1 -- records the SS disposition of finding 1 (E-3): held for the S-L3 review.
   - 1.0 -- trace of every reader found of L2 argala edges and bodha_cgm_edges.cancelled_flag, with what TI-L2-37 (cancelled_flag semantics for argala end; `undetermined` its own state) does to each. Evidence only.
 ---
@@ -26,9 +27,9 @@ active; "the old `cancelled_flag` semantics for argala end"), TI-L2-38 (`bo_pram
 |---|---|---|---|
 | argala_positive | false | antagonistic / harmonious / mixed / neutral | 10 / 10 / 30 / 25 |
 | argala_virodha | false | antagonistic | 34 |
-| argala_virodha | **true** | antagonistic | **10** |
+| argala_virodha | **true** | antagonistic | **10** (2 per ayanamsha x 5) |
 
-Those 10 are the only `cancelled_flag = true` rows of the whole table (all other edge types: 0). The
+Those 10 (2 in each of the five ayanamshas) are the only `cancelled_flag = true` rows of the whole table (all other edge types: 0). The
 `cancelled_by_jsonb` payload carries `original_polarity`, `resulting_role`, `cancelling_roots[]`, `cancelling_actors`,
 `target`.
 
@@ -38,7 +39,7 @@ Those 10 are the only `cancelled_flag = true` rows of the whole table (all other
 |---|---|---|---|
 | E-1 | `bo_karanajala.py:609-613` (writer), INSERT at `:65-79`; other sites hard-code `False` (`:692, :775, :1014, :1137, :1189, :1258, :1716`) | produces the flag and payload | this is the change itself |
 | E-2 | `bo_pramana_mapa.py:589-606` (`_SIGNED_RELATION_SQL`, the signed-relation scorecard) | counts violations: `valence IS NULL OR valence NOT IN (harmonious, antagonistic, mixed, neutral, benefic, malefic)` or `cancelled_flag IS TRUE AND <payload incomplete>` | (a) the `cancelled_flag IS TRUE AND ...` conjunct would never fire once the flag is not set: it keeps passing but checks nothing (the N.8 pattern); (b) a new edge `valence` such as `undetermined` would count as a violation, so the closed set must change in the same batch if `undetermined` is stored in `valence` (TI-L2-38 says "own state"; where it is stored decides this) |
-| E-3 | `services/ka_kshetra/stage2_promise.py:330-340` (`_fetch_cgm_edges`, Kāla L3, read only) | `WHERE ... cancelled_flag = FALSE`; maps `argala` edges into the promise graph with `computed_strength` | **the 10 cancelled `argala_virodha` edges are excluded today. If the flag is no longer set they enter the promise graph** with their stored strength: a change in an L3 input that no L2 change note currently lists. Kāla files are not touched here; the owner of the Kāla spec (SAMĀPTI hand-off to ṢAḌ-DARŚANA) must decide whether `undetermined`/obstructed edges should be excluded in Kāla by a different test |
+| E-3 | `services/ka_kshetra/stage2_promise.py:330-340` (`_fetch_cgm_edges`, Kāla L3, read only) | `WHERE ... cancelled_flag = FALSE`; maps `argala` edges into the promise graph with `computed_strength` | **the 10 cancelled `argala_virodha` edges (2 per ayanamsha; Kāla reads one ayanamsha at a time, so each promise graph loses 2) are excluded today. If the flag is no longer set they enter the promise graph** with their stored strength: a change in an L3 input that no L2 change note currently lists. Kāla files are not touched here; the owner of the Kāla spec (SAMĀPTI hand-off to ṢAḌ-DARŚANA) must decide whether `undetermined`/obstructed edges should be excluded in Kāla by a different test |
 | E-4 | `src/lib/retrieval/registry/layers/L2_bodha/traverse_chart_graph.ts:1195-1210` | selects `e.cancelled_flag`, `e.valence`, `e.edge_type` and others (not `relationship_class`); passes them to the caller; `valence_filter` normalises via `VALENCE_ALIASES` (`:106-113`: harmonious / antagonistic / neutral and the D4 aliases) | served value changes from true to false for the 10 rows; a new `valence` word is not in `VALENCE_ALIASES` and would pass through un-normalised (a served-descriptor change, so the capability census regenerates; PR #2984's file) |
 | E-5 | `platform-mcp/src/tools/registry_bridge.ts` (`get_cgm_subgraph`, around `:3598-3600`) and `src/lib/retrieval/synergy/orchestrator.ts:363-368` | wrappers over E-4 | pass-through |
 | E-6 | `scripts/validate_data_plane_l2_contract.py:183` | asserts the text of `bo_karanajala.py` contains `%(cancelled_by_jsonb)s::jsonb`, `cancelling_roots`, `original_polarity` (violation `cancellation_contract_missing:<token>`) | removing the cancellation payload from the writer would raise these violations. The script is **not referenced** from `.github/`, `platform/scripts/` or `package.json` in this tree, so it would fail only when run by hand; update it in the same change |
@@ -53,13 +54,13 @@ yoga_member / conjunction / aspect types), `bo_yantra_mechanism.py` (dispositor,
 edge id), `bo_drishti.py:129, :197` (`underlying_msr_signal_ids_array`, empty on argala edges), `bo_anveshana.py:338`
 (`is_cross_subsystem = TRUE`; argala is `False`), `ph_phaladesa.py` (names the table in a docstring, no query),
 `address_resolver.ts` (comment only), `graha_portrait.ts:90` (a fencing label). Fixtures that only contain the word
-(`flip_detector/hooks_old_schema/argala.json`, `dens_scan_inputs_2026-10-02.json`) are not readers.
+(`flip_detector/hooks_old_schema/argala.json`, `dens_scan_inputs_2026-10-02.json`) are not readers. Two audit ledgers also mention the flag (`00_ARCHITECTURE/llm_consumption_audit/ledgers/value_families.jsonl`, `.../state/CONCEPT_RETRIEVABILITY_MATRIX.jsonl`); they are records, not consumers.
 
 ## Findings for SS / the batch (nothing built here)
 
 **Disposition (SS, relayed by Exec Suvarna): TI-L2-40 / TI-L2-37 as they affect the Kāla promise filter (`stage2_promise.py:330-340`, E-3) are HELD for the S-L3 review. The change alters Kāla behaviour and lands with the L3 rebuild, not before.**
 
-1. **E-3 is the one cross-layer consequence**: the Kāla promise graph currently drops exactly the 10 cancelled edges.
+1. **E-3 is the one cross-layer consequence**: the Kāla promise graph currently drops exactly the cancelled edges: 2 in each ayanamsha's graph (10 chart-wide).
    TI-L2-37's "cancelled_flag semantics for argala end" would put them back. The batch needs a decision on how Kāla
    should treat `undetermined` and obstructed argala, made with the Kāla owner, before the rebuild; otherwise the L2
    rebuild silently changes an L3 input.
@@ -68,7 +69,7 @@ edge id), `bo_drishti.py:129, :197` (`underlying_msr_signal_ids_array`, empty on
 3. **E-6 and E-9 are code that encodes the old semantics** and move with TI-L2-37; E-6 is not wired into CI, so it
    would not catch the change.
 4. The L1 canonical vocabulary excludes `obstructed` (no strength basis), so after the change `cancelled_flag`
-   would be false on every argala edge. The 10 live `true` rows are therefore the whole measurable effect of the flag
+   would be false on every argala edge. The 10 live `true` rows (2 per ayanamsha) are therefore the whole measurable effect of the flag
    removal on this chart.
 
 ## Limits
