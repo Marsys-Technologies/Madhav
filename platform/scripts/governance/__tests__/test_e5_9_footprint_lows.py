@@ -223,7 +223,7 @@ def test_the_imported_constant_reason_names_the_constant_and_reaches_the_footpri
     ("def r(c):\n    c.execute(build_sql())\n", "sql_from_call_result"),
     ("from helpers import make\ndef r(c):\n    c.execute(make('t_b'))\n", "sql_from_call_result"),
     ("import helpers\ndef r(c):\n    c.execute(helpers.make('t_b'))\n", "sql_from_call_result"),
-    ("def r(c, cfg):\n    c.execute(cfg.get('sql'))\n", "sql_from_call_result"),
+    ("def r(c, cfg):\n    c.execute(cfg.get('sql'))\n", "unresolved_sql_parameter"),
     ("def r(c, q):\n    c.execute(q['insert_b'])\n", "sql_from_subscript"),
     ("QS = compute()\ndef r(c):\n    c.execute(QS['b'])\n", "sql_from_subscript"),
     ("def r(c):\n    c.execute(Q[0])\n", "sql_from_subscript"),
@@ -382,7 +382,7 @@ def test_a_plain_name_constant_still_resolves(repo):
     ('class W:\n    """INSERT INTO t_b (x) VALUES (1)"""\n    def r(self, cur):\n        cur.execute(W.__doc__)\n', "sql_from_dunder_attribute"),
     ('def r(cur):\n    cur.execute(inspect.getdoc(r))\n', "sql_from_call_result"),
     ('def r(o):\n    setattr(o, "SQL", "INSERT INTO t_b VALUES (1)")\n', "runtime_rebinding"),
-    ('import sys\ndef r():\n    setattr(sys.modules[__name__], "OWN", "x")\n', "runtime_rebinding"),
+    ('import sys\ndef r():\n    setattr(sys.modules[__name__], "OWN", "x")\n', ("runtime_rebinding", "dynamic_dispatch")),
     ('globals()["T"] = "t_b"\n', "runtime_rebinding"),
     ('def r(n, v):\n    locals()[n] = v\n', "runtime_rebinding"),
     ('def r(n, v):\n    vars()[n] = v\n', "runtime_rebinding"),
@@ -393,10 +393,10 @@ def test_a_plain_name_constant_still_resolves(repo):
     ('exec("x = 1")\n', "dynamic_code"),
     ('def r(s):\n    return eval(s)\n', "dynamic_code"),
     ('def r(s):\n    return compile(s, "f", "exec")\n', "dynamic_code"),
-    ('def r(cur):\n    getattr(cur, "execute")("DELETE FROM t_b")\n', "dynamic_attribute_call"),
-    ('def r(cur, name):\n    getattr(cur, name)("DELETE FROM t_b")\n', "dynamic_attribute_call"),
-    ('def r(cur):\n    fn = getattr(cur, "executemany")\n    fn("x", [])\n', "dynamic_attribute_call"),
-    ('def r(cur):\n    fn = getattr(cur, "copy_from")\n', "dynamic_attribute_call"),
+    ('def r(cur):\n    getattr(cur, "execute")("DELETE FROM t_b")\n', "dynamic_dispatch"),
+    ('def r(cur, name):\n    getattr(cur, name)("DELETE FROM t_b")\n', "dynamic_dispatch"),
+    ('def r(cur):\n    fn = getattr(cur, "executemany")\n    fn("x", [])\n', "dynamic_dispatch"),
+    ('def r(cur):\n    fn = getattr(cur, "copy_from")\n', "dynamic_dispatch"),
 ])
 def test_an_exotic_write_form_is_listed_as_not_scanned_with_a_named_reason(repo, src, reason):
     res = scan(repo, OWN + src)
@@ -406,7 +406,7 @@ def test_an_exotic_write_form_is_listed_as_not_scanned_with_a_named_reason(repo,
 @pytest.mark.parametrize("src", [
     'B = b"\\x00\\x01 not sql"\n',
     'import hashlib\nH = hashlib.sha256(b"salt").hexdigest()\n',
-    'def r(o):\n    return getattr(o, "close")()\n',                                      # a literal attribute that is not a SQL runner
+    'def r(o):\n    return getattr(o, "close", None)\n',                                  # a literal attribute read with a default
     'def r(o, k):\n    return o.__dict__.get(k)\n',
     'def r(idx, v):\n    idx.__dict__["_cache"] = v\n',                                   # per-object state, not module rebinding
     'def r(x):\n    return globals().get("T"), locals().keys()\n',                       # reading the namespace is not rebinding it

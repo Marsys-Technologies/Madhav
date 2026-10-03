@@ -93,7 +93,23 @@ implicit concatenation, `%`, `.format`, `.join`, `.replace`/`.strip`/... of prov
 assigned exactly once in that class body to a provable value and nowhere else in the file; a call to a function defined in the
 file that returns only provable values; `len/int/float/...` (a number carries no SQL text) and `str/text/dedent/cleandoc` of
 provable arguments; a savepoint statement (`SAVEPOINT|RELEASE [SAVEPOINT]|ROLLBACK TO <identifier>`), which writes no table.
-Attributes are never matched by their last segment. The first reason found is reported (always a named one):
+Attributes are never matched by their last segment. Two further disciplines close the hiding places for a mutation or an
+override:
+
+* **Containers.** A name or attribute bound to a mutable container (list/dict/set, a comprehension, a copy or a combination of
+  one) is provable only while EVERY use of it is a read: iteration, a subscript load, `.items()/.values()/.keys()/.get()/.copy()`,
+  `len`, `in`, truthiness, an f-string, `str.join(...)`, a pure builtin (`sorted`, `list`, `enumerate`, ...), unpacking, or --
+  on the BARE name only -- a mutator call (`append`, `extend`, `update`, `setdefault`, ...) or an item store, whose values are
+  tracked as bindings. Aliasing it, passing it to a call, binding a method of it (`ap = L.append`), mutating it through an
+  attribute receiver (`self.L.append`, `W.L[0] = x`), returning, yielding or storing it elsewhere is `container_escapes`; so is
+  a container holding another mutable container.
+* **Class attributes.** `self.X` / `cls.X` / `Cls.X` is provable only on a plain class (undecorated, no base but `object`, no
+  metaclass, no subclass in the file, never constructed with arguments, no `__dict__` use in the file, no `self.X = ...`
+  anywhere, no method called through the class with an explicit `self`) when `X` is an unannotated top-level `X = <value>`
+  assigned exactly once in the class body (not under `if`/`try`/`for`/`with`, not `+=`, not shadowed by a `def`/import).
+  Dataclass / NamedTuple / Enum fields and subclass overrides are therefore not provable.
+
+The first reason found is reported (always a named one):
 
 Reasons a writer lands in `assets_not_scanned`:
 writer file missing/unparseable/too deeply nested; a table named by a runtime value; a name that is bound anywhere in the
@@ -109,7 +125,7 @@ that is touched in any way other than being measured/iterated (`.append`/`.exten
 * MERGE INTO, REFRESH MATERIALIZED VIEW, CREATE TABLE, SELECT ... INTO (an INTO at the same parenthesis depth as its SELECT, so
   `SELECT EXTRACT(year FROM d) INTO t` is caught), ALTER TABLE, DROP TABLE, psycopg `sql.SQL`/`sql.Identifier` composition, SQL read
   from a file feeding `execute`, a `*.sql` file reference. SQL comments (`/* */` nested, `--`) are whitespace: verbs are matched on
-  the comment-free text, and the raw text is also scanned for the tables it names and for these forms, so a comment can only add.
+  the comment-free text; the stripper is quote-aware (`'--'`, `E'\\''`, `"--"`, `$$--$$` are text, a `\x01..\x02` placeholder is opaque), and the raw and the comment-free passes are UNIONED -- every table and every not-scanned reason of either pass is kept -- so a comment can only add (a verb split by a comment is read by the comment-free pass; the raw pass defers to it when the very next token is a comment opener).
 * an execute-like argument that is not provably in-file: an imported name or an attribute of an imported module
   (`imported_sql_constant`), a call result (`sql_from_call_result`), a subscript of something not provable (`sql_from_subscript`),
   a name bound nowhere (`unresolved_sql_name`) or bound by something not provable, a parameter with no / an unprovable call site
@@ -119,12 +135,17 @@ that is touched in any way other than being measured/iterated (`.append`/`.exten
   `map(cur.execute, ...)`: `execute_method_used_as_value`), an imported execute-like function (`execute_function_imported`).
 * a literal that ENDS in a write verb with no target (`INSERT INTO`, `DELETE FROM`, `TRUNCATE [TABLE]`, `UPDATE `, `COPY `:
   `trailing_write_verb_without_target`), an `UPDATE`/`COPY` whose SET/FROM tail or target is a placeholder, a name followed by
-  nothing (`'UPDATE a ' + clause`, `q = 'UPDATE a'; q += ' SET x=1'`), a statement whose verb comes from a name
-  (`f'{V} FROM a'`), a bytes literal carrying a write form, an `UPDATE ... SET`/`COPY ... FROM` whose target is not a plain name.
+  nothing (`'UPDATE a ' + clause`, `q = 'UPDATE a'; q += ' SET x=1'`), a statement whose verb comes from a name holding a bare verb (`V = 'DELETE'; f'{V} FROM a'`), or whose first token is a name followed by SQL words (`FROM|INTO|TABLE|SET|VALUES|SELECT`) or by a name holding a SQL keyword (`f'{V} {F} a'`; prose such as `f'{a} {b} house'` and a name holding a whole statement are not), a bytes literal carrying a write form, an `UPDATE ... SET`/`COPY ... FROM` whose target is not a plain name.
 * `copy_from`/`copy_to`/`copy_to_table`/`copy_records_to_table` calls (`copy_api_without_sql_text`), `exec`/`eval`/`compile`
   (`dynamic_code`), `setattr`, item assignment on or aliasing of `globals()`/`locals()`/`vars()`, a write through `sys.modules[...]`
   (`runtime_rebinding`), `from x import *` (`dynamic_binding`), `getattr(...)(...)` or `getattr(obj, 'execute')`
-  (`dynamic_attribute_call`).
+  (`dynamic_attribute_call`). Dispatch by string is `dynamic_dispatch`: `getattr` with a runtime name, with a name that is a
+  local def/class or a SQL-running method, or whose result is called straight away (a 3-argument read of a literal attribute is a
+  plain read); `globals()/locals()/vars()` looked up and called, aliased or passed on; `sys.modules`, `__import__`, `importlib`,
+  `builtins`, `__main__`, frames (`_getframe`, `currentframe`, `f_globals`), `operator.methodcaller`/`attrgetter`,
+  `__getattribute__`. A function with a foreign decorator (anything but `staticmethod`/`classmethod`/`property`) is unprovable as a
+  SQL source or as a parameter sink; a classmethod called through its class is indexed past `cls` (a regular method called
+  through its class is not).
 * a SQL literal longer than 64 KB (`sql_literal_too_long`) and a file whose provenance resolution would exceed its work cap of
   60,000 bindings/expressions (`resolver_work_cap`): both fall to NOT scanned, never to complete.
 

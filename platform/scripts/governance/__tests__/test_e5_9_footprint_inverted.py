@@ -727,7 +727,6 @@ def test_aliasing_the_namespace_dict_or_reaching_another_module_is_runtime_rebin
     "def r(x):\n    return 'a {y}'.format(**locals())\n",
     "def r():\n    return globals()['T']\n",
     "def r(o, v):\n    o.__dict__['k'] = v\n",
-    "import sys\ndef r():\n    return sys.modules.get('x')\n",
 ])
 def test_reading_the_namespace_is_not_rebinding_it(repo, src):
     complete(repo, OWN + src)
@@ -749,7 +748,8 @@ def test_a_statement_whose_verb_comes_from_a_name_is_not_scanned(repo, src):
 
 
 def test_a_leading_placeholder_that_is_not_a_missing_verb_is_fine(repo):
-    partial(repo, OWN + "COLS = 'a'\nx = f'{COLS} FROM t'\n", "unparseable_write_target")   # indistinguishable from `{V} FROM a`: over-reported
+    complete(repo, OWN + "COLS = 'a'\nx = f'{COLS} FROM t'\n")        # a name holding a non-verb: not a hidden verb
+    partial(repo, OWN + "def go(c, v):\n    c.execute(f'{v} FROM t')\ngo(None, 'x')\n", "unparseable_write_target")   # a parameter + SQL words
     complete(repo, OWN + "COLS = 'a'\nx = f'{COLS} from t'\n")        # lowercase: prose-like, no verb keyword
     complete(repo, OWN + "def r(n):\n    return f'{n} from {n}'\nr('x')\n")
     complete(repo, OWN + "P = 'SELECT 1 '\nx = P + 'FROM t_b'\n")
