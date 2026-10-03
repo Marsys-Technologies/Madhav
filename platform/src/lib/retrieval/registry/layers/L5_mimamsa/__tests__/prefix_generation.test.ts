@@ -21,6 +21,7 @@ import { queryManifestationGrammarCapability } from '../query_manifestation_gram
 import { queryMimamsaDiscoveriesCapability } from '../query_mimamsa_discoveries'
 import { queryCalibrationCapability } from '../query_calibration'
 import { queryLoadBearingCapability } from '../query_load_bearing'
+import { queryInsightEmbeddingsCapability } from '../query_insight_embeddings'
 
 type Rec = Record<string, any> // eslint-disable-line @typescript-eslint/no-explicit-any
 const HERE = path.dirname(fileURLToPath(import.meta.url))
@@ -199,10 +200,79 @@ describe('relabelling is stricter-only', () => {
     expect(post['statement']).toBe('Blind retrodiction stays as stored on a post-fix row')
   })
 
-  it('load_bearing is labelled in every generation (no validated generation exists)', () => {
+  it('load_bearing: the structural-proxy claim is separate from the generation verdict (MED-1)', () => {
     const post = G.labelInsightUnit({ ...PRE_UNIT_LB, surface_formula_version: V_DARSHANA, leakage_status: 'not_assessed' })
-    expect(post).toMatchObject({ generation_status: 'pre_fix_unvalidated', generation_reason: 'no_validated_generation_exists' })
+    // a unit from a fixed writer is NOT called pre-fix, but its claim is still labelled
+    expect(post).toMatchObject({ generation_status: 'post_fix', claim_status: 'structural_proxy_only' })
+    expect(post['generation_label']).toBeUndefined()
+    expect(String(post['claim_label'])).toContain('structural proxy only')
+    expect(String(post['claim_label'])).not.toMatch(/pre-fix/i)
     expect(String(post['statement'])).not.toContain('Removing this signal would materially')
+    expect(String(post['statement'])).toContain('structural proxy only')
+    // a stale (v1.0) load_bearing unit is both: pre-fix generation AND structural proxy
+    const pre = G.labelInsightUnit(PRE_UNIT_LB)
+    expect(pre).toMatchObject({ generation_status: 'pre_fix_unvalidated', claim_status: 'structural_proxy_only' })
+    expect(String(pre['statement'])).toContain('structural proxy only')
+  })
+
+  it('load_bearing never raises the chart-level generation flag, so the flag can clear after a rebuild', () => {
+    const postLb = G.labelInsightUnit({ ...PRE_UNIT_LB, surface_formula_version: V_DARSHANA, leakage_status: 'not_assessed' })
+    const postOther = G.labelInsightUnit(POST_UNIT)
+    const s = G.summarizeGeneration([postLb, postOther], ['insight_unit'])
+    expect(s.flags).toEqual([])
+    expect(s).toMatchObject({ pre_fix_rows: 0, post_fix_rows: 2, structural_proxy_rows: 1 })
+    expect(s.note).not.toMatch(/load_bearing.*pre-fix generation/)
+    const rows = [G.labelLoadBearingRow({ signal_id: 'fam_yoga' })]
+    expect(G.summarizeGeneration(rows, [])).toMatchObject({ flags: [], pre_fix_rows: 0, generation_not_assessed_rows: 1, structural_proxy_rows: 1 })
+    // 'not_assessed' is honoured only together with the proxy claim; anything else stays fail-closed
+    expect(G.summarizeGeneration([{ generation_status: 'not_assessed' }], []).flags).toEqual(['l5_rows_pre_fix_generation'])
+  })
+
+  it('calibrated_outlook: no residual "(evidence: empirical)" and no served rate on a pre-fix row (MED-2)', () => {
+    const pre = G.labelInsightUnit({
+      insight_id: 'co', insight_type: 'calibrated_outlook', evidence_grade: 'empirical', leakage_status: 'clean', surface_formula_version: 'mi_darshana_v1.0',
+      statement: 'In predictions scored [0.6, 0.7), the observed outcome rate is 28.6% across 7 events (evidence: empirical).',
+    })
+    expect(pre['evidence_grade']).toBe('unvalidated_prefix')
+    expect(String(pre['statement'])).not.toMatch(/evidence: empirical/)
+    expect(String(pre['statement'])).not.toMatch(/28\.6/)
+    expect(String(pre['statement'])).toContain('(evidence: unvalidated_prefix; pre-fix generation, not validated)')
+    // untouched on a post-fix row
+    const post = G.labelInsightUnit({ ...POST_UNIT, insight_type: 'calibrated_outlook', statement: 'the observed outcome rate is 28.6% across 7 events (evidence: empirical).' })
+    expect(post['statement']).toContain('28.6% across 7 events (evidence: empirical)')
+  })
+
+  it('stamp regex is anchored: trailing / leading junk, padding and a third component are unparseable (MED-3)', () => {
+    for (const junk of ['mi_darshana_v1.2.3', 'mi_darshana_v1.2-rc1', 'mi_darshana_v1.2 ', ' mi_darshana_v1.2', 'x mi_darshana_v1.2', 'mi_darshana_v1.2\nx', 'MI_DARSHANA_V1.2']) {
+      expect(G.classifyInsightUnit({ ...POST_UNIT, surface_formula_version: junk })).toMatchObject({ pre_fix: true, reason: 'stamp_unparseable' })
+    }
+    expect(G.classifyInsightUnit({ ...POST_UNIT, surface_formula_version: 'mi_darshana_v1.2' }).pre_fix).toBe(false)
+  })
+
+  it('a malformed calibration probe value is never read as base_rate NULL (MED-3)', () => {
+    for (const bad of [undefined, null, 'yes', 1, 'true', 0, {}]) {
+      expect(G.classifyCalibrationSet([{ scoring_formula_version: 'mi_pramana_v2.0', base_rate_is_null: bad }]).pre_fix).toBe(true)
+    }
+    expect(G.classifyCalibrationSet([{ scoring_formula_version: 'mi_pramana_v2.0', base_rate_is_null: true }]).pre_fix).toBe(false)
+    expect(G.classifyCalibrationSet([{ scoring_formula_version: 'mi_pramana_v2.0', base_rate_is_null: 't' }]).pre_fix).toBe(false)
+    // row-level: an absent base_rate column (not read) is not NULL
+    expect(G.classifyCalibrationRow({ scoring_formula_version: 'mi_pramana_v2.0' }).pre_fix).toBe(true)
+    expect(G.classifyCalibrationRow({ scoring_formula_version: 'mi_pramana_v2.0', base_rate: null }).pre_fix).toBe(false)
+  })
+
+  it('a post-labelled unit whose leakage_status was not read / is a variant of clean is pre-fix (LOW-1)', () => {
+    for (const ls of [undefined, null, '', ' ', 'Clean', 'clean ', 3]) {
+      expect(G.classifyInsightUnit({ ...POST_UNIT, leakage_status: ls })).toMatchObject({ pre_fix: true, reason: 'fix_marker_absent' })
+    }
+  })
+
+  it("the 'assignment count' rewrite is applied only to the (n=N, empirical learning) form, not to the outcome-scored form (LOW-3)", () => {
+    const a = G.relabelPrefixStatement("fires with 0% propensity (n=55, empirical learning).", 'manifestation_grammar')
+    expect(a).toContain('stored n=55 is an assignment count')
+    const b = G.relabelPrefixStatement("fires with 40% propensity (n=9 outcome-scored predictions, empirical learning).", 'manifestation_grammar')
+    expect(b).toContain('n=9 outcome-scored predictions; pre-fix generation, not validated')
+    expect(b).not.toMatch(/assignment count/)
+    expect(b).not.toMatch(/empirical learning/i)
   })
 
   it('does not mutate its input', () => {
@@ -313,7 +383,30 @@ describe('served handlers', () => {
   it('query_load_bearing: rows are labelled, values untouched', async () => {
     queryMock.mockResolvedValueOnce({ rows: [{ conclusion_id: 'c', signal_id: 'fam_yoga', sensitivity: 0.7, role: 'load_bearing', formula_version: 'mi_adhilepa_v1.0' }] })
     const res = await queryLoadBearingCapability.handler({ chart_id: CHART }, undefined) as { content: Rec }
-    expect(res.content.rows[0]).toMatchObject({ sensitivity: 0.7, role: 'load_bearing', generation_reason: 'no_validated_generation_exists' })
-    expect(res.content.generation_flags).toEqual(['l5_rows_pre_fix_generation'])
+    expect(res.content.rows[0]).toMatchObject({ sensitivity: 0.7, role: 'load_bearing', claim_status: 'structural_proxy_only', generation_status: 'not_assessed' })
+    expect(String(res.content.rows[0].claim_label)).not.toMatch(/pre-fix/i)
+    expect(res.content.generation_flags).toEqual([])
+  })
+
+  it('query_insight_embeddings nearest: a pre-fix neighbour is never served as raw empirical (MED-3 wiring)', async () => {
+    queryMock.mockReset()
+    queryMock.mockResolvedValueOnce({ rows: [
+      { insight_id: 'n1', cosine_distance: 0.1, insight_type: 'calibrated_outlook', rank_consequence: 0.286, evidence_grade: 'empirical',
+        statement: 'the observed outcome rate is 28.6% across 7 events (evidence: empirical).', leakage_status: 'clean', surface_formula_version: 'mi_darshana_v1.0' },
+      { insight_id: 'n2', cosine_distance: 0.2, insight_type: 'emergent_law', rank_consequence: 0.3, evidence_grade: 'empirical',
+        statement: 'mean credit=0.30', leakage_status: 'not_assessed', surface_formula_version: V_DARSHANA },
+      { insight_id: 'n3', cosine_distance: 0.3, insight_type: 'emergent_law', rank_consequence: 0.3, evidence_grade: 'empirical', statement: 'orphan (LEFT JOIN null)',
+        leakage_status: null, surface_formula_version: null },
+    ] })
+    const res = await queryInsightEmbeddingsCapability.handler({ chart_id: CHART, mode: 'nearest', seed_insight_id: 's' }, undefined) as { content: Rec }
+    const [a, b, c] = res.content.rows
+    expect(a).toMatchObject({ evidence_grade: 'unvalidated_prefix', generation_status: 'pre_fix_unvalidated', rank_consequence: null })
+    expect(String(a.statement)).not.toMatch(/28\.6|evidence: empirical/)
+    expect(b).toMatchObject({ evidence_grade: 'empirical', generation_status: 'post_fix', rank_consequence: 0.3 })
+    expect(c).toMatchObject({ evidence_grade: 'unvalidated_prefix', generation_status: 'pre_fix_unvalidated' })
+    // the SQL must keep selecting the two stamp columns the detector needs
+    const sql = String(queryMock.mock.calls[0]?.[0])
+    expect(sql).toContain('u.leakage_status')
+    expect(sql).toContain('u.surface_formula_version')
   })
 })

@@ -32,9 +32,19 @@
  *   - row build date vs fix commit date: discoveries/load_bearing carry no timestamp, and the merge
  *     date is not the deploy date (a row built between the two would be mislabelled post-fix).
  *
- * KNOWN LIMIT (stated, not hidden): the CF-L5-03 chronology defect (retrodiction scored as
- * prediction) is NOT fixed on main. A rebuild by a floor-passing writer therefore clears the label
- * but not that defect; the label means "written by a writer with the listed fixes", nothing more.
+ * KNOWN LIMITS (stated, not hidden):
+ *   - the CF-L5-03 chronology defect (retrodiction scored as prediction) is NOT fixed on main. A rebuild
+ *     by a floor-passing writer therefore clears the label but not that defect; the label means
+ *     "written by a writer with the listed fixes", nothing more.
+ *   - classification is per-row-stamp only; the SOURCE generation is not consulted. In a partial rebuild
+ *     (e.g. mi_darshana rebuilt over still-v1.0 grammar rows) a floor-passing unit can keep a stored
+ *     'empirical' grade that rests on a pre-fix source row. The label is exact for a whole-chain rebuild.
+ *
+ * SEPARATE CLAIM (not a generation): load_bearing rows rank classical prior weights in EVERY generation on
+ * main (mi_adhilepa sensitivity = min(applied_multiplier / 2, 1), role = rank position; the only ablation in
+ * mi_pariksha is `structural_proxy_only`). That is carried as `claim_status: 'structural_proxy_only'` and
+ * never as 'pre-fix generation', and it does not raise the chart-level generation flag, so the flag can clear
+ * after a rebuild.
  *
  * Pure module, no imports. A byte-identical copy lives at platform-mcp/src/lib/l5_prefix_generation.ts
  * (platform-mcp cannot import platform sources); a parity test enforces identity.
@@ -42,6 +52,10 @@
 
 export const UNVALIDATED_PREFIX_GRADE = 'unvalidated_prefix'
 export const PREFIX_LABEL = 'pre-fix generation, not validated'
+export const STRUCTURAL_PROXY_STATUS = 'structural_proxy_only'
+export const STRUCTURAL_PROXY_LABEL =
+  'structural proxy only: sensitivity is a rescaled classical prior weight and role is its rank position; ' +
+  'not a validated signal-removal analysis'
 
 /** Legend entry for the downgraded grade (query_insights merges it into evidence_grade_legend). */
 export const PREFIX_GRADE_LEGEND: Record<string, string> = {
@@ -63,7 +77,6 @@ export type PrefixReason =
   | 'fix_marker_absent'
   | 'unknown_row_class'
   | 'generation_probe_unavailable'
-  | 'no_validated_generation_exists'
 
 export interface GenerationVerdict {
   pre_fix: boolean
@@ -97,7 +110,7 @@ const CALIBRATION_LEGACY_LABEL: Floor = { asset: 'mi_pramana', major: 2, minor: 
 function parseStamp(label: unknown): { asset: string; major: number; minor: number } | null | 'missing' {
   if (label == null || (typeof label === 'string' && label.trim() === '')) return 'missing'
   if (typeof label !== 'string') return null
-  const m = /^([a-z][a-z0-9_]*)_v(\d+)\.(\d+)$/.exec(label.trim())
+  const m = /^([a-z][a-z0-9_]*)_v(\d+)\.(\d+)$/.exec(label) // anchored, no trim: padded / suffixed stamps are unparseable
   if (!m) return null
   return { asset: String(m[1]), major: Number(m[2]), minor: Number(m[3]) }
 }
@@ -138,7 +151,10 @@ export function classifyInsightUnit(row: Record<string, unknown>): GenerationVer
   // Old writers stamped leakage_status = 'clean' on every unit with no detector behind it.
   // Fixed writers write 'not_assessed'. A 'clean' under a post-fix label is a contradiction
   // (hand-edited label or mixed write): fail closed.
-  if (row['leakage_status'] === 'clean') {
+  // The marker must be PRESENT (a string) and not 'clean': a SELECT that omits the column, a null, or a
+  // case/whitespace variant of 'clean' all fail closed.
+  const ls = row['leakage_status']
+  if (typeof ls !== 'string' || ls.trim().toLowerCase() === 'clean' || ls.trim() === '') {
     return { ...v, pre_fix: true, reason: 'fix_marker_absent' }
   }
   return v
@@ -184,7 +200,7 @@ export function classifyCalibrationRow(row: Record<string, unknown>): Generation
   if (v.reason === 'stamp_below_floor') {
     const p = parseStamp(label)
     if (p && p !== 'missing' && p.asset === CALIBRATION_LEGACY_LABEL.asset && atLeast(p, CALIBRATION_LEGACY_LABEL)) {
-      if (row['base_rate'] == null) return { ...v, pre_fix: false, reason: null }
+      if (row['base_rate'] === null) return { ...v, pre_fix: false, reason: null } // strict: undefined (column not read) is NOT null
       return { ...v, pre_fix: true, reason: 'fix_marker_absent' }
     }
   }
@@ -204,6 +220,7 @@ export function classifyCalibrationSet(
   for (const g of groups) {
     const v = classifyCalibrationRow({
       scoring_formula_version: g.scoring_formula_version,
+      // Only an explicit boolean true / 't' is NULL; undefined, 'yes', 1, null (a malformed probe value) are not.
       base_rate: g.base_rate_is_null === true || g.base_rate_is_null === 't' ? null : 'not-null',
     })
     if (v.pre_fix) return v
@@ -220,11 +237,22 @@ const EMPIRICAL = 'empirical'
 /** Statement rewrites that remove claims the pre-fix text made and the data never earned. */
 export function relabelPrefixStatement(statement: string, insightType: unknown): string {
   let s = statement
-  // 'fires with 0% propensity (n=55, empirical learning)' (v1.0) and the v1.1 'outcome-scored' form.
+  // v1.0 form 'fires with 0% propensity (n=55, empirical learning)': n there is the assignment count
+  // (mi_sambandha n = opportunity count; scored_count was 0). The later 'outcome-scored predictions' form
+  // (v1.1) does carry a scored n, so that sentence is NOT rewritten to call n an assignment count.
   s = s.replace(
-    /\(n=(\d+)(?: outcome-scored predictions)?, empirical learning\)/gi,
+    /\(n=(\d+), empirical learning\)/gi,
     `(${PREFIX_LABEL}; stored n=$1 is an assignment count, not scored outcomes)`,
   )
+  s = s.replace(
+    /\(n=(\d+) outcome-scored predictions, empirical learning\)/gi,
+    `(n=$1 outcome-scored predictions; ${PREFIX_LABEL})`,
+  )
+  // calibrated_outlook: '... the observed outcome rate is 28.6% across 7 events (evidence: empirical).'
+  // The rate comes from the pre-fix calibration set (circular, chronology-unclean bins), and the grade
+  // word is the stored one; neither is served as measured evidence.
+  s = s.replace(/the observed outcome rate is [\d.]+%/gi, 'the observed outcome rate is [suppressed: unvalidated pre-fix value]')
+  s = s.replace(/\(evidence: empirical\)/gi, `(evidence: ${UNVALIDATED_PREFIX_GRADE}; ${PREFIX_LABEL})`)
   s = s.replace(/empirical learning/gi, PREFIX_LABEL)
   // The v1.0 grammar template prints the propensity as 'fires with N% propensity' (a literal 0% on the
   // canonical chart's 7 rows with 0 scored outcomes); the number was never a measurement.
@@ -240,8 +268,19 @@ export function relabelPrefixStatement(statement: string, insightType: unknown):
 export function relabelLoadBearingStatement(statement: string): string {
   return statement.replace(
     /Removing this signal would materially alter the reading\./g,
-    'This ranks a classical prior weight; no signal-removal analysis was run, so it is not a validated sensitivity.',
+    'This ranks a classical prior weight (structural proxy only); it is not a validated signal-removal analysis.',
   )
+}
+
+/** Attach the (generation-independent) structural-proxy claim label to a load_bearing row. */
+function withProxyClaim(out: Record<string, unknown>): Record<string, unknown> {
+  const res: Record<string, unknown> = {
+    ...out,
+    claim_status: STRUCTURAL_PROXY_STATUS,
+    claim_label: STRUCTURAL_PROXY_LABEL,
+  }
+  if (typeof out['statement'] === 'string') res['statement'] = relabelLoadBearingStatement(out['statement'])
+  return res
 }
 
 export interface LabelOptions {
@@ -253,17 +292,16 @@ export interface LabelOptions {
  * Apply the generation verdict to an insight-unit row. Adds `generation_status` (always, so an
  * absent field never has to be read as "fine"), and for pre-fix rows: downgrades 'empirical' to
  * 'unvalidated_prefix' (original kept in `evidence_grade_stored`), rewrites the affected statement text
- * and adds a human-readable `generation_label`. load_bearing units are labelled in every generation
- * (no validated generation exists for a signal-removal claim).
+ * and adds a human-readable `generation_label`. load_bearing units additionally carry the
+ * generation-independent `claim_status: 'structural_proxy_only'` (see module header); that claim does not
+ * make a post-fix unit "pre-fix".
  */
 export function labelInsightUnit(row: Record<string, unknown>, opts: LabelOptions = {}): Record<string, unknown> {
-  let verdict = classifyInsightUnit(row)
+  const verdict = classifyInsightUnit(row)
   const isLoadBearing = row['insight_type'] === 'load_bearing'
-  if (!verdict.pre_fix && isLoadBearing) {
-    verdict = { ...verdict, pre_fix: true, reason: 'no_validated_generation_exists', required: null }
-  }
   if (!verdict.pre_fix) {
-    return { ...row, generation_status: 'post_fix' }
+    const post = { ...row, generation_status: 'post_fix' }
+    return isLoadBearing ? withProxyClaim(post) : post
   }
   const out: Record<string, unknown> = {
     ...row,
@@ -278,11 +316,8 @@ export function labelInsightUnit(row: Record<string, unknown>, opts: LabelOption
     out['evidence_grade_stored'] = EMPIRICAL
     labelParts.push(`stored grade "empirical" is not served`)
   }
-  if (isLoadBearing) labelParts.push('ranks classical prior weights; no signal-removal analysis')
   if (opts.rewriteText !== false && typeof row['statement'] === 'string') {
-    const rewritten = verdict.reason === 'no_validated_generation_exists'
-      ? relabelLoadBearingStatement(row['statement'])
-      : relabelPrefixStatement(row['statement'], row['insight_type'])
+    const rewritten = relabelPrefixStatement(row['statement'], row['insight_type'])
     if (rewritten !== row['statement']) {
       out['statement'] = rewritten
       labelParts.push('stored statement wording relabelled')
@@ -291,7 +326,7 @@ export function labelInsightUnit(row: Record<string, unknown>, opts: LabelOption
   out['generation_label'] = labelParts.length > 0
     ? `${PREFIX_LABEL} (${labelParts.join('; ')})`
     : PREFIX_LABEL
-  return out
+  return isLoadBearing ? withProxyClaim(out) : out
 }
 
 /** manifestation_grammar row: downgrade 'empirical' for pre-fix rows; values stay (raw reader). */
@@ -334,15 +369,17 @@ export function labelDiscoveryRow(row: Record<string, unknown>): Record<string, 
   return out
 }
 
-/** mimamsa_load_bearing row (mi_adhilepa): no generation yet carries a real signal-removal analysis. */
+/**
+ * mimamsa_load_bearing row (mi_adhilepa). The table has no per-row writer stamp that separates generations
+ * (formula_version is a constant that never moved), so generation_status is 'not_assessed' rather than a
+ * claimed verdict; the claim label (structural proxy only) is true of every generation on main.
+ */
 export function labelLoadBearingRow(row: Record<string, unknown>): Record<string, unknown> {
   return {
     ...row,
-    generation_status: 'pre_fix_unvalidated',
-    generation_reason: 'no_validated_generation_exists' satisfies PrefixReason,
-    generation_label:
-      'not validated: sensitivity is a rescaled classical prior weight (applied_multiplier / 2) and role is its ' +
-      'rank position; no signal-removal analysis was run',
+    generation_status: 'not_assessed',
+    claim_status: STRUCTURAL_PROXY_STATUS,
+    claim_label: STRUCTURAL_PROXY_LABEL,
   }
 }
 
@@ -373,6 +410,10 @@ export interface GenerationSummary {
   flags: L5GenerationFlag[]
   pre_fix_rows: number
   post_fix_rows: number
+  /** rows whose generation cannot be assessed from a stamp (mimamsa_load_bearing); never counted pre/post */
+  generation_not_assessed_rows: number
+  /** rows carrying the generation-independent structural-proxy claim (load_bearing); does not raise the flag */
+  structural_proxy_rows: number
   empirical_downgraded_rows: number
   floors: Record<string, string>
   note: string
@@ -383,9 +424,13 @@ export function summarizeGeneration(rows: ReadonlyArray<Record<string, unknown>>
   let pre = 0
   let post = 0
   let down = 0
+  let na = 0
+  let proxy = 0
   for (const r of rows) {
     if (r['generation_status'] === 'post_fix') post++
-    else pre++ // fail-closed: anything not explicitly post_fix counts as pre-fix
+    else if (r['generation_status'] === 'not_assessed' && r['claim_status'] === STRUCTURAL_PROXY_STATUS) na++
+    else pre++ // fail-closed: anything not explicitly post_fix / assessed-as-not-assessable counts as pre-fix
+    if (r['claim_status'] === STRUCTURAL_PROXY_STATUS) proxy++
     if (r['evidence_grade_stored'] === EMPIRICAL) down++
   }
   const floors: Record<string, string> = {}
@@ -395,11 +440,15 @@ export function summarizeGeneration(rows: ReadonlyArray<Record<string, unknown>>
     flags: pre > 0 ? ['l5_rows_pre_fix_generation'] : [],
     pre_fix_rows: pre,
     post_fix_rows: post,
+    generation_not_assessed_rows: na,
+    structural_proxy_rows: proxy,
     empirical_downgraded_rows: down,
     floors,
     note:
       `Rows classified from the writer stamps stored on each row (version label + fix marker), at request time. ` +
       `"pre_fix_unvalidated" rows were written before the honesty fixes the floors name and are served as ${PREFIX_LABEL}; ` +
-      `their stored "empirical" grade is not served. Stored rows are unchanged. Cleared by a rebuild from writers at or above the floors.`,
+      `their stored "empirical" grade is not served. Stored rows are unchanged. The flag is cleared by a rebuild from writers ` +
+      `at or above the floors. structural_proxy_rows (load_bearing) carry a separate, generation-independent claim label ` +
+      `and never raise the flag.`,
   }
 }

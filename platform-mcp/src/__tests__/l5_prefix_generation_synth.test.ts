@@ -23,8 +23,8 @@ const POST = { surface_formula_version: 'mi_darshana_v1.2', leakage_status: 'not
 const base = { domain: 'career', question_lens: null, rank_consequence: 0.4, confidence_band: null, is_negative_knowledge: false }
 const ROWS = [
   { ...base, ...PRE, insight_id: 'v1', insight_type: 'verdict_object', statement: 'Career: promised (grade 8.8/10). Strong evidence.', n_support: 5, evidence_grade: 'structural' },
-  { ...base, ...PRE, insight_id: 'co_pre', insight_type: 'calibrated_outlook', statement: 'Career outlook: observed outcome rate is 62.0% (n=9).', n_support: 9, evidence_grade: 'empirical' },
-  { ...base, ...POST, insight_id: 'co_post', insight_type: 'calibrated_outlook', statement: 'Career outlook: observed outcome rate is 62.0% (n=9).', n_support: 9, evidence_grade: 'empirical' },
+  { ...base, ...PRE, insight_id: 'co_pre', insight_type: 'calibrated_outlook', statement: 'In predictions scored [0.6, 0.7), the observed outcome rate is 28.6% across 7 events (evidence: empirical).', n_support: 9, evidence_grade: 'empirical' },
+  { ...base, ...POST, insight_id: 'co_post', insight_type: 'calibrated_outlook', statement: 'In predictions scored [0.6, 0.7), the observed outcome rate is 28.6% across 7 events (evidence: empirical).', n_support: 9, evidence_grade: 'empirical' },
   { ...base, ...PRE, insight_id: 'v_emp', insight_type: 'verdict_object', question_lens: 'wealth', statement: 'Wealth: promised (grade 7.5/10). Strong evidence.', n_support: 5, evidence_grade: 'empirical' },
   { ...base, ...PRE, insight_id: 'lb', insight_type: 'load_bearing', statement: "Signal 'fam_yoga' is load_bearing for conclusion 'c' (sensitivity=0.70). Removing this signal would materially alter the reading.", n_support: 1, evidence_grade: 'structural' },
 ]
@@ -74,11 +74,16 @@ describe('platform-mcp: pre-fix generation label', () => {
     expect(pre.generation_status).toBe('pre_fix_unvalidated')
     expect(post.evidence_grade).toBe('empirical')
     expect(post.generation_status).toBe('post_fix')
+    // MED-2: the pre-fix outlook neither serves the rate nor keeps the stored 'evidence: empirical' wording
+    expect(String(pre.statement)).not.toMatch(/28\.6|evidence: empirical/)
+    expect(String(pre.statement)).toContain('pre-fix generation, not validated')
+    expect(String(post.statement)).toContain('28.6% across 7 events (evidence: empirical)')
     expect(c.generation_flags).toEqual(['l5_rows_pre_fix_generation'])
-    expect(c.generation_disclosure).toMatchObject({ pre_fix_rows: 4, post_fix_rows: 1, empirical_downgraded_rows: 2 })
+    expect(c.generation_disclosure).toMatchObject({ pre_fix_rows: 4, post_fix_rows: 1, empirical_downgraded_rows: 2, structural_proxy_rows: 1 })
     const lb = (c.load_bearing_signals as Array<Record<string, any>>)[0]!
     expect(lb.statement).not.toContain('Removing this signal would materially alter the reading.')
-    expect(lb.statement).toContain('no signal-removal analysis was run')
+    expect(lb.statement).toContain('structural proxy only')
+    expect(lb.claim_status).toBe('structural_proxy_only')
     // verdict rows are not rewritten (only labelled); layer constants stay (stricter)
     const v = (c.verdict_summary as Array<Record<string, any>>)[0]!
     expect(v.statement).toContain('promised (grade 8.8/10)')

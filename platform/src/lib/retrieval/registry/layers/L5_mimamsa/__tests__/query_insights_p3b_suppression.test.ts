@@ -121,8 +121,9 @@ describe('query_insights — P3-b tier-suppression (F-69)', () => {
     // TI-l5-insight-prefix-label-001: the sentence claims a signal-removal analysis nobody ran
     // (sensitivity = rescaled classical prior weight, mi_adhilepa); it is relabelled in every generation.
     expect(String(unit.statement)).not.toContain('Removing this signal would materially alter the reading.')
-    expect(String(unit.statement)).toContain('no signal-removal analysis was run')
-    expect(unit.generation_reason).toBe('no_validated_generation_exists')
+    expect(String(unit.statement)).toContain('structural proxy only')
+    expect(unit.claim_status).toBe('structural_proxy_only')
+    expect(unit.generation_status).toBe('post_fix')
   })
 
   it('evidence_grade=prior_only, calibrated_outlook template → the embedded outcome-rate value is ALSO redacted', async () => {
