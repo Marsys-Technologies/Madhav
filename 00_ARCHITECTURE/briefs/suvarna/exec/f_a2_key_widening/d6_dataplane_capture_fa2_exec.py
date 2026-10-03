@@ -37,7 +37,8 @@ shas are BOUND (SS decision N-86, GATE_V2 revision 3, PR #2938 head 7f0db55c3). 
 frozen (the hunk set may still gain item 5, and the hash is computed once, at the freeze).
 
 outcome.json (status dry_run | applied | failed | commit_state_unknown) is written into the run's evidence directory in every mode
-(executor_standards.outcome_guard) with python_executable (sys.executable) and python_version (full sys.version): the dry run and the apply must use the SAME interpreter, and the
+(executor_standards.outcome_guard) with python_executable (sys.executable), python_version (full sys.version), psycopg_version and libpq_version, which are also bound into the evidence
+digest: --apply / --rollback refuse (exit 96, before any connection) under a different interpreter or driver than the matching dry run, or when its record is missing; and the
 source runs on Python 3.11 and 3.12+ (no f-string reuses its own quote type: tests/test_py311_and_interpreter.py); commit_state_unknown means conn.commit() itself raised (the server MAY have committed: check the database first).
 An under_test launch marker is refused (exit 93) in every mode outside pytest. A MISSING outcome.json means check the database. The administrator password is fetched from Secret Manager inside this process ONLY after the
 plan hash matched, never printed or saved; tests inject a disposable connection and never reach connect_admin().
@@ -309,6 +310,7 @@ TEST_EVIDENCE_ENV = "DPFA2_TEST_EVIDENCE_ROOT"
 PYTEST_ENV = "PYTEST_CURRENT_TEST"
 EXIT_NO_LAUNCH = 93
 EXIT_TEST_ENV = 95
+EXIT_INTERPRETER = 96        # --apply / --rollback under a different interpreter (or driver) than the dry run, or no comparable record
 MODES = ("count", "dry-run", "apply", "rollback-dry-run", "rollback")
 
 
@@ -499,7 +501,7 @@ def render_plan(sha: str | None = None, pins: dict | None = None) -> str:
         "pg_get_functiondef after == the patched body (md5 as bound) and its diff from the before body has the bound sha256 and hunk count; owner/secdef/config/ACL unchanged; the new index is unique, "
         "valid, NULLS NOT DISTINCT on the 7 columns; every attestation row equals the live object under the gate's own join and equals the bound digest; the gate's three queries "
         "are false AFTER the plan under search_path public and stored == gate-side digests; identity probes: chart_divisionals 84 landed / 84 distinct identities (legacy 6 args: 18), chart_vichara writer-shaped fixture rows == distinct identities under the live 9 arguments and fewer under the legacy 8; transient grants "
-        "revoked and membership equals the pre-state; --expect-plan == plan hash; --expect-evidence == this run's evidence digest (apply).",
+        "revoked and membership equals the pre-state; --expect-plan == plan hash; --expect-evidence == this run's evidence digest (apply; the digest binds the interpreter path, the full sys.version, the psycopg and libpq versions: an apply or rollback under a different interpreter or driver refuses, exit 96, before any connection).",
         "-- ROLLBACK (--rollback-dry-run / --rollback), the exact inverse, as data_plane_l1_owner (generic: every function re-applied from its shipped live definition and re-attested):",
         "-- preconditions: each function md5 == its patched md5 and its attestation == its patched sha256; 7-column index; every changed table's trigger has its 'to' arguments with attestation " + "; ".join(f"{c.table} {c.to_digest}" for c in TRIGGER_CHANGES) + "; the patched comments; "
         "NO two chart_divisionals rows share the six-column key (a rebuild that landed widened rows makes the old index impossible: delete them first); no build in flight; gate green",
@@ -979,7 +981,7 @@ def run_leg(conn, leg: Leg, mode: str, out, writer_commit: str | None = None, ga
     ck.chk("post_exclusive_window_statements_bounded", window["statements"] <= WINDOW_STATEMENT_BOUND, window["statements"])
     digest = hashlib.sha256(canonical({
         "plan": "see plan_hash", "leg": leg.name, "executor": exec_sha(), "writer_commit": writer_commit, "writer_line": writer_line,
-        "before": before, "old_def_md5": {k: hashlib.md5(v.encode()).hexdigest() for k, v in plan["old_defs"].items()},
+        "runtime": runtime_record(), "before": before, "old_def_md5": {k: hashlib.md5(v.encode()).hexdigest() for k, v in plan["old_defs"].items()},
         "checks": [(n, ok) for n, ok, _ in ck.items]}).encode()).hexdigest()
     if mode in ("apply", "rollback"):
         ck.chk("evidence_digest_matches_expected", expect_evidence == digest, f"expected {expect_evidence} got {digest}")
@@ -1059,13 +1061,23 @@ def write_evidence(run_dir: pathlib.Path, res: dict, result: dict) -> None:
 _SAFE_CLASS: dict = {}
 
 
+RUNTIME_KEYS = ("python_executable", "python_version", "psycopg_version", "libpq_version")
+
+
+def runtime_record() -> dict:
+    """WHICH interpreter and driver is running: sys.executable, the full sys.version, psycopg.__version__ and the libpq version (an int, e.g.
+    170002). Recorded in outcome.json (every status) and in result.json, and BOUND INTO THE EVIDENCE DIGEST (run_leg): the dry run and the apply
+    must use the SAME interpreter and driver, and the apply refuses by itself otherwise (interpreter_precheck, then the digest)."""
+    return {"python_executable": sys.executable, "python_version": sys.version, "psycopg_version": psycopg.__version__,
+            "libpq_version": psycopg.pq.version()}
+
+
 def add_interpreter_to_outcome(path):
-    """Records WHICH interpreter ran (sys.executable, the full sys.version) in outcome.json, in every status: the dry run and the apply must use the
-    SAME interpreter, and the operator compares the two files. The gate's executor_standards.py is pinned byte-for-byte (GATE_PINS), so the two
+    """Adds runtime_record() to outcome.json, in every status. The gate's executor_standards.py is pinned byte-for-byte (GATE_PINS), so the
     fields are added here, atomically (temp file + os.replace in the same directory, mode 0600), right after the standard write."""
     with open(path) as f:
         body = json.load(f)
-    body["python_executable"], body["python_version"] = sys.executable, sys.version
+    body.update(runtime_record())
     d = os.path.dirname(path)
     fd, tmp = tempfile.mkstemp(prefix=".outcome.", dir=d)
     try:
@@ -1091,6 +1103,7 @@ def safe_outcome_class(es):
 
     class SafeOutcome(es.outcome_guard):
         write_error = None
+        interpreter_record_error = None        # the standard outcome.json exists but the interpreter record could not be added
         committed = False
         commit_unknown = None              # class name of the exception conn.commit() itself raised: the server MAY have committed
         commit_digest = None
@@ -1112,8 +1125,8 @@ def safe_outcome_class(es):
                 return
             try:
                 add_interpreter_to_outcome(self.path)
-            except (OSError, ValueError) as exc:        # the standard file exists but lacks the interpreter record: reported like a failed write
-                self.write_error = type(exc).__name__
+            except (OSError, ValueError) as exc:        # the standard file exists but lacks the interpreter record: reported as exactly that
+                self.interpreter_record_error = type(exc).__name__
 
         @staticmethod
         def _warn(text):
@@ -1154,12 +1167,56 @@ def conclude(o, result, kind, digest=None, checks=()):
             "outcome.json could not be written (%s)%s" % (o.write_error, "; THE COMMIT HAPPENED" if kind == "applied" else ""))
     else:
         result["outcome_file"] = o.path
+        if o.interpreter_record_error:
+            result.setdefault("warnings", []).append(
+                "outcome.json written without the interpreter record (%s)%s" % (o.interpreter_record_error, "; THE COMMIT HAPPENED" if kind == "applied" else ""))
     return result
 
 
 def refuse(o, check: str, message: str):
     o.fail([check])
     raise SystemExit("REFUSED: " + message)
+
+
+def refuse_interpreter(o, check: str, message: str):
+    """Distinct from every other refusal: exit EXIT_INTERPRETER (96), its own check name in outcome.json, before any connection."""
+    o.fail([check])
+    o._warn("REFUSED (interpreter): " + message + "\n")
+    raise SystemExit(EXIT_INTERPRETER)
+
+
+def interpreter_precheck(o, evidence_root, expect_evidence: str, log: list) -> None:
+    """--apply / --rollback, BEFORE the credential is fetched: find the dry run(s) whose outcome.json says status dry_run and whose
+    evidence_digest equals --expect-evidence (they sit in the same evidence root) and compare their recorded runtime with this process.
+    A record missing any field = cannot compare = REFUSED; any difference (interpreter path, full sys.version, psycopg, libpq) = REFUSED.
+    No dry-run evidence found here (e.g. copied from another host): no early verdict; the evidence digest itself binds the runtime
+    (run_leg), so a different interpreter still fails evidence_digest_matches_expected."""
+    now, matches = runtime_record(), []
+    try:
+        entries = sorted(pathlib.Path(evidence_root).iterdir())
+    except OSError:
+        entries = []
+    for d in entries:
+        try:
+            body = json.loads((d / "outcome.json").read_text())
+        except (OSError, ValueError):
+            continue
+        if isinstance(body, dict) and body.get("status") == "dry_run" and body.get("evidence_digest") == expect_evidence:
+            matches.append((d.name, body))
+    if not matches:
+        log.append(f"interpreter check: no dry-run evidence for this digest under {evidence_root}; the evidence digest itself binds the interpreter")
+        return
+    for name, body in matches:
+        missing = [k for k in RUNTIME_KEYS if body.get(k) in (None, "")]
+        if missing:
+            refuse_interpreter(o, "dry_run_evidence_lacks_interpreter_record", f"cannot compare: the dry run {name} recorded no {', '.join(missing)} "
+                               "(an older executor, or an edited file); repeat the dry run with this executor and use its evidence digest")
+        differs = [k for k in RUNTIME_KEYS if body[k] != now[k]]
+        if differs:
+            refuse_interpreter(o, "interpreter_differs_from_dry_run", f"the dry run {name} used a different interpreter or driver ("
+                               + "; ".join(f"{k}: dry run {body[k]!r}, now {now[k]!r}" for k in differs)
+                               + "): run the apply with the SAME interpreter, or repeat the dry run under this one")
+    log.append(f"interpreter check: {len(matches)} dry run(s) with this digest used the same interpreter, psycopg and libpq")
 
 
 _HELD_SIGNALS = {signal.SIGTERM, signal.SIGHUP, signal.SIGINT}
@@ -1198,6 +1255,8 @@ def execute(args, connect, now=None, gate_fp=None, gate_tables=None, writer_runn
         except ExpectedDiffError as exc:
             refuse(o, "expected_diff_mismatch", f"the patched body is not the bound EXPECTED_DIFF body ({str(exc)[:160]})")
         lines: list[str] = []
+        if args.mode in ("apply", "rollback"):
+            interpreter_precheck(o, evidence_root, args.expect_evidence, lines)
         conn = connect()                         # the administrator credential is fetched here, never earlier
         try:
             try:
@@ -1208,7 +1267,7 @@ def execute(args, connect, now=None, gate_fp=None, gate_tables=None, writer_runn
                 raise
             ck, digest = res["checks"], res["evidence_digest"]
             result = {"plan_hash": phash, "executor_sha256": sha, "mode": args.mode, "evidence_digest": digest,
-                      "failed_checks": ck.failed, "checks": {n: ok for n, ok, _ in ck.items},
+                      "failed_checks": ck.failed, "checks": {n: ok for n, ok, _ in ck.items}, "runtime": runtime_record(),
                       "details": {n: d for n, ok, d in ck.items if d and not ok}, "log": lines, "evidence_dir": str(run_dir)}
             if args.mode in ("apply", "rollback") and res["commit_ok"]:
                 signal.pthread_sigmask(signal.SIG_BLOCK, _HELD_SIGNALS)       # SIGTERM/SIGHUP/SIGINT wait until the COMMIT is recorded

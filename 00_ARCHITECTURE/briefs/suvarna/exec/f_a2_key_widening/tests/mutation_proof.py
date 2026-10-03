@@ -23,7 +23,8 @@ REPO = SRC.parents[4]
 REL = SRC.relative_to(REPO)
 DESELECT = "not test_plan_txt_is_the_rendering_with_the_current_pins"      # it compares plan.txt with the (mutated) executor sha: a spurious red
 PY311 = "tests/test_py311_and_interpreter.py"
-FAST = "tests/test_plan_and_wiring.py tests/test_plan_docs.py tests/test_combined_exec.py tests/test_capture_shapes.py tests/test_dasha_partition_patches.py " + PY311
+IB = "tests/test_interpreter_binding.py"
+FAST = "tests/test_plan_and_wiring.py tests/test_plan_docs.py tests/test_combined_exec.py tests/test_capture_shapes.py tests/test_dasha_partition_patches.py " + PY311 + " " + IB
 
 # (name, file, old, new, kind, test files, -k expression or None)
 H3A_PRECEDENCE_OLD = """      IF v_value_num IS NOT NULL THEN
@@ -156,8 +157,15 @@ MUTATIONS = [
     ("limits: statement_timeout 120s raised (no sha pin needed)", EX, 'STATEMENT_TIMEOUT = "120s"\n', 'STATEMENT_TIMEOUT = "1200s"\n', None, LM, "documented or really_sets"),
     ("e2e: patch B no longer includes the vimshottari_kp rows (recomputed constants, database proof)", BC, "ARRAY['vimshottari','vimshottari_kp']::TEXT[]", "ARRAY['vimshottari']::TEXT[]", "recompute", DE, "B_after"),
     ("e2e: patch C post-pass block neutered (recomputed constants, database proof)", BC, "IF p_asset_id = 'ga_dashas' AND p_partition_key", "IF p_asset_id = 'ga_dashas_x' AND p_partition_key", "recompute", DE, "C_after"),
-    ("python 3.11 floor: the nested same-quote f-string re-introduced (line 466)", EX, "{ITEM_LABELS.get(p.signature, 'ITEM ? (add a label to ITEM_LABELS)')}", '{ITEM_LABELS.get(p.signature, "ITEM ? (add a label to ITEM_LABELS)")}', None, PY311, None),
+    ("python 3.11 floor: the nested same-quote f-string re-introduced (render_plan ITEM_LABELS line, line 470)", EX, "{ITEM_LABELS.get(p.signature, 'ITEM ? (add a label to ITEM_LABELS)')}", '{ITEM_LABELS.get(p.signature, "ITEM ? (add a label to ITEM_LABELS)")}', None, PY311, None),
     ("interpreter record: outcome.json no longer gets python_executable / python_version", EX, "                add_interpreter_to_outcome(self.path)\n", "                pass\n", None, PY311, "interpreter"),
+    ("interpreter binding: the runtime removed from the evidence digest", EX, '        "runtime": runtime_record(), "before": before,', '        "before": before,', None, IB, "digest"),
+    ("interpreter binding: the early precheck is no longer called", EX, "            interpreter_precheck(o, evidence_root, args.expect_evidence, lines)\n", "            pass\n", None, IB, "refuses_by_itself or rollback_under"),
+    ("interpreter binding: a differing interpreter/driver field is no longer refused", EX, "        differs = [k for k in RUNTIME_KEYS if body[k] != now[k]]\n", "        differs = []\n", None, IB, "different_runtime or rollback_under"),
+    ("interpreter binding: a missing field (old format) is no longer 'cannot compare'", EX, '        missing = [k for k in RUNTIME_KEYS if body.get(k) in (None, "")]\n', "        missing = []\n", None, IB, "cannot_be_compared or old_format"),
+    ("interpreter binding: the refusal exit code is no longer the distinct 96", EX, "    raise SystemExit(EXIT_INTERPRETER)\n", "    raise SystemExit(1)\n", None, IB, "refuses_by_itself"),
+    ("interpreter binding: psycopg / libpq versions dropped from the runtime record", EX, '"psycopg_version": psycopg.__version__,\n            "libpq_version": psycopg.pq.version()}', '"psycopg_version": "x",\n            "libpq_version": 0}', None, PY311 + " " + IB, "interpreter or runtime"),
+    ("interpreter record failure: the message is again the misleading 'could not be written'", EX, "        if o.interpreter_record_error:\n", "        if False:\n", None, PY311, "failed_interpreter_record"),
     ("verify SQL: the plan text no longer names the verification files", EX, '        + "; ".join(f"{n} sha256 {sha_file(HERE / n)}" for n in VERIFY_FILES),', '        + "",', None, WIRING, "verify_files"),
 ]
 

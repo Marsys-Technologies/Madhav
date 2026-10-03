@@ -15,6 +15,7 @@ import json
 import pathlib
 import sys
 
+import psycopg
 import pytest
 
 import conftest as cf
@@ -70,7 +71,7 @@ def test_the_shipped_executor_has_no_reused_quote_inside_an_fstring_replacement_
 
 
 def test_the_backstop_finds_the_construct_in_a_temp_copy(tmp_path):
-    """Mutation proof for the tokenizer backstop (>= 3.12): the shipped line 466 re-introduced in a temp copy is found."""
+    """Mutation proof for the tokenizer backstop (>= 3.12): the shipped render_plan ITEM_LABELS line (line 470) re-introduced in a temp copy is found."""
     if sys.version_info < (3, 12):
         pytest.skip("tokenizer backstop is for >= 3.12")
     import io
@@ -122,6 +123,7 @@ def test_outcome_json_records_the_interpreter_in_every_status(mod, tmp_path, kin
     path = d / "outcome.json"
     body = json.loads(path.read_text())
     assert body["python_executable"] == sys.executable and body["python_executable"]
+    assert body["psycopg_version"] == psycopg.__version__ and body["libpq_version"] == psycopg.pq.version() and isinstance(body["libpq_version"], int)
     assert body["python_version"] == sys.version and body["python_version"].startswith(f"{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}")
     assert body["status"] in ("dry_run", "applied", "failed", "commit_state_unknown")
     assert oct(path.stat().st_mode & 0o777) == "0o600" and not list(d.glob(".outcome.*"))            # atomic replace left no temp file
@@ -136,4 +138,22 @@ def test_a_failed_interpreter_record_is_reported_not_silent(mod, tmp_path, monke
     with mod.safe_outcome_class(es)(d, str(EXEC_DIR / "d6_dataplane_capture_fa2_exec.py"), "a" * 64,
                                     dict(es.fingerprint(str(cf.GATE_FIXTURE)), under_test=False)) as o:
         o.dry_run("b" * 64)
-    assert o.write_error == "OSError"
+    assert o.write_error is None and o.interpreter_record_error == "OSError"        # the standard file exists; only the interpreter record is missing
+    body = json.loads((d / "outcome.json").read_text())
+    assert body["status"] == "dry_run" and "python_executable" not in body
+    result = mod.conclude(o, {}, "dry_run")
+    assert result["outcome_file"] == o.path                                          # the key stays accurate: the file exists
+    assert result["warnings"] == ["outcome.json written without the interpreter record (OSError)"]
+    applied = mod.conclude(o, {}, "applied")
+    assert applied["warnings"] == ["outcome.json written without the interpreter record (OSError); THE COMMIT HAPPENED"]
+
+
+def test_a_failed_standard_write_keeps_its_own_message(mod, tmp_path, monkeypatch):
+    es = mod.standards()
+    cls = mod.safe_outcome_class(es)
+    monkeypatch.setattr(es, "write_outcome", lambda *a, **k: (_ for _ in ()).throw(OSError("disk")))
+    with cls(tmp_path / "w2", str(EXEC_DIR / "d6_dataplane_capture_fa2_exec.py"), "a" * 64, dict(es.fingerprint(str(cf.GATE_FIXTURE)), under_test=False)) as o:
+        o.dry_run("b" * 64)
+    result = mod.conclude(o, {}, "applied")
+    assert o.write_error == "OSError" and "outcome_file" not in result
+    assert result["warnings"] == ["outcome.json could not be written (OSError); THE COMMIT HAPPENED"]
