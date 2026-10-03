@@ -2352,7 +2352,7 @@
    "read_kind": null,
    "evidence": {
     "kind": "registry kind data (seed default, T0 data); writer-backed own table(s) mimamsa_intervention_ledger; census Idem.pattern PASS: DELETE FROM the asset's own table(s) (delete-then-insert): m",
-    "carriage": "served_surface null (unknown): no real served read found. Its table mimamsa_intervention_ledger is written by platform/src/lib/mcp/intervention_ledger_writer.ts:65 (filing), SELECTed only for dedupe (intervention_ledger_writer.ts:110) and by its own build service (python-sidecar/services/mi_sankalpa/db.py, used only by pipeline/orchestrator/writers/mi_sankalpa.py), and wiped by cockpit assetClearSpec.ts:176; platform-mcp/src/lib/kala_upaya_diagnosis.ts:1063-1098 buildEfficacyReport states it has no MCP-exposed read path and always returns honest_empty. A kala_upaya_diagnosis.ts comment, the api/mcp/db/query allow-list and a filing-write do not count. Dens.served N/A is correct here.",
+    "carriage": "served_surface null (unknown): no real served read found. Its table mimamsa_intervention_ledger is written by platform/src/lib/mcp/intervention_ledger_writer.ts:65 (filing), SELECTed only for dedupe (intervention_ledger_writer.ts:110) and by its own build service (python-sidecar/services/mi_sankalpa/db.py, used only by pipeline/orchestrator/writers/mi_sankalpa.py), and wiped by cockpit assetClearSpec.ts:164; platform-mcp/src/lib/kala_upaya_diagnosis.ts:1063-1098 buildEfficacyReport states it has no MCP-exposed read path and always returns honest_empty. A kala_upaya_diagnosis.ts comment, the api/mcp/db/query allow-list and a filing-write do not count. Dens.served N/A is correct here.",
     "prose_fields": null
    }
   },
