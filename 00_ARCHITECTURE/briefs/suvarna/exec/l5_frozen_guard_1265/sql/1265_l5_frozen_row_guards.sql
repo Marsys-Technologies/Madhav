@@ -16,7 +16,7 @@
 --      absent (a fresh replay) it is created; equal it is a no-op replace.
 --   B. ASSERT-AND-RECORD the live-only builder grants: data_plane_builder holds exactly SELECT, INSERT, DELETE ('ard',
 --      grantor amjis_app) on public.mimamsa_predictions and public.mimamsa_manifestation_sets (BUILDER_GRANT_PLAN, applied out
---      of band). No-op if present; RAISES if absent or different. This file never issues a GRANT. Also asserts that the repo
+--      of band). No-op if present; RAISES if absent or different. This file never grants a table privilege (its only GRANT is EXECUTE on its own two helpers, section C1c). Also asserts that the repo
 --      objects it builds beside are the repo's: bmpl_freeze_confirmed (md5 70c2ddb261d703fa6a33a4feaf39c99c) and its trigger,
 --      brahma_prospective_ledger_enforce_shape (md5 acc7ec0121fa1fe0752ae938d9edfafe) and its trigger.
 --   C. GUARDS (every role, owners and superusers included; ENABLE ALWAYS so session_replication_role = replica does not
@@ -54,6 +54,13 @@
 -- public.charts, the discriminator RAISES at run time if it ever becomes true, the executor refuses (pre and post), and sql/verify_charts_rls_constraint.sql
 -- reports it (run it in every dry run and W-step read-back).
 --
+-- HELPER ACL (review MED/LOW-2): both l5_frozen_* helpers are REVOKEd from PUBLIC and EXECUTE is granted only to the non-owner roles that hold DELETE on a
+-- frozen table; asserted by the post-check (PUBLIC false, each such role true). INVARIANT (review LOW-4), RAISED by the gate and the post-check: no
+-- non-owner, non-superuser role holds a write on chart_subject_consent / chart_subject_deletion_disputes AND DELETE on a frozen table (the consent exception
+-- reads those tables with the invoker's rights; a role holding both could forge a 'withdrawn' row and delete). NOTE: session_replication_role = replica
+-- (superuser only) bypasses the two ORIGIN-enabled triggers this file does not own (the captured builder guard and trg_bmpl_freeze_confirmed); the 8 new
+-- triggers are ENABLE ALWAYS and are not bypassed.
+--
 -- ORDER: after S-L1 and after the append-only mi_bhavisya writer + assetClearSpec change are deployed (the executor checks the
 -- commit named by --writer-commit). Once applied, the old pending/due DELETE of mi_bhavisya.py:230 and assetClearSpec.ts:149
 -- fail loudly. RLS is NOT armed (recorded in the PR: unsound for the live role set). Rollback: the ROLLBACK sql of this
@@ -68,6 +75,7 @@ DECLARE
   rel_owner oid;
   t text;
   col text;
+  inv_roles text;
 BEGIN
   FOREACH t IN ARRAY ARRAY['mimamsa_predictions', 'brahma_prospective_ledger', 'mimamsa_manifestation_sets', 'brahma_mimamsa_prediction_ledger'] LOOP
     IF to_regclass('public.' || t) IS NULL THEN
@@ -81,6 +89,21 @@ BEGIN
   END LOOP;
   IF to_regclass('public.charts') IS NOT NULL AND (SELECT relforcerowsecurity FROM pg_class WHERE oid = 'public.charts'::regclass) THEN
     RAISE EXCEPTION '1265: STANDING CONSTRAINT violated: FORCE ROW LEVEL SECURITY is set on public.charts. The chart-deletion discriminator (l5_frozen_chart_cascade_authorizes, SECURITY DEFINER) is unsafe under it; revisit the 1265 guard before keeping FORCE on charts.';
+  END IF;
+  IF to_regclass('public.chart_subject_consent') IS NOT NULL AND to_regclass('public.chart_subject_deletion_disputes') IS NOT NULL THEN
+    SELECT string_agg(r.rolname, ', ' ORDER BY r.rolname) INTO inv_roles
+      FROM pg_roles r
+     WHERE NOT r.rolsuper AND r.rolname NOT LIKE 'pg\_%'
+       AND NOT EXISTS (SELECT 1 FROM pg_class c WHERE c.oid IN ('public.mimamsa_predictions'::regclass, 'public.brahma_prospective_ledger'::regclass,
+                         'public.mimamsa_manifestation_sets'::regclass, 'public.brahma_mimamsa_prediction_ledger'::regclass) AND pg_has_role(r.oid, c.relowner, 'MEMBER'))
+       AND (has_table_privilege(r.oid, 'public.chart_subject_consent', 'INSERT') OR has_table_privilege(r.oid, 'public.chart_subject_consent', 'UPDATE')
+         OR has_table_privilege(r.oid, 'public.chart_subject_consent', 'DELETE') OR has_table_privilege(r.oid, 'public.chart_subject_deletion_disputes', 'INSERT')
+         OR has_table_privilege(r.oid, 'public.chart_subject_deletion_disputes', 'UPDATE') OR has_table_privilege(r.oid, 'public.chart_subject_deletion_disputes', 'DELETE'))
+       AND (has_table_privilege(r.oid, 'public.mimamsa_predictions', 'DELETE') OR has_table_privilege(r.oid, 'public.brahma_prospective_ledger', 'DELETE')
+         OR has_table_privilege(r.oid, 'public.mimamsa_manifestation_sets', 'DELETE') OR has_table_privilege(r.oid, 'public.brahma_mimamsa_prediction_ledger', 'DELETE'));
+    IF inv_roles IS NOT NULL THEN
+      RAISE EXCEPTION '%: INVARIANT violated: role(s) % hold a write on the consent tables AND DELETE on a frozen table; a forged withdrawn consent row would open a delete for them. Revisit the consent exception before granting this.', '1265', inv_roles;
+    END IF;
   END IF;
   IF NOT has_schema_privilege(current_user, 'public', 'CREATE') THEN
     missing := missing || format('current_user %s has no CREATE on schema public (this file creates functions there; run it only through l5_frozen_guard_exec.py, which grants and revokes the capability inside its transaction)',
@@ -196,17 +219,18 @@ DECLARE
   privs text;
   grantor text;
   n int;
+  grantable boolean;
   f record;
 BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'data_plane_builder') THEN
     RAISE EXCEPTION '1265: role data_plane_builder does not exist; the recorded builder grants cannot hold';
   END IF;
   FOREACH tbl IN ARRAY ARRAY['mimamsa_predictions', 'mimamsa_manifestation_sets'] LOOP
-    SELECT string_agg(a.privilege_type, ',' ORDER BY a.privilege_type), min(pg_get_userbyid(a.grantor)), count(DISTINCT a.grantor)
-      INTO privs, grantor, n
+    SELECT string_agg(a.privilege_type, ',' ORDER BY a.privilege_type), min(pg_get_userbyid(a.grantor)), count(DISTINCT a.grantor), bool_or(a.is_grantable)
+      INTO privs, grantor, n, grantable
       FROM pg_class c, aclexplode(c.relacl) a
      WHERE c.oid = ('public.' || tbl)::regclass AND a.grantee = 'data_plane_builder'::regrole;
-    IF privs IS DISTINCT FROM 'DELETE,INSERT,SELECT' OR grantor IS DISTINCT FROM 'amjis_app' OR n <> 1 THEN
+    IF privs IS DISTINCT FROM 'DELETE,INSERT,SELECT' OR grantor IS DISTINCT FROM 'amjis_app' OR n <> 1 OR grantable THEN
       RAISE EXCEPTION '1265: the recorded live grant "data_plane_builder=ard/amjis_app" on public.% is not present as recorded (found privileges %, grantor %); this file records it, it does not create it',
         tbl, COALESCE(privs, '<none>'), COALESCE(grantor, '<none>');
     END IF;
@@ -280,7 +304,7 @@ END
 $helper$;
 
 COMMENT ON FUNCTION public.l5_frozen_withdrawal_authorizes(uuid) IS
-  'N-104/N-107 / 1265: true only when the chart''s subject has withdrawn consent (chart_subject_consent) and no deletion dispute is open/reopened/escalated. The single exception to the L5 frozen-history DELETE guards. Fails closed (false) when the consent tables are absent or unreadable by the invoker.';
+  'N-104/N-107 / 1265: true only when the chart''s subject has withdrawn consent (chart_subject_consent) and no deletion dispute is open/reopened/escalated. One of the two exceptions to the L5 frozen-history DELETE guards (the other is the chart-deletion cascade). Fails closed (false) when the consent tables are absent or unreadable by the invoker.';
 
 -- C1b. The chart-deletion allowance (SS N-108): deleting a CHART is the strongest form of consent withdrawal, so the RI cascade of
 -- charts(id) ON DELETE CASCADE (migration 1275) may remove the rows of that chart; every other DELETE stays refused. Discriminator:
@@ -585,14 +609,32 @@ REVOKE ALL ON FUNCTION public.brahma_prospective_ledger_frozen_row_guard() FROM 
 REVOKE ALL ON FUNCTION public.mimamsa_manifestation_sets_frozen_row_guard() FROM PUBLIC;
 REVOKE ALL ON FUNCTION public.brahma_mimamsa_prediction_ledger_delete_guard() FROM PUBLIC;
 
+-- LOW-2: the two helpers are NOT executable by PUBLIC (the SECURITY DEFINER chart helper would be an RLS-bypassing chart-existence oracle). The guards are
+-- SECURITY INVOKER, so a role that deletes must be able to execute them: EXECUTE goes only to the non-owner roles that hold DELETE on a frozen table today
+-- (derived from the live ACLs). A role granted DELETE later gets a loud "permission denied for function l5_frozen_..." until it is granted EXECUTE too.
+REVOKE ALL ON FUNCTION public.l5_frozen_withdrawal_authorizes(uuid) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.l5_frozen_chart_cascade_authorizes(uuid) FROM PUBLIC;
+DO $helper_acl$
+DECLARE
+  g oid;
+BEGIN
+  FOR g IN SELECT DISTINCT a.grantee FROM pg_class c, aclexplode(c.relacl) a
+            WHERE c.oid IN ('public.mimamsa_predictions'::regclass, 'public.brahma_prospective_ledger'::regclass,
+                            'public.mimamsa_manifestation_sets'::regclass, 'public.brahma_mimamsa_prediction_ledger'::regclass)
+              AND a.privilege_type = 'DELETE' AND a.grantee <> 0 AND a.grantee <> c.relowner LOOP
+    EXECUTE format('GRANT EXECUTE ON FUNCTION public.l5_frozen_withdrawal_authorizes(uuid), public.l5_frozen_chart_cascade_authorizes(uuid) TO %I', pg_get_userbyid(g));
+  END LOOP;
+END
+$helper_acl$;
+
 COMMENT ON FUNCTION public.mimamsa_predictions_frozen_row_guard() IS
-  'N-104/N-107 / 1265: every mimamsa_predictions row is a frozen prediction. UPDATE allows only lifecycle_status (pending->due/confirmed/denied/partial/expired, due->confirmed/denied/partial/expired) and the set-once chart-context staleness marker; DELETE is refused except after a recorded subject withdrawal with no open dispute; TRUNCATE is refused. Applies to every role.';
+  'N-104/N-107 / 1265: every mimamsa_predictions row is a frozen prediction. UPDATE allows only lifecycle_status (pending->due/confirmed/denied/partial/expired, due->confirmed/denied/partial/expired) and the set-once chart-context staleness marker; DELETE is refused except (a) as the cascade of deleting the chart itself or (b) after a recorded subject withdrawal with no open dispute; TRUNCATE is refused. Applies to every role.';
 COMMENT ON FUNCTION public.brahma_prospective_ledger_frozen_row_guard() IS
-  'N-107 / 1265: filed standing predictions are frozen. UPDATE allows only the lifecycle (open->matched/lapsed_unobserved/withdrawn, matched->confirmed/falsified/withdrawn), the match record written by open->matched, and the set-once staleness marker; DELETE only after a recorded subject withdrawal; TRUNCATE refused.';
+  'N-107 / 1265: filed standing predictions are frozen. UPDATE allows only the lifecycle (open->matched/lapsed_unobserved/withdrawn, matched->confirmed/falsified/withdrawn), the match record written by open->matched, and the set-once staleness marker; DELETE only as the cascade of deleting the chart itself or after a recorded subject withdrawal; TRUNCATE refused.';
 COMMENT ON FUNCTION public.mimamsa_manifestation_sets_frozen_row_guard() IS
-  'N-107 / 1265: manifestation sets are the freeze-id citations of the frozen predictions: no UPDATE of any column, DELETE only after a recorded subject withdrawal, TRUNCATE refused.';
+  'N-107 / 1265: manifestation sets are the freeze-id citations of the frozen predictions: no UPDATE of any column, DELETE only as the cascade of deleting the chart itself or after a recorded subject withdrawal, TRUNCATE refused.';
 COMMENT ON FUNCTION public.brahma_mimamsa_prediction_ledger_delete_guard() IS
-  'N-107 / 1265: ledger rows cannot be deleted (only after a recorded subject withdrawal) or truncated. UPDATE freezing stays with trg_bmpl_freeze_confirmed (migration 470).';
+  'N-107 / 1265: ledger rows cannot be deleted (only as the cascade of deleting the chart itself or after a recorded subject withdrawal) or truncated. UPDATE freezing stays with trg_bmpl_freeze_confirmed (migration 470).';
 
 -- C6. Triggers (create when absent; a present one must have the expected shape). ENABLE ALWAYS below.
 DO $triggers$
@@ -685,6 +727,11 @@ BEGIN
     pc := gen_random_uuid();
   END IF;
   BEGIN
+    -- ---- the chart helper's positive path (a helper that always answers false would only fail at the first chart delete)
+    IF to_regclass('public.charts') IS NOT NULL THEN
+      IF public.l5_frozen_chart_cascade_authorizes(pc) THEN failures := array_append(failures, 'the chart helper authorizes a chart that exists'); END IF;
+      IF NOT public.l5_frozen_chart_cascade_authorizes(gen_random_uuid()) THEN failures := array_append(failures, 'the chart helper does not authorize a chart that does not exist (positive path)'); END IF;
+    END IF;
     -- ---- mimamsa_predictions
     INSERT INTO public.mimamsa_predictions
       (chart_id, prediction_id, source_pramana_id, outcome_claim, domain, observation_window, eval_date,
@@ -787,6 +834,8 @@ DO $post$
 DECLARE
   rec record;
   bad int;
+  inv_roles text;
+  g oid;
 BEGIN
   FOR rec IN SELECT * FROM (VALUES
       ('mimamsa_predictions_builder_guard()', '46c23854275c2712b30860a2b174adb2'),
@@ -818,6 +867,34 @@ BEGIN
         to_regprocedure('public.brahma_mimamsa_prediction_ledger_delete_guard()'))
        AND (prosecdef OR has_function_privilege('public', oid, 'EXECUTE'))) THEN
     RAISE EXCEPTION '1265 post-check: a trigger guard function is SECURITY DEFINER or executable by PUBLIC';
+  END IF;
+  IF has_function_privilege('public', to_regprocedure('public.l5_frozen_withdrawal_authorizes(uuid)'), 'EXECUTE')
+     OR has_function_privilege('public', to_regprocedure('public.l5_frozen_chart_cascade_authorizes(uuid)'), 'EXECUTE') THEN
+    RAISE EXCEPTION '1265 post-check: a l5_frozen_* helper is executable by PUBLIC (the SECURITY DEFINER chart helper would be an RLS-bypassing chart-existence oracle)';
+  END IF;
+  FOR g IN SELECT DISTINCT a.grantee FROM pg_class c, aclexplode(c.relacl) a
+            WHERE c.oid IN ('public.mimamsa_predictions'::regclass, 'public.brahma_prospective_ledger'::regclass,
+                            'public.mimamsa_manifestation_sets'::regclass, 'public.brahma_mimamsa_prediction_ledger'::regclass)
+              AND a.privilege_type = 'DELETE' AND a.grantee <> 0 AND a.grantee <> c.relowner LOOP
+    IF NOT (has_function_privilege(g, to_regprocedure('public.l5_frozen_withdrawal_authorizes(uuid)'), 'EXECUTE')
+            AND has_function_privilege(g, to_regprocedure('public.l5_frozen_chart_cascade_authorizes(uuid)'), 'EXECUTE')) THEN
+      RAISE EXCEPTION '1265 post-check: role % holds DELETE on a frozen table but cannot execute the guard helpers', pg_get_userbyid(g);
+    END IF;
+  END LOOP;
+  IF to_regclass('public.chart_subject_consent') IS NOT NULL AND to_regclass('public.chart_subject_deletion_disputes') IS NOT NULL THEN
+    SELECT string_agg(r.rolname, ', ' ORDER BY r.rolname) INTO inv_roles
+      FROM pg_roles r
+     WHERE NOT r.rolsuper AND r.rolname NOT LIKE 'pg\_%'
+       AND NOT EXISTS (SELECT 1 FROM pg_class c WHERE c.oid IN ('public.mimamsa_predictions'::regclass, 'public.brahma_prospective_ledger'::regclass,
+                         'public.mimamsa_manifestation_sets'::regclass, 'public.brahma_mimamsa_prediction_ledger'::regclass) AND pg_has_role(r.oid, c.relowner, 'MEMBER'))
+       AND (has_table_privilege(r.oid, 'public.chart_subject_consent', 'INSERT') OR has_table_privilege(r.oid, 'public.chart_subject_consent', 'UPDATE')
+         OR has_table_privilege(r.oid, 'public.chart_subject_consent', 'DELETE') OR has_table_privilege(r.oid, 'public.chart_subject_deletion_disputes', 'INSERT')
+         OR has_table_privilege(r.oid, 'public.chart_subject_deletion_disputes', 'UPDATE') OR has_table_privilege(r.oid, 'public.chart_subject_deletion_disputes', 'DELETE'))
+       AND (has_table_privilege(r.oid, 'public.mimamsa_predictions', 'DELETE') OR has_table_privilege(r.oid, 'public.brahma_prospective_ledger', 'DELETE')
+         OR has_table_privilege(r.oid, 'public.mimamsa_manifestation_sets', 'DELETE') OR has_table_privilege(r.oid, 'public.brahma_mimamsa_prediction_ledger', 'DELETE'));
+    IF inv_roles IS NOT NULL THEN
+      RAISE EXCEPTION '1265 post-check: INVARIANT violated: role(s) % hold a write on the consent tables AND DELETE on a frozen table', inv_roles;
+    END IF;
   END IF;
   IF (SELECT prosecdef FROM pg_proc WHERE oid = to_regprocedure('public.l5_frozen_withdrawal_authorizes(uuid)')) THEN
     RAISE EXCEPTION '1265 post-check: the withdrawal helper is SECURITY DEFINER';

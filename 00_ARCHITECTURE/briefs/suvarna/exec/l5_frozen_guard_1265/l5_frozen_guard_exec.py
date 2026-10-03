@@ -5,8 +5,8 @@ WHAT IT DOES (one transaction; schema code only, no row of any table is written 
   (1) captures the live-only trigger function public.mimamsa_predictions_builder_guard() (md5 guard; no-op replace),
   (2) ASSERTS-AND-RECORDS the live-only builder grants ('ard' on mimamsa_predictions and mimamsa_manifestation_sets; raises if absent; never grants),
   (3) creates the frozen-history guards: mimamsa_predictions, brahma_prospective_ledger, mimamsa_manifestation_sets (UPDATE allow-lists,
-      DELETE refused, TRUNCATE refused) and a DELETE/TRUNCATE guard on brahma_mimamsa_prediction_ledger, all ENABLE ALWAYS, with the ONE
-      data-driven consent-withdrawal exception for DELETE (public.l5_frozen_withdrawal_authorizes),
+      DELETE refused, TRUNCATE refused) and a DELETE/TRUNCATE guard on brahma_mimamsa_prediction_ledger, all ENABLE ALWAYS, with TWO
+      data-driven exceptions for DELETE (the chart-deletion cascade, l5_frozen_chart_cascade_authorizes; the consent withdrawal, l5_frozen_withdrawal_authorizes),
   (4) self-tests every guard inside the transaction (rolled-back probe rows) and runs an asserting post-check that RAISES,
   and the exact inverse (--rollback). The SQL lives in ./sql/ and is run as ONE script; it is NEVER under platform/migrations (migrate.ts
   would pick it up and the routine runner, which cannot CREATE in schema public, would fail the migrate job and block deploys).
@@ -34,11 +34,14 @@ MODES (every mode needs --expect-plan: the administrator credential is fetched o
   --rollback --expect-plan H --expect-evidence D
                                    the inverse, committed
 
+TARGET (first statements on a new connection, exit 94 otherwise): current_user = session_user = postgres, database amjis, server major 15, NOT a superuser, CREATEROLE;
+the administrator must be a member of pg_read_all_stats (pre_admin_can_see_all_sessions) so the builder-session check can see other sessions. Exit 96: commit() itself raised.
+
 LAUNCH (GATE_V2). Never started directly: `exec/gate_v2/run_gated.sh <python3.11> l5_frozen_guard_exec.py <args>`. main() calls launch_gate() FIRST and
 refuses (exit 93) without a verifying GATE_V2_LAUNCH marker. outcome.json (dry_run | applied | failed | commit_state_unknown) is written in every mode
 with python_executable, python_version, psycopg_version and libpq_version, which are also bound into the evidence digest: --apply / --rollback refuse
 (exit 92, before any connection) under a different interpreter or driver than the matching dry run. A MISSING outcome.json means check the database.
-The source runs on Python 3.11 and 3.12+ (no f-string reuses its own quote type). Under test only, connect() is injected; connect_admin() is never reached.
+The source runs on Python 3.11 and 3.12+ (no f-string reuses its own quote type); execute() refuses (python_below_3_11) under an older interpreter. Under test only, connect() is injected; connect_admin() is never reached.
 """
 from __future__ import annotations
 
@@ -67,6 +70,42 @@ VERIFY_FILES = ("verify_before_apply.sql", "verify_after_apply.sql", "verify_cha
 
 PROJECT = "madhav-astrology"
 EXPECTED_DB = "amjis"
+
+
+@dataclasses.dataclass(frozen=True)
+class Target:
+    """Who and where the administrator connection must be. Production values below; tests pass a mirror target to execute() (there is NO environment route)."""
+    user: str = "postgres"
+    database: str = EXPECTED_DB
+    server_major: int = 15
+
+
+PRODUCTION_TARGET = Target()
+
+
+class CommitStateUnknown(Exception):
+    def __init__(self, exc_name: str) -> None:
+        super().__init__(exc_name)
+        self.exc_name = exc_name
+
+
+def check_target(conn, target: Target) -> tuple:
+    """LOW-1. The very first statements on a new connection: current_user = session_user = the named administrator, current_database = the named database,
+    server major version, NOT a superuser (the plan is written for a CREATEROLE administrator with transient membership), and CREATEROLE. -> (ok, facts)."""
+    cur = conn.cursor()
+    cur.execute("SELECT current_user, session_user, current_database(), current_setting('server_version_num')::int / 10000, r.rolsuper, r.rolcreaterole, "
+                "pg_has_role(current_user, 'pg_monitor', 'MEMBER'), pg_has_role(current_user, 'pg_read_all_stats', 'MEMBER') "
+                "FROM pg_roles r WHERE r.rolname = current_user")
+    cu, su, db, major, sup, crt, mon, stats = cur.fetchone()
+    conn.rollback()
+    facts = ["target: current_user=%s session_user=%s database=%s server_major=%s superuser=%s createrole=%s pg_monitor=%s pg_read_all_stats=%s"
+             % (cu, su, db, major, sup, crt, mon, stats)]
+    ok = (cu, su, db, major) == (target.user, target.user, target.database, target.server_major) and not sup and bool(crt)
+    return ok, facts
+
+
+def python_ok(version_info=None) -> bool:
+    return tuple((version_info or sys.version_info)[:2]) >= PY_FLOOR
 SCHEMA_OWNER = "data_plane_schema_owner"
 APP_OWNER = "amjis_app"
 BUILDER = "data_plane_builder"
@@ -171,6 +210,8 @@ def expected_diff() -> dict:
                       "DELETE only through l5_frozen_chart_cascade_authorizes (SS N-108), checked first: no charts row with that id, i.e. inside the RI cascade of deleting the chart itself the parent is already gone; SECURITY DEFINER because charts has row-level security on; pg_trigger_depth() is deliberately not used; a direct DELETE of a row whose chart exists is refused"],
         "not_guarded_by_ruling": ["mimamsa_calibration", "mimamsa_calibration_snapshot"],
         "rls": "NOT armed (assessed: unsound for the live role set; see the PR)",
+        "helper_acl": "the two l5_frozen_* helpers are NOT executable by PUBLIC (REVOKE ... FROM PUBLIC); EXECUTE is granted only to the non-owner roles that hold DELETE on a frozen table; the SECURITY DEFINER chart helper is otherwise an RLS-bypassing chart-existence oracle",
+        "invariant": "no non-owner, non-superuser role holds a write on chart_subject_consent / chart_subject_deletion_disputes AND DELETE on a frozen table (asserted by the script's gate and post-check: a forged 'withdrawn' row would otherwise open a delete)",
         "standing_constraint": "public.charts relforcerowsecurity must be false (SS): checked pre and post by the executor, by the script's gate, post-check and the discriminator at run time, and by sql/verify_charts_rls_constraint.sql",
         "rollback": "drops the 8 triggers and 6 functions; the captured builder guard and the existing repo triggers stay; no CREATE capability needed",
         "order": "after S-L1, after the append-only mi_bhavisya writer and the assetClearSpec change are deployed (--writer-commit), before any L5 rebuild",
@@ -187,6 +228,9 @@ PYTEST_ENV = "PYTEST_CURRENT_TEST"
 EXIT_NO_LAUNCH = 93
 EXIT_TEST_ENV = 95
 EXIT_INTERPRETER = 92
+EXIT_WRONG_TARGET = 94       # not the expected administrator / database / server major version, or a superuser: checked before anything else
+EXIT_COMMIT_UNKNOWN = 96     # commit() itself raised: the change may or may not be committed (distinct from every refusal)
+PY_FLOOR = (3, 11)
 MODES = ("count", "dry-run", "apply", "rollback-dry-run", "rollback")
 
 
@@ -243,7 +287,7 @@ def render_plan(sha: str | None = None, pins: dict | None = None) -> str:
         "-- NOT a migration: the sql lives in this package, never under platform/migrations or platform/supabase/migrations.",
         f"SET LOCAL search_path = public, pg_catalog; SET LOCAL lock_timeout = '{LOCK_TIMEOUT}'; SET LOCAL statement_timeout = '{STATEMENT_TIMEOUT}'",
         f"-- STEP (transient role membership, part of the plan): GRANT {SCHEMA_OWNER} TO CURRENT_USER and GRANT {APP_OWNER} TO CURRENT_USER, each only if the administrator is not already a member; REVOKEd before COMMIT; the memberships are compared with the pre-state.",
-        "-- FORWARD (--dry-run / --apply). preconditions (read only; any failure = refuse + ROLLBACK): the database is amjis; no build_runs planned/running/paused on ANY chart; no data_plane_builder session active/idle-in-transaction; "
+        "-- FORWARD (--dry-run / --apply). preconditions (read only; any failure = refuse + ROLLBACK): FIRST, on the new connection and before any other statement (exit 94 otherwise): current_user = session_user = postgres, database amjis, server major 15, NOT a superuser, CREATEROLE (facts printed); the administrator is a member of pg_read_all_stats (pre_admin_can_see_all_sessions: else the session check would pass blind); no build_runs planned/running/paused on ANY chart; no data_plane_builder session active, idle-in-transaction or with a hidden state; Python >= 3.11; "
         f"schema public: owner {SCHEMA_OWNER}, {APP_OWNER} has USAGE and NO CREATE (an already open window is refused); the four tables are owned by {APP_OWNER}; the captured builder guard is live as captured "
         f"(md5 {BUILDER_MD5}, {BUILDER_LEN} bytes, secdef false, owner {APP_OWNER}, ACL {{amjis_app=X/amjis_app}}, trigger tgtype 15 enabled O); NONE of the {len(NEW_FUNCTIONS)} new functions or {len(NEW_TRIGGERS)} new triggers exists; "
         "the repo objects it builds beside are the repo's (" + "; ".join(f"{k} md5 {v}" for k, v in EXISTING.items()) + "; their triggers); "
@@ -443,21 +487,24 @@ def charts_force_rls(cur):
     return None if row is None else bool(row[0])
 
 
-def preconditions(cur, leg: Leg, ck: Checks, out, expected_db: str) -> None:
-    cur.execute("SELECT current_database()")
-    ck.chk("pre_database_is_the_expected_one", cur.fetchone()[0] == expected_db, "connected to a database other than " + expected_db)
+def preconditions(cur, leg: Leg, ck: Checks, out) -> None:
     cur.execute("SET LOCAL ROLE " + APP_OWNER)
     cur.execute("SELECT count(*), COALESCE(string_agg(DISTINCT left(chart_id::text,8) || ':' || state, ', '), '') FROM public.build_runs "
                 "WHERE state IN ('planned','running','paused')")
     n, which = cur.fetchone()
     cur.execute("RESET ROLE")
     ck.chk("pre_no_build_in_flight", n == 0, str(n) + " build_run(s) in planned/running/paused on ANY chart (" + which + "); not touched" if n else None)
-    cur.execute("SELECT count(*) FILTER (WHERE state IN ('active','idle in transaction','idle in transaction (aborted)')), count(*) FILTER (WHERE state IS NULL) "
-                "FROM pg_stat_activity WHERE usename = %s AND pid <> pg_backend_pid()", (BUILDER,))
-    busy, hidden = cur.fetchone()
-    if hidden:
-        out("WARNING: " + str(hidden) + " " + BUILDER + " session(s) have a hidden state (no pg_read_all_stats); only build_runs guards them")
-    ck.chk("pre_no_builder_session", busy == 0, "a " + BUILDER + " session is active or idle-in-transaction" if busy else None)
+    # MED-1: the builder-session check is only a detector if the administrator CAN see other sessions' state. Fail closed: assert the fact, print it, and count a
+    # session whose state is hidden (NULL) as busy: unknown is never read as idle.
+    cur.execute("SELECT pg_has_role(current_user, 'pg_monitor', 'MEMBER'), pg_has_role(current_user, 'pg_read_all_stats', 'MEMBER')")
+    mon, stats = cur.fetchone()
+    out("administrator %s a member of pg_read_all_stats (pg_monitor member: %s): the %s session check %s see other sessions"
+        % ("is" if stats else "is NOT", mon, BUILDER, "can" if stats else "CANNOT"))
+    ck.chk("pre_admin_can_see_all_sessions", bool(stats), None if stats else "the administrator lacks pg_read_all_stats: the builder-session check would pass blind")
+    cur.execute("SELECT count(*) FROM pg_stat_activity WHERE usename = %s AND pid <> pg_backend_pid() "
+                "AND (state IS NULL OR state IN ('active','idle in transaction','idle in transaction (aborted)'))", (BUILDER,))
+    busy = cur.fetchone()[0]
+    ck.chk("pre_no_builder_session", busy == 0, str(busy) + " " + BUILDER + " session(s) active, idle-in-transaction or with a hidden state" if busy else None)
     forced = charts_force_rls(cur) if leg.name == "forward" else None       # the rollback removes the guard: it is the remedy, never blocked by the constraint
     ck.chk("pre_standing_constraint_charts_not_force_rls", forced is not True,
            "STANDING CONSTRAINT VIOLATED: FORCE ROW LEVEL SECURITY is set on public.charts; revisit the 1265 chart-deletion guard before keeping FORCE" if forced else None)
@@ -522,9 +569,13 @@ def accounting(leg: Leg, before: dict, after: dict) -> list:
     md5s = {r[0].split("(")[0]: r[1] for r in want_f}
     ck_md5 = all(md5s.get(s.split("(")[0]) == m for s, (_, m) in NEW_FUNCTIONS.items())
     out.append(("post_function_md5s_equal_the_bound_ones", ck_md5, md5s))
+    def acl_ok(row):
+        entries = [e for e in row[5].strip("{}").split(",") if e]
+        return not any(e.startswith("=") for e in entries) and any(e.startswith(APP_OWNER + "=X/") for e in entries)
     out.append(("post_new_functions_owner_definer_flags_and_acl_as_planned",
                 all(r[2] == APP_OWNER for r in want_f)
                 and all(r[3] == ("true" if r[0].startswith("l5_frozen_chart_cascade_authorizes") else "false") for r in want_f)
+                and all(acl_ok(r) for r in want_f)
                 and all(r[5] == "{amjis_app=X/amjis_app}" for r in want_f if not r[0].startswith("l5_frozen_")),
                 sorted((r[0], r[2], r[3], r[5]) for r in want_f)))
     got_t = {(r[0], r[1], r[2], r[3]) for r in want_t}
@@ -566,7 +617,7 @@ def runtime_record() -> dict:
 RUNTIME_KEYS = ("python_executable", "python_version", "psycopg_version", "libpq_version")
 
 
-def run_leg(conn, leg: Leg, mode: str, out, writer_commit=None, writer_runner=None, expect_evidence=None, expected_db: str = EXPECTED_DB) -> dict:
+def run_leg(conn, leg: Leg, mode: str, out, writer_commit=None, writer_runner=None, expect_evidence=None) -> dict:
     """One transaction. Returns {commit_ok, checks, evidence_digest, report}; the caller commits or rolls back."""
     writer_runner = writer_runner or _run_cmd
     ck = Checks()
@@ -584,7 +635,7 @@ def run_leg(conn, leg: Leg, mode: str, out, writer_commit=None, writer_runner=No
         ck.chk("pre_admin_can_assume_the_owner_roles", False, "GRANT failed: " + type(exc).__name__)
         out("REFUSED: the administrator cannot assume the owner roles (" + type(exc).__name__ + "); nothing was changed")
         return {"commit_ok": False, "checks": ck, "evidence_digest": None, "report": [], "digest_parts": {}}
-    preconditions(cur, leg, ck, out, expected_db)
+    preconditions(cur, leg, ck, out)
     writer_line = "n/a (rollback)"
     if leg.name == "forward":
         problems, writer_line = writer_check(writer_commit, writer_runner)
@@ -854,8 +905,9 @@ def install_signal_handlers() -> None:
         signal.signal(sig, _on_terminate)
 
 
-def execute(args, connect, now=None, gate_fp=None, writer_runner=None, expected_db: str = EXPECTED_DB):
-    """Returns (exit_code, result). `connect` is the only door to a database and is called ONLY after the plan hash matched."""
+def execute(args, connect, now=None, gate_fp=None, writer_runner=None, target=None):
+    """Returns (exit_code, result). `connect` is the only door to a database and is called ONLY after the plan hash matched. `target` defaults to the production
+    administrator/database/major version; only tests pass another (there is no environment or command-line route)."""
     now = now or dt.datetime.now(dt.timezone.utc)
     es = standards()
     evidence_root = resolve_evidence_root(getattr(args, "evidence_root", None))
@@ -867,6 +919,8 @@ def execute(args, connect, now=None, gate_fp=None, writer_runner=None, expected_
     except EvidenceError as exc:
         return 1, {"status": "ABORTED_ROLLED_BACK", "reason": str(exc), "plan_hash": phash, "executor_sha256": sha}
     with safe_outcome_class(es)(run_dir, __file__, phash, gate_fp) as o:
+        if not python_ok():
+            refuse(o, "python_below_3_11", "this executor is bound to Python >= 3.11 (the interpreter the dry run and the apply must share)")
         if args.expect_plan != phash:
             refuse(o, "args_expect_plan_mismatch", "--expect-plan does not equal the plan hash")
         if args.mode in ("apply", "rollback") and not args.expect_evidence:
@@ -883,9 +937,15 @@ def execute(args, connect, now=None, gate_fp=None, writer_runner=None, expected_
             interpreter_precheck(o, evidence_root, args.expect_evidence, lines)
         conn = connect()                         # the administrator credential is fetched here, never earlier
         try:
+            target_ok, target_facts = check_target(conn, target or PRODUCTION_TARGET)
+            lines.extend(target_facts)
+            if not target_ok:
+                o.fail(["connected_to_the_wrong_target"])
+                o._warn("REFUSED (target): the connection is not the expected administrator on the expected database/server: " + " | ".join(target_facts) + "\n")
+                raise SystemExit(EXIT_WRONG_TARGET)
             try:
                 res = run_leg(conn, leg, args.mode if args.mode != "rollback-dry-run" else "dry-run", lines.append, args.writer_commit,
-                              writer_runner, args.expect_evidence, expected_db)
+                              writer_runner, args.expect_evidence)
             except Exception as exc:
                 conn.rollback()
                 if isinstance(exc, psycopg.Error):             # the script RAISED (an asserting check) or a statement failed: nothing is committed
@@ -905,6 +965,8 @@ def execute(args, connect, now=None, gate_fp=None, writer_runner=None, expected_
                         conn.commit()
                     except BaseException as exc:                              # the commit call ITSELF failed: the server may have committed
                         o.mark_commit_unknown(digest, type(exc).__name__)
+                        if isinstance(exc, Exception):
+                            raise CommitStateUnknown(type(exc).__name__) from exc       # its own exit code (96) in main()
                         raise
                     o.mark_committed(digest)
                 finally:
@@ -969,6 +1031,10 @@ def main(argv=None) -> int:
         code, result = execute(args, connect_admin, gate_fp=gate_fp)
     except SystemExit:
         raise
+    except CommitStateUnknown as exc:
+        print("COMMIT STATE UNKNOWN (%s raised by commit()): the change may or may not be committed; outcome.json records commit_state_unknown. "
+              "CHECK THE DATABASE before doing anything else." % exc.exc_name)
+        return EXIT_COMMIT_UNKNOWN
     except Exception as exc:
         print("failed: %s %s" % (type(exc).__name__, str(exc)[:200].replace("\n", " ")))
         return 1

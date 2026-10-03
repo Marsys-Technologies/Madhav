@@ -370,7 +370,7 @@ def pg_cluster():
                 c.execute("GRANT %s TO data_plane_migrator" % r)
             c.execute("GRANT role_web_serve TO amjis_inquiry_serve")
             c.execute("CREATE ROLE adm LOGIN INHERIT NOSUPERUSER CREATEROLE NOCREATEDB NOREPLICATION NOBYPASSRLS")      # Cloud SQL's postgres, as read live
-            c.execute("GRANT pg_read_all_stats TO adm")      # Cloud SQL's postgres reaches pg_monitor through cloudsqlsuperuser
+            c.execute("GRANT pg_monitor TO adm")      # Cloud SQL's postgres reaches pg_monitor (and so pg_read_all_stats) through cloudsqlsuperuser
             c.execute("CREATE ROLE adm_blind LOGIN INHERIT NOSUPERUSER CREATEROLE NOCREATEDB NOREPLICATION NOBYPASSRLS")      # same, without pg_read_all_stats
             c.execute("CREATE ROLE adm_nocr LOGIN INHERIT NOSUPERUSER NOCREATEROLE NOCREATEDB NOREPLICATION NOBYPASSRLS")
             major = int(c.execute("SHOW server_version_num").fetchone()[0]) // 10000

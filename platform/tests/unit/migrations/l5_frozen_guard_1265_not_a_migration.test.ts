@@ -47,9 +47,10 @@ describe('1265 owner-path SQL is not a migration', () => {
     expect(sql.replace(/\n-- /g, ' ')).toContain('must never be placed under platform/migrations')
   })
 
-  it('the script never issues a GRANT and never touches asset_registry', () => {
+  it('the only GRANT in the script is EXECUTE on its own two helpers, and it never touches asset_registry', () => {
     const code = fs.readFileSync(path.join(PKG, 'sql/1265_l5_frozen_row_guards.sql'), 'utf8').split('\n').filter(l => !l.trim().startsWith('--')).join('\n')
-    expect(code).not.toMatch(/\bGRANT\b/)
+    const grants = code.match(/\bGRANT\b[^;]*/g) ?? []
+    for (const g of grants) expect(g).toMatch(/^GRANT EXECUTE ON FUNCTION public\.l5_frozen_withdrawal_authorizes\(uuid\), public\.l5_frozen_chart_cascade_authorizes\(uuid\) TO/)
     expect(code).not.toMatch(/asset_registry/)
   })
 

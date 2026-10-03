@@ -69,6 +69,10 @@ def failing_runner(argv):
     raise RuntimeError("git show failed")
 
 
+def tgt(world, admin="adm"):
+    return EX.Target(user=admin, database=world.name, server_major=world.pg["major"])
+
+
 def run(world, mode, *, expect_plan=None, expect_evidence=None, writer_commit=COMMIT, admin="adm", runner=ok_runner, evidence_root=None, expected_db=None, gate_fp=None):
     args = argparse.Namespace(mode=mode, expect_plan=expect_plan if expect_plan is not None else EX.plan_hash(), expect_evidence=expect_evidence,
                               writer_commit=writer_commit, evidence_root=evidence_root)
@@ -76,7 +80,8 @@ def run(world, mode, *, expect_plan=None, expect_evidence=None, writer_commit=CO
     def connect():
         return world.connect(admin)
     try:
-        return EX.execute(args, connect, gate_fp=gate_fp or GATE_FP, writer_runner=runner, expected_db=expected_db or world.name)
+        return EX.execute(args, connect, gate_fp=gate_fp or GATE_FP, writer_runner=runner,
+                          target=EX.Target(user=admin, database=expected_db or world.name, server_major=world.pg["major"]))
     except SystemExit as e:
         return ("exit", e.code)
 
@@ -118,7 +123,7 @@ def test_dry_run_prints_the_exact_diff_changes_nothing_and_records_the_outcome(w
     code, result = run(world, "dry-run")
     assert code == 0 and result["status"] == "DRY_RUN_ROLLED_BACK_ALL_CHECKS_HOLD" and result["failed_checks"] == []
     assert world.catalog_state() == before and world.schema_acl() == world.baseline_acl
-    assert world.query("SELECT r.rolname FROM pg_auth_members am JOIN pg_roles m ON m.oid = am.member JOIN pg_roles r ON r.oid = am.roleid WHERE m.rolname = 'adm'") == [("pg_read_all_stats",)]
+    assert world.query("SELECT r.rolname FROM pg_auth_members am JOIN pg_roles m ON m.oid = am.member JOIN pg_roles r ON r.oid = am.roleid WHERE m.rolname = 'adm'") == [("pg_monitor",)]
     log = "\n".join(result["log"])
     assert "6 added" in log and "8 added" in log and "IDENTICAL" in log and "equals the pre-state" in log and "commit conditions: ALL HOLD" in log
     out = outcome_of(result)
@@ -174,7 +179,7 @@ def test_the_evidence_digest_changes_when_the_pre_state_changes(world, evid):
 def test_a_wrong_plan_hash_refuses_before_any_connection_and_the_outcome_says_so(world, evid):
     args = argparse.Namespace(mode="dry-run", expect_plan="0" * 64, expect_evidence=None, writer_commit=None, evidence_root=None)
     with pytest.raises(SystemExit):
-        EX.execute(args, never_connect, gate_fp=GATE_FP, expected_db=world.name)
+        EX.execute(args, never_connect, gate_fp=GATE_FP, target=tgt(world))
     out, _ = latest_outcome(evid, "dry-run")
     assert out["status"] == "failed" and out["failed_checks"] == ["args_expect_plan_mismatch"]
 
@@ -183,7 +188,7 @@ def test_apply_without_evidence_or_without_a_writer_commit_is_refused_before_any
     for kw, check in (({"expect_evidence": None}, "args_expect_evidence_missing"), ({"expect_evidence": "a" * 64, "writer_commit": None}, "args_writer_commit_missing")):
         args = argparse.Namespace(mode="apply", expect_plan=EX.plan_hash(), evidence_root=None, **{"expect_evidence": None, "writer_commit": COMMIT, **kw})
         with pytest.raises(SystemExit):
-            EX.execute(args, never_connect, gate_fp=GATE_FP, expected_db=world.name)
+            EX.execute(args, never_connect, gate_fp=GATE_FP, target=tgt(world))
         assert latest_outcome(evid, "apply")[0]["failed_checks"] == [check]
 
 
@@ -193,7 +198,7 @@ def test_a_hand_edited_sql_script_is_refused_before_any_connection(world, evid, 
     monkeypatch.setattr(EX, "FORWARD_SQL", edited)
     args = argparse.Namespace(mode="dry-run", expect_plan=EX.plan_hash(), expect_evidence=None, writer_commit=None, evidence_root=None)
     with pytest.raises(SystemExit):
-        EX.execute(args, never_connect, gate_fp=GATE_FP, expected_db=world.name)
+        EX.execute(args, never_connect, gate_fp=GATE_FP, target=tgt(world))
     assert latest_outcome(evid, "dry-run")[0]["failed_checks"] == ["expected_diff_mismatch"]
 
 
@@ -245,12 +250,40 @@ def test_refused_when_a_builder_session_is_active_or_idle_in_transaction(world, 
         held.close()
 
 
-def test_an_administrator_who_cannot_see_session_states_is_warned_and_build_runs_alone_guards(world, evid):
+def test_MED1_an_administrator_who_cannot_see_session_states_FAILS_CLOSED_even_with_an_idle_builder_session(world, evid):
     held = world.connect("data_plane_builder")
     held.execute("SELECT 1")
     try:
+        pre = world.catalog_state()
         code, res = run(world, "dry-run", admin="adm_blind")
-        assert code == 0 and any("hidden state (no pg_read_all_stats)" in line for line in res["log"])
+        assert code == 2 and "pre_admin_can_see_all_sessions" in res["failed_checks"]
+        assert any("is NOT a member of pg_read_all_stats" in line and "CANNOT see other sessions" in line for line in res["log"])
+        assert world.catalog_state() == pre
+    finally:
+        held.rollback()
+        held.close()
+
+
+def test_MED1_blind_administrator_is_refused_even_without_any_builder_session_and_the_fact_is_printed_when_it_can_see(world, evid):
+    code, res = run(world, "dry-run", admin="adm_blind")
+    assert code == 2 and res["failed_checks"] == ["pre_admin_can_see_all_sessions"]
+    code, res = run(world, "dry-run")
+    assert code == 0 and any("administrator is a member of pg_read_all_stats" in line and "can see other sessions" in line for line in res["log"])
+
+
+def test_MED1_a_builder_session_with_a_hidden_state_counts_as_busy(world, evid, monkeypatch):
+    """A session whose state the administrator cannot read (NULL) is never read as idle: pretend the visibility check passed for a blind admin."""
+    held = world.connect("data_plane_builder")
+    held.execute("SELECT 1")
+    try:
+        real = EX.preconditions
+
+        def pre(cur, leg, ck, out):
+            real(cur, leg, ck, out)
+            ck.items[:] = [(n, True if n == "pre_admin_can_see_all_sessions" else ok, d) for n, ok, d in ck.items]
+        monkeypatch.setattr(EX, "preconditions", pre)
+        code, res = run(world, "dry-run", admin="adm_blind")
+        assert code == 2 and "pre_no_builder_session" in res["failed_checks"] and "hidden state" in res["details"]["pre_no_builder_session"]
     finally:
         held.rollback()
         held.close()
@@ -276,7 +309,7 @@ def test_refused_when_a_recorded_builder_grant_is_absent_and_the_sql_raises_even
     pre = world.catalog_state()
     code, res = run(world, "dry-run")
     assert code == 2 and "pre_recorded_builder_grant_mimamsa_manifestation_sets" in res["failed_checks"] and world.catalog_state() == pre
-    monkeypatch.setattr(EX, "preconditions", lambda cur, leg, ck, out, expected_db: None)         # the SQL's own assertion is the second, independent line
+    monkeypatch.setattr(EX, "preconditions", lambda cur, leg, ck, out: None)         # the SQL's own assertion is the second, independent line
     code, res = run(world, "dry-run")
     assert code == 2 and any(c.startswith("sql_raised_RaiseException") for c in res["failed_checks"])
     assert "does not create it" in json.dumps(res["details"]) and world.catalog_state() == pre
@@ -292,16 +325,40 @@ def test_refused_when_the_repo_objects_it_builds_beside_are_not_the_repos(world,
     assert code == 2 and "pre_repo_function_bmpl_freeze_confirmed" in res["failed_checks"]
 
 
-def test_refused_on_another_database_than_the_expected_one(world, evid):
-    code, res = run(world, "dry-run", expected_db="amjis")
-    assert code == 2 and "pre_database_is_the_expected_one" in res["failed_checks"]
-
-
-def test_refused_when_the_administrator_cannot_assume_the_owner_roles_and_nothing_changes(world, evid):
+def test_LOW1_wrong_database_wrong_admin_wrong_major_a_superuser_and_a_set_role_session_are_refused_with_exit_94_before_anything_else(world, evid):
     pre = world.catalog_state()
-    code, res = run(world, "dry-run", admin="adm_nocr")
-    assert code == 2 and res["failed_checks"] == ["pre_admin_can_assume_the_owner_roles"]
+    for kw in (dict(expected_db="amjis"), dict(admin="adm_nocr")):
+        assert run(world, "dry-run", **kw) == ("exit", 94), kw
+        out, _ = latest_outcome(evid, "dry-run")
+        assert out["status"] == "failed" and out["failed_checks"] == ["connected_to_the_wrong_target"]
+    args = argparse.Namespace(mode="dry-run", expect_plan=EX.plan_hash(), expect_evidence=None, writer_commit=COMMIT, evidence_root=None)
+
+    def as_setrole():
+        c = world.connect("adm")
+        c.execute("SET ROLE pg_monitor")
+        c.commit()
+        return c
+    for target, connect, who in ((EX.Target(user="adm", database=world.name, server_major=world.pg["major"] + 1), lambda: world.connect("adm"), "wrong major"),
+                                 (EX.Target(user="postgres", database=world.name, server_major=world.pg["major"]), lambda: world.connect("postgres"), "superuser"),
+                                 (EX.Target(user="adm", database=world.name, server_major=world.pg["major"]), as_setrole, "current_user != session_user")):
+        with pytest.raises(SystemExit) as ei:
+            EX.execute(args, connect, gate_fp=GATE_FP, writer_runner=ok_runner, target=target)
+        assert ei.value.code == EX.EXIT_WRONG_TARGET == 94, who
     assert world.catalog_state() == pre
+    assert world.query("SELECT r.rolname FROM pg_auth_members am JOIN pg_roles m ON m.oid = am.member JOIN pg_roles r ON r.oid = am.roleid WHERE m.rolname = 'adm'") == [("pg_monitor",)], "no transient grant was taken"
+
+
+def test_the_default_target_is_production_postgres_amjis_15():
+    assert (EX.PRODUCTION_TARGET.user, EX.PRODUCTION_TARGET.database, EX.PRODUCTION_TARGET.server_major) == ("postgres", "amjis", 15)
+
+
+def test_NIT6_the_python_floor_is_enforced(world, evid, monkeypatch):
+    assert EX.python_ok((3, 11, 0)) and EX.python_ok((3, 14, 1)) and not EX.python_ok((3, 10, 12))
+    monkeypatch.setattr(EX, "python_ok", lambda vi=None: False)
+    args = argparse.Namespace(mode="dry-run", expect_plan=EX.plan_hash(), expect_evidence=None, writer_commit=None, evidence_root=None)
+    with pytest.raises(SystemExit):
+        EX.execute(args, never_connect, gate_fp=GATE_FP, target=tgt(world))
+    assert latest_outcome(evid, "dry-run")[0]["failed_checks"] == ["python_below_3_11"]
 
 
 def test_apply_is_single_shot_a_second_run_is_refused_until_the_rollback(world, evid):
@@ -320,7 +377,7 @@ def test_a_sql_failure_inside_the_transaction_rolls_everything_back(world, evid,
     code, res = run(world, "dry-run")
     assert code == 2 and any(c.startswith("sql_raised_RaiseException") for c in res["failed_checks"]) and "post-check" in json.dumps(res["details"])
     assert world.catalog_state() == pre and world.schema_acl() == world.baseline_acl
-    assert world.query("SELECT r.rolname FROM pg_auth_members am JOIN pg_roles m ON m.oid = am.member JOIN pg_roles r ON r.oid = am.roleid WHERE m.rolname = 'adm'") == [("pg_read_all_stats",)]
+    assert world.query("SELECT r.rolname FROM pg_auth_members am JOIN pg_roles m ON m.oid = am.member JOIN pg_roles r ON r.oid = am.roleid WHERE m.rolname = 'adm'") == [("pg_monitor",)]
 
 
 def test_a_lock_held_by_another_session_makes_the_plan_fail_clean_and_fast(world, evid):
@@ -357,7 +414,7 @@ def test_apply_under_a_different_interpreter_or_driver_than_the_dry_run_refuses_
     _tamper(evid, field, value)
     args = argparse.Namespace(mode="apply", expect_plan=EX.plan_hash(), expect_evidence=dry["evidence_digest"], writer_commit=COMMIT, evidence_root=None)
     with pytest.raises(SystemExit) as ei:
-        EX.execute(args, never_connect, gate_fp=GATE_FP, writer_runner=ok_runner, expected_db=world.name)
+        EX.execute(args, never_connect, gate_fp=GATE_FP, writer_runner=ok_runner, target=tgt(world))
     assert ei.value.code == EX.EXIT_INTERPRETER == 92
     assert latest_outcome(evid, "apply")[0]["failed_checks"] == [check]
 
@@ -433,8 +490,9 @@ def test_a_commit_that_itself_raises_is_recorded_as_commit_state_unknown(world, 
         def __getattr__(self, n):
             return getattr(self._c, n)
 
-    with pytest.raises(psy.OperationalError):
-        EX.execute(args, lambda: Proxy(world.connect("adm")), gate_fp=GATE_FP, writer_runner=ok_runner, expected_db=world.name)
+    with pytest.raises(EX.CommitStateUnknown) as ei:
+        EX.execute(args, lambda: Proxy(world.connect("adm")), gate_fp=GATE_FP, writer_runner=ok_runner, target=tgt(world))
+    assert ei.value.exc_name == "OperationalError"
     out, _ = latest_outcome(evid, "apply")
     assert out["status"] == "commit_state_unknown" and out["warnings"] == ["commit_raised:OperationalError"]
 
@@ -490,15 +548,15 @@ def test_a_test_gate_directory_is_refused_outside_a_pytest_run_with_exit_95():
     assert ei.value.code == 95
 
 
-def test_main_runs_the_whole_chain_through_the_gate_marker_and_stops_at_the_database_name_guard(world, evid, monkeypatch, capsys):
-    """main(): launch_gate -> parse -> execute with connect_admin replaced by a mirrored-world connection. The default expected database is `amjis`, the
-    mirror is not, so the plan refuses at pre_database_is_the_expected_one: exit 2, nothing changed."""
+def test_main_runs_the_whole_chain_through_the_gate_marker_and_stops_at_the_target_guard_with_exit_94(world, evid, monkeypatch, capsys):
+    """main(): launch_gate -> parse -> execute with connect_admin replaced by a mirrored-world connection. The default target is production (database amjis,
+    server major 15): the mirror is not, so the very first statements refuse with exit 94 and nothing changes."""
     pre = world.catalog_state()
     monkeypatch.setenv("GATE_V2_LAUNCH", _marker(True))
     monkeypatch.setattr(EX, "connect_admin", lambda: world.connect("adm"))
-    code = EX.main(["--dry-run", "--expect-plan", EX.plan_hash()])
-    printed = json.loads(capsys.readouterr().out)
-    assert code == 2 and printed["failed_checks"] == ["pre_database_is_the_expected_one"] and world.catalog_state() == pre
+    with pytest.raises(SystemExit) as ei:
+        EX.main(["--dry-run", "--expect-plan", EX.plan_hash()])
+    assert ei.value.code == 94 and world.catalog_state() == pre
 
 
 def test_connect_admin_is_pinned_to_the_proxy_the_amjis_database_and_the_postgres_user():
@@ -506,7 +564,7 @@ def test_connect_admin_is_pinned_to_the_proxy_the_amjis_database_and_the_postgre
     assert 'host="127.0.0.1", port=5433, dbname=EXPECTED_DB, user="postgres"' in src and 'EXPECTED_DB = "amjis"' in src
     assert "cloudsql-postgres-admin-password" in src
     import re
-    assert len(re.findall(r"(?<![A-Za-z_.])print\(", src)) == 2, "only main() prints (the result JSON and the failure line), never a secret"
+    assert len(re.findall(r"(?<![A-Za-z_.])print\(", src)) == 3, "only main() prints (the result JSON, the failure line, the commit-unknown line), never a secret"
 
 
 def test_the_run_gated_launcher_in_the_repo_is_the_one_the_executor_pins():
@@ -577,3 +635,24 @@ def test_standing_constraint_a_force_set_after_the_apply_makes_the_rollback_dry_
             c.execute("DELETE FROM mimamsa_predictions WHERE chart_id = %s", (CHART_A,))
     code, rdry = run(world, "rollback-dry-run")
     assert code == 0
+
+
+def test_NIT5_main_maps_a_commit_that_raised_to_its_own_exit_code_96(world, evid, monkeypatch, capsys):
+    monkeypatch.setenv("GATE_V2_LAUNCH", _marker(True))
+
+    def boom(args, connect, **kw):
+        raise EX.CommitStateUnknown("OperationalError")
+    monkeypatch.setattr(EX, "execute", boom)
+    assert EX.main(["--dry-run", "--expect-plan", EX.plan_hash()]) == EX.EXIT_COMMIT_UNKNOWN == 96
+    assert "COMMIT STATE UNKNOWN" in capsys.readouterr().out
+
+
+def test_NIT7_a_script_that_writes_a_row_is_caught_by_post_rowdata_identical(world, evid, monkeypatch, tmp_path):
+    """Kills executor mutant X5 (post_rowdata_identical dropped): a forward script that inserts a row must fail the commit conditions."""
+    bad = tmp_path / "writes.sql"
+    bad.write_text(EX.FORWARD_SQL.read_text(encoding="utf8") + "\nINSERT INTO public.mimamsa_manifestation_sets VALUES ('%s', 'pred_x', 'ch', 'career', 'phala_anchors', '{}', true, now());\n" % CHART_A, encoding="utf8")
+    monkeypatch.setattr(EX, "FORWARD_SQL", bad)
+    pre = world.catalog_state()
+    code, res = run(world, "dry-run")
+    assert code == 2 and "post_rowdata_identical" in res["failed_checks"]
+    assert world.catalog_state() == pre

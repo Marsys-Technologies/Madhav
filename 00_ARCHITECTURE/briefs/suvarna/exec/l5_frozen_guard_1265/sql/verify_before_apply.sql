@@ -19,3 +19,12 @@ SELECT 'mimamsa_predictions' AS t, count(*) FROM mimamsa_predictions UNION ALL S
 UNION ALL SELECT 'brahma_prospective_ledger', count(*) FROM brahma_prospective_ledger UNION ALL SELECT 'brahma_mimamsa_prediction_ledger', count(*) FROM brahma_mimamsa_prediction_ledger;
 -- 6. STANDING CONSTRAINT: public.charts must not have FORCE ROW LEVEL SECURITY (run sql/verify_charts_rls_constraint.sql; expect verdict OK)
 SELECT relforcerowsecurity AS charts_rls_forced, CASE WHEN relforcerowsecurity THEN 'FAIL: FORCE ROW LEVEL SECURITY on public.charts (revisit the 1265 guard)' ELSE 'OK' END AS verdict FROM pg_class WHERE relnamespace = 'public'::regnamespace AND relname = 'charts';
+-- 7. INVARIANT (the script's gate RAISES on it): no non-owner, non-superuser role holds a write on the consent tables AND DELETE on a frozen table (expect 0 rows)
+SELECT r.rolname FROM pg_roles r
+ WHERE NOT r.rolsuper AND r.rolname NOT LIKE 'pg\_%' AND r.rolname <> 'amjis_app'
+   AND (has_table_privilege(r.oid, 'public.chart_subject_consent', 'INSERT') OR has_table_privilege(r.oid, 'public.chart_subject_consent', 'UPDATE') OR has_table_privilege(r.oid, 'public.chart_subject_consent', 'DELETE')
+     OR has_table_privilege(r.oid, 'public.chart_subject_deletion_disputes', 'INSERT') OR has_table_privilege(r.oid, 'public.chart_subject_deletion_disputes', 'UPDATE') OR has_table_privilege(r.oid, 'public.chart_subject_deletion_disputes', 'DELETE'))
+   AND (has_table_privilege(r.oid, 'public.mimamsa_predictions', 'DELETE') OR has_table_privilege(r.oid, 'public.brahma_prospective_ledger', 'DELETE')
+     OR has_table_privilege(r.oid, 'public.mimamsa_manifestation_sets', 'DELETE') OR has_table_privilege(r.oid, 'public.brahma_mimamsa_prediction_ledger', 'DELETE'));
+-- 8. the administrator can see other sessions (expect true for the role the executor connects as: pg_read_all_stats member)
+SELECT pg_has_role('postgres', 'pg_read_all_stats', 'MEMBER') AS postgres_is_pg_read_all_stats_member;

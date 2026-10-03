@@ -332,7 +332,8 @@ def test_prospective_terminal_statuses_never_change_and_the_match_record_is_writ
 @pytest.mark.parametrize("role", ["amjis_app", "role_ledger_write", "postgres"])
 def test_prospective_delete_is_refused_for_every_status_and_shape(shared, pid, role):
     if role == "role_ledger_write":
-        shared.exec("GRANT DELETE ON brahma_prospective_ledger TO role_ledger_write", role="amjis_app")
+        shared.exec("GRANT DELETE ON brahma_prospective_ledger TO role_ledger_write; GRANT EXECUTE ON FUNCTION public.l5_frozen_withdrawal_authorizes(uuid), "
+                    "public.l5_frozen_chart_cascade_authorizes(uuid) TO role_ledger_write", role="amjis_app")
     refused(shared, role, "DELETE FROM brahma_prospective_ledger WHERE prediction_id = %s", (PRO[pid],), prefix=P_PRO)
 
 
@@ -508,11 +509,19 @@ def test_the_decoy_trigger_attack_deletes_nothing_while_the_chart_exists(world):
         psy = world.pg["psycopg"]
         with world.connect("postgres") as c:
             c.execute("SET ROLE atk_t")
+            with pytest.raises(psy.errors.InsufficientPrivilege, match="permission denied for function l5_frozen"):      # no EXECUTE on the helpers (LOW-2): refused one step earlier
+                c.execute("INSERT INTO atk.decoy VALUES (1)")
+            c.rollback()
+        assert counts(world, CHART_A)["mimamsa_predictions"] == 7
+        world.exec("GRANT EXECUTE ON FUNCTION public.l5_frozen_withdrawal_authorizes(uuid), public.l5_frozen_chart_cascade_authorizes(uuid) TO atk_t", role="amjis_app")
+        with world.connect("postgres") as c:                                                # and WITH execute the guard itself refuses (the chart exists)
+            c.execute("SET ROLE atk_t")
             with pytest.raises(psy.errors.InsufficientPrivilege, match=P_PRED):
                 c.execute("INSERT INTO atk.decoy VALUES (1)")
             c.rollback()
         assert counts(world, CHART_A)["mimamsa_predictions"] == 7
     finally:
+        world.exec("REVOKE ALL ON FUNCTION public.l5_frozen_withdrawal_authorizes(uuid), public.l5_frozen_chart_cascade_authorizes(uuid) FROM atk_t", role="amjis_app")
         world.exec("DROP SCHEMA atk CASCADE; REVOKE ALL ON mimamsa_predictions, charts FROM atk_t; REVOKE USAGE ON SCHEMA public FROM atk_t; DROP ROLE atk_t")
 
 
@@ -822,7 +831,8 @@ def run_probes(w: World) -> list:
     # a role that NO row-level-security policy lets see any chart must still be refused for a chart that exists (the helper is SECURITY DEFINER)
     with w.connect("postgres") as c:
         try:
-            c.execute("CREATE ROLE probe_blind NOLOGIN; GRANT USAGE ON SCHEMA public TO probe_blind; GRANT SELECT, DELETE ON mimamsa_predictions TO probe_blind; GRANT SELECT ON charts TO probe_blind")
+            c.execute("CREATE ROLE probe_blind NOLOGIN; GRANT USAGE ON SCHEMA public TO probe_blind; GRANT SELECT, DELETE ON mimamsa_predictions TO probe_blind; GRANT SELECT ON charts TO probe_blind; "
+                      "GRANT EXECUTE ON FUNCTION public.l5_frozen_withdrawal_authorizes(uuid), public.l5_frozen_chart_cascade_authorizes(uuid) TO probe_blind")
             c.execute("SET ROLE probe_blind")
             n_seen = c.execute("SELECT count(*) FROM charts").fetchone()[0]
             if n_seen != 0:
@@ -992,7 +1002,7 @@ FILE_MUTANTS = [
     ("md5 guard on the builder body neutered", lambda s: s.replace("IF f.body_md5 <> '46c23854275c2712b30860a2b174adb2' OR f.body_len <> 1084 THEN", "IF false THEN")),
     ("builder trigger shape check neutered", lambda s: s.replace("ELSIF t.tgtype <> 15 OR", "ELSIF false AND t.tgtype <> 15 OR")),
     ("changed-live-guard refusal neutered", lambda s: s.replace("IF EXISTS (SELECT 1 FROM pg_proc p WHERE p.oid = to_regprocedure('public.' || rec.sig) AND md5(p.prosrc) <> rec.want) THEN", "IF false THEN")),
-    ("recorded-grant assertion neutered", lambda s: s.replace("IF privs IS DISTINCT FROM 'DELETE,INSERT,SELECT' OR grantor IS DISTINCT FROM 'amjis_app' OR n <> 1 THEN", "IF false THEN")),
+    ("recorded-grant assertion neutered", lambda s: s.replace("IF privs IS DISTINCT FROM 'DELETE,INSERT,SELECT' OR grantor IS DISTINCT FROM 'amjis_app' OR n <> 1 OR grantable THEN", "IF false THEN")),
     ("repo-object assertion neutered", lambda s: s.replace("IF NOT FOUND OR f.md5 <> '70c2ddb261d703fa6a33a4feaf39c99c' THEN", "IF false THEN")),
     ("ENABLE ALWAYS dropped", lambda s: s.replace("EXECUTE format('ALTER TABLE public.%I ENABLE ALWAYS TRIGGER %I', rec.tbl, rec.trg);", "NULL;")),
     ("truncate triggers dropped", lambda s: s.replace("        EXECUTE format('CREATE TRIGGER %I BEFORE TRUNCATE ON public.%I FOR EACH STATEMENT EXECUTE FUNCTION public.%I()', rec.trg, rec.tbl, rec.fn);", "        NULL;")),
@@ -1312,7 +1322,7 @@ def test_the_verify_script_reports_ok_normally_and_a_loud_fail_row_under_force(w
     rows = world.query(_first_stmt(), role="suvarna_reader")
     assert rows[0][2] is True and rows[0][4].startswith("FAIL: FORCE ROW LEVEL SECURITY is set on public.charts. STOP")
     for name in ("verify_before_apply.sql", "verify_after_apply.sql"):
-        last = (PKG / "sql" / name).read_text(encoding="utf8").strip().splitlines()[-1]
+        last = [l for l in (PKG / "sql" / name).read_text(encoding="utf8").splitlines() if l.startswith("SELECT relforcerowsecurity")][0]
         assert world.query(last, role="suvarna_reader")[0][1].startswith("FAIL: FORCE ROW LEVEL SECURITY on public.charts")
 
 
@@ -1339,3 +1349,89 @@ def test_mutant_the_runtime_check_removed_is_caught_by_the_force_test_and_the_ga
         raise AssertionError("the post-check must also RAISE")
     finally:
         drop_world(pg_cluster, w2)
+
+
+# ================================================================ M. review round 2: LOW-2 helper ACL, LOW-4 invariant, NIT positive path / is_grantable
+
+HELPERS = ("l5_frozen_withdrawal_authorizes(uuid)", "l5_frozen_chart_cascade_authorizes(uuid)")
+
+
+def test_LOW2_helpers_are_not_executable_by_public_and_only_the_delete_holders_can_execute_them(world):
+    world.apply_sql(REAL)
+    for h in HELPERS:
+        assert world.query("SELECT has_function_privilege('public', to_regprocedure(%s), 'EXECUTE')", ("public." + h,)) == [(False,)]
+        holders = {r[0] for r in world.query("SELECT r.rolname FROM pg_roles r WHERE r.rolname !~ '^pg_' AND r.rolname NOT LIKE 'cloudsql%%' AND NOT r.rolsuper AND "
+                                              "has_function_privilege(r.oid, to_regprocedure(%s), 'EXECUTE')", ("public." + h,))}
+        assert holders == {"amjis_app", "role_orchestrator", "data_plane_builder"}, holders      # owner + the non-owner DELETE holders (predictions / manifestation sets)
+    for role in ("suvarna_reader", "role_web_serve", "retrieval_census_ro", "role_ledger_write", "nirmana_evidence_ingress_writer", "role_jobs"):
+        for h in HELPERS:
+            assert world.query("SELECT has_function_privilege(%s, to_regprocedure(%s), 'EXECUTE')", (role, "public." + h)) == [(False,)], (role, h)
+
+
+def test_LOW2_the_chart_existence_oracle_is_closed_for_an_RLS_blinded_caller(world):
+    world.apply_sql(REAL)
+    world.exec("GRANT SELECT ON charts TO suvarna_reader", role="amjis_app")
+    psy = world.pg["psycopg"]
+    with world.connect("suvarna_reader") as c:
+        assert c.execute("SELECT count(*) FROM charts").fetchone()[0] == 0, "blind: no policy lets the reader see any chart"
+        with pytest.raises(psy.errors.InsufficientPrivilege, match="permission denied for function l5_frozen_chart_cascade_authorizes"):
+            c.execute("SELECT public.l5_frozen_chart_cascade_authorizes(%s)", (CHART_A,))
+
+
+def test_LOW2_the_oracle_exists_without_the_revoke_mutant_and_a_late_delete_grant_is_loud(world):
+    mutant = REAL.replace("REVOKE ALL ON FUNCTION public.l5_frozen_chart_cascade_authorizes(uuid) FROM PUBLIC;\n", "")
+    assert mutant != REAL
+    w2 = mutant.replace("    RAISE EXCEPTION '1265 post-check: a l5_frozen_* helper is executable by PUBLIC", "    RAISE EXCEPTION '1265 post-check: a l5_frozen_* helper is executable by PUBLIC")
+    psy = world.pg["psycopg"]
+    with pytest.raises(psy.errors.RaiseException, match="a l5_frozen_\\* helper is executable by PUBLIC"):
+        world.apply_sql(mutant)                                          # the post-check is the detector for the omitted REVOKE
+    world.apply_sql(REAL)
+    world.exec("GRANT DELETE ON mimamsa_predictions TO role_jobs", role="amjis_app")          # a role granted DELETE LATER: loud refusal until it is granted EXECUTE too
+    refused(world, "role_jobs", "DELETE FROM mimamsa_predictions WHERE chart_id = %s", (CHART_A,), prefix="permission denied for function", contains="l5_frozen_")
+
+
+def test_LOW2_post_check_positive_a_delete_holder_without_execute_is_caught_and_the_script_is_idempotent_for_grants(world):
+    world.apply_sql(REAL)
+    state = world.query("SELECT proname, proacl::text FROM pg_proc WHERE proname LIKE 'l5_frozen%' ORDER BY 1")
+    world.apply_sql(REAL)
+    assert world.query("SELECT proname, proacl::text FROM pg_proc WHERE proname LIKE 'l5_frozen%' ORDER BY 1") == state
+
+
+def test_LOW4_gate_refuses_when_a_non_owner_role_holds_a_consent_write_and_a_frozen_delete(world):
+    before = world.catalog_state()
+    world.exec("GRANT INSERT ON chart_subject_consent TO role_orchestrator", role="amjis_app")        # orchestrator already holds DELETE on predictions
+    _raises(world, "INVARIANT violated: role\\(s\\) role_orchestrator hold a write on the consent tables AND DELETE on a frozen table")
+    assert world.catalog_state() == before
+
+
+def test_LOW4_via_group_membership_and_via_the_disputes_table_too(world):
+    world.exec("GRANT UPDATE ON chart_subject_deletion_disputes TO role_web_serve; GRANT DELETE ON mimamsa_manifestation_sets TO role_web_serve", role="amjis_app")
+    _raises(world, "INVARIANT violated: role\\(s\\) amjis_inquiry_serve, role_web_serve")
+
+
+def test_LOW4_post_check_catches_the_invariant_when_the_gate_is_neutered(world):
+    world.exec("GRANT INSERT ON chart_subject_consent TO role_orchestrator", role="amjis_app")
+    gate_start = REAL.index("IF to_regclass('public.chart_subject_consent') IS NOT NULL AND to_regclass('public.chart_subject_deletion_disputes') IS NOT NULL THEN")
+    mutant = REAL[:gate_start] + REAL[gate_start:].replace("IF to_regclass('public.chart_subject_consent') IS NOT NULL AND to_regclass('public.chart_subject_deletion_disputes') IS NOT NULL THEN", "IF false THEN", 1)
+    _raises(world, "post-check: INVARIANT violated", _strip_selftest(mutant))
+
+
+def test_LOW4_today_s_production_shaped_grants_satisfy_the_invariant(world):
+    world.apply_sql(REAL)
+    assert world.query("SELECT has_table_privilege('role_web_serve', 'chart_subject_consent', 'DELETE'), has_table_privilege('role_web_serve', 'mimamsa_predictions', 'DELETE')") == [(True, False)]
+
+
+def test_NIT3_positive_path_a_helper_that_always_answers_false_fails_the_self_test(pg_cluster):
+    w = make_world(pg_cluster)
+    try:
+        psy = pg_cluster["psycopg"]
+        mutant = mutate("cascade", "SELECT NOT EXISTS (SELECT 1 FROM public.charts c WHERE c.id = p_chart) INTO v_gone;", "SELECT false INTO v_gone;")
+        with pytest.raises(psy.errors.RaiseException, match="does not authorize a chart that does not exist \\(positive path\\)"):
+            w.apply_sql(mutant)
+    finally:
+        drop_world(pg_cluster, w)
+
+
+def test_NIT4_a_grantable_builder_grant_is_refused(world):
+    world.exec("GRANT SELECT ON mimamsa_predictions TO data_plane_builder WITH GRANT OPTION", role="amjis_app")
+    _raises(world, "recorded live grant .*mimamsa_predictions")

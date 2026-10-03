@@ -105,11 +105,12 @@ def test_script_is_schema_code_only_no_grant_no_registry_no_rls_no_transaction_c
     assert c.strip().startswith("SET LOCAL lock_timeout = '5s';")
     for s in (c, code(RB)):
         assert not re.search(r"^\s*(BEGIN|COMMIT|ROLLBACK)\s*;", s, re.M)
-        assert not re.search(r"\bGRANT\b", s), "this script never issues a GRANT (the recorded builder grants are only asserted)"
+        assert not [g for g in re.findall(r"\bGRANT\b[^;]*", s) if not g.startswith("GRANT EXECUTE ON FUNCTION public.l5_frozen_withdrawal_authorizes(uuid), public.l5_frozen_chart_cascade_authorizes(uuid) TO")], \
+            "the only GRANT is EXECUTE on this script's own two helpers (the recorded builder grants are only asserted, never issued)"
         assert not re.search(r"asset_registry|_migrations_applied|CREATE POLICY|(ENABLE|DISABLE|NO FORCE|FORCE)\s+ROW LEVEL SECURITY\s*;", s), "the script never changes row security (it only READS relforcerowsecurity)"
     assert not re.search(r"\b(DROP TABLE|DROP COLUMN|ADD COLUMN|CREATE TABLE|CREATE INDEX|ALTER COLUMN)\b", c)
     assert len(re.findall(r"\bINSERT INTO\b", c)) == 4 and "1265_selftest_ok" in c      # only the rolled-back probes
-    assert c.count("REVOKE ALL ON FUNCTION") == 5
+    assert c.count("REVOKE ALL ON FUNCTION") == 7
 
 
 def test_every_new_trigger_is_enable_always_and_only_the_planned_eight_are_created():
@@ -163,7 +164,7 @@ def test_mimamsa_calibration_tables_are_not_guarded_by_ruling():
 def test_header_states_the_decisions_privilege_order_exceptions_and_what_is_not_done():
     h = flat(FW)
     for n in ("OWNER-PATH SQL, NOT A MIGRATION", "must never be placed under platform/migrations", "N-104 and N-107", "ASSERT-AND-RECORD",
-              "data_plane_builder holds exactly SELECT, INSERT, DELETE", "never issues a GRANT",
+              "data_plane_builder holds exactly SELECT, INSERT, DELETE", "never grants a table privilege",
               "TWO data-driven exceptions (SS N-107 and N-108)", "no charts row with that id", "frozen = every row, pending included",
               "NOT guarded by ruling: mimamsa_calibration and mimamsa_calibration_snapshot", "ORDER: after S-L1", "RLS is NOT armed",
               "Break-glass", "CAN disable a trigger"):
