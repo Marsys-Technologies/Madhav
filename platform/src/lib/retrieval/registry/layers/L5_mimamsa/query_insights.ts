@@ -14,7 +14,7 @@
 
 import type { CapabilityDescriptor } from '../../index'
 import { query } from '@/lib/db/client'
-
+import { PREFIX_GRADE_LEGEND, labelInsightUnit, summarizeGeneration } from './prefix_generation'
 export const EMPIRICALLY_CALIBRATED = 'empirical'
 
 // GA-5 review finding on #1386 (rounds 2-3): mi_darshana.py embeds a suppressed numeric
@@ -260,8 +260,14 @@ export const queryInsightsCapability: CapabilityDescriptor = {
 
       const calibration_summary = (calResult.rows[0] ?? {}) as Record<string, unknown>
 
+      // TI-l5-insight-prefix-label-001: classify each row's generation from its own stored stamps
+      // BEFORE anything is graded or counted, so a pre-fix 'empirical' row is never counted or
+      // served as empirical (stricter-only; see prefix_generation.ts for the detector).
+      const labelled = (insightResult.rows as Array<Record<string, unknown>>).map(r => labelInsightUnit(r))
+      const generation_disclosure = summarizeGeneration(labelled, ['insight_unit'])
+
       const evidence_grade_counts: Record<string, number> = {}
-      for (const row of insightResult.rows as Array<Record<string, unknown>>) {
+      for (const row of labelled) {
         const g = String(row.evidence_grade ?? 'unknown')
         evidence_grade_counts[g] = (evidence_grade_counts[g] ?? 0) + 1
       }
@@ -270,16 +276,18 @@ export const queryInsightsCapability: CapabilityDescriptor = {
       // imply a tier this response does not contain.
       const evidence_grade_legend: Record<string, string> = {}
       for (const g of Object.keys(evidence_grade_counts)) {
-        evidence_grade_legend[g] = EVIDENCE_GRADE_LEGEND[g] ?? 'unrecognized tier — treated as not-calibrated (fail-closed: numerics suppressed).'
+        evidence_grade_legend[g] = EVIDENCE_GRADE_LEGEND[g] ?? PREFIX_GRADE_LEGEND[g] ?? 'unrecognized tier — treated as not-calibrated (fail-closed: numerics suppressed).'
       }
 
       return {
         content: {
           chart_id,
-          insight_units:       insightResult.rows.map(suppressIfNotCalibrated),
+          insight_units:       labelled.map(suppressIfNotCalibrated),
           calibration_summary,
           evidence_grade_counts,
           evidence_grade_legend,
+          generation_disclosure,
+          generation_flags:    generation_disclosure.flags,
           filters:             { insight_type, domain, min_rank, top_k, include_neg },
           total_returned:      insightResult.rows.length,
           total_matching,

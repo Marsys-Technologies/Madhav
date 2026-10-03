@@ -89,6 +89,71 @@ export interface NirmanaRegistryContractRow {
   superseded_by: string | null
   data_disposition: 'RETAINED_AS_CAPITAL' | 'SUPERSEDED_IN_PLACE' | 'DROPPABLE' | null
   dead_flag: boolean | null
+  /**
+   * Whether ANY provenance receipt or build_run_assets row exists for the asset (see `runtimeEvidenceSql`). Read only by `isNirmanaStagedInertCandidate`; null / undefined is NOT "none" — only `=== false` excludes.
+   */
+  has_runtime_evidence?: boolean | null
+}
+
+/**
+ * PRAVĀHA (#2996, migration 1243): the two Gochara candidate writers that are STAGED in asset_registry only so the orchestrator's writer-gap
+ * pre-flight finds a row for every registered writer. They are not elevation-denominator assets and, while inert, are excluded from the frozen
+ * population — by ONE explicit, shape-conditioned rule (never "all inactive assets": retired identities belong to the frozen population).
+ *
+ * REMOVAL TRIGGER: when ka_gochara_v5 or ka_gochara_v4_41_candidate is ACTIVATED or RETIRED, its id is removed from this list IN THE SAME CHANGE.
+ * EVERY REAL DISPATCH is ALSO a trigger, including a successful run: it leaves build_run_assets rows and (on success) a provenance receipt. Receipts
+ * survive the watchdog's pruning of old build runs, but `asset_provenance_receipts` has ON DELETE CASCADE to the registry row
+ * (supabase/migrations/596:12), so a receipt is NOT permanent evidence either — deleting the registry row cascades it away (the v4.1 teardown no longer
+ * deletes the row, #2997, but the cascade holds for any deletion). The exclusion therefore ends or silently resumes depending on what happened to the
+ * evidence rows; the rule that does not depend on that is the PROCEDURAL commitment: every real dispatch of either candidate, successful or not,
+ * requires its disposition (retire the asset or adjust its frozen-population status) and the removal of its id from this list IN THE SAME CHANGE.
+ */
+export const NIRMANA_STAGED_INERT_CANDIDATES: ReadonlySet<string> = new Set(['ka_gochara_v4_41_candidate', 'ka_gochara_v5'])
+
+/**
+ * The exclusion applies ONLY while the row still has the staged shape: exactly one of the two ids, is_active = false, has_writer = true, no
+ * dependencies, catalog_status not RETIRED, and POSITIVELY no receipt / build-run evidence (`has_runtime_evidence === false`). Any
+ * change — activation, a dependency, a receipt or a build-run row, or a loader that does not supply the evidence column — makes the row
+ * count as a normal asset again, and the monitor / comparisons see it.
+ */
+export function isNirmanaStagedInertCandidate(row: NirmanaRegistryContractRow): boolean {
+  return NIRMANA_STAGED_INERT_CANDIDATES.has(row.asset_id)
+    && row.is_active === false
+    && row.has_writer === true
+    && (row.depends_on ?? []).length === 0
+    && row.catalog_status !== 'RETIRED'
+    && row.has_runtime_evidence === false
+}
+
+/**
+ * Removes the staged inert candidates from a registry view — and ONLY while nothing depends on them (a dependent asset would make the candidate part
+ * of the live DAG). Shared by baseline construction and both frozen-registry comparisons.
+ */
+export function excludeNirmanaStagedInertCandidates<T extends NirmanaRegistryContractRow>(rows: T[]): T[] {
+  const dependedOn = new Set(rows.flatMap((row) => row.depends_on ?? []))
+  return rows.filter((row) => !(isNirmanaStagedInertCandidate(row) && !dependedOn.has(row.asset_id)))
+}
+
+/**
+ * SQL expression `has_runtime_evidence` for a registry row aliased `alias`, ONE predicate for every loader (monitor, snapshot, all five definitions
+ * loaders incl. the ingress path): `EXISTS(asset_provenance_receipts) OR EXISTS(build_run_assets)` for exactly the two staged ids, NULL for every other
+ * row (never consulted). All three loader roles (amjis_app, nirmana_campaign_control_writer, nirmana_evidence_ingress_writer) hold SELECT on both
+ * tables (read-only production check, 2026-10-03); none of the two non-app roles holds SELECT on asset_throughput, so throughput is NOT part of the
+ * predicate — a cockpit refresh row is not a build, so it is not runtime evidence. NULL is "unknown" and is NEVER read as "no evidence":
+ * `isNirmanaStagedInertCandidate` excludes only on `=== false`.
+ *
+ * KNOWN LIMIT (documented, Suvarṇa-approved fallback (b)): the evidence is not permanent. The cockpit watchdog PRUNES old build_run_assets / build_runs
+ * rows (`app/api/cockpit/watchdog/route.ts:462-475`); a FAILED run leaves no receipt; and a receipt is deleted with its registry row
+ * (ON DELETE CASCADE, supabase/migrations/596:12). So a candidate whose only evidence was a pruned build row, or whose registry row was deleted and
+ * re-staged, can look evidence-free again and be excluded. PROCEDURAL COMMITMENT that closes it: EVERY real dispatch of either candidate — successful or
+ * not — retires the asset or adjusts its frozen-population status IN THE SAME CHANGE (and removes its id from NIRMANA_STAGED_INERT_CANDIDATES).
+ * A narrow SECURITY DEFINER function that also reads asset_throughput is prepared as a separate protected-class migration (draft, 1235); the loaders
+ * switch to it in a later routine change, after that migration is applied.
+ */
+export function runtimeEvidenceSql(alias: string): string {
+  return `CASE WHEN ${alias}.asset_id IN ('ka_gochara_v4_41_candidate', 'ka_gochara_v5')
+              THEN (EXISTS (SELECT 1 FROM public.asset_provenance_receipts rcpt WHERE rcpt.asset_id = ${alias}.asset_id)
+                    OR EXISTS (SELECT 1 FROM public.build_run_assets bra WHERE bra.asset_id = ${alias}.asset_id)) END AS has_runtime_evidence`
 }
 
 export type NirmanaExecutionObligation = Exclude<
@@ -348,7 +413,9 @@ export function parseFreezableNirmanaElevationManifest(manifest: unknown): Nirma
  * fails closed: the filtered registry view reports it as absent.
  */
 function elevationDenominatorRegistryRows(rows: NirmanaRegistryContractRow[]): NirmanaRegistryContractRow[] {
-  return rows.filter((row) => !NIRMANA_SUPPORTING_WRITERS.has(row.asset_id))
+  // R20-2: the candidate rule sees the COMPLETE registry first (a supporting writer that depends on a candidate must keep it in the denominator),
+  // and only then are the supporting writers removed.
+  return excludeNirmanaStagedInertCandidates(rows).filter((row) => !NIRMANA_SUPPORTING_WRITERS.has(row.asset_id))
 }
 
 export function assertManifestMatchesRegistry(
@@ -617,7 +684,8 @@ export async function acceptNirmanaBaselineCandidate(
               sanskrit_name, english_name, english_description,
               sort_order, scope, asset_kind, catalog_status, is_active, has_writer,
               target_table, count_sql, integrity_check_sql, health_probe,
-              natural_key_partition, superseded_by, data_disposition, dead_flag
+              natural_key_partition, superseded_by, data_disposition, dead_flag,
+              ${runtimeEvidenceSql('asset_registry')}
          FROM asset_registry
         ORDER BY asset_id`,
     )
@@ -761,7 +829,8 @@ export async function freezeNirmanaElevationDefinition(input: FreezeNirmanaEleva
     `SELECT asset_id, layer, COALESCE(depends_on, '{}') AS depends_on,
             sort_order, scope, asset_kind, catalog_status, is_active, has_writer,
             target_table, count_sql, integrity_check_sql, health_probe,
-            natural_key_partition, superseded_by, data_disposition, dead_flag
+            natural_key_partition, superseded_by, data_disposition, dead_flag,
+              ${runtimeEvidenceSql('asset_registry')}
        FROM asset_registry
       ORDER BY asset_id`,
   )
@@ -914,7 +983,8 @@ export async function supersedeNirmanaElevationDefinition(
     const registry = await client.query<NirmanaRegistryContractRow>(
       `SELECT asset_id, layer, COALESCE(depends_on, '{}') AS depends_on, sanskrit_name, english_name, english_description,
               sort_order, scope, asset_kind, catalog_status, is_active, has_writer, target_table, count_sql,
-              integrity_check_sql, health_probe, natural_key_partition, superseded_by, data_disposition, dead_flag
+              integrity_check_sql, health_probe, natural_key_partition, superseded_by, data_disposition, dead_flag,
+              ${runtimeEvidenceSql('asset_registry')}
          FROM asset_registry ORDER BY asset_id`,
     )
     const { buildNirmanaBaselineCandidate } = await import('./monitor')
@@ -1086,7 +1156,8 @@ export async function supersedeNirmanaElevationDefinitionMidCampaign(
     const registry = await client.query<NirmanaRegistryContractRow>(
       `SELECT asset_id, layer, COALESCE(depends_on, '{}') AS depends_on, sanskrit_name, english_name, english_description,
               sort_order, scope, asset_kind, catalog_status, is_active, has_writer, target_table, count_sql,
-              integrity_check_sql, health_probe, natural_key_partition, superseded_by, data_disposition, dead_flag
+              integrity_check_sql, health_probe, natural_key_partition, superseded_by, data_disposition, dead_flag,
+              ${runtimeEvidenceSql('asset_registry')}
          FROM asset_registry ORDER BY asset_id`,
     )
     const { buildNirmanaBaselineCandidate } = await import('./monitor')
@@ -2732,7 +2803,8 @@ async function loadCurrentRegistryRows(client: PoolClient): Promise<NirmanaRegis
     `SELECT asset_id, layer, COALESCE(depends_on, '{}') AS depends_on,
             sort_order, scope, asset_kind, catalog_status, is_active, has_writer,
             target_table, count_sql, integrity_check_sql, health_probe,
-            natural_key_partition, superseded_by, data_disposition, dead_flag
+            natural_key_partition, superseded_by, data_disposition, dead_flag,
+              ${runtimeEvidenceSql('asset_registry')}
        FROM asset_registry
       ORDER BY asset_id`,
   )
