@@ -32,6 +32,8 @@ from typing import Any
 
 import psycopg.rows
 
+from brahmagyan.l0_attribution_state import capture as _capture_attribution, restore as _restore_attribution
+
 logger = logging.getLogger(__name__)
 
 # ── Citation constants ─────────────────────────────────────────────────────────
@@ -2241,6 +2243,8 @@ def seed_yogas(conn, build_id: str | None = None,
     # is scoped to its entity class). Desired source is computed first; the
     # replacement then shares the orchestrator-owned transaction/savepoint.
     with conn.cursor() as cur:
+        # attribution_state (migration 1268) is not part of the seed: carry it across the replacement (SS N-111)
+        attribution_saved = _capture_attribution(cur, "brahma_yoga_catalog", "canonical_id", "classical_citations")
         cur.execute("DELETE FROM brahma_yoga_source_chunks")
         cur.execute("DELETE FROM reference_yogas")
         ref_replaced = cur.rowcount
@@ -2332,6 +2336,8 @@ def seed_yogas(conn, build_id: str | None = None,
 
             if (i + 1) % 50 == 0:
                 logger.info("[l0_yogas] progress: %d/%d yogas processed", i + 1, len(all_yogas))
+
+        _restore_attribution(cur, "brahma_yoga_catalog", "canonical_id", "classical_citations", attribution_saved)
 
         cur.execute(
             """
