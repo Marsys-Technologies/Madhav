@@ -102,6 +102,9 @@ export interface NirmanaRegistryContractRow {
  * population — by ONE explicit, shape-conditioned rule (never "all inactive assets": retired identities belong to the frozen population).
  *
  * REMOVAL TRIGGER: when ka_gochara_v5 or ka_gochara_v4_41_candidate is ACTIVATED or RETIRED, its id is removed from this list IN THE SAME CHANGE.
+ * A COMPLETED REAL RUN is ALSO a trigger: a successful run persists a provenance receipt that the v4.1 dispatch teardown does not delete, so
+ * `has_runtime_evidence` stays true for good and the exclusion ends permanently (the monitor reads source_unavailable until the id is removed from this
+ * list by retiring the asset or adjusting its frozen-population status — the authorised remedy; never a silent hand-delete of the receipt).
  */
 export const NIRMANA_STAGED_INERT_CANDIDATES: ReadonlySet<string> = new Set(['ka_gochara_v4_41_candidate', 'ka_gochara_v5'])
 
