@@ -69,7 +69,7 @@ def _line(ptr):
 # ───────────────────────── Part 1: the committed entry ─────────────────────────
 
 def test_the_file_is_1_12_0_and_the_latta_declares_prose_fields_empty_with_a_coupling():
-    assert DECL["version"] == "1.12.0" and ac.validate_declarations(DECL)
+    assert DECL["version"] == "1.13.0" and ac.validate_declarations(DECL)
     assert ENTRY["prose_fields"] == [] and ENTRY["evidence_kind"] == "writer"
     ev = ENTRY["evidence"]["prose_fields"]
     cites = ac._EVIDENCE_ANY_CITE_RE.findall(ev)
@@ -799,12 +799,12 @@ def test_the_reader_holds_no_copy_of_the_rule():
 # ───────────────────────── Part 7: the pin ─────────────────────────
 
 def test_the_registry_revision_and_the_four_narr_criteria_carry_the_new_declared_form():
-    assert ac.REGISTRY_REVISION == 16
+    assert ac.REGISTRY_REVISION >= 16          # pin 23 (DENS-TIER-GUARD) is stacked on this one; the NARR-GUARD change-log entry stays in the comment
     for c in NARR:
         e = ac.CRITERION_REGISTRY[c]
         assert e["revision"] == 2 and "prose_coupling to carriage_d1" in e["applicability"] and "NARR-GUARD" in e["applicability"], c
     assert ac.NA_CAUSES["Narr.agree"] == ("no-prose",) and all(f"{c}#measured:no-prose" in ac.NA_RULE_DECISIONS for c in NARR)
-    assert "16 (provisional): NARR-GUARD" in pathlib.Path(ac.__file__).read_text(encoding="utf-8").split("REGISTRY_REVISION = 16", 1)[1][:200]
+    assert "16 (provisional): NARR-GUARD" in pathlib.Path(ac.__file__).read_text(encoding="utf-8").split("REGISTRY_REVISION = ", 1)[1].split("\n", 1)[0]
 
 
 @pytest.mark.parametrize("bad", [["effect"], {"a": 1}, 7, None])

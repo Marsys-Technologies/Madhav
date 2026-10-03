@@ -267,9 +267,9 @@ def test_a_module_with_a_label_and_a_select_is_one_reach_and_keeps_its_fail(tree
 
 
 def test_a_label_only_module_beside_a_real_serving_module_changes_neither_the_verdict_nor_the_pass(tree):
-    tree.write(tree.layers / "L0_x", "real.ts", dr._cap("SELECT id, signature_tier FROM t_x"))
+    tree.write(tree.layers / "L0_x", "real.ts", dr._cap("SELECT id, tier FROM t_x"))
     tree.write(tree.tools, "label.ts", LABELS["provenance-tables-array"])
-    cap = dr._scan(tree, list(TOKS), columns={"t_x": ["id", "signature_tier"]})
+    cap = dr._scan(tree, list(TOKS), columns={"t_x": ["id", "tier"]})
     d = ac._grade_dens(cap, "t_x")
     assert d["v"] == ac.PASS, d
     assert cap["modules"] == ["L0_x/real.ts"] and len(cap["label_only"]) == 1 and cap["label_only"][0].endswith("/label.ts"), cap
@@ -297,9 +297,9 @@ def test_a_shared_table_select_in_a_capability_that_names_the_asset_by_label_sti
 
 
 def test_a_label_next_to_a_real_pass_is_named_in_the_evidence_text_and_the_count_excludes_it(tree):
-    tree.write(tree.layers / "L0_x", "real.ts", dr._cap("SELECT id, signature_tier FROM t_x"))
+    tree.write(tree.layers / "L0_x", "real.ts", dr._cap("SELECT id, tier FROM t_x"))
     tree.write(tree.tools, "label.ts", LABELS["provenance-tables-array"])
-    d = ac._grade_dens(dr._scan(tree, list(TOKS), columns={"t_x": ["id", "signature_tier"]}), "t_x")
+    d = ac._grade_dens(dr._scan(tree, list(TOKS), columns={"t_x": ["id", "tier"]}), "t_x")
     assert d["v"] == ac.PASS and "1 module(s) reach it by code: L0_x/real.ts (+1 name it only as a label)" in d["measured"], d
 
 
@@ -1083,7 +1083,9 @@ def test_bg_sarvatobhadra_grid_stays_no_detector_because_a_comment_names_it_r51(
 def test_no_pass_partial_or_fail_cell_moves_on_the_real_tree(real_dens):
     from collections import Counter
     c = Counter(g["v"] for g, _cap in real_dens.values())
-    assert (c["PASS"], c["PARTIAL"], c["FAIL"]) == (5, 26, 43), c
+    # DENS-TIER-GUARD (N-98, pin 23): was (5, 26, 43). The closed tier vocabulary moves THREE real PASS cells to PARTIAL (ga_medical and ga_vastu selected `indication_tier`, mi_kula
+    # `evidence_tier`: neither is `tier` / `verification_pass_status` and none is declared); FAIL / N/A / NO_DETECTOR counts do not move (test_e6_dens_tier_guard.py names the three).
+    assert (c["PASS"], c["PARTIAL"], c["FAIL"]) == (2, 29, 43), c
     assert c["N/A"] == 5 and c["NO_DETECTOR"] == 48, c
 
 
@@ -1119,19 +1121,19 @@ def test_the_python_reader_clause_of_the_old_text_is_gone_and_replaced_by_the_se
 
 def test_dens_served_criterion_revision_5_states_the_select_reading():
     e = ac.CRITERION_REGISTRY["Dens.served"]
-    assert e["revision"] == 5 and "tier column" in e["applicability"] and "label" in e["applicability"], e
+    assert e["revision"] == 6 and "tier column" in e["applicability"] and "label" in e["applicability"], e      # 6: N-98 closed tier vocabulary
 
 
 def test_registry_revision_is_at_least_14_and_the_declarations_file_is_at_the_decl_latta_version():
     assert ac.REGISTRY_REVISION >= 14          # pin 15 (STAMP) is stacked on this one
     # 1.9.0 at pin 14 (the Dens PR did not touch the file); 1.10.0 after DECL-LATTA, 1.11.0 after DECL-LATTA-NULL (bg_phaladeepika_latta's entry only)
-    assert json.loads((HERE.parent / "asset_declarations.json").read_text(encoding="utf-8"))["version"] == "1.12.0"
+    assert json.loads((HERE.parent / "asset_declarations.json").read_text(encoding="utf-8"))["version"] == "1.13.0"
 
 
 def test_only_dens_served_changed_in_the_criterion_registry_at_14():
     """Everything else in the registry is the rev-13 content: the one revision-5 entry is Dens.served."""
     revs = {k: v["revision"] for k, v in ac.CRITERION_REGISTRY.items() if v["revision"] != 1}
-    assert revs.get("Dens.served") == 5
+    assert revs.get("Dens.served") == 6          # 5 at pin 14; 6 at pin 23 (DENS-TIER-GUARD, N-98)
     assert set(ac.NA_CAUSES["Dens.served"]) == {"no-served-surface"}
 
 

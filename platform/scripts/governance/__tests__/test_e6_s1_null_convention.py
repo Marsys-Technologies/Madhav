@@ -176,7 +176,7 @@ def test_validator_doc_level_field_list_must_match_when_present():
 
 def test_the_committed_file_is_1_11_0_declares_a_null_convention_only_for_the_latta_and_lists_the_fields():
     raw = json.loads(ac.DECLARATIONS_PATH.read_text(encoding="utf-8"))
-    assert raw["version"] == "1.12.0"          # DECL-LATTA-NULL: bg_phaladeepika_latta is the first (and only) asset to declare one
+    assert raw["version"] == "1.13.0"          # DECL-LATTA-NULL: bg_phaladeepika_latta is the first (and only) asset to declare one
     assert raw["null_convention_declaration_fields"] == list(ac.NULL_CONVENTION_DECL_FIELDS)
     # the per-asset review is the reviewed work: nothing is declared by pattern in this PR
     assert [a for a, e in raw["assets"].items() if "null_convention" in e] == ["bg_phaladeepika_latta"]
