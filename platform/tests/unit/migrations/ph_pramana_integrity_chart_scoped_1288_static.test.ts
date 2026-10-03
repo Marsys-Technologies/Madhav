@@ -2,7 +2,7 @@
  * Suvarna / migration 1288 — STATIC contract (ph_pramana integrity_check_sql made chart-scoped; the scope is read from the orchestrator's committed
  * state because the check is executed unbound). The live proof (disposable PG 15 and 17, run as amjis_app on the W1 production roles and schema ACL,
  * the check executed the way the orchestrator executes it, today / after the #3072 delete / after a rebuild, inside and outside a build, corruption in
- * the chart being built vs the other chart, zombie and planned runs, 20 mutants) is
+ * the chart being built vs the other chart, zombie and planned runs, 22 mutants) is
  * python-sidecar/tests/test_migration_1288_ph_pramana_integrity_chart_scoped.py.
  */
 import { describe, it, expect } from 'vitest'
@@ -18,7 +18,7 @@ const CODE = SQL.split('\n').filter(l => !l.trim().startsWith('--')).join('\n')
 const FLAT = SQL.replace(/^--/gm, ' ').replace(/\s+/g, ' ')
 const md5 = (s: string): string => crypto.createHash('md5').update(s).digest('hex')
 const OLD_MD5 = '45f89d4853b157e22507ffccdb9af0e0'
-const NEW_MD5 = 'e3d0ccd89a09fa855f0cff75538f7ee8'
+const NEW_MD5 = 'c3f1b7949ebfda27ab959e55c2a14898'
 const m681 = fs.readFileSync(path.join(MIG, '681_l4_phala_c12_registry_contracts.sql'), 'utf8')
 const oldText = [...m681.matchAll(/\$check\$([\s\S]*?)\$check\$/g)].map(m => m[1] ?? '').find(t => md5(t) === OLD_MD5) ?? ''
 const newText = /\$ck\$([\s\S]*)\$ck\$/.exec(SQL)?.[1] ?? ''
@@ -31,7 +31,10 @@ describe('migration 1288 — static contract', () => {
 
   it('the NEW text has the named md5/length, no bind placeholder, and the scope read from running/building state', () => {
     expect(md5(newText)).toBe(NEW_MD5)
-    expect(newText).toHaveLength(3046)
+    expect(newText).toHaveLength(3398)
+    expect(crypto.createHash('sha256').update(newText).digest('hex')).toBe('040cf925736b063b41b894812835d6c97fcc0083544c899efa2978020f46267f')
+    expect(newText.split('AND txid_current_if_assigned() IS NOT NULL')).toHaveLength(5)
+    expect(newText).not.toContain('xmin')
     expect(newText).not.toContain('$1')
     expect(newText.split("b.asset_id = 'ph_pramana' AND b.state = 'building' AND r.state = 'running'")).toHaveLength(3)
     expect(newText).toContain('information_schema.columns')
@@ -56,8 +59,8 @@ describe('migration 1288 — static contract', () => {
 
   it('states the header facts: the problem, the unbound execution, readbacks, serving effect, zombies, limits, not-done', () => {
     for (const n of ['THE PROBLEM', 'REVIEW_3072.md MED-1', 'HOW THE ORCHESTRATOR BINDS A CHART: IT DOES NOT', 'cur.execute(integrity_sql)', 'FROZEN',
-      'OUTSIDE a build', 'READBACKS', 'after the #3072 delete', 'SERVING / FRESHNESS EFFECT AT APPLY', 'asset_freshness holds 0 rows for ph_pramana',
-      'ACTIVE RUNS (ENFORCED)', 'Zombie rows', 'KNOWN LIMIT', 'NOT DONE HERE', 'VERIFICATION BY PRODUCTION STRUCTURE', 'ROLLBACK', OLD_MD5, NEW_MD5]) expect(FLAT).toContain(n)
+      'read-only session', 'txid_current_if_assigned() IS NOT NULL', 'LOST DETECTION', 'PRE-WRITE state', 'NEVER RUN TWO ph_pramana BUILDS CONCURRENTLY', 'LIST FOREIGN build_runs', 'RE-COUPLE THE CHARTS', 'READBACKS', 'after the #3072 delete', 'SERVING / FRESHNESS EFFECT AT APPLY', 'asset_freshness holds 0 rows for ph_pramana',
+      'ACTIVE RUNS (ENFORCED)', 'Zombie rows', 'KNOWN LIMITS', 'NOT DONE HERE', 'VERIFICATION BY PRODUCTION STRUCTURE', 'ROLLBACK', OLD_MD5, NEW_MD5]) expect(FLAT).toContain(n)
   })
 
   it('is a ROUTINE migration (not protected), unique, in the 1200-1299 range', () => {

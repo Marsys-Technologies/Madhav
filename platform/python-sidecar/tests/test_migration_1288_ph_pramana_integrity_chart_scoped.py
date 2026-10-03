@@ -33,7 +33,8 @@ _MIG = _REPO / "platform" / "migrations"
 _M1288 = _MIG / "1288_ph_pramana_integrity_check_chart_scoped.sql"
 _M681 = _MIG / "681_l4_phala_c12_registry_contracts.sql"
 _REAL = _M1288.read_text()
-OLD_MD5, NEW_MD5, OLD_LEN, NEW_LEN = "45f89d4853b157e22507ffccdb9af0e0", "e3d0ccd89a09fa855f0cff75538f7ee8", 1284, 3046
+OLD_MD5, NEW_MD5, OLD_LEN, NEW_LEN = "45f89d4853b157e22507ffccdb9af0e0", "c3f1b7949ebfda27ab959e55c2a14898", 1284, 3398
+NEW_SHA256 = "040cf925736b063b41b894812835d6c97fcc0083544c899efa2978020f46267f"
 CHART_A = "482012f1-710e-4a25-994a-93821f5871aa"   # canonical: 4 anchors
 CHART_B = "1c826d5a-41cb-4450-b4dc-59d440e5f75a"   # 56 anchors in production; 8 are the contaminated life_event_miss rows' anchors
 INTEGRITY_SENTINEL = "SELECT true AS integrity_passed -- stand-in; another migration's column"
@@ -81,6 +82,9 @@ def test_new_text_named_md5_length_no_bind_placeholder_and_the_scope_structure()
     assert "$1" not in new and "%s" not in new, "the orchestrator executes the text with no parameters"
     assert new.count("b.asset_id = 'ph_pramana' AND b.state = 'building' AND r.state = 'running'") == 2
     assert new.count("IN (SELECT r.chart_id FROM build_runs r JOIN build_run_assets b") == 2
+    assert new.count("AND txid_current_if_assigned() IS NOT NULL") == 4, "the scope applies only to a session that has written"
+    assert "xmin" not in new and "chart_id IS NOT NULL" not in new.replace("a.chart_id IS NOT NULL", "")
+    assert hashlib.sha256(new.encode()).hexdigest() == NEW_SHA256
     assert "information_schema.columns" in new and "count(DISTINCT anchor_id)" in new and "FULL OUTER JOIN phala_pramana p" in new
     assert "WHERE NOT EXISTS (SELECT 1 FROM build_runs r2 JOIN build_run_assets b2" in new, "the outside-a-build fallback"
 
@@ -101,8 +105,9 @@ def test_migration_shape_guards_and_header():
         assert needle in code, needle
     sql = _flat(_M1288)
     for needle in ("HOW THE ORCHESTRATOR BINDS A CHART: IT DOES NOT", "cur.execute(integrity_sql)", "FROZEN", "asset_runner.py:1200", "THE PROBLEM", "REVIEW_3072.md MED-1",
-                   "OUTSIDE a build", "fall", "READBACKS", "after the #3072 delete", "SERVING / FRESHNESS EFFECT AT APPLY", "asset_freshness holds 0 rows for ph_pramana",
-                   "ACTIVE RUNS (ENFORCED)", "Zombie rows", "KNOWN LIMIT", "NOT DONE HERE", "VERIFICATION BY PRODUCTION STRUCTURE", "ROLLBACK", OLD_MD5, NEW_MD5):
+                   "read-only session", "txid_current_if_assigned() IS NOT NULL", "LOST DETECTION", "ZERO pramana rows", "PRE-WRITE state", "NEVER RUN TWO ph_pramana BUILDS CONCURRENTLY", "LIST FOREIGN build_runs", "RE-COUPLE THE CHARTS", "sha256", "READBACKS", "after the #3072 delete", "SERVING / FRESHNESS EFFECT AT APPLY", "asset_freshness holds 0 rows for ph_pramana",
+                   "ACTIVE RUNS (ENFORCED)", "Zombie rows", "KNOWN LIMITS", "NOT DONE HERE", "txid_current_if_assigned() IS NOT NULL", "LOST DETECTION", "ZERO pramana rows",
+                   "PRE-WRITE state", "NEVER RUN TWO ph_pramana BUILDS CONCURRENTLY", "LIST FOREIGN build_runs", "RE-COUPLE THE CHARTS", "sha256", "xmin-based", "VERIFICATION BY PRODUCTION STRUCTURE", "ROLLBACK", OLD_MD5, NEW_MD5):
         assert needle in sql, f"header no longer states: {needle}"
     assert _M1288.name.startswith("1288_") and len(list(_MIG.glob("1288_*.sql"))) == 1
 
@@ -265,10 +270,11 @@ CREATE TABLE asset_freshness (
     asset_id text NOT NULL REFERENCES asset_registry(asset_id) ON DELETE CASCADE, chart_id uuid, scope_key text NOT NULL,
     partition_key text NOT NULL, freshness_state text NOT NULL, reasons jsonb NOT NULL DEFAULT '[]'::jsonb,
     receipt_version text NOT NULL, observed_at timestamptz NOT NULL DEFAULT now(), PRIMARY KEY (asset_id, scope_key, partition_key));
-CREATE TABLE build_runs (id uuid PRIMARY KEY DEFAULT gen_random_uuid(), chart_id uuid, state text NOT NULL
+CREATE TABLE build_runs (id uuid PRIMARY KEY DEFAULT gen_random_uuid(), chart_id uuid NOT NULL, state text NOT NULL
     CHECK (state IN ('planned','running','paused','completed','stopped','failed')));
 CREATE TABLE build_run_assets (run_id uuid NOT NULL REFERENCES build_runs(id), asset_id text NOT NULL, position int NOT NULL DEFAULT 0,
     state text NOT NULL CHECK (state IN ('queued','building','complete','skipped','error','aborted')), PRIMARY KEY (run_id, asset_id));
+CREATE TABLE asset_throughput (chart_id uuid, asset_id text, last_built_at timestamptz, rows_written int);
 CREATE TABLE phala_anchors (anchor_id uuid PRIMARY KEY DEFAULT gen_random_uuid(), chart_id uuid NOT NULL, label text);
 CREATE TABLE phala_pramana (
     pramana_id uuid PRIMARY KEY DEFAULT gen_random_uuid(), chart_id uuid NOT NULL, anchor_id uuid NOT NULL, evidence_type text NOT NULL,
@@ -294,13 +300,14 @@ def _make_fixture(connect, *, text="__OLD__", pramana_rows=True):
         c.execute(_TRIGGER_FN)
         c.execute(_TRIGGER_DEF)
         c.execute("INSERT INTO asset_freshness (asset_id, chart_id, scope_key, partition_key, freshness_state, receipt_version) VALUES ('ph_nimitta', %s, 'k', 'p', 'fresh', 'v1')", (CHART_A,))
+        c.execute("INSERT INTO asset_throughput VALUES (%s, 'ph_pramana', now(), 0), (%s, 'ph_pramana', now(), 0)", (CHART_A, CHART_B))
         for chart, n in ((CHART_A, N_A), (CHART_B, N_B)):
             for k in range(n):
                 c.execute("INSERT INTO phala_anchors (chart_id, label) VALUES (%s, %s)", (chart, f"a{k}"))
         if pramana_rows:
             c.execute("INSERT INTO phala_pramana (chart_id, anchor_id, evidence_type) SELECT a.chart_id, a.anchor_id, "
                       "CASE WHEN a.chart_id = %s AND a.label IN ('a0','a1','a2','a3','a4','a5','a6','a7') THEN 'life_event_miss' ELSE 'astro_only' END FROM phala_anchors a", (CHART_B,))
-        c.execute("GRANT SELECT ON asset_registry, build_runs, build_run_assets, phala_anchors, phala_pramana, asset_freshness TO data_plane_builder, suvarna_reader")
+        c.execute("GRANT SELECT ON asset_registry, build_runs, build_run_assets, phala_anchors, phala_pramana, asset_freshness, asset_throughput TO data_plane_builder, suvarna_reader")
         # the production owners, applied like W1: the schema ACL verbatim (amjis_app: USAGE only), every table owned by amjis_app
         c.execute((_HERE / "fixtures" / "w1_schema_acl.sql").read_text())
         for (t,) in c.execute("SELECT tablename FROM pg_tables WHERE schemaname = 'public'").fetchall():
@@ -325,10 +332,16 @@ def _start_run(connect, chart, run_state="running", asset_state="building", asse
     return rid
 
 
-def _check(connect, sql, user="amjis_app"):
-    """Executed the way asset_runner._probe_asset does: cur.execute(sql) with NO parameters; first column of the one row."""
+def _check(connect, sql, user="amjis_app", wrote=True):
+    """Executed the way asset_runner._probe_asset does: cur.execute(sql) with NO parameters; first column of the one row.
+    wrote=True: the session has a txid, like the orchestrator's probe (writer + heartbeat wrote in the same transaction).
+    wrote=False: a read-only session (freeze-time detector, census, operator SELECT): no txid."""
     with connect(user=user) as c:
         cur = c.cursor()
+        if wrote:
+            cur.execute("SELECT txid_current()")
+        else:
+            c.read_only = True
         cur.execute(sql)
         return cur.fetchone()[0]
 
@@ -582,6 +595,90 @@ def test_two_concurrent_ph_pramana_builds_put_both_charts_in_scope(db):
     assert _check(db, _new_text()) is False
 
 
+def test_REAL_probe_asset_in_a_writer_shaped_transaction_has_a_txid_and_the_scope_applies(db):
+    """MED-1/MED-2 hardening: the orchestrator's probe runs after the writer and its heartbeat wrote, in the same transaction (savepoint per sub-step),
+    so txid_current_if_assigned() is not NULL and the chart scope applies. The REAL _probe_asset is called (dict rows, like the orchestrator)."""
+    from psycopg.rows import dict_row
+    from pipeline.orchestrator.asset_runner import _probe_asset
+    _make_fixture(db)
+    _delete_contaminated(db)                      # chart B incomplete: the post-#3072 state
+    _apply(db, _REAL)
+    reg = {"integrity_check_sql": _row(db)[0]}
+    assert reg["integrity_check_sql"] == _new_text()
+    _start_run(db, CHART_A)                       # committed 'running' + 'building' rows, as run_asset leaves them
+    conn = db(user="amjis_app", row_factory=dict_row)
+    cur = conn.cursor()
+    cur.execute("SELECT txid_current_if_assigned() IS NOT NULL AS has_txid")
+    assert cur.fetchone()["has_txid"] is False, "precondition: nothing written yet"
+    cur.execute("SAVEPOINT writer_exec")
+    cur.execute("DELETE FROM phala_pramana WHERE chart_id = %s", (CHART_A,))
+    cur.execute("INSERT INTO phala_pramana (chart_id, anchor_id, evidence_type) SELECT chart_id, anchor_id, 'astro_only' FROM phala_anchors WHERE chart_id = %s", (CHART_A,))
+    cur.execute("RELEASE SAVEPOINT writer_exec")
+    cur.execute("UPDATE asset_throughput SET last_built_at = NOW(), rows_written = 4 WHERE chart_id IS NOT DISTINCT FROM %s AND asset_id = 'ph_pramana'", (CHART_A,))
+    cur.execute("SELECT txid_current_if_assigned() IS NOT NULL AS has_txid")
+    assert cur.fetchone()["has_txid"] is True
+    ok, message = _probe_asset(conn, cur, "ph_pramana", reg, False)
+    old_ok, _ = _probe_asset(conn, cur, "ph_pramana", {"integrity_check_sql": _old_text()}, False)
+    conn.rollback()
+    conn.close()
+    assert ok is True, message
+    assert old_ok is False, "the old global check fails the same transaction (the problem)"
+
+
+def test_REAL_probe_asset_rebuild_of_the_incomplete_chart_itself_reads_true_after_the_writer(db):
+    """LOW-2: the FALSE for 1c826d5a in the table is the PRE-WRITE state; the probe runs after the writer regenerated the rows, so that build reads TRUE."""
+    from psycopg.rows import dict_row
+    from pipeline.orchestrator.asset_runner import _probe_asset
+    _make_fixture(db)
+    _delete_contaminated(db)
+    _start_run(db, CHART_B)
+    conn = db(user="amjis_app", row_factory=dict_row)
+    cur = conn.cursor()
+    cur.execute("DELETE FROM phala_pramana WHERE chart_id = %s", (CHART_B,))
+    cur.execute("INSERT INTO phala_pramana (chart_id, anchor_id, evidence_type) SELECT chart_id, anchor_id, 'astro_only' FROM phala_anchors WHERE chart_id = %s", (CHART_B,))
+    cur.execute("UPDATE asset_throughput SET rows_written = 12 WHERE chart_id = %s AND asset_id = 'ph_pramana'", (CHART_B,))
+    ok, message = _probe_asset(conn, cur, "ph_pramana", {"integrity_check_sql": _new_text()}, False)
+    conn.rollback()
+    conn.close()
+    assert ok is True, message
+
+
+def test_READ_ONLY_sessions_are_never_narrowed_by_an_in_flight_or_stuck_run(db):
+    """MED-2: a running+building row used to narrow the detector/census to one chart (TRUE where the old check was FALSE). With the txid condition a
+    read-only session (no txid) takes the all-charts scope; the orchestrator session (txid) is still scoped."""
+    _make_fixture(db)
+    _exec(db, "DELETE FROM phala_pramana WHERE anchor_id = (SELECT anchor_id FROM phala_anchors WHERE chart_id = %s LIMIT 1)", (CHART_B,))   # chart B corrupt
+    _start_run(db, CHART_A)
+    new = _new_text()
+    assert _check(db, _old_text(), wrote=False) is False
+    assert _check(db, new, wrote=False) is False, "read-only: not narrowed to the chart in flight"
+    assert _check(db, new, wrote=True) is True, "the orchestrator session of chart A is scoped to A"
+    assert _check(db, new, user="suvarna_reader", wrote=False) is False, "the reader role / detector"
+
+
+def test_MED_1_two_concurrent_builds_recouple_the_charts_documented_and_runbook_rule(db):
+    """Chart X complete, chart Y's COMMITTED rows incomplete (1c826d5a after #3072), both builds running: X's probe reads FALSE (fails closed, transient)."""
+    _make_fixture(db)
+    _delete_contaminated(db)
+    _start_run(db, CHART_A)
+    _start_run(db, CHART_B)
+    assert _check(db, _new_text(), wrote=True) is False
+    sql = _flat(_M1288)
+    assert "NEVER RUN TWO ph_pramana BUILDS CONCURRENTLY" in sql and "LIST FOREIGN build_runs BEFORE EVERY DISPATCH" in sql
+
+
+def test_a_build_whose_session_wrote_nothing_takes_the_all_charts_scope_documented_limit(db):
+    """A chart with no anchors, no asset_throughput row to heartbeat, writer deleted 0 rows: no txid, so the check behaves like the old one."""
+    _make_fixture(db)
+    _delete_contaminated(db)
+    _exec(db, "DELETE FROM phala_pramana WHERE chart_id = %s", (CHART_A,))
+    _exec(db, "DELETE FROM phala_anchors WHERE chart_id = %s", (CHART_A,))
+    _exec(db, "DELETE FROM asset_throughput WHERE chart_id = %s", (CHART_A,))
+    _start_run(db, CHART_A)
+    assert _check(db, _new_text(), wrote=False) is False
+    assert _check(db, _new_text(), wrote=True) is True
+
+
 # -- MUTATION proof ---------------------------------------------------------------------------
 
 _REAL_NEW = _new_text()
@@ -653,6 +750,13 @@ def _semantic_scenario(db, sql):
     _start_run(db, CHART_A)
     if _check(db, t) is not False:
         v.append("a chart being built with anchors and no pramana must be judged")
+    _make_fixture(db)
+    _exec(db, "DELETE FROM phala_pramana WHERE anchor_id = (SELECT anchor_id FROM phala_anchors WHERE chart_id = %s LIMIT 1)", (CHART_B,))
+    _start_run(db, CHART_A)
+    if _check(db, t, wrote=False) is not False:
+        v.append("read-only session narrowed by an in-flight run: must stay all-charts (false)")
+    if _check(db, t, wrote=True) is not True:
+        v.append("orchestrator session (txid) must be scoped to the chart being built")
     return v
 
 
@@ -755,7 +859,9 @@ _MUTANTS = {
     "text_tiling_other_direction_only": (_remake(_N.replace("WHERE (a.anchor_id IS NULL OR p.anchor_id IS NULL)", "WHERE (a.anchor_id IS NULL)")), "semantic"),
     "text_grain_clause_dropped": (_remake(_N.replace("HAVING count(*) <> count(DISTINCT anchor_id)", "HAVING false")), "semantic"),
     "text_schema_clause_dropped": (_remake(_N.replace("AND data_type IN ('numeric','double precision','real'))", "AND false)")), "semantic"),
-    "text_run_chart_not_null_dropped_scope_empty": (_remake(_N.replace("AND r.chart_id IS NOT NULL", "AND false", 1)), "semantic"),
+    "text_txid_condition_removed_everywhere": (_remake(_N.replace(" AND txid_current_if_assigned() IS NOT NULL", "")), "semantic"),
+    "text_txid_condition_removed_from_the_fallback_only": (_remake(_N.replace("AND r2.state = 'running' AND txid_current_if_assigned() IS NOT NULL", "AND r2.state = 'running'")), "semantic"),
+    "text_txid_condition_inverted": (_remake(_N.replace("txid_current_if_assigned() IS NOT NULL", "txid_current_if_assigned() IS NULL")), "semantic"),
 }
 
 
