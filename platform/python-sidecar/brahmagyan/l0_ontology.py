@@ -650,40 +650,97 @@ ENTITIES += [
        "Mantreswara's Phaladeepika synthesis school"),
 ]
 
-# ── Classical texts (15) ──────────────────────────────────────────────────────
+# ── Classical texts: derived from the corpus manifest (TI-L0-13, SS Q4, CF-09 (c)) ───────
+#
+# The `text` class is the corpus (`brahmagyan.l0_texts.TEXTS`, the manifest bg_texts builds the
+# corpus from, 15 texts), not a hand-kept second list: the two had drifted by 3 in each direction
+# (corpus-only: bhrigu_nandi_nadi, bphs_jaimini, nadi_navamsa_patel; ontology-only: bhrigu_samhita,
+# jaimini_sutram, lal_kitab_text). Rules, in order:
+#   1. every manifest text is a text entity (so a text added to the corpus appears here);
+#   2. the 12 texts that already existed in both places keep their display fields VERBATIM
+#      (_TEXT_LEGACY_DISPLAY) - no served name, synonym or description moves;
+#   3. a manifest-only text takes name / synonyms / description / source_citation from the
+#      manifest's own fields (no invented value);
+#   4. an ontology-only id stays ONLY if a consumer exists (referrer census, see the wave plan):
+#      `jaimini_sutram` is cited as text_id by 12 yoga and 5 dasha_system catalogue rows and is a
+#      live classical_texts row (its chunks live under `bphs_jaimini`); `bhrigu_samhita` and
+#      `lal_kitab_text` have no consumer anywhere and are not corpus texts (l0_texts.py: "Dropped:
+#      lal_kitab ... bhrigu_samhita (no defensible edition)"), so they are no longer emitted and
+#      the writer's owned-class sweep removes them.
 
-ENTITIES += [
-    _e("text", "bphs", "Brihat Parashara Hora Shastra", "Bṛhat Parāśara Horā Śāstra",
-       ["bphs", "brihat parasara", "parashara hora"], "Foundational Parashari text"),
-    _e("text", "phaladeepika", "Phaladeepika", "Phaladīpikā",
-       ["phaladeepika"], "Mantreswara's predictive synthesis"),
-    _e("text", "jataka_parijata", "Jataka Parijata", "Jātaka Pārijāta",
-       ["jataka parijata", "parijata"], "Vaidyanatha Dikshita's comprehensive natal text"),
-    _e("text", "uttara_kalamrita", "Uttara Kalamrita", "Uttara Kālāmṛta",
-       ["uttara kalamrita", "kalamrita"], "Kalidasa's compact reference"),
-    _e("text", "jaimini_sutram", "Jaimini Sutram", "Jaimini Sūtram",
-       ["jaimini sutram", "jaimini sutras"], "The Jaimini aphorisms"),
-    _e("text", "brihat_jataka", "Brihat Jataka", "Bṛhat Jātaka",
-       ["brihat jataka", "varahamihira jataka"], "Varahamihira's natal classic"),
-    _e("text", "saravali", "Saravali", "Sārāvalī",
-       ["saravali", "kalyana varma"], "Kalyana Varma's extensive yoga catalog"),
-    _e("text", "hora_sara", "Hora Sara", "Horā Sāra",
-       ["hora sara", "prithuyasas"], "Prithuyasas's predictive text"),
-    _e("text", "sarvartha_chintamani", "Sarvartha Chintamani", "Sarvārtha Cintāmaṇi",
-       ["sarvartha chintamani", "chintamani"], "Venkatesha's predictive compendium"),
-    _e("text", "brihat_samhita", "Brihat Samhita", "Bṛhat Saṃhitā",
-       ["brihat samhita", "samhita"], "Varahamihira's mundane/omens encyclopedia"),
-    _e("text", "tajaka_neelakanthi", "Tajaka Neelakanthi", "Tājaka Nīlakaṇṭhī",
-       ["tajaka neelakanthi", "neelakanthi"], "Neelakantha's annual-chart text"),
-    _e("text", "yavana_jataka", "Yavana Jataka", "Yavana Jātaka",
-       ["yavana jataka"], "Sphujidhvaja's Greek-influenced natal text"),
-    _e("text", "bhrigu_samhita", "Bhrigu Samhita", "Bhṛgu Saṃhitā",
-       ["bhrigu samhita", "bhrigu"], "Bhrigu's predictive compendium (extracts)"),
-    _e("text", "muhurta_chintamani", "Muhurta Chintamani", "Muhūrta Cintāmaṇi",
-       ["muhurta chintamani"], "Rama's electional-astrology text"),
-    _e("text", "lal_kitab_text", "Lal Kitab", "Lāl Kitāb",
-       ["lal kitab text"], "The Lal Kitab remedial corpus"),
-]
+from brahmagyan.l0_texts import TEXTS as _CORPUS_TEXTS  # noqa: E402
+
+_TEXT_LEGACY_DISPLAY: dict[str, tuple] = {
+    "bphs": ("Brihat Parashara Hora Shastra", "Bṛhat Parāśara Horā Śāstra",
+        ["bphs", "brihat parasara", "parashara hora"],
+        "Foundational Parashari text"),
+    "phaladeepika": ("Phaladeepika", "Phaladīpikā",
+        ["phaladeepika"],
+        "Mantreswara's predictive synthesis"),
+    "jataka_parijata": ("Jataka Parijata", "Jātaka Pārijāta",
+        ["jataka parijata", "parijata"],
+        "Vaidyanatha Dikshita's comprehensive natal text"),
+    "uttara_kalamrita": ("Uttara Kalamrita", "Uttara Kālāmṛta",
+        ["uttara kalamrita", "kalamrita"],
+        "Kalidasa's compact reference"),
+    "brihat_jataka": ("Brihat Jataka", "Bṛhat Jātaka",
+        ["brihat jataka", "varahamihira jataka"],
+        "Varahamihira's natal classic"),
+    "saravali": ("Saravali", "Sārāvalī",
+        ["saravali", "kalyana varma"],
+        "Kalyana Varma's extensive yoga catalog"),
+    "hora_sara": ("Hora Sara", "Horā Sāra",
+        ["hora sara", "prithuyasas"],
+        "Prithuyasas's predictive text"),
+    "sarvartha_chintamani": ("Sarvartha Chintamani", "Sarvārtha Cintāmaṇi",
+        ["sarvartha chintamani", "chintamani"],
+        "Venkatesha's predictive compendium"),
+    "brihat_samhita": ("Brihat Samhita", "Bṛhat Saṃhitā",
+        ["brihat samhita", "samhita"],
+        "Varahamihira's mundane/omens encyclopedia"),
+    "tajaka_neelakanthi": ("Tajaka Neelakanthi", "Tājaka Nīlakaṇṭhī",
+        ["tajaka neelakanthi", "neelakanthi"],
+        "Neelakantha's annual-chart text"),
+    "yavana_jataka": ("Yavana Jataka", "Yavana Jātaka",
+        ["yavana jataka"],
+        "Sphujidhvaja's Greek-influenced natal text"),
+    "muhurta_chintamani": ("Muhurta Chintamani", "Muhūrta Cintāmaṇi",
+        ["muhurta chintamani"],
+        "Rama's electional-astrology text"),
+}
+
+# Ontology-only text ids kept because a consumer exists.
+_TEXT_ONTOLOGY_ONLY_KEPT: dict[str, tuple] = {
+    "jaimini_sutram": ("Jaimini Sutram", "Jaimini Sūtram",
+        ["jaimini sutram", "jaimini sutras"],
+        "The Jaimini aphorisms"),
+}
+
+
+def build_text_entities(corpus_texts: list[dict]) -> list[dict]:
+    """The `text` class from a corpus manifest (pure; see the rules above)."""
+    out: list[dict] = []
+    for t in corpus_texts:
+        cid = t["text_id"]
+        if cid in _TEXT_LEGACY_DISPLAY:
+            name_en, name_sa, synonyms, description = _TEXT_LEGACY_DISPLAY[cid]
+            out.append(_e("text", cid, name_en, name_sa, list(synonyms), description))
+            continue
+        synonyms: list[str] = []
+        for cand in (t["title_en"].lower(), cid.replace("_", " ")):
+            if cand not in synonyms:
+                synonyms.append(cand)
+        entity = _e("text", cid, t["title_en"], t.get("title_sa"), synonyms,
+                    f'{t["author"]}; {t["school"]} school')
+        entity["source_citation"] = t["source_citation"]
+        out.append(entity)
+    for cid, (name_en, name_sa, synonyms, description) in _TEXT_ONTOLOGY_ONLY_KEPT.items():
+        if all(e["canonical_id"] != cid for e in out):
+            out.append(_e("text", cid, name_en, name_sa, list(synonyms), description))
+    return out
+
+
+ENTITIES += build_text_entities(_CORPUS_TEXTS)
 
 # ── Domains — additional entries to reach ≥40 total ──────────────────────────
 
@@ -1082,7 +1139,7 @@ def resolve(term: str) -> dict | None:
             return entity
         if entity["canonical_name_en"].lower().replace(" ", "_") == t:
             return entity
-        if entity.get("canonical_name_sa", "").lower().replace(" ", "_") == t:
+        if (entity.get("canonical_name_sa") or "").lower().replace(" ", "_") == t:  # nadi_navamsa_patel has no Sanskrit title (None)
             return entity
         if t in [s.lower() for s in entity["synonyms"]]:
             return entity
