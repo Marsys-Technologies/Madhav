@@ -541,7 +541,8 @@ def test_the_verifier_imports_nothing_from_the_builder():
     assert not bad, f"the verifier must be independent of the builder: {bad}"
     # stdlib only (the aspect-to-span re-derivation needs `datetime.timedelta`; R9-10: `json` reads the
     # manifest's stored_scope)
-    assert imported <= {"__future__", "hashlib", "typing", "decimal", "datetime", "json"}, imported
+    # + `brahmagyan.verification_vocab`: the SANCTIONED tier vocabulary (TAP-6 forbids the literal outside it) — a constant, no builder logic
+    assert imported <= {"__future__", "hashlib", "typing", "decimal", "datetime", "json", "brahmagyan.verification_vocab"}, imported
 
 
 def test_the_seal_check_sees_exactly_what_is_missing_after_the_builder_alone(am5):

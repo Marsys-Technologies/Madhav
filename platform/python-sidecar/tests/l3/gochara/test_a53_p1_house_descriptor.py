@@ -78,7 +78,10 @@ def test_no_rule_module_and_no_p1_code_path_mentions_the_descriptor():
     assert rules == [], f"rule modules must not read the descriptor: {rules}"
     # window_gate.py hashes the stored descriptor as one record field of the verification-inputs preimage (R9-2)
     allowed = {"record_store.py", "window_store.py", "window_verifier.py", "window_sweep.py",
-               "record_verifier.py", "window_gate.py"}
+               "record_verifier.py", "window_gate.py",
+               # the verifier's independent record derivation SELECTs the stored column to compare it with its own derivation (R10-1/R11-2):
+               # it reads the stored value as a field of the record, it does not use it to derive anything
+               "record_derivation.py"}
     users = {p.name for p in (SIDECAR / "services" / "gochara_kernel").glob("*.py")
              if "house_from_frame" in p.read_text()}
     assert users <= allowed, users - allowed

@@ -37,6 +37,14 @@ class _FakeRead:
                 if (build_id is None or str(r["build_id"]) == str(build_id))]
 
 
+@pytest.fixture(autouse=True)
+def _no_g6_query(monkeypatch):
+    """These tests drive the reader with a fake `fetch_dasha_periods_multilevel` and NO connection (conn=None). G6's own
+    `assert_single_pinned_build` queries `chart_dashas` directly, so it is stubbed here; it is exercised against a real database
+    in test_a53_r16_amendments.py (mixed builds, null build, unpinned build, other systems)."""
+    monkeypatch.setattr(dasha_read, "assert_single_pinned_build", lambda conn, chart_id: [])
+
+
 # ── select_dasha_read_contract ───────────────────────────────────────────────
 
 def test_canonical_chart_is_pinned_to_the_frozen_build():
