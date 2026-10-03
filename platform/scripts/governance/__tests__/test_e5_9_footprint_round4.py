@@ -138,6 +138,7 @@ def test_dollar_tag_and_identifier_edge_forms():
     assert f("SELECT $1$ -- c") == "SELECT $1$  "                                         # a tag cannot start with a digit
     assert f("SELECT a_$b$ x -- c") == "SELECT a_$b$ x  "                                 # `_` continues an identifier too
     assert f("SELECT a1$b$ x -- c") == "SELECT a1$b$ x  "
+    assert f("SELECT \u20ac$b$ x -- c") == "SELECT \u20ac$b$ x  "                             # any non-ASCII character continues an identifier
     assert f("SELECT (a)$b$ x -- c") == "SELECT (a)$b$ x -- c"                            # after `)` it IS a dollar quote (unterminated)
 
 
@@ -421,6 +422,14 @@ def test_rendering_helpers():
     assert ev("V + 'ETE ' + F") == "DELETE FROM" and ev("'%s-%s' % (V, F)") == "DEL-FROM"
     assert ev("'a'.zfill(3)") == "00a" and ev("'x'.replace('x', V)") == "DEL" and ev("', '.join([V, F])") == "DEL, FROM"
     assert ev("unknown") is None and ev("os.getcwd()") is None and ev("'a'.format(os.sep)") is None
+
+
+def test_eval_const_reads_nested_fstrings_and_decorated_functions_are_not_immutable():
+    ast = __import__("ast")
+    sc = slw._WriteScan(ast.parse("V = 'DEL'\nfrom c import deco\n@deco\ndef mk():\n    return 'x'\ndef mk2():\n    return 'x'\n"))
+    assert sc._eval_const(ast.parse("f\"{f'{V}ETE'} FROM\"", mode="eval").body, 0) == "DELETE FROM"
+    assert sc._eval_const(ast.parse("f'{V!r}'", mode="eval").body, 0) is None
+    assert not sc._immutable_expr(ast.parse("mk()", mode="eval").body) and sc._immutable_expr(ast.parse("mk2()", mode="eval").body)
 
 
 def test_tuple_unpack_binds_each_name_its_own_literal_and_other_unpacking_binds_none():
