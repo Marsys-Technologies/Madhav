@@ -537,3 +537,43 @@ def test_dry_run_apply_and_rollback_work_with_the_1275_foreign_keys_already_pres
     code, rb = run(world, "rollback", expect_evidence=rdry["evidence_digest"])
     assert code == 0
 
+
+
+def test_standing_constraint_force_rls_on_charts_refuses_the_dry_run_with_a_loud_warn_and_changes_nothing(world, evid):
+    world.exec("ALTER TABLE charts FORCE ROW LEVEL SECURITY", role="amjis_app")
+    pre = world.catalog_state()
+    code, res = run(world, "dry-run")
+    assert code == 2 and res["failed_checks"] == ["pre_standing_constraint_charts_not_force_rls"]
+    assert any(line.startswith("WARN: STANDING CONSTRAINT VIOLATED") for line in res["log"])
+    assert "revisit the 1265 chart-deletion guard" in res["details"]["pre_standing_constraint_charts_not_force_rls"]
+    assert world.catalog_state() == pre
+    code, res = run(world, "count")
+    assert code == 2 and "pre_standing_constraint_charts_not_force_rls" in res["failed_checks"]
+    code, res = run(world, "apply", expect_evidence="1" * 64)
+    assert code == 1 and "pre_standing_constraint_charts_not_force_rls" in res["failed_checks"]
+    assert world.query("SELECT count(*) FROM pg_proc WHERE proname LIKE '%frozen%'") == [(0,)]
+
+
+def test_standing_constraint_is_rechecked_after_the_plan(world, evid, monkeypatch):
+    calls = {"n": 0}
+    real = EX.charts_force_rls
+
+    def flip(cur):
+        calls["n"] += 1
+        return False if calls["n"] == 1 else True          # false before, true after (e.g. a concurrent change inside the window)
+    monkeypatch.setattr(EX, "charts_force_rls", flip)
+    code, res = run(world, "dry-run")
+    assert code == 2 and "post_standing_constraint_charts_not_force_rls" in res["failed_checks"]
+    monkeypatch.setattr(EX, "charts_force_rls", real)
+
+
+def test_standing_constraint_a_force_set_after_the_apply_makes_the_rollback_dry_run_still_work_and_the_guards_fail_loudly(world, evid):
+    _, dry = run(world, "dry-run")
+    run(world, "apply", expect_evidence=dry["evidence_digest"])
+    world.exec("ALTER TABLE charts FORCE ROW LEVEL SECURITY", role="amjis_app")
+    psy = world.pg["psycopg"]
+    with world.connect("amjis_app") as c:
+        with pytest.raises(psy.errors.InsufficientPrivilege, match="FORCE ROW LEVEL SECURITY"):
+            c.execute("DELETE FROM mimamsa_predictions WHERE chart_id = %s", (CHART_A,))
+    code, rdry = run(world, "rollback-dry-run")
+    assert code == 0

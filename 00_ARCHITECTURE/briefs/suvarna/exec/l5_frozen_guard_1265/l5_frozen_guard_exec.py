@@ -63,7 +63,7 @@ REPO_ROOT = HERE.parents[4]
 SQL_DIR = HERE / "sql"
 FORWARD_SQL = SQL_DIR / "1265_l5_frozen_row_guards.sql"
 ROLLBACK_SQL = SQL_DIR / "1265_l5_frozen_row_guards.ROLLBACK.sql"
-VERIFY_FILES = ("verify_before_apply.sql", "verify_after_apply.sql")
+VERIFY_FILES = ("verify_before_apply.sql", "verify_after_apply.sql", "verify_charts_rls_constraint.sql")
 
 PROJECT = "madhav-astrology"
 EXPECTED_DB = "amjis"
@@ -84,7 +84,7 @@ TABLES = ("mimamsa_predictions", "brahma_prospective_ledger", "mimamsa_manifesta
 BUILDER_SIG, BUILDER_MD5, BUILDER_LEN = "mimamsa_predictions_builder_guard()", "46c23854275c2712b30860a2b174adb2", 1084
 NEW_FUNCTIONS = {                       # signature -> (dollar-quote tag in the sql script, md5 of the body)
     "l5_frozen_withdrawal_authorizes(uuid)": ("helper", "3ec94f3a5b54fdb701e56db53cb59ca3"),
-    "l5_frozen_chart_cascade_authorizes(uuid)": ("cascade", "4617dbe262a6527a8173fb9e71badb0c"),
+    "l5_frozen_chart_cascade_authorizes(uuid)": ("cascade", "da32591b1be1a66b6a44cc79c851485b"),
     "mimamsa_predictions_frozen_row_guard()": ("predictions", "c70f89cc3be0ce3891e59d4b10f1852d"),
     "brahma_prospective_ledger_frozen_row_guard()": ("prospective", "0e2abf47bc0b16acfdde5783e9689941"),
     "mimamsa_manifestation_sets_frozen_row_guard()": ("manifestation", "e362add1186640c49dc4700dfd94c670"),
@@ -171,6 +171,7 @@ def expected_diff() -> dict:
                       "DELETE only through l5_frozen_chart_cascade_authorizes (SS N-108), checked first: no charts row with that id, i.e. inside the RI cascade of deleting the chart itself the parent is already gone; SECURITY DEFINER because charts has row-level security on; pg_trigger_depth() is deliberately not used; a direct DELETE of a row whose chart exists is refused"],
         "not_guarded_by_ruling": ["mimamsa_calibration", "mimamsa_calibration_snapshot"],
         "rls": "NOT armed (assessed: unsound for the live role set; see the PR)",
+        "standing_constraint": "public.charts relforcerowsecurity must be false (SS): checked pre and post by the executor, by the script's gate, post-check and the discriminator at run time, and by sql/verify_charts_rls_constraint.sql",
         "rollback": "drops the 8 triggers and 6 functions; the captured builder guard and the existing repo triggers stay; no CREATE capability needed",
         "order": "after S-L1, after the append-only mi_bhavisya writer and the assetClearSpec change are deployed (--writer-commit), before any L5 rebuild",
     }
@@ -246,6 +247,8 @@ def render_plan(sha: str | None = None, pins: dict | None = None) -> str:
         f"schema public: owner {SCHEMA_OWNER}, {APP_OWNER} has USAGE and NO CREATE (an already open window is refused); the four tables are owned by {APP_OWNER}; the captured builder guard is live as captured "
         f"(md5 {BUILDER_MD5}, {BUILDER_LEN} bytes, secdef false, owner {APP_OWNER}, ACL {{amjis_app=X/amjis_app}}, trigger tgtype 15 enabled O); NONE of the {len(NEW_FUNCTIONS)} new functions or {len(NEW_TRIGGERS)} new triggers exists; "
         "the repo objects it builds beside are the repo's (" + "; ".join(f"{k} md5 {v}" for k, v in EXISTING.items()) + "; their triggers); "
+        "STANDING CONSTRAINT (SS): public.charts must NOT have FORCE ROW LEVEL SECURITY (relforcerowsecurity false; the chart-deletion discriminator is SECURITY DEFINER and relies on the owner bypassing row security): refused in the preconditions and re-checked after, WARN line in the dry run, "
+        "RAISED by the script's gate, post-check and the discriminator itself; sql/verify_charts_rls_constraint.sql reports it; "
         f"{BUILDER} holds exactly {BUILDER_GRANT_PRIVS} (grantor {APP_OWNER}) on " + " and ".join(BUILDER_GRANT_TABLES) + "; --writer-commit: full 40-hex sha, the pipeline job image tag equals it, and at that commit "
         + " and ".join(WRITER_FILES) + " contain no DELETE FROM mimamsa_predictions / mimamsa_manifestation_sets.",
         f"-- 1. SET LOCAL ROLE {SCHEMA_OWNER}; GRANT CREATE ON SCHEMA public TO {APP_OWNER}  (transient; closed in step 3)",
@@ -433,6 +436,13 @@ def fn_row(cur, sig):
     return row
 
 
+def charts_force_rls(cur):
+    """relforcerowsecurity of public.charts (None if absent). STANDING CONSTRAINT (SS): it must be false; read from the catalog, no USAGE needed."""
+    cur.execute("SELECT c.relforcerowsecurity FROM pg_class c WHERE c.relnamespace = 'public'::regnamespace AND c.relname = 'charts'")
+    row = cur.fetchone()
+    return None if row is None else bool(row[0])
+
+
 def preconditions(cur, leg: Leg, ck: Checks, out, expected_db: str) -> None:
     cur.execute("SELECT current_database()")
     ck.chk("pre_database_is_the_expected_one", cur.fetchone()[0] == expected_db, "connected to a database other than " + expected_db)
@@ -448,6 +458,11 @@ def preconditions(cur, leg: Leg, ck: Checks, out, expected_db: str) -> None:
     if hidden:
         out("WARNING: " + str(hidden) + " " + BUILDER + " session(s) have a hidden state (no pg_read_all_stats); only build_runs guards them")
     ck.chk("pre_no_builder_session", busy == 0, "a " + BUILDER + " session is active or idle-in-transaction" if busy else None)
+    forced = charts_force_rls(cur) if leg.name == "forward" else None       # the rollback removes the guard: it is the remedy, never blocked by the constraint
+    ck.chk("pre_standing_constraint_charts_not_force_rls", forced is not True,
+           "STANDING CONSTRAINT VIOLATED: FORCE ROW LEVEL SECURITY is set on public.charts; revisit the 1265 chart-deletion guard before keeping FORCE" if forced else None)
+    if forced:
+        out("WARN: STANDING CONSTRAINT VIOLATED: relforcerowsecurity is TRUE on public.charts (the 1265 SECURITY DEFINER chart discriminator is unsafe under it)")
     cur.execute("SELECT pg_get_userbyid(nspowner), has_schema_privilege(%s, 'public', 'USAGE'), has_schema_privilege(%s, 'public', 'CREATE') "
                 "FROM pg_namespace WHERE nspname = 'public'", (APP_OWNER, APP_OWNER))
     owner, usage, create = cur.fetchone()
@@ -606,6 +621,8 @@ def run_leg(conn, leg: Leg, mode: str, out, writer_commit=None, writer_runner=No
     ck.chk("post_membership_equals_pre_state_after_revoke", membership_after == membership_before,
            None if membership_after == membership_before else "pre " + str(sorted(membership_before)) + " post " + str(sorted(membership_after)))
     ck.chk("post_app_owner_has_no_create_on_public_again", app_create_after is False)
+    ck.chk("post_standing_constraint_charts_not_force_rls", leg.name != "forward" or charts_force_rls(cur) is not True,
+           "STANDING CONSTRAINT VIOLATED: FORCE ROW LEVEL SECURITY is set on public.charts")
     for name, ok, detail in accounting(leg, before, after):
         ck.chk(name, ok, detail)
     if leg.name == "forward":

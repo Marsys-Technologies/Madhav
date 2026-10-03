@@ -11,7 +11,7 @@ DECLARE
 BEGIN
   FOR rec IN SELECT * FROM (VALUES
       ('l5_frozen_withdrawal_authorizes(uuid)', '3ec94f3a5b54fdb701e56db53cb59ca3'),
-      ('l5_frozen_chart_cascade_authorizes(uuid)', '4617dbe262a6527a8173fb9e71badb0c'),
+      ('l5_frozen_chart_cascade_authorizes(uuid)', 'da32591b1be1a66b6a44cc79c851485b'),
       ('mimamsa_predictions_frozen_row_guard()', 'c70f89cc3be0ce3891e59d4b10f1852d'),
       ('brahma_prospective_ledger_frozen_row_guard()', '0e2abf47bc0b16acfdde5783e9689941'),
       ('mimamsa_manifestation_sets_frozen_row_guard()', 'e362add1186640c49dc4700dfd94c670'),

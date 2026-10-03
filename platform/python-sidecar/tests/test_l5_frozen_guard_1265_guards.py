@@ -14,7 +14,7 @@ import re
 
 import pytest
 
-from tests.l5_frozen_guard_world import (CASCADE_TABLES, CHART_A, CHART_B, CHART_C, FORWARD, RUN_1, RUN_2, ROLLBACK, World, add_chart_fks,
+from tests.l5_frozen_guard_world import (CASCADE_TABLES, CHART_A, CHART_B, CHART_C, FORWARD, PKG, RUN_1, RUN_2, ROLLBACK, World, add_chart_fks,
                                          body, drop_world, make_world, pg_cluster, pred_row, pros_row)  # noqa: F401  (pg_cluster is a fixture)
 
 REAL = FORWARD.read_text(encoding="utf8")
@@ -1259,3 +1259,83 @@ def test_mutant_invoker_rights_discriminator_is_defeated_by_row_level_security_o
         assert any("blind to charts" in f for f in run_probes(w)), "the probe for a role blind to charts must catch the invoker-rights helper"
     finally:
         drop_world(pg_cluster, w)
+
+
+# ================================================================ L. STANDING CONSTRAINT (SS): no FORCE ROW LEVEL SECURITY on charts without revisiting the guard
+
+VERIFY_CHARTS = (PKG / "sql" / "verify_charts_rls_constraint.sql").read_text(encoding="utf8")
+
+
+def test_the_scripts_gate_refuses_when_charts_has_force_row_level_security_and_changes_nothing(world):
+    world.exec("ALTER TABLE charts FORCE ROW LEVEL SECURITY", role="amjis_app")
+    before = world.catalog_state()
+    _raises(world, "STANDING CONSTRAINT violated: FORCE ROW LEVEL SECURITY is set on public.charts")
+    assert world.catalog_state() == before
+
+
+def test_why_the_constraint_exists_under_force_the_definer_owner_is_blind_and_a_naive_discriminator_would_authorize_a_direct_delete(world):
+    """The mutant without the run-time check (and without the gate): after FORCE, a DIRECT delete of an existing chart's frozen rows is AUTHORIZED."""
+    mutant = mutate("cascade", "  IF EXISTS (SELECT 1 FROM pg_catalog.pg_class k WHERE k.oid = 'public.charts'::regclass AND k.relforcerowsecurity) THEN", "  IF false THEN")
+    world.apply_sql(_strip_selftest(mutant))
+    world.exec("ALTER TABLE charts FORCE ROW LEVEL SECURITY", role="amjis_app")
+    assert world.query("SELECT count(*) FROM charts", role="amjis_app") == [(0,)], "under FORCE even the owner sees no chart (policy USING false)"
+    assert passes(world, "amjis_app", "DELETE FROM mimamsa_predictions WHERE chart_id = %s AND prediction_id = 'pred_a0'", (CHART_A,)) == 1, "the vulnerability the constraint guards against"
+
+
+def test_the_discriminator_itself_raises_loudly_at_run_time_if_force_is_ever_set_so_it_never_fails_open(world):
+    world.apply_sql(REAL)
+    add_chart_fks(world)                      # before FORCE: FK validation would otherwise be blinded by the forced policy too
+    world.exec("ALTER TABLE charts FORCE ROW LEVEL SECURITY", role="amjis_app")
+    for role in ("amjis_app", "role_orchestrator", "postgres"):
+        refused(world, role, "DELETE FROM mimamsa_predictions WHERE chart_id = %s", (CHART_A,), prefix="l5_frozen_chart_cascade_authorizes:", contains="FORCE ROW LEVEL SECURITY")
+    for t_ in ("mimamsa_manifestation_sets", "brahma_prospective_ledger", "brahma_mimamsa_prediction_ledger"):
+        refused(world, "amjis_app", "DELETE FROM " + t_ + " WHERE chart_id = %s", (CHART_A,), prefix="l5_frozen_chart_cascade_authorizes:")
+    # even the chart delete itself fails loudly (and rolls back) rather than silently authorizing anything
+    assert passes(world, "amjis_app", "DELETE FROM charts WHERE id = %s", (CHART_A,)) == 0, "under FORCE the owner's own delete matches no row (policy USING false): no cascade, nothing lost"
+    assert counts(world, CHART_A)["mimamsa_predictions"] == 7
+    world.exec("ALTER TABLE charts NO FORCE ROW LEVEL SECURITY", role="amjis_app")
+    world.exec("DELETE FROM charts WHERE id = %s", (CHART_A,), role="amjis_app")
+    assert counts(world, CHART_A) == {t: 0 for t in CASCADE_TABLES}
+
+
+def _first_stmt():
+    head = VERIFY_CHARTS.split("-- the discriminator")[0]
+    return "\n".join(l for l in head.splitlines() if not l.lstrip().startswith("--"))
+
+
+def test_the_verify_script_reports_ok_normally_and_a_loud_fail_row_under_force(world):
+    world.apply_sql(REAL)
+    rows = world.query(_first_stmt(), role="suvarna_reader")
+    assert rows == [("charts", True, False, "amjis_app", "OK")]
+    assert world.query("SELECT p.prosecdef, p.proowner = c.relowner FROM pg_proc p, pg_class c WHERE p.proname = 'l5_frozen_chart_cascade_authorizes' AND c.relname = 'charts'") == [(True, True)]
+    world.exec("ALTER TABLE charts FORCE ROW LEVEL SECURITY", role="amjis_app")
+    rows = world.query(_first_stmt(), role="suvarna_reader")
+    assert rows[0][2] is True and rows[0][4].startswith("FAIL: FORCE ROW LEVEL SECURITY is set on public.charts. STOP")
+    for name in ("verify_before_apply.sql", "verify_after_apply.sql"):
+        last = (PKG / "sql" / name).read_text(encoding="utf8").strip().splitlines()[-1]
+        assert world.query(last, role="suvarna_reader")[0][1].startswith("FAIL: FORCE ROW LEVEL SECURITY on public.charts")
+
+
+def test_mutant_the_runtime_check_removed_is_caught_by_the_force_test_and_the_gate_removed_alone_is_caught_too(pg_cluster):
+    w = make_world(pg_cluster)
+    try:
+        w.apply_sql(_strip_selftest(mutate("cascade", "  IF EXISTS (SELECT 1 FROM pg_catalog.pg_class k WHERE k.oid = 'public.charts'::regclass AND k.relforcerowsecurity) THEN", "  IF false THEN")))
+        w.exec("ALTER TABLE charts FORCE ROW LEVEL SECURITY", role="amjis_app")
+        psy = pg_cluster["psycopg"]
+        with w.connect("amjis_app") as c:
+            c.execute("DELETE FROM mimamsa_predictions WHERE chart_id = %s AND prediction_id = 'pred_a0'", (CHART_A,))      # authorized: the mutant is detectable
+            c.rollback()
+    finally:
+        drop_world(pg_cluster, w)
+    w2 = make_world(pg_cluster)
+    try:
+        w2.exec("ALTER TABLE charts FORCE ROW LEVEL SECURITY", role="amjis_app")
+        gateless = REAL.replace("IF to_regclass('public.charts') IS NOT NULL AND (SELECT relforcerowsecurity FROM pg_class WHERE oid = 'public.charts'::regclass) THEN\n    RAISE EXCEPTION '1265: STANDING", "IF false THEN\n    RAISE EXCEPTION '1265: STANDING")
+        assert gateless != REAL
+        w2.apply_sql(_strip_selftest(gateless))          # the gate neutered (self-test stripped: under FORCE even the owner sees no chart row): the post-check is the second, independent line
+    except pg_cluster["psycopg"].errors.RaiseException as e:
+        assert "post-check: STANDING CONSTRAINT violated" in str(e)
+    else:
+        raise AssertionError("the post-check must also RAISE")
+    finally:
+        drop_world(pg_cluster, w2)

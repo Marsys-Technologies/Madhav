@@ -106,7 +106,7 @@ def test_script_is_schema_code_only_no_grant_no_registry_no_rls_no_transaction_c
     for s in (c, code(RB)):
         assert not re.search(r"^\s*(BEGIN|COMMIT|ROLLBACK)\s*;", s, re.M)
         assert not re.search(r"\bGRANT\b", s), "this script never issues a GRANT (the recorded builder grants are only asserted)"
-        assert not re.search(r"asset_registry|_migrations_applied|ROW LEVEL SECURITY|CREATE POLICY", s)
+        assert not re.search(r"asset_registry|_migrations_applied|CREATE POLICY|(ENABLE|DISABLE|NO FORCE|FORCE)\s+ROW LEVEL SECURITY\s*;", s), "the script never changes row security (it only READS relforcerowsecurity)"
     assert not re.search(r"\b(DROP TABLE|DROP COLUMN|ADD COLUMN|CREATE TABLE|CREATE INDEX|ALTER COLUMN)\b", c)
     assert len(re.findall(r"\bINSERT INTO\b", c)) == 4 and "1265_selftest_ok" in c      # only the rolled-back probes
     assert c.count("REVOKE ALL ON FUNCTION") == 5
@@ -208,3 +208,35 @@ def test_no_fstring_reuses_its_own_quote_type_inside_a_replacement_field():
             elif tk.type == tokenize.STRING and depth and tk.string.lstrip("rbfRBF")[0] == depth[-1]:
                 bad.append((path.name, tk.start))
     assert not bad, bad
+
+
+# ---- STANDING CONSTRAINT (SS): no FORCE ROW LEVEL SECURITY on charts without revisiting the guard -------------------
+
+def test_the_standing_constraint_is_in_the_readme_the_script_the_plan_and_the_hashed_verify_files():
+    readme = (PKG / "README.md").read_text(encoding="utf8")
+    assert "no FORCE ROW LEVEL SECURITY on `charts` without first revisiting this guard" in readme
+    assert "Is this README inside the bound hash inputs? No." in readme
+    h = flat(FW)
+    assert "STANDING CONSTRAINT (SS): no FORCE ROW LEVEL SECURITY on public.charts" in h
+    assert FW.count("relforcerowsecurity") >= 3                          # gate, post-check, discriminator
+    assert "relforcerowsecurity" in body(FW, "cascade") and "RAISE EXCEPTION" in body(FW, "cascade")
+    plan = EX.render_plan()
+    assert "STANDING CONSTRAINT (SS): public.charts must NOT have FORCE ROW LEVEL SECURITY" in plan and "verify_charts_rls_constraint.sql" in plan
+    assert "verify_charts_rls_constraint.sql" in EX.VERIFY_FILES and EX.sha_file(PKG / "sql" / "verify_charts_rls_constraint.sql") in plan
+    assert "standing_constraint" in EX.expected_diff()
+    src = (PKG / "l5_frozen_guard_exec.py").read_text(encoding="utf8")
+    assert "pre_standing_constraint_charts_not_force_rls" in src and "post_standing_constraint_charts_not_force_rls" in src and "WARN: STANDING CONSTRAINT VIOLATED" in src
+
+
+def test_readme_and_plan_txt_are_not_hash_inputs_but_the_executor_sql_and_verify_files_are():
+    base = EX.plan_hash()
+    # the plan hash reads the rendered text, which names sha256 of the sql, verify files and the executor; the README and plan.txt are never read by it
+    assert "README" not in EX.render_plan() and "plan.txt" not in EX.render_plan()
+    import pathlib
+    readme = PKG / "README.md"
+    original = readme.read_text(encoding="utf8")
+    try:
+        readme.write_text(original + "\nan edit\n", encoding="utf8")
+        assert EX.plan_hash() == base
+    finally:
+        readme.write_text(original, encoding="utf8")

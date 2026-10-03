@@ -49,6 +49,11 @@
 --   D. SELF-TEST per table (rolled-back probe rows; the guard's own message is required, so a missing privilege cannot pass
 --      for a refusal) and an asserting POST-CHECK that RAISES. The executor adds its own catalog accounting.
 --
+-- STANDING CONSTRAINT (SS): no FORCE ROW LEVEL SECURITY on public.charts without first revisiting the chart-deletion discriminator above (it relies on
+-- a SECURITY DEFINER owner that bypasses row security on charts). Machine-checked: this file's gate and post-check RAISE if relforcerowsecurity is true on
+-- public.charts, the discriminator RAISES at run time if it ever becomes true, the executor refuses (pre and post), and sql/verify_charts_rls_constraint.sql
+-- reports it (run it in every dry run and W-step read-back).
+--
 -- ORDER: after S-L1 and after the append-only mi_bhavisya writer + assetClearSpec change are deployed (the executor checks the
 -- commit named by --writer-commit). Once applied, the old pending/due DELETE of mi_bhavisya.py:230 and assetClearSpec.ts:149
 -- fail loudly. RLS is NOT armed (recorded in the PR: unsound for the live role set). Rollback: the ROLLBACK sql of this
@@ -74,6 +79,9 @@ BEGIN
                                    current_user, pg_get_userbyid(rel_owner), t);
     END IF;
   END LOOP;
+  IF to_regclass('public.charts') IS NOT NULL AND (SELECT relforcerowsecurity FROM pg_class WHERE oid = 'public.charts'::regclass) THEN
+    RAISE EXCEPTION '1265: STANDING CONSTRAINT violated: FORCE ROW LEVEL SECURITY is set on public.charts. The chart-deletion discriminator (l5_frozen_chart_cascade_authorizes, SECURITY DEFINER) is unsafe under it; revisit the 1265 guard before keeping FORCE on charts.';
+  END IF;
   IF NOT has_schema_privilege(current_user, 'public', 'CREATE') THEN
     missing := missing || format('current_user %s has no CREATE on schema public (this file creates functions there; run it only through l5_frozen_guard_exec.py, which grants and revokes the capability inside its transaction)',
                                  current_user);
@@ -230,7 +238,7 @@ DECLARE
 BEGIN
   FOR rec IN SELECT * FROM (VALUES
       ('l5_frozen_withdrawal_authorizes(uuid)', '3ec94f3a5b54fdb701e56db53cb59ca3'),
-      ('l5_frozen_chart_cascade_authorizes(uuid)', '4617dbe262a6527a8173fb9e71badb0c'),
+      ('l5_frozen_chart_cascade_authorizes(uuid)', 'da32591b1be1a66b6a44cc79c851485b'),
       ('mimamsa_predictions_frozen_row_guard()', 'c70f89cc3be0ce3891e59d4b10f1852d'),
       ('brahma_prospective_ledger_frozen_row_guard()', '0e2abf47bc0b16acfdde5783e9689941'),
       ('mimamsa_manifestation_sets_frozen_row_guard()', 'e362add1186640c49dc4700dfd94c670'),
@@ -298,6 +306,13 @@ BEGIN
   -- role can create).
   IF p_chart IS NULL OR to_regclass('public.charts') IS NULL THEN
     RETURN false;
+  END IF;
+  -- STANDING CONSTRAINT (SS): no FORCE ROW LEVEL SECURITY on public.charts without first revisiting this guard. With FORCE, row security applies to the
+  -- owner too, this definer would not see the chart, and every direct delete would read "chart absent" and be authorized. So the guard checks it
+  -- itself and refuses LOUDLY (the chart delete or the direct delete fails with this message) instead of failing open.
+  IF EXISTS (SELECT 1 FROM pg_catalog.pg_class k WHERE k.oid = 'public.charts'::regclass AND k.relforcerowsecurity) THEN
+    RAISE EXCEPTION 'l5_frozen_chart_cascade_authorizes: FORCE ROW LEVEL SECURITY is set on public.charts; the 1265 chart-deletion discriminator is unsafe under it (a definer owner would no longer see the chart). Revisit the 1265 guard before keeping FORCE on charts.'
+      USING ERRCODE = '42501';
   END IF;
   BEGIN
     SELECT NOT EXISTS (SELECT 1 FROM public.charts c WHERE c.id = p_chart) INTO v_gone;
@@ -776,7 +791,7 @@ BEGIN
   FOR rec IN SELECT * FROM (VALUES
       ('mimamsa_predictions_builder_guard()', '46c23854275c2712b30860a2b174adb2'),
       ('l5_frozen_withdrawal_authorizes(uuid)', '3ec94f3a5b54fdb701e56db53cb59ca3'),
-      ('l5_frozen_chart_cascade_authorizes(uuid)', '4617dbe262a6527a8173fb9e71badb0c'),
+      ('l5_frozen_chart_cascade_authorizes(uuid)', 'da32591b1be1a66b6a44cc79c851485b'),
       ('mimamsa_predictions_frozen_row_guard()', 'c70f89cc3be0ce3891e59d4b10f1852d'),
       ('brahma_prospective_ledger_frozen_row_guard()', '0e2abf47bc0b16acfdde5783e9689941'),
       ('mimamsa_manifestation_sets_frozen_row_guard()', 'e362add1186640c49dc4700dfd94c670'),
@@ -806,6 +821,9 @@ BEGIN
   END IF;
   IF (SELECT prosecdef FROM pg_proc WHERE oid = to_regprocedure('public.l5_frozen_withdrawal_authorizes(uuid)')) THEN
     RAISE EXCEPTION '1265 post-check: the withdrawal helper is SECURITY DEFINER';
+  END IF;
+  IF to_regclass('public.charts') IS NOT NULL AND (SELECT relforcerowsecurity FROM pg_class WHERE oid = 'public.charts'::regclass) THEN
+    RAISE EXCEPTION '1265 post-check: STANDING CONSTRAINT violated: public.charts has FORCE ROW LEVEL SECURITY';
   END IF;
   IF NOT (SELECT prosecdef FROM pg_proc WHERE oid = to_regprocedure('public.l5_frozen_chart_cascade_authorizes(uuid)')) THEN
     RAISE EXCEPTION '1265 post-check: the chart-cascade helper must be SECURITY DEFINER (row-level security on charts)';

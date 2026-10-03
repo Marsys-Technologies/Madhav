@@ -17,3 +17,5 @@ SELECT has_schema_privilege('amjis_app', 'public', 'CREATE') AS amjis_app_can_cr
 -- 5. frozen-set baseline (row counts per table; the executor binds the md5s)
 SELECT 'mimamsa_predictions' AS t, count(*) FROM mimamsa_predictions UNION ALL SELECT 'mimamsa_manifestation_sets', count(*) FROM mimamsa_manifestation_sets
 UNION ALL SELECT 'brahma_prospective_ledger', count(*) FROM brahma_prospective_ledger UNION ALL SELECT 'brahma_mimamsa_prediction_ledger', count(*) FROM brahma_mimamsa_prediction_ledger;
+-- 6. STANDING CONSTRAINT: public.charts must not have FORCE ROW LEVEL SECURITY (run sql/verify_charts_rls_constraint.sql; expect verdict OK)
+SELECT relforcerowsecurity AS charts_rls_forced, CASE WHEN relforcerowsecurity THEN 'FAIL: FORCE ROW LEVEL SECURITY on public.charts (revisit the 1265 guard)' ELSE 'OK' END AS verdict FROM pg_class WHERE relnamespace = 'public'::regnamespace AND relname = 'charts';
