@@ -43,14 +43,16 @@
 --     * Ketu 12th (favourable) is one of the 19 'refuted' rows; the corpus text contradicts its content as well
 --       (acharya check); its row content is NOT changed here.
 --
--- DURABILITY WARNING (found by reading the writers; the other half of TI-L0-09 is the writer change)
+-- DURABILITY WARNING AND THE PAIR PR (SS N-111)
 --   The doshas writer (brahmagyan/l0_doshas.py:1942-1944) and the yogas writer (l0_yogas.py:2244-2249) DELETE the
---   whole catalogue and re-INSERT it; they do not write attribution_state. A rebuild of bg_doshas or bg_yogas
---   therefore RESETS the new column to NULL (honest: unclassified) until the writers derive the state. The remedy
---   writer (ON CONFLICT (remedy_id) DO UPDATE with an explicit column list) and the transit writer (ON CONFLICT ...
---   DO UPDATE, stale-id deletes only) leave the column alone. The writer change edits brahmagyan/l0_*.py, which
---   stales nirmana-writer-digests.json (a #2984 file), so it cannot be a green PR yet. Do NOT rebuild bg_doshas /
---   bg_yogas expecting the state to survive.
+--   whole catalogue and re-INSERT it; they do not write attribution_state, so on main a rebuild of bg_doshas or
+--   bg_yogas RESETS the new column to NULL (a signal with no durability, CLAUDE.md N.8). THIS MIGRATION THEREFORE
+--   APPLIES ONLY TOGETHER WITH ITS PAIR PR #3071 (suvarna/land/TI-l0-attribution-writers-001), which makes both writers
+--   capture the state before their DELETE and restore it after their INSERTs (same key AND same citation; default rule
+--   for new placeholder entries; no-op if the column is absent). Merge both together. The remedy writer (ON CONFLICT
+--   DO UPDATE with an explicit column list) and the transit writer (upsert, stale-id deletes only) never touched the
+--   column. The pair PR edits brahmagyan/l0_*.py, which stales nirmana-writer-digests.json (a #2984 file; the
+--   second-merging PR regenerates), so it is a known-red PR until then.
 --
 -- SERVING AND FRESHNESS EFFECT AT APPLY
 --   * Touches NO asset_registry column and no asset_freshness row: nirmana_registry_receipt_invalidation does NOT
@@ -80,8 +82,8 @@
 -- IDEMPOTENT: ADD COLUMN IF NOT EXISTS; constraints guarded by a catalog lookup; backfill writes NULL rows only.
 --
 -- NOT DONE HERE
---   * The writer half of TI-L0-09 (derive sourced/unsourced/refuted in l0_doshas/l0_yogas/l0_remedy_corpus/
---     l0_transit) and the rebuild of the four assets; both wait for #2984 (writer-digest inventory) and SS.
+--   * Deriving sourced/unsourced/refuted in the writers (only the carry-forward + default rule are in the pair PR #3071) and the rebuild of the four assets.
+--     (a rebuild after both PRs preserves the state; no rebuild is part of this PR).
 --   * Any 'sourced' state; any citation change; TI-L0-10 re-sourcing; the 7 double-gochara rows; the named-text
 --     remedy rows; bg_ontology / bg_reference / bg_muhurta_lattice / bg_vastu_directions placeholder families.
 --   * The inspector reading the column (Ldgr/Carr reading of 'unsourced'/'refuted': Track E, CF-07).
