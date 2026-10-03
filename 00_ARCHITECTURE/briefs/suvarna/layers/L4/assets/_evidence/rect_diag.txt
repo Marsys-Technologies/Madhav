@@ -1,0 +1,8 @@
+life_events with a placeable MD lord: 63 ; pre-2020 (firewall training set): 40
+writer natal index keys: ['Jup', 'Ket_mean', 'Lagna', 'Mar', 'Mer', 'Moon', 'Rah_mean', 'Sat', 'Sun', 'Ven'] | resolvable full names among MD lords of training events: 0 of 40
+as written (compound domain slug + 3-letter fact subjects): matched,fit by candidate lagna sign -> {'Aries': (0, 0.0), 'Taurus': (0, 0.0), 'Pisces': (0, 0.0)}
+category instead of compound domain, writer index: matched,fit by candidate lagna sign -> {'Aries': (0, 0.0), 'Taurus': (0, 0.0), 'Pisces': (0, 0.0)}
+compound domain, full-name index: matched,fit by candidate lagna sign -> {'Aries': (0, 0.0), 'Taurus': (1, 0.0125), 'Pisces': (0, 0.0)}
+category + full-name index (both corrected): matched,fit by candidate lagna sign -> {'Aries': (7, 0.0875), 'Taurus': (21, 0.2625), 'Pisces': (12, 0.15)}
+events whose domain resolves to >=1 significator house (as written / category): 1 30
+category values with no significator-house entry: Counter({'spiritual': 5, 'psychological': 3, 'other': 1, 'finance': 1})
