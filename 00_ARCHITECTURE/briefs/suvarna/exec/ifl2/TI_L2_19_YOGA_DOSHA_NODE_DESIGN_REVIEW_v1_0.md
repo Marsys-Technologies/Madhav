@@ -1,11 +1,12 @@
 ---
-version: 1.1
+version: 1.2
 status: DECIDED_N-106 (SS ruled all three decisions as recommended; TI-L2-30 may be coded from this design after the batch is released)
 lane: TI-i-fl2-007
 item: TI-L2-19 (Q-L2-06 design REVIEW; gate for TI-L2-30)
 branch: suvarna/land/TI-i-fl2-007
 basis: origin/main 7773df1f9 (bo_bimba.py / bo_karanajala.py unchanged since adb0db29d); production DB read 2026-10-03, reader-only SELECT, chart 482012f1
 changelog:
+  - 1.2 -- review-ifl2b fixes: no chart-derived catalogue/combination names in the table (generic placeholders); FACT vs PROPOSAL labelled in the section 2 table; 're-wires nothing' stated as true of the live graph only.
   - 1.1 -- SS ruling N-106 recorded: all three decisions (section 5) DECIDED as recommended; section 4 Option A is the decided identity; option analysis kept as history.
   - 1.0 -- design REVIEW for SS: classification of the non-name yoga/dosha node subjects and the id-change list. Document only; nothing is coded.
 ---
@@ -26,21 +27,23 @@ registry change is made here.
   (`bodha_cgm_node_identity`, migration 714). Of the 17 per ayanamsha, 10 are real catalogue names and 7 are not.
 * 15 signals have no node of their own because their subject collides (3 per ayanamsha).
 * **No edge attaches to any yoga/dosha node**: 0 edges of type `yoga_member` on the chart, and every yoga/dosha
-  node has `degree_in = degree_out = 0`. So re-keying these nodes re-wires nothing today (the reason there are no
-  membership edges was not traced here).
+  node has `degree_in = degree_out = 0`. So re-keying these nodes re-wires nothing **in the live graph**. This does not hold after a rebuild
+  by itself: `bo_karanajala.py:927-941` builds `yoga_member` edges from exactly these nodes whenever a signal's
+  configuration names a graha or house, and why the live build produced none was not traced here. The identity
+  decision therefore should not rest on "no edges today".
 
 ## 2. Classification of the signal types behind the subjects
 
 All 13 yoga/dosha `signal_type_id`s on the chart, the subject each gives today, and the proposed disposition
 (5 signals each, one per ayanamsha, unless stated):
 
-| signal_type_id | subject today | what the signal is | proposed disposition |
+| signal_type_id | subject today (FACT) | what the signal is (FACT) | disposition (PROPOSAL, decided in section 5 where marked) |
 |---|---|---|---|
-| `yoga_label:yoga_name` | `yoga:<name>_yoga` (7 names: shoola, gola, yuga, kedara, vasi, anapha [4 signals, one ayanamsha lacks it], sasa) | a catalogue yoga, named | **keep a yoga node**, label = catalogue name |
-| `panchanga_special_yoga_combinations:combination_name` | `yoga:panchaka` | a catalogue combination, named | **keep a yoga node** |
+| `yoga_label:yoga_name` | `yoga:<name>_yoga` (7 distinct catalogue names; one ayanamsha lacks one of them, so 34 signals) | a catalogue yoga, named | **keep a yoga node**, label = catalogue name |
+| `panchanga_special_yoga_combinations:combination_name` | `yoga:<combination name>` | a catalogue combination, named | **keep a yoga node** |
 | `panchanga_yoga:name` | `yoga:<panchanga yoga name>` | the birth-time panchanga yoga, a catalogue name | **keep a yoga node** |
-| `dosha_label:dosha_name` | `dosha:manglik_dosha` (5), `dosha:kemadruma_dosha` (1) | a catalogue dosha, named | **keep a dosha node** |
-| `kendradhipati_dosha:doshas_kendradhipati` | `dosha:afflicted` (10) / `dosha:unafflicted` (10) | one signal **per graha** (`planet` in the configuration; `ruled_houses`; `kendradhipati_active` true or false; `doctrine_status = PROPOSED`) | **split by `kendradhipati_active`**: the `true` rows ("afflicted", 2 per ayanamsha) are instances of a real dosha with a bad name: one dosha node each, label from the catalogue name plus the graha, keyed by `planet`; the `false` rows ("unafflicted") assert the dosha does NOT apply and get **no node** (a Dosha node for an absent dosha would read as a finding). DECIDED (N-106, section 5.1) |
+| `dosha_label:dosha_name` | `dosha:<name>` (2 distinct catalogue names, 6 signals) | a catalogue dosha, named | **keep a dosha node** |
+| `kendradhipati_dosha:doshas_kendradhipati` | `dosha:afflicted` (10) / `dosha:unafflicted` (10) | one signal **per graha** (`planet` in the configuration; `ruled_houses`; `kendradhipati_active` true or false; `doctrine_status = PROPOSED`) | **split by `kendradhipati_active`**: the `true` rows ("afflicted", 2 per ayanamsha) are, in my reading (a judgment, not a fact; all 20 signals carry `doctrine_status = PROPOSED`), instances of a real dosha with a bad name: one dosha node each, label from the catalogue name plus the graha, keyed by `planet`; the `false` rows ("unafflicted") assert the dosha does NOT apply and get **no node** (a Dosha node for an absent dosha would read as a finding). DECIDED (N-106, section 5.1) |
 | `graha_yoga_karaka_flag:is_yoga_karaka` | `yoga:false` | the flag `is_yoga_karaka = false` for a graha | **no node** (named by SS as the example) |
 | `panchanga_yoga:inauspicious_flag` | `yoga:false` | the flag `inauspicious_flag = false` | **no node** (named by SS) |
 | `panchanga_special_yoga_combinations:active_at_birth_flag` | `yoga:true` | the flag `active_at_birth_flag = true` | **no node** (flag) |
@@ -83,7 +86,7 @@ configuration key":
   signal types carrying one catalogue name would collide again (none do today: the 50 names are distinct within an
   ayanamsha), which is the defect class being removed.
 
-Either way, edges: no live edge attaches to these nodes (section 1), so no edge id moves on this chart. The code
+Either way, edges: no live edge attaches to these nodes (section 1), so no live edge id moves; that is a statement about the live graph only (section 1): a rebuilt graph may carry `yoga_member` edges from these nodes, whose ids depend on the node ids, and Option A (decided) keeps the 50 catalogue-name node ids so those edges would not re-key. The code
 that must follow (TI-L2-30): `bo_karanajala.py:927-941` (`_yoga_node_subject` lookup for membership edges, which would
 simply find no node for the six flag/attribute types and the unafflicted rows), `bo_bimba.py` (`yoga_best` dedup, the label and the citation
 `"{Class} node: {name}"` at `:523`).
