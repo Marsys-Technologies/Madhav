@@ -145,6 +145,7 @@ export const PROTECTED_PUBLIC_SCHEMA_MIGRATIONS = new Set([
   '1206_gochara_search_inventory_completeness.sql',
   '1232_gochara_search_moon_scope_domain.sql',
   '1233_gochara_p1_period_anchor.sql',
+  '1235_ka_gochara_staged_candidate_evidence_function.sql',
   '1240_gochara_window_verification_gate.sql',
 ])
 
