@@ -1,0 +1,424 @@
+{
+ "adh_sig_live": {
+  "sql": "select count(*) rows_total, count(s.signal_id) resolving from mimamsa_signal_adjustment a left join bodha_msr_signals s on s.chart_id=a.chart_id and s.signal_id::text = a.origin_id where a.chart_id='482012f1-710e-4a25-994a-93821f5871aa'",
+  "rows": [
+   {
+    "rows_total": "50104",
+    "resolving": "0"
+   }
+  ]
+ },
+ "adh_fact_live": {
+  "sql": "select count(*) rows_total, count(f.fact_id) resolving from mimamsa_fact_adjustment a left join chart_facts f on f.chart_id=a.chart_id and f.fact_id::text = a.origin_id where a.chart_id='482012f1-710e-4a25-994a-93821f5871aa'",
+  "rows": [
+   {
+    "rows_total": "61523",
+    "resolving": "0"
+   }
+  ]
+ },
+ "adh_conv_live": {
+  "sql": "select count(*) rows_total, (select count(*) from kala_convergence where chart_id='482012f1-710e-4a25-994a-93821f5871aa') live_convergence_rows, count(k.convergence_id) resolving from mimamsa_convergence_adjustment a left join kala_convergence k on k.chart_id=a.chart_id and k.convergence_id::text = a.origin_id where a.chart_id='482012f1-710e-4a25-994a-93821f5871aa'",
+  "rows": [
+   {
+    "rows_total": "500",
+    "live_convergence_rows": "0",
+    "resolving": "0"
+   }
+  ]
+ },
+ "adh_anc_live": {
+  "sql": "select count(*) rows_total, count(k.anchor_id) resolving from mimamsa_anchor_adjustment a left join phala_anchors k on k.chart_id=a.chart_id and k.anchor_id::text = a.origin_id where a.chart_id='482012f1-710e-4a25-994a-93821f5871aa'",
+  "rows": [
+   {
+    "rows_total": "139",
+    "resolving": "0"
+   }
+  ]
+ },
+ "attr_sig_live": {
+  "sql": "select count(distinct a.signal_id) sigs, count(distinct s.signal_id) resolving from mimamsa_attribution a left join bodha_msr_signals s on s.chart_id=a.chart_id and s.signal_id::text = a.signal_id where a.chart_id='482012f1-710e-4a25-994a-93821f5871aa'",
+  "rows": [
+   {
+    "sigs": "15",
+    "resolving": "0"
+   }
+  ]
+ },
+ "pred_driving_live": {
+  "sql": "with d as (select (x->>'signal_id') sid from mimamsa_predictions p, jsonb_array_elements(p.driving_signals) x where p.chart_id='482012f1-710e-4a25-994a-93821f5871aa') select count(*) refs, count(distinct d.sid) distinct_sids, count(s.signal_id) resolving from d left join bodha_msr_signals s on s.chart_id='482012f1-710e-4a25-994a-93821f5871aa' and s.signal_id::text=d.sid",
+  "rows": [
+   {
+    "refs": "695",
+    "distinct_sids": "25",
+    "resolving": "0"
+   }
+  ]
+ },
+ "gun_n": {
+  "sql": "select x->>'family_id' fam, count(*) pairs, count(distinct c.match_id) matches, count(distinct c.prediction_id) preds, count(distinct c.event_id) events from mimamsa_calibration c join mimamsa_predictions p on p.chart_id=c.chart_id and p.prediction_id=c.prediction_id and p.chart_context_stale_at is null, jsonb_array_elements(p.driving_signals) x where c.chart_id='482012f1-710e-4a25-994a-93821f5871aa' group by 1 order by 2 desc",
+  "rows": [
+   {
+    "fam": "fam_graha_natal",
+    "pairs": "271",
+    "matches": "57",
+    "preds": "13",
+    "events": "24"
+   },
+   {
+    "fam": "fam_transit",
+    "pairs": "14",
+    "matches": "7",
+    "preds": "2",
+    "events": "6"
+   }
+  ]
+ },
+ "cal_leaked": {
+  "sql": "select count(*) from mimamsa_calibration where chart_id='482012f1-710e-4a25-994a-93821f5871aa' and leakage_status='leaked'",
+  "rows": [
+   {
+    "count": "0"
+   }
+  ]
+ },
+ "snap": {
+  "sql": "select snapshot_id, publication_status, two_key_complete, proposing_executor from mimamsa_calibration_snapshot where chart_id='482012f1-710e-4a25-994a-93821f5871aa' order by snapshot_id",
+  "rows": [
+   {
+    "snapshot_id": "snap_482012f1_1786129254",
+    "publication_status": "proposed",
+    "two_key_complete": "f",
+    "proposing_executor": "mi_gunanaka"
+   },
+   {
+    "snapshot_id": "snap_482012f1_1786136411",
+    "publication_status": "proposed",
+    "two_key_complete": "f",
+    "proposing_executor": "mi_gunanaka"
+   },
+   {
+    "snapshot_id": "snap_482012f1_1786146516",
+    "publication_status": "proposed",
+    "two_key_complete": "f",
+    "proposing_executor": "mi_gunanaka"
+   },
+   {
+    "snapshot_id": "snap_482012f1_1786583790",
+    "publication_status": "proposed",
+    "two_key_complete": "f",
+    "proposing_executor": "mi_gunanaka"
+   }
+  ]
+ },
+ "rel_ok": {
+  "sql": "select stratum_key, n, observed_rate, held_out_validity, evidence_grade, brier_score from mimamsa_reliability where chart_id='482012f1-710e-4a25-994a-93821f5871aa' order by predicted_prob_bin::text",
+  "rows": [
+   {
+    "stratum_key": "domain_all",
+    "n": "[0.2,0.3)",
+    "observed_rate": "4",
+    "held_out_validity": "0",
+    "evidence_grade": "insufficient_n",
+    "brier_score": "prior_only"
+   },
+   {
+    "stratum_key": "domain_all",
+    "n": "[0.3,0.4)",
+    "observed_rate": "13",
+    "held_out_validity": "0",
+    "evidence_grade": "pass",
+    "brier_score": "empirical"
+   },
+   {
+    "stratum_key": "domain_all",
+    "n": "[0.4,0.5)",
+    "observed_rate": "12",
+    "held_out_validity": "0",
+    "evidence_grade": "pass",
+    "brier_score": "empirical"
+   },
+   {
+    "stratum_key": "domain_all",
+    "n": "[0.5,0.6)",
+    "observed_rate": "18",
+    "held_out_validity": "0",
+    "evidence_grade": "pass",
+    "brier_score": "empirical"
+   },
+   {
+    "stratum_key": "domain_all",
+    "n": "[0.6,0.7)",
+    "observed_rate": "7",
+    "held_out_validity": "0.285714285714286",
+    "evidence_grade": "pass",
+    "brier_score": "empirical"
+   },
+   {
+    "stratum_key": "domain_all",
+    "n": "[0.8,0.9)",
+    "observed_rate": "3",
+    "held_out_validity": "0",
+    "evidence_grade": "insufficient_n",
+    "brier_score": "prior_only"
+   }
+  ]
+ },
+ "disc_versions": {
+  "sql": "select discovery_formula_ver, discovery_class, count(*), count(evidence_refs->'n_scored_matches') has_scored, count(evidence_refs->'cutoff_enforced') has_cutoff from mimamsa_discoveries where chart_id='482012f1-710e-4a25-994a-93821f5871aa' group by 1,2",
+  "rows": [
+   {
+    "discovery_formula_ver": "mi_pariksha_v2.0",
+    "discovery_class": "retrodiction",
+    "count": "51",
+    "has_scored": "0",
+    "has_cutoff": "0"
+   },
+   {
+    "discovery_formula_ver": "mi_pariksha_v2.0",
+    "discovery_class": "emergent_law",
+    "count": "20",
+    "has_scored": "0",
+    "has_cutoff": "0"
+   }
+  ]
+ },
+ "ins_versions": {
+  "sql": "select insight_type, evidence_grade, surface_formula_version, count(*), count(provenance_chain->'grade_basis') has_basis from mimamsa_insight_units where chart_id='482012f1-710e-4a25-994a-93821f5871aa' group by 1,2,3 order by 1,2",
+  "rows": [
+   {
+    "insight_type": "calibrated_outlook",
+    "evidence_grade": "empirical",
+    "surface_formula_version": "mi_darshana_v1.0",
+    "count": "4",
+    "has_basis": "0"
+   },
+   {
+    "insight_type": "calibrated_outlook",
+    "evidence_grade": "prior_only",
+    "surface_formula_version": "mi_darshana_v1.0",
+    "count": "2",
+    "has_basis": "0"
+   },
+   {
+    "insight_type": "emergent_law",
+    "evidence_grade": "empirical",
+    "surface_formula_version": "mi_darshana_v1.0",
+    "count": "20",
+    "has_basis": "0"
+   },
+   {
+    "insight_type": "load_bearing",
+    "evidence_grade": "structural",
+    "surface_formula_version": "mi_darshana_v1.0",
+    "count": "4",
+    "has_basis": "0"
+   },
+   {
+    "insight_type": "manifestation_grammar",
+    "evidence_grade": "empirical",
+    "surface_formula_version": "mi_darshana_v1.0",
+    "count": "7",
+    "has_basis": "0"
+   },
+   {
+    "insight_type": "retrodiction",
+    "evidence_grade": "prior_only",
+    "surface_formula_version": "mi_darshana_v1.0",
+    "count": "51",
+    "has_basis": "0"
+   },
+   {
+    "insight_type": "verdict_object",
+    "evidence_grade": "structural",
+    "surface_formula_version": "mi_darshana_v1.0",
+    "count": "27",
+    "has_basis": "0"
+   }
+  ]
+ },
+ "retro_statements": {
+  "sql": "select count(*) filter (where statement ilike 'Blind retrodiction%') blind_claim, count(*) from mimamsa_discoveries where chart_id='482012f1-710e-4a25-994a-93821f5871aa' and discovery_class='retrodiction'",
+  "rows": [
+   {
+    "blind_claim": "51",
+    "count": "51"
+   }
+  ]
+ },
+ "gram_empirical": {
+  "sql": "select channel_id, fire_count, opportunity_count, scored_count, channel_propensity, prior_propensity, evidence_grade from mimamsa_manifestation_grammar where chart_id='482012f1-710e-4a25-994a-93821f5871aa' and evidence_grade='empirical' order by channel_id",
+  "rows": [
+   {
+    "channel_id": "ch_career_verbal",
+    "fire_count": "0",
+    "opportunity_count": "37",
+    "scored_count": "0",
+    "channel_propensity": "0",
+    "prior_propensity": "0.4",
+    "evidence_grade": "empirical"
+   },
+   {
+    "channel_id": "ch_character_verbal",
+    "fire_count": "0",
+    "opportunity_count": "5",
+    "scored_count": "0",
+    "channel_propensity": "0",
+    "prior_propensity": "0.5",
+    "evidence_grade": "empirical"
+   },
+   {
+    "channel_id": "ch_health_verbal",
+    "fire_count": "0",
+    "opportunity_count": "5",
+    "scored_count": "0",
+    "channel_propensity": "0",
+    "prior_propensity": "0.5",
+    "evidence_grade": "empirical"
+   },
+   {
+    "channel_id": "ch_relationship_verbal",
+    "fire_count": "0",
+    "opportunity_count": "49",
+    "scored_count": "0",
+    "channel_propensity": "0",
+    "prior_propensity": "0.5",
+    "evidence_grade": "empirical"
+   },
+   {
+    "channel_id": "ch_spirituality_verbal",
+    "fire_count": "0",
+    "opportunity_count": "6",
+    "scored_count": "0",
+    "channel_propensity": "0",
+    "prior_propensity": "0.5",
+    "evidence_grade": "empirical"
+   },
+   {
+    "channel_id": "ch_transition_verbal",
+    "fire_count": "0",
+    "opportunity_count": "55",
+    "scored_count": "0",
+    "channel_propensity": "0",
+    "prior_propensity": "0.5",
+    "evidence_grade": "empirical"
+   },
+   {
+    "channel_id": "ch_wealth_verbal",
+    "fire_count": "0",
+    "opportunity_count": "26",
+    "scored_count": "0",
+    "channel_propensity": "0",
+    "prior_propensity": "0.5",
+    "evidence_grade": "empirical"
+   }
+  ]
+ },
+ "gram_opp_vs_sets": {
+  "sql": "select (select count(*) from mimamsa_manifestation_sets where chart_id='482012f1-710e-4a25-994a-93821f5871aa') sets, (select sum(opportunity_count) from mimamsa_manifestation_grammar where chart_id='482012f1-710e-4a25-994a-93821f5871aa') opp_sum",
+  "rows": [
+   {
+    "sets": "139",
+    "opp_sum": "183"
+   }
+  ]
+ },
+ "cal_retro": {
+  "sql": "select count(*) joined, count(*) filter (where e.event_date < p.emitted_at::date) event_date_before_emit, count(*) filter (where l.recorded_at < p.emitted_at) recorded_before_emit from mimamsa_calibration c join mimamsa_predictions p on p.chart_id=c.chart_id and p.prediction_id=c.prediction_id join mimamsa_event_provenance e on e.chart_id=c.chart_id and e.event_id=c.event_id left join life_events l on l.chart_id=e.chart_id and l.event_id=e.event_id where c.chart_id='482012f1-710e-4a25-994a-93821f5871aa'",
+  "rows": [
+   {
+    "joined": "53",
+    "event_date_before_emit": "53",
+    "recorded_before_emit": "53"
+   }
+  ]
+ },
+ "unresolved_in_bins": {
+  "sql": "select count(*) filter (where composite_verdict='UNRESOLVED') unresolved, count(*) total from mimamsa_calibration where chart_id='482012f1-710e-4a25-994a-93821f5871aa'",
+  "rows": [
+   {
+    "unresolved": "25",
+    "total": "57"
+   }
+  ]
+ },
+ "pred_live_anchor": {
+  "sql": "select count(*) preds, count(a.anchor_id) with_live_anchor from mimamsa_predictions p left join phala_anchors a on a.chart_id=p.chart_id and a.anchor_id::text=p.source_pramana_id where p.chart_id='482012f1-710e-4a25-994a-93821f5871aa'",
+  "rows": [
+   {
+    "preds": "139",
+    "with_live_anchor": "4"
+   }
+  ]
+ },
+ "anchors_now": {
+  "sql": "select count(*), min(computed_at) from phala_anchors where chart_id='482012f1-710e-4a25-994a-93821f5871aa'",
+  "rows": [
+   {
+    "count": "4",
+    "min": "2026-08-13 01:15:55.555697+00"
+   }
+  ]
+ },
+ "msr_ids_now": {
+  "sql": "select count(*), max(computed_at) from bodha_msr_signals where chart_id='482012f1-710e-4a25-994a-93821f5871aa'",
+  "rows": [
+   {
+    "count": "50678",
+    "max": "2026-09-11 12:09:33.258995+00"
+   }
+  ]
+ },
+ "kfw_cols": {
+  "sql": "select count(*) from kala_field_weights",
+  "rows": [
+   {
+    "count": "29"
+   }
+  ]
+ },
+ "cal_controls_cols": {
+  "sql": "select count(*) filter (where last_harness_score is not null) harness_scored from mimamsa_negative_controls",
+  "rows": [
+   {
+    "harness_scored": "0"
+   }
+  ]
+ },
+ "le_corr_8": {
+  "sql": "select count(*) from life_events where chart_id='482012f1-710e-4a25-994a-93821f5871aa' and date_tightened_at is not null",
+  "rows": [
+   {
+    "count": "8"
+   }
+  ]
+ },
+ "journal_all": {
+  "sql": "select count(*) rows_all, count(distinct chart_id) charts from mimamsa_journal",
+  "rows": [
+   {
+    "rows_all": "0",
+    "charts": "0"
+   }
+  ]
+ },
+ "prospective_ledger": {
+  "sql": "select lifecycle_status, count(*) from brahma_prospective_ledger where chart_id='482012f1-710e-4a25-994a-93821f5871aa' group by 1",
+  "rows": [
+   {
+    "lifecycle_status": "open",
+    "count": "18"
+   }
+  ]
+ },
+ "activation_basis": {
+  "sql": "select count(*) total_matches, count(*) filter (where composite_verdict in ('CONFIRMED','PARTIAL','REFUTED')) adjudicated, count(distinct prediction_id) distinct_predictions from mimamsa_calibration where chart_id='482012f1-710e-4a25-994a-93821f5871aa'",
+  "rows": [
+   {
+    "total_matches": "57",
+    "adjudicated": "32",
+    "distinct_predictions": "13"
+   }
+  ]
+ }
+}
