@@ -158,6 +158,8 @@ def test_the_drill_coverage_block_says_what_the_verdict_covers():
     assert cov["non_deterministic"] == {"bg_cohort": ["platform_bound"], "bg_muhurta_lattice": ["rolling_horizon"],
                                         "bg_sky_calendar": ["rolling_horizon", "platform_bound"]}
     assert cov["declarations_sha256"] == fd.load_declarations().sha256 and sr.check_coverage(cov, cov["units"]) == cov
+    assert cov["seeded"] == ["grp_classical_text_chunks"] and fd.load_declarations().coverage_report()["seeded"] == ["grp_classical_text_chunks"]
+    assert {g: v["seeded"] for g, v in DOC["groups"].items()} == {"brahma_ontology": False, "brahma_class_priors": False, "classical_text_chunks": True}
 
 
 def test_one_fingerprint_definition_everywhere():
@@ -369,6 +371,9 @@ REFUSALS = [
     ("group_member_evidence_names_no_group_table", "evidence_missing",
      lambda x: x["groups"]["brahma_ontology"]["members"].update({"bg_ontology": ["platform/python-sidecar/brahmagyan/l0_kota_chakra_rings.py:155"]}), None),
     ("group_bad_reproducibility", "bad_reproducibility", lambda x: x["groups"]["brahma_ontology"].update({"reproducibility": ["never"]}), None),
+    ("group_seeded_not_a_bool", "bad_seeded", lambda x: x["groups"]["classical_text_chunks"].update({"seeded": "yes"}), None),
+    ("group_seeded_null", "bad_seeded", lambda x: x["groups"]["brahma_ontology"].update({"seeded": None}), None),
+    ("group_seeded_missing", "missing_key", lambda x: x["groups"]["brahma_ontology"].pop("seeded"), None),
     ("group_unknown_key", "unknown_key", lambda x: x["groups"]["brahma_ontology"].update({"x": 1}), None),
     ("embedding_column_also_excluded", "bad_embedding",
      lambda x: x["groups"]["classical_text_chunks"]["tables"][0]["exclude"].append({"column": "embedding", "reason_code": "not_written_by_writer", "reason": "r" * 30}), None),
@@ -793,6 +798,7 @@ MUTANTS = [
     ('            if n not in accounted:', '            if False:'),
     ('                        if n in universe and n not in accounted and n not in known and n not in seen:', '                        if False:'),
     ('        if not (isinstance(mem, Mapping) and len(mem) >= 2):', '        if False:'),
+    ('        if not isinstance(g["seeded"], bool):', '        if False:'),
     ('            elif asset not in group_members.get(gid, []):', '            elif False:'),
     ('            elif gid not in (a.get("groups") or []):', '            elif False:'),
     ('        others = side.get(n, set()) - {owner}', '        others = set()'),

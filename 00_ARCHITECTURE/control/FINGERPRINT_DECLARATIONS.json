@@ -8,7 +8,7 @@
   "registry_snapshot_sha256": "2ff1eb31a6c75b6622bddc160fad389ef4cb73d803784b0ed87e12da14315686",
   "schema_dump": "S_L1/rehearsal_final/seed/prod_schema.sql",
   "schema_dump_sha256": "f5639b432c84a4bc3db1f600fef7ea842643cf3b70f744fc96223168f2c6dd13",
-  "code_commit": "1bd6b5f9fcf0c80f8576d9f1a9b06b2df2a7bc34"
+  "code_commit": "bbbd0fab3c6e2cb9bfc1550c87a7dbe99612321f"
  },
  "groups": {
   "brahma_class_priors": {
@@ -49,6 +49,7 @@
    "reproducibility": [
     "deterministic"
    ],
+   "seeded": false,
    "notes": "Two writers upsert disjoint fact_kind / prior_basis rows into one table; both are rebuilt together and compared as one unit."
   },
   "brahma_ontology": {
@@ -103,6 +104,7 @@
    "reproducibility": [
     "deterministic"
    ],
+   "seeded": false,
    "notes": "Rows are partitioned by entity_class across four writers, each deleting and rewriting only its own slice; the drill compares the whole table as one unit."
   },
   "classical_text_chunks": {
@@ -141,7 +143,7 @@
        "model_id": "text-multilingual-embedding-002"
       }
      ],
-     "notes": "The embedding vector is not hashed (a float cloud): E5.5 fingerprints its source columns plus the pinned model id. The drill SEEDS this table from production rather than rebuilding it (bg_texts needs GCS and Vertex), so equality is expected; explain with seeded_not_rebuilt otherwise. Other columns (ocr_*, cleaned_*, translation_*) are written by non-orchestrated OCR/cleanup passes and are compared as they are."
+     "notes": "The embedding vector is not hashed (a float cloud): E5.5 fingerprints its source columns plus the pinned model id. The drill SEEDS this table from production rather than rebuilding it (bg_texts needs GCS and Vertex): the group is flagged `seeded`, shown in the drill, and never counts toward PASS (SS decision, round 3). Other columns (ocr_*, cleaned_*, translation_*) are written by non-orchestrated OCR/cleanup passes and are compared as they are."
     }
    ],
    "members": {
@@ -155,6 +157,7 @@
    "reproducibility": [
     "deterministic"
    ],
+   "seeded": true,
    "notes": "bg_texts inserts the chunks (ON CONFLICT DO NOTHING); bg_text_index updates topic_tag in place; compared as one unit."
   }
  },

@@ -61,7 +61,7 @@ def _declared(tables, *, reproducibility=("deterministic",), notcov=(), groups=(
             "not_covered_tables": [{"name": n, "reason": "r" * 70, "evidence": ["x.py:1"]} for n in notcov]}
 
 
-def syn_doc():
+def syn_doc(seeded_group=False):
     a = {f"a_{i}": _declared([_table(f"syn_t{i}", ["k"], f"primary_key:syn_t{i}_pk")]) for i in range(5)}
     a["a_multi"] = _declared([_table("syn_m1", ["k"], "primary_key:syn_m1_pk"), _table("syn_m2", ["k", "n"], "unique:syn_m2_u", [("id", "surrogate_identity")])])
     a["a_roll"] = _declared([_table("syn_roll", ["k"], "primary_key:syn_roll_pk", [("computed_at", "wall_clock_timestamp")])],
@@ -77,12 +77,13 @@ def syn_doc():
             "source": {"registry_snapshot": "x", "registry_snapshot_sha256": "0" * 64, "schema_dump": "x", "schema_dump_sha256": "0" * 64,
                        "code_commit": SHA40},
             "groups": {"g_shared": {"tables": [_table("syn_g", ["k"], "primary_key:syn_g_pk", [("id", "surrogate_identity")])],
-                                    "members": {"a_gm1": ["x.py:1"], "a_gm2": ["x.py:1"]}, "reproducibility": ["deterministic"]}},
+                                    "members": {"a_gm1": ["x.py:1"], "a_gm2": ["x.py:1"]}, "reproducibility": ["deterministic"],
+                                    "seeded": seeded_group}},
             "assets": a}
 
 
-def syn_decls(sha="7" * 64):
-    doc = syn_doc()
+def syn_decls(sha="7" * 64, seeded_group=False):
+    doc = syn_doc(seeded_group)
     assert fd.validate(doc, registry=None, schema=None, repo_root=None) == []
     return fd.Declarations(doc=doc, sha256=sha)
 
@@ -973,12 +974,118 @@ def test_the_ephemeris_expected_difference_is_printed_and_never_hides_the_differ
 
 
 def test_the_real_declarations_cover_the_real_drill_end_to_end_offline():
-    """All 32 comparison units through the whole pure pipeline (no database): equal sides pass scoped; undeclared assets are reported."""
+    """All 32 comparison units through the whole pure pipeline (no database): equal sides pass scoped; the text group is SEEDED and not counted."""
     decls = fd.load_declarations()
     prod, reh = out_doc(decls, "production"), out_doc(decls, "rehearsal")
     drill, cov = smd.build_drill(prod, reh, decls, None, commit=SHA40)
     assert drill["result"] == "PASS_DECLARED_ONLY" and len(drill["expected_assets"]) == 32 and len(cov["undeclared"]) == 6
-    assert len(drill["equal"]) == 32 and sorted(cov["partial"]) == ["bg_remedies", "bg_texts"]
+    assert len(drill["equal"]) == 31 and "grp_classical_text_chunks" not in drill["equal"] and sorted(cov["partial"]) == ["bg_remedies", "bg_texts"]
+    assert drill["seeded"] == {"grp_classical_text_chunks": "equal"} and drill["coverage"]["seeded"] == ["grp_classical_text_chunks"]
+    assert cov["unit_status"]["grp_classical_text_chunks"] == {"status": "seeded:equal", "members": ["bg_text_index", "bg_texts"]}
+
+
+def test_the_headline_next_to_the_result_prints_the_numbers_and_the_names():
+    decls = fd.load_declarations()
+    drill, cov = smd.build_drill(out_doc(decls, "production"), out_doc(decls, "rehearsal"), decls, None, commit=SHA40)
+    h = cov["headline"]
+    assert h.startswith("PASS_DECLARED_ONLY: 34 of 40 L0 assets declared (32 full, 2 partial: bg_remedies (not covered: remedy_review_queue); bg_texts (not covered: classical_texts))")
+    assert "6 undeclared: bg_compendium_index, bg_ephemeris_engine, bg_gochara_citation_resolution, bg_panchanga, bg_sarvatobhadra_grid, bg_transit_rules" in h
+    assert "3 non-deterministic: bg_cohort ['platform_bound'], bg_muhurta_lattice ['rolling_horizon'], bg_sky_calendar ['rolling_horizon', 'platform_bound']" in h
+    assert "1 SEEDED (shown, not counted toward the verdict): grp_classical_text_chunks [equal]" in h and "32 comparison units, 31 in the rebuilt-equals-source claim" in h
+    assert cov["seeded_status"] == {"grp_classical_text_chunks": "equal"}
+    assert len(cov["limits"]) == 3 and any("STATEMENT level" in x and "cannot tell WHICH column a clock call feeds" in x and "post-J1" in x for x in cov["limits"])
+    assert any("SEEDED units" in x and "never counted" in x and "does not by itself fail" in x for x in cov["limits"])
+    assert any("bare PASS is reserved for full coverage" in x for x in cov["limits"])
+
+
+def test_the_headline_for_a_fully_covered_declarations_file_says_zero_everywhere():
+    cov = {"declared": ["a", "b"], "partial": {}, "undeclared": {}, "non_deterministic": {}, "seeded": [], "units": ["a", "b"]}
+    assert smd.coverage_headline("PASS", cov, 2) == ("PASS: 2 of 2 L0 assets declared (2 full, 0 partial); 0 undeclared; 0 non-deterministic; "
+                                                     "0 SEEDED (shown, not counted toward the verdict); 2 comparison units, 2 in the rebuilt-equals-source claim.")
+
+
+def test_the_compare_cli_prints_coverage_names_limits_and_seeded_next_to_the_result(tmp_path, capsys):
+    decls = fd.load_declarations()
+    for n, d in (("prod", out_doc(decls, "production")), ("reh", out_doc(decls, "rehearsal"))):
+        (tmp_path / f"{n}.json").write_text(json.dumps(d))
+    out = tmp_path / "drill.json"
+    assert smd.main(["compare", "--production", str(tmp_path / "prod.json"), "--rehearsal", str(tmp_path / "reh.json"), "--commit", SHA40, "--out", str(out)]) == 0
+    printed = json.loads(capsys.readouterr().out)
+    assert printed["result"] == "PASS_DECLARED_ONLY" and printed["headline"].startswith("PASS_DECLARED_ONLY: 34 of 40")
+    assert len(printed["declared"]) == 34 and printed["seeded"] == {"grp_classical_text_chunks": "equal"} and sorted(printed["non_deterministic"]) == ["bg_cohort", "bg_muhurta_lattice", "bg_sky_calendar"]
+    assert any("STATEMENT level" in x for x in printed["limits"])
+    rep = json.loads((tmp_path / "drill.json.coverage.json").read_text())
+    assert rep["headline"] == printed["headline"] and rep["limits"] == printed["limits"]
+
+
+def _seeded_decls(seeded=True):
+    doc = syn_doc(seeded)
+    for a in list(doc["assets"]):
+        if a not in ("a_gm1", "a_gm2", "a_svc", "a_und"):
+            doc["assets"].pop(a)
+    assert fd.validate(doc, registry=None, schema=None, repo_root=None) == []
+    return fd.Declarations(doc=doc, sha256="6" * 64)
+
+
+def test_a_seeded_group_is_shown_but_never_counted_in_the_drill():
+    ds = syn_decls(seeded_group=True)
+    assert ds.seeded_units() == ["grp_g_shared"] and ds.drill_coverage()["seeded"] == ["grp_g_shared"] and ds.units()["grp_g_shared"]["seeded"] is True
+    prod, reh = out_doc(ds, "production"), out_doc(ds, "rehearsal")
+    drill, cov = smd.build_drill(prod, reh, ds, None, commit=SHA40)
+    assert drill["result"] == "PASS_DECLARED_ONLY" and "grp_g_shared" not in drill["equal"] and len(drill["equal"]) == 8 and drill["seeded"] == {"grp_g_shared": "equal"}
+    assert cov["unit_status"]["grp_g_shared"] == {"status": "seeded:equal", "members": ["a_gm1", "a_gm2"]} and sr.validate_drill(drill) == []
+    # the seeded unit differs: reported, not unexplained, the rebuild claim stands
+    _set_unit(reh, "grp_g_shared", H)
+    d2, c2 = smd.build_drill(prod, reh, ds, None, commit=SHA40)
+    assert d2["result"] == "PASS_DECLARED_ONLY" and [x["asset"] for x in d2["differences"]] == ["grp_g_shared"] and d2["unexplained"] == []
+    assert c2["unit_status"]["grp_g_shared"]["status"] == "seeded:fingerprint_differs" and c2["differences_with_hints"][0]["members"] == ["a_gm1", "a_gm2"]
+    assert "[fingerprint_differs]" in c2["headline"]
+    # the same drill with the group NOT seeded fails on that difference
+    plain = syn_decls(seeded_group=False)
+    prod_p, reh_p = out_doc(plain, "production"), out_doc(plain, "rehearsal")
+    _set_unit(reh_p, "grp_g_shared", H)
+    assert smd.build_drill(prod_p, reh_p, plain, None, commit=SHA40)[0]["result"] == "FAIL"
+
+
+def test_a_drill_whose_only_equal_unit_is_the_seeded_group_reads_unmeasured():
+    only = _seeded_decls(True)
+    assert only.expected_assets() == ["grp_g_shared"]
+    drill, cov = smd.build_drill(out_doc(only, "production"), out_doc(only, "rehearsal"), only, None, commit=SHA40)
+    assert drill["result"] == "UNMEASURED" and drill["equal"] == [] and drill["seeded"] == {"grp_g_shared": "equal"} and sr.validate_drill(drill) == []
+    assert cov["headline"].startswith("UNMEASURED:")
+    unseeded = _seeded_decls(False)
+    assert smd.build_drill(out_doc(unseeded, "production"), out_doc(unseeded, "rehearsal"), unseeded, None, commit=SHA40)[0]["result"] == "PASS_DECLARED_ONLY"
+
+
+def test_the_real_text_group_is_seeded_and_no_other_group_is():
+    d = fd.load_declarations()
+    assert {g: v["seeded"] for g, v in d.groups.items()} == {"brahma_ontology": False, "brahma_class_priors": False, "classical_text_chunks": True}
+    assert d.seeded_units() == ["grp_classical_text_chunks"] and d.drill_coverage()["scope"] == "declared_only"
+    assert all(not v["seeded"] for u, v in d.units().items() if v["kind"] == "asset")
+
+
+def test_status_states_the_exact_build_record_it_expects(capsys):
+    s = smd.drill_status(D5)
+    exp = s["build_record_expected"]
+    assert exp["schema"] == "suvarna-build-record/v1" and "--build-record PATH" in exp["flag"] and set(exp["required_fields"]) == {"schema", "run_id", "state", "orchestrator_commit", "assets"}
+    assert exp["declared_assets_that_must_be_complete"] == D5.declared_assets() and "no other top-level key" in exp["closed"]
+    assert "CLAIMED_UNVERIFIED" in exp["purpose"]
+    assert any("build_record_expected" in x["detail"].get("expects", "") for x in s["steps"] if x["step"] == "rehearsal_l0_rebuild")
+    # a record written exactly from the spec verifies (the spec and the verifier agree)
+    ex = exp["shape_example"]
+    assert set(ex) == set(exp["required_fields"]) and ex["schema"] == smd.BUILD_RECORD_SCHEMA
+    rec = {**ex, "run_id": "5e57e57e-5e57-4e57-8e57-5e57e57e57e5", "orchestrator_commit": SHA40,
+           "assets": [{"asset_id": a, "state": "complete"} for a in exp["declared_assets_that_must_be_complete"]]}
+    assert smd.verify_rebuild_receipt({"run_id": rec["run_id"], "orchestrator_commit": SHA40}, rec, D5) == []
+    assert smd.verify_rebuild_receipt({"run_id": rec["run_id"], "orchestrator_commit": SHA40}, {**rec, "extra": 1}, D5)
+    # the claimed step says what to supply
+    prod, reh = _pair()
+    claimed = {x["step"]: x for x in smd.drill_status(D5, rehearsal=reh)["steps"]}["rehearsal_l0_rebuild"]
+    assert claimed["state"] == "CLAIMED_UNVERIFIED" and "--build-record PATH" in claimed["detail"]["expects"]
+    assert smd.main(["build-record-spec"]) == 0
+    real = json.loads(capsys.readouterr().out)
+    assert real["schema"] == "suvarna-build-record/v1" and len(real["declared_assets_that_must_be_complete"]) == 34 and "bg_ontology" in real["declared_assets_that_must_be_complete"]
+    assert smd.main(["status"]) == 0 and json.loads(capsys.readouterr().out)["build_record_expected"]["schema"] == "suvarna-build-record/v1"
 
 
 # ── baseline target: database names, the rehearsal policy pins ──
@@ -1439,6 +1546,21 @@ def invariants(m, tmp: pathlib.Path) -> list[str]:
     check("harness_disposable_not_rehearsal_port", lambda: raises(m.MirrorError, lambda: m.harness_target(tmp / "no_root", db="suvarna_disposable_m", port=55432)))
     check("quote", lambda: m._quote_ident('a"b') == '"a""b"' and m._quote_lit("a'b") == "'a''b'")
     check("strict_rd", lambda: raises(Exception, lambda: m._rd(_dup_file(tmp))))
+    # round 3
+    dseed = syn_decls(seeded_group=True)
+    pS, rS = out_doc(dseed, "production"), out_doc(dseed, "rehearsal")
+    check("drill_seeded_not_counted", lambda: m.build_drill(pS, rS, dseed, None, commit=SHA40)[0]["seeded"] == {"grp_g_shared": "equal"}
+          and "grp_g_shared" not in m.build_drill(pS, rS, dseed, None, commit=SHA40)[0]["equal"])
+    check("report_headline_and_limits", lambda: m.build_drill(pS, rS, dseed, None, commit=SHA40)[1]["headline"].startswith("PASS_DECLARED_ONLY:")
+          and "SEEDED" in m.build_drill(pS, rS, dseed, None, commit=SHA40)[1]["headline"] and len(m.build_drill(pS, rS, dseed, None, commit=SHA40)[1]["limits"]) == 3)
+    check("report_seeded_unit_status", lambda: m.build_drill(pS, rS, dseed, None, commit=SHA40)[1]["unit_status"]["grp_g_shared"] == {"status": "seeded:equal", "members": ["a_gm1", "a_gm2"]})
+    only_seeded = _seeded_decls(True)
+    check("drill_only_seeded_unmeasured", lambda: m.build_drill(out_doc(only_seeded, "production"), out_doc(only_seeded, "rehearsal"), only_seeded, None, commit=SHA40)[0]["result"] == "UNMEASURED")
+    check("headline_names", lambda: "bg_remedies" in m.coverage_headline("X", {"declared": ["a"], "partial": {"bg_remedies": ["t"]}, "undeclared": {"u1": "c"}, "non_deterministic": {}, "seeded": ["grp_x"], "units": ["a", "grp_x"]}, 3, {"grp_x": "equal"})
+          and "u1" in m.coverage_headline("X", {"declared": ["a"], "partial": {}, "undeclared": {"u1": "c"}, "non_deterministic": {}, "seeded": [], "units": ["a"]}, 3)
+          and "grp_x [equal]" in m.coverage_headline("X", {"declared": ["a"], "partial": {}, "undeclared": {}, "non_deterministic": {}, "seeded": ["grp_x"], "units": ["a", "grp_x"]}, 3, {"grp_x": "equal"}))
+    check("limits_text", lambda: any("STATEMENT level" in x for x in m.LIMITS_TEXT) and len(m.LIMITS_TEXT) == 3)
+    check("build_record_spec", lambda: m.build_record_spec(D5)["declared_assets_that_must_be_complete"] == D5.declared_assets() and m.drill_status(D5)["build_record_expected"]["schema"] == m.BUILD_RECORD_SCHEMA)
     # the rehearsal policy pins (stubs: nothing real is started or touched; each pin is isolated: every OTHER pin is satisfied)
     def mkroot(name, *, marker=True, data=True):
         r = tmp / name
@@ -1488,6 +1610,12 @@ def test_invariants_hold_on_the_unmutated_module(tmp_path):
 
 
 MUTANTS = [
+    ('    cov["headline"] = coverage_headline(drill["result"], drill["coverage"], len(decls.assets), drill["seeded"])', '    cov["headline"] = ""'),
+    ('    return "; ".join(bits) + "."', '    return bits[0] + "."'),
+    ('    cov["limits"] = list(LIMITS_TEXT)', '    cov["limits"] = []'),
+    ('    for u, st in drill["seeded"].items():\n        unit_status[u] = {"status": f"seeded:{st}", "members": decls.members(u)}', '    pass'),
+    ('    return {**copy.deepcopy(BUILD_RECORD_SPEC), "declared_assets_that_must_be_complete": decls.declared_assets()}', '    return copy.deepcopy(BUILD_RECORD_SPEC)'),
+    ('"steps": steps, "build_record_expected": build_record_spec(decls)}', '"steps": steps}'),
     ('    return (isinstance(rebuild, Mapping) and set(rebuild) == {"run_id", "orchestrator_commit"} and real_uuid(rebuild["run_id"])', '    return (isinstance(rebuild, Mapping) and set(rebuild) == {"run_id", "orchestrator_commit"}'),
     ('    return str(u) == v and u.variant == uuid.RFC_4122 and u.version in range(1, 9)', '    return True'),
     ('    return str(u) == v and u.variant == uuid.RFC_4122 and u.version in range(1, 9)', '    return u.variant == uuid.RFC_4122 and u.version in range(1, 9)'),

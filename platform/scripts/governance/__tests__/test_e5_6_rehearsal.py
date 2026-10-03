@@ -1087,7 +1087,7 @@ def cov_(units=None, nd=None, **over):
     units = sorted(units if units is not None else ASSETS)
     nd = nd or {}
     c = {"declarations_sha256": None, "units": units, "declared": units, "partial": {}, "undeclared": {}, "non_deterministic": nd, "groups": {},
-         "expected_differences": [], "scope": "declared_only" if nd else "all_declared_full"}
+         "seeded": [], "expected_differences": [], "scope": "declared_only" if nd else "all_declared_full"}
     c.update(over)
     return c
 
@@ -1256,10 +1256,10 @@ def test_compare_cli_requires_expected_and_commit_and_writes_a_valid_drill(tmp_p
 
 # ── round 2: the drill document says what it covers (coverage), carries its row counts, and an empty table is never "equal" ──
 
-def test_drill_keys_gain_exactly_coverage_rows_and_empty_both_sides():
-    assert sr.DRILL_KEYS[-3:] == ("coverage", "rows", "empty_both_sides")
+def test_drill_keys_gain_exactly_coverage_rows_empty_both_sides_and_seeded():
+    assert sr.DRILL_KEYS[-4:] == ("coverage", "rows", "empty_both_sides", "seeded")
     r = cmp_(same_sets(), same_sets())
-    assert set(r) == set(sr.DRILL_KEYS) and r["coverage"] == cov_() and r["empty_both_sides"] == []
+    assert set(r) == set(sr.DRILL_KEYS) and r["coverage"] == cov_() and r["empty_both_sides"] == [] and r["seeded"] == {}
     assert r["rows"]["bg_a"] == {"production": {"t": 5}, "rehearsal": {"t": 5}}
 
 
@@ -1397,6 +1397,96 @@ def test_drill_expected_assets_and_coverage_come_from_the_declarations():
     assert len(sr.drill_expected_assets()) == 32 and sr.drill_coverage()["scope"] == "declared_only"
     with pytest.raises(sr.RehearsalError, match="refused"):
         sr.drill_coverage("/nonexistent/declarations.json")
+
+
+
+# ── round 3: SEEDED units are shown but never counted toward the rebuilt-equals-source claim ──
+
+def scov(seeded, units=None, **over):
+    """A declared_only coverage block whose `seeded` list is given."""
+    return cov_(units, seeded=sorted(seeded), scope="declared_only", **over)
+
+
+def test_an_equal_seeded_unit_is_shown_and_never_counted():
+    r = cmp_(same_sets(), same_sets(), coverage=scov(["bg_d"]))
+    assert r["result"] == "PASS_DECLARED_ONLY" and r["seeded"] == {"bg_d": "equal"} and "bg_d" not in r["equal"] and len(r["equal"]) == 9
+    assert r["empty_both_sides"] == [] and sr.validate_drill(r) == []
+
+
+def test_a_drill_whose_only_equal_units_are_seeded_is_unmeasured():
+    sets = {"bg_a": fp(1), "bg_b": fp(2)}
+    r = cmp_(sets, sets, expected_assets=["bg_a", "bg_b"], coverage=scov(["bg_a", "bg_b"], units=["bg_a", "bg_b"]))
+    assert r["result"] == "UNMEASURED" and r["equal"] == [] and r["seeded"] == {"bg_a": "equal", "bg_b": "equal"}
+    assert sr.validate_drill(r) == []
+    # one rebuilt unit equal next to a seeded one is enough
+    r2 = cmp_(sets, sets, expected_assets=["bg_a", "bg_b"], coverage=scov(["bg_b"], units=["bg_a", "bg_b"]))
+    assert r2["result"] == "PASS_DECLARED_ONLY" and r2["equal"] == ["bg_a"]
+    # a rebuilt unit that differs UNEXPLAINED does not make the seeded one count: FAIL
+    bad = cmp_(sets, {**sets, "bg_a": fp(9)}, expected_assets=["bg_a", "bg_b"], coverage=scov(["bg_b"], units=["bg_a", "bg_b"]))
+    assert bad["result"] == "FAIL" and bad["unexplained"] == ["bg_a"]
+    # an explained-different rebuilt unit counts as measured
+    ok = cmp_(sets, {**sets, "bg_a": fp(9)}, {"bg_a": explain("seeded_not_rebuilt")}, expected_assets=["bg_a", "bg_b"],
+              coverage=scov(["bg_b"], units=["bg_a", "bg_b"]), max_difference_share=1.0)
+    assert ok["result"] == "PASS_DECLARED_ONLY"
+
+
+def test_a_seeded_unit_that_differs_is_reported_but_does_not_fail_the_rebuild_claim():
+    prod, reh = same_sets(), {**same_sets(), "bg_d": fp(99)}
+    r = cmp_(prod, reh, coverage=scov(["bg_d"]))
+    assert r["result"] == "PASS_DECLARED_ONLY" and [d["asset"] for d in r["differences"]] == ["bg_d"] and r["unexplained"] == []
+    assert r["seeded"] == {"bg_d": "fingerprint_differs"} and r["problems"] == [] and sr.validate_drill(r) == []
+    # the share limits are about the rebuilt units only: three seeded differences (30%) are not "too many"
+    reh3 = {**same_sets(), "bg_d": fp(91), "bg_e": fp(92), "bg_f": fp(93)}
+    assert cmp_(prod, reh3, coverage=scov(["bg_d", "bg_e", "bg_f"]))["result"] == "PASS_DECLARED_ONLY"
+    # an explanation for it is still checked (a malformed one is a problem) and an undecided one is not counted
+    assert cmp_(prod, reh, {"bg_d": explain("seeded_not_rebuilt", decision=None)}, coverage=scov(["bg_d"]))["result"] == "PASS_DECLARED_ONLY"
+    assert cmp_(prod, reh, {"bg_d": {"reason_code": "because", "detail": DETAIL}}, coverage=scov(["bg_d"]))["result"] == "FAIL"
+    # a rebuilt unit differing next to it still fails
+    assert cmp_(prod, {**reh, "bg_b": fp(77)}, coverage=scov(["bg_d"]))["result"] == "FAIL"
+    # a seeded unit missing on one side is a difference too, not a failure
+    miss = {k: v for k, v in same_sets().items() if k != "bg_d"}
+    m = cmp_(same_sets(), miss, coverage=scov(["bg_d"]))
+    assert m["result"] == "PASS_DECLARED_ONLY" and m["seeded"] == {"bg_d": "missing_in_rehearsal"} and m["differences"][0]["kind"] == "missing_in_rehearsal"
+
+
+def test_a_seeded_unit_that_is_uncovered_or_empty_is_shown_without_failing():
+    miss = {k: v for k, v in same_sets().items() if k != "bg_d"}
+    r = cmp_(miss, miss, coverage=scov(["bg_d"]))
+    assert r["result"] == "PASS_DECLARED_ONLY" and r["seeded"] == {"bg_d": "uncovered"} and r["uncovered"] == []
+    sets = same_sets()
+    rows = rows_(sets, sets)
+    rows["bg_d"] = {"production": {"t": 0}, "rehearsal": {"t": 0}}
+    e = cmp_(sets, sets, rows=rows, coverage=scov(["bg_d"]))
+    assert e["result"] == "PASS_DECLARED_ONLY" and e["seeded"] == {"bg_d": "empty_both_sides"} and e["empty_both_sides"] == []
+    # but a non-seeded empty unit still makes the verdict UNMEASURED and a non-seeded uncovered one still fails
+    assert cmp_(sets, sets, rows=rows)["result"] == "UNMEASURED"
+    assert cmp_(miss, miss)["result"] == "FAIL"
+    # equal fingerprints with different rows are a contradiction even for a seeded unit
+    rows["bg_d"] = {"production": {"t": 0}, "rehearsal": {"t": 3}}
+    assert cmp_(sets, sets, rows=rows, coverage=scov(["bg_d"]))["result"] == "FAIL"
+
+
+def test_the_seeded_coverage_list_is_closed_sorted_and_part_of_the_derived_scope():
+    with pytest.raises(sr.RehearsalError, match="derived"):
+        cmp_(same_sets(), same_sets(), coverage=cov_(seeded=["bg_d"]))                 # seeded present but scope claims all_declared_full
+    for bad in ("bg_d", ["bg_zzz"], ["bg_e", "bg_d"], ["bg_d", "bg_d"], [1], None):
+        with pytest.raises(sr.RehearsalError, match="seeded"):
+            cmp_(same_sets(), same_sets(), coverage=cov_(seeded=bad, scope="declared_only"))
+    c = cov_()
+    c.pop("seeded")
+    with pytest.raises(sr.RehearsalError):
+        cmp_(same_sets(), same_sets(), coverage=c)
+
+
+def test_the_seeded_field_of_the_drill_is_rederived():
+    r = cmp_(same_sets(), {**same_sets(), "bg_d": fp(99)}, coverage=scov(["bg_d"]))
+    assert sr.validate_drill(r) == []
+    for label, edit in (("status", lambda d: d["seeded"].update(bg_d="equal")), ("dropped", lambda d: d["seeded"].clear()),
+                        ("added", lambda d: d["seeded"].update(bg_a="equal")), ("coverage", lambda d: d["coverage"].update(seeded=[])),
+                        ("result", lambda d: d.update(result="FAIL"))):
+        d = copy.deepcopy(r)
+        edit(d)
+        assert sr.validate_drill(d), label
 
 
 
@@ -2019,6 +2109,27 @@ def invariants(m: types.ModuleType, tmp: pathlib.Path) -> list[str]:
     if cdrill is not None:
         check("drill_coverage_tamper", lambda: m.validate_drill({**copy.deepcopy(cdrill), "result": "PASS"}) != [])
         check("drill_declarations_bound", lambda: m.validate_drill(cdrill, declarations_coverage={**cdrill["coverage"], "undeclared": {"x": "y"}}) != [])
+    # round 3: seeded
+    sd = lambda seeded, units=None, **o: cov_(units, seeded=sorted(seeded), scope="declared_only", **o)  # noqa: E731
+    check("seeded_equal_not_counted", lambda: cmp2(full, full, coverage=sd(["bg_d"]))["result"] == "PASS_DECLARED_ONLY" and "bg_d" not in cmp2(full, full, coverage=sd(["bg_d"]))["equal"])
+    two_ = {"bg_a": fp(1), "bg_b": fp(2)}
+    check("seeded_only_equal_unmeasured", lambda: cmp2(two_, two_, expected_assets=["bg_a", "bg_b"], coverage=sd(["bg_a", "bg_b"], ["bg_a", "bg_b"]))["result"] == "UNMEASURED")
+    check("seeded_one_rebuilt_equal_enough", lambda: cmp2(two_, two_, expected_assets=["bg_a", "bg_b"], coverage=sd(["bg_b"], ["bg_a", "bg_b"]))["result"] == "PASS_DECLARED_ONLY")
+    sdiff = {**full, "bg_d": fp(99)}
+    check("seeded_diff_reported_not_failing", lambda: cmp2(full, sdiff, coverage=sd(["bg_d"]))["result"] == "PASS_DECLARED_ONLY"
+          and cmp2(full, sdiff, coverage=sd(["bg_d"]))["unexplained"] == [] and [d["asset"] for d in cmp2(full, sdiff, coverage=sd(["bg_d"]))["differences"]] == ["bg_d"])
+    check("seeded_diff_status", lambda: cmp2(full, sdiff, coverage=sd(["bg_d"]))["seeded"] == {"bg_d": "fingerprint_differs"})
+    sdiff3 = {**full, "bg_d": fp(91), "bg_e": fp(92), "bg_f": fp(93)}
+    check("seeded_diffs_not_in_share", lambda: cmp2(full, sdiff3, coverage=sd(["bg_d", "bg_e", "bg_f"]))["result"] == "PASS_DECLARED_ONLY")
+    check("seeded_undecided_not_counted", lambda: cmp2(full, sdiff, {"bg_d": ex("seeded_not_rebuilt", 1, None)}, coverage=sd(["bg_d"]))["result"] == "PASS_DECLARED_ONLY")
+    check("rebuilt_diff_still_fails_next_to_seeded", lambda: cmp2(full, {**sdiff, "bg_b": fp(77)}, coverage=sd(["bg_d"]))["result"] == "FAIL")
+    check("seeded_uncovered_shown", lambda: cmp2(miss, miss, coverage=sd(["bg_j"]))["seeded"] == {"bg_j": "uncovered"} and cmp2(miss, miss, coverage=sd(["bg_j"]))["result"] == "PASS_DECLARED_ONLY")
+    four = ["bg_g", "bg_h", "bg_i", "bg_j"]
+    twod = {**full, "bg_a": fp(81), "bg_b": fp(82)}
+    check("seeded_not_in_share_denominator", lambda: cmp2(full, twod, {a: ex("seeded_not_rebuilt", i) for i, a in enumerate(("bg_a", "bg_b"))}, coverage=sd(four))["result"] == "FAIL")
+    check("share_denominator_without_seeded_ok", lambda: cmp2(full, twod, {a: ex("seeded_not_rebuilt", i) for i, a in enumerate(("bg_a", "bg_b"))}, coverage=cov_(ASSETS))["result"] in m.RESULTS_PASS)
+    check("seeded_scope_derived", lambda: raises(m.RehearsalError, lambda: cmp2(full, full, coverage=cov_(ASSETS, seeded=["bg_d"]))))
+    check("seeded_sorted_subset", lambda: raises(m.RehearsalError, lambda: cmp2(full, full, coverage=sd(["bg_zzz"]))) and raises(m.RehearsalError, lambda: cmp2(full, full, coverage=cov_(ASSETS, seeded=["bg_e", "bg_d"], scope="declared_only"))))
     check("drill_junk_never_raises", lambda: all(m.validate_drill(j) for j in (None, 5, [], {})))
     return bad
 
@@ -2029,10 +2140,23 @@ def test_invariant_suite_is_clean_on_the_unmutated_module(tmp_path):
 
 
 MUTANTS = [
-    ('    result = "FAIL" if failed else "UNMEASURED" if empty else ("PASS" if cov["scope"] == "all_declared_full" else "PASS_DECLARED_ONLY")', '    result = "FAIL" if failed else "UNMEASURED" if empty else "PASS"'),
-    ('    result = "FAIL" if failed else "UNMEASURED" if empty else ("PASS" if cov["scope"] == "all_declared_full" else "PASS_DECLARED_ONLY")', '    result = "FAIL" if failed else ("PASS" if cov["scope"] == "all_declared_full" else "PASS_DECLARED_ONLY")'),
+    ('            elif a in seeded:\n                seeded_status[a] = "empty_both_sides" if sum(rws[a]["production"].values()) == 0 else "equal"      # shown, never counted', '            elif False:\n                seeded_status[a] = "equal"'),
+    ('    measured = len(equal) + sum(1 for d in rebuilt_diffs if d["explained"] is not None)', '    measured = len(equal) + len(seeded_status) + sum(1 for d in rebuilt_diffs if d["explained"] is not None)'),
+    ('    measured = len(equal) + sum(1 for d in rebuilt_diffs if d["explained"] is not None)', '    measured = 1'),
+    ('    unexplained = [d["asset"] for d in rebuilt_diffs if d["explained"] is None]', '    unexplained = [d["asset"] for d in diffs if d["explained"] is None]'),
+    ('    rebuilt = [a for a in expected if a not in seeded]                    # the units the rebuilt-equals-source claim is about', '    rebuilt = list(expected)'),
+    ('    rebuilt_diffs = [d for d in diffs if d["asset"] not in seeded]', '    rebuilt_diffs = list(diffs)'),
+    ('        if "decision" not in e and d["asset"] not in seeded:', '        if "decision" not in e:'),
+    ('        if a in seeded:\n            seeded_status[a] = kind', '        if False:\n            seeded_status[a] = kind'),
+    ('            if a in seeded:\n                seeded_status[a] = "uncovered"', '            if False:\n                seeded_status[a] = "uncovered"'),
+    ('    uncovered = [a for a in uncovered_all if a not in seeded]', '    uncovered = list(uncovered_all)'),
+    ('c["partial"] or c["undeclared"] or c["non_deterministic"] or c["seeded"]) else "all_declared_full"', 'c["partial"] or c["undeclared"] or c["non_deterministic"]) else "all_declared_full"'),
+    ('c["seeded"] == sorted(c["seeded"])):', 'True):'),
+    ('set(c["seeded"]) <= set(c["units"]) and', 'True and'),
+    ('    result = ("FAIL" if failed else "UNMEASURED" if (empty or measured == 0)\n              else ("PASS" if cov["scope"] == "all_declared_full" else "PASS_DECLARED_ONLY"))', '    result = "FAIL" if failed else "UNMEASURED" if empty else "PASS"'),
+    ('    result = ("FAIL" if failed else "UNMEASURED" if (empty or measured == 0)\n              else ("PASS" if cov["scope"] == "all_declared_full" else "PASS_DECLARED_ONLY"))', '    result = "FAIL" if failed else ("PASS" if cov["scope"] == "all_declared_full" else "PASS_DECLARED_ONLY")'),
     ('    if c["scope"] != scope:', '    if False:'),
-    ('    scope = "declared_only" if (c["partial"] or c["undeclared"] or c["non_deterministic"]) else "all_declared_full"', '    scope = "declared_only" if (c["partial"] or c["undeclared"]) else "all_declared_full"'),
+    ('    scope = "declared_only" if (c["partial"] or c["undeclared"] or c["non_deterministic"] or c["seeded"]) else "all_declared_full"', '    scope = "declared_only" if (c["partial"] or c["undeclared"]) else "all_declared_full"'),
     ('c["units"] == sorted(expected)):', 'True):'),
     ('        if need is not None and need not in cov["non_deterministic"].get(d["asset"], []):', '        if False:'),
     ('            if rws[a]["production"] != rws[a]["rehearsal"]:', '            if False:'),
@@ -2132,10 +2256,10 @@ MUTANTS = [
     ('if e["reason_code"] not in EXPLAIN_CODES_BY_KIND[kind]:', 'if False:'),
     ('if "decision" in e and not (isinstance(e["decision"], str) and _DECISION_ID.fullmatch(e["decision"])):', 'if False:'),
     ('if norm in seen:', 'if False:'),
-    ('if "decision" not in e:\n            undecided += 1', 'if False:\n            undecided += 1'),
-    ('if expected and undecided / len(expected) > max_undecided_share:', 'if False:'),
-    ('if expected and len(diffs) / len(expected) > max_difference_share:', 'if False:'),
-    ('uncovered = [a for a in expected if a not in prod and a not in reh]', 'uncovered = []'),
+    ('if "decision" not in e and d["asset"] not in seeded:\n            undecided += 1', 'if False:\n            undecided += 1'),
+    ('if rebuilt and undecided / len(rebuilt) > max_undecided_share:', 'if False:'),
+    ('if rebuilt and len(rebuilt_diffs) / len(rebuilt) > max_difference_share:', 'if False:'),
+    ('uncovered_all = [a for a in expected if a not in prod and a not in reh]', 'uncovered_all = []'),
     ('unexpected = sorted((set(prod) | set(reh)) - set(expected))', 'unexpected = []'),
     ('if env["definition"] != FINGERPRINT_DEFINITION:', 'if False:'),
     ('if not isinstance(explained, Mapping):', 'if False:'),

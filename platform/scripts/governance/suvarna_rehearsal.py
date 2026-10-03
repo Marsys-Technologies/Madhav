@@ -1190,9 +1190,9 @@ MIN_DETAIL_CHARS = 40
 DEFAULT_LIMITS = (0.0, 0.25)                   # (max_undecided_share, max_difference_share)
 DRILL_KEYS = ("schema", "item", "result", "commit", "tool_sha256", "definition", "expected_assets", "production", "rehearsal",
               "explained_input", "inputs", "equal", "differences", "unexplained", "uncovered", "unexpected",
-              "explanations_without_difference", "problems", "limits", "coverage", "rows", "empty_both_sides")
+              "explanations_without_difference", "problems", "limits", "coverage", "rows", "empty_both_sides", "seeded")
 RESULTS_PASS = ("PASS", "PASS_DECLARED_ONLY")   # PASS only when every L0 asset is declared, full and deterministic; otherwise the scoped label
-COVERAGE_KEYS = ("declarations_sha256", "units", "declared", "partial", "undeclared", "non_deterministic", "groups", "expected_differences", "scope")
+COVERAGE_KEYS = ("declarations_sha256", "units", "declared", "partial", "undeclared", "non_deterministic", "groups", "seeded", "expected_differences", "scope")
 NON_DETERMINISTIC_FLAGS = ("rolling_horizon", "platform_bound")
 CODE_REQUIRES_FLAG = {"rolling_horizon": "rolling_horizon", "source_unavailable_offline": "platform_bound"}   # an explanation code only a flagged unit may carry
 _DECISION_ID = re.compile(r"N-[0-9]{1,6}")
@@ -1257,12 +1257,14 @@ def check_coverage(coverage: Any, expected: Sequence[str]) -> dict:
         raise RehearsalError(f"coverage.non_deterministic must map a unit to a non-empty list of flags from {NON_DETERMINISTIC_FLAGS}")
     if not (isinstance(c["groups"], Mapping) and all(k in c["units"] and _unit_list(v) and len(v) >= 2 for k, v in c["groups"].items())):
         raise RehearsalError("coverage.groups must map a unit to its (at least two) member assets")
+    if not (_unit_list(c["seeded"]) and set(c["seeded"]) <= set(c["units"]) and c["seeded"] == sorted(c["seeded"])):
+        raise RehearsalError("coverage.seeded must be a sorted list of units from coverage.units (units seeded from production, not rebuilt)")
     ed = c["expected_differences"]
     if not (isinstance(ed, list) and all(isinstance(e, Mapping) and set(e) == {"unit", "table", "columns", "reference"} and e["unit"] in c["units"]
                                          and isinstance(e["table"], str) and _unit_list(e["columns"]) and e["columns"]
                                          and isinstance(e["reference"], str) and e["reference"].strip() for e in ed)):
         raise RehearsalError("coverage.expected_differences must list {unit, table, columns, reference} records of units in coverage.units")
-    scope = "declared_only" if (c["partial"] or c["undeclared"] or c["non_deterministic"]) else "all_declared_full"
+    scope = "declared_only" if (c["partial"] or c["undeclared"] or c["non_deterministic"] or c["seeded"]) else "all_declared_full"
     if c["scope"] != scope:
         raise RehearsalError(f"coverage.scope is derived: it must be {scope!r} for this coverage")
     return c
@@ -1301,8 +1303,13 @@ def compare_fingerprint_sets(production: Any, rehearsal: Any, explained: Any = N
     rolling_horizon / platform_bound in `coverage`), the share of EXPLAINED differences without an SS-recorded decision id `N-<n>` exceeds
     `max_undecided_share` (default 0), the share of differing units exceeds `max_difference_share`, or two equal fingerprints carry different
     row counts. A unit that is EMPTY on both sides (zero rows everywhere) is never `equal`: it is listed in `empty_both_sides` and the
-    verdict cannot be PASS (it reads UNMEASURED). Otherwise PASS, or PASS_DECLARED_ONLY whenever `coverage` says any asset is partial,
-    undeclared or non-deterministic: a bare PASS means every L0 asset was declared, full and deterministic. The output embeds both
+    verdict cannot be PASS (it reads UNMEASURED). SEEDED units (`coverage.seeded`: copied from production, not rebuilt) are SHOWN (key
+    `seeded`: unit -> equal | differs kind | empty_both_sides | uncovered) but EXCLUDED from the rebuilt-equals-source claim: an equal
+    seeded unit is not in `equal`, never counts toward PASS or PASS_DECLARED_ONLY (a drill whose only equal units are seeded reads
+    UNMEASURED: it needs at least one non-seeded unit equal or explained-different), and a seeded unit that differs is still reported in
+    `differences` but is not `unexplained`, does not count in the share limits and does not by itself fail the drill. Otherwise PASS, or
+    PASS_DECLARED_ONLY whenever `coverage` says any asset is partial, undeclared, non-deterministic or seeded: a bare PASS means every
+    L0 asset was declared, full, deterministic and rebuilt. The output embeds both
     fingerprint sets, the explanations, the coverage block, the row counts, input hashes, the commit and the tool hash, and `validate_drill`
     re-derives it."""
     if not (isinstance(commit, str) and HEX40.fullmatch(commit)):
@@ -1323,21 +1330,29 @@ def compare_fingerprint_sets(production: Any, rehearsal: Any, explained: Any = N
     cov = check_coverage(coverage, exp)
     rws = check_rows(rows, prod, reh)
     expected = sorted(exp)
-    uncovered = [a for a in expected if a not in prod and a not in reh]
+    seeded = set(cov["seeded"])
+    uncovered_all = [a for a in expected if a not in prod and a not in reh]
+    uncovered = [a for a in uncovered_all if a not in seeded]
     unexpected = sorted((set(prod) | set(reh)) - set(expected))
-    equal, diffs, problems, empty = [], [], [], []
+    equal, diffs, problems, empty, seeded_status = [], [], [], [], {}
     for a in expected:
-        if a in uncovered:
+        if a in uncovered_all:
+            if a in seeded:
+                seeded_status[a] = "uncovered"
             continue
         if a in prod and a in reh and prod[a] == reh[a]:
             if rws[a]["production"] != rws[a]["rehearsal"]:
                 problems.append(f"{a}: equal fingerprints but different row counts {rws[a]['production']} vs {rws[a]['rehearsal']}: a fingerprint covers its rows, so one side is wrong")
+            elif a in seeded:
+                seeded_status[a] = "empty_both_sides" if sum(rws[a]["production"].values()) == 0 else "equal"      # shown, never counted
             elif sum(rws[a]["production"].values()) == 0:
                 empty.append(a)                                # equal because both are empty is not equality of content
             else:
                 equal.append(a)
             continue
         kind = "missing_in_rehearsal" if a not in reh else "missing_in_production" if a not in prod else "fingerprint_differs"
+        if a in seeded:
+            seeded_status[a] = kind
         diffs.append({"asset": a, "kind": kind, "production": prod.get(a), "rehearsal": reh.get(a), "explained": None})
     seen: dict[str, str] = {}
     undecided = 0
@@ -1360,16 +1375,20 @@ def compare_fingerprint_sets(production: Any, rehearsal: Any, explained: Any = N
             continue
         seen[norm] = d["asset"]
         d["explained"] = dict(e)
-        if "decision" not in e:
+        if "decision" not in e and d["asset"] not in seeded:
             undecided += 1
     stray = sorted(set(explained) - {d["asset"] for d in diffs})
-    unexplained = [d["asset"] for d in diffs if d["explained"] is None]
-    if expected and undecided / len(expected) > max_undecided_share:
+    rebuilt = [a for a in expected if a not in seeded]                    # the units the rebuilt-equals-source claim is about
+    rebuilt_diffs = [d for d in diffs if d["asset"] not in seeded]
+    unexplained = [d["asset"] for d in rebuilt_diffs if d["explained"] is None]
+    if rebuilt and undecided / len(rebuilt) > max_undecided_share:
         problems.append(f"{undecided} explained difference(s) have no decision id: over the allowed share {max_undecided_share}")
-    if expected and len(diffs) / len(expected) > max_difference_share:
-        problems.append(f"{len(diffs)} of {len(expected)} expected assets differ: over the allowed share {max_difference_share}")
+    if rebuilt and len(rebuilt_diffs) / len(rebuilt) > max_difference_share:
+        problems.append(f"{len(rebuilt_diffs)} of {len(rebuilt)} expected assets differ: over the allowed share {max_difference_share}")
     failed = bool(unexplained or stray or uncovered or unexpected or problems)
-    result = "FAIL" if failed else "UNMEASURED" if empty else ("PASS" if cov["scope"] == "all_declared_full" else "PASS_DECLARED_ONLY")
+    measured = len(equal) + sum(1 for d in rebuilt_diffs if d["explained"] is not None)
+    result = ("FAIL" if failed else "UNMEASURED" if (empty or measured == 0)
+              else ("PASS" if cov["scope"] == "all_declared_full" else "PASS_DECLARED_ONLY"))
     return {"schema": DRILL_SCHEMA, "item": "E5.7", "result": result, "commit": commit,
             "tool_sha256": tool_sha256(), "definition": FINGERPRINT_DEFINITION, "expected_assets": expected,
             "production": fingerprint_set(prod), "rehearsal": fingerprint_set(reh), "explained_input": dict(explained),
@@ -1380,7 +1399,7 @@ def compare_fingerprint_sets(production: Any, rehearsal: Any, explained: Any = N
             "explanations_without_difference": stray, "problems": problems,
             "limits": {"max_undecided_share": max_undecided_share, "max_difference_share": max_difference_share,
                        "min_detail_chars": MIN_DETAIL_CHARS},
-            "coverage": cov, "rows": rws, "empty_both_sides": empty}
+            "coverage": cov, "rows": rws, "empty_both_sides": empty, "seeded": seeded_status}
 
 
 def validate_drill(doc: Any, tool_sha: str | None = None, declarations_coverage: Mapping | None = None) -> list[str]:

@@ -73,8 +73,8 @@ MIN_UNDECLARED_REASON_CHARS = 60
 TIMESTAMP_NAIVE = "timestamp without time zone"
 
 TOP_KEYS = ("schema", "fingerprint_definition", "layer", "scope", "source", "groups", "assets")
-GROUP_KEYS = ("tables", "members", "reproducibility", "notes")
-GROUP_REQUIRED = ("tables", "members", "reproducibility")
+GROUP_KEYS = ("tables", "members", "reproducibility", "seeded", "notes")
+GROUP_REQUIRED = ("tables", "members", "reproducibility", "seeded")
 SOURCE_KEYS = ("registry_snapshot", "registry_snapshot_sha256", "schema_dump", "schema_dump_sha256", "code_commit")
 DECLARED_KEYS = ("status", "fingerprint_definition", "scope", "coverage", "reproducibility", "groups", "tables", "not_covered_tables",
                  "not_written_tables", "notes")
@@ -670,6 +670,9 @@ def validate(doc: Any, *, registry: Mapping[str, Mapping] | None = None, schema:
             continue
         if not _closed(g, GROUP_KEYS, GROUP_REQUIRED, gp, probs):
             continue
+        if not isinstance(g["seeded"], bool):
+            probs.append(("bad_seeded", gp, "seeded must be true or false: a SEEDED group is copied from production, not rebuilt, and never counts toward the "
+                                            "rebuilt-equals-source claim"))
         if not _repro_ok(g["reproducibility"]):
             probs.append(("bad_reproducibility", gp, f"reproducibility is a non-empty list of unique values from {REPRODUCIBILITY}; 'deterministic' stands alone"))
         tabs = g["tables"]
@@ -872,11 +875,12 @@ class Declarations:
         for a in self.declared_assets():
             d = self.assets[a]
             if d["tables"]:
-                out[a] = {"kind": "asset", "members": [a], "tables": [t["name"] for t in d["tables"]], "reproducibility": list(d["reproducibility"])}
+                out[a] = {"kind": "asset", "members": [a], "tables": [t["name"] for t in d["tables"]], "reproducibility": list(d["reproducibility"]),
+                          "seeded": False}
         for gid in sorted(self.groups):
             g = self.groups[gid]
             out[self.group_unit(gid)] = {"kind": "group", "members": sorted(g["members"]), "tables": [t["name"] for t in g["tables"]],
-                                         "reproducibility": list(g["reproducibility"])}
+                                         "reproducibility": list(g["reproducibility"]), "seeded": bool(g["seeded"])}
         return out
 
     def expected_assets(self) -> list[str]:
@@ -925,6 +929,10 @@ class Declarations:
                     out.append({"unit": u, "table": t["name"], "columns": list(ed["columns"]), "reference": ed["reference"]})
         return out
 
+    def seeded_units(self) -> list[str]:
+        """Units whose rows are SEEDED from production rather than rebuilt: shown in the drill, never counted toward PASS."""
+        return sorted(u for u, v in self.units().items() if v["seeded"])
+
     def non_deterministic(self) -> dict[str, list[str]]:
         return {u: list(v["reproducibility"]) for u, v in sorted(self.units().items()) if v["reproducibility"] != ["deterministic"]}
 
@@ -935,14 +943,16 @@ class Declarations:
         nd = self.non_deterministic()
         return {"declarations_sha256": self.sha256, "units": self.expected_assets(), "declared": self.declared_assets(), "partial": part,
                 "undeclared": un, "non_deterministic": nd, "groups": {u: v["members"] for u, v in self.units().items() if v["kind"] == "group"},
-                "expected_differences": self.expected_differences(), "scope": "declared_only" if (part or un or nd) else "all_declared_full"}
+                "seeded": self.seeded_units(), "expected_differences": self.expected_differences(),
+                "scope": "declared_only" if (part or un or nd or self.seeded_units()) else "all_declared_full"}
 
     def coverage_report(self) -> dict:
         un = self.undeclared_assets()
         cov = self.drill_coverage()
         return {"definition": FINGERPRINT_DEFINITION, "declarations_sha256": self.sha256, "assets_total": len(self.assets),
                 "declared": self.declared_assets(), "undeclared": un, "partial": self.partial_assets(), "units": cov["units"], "groups": cov["groups"],
-                "reproducibility": cov["non_deterministic"], "expected_differences": cov["expected_differences"], "scope": cov["scope"]}
+                "reproducibility": cov["non_deterministic"], "seeded": cov["seeded"], "expected_differences": cov["expected_differences"],
+                "scope": cov["scope"]}
 
 
 def load_declarations(path: str | Path = DEFAULT_DECLARATIONS, *, registry: Mapping | str | Path | None = DEFAULT_REGISTRY,

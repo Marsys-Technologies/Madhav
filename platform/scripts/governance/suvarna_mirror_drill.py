@@ -32,7 +32,8 @@ Usage (also reachable as `suvarna_rehearsal.py drill ...`):
   suvarna_mirror_drill.py validate-baseline PATH
   suvarna_mirror_drill.py rehearsal-fingerprints --url URL --policy rehearsal|disposable --stage baseline|after_rebuild --as-of YYYY-MM-DD --commit SHA --out PATH
   suvarna_mirror_drill.py compare --production P --rehearsal P --commit SHA [--explained E] --out PATH
-  suvarna_mirror_drill.py status [--baseline P] [--production P] [--rehearsal P] [--build-record P]
+  suvarna_mirror_drill.py status [--baseline P] [--production P] [--rehearsal P] [--build-record P]      (prints `build_record_expected`)
+  suvarna_mirror_drill.py build-record-spec
 Exit: 0 ok · 2 refused / invalid · 4 comparison FAIL · 5 error.
 """
 from __future__ import annotations
@@ -95,6 +96,34 @@ OWNERSHIP_PROBES = (
     {"asset": "bg_sarvatobhadra_grid", "sql": "SELECT count(*) FROM bg_sarvatobhadra_grid",
      "outcome": "0 rows, registered deliberately empty (ADJUDICATION-11): stays UNDECLARED"},
 )
+
+
+LIMITS_TEXT = (
+    "Wall-clock exclusions are checked at STATEMENT level: the check accepts a `wall_clock_timestamp` exclusion on an unusual column name when the "
+    "cited statement holds now()/CURRENT_TIMESTAMP/datetime.now(), but it cannot tell WHICH column a clock call feeds. A column-level check is post-J1.",
+    "SEEDED units (copied from production, not rebuilt) are shown but never counted toward PASS or PASS_DECLARED_ONLY; a drill whose only equal units "
+    "are seeded reads UNMEASURED; a seeded unit that differs is reported as a difference but does not by itself fail the rebuilt-equals-source claim.",
+    "A bare PASS is reserved for full coverage: every L0 asset declared, full, deterministic and rebuilt. PASS_DECLARED_ONLY says the verdict covers "
+    "the declared, non-seeded units only; the undeclared, partial, non-deterministic and seeded names are listed next to it.",
+)
+
+BUILD_RECORD_SPEC = {
+    "flag": "--build-record PATH  (drill status; a JSON file, strict: no duplicate keys, no NaN/Infinity)",
+    "schema": "suvarna-build-record/v1",
+    "purpose": "lets `drill status` verify the rehearsal rebuild receipt {run_id, orchestrator_commit} of the rehearsal fingerprint file; without it the "
+               "rebuild step reads CLAIMED_UNVERIFIED",
+    "required_fields": {
+        "schema": "the string suvarna-build-record/v1",
+        "run_id": "the orchestrator run id: a canonical lower-case RFC 4122 UUID, equal to the receipt's run_id (not nil, not all-zero)",
+        "state": "the string completed (the build_runs state of that run)",
+        "orchestrator_commit": "40-hex commit the run's orchestrator code was at, equal to the receipt's orchestrator_commit",
+        "assets": "list of {asset_id, state}: one entry per asset of the run (a read-only export of its build_run_assets rows); "
+                  "EVERY declared asset (see `drill expected`, `declared`) must appear with state complete",
+    },
+    "closed": "no other top-level key and no other key in an assets entry",
+    "shape_example": {"schema": "suvarna-build-record/v1", "run_id": "<uuid>", "state": "completed", "orchestrator_commit": "<40-hex>",
+                      "assets": [{"asset_id": "bg_ephemeris", "state": "complete"}]},
+}
 
 
 class MirrorError(sr.RehearsalError):
@@ -755,11 +784,38 @@ def build_drill(production: Mapping, rehearsal: Mapping, decls: fd.Declarations,
                                                     "the unit did not differ: if the referenced change has landed, remove this record")}
                                           for e in decls.expected_differences()]
     cov["empty_both_sides"] = list(drill["empty_both_sides"])
+    for u, st in drill["seeded"].items():
+        unit_status[u] = {"status": f"seeded:{st}", "members": decls.members(u)}
+    cov["seeded_status"] = dict(drill["seeded"])
     cov["as_of"] = production["as_of"]
     cov["result"] = drill["result"]
+    cov["headline"] = coverage_headline(drill["result"], drill["coverage"], len(decls.assets), drill["seeded"])
+    cov["limits"] = list(LIMITS_TEXT)
     cov["note"] = "undeclared assets are NOT in expected_assets: they are reported here and in the drill's coverage block, not compared"
     return drill, cov
 
+
+def build_record_spec(decls: fd.Declarations) -> dict:
+    """Exactly what `drill status --build-record PATH` expects (the orchestrator-side export of the rehearsal run): the path argument, the schema id,
+    every required field and the declared assets that must all appear complete."""
+    return {**copy.deepcopy(BUILD_RECORD_SPEC), "declared_assets_that_must_be_complete": decls.declared_assets()}
+
+
+def coverage_headline(result: str, cov: Mapping, assets_total: int, seeded_status: Mapping | None = None) -> str:
+    """The one-paragraph statement printed next to the result: the numbers AND the names behind them."""
+    part, seeded, nd = cov["partial"], cov["seeded"], cov["non_deterministic"]
+    undeclared = sorted(cov["undeclared"])
+    status = seeded_status or {}
+    part_txt = "; ".join("%s (not covered: %s)" % (a, ", ".join(t)) for a, t in sorted(part.items()))
+    nd_txt = ", ".join("%s %s" % (u, v) for u, v in sorted(nd.items()))
+    seeded_txt = ", ".join("%s [%s]" % (u, status.get(u, "not compared")) for u in seeded)
+    bits = ["%s: %d of %d L0 assets declared (%d full, %d partial%s)" % (result, len(cov["declared"]), assets_total, len(cov["declared"]) - len(part),
+                                                                       len(part), (": " + part_txt) if part else ""),
+            "%d undeclared%s" % (len(undeclared), (": " + ", ".join(undeclared)) if undeclared else ""),
+            "%d non-deterministic%s" % (len(nd), (": " + nd_txt) if nd else ""),
+            "%d SEEDED (shown, not counted toward the verdict)%s" % (len(seeded), (": " + seeded_txt) if seeded else ""),
+            "%d comparison units, %d in the rebuilt-equals-source claim" % (len(cov["units"]), len(cov["units"]) - len(seeded))]
+    return "; ".join(bits) + "."
 
 def drill_status(decls: fd.Declarations, *, baseline: Any = None, production: Any = None, rehearsal: Any = None, build_record: Any = None) -> dict:
     """Which steps are measured and which are not. A step is MEASURED only when this module recomputed it from the declarations; a file that
@@ -783,9 +839,13 @@ def drill_status(decls: fd.Declarations, *, baseline: Any = None, production: An
                                                                                            "verified_against": BUILD_RECORD_SCHEMA}})
         else:
             steps.append({"step": "rehearsal_l0_rebuild", "state": "CLAIMED_UNVERIFIED", "reason": NEEDS["rebuild"],
-                          "detail": {"run_id": rehearsal["rebuild"]["run_id"], "unverified_because": rprob}})
+                          "detail": {"run_id": rehearsal["rebuild"]["run_id"], "unverified_because": rprob,
+                                     "expects": f"--build-record PATH holding a {BUILD_RECORD_SCHEMA} (see build_record_expected)"}})
     else:
-        steps.append({"step": "rehearsal_l0_rebuild", "state": "UNMEASURED", "reason": NEEDS["rebuild"], "detail": {"problems": reh_p} if reh_p else {}})
+        steps.append({"step": "rehearsal_l0_rebuild", "state": "UNMEASURED", "reason": NEEDS["rebuild"],
+                      "detail": {**({"problems": reh_p} if reh_p else {}),
+                                 "expects": f"a rehearsal after_rebuild fingerprint file with a rebuild receipt, then --build-record PATH holding a {BUILD_RECORD_SCHEMA} "
+                                            "(see build_record_expected)"}})
     prod_p = validate_fingerprint_output(production, decls, side="production") if production is not None else None
     if production is not None and not prod_p:
         steps.append({"step": "production_fingerprints", "state": "SHAPE_CHECKED",
@@ -802,7 +862,7 @@ def drill_status(decls: fd.Declarations, *, baseline: Any = None, production: An
     else:
         steps.append({"step": "as_of_pin", "state": "UNMEASURED", "reason": NEEDS["as_of"], "detail": {"rolling_horizon_units": rolling}})
     steps.append({"step": "ss_decisions", "state": "UNMEASURED", "reason": NEEDS["decisions"]})
-    return {"result": "UNMEASURED", "steps": steps}
+    return {"result": "UNMEASURED", "steps": steps, "build_record_expected": build_record_spec(decls)}
 
 
 # ═════════════════════════ CLI ═════════════════════════
@@ -857,6 +917,8 @@ def main(argv: Sequence[str] | None = None) -> int:
     c.add_argument("--explained")
     c.add_argument("--out", required=True)
     c.add_argument("--declarations", default=str(fd.DEFAULT_DECLARATIONS))
+    br = sub.add_parser("build-record-spec")
+    br.add_argument("--declarations", default=str(fd.DEFAULT_DECLARATIONS))
     st = sub.add_parser("status")
     st.add_argument("--baseline")
     st.add_argument("--production")
@@ -920,11 +982,15 @@ def main(argv: Sequence[str] | None = None) -> int:
             write_json(drill, a.out)
             cov_path = str(a.out) + ".coverage.json"
             write_json(cov, cov_path)
-            _print({"result": drill["result"], "scope": drill["coverage"]["scope"], "differences": len(drill["differences"]),
+            _print({"result": drill["result"], "headline": cov["headline"], "scope": drill["coverage"]["scope"], "differences": len(drill["differences"]),
                     "unexplained": drill["unexplained"], "empty_both_sides": drill["empty_both_sides"], "coverage_report": cov_path,
-                    "undeclared": sorted(cov["undeclared"]), "partial": sorted(cov["partial"]), "groups": cov["groups"],
-                    "expected_differences": cov["expected_differences_status"]})
+                    "declared": drill["coverage"]["declared"], "undeclared": sorted(cov["undeclared"]), "partial": sorted(cov["partial"]),
+                    "seeded": drill["seeded"], "non_deterministic": drill["coverage"]["non_deterministic"], "groups": cov["groups"],
+                    "expected_differences": cov["expected_differences_status"], "limits": cov["limits"]})
             return 0 if drill["result"] in sr.RESULTS_PASS else 4
+        if a.cmd == "build-record-spec":
+            _print(build_record_spec(decls))
+            return 0
         if a.cmd == "status":
             _print(drill_status(decls, baseline=_rd(a.baseline) if a.baseline else None, production=_rd(a.production) if a.production else None,
                                 rehearsal=_rd(a.rehearsal) if a.rehearsal else None, build_record=_rd(a.build_record) if a.build_record else None))
