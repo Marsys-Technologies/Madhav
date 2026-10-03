@@ -687,3 +687,30 @@ def test_gate_log_line_format_is_exactly_the_documented_one(monkeypatch, caplog)
     r_panchanga(monkeypatch, CANON_UUID, True, "writer")
     assert [r.getMessage() for r in caplog.records if r.getMessage().startswith("FORENSIC gate ga_panchanga")] == [
         "FORENSIC gate ga_panchanga executed passed=True chart=canonical"]
+
+
+# ── _verify_vimshottari's verdict is a table/constant check, never the two-pass tier ──────────────────
+# DASHA_TIER_CHECK P2 / CLAUDE.md N.8: nothing in _verify_vimshottari is a second implementation (the duration loop ends in a
+# bare `pass`; the native-anchor check compares ONE stored row to the constant "Jupiter" and bypasses two_pass_verdict). Its
+# verdict for the native is therefore CLASSICAL_MATCH. The stored vimshottari tier is NOT this value (it comes from
+# _apply_vimshottari_independent_verification), so no column depends on it; it reaches only logs + the returned summary.
+
+def _vim_l1_rows(lord: str) -> list[dict]:
+    return [{"level_n": 1, "start_date": date.min, "end_date": date.max, "lord_graha": lord, "duration_days": 6000}]
+
+
+@pytest.mark.parametrize("chart_id", [CANON_UUID, CANON], ids=["uuid", "str"])
+def test_verify_vimshottari_native_verdict_is_classical_match_not_two_pass(chart_id):
+    verdict = gdw._verify_vimshottari(_vim_l1_rows("Jupiter"), 325.0, chart_id)
+    assert verdict == "classical_match" == gdw.CLASSICAL_MATCH
+    assert verdict != "two_pass_verified"
+
+
+@pytest.mark.parametrize("chart_id", [CANON_UUID, CANON], ids=["uuid", "str"])
+def test_verify_vimshottari_wrong_native_anchor_still_halts(chart_id):
+    with pytest.raises(ValueError, match="FORENSIC HALT"):
+        gdw._verify_vimshottari(_vim_l1_rows("Saturn"), 325.0, chart_id)
+
+
+def test_verify_vimshottari_non_native_chart_is_unverified_default_and_ungated():
+    assert gdw._verify_vimshottari(_vim_l1_rows("Saturn"), 100.0, OTHER_UUID) == "single" == gdw.UNVERIFIED_DEFAULT

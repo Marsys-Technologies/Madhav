@@ -45,7 +45,6 @@ from brahmagyan.graha_vocabulary import to_title
 from brahmagyan.verification_vocab import (
     CLASSICAL_MATCH,
     DIVERGENT_FLAGGED,
-    TWO_PASS_VERIFIED,
     UNVERIFIED_DEFAULT,
     entry_for as _vocab_entry_for,
 )
@@ -809,13 +808,25 @@ def _karaka_provenance_suffix(role: str | None, karakas: list[str]) -> str:
 def _verify_vimshottari(rows: list[dict], moon_sid: float,
                         chart_id: str = CANONICAL_CHART_ID) -> str:
     """
-    Two-pass verification for Vimshottari:
-    Pass 1: algebraic — sum of all L1 years ≈ N × 120y (within 1 day) [structural,
-            any chart].
-    Pass 2: FORENSIC — the period containing the NATIVE birth date (1984-02-05)
-            must have lord = Jupiter. Native-anchored; run only for the native
-            chart (Phase 3B). A non-native chart has its own birth date + lord.
-    Returns 'two_pass_verified' or raises ValueError.
+    Anchor/table check for Vimshottari (NOT a second implementation).
+
+    What it does, honestly:
+    - Native-anchor check (FORENSIC): the L1 period containing the NATIVE birth date
+      (1984-02-05) must have lord = Jupiter, i.e. one stored row is compared to the
+      benchmark constant FORENSIC_VIMSHOTTARI_STARTING_LORD. Run only for the native
+      chart; raises ValueError (halts the substep) on disagreement or when no L1 row
+      covers the birth date.
+    - Duration loop: compares each L1 period's own duration_days with the same
+      VIMSHOTTARI_YEARS table arithmetic that produced it; its tolerance branch ends in
+      a bare `pass`, so it can never fail and contributes no evidence.
+
+    Returns CLASSICAL_MATCH for the native chart (a comparison against a table/constant
+    that could have raised and did not) and UNVERIFIED_DEFAULT for any other chart (nothing
+    was contradicted). It never returns the two-pass tier: a second implementation compared
+    with a tolerance is `_apply_vimshottari_independent_verification` +
+    `_vimshottari_independent_verifier`, which is the only producer of the stored
+    vimshottari tier. This return value is not stored on any row (it reaches only the
+    INFO logs and the returned summary dict).
     """
     l1_rows = [r for r in rows if r["level_n"] == 1]
     if not l1_rows:
@@ -838,11 +849,16 @@ def _verify_vimshottari(rows: list[dict], moon_sid: float,
                 f"Moon nakshatra must be Purva Bhadrapada (lord=Jupiter)."
             )
 
-    # §6.18 EARNEDNESS RULING (2026-08-02): Pass 2 above is the ONLY check here that can fail
-    # for a reason other than a bug in itself, and it runs for the native chart only. Pass 1
-    # below cannot fail at all — its tolerance comparison ends in a bare `pass`. So a non-native
-    # chart reaching this point has had NOTHING contradicted, and must not claim otherwise.
-    verdict = TWO_PASS_VERIFIED if str(chart_id) == CANONICAL_CHART_ID else UNVERIFIED_DEFAULT
+    # §6.18 EARNEDNESS RULING (2026-08-02): the native-anchor check above is the ONLY check here
+    # that can fail for a reason other than a bug in itself, and it runs for the native chart
+    # only. The duration loop below cannot fail at all — its tolerance comparison ends in a bare
+    # `pass`. So a non-native chart reaching this point has had NOTHING contradicted, and must
+    # not claim otherwise.
+    # SS ruling (S-L1, DASHA_TIER_CHECK P2, CLAUDE.md N.8): the native-anchor check compares ONE
+    # stored row to a constant, which is a table/constant comparison — CLASSICAL_MATCH at most,
+    # never the two-pass tier (nothing here is a second implementation, and this literal does
+    # not go through two_pass_verdict).
+    verdict = CLASSICAL_MATCH if str(chart_id) == CANONICAL_CHART_ID else UNVERIFIED_DEFAULT
 
     # Pass 1: algebraic — each L1 period should have correct duration
     for row in l1_rows:
