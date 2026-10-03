@@ -64,25 +64,41 @@ describe('remote CLI runner', () => {
       .rejects.toMatchObject({ code: 'AI_CLI_TIMEOUT' })
   })
 
-  it('requires a confirmed remote identity and only executes a model sealed by validation', async () => {
+  it('rejects unknown models after safe catalogue refresh and only executes a confirmed advertised model', async () => {
     const operations: string[] = []
+    const executionBodies: Array<Record<string, unknown>> = []
+    const confirmationBodies: Array<Record<string, unknown>> = []
     const fetchImpl = vi.fn(async (_input: URL | RequestInfo, init?: RequestInit) => {
       const body = JSON.parse(String(init?.body))
       operations.push(body.operation)
-      if (body.operation === 'confirm') return Response.json({ ok: true })
+      if (body.operation === 'inspect') return Response.json(identity)
+      if (body.operation === 'catalog') return Response.json({ models: [
+        { modelId: 'gpt-6-sol', displayName: 'GPT-6 Sol', supportedEfforts: ['medium'],
+          defaultEffort: 'medium', isCatalogDiscovered: true },
+      ] })
+      if (body.operation === 'confirm') {
+        confirmationBodies.push(body)
+        return Response.json({ ok: true })
+      }
       if (body.operation === 'execute') {
+        executionBodies.push(body)
         return Response.json({ stdout: '{"type":"turn.completed","usage":{}}', exitCode: 0, signal: null })
       }
       throw new Error(`unexpected ${body.operation}`)
     }) as unknown as typeof fetch
     const runner = createRemoteCliRunner({ endpoint: 'http://10.160.0.2:8787', token, fetchImpl })
+    await runner.runModelCatalogValidation('owner', 'codex')
     await runner.confirmValidation('codex', identity, '0.158.0', [null, 'gpt-6-sol'])
 
     await expect(runner.runExecution('owner', 'codex', { modelId: 'not-approved', stdin: 'prompt' }))
       .rejects.toMatchObject({ code: 'AI_MODEL_UNAVAILABLE' })
-    await expect(runner.runExecution('owner', 'codex', { modelId: 'gpt-6-sol', stdin: 'prompt' }))
+    await expect(runner.runExecution('owner', 'codex', { modelId: 'gpt-6-sol', stdin: 'prompt', effort: 'medium' }))
       .resolves.toMatchObject({ exitCode: 0 })
-    expect(operations).toEqual(['confirm', 'execute'])
+    expect(executionBodies).toEqual([expect.objectContaining({ modelId: 'gpt-6-sol', effort: 'medium' })])
+    expect(confirmationBodies.map(body => body.modelIds)).toEqual([
+      [null, 'gpt-6-sol'], [null, 'gpt-6-sol'],
+    ])
+    expect(operations).toEqual(['catalog', 'confirm', 'inspect', 'catalog', 'inspect', 'confirm', 'execute'])
   })
 
   it('probes an exact remote CLI model before admitting it to execution', async () => {

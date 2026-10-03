@@ -205,13 +205,14 @@ def test_carr_checks_is_empty_when_nothing_is_declared_and_three_independent_rec
 
 def test_no_carriage_is_registered_for_d1_d2_d3_only():
     for c in CHECKS:
-        assert ac.NA_CAUSES[c] == ("no-carriage",)
+        assert ac.NA_CAUSES[c] == ("no-carriage", "not-the-declared-carriage", "ratified_judgment")     # S2 added the two declaration-keyed causes
     assert "Carr.detector" not in ac.NA_CAUSES
     assert [k for k, v in ac.NA_CAUSES.items() if "no-carriage" in v] == list(CHECKS)
 
 
-def test_na_rule_decisions_stays_empty():
-    assert ac.NA_RULE_DECISIONS == {}
+def test_no_carr_rule_is_declared():
+    # until terminal_by_construction is declared (N-22 row 16); S2 declares only the declaration-keyed not-the-declared-carriage rules
+    assert not [i for i in ac.NA_RULE_DECISIONS if i.startswith("Carr.") and not i.endswith("#measured:not-the-declared-carriage")]
 
 
 def test_cause_keyed_rule_ids_validate_only_for_d1_d2_d3(monkeypatch):
@@ -394,7 +395,9 @@ def test_measure_candidate_flows_through_the_rollup_as_no_detector_undecided(mon
     monkeypatch.setattr(ac, "NA_RULE_DECISIONS", {f"{c}#measured:no-carriage": "SS-test" for c in CHECKS})
     by = {c["criterion"]: c for c in ac.rollup_asset("L0", ms["t"])["Carr"]["checks"]}
     assert all(by[c]["v"] == NA for c in CHECKS)
-    assert by["Carr.detector"]["v"] != NA                 # the retired-later meta check is untouched here (packet i)
+    # E6 item (i): the meta-check is retired, so Carr is exactly D1-D3 and the declared candidates alone decide the cell
+    assert "Carr.detector" not in by and sorted(by) == sorted(CHECKS)
+    assert ac.rollup_asset("L0", ms["t"])["Carr"]["v"] == NA
 
 
 def test_a_candidate_does_not_close_a_ledger_gap_while_the_rule_is_undecided():

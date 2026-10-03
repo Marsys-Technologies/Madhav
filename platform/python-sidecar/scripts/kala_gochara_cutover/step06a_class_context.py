@@ -81,6 +81,7 @@ if str(SIDECAR) not in sys.path:
     sys.path.insert(0, str(SIDECAR))
 
 from services.gochara_grammar import dasha_data as DD  # noqa: E402
+from services.gochara_grammar import read_tier_policy as RTP  # noqa: E402
 from services.gochara_grammar.resonance_map import fetch_resonance_targets  # noqa: E402
 from services.gochara_intensity import enrichment, valence  # noqa: E402
 from services.gochara_intensity import permission as perm  # noqa: E402
@@ -282,7 +283,14 @@ def load_pinned_dasha_periods(conn, chart_id: str, systems: list[str]) -> tuple[
     contract["rows_excluded_by_build_pin"] = len(raw_vim) - len(
         [r for r in raw_vim if str(r.get("build_id")) == str(contract["build_id"])])
     others = [s for s in systems if s != "vimshottari"]
-    rest = DD.fetch_dasha_periods_multilevel(conn, chart_id, systems=others) if others else []
+    # the non-pinned DR-14 systems only VOTE in the plurality: read under the
+    # per-(system, level) tier policy (read_tier_policy.LEVEL_TIER_POLICY —
+    # identical to the strict read on today's rows; the relabelled level-1 rows
+    # of mudda / narayana still come back, each keeping its own tier). The
+    # vimshottari reads above stay STRICT (§4.0).
+    rest = (DD.fetch_dasha_periods_multilevel(
+        conn, chart_id, systems=others, level_tier_policy=True)
+        if others else [])
     return list(vim) + list(rest), contract
 
 
@@ -300,6 +308,59 @@ def _jsonable_period(p: dict) -> dict:
         else:
             out[k] = str(v)
     return out
+
+
+def dasha_availability(conn, chart_id: str, periods: list[dict]) -> dict:
+    """{system_id: {state, reason, rows_read, observed_rows_by_level_tier}} for
+    every DR-14 dasha system. `unavailable` = the read returned NO row for it:
+    either none are stored, or every stored row was refused by the tier policy
+    (the observed level × tier counts are stated, from one read-only COUNT).
+    Distinct from `inactive` (rows read, none covering the instant)."""
+    read = {}
+    for p in periods:
+        read[p.get("system_id")] = read.get(p.get("system_id"), 0) + 1
+    observed: dict[str, dict[str, int]] = {}
+    try:
+        with savepoint_scope(conn, "dasha_availability"):
+            cur = conn.execute(
+                "SELECT system_id, level_n, verification_pass_status, count(*) AS n"
+                " FROM chart_dashas WHERE chart_id = %s AND ayanamsha_id = %s"
+                " AND system_id = ANY(%s) AND level_n = ANY(%s)"
+                " GROUP BY 1, 2, 3 ORDER BY 1, 2, 3",
+                (chart_id, AV_DONOR_AYANAMSHA, list(perm.DASHA_SYSTEM_IDS),
+                 list(DD.DEFAULT_LEVELS)))
+            for r in cur.fetchall():
+                sid, lvl, tier, n = (r if not isinstance(r, dict) else
+                                     (r["system_id"], r["level_n"],
+                                      r["verification_pass_status"], r["n"]))
+                observed.setdefault(sid, {})[f"L{lvl}/{tier}"] = int(n)
+    except Exception as exc:  # noqa: BLE001 — a failed COUNT must not fail the build
+        logger.info("[step06a] dasha availability count failed: %s", exc)
+    out = {}
+    for sid in perm.DASHA_SYSTEM_IDS:
+        if read.get(sid):
+            out[sid] = {"state": "available", "reason": None,
+                        "rows_read": read[sid],
+                        "observed_rows_by_level_tier": observed.get(sid)}
+        else:
+            out[sid] = {"state": "unavailable",
+                        "reason": ("all_stored_rows_refused_by_tier_policy"
+                                   if observed.get(sid) else "no_rows_stored"),
+                        "rows_read": 0,
+                        "observed_rows_by_level_tier": observed.get(sid)}
+    return out
+
+
+def _rows_by_system_tier(periods: list[dict]) -> dict:
+    """{system_id: {tier: n}} of the rows actually emitted — a system absent
+    here had NO readable row (the consumer reports it inactive); the tier of
+    each emitted row is stated, never implied verified."""
+    out: dict[str, dict[str, int]] = {}
+    for p in periods:
+        t = p.get("verification_pass_status")
+        d = out.setdefault(str(p.get("system_id")), {})
+        d[str(t)] = d.get(str(t), 0) + 1
+    return {k: dict(sorted(v.items())) for k, v in sorted(out.items())}
 
 
 def _to_jd(ts) -> float:
@@ -326,7 +387,10 @@ def fetch_class_contact_instants(conn, chart_id: str, generation: str):
         (chart_id, generation)).fetchall()
     by_class: dict[str, list[float]] = {}
     null_exact = 0
-    for cls, t_exact in rows:
+    for row in rows:
+        # dict/tuple row agnostic (ASTRA v1.1 A1): the runner hands dict rows
+        cls, t_exact = ((row["event_class"], row["t_exact"])
+                        if isinstance(row, dict) else (row[0], row[1]))
         if t_exact is None:
             null_exact += 1
             continue
@@ -396,6 +460,73 @@ def build_class_context(swe, conn, chart_id: str, event_class: str,
     }
 
 
+class NoContactsError(Exception):
+    """No candidate contacts joined to resolved map rows (exit 3 at the CLI)."""
+
+
+def build_all_class_contexts(swe, conn, chart_id: str, generation: str):
+    """The whole class-context pass on a CALLER-SUPPLIED connection: per event
+    class, the union-semantics permission context the windows projection
+    consumes. Returns (contexts, omitted, null_exact). READ-ONLY — never
+    commits/rolls back/closes `conn`, never opens its own. Raises
+    NoContactsError when no candidate contacts join (the CLI's exit 3)."""
+    by_class, null_exact = fetch_class_contact_instants(
+        conn, chart_id, generation)
+    if not by_class:
+        raise NoContactsError(
+            f"no candidate contacts joined to resolved map rows "
+            f"for chart {chart_id} generation {generation!r} "
+            "— run step06_candidate_build.py first")
+
+    # The caller's transaction mode governs: under the CLI's autocommit
+    # connection savepoint_scope is a no-op passthrough (the _dbutil
+    # docstring's recommended shape for this engine's many defensive-catch
+    # queries); under the governed writer the orchestrator's per-substep
+    # transaction carries them.
+    # T0-6: MD/AD/PD (levels 1-3) at the §4.0 contract tier; a duplicate
+    # CONFLICT raises loudly (DashaReadConflict propagates — never
+    # silently served), a DB-shape surprise yields the honest [].
+    # ASTRA v1.2 P1-1: the build pin is selected from a RAW read and
+    # applied BEFORE canonicalization (load_pinned_dasha_periods).
+    dasha_periods, dasha_contract = load_pinned_dasha_periods(
+        conn, chart_id, list(perm.DASHA_SYSTEM_IDS))
+
+    # T0-7 / O-TV-3 / D-SPECS C4: the AV donor matrix is read once as a
+    # per-key set and emitted at the document's top level; it is NOT a
+    # class-level unresolved operand (P5c alone consumes it).
+    av_donor_matrix = fetch_av_donor_matrix(conn, chart_id)
+    unresolved_valence: list[str] = []
+    # ASTRA P1-2: the frozen C5 licence needs the chart operands and the
+    # §4.0 read pin; both are read once and emitted at the top level.
+    chart_operands = fetch_chart_operands(conn, chart_id)
+
+    contexts: dict[str, dict] = {}
+    omitted: list[dict] = []
+    for cls in sorted(by_class):
+        entry = build_class_context(
+            swe, conn, chart_id, cls, sorted(by_class[cls]),
+            dasha_periods, unresolved_valence)
+        if entry is None:
+            omitted.append({
+                "event_class": cls,
+                "reason": "targets did not resolve "
+                          "(fetch_resonance_targets/enrich_targets empty) "
+                          "— omitted, never fabricated",
+                "candidate_instants": len(by_class[cls]),
+            })
+            continue
+        contexts[cls] = entry
+    # The per-instant payload step06b consumes (T0-6): chart-level rows,
+    # emitted once; per-class entries stay self-describing otherwise.
+    contexts["_permission_mode"] = PERMISSION_MODE
+    contexts["_dasha_periods"] = [_jsonable_period(p) for p in dasha_periods]
+    contexts["_av_donor_matrix"] = av_donor_matrix
+    contexts["_chart"] = chart_operands
+    contexts["_dasha_read_contract"] = dasha_contract
+    contexts["_dasha_availability"] = dasha_availability(conn, chart_id, dasha_periods)
+    return contexts, omitted, null_exact
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = step_parser(6, __doc__)
     parser.add_argument("--chart-id", required=True)
@@ -408,58 +539,24 @@ def main(argv: list[str] | None = None) -> int:
 
     conn = connect(args.dsn, step=6, autocommit=True)
     try:
-        by_class, null_exact = fetch_class_contact_instants(
-            conn, args.chart_id, args.generation)
-        if not by_class:
-            print(f"ERROR: no candidate contacts joined to resolved map rows "
-                  f"for chart {args.chart_id} generation {args.generation!r} "
-                  "— run step06_candidate_build.py first", file=sys.stderr)
-            return 3
-
         # autocommit: savepoint_scope is a no-op passthrough there and each
         # defensive read is its own transaction (the _dbutil docstring's
         # recommended shape for this engine's many defensive-catch queries).
-        # T0-6: MD/AD/PD (levels 1-3) at the §4.0 contract tier; a duplicate
-        # CONFLICT raises loudly (DashaReadConflict propagates — never
-        # silently served), a DB-shape surprise yields the honest [].
-        # ASTRA v1.2 P1-1: the build pin is selected from a RAW read and
-        # applied BEFORE canonicalization (load_pinned_dasha_periods).
-        dasha_periods, dasha_contract = load_pinned_dasha_periods(
-            conn, args.chart_id, list(perm.DASHA_SYSTEM_IDS))
-
-        # T0-7 / O-TV-3 / D-SPECS C4: the AV donor matrix is read once as a
-        # per-key set and emitted at the document's top level; it is NOT a
-        # class-level unresolved operand (P5c alone consumes it).
-        av_donor_matrix = fetch_av_donor_matrix(conn, args.chart_id)
-        unresolved_valence: list[str] = []
-        # ASTRA P1-2: the frozen C5 licence needs the chart operands and the
-        # §4.0 read pin; both are read once and emitted at the top level.
-        chart_operands = fetch_chart_operands(conn, args.chart_id)
-
-        contexts: dict[str, dict] = {}
-        omitted: list[dict] = []
-        for cls in sorted(by_class):
-            entry = build_class_context(
-                swe, conn, args.chart_id, cls, sorted(by_class[cls]),
-                dasha_periods, unresolved_valence)
-            if entry is None:
-                omitted.append({
-                    "event_class": cls,
-                    "reason": "targets did not resolve "
-                              "(fetch_resonance_targets/enrich_targets empty) "
-                              "— omitted, never fabricated",
-                    "candidate_instants": len(by_class[cls]),
-                })
-                continue
-            contexts[cls] = entry
-        # The per-instant payload step06b consumes (T0-6): chart-level rows,
-        # emitted once; per-class entries stay self-describing otherwise.
-        wired_classes = sorted(contexts)
-        contexts["_permission_mode"] = PERMISSION_MODE
-        contexts["_dasha_periods"] = [_jsonable_period(p) for p in dasha_periods]
-        contexts["_av_donor_matrix"] = av_donor_matrix
-        contexts["_chart"] = chart_operands
-        contexts["_dasha_read_contract"] = dasha_contract
+        try:
+            contexts, omitted, null_exact = build_all_class_contexts(
+                swe, conn, args.chart_id, args.generation)
+        except NoContactsError as exc:
+            print(f"ERROR: {exc}", file=sys.stderr)
+            return 3
+        # The chart-level payloads live on the document's top level (the
+        # core emits them); the CLI report reads them back out.
+        wired_classes = sorted(k for k in contexts if not k.startswith("_"))
+        dasha_contract = contexts["_dasha_read_contract"]
+        chart_operands = contexts["_chart"]
+        av_donor_matrix = contexts["_av_donor_matrix"]
+        unresolved_valence = sorted({
+            op for cls, entry in contexts.items() if not cls.startswith("_")
+            for op in entry.get("valence_unresolved_operands", [])})
     finally:
         conn.close()
 
@@ -477,7 +574,14 @@ def main(argv: list[str] | None = None) -> int:
         "dasha_periods_emitted": len(contexts.get("_dasha_periods", [])),
         "dasha_levels": list(DD.DEFAULT_LEVELS),
         "dasha_read_tier": DD.READ_CONTRACT_TIER,
+        "dasha_read_tier_policy": {
+            "default": sorted(RTP.STRICT_TIERS),
+            "per_system_level": {f"{s}/L{l}": sorted(t)
+                                 for (s, l), t in sorted(RTP.LEVEL_TIER_POLICY.items())}},
+        "dasha_rows_by_system_tier": _rows_by_system_tier(
+            contexts.get("_dasha_periods", [])),
         "dasha_read_contract": dasha_contract,
+        "dasha_availability": contexts["_dasha_availability"],
         "chart_operands_missing": chart_operands["operands_missing"],
         "valence_unresolved_operands": unresolved_valence,
         "av_donor_matrix": {k: v for k, v in av_donor_matrix.items()

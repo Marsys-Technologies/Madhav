@@ -22,6 +22,8 @@ from datetime import datetime, timezone
 from typing import Optional
 
 from brahmagyan.verification_vocab import TWO_PASS_VERIFIED
+from services.gochara_grammar.read_tier_policy import (
+    HONEST_COMPUTED_TIERS, row_tier_accepted, tier_accepted)
 
 logger = logging.getLogger(__name__)
 
@@ -176,6 +178,7 @@ def fetch_dasha_periods_multilevel(
     tier: str = READ_CONTRACT_TIER,
     build_id: Optional[str] = None,
     canonicalize: bool = True,
+    level_tier_policy: bool = False,
 ) -> list[dict]:
     """§4.0 multi-level (MD/AD/PD) read of `chart_dashas`, with parent
     linkage preserved (`parent_row_id`) and the contract's duplicate rules
@@ -194,6 +197,15 @@ def fetch_dasha_periods_multilevel(
     Pinning happens IN THE QUERY, before any duplicate handling (ASTRA v1.1
     P1-2): ayanāṃśa and tier always (a NULL tier never matches the equality
     predicate), build when `build_id` is given (a NULL build never matches).
+
+    TIER. The default is the STRICT contract tier (`tier`, equality) — what
+    the vimshottari build pin and the '5.0' §4.0 read require, unchanged.
+    `level_tier_policy=True` applies read_tier_policy.LEVEL_TIER_POLICY per
+    (system, level): the listed rows (mudda / narayana level 1) are read at
+    any honestly emitted computed tier and keep their own
+    `verification_pass_status`; EVERY other (system, level) stays strict, so
+    the row set read on today's data is identical. Floored / divergent /
+    pending / unknown / NULL are refused either way.
     The duplicate rules are `canonicalize_multilevel_rows` — identical
     collapse, parent-alias canonicalization, sibling `index`, and the
     `(level, parent, index)` overlap conflict.
@@ -208,9 +220,14 @@ def fetch_dasha_periods_multilevel(
               FROM chart_dashas
              WHERE chart_id = %s AND ayanamsha_id = %s
                AND system_id = ANY(%s) AND level_n = ANY(%s)
-               AND verification_pass_status = %s
+               AND verification_pass_status = {tier_pred}
     """
-    params: list = [chart_id, ayanamsha_id, want_systems, list(levels), tier]
+    if not level_tier_policy:
+        tier_pred, tier_param = "%s", tier
+    else:  # superset pre-filter; the per-(system, level) policy is applied below
+        tier_pred, tier_param = "ANY(%s)", sorted(HONEST_COMPUTED_TIERS | {tier})
+    sql = sql.replace("{tier_pred}", tier_pred)
+    params: list = [chart_id, ayanamsha_id, want_systems, list(levels), tier_param]
     if build_id is not None:
         sql += "           AND build_id = %s\n"
         params.append(str(build_id))
@@ -226,8 +243,16 @@ def fetch_dasha_periods_multilevel(
               for row in rows]
     # a row that escaped the pin predicates with a NULL contract field is
     # rejected (never a silently unpinned read)
+    # (and a row whose tier the read policy does not accept — defence in depth
+    # behind the predicate)
+    def _readable(r: dict) -> bool:
+        st = r.get("verification_pass_status")
+        if level_tier_policy:
+            return (row_tier_accepted(r.get("system_id"), r.get("level_n"), st)
+                    or tier_accepted(st, {tier}))
+        return tier_accepted(st, {tier})
     parsed = [r for r in parsed
-              if r.get("verification_pass_status") is not None
+              if _readable(r)
               and (build_id is None or r.get("build_id") is not None)]
     if not canonicalize:
         # RAW pinned rows — for a caller that must SELECT the build pin

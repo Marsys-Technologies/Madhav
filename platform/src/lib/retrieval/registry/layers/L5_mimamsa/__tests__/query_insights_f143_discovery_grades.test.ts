@@ -114,6 +114,7 @@ describe('query_insights — F-143 discovery evidence tiers', () => {
   it("'empirical' is still reachable and still passes through unsuppressed", async () => {
     const result = await run([discoveryRow({
       evidence_grade: 'empirical',
+      surface_formula_version: 'mi_darshana_v1.2', leakage_status: 'not_assessed',
       provenance_chain: { grade_basis: { rule: 'scored_matches_threshold', n_scored_matches: 6 } },
     })])
     const unit = result.content.insight_units[0]

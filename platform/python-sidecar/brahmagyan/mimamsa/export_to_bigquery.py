@@ -5,7 +5,22 @@ brahmagyan/mimamsa/export_to_bigquery.py — BRAHMA MI-5-5: L5 Mīmāṃsā cros
 Asset:   mimamsa.research (MI-5-5)
 Layer:   L5 Mīmāṃsā — the final cross-corpus analytics layer
 Purpose: Export L1/L2 data (chart_facts + bodha_signals) to Parquet → GCS → BigQuery
-         for OLAP analytics without leaking life_events into prediction generation.
+         for OLAP analytics.
+
+PRIVACY (SS N-109, lifeevents-audit F1): `life_events` is PEOPLE-ENTERED, PRIVATE,
+chart-scoped data (free-text `description`, `source_citation`). This module can
+NEVER export it. There is no life_events table spec, no `--include-life-events`
+flag and no `include_life_events` parameter; any request naming a life_events /
+LEL table key is refused (fail closed, `LifeEventsExportRefused`) in `run_export`
+and `export_table`, and `export_table` additionally refuses any spec whose SQL
+reads `life_events`. If an export of derived event numbers is ever wanted it must
+be a NEW module: chart_id-scoped, column-whitelisted with NO free text, gated on
+`life_events.pool_consent` plus a stated disclosure tier.
+
+NOTE: the remaining chart_facts / bodha_signals specs and the mimamsa_export_log
+INSERT target a schema that no longer exists in production (the SELECTs fail
+first, so nothing leaves). That is a separate, pre-existing problem and is
+deliberately NOT fixed here.
 
 Contract:
   - Dataset:  brahma_l5_olap (pre-provisioned in GCP)
@@ -13,13 +28,11 @@ Contract:
                table_name TEXT, row_count INT, gcs_path TEXT,
                source_citation TEXT NOT NULL)
   - source_citation: NON-NULL on every log row and every exported data row
-  - life_events: CALIBRATION ONLY — never fed to prediction generation
-    (constraint enforced by table_name gate: 'life_events_calibration' prefix)
+  - life_events: NEVER exported (see PRIVACY above)
 
 Sources:
   - chart_facts — L1 natal chart facts (2,717 rows, FORENSIC_v8_0)
   - bodha_signals — L2 Bodha MSR signal states (573 signals per bodha_bo24)
-  - life_events — L1 LEL events, CALIBRATION intake only (57 events)
 
 Native:  Abhisek Mohanty, 1984-02-05, 10:43 IST, Bhubaneswar
          chart_id: 482012f1-710e-4a25-994a-93821f5871aa (FORENSIC canonical)
@@ -36,9 +49,6 @@ Usage:
 
     # Export with custom GCS bucket
     python -m brahmagyan.mimamsa.export_to_bigquery --gcs-bucket my-bucket
-
-    # Include life_events for calibration (never prediction)
-    python -m brahmagyan.mimamsa.export_to_bigquery --include-life-events
 
 Environment variables:
     DATABASE_URL       — PostgreSQL connection string (required)
@@ -57,6 +67,7 @@ import io
 import json
 import logging
 import os
+import re
 import sys
 import uuid
 from datetime import datetime, timezone
@@ -74,14 +85,22 @@ BQ_DATASET    = os.environ.get("BQ_DATASET",   "brahma_l5_olap")
 # Source citation for the export log — references canonical L1/L2 artifacts
 _LOG_SOURCE_CITATION = (
     "FORENSIC v8.0 (chart_facts via forensic_render; md archived 99_ARCHIVE/01_FACTS_LAYER/FORENSIC_DATA_v8_0_SUPPLEMENT.md) | "
-    "LIFE_EVENT_LOG_v1_2.md (canonical_id LEL, v1.7) | "
     "chart_facts table (2,717 rows, 27 categories, BRAHMA-MCP-Transformation) | "
     "bodha_signals table (573 MSR signals, BRAHMA-BO-2-4) | "
     "BRAHMA MI-5-5 export [BRAHMA-MI-5-5]"
 )
 
-# Life-events leakage guard — tables with this prefix are CALIBRATION ONLY
-_LEL_CALIBRATION_PREFIX = "life_events_calibration"
+# Life-events egress guard (SS N-109 / lifeevents-audit F1): people-entered
+# life-event data must never leave the database through this module.
+_LIFE_EVENTS_NAME_RE = re.compile(
+    r"(life[_\- ]?events?|(^|[_\- ])lel([_\- ]|$))", re.IGNORECASE
+)
+_LIFE_EVENTS_SQL_RE = re.compile(r"\blife_events\w*\b|\blel_\w+\b", re.IGNORECASE)
+
+
+class LifeEventsExportRefused(RuntimeError):
+    """Raised when an export of people-entered life-event data is requested."""
+
 
 # ── Table export specs ─────────────────────────────────────────────────────────
 #
@@ -89,7 +108,8 @@ _LEL_CALIBRATION_PREFIX = "life_events_calibration"
 #   sql           — query that reads from source DB (must select source_citation)
 #   bq_table      — BigQuery table name in brahma_l5_olap dataset
 #   description   — human label for logging
-#   is_lel        — True if this is a life_events intake (calibration-only gate)
+#
+# life_events is intentionally absent and must stay absent (see PRIVACY above).
 
 _TABLE_SPECS: dict[str, dict[str, Any]] = {
     "chart_facts": {
@@ -114,7 +134,6 @@ _TABLE_SPECS: dict[str, dict[str, Any]] = {
         """,
         "bq_table": "chart_facts",
         "description": "L1 chart facts (FORENSIC_v8_0 — planets, houses, dashas, yogas)",
-        "is_lel": False,
     },
     "bodha_signals": {
         "sql": """
@@ -138,41 +157,6 @@ _TABLE_SPECS: dict[str, dict[str, Any]] = {
         """,
         "bq_table": "bodha_signals",
         "description": "L2 Bodha MSR signal states (573 signals, BRAHMA-BO-2-4)",
-        "is_lel": False,
-    },
-    "life_events_calibration": {
-        "sql": """
-            SELECT
-                event_id,
-                event_date,
-                date_confidence,
-                category,
-                subcategory,
-                description,
-                magnitude,
-                valence,
-                vimshottari_md,
-                vimshottari_ad,
-                yogini_md,
-                chara_md_ad,
-                sade_sati_phase,
-                retrodictive_match,
-                signals_matched,
-                confidence,
-                source_citation
-            FROM life_events
-            WHERE source_citation IS NOT NULL
-              AND source_citation <> ''
-              AND calibration_only = TRUE
-            ORDER BY event_date
-        """,
-        "bq_table": "life_events_calibration",
-        "description": (
-            "L1 life events — CALIBRATION ONLY (LEL v1.7, 57 events). "
-            "NEVER used for prediction generation. "
-            "Leakage guard: calibration_only=TRUE filter is mandatory."
-        ),
-        "is_lel": True,
     },
 }
 
@@ -359,22 +343,31 @@ def _write_export_log(
     )
 
 
-# ── LEL leakage guard ──────────────────────────────────────────────────────────
+# ── Life-events egress guard ───────────────────────────────────────────────────
 
 
-def _assert_not_prediction_feed(table_name: str, is_lel: bool) -> None:
+def _refuse_life_events_key(table_key: str) -> None:
     """
-    Enforce the constraint: life_events data is CALIBRATION ONLY.
+    Fail closed if `table_key` names a life_events / LEL table.
 
-    If table is LEL-tagged but does NOT have the calibration prefix, raise immediately.
-    This is a hard contract: life_events must NEVER feed prediction generation.
+    people-entered life-event data (free-text `description`, `source_citation`)
+    must never be exported to GCS / BigQuery by this module.
     """
-    if is_lel and not table_name.startswith(_LEL_CALIBRATION_PREFIX):
-        raise RuntimeError(
-            f"[STOP] LEL leakage guard violation: table_name={table_name!r} "
-            f"is tagged as life_events but does not use the "
-            f"'{_LEL_CALIBRATION_PREFIX}' prefix. "
-            f"Life events must NEVER feed prediction generation."
+    if _LIFE_EVENTS_NAME_RE.search(str(table_key)):
+        raise LifeEventsExportRefused(
+            f"[STOP] life_events export refused: table_key={table_key!r}. "
+            f"life_events is people-entered, private, chart-scoped data and is "
+            f"never exported by export_to_bigquery (SS N-109)."
+        )
+
+
+def _refuse_life_events_sql(table_key: str, sql: str) -> None:
+    """Fail closed if a table spec's SQL reads life_events / lel_* under any key."""
+    if _LIFE_EVENTS_SQL_RE.search(sql):
+        raise LifeEventsExportRefused(
+            f"[STOP] life_events export refused: the SQL for table_key={table_key!r} "
+            f"reads life_events / lel_* data, which is never exported "
+            f"by export_to_bigquery (SS N-109)."
         )
 
 
@@ -413,6 +406,8 @@ def export_table(
           "exported_at":    str (ISO),
         }
     """
+    _refuse_life_events_key(table_key)
+
     if table_key not in _TABLE_SPECS:
         raise ValueError(
             f"Unknown table_key {table_key!r}. "
@@ -421,12 +416,12 @@ def export_table(
 
     spec = _TABLE_SPECS[table_key]
     bq_table   = spec["bq_table"]
-    is_lel     = spec["is_lel"]
     description = spec["description"]
     sql        = spec["sql"].strip()
 
-    # Leakage guard
-    _assert_not_prediction_feed(bq_table, is_lel)
+    # Egress guard: neither the BQ table name nor the SQL may touch life_events.
+    _refuse_life_events_key(bq_table)
+    _refuse_life_events_sql(table_key, sql)
 
     export_id  = str(uuid.uuid4())
     ts         = export_timestamp or datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
@@ -520,7 +515,6 @@ def run_export(
     chart_id: str,
     tables: list[str] | None = None,
     *,
-    include_life_events: bool = False,
     dry_run: bool = False,
 ) -> list[dict[str, Any]]:
     """
@@ -529,9 +523,11 @@ def run_export(
     Args:
         chart_id:            Chart UUID this export run is attributed to (required).
         tables:              List of table_keys to export. Default: chart_facts + bodha_signals.
-        include_life_events: If True, also export life_events_calibration.
-                             CALIBRATION ONLY — never feeds prediction generation.
         dry_run:             If True, skip writes.
+
+    Raises:
+        LifeEventsExportRefused: if ANY requested table key names life_events / LEL
+            (checked before any table is processed, so nothing is exported).
 
     Returns:
         List of export result dicts (one per table).
@@ -539,8 +535,10 @@ def run_export(
     default_tables = ["chart_facts", "bodha_signals"]
     if tables is None:
         tables = list(default_tables)
-    if include_life_events and "life_events_calibration" not in tables:
-        tables = list(tables) + ["life_events_calibration"]
+    # Fail closed BEFORE exporting anything (export_table failures are otherwise
+    # swallowed into per-table error dicts below).
+    for tkey in tables:
+        _refuse_life_events_key(tkey)
 
     results: list[dict[str, Any]] = []
     ts = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
@@ -576,7 +574,7 @@ def run_acceptance_gate(dry_run: bool = False) -> dict[str, Any]:
     AC1: export_log table exists and is reachable
     AC2: BQ dataset brahma_l5_olap is accessible
     AC3: source_citation is non-null on all export_log rows
-    AC4: life_events never appears in export_log without calibration_only prefix
+    AC4: life_events never appears in export_log
 
     Returns: {passed: bool, checks: list}
     """
@@ -651,18 +649,18 @@ def run_acceptance_gate(dry_run: bool = False) -> dict[str, Any]:
             "error": str(exc),
         })
 
-    # AC4: life_events never in export_log without calibration prefix
+    # AC4: life_events never appears in export_log at all
     try:
         with _get_conn() as conn:
             row = conn.execute(
                 "SELECT COUNT(*) FROM mimamsa_export_log "
-                "WHERE table_name LIKE 'life_events%' "
-                "  AND table_name NOT LIKE 'life_events_calibration%'"
+                "WHERE table_name ILIKE 'life_events%' "
+                "   OR table_name ILIKE 'lel\\_%'"
             ).fetchone()
             leakage_count = int(row[0]) if row else 0
         checks.append({
             "id": "AC4",
-            "desc": "life_events only in export_log with 'life_events_calibration' prefix",
+            "desc": "no life_events / lel export_log rows (life_events is never exported)",
             "passed": leakage_count == 0,
             "value": leakage_count,
         })
@@ -712,15 +710,7 @@ def main() -> None:
         choices=list(_TABLE_SPECS.keys()),
         help=(
             "Tables to export (default: chart_facts bodha_signals). "
-            "Valid: chart_facts, bodha_signals, life_events_calibration"
-        ),
-    )
-    parser.add_argument(
-        "--include-life-events",
-        action="store_true",
-        help=(
-            "Also export life_events_calibration. "
-            "CALIBRATION ONLY — never feeds prediction generation."
+            "Valid: chart_facts, bodha_signals. life_events is never exportable."
         ),
     )
     parser.add_argument(
@@ -755,7 +745,6 @@ def main() -> None:
     results = run_export(
         args.chart_id,
         tables=args.tables,
-        include_life_events=args.include_life_events,
         dry_run=args.dry_run,
     )
 

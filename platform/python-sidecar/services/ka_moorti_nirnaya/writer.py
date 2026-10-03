@@ -47,6 +47,12 @@ from typing import Any
 import psycopg.rows
 
 from pipeline.orchestrator.writers import WriterBase, WriterResult, register
+from services.w2g.node_series import (
+    NODE_CONVENTION_MISMATCH_REASON,
+    NODE_SERIES_PREDICATE,
+    assert_one_row_per_date,
+    node_mode_differs_from_kernel,
+)
 from services.ka_graha_sancara.engine import NAKSHATRAS, NAK_SIZE_DEG, SIGNS
 from services.gochara_kernel.overlays import date_to_jd as _date_to_jd
 from services.ka_moorti_nirnaya.logic import (
@@ -88,10 +94,11 @@ WHERE chart_id = %s AND ayanamsha_id = %s
   AND fact_category = 'graha_position' AND fact_subject = 'MOON' AND fact_key = 'longitude_sidereal'
 """
 
-_FETCH_EPHEMERIS_RANGE_SQL = """
+_FETCH_EPHEMERIS_RANGE_SQL = f"""
 SELECT date, body, tropical_longitude
 FROM ephemeris_daily
 WHERE ayanamsha_id = 'tropical' AND date BETWEEN %s AND %s AND body = ANY(%s)
+  AND {NODE_SERIES_PREDICATE}
 ORDER BY body, date
 """
 
@@ -176,7 +183,10 @@ def _config_horizon_date(value: Any) -> date | None:
 # actually produced (every refine call asserts retflag & 2); 'spline_unrefined'
 # is the kernel's own arc-spline root, used ONLY after the kernel reported its
 # ephemeris backend unavailable (EphemerisBackendError). A body with no ingress
-# root in the horizon never called Swiss, so it claims neither.
+# root in the horizon never called Swiss, so it claims neither. 'spline_unrefined' is
+# ALSO recorded, with a `reason`, for a node body whose series convention differs from the
+# kernel's refinement convention (`node_convention_mismatch(series=true,kernel=mean)`):
+# Swiss is not called for it at all, so no backend is claimed ('not_probed').
 SOLVER_SWISS_REFINED = "swiss_refined"
 SOLVER_SPLINE_UNREFINED = "spline_unrefined"
 SOLVER_NO_ROOTS = "no_ingress_roots"
@@ -225,6 +235,22 @@ def _build_kernel_arcs(
                 "that body grades day-grain", body, exc,
             )
             continue
+        if node_mode_differs_from_kernel(body):
+            # The daily series for this body is the TRUE node (what L0 stores); the kernel's
+            # Swiss objective for a node is the MEAN node (N-69). Refining a TRUE-series
+            # root against a MEAN objective measures a different curve — it lands up to
+            # ~10 days off and used to surface as a spurious "lost its bracket". Keep the
+            # roots of the series the arcs were built from, and RECORD that nothing was
+            # refined and why. Removed in step 3, when the series itself is MEAN.
+            roots = find_boundary_roots(idx, body, "sign_ingress", refine=False)
+            roots_by_body[body] = roots
+            index_by_body[body] = idx
+            solver_by_body[body] = {
+                "method": SOLVER_SPLINE_UNREFINED,
+                "backend": "not_probed",
+                "reason": NODE_CONVENTION_MISMATCH_REASON,
+            }
+            continue
         try:
             roots = find_boundary_roots(idx, body, "sign_ingress", refine=True)
             solver = (
@@ -253,13 +279,23 @@ def _solver_notes(solver_by_body: dict[str, dict[str, str]]) -> str:
     its ingress roots and the ephemeris backend the kernel reported."""
     per_body = ",".join(
         f"{body}:{info['method']}|{info['backend']}"
+        + (f"|{info['reason']}" if info.get("reason") else "")
         for body, info in sorted(solver_by_body.items())
     )
+    # `degraded` = the BACKEND was unavailable; a node-convention mismatch is a different,
+    # separately counted reason for the same un-refined method
     degraded = sum(
         1 for info in solver_by_body.values()
-        if info["method"] == SOLVER_SPLINE_UNREFINED
+        if info["method"] == SOLVER_SPLINE_UNREFINED and not info.get("reason")
     )
-    return f"ingress_solver={per_body or 'none'};ingress_solver_degraded={degraded}"
+    node_mismatch = sum(
+        1 for info in solver_by_body.values()
+        if info.get("reason") == NODE_CONVENTION_MISMATCH_REASON
+    )
+    notes = f"ingress_solver={per_body or 'none'};ingress_solver_degraded={degraded}"
+    if node_mismatch:
+        notes += f";ingress_solver_node_convention_unrefined={node_mismatch}"
+    return notes
 
 
 def _match_ingress_instant(
@@ -290,6 +326,7 @@ def _fetch_daily_sidereal_by_body(
     with conn.cursor(row_factory=psycopg.rows.dict_row) as cur:
         cur.execute(_FETCH_EPHEMERIS_RANGE_SQL, (horizon_start, horizon_end, list(bodies)))
         rows = cur.fetchall()
+    assert_one_row_per_date(rows, context="ka_moorti_nirnaya._fetch_daily_sidereal_by_body")
 
     by_body: dict[str, list[tuple[date, float]]] = {b: [] for b in bodies}
     for r in rows:

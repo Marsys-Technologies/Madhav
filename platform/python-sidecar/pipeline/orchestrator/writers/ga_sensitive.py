@@ -7,12 +7,14 @@ watchdog reapers and makes a connection drop non-fatal (prior ayanamshas survive
 """
 from __future__ import annotations
 from ga_writers.data_plane_runtime import l1_producer_contract
+from panchang_engine.swiss_backend import records_swiss_backend
 
 from . import register, WriterBase, ContextSpec, WriterResult, SubStep
 
 
 @register('ga_sensitive')
 @l1_producer_contract
+@records_swiss_backend
 class GaSensitiveWriter(WriterBase):
     asset_id = 'ga_sensitive'
     has_substeps = True
@@ -31,7 +33,9 @@ class GaSensitiveWriter(WriterBase):
             get_ga_sensitive_context,
             CANONICAL_AYANAMSHAS,
         )
-        chart_id = ctx.config['chart_id']
+        # uuid.UUID from the real orchestrator (psycopg uuid decode); the writer's FORENSIC gate compares
+        # chart_id to a str constant, so convert at the boundary.
+        chart_id = str(ctx.config['chart_id'])
         birth_params = ctx.config.get('birth_params')  # always a real dict — native has no special case
         aya_key = step.key.split(':', 1)[1]
         aya_id = CANONICAL_AYANAMSHAS[aya_key]

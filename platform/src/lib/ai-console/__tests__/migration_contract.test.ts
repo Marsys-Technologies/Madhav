@@ -5,6 +5,7 @@ import { describe, expect, it } from 'vitest'
 const path = resolve(__dirname, '../../../../migrations/1124_ai_console_byok_routing.sql')
 const repairPath = resolve(__dirname, '../../../../migrations/1125_ai_snapshot_shape_operator_precedence.sql')
 const shortlistPath = resolve(__dirname, '../../../../migrations/1151_ai_console_model_shortlist.sql')
+const effortPath = resolve(__dirname, '../../../../supabase/migrations/1300_ai_console_role_effort.sql')
 const tables = ['ai_provider_connections', 'ai_connection_models', 'ai_custom_configurations',
   'ai_custom_configuration_roles', 'ai_user_defaults', 'ai_cli_installations', 'ai_cli_models',
   'ai_cli_grants', 'ai_conversation_selections', 'ai_turn_routing_snapshots',
@@ -54,6 +55,14 @@ describe('AI Console governed persistence contract', () => {
     expect(text).toContain('ai_custom_configuration_roles')
     expect(text).toContain('ai_conversation_selections')
     expect(text).toContain('tested_entrypoint_sha256 IS NOT NULL')
+  })
+  it('adds nullable, bounded role effort in the canonical runner transaction', () => {
+    const text = readFileSync(effortPath, 'utf8')
+    expect(text).toContain('ALTER TABLE ai_custom_configuration_roles')
+    expect(text).toContain('ADD COLUMN IF NOT EXISTS effort text')
+    expect(text).toContain("effort IS NULL OR effort IN ('low', 'medium', 'high')")
+    expect(text).not.toMatch(/^\s*(?:BEGIN|START TRANSACTION|COMMIT|ROLLBACK)\s*;/im)
+    expect(text).not.toMatch(/SECURITY\s+DEFINER/i)
   })
   it('serializes deferred checks without upgrading FK key-share locks', () => {
     const text = sql()

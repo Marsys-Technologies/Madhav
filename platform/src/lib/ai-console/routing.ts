@@ -22,8 +22,10 @@ const ResolverInputSchema = z.object({
 function safeTarget(target: RoutingTarget): ResolvedRoleTarget {
   return target.kind === 'provider_model'
     ? Object.freeze({ kind: 'provider_model' as const, connectionId: target.connectionId,
-      providerId: target.providerId, modelId: target.modelId })
-    : Object.freeze({ kind: 'local_cli' as const, cliId: target.cliId, modelId: target.modelId })
+      providerId: target.providerId, modelId: target.modelId,
+      ...(target.effort ? { effort: target.effort } : {}) })
+    : Object.freeze({ kind: 'local_cli' as const, cliId: target.cliId, modelId: target.modelId,
+      ...(target.effort ? { effort: target.effort } : {}) })
 }
 
 function executionTarget(userId: string, role: AiRole, target: RoutingTarget): ResolvedRoleExecution {

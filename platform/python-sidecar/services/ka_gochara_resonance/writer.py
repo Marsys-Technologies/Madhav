@@ -158,7 +158,7 @@ import logging
 import re as _re
 from typing import Any, Iterable
 
-from brahmagyan.graha_vocabulary import norm_graha
+from brahmagyan.graha_vocabulary import norm_graha, to_title
 from services.gochara_grammar.derived_points import (
     M6_EVENT_CLASSES,
     MANDI_DISTANCE_AGENT,
@@ -331,6 +331,17 @@ _KARAKA_FACT_SUBJECT: dict[str, str] = {
     name: norm_graha(name)
     for name in ("Sun", "Moon", "Mars", "Mercury", "Jupiter", "Venus", "Saturn", "Rahu", "Ketu")
 }
+
+def _canonical_lord(raw) -> str | None:
+    """The L0 `reference_signs.lord` spelling → the Title-case graha name the
+    karaka/fact-subject maps are keyed by. L0 stores LOWERCASE ('mars',
+    brahmagyan/l0_reference.py:269 SIGNS); a bare dict lookup keyed 'Mars' silently
+    resolved NOTHING (every lord row 'unavailable' on the real rebuild, run 9863849f).
+    Normalised through the project's own graha vocabulary; a name the vocabulary does
+    not recognise returns None — the caller reports it, never guesses."""
+    title = to_title(str(raw)) if raw else ""
+    return title if title in _KARAKA_FACT_SUBJECT else None
+
 
 _SENSITIVE_DEGREE_KEYS = ("mrityu_bhaga", "gandanta", "kartari", "pushkara")
 
@@ -1025,14 +1036,25 @@ def _fetch_chart_resolution_context(conn, chart_id: str) -> dict:
         lagna_sign_num = int(row["fact_value_num"])
 
     sign_lords: dict[int, str] | None = None
+    unknown_lords: dict[int, str] = {}
     try:
         with conn.cursor(row_factory=psycopg.rows.dict_row) as cur:
             cur.execute(_FETCH_SIGN_LORDS_SQL)
             rows = cur.fetchall()
-        lords = {int(r["sign_id"]): str(r["lord"]) for r in rows
-                 if r.get("sign_id") is not None and r.get("lord")}
+        lords: dict[int, str] = {}
+        for r in rows:
+            if r.get("sign_id") is None or not r.get("lord"):
+                continue
+            canon = _canonical_lord(r["lord"])
+            if canon is None:
+                unknown_lords[int(r["sign_id"])] = str(r["lord"])
+                lords[int(r["sign_id"])] = ""        # present but unrecognised
+            else:
+                lords[int(r["sign_id"])] = canon
         if len(lords) == 12:
-            sign_lords = lords
+            # unrecognised rows are dropped from the lookup so they resolve to
+            # 'unqualified' (rulership unusable), and are NAMED in the build notes
+            sign_lords = {k: v for k, v in lords.items() if v}
     except Exception as exc:  # noqa: BLE001 — absence is data, not a crash
         logger.warning("[ka_gochara_resonance] reference_signs unreadable (%s) — "
                        "lord rows will be stamped 'unqualified'", exc)
@@ -1046,6 +1068,7 @@ def _fetch_chart_resolution_context(conn, chart_id: str) -> dict:
     return {
         "lagna_sign_num": lagna_sign_num,
         "sign_lords": sign_lords,
+        "unknown_lords": unknown_lords,
         "present_subjects": present_subjects,
     }
 
@@ -1223,6 +1246,7 @@ def _build_wp3c_notes(report: dict, all_rows: list[dict],
             "unqualified": lord["unqualified"],
             "unavailable_refs": sorted(lord["unavailable_refs"]),
             "unqualified_refs": sorted(lord["unqualified_refs"]),
+            "unrecognised_lord_names": lord.get("unrecognised_lord_names", {}),
             "resolved_lords": {k: lord["resolved_map"][k] for k in sorted(lord["resolved_map"])},
         },
         "roots": {
@@ -1269,6 +1293,11 @@ def _build_writer_class():
                     "unavailable_refs": [], "unqualified_refs": [],
                     "resolved_map": {},
                     "rulership_available": resolution_ctx["sign_lords"] is not None,
+                    # lord names in reference_signs the graha vocabulary does not
+                    # recognise — rows on those signs are 'unqualified', NAMED here
+                    "unrecognised_lord_names": {
+                        str(k): v for k, v in sorted(
+                            resolution_ctx.get("unknown_lords", {}).items())},
                 },
                 "m6_derived": {"rows": 0, "resolved": 0, "unavailable": 0, "unqualified": 0},
             }

@@ -20,6 +20,7 @@ from __future__ import annotations
 
 import json
 import pathlib
+import re
 import sys
 
 import pytest
@@ -956,7 +957,10 @@ def test_check_fails_when_all_no_detector_scus_get_a_fake_route_evidence_only_pr
             ]
             entry["no_detector"] = None
             faked.append(scu_id)
-    assert len(faked) == 75  # the exact count the gate review's own attack used
+    # Derived from the committed artifact (its own generator-written summary), not a pinned number:
+    # a regeneration moves the count (75 -> 71 on 2026-10-02) without changing what this attack proves.
+    assert faked and len(faked) == payload["summary"]["scus_no_detector"]
+    assert len(faked) == sum(payload["summary"]["no_detector_reason_counts"].values())
 
     artifact_path = tmp_path / "producer_provenance.derived.json"
     artifact_path.write_text(json.dumps(payload))
@@ -1293,7 +1297,7 @@ def test_check_fails_when_all_no_detector_scus_get_a_fake_source_query_producer(
 ):
     """B2 (B_REVIEW4): a fabricated `derived_from_source_query` producer
     (`table: no_such_table_xyz`, `source_ref: nope.ts:1-2` — shape-valid but
-    uncatalogued) on all 75 NO_DETECTOR SCUs used to pass 182/182. Binding
+    uncatalogued) on every NO_DETECTOR SCU used to pass 182/182. Binding
     each producer's `source_ref` to a `kind: source_query` requirement's own
     `source_ref` on the SAME SCU (checkable from the snapshot alone, no DB)
     closes this. Table EXISTENCE remains a stated, DB-bound limit (E).
@@ -1314,7 +1318,8 @@ def test_check_fails_when_all_no_detector_scus_get_a_fake_source_query_producer(
             ]
             entry["no_detector"] = None
             faked.append(scu_id)
-    assert len(faked) == 75
+    assert faked and len(faked) == payload["summary"]["scus_no_detector"]
+    assert len(faked) == sum(payload["summary"]["no_detector_reason_counts"].values())
 
     artifact_path = tmp_path / "producer_provenance.derived.json"
     artifact_path.write_text(json.dumps(payload))
@@ -1333,8 +1338,7 @@ def test_check_fails_when_all_no_detector_scus_get_a_fake_source_query_producer(
 
 
 def test_all_committed_source_query_producers_are_snapshot_bound():
-    """B2 (d): confirms the count the gate review found — all 294
-    `derived_from_source_query` producers in the real committed artifact have
+    """B2 (d): confirms that all `derived_from_source_query` producers in the real committed artifact have
     a `source_ref` equal to a `kind: source_query` requirement's own
     `source_ref` on the SAME SCU in the snapshot. This is what makes the
     unmodified artifact still pass under the new B2 binding check."""
@@ -1351,7 +1355,49 @@ def test_all_committed_source_query_producers_are_snapshot_bound():
                 if p.get("source_ref") not in refs_by_scu.get(scu_id, set()):
                     unbound.append((scu_id, p.get("asset_id")))
     assert unbound == []
-    assert bound_count == 294
+    # Count derived from the committed file by a second path (raw text, not the parsed payload walk above);
+    # the exact number moves with every regeneration (294 -> 290 on 2026-10-02).
+    raw = cp.DERIVED_OUTPUT_PATH.read_text(encoding="utf-8")
+    assert bound_count > 0
+    assert bound_count == len(re.findall(r'"disposition":\s*"derived_from_source_query"', raw))
+
+
+def test_committed_artifact_summary_agrees_with_its_entries():
+    """The generator writes `summary`; `--check` never reads it, so a hand-edited or stale summary passed
+    silently (reviewer: total_scus=999 still passed). Recompute every count the summary states from the
+    entries themselves."""
+    payload = _load_real_committed_artifact()
+    scus = payload["scus"]
+    summary = payload["summary"]
+    assert summary["total_scus"] == len(scus) == payload["snapshot_scu_count"]
+    assert summary["scus_with_producers"] == sum(1 for e in scus.values() if e.get("producers"))
+    assert summary["scus_no_detector"] == sum(1 for e in scus.values() if e.get("no_detector"))
+    assert sum(summary["no_detector_reason_counts"].values()) == summary["scus_no_detector"]
+
+
+# PIN: producers by disposition in the committed artifact. This moves at EVERY regeneration, on purpose: the
+# diff of these numbers is what shows a reviewer that producers vanished (294 -> 290 source-query on 2026-10-02,
+# from stale line anchors and source refactors). Update it in the same PR as the regenerated artifact, and
+# explain any drop in the PR body.
+PINNED_PRODUCERS_BY_DISPOSITION = {
+    "derived_from_service_probe": 9,
+    "derived_from_source_query": 290,
+    "reviewed_output": 14,
+    "route_evidence_only": 1,
+}
+
+
+def test_committed_artifact_producer_counts_are_pinned_and_agree_with_its_entries():
+    payload = _load_real_committed_artifact()
+    counted = {}
+    for entry in payload["scus"].values():
+        for p in entry.get("producers", []):
+            counted[p["disposition"]] = counted.get(p["disposition"], 0) + 1
+    # the summary the generator wrote must equal the entries (a hand-edit of either is caught) ...
+    assert payload["summary"]["producers_by_disposition"] == dict(sorted(counted.items()))
+    # ... and the entries must equal the pin (a silent deletion of producers is caught, and a regeneration
+    # forces a visible change to the numbers above)
+    assert counted == PINNED_PRODUCERS_BY_DISPOSITION
 
 
 def test_check_fails_when_a_fake_producer_is_appended_beside_a_real_one(

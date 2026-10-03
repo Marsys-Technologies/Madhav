@@ -312,15 +312,33 @@ class TestAblateWindowIntensityUnwiredMechanism:
     report the honest, distinct "mechanism_not_wired" label instead, and the
     window's intensity must be returned UNCHANGED (zero contribution)."""
 
-    def test_all_10_admitted_toggle_keys_are_currently_unwired(self):
-        """Regression guard: MECHANISM_ENGINE_WIRED must list all 10 admitted
-        toggle_keys, all False, until a future PR wires one in deliberately."""
-        assert set(MECHANISM_ENGINE_WIRED) == set(ADMITTED_MECHANISM_IDS)
-        assert all(v is False for v in MECHANISM_ENGINE_WIRED.values()), (
-            "A mechanism flipped to wired=True without updating this test "
-            "deliberately — see MECHANISM_ENGINE_WIRED's own comment for the "
-            "hand-off checklist before flipping an entry."
+    def test_admitted_toggle_keys_are_unwired_and_wired_set_is_exactly_w30(self):
+        """Regression guard: the 10 admitted toggle_keys must never SILENTLY become
+        wired into engine.py's lambda_v3. Current ratified state (C23 refresh,
+        2026-10-02): all 10 ADMITTED_MECHANISM_IDS are present and False; the
+        True subset is EXACTLY {w30_nodal_drishti} — wired deliberately by #2731
+        (multiplied into raw_lambda; open ruling N-14 retires it behind the
+        nodal_drishti flag); w23_tara_bala was flipped back to False by #2769
+        (A5.4 / S-04 / O-P6-TARA: tārā is testimony annotation, never a factor);
+        w28_bhava_degrees and w29_citation_resolution are present and False
+        (structural-only, modifier always 1.0, added by #2731). Any future flip
+        must update this test deliberately — see MECHANISM_ENGINE_WIRED's own
+        comment for the hand-off checklist before flipping an entry."""
+        for toggle_key in ADMITTED_MECHANISM_IDS:
+            assert MECHANISM_ENGINE_WIRED.get(toggle_key) is False, (
+                f"admitted toggle {toggle_key!r} became wired (or vanished) "
+                "without a deliberate update of this guard"
+            )
+        wired = {k for k, v in MECHANISM_ENGINE_WIRED.items() if v is True}
+        assert wired == {"w30_nodal_drishti"}, (
+            f"the wired subset drifted from the ratified {{'w30_nodal_drishti'}} "
+            f"(#2731; N-14 retires it behind the nodal_drishti flag): {wired!r}"
         )
+        for structural in ("w28_bhava_degrees", "w29_citation_resolution"):
+            assert MECHANISM_ENGINE_WIRED.get(structural) is False, (
+                f"structural-only {structural} (modifier always 1.0, #2731) "
+                "flipped without a deliberate update of this guard"
+            )
 
     def test_unwired_mechanism_no_literal_match_returns_mechanism_not_wired(self):
         w = _make_window(1.0, term_breakdown=None)

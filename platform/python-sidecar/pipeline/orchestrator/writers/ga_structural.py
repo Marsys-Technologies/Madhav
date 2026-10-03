@@ -5,12 +5,14 @@ GA8 Structural Enumeration Rebuild v2.0 — per GA8_STRUCTURAL_ENUMERATION_BRIEF
 """
 from __future__ import annotations
 from ga_writers.data_plane_runtime import l1_producer_contract
+from panchang_engine.swiss_backend import records_swiss_backend
 
 from . import register, WriterBase, ContextSpec, WriterResult, SubStep
 
 
 @register('ga_structural')
 @l1_producer_contract
+@records_swiss_backend
 class GaStructuralWriter(WriterBase):
     asset_id = 'ga_structural'
     has_substeps = True
@@ -33,7 +35,9 @@ class GaStructuralWriter(WriterBase):
 
         ayanamsha_id = step.key.removeprefix("ayanamsha_")
         rows = build_ga_structural_substep(
-            chart_id=ctx.config['chart_id'],
+            # uuid.UUID from the real orchestrator (psycopg uuid decode); the writer's FORENSIC gate compares
+            # chart_id to a str constant, so convert at the boundary.
+            chart_id=str(ctx.config['chart_id']),
             build_id=ctx.build_id,
             ayanamsha_id=ayanamsha_id,
             conn=ctx.db_conn,

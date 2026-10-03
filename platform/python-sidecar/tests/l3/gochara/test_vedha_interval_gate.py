@@ -269,7 +269,9 @@ def test_projection_no_longer_calls_the_legacy_whole_row_multiplier():
     import inspect
     src = inspect.getsource(w)
     assert "compute_quality_gates(" not in src
-    assert "make_vedha_gate(vedha_rows)" in inspect.getsource(w.main)
+    # A2.5 conn-injection: main() is a thin CLI wrapper; the gate is built on
+    # the executable path (project_windows_core) it routes through.
+    assert "make_vedha_gate(vedha_rows)" in inspect.getsource(w.project_windows_core)
 
 
 

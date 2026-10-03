@@ -205,6 +205,10 @@ KNOWN_HAS_WRITER_TRUE: frozenset[str] = frozenset({
     # into kala_gochara_windows_v2 ONLY. Seed row added to asset_registry
     # via migration 560 with has_writer=true, has_substeps=true.
     "ka_gochara_v3_century_materialize",
+    # ── PRAVĀHA A2.5 — no migration by design (steward condition 2); the
+    # has_writer=true registry row is staged idempotently by
+    # platform/scripts/dispatch_a25_v41_candidate_job.py on steward go.
+    "ka_gochara_v4_41_candidate",
     # ── L4 Phala — migration 342 ─────────────────────────────────────────────
     "ph_muhurta",
     "ph_nimitta",

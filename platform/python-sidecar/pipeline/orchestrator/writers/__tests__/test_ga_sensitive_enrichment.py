@@ -85,11 +85,11 @@ def test_sun_derived_category():
         assert r["fact_category"] == "sun_derived_upagraha"
 
 
-def test_sun_derived_two_pass_verified():
+def test_sun_derived_single_no_second_path():
     rows = _build_sun_derived_upagrahas_rows(
         ALL_LONGS, CHART_ID, AYA_ID, BUILD_ID, ENG_VER, PANCHANGA_SUNDAY)
     for r in rows:
-        assert r.get("verification_pass_status") == "two_pass_verified"
+        assert r.get("verification_pass_status") == "single"
 
 
 def test_special_lagnas_has_hora_ghati_bhava():
@@ -118,10 +118,12 @@ def test_special_lagnas_vighati_is_delegated_not_floored():
     vighati_rows = [r for r in rows if r.get("fact_subject") == "VIGHATI_LAGNA"]
     assert len(vighati_rows) >= 1
     for r in vighati_rows:
-        assert r.get("verification_pass_status") == "two_pass_verified"
+        assert r.get("verification_pass_status") == "single"
 
 
-def test_special_lagnas_others_two_pass_verified():
+def test_special_lagnas_others_single_no_second_path():
+    # (Q03 / SS N-62: the delegation below is real but no second path is compared -> `single`, not
+    # `two_pass_verified`.)
     # M-10 fix (R6-1d) supersedes the M-22/R6-1f stamp demotion this test
     # previously encoded: HORA_LAGNA/GHATI_LAGNA/BHAVA_LAGNA no longer use
     # the fabricated Sun-within-sign-offset proxy that justified downgrading
@@ -137,7 +139,7 @@ def test_special_lagnas_others_two_pass_verified():
     non_vighati = [r for r in rows if r.get("fact_subject") != "VIGHATI_LAGNA"]
     assert non_vighati, "expected HORA_LAGNA/GHATI_LAGNA/BHAVA_LAGNA rows"
     for r in non_vighati:
-        assert r.get("verification_pass_status") == "two_pass_verified"
+        assert r.get("verification_pass_status") == "single"
 
 
 def test_special_lagnas_floors_when_native_absent():
@@ -166,11 +168,11 @@ def test_sphuta_completion_category():
         assert r["fact_category"] == "esoteric_point_sphuta_fertility"
 
 
-def test_sphuta_completion_all_two_pass_verified():
+def test_sphuta_completion_all_single_no_second_path():
     rows = _build_sphuta_completion_rows(
         ALL_LONGS, CHART_ID, AYA_ID, BUILD_ID, ENG_VER)
     for r in rows:
-        assert r.get("verification_pass_status") == "two_pass_verified"
+        assert r.get("verification_pass_status") == "single"
 
 
 def test_yogi_system_has_yogi_graha_rows():
@@ -201,11 +203,11 @@ def test_yogi_graha_is_valid_planet():
     assert assigned_rows[0]["fact_value_text"] in valid_planets
 
 
-def test_yogi_system_all_two_pass_verified():
+def test_yogi_system_all_single_no_second_path():
     rows = _build_yogi_system_completion_rows(
         ALL_LONGS, CHART_ID, AYA_ID, BUILD_ID, ENG_VER, PANCHANGA_SUNDAY)
     for r in rows:
-        assert r.get("verification_pass_status") == "two_pass_verified"
+        assert r.get("verification_pass_status") == "single"
 
 
 # ---------------------------------------------------------------------------

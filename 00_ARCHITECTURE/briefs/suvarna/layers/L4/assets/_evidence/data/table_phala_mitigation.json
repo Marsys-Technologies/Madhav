@@ -1,0 +1,281 @@
+{
+ "table": "phala_mitigation",
+ "columns": [
+  {
+   "column_name": "mitigation_id",
+   "data_type": "uuid",
+   "is_nullable": "NO",
+   "column_default": "gen_random_uuid()"
+  },
+  {
+   "column_name": "chart_id",
+   "data_type": "uuid",
+   "is_nullable": "NO",
+   "column_default": ""
+  },
+  {
+   "column_name": "obstruction_id",
+   "data_type": "bigint",
+   "is_nullable": "YES",
+   "column_default": ""
+  },
+  {
+   "column_name": "linked_anchor_id",
+   "data_type": "uuid",
+   "is_nullable": "YES",
+   "column_default": ""
+  },
+  {
+   "column_name": "afflicting_graha",
+   "data_type": "text",
+   "is_nullable": "YES",
+   "column_default": ""
+  },
+  {
+   "column_name": "obstruction_severity",
+   "data_type": "text",
+   "is_nullable": "YES",
+   "column_default": ""
+  },
+  {
+   "column_name": "program_jsonb",
+   "data_type": "jsonb",
+   "is_nullable": "NO",
+   "column_default": ""
+  },
+  {
+   "column_name": "tradition_options_jsonb",
+   "data_type": "jsonb",
+   "is_nullable": "NO",
+   "column_default": ""
+  },
+  {
+   "column_name": "cross_tradition_corroboration",
+   "data_type": "smallint",
+   "is_nullable": "YES",
+   "column_default": ""
+  },
+  {
+   "column_name": "recommended_tier_jsonb",
+   "data_type": "jsonb",
+   "is_nullable": "YES",
+   "column_default": ""
+  },
+  {
+   "column_name": "intensity_tier",
+   "data_type": "text",
+   "is_nullable": "YES",
+   "column_default": ""
+  },
+  {
+   "column_name": "proportionality_basis",
+   "data_type": "text",
+   "is_nullable": "YES",
+   "column_default": ""
+  },
+  {
+   "column_name": "initiation_muhurta_ref",
+   "data_type": "uuid",
+   "is_nullable": "YES",
+   "column_default": ""
+  },
+  {
+   "column_name": "window_start",
+   "data_type": "date",
+   "is_nullable": "YES",
+   "column_default": ""
+  },
+  {
+   "column_name": "window_end",
+   "data_type": "date",
+   "is_nullable": "YES",
+   "column_default": ""
+  },
+  {
+   "column_name": "re_evaluation_date",
+   "data_type": "date",
+   "is_nullable": "NO",
+   "column_default": ""
+  },
+  {
+   "column_name": "outcome_hook_jsonb",
+   "data_type": "jsonb",
+   "is_nullable": "NO",
+   "column_default": ""
+  },
+  {
+   "column_name": "classical_citation",
+   "data_type": "text",
+   "is_nullable": "YES",
+   "column_default": ""
+  },
+  {
+   "column_name": "derivation_ledger_jsonb",
+   "data_type": "jsonb",
+   "is_nullable": "NO",
+   "column_default": ""
+  },
+  {
+   "column_name": "source_citation",
+   "data_type": "text",
+   "is_nullable": "NO",
+   "column_default": ""
+  },
+  {
+   "column_name": "computed_at",
+   "data_type": "timestamp with time zone",
+   "is_nullable": "NO",
+   "column_default": "now()"
+  },
+  {
+   "column_name": "source_id",
+   "data_type": "text",
+   "is_nullable": "YES",
+   "column_default": ""
+  }
+ ],
+ "has_chart_id": true,
+ "rows_by_chart": [
+  {
+   "chart_id": "1c826d5a-41cb-4450-b4dc-59d440e5f75a",
+   "n": "741"
+  },
+  {
+   "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+   "n": "536"
+  }
+ ],
+ "chart_nonnull": {
+  "_total": "536",
+  "mitigation_id": "536",
+  "chart_id": "536",
+  "obstruction_id": "536",
+  "linked_anchor_id": "0",
+  "afflicting_graha": "492",
+  "obstruction_severity": "536",
+  "program_jsonb": "536",
+  "tradition_options_jsonb": "536",
+  "cross_tradition_corroboration": "536",
+  "recommended_tier_jsonb": "536",
+  "intensity_tier": "536",
+  "proportionality_basis": "536",
+  "initiation_muhurta_ref": "0",
+  "window_start": "492",
+  "window_end": "492",
+  "re_evaluation_date": "536",
+  "outcome_hook_jsonb": "536",
+  "classical_citation": "536",
+  "derivation_ledger_jsonb": "536",
+  "source_citation": "536",
+  "computed_at": "536",
+  "source_id": "0"
+ },
+ "value_counts": {
+  "afflicting_graha": [
+   {
+    "v": "saturn",
+    "n": "492"
+   },
+   {
+    "v": "",
+    "n": "44"
+   }
+  ],
+  "obstruction_severity": [
+   {
+    "v": "medium",
+    "n": "396"
+   },
+   {
+    "v": "low",
+    "n": "140"
+   }
+  ],
+  "cross_tradition_corroboration": [
+   {
+    "v": "0",
+    "n": "536"
+   }
+  ],
+  "intensity_tier": [
+   {
+    "v": "light",
+    "n": "536"
+   }
+  ],
+  "proportionality_basis": [
+   {
+    "v": "severity=medium \u00d7 anchor_magnitude=minor \u2192 light",
+    "n": "396"
+   },
+   {
+    "v": "severity=low \u00d7 anchor_magnitude=minor \u2192 light",
+    "n": "140"
+   }
+  ],
+  "classical_citation": [
+   {
+    "v": "Brihat Parashara Hora Shastra \u2014 Upaya chapter",
+    "n": "536"
+   }
+  ],
+  "source_id": [
+   {
+    "v": "",
+    "n": "536"
+   }
+  ]
+ },
+ "constraints": [
+  {
+   "conname": "phala_mitigation_cross_tradition_corroboration_check",
+   "contype": "c",
+   "def": "CHECK (((cross_tradition_corroboration >= 0) AND (cross_tradition_corroboration <= 6)))"
+  },
+  {
+   "conname": "phala_mitigation_intensity_tier_check",
+   "contype": "c",
+   "def": "CHECK ((intensity_tier = ANY (ARRAY['light'::text, 'moderate'::text, 'intensive'::text])))"
+  },
+  {
+   "conname": "phala_mitigation_initiation_muhurta_ref_fkey",
+   "contype": "f",
+   "def": "FOREIGN KEY (initiation_muhurta_ref) REFERENCES phala_muhurta(muhurta_id) ON DELETE SET NULL"
+  },
+  {
+   "conname": "phala_mitigation_linked_anchor_id_fkey",
+   "contype": "f",
+   "def": "FOREIGN KEY (linked_anchor_id) REFERENCES phala_anchors(anchor_id) ON DELETE SET NULL"
+  },
+  {
+   "conname": "phala_mitigation_pkey",
+   "contype": "p",
+   "def": "PRIMARY KEY (mitigation_id)"
+  }
+ ],
+ "indexes": [
+  {
+   "indexname": "phala_mitigation_pkey",
+   "indexdef": "CREATE UNIQUE INDEX phala_mitigation_pkey ON public.phala_mitigation USING btree (mitigation_id)"
+  },
+  {
+   "indexname": "phala_mitigation_natural_key",
+   "indexdef": "CREATE UNIQUE INDEX phala_mitigation_natural_key ON public.phala_mitigation USING btree (chart_id, COALESCE(obstruction_id, ('-1'::integer)::bigint), intensity_tier)"
+  },
+  {
+   "indexname": "phala_mitigation_chart_idx",
+   "indexdef": "CREATE INDEX phala_mitigation_chart_idx ON public.phala_mitigation USING btree (chart_id)"
+  },
+  {
+   "indexname": "phala_mitigation_anchor_idx",
+   "indexdef": "CREATE INDEX phala_mitigation_anchor_idx ON public.phala_mitigation USING btree (linked_anchor_id) WHERE (linked_anchor_id IS NOT NULL)"
+  }
+ ],
+ "referenced_by": [
+  {
+   "tbl": "phala_sankrama",
+   "conname": "phala_sankrama_mitigation_ref_fkey",
+   "def": "FOREIGN KEY (mitigation_ref) REFERENCES phala_mitigation(mitigation_id) ON DELETE SET NULL"
+  }
+ ]
+}

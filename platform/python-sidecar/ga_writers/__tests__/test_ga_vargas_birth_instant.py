@@ -25,10 +25,19 @@ from this writer's own output.
 """
 from __future__ import annotations
 
+import os
+
 import pytest
 
-pytest.importorskip("jhora", reason="PyJHora required for the birth-instant regression")
-pytest.importorskip("swisseph")
+# Both libraries are in requirements-ci.txt.  Under CI (GITHUB_ACTIONS=true) a missing one must
+# FAIL the module's collection, not silently skip every test in it (CLAUDE.md §N.8: a green that
+# nothing could have turned red is not a result).  Locally, an absent dependency still skips.
+if os.environ.get("GITHUB_ACTIONS") == "true":
+    import jhora  # noqa: F401
+    import swisseph  # noqa: F401
+else:
+    pytest.importorskip("jhora", reason="PyJHora required for the birth-instant regression")
+    pytest.importorskip("swisseph")
 
 # Native birth params (CLAUDE.md §B), as stored in public.charts.
 BIRTH_LAT = 20.2961

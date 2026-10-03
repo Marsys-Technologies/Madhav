@@ -50,13 +50,19 @@ interface SetupOptions {
   cliResponse?: CliStateDto
   duplicateNameError?: boolean
   validationResponse?: unknown
+  refreshError?: boolean
+  reloadErrorAfterRefresh?: boolean
 }
 
 function setup(overrides?: Partial<typeof state>, options: SetupOptions = {}) {
   const current = { ...state, ...overrides }
   const calls: Array<[RequestInfo | URL, RequestInit | undefined]> = []
+  let refreshed = false
   vi.stubGlobal('fetch', vi.fn((url: RequestInfo | URL, init?: RequestInit) => {
     calls.push([url, init])
+    if (options.reloadErrorAfterRefresh && refreshed && ['/api/ai-console', '/api/ai-console/clis'].includes(String(url))) {
+      return response({ error: 'AI_PROVIDER_UNREACHABLE' }, 503)
+    }
     if (String(url) === '/api/ai-console/clis' && options.cliPending) return new Promise<Response>(() => {})
     if (String(url) === '/api/ai-console/clis') return options.cliError
       ? response({ error: 'AI_CLI_UNREACHABLE' }, 503)
@@ -64,6 +70,10 @@ function setup(overrides?: Partial<typeof state>, options: SetupOptions = {}) {
     if (String(url) === '/api/ai-console' && options.aggregatePending) return new Promise<Response>(() => {})
     if (String(url) === '/api/ai-console' && options.aggregateError) return response({ error: 'AI_PROVIDER_UNREACHABLE' }, 503)
     if (String(url) === '/api/ai-console/default' && init?.method === 'PUT') return response({ defaultChoice: JSON.parse(String(init.body)).choice })
+    if (String(url).endsWith('/refresh') && init?.method === 'POST') {
+      refreshed = true
+      return options.refreshError ? response({ error: 'AI_CLI_UNREACHABLE' }, 503) : response({ status: 'refreshed' })
+    }
     if (String(url).endsWith('/validate') && init?.method === 'POST' && options.validationResponse) return response(options.validationResponse)
     if (String(url) === '/api/ai-console/configurations' && init?.method === 'POST'
       && options.duplicateNameError && String(init.body).includes('duplicateFrom')) {
@@ -79,14 +89,121 @@ function setup(overrides?: Partial<typeof state>, options: SetupOptions = {}) {
 afterEach(() => { cleanup(); onlineManager.setOnline(true); vi.unstubAllGlobals(); vi.restoreAllMocks() })
 
 describe('AI Console', () => {
+  it('refreshes stale validated API catalogs and authorized CLI catalogs once without generation tests', async () => {
+    const { calls } = setup({ connections: [state.connections[0],
+      { ...state.connections[0], id: 'retired', name: 'Retired Kimi', providerId: 'kimi' },
+      { ...state.connections[0], id: 'unvalidated', name: 'Invalid OpenAI', validationState: 'invalid', confirmedValid: false },
+      { ...state.connections[0], id: 'deleted', name: 'Deleted OpenAI', deletedAt: '2026-09-28T10:00:00.000Z' },
+    ] })
+    await screen.findByText('Personal OpenAI')
+    await waitFor(() => expect(calls.filter(([url]) => String(url).endsWith('/refresh'))).toHaveLength(4))
+    const refreshes = calls.filter(([url]) => String(url).endsWith('/refresh'))
+    expect(refreshes.map(([url]) => String(url))).toEqual([
+      `/api/ai-console/connections/${CONNECTION_ID}/refresh`, '/api/ai-console/clis/codex/refresh',
+      '/api/ai-console/clis/claude_code/refresh', '/api/ai-console/clis/kimi_code/refresh',
+    ])
+    expect(refreshes.every(([, init]) => JSON.parse(String(init?.body)).force === false)).toBe(true)
+    expect(calls.some(([url]) => String(url).endsWith('/validate') || String(url).endsWith('/models'))).toBe(false)
+    expect(calls.some(([url]) => String(url).includes('/gemini_antigravity/refresh'))).toBe(false)
+  })
+
+  it('uses a fresh catalog on entry and allows a scoped manual forced refresh for APIs and CLIs', async () => {
+    const stamp = new Date().toISOString()
+    const { calls } = setup({ connections: [{ ...state.connections[0], catalogRefreshedAt: stamp }] }, {
+      cliResponse: { clis: cliState.clis.map(cli => cli.state === 'not_granted' ? cli : { ...cli, catalogRefreshedAt: stamp }) },
+    })
+    const api = (await screen.findByText('Personal OpenAI')).closest('article')!
+    expect(calls.some(([url]) => String(url).endsWith('/refresh'))).toBe(false)
+    await userEvent.click(within(api).getByRole('button', { name: 'Refresh Personal OpenAI models and effort levels' }))
+    await waitFor(() => expect(calls.some(([url, init]) => String(url) === `/api/ai-console/connections/${CONNECTION_ID}/refresh`
+      && JSON.parse(String(init?.body)).force === true)).toBe(true))
+    const cli = screen.getByText('Codex CLI').closest('article')!
+    await userEvent.click(within(cli).getByRole('button', { name: 'Refresh Codex CLI version, models, and effort levels' }))
+    await waitFor(() => expect(calls.filter(([url]) => String(url).endsWith('/refresh'))).toHaveLength(2))
+    expect(JSON.parse(String(calls.find(([url]) => String(url) === '/api/ai-console/clis/codex/refresh')![1]?.body))).toEqual({ force: true })
+  })
+
+  it('retains working model choices after refresh failure and does not loop background retries', async () => {
+    const { calls } = setup(undefined, { refreshError: true })
+    const card = (await screen.findByText('Claude Code')).closest('article')!
+    await waitFor(() => expect(within(card).getByText(/previous model list is retained/i)).toBeTruthy())
+    expect(within(card).getByText('Built-in default')).toBeTruthy()
+    await userEvent.click(within(card).getByRole('button', { name: 'Set up four roles' }))
+    const dialog = await screen.findByRole('dialog', { name: 'Set up four roles' })
+    expect(within(dialog).getByLabelText(/model for synthesizer/i)).toHaveValue('__builtin__')
+    expect(calls.filter(([url]) => String(url) === '/api/ai-console/clis/claude_code/refresh')).toHaveLength(1)
+    expect(calls.some(([url]) => String(url).endsWith('/models'))).toBe(false)
+  })
+
+  it('keeps the existing view if settings cannot be reloaded after a catalog refresh', async () => {
+    setup(undefined, { reloadErrorAfterRefresh: true })
+    await screen.findByText(/latest settings could not be reloaded/i)
+    expect(screen.getByText('Personal OpenAI')).toBeTruthy()
+    const cli = screen.getByText('Claude Code').closest('article')!
+    expect(within(cli).getByRole('button', { name: 'Set up four roles' })).not.toBeDisabled()
+    expect(within(cli).getByText('Built-in default')).toBeTruthy()
+  })
+
+  it('uses advertised API effort capabilities rather than a static effort list', async () => {
+    setup({ models: [{ ...state.models[0], modelId: 'claude-new', displayName: 'New Claude', supportedEfforts: ['high', 'max'], effortSource: 'provider' }],
+      connections: [{ ...state.connections[0], providerId: 'anthropic' }] })
+    const card = (await screen.findByText('Personal OpenAI')).closest('article')!
+    await userEvent.click(within(card).getByRole('button', { name: 'Set up four roles' }))
+    const dialog = await screen.findByRole('dialog', { name: 'Set up four roles' })
+    const effort = within(dialog).getByLabelText(/effort for synthesizer/i) as HTMLSelectElement
+    expect([...effort.options].map(option => option.value)).toEqual(['', 'high', 'max'])
+    expect(effort).not.toBeDisabled()
+  })
+
+  it('shows Codex catalogue effort levels and saves an exact model-specific effort without another CLI family', async () => {
+    const { calls } = setup(undefined, { cliResponse: { clis: cliState.clis.map(cli => cli.cliId === 'codex' && 'models' in cli
+      ? { ...cli, state: 'reachable', models: [{ modelId: 'gpt-6-astra', displayName: 'GPT 6 Astra',
+        compatibleRoles: ['synthesizer', 'planner', 'deep_planner', 'worker'], supportsTools: true,
+        supportsStructuredOutput: true, isBuiltinDefault: false, isCatalogDiscovered: true, isIndividuallyTested: false,
+        supportedEfforts: ['low', 'medium', 'high', 'xhigh', 'max', 'ultra'], defaultEffort: 'medium' }] } : cli) } })
+    const card = (await screen.findByText('Codex CLI')).closest('article')!
+    expect(within(card).getByText(/listed by subscription · not individually tested/i)).toBeTruthy()
+    await userEvent.click(within(card).getByRole('button', { name: 'Set up four roles' }))
+    const dialog = await screen.findByRole('dialog', { name: 'Set up four roles' })
+    const model = within(dialog).getByLabelText(/model for synthesizer/i)
+    await userEvent.selectOptions(model, 'gpt-6-astra')
+    const effort = within(dialog).getByLabelText(/effort for synthesizer/i) as HTMLSelectElement
+    expect([...effort.options].map(option => option.value)).toEqual(['', 'low', 'medium', 'high', 'xhigh', 'max', 'ultra'])
+    expect(effort.options[0].textContent).toBe('Model default · medium')
+    expect(within(dialog).queryByText(/Claude Code/)).toBeNull()
+    await userEvent.selectOptions(effort, 'ultra')
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Use this model for every role' }))
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Save configuration' }))
+    await waitFor(() => expect(calls.some(([url]) => String(url) === '/api/ai-console/configurations')).toBe(true))
+    const saved = JSON.parse(String(calls.find(([url]) => String(url) === '/api/ai-console/configurations')![1]?.body))
+    expect(saved.roles.synthesizer).toEqual({ kind: 'local_cli', cliId: 'codex', modelId: 'gpt-6-astra', effort: 'ultra' })
+  })
+
+  it('keeps an unsupported saved effort visible for repair when the refreshed model advertises fewer levels', async () => {
+    const target = { kind: 'local_cli' as const, cliId: 'claude_code' as const, modelId: 'claude-opus-4-6', effort: 'ultra' }
+    setup({ configurations: [{ ...state.configurations[0], name: 'Saved Claude roles', configurationKind: 'cli_preset',
+      ownerConnectionId: null, ownerCliId: 'claude_code', roles: { synthesizer: target, planner: target, deep_planner: target, worker: target } }] }, {
+      cliResponse: { clis: cliState.clis.map(cli => cli.cliId === 'claude_code' && 'models' in cli
+        ? { ...cli, models: [{ ...cli.models[0], modelId: 'claude-opus-4-6', displayName: 'Opus 4.6',
+          isBuiltinDefault: false, supportedEfforts: ['low', 'high'] }] } : cli) },
+    })
+    const card = (await screen.findByText('Claude Code')).closest('article')!
+    await userEvent.click(within(card).getByRole('button', { name: 'Edit four roles' }))
+    const dialog = await screen.findByRole('dialog', { name: 'Edit role setup' })
+    expect(within(dialog).getByLabelText(/effort for synthesizer/i)).toHaveAttribute('aria-invalid', 'true')
+    expect(within(dialog).getByRole('button', { name: 'Save configuration' })).toBeDisabled()
+    expect(within(dialog).getByText(/saved effort level is unsupported/i)).toBeTruthy()
+  })
+
   it('sets up a provider-owned four-role preset without offering CLI sources', async () => {
     const { calls } = setup()
     const card = (await screen.findByText('Personal OpenAI')).closest('article')!
     await userEvent.click(within(card).getByRole('button', { name: 'Set up four roles' }))
     const dialog = await screen.findByRole('dialog', { name: 'Set up four roles' })
     expect(within(dialog).getByLabelText('Configuration name')).toHaveValue('Personal OpenAI roles')
-    const source = within(dialog).getByLabelText(/source for synthesizer/i) as HTMLSelectElement
-    expect([...source.options].map(option => option.textContent)).toEqual(['Choose source', 'Personal OpenAI · OpenAI'])
+    expect(within(dialog).queryByLabelText(/source for synthesizer/i)).toBeNull()
+    expect(within(dialog).getByLabelText(/model for synthesizer/i)).toHaveValue('gpt-safe')
+    expect(within(dialog).getByLabelText(/effort for synthesizer/i)).toBeDisabled()
     expect(within(dialog).queryByText('Claude Code')).toBeNull()
     await userEvent.click(within(dialog).getByRole('button', { name: 'Save configuration' }))
     await waitFor(() => expect(calls.some(([url, init]) => String(url) === '/api/ai-console/configurations'
@@ -94,6 +211,25 @@ describe('AI Console', () => {
     const saved = calls.find(([url, init]) => String(url) === '/api/ai-console/configurations' && init?.method === 'POST')!
     expect(JSON.parse(String(saved[1]?.body))).toMatchObject({ configurationKind: 'provider_preset',
       ownerConnectionId: CONNECTION_ID, ownerCliId: null })
+  })
+
+  it('saves a supported effort for all four provider roles', async () => {
+    const { calls } = setup({ models: [{ ...state.models[0], modelId: 'gpt-5.5', displayName: 'GPT 5.5' }],
+      configurations: [] })
+    const card = (await screen.findByText('Personal OpenAI')).closest('article')!
+    await userEvent.click(within(card).getByRole('button', { name: 'Set up four roles' }))
+    const dialog = await screen.findByRole('dialog', { name: 'Set up four roles' })
+    await userEvent.selectOptions(within(dialog).getByLabelText(/effort for synthesizer/i), 'high')
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Use this model for every role' }))
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Save configuration' }))
+    await waitFor(() => expect(calls.some(([url, init]) => String(url) === '/api/ai-console/configurations'
+      && init?.method === 'POST')).toBe(true))
+    const saved = calls.find(([url, init]) => String(url) === '/api/ai-console/configurations'
+      && init?.method === 'POST')!
+    const roles = JSON.parse(String(saved[1]?.body)).roles
+    for (const role of ['synthesizer', 'planner', 'deep_planner', 'worker']) {
+      expect(roles[role]).toMatchObject({ kind: 'provider_model', modelId: 'gpt-5.5', effort: 'high' })
+    }
   })
 
   it('offers card-level defaults only for complete provider and CLI role setups', async () => {
@@ -136,6 +272,8 @@ describe('AI Console', () => {
     await screen.findByText('Personal OpenAI')
     expect(screen.queryByText('Catalog 149')).toBeNull()
     await userEvent.click(screen.getByRole('button', { name: /manage models/i }))
+    expect(screen.getByText(/showing 1 of 1 matching models/i)).toBeTruthy()
+    await userEvent.selectOptions(screen.getByLabelText('View'), 'catalog')
     expect(screen.getByText(/showing 30 of 151 matching models/i)).toBeTruthy()
     const search = screen.getByRole('searchbox', { name: 'Find a model' })
     await userEvent.type(search, 'Catalog 149')
@@ -169,7 +307,45 @@ describe('AI Console', () => {
     const dialog = await screen.findByRole('dialog', { name: 'Set up four roles' })
     expect(within(dialog).getByLabelText('Configuration name')).toHaveValue('Claude Code roles')
     expect(within(dialog).getByLabelText(/model for synthesizer/i)).toHaveValue('__builtin__')
-    expect(within(dialog).getByLabelText(/source for synthesizer/i).querySelectorAll('option')).toHaveLength(2)
+    expect(within(dialog).queryByLabelText(/source for synthesizer/i)).toBeNull()
+    expect(within(dialog).getByLabelText(/effort for synthesizer/i)).toBeDisabled()
+    expect(within(dialog).getByRole('textbox', { name: 'Add a model to the role lists' })).toBeTruthy()
+  })
+
+  it('saves a tested Claude CLI model and effort without offering another CLI family', async () => {
+    const { calls } = setup(undefined, { cliResponse: { clis: cliState.clis.map(cli => cli.cliId === 'claude_code' && 'models' in cli
+      ? { ...cli, models: [...cli.models, { modelId: 'claude-sonnet-4-6', displayName: 'Sonnet 4.6',
+        compatibleRoles: ['synthesizer', 'planner', 'deep_planner', 'worker'], supportsTools: true,
+        supportsStructuredOutput: true, isBuiltinDefault: false }] } : cli) } })
+    await screen.findByText('Claude Code')
+    await userEvent.click(within(screen.getByText('Claude Code').closest('article')!).getByRole('button', { name: 'Set up four roles' }))
+    const dialog = await screen.findByRole('dialog', { name: 'Set up four roles' })
+    const model = within(dialog).getByLabelText(/model for synthesizer/i) as HTMLSelectElement
+    expect([...model.options].map(option => option.value)).toEqual(['', '__builtin__', 'claude-sonnet-4-6'])
+    await userEvent.selectOptions(model, 'claude-sonnet-4-6')
+    await userEvent.selectOptions(within(dialog).getByLabelText(/effort for synthesizer/i), 'medium')
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Use this model for every role' }))
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Save configuration' }))
+    await waitFor(() => expect(calls.some(([url, init]) => String(url) === '/api/ai-console/configurations'
+      && init?.method === 'POST')).toBe(true))
+    const call = calls.find(([url, init]) => String(url) === '/api/ai-console/configurations' && init?.method === 'POST')!
+    const saved = JSON.parse(String(call[1]?.body))
+    expect(saved.configurationKind).toBe('cli_preset')
+    for (const role of ['synthesizer', 'planner', 'deep_planner', 'worker']) {
+      expect(saved.roles[role]).toMatchObject({ kind: 'local_cli', cliId: 'claude_code',
+        modelId: 'claude-sonnet-4-6', effort: 'medium' })
+    }
+  })
+
+  it('tests a CLI model without leaving the role setup dialog', async () => {
+    const { calls } = setup()
+    await screen.findByText('Claude Code')
+    await userEvent.click(within(screen.getByText('Claude Code').closest('article')!).getByRole('button', { name: 'Set up four roles' }))
+    const dialog = await screen.findByRole('dialog', { name: 'Set up four roles' })
+    await userEvent.type(within(dialog).getByRole('textbox', { name: 'Add a model to the role lists' }), 'claude-sonnet-4-6')
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Test through CLI and add' }))
+    await waitFor(() => expect(calls.some(([url, init]) => String(url) === '/api/ai-console/clis/claude_code/models'
+      && init?.method === 'POST' && JSON.parse(String(init.body)).modelId === 'claude-sonnet-4-6')).toBe(true))
   })
 
   it('submits one exact CLI model ID for a local subscription test', async () => {
@@ -503,10 +679,10 @@ describe('AI Console', () => {
     const dialog = await screen.findByRole('dialog')
     const synthesizerModel = dialog.querySelector('#aic-synthesizer-model') as HTMLSelectElement
     expect(synthesizerModel.value).toBe('gpt-safe')
-    expect(within(synthesizerModel).getByRole('option', { name: /saved model.*no longer available/i })).toBeDisabled()
+    expect(within(synthesizerModel).getByRole('option', { name: /saved model.*needs a current test or role check/i })).toBeDisabled()
     expect(synthesizerModel).toHaveAttribute('aria-invalid', 'true')
     expect(synthesizerModel).toHaveAttribute('aria-describedby', 'aic-model-repair')
-    expect(within(dialog).getByText(/saved model choices are no longer available or compatible/i)).toBeTruthy()
+    expect(within(dialog).getByText(/saved models need a current generation test/i)).toBeTruthy()
     expect(within(dialog).getByRole('button', { name: 'Save configuration' })).toBeDisabled()
   })
 
@@ -524,7 +700,7 @@ describe('AI Console', () => {
     const dialog = await screen.findByRole('dialog')
     const synthesizerModel = dialog.querySelector('#aic-synthesizer-model') as HTMLSelectElement
     expect(synthesizerModel.value).toBe('__builtin__')
-    expect(within(synthesizerModel).getByRole('option', { name: /built-in default.*no longer available/i })).toBeDisabled()
+    expect(within(synthesizerModel).getByRole('option', { name: /built-in default.*needs a current test or role check/i })).toBeDisabled()
     expect(dialog).not.toHaveTextContent('__builtin__')
     expect(synthesizerModel).toHaveAttribute('aria-invalid', 'true')
     expect(synthesizerModel).toHaveAttribute('aria-describedby', 'aic-model-repair')

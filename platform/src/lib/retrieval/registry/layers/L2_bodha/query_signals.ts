@@ -66,7 +66,9 @@ import {
 } from '../../../address_resolver'
 import { deriveDefect001Note, deriveSignatureTierNote } from '../../../provenance/freshness_notes'
 import { BUILD_FENCE_INPUT, classifyBuildFence, explicitEmptyBuildFenceRefusal } from '../../generation/served_generation'
-
+import { resolveL2Lineage, l2LineageFlag } from '../../../provenance/l2_lineage'
+import type { JudgmentFlagEntry } from '../../../envelope'
+import { annotateAyurdayaYearRows, ayurdayaDisclosureObject, deriveAyurdayaFigureDisclosure } from '../L1_ganita/ayurdaya_unreduced_base'
 const FRAME_VALUES: ReferenceFrame[] = ['lagna', 'chandra', 'surya', 'arudha', 'karakamsha']
 
 // Internal L1-writer namespace tags (e.g. "[ga_sensitive]", "[ga_structural]") that get
@@ -623,6 +625,13 @@ export const querySignalsCapability: CapabilityDescriptor = {
         deriveSignatureTierNote(chart_id, ayanamsha_id),
       ])
 
+      // SS N-62 Q10 (display-side): L2 `ayurdaya:*` MSR signals carry the bare unreduced-base totals
+      // in signal_summary_text / configuration_jsonb. Disclosed from the FULL fetched columns (before
+      // any projection can drop signal_type_id/configuration_jsonb); each ayurdaya signal is tagged
+      // with its own figure_kind, and the page gets the nested disclosure + closed-vocabulary flag.
+      const ayuDisclosure = deriveAyurdayaFigureDisclosure(signals)
+      signals = annotateAyurdayaYearRows(signals, ayuDisclosure)
+
       // WP-1.3(g)/LCA-7: project served rows down to the requested columns. Done AFTER the
       // internal pipeline (ranking/demotion/freshness read the always-fetched default set)
       // so narrowing the SERVED projection never starves the machinery. projection.serve
@@ -632,6 +641,7 @@ export const querySignalsCapability: CapabilityDescriptor = {
         signals = signals.map(s => {
           const picked: Record<string, unknown> = {}
           for (const c of serveCols) if (c in s) picked[c] = s[c]
+          if (s['figure_kind'] !== undefined) { picked['figure_kind'] = s['figure_kind']; picked['reductions_applied'] = s['reductions_applied'] }
           return picked
         })
       }
@@ -696,12 +706,25 @@ export const querySignalsCapability: CapabilityDescriptor = {
           '.'
         : undefined
 
+      // N-91 between-state disclosure: the signals served here carry `constituent_facts_array`
+      // fact_ids (L2 echoes of L1). A REAL receipt-pin detector (provenance/l2_lineage.ts) says
+      // whether the L2 receipts were built against an L1 generation that has since been rebuilt;
+      // if so (or if the check could not run — fail closed) the flag is served. MERGED into any
+      // other judgment flag (the ayurdaya disclosure), never overwriting it.
+      const l2LineageDisclosure = l2LineageFlag(await resolveL2Lineage(chart_id))
+      const servedJudgmentFlags: JudgmentFlagEntry[] = [
+        ...(ayuDisclosure ? [ayuDisclosure.judgment_flag] : []),
+        ...(l2LineageDisclosure ? [l2LineageDisclosure] : []),
+      ]
+
       const responseContent = {
         chart_id,
         build_id,
         frame,
         ...(frameContext ? { frame_context: frameContext } : {}),
         ayanamsha_id,
+        ...(ayuDisclosure ? { ayurdaya_figure_disclosure: ayurdayaDisclosureObject(ayuDisclosure) } : {}),
+        ...(servedJudgmentFlags.length > 0 ? { judgment_flags: servedJudgmentFlags } : {}),
         signals,
         returned_count: signals.length,
         total_matching_filters,
@@ -764,7 +787,11 @@ export const querySignalsCapability: CapabilityDescriptor = {
               'Served rows omit them until that migration lands (self-healing — no code change needed).',
         },
       }
-      const response = { content: responseContent, is_error: false as const }
+      const response = {
+        content: responseContent,
+        is_error: false as const,
+        ...(servedJudgmentFlags.length > 0 ? { judgment_flags: servedJudgmentFlags } : {}),
+      }
       cacheSet(_cacheKey, response)
       return response
     } catch (err) {

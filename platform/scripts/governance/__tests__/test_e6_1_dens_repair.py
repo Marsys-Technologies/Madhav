@@ -99,7 +99,7 @@ def test_contract_without_a_tier_column_in_the_served_select_is_partial_never_pa
 
 
 def test_a_tier_column_without_a_contract_is_fail(tree, monkeypatch):
-    tree.write(tree.layers / "L0_x", "q.ts", _cap("SELECT fact_id, signature_tier FROM t_x", contract=False))
+    tree.write(tree.layers / "L0_x", "q.ts", _cap("SELECT fact_id, tier FROM t_x", contract=False))
     c = _measure(monkeypatch, tree, {"bg_x": w1._reg_row("bg_x", "t_x")})
     d = _dens(c, "bg_x")
     assert d["v"] == ac.FAIL and "no referencing capability that serves it declares density_contract" in d["measured"], d
@@ -110,7 +110,7 @@ def test_the_contract_and_the_tier_column_must_sit_in_the_same_capability(tree, 
     column; capability B in the same file selects a tier column but declares no contract. The FILE has both halves; no
     capability has them together."""
     tree.write(tree.layers / "L0_x", "q.ts", _cap("SELECT fact_id FROM t_x", name="capA")
-               + _cap("SELECT signature_tier FROM t_x", contract=False, name="capB"))
+               + _cap("SELECT tier FROM t_x", contract=False, name="capB"))
     c = _measure(monkeypatch, tree, {"bg_x": w1._reg_row("bg_x", "t_x")})
     d = _dens(c, "bg_x")
     assert d["v"] == ac.PARTIAL, d
@@ -118,7 +118,7 @@ def test_the_contract_and_the_tier_column_must_sit_in_the_same_capability(tree, 
 
 def test_a_contract_in_a_capability_that_does_not_reference_the_asset_is_not_its_contract(tree, monkeypatch):
     tree.write(tree.layers / "L0_x", "q.ts", _cap("SELECT fact_id FROM other_table", name="capA")
-               + _cap("SELECT signature_tier FROM t_x", contract=False, name="capB"))
+               + _cap("SELECT tier FROM t_x", contract=False, name="capB"))
     c = _measure(monkeypatch, tree, {"bg_x": w1._reg_row("bg_x", "t_x")})
     assert _dens(c, "bg_x")["v"] == ac.FAIL
 
@@ -133,7 +133,7 @@ def test_a_select_of_a_shared_table_in_a_capability_that_never_names_the_asset_i
     """bg_a's id sits in capability A (contract, no select); capability B reads the shared table with a tier column and
     never names bg_a. B's select is the table's, not bg_a's: the scan has no served select for bg_a."""
     tree.write(tree.layers / "L0_x", "q.ts", "export const capA = {\n  " + CONTRACT + "\n  note: 'bg_a',\n}\n"
-               + _cap("SELECT id, signature_tier FROM t_shared", contract=False, name="capB"))
+               + _cap("SELECT id, tier FROM t_shared", contract=False, name="capB"))
     reg = {"bg_a": w1._reg_row("bg_a", "t_shared"), "bg_b": w1._reg_row("bg_b", "t_shared")}
     d = _dens(_measure(monkeypatch, tree, reg), "bg_a")
     assert d["v"] == ac.NO_DET and "no served select" in d["measured"], d
@@ -141,17 +141,26 @@ def test_a_select_of_a_shared_table_in_a_capability_that_never_names_the_asset_i
 
 def test_a_contract_in_a_declaration_that_only_names_the_asset_id_is_not_its_serving_capability(tree, monkeypatch):
     """The contract sits in a capability that mentions `bg_x` in a string but serves no rows of its table, and nothing
-    in the module selects from the table: there is no served select, so the scan cannot tell — not a PARTIAL."""
-    tree.write(tree.tools, "tool.ts", "export const cap = {\n  " + CONTRACT + "\n  note: 'covers bg_x',\n}\n")
+    in the module selects from the table: there is no served select — never a PARTIAL (a contract is not credited to a
+    capability that does not serve the table). REGISTRY_REVISION 14 (SS N-74(a)): the mention is a LABEL (prose under a
+    non-label key, not SQL), so the module is not a reach and the asset reads the N/A with the label-only module named;
+    before 14 this read NO_DETECTOR ("reach it by code, no served select"). A mention the scan cannot classify still reads
+    NO_DETECTOR: see test_e6_dens_label_select.py."""
+    tree.write(tree.tools, "tool.ts", "export const cap = {\n  " + CONTRACT + "\n  note: 'a note that covers bg_x for the reader of this page',\n}\n")
     d = _dens(_measure(monkeypatch, tree, {"bg_x": w1._reg_row("bg_x", "t_x")}), "bg_x")
-    assert d["v"] == ac.NO_DET and "no served select" in d["measured"], d
+    assert d["v"] == ac.NA and "only as a label" in d["measured"], d
+    # a short embedded name is NOT recognised as a label by default (SS DENS review M1): the scan cannot tell, so NO_DETECTOR
+    for body in ("note: 'covers bg_x',", "tags: ['bg_x'],"):
+        tree.write(tree.tools, "tool.ts", "export const cap = {\n  " + CONTRACT + "\n  " + body + "\n}\n")
+        d = _dens(_measure(monkeypatch, tree, {"bg_x": w1._reg_row("bg_x", "t_x")}), "bg_x")
+        assert d["v"] == ac.NO_DET and "no served select" in d["measured"], (body, d)
 
 
 def test_a_contract_and_a_served_select_in_different_declarations_is_partial_with_that_reason(tree, monkeypatch):
     """A helper holds the SQL (with the tier column); the descriptor that declares the contract only calls it. The
     scan cannot attribute the select to the contract, so: PARTIAL, never PASS, and it says why."""
     tree.write(tree.tools, "tool.ts",
-               "async function load() {\n  return query(`SELECT id, signature_tier FROM t_x`)\n}\n"
+               "async function load() {\n  return query(`SELECT id, tier FROM t_x`)\n}\n"
                "export const cap = {\n  " + CONTRACT + "\n  note: 't_x',\n  run: () => load(),\n}\n")
     d = _dens(_measure(monkeypatch, tree, {"bg_x": w1._reg_row("bg_x", "t_x")}), "bg_x")
     assert d["v"] == ac.PARTIAL and "different top-level declaration" in d["measured"], d
@@ -162,13 +171,15 @@ def test_a_fail_names_a_contract_declared_elsewhere_in_the_module_so_the_limit_i
     verdict stays FAIL (no attribution), and the evidence says where a contract does sit — a reviewer sees the limit."""
     tree.write(tree.tools, "tool.ts",
                "export const cap = {\n  " + CONTRACT + "\n  run: () => other(),\n}\n"
-               "async function other() {\n  return query(`SELECT id, signature_tier FROM t_x`)\n}\n")
+               "async function other() {\n  return query(`SELECT id, tier FROM t_x`)\n}\n")
     d = _dens(_measure(monkeypatch, tree, {"bg_x": w1._reg_row("bg_x", "t_x")}), "bg_x")
     assert d["v"] == ac.FAIL and "declared in" in d["measured"] and "not in a capability that serves it" in d["measured"], d
 
 
 @pytest.mark.parametrize("col, ok", [
-    ("verification_pass_status", True), ("tier", True), ("signature_tier", True), ("efficacy_tier", True),
+    # DENS-TIER-GUARD (N-98, REGISTRY_REVISION 23): the vocabulary is CLOSED. `signature_tier` / `efficacy_tier` counted under the open `\w+_tier` regex (that
+    # assertion is the one the guard reverses: they now count only when declared, test_e6_dens_tier_guard.py); `cost_tier` / `access_tier` never count.
+    ("verification_pass_status", True), ("tier", True), ("signature_tier", False), ("efficacy_tier", False), ("cost_tier", False), ("access_tier", False),
     ("frontier", False), ("tiered_x", False), ("tier_note", False), ("confidence", False), ("fact_value", False),
 ])
 def test_the_tier_column_vocabulary_is_exact(tree, monkeypatch, col, ok):
@@ -179,17 +190,17 @@ def test_the_tier_column_vocabulary_is_exact(tree, monkeypatch, col, ok):
 
 def test_a_qualified_tier_column_of_another_table_does_not_count_when_columns_are_unknown_too(tree, monkeypatch):
     tree.write(tree.layers / "L0_x", "q.ts",
-               _cap("SELECT a.fact_id, b.signature_tier FROM t_x a JOIN t_other b ON b.id = a.oid"))
+               _cap("SELECT a.fact_id, b.tier FROM t_x a JOIN t_other b ON b.id = a.oid"))
     c = _measure(monkeypatch, tree, {"bg_x": w1._reg_row("bg_x", "t_x")})
     assert _dens(c, "bg_x")["v"] == ac.PARTIAL
     tree.write(tree.layers / "L0_x", "q.ts",
-               _cap("SELECT a.fact_id, a.signature_tier FROM t_x a JOIN t_other b ON b.id = a.oid"))
+               _cap("SELECT a.fact_id, a.tier FROM t_x a JOIN t_other b ON b.id = a.oid"))
     assert _dens(_measure(monkeypatch, tree, {"bg_x": w1._reg_row("bg_x", "t_x")}), "bg_x")["v"] == ac.PASS
 
 
 def test_a_density_contract_named_in_a_string_is_not_a_declaration(tree, monkeypatch):
     """R232 carried into the repaired rule: a string that says `density_contract:` declares nothing."""
-    tree.write(tree.layers / "L0_x", "q.ts", _cap("SELECT id, signature_tier FROM t_x", contract=False).replace(
+    tree.write(tree.layers / "L0_x", "q.ts", _cap("SELECT id, tier FROM t_x", contract=False).replace(
         "  run:", "  note: 'density_contract: pending',\n  run:"))
     assert _dens(_measure(monkeypatch, tree, {"bg_x": w1._reg_row("bg_x", "t_x")}), "bg_x")["v"] == ac.FAIL
 
@@ -211,7 +222,7 @@ def test_a_served_select_under_a_path_that_only_contains_the_word_knowledge_stil
 
 def test_a_qualified_tier_column_of_another_table_does_not_count_when_columns_are_known(tree, monkeypatch):
     tree.write(tree.layers / "L0_x", "q.ts",
-               _cap("SELECT a.fact_id, b.signature_tier FROM t_x a JOIN t_other b ON b.id = a.oid"))
+               _cap("SELECT a.fact_id, b.tier FROM t_x a JOIN t_other b ON b.id = a.oid"))
     c = _measure(monkeypatch, tree, {"bg_x": w1._reg_row("bg_x", "t_x")}, {"t_x": (["fact_id", "oid"], [])})
     assert _dens(c, "bg_x")["v"] == ac.PARTIAL
 
@@ -221,7 +232,7 @@ def test_a_qualified_tier_column_of_another_table_does_not_count_when_columns_ar
 def test_select_star_resolves_through_the_catalog_columns(tree, monkeypatch):
     tree.write(tree.layers / "L0_x", "q.ts", _cap("SELECT * FROM t_x"))
     reg = {"bg_x": w1._reg_row("bg_x", "t_x")}
-    assert _dens(_measure(monkeypatch, tree, reg, {"t_x": (["id", "signature_tier"], [])}), "bg_x")["v"] == ac.PASS
+    assert _dens(_measure(monkeypatch, tree, reg, {"t_x": (["id", "tier"], [])}), "bg_x")["v"] == ac.PASS
     assert _dens(_measure(monkeypatch, tree, reg, {"t_x": (["id", "v"], [])}), "bg_x")["v"] == ac.PARTIAL
 
 
@@ -235,7 +246,7 @@ def test_a_run_time_select_list_does_not_hide_an_explicit_tier_column_but_never_
     reg = {"bg_x": w1._reg_row("bg_x", "t_x")}
     tree.write(tree.layers / "L0_x", "q.ts", _cap("SELECT ${cols} FROM t_x"))
     assert _dens(_measure(monkeypatch, tree, reg), "bg_x")["v"] == ac.PARTIAL
-    tree.write(tree.layers / "L0_x", "q.ts", _cap("SELECT ${cols}, signature_tier FROM t_x"))
+    tree.write(tree.layers / "L0_x", "q.ts", _cap("SELECT ${cols}, tier FROM t_x"))
     assert _dens(_measure(monkeypatch, tree, reg), "bg_x")["v"] == ac.PASS
 
 
@@ -259,13 +270,13 @@ def test_an_mcp_only_reference_is_found_and_named_by_root(tree, monkeypatch, whe
 
 
 def test_a_reference_through_a_count_sql_table_only_is_found(tree, monkeypatch):
-    tree.write(tree.tools, "tool.ts", _cap("SELECT id, signature_tier FROM t_events"))
+    tree.write(tree.tools, "tool.ts", _cap("SELECT id, tier FROM t_events"))
     reg = {"bg_x": w1._reg_row("bg_x", None, count_sql="SELECT count(*) FROM t_events")}
     assert _dens(_measure(monkeypatch, tree, reg), "bg_x")["v"] == ac.PASS
 
 
 def test_a_registry_only_reference_with_a_served_select_is_found(tree, monkeypatch):
-    tree.write(tree.layers / "L0_x", "q.ts", _cap("SELECT id, signature_tier FROM t_x"))
+    tree.write(tree.layers / "L0_x", "q.ts", _cap("SELECT id, tier FROM t_x"))
     assert _dens(_measure(monkeypatch, tree, {"bg_x": w1._reg_row("bg_x", "t_x")}), "bg_x")["v"] == ac.PASS
 
 
@@ -311,7 +322,7 @@ def test_an_outside_reference_that_is_not_a_served_select_does_not_block_na(tree
 # ───────────────────────── shared tables: a reader of a shared table does not serve every asset ─────────────────────────
 
 def test_a_shared_table_alone_never_attributes_a_serving_capability(tree, monkeypatch):
-    tree.write(tree.layers / "L0_x", "q.ts", _cap("SELECT id, signature_tier FROM t_shared"))
+    tree.write(tree.layers / "L0_x", "q.ts", _cap("SELECT id, tier FROM t_shared"))
     reg = {"bg_a": w1._reg_row("bg_a", "t_shared"), "bg_b": w1._reg_row("bg_b", "t_shared")}
     c = _measure(monkeypatch, tree, reg)
     for aid in reg:
@@ -320,9 +331,9 @@ def test_a_shared_table_alone_never_attributes_a_serving_capability(tree, monkey
 
 
 def test_the_asset_id_attributes_a_reader_of_a_shared_table(tree, monkeypatch):
-    tree.write(tree.layers / "L0_x", "q.ts", _cap("SELECT id, signature_tier FROM t_shared WHERE k = 'bg_a'"))
+    tree.write(tree.layers / "L0_x", "q.ts", _cap("SELECT id, tier FROM t_shared WHERE k = 'bg_a'"))
     reg = {"bg_a": w1._reg_row("bg_a", "t_shared"), "bg_b": w1._reg_row("bg_b", "t_shared")}
-    c = _measure(monkeypatch, tree, reg, {"t_shared": (["id", "signature_tier"], [])})
+    c = _measure(monkeypatch, tree, reg, {"t_shared": (["id", "tier"], [])})
     assert _dens(c, "bg_a")["v"] == ac.PASS and _dens(c, "bg_b")["v"] == ac.NO_DET
 
 
@@ -330,11 +341,12 @@ def test_the_asset_id_attributes_a_reader_of_a_shared_table(tree, monkeypatch):
 
 def test_dens_served_criterion_revision_is_bumped_and_says_structural():
     e = ac.CRITERION_REGISTRY["Dens.served"]
-    assert e["revision"] == 4 and "tier column" in e["applicability"], e
+    assert e["revision"] == 6 and "tier column" in e["applicability"], e                 # 5: SS N-74(a), select vs label; 6: SS N-98, closed tier vocabulary
 
 
-def test_na_rule_decisions_stays_empty_so_a_measured_dens_na_reads_no_detector_in_the_cell(tree, monkeypatch):
-    assert ac.NA_RULE_DECISIONS == {}
+def test_an_undeclared_rule_leaves_a_measured_dens_na_reading_no_detector_in_the_cell(tree, monkeypatch):
+    # REGISTRY_REVISION 9 declares Dens.served#measured:no-served-surface (SS N-65); this is the UNDECLARED path
+    monkeypatch.setattr(ac, "NA_RULE_DECISIONS", {})
     tree.write(tree.tools, "tool.ts", _cap("SELECT id FROM unrelated"))
     c = _measure(monkeypatch, tree, {"bg_x": w1._reg_row("bg_x", "t_x")})
     assert _dens(c, "bg_x")["v"] == ac.NA
@@ -342,6 +354,10 @@ def test_na_rule_decisions_stays_empty_so_a_measured_dens_na_reads_no_detector_i
     assert cell["v"] == ac.NO_DET, cell
     chk = next(k for k in cell["checks"] if k["criterion"] == "Dens.served")
     assert chk["cause"] == "no-served-surface" and chk["rule_id"] == "Dens.served#measured:no-served-surface", chk
+    # ... and with the approved rule declared (the production table) the same measurement reads N/A
+    monkeypatch.setattr(ac, "NA_RULE_DECISIONS", {"Dens.served#measured:no-served-surface": "N-22/N-22a row 19; N-65 (test)"})
+    cell = ac.rollup_asset("L0", next(a for a in c["assets"] if a["asset_id"] == "bg_x")["measurements"])["Dens"]
+    assert cell["v"] == ac.NA, cell
 
 
 def test_the_legacy_call_shape_still_lists_modules_by_code(tmp_path):
@@ -359,16 +375,16 @@ _FALSE_TIER_SHAPES = [
     ("count-distinct", "count(DISTINCT tier) AS n, id"),
     ("count-filter", "count(*) FILTER (WHERE tier = 'gold') AS n"),
     ("case-aliased-as-tier", "CASE WHEN score > 1 THEN 'hi' ELSE 'lo' END AS tier, id"),
-    ("function-of-tier", "lower(signature_tier) AS s, id"),
+    ("function-of-tier", "lower(tier) AS s, id"),
     ("coalesce-of-tier", "coalesce(tier, 'x') AS tier"),
     ("tier-led-expression", "tier IS NOT NULL AS has_tier, id"),
-    ("tier-concatenation", "signature_tier || '-x' AS label"),
+    ("tier-concatenation", "tier || '-x' AS label"),
     ("tier-comparison", "tier = 'gold' AS is_gold"),
 ]
 
 
 @pytest.mark.parametrize("sid, sel", _FALSE_TIER_SHAPES, ids=[s[0] for s in _FALSE_TIER_SHAPES])
-@pytest.mark.parametrize("cols", [None, ["id", "score", "tier", "signature_tier"]], ids=["cols-unknown", "cols-known"])
+@pytest.mark.parametrize("cols", [None, ["id", "score", "tier"]], ids=["cols-unknown", "cols-known"])
 def test_a_tier_name_inside_an_expression_is_never_a_tier_column(sid, sel, cols):
     st, got = ac._select_tier(sel, None, "t_x", cols)
     assert st != ac.TIER_YES and got == [], (sid, st, got)
@@ -407,9 +423,9 @@ def test_the_false_tier_shapes_do_not_mint_pass_through_the_scan(tree, monkeypat
         assert d["v"] != ac.PASS, (sql, d)
 
 
-@pytest.mark.parametrize("sel", ["tier", "t_x.tier", "x.tier AS t", "signature_tier::text", "DISTINCT tier",
-                                 "id, \"tier\"", "verification_pass_status", "a.id, x.indication_tier AS it"])
-@pytest.mark.parametrize("cols", [None, ["id", "tier", "signature_tier", "verification_pass_status", "indication_tier"]],
+@pytest.mark.parametrize("sel", ["tier", "t_x.tier", "x.tier AS t", "tier::text", "DISTINCT tier",
+                                 "id, \"tier\"", "verification_pass_status", "a.id, x.verification_pass_status AS it"])
+@pytest.mark.parametrize("cols", [None, ["id", "tier", "verification_pass_status"]],
                          ids=["cols-unknown", "cols-known"])
 def test_a_plain_tier_column_item_still_counts(sel, cols):
     st, got = ac._select_tier(sel, "x", "t_x", cols)
@@ -422,7 +438,7 @@ def test_test_files_and_tests_directories_are_excluded_from_the_serving_roots(tr
     """A `*.test.ts` or a file under `__tests__/` holding a contract plus a tier select is a fixture, not a capability:
     it must never mint PASS (nor count as a module reaching the asset)."""
     (tree.tools / "__tests__").mkdir()
-    sql = "SELECT id, signature_tier FROM t_x"
+    sql = "SELECT id, tier FROM t_x"
     tree.write(tree.tools / "__tests__", "x.ts", _cap(sql))
     tree.write(tree.tools, "x.test.ts", _cap(sql))
     tree.write(tree.layers / "L0_x" , "y.test.ts", _cap(sql))
@@ -445,11 +461,11 @@ def test_test_files_outside_the_serving_roots_do_not_block_na(tree, monkeypatch)
 def test_the_wider_probe_covers_both_source_trees_including_the_mcp_server():
     """Constant pin: a probe that drops `platform-mcp/src` lets an asset served only there read N/A."""
     assert "platform-mcp/src" in ac.DENS_OUTSIDE_ROOTS and "platform/src" in ac.DENS_OUTSIDE_ROOTS
-    assert ac.DENS_TIER_COLUMN.match("verification_pass_status") and ac.DENS_TIER_COLUMN.match("evidence_tier")
+    assert ac.dens_tier_counts("verification_pass_status") and ac.dens_tier_counts("tier") and not ac.dens_tier_counts("evidence_tier")      # closed list (N-98)
 
 
 def test_a_tier_column_without_a_contract_is_surfaced_in_the_fail_evidence(tree, monkeypatch):
-    tree.write(tree.layers / "L0_x", "q.ts", _cap("SELECT fact_id, signature_tier FROM t_x", contract=False))
+    tree.write(tree.layers / "L0_x", "q.ts", _cap("SELECT fact_id, tier FROM t_x", contract=False))
     d = _dens(_measure(monkeypatch, tree, {"bg_x": w1._reg_row("bg_x", "t_x")}), "bg_x")
     assert d["v"] == ac.FAIL and "a tier column is selected without a contract in: L0_x/q.ts" in d["measured"], d
 
@@ -532,8 +548,8 @@ def test_a_clean_ts_reference_that_is_neither_select_nor_comment_still_reads_na(
 def test_a_known_catalog_that_lacks_the_named_column_does_not_credit_it():
     """With the table's columns known, a tier NAME that is not one of them (an alias, another table's column) counts
     for nothing."""
-    assert ac._select_tier("signature_tier", None, "t_x", ["id", "v"]) == (ac.TIER_NO, [])
-    assert ac._select_tier("signature_tier", None, "t_x", ["id", "signature_tier"]) == (ac.TIER_YES, ["signature_tier"])
+    assert ac._select_tier("tier", None, "t_x", ["id", "v"]) == (ac.TIER_NO, [])
+    assert ac._select_tier("tier", None, "t_x", ["id", "tier"]) == (ac.TIER_YES, ["tier"])
 
 
 def test_the_desync_detector_reads_quotes_newlines_and_comments():
@@ -562,7 +578,7 @@ def test_a_sibling_capability_in_the_same_array_does_not_lend_its_contract(tree,
     nothing. One top-level declaration holds both halves; no capability ENTRY has them together."""
     tree.write(tree.layers / "L0_x", "q.ts",
                "export const caps = [\n  " + _cap_obj("SELECT id FROM t_x", name="a") + ",\n  "
-               + _cap_obj("SELECT id, signature_tier FROM t_x", contract=False, name="b") + ",\n]\n")
+               + _cap_obj("SELECT id, tier FROM t_x", contract=False, name="b") + ",\n]\n")
     d = _dens(_measure(monkeypatch, tree, _reg_x()), "bg_x")
     assert d["v"] == ac.PARTIAL and "no tier column" in d["measured"], d
 
@@ -570,7 +586,7 @@ def test_a_sibling_capability_in_the_same_array_does_not_lend_its_contract(tree,
 def test_a_contract_in_one_entry_and_the_tier_select_in_a_sibling_of_another_asset_is_never_pass(tree, monkeypatch):
     tree.write(tree.layers / "L0_x", "q.ts",
                "export const caps = [\n  " + _cap_obj("SELECT id FROM other_table", name="a") + ",\n  "
-               + _cap_obj("SELECT id, signature_tier FROM t_x", contract=False, name="b") + ",\n]\n")
+               + _cap_obj("SELECT id, tier FROM t_x", contract=False, name="b") + ",\n]\n")
     d = _dens(_measure(monkeypatch, tree, _reg_x()), "bg_x")
     assert d["v"] == ac.PARTIAL and "different capability entry" in d["measured"], d
 
@@ -578,7 +594,7 @@ def test_a_contract_in_one_entry_and_the_tier_select_in_a_sibling_of_another_ass
 def test_each_entry_carrying_its_own_contract_and_tier_select_passes(tree, monkeypatch):
     tree.write(tree.layers / "L0_x", "q.ts",
                "export const caps = [\n  " + _cap_obj("SELECT id FROM other_table", name="a") + ",\n  "
-               + _cap_obj("SELECT id, signature_tier FROM t_x", name="b") + ",\n]\n")
+               + _cap_obj("SELECT id, tier FROM t_x", name="b") + ",\n]\n")
     assert _dens(_measure(monkeypatch, tree, _reg_x()), "bg_x")["v"] == ac.PASS
 
 
@@ -586,7 +602,7 @@ def test_each_entry_carrying_its_own_contract_and_tier_select_passes(tree, monke
 
 @pytest.mark.parametrize("val", ["undefined", "null", "false"])
 def test_a_contract_key_with_no_real_value_is_not_a_declaration(tree, monkeypatch, val):
-    body = ("export const cap = {\n  id: 'a',\n  density_contract: %s,\n  run: async () => query(`SELECT id, signature_tier FROM t_x`),\n}\n" % val)
+    body = ("export const cap = {\n  id: 'a',\n  density_contract: %s,\n  run: async () => query(`SELECT id, tier FROM t_x`),\n}\n" % val)
     tree.write(tree.layers / "L0_x", "q.ts", body)
     d = _dens(_measure(monkeypatch, tree, _reg_x()), "bg_x")
     assert d["v"] == ac.FAIL, (val, d)
@@ -594,7 +610,7 @@ def test_a_contract_key_with_no_real_value_is_not_a_declaration(tree, monkeypatc
 
 @pytest.mark.parametrize("val", ["{ paginated: true }", "DENSITY", "buildContract()"])
 def test_a_contract_key_with_an_object_or_identifier_value_is_a_declaration(tree, monkeypatch, val):
-    body = ("export const cap = {\n  id: 'a',\n  density_contract: %s,\n  run: async () => query(`SELECT id, signature_tier FROM t_x`),\n}\n" % val)
+    body = ("export const cap = {\n  id: 'a',\n  density_contract: %s,\n  run: async () => query(`SELECT id, tier FROM t_x`),\n}\n" % val)
     tree.write(tree.layers / "L0_x", "q.ts", body)
     assert _dens(_measure(monkeypatch, tree, _reg_x()), "bg_x")["v"] == ac.PASS
 
@@ -602,11 +618,11 @@ def test_a_contract_key_with_an_object_or_identifier_value_is_a_declaration(tree
 # (1c, 1d) only the served READ is credited: not a sub-select, an INSERT...SELECT or a UNION branch
 
 @pytest.mark.parametrize("sql", [
-    "SELECT id FROM other WHERE k IN (SELECT signature_tier FROM t_x)",
-    "INSERT INTO z (signature_tier) SELECT signature_tier FROM t_x",
-    "WITH w AS (SELECT signature_tier FROM t_x) SELECT id FROM w",
-    "SELECT id FROM other UNION SELECT signature_tier FROM t_x",
-    "CREATE TABLE z AS SELECT signature_tier FROM t_x",
+    "SELECT id FROM other WHERE k IN (SELECT tier FROM t_x)",
+    "INSERT INTO z (tier) SELECT tier FROM t_x",
+    "WITH w AS (SELECT tier FROM t_x) SELECT id FROM w",
+    "SELECT id FROM other UNION SELECT tier FROM t_x",
+    "CREATE TABLE z AS SELECT tier FROM t_x",
 ], ids=["where-subselect", "insert-select", "cte-body", "union-branch", "create-as"])
 def test_a_tier_column_outside_the_served_read_is_never_a_pass(tree, monkeypatch, sql):
     tree.write(tree.layers / "L0_x", "q.ts", _cap(sql))
@@ -617,9 +633,9 @@ def test_a_tier_column_outside_the_served_read_is_never_a_pass(tree, monkeypatch
 def test_the_outer_select_owns_its_from_even_with_a_subselect_in_its_list(tree, monkeypatch):
     """The FROM's own SELECT is the outer one (paren balance), so the select is the served read; a `(SELECT …)` in its
     list still makes the list unattributable (UNKNOWN -> PARTIAL, never PASS)."""
-    sel = list(ac._served_selects("t_x", ["SELECT (SELECT max(v) FROM o) AS m, x.signature_tier FROM t_x x"], strict=True))
+    sel = list(ac._served_selects("t_x", ["SELECT (SELECT max(v) FROM o) AS m, x.tier FROM t_x x"], strict=True))
     assert len(sel) == 1 and sel[0][3].startswith(" (SELECT max(v) FROM o) AS m"), sel
-    tree.write(tree.layers / "L0_x", "q.ts", _cap("SELECT (SELECT max(v) FROM o) AS m, x.signature_tier FROM t_x x"))
+    tree.write(tree.layers / "L0_x", "q.ts", _cap("SELECT (SELECT max(v) FROM o) AS m, x.tier FROM t_x x"))
     assert _dens(_measure(monkeypatch, tree, _reg_x()), "bg_x")["v"] == ac.PARTIAL
 
 
@@ -627,7 +643,7 @@ def test_the_outer_select_owns_its_from_even_with_a_subselect_in_its_list(tree, 
 
 @pytest.mark.parametrize("extra", ["is_selected", "reselect_count", "selected"])
 def test_a_column_name_holding_select_does_not_truncate_the_select_list(tree, monkeypatch, extra):
-    tree.write(tree.layers / "L0_x", "q.ts", _cap(f"SELECT id, signature_tier, {extra} FROM t_x"))
+    tree.write(tree.layers / "L0_x", "q.ts", _cap(f"SELECT id, tier, {extra} FROM t_x"))
     assert _dens(_measure(monkeypatch, tree, _reg_x()), "bg_x")["v"] == ac.PASS
     assert [s.strip() for _i, _m, _a, s in ac._served_selects("t_x", [f"SELECT id, {extra} FROM t_x"])] == [f"id, {extra}"]
 
@@ -666,18 +682,18 @@ def test_a_comment_naming_the_asset_blocks_na_even_when_the_table_is_in_code(tre
 # (5) a desynced file INSIDE a serving root
 
 def test_a_desynced_serving_root_file_that_names_the_asset_is_no_detector_never_fail(tree, monkeypatch):
-    tree.write(tree.tools, "odd.ts", "const re = /'/;\n" + _cap("SELECT id, signature_tier FROM t_x", contract=False))
+    tree.write(tree.tools, "odd.ts", "const re = /'/;\n" + _cap("SELECT id, tier FROM t_x", contract=False))
     d = _dens(_measure(monkeypatch, tree, _reg_x()), "bg_x")
     assert d["v"] == ac.NO_DET and "odd.ts" in d["measured"] and "string scanner" in d["measured"], d
 
 
 def test_a_desynced_file_never_mints_pass(tree, monkeypatch):
-    tree.write(tree.tools, "odd.ts", "const re = /'/;\n" + _cap("SELECT id, signature_tier FROM t_x"))
+    tree.write(tree.tools, "odd.ts", "const re = /'/;\n" + _cap("SELECT id, tier FROM t_x"))
     assert _dens(_measure(monkeypatch, tree, _reg_x()), "bg_x")["v"] == ac.NO_DET
 
 
 def test_a_clean_pass_stands_when_a_desynced_file_also_names_the_asset(tree, monkeypatch):
-    tree.write(tree.layers / "L0_x", "q.ts", _cap("SELECT id, signature_tier FROM t_x"))
+    tree.write(tree.layers / "L0_x", "q.ts", _cap("SELECT id, tier FROM t_x"))
     tree.write(tree.tools, "odd.ts", "const re = /'/;\nconst x = 't_x';\n")
     assert _dens(_measure(monkeypatch, tree, _reg_x()), "bg_x")["v"] == ac.PASS
 
@@ -691,7 +707,7 @@ def test_a_desynced_file_that_never_names_the_asset_changes_nothing(tree, monkey
 # (6) mutants that only a targeted fixture kills
 
 def test_an_outside_root_that_overlaps_a_serving_root_adds_no_outside_tail(tree):
-    tree.write(tree.layers / "L0_x", "q.ts", _cap("SELECT id, signature_tier FROM t_x"))
+    tree.write(tree.layers / "L0_x", "q.ts", _cap("SELECT id, tier FROM t_x"))
     cap = _REAL_SCAN(tree.roots, ["t_x", "bg_x"], outside_roots=(str(tree.tmp),))
     assert cap["outside"] == [] and cap["outside_named"] == [], cap
     assert ac._grade_dens(cap, "t_x")["v"] == ac.PASS and "outside" not in ac._grade_dens(cap, "t_x")["measured"]
@@ -714,7 +730,7 @@ def test_ts_mask_blanks_a_comment_to_its_last_character(src):
 def test_a_comment_ending_in_a_brace_does_not_shift_the_declaration_boundaries(tree, monkeypatch):
     tree.write(tree.layers / "L0_x", "q.ts",
                "export const capA = { id: 'a', " + CONTRACT + " run: () => query(`SELECT id FROM t_x`) } // {\n"
-               "export const capB = { id: 'b', run: () => query(`SELECT id, signature_tier FROM t_x`) }\n")
+               "export const capB = { id: 'b', run: () => query(`SELECT id, tier FROM t_x`) }\n")
     assert _dens(_measure(monkeypatch, tree, _reg_x()), "bg_x")["v"] == ac.PARTIAL
 
 
@@ -727,9 +743,10 @@ def test_declaration_files_node_modules_and_generated_code_do_not_block_na(tree,
 
 
 def test_the_tier_vocabulary_is_case_insensitive():
-    for c in ("TIER", "Signature_Tier", "VERIFICATION_PASS_STATUS"):
-        assert ac.DENS_TIER_COLUMN.match(c), c
-    assert ac._select_tier("Signature_Tier", None, "t_x", None)[0] == ac.TIER_YES
+    for c in ("TIER", "Tier", "VERIFICATION_PASS_STATUS"):
+        assert ac.dens_tier_counts(c), c
+    assert ac._select_tier("Tier", None, "t_x", None)[0] == ac.TIER_YES
+    assert ac._select_tier("Signature_Tier", None, "t_x", None)[0] == ac.TIER_NO          # N-98: closed list; only a declared name counts (test_e6_dens_tier_guard.py)
 
 
 def test_a_from_literal_after_a_complete_select_is_not_a_select_list_for_it():
@@ -742,7 +759,7 @@ def test_a_from_literal_after_a_complete_select_is_not_a_select_list_for_it():
 def test_a_from_whose_select_is_unbalanced_is_not_borrowed_from_the_previous_literal():
     """`EXTRACT(year FROM t_x)` has a SELECT in its literal but none that owns the FROM; the previous literal's
     dangling SELECT is not its list either."""
-    assert list(ac._served_selects("t_x", ["SELECT signature_tier ", "SELECT EXTRACT(year FROM t_x) AS y"], strict=True)) == []
+    assert list(ac._served_selects("t_x", ["SELECT tier ", "SELECT EXTRACT(year FROM t_x) AS y"], strict=True)) == []
 
 
 def test_a_literal_ending_in_from_is_dynamic_only_when_it_is_concatenated_on():
@@ -759,11 +776,11 @@ def test_a_literal_ending_in_from_is_dynamic_only_when_it_is_concatenated_on():
 # ───────────────────────── final review: SQL comments, split literals, more dynamic spellings, regex/contract edges ─────────────────────────
 
 @pytest.mark.parametrize("sql", [
-    "SELECT id FROM other WHERE k IN ( /* c */ SELECT id, signature_tier FROM t_x)",
-    "SELECT id FROM other WHERE k IN (-- c\nSELECT id, signature_tier FROM t_x)",
-    "SELECT id FROM other WHERE k IN (/* a */ /* b */\n  SELECT id, signature_tier FROM t_x)",
-    "INSERT INTO z (signature_tier) /* c */ SELECT signature_tier FROM t_x",
-    "SELECT id FROM other UNION -- c\n SELECT signature_tier FROM t_x",
+    "SELECT id FROM other WHERE k IN ( /* c */ SELECT id, tier FROM t_x)",
+    "SELECT id FROM other WHERE k IN (-- c\nSELECT id, tier FROM t_x)",
+    "SELECT id FROM other WHERE k IN (/* a */ /* b */\n  SELECT id, tier FROM t_x)",
+    "INSERT INTO z (tier) /* c */ SELECT tier FROM t_x",
+    "SELECT id FROM other UNION -- c\n SELECT tier FROM t_x",
 ], ids=["block-comment", "line-comment", "two-comments", "insert-comment", "union-comment"])
 def test_a_sql_comment_does_not_hide_the_subselect_paren_or_write_prefix(tree, monkeypatch, sql):
     tree.write(tree.layers / "L0_x", "q.ts", _cap(sql))
@@ -773,19 +790,19 @@ def test_a_sql_comment_does_not_hide_the_subselect_paren_or_write_prefix(tree, m
 
 def test_a_comment_inside_the_select_owner_search_does_not_unbalance_it():
     """A `)` inside a SQL comment is not a paren."""
-    sel = list(ac._served_selects("t_x", ["SELECT id, /* ) */ signature_tier FROM t_x"], strict=True))
-    assert len(sel) == 1 and sel[0][3] is not None and "signature_tier" in sel[0][3], sel
+    sel = list(ac._served_selects("t_x", ["SELECT id, /* ) */ tier FROM t_x"], strict=True))
+    assert len(sel) == 1 and sel[0][3] is not None and "tier" in sel[0][3], sel
 
 
 @pytest.mark.parametrize("lits, served", [
-    (["x IN (", "SELECT id, signature_tier FROM t_x)"], False),                   # sub-select split across literals
-    (["x IN (", "SELECT id, signature_tier ", "FROM t_x)"], False),               # ... and the FROM split off too
-    (["INSERT INTO z (a) ", "SELECT signature_tier FROM t_x"], False),
-    (["SELECT id FROM o UNION ", "SELECT signature_tier FROM t_x"], False),
-    (["x IN ( /* c */ ", "SELECT signature_tier FROM t_x)"], False),
-    (["SELECT id, signature_tier ", "FROM t_x"], True),                           # the plain split select
-    (["Create a chart", "SELECT id, signature_tier FROM t_x"], True),             # an unrelated prose literal before it
-    (["a", "SELECT id, signature_tier ", "FROM t_x"], True),
+    (["x IN (", "SELECT id, tier FROM t_x)"], False),                   # sub-select split across literals
+    (["x IN (", "SELECT id, tier ", "FROM t_x)"], False),               # ... and the FROM split off too
+    (["INSERT INTO z (a) ", "SELECT tier FROM t_x"], False),
+    (["SELECT id FROM o UNION ", "SELECT tier FROM t_x"], False),
+    (["x IN ( /* c */ ", "SELECT tier FROM t_x)"], False),
+    (["SELECT id, tier ", "FROM t_x"], True),                           # the plain split select
+    (["Create a chart", "SELECT id, tier FROM t_x"], True),             # an unrelated prose literal before it
+    (["a", "SELECT id, tier ", "FROM t_x"], True),
 ], ids=["sub-split", "sub-split-from", "insert-split", "union-split", "comment-split", "plain-split", "prose-before", "plain-split-2"])
 def test_a_select_at_the_start_of_a_literal_reads_its_context_from_the_previous_literal(lits, served):
     got = list(ac._served_selects("t_x", lits, strict=True))
@@ -795,10 +812,10 @@ def test_a_select_at_the_start_of_a_literal_reads_its_context_from_the_previous_
 
 def test_the_split_select_and_the_split_subselect_end_to_end(tree, monkeypatch):
     tree.write(tree.layers / "L0_x", "q.ts",
-               "export const cap = {\n  id: 'a',\n  " + CONTRACT + "\n  run: () => query('SELECT id, signature_tier ' + 'FROM t_x'),\n}\n")
+               "export const cap = {\n  id: 'a',\n  " + CONTRACT + "\n  run: () => query('SELECT id, tier ' + 'FROM t_x'),\n}\n")
     assert _dens(_measure(monkeypatch, tree, _reg_x()), "bg_x")["v"] == ac.PASS
     tree.write(tree.layers / "L0_x", "q.ts",
-               "export const cap = {\n  id: 'a',\n  " + CONTRACT + "\n  run: () => query('SELECT id FROM o WHERE k IN (' + 'SELECT id, signature_tier FROM t_x)'),\n}\n")
+               "export const cap = {\n  id: 'a',\n  " + CONTRACT + "\n  run: () => query('SELECT id FROM o WHERE k IN (' + 'SELECT id, tier FROM t_x)'),\n}\n")
     assert _dens(_measure(monkeypatch, tree, _reg_x()), "bg_x")["v"] == ac.PARTIAL
 
 
@@ -831,13 +848,13 @@ def test_a_complete_table_name_that_is_not_concatenated_is_not_dynamic():
 
 @pytest.mark.parametrize("val", ["trueValue", "nullableContract", "falsey", "undefinedContract"])
 def test_an_identifier_that_merely_starts_like_a_literal_is_a_real_contract_value(tree, monkeypatch, val):
-    body = ("export const cap = {\n  id: 'a',\n  density_contract: %s,\n  run: async () => query(`SELECT id, signature_tier FROM t_x`),\n}\n" % val)
+    body = ("export const cap = {\n  id: 'a',\n  density_contract: %s,\n  run: async () => query(`SELECT id, tier FROM t_x`),\n}\n" % val)
     tree.write(tree.layers / "L0_x", "q.ts", body)
     assert _dens(_measure(monkeypatch, tree, _reg_x()), "bg_x")["v"] == ac.PASS
 
 
 def test_density_contract_true_is_not_a_declaration(tree, monkeypatch):
-    body = ("export const cap = {\n  id: 'a',\n  density_contract: true,\n  run: async () => query(`SELECT id, signature_tier FROM t_x`),\n}\n")
+    body = ("export const cap = {\n  id: 'a',\n  density_contract: true,\n  run: async () => query(`SELECT id, tier FROM t_x`),\n}\n")
     tree.write(tree.layers / "L0_x", "q.ts", body)
     assert _dens(_measure(monkeypatch, tree, _reg_x()), "bg_x")["v"] == ac.FAIL
 
@@ -852,13 +869,13 @@ def test_enclosing_object_skips_nested_objects_on_both_sides():
 
 def test_a_nested_object_before_the_contract_key_does_not_hide_the_entry(tree, monkeypatch):
     body = ("export const caps = [\n"
-            "  { id: 'a', meta: { x: { y: 1 } }, density_contract: { paginated: true }, run: async () => query(`SELECT id, signature_tier FROM t_x`) },\n"
+            "  { id: 'a', meta: { x: { y: 1 } }, density_contract: { paginated: true }, run: async () => query(`SELECT id, tier FROM t_x`) },\n"
             "  { id: 'b', run: async () => query(`SELECT id FROM t_x`) },\n]\n")
     tree.write(tree.layers / "L0_x", "q.ts", body)
     assert _dens(_measure(monkeypatch, tree, _reg_x()), "bg_x")["v"] == ac.PASS
     # the contract sits in entry B; A (with the tier select) has none
     body = ("export const caps = [\n"
-            "  { id: 'a', meta: { x: { y: 1 } }, run: async () => query(`SELECT id, signature_tier FROM t_x`) },\n"
+            "  { id: 'a', meta: { x: { y: 1 } }, run: async () => query(`SELECT id, tier FROM t_x`) },\n"
             "  { id: 'b', meta: { z: 1 }, density_contract: { paginated: true }, run: async () => query(`SELECT id FROM t_x`) },\n]\n")
     tree.write(tree.layers / "L0_x", "q.ts", body)
     assert _dens(_measure(monkeypatch, tree, _reg_x()), "bg_x")["v"] == ac.PARTIAL
@@ -871,6 +888,6 @@ def test_the_unparsed_message_names_the_real_causes(tree, monkeypatch):
 
 
 def test_a_word_from_inside_a_sql_comment_does_not_cancel_a_split_select():
-    got = list(ac._served_selects("t_x", ["SELECT id, signature_tier /* from elsewhere */ ", "FROM t_x"], strict=True))
+    got = list(ac._served_selects("t_x", ["SELECT id, tier /* from elsewhere */ ", "FROM t_x"], strict=True))
     assert len(got) == 1 and got[0][3] is not None, got
     assert list(ac._served_selects("t_x", ["SELECT id FROM o ", "FROM t_x"], strict=True)) == []
