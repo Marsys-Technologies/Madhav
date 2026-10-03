@@ -1,11 +1,12 @@
 ---
-version: 1.0
+version: 1.1
 status: CURRENT
 lane: TI-i-fl2-004
 item: TI-L2-21 (Q-L2-03 orb check, "re-check at execution")
 branch: suvarna/land/TI-i-fl2-004
 basis: origin/main adb0db29d; production DB read 2026-10-03, reader-only SELECT, chart 482012f1
 changelog:
+  - 1.1 -- after independent review: the stored 1.0 is an explicit provisional constant (bo_laksana.py:1425, :2106; each emitter passes 1.0), not the dataclass default; the prior ruling D-CND-33 / adjudication #2052 is now cited and its effect on the proposal stated.
   - 1.0 -- re-check of which L1 aspect facts carry an orb. The brief's premise ("no orb fact was found for aspects") is incomplete: the Tajika aspect facts do. Evidence only.
 ---
 
@@ -22,7 +23,7 @@ the re-check.
 `chart_facts.fact_category = 'aspect_tajik'` (ithasala / eesarpha / manaau) carries
 `fact_value_jsonb = {"orb_deg": ..., "orb_strength": ..., "applying": ..., "deeptamsa_sum_deg": ..., "salience": ..., "house_diff": ...}`.
 It is **not** true for the Parashari, Jaimini, virupa-drishti, special-point or lord-aspect families,
-which store no orb. So TI-L2-27 / TI-L2-21 should not read as "no orb fact exists for aspects":
+which store no orb. The nearest prior decision is D-CND-33 / adjudication #2052 (below): it covered conjunctions and a missing max-orb reference, not the Tajika `orb_strength`. So TI-L2-27 / TI-L2-21 should not read as "no orb fact exists for aspects":
 for the Tajika family the L1 fact exists and L2 ignores it.
 
 ## What was measured (canonical chart, production, 2026-10-03)
@@ -44,8 +45,26 @@ L1 aspect-class categories, whether the fact carries an orb, and the L2 signals 
 
 322 distinct L2 signals (of 50,678) cite an L1 fact that carries an orb (Tajika 20 + conjunction
 302), and all of them store `orb_tightness = 1.0`. In fact **all 50,678 rows store exactly
-1.0** (no NULL, one distinct value, across all six producers), which is the default of
-`SalienceInputs.orb_tightness` (`bodha_writers/formulas.py:127`: "1 = exact, 0 = at max orb"; the V2 dataclass repeats the default at `:587`).
+1.0** (no NULL, one distinct value, across all six producers). That 1.0 is **an explicit provisional
+constant, not the dataclass default**: `bo_laksana.py:1425` writes `"orb_tightness": 1.0` literally, the
+condition-terms path at `:2106` reads `_safe_float(tags.get("orb_tightness"), 1.0)` and labels it
+`provisional_constant_pending_design_ruling -- see #2052` (per the code comment at `:2088-2092` the jsonb key `orb_tightness` appears in none of the chart's L1 facts, so
+it always falls to 1.0), and each satellite emitter passes `orb_tightness=1.0` explicitly
+(`arudha_emitter.py:96`, `special_lagna_emitter.py:96`, `nakshatra_semantic_emitter.py:232`,
+`sudarshana_emitter.py:241`, `vargottama_dhana_emitter.py:119`). The dataclass default in
+`bodha_writers/formulas.py:127` ("1 = exact, 0 = at max orb"; the V2 dataclass repeats it at `:587`) is
+the same value, but the stored 1.0 does not come from it.
+
+**Prior decision on this exact term.** Main already carries a ruling: D-CND-33 (Conductor ruling on
+adjudication #2052, 2026-09-06; `bo_laksana.py:76-90` and `:2095-2106`, `PROVISIONAL_SALIENCE_TERMS_NOTE`).
+It states that `orb_tightness` "has a real L1 data source (`conjunction_per_varga.orb_deg`) for a narrow
+signal slice", that the formula's own spec lacks a max-orb reference the codebase does not define
+(`bg_combustion_orbs` and L3's `_ACTIVITY_MAX_ORB_DEG` are different concepts and would be wrong-domain
+substitutes), and that the 1.0 is therefore an honestly labelled identity placeholder pending a native
+design ruling. #2052 is still open. What this note adds to that ruling: (a) the Tajika aspect facts carry an
+orb *and* an L1-normalised `orb_strength` in [0,1], so for that family no max-orb reference of our own is
+needed; (b) the ruling's "narrow slice" is the conjunction family (302 signals) and does not mention the
+20 Tajika signals.
 
 The Tajika orbs the L2 rows ignore (identical across the five ayanamshas):
 
@@ -67,7 +86,8 @@ disagree: an orb *was* computed, in L1, and is ignored.
 ## Consequences for the batched items (for SS; nothing is built here)
 
 * TI-L2-27: for the Tajika and conjunction families the design can read the L1 orb instead of storing
-  None. L1's `orb_strength` is already a 0 to 1 tightness for Tajika; conjunctions carry degrees only
+  None. For conjunctions this still needs the native's max-orb ruling that D-CND-33 / #2052 is waiting for;
+  for Tajika, L1's own `orb_strength` removes that dependency. L1's `orb_strength` is already a 0 to 1 tightness for Tajika; conjunctions carry degrees only
   and need a stated normalisation (the formula's "max orb"). Either way the change **lowers**
   salience for wide-orb Tajika signals, so it belongs in the single rebuild with its own before/after.
 * TI-L2-21's own residual (an L1 orb fact for Parashari / Jaimini / virupa aspects) stands for those
