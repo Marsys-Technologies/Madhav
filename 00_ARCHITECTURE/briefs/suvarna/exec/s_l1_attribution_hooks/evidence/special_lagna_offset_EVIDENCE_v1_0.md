@@ -1,6 +1,6 @@
 ---
 artifact: SPECIAL_LAGNA_OFFSET_EVIDENCE
-version: 1.1
+version: 1.2
 status: DRAFT-FOR-REVIEW
 produced_by: exec-suvarna (hora-lagna worker)
 lane: special_lagna_offset
@@ -8,6 +8,7 @@ pr: "#2971"
 date: 2026-10-02
 decision: SS accepted the lane in S-L1 (fallback: leaves S-L1 if not review-clean)
 changelog:
+  - "1.2 (2026-10-03): F-2 of the PR #2984 delta review. The statements that INDU/SREE/VARNADA 'values do not change' / 'ZERO CHANGE on every column' were true of the CLASS values (sign, sign_lord, house_d1, nakshatra, nakshatra_lord, pada), the flags and the provenance text, but not of the longitude number under the Moshier to .se1 backend move (INDU -0.000185 deg, SREE -0.004985 deg, VARNADA 0 to 2.7e-8 deg on True Chitra and Surya Siddhanta; /Users/Dev/suvarna-evidence/Ephemeris/SE1_SHIFT_ANALYSIS.md (sha256 22564b863fc7cb3713e5d4b5d88ca5dc7376532fd93a9faa6461c99689ac3403) section 3 and /Users/Dev/suvarna-evidence/Ephemeris/SPECIAL_LAGNA_AYA_CHECK.md section 3b). Script C3 now holds each longitude to its own declared band (INDU +/-0.00025, SREE +/-0.0055, VARNADA +/-1e-7 deg) and keeps every other column exact; tests added. A correct .se1 rebuild would otherwise have failed the REQUIRED W7 step on 12 rows (5 INDU, 5 SREE, 2 VARNADA)."
   - "1.1 (2026-10-02): R2c2 review fixes. Hook: the optional longitude value entry removed, so a NULL/text longitude fails the detector itself; W7 run of the check script declared REQUIRED; check script refuses to run unless the session is read-only; Vighati/tolerance note; legacy/historical not-changed note; exact Varnada finding with quote, 144-pair result and the canonical five-row table; Varnada readers list."
   - "1.0 (2026-10-02): hook entries, zero-change expectations, findings records, Varnada design (local copy, no swap), #2967 removal list."
 ---
@@ -26,12 +27,12 @@ PyJHora 4.8.6 `drik.special_ascendant` read the Sun `tz` hours after sunrise. `p
 | `near_nakshatra_boundary_flag` | 5 points x 7 keys = 35 | BHAVA surya_siddhanta_classical true->false; GHATI krishnamurti, lahiri_chitrapaksha, true_chitra false->true; VIGHATI raman true->false (script C5; not read by the detector) |
 | `formula_provenance_text` | 140 (4 subjects x 7 keys x 5) | all change (corrected citations; script C6; not read by the detector) |
 | `sign`, `sign_lord`, `house_d1`, `nakshatra`, `nakshatra_lord`, `pada` | 4 subjects x 20 = 120 | **ZERO CHANGE** (hook entry `exact 0`, script C2): sign 0/20, nakshatra 0/20, pada 0/20, house 0/20 |
-| INDU, SREE, VARNADA, every key | 3 subjects x 35 = 105 | **ZERO CHANGE** (hook entry `exact 0` on the class keys; script C3 on every column) |
+| INDU, SREE, VARNADA, every key | 3 subjects x 35 = 105 | **CLASS ZERO CHANGE** (hook entry `exact 0` on the class keys; script C3 compares sign, sign_lord, house_d1, nakshatra, nakshatra_lord, pada, flags and provenance text EXACTLY). The `longitude_sidereal` number of these three moves by a measured, tiny amount under the Moshier to .se1 backend move and is held to its own band by C3: INDU +/-0.00025 deg (measured -0.000185, the Moon's shift), SREE +/-0.0055 deg (measured -0.004985, 27 x the Moon's shift), VARNADA +/-1e-7 deg (measured 0 on three ayanamshas, -2.6e-8 true_chitra, +1.2e-8 surya_siddhanta) |
 | row count | 245 per chart | unchanged (hook entry `exact 0` on appeared/disappeared/occurrence_count of longitude; script C1) |
 
 Pada answer: no pada changes. The smallest distance from any of the 20 points (old or new position) to a pada edge is 7.6 arcmin, and none of the 20 crosses a sign, nakshatra or pada edge when shifted by 13.9 arcmin. Model check: with the stored longitude, the writer's own classifier reproduces the stored sign/nakshatra/pada on all 20 points, the writer's boundary-flag functions reproduce the stored flags, and a synthesized after-state built from the REAL before-snapshot passes `special_lagna_offset_check.py --compare` (0 failures, 245 rows). The model assumes the stored rows were built with the unfixed adapter and the +5.5 h timezone.
 
-**Varnada: no VARNADA row changes on the canonical chart (0 of 35).** Varnada Lagna depends on the Lagna sign and the Hora Lagna SIGN only, and no Hora Lagna sign changes on this chart in any ayanamsha (sign 0/5). Its longitude is the Lagna's own degree in sign.
+**Varnada: no VARNADA class value changes on the canonical chart (0 of 30 class rows).** Varnada Lagna depends on the Lagna sign and the Hora Lagna SIGN only, and no Hora Lagna sign changes on this chart in any ayanamsha (sign 0/5). Its longitude is the Lagna's own degree in sign, so it moves only as far as the Lagna does under the backend move: 0 on Lahiri, Krishnamurti and Raman, about 3e-8 deg on True Chitra and Surya Siddhanta (script C3 band +/-1e-7 deg).
 
 Detector-visibility: continuous values (longitude) are counted in the detector's `continuous` block and never blocking, BUT a longitude that becomes NULL or text is a class `value` change; the hook deliberately declares NO entry for the longitude value, so the detector itself FAILS it (`KIND_MISMATCH`, verified offline for NULL and for text). The hook format has no null-count expectation, which is why this route is used instead. Flag columns and provenance text are not read at all. Hence two layers: the hook (class-level zero-change, row counts) and the script (delta, flags, provenance). Tier changes on special_lagna belong to the tiers lane (#2941, two_pass_verified -> single on 245 rows) and are excluded from this hook's zero-change entry on purpose; with no tiers hook loaded they appear as KIND_MISMATCH, with it loaded they are attributed to it.
 

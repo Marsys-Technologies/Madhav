@@ -8,7 +8,11 @@ after it, and fails on any deviation from what the lane declared for the CANONIC
 
   C1  row counts: 245 before and after, exactly one row per (ayanamsha, subject, key)
   C2  ZERO CHANGE: sign, sign_lord, house_d1, nakshatra, nakshatra_lord, pada on ALL 7 subjects
-  C3  ZERO CHANGE: INDU/SREE/VARNADA every key (value, flags, provenance text)
+  C3  INDU/SREE/VARNADA: every key EXACTLY unchanged (value, flags, provenance text) EXCEPT the
+      longitude_sidereal NUMBER, which may move only inside its own declared ephemeris band
+      (LONGITUDE_BAND_DEG below; the Moshier -> .se1 move shifts these three by a measured, tiny amount).
+      Class values (sign, sign_lord, house_d1, nakshatra, nakshatra_lord, pada), flags and provenance
+      stay exact: the band never loosens a class check
   C4  longitude_sidereal of BHAVA/GHATI/HORA/VIGHATI x 5 ayanamshas (20 rows): delta == -0.23243 deg
       within +/-0.001 deg (the Sun's motion over the +5.5 h timezone offset on the birth date)
   C5  near_nakshatra_boundary_flag flips on exactly 5 points x 7 keys, in the declared direction;
@@ -39,6 +43,27 @@ CLASS_KEYS = ("sign", "sign_lord", "house_d1", "nakshatra", "nakshatra_lord", "p
 ALL_KEYS = CLASS_KEYS + ("longitude_sidereal",)
 EXPECTED_DELTA_DEG = -0.23243
 DELTA_TOL_DEG = 0.001
+# C3 ephemeris bands (deg), ONE PER SUBJECT, no shared band. The S-L1 rebuild runs on the pinned Swiss .se1
+# files; the stored rows were built on Moshier. INDU, SREE and VARNADA are not moved by the lane (class values
+# and flags stay exact) but their longitude NUMBER inherits the backend's shift of the inputs. Evidence:
+# /Users/Dev/suvarna-evidence/Ephemeris/SE1_SHIFT_ANALYSIS.md (sha256 22564b863fc7cb3713e5d4b5d88ca5dc7376532fd93a9faa6461c99689ac3403)
+# section 3 (input shifts: Moon -0.6646..-0.6648 arcsec on all five ayanamshas; Lagna/MC/cusps 0, True Chitra
+# -0.0001 arcsec) and /Users/Dev/suvarna-evidence/Ephemeris/SPECIAL_LAGNA_AYA_CHECK.md section 3b (measured on
+# the canonical chart, linux/amd64, all five ayanamshas, Moshier vs .se1, full precision).
+#   INDU_LAGNA  follows the Moon one-for-one (INDU = Moon - 90 deg in the stored data): the Moon's shift is
+#               0.6648 arcsec = 1.847e-4 deg; measured -0.00018460 .. -0.00018467 deg on all five. Band
+#               +/-0.00025 deg (1.35x the Moon's shift; 0.001 deg would be 5.4x too loose).
+#   SREE_LAGNA  amplifies the Moon's shift x27 (SE1_SHIFT_ANALYSIS.md: "Sree Lagna (27 x Moon fraction)"):
+#               0.6648 arcsec x 27 = 17.95 arcsec = 0.004986 deg; measured -0.004984 .. -0.004986 deg.
+#               Band +/-0.0055 deg (1.10x). Its class keys stay exact (the analysis found no pada edge
+#               crossed: nearest margin ~0.005 deg for true_chitra at 203.3525, edge 203.3333).
+#   VARNADA     longitude = the Lagna's degree in its sign (the Varnada SIGN comes from the Lagna and Hora
+#               signs, which do not change). The Lagna moves 0 on Lahiri/Krishnamurti/Raman and -0.0001
+#               arcsec (2.8e-8 deg) on True Chitra/Surya Siddhanta (the ayanamsha value itself shifts
+#               -0.0055 / -0.00004 arcsec); measured -2.65e-8 (true_chitra) and +1.15e-8 (surya_siddhanta)
+#               deg, exactly 0.0 on the other three. Band +/-1e-7 deg (3.6x the Lagna shift).
+# A move beyond a band, or any change of a class key / flag / provenance, FAILS C3.
+LONGITUDE_BAND_DEG = {"INDU_LAGNA": 0.00025, "SREE_LAGNA": 0.0055, "VARNADA_LAGNA": 1e-7}
 # (subject, ayanamsha) -> (before, after) of near_nakshatra_boundary_flag on all 7 keys
 EXPECTED_NAK_FLAG_FLIPS = {
     ("BHAVA_LAGNA", "surya_siddhanta_classical"): ("t", "f"),
@@ -116,6 +141,22 @@ def _sdelta(a: float, b: float) -> float:
     return ((b - a + 180.0) % 360.0) - 180.0
 
 
+def _longitude_band_failure(subject: str, before: str, after: str) -> str:
+    """'' when the longitude of an unmoved subject is inside its declared ephemeris band, else a reason.
+    Identical text passes (including both NULL); a NULL/non-numeric on one side only fails."""
+    if before == after:
+        return ""
+    band = LONGITUDE_BAND_DEG[subject]
+    try:
+        d = _sdelta(float(before), float(after))
+    except ValueError:
+        return f"longitude not comparable ({before[:20]!r} -> {after[:20]!r})"
+    if abs(d) > band:
+        return (f"longitude moved {d:+.9f} deg, outside the declared ephemeris band +/-{band} deg "
+                f"(Moshier -> .se1 shift, SE1_SHIFT_ANALYSIS.md)")
+    return ""
+
+
 def check_states(before: list[dict], after: list[dict], chart_id: str = CANONICAL) -> dict:
     """Pure function. Returns {"failures": [...], "info": [...]}; empty failures == pass."""
     canonical = chart_id.strip().lower() == CANONICAL
@@ -140,7 +181,11 @@ def check_states(before: list[dict], after: list[dict], chart_id: str = CANONICA
         aya, subj, key = k
         if subj in STILL and canonical:  # C3
             for col in COLS[3:]:
-                if b[col] != a[col]:
+                if col == "fact_value_num" and key == "longitude_sidereal":
+                    msg = _longitude_band_failure(subj, b[col], a[col])
+                    if msg:
+                        fails.append(f"C3 {k}: {msg}")
+                elif b[col] != a[col]:
                     fails.append(f"C3 {k}: {col} changed ({b[col][:40]!r} -> {a[col][:40]!r})")
         if key in CLASS_KEYS and val(b) != val(a):
             msg = f"C2 {k}: class value changed {val(b)} -> {val(a)}"
@@ -156,8 +201,9 @@ def check_states(before: list[dict], after: list[dict], chart_id: str = CANONICA
             if not canonical and abs(d) > 1.0:
                 fails.append(f"C4 {k}: |delta| {abs(d):.4f} deg exceeds the 1 deg sanity bound")
         if subj in STILL and key == "longitude_sidereal" and not canonical:
-            if b["fact_value_num"] != a["fact_value_num"]:
-                fails.append(f"C3 {k}: longitude of a non-moved subject changed")
+            msg = _longitude_band_failure(subj, b["fact_value_num"], a["fact_value_num"])
+            if msg:
+                fails.append(f"C3 {k}: {msg} (bands are the canonical chart's; read the derivation at LONGITUDE_BAND_DEG)")
         if canonical:  # C5 / C6
             if _flag(b["near_sign_boundary_flag"]) != _flag(a["near_sign_boundary_flag"]):
                 fails.append(f"C5 {k}: near_sign_boundary_flag changed")

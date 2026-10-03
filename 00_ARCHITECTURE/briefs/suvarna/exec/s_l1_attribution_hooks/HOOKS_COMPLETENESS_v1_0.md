@@ -1,6 +1,6 @@
 ---
 artifact: HOOKS_COMPLETENESS
-version: 1.3
+version: 1.4
 status: DRAFT-FOR-REVIEW
 produced_by: exec-suvarna (integration-hooks worker, S-L1 phase 3)
 decision: SS 2026-10-02 flip_detector conditions 1 and 3 and the rehearsal-final decision (explicit counts for code-driven changes; optional only for the five chart-dependent categories)
@@ -8,6 +8,7 @@ scope: hook directory 00_ARCHITECTURE/briefs/suvarna/exec/s_l1_attribution_hooks
 evidence:
   - /Users/Dev/suvarna-evidence/Ephemeris/SE1_SHIFT_ANALYSIS.md (sha256 22564b863fc7cb3713e5d4b5d88ca5dc7376532fd93a9faa6461c99689ac3403)
 changelog:
+  - "1.4 (2026-10-03): special_lagna_offset.json description (and its byte copy in the flip-detector fixtures) reworded from 'INDU/SREE/VARNADA values do not change' to 'class values do not change; the longitude number moves inside a declared band' (F-2 of the PR #2984 delta review; evidence/special_lagna_offset_check.py C3 bands and tests). No hook entry, count or expectation changed."
   - "1.3 (2026-10-03): citations only, no content change: every citation of SE1_SHIFT_ANALYSIS.md now names the read-only evidence copy /Users/Dev/suvarna-evidence/Ephemeris/SE1_SHIFT_ANALYSIS.md (sha256 22564b863fc7cb3713e5d4b5d88ca5dc7376532fd93a9faa6461c99689ac3403); the file lived only in a session scratchpad before. The analysis itself is unchanged."
   - "1.2 (2026-10-03): ephemeris_backend_shift added (SS 2026-10-03 GO; /Users/Dev/suvarna-evidence/Ephemeris/SE1_SHIFT_ANALYSIS.md (sha256 22564b863fc7cb3713e5d4b5d88ca5dc7376532fd93a9faa6461c99689ac3403)): 23 hook files now. The Moshier-to-.se1 move is declared per dasha system (Vimshottari +6,990..+6,994 s, KP with its parent, Kalachakra +145,089..+145,111 s and +150,309 s on Surya Siddhanta, Mudda 0..+1 s plus one -43 s step, Yogini / Ashtottari / Chara / Narayana / Naisargika exactly 0) and the level-4 row-set change PER AYANAMSHA (never as a five-ayanamsha total). karaka_dasha_roles[0] narrowed to ashtottari, mudda, naisargika; karaka_dasha_roles, tiers, tiers_other_charts, karaka_roles reworded; sade_sati_placeholder_null names the Saturn ingress shift. New sections 9 (FLIP_DETECTOR_KNOWN_LIMITS and the follow-up tooling-PR list), 10 (W2/W6 backend-evidence rule) and 11 (POST_WINDOW_FINDINGS). The 'window edges' sentences in section 5 item 6 corrected to the measured cause (UTC-midnight date quantisation of sub-day level-4 rows). Test file: 123 tests with the detector."
   - "1.1 (2026-10-03): id-change correction (N-91 condition 6). The vichara row of section 2 and the evidence declaration it points to said the sorted constituent_fact_ids are an ORDER-ONLY change with identical membership; at S-L1 every chart_vichara row's ids are NEW (the fact_id formula drops build_id). Section 8 added; no hook JSON, count or test changed."

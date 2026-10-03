@@ -107,6 +107,133 @@ def test_longitude_delta_wraps_around_360():
     assert _fails(a, b) == []
 
 
+# ---- C3 ephemeris bands (Moshier -> .se1): INDU / SREE / VARNADA longitude numbers --------------------------
+# MEASURED shifts of the whole compute_chart payload, canonical chart, linux/amd64, Moshier vs pinned .se1, full
+# precision (SPECIAL_LAGNA_AYA_CHECK.md section 3b; harness output h2_old_noephe.json vs h2_old_se1.json).
+MEASURED_SE1_SHIFT_DEG = {
+    "INDU_LAGNA": {"lahiri_chitrapaksha": -0.00018463947162672412, "true_chitra": -0.00018466592575805407,
+                   "krishnamurti": -0.00018463947162672412, "raman": -0.00018463947162672412,
+                   "surya_siddhanta_classical": -0.00018460927907426594},
+    "SREE_LAGNA": {"lahiri_chitrapaksha": -0.004985265733921551, "true_chitra": -0.004986006449570368,
+                   "krishnamurti": -0.004985265733921551, "raman": -0.004985265733921551,
+                   "surya_siddhanta_classical": -0.004984439000736529},
+    "VARNADA_LAGNA": {"lahiri_chitrapaksha": 0.0, "true_chitra": -2.645410290824657e-08,
+                      "krishnamurti": 0.0, "raman": 0.0, "surya_siddhanta_classical": 1.1534268651303137e-08},
+}
+BANDS = {"INDU_LAGNA": 0.00025, "SREE_LAGNA": 0.0055, "VARNADA_LAGNA": 1e-7}
+
+
+def _shifted(shift_for, subjects=("INDU_LAGNA", "SREE_LAGNA", "VARNADA_LAGNA"), base="123.456"):
+    """The declared after-state with `shift_for(subject, ayanamsha)` added to the longitude of the given subjects."""
+    a = _after(_before())
+    for r in a:
+        if r["fact_subject"] in subjects and r["fact_key"] == "longitude_sidereal":
+            r["fact_value_num"] = repr((float(base) + shift_for(r["fact_subject"], r["ayanamsha_id"])) % 360)
+    return a
+
+
+def _c3(fails):
+    return [f for f in fails if f.startswith("C3")]
+
+
+def test_the_declared_bands_are_the_ones_in_the_script():
+    assert M.LONGITUDE_BAND_DEG == BANDS  # one band per longitude, no shared band
+
+
+def test_a_correct_se1_rebuild_passes_c3_with_the_measured_shifts():
+    """The measured Moshier -> .se1 movement of INDU, SREE and VARNADA (15 rows) must not fail the W7 step."""
+    assert _fails(_shifted(lambda s, aya: MEASURED_SE1_SHIFT_DEG[s][aya])) == []
+    for subj, per_aya in MEASURED_SE1_SHIFT_DEG.items():  # and every measured value is inside ITS OWN band
+        assert all(abs(v) <= BANDS[subj] for v in per_aya.values())
+
+
+def test_without_a_band_the_measured_shifts_would_have_failed():
+    """Pin the F-2 failure: the old exact-equality check failed every measured INDU/SREE row (and 2 VARNADA)."""
+    a = _shifted(lambda s, aya: MEASURED_SE1_SHIFT_DEG[s][aya])
+    exact = [r for r, r0 in zip(a, _before()) if r["fact_subject"] in M.STILL and r["fact_value_num"] != r0["fact_value_num"]
+             and r["fact_key"] == "longitude_sidereal"]
+    assert len(exact) == 5 + 5 + 2
+
+
+@pytest.mark.parametrize("subject,inside,outside", [
+    ("INDU_LAGNA", 0.00024, 0.001),      # 0.001 deg is the loose band the SREE magnitude would need: it must FAIL for INDU
+    ("INDU_LAGNA", 0.00024, 0.00026),    # just beyond the INDU band
+    ("SREE_LAGNA", 0.0054, 0.006),
+    ("SREE_LAGNA", 0.0054, 0.0056),      # just beyond the SREE band: any wider band (e.g. 0.006) is caught here
+    ("VARNADA_LAGNA", 9e-8, 2e-7),
+])
+@pytest.mark.parametrize("direction", [-1, 1])
+def test_each_longitude_band_is_tight_both_directions(subject, inside, outside, direction):
+    ok = _shifted(lambda s, aya: direction * inside if s == subject else 0.0)
+    assert _c3(_fails(ok)) == [], "inside the band must pass"
+    for aya in AYAS:
+        bad = _shifted(lambda s, a, aya=aya: direction * outside if (s, a) == (subject, aya) else 0.0)
+        got = _c3(_fails(bad))
+        assert len(got) == 1 and subject in got[0] and aya in got[0] and "outside the declared ephemeris band" in got[0], got
+
+
+def test_the_bands_are_not_shared_between_lagnas():
+    assert _c3(_fails(_shifted(lambda s, aya: 0.005 if s == "INDU_LAGNA" else 0.0)))      # SREE-sized move on INDU fails
+    assert _c3(_fails(_shifted(lambda s, aya: 0.0005 if s == "VARNADA_LAGNA" else 0.0)))  # and on VARNADA
+    assert _fails(_shifted(lambda s, aya: 0.005 if s == "SREE_LAGNA" else 0.0)) == []     # but it is fine on SREE
+
+
+def test_band_works_across_the_360_wrap():
+    b = _before()
+    for r in b:
+        if r["fact_subject"] == "SREE_LAGNA" and r["fact_key"] == "longitude_sidereal":
+            r["fact_value_num"] = "0.002"
+    a = _after(b)
+    for r in a:
+        if r["fact_subject"] == "SREE_LAGNA" and r["fact_key"] == "longitude_sidereal":
+            r["fact_value_num"] = repr((0.002 - 0.004985) % 360)
+    assert _fails(a, b) == []
+    for r in a:
+        if r["fact_subject"] == "SREE_LAGNA" and r["fact_key"] == "longitude_sidereal":
+            r["fact_value_num"] = repr((0.002 - 0.006) % 360)
+    assert _c3(_fails(a, b))
+
+
+@pytest.mark.parametrize("subject", ["INDU_LAGNA", "SREE_LAGNA", "VARNADA_LAGNA"])
+@pytest.mark.parametrize("key", ["sign", "sign_lord", "nakshatra", "nakshatra_lord", "pada", "house_d1"])
+def test_a_class_change_fails_even_with_the_measured_shift_applied(subject, key):
+    """The band applies to longitude_sidereal only; sign, nakshatra, pada (and the rest) stay EXACT."""
+    a = _shifted(lambda s, aya: MEASURED_SE1_SHIFT_DEG[s][aya])
+    r = next(x for x in a if x["fact_subject"] == subject and x["fact_key"] == key and x["ayanamsha_id"] == "true_chitra")
+    if r["fact_value_num"]:
+        r["fact_value_num"] = str(float(r["fact_value_num"]) + 1)
+    else:
+        r["fact_value_text"] = r["fact_value_text"] + "x"
+    got = _fails(a)
+    assert any(f.startswith("C2") for f in got) and _c3(got), got
+
+
+@pytest.mark.parametrize("subject", ["INDU_LAGNA", "SREE_LAGNA", "VARNADA_LAGNA"])
+@pytest.mark.parametrize("col,new", [("near_nakshatra_boundary_flag", "true"), ("near_sign_boundary_flag", "true"),
+                                      ("vargottama_flag_at_point", "true"), ("formula_provenance_text", "changed")])
+def test_flags_and_provenance_stay_exact_with_the_measured_shift_applied(subject, col, new):
+    a = _shifted(lambda s, aya: MEASURED_SE1_SHIFT_DEG[s][aya])
+    r = next(x for x in a if x["fact_subject"] == subject and x["fact_key"] == "longitude_sidereal" and x["ayanamsha_id"] == "raman")
+    r[col] = new
+    assert _c3(_fails(a)), (subject, col)
+
+
+def test_a_null_or_non_numeric_longitude_fails_c3():
+    for new in ("", "NaN-ish", "None"):
+        a = _after(_before())
+        r = next(x for x in a if x["fact_subject"] == "SREE_LAGNA" and x["fact_key"] == "longitude_sidereal")
+        r["fact_value_num"] = new
+        assert _c3(_fails(a)), new
+
+
+def test_non_canonical_chart_uses_the_same_bands():
+    other = "1c826d5a-41cb-4450-b4dc-59d440e5f75a"
+    ok = _shifted(lambda s, aya: MEASURED_SE1_SHIFT_DEG[s][aya])
+    assert M.check_states(_before(), ok, other)["failures"] == []
+    bad = _shifted(lambda s, aya: 0.006 if s == "SREE_LAGNA" else 0.0)
+    assert _c3(M.check_states(_before(), bad, other)["failures"])
+
+
 def test_nakshatra_flag_flips_exactly_as_declared():
     a = _after(_before())
     next(x for x in a if x["fact_subject"] == "HORA_LAGNA" and x["ayanamsha_id"] == "raman")["near_nakshatra_boundary_flag"] = "true"
