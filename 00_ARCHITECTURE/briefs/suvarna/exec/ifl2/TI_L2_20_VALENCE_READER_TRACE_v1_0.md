@@ -20,9 +20,10 @@ falls through to `'neutral'` (`bo_laksana` and `bo_laksana_rerank`, one rebuild)
 
 **No reader breaks on NULL, so no ASK is triggered by breakage.** Every Python and SQL reader is
 NULL-safe or counts NULL together with neutral; the TypeScript readers pass the value through as
-`string | null`. **One served summary changes shape** and SS should know before TI-L2-32 lands: the
-`valence_counts` tally in the ranked-signal summary would stop showing a `neutral` bucket for rows
-that become NULL (see R-7).
+`string | null`. **One served field changes meaning** and SS should know before TI-L2-32 lands: the per-entity
+`dominant_valence` in the hierarchical profiles (`orientation`) is a most-frequent-bucket count that
+skips NULL, so it would stop saying `neutral` for entities whose rows become NULL and could name a
+non-neutral valence from the few assessed rows (see R-7).
 
 ## Schema facts (production, 2026-10-03)
 
@@ -51,7 +52,7 @@ that become NULL (see R-7).
 | R-4 | `pipeline/orchestrator/writers/bo_sangati.py:204, 237` | `str(signal.get("valence") or "").lower() in {"malefic","mixed","antagonistic"}` | none: NULL reads as "" and is not a qualified contradiction, same as neutral |
 | R-5 | `pipeline/orchestrator/writers/ka_yojaka.py:82, 215, 922-925` (Kāla) | copies `valence` into the signal dict; `signal_valence` is `str(v) if v is not None else None` | NULL passes through as NULL (explicit None branch). Kāla file: read only, not touched |
 | R-6 | `src/lib/retrieval/spine/compute_spine_bundle.ts:185`, `spine/types.ts:9` | `valence: string \| null` (already typed nullable; test fixture uses `valence: null`) | none |
-| R-7 | `src/lib/retrieval/ranking/composite_ranker.ts:83, 618` | `if (r.valence) valenceCounts[r.valence] += 1` -- builds the `valence_counts` tally of the ranked-signal summary | **NULL rows are skipped, so the summary's `neutral` count would fall by the number of rows that become NULL** (served-output change, not a break) |
+| R-7 | `src/lib/retrieval/ranking/composite_ranker.ts:83, 613-641` (`buildHierarchicalProfiles`; served via `src/lib/retrieval/orientation.ts:50, 228`) | `if (r.valence) valenceCounts[r.valence] += 1`, then `dominant_valence` = the most frequent bucket per entity profile | **NULL rows are skipped, so an entity whose rows are mostly keyword-fallthrough neutral would stop reporting `dominant_valence: "neutral"`: the dominant bucket becomes the largest non-neutral one (benefic/malefic/mixed), or `null` if every row is NULL.** A served-output change, not a break; it can read as a stronger claim than before ("dominant: malefic" over a handful of assessed rows among many unassessed ones) |
 | R-8 | `src/lib/retrieval/registry/layers/register_d9_judgment.ts:1466-1472` | `WHERE valence IN ('malefic','mixed')` (adverse-valence layer) | none: neutral and NULL are both excluded |
 | R-9 | `src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts:100, 142`, `query_domain_reading.ts:206, 427` | projection of the column in the served rows | served field is `null` instead of `"neutral"` for those rows (a visible value change; consumers must read it as "no rule matched", which `valence_source` already labels) |
 | R-10 | `src/lib/retrieval/registry/knowledge/source_query_availability.ts:3216, 3807, 3925, 3971` | `SELECT ... valence ... LIMIT 0` availability probes | none (probes only, zero rows) |
@@ -77,7 +78,8 @@ Not readers of this column despite the name: `bo_pramana_mapa.py:595` (`bodha_cg
 ## Recommendation for TI-L2-32 (for SS; nothing is built here)
 
 No ASK is needed for breakage. SS may still want to decide R-7/R-9: either accept that the served
-`valence_counts` tally and the served `valence` field show NULL for "no rule matched" (with
-`valence_source` already naming the computation), or have the tally count NULL as its own
-`unassessed` bucket in the same PR as the writer change. That is a served-surface edit and so a
+`dominant_valence` and the served `valence` field show NULL / the non-neutral mode for "no rule
+matched" rows (with `valence_source` already naming the computation), or have
+`buildHierarchicalProfiles` count NULL as its own `unassessed` bucket (and not let a small assessed
+minority win) in the same PR as the writer change. That is a served-surface edit and so a
 regeneration of the capability census; it is not part of this note.
