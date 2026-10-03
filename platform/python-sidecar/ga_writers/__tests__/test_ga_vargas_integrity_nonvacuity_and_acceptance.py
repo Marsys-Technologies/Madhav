@@ -125,13 +125,18 @@ def built_rows() -> list[dict]:
     from ga_writers import ga_vargas_writer as w
     from ga_writers.__tests__.test_ga_vargas_key_widening import FakeDB, BIRTH, BUILD, real_deity_cache
     saved = w._SHASHTIAMSHA_CACHE
+    saved_karakas = w._read_jaimini_karakas
     w._SHASHTIAMSHA_CACHE = real_deity_cache()
+    # ga_vargas inherits the karaka assignment from ga_sensitive's stored rows and fails closed without them (#2984); the FakeDB stores no chart_facts.
+    w._read_jaimini_karakas = lambda conn, chart_id, ayanamsha_id: dict(zip(
+        w.JAIMINI_KARAKA_NAMES, ("Sun", "Moon", "Mars", "Mercury", "Jupiter", "Venus", "Saturn", "Rahu")))
     try:
         db = FakeDB()
         w.build_ga_vargas(CANON, BUILD, conn=db, birth_params=BIRTH, ayanamsha_subset=list(AYAS))
         return list(db.rows.values())
     finally:
         w._SHASHTIAMSHA_CACHE = saved
+        w._read_jaimini_karakas = saved_karakas
 
 
 @pytest.fixture()

@@ -208,11 +208,20 @@ def _deities(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(_w(), "_SHASHTIAMSHA_CACHE", real_deity_cache())
 
 
+@pytest.fixture()
+def _karakas(monkeypatch: pytest.MonkeyPatch) -> None:
+    """ga_vargas now INHERITS the karaka assignment from ga_sensitive's stored rows (ga_writers/_karaka_roles.py, #2984) and fails closed
+    without them; the FakeDB stores no chart_facts, so supply a clean 8-rank assignment (this file tests the unique-key grain, not the karaka read)."""
+    w = _w()
+    monkeypatch.setattr(w, "_read_jaimini_karakas", lambda conn, chart_id, ayanamsha_id: dict(zip(
+        w.JAIMINI_KARAKA_NAMES, ("Sun", "Moon", "Mars", "Mercury", "Jupiter", "Venus", "Saturn", "Rahu"))))
+
+
 BIRTH = {"datetime_iso": "1984-02-05T10:43:00", "latitude_deg": 20.2961,
          "longitude_deg": 85.8245, "tz_offset_hours": 5.5}
 
 
-def test_full_substep_stores_every_row_it_builds(_deities: None) -> None:
+def test_full_substep_stores_every_row_it_builds(_deities: None, _karakas: None) -> None:
     w = _w()
     db = FakeDB(SEVEN)
     s = w.build_ga_vargas(CHART, BUILD, conn=db, birth_params=BIRTH,
@@ -368,7 +377,7 @@ def test_rows_the_database_rejects_are_not_swallowed() -> None:
         w._write_rows_batch(_Refusing(SEVEN), [_row("D30.S1"), _row("D30.S2")], set(), w.new_write_stats())
 
 
-def test_sentinels_replaced_per_ayanamsha_are_not_run_collisions(_deities: None) -> None:
+def test_sentinels_replaced_per_ayanamsha_are_not_run_collisions(_deities: None, _karakas: None) -> None:
     """The legacy multi-ayanamsha call re-deletes and re-emits the INVARIANT sentinels."""
     w = _w()
     db = FakeDB(SEVEN)

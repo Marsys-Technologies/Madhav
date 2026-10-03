@@ -6,7 +6,7 @@
     "A reviewed output-digest specification establishes deterministic output hashing, not semantic value, population, planner reachability, or empirical validity.",
     "The full MCP profile is registration-gated by the reviewed route authority; its real registration set is exact-set tested independently."
   ],
-  "content_sha256": "7f5c9b1292f2c7c6a5c4849854f4519b2e4afb229504805158ce217c5977d403",
+  "content_sha256": "fd0c56807ec9d1c67a922d7af148118a7bb91634b0b59f10721b4541834c0214",
   "denominators": {
     "descriptor_route_contracts": {
       "by_public_route_disposition": {
@@ -20967,7 +20967,7 @@
       ]
     }
   },
-  "generated_at": "2026-10-03T19:30:29.000Z",
+  "generated_at": "2026-10-03T20:42:07.000Z",
   "provenance": {
     "method": "DB-free source census with recursively key-sorted canonical JSON and SHA-256 fingerprints",
     "sources": [
@@ -21956,7 +21956,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_divisionals.ts",
-            "sha256": "698e0eda76165653ab92b623b1097d5613ec53285b97b61eab3aeda2ec2caa76"
+            "sha256": "280a7b9ef495f7f923843a1d2779a925abaf05935bac25549736b65f5502855c"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_eclipse_flags.ts",
@@ -22344,7 +22344,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/register_d9_judgment.ts",
-            "sha256": "118303a6e59d287ea1c53f6ab8db6e9cb5d4de0cd05d8f57499ebfd4c1d67014"
+            "sha256": "3dff951d46cbed29bbb7796b5b8df1955eb27ef29c92d4b74364826e9c552de9"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/register_spine_bundle.ts",
@@ -22412,7 +22412,7 @@
           }
         ],
         "path": "platform/src/lib/retrieval/{registry,synthesis}/**/*.ts (excluding tests)",
-        "sha256": "1bdaf87c97bd2805482b8e3ac354065d8e0a035c5edb599f0eebbf5c91023e8c"
+        "sha256": "3e957d981f9490e048fc31def58307de5844aa64dd21c0021ed6b8836dda2b6e"
       },
       {
         "id": "service_effect_contracts",
@@ -22432,10 +22432,10 @@
       {
         "id": "writer_digest_inventory",
         "path": "platform/src/generated/nirmana-writer-digests.json",
-        "sha256": "edc347fb5cbaff4811c68a78064ed645e7cc22499bf4f55dc42a3005bae9b61e"
+        "sha256": "60b915912e87a433b836a5d53a6f4f812c1780417d6d2ca190a4f9af30c172b6"
       }
     ]
   },
   "schema_version": "capability-estate-census/v1.2",
-  "source_revision": "e9e96d759cc430d68f33d18f34b5d9b085c6886b"
+  "source_revision": "f035d9e21d51931c420b033d7152a41b26d83350"
 }
