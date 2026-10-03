@@ -192,6 +192,7 @@ class Cluster:
         self.sock = tempfile.mkdtemp(prefix="p", dir=SOCKDIR_ROOT)
         self.port = _free_port()
         self._n = 0
+        self._base: str | None = None
         self.started = False
 
     def _run(self, exe: str, *args: str, timeout: int = 120) -> None:
@@ -250,15 +251,20 @@ class Env:
         self.cl = cl
         cl._n += 1
         self.db = f"t{cl._n}"
+        # the production-shaped base database is built ONCE per cluster and cloned (CREATE DATABASE ... TEMPLATE)
+        if cl._base is None:
+            cl._base = "base_tpl"
+            with cl.connect("postgres", "postgres", autocommit=True) as c:
+                c.execute(f"CREATE DATABASE {cl._base} TEMPLATE template0")
+            with cl.connect(cl._base, "postgres", autocommit=True) as c:
+                c.execute("ALTER SCHEMA public OWNER TO data_plane_schema_owner")
+                c.execute("REVOKE ALL ON SCHEMA public FROM PUBLIC")
+                c.execute("GRANT USAGE, CREATE ON SCHEMA public TO data_plane_schema_owner")
+                c.execute("GRANT USAGE ON SCHEMA public TO amjis_app, suvarna_reader")
+                c.execute(ddl)
+                self._own_everything(c)
         with cl.connect("postgres", "postgres", autocommit=True) as c:
-            c.execute(f"CREATE DATABASE {self.db} TEMPLATE template0")
-        with cl.connect(self.db, "postgres", autocommit=True) as c:
-            c.execute("ALTER SCHEMA public OWNER TO data_plane_schema_owner")
-            c.execute("REVOKE ALL ON SCHEMA public FROM PUBLIC")
-            c.execute("GRANT USAGE, CREATE ON SCHEMA public TO data_plane_schema_owner")
-            c.execute("GRANT USAGE ON SCHEMA public TO amjis_app, suvarna_reader")
-            c.execute(ddl)
-            self._own_everything(c)
+            c.execute(f"CREATE DATABASE {self.db} TEMPLATE {cl._base}")
 
     def _own_everything(self, c: psycopg.Connection) -> None:
         for (rel,) in c.execute(
@@ -275,10 +281,15 @@ class Env:
     def app(self, autocommit: bool = False) -> psycopg.Connection:
         return self.cl.connect(self.db, "amjis_app", autocommit=autocommit)
 
+    def _conn(self) -> psycopg.Connection:
+        """One shared superuser autocommit connection for fixture writes (opening one per row is the slow path)."""
+        if getattr(self, "_c", None) is None or self._c.closed:
+            self._c = self.cl.connect(self.db, "postgres", autocommit=True)
+        return self._c
+
     def run(self, stmt: str, params=None) -> None:
         """Fixture DML/DDL as the superuser (the app role cannot CREATE in schema public, like production)."""
-        with self.admin() as c:
-            c.execute(stmt, params)
+        self._conn().execute(stmt, params)
 
     def rows(self, stmt: str, params=None) -> list[tuple]:
         with self.admin() as c:
@@ -293,15 +304,13 @@ class Env:
         base.update(cols)
         base["asset_id"] = asset_id
         names = list(base)
-        with self.admin() as c:
-            c.execute(f"INSERT INTO public.asset_registry ({', '.join(names)}) VALUES ({', '.join(['%s'] * len(names))})",
-                      [base[n] for n in names])
+        self._conn().execute(f"INSERT INTO public.asset_registry ({', '.join(names)}) VALUES ({', '.join(['%s'] * len(names))})",
+                             [base[n] for n in names])
 
     def add_fresh(self, asset_id: str, state: str = "fresh", reasons: str = "[]") -> None:
-        with self.admin() as c:
-            c.execute("INSERT INTO public.asset_freshness (asset_id, partition_key, freshness_state, reasons, receipt_version, observed_at) "
-                      "VALUES (%s, '__whole_asset__', %s, %s::jsonb, 'v1', '2026-01-01T00:00:00Z')",
-                      (asset_id, state, reasons))
+        self._conn().execute("INSERT INTO public.asset_freshness (asset_id, partition_key, freshness_state, reasons, receipt_version, observed_at) "
+                             "VALUES (%s, '__whole_asset__', %s, %s::jsonb, 'v1', '2026-01-01T00:00:00Z')",
+                             (asset_id, state, reasons))
 
     def apply(self, sql: str, name: str = "mig.sql", notices: list[str] | None = None, track: bool = True):
         """Apply `sql` as amjis_app in ONE transaction (BEGIN; sql; tracker INSERT; COMMIT), like migrate.ts.
@@ -329,6 +338,8 @@ class Env:
             return {r[cols.index(key)]: dict(zip(cols, r)) for r in cur.fetchall()}
 
     def drop(self) -> None:
+        if getattr(self, "_c", None) is not None and not self._c.closed:
+            self._c.close()
         with self.cl.connect("postgres", "postgres", autocommit=True) as c:
             c.execute(f"DROP DATABASE IF EXISTS {self.db} WITH (FORCE)")
 
