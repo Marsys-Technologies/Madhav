@@ -62,6 +62,9 @@ class _Cur:
         if "to_regclass" in s:
             self._rows = [{"use_view": c.view_usable}]
             return
+        if s.startswith("SELECT current_setting("):
+            self._rows = [{"current_setting": c.gucs.get(params[0])}]
+            return
         if s.startswith("SELECT set_config("):
             name, value = params
             c.gucs[name] = value
@@ -97,7 +100,7 @@ class FakeConn:
                 description TEXT NOT NULL, domain TEXT, outcome_observed BOOLEAN, chart_id TEXT NOT NULL,
                 provenance TEXT, chart_state TEXT, significance TEXT);
             CREATE VIEW life_events_chart_scoped AS
-                SELECT id, event_id, event_date, category, domain, outcome_observed, chart_id
+                SELECT id, event_id, event_date, category, domain, chart_id
                 FROM life_events WHERE chart_id = app_chart_context();
             CREATE TABLE chart_dashas (chart_id TEXT, system_id TEXT, level_n INT, ayanamsha_id TEXT,
                 lord_graha TEXT, start_date DATE, end_date DATE);
@@ -188,8 +191,27 @@ def test_helper_pins_the_guc_for_the_read_and_clears_it_after(two_charts):
     two_charts.view_usable = True
     fetch_chart_life_events(two_charts, CHART_A, ("id",))
     sets = [p for s, p in two_charts.log if s.startswith("SELECT set_config(")]
-    assert sets == [(CHART_CONTEXT_GUC, str(CHART_A)), (CHART_CONTEXT_GUC, "")]
+    assert sets == [(CHART_CONTEXT_GUC, str(CHART_A)), (CHART_CONTEXT_GUC, "")]      # nothing was pinned before: restored to the empty setting
     assert two_charts.gucs[CHART_CONTEXT_GUC] == ""
+
+
+def test_the_previous_guc_value_is_restored_not_blanked(two_charts):
+    """LOW-3 (review): an orchestrator-level pin made before the read is still in place after it."""
+    outer = str(CHART_B)
+    two_charts.gucs[CHART_CONTEXT_GUC] = outer
+    fetch_chart_life_events(two_charts, CHART_A, ("id",))
+    assert two_charts.gucs[CHART_CONTEXT_GUC] == outer
+    from brahmagyan.phala.life_events_scope import resolve_life_event_text
+    resolve_life_event_text(two_charts, CHART_A, event_uuid(CHART_A, 1))
+    assert two_charts.gucs[CHART_CONTEXT_GUC] == outer
+
+
+def test_rows_come_back_ordered_by_event_date_whatever_the_insertion_order():
+    c = FakeConn()
+    for n, d in ((1, dt.date(2019, 1, 9)), (2, dt.date(2011, 3, 3)), (3, dt.date(2015, 6, 1))):
+        c.add_event(CHART_A, n, d)
+    rows = fetch_chart_life_events(c, CHART_A, ("id", "event_date"), order_by=("event_date",))
+    assert [r["event_date"] for r in rows] == sorted(r["event_date"] for r in rows) and len(rows) == 3
 
 
 def test_helper_runs_in_its_own_savepoint_and_releases_it(two_charts):
@@ -199,7 +221,7 @@ def test_helper_runs_in_its_own_savepoint_and_releases_it(two_charts):
 
 
 def test_columns_are_whitelisted_to_the_view_columns(two_charts):
-    for private in ("description", "provenance", "chart_state", "significance", "source_citation", "recorded_at", "pool_consent"):
+    for private in ("outcome_observed", "description", "provenance", "chart_state", "significance", "source_citation", "recorded_at", "pool_consent"):
         with pytest.raises(ValueError):
             fetch_chart_life_events(two_charts, CHART_A, ("id", private))
     with pytest.raises(ValueError):
@@ -209,6 +231,7 @@ def test_columns_are_whitelisted_to_the_view_columns(two_charts):
     assert "provenance" not in VIEW_COLUMNS and "chart_state" not in VIEW_COLUMNS
     assert "description" not in VIEW_COLUMNS                              # SS N-109: no private free text in the builder's window
     assert two_charts.log == []                                            # refused before any statement ran
+    assert "outcome_observed" not in VIEW_COLUMNS                          # SS N-112: minimal columns
 
 
 def test_a_malformed_chart_id_raises_before_any_statement(two_charts):
@@ -326,9 +349,8 @@ def test_ph_pramana_canonical_rows_equal_the_old_unscoped_read_except_the_remove
     new = _writer()._load_lel(c, CHART_A)
     assert len(new) == len(old_rows) == 4
     for e, r in zip(new, old_rows):
-        observed = r["outcome_observed"]
         assert (e.event_date, e.domain, e.lel_id) == (r["event_date"], str(r["category"] or ''), None)
-        assert e.outcome_valence == ('observed' if observed else 'not_observed' if observed is False else None)
+        assert e.outcome_valence is None                      # SS N-112: not read (the engine never used it; it is not persisted)
         assert e.lel_jsonb == {'id': str(r['id']), 'event_date': str(r['event_date']), 'source_table': 'life_events'}
         assert e.event_summary == '' and 'summary' not in e.lel_jsonb
 
@@ -340,7 +362,7 @@ def test_a_derived_pramana_row_never_carries_free_text(two_charts):
                               window_start=dt.date(2011, 1, 1), window_end=dt.date(2012, 12, 31), peak_date=None,
                               magnitude=None, confidence_high=None, derivation_ledger_jsonb={})
     entries = _writer()._load_lel(two_charts, CHART_A)
-    assert not any("description" in s for s in two_charts.selects_of_life_events())
+    assert not any("description" in s or "outcome_observed" in s for s in two_charts.selects_of_life_events())
     rec = derive_pramana_records(PramanaContext(chart_id=str(CHART_A), today=dt.date(2026, 10, 1), anchors=[anchor], lel_entries=entries))[0]
     assert rec.evidence_type == "life_event_match" and rec.lel_entry_jsonb is not None
     assert set(rec.lel_entry_jsonb) == {"id", "event_date", "source_table"}
@@ -408,6 +430,16 @@ def test_ph_rectification_training_events_are_chart_scoped(view_usable):
     assert [e.event_id for e in a] == ["EVT.4820.1", "EVT.4820.2"] and all(e.maha_dasha_lord == "Venus" for e in a)
     assert [e.event_id for e in b] == ["EVT.1c82.1", "EVT.1c82.2"] and all(e.maha_dasha_lord == "Moon" for e in b)
     assert _load_chart_training_events(c, CHART_C) == []
+
+
+@pytest.mark.parametrize("exc", [psycopg.errors.QueryCanceled("statement timeout"), psycopg.errors.DeadlockDetected("deadlock"),
+                                 psycopg.errors.OperationalError("connection lost"), psycopg.errors.InFailedSqlTransaction("aborted"),
+                                 psycopg.errors.LockNotAvailable("lock timeout"), RuntimeError("anything else")])
+def test_ph_rectification_only_a_schema_gap_degrades_everything_else_is_loud(exc):
+    """Review MED-1 (SS N-112): a timeout, deadlock, lost connection or aborted transaction is NOT 'no events'."""
+    from pipeline.orchestrator.writers.ph_rectification import _load_chart_training_events
+    with pytest.raises(type(exc)):
+        _load_chart_training_events(FakeConn(fail_select=exc), CHART_A)
 
 
 def test_ph_rectification_privilege_foreign_row_and_bad_id_propagate_but_schema_gaps_degrade():

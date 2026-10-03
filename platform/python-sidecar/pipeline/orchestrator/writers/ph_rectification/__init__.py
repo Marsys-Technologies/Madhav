@@ -140,18 +140,18 @@ def _load_chart_training_events(conn, chart_id: str) -> list[TrainingEvent]:
     empty log). Events whose per-chart mahadasha lord can't be
     determined from this chart's chart_dashas are skipped (never fabricated)."""
     import psycopg
-    from brahmagyan.phala.life_events_scope import ForeignChartRowError, fetch_chart_life_events
+    from brahmagyan.phala.life_events_scope import fetch_chart_life_events
     # (imported here, not at module top: the asset declarations pin line numbers of this file)
     try:
         rows = fetch_chart_life_events(  # SAVEPOINT-wrapped: a failed read never aborts the build transaction
             conn, chart_id, ("event_id", "event_date", "category", "domain"), order_by=("event_date",),
         )
-    except (ValueError, TypeError, ForeignChartRowError, psycopg.errors.InsufficientPrivilege):
-        # A malformed chart_id, a foreign row or an unreadable log is a defect, never "no events" (SS N-105).
-        raise
-    except Exception as e:
-        # Pre-423 schema (no chart_id column) or missing table → no per-chart
+    except (psycopg.errors.UndefinedTable, psycopg.errors.UndefinedColumn) as e:
+        # ONLY a schema gap degrades: pre-423 schema (no chart_id column) or missing table → no per-chart
         # training source → structural-only rectification. Never a hard failure.
+        # EVERYTHING else (privilege, timeout, deadlock, lost connection, aborted transaction, malformed chart_id,
+        # foreign row) propagates: an unreadable log is not an empty log (SS N-105 / N-112).
+        # (The helper already rolled back its own SAVEPOINT, so the build transaction is still usable.)
         logger.warning(
             "ph_rectification: chart-scoped life_events read failed (%s); "
             "proceeding structural-only (no LEL training)", e,

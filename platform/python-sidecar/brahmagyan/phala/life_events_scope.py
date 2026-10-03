@@ -17,7 +17,7 @@ WHAT A READ DOES (every call, no exceptions)
     * normalizes the build's chart_id (`uuid.UUID` on the real runner path, `str` elsewhere) to a UUID; a value
       that is not a UUID raises ValueError (it is never coerced, swallowed or cast away);
     * pins `app.chart_context` to that chart for the statement (transaction-local `set_config(..., true)`), and
-      clears it again afterwards;
+      RESTORES the value it had before (an orchestrator-level pin is never blanked);
     * issues `SELECT <whitelisted columns> FROM <relation> WHERE chart_id = %s ORDER BY <whitelisted columns>`,
       so the explicit chart predicate is present on the view path AND on the base-table path (belt and braces);
     * checks every returned row's chart_id equals the requested chart and raises ForeignChartRowError otherwise
@@ -64,10 +64,10 @@ SAVEPOINT = "sp_l4_life_events_scope"
 #   domain             ph_rectification (TrainingEvent.domain)
 #   (description is NOT a column: SS N-109, data minimisation. Private free text is never copied into a derived L4 row;
 #    a derived row carries the life_event id reference and the text is resolved on demand by `resolve_life_event_text`.)
-#   outcome_observed   ph_pramana   (valence)
+#   (outcome_observed is NOT a column either: ph_pramana set LelEntry.outcome_valence and nothing used or persisted it; SS N-112 minimal columns.)
 #   chart_id           both         (the explicit predicate and the runtime guard)
 VIEW_COLUMNS: tuple[str, ...] = (
-    "id", "event_id", "event_date", "category", "domain", "outcome_observed", "chart_id",
+    "id", "event_id", "event_date", "category", "domain", "chart_id",
 )
 
 _RESOLVE_SQL = (
@@ -122,6 +122,21 @@ def build_select_sql(relation: str, columns: Sequence[str], order_by: Sequence[s
     return f"SELECT {', '.join(cols)} FROM {relation} WHERE chart_id = %s ORDER BY {', '.join(order)}"
 
 
+def _pin_guc(conn: Any, chart_id: str) -> str:
+    """Pin app.chart_context for this transaction and return the value it had (so the caller can RESTORE it, not blank it)."""
+    with conn.cursor() as cur:
+        cur.execute("SELECT current_setting(%s, true)", (CHART_CONTEXT_GUC,))
+        prev = _first(cur.fetchone())
+    with conn.cursor() as cur:
+        cur.execute("SELECT set_config(%s, %s, true)", (CHART_CONTEXT_GUC, chart_id))
+    return prev if isinstance(prev, str) else ""
+
+
+def _restore_guc(conn: Any, prev: str) -> None:
+    with conn.cursor() as cur:
+        cur.execute("SELECT set_config(%s, %s, true)", (CHART_CONTEXT_GUC, prev))
+
+
 def _savepoint(conn: Any, statement: str) -> None:
     with conn.cursor() as cur:
         cur.execute(f"{statement} {SAVEPOINT}")
@@ -142,8 +157,7 @@ def fetch_chart_life_events(
     try:
         relation = resolve_relation(conn)
         sql = build_select_sql(relation, wanted, order_by)
-        with conn.cursor() as cur:
-            cur.execute("SELECT set_config(%s, %s, true)", (CHART_CONTEXT_GUC, str(cid)))
+        prev = _pin_guc(conn, str(cid))
         with conn.cursor(row_factory=psycopg.rows.dict_row) as cur:
             cur.execute(sql, (cid,))
             rows = [dict(r) for r in cur.fetchall()]
@@ -153,8 +167,7 @@ def fetch_chart_life_events(
                 f"life_events read for chart {cid} returned {len(foreign)} row(s) of another chart "
                 f"(relation={relation}); refusing to return any row"
             )
-        with conn.cursor() as cur:
-            cur.execute("SELECT set_config(%s, %s, true)", (CHART_CONTEXT_GUC, ""))
+        _restore_guc(conn, prev)
         _savepoint(conn, "RELEASE SAVEPOINT")
         return rows
     except BaseException:
@@ -174,15 +187,13 @@ def resolve_life_event_text(conn: Any, chart_id: Any, event_ref: Any) -> str | N
     ref = normalize_chart_id(event_ref)                      # an id is a uuid: same strict parse (malformed raises)
     _savepoint(conn, "SAVEPOINT")
     try:
-        with conn.cursor() as cur:
-            cur.execute("SELECT set_config(%s, %s, true)", (CHART_CONTEXT_GUC, str(cid)))
+        prev = _pin_guc(conn, str(cid))
         with conn.cursor(row_factory=psycopg.rows.dict_row) as cur:
             cur.execute(f"SELECT description, chart_id FROM {BASE_TABLE} WHERE chart_id = %s AND id = %s", (cid, ref))
             rows = [dict(r) for r in cur.fetchall()]
         if any(str(r.get("chart_id")) != str(cid) for r in rows):
             raise ForeignChartRowError(f"life_events lookup for chart {cid} returned a row of another chart")
-        with conn.cursor() as cur:
-            cur.execute("SELECT set_config(%s, %s, true)", (CHART_CONTEXT_GUC, ""))
+        _restore_guc(conn, prev)
         _savepoint(conn, "RELEASE SAVEPOINT")
         return rows[0]["description"] if rows else None
     except BaseException:

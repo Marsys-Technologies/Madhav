@@ -369,12 +369,14 @@ def test_load_training_events_empty_when_no_life_events():
 def test_load_training_events_missing_column_is_structural_not_crash():
     """Pre-423 schema (no chart_id column) → the chart-scoped read raises; the
     writer swallows it and returns [] (structural-only), never a hard failure.
-    (SS ruling N-105: only a SCHEMA gap degrades; a privilege error or a malformed
-    chart_id propagates -- see tests/test_life_events_scope.py.)"""
+    (SS rulings N-105 / N-112: only a SCHEMA gap (UndefinedTable / UndefinedColumn) degrades; anything else
+    propagates -- see tests/test_life_events_scope.py.)"""
     from pipeline.orchestrator.writers.ph_rectification import _load_chart_training_events
+    import psycopg
+
     class _RaisingConn:
         def cursor(self, *a, **k):
-            raise RuntimeError('column "chart_id" does not exist')
+            raise psycopg.errors.UndefinedColumn('column "chart_id" does not exist')
     assert _load_chart_training_events(_RaisingConn(), _TEST_CHART_ID) == []
 
 
