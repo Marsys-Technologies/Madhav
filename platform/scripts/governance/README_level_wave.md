@@ -81,14 +81,111 @@ table per asset. The report therefore carries `footprint_scope` (and `partial_re
 * `complete` only when none of those holds; `has_blockers` is then the computed boolean. The impact statement labels it
   `COMPLETE_PER_STATIC_SCAN`: a statement about the scan, not about production.
 
-Reasons a writer lands in `assets_not_scanned` (never guessed): writer file missing/unparseable/too deeply nested; a
-table named by a runtime value; a name that is bound anywhere in the module other than as one single string literal
-(loop/with/except/match targets, comprehension targets, augmented or walrus assignment, parameters, import aliases,
-global/nonlocal, def/class names, unpacking, attribute assignment, a second different value); no write statement visible
-at all (how a delegating adapter looks); a `source_paths` entry that is not a literal `.py` file or leaves the repo; and
-write forms the scan does not analyse: MERGE INTO, REFRESH MATERIALIZED VIEW, CREATE TABLE, SELECT ... INTO, ALTER TABLE,
-DROP TABLE, psycopg `sql.SQL`/`sql.Identifier` composition, SQL read from a file feeding `execute`, a `*.sql` file
-reference.
+The scan decides in two directions, and the default is CLOSED: the SQL handed to an execute-like call (`execute`,
+`executemany`, `executescript`, `copy`, `copy_expert`, `execute_values`, `execute_batch`, `fetch`, `fetchrow`, `fetchval`,
+`fetchmany`, `prepare`, `exec_driver_sql`, `run`) is read as complete ONLY when it is positively recognised as made of this
+file's own literals; everything else is not scanned. "Provably in-file" means one of: a string literal; an f-string, `+`,
+implicit concatenation, `%`, `.format`, `.join`, `.replace`/`.strip`/... of provably in-file parts; a name EVERY binding of which
+(anywhere in the module, scope-blind) is provably in-file; a parameter whose in-file call sites ALL pass provably in-file values
+(a missing argument falls back to a default that must itself be provable; no call site, an aliased/partial'd function, or a
+`*args`/`**kwargs` call is not provable); a loop / comprehension / unpacking variable over a provably in-file container
+(`for k, v in X.items()` is position-aware); a subscript of such a container; a class attribute (`self.X`, `cls.X`, `Cls.X`)
+assigned exactly once in that class body to a provable value and nowhere else in the file; a call to a function defined in the
+file that returns only provable values; `len/int/float/...` (a number carries no SQL text) and `str/text/dedent/cleandoc` of
+provable arguments; a savepoint statement (`SAVEPOINT|RELEASE [SAVEPOINT]|ROLLBACK TO <identifier>`), which writes no table.
+Attributes are never matched by their last segment. Two further disciplines close the hiding places for a mutation or an
+override:
+
+* **Containers.** A name is policed as a possible mutable container UNLESS it is provably an immutable value (str, bytes, number,
+  bool, None, or a tuple / frozenset of such, recursively; a call result of an in-file function counts only if the function returns
+  one on every path). A call result, a subscript, an attribute, `setdefault`/`get`/`pop`, a loop over a container of lists, a
+  tuple that holds a list: all are policed. A policed name is provable only while EVERY use of it is a read: iteration, a subscript load, `.items()/.values()/.keys()/.get()/.copy()`,
+  `len`, `in`, truthiness, an f-string, `str.join(...)`, a pure builtin (`sorted`, `list`, `enumerate`, ...), unpacking, or --
+  on the BARE name only -- a mutator call (`append`, `extend`, `update`, `setdefault`, ...) or an item store, whose values are
+  tracked as bindings. Aliasing it, passing it to a call, binding a method of it (`ap = L.append`), mutating it through an
+  attribute receiver (`self.L.append`, `W.L[0] = x`), returning, yielding or storing it elsewhere is `container_escapes`; so is
+  a container (or a tuple) holding another mutable container.
+* **Class attributes.** `self.X` / `cls.X` / `Cls.X` is provable only on a plain class (undecorated, no base but `object`, no
+  metaclass, no subclass in the file, never constructed with arguments, its name never rebound (`A = imported`, `from c import A`,
+  a parameter named `A`, a second `def A`), no `__dict__`/`__setattr__`/`__getattribute__` use or definition in the file, no
+  3-argument `type(...)` call, no `self.X = ...`
+  anywhere, no method called through the class with an explicit `self`) when `X` is an unannotated top-level `X = <value>`
+  assigned exactly once in the class body (not under `if`/`try`/`for`/`with`, not `+=`, not shadowed by a `def`/import).
+  Dataclass / NamedTuple / Enum fields and subclass overrides are therefore not provable.
+
+The first reason found is reported (always a named one):
+
+Reasons a writer lands in `assets_not_scanned`:
+writer file missing/unparseable/too deeply nested; a table named by a runtime value; a name that is bound anywhere in the
+module other than as one single string literal (loop/with/async-with/except/match targets, comprehension targets, augmented
+or walrus assignment, parameters, import aliases, global/nonlocal, def/async-def/class names, tuple/list/starred unpacking,
+attribute assignment, a second different value); a dotted or attribute name (`{cfg.T}`, `{self.T}`: never read as a table
+constant, so it can never resolve to an unrelated local `T`); a quoted identifier that is not a plain lowercase
+`"[a-z_][a-z0-9_]*"` (`"a.b"`, `"Foo"`, `U&"..."`, `"my table"`); a three-part name; no write statement visible at all (how a
+delegating adapter looks); a `source_paths` entry that is not a literal `.py` file or leaves the repo, or a `source_paths`
+that is touched in any way other than being measured/iterated (`.append`/`.extend`/`+=`/item assignment/`setattr`/`getattr`/walrus/
+`del`/tuple-unpack/alias: `source_paths_mutated_at_runtime`); and write forms the scan does not analyse:
+
+* MERGE INTO, REFRESH MATERIALIZED VIEW, CREATE TABLE, SELECT ... INTO (an INTO at the same parenthesis depth as its SELECT, so
+  `SELECT EXTRACT(year FROM d) INTO t` is caught), ALTER TABLE, DROP TABLE, psycopg `sql.SQL`/`sql.Identifier` composition, SQL read
+  from a file feeding `execute`, a `*.sql` file reference. SQL comments (`/* */` nested, `--`) are whitespace: verbs are matched on
+  the comment-free text; the stripper is quote-aware (`'--'`, `E'\\''`, `"--"`, `$$--$$` are text, a `\x01..\x02` placeholder is opaque), and THREE readings are UNIONED (the raw text, the quote-aware comment-free text, and the text with every comment marker stripped wherever it sits -- so a keyword split by a comment INSIDE a string or a `$$` body, `DO $$ BEGIN DELETE /*x*/ FROM t; END $$`, is read); `$` inside an identifier (`a$b$`) does not open a dollar quote and a dollar tag may be non-ASCII (`$é$`) -- every table and every not-scanned reason of either pass is kept -- so a comment can only add (a verb split by a comment is read by the comment-free pass; the raw pass defers to it when the very next token is a comment opener).
+* an execute-like argument that is not provably in-file: an imported name or an attribute of an imported module
+  (`imported_sql_constant`), a call result (`sql_from_call_result`), a subscript of something not provable (`sql_from_subscript`),
+  a name bound nowhere (`unresolved_sql_name`) or bound by something not provable, a parameter with no / an unprovable call site
+  (`unresolved_sql_parameter`), an attribute not assigned exactly once in its class body (`unresolved_sql_attribute`), a dunder
+  attribute such as `fn.__doc__` (`sql_from_dunder_attribute`), bytes (`bytes_sql_literal`), `*args`/`**kwargs`/an unidentifiable
+  SQL argument (`unresolved_sql_arguments`), an execute-like method used as a value (`ex = cur.execute`, `partial(cur.execute, Q)`,
+  `map(cur.execute, ...)`: `execute_method_used_as_value`), an imported execute-like function (`execute_function_imported`).
+* a literal that ENDS in a write verb with no target (`INSERT INTO`, `DELETE FROM`, `TRUNCATE [TABLE]`, `UPDATE `, `COPY `:
+  `trailing_write_verb_without_target`), an `UPDATE`/`COPY` whose SET/FROM tail or target is a placeholder, a name followed by
+  nothing (`'UPDATE a ' + clause`, `q = 'UPDATE a'; q += ' SET x=1'`), a statement whose verb comes from a name holding a bare verb (`V = 'DELETE'; f'{V} FROM a'`), or whose first token is a name followed by SQL words (`FROM|INTO|TABLE|SET|VALUES|SELECT`) or by a name holding a SQL keyword (`f'{V} {F} a'`; prose such as `f'{a} {b} house'` and a name holding a whole statement are not), a bytes literal carrying a write form, an `UPDATE ... SET`/`COPY ... FROM` whose target is not a plain name.
+* `copy_from`/`copy_to`/`copy_to_table`/`copy_records_to_table` calls (`copy_api_without_sql_text`), `exec`/`eval`/`compile`
+  (`dynamic_code`), `setattr`, item assignment on or aliasing of `globals()`/`locals()`/`vars()`, a write through `sys.modules[...]`
+  (`runtime_rebinding`), `from x import *` (`dynamic_binding`), `getattr(...)(...)` or `getattr(obj, 'execute')`
+  (`dynamic_attribute_call`). Dispatch by string is `dynamic_dispatch`: `getattr` with a runtime name, with a name that is a
+  local def/class or a SQL-running method, or whose result is called straight away (a 3-argument read of a literal attribute is a
+  plain read); ANY use of `globals()/locals()/vars()` or `__builtins__`, `gc.get_objects()`; `sys.modules`, `__import__`, `importlib`,
+  `builtins`, `__main__`, frames (`_getframe`, `currentframe`, `f_globals`), `operator.methodcaller`/`attrgetter`,
+  `__getattribute__`. A function with a foreign decorator (anything but `staticmethod`/`classmethod`/`property`) is unprovable as a
+  SQL source or as a parameter sink; a classmethod called through its class is indexed past `cls` (a regular method called
+  through its class is not).
+* a SQL literal longer than 64 KB (`sql_literal_too_long`) and a file whose provenance resolution would exceed its work cap of
+  60,000 bindings/expressions (`resolver_work_cap`): both fall to NOT scanned, never to complete.
+
+Every table of a `TRUNCATE a, b` list (with `TABLE`/`ONLY`/`*`/`RESTART IDENTITY`/`CASCADE`, schema-qualified with optional spaces
+around the dot, quoted) and every write of a multi-statement or `WITH ... INSERT/UPDATE/DELETE` literal is captured; a table only
+read (`DELETE ... USING`, `UPDATE ... FROM`, `INSERT ... SELECT FROM`) is not a write. A `''.join([...])` of a list literal is
+rendered like a concatenation. Not reassembled (so a verb and its target built from separately bound fragments goes unseen unless
+the verb comes from a name): fragments bound in different names and joined elsewhere. A table-parameter helper
+(`def wipe(c, t): ... {t}`) resolves from its call sites (`self`/`cls` are not counted); an aliased or `*args`-called helper is not
+resolved.
+
+A template made of this file's own constants is READ as the statement it runs: `'%s %s t' % (V, F)`, `'{} {} t'.format(V, F)`,
+`f'{V}ETE FROM t'`, `'DELETE FROM'.strip() + ' t'`, `'DELETE FROM x'.replace('x', 't')`, `v, f = 'DELETE', 'FROM'` are rendered
+with the constants written out (only `str` methods on literals are evaluated; nothing is imported or called) and scanned as well.
+
+A closed evaluator reads constant-only SQL (E6.1 follow-up, review round): an execute / SQL argument built ONLY from constants and constant-bound names, through any operator,
+subscript, container, comprehension, conditional or call of a closed list of pure builtins and str / bytes / dict / sequence methods, is EVALUATED and the text it evaluates to is
+scanned as the statement it runs: `'%c%c%c' % (68, 69, 76)`, `'%(v)s FROM t' % {'v': 'DELETE'}`, `'ETELED'[::-1]`, `' '.join(w for w in (...))`, `('%c' + 'ELETE FROM t') % 68`,
+`A = 68; '%cELETE FROM t' % A`, `PARTS = [...]; ''.join(PARTS)`, `'DEL' + ('ETE FROM t' if 1 else 'x')`, `S = 'DEL'; S += 'ETE FROM t'`, a loop that builds the text, a name assigned in
+several places (each value is scanned). A constant-only expression that cannot be evaluated is **not scanned**, never clean (reason `write_form_not_analysed: a constant-only template
+whose text this scan cannot read`): a method outside the closed list, a set iterated into a text (its order is arbitrary), a container built up by `.append` / item stores then
+iterated or joined (`conds = []; conds.append(..); ' AND '.join(conds)`: its order and count are not known; indexing it is fine, each element is scanned), a text assembled from more
+than 64 pieces or by a non-`+=` augmented operator. The evaluator only ever ADDS tables and reasons; the closed allow-list still judges the expression afterwards. A parameter, an
+unknown call, an attribute and a name with a non-assignment binding are not constants and keep their existing handling. **Remaining, by design:** a text assembled from NON-constant
+pieces is the existing (placeholder / call-site) machinery's, and arrangements the straight-line model cannot see (pieces appended conditionally in an order a loop or branch changes)
+are read as the cumulative arrangements in source order, not every subset. **Cost:** a where-clause builder that `' AND '.join(...)`s a mutated list now reads not scanned (10
+non-writer files under platform/ do; none of the 121 orchestrator writers). Also (same follow-up): a starred unpack target (`first, *rest = SRC`) is a
+list, so its aliases / escapes are policed like any other container, and a container that carries another mutable container at ANY depth
+(`[('a', ['b'])]`, `dict(k=['b'])`, `[['a']] * 2`) is not provable. The resolver's work is bounded deterministically: `_WriteScan.work_steps`
+(read-only) against `MAX_RESOLVER_STEPS`, asserted in `test_e5_9_footprint_steps.py` (steps per source line over the reviewer corpora and the
+hostile shapes), with the old wall-clock asserts kept only as a generous backstop.
+
+Documented, not detected: `VACUUM FULL` / `CLUSTER` (they rewrite a table, they write no rows), `COPY ... TO` with a runtime target
+(an export), an instance of another module's class that is called instead of this file's class (an imported delegate), `__dict__`
+on an instance (it only matters for class attributes, which it already disables), and a name collision elsewhere that makes an
+in-file class attribute unknowable (the scan then says not scanned).
 
 The scan reads source text only (`ast.parse`, nothing imported or executed). It cannot see stored functions that write,
 triggers, rules, or a delegate in another module when the writer also writes tables itself (documented, not detected), and
@@ -146,10 +243,65 @@ The family set is what the WAVE tool refuses. Family assets and their readers ar
 production session with the single-asset dispatcher, each under a stage the strategist approves (Pravaha's own assets only by
 Pravaha). The wave tool is for level waves of non-family assets (first use: the 23 bo_* assets).
 
-`FAMILY_ASSETS.json` (draft `0.1-draft`, branch `suvarna/engine-E6.3-family`, 21 members) now includes, beyond the five R8 names
+`FAMILY_ASSETS.json` (draft `0.2-draft`, 25 members, regenerated at registry revision 16; see the draft level map below) includes, beyond the five R8 names
 and the 13 other readers: `ka_yojaka` (Sangam's stale prerequisite), `ka_gochara_v3_century_materialize` (Gochara's century
 writer) and `ka_moorti_nirnaya` (Pravaha's gochara writer, not covered by any name pattern). `ka_kota_chakra` is deliberately not
 in the set (that reader is ours by agreement). None of the 23 bo_* assets is a member; a test pins that.
+
+### The draft level map (SS ruling N-97 item 6; freeze at J1)
+
+`00_ARCHITECTURE/control/LEVEL_MAP.json` is a **draft** pre-J1 snapshot of the dependency levels of the 127 active registry assets
+(`version` `0.2-draft`, `_stamp.status` `DRAFT`). `FAMILY_ASSETS.json` is regenerated with it. Both are generated, never hand-edited:
+`python3 00_ARCHITECTURE/control/regenerate_draft_level_map.py --frozen-at <ISO-8601>` rewrites `registry_input_draft.json`,
+`LEVEL_MAP.json` and `FAMILY_ASSETS.json` all-or-nothing, and refuses (exit 2) to overwrite a set that is not a plain DRAFT unless
+`--force`. `--check` compares all three files with a regeneration made at the recorded stamp.
+
+**What the stamp binds.** `_stamp.registry_revision` / `registry_fingerprint` are `asset_census.REGISTRY_REVISION` and
+`registry_fingerprint()`: they hash the **census criteria registry, not the `asset_registry` dependency graph**. A stale census stamp
+says nothing about whether the DAG moved. The DAG is bound by `_stamp.registry_input_sha256` (the committed input rows) and
+`_stamp.dag_sha256` (the active edges). A DRAFT whose census stamp is behind is only STALE: a pytest warning, and `--check` prints
+`STALE (draft)` and exits 0 (`--check --strict` exits 1), so engine PRs that bump the census revision do not churn these files. A
+stamp whose status is not DRAFT fails on staleness. Because a status can be relabelled, **`--check --pre-freeze` is the J1 gate**: it
+fails on any DRAFT and on any stale census stamp.
+
+**Levels are dependency depth, not dispatch wave indices.** Level = longest path in the registry dependency DAG (27 levels, 0 to
+26). A wave band is a level range: W0 0-2, W1 3-5, W2 6-11, W3 12-16, W4 17-21, W5 22-26. The counts 65/13/14/17/9/9 are band sizes
+and **include family assets**. The dispatch set of a band is the band minus `family_set`, as measured on this map:
+
+| Band | Levels | In band | Dispatchable (non-family) |
+|---|---|---|---|
+| W0 | 0-2 | 65 | 60 |
+| W1 | 3-5 | 13 | 12 |
+| W2 | 6-11 | 14 | 14 |
+| W3 | 12-16 | 17 | 5 |
+| W4 | 17-21 | 9 | 6 |
+| W5 | 22-26 | 9 | 8 |
+
+The dispatcher's own wave index (`derive_waves` over the non-family set) differs from the level for 14 `ph_*` / `mi_*` assets (6
+`ph_*`, 8 `mi_*`), because the family assets they depend on drop out of the set: W4 and W5 depend on the family assets `ph_muhurta`,
+`ph_nimitta`, `ph_pratikara` and `mi_adhilepa`. Use the level for dependency depth and `derive_waves` for dispatch order.
+
+**Who reads these files.** The dispatcher (`suvarna_level_wave.py`) never reads `LEVEL_MAP.json`; it reads `FAMILY_ASSETS.json` only
+for the six lists and `family_set` and ignores `_stamp`. The E6.3 tracker's `_e63_registry_assets` unions the keys of
+`LEVEL_MAP.levels` into the registry asset ids it knows (beside the seed), so the level map's ids are treated as registry assets.
+
+**Where the DAG comes from (offline, no database).** The repo's frozen pre-1210 reconstruction of the live registry plus migration
+1210's 12 edges (`regenerate_draft_level_map.py` docstring has the full provenance). It is not a live export. The seed's own
+`depends_on` is bootstrap-only and differs from this DAG on exactly five assets (`bo_nakshatra_semantic`, `ka_kshetra`, `ka_sangam`,
+`ka_muhurta_seva`, `ka_vighnakara`; pinned in a test). The exact set of migrations in both runner directories
+(`platform/migrations`, `platform/supabase/migrations`) whose SQL mentions `depends_on` is pinned in
+`registry_depends_on_migrations.json`; a new or removed entry fails the test until the registry input and the pin are updated
+(`--write-migration-pin`). The cross-check against the E6 census of `adb0db29d` lives outside the repo
+(`/Users/Dev/suvarna-evidence/census_fresh/adb0db2`); its result, recorded here so it does not rest on that path: 127 assets, and for
+all 127 the census's declared-edge count and blocking-radius direct and transitive counts equal this DAG's (census registry revision
+16, fingerprint `8b88e7b2...cb97c`). `ka_gochara_sweep` and `ka_gochara_v3_century_materialize` are live inactive rows;
+`ka_gochara_v4_41_candidate` is a seed-only inactive row that the census lists under `phantom_registered`, not a live registry row.
+
+**The J1 freeze.** `regenerate_draft_level_map.py --freeze --registry-export <live asset_registry export json> --frozen-at <ISO>`
+(the export is a JSON list of `{asset_id, layer, depends_on, active}` taken read-only by whoever holds the reader login). The
+export's active ids and edges must equal `registry_input_draft.json`'s, otherwise the differences are printed and nothing is written.
+On a match the three files are written with status `FROZEN`, version `1.0` and a stamp at the current census pin;
+`--check --pre-freeze` then passes. The tool does not merge or push anything.
 
 ## Stop hook between waves
 

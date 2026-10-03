@@ -146,8 +146,13 @@ def test_the_committed_file_is_byte_identical_to_what_the_generator_makes_from_t
         import pytest
         pytest.skip("generate_level_map.py is not part of this checkout (it lands with the E6.3 PR #2891, whose "
                     "test_e6_3_family_file_roundtrip.py then checks this pair): round trip not run here")
-    rows = g.load_registry_from_seed(SEED)
+    # the registry is the committed draft registry input (the live active registry; the seed is a stale stand-in that still
+    # holds ka_gochara_v3_century_materialize active), and the draft stamp is carried as a generator note
+    reg = REPO / "00_ARCHITECTURE/control/registry_input_draft.json"
+    assert reg.exists(), "registry_input_draft.json must be committed beside FAMILY_ASSETS.json (a skip would hide a missing input)"
+    rows = g.load_registry_json(reg)
     inp = g.load_family_input(REPO / "00_ARCHITECTURE/control/family_lists_input.json")
+    notes = {"_stamp": DOC["_stamp"]} if "_stamp" in DOC else None
     doc = g.build_family_assets(inp, rows, version=DOC["version"], frozen_at=DOC["frozen_at"],
-                                registry_revision=DOC["registry_revision"])
+                                registry_revision=DOC["registry_revision"], notes=notes)
     assert json.dumps(doc, indent=2, ensure_ascii=False) + "\n" == FILE.read_text(encoding="utf-8")

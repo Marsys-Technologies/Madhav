@@ -115,7 +115,7 @@ def test_validator_a_stamp_column_is_not_a_declared_prose_field():
 def test_the_declarations_file_lists_the_new_field_and_only_the_latta_declares_a_convention():
     raw = json.loads(ac.DECLARATIONS_PATH.read_text(encoding="utf-8"))
     assert raw["null_convention_declaration_fields"] == list(ac.NULL_CONVENTION_DECL_FIELDS) and "stamp_columns" in ac.NULL_CONVENTION_DECL_FIELDS
-    assert raw["version"] == "1.11.0"          # 1.10.0 with DECL-LATTA (#2991); 1.11.0 with DECL-LATTA-NULL (the first null_convention + stamp_columns)
+    assert raw["version"] == "1.12.0"          # 1.10.0 with DECL-LATTA (#2991); 1.11.0 with DECL-LATTA-NULL (the first null_convention + stamp_columns)
     assert "stamp_columns" in raw["description"]
     assert [a for a, e in raw["assets"].items() if "null_convention" in e] == ["bg_phaladeepika_latta"]
     ac.load_asset_declarations()
@@ -256,7 +256,9 @@ def test_both_timestamp_data_types_pass_the_early_screen(monkeypatch, typ):
 def test_the_early_screen_only_looks_at_the_declared_stamp_columns(monkeypatch):
     monkeypatch.setattr(ac, "null_convention_fetch", lambda *a, **k: SSTATS())
     assert _check(SSPEC(), types=dict(s1.LATTA_TYPES, direction="date"))["v"] == PASS                                 # an undeclared non-timestamp column is not a stamp refusal
-    assert _check(SSPEC(stamps=[]), types=dict(s1.LATTA_TYPES, created_at="text"), ) ["v"] in (PASS, FAIL, PARTIAL, ERRORED)   # nothing declared: no stamp screen
+    r = _check(SSPEC(stamps=[]), types=dict(s1.LATTA_TYPES, created_at="text"))                                       # nothing declared: no stamp screen
+    assert r["v"] == FAIL and "refused" not in r["measured"] and "declaration_disagreements" not in r, r              # (was `in (PASS, FAIL, PARTIAL, ERRORED)`: that also passed a refusal-free NO_DETECTOR / a screen that ran)
+    assert r["convention"]["undeclared_constants"] == ["created_at"] and "stamp_refused" not in r["convention"]    # the ordinary S1 reading of a one-value column that is neither stamp nor constant
 
 
 def test_a_stamp_declaration_naming_a_missing_column_fails_in_the_check_before_any_select(monkeypatch):
@@ -464,7 +466,11 @@ def test_REAL_SQL_a_stamp_column_that_is_not_a_timestamp_is_refused(monkeypatch,
     setup = _variant("created_at timestamptz NOT NULL DEFAULT '2026-01-01'", ddl)
     r = _real_check(monkeypatch, disposable_pg, setup, types=dict(s1.REAL_TYPES, created_at=claimed))
     assert r["v"] == NO_DET and r["declaration_disagreements"][0]["field"] == "null_convention.stamp_columns.created_at", r
-    assert kind in r["measured"] or claimed in r["measured"], r
+    if "timestamp" in claimed:      # the types map claims a timestamp: the early screen passes and the CATALOG's type is what is reported (was `kind in .. or claimed in ..`: either string anywhere passed)
+        assert f"created_at is type {kind}, NOT NULL" in r["measured"] and "the table contradicts the declaration" in r["measured"], r
+        assert r["convention"]["stamp_refused"] == ["created_at"]
+    else:                           # the early screen refuses on the information_schema type and reads nothing
+        assert f"(created_at is {claimed})" in r["measured"] and "nothing read" in r["measured"], r
 
 
 def test_REAL_SQL_timestamp_without_time_zone_passes(monkeypatch, disposable_pg):

@@ -130,10 +130,10 @@ def test_validator_refuses_non_objects_and_a_no_classical_claim_beside_a_transcr
     for bad in ("no_alias_class", ["na"], 7, True):
         _bad(dict(vocab_alias=bad), "must be an object")
         _bad(dict(ldgr_source=bad), "must be an object")
-    car = dict(applies="D1", nature="transcription", why="w", evidence=s2.EVID, citation_state="sourced")
+    car = dict(applies="D1", nature="transcription", why=s2.WHY, evidence=s2.EVID, citation_state="sourced")
     _bad(dict(ldgr_source=LS_NA, carriage=car), "contradicts a declared transcription carriage")
     ac.validate_declarations(_doc(dict(ldgr_source=LS_M(), carriage=car)))            # naming the source column beside a transcription is the consistent pair
-    ac.validate_declarations(_doc(dict(ldgr_source=LS_NA, carriage=dict(applies="D3", nature="computation", why="w", evidence=s2.EVID))))
+    ac.validate_declarations(_doc(dict(ldgr_source=LS_NA, carriage=dict(applies="D3", nature="computation", why=s2.WHY, evidence=s2.EVID))))
 
 
 def test_validator_doc_level_field_lists_must_match_when_present():
@@ -149,7 +149,7 @@ def test_validator_doc_level_field_lists_must_match_when_present():
 
 def test_the_committed_file_declares_neither_key_beyond_the_latta_and_lists_the_fields():
     raw = json.loads(ac.DECLARATIONS_PATH.read_text(encoding="utf-8"))
-    assert raw["version"] == "1.11.0"          # DECL-LATTA: bg_phaladeepika_latta is the first (and only) asset to declare them
+    assert raw["version"] == "1.12.0"          # DECL-LATTA: bg_phaladeepika_latta is the first (and only) asset to declare them
     assert raw["vocab_alias_declaration_fields"] == list(ac.VOCAB_ALIAS_DECL_FIELDS)
     assert raw["ldgr_source_declaration_fields"] == list(ac.LDGR_SOURCE_DECL_FIELDS)
     # the per-asset review is the reviewed work: nothing is declared by pattern in this PR
@@ -843,8 +843,12 @@ def test_the_why_length_cap_is_exactly_1200_and_the_alias_like_list_is_pinned():
     assert ac.ALIAS_LIKE_TOKENS == ("synonym", "alias", "alt_name", "alternate_name", "other_name", "also_known", "nickname", "name_variant") and ac.ALIAS_LIKE_EXACT == ("aka",)
 
 
-def test_the_s2_carriage_validator_is_unchanged_by_the_s3_text_rules():
-    ac.validate_declarations(_doc(dict(carriage=dict(applies="D3", nature="computation", why="w", evidence=s2.EVID))))      # S2 still takes a one-letter why
+def test_the_s2_carriage_validator_now_takes_the_s3_text_rules():
+    """E6.1 follow-up (S2 strictness): the carriage `why` / `evidence` are held to S3's rules (this test pinned the opposite while S3 merged: a one-letter why was accepted)."""
+    ac.validate_declarations(_doc(dict(carriage=dict(applies="D3", nature="computation", why=s2.WHY, evidence=s2.EVID))))
+    for bad_why in ("w", "TBD later on", "n/a"):
+        with pytest.raises(ac.DeclarationsError, match=r"carriage\.why"):
+            ac.validate_declarations(_doc(dict(carriage=dict(applies="D3", nature="computation", why=bad_why, evidence=s2.EVID))))
 
 
 # ───────────────────────── LOW: malformed declarations, unknown columns, carriage guards ─────────────────────────
@@ -877,7 +881,7 @@ def test_unknown_columns_of_a_declared_target_table_are_no_detector_and_only_no_
 
 @pytest.mark.parametrize("nature, extra", [("derivation", dict(applies="D2")), ("ratified_judgment", dict(ruling="N-73"))])
 def test_no_classical_claim_is_refused_beside_a_derivation_or_ratified_judgment_carriage(nature, extra):
-    car = dict(nature=nature, why="w", evidence=s2.EVID, **extra)
+    car = dict(nature=nature, why=s2.WHY, evidence=s2.EVID, **extra)
     _bad(dict(ldgr_source=LS_NA, carriage=car), f"contradicts a declared {nature} carriage")
 
 

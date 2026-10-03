@@ -60,6 +60,9 @@ def _assets():
             for L, assets in FIXTURE["layers"].items() for a, ms in assets.items()]
 
 
+NARR_GUARD_CLAUSE = ("; an asset that declares prose_fields [] WITH a prose_coupling to carriage_d1 (NARR-GUARD, pin 16, N-94) reads N/A only while its own Carr.D1 reads PASS, else NO_DETECTOR")
+
+
 def _restore_pre_retirement(monkeypatch):
     """Rebuild the revision-7 inspector around the real rollup code: the criterion back in the registry, nothing retired."""
     reg = dict(ac.CRITERION_REGISTRY)
@@ -68,7 +71,9 @@ def _restore_pre_retirement(monkeypatch):
                           applicability="the asset restates a value from a cited source (source correspondence)")
     monkeypatch.setattr(ac, "CRITERION_REGISTRY", reg)
     monkeypatch.setattr(ac, "RETIRED_CRITERIA", {}, raising=False)
-    reg["Narr.agree"] = dict(reg["Narr.agree"], applicability=NARR_AGREE_REV7)    # its text said "undecided" until revision 9
+    reg["Narr.agree"] = dict(reg["Narr.agree"], revision=1, applicability=NARR_AGREE_REV7)    # its text said "undecided" until revision 9; revision 16 (NARR-GUARD) re-worded and bumped all four Narr checks
+    for crit in ("Narr.checkable", "Narr.fidelity_test", "Narr.lint"):
+        reg[crit] = dict(reg[crit], revision=1, applicability=reg[crit]["applicability"].replace(NARR_GUARD_CLAUSE, ""))
     reg["Vocab.alias"] = dict(reg["Vocab.alias"], revision=1, applicability="the table declares an alias-bearing class census")     # revision 12 (S3) re-worded and bumped both
     reg["Ldgr.source_presence"] = dict(reg["Ldgr.source_presence"], revision=2,
                                        applicability="the target table carries a recognised citation column (R60: singular classical_citation included)")
