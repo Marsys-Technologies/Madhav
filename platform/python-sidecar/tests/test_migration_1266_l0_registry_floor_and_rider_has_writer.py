@@ -623,4 +623,11 @@ def _build_mutant(name: str, spec) -> str:
 def test_every_mutant_is_killed(cluster, name, spec):
     mutant = _build_mutant(name, spec)
     assert mutant != REAL_SQL
-    assert all_violations(cluster, mutant) != [], f"mutant survived: {name}"
+    viol = all_violations(cluster, mutant)
+    assert viol != [], f"mutant survived: {name}"
+    # a mutant that merely breaks the SQL (a scenario crash) proves nothing: require a detected behavioural violation
+    assert any("scenario crashed" not in x for x in viol), f"mutant only crashed the harness: {name}: {viol[:2]}"
+    log = os.environ.get("MUTATION_LOG")
+    if log:
+        with open(log, "a") as fh:
+            fh.write(f"PG{cluster.version} | {name} | KILLED by {len(viol)} violation(s); first: {viol[0][:160]}\n")
