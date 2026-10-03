@@ -168,5 +168,5 @@ describe.skipIf(!CLONE)('resolve_entity - real database census (TI-L0-14)', () =
     } finally {
       await db.end()
     }
-  })
+  }, 120_000)
 })
