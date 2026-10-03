@@ -8550,3 +8550,13 @@ Resume condition for everything downstream: a successful protected deploy with 1
 - Authority: native requested an understandable HTML or other artifact showing the current information architecture.
 - Scope: derivative current-state HTML, static overview image and task-local receipts under `00_ARCHITECTURE/briefs/portal_experience/CURRENT_*` and `Assets/screenshots/portal-experience/`. Existing audit evidence is reused.
 - No application changes, production window, AI execution, migration, deployment, credentials, foreign campaign mutation or application commit/push. Truthful desktop provenance; root CLAUDE §G equivalent scope check; validator unchanged.
+
+
+## 2026-10-04 — Portal cleanup and chart navigation lease
+
+- Lease ID: L-PORTAL-CLEANUP-20261004; holder: Codex desktop.
+- Started: 2026-10-03T22:23:06.705778+00:00; expiry: 2026-10-04T02:23:06.705778+00:00; status: ACTIVE.
+- Worktree: `/Users/Dev/.codex/worktrees/portal-cleanup/Madhav`; branch: task-owned Codex worktree, pinned origin/main a5b3b7b263a3.
+- Authority: native approved sign-in→Jātakas→selected chart; safe removal of Audit/Performance navigation and dedicated dead code, Samīkṣā/Pratikṛti/old chart Cockpit/Timeline/Command Center; chart Life Events text, return links and recommendations for Admin/MCP/Foundation.
+- Scope: local frontend/page retirement, exclusive UI dependencies and callers, chart Life Events text read/write interfaces if existing storage supports safe scope, tests and task-owned plan/receipts. Personal Panchang entry remains, later functional union of general plus chart-specific data.
+- No production writes, deployment, paid AI, chart rebuild, applied-migration edit, corpus edit or unrelated campaign mutation. Preserve shared services, review/calibration data and historical readings. Desktop provenance truthful; root CLAUDE §G equivalent scoped bootstrap; validators unchanged.
