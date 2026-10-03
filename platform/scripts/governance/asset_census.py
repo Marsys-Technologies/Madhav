@@ -762,9 +762,9 @@ def validate_carriage_declaration(where: str, car: dict, e: dict) -> None:
         raise DeclarationsError(f"{where}.carriage.evidence {car['evidence']!r} is not an existing repo-relative file (optionally with :line); a "
                                 f"pointer that cannot be checked must say so: 'unverified:<where it is recorded>'")
     # E6.1 follow-up (S2 strictness, matching S3's `_s3_common`): the same text and pointer rules as vocab_alias / ldgr_source. `why` is a real one-line statement (no control or
-    # invisible character, at least 15 characters and 3 words, not led or dominated by a placeholder word: a long sentence may mention NULL, as the latta's does); `evidence` has no control character, a `:LINE` inside the file, and an `unverified:` pointer states
+    # invisible character, at least 15 characters and 3 words, no placeholder word anywhere, except that a D1 / D2 / D3 sentence may mention `null` / `none`, as the latta's does; a ratified_judgment, which releases N/A, may not); `evidence` has no control character, a `:LINE` inside the file, and an `unverified:` pointer states
     # a real description (10 characters, 2 words). A ratified_judgment carriage RELEASES Carr.D1-D3 to N/A, so (as an S3 N/A release) it may not rest on an `unverified:` pointer.
-    bad = _s3_text_problem(car["why"], min_chars=15, min_words=3, placeholder="lead")
+    bad = _s3_text_problem(car["why"], min_chars=15, min_words=3, placeholder="any" if nature == RATIFIED_JUDGMENT else "prose")
     if bad:
         raise DeclarationsError(f"{where}.carriage.why {bad}")
     bad = _s3_evidence_problem(car["evidence"], allow_unverified=nature != RATIFIED_JUDGMENT)
@@ -854,12 +854,16 @@ _S3_PLACEHOLDER_WORDS = frozenset({"tbd", "todo", "tba", "fixme", "xxx", "placeh
 _S3_WORD = re.compile(r"[^\W_]+(?:[./'-][^\W_]+)*")
 
 
+_PROSE_MAY_MENTION = frozenset({"null", "none"})      # the only placeholder words a carriage `why` sentence may mention (the committed latta why says "content_sa is NULL")
+
+
 def _s3_text_problem(v, *, min_chars: int, min_words: int, placeholder: str = "any"):
     """None when `v` is a real one-line text: a str with no control / format / line-separator character (\\r, \\n, U+0085, U+2028/9, zero-width ...), at least
     `min_chars` characters and `min_words` words once trimmed, and no placeholder word (TBD, todo, N/A ...); else why it is not.
-    `placeholder="any"` (S3's rule) refuses a placeholder word ANYWHERE. `placeholder="lead"` (the carriage `why`, E6.1 follow-up) is for a long explanatory sentence that may
-    legitimately MENTION a word like NULL or none ("content_sa is NULL"): it refuses a statement that LEADS with a placeholder word or whose words, placeholders taken out, fall
-    below `min_words` (so 'TBD later', 'N/A', 'tbd tbd tbd' and 'TODO fill this in' are still refused)."""
+    `placeholder="any"` (S3's rule) refuses a placeholder word ANYWHERE. `placeholder="prose"` (the carriage `why` of a D1 / D2 / D3 check, E6.1 follow-up) is for a long explanatory
+    sentence that may legitimately MENTION the words `null` and `none` ("content_sa is NULL", "none of the rows has an effect clause"): ONLY those two are exempt; every other placeholder
+    word (tbd, todo, tba, fixme, xxx, placeholder, pending, n/a, unknown, nil, ...) is still refused anywhere, and the statement needs at least `min_words` REAL words (a word that is no
+    placeholder word at all: 'see tbd tbd tbd' and 'none none none none' have fewer than three). A ratified_judgment `why` (it releases Carr.D1-D3 to N/A) uses "any"."""
     if not isinstance(v, str):
         return "is not a string"
     if v != v.strip():
@@ -871,10 +875,12 @@ def _s3_text_problem(v, *, min_chars: int, min_words: int, placeholder: str = "a
     words = _S3_WORD.findall(v)
     if len(v) < min_chars or len(words) < min_words:
         return f"is too short to be a real statement (need at least {min_chars} characters and {min_words} words)"
-    if placeholder == "lead":
-        real = [w for w in words if w.casefold() not in _S3_PLACEHOLDER_WORDS]
-        if words and (words[0].casefold() in _S3_PLACEHOLDER_WORDS or len(real) < min_words):
-            return "is a placeholder, not a reason (it leads with a placeholder word or is mostly placeholder words: TBD / todo / placeholder / n/a ...)"
+    if placeholder == "prose":
+        bad = [w for w in words if w.casefold() in _S3_PLACEHOLDER_WORDS and w.casefold() not in _PROSE_MAY_MENTION]
+        if bad:
+            return f"contains a placeholder word ({bad[0]!r}: TBD / todo / pending / unknown / n/a ... are refused anywhere; only null / none may be mentioned in a sentence)"
+        if sum(1 for w in words if w.casefold() not in _S3_PLACEHOLDER_WORDS) < min_words:
+            return f"is mostly placeholder words (need at least {min_words} words that are none of: null, none, tbd, todo, ...)"
         return None
     if any(w.casefold() in _S3_PLACEHOLDER_WORDS for w in words):
         return "contains a placeholder word (TBD / todo / placeholder / n/a ...)"
@@ -8545,7 +8551,9 @@ def _emit_facts(a: dict, census: dict):
     try:
         decl = load_asset_declarations()
     except DeclarationsError:
-        return None
+        # unreadable declarations: the record's own block is all the guard has -- EXCEPT for an asset whose coupling is REQUIRED (PROSE_COUPLING_REQUIRED), keyed by asset id: no
+        # coupling can be shown, so none of its Narr N/A rows is released (E6.1 follow-up, LOW-2; stricter only, every other asset reads None as before)
+        return {"declared_prose_coupling_missing": True} if prose_coupling_required_problem(a.get("asset_id") if isinstance(a, dict) else None, None) else None
     return facts_for_asset(a, decl)
 
 

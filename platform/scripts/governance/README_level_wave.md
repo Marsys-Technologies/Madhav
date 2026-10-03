@@ -165,11 +165,18 @@ A template made of this file's own constants is READ as the statement it runs: `
 `f'{V}ETE FROM t'`, `'DELETE FROM'.strip() + ' t'`, `'DELETE FROM x'.replace('x', 't')`, `v, f = 'DELETE', 'FROM'` are rendered
 with the constants written out (only `str` methods on literals are evaluated; nothing is imported or called) and scanned as well.
 
-The converse, a closed list (E6.1 follow-up): a text-TRANSFORMING expression made ONLY of literals whose text neither the renderer nor
-the evaluator can produce is **not scanned**, never passed: `'%c%c%c' % (68, 69, 76)`, `'%(v)s FROM t' % {'v': 'DELETE'}`, `'%-6s FROM t' %
-'DELETE'`, `'ETELED'[::-1]`, `' '.join(w for w in ('DELETE', 'FROM', 't'))`, `'x' * n`, a `.translate(...)` (reason
-`write_form_not_analysed: a constant-only template whose text this scan cannot read`). A name-built join (`', '.join(COLS)`), a number
-(`10 * 5`) and every form the renderer reads are unchanged. Also (same follow-up): a starred unpack target (`first, *rest = SRC`) is a
+A closed evaluator reads constant-only SQL (E6.1 follow-up, review round): an execute / SQL argument built ONLY from constants and constant-bound names, through any operator,
+subscript, container, comprehension, conditional or call of a closed list of pure builtins and str / bytes / dict / sequence methods, is EVALUATED and the text it evaluates to is
+scanned as the statement it runs: `'%c%c%c' % (68, 69, 76)`, `'%(v)s FROM t' % {'v': 'DELETE'}`, `'ETELED'[::-1]`, `' '.join(w for w in (...))`, `('%c' + 'ELETE FROM t') % 68`,
+`A = 68; '%cELETE FROM t' % A`, `PARTS = [...]; ''.join(PARTS)`, `'DEL' + ('ETE FROM t' if 1 else 'x')`, `S = 'DEL'; S += 'ETE FROM t'`, a loop that builds the text, a name assigned in
+several places (each value is scanned). A constant-only expression that cannot be evaluated is **not scanned**, never clean (reason `write_form_not_analysed: a constant-only template
+whose text this scan cannot read`): a method outside the closed list, a set iterated into a text (its order is arbitrary), a container built up by `.append` / item stores then
+iterated or joined (`conds = []; conds.append(..); ' AND '.join(conds)`: its order and count are not known; indexing it is fine, each element is scanned), a text assembled from more
+than 64 pieces or by a non-`+=` augmented operator. The evaluator only ever ADDS tables and reasons; the closed allow-list still judges the expression afterwards. A parameter, an
+unknown call, an attribute and a name with a non-assignment binding are not constants and keep their existing handling. **Remaining, by design:** a text assembled from NON-constant
+pieces is the existing (placeholder / call-site) machinery's, and arrangements the straight-line model cannot see (pieces appended conditionally in an order a loop or branch changes)
+are read as the cumulative arrangements in source order, not every subset. **Cost:** a where-clause builder that `' AND '.join(...)`s a mutated list now reads not scanned (10
+non-writer files under platform/ do; none of the 121 orchestrator writers). Also (same follow-up): a starred unpack target (`first, *rest = SRC`) is a
 list, so its aliases / escapes are policed like any other container, and a container that carries another mutable container at ANY depth
 (`[('a', ['b'])]`, `dict(k=['b'])`, `[['a']] * 2`) is not provable. The resolver's work is bounded deterministically: `_WriteScan.work_steps`
 (read-only) against `MAX_RESOLVER_STEPS`, asserted in `test_e5_9_footprint_steps.py` (steps per source line over the reviewer corpora and the

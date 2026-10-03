@@ -4,9 +4,10 @@ The carriage declaration (`carriage: {nature, applies, why, evidence, ...}`) use
 vocab_alias / ldgr_source (`_s3_common`) hold theirs to real text rules. The carriage now takes them too, so a declaration that RELEASES or GRADES a Carr check cannot rest on a
 placeholder reason or an unreadable pointer:
 
-  why       a str, no leading / trailing whitespace, no control / format / line-separator character, <= 1200 chars, at least 15 characters and 3 words, and not a placeholder:
-            it may not LEAD with a placeholder word or be mostly placeholder words ('TBD later', 'N/A', 'tbd tbd tbd'). (S3's "no placeholder word ANYWHERE" would refuse the
-            committed latta, whose long why says "content_sa is NULL": a long explanatory sentence may mention NULL; that is the one deliberate difference.)
+  why       a str, no leading / trailing whitespace, no control / format / line-separator character, <= 1200 chars, at least 15 characters and 3 words, and no placeholder word
+            ANYWHERE (S3's rule), with ONE deliberate exception for a D1 / D2 / D3 check: the words `null` and `none` may be mentioned (the committed latta why says "content_sa is
+            NULL"); tbd / todo / tba / fixme / xxx / placeholder / pending / n/a / unknown stay refused anywhere, and at least three REAL words (none of those) are needed.
+            A ratified_judgment, which RELEASES Carr.D1-D3 to N/A, takes S3's rule unchanged (no exception).
   evidence  no control / invisible character; a `:LINE` inside the file; an `unverified:` pointer states a real description (10 characters, 2 words); and a ratified_judgment
             carriage (which RELEASES Carr.D1-D3 to N/A, an S3 N/A release) may not rest on `unverified:` at all.
   spec pointers (effect_clauses_evidence, condition_evidence, an escape hatch's, a repair's): the same control-character / line-range / unverified-text rules.
@@ -59,7 +60,7 @@ def test_the_committed_latta_carriage_validates_as_is_and_still_reads_the_same()
     assert ac.validate_declarations(doc)
     assert "NULL" in car["why"] and car["evidence"].endswith(":122")                       # the long sentence that mentions NULL: why S3's anywhere-rule is not used verbatim
     assert ac._s3_text_problem(car["why"], min_chars=15, min_words=3) is not None           # (S3's own rule WOULD refuse it)
-    assert ac._s3_text_problem(car["why"], min_chars=15, min_words=3, placeholder="lead") is None
+    assert ac._s3_text_problem(car["why"], min_chars=15, min_words=3, placeholder="prose") is None
     assert ac._s3_evidence_problem(car["evidence"], allow_unverified=True) is None
     assert ac.load_asset_declarations()["bg_phaladeepika_latta"]["carriage"] == car
 
@@ -71,11 +72,11 @@ def test_the_committed_latta_carriage_validates_as_is_and_still_reads_the_same()
     ("a reason", "too short"),                                                              # 8 characters, 2 words
     ("two words here", "too short"),                                                        # 14 characters
     ("tiny little one", None),                                                              # 15 characters, 3 words: the floor itself is accepted
-    ("TBD: reason to be written later", "placeholder"),                                      # leads with one
+    ("TBD: reason to be written later", "placeholder"),
     ("n/a", "too short"),
     ("tbd tbd tbd tbd tbd", "placeholder"),
     ("TODO fill this reason in properly", "placeholder"),
-    ("none none none none", "placeholder"),
+    ("none none none none", "mostly placeholder"),
     (" leading space in the reason text", "leading or trailing whitespace"),
     ("trailing space in the reason text ", "leading or trailing whitespace"),
     ("a reason with a zero​width space inside it", "control, line-separator or invisible"),
@@ -89,8 +90,39 @@ def test_the_carriage_why_is_held_to_the_s3_text_rules(why, match):
         _refused(_car(why=why), rf"carriage\.why .*{match}")
 
 
-def test_a_long_explanatory_why_may_mention_a_placeholder_word():
+def test_a_long_explanatory_why_may_mention_null_and_none_but_no_other_placeholder_word():
     _ok(_car(why="eight rows, content_sa is NULL for all of them; the effect of two rows is reserved empty and none is invented"))
+    _ok(_car(why="none of the rows carries an effect clause for Ketu, whose counting rule the passage does not give"))
+    for word in ("tbd", "TBD", "todo", "tba", "fixme", "xxx", "placeholder", "pending", "unknown", "n/a", "nil", "lorem"):
+        _refused(_car(why=f"eight rows transcribed from the passage, source {word} for the rest"), rf"carriage\.why .*placeholder word")
+
+
+@pytest.mark.parametrize("why", [
+    "all rows matched TBD",
+    "ratified by the strategist, todo later",
+    "rows match; pending review; unknown source; none claimed",
+    "see tbd tbd tbd",
+    "all rows match the passage, unknown",
+    "rows are checked by Carr.D1 (n/a for the rest)",
+    "TODO: eight rows transcribed from the passage",
+])
+def test_a_placeholder_word_anywhere_is_refused_for_every_nature(why):
+    _refused(_car(why=why), r"carriage\.why .*placeholder")
+    _refused(dict(RJ, why=why), r"carriage\.why .*placeholder")
+    _refused(dict(applies="D3", nature="computation", why=why, evidence=EVID), r"carriage\.why .*placeholder")
+    _refused(dict(applies="D2", nature="derivation", why=why, evidence=EVID), r"carriage\.why .*placeholder")
+
+
+@pytest.mark.parametrize("why", ["none none none none", "null null none null", "see none none none", "none or null none"])
+def test_fewer_than_three_real_words_is_refused_even_when_only_null_and_none_are_mentioned(why):
+    _refused(_car(why=why), r"carriage\.why .*mostly placeholder words")
+
+
+def test_a_ratified_judgment_takes_s3s_rule_with_no_null_none_exception():
+    sentence = "the rows were ratified, content_sa is NULL and none is invented"
+    _ok(_car(why=sentence))                                                               # a D1 sentence may mention both
+    _refused(dict(RJ, why=sentence), r"carriage\.why .*placeholder word")                  # a ratified_judgment, which releases N/A, may not
+    _ok(dict(RJ, why="ratified by the strategist as a judgment seed for this asset"))
 
 
 def test_the_old_checks_still_come_first_with_their_old_messages():
@@ -192,3 +224,32 @@ def test_a_declaration_with_no_carriage_and_every_other_declared_asset_is_untouc
     with_carriage = [a for a, e in doc["assets"].items() if isinstance(e.get("carriage"), dict) and e["carriage"].get("nature")]
     assert with_carriage == ["bg_phaladeepika_latta"]                                         # the only asset the strictness can touch, and it validates (first test)
     assert ac.validate_declarations(doc)
+
+
+# ───────────────────────── mutations of the placeholder rule ─────────────────────────
+
+def test_MUTATION_widening_the_null_none_exemption_accepts_the_review_examples(monkeypatch):
+    for why in ("all rows matched TBD", "rows match; pending review; unknown source; none claimed", "ratified by the strategist, todo later"):
+        _refused(_car(why=why), r"carriage\.why")
+    monkeypatch.setattr(ac, "_PROSE_MAY_MENTION", frozenset({"null", "none", "tbd", "pending", "unknown", "todo"}))
+    for why in ("all rows matched TBD", "rows match; pending review; unknown source; none claimed", "ratified by the strategist, todo later"):
+        _ok(_car(why=why))                                                                # the exemption list is what refuses them
+
+
+def test_the_real_words_rule_refuses_on_its_own_once_the_exemption_is_widened(monkeypatch):
+    """`see tbd tbd tbd` has one real word. Widen the exemption so the placeholder-anywhere rule no longer fires: the three-real-words rule still refuses it (it is load-bearing, not
+    redundant); and with only null / none exempt the placeholder rule refuses it first."""
+    _refused(_car(why="see tbd tbd tbd"), r"carriage\.why .*placeholder word")
+    monkeypatch.setattr(ac, "_PROSE_MAY_MENTION", frozenset({"null", "none", "tbd"}))
+    _refused(_car(why="see tbd tbd tbd"), r"carriage\.why .*mostly placeholder words")
+    _refused(_car(why="none none none none"), r"carriage\.why .*mostly placeholder words")
+    assert ac._s3_text_problem("see tbd tbd tbd", min_chars=15, min_words=3, placeholder="prose") is not None
+    assert ac._s3_text_problem("see tbd tbd tbd and the other three real words follow", min_chars=15, min_words=3, placeholder="prose") is None   # with the exemption widened, enough real words pass
+
+
+def test_MUTATION_a_ratified_judgment_that_used_the_prose_rule_would_accept_null_and_none(monkeypatch):
+    sentence = "the rows were ratified, content_sa is NULL and none is invented"
+    _refused(dict(RJ, why=sentence), r"carriage\.why")
+    real = ac._s3_text_problem
+    monkeypatch.setattr(ac, "_s3_text_problem", lambda v, *, min_chars, min_words, placeholder="any": real(v, min_chars=min_chars, min_words=min_words, placeholder="prose") if placeholder == "any" and v == sentence else real(v, min_chars=min_chars, min_words=min_words, placeholder=placeholder))
+    _ok(dict(RJ, why=sentence))

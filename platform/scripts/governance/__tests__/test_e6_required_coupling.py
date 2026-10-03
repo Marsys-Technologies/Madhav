@@ -200,6 +200,21 @@ def test_the_gap_ledger_releases_no_narr_row_for_the_double_deletion(monkeypatch
     assert all(ac._na_released(c, ms[c], ms, "L0", facts_off) is True for c in NARR)       # mutation: the pin removed, the cheaper state is released again
 
 
+def test_the_gap_ledger_facts_of_a_required_asset_stay_strict_when_the_declarations_file_is_unreadable(monkeypatch):
+    """LOW-2: `_emit_facts` used to return None for EVERY asset when the declarations file could not be read, so the ledger's only guard was the record's own coupling block. A
+    required asset now reads `declared_prose_coupling_missing` (asset-keyed); every other asset still reads None."""
+    def boom():
+        raise ac.DeclarationsError("unreadable")
+    monkeypatch.setattr(ac, "load_asset_declarations", boom)
+    latta, other = dict(asset_id=AID, measurements={}), dict(asset_id="bg_yogas", measurements={})
+    assert ac._emit_facts(latta, {}) == {"declared_prose_coupling_missing": True} and ac._emit_facts(other, {}) is None and ac._emit_facts("x", {}) is None
+    ms = _plain_na()                                          # a plain N/A record (its block dropped): not released for the latta, released for any other asset
+    assert all(ac._na_released(c, ms[c], ms, "L0", ac._emit_facts(latta, {})) is False for c in NARR)
+    assert all(ac._na_released(c, ms[c], ms, "L0", ac._emit_facts(other, {})) is True for c in NARR)
+    monkeypatch.setattr(ac, "PROSE_COUPLING_REQUIRED", {})
+    assert all(ac._na_released(c, ms[c], ms, "L0", ac._emit_facts(latta, {})) is True for c in NARR)       # mutation: without the table the plain record is released again
+
+
 # ───────────────────────── Part 4: the E6.3 reader ─────────────────────────
 
 def test_the_reader_refuses_the_double_deletion_at_the_ref_in_every_census_shape(tmp_path):
@@ -211,11 +226,34 @@ def test_the_reader_refuses_the_double_deletion_at_the_ref_in_every_census_shape
     assert ng.satisfied_narr(ng.nworld(tmp_path / "coupled", ng._full(ng._d1()))) == [True]                      # the committed entry still counts
 
 
-def test_the_reader_refuses_a_required_asset_with_no_declaration_at_the_ref(tmp_path):
-    w = ng.nworld(tmp_path / "gone", _plain_na(), entry=bare_entry())
-    w.declarations_text = json.dumps({"version": "1.0.0", "assets": {"bg_yogas": {"prose_fields": []}}}, indent=2) + "\n"     # the latta's entry is not in the file at all
-    w.commit()
-    assert ng.satisfied_narr(w) == [False]
+def _rec(asset):
+    return {"asset": asset, "layer": "L0", "criterion": "Narr.agree", "verdict": "N/A"}
+
+
+def test_the_reader_fails_closed_when_a_required_asset_has_no_declaration_at_the_ref(monkeypatch):
+    """The reader helper called directly (the world fixtures also fail on the declaration-sha binding, which would hide this branch): no entry at the ref for a REQUIRED asset is
+    refused; for any other asset it is the old `True` (the declared rule alone decides, nothing to couple)."""
+    monkeypatch.setattr(T, "_e63_declared_entry", lambda repo, sha, asset: None)
+    assert T._e63_narr_coupling_ok("repo", "sha", _rec(AID), "census-src") is False
+    assert T._e63_narr_coupling_ok("repo", "sha", _rec("bg_yogas"), "census-src") is True
+    assert T._e63_narr_coupling_ok("repo", "sha", _rec("bg_phaladeepika_latta_x"), "census-src") is True
+
+
+def test_MUTATION_a_reader_that_returns_true_for_an_absent_declaration_would_count_the_required_asset(monkeypatch):
+    monkeypatch.setattr(T, "_e63_declared_entry", lambda repo, sha, asset: None)
+    assert T._e63_narr_coupling_ok("repo", "sha", _rec(AID), "") is False
+    monkeypatch.setattr(T, "E63_NARR_COUPLING_REQUIRED", frozenset())               # what `return not required` becomes if the branch is removed: the old `return True`
+    assert T._e63_narr_coupling_ok("repo", "sha", _rec(AID), "") is True            # so the False above is earned by the REQUIRED branch, nothing else
+
+
+def test_the_reader_refuses_a_required_asset_with_a_declaration_that_lacks_the_coupling(monkeypatch):
+    """The entry exists but has neither word: the branch that decides to ASK the ref census (the `required` clause of the trigger): without it the reader would return True here."""
+    monkeypatch.setattr(T, "_e63_declared_entry", lambda repo, sha, asset: _without(*BOTH_GONE))
+    monkeypatch.setattr(T, "_e63_null_census_record", lambda repo, sha, rec: None)    # no census to ask: a coupled / required asset fails closed
+    assert T._e63_narr_coupling_ok("repo", "sha", _rec(AID), "") is False
+    assert T._e63_narr_coupling_ok("repo", "sha", _rec("bg_yogas"), "") is True       # an asset outside the table with the same shape is not asked at all
+    monkeypatch.setattr(T, "E63_NARR_COUPLING_REQUIRED", frozenset())
+    assert T._e63_narr_coupling_ok("repo", "sha", _rec(AID), "") is True              # mutation: without the table the trigger is skipped and the cheaper state counts
 
 
 def bare_entry():
@@ -242,15 +280,16 @@ def test_MUTATION_the_reader_copy_of_the_table_is_what_stops_a_ref_census_that_p
     assert ng.satisfied_narr(ng.nworld(tmp_path / "no_copy", plain, entry=bare, census_src=old)) == [True]            # the cheaper state, counted: the copy is load-bearing
 
 
-def test_MUTATION_the_readers_copy_is_the_trigger_so_a_drifted_copy_is_caught_by_the_parity_pin(monkeypatch):
-    """The reader asks the ref's census about an asset only when ITS copy of the table names it (it holds no rule of its own, so it cannot discover a required asset from the
-    declaration alone). A copy that drifted from the census table would therefore silently stop asking: the parity assertion of the first test is what catches it."""
-    assert T.E63_NARR_COUPLING_REQUIRED == frozenset(ac.PROSE_COUPLING_REQUIRED)
+def test_MUTATION_a_drifted_reader_copy_stops_asking_the_census_and_the_cheaper_state_counts(tmp_path, monkeypatch):
+    """The reader asks the ref's census about an asset only when ITS copy of the table names it (it holds no rule of its own). Empty the copy and a REAL world with the double
+    deletion (the current census, a bare `prose_fields []` declaration, a plain N/A record) is counted: that is the failure the parity assertion of the first test exists to catch,
+    shown as behaviour instead of as an inequality."""
+    plain = {c: dict(v=NA, measured="x", cause="no-prose") for c in NARR}
+    assert ng.satisfied_narr(ng.nworld(tmp_path / "with_copy", plain, entry=bare_entry())) == [False]
     monkeypatch.setattr(T, "E63_NARR_COUPLING_REQUIRED", frozenset())
-    assert T.E63_NARR_COUPLING_REQUIRED != frozenset(ac.PROSE_COUPLING_REQUIRED)
-    monkeypatch.setattr(ac, "PROSE_COUPLING_REQUIRED", {**ac.PROSE_COUPLING_REQUIRED, "bg_yogas": "N-0: a hypothetical second required asset"})
-    monkeypatch.setattr(T, "E63_NARR_COUPLING_REQUIRED", frozenset({AID}))
-    assert T.E63_NARR_COUPLING_REQUIRED != frozenset(ac.PROSE_COUPLING_REQUIRED)             # an asset added to one table and not the other is visible
+    T._E63_NARR_CACHE.clear()
+    assert ng.satisfied_narr(ng.nworld(tmp_path / "drifted_copy", plain, entry=bare_entry())) == [True]
+    assert T.E63_NARR_COUPLING_REQUIRED != frozenset(ac.PROSE_COUPLING_REQUIRED)       # ... and the parity pin sees exactly this drift
 
 
 # ───────────────────────── Part 5: nothing moves ─────────────────────────

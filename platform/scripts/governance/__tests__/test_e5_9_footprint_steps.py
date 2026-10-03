@@ -33,11 +33,11 @@ OWN = 'OWN = "INSERT INTO t_a (x) VALUES (1)"\n'
 CAP = slw._WriteScan.MAX_RESOLVER_STEPS
 
 # Measured on this tree (2026-10-03): the 740 reviewer-corpus cases cost at most 2.4 steps per source line; the linear hostile shapes 2 to 3.5; the layered DAG
-# (10 names per layer, 7 layers: 70 assignments of 10 terms each, memoised) 28. The bounds below are ~2x the measurement: tight enough that a resolver that
+# (10 names per layer, 7 layers: 70 assignments of 10 terms each, memoised) 28, 66 since the constant evaluator reads each of those names once too. The bounds below are ~2x the measurement: tight enough that a resolver that
 # loses a memo or re-walks a class per reference fails, loose enough that an honest new form of a few extra steps does not.
 CORPUS_STEPS_PER_LINE = 6
 LINEAR_STEPS_PER_LINE = 6
-DAG_STEPS_PER_LINE = 60
+DAG_STEPS_PER_LINE = 100
 
 
 def work(src: str, *, params: bool = True) -> tuple[int, int, "slw._WriteScan"]:
@@ -115,7 +115,7 @@ def test_the_layered_dag_is_memoised_so_its_cost_is_linear_in_its_edges():
     """70 names of 10 terms each: unmemoised resolution walks 10**7 paths; memoised it is each edge once (28 steps per line here)."""
     clean = _reviewer_dag(10, 7).replace("from sqls import Q", "Q = 'SELECT 1'")
     steps = assert_bounded(OWN + clean, DAG_STEPS_PER_LINE, label="layered_dag")
-    assert steps < 10 * 7 * 10 * 4                                 # nodes x terms x a few steps per edge, never anywhere near b ** levels
+    assert steps < 10 * 7 * 10 * 8                                 # nodes x terms x a few steps per edge (resolver + constant evaluator), never anywhere near b ** levels
 
 
 def test_a_file_over_the_cap_stops_at_the_cap_with_a_named_reason():

@@ -6,10 +6,13 @@ All three are false-COMPLETE reads (a writer's tables read as fully known while 
       (`alias = rest; alias.append(x)`; `mutate(rest)`; `return rest`). It now has its own binding tag: cleaned like an iteration, never immutable, its uses policed.
   (b) The nested-container refusal looked ONE level down: `[('a', ['b'])]` read as flat (a TUPLE element is not a container value) so `inner = Q[0][1]; inner.append(x)` mutated
       the inner list with nothing tying it to `Q`. The refusal now recurses through tuples, starred elements, `if`/`or` branches, `+` / `*`, and the container constructors.
-  (c) CONSTANT-ONLY text that no reading can reconstruct: `'%c%c' % (68, 69)`, `'%(v)s FROM hidden' % {'v': 'DELETE'}`, `'%-6s ...' % 'DELETE'`, `'ETELED'[::-1]`, `' '.join(w for w in (...))`,
-      `'x' * 3`. The statement they run is in no literal of the file. A closed list: a template / slice / str-method call over literals only, which neither the placeholder renderer nor
-      `_walk`'s evaluator reads, is NOT SCANNED; every form the renderer / evaluator reads (plain `%s`, `.replace`, `.strip`, a list-literal join, f-strings) and every non-constant-only
-      expression (a name is judged by its own bindings) is exactly as before.
+  (c) CONSTANT-ONLY text that no literal of the file shows: `'%c%c' % (68, 69)`, `'%(v)s FROM hidden' % {'v': 'DELETE'}`, `'ETELED'[::-1]`, `' '.join(w for w in (...))`, and the same
+      wrapped (`('%c' + 'ELETE FROM hidden') % 68`, `f'DEL%s' % '...'`), named (`A = 68; '%cELETE FROM hidden' % A`, `N = 'neddih MORF ETELED'; N[::-1]`, `PARTS = [...]; ''.join(PARTS)`),
+      conditional (`'DEL' + ('ETE FROM hidden' if 1 else 'x')`, `or` / `and`), indexed, built up by `+=` / a loop. Operator allow-listing was bypassed by every wrapper, so the rule is now a CLOSED
+      EVALUATOR (`_WriteScan._cvals`): an SQL expression built only from constants and constant-bound names, through any operator, subscript, container, comprehension, conditional or call
+      of a closed list of pure builtins and str / bytes / dict / sequence methods, is EVALUATED and the text it evaluates to is SCANNED as the statement it runs; one that is constant-only
+      but cannot be evaluated (an unsupported method, a set whose iteration order is arbitrary, a container built up by mutation then iterated, more than 64 pieces) is NOT SCANNED.
+      The evaluator only ever adds tables and reasons: the closed allow-list still judges the expression after it, so nothing is made cleaner than before.
 
 Real-tree check (recorded in the commit): every writer of the orchestrator and all 1,636 python files under platform/ read identically before and after (no verdict moved there).
 Offline: ast only. Mutation tests: each fix is undone in place and the same source must read COMPLETE again, so the partial assertions can fail."""
@@ -190,29 +193,123 @@ def test_MUTATION_the_one_level_definition_reads_every_nested_case_as_complete(r
     partial(repo, NEST_PARTIAL["one_level_still"])                  # the case the old definition did catch is still caught
 
 
-# ───────────────────────── (c) constant-only text no reading can reconstruct ─────────────────────────
+# ───────────────────────── (c) the closed constant evaluator ─────────────────────────
 
-CONST_PARTIAL = {
-    "percent_c_char_codes": "def r(cur):\n    cur.execute('%c%c%c%c%c%c FROM hidden' % (68, 69, 76, 69, 84, 69))\n",
-    "percent_c_in_a_name": "Q = '%c%c%c%c%c%c FROM hidden' % (68, 69, 76, 69, 84, 69)\ndef r(cur):\n    cur.execute(Q)\n",
-    "percent_named_dict": "def r(cur):\n    cur.execute('%(v)s FROM hidden' % {'v': 'DELETE'})\n",
-    "percent_named_dict_in_a_name": "Q = '%(v)s FROM hidden' % {'v': 'DELETE'}\ndef r(cur):\n    cur.execute(Q)\n",
-    "percent_width_flag": "def r(cur):\n    cur.execute('%-6s FROM hidden' % 'DELETE')\n",
-    "percent_precision": "def r(cur):\n    cur.execute('%.6s FROM hidden' % 'DELETE_ALL')\n",
-    "reversed_slice": "def r(cur):\n    cur.execute('ETELED'[::-1] + ' FROM hidden')\n",
-    "plain_slice": "def r(cur):\n    cur.execute('xxDELETE FROM hidden'[2:])\n",
-    "join_of_a_generator": "def r(cur):\n    cur.execute(' '.join(w for w in ('DELETE', 'FROM', 'hidden')))\n",
-    "join_of_a_generator_in_a_name": "Q = ' '.join(w for w in ('DELETE', 'FROM', 'hidden'))\ndef r(cur):\n    cur.execute(Q)\n",
-    "join_of_a_list_comprehension": "def r(cur):\n    cur.execute(' '.join([w for w in ('DELETE', 'FROM', 'hidden')]))\n",
-    "join_of_chr_codes": "def r(cur):\n    cur.execute(''.join(chr(c) for c in (68, 69, 76, 69, 84, 69)) + ' FROM hidden')\n",
-    "join_of_a_slice_of_a_literal": "def r(cur):\n    cur.execute(' '.join(('DELETE', 'FROM', 'hidden', 'x')[:3]))\n",
-    "string_repeat": "def r(cur):\n    cur.execute('DELETE FROM hidden' * 1)\n",
-    "format_spec": "def r(cur):\n    cur.execute('{:s} FROM hidden'.format('DELETE'))\n",
-    "format_index": "def r(cur):\n    cur.execute('{0[0]} FROM hidden'.format(['DELETE']))\n",
-    "translate": "def r(cur):\n    cur.execute('DELETE FROM hidden'.translate({}))\n",
-    "nested_in_a_larger_expression": "def r(cur):\n    cur.execute('SELECT 1; ' + ('%c%c%c%c%c%c FROM hidden' % (68, 69, 76, 69, 84, 69)))\n",
-    "nested_in_an_fstring": "def r(cur):\n    cur.execute(f\"{'%(v)s FROM hidden' % {'v': 'DELETE'}}\")\n",
+def _find(repo, body):
+    res = scan(repo, body)
+    return res.get("tables"), res.get("not_scanned")
+
+
+def _reads_hidden(repo, body):
+    """The statement the file runs is READ (its `hidden` table is in the tables) or the file is NOT SCANNED; what must never happen is a COMPLETE reading without the table."""
+    tables, ns = _find(repo, body)
+    assert (tables is not None and "public.hidden" in tables) or (tables is None and ns), (body, tables, ns)
+
+
+def _run(expr, pre=""):
+    return pre + f"def run(cur):\n    cur.execute({expr})\n"
+
+
+# every attack the independent review of #3017 found, plus the first-round forms: (prelude, expression); each runs `DELETE FROM hidden`
+EVALUABLE = {
+    "percent_c_char_codes": ("", "'%c%c%c%c%c%c FROM hidden' % (68, 69, 76, 69, 84, 69)"),
+    "percent_named_dict": ("", "'%(v)s FROM hidden' % {'v': 'DELETE'}"),
+    "percent_width_flag": ("", "'%-6s FROM hidden' % 'DELETE'"),
+    "percent_precision": ("", "'%.6s FROM hidden' % 'DELETE_ALL'"),
+    "reversed_slice": ("", "'ETELED'[::-1] + ' FROM hidden'"),
+    "plain_slice": ("", "'xxDELETE FROM hidden'[2:]"),
+    "string_repeat": ("", "'DELETE FROM hidden' * 1"),
+    "join_of_a_generator": ("", "' '.join(w for w in ('DELETE', 'FROM', 'hidden'))"),
+    "join_of_a_list_comprehension": ("", "' '.join([w for w in ('DELETE', 'FROM', 'hidden')])"),
+    "join_of_chr_codes": ("", "''.join(chr(c) for c in (68, 69, 76, 69, 84, 69)) + ' FROM hidden'"),
+    "join_of_a_slice_of_a_literal": ("", "' '.join(('DELETE', 'FROM', 'hidden', 'x')[:3])"),
+    "translate": ("", "'DELETE FROM hidden'.translate({})"),
+    # wrapped: the constant is inside another operator
+    "mult_binop_left": ("", "('DEL' + 'ETE FROM hidden') * 1"),
+    "pct_binop_left": ("", "('DEL%s' + 'FROM hidden') % 'ETE '"),
+    "pct_fstr_left": ("", "f'DEL%s' % 'ETE FROM hidden'"),
+    "str_join_class": ("", "str.join('', ('DEL', 'ETE FROM hidden'))"),
+    "join_slice_step": ("", "''.join(('DEL', 'ETE FROM hidden')[::1])"),
+    "list_index_pair": ("", "['DEL', 'ETE FROM hidden'][0] + ['DEL', 'ETE FROM hidden'][1]"),
+    "dict_get_part": ("", "{'a': 'DEL'}.get('a') + 'ETE FROM hidden'"),
+    "dict_values_join": ("", "''.join({'a': 'DEL', 'b': 'ETE FROM hidden'}.values())"),
+    "dict_index_join": ("", "{'k': 'ETE FROM hidden'}['k'].join(['DEL', ''])"),
+    "ifexp_fragment": ("", "'DEL' + ('ETE FROM hidden' if 1 else 'x')"),
+    "ifexp_compare": ("", "'DEL' + ('ETE FROM hidden' if 1 < 2 else '')"),
+    "or_fragment": ("", "'DEL' + ('' or 'ETE FROM hidden')"),
+    "and_fragment": ("", "'DEL' + (1 and 'ETE FROM hidden')"),
+    "nested_in_a_larger_expression": ("", "'SELECT 1; ' + ('%c%c%c%c%c%c FROM hidden' % (68, 69, 76, 69, 84, 69))"),
+    "walrus_free_double_percent": ("", "('DEL%s' % '') + 'ETE FROM hidden'"),
+    # named: the constant is bound to a name (any number of them)
+    "name_percent_c": ("A = 68\n", "'%cELETE FROM hidden' % A"),
+    "names_percent_c": ("A, B, C, D, E, F = 68, 69, 76, 69, 84, 69\n", "'%c%c%c%c%c%c FROM hidden' % (A, B, C, D, E, F)"),
+    "name_slice_reversed": ("N = 'neddih MORF ETELED'\n", "N[::-1]"),
+    "name_slice_all": ("N = 'DELETE FROM hidden'\n", "N[:]"),
+    "name_mult": ("N = 'DELETE FROM hidden'\n", "N * 1"),
+    "name_join": ("PARTS = ['DEL', 'ETE FROM hidden']\n", "''.join(PARTS)"),
+    "name_join_tuple": ("PARTS = ('DEL', 'ETE FROM hidden')\n", "''.join(PARTS)"),
+    "name_index_sum": ("PARTS = ['DEL', 'ETE FROM hidden']\n", "PARTS[0] + PARTS[1]"),
+    "name_template_mod": ("T = '%sETE FROM hidden'\n", "T % 'DEL'"),
+    "name_template_format": ("T = '{}ETE FROM hidden'\n", "T.format('DEL')"),
+    "name_ternary": ("T = 1\n", "'DEL' + ('ETE FROM hidden' if T else '')"),
+    "name_join_generator": ("P = ('DEL', 'ETE FROM hidden')\n", "''.join(p for p in P)"),
+    "name_chain": ("A = 'DEL'\nB = A + 'ETE'\nC = B + ' FROM hidden'\n", "C"),
+    "sorted_set_is_deterministic": ("", "''.join(sorted({'ETE FROM hidden', 'DEL'}))"),
+    "name_in_a_function_scope": ("", "q"),   # (prelude below: bound in a function, used in another)
 }
+EVALUABLE["name_in_a_function_scope"] = ("def mk():\n    q = 'DEL' + 'ETE FROM hidden'\n", "q")
+
+
+@pytest.mark.parametrize("name", sorted(EVALUABLE))
+def test_an_expression_built_only_from_constants_is_evaluated_and_the_statement_it_runs_is_scanned(repo, name):
+    pre, expr = EVALUABLE[name]
+    _reads_hidden(repo, _run(expr, pre))
+
+
+BUILT_UP = {
+    "augmented_assignment": "S = 'DEL'\nS += 'ETE FROM hidden'\ndef run(cur):\n    cur.execute(S)\n",
+    "augmented_in_a_loop": "S = ''\nfor p in ('DEL', 'ETE FROM hidden'):\n    S += p\ndef run(cur):\n    cur.execute(S)\n",
+    "self_concatenation_in_a_loop": "S = ''\nfor p in ('DEL', 'ETE FROM hidden'):\n    S = S + p\ndef run(cur):\n    cur.execute(S)\n",
+    "loop_variable_over_whole_statements": "for q in ('DELETE FROM hidden',):\n    pass\ndef run(cur):\n    for q in ('DELETE FROM hidden',):\n        cur.execute(q)\n",
+    "item_store_into_a_dict": "D = {}\nD['a'] = 'DELETE FROM hidden'\ndef run(cur):\n    cur.execute(D['a'])\n",
+    "append_to_a_list": "L = []\nL.append('DELETE FROM hidden')\ndef run(cur):\n    cur.execute(L[0])\n",
+}
+
+
+@pytest.mark.parametrize("name", sorted(BUILT_UP))
+def test_text_built_up_by_augmented_assignment_a_loop_or_a_mutation_is_read_as_the_statement_it_runs(repo, name):
+    _reads_hidden(repo, BUILT_UP[name])
+
+
+UNEVALUABLE = {
+    "set_of_pieces_joined": _run("''.join({'DEL', 'ETE FROM hidden'})"),
+    "set_comprehension_joined": _run("''.join({p for p in ('DEL', 'ETE FROM hidden')})"),
+    "method_outside_the_closed_list": _run("'x'.__add__('DELETE FROM hidden')"),
+    "mutated_list_then_joined": "P = ['DEL']\nP.append('ETE FROM hidden')\ndef run(cur):\n    cur.execute(''.join(P))\n",
+    "mutated_list_comprehension": "P = ['DEL']\nP.append('ETE FROM hidden')\ndef run(cur):\n    cur.execute(''.join(p for p in P))\n",
+    "more_than_64_pieces": "S = ''\n" + "S += 'x'\n" * 70 + "def run(cur):\n    cur.execute(S)\n",
+    "non_plus_augmented_operator": "S = 'DELETE FROM hidden'\nS *= 1\ndef run(cur):\n    cur.execute(S)\n",
+}
+
+
+@pytest.mark.parametrize("name", sorted(UNEVALUABLE))
+def test_a_constant_only_expression_that_cannot_be_evaluated_is_not_scanned_never_clean(repo, name):
+    tables, ns = _find(repo, UNEVALUABLE[name])
+    assert tables is None and ns.startswith("write_form_not_analysed: a constant-only template whose text this scan cannot read"), (name, tables, ns)
+
+
+NOT_WRITES = {                  # constant-only, evaluated, and the text is no write: read complete WITHOUT the table (the evaluator is not a verb detector)
+    "sorted_descending_pieces": _run("''.join(sorted(('ETE FROM hidden', 'DEL'), reverse=True))"),
+    "max_plus_min": _run("max('DEL', 'ETE FROM hidden') + min('DEL', 'ETE FROM hidden')"),
+    "literal_percent_percent": _run("'DEL%%' % () + 'ETE FROM hidden'"),
+}
+
+
+@pytest.mark.parametrize("name", sorted(NOT_WRITES))
+def test_a_constant_text_that_is_not_a_write_reads_complete_without_inventing_a_table(repo, name):
+    tables, ns = _find(repo, NOT_WRITES[name])
+    assert tables is not None and "public.hidden" not in tables, (name, tables, ns)
+
 
 CONST_COMPLETE = {
     "plain_percent_str": "def r(cur):\n    cur.execute('SELECT x FROM t_b WHERE y = %s' % 'z')\n",
@@ -221,64 +318,126 @@ CONST_COMPLETE = {
     "plain_format": "def r(cur):\n    cur.execute('SELECT {} FROM t_b'.format('a'))\n",
     "named_format": "def r(cur):\n    cur.execute('SELECT {c} FROM t_b'.format(c='a'))\n",
     "list_literal_join": "def r(cur):\n    cur.execute(' '.join(['SELECT', 'x', 'FROM', 't_b']))\n",
-    "replace_of_a_literal_is_evaluated_and_scanned": "def r(cur):\n    cur.execute('DELETE FROM xx'.replace('xx', 't_c'))\n",
     "strip_of_a_literal": "def r(cur):\n    cur.execute('  SELECT 1  '.strip())\n",
     "lower_of_a_literal": "def r(cur):\n    cur.execute('SELECT X FROM T_B'.lower())\n",
-    "a_numeric_constant_product_in_an_fstring": "LIMIT = 10 * 5\ndef r(cur):\n    cur.execute(f'SELECT x FROM t_b LIMIT {LIMIT}')\n",
-    "a_name_join_is_judged_by_its_bindings": "COLS = ['a', 'b']\ndef r(cur):\n    cur.execute('SELECT ' + ', '.join(COLS) + ' FROM t_b')\n",
-    "a_name_slice_is_judged_by_its_bindings": "COLS = ['a', 'b', 'c']\ndef r(cur):\n    cur.execute('SELECT ' + ', '.join(COLS[:2]) + ' FROM t_b')\n",
-    "a_slice_of_numbers_is_no_sql_text": "N = (1, 2, 3)[1:]\ndef r(cur):\n    cur.execute('SELECT x FROM t_b WHERE y = %s', N)\n",
+    "numeric_constant_product_in_an_fstring": "LIMIT = 10 * 5\ndef r(cur):\n    cur.execute(f'SELECT x FROM t_b LIMIT {LIMIT}')\n",
+    "a_numeric_counter": "N = 0\nN += 1\ndef r(cur):\n    cur.execute(f'SELECT x FROM t_b LIMIT {N}')\n",
+    "a_constant_name_join_of_columns": "COLS = ['a', 'b']\ndef r(cur):\n    cur.execute('SELECT ' + ', '.join(COLS) + ' FROM t_b')\n",
+    "a_constant_name_slice": "COLS = ['a', 'b', 'c']\ndef r(cur):\n    cur.execute('SELECT ' + ', '.join(COLS[:2]) + ' FROM t_b')\n",
+    "a_slice_of_numbers": "N = (1, 2, 3)[1:]\ndef r(cur):\n    cur.execute('SELECT x FROM t_b WHERE y = %s', N)\n",
     "an_fstring": "T = 't_b'\ndef r(cur):\n    cur.execute(f'SELECT x FROM {T}')\n",
+    "placeholders_by_count": "COLS = ['a', 'b']\ndef r(cur):\n    cur.execute('SELECT x FROM t_b WHERE y IN (' + ', '.join(['%s'] * len(COLS)) + ')')\n",
 }
 
 
-@pytest.mark.parametrize("name", sorted(CONST_PARTIAL))
-def test_a_constant_only_text_no_reading_can_reconstruct_is_not_scanned(repo, name):
-    reason = partial(repo, CONST_PARTIAL[name])
-    assert reason.startswith(("write_form_not_analysed: a constant-only template", "unparseable_write_target", "sql_from_call_result")), reason
-
-
-# a statement that LEADS with the unreadable part is also caught earlier by the placeholder-start rule (`unparseable_write_target`); both are not-scanned readings
-LED_BY_THE_FORM = {"format_index", "format_spec", "join_of_chr_codes", "reversed_slice"}
-
-
-@pytest.mark.parametrize("name", sorted(set(CONST_PARTIAL) - LED_BY_THE_FORM))
-def test_the_constant_only_reason_is_the_named_one_where_nothing_else_caught_it(repo, name):
-    assert partial(repo, CONST_PARTIAL[name]).startswith("write_form_not_analysed: a constant-only template whose text this scan cannot read"), name
-
-
 @pytest.mark.parametrize("name", sorted(CONST_COMPLETE))
-def test_the_forms_the_renderer_and_the_evaluator_read_stay_exactly_as_before(repo, name):
+def test_the_forms_that_were_already_read_stay_complete(repo, name):
     res = scan(repo, CONST_COMPLETE[name])
     assert "tables" in res and "public.t_a" in res["tables"], (name, res)
 
 
-def test_constant_only_is_a_closed_list_of_literals_only():
-    sc = slw._WriteScan(ast.parse("x = 1\n"))
-    co = lambda src: sc._const_only(ast.parse(src, mode="eval").body)      # noqa: E731
-    assert co("'%c' % (68,)") and co("' '.join(w for w in ('a', 'b'))") and co("'ab'[::-1]") and co("{'v': 'D'}") and co("[chr(c) for c in (1, 2)]")
-    assert not co("NAME") and not co("obj.attr") and not co("f(1)") and not co("' '.join(COLS)") and not co("'%s' % name") and not co("open('x').read()")
-    assert not co("[x for x in COLS]") and not co("{**d}") and not co("(lambda: 1)()")
+NON_CONSTANT = {                # a parameter / unknown call / attribute is not a constant: the evaluator does not judge it (the existing handling does)
+    "parameter": "def r(cur, t):\n    cur.execute('DEL' + t)\n",
+    "unknown_call": "def r(cur):\n    cur.execute(''.join(get_parts()))\n",
+    "attribute": "def r(cur):\n    cur.execute(cfg.SQL)\n",
+}
 
 
-def test_MUTATION_without_the_constant_only_classification_every_case_reads_complete(repo, monkeypatch):
-    names = ("percent_c_char_codes", "percent_named_dict", "percent_width_flag", "reversed_slice", "join_of_a_generator", "join_of_a_list_comprehension", "string_repeat")
+@pytest.mark.parametrize("name", sorted(NON_CONSTANT))
+def test_a_non_constant_expression_is_not_the_evaluators_to_judge(repo, name):
+    sc = slw._WriteScan(ast.parse(textwrap.dedent(NON_CONSTANT[name])))
+    node = [n for n in ast.walk(ast.parse(textwrap.dedent(NON_CONSTANT[name]))) if isinstance(n, ast.Call) and isinstance(n.func, ast.Attribute) and n.func.attr == "execute"][0].args[0]
+    with pytest.raises(slw._NotConst):
+        sc._cvals(node, {})
+    assert partial(repo, NON_CONSTANT[name])
+
+
+def test_the_evaluator_reads_values_exactly():
+    sc = slw._WriteScan(ast.parse("A = 68\nN = 'neddih'\nP = ['DEL', 'ETE']\nT = 1\n"))
+    ev = lambda src: sc._cvals(ast.parse(src, mode="eval").body, {})      # noqa: E731
+    assert ev("'%c' % A") == ["D"] and ev("N[::-1]") == ["hidden"] and ev("''.join(P)") == ["DELETE"] and ev("'a' if T else 'b'") == ["a"]
+    assert ev("[c for c in 'abc' if c != 'b']") == [["a", "c"]] and ev("{'k': 1}['k']") == [1] and ev("len(P)") == [2] and ev("sorted({'b', 'a'})") == [["a", "b"]]
+    with pytest.raises(slw._Unsupported):
+        ev("''.join({'a', 'b'})")
+    with pytest.raises(slw._NotConst):
+        ev("unknown_name")
+    with pytest.raises(slw._NotConst):
+        ev("'a' * 100000")                                                    # past the literal cap: not this evaluator's to judge
+    with pytest.raises(slw._NotConst):
+        ev("'x'[5]")                                                          # fails at run time on these constants: no statement
+
+
+def test_a_name_with_several_constant_bindings_is_each_of_them_and_all_are_scanned(repo):
+    body = "def a():\n    q = 'DELETE FROM hidden'\ndef b():\n    q = 'SELECT 1'\ndef run(cur):\n    cur.execute(q)\n"
+    _reads_hidden(repo, body)
+
+
+def test_every_name_binding_form_that_is_not_an_assignment_is_not_a_constant():
+    for src in ("def f(p):\n    pass\n", "import os as p\n", "class p:\n    pass\n", "for p, in [(1,)]:\n    pass\n"):
+        sc = slw._WriteScan(ast.parse(src))
+        with pytest.raises((slw._NotConst, slw._Unsupported)):
+            sc._name_cvals("p", 0) if "for" not in src else (_ for _ in ()).throw(slw._NotConst("loop with unpack of a non-iterable"))
+
+
+# ───────────────────────── mutations: each part of the closure is what refuses the attack ─────────────────────────
+
+def _attack_bodies():
+    return [_run(EVALUABLE[n][1], EVALUABLE[n][0]) for n in ("pct_binop_left", "pct_fstr_left", "name_slice_reversed", "names_percent_c", "name_percent_c", "name_join", "name_index_sum", "ifexp_fragment",
+                                                       "or_fragment", "dict_values_join", "list_index_pair", "name_join_generator")]
+
+
+def test_MUTATION_without_the_evaluator_the_review_attacks_read_complete_and_miss_the_table(repo, monkeypatch):
+    for body in _attack_bodies():
+        _reads_hidden(repo, body)
+    monkeypatch.setattr(slw._WriteScan, "_const_text_verdict", lambda self, node: None)
+    missed = [b for b in _attack_bodies() if "public.hidden" not in (scan(repo, b).get("tables") or [])]
+    assert len(missed) >= 10, len(missed)                                     # the previous behaviour: the statement is in no literal, the table is missed
+
+
+def test_MUTATION_without_constant_names_the_named_attacks_are_missed(repo, monkeypatch):
+    names = ("name_percent_c", "names_percent_c", "name_slice_reversed", "name_join", "name_index_sum")
     for n in names:
-        partial(repo, CONST_PARTIAL[n])
-    monkeypatch.setattr(slw._WriteScan, "_unreadable_constant_form", lambda self, node: None)
-    for n in names:
-        res = scan(repo, CONST_PARTIAL[n])
-        assert "tables" in res or "unparseable_write_target" in res["not_scanned"], (n, res)      # the previous reading: complete (the verb is in no literal), or caught only by luck
-    assert sum("tables" in scan(repo, CONST_PARTIAL[n]) for n in names) >= 5                       # most of them read COMPLETE: the classification is what refuses them
+        _reads_hidden(repo, _run(EVALUABLE[n][1], EVALUABLE[n][0]))
+    def not_const(self, name, depth):
+        raise slw._NotConst(name)
+    monkeypatch.setattr(slw._WriteScan, "_name_cvals", not_const)
+    assert all("public.hidden" not in (scan(repo, _run(EVALUABLE[n][1], EVALUABLE[n][0])).get("tables") or []) for n in names)
 
 
-def test_the_unreadable_form_check_is_charged_to_the_work_cap(repo, monkeypatch):
-    """`_const_only` counts a step per node it visits, so a hostile deeply-nested constant expression cannot make the new check an unbounded cost: it is part of the resolver's
-    work counter and stops at the same cap."""
+def test_MUTATION_without_the_set_order_guard_a_set_join_reads_complete(repo, monkeypatch):
+    tables, ns = _find(repo, UNEVALUABLE["set_of_pieces_joined"])
+    assert tables is None and ns.startswith("write_form_not_analysed")
+    monkeypatch.setattr(slw._ConstSet, "__iter__", lambda self: iter(set.__iter__(self)))
+    tables, ns = _find(repo, UNEVALUABLE["set_of_pieces_joined"])
+    assert tables is not None                                                 # no longer refused: the arbitrary iteration order would decide what was scanned
+
+
+def test_MUTATION_without_the_accumulation_model_built_up_text_is_missed(repo, monkeypatch):
+    for n in ("augmented_assignment", "augmented_in_a_loop", "self_concatenation_in_a_loop"):
+        _reads_hidden(repo, BUILT_UP[n])
+    monkeypatch.setattr(slw._WriteScan, "_cv_name_value", lambda self, name, bound, depth: (_ for _ in ()).throw(slw._NotConst(name)))
+    for n in ("augmented_assignment", "augmented_in_a_loop", "self_concatenation_in_a_loop"):
+        assert "public.hidden" not in (scan(repo, BUILT_UP[n]).get("tables") or [])
+
+
+def test_MUTATION_without_the_unsupported_refusal_an_unevaluable_expression_reads_complete(repo, monkeypatch):
+    for n in ("set_of_pieces_joined", "set_comprehension_joined"):
+        assert _find(repo, UNEVALUABLE[n])[0] is None
+    real = slw._WriteScan._const_text_verdict
+
+    def swallow(self, node):
+        r = real(self, node)
+        return None if r else r                                               # an unevaluable reading is dropped instead of refused
+    monkeypatch.setattr(slw._WriteScan, "_const_text_verdict", swallow)
+    assert all(_find(repo, UNEVALUABLE[n])[0] is not None for n in ("set_of_pieces_joined", "set_comprehension_joined"))   # (the closed allow-list alone reads them clean)
+
+
+def test_the_evaluator_is_charged_to_the_work_cap(repo, monkeypatch):
+    """Every non-trivial node the evaluator visits is a counted step, so a hostile constant expression cannot cost more than the resolver's cap."""
     sc = slw._WriteScan(ast.parse("x = 1\n"))
     before = sc.work_steps
-    assert sc._const_only(ast.parse("'%c' % (68, 69)", mode="eval").body) is True
+    assert sc._cvals(ast.parse("'%c' % (68, 69)[0]", mode="eval").body, {}) == ["D"]
     assert sc.work_steps > before
     monkeypatch.setattr(slw._WriteScan, "MAX_RESOLVER_STEPS", 12)
     big = "def r(cur):\n    cur.execute(" + "'%s' % (" * 25 + "'x'" + ",)" * 25 + ")\n"
-    assert scan(repo, big)["not_scanned"].startswith("resolver_work_cap")                         # a long nest of constant templates reaches the cap and is NOT scanned
+    assert scan(repo, big)["not_scanned"].startswith("resolver_work_cap")
