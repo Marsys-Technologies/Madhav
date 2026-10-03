@@ -12,7 +12,15 @@ Classes:
 
 Source: BEYOND_ACHARYA_W1_JUDGMENT_SEED_PACKAGE_v1_0.md §7
 
-Idempotency: L0 = ON CONFLICT DO UPDATE (global, not per-chart).
+Idempotency: L0 = ON CONFLICT DO UPDATE (global, not per-chart), with ONE
+exception (TI-L0-21 / SS Q8, "L0 holds seeds only"): a `calibratable` constant
+is SEED-ONCE. If its live `value_jsonb` still equals the seed (jsonb equality,
+so `0.80` equals `0.8`) the row converges to the seed exactly as before (value
+text normalised, version reset); if the live value DIFFERS from the seed, the
+value and its `version` belong to whoever changed it and are kept. The
+descriptive columns (class, consumer_assets, citation, calibratable, bounds)
+always refresh. A non-calibratable constant (classical / engineering) is always
+fully converged to the seed.
 """
 from __future__ import annotations
 
@@ -204,6 +212,47 @@ CONSTANTS: list[dict] = [
     },
 ]
 
+_INSERT_PREFIX = """
+                INSERT INTO brahma_formula_constants
+                  (constant_id, value_jsonb, class, consumer_assets,
+                   citation_or_ratification, calibratable, bounds, version)
+                VALUES (%s, %s::jsonb, %s, %s, %s, %s, %s::jsonb, '1.0')
+                ON CONFLICT (constant_id)
+                DO UPDATE SET
+"""
+
+# Non-calibratable (classical / engineering): converge every column to the seed.
+_CONVERGE_UPSERT_SQL = _INSERT_PREFIX + """\
+                    value_jsonb              = EXCLUDED.value_jsonb,
+                    class                    = EXCLUDED.class,
+                    consumer_assets          = EXCLUDED.consumer_assets,
+                    citation_or_ratification = EXCLUDED.citation_or_ratification,
+                    calibratable             = EXCLUDED.calibratable,
+                    bounds                   = EXCLUDED.bounds,
+                    version                  = EXCLUDED.version
+                """
+
+# Calibratable: seed-once. A live value that DIFFERS from the seed (jsonb equality, so
+# `0.80` = `0.8`) is kept together with its version; a live value equal to the seed is
+# rewritten exactly as the converge SQL does (that rewrite normalises numeric text, which
+# the reviewed migration-615 digest of this table depends on: migration 389 seeded `0.80`,
+# the writer's json.dumps gives `0.8`).
+_SEED_ONCE_UPSERT_SQL = _INSERT_PREFIX + """\
+                    value_jsonb              = CASE
+                        WHEN brahma_formula_constants.value_jsonb = EXCLUDED.value_jsonb
+                        THEN EXCLUDED.value_jsonb
+                        ELSE brahma_formula_constants.value_jsonb END,
+                    class                    = EXCLUDED.class,
+                    consumer_assets          = EXCLUDED.consumer_assets,
+                    citation_or_ratification = EXCLUDED.citation_or_ratification,
+                    calibratable             = EXCLUDED.calibratable,
+                    bounds                   = EXCLUDED.bounds,
+                    version                  = CASE
+                        WHEN brahma_formula_constants.value_jsonb = EXCLUDED.value_jsonb
+                        THEN EXCLUDED.version
+                        ELSE brahma_formula_constants.version END
+                """
+
 
 def seed_formula_constants(
     conn: Any,
@@ -234,21 +283,7 @@ def seed_formula_constants(
 
         for row in CONSTANTS:
             cur.execute(
-                """
-                INSERT INTO brahma_formula_constants
-                  (constant_id, value_jsonb, class, consumer_assets,
-                   citation_or_ratification, calibratable, bounds, version)
-                VALUES (%s, %s::jsonb, %s, %s, %s, %s, %s::jsonb, '1.0')
-                ON CONFLICT (constant_id)
-                DO UPDATE SET
-                    value_jsonb              = EXCLUDED.value_jsonb,
-                    class                    = EXCLUDED.class,
-                    consumer_assets          = EXCLUDED.consumer_assets,
-                    citation_or_ratification = EXCLUDED.citation_or_ratification,
-                    calibratable             = EXCLUDED.calibratable,
-                    bounds                   = EXCLUDED.bounds,
-                    version                  = EXCLUDED.version
-                """,
+                _SEED_ONCE_UPSERT_SQL if row["calibratable"] else _CONVERGE_UPSERT_SQL,
                 (
                     row["constant_id"],
                     json.dumps(row["value_jsonb"]),
