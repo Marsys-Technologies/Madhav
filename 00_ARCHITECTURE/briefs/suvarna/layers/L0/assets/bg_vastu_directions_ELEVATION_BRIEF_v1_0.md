@@ -158,3 +158,8 @@ Disposition accepted as proposed (Q10). Items marked (R) are PROVISIONAL until t
 4. CF-12: ANSWERED by SS 2026-10-01 (Q12): yes: 'no orphan rows under the writer's own partition' is the Idem claim for L0 upsert writers.
 
 **Track I items arising (see INDEX section 8):** TI-L0-03, TI-L0-05, TI-L0-06, TI-L0-25, TI-L0-33.
+
+
+## 8 · WAVE addendum (2026-10-03, Track I I.FL0; docs only, additive, PROVISIONAL like the rest of this brief)
+
+**Disposition note, N-102 (owner ruling): deferred by owner (N-102): source not held.** This asset's classical source text is not in the served corpus (the corpus holds the 16 texts listed by `classical_texts`; this asset's source is not among them or not at passage grain). The owner ruled to leave classical texts the platform does not hold: this asset is NOT being provenance-confirmed now. It stays NO_DETECTOR on Carr and is not elevated in this campaign. No other disposition in this brief changes; the existing fix designs remain valid but are not to be scheduled for Carr. Evidence and the no-writer analysis for the neighbouring assets: `/Users/Dev/suvarna-evidence/TrackI/WAVE_NO_WRITER_LIST.md`.

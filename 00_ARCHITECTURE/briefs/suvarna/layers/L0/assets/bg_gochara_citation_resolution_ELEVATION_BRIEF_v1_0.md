@@ -159,3 +159,8 @@ Disposition accepted as proposed (Q10). Items marked (R) are PROVISIONAL until t
 3. CF-04: ANSWERED by SS 2026-10-01 (Q2): Dens applies wherever an asset reaches a served surface. A reference vocabulary of uniform authority declares `uniform_authority: true` in the declarations file and Dens then PASSes on `density_contract` facets without a tier column (R, PROVISIONAL until the J1 review); mixed-authority tables need a real tier. Re-measure first with the current inspector (done offline here, see INDEX section 9).
 
 **Track I items arising (see INDEX section 8):** TI-L0-03, TI-L0-05, TI-L0-06, TI-L0-20.
+
+
+## 8 · WAVE addendum (2026-10-03, Track I I.FL0; docs only, additive, PROVISIONAL like the rest of this brief)
+
+**Disposition note, N-102 (owner ruling): deferred by owner (N-102): source not held.** This asset's classical source text is not in the served corpus (the corpus holds the 16 texts listed by `classical_texts`; this asset's source is not among them or not at passage grain). The owner ruled to leave classical texts the platform does not hold: this asset is NOT being provenance-confirmed now. It stays NO_DETECTOR on Carr and is not elevated in this campaign. No other disposition in this brief changes; the existing fix designs remain valid but are not to be scheduled for Carr. Evidence and the no-writer analysis for the neighbouring assets: `/Users/Dev/suvarna-evidence/TrackI/WAVE_NO_WRITER_LIST.md`.

@@ -158,3 +158,12 @@ Disposition accepted as proposed (Q10). Items marked (R) are PROVISIONAL until t
 3. CF-12: ANSWERED by SS 2026-10-01 (Q12): yes: 'no orphan rows under the writer's own partition' is the Idem claim for L0 upsert writers.
 
 **Track I items arising (see INDEX section 8):** TI-L0-03, TI-L0-06, TI-L0-25, TI-L0-27.
+
+
+## 8 · WAVE addendum (2026-10-03, Track I I.FL0; docs only, additive, PROVISIONAL like the rest of this brief)
+
+**Disposition note 1: the ratifying package is not accepted.** Every one of the 171 `prior_version='1.0'` rows carries `ratified_by = 'W1_SEED_PACKAGE_v1_0'` (`brahmagyan/l0_class_priors.py:323,344,365,411`). That string is the authoring package's own label: `00_ARCHITECTURE/BEYOND_ACHARYA_W1_JUDGMENT_SEED_PACKAGE_v1_0.md` is `status: DRAFT-FOR-NATIVE-GLANCE`, "authored by Cowork (acting as delegated acharya)", and `BA_JUDGMENT_LEDGER_v1_0.md:416` lists **JL-002 (P3A seed values, reversible by `bg_class_priors` upsert) as PENDING**. No acceptance record was found (SESSION_LOG, CURRENT_STATE, the BA ledger). The priors are therefore un-ratified project-judgment seeds; the column name overstates. This goes into SS's batched acharya review.
+
+**Disposition note 2: lineage mislabel.** Seven rows (arudha, dhana_axis, nakshatra_semantic, special_lagna, vargottama_amplification: DIS.019/DR-6; bhavat_bhavam_amplifier, sudarshana_agreement: DIS.016/DR-3) state a different ratification in their own `citation` while `ratified_by` says `W1_SEED_PACKAGE_v1_0` (the writer hard-codes it for every row).
+
+**Disposition note 3: mixing of judgment and classical claims.** 40 of 171 citations name a classical source: 16 varga rows restate a Vimshopaka weight (the classical numbers already exist as `reference_constants` `vimshopaka_shodashavarga_*`; the stored `class_prior` is a judgment transform of them, not equal), 11 graha_domain rows assert a karaka relation (8 supported by `reference_karakas`, 3 not), 13 name a text as the reason for a weighting. Split design (claims referenced, no rows moved; needs a migration number from SS to re-seal the migration-615 integrity digest): `/Users/Dev/suvarna-evidence/TrackI/WAVE5_CLASS_PRIORS_SPLIT_DESIGN.md`. HELD for SS.
