@@ -41,6 +41,9 @@ Ruling 9 requires that a review happened, not that a particular party signs. For
   folded. Its two 2026-09-25 elevations (the three planes and the compositional identity in §1.3; the
   Domain correctness obligation in §14, now carrying the owner that decision 11 gave it) are
   native-directed content recorded in its own changelog.
+  [ANNOTATION 2026-10-03 (register R72) — the review file named above is NOT LOCATED: it exists on no branch or ref
+  (checked 2026-10-02), so "ACCEPT, 11 MAJOR + 14 MINOR folded" is carried from the tier-1 changelog entry and cannot be
+  re-verified. The text above is left as written; see `MADHAV_PRODUCT_DEFINITION_FINAL.md` frontmatter `review_record`.]
 - **Tier 2** — `briefs/reviews/REVIEW_DATA_PLANE_FINAL_v1_0.md`, verdict REJECT on the version
   reviewed, with all 22 findings discharged before this seal: 20 by edit, 1 restated and 1 withdrawn by
   native ruling 11. That review also audited its predecessor's 21 findings one by one against the file

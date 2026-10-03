@@ -19,9 +19,13 @@ seal:
     ruling, and the reopen is recorded in this changelog as such, with the ruling named. Correcting a
     typo is not a reopen; changing an obligation, a contract, a count or a scope is.
   still_open_below_the_seal: ["layer instance (L0-L5)", "asset template", "asset instance (per-asset briefs)"]
-  review_backing: "briefs/reviews/REVIEW_PRODUCT_DEFINITION_v3_1.md — verdict ACCEPT, 11 MAJOR + 14 MINOR folded; the two 2026-09-25 elevations (§1.3 planes and compositional identity; §14 Domain correctness with its owner named) are native-directed content, recorded in the changelog below"
+  review_backing: "the review recorded in this document's 2026-09-24 changelog entry (its file, briefs/reviews/REVIEW_PRODUCT_DEFINITION_v3_1.md, is not located — see review_record) — verdict ACCEPT, 11 MAJOR + 14 MINOR folded as recorded there; the two 2026-09-25 elevations (§1.3 planes and compositional identity; §14 Domain correctness with its owner named) are native-directed content, recorded in the changelog below"
 produced_on: 2026-09-24
-review_record: briefs/reviews/REVIEW_PRODUCT_DEFINITION_v3_1.md  # verdict ACCEPT, 11 MAJOR + 14 MINOR, all folded
+review_record: []   # independent reviews OF this document
+# NOT LOCATED: briefs/reviews/REVIEW_PRODUCT_DEFINITION_v3_1.md does not exist in the repository (checked on
+# origin/campaign/nikasha-test and origin/main, 2026-10-02; register R72). "ACCEPT, 11 MAJOR + 14 MINOR, all folded"
+# is carried from this document's own 2026-09-24 changelog entry and cannot be re-verified. The independent review
+# of this reopen (N-5.T1) is listed here, by path, when it exists.
 p_identifier_note: "P-identifiers renumbered at v3.1: v3.0 P20 (observation briefs) removed; v3.0 P21-P24 became v3.1 P20-P23. Any lineage citation of P20-P24 refers to v3.0 numbering. P24 at FINAL is a NEW need (present-tense), appended rather than renumbered."
 decision_owner: Native
 supersedes: "MADHAV_PRODUCT_DEFINITION_v3_0.md (CURRENT 2026-09-13 → SUPERSEDED). v3.0 is retained as the historical adopted master; its authority record CCD-010 is not retroactively withdrawn."
