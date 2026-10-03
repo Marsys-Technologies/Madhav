@@ -229,9 +229,9 @@ ENTITIES += [
     _e("dasha_system", "yogini", "Yogini Dasha", "Yogini",
        ["yogini", "yogini_dasha"],
        "36-year dasha system; eight yoginis"),
-    _e("dasha_system", "jaimini_chara", "Jaimini Chara Dasha", "Chara",
-       ["chara", "jaimini_chara", "char_dasha"],
-       "Sign-based Jaimini dasha system"),
+    # TI-L0-13 side fix: the stray co-writer row dasha_system|jaimini_chara was removed - the dasha catalogue's
+    # id is chara_jaimini (l0_dasha_systems.py), so a bg_ontology rebuild INSERTED this row (741 -> 742) and
+    # turned the bg_dasha_systems integrity check false (21 ontology dasha rows, sealed 20). Never live.
     _e("dasha_system", "kalachakra", "Kalachakra Dasha", "Kalachakra",
        ["kalachakra", "kala_chakra"],
        "Nakshatra-pada-based dasha system"),

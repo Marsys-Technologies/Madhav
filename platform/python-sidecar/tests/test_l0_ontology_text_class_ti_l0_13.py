@@ -231,3 +231,44 @@ def test_real_writer_adds_3_removes_2_and_changes_nothing_else():
         out = O.seed_ontology(conn, autocommit=False)
         conn.commit()
         assert out["inserted"] == 0 and list(conn.execute(f"SELECT {COLS} FROM brahma_ontology ORDER BY entity_class,canonical_id")) == snap
+
+
+# ── SS N-113 (d): the stray co-writer row dasha_system|jaimini_chara ──────────────────────────────────────────
+# A bg_ontology rebuild used to INSERT `dasha_system|jaimini_chara` (the static ENTITIES list carried it; the dasha
+# catalogue's id is `chara_jaimini`): 741 -> 742 rows, and the bg_dasha_systems sealed check (20 ontology dasha rows)
+# went false until bg_dasha_systems was rebuilt. The row is removed from ENTITIES.
+
+def _catalogue_dasha_ids() -> set[str]:
+    from brahmagyan import l0_dasha_systems as DS
+    return {d["canonical_id"] for d in DS.DASHA_SYSTEMS}
+
+
+def test_every_co_writer_entity_in_the_static_list_is_a_catalogue_id_so_a_rebuild_can_never_insert_a_stray():
+    ids = _catalogue_dasha_ids()
+    assert len(ids) == 20
+    for e in O.ENTITIES:
+        if e["entity_class"] == "dasha_system":
+            assert e["canonical_id"] in ids, f"stray co-writer entity {e['canonical_id']!r}: not in the dasha catalogue"
+    assert not any(e["canonical_id"] == "jaimini_chara" for e in O.ENTITIES)
+
+
+@requires_pg
+def test_real_bg_ontology_rebuild_keeps_the_row_count_and_the_dasha_class_at_20():
+    from brahmagyan import l0_dasha_systems as DS
+    with scratch_schema(DDL) as conn:
+        # production-shaped: the whole ontology as bg_ontology + the co-writers leave it, dasha class = the 20 catalogue ids
+        O.seed_ontology(conn, autocommit=False)
+        conn.execute("DELETE FROM brahma_ontology WHERE entity_class='dasha_system'")
+        for d in DS.DASHA_SYSTEMS:
+            conn.execute("INSERT INTO brahma_ontology(entity_class,canonical_id,canonical_name_en,synonyms,source_citation) "
+                         "VALUES ('dasha_system',%s,%s,'{}','x')", (d["canonical_id"], d["canonical_id"]))
+        conn.commit()
+        before = conn.execute("SELECT count(*) AS n FROM brahma_ontology").fetchone()["n"]
+        dasha_before = conn.execute("SELECT count(*) AS n FROM brahma_ontology WHERE entity_class='dasha_system'").fetchone()["n"]
+        assert dasha_before == 20
+        for _ in range(2):            # first run and a converged rerun
+            out = O.seed_ontology(conn, autocommit=False)
+            conn.commit()
+            assert conn.execute("SELECT count(*) AS n FROM brahma_ontology").fetchone()["n"] == before, "rebuild must KEEP the row count"
+            assert conn.execute("SELECT count(*) AS n FROM brahma_ontology WHERE entity_class='dasha_system'").fetchone()["n"] == 20
+        assert out["deleted"] == 0 and out["inserted"] == 0
