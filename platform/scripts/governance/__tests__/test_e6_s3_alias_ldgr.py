@@ -21,6 +21,7 @@ sys.path.insert(0, str(HERE.parent))
 sys.path.insert(0, str(HERE))
 
 import asset_census as ac  # noqa: E402
+import _decl_version  # noqa: E402
 import test_e6_a_na_causes as na_causes  # noqa: E402
 import test_e6_na_r01_03 as r13  # noqa: E402
 import test_e6_s2_carriage as s2  # noqa: E402
@@ -149,7 +150,7 @@ def test_validator_doc_level_field_lists_must_match_when_present():
 
 def test_the_committed_file_declares_neither_key_beyond_the_latta_and_lists_the_fields():
     raw = json.loads(ac.DECLARATIONS_PATH.read_text(encoding="utf-8"))
-    assert raw["version"] == "1.13.0"          # DECL-LATTA: bg_phaladeepika_latta is the first (and only) asset to declare them
+    assert raw["version"] == _decl_version.CURRENT          # DECL-LATTA: bg_phaladeepika_latta is the first (and only) asset to declare them
     assert raw["vocab_alias_declaration_fields"] == list(ac.VOCAB_ALIAS_DECL_FIELDS)
     assert raw["ldgr_source_declaration_fields"] == list(ac.LDGR_SOURCE_DECL_FIELDS)
     # the per-asset review is the reviewed work: nothing is declared by pattern in this PR
@@ -879,7 +880,7 @@ def test_unknown_columns_of_a_declared_target_table_are_no_detector_and_only_no_
     assert "cause" not in rec and ac.rollup_asset("L0", {ALIAS: rec})["Vocab"]["v"] == NO_DET
 
 
-@pytest.mark.parametrize("nature, extra", [("derivation", dict(applies="D2")), ("ratified_judgment", dict(ruling="N-73"))])
+@pytest.mark.parametrize("nature, extra", [("derivation", dict(applies="D3")), ("ratified_judgment", dict(ruling="N-73"))])
 def test_no_classical_claim_is_refused_beside_a_derivation_or_ratified_judgment_carriage(nature, extra):
     car = dict(nature=nature, why=s2.WHY, evidence=s2.EVID, **extra)
     _bad(dict(ldgr_source=LS_NA, carriage=car), f"contradicts a declared {nature} carriage")
@@ -910,7 +911,7 @@ def test_the_declared_ldgr_check_checks_the_table_exists_in_the_measure_wiring(m
 
 def test_revision_12_pins_the_s3_content():
     assert ac.REGISTRY_REVISION >= 12
-    assert ac.CRITERION_REGISTRY[ALIAS]["revision"] == 2 and ac.CRITERION_REGISTRY[LDGR]["revision"] == 3
+    assert ac.CRITERION_REGISTRY[ALIAS]["revision"] == 2 and ac.CRITERION_REGISTRY[LDGR]["revision"] == 4      # 3 at the S3 merge (pin 12), 4 at pin 24 (C2(ii))
     assert r13.S3_IDS <= set(ac.NA_RULE_DECISIONS) and r13.S3_IDS <= r13.DECLARED_IDS
     for rid in r13.S3_IDS:
         why = ac.NA_RULE_DECISIONS[rid]
