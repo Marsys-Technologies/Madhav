@@ -17,6 +17,12 @@ const fixedNonBuildDispositions = new Map([
   ['bg_gochara_citation_resolution', 'static_acceptance'],
   ['bg_sarvatobhadra_grid', 'empty_acceptance'],
   ['lel_events', 'source_acceptance'],
+  // Suvarṇa ruling (their item B.FG): ka_gochara_v3_century_materialize is a RETIRED-PENDING legacy writer — the
+  // plan retires it when '5.0' comes from the registered writer. Until the B.FG retirement lands (catalog flip to
+  // RETIRED + superseded_by/data_disposition, which then satisfies the ordinary retired gate), its obligation is
+  // this audited disposition — NOT an exclusion and NOT a denominator change: the asset stays in the frozen
+  // population. REMOVE this entry with the B.FG retirement.
+  ['ka_gochara_v3_century_materialize', 'retired_with_disposition'],
 ])
 const fixedProducerCoverage = new Map([
   ['bg_sign_medical', 'bg_medical_mappings'],
@@ -341,7 +347,14 @@ export function assertFreezableManifest(manifest: NirmanaElevationManifest): voi
     }
     const fixedDisposition = fixedNonBuildDispositions.get(asset.asset_id)
     if (fixedDisposition !== undefined && asset.execution_obligation !== fixedDisposition) {
-      throw new Error(`Asset ${asset.asset_id} must retain its adjudicated ${fixedDisposition} obligation.`)
+      // A retired-PENDING adjudication binds only the audited CURRENT/inactive shape: the immutable historical
+      // T0 manifests froze ka_gochara_v3_century_materialize while it was still an ACTIVE build writer, and the
+      // eventual RETIRED row satisfies the ordinary retired gate instead.
+      const outsideAuditedShape = fixedDisposition === 'retired_with_disposition'
+        && (asset.registry_contract.is_active || asset.registry_contract.catalog_status === 'RETIRED')
+      if (!outsideAuditedShape) {
+        throw new Error(`Asset ${asset.asset_id} must retain its adjudicated ${fixedDisposition} obligation.`)
+      }
     }
     if (['static_acceptance', 'source_acceptance', 'empty_acceptance'].includes(asset.execution_obligation)
       && fixedDisposition !== asset.execution_obligation) {
@@ -359,12 +372,21 @@ export function assertFreezableManifest(manifest: NirmanaElevationManifest): voi
         || (!asset.registry_contract.has_writer && !asset.registry_contract.health_probe))) {
       throw new Error(`Probe asset ${asset.asset_id} must have either a service writer or a registry health probe.`)
     }
-    if (asset.execution_obligation === 'retired_with_disposition'
-      && (asset.registry_contract.catalog_status !== 'RETIRED'
-        || asset.registry_contract.is_active
-        || !asset.registry_contract.superseded_by
-        || !asset.registry_contract.data_disposition)) {
-      throw new Error(`Retired asset ${asset.asset_id} is missing its successor or data disposition.`)
+    if (asset.execution_obligation === 'retired_with_disposition') {
+      // An AUDITED retired-pending entry (fixedNonBuildDispositions) is adjudicated ahead of the catalog flip:
+      // the row is still CURRENT and its successor / data disposition land WITH the retirement, so only
+      // inactivity is enforced here. Organically retired rows keep the strict gate.
+      const auditedRetiredPending = fixedDisposition === 'retired_with_disposition'
+        && asset.registry_contract.catalog_status !== 'RETIRED'
+      const invalid = auditedRetiredPending
+        ? asset.registry_contract.is_active
+        : (asset.registry_contract.catalog_status !== 'RETIRED'
+          || asset.registry_contract.is_active
+          || !asset.registry_contract.superseded_by
+          || !asset.registry_contract.data_disposition)
+      if (invalid) {
+        throw new Error(`Retired asset ${asset.asset_id} is missing its successor or data disposition.`)
+      }
     }
     if (asset.execution_obligation === 'producer_covered') {
       if (!asset.producer_id || asset.producer_id === asset.asset_id) throw new Error(`Producer-covered asset ${asset.asset_id} must name a distinct producer.`)
