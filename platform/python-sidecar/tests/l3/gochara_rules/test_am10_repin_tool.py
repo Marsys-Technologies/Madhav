@@ -620,11 +620,11 @@ def test_an_empty_level_is_a_STOP_that_quotes_the_readers_own_logged_reason(tmp_
     assert "['PD']" in capsys.readouterr().err
 
 
-def test_a_dasha_read_conflict_is_a_named_refusal(monkeypatch, capsys):
+def test_a_dasha_read_conflict_is_a_named_refusal(monkeypatch, capsys, tmp_path):
     def boom(conn, chart, **kw):
         raise T.DD.DashaReadConflict("two rows, one identity, different contract fields")
     monkeypatch.setattr(T.DD, "fetch_dasha_periods_multilevel", boom)
-    assert T.main(["--capture-old", "/nonexistent/x.json"], conn=FakeConn()) == 3
+    assert T.main(["--capture-old", str(tmp_path / "x.json")], conn=FakeConn()) == 3
     assert "dasha read conflict" in capsys.readouterr().err
 
 
@@ -1987,3 +1987,108 @@ def test_the_w0_import_never_raises_a_malformed_structure_is_STOP_exit_3_and_wri
     assert sorted(x.name for x in tmp_path.iterdir()) == ["w0.json"]
     # an unreadable file and a checksum mismatch are STOPs too
     assert T.main(["--import-w0", str(tmp_path / "missing.json"), "--w0-checksum", "0" * 64, "--w0-capture-out", str(out)]) == 3 and not out.exists()
+
+
+# ── v1.6 (Codex): schema-strict W0, strict-UTF-8 + atomic writes, output destinations validated first, ONE top-level guard ───────────────────────────────────────────────
+
+def _w0_doc():
+    rows = []
+    for r in ref_rows("old"):
+        rows.append({"dasha_row_id": r["dasha_row_id"], "level_n": r["level_n"], "parent_row_id": r["parent_row_id"], "lord_graha": r["lord_graha"],
+                     "start_iso": r["start_iso"], "end_iso": r["end_iso"], "trunc_start": False, "trunc_end": False})
+    return {"chart_id": CHART, "build_id": OLDB, "rows": rows, "natal": natal_dicts()}
+
+
+def _import_w0_file(tmp_path, doc, name="w0.json"):
+    import hashlib as _h, json as _j
+    p = tmp_path / name
+    p.write_text(_j.dumps(doc))
+    out = tmp_path / ("out_" + name)
+    rc = T.main(["--import-w0", str(p), "--w0-checksum", _h.sha256(p.read_bytes()).hexdigest(), "--w0-capture-out", str(out)])
+    return rc, out
+
+
+def test_the_unmutated_w0_baseline_imports_so_every_mutation_below_proves_its_own_field(tmp_path, capsys):
+    rc, out = _import_w0_file(tmp_path, _w0_doc())
+    assert rc == 0 and out.exists(), capsys.readouterr().err
+    T.load_capture(str(out), CHART, OLDB)
+
+
+@pytest.mark.parametrize("mutate", [
+    lambda d: d["rows"][0].__setitem__("level_n", 1.5),                                  # Codex v1.6: a fractional level used to be int()-ed silently
+    lambda d: d["rows"][0].__setitem__("level_n", "1"), lambda d: d["rows"][0].__setitem__("level_n", True), lambda d: d["rows"][0].__setitem__("level_n", None),
+    lambda d: d["rows"][0].__setitem__("level_n", {"a": 1}), lambda d: d["rows"][0].__setitem__("level_n", 1.0),
+    lambda d: d["rows"][0].__setitem__("start_iso", 5), lambda d: d["rows"][0].__setitem__("lord_graha", ["x"]), lambda d: d["rows"][0].__setitem__("dasha_row_id", ""),
+    lambda d: d["rows"][0].__setitem__("parent_row_id", 7), lambda d: d["rows"][0].__setitem__("trunc_start", "false"), lambda d: d["rows"][0].__setitem__("trunc_end", 1),
+    lambda d: d["natal"][0].__setitem__("longitude", {"v": 1}),                        # Codex v1.6: an object longitude used to be str()-ed silently
+    lambda d: d["natal"][0].__setitem__("longitude", [1]), lambda d: d["natal"][0].__setitem__("longitude", True), lambda d: d["natal"][0].__setitem__("longitude", "x"),
+    lambda d: d["natal"][0].__setitem__("longitude", "nan"), lambda d: d["natal"][0].__setitem__("longitude", 1e999), lambda d: d["natal"][0].__setitem__("fact_subject", 5),
+    lambda d: d["natal"][0].__setitem__("fact_subject", ""), lambda d: d["natal"][0].__setitem__("fact_id", [1]), lambda d: d["natal"][0].__setitem__("tier", {"a": 1}),
+])
+def test_a_schema_violating_w0_is_STOP_exit_3_and_writes_nothing(tmp_path, capsys, mutate):
+    doc = _w0_doc(); mutate(doc)
+    rc, out = _import_w0_file(tmp_path, doc)
+    err = capsys.readouterr().err
+    assert rc == 3 and "STOP" in err and "Traceback" not in err and not out.exists()
+    assert sorted(p.name for p in tmp_path.iterdir()) == ["w0.json"]
+
+
+def test_a_lone_surrogate_in_the_notice_is_refused_at_parse_time_even_under_dry_run(monkeypatch, tmp_path, capsys):
+    cap, fr = _clean_setup(monkeypatch, tmp_path)
+    import json as _j
+    p = tmp_path / "n.json"
+    p.write_text(_j.dumps({"settled_1": True, "source_message_id": "\ud800", "system_id": "vimshottari", "ayanamsha_id": "lahiri_chitrapaksha", "new_build_id": NEWB,
+                           "expected_shift_seconds": {"1": 6993, "2": 6993, "3": 6993}, "tolerance_seconds": 2}))                   # json.dumps writes the escape, as a generator would
+    assert "\\ud800" in p.read_text()                                                      # the file carries the JSON escape of a lone surrogate
+    for extra in (["--dry-run"], ["--out", str(tmp_path / "e.md")]):
+        before = sorted(x.name for x in tmp_path.iterdir())
+        rc = T.main(["--new-build-id", NEWB, "--old-rows", str(cap), "--settled-notice", str(p), "--forensic-report", str(fr)] + extra, conn=_Boom())
+        got = capsys.readouterr()
+        assert rc == 3 and "lone surrogate" in got.err and "Traceback" not in got.err and got.out == ""
+        assert sorted(x.name for x in tmp_path.iterdir()) == before
+    for doc in ('{"a": "\\ud800"}', '{"\\ud800": 1}', '["\\udfff"]'):
+        with pytest.raises(ValueError, match="lone surrogate"):
+            T.strict_json_loads(doc)
+
+
+def test_output_destinations_are_validated_before_any_read_or_write(tmp_path, capsys):
+    d = tmp_path / "adir"; d.mkdir()
+    missing = tmp_path / "nope" / "x.json"
+    for argv in (["--capture-old", str(d)], ["--capture-old", str(missing)], ["--capture-new", str(d), "--new-build-id", NEWB], ["--capture-new", str(missing), "--new-build-id", NEWB],
+                 ["--import-w0", "w0.json", "--w0-checksum", "0" * 64, "--w0-capture-out", str(d)],
+                 ["--new-build-id", NEWB, "--out", str(d)], ["--new-build-id", NEWB, "--dry-run", "--out", str(missing)]):
+        before = sorted(x.name for x in tmp_path.iterdir())
+        rc = T.main(argv, conn=_Boom())                                                                       # the connection is never touched
+        err = capsys.readouterr().err
+        assert rc == 3 and "nothing was read or written" in err and "Traceback" not in err, (argv, err)
+        assert sorted(x.name for x in tmp_path.iterdir()) == before
+
+
+def test_writes_are_strict_utf8_and_atomic_a_failed_write_leaves_the_old_file_and_no_temp(monkeypatch, tmp_path):
+    import os as _os
+    p = tmp_path / "evidence.md"
+    T.write_atomic(p, "first")
+    assert p.read_text() == "first" and sorted(x.name for x in tmp_path.iterdir()) == ["evidence.md"]
+    with pytest.raises(ValueError, match="cannot be encoded as UTF-8"):
+        T.write_atomic(p, "bad \ud800 text")                                                                   # a lone surrogate: refused BEFORE the disk is touched
+    assert p.read_text() == "first" and sorted(x.name for x in tmp_path.iterdir()) == ["evidence.md"]
+    monkeypatch.setattr(_os, "replace", lambda *a, **k: (_ for _ in ()).throw(OSError("disk full")))
+    with pytest.raises(OSError):
+        T.write_atomic(p, "second")
+    assert p.read_text() == "first" and sorted(x.name for x in tmp_path.iterdir()) == ["evidence.md"]       # the old file survives; the temp file is removed
+    with pytest.raises(ValueError, match="is a directory"):
+        T.write_atomic(tmp_path, "x")
+    with pytest.raises(ValueError, match="does not exist"):
+        T.write_atomic(tmp_path / "no" / "f", "x")
+
+
+def test_the_top_level_guard_turns_ANY_exception_into_STOP_exit_3_but_keeps_argparse_exit_2(monkeypatch, capsys):
+    for exc in (RuntimeError("x"), RecursionError("deep"), MemoryError("m"), UnicodeEncodeError("utf-8", "\\ud800", 0, 1, "surrogates"), IsADirectoryError("d"), AssertionError("a"), KeyError("k")):
+        monkeypatch.setattr(T, "_main_impl", lambda argv=None, conn=None, e=exc: (_ for _ in ()).throw(e))
+        assert T.main([]) == 3
+        err = capsys.readouterr().err
+        assert err.startswith("STOP: ") and type(exc).__name__ in err and "Traceback" not in err
+    monkeypatch.undo()
+    with pytest.raises(SystemExit) as e:
+        T.main(["--no-such-flag"])
+    assert e.value.code == 2

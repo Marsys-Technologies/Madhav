@@ -61,6 +61,7 @@ import uuid
 import os
 import re
 import statistics
+import tempfile
 import sys
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -441,9 +442,45 @@ def validate_capture(d: dict, chart_id: str, build_id: str) -> list[str]:
     return out
 
 
+def write_atomic(path, text: str) -> None:
+    """The ONLY way this tool writes a file (Codex v1.6): the text is encoded as STRICT UTF-8 FIRST (a lone surrogate or any unencodable character raises ValueError before the disk is touched), the destination
+    must be a (new or existing) FILE in an EXISTING directory, and the bytes go to a temp file in that directory that is `os.replace`d onto the destination only after a successful flush + fsync — so an
+    interrupted or refused write never leaves a half-written file under the real name."""
+    try:
+        data = text.encode("utf-8")
+    except UnicodeEncodeError:
+        raise ValueError(f"the text for {path} cannot be encoded as UTF-8 (a lone surrogate or an unencodable character); nothing written") from None
+    p = Path(path)
+    if p.is_dir():
+        raise ValueError(f"{path} is a directory, not a file; nothing written")
+    if not p.parent.is_dir():
+        raise ValueError(f"the directory of {path} does not exist; nothing written")
+    fd, tmp = tempfile.mkstemp(dir=str(p.parent), prefix=p.name + ".", suffix=".tmp")
+    try:
+        with os.fdopen(fd, "wb") as fh:
+            fh.write(data); fh.flush(); os.fsync(fh.fileno())
+        os.replace(tmp, p)
+    except BaseException:
+        try:
+            os.unlink(tmp)
+        except OSError:
+            pass
+        raise
+
+
+def output_path_problem(path) -> str | None:
+    """VALIDATION-PHASE check of an output destination (no write): not a directory, directory exists."""
+    p = Path(path)
+    if p.is_dir():
+        return f"output path {path} is a directory, not a file"
+    if not p.parent.is_dir():
+        return f"the directory of output path {path} does not exist"
+    return None
+
+
 def write_capture(path: str, d: dict) -> str:
     """Writes a validated capture envelope; returns the DATA sha256. The whole-file checksum is a SEPARATE fact (printed by the caller from the written bytes; keep it with the file)."""
-    Path(path).write_text(json.dumps(d, indent=1, sort_keys=True), encoding="utf-8")
+    write_atomic(path, json.dumps(d, indent=1, sort_keys=True))
     return d["sha256"]
 
 
@@ -463,10 +500,28 @@ def _refuse_json_constant(token: str):
     raise ValueError(f"the JSON constant {token} is not accepted")
 
 
+def _require_utf8_strings(node) -> None:
+    """Every string in the document — keys and values, at any depth — must be encodable as UTF-8 (a JSON `\\ud800` escape decodes to a lone surrogate that no report, capture or evidence file could carry; Codex v1.6)."""
+    stack = [node]
+    while stack:
+        n = stack.pop()
+        if isinstance(n, str):
+            try:
+                n.encode("utf-8")
+            except UnicodeEncodeError:
+                raise ValueError("a string in the document contains a lone surrogate (not encodable as UTF-8)") from None
+        elif isinstance(n, dict):
+            stack.extend(n.keys()); stack.extend(n.values())
+        elif isinstance(n, list):
+            stack.extend(n)
+
+
 def strict_json_loads(text: str):
     """The ONE JSON reader for every operator-supplied file (the SETTLED-1 notice, the rulings, the W0 baseline, the capture envelope): duplicate keys at any depth and NaN/Infinity tokens are refused."""
     try:
-        return json.loads(text, object_pairs_hook=_no_duplicate_keys, parse_constant=_refuse_json_constant)
+        doc = json.loads(text, object_pairs_hook=_no_duplicate_keys, parse_constant=_refuse_json_constant)
+        _require_utf8_strings(doc)
+        return doc
     except ValueError:
         raise                                                  # malformed JSON, duplicate keys, NaN/Infinity tokens, bad UTF-8: already the named refusal
     except RecursionError:                                     # a hostile document nested ~100,000 deep (Codex v1.4): a refusal, never a traceback
@@ -629,10 +684,19 @@ def _w0_normalise(d: dict, old_id: str) -> tuple[list[dict], list[dict], list[st
     for r in d["rows"]:
         if not isinstance(r, dict):
             raise ValueError("a W0 row is not an object")
-        try:
-            lv = int(r["level_n"])
-        except (KeyError, TypeError, ValueError):
-            raise ValueError(f"W0 row {r.get('dasha_row_id')!r} has no integer level_n") from None
+        raw_lv = r.get("level_n")
+        if isinstance(raw_lv, bool) or not isinstance(raw_lv, int):                    # NO silent conversion: 1.5, "1", true, null, objects are all refused (Codex v1.6)
+            raise ValueError(f"W0 row {r.get('dasha_row_id')!r} has no integer level_n (got {raw_lv!r})")
+        lv = raw_lv
+        for key in ("dasha_row_id", "lord_graha", "start_iso", "end_iso"):
+            if not isinstance(r.get(key), str) or not r[key].strip():
+                raise ValueError(f"W0 row {r.get('dasha_row_id')!r}: {key} must be a non-empty string (got {r.get(key)!r})")
+        for key in ("parent_row_id", "system_id", "verification_pass_status", "build_id"):
+            if r.get(key) is not None and not isinstance(r[key], str):
+                raise ValueError(f"W0 row {r.get('dasha_row_id')!r}: {key} must be a string or null (got {r[key]!r})")
+        for key in ("trunc_start", "trunc_end", "is_truncated_at_window_start", "is_truncated_at_window_end"):
+            if r.get(key) is not None and not isinstance(r[key], bool):
+                raise ValueError(f"W0 row {r.get('dasha_row_id')!r}: {key} must be true, false or null (got {r[key]!r})")
         if lv > max(LEVELS_IN_SCOPE):
             dropped += 1
             continue
@@ -653,6 +717,22 @@ def _w0_normalise(d: dict, old_id: str) -> tuple[list[dict], list[dict], list[st
         if not isinstance(n, dict):
             raise ValueError("a W0 natal entry is not an object")
         lon_key = next((k for k in ("longitude", "value", "fact_value_num") if n.get(k) not in (None, "")), None)
+        if lon_key is not None:                                                          # a longitude is a finite number or a numeric string — never an object/list/bool (Codex v1.6)
+            lon_v = n[lon_key]
+            if isinstance(lon_v, bool) or not (isinstance(lon_v, (int, float)) or isinstance(lon_v, str)):
+                raise ValueError(f"W0 natal entry {n.get('fact_subject')!r}: {lon_key} must be a number or a numeric string (got {lon_v!r})")
+            try:
+                ok_lon = math.isfinite(float(lon_v))
+            except (ValueError, OverflowError):
+                ok_lon = False
+            if not ok_lon:
+                raise ValueError(f"W0 natal entry {n.get('fact_subject')!r}: {lon_key} {lon_v!r} is not a finite number")
+        for key in ("fact_subject",):
+            if not isinstance(n.get(key), str) or not n[key].strip():
+                raise ValueError(f"W0 natal entry: {key} must be a non-empty string (got {n.get(key)!r})")
+        for key in ("fact_id", "tier", "verification_pass_status", "build_id"):
+            if n.get(key) is not None and not isinstance(n[key], (str, int)) or isinstance(n.get(key), bool):
+                raise ValueError(f"W0 natal entry {n.get('fact_subject')!r}: {key} must be a string or null (got {n.get(key)!r})")
         if lon_key not in (None, "longitude"):
             filled[f"natal longitude (from {lon_key})"] = filled.get(f"natal longitude (from {lon_key})", 0) + 1
         natal.append({"fact_id": None if n.get("fact_id") is None else str(n["fact_id"]), "fact_subject": n.get("fact_subject"),
@@ -1011,8 +1091,7 @@ def apply_repin(new_id: str, maps: list[dict], repo_root: Path, rulings: dict | 
     assert s.count(f'"build_id": "{new_id}"') == 1 and f'"build_id": "{old_id}"' not in s, "the re-pin constant must equal the SETTLED-1 build and the old pin must be gone (G6 b)"
     new_ver = rewrite_once(ver_txt, {ver_old_line: f'_C_BUILD = "{new_id}"'})
     assert new_ver.count(f'_C_BUILD = "{new_id}"') == 1 and ver_old_line not in new_ver, "the verifier's _C_BUILD must equal the SETTLED-1 build and the old pin must be gone"
-    perm.write_text(s, encoding="utf-8")
-    ver.write_text(new_ver, encoding="utf-8")
+    writes: list[tuple[Path, str]] = [(perm, s), (ver, new_ver)]                    # every new text is built in memory FIRST; all are encoded/validated, then written atomically one by one
     changed.append(str(perm.relative_to(repo_root)))
     changed.append(str(ver.relative_to(repo_root)))
     by_file: dict[str, dict[int, dict[str, str]]] = {}
@@ -1027,10 +1106,16 @@ def apply_repin(new_id: str, maps: list[dict], repo_root: Path, rulings: dict | 
             lines[ln - 1] = rewrite_once(lines[ln - 1], mp)                            # ONLY the ruled lines
         new_txt = rewrite_once("".join(lines), {**ids, old_id: new_id})
         if new_txt != txt:
-            p.write_text(new_txt, encoding="utf-8"); changed.append(rel)
+            writes.append((p, new_txt)); changed.append(rel)
     gen = SIDECAR / "tests" / "l3" / "gochara_rules" / f"test_am10_repin_{new_id[:8]}.py"
-    gen.write_text(GENERATED_TEST.format(old=old_id, new=new_id), encoding="utf-8")
+    writes.append((gen, GENERATED_TEST.format(old=old_id, new=new_id)))
     changed.append(str(gen.relative_to(repo_root)))
+    for p_, txt_ in writes:                                                          # validate EVERYTHING before the first replace
+        txt_.encode("utf-8")
+        if p_.is_dir():
+            raise ValueError(f"{p_} is a directory; nothing written")
+    for p_, txt_ in writes:
+        write_atomic(p_, txt_)
     return changed
 
 
@@ -1244,6 +1329,30 @@ def _read_operator_inputs(a, old_id: str):
 
 
 def main(argv=None, *, conn=None) -> int:
+    """The CLI behind ONE TOP-LEVEL GUARD (Codex v1.6): argparse usage errors keep their exit 2 (SystemExit) and Ctrl-C passes, but ANY other exception — from validation, I/O, encoding, a malformed input nobody
+    anticipated — becomes `STOP: <Type>: <reason>`, exit 3, never a traceback. Every write goes through `write_atomic` (strict UTF-8, temp file + replace), so a refused or failed run leaves no half-written file."""
+    try:
+        return _main_impl(argv, conn=conn)
+    except (SystemExit, KeyboardInterrupt):
+        raise
+    except BaseException as exc:                                    # includes RecursionError / MemoryError / AssertionError
+        try:
+            print(f"STOP: {exc.__class__.__name__}: {exc}", file=sys.stderr)
+        except Exception:
+            pass
+        return 3
+
+
+def _output_problem(a) -> str | None:
+    for flag, path in (("--out", a.out), ("--capture-old", a.capture_old), ("--capture-new", a.capture_new), ("--w0-capture-out", a.w0_capture_out)):
+        if path:
+            problem = output_path_problem(path)
+            if problem:
+                return f"{flag}: {problem}"
+    return None
+
+
+def _main_impl(argv=None, *, conn=None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     ap.add_argument("--new-build-id", default=None, help="the SETTLED-1 build — REQUIRED for comparison/application, REFUSED with --capture-old")
     ap.add_argument("--chart-id", default=PERM.DASHA_READ_CONTRACT["chart_id"])
@@ -1266,6 +1375,9 @@ def main(argv=None, *, conn=None) -> int:
     bad = _mode_error(a)                     # BEFORE any capture, connection or read (Codex R17-7)
     if bad:
         print(bad, file=sys.stderr); return 2
+    bad_out = _output_problem(a)                                         # output destinations are validated BEFORE any read or write (a directory, a missing directory)
+    if bad_out:
+        print(f"STOP — {bad_out}; nothing was read or written", file=sys.stderr); return 3
     if a.import_w0:
         return import_w0(a.import_w0, a.w0_checksum, a.w0_capture_out, a.chart_id)
     if a.capture_old:
@@ -1345,7 +1457,7 @@ def main(argv=None, *, conn=None) -> int:
     report = render(old_id=old_id, new_id=a.new_build_id, chart_id=a.chart_id, o_int=integrity(old_rows),
                     n_int=integrity(new_rows), m=m, stats=stats, flips=flips, sensitive=sensitive, maps=maps, stops=stops, evidence=evidence)
     if a.out and not a.dry_run:
-        Path(a.out).write_text(report, encoding="utf-8")
+        write_atomic(a.out, report)
     print(report)
     if stops:
         print("STOP — not re-pinning.", file=sys.stderr); return 3
