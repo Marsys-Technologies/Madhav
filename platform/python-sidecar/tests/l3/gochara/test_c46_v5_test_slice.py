@@ -730,3 +730,33 @@ def test_under_a_marker_a_null_or_contradicting_config_horizon_is_refused_and_an
         writer_mod._effective_horizon(mk(horizon=None), sl)
     with pytest.raises(writer_mod.TestSliceRefusal):
         writer_mod._effective_horizon(mk(horizon=(sl.horizon[0], sl.horizon[0])), sl)
+
+
+# ── A5.5g invariant (Stream B, round 1 on PR 3132): the slice never touches the snapshot substep ───────────────────
+
+def _plan_keys(manifest=None):
+    return [s.key for s in writer_mod.GocharaV5Writer().plan_substeps(_ctx(manifest))]
+
+
+_SLICE_SHAPES = {
+    "one_class_full": _marker(),
+    "all_classes_1y": _marker(run="all_classes_1y", classes=list(writer_mod.SCORED_CLASSES),
+                              horizon=["2025-01-01T00:00:00+00:00", "2025-12-31T00:00:00+00:00"]),
+}
+
+
+@pytest.mark.parametrize("shape", sorted(_SLICE_SHAPES))
+def test_no_slice_plan_drops_reorders_or_conditions_the_snapshot_substep(shape):
+    """INVARIANT: the `snapshot` substep is where PR 3132's chain replace lives, so a slice plan must keep it exactly once,
+    with the SAME head as the default plan (rules, convention, bodies, manifest, snapshot — nothing dropped, reordered or
+    made conditional), and before every substep that writes chain rows. A slice narrows the CLASSES, never the head."""
+    default = _plan_keys()
+    sliced = _plan_keys({writer_mod.TEST_SLICE_KEY: _SLICE_SHAPES[shape]})
+    snap = writer_mod.SNAPSHOT_SUBSTEP
+    assert sliced.count(snap) == 1 and default.count(snap) == 1
+
+    def head(plan):
+        return plan[:plan.index(snap) + 1]
+    assert head(sliced) == head(default)
+    writers = [i for i, k in enumerate(sliced) if k.startswith(("inventory:", "coverage:", "record:", "window:", "verify:"))]
+    assert writers and min(writers) > sliced.index(snap)
