@@ -57,7 +57,19 @@ describe('correction preservation boundary', () => {
 
   it('every null clear op is classified — a new skip-clean asset cannot slip through unclassified', () => {
     const nulls = Object.entries(EXPLICIT_CLEAR_OPS).filter(([, ops]) => ops === null).map(([id]) => id).sort()
-    expect(nulls).toEqual([...Object.keys(CORRECTION_PRESERVATION), ...Object.keys(CORRECTION_NOTHING_TO_CLEAR)].sort())
+    // ga_fact_identity (migration 1262, has_writer=false) is classified by strictDecision's has_writer rule, not by name.
+    const noWriterNulls = ['ga_fact_identity']
+    expect(nulls).toEqual([...Object.keys(CORRECTION_PRESERVATION), ...Object.keys(CORRECTION_NOTHING_TO_CLEAR), ...noWriterNulls].sort())
+  })
+
+  it('ga_fact_identity (hand-run G-IDX index, has_writer=false) is preserved by a correction and issues no statement', async () => {
+    const { db, calls } = recorder()
+    const result = await invalidateAssets({
+      db, chartId: CHART, assets: [asset('ga_fact_identity', { layer: 'ganita', has_writer: false })], policy: 'chart-correction-strict',
+    })
+    expect(calls).toEqual([])
+    expect(result.preservedAssetIds).toEqual(['ga_fact_identity'])
+    expect(result.clearedAssetIds).toEqual([])
   })
 
   it('answered journal rows survive: mi_abhilekha clears only unanswered prompts', async () => {

@@ -88,7 +88,34 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
+  changes:
+    # Fast path: a pull request whose EVERY changed file is documentation/evidence (see platform/scripts/governance/ci_changes.py) skips the
+    # heavy jobs below. FAIL-CLOSED: only an explicit `docs_only=true` skips; a failed/empty/unreadable classification, a push, a merge_group
+    # or a manual run all run everything. A skipped job reports "Skipped", which a required check counts as passing, and the aggregate
+    # `Governance Tool Tests (pytest)` job accepts `skipped` ONLY together with docs_only=true.
+    name: Change Classification
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    outputs:
+      docs_only: ${{ steps.classify.outputs.docs_only }}
+    steps:
+      - name: Checkout (merge commit and its parents)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - name: Classify the change
+        id: classify
+        run: |
+          out=$(python3 platform/scripts/governance/ci_changes.py --event "$GITHUB_EVENT_NAME" --base HEAD^1 --head HEAD) || out="docs_only=false"
+          case "$out" in docs_only=true|docs_only=false) ;; *) out="docs_only=false" ;; esac
+          echo "$out" | tee -a "$GITHUB_OUTPUT"
+
   typecheck:
+    needs: changes
+    if: ${{ !cancelled() && needs.changes.outputs.docs_only != 'true' }}
     name: TypeScript (src only)
     runs-on: ubuntu-latest
     defaults:
@@ -112,6 +139,8 @@ jobs:
           if [ -n "$non_test" ]; then printf '%s\n' "$non_test"; exit 1; fi
 
   typecheck-mcp:
+    needs: changes
+    if: ${{ !cancelled() && needs.changes.outputs.docs_only != 'true' }}
     name: TypeScript — platform-mcp
     runs-on: ubuntu-latest
     defaults:
@@ -128,6 +157,8 @@ jobs:
       - run: npx tsc --noEmit
 
   unit-tests:
+    needs: changes
+    if: ${{ !cancelled() && needs.changes.outputs.docs_only != 'true' }}
     name: Unit Tests
     runs-on: ubuntu-latest
     # A healthy complete suite is measured in seconds locally and bounded minutes in
@@ -259,6 +290,8 @@ jobs:
   # and the provision step back onto `unit-tests` and delete this job.
   # ─────────────────────────────────────────────────────────────────────────────
   db-integration-tests:
+    needs: changes
+    if: ${{ !cancelled() && needs.changes.outputs.docs_only != 'true' }}
     name: DB Integration Tests (SAMĪKṢĀ, throwaway Postgres)
     runs-on: ubuntu-latest
     defaults:
@@ -567,6 +600,23 @@ jobs:
           cd python-sidecar
           python -m pytest tests/l3/test_builder_role_resonance_writer.py -q --tb=short
 
+      - name: TI-l1-panchanga-moon-sign-001 — ga_panchanga birth-Moon-sign position-fact read against real Postgres
+        # The chandra_bala_natal_baseline birth Moon sign is READ from the upstream
+        # ga_positions fact (graha_position | MOON | sign) with a DISTINCT ON ... total
+        # ORDER BY (latest computed_at, then build_id). The DB-free tests use a fake
+        # connection and cannot prove that SQL; this suite does, on a throwaway database
+        # (synthetic rows, production column types). It must RUN here: under
+        # GITHUB_ACTIONS=true the module fails, never skips, if the variable is missing
+        # or the database is unreachable.
+        env:
+          PGPASSWORD: postgres
+          GA4_MOON_SIGN_TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/ga4_moon_sign_test
+        run: |
+          psql -h localhost -U postgres -v ON_ERROR_STOP=1 -c "CREATE DATABASE ga4_moon_sign_test;"
+          pip install -r python-sidecar/requirements-ci.txt --quiet
+          cd python-sidecar
+          python -m pytest tests/test_ga4_chandra_bala_birth_sign_pg.py -q --tb=short
+
       - name: C15 — ka_gochara_v4_41_candidate writer SQL layer AS data_plane_builder against real Postgres
         # Pravāha C15 (steward M20261002T040828-9e76): the '4.1' candidate
         # writer (#2799) will soon run in production as data_plane_builder.
@@ -586,6 +636,25 @@ jobs:
           cd python-sidecar
           python -m pytest tests/l3/test_builder_role_v4_41_candidate.py -q --tb=short
 
+      - name: TI-s-l1-integration-001 — karaka-role readers (ga_vargas, ga_dashas, ga_structural karaka web) against real Postgres
+        # ga_vargas and ga_dashas share ONE reader of ga_sensitive's stored kn_rao karaka
+        # assignments (ga_writers/_karaka_roles.py) and ga_structural's karaka web has its own
+        # read (S-L1 lanes #2878/#2886/#2883). Their DB-free tests use fake cursors and cannot
+        # prove the SQL (pins, total ORDER BY, school filter, refusals); this suite does, on a
+        # throwaway database whose chart_facts has the production column types, primary key
+        # and unique indexes, on rows built by the real ga_sensitive writer (synthetic
+        # longitudes, no birth data). It must RUN here: under GITHUB_ACTIONS=true the module
+        # fails, never skips, if the variable is missing or the database is unreachable. The
+        # module is `integration`-marked, so the generic sidecar job deselects it.
+        env:
+          PGPASSWORD: postgres
+          KARAKA_READER_TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/karaka_reader_test
+        run: |
+          psql -h localhost -U postgres -v ON_ERROR_STOP=1 -c "CREATE DATABASE karaka_reader_test;"
+          pip install -r python-sidecar/requirements-ci.txt --quiet
+          cd python-sidecar
+          python -m pytest tests/test_karaka_readers_pg.py -q --tb=short
+
       - name: C19 — overlay writers' SQL layer AS data_plane_builder against real Postgres
         # Pravāha C19 (steward M20261002T062943-356e): the ka_moorti_nirnaya
         # and ka_vedha_gochara overlay writers will be rebuilt in production at
@@ -600,6 +669,22 @@ jobs:
           pip install -r python-sidecar/requirements-ci.txt --quiet
           cd python-sidecar
           python -m pytest tests/l3/test_builder_role_overlay_writers.py -q --tb=short
+
+      - name: TI-l1-min-fixes-001 — L1 MV-refresh ownership skip + aborted-transaction guard against real Postgres
+        # The S-L1 job runs as data_plane_builder, which is not a member of amjis_app
+        # (the owner of every L1 materialized view): an in-writer REFRESH fails, the
+        # writer swallowed it and left the shared transaction ABORTED. This suite
+        # drives ga_sade_sati_writer._refresh_mv AS an authenticated builder
+        # connection (must skip, transaction healthy) and as the owner (must
+        # refresh), and the universal guard in ga_writers/data_plane_runtime.py
+        # (a writer that swallows a DB error must raise a named ContractError),
+        # on the shared fixture's production power structure.
+        env:
+          C7_BUILDER_ROLE_TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/c7_builder_role_test
+        run: |
+          pip install -r python-sidecar/requirements-ci.txt --quiet
+          cd python-sidecar
+          python -m pytest ga_writers/__tests__/test_l1_min_fixes_builder_role_pg.py -q --tb=short
 
       - name: C21 — WP10 cutover rehearsal gate against the CI Postgres service
         # Pravāha C21 (steward M20261002T080256-690e): this suite used to skip
@@ -617,6 +702,26 @@ jobs:
           pip install -r python-sidecar/requirements-ci.txt --quiet
           cd python-sidecar
           python -m pytest tests/l3/gochara/test_wp10_cutover.py -q --tb=short
+
+      - name: TI-l1-vichara-writer-001 — provision the migration 920 digest test DB
+        env:
+          PGPASSWORD: postgres
+        run: |
+          psql -h localhost -U postgres -v ON_ERROR_STOP=1 -c "CREATE DATABASE vichara_digest_test;"
+
+      - name: TI-l1-vichara-writer-001 — ga_vichara writer identity/as-of tests + migration 920 digest against real Postgres
+        # The writer's sorted constituent_fact_ids must make the migration-920
+        # output digest independent of Python set iteration order. This runs the
+        # REAL compute_output_digest with migration 920's verbatim spec on rows
+        # the real writer produced under two PYTHONHASHSEEDs (and a pre-fix
+        # control). The integration-marked digest test FAILS (never skips) under
+        # GITHUB_ACTIONS=true when this database is unavailable.
+        env:
+          VICHARA_DIGEST_DSN: postgresql://postgres:postgres@localhost:5432/vichara_digest_test
+        run: |
+          pip install -r python-sidecar/requirements-ci.txt --quiet
+          cd python-sidecar
+          python -m pytest tests/test_ga_vichara_identity_and_asof.py -q --tb=short
 
       - name: Nirmāṇa T0 — provision the migration 599 DAG test DB
         env:
@@ -983,6 +1088,8 @@ jobs:
         run: npx vitest run src/lib/pariprashna/pipeline/__tests__/reading_parts_persistence.db.test.ts --reporter=verbose
 
   pratijna-v4-fixture-property-tests:
+    needs: changes
+    if: ${{ !cancelled() && needs.changes.outputs.docs_only != 'true' }}
     # PRATIJÑĀ v4 Lane B3 — the CI tier of the campaign's three-tier
     # verification plan (00_ARCHITECTURE/briefs/adhisthana/MASTER_PLAN_v1_0.md
     # §5): "real-data snapshot fixture (one chart's facts+signals+Index
@@ -1067,6 +1174,8 @@ jobs:
           pytest tests/test_pratijna_v4_snapshot_properties.py -v --tb=short
 
   planner-regression:
+    needs: changes
+    if: ${{ !cancelled() && needs.changes.outputs.docs_only != 'true' }}
     name: Planner Regression Gate
     runs-on: ubuntu-latest
 
@@ -1106,6 +1215,8 @@ jobs:
         run: npx vitest run tests/planner --reporter=verbose
 
   icr-pr-gate:
+    needs: changes
+    if: ${{ !cancelled() && needs.changes.outputs.docs_only != 'true' }}
     name: ICR PR Gate (synthetic smoke)
     runs-on: ubuntu-latest
     # continue-on-error: true — PERMANENT DESIGN DECISION (not a temp soft-pass)
@@ -1436,6 +1547,8 @@ jobs:
         run: python platform/scripts/governance/check_fact_subject_wellformedness.py
 
   governance-tool-tests-shard:
+    needs: changes
+    if: ${{ !cancelled() && needs.changes.outputs.docs_only != 'true' }}
     # Suvarṇa E4.1 (sharded, Exec Suvarṇa): runs platform/scripts/governance/__tests__ as a whole, so the landed Nikaṣa tools and the
     # drift_detector/schema_validator tests are enforced, not just present. No DB, no network: tests that need a live DB skip on their
     # own (PG*/DATABASE_URL unset), and tests pinning campaign artifacts that are not on this tree skip via conftest.
@@ -1479,11 +1592,12 @@ jobs:
           python -m pytest "${FILES[@]}" -q --no-header -rs
 
   governance-tool-tests:
-    # The ORIGINAL job name, kept as ONE check: green only when every shard above is green (a cancelled, skipped or failed shard is not
-    # green). The Suvarṇa plan's `ci_job_passed` detectors name this job, so they keep meaning "the whole governance test directory
-    # passed". (It is not in the branch ruleset's required list today; that is unchanged.)
+    # The ORIGINAL job name, kept as ONE check: green only when every shard above is green (a cancelled or failed shard is not green; a
+    # SKIPPED shard is green ONLY on a docs-only pull request, where the `changes` job skipped it on purpose). The Suvarṇa plan's
+    # `ci_job_passed` detectors name this job, so they keep meaning "the whole governance test directory passed". (It is not in the
+    # branch ruleset's required list today; that is unchanged.)
     name: Governance Tool Tests (pytest)
-    needs: governance-tool-tests-shard
+    needs: [changes, governance-tool-tests-shard]
     if: ${{ always() }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -1491,14 +1605,14 @@ jobs:
       contents: read
 
     steps:
-      - name: Every shard passed
+      - name: Every shard passed (or was skipped on a docs-only change)
         env:
           SHARDS_RESULT: ${{ needs.governance-tool-tests-shard.result }}
+          DOCS_ONLY: ${{ needs.changes.outputs.docs_only }}
         run: |
-          if [ "$SHARDS_RESULT" != "success" ]; then
-            echo "::error::governance test shards finished '$SHARDS_RESULT', not 'success'"; exit 1
-          fi
-          echo "all governance test shards passed"
+          if [ "$SHARDS_RESULT" = "success" ]; then echo "all governance test shards passed"; exit 0; fi
+          if [ "$SHARDS_RESULT" = "skipped" ] && [ "$DOCS_ONLY" = "true" ]; then echo "docs-only change: governance test shards skipped by design"; exit 0; fi
+          echo "::error::governance test shards finished '$SHARDS_RESULT' (docs_only='$DOCS_ONLY'), not 'success'"; exit 1
 
   governance-gates:
     # v1.2 follow-on (2026-05-28): four gates from session_queue.yaml that the
@@ -1788,6 +1902,8 @@ jobs:
           SWE_EPHE_PATH="$nirmana_ephe_dir" pytest tests/test_service_probes.py tests/test_swiss_backend_helper.py -q
 
   governance-gates-gochara:
+    needs: changes
+    if: ${{ !cancelled() && needs.changes.outputs.docs_only != 'true' }}
     # C23 (Suvarṇa §N.8 finding; steward ruling M20261002T182324-6b9a): the four
     # sidecar gochara test directories sat outside every pytest selection —
     # green because never run. They run HERE, in a separate PARALLEL job, so the

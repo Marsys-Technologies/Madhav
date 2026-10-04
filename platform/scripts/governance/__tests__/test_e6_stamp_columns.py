@@ -19,6 +19,7 @@ sys.path.insert(0, str(HERE.parent))
 sys.path.insert(0, str(HERE))
 
 import asset_census as ac  # noqa: E402
+import _decl_version  # noqa: E402
 import test_e6_s1_null_convention as s1  # noqa: E402
 import test_e6_s3_alias_ldgr as s3  # noqa: E402
 from _disposable_pg import disposable_pg  # noqa: E402,F401  (the session fixture)
@@ -115,7 +116,7 @@ def test_validator_a_stamp_column_is_not_a_declared_prose_field():
 def test_the_declarations_file_lists_the_new_field_and_only_the_latta_declares_a_convention():
     raw = json.loads(ac.DECLARATIONS_PATH.read_text(encoding="utf-8"))
     assert raw["null_convention_declaration_fields"] == list(ac.NULL_CONVENTION_DECL_FIELDS) and "stamp_columns" in ac.NULL_CONVENTION_DECL_FIELDS
-    assert raw["version"] == "1.13.0"          # 1.10.0 with DECL-LATTA (#2991); 1.11.0 with DECL-LATTA-NULL (the first null_convention + stamp_columns)
+    assert raw["version"] == _decl_version.CURRENT          # 1.10.0 with DECL-LATTA (#2991); 1.11.0 with DECL-LATTA-NULL (the first null_convention + stamp_columns)
     assert "stamp_columns" in raw["description"]
     assert [a for a, e in raw["assets"].items() if "null_convention" in e] == ["bg_phaladeepika_latta"]
     ac.load_asset_declarations()
