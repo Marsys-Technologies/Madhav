@@ -19,8 +19,8 @@
     },
     {
       "file": "platform/python-sidecar/services/gochara_kernel/inventory_verifier.py",
-      "line": 599,
-      "justification": "DELIBERATE independent restatement, not an oracle bypass: the gochara verifier re-derives the builder's output from the spec text and imports nothing from the builder (ND-ROLES option A; independent re-derivation is the point of a separate verifier — importing the shared oracle would make the check agree with the builder by construction). Same pinned doctrine as services/gochara_kernel/convention.py (WP1_CONTRACTS.md §7 + §2.2 N-14: Rahu/Ketu cast NO drishti, the opposite of brahmagyan.aspects' nodal convention). A test asserts the verifier's table equals the kernel's. Added 2026-10-03, PR #2999 CI (D-01a), Pravaha A5.3."
+      "line": 605,
+      "justification": "DELIBERATE independent restatement, not an oracle bypass: the gochara verifier re-derives the builder's output from the spec text and imports nothing from the builder (ND-ROLES option A; independent re-derivation is the point of a separate verifier — importing the shared oracle would make the check agree with the builder by construction). Same pinned doctrine as services/gochara_kernel/convention.py (WP1_CONTRACTS.md §7 + §2.2 N-14: Rahu/Ketu cast NO drishti, the opposite of brahmagyan.aspects' nodal convention). A test asserts the verifier's table equals the kernel's. Added 2026-10-03, PR #2999 CI (D-01a), Pravaha A5.3. Line updated 599→605 (2026-10-04, pravaha/c46-v5-test-slice): the optional `excluded_agents` parameter of rederive_inventory_digest was added above; the dict itself is byte-identical to origin/main."
     },
     {
       "file": "platform/python-sidecar/services/gochara_kernel/window_verifier.py",
