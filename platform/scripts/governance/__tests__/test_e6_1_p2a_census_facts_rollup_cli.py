@@ -53,8 +53,10 @@ def _stub_layer(monkeypatch, ctrl, reg, tables, exists=None, views=None):
     monkeypatch.setattr(ac, "alias_census", lambda t, c: None)
 
     def fake_psql(sql, sep="\x1f", timeout=None):
-        if "IS NOT NULL" in sql:
-            return [["48"]]
+        if "format_type(a.atttypid" in sql:                 # C2(ii): the citation column's type decides how a placeholder is told from a source
+            return [["text"]]
+        if "jsonb_build_object('rows'" in sql:              # C2(ii): one read, rows / NULL / placeholder counts
+            return [['{"rows":48,"null":0,"placeholder":0}']]
         raise AssertionError(f"unexpected query: {sql[:100]}")
     monkeypatch.setattr(ac, "psql", fake_psql)
 

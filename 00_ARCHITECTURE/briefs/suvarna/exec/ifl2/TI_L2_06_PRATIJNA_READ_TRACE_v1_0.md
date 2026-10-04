@@ -29,7 +29,7 @@ migration) is not built here.
    no CI call. A DAG edge cannot name it.
 3. **On the canonical chart it is almost empty**: 1,205 of 143,299 `chart_facts` rows (0.84%) have an
    identity row, all of kinds `graha` (845) and `house` (360), none of `graha_in_varga` or any
-   varga-tagged kind; the other canonical chart `1c826d5a` has 125,873 of 139,717 (90.1%) across 17
+   varga-tagged kind; the comparison chart `1c826d5a` has 125,873 of 139,717 (90.1%) across 17
    kinds. The 1,205 rows are one build (`1c092ffb`, 2026-09-07); the chart's facts are 10 builds
    (2026-09-07 to 2026-09-08). `chart_fact_identity.fact_id` is `ON DELETE CASCADE`, so a rebuild of
    `chart_facts` deletes the index rows of every replaced fact, and nothing re-creates them.

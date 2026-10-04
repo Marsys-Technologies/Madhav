@@ -947,23 +947,153 @@ class TestAshtakavargaRows:
                     f"{r['graha']} bindu out of [0,8]: {r['fact_value_num']}"
 
 
+# Canonical chart 482012f1 / Lahiri kn_rao karaka assignments as stored by ga_sensitive
+# (rank 1..8): Moon Saturn Sun Venus Mars Rahu Jupiter Mercury.
+CANONICAL_KARAKA_ASSIGNMENTS = {
+    "AK": "Moon", "AmK": "Saturn", "BK": "Sun", "MK": "Venus",
+    "PiK": "Mars", "PK": "Rahu", "GK": "Jupiter", "DK": "Mercury",
+}
+# ga_sensitive rows exactly as stored after the karaka-roles fix: (subject, key, text, num)
+_STORED_KN_RAO_ROWS = [
+    (subj, key, text, num)
+    for rank, (subj, graha) in enumerate([
+        ("ATMAKARAKA", "Moon"), ("AMATYAKARAKA", "Saturn"), ("BHRATRIKARAKA", "Sun"),
+        ("MATRIKARAKA", "Venus"), ("PITRIKARAKA", "Mars"), ("PUTRAKARAKA", "Rahu"),
+        ("GNATIKARAKA", "Jupiter"), ("DARAKARAKA", "Mercury"),
+    ], start=1)
+    for key, text, num in (("assigned_graha", graha, None), ("karaka_rank", None, float(rank)))
+]
+
+
+class _FakeKarakaConn:
+    """psycopg-shaped stub: conn.cursor(row_factory=...) -> context-managed cursor."""
+
+    def __init__(self, rows):
+        self._rows = rows
+        self.calls: list[tuple[str, tuple]] = []
+
+    def cursor(self, row_factory=None):
+        conn = self
+
+        class _Cur:
+            def __enter__(self): return self
+            def __exit__(self, *a): return False
+            def execute(self, sql, params=None): conn.calls.append((sql, tuple(params or ())))
+            def fetchall(self): return list(conn._rows)
+
+        return _Cur()
+
+
 class TestKarakaRows:
     def test_24_rows_total(self):
         """8 karakas × 3 keys (assigned_graha, sign, dignity) = 24 rows."""
         m = _mod()
         rows = m._build_karaka_rows(
             MOCK_CHART_ID, MOCK_AYAN, MOCK_BUILD_ID, 10, "D10",
-            MOCK_VARGA_DATA, MOCK_D1_LONGITUDES)
+            MOCK_VARGA_DATA, CANONICAL_KARAKA_ASSIGNMENTS)
         assert len(rows) == 24, f"Expected 24 karaka rows, got {len(rows)}"
 
     def test_all_8_karakas_present(self):
         m = _mod()
         rows = m._build_karaka_rows(
             MOCK_CHART_ID, MOCK_AYAN, MOCK_BUILD_ID, 10, "D10",
-            MOCK_VARGA_DATA, MOCK_D1_LONGITUDES)
+            MOCK_VARGA_DATA, CANONICAL_KARAKA_ASSIGNMENTS)
         subjects = {r["fact_subject"].split(".")[-1] for r in rows}
         for k in m.JAIMINI_KARAKA_NAMES:
             assert k in subjects, f"Missing karaka {k}"
+
+    def test_names_are_the_8_scheme_and_sk_is_gone(self):
+        m = _mod()
+        assert m.JAIMINI_KARAKA_NAMES == ["AK", "AmK", "BK", "MK", "PiK", "PK", "GK", "DK"]
+        assert "SK" not in m.JAIMINI_KARAKA_FULL
+        assert m.JAIMINI_KARAKA_FULL["PiK"] == "Pitri_Karaka"
+        assert m.JAIMINI_KARAKA_FULL["PK"] == "Putra_Karaka"
+        assert m.JAIMINI_KARAKA_FULL["GK"] == "Gnati_Karaka"
+        assert m.JAIMINI_KARAKA_FULL["DK"] == "Dara_Karaka"
+
+    def test_assigned_graha_is_inherited_not_rederived(self):
+        """Rahu is PK (rank 6) as ga_sensitive stores it; the old plain-degree ranking would
+        have made Rahu rank 5 from MOCK data's own degrees. The rows must echo the input map."""
+        m = _mod()
+        rows = m._build_karaka_rows(
+            MOCK_CHART_ID, MOCK_AYAN, MOCK_BUILD_ID, 1, "D1",
+            MOCK_VARGA_DATA, CANONICAL_KARAKA_ASSIGNMENTS)
+        got = {
+            r["fact_subject"].split(".")[-1]: r["fact_value_text"]
+            for r in rows if r["fact_key"] == "assigned_graha"
+        }
+        assert got == CANONICAL_KARAKA_ASSIGNMENTS
+        assert all(r["fact_subject"].startswith("D1.") for r in rows)
+        assert not any(r["fact_subject"].endswith(".SK") for r in rows)
+
+
+class TestKarakaReaderMapping:
+    """_read_jaimini_karakas: ga_sensitive kn_rao rows -> {AK..DK: graha} (DB stubbed)."""
+
+    def test_golden_rank_to_abbreviation(self):
+        m = _mod()
+        conn = _FakeKarakaConn(_STORED_KN_RAO_ROWS)
+        got = m._read_jaimini_karakas(conn, MOCK_CHART_ID, MOCK_AYAN)
+        assert got == CANONICAL_KARAKA_ASSIGNMENTS
+        # rank 5..8 -> PiK PK GK DK
+        assert [got[k] for k in ("PiK", "PK", "GK", "DK")] == ["Mars", "Rahu", "Jupiter", "Mercury"]
+
+    def test_pre_2878_rows_are_refused_not_read(self):
+        """Pre-#2878 rows (old labels: rank 5 = PUTRAKARAKA ... rank 8 = STRIKARAKA subject, no PITRIKARAKA) are
+        REFUSED. The ga_sensitive -> ga_vargas ordering is enforced only by the held migration 1226, so the
+        reader guards the generation itself (subjects must be exactly KARAKA_ROLES_8)."""
+        m = _mod()
+        old_labels = ["ATMAKARAKA", "AMATYAKARAKA", "BHRATRIKARAKA", "MATRIKARAKA",
+                      "PUTRAKARAKA", "GNATIKARAKA", "DARAKARAKA", "STRIKARAKA"]
+        grahas = ["Moon", "Saturn", "Sun", "Venus", "Mars", "Rahu", "Jupiter", "Mercury"]
+        rows = []
+        for rank, (subj, graha) in enumerate(zip(old_labels, grahas), start=1):
+            rows += [(subj, "assigned_graha", graha, None), (subj, "karaka_rank", None, float(rank))]
+        with pytest.raises(m.KarakaDependencyMissing, match=r"STRIKARAKA.*PITRIKARAKA|PITRIKARAKA.*STRIKARAKA"):
+            m._read_jaimini_karakas(_FakeKarakaConn(rows), MOCK_CHART_ID, MOCK_AYAN)
+
+    def test_correct_eight_subjects_accepted_and_duplicated_graha_still_refused(self):
+        m = _mod()
+        assert m._read_jaimini_karakas(
+            _FakeKarakaConn(_STORED_KN_RAO_ROWS), MOCK_CHART_ID, MOCK_AYAN) == CANONICAL_KARAKA_ASSIGNMENTS
+        rows = [(s, k, ("Moon" if (s == "DARAKARAKA" and k == "assigned_graha") else t), n)
+                for s, k, t, n in _STORED_KN_RAO_ROWS]
+        with pytest.raises(m.KarakaDependencyMissing, match="distinct"):
+            m._read_jaimini_karakas(_FakeKarakaConn(rows), MOCK_CHART_ID, MOCK_AYAN)
+
+    def test_query_is_pinned_and_totally_ordered(self):
+        m = _mod()
+        conn = _FakeKarakaConn(_STORED_KN_RAO_ROWS)
+        m._read_jaimini_karakas(conn, MOCK_CHART_ID, MOCK_AYAN)
+        (sql, params), = conn.calls
+        assert "fact_category = 'karaka_chara_position'" in sql
+        assert "fact_key IN ('assigned_graha', 'karaka_rank')" in sql
+        assert "formula_id = %s" in sql
+        assert "ORDER BY fact_subject, fact_key, fact_id" in sql
+        assert params == (MOCK_CHART_ID, MOCK_AYAN, "kn_rao_rahu_included")
+
+    def test_absent_ga_sensitive_rows_fail_loudly_naming_the_dependency(self):
+        m = _mod()
+        with pytest.raises(m.KarakaDependencyMissing, match="ga_sensitive"):
+            m._read_jaimini_karakas(_FakeKarakaConn([]), MOCK_CHART_ID, MOCK_AYAN)
+
+    def test_partial_or_duplicated_rows_fail_loudly(self):
+        m = _mod()
+        with pytest.raises(m.KarakaDependencyMissing, match="permutation"):
+            m._read_jaimini_karakas(_FakeKarakaConn(_STORED_KN_RAO_ROWS[:-2]), MOCK_CHART_ID, MOCK_AYAN)
+        with pytest.raises(m.KarakaDependencyMissing, match="duplicated"):
+            m._read_jaimini_karakas(
+                _FakeKarakaConn(_STORED_KN_RAO_ROWS + _STORED_KN_RAO_ROWS[:1]),
+                MOCK_CHART_ID, MOCK_AYAN)
+        # an assigned_graha with no matching karaka_rank
+        with pytest.raises(m.KarakaDependencyMissing, match="malformed"):
+            m._read_jaimini_karakas(
+                _FakeKarakaConn(_STORED_KN_RAO_ROWS + [("X", "assigned_graha", "Sun", None)]),
+                MOCK_CHART_ID, MOCK_AYAN)
+
+    def test_no_in_writer_derivation_remains(self):
+        m = _mod()
+        assert not hasattr(m, "_compute_jaimini_karakas")
 
 
 class TestRollupRows:

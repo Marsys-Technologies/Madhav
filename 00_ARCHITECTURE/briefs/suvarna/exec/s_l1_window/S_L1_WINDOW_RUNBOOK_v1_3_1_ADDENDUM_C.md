@@ -1,0 +1,18 @@
+# S-L1 window runbook v1.3.1 — ADDENDUM C (W7.14 criterion restated; pre-existing served outage; first post-window fix)
+
+Status: addendum only; runbook v1.3.1 (sha256 783536b4ab7289bf06cec65f1766003e0ec4ec2f42d83471d0db55dc0b808131) stays locked. Directed by Strategic Suvarṇa (madhav-06), ruling at 2026-10-04 (after the W0.14 BEFORE calls). C supersedes the runbook's wording for W7.14 only.
+
+## C.1 W0.14 BEFORE (recorded)
+SS ran judgment_query (career v3), assess_career, judgment_query (marriage v3) at 02:17Z and bodha_signals_get at 02:19Z (3 of 10,114 signals served; NO l2_receipts_predate_l1 flag; 0/3 constituent references orphaned). Evidence: `$EV/W0/pre_calls/W0_14_SS_SERVED_CALLS.md` (read from disk; SS appended after the first save).
+
+## C.2 PRE-EXISTING served outage (not a W7 failure, not an abort condition)
+- Symptom: judgment_query and assess_* on chart 482012f1-… return "Could not resolve frame \"lagna\" … no graha_position/LAGNA sign fact found"; assess_career flags significator_condition_unavailable.
+- Cause (read-only diagnosis 2026-10-04): the row exists in production (graha_position|LAGNA|sign = Aries for all 5 ayanamshas, build 1c092ffb-72eb-4614-8422-552ca6eae985) but is fenced out of the served build set. `ga_positions` has a leftover receipt partition `__whole_asset__` (receipt_state unknown, build e1c5109f, observed 2026-09-07 01:07:39Z, freshness stale) next to its proven/fresh declared partition (build 0ac321ee); `served_generation.ts` classifies the asset as unresolved (`receipt_not_proven`) and withholds its rows build. Data dates from 2026-09-07; the fence code that makes it bite landed 2026-09-28 (#2742, #2749). NOT caused by #2984/#2986.
+- S-L1 does NOT repair it: the second rehearsal's post state (`rehearsal_final/r2/out/post/heads_proxy.txt`) still carries the leftover unknown receipt next to the new proven one.
+- At W7.14 it is RECORDED AS UNCHANGED. The between-state disclosure names it exactly this way. The row is NOT touched during the window.
+
+## C.3 W7.14 criterion (replaces the runbook wording)
+AFTER S-L1, `bodha_signals_get` on the canonical chart must carry the `l2_receipts_predate_l1` flag (the L2 receipts predate the rebuilt L1), must NOT carry `l2_lineage_check_failed`, and the reading_contract sentence must be present. (BEFORE was: flag absent.) The `ga_strength` `receipt_spec_retired` defect (also a cause of unresolved assets today) is expected to be fixed by the ga_strength rebuild; record the post-window resolver state of ga_positions (unresolved, unchanged) and ga_strength.
+
+## C.4 First post-window item (after the suvarna_reader password rotation PW.1)
+Retire the leftover `__whole_asset__` receipt + freshness twin of ga_positions so the asset resolves and served judgments work again: gated owner-path action, dry run first, plan hash approved by SS, applied the same day. Package state (read 2026-10-04): PR #2910 `suvarna/land/TI-d6-orphan-receipts-001` DRAFT, head 16f2c75bc, plan v3.2 status DRAFT_FOR_REVIEW (v3 plan hash `c38946fe95ee121a3138b637e2578970ccbfea1827c01db7b0edbc40c4089c14` NOT approved), executor `orphan_receipts_exec.py` sha256 `ffa4309f5d6411254daccdfa105f0d3cfff19b64ea31a1269a0af75b82f8f788`, gate files = GATE_V2 pins. It covers exactly this row (ga_positions `__whole_asset__`: 1 receipt row + 1 freshness row, orphan_rows_found 1 and 1). Precondition P3 requires a proven/fresh declared-partition receipt newer than `--min-build-after` (= the S-L1 ga_positions dispatch time T0): it cannot pass before the rebuild (the real dry runs of 2026-10-02 were REFUSED on P3 as designed). Needs before apply: merge main into the PR (CI), re-bind the hash on the merged head, dry run with `--min-build-after <T0>`, review, SS approval.

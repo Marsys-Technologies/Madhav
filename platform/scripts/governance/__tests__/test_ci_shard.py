@@ -105,11 +105,12 @@ def test_ci_matrix_count_and_name_agree(jobs):
 def test_the_aggregate_job_keeps_the_original_required_name_and_fails_on_any_non_success(jobs):
     agg = jobs["governance-tool-tests"]
     assert agg["name"] == "Governance Tool Tests (pytest)"
-    assert agg["needs"] == "governance-tool-tests-shard" or agg["needs"] == ["governance-tool-tests-shard"]
+    assert set(agg["needs"]) == {"changes", "governance-tool-tests-shard"}
     assert "always()" in str(agg["if"])
     step = agg["steps"][0]
     assert step["env"]["SHARDS_RESULT"] == "${{ needs.governance-tool-tests-shard.result }}"
-    assert '!= "success"' in step["run"] and "exit 1" in step["run"]
+    assert step["env"]["DOCS_ONLY"] == "${{ needs.changes.outputs.docs_only }}"
+    assert "exit 1" in step["run"]
 
 
 def test_no_other_job_still_runs_the_whole_directory_as_one_pytest_call(jobs):
@@ -118,12 +119,17 @@ def test_no_other_job_still_runs_the_whole_directory_as_one_pytest_call(jobs):
             assert "pytest platform/scripts/governance/__tests__ " not in str(s.get("run", "")) + " ", name
 
 
-@pytest.mark.parametrize("result,ok", [("success", True), ("skipped", False), ("cancelled", False), ("failure", False), ("", False)])
-def test_a_skipped_or_cancelled_or_failed_shard_fails_the_aggregate(jobs, result, ok):
-    """N-98 A: run the aggregate job's own script with each possible `needs.<shard>.result`: only `success` may pass."""
+@pytest.mark.parametrize("result,docs_only,ok", [("success", "", True), ("success", "true", True), ("success", "false", True),
+                                                 ("skipped", "true", True),                       # skipped by the docs-only fast path: green
+                                                 ("skipped", "false", False), ("skipped", "", False),   # skipped for any other reason: NOT green
+                                                 ("cancelled", "true", False), ("failure", "true", False), ("failure", "", False),
+                                                 ("cancelled", "", False), ("", "true", False), ("", "", False)])
+def test_a_skipped_or_cancelled_or_failed_shard_fails_the_aggregate_unless_docs_only_skipped_it(jobs, result, docs_only, ok):
+    """N-98 A + the fast path: run the aggregate job's own script with each `needs.<shard>.result` and docs_only: only success, or skipped
+    together with docs_only=true, may pass."""
     script = jobs["governance-tool-tests"]["steps"][0]["run"]
-    p = subprocess.run(["bash", "-c", script], env={"SHARDS_RESULT": result, "PATH": "/usr/bin:/bin"}, capture_output=True, text=True)
-    assert (p.returncode == 0) is ok, (result, p.stdout, p.stderr)
+    p = subprocess.run(["bash", "-c", script], env={"SHARDS_RESULT": result, "DOCS_ONLY": docs_only, "PATH": "/usr/bin:/bin"}, capture_output=True, text=True)
+    assert (p.returncode == 0) is ok, (result, docs_only, p.stdout, p.stderr)
     assert ("::error::" in p.stdout) is (not ok)
 
 

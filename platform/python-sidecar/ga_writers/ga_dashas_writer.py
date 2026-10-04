@@ -45,7 +45,6 @@ from brahmagyan.graha_vocabulary import to_title
 from brahmagyan.verification_vocab import (
     CLASSICAL_MATCH,
     DIVERGENT_FLAGGED,
-    TWO_PASS_VERIFIED,
     UNVERIFIED_DEFAULT,
     entry_for as _vocab_entry_for,
 )
@@ -76,6 +75,13 @@ assert _SCOPE_CAP_SENTINEL_ENTRY is not None, (
 )
 SCOPE_CAP_SENTINEL: str = _SCOPE_CAP_SENTINEL_ENTRY.status
 from ga_writers._idempotency import authorize_chart_fact_delete, replace_prior_chart_dashas
+from ga_writers._karaka_roles import (
+    KARAKA_ABBREVIATIONS_8,
+    KARAKA_SCHOOL_KN_RAO,
+    KarakaDependencyMissing,  # re-exported: tests and callers import it from this module
+    fetch_kn_rao_karaka_rows,
+    kn_rao_graha_by_rank,
+)
 from ga_writers._telemetry import update_asset_throughput
 from ga_writers._vimshottari_independent_verifier import (
     compare_row as _iv_compare_row,
@@ -641,17 +647,117 @@ def _activate_natal_context(chart_id: str, ayanamsha_id: str, conn: Any) -> None
     _CURRENT_NATAL_CONTEXT_KEY = key
 
 
-# Karakas mapping (7 Jaimini karakas based on degree-ordering — FORENSIC chart)
-# AK=Sun(highest deg), AmK=Mars, BK=Mercury, MK=Saturn, PK=Jupiter, GK=Venus, DK=Moon
-_JAIMINI_KARAKAS = {
-    "Sun":     "AK",    # Atmakaraka
-    "Mars":    "AmK",   # Amatyakaraka
-    "Mercury": "BK",    # Bhratrukaraka
-    "Saturn":  "MK",    # Matrukaraka
-    "Jupiter": "PK",    # Pitrukaraka
-    "Venus":   "GK",    # Gnatikaraka
-    "Moon":    "DK",    # Darakaraka
-}
+# ── Jaimini karaka roles (karaka_role_at_period / karakas_active_during_period) ──
+#
+# CLAUDE.md N.5 / N.7 item 3: ga_sensitive OWNS the chara-karaka derivation
+# (chart_facts fact_category='karaka_chara_position'); this writer READS the
+# chart's own assignments and never re-derives or hard-codes them. The prior
+# version applied ONE hard-coded lord -> role dict (Sun AK, Mars AmK, Mercury BK,
+# Saturn MK, Jupiter PK, Venus GK, Moon DK, commented "FORENSIC chart") to EVERY
+# chart, so all three charts carried identical role columns (~169k non-null
+# rows each) regardless of their own degree order; on the canonical chart the
+# real kn_rao roles (Lahiri) are Moon AK ... Mercury DK, Rahu PK. The dict also
+# had no Rahu entry and used the retired 7-scheme names (PK=Jupiter, ...).
+#
+# School: ``kn_rao_rahu_included`` (SS N-69 headline school; 8 grahas, rank ->
+# AK AmK BK MK PiK PK GK DK via the shared vocabulary in ga_writers/
+# _karaka_roles.py). It is stamped on every row that carries a role claim (see
+# _karaka_provenance_suffix) so a reader sees which school the label belongs to.
+#
+# NULL is the honest value, never an invented one, where no role exists:
+#   * Ketu has no karaka role in the 8-scheme.
+#   * chara_karaka / kalachakra / narayana lords are zodiac SIGNS and yogini
+#     lords are yogini NAMES (Mangala, Pingala, ...): none of them is a graha, so
+#     they cannot carry a chara-karaka role (the stored values were already NULL
+#     there; the old dict simply never matched them). The yogini deity -> graha
+#     alias used for lord_natal_* is deliberately NOT applied to roles.
+#
+# ``karakas_active_during_period`` = the 'Graha:role' strings of the row's lord and
+# its parent lord, derived from the SAME read. Emission order is the fixed graha
+# order below (the legacy dict's insertion order, Rahu appended), a convention
+# kept so rows whose roles do not change keep byte-identical arrays.
+_KARAKAS_ACTIVE_GRAHA_ORDER: tuple[str, ...] = (
+    "Sun", "Mars", "Mercury", "Saturn", "Jupiter", "Venus", "Moon", "Rahu",
+)
+
+# Cache: (chart_id, ayanamsha_id) -> {graha: role abbreviation}, or the error
+# message when ga_sensitive's rows are absent/malformed (raised lazily, only if a
+# role is actually needed). Keyed on the FULL (chart, ayanamsha) pair and looked
+# up by the explicit ids every _build_row() call already carries, so per-ayanamsha
+# builds, interleaved systems and parallel/forked workers never read each other's
+# roles (no "current context" global). Every build_system() call RELOADS its own
+# key from the DB (never trusts an earlier process-lifetime entry), so a ga_sensitive
+# rebuild between two builds in one long-lived process is picked up.
+_KARAKA_ROLE_CACHE: dict[tuple[str, str], dict[str, str] | str] = {}
+
+
+def _read_karaka_roles(conn: Any, chart_id: str, ayanamsha_id: str) -> dict[str, str]:
+    """READ the chart's own Jaimini chara-karaka assignments from ga_sensitive's L1 rows.
+
+    Returns ``{graha: role abbreviation}`` (AK AmK BK MK PiK PK GK DK), e.g. on the
+    canonical chart / Lahiri ``{"Moon": "AK", "Saturn": "AmK", ..., "Rahu": "PK", ...}``.
+
+    Shares ONE implementation with ga_vargas_writer._read_jaimini_karakas
+    (ga_writers/_karaka_roles.py): rows are pinned on fact_category + fact_key
+    (assigned_graha, karaka_rank) + the canonical school formula_id with a total ORDER BY,
+    and the rank -> abbreviation mapping is by the stored ``karaka_rank`` (vocabulary:
+    the same module), never by parsing subject names. Raises KarakaDependencyMissing (never
+    recomputes, never returns a partial map) when ga_sensitive has not built this
+    chart/ayanamsha or its rows are not a clean permutation of the eight ranks.
+    """
+    return _karaka_roles_from_rows(fetch_kn_rao_karaka_rows(conn, chart_id, ayanamsha_id), chart_id, ayanamsha_id)
+
+
+def _karaka_roles_from_rows(
+    fetched: list[tuple[Any, ...]], chart_id: str, ayanamsha_id: str,
+) -> dict[str, str]:
+    """Pure core of _read_karaka_roles: (subject, key, text, num) rows -> {graha: role}."""
+    grahas = kn_rao_graha_by_rank(
+        fetched, chart_id, ayanamsha_id,
+        consumer="ga_dashas", allowed_grahas=_KARAKAS_ACTIVE_GRAHA_ORDER,
+    )
+    return dict(zip(grahas, KARAKA_ABBREVIATIONS_8))
+
+
+def _activate_karaka_roles(chart_id: str, ayanamsha_id: str, conn: Any) -> None:
+    """(Re)load the karaka roles for (chart_id, ayanamsha_id) from ga_sensitive.
+
+    Always reloads (see _KARAKA_ROLE_CACHE). Absent/malformed ga_sensitive rows are
+    recorded, not raised here: systems whose lords can never carry a role (yogini,
+    chara_karaka, kalachakra, narayana) must still build, and any row that DOES need a
+    role raises at that point. A genuine database error propagates (never swallowed).
+    """
+    key = (chart_id, ayanamsha_id)
+    try:
+        _KARAKA_ROLE_CACHE[key] = _read_karaka_roles(conn, chart_id, ayanamsha_id)
+    except KarakaDependencyMissing as exc:
+        _KARAKA_ROLE_CACHE[key] = str(exc)
+
+
+def set_karaka_roles(chart_id: str, ayanamsha_id: str, roles: dict[str, str]) -> None:
+    """Explicitly seed the karaka roles for (chart_id, ayanamsha_id). Production code
+    never calls this (build_system() reads ga_sensitive); it exists so unit tests that
+    compute a system directly (no DB, no build_system()) can supply a deliberate,
+    correctly-labelled fixture instead of silently getting NULL roles."""
+    _KARAKA_ROLE_CACHE[(chart_id, ayanamsha_id)] = dict(roles)
+
+
+def _karaka_roles_needed(chart_id: str, ayanamsha_id: str, *lords: str | None) -> dict[str, str] | None:
+    """The {graha: role} map for this build, or None when none of ``lords`` is a graha
+    that can carry a role (so yogini/sign lords and a bare Ketu need no ga_sensitive
+    read). Raises KarakaDependencyMissing when a role is needed but unavailable."""
+    if not any(lord in _KARAKAS_ACTIVE_GRAHA_ORDER for lord in lords if lord):
+        return None
+    entry = _KARAKA_ROLE_CACHE.get((chart_id, ayanamsha_id))
+    if entry is None:
+        raise KarakaDependencyMissing(
+            f"[ga_dashas] karaka roles not loaded for chart_id={chart_id} ayanamsha={ayanamsha_id}: "
+            f"ga_sensitive's karaka_chara_position rows were never read (build_system() reads them; "
+            f"direct callers must set_karaka_roles()). ga_dashas does not hard-code or recompute karakas."
+        )
+    if isinstance(entry, str):
+        raise KarakaDependencyMissing(entry)
+    return entry
 
 
 def _get_natal_context(lord: str) -> dict[str, Any]:
@@ -666,13 +772,35 @@ def _get_natal_context(lord: str) -> dict[str, Any]:
     }
 
 
-def _get_karakas_active(lord: str, parent_lord: str | None) -> list[str]:
-    """Karakas active at this branch (Addition Q)."""
-    active = []
-    for graha, karaka in _JAIMINI_KARAKAS.items():
-        if graha == lord or graha == parent_lord:
-            active.append(f"{graha}:{karaka}")
-    return active
+def _get_karaka_role(chart_id: str, ayanamsha_id: str, lord: str) -> str | None:
+    """The chart's own kn_rao karaka role of ``lord`` (None: no role — Ketu, sign, yogini)."""
+    roles = _karaka_roles_needed(chart_id, ayanamsha_id, lord)
+    return roles.get(lord) if roles is not None else None
+
+
+def _get_karakas_active(
+    chart_id: str, ayanamsha_id: str, lord: str, parent_lord: str | None,
+) -> list[str]:
+    """Karakas active at this branch (Addition Q): 'Graha:role' for the lord and the
+    parent lord, from the same ga_sensitive read as karaka_role_at_period, in
+    _KARAKAS_ACTIVE_GRAHA_ORDER. Empty when neither carries a role."""
+    roles = _karaka_roles_needed(chart_id, ayanamsha_id, lord, parent_lord)
+    if roles is None:
+        return []
+    return [
+        f"{graha}:{roles[graha]}"
+        for graha in _KARAKAS_ACTIVE_GRAHA_ORDER
+        if graha in roles and (graha == lord or graha == parent_lord)
+    ]
+
+
+def _karaka_provenance_suffix(role: str | None, karakas: list[str]) -> str:
+    """Provenance text appended to citation_human on rows that carry a karaka claim, so
+    a reader sees which school the role labels belong to. Empty when the row claims no
+    role (the row then carries no karaka assertion to attribute)."""
+    if role is None and not karakas:
+        return ""
+    return f"; karaka_school={KARAKA_SCHOOL_KN_RAO} (ga_sensitive karaka_chara_position)"
 
 
 # ── Two-pass verification ─────────────────────────────────────────────────────
@@ -680,20 +808,32 @@ def _get_karakas_active(lord: str, parent_lord: str | None) -> list[str]:
 def _verify_vimshottari(rows: list[dict], moon_sid: float,
                         chart_id: str = CANONICAL_CHART_ID) -> str:
     """
-    Two-pass verification for Vimshottari:
-    Pass 1: algebraic — sum of all L1 years ≈ N × 120y (within 1 day) [structural,
-            any chart].
-    Pass 2: FORENSIC — the period containing the NATIVE birth date (1984-02-05)
-            must have lord = Jupiter. Native-anchored; run only for the native
-            chart (Phase 3B). A non-native chart has its own birth date + lord.
-    Returns 'two_pass_verified' or raises ValueError.
+    Anchor/table check for Vimshottari (NOT a second implementation).
+
+    What it does, honestly:
+    - Native-anchor check (FORENSIC): the L1 period containing the NATIVE birth date
+      (1984-02-05) must have lord = Jupiter, i.e. one stored row is compared to the
+      benchmark constant FORENSIC_VIMSHOTTARI_STARTING_LORD. Run only for the native
+      chart; raises ValueError (halts the substep) on disagreement or when no L1 row
+      covers the birth date.
+    - Duration loop: compares each L1 period's own duration_days with the same
+      VIMSHOTTARI_YEARS table arithmetic that produced it; its tolerance branch ends in
+      a bare `pass`, so it can never fail and contributes no evidence.
+
+    Returns CLASSICAL_MATCH for the native chart (a comparison against a table/constant
+    that could have raised and did not) and UNVERIFIED_DEFAULT for any other chart (nothing
+    was contradicted). It never returns the two-pass tier: a second implementation compared
+    with a tolerance is `_apply_vimshottari_independent_verification` +
+    `_vimshottari_independent_verifier`, which is the only producer of the stored
+    vimshottari tier. This return value is not stored on any row (it reaches only the
+    INFO logs and the returned summary dict).
     """
     l1_rows = [r for r in rows if r["level_n"] == 1]
     if not l1_rows:
         raise ValueError("Vimshottari: no L1 rows")
 
-    # Pass 2 (FORENSIC) — native-only regression guard.
-    if chart_id == CANONICAL_CHART_ID:
+    # Pass 2 (FORENSIC) — native-only regression guard. str(): a uuid.UUID never == the str constant (gate skipped).
+    if str(chart_id) == CANONICAL_CHART_ID:
         birth_date = date(1984, 2, 5)
         birth_period_lord: str | None = None
         for row in l1_rows:
@@ -709,11 +849,16 @@ def _verify_vimshottari(rows: list[dict], moon_sid: float,
                 f"Moon nakshatra must be Purva Bhadrapada (lord=Jupiter)."
             )
 
-    # §6.18 EARNEDNESS RULING (2026-08-02): Pass 2 above is the ONLY check here that can fail
-    # for a reason other than a bug in itself, and it runs for the native chart only. Pass 1
-    # below cannot fail at all — its tolerance comparison ends in a bare `pass`. So a non-native
-    # chart reaching this point has had NOTHING contradicted, and must not claim otherwise.
-    verdict = TWO_PASS_VERIFIED if chart_id == CANONICAL_CHART_ID else UNVERIFIED_DEFAULT
+    # §6.18 EARNEDNESS RULING (2026-08-02): the native-anchor check above is the ONLY check here
+    # that can fail for a reason other than a bug in itself, and it runs for the native chart
+    # only. The duration loop below cannot fail at all — its tolerance comparison ends in a bare
+    # `pass`. So a non-native chart reaching this point has had NOTHING contradicted, and must
+    # not claim otherwise.
+    # SS ruling (S-L1, DASHA_TIER_CHECK P2, CLAUDE.md N.8): the native-anchor check compares ONE
+    # stored row to a constant, which is a table/constant comparison — CLASSICAL_MATCH at most,
+    # never the two-pass tier (nothing here is a second implementation, and this literal does
+    # not go through two_pass_verdict).
+    verdict = CLASSICAL_MATCH if str(chart_id) == CANONICAL_CHART_ID else UNVERIFIED_DEFAULT
 
     # Pass 1: algebraic — each L1 period should have correct duration
     for row in l1_rows:
@@ -860,7 +1005,7 @@ def _verify_yogini(rows: list[dict]) -> str:
         if row["lord_graha"] not in known_lords:
             raise ValueError(f"Yogini: unknown lord {row['lord_graha']!r}")
 
-    return CLASSICAL_MATCH  # membership check only — relay fidelity, not re-derivation (§6.18 ruling)
+    return UNVERIFIED_DEFAULT  # membership in the table the producer draws from: tautology, earns `single` (SS tier rule)
 
 
 def _verify_ashtottari(rows: list[dict]) -> str:
@@ -869,14 +1014,14 @@ def _verify_ashtottari(rows: list[dict]) -> str:
     """
     l1_rows = [r for r in rows if r["level_n"] == 1]
     if not l1_rows:
-        return CLASSICAL_MATCH  # Non-applicable → empty is OK
+        return UNVERIFIED_DEFAULT  # Non-applicable → empty is OK (no check ran)
 
     known = set(ASHTOTTARI_LORDS_ORDER)
     for row in l1_rows:
         if row["lord_graha"] not in known:
             raise ValueError(f"Ashtottari: unknown lord {row['lord_graha']!r}")
 
-    return CLASSICAL_MATCH  # membership check only — relay fidelity, not re-derivation (§6.18 ruling)
+    return UNVERIFIED_DEFAULT  # membership in the table the producer draws from: tautology, earns `single` (SS tier rule)
 
 
 def _verify_chara(rows: list[dict]) -> str:
@@ -885,7 +1030,7 @@ def _verify_chara(rows: list[dict]) -> str:
     """
     l1_rows = [r for r in rows if r["level_n"] == 1]
     if not l1_rows:
-        return CLASSICAL_MATCH
+        return UNVERIFIED_DEFAULT
 
     sign_names = [
         "Aries", "Taurus", "Gemini", "Cancer", "Leo", "Virgo",
@@ -895,7 +1040,7 @@ def _verify_chara(rows: list[dict]) -> str:
         if row["lord_graha"] not in sign_names:
             raise ValueError(f"Chara: invalid sign {row['lord_graha']!r}")
 
-    return CLASSICAL_MATCH  # membership check only — relay fidelity, not re-derivation (§6.18 ruling)
+    return UNVERIFIED_DEFAULT  # membership in the table the producer draws from: tautology, earns `single` (SS tier rule)
 
 
 def _verify_naisargika(rows: list[dict]) -> str:
@@ -907,7 +1052,7 @@ def _verify_naisargika(rows: list[dict]) -> str:
     for row in l1_rows:
         if row["lord_graha"] not in known:
             raise ValueError(f"Naisargika: unknown lord {row['lord_graha']!r}")
-    return CLASSICAL_MATCH  # membership check only — relay fidelity, not re-derivation (§6.18 ruling)
+    return UNVERIFIED_DEFAULT  # membership in the table the producer draws from: tautology, earns `single` (SS tier rule)
 
 
 # Two independent classical correspondence tables PyJHora's Varsha-Vimshottari
@@ -932,7 +1077,8 @@ def _verify_mudda(rows: list[dict], moon_nak_idx0: int | None = None) -> str:
     """
     Mudda/Tajik: real verification (register M-5 "unstamp" — this function
     used to blindly return 'two_pass_verified' for any non-empty row set,
-    without checking the classical anchor was actually correct).
+    without checking the classical anchor was actually correct; Q03 / SS N-62 then
+    demoted the surviving real check to 'classical_match' -- see the return below).
 
     Verifies:
       (1) the varsha-1 (birth-year) L1 lord matches an INDEPENDENT
@@ -973,7 +1119,12 @@ def _verify_mudda(rows: list[dict], moon_nak_idx0: int | None = None) -> str:
                 f"cyclic at varsha index {i} ({l1_rows[i]['lord_graha']!r} vs "
                 f"{l1_rows[i + 9]['lord_graha']!r})"
             )
-    return TWO_PASS_VERIFIED
+    # Q03 / SS N-62 (audit AUDIT_L1_TIERS_PER_EMITTER_v1_0.md §3): `classical_match`, not
+    # `two_pass_verified`. The "independent re-derivation" is a transcribed copy of PyJHora's
+    # nakshatra -> lord tables (`_MUDDA_NATAL_ADHIPATI` / `_MUDDA_VARSHA_ADHIPATI`) plus a 9-year
+    # periodicity invariant, and only the varsha-1 row is re-derived -- a relay-fidelity check
+    # over the same classical table, not a second algorithm.
+    return CLASSICAL_MATCH
 
 
 def _verify_kalachakra(rows: list[dict]) -> str:
@@ -1051,7 +1202,8 @@ def _build_row(
     duration_days = float(_days_between(start_d, end_d))
 
     natal = _get_natal_context(lord)
-    karakas = _get_karakas_active(lord, parent_lord)
+    karaka_role = _get_karaka_role(chart_id, ayanamsha_id, lord)
+    karakas = _get_karakas_active(chart_id, ayanamsha_id, lord, parent_lord)
     relationship = _planet_relationship(lord, parent_lord)
 
     # Sandhi (V-11 fix): whether this period, by its own duration, is a
@@ -1077,11 +1229,11 @@ def _build_row(
         "end_iso": end_iso,
         "duration_days": duration_days,
         "sandhi_flag": sandhi_flag,
-        "karaka_role_at_period": _JAIMINI_KARAKAS.get(lord),
+        "karaka_role_at_period": karaka_role,
         "verification_pass_status": verification_status,
         "verification_method": "two_pass_classical_reconstruction",
         "citation_ref": citation_computer,
-        "citation_human": citation_human,
+        "citation_human": citation_human + _karaka_provenance_suffix(karaka_role, karakas),
         "computed_at": datetime.now(timezone.utc).isoformat(),
         "engine_version": "pyjhora_adapter/0.1.0",
         # A7 additions
@@ -1136,7 +1288,7 @@ def compute_vimshottari(
     # FORENSIC HALT: native-anchored starting-lord check — asserted only for the
     # native chart (a non-native chart's starting lord is whatever its Moon yields).
     # Phase 3B writer generalization.
-    if chart_id == CANONICAL_CHART_ID and nak_lord != FORENSIC_VIMSHOTTARI_STARTING_LORD:
+    if str(chart_id) == CANONICAL_CHART_ID and nak_lord != FORENSIC_VIMSHOTTARI_STARTING_LORD:
         raise ValueError(
             f"FORENSIC HALT: Moon nakshatra lord={nak_lord!r}, "
             f"expected={FORENSIC_VIMSHOTTARI_STARTING_LORD!r}. "
@@ -1209,7 +1361,7 @@ def compute_vimshottari(
             md_row = _build_row(
                 chart_id, build_id, ayanamsha_id, "vimshottari",
                 1, md_lord, md_start_d, md_end_d,
-                None, None, TWO_PASS_VERIFIED, ref, human,
+                None, None, UNVERIFIED_DEFAULT, ref, human,
                 is_trunc_start=is_trunc_s, is_trunc_end=is_trunc_e,
                 start_jd=max(md_jd, min_jd), end_jd=min(md_end_jd, max_jd),
             )
@@ -1242,7 +1394,7 @@ def compute_vimshottari(
                 ad_row = _build_row(
                     chart_id, build_id, ayanamsha_id, "vimshottari",
                     2, ad_lord, ad_start_d, ad_end_d,
-                    md_row_id, md_lord, TWO_PASS_VERIFIED, ref, human,
+                    md_row_id, md_lord, UNVERIFIED_DEFAULT, ref, human,
                     is_trunc_start=is_trunc_s2, is_trunc_end=is_trunc_e2,
                     start_jd=max(ad_jd, min_jd), end_jd=min(ad_end_jd, max_jd),
                 )
@@ -1273,7 +1425,7 @@ def compute_vimshottari(
                     pd_row = _build_row(
                         chart_id, build_id, ayanamsha_id, "vimshottari",
                         3, pd_lord, pd_start_d, pd_end_d,
-                        ad_row_id, ad_lord, TWO_PASS_VERIFIED, ref, human,
+                        ad_row_id, ad_lord, UNVERIFIED_DEFAULT, ref, human,
                         start_jd=max(pd_jd, min_jd), end_jd=min(pd_end_jd, max_jd),
                     )
                     pd_row["dasha_row_id"] = pd_row_id
@@ -1302,7 +1454,7 @@ def compute_vimshottari(
                         sk_row = _build_row(
                             chart_id, build_id, ayanamsha_id, "vimshottari",
                             4, sk_lord, sk_start_d, sk_end_d,
-                            pd_row_id, pd_lord, TWO_PASS_VERIFIED, ref, human,
+                            pd_row_id, pd_lord, UNVERIFIED_DEFAULT, ref, human,
                             start_jd=max(sk_jd, min_jd), end_jd=min(sk_end_jd, max_jd),
                         )
                         rows.append(sk_row)
@@ -1407,7 +1559,7 @@ def compute_kp_subperiods(
             kp_row = _build_row(
                 chart_id, build_id, ayanamsha_id, KP_SYSTEM_ID,
                 2, sub_lord, clipped_s, clipped_e,
-                md_row_id, md_lord, TWO_PASS_VERIFIED, ref, human,
+                md_row_id, md_lord, UNVERIFIED_DEFAULT, ref, human,
                 is_trunc_start=trunc_s, is_trunc_end=trunc_e,
                 kp_sublevel="sub",
                 kp_sub_lord=sub_lord,
@@ -1450,7 +1602,7 @@ def compute_kp_subperiods(
                 kp_sub_row = _build_row(
                     chart_id, build_id, ayanamsha_id, KP_SYSTEM_ID,
                     3, sub2_lord, clipped_s2, clipped_e2,
-                    kp_row_id, sub_lord, TWO_PASS_VERIFIED, ref2, human2,
+                    kp_row_id, sub_lord, UNVERIFIED_DEFAULT, ref2, human2,
                     is_trunc_start=trunc_s2, is_trunc_end=trunc_e2,
                     kp_sublevel="sub_sub",
                     kp_sub_lord=sub_lord,
@@ -1535,7 +1687,7 @@ def compute_yogini_system(
             md_row = _build_row(
                 chart_id, build_id, ayanamsha_id, "yogini",
                 1, name, md_start_d, md_end_d,
-                None, None, TWO_PASS_VERIFIED, ref, human,
+                None, None, UNVERIFIED_DEFAULT, ref, human,
                 period_deity=name,
                 is_trunc_start=(md_jd < min_jd), is_trunc_end=(md_end_jd > max_jd),
                 start_jd=max(md_jd, min_jd), end_jd=min(md_end_jd, max_jd),
@@ -1568,7 +1720,7 @@ def compute_yogini_system(
                 ad_row = _build_row(
                     chart_id, build_id, ayanamsha_id, "yogini",
                     2, ad_name, ad_start_d, ad_end_d,
-                    md_row_id, name, TWO_PASS_VERIFIED, ref, human,
+                    md_row_id, name, UNVERIFIED_DEFAULT, ref, human,
                     period_deity=ad_name,
                     start_jd=max(ad_jd, min_jd), end_jd=min(ad_end_jd, max_jd),
                 )
@@ -1599,7 +1751,7 @@ def compute_yogini_system(
                     pd_row = _build_row(
                         chart_id, build_id, ayanamsha_id, "yogini",
                         3, pd_name, pd_start_d, pd_end_d,
-                        ad_row_id, ad_name, TWO_PASS_VERIFIED, ref, human,
+                        ad_row_id, ad_name, UNVERIFIED_DEFAULT, ref, human,
                         period_deity=pd_name,
                         start_jd=max(pd_jd, min_jd), end_jd=min(pd_end_jd, max_jd),
                     )
@@ -1629,7 +1781,7 @@ def compute_yogini_system(
                         sk_row = _build_row(
                             chart_id, build_id, ayanamsha_id, "yogini",
                             4, sk_name, sk_start_d, sk_end_d,
-                            pd_row_id, pd_name, TWO_PASS_VERIFIED, ref, human,
+                            pd_row_id, pd_name, UNVERIFIED_DEFAULT, ref, human,
                             period_deity=sk_name,
                             start_jd=max(sk_jd, min_jd), end_jd=min(sk_end_jd, max_jd),
                         )
@@ -1713,7 +1865,7 @@ def compute_ashtottari_system(
             md_row = _build_row(
                 chart_id, build_id, ayanamsha_id, "ashtottari",
                 1, md_lord, md_start_d, md_end_d,
-                None, None, TWO_PASS_VERIFIED, ref, human,
+                None, None, UNVERIFIED_DEFAULT, ref, human,
                 applies_to_chart=True,  # FORENSIC: Rahu in 5H → applicable
                 start_jd=max(md_jd, min_jd), end_jd=min(md_end_jd, max_jd),
             )
@@ -1743,7 +1895,7 @@ def compute_ashtottari_system(
                 ad_row = _build_row(
                     chart_id, build_id, ayanamsha_id, "ashtottari",
                     2, ad_lord, ad_start_d, ad_end_d,
-                    md_row_id, md_lord, TWO_PASS_VERIFIED, ref, human,
+                    md_row_id, md_lord, UNVERIFIED_DEFAULT, ref, human,
                     start_jd=max(ad_jd, min_jd), end_jd=min(ad_end_jd, max_jd),
                 )
                 ad_row["dasha_row_id"] = ad_row_id
@@ -1772,7 +1924,7 @@ def compute_ashtottari_system(
                     pd_row = _build_row(
                         chart_id, build_id, ayanamsha_id, "ashtottari",
                         3, pd_lord, pd_start_d, pd_end_d,
-                        ad_row_id, ad_lord, TWO_PASS_VERIFIED, ref, human,
+                        ad_row_id, ad_lord, UNVERIFIED_DEFAULT, ref, human,
                         start_jd=max(pd_jd, min_jd), end_jd=min(pd_end_jd, max_jd),
                     )
                     pd_row["dasha_row_id"] = pd_row_id
@@ -1800,7 +1952,7 @@ def compute_ashtottari_system(
                         sk_row = _build_row(
                             chart_id, build_id, ayanamsha_id, "ashtottari",
                             4, sk_lord, sk_start_d, sk_end_d,
-                            pd_row_id, pd_lord, TWO_PASS_VERIFIED, ref, human,
+                            pd_row_id, pd_lord, UNVERIFIED_DEFAULT, ref, human,
                             start_jd=max(sk_jd, min_jd), end_jd=min(sk_end_jd, max_jd),
                         )
                         rows.append(sk_row)
@@ -2025,7 +2177,7 @@ def compute_chara_system(
             md_row = _build_row(
                 chart_id, build_id, ayanamsha_id, "chara_karaka",
                 1, sign, md_start_d, md_end_d,
-                None, None, TWO_PASS_VERIFIED, ref, human,
+                None, None, UNVERIFIED_DEFAULT, ref, human,
                 start_jd=max(md_jd, min_jd), end_jd=min(md_end_jd, max_jd),
             )
             md_row["dasha_row_id"] = md_row_id
@@ -2054,7 +2206,7 @@ def compute_chara_system(
                 ad_row = _build_row(
                     chart_id, build_id, ayanamsha_id, "chara_karaka",
                     2, ad_sign, ad_start_d, ad_end_d,
-                    md_row_id, sign, TWO_PASS_VERIFIED, ref, human,
+                    md_row_id, sign, UNVERIFIED_DEFAULT, ref, human,
                     start_jd=max(ad_jd, min_jd), end_jd=min(ad_end_jd, max_jd),
                 )
                 ad_row["dasha_row_id"] = ad_row_id
@@ -2083,7 +2235,7 @@ def compute_chara_system(
                     pd_row = _build_row(
                         chart_id, build_id, ayanamsha_id, "chara_karaka",
                         3, pd_sign, pd_start_d, pd_end_d,
-                        ad_row_id, ad_sign, TWO_PASS_VERIFIED, ref, human,
+                        ad_row_id, ad_sign, UNVERIFIED_DEFAULT, ref, human,
                         start_jd=max(pd_jd, min_jd), end_jd=min(pd_end_jd, max_jd),
                     )
                     pd_row["dasha_row_id"] = pd_row_id
@@ -2111,7 +2263,7 @@ def compute_chara_system(
                         sk_row = _build_row(
                             chart_id, build_id, ayanamsha_id, "chara_karaka",
                             4, sk_sign, sk_start_d, sk_end_d,
-                            pd_row_id, pd_sign, TWO_PASS_VERIFIED, ref, human,
+                            pd_row_id, pd_sign, UNVERIFIED_DEFAULT, ref, human,
                             start_jd=max(sk_jd, min_jd), end_jd=min(sk_end_jd, max_jd),
                         )
                         rows.append(sk_row)
@@ -2192,13 +2344,16 @@ def _verify_narayana(rows: list[dict]) -> str:
     raises ValueError rather than encoding an ad-hoc string into this column."""
     md_rows = sorted((r for r in rows if r["level_n"] == 1), key=lambda r: r["start_date"])
     if not md_rows:
-        return CLASSICAL_MATCH
+        return UNVERIFIED_DEFAULT
     for a, b in zip(md_rows, md_rows[1:]):
         if a["end_date"] > b["start_date"]:
             raise ValueError(
                 f"Narayana: overlapping MD periods {a['lord_graha']!r}->{b['lord_graha']!r}"
             )
-    return TWO_PASS_VERIFIED
+    # Q03 / SS N-62 + SS tier rule (S-L1 follow-up): a non-overlap ORDERING check over the engine's
+    # own output is a bounds invariant: neither a classical-table match nor a second implementation
+    # -> `single`. The build still halts (ValueError) on an overlap.
+    return UNVERIFIED_DEFAULT
 
 
 def compute_narayana_system(
@@ -2374,7 +2529,7 @@ def compute_naisargika_system(
         md_row = _build_row(
             chart_id, build_id, ayanamsha_id, "naisargika",
             1, md_lord, md_start_d, md_end_d,
-            None, None, TWO_PASS_VERIFIED, ref, human,
+            None, None, UNVERIFIED_DEFAULT, ref, human,
             start_jd=max(md_jd, min_jd), end_jd=min(md_end_jd, max_jd),
         )
         md_row["dasha_row_id"] = md_row_id
@@ -2402,7 +2557,7 @@ def compute_naisargika_system(
             ad_row = _build_row(
                 chart_id, build_id, ayanamsha_id, "naisargika",
                 2, ad_lord, ad_start_d, ad_end_d,
-                md_row_id, md_lord, TWO_PASS_VERIFIED, ref, human,
+                md_row_id, md_lord, UNVERIFIED_DEFAULT, ref, human,
                 start_jd=max(ad_jd, min_jd), end_jd=min(ad_end_jd, max_jd),
             )
             ad_row["dasha_row_id"] = ad_row_id
@@ -2430,7 +2585,7 @@ def compute_naisargika_system(
                 pd_row = _build_row(
                     chart_id, build_id, ayanamsha_id, "naisargika",
                     3, pd_lord, pd_start_d, pd_end_d,
-                    ad_row_id, ad_lord, TWO_PASS_VERIFIED, ref, human,
+                    ad_row_id, ad_lord, UNVERIFIED_DEFAULT, ref, human,
                     start_jd=max(pd_jd, min_jd), end_jd=min(pd_end_jd, max_jd),
                 )
                 pd_row["dasha_row_id"] = pd_row_id
@@ -2457,7 +2612,7 @@ def compute_naisargika_system(
                     sk_row = _build_row(
                         chart_id, build_id, ayanamsha_id, "naisargika",
                         4, sk_lord, sk_start_d, sk_end_d,
-                        pd_row_id, pd_lord, TWO_PASS_VERIFIED, ref, human,
+                        pd_row_id, pd_lord, UNVERIFIED_DEFAULT, ref, human,
                         start_jd=max(sk_jd, min_jd), end_jd=min(sk_end_jd, max_jd),
                     )
                     rows.append(sk_row)
@@ -2505,6 +2660,22 @@ _MUDDA_IDX_TO_LORD = ["Sun", "Moon", "Mars", "Mercury", "Jupiter", "Venus", "Sat
 
 
 @serialized_swiss_state
+def _mudda_sun_long_at(jd: float, ayanamsha_id: str) -> float:
+    """Sun's sidereal longitude (deg, 0..360) at Julian day ``jd`` (UT) for ``ayanamsha_id``.
+
+    The mode and ephemeris path are selected HERE, on the calling thread (swisseph keeps both per
+    thread on Linux), instead of being inherited from ``_mudda_solar_return_jd``'s own
+    ``set_ayanamsa_mode`` call -- the same nested-helper hazard as ``ga_sade_sati_writer.
+    _saturn_sign_at_jd`` (TI thread-fix lane).  Byte-identical when the thread already holds the mode.
+    """
+    from pyjhora_adapter._jhora import drik as _drik
+    from pyjhora_adapter._swiss_thread_scope import with_sidereal_mode
+
+    with with_sidereal_mode(ayanamsha_id, jd, via_jhora=True):
+        return float(_drik.sidereal_longitude(jd, 0)) % 360.0  # 0 = Sun (swisseph body id)
+
+
+@serialized_swiss_state
 def _mudda_solar_return_jd(
     natal_sun_long: float,
     birth_jd: float,
@@ -2535,7 +2706,7 @@ def _mudda_solar_return_jd(
     _drik.set_ayanamsa_mode(_mode)
 
     def _sun_long_at(jd: float) -> float:
-        return float(_drik.sidereal_longitude(jd, 0)) % 360.0  # 0 = Sun (swisseph body id)
+        return _mudda_sun_long_at(jd, ayanamsha_id)
 
     def _ang_diff(a: float, b: float) -> float:
         return ((a - b + 180.0) % 360.0) - 180.0
@@ -2687,7 +2858,7 @@ def compute_mudda_system(
         md_row = _build_row(
             chart_id, build_id, ayanamsha_id, "mudda",
             1, varsha_lord, varsha_start_d, varsha_end_d,
-            None, None, TWO_PASS_VERIFIED, ref, human,
+            None, None, UNVERIFIED_DEFAULT, ref, human,
             varsha_year_lord=varsha_lord,
             start_jd=max(varsha_start_jd, min_jd), end_jd=min(varsha_end_jd, max_jd_global),
         )
@@ -2712,7 +2883,7 @@ def compute_mudda_system(
             row2 = _build_row(
                 chart_id, build_id, ayanamsha_id, "mudda",
                 2, lord_name, s_d, e_d,
-                md_row_id, varsha_lord, TWO_PASS_VERIFIED, ref2, human2,
+                md_row_id, varsha_lord, UNVERIFIED_DEFAULT, ref2, human2,
                 varsha_year_lord=varsha_lord,
                 start_jd=max(s_jd, min_jd), end_jd=min(e_jd, max_jd_global),
             )
@@ -2743,7 +2914,7 @@ def compute_mudda_system(
             row3 = _build_row(
                 chart_id, build_id, ayanamsha_id, "mudda",
                 3, lord_name, s_d, e_d,
-                parent_id, parent_lord, TWO_PASS_VERIFIED, ref3, human3,
+                parent_id, parent_lord, UNVERIFIED_DEFAULT, ref3, human3,
                 varsha_year_lord=varsha_lord,
                 start_jd=max(s_jd, min_jd), end_jd=min(e_jd, max_jd_global),
             )
@@ -2771,7 +2942,7 @@ def compute_mudda_system(
             row4 = _build_row(
                 chart_id, build_id, ayanamsha_id, "mudda",
                 4, lord_name, s_d, e_d,
-                parent_id, parent_lord, TWO_PASS_VERIFIED, ref4, human4,
+                parent_id, parent_lord, UNVERIFIED_DEFAULT, ref4, human4,
                 varsha_year_lord=varsha_lord,
                 start_jd=max(s_jd, min_jd), end_jd=min(e_jd, max_jd_global),
             )
@@ -2883,7 +3054,7 @@ def compute_kalachakra_system(
             row = _build_row(
                 chart_id, build_id, ayanamsha_id, "kalachakra",
                 depth, sign, s_d, e_d,
-                parent_id, parent_lord, TWO_PASS_VERIFIED, ref, human,
+                parent_id, parent_lord, UNVERIFIED_DEFAULT, ref, human,
                 period_deity=f"Kalachakra-{sign}",
                 anchored_solar_return_iso=solar_return_iso,
                 start_jd=max(s_jd, min_jd), end_jd=min(e_jd, max_jd),
@@ -3128,6 +3299,11 @@ def build_system(
     The native-anchored FORENSIC assertion runs only for the native chart.
     """
     from contextlib import nullcontext
+    # The orchestrator hands chart_id over exactly as psycopg decodes build_runs.chart_id: a uuid.UUID. Every
+    # identity below (stable_uuid / stabilize_hierarchical_uuids use canonical JSON, which refuses a UUID),
+    # every `chart_id == CANONICAL_CHART_ID` guard and every (chart_id, ayanamsha) cache key is a str
+    # contract, so normalise once on entry (REHEARSAL-LINUX P1; the str form is the canonical text of the UUID).
+    chart_id = str(chart_id)
     if build_id is None:
         build_id = str(uuid.uuid4())
 
@@ -3150,6 +3326,9 @@ def build_system(
     if not skip_db:
         with (_conn() if conn is None else nullcontext(conn)) as _nc:
             _activate_natal_context(chart_id, ayanamsha_id, _nc)
+            # S-L1: read the chart's OWN karaka roles from ga_sensitive (N.5) for this
+            # exact (chart, ayanamsha); raises later, only if a row needs a role.
+            _activate_karaka_roles(chart_id, ayanamsha_id, _nc)
 
     logger.info(
         "[ga_dashas] Building system=%s ayanamsha=%s chart_id=%s",
@@ -3177,8 +3356,15 @@ def build_system(
     if system_id == "vimshottari":
         # FORENSIC assertion — native-anchored (Moon nak + starting lord); a
         # non-native chart has no pre-verified anchor, so it is not asserted.
-        if chart_id == CANONICAL_CHART_ID:
-            _assert_forensic_vimshottari([], moon_nak_name, moon_nak_lord)
+        if str(chart_id) == CANONICAL_CHART_ID:
+            try:
+                _assert_forensic_vimshottari([], moon_nak_name, moon_nak_lord)
+            except Exception:
+                logger.error("FORENSIC gate ga_dashas executed passed=False chart=canonical ayanamsha=%s", ayanamsha_id)
+                raise
+            logger.info("FORENSIC gate ga_dashas executed passed=True chart=canonical ayanamsha=%s", ayanamsha_id)
+        else:
+            logger.debug("FORENSIC gate ga_dashas skipped chart=skipped-non-canonical ayanamsha=%s", ayanamsha_id)
         rows = compute_vimshottari(moon_sid, birth_jd, ayanamsha_id, chart_id, build_id)
         # KP sub-periods (CRITICAL OVERRIDE 2)
         kp_rows = compute_kp_subperiods(rows, chart_id, build_id, ayanamsha_id)
@@ -3367,6 +3553,7 @@ def write_dasha_scope_cap_sentinels(chart_id: str, build_id: str, *, conn: Any =
     """
     from contextlib import nullcontext
 
+    chart_id = str(chart_id)  # uuid.UUID from the real orchestrator path; stable_uuid below hashes canonical JSON, which refuses a UUID (REHEARSAL-LINUX P1)
     common_fields = {
         "chart_id": chart_id,
         "ayanamsha_id": "INVARIANT",

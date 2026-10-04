@@ -1,0 +1,272 @@
+{
+ "asset_id": "ph_rectification",
+ "collected_utc": "2026-10-03T12:25:06.236594Z",
+ "chart": "482012f1-710e-4a25-994a-93821f5871aa",
+ "registry": {
+  "rung": "R4",
+  "layer": "phala",
+  "scope": "per_chart",
+  "domain": "chart",
+  "asset_id": "ph_rectification",
+  "size_sql": "SELECT pg_total_relation_size('phala_rectification')",
+  "count_sql": "SELECT (SELECT count(*) FROM phala_rectification WHERE chart_id = $1) + (SELECT count(*) FROM phala_rectification_best WHERE chart_id = $1) AS count",
+  "dead_flag": null,
+  "is_active": true,
+  "asset_kind": "artifact",
+  "asset_type": "data",
+  "created_at": "2026-06-22T11:17:30.53947+00:00",
+  "depends_on": [
+   "ph_nimitta"
+  ],
+  "has_writer": true,
+  "layer_name": "Phala",
+  "sort_order": 9,
+  "layer_index": "L4",
+  "clear_tables": null,
+  "english_name": "Birth-time rectification",
+  "has_substeps": false,
+  "health_probe": null,
+  "storage_type": "postgres_table",
+  "target_floor": 186,
+  "target_table": "phala_rectification",
+  "provides_apis": null,
+  "sanskrit_name": "Jananak\u0101la-\u015buddhi",
+  "superseded_by": null,
+  "catalog_status": "CURRENT",
+  "service_health": null,
+  "last_invoked_at": null,
+  "selftest_detail": null,
+  "data_disposition": null,
+  "last_selftest_at": null,
+  "estimated_seconds": 1,
+  "volume_explanation": "37 offsets (a fixed +/-90 minute, 5-minute lattice) x 5 ayanamshas + 1 best row = 186. Identical on every chart because the SCAN GRID is chart-independent by design; the ascendants computed on it are per-chart (verified: lagna differs between charts at every offset). A derived structural constant, not a chart-independence bug. KNOWN OPEN DEFECTS held to W3-3: the LEL fit is identically 0.0000 on all 95 scored candidates while load_bearing reads true, and confidence_low = -0.2000 is persisted -- the two invariants that detect these fail today and land with their fixes rather than installed red. Detector is chart-PARTITIONED per D-CND-03, so a violation names the chart it belongs to.",
+  "english_description": "Birth-time rectification via PyJHora ascendant scan (\u00b190 min, 5-min steps, 5 ayanamshas) scored against pre-2020 LEL events. LEAKAGE-FIREWALL: post-2020 + LEL v1.7 M5-A-S1 enrichment events held out. NO-AUTO-OVERRIDE (D43): auto_action=stage_for_review only; canonical chart never auto-mutated. Best candidate staged for native adoption.",
+  "integrity_check_sql": "\n-- D-CND-03: every clause partitions on chart_id already -- the scan lattice is a per-chart\n-- structure, so a defect in one chart's lattice cannot be masked by another's.\nSELECT\n  -- Contiguous, gap-free offset lattice at the declared step.\n  NOT EXISTS (SELECT 1 FROM (\n     SELECT chart_id, offset_minutes,\n            lead(offset_minutes) OVER (PARTITION BY chart_id ORDER BY offset_minutes) nx\n     FROM (SELECT DISTINCT chart_id, offset_minutes FROM phala_rectification) o) g\n    WHERE nx IS NOT NULL AND nx - offset_minutes <> 5\n    GROUP BY chart_id HAVING count(*) > 0)\n  -- Symmetric and centred on the recorded birth time.\n  AND NOT EXISTS (SELECT 1 FROM phala_rectification\n     GROUP BY chart_id HAVING min(offset_minutes) <> -max(offset_minutes) OR NOT bool_or(offset_minutes = 0))\n  -- Complete cross-product: every offset scored under every ayanamsha.\n  AND NOT EXISTS (SELECT 1 FROM (SELECT chart_id, offset_minutes FROM phala_rectification\n        GROUP BY 1,2 HAVING count(DISTINCT ayanamsha_id) <> 5) x\n     GROUP BY chart_id HAVING count(*) > 0)\n  -- lagna_stable is an all-or-nothing property of an offset across ayanamshas.\n  AND NOT EXISTS (SELECT 1 FROM (SELECT chart_id, offset_minutes FROM phala_rectification\n        GROUP BY 1,2 HAVING count(DISTINCT lagna_stable) > 1) x\n     GROUP BY chart_id HAVING count(*) > 0)\n  -- The best row must resolve to a real candidate of its OWN chart.\n  AND NOT EXISTS (SELECT 1 FROM phala_rectification_best b WHERE b.best_candidate_id IS NOT NULL\n       AND NOT EXISTS (SELECT 1 FROM phala_rectification c\n             WHERE c.id = b.best_candidate_id AND c.chart_id = b.chart_id)\n     GROUP BY b.chart_id HAVING count(*) > 0)\n",
+  "natural_key_partition": "phala_rectification (chart_id, offset_minutes, ayanamsha_id) + phala_rectification_best (chart_id) -- PhRectificationWriter is the confirmed sole build-time writer of BOTH tables in full (not a subset case). Both natural keys ARE the tables' own live UNIQUE constraints (phala_rectification_chart_offset_ayan; phala_rectification_best_chart_id_key). A legacy dead function, brahmagyan/phala/rectification.py::seed_phala_rectification(), also targets phala_rectification but has zero call sites anywhere in the tree and its INSERT/ON CONFLICT clause reference columns (candidate_time, alignment_score, rectification_confidence, source_citation, computed_at) that do not exist on the live schema -- confirmed dead, not a live co-writer risk. Writer does an unconditional DELETE FROM phala_rectification_best WHERE chart_id = %s then DELETE FROM phala_rectification WHERE chart_id = %s (children first) immediately before the INSERT batch (delete-then-insert-per-chart, CLAUDE.md SS N.3). Surrogate/non-owned columns excluded from the digest value columns: both tables' id (surrogate PK, gen_random_uuid()) and scored_at (DEFAULT now()); phala_rectification_best.best_candidate_id (FK to the other table's fresh-per-rebuild surrogate PK, non-deterministic across rebuilds, redundant with offset_minutes/candidate_birth_utc already included); phala_rectification_best.native_adopted/adopted_at (never set by this writer's own INSERT column list -- mutated only by a post-build human review action per the D43 stage_for_review gate, reset to DEFAULT on every rebuild, not writer-owned content)",
+  "rebuild_on_probe_fail": false,
+  "expected_volume_inputs": {
+   "source": "services/ph_rectification/engine.py SCAN_HALF_WIDTH_MIN / SCAN_STEP_MIN / AYANAMSHAS",
+   "best_rows": 1,
+   "scan_step_min": 5,
+   "ayanamsha_count": 5,
+   "scan_half_width_min": 90
+  },
+  "writer_timeout_seconds": 10800,
+  "expected_volume_formula": "(floor(2 * scan_half_width_min / scan_step_min) + 1) * ayanamsha_count + 1 best row"
+ },
+ "throughput": {
+  "state": "stale",
+  "history": [],
+  "asset_id": "ph_rectification",
+  "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+  "last_error": null,
+  "rows_written": 186,
+  "expected_rows": null,
+  "last_built_at": "2026-08-13T01:16:06.163083+00:00",
+  "rows_per_second": null,
+  "duration_seconds": null,
+  "last_measured_at": null,
+  "measurement_count": 0,
+  "last_measured_build_id": null,
+  "built_against_writer_hash": "unknown",
+  "built_against_upstream_hash": "bb1935be1d62af32"
+ },
+ "runs_summary": [
+  {
+   "n": 9,
+   "last": "2026-07-13T21:13:41.719555+00:00",
+   "state": "aborted",
+   "disposition": null
+  },
+  {
+   "n": 37,
+   "last": "2026-08-13T01:16:06.163083+00:00",
+   "state": "complete",
+   "disposition": null
+  },
+  {
+   "n": 26,
+   "last": "2026-08-12T23:44:41.520659+00:00",
+   "state": "error",
+   "disposition": "blocked_dependency"
+  },
+  {
+   "n": 2,
+   "last": "2026-07-06T14:23:16.167695+00:00",
+   "state": "error",
+   "disposition": null
+  },
+  {
+   "n": 19,
+   "last": null,
+   "state": "queued",
+   "disposition": null
+  }
+ ],
+ "last_runs": [
+  {
+   "error": null,
+   "scope": "asset_set",
+   "state": "complete",
+   "run_id": "cbd6ea44-3c09-4ce5-9b21-d22fb0eeccf6",
+   "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+   "ended_at": "2026-08-13T01:16:06.163083+00:00",
+   "started_at": "2026-08-13T01:16:03.847603+00:00",
+   "disposition": null,
+   "output_changed": null
+  },
+  {
+   "error": null,
+   "scope": "asset_set",
+   "state": "complete",
+   "run_id": "51eaa05c-7604-42cc-a3db-e7fa6d9c3f7c",
+   "chart_id": "1c826d5a-41cb-4450-b4dc-59d440e5f75a",
+   "ended_at": "2026-08-12T17:10:34.028689+00:00",
+   "started_at": "2026-08-12T17:10:13.723586+00:00",
+   "disposition": null,
+   "output_changed": null
+  },
+  {
+   "error": null,
+   "scope": "global",
+   "state": "complete",
+   "run_id": "9fc3e49d-8c24-4be7-80f0-29c8cff726e8",
+   "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+   "ended_at": "2026-08-07T23:44:51.854154+00:00",
+   "started_at": "2026-08-07T23:44:25.069053+00:00",
+   "disposition": null,
+   "output_changed": null
+  },
+  {
+   "error": null,
+   "scope": "asset_set",
+   "state": "complete",
+   "run_id": "d33b44ce-5e42-4e90-9e54-6f7445652931",
+   "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+   "ended_at": "2026-08-07T18:57:44.462028+00:00",
+   "started_at": "2026-08-07T18:57:14.55461+00:00",
+   "disposition": null,
+   "output_changed": null
+  },
+  {
+   "error": null,
+   "scope": "asset_set",
+   "state": "complete",
+   "run_id": "5940f325-63b5-48ce-b9de-3472a5746af4",
+   "chart_id": "1c826d5a-41cb-4450-b4dc-59d440e5f75a",
+   "ended_at": "2026-07-28T10:58:01.393556+00:00",
+   "started_at": "2026-07-28T10:57:53.032082+00:00",
+   "disposition": null,
+   "output_changed": null
+  },
+  {
+   "error": null,
+   "scope": "asset_set",
+   "state": "complete",
+   "run_id": "08b895f3-b3dc-4d75-b672-6bca077e28a0",
+   "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+   "ended_at": "2026-07-28T10:18:23.250683+00:00",
+   "started_at": "2026-07-28T10:18:02.585268+00:00",
+   "disposition": null,
+   "output_changed": null
+  },
+  {
+   "error": null,
+   "scope": "asset_set",
+   "state": "complete",
+   "run_id": "0faf6c66-8dad-4bcf-8478-fd92f3171b66",
+   "chart_id": "1c826d5a-41cb-4450-b4dc-59d440e5f75a",
+   "ended_at": "2026-07-28T04:59:30.510276+00:00",
+   "started_at": "2026-07-28T04:59:02.601435+00:00",
+   "disposition": null,
+   "output_changed": null
+  },
+  {
+   "error": null,
+   "scope": "asset_set",
+   "state": "complete",
+   "run_id": "ed26e2d3-6dfa-43a4-936e-a815f7fc5309",
+   "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+   "ended_at": "2026-07-28T03:28:44.966759+00:00",
+   "started_at": "2026-07-28T03:28:10.793009+00:00",
+   "disposition": null,
+   "output_changed": null
+  }
+ ],
+ "last_runs_canonical": [
+  {
+   "error": null,
+   "state": "complete",
+   "run_id": "cbd6ea44-3c09-4ce5-9b21-d22fb0eeccf6",
+   "ended_at": "2026-08-13T01:16:06.163083+00:00",
+   "started_at": "2026-08-13T01:16:03.847603+00:00",
+   "disposition": null,
+   "output_changed": null
+  },
+  {
+   "error": null,
+   "state": "complete",
+   "run_id": "9fc3e49d-8c24-4be7-80f0-29c8cff726e8",
+   "ended_at": "2026-08-07T23:44:51.854154+00:00",
+   "started_at": "2026-08-07T23:44:25.069053+00:00",
+   "disposition": null,
+   "output_changed": null
+  },
+  {
+   "error": null,
+   "state": "complete",
+   "run_id": "d33b44ce-5e42-4e90-9e54-6f7445652931",
+   "ended_at": "2026-08-07T18:57:44.462028+00:00",
+   "started_at": "2026-08-07T18:57:14.55461+00:00",
+   "disposition": null,
+   "output_changed": null
+  },
+  {
+   "error": null,
+   "state": "complete",
+   "run_id": "08b895f3-b3dc-4d75-b672-6bca077e28a0",
+   "ended_at": "2026-07-28T10:18:23.250683+00:00",
+   "started_at": "2026-07-28T10:18:02.585268+00:00",
+   "disposition": null,
+   "output_changed": null
+  },
+  {
+   "error": null,
+   "state": "complete",
+   "run_id": "ed26e2d3-6dfa-43a4-936e-a815f7fc5309",
+   "ended_at": "2026-07-28T03:28:44.966759+00:00",
+   "started_at": "2026-07-28T03:28:10.793009+00:00",
+   "disposition": null,
+   "output_changed": null
+  },
+  {
+   "error": null,
+   "state": "complete",
+   "run_id": "60f05804-9e1a-41c7-a96e-27597825fd70",
+   "ended_at": "2026-07-27T06:03:30.397712+00:00",
+   "started_at": "2026-07-27T06:03:29.304593+00:00",
+   "disposition": null,
+   "output_changed": null
+  },
+  {
+   "error": null,
+   "state": "complete",
+   "run_id": "42720d15-f943-42af-8b76-e4f97f3bfd3f",
+   "ended_at": "2026-07-24T11:12:02.90434+00:00",
+   "started_at": "2026-07-24T11:11:57.171829+00:00",
+   "disposition": null,
+   "output_changed": null
+  },
+  {
+   "error": null,
+   "state": "complete",
+   "run_id": "2c514a63-9162-4018-a4ce-744b8ed40117",
+   "ended_at": "2026-07-20T19:33:08.281939+00:00",
+   "started_at": "2026-07-20T19:33:07.414717+00:00",
+   "disposition": null,
+   "output_changed": null
+  }
+ ],
+ "live_count": "count\n186\n(1 row)",
+ "integrity_check_result": "?column?\nt\n(1 row)"
+}

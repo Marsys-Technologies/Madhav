@@ -98,3 +98,35 @@ def test_Q8_the_latta_carr_d1_certificate_carries_the_ocr_english_caveat_and_the
     assert (with_coupling["citation_state"], with_coupling["citation_state_caveat"]) == (alone["citation_state"], alone["citation_state_caveat"]) == ("sourced_ocr_unverified", True)
     assert {k: v for k, v in with_coupling.items() if k in ("verdict", "criterion", "citation_state", "citation_state_caveat", "detector", "kind")} == \
         {k: v for k, v in alone.items() if k in ("verdict", "criterion", "citation_state", "citation_state_caveat", "detector", "kind")}
+
+
+# ───────────────────────── E6.1 follow-up (LOW-1): the required-coupling pin at certify ─────────────────────────
+
+def _plain_na_census():
+    ms = {c: ac._na("prose_fields [] declared and no write to a column the declarations treat as narration", "no-prose") for c in NARR}
+    ms["Carr.D1"] = _d1()
+    return write_census_file(ms, asset=AID, layer="L0", generated=RUN)
+
+
+def test_a_plain_narr_na_record_of_a_required_asset_is_refused_at_certify(ledger):
+    """The census record of the latta carries a plain R03 N/A (no `prose_coupling` block: what an old census, or the glue before the pin, emitted) beside a Carr.D1 PASS. The
+    certificate writer reads no declarations file, so its facts could never flag the missing coupling; the required-coupling pin is read from the record instead."""
+    before = ledger.read_bytes()
+    with pytest.raises(nc.CertificationRefused) as ei:
+        nc.write_certification(**_req(ledger, _plain_na_census(), NCRIT, "N/A", na_rule_id=RID))
+    assert ei.value.code == "na_coupling_unmet" and "requires a prose_coupling to carriage_d1" in str(ei.value) and "N-94" in str(ei.value)
+    assert ledger.read_bytes() == before
+
+
+def test_the_coupled_record_of_the_required_asset_and_a_plain_record_of_any_other_asset_certify_as_before(ledger):
+    assert nc.write_certification(**_req(ledger, _census(_d1()), NCRIT, "N/A", na_rule_id=RID)).record["verdict"] == "N/A"
+    ms = {c: ac._na("prose_fields [] declared and no write to a column the declarations treat as narration", "no-prose") for c in NARR}
+    p = write_census_file(ms, asset="bg_doshas", layer="L0", generated=RUN)
+    assert nc.write_certification(**dict(_req(ledger, p, NCRIT, "N/A", na_rule_id=RID), asset="bg_doshas")).record["verdict"] == "N/A"
+
+
+def test_MUTATION_without_the_required_table_the_plain_record_of_the_latta_certifies(ledger, monkeypatch):
+    with pytest.raises(nc.CertificationRefused):
+        nc.write_certification(**_req(ledger, _plain_na_census(), NCRIT, "N/A", na_rule_id=RID))
+    monkeypatch.setattr(ac, "PROSE_COUPLING_REQUIRED", {})
+    assert nc.write_certification(**_req(ledger, _plain_na_census(), NCRIT, "N/A", na_rule_id=RID)).record["verdict"] == "N/A"          # the cheaper state, certified: the pin refused it
