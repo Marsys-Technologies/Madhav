@@ -383,7 +383,7 @@ jobs:
           PGPASSWORD: postgres
         run: psql -h localhost -U postgres -v ON_ERROR_STOP=1 -c "CREATE DATABASE gochara_a51_test;"
 
-      - name: Pravāha F-1 — migration 1206 live-DB suite (REQUIRED, never skipped) + reproducible mutation evidence
+      - name: Pravāha F-1 — migration 1206 / 1232 / 1233 live-DB suites (REQUIRED, never skipped) + reproducible mutation evidence
         # GOCHARA_REQUIRE_DB=1 turns a missing/blank URL into a FAILING test instead of the
         # suite's usual silent skip (Codex v1.0 R5). The mutation harness neuters each 1206
         # guard in turn and requires every mutation to be caught by >=1 failing test.
@@ -391,7 +391,7 @@ jobs:
           GOCHARA_A51_TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/gochara_a51_test
           GOCHARA_REQUIRE_DB: '1'
         run: |
-          npx vitest run tests/integration/gochara_b6_am5_search_inventory.db.test.ts --reporter=verbose --no-file-parallelism
+          npx vitest run tests/integration/gochara_b6_am5_search_inventory.db.test.ts tests/integration/gochara_b6_am14_moon_domain.db.test.ts tests/integration/gochara_b6_am21_p1_anchor.db.test.ts --reporter=verbose --no-file-parallelism
           python3 scripts/gochara/mutation_check_1206.py
 
       - name: RATE-07 — provision the rate-limit bucket DB (migration 580, real file)
