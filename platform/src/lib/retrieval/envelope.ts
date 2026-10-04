@@ -915,6 +915,15 @@ export function buildReadingContract(params: BuildReadingContractParams): string
   // 2. Grounding sentence — is the verdict backed by resolvable L1 facts?
   if (grade === 'floored_null') {
     s.push('It is an HONEST EMPTY result — no supporting data was found; do not read the absence as a negative finding, and do not manufacture a reading from it.')
+  } else if ((params.groundingFactCount ?? 0) > 0 && judgmentFlagsInclude(params.judgmentFlags, 'l2_receipts_predate_l1')) {
+    // N-91 between-state disclosure: a REAL lineage detector (provenance/l2_lineage.ts) found the L2
+    // receipts behind these ids predate the current L1 rebuild — the count sentence would be a
+    // verified-sounding claim over ids that may no longer resolve. Take the existing NOT-anchored
+    // branch and name the cause.
+    s.push('Its reading is NOT yet anchored to resolvable L1 fact references in this envelope; drill via the pointers before treating it as confirmed. Cause: the L2 receipts behind these fact_ids predate the current L1 (chart_facts) rebuild, so the cited fact_ids may no longer resolve; this clears when L2 is rebuilt.')
+  } else if ((params.groundingFactCount ?? 0) > 0 && judgmentFlagsInclude(params.judgmentFlags, 'l2_lineage_check_failed')) {
+    // Fail closed: an unchecked lineage is never read as a clean one.
+    s.push('Its reading is NOT yet anchored to resolvable L1 fact references in this envelope; drill via the pointers before treating it as confirmed. Cause: the L2-to-L1 lineage check could not be completed, so whether the cited fact_ids still resolve in chart_facts is unknown.')
   } else if ((params.groundingFactCount ?? 0) > 0) {
     s.push(`Its reading is grounded in ${params.groundingFactCount} resolvable L1 fact reference(s) — you may follow each fact_id down to its deterministic source.`)
   } else {
@@ -1191,6 +1200,14 @@ export const JUDGMENT_FLAG_CODES = [
   // served row's own harana_status cannot confirm that, a figure of unverified reduction status.
   // Ethical Framework: never serve a bare "N-year" longevity total with no caveat. ──
   'ayurdaya_unreduced_base_figures',
+  // ── N-91 between-state L2 lineage disclosure (provenance/l2_lineage.ts): a REAL receipt-pin detector
+  // found the L2 (Bodha) receipts behind a response's fact_ids were built against an L1 (chart_facts)
+  // generation that has since been rebuilt, so those ids may no longer resolve. When set,
+  // buildReadingContract takes the NOT-yet-anchored branch with the cause. ──
+  'l2_receipts_predate_l1',
+  // The lineage detector itself could not run (query/evaluation error). Fail closed: "could not
+  // check" is disclosed as such and never read as "checked clean". ──
+  'l2_lineage_check_failed',
   // ── transitional catch-all for a bare string this migration cannot classify further ──
   'legacy_unstructured_flag',
 ] as const

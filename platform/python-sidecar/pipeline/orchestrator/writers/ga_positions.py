@@ -30,7 +30,9 @@ class GaPositionsWriter(WriterBase):
         # Every chart including the native now goes through this path — no NATIVE_BIRTH
         # fallback exists anywhere in the stack.
         s = build_ga_positions(
-            chart_id=ctx.config['chart_id'],
+            # uuid.UUID from the real orchestrator (psycopg uuid decode); the writer's FORENSIC gate compares
+            # chart_id to a str constant, so convert at the boundary.
+            chart_id=str(ctx.config['chart_id']),
             build_id=ctx.build_id,
             conn=ctx.db_conn,
             birth_params=ctx.config.get('birth_params'),

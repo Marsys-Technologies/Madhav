@@ -31,6 +31,7 @@ sys.path.insert(0, str(HERE.parent))
 sys.path.insert(0, str(HERE))
 
 import asset_census as ac  # noqa: E402
+import _decl_version  # noqa: E402
 import test_e6_1_dens_repair as dr  # noqa: E402
 import test_e6_1_p1_registry_rollup as p1  # noqa: E402
 import test_w2_1_earned_verdicts as w1  # noqa: E402
@@ -533,7 +534,7 @@ def test_the_pin_the_revision_the_criterion_and_the_declarations_file():
     src = pathlib.Path(ac.__file__).read_text(encoding="utf-8")
     assert "23 (provisional): DENS-TIER-GUARD" in src.split("REGISTRY_REVISION = ", 1)[1].split("\n", 1)[0]
     raw = json.loads(ac.DECLARATIONS_PATH.read_text(encoding="utf-8"))
-    assert raw["version"] == "1.13.0" and raw["density_tier_declaration_fields"] == ["column", "why", "evidence"] == list(ac.DENS_TIER_DECL_FIELDS)
+    assert raw["version"] == _decl_version.CURRENT and raw["density_tier_declaration_fields"] == ["column", "why", "evidence"] == list(ac.DENS_TIER_DECL_FIELDS)
     assert "density_tier_columns" in raw["description"] and "N-98" in raw["description"]
     assert [a for a, d in raw["assets"].items() if "density_tier_columns" in d] == [], "inert: no asset declares one yet"
 

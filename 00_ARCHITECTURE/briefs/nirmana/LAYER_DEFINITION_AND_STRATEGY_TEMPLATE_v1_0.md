@@ -275,7 +275,7 @@ each rule, the detector.** A rule with no detector is a wish.
 
 ```
 inherits:    Product §2 (two modes, one depth); Data plane §3.4 (the field → contract mapping)
-measured_by: presentation-parity test (Data plane §12.2): both renderings from the consumed reading package, no recomputation, identical finding / confidence / uncertainty
+measured_by: producer-field carriage test — each §3.4 field this layer owns is present in its produced contracts; the presentation-parity test itself (Data plane §12.2) is [TRANSFERS] and is linked when its owner runs it, never run as this layer's own acceptance
 traces_to:   0.1 — the acharya rows are unservable if these fields are not carried
 ```
 
@@ -356,7 +356,7 @@ is these detectors or it does not exist:
 | c | **independent re-derivation** | a classical quantity computed a second way, from different inputs | the two results differ beyond a declared tolerance |
 
 For each obligation the layer owns (§2.4), state which of a–c applies, the detector, and its current
-result — `PASS` / `FAIL` / `PARTIAL` / **`NO DETECTOR`**. `NO DETECTOR` is never a pass; it is a gap.
+result — `PASS` / `FAIL` / `PARTIAL` / **`NO_DETECTOR`**. `NO_DETECTOR` is never a pass; it is a gap.
 
 **A reference layer is where this matters most.** L0 holds the tradition's own testimony, so a corrupted
 copy there propagates into every reading built on it and is invisible at every later layer — each of which
@@ -517,7 +517,7 @@ Three instruments, not one. Only the first produces certification records.
 
 **(a) The gates — certified, per asset.** **Seven always, plus at most two that apply conditionally
 — nine in total** (eight at v1.1; `Build` added 2026-09-26 by native ruling, decision 17). Each is a
-claim with a detector that could return false; a gate without one is `NO DETECTOR`, which is an honest
+claim with a detector that could return false; a gate without one is `NO_DETECTOR`, which is an honest
 null, never a pass. The set is per asset and layer-independent: **9 × 129 assets across L0–L5**.
 
 **The gate/opportunity boundary, decided by native ruling and specified in the tier-4 template §4.2:**
@@ -611,6 +611,8 @@ verified_by · verified_on
 verdict ∈ { PASS | FAIL | PARTIAL | NO_DETECTOR | N/A }     — closed set, these spellings exactly
 ```
 
+A `[TRANSFERS]-pending` record (§5.4 test 4) is an annotation written beside a verdict, never a verdict: the set above is unchanged.
+
 A revised criterion invalidates **only** the records for that criterion, across affected assets; it
 never re-opens the rest. An asset is *elevated* when every criterion its layer requires has a current
 record with a passing verdict. A definition revision that changes no criterion changes nothing.
@@ -625,8 +627,8 @@ Before an instance is called ready:
 2. **Alignment test.** Every section names its `traces_to:`; a reviewer strikes any that cannot.
 3. **Measured, not inherited.** Every figure names its `measured_by:`; a reviewer rejects any that
    cannot be re-run.
-4. **Presentation parity** holds for the layer's served surface.
-5. **The gate map exists.** §5.2's eight-row map from gate to feeding section is written out in the
+4. **Presentation fields carried.** Every §3.4 field this layer owns (§2.2) is present in its produced contracts — a contract test, run here. End-to-end Presentation parity and Delivery sentinel are [TRANSFERS] (Data plane §12.2): where their owner or its test is not built, record `[TRANSFERS]-pending` with the obligation, owner and dependency — never a pass, never a block on this instance for the transferred part alone, never an invented verdict; where the owner runs it, link the result.
+5. **The gate map exists.** §5.2's nine-row map from gate to feeding section is written out in the
    instance. An instance missing the map fails this test outright — the map is the derivability test
    in tabular form, and demanding it without checking for it is how it goes unwritten.
 6. **Independent review**, fresh context, findings folded, before the instance is cited by anything

@@ -78,11 +78,16 @@ EXPECTED_OPERATION_OWNERS = {
     ("brahmagyan/l0_ephemeris.py", "query_ayanamsha_delta"),
     ("ga_writers/ga_dashas_writer.py", "_get_moon_position"),
     ("ga_writers/ga_dashas_writer.py", "_mudda_solar_return_jd"),
+    # TI thread-fix lane: the nested Sun-longitude closure hoisted so it owns its mode setter.
+    ("ga_writers/ga_dashas_writer.py", "_mudda_sun_long_at"),
     ("ga_writers/ga_dashas_writer.py", "build_system"),
     ("ga_writers/ga_dashas_writer.py", "compute_mudda_system"),
-    ("ga_writers/ga_sade_sati_writer.py", "_detect_saturn_retrogrades"),
+    # TI thread-fix lane: the two Saturn closures were hoisted to module level so each owns its
+    # mode setter; `_detect_saturn_retrogrades` itself no longer touches Swiss state directly.
     ("ga_writers/ga_sade_sati_writer.py", "_detect_saturn_sign_changes"),
     ("ga_writers/ga_sade_sati_writer.py", "_lookup_tara_bala_for_saturn_at"),
+    ("ga_writers/ga_sade_sati_writer.py", "_saturn_sign_at_jd"),
+    ("ga_writers/ga_sade_sati_writer.py", "_saturn_speed_at_jd"),
     # Lane l3/gochara-autonomous-wp0-7 added _derive_ashtakavarga_prastara
     # (G-10 / ruling sheet M-7, N-21 testimony grade) already decorated with
     # @serialized_swiss_state; registered here as a compliant boundary owner.
@@ -137,9 +142,14 @@ EXPECTED_OPERATION_OWNERS = {
     ("pyjhora_adapter/houses.py", "compute_bhava_chalit"),
     ("pyjhora_adapter/houses.py", "compute_midheaven"),
     ("pyjhora_adapter/panchanga.py", "compute_panchanga"),
+    # TI thread-fix lane: the one reviewed per-thread mode+path idiom (mode set inside the
+    # swiss_state_scope() it holds for the whole `with` body).
+    ("pyjhora_adapter/_swiss_thread_scope.py", "with_sidereal_mode"),
     ("pyjhora_adapter/positions.py", "_set_ayanamsha"),
     ("pyjhora_adapter/positions.py", "compute_positions"),
     ("pyjhora_adapter/sensitive_points.py", "compute_sensitive_points"),
+    ("pyjhora_adapter/special_lagnas.py", "_special_ascendant"),
+    ("pyjhora_adapter/special_lagnas.py", "_varnada_lagna_bv_raman"),
     ("pyjhora_adapter/special_lagnas.py", "compute_special_lagnas"),
     ("pyjhora_adapter/strength.py", "_set_ayanamsha"),
     ("pyjhora_adapter/strength.py", "compute_ashtakavarga_shodhana"),

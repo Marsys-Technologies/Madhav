@@ -286,7 +286,9 @@ def test_build_yogi_points_rows_full_native_chart():
     assert rows, "expected Yogi-system rows"
     for r in rows:
         assert r["fact_category"] == "sensitive_point_yogi"
-        assert r["verification_pass_status"] == "two_pass_verified"
+        # Q03 / SS N-62 + SS tier rule: same sum in integer arcseconds over the same longitudes,
+        # no classical table compared -> `single` on agreement.
+        assert r["verification_pass_status"] == "single"
         assert r["citation_human"]
 
     by_subj_key = {(r["fact_subject"], r["fact_key"]): r for r in rows}

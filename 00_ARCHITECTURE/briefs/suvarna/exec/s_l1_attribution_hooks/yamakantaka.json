@@ -1,0 +1,17 @@
+{
+  "lane": "yamakantaka",
+  "ruling": "YAMAKANTAKA sensitive point (E-008), #2731",
+  "pr": "commit 285bff17c on main (#2731); emitted by ga_sensitive_writer",
+  "description": "chart_facts.sensitive_point_gulika_mandi gains a third subject, YAMAKANTAKA, with the same 7 keys as GULIKA and MANDI (house_d1, longitude_sidereal, nakshatra, nakshatra_lord, pada, sign, sign_lord): 7 keys x 5 ayanamshas = 35 rows per chart. On main (#2731) but production has not run ga_sensitive since: production carries GULIKA and MANDI only (35 rows each on all three charts, reader count 2026-10-02), so the rebuild APPEARS exactly 35 rows per chart. longitude_sidereal is a continuous key; a continuous KEY that appears is a detector change, so it counts. The 70 existing GULIKA / MANDI rows change tier (tiers lane) and nothing else.",
+  "may_change": [
+    {
+      "table": "chart_facts",
+      "categories": ["sensitive_point_gulika_mandi"],
+      "fact_keys": ["house_d1", "longitude_sidereal", "nakshatra", "nakshatra_lord", "pada", "sign", "sign_lord"],
+      "change_types": ["appeared"],
+      "expected_count": {"exact": 35},
+      "expected_direction": "35 rows appear per chart (YAMAKANTAKA x 7 keys x 5 ayanamshas).",
+      "note": "source: SS 2026-10-02 ('YAMAKANTAKA +35 rows/chart: hook appears, exact, source #2731'); rehearsal-synthetic (19-lane rehearsal, flip_detector v2.3 compare against the origin/main baseline build on the same synthetic chart; HOOKS_COMPLETENESS_v1_0.md, Source evidence) (rehearsal final holds YAMAKANTAKA 5 rows per key, 7 keys); production re-read: GULIKA 35 + MANDI 35 on each chart. Note: the rehearsal baseline already had these rows (built from main), so the rehearsal diff shows 105 tier changes there versus the canonical 70 + 35 appearing."
+    }
+  ]
+}
