@@ -703,11 +703,14 @@ def _finite_number(v) -> bool:
 # Codex ASTRA_REVIEW_REPIN_TOOL_DELTA: a declared shape could bless a broken rebuild (a declaration copied from the broken state) and counts/builds were accepted independently, so the post-S-L1 shape is FIXED
 # (45 + 1 partitions, exactly the SETTLED-1 build). A notice carrying any of these fields is REFUSED, so nobody believes they have an effect.
 _REFUSED_NOTICE_FIELDS = ("expected_partitions_non_scope", "expected_partitions_scope_cap", "expected_dasha_build_ids")
+# The notice's top level is an ALLOW-LIST (Codex ASTRA_REVIEW_REPIN_TOOL_DELTA v1.1): EXACTLY these seven keys; every other key — unknown, misspelled, or one of the retired expected_* fields — is refused BY NAME.
+_NOTICE_KEYS = ("settled_1", "source_message_id", "system_id", "ayanamsha_id", "new_build_id", "expected_shift_seconds", "tolerance_seconds")
 
 
 def load_notice(path: str) -> dict:
     """Suvarṇa's SETTLED-1 notice as JSON: {"settled_1": true, "source_message_id": "<id>", "system_id": "vimshottari", "ayanamsha_id": "lahiri_chitrapaksha", "new_build_id": "<uuid>",
     "expected_shift_seconds": {"1": 6993, "2": 6993, "3": {"start": 6992, "end": 6994}}, "tolerance_seconds": 2}.
+    STRICT ALLOW-LIST (Codex ASTRA_REVIEW_REPIN_TOOL_DELTA v1.1): the top level is EXACTLY the seven keys above — any other key (unknown, misspelled, the retired expected_* shape fields) is refused BY NAME.
     STRICT (Codex R17-3/R17-5, Fable F-R18-4): the notice is BOUND to what it describes — `system_id` must be `vimshottari`, `ayanamsha_id` `lahiri_chitrapaksha`, `source_message_id` non-empty (recorded in
     the evidence), `new_build_id` a valid UUID (canonicalised); `expected_shift_seconds` MUST name levels 1, 2 and 3, each a FINITE number or {start, end} — **`{start, end}` are the START-boundary and
     END-boundary shift expectations, NOT a range** — and ANY OTHER level (SETTLED-1 will declare level-4 deltas) is TOLERATED, echoed in the evidence and NEVER compared (this tool judges levels 1–3
@@ -715,6 +718,16 @@ def load_notice(path: str) -> dict:
     raw = Path(path).read_bytes()
     d = json.loads(raw.decode("utf-8"))
     problems = []
+    if not isinstance(d, dict):
+        raise ValueError("the SETTLED-1 notice is invalid: the notice must be a JSON object")
+    unknown = sorted(k for k in d if k not in _NOTICE_KEYS)
+    if unknown:
+        retired = [k for k in unknown if k in _REFUSED_NOTICE_FIELDS]
+        other = [k for k in unknown if k not in _REFUSED_NOTICE_FIELDS]
+        if retired:
+            problems.append(f"{', '.join(retired)} NOT accepted: the post-S-L1 chart_dashas shape is fixed (45 + 1 partitions, exactly the SETTLED-1 build); no notice field may override it")
+        if other:
+            problems.append(f"unknown notice key(s) {', '.join(repr(k) for k in other)}: the notice allows EXACTLY {', '.join(_NOTICE_KEYS)}")
     if d.get("settled_1") is not True:
         problems.append("settled_1 must be true")
     if d.get("system_id") != CANONICAL_SYSTEM:
@@ -739,9 +752,6 @@ def load_notice(path: str) -> dict:
     tol = d.get("tolerance_seconds")
     if not _finite_number(tol) or tol < MIN_TOLERANCE_SECONDS:
         problems.append(f"tolerance_seconds must be a FINITE number >= {MIN_TOLERANCE_SECONDS}")
-    refused = [k for k in _REFUSED_NOTICE_FIELDS if k in d]
-    if refused:
-        problems.append(f"{', '.join(refused)} NOT accepted: the post-S-L1 chart_dashas shape is fixed (45 + 1 partitions, exactly the SETTLED-1 build); no notice field may override it")
     if problems:
         raise ValueError("the SETTLED-1 notice is invalid: " + "; ".join(problems))
     d["_ignored_levels"] = sorted(k for k in exp if k not in {str(lv) for lv in LEVELS_IN_SCOPE})

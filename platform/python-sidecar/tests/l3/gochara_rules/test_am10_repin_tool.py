@@ -1637,3 +1637,40 @@ def test_a_capture_whose_recorded_per_level_counts_do_not_match_its_rows_is_refu
     p.write_text(_j.dumps(d))
     with pytest.raises(ValueError, match="recorded per-level counts do not match its rows"):
         T.load_capture(str(p), CHART, OLDB)
+
+
+# ── the notice's top level is an ALLOW-LIST of exactly seven keys (Codex ASTRA_REVIEW_REPIN_TOOL_DELTA v1.1) ──────────────────────────────────────────────────────────
+
+def test_the_notice_top_level_is_an_allow_list_unknown_misspelled_and_retired_keys_are_refused_by_name(tmp_path):
+    good = T.load_notice(_notice(tmp_path))
+    assert sorted(k for k in good if not k.startswith("_")) == sorted(T._NOTICE_KEYS)                                    # EXACTLY the seven keys (plus the loader's own _-prefixed fields)
+    for key, val in (("unexpected_field", 1), ("expected_partition_non_scope", 47), ("_declared_shape", {"non_scope": 47}), ("Settled_1", True), ("tolerance", 2), ("new_build_id ", "x")):
+        with pytest.raises(ValueError, match=f"notice is invalid.*unknown notice key\\(s\\) '{key}'"):
+            T.load_notice(_notice(tmp_path, **{key: val}))
+    with pytest.raises(ValueError, match="unknown notice key\\(s\\) 'a_typo', 'b_typo'"):                                     # every unknown key is named
+        T.load_notice(_notice(tmp_path, b_typo=1, a_typo=2))
+    with pytest.raises(ValueError, match="expected_dasha_build_ids NOT accepted"):                                         # the retired fields keep their own named refusal
+        T.load_notice(_notice(tmp_path, expected_dasha_build_ids=[NEWB]))
+    p = tmp_path / "arr.json"; p.write_text("[1, 2]")
+    with pytest.raises(ValueError, match="must be a JSON object"):
+        T.load_notice(str(p))
+    # the documented additional levels INSIDE expected_shift_seconds are still tolerated and echoed
+    assert T.load_notice(_notice(tmp_path, expected_shift_seconds={"1": 6993, "2": 6993, "3": 6993, "4": 41000}))["_ignored_levels"] == ["4"]
+
+
+def test_the_cli_stops_on_an_unknown_or_misspelled_notice_key_and_writes_nothing(monkeypatch, tmp_path, capsys):
+    rows_new = T.norm_rows(ref_rows("new", 6993))
+    cap = tmp_path / "old.json"; write_old_cap(cap)
+    monkeypatch.setattr(T.DD, "fetch_dasha_periods_multilevel", lambda conn, chart, build_id=None, **kw: rows_new if build_id == NEWB else [])
+    monkeypatch.setattr(T, "fetch_vimshottari_builds", lambda conn, chart: {NEWB: 117})
+    monkeypatch.setattr(T, "fetch_preflight_facts", lambda conn, chart: GOODFACTS)
+    fr = tmp_path / "f.md"; fr.write_text("anchors")
+    before = sorted(p.name for p in tmp_path.iterdir())
+    out = tmp_path / "evidence.md"
+    for key in ("unexpected_field", "expected_partition_non_scope", "_declared_shape"):
+        n = _notice(tmp_path, new_build_id=NEWB, **{key: 1})
+        rc = T.main(["--new-build-id", NEWB, "--old-rows", str(cap), "--settled-notice", n, "--forensic-report", str(fr), "--out", str(out)], conn=FakeConn())
+        err = capsys.readouterr().err
+        assert rc == 3 and "notice is invalid" in err and repr(key) in err, (key, err)
+        assert not out.exists()                                                                                          # no evidence file, no re-pin: nothing written
+    assert sorted(p.name for p in tmp_path.iterdir()) == sorted(before + ["notice.json"])                                 # only the test's own notice file was written
