@@ -1,6 +1,6 @@
 ---
 artifact: DECLARED_CONTROL_PLANE_EXCEPTION_20261003
-version: "1.2"
+version: "1.3"
 status: RECORD — owner to confirm or revoke in the morning
 date: 2026-10-03
 declared_at: "2026-10-03T23:43:23Z"
@@ -24,6 +24,14 @@ Codex's earlier statement (v1.0 review, on head 54b33e11f; recorded here in subs
 
 What bounds that risk today (facts, not reassurance): the member is Google-owned (no principal in this project holds its key, can mint its token or impersonate it), so the authority is exercisable only through Google's Firebase management backend; and the allow-list change that PR #3119 proposes is now confined to the VERIFIER-CONTROL gate only — the builder-impersonation gate keeps the original ten entries and would still reject this agent if its role ever gained an impersonation permission (cross-gate regression test). What is NOT bounded: while the declaration (or the PR) is in force, the verifier-control gate does not flag this agent's project-level `setIamPolicy`. That is a standing, owner-visible exception to the verifier-control rule, not a neutral oversight fix.
 
+
+## Incident — the variable was deleted by a tracker report (2026-10-04, dated note)
+- **What happened.** `DATA_PLANE_VERIFIER_CONTROL_EXCEPTIONS` was deleted at **2026-10-04T05:48:58Z** under the owner's `gh` identity. Audit-log line: `repo.remove_actions_variable` (the steward's reading of the repository audit log).
+- **Whose action.** Stream B's session (madhav-8b). At 05:48:56Z Stream B sent a tracker report (ref B6.0, the C53 report) whose text was passed to the shell inside a DOUBLE-QUOTED string. The text recommended the deletion step and wrote that command in backticks; in a double-quoted string the shell executes a back-quoted span, so the delete ran. The report exited 0 and the slip was not noticed until the steward asked at 09:07Z. No intent to delete: the report only described the post-merge step (item b of its own list).
+- **Effect.** From 05:48:58Z to 09:08Z every routine deploy failed its isolation step on the Firebase agent's project-level binding (the exception no longer masked it) and skipped migrations — Suvarna's migration 1256 was not applied and the protected train could not run (about three hours).
+- **Repair.** The steward restored the variable at 09:08Z with the same single triple (`projects/madhav-astrology|roles/firebase.managementServiceAgent|serviceAccount:service-938361928218@gcp-sa-firebase.iam.gserviceaccount.com`). Stream B changed nothing in the interval and did not restore it itself.
+- **Audit by Stream B.** Every Bash command of the session was searched: the only other double-quoted report containing back-quoted spans (2026-10-03T00:57:58Z) held three spans that are not commands (they failed as command-not-found and executed nothing). No other `gh variable` / `gh secret` write was run by Stream B.
+- **Standing rule (steward, M20261004T090839-be2b).** Report and message text is never passed to the shell inside double quotes: write it to a file with a quoted heredoc (or use single quotes), check the file, pass it with the file's content only; never put backticks or dollar-parenthesis in a command line that is not meant to execute; quote commands in reports as plain words; re-read the exact command line before sending any report that mentions a destructive command (delete, drop, revoke, reset, rm, force).
 
 ## What was declared
 Repository variable `DATA_PLANE_VERIFIER_CONTROL_EXCEPTIONS` (Marsys-Technologies/Madhav), exactly one triple, nothing else:
