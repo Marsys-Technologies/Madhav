@@ -86,8 +86,9 @@ export const getNakshatraCapability: CapabilityDescriptor = {
 
       const params: unknown[] = [chartId, categories, limit, offset]
       let sql = `
-        SELECT fact_id, fact_category, fact_subject, ayanamsha_id, fact_key, fact_value_num,
-               fact_value_text, fact_value_jsonb, unit, verification_pass_status, citation_ref
+        SELECT fact_id, fact_category, fact_subject, ayanamsha_id, fact_key, formula_id,
+               fact_value_num, fact_value_text, fact_value_jsonb, unit,
+               verification_pass_status, citation_ref
         FROM chart_facts
         WHERE chart_id = $1 AND fact_category = ANY($2::text[])
       `
@@ -95,7 +96,10 @@ export const getNakshatraCapability: CapabilityDescriptor = {
         sql += ` AND ayanamsha_id = $${params.length + 1}`
         params.push(args.ayanamsha_id as string)
       }
-      sql += ` ORDER BY fact_category, ayanamsha_id, fact_subject, fact_key LIMIT $3 OFFSET $4`
+      // Total order: after a ga_nakshatra rebuild each (graha_gandanta, subject, is_gandanta)
+      // key has TWO rows (canonical + strict_0_48 variant, told apart only by formula_id), so
+      // an order ending at fact_key leaves ties that sort unstably across LIMIT/OFFSET pages.
+      sql += ` ORDER BY fact_category, ayanamsha_id, fact_subject, fact_key, formula_id NULLS FIRST, fact_id LIMIT $3 OFFSET $4`
 
       const result = await query<Record<string, unknown>>(sql, params)
       const rows = result.rows ?? []

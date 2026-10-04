@@ -77,6 +77,7 @@ import logging
 from typing import Any
 
 from brahmagyan.l0_kp_sublord_division import lookup_division
+from brahmagyan.verification_tiers import EXTERNAL_COMPUTATION_REQUIRED
 from brahmagyan.verification_vocab import TWO_PASS_VERIFIED, assert_legal, two_pass_verdict
 from ga_writers.ga_nakshatra_compute import compute_kp_lords
 from ga_writers.ga_nakshatra_emitters import PLANET_TO_SUBJECT
@@ -188,7 +189,7 @@ def emit_kp_significators(
                              HOUSE_SIGNIFICATORS_CATEGORY, f"HOUSE_{h:02d}",
                              "ranked_significators", value_text=_EXTERNAL_REQUIRED,
                              source="ga_nakshatra:kp_significators:external_required",
-                             verification_pass_status="external_computation_required"))
+                             verification_pass_status=EXTERNAL_COMPUTATION_REQUIRED))
         logger.warning(
             "[ga_nakshatra:kp_significators] chart=%s ay=%s: Placidus cusps absent — "
             "12 EXTERNAL_COMPUTATION_REQUIRED markers emitted, no significators derived.",
@@ -220,6 +221,11 @@ def emit_kp_significators(
         # SECOND PASS: the live iterative subdivision used by emit_kp_lords in this
         # same build. Independently implemented (float accumulation vs. the L0 table's
         # exact rationals) so it could genuinely disagree.
+        # Q03 / SS N-62 (audit AUDIT_L1_TIERS_PER_EMITTER_v1_0.md §2.2) keeps this verdict at
+        # `two_pass_verified` on the "table lookup vs arithmetic" test, WITH THIS CAVEAT: both
+        # paths implement the same Vimśottarī rule, with the year constants pinned equal by
+        # tests/test_bg_kp_sublord_division.py. The second path catches implementation,
+        # rounding and boundary-tie bugs; it would NOT catch a wrong rule.
         live = compute_kp_lords(lon)
         verdict = two_pass_verdict(
             (div["star_lord"], div["sub_lord"]),

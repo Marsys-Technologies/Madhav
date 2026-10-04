@@ -123,7 +123,7 @@ class TestF157OwnSignNotParivartana:
         there must be ZERO parivartana_per_varga rows — not merely zero
         self-paired ones."""
         chart_output = {
-            "ascendant": {"sign": "Aries", "sign_id": 1, "longitude": 15.0},
+            "ascendant": {"sign": "Aries", "sign_id": 1, "longitude_deg": 15.0},
             "grahas": [
                 {"name": "Jupiter", "sign": "Sagittarius", "sign_id": 9, "house": 9,
                  "longitude": 265.0, "retrograde": False, "dignity_status": "own_sign"},
@@ -139,7 +139,7 @@ class TestF157GenuineExchangeStillFires:
 
     def test_mars_venus_exchange_still_emits_one_correctly_paired_row(self):
         chart_output = {
-            "ascendant": {"sign": "Aries", "sign_id": 1, "longitude": 15.0},
+            "ascendant": {"sign": "Aries", "sign_id": 1, "longitude_deg": 15.0},
             "grahas": [
                 {"name": "Mars", "sign": "Taurus", "sign_id": 2, "house": 2,
                  "longitude": 45.0, "retrograde": False, "dignity_status": "neutral"},
@@ -167,7 +167,7 @@ class TestF157GenuineExchangeStillFires:
         no exchange) WHILE Mars/Venus genuinely exchange elsewhere. The fix
         must suppress only the former."""
         chart_output = {
-            "ascendant": {"sign": "Aries", "sign_id": 1, "longitude": 15.0},
+            "ascendant": {"sign": "Aries", "sign_id": 1, "longitude_deg": 15.0},
             "grahas": [
                 {"name": "Jupiter", "sign": "Sagittarius", "sign_id": 9, "house": 9,
                  "longitude": 265.0, "retrograde": False, "dignity_status": "own_sign"},

@@ -33,7 +33,9 @@ class GaSensitiveWriter(WriterBase):
             get_ga_sensitive_context,
             CANONICAL_AYANAMSHAS,
         )
-        chart_id = ctx.config['chart_id']
+        # uuid.UUID from the real orchestrator (psycopg uuid decode); the writer's FORENSIC gate compares
+        # chart_id to a str constant, so convert at the boundary.
+        chart_id = str(ctx.config['chart_id'])
         birth_params = ctx.config.get('birth_params')  # always a real dict — native has no special case
         aya_key = step.key.split(':', 1)[1]
         aya_id = CANONICAL_AYANAMSHAS[aya_key]

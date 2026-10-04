@@ -168,6 +168,15 @@ def test_build_system_raises_on_partial_persist(monkeypatch):
     must raise rather than return status=PASS (BA-P3 FIX 2 completeness check)."""
     monkeypatch.setattr(mod, "_get_moon_position", lambda aya, birth: (325.5, mod.BIRTH_JD if hasattr(mod, "BIRTH_JD") else 2445734.5))
     monkeypatch.setattr(mod, "_upsert_rows", lambda conn, rows, sys_id, aya, commit=True: max(0, len(rows) - 1))
+    # S-L1 karaka-roles fix: the writer reads ga_sensitive's per-chart roles; this fake conn
+    # has no cursor semantics for that read, so seed the roles directly.
+    monkeypatch.setattr(
+        mod, "_activate_karaka_roles",
+        lambda chart_id, ayan, conn: mod.set_karaka_roles(chart_id, ayan, {
+            "Moon": "AK", "Saturn": "AmK", "Sun": "BK", "Venus": "MK",
+            "Mars": "PiK", "Rahu": "PK", "Jupiter": "GK", "Mercury": "DK",
+        }),
+    )
 
     conn = _FakeConn()
     with pytest.raises(RuntimeError, match="completeness check FAILED"):
