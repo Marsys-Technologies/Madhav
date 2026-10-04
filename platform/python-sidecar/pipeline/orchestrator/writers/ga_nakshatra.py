@@ -12,6 +12,7 @@ significator emitter READS it (§N.5) and never re-derives the geometry.
 """
 from __future__ import annotations
 from ga_writers.data_plane_runtime import l1_producer_contract
+from panchang_engine.swiss_backend import records_swiss_backend
 import hashlib
 import time
 import json
@@ -22,7 +23,8 @@ from typing import Any
 from pipeline.orchestrator.writers import WriterBase, WriterResult, SubStep, register, ContextSpec
 from ga_writers._idempotency import replace_prior_chart_facts
 from brahmagyan.graha_vocabulary import to_title
-from brahmagyan.verification_vocab import UNVERIFIED_DEFAULT, assert_legal, two_pass_verdict
+from brahmagyan.verification_vocab import UNVERIFIED_DEFAULT, assert_legal
+from brahmagyan.verification_tiers import DIVERGENT_FLAGGED
 from ga_writers.ga_nakshatra_emitters import (
     emit_nakshatra_join, emit_kp_lords, emit_gandanta_flags,
     emit_dispositor_graph, emit_tara_bala, emit_statistics,
@@ -69,9 +71,16 @@ NAK_LORD_STR_TO_BODY: dict[str, str] = {
 
 
 def _fact_id(category: str, subject: str, key: str,
-             chart_id: str, ayanamsha_id: str, build_id: str) -> str:
+             chart_id: str, ayanamsha_id: str, build_id: str,
+             formula_id: str | None = None) -> str:
     # build_id is observation provenance, never semantic fact identity.
     raw = f"{category}|{subject}|{key}|{chart_id}|{ayanamsha_id}"
+    if formula_id:
+        # A named variant (e.g. graha_gandanta `strict_0_48`) shares (category, subject,
+        # key) with its canonical twin, so formula_id is part of ITS identity — otherwise
+        # the two would collide on the primary key. Canonical rows (formula_id NULL) keep
+        # the exact id they always had.
+        raw += f"|{formula_id}"
     return hashlib.sha256(raw.encode()).hexdigest()[:16]
 
 
@@ -90,9 +99,10 @@ _PADA_ARC_DEG = _NAK_ARC_DEG / 4.0  # 3°20' — one pada
 
 
 def _derive_nakshatra_pada(longitude_deg: float) -> tuple[int, int]:
-    """Independent 1-based (nakshatra, pada) from a sidereal longitude.
+    """Re-derived 1-based (nakshatra, pada) from a sidereal longitude.
 
-    SECOND PASS. The first pass is PyJHora's `drik.nakshatra_pada()`, reached via
+    CHECK PATH (an arithmetic agreement check, tier `single` on agreement; NOT an independent
+    re-derivation and NOT a table match -- see `_nakshatra_pada_verdicts`). The first pass is PyJHora's `drik.nakshatra_pada()`, reached via
     `pyjhora_adapter.positions._nakshatra_for_long` (grahas) and `drik.ascendant`
     (Lagna). This is a separate implementation of the same classical division —
     it does NOT call the library — so a boundary-convention difference, an ayanāṃśa
@@ -108,11 +118,19 @@ def _derive_nakshatra_pada(longitude_deg: float) -> tuple[int, int]:
 def _nakshatra_pada_verdicts(chart_output: dict) -> dict[str, dict[str, str]]:
     """Run the second pass for every body and return {subject: {claim: status}}.
 
-    `claim` is 'nakshatra' or 'pada'. Status is `two_pass_verified` when the engine's
-    attribution and the independent re-derivation agree, `divergent_flagged` when they
-    disagree (a halt-worthy inconsistency the row must carry, not hide), and
-    `UNVERIFIED_DEFAULT` when the body carries no usable longitude so no second pass
-    could run at all.
+    `claim` is 'nakshatra' or 'pada'. Status is `single` (UNVERIFIED_DEFAULT: nothing earned) when the engine's
+    attribution and the re-derivation agree, `divergent_flagged` when they disagree (a
+    halt-worthy inconsistency the row must carry, not hide), and `UNVERIFIED_DEFAULT`
+    when the body carries no usable longitude so no check could run at all.
+
+    WHY `single`, NOT `classical_match` or `two_pass_verified` (Q03 / SS N-62 ruling + SS tier rule, audit
+    AUDIT_L1_TIERS_PER_EMITTER_v1_0.md §2.2): the "second path differs because" sentence
+    cannot be written. The first path, PyJHora's `drik.nakshatra_pada`, is itself
+    `int(longitude / (360/27))` plus a remainder division, and `_derive_nakshatra_pada` is
+    the same floor division over the same exported longitude -- a bug in the shared formula
+    would not be caught. The check is real (it catches attribution/longitude
+    desynchronisation and a boundary-convention slip, and a disagreement is stored `divergent_flagged`)
+    but it compares no classical reference table and no second algorithm, so agreement earns `single`.
     """
     grahas = chart_output.get("grahas", []) or []
     asc = chart_output.get("ascendant", {}) or {}
@@ -140,11 +158,11 @@ def _nakshatra_pada_verdicts(chart_output: dict) -> dict[str, dict[str, str]]:
             if engine_value is None:
                 per_claim[claim] = UNVERIFIED_DEFAULT
                 continue
-            # int() coercion stays HERE, deliberately: two_pass_verdict compares as-given
-            # and must never silently redefine what "agrees" means for a caller.
+            # int() coercion stays HERE, deliberately: "agrees" means integer equality of the
+            # 1-based nakshatra / pada numbers, defined at the call site, not by a shared helper.
             engine_i, derived_i = int(engine_value), int(derived_value)
             agrees = engine_i == derived_i
-            per_claim[claim] = two_pass_verdict(engine_i, derived_i)
+            per_claim[claim] = UNVERIFIED_DEFAULT if agrees else DIVERGENT_FLAGGED
             if not agrees:
                 logger.warning(
                     "[ga_nakshatra] second-pass DIVERGENCE for %s %s: engine=%s "
@@ -184,8 +202,11 @@ def _enrich_rows(
         value_text  = r.get("fact_value_text")
         value_num   = r.get("fact_value_num")
 
-        fid  = _fact_id(category, subject, key, chart_id, ay, build_id)
+        formula_id = r.get("formula_id")
+        fid  = _fact_id(category, subject, key, chart_id, ay, build_id, formula_id)
         cref = f"{category}.{subject}.{key}@chart={chart_id}:ay={ay}:eng={eng_ver}"
+        if formula_id:
+            cref += f":formula={formula_id}"
         # Simple human-readable citation
         if value_text is not None:
             chum = f"{subject} {key}: {value_text} [{category}]"
@@ -193,6 +214,8 @@ def _enrich_rows(
             chum = f"{subject} {key}: {value_num} [{category}]"
         else:
             chum = f"{subject} {key} [{category}]"
+        if formula_id:
+            chum += f" (variant {formula_id})"
 
         claim = _ATTRIBUTION_ROWS.get((category, key))
         # An emitter that ran its OWN detector may set the status on the row itself
@@ -300,6 +323,65 @@ def _forensic_gate(chart_output: dict, ayanamsha_id: str) -> None:
         )
 
 
+#: Canonical rows (formula_id NULL) — the statement this writer has always used, unchanged.
+_INSERT_CANONICAL_SQL = """
+    INSERT INTO chart_facts
+      (fact_id, chart_id, ayanamsha_id, build_id,
+       fact_category, fact_subject, fact_key,
+       fact_value_text, fact_value_num, fact_value_jsonb,
+       unit, citation_ref, citation_human,
+       source_calculation, verification_pass_status,
+       engine_version, computed_at)
+    VALUES
+      (%(fact_id)s, %(chart_id)s, %(ayanamsha_id)s, %(build_id)s,
+       %(fact_category)s, %(fact_subject)s, %(fact_key)s,
+       %(fact_value_text)s, %(fact_value_num)s, %(fact_value_jsonb)s,
+       %(unit)s, %(citation_ref)s, %(citation_human)s,
+       %(source_calculation)s, %(verification_pass_status)s,
+       %(engine_version)s, %(computed_at)s)
+    ON CONFLICT (chart_id, ayanamsha_id, fact_category, fact_subject, fact_key, build_id)
+    WHERE formula_id IS NULL
+    DO UPDATE SET
+      fact_id                  = EXCLUDED.fact_id,
+      fact_value_text          = EXCLUDED.fact_value_text,
+      fact_value_num           = EXCLUDED.fact_value_num,
+      citation_ref             = EXCLUDED.citation_ref,
+      citation_human           = EXCLUDED.citation_human,
+      engine_version           = EXCLUDED.engine_version,
+      computed_at              = EXCLUDED.computed_at
+"""
+
+#: Named-variant rows (formula_id set, e.g. graha_gandanta `strict_0_48`): same columns plus
+#: formula_id, arbitrated on the `chart_facts_unique_with_formula` partition
+#: (chart_id, ayanamsha_id, fact_category, fact_subject, fact_key, build_id, formula_id).
+_INSERT_VARIANT_SQL = """
+    INSERT INTO chart_facts
+      (fact_id, chart_id, ayanamsha_id, build_id,
+       fact_category, fact_subject, fact_key,
+       fact_value_text, fact_value_num, fact_value_jsonb,
+       unit, citation_ref, citation_human,
+       source_calculation, verification_pass_status,
+       engine_version, computed_at, formula_id)
+    VALUES
+      (%(fact_id)s, %(chart_id)s, %(ayanamsha_id)s, %(build_id)s,
+       %(fact_category)s, %(fact_subject)s, %(fact_key)s,
+       %(fact_value_text)s, %(fact_value_num)s, %(fact_value_jsonb)s,
+       %(unit)s, %(citation_ref)s, %(citation_human)s,
+       %(source_calculation)s, %(verification_pass_status)s,
+       %(engine_version)s, %(computed_at)s, %(formula_id)s)
+    ON CONFLICT (chart_id, ayanamsha_id, fact_category, fact_subject, fact_key, build_id, formula_id)
+    WHERE formula_id IS NOT NULL
+    DO UPDATE SET
+      fact_id                  = EXCLUDED.fact_id,
+      fact_value_text          = EXCLUDED.fact_value_text,
+      fact_value_num           = EXCLUDED.fact_value_num,
+      citation_ref             = EXCLUDED.citation_ref,
+      citation_human           = EXCLUDED.citation_human,
+      engine_version           = EXCLUDED.engine_version,
+      computed_at              = EXCLUDED.computed_at
+"""
+
+
 def _run_ayanamsha_pass(
     ctx: ContextSpec, canonical_id: str, adapter_id: str,
     nak_rows: dict, pada_rows: dict,
@@ -312,8 +394,16 @@ def _run_ayanamsha_pass(
 
     # FORENSIC gate — native chart only (chart_id matches canonical native)
     NATIVE_CHART_ID = "482012f1-710e-4a25-994a-93821f5871aa"
-    if chart_id == NATIVE_CHART_ID:
-        _forensic_gate(chart_output, canonical_id)
+    # str(): the orchestrator hands a uuid.UUID, which never == the str constant, so the gate was skipped.
+    if str(chart_id) == NATIVE_CHART_ID:
+        try:
+            _forensic_gate(chart_output, canonical_id)
+        except Exception:
+            logger.error("FORENSIC gate ga_nakshatra executed passed=False chart=canonical ayanamsha=%s", canonical_id)
+            raise
+        logger.info("FORENSIC gate ga_nakshatra executed passed=True chart=canonical ayanamsha=%s", canonical_id)
+    else:
+        logger.debug("FORENSIC gate ga_nakshatra skipped chart=skipped-non-canonical ayanamsha=%s", canonical_id)
 
     grahas = chart_output.get("grahas", [])
     asc    = chart_output.get("ascendant", {})
@@ -353,33 +443,7 @@ def _run_ayanamsha_pass(
     replace_prior_chart_facts(ctx.db_conn, all_rows)
     for r in all_rows:
         ctx.db_conn.execute(
-            """
-            INSERT INTO chart_facts
-              (fact_id, chart_id, ayanamsha_id, build_id,
-               fact_category, fact_subject, fact_key,
-               fact_value_text, fact_value_num, fact_value_jsonb,
-               unit, citation_ref, citation_human,
-               source_calculation, verification_pass_status,
-               engine_version, computed_at)
-            VALUES
-              (%(fact_id)s, %(chart_id)s, %(ayanamsha_id)s, %(build_id)s,
-               %(fact_category)s, %(fact_subject)s, %(fact_key)s,
-               %(fact_value_text)s, %(fact_value_num)s, %(fact_value_jsonb)s,
-               %(unit)s, %(citation_ref)s, %(citation_human)s,
-               %(source_calculation)s, %(verification_pass_status)s,
-               %(engine_version)s, %(computed_at)s)
-            ON CONFLICT (chart_id, ayanamsha_id, fact_category, fact_subject, fact_key, build_id)
-            WHERE formula_id IS NULL
-            DO UPDATE SET
-              fact_id                  = EXCLUDED.fact_id,
-              fact_value_text          = EXCLUDED.fact_value_text,
-              fact_value_num           = EXCLUDED.fact_value_num,
-              citation_ref             = EXCLUDED.citation_ref,
-              citation_human           = EXCLUDED.citation_human,
-              engine_version           = EXCLUDED.engine_version,
-              computed_at              = EXCLUDED.computed_at
-            """,
-            r,
+            _INSERT_VARIANT_SQL if r.get("formula_id") else _INSERT_CANONICAL_SQL, r,
         )
 
     logger.info("ga_nakshatra %s: %d rows inserted", canonical_id, len(all_rows))
@@ -392,6 +456,7 @@ def _run_ayanamsha_pass(
 
 @register('ga_nakshatra')
 @l1_producer_contract
+@records_swiss_backend
 class NakshatraWriter(WriterBase):
     asset_id = 'ga_nakshatra'
     has_substeps = True
@@ -411,7 +476,8 @@ class NakshatraWriter(WriterBase):
             )
 
         nak_rows, pada_rows = _fetch_bg_nakshatra(ctx.db_conn)
-        chart_id    = ctx.config["chart_id"]
+        # uuid.UUID from the real orchestrator (psycopg uuid decode); the FORENSIC gate compares it to a str constant.
+        chart_id    = str(ctx.config["chart_id"])
         birth_params = ctx.config.get("birth_params")
 
         if step.key.startswith("ayanamsha:"):

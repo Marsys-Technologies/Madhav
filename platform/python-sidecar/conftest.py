@@ -34,6 +34,78 @@ import os
 import pytest
 
 
+def pytest_configure(config):
+    """Register the sidecar's two execution-class markers (C23, 2026-10-02).
+
+    slow_real_ephemeris: the test drives the real engine over large JD sweeps
+    (200-1000 samples) with real Swiss ephemeris positions per planet per JD
+    (every position call re-runs swe.set_ephe_path under the serialized Swiss
+    lock — pipeline/transit_search.py:249-251,337), so a single test can take
+    tens of seconds to minutes. CI runs these in a SEPARATE required step with
+    a stated time budget (Governance Gates job); the fast step deselects the
+    marker. Mark individual tests, or a whole file when the file is dominated
+    by such tests.
+
+    benchmark: the test asserts timing ratios (speedup / scaling) and is
+    load-sensitive by construction, so it can never be a gate. CI runs these
+    in a third, continue-on-error step named 'non-gating benchmark'; both
+    required steps deselect the marker.
+    """
+    config.addinivalue_line(
+        "markers",
+        "slow_real_ephemeris: real-engine JD-sweep test (minutes); runs in CI's "
+        "separate required slow step with a stated time budget, never in the fast step",
+    )
+    config.addinivalue_line(
+        "markers",
+        "benchmark: timing-ratio test, load-sensitive by construction; runs only in "
+        "CI's non-gating benchmark step (continue-on-error), never a gate",
+    )
+
+
+def _configure_swiss_corpus_for_tests() -> None:
+    """Point SE_EPHE_PATH at a local Swiss .se1 corpus when one exists.
+
+    The sidecar's ephemeris helper (panchang_engine/swiss_backend.py) fails
+    closed without SE_EPHE_PATH -- there is no silent Moshier fallback.  CI
+    exports it explicitly; for a local run this mirrors the production
+    resolution order of brahmagyan.l0_ephemeris._resolve_ephe_path
+    (SWE_EPHE_PATH, /app/ephe, /tmp/se1) and the explicit override
+    MARSYS_TEST_SE1_DIR.  With no corpus the variable stays unset and the tests
+    that need an ephemeris fail with the helper's explicit error.  Runs at
+    conftest import, i.e. before any test module (and PyJHora) is imported.
+    """
+    if os.environ.get("SE_EPHE_PATH", "").strip():
+        return
+    for candidate in (
+        os.environ.get("MARSYS_TEST_SE1_DIR"),
+        os.environ.get("SWE_EPHE_PATH"),
+        "/app/ephe",
+        "/tmp/se1",
+    ):
+        if candidate and all(
+            os.path.isfile(os.path.join(candidate, name))
+            for name in ("sepl_18.se1", "semo_18.se1")
+        ):
+            os.environ["SE_EPHE_PATH"] = candidate
+            return
+
+
+_configure_swiss_corpus_for_tests()
+
+
+def pytest_report_header(config):
+    path = os.environ.get("SE_EPHE_PATH", "").strip()
+    if path:
+        return f"swiss .se1 corpus: SE_EPHE_PATH={path}"
+    return (
+        "swiss .se1 corpus: NOT CONFIGURED -- tests that compute (panchang, PyJHora, L1/L3 "
+        "writers) fail closed with SwissBackendError, by design (no silent Moshier). Set "
+        "MARSYS_TEST_SE1_DIR or SWE_EPHE_PATH to a dir with the three pinned .se1 files "
+        "(sepl_18, semo_18, seas_18; see Dockerfile.pipeline)."
+    )
+
+
 @pytest.fixture(scope="session", autouse=True)
 def _isolate_conductor_halt_log(tmp_path_factory: pytest.TempPathFactory):
     """Redirect every ga_writers `_write_halt_log()` call to a tmp dir.

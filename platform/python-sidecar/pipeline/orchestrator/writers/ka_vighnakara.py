@@ -25,6 +25,7 @@ import logging
 from datetime import date as DateType
 from typing import Optional
 
+from panchang_engine.swiss_backend import records_swiss_backend
 from panchang_engine.swiss_state import serialized_swiss_state
 # Rikta classification: the engine's own tithi-type table (tithi ids 1..30), via its public
 # accessor. Referenced, never re-listed here.
@@ -189,6 +190,7 @@ def _jd_from_date(d: DateType) -> float:
 
 
 @register('ka_vighnakara')
+@records_swiss_backend
 class KaVighnakaraWriter(WriterBase):
     def run(self, ctx) -> WriterResult:
         # Guard: swisseph is REQUIRED for real ephemeris-based detection.  Without it

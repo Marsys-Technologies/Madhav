@@ -16,13 +16,21 @@ describe('private AI CLI bridge contract', () => {
     expect(bridge).toContain("path: join(HOME, '.local/bin/codex')")
     expect(bridge).toContain("path: join(HOME, '.local/bin/claude')")
     expect(bridge).toContain("path: join(HOME, '.local/bin/agy')")
-    expect(bridge).toContain("versions: ['1.2.12', '1.2.13']")
+    expect(bridge).toContain("versions: ['1.2.12', '1.2.13', '1.2.15']")
     expect(bridge).toContain('definition.versions.includes(payload.version)')
     expect(bridge).toContain("path: join(HOME, '.kimi-code/bin/kimi')")
     expect(bridge).not.toMatch(/raw\.(?:args|command|executable)/)
     expect(bridge).not.toContain('shell: true')
     expect(bridge.match(/return await runCommand/g)).toHaveLength(3)
     expect(bridge).toContain('return await runKimiAcp')
+  })
+
+  it('limits execution effort to known CLI model IDs and fixed arguments', () => {
+    expect(bridge).toContain('const SAFE_EFFORT = /^[a-z][a-z0-9_]{0,31}$/')
+    expect(bridge).toContain('models.get(modelId)?.includes(effort)')
+    expect(bridge).toContain("if (effort) args.push('-c', `model_reasoning_effort=${effort}`)")
+    expect(bridge).toContain("if (effort) args.push('--effort', effort)")
+    expect(bridge).toContain("!['codex', 'claude_code'].includes(cliId)")
   })
 
   it('requires a file-backed bearer token and constant-time comparison', () => {
@@ -32,7 +40,7 @@ describe('private AI CLI bridge contract', () => {
   })
 
   it('smoke-tests every supported Antigravity version and confirms the detected one', () => {
-    expect(smoke).toContain("versions: ['1.2.12', '1.2.13']")
+    expect(smoke).toContain("versions: ['1.2.12', '1.2.13', '1.2.15']")
     expect(smoke).toContain('version: acceptedVersion')
   })
 

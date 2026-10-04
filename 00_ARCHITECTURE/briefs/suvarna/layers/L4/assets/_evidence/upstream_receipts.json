@@ -1,0 +1,1024 @@
+{
+ "generated_utc": "2026-10-03T13:02:36Z",
+ "role": "suvarna_reader (read-only; default_transaction_read_only=on)",
+ "queries": {
+  "upstream_rows_by_chart": {
+   "sql": "select 'kala_convergence' t, chart_id::text c, count(*) from kala_convergence group by 2 union all select 'kala_bhavishya', chart_id::text, count(*) from kala_bhavishya group by 2 union all select 'kala_obstruction', chart_id::text, count(*) from kala_obstruction group by 2 union all select 'bodha_discoveries', chart_id::text, count(*) from bodha_discoveries group by 2 union all select 'bodha_cdlm_cells', chart_id::text, count(*) from bodha_cdlm_cells group by 2 union all select 'bodha_rm_remedy_prescriptions', chart_id::text, count(*) from bodha_rm_remedy_prescriptions group by 2 union all select 'life_events', chart_id::text, count(*) from life_events group by 2 union all select 'mimamsa_predictions', chart_id::text, count(*) from mimamsa_predictions group by 2 order by 1,2",
+   "result": [
+    {
+     "t": "bodha_cdlm_cells",
+     "c": "1c826d5a-41cb-4450-b4dc-59d440e5f75a",
+     "count": "75"
+    },
+    {
+     "t": "bodha_cdlm_cells",
+     "c": "482012f1-710e-4a25-994a-93821f5871aa",
+     "count": "280"
+    },
+    {
+     "t": "bodha_cdlm_cells",
+     "c": "cb73cd3d-9eba-4220-9902-0de91566e980",
+     "count": "75"
+    },
+    {
+     "t": "bodha_discoveries",
+     "c": "1c826d5a-41cb-4450-b4dc-59d440e5f75a",
+     "count": "1243"
+    },
+    {
+     "t": "bodha_discoveries",
+     "c": "482012f1-710e-4a25-994a-93821f5871aa",
+     "count": "1161"
+    },
+    {
+     "t": "bodha_discoveries",
+     "c": "cb73cd3d-9eba-4220-9902-0de91566e980",
+     "count": "1291"
+    },
+    {
+     "t": "bodha_rm_remedy_prescriptions",
+     "c": "1c826d5a-41cb-4450-b4dc-59d440e5f75a",
+     "count": "135"
+    },
+    {
+     "t": "bodha_rm_remedy_prescriptions",
+     "c": "482012f1-710e-4a25-994a-93821f5871aa",
+     "count": "135"
+    },
+    {
+     "t": "bodha_rm_remedy_prescriptions",
+     "c": "cb73cd3d-9eba-4220-9902-0de91566e980",
+     "count": "135"
+    },
+    {
+     "t": "kala_bhavishya",
+     "c": "1c826d5a-41cb-4450-b4dc-59d440e5f75a",
+     "count": "100"
+    },
+    {
+     "t": "kala_convergence",
+     "c": "1c826d5a-41cb-4450-b4dc-59d440e5f75a",
+     "count": "17957"
+    },
+    {
+     "t": "kala_convergence",
+     "c": "cb73cd3d-9eba-4220-9902-0de91566e980",
+     "count": "2540"
+    },
+    {
+     "t": "kala_obstruction",
+     "c": "1c826d5a-41cb-4450-b4dc-59d440e5f75a",
+     "count": "741"
+    },
+    {
+     "t": "kala_obstruction",
+     "c": "cb73cd3d-9eba-4220-9902-0de91566e980",
+     "count": "6"
+    },
+    {
+     "t": "life_events",
+     "c": "482012f1-710e-4a25-994a-93821f5871aa",
+     "count": "63"
+    },
+    {
+     "t": "mimamsa_predictions",
+     "c": "1c826d5a-41cb-4450-b4dc-59d440e5f75a",
+     "count": "56"
+    },
+    {
+     "t": "mimamsa_predictions",
+     "c": "482012f1-710e-4a25-994a-93821f5871aa",
+     "count": "139"
+    }
+   ]
+  },
+  "discoveries_computed_at": {
+   "sql": "select min(computed_at)::text, max(computed_at)::text, count(*) from bodha_discoveries where chart_id='482012f1-710e-4a25-994a-93821f5871aa'",
+   "result": [
+    {
+     "min": "2026-09-10 07:06:32.826674+00",
+     "max": "2026-09-10 07:06:32.826674+00",
+     "count": "1161"
+    }
+   ]
+  },
+  "stored_discovery_ids_still_exist": {
+   "sql": "select count(*) stored, count(d.discovery_id) still_exist from phala_anchors a left join bodha_discoveries d on d.discovery_id::text=a.discovery_id::text where a.chart_id='482012f1-710e-4a25-994a-93821f5871aa'",
+   "result": [
+    {
+     "stored": "4",
+     "still_exist": "0"
+    }
+   ]
+  },
+  "predictions_resolving_to_anchors": {
+   "sql": "select count(*) total, count(a.anchor_id) resolves from mimamsa_predictions p left join phala_anchors a on a.anchor_id::text=p.source_pramana_id where p.chart_id='482012f1-710e-4a25-994a-93821f5871aa'",
+   "result": [
+    {
+     "total": "139",
+     "resolves": "4"
+    }
+   ]
+  },
+  "nimitta_integrity_prediction_term_all_charts": {
+   "sql": "select count(*) from mimamsa_predictions p left join phala_anchors a on a.anchor_id::text=p.source_pramana_id where p.source_pramana_id is not null and a.anchor_id is null",
+   "result": [
+    {
+     "count": "135"
+    }
+   ]
+  },
+  "asset_throughput_ph": {
+   "sql": "select asset_id,state,rows_written,last_built_at::text from asset_throughput where chart_id='482012f1-710e-4a25-994a-93821f5871aa' and asset_id like 'ph\\_%' order by 1",
+   "result": [
+    {
+     "asset_id": "ph_muhurta",
+     "state": "stale",
+     "rows_written": "139",
+     "last_built_at": "2026-08-13 01:16:03.105166+00"
+    },
+    {
+     "asset_id": "ph_nimitta",
+     "state": "stale",
+     "rows_written": "139",
+     "last_built_at": "2026-08-13 01:16:00.435155+00"
+    },
+    {
+     "asset_id": "ph_phaladesa",
+     "state": "stale",
+     "rows_written": "13",
+     "last_built_at": "2026-08-13 01:16:27.343582+00"
+    },
+    {
+     "asset_id": "ph_pramana",
+     "state": "stale",
+     "rows_written": "139",
+     "last_built_at": "2026-08-13 01:16:22.481143+00"
+    },
+    {
+     "asset_id": "ph_pratikara",
+     "state": "stale",
+     "rows_written": "536",
+     "last_built_at": "2026-08-13 01:16:05.883214+00"
+    },
+    {
+     "asset_id": "ph_rectification",
+     "state": "stale",
+     "rows_written": "186",
+     "last_built_at": "2026-08-13 01:16:06.163083+00"
+    },
+    {
+     "asset_id": "ph_sankrama",
+     "state": "stale",
+     "rows_written": "2510",
+     "last_built_at": "2026-08-13 01:16:21.621682+00"
+    },
+    {
+     "asset_id": "ph_sodhana",
+     "state": "stale",
+     "rows_written": "97",
+     "last_built_at": "2026-08-13 01:16:07.622477+00"
+    },
+    {
+     "asset_id": "ph_suddha_sodhana",
+     "state": "stale",
+     "rows_written": "139",
+     "last_built_at": "2026-08-13 01:16:09.082588+00"
+    }
+   ]
+  },
+  "asset_throughput_upstream": {
+   "sql": "select asset_id,state,rows_written,last_built_at::text from asset_throughput where chart_id='482012f1-710e-4a25-994a-93821f5871aa' and asset_id in ('ka_sangam','ka_bhavishya_lekha','ka_vighnakara','ka_kalasutra','ka_gochara','bo_upaya','bo_sangati','bo_anveshana','bo_laksana') order by 1",
+   "result": [
+    {
+     "asset_id": "bo_anveshana",
+     "state": "stale",
+     "rows_written": "4437",
+     "last_built_at": "2026-09-10 07:06:32.76269+00"
+    },
+    {
+     "asset_id": "bo_laksana",
+     "state": "lit",
+     "rows_written": "50529",
+     "last_built_at": "2026-09-08 18:22:33.248104+00"
+    },
+    {
+     "asset_id": "bo_sangati",
+     "state": "lit",
+     "rows_written": "535",
+     "last_built_at": "2026-09-11 15:55:51.047496+00"
+    },
+    {
+     "asset_id": "bo_upaya",
+     "state": "stale",
+     "rows_written": "240",
+     "last_built_at": "2026-09-09 23:57:19.202635+00"
+    },
+    {
+     "asset_id": "ka_bhavishya_lekha",
+     "state": "stale",
+     "rows_written": "100",
+     "last_built_at": "2026-08-13 01:15:54.314753+00"
+    },
+    {
+     "asset_id": "ka_gochara",
+     "state": "stale",
+     "rows_written": "87",
+     "last_built_at": "2026-09-10 04:16:38.914302+00"
+    },
+    {
+     "asset_id": "ka_kalasutra",
+     "state": "stale",
+     "rows_written": "335403",
+     "last_built_at": "2026-08-13 01:15:50.567754+00"
+    },
+    {
+     "asset_id": "ka_sangam",
+     "state": "stale",
+     "rows_written": "14868",
+     "last_built_at": "2026-08-13 01:07:13.494312+00"
+    },
+    {
+     "asset_id": "ka_vighnakara",
+     "state": "stale",
+     "rows_written": "536",
+     "last_built_at": "2026-08-13 01:08:12.911241+00"
+    }
+   ]
+  },
+  "anchors_posterior_window": {
+   "sql": "select count(distinct posterior) dp, min(posterior), max(posterior), min(window_start)::text, max(window_end)::text, count(*) filter (where peak_date is null) nopeak, count(*) filter (where lift_vector_jsonb->>'promise_lift'='1.75') promise175 from phala_anchors where chart_id='482012f1-710e-4a25-994a-93821f5871aa'",
+   "result": [
+    {
+     "dp": "1",
+     "min": "2026-08-12",
+     "max": "2026-11-10",
+     "nopeak": "4",
+     "promise175": "4"
+    }
+   ]
+  },
+  "bhavishya_probability_tier": {
+   "sql": "select probability_tier, count(*) from kala_bhavishya group by 1",
+   "result": [
+    {
+     "probability_tier": "tier_1_high",
+     "count": "100"
+    }
+   ]
+  },
+  "phaladesa_vs_anchors": {
+   "sql": "select pd.domain, pd.anchor_count, (select count(*) from phala_anchors a where a.chart_id=pd.chart_id and lower(a.domain)=pd.domain) real_anchors, pd.top_anchor_id is not null has_top, (select count(*) from phala_anchors a where a.anchor_id=pd.top_anchor_id) top_resolves from phala_phaladesa pd where pd.chart_id='482012f1-710e-4a25-994a-93821f5871aa' order by 1",
+   "result": [
+    {
+     "domain": "career",
+     "anchor_count": "29",
+     "real_anchors": "1",
+     "has_top": "t",
+     "top_resolves": "1"
+    },
+    {
+     "domain": "character",
+     "anchor_count": "5",
+     "real_anchors": "1",
+     "has_top": "t",
+     "top_resolves": "0"
+    },
+    {
+     "domain": "education",
+     "anchor_count": "0",
+     "real_anchors": "0",
+     "has_top": "f",
+     "top_resolves": "0"
+    },
+    {
+     "domain": "family",
+     "anchor_count": "0",
+     "real_anchors": "0",
+     "has_top": "f",
+     "top_resolves": "0"
+    },
+    {
+     "domain": "general",
+     "anchor_count": "0",
+     "real_anchors": "0",
+     "has_top": "f",
+     "top_resolves": "0"
+    },
+    {
+     "domain": "health",
+     "anchor_count": "5",
+     "real_anchors": "1",
+     "has_top": "t",
+     "top_resolves": "0"
+    },
+    {
+     "domain": "progeny",
+     "anchor_count": "0",
+     "real_anchors": "0",
+     "has_top": "f",
+     "top_resolves": "0"
+    },
+    {
+     "domain": "relationship",
+     "anchor_count": "18",
+     "real_anchors": "1",
+     "has_top": "t",
+     "top_resolves": "0"
+    },
+    {
+     "domain": "residence",
+     "anchor_count": "0",
+     "real_anchors": "0",
+     "has_top": "f",
+     "top_resolves": "0"
+    },
+    {
+     "domain": "spirituality",
+     "anchor_count": "6",
+     "real_anchors": "0",
+     "has_top": "t",
+     "top_resolves": "0"
+    },
+    {
+     "domain": "transition",
+     "anchor_count": "50",
+     "real_anchors": "0",
+     "has_top": "t",
+     "top_resolves": "0"
+    },
+    {
+     "domain": "travel",
+     "anchor_count": "0",
+     "real_anchors": "0",
+     "has_top": "f",
+     "top_resolves": "0"
+    },
+    {
+     "domain": "wealth",
+     "anchor_count": "26",
+     "real_anchors": "0",
+     "has_top": "t",
+     "top_resolves": "0"
+    }
+   ]
+  },
+  "phaladesa_narration_contradiction": {
+   "sql": "select count(*) filter (where narration_jsonb->>'text' like '%contradiction signal(s) temper%') claims, count(*) filter (where contradiction_summary_jsonb->>'contested'='false') contested_false, count(*) filter (where narration_jsonb->>'text' like '%passed clean sodhana review%') clean_claims from phala_phaladesa where chart_id='482012f1-710e-4a25-994a-93821f5871aa'",
+   "result": [
+    {
+     "claims": "7",
+     "contested_false": "7",
+     "clean_claims": "7"
+    }
+   ]
+  },
+  "muhurta_scores": {
+   "sql": "select action_class, count(*), round(min(composite_quality)::numeric,3) cmin, round(max(composite_quality)::numeric,3) cmax, round(min(panchanga_score)::numeric,3) pmin, round(max(panchanga_score)::numeric,3) pmax, count(*) filter (where hora_lord is distinct from personalization_graha) hora_ne_graha, count(*) filter (where linked_anchor_id is not null) linked from phala_muhurta where chart_id='482012f1-710e-4a25-994a-93821f5871aa' group by 1 order by 1",
+   "result": [
+    {
+     "action_class": "marriage",
+     "count": "17",
+     "cmin": "0.086",
+     "cmax": "0.123",
+     "pmin": "0.536",
+     "pmax": "0.536",
+     "hora_ne_graha": "0",
+     "linked": "1"
+    },
+    {
+     "action_class": "medical",
+     "count": "5",
+     "cmin": "0.081",
+     "cmax": "0.116",
+     "pmin": "0.516",
+     "pmax": "0.516",
+     "hora_ne_graha": "0",
+     "linked": "1"
+    },
+    {
+     "action_class": "new_venture",
+     "count": "34",
+     "cmin": "0.183",
+     "cmax": "0.261",
+     "pmin": "0.820",
+     "pmax": "0.820",
+     "hora_ne_graha": "0",
+     "linked": "1"
+    },
+    {
+     "action_class": "start_business",
+     "count": "28",
+     "cmin": "0.183",
+     "cmax": "0.261",
+     "pmin": "0.820",
+     "pmax": "0.820",
+     "hora_ne_graha": "0",
+     "linked": "1"
+    },
+    {
+     "action_class": "travel",
+     "count": "50",
+     "cmin": "0.092",
+     "cmax": "0.131",
+     "pmin": "0.556",
+     "pmax": "0.556",
+     "hora_ne_graha": "0",
+     "linked": "0"
+    }
+   ]
+  },
+  "muhurta_bala_source": {
+   "sql": "select tarabala_chandrabala_jsonb->>'source' src, window_quality_verdict, count(*) from phala_muhurta where chart_id='482012f1-710e-4a25-994a-93821f5871aa' group by 1,2",
+   "result": [
+    {
+     "src": "placeholder_no_ephemeris",
+     "window_quality_verdict": "mediocre",
+     "count": "134"
+    }
+   ]
+  },
+  "sodhana_other_chart": {
+   "sql": "select anomaly_type, anomaly_severity, count(*), count(distinct anchor_id) from phala_sodhana group by 1,2 order by 1,2",
+   "result": [
+    {
+     "anomaly_type": "confidence_inflation",
+     "anomaly_severity": "major",
+     "count": "34"
+    },
+    {
+     "anomaly_type": "falsifier_absent",
+     "anomaly_severity": "critical",
+     "count": "6"
+    },
+    {
+     "anomaly_type": "magnitude_drift",
+     "anomaly_severity": "minor",
+     "count": "1"
+    }
+   ]
+  },
+  "suddha_by_chart": {
+   "sql": "select chart_id::text, cleanliness_status, count(*) from phala_suddha_sodhana group by 1,2 order by 1,2",
+   "result": [
+    {
+     "chart_id": "1c826d5a-41cb-4450-b4dc-59d440e5f75a",
+     "cleanliness_status": "clean",
+     "count": "19"
+    },
+    {
+     "chart_id": "1c826d5a-41cb-4450-b4dc-59d440e5f75a",
+     "cleanliness_status": "flagged",
+     "count": "1"
+    },
+    {
+     "chart_id": "1c826d5a-41cb-4450-b4dc-59d440e5f75a",
+     "cleanliness_status": "staged_revision",
+     "count": "36"
+    },
+    {
+     "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+     "cleanliness_status": "clean",
+     "count": "4"
+    }
+   ]
+  },
+  "sodhana_anchor_inputs_other_chart": {
+   "sql": "select count(distinct confidence_high) dch, count(distinct (dasha_consensus_count, ayanamsha_robustness)) pairs, count(*) from phala_anchors where chart_id='1c826d5a-41cb-4450-b4dc-59d440e5f75a'",
+   "result": [
+    {
+     "dch": "8",
+     "pairs": "1",
+     "count": "56"
+    }
+   ]
+  },
+  "pramana_by_chart": {
+   "sql": "select chart_id::text, evidence_type, window_status, evidence_strength_label, count(*) from phala_pramana group by 1,2,3,4 order by 1,2,3",
+   "result": [
+    {
+     "chart_id": "1c826d5a-41cb-4450-b4dc-59d440e5f75a",
+     "evidence_type": "life_event_miss",
+     "window_status": "past_window",
+     "evidence_strength_label": "indirect",
+     "count": "8"
+    },
+    {
+     "chart_id": "1c826d5a-41cb-4450-b4dc-59d440e5f75a",
+     "evidence_type": "pending_observation",
+     "window_status": "open",
+     "evidence_strength_label": "proxy",
+     "count": "3"
+    },
+    {
+     "chart_id": "1c826d5a-41cb-4450-b4dc-59d440e5f75a",
+     "evidence_type": "pending_observation",
+     "window_status": "pending",
+     "evidence_strength_label": "proxy",
+     "count": "45"
+    },
+    {
+     "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+     "evidence_type": "pending_observation",
+     "window_status": "open",
+     "evidence_strength_label": "proxy",
+     "count": "4"
+    }
+   ]
+  },
+  "life_events_categories": {
+   "sql": "select category, count(*) from life_events where chart_id='482012f1-710e-4a25-994a-93821f5871aa' group by 1 order by 2 desc",
+   "result": [
+    {
+     "category": "career",
+     "count": "11"
+    },
+    {
+     "category": "education",
+     "count": "10"
+    },
+    {
+     "category": "spiritual",
+     "count": "10"
+    },
+    {
+     "category": "relationship",
+     "count": "7"
+    },
+    {
+     "category": "health",
+     "count": "6"
+    },
+    {
+     "category": "family",
+     "count": "3"
+    },
+    {
+     "category": "residential+travel",
+     "count": "3"
+    },
+    {
+     "category": "psychological",
+     "count": "3"
+    },
+    {
+     "category": "loss",
+     "count": "3"
+    },
+    {
+     "category": "other",
+     "count": "2"
+    },
+    {
+     "category": "creative",
+     "count": "2"
+    },
+    {
+     "category": "finance",
+     "count": "2"
+    },
+    {
+     "category": "travel",
+     "count": "1"
+    }
+   ]
+  },
+  "life_events_date_confidence": {
+   "sql": "select date_confidence, count(*) filter (where event_date<'2020-01-01') pre2020, count(*) from life_events where chart_id='482012f1-710e-4a25-994a-93821f5871aa' group by 1",
+   "result": [
+    {
+     "date_confidence": "year_only",
+     "pre2020": "3",
+     "count": "3"
+    },
+    {
+     "date_confidence": "exact",
+     "pre2020": "35",
+     "count": "57"
+    },
+    {
+     "date_confidence": "month_known",
+     "pre2020": "2",
+     "count": "3"
+    }
+   ]
+  },
+  "mitigation_facts": {
+   "sql": "select count(*) n, count(*) filter (where (program_jsonb->>'total_scheduled')::int=0) empty_programs, count(*) filter (where linked_anchor_id is null) no_anchor, count(*) filter (where afflicting_graha is null or afflicting_graha='') no_graha, count(distinct classical_citation) dcite, count(*) filter (where source_id is null) null_source from phala_mitigation where chart_id='482012f1-710e-4a25-994a-93821f5871aa'",
+   "result": [
+    {
+     "n": "536",
+     "empty_programs": "536",
+     "no_anchor": "536",
+     "no_graha": "44",
+     "dcite": "1",
+     "null_source": "536"
+    }
+   ]
+  },
+  "mitigation_obstruction_resolution": {
+   "sql": "select count(*) total, count(o.id) resolves from phala_mitigation m left join kala_obstruction o on o.id=m.obstruction_id and o.chart_id=m.chart_id where m.chart_id='482012f1-710e-4a25-994a-93821f5871aa'",
+   "result": [
+    {
+     "total": "536",
+     "resolves": "0"
+    }
+   ]
+  },
+  "prescriptions_shape": {
+   "sql": "select estimated_cost_inr_range_jsonb->>'cost_tier' ct, count(*), count(*) filter (where estimated_cost_inr_range_jsonb ? 'max_inr') has_max_inr, count(*) filter (where array_length(prerequisite_prescription_ids_array,1)>0) prereq, count(*) filter (where array_length(incompatible_with_prescription_ids_array,1)>0) incompat from bodha_rm_remedy_prescriptions where chart_id='482012f1-710e-4a25-994a-93821f5871aa' group by 1 order by 2 desc",
+   "result": [
+    {
+     "ct": "free",
+     "count": "60",
+     "has_max_inr": "0",
+     "prereq": "0",
+     "incompat": "0"
+    },
+    {
+     "ct": "low",
+     "count": "40",
+     "has_max_inr": "0",
+     "prereq": "0",
+     "incompat": "0"
+    },
+    {
+     "ct": "",
+     "count": "25",
+     "has_max_inr": "0",
+     "prereq": "0",
+     "incompat": "0"
+    },
+    {
+     "ct": "medium",
+     "count": "10",
+     "has_max_inr": "0",
+     "prereq": "0",
+     "incompat": "0"
+    }
+   ]
+  },
+  "prescriptions_source_ids": {
+   "sql": "select classical_sources_jsonb->>'source_id' sid, count(*) from bodha_rm_remedy_prescriptions where chart_id='482012f1-710e-4a25-994a-93821f5871aa' group by 1",
+   "result": [
+    {
+     "sid": "classical_tradition",
+     "count": "65"
+    },
+    {
+     "sid": "BPHS",
+     "count": "70"
+    }
+   ]
+  },
+  "sankrama_fanout": {
+   "sql": "select count(*) rows, count(distinct (source_anchor_id,target_domain)) pairs, count(*) filter (where projected_window_start=source_window_start and projected_window_end=source_window_end) same_window, count(*) filter (where trajectory='stable') stable, count(*) filter (where asymmetry_score=0) asym0, count(*) filter (where cascade_depth=1) depth1 from phala_sankrama where chart_id='482012f1-710e-4a25-994a-93821f5871aa'",
+   "result": [
+    {
+     "rows": "155",
+     "pairs": "31",
+     "same_window": "155",
+     "stable": "155",
+     "asym0": "155",
+     "depth1": "155"
+    }
+   ]
+  },
+  "sankrama_cell_resolution": {
+   "sql": "select count(*) total, count(c.cell_id) resolves from phala_sankrama s left join bodha_cdlm_cells c on c.cell_id=s.cdlm_cell_id where s.chart_id='482012f1-710e-4a25-994a-93821f5871aa'",
+   "result": [
+    {
+     "total": "155",
+     "resolves": "0"
+    }
+   ]
+  },
+  "cdlm_upstream_nulls": {
+   "sql": "select count(*) n, count(cell_evolution_gradient_score) grad, count(asymmetry_score) asym, count(*) filter (where jsonb_array_length(coalesce(predicted_activation_dasha_windows_jsonb,'[]'::jsonb))>0) act_windows from bodha_cdlm_cells where chart_id='482012f1-710e-4a25-994a-93821f5871aa'",
+   "result": [
+    {
+     "n": "280",
+     "grad": "0",
+     "asym": "0",
+     "act_windows": "0"
+    }
+   ]
+  },
+  "rectification_summary": {
+   "sql": "select ayanamsha_id, lagna_stable, lel_fit_score::text, lel_events_matched, lel_events_tested, count(*), count(distinct offset_minutes) from phala_rectification where chart_id='482012f1-710e-4a25-994a-93821f5871aa' group by 1,2,3,4,5 order by 1,2",
+   "result": [
+    {
+     "ayanamsha_id": "kp",
+     "lagna_stable": "f",
+     "lel_fit_score": "",
+     "lel_events_matched": "",
+     "lel_events_tested": "40",
+     "count": "18"
+    },
+    {
+     "ayanamsha_id": "kp",
+     "lagna_stable": "t",
+     "lel_fit_score": "0.0000",
+     "lel_events_matched": "0",
+     "lel_events_tested": "40",
+     "count": "19"
+    },
+    {
+     "ayanamsha_id": "lahiri",
+     "lagna_stable": "f",
+     "lel_fit_score": "",
+     "lel_events_matched": "",
+     "lel_events_tested": "40",
+     "count": "18"
+    },
+    {
+     "ayanamsha_id": "lahiri",
+     "lagna_stable": "t",
+     "lel_fit_score": "0.0000",
+     "lel_events_matched": "0",
+     "lel_events_tested": "40",
+     "count": "19"
+    },
+    {
+     "ayanamsha_id": "raman",
+     "lagna_stable": "f",
+     "lel_fit_score": "",
+     "lel_events_matched": "",
+     "lel_events_tested": "40",
+     "count": "18"
+    },
+    {
+     "ayanamsha_id": "raman",
+     "lagna_stable": "t",
+     "lel_fit_score": "0.0000",
+     "lel_events_matched": "0",
+     "lel_events_tested": "40",
+     "count": "19"
+    },
+    {
+     "ayanamsha_id": "surya_siddhanta",
+     "lagna_stable": "f",
+     "lel_fit_score": "",
+     "lel_events_matched": "",
+     "lel_events_tested": "40",
+     "count": "18"
+    },
+    {
+     "ayanamsha_id": "surya_siddhanta",
+     "lagna_stable": "t",
+     "lel_fit_score": "0.0000",
+     "lel_events_matched": "0",
+     "lel_events_tested": "40",
+     "count": "19"
+    },
+    {
+     "ayanamsha_id": "true_chitra",
+     "lagna_stable": "f",
+     "lel_fit_score": "",
+     "lel_events_matched": "",
+     "lel_events_tested": "40",
+     "count": "18"
+    },
+    {
+     "ayanamsha_id": "true_chitra",
+     "lagna_stable": "t",
+     "lel_fit_score": "0.0000",
+     "lel_events_matched": "0",
+     "lel_events_tested": "40",
+     "count": "19"
+    }
+   ]
+  },
+  "rectification_best": {
+   "sql": "select offset_minutes, best_lel_fit_score::text, confidence_low::text, confidence_high::text, confidence_label, win_margin::text, lel_training_events, lel_training_matched, judgment_flags::text, auto_action, native_adopted from phala_rectification_best where chart_id='482012f1-710e-4a25-994a-93821f5871aa'",
+   "result": [
+    {
+     "offset_minutes": "0",
+     "best_lel_fit_score": "0.0000",
+     "confidence_low": "-0.2000",
+     "confidence_high": "0.2000",
+     "confidence_label": "unresolved",
+     "win_margin": "0.0000",
+     "lel_training_events": "40",
+     "lel_training_matched": "0",
+     "judgment_flags": "{\"calibration\": \"calibrated\", \"load_bearing\": true, \"lel_event_count\": 64, \"calibration_state\": \"calibrated\", \"rectification_basis\": \"lel_fit\"}",
+     "auto_action": "stage_for_review",
+     "native_adopted": "f"
+    }
+   ]
+  },
+  "rectification_sign_vs_L1": {
+   "sql": "select r.ayanamsha_id, r.lagna_sign = (select fact_value_text from chart_facts f where f.chart_id=r.chart_id and f.fact_subject='LAGNA' and f.fact_key='sign' limit 1) eq_L1 from phala_rectification r where r.chart_id='482012f1-710e-4a25-994a-93821f5871aa' and offset_minutes=0",
+   "result": [
+    {
+     "ayanamsha_id": "lahiri",
+     "eq_l1": "t"
+    },
+    {
+     "ayanamsha_id": "true_chitra",
+     "eq_l1": "t"
+    },
+    {
+     "ayanamsha_id": "kp",
+     "eq_l1": "t"
+    },
+    {
+     "ayanamsha_id": "raman",
+     "eq_l1": "t"
+    },
+    {
+     "ayanamsha_id": "surya_siddhanta",
+     "eq_l1": "t"
+    }
+   ]
+  },
+  "chart_facts_graha_subjects": {
+   "sql": "select fact_subject from chart_facts where chart_id='482012f1-710e-4a25-994a-93821f5871aa' and ayanamsha_id='lahiri_chitrapaksha' and fact_category='graha_position' and fact_key='sign' order by 1",
+   "result": [
+    {
+     "fact_subject": "JUP"
+    },
+    {
+     "fact_subject": "KET_MEAN"
+    },
+    {
+     "fact_subject": "LAGNA"
+    },
+    {
+     "fact_subject": "MAR"
+    },
+    {
+     "fact_subject": "MER"
+    },
+    {
+     "fact_subject": "MOON"
+    },
+    {
+     "fact_subject": "RAH_MEAN"
+    },
+    {
+     "fact_subject": "SAT"
+    },
+    {
+     "fact_subject": "SUN"
+    },
+    {
+     "fact_subject": "VEN"
+    }
+   ]
+  },
+  "builder_privileges": {
+   "sql": "select t, has_table_privilege('data_plane_builder', 'public.'||t, 'INSERT') ins, has_table_privilege('data_plane_builder', 'public.'||t, 'DELETE') del, has_table_privilege('data_plane_builder', 'public.'||t, 'SELECT') sel from unnest(array['phala_anchors','phala_muhurta','phala_sodhana','phala_mitigation','phala_suddha_sodhana','phala_sankrama','phala_pramana','phala_phaladesa','phala_rectification','phala_rectification_best','mimamsa_predictions']) t",
+   "result": [
+    {
+     "t": "phala_anchors",
+     "ins": "t",
+     "del": "t",
+     "sel": "t"
+    },
+    {
+     "t": "phala_muhurta",
+     "ins": "t",
+     "del": "t",
+     "sel": "t"
+    },
+    {
+     "t": "phala_sodhana",
+     "ins": "t",
+     "del": "t",
+     "sel": "t"
+    },
+    {
+     "t": "phala_mitigation",
+     "ins": "t",
+     "del": "t",
+     "sel": "t"
+    },
+    {
+     "t": "phala_suddha_sodhana",
+     "ins": "t",
+     "del": "t",
+     "sel": "t"
+    },
+    {
+     "t": "phala_sankrama",
+     "ins": "t",
+     "del": "t",
+     "sel": "t"
+    },
+    {
+     "t": "phala_pramana",
+     "ins": "t",
+     "del": "t",
+     "sel": "t"
+    },
+    {
+     "t": "phala_phaladesa",
+     "ins": "t",
+     "del": "t",
+     "sel": "t"
+    },
+    {
+     "t": "phala_rectification",
+     "ins": "f",
+     "del": "f",
+     "sel": "f"
+    },
+    {
+     "t": "phala_rectification_best",
+     "ins": "f",
+     "del": "f",
+     "sel": "f"
+    },
+    {
+     "t": "mimamsa_predictions",
+     "ins": "t",
+     "del": "t",
+     "sel": "t"
+    }
+   ]
+  },
+  "identity_function_privilege": {
+   "sql": "select has_function_privilege('phala_anchor_identity(uuid,text,text,text,text,text,date,date,date,text)','execute') can_execute",
+   "result": [
+    {
+     "can_execute": "f"
+    }
+   ]
+  },
+  "cascade_fks": {
+   "sql": "select conrelid::regclass::text tbl, conname, pg_get_constraintdef(oid) def from pg_constraint where contype='f' and (confrelid='public.phala_anchors'::regclass or conrelid='public.phala_anchors'::regclass) order by 1,2",
+   "result": [
+    {
+     "tbl": "phala_anchors",
+     "conname": "phala_anchors_bhavishya_id_fkey",
+     "def": "FOREIGN KEY (bhavishya_id) REFERENCES kala_bhavishya(id) ON DELETE SET NULL"
+    },
+    {
+     "tbl": "phala_anchors",
+     "conname": "phala_anchors_convergence_id_fkey",
+     "def": "FOREIGN KEY (convergence_id) REFERENCES kala_convergence(convergence_id) ON DELETE CASCADE"
+    },
+    {
+     "tbl": "phala_mitigation",
+     "conname": "phala_mitigation_linked_anchor_id_fkey",
+     "def": "FOREIGN KEY (linked_anchor_id) REFERENCES phala_anchors(anchor_id) ON DELETE SET NULL"
+    },
+    {
+     "tbl": "phala_muhurta",
+     "conname": "phala_muhurta_linked_anchor_id_fkey",
+     "def": "FOREIGN KEY (linked_anchor_id) REFERENCES phala_anchors(anchor_id) ON DELETE SET NULL"
+    },
+    {
+     "tbl": "phala_pramana",
+     "conname": "phala_pramana_anchor_id_fkey",
+     "def": "FOREIGN KEY (anchor_id) REFERENCES phala_anchors(anchor_id) ON DELETE CASCADE"
+    },
+    {
+     "tbl": "phala_sankrama",
+     "conname": "phala_sankrama_source_anchor_id_fkey",
+     "def": "FOREIGN KEY (source_anchor_id) REFERENCES phala_anchors(anchor_id) ON DELETE CASCADE"
+    },
+    {
+     "tbl": "phala_sodhana",
+     "conname": "phala_sodhana_anchor_id_fkey",
+     "def": "FOREIGN KEY (anchor_id) REFERENCES phala_anchors(anchor_id) ON DELETE CASCADE"
+    },
+    {
+     "tbl": "phala_suddha_sodhana",
+     "conname": "phala_suddha_sodhana_anchor_id_fkey",
+     "def": "FOREIGN KEY (anchor_id) REFERENCES phala_anchors(anchor_id) ON DELETE CASCADE"
+    }
+   ]
+  },
+  "discoveries_top100_static": {
+   "sql": "select discovery_subsystem, count(*) from (select discovery_subsystem from bodha_discoveries where chart_id='482012f1-710e-4a25-994a-93821f5871aa' order by composite_discovery_rank desc nulls last limit 100) x group by 1",
+   "result": [
+    {
+     "discovery_subsystem": "ga_sensitive",
+     "count": "5"
+    },
+    {
+     "discovery_subsystem": "ga_structural",
+     "count": "95"
+    }
+   ]
+  },
+  "ph_integrity_sql_results": {
+   "sql": "asset_registry.integrity_check_sql executed as written (read-only)",
+   "result": {
+    "ph_nimitta": {
+     "error": "ERROR:  permission denied for function phala_anchor_identity"
+    },
+    "ph_muhurta": "?column?\nt\n(1 row)",
+    "ph_sodhana": "?column?\nt\n(1 row)",
+    "ph_pratikara": "?column?\nf\n(1 row)",
+    "ph_suddha_sodhana": "?column?\nt\n(1 row)",
+    "ph_sankrama": "?column?\nt\n(1 row)",
+    "ph_pramana": "?column?\nt\n(1 row)",
+    "ph_phaladesa": "?column?\nf\n(1 row)",
+    "ph_rectification": "?column?\nt\n(1 row)"
+   }
+  }
+ }
+}

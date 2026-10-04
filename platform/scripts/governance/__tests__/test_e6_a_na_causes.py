@@ -61,6 +61,10 @@ def _stub_layer(monkeypatch, ctrl, reg, tables=None, *, registered=None, live=No
     monkeypatch.setattr(ac, "contract_scan", lambda a, f: ("PASS", []))
 
     def fake_psql(sql, sep="\x1f", timeout=None):
+        if "format_type(a.atttypid" in sql:                 # C2(ii): the citation column's type
+            return [["text"]]
+        if "jsonb_build_object('rows'" in sql:              # C2(ii): rows / NULL / placeholder counts, one read
+            return [['{"rows":48,"null":0,"placeholder":0}']]
         if "IS NOT NULL" in sql:
             return [["48"]]
         if "EXISTS" in sql:
@@ -113,8 +117,9 @@ SITES = [
      {"x": _reg_row("x")}, {}),
     ("exercised-never-executed", "Build.exercised", "never-executed-no-writer",
      {"x": _reg_row("x")}, dict(hist={"x": _h_unstarted()})),
+    # F5 (SS N-65): `never-run` needs the history source demonstrably present: another asset of the census has rows
     ("history-never-run", "Build.history", "never-run",
-     {"x": _reg_row("x")}, {}),
+     {"x": _reg_row("x"), "y": _reg_row("y")}, dict(hist={"y": _h_unstarted()})),
     ("dep-liveness-none", "Build.dep_liveness", "no-declared-dependencies",
      {"x": _reg_row("x")}, {}),
 ]
@@ -249,9 +254,21 @@ def test_every_registered_cause_is_observed_emitted_under_its_criterion(monkeypa
         assert rec["v"] == NA, rec
         observed.add(("Earn.build_record", rec["cause"]))
     for crit, rec in ac.prose_checks("x", {"prose_fields": [], "evidence": {"prose_fields": "w.py:1"}},
-                                     dict(written={}, vocabulary=set())).items():
+                                     dict(written={"t": set()}, vocabulary=set())).items():
         assert rec["v"] == NA, rec           # E6 packet (c): the declared-no-prose measured N/A candidates
         observed.add((crit, rec["cause"]))
+    observed.add(("Earn.service_state", ac._service_state_na("data", "data")["cause"]))     # S4/N-72: keyed on the declared kind
+    for got in (ac.vocab_alias_declared_check("x", dict(na="no_alias_class", why="w", evidence="e:1"), "t", ["id"]),   # S3: the declared N/A words
+                ac.ldgr_source_declared_check("x", dict(na="no_classical_claim", why="w", evidence="e:1"), "t", ["id"])):
+        for crit, rec in got.items():
+            assert rec["v"] == NA, rec
+            observed.add((crit, rec["cause"]))
+    for car in (dict(nature="derivation", applies="D3", why="w", evidence="e:1"),                           # S2: a declared carriage check
+                dict(nature="transcription", applies="D1", citation_state="sourced", why="w", evidence="e:1"),
+                dict(nature="ratified_judgment", ruling="N-73", why="w", evidence="e:1")):
+        for crit, rec in ac.carriage_declared_checks("x", car, None, column_types=None, prose_columns=[]).items():
+            if rec["v"] == NA:
+                observed.add((crit, rec["cause"]))
     for crit, rec in ac.carr_checks(dict(declared_terminal_by_construction="writer x.py:1 writes nothing read",
                                          blocking_radius=dict(direct=0, transitive=0),
                                          measured_served=NA)).items():
@@ -396,9 +413,10 @@ def test_the_cause_encoding_bumped_the_registry_revision():
     assert ac.REGISTRY_REVISION >= 2, "what a cell means changed (rule ids are cause-keyed): revision must be bumped"
 
 
-def test_na_rule_decisions_is_still_empty():
-    assert ac.NA_RULE_DECISIONS == {}, "the N-22 rule table is not approved: nothing may be declared"
-    ac.validate_na_rule_decisions()    # and the (empty) production table is, trivially, well-formed
+def test_na_rule_decisions_is_exactly_the_approved_set():
+    import test_e6_na_r01_03 as r13
+    assert set(ac.NA_RULE_DECISIONS) == r13.DECLARED_IDS, "only the N-65 approved rules may be declared"
+    ac.validate_na_rule_decisions()    # and the production table is well-formed
 
 
 # ───────────────────────── (3b) the declared rule table is validated, not trusted ─────────────────────────

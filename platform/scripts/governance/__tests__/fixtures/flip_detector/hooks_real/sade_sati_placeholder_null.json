@@ -1,0 +1,27 @@
+{
+  "lane": "sade_sati_placeholder_null",
+  "ruling": "honest null beats an invented value (CLAUDE.md N.7 item 6): placeholder -> NULL, reason no_ga7_period_covers_date",
+  "pr": "#2965 (a3cbead90)",
+  "charts": ["482012f1", "cb73cd3d"],
+  "description": "ga_sade_sati used to store the literal string 'PENDING_GA7_LOOKUP' as fact_value_text where the chart_dashas lookup returned nothing (the mudda dasha table's horizon ends before the Sade Sati phase date): a placeholder presented as a value. Now fact_value_text is NULL and the citation sentence carries the named reason 'no_ga7_period_covers_date'. Every stored placeholder is the key concurrent_mudda_lord. Rows are unchanged in number; the category VALUE changes (a text becomes NULL = a detector value change). Production counts (reader 2026-10-02): canonical 482012f1 sade_sati_phase 30 (6 per ayanamsha) + sade_sati_concurrent_dasha_overlay 10 (2 per ayanamsha) = 40; Kiran cb73cd3d the same 30 + 10; Abhinandan 1c826d5a 40 + 10 (not covered here: S-L1b). Total 130 rows over the three charts. The tier of these rows is single before and after. NOT declared here: the ephemeris backend move (Moshier to .se1, a separate lane) shifts Saturn sign-ingress instants by up to about 17 minutes (Krishnamurti +-1,044 s; Lahiri -323 to +369 s; True Chitra +-391 s; Raman +-692 s; Surya Siddhanta +-197 s) and Saturn stations by -31 to +27 s, so the sade_sati cycle / phase *_iso time facts move by that much; they are time-valued, not class changes, the detector never compares them, and no hook declares a sade_sati date (see ephemeris_backend_shift.json and HOOKS_W7_HAND_READBACK H15). The dasha-lord lookups at the phase instants do not flip (360 stored lookups replayed, 0 flips).",
+  "may_change": [
+    {
+      "table": "chart_facts",
+      "categories": ["sade_sati_phase"],
+      "fact_keys": ["concurrent_mudda_lord"],
+      "change_types": ["value"],
+      "expected_count": {"exact": 30},
+      "expected_direction": "'PENDING_GA7_LOOKUP' -> NULL on 30 rows (6 per ayanamsha).",
+      "note": "source: SS 2026-10-02 hook fact in the #2965 integration commit ('EXACT canonical count 40: sade_sati_phase 30 + sade_sati_concurrent_dasha_overlay 10'); production reader count by chart / category / ayanamsha; rehearsal-synthetic (19-lane rehearsal, flip_detector v2.3 compare against the origin/main baseline build on the same synthetic chart; HOOKS_COMPLETENESS_v1_0.md, Source evidence) (the rehearsal baseline carries the same 30 + 10 placeholders; the rehearsal tree predates #2965, so the rehearsal diff does not show the change)."
+    },
+    {
+      "table": "chart_facts",
+      "categories": ["sade_sati_concurrent_dasha_overlay"],
+      "fact_keys": ["concurrent_mudda_lord"],
+      "change_types": ["value"],
+      "expected_count": {"exact": 10},
+      "expected_direction": "'PENDING_GA7_LOOKUP' -> NULL on 10 rows (2 per ayanamsha).",
+      "note": "same source. The ga_dashas rebuild precedes ga_sade_sati in the DAG and does not extend the mudda horizon, so the lookup still finds no covering period."
+    }
+  ]
+}

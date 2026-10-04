@@ -10,6 +10,8 @@ import {
   canonicalManifestDigest,
   canonicalRegistryContractDigest,
   CANONICAL_NIRMANA_CHART_ID,
+  excludeNirmanaStagedInertCandidates,
+  runtimeEvidenceSql,
   nirmanaExecutionContractForRegistryRow,
   NirmanaElevationManifestSchema,
   registryContractFingerprintInput,
@@ -216,7 +218,11 @@ export function buildNirmanaBaselineCandidate(rows: NirmanaRegistryContractRow[]
   // identity, and contract digest derived from it — excludes them, so a live
   // registry carrying bo_grounding still yields the frozen 128-asset
   // denominator the D-NATIVE-13 flip and the stage-spine guards hard-assert.
-  const orderedRows = orderedRegistryRows(rows.filter((row) => !NIRMANA_SUPPORTING_WRITERS.has(row.asset_id)))
+  // PRAVĀHA #2996 (migration 1243): the two staged inert Gochara candidates are excluded by ONE explicit, shape-conditioned rule
+  // (definitions.ts isNirmanaStagedInertCandidate) — never "all inactive assets": retired identities stay in the frozen population.
+  // R20-2: the candidate rule sees the COMPLETE registry first (a supporting writer depending on a candidate keeps it in the denominator), then
+  // the supporting writers are removed.
+  const orderedRows = orderedRegistryRows(excludeNirmanaStagedInertCandidates(rows).filter((row) => !NIRMANA_SUPPORTING_WRITERS.has(row.asset_id)))
   const manifestWithoutWaves = NirmanaElevationManifestSchema.parse({
     chart_id: CANONICAL_NIRMANA_CHART_ID,
     assets: orderedRows.map((row) => {
@@ -451,7 +457,8 @@ async function loadMonitorInputs(client: MonitorReadClient): Promise<{
             sort_order, scope, asset_kind, catalog_status, is_active, has_writer,
             target_table, count_sql, integrity_check_sql, health_probe,
             natural_key_partition, superseded_by, data_disposition, dead_flag,
-            sanskrit_name, english_name, english_description
+            sanskrit_name, english_name, english_description,
+            ${runtimeEvidenceSql('asset_registry')}
        FROM asset_registry
       ORDER BY layer, sort_order, asset_id`,
   )

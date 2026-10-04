@@ -4,6 +4,13 @@ import { execFileSync } from 'node:child_process'
 const project = process.env.GOOGLE_CLOUD_PROJECT ?? 'madhav-astrology'
 export const BUILDER_SERVICE_ACCOUNT = `data-plane-builder-runtime@${project}.iam.gserviceaccount.com`
 export const BUILDER_SECRET = 'data-plane-builder-db-url'
+// Gochara verification job: its own identity + its own secret + one named job (Option A, ND-ROLES).
+// The sealer has NO GCP identity and NO Secret Manager secret: its DSN lives only in the
+// `gochara-seal` GitHub environment, so any gochara/sealer name here is a violation, not a pair.
+export const VERIFIER_SERVICE_ACCOUNT = `gochara-verifier-runtime@${project}.iam.gserviceaccount.com`
+export const VERIFIER_SECRET = 'gochara-verifier-db-url'
+export const VERIFIER_JOB = 'gochara-verification-job'
+const SEALER_REFERENCE = /gochara[-_]sealer|GOCHARA_SEALER/i
 
 interface IamBinding { role: string; members?: string[]; condition?: unknown }
 interface IamPolicy { bindings?: IamBinding[] }
@@ -40,6 +47,27 @@ function grantsImpersonation(role: string, resolved: RolePermissions): boolean {
   return [...IMPERSONATION_PERMISSIONS].some((permission) => grantsPermission(role, permission, resolved))
 }
 
+// R14-4 (Codex round 14): the verifier service account must not be reachable by ANY capability that can mint, upload or
+// impersonate a credential for it, or rewrite its policy — so key CREATION and key UPLOAD and setIamPolicy are counted exactly
+// like actAs / token creation. "Zero keys exist today" proves nothing about who can create one tomorrow.
+const SA_CONTROL_PERMISSIONS = new Set([
+  ...IMPERSONATION_PERMISSIONS,
+  'iam.serviceAccountKeys.create', 'iam.serviceAccountKeys.upload', 'iam.serviceAccounts.setIamPolicy',
+  // R15-1: whoever can rewrite an ANCESTOR's policy can grant themselves any of the above on every service account below it — including the verifier's.
+  'resourcemanager.projects.setIamPolicy', 'resourcemanager.folders.setIamPolicy', 'resourcemanager.organizations.setIamPolicy',
+])
+// Roles whose capability is known by name even if a role-permission lookup did not resolve them (defence in depth; the resolved
+// permission list is authoritative for every role that WAS resolved, including editor and any custom role).
+const KNOWN_SA_CONTROL_ROLES = new Set([
+  ...IMPERSONATION_ROLES, 'roles/iam.serviceAccountKeyAdmin', 'roles/iam.serviceAccountAdmin', 'roles/iam.securityAdmin',
+  'roles/resourcemanager.projectIamAdmin', 'roles/resourcemanager.folderIamAdmin', 'roles/resourcemanager.organizationAdmin', 'roles/owner',
+])
+
+export function grantsServiceAccountControl(role: string, resolved: RolePermissions): boolean {
+  if (KNOWN_SA_CONTROL_ROLES.has(role)) return true
+  return (resolved[role] ?? []).some((permission) => SA_CONTROL_PERMISSIONS.has(permission))
+}
+
 function isDeclaredControlPlaneAdminGrant(
   binding: IamBinding,
   member: string,
@@ -72,6 +100,34 @@ function isCanonicalGoogleServiceAgentGrant(
   return expectedByRole[binding.role] === member
 }
 
+/**
+ * R16-1: ONE resource canonicaliser. IAM returns this project as `projects/<id>` OR `projects/<number>`; every comparison of "is this the project?"
+ * (policy collection, the declared exceptions, the verifier-control check, the shared secret-accessor and builder-impersonation checks) goes through
+ * this function, so a correctly declared owner / service agent / exception can never pass one check and fail another solely on the representation.
+ * Any other resource is returned as given.
+ */
+export function canonicalResource(resource: string | undefined, projectNumber = ''): string {
+  const raw = resource ?? ''
+  return projectNumber !== '' && raw === `projects/${projectNumber}` ? `projects/${project}` : raw
+}
+export function isThisProject(resource: string | undefined, projectNumber = ''): boolean {
+  return canonicalResource(resource, projectNumber) === `projects/${project}`
+}
+/** The operator-declared exceptions (`resource|role|member` separated by `;`), each resource canonicalised like the policies it is compared to; a malformed triple refuses. */
+export function parseDeclaredExceptions(declared: string, projectNumber = ''): Set<string> {
+  const out = new Set<string>()
+  for (const raw of declared.split(';')) {
+    const entry = raw.trim()
+    if (!entry) continue
+    const parts = entry.split('|')
+    if (parts.length !== 3 || parts.some((p) => p.trim() === '')) {
+      throw new Error(`DATA_PLANE_VERIFIER_CONTROL_EXCEPTIONS entry is not exactly resource|role|member: ${entry}`)
+    }
+    out.add(`${canonicalResource(parts[0].trim(), projectNumber)}|${parts[1].trim()}|${parts[2].trim()}`)
+  }
+  return out
+}
+
 export function iamSearchScopes(ancestors: ResourceAncestor[]): string[] {
   const scopes = new Set<string>([`projects/${project}`])
   for (const ancestor of ancestors) {
@@ -85,10 +141,42 @@ export function iamSearchScopes(ancestors: ResourceAncestor[]): string[] {
   return [...scopes]
 }
 
+// R15-3: the documented format of the `run.googleapis.com/secrets` annotation is COMMA-SEPARATED `alias:projects/<project>/secrets/<name>`
+// (the SDK's `secrets_mapping.ParseAnnotation`), NOT JSON. An entry resolves to a canonical secret: a secret of THIS project is its bare name
+// (what the rest of the inventory compares against); a secret of ANY OTHER project stays fully qualified, so it can never be mistaken for ours.
+export interface SecretsAnnotationEntry { alias: string; canonical: string }
+export function parseSecretsAnnotation(value: string, projectNumber = ''): SecretsAnnotationEntry[] {
+  const out: SecretsAnnotationEntry[] = []
+  const seen = new Map<string, string>()
+  for (const raw of value.split(',')) {
+    const entry = raw.trim()
+    if (!entry) throw new Error('Cloud Run secrets annotation contains an empty entry.')
+    const m = entry.match(/^([A-Za-z0-9_-]+):(?:projects\/([A-Za-z0-9-]+|\d+)\/secrets\/)?([A-Za-z0-9_-]+)$/)
+    if (!m) throw new Error(`Cloud Run secrets annotation entry is not alias:projects/<project>/secrets/<name>: ${entry}`)
+    const [, alias, proj, name] = m
+    const own = !proj || proj === project || (projectNumber !== '' && proj === projectNumber)
+    const canonical = own ? name : `projects/${proj}/secrets/${name}`
+    if (seen.has(alias) && seen.get(alias) !== canonical) throw new Error(`Cloud Run secrets annotation maps alias ${alias} to two different secrets.`)
+    seen.set(alias, canonical)
+    out.push({ alias, canonical })
+  }
+  return out
+}
+let secretProjectNumber = ''
+export function setSecretResolutionProjectNumber(value: string): void { secretProjectNumber = value }
+
 export function extractRunIdentityAndSecrets(definition: unknown): { serviceAccount: string; secrets: string[] } {
   let serviceAccount = ''
   const secrets = new Set<string>()
+  const aliases = new Map<string, string>()
+  const referenced: string[] = []
   const addSecret = (candidate: string): void => {
+    const full = candidate.match(/^projects\/([A-Za-z0-9-]+|\d+)\/secrets\/([^/:]+)(?::|\/versions\/.*)?$/)
+    if (full) {                                   // a fully qualified reference: this project's secret is its bare name; ANY OTHER project's stays qualified
+      const own = full[1] === project || (secretProjectNumber !== '' && full[1] === secretProjectNumber)
+      secrets.add(own ? full[2] : `projects/${full[1]}/secrets/${full[2]}`)
+      return
+    }
     const resource = candidate.match(/(?:^|\/)secrets\/([^/:]+)(?::|\/versions\/|$)/)
     if (resource?.[1]) { secrets.add(resource[1]); return }
     const short = candidate.match(/^([A-Za-z0-9_-]+)(?::[^:]*)?$/)
@@ -107,25 +195,29 @@ export function extractRunIdentityAndSecrets(definition: unknown): { serviceAcco
         const ref = child as Record<string, unknown>
         const name = typeof ref.name === 'string' ? ref.name : typeof ref.secret === 'string' ? ref.secret : ''
         if (!name) throw new Error('Cloud Run secretKeyRef has no exact secret name.')
-        addSecret(name)
+        referenced.push(name)
       }
       if ((key === 'secretName' || key === 'secret') && typeof child === 'string') addSecret(child)
       if (key === 'run.googleapis.com/secrets' && typeof child === 'string') {
-        let annotation: unknown
-        try { annotation = JSON.parse(child) }
-        catch { throw new Error('Cloud Run secrets annotation is not valid JSON.') }
-        if (!annotation || typeof annotation !== 'object' || Array.isArray(annotation)) {
-          throw new Error('Cloud Run secrets annotation is not an exact object map.')
-        }
-        for (const secret of Object.values(annotation as Record<string, unknown>)) {
-          if (typeof secret !== 'string') throw new Error('Cloud Run secrets annotation contains a non-string reference.')
-          addSecret(secret)
+        for (const entry of parseSecretsAnnotation(child, secretProjectNumber)) {
+          if (aliases.has(entry.alias) && aliases.get(entry.alias) !== entry.canonical) {
+            throw new Error(`Cloud Run secrets annotation maps alias ${entry.alias} to two different secrets.`)
+          }
+          aliases.set(entry.alias, entry.canonical)
         }
       }
       walk(child)
     }
   }
   walk(definition)
+  // aliases resolve to their canonical project+secret; EVERY alias target is inventoried (an alias in the annotation can be mounted), and a
+  // reference by alias is counted as the secret it resolves to, never as the alias string
+  for (const target of aliases.values()) secrets.add(target)
+  for (const name of referenced) {
+    const base = name.match(/^([A-Za-z0-9_-]+)(?::[^:]*)?$/)?.[1]
+    if (base && aliases.has(base)) secrets.add(aliases.get(base)!)
+    else addSecret(name)
+  }
   if (!serviceAccount) throw new Error('Cloud Run definition has no exact service account.')
   return { serviceAccount, secrets: [...secrets].sort() }
 }
@@ -243,16 +335,11 @@ function assertAnnotationsSurface(value: unknown): void {
   }
   for (const [key, annotation] of Object.entries(value as Record<string, unknown>)) {
     if (key === 'run.googleapis.com/secrets') {
-      if (typeof annotation !== 'string') throw new Error('Cloud Run secrets annotation is not valid JSON.')
-      let references: unknown
-      try { references = JSON.parse(annotation) }
-      catch { throw new Error('Cloud Run secrets annotation is not valid JSON.') }
-      if (!references || typeof references !== 'object' || Array.isArray(references)
-          || Object.values(references as Record<string, unknown>).some((reference) =>
-            typeof reference !== 'string'
-            || !/^(?:projects\/(?:[A-Za-z0-9-]+|\d+)\/secrets\/)?[A-Za-z0-9_-]+(?::|\/versions\/)[A-Za-z0-9_-]+$/.test(reference))) {
-        throw new Error('Cloud Run secrets annotation is not an exact Secret Manager reference map.')
-      }
+      // R16-1: the documented format is a COMMA-SEPARATED `alias:projects/<project>/secrets/<name>` list — the SAME parser the secret-resolution path uses
+      // (malformed, empty and conflicting-alias entries refuse; a valid annotated ordinary resource passes this surface check).
+      if (typeof annotation !== 'string') throw new Error('Cloud Run secrets annotation is not a string.')
+      try { parseSecretsAnnotation(annotation, secretProjectNumber) }
+      catch (error) { throw new Error(`Cloud Run secrets annotation is not the documented alias:projects/<project>/secrets/<name> list: ${error instanceof Error ? error.message : String(error)}`) }
       continue
     }
     if (typeof annotation !== 'string') {
@@ -403,6 +490,134 @@ export function assertSecretIsolation(
   }
 }
 
+export interface VerifierState {
+  /** Emails of every service account whose name mentions gochara (all must be the verifier's). */
+  serviceAccountEmails: string[]
+  /** Short names of every Secret Manager secret whose name mentions gochara or sealer. */
+  secretNames: string[]
+  serviceAccount?: ServiceAccount
+  serviceAccountPolicy?: IamPolicy
+  secretPolicy?: IamPolicy
+  /** Count of user-managed keys; undefined = not measured, which fails (no key may exist). */
+  userManagedKeys?: number
+}
+
+/**
+ * R14-4: the EXACT policy the verifier service account may carry, per provisioning phase — an allow-list of (role, member)
+ * pairs, nothing else:
+ *   staged (act 3 done, act 10 not yet)   → NO bindings at all;
+ *   deployable (act 10 done)              → exactly `roles/iam.serviceAccountUser` for the deployment principal, unconditional.
+ * ANY other binding — a different role, a second member, a condition, a key administrator, a policy administrator — fails, whether
+ * or not a key exists today. (Capabilities inherited from the project/folder/organization are checked separately, below.)
+ */
+export type VerifierPhase = 'staged' | 'deployable'
+export function assertVerifierServiceAccountPolicyExact(
+  policy: IamPolicy | undefined,
+  expectedDeployer: string | undefined,
+  resolved: RolePermissions = {},
+  phase: VerifierPhase = 'deployable',
+): void {
+  const bindings = policy?.bindings ?? []
+  const pairs = bindings.flatMap((binding) => (binding.members ?? []).map((member) => ({ role: binding.role, member, conditional: binding.condition !== undefined })))
+  const control = bindings.filter((binding) => grantsServiceAccountControl(binding.role, resolved))
+  if (pairs.some((pair) => pair.conditional)) {
+    throw new Error('Verifier service-account policy is not the exact allow-list: a conditional binding is never part of it.')
+  }
+  const allowedDeployable = expectedDeployer ? [`roles/iam.serviceAccountUser|${expectedDeployer}`] : []
+  const actual = pairs.map((pair) => `${pair.role}|${pair.member}`).sort()
+  // R15-1: the PHASE is explicit — `staged` (act 3 done, act 10 not yet) is EXACTLY zero bindings; `deployable` (act 10 done) is EXACTLY the one deployer
+  // binding, so the act-10 postcondition is enforced (zero bindings once act 10 is declared done FAILS), not merely tolerated as a union of two shapes.
+  const matchesStaged = phase === 'staged' && actual.length === 0
+  const matchesDeployable = phase === 'deployable' && allowedDeployable.length === 1 && actual.length === 1 && actual[0] === allowedDeployable[0]
+  if (!matchesStaged && !matchesDeployable) {
+    const offending = control.length > 0
+      ? ` (it includes a binding that can create/upload keys, mint tokens, impersonate or rewrite the policy: ${control.map((binding) => binding.role).sort().join(', ')})`
+      : ''
+    throw new Error(`Verifier service-account policy is not the exact allow-list for phase '${phase}' (staged: no bindings; deployable: only roles/iam.serviceAccountUser for the deployment principal)${offending}.`)
+  }
+}
+
+/**
+ * R14-4: no principal may hold — DIRECTLY OR INHERITED from the project, a folder or the organization — a role that can create or
+ * upload a key for, mint a token for, impersonate, or rewrite the policy of the verifier service account, outside a NAMED,
+ * DOCUMENTED control-plane exception list: (1) the declared human control-plane owner's `roles/owner` at the project, (2) Google's
+ * canonical service agents (the existing allow-list), and (3) the explicit operator-declared exceptions in
+ * DATA_PLANE_VERIFIER_CONTROL_EXCEPTIONS (`resource|role|member` triples separated by `;`, each reviewed and recorded in the
+ * act-3 report). Applies once the verifier service account exists (act 3 onward).
+ */
+export function assertVerifierInheritedControl(
+  effective: EffectivePolicy[],
+  resolved: RolePermissions = {},
+  controlPlaneAdminPrincipal = '',
+  projectNumber = '',
+  declaredExceptions = process.env.DATA_PLANE_VERIFIER_CONTROL_EXCEPTIONS ?? '',
+): void {
+  const exceptions = parseDeclaredExceptions(declaredExceptions, projectNumber)
+  const violations: string[] = []
+  for (const hit of effective) {
+    const resource = canonicalResource(hit.resource ?? 'unknown resource', projectNumber)
+    for (const binding of hit.policy?.bindings ?? []) {
+      if (!grantsServiceAccountControl(binding.role, resolved)) continue
+      for (const member of binding.members ?? []) {
+        const isProject = resource === `projects/${project}`
+        if (isProject && isDeclaredControlPlaneAdminGrant(binding, member, controlPlaneAdminPrincipal)) continue
+        if (isProject && isCanonicalGoogleServiceAgentGrant(binding, member, projectNumber)) continue
+        if (binding.condition === undefined && exceptions.has(`${resource}|${binding.role}|${member}`)) continue
+        violations.push(`${resource}:${binding.role}:${member}`)
+      }
+    }
+  }
+  if (violations.length > 0) {
+    throw new Error(`Inherited or aggregate capability to create/upload keys for, mint tokens for, impersonate or rewrite the policy of the verifier service account remains outside the declared control-plane exceptions: ${violations.sort().join(', ')}`)
+  }
+}
+
+/**
+ * Gate for the Gochara verification pair. Absent resources pass (act 3 -> act 4 are staged), but
+ * whatever exists must be exact and anything gochara-named that is not the pair fails.
+ * Project-wide secret access for ANY principal is already refused by assertSecretIsolation.
+ */
+export function assertVerifierIsolation(
+  projectPolicy: IamPolicy,
+  state: VerifierState,
+  resolved: RolePermissions = {},
+  expectedDeployer = process.env.DATA_PLANE_DEPLOY_PRINCIPAL,
+  phase?: VerifierPhase,
+): void {
+  const unknownAccounts = state.serviceAccountEmails.filter((email) => email !== VERIFIER_SERVICE_ACCOUNT)
+  if (unknownAccounts.length > 0) {
+    throw new Error(`Unknown gochara service account(s) ${unknownAccounts.sort().join(', ')}; only ${VERIFIER_SERVICE_ACCOUNT} is permitted.`)
+  }
+  const unknownSecrets = state.secretNames.filter((name) => name !== VERIFIER_SECRET)
+  if (unknownSecrets.length > 0) {
+    throw new Error(`Unknown gochara/sealer secret(s) ${unknownSecrets.sort().join(', ')}; the sealer credential lives only in the gochara-seal environment.`)
+  }
+  const hasAccount = state.serviceAccountEmails.length === 1
+  const hasSecret = state.secretNames.length === 1
+  if (hasSecret && !hasAccount) throw new Error('Verifier secret exists without its dedicated service account.')
+  if (!hasAccount) return
+  const member = `serviceAccount:${VERIFIER_SERVICE_ACCOUNT}`
+  if (state.serviceAccount?.disabled === true) throw new Error('Dedicated verifier service account is disabled.')
+  if (state.userManagedKeys !== 0) throw new Error('Dedicated verifier service account must have no user-managed keys.')
+  const projectBindings = (projectPolicy.bindings ?? []).filter((binding) => (binding.members ?? []).includes(member))
+  if (projectBindings.some((binding) => binding.condition !== undefined)
+      || projectBindings.length !== 1 || projectBindings[0].role !== 'roles/cloudsql.client') {
+    throw new Error('Dedicated verifier must have exactly project role roles/cloudsql.client.')
+  }
+  if (phase !== 'staged' && phase !== 'deployable') {
+    throw new Error('DATA_PLANE_VERIFIER_PHASE must be declared as staged (act 3 done, act 10 not yet) or deployable (act 10 done) once the verifier service account exists.')
+  }
+  assertVerifierServiceAccountPolicyExact(state.serviceAccountPolicy, expectedDeployer, resolved, phase)
+  if (!hasSecret) return
+  const accessorBindings = (state.secretPolicy?.bindings ?? [])
+    .filter((binding) => grantsPermission(binding.role, SECRET_ACCESS_PERMISSION, resolved))
+  const grants = accessorBindings.flatMap((binding) => binding.members ?? [])
+  if (accessorBindings.some((binding) => binding.condition !== undefined)
+      || grants.length !== 1 || grants[0] !== member) {
+    throw new Error(`Verifier secret must grant accessor to exactly ${member} and no other principal.`)
+  }
+}
+
 export function assertEffectiveIsolation(
   effective: EffectivePolicy[],
   builderServiceAccountPolicy: IamPolicy,
@@ -412,11 +627,12 @@ export function assertEffectiveIsolation(
   projectNumber = '',
   mode: SecretIsolationMode = 'strict',
 ): void {
+  if (projectNumber !== '') setSecretResolutionProjectNumber(projectNumber)      // ONE project identity for the literal-surface annotation parse and the secret resolution
   for (const hit of effective) {
     const accessors = (hit.policy?.bindings ?? [])
       .filter((binding) => grantsPermission(binding.role, SECRET_ACCESS_PERMISSION, resolved))
       .flatMap((binding) => (binding.members ?? [])
-        .filter((member) => !(hit.resource === `projects/${project}`
+        .filter((member) => !(isThisProject(hit.resource, projectNumber)
           && isDeclaredControlPlaneAdminGrant(binding, member, controlPlaneAdminPrincipal))))
     if (accessors.length && !/\/secrets\/[^/]+$/.test(hit.resource ?? '')) {
       throw new Error(`Inherited or aggregate Secret Manager accessor binding remains on ${hit.resource ?? 'unknown resource'}.`)
@@ -432,7 +648,7 @@ export function assertEffectiveIsolation(
       const encodedSuffix = `/serviceAccounts/${encodeURIComponent(BUILDER_SERVICE_ACCOUNT)}`
       return !resource.endsWith(suffix) && !resource.endsWith(encodedSuffix)
     })
-    .filter(({ resource, member, binding }) => !(resource === `projects/${project}`
+    .filter(({ resource, member, binding }) => !(isThisProject(resource, projectNumber)
       && (isDeclaredControlPlaneAdminGrant(binding, member, controlPlaneAdminPrincipal)
         || isCanonicalGoogleServiceAgentGrant(binding, member, projectNumber))))
   if (inheritedImpersonators.length > 0) {
@@ -480,6 +696,18 @@ export function assertEffectiveIsolation(
         && (surface.kind !== 'job' || surface.name !== 'brahma-build-pipeline-job')) {
       throw new Error(`Builder identity is used outside the one named build job (${surface.kind}/${surface.name}).`)
     }
+    if (SEALER_REFERENCE.test(serialized)) {
+      throw new Error(`Sealer credential or identity is referenced on Cloud Run ${surface.kind}/${surface.name}; it lives only in the gochara-seal environment.`)
+    }
+    const usesVerifierSecret = inventory.secrets.includes(VERIFIER_SECRET)
+    const usesVerifierIdentity = inventory.serviceAccount === VERIFIER_SERVICE_ACCOUNT
+    const isVerifierJob = surface.kind === 'job' && surface.name === VERIFIER_JOB
+    if ((usesVerifierSecret || usesVerifierIdentity) && !isVerifierJob) {
+      throw new Error(`Verifier credential or identity is used outside the one named verification job (${surface.kind}/${surface.name}).`)
+    }
+    if (isVerifierJob && !(usesVerifierIdentity && inventory.secrets.length === 1 && inventory.secrets[0] === VERIFIER_SECRET)) {
+      throw new Error('Named verification job lacks the exact verifier identity and secret binding.')
+    }
     if (isBuildJob && mode === 'strict' && !exactTargetBinding) {
       throw new Error('Named build job lacks the exact builder identity and secret binding.')
     }
@@ -504,6 +732,25 @@ export function requiresRuntimeSecretGrant(surface: CloudRunSurface): boolean {
   return !(active && (active as Record<string, unknown>).status === 'False')
 }
 
+function loadVerifierState(): VerifierState {
+  const serviceAccountEmails = gcloud<{ email?: string }[]>(['iam', 'service-accounts', 'list', '--project', project])
+    .map((entry) => entry.email ?? '')
+    .filter((email) => /gochara|sealer/i.test(email))
+  const secretNames = gcloud<{ name?: string }[]>(['secrets', 'list', '--project', project])
+    .map((entry) => (entry.name ?? '').split('/').pop() ?? '')
+    .filter((name) => /gochara|sealer/i.test(name))
+  const state: VerifierState = { serviceAccountEmails, secretNames }
+  if (serviceAccountEmails.includes(VERIFIER_SERVICE_ACCOUNT)) {
+    state.serviceAccount = gcloud<ServiceAccount>(['iam', 'service-accounts', 'describe', VERIFIER_SERVICE_ACCOUNT, '--project', project])
+    state.serviceAccountPolicy = gcloud<IamPolicy>(['iam', 'service-accounts', 'get-iam-policy', VERIFIER_SERVICE_ACCOUNT, '--project', project])
+    state.userManagedKeys = gcloud<unknown[]>(['iam', 'service-accounts', 'keys', 'list', '--iam-account', VERIFIER_SERVICE_ACCOUNT, '--managed-by', 'user', '--project', project]).length
+  }
+  if (secretNames.includes(VERIFIER_SECRET)) {
+    state.secretPolicy = gcloud<IamPolicy>(['secrets', 'get-iam-policy', VERIFIER_SECRET, '--project', project])
+  }
+  return state
+}
+
 export function runDataPlaneSecretIsolationPreflight(): void {
   const mode = process.env.DATA_PLANE_SECRET_ISOLATION_MODE?.trim() || 'strict'
   if (!['pre_transition','strict'].includes(mode)) {
@@ -517,20 +764,23 @@ export function runDataPlaneSecretIsolationPreflight(): void {
   const projectIdentity = gcloud<{ projectNumber?: string }>(['projects', 'describe', project])
   const projectNumber = projectIdentity.projectNumber?.trim() ?? ''
   if (!/^\d+$/.test(projectNumber)) throw new Error('Could not resolve the exact GCP project number.')
+  setSecretResolutionProjectNumber(projectNumber)
   const secretPolicy = gcloud<IamPolicy>(['secrets', 'get-iam-policy', BUILDER_SECRET, '--project', project])
   const serviceAccount = gcloud<ServiceAccount>(['iam', 'service-accounts', 'describe', BUILDER_SERVICE_ACCOUNT, '--project', project])
   const serviceAccountPolicy = gcloud<IamPolicy>(['iam', 'service-accounts', 'get-iam-policy', BUILDER_SERVICE_ACCOUNT, '--project', project])
   const topicPolicy = gcloud<IamPolicy>(['pubsub', 'topics', 'get-iam-policy', 'cockpit-events', '--project', project])
   const ancestors = gcloud<ResourceAncestor[]>(['projects', 'get-ancestors', project])
   const effective = ancestors.map((ancestor): EffectivePolicy => {
-    if (ancestor.type === 'project') return { resource: `projects/${ancestor.id}`, policy: ancestor.id === project
+    if (ancestor.type === 'project') return { resource: canonicalResource(`projects/${ancestor.id}`, projectNumber), policy: ancestor.id === project
       ? projectPolicy : gcloud<IamPolicy>(['projects','get-iam-policy',ancestor.id!]) }
     if (ancestor.type === 'folder') return { resource: `folders/${ancestor.id}`, policy: gcloud<IamPolicy>(['resource-manager','folders','get-iam-policy',ancestor.id!]) }
     if (ancestor.type === 'organization') return { resource: `organizations/${ancestor.id}`, policy: gcloud<IamPolicy>(['organizations','get-iam-policy',ancestor.id!]) }
     throw new Error('Could not load a complete ancestor IAM policy.')
   })
+  const verifier = loadVerifierState()
   const roleNames = new Set<string>()
-  for (const policy of [projectPolicy,secretPolicy,serviceAccountPolicy,topicPolicy,...effective.map((hit) => hit.policy ?? {})]) {
+  for (const policy of [projectPolicy,secretPolicy,serviceAccountPolicy,topicPolicy,
+    verifier.serviceAccountPolicy ?? {}, verifier.secretPolicy ?? {}, ...effective.map((hit) => hit.policy ?? {})]) {
     for (const binding of policy.bindings ?? []) roleNames.add(binding.role)
   }
   const resolved: RolePermissions = {}
@@ -538,6 +788,10 @@ export function runDataPlaneSecretIsolationPreflight(): void {
     resolved[role] = gcloud<{ includedPermissions?: string[] }>(roleDescribeArgs(role)).includedPermissions ?? []
   }
   assertSecretIsolation(projectPolicy, secretPolicy, serviceAccount, topicPolicy, resolved, controlPlaneAdminPrincipal)
+  assertVerifierIsolation(projectPolicy, verifier, resolved, process.env.DATA_PLANE_DEPLOY_PRINCIPAL, process.env.DATA_PLANE_VERIFIER_PHASE?.trim() as VerifierPhase | undefined)
+  if (verifier.serviceAccountEmails.includes(VERIFIER_SERVICE_ACCOUNT)) {
+    assertVerifierInheritedControl(effective, resolved, controlPlaneAdminPrincipal, projectNumber)
+  }
 
   const surfaces: CloudRunSurface[] = []
   for (const entry of gcloud<CloudRunEntry[]>(['run', 'services', 'list', '--project', project, '--platform', 'managed'])) {

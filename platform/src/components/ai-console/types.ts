@@ -7,7 +7,8 @@ export type ProviderChoice = { kind: 'provider_model'; connectionId: string; mod
 export type ConfigurationChoice = { kind: 'custom_configuration'; configurationId: string }
 export type CliChoice = { kind: 'local_cli'; cliId: CliId; modelId: string | null }
 export type AiChoice = ProviderChoice | ConfigurationChoice | CliChoice
-export type RoleTarget = ProviderChoice | CliChoice
+export type AiEffort = string
+export type RoleTarget = (ProviderChoice | CliChoice) & { effort?: AiEffort | null }
 export type ConfigurationKind = 'provider_preset' | 'cli_preset' | 'custom_api' | 'custom_cli' | 'legacy_mixed'
 
 export interface ProviderConnectionDto {
@@ -22,6 +23,9 @@ export interface ProviderConnectionDto {
   lastCheckedAt: string | null
   lastErrorCode: string | null
   deletedAt: string | null
+  catalogRefreshedAt?: string | null
+  catalogAttemptedAt?: string | null
+  catalogErrorCode?: string | null
 }
 
 export interface ProviderModelDto {
@@ -38,6 +42,9 @@ export interface ProviderModelDto {
   lastProbeErrorCode?: string | null
   lastProbeInputTokens?: number | null
   lastProbeOutputTokens?: number | null
+  supportedEfforts?: string[]
+  defaultEffort?: string | null
+  effortSource?: 'provider' | 'policy'
 }
 
 export interface ConfigurationDto {
@@ -66,6 +73,11 @@ export interface CliModelDto {
   supportsTools: boolean
   supportsStructuredOutput: boolean
   isBuiltinDefault: boolean
+  supportedEfforts?: string[]
+  effortSource?: 'cli' | 'policy'
+  defaultEffort?: string | null
+  isCatalogDiscovered?: boolean
+  isIndividuallyTested?: boolean
 }
 
 export type CliCardDto =
@@ -77,6 +89,9 @@ export type CliCardDto =
       detectedProduct: string | null
       detectedVersion: string | null
       lastCheckedAt: string | null
+      catalogRefreshedAt?: string | null
+      catalogAttemptedAt?: string | null
+      catalogErrorCode?: string | null
       models: CliModelDto[]
     }
 
@@ -84,6 +99,16 @@ export interface CliStateDto { clis: CliCardDto[] }
 
 export interface ConsoleMutation {
   (url: string, init: RequestInit, successMessage: string | ((result: unknown) => string)): Promise<unknown>
+}
+
+export interface CatalogRefreshStatus { pending: boolean; error?: string }
+export type CatalogRefresh = (kind: 'connection' | 'cli', id: string, force?: boolean) => Promise<void>
+
+export function cliModelEvidence(model: CliModelDto): string {
+  if (model.isBuiltinDefault) return 'Validated CLI default'
+  if (model.isIndividuallyTested === true) return 'Individually tested through subscription'
+  if (model.isCatalogDiscovered === true) return 'Listed by subscription · not individually tested'
+  return 'Listed by CLI · execution not verified'
 }
 
 export const ROLE_LABELS: Record<AiRole, string> = {

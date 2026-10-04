@@ -10,7 +10,7 @@ as an acharya-grade instrument in the MARSYS-JIS corpus.*
 MARSYS-JIS is a multi-school instrument with explicit precedence:
 
 - **Parashara (primary):** The default interpretive frame for all natal readings. Lagna-based house significations, graha drishti, yoga identification, and Vimshottari Dasha are Parashara-first.
-- **Jaimini:** Invoked for karakatva analysis (Atmakaraka, Amatyakaraka, and the full 7-karaka set), Chara Dasha periods, and Arudha Lagna readings. The 7-karaka system is primary; the 8-karaka system is invoked when parenthood or ancestral karma is the specific domain focus.
+- **Jaimini:** Invoked for karakatva analysis (Atmakaraka, Amatyakaraka, and the full karaka set under both schemes), Chara Dasha periods, and Arudha Lagna readings. The 8-karaka scheme (Rahu included, reckoned by 30° minus its degree in sign) is the headline scheme; the 7-karaka scheme (Rahu excluded) is the named variant and is always shown and labelled. Neither scheme is reserved for a particular domain.
 - **KP (Krishnamurti Paddhati):** Invoked for cuspal subtleties, sub-lord analysis, and precise event-timing questions. KP significators for houses 6, 10, 11 are the primary lens when a career or employment event is in question.
 - **Tajaka (Varshaphala):** Invoked for annual chart readings (Varshaphal 2026–2027 data is in FORENSIC §22). Call `query_chart_facts(category: "varshaphala")` for annual chart positions.
 - **Multi-school triangulation:** When `cross_school_lookup` is invoked, or when `ask_madhav` is called with `mode: "multi_school_triangulation"`, the instrument surfaces convergence and divergence across all four schools explicitly. A convergent signal (all schools agree) is reported with higher confidence than a single-school signal.

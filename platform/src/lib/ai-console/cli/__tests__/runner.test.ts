@@ -17,7 +17,7 @@ vi.mock('node:fs', async importOriginal => {
 vi.mock('../../repository', () => ({
   withCliInvocationAuthorization: authorization.invoke,
 }))
-import { createCliRunner } from '../runner'
+import { createCliRunner, createRemoteCliRunner, type CliInstallationIdentity } from '../runner'
 
 const roots: string[] = []
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms))
@@ -46,6 +46,94 @@ async function fixture(source: string) {
 }
 
 describe('governed CLI runner', () => {
+  it('discovers paginated Codex subscription models and efforts without submitting a prompt', async () => {
+    const { definition } = await fixture(`
+      const rl=require('node:readline').createInterface({input:process.stdin});
+      rl.on('line', line => {
+        const request=JSON.parse(line);
+        if (request.method==='initialized') return;
+        let result;
+        if(request.method==='initialize') result={userAgent:'test'};
+        else if(request.method==='account/read') result={account:{type:'chatgpt',email:'private@example.com'}};
+        else if(request.method==='model/list') {
+          const second=!!request.params.cursor;
+          result={data:[{model:second?'gpt-second':'gpt-first',displayName:second?'Second':'First',hidden:false,
+            supportedReasoningEfforts:[{reasoningEffort:'medium'},{reasoningEffort:'ultra'}],
+            defaultReasoningEffort:'medium',isDefault:!second,
+            privateCredential:'do-not-return'}, ...(!second?[{model:'hidden',hidden:true}]:[])],
+            nextCursor:second?null:'next'};
+        } else throw Error('Unexpected model inference request');
+        process.stdout.write(JSON.stringify({id:request.id,result})+'\\n');
+      });`)
+    const runner = createCliRunner({ registry: { codex: { ...definition,
+      modelCatalog: { args: ['catalog'], format: 'codex_app_server' } } },
+      environment: { ...process.env, OPENAI_API_KEY: 'should-never-be-forwarded' } })
+    const result = await runner.runModelCatalogValidation('alice', 'codex')
+    expect(result).toEqual([
+      { modelId: 'gpt-first', displayName: 'First', supportedEfforts: ['medium', 'ultra'],
+        defaultEffort: 'medium', isDefault: true, isCatalogDiscovered: true },
+      { modelId: 'gpt-second', displayName: 'Second', supportedEfforts: ['medium', 'ultra'],
+        defaultEffort: 'medium', isDefault: false, isCatalogDiscovered: true },
+    ])
+    expect(JSON.stringify(result)).not.toMatch(/private|credential|hidden/i)
+    expect(runner.inspectForTests()).toEqual({ active: 0, queued: 0 })
+  })
+
+  it('rejects Codex API-key authentication before requesting its model catalogue', async () => {
+    const { definition } = await fixture(`
+      require('node:readline').createInterface({input:process.stdin}).on('line', line => {
+        const request=JSON.parse(line); if(request.method==='initialized')return;
+        if(request.method==='model/list')throw Error('API catalogue must not be requested');
+        process.stdout.write(JSON.stringify({id:request.id,result:request.method==='account/read'
+          ?{account:{type:'apiKey'}}:{}})+'\\n');
+      })`)
+    const runner = createCliRunner({ registry: { codex: { ...definition,
+      modelCatalog: { args: ['catalog'], format: 'codex_app_server' } } } })
+    await expect(runner.runModelCatalogValidation('alice', 'codex'))
+      .rejects.toMatchObject({ code: 'AI_CLI_AUTH_UNAVAILABLE' })
+    expect(runner.inspectForTests()).toEqual({ active: 0, queued: 0 })
+  })
+
+  it('rejects Claude auth-status exit zero when no subscription is logged in', async () => {
+    const { definition } = await fixture(`process.stdout.write(JSON.stringify({
+      loggedIn:false,authMethod:'none',apiProvider:'firstParty'}))`)
+    const runner = createCliRunner({ registry: { claude_code: { ...definition, id: 'claude_code' } } })
+    await expect(runner.runAuthValidation('alice', 'claude_code'))
+      .rejects.toMatchObject({ code: 'AI_CLI_AUTH_UNAVAILABLE' })
+  })
+
+  it('discovers Claude control model aliases and advertised effort levels through a subscription', async () => {
+    const { definition } = await fixture(`
+      if(process.argv[2]==='auth') {
+        process.stdout.write(JSON.stringify({loggedIn:true,authMethod:'claude.ai',apiProvider:'firstParty',
+          email:'private@example.com'}));
+      } else require('node:readline').createInterface({input:process.stdin}).on('line', line => {
+        const request=JSON.parse(line);
+        if(request.type!=='control_request'||request.request.subtype!=='initialize') throw Error('Prompt forbidden');
+        process.stdout.write(JSON.stringify({type:'control_response',response:{request_id:request.request_id,
+          subtype:'success',response:{account:{email:'private@example.com'},models:[
+            {value:'sonnet',displayName:'Sonnet',supportsEffort:true,supportedEffortLevels:['low','high','max']},
+            {value:'haiku',displayName:'Haiku'}]}}})+'\\n');
+      });`)
+    const runner = createCliRunner({ registry: { claude_code: { ...definition, id: 'claude_code',
+      modelCatalog: { args: ['catalog'], format: 'claude_control' } } } })
+    expect(await runner.runModelCatalogValidation('alice', 'claude_code')).toEqual([
+      { modelId: 'sonnet', displayName: 'Sonnet', supportedEfforts: ['low', 'high', 'max'],
+        defaultEffort: null, isDefault: false, isCatalogDiscovered: true },
+      { modelId: 'haiku', displayName: 'Haiku', supportedEfforts: [],
+        defaultEffort: null, isDefault: false, isCatalogDiscovered: true },
+    ])
+  })
+
+  it('bounds metadata-only protocol timeout and releases its process slot', async () => {
+    const { definition } = await fixture('process.stdin.resume(); setInterval(()=>{},1000)')
+    const runner = createCliRunner({ registry: { codex: { ...definition,
+      modelCatalog: { args: ['catalog'], format: 'codex_app_server' } } }, limits: { timeoutMs: 40 } })
+    await expect(runner.runModelCatalogValidation('alice', 'codex'))
+      .rejects.toMatchObject({ code: 'AI_CLI_TIMEOUT' })
+    expect(runner.inspectForTests()).toEqual({ active: 0, queued: 0 })
+  })
+
   it('passes exact argv/stdin in an isolated cwd and strips token/project environment', async () => {
     const { root, definition } = await fixture(`
       let input=''; process.stdin.on('data', c => input += c); process.stdin.on('end', () => {
@@ -238,6 +326,115 @@ describe('governed CLI runner', () => {
       .resolves.toMatchObject({ stdout: '["run","-m","approved-model"]' })
     await expect(runner.runExecution('alice', 'codex', { modelId: 'unapproved-model', stdin: '' }))
       .rejects.toMatchObject({ code: 'AI_MODEL_UNAVAILABLE' })
+  })
+
+  it('extends an unchanged tested binary from fresh metadata without another probe, preserving manual models', async () => {
+    const { definition } = await fixture(`
+      if(process.argv[2]==='catalog') {
+        require('node:readline').createInterface({input:process.stdin}).on('line', line=>{
+          const request=JSON.parse(line); if(request.method==='initialized')return;
+          const result=request.method==='account/read'?{account:{type:'chatgpt'}}:
+            request.method==='model/list'?{data:[{model:'new-model',displayName:'New model',hidden:false,isDefault:true,
+              supportedReasoningEfforts:[{reasoningEffort:'ultra'}],defaultReasoningEffort:'ultra'}],nextCursor:null}:{};
+          if(!['initialize','account/read','model/list'].includes(request.method))throw Error('Probe forbidden');
+          process.stdout.write(JSON.stringify({id:request.id,result})+'\\n');
+        });
+      } else if(process.argv[2]==='run') process.stdout.write(JSON.stringify(process.argv.slice(2)));
+      else throw Error('Probe forbidden');`)
+    const runner = createCliRunner({ registry: { codex: { ...definition,
+      modelCatalog: { args: ['catalog'], format: 'codex_app_server' } } } })
+    const identity = await runner.inspectInstallation('codex')
+    await runner.confirmValidation('codex', identity, '1.0.0', [null])
+    await runner.confirmManualModel('codex', identity, 'manual-model')
+    await expect(runner.runExecution('alice', 'codex', { modelId: 'new-model', stdin: '', effort: 'ultra' }))
+      .resolves.toMatchObject({ stdout: '["run","-m","new-model","-c","model_reasoning_effort=ultra"]' })
+    await expect(runner.runExecution('alice', 'codex', { modelId: 'manual-model', stdin: '' }))
+      .resolves.toMatchObject({ stdout: '["run","-m","manual-model"]' })
+    await expect(runner.runExecution('alice', 'codex', { modelId: 'invented-model', stdin: '' }))
+      .rejects.toMatchObject({ code: 'AI_MODEL_UNAVAILABLE' })
+    expect(runner.inspectForTests()).toEqual({ active: 0, queued: 0 })
+  })
+
+  it('does not admit fresh metadata after the previously tested executable changes', async () => {
+    const { definition, executable } = await fixture('process.stdout.write("must-not-spawn")')
+    const runner = createCliRunner({ registry: { codex: { ...definition,
+      modelCatalog: { args: ['catalog'], format: 'codex_app_server' } } } })
+    const identity = await runner.inspectInstallation('codex')
+    await runner.confirmValidation('codex', identity, '1.0.0', [null])
+    authorization.invoke.mockClear()
+    await writeFile(executable, '#!/usr/bin/env node\nthrow Error("must-not-spawn")')
+    await expect(runner.runExecution('alice', 'codex', { modelId: 'new-model', stdin: '' }))
+      .rejects.toMatchObject({ code: 'AI_CLI_UNREACHABLE' })
+    expect(authorization.invoke).not.toHaveBeenCalled()
+  })
+
+  it('refreshes a warm remote model cache only from the unchanged host catalogue and seals it back to the bridge', async () => {
+    const identity: CliInstallationIdentity = { cliId: 'codex', entrypoint: { candidate: '/fixed/codex',
+      realpath: '/fixed/codex', device: '1', inode: '2', size: 3, modifiedMs: 4, changedMs: 5,
+      mode: 0o755, uid: 501, sha256: 'a'.repeat(64) } }
+    let models = [{ modelId: 'old-model', displayName: 'Old', supportedEfforts: ['low'] }]
+    const operations: string[] = []
+    const confirmations: (string | null)[][] = []
+    const fetchImpl = vi.fn(async (_url: unknown, init?: RequestInit) => {
+      const body = JSON.parse(String(init?.body))
+      operations.push(body.operation)
+      if (body.operation === 'inspect') return Response.json(identity)
+      if (body.operation === 'catalog') return Response.json({ models })
+      if (body.operation === 'confirm') { confirmations.push(body.modelIds); return Response.json({}) }
+      if (body.operation === 'execute') return Response.json({ stdout: body.modelId, exitCode: 0, signal: null })
+      throw Error('Auth or inference probe forbidden')
+    })
+    const runner = createRemoteCliRunner({ endpoint: 'http://10.0.0.1:8787', token: 't'.repeat(32),
+      fetchImpl: fetchImpl as typeof fetch })
+    await runner.runModelCatalogValidation('alice', 'codex')
+    await runner.confirmValidation('codex', identity, '0.158.0', [null, 'old-model'])
+    await runner.confirmManualModel('codex', identity, 'manual-model')
+    models = [{ modelId: 'new-model', displayName: 'New', supportedEfforts: ['ultra'] }]
+    operations.length = 0
+    await expect(runner.runExecution('alice', 'codex', { modelId: 'new-model', stdin: '', effort: 'ultra' }))
+      .resolves.toMatchObject({ stdout: 'new-model' })
+    expect(operations).toEqual(['inspect', 'catalog', 'inspect', 'confirm', 'execute'])
+    expect(confirmations.at(-1)).toEqual([null, 'manual-model', 'new-model'])
+    models = [{ modelId: 'new-model', displayName: 'New', supportedEfforts: ['ultra', 'max'] }]
+    operations.length = 0
+    await expect(runner.runExecution('alice', 'codex', { modelId: 'new-model', stdin: '', effort: 'max' }))
+      .resolves.toMatchObject({ stdout: 'new-model' })
+    expect(operations).toEqual(['inspect', 'catalog', 'inspect', 'confirm', 'execute'])
+    await expect(runner.runExecution('alice', 'codex', { modelId: 'manual-model', stdin: '' }))
+      .resolves.toMatchObject({ stdout: 'manual-model' })
+    await expect(runner.runExecution('alice', 'codex', { modelId: 'old-model', stdin: '' }))
+      .rejects.toMatchObject({ code: 'AI_MODEL_UNAVAILABLE' })
+    await expect(runner.runExecution('alice', 'codex', { modelId: 'invented-model', stdin: '' }))
+      .rejects.toMatchObject({ code: 'AI_MODEL_UNAVAILABLE' })
+  })
+
+  it('rejects remote cache refresh if host identity changes or metadata aborts before execution', async () => {
+    const identity: CliInstallationIdentity = { cliId: 'codex', entrypoint: { candidate: '/fixed/codex',
+      realpath: '/fixed/codex', device: '1', inode: '2', size: 3, modifiedMs: 4, changedMs: 5,
+      mode: 0o755, uid: 501, sha256: 'a'.repeat(64) } }
+    const operations: string[] = []
+    const controller = new AbortController()
+    let changed = true
+    const fetchImpl = vi.fn(async (_url: unknown, init?: RequestInit) => {
+      const body = JSON.parse(String(init?.body)); operations.push(body.operation)
+      if (body.operation === 'confirm') return Response.json({})
+      if (body.operation === 'inspect') return Response.json(changed
+        ? { ...identity, entrypoint: { ...identity.entrypoint, sha256: 'b'.repeat(64) } } : identity)
+      if (body.operation === 'catalog') { controller.abort(); return Response.json({ models: [
+        { modelId: 'new-model', displayName: 'New', supportedEfforts: ['low'] },
+      ] }) }
+      throw Error('Execution forbidden')
+    })
+    const runner = createRemoteCliRunner({ endpoint: 'http://10.0.0.1:8787', token: 't'.repeat(32),
+      fetchImpl: fetchImpl as typeof fetch })
+    await runner.confirmValidation('codex', identity, '0.158.0', [null])
+    await expect(runner.runExecution('alice', 'codex', { modelId: 'new-model', stdin: '' }))
+      .rejects.toMatchObject({ code: 'AI_CLI_UNREACHABLE' })
+    expect(operations).toEqual(['confirm', 'inspect'])
+    changed = false; operations.length = 0
+    await expect(runner.runExecution('alice', 'codex', { modelId: 'new-model', stdin: '', signal: controller.signal }))
+      .rejects.toMatchObject({ code: 'AI_EXECUTION_FAILED' })
+    expect(operations).toEqual(['inspect', 'catalog'])
   })
 
   it('probes an exact manual model through CLI argv before admitting its execution', async () => {

@@ -8,6 +8,7 @@ import { homedir, tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { spawn } from 'node:child_process'
 import { StringDecoder } from 'node:string_decoder'
+import { startCatalogProcess } from './catalog-protocol.mjs'
 
 const PORT = readPositiveInteger(process.env.MARSYS_AI_CLI_BRIDGE_PORT ?? '8787', 65_535)
 const HOST = process.env.MARSYS_AI_CLI_BRIDGE_HOST ?? '127.0.0.1'
@@ -21,6 +22,7 @@ const KILL_GRACE_MS = 500
 const GLOBAL_CONCURRENCY = 4
 const PER_CLI_CONCURRENCY = 2
 const SAFE_MODEL = /^[^-\u0000-\u001f\u007f][^\u0000-\u001f\u007f]{0,511}$/
+const SAFE_EFFORT = /^[a-z][a-z0-9_]{0,31}$/
 
 if (!TOKEN_FILE) throw new Error('MARSYS_AI_CLI_BRIDGE_TOKEN_FILE is required')
 const token = (await readFile(TOKEN_FILE, 'utf8')).trim()
@@ -28,15 +30,19 @@ if (token.length < 32) throw new Error('Bridge token is invalid')
 
 const definitions = Object.freeze({
   codex: Object.freeze({
-    path: join(HOME, '.local/bin/codex'), versions: ['0.158.0'], versionArgs: ['--version'],
+    path: join(HOME, '.local/bin/codex'), versions: ['0.155.1', '0.158.0'], versionArgs: ['--version'],
     authArgs: ['login', 'status'],
+    catalogArgs: ['app-server', '--stdio', '-c', 'model_provider="openai"'],
   }),
   claude_code: Object.freeze({
-    path: join(HOME, '.local/bin/claude'), versions: ['2.1.284'], versionArgs: ['--version'],
+    path: join(HOME, '.local/bin/claude'), versions: ['2.1.239', '2.1.284'], versionArgs: ['--version'],
     authArgs: ['auth', 'status'],
+    catalogArgs: ['-p', '--input-format', 'stream-json', '--output-format', 'stream-json', '--verbose',
+      '--no-session-persistence', '--tools', '', '--setting-sources', '', '--mcp-config', '{"mcpServers":{}}',
+      '--strict-mcp-config', '--permission-mode', 'dontAsk'],
   }),
   gemini_antigravity: Object.freeze({
-    path: join(HOME, '.local/bin/agy'), versions: ['1.2.12', '1.2.13'], versionArgs: ['--version'],
+    path: join(HOME, '.local/bin/agy'), versions: ['1.2.12', '1.2.13', '1.2.15'], versionArgs: ['--version'],
     catalogArgs: ['models'],
   }),
   kimi_code: Object.freeze({
@@ -48,6 +54,7 @@ const definitions = Object.freeze({
 const activeByCli = new Map()
 let active = 0
 const queue = []
+const catalogEfforts = new Map()
 
 const server = createServer(async (request, response) => {
   response.setHeader('Cache-Control', 'no-store')
@@ -93,18 +100,58 @@ async function invoke(payload) {
   }
   if (payload.operation === 'auth') {
     if (!definition.authArgs) throw bridgeError('AI_CLI_AUTH_UNAVAILABLE')
-    await runCommand(payload.cliId, definition.path, definition.authArgs, '', undefined, 'AI_CLI_AUTH_UNAVAILABLE')
+    const result = await runCommand(payload.cliId, definition.path, definition.authArgs, '', undefined, 'AI_CLI_AUTH_UNAVAILABLE')
+    assertSubscriptionAuth(payload.cliId, result.stdout)
     return processResult('')
   }
   if (payload.operation === 'catalog') {
-    if (!definition.catalogArgs) throw bridgeError('AI_CLI_AUTH_UNAVAILABLE')
-    const result = await runCommand(payload.cliId, definition.path, definition.catalogArgs, '', undefined, 'AI_CLI_AUTH_UNAVAILABLE')
-    return { models: safeCatalogModels(payload.cliId, result.stdout) }
+    return { models: await readCatalog(payload.cliId, definition) }
   }
   if (payload.operation === 'probe' || payload.operation === 'probe_model' || payload.operation === 'execute') {
     return runGeneration(payload, definition)
   }
   throw bridgeError('AI_EXECUTION_FAILED')
+}
+
+async function readCatalog(cliId, definition) {
+  if (!definition.catalogArgs) throw bridgeError('AI_CLI_AUTH_UNAVAILABLE')
+  const identity = await inspectInstallation(cliId, definition)
+  const version = await runCommand(cliId, definition.path, definition.versionArgs, '')
+  if (!definition.versions.some(value => containsVersion(version.stdout, value))) throw bridgeError('AI_CLI_UNREACHABLE')
+  let models
+  if (cliId === 'codex' || cliId === 'claude_code') {
+    if (cliId === 'claude_code') {
+      const auth = await runCommand(cliId, definition.path, definition.authArgs, '', undefined, 'AI_CLI_AUTH_UNAVAILABLE')
+      assertSubscriptionAuth(cliId, auth.stdout)
+    }
+    const cwd = await mkdtemp(join(tmpdir(), 'marsys-ai-cli-catalog-'))
+    try {
+      const process = startCatalogProcess({ cliId, executable: identity.entrypoint.realpath,
+        args: definition.catalogArgs, cwd, env: safeEnvironment(), error: bridgeError,
+        limits: { stdoutBytes: MAX_STDOUT_BYTES, stderrBytes: MAX_STDERR_BYTES, timeoutMs: 20_000,
+          killGraceMs: KILL_GRACE_MS },
+      })
+      const result = await process.completion
+      models = JSON.parse(result.stdout)
+    } finally { await rm(cwd, { recursive: true, force: true }) }
+  } else {
+    const result = await runCommand(cliId, definition.path, definition.catalogArgs, '', undefined, 'AI_CLI_AUTH_UNAVAILABLE')
+    models = safeCatalogModels(cliId, result.stdout)
+  }
+  const after = await inspectInstallation(cliId, definition)
+  if (JSON.stringify(identity) !== JSON.stringify(after)) throw bridgeError('AI_CLI_UNREACHABLE')
+  catalogEfforts.set(cliId, { sha256: after.entrypoint.sha256,
+    models: new Map(models.map(model => [model.modelId, model.supportedEfforts ?? []])) })
+  return models
+}
+
+function assertSubscriptionAuth(cliId, stdout) {
+  if (cliId !== 'claude_code') return
+  let auth
+  try { auth = JSON.parse(stdout) } catch { throw bridgeError('AI_CLI_AUTH_UNAVAILABLE') }
+  if (auth.loggedIn !== true || auth.authMethod !== 'claude.ai' || auth.apiProvider !== 'firstParty') {
+    throw bridgeError('AI_CLI_AUTH_UNAVAILABLE')
+  }
 }
 
 /** Return model labels only. Never forward provider/account metadata from a CLI catalog. */
@@ -139,6 +186,21 @@ function safeCatalogModels(cliId, stdout) {
 async function runGeneration(payload, definition) {
   const modelId = payload.operation === 'execute' || payload.operation === 'probe_model' ? payload.modelId : null
   if (modelId !== null && !SAFE_MODEL.test(modelId)) throw bridgeError('AI_MODEL_UNAVAILABLE')
+  if (payload.cliId === 'codex') await readCatalog(payload.cliId, definition)
+  else if (payload.cliId === 'claude_code') {
+    const auth = await runCommand(payload.cliId, definition.path, definition.authArgs, '', undefined, 'AI_CLI_AUTH_UNAVAILABLE')
+    assertSubscriptionAuth(payload.cliId, auth.stdout)
+  }
+  const effort = payload.operation === 'execute' ? payload.effort : undefined
+  if (effort) {
+    const identity = await inspectInstallation(payload.cliId, definition)
+    if (catalogEfforts.get(payload.cliId)?.sha256 !== identity.entrypoint.sha256) {
+      await readCatalog(payload.cliId, definition)
+    }
+    if (!catalogEfforts.get(payload.cliId)?.models.get(modelId)?.includes(effort)) {
+      throw bridgeError('AI_MODEL_UNAVAILABLE')
+    }
+  }
   const cwd = await mkdtemp(join(tmpdir(), 'marsys-ai-cli-'))
   try {
     let schemaPath
@@ -152,6 +214,7 @@ async function runGeneration(payload, definition) {
       const args = ['exec', '--sandbox', 'read-only', '--ephemeral', '--ignore-user-config', '--ignore-rules',
         '--skip-git-repo-check', '--color', 'never', '--json', '--cd', cwd]
       if (modelId) args.push('--model', modelId)
+      if (effort) args.push('-c', `model_reasoning_effort=${effort}`)
       if (schemaPath) args.push('--output-schema', schemaPath)
       args.push('-')
       return await runCommand(payload.cliId, definition.path, args, payload.stdin, cwd)
@@ -161,6 +224,7 @@ async function runGeneration(payload, definition) {
         '--disable-slash-commands', '--tools', '', '--setting-sources', '', '--mcp-config', '{"mcpServers":{}}',
         '--strict-mcp-config', '--permission-mode', 'dontAsk']
       if (modelId) args.push('--model', modelId)
+      if (effort) args.push('--effort', effort)
       if (schemaPath) args.push('--json-schema', schemaPath)
       return await runCommand(payload.cliId, definition.path, args, payload.stdin, cwd)
     }
@@ -380,7 +444,7 @@ function validatePayload(raw) {
   const allowed = operation === 'confirm' ? ['operation', 'cliId', 'identity', 'version', 'modelIds']
     : operation === 'probe' ? ['operation', 'cliId', 'stdin']
       : operation === 'probe_model' ? ['operation', 'cliId', 'modelId', 'stdin']
-      : operation === 'execute' ? ['operation', 'cliId', 'modelId', 'stdin', 'responseSchema', 'maxOutputTokens']
+      : operation === 'execute' ? ['operation', 'cliId', 'modelId', 'stdin', 'effort', 'responseSchema', 'maxOutputTokens']
         : ['operation', 'cliId']
   if (Object.keys(raw).some(key => !allowed.includes(key))) throw bridgeError('AI_EXECUTION_FAILED')
   if ((operation === 'probe' || operation === 'probe_model' || operation === 'execute') && (typeof raw.stdin !== 'string'
@@ -389,6 +453,11 @@ function validatePayload(raw) {
     && (typeof raw.modelId !== 'string' || !SAFE_MODEL.test(raw.modelId))) throw bridgeError('AI_MODEL_UNAVAILABLE')
   if (operation === 'probe_model' && (!['codex', 'claude_code'].includes(cliId)
     || typeof raw.modelId !== 'string' || !SAFE_MODEL.test(raw.modelId))) throw bridgeError('AI_MODEL_UNAVAILABLE')
+  if (operation === 'execute' && raw.effort !== undefined
+    && (typeof raw.effort !== 'string' || !SAFE_EFFORT.test(raw.effort) || !['codex', 'claude_code'].includes(cliId)
+      || typeof raw.modelId !== 'string')) {
+    throw bridgeError('AI_MODEL_UNAVAILABLE')
+  }
   if (operation === 'confirm' && (typeof raw.version !== 'string' || !Array.isArray(raw.modelIds)
     || raw.modelIds.length > 257 || !raw.identity || typeof raw.identity !== 'object')) {
     throw bridgeError('AI_EXECUTION_FAILED')

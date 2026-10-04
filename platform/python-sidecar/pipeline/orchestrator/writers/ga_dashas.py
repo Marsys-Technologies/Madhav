@@ -10,6 +10,7 @@ ORCHESTRATOR_GENERALIZATION_INVESTIGATION_v1_0.md §2.B.2.
 """
 from __future__ import annotations
 from ga_writers.data_plane_runtime import l1_producer_contract
+from panchang_engine.swiss_backend import records_swiss_backend
 
 from . import register, WriterBase, ContextSpec, WriterResult, SubStep
 
@@ -18,6 +19,7 @@ _POST_PASS_KEY = '__concurrency_post_pass__'
 
 @register('ga_dashas')
 @l1_producer_contract
+@records_swiss_backend
 class GaDashasWriter(WriterBase):
     asset_id = 'ga_dashas'
     has_substeps = True
@@ -42,7 +44,11 @@ class GaDashasWriter(WriterBase):
             write_dasha_scope_cap_sentinels,
         )
 
-        chart_id = ctx.config['chart_id']
+        # run_asset puts run["chart_id"] in ctx.config as-is, and psycopg decodes a uuid
+        # column to uuid.UUID. ga_dashas_writer feeds chart_id into stable_uuid /
+        # stabilize_hierarchical_uuids (canonical JSON, which rejects a UUID) and compares it
+        # to the str CANONICAL_CHART_ID, so convert once here, at the adapter boundary.
+        chart_id = str(ctx.config['chart_id'])
         if step.key == _POST_PASS_KEY:
             _run_concurrency_post_pass_db(chart_id, ctx.build_id, conn=ctx.db_conn)
             # SD-DASHA-1 (SAMĀPTI v2.0 §9.5): this path previously never wrote

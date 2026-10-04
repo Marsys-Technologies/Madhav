@@ -614,10 +614,17 @@ class TestCompositeStrength:
         rows = sut._build_composite_strength_rows(
             STRENGTH_FAKE_CONN, MOCK_CHART_OUTPUT, CHART_ID, BUILD_ID, AY_ID, COMPUTED_AT, ENG_VER
         )
-        # 9 grahas × 12 houses × 3 keys = 324
-        graha_count = len(MOCK_CHART_OUTPUT["grahas"])
-        expected = graha_count * 12 * 3
+        # 7 classical grahas × 12 houses × 3 keys = 252, plus the two nodes (Rahu/Ketu), which
+        # have no classical required shadbala and so floor to ONE honest-null bphs_weighted row
+        # per house (2 × 12 = 24; SS ruling 2026-10-02) = 276.
+        grahas = MOCK_CHART_OUTPUT["grahas"]
+        node_count = sum(1 for g in grahas if g["name"] in ("Rahu", "Ketu"))
+        classical_count = len(grahas) - node_count
+        expected = classical_count * 12 * 3 + node_count * 12
         assert len(rows) == expected, f"Expected {expected}, got {len(rows)}"
+        node_rows = [r for r in rows if r["fact_subject"].startswith(("RAH_MEAN", "KET_MEAN"))]
+        assert all(r["fact_value_num"] is None and r["verification_pass_status"] == "floored"
+                   for r in node_rows)
 
     def test_strength_scores_between_0_and_2(self):
         rows = sut._build_composite_strength_rows(
@@ -876,9 +883,13 @@ class TestArgalaMatrices:
         )
         argala = [r for r in rows if r["fact_category"] == "argala_natal_matrix"]
         for r in argala:
-            # Must be atomic: value_num present, no large jsonb blob
-            assert r["fact_value_num"] is not None, \
-                f"Argala row {r['fact_subject']}:{r['fact_key']} has no numeric value"
+            # Must be atomic: a numeric value, OR (AR-3, SS N-61) a NULL with the 'no_occupant'
+            # marker when an argala-offset cell's source sign holds no graha; never a jsonb blob.
+            if r["fact_value_num"] is None:
+                assert r["fact_value_text"] == "no_occupant", \
+                    f"Argala row {r['fact_subject']}:{r['fact_key']} is NULL without no_occupant"
+            else:
+                assert r["fact_value_text"] is None
             assert r["fact_value_jsonb"] is None, \
                 f"Argala row should not use fact_value_jsonb (atomic)"
 
@@ -1991,7 +2002,7 @@ class TestKarakaWebCanonicalSchool:
     def test_no_duplicate_fact_ids_from_single_school(self):
         # 8 roles -> 8 distinct planets (a clean permutation, as a single school is)
         roles = ["ATMAKARAKA", "AMATYAKARAKA", "BHRATRIKARAKA", "MATRIKARAKA",
-                 "PUTRAKARAKA", "GNATIKARAKA", "DARAKARAKA", "STRIKARAKA"]
+                 "PITRIKARAKA", "PUTRAKARAKA", "GNATIKARAKA", "DARAKARAKA"]
         planets = ["Sun", "Moon", "Mars", "Mercury", "Jupiter", "Venus", "Saturn", "Rahu"]
         rows_in = [(r, p, None, None) for r, p in zip(roles, planets)]
         conn = self._Conn(rows=rows_in)
@@ -2010,6 +2021,136 @@ class TestKarakaWebCanonicalSchool:
                                          CHART_ID, BUILD_ID, AY_ID, COMPUTED_AT, ENG_VER)
         fids = [r["fact_id"] for r in out]
         assert len(fids) == len(set(fids)), "duplicate planet must not yield duplicate fact_ids"
+
+
+class TestKarakaWebOrderIndependence:
+    """S-L1 karaka-web order fix: karaka_web_per_varga must be a pure function of the
+    SET of stored karaka rows and the per-varga state, never of read order, and
+    Parashari graha-drishti must be evaluated in BOTH directions (it is not
+    symmetric: Mars 4/8, Jupiter 5/9, Saturn 3/10, nodes 5/9)."""
+
+    _Conn = TestKarakaWebCanonicalSchool._Conn
+
+    # roles/planets (a clean 5-of-8 slice of the kn_rao school)
+    _ROWS = [
+        ("ATMAKARAKA", "Sun", None, None),
+        ("AMATYAKARAKA", "Moon", None, None),
+        ("BHRATRIKARAKA", "Mars", None, None),
+        ("MATRIKARAKA", "Jupiter", None, None),
+        ("PITRIKARAKA", "Saturn", None, None),
+    ]
+
+    @staticmethod
+    def _state():
+        # Houses (== signs for an Aries-lagna varga):
+        #   Sun H1 Aries  + Jupiter H1 Aries  -> conjunction (symmetric)
+        #   Moon H5 Leo   : Jupiter (5/7/9 from H1 -> H5,H7,H9) aspects Moon; Moon (7th only -> H11) does NOT aspect Jupiter
+        #   Mars H12 Pisces, Saturn H3 Gemini: Mars 4th (12->H3) aspects Saturn; Saturn 10th (3->H12) aspects Mars (mutual, both special)
+        return {
+            "Sun":     {"sign": "Aries",  "house": 1},
+            "Jupiter": {"sign": "Aries",  "house": 1},
+            "Moon":    {"sign": "Leo",    "house": 5},
+            "Mars":    {"sign": "Pisces", "house": 12},
+            "Saturn":  {"sign": "Gemini", "house": 3},
+        }
+
+    def _run(self, rows_in):
+        return sut._build_karaka_web_rows(
+            self._Conn(rows=list(rows_in)), self._state(), MOCK_CHART_OUTPUT, "D9",
+            CHART_ID, BUILD_ID, AY_ID, COMPUTED_AT, ENG_VER,
+        )
+
+    @staticmethod
+    def _by_key(rows):
+        return {(r["fact_subject"], r["fact_key"]): r for r in rows}
+
+    def test_aspect_is_directional_and_both_directions_are_evaluated(self):
+        out = self._by_key(self._run(self._ROWS))
+        S = sut.PLANET_TO_SUBJECT
+        jup, moon = f"D9_{S['Jupiter']}", f"D9_{S['Moon']}"
+        mars, sat = f"D9_{S['Mars']}", f"D9_{S['Saturn']}"
+        # asymmetric: Jupiter aspects Moon (5th); Moon does not aspect Jupiter
+        assert (jup, f"aspect_{S['Moon']}") in out
+        assert (moon, f"aspect_{S['Jupiter']}") not in out
+        r = out[(jup, f"aspect_{S['Moon']}")]
+        assert r["fact_value_text"] == "aspect"
+        assert r["fact_value_jsonb"]["planet_a"] == "Jupiter"
+        assert r["fact_value_jsonb"]["planet_b"] == "Moon"
+        assert r["fact_value_jsonb"]["direction"] == "a_to_b"
+        assert "(Jupiter) aspects" in r["citation_human"] and "(Moon)" in r["citation_human"]
+        # mutual special aspects: Mars 4th onto Saturn AND Saturn 10th onto Mars, each its own fact
+        assert (mars, f"aspect_{S['Saturn']}") in out
+        assert (sat, f"aspect_{S['Mars']}") in out
+
+    def test_conjunction_emitted_once_per_subject_with_symmetric_statement(self):
+        out = self._by_key(self._run(self._ROWS))
+        S = sut.PLANET_TO_SUBJECT
+        a = out[(f"D9_{S['Sun']}", f"conjunction_{S['Jupiter']}")]
+        b = out[(f"D9_{S['Jupiter']}", f"conjunction_{S['Sun']}")]
+        for r in (a, b):
+            assert r["fact_value_text"] == "conjunction"
+            assert r["fact_value_jsonb"]["direction"] == "symmetric"
+            assert "conjunct" in r["citation_human"]
+        assert a["fact_id"] != b["fact_id"]
+
+    def test_exact_golden_row_set(self):
+        S = sut.PLANET_TO_SUBJECT
+        got = [(r["fact_subject"], r["fact_key"]) for r in self._run(self._ROWS)]
+        def k(a, rel, b):
+            return (f"D9_{S[a]}", f"{rel}_{S[b]}")
+        # canonical order: ALL_GRAHAS = Sun, Moon, Mars, Mercury, Jupiter, Venus, Saturn, ...; a-major, b ascending
+        expected = [
+            k("Sun", "conjunction", "Jupiter"),
+            # Sun (7th -> H7): nobody at H7
+            # Moon H5: 7th -> H11 nobody
+            k("Mars", "aspect", "Saturn"),     # 12 + 4th -> H3
+            k("Jupiter", "conjunction", "Sun"),
+            k("Jupiter", "aspect", "Moon"),    # 5th
+            k("Saturn", "aspect", "Moon"),     # 3 + 3rd -> H5
+            k("Saturn", "aspect", "Mars"),     # 3 + 10th -> H12
+        ]
+        assert got == expected
+
+    def test_output_independent_of_input_order_all_permutations(self):
+        import itertools
+        base = self._run(self._ROWS)
+        assert base, "golden state must emit rows"
+        for perm in itertools.permutations(self._ROWS):
+            assert self._run(perm) == base, f"output changed with karaka read order {[r[1] for r in perm]}"
+
+    def test_query_has_total_order_by_and_keeps_pins(self):
+        conn = self._Conn(rows=[])
+        sut._build_karaka_web_rows(conn, self._state(), MOCK_CHART_OUTPUT, "D9",
+                                   CHART_ID, BUILD_ID, AY_ID, COMPUTED_AT, ENG_VER)
+        sql, params = conn.calls[0]
+        assert "ORDER BY fact_subject, fact_id" in sql
+        assert "fact_category = 'karaka_chara_position'" in sql
+        assert "fact_key = 'assigned_graha'" in sql
+        assert "formula_id = %s" in sql and "kn_rao_rahu_included" in params
+
+    def test_all_conjunct_no_duplicate_fact_ids_bidirectional(self):
+        vs = {p: {"sign": "Aries", "house": 1} for p in
+              ["Sun", "Moon", "Mars", "Mercury", "Jupiter", "Venus", "Saturn", "Rahu"]}
+        roles = ["ATMAKARAKA", "AMATYAKARAKA", "BHRATRIKARAKA", "MATRIKARAKA",
+                 "PITRIKARAKA", "PUTRAKARAKA", "GNATIKARAKA", "DARAKARAKA"]
+        rows_in = [(r, p, None, None) for r, p in zip(roles, vs)]
+        out = sut._build_karaka_web_rows(self._Conn(rows=rows_in), vs, MOCK_CHART_OUTPUT, "D1",
+                                         CHART_ID, BUILD_ID, AY_ID, COMPUTED_AT, ENG_VER)
+        assert len(out) == 8 * 7
+        assert len({r["fact_id"] for r in out}) == len(out)
+        assert len({(r["fact_subject"], r["fact_key"]) for r in out}) == len(out)
+
+    def test_duplicate_planet_role_label_is_deterministic(self):
+        rows_in = [("AMATYAKARAKA", "Mercury", None, None),
+                   ("ATMAKARAKA", "Mercury", None, None),
+                   ("BHRATRIKARAKA", "Sun", None, None)]
+        vs = {"Mercury": {"sign": "Aries", "house": 1}, "Sun": {"sign": "Aries", "house": 1}}
+        a = sut._build_karaka_web_rows(self._Conn(rows=rows_in), vs, MOCK_CHART_OUTPUT, "D1",
+                                       CHART_ID, BUILD_ID, AY_ID, COMPUTED_AT, ENG_VER)
+        b = sut._build_karaka_web_rows(self._Conn(rows=list(reversed(rows_in))), vs, MOCK_CHART_OUTPUT, "D1",
+                                       CHART_ID, BUILD_ID, AY_ID, COMPUTED_AT, ENG_VER)
+        assert a == b
+        assert {r["fact_value_jsonb"]["role_a"] for r in a if r["fact_value_jsonb"]["planet_a"] == "Mercury"} == {"AMATYAKARAKA"}
 
 
 # ── F-61: saptavargaja_score materialization (PARIŚEṢA-V4) ───────────────────

@@ -1,0 +1,36 @@
+--- ph_nimitta: posterior for a no-evidence anchor (current code) vs the old default
+current: 0.184 {'base_rate': 0.2, 'promise_lift': 1.0, 'activation_lift': 1.0, 'trigger_lift': 1.0, 'ayanamsha_robustness_modifier': 0.92, 'posterior': 0.184} (0.134, 0.234)
+old default grade5/conditional: 0.322
+NimittaContext() defaults: grade 5.0 status conditional base_rate 0.1 -> promise_lift 1.75
+derive_karmic_frame("Saturn -> Venus -> Jupiter (final dispositor)") -> (None, None) ; derive_karmic_frame("saturn") -> ('debt_surfacing', 'Saturn ripens karmic debt through restriction and discipline.')
+--- ph_sodhana: detectors with identical anchors
+4 identical anchors -> []
+5 identical anchors -> ['confidence_degenerate', 'ceiling_inputs_degenerate']
+falsifier with one token flagged? None
+ledger with only anchor_source flagged? None
+--- ph_rectification: select_best with a zero-fit field
+conf_low -0.2 conf_high 0.2 win_margin 0.0 label unresolved offset 0
+--- ph_pramana: LEL category normalisation
+  career -> career
+  education -> education
+  spiritual -> spirituality
+  relationship -> relationship
+  health -> health
+  family -> family
+  residential+travel -> None
+  psychological -> character
+  loss -> None
+  other -> None
+  creative -> None
+  finance -> wealth
+  travel -> travel
+--- ph_muhurta: verdict honesty on placeholder bala
+None | mediocre
+--- ph_pratikara: cost tiering with the upstream cost dict shape (no max_inr)
+{'free': 1, 'low_cost': 0, 'high_investment': 0}
+--- ph_pratikara: empty prescriptions -> record
+program {'scheduled_ids': [], 'sequence_basis': 'prerequisite_topo_sort + incompatible_exclusion', 'total_scheduled': 0} citation None source_id None intensity moderate ctc 0
+--- ph_sankrama: cascade chain depth and trajectory with an unknown gradient
+trajectory None cascade_depth 1 projected==source window True confidence 0.186 asymmetry 0.0
+--- ph_phaladesa: the contradiction sentence with the real jsonb shape (a 3-key dict, contested=false)
+The career and profession domain rests on 1 predictive anchor(s), of which 1 passed clean sodhana review. The assessed magnitude of effect is minor. Confidence band spans 0.272–0.372; the outcome is classed as influenceable. Falsifiability status: open. 3 contradiction signal(s) temper this reading and warrant caution.

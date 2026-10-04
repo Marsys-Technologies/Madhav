@@ -1,0 +1,265 @@
+{
+ "asset_id": "ph_sankrama",
+ "collected_utc": "2026-10-03T12:24:53.689187Z",
+ "chart": "482012f1-710e-4a25-994a-93821f5871aa",
+ "registry": {
+  "rung": "R4",
+  "layer": "phala",
+  "scope": "per_chart",
+  "domain": "chart",
+  "asset_id": "ph_sankrama",
+  "size_sql": "SELECT pg_total_relation_size('phala_sankrama')",
+  "count_sql": "SELECT count(*) FROM phala_sankrama WHERE chart_id = $1",
+  "dead_flag": null,
+  "is_active": true,
+  "asset_kind": "artifact",
+  "asset_type": "data",
+  "created_at": "2026-06-22T11:17:30.373135+00:00",
+  "depends_on": [
+   "ph_nimitta",
+   "bo_sangati"
+  ],
+  "has_writer": true,
+  "layer_name": "Phala",
+  "sort_order": 6,
+  "layer_index": "L4",
+  "clear_tables": null,
+  "english_name": "Cross-domain spillover",
+  "has_substeps": false,
+  "health_probe": null,
+  "storage_type": "postgres_table",
+  "target_floor": 2510,
+  "target_table": "phala_sankrama",
+  "provides_apis": null,
+  "sanskrit_name": "Sa\u1e45krama",
+  "superseded_by": null,
+  "catalog_status": "CURRENT",
+  "service_health": null,
+  "last_invoked_at": null,
+  "selftest_detail": null,
+  "data_disposition": null,
+  "last_selftest_at": null,
+  "estimated_seconds": 5,
+  "volume_explanation": "One row per (anchor, material CDLM cell of the anchor's mapped domain). The formula reproduces the live count EXACTLY on both built charts (2510 and 475). KNOWN OPEN DEFECT: the anchor->CDLM domain map sends 'transition' to 'general', a domain CDLM does not have, destroying 250 rows (10%) that a correct map would produce; the full no-gap tiling invariant is therefore withheld until that fix lands in W3-3 rather than installed red. Detector is chart-PARTITIONED per D-CND-03, so a violation names the chart it belongs to.",
+  "english_description": "Grounded multi-hop cross-domain dynamics: lag from real activation windows + graph-bridge mechanism, A\u2192B\u2192C cascades, cross-domain conflicts, trajectory + mitigation routing",
+  "integrity_check_sql": "\n-- D-CND-03: chart-partitioned.\nSELECT\n  -- \u00a7N.5: L4 must not have drifted from the L2 value it copied.\n  NOT EXISTS (SELECT 1 FROM phala_sankrama s\n      JOIN bodha_cdlm_cells c ON c.cell_id = s.cdlm_cell_id AND c.chart_id = s.chart_id\n     WHERE s.linkage_strength IS DISTINCT FROM c.net_linkage_strength\n        OR s.target_domain IS DISTINCT FROM c.domain_col\n     GROUP BY s.chart_id HAVING count(*) > 0)\n  -- Projected windows are ordered.\n  AND NOT EXISTS (SELECT 1 FROM phala_sankrama\n     WHERE projected_window_end IS NOT NULL AND projected_window_start > projected_window_end\n     GROUP BY chart_id HAVING count(*) > 0)\n  -- The natural key is distinct within each chart.\n  AND NOT EXISTS (SELECT 1 FROM phala_sankrama\n     GROUP BY chart_id HAVING count(*) <> count(DISTINCT (source_anchor_id, cdlm_cell_id)))\n",
+  "natural_key_partition": "phala_sankrama (chart_id, source_anchor_id, cdlm_cell_id, target_domain, relationship_type) -- sole writer; this IS the table's own live UNIQUE constraint phala_sankrama_natural_key (migration 367 added cdlm_cell_id to the original index specifically so that two distinct CDLM cells linking the same anchor to the same target domain via distinct bridge paths do not collapse to one row). None of the five key columns is a random uuid4 -- chart_id/source_anchor_id/cdlm_cell_id are foreign references (chart, phala_anchors, bodha_cdlm_cells; cdlm_cell_id carried via the derivation ledger, no cross-layer FK by design) and target_domain/relationship_type are deterministic classification strings from the DB-free derive_spillover() engine. Writer does an unconditional DELETE FROM phala_sankrama WHERE chart_id = %s immediately before the INSERT batch (delete-then-insert-per-chart, CLAUDE.md SS N.3), and the INSERT itself carries ON CONFLICT ON CONSTRAINT phala_sankrama_natural_key DO NOTHING, so the live unique constraint is a sufficient natural key; sankrama_id (surrogate PK, gen_random_uuid() default) and computed_at (DEFAULT now()) excluded from the digest value columns as non-deterministic across rebuilds",
+  "rebuild_on_probe_fail": false,
+  "expected_volume_inputs": {
+   "linkage_threshold": 0.25,
+   "anchor_count_by_domain": "SELECT domain, count(*) FROM phala_anchors WHERE chart_id = $1 GROUP BY 1",
+   "material_cell_count_by_row": "SELECT domain_row, count(*) FROM bodha_cdlm_cells WHERE chart_id = $1 AND net_linkage_strength >= 0.25 GROUP BY 1"
+  },
+  "writer_timeout_seconds": 10800,
+  "expected_volume_formula": "sum over anchor domains of (anchors in that domain x material bodha_cdlm_cells whose domain_row = map(domain) and net_linkage_strength >= 0.25)"
+ },
+ "throughput": {
+  "state": "stale",
+  "history": [],
+  "asset_id": "ph_sankrama",
+  "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+  "last_error": null,
+  "rows_written": 2510,
+  "expected_rows": null,
+  "last_built_at": "2026-08-13T01:16:21.621682+00:00",
+  "rows_per_second": null,
+  "duration_seconds": null,
+  "last_measured_at": null,
+  "measurement_count": 0,
+  "last_measured_build_id": null,
+  "built_against_writer_hash": "unknown",
+  "built_against_upstream_hash": "bbe49896de1dd64e"
+ },
+ "runs_summary": [
+  {
+   "n": 9,
+   "last": "2026-07-13T21:13:41.719555+00:00",
+   "state": "aborted",
+   "disposition": null
+  },
+  {
+   "n": 37,
+   "last": "2026-08-13T01:16:21.621682+00:00",
+   "state": "complete",
+   "disposition": null
+  },
+  {
+   "n": 26,
+   "last": "2026-08-12T23:44:41.539154+00:00",
+   "state": "error",
+   "disposition": "blocked_dependency"
+  },
+  {
+   "n": 19,
+   "last": null,
+   "state": "queued",
+   "disposition": null
+  }
+ ],
+ "last_runs": [
+  {
+   "error": null,
+   "scope": "asset_set",
+   "state": "complete",
+   "run_id": "cbd6ea44-3c09-4ce5-9b21-d22fb0eeccf6",
+   "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+   "ended_at": "2026-08-13T01:16:21.621682+00:00",
+   "started_at": "2026-08-13T01:16:06.35009+00:00",
+   "disposition": null,
+   "output_changed": null
+  },
+  {
+   "error": null,
+   "scope": "asset_set",
+   "state": "complete",
+   "run_id": "51eaa05c-7604-42cc-a3db-e7fa6d9c3f7c",
+   "chart_id": "1c826d5a-41cb-4450-b4dc-59d440e5f75a",
+   "ended_at": "2026-08-12T17:11:02.554013+00:00",
+   "started_at": "2026-08-12T17:10:13.806004+00:00",
+   "disposition": null,
+   "output_changed": null
+  },
+  {
+   "error": null,
+   "scope": "global",
+   "state": "complete",
+   "run_id": "9fc3e49d-8c24-4be7-80f0-29c8cff726e8",
+   "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+   "ended_at": "2026-08-07T23:47:40.081591+00:00",
+   "started_at": "2026-08-07T23:44:08.421914+00:00",
+   "disposition": null,
+   "output_changed": null
+  },
+  {
+   "error": null,
+   "scope": "asset_set",
+   "state": "complete",
+   "run_id": "d33b44ce-5e42-4e90-9e54-6f7445652931",
+   "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+   "ended_at": "2026-08-07T18:59:42.987735+00:00",
+   "started_at": "2026-08-07T18:57:14.547672+00:00",
+   "disposition": null,
+   "output_changed": null
+  },
+  {
+   "error": null,
+   "scope": "asset_set",
+   "state": "complete",
+   "run_id": "5940f325-63b5-48ce-b9de-3472a5746af4",
+   "chart_id": "1c826d5a-41cb-4450-b4dc-59d440e5f75a",
+   "ended_at": "2026-07-28T10:58:51.625586+00:00",
+   "started_at": "2026-07-28T10:57:43.321338+00:00",
+   "disposition": null,
+   "output_changed": null
+  },
+  {
+   "error": null,
+   "scope": "asset_set",
+   "state": "complete",
+   "run_id": "08b895f3-b3dc-4d75-b672-6bca077e28a0",
+   "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+   "ended_at": "2026-07-28T10:19:06.610147+00:00",
+   "started_at": "2026-07-28T10:17:47.362705+00:00",
+   "disposition": null,
+   "output_changed": null
+  },
+  {
+   "error": null,
+   "scope": "asset_set",
+   "state": "complete",
+   "run_id": "0faf6c66-8dad-4bcf-8478-fd92f3171b66",
+   "chart_id": "1c826d5a-41cb-4450-b4dc-59d440e5f75a",
+   "ended_at": "2026-07-28T05:01:25.752879+00:00",
+   "started_at": "2026-07-28T04:59:02.38251+00:00",
+   "disposition": null,
+   "output_changed": null
+  },
+  {
+   "error": null,
+   "scope": "asset_set",
+   "state": "complete",
+   "run_id": "ed26e2d3-6dfa-43a4-936e-a815f7fc5309",
+   "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+   "ended_at": "2026-07-28T03:30:19.502241+00:00",
+   "started_at": "2026-07-28T03:28:10.791489+00:00",
+   "disposition": null,
+   "output_changed": null
+  }
+ ],
+ "last_runs_canonical": [
+  {
+   "error": null,
+   "state": "complete",
+   "run_id": "cbd6ea44-3c09-4ce5-9b21-d22fb0eeccf6",
+   "ended_at": "2026-08-13T01:16:21.621682+00:00",
+   "started_at": "2026-08-13T01:16:06.35009+00:00",
+   "disposition": null,
+   "output_changed": null
+  },
+  {
+   "error": null,
+   "state": "complete",
+   "run_id": "9fc3e49d-8c24-4be7-80f0-29c8cff726e8",
+   "ended_at": "2026-08-07T23:47:40.081591+00:00",
+   "started_at": "2026-08-07T23:44:08.421914+00:00",
+   "disposition": null,
+   "output_changed": null
+  },
+  {
+   "error": null,
+   "state": "complete",
+   "run_id": "d33b44ce-5e42-4e90-9e54-6f7445652931",
+   "ended_at": "2026-08-07T18:59:42.987735+00:00",
+   "started_at": "2026-08-07T18:57:14.547672+00:00",
+   "disposition": null,
+   "output_changed": null
+  },
+  {
+   "error": null,
+   "state": "complete",
+   "run_id": "08b895f3-b3dc-4d75-b672-6bca077e28a0",
+   "ended_at": "2026-07-28T10:19:06.610147+00:00",
+   "started_at": "2026-07-28T10:17:47.362705+00:00",
+   "disposition": null,
+   "output_changed": null
+  },
+  {
+   "error": null,
+   "state": "complete",
+   "run_id": "ed26e2d3-6dfa-43a4-936e-a815f7fc5309",
+   "ended_at": "2026-07-28T03:30:19.502241+00:00",
+   "started_at": "2026-07-28T03:28:10.791489+00:00",
+   "disposition": null,
+   "output_changed": null
+  },
+  {
+   "error": null,
+   "state": "complete",
+   "run_id": "60f05804-9e1a-41c7-a96e-27597825fd70",
+   "ended_at": "2026-07-27T06:03:32.950899+00:00",
+   "started_at": "2026-07-27T06:03:27.503977+00:00",
+   "disposition": null,
+   "output_changed": null
+  },
+  {
+   "error": null,
+   "state": "complete",
+   "run_id": "42720d15-f943-42af-8b76-e4f97f3bfd3f",
+   "ended_at": "2026-07-24T11:12:10.670484+00:00",
+   "started_at": "2026-07-24T11:12:03.433129+00:00",
+   "disposition": null,
+   "output_changed": null
+  },
+  {
+   "error": null,
+   "state": "complete",
+   "run_id": "2c514a63-9162-4018-a4ce-744b8ed40117",
+   "ended_at": "2026-07-20T19:33:07.054414+00:00",
+   "started_at": "2026-07-20T19:33:06.639026+00:00",
+   "disposition": null,
+   "output_changed": null
+  }
+ ],
+ "live_count": "count\n155\n(1 row)",
+ "integrity_check_result": "?column?\nt\n(1 row)"
+}

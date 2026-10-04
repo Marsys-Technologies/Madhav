@@ -3,7 +3,9 @@
 import { useState } from 'react'
 import { AlertCircle, CheckCircle2, CircleDashed, Clock3, ShieldX, TerminalSquare } from 'lucide-react'
 import { AiChoiceRadio } from './AiChoiceRadio'
-import { AI_ROLES, ROLE_LABELS, choicesEqual, formatCheckedAt, type AiChoice, type AiConsoleStateDto, type CliCardDto, type ConsoleMutation } from './types'
+import { CatalogRefreshControl } from './CatalogRefreshControl'
+import { cliEffortLevels } from '@/lib/ai-console/effort'
+import { AI_ROLES, ROLE_LABELS, choicesEqual, cliModelEvidence, formatCheckedAt, type AiChoice, type AiConsoleStateDto, type CliCardDto, type ConsoleMutation, type CatalogRefresh, type CatalogRefreshStatus } from './types'
 
 const STATE_LABELS: Record<CliCardDto['state'], string> = {
   not_granted: 'Not granted', untested: 'Not tested', validating: 'Testing', reachable: 'Reachable',
@@ -26,9 +28,11 @@ interface Props {
   mutate: ConsoleMutation
   onSelectDefault: (choice: AiChoice) => Promise<unknown>
   onConfigureRoles?: (cliId: CliCardDto['cliId']) => void
+  onRefreshCatalog: CatalogRefresh
+  refreshStatus: Record<string, CatalogRefreshStatus>
 }
 
-export function LocalClisSection({ state, clis, loading, error, aggregateStatus, mutationPending, mutate, onSelectDefault, onConfigureRoles }: Props) {
+export function LocalClisSection({ state, clis, loading, error, aggregateStatus, mutationPending, mutate, onSelectDefault, onConfigureRoles, onRefreshCatalog, refreshStatus }: Props) {
   const [candidateIds, setCandidateIds] = useState<Record<string, string>>({})
   async function testCli(cli: CliCardDto) {
     try {
@@ -66,7 +70,8 @@ export function LocalClisSection({ state, clis, loading, error, aggregateStatus,
           const presetReady = Boolean(preset && cli.state === 'reachable' && AI_ROLES.every(role => {
             const target = preset.roles[role]
             return target.kind === 'local_cli' && target.cliId === cli.cliId
-              && cli.models.some(model => model.modelId === target.modelId && model.compatibleRoles.includes(role))
+              && cli.models.some(model => model.modelId === target.modelId && model.compatibleRoles.includes(role)
+                && (!target.effort || (model.supportedEfforts ?? cliEffortLevels(cli.cliId, model.modelId)).includes(target.effort)))
           }))
           return <article className="aic-card" key={cli.cliId}>
             <div className="aic-card-head">
@@ -74,19 +79,25 @@ export function LocalClisSection({ state, clis, loading, error, aggregateStatus,
               {isPrivate ? <p className="aic-section-copy">An administrator must grant access before host availability can be shown.</p> : <>
                 <p className="aic-meta">{cli.detectedProduct ?? 'Product not detected'}{cli.detectedVersion ? ` · ${cli.detectedVersion}` : ''}</p>
                 <p className="aic-meta">Last check · {formatCheckedAt(cli.lastCheckedAt)}</p>
-                <div className="aic-actions"><button className="aic-button" type="button" disabled={mutationPending} onClick={() => testCli(cli)}>Test local CLI</button>{cli.state === 'reachable' && <button className="aic-button" data-primary="true" type="button" onClick={() => onConfigureRoles?.(cli.cliId)}>{preset ? 'Edit four roles' : 'Set up four roles'}</button>}</div>
-                {cli.state === 'reachable' && (cli.cliId === 'codex' || cli.cliId === 'claude_code') && <div className="aic-cli-manual">
-                  <p className="aic-section-copy">This CLI does not publish a model catalog here. Enter an exact model ID to test it through the local subscription, then assign it to roles in a configuration.</p>
+                <CatalogRefreshControl name={cli.productName} kind="cli" refreshedAt={cli.catalogRefreshedAt}
+                  errorCode={cli.catalogErrorCode} status={refreshStatus[`cli:${cli.cliId}`]}
+                  onRefresh={() => void onRefreshCatalog('cli', cli.cliId, true)} />
+                {cli.state === 'needs_attention' && cli.catalogRefreshedAt && !cli.catalogErrorCode && <p className="aic-meta">The installed version and model catalog were detected. Run Test local CLI to verify execution with this installation before setting up roles.</p>}
+                <div className="aic-actions"><button className="aic-button" type="button" disabled={mutationPending} onClick={() => testCli(cli)}>Test local CLI</button>{cli.state === 'reachable' && cli.cliId !== 'kimi_code' && <button className="aic-button" data-primary="true" type="button" onClick={() => onConfigureRoles?.(cli.cliId)}>{preset ? 'Edit four roles' : 'Set up four roles'}</button>}</div>
+                {cli.cliId === 'kimi_code' && <p className="aic-meta">Kimi Code currently supports synthesis only. It can be the synthesizer in a mixed custom CLI configuration, but cannot fill all four roles by itself.</p>}
+                {cli.state === 'reachable' && (cli.cliId === 'codex' || cli.cliId === 'claude_code') && <details className="aic-cli-manual">
+                  <summary>Advanced · test an exact model ID</summary>
+                  <p className="aic-section-copy">Refresh retrieves models offered by this subscription. If a model is missing, enter its exact ID and test it through the local subscription.</p>
                   <div className="aic-field"><label htmlFor={`aic-cli-model-${cli.cliId}`}>Exact model ID for {cli.productName}</label><input id={`aic-cli-model-${cli.cliId}`} value={candidateIds[cli.cliId] ?? ''} onChange={event => setCandidateIds(current => ({ ...current, [cli.cliId]: event.target.value }))} placeholder="Model ID from this CLI" autoComplete="off" /></div>
                   <button className="aic-button" type="button" disabled={mutationPending || !candidateIds[cli.cliId]?.trim()} onClick={() => addCandidate(cli)}>Test and add CLI model</button>
-                </div>}
+                </details>}
               </>}
             </div>
-            {preset && !isPrivate && <div className="aic-role-grid aic-card-roles">{AI_ROLES.map(role => <div className="aic-role-row" key={role}><span className="aic-role-label">{ROLE_LABELS[role]}</span><span className="aic-model-id">{preset.roles[role].modelId ?? 'Built-in default'}</span></div>)}</div>}
-            {!isPrivate && <div className="aic-model-row" data-default={presetChecked}><div><span className="aic-model-name">{preset ? 'CLI role setup' : 'Role setup needed'}</span><span className="aic-model-id">{presetReady ? 'All four roles use this local subscription' : 'Set up four compatible roles before selecting as default'}</span></div>{presetChoice && <AiChoiceRadio choice={presetChoice} checked={presetChecked} disabled={!presetReady || aggregateStatus !== 'ready' || mutationPending} unavailable={presetChecked && !presetReady} label={cli.productName} onSelect={onSelectDefault} />}</div>}
+            {preset && !isPrivate && <div className="aic-role-grid aic-card-roles">{AI_ROLES.map(role => <div className="aic-role-row" key={role}><span className="aic-role-label">{ROLE_LABELS[role]}</span><span className="aic-model-id">{preset.roles[role].modelId ?? 'Built-in default'} · Effort: {preset.roles[role].effort ?? 'model default'}</span></div>)}</div>}
+            {!isPrivate && cli.cliId !== 'kimi_code' && <div className="aic-model-row" data-default={presetChecked}><div><span className="aic-model-name">{preset ? 'CLI role setup' : 'Role setup needed'}</span><span className="aic-model-id">{presetReady ? 'All four roles use this local subscription' : 'Set up four compatible roles before selecting as default'}</span></div>{presetChoice && <AiChoiceRadio choice={presetChoice} checked={presetChecked} disabled={!presetReady || aggregateStatus !== 'ready' || mutationPending} unavailable={presetChecked && !presetReady} label={cli.productName} onSelect={onSelectDefault} />}</div>}
             {!isPrivate && <div className="aic-model-list" aria-label={`${cli.productName} models`}>
               {models.length === 0 ? <div className="aic-model-row"><span className="aic-model-id">{cli.state === 'reachable' ? 'No compatible models available' : 'This CLI is not available for execution'}</span></div> : models.map(model => {
-                return <div className="aic-model-row" key={model.modelId ?? '__builtin__'}><div><span className="aic-model-name">{model.displayName}</span><span className="aic-model-id">{model.modelId ?? 'Built-in default'} · {model.isBuiltinDefault ? 'Validated with this CLI' : cli.cliId === 'codex' || cli.cliId === 'claude_code' ? 'Individually tested with this CLI' : 'Discovered by CLI · not individually tested'}</span></div></div>
+                return <div className="aic-model-row" key={model.modelId ?? '__builtin__'}><div><span className="aic-model-name">{model.displayName}</span><span className="aic-model-id">{model.modelId ?? 'Built-in default'} · {cliModelEvidence(model)}</span>{model.supportedEfforts && <span className="aic-model-id">Effort: {model.supportedEfforts.length ? model.supportedEfforts.join(', ') : 'model default only'}{model.defaultEffort ? ` · default ${model.defaultEffort}` : ''}</span>}</div></div>
               })}
             </div>}
           </article>

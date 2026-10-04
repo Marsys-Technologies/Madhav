@@ -13,7 +13,7 @@ describe('closed CLI registry', () => {
       .toEqual(['/Users/Dev/.local/share/claude/versions/'])
     expect(CLI_REGISTRY.claude_code.interpreter).toBeUndefined()
     expect(CLI_REGISTRY.gemini_antigravity).toMatchObject({
-      candidates: ['/Users/Dev/.local/bin/agy'], supportedVersions: ['1.2.12', '1.2.13'],
+      candidates: ['/Users/Dev/.local/bin/agy'], supportedVersions: ['1.2.12', '1.2.13', '1.2.15'],
       compatibleRoles: AI_ROLES,
       modelCatalog: { args: ['models'], format: 'antigravity_models' },
       execution: { transport: 'antigravity_stream_json', outputFormat: 'antigravity_stream_json' },
@@ -30,12 +30,17 @@ describe('closed CLI registry', () => {
 
   it('accepts only the independently inspected versions', () => {
     expect(parseSupportedVersion(CLI_REGISTRY.codex, 'codex-cli 0.158.0')).toBe('0.158.0')
+    expect(parseSupportedVersion(CLI_REGISTRY.codex, 'codex-cli 0.155.1')).toBe('0.155.1')
     expect(parseSupportedVersion(CLI_REGISTRY.codex, 'codex-cli 0.158.1')).toBeNull()
     expect(parseSupportedVersion(CLI_REGISTRY.claude_code, '2.1.284 (Claude Code)')).toBe('2.1.284')
+    expect(parseSupportedVersion(CLI_REGISTRY.claude_code, '2.1.239 (Claude Code)')).toBe('2.1.239')
     expect(parseSupportedVersion(CLI_REGISTRY.claude_code, '2.2.0')).toBeNull()
     expect(parseSupportedVersion(CLI_REGISTRY.gemini_antigravity, 'agy version 1.2.12')).toBe('1.2.12')
     expect(parseSupportedVersion(CLI_REGISTRY.gemini_antigravity, 'agy version 1.2.13')).toBe('1.2.13')
+    expect(parseSupportedVersion(CLI_REGISTRY.gemini_antigravity, 'agy version 1.2.15')).toBe('1.2.15')
     expect(parseSupportedVersion(CLI_REGISTRY.gemini_antigravity, 'agy version 1.2.14')).toBeNull()
+    expect(parseSupportedVersion(CLI_REGISTRY.gemini_antigravity, 'agy version 1.2.16')).toBeNull()
+    expect(parseSupportedVersion(CLI_REGISTRY.gemini_antigravity, 'agy version 1.2.150')).toBeNull()
     expect(parseSupportedVersion(CLI_REGISTRY.gemini_antigravity, 'agy version 1.1.16')).toBeNull()
     expect(parseSupportedVersion(CLI_REGISTRY.kimi_code, '2.1.1')).toBe('2.1.1')
   })
@@ -60,6 +65,18 @@ describe('closed CLI registry', () => {
       'stream-json', '--print-timeout', '2m', '--model', 'gemini-3.8-flash-low',
     ])
     expect(buildExecutionArgs(CLI_REGISTRY.kimi_code, 'kimi-code/k3-256k')).toEqual(['acp'])
+    expect(buildExecutionArgs(CLI_REGISTRY.codex, 'gpt-5.5', { effort: 'low' }))
+      .toContain('model_reasoning_effort=low')
+    expect(buildExecutionArgs(CLI_REGISTRY.claude_code, 'claude-sonnet-4-6', { effort: 'high' }))
+      .toEqual(expect.arrayContaining(['--effort', 'high']))
+    expect(() => buildExecutionArgs(CLI_REGISTRY.kimi_code, 'kimi-code/k3-256k', { effort: 'low' })).toThrow()
+    expect(() => buildExecutionArgs(CLI_REGISTRY.codex, null, { effort: 'low' })).toThrow()
+    expect(buildExecutionArgs(CLI_REGISTRY.codex, 'gpt-catalog-model', {
+      effort: 'ultra', supportedEfforts: ['medium', 'ultra'],
+    })).toContain('model_reasoning_effort=ultra')
+    expect(() => buildExecutionArgs(CLI_REGISTRY.codex, 'gpt-catalog-model', {
+      effort: 'high', supportedEfforts: ['medium', 'ultra'],
+    })).toThrow()
   })
 
   it('rejects model argument injection and exposes all four compatible roles', () => {
