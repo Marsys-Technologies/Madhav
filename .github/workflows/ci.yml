@@ -1000,6 +1000,11 @@ jobs:
         # This test fails on that old path (mutation-checked) — keep it collected.
         run: python -m pytest scripts/__tests__/test_dispatch_frozen_rebuild_digest_path.py -q
 
+      - name: Gochara v5 small-test dispatch — the marker it builds is accepted by the writer's own validator
+        # The dispatch used to carry its own copy of the slice rules (classes the writer never scored, date-only
+        # horizons it refuses) and a registry INSERT of the pre-1304 row. These tests use the REAL writer as oracle.
+        run: python -m pytest scripts/__tests__/test_dispatch_v5_small_test.py -q
+
       - name: NTAP monitor — provision the dedicated migration 629 contract DB
         # Dedicated disposable database on this job's local postgres:16 service.
         # The contract test also refuses any non-loopback host or any database
