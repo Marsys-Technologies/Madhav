@@ -552,16 +552,25 @@ def publish_candidate(conn, chart_id: str, generation: str, convention_id: str,
             f"has status {row[1]!r}; a rebuild after publication is a NEW "
             f"generation label (plan §4.7)"
         )
-    conn.execute(
+    # The replace is CONDITIONAL on the row still being a candidate (Codex round 4 follow-up (d)): between the status read above and this
+    # UPDATE a publish can flip the row, and an unconditional UPDATE would then rewrite the input vector of a PUBLISHED manifest (a stale
+    # caller could even stamp it as a test slice). The draft database CHECK (PR 3140) refuses a published slice stamp; this makes the
+    # rewrite of any non-candidate vector impossible from the writer's own path.
+    replaced = conn.execute(
         """
         UPDATE kala_gochara_publication
         SET convention_id = %s, input_generation_vector = %s,
             ephemeris_backend = %s, horizon = %s::tstzrange,
             row_counts = '{}'::jsonb, content_digest = 'sha256:unpublished-candidate'
-        WHERE manifest_id = %s
+        WHERE manifest_id = %s AND status = 'candidate'
         """,
         (convention_id, vector, ephem, horizon, row[0]),
     )
+    if getattr(replaced, "rowcount", None) == 0:
+        raise PublishedGenerationRefusal(
+            f"publish_candidate refused: the manifest for generation {generation!r} was no longer a candidate when it was replaced "
+            "(it changed status after it was read — a stale caller); nothing was rewritten"
+        )
     return str(row[0])
 
 

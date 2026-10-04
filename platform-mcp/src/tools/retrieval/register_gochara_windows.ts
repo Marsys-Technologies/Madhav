@@ -108,6 +108,7 @@ import { z } from 'zod'
 import type { Principal } from '../../types.js'
 import { remoteAuthorize } from '../../lib/authz.js'
 import { finalizeMcpBudget, type TrimmableSection } from '../../lib/response_budget.js'
+import { governedGenerationGate } from '../../lib/governed_generation_gate.js'
 
 // ── Platform DB proxy (see module DB ACCESS NOTE) ────────────────────────────
 // The MCP server holds no direct DB connection; it proxies SELECT-only,
@@ -971,6 +972,9 @@ export interface GocharaCoverage {
   status?: 'unpublished'
   /** Present when status === 'unpublished'. */
   note?: string
+  /** Present when status === 'unpublished' because the authority row names a GOVERNED (5.x) generation that is not published and sealed
+   *  (or is a test slice): the gate's reason. Absent when there is simply no authority row. */
+  withheld_reason?: string
   /** P-1b: coverage derived from kala_gochara_coverage manifest rows for a
    *  manifest-carrying generation ('4.x'). Present only when ≥1 coverage row
    *  exists for (chart_id, generation) — the writer's own record of what was
@@ -1004,6 +1008,14 @@ export interface GocharaCoverage {
     swept_event_classes: string[]
     source: string
   } | null
+}
+
+/** The citation for an unpublished coverage object: the absent-authority text it has always carried, or — when the authority names a governed
+ *  generation that is not published and sealed — the gate's reason. */
+export function unpublishedCitation(coverage: { withheld_reason?: string }): string {
+  return coverage.withheld_reason
+    ? `unpublished — the authority names a generation that is not served: ${coverage.withheld_reason} (N-10 / P-1d)`
+    : 'unpublished — no kala_gochara_authority row for this chart (N-10 / P-1d)'
 }
 
 export interface GocharaNotCovered {
@@ -1075,8 +1087,26 @@ export async function computeGocharaCoverage(
   const manifest = authGen != null
     ? await fetchPublicationManifest(chartId, authGen, principal)
     : null
+  // THE GOVERNED-GENERATION GATE (Codex rounds 3 and 4 on PR 3110, follow-up (c)): the SAME rule the contact-ledger reader applies
+  // (governed_generation_gate.ts). A governed (5.x) generation the authority names is served as coverage only when its manifest is
+  // PUBLISHED and SEALED and is not a test slice; otherwise it is withheld as unpublished, with the gate's reason. Until now this path was
+  // protected only by migration 1236 (the authority table refuses a governed generation); the rule is added BEFORE any authority flip.
+  const manifestVector = (manifest?.input_generation_vector ?? null) as Record<string, unknown> | null
+  const gate = manifest != null && authGen != null
+    ? await governedGenerationGate(
+        (sql, params) => platformQuery(sql, params, principal),
+        chartId,
+        authGen,
+        {
+          status: manifest.status == null ? null : String(manifest.status),
+          stored_scope: typeof manifestVector?.['stored_scope'] === 'string' ? (manifestVector['stored_scope'] as string) : null,
+          has_test_slice: manifestVector != null && manifestVector['test_slice'] != null,
+        }
+      )
+    : null
+  const withheld = gate != null && !gate.serve ? gate : null
   // P-1b: three regimes (see the block comment above).
-  const isManifestGeneration = manifest != null
+  const isManifestGeneration = manifest != null && withheld == null
   const isV3Authority = !isManifestGeneration && authGen != null && (authGen === '3.0' || authGen.startsWith('g3_'))
 
   // The substep asset_id and source description differ by authority generation.
@@ -1128,7 +1158,7 @@ export async function computeGocharaCoverage(
   // archaeology the retired COALESCE convention produced. The vocabulary axes
   // (knownDomains / eventClassDomains) are still resolved so a `domain` filter
   // keeps validating against the real ontology.
-  if (authGen == null) {
+  if (authGen == null || withheld != null) {
     const [classesRespU, universeRespU] = await Promise.all([
       platformQuery(
         `SELECT DISTINCT rm.event_class AS event_class, eo.domain AS domain
@@ -1163,18 +1193,21 @@ export async function computeGocharaCoverage(
       eventClassDomainsOk: classesRespU.ok,
       coverage: {
         status: 'unpublished' as const,
-        note:
-          'This chart has no kala_gochara_authority row — no generation is authoritative for it, ' +
-          'so nothing is served as published coverage. The retired COALESCE-to-\'v1\' convention ' +
-          'would have silently served this as a v1-authority chart; absent authority is now the ' +
-          'honest unpublished state (N-10 / P-1d). A release-authority flip publishes a generation.',
+        ...(withheld != null ? { withheld_reason: withheld.reason } : {}),
+        note: withheld != null
+          ? `The authority row names generation ${authGen}, but ${withheld.reason} Nothing is served as published coverage. ` +
+            '(Governed-generation gate; N-10 / P-1d.)'
+          : 'This chart has no kala_gochara_authority row — no generation is authoritative for it, ' +
+            'so nothing is served as published coverage. The retired COALESCE-to-\'v1\' convention ' +
+            'would have silently served this as a v1-authority chart; absent authority is now the ' +
+            'honest unpublished state (N-10 / P-1d). A release-authority flip publishes a generation.',
         event_classes_covered: [],
         event_classes_targeted_not_swept: [],
         domains_not_covered: universeDomainsU,
         universe_source: COVERAGE_UNIVERSE_SOURCE,
         sweep_completeness: {
           substeps_committed: 0,
-          source: 'unpublished — no kala_gochara_authority row for this chart',
+          source: withheld != null ? `unpublished — authority names ${authGen}, which is not served (${withheld.refusal})` : 'unpublished — no kala_gochara_authority row for this chart',
           note:
             'No authoritative generation exists for this chart, so no sweep execution is ' +
             'attributed to a published generation. Substep history, if any exists, belongs to ' +
@@ -1185,7 +1218,7 @@ export async function computeGocharaCoverage(
           tier: 'thin' as const,
           covered_class_count: 0,
           covered_domain_count: 0,
-          reason: '0 event classes covered — chart is unpublished (no kala_gochara_authority row)',
+          reason: withheld != null ? `0 event classes covered — the authority's generation ${authGen} is withheld (${withheld.refusal})` : '0 event classes covered — chart is unpublished (no kala_gochara_authority row)',
         },
       },
     }
@@ -1834,7 +1867,7 @@ export async function computeGocharaActivation(
   // P-1d: an unpublished chart must never be served with generation=v1
   // provenance — the citation names the unpublished state instead.
   const resolvedCitation = coverage.status === 'unpublished'
-    ? 'unpublished — no kala_gochara_authority row for this chart (N-10 / P-1d)'
+    ? unpublishedCitation(coverage)
     : buildSourceCitation(chartId, rawRows[0]?.generation ?? null, manifest)
 
   // MR-25: resolve citation strings from active_sentences to verse_refs.
@@ -2146,7 +2179,7 @@ export async function computeGocharaForecast(
   // P-1d: an unpublished chart must never be served with generation=v1
   // provenance — the citation names the unpublished state instead.
   const resolvedCitation = coverage.status === 'unpublished'
-    ? 'unpublished — no kala_gochara_authority row for this chart (N-10 / P-1d)'
+    ? unpublishedCitation(coverage)
     : buildSourceCitation(chartId, rawRows[0]?.generation ?? null, manifest)
 
   // P-1e (H-5 serving rule): admission is cap-free; the LIMIT above is a
@@ -2446,7 +2479,7 @@ export async function computeGocharaElectionAvoidance(
   // P-1d: an unpublished chart must never be served with generation=v1
   // provenance — the citation names the unpublished state instead.
   const resolvedCitation = coverage.status === 'unpublished'
-    ? 'unpublished — no kala_gochara_authority row for this chart (N-10 / P-1d)'
+    ? unpublishedCitation(coverage)
     : buildSourceCitation(chartId, rows[0]?.generation ?? null, manifest)
 
   // P-1e (H-5 serving rule): the LIMIT above is a serve-time trim ONLY —
