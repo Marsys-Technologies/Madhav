@@ -666,6 +666,17 @@ def _w0_normalise(d: dict, old_id: str) -> tuple[list[dict], list[dict], list[st
 
 
 def import_w0(path: str, checksum: str, out_path: str, chart_id: str) -> int:
+    """The W0 import behind an EXCEPTION BOUNDARY (Codex v1.5): any problem — an unreadable file, a malformed structure, an unexpected exception anywhere in the read, normalisation, validation or write — is
+    a named STOP, exit 3, never a traceback. (The detailed contract is `_import_w0`'s.)"""
+    try:
+        return _import_w0(path, checksum, out_path, chart_id)
+    except OSError as exc:
+        print(f"STOP — the W0 file or its output could not be read/written ({exc.__class__.__name__}); nothing was accepted", file=sys.stderr); return 3
+    except Exception as exc:
+        print(f"STOP — the W0 file could not be interpreted ({exc.__class__.__name__}: {exc}); nothing written", file=sys.stderr); return 3
+
+
+def _import_w0(path: str, checksum: str, out_path: str, chart_id: str) -> int:
     """Suvarṇa's W0 FALLBACK baseline (Fable F-R18-4 / F-R19-3): a JSON file whose SHA-256 (of the file's bytes) is the checksum her SETTLED-1 names. THE ACCEPTED SHAPE, exactly:
 
         {"chart_id": "482012f1-710e-4a25-994a-93821f5871aa", "build_id": "<the OLD pinned build>",
@@ -688,7 +699,11 @@ def import_w0(path: str, checksum: str, out_path: str, chart_id: str) -> int:
     except ValueError as exc:                                  # a malformed / duplicate-keyed / NaN-bearing W0 file: a named STOP, nothing written
         print(f"STOP — the W0 file is not valid strict JSON: {exc}", file=sys.stderr); return 3
     old_id = PERM.DASHA_READ_CONTRACT["build_id"]
-    if d.get("chart_id") != chart_id or canon_uuid(d.get("build_id")) != old_id or not isinstance(d.get("rows"), list) or not isinstance(d.get("natal"), list):
+    try:
+        w0_build = canon_uuid(d.get("build_id")) if isinstance(d, dict) else None
+    except ValueError:
+        w0_build = None
+    if not isinstance(d, dict) or d.get("chart_id") != chart_id or w0_build != old_id or not isinstance(d.get("rows"), list) or not isinstance(d.get("natal"), list):
         print("STOP — the W0 file is not {chart_id, build_id, rows, natal} for this chart and the pinned build", file=sys.stderr); return 3
     try:
         kept, natal, notes = _w0_normalise(d, old_id)
@@ -956,7 +971,7 @@ def scan_test_literals(instants: dict[str, str], repo_root: Path) -> list[tuple[
     return out
 
 
-def apply_repin(new_id: str, maps: list[dict], repo_root: Path, rulings: dict | None = None, review: list[str] | None = None) -> list[str]:
+def apply_repin(new_id: str, maps: list[dict], repo_root: Path, rulings: dict | None = None, review: list[str] | None = None, check_only: bool = False) -> list[str]:
     """Rewrites (a) permission.py: the pin, the reference rows' ids and instants — ONE pass; (b) tests/l3: the reference rows' ids and the old pin's build id (they ARE reference rows).
     An OLD BOUNDARY INSTANT found in a test is NEVER rewritten automatically (it may be an event date that merely equals a boundary — D8): each match is listed as `path:line old -> new`
     and --apply STOPS before writing ANYTHING (`NeedsRuling`) unless every match is classified in `rulings` = {"rewrite": ["path:line", …], "keep": ["path:line", …]} (the steward's ruling)."""
@@ -990,6 +1005,8 @@ def apply_repin(new_id: str, maps: list[dict], repo_root: Path, rulings: dict | 
         review.extend(f"{p}:{ln} {a_} -> {b_} [{ruled.get(f'{p}:{ln}', 'UNRULED')}]" for p, ln, a_, b_ in matches)
     if unclassified:
         raise NeedsRuling(unclassified)                                              # nothing has been written
+    if check_only:                                                                   # every repository-state refusal has been evaluated; nothing has been written
+        return []
     s = rewrite_once(s, {**ids, **instants, f'"build_id": "{old_id}"': f'"build_id": "{new_id}"'})
     assert s.count(f'"build_id": "{new_id}"') == 1 and f'"build_id": "{old_id}"' not in s, "the re-pin constant must equal the SETTLED-1 build and the old pin must be gone (G6 b)"
     new_ver = rewrite_once(ver_txt, {ver_old_line: f'_C_BUILD = "{new_id}"'})
@@ -1183,6 +1200,32 @@ def _capture_build(a, conn, build_id: str, path: str, label: str) -> int:
     return 0
 
 
+_RULING_ENTRY = re.compile(r".+:[1-9][0-9]*")
+
+
+def validate_rulings(r) -> dict:
+    """The rulings file's STRUCTURE, validated in the single validation phase (Codex v1.5): an object whose ONLY keys are `rewrite` and `keep`, each (when present) a list of DISTINCT strings of the form
+    `path:line`; no entry may be both rewritten and kept. Raises ValueError by name; never anything else."""
+    if not isinstance(r, dict):
+        raise ValueError("the rulings must be a JSON object {rewrite: [path:line…], keep: [path:line…]}")
+    extra = sorted(k for k in r if k not in ("rewrite", "keep"))
+    if extra:
+        raise ValueError(f"unknown rulings key(s) {', '.join(repr(k) for k in extra)}: only 'rewrite' and 'keep' are allowed")
+    for k in ("rewrite", "keep"):
+        v = r.get(k, [])
+        if not isinstance(v, list):
+            raise ValueError(f"rulings[{k!r}] must be a list of 'path:line' strings")
+        bad = [x for x in v if not (isinstance(x, str) and _RULING_ENTRY.fullmatch(x))]
+        if bad:
+            raise ValueError(f"rulings[{k!r}] entries must be 'path:line' strings; refused: {bad[:3]!r}")
+        if len(set(v)) != len(v):
+            raise ValueError(f"rulings[{k!r}] repeats an entry")
+    both = sorted(set(r.get("rewrite", [])) & set(r.get("keep", [])))
+    if both:
+        raise ValueError(f"rulings classify {both[:3]!r} as BOTH rewrite and keep")
+    return {"rewrite": list(r.get("rewrite", [])), "keep": list(r.get("keep", []))}
+
+
 def _read_operator_inputs(a, old_id: str):
     """Reads and validates every operator-supplied input BEFORE any side effect: (notice | None, old-rows capture | None, rulings | None). Raises only OSError / ValueError (a named STOP)."""
     notice = load_notice(a.settled_notice) if a.settled_notice else None
@@ -1190,9 +1233,13 @@ def _read_operator_inputs(a, old_id: str):
     rulings = None
     if a.rulings:
         try:
-            rulings = strict_json_loads(Path(a.rulings).read_text(encoding="utf-8"))
+            raw_rulings = strict_json_loads(Path(a.rulings).read_text(encoding="utf-8"))
         except (OSError, ValueError) as exc:
             raise ValueError(f"the rulings file is not valid strict JSON: {exc}") from None
+        try:
+            rulings = validate_rulings(raw_rulings)
+        except ValueError as exc:
+            raise ValueError(f"the rulings file is invalid: {exc}") from None
     return notice, old_rows, rulings
 
 
@@ -1277,6 +1324,15 @@ def main(argv=None, *, conn=None) -> int:
     stops += extra_stops
     if notice is not None and notice.get("new_build_id") != a.new_build_id:                         # Codex R17-5: notice == --new-build-id == the database readback (the builds check above)
         stops.append(f"the SETTLED-1 notice names build {notice.get('new_build_id')}, not {a.new_build_id}")
+    if a.apply and not stops:                                  # resolve EVERY apply-time refusal (test-literal rulings, the verifier's second pin site, literal conflicts) BEFORE the report is emitted or CLEAN is printed (Codex v1.5)
+        try:
+            apply_repin(a.new_build_id, maps, SIDECAR.parents[1], rulings=rulings, review=[], check_only=True)
+        except NeedsRuling as exc:
+            stops.append(f"{len(exc.unclassified)} test literal(s) equal to an old boundary need the steward's ruling (--rulings): " + "; ".join(exc.unclassified[:5]))
+        except VerifierPinMissing as exc:
+            stops.append(f"apply would be refused: {exc}")
+        except Exception as exc:                               # an assertion or any unexpected failure while checking the repository state: a named STOP, nothing written
+            stops.append(f"apply could not be checked ({exc.__class__.__name__}: {exc}); nothing was written")
     evidence = [f"window-clipped edges excluded from the shift statistics (clipped on BOTH builds, required unchanged), per level: "
                 + (", ".join(f"{LEVEL_NAME.get(lv, lv)} start {c['start']} / end {c['end']}" for lv, c in edges["clipped"].items()) or "none")]
     evidence.append(f"chart_dashas shape: observed {pre_facts['non_scope']} non-scope + {pre_facts['scope']} scope-cap partition(s), builds {sorted(pre_facts['builds'])}; required: {EXPECTED_NON_SCOPE_PARTITIONS} + {EXPECTED_SCOPE_PARTITIONS} and exactly the SETTLED-1 build {a.new_build_id} (fixed; no notice field overrides it)")
@@ -1309,6 +1365,8 @@ def main(argv=None, *, conn=None) -> int:
             print("STOP — test literals equal to an old boundary need the steward's ruling (--rulings).", file=sys.stderr); return 3
         except VerifierPinMissing as exc:
             print(f"STOP (nothing written) — {exc}", file=sys.stderr); return 3
+        except Exception as exc:                               # last resort: never a traceback; the checks already passed, so inspect `git status` before retrying
+            print(f"STOP — the apply failed unexpectedly ({exc.__class__.__name__}: {exc}); inspect `git status` — files may be partly written", file=sys.stderr); return 3
         print(f"re-pin PREPARED locally on 'SETTLED-1 received' per {a.settled_received}. ST-SL1-HOLD REMAINS IN FORCE for production Gochara work until this re-pin is reviewed and merged and the steward announces the hold lifted.")
         print("BOTH pin constants were rewritten and verified equal to the SETTLED-1 build: services/gochara_rules/permission.py DASHA_READ_CONTRACT['build_id'] AND services/gochara_kernel/inventory_verifier.py _C_BUILD.")
         print("NEXT, in the SAME reviewed re-pin PR: regenerate the implementation lock — `python -m services.gochara_kernel.implementation_registry --write` (a changed governed module moves the implementation digest; the seal refuses an unregistered one) AND the golden brief fixtures that move with it — tests/l3/gochara/fixtures/golden_brief_stdout_1class.txt and golden_brief_log_entries_1class.json (regenerate them the way Stream A's tests document, then re-run the A5.3 suite).")

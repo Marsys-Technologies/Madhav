@@ -1901,3 +1901,89 @@ def test_a_last_resort_handler_turns_any_unexpected_validation_exception_into_ex
     err = capsys.readouterr().err
     assert rc == 3 and "invalid operator input (RuntimeError)" in err and "nothing was written" in err and not out.exists()
     assert sorted(p.name for p in tmp_path.iterdir()) == sorted(before + ["notice.json"])
+
+
+# ── v1.5 (Codex): rulings STRUCTURE inside the single validation phase; apply-time refusals resolved BEFORE the report; the W0 import behind an exception boundary ──────────
+
+@pytest.mark.parametrize("bad", [
+    '{"rewrite": 7, "keep": []}',                                  # Codex v1.5 counterexample
+    '{"rewrite": ["a.py:1", 3], "keep": []}', '{"rewrite": ["noline"], "keep": []}', '{"rewrite": ["a.py:0"]}', '{"rewrite": [], "keep": "x"}', '{"rewrite": {"a.py:1": 1}}',
+    '{"rewrite": ["a.py:1"], "keep": ["a.py:1"]}', '{"rewrite": ["a.py:1", "a.py:1"]}', '{"nope": []}', '[]', '"s"', "7", "null", '{"rewrite": [null]}',
+])
+def test_malformed_rulings_are_STOP_exit_3_before_any_report_write_or_CLEAN_under_apply_and_out(monkeypatch, tmp_path, capsys, bad):
+    cap, fr = _clean_setup(monkeypatch, tmp_path)
+    out = tmp_path / "evidence.md"
+    rul = tmp_path / "rulings.json"; rul.write_text(bad)
+    before = sorted(p.name for p in tmp_path.iterdir())
+    rc = T.main(["--new-build-id", NEWB, "--old-rows", str(cap), "--settled-notice", _notice(tmp_path, new_build_id=NEWB), "--forensic-report", str(fr),
+                 "--apply", "--settled-received", "M1", "--rulings", str(rul), "--out", str(out)], conn=_Boom())
+    got = capsys.readouterr()
+    assert rc == 3 and "rulings file is invalid" in got.err, got.err
+    assert got.out == "" and "CLEAN" not in got.out and not out.exists() and sorted(p.name for p in tmp_path.iterdir()) == sorted(before + ["notice.json"])
+
+
+def test_well_formed_rulings_validate_and_are_normalised():
+    assert T.validate_rulings({"rewrite": ["a/b.py:12"], "keep": ["c.py:3"]}) == {"rewrite": ["a/b.py:12"], "keep": ["c.py:3"]}
+    assert T.validate_rulings({}) == {"rewrite": [], "keep": []}
+    assert T.validate_rulings({"keep": ["x.py:1"]}) == {"rewrite": [], "keep": ["x.py:1"]}
+
+
+def test_apply_time_refusals_are_resolved_BEFORE_the_report_so_no_CLEAN_precedes_a_NeedsRuling_or_a_missing_verifier(monkeypatch, tmp_path, capsys):
+    cap, fr = _clean_setup(monkeypatch, tmp_path)
+    calls = []
+    def fake(new_id, maps, root, rulings=None, review=None, check_only=False):
+        calls.append(check_only)
+        if not check_only:
+            raise AssertionError("a real apply was attempted although the check refused")
+        raise T.NeedsRuling(["tests/l3/x.py:5 2000-01-01T00:00:00Z -> 2000-01-01T01:56:33Z"])
+    monkeypatch.setattr(T, "apply_repin", fake)
+    out = tmp_path / "evidence.md"
+    rc = T.main(["--new-build-id", NEWB, "--old-rows", str(cap), "--settled-notice", _notice(tmp_path, new_build_id=NEWB), "--forensic-report", str(fr),
+                 "--apply", "--settled-received", "M1", "--out", str(out)], conn=FakeConn())
+    got = capsys.readouterr()
+    assert rc == 3 and calls == [True]                                                                            # only the CHECK ran
+    assert "verdict: **CLEAN**" not in got.out and "need the steward's ruling" in got.out and "STOP" in got.out
+    assert "verdict: **CLEAN**" not in out.read_text()                                                             # the written report is truthful: STOP, not CLEAN
+    def fake2(new_id, maps, root, rulings=None, review=None, check_only=False):
+        raise T.VerifierPinMissing("inventory_verifier.py is absent")
+    monkeypatch.setattr(T, "apply_repin", fake2)
+    rc = T.main(["--new-build-id", NEWB, "--old-rows", str(cap), "--settled-notice", _notice(tmp_path, new_build_id=NEWB), "--forensic-report", str(fr), "--apply", "--settled-received", "M1"], conn=FakeConn())
+    assert rc == 3 and "verdict: **CLEAN**" not in capsys.readouterr().out
+    def fake3(new_id, maps, root, rulings=None, review=None, check_only=False):
+        raise AssertionError("a permission literal is not whole-second")
+    monkeypatch.setattr(T, "apply_repin", fake3)
+    rc = T.main(["--new-build-id", NEWB, "--old-rows", str(cap), "--settled-notice", _notice(tmp_path, new_build_id=NEWB), "--forensic-report", str(fr), "--apply", "--settled-received", "M1"], conn=FakeConn())
+    assert rc == 3 and "verdict: **CLEAN**" not in capsys.readouterr().out
+
+
+def test_an_unexpected_exception_during_the_real_apply_is_exit_3_not_a_traceback(monkeypatch, tmp_path, capsys):
+    cap, fr = _clean_setup(monkeypatch, tmp_path)
+    def fake(new_id, maps, root, rulings=None, review=None, check_only=False):
+        if check_only:
+            return []
+        raise PermissionError("disk")
+    monkeypatch.setattr(T, "apply_repin", fake)
+    rc = T.main(["--new-build-id", NEWB, "--old-rows", str(cap), "--settled-notice", _notice(tmp_path, new_build_id=NEWB), "--forensic-report", str(fr), "--apply", "--settled-received", "M1"], conn=FakeConn())
+    err = capsys.readouterr().err
+    assert rc == 3 and "the apply failed unexpectedly (PermissionError" in err and "git status" in err
+
+
+@pytest.mark.parametrize("w0", [
+    '{"chart_id": "%(c)s", "build_id": "bad", "rows": [], "natal": []}',                                        # Codex v1.5 counterexample 1 (uncaught ValueError)
+    '[]', '[{"a": 1}]', '"x"', '7', 'null',                                                                     # counterexample 2 (root list -> AttributeError) and other roots
+    '{"chart_id": "%(c)s", "build_id": 5, "rows": [], "natal": []}',
+    '{"chart_id": "%(c)s", "build_id": "%(o)s", "rows": {}, "natal": []}', '{"chart_id": "%(c)s", "build_id": "%(o)s", "rows": [], "natal": "x"}',
+    '{"chart_id": "%(c)s", "build_id": "%(o)s", "rows": [1], "natal": []}', '{"chart_id": "%(c)s", "build_id": "%(o)s", "rows": [{"level_n": "x"}], "natal": []}',
+    '{"chart_id": "%(c)s", "build_id": "%(o)s", "rows": [{"level_n": 1, "dasha_row_id": "r", "parent_row_id": null, "lord_graha": "Sun", "start_iso": 5, "end_iso": null}], "natal": []}',
+    '{"chart_id": "%(c)s", "build_id": "%(o)s", "rows": [], "natal": [1]}',
+])
+def test_the_w0_import_never_raises_a_malformed_structure_is_STOP_exit_3_and_writes_nothing(tmp_path, capsys, w0):
+    import hashlib as _h
+    p = tmp_path / "w0.json"; p.write_text(w0 % {"c": CHART, "o": OLDB})
+    out = tmp_path / "w0_out.json"
+    rc = T.main(["--import-w0", str(p), "--w0-checksum", _h.sha256(p.read_bytes()).hexdigest(), "--w0-capture-out", str(out)])
+    err = capsys.readouterr().err
+    assert rc == 3 and "STOP" in err and "Traceback" not in err and not out.exists()
+    assert sorted(x.name for x in tmp_path.iterdir()) == ["w0.json"]
+    # an unreadable file and a checksum mismatch are STOPs too
+    assert T.main(["--import-w0", str(tmp_path / "missing.json"), "--w0-checksum", "0" * 64, "--w0-capture-out", str(out)]) == 3 and not out.exists()
