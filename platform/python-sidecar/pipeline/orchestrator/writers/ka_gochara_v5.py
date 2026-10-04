@@ -305,12 +305,26 @@ def _slice_component(slice_: TestSlice) -> dict:
 
 
 def _scope_normalised(vector: dict) -> dict:
-    """The vector the in-build independent derivation check sees (Stream A C46 review R1):
+    """The vector the in-build independent derivation check sees (Stream A C46 review R1/R1b):
     identical in EVERY component, with only the slice's identity removed — stored_scope back
     to the default and the test_slice key dropped. The STORED manifest vector keeps both, so
     the verification JOB still refuses a sliced manifest by name, while the BUILD still proves
     the ephemeris files, the library, the probe, L0, the registry and the implementation
-    against the real image."""
+    against the real image.
+
+    R1b: ONLY a vector that really carries the slice stamp (stored_scope == the slice scope AND a
+    test_slice component) is normalised. A default vector — including one whose stored_scope is
+    unknown or tampered — is returned UNCHANGED, so verify_inputs still refuses it by name as before
+    (the default path must not get weaker). A half-stamped vector (one stamp without the other) is a
+    named refusal, never normalised."""
+    scope_stamp = vector.get("stored_scope") == TEST_SLICE_SCOPE
+    key_stamp = "test_slice" in vector
+    if not scope_stamp and not key_stamp:
+        return dict(vector)
+    if scope_stamp != key_stamp:
+        raise TestSliceRefusal(
+            f"{ASSET_ID}: {TEST_SLICE_KEY}: half-stamped input vector (stored_scope={vector.get('stored_scope')!r}, "
+            f"test_slice component {'present' if key_stamp else 'absent'}) — refused, never normalised")
     v = dict(vector)
     v["stored_scope"] = gk_input_vector.STORED_SCOPE
     v.pop("test_slice", None)

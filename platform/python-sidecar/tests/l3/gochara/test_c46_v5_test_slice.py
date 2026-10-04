@@ -494,3 +494,60 @@ def test_a_sliced_manifest_fails_by_name_when_the_ephemeris_is_wrong(db, tmp_pat
         _run_substep(db, writer_mod.MANIFEST_SUBSTEP, ephe)
     with db.transaction():
         assert InventoryStore(db).manifest_vector(CHART_ID, writer_mod.GENERATION) is None
+
+
+# ── R1b (Stream A's C46b re-review): the scope normalisation applies ONLY to a slice-stamped vector ───────────────
+
+def test_a_default_vector_is_returned_unchanged_by_the_normalisation():
+    v = {"stored_scope": iv.STORED_SCOPE, "result_policy": "all_null_candidate/1", "schema": "x"}
+    assert writer_mod._scope_normalised(v) == v and writer_mod._scope_normalised(v) is not v
+
+
+def test_an_unknown_or_tampered_stored_scope_is_NOT_normalised_so_the_default_path_still_refuses_it():
+    v = {"stored_scope": "some_unknown_scope", "result_policy": "all_null_candidate/1"}
+    assert writer_mod._scope_normalised(v)["stored_scope"] == "some_unknown_scope"
+
+
+def test_a_slice_stamped_vector_is_normalised_to_the_default_scope_without_the_slice_component():
+    v = {"stored_scope": writer_mod.TEST_SLICE_SCOPE, "test_slice": {"schema": writer_mod.TEST_SLICE_SCHEMA, "marker_digest": "ab"},
+         "ephemeris": {"files": {"a": "b"}}}
+    n = writer_mod._scope_normalised(v)
+    assert n["stored_scope"] == iv.STORED_SCOPE and "test_slice" not in n and n["ephemeris"] == v["ephemeris"]
+    assert v["stored_scope"] == writer_mod.TEST_SLICE_SCOPE and "test_slice" in v      # the stored vector is untouched
+
+
+@pytest.mark.parametrize("half", [{"stored_scope": "test_slice"}, {"stored_scope": "stored_non_moon", "test_slice": {"x": 1}}])
+def test_a_half_stamped_vector_is_refused_by_name(half):
+    with pytest.raises(writer_mod.TestSliceRefusal, match="half-stamped"):
+        writer_mod._scope_normalised(half)
+
+
+def test_verify_live_inputs_still_hands_an_unknown_stored_scope_to_verify_inputs_unchanged(monkeypatch):
+    """The default path through the real seam: a stored vector with an unknown scope reaches verify_inputs AS IS."""
+    seen = {}
+
+    class _Store:
+        def __init__(self, conn): pass
+        def manifest_vector(self, chart, gen): return {"stored_scope": "some_unknown_scope", "l0": {}}
+
+    class _Sky:
+        def __init__(self, conn): pass
+        def register_convention(self): return "sky-1"
+
+    monkeypatch.setattr(writer_mod, "InventoryStore", _Store)
+    monkeypatch.setattr(writer_mod, "SkyEventStore", _Sky)
+    monkeypatch.setattr(writer_mod.gk_input_vector, "verify_live", lambda *a, **k: None)
+    monkeypatch.setattr(writer_mod.gk_input_vector_verifier, "verify_inputs",
+                        lambda conn, vec, **k: seen.update(vec=vec))
+    writer_mod._verify_live_inputs(_ctx(), CHART_ID)
+    assert seen["vec"]["stored_scope"] == "some_unknown_scope"
+
+
+def test_mutation_without_the_stamp_condition_the_unknown_scope_would_be_masked(monkeypatch):
+    """Mutation proof: the pre-R1b helper (unconditional) would have rewritten the unknown scope — this test pins that the
+    current helper does not."""
+    def pre_r1b(vector):
+        v = dict(vector); v["stored_scope"] = iv.STORED_SCOPE; v.pop("test_slice", None); return v
+    unknown = {"stored_scope": "some_unknown_scope"}
+    assert pre_r1b(unknown)["stored_scope"] == iv.STORED_SCOPE                 # the defect
+    assert writer_mod._scope_normalised(unknown)["stored_scope"] == "some_unknown_scope"   # the fix
