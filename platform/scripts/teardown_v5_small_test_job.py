@@ -1,7 +1,6 @@
 """
 teardown_v5_small_test_job.py — Pravāha C38: teardown for the SMALL TEST build
-of ka_gochara_v5 staged by dispatch_v5_small_test_job.py (C37), modelled on
-the A2.5/A4 teardown in dispatch_a25_v41_candidate_job.py.
+of ka_gochara_v5 staged by dispatch_v5_small_test_job.py (C37).
 
 ONE transaction, chart/run-scoped, fail-closed. Chart is the pinned canonical
 chart 482012f1-710e-4a25-994a-93821f5871aa ONLY — there is no chart argument.
@@ -10,37 +9,43 @@ DATABASE_URL comes from the environment only: never on argv, never printed.
 REFUSES (loudly, nothing deleted) when ANY of these holds:
   1. a kala_gochara_publication row for the pinned chart at generation '5.0'
      has status 'published' (a published generation is immutable);
-  2. a ka_gochara_generation_seal row exists for the pinned chart at
-     generation '5.0' (a sealed generation is permanent publication
-     history — 1153 §5);
+  2. a ka_gochara_generation_seal row exists for the pinned chart at '5.0'
+     (a sealed generation is permanent publication history — 1153 §5);
   3. kala_gochara_authority names '5.0' as the pinned chart's
      authoritative_generation (a SERVING generation is never torn down);
   4. a build_runs row for this asset on the pinned chart is
      planned/running/paused (active execution — stop it first);
-  5. generation '5.0' rows exist for the pinned chart in any of the four
-     kala_gochara_* tables but NO build_runs row names
-     triggered_by = 'gochara-v5-small-test' for the chart — those rows were
-     NOT produced by a small-test run and this script never touches them.
+  5. a NON-TEST build run of this asset exists on the pinned chart (a real build
+     was dispatched: this script only removes the small test);
+  6. the provenance receipts of this asset on the pinned chart include one that
+     belongs to a non-test run;
+  7. there is generation '5.0' output (or a receipt with no run link) that cannot
+     be ATTRIBUTED to a small test. Attribution is EITHER a build run with
+     triggered_by = 'gochara-v5-small-test' for the chart, OR a candidate manifest
+     that is stamped stored_scope = 'test_slice' (the slice stamp lives in the
+     manifest itself, so it survives the cockpit watchdog pruning old build runs and
+     it is what C46 stamps on every sliced candidate).
 
-Then deletes, in one commit:
-    DELETE FROM build_run_assets WHERE run_id IN
-      (SELECT id FROM build_runs WHERE triggered_by = 'gochara-v5-small-test'
-         AND chart_id = '<pinned>');
-    DELETE FROM build_runs WHERE triggered_by = 'gochara-v5-small-test'
-      AND chart_id = '<pinned>';
-    DELETE FROM asset_throughput WHERE asset_id = 'ka_gochara_v5'
-      AND chart_id = '<pinned>';
-    -- '5.0' rows for the PINNED CHART ONLY — never another chart's '5.0':
-    DELETE FROM kala_gochara_windows     WHERE chart_id = '<pinned>' AND generation = '5.0';
-    DELETE FROM kala_gochara_contacts    WHERE chart_id = '<pinned>' AND generation = '5.0';
-    DELETE FROM kala_gochara_coverage    WHERE chart_id = '<pinned>' AND generation = '5.0';
-    DELETE FROM kala_gochara_publication WHERE chart_id = '<pinned>' AND generation = '5.0';
-
-And KEEPS the asset_registry row (migration 1243 inserts it permanently —
-deleting it would fail the orchestrator's writer-gap preflight on EVERY
-build run): in the SAME transaction the row is restored to its inert state
-(UPDATE asset_registry SET is_active = false) and verified field by field
-against the 1243 shape.
+Then deletes, in ONE commit, in dependency order:
+    provenance receipts of this asset on the pinned chart (they are test evidence
+      — and deleting the run row first would set their build link to NULL, which the
+      Nirmana monitor reads as evidence whose run cannot be found, i.e. NON-test
+      evidence; see definitions.ts, rule N-137);
+    build_run_assets and build_runs rows of the test runs; the asset_throughput row;
+    the OUTPUT CHAIN of (chart, '5.0'), in the order RecordStore.delete_generation_chain
+      uses: eval_window (window membership cascades), relationship_record
+      (prerequisites cascade), contact, event-class coverage partitions;
+    the SEARCH INVENTORY, in the order InventoryStore.delete_generation_inventory
+      uses: interval, obligation, path_pin, inventory (verification rows cascade),
+      the input snapshot;
+    the legacy v4 ledger rows of '5.0' (windows, contacts) and the candidate manifest.
+KEPT: the asset_registry row (migration 1243 inserts it permanently; deleting it
+would fail the orchestrator's writer-gap preflight on every build run) — restored
+inert (is_active = false) in the same transaction and verified field by field
+against the migration-1304 small-test shape; the global sky-event substrate
+(physical objects, contact identities, sky events: insert-if-absent, reused by the
+full build); Moon on-demand coverage partitions (durable query identities, not
+build output); every other chart and every other generation.
 
 --dry-run runs every refusal check, then lists the COUNTS per table of what
 would be deleted and ROLLS BACK — nothing is written.
@@ -60,6 +65,7 @@ ASSET_ID = "ka_gochara_v5"
 CHART_ID = "482012f1-710e-4a25-994a-93821f5871aa"
 TRIGGERED_BY = "gochara-v5-small-test"
 GENERATION = "5.0"
+SLICE_SCOPE = "test_slice"
 
 _env_file = os.path.join(os.path.dirname(__file__), "..", ".env.local")
 if os.path.exists(_env_file):
@@ -70,40 +76,52 @@ if os.path.exists(_env_file):
                 k, _, v = line.partition("=")
                 os.environ.setdefault(k.strip(), v.strip())
 
-# The 1243 shape the ka_gochara_v5 registry row must hold after teardown.
+# The shape the ka_gochara_v5 registry row must hold after teardown: the migration-1304 small-test row, the SAME values
+# dispatch_v5_small_test_job.EXPECTED_REGISTRY_ROW validates before staging (a test pins the two equal). The pre-1304
+# shape this script used to check (has_substeps false, 600 s, no dependencies) can never be restored once 1304 is applied:
+# the post-delete check would raise and the whole teardown would roll back.
 EXPECTED_REGISTRY_ROW = {
     "scope": "per_chart",
     "is_active": False,
     "has_writer": True,
-    "has_substeps": False,
-    "writer_timeout_seconds": 600,
-    "depends_on": [],
+    "has_substeps": True,
+    "writer_timeout_seconds": 7200,
+    "depends_on": ["ga_positions", "ga_dashas"],
+    "target_table": "ka_gochara_eval_window",
+    "count_sql": ("SELECT COUNT(*) FROM ka_gochara_eval_window "
+                  "WHERE chart_id=$1 AND generation='5.0'"),
+    "target_floor": 0,
+    "estimated_seconds": None,
 }
 
-DATA_TABLES = (
-    "kala_gochara_windows",
-    "kala_gochara_contacts",
-    "kala_gochara_coverage",
-    "kala_gochara_publication",
+# (label, table, extra WHERE) — the order is the deletion order and the dry-run listing order.
+CHAIN_TABLES = (
+    ("ka_gochara_eval_window", ""),                 # window membership cascades with it
+    ("ka_gochara_relationship_record", ""),         # prerequisites cascade with it
+    ("ka_gochara_contact", ""),                     # ALL of the generation's contacts (orphans and shared ones too)
+    ("kala_gochara_coverage", " AND partition_kind = 'event_class'"),   # last: records / windows reference it
 )
+INVENTORY_TABLES = (
+    ("ka_gochara_search_interval", ""),
+    ("ka_gochara_search_obligation", ""),
+    ("ka_gochara_search_path_pin", ""),
+    ("ka_gochara_search_inventory", ""),            # its verification rows cascade
+    ("ka_gochara_search_input_snapshot", ""),
+)
+LEGACY_TABLES = (
+    ("kala_gochara_windows", ""),
+    ("kala_gochara_contacts", ""),
+    ("kala_gochara_publication", ""),               # the candidate manifest: last
+)
+GENERATION_TABLES = CHAIN_TABLES + INVENTORY_TABLES + LEGACY_TABLES
 
-TEARDOWN_DELETES = (
-    """DELETE FROM build_run_assets WHERE run_id IN
-         (SELECT id FROM build_runs WHERE triggered_by = %s
-            AND chart_id = %s)""",
-    "DELETE FROM build_runs WHERE triggered_by = %s AND chart_id = %s",
-    "DELETE FROM asset_throughput WHERE asset_id = %s AND chart_id = %s",
-    "DELETE FROM kala_gochara_windows     WHERE chart_id = %s AND generation = '5.0'",
-    "DELETE FROM kala_gochara_contacts    WHERE chart_id = %s AND generation = '5.0'",
-    "DELETE FROM kala_gochara_coverage    WHERE chart_id = %s AND generation = '5.0'",
-    "DELETE FROM kala_gochara_publication WHERE chart_id = %s AND generation = '5.0'",
-)
+_TEST_RUNS = ("SELECT id FROM build_runs WHERE triggered_by = %s AND chart_id = %s")
 
 
 def _validate_registry_row(cur) -> None:
     cur.execute(
-        """SELECT scope, is_active, has_writer, has_substeps,
-                  writer_timeout_seconds, depends_on
+        """SELECT scope, is_active, has_writer, has_substeps, writer_timeout_seconds,
+                  depends_on, target_table, count_sql, target_floor, estimated_seconds
            FROM asset_registry WHERE asset_id = %s""",
         (ASSET_ID,),
     )
@@ -120,7 +138,21 @@ def _validate_registry_row(cur) -> None:
         if actual != expected:
             raise RuntimeError(
                 f"{ASSET_ID}.{field} is {actual!r}, expected {expected!r} — "
-                "the registry row must be its inert 1243 self after teardown")
+                "the registry row must be its migration-1304 small-test self after teardown "
+                "(apply 1304; never edit the row by hand)")
+
+
+def _count(cur, sql: str, params: tuple = ()) -> int:
+    cur.execute(sql, params)
+    return int(cur.fetchone()["n"])
+
+
+def _generation_rows(cur) -> int:
+    total = 0
+    for table, extra in GENERATION_TABLES:
+        total += _count(cur, f"SELECT count(*) AS n FROM {table} WHERE chart_id = %s AND generation = %s{extra}",
+                        (CHART_ID, GENERATION))
+    return total
 
 
 def _refusal_checks(cur) -> None:
@@ -175,54 +207,77 @@ def _refusal_checks(cur) -> None:
             f"for asset {ASSET_ID} on chart {CHART_ID} — stop active "
             "execution first")
 
-    # The '5.0' data rows may be deleted ONLY when they came from a
-    # small-test run. Rows with no small-test run behind them are untouchable.
-    data_rows = 0
-    for table in DATA_TABLES:
-        cur.execute(
-            f"SELECT count(*) AS n FROM {table} WHERE chart_id = %s AND generation = %s",
-            (CHART_ID, GENERATION),
-        )
-        data_rows += cur.fetchone()["n"]
-    if data_rows:
-        cur.execute(
-            """SELECT count(*) AS n FROM build_runs
-               WHERE triggered_by = %s AND chart_id = %s""",
-            (TRIGGERED_BY, CHART_ID),
-        )
-        if cur.fetchone()["n"] == 0:
-            raise RuntimeError(
-                f"teardown refused: {data_rows} generation '5.0' row(s) exist "
-                f"for chart {CHART_ID} but NO build_runs row names "
-                f"triggered_by = '{TRIGGERED_BY}' — those rows were not "
-                "produced by a small-test run and this script never touches them")
+    non_test = _count(
+        cur, "SELECT count(*) AS n FROM build_runs WHERE chart_id = %s AND scope_target = %s AND triggered_by <> %s",
+        (CHART_ID, ASSET_ID, TRIGGERED_BY))
+    if non_test:
+        raise RuntimeError(
+            f"teardown refused: {non_test} NON-test build run(s) of {ASSET_ID} exist on chart {CHART_ID} "
+            f"(triggered_by other than '{TRIGGERED_BY}') — a real build was dispatched; this script only "
+            "removes the small test")
+
+    foreign_receipts = _count(
+        cur,
+        """SELECT count(*) AS n FROM asset_provenance_receipts r
+           WHERE r.asset_id = %s AND r.chart_id = %s AND r.build_id IS NOT NULL
+             AND NOT EXISTS (SELECT 1 FROM build_runs b WHERE b.id = r.build_id AND b.triggered_by = %s)""",
+        (ASSET_ID, CHART_ID, TRIGGERED_BY))
+    if foreign_receipts:
+        raise RuntimeError(
+            f"teardown refused: {foreign_receipts} provenance receipt(s) of {ASSET_ID} on chart {CHART_ID} belong "
+            f"to a run that is not a '{TRIGGERED_BY}' run — those are not small-test evidence")
+
+    # ATTRIBUTION: output (or a receipt with no run link) may be removed only when it is the small test's.
+    test_runs = _count(cur, "SELECT count(*) AS n FROM build_runs WHERE triggered_by = %s AND chart_id = %s",
+                       (TRIGGERED_BY, CHART_ID))
+    cur.execute(
+        """SELECT 1 AS n FROM kala_gochara_publication
+           WHERE chart_id = %s AND generation = %s AND status = 'candidate'
+             AND input_generation_vector->>'stored_scope' = %s""",
+        (CHART_ID, GENERATION, SLICE_SCOPE))
+    stamped = cur.fetchone() is not None
+    unlinked_receipts = _count(
+        cur, "SELECT count(*) AS n FROM asset_provenance_receipts WHERE asset_id = %s AND chart_id = %s AND build_id IS NULL",
+        (ASSET_ID, CHART_ID))
+    rows = _generation_rows(cur)
+    if (rows or unlinked_receipts) and not (test_runs or stamped):
+        raise RuntimeError(
+            f"teardown refused: {rows} generation '5.0' row(s) and {unlinked_receipts} run-less receipt(s) exist for "
+            f"chart {CHART_ID} but NO build_runs row names triggered_by = '{TRIGGERED_BY}' and the candidate manifest "
+            f"is not stamped stored_scope = '{SLICE_SCOPE}' — they were not produced by a small-test run and this "
+            "script never touches them")
+    if unlinked_receipts and not stamped:
+        raise RuntimeError(
+            f"teardown refused: {unlinked_receipts} receipt(s) of {ASSET_ID} carry no run link and the candidate "
+            f"manifest is not stamped stored_scope = '{SLICE_SCOPE}' — they cannot be attributed to the small test")
 
 
 def _dry_run_counts(cur) -> dict[str, int]:
     counts: dict[str, int] = {}
-    cur.execute(
-        """SELECT count(*) AS n FROM build_run_assets WHERE run_id IN
-             (SELECT id FROM build_runs WHERE triggered_by = %s AND chart_id = %s)""",
-        (TRIGGERED_BY, CHART_ID),
-    )
-    counts["build_run_assets"] = cur.fetchone()["n"]
-    cur.execute(
-        "SELECT count(*) AS n FROM build_runs WHERE triggered_by = %s AND chart_id = %s",
-        (TRIGGERED_BY, CHART_ID),
-    )
-    counts["build_runs"] = cur.fetchone()["n"]
-    cur.execute(
-        "SELECT count(*) AS n FROM asset_throughput WHERE asset_id = %s AND chart_id = %s",
-        (ASSET_ID, CHART_ID),
-    )
-    counts["asset_throughput"] = cur.fetchone()["n"]
-    for table in DATA_TABLES:
-        cur.execute(
-            f"SELECT count(*) AS n FROM {table} WHERE chart_id = %s AND generation = %s",
-            (CHART_ID, GENERATION),
-        )
-        counts[table] = cur.fetchone()["n"]
+    counts["asset_provenance_receipts"] = _count(
+        cur, "SELECT count(*) AS n FROM asset_provenance_receipts WHERE asset_id = %s AND chart_id = %s",
+        (ASSET_ID, CHART_ID))
+    counts["build_run_assets"] = _count(
+        cur, f"SELECT count(*) AS n FROM build_run_assets WHERE run_id IN ({_TEST_RUNS})", (TRIGGERED_BY, CHART_ID))
+    counts["build_runs"] = _count(
+        cur, "SELECT count(*) AS n FROM build_runs WHERE triggered_by = %s AND chart_id = %s", (TRIGGERED_BY, CHART_ID))
+    counts["asset_throughput"] = _count(
+        cur, "SELECT count(*) AS n FROM asset_throughput WHERE asset_id = %s AND chart_id = %s", (ASSET_ID, CHART_ID))
+    for table, extra in GENERATION_TABLES:
+        counts[table] = _count(
+            cur, f"SELECT count(*) AS n FROM {table} WHERE chart_id = %s AND generation = %s{extra}",
+            (CHART_ID, GENERATION))
     return counts
+
+
+def _delete_everything(cur) -> None:
+    cur.execute("DELETE FROM asset_provenance_receipts WHERE asset_id = %s AND chart_id = %s", (ASSET_ID, CHART_ID))
+    cur.execute(f"DELETE FROM build_run_assets WHERE run_id IN ({_TEST_RUNS})", (TRIGGERED_BY, CHART_ID))
+    cur.execute("DELETE FROM build_runs WHERE triggered_by = %s AND chart_id = %s", (TRIGGERED_BY, CHART_ID))
+    cur.execute("DELETE FROM asset_throughput WHERE asset_id = %s AND chart_id = %s", (ASSET_ID, CHART_ID))
+    for table, extra in GENERATION_TABLES:
+        # the inventory and the legacy ledger tables carry no event-class partitions: `extra` is only the coverage filter
+        cur.execute(f"DELETE FROM {table} WHERE chart_id = %s AND generation = %s{extra}", (CHART_ID, GENERATION))
 
 
 def teardown(*, dry_run: bool = False) -> None:
@@ -243,15 +298,9 @@ def teardown(*, dry_run: bool = False) -> None:
             for name, n in counts.items():
                 print(f"{name}\t{n}")
             return
-        for sql in TEARDOWN_DELETES:
-            if "build_run_assets" in sql or "FROM build_runs" in sql:
-                cur.execute(sql, (TRIGGERED_BY, CHART_ID))
-            elif "asset_throughput" in sql:
-                cur.execute(sql, (ASSET_ID, CHART_ID))
-            else:
-                cur.execute(sql, (CHART_ID,))
-        # The registry row stays (migration 1243) — restore inertness and
-        # verify the landed row field by field in the same transaction.
+        _delete_everything(cur)
+        # The registry row stays (migration 1243) — restore inertness and verify the landed row field by field
+        # against the migration-1304 shape, in the same transaction.
         cur.execute(
             "UPDATE asset_registry SET is_active = false WHERE asset_id = %s",
             (ASSET_ID,),
@@ -263,9 +312,9 @@ def teardown(*, dry_run: bool = False) -> None:
         conn.close()
         raise
     conn.close()
-    print(f"[teardown] removed the small-test run bookkeeping and the '5.0' "
-          f"rows for chart {CHART_ID}; asset_registry row kept and restored "
-          f"to inert (is_active=false) — one transaction", file=sys.stderr)
+    print(f"[teardown] removed the small-test run bookkeeping, its provenance receipts, the output chain, the search "
+          f"inventory and the candidate manifest for chart {CHART_ID} generation '5.0'; asset_registry row kept and "
+          f"restored to inert (is_active=false) in its migration-1304 shape — one transaction", file=sys.stderr)
 
 
 def main(argv: list[str] | None = None) -> None:

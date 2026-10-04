@@ -4,8 +4,8 @@
   "entries": [
     {
       "file": "platform/python-sidecar/ga_writers/ga_strength_writer.py",
-      "line": 230,
-      "justification": "Pre-existing local aspect-strength dict; B-02 stream will migrate to brahmagyan.aspects oracle. Line updated 224→230 (2026-09-29, l3/gochara-autonomous-wp0-7): branch insertions above (_citation_human_strength G-10 clause, +6 lines) shifted the unchanged, byte-identical dict; verified against origin/main:224-232."
+      "line": 302,
+      "justification": "Pre-existing local aspect-strength dict; B-02 stream will migrate to brahmagyan.aspects oracle. Line updated 231→302 (2026-10-02, S-L1 integration branch: the merged lanes #2854/#2941/#2893/#2960 add 71 lines above the unchanged dict; verified by check_no_local_aspect_dict.py); 230→231 (2026-10-02, TI-l1-writer-fixes-001: one import line added above); earlier 224→230 (2026-09-29, l3/gochara-autonomous-wp0-7): branch insertions above (_citation_human_strength G-10 clause, +6 lines) shifted the unchanged, byte-identical dict; verified against origin/main:224-232."
     },
     {
       "file": "platform/python-sidecar/services/gochara_kernel/convention.py",

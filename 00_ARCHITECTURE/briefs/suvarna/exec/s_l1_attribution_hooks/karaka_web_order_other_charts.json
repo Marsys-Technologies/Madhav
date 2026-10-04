@@ -1,0 +1,17 @@
+{
+  "lane": "karaka_web_order_other_charts",
+  "ruling": "karaka web order-dependence (SS ruling, S-L1 mandatory) (non-canonical charts)",
+  "pr": "branch suvarna/land/TI-l1-karaka-web-order-001",
+  "charts": ["1c826d5a", "cb73cd3d"],
+  "description": "Same fix as karaka_web_order.json for the charts compared besides the canonical one (Abhinandan 1c826d5a, Kiran cb73cd3d: S-L1b). No offline estimate exists for these charts, so the only expectation is that rows APPEAR (a rebuild with the order-independent builder always adds at least the mirrored conjunction rows and the reverse-direction aspects on a chart that has any conjunction or aspect pair): at least one. The exact delta is read from the flip report.",
+  "may_change": [
+    {
+      "table": "chart_facts",
+      "categories": ["karaka_web_per_varga"],
+      "change_types": ["appeared"],
+      "expected_count": {"min": 1},
+      "expected_direction": "rows only appear",
+      "note": "source: none beyond the lane text: no estimate exists for these charts; the canonical band is in karaka_web_order.json (estimate 1,074, rehearsal-synthetic 1,139)."
+    }
+  ]
+}
