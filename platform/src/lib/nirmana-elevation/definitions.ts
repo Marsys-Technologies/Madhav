@@ -129,7 +129,11 @@ export interface NirmanaRegistryContractRow {
  * test of the END STATE is the monitor reading in_sync, which belongs to the successor manifest. What this interim rule achieves is only that the monitor stops reading
  * source_unavailable (it threw on the unresolved obligation of this inactive writer since 2026-09-24) and reports the true state. Audit facts, read from production
  * read-only at 2026-10-04T13:31:57Z (the cutoff below): CURRENT, inactive, has_writer, no superseded_by / data_disposition, depends_on exactly the six declared ids, NOTHING
- * depends on it, 0 provenance receipts, 7 build_run_assets rows all from runs created 2026-08-10 .. 2026-08-21. ANY evidence after the cutoff — a new run of any trigger — fails closed. Evidence is not permanent (the cockpit watchdog prunes old build_run_assets / build_runs rows; a receipt's `build_id` becomes NULL when its run is pruned —
+ * depends on it, 0 provenance receipts, 7 build_run_assets rows all from runs created 2026-08-10 .. 2026-08-21. ANY evidence after the cutoff — a new run of any trigger — fails closed. OPERATOR NOTE: if the rule switches itself off because a run touched v3 after the cutoff,
+ * that means the successor-manifest decision is DUE (the interim has ended), not that something broke; while the rule is in force the frozen t3 manifest (128 assets, v3 active) cannot
+ * match the live view (127), so any supersede / freeze comparison fails on the COUNT first rather than on the specific drift (ga_vargas, bg_ephemeris_engine) — read the monitor's
+ * affected list, not the count message. KNOWN LIMIT (Suvarṇa Exec's review F2): a build_run_assets row with NO timestamp of its own reads as old when its run is old; no code path
+ * adds a row to an existing run (rows are created with their run) and the orchestrator stamps started_at = NOW() when the asset starts, which makes the row newer and blocking. Evidence is not permanent (the cockpit watchdog prunes old build_run_assets / build_runs rows; a receipt's `build_id` becomes NULL when its run is pruned —
  * which this rule reads as NON-test evidence, i.e. it fails closed — and a receipt is deleted with its registry row, supabase/migrations/596:12), so the procedural commitment,
  * not the detector alone, is what closes the loop; after a teardown the evidence rows are gone or still test-marked.
  */
