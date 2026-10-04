@@ -1,6 +1,6 @@
 ---
 artifact: DECLARED_CONTROL_PLANE_EXCEPTION_20261003
-version: "1.0"
+version: "1.1"
 status: RECORD — owner to confirm or revoke in the morning
 date: 2026-10-03
 declared_at: "2026-10-03T23:43:23Z"
@@ -10,9 +10,16 @@ remedy_source: "ROLES_AND_SEAL_PROVISIONING_RUNBOOK_v1_0.md, act-7 row (§ failu
 evidence: "/Users/Dev/pravaha/run/sitting-20261003/manual/{act3.txt, act4.txt, act10.txt, act7-preflight-after-act4.txt, act7-exception-test.txt, act3-declared-exception.txt}"
 changelog:
   - "1.0 (2026-10-03): recorded by Stream B at the steward's request (ST SIT-EXCEPTION-RECORD)."
+  - "1.1 (2026-10-04): adds Codex's residual-risk statement (reviews/ASTRA_REVIEW_C53_FIREBASE_AGENT_ALLOWLIST_v1_0.md, on PR #3119 head 54b33e11f) near the top for the owner, and updates the follow-up: the allow-list change is confined to the verifier-control gate (PR #3119 head ab96a9fa8). Stream B, at the steward's request (ST C53-CODEX). The 'allows' and 'revoke' sections are unchanged; one sentence under 'What the exception allows' is qualified (see the residual-risk section)."
 ---
 
 # Declared control-plane exception — Google-managed Firebase service agent
+
+## Residual risk — the owner must read this sentence before confirming or revoking
+Codex's statement (ASTRA review of PR #3119, recorded here in substance): **"same class" is fair for Google MANAGEMENT agents, but it is NOT equivalent AUTHORITY.** None of the ten Google service agents already on the allow-list holds `resourcemanager.projects.setIamPolicy`; the Firebase management agent does. Its project-IAM rewrite authority is materially broader — misuse of it could grant secret access or verifier impersonation to itself or to others.
+
+What bounds that risk today (facts, not reassurance): the member is Google-owned (no principal in this project holds its key, can mint its token or impersonate it), so the authority is exercisable only through Google's Firebase management backend; and the allow-list change that PR #3119 proposes is now confined to the VERIFIER-CONTROL gate only — the builder-impersonation gate keeps the original ten entries and would still reject this agent if its role ever gained an impersonation permission (cross-gate regression test). What is NOT bounded: while the declaration (or the PR) is in force, the verifier-control gate does not flag this agent's project-level `setIamPolicy`. That is a standing, owner-visible exception to the verifier-control rule, not a neutral oversight fix.
+
 
 ## What was declared
 Repository variable `DATA_PLANE_VERIFIER_CONTROL_EXCEPTIONS` (Marsys-Technologies/Madhav), exactly one triple, nothing else:
@@ -37,7 +44,7 @@ The steward's first note named `iam.serviceAccounts.create/get/list` as the trig
 ## What the exception allows — and does not
 - ALLOWS exactly: that one binding (project `madhav-astrology`, that role, that member, UNCONDITIONAL — `binding.condition === undefined`) to be present when the verifier-control gate runs. The triple is canonicalised by `parseDeclaredExceptions` / `canonicalResource` (a project number resolves to the project id).
 - DOES NOT allow: any other agent, role, member, resource or conditional binding; any wildcard. The preflight still refuses everything else, and the other gates are unaffected: a local run with the triple in the process environment exited 0, i.e. it passed ALL isolation gates (secret-accessor and builder-impersonation checks have no exception mechanism and also passed — the runbook's "an exception must satisfy ALL gates" condition).
-- The member is a Google-owned service agent: no principal in this project holds its key, can mint its token or impersonate it, so the capability is exercisable only by Google's Firebase management backend through its fixed API behaviour — not by the builder, the application or a human. No new path to the verifier's credential for any principal this project controls.
+- The member is a Google-owned service agent: no principal in this project holds its key, can mint its token or impersonate it, so the capability is exercisable only by Google's Firebase management backend through its fixed API behaviour — not by the builder, the application or a human. (Qualified in v1.1: this is a statement about WHO can exercise the capability, not about its breadth — see "Residual risk" above: a project-IAM rewrite authority is materially broader than that of the ten listed agents.)
 - The variable reaches the preflight's process environment on all four `deploy.yml` invocations (the `env:` line sits in the same step as each call: lines 538/540, 885/886, 950/951, 1233/1234 on main `b20bbb520`); no other workflow or script invokes the preflight.
 
 ## How to revoke
@@ -48,6 +55,8 @@ The owner CONFIRMS (keep the declaration until the allow-list PR below lands, th
 
 ## Follow-up (after the window, reviewed — never at the sitting)
 A reviewed PR adds the exact `roles/firebase.managementServiceAgent` ↔ `serviceAccount:service-<projectNumber>@gcp-sa-firebase.iam.gserviceaccount.com` pair to `isCanonicalGoogleServiceAgentGrant` with a test (positive for that pair, negative for a different member or a conditional binding), after which the declared variable is deleted. Stream B owns that code (#2961's preflight).
+
+**Status (2026-10-04):** PR #3119 (draft) implements it. Codex ACCEPT_WITH_AMENDMENTS on head 54b33e11f: the matcher is shared with the builder gate (`assertEffectiveIsolation`), so the Firebase exemption was confined to the verifier-control gate only (head ab96a9fa8; the original ten entries byte-identical; cross-gate regression, foreign-project-resource and mixed-member tests added). Merge waits for Codex's one-line re-check; the variable is deleted only after that PR is merged and deployed, then the isolation proof is re-run.
 
 ## Act-3 report addendum (runbook §3 terms)
 - Act: 3 — create the verifier service account and its one project role; ADDENDUM: act-7 isolation refusal, control-plane exception declared.
