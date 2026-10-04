@@ -255,6 +255,46 @@ describe('POST /api/admin/internal/nirmana-elevation-monitor', () => {
     info.mockRestore(); error.mockRestore()
   })
 
+  // N-138 (F5, Suvarṇa Exec's review of PR 3130): the v3 century writer is named in the monitor output, and the loader asks for the cutoff-mode predicate
+  const V3_ID = 'ka_gochara_v3_century_materialize'
+  const V3_DEPS = ['bg_sky_calendar', 'ka_gochara_resonance', 'ka_kota_chakra', 'ka_moorti_nirnaya', 'ka_tithi_pravesha', 'ka_vedha_gochara']
+  const v3Row = (over: Partial<NirmanaRegistryContractRow> = {}) => stagedRow(V3_ID, { depends_on: V3_DEPS, target_table: 'kala_gochara_windows_v2', ...over })
+
+  it('N-138: names the v3 century writer (id, reason, decision N-138) in the response, logs it, and the loader selects the cutoff predicate', async () => {
+    const info = vi.spyOn(console, 'info').mockImplementation(() => undefined)
+    successfulSources({ registryRows: [registryRow(), v3Row()] })
+    const { POST } = await import('../route')
+    const response = await POST(request({ Authorization: `Bearer ${schedulerOidcToken}` }))
+    const body = await response.json()
+    expect(response.status).toBe(200)
+    expect(body.excluded_staged_candidates).toEqual([{
+      asset_id: V3_ID, reason: 'retirement-pending legacy century writer (interim: ends with the t3 successor manifest or the registry retirement)', decision: 'N-138',
+    }])
+    expect(body.status).not.toBe('source_unavailable')                                  // the unresolved obligation of the inactive writer no longer breaks the baseline
+    const logged = info.mock.calls.filter(([message]) => String(message).includes('staged candidate excluded'))
+    expect(logged.map(([, detail]) => (detail as { asset_id: string }).asset_id)).toEqual([V3_ID])
+    expect(logged[0][1]).toMatchObject({ decision: 'N-138' })
+    const registrySql = clientQueryMock.mock.calls.map(([sql]) => String(sql)).find((sql) => sql.includes('FROM asset_registry')) ?? ''
+    expect(registrySql).toContain("'2026-10-04T13:31:57Z'::timestamptz")                // the audit instant of the cutoff mode
+    expect(registrySql).toContain('COALESCE(GREATEST(bra.started_at, bra.ended_at')
+    info.mockRestore()
+  })
+
+  it.each([
+    ['evidence newer than the audit instant', { has_non_test_runtime_evidence: true }],
+    ['a changed dependency set', { depends_on: [...V3_DEPS.slice(1), 'bg_reference'] }],
+    ['an empty dependency set', { depends_on: [] }],
+  ])('N-138 fails closed: v3 with %s is NOT excluded — not listed, and the monitor cannot read the baseline as healthy', async (_name, over) => {
+    const info = vi.spyOn(console, 'info').mockImplementation(() => undefined)
+    const error = vi.spyOn(console, 'error').mockImplementation(() => undefined)
+    successfulSources({ registryRows: [registryRow(), v3Row(over)] })
+    const { POST } = await import('../route')
+    const body = await (await POST(request({ Authorization: `Bearer ${schedulerOidcToken}` }))).json()
+    expect(body.excluded_staged_candidates).toEqual([])
+    expect(body.status).toBe('source_unavailable')
+    info.mockRestore(); error.mockRestore()
+  })
+
   it('F4: the exclusions are reported BEFORE the baseline is built — a baseline that throws still shows what was excluded', async () => {
     const info = vi.spyOn(console, 'info').mockImplementation(() => undefined)
     const error = vi.spyOn(console, 'error').mockImplementation(() => undefined)

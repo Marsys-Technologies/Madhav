@@ -422,3 +422,82 @@ def test_h_N138_evidence_by_DATE_for_the_v3_century_writer_strictly_newer_than_t
     assert got[V5] is False and got[V41] is False
     clear()
     assert all_roles()[V3] is False
+
+
+def test_i_N138_followups_each_python_survivor_of_Suvarna_Execs_mutation_run_dies_at_the_SQL_level(world):
+    """F1 + F2 (Suvarṇa Exec's review of PR 3130): the cases that only the golden string used to pin. A RECEIPT exactly at the cutoff is history; a build_run_assets row with an
+    old OWN timestamp under a NEWER run blocks; a row with NULL started_at and an old ended_at under a run with NO started_at / ended_at is old (only the row's ended_at and the
+    run's created_at prove it); a v5-test-trigger RECEIPT newer than the cutoff blocks v3; a queued row with NO timestamp under an OLD run reads as old (F2: documented limit —
+    see the comment on the rule; no code path adds a row to an existing run, and the orchestrator stamps started_at = NOW() when the asset starts); and the answers do not depend on
+    the session time zone."""
+    conn, _ = world
+    _apply(conn)
+    for role in ROLES[1:]:
+        conn.execute(f"GRANT SELECT ON asset_provenance_receipts, build_run_assets, build_runs, asset_registry TO {role}")
+    conn.execute("GRANT SELECT ON asset_registry TO amjis_app")
+    q = f"SELECT asset_id, {EXPR.format(a='asset_registry')} AS ev FROM asset_registry WHERE asset_id IN (%s, %s, %s, 'ka_gochara') ORDER BY 1"
+
+    def v3_all_roles():
+        got = [dict(_as(conn, r, q, (V3, V41, V5)))[V3] for r in ROLES]
+        assert got[0] == got[1] == got[2], got
+        return got[0]
+
+    def run_at(created, started=None, ended=None, trig="some-ordinary-dispatch"):
+        rid = str(uuid.uuid4())
+        conn.execute("INSERT INTO build_runs (id, triggered_by, created_at, started_at, ended_at) VALUES (%s, %s, %s::timestamptz, %s::timestamptz, %s::timestamptz)", (rid, trig, created, started, ended))
+        return rid
+
+    def clear():
+        conn.execute("DELETE FROM asset_provenance_receipts WHERE asset_id = %s", (V3,))
+        conn.execute("DELETE FROM build_run_assets WHERE asset_id = %s", (V3,))
+        conn.execute("DELETE FROM build_runs")
+
+    def in_every_zone(expected, arrange):
+        for zone in ("UTC", "America/Los_Angeles", "Pacific/Kiritimati", "Asia/Kolkata"):
+            conn.execute(f"SET TIME ZONE '{zone}'")
+            clear()
+            arrange()
+            assert v3_all_roles() is expected, (zone, expected)
+        conn.execute("RESET TIME ZONE")
+        clear()
+
+    # a RECEIPT exactly at the cutoff (history), one microsecond after (blocking) — in every session time zone
+    in_every_zone(False, lambda: conn.execute("INSERT INTO asset_provenance_receipts (asset_id, build_id, observed_at) VALUES (%s, NULL, %s::timestamptz)", (V3, CUTOFF)))
+    in_every_zone(True, lambda: conn.execute("INSERT INTO asset_provenance_receipts (asset_id, build_id, observed_at) VALUES (%s, NULL, '2026-10-04 13:31:57.000001+00')", (V3,)))
+    in_every_zone(False, lambda: conn.execute("INSERT INTO asset_provenance_receipts (asset_id, build_id, observed_at) VALUES (%s, NULL, '2026-10-04 19:01:57+05:30')", (V3,)))      # the same instant, offset form
+    in_every_zone(True, lambda: conn.execute("INSERT INTO build_run_assets (run_id, asset_id, started_at) VALUES (NULL, %s, '2026-10-04 13:31:57.000001+00')", (V3,)))
+    # a build_run_assets row with an OLD own timestamp whose RUN is newer ⇒ blocking
+    def old_row_new_run():
+        newer = run_at("2026-10-05 00:00:00+00")
+        conn.execute("INSERT INTO build_run_assets (run_id, asset_id, started_at, ended_at) VALUES (%s, %s, '2026-08-12 22:22:00+00', '2026-08-12 22:22:24+00')", (newer, V3))
+    in_every_zone(True, old_row_new_run)
+    # NULL started_at, old ended_at, under a run whose started_at / ended_at are NULL (created_at old) ⇒ old: ONLY the row's ended_at and the run's created_at prove it
+    def only_ended_and_created():
+        old = run_at("2026-08-12 22:21:19+00")
+        conn.execute("INSERT INTO build_run_assets (run_id, asset_id, started_at, ended_at) VALUES (%s, %s, NULL, '2026-08-12 22:22:24+00')", (old, V3))
+    in_every_zone(False, only_ended_and_created)
+    # … and the converse: NULL started_at but a NEWER ended_at under an OLD run blocks — only the row's ended_at proves it
+    def only_new_ended_at():
+        old = run_at("2026-08-12 22:21:19+00")
+        conn.execute("INSERT INTO build_run_assets (run_id, asset_id, started_at, ended_at) VALUES (%s, %s, NULL, '2026-10-05 00:00:00+00')", (old, V3))
+    in_every_zone(True, only_new_ended_at)
+    # a v5-TEST-trigger RECEIPT newer than the cutoff blocks v3 (the declared v5 trigger is not test evidence for v3) — and an OLD one does not
+    def v5_trigger_receipt(created):
+        def arrange():
+            tr = run_at(created, trig="gochara-v5-small-test")
+            conn.execute("INSERT INTO asset_provenance_receipts (asset_id, build_id, observed_at) VALUES (%s, %s, '2026-08-01 00:00:00+00')", (V3, tr))
+        return arrange
+    in_every_zone(True, v5_trigger_receipt("2026-10-05 00:00:00+00"))
+    in_every_zone(False, v5_trigger_receipt("2026-08-12 22:21:19+00"))
+    # F2 — a QUEUED row (no timestamp of its own) under an OLD run reads as old. Documented limit: every code path that creates build_run_assets rows creates the run in the same
+    # transaction (so the run's created_at is the creation time), and asset_runner stamps started_at = NOW() the moment the asset starts, which makes the row newer and blocking.
+    def queued_under_old_run():
+        old = run_at("2026-08-12 22:21:19+00")
+        conn.execute("INSERT INTO build_run_assets (run_id, asset_id) VALUES (%s, %s)", (old, V3))
+    in_every_zone(False, queued_under_old_run)
+    def started_now_under_old_run():
+        old = run_at("2026-08-12 22:21:19+00")
+        conn.execute("INSERT INTO build_run_assets (run_id, asset_id) VALUES (%s, %s)", (old, V3))
+        conn.execute("UPDATE build_run_assets SET started_at = NOW() WHERE run_id = %s", (old,))                   # what asset_runner does when the asset starts
+    in_every_zone(True, started_now_under_old_run)
+
