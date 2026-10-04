@@ -27,11 +27,33 @@ Usage:
     # Or against all three canonical charts:
     DATABASE_URL=... python3 scripts/build_fact_identity_index.py --all-canonical
 
+Corrected check (S-L1 rehearsal P3, SS-ruled; `brahmagyan/fact_identity_check.py`):
+every run evaluates and prints it. `--check` makes a FAILED check fatal: the
+chart's transaction is rolled back (the prior index is left untouched) and the
+script exits 4. In a dry-run, `rows == parsed` has no detector (nothing is
+written) and is reported NOT_EVALUATED, never PASS.
+
+RUNBOOK FACTS (W7 read-back):
+  * Run this AFTER every ga_* build has finished (start of W7). `chart_fact_identity`
+    is FK `ON DELETE CASCADE` to `chart_facts`, so any later delete-then-insert
+    rebuild of a ga_* writer empties the rows of every replaced fact; a run in
+    the middle of the build window is undone by the next writer.
+  * Run as role `amjis_app` or `role_orchestrator`. `data_plane_builder` has no
+    privilege on the table.
+  * The index is NOT 1,205 rows after this script: 1,205 is the `ga_positions`
+    row count (what survives the cascade), not the G-IDX result.
+
+Usage with the gate:
+    DATABASE_URL=... python3 scripts/build_fact_identity_index.py \\
+        --chart-id 482012f1-710e-4a25-994a-93821f5871aa --check
+
 Exit codes:
     0 — completed (per-chart summary printed; an honest 0-row parse for a
-        chart with no facts is not a failure)
+        chart with no facts is not a failure unless --check, where an empty
+        chart FAILS `facts_present`)
     2 — a chart's population failed (DB error mid-transaction; rolled back)
     3 — the run itself could not proceed (no DATABASE_URL, no driver)
+    4 — `--check` and the corrected check FAILED (rolled back, nothing written)
 """
 from __future__ import annotations
 
@@ -42,7 +64,11 @@ import time
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from brahmagyan.fact_identity_parser import classify_unparsed_subject, parse_fact_identity  # noqa: E402
+from brahmagyan.fact_identity_check import (  # noqa: E402
+    IDENTITY_FREE_REASONS_ALLOWED,
+    check_identity_index,
+    classify_fact,
+)
 
 CANONICAL_CHART_IDS = [
     "482012f1-710e-4a25-994a-93821f5871aa",
@@ -107,8 +133,9 @@ def build_index_for_chart(conn, chart_id: str, dry_run: bool = False) -> dict:
                     break
                 for fact_id, fact_category, fact_subject, fact_key, build_id in batch:
                     total += 1
-                    match = parse_fact_identity(fact_subject, fact_key, fact_category)
-                    if match is not None:
+                    kind, payload = classify_fact(fact_category, fact_subject, fact_key)
+                    if kind == "parsed":
+                        match = payload
                         parsed += 1
                         entity_kind_counts[match.entity_kind] = entity_kind_counts.get(match.entity_kind, 0) + 1
                         rows_to_insert.append({
@@ -130,11 +157,10 @@ def build_index_for_chart(conn, chart_id: str, dry_run: bool = False) -> dict:
                             rows_to_insert = []
                         continue
 
-                    cls = classify_unparsed_subject(fact_subject, fact_category)
-                    if cls is not None:
+                    if kind == "identity_free":
                         identity_free += 1
-                        identity_free_reasons[cls] = identity_free_reasons.get(cls, 0) + 1
-                    else:
+                        identity_free_reasons[payload] = identity_free_reasons.get(payload, 0) + 1
+                    else:  # "gap": neither parsed nor a recognised identity-free token
                         gap += 1
                         key = (fact_category, fact_key)
                         if key not in gap_examples:
@@ -142,6 +168,17 @@ def build_index_for_chart(conn, chart_id: str, dry_run: bool = False) -> dict:
 
             if rows_to_insert and not dry_run:
                 write_cur.executemany(INSERT_SQL, rows_to_insert)
+
+            # The detector behind `rows == parsed`: count what is ACTUALLY in the
+            # table for this chart after the insert (same transaction). Not
+            # measured in a dry-run -> None (NOT_EVALUATED), never assumed.
+            rows_in_table = None
+            if not dry_run:
+                write_cur.execute(
+                    "SELECT count(*) FROM chart_fact_identity WHERE chart_id = %s",
+                    (chart_id,),
+                )
+                rows_in_table = int(write_cur.fetchone()[0])
 
     denom = parsed + gap
     coverage_pct = (100.0 * parsed / denom) if denom else 100.0
@@ -153,6 +190,7 @@ def build_index_for_chart(conn, chart_id: str, dry_run: bool = False) -> dict:
         "parsed": parsed,
         "identity_free": identity_free,
         "gap": gap,
+        "rows_in_table": rows_in_table,
         "coverage_of_identity_bearing_pct": round(coverage_pct, 4),
         "entity_kind_counts": entity_kind_counts,
         "identity_free_reasons": identity_free_reasons,
@@ -169,6 +207,13 @@ def main() -> int:
                         help="run for all three canonical charts sequentially")
     parser.add_argument("--dry-run", action="store_true",
                          help="parse and report only; no DELETE/INSERT")
+    parser.add_argument("--check", action="store_true",
+                         help="a FAILED corrected check is fatal: roll the chart back, exit 4 "
+                              "(the check is always evaluated and printed either way)")
+    parser.add_argument("--reasons-mode", choices=("exact", "subset"), default="exact",
+                         help="identity_free reason-set rule: 'exact' (SS rule, default: observed == "
+                              "the 14 + scope_cap_sentinel) or 'subset' (observed <= allowed; for a "
+                              "chart not rebuilt by every S-L1 writer). A NEW reason fails in both.")
     args = parser.parse_args()
 
     dsn = os.environ.get("DATABASE_URL")
@@ -191,7 +236,10 @@ def main() -> int:
         try:
             with psycopg.connect(dsn) as conn:
                 summary = build_index_for_chart(conn, chart_id, dry_run=args.dry_run)
-                if args.dry_run:
+                result = check_identity_index(
+                    summary, exact_reasons=(args.reasons_mode == "exact"),
+                )
+                if args.dry_run or (args.check and result.failed):
                     conn.rollback()
                 else:
                     conn.commit()
@@ -213,6 +261,19 @@ def main() -> int:
         print("identity_free_reasons:")
         for k, v in sorted(summary["identity_free_reasons"].items(), key=lambda kv: -kv[1]):
             print(f"  {v:8d}  {k}")
+        print(f"rows_in_table={summary['rows_in_table']}")
+        print(f"corrected_check (allowed reasons: {len(IDENTITY_FREE_REASONS_ALLOWED)}, mode={args.reasons_mode}):")
+        print(result.render())
+        if result.failed:
+            print(f"CHECK: FAIL ({', '.join(i.name for i in result.failed)})"
+                  + (" -- rolled back, nothing written" if args.check else " -- NOT fatal without --check"))
+            if args.check:
+                overall_exit = 4
+        elif result.not_evaluated:
+            print(f"CHECK: NOT_EVALUATED ({', '.join(i.name for i in result.not_evaluated)}) -- no failures"
+                  + (" (dry-run)" if args.dry_run else ""))
+        else:
+            print("CHECK: PASS")
         if summary["gap_examples"]:
             print("GAP examples (category, key) -> subject:")
             for k, v in summary["gap_examples"].items():

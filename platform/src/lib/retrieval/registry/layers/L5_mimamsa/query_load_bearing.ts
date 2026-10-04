@@ -16,7 +16,7 @@
  */
 import type { CapabilityDescriptor } from '../../types'
 import { query } from '@/lib/db/client'
-
+import { labelLoadBearingRow, summarizeGeneration } from './prefix_generation'
 const MAX_LIMIT = 100
 
 export const queryLoadBearingCapability: CapabilityDescriptor = {
@@ -92,10 +92,16 @@ export const queryLoadBearingCapability: CapabilityDescriptor = {
         query<{ total: string }>(`SELECT COUNT(*)::text AS total FROM mimamsa_load_bearing WHERE ${where}`, params),
       ])
       const total_matching = Number(countRes.rows[0]?.total ?? 0)
+      // TI-l5-insight-prefix-label-001: these rows rank classical prior weights (mi_adhilepa), not a
+      // measured sensitivity, in every generation on main. Labelled, values unchanged.
+      const labelledRows = (rowsRes.rows as Array<Record<string, unknown>>).map(labelLoadBearingRow)
+      const generation_disclosure = summarizeGeneration(labelledRows, [])
       return {
         content: {
           chart_id,
-          rows: rowsRes.rows,
+          rows: labelledRows,
+          generation_disclosure,
+          generation_flags: generation_disclosure.flags,
           count: rowsRes.rows.length,
           total_matching,
           more_available: total_matching > rowsRes.rows.length,

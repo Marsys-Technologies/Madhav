@@ -27,12 +27,14 @@ HERE = pathlib.Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE.parent))
 
 import asset_census as ac  # noqa: E402
+import _decl_version  # noqa: E402
 import carriage_d1 as d1  # noqa: E402
 import test_e6_s2_carriage as s2  # noqa: E402
 import test_e6_s3_alias_ldgr as s3  # noqa: E402
 from _disposable_pg import disposable_pg  # noqa: E402,F401  (the session fixture)
 
 AID = "bg_phaladeepika_latta"
+BATCH2_VOCAB = ["bg_dignity_reference", "bg_kp_sublord_division", "bg_transit_engine", "bg_transit_rules", "bg_vastu_directions"]      # declared by L0-WAVE batch 2
 PASS, FAIL, PARTIAL, NO_DET, NA = ac.PASS, ac.FAIL, ac.PARTIAL, ac.NO_DET, ac.NA
 DECL = json.loads(ac.DECLARATIONS_PATH.read_text(encoding="utf-8"))
 ENTRY = DECL["assets"][AID]
@@ -87,14 +89,15 @@ def _refused(mutate, match):
 # ───────────────────────── Part 1: the committed entry ─────────────────────────
 
 def test_the_committed_file_is_1_10_0_and_the_validator_accepts_this_entry():
-    assert DECL["version"] == "1.12.0" and "bg_phaladeepika_latta" in DECL["description"].split("Version 1.10.0", 1)[1]      # 1.11.0 DECL-LATTA-NULL, 1.12.0 NARR-GUARD
+    assert DECL["version"] == _decl_version.CURRENT and "bg_phaladeepika_latta" in DECL["description"].split("Version 1.10.0", 1)[1]      # 1.11.0 DECL-LATTA-NULL, 1.12.0 NARR-GUARD
     ac.validate_declarations(DECL)
     assert ac.load_asset_declarations()[AID]["carriage"]["applies"] == "D1"
 
 
 def test_this_asset_alone_declares_the_three_blocks_and_its_created_at_is_a_stamp_never_a_constant():
     decl = [a for a, e in DECL["assets"].items() if any(k in (e.get("carriage") or {}) for k in ac.CARRIAGE_DECL_FIELDS) or "vocab_alias" in e or "ldgr_source" in e]
-    assert decl == [AID]
+    assert sorted(decl) == sorted([AID, *BATCH2_VOCAB])                  # L0-WAVE batch 2: five more vocab_alias declarations, none a carriage or an ldgr_source
+    assert [a for a, e in DECL["assets"].items() if "ldgr_source" in e or any(k in (e.get("carriage") or {}) for k in ac.CARRIAGE_DECL_FIELDS)] == [AID]
     assert [a for a, e in DECL["assets"].items() if "null_convention" in e] == [AID]                  # DECL-LATTA-NULL (1.11.0)
     nc = ENTRY["null_convention"]
     assert "created_at" not in [c["column"] for c in nc["constants"]]            # option A is refused: no created_at constant; it is a declared stamp column
@@ -330,7 +333,7 @@ def _setup():
 def _measure_all(monkeypatch, pg):
     s3._real(monkeypatch, pg, _setup())
     m = {}
-    m.update(ac.carriage_declared_checks(AID, CAR, AID, False))
+    m.update(ac.carriage_declared_checks(AID, CAR, AID, False, column_types=ac.carriage_fetch_column_types(AID), prose_columns=[]))
     m.update(ac.vocab_alias_declared_check(AID, VA, AID, COLS))
     m.update(ac.ldgr_source_declared_check(AID, LS, AID, COLS, [["table_version", "graha"]]))
     return m
@@ -379,7 +382,7 @@ def test_REAL_a_blank_verse_ref_on_one_row_makes_ldgr_partial(monkeypatch, dispo
 
 def test_REAL_a_wrong_row_in_the_table_is_a_d1_partial_naming_it(monkeypatch, disposable_pg):
     s3._real(monkeypatch, disposable_pg, _setup() + [f"UPDATE {AID} SET count_from_graha = 21 WHERE graha = 'Moon';"])
-    r = ac.carriage_declared_checks(AID, CAR, AID, False)["Carr.D1"]
+    r = ac.carriage_declared_checks(AID, CAR, AID, False, column_types=ac.carriage_fetch_column_types(AID), prose_columns=[])["Carr.D1"]
     assert r["v"] == PARTIAL and [u["row"] for u in r["d1"]["unmatched"]] == ["Moon"]
 
 
