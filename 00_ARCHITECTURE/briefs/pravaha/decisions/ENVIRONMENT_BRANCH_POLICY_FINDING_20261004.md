@@ -1,6 +1,6 @@
 ---
 artifact: ENVIRONMENT_BRANCH_POLICY_FINDING_20261004
-version: "1.0"
+version: "1.1"
 status: RECORD — owner to decide on the data-plane-production-cutover recommendation
 date: 2026-10-04
 written_by: "Stream B (madhav-8b) at the steward's request (SIT-ROW5-6)"
@@ -12,6 +12,7 @@ sources:
   - "GitHub REST, Deployment branch policies: name = \"The name pattern that branches or tags must match in order to deploy to the environment.\"; type = branch or tag. https://docs.github.com/en/rest/deployments/branch-policies"
 changelog:
   - "1.0 (2026-10-04): recorded."
+  - "1.1 (2026-10-04, steward SIT-CUTOVER-ENV-FACTS M20261004T010608-4373): CORRECTION — the automatic deploy does NOT use data-plane-production-cutover (both jobs that declare it are manual-dispatch-only); the earlier advice against a required reviewer was wrong on that point and is replaced by an exact list of what would wait."
 ---
 
 # A safety lock that was not locking — and what to do about it
@@ -33,7 +34,10 @@ The admin-secret refresh made at 01:00Z was overwritten at 01:04Z with a throw-a
 
 ## The same weakness on `data-plane-production-cutover` (NOT changed — your decision)
 - It holds the administrator and owner secrets (names only): DATA_PLANE_ADMIN_DATABASE_URL, DATA_PLANE_MIGRATOR_DATABASE_URL, DATA_PLANE_OWNERSHIP_ADMIN_DATABASE_URL (currently a throw-away value), DATA_PLANE_VERIFIER_DATABASE_URL, DATA_PLANE_RESTORE_VALIDATION_* and DATA_PLANE_BACKUP_RESTORE_ID. It has NO required reviewer, admins may bypass, and the same ineffective branch rule.
-- Five workflow files use it: `deploy.yml` (two jobs), `data-plane-credential-preflight.yml`, `gochara-role-provisioning-oneshot.yml`. Only the one-shot has a `github.ref == main` guard, and that guard lives inside the file, so a work branch that edits the file can remove it; only the environment's own rule is enforced by GitHub itself.
+- Who declares it (verified against `deploy.yml` on main): exactly two jobs, `privileged-bootstrap` ("One-time Protected DB Bootstrap") and `jataka-protected-migrations` ("Apply Protected Public-Schema Migrations" — the protected window, act 9), and BOTH run only on a manual dispatch (`github.event_name == 'workflow_dispatch'`). Two more workflow files name it: `data-plane-credential-preflight.yml` (manual dispatch only, no branch guard) and `gochara-role-provisioning-oneshot.yml` (manual dispatch; its job has an in-file `github.ref == main` guard, which a work branch that edits the file can remove). The routine jobs ("Inspect DB Migration State", "Apply Routine DB Migrations") declare NO environment (they use a repository secret); automatic deploys never touch this environment.
 - Who can exploit it: the repository has a single collaborator with write access (the owner's account), so no outsider is involved. The real exposure is that anything acting with the owner's token (including these automated sessions) could run a modified workflow from any branch and read those secrets. It adds little beyond what that token can already do, but it removes the one server-side brake.
 - All recorded uses of this environment in the last days ran from `main` (five of five).
-- **Recommendation:** apply the same two-call fix to `data-plane-production-cutover` (custom policy, one entry `main`). It is the smallest change, cannot break the existing flows (they all run from `main`), and is easy to undo (set the policy back). Do NOT add a required reviewer there: the automatic deploy uses the environment and would stop waiting for a person. Optionally add the same `main` guard line to the other jobs that use it. Decision: yours; the steward will not touch it without your word.
+- **Recommendation, in two independent steps:**
+  1. **Branch rule (recommended now-ish; no job waits):** apply the same two calls as above (custom policy, one entry `main`). Nothing in normal use changes — every recorded use ran from `main`, routine and automatic deploys do not use the environment, and Suvarṇa confirms it does not disturb their W1. Easy to undo. Best done well before 06:30Z or after SETTLED-1 — not inside Suvarṇa's window.
+  2. **Required reviewer (optional; adds a manual approval):** a reviewer only means something if administrators cannot bypass it, so it needs THREE settings: a reviewer, `can_admins_bypass:false`, and (with one account) `prevent_self_review:false`. **Exactly what would start WAITING for an approval:** (a) the manual dispatch of the protected window (act 9, `jataka-protected-migrations`) — one extra approval click at the sitting; (b) the manual one-time bootstrap (`privileged-bootstrap`); (c) the one-shot role workflow `gochara-role-provisioning-oneshot.yml` (create-roles); (d) `data-plane-credential-preflight.yml`. **What would NOT wait:** every automatic deploy and the routine migration job. The approver would be the steward under your account (ruling 2), so it adds a second look and an audit record but not a second person. The sitting checklist would need one extra step at act 9.
+  Decision: yours; the steward will not touch the environment without your word.
