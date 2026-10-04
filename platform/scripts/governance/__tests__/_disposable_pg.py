@@ -274,6 +274,12 @@ def get_cluster() -> Cluster:
     binaries exist at all, PGStartError (fail) for every other problem; both outcomes are remembered so a broken start is not retried
     per test."""
     with _lock:
+        cl = _state["cluster"]
+        if cl is not None and cl.stopped:
+            # A session fixture imported into several test modules is finalised (shutdown()) when pytest moves to the next module's copy of it; the
+            # next module must get a LIVE cluster, not the stopped one. Only a cluster that was started and then stopped is restarted; a failed start
+            # or a missing binary stays remembered (not retried per test).
+            _state.update({"cluster": None, "tried": False})
         if not _state["tried"]:
             _state["tried"] = True
             bin_dir = find_bin_dir()

@@ -8661,6 +8661,41 @@ def _declarations_provenance() -> dict:
     return dict(declarations_sha256=sha, declarations_version=ver)
 
 
+DB_IDENTITY_SCHEMA = "nikasha_db_identity/1"
+_DB_NAME_SHAPE = re.compile(r"[A-Za-z0-9_.$-]{1,63}")
+_DB_SYSID_SHAPE = re.compile(r"[0-9]{1,30}")
+
+
+def _db_identity() -> dict:
+    """E1.7: a NON-SECRET identity of the database cluster this census reads, so T4's "ran in production" can be PROVEN rather than asserted
+    (a census taken on a sandbox clone is otherwise indistinguishable from a production one). `{schema, database, system_id_sha256}`: the
+    database name (`current_database()`) and a domain-tagged sha256 of the cluster's `system_identifier` (`pg_control_system()`: set at
+    initdb, equal on a physical replica, different on a restored or cloned cluster). NEVER a host, port, user, password or URL, and the raw
+    identifier is not stored. Two read-only SELECTs through psql(), asked separately: a role that may not call pg_control_system() keeps the
+    database name. A value outside the expected shape (a name that is not a plain identifier, an identifier that is not an integer) is refused,
+    never echoed. Never raises and never changes an exit code: an unreachable database or a denied function stamps null plus a FIXED reason
+    (a psql error line can carry a host or an address, so it is not quoted). Verdict-neutral: one more head key; the registry, its fingerprint
+    and every measurement are untouched. It proves WHICH cluster was read; that it is production needs a registered production identity."""
+    ident = dict(schema=DB_IDENTITY_SCHEMA, database=None, system_id_sha256=None)
+    try:
+        name = scalar("SELECT current_database()")
+    except Exception:       # noqa: BLE001 -- a stamp is best-effort provenance: whatever stops the read (no psql, a timeout, a ragged answer), the run goes on
+        name = None
+    if not (isinstance(name, str) and _DB_NAME_SHAPE.fullmatch(name)):
+        ident["unavailable"] = "the database could not be read (psql unreachable or the read failed)"
+        return dict(db_identity=ident)
+    ident["database"] = name
+    try:
+        sysid = scalar("SELECT system_identifier::text FROM pg_control_system()")
+    except Exception:       # noqa: BLE001 -- as above: a role without EXECUTE on pg_control_system() keeps the name
+        sysid = None
+    if not (isinstance(sysid, str) and _DB_SYSID_SHAPE.fullmatch(sysid)):
+        ident["unavailable"] = "the system identifier could not be read by this role (pg_control_system())"
+        return dict(db_identity=ident)
+    ident["system_id_sha256"] = hashlib.sha256(f"nikasha-db-identity/1:{sysid}".encode("utf-8")).hexdigest()
+    return dict(db_identity=ident)
+
+
 def census_stamp() -> dict:
     """Strategist ruling N-44 A: the provenance a layer census carries in its head, so a certificate can never be written
     from a census measured under a different registry revision or a different tool. Keys: `registry_revision`
@@ -8674,9 +8709,10 @@ def census_stamp() -> dict:
     `declarations_unavailable` only when either is null. They are NOT fingerprinted content (REGISTRY_REVISION is unchanged and no
     cell moves). Interplay with `tool_commit`: asset_declarations.json lives in the governance directory, so a MODIFIED tracked
     declarations file already makes `tool_commit` null + `tool_dirty` true; the sha is always of the bytes actually read, so it also
-    distinguishes two CLEAN commits whose declarations differ, and a consumer compares it to the file at the ref it certifies."""
+    distinguishes two CLEAN commits whose declarations differ, and a consumer compares it to the file at the ref it certifies.
+    E1.7: also `db_identity` (see `_db_identity`): the database name and a hash of the cluster's system identifier, never a host or credential."""
     return dict(registry_revision=REGISTRY_REVISION, registry_fingerprint=registry_fingerprint(),
-                **_git_provenance(__file__), **_declarations_provenance())
+                **_git_provenance(__file__), **_declarations_provenance(), **_db_identity())
 
 
 def census_scope(obj) -> dict | None:
