@@ -52,7 +52,7 @@ def _raw_ps(pid: int, field: str) -> str:
     return subprocess.run(["ps", "-ww", "-p", str(pid), "-o", f"{field}="], capture_output=True, text=True, timeout=10).stdout.strip()
 
 
-def _dead_pid(need_stamp: bool = True) -> tuple[int, str]:
+def _dead_pid(need_stamp: bool = True) -> tuple[int, str | None]:
     """A pid that is now gone, with the start stamp it had. The process is held alive until it is visible to `ps` (a fixed short sleep let a loaded
     machine finish the process before the stamp was read, giving an empty one), then killed and reaped."""
     p = subprocess.Popen([sys.executable, "-c", "import time; time.sleep(600)"])
@@ -287,11 +287,11 @@ def _fake_postmaster(data: pathlib.Path, startup_delay: float = 0.0) -> subproce
     try:
         _wait_until(lambda: (wd._ps("-p", str(p.pid), "-o", "command=") or (0, ""))[1].strip().startswith(f"postgres -D {data}"),
                     "the fake postmaster's exec'd command line")
+        (data / "postmaster.pid").write_text(f"{p.pid}\n{data}\n")
     except BaseException:
         p.kill()
         p.wait()
         raise
-    (data / "postmaster.pid").write_text(f"{p.pid}\n{data}\n")
     return p
 
 
