@@ -458,11 +458,16 @@ def rederive_inventory_digest(
     path_exclusions: Mapping[Any, Mapping[str, str | None]],
     h_unknown_exclusion: Mapping[str, str | None] | None = None,
     selected_versions: Mapping[str, str] | None = None,
+    excluded_agents: Sequence[str] | None = None,
 ) -> dict[str, Any]:
     """Re-derive one class's inventory and its digest from the sealed paths, the
     snapshot and the consumed L1 facts. Raises `Unverifiable` rather than guess.
     `selected_versions` is the selection the verifier is TOLD (None ⇒ derived from the single sealed version
-    or the included one — never from today's configuration)."""
+    or the included one — never from today's configuration).
+    `excluded_agents` is the transiting bodies the stored tier never holds: None (the default, and what the verification JOB, the
+    seal flow and serving always use) reads them from the generation's BOUND manifest scope and refuses an unknown scope; an
+    explicit value is TOLD to the verifier by a caller that holds a validated, narrower authority than the manifest scope — the
+    writer's in-build self-check of a TEST SLICE, whose stored scope is deliberately unknown to every vocabulary."""
     if event_class not in _CLASS and event_class not in _UNKNOWN_H:
         raise Unverifiable(f"{event_class}: not a scored class")
     snap = conn.execute(
@@ -479,7 +484,8 @@ def rederive_inventory_digest(
         raise Unverifiable("no snapshot / inventory header to verify against")
     chart = read_chart(conn, snap[1])           # every class: P2 needs the natal Moon even where H is unknown
     pins = derive_class_pins(event_class, chart, sealed_paths,
-                             excluded_agents=bound_excluded_agents(conn, chart_id, generation),   # R9-10: the manifest's scope
+                             excluded_agents=(bound_excluded_agents(conn, chart_id, generation)       # R9-10: the manifest's scope
+                                              if excluded_agents is None else tuple(excluded_agents)),
                              selected_versions=selected_versions,
                              path_exclusions=path_exclusions, h_unknown_exclusion=h_unknown_exclusion)
     pre = inventory_preimage(convention_id=snap[0], horizon=(hdr[0], hdr[1]),

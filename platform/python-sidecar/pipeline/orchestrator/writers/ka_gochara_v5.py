@@ -43,8 +43,10 @@ FROZEN ORCHESTRATOR CONTRACT (§N.2)
 from __future__ import annotations
 
 import dataclasses
+import hashlib
+import json
 import logging
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 from pipeline.orchestrator.writers import (
     ContextSpec,
@@ -151,6 +153,282 @@ SCORED_CLASSES = tuple(sorted(c for c, k in gk_evaluator.ROW_MEMBERSHIP.items()
 # overridable in config for rehearsals.
 DEFAULT_HORIZON = (datetime(1998, 1, 1, tzinfo=timezone.utc),
                    datetime(2026, 4, 17, tzinfo=timezone.utc))
+
+# ── gochara_v5_test_slice (C46; Stream A's spec M20261003T181323-f9c7 §3) ─────
+# A staged test run carries a digest-protected marker in build_runs.plan_manifest
+# (found through ctx.build_id + ctx.db_conn — never ctx.config). ABSENT key =
+# today's behaviour, byte-identical. PRESENT but malformed, an unknown run, any
+# extra field, a class outside SCORED_CLASSES or a horizon outside
+# DEFAULT_HORIZON = a named TestSliceRefusal, never a guess. A valid marker
+# narrows the plan to the marker's classes over the marker's horizon and stamps
+# the candidate manifest's input vector with stored_scope='test_slice' plus the
+# marker digest — a scope no verifier vocabulary knows, so the verification job
+# refuses it by name and the candidate is unsealable by construction. The writer
+# never publishes either way.
+TEST_SLICE_KEY = "gochara_v5_test_slice"
+TEST_SLICE_SCHEMA = "gochara_v5_test_slice/1"
+TEST_SLICE_RUNS = ("all_classes_1y", "one_class_full")
+TEST_SLICE_SCOPE = "test_slice"
+_ONE_YEAR = timedelta(days=366)
+_TEST_SLICE_FIELDS = frozenset({"schema", "run", "horizon", "classes"})
+
+
+class TestSliceRefusal(Exception):
+    """The gochara_v5_test_slice marker in build_runs.plan_manifest is present
+    but malformed (or conflicts with ctx.config) — refused by name, never
+    guessed, never silently defaulted."""
+
+    __test__ = False      # not a pytest class (Stream A C46 review note a)
+
+
+@dataclasses.dataclass(frozen=True)
+class TestSlice:
+    __test__ = False      # not a pytest class (Stream A C46 review note a)
+
+    run: str
+    horizon: tuple
+    classes: tuple                     # in SCORED_CLASSES order
+    marker: dict
+    digest: str
+
+
+def _manifest_digest(manifest) -> str:
+    """sha256 of the canonical JSON of a run manifest — the SAME canonicalisation as the runner's
+    `_canonical_manifest_digest` (recursively key-sorted objects, array order kept, ASCII-escaped, no spaces); a test pins the two
+    equal on real manifests."""
+    return hashlib.sha256(
+        json.dumps(manifest, ensure_ascii=True, sort_keys=True, separators=(",", ":")).encode("utf-8")).hexdigest()
+
+
+def _plan_manifest(ctx: ContextSpec) -> dict | None:
+    """build_runs.plan_manifest for this run, or None when the run carries no manifest. Read through ctx.build_id +
+    ctx.db_conn — never ctx.config. A schema without build_runs at all (the partial disposable mirrors the kernel's own DB
+    tests build) is read inside a savepoint and treated as 'no marker' — a missing row and a missing table both mean the default
+    path; a malformed marker NEVER does.
+
+    EVERY read verifies the manifest against `plan_manifest_digest` (the runner verifies it once, at preflight, and the plan is
+    fixed at asset start): a manifest that is present but whose digest is missing or does not match what is stored now was
+    CHANGED after dispatch — the marker may have been added, removed or replaced mid-run — and is refused by name, never read.
+    (Fable P1 on PR 3110: a key removed before the manifest substep stamped a full-horizon default candidate on a plan narrowed
+    to one class.)"""
+    if ctx.db_conn is None:
+        # Connection-free PLANNING (a dry run that only lists the plan; the lifecycle and snapshot-order tests do this). Such a call
+        # cannot read a marker and nothing executes, so it returns the default plan — ONLY for a dry run. A LIVE call with no
+        # connection is a contract violation and is refused by name: a live run must never silently fall back to the default plan
+        # because the marker could not be read.
+        if ctx.dry_run:
+            return None
+        raise TestSliceRefusal(
+            f"{ASSET_ID}: {TEST_SLICE_KEY}: a live plan needs a connection to read build_runs.plan_manifest — refused, never "
+            "planned as the default (only a dry run may plan without one)")
+
+    def read():
+        return ctx.db_conn.execute(
+            "SELECT plan_manifest, plan_manifest_digest FROM public.build_runs WHERE id = %s",
+            (str(ctx.build_id),)).fetchone()
+    try:
+        row = _in_savepoint(ctx.db_conn, read)
+    except Exception as exc:  # noqa: BLE001 - the driver module is never named here (writer purity);
+        if type(exc).__name__ != "UndefinedTable":   # only an ABSENT table reads as 'no marker'
+            raise
+        return None
+    if row is None:
+        return None
+    manifest = row[0] if not isinstance(row, dict) else row.get("plan_manifest")
+    stored_digest = row[1] if not isinstance(row, dict) else row.get("plan_manifest_digest")
+    if manifest is None:
+        return None                      # a row with no manifest: the default path, as before
+    if isinstance(manifest, str):
+        try:
+            manifest = json.loads(manifest)
+        except ValueError as exc:
+            raise TestSliceRefusal(
+                f"{ASSET_ID}: {TEST_SLICE_KEY}: build_runs.plan_manifest is not valid JSON ({exc}) — refused, "
+                "never read as 'no marker'") from exc
+        if manifest is None:
+            return None
+    if not isinstance(manifest, dict):
+        # P2-3 (Codex): an array that CONTAINS the marker used to read as 'no marker' and yield the full plan —
+        # a writer that fails open. A manifest that is present must be an object.
+        raise TestSliceRefusal(
+            f"{ASSET_ID}: {TEST_SLICE_KEY}: build_runs.plan_manifest is {type(manifest).__name__}, not an object — "
+            "refused, never read as 'no marker'")
+    if not isinstance(stored_digest, str) or stored_digest != _manifest_digest(manifest):
+        raise TestSliceRefusal(
+            f"{ASSET_ID}: {TEST_SLICE_KEY}: build_runs.plan_manifest does not match its plan_manifest_digest "
+            f"(stored digest {stored_digest!r}, manifest digest {_manifest_digest(manifest)!r}) — the manifest changed after "
+            "dispatch (a marker added, removed or replaced mid-run is exactly that); refused, never read")
+    return manifest
+
+
+def _in_savepoint(conn, read):
+    """Run `read` so that a failing read (an absent table) cannot poison the caller's transaction, WITHOUT ever being the
+    one that commits: the orchestrator owns commit (frozen contract).
+
+    On a connection that is IDLE and not autocommit, `conn.transaction()` would open its OWN outermost transaction and COMMIT it
+    at exit — a writer-side commit (Fable P3: `plan_substeps` can be the first thing the driver calls on a fresh connection). There
+    a manual SAVEPOINT is used: the first statement opens the connection's implicit transaction, which stays open and is never
+    committed here. In every other state (already inside a transaction, or an autocommit test connection that has no outer
+    transaction to disturb) `transaction()` is a real savepoint or the test harness's own."""
+    tx = getattr(conn, "transaction", None)
+    if tx is None:
+        return read()
+    status = getattr(getattr(conn, "info", None), "transaction_status", None)
+    idle = status is not None and getattr(status, "name", str(status)) == "IDLE"
+    if idle and not getattr(conn, "autocommit", False):
+        conn.execute("SAVEPOINT gochara_v5_marker_read")
+        try:
+            out = read()
+        except Exception:
+            conn.execute("ROLLBACK TO SAVEPOINT gochara_v5_marker_read")
+            raise
+        conn.execute("RELEASE SAVEPOINT gochara_v5_marker_read")
+        return out
+    with tx():
+        return read()
+
+
+def _parse_slice_horizon(raw) -> tuple:
+    def refuse(msg):
+        raise TestSliceRefusal(f"{ASSET_ID}: {TEST_SLICE_KEY}: {msg}")
+    if (not isinstance(raw, (list, tuple)) or len(raw) != 2
+            or not all(isinstance(x, str) for x in raw)):
+        refuse(f"horizon {raw!r} is not a pair of ISO timestamps — refused, never guessed")
+    try:
+        pts = tuple(datetime.fromisoformat(x) for x in raw)
+    except (ValueError, OverflowError) as exc:
+        refuse(f"horizon {raw!r} is not parseable ISO 8601 ({exc})")
+    if any(p.tzinfo is None for p in pts):
+        refuse(f"horizon {raw!r} carries a naive timestamp — an unstated zone is never guessed")
+    try:
+        start, end = (p.astimezone(timezone.utc) for p in pts)
+    except (ValueError, OverflowError) as exc:      # e.g. 0001-01-01T00:00:00+01:00 overflows the UTC conversion
+        refuse(f"horizon {raw!r} cannot be converted to UTC ({type(exc).__name__}: {exc})")
+    if not start < end:
+        refuse(f"horizon {raw!r} is empty or inverted")
+    if start < DEFAULT_HORIZON[0] or end > DEFAULT_HORIZON[1]:
+        refuse(f"horizon [{start.isoformat()}, {end.isoformat()}) reaches outside DEFAULT_HORIZON "
+               f"[{DEFAULT_HORIZON[0].isoformat()}, {DEFAULT_HORIZON[1].isoformat()}) — refused, never clipped")
+    return (start, end)
+
+
+def _validate_test_slice(marker) -> TestSlice:
+    """The marker, strictly. Every deviation is a named TestSliceRefusal — the writer never
+    guesses a scope it was not explicitly given."""
+    def refuse(msg):
+        raise TestSliceRefusal(f"{ASSET_ID}: {TEST_SLICE_KEY}: {msg}")
+    if not isinstance(marker, dict):
+        refuse(f"marker is {type(marker).__name__}, not an object")
+    extra = sorted(set(marker) - _TEST_SLICE_FIELDS)
+    missing = sorted(_TEST_SLICE_FIELDS - set(marker))
+    if extra:
+        refuse(f"unexpected field(s) {extra} — the schema admits exactly {sorted(_TEST_SLICE_FIELDS)}")
+    if missing:
+        refuse(f"missing field(s) {missing}")
+    if marker["schema"] != TEST_SLICE_SCHEMA:
+        refuse(f"schema {marker['schema']!r} != {TEST_SLICE_SCHEMA!r}")
+    run = marker["run"]
+    if run not in TEST_SLICE_RUNS:
+        refuse(f"unknown run {run!r} (known: {list(TEST_SLICE_RUNS)})")
+    horizon = _parse_slice_horizon(marker["horizon"])
+    classes = marker["classes"]
+    if (not isinstance(classes, list) or not classes
+            or any(not isinstance(c, str) for c in classes)):
+        refuse(f"classes {classes!r} is not a non-empty list of class names")
+    unknown = [c for c in classes if c not in SCORED_CLASSES]
+    if unknown:
+        refuse(f"classes {unknown} are not scored classes (SCORED_CLASSES)")
+    if len(set(classes)) != len(classes):
+        refuse(f"classes {classes!r} names a class twice")
+    if run == "all_classes_1y":
+        if set(classes) != set(SCORED_CLASSES):
+            refuse(f"run 'all_classes_1y' is all {len(SCORED_CLASSES)} scored classes, "
+                   f"not {sorted(classes)}")
+        if horizon[1] - horizon[0] > _ONE_YEAR:
+            refuse(f"run 'all_classes_1y' is a 1-year horizon, not {horizon[1] - horizon[0]}")
+    else:  # one_class_full
+        if len(classes) != 1:
+            refuse(f"run 'one_class_full' is exactly one class, not {sorted(classes)}")
+        if horizon != DEFAULT_HORIZON:
+            refuse("run 'one_class_full' is the full DEFAULT_HORIZON, not "
+                   f"[{horizon[0].isoformat()}, {horizon[1].isoformat()})")
+    ordered = tuple(c for c in SCORED_CLASSES if c in set(classes))
+    digest = hashlib.sha256(
+        gk_input_vector.canonical_json(marker).encode("utf-8")).hexdigest()
+    return TestSlice(run=run, horizon=horizon, classes=ordered, marker=dict(marker), digest=digest)
+
+
+def _test_slice(ctx: ContextSpec) -> TestSlice | None:
+    """The run's validated test-slice marker, or None — the ABSENT key is today's behaviour,
+    byte-identical."""
+    manifest = _plan_manifest(ctx)
+    if manifest is None or TEST_SLICE_KEY not in manifest:
+        return None
+    return _validate_test_slice(manifest[TEST_SLICE_KEY])
+
+
+def _slice_component(slice_: TestSlice) -> dict:
+    """The manifest-vector component that makes a sliced candidate unsealable by construction: stored_scope='test_slice' (a
+    value no verifier vocabulary knows) plus the marker digest — and, for audit (Fable P1 iii), the run shape, the classes and
+    the horizon IN CLEAR, so a reader of the manifest alone sees how narrow the candidate is."""
+    return {"schema": TEST_SLICE_SCHEMA, "marker_digest": slice_.digest, "run": slice_.run,
+            "classes": list(slice_.classes), "horizon": [slice_.horizon[0].isoformat(), slice_.horizon[1].isoformat()]}
+
+
+def _slice_excluded_agents(slice_: "TestSlice | None"):
+    """The excluded transiting bodies the writer's IN-BUILD self-checks are TOLD under a validated marker: the DEFAULT stored scope's
+    (`stored_non_moon` → the Moon), because a test slice narrows classes and horizon, never which bodies the stored tier holds. None
+    without a marker: the verifiers then read the manifest's own scope exactly as before. (Stream B P1 on PR 3110: with the stored
+    scope `test_slice`, `verify_p1_anchors` and the inventory re-derivation raised Unverifiable at the first P1 grain.) This changes
+    only what the BUILD reports about itself; the verification JOB, the seal flow and serving always pass nothing and so still read
+    the stored scope and refuse a sliced candidate by name."""
+    if slice_ is None:
+        return None
+    return gk_verifier.excluded_agents_of_scope(gk_input_vector.STORED_SCOPE)
+
+
+def _scope_normalised(vector: dict, slice_: TestSlice | None) -> dict:
+    """The vector the in-build independent derivation check sees (Stream A C46 review R1/R1b, Codex P1-2):
+    identical in EVERY component, with only the slice's identity removed — stored_scope back to the default and the
+    test_slice key dropped. The STORED manifest vector keeps both, so the verification JOB still refuses a sliced
+    manifest by name, while the BUILD still proves the ephemeris files, the library, the probe, L0, the registry and
+    the implementation against the real image.
+
+    The normalisation is bound to the run's VALIDATED marker (`_test_slice(ctx)`), never to what the vector says about
+    itself: with no marker the vector is returned UNCHANGED (a default context has nothing to normalise; a stamp on its
+    vector is refused by `verify_live` and by `verify_inputs` as before); with a marker ONLY a vector carrying exactly
+    the scope `test_slice` AND exactly this marker's {schema, marker_digest} component is normalised — an empty
+    component, a wrong digest, a missing or half stamp is a named refusal."""
+    if slice_ is None:
+        return dict(vector)
+    expected = _slice_component(slice_)
+    if vector.get("stored_scope") != TEST_SLICE_SCOPE or vector.get("test_slice") != expected:
+        raise TestSliceRefusal(
+            f"{ASSET_ID}: {TEST_SLICE_KEY}: the input vector's slice stamp (stored_scope={vector.get('stored_scope')!r}, "
+            f"test_slice={vector.get('test_slice')!r}) is not the run's validated marker ({TEST_SLICE_SCOPE!r}, "
+            f"{expected!r}) — refused, never normalised")
+    v = dict(vector)
+    v["stored_scope"] = gk_input_vector.STORED_SCOPE
+    v.pop("test_slice", None)
+    return v
+
+
+def _effective_horizon(ctx: ContextSpec, slice_: TestSlice | None):
+    """The marker's horizon under a slice; else EXACTLY what main used: `ctx.config.get("horizon", DEFAULT_HORIZON)` —
+    an absent key is DEFAULT_HORIZON, an explicit null stays None (and fails downstream as it always did; Codex P2-4: it
+    must not be quietly turned into the default). Under a marker a config horizon that is present and null, or that
+    CONTRADICTS the marker, is ambiguous — refused, never guessed."""
+    if slice_ is None:
+        return ctx.config.get("horizon", DEFAULT_HORIZON)
+    if "horizon" in ctx.config:
+        cfg = ctx.config["horizon"]
+        if cfg is None or tuple(cfg) != tuple(slice_.horizon):
+            raise TestSliceRefusal(
+                f"{ASSET_ID}: {TEST_SLICE_KEY}: ctx.config['horizon'] {cfg!r} contradicts the "
+                f"marker horizon {slice_.horizon!r} — refused, never guessed")
+    return slice_.horizon
+
+
 _SIGNS = ("aries", "taurus", "gemini", "cancer", "leo", "virgo", "libra",
           "scorpio", "sagittarius", "capricorn", "aquarius", "pisces")
 _JD_UNIX_EPOCH = 2440587.5
@@ -182,7 +460,7 @@ class HorizonMismatch(RuntimeError):
     """A5.5f: this run's horizon is not the horizon its candidate manifest was published for."""
 
 
-def _require_manifest_horizon(ctx: ContextSpec, chart_id: str) -> None:
+def _require_manifest_horizon(ctx: ContextSpec, chart_id: str, slice_: "TestSlice | None" = None) -> None:
     """Every chain-writing substep (snapshot, inventory, coverage, record, window, verify) passes through
     `_verify_live_inputs`, and so through this guard: the horizon this run is configured with must be EXACTLY the horizon
     its candidate manifest (kala_gochara_publication) was published for. Nothing used to compare the two, so an
@@ -195,7 +473,7 @@ def _require_manifest_horizon(ctx: ContextSpec, chart_id: str) -> None:
     if row is None:
         raise RuntimeError(f"{ASSET_ID}: no candidate manifest for generation {GENERATION} — the manifest substep runs first")
     lo, hi = tuple(row.values()) if isinstance(row, dict) else tuple(row)
-    horizon = ctx.config.get("horizon", DEFAULT_HORIZON)
+    horizon = _effective_horizon(ctx, slice_)          # the marker's horizon under a slice, else the configured one
     # exact instants: any difference, even sub-microsecond or a zone that moves the instant, refuses (fail-closed)
     if horizon is None or (lo, hi) != (horizon[0], horizon[1]):
         raise HorizonMismatch(
@@ -212,16 +490,24 @@ def _verify_live_inputs(ctx: ContextSpec, chart_id: str) -> None:
     if stored is None:
         raise RuntimeError(f"{ASSET_ID}: no candidate manifest vector for generation {GENERATION} — "
                            "the manifest substep runs first")
-    _require_manifest_horizon(ctx, chart_id)
+    # Codex P1-2: the expected scope and slice component come from the run's VALIDATED marker, never from the stored
+    # vector being checked (verify_live used to copy them from it, so a sliced run accepted a default vector and a
+    # default run a sliced one). Passed explicitly, a missing, changed or forged stamp is a named drift.
+    slice_ = _test_slice(ctx)
+    _require_manifest_horizon(ctx, chart_id, slice_)
     gk_input_vector.verify_live(
         ctx.db_conn, stored,
         sky_convention_id=SkyEventStore(ctx.db_conn).register_convention(),
         ephe_path=ctx.config.get("ephe_path"), path_refs=gk_rule_registry.bound_path_refs(),
-        rulings=_applicable_rulings())
+        rulings=_applicable_rulings(),
+        stored_scope=TEST_SLICE_SCOPE if slice_ is not None else gk_input_vector.STORED_SCOPE,
+        test_slice=_slice_component(slice_) if slice_ is not None else None)
     # ... and every component that can be derived WITHOUT the builder's code is (registry + L0 + sky in
-    # Postgres, ephemeris files + runtime library + implementation by direct hashing)
+    # Postgres, ephemeris files + runtime library + implementation by direct hashing). Under a slice the
+    # check runs on the SCOPE-NORMALISED copy: the stored vector's unknown scope is the unsealability
+    # proof and belongs to the verification job — the build still proves the real image (R1).
     gk_input_vector_verifier.verify_inputs(
-        ctx.db_conn, stored, ephe_path=ctx.config.get("ephe_path"),
+        ctx.db_conn, _scope_normalised(stored, slice_), ephe_path=ctx.config.get("ephe_path"),
         modules=gk_input_vector.IMPLEMENTATION_MODULES, path_refs=gk_rule_registry.bound_path_refs())
 
 
@@ -304,6 +590,15 @@ def p1_minting_closed_reason(conn) -> str | None:
     return None
 
 
+def _class_of_grain(key: str) -> str | None:
+    """The event class a per-class substep key names, or None for a class-less substep."""
+    if key.startswith((INVENTORY_SUBSTEP_PREFIX, COVERAGE_SUBSTEP_PREFIX, VERIFY_SUBSTEP_PREFIX)):
+        return key.split(":", 1)[1]
+    if key.startswith((RECORD_SUBSTEP_PREFIX, WINDOW_SUBSTEP_PREFIX)):
+        return key.split(":", 2)[1]
+    return None
+
+
 @register(ASSET_ID)
 class GocharaV5Writer(WriterBase):
     """Pravāha A5.3: the '5.0' writer — phase-1 geometry store landed.
@@ -325,9 +620,15 @@ class GocharaV5Writer(WriterBase):
         Static by design: the rule catalogue, the convention vector and the
         8-body substrate set are pinned constants (Moon excluded — EPHEMERAL
         per pin 6). The chart-scope refusal lives here too — a foreign chart
-        is refused at PLAN time, not first at execution time."""
+        is refused at PLAN time, not first at execution time.
+
+        C46 test slice: a gochara_v5_test_slice marker in the run's
+        plan_manifest narrows the class loop to the marker's classes; no
+        marker = the full SCORED_CLASSES plan, byte-identical to today."""
         ctx = _native_ctx(ctx)
         _require_pinned_chart(ctx.config["chart_id"])
+        slice_ = _test_slice(ctx)
+        classes = slice_.classes if slice_ is not None else SCORED_CLASSES
         steps = [
             SubStep(key=RULES_SUBSTEP,
                     label="rule_binding: P1–P5 registry + F3 seals (global "
@@ -348,7 +649,7 @@ class GocharaV5Writer(WriterBase):
         steps.append(SubStep(
             key=SNAPSHOT_SUBSTEP,
             label="AM-5 search-input snapshot (ONE per generation; L1/daśā/AV digests)"))
-        for event_class in SCORED_CLASSES:
+        for event_class in classes:
             steps.append(SubStep(
                 key=f"{INVENTORY_SUBSTEP_PREFIX}{event_class}",
                 label=f"AM-5 search inventory: pins → obligations → interval ledger "
@@ -417,6 +718,18 @@ class GocharaV5Writer(WriterBase):
                        f"{inserted} inserted, {counts['reused']} reused "
                        "(idempotent)"))
         self._take_chart_lock(ctx, chart_id)
+        # the slice read comes AFTER the chart lock: the lock stays the first statement of every
+        # substrate substep (ruling B / N13), and an out-of-slice grain writes nothing either way
+        slice_ = _test_slice(ctx)
+        grain_class = _class_of_grain(step.key)
+        if slice_ is not None and grain_class is not None and grain_class not in slice_.classes:
+            # Fable P1 (scenario B): this used to RETURN success, so a marker replaced mid-run quietly skipped every grain
+            # outside the new marker. The plan is fixed at asset start from the marker then read; a substep for a class the
+            # marker now read does not name means the two disagree: refused by name, never skipped.
+            raise TestSliceRefusal(
+                f"{ASSET_ID}: {TEST_SLICE_KEY}: substep {step.key!r} names class {grain_class!r}, which is not in the run's "
+                f"validated marker {list(slice_.classes)} — the plan and the marker disagree (the stored plan_manifest changed "
+                "after the plan was fixed); refused, never skipped")
         if step.key == CONVENTION_SUBSTEP:
             store = SkyEventStore(ctx.db_conn)
             cid = store.register_convention()
@@ -426,10 +739,10 @@ class GocharaV5Writer(WriterBase):
                 or step.key.startswith((INVENTORY_SUBSTEP_PREFIX, VERIFY_SUBSTEP_PREFIX))):
             if step.key != MANIFEST_SUBSTEP:
                 _verify_live_inputs(ctx, chart_id)
-            return self._run_inventory_phase(ctx, step, chart_id)
+            return self._run_inventory_phase(ctx, step, chart_id, slice_)
         if step.key.startswith((COVERAGE_SUBSTEP_PREFIX, RECORD_SUBSTEP_PREFIX)):
             _verify_live_inputs(ctx, chart_id)
-            return self._run_record_phase(ctx, step, chart_id)
+            return self._run_record_phase(ctx, step, chart_id, slice_)
         if step.key.startswith(WINDOW_SUBSTEP_PREFIX):
             _verify_live_inputs(ctx, chart_id)
             return self._run_window_phase(ctx, step, chart_id)
@@ -450,12 +763,12 @@ class GocharaV5Writer(WriterBase):
     # ------------------------------------------------------------------
 
     def _run_inventory_phase(self, ctx: ContextSpec, step: SubStep,
-                             chart_id: str) -> WriterResult:
+                             chart_id: str, slice_: TestSlice | None = None) -> WriterResult:
         """AM-5 chain (chart lock already taken by the caller; every INVENTORY write takes
         the global SHARED key after it — chart → global SHARED, draft item 7):
         `manifest` → `snapshot` → `inventory:<class>` → (coverage, records) →
         `verify:<class>`. Sealing is NOT this writer's step (A6)."""
-        horizon = ctx.config.get("horizon", DEFAULT_HORIZON)
+        horizon = _effective_horizon(ctx, slice_)
         ephe_path = ctx.config.get("ephe_path")
         inv_store = InventoryStore(ctx.db_conn)
         rstore = RecordStore(ctx.db_conn)
@@ -470,11 +783,17 @@ class GocharaV5Writer(WriterBase):
                 l0_consumed=_l0_consumed(),
                 # R9-1: the policy is an INPUT of the build, chosen here and bound into the manifest; every later
                 # stage reads it back FROM the manifest — nothing downstream holds its own constant
-                result_policy=ctx.config.get("result_policy", gk_input_vector.DEFAULT_RESULT_POLICY))
+                result_policy=ctx.config.get("result_policy", gk_input_vector.DEFAULT_RESULT_POLICY),
+                # C46: a sliced build is unsealable by construction — stored_scope no verifier
+                # vocabulary knows, plus the marker digest; absent marker = the default, unchanged
+                stored_scope=TEST_SLICE_SCOPE if slice_ is not None else gk_input_vector.STORED_SCOPE,
+                test_slice=_slice_component(slice_) if slice_ is not None else None)
             # every component that can be derived without the builder's code is derived a SECOND way and the two
-            # must agree before the identity is bound
-            inputs_report = gk_input_vector_verifier.verify_inputs(
-                ctx.db_conn, vector, ephe_path=ephe_path, modules=gk_input_vector.IMPLEMENTATION_MODULES,
+            # must agree before the identity is bound. Under a test slice the check runs on the SCOPE-NORMALISED
+            # copy (Stream A C46 review R1): the stored vector's scope is REFUSED BY NAME only at the verification
+            # job (the unsealability proof); the build still proves the ephemeris/registry/implementation.
+            gk_input_vector_verifier.verify_inputs(
+                ctx.db_conn, _scope_normalised(vector, slice_), ephe_path=ephe_path, modules=gk_input_vector.IMPLEMENTATION_MODULES,
                 path_refs=gk_rule_registry.bound_path_refs(),
                 jd_range=gk_input_vector.consumed_jd_range(horizon))
             jd = horizon[0].timestamp() / 86400.0 + _JD_UNIX_EPOCH
@@ -486,11 +805,15 @@ class GocharaV5Writer(WriterBase):
                 {"backend": "swieph", "probe_retflag": int(retflag)},
                 f"[{horizon[0].isoformat()},{horizon[1].isoformat()})",
                 writer_asset_id=ASSET_ID)
+            slice_note = (f"; TEST SLICE {slice_.run} (marker {slice_.digest[:12]}…): "
+                          "stored_scope='test_slice' — unsealable by construction, the verifier "
+                          "refuses the scope by name; the in-build derivation check ran on the "
+                          "scope-normalised copy" if slice_ is not None else "")
             return WriterResult(asset_id=self.asset_id, rows_inserted=0,
                                 notes=f"candidate manifest {mid[:8]}… (input vector {gk_input_vector.VECTOR_SCHEMA}: "
                                       f"registry digest {vector['registry']['digest'][:12]}…, "
                                       f"{len(vector['ephemeris']['files'])} ephemeris files, node "
-                                      "series, both orb policies, rulings, implementation)")
+                                      f"series, both orb policies, rulings, implementation){slice_note}")
 
         if step.key == SNAPSHOT_SUBSTEP:
             context = fetch_chart_context(ctx.db_conn, chart_id)
@@ -576,7 +899,8 @@ class GocharaV5Writer(WriterBase):
                 event_class=event_class, sealed_paths=sealed,
                 path_exclusions=VERIFIER_PATH_RULINGS,
                 h_unknown_exclusion=VERIFIER_H_UNKNOWN_RULING,
-                selected_versions=stored_sel or None)
+                selected_versions=stored_sel or None,
+                excluded_agents=_slice_excluded_agents(slice_))
         except gk_verifier.Unverifiable as exc:
             return WriterResult(
                 asset_id=self.asset_id, rows_inserted=0,
@@ -605,7 +929,7 @@ class GocharaV5Writer(WriterBase):
         # aspect-to-span contacts are certified like every other contact by `certify_contact_geometry` below — the
         # DERIVED-tolerance, union-of-contacts contract (R10-6); the fixed-tolerance sampling precheck that used to run
         # here (3 s / 6 h) contradicted it and is removed.
-        horizon = ctx.config.get("horizon", DEFAULT_HORIZON)
+        horizon = _effective_horizon(ctx, slice_)
         ephe_path = ctx.config.get("ephe_path")
 
         def position_at(body: str, t: datetime) -> float:
@@ -639,7 +963,7 @@ class GocharaV5Writer(WriterBase):
                                   f"({geometry['contacts_expected']} contacts; {geometry['named_limit']}){gate_note}")
 
     def _run_record_phase(self, ctx: ContextSpec, step: SubStep,
-                          chart_id: str) -> WriterResult:
+                          chart_id: str, slice_: TestSlice | None = None) -> WriterResult:
         """interval_sweep substeps (the chart lock is already taken by the
         caller — substrate order, N13): `coverage:<class>` writes the class
         partition (pin 7), `record:<class>:<path>` materialises the grain.
@@ -647,7 +971,7 @@ class GocharaV5Writer(WriterBase):
         NAMED by require_complete, never defaulted."""
         context = fetch_chart_context(ctx.db_conn, chart_id)
         require_complete(context)
-        horizon = ctx.config.get("horizon", DEFAULT_HORIZON)
+        horizon = _effective_horizon(ctx, slice_)
         ephe_path = ctx.config.get("ephe_path")
         chart = {"lagna_deg": context["lagna_deg"], "natal": context["natal"]}
         store = RecordStore(ctx.db_conn)
@@ -753,7 +1077,7 @@ class GocharaV5Writer(WriterBase):
             # closed nothing was minted, the class makes no P1 completeness claim, and the notes say so
             if not p1_closed:
                 verify_p1_anchors(ctx.db_conn, chart_id=chart_id, generation=GENERATION, event_class=event_class,
-                                  position_at=position_at)
+                                  position_at=position_at, excluded_agents=_slice_excluded_agents(slice_))
             # AM-20 (revised): the stored house descriptor is the count from the lagna
             verify_p1_house_descriptor(ctx.db_conn, chart_id=chart_id, generation=GENERATION,
                                        event_class=event_class)
