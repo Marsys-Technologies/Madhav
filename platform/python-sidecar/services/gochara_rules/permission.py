@@ -10,7 +10,8 @@ absent on this chart with both failed conditions named (O-PP-3, D-RQ7).
 
 Reference rows below are literal constant data, source =
 "GOCHARA_DESIGN_SPECS_v1_4 §4.0 [L]" (verified 2026-09-30, tier
-two_pass_verified, build 1f89fd4c-7d1e-4f3a-b3ae-e7ff839a6feb).
+two_pass_verified, build 75524b3e-102a-43ec-8cee-3f57fee752c3 — RE-PINNED at SETTLED-1 (S-L1, 2026-10-04) from the first pin, build
+1f89fd4c-7d1e-4f3a-b3ae-e7ff839a6feb verified 2026-09-30: lords and row counts unchanged, every boundary shifted by about 6993 s).
 """
 from __future__ import annotations
 
@@ -28,58 +29,58 @@ DASHA_READ_CONTRACT = {
     "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
     "ayanamsha_id": "lahiri_chitrapaksha",
     "system_id": "vimshottari",
-    "build_id": "1f89fd4c-7d1e-4f3a-b3ae-e7ff839a6feb",
+    "build_id": "75524b3e-102a-43ec-8cee-3f57fee752c3",
     "tier": TWO_PASS_VERIFIED,
     "source": "GOCHARA_DESIGN_SPECS_v1_4 §4.0 [L]",
 }
 
 # Pinned reference rows (§4.0 [L]; every row id printed in full — C6).
 MD_ROWS: tuple[dict, ...] = (
-    {"row_id": "58afa482-4bce-42df-9c0d-0b5a2e02305e", "level": "MD",
+    {"row_id": "1d1a80c0-53c6-5ff7-930a-52ff0f306cae", "level": "MD",
      "lord": "Mercury", "parent_row_id": None,
-     "start_iso": "2010-08-18T15:50:23Z", "end_iso": "2027-08-18T21:50:23Z",
+     "start_iso": "2010-08-18T17:46:56Z", "end_iso": "2027-08-18T23:46:56Z",
      "source": "GOCHARA_DESIGN_SPECS_v1_4 §4.0 [L]"},
 )
 
 AD_ROWS: tuple[dict, ...] = (
-    {"row_id": "133b4500-ad36-4fff-8814-c6b0b253ca05", "level": "AD",
-     "lord": "Ketu", "parent_row_id": "58afa482-4bce-42df-9c0d-0b5a2e02305e",
-     "start_iso": "2013-01-14T07:17:23Z", "end_iso": "2014-01-11T12:14:23Z",
+    {"row_id": "2103a226-b814-5ec7-b987-dffb421d5288", "level": "AD",
+     "lord": "Ketu", "parent_row_id": "1d1a80c0-53c6-5ff7-930a-52ff0f306cae",
+     "start_iso": "2013-01-14T09:13:56Z", "end_iso": "2014-01-11T14:10:56Z",
      "source": "GOCHARA_DESIGN_SPECS_v1_4 §4.0 [L]"},
-    {"row_id": "14f20359-c30e-425d-b50f-45b017568ace", "level": "AD",
-     "lord": "Moon", "parent_row_id": "58afa482-4bce-42df-9c0d-0b5a2e02305e",
-     "start_iso": "2017-09-17T20:20:23Z", "end_iso": "2019-02-17T06:50:23Z",
+    {"row_id": "68789a8d-85ae-5eb5-8d88-a8743b23073c", "level": "AD",
+     "lord": "Moon", "parent_row_id": "1d1a80c0-53c6-5ff7-930a-52ff0f306cae",
+     "start_iso": "2017-09-17T22:16:56Z", "end_iso": "2019-02-17T08:46:56Z",
      "source": "GOCHARA_DESIGN_SPECS_v1_4 §4.0 [L]"},
-    {"row_id": "b1e4d515-6a94-4054-89ff-1ed2487f66ae", "level": "AD",
-     "lord": "Mars", "parent_row_id": "58afa482-4bce-42df-9c0d-0b5a2e02305e",
-     "start_iso": "2019-02-17T06:50:23Z", "end_iso": "2020-02-14T11:47:23Z",
+    {"row_id": "c4821baa-f4b0-51d5-b035-28ba2bd36a78", "level": "AD",
+     "lord": "Mars", "parent_row_id": "1d1a80c0-53c6-5ff7-930a-52ff0f306cae",
+     "start_iso": "2019-02-17T08:46:56Z", "end_iso": "2020-02-14T13:43:56Z",
      "source": "GOCHARA_TEST_ORACLES_v1_4 O-PP-2 [L]"},
-    {"row_id": "25a4b815-39bb-4b4a-b922-84a71778bb4f", "level": "AD",
-     "lord": "Rahu", "parent_row_id": "58afa482-4bce-42df-9c0d-0b5a2e02305e",
-     "start_iso": "2020-02-14T11:47:23Z", "end_iso": "2022-09-02T21:05:23Z",
+    {"row_id": "a91faefa-f0d9-5a5d-950c-0adafb276fc7", "level": "AD",
+     "lord": "Rahu", "parent_row_id": "1d1a80c0-53c6-5ff7-930a-52ff0f306cae",
+     "start_iso": "2020-02-14T13:43:56Z", "end_iso": "2022-09-02T23:01:56Z",
      "source": "GOCHARA_DESIGN_SPECS_v1_4 §4.0 [L]"},
 )
 
 PD_ROWS: tuple[dict, ...] = (
-    {"row_id": "6b843ad2-0759-4e7f-af7d-d39eac8b0325", "level": "PD",
-     "lord": "Mercury", "parent_row_id": "133b4500-ad36-4fff-8814-c6b0b253ca05",
-     "start_iso": "2013-11-21T04:44:19Z", "end_iso": "2014-01-11T12:14:23Z",
+    {"row_id": "65e30373-9db8-5606-a2bb-7c540114e135", "level": "PD",
+     "lord": "Mercury", "parent_row_id": "2103a226-b814-5ec7-b987-dffb421d5288",
+     "start_iso": "2013-11-21T06:40:51Z", "end_iso": "2014-01-11T14:10:56Z",
      "source": "GOCHARA_DESIGN_SPECS_v1_4 §4.0 [L]"},
-    {"row_id": "203406df-ddc3-44b8-a174-e48c5546d009", "level": "PD",
-     "lord": "Venus", "parent_row_id": "14f20359-c30e-425d-b50f-45b017568ace",
-     "start_iso": "2018-10-28T04:09:53Z", "end_iso": "2019-01-22T09:54:53Z",
+    {"row_id": "91980ae7-4081-5373-8781-c8a31b03d4ef", "level": "PD",
+     "lord": "Venus", "parent_row_id": "68789a8d-85ae-5eb5-8d88-a8743b23073c",
+     "start_iso": "2018-10-28T06:06:26Z", "end_iso": "2019-01-22T11:51:26Z",
      "source": "GOCHARA_DESIGN_SPECS_v1_4 §4.0 [L]"},
-    {"row_id": "5c07a7c9-0848-4e54-9f0b-2a9652101cef", "level": "PD",
-     "lord": "Venus", "parent_row_id": "25a4b815-39bb-4b4a-b922-84a71778bb4f",
-     "start_iso": "2021-10-04T03:09:26Z", "end_iso": "2022-03-08T08:42:26Z",
+    {"row_id": "48338f36-94c3-5495-b946-68f7f6e512bc", "level": "PD",
+     "lord": "Venus", "parent_row_id": "a91faefa-f0d9-5a5d-950c-0adafb276fc7",
+     "start_iso": "2021-10-04T05:05:59Z", "end_iso": "2022-03-08T10:38:59Z",
      "source": "GOCHARA_DESIGN_SPECS_v1_4 §4.0 [L]"},
-    {"row_id": "a4cf46db-fcb5-479c-8aab-ca87bcb551ff", "level": "PD",
-     "lord": "Saturn", "parent_row_id": "b1e4d515-6a94-4054-89ff-1ed2487f66ae",
-     "start_iso": "2019-06-21T00:55:52Z", "end_iso": "2019-08-17T09:18:53Z",
+    {"row_id": "d4d08aca-8995-51f3-a8ba-f9238a5311b3", "level": "PD",
+     "lord": "Saturn", "parent_row_id": "c4821baa-f4b0-51d5-b035-28ba2bd36a78",
+     "start_iso": "2019-06-21T02:52:24Z", "end_iso": "2019-08-17T11:15:26Z",
      "source": "GOCHARA_TEST_ORACLES_v1_4 O-PP-2 [L]"},
-    {"row_id": "73eea5c0-631f-4b48-8c8f-483c910c6fde", "level": "PD",
-     "lord": "Saturn", "parent_row_id": "25a4b815-39bb-4b4a-b922-84a71778bb4f",
-     "start_iso": "2020-11-04T09:13:29Z", "end_iso": "2021-03-31T20:29:50Z",
+    {"row_id": "f72e343c-b877-516b-a089-54494031aa2d", "level": "PD",
+     "lord": "Saturn", "parent_row_id": "a91faefa-f0d9-5a5d-950c-0adafb276fc7",
+     "start_iso": "2020-11-04T11:10:02Z", "end_iso": "2021-03-31T22:26:23Z",
      "source": "GOCHARA_TEST_ORACLES_v1_4 O-PP-2 [L]"},
 )
 
