@@ -102,9 +102,10 @@ def world(dsn):
     conn.execute(DDL)
     # the columns the evidence predicate reads, with production's keys: build_runs(id uuid, triggered_by text NOT NULL); build_run_assets.run_id -> build_runs ON DELETE CASCADE;
     # asset_provenance_receipts.build_id -> build_runs ON DELETE SET NULL (a pruned run leaves the receipt with a NULL build_id)
-    conn.execute("CREATE TABLE build_runs (id uuid PRIMARY KEY, triggered_by text NOT NULL); "
-                 "CREATE TABLE asset_provenance_receipts (asset_id text, build_id uuid REFERENCES build_runs(id) ON DELETE SET NULL); "
-                 "CREATE TABLE build_run_assets (run_id uuid REFERENCES build_runs(id) ON DELETE CASCADE, asset_id text); CREATE TABLE asset_throughput (asset_id text)")
+    # N-138 (cutoff mode) reads the timestamps too, with production's names: build_runs.created_at / started_at / ended_at, receipts.observed_at, build_run_assets.started_at / ended_at
+    conn.execute("CREATE TABLE build_runs (id uuid PRIMARY KEY, triggered_by text NOT NULL, created_at timestamptz NOT NULL DEFAULT now(), started_at timestamptz, ended_at timestamptz); "
+                 "CREATE TABLE asset_provenance_receipts (asset_id text, build_id uuid REFERENCES build_runs(id) ON DELETE SET NULL, observed_at timestamptz); "
+                 "CREATE TABLE build_run_assets (run_id uuid REFERENCES build_runs(id) ON DELETE CASCADE, asset_id text, started_at timestamptz, ended_at timestamptz); CREATE TABLE asset_throughput (asset_id text)")
     for tbl in ("asset_registry", "build_runs", "asset_provenance_receipts", "build_run_assets", "asset_throughput"):
         conn.execute(f"ALTER TABLE {tbl} OWNER TO amjis_app")                 # production: amjis_app owns them and the migration runner authenticates as amjis_app
     others = sorted(set(registered) - _WRITER_SUBASSET_IDS - {V41, V5, "ka_gochara"})
@@ -339,3 +340,85 @@ def test_g_N137_evidence_from_a_DECLARED_TEST_RUN_is_not_evidence_for_v5_but_any
     assert all_roles()[V5] is False
     conn.execute("INSERT INTO build_run_assets VALUES (%s, %s)", (near, V5))
     assert all_roles()[V5] is True
+
+
+V3 = "ka_gochara_v3_century_materialize"
+CUTOFF = "2026-10-04T13:31:57Z"
+
+
+def test_h_N138_evidence_by_DATE_for_the_v3_century_writer_strictly_newer_than_the_cutoff_or_without_a_timestamp_in_all_three_loader_roles(world):
+    """Suvarṇa N-138, on a real PostgreSQL: for v3 the evidence mode is the audit INSTANT, not a test trigger. Evidence at or before the cutoff is the audited history (False);
+    anything STRICTLY newer — the row's own timestamp or its run's — is blocking (True), and a row with no timestamp at all is unknown, never 'no evidence' (True). A declared
+    v5 test trigger is NOT test evidence for v3. Identical answers for the three loader roles; v4.1 / v5 are unaffected."""
+    conn, _ = world
+    _apply(conn)
+    for role in ROLES[1:]:
+        conn.execute(f"GRANT SELECT ON asset_provenance_receipts, build_run_assets, build_runs, asset_registry TO {role}")
+    conn.execute("GRANT SELECT ON asset_registry TO amjis_app")
+    assert conn.execute("SELECT count(*) FROM asset_registry WHERE asset_id = %s", (V3,)).fetchone()[0] == 1, "the world has no v3 row"
+    q = f"SELECT asset_id, {EXPR.format(a='asset_registry')} AS ev FROM asset_registry WHERE asset_id IN (%s, %s, %s, 'ka_gochara') ORDER BY 1"
+
+    def all_roles():
+        got = [_as(conn, r, q, (V3, V41, V5)) for r in ROLES]
+        assert got[0] == got[1] == got[2], got
+        return {aid: ev for aid, ev in got[0]}
+
+    def run_at(created, started=None, ended=None, trig="some-ordinary-dispatch"):
+        rid = str(uuid.uuid4())
+        conn.execute("INSERT INTO build_runs (id, triggered_by, created_at, started_at, ended_at) VALUES (%s, %s, %s::timestamptz, %s::timestamptz, %s::timestamptz)", (rid, trig, created, started, ended))
+        return rid
+
+    def clear():
+        conn.execute("DELETE FROM asset_provenance_receipts WHERE asset_id = %s", (V3,))
+        conn.execute("DELETE FROM build_run_assets WHERE asset_id = %s", (V3,))
+        conn.execute("DELETE FROM build_runs")
+
+    assert all_roles()[V3] is False and all_roles()[V5] is False and all_roles()[V41] is False        # zero evidence qualifies
+    # the production history: old runs (2026-08), one build_run_assets row with a NULL started_at but an old ended_at ⇒ audited history, NOT blocking
+    old = run_at("2026-08-12 22:21:19+00")
+    conn.execute("INSERT INTO build_run_assets (run_id, asset_id, started_at, ended_at) VALUES (%s, %s, NULL, '2026-08-12 22:22:24+00')", (old, V3))
+    conn.execute("INSERT INTO build_run_assets (run_id, asset_id, started_at, ended_at) VALUES (%s, %s, '2026-08-21 13:37:44+00', '2026-08-21 13:37:44+00')", (old, V3))
+    assert all_roles()[V3] is False
+    # a receipt older than the cutoff, its run pruned (build_id NULL): still audited history — the timestamp decides, not the missing run
+    conn.execute("INSERT INTO asset_provenance_receipts (asset_id, build_id, observed_at) VALUES (%s, NULL, '2026-08-21 13:40:00+00')", (V3,))
+    assert all_roles()[V3] is False
+    # BOUNDARY: evidence exactly AT the cutoff is the audited history; one second later is new
+    clear()
+    at = run_at(CUTOFF)
+    conn.execute("INSERT INTO build_run_assets (run_id, asset_id, started_at, ended_at) VALUES (%s, %s, %s::timestamptz, %s::timestamptz)", (at, V3, CUTOFF, CUTOFF))
+    assert all_roles()[V3] is False
+    clear()
+    after = run_at("2026-10-04 13:31:58+00")
+    conn.execute("INSERT INTO build_run_assets (run_id, asset_id) VALUES (%s, %s)", (after, V3))                    # the row has no timestamp of its own; its RUN is newer
+    assert all_roles()[V3] is True
+    # the row's own timestamp can be newer while its run is old
+    clear()
+    old = run_at("2026-08-12 22:21:19+00")
+    conn.execute("INSERT INTO build_run_assets (run_id, asset_id, started_at) VALUES (%s, %s, '2026-10-05 00:00:00+00')", (old, V3))
+    assert all_roles()[V3] is True
+    # a RECEIPT newer than the cutoff, or whose run is newer
+    clear()
+    conn.execute("INSERT INTO asset_provenance_receipts (asset_id, build_id, observed_at) VALUES (%s, NULL, '2026-10-04 13:31:58+00')", (V3,))
+    assert all_roles()[V3] is True
+    clear()
+    newer = run_at("2026-10-05 00:00:00+00")
+    conn.execute("INSERT INTO asset_provenance_receipts (asset_id, build_id, observed_at) VALUES (%s, %s, '2026-08-01 00:00:00+00')", (V3, newer))
+    assert all_roles()[V3] is True
+    # NO timestamp anywhere = unknown ⇒ fails closed (a build_run_assets row with a NULL run and NULL times; a receipt with no observed_at and no run)
+    clear()
+    conn.execute("INSERT INTO build_run_assets (run_id, asset_id) VALUES (NULL, %s)", (V3,))
+    assert all_roles()[V3] is True
+    clear()
+    conn.execute("INSERT INTO asset_provenance_receipts (asset_id, build_id, observed_at) VALUES (%s, NULL, NULL)", (V3,))
+    assert all_roles()[V3] is True
+    # a v5 TEST-trigger run is NOT test evidence for v3: a new run of ANY trigger fails closed
+    clear()
+    testrun = run_at("2026-10-05 00:00:00+00", trig="gochara-v5-small-test")
+    conn.execute("INSERT INTO build_run_assets (run_id, asset_id, started_at) VALUES (%s, %s, '2026-10-05 00:00:00+00')", (testrun, V3))
+    assert all_roles()[V3] is True
+    # the other ids are untouched by v3's evidence (and still use the trigger mode): a NEW-dated run for v5 under its declared trigger is test evidence ⇒ False
+    conn.execute("INSERT INTO build_run_assets (run_id, asset_id) VALUES (%s, %s)", (testrun, V5))
+    got = all_roles()
+    assert got[V5] is False and got[V41] is False
+    clear()
+    assert all_roles()[V3] is False
