@@ -2371,3 +2371,171 @@ def test_p1_4_a_cli_string_with_a_lone_surrogate_or_nul_is_refused_before_any_si
     ns = type("NS", (), {})()
     ns.__dict__.update({"out": "ok", "capture_old": None, "n": 3, "flag": True, "rulings": "bad\ud83d"})
     assert T.cli_string_problems(ns) == ["--rulings is not valid UTF-8 text (a lone surrogate)"]
+
+
+# ── Codex v1.8: four more P1 counterexamples + the threat-list checks (T-OUT collisions, T-ATOMIC, evidence ordering) ───────────────────────────────────────────────────
+def _sidecar_tree(tmp_path):
+    """A scratch SIDECAR with the two application destinations, one tests/l3 file and the generated-test directory."""
+    (tmp_path / "services" / "gochara_rules").mkdir(parents=True)
+    (tmp_path / "services" / "gochara_kernel").mkdir(parents=True)
+    (tmp_path / "tests" / "l3" / "gochara_rules").mkdir(parents=True)
+    perm = tmp_path / "services" / "gochara_rules" / "permission.py"
+    perm.write_text(pathlib.Path(PERM.__file__).read_text(encoding="utf-8"), encoding="utf-8")
+    _stub_verifier(tmp_path)
+    t = tmp_path / "tests" / "l3" / "gochara_rules" / "test_literal.py"
+    t.write_text("X = 1\n", encoding="utf-8")
+    return perm, t
+
+
+def test_v18_1_an_evidence_output_that_is_a_source_or_an_input_or_another_output_is_refused_before_any_write(monkeypatch, tmp_path, capsys):
+    cap, fr = _clean_setup(monkeypatch, tmp_path)
+    perm, t = _sidecar_tree(tmp_path)
+    monkeypatch.setattr(T, "SIDECAR", tmp_path)
+    notice = _notice(tmp_path, new_build_id=NEWB)
+    link = tmp_path / "evidence_link.md"; link.symlink_to(perm)
+    base = ["--new-build-id", NEWB, "--old-rows", str(cap), "--settled-notice", notice, "--forensic-report", str(fr), "--apply", "--settled-received", "M1"]
+    before = {p: p.read_bytes() for p in (perm, t, cap, fr, pathlib.Path(notice))}
+    for out in (perm, t, cap, fr, pathlib.Path(notice), link, tmp_path / "services" / "gochara_kernel" / "inventory_verifier.py",
+                tmp_path / "tests" / "l3" / "gochara_rules" / f"test_am10_repin_{NEWB[:8]}.py"):
+        rc = T.main([*base, "--out", str(out)], conn=_Boom())
+        err = capsys.readouterr().err
+        if out.name.startswith("test_am10_repin_"):
+            assert rc == 3 and "same file as the generated test" in err, (out, err)            # does not exist yet, but it is the reserved destination
+        else:
+            assert rc == 3 and "is the same file as" in err and "nothing" not in err.split("STOP")[0], (out, err)
+        assert all(p.read_bytes() == b for p, b in before.items()), f"{out}: an input or source was modified"
+    # two outputs naming the same file
+    same = tmp_path / "same.json"
+    rc = T.main(["--capture-new", str(same), "--new-build-id", NEWB, "--w0-capture-out", str(same)], conn=_Boom())
+    assert rc in (2, 3)
+    ns = type("NS", (), {"out": str(tmp_path / "e.md"), "capture_old": None, "capture_new": str(tmp_path / "e.md"), "w0_capture_out": None, "forensic_report": None, "settled_notice": None,
+                         "old_rows": None, "rulings": None, "import_w0": None, "new_build_id": NEWB})()
+    assert any("name the same file" in m for m in T.io_collision_problems(ns))
+    ns.capture_new = None; ns.import_w0 = ns.out
+    assert any("same file as --import-w0" in m for m in T.io_collision_problems(ns))
+    ns.import_w0 = None
+    assert T.io_collision_problems(ns) == []                                                                          # a plain, separate evidence file is fine
+
+
+def test_v18_2_an_existing_nonidentical_generated_test_is_refused_before_anything_is_reported_or_written(monkeypatch, tmp_path):
+    perm, t = _sidecar_tree(tmp_path)
+    ref = PERM.AD_ROWS[0]
+    maps = [{"old": ref, "new": {"dasha_row_id": "99999999-9999-4999-8999-999999999999", "start_iso": "2013-01-14T09:13:56Z", "end_iso": "2014-01-11T14:11:56Z", "lord_graha": ref["lord"]}, "key": (2, (0,))}]
+    monkeypatch.setattr(T, "SIDECAR", tmp_path)
+    new_id = "22222222-2222-4222-8222-222222222222"
+    gen = tmp_path / "tests" / "l3" / "gochara_rules" / f"test_am10_repin_{new_id[:8]}.py"
+    keep = f'# a hand-written test with a KEEP literal\nOLD = "{ref["start_iso"]}"\n'
+    gen.write_text(keep, encoding="utf-8")
+    perm_before = perm.read_text(encoding="utf-8")
+    with pytest.raises(T.VerifierPinMissing, match="already exists and differs"):
+        T.apply_repin(new_id, maps, tmp_path, rulings={"keep": [f"tests/l3/gochara_rules/{gen.name}:2"]}, check_only=True)
+    with pytest.raises(T.VerifierPinMissing, match="already exists and differs"):
+        T.apply_repin(new_id, maps, tmp_path, rulings={"keep": [f"tests/l3/gochara_rules/{gen.name}:2"]})
+    assert gen.read_text(encoding="utf-8") == keep and perm.read_text(encoding="utf-8") == perm_before     # nothing replaced, nothing written
+    gen.write_text(T.GENERATED_TEST.format(old=PERM.DASHA_READ_CONTRACT["build_id"], new=new_id), encoding="utf-8")   # an IDENTICAL existing file is accepted (an idempotent re-run)
+    T.apply_repin(new_id, maps, tmp_path, check_only=True)
+
+
+@pytest.mark.parametrize("bad", ["-1e-9999", "-0", "-0.0", "-1e-400", "360", "360.0", "1e400", "-1", " 1", "1 ", "", "0x10", "1_0", "NaN", "Infinity", "-Infinity"])
+def test_v18_3_a_natal_longitude_is_range_checked_exactly_never_through_a_float(bad):
+    nat = natal_dicts(); nat[0]["longitude"] = bad
+    assert any("longitude must be a finite number" in m for m in T.strict_natal_problems(nat)), bad
+
+
+@pytest.mark.parametrize("good", ["0", "0.0", "1e-9999", "359.9999999999999999999999", "123.456", "1E2", 0, 7, 359, 12.5])
+def test_v18_3_exact_values_inside_the_range_are_accepted(good):
+    nat = natal_dicts(); nat[0]["longitude"] = good
+    assert T.strict_natal_problems(nat) == [], good
+
+
+def test_v18_3_a_json_float_that_underflowed_to_negative_zero_and_a_json_minus_zero_float_are_refused():
+    nat = natal_dicts(); nat[0]["longitude"] = -0.0
+    assert T.strict_natal_problems(nat)
+    nat[0]["longitude"] = json_loads_float("-1e-9999")                     # what a JSON number `-1e-9999` becomes: -0.0 (lossy at parse)
+    assert nat[0]["longitude"] == 0.0 and T.strict_natal_problems(nat)
+
+
+def json_loads_float(text):
+    import json as _json
+    return _json.loads(text)
+
+
+def test_v18_4_chart_ids_are_canonical_uuid_text_on_the_cli_in_w0_and_in_capture_validation(tmp_path, capsys):
+    import hashlib as _h
+    assert T.chart_id_problem(CHART) is None
+    for bad in ("not-a-uuid", CHART.upper(), "{" + CHART + "}", "urn:uuid:" + CHART, CHART.replace("-", ""), "", None, 5):
+        assert T.chart_id_problem(bad), bad
+    # the CLI refuses before any dispatch, read or write
+    out = tmp_path / "e.md"
+    rc = T.main(["--new-build-id", NEWB, "--chart-id", "not-a-uuid", "--out", str(out)], conn=_Boom())
+    assert rc == 3 and "--chart-id" in capsys.readouterr().err and not out.exists()
+    # W0: BOTH the file's chart id and --chart-id equal and non-UUID, matching checksum: refused, nothing written
+    w0 = tmp_path / "w0.json"
+    w0.write_text('{"chart_id": "not-a-uuid", "build_id": "%s", "rows": [], "natal": []}' % OLDB)
+    cap_out = tmp_path / "w0_out.json"
+    rc = T.main(["--import-w0", str(w0), "--w0-checksum", _h.sha256(w0.read_bytes()).hexdigest(), "--w0-capture-out", str(cap_out), "--chart-id", "not-a-uuid"])
+    assert rc == 3 and "chart id" in capsys.readouterr().err and not cap_out.exists()
+    # capture validation: a capture for a non-UUID chart is refused even when it equals the expected string
+    cap = old_cap()
+    cap["chart_id"] = "not-a-uuid"
+    bad = T.validate_capture(cap, "not-a-uuid", OLDB)
+    assert bad and "not canonical UUID text" in bad[0]
+
+
+def test_t_atomic_a_failed_apply_restores_every_file_it_had_written_and_removes_the_files_it_created(monkeypatch, tmp_path):
+    perm, t = _sidecar_tree(tmp_path)
+    ref = PERM.AD_ROWS[0]
+    lit = tmp_path / "tests" / "l3" / "gochara_rules" / "test_ids.py"
+    lit.write_text(f'ROW = "{ref["row_id"]}"\n', encoding="utf-8")
+    maps = [{"old": ref, "new": {"dasha_row_id": "99999999-9999-4999-8999-999999999999", "start_iso": "2013-01-14T09:13:56Z", "end_iso": "2014-01-11T14:11:56Z", "lord_graha": ref["lord"]}, "key": (2, (0,))}]
+    monkeypatch.setattr(T, "SIDECAR", tmp_path)
+    new_id = "22222222-2222-4222-8222-222222222222"
+    originals = {p: p.read_bytes() for p in (perm, lit, tmp_path / "services" / "gochara_kernel" / "inventory_verifier.py")}
+    real = T.write_atomic
+    calls = []
+
+    def flaky(path, text):
+        calls.append(str(path))
+        if len(calls) == 4 and "restore" not in calls:                       # permission.py, verifier and the id file are written; the LAST (generated test) write fails
+            raise OSError("disk full")
+        return real(path, text)
+
+    monkeypatch.setattr(T, "write_atomic", flaky)
+    with pytest.raises(OSError, match="disk full"):
+        T.apply_repin(new_id, maps, tmp_path)
+    assert {p: p.read_bytes() for p in originals} == originals, "a file written before the failure was not restored"
+    assert not (tmp_path / "tests" / "l3" / "gochara_rules" / f"test_am10_repin_{new_id[:8]}.py").exists()
+
+
+def test_t_evidence_with_apply_the_report_is_written_after_the_apply_and_a_failed_apply_marks_it_NOT_APPLIED(monkeypatch, tmp_path, capsys):
+    cap, fr = _clean_setup(monkeypatch, tmp_path)
+    out = tmp_path / "evidence.md"
+    order = []
+    real = T.write_atomic
+
+    def tracking(path, text):
+        order.append(("write", str(path)))
+        return real(path, text)
+
+    def ok_apply(new_id, maps, root, rulings=None, review=None, check_only=False):
+        order.append(("apply", check_only))
+        return [] if check_only else ["services/x.py"]
+
+    monkeypatch.setattr(T, "write_atomic", tracking)
+    monkeypatch.setattr(T, "apply_repin", ok_apply)
+    args = ["--new-build-id", NEWB, "--old-rows", str(cap), "--settled-notice", _notice(tmp_path, new_build_id=NEWB), "--forensic-report", str(fr), "--apply", "--settled-received", "M1", "--out", str(out)]
+    assert T.main(args, conn=FakeConn()) == 0
+    capsys.readouterr()
+    kinds = [o for o in order if o[0] == "apply" or o == ("write", str(out))]
+    assert kinds == [("apply", True), ("apply", False), ("write", str(out))], kinds                                    # check, apply, THEN the evidence
+    assert "verdict: **CLEAN**" in out.read_text() and not out.read_text().startswith("# !!!")
+    out.unlink()
+
+    def failing_apply(new_id, maps, root, rulings=None, review=None, check_only=False):
+        if check_only:
+            return []
+        raise OSError("disk full")
+
+    monkeypatch.setattr(T, "apply_repin", failing_apply)
+    assert T.main(args, conn=FakeConn()) == 3
+    assert out.read_text().startswith("# !!! RE-PIN NOT APPLIED — APPLY FAILED (OSError)")                           # the CLEAN verdict never stands alone beside a failed apply

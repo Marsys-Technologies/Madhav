@@ -57,6 +57,7 @@ import json
 import logging
 import math
 import time
+from decimal import Decimal, InvalidOperation
 import uuid
 import os
 import re
@@ -379,6 +380,17 @@ def _capture_digest(chart_id: str, build_id: str, rows: list[dict], natal: list[
 _ROW_STR_KEYS = ("dasha_row_id", "lord_graha", "start_iso", "end_iso", "system_id", "verification_pass_status", "build_id")
 
 
+def chart_id_problem(value) -> str | None:
+    """Codex v1.8 P1-4: a chart id is canonical lower-case hyphenated UUID text — validated before dispatch (CLI), in a W0 file and in capture validation, never merely compared."""
+    if not isinstance(value, str) or not value:
+        return f"chart id {value!r} is not a string"
+    try:
+        ok = str(uuid.UUID(value)) == value
+    except ValueError:
+        ok = False
+    return None if ok else f"chart id {value!r} is not canonical UUID text (lower-case, hyphenated)"
+
+
 def strict_rows_problems(rows, label: str = "rows") -> list[str]:
     """Codex v1.7 P1-1: ONE strict row schema, applied BEFORE any coercion (`int(...)`, `_t(...)`) to every row source — a loaded capture, both acquisitions and the W0 import all end in
     `validate_capture`. Per row: an object; `level_n` an INTEGER (not a bool, a float, a string); `dasha_row_id` / `lord_graha` / `start_iso` / `end_iso` / `system_id` /
@@ -441,24 +453,16 @@ def strict_natal_problems(natal) -> list[str]:
         ok = False
         if isinstance(v, bool) or v is None:
             ok = False
-        elif isinstance(v, (int, float)):
-            ok = math.isfinite(v)
-        elif isinstance(v, str) and v.strip():
+        elif isinstance(v, float):
+            ok = math.isfinite(v) and not (v == 0.0 and math.copysign(1.0, v) < 0) and 0.0 <= v < 360.0     # a JSON `-1e-9999` arrives here as -0.0 (lossy at parse): a signed zero is refused
+        elif isinstance(v, int):
+            ok = 0 <= v < 360
+        elif isinstance(v, str) and re.fullmatch(r"[0-9]+(?:\.[0-9]+)?(?:[eE][+-]?[0-9]+)?", v):             # plain ASCII decimal text only: no sign, space, underscore, Unicode digit, NaN or hex
             try:
-                ok = math.isfinite(float(v))
-            except ValueError:
-                ok = False
-            if ok:
-                try:
-                    from decimal import Decimal
-                    ok = Decimal(v).is_finite()
-                except Exception:                      # noqa: BLE001 — any parse trouble is a refusal
-                    ok = False
-        if ok:
-            try:
-                ok = 0 <= float(v) < 360
-            except (TypeError, ValueError):
-                ok = False
+                d_ = Decimal(v)                                                                              # EXACT: no float conversion, so `-1e-9999` stays a negative number
+            except InvalidOperation:
+                d_ = None
+            ok = d_ is not None and d_.is_finite() and not d_.is_signed() and Decimal(0) <= d_ < Decimal(360)   # signed zero / any negative is refused
         if not ok:
             out.append(f"{who}: longitude must be a finite number in [0, 360) (got {v!r})")
     return out
@@ -507,6 +511,9 @@ def validate_capture(d: dict, chart_id: str, build_id: str) -> list[str]:
     out: list[str] = []
     if not isinstance(d, dict) or not d.get("rows"):
         return ["the capture is empty or not an object"]
+    bad_chart = chart_id_problem(d.get("chart_id")) or chart_id_problem(chart_id)
+    if bad_chart:
+        return out + [bad_chart]
     if d.get("chart_id") != chart_id:
         out.append(f"the capture is for chart {d.get('chart_id')!r}, expected {chart_id}")
     try:
@@ -882,6 +889,9 @@ def _import_w0(path: str, checksum: str, out_path: str, chart_id: str) -> int:
         w0_build = canon_uuid(d.get("build_id")) if isinstance(d, dict) else None
     except ValueError:
         w0_build = None
+    bad_chart = chart_id_problem(chart_id) or (chart_id_problem(d.get("chart_id")) if isinstance(d, dict) else None)
+    if bad_chart:
+        print(f"STOP — {bad_chart}; nothing written", file=sys.stderr); return 3
     if not isinstance(d, dict) or d.get("chart_id") != chart_id or w0_build != old_id or not isinstance(d.get("rows"), list) or not isinstance(d.get("natal"), list):
         print("STOP — the W0 file is not {chart_id, build_id, rows, natal} for this chart and the pinned build", file=sys.stderr); return 3
     try:
@@ -1302,6 +1312,27 @@ def scan_wide_literals(instants: dict[str, str], repo_root: Path) -> list[tuple[
     return out
 
 
+def write_all_or_restore(writes: list[tuple[Path, str]]) -> None:
+    """Threat T-ATOMIC: an apply is ALL-OR-NOTHING. Each file is written atomically (`write_atomic`); if any write fails, the files already written are put back byte for byte (and files this apply
+    CREATED are removed) before the error propagates, so a failed apply never leaves a half-re-pinned tree."""
+    originals: dict[Path, bytes | None] = {p_: (p_.read_bytes() if p_.exists() else None) for p_, _ in writes}
+    done: list[Path] = []
+    try:
+        for p_, txt_ in writes:
+            write_atomic(p_, txt_)
+            done.append(p_)
+    except BaseException:
+        for q in reversed(done):
+            try:
+                if originals[q] is None:
+                    q.unlink()
+                else:
+                    write_atomic(q, originals[q].decode("utf-8"))
+            except Exception:                    # noqa: BLE001 — best effort; the original error is what the operator needs
+                pass
+        raise
+
+
 def validate_write_plan(writes: list[tuple[Path, str]]) -> None:
     """Everything `write_atomic` would refuse, found BEFORE any file is touched and before a CLEAN report is published: strict-UTF-8-encodable text; each destination a (new or existing) regular FILE
     — never a directory — inside an EXISTING, writable directory (`write_atomic` creates no directories); an existing destination writable. Raises `VerifierPinMissing` (a named STOP, nothing written)."""
@@ -1370,7 +1401,11 @@ def apply_repin(new_id: str, maps: list[dict], repo_root: Path, rulings: dict | 
     for p, ln, st, en, a_, b_ in scan_test_spans(instants, repo_root):
         if ruled.get(f"{p}:{ln}") == "rewrite":
             by_file.setdefault(p, {}).setdefault(ln, []).append((st, en, a_, b_))
-    for p in sorted(q for q in (SIDECAR / "tests" / "l3").rglob("*.py") if q.is_file()):    # a DIRECTORY named *.py is not a file to scan or rewrite (the write plan refuses it)
+    gen = SIDECAR / "tests" / "l3" / "gochara_rules" / f"test_am10_repin_{new_id[:8]}.py"
+    gen_text = GENERATED_TEST.format(old=old_id, new=new_id)
+    if gen.exists() and gen.is_file() and gen.read_text(encoding="utf-8") != gen_text:             # Codex v1.8 P1-2: never replace a different existing file wholesale (it may hold ruled KEEP literals)
+        raise VerifierPinMissing(f"{gen} already exists and differs from the generated test; refusing to replace it (move it aside or review it); nothing written")
+    for p in sorted(q for q in (SIDECAR / "tests" / "l3").rglob("*.py") if q.is_file() and q != gen):    # a DIRECTORY named *.py is not a file to scan or rewrite; the generated test is written whole, never rewritten
         txt = p.read_text(encoding="utf-8")
         rel = str(p.relative_to(repo_root))
         lines = txt.splitlines(keepends=True)
@@ -1381,14 +1416,12 @@ def apply_repin(new_id: str, maps: list[dict], repo_root: Path, rulings: dict | 
         new_txt = rewrite_once(rewrite_wrapped_ids("".join(lines), ids), {**ids, old_id: new_id})          # a wrapped old id is rewritten character for character first
         if new_txt != txt:
             writes.append((p, new_txt)); changed.append(rel)
-    gen = SIDECAR / "tests" / "l3" / "gochara_rules" / f"test_am10_repin_{new_id[:8]}.py"
-    writes.append((gen, GENERATED_TEST.format(old=old_id, new=new_id)))
+    writes.append((gen, gen_text))
     changed.append(str(gen.relative_to(repo_root)))
     validate_write_plan(writes)                                                      # the COMPLETE plan — generated destinations and parent directories included — is validated first (Codex v1.7 P1-3)
     if check_only:                                                                   # every repository-state refusal AND every destination has been evaluated; nothing has been written
         return []
-    for p_, txt_ in writes:
-        write_atomic(p_, txt_)
+    write_all_or_restore(writes)
     return changed
 
 
@@ -1632,12 +1665,60 @@ def cli_string_problems(a) -> list[str]:
     return out
 
 
+def _same_file(p: str | Path, q: str | Path) -> bool:
+    """The same file by resolved path, or by identity when both exist (a symlink or a hard link to a source is the source)."""
+    try:
+        if os.path.realpath(p) == os.path.realpath(q):
+            return True
+        return os.path.exists(p) and os.path.exists(q) and os.path.samefile(p, q)
+    except OSError:
+        return False
+
+
+def io_collision_problems(a) -> list[str]:
+    """Codex v1.8 P1-1 (threat list T-OUT): no evidence/capture OUTPUT may be the same file as an INPUT, as another output, or as anything --apply rewrites — checked BEFORE any read or write. Without
+    this an `--apply --out permission.py` overwrote the pin with its own CLEAN report. Reserved: every input file, permission.py, the verifier, the generated test, every tests/l3 `*.py` (the files an
+    apply may rewrite) and this tool's own file."""
+    outputs = [(f, v) for f, v in (("--out", a.out), ("--capture-old", a.capture_old), ("--capture-new", a.capture_new), ("--w0-capture-out", a.w0_capture_out)) if v]
+    reserved: list[tuple[str, str | Path]] = [(f, v) for f, v in (("--forensic-report", a.forensic_report), ("--settled-notice", a.settled_notice), ("--old-rows", a.old_rows),
+                                                                    ("--rulings", a.rulings), ("--import-w0", a.import_w0)) if v]
+    reserved += [("permission.py", SIDECAR / "services" / "gochara_rules" / "permission.py"), ("inventory_verifier.py", SIDECAR / "services" / "gochara_kernel" / "inventory_verifier.py"),
+                 ("the re-pin tool", Path(__file__))]
+    if isinstance(a.new_build_id, str) and a.new_build_id:
+        reserved.append(("the generated test", SIDECAR / "tests" / "l3" / "gochara_rules" / f"test_am10_repin_{a.new_build_id[:8]}.py"))
+    tests = SIDECAR / "tests" / "l3"
+    if tests.is_dir():
+        reserved += [("a tests/l3 file", q) for q in tests.rglob("*.py") if q.is_file()]
+    out: list[str] = []
+    for i, (flag, path) in enumerate(outputs):
+        for what, other in reserved:
+            if _same_file(path, other):
+                out.append(f"{flag} {path} is the same file as {what}")
+        for flag2, path2 in outputs[i + 1:]:
+            if _same_file(path, path2):
+                out.append(f"{flag} and {flag2} name the same file ({path})")
+    return out
+
+
+def _write_failed_evidence(a, report: str, note: str) -> None:
+    """With --apply the evidence file is written after the apply; when the apply does NOT succeed the comparison verdict is still recorded, but under a prominent failure header — a CLEAN report never
+    stands alone beside a failed apply. Best effort (the failure itself is already reported on stderr)."""
+    if a.out:
+        try:
+            write_atomic(a.out, f"# !!! RE-PIN NOT APPLIED — {note}\n\n" + report)
+        except Exception:                                    # noqa: BLE001
+            pass
+
+
 def _output_problem(a) -> str | None:
     for flag, path in (("--out", a.out), ("--capture-old", a.capture_old), ("--capture-new", a.capture_new), ("--w0-capture-out", a.w0_capture_out)):
         if path:
             problem = output_path_problem(path)
             if problem:
                 return f"{flag}: {problem}"
+    collisions = io_collision_problems(a)
+    if collisions:
+        return "; ".join(collisions[:4])
     return None
 
 
@@ -1664,6 +1745,9 @@ def _main_impl(argv=None, *, conn=None) -> int:
     bad_cli = cli_string_problems(a)         # Codex v1.7 P1-4: every CLI string is validated BEFORE any read, connection or write (JSON inputs get the same discipline in their own loaders)
     if bad_cli:
         print("STOP — " + "; ".join(bad_cli) + "; nothing was read or written", file=sys.stderr); return 3
+    bad_chart = chart_id_problem(a.chart_id)                              # Codex v1.8 P1-4: BEFORE any dispatch, read or write
+    if bad_chart:
+        print(f"STOP — --chart-id: {bad_chart}; nothing was read or written", file=sys.stderr); return 3
     bad = _mode_error(a)                     # BEFORE any capture, connection or read (Codex R17-7)
     if bad:
         print(bad, file=sys.stderr); return 2
@@ -1748,8 +1832,8 @@ def _main_impl(argv=None, *, conn=None) -> int:
         evidence.append(f"forensic report sha256: {hashlib.sha256(Path(a.forensic_report).read_bytes()).hexdigest()} — this tool checks that the file EXISTS and is NON-EMPTY ONLY; CLEAN is NOT independent validation of the seven FORENSIC anchors (that evidence is the L1 owner's)")
     report = render(old_id=old_id, new_id=a.new_build_id, chart_id=a.chart_id, o_int=integrity(old_rows),
                     n_int=integrity(new_rows), m=m, stats=stats, flips=flips, sensitive=sensitive, maps=maps, stops=stops, evidence=evidence)
-    if a.out and not a.dry_run:
-        write_atomic(a.out, report)
+    if a.out and not a.dry_run and not (a.apply and not stops):
+        write_atomic(a.out, report)                                       # with --apply the evidence is written AFTER the apply (below): a CLEAN report must not outlive a failed apply
     print(report)
     if stops:
         print("STOP — not re-pinning.", file=sys.stderr); return 3
@@ -1773,11 +1857,16 @@ def _main_impl(argv=None, *, conn=None) -> int:
         except NeedsRuling as exc:
             for r in exc.unclassified:
                 print("NEEDS RULING (nothing written):", r, file=sys.stderr)
+            _write_failed_evidence(a, report, "NEEDS RULING — nothing written")
             print("STOP — test literals equal to an old boundary need the steward's ruling (--rulings).", file=sys.stderr); return 3
         except VerifierPinMissing as exc:
+            _write_failed_evidence(a, report, f"REFUSED — nothing written: {exc}")
             print(f"STOP (nothing written) — {exc}", file=sys.stderr); return 3
-        except Exception as exc:                               # last resort: never a traceback; the checks already passed, so inspect `git status` before retrying
-            print(f"STOP — the apply failed unexpectedly ({exc.__class__.__name__}: {exc}); inspect `git status` — files may be partly written", file=sys.stderr); return 3
+        except Exception as exc:                               # last resort: never a traceback; the apply restores what it had written (write_all_or_restore); inspect `git status` anyway
+            _write_failed_evidence(a, report, f"APPLY FAILED ({exc.__class__.__name__}) — the files written so far were restored; inspect `git status`")
+            print(f"STOP — the apply failed unexpectedly ({exc.__class__.__name__}: {exc}); written files were restored; inspect `git status`", file=sys.stderr); return 3
+        if a.out:
+            write_atomic(a.out, report)                       # the evidence of a SUCCESSFUL apply
         print(f"re-pin PREPARED locally on 'SETTLED-1 received' per {a.settled_received}. ST-SL1-HOLD REMAINS IN FORCE for production Gochara work until this re-pin is reviewed and merged and the steward announces the hold lifted.")
         print("BOTH pin constants were rewritten and verified equal to the SETTLED-1 build: services/gochara_rules/permission.py DASHA_READ_CONTRACT['build_id'] AND services/gochara_kernel/inventory_verifier.py _C_BUILD.")
         print("NEXT, in the SAME reviewed re-pin PR: regenerate the implementation lock — `python -m services.gochara_kernel.implementation_registry --write` (a changed governed module moves the implementation digest; the seal refuses an unregistered one) AND the golden brief fixtures that move with it — tests/l3/gochara/fixtures/golden_brief_stdout_1class.txt and golden_brief_log_entries_1class.json (regenerate them the way Stream A's tests document, then re-run the A5.3 suite).")
