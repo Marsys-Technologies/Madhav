@@ -496,58 +496,237 @@ def test_a_sliced_manifest_fails_by_name_when_the_ephemeris_is_wrong(db, tmp_pat
         assert InventoryStore(db).manifest_vector(CHART_ID, writer_mod.GENERATION) is None
 
 
-# ── R1b (Stream A's C46b re-review): the scope normalisation applies ONLY to a slice-stamped vector ───────────────
+# ── Codex P1-2 / R1b: the slice stamp is bound to the run's VALIDATED marker, never to the vector itself ───────────
 
-def test_a_default_vector_is_returned_unchanged_by_the_normalisation():
-    v = {"stored_scope": iv.STORED_SCOPE, "result_policy": "all_null_candidate/1", "schema": "x"}
-    assert writer_mod._scope_normalised(v) == v and writer_mod._scope_normalised(v) is not v
-
-
-def test_an_unknown_or_tampered_stored_scope_is_NOT_normalised_so_the_default_path_still_refuses_it():
-    v = {"stored_scope": "some_unknown_scope", "result_policy": "all_null_candidate/1"}
-    assert writer_mod._scope_normalised(v)["stored_scope"] == "some_unknown_scope"
+def _slice():
+    return writer_mod._validate_test_slice(_marker())
 
 
-def test_a_slice_stamped_vector_is_normalised_to_the_default_scope_without_the_slice_component():
-    v = {"stored_scope": writer_mod.TEST_SLICE_SCOPE, "test_slice": {"schema": writer_mod.TEST_SLICE_SCHEMA, "marker_digest": "ab"},
-         "ephemeris": {"files": {"a": "b"}}}
-    n = writer_mod._scope_normalised(v)
-    assert n["stored_scope"] == iv.STORED_SCOPE and "test_slice" not in n and n["ephemeris"] == v["ephemeris"]
-    assert v["stored_scope"] == writer_mod.TEST_SLICE_SCOPE and "test_slice" in v      # the stored vector is untouched
+def _stamped(**over):
+    v = {"stored_scope": writer_mod.TEST_SLICE_SCOPE, "test_slice": writer_mod._slice_component(_slice()),
+         "ephemeris": {"files": {"a": "b"}}, "registry": {"digest": "d"}}
+    v.update(over)
+    return v
 
 
-@pytest.mark.parametrize("half", [{"stored_scope": "test_slice"}, {"stored_scope": "stored_non_moon", "test_slice": {"x": 1}}])
-def test_a_half_stamped_vector_is_refused_by_name(half):
-    with pytest.raises(writer_mod.TestSliceRefusal, match="half-stamped"):
-        writer_mod._scope_normalised(half)
+def test_without_a_marker_the_vector_is_returned_unchanged_whatever_it_carries():
+    """A default context has nothing to normalise; a stamp on its vector is refused downstream by name."""
+    for v in ({"stored_scope": iv.STORED_SCOPE, "schema": "x"},
+              {"stored_scope": "some_unknown_scope"},
+              _stamped()):
+        out = writer_mod._scope_normalised(v, None)
+        assert out == v and out is not v
 
 
-def test_verify_live_inputs_still_hands_an_unknown_stored_scope_to_verify_inputs_unchanged(monkeypatch):
-    """The default path through the real seam: a stored vector with an unknown scope reaches verify_inputs AS IS."""
-    seen = {}
+def test_with_the_matching_marker_the_exact_pair_is_normalised_and_the_stored_vector_untouched():
+    v = _stamped()
+    n = writer_mod._scope_normalised(v, _slice())
+    assert n["stored_scope"] == iv.STORED_SCOPE and "test_slice" not in n
+    assert n["ephemeris"] == v["ephemeris"] and n["registry"] == v["registry"]
+    assert v["stored_scope"] == writer_mod.TEST_SLICE_SCOPE and "test_slice" in v
 
+
+@pytest.mark.parametrize("vector", [
+    {"stored_scope": iv.STORED_SCOPE, "ephemeris": {}},                                            # a default vector
+    {"stored_scope": writer_mod.TEST_SLICE_SCOPE, "test_slice": {}},                                # empty component
+    {"stored_scope": writer_mod.TEST_SLICE_SCOPE,
+     "test_slice": {"schema": writer_mod.TEST_SLICE_SCHEMA, "marker_digest": "00" * 32}},           # wrong digest
+    {"stored_scope": writer_mod.TEST_SLICE_SCOPE,
+     "test_slice": {"schema": "gochara_v5_test_slice/9", "marker_digest": "x"}},                    # wrong schema
+    {"stored_scope": writer_mod.TEST_SLICE_SCOPE},                                                  # half stamp: scope only
+    {"stored_scope": iv.STORED_SCOPE, "test_slice": {"x": 1}},                                      # half stamp: component only
+    {"stored_scope": "some_unknown_scope"},                                                         # tampered scope
+], ids=["default", "empty_component", "wrong_digest", "wrong_schema", "scope_only", "component_only", "unknown_scope"])
+def test_with_a_marker_anything_but_the_exact_pair_is_a_named_refusal(vector):
+    with pytest.raises(writer_mod.TestSliceRefusal, match="not the run's validated marker"):
+        writer_mod._scope_normalised(vector, _slice())
+
+
+def _drift_conn(monkeypatch, stored, marker_manifest):
+    """The PRODUCTION caller `_verify_live_inputs` on a fake context, with the REAL verify_live / diff_vectors:
+    only the live rebuild (build_input_vector) is replaced by one that honours the stamps it is GIVEN, so what is
+    compared is exactly what the caller passed in."""
     class _Store:
         def __init__(self, conn): pass
-        def manifest_vector(self, chart, gen): return {"stored_scope": "some_unknown_scope", "l0": {}}
+        def manifest_vector(self, chart, gen): return stored
 
     class _Sky:
         def __init__(self, conn): pass
         def register_convention(self): return "sky-1"
 
+    seen = {}
+
+    def live(conn, **kw):
+        v = {k: v for k, v in stored.items() if k not in ("stored_scope", "test_slice")}
+        v["stored_scope"] = kw["stored_scope"]
+        if kw.get("test_slice") is not None:
+            v["test_slice"] = kw["test_slice"]
+        return v
+
     monkeypatch.setattr(writer_mod, "InventoryStore", _Store)
     monkeypatch.setattr(writer_mod, "SkyEventStore", _Sky)
-    monkeypatch.setattr(writer_mod.gk_input_vector, "verify_live", lambda *a, **k: None)
+    monkeypatch.setattr(iv, "build_input_vector", live)
     monkeypatch.setattr(writer_mod.gk_input_vector_verifier, "verify_inputs",
                         lambda conn, vec, **k: seen.update(vec=vec))
-    writer_mod._verify_live_inputs(_ctx(), CHART_ID)
-    assert seen["vec"]["stored_scope"] == "some_unknown_scope"
+    return _ctx(marker_manifest), seen
 
 
-def test_mutation_without_the_stamp_condition_the_unknown_scope_would_be_masked(monkeypatch):
-    """Mutation proof: the pre-R1b helper (unconditional) would have rewritten the unknown scope — this test pins that the
-    current helper does not."""
-    def pre_r1b(vector):
-        v = dict(vector); v["stored_scope"] = iv.STORED_SCOPE; v.pop("test_slice", None); return v
-    unknown = {"stored_scope": "some_unknown_scope"}
-    assert pre_r1b(unknown)["stored_scope"] == iv.STORED_SCOPE                 # the defect
-    assert writer_mod._scope_normalised(unknown)["stored_scope"] == "some_unknown_scope"   # the fix
+def _base_vector(**over):
+    v = {"schema": iv.VECTOR_SCHEMA, "stored_scope": iv.STORED_SCOPE, "l0": {}, "result_policy": None,
+         "ephemeris": {"files": {}}, "registry": {"digest": "d"}}
+    v.update(over)
+    return v
+
+
+def test_production_caller_a_default_run_accepts_a_default_vector_and_a_sliced_run_a_sliced_one(monkeypatch):
+    ctx, seen = _drift_conn(monkeypatch, _base_vector(), None)
+    writer_mod._verify_live_inputs(ctx, CHART_ID)
+    assert seen["vec"]["stored_scope"] == iv.STORED_SCOPE
+    sliced = _base_vector(stored_scope=writer_mod.TEST_SLICE_SCOPE, test_slice=writer_mod._slice_component(_slice()))
+    ctx, seen = _drift_conn(monkeypatch, sliced, {writer_mod.TEST_SLICE_KEY: _marker()})
+    writer_mod._verify_live_inputs(ctx, CHART_ID)
+    assert seen["vec"]["stored_scope"] == iv.STORED_SCOPE and "test_slice" not in seen["vec"]   # normalised copy
+
+
+@pytest.mark.parametrize("stored, manifest, drifts", [
+    # a SLICED run meeting a DEFAULT vector (the vector lost its stamp)
+    (_base_vector(), {writer_mod.TEST_SLICE_KEY: _marker()}, ("stored_scope", "test_slice")),
+    # a DEFAULT run meeting a SLICED vector (the run lost its marker)
+    (_base_vector(stored_scope=writer_mod.TEST_SLICE_SCOPE, test_slice={"schema": "gochara_v5_test_slice/1",
+                                                                      "marker_digest": "x"}), None,
+     ("stored_scope", "test_slice")),
+    # forged: the scope says slice, the component is empty
+    (_base_vector(stored_scope=writer_mod.TEST_SLICE_SCOPE, test_slice={}), {writer_mod.TEST_SLICE_KEY: _marker()},
+     ("test_slice",)),
+    # changed: right schema, wrong digest
+    (_base_vector(stored_scope=writer_mod.TEST_SLICE_SCOPE,
+                  test_slice={"schema": writer_mod.TEST_SLICE_SCHEMA, "marker_digest": "00" * 32}),
+     {writer_mod.TEST_SLICE_KEY: _marker()}, ("test_slice",)),
+    # a DEFAULT run meeting a tampered unknown scope
+    (_base_vector(stored_scope="some_unknown_scope"), None, ("stored_scope",)),
+], ids=["sliced_run_default_vector", "default_run_sliced_vector", "forged_empty", "wrong_digest", "default_run_unknown_scope"])
+def test_production_caller_refuses_a_missing_changed_or_forged_stamp_by_name(monkeypatch, stored, manifest, drifts):
+    ctx, seen = _drift_conn(monkeypatch, stored, manifest)
+    with pytest.raises(iv.InputDrift) as exc:
+        writer_mod._verify_live_inputs(ctx, CHART_ID)
+    for name in drifts:
+        assert name in str(exc.value)
+    assert "vec" not in seen                  # refused BEFORE the in-build independent check ran
+
+
+def test_mutation_the_old_caller_copied_the_expectation_from_the_vector_it_was_checking(monkeypatch):
+    """The defect, restated as a test: calling verify_live WITHOUT explicit stamps (the pre-fix caller) accepts a
+    forged slice stamp, because it compares the vector with a rebuild that copied the vector's own stamp."""
+    forged = _base_vector(stored_scope=writer_mod.TEST_SLICE_SCOPE, test_slice={})
+    monkeypatch.setattr(iv, "build_input_vector",
+                        lambda conn, **kw: {**{k: v for k, v in forged.items() if k not in ("stored_scope", "test_slice")},
+                                            "stored_scope": kw["stored_scope"],
+                                            **({"test_slice": kw["test_slice"]} if kw.get("test_slice") is not None else {})})
+    iv.verify_live(None, forged)                    # no explicit stamps: passes — the hole
+    with pytest.raises(iv.InputDrift):              # explicit expectation from the validated marker: refused
+        iv.verify_live(None, forged, stored_scope=writer_mod.TEST_SLICE_SCOPE,
+                       test_slice=writer_mod._slice_component(_slice()))
+
+
+# ── Codex P2-3: malformed containers and timestamps are named refusals ────────────────────────────────────────────
+
+class _RowConn:
+    """A conn whose build_runs read returns exactly the given row (None = no row)."""
+
+    def __init__(self, row):
+        self.row = row
+
+    def execute(self, sql, params=()):
+        row = self.row
+
+        class _R:
+            def fetchone(self):
+                return row
+        return _R()
+
+
+def _ctx_row(row):
+    return ContextSpec(asset_id=writer_mod.ASSET_ID, build_id="b", db_conn=_RowConn(row),
+                       config={"chart_id": CHART_ID}, dry_run=False)
+
+
+@pytest.mark.parametrize("manifest", [[{writer_mod.TEST_SLICE_KEY: {}}], [], "a-bare-string", 7, True,
+                                      json.dumps([{writer_mod.TEST_SLICE_KEY: {}}]), json.dumps(7), "{not json"],
+                         ids=["array_with_marker", "empty_array", "string", "number", "bool", "json_array_text",
+                              "json_number_text", "invalid_json_text"])
+def test_a_present_but_malformed_plan_manifest_is_refused_not_read_as_no_marker(manifest):
+    with pytest.raises(writer_mod.TestSliceRefusal, match="plan_manifest"):
+        writer_mod.GocharaV5Writer().plan_substeps(_ctx_row((manifest,)))
+
+
+@pytest.mark.parametrize("row", [None, (None,), ("null",), ({},), (json.dumps({}),)],
+                         ids=["no_row", "null_manifest", "json_null_text", "empty_object", "empty_object_text"])
+def test_no_row_or_no_manifest_or_an_empty_object_still_means_the_default_plan(row):
+    steps = writer_mod.GocharaV5Writer().plan_substeps(_ctx_row(row))
+    assert len(steps) == GOLDEN_PLAN_STEPS
+
+
+@pytest.mark.parametrize("pair", [["0001-01-01T00:00:00+01:00", "2000-01-01T00:00:00+00:00"],
+                                  ["2000-01-01T00:00:00+00:00", "9999-12-31T23:59:59-05:00"],
+                                  ["2000-01-01T00:00:00+00:00", "2000-01-01T00:00:00+00:00"]],
+                         ids=["underflow_on_utc", "overflow_on_utc", "equal_endpoints"])
+def test_timestamp_overflow_and_empty_horizons_are_named_refusals(pair):
+    with pytest.raises(writer_mod.TestSliceRefusal):
+        writer_mod._parse_slice_horizon(pair)
+
+
+def test_non_string_class_members_are_a_named_refusal():
+    for classes in (["marriage", 5], [None], [["marriage"]], "marriage"):
+        with pytest.raises(writer_mod.TestSliceRefusal):
+            writer_mod._validate_test_slice(_marker(run="all_classes_1y", classes=classes,
+                                                    horizon=["2025-01-01T00:00:00+00:00", "2025-12-31T00:00:00+00:00"]))
+
+
+class _Boom:
+    def __init__(self, exc):
+        self.exc = exc
+
+    def execute(self, sql, params=()):
+        raise self.exc
+
+
+def test_a_permission_error_on_the_marker_read_propagates_but_an_absent_table_reads_as_no_marker():
+    class InsufficientPrivilege(Exception):
+        pass
+
+    class UndefinedTable(Exception):
+        pass
+    ctx = ContextSpec(asset_id=writer_mod.ASSET_ID, build_id="b", db_conn=_Boom(InsufficientPrivilege("denied")),
+                      config={"chart_id": CHART_ID}, dry_run=False)
+    with pytest.raises(InsufficientPrivilege):
+        writer_mod._plan_manifest(ctx)
+    ctx = ContextSpec(asset_id=writer_mod.ASSET_ID, build_id="b", db_conn=_Boom(UndefinedTable("no table")),
+                      config={"chart_id": CHART_ID}, dry_run=False)
+    assert writer_mod._plan_manifest(ctx) is None
+
+
+# ── Codex P2-4: an explicit null horizon keeps main's behaviour without a marker ────────────────────────────────────
+
+def test_without_a_marker_absent_and_explicit_null_horizons_behave_as_on_main():
+    absent = ContextSpec(asset_id=writer_mod.ASSET_ID, build_id="b", db_conn=None, config={"chart_id": CHART_ID},
+                         dry_run=False)
+    null = ContextSpec(asset_id=writer_mod.ASSET_ID, build_id="b", db_conn=None,
+                       config={"chart_id": CHART_ID, "horizon": None}, dry_run=False)
+    listed = ["a", "b"]
+    given = ContextSpec(asset_id=writer_mod.ASSET_ID, build_id="b", db_conn=None,
+                        config={"chart_id": CHART_ID, "horizon": listed}, dry_run=False)
+    assert writer_mod._effective_horizon(absent, None) == writer_mod.DEFAULT_HORIZON
+    assert writer_mod._effective_horizon(null, None) is None            # main passed the null through (and failed later)
+    assert writer_mod._effective_horizon(given, None) is listed         # exactly what main returned, not a copy
+
+
+def test_under_a_marker_a_null_or_contradicting_config_horizon_is_refused_and_an_equal_one_accepted():
+    sl = _slice()
+    mk = lambda **cfg: ContextSpec(asset_id=writer_mod.ASSET_ID, build_id="b", db_conn=None,   # noqa: E731
+                                   config={"chart_id": CHART_ID, **cfg}, dry_run=False)
+    assert writer_mod._effective_horizon(mk(), sl) == sl.horizon
+    assert writer_mod._effective_horizon(mk(horizon=sl.horizon), sl) == sl.horizon
+    with pytest.raises(writer_mod.TestSliceRefusal):
+        writer_mod._effective_horizon(mk(horizon=None), sl)
+    with pytest.raises(writer_mod.TestSliceRefusal):
+        writer_mod._effective_horizon(mk(horizon=(sl.horizon[0], sl.horizon[0])), sl)

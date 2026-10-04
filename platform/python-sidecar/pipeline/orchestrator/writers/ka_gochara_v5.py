@@ -212,9 +212,24 @@ def _plan_manifest(ctx: ContextSpec) -> dict | None:
     if row is None:
         return None
     manifest = row[0] if not isinstance(row, dict) else row.get("plan_manifest")
+    if manifest is None:
+        return None                      # a row with no manifest: the default path, as before
     if isinstance(manifest, str):
-        manifest = json.loads(manifest)
-    return manifest if isinstance(manifest, dict) else None
+        try:
+            manifest = json.loads(manifest)
+        except ValueError as exc:
+            raise TestSliceRefusal(
+                f"{ASSET_ID}: {TEST_SLICE_KEY}: build_runs.plan_manifest is not valid JSON ({exc}) — refused, "
+                "never read as 'no marker'") from exc
+        if manifest is None:
+            return None
+    if not isinstance(manifest, dict):
+        # P2-3 (Codex): an array that CONTAINS the marker used to read as 'no marker' and yield the full plan —
+        # a writer that fails open. A manifest that is present must be an object.
+        raise TestSliceRefusal(
+            f"{ASSET_ID}: {TEST_SLICE_KEY}: build_runs.plan_manifest is {type(manifest).__name__}, not an object — "
+            "refused, never read as 'no marker'")
+    return manifest
 
 
 def _in_savepoint(tx, read):
@@ -230,11 +245,14 @@ def _parse_slice_horizon(raw) -> tuple:
         refuse(f"horizon {raw!r} is not a pair of ISO timestamps — refused, never guessed")
     try:
         pts = tuple(datetime.fromisoformat(x) for x in raw)
-    except ValueError as exc:
+    except (ValueError, OverflowError) as exc:
         refuse(f"horizon {raw!r} is not parseable ISO 8601 ({exc})")
     if any(p.tzinfo is None for p in pts):
         refuse(f"horizon {raw!r} carries a naive timestamp — an unstated zone is never guessed")
-    start, end = (p.astimezone(timezone.utc) for p in pts)
+    try:
+        start, end = (p.astimezone(timezone.utc) for p in pts)
+    except (ValueError, OverflowError) as exc:      # e.g. 0001-01-01T00:00:00+01:00 overflows the UTC conversion
+        refuse(f"horizon {raw!r} cannot be converted to UTC ({type(exc).__name__}: {exc})")
     if not start < end:
         refuse(f"horizon {raw!r} is empty or inverted")
     if start < DEFAULT_HORIZON[0] or end > DEFAULT_HORIZON[1]:
@@ -304,44 +322,48 @@ def _slice_component(slice_: TestSlice) -> dict:
     return {"schema": TEST_SLICE_SCHEMA, "marker_digest": slice_.digest}
 
 
-def _scope_normalised(vector: dict) -> dict:
-    """The vector the in-build independent derivation check sees (Stream A C46 review R1/R1b):
-    identical in EVERY component, with only the slice's identity removed — stored_scope back
-    to the default and the test_slice key dropped. The STORED manifest vector keeps both, so
-    the verification JOB still refuses a sliced manifest by name, while the BUILD still proves
-    the ephemeris files, the library, the probe, L0, the registry and the implementation
-    against the real image.
+def _scope_normalised(vector: dict, slice_: TestSlice | None) -> dict:
+    """The vector the in-build independent derivation check sees (Stream A C46 review R1/R1b, Codex P1-2):
+    identical in EVERY component, with only the slice's identity removed — stored_scope back to the default and the
+    test_slice key dropped. The STORED manifest vector keeps both, so the verification JOB still refuses a sliced
+    manifest by name, while the BUILD still proves the ephemeris files, the library, the probe, L0, the registry and
+    the implementation against the real image.
 
-    R1b: ONLY a vector that really carries the slice stamp (stored_scope == the slice scope AND a
-    test_slice component) is normalised. A default vector — including one whose stored_scope is
-    unknown or tampered — is returned UNCHANGED, so verify_inputs still refuses it by name as before
-    (the default path must not get weaker). A half-stamped vector (one stamp without the other) is a
-    named refusal, never normalised."""
-    scope_stamp = vector.get("stored_scope") == TEST_SLICE_SCOPE
-    key_stamp = "test_slice" in vector
-    if not scope_stamp and not key_stamp:
+    The normalisation is bound to the run's VALIDATED marker (`_test_slice(ctx)`), never to what the vector says about
+    itself: with no marker the vector is returned UNCHANGED (a default context has nothing to normalise; a stamp on its
+    vector is refused by `verify_live` and by `verify_inputs` as before); with a marker ONLY a vector carrying exactly
+    the scope `test_slice` AND exactly this marker's {schema, marker_digest} component is normalised — an empty
+    component, a wrong digest, a missing or half stamp is a named refusal."""
+    if slice_ is None:
         return dict(vector)
-    if scope_stamp != key_stamp:
+    expected = _slice_component(slice_)
+    if vector.get("stored_scope") != TEST_SLICE_SCOPE or vector.get("test_slice") != expected:
         raise TestSliceRefusal(
-            f"{ASSET_ID}: {TEST_SLICE_KEY}: half-stamped input vector (stored_scope={vector.get('stored_scope')!r}, "
-            f"test_slice component {'present' if key_stamp else 'absent'}) — refused, never normalised")
+            f"{ASSET_ID}: {TEST_SLICE_KEY}: the input vector's slice stamp (stored_scope={vector.get('stored_scope')!r}, "
+            f"test_slice={vector.get('test_slice')!r}) is not the run's validated marker ({TEST_SLICE_SCOPE!r}, "
+            f"{expected!r}) — refused, never normalised")
     v = dict(vector)
     v["stored_scope"] = gk_input_vector.STORED_SCOPE
     v.pop("test_slice", None)
     return v
 
 
-def _effective_horizon(ctx: ContextSpec, slice_: TestSlice | None) -> tuple:
-    """The marker's horizon under a slice; else ctx.config's override or DEFAULT_HORIZON.
-    A config horizon that CONTRADICTS a marker is ambiguous — refused, never guessed."""
-    cfg = ctx.config.get("horizon")
+def _effective_horizon(ctx: ContextSpec, slice_: TestSlice | None):
+    """The marker's horizon under a slice; else EXACTLY what main used: `ctx.config.get("horizon", DEFAULT_HORIZON)` —
+    an absent key is DEFAULT_HORIZON, an explicit null stays None (and fails downstream as it always did; Codex P2-4: it
+    must not be quietly turned into the default). Under a marker a config horizon that is present and null, or that
+    CONTRADICTS the marker, is ambiguous — refused, never guessed."""
     if slice_ is None:
-        return tuple(cfg) if cfg is not None else DEFAULT_HORIZON
-    if cfg is not None and tuple(cfg) != tuple(slice_.horizon):
-        raise TestSliceRefusal(
-            f"{ASSET_ID}: {TEST_SLICE_KEY}: ctx.config['horizon'] {cfg!r} contradicts the "
-            f"marker horizon {slice_.horizon!r} — refused, never guessed")
+        return ctx.config.get("horizon", DEFAULT_HORIZON)
+    if "horizon" in ctx.config:
+        cfg = ctx.config["horizon"]
+        if cfg is None or tuple(cfg) != tuple(slice_.horizon):
+            raise TestSliceRefusal(
+                f"{ASSET_ID}: {TEST_SLICE_KEY}: ctx.config['horizon'] {cfg!r} contradicts the "
+                f"marker horizon {slice_.horizon!r} — refused, never guessed")
     return slice_.horizon
+
+
 _SIGNS = ("aries", "taurus", "gemini", "cancer", "leo", "virgo", "libra",
           "scorpio", "sagittarius", "capricorn", "aquarius", "pisces")
 _JD_UNIX_EPOCH = 2440587.5
@@ -377,17 +399,23 @@ def _verify_live_inputs(ctx: ContextSpec, chart_id: str) -> None:
     if stored is None:
         raise RuntimeError(f"{ASSET_ID}: no candidate manifest vector for generation {GENERATION} — "
                            "the manifest substep runs first")
+    # Codex P1-2: the expected scope and slice component come from the run's VALIDATED marker, never from the stored
+    # vector being checked (verify_live used to copy them from it, so a sliced run accepted a default vector and a
+    # default run a sliced one). Passed explicitly, a missing, changed or forged stamp is a named drift.
+    slice_ = _test_slice(ctx)
     gk_input_vector.verify_live(
         ctx.db_conn, stored,
         sky_convention_id=SkyEventStore(ctx.db_conn).register_convention(),
         ephe_path=ctx.config.get("ephe_path"), path_refs=gk_rule_registry.bound_path_refs(),
-        rulings=_applicable_rulings())
+        rulings=_applicable_rulings(),
+        stored_scope=TEST_SLICE_SCOPE if slice_ is not None else gk_input_vector.STORED_SCOPE,
+        test_slice=_slice_component(slice_) if slice_ is not None else None)
     # ... and every component that can be derived WITHOUT the builder's code is (registry + L0 + sky in
     # Postgres, ephemeris files + runtime library + implementation by direct hashing). Under a slice the
     # check runs on the SCOPE-NORMALISED copy: the stored vector's unknown scope is the unsealability
     # proof and belongs to the verification job — the build still proves the real image (R1).
     gk_input_vector_verifier.verify_inputs(
-        ctx.db_conn, _scope_normalised(stored), ephe_path=ctx.config.get("ephe_path"),
+        ctx.db_conn, _scope_normalised(stored, slice_), ephe_path=ctx.config.get("ephe_path"),
         modules=gk_input_vector.IMPLEMENTATION_MODULES, path_refs=gk_rule_registry.bound_path_refs())
 
 
@@ -670,7 +698,7 @@ class GocharaV5Writer(WriterBase):
             # copy (Stream A C46 review R1): the stored vector's scope is REFUSED BY NAME only at the verification
             # job (the unsealability proof); the build still proves the ephemeris/registry/implementation.
             gk_input_vector_verifier.verify_inputs(
-                ctx.db_conn, _scope_normalised(vector), ephe_path=ephe_path, modules=gk_input_vector.IMPLEMENTATION_MODULES,
+                ctx.db_conn, _scope_normalised(vector, slice_), ephe_path=ephe_path, modules=gk_input_vector.IMPLEMENTATION_MODULES,
                 path_refs=gk_rule_registry.bound_path_refs(),
                 jd_range=gk_input_vector.consumed_jd_range(horizon))
             jd = horizon[0].timestamp() / 86400.0 + _JD_UNIX_EPOCH
