@@ -30,6 +30,7 @@ What this file proves:
 """
 from __future__ import annotations
 
+import dataclasses
 import hashlib
 import json
 import sys
@@ -542,7 +543,25 @@ def test_with_a_marker_anything_but_the_exact_pair_is_a_named_refusal(vector):
         writer_mod._scope_normalised(vector, _slice())
 
 
-def _drift_conn(monkeypatch, stored, marker_manifest):
+class _HorizonConn(_ManifestConn):
+    """A fake that also answers the horizon guard's read of the candidate manifest's published horizon."""
+
+    def __init__(self, manifest, horizon):
+        super().__init__(manifest)
+        self.horizon = horizon
+
+    def execute(self, sql, params=()):
+        if "FROM public.kala_gochara_publication" in sql:
+            horizon = self.horizon
+
+            class _R:
+                def fetchone(self):
+                    return (horizon[0], horizon[1])
+            return _R()
+        return super().execute(sql, params)
+
+
+def _drift_conn(monkeypatch, stored, marker_manifest, manifest_horizon_override=None):
     """The PRODUCTION caller `_verify_live_inputs` on a fake context, with the REAL verify_live / diff_vectors:
     only the live rebuild (build_input_vector) is replaced by one that honours the stamps it is GIVEN, so what is
     compared is exactly what the caller passed in."""
@@ -568,7 +587,13 @@ def _drift_conn(monkeypatch, stored, marker_manifest):
     monkeypatch.setattr(iv, "build_input_vector", live)
     monkeypatch.setattr(writer_mod.gk_input_vector_verifier, "verify_inputs",
                         lambda conn, vec, **k: seen.update(vec=vec))
-    return _ctx(marker_manifest), seen
+    ctx = _ctx(marker_manifest)
+    # the manifest's published horizon: the marker's under a slice, the default otherwise (the horizon guard reads it)
+    manifest_horizon = _slice().horizon if marker_manifest is not None else writer_mod.DEFAULT_HORIZON
+    if manifest_horizon_override is not None:
+        manifest_horizon = manifest_horizon_override
+    ctx = dataclasses.replace(ctx, db_conn=_HorizonConn(marker_manifest, manifest_horizon))
+    return ctx, seen
 
 
 def _base_vector(**over):
@@ -760,3 +785,21 @@ def test_no_slice_plan_drops_reorders_or_conditions_the_snapshot_substep(shape):
     assert head(sliced) == head(default)
     writers = [i for i, k in enumerate(sliced) if k.startswith(("inventory:", "coverage:", "record:", "window:", "verify:"))]
     assert writers and min(writers) > sliced.index(snap)
+
+
+@pytest.mark.parametrize("manifest, stored_kw, other", [
+    (None, {}, (writer_mod.DEFAULT_HORIZON[0], writer_mod.DEFAULT_HORIZON[1] - __import__("datetime").timedelta(days=1))),
+    ({writer_mod.TEST_SLICE_KEY: _marker()},
+     {"stored_scope": writer_mod.TEST_SLICE_SCOPE, "test_slice": {"schema": writer_mod.TEST_SLICE_SCHEMA,
+                                                                "marker_digest": "placeholder"}},
+     (writer_mod.DEFAULT_HORIZON[0], writer_mod.DEFAULT_HORIZON[1] - __import__("datetime").timedelta(days=1))),
+], ids=["default_run", "sliced_run"])
+def test_production_caller_refuses_a_horizon_that_is_not_the_manifests_for_a_default_and_a_sliced_run(monkeypatch,
+                                                                                                      manifest, stored_kw, other):
+    stored = _base_vector(**stored_kw)
+    if manifest is not None:
+        stored["test_slice"] = writer_mod._slice_component(_slice())
+    ctx, seen = _drift_conn(monkeypatch, stored, manifest, manifest_horizon_override=other)
+    with pytest.raises(writer_mod.HorizonMismatch, match="horizon guard"):
+        writer_mod._verify_live_inputs(ctx, CHART_ID)
+    assert "vec" not in seen
