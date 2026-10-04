@@ -64,9 +64,9 @@ def test_the_am5_chain_runs_with_a_uuid_chart_and_a_dict_row_connection(native):
     assert "obligations" in inv.notes
     assert step("coverage:marriage").rows_inserted == 1
     # R8-4: P2 is now derivable, so the independent inventory + ledger derivations run on the dict-row connection and
-    # the NEXT independent check (aspect-to-span occurrences by sampling) refuses a class whose contacts were never
-    # materialised — the verify kind reached its last row-shape seam and failed honestly
-    with pytest.raises(RuntimeError, match="the two readings DISAGREE"):
+    # the NEXT independent check refuses a class whose contacts were never materialised — since 776c554f0 the refusal
+    # is the contact-geometry certification naming every expected contact that is not in the ledger
+    with pytest.raises(RuntimeError, match="contact geometry certification failed marriage"):
         step("verify:marriage")
     n = conn.execute(
         "SELECT count(*) AS n FROM public.ka_gochara_search_inventory WHERE generation = %s",
