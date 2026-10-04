@@ -142,6 +142,21 @@ _INTENTIONAL_EXCLUSIONS: frozenset[tuple[str, str]] = frozenset({
     # above too — listed here for documentation, not because the scanner
     # would otherwise catch it).
     ("date_resolver.py", "_GRAHA_ALIASES"),
+    # Pravāha A5.3 gochara kernel (steward ruling M20261003T121341-faa6 / Suvarna M20261003T121400-1b17, PR #2999 CI). Five CLOSED 9-key
+    # CASE/SUBJECT-CODE adapters between the persisted forms of the SAME nine grahas (subject code <-> Title case <-> lowercase DB domain
+    # value): exact-key lookups over a closed domain, not fuzzy/alias normalisers.
+    #
+    # PERMANENT — the two VERIFIER maps. The gochara verifier imports nothing from the builder or the SSoT: independence from them is the
+    # purpose of a separate verifier (ND-ROLES). They are checked only against FIXED LITERAL expectations (tests/l3/gochara/
+    # test_a53_r18_graha_map_parity.py), never tied to the SSoT.
+    ("window_verifier.py", "_TITLE"),
+    ("inventory_verifier.py", "_FACT_SUBJECT"),
+    # TEMPORARY — the three BUILDER maps. Each is to migrate onto the graha_vocabulary helpers AFTER the protected window (a governed-code
+    # change: implementation lock, goldens and digests move, so it is deliberately not made inside the train). Until then each is pinned
+    # equal to the map derived from the SSoT by a parity test in the same file as above, so it cannot drift.
+    ("chart_context.py", "_SUBJECT_TITLE"),
+    ("substrate.py", "DB_BODY"),
+    ("window_sweep.py", "GRAHA_TITLE"),
 })
 
 
