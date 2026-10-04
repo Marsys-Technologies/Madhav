@@ -150,6 +150,27 @@ def _role_exists(conn, name: str) -> bool:
 
 # ── preconditions ────────────────────────────────────────────────────────────────────────────────────
 
+def _enforce_class_census(conn, *, chart_id, generation, vector, found) -> None:
+    # G8 (steward GAPS-G8-G9): the CLASS CENSUS. The generation as a whole — not only the classes this run was asked to verify — must
+    # claim EXACTLY the scored classes its manifest pins, and the pinned list must be this verifier's own universe (the vector component
+    # check in verify_inputs below re-derives that). A claimed class is an event_class coverage partition OR a search inventory; a
+    # candidate left with 16 of 26 classes after a failed dispatch, or carrying an unscored one, is refused BY NAME here, before any row
+    # is written, and again by the seal-time completeness function (migration 1306).
+    _vec0 = vector if isinstance(vector, dict) else __import__("json").loads(vector)
+    pinned = _vec0.get("scored_classes")
+    if not isinstance(pinned, list) or not pinned:
+        raise VerificationRefused("class_census_unpinned", f"the manifest vector of generation {generation} pins no expected class census "
+                                  "(scored_classes) — a candidate must say which classes it is built for")
+    claimed = sorted(set(found) | {_one(r) if not isinstance(r, tuple) else r[0] for r in conn.execute(
+        "SELECT partition_key FROM public.kala_gochara_coverage WHERE chart_id = %s AND generation = %s AND partition_kind = 'event_class'",
+        (chart_id, generation)).fetchall()})
+    missing, extra = sorted(set(pinned) - set(claimed)), sorted(set(claimed) - set(pinned))
+    if missing or extra:
+        raise VerificationRefused(
+            "class_census_mismatch", f"generation {generation} claims {len(claimed)} class(es) but its manifest pins {len(pinned)}: "
+            f"missing {missing or 'none'}; not in the pinned list {extra or 'none'} — a full candidate must claim exactly the scored classes")
+
+
 def check_preconditions(conn, *, chart_id: str, generation: str, classes=None, ephe_path: str | None = None,
                         modules: dict | None = None, path_refs=None, horizon=None) -> dict:
     """REFUSE BY NAME (nothing written) unless the generation can honestly be verified."""
@@ -177,6 +198,7 @@ def check_preconditions(conn, *, chart_id: str, generation: str, classes=None, e
         (chart_id, generation)).fetchall()]
     if not found:
         raise VerificationRefused("incomplete_build", "the generation has no search inventory at all")
+    _enforce_class_census(conn, chart_id=chart_id, generation=generation, vector=vector, found=found)
     wanted = list(classes) if classes else found
     gaps = []
     for cls in wanted:
@@ -202,7 +224,8 @@ def check_preconditions(conn, *, chart_id: str, generation: str, classes=None, e
     vec = vector if isinstance(vector, dict) else __import__("json").loads(vector)
     try:
         ivv.verify_inputs(conn, vec, ephe_path=ephe_path, modules=modules, path_refs=path_refs,
-                          jd_range=iv.consumed_jd_range((manifest_horizon.lower, manifest_horizon.upper)))
+                          jd_range=iv.consumed_jd_range((manifest_horizon.lower, manifest_horizon.upper)),
+                          require_scored_classes=True)
     except RuntimeError as exc:
         raise VerificationRefused("stale_inputs", str(exc)) from exc
     out["inputs"] = "independently re-derived"

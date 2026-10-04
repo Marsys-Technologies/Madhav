@@ -67,7 +67,7 @@ on:
         required: false
         default: false
       gochara_contracts_schema_migration:
-        description: 'Explicitly authorize the temporary protected schema window for exact Gochara contract migrations 1153-1157, 1204, 1206, 1232, 1233, 1240 (Pravāha A5.1 + B6.0 v1.5 amendment AM-7 + AM-5 search-completeness storage)'
+        description: 'Explicitly authorize the temporary protected schema window for exact Gochara contract migrations 1153-1157, 1204, 1206, 1232, 1233, 1240, 1306 (Pravāha A5.1 + B6.0 v1.5 amendment AM-7 + AM-5 search-completeness storage)'
         type: boolean
         required: false
         default: false
@@ -1107,6 +1107,12 @@ jobs:
             # migration numbered below 1240 (1234 builder grants, and any of 1235/1236 that exist) must ALREADY be applied by an
             # ordinary deploy BEFORE this window is dispatched.
             migrations+=(1240_gochara_window_verification_gate.sql)
+            # Pravāha G8 expected-class census at seal (steward GAPS-G8-G9) — 1306, after 1240, SECOND protected window. REPLACES one function
+            # (the 1232 completeness function) with the 1232 body plus one appended block; no new object, no grant. PRECONDITION: the
+            # routine migrations numbered below 1306 that are pending at that time (1241 v7 if not yet applied, 1303, 1304) are applied by an
+            # ordinary deploy BEFORE the window, or are deliberately left out of the selection — --only refuses an unselected unapplied file
+            # numbered <= the highest selected.
+            migrations+=(1306_gochara_expected_class_census.sql)
           fi
           if [ "$APPLY_AI_METERING_SCHEMA_MIGRATION" = "true" ]; then
             migrations+=(1202_ai_metering_ledger.sql)

@@ -196,6 +196,18 @@ def _require_policy(policy):
     return policy
 
 
+def _scored_classes_component(classes) -> list:
+    """G8 (steward GAPS-G8-G9): the EXPECTED class census the generation is built for — the scored event classes, sorted, pinned in the
+    manifest vector so the verification job and the seal-time completeness function (migration 1306) can refuse a candidate that
+    claims more or fewer classes. ADDITIVE and optional at the serializer (the frozen test vectors, which never carried it, keep their
+    literal preimages and digests); REQUIRED at verify and at seal. A non-list, an empty list, a non-string, a blank, an untrimmed or a
+    duplicated name is refused here, never normalised."""
+    if (not isinstance(classes, (list, tuple)) or not classes or any(not isinstance(c, str) or not c.strip() or c != c.strip() for c in classes)
+            or len(set(classes)) != len(classes)):
+        raise InputDrift(f"scored_classes {classes!r} is not a non-empty list of distinct, trimmed class names")
+    return sorted(classes)
+
+
 def assemble_vector(inp: dict) -> dict:
     """The vector from already-obtained inputs, PURE — the single serializer `build_input_vector` and the
     frozen test vectors (`am16_vectors_frozen_v1.json`, literal preimages + expected sha256) both use."""
@@ -220,7 +232,7 @@ def assemble_vector(inp: dict) -> dict:
                        "activity": inp["activity_orb"]},
         "rulings_digest": _sha(canonical_json(sorted(inp["rulings"], key=canonical_json))),
         "implementation": {st: _sha(canonical_json(m)) for st, m in sorted(inp["impl_modules"].items())},
-    }
+    } | ({"scored_classes": _scored_classes_component(inp["scored_classes"])} if inp.get("scored_classes") is not None else {})
 
 
 # ── node series / ephemeris ──────────────────────────────────────────────────
@@ -447,7 +459,8 @@ def build_input_vector(conn, *, sky_convention_id: str, ephe_path: str | None,
                        horizon: tuple | None = None, bodies: Iterable[str] | None = None,
                        files_probe=None, series_probe=None, modules: dict | None = None,
                        l0_consumed: Iterable[str] = (), census_override=None,
-                       result_policy: str = DEFAULT_RESULT_POLICY) -> dict:
+                       result_policy: str = DEFAULT_RESULT_POLICY,
+                       scored_classes: Iterable[str] | None = None) -> dict:
     """The vector of what this build CONSUMES. `l0_consumed` names the L0 authorities actually read (none ⇒
     none is a dependency); `census_override` (historical replay) restates the ORIGINAL sealed-version census."""
     from .substrate import SUBSTRATE_BODIES, SUBSTRATE_DOMAIN_END, SUBSTRATE_DOMAIN_START
@@ -472,6 +485,7 @@ def build_input_vector(conn, *, sky_convention_id: str, ephe_path: str | None,
         "activity_orb": activity_orb_states(conn, refs, census_override=census_override),
         "rulings": list(rulings),
         "impl_modules": _implementation_modules(modules),
+        "scored_classes": None if scored_classes is None else list(scored_classes),
     })
 
 
@@ -507,6 +521,7 @@ def verify_replay(conn, stored: dict, path_refs: Iterable[tuple[str, str]], **kw
         raise InputDrift(f"manifest vector schema {stored.get('schema')!r} != {VECTOR_SCHEMA!r}")
     kw.setdefault("l0_consumed", tuple(stored.get("l0", {})))
     kw.setdefault("result_policy", stored.get("result_policy"))
+    kw.setdefault("scored_classes", stored.get("scored_classes"))
     replayed = build_input_vector(conn, path_refs=path_refs, census_override=stored["registry"]["census"], **kw)
     diff = diff_vectors(stored, replayed)
     if diff:
@@ -523,6 +538,7 @@ def verify_live(conn, stored: dict, **kw) -> None:
         raise InputDrift(f"manifest vector schema {stored.get('schema')!r} != {VECTOR_SCHEMA!r}")
     kw.setdefault("l0_consumed", tuple(stored.get("l0", {})))
     kw.setdefault("result_policy", stored.get("result_policy"))
+    kw.setdefault("scored_classes", stored.get("scored_classes"))
     live = build_input_vector(conn, **kw)
     diff = diff_vectors(stored, live)
     if diff:

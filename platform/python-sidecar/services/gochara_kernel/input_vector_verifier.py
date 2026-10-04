@@ -162,6 +162,17 @@ _CENSUS_STEP_DAYS = 120.0                                  # finer than a file b
 _KNOWN_SCHEMA = "ka_gochara_input_vector/3"
 _KNOWN_SCOPES = ("stored_non_moon",)
 _KNOWN_POLICIES = ("all_null_candidate/1", "window_qualification/1")
+#: G8: the verifier's OWN scored-class universe (nothing imported from the builder): the 26 scored event classes of the evaluation
+#: protocol's fixed 27-class table (EVALUATION_PROTOCOL_v2_3 §2; gochara_eval.registry.CLASSES_27) minus `birth_anchor`, which is an
+#: unscored annotation — the evaluator refuses to enumerate it by design (O-CF-N6: zero rows). A drift test pins this tuple equal to both
+#: the protocol's table minus the annotation and the builder's scored classes, so the three can never silently disagree.
+SCORED_CLASS_UNIVERSE = (
+    "achievement_recognition", "bereavement", "business_launch", "career_advancement", "career_change", "career_entry",
+    "career_setback", "childbirth", "chronic_onset", "education_milestone", "exam_outcome", "financial_deception",
+    "foreign_settlement", "illness_acute", "major_gain", "major_loss", "marriage", "parental_event", "property_acquisition",
+    "psychological_arc", "relocation", "romantic_start", "separation", "spiritual_turn", "surgery", "travel_event",
+)
+ANNOTATION_ONLY_CLASSES = ("birth_anchor",)
 
 
 def derive_opened_file_census(ephe_path: str, jd_lo: float, jd_hi: float, *, bodies=None) -> dict:
@@ -259,7 +270,8 @@ NOT_INDEPENDENTLY_DERIVED = ("orb_policy", "rulings_digest", "consumed_range", "
 
 
 def verify_inputs(conn, stored: dict, *, ephe_path: str, modules: dict, path_refs=None, census=None,
-                  jd_range=None, census_probe=None, series_probe=None, backend_probe=None, absolute_probe=None) -> dict:
+                  jd_range=None, census_probe=None, series_probe=None, backend_probe=None, absolute_probe=None,
+                  require_scored_classes: bool = False) -> dict:
     """Independently re-derive every component of the stored vector that CAN be derived without the builder's
     code, and refuse any disagreement by name. Returns {"derived": [...components], "not_derived": [...]}.
     `census` (replay) restates the original sealed-version census for the registry component."""
@@ -328,6 +340,15 @@ def verify_inputs(conn, stored: dict, *, ephe_path: str, modules: dict, path_ref
     if "platform" in stored["ephemeris"]:
         check("ephemeris.platform", runtime_platform(), stored["ephemeris"]["platform"])
     derived.append("ephemeris.library")
+    # G8: the expected class census the vector pins must be the verifier's OWN scored-class universe. REQUIRED for a real candidate
+    # (the verification job and the writer's in-build check pass require_scored_classes=True); a vector that predates the key (the frozen
+    # test vectors) is judged only when it carries one.
+    if require_scored_classes or "scored_classes" in stored:
+        if "scored_classes" not in stored:
+            problems.append("scored_classes: the vector pins no expected class census (a candidate must pin the scored-class list)")
+        else:
+            check("scored_classes", sorted(SCORED_CLASS_UNIVERSE), stored["scored_classes"])
+        derived.append("scored_classes")
     check("node", _NODE, stored["node"])
     derived.append("node")
     check("implementation", module_digests(modules), stored["implementation"])
