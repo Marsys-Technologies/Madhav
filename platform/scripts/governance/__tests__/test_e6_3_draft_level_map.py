@@ -270,7 +270,8 @@ def test_family_assets_are_marked_and_excluded_from_every_wave_dispatch_set():
     assert family_problems(FA, LM, ROWS) == []
     members = set(FA["family_set"])
     in_map = members & set(LM["levels"])
-    assert in_map and members - in_map == {"ka_gochara_sweep", "ka_gochara_v3_century_materialize", "ka_gochara_v4_41_candidate"}
+    assert in_map and members - in_map == {"ka_gochara_sweep", "ka_gochara_v3_century_materialize", "ka_gochara_v4_41_candidate",
+                                           "ka_gochara_v5"}
     dispatch = {a for a in LM["levels"] if a not in members}
     assert dispatch | in_map == set(LM["levels"]) and not dispatch & members
 
@@ -278,7 +279,7 @@ def test_family_assets_are_marked_and_excluded_from_every_wave_dispatch_set():
 def test_the_family_lists_are_the_strategist_input_unchanged_in_membership():
     inp = G.load_family_input(CTRL / R.FAMILY_INPUT_FILE)
     assert all(FA[k] == inp[k] for k in G.FAMILY_LIST_KEYS)
-    assert len(FA["family_set"]) == 25
+    assert len(FA["family_set"]) == 26
 
 
 # ───────────────────────── where the DAG comes from ─────────────────────────
@@ -317,10 +318,11 @@ def test_the_seed_and_the_input_differ_on_exactly_five_assets_in_exactly_these_e
     }
 
 
-def test_the_inactive_rows_are_pinned_and_the_seed_only_one_is_not_a_live_row():
+def test_the_inactive_rows_are_pinned_and_none_is_seed_only_since_1243():
     assert sorted(r["asset_id"] for r in ROWS if not r["active"]) == [
-        "ka_gochara_sweep", "ka_gochara_v3_century_materialize", "ka_gochara_v4_41_candidate"]
-    assert set(R.SEED_ONLY_INACTIVE) == {"ka_gochara_v4_41_candidate"} and set(R.LIVE_INACTIVE_OVERRIDES) == {"ka_gochara_v3_century_materialize"}
+        "ka_gochara_sweep", "ka_gochara_v3_century_materialize", "ka_gochara_v4_41_candidate", "ka_gochara_v5"]
+    # migration 1243 made ka_gochara_v4_41_candidate and ka_gochara_v5 live inactive rows: nothing is seed-only any more
+    assert set(R.SEED_ONLY_INACTIVE) == set() and set(R.LIVE_INACTIVE_OVERRIDES) == {"ka_gochara_v3_century_materialize"}
 
 
 def test_the_stamp_binds_the_dag_and_says_the_census_fields_are_not_the_dag():
