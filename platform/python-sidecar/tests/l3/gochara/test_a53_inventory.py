@@ -46,7 +46,7 @@ def _row(i, level, lord, a, b):
 DASHA_PARENT = {1: None, 2: 1, 3: 1, 4: 2, 5: 2, 6: 3}
 L0_VEDHA_ROWS = [tuple(r) for r in json.loads(
     (Path(__file__).resolve().parents[1] / "gochara_rules" / "fixtures" / "l0_vedha_rows_2026_10_02.json").read_text())]
-PINNED_BUILD = "1f89fd4c-7d1e-4f3a-b3ae-e7ff839a6feb"      # the frozen §4.0 contract build
+PINNED_BUILD = "75524b3e-102a-43ec-8cee-3f57fee752c3"      # the frozen §4.0 contract build
 
 
 # Pinned Vimśottarī rows around the class horizon [2025-01-01, 2025-03-01): each level
