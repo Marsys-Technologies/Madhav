@@ -1,5 +1,5 @@
 import 'server-only'
-import { deriveDeleteSqlFromCountSql, EXPLICIT_CLEAR_OPS } from '@/lib/cockpit/assetClearSpec'
+import { deriveDeleteSqlFromCountSql, EXPLICIT_CLEAR_NOTICES, EXPLICIT_CLEAR_OPS } from '@/lib/cockpit/assetClearSpec'
 import type { ClearPolicy, Queryable, RegistryEntryWithScope } from '@/lib/build/runPreparation'
 
 /**
@@ -21,7 +21,8 @@ import type { ClearPolicy, Queryable, RegistryEntryWithScope } from '@/lib/build
  * Preservation boundary for a correction: data that no build regenerates is
  * never erased — the governed skip-clean assets listed below, and any per-chart
  * asset with no writer. Answered journal rows and confirmed/denied outcomes
- * survive through the governed scoped operations for mi_abhilekha/mi_bhavisya.
+ * survive through the governed scoped operation for mi_abhilekha; mi_bhavisya's predictions and
+ * manifestation sets are append-only history and are never deleted (SS N-104).
  * Ownership, grants and consent live outside the asset registry and are never
  * touched here.
  */
@@ -30,6 +31,7 @@ export const CORRECTION_PRESERVATION = {
   lel_events: 'user-authored life events and chart-state index',
   mi_seva: 'user preferences are not chart-derived output',
   mi_vistara: 'global append-only export log',
+  mi_bhavisya: 'frozen predictions and their manifestation sets are append-only calibration history (SS N-104)',
 } as const
 
 export const CORRECTION_NOTHING_TO_CLEAR = {
@@ -59,6 +61,11 @@ export interface InvalidationResult {
   preservedAssetIds: string[]
   /** Operator policy only: assets whose DELETE failed and was rolled back to its savepoint. */
   failedAssetIds: string[]
+  /**
+   * Assets whose rows are history and are never cleared (SS N-104): no statement was issued for
+   * them. Surfaced so a caller can tell the operator that nothing was cleared, instead of a silent skip.
+   */
+  notices: Array<{ assetId: string; message: string }>
 }
 
 const TABLE_NAME_RE = /^[a-z_][a-z0-9_]{0,62}$/
@@ -130,7 +137,11 @@ export async function invalidateAssets(args: {
 }): Promise<InvalidationResult> {
   const { db, chartId, policy } = args
   const ordered = [...args.assets].reverse()
-  const result: InvalidationResult = { clearedAssetIds: [], preservedAssetIds: [], failedAssetIds: [] }
+  const result: InvalidationResult = { clearedAssetIds: [], preservedAssetIds: [], failedAssetIds: [], notices: [] }
+  const notice = (assetId: string) => {
+    const message = EXPLICIT_CLEAR_NOTICES[assetId]
+    if (message) result.notices.push({ assetId, message })
+  }
 
   if (policy === 'chart-correction-strict') {
     // Resolve every decision before the first DELETE so an unsafe or missing
@@ -139,6 +150,7 @@ export async function invalidateAssets(args: {
     for (const { asset, decision } of decisions) {
       if (decision.kind === 'preserve') {
         result.preservedAssetIds.push(asset.asset_id)
+        notice(asset.asset_id)
         continue
       }
       if (decision.kind === 'skip') continue
@@ -153,7 +165,10 @@ export async function invalidateAssets(args: {
   let savepointIndex = 0
   for (const asset of ordered) {
     const statements = operatorStatements(asset, chartId)
-    if (!statements) continue // no clear spec or skip-clean — non-destructive
+    if (!statements) {
+      notice(asset.asset_id)
+      continue // no clear spec or skip-clean — non-destructive
+    }
     const savepoint = `cb_${savepointIndex++}`
     await db.query(`SAVEPOINT ${savepoint}`)
     let failed = false
