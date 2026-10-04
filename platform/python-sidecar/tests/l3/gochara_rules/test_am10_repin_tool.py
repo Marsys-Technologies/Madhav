@@ -1383,3 +1383,86 @@ def test_an_instant_string_without_an_offset_is_REFUSED_by_name_on_any_machine_t
         if old_tz is None:
             _os.environ.pop("TZ", None)
         _time.tzset()
+
+
+# ── declared post-S-L1 shape (steward ST-REPIN-PARTITION-SHAPE) ─────────────────────────────────────────────────────────────────────────────────────────────
+
+OTHERB = "33333333-3333-4333-8333-333333333333"
+
+
+def _shape(**over):
+    d = {"expected_partitions_non_scope": 47, "expected_partitions_scope_cap": 1, "expected_dasha_build_ids": [NEWB, OTHERB]}
+    d.update(over)
+    return d
+
+
+def test_the_notice_may_declare_the_post_s_l1_shape_all_or_none_and_strictly(tmp_path):
+    assert T.load_notice(_notice(tmp_path))["_declared_shape"] is None                                             # no declaration ⇒ only the default is ever accepted
+    got = T.load_notice(_notice(tmp_path, new_build_id=NEWB, **_shape()))["_declared_shape"]
+    assert got == {"non_scope": 47, "scope": 1, "build_ids": sorted([NEWB, OTHERB])}
+    bad = [dict(expected_partitions_non_scope=47),                                                                  # partial declarations are refused
+           dict(expected_partitions_non_scope=47, expected_partitions_scope_cap=1),
+           dict(expected_dasha_build_ids=[NEWB]),
+           _shape(expected_partitions_non_scope=-1), _shape(expected_partitions_non_scope=True), _shape(expected_partitions_non_scope=47.0), _shape(expected_partitions_scope_cap="1"),
+           _shape(expected_dasha_build_ids=[]), _shape(expected_dasha_build_ids="x"), _shape(expected_dasha_build_ids=[NEWB, "not-a-uuid"]),
+           _shape(expected_dasha_build_ids=[NEWB, NEWB]),                                                          # a repeated build id
+           _shape(expected_dasha_build_ids=[OTHERB])]                                                              # the SETTLED-1 build must be one of them
+    for over in bad:
+        with pytest.raises(ValueError, match="notice is invalid"):
+            T.load_notice(_notice(tmp_path, new_build_id=NEWB, **over))
+
+
+def test_the_guard_accepts_the_default_or_exactly_the_declared_shape_and_nothing_else():
+    declared = {"non_scope": 47, "scope": 1, "build_ids": sorted([NEWB, OTHERB])}
+    # no declaration: unchanged (the default only)
+    assert T.preflight_problems(GOODFACTS, NEWB) == []
+    assert any("(iii)" in p for p in T.preflight_problems({**GOODFACTS, "non_scope": 47}, NEWB))
+    assert any("(ii)" in p for p in T.preflight_problems({**GOODFACTS, "builds": [NEWB, OTHERB]}, NEWB))
+    # with a declaration: the declared shape passes ...
+    assert T.preflight_problems({**GOODFACTS, "non_scope": 47, "builds": [NEWB, OTHERB]}, NEWB, declared=declared) == []
+    assert T.preflight_problems({**GOODFACTS, "non_scope": 47, "builds": [OTHERB, NEWB]}, NEWB, declared=declared) == []        # order is irrelevant
+    # ... the default still passes ...
+    assert T.preflight_problems(GOODFACTS, NEWB, declared=declared) == []
+    # ... and everything that is NEITHER is refused, each condition separately
+    assert any("(iii)" in p and "declared 47 + 1" in p for p in T.preflight_problems({**GOODFACTS, "non_scope": 46}, NEWB, declared=declared))
+    assert any("(iii)" in p for p in T.preflight_problems({**GOODFACTS, "non_scope": 47, "scope": 0}, NEWB, declared=declared))
+    assert any("(ii)" in p and "declared set" in p for p in T.preflight_problems({**GOODFACTS, "builds": [NEWB, OLDB]}, NEWB, declared=declared))   # an UNdeclared extra build
+
+    assert any("(v)" in p for p in T.preflight_problems({**GOODFACTS, "builds": [OTHERB]}, NEWB, declared=declared))                # the declared extra ALONE is one build that is not the SETTLED-1 build
+    assert any("(ii)" in p for p in T.preflight_problems({**GOODFACTS, "builds": []}, NEWB, declared=declared))
+    for st in ("stale", None):
+        bad = {**GOODFACTS, "throughput": {"ga_dashas": st or "lit", "ga_positions": "lit"}} if st else {**GOODFACTS, "throughput": {"ga_positions": "lit"}}
+        assert any("(iv)" in p for p in T.preflight_problems({**bad, "non_scope": 47, "builds": [NEWB, OTHERB]}, NEWB, declared=declared))       # (iv) is never relaxed
+
+
+def test_the_cli_records_the_default_and_the_declared_shape_and_never_relaxes_the_vimshottari_single_build_check(monkeypatch, tmp_path, capsys):
+    rows_new = T.norm_rows(ref_rows("new", 6993))
+    cap = tmp_path / "old.json"; write_old_cap(cap)
+    monkeypatch.setattr(T.DD, "fetch_dasha_periods_multilevel", lambda conn, chart, build_id=None, **kw: rows_new if build_id == NEWB else [])
+    monkeypatch.setattr(T, "fetch_vimshottari_builds", lambda conn, chart: {NEWB: 117})
+    fr = tmp_path / "f.md"; fr.write_text("anchors")
+    notice_args = lambda **over: ["--new-build-id", NEWB, "--old-rows", str(cap), "--settled-notice", _notice(tmp_path, new_build_id=NEWB, **over), "--forensic-report", str(fr), "--dry-run"]
+    facts47 = {**GOODFACTS, "non_scope": 47, "builds": [NEWB, OTHERB]}
+    monkeypatch.setattr(T, "fetch_preflight_facts", lambda conn, chart: facts47)
+    # declared + observed == declared ⇒ CLEAN, and the evidence names the default, the declaration and the match
+    rc = T.main(notice_args(**_shape()), conn=FakeConn())
+    out = capsys.readouterr().out
+    assert rc == 0 and "verdict: **CLEAN**" in out, out[-900:]
+    assert "chart_dashas shape: observed 47 non-scope + 1 scope-cap" in out and "(matches: declared)" in out and "default 45 + 1" in out and f"declared 47 non-scope + 1 scope-cap, builds {sorted([NEWB, OTHERB])}" in out
+    # the SAME observation WITHOUT a declaration ⇒ STOP, and the evidence says no shape was declared
+    rc = T.main(notice_args(), conn=FakeConn())
+    out = capsys.readouterr().out
+    assert rc == 3 and "(iii)" in out and "no shape declared in the notice" in out and "(matches: NONE)" in out
+    # a declaration that the observation does NOT equal ⇒ STOP
+    rc = T.main(notice_args(**_shape(expected_partitions_non_scope=48)), conn=FakeConn())
+    assert rc == 3 and "declared 48 + 1" in capsys.readouterr().out
+    # the Vimśottarī (Lahiri, levels 1–3) single-build check is NEVER relaxed by a declaration: two such builds ⇒ STOP even when the declared shape matches
+    monkeypatch.setattr(T, "fetch_vimshottari_builds", lambda conn, chart: {NEWB: 117, OTHERB: 117})
+    rc = T.main(notice_args(**_shape()), conn=FakeConn())
+    assert rc == 3 and "exactly ONE" in capsys.readouterr().out
+    # default observation, default behaviour: the recorded evidence says it matched the default
+    monkeypatch.setattr(T, "fetch_vimshottari_builds", lambda conn, chart: {NEWB: 117})
+    monkeypatch.setattr(T, "fetch_preflight_facts", lambda conn, chart: GOODFACTS)
+    rc = T.main(["--new-build-id", NEWB, "--old-rows", str(cap), "--settled-notice", _notice(tmp_path, new_build_id=NEWB), "--forensic-report", str(fr), "--dry-run"], conn=FakeConn())
+    out = capsys.readouterr().out
+    assert rc == 0 and "(matches: default)" in out and "no shape declared in the notice" in out
