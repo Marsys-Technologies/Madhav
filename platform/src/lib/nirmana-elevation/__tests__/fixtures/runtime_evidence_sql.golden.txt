@@ -1,0 +1,5 @@
+CASE WHEN {a}.asset_id IN ('ka_gochara_v4_41_candidate', 'ka_gochara_v5')
+              THEN (EXISTS (SELECT 1 FROM public.asset_provenance_receipts rcpt WHERE rcpt.asset_id = {a}.asset_id
+                              AND NOT EXISTS (SELECT 1 FROM public.build_runs br WHERE br.id = rcpt.build_id AND br.triggered_by = ANY (CASE {a}.asset_id WHEN 'ka_gochara_v5' THEN ARRAY['gochara-v5-small-test']::text[] ELSE ARRAY[]::text[] END)))
+                    OR EXISTS (SELECT 1 FROM public.build_run_assets bra WHERE bra.asset_id = {a}.asset_id
+                              AND NOT EXISTS (SELECT 1 FROM public.build_runs br WHERE br.id = bra.run_id AND br.triggered_by = ANY (CASE {a}.asset_id WHEN 'ka_gochara_v5' THEN ARRAY['gochara-v5-small-test']::text[] ELSE ARRAY[]::text[] END)))) END AS has_non_test_runtime_evidence
