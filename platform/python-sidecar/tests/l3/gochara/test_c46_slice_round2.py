@@ -527,3 +527,58 @@ def test_the_call_site_guard_can_fail(tmp_path):
     """The guard is only worth having if it detects a third caller."""
     (tmp_path / "rogue.py").write_text("from x import verify_p1_anchors\nverify_p1_anchors(c, excluded_agents=('moon',))\n")
     assert _excluded_agents_calls(tmp_path) == [("rogue.py", "verify_p1_anchors", "('moon',)")]
+
+
+# --- 10. round 4 (steward ruling on Codex v1.3): the lock and the slice condition are for GOVERNED generations only -------------
+
+OTHER_CHART = "11111111-2222-3333-4444-555555555555"
+
+
+def _legacy_candidate(w, chart, generation="4.1"):
+    from services.gochara_kernel import record_store as rs
+    convention = rs.RecordStore(w.conn).ensure_kala_convention()
+    return ledger.publish_candidate(w.conn, chart, generation, convention, {"k": "v"}, {"backend": "swieph"},
+                                    "[2020-01-01,2030-01-01)")
+
+
+def test_the_gochara_5_lock_refuses_any_chart_but_the_canonical_one(sworld):
+    """The premise of the regression: `ka_gochara_lock_chart` (1153) refuses every other chart, so a lock taken for a legacy flip of
+    another chart would fail before the candidate was read."""
+    import psycopg
+    with pytest.raises(psycopg.errors.Error):
+        with sworld.conn.transaction():
+            sworld.conn.execute("SELECT public.ka_gochara_lock_chart(%s::uuid)", (OTHER_CHART,))
+
+
+@pytest.mark.parametrize("chart", [OTHER_CHART, CHART_ID], ids=["non_canonical_chart", "canonical_chart"])
+def test_a_legacy_generation_publishes_exactly_as_before_for_any_chart_with_no_lock_and_no_transaction_block(sworld, chart):
+    """Steward ruling (Codex v1.3): legacy 3.x/4.x publication (step08_flip --chart-id other) must behave as on main. The recording
+    wrapper shows no transaction block, no lock probe and no slice read; the row is published by the original flip."""
+    _legacy_candidate(sworld, chart)
+    rec = _Recording(sworld.conn)
+    ledger.publish(rec, chart, "4.1")
+    assert "<transaction>" not in rec.statements
+    assert not any("ka_gochara_lock_chart" in s for s in rec.statements)
+    assert not any("input_generation_vector" in s for s in rec.statements)            # no slice check, no conditional flip
+    status = sworld.conn.execute("SELECT status FROM public.kala_gochara_publication WHERE chart_id = %s AND generation = '4.1'",
+                                 (chart,)).fetchone()[0]
+    assert status == "published"
+
+
+def test_a_governed_generation_still_locks_first_and_a_legacy_one_is_told_apart_by_the_generation_alone(sworld):
+    sworld.step_as(writer_mod.MANIFEST_SUBSTEP, sworld.run_id(None), FULLL)
+    rec = _Recording(sworld.conn)
+    ledger.publish(rec, CHART_ID, GEN)                            # '5.0'
+    assert rec.statements[0] == "<transaction>" and "ka_gochara_lock_chart(%s::uuid)" in rec.statements[2]
+    assert [ledger._candidate_boundary().is_governed(g) for g in ("3.0", "4.1", "5.0", "5.9", "6.0")] == [False, False, True, True, True]
+
+
+def test_a_legacy_manifest_is_not_given_the_slice_condition(sworld):
+    """A legacy vector never carries the slice words, and the flip is the original one: a legacy row whose vector happens to hold a
+    `test_slice` key still publishes (the condition is a governed-generation rule)."""
+    _legacy_candidate(sworld, CHART_ID)
+    with sworld.conn.transaction():
+        sworld.conn.execute("UPDATE public.kala_gochara_publication SET input_generation_vector = input_generation_vector || '{\"test_slice\": {}}'::jsonb"
+                            " WHERE generation = '4.1'")
+    ledger.publish(sworld.conn, CHART_ID, "4.1")
+    assert sworld.conn.execute("SELECT status FROM public.kala_gochara_publication WHERE generation = '4.1'").fetchone()[0] == "published"

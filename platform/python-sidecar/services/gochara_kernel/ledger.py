@@ -654,21 +654,34 @@ def publish(conn, chart_id: str, generation: str) -> str:
     kala_gochara_publication_one_published enforces N-10 (one published
     manifest per chart+generation) at the database level.
 
-    ATOMIC against a concurrent rebuild (Codex round 3 on PR 3110): the chart transaction lock is taken BEFORE the first read, in a
-    transaction of its own (a savepoint when the caller already holds one), so a slice build cannot replace the candidate's input
-    vector between the checks below and the flip; and the flip itself is CONDITIONAL — still a candidate, no `test_slice` scope word,
-    no `test_slice` component — refusing by name when it updates no row. The unconditional database-level guarantee (a trigger or
-    CHECK refusing `published` for a slice-stamped vector, and the builder's UPDATE grant from migration 1216) is a migration for a
-    later protected window; until then these checks, the verification job, the seal flow and the readers are the defence."""
+    GOVERNED generations (5.x, `candidate_boundary.is_governed`) are published ATOMICALLY against a concurrent rebuild (Codex rounds
+    3 and 4 on PR 3110): the Gochara-5 chart transaction lock (`ka_gochara_lock_chart`, migration 1153) is taken BEFORE the first
+    read, and the flip itself is CONDITIONAL — still a candidate, no `test_slice` scope word, no `test_slice` component — refusing
+    by name when it updates no row. LEGACY generations (3.x, 4.x) behave EXACTLY as before for every chart: no lock (the Gochara-5
+    lock function refuses any chart but the canonical one, and a legacy flip of another chart must not start failing), no slice
+    check, the original unconditional flip.
+
+    TRANSACTIONS. For a governed generation the lock and the flip run inside `conn.transaction()`. That block BEGINs and COMMITS
+    when it is entered on an IDLE connection (autocommit, or no transaction open yet) — the commit covers this publish only — and is
+    a SAVEPOINT when the connection is already inside a transaction, which is the case for both production callers: `seal_flow`
+    (inside its seal transaction, under the seal locks, so nothing stays published if its later checks refuse) and `step08_flip`
+    (autocommit=False, earlier statements already issued). A caller that wants publish and its next statement to commit together
+    must already be inside a transaction.
+
+    The unconditional database-level guarantee (a CHECK refusing `published` for a slice-stamped vector, and the builder's UPDATE
+    grant from migration 1216) is a migration for a later protected window (draft PR 3140)."""
+    if not _candidate_boundary().is_governed(generation):
+        return _publish(conn, chart_id, generation, governed=False)
     transaction = getattr(conn, "transaction", None)
     if transaction is None:                               # a ledger-only fake without transactions
-        return _publish_locked(conn, chart_id, generation)
+        return _publish(conn, chart_id, generation, governed=True)
     with transaction():
-        return _publish_locked(conn, chart_id, generation)
+        return _publish(conn, chart_id, generation, governed=True)
 
 
-def _publish_locked(conn, chart_id: str, generation: str) -> str:
-    _take_chart_lock(conn, chart_id)
+def _publish(conn, chart_id: str, generation: str, *, governed: bool) -> str:
+    if governed:
+        _take_chart_lock(conn, chart_id)
     row = _manifest_row(conn, chart_id, generation)
     if row is None:
         raise ValueError(f"no manifest for chart {chart_id} generation {generation!r}")
@@ -678,7 +691,8 @@ def _publish_locked(conn, chart_id: str, generation: str) -> str:
         raise ValueError(
             f"cannot publish generation {generation!r}: manifest status is {row[1]!r}"
         )
-    _refuse_test_slice(conn, row[0], generation)
+    if governed:
+        _refuse_test_slice(conn, row[0], generation)
     digest = _canonical_row_set(conn, chart_id, generation)
     counts = {
         "contacts": _scalar(conn.execute(
@@ -706,6 +720,18 @@ def _publish_locked(conn, chart_id: str, generation: str) -> str:
             else 0
         ),
     }
+    if not governed:
+        # LEGACY (3.x / 4.x): the original flip, unchanged
+        conn.execute(
+            """
+            UPDATE kala_gochara_publication
+            SET status = 'published', published_at = now(),
+                content_digest = %s, row_counts = %s::jsonb
+            WHERE manifest_id = %s
+            """,
+            (digest, canonical_json(counts), row[0]),
+        )
+        return str(row[0])
     flipped = conn.execute(
         """
         UPDATE kala_gochara_publication
