@@ -139,6 +139,24 @@ export const NIRMANA_STAGED_INERT_CANDIDATE_RULES: ReadonlyMap<string, NirmanaSt
   ['ka_gochara_v5', { declaredDependsOn: ['ga_dashas', 'ga_positions'], testTriggers: ['gochara-v5-small-test'], reason: 'unsealed test candidate', decision: 'N-137' }],
 ])
 
+/**
+ * Validates a rule table (F2, Suvarṇa's N-137 review): every id, every `declaredDependsOn` / `testTriggers` entry, the reason and the decision must be a NON-EMPTY, TRIMMED string
+ * (an empty-string trigger would match a `triggered_by` of '' and silently classify real runs as test runs; an untrimmed one would never match). Runs at module load on the real table.
+ */
+export function assertStagedInertCandidateRules(rules: ReadonlyMap<string, NirmanaStagedInertCandidateRule>): void {
+  const bad = (what: string, value: unknown) => { throw new Error(`NIRMANA_STAGED_INERT_CANDIDATE_RULES: ${what} must be a non-empty, trimmed string (got ${JSON.stringify(value)})`) }
+  for (const [id, rule] of rules) {
+    if (typeof id !== 'string' || id.length === 0 || id !== id.trim()) bad('the asset id', id)
+    for (const dep of rule.declaredDependsOn) if (typeof dep !== 'string' || dep.length === 0 || dep !== dep.trim()) bad(`${id}.declaredDependsOn entry`, dep)
+    for (const trig of rule.testTriggers) if (typeof trig !== 'string' || trig.length === 0 || trig !== trig.trim()) bad(`${id}.testTriggers entry`, trig)
+    if (typeof rule.reason !== 'string' || rule.reason.trim().length === 0 || rule.reason !== rule.reason.trim()) bad(`${id}.reason`, rule.reason)
+    if (typeof rule.decision !== 'string' || rule.decision.trim().length === 0 || rule.decision !== rule.decision.trim()) bad(`${id}.decision`, rule.decision)
+    if (new Set(rule.declaredDependsOn).size !== rule.declaredDependsOn.length) bad(`${id}.declaredDependsOn (duplicate entry)`, rule.declaredDependsOn)
+    if (new Set(rule.testTriggers).size !== rule.testTriggers.length) bad(`${id}.testTriggers (duplicate entry)`, rule.testTriggers)
+  }
+}
+assertStagedInertCandidateRules(NIRMANA_STAGED_INERT_CANDIDATE_RULES)
+
 /** The ids of the rule table — kept as the set the earlier callers and tests read. */
 export const NIRMANA_STAGED_INERT_CANDIDATES: ReadonlySet<string> = new Set(NIRMANA_STAGED_INERT_CANDIDATE_RULES.keys())
 
@@ -213,12 +231,14 @@ function sqlLiteral(value: string): string {
  * KNOWN LIMIT (documented, unchanged): the evidence is not permanent — the watchdog prunes old build_run_assets / build_runs rows (`app/api/cockpit/watchdog/route.ts`), a FAILED run leaves
  * no receipt, and a receipt is deleted with its registry row. The PROCEDURAL commitment closes it: a non-test dispatch removes the id from the rule table in the same change.
  */
-export function runtimeEvidenceSql(alias: string): string {
-  const ids = [...NIRMANA_STAGED_INERT_CANDIDATE_RULES.keys()]
+export function runtimeEvidenceSql(alias: string, rules: ReadonlyMap<string, NirmanaStagedInertCandidateRule> = NIRMANA_STAGED_INERT_CANDIDATE_RULES): string {
+  assertStagedInertCandidateRules(rules)
+  const ids = [...rules.keys()]
   const triggers = ids
-    .filter((id) => NIRMANA_STAGED_INERT_CANDIDATE_RULES.get(id)!.testTriggers.length > 0)
-    .map((id) => `WHEN ${sqlLiteral(id)} THEN ARRAY[${NIRMANA_STAGED_INERT_CANDIDATE_RULES.get(id)!.testTriggers.map(sqlLiteral).join(', ')}]::text[]`)
-  const testTriggers = `CASE ${alias}.asset_id ${triggers.join(' ')} ELSE ARRAY[]::text[] END`
+    .filter((id) => rules.get(id)!.testTriggers.length > 0)
+    .map((id) => `WHEN ${sqlLiteral(id)} THEN ARRAY[${rules.get(id)!.testTriggers.map(sqlLiteral).join(', ')}]::text[]`)
+  // F1: with NO declared trigger anywhere a `CASE x ELSE …` with no WHEN is a syntax error — emit the empty array explicitly (any evidence is then non-test evidence)
+  const testTriggers = triggers.length === 0 ? 'ARRAY[]::text[]' : `CASE ${alias}.asset_id ${triggers.join(' ')} ELSE ARRAY[]::text[] END`
   return `CASE WHEN ${alias}.asset_id IN (${ids.map(sqlLiteral).join(', ')})
               THEN (EXISTS (SELECT 1 FROM public.asset_provenance_receipts rcpt WHERE rcpt.asset_id = ${alias}.asset_id
                               AND NOT EXISTS (SELECT 1 FROM public.build_runs br WHERE br.id = rcpt.build_id AND br.triggered_by = ANY (${testTriggers})))

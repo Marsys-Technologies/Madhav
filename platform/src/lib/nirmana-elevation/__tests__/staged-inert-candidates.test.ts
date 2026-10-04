@@ -10,8 +10,10 @@ import {
   assertManifestMatchesRegistry,
   assertManifestMatchesRegistryIdentity,
   excludeNirmanaStagedInertCandidates,
+  assertStagedInertCandidateRules,
   excludedNirmanaStagedInertCandidates,
   isNirmanaStagedInertCandidate,
+  type NirmanaStagedInertCandidateRule,
   NIRMANA_STAGED_INERT_CANDIDATE_RULES,
   NIRMANA_STAGED_INERT_CANDIDATES,
   runtimeEvidenceSql,
@@ -241,6 +243,11 @@ describe('staged inert Gochara candidates — excluded while inert, visible the 
       const dependent = registryRow('bg_depends_on_v5', { depends_on: [V5], sort_order: 5 })
       expect(excludeNirmanaStagedInertCandidates([v5truthful(), dependent]).map((r) => r.asset_id)).toEqual([V5, 'bg_depends_on_v5'])
       expect(excludedNirmanaStagedInertCandidates([v5truthful(), dependent])).toEqual([])
+      // the candidate stays in the denominator, so the baseline and BOTH frozen-registry comparisons fail closed (F3: asserted, not implied)
+      const rows = [...population, v5truthful(), dependent]
+      expect(() => buildNirmanaBaselineCandidate(rows)).toThrow()
+      expect(() => assertManifestMatchesRegistryIdentity(frozen().manifest, rows)).toThrow(/Frozen manifest contains 3 assets but the live registry contains 5/)
+      expect(() => assertManifestMatchesRegistry(frozen().manifest, rows)).toThrow(/Frozen manifest contains 3 assets but the live registry contains 5/)
     })
 
     it('VISIBLE exclusion: each excluded id is NAMED with its reason and decision (not merely absent from the count); nothing is listed when nothing is excluded', () => {
@@ -250,6 +257,46 @@ describe('staged inert Gochara candidates — excluded while inert, visible the 
       ])
       expect(excludedNirmanaStagedInertCandidates(population)).toEqual([])
       expect(excludedNirmanaStagedInertCandidates([...population, v5truthful({ is_active: true })])).toEqual([])
+    })
+
+    it('F1: with NO declared test trigger anywhere the SQL is still valid — an explicit empty array, never a CASE with no WHEN', () => {
+      const none = new Map<string, NirmanaStagedInertCandidateRule>([['ka_gochara_v4_41_candidate', { declaredDependsOn: [], testTriggers: [], reason: 'staged inert candidate', decision: 'D' }]])
+      const sql = runtimeEvidenceSql('registry', none)
+      expect(sql).toContain('br.triggered_by = ANY (ARRAY[]::text[])')
+      expect(sql).not.toMatch(/CASE\s+registry\.asset_id\s+(ELSE|END)/)                                  // `CASE x ELSE … END` with no WHEN is a syntax error
+      expect(sql).not.toMatch(/THEN ARRAY\[/)                                                                // no per-id trigger arm at all
+      expect(sql).toMatch(/AS has_non_test_runtime_evidence$/)
+      // the real table is unchanged by the rule parameter: still the golden text
+      expect(runtimeEvidenceSql('{a}')).toBe(readFileSync(path.resolve(__dirname, 'fixtures/runtime_evidence_sql.golden.txt'), 'utf8').replace(/\n$/, ''))
+    })
+
+    describe('F2: the rule table is validated (at module load for the real table, and for any table handed to the SQL builder)', () => {
+      const ok = (over: Partial<NirmanaStagedInertCandidateRule> = {}): ReadonlyMap<string, NirmanaStagedInertCandidateRule> =>
+        new Map([['ka_x', { declaredDependsOn: ['ga_a'], testTriggers: ['t-1'], reason: 'unsealed test candidate', decision: 'N-1', ...over }]])
+      it('the real table passes (this is the module-load check)', () => {
+        expect(() => assertStagedInertCandidateRules(NIRMANA_STAGED_INERT_CANDIDATE_RULES)).not.toThrow()
+        expect(() => assertStagedInertCandidateRules(ok())).not.toThrow()
+      })
+      it.each([
+        ['an EMPTY-string test trigger (it would match triggered_by = \'\')', { testTriggers: [''] }],
+        ['a whitespace-only test trigger', { testTriggers: ['   '] }],
+        ['an untrimmed test trigger (it could never match)', { testTriggers: [' t-1'] }],
+        ['a trailing-space test trigger', { testTriggers: ['t-1 '] }],
+        ['a duplicated test trigger', { testTriggers: ['t-1', 't-1'] }],
+        ['an empty declared dependency', { declaredDependsOn: [''] }],
+        ['an untrimmed declared dependency', { declaredDependsOn: ['ga_a '] }],
+        ['a duplicated declared dependency', { declaredDependsOn: ['ga_a', 'ga_a'] }],
+        ['an empty reason', { reason: '' }],
+        ['an empty decision', { decision: '  ' }],
+      ])('refuses %s', (_name, over) => {
+        const table = ok(over as Partial<NirmanaStagedInertCandidateRule>)
+        expect(() => assertStagedInertCandidateRules(table)).toThrow(/NIRMANA_STAGED_INERT_CANDIDATE_RULES/)
+        expect(() => runtimeEvidenceSql('registry', table)).toThrow(/NIRMANA_STAGED_INERT_CANDIDATE_RULES/)        // a bad table can never reach SQL
+      })
+      it('refuses an empty or untrimmed asset id', () => {
+        expect(() => assertStagedInertCandidateRules(new Map([['', { declaredDependsOn: [], testTriggers: [], reason: 'r', decision: 'd' }]]))).toThrow()
+        expect(() => assertStagedInertCandidateRules(new Map([[' ka_x', { declaredDependsOn: [], testTriggers: [], reason: 'r', decision: 'd' }]]))).toThrow()
+      })
     })
 
     it('the exclusion list enters no digest: the candidate is byte-identical whether or not the visible list is asked for', () => {

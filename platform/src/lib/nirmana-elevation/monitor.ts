@@ -441,7 +441,7 @@ export function classifyNirmanaDivergence(input: {
 
 type MonitorReadClient = Pick<PoolClient, 'query'>
 
-async function loadMonitorInputs(client: MonitorReadClient): Promise<{
+async function loadMonitorInputs(client: MonitorReadClient, onExcluded: (excluded: NirmanaExcludedStagedCandidate[]) => void = () => undefined): Promise<{
   candidate: NirmanaBaselineCandidate
   excludedStagedCandidates: NirmanaExcludedStagedCandidate[]
   definition: StoredFrozenDefinition | null
@@ -470,8 +470,10 @@ async function loadMonitorInputs(client: MonitorReadClient): Promise<{
        FROM asset_registry
       ORDER BY layer, sort_order, asset_id`,
   )
-  const candidate = buildNirmanaBaselineCandidate(registry.rows)
+  // F4 (N-137 review): the exclusions are computed and REPORTED before the baseline is built, so a baseline that throws (an unresolved asset in the denominator) still shows what was excluded
   const excludedStagedCandidates = excludedNirmanaStagedInertCandidates(registry.rows)
+  onExcluded(excludedStagedCandidates)
+  const candidate = buildNirmanaBaselineCandidate(registry.rows)
 
   const definitions = await client.query<StoredFrozenDefinition>(
     `SELECT definition_revision, definition_status, manifest, manifest_sha256
@@ -587,11 +589,11 @@ async function loadMonitorInputs(client: MonitorReadClient): Promise<{
   }
 }
 
-async function readMonitorInputs(): Promise<Awaited<ReturnType<typeof loadMonitorInputs>>> {
+async function readMonitorInputs(onExcluded?: (excluded: NirmanaExcludedStagedCandidate[]) => void): Promise<Awaited<ReturnType<typeof loadMonitorInputs>>> {
   const client = await (await getPool()).connect()
   try {
     await client.query('BEGIN TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY')
-    const inputs = await loadMonitorInputs(client)
+    const inputs = await loadMonitorInputs(client, onExcluded)
     await client.query('COMMIT')
     return inputs
   } catch (error) {
@@ -671,11 +673,12 @@ export async function runNirmanaElevationMonitor(): Promise<NirmanaMonitorObserv
   let observation: Omit<NirmanaMonitorObservation, 'id' | 'observed_at' | 'freshness_deadline_at'>
   let excludedStagedCandidates: NirmanaExcludedStagedCandidate[] = []
   try {
-    const inputs = await readMonitorInputs()
-    excludedStagedCandidates = inputs.excludedStagedCandidates
-    for (const excluded of excludedStagedCandidates) {                         // N-137: the exclusion is VISIBLE in the monitor output every run
-      console.info('[nirmana-elevation] staged candidate excluded from the frozen population', excluded)
-    }
+    const inputs = await readMonitorInputs((excludedNow) => {
+      excludedStagedCandidates = excludedNow
+      for (const excluded of excludedNow) {                                    // N-137: the exclusion is VISIBLE in the monitor output every run — even when the baseline then throws
+        console.info('[nirmana-elevation] staged candidate excluded from the frozen population', excluded)
+      }
+    })
     const release = await loadNirmanaReleaseStatus()
     const releaseObservedAt = release.release.observed_at
     if (!releaseObservedAt || Number.isNaN(Date.parse(releaseObservedAt))) {

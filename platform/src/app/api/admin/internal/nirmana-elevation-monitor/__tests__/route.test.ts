@@ -228,6 +228,8 @@ describe('POST /api/admin/internal/nirmana-elevation-monitor', () => {
     ['a non-test evidence row', { has_non_test_runtime_evidence: true }],
     ['is_active true', { is_active: true }],
     ['an extra dependency', { depends_on: ['ga_positions', 'ga_dashas', 'bg_reference'] }],
+    ['a MISSING dependency', { depends_on: ['ga_dashas'] }],
+    ['a DIFFERENT dependency', { depends_on: ['ga_dashas', 'bg_reference'] }],
   ])('N-137 fails closed: a v5 with %s is NOT excluded — it is not listed and the monitor cannot read the baseline as healthy', async (_name, over) => {
     const info = vi.spyOn(console, 'info').mockImplementation(() => undefined)
     const error = vi.spyOn(console, 'error').mockImplementation(() => undefined)
@@ -238,6 +240,32 @@ describe('POST /api/admin/internal/nirmana-elevation-monitor', () => {
     expect(body.excluded_staged_candidates).toEqual([])
     expect(body.status).toBe('source_unavailable')                                      // the unresolved candidate in the denominator makes the baseline unbuildable: a loud state, never a quiet in_sync
     expect(info.mock.calls.filter(([message]) => String(message).includes('staged candidate excluded'))).toEqual([])
+    info.mockRestore(); error.mockRestore()
+  })
+
+  it('N-137 fails closed: an asset that DEPENDS on v5 keeps it in the denominator — not excluded, not listed, and the monitor cannot read the baseline as healthy', async () => {
+    const info = vi.spyOn(console, 'info').mockImplementation(() => undefined)
+    const error = vi.spyOn(console, 'error').mockImplementation(() => undefined)
+    const dependent = { ...registryRow(), asset_id: 'bg_depends_on_v5', sort_order: 2, depends_on: ['ka_gochara_v5'] }
+    successfulSources({ registryRows: [registryRow(), stagedRow('ka_gochara_v5', { depends_on: ['ga_positions', 'ga_dashas'] }), dependent] })
+    const { POST } = await import('../route')
+    const body = await (await POST(request({ Authorization: `Bearer ${schedulerOidcToken}` }))).json()
+    expect(body.excluded_staged_candidates).toEqual([])
+    expect(body.status).toBe('source_unavailable')
+    info.mockRestore(); error.mockRestore()
+  })
+
+  it('F4: the exclusions are reported BEFORE the baseline is built — a baseline that throws still shows what was excluded', async () => {
+    const info = vi.spyOn(console, 'info').mockImplementation(() => undefined)
+    const error = vi.spyOn(console, 'error').mockImplementation(() => undefined)
+    // v4.1 is excluded by the rule; v5 carries NON-test evidence, so it stays in the denominator and the baseline throws
+    successfulSources({ registryRows: [registryRow(), stagedRow('ka_gochara_v4_41_candidate'), stagedRow('ka_gochara_v5', { depends_on: ['ga_positions', 'ga_dashas'], has_non_test_runtime_evidence: true })] })
+    const { POST } = await import('../route')
+    const body = await (await POST(request({ Authorization: `Bearer ${schedulerOidcToken}` }))).json()
+    expect(body.status).toBe('source_unavailable')                                                               // the baseline threw …
+    expect(body.excluded_staged_candidates).toEqual([{ asset_id: 'ka_gochara_v4_41_candidate', reason: 'staged inert candidate', decision: 'PRAVAHA-2996 (migration 1243)' }])   // … and the exclusion is still shown
+    const logged = info.mock.calls.filter(([message]) => String(message).includes('staged candidate excluded'))
+    expect(logged.map(([, detail]) => (detail as { asset_id: string }).asset_id)).toEqual(['ka_gochara_v4_41_candidate'])
     info.mockRestore(); error.mockRestore()
   })
 
