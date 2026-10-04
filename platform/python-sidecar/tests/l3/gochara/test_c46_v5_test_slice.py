@@ -52,21 +52,33 @@ GOLDEN_PLAN_DIGEST = "0a7298509d92fc32d485113aed85a3f0c296e1ddb2db170b43f89d4d46
 GOLDEN_PLAN_STEPS = 298
 
 
+def _digest_of(manifest):
+    """What dispatch stores in plan_manifest_digest for this manifest (JSON text is parsed first, as the writer does)."""
+    if isinstance(manifest, str):
+        try:
+            manifest = json.loads(manifest)
+        except ValueError:
+            return "x"
+    return writer_mod._manifest_digest(manifest)
+
+
 class _ManifestConn:
     """Recording fake: answers the build_runs read with a fixed plan_manifest;
     any lifecycle call is a failure."""
 
-    def __init__(self, manifest=None):
+    def __init__(self, manifest=None, digest="auto"):
         self.manifest = manifest
+        self.digest = digest              # "auto" = the manifest's own canonical digest (what dispatch stores)
         self.statements: list[tuple[str, tuple]] = []
 
     def execute(self, sql, params=()):
         self.statements.append((sql, params))
         manifest = self.manifest
+        digest = _digest_of(manifest) if self.digest == "auto" else self.digest
 
         class _R:
             def fetchone(self):
-                return (manifest,) if manifest is not None else None
+                return (manifest, digest) if manifest is not None else None
 
             def fetchall(self):
                 return []
@@ -258,16 +270,17 @@ def test_the_refusal_names_the_marker_key():
 # ── (d) execution honours the slice ──────────────────────────────────────────
 
 
-def test_a_grain_outside_the_slice_is_not_built():
+def test_a_grain_outside_the_marker_is_refused_by_name_never_skipped():
+    """Fable P1 (scenario B): this branch used to RETURN success. The plan is fixed at asset start; a substep for a class the marker
+    now read does not name means the stored plan_manifest changed — refused, and nothing but the chart lock and the marker read
+    was issued."""
     cls = writer_mod.SCORED_CLASSES[0]
     other = writer_mod.SCORED_CLASSES[1]
     ctx = _ctx({writer_mod.TEST_SLICE_KEY: _marker(classes=[cls])})
     ctx = writer_mod._native_ctx(ctx)
-    res = writer_mod.GocharaV5Writer().run_substep(ctx, SubStep(key=f"record:{other}:P1"))
-    assert res.rows_inserted == 0 and "not in the marker" in res.notes
-    # nothing but the chart lock and the marker read was issued — no record-phase work
-    assert all(("build_runs" in sql) or ("ka_gochara_lock_chart" in sql)
-               for sql, _ in ctx.db_conn.statements)
+    with pytest.raises(writer_mod.TestSliceRefusal, match=r"not in the run's validated marker"):
+        writer_mod.GocharaV5Writer().run_substep(ctx, SubStep(key=f"record:{other}:P1"))
+    assert all(("build_runs" in sql) or ("ka_gochara_lock_chart" in sql) for sql, _ in ctx.db_conn.statements)
 
 
 def test_class_of_grain_parses_every_per_class_prefix():
@@ -289,8 +302,12 @@ def test_slice_component_binds_the_marker_digest():
     slice_ = writer_mod._validate_test_slice(marker)
     comp = writer_mod._slice_component(slice_)
     expect = hashlib.sha256(iv.canonical_json(marker).encode("utf-8")).hexdigest()
-    assert comp == {"schema": writer_mod.TEST_SLICE_SCHEMA, "marker_digest": expect}
+    assert comp == {"schema": writer_mod.TEST_SLICE_SCHEMA, "marker_digest": expect, "run": marker["run"],
+                    "classes": list(slice_.classes), "horizon": [h.isoformat() for h in slice_.horizon]}
     assert len(comp["marker_digest"]) == 64
+    # audit (Fable P1 iii): the run shape, the classes and the horizon are readable from the manifest alone
+    assert comp["run"] == "one_class_full" and comp["classes"] == [writer_mod.SCORED_CLASSES[0]]
+    assert comp["horizon"] == ["1998-01-01T00:00:00+00:00", "2026-04-17T00:00:00+00:00"]
 
 
 def test_default_vector_has_no_test_slice_key_and_the_default_scope():
@@ -434,11 +451,12 @@ from .test_a53_am5_writer import make_ephe  # noqa: E402
 def _db_with_marker(db, marker, build_id="b-c46"):
     with db.transaction():
         db.execute("CREATE TABLE IF NOT EXISTS public.build_runs"
-                   " (id text PRIMARY KEY, plan_manifest jsonb)")
+                   " (id text PRIMARY KEY, plan_manifest jsonb, plan_manifest_digest text)")
+    manifest = {writer_mod.TEST_SLICE_KEY: marker}
     with db.transaction():
-        db.execute("INSERT INTO public.build_runs (id, plan_manifest)"
-                   " VALUES (%s, %s::jsonb)",
-                   (build_id, json.dumps({writer_mod.TEST_SLICE_KEY: marker})))
+        db.execute("INSERT INTO public.build_runs (id, plan_manifest, plan_manifest_digest)"
+                   " VALUES (%s, %s::jsonb, %s)",
+                   (build_id, json.dumps(manifest), writer_mod._manifest_digest(manifest)))
 
 
 def _run_substep(db, key, ephe, build_id="b-c46"):
@@ -671,6 +689,8 @@ class _RowConn:
 
 
 def _ctx_row(row):
+    if row is not None and len(row) == 1:
+        row = (row[0], None if row[0] is None else _digest_of(row[0]))        # the digest dispatch would have stored
     return ContextSpec(asset_id=writer_mod.ASSET_ID, build_id="b", db_conn=_RowConn(row),
                        config={"chart_id": CHART_ID}, dry_run=False)
 
@@ -803,3 +823,150 @@ def test_production_caller_refuses_a_horizon_that_is_not_the_manifests_for_a_def
     with pytest.raises(writer_mod.HorizonMismatch, match="horizon guard"):
         writer_mod._verify_live_inputs(ctx, CHART_ID)
     assert "vec" not in seen
+
+
+# ── Fable P1 on PR 3110: a change of build_runs.plan_manifest DURING a run is refused on every read ─────────────────────
+
+def test_the_manifest_digest_is_the_runners_canonicalisation():
+    """The writer cannot import the runner (layering), so its copy of the canonicalisation is pinned equal on real manifests."""
+    from pipeline.orchestrator import runner
+    samples = [
+        {}, {"a": 1}, {"b": [3, 1, 2], "a": {"z": 1, "y": [{"k": "v", "j": None}]}},
+        {"version": "nirmana-run-manifest/v1", "chart_id": CHART_ID, "waves": [["ka_gochara_v5"]],
+         writer_mod.TEST_SLICE_KEY: _marker()},
+        {"unicode": "Gocara-Pratijñā 5.0 — mūrti", "float": 1.5, "bool": True, "nested": {"é": ["ü", {"ß": 0}]}},
+    ]
+    for m in samples:
+        assert writer_mod._manifest_digest(m) == runner._canonical_manifest_digest(m), m
+
+
+def test_scenario_a_a_marker_removed_after_dispatch_is_refused_not_read_as_no_marker():
+    """Staged with a marker (plan narrowed), the key is then removed from the row while the stored digest stays: the manifest
+    substep used to read 'no marker' and stamp a full-horizon DEFAULT candidate on a one-class plan. Now every read refuses."""
+    staged = {writer_mod.TEST_SLICE_KEY: _marker(), "version": "nirmana-run-manifest/v1"}
+    stored_digest = writer_mod._manifest_digest(staged)
+    tampered = {"version": "nirmana-run-manifest/v1"}                          # the key removed
+    ctx = ContextSpec(asset_id=writer_mod.ASSET_ID, build_id="b", db_conn=_ManifestConn(tampered, digest=stored_digest),
+                      config={"chart_id": CHART_ID}, dry_run=False)
+    with pytest.raises(writer_mod.TestSliceRefusal, match="plan_manifest_digest"):
+        writer_mod._test_slice(ctx)
+    with pytest.raises(writer_mod.TestSliceRefusal, match="plan_manifest_digest"):
+        writer_mod.GocharaV5Writer().plan_substeps(ctx)                         # and at plan time
+
+
+def test_scenario_b_a_marker_replaced_after_dispatch_is_refused():
+    a, b = writer_mod.SCORED_CLASSES[0], writer_mod.SCORED_CLASSES[1]
+    staged = {writer_mod.TEST_SLICE_KEY: _marker(classes=[a])}
+    replaced = {writer_mod.TEST_SLICE_KEY: _marker(classes=[b])}
+    ctx = ContextSpec(asset_id=writer_mod.ASSET_ID, build_id="b",
+                      db_conn=_ManifestConn(replaced, digest=writer_mod._manifest_digest(staged)),
+                      config={"chart_id": CHART_ID}, dry_run=False)
+    with pytest.raises(writer_mod.TestSliceRefusal, match="plan_manifest_digest"):
+        writer_mod._plan_manifest(ctx)
+    # and if digest and manifest are replaced TOGETHER, the substeps of the old plan name a class the new marker does not
+    ctx2 = writer_mod._native_ctx(ContextSpec(asset_id=writer_mod.ASSET_ID, build_id="b", db_conn=_ManifestConn(replaced),
+                                              config={"chart_id": CHART_ID}, dry_run=False))
+    with pytest.raises(writer_mod.TestSliceRefusal, match="not in the run's validated marker"):
+        writer_mod.GocharaV5Writer().run_substep(ctx2, SubStep(key=f"inventory:{a}"))
+
+
+@pytest.mark.parametrize("digest", [None, "", "not-hex", "0" * 64, 7], ids=["none", "empty", "not_hex", "wrong_digest", "wrong_type"])
+def test_a_manifest_with_a_missing_or_wrong_digest_is_refused(digest):
+    ctx = ContextSpec(asset_id=writer_mod.ASSET_ID, build_id="b",
+                      db_conn=_ManifestConn({writer_mod.TEST_SLICE_KEY: _marker()}, digest=digest),
+                      config={"chart_id": CHART_ID}, dry_run=False)
+    with pytest.raises(writer_mod.TestSliceRefusal, match="plan_manifest_digest"):
+        writer_mod._plan_manifest(ctx)
+
+
+def test_a_default_manifest_with_the_right_digest_still_means_the_default_plan():
+    assert len(_plan_keys({"version": "nirmana-run-manifest/v1", "waves": [["ka_gochara_v5"]]})) == GOLDEN_PLAN_STEPS
+
+
+def test_the_digest_is_read_with_the_manifest_in_one_statement():
+    ctx = ContextSpec(asset_id=writer_mod.ASSET_ID, build_id="b", db_conn=_ManifestConn({"x": 1}), config={"chart_id": CHART_ID},
+                      dry_run=False)
+    writer_mod._plan_manifest(ctx)
+    sql = ctx.db_conn.statements[0][0]
+    assert "plan_manifest" in sql and "plan_manifest_digest" in sql                  # one read: no window between the two
+
+
+def test_one_year_admits_366_days_and_not_one_second_more():
+    """'all_classes_1y' means AT MOST 366 days (a leap year fits): pinned at the boundary."""
+    start = "2024-01-01T00:00:00+00:00"
+    ok = writer_mod._validate_test_slice(_marker(run="all_classes_1y", classes=list(writer_mod.SCORED_CLASSES),
+                                                 horizon=[start, "2025-01-01T00:00:00+00:00"]))          # 366 days (2024 is a leap year)
+    assert ok.horizon[1] - ok.horizon[0] == __import__("datetime").timedelta(days=366)
+    with pytest.raises(writer_mod.TestSliceRefusal, match="1-year"):
+        writer_mod._validate_test_slice(_marker(run="all_classes_1y", classes=list(writer_mod.SCORED_CLASSES),
+                                                horizon=[start, "2025-01-01T00:00:01+00:00"]))
+
+
+# ── Fable P3: the marker read never commits (a savepoint helper that cannot open an outermost transaction) ──────────────
+
+class _Status:
+    def __init__(self, name):
+        self.name = name
+
+
+class _SavepointConn:
+    """A connection fake: records every statement, fails the test if `transaction()` is used where it must not be."""
+
+    def __init__(self, status, autocommit, fail_read=False):
+        self.info = types_namespace(transaction_status=_Status(status))
+        self.autocommit = autocommit
+        self.statements: list[str] = []
+        self.transaction_calls = 0
+        self.fail_read = fail_read
+
+    def transaction(self):
+        self.transaction_calls += 1
+        conn = self
+
+        class _Tx:
+            def __enter__(self_inner):
+                return self_inner
+
+            def __exit__(self_inner, *exc):
+                return False
+        return _Tx()
+
+    def execute(self, sql, params=None):
+        self.statements.append(sql)
+
+
+def types_namespace(**kw):
+    import types
+    return types.SimpleNamespace(**kw)
+
+
+def test_on_an_idle_non_autocommit_connection_the_read_uses_a_manual_savepoint_never_transaction():
+    conn = _SavepointConn("IDLE", autocommit=False)
+    assert writer_mod._in_savepoint(conn, lambda: "row") == "row"
+    assert conn.transaction_calls == 0                                              # transaction() would COMMIT at exit
+    assert conn.statements == ["SAVEPOINT gochara_v5_marker_read", "RELEASE SAVEPOINT gochara_v5_marker_read"]
+
+
+def test_a_failing_read_on_an_idle_connection_rolls_back_to_the_savepoint_and_re_raises():
+    conn = _SavepointConn("IDLE", autocommit=False)
+
+    def boom():
+        raise RuntimeError("relation does not exist")
+    with pytest.raises(RuntimeError, match="does not exist"):
+        writer_mod._in_savepoint(conn, boom)
+    assert conn.transaction_calls == 0
+    assert conn.statements == ["SAVEPOINT gochara_v5_marker_read", "ROLLBACK TO SAVEPOINT gochara_v5_marker_read"]
+
+
+@pytest.mark.parametrize("status, autocommit", [("INTRANS", False), ("INTRANS", True), ("IDLE", True)],
+                         ids=["inside_a_transaction", "autocommit_inside", "autocommit_idle"])
+def test_inside_a_transaction_or_on_an_autocommit_connection_transaction_is_the_savepoint(status, autocommit):
+    conn = _SavepointConn(status, autocommit=autocommit)
+    assert writer_mod._in_savepoint(conn, lambda: 1) == 1
+    assert conn.transaction_calls == 1 and conn.statements == []
+
+
+def test_a_connection_without_transaction_support_just_reads():
+    class Bare:
+        pass
+    assert writer_mod._in_savepoint(Bare(), lambda: 5) == 5

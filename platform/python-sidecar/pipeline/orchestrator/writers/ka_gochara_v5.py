@@ -192,19 +192,42 @@ class TestSlice:
     digest: str
 
 
+def _manifest_digest(manifest) -> str:
+    """sha256 of the canonical JSON of a run manifest — the SAME canonicalisation as the runner's
+    `_canonical_manifest_digest` (recursively key-sorted objects, array order kept, ASCII-escaped, no spaces); a test pins the two
+    equal on real manifests."""
+    return hashlib.sha256(
+        json.dumps(manifest, ensure_ascii=True, sort_keys=True, separators=(",", ":")).encode("utf-8")).hexdigest()
+
+
 def _plan_manifest(ctx: ContextSpec) -> dict | None:
-    """build_runs.plan_manifest for this run (digest-protected at dispatch), or None when the
-    run carries no manifest. Read through ctx.build_id + ctx.db_conn — never ctx.config.
-    A schema without build_runs at all (the partial disposable mirrors the kernel's own DB
-    tests build) is read inside a savepoint and treated as 'no marker' — a missing row and a
-    missing table both mean the default path; a malformed marker NEVER does."""
+    """build_runs.plan_manifest for this run, or None when the run carries no manifest. Read through ctx.build_id +
+    ctx.db_conn — never ctx.config. A schema without build_runs at all (the partial disposable mirrors the kernel's own DB
+    tests build) is read inside a savepoint and treated as 'no marker' — a missing row and a missing table both mean the default
+    path; a malformed marker NEVER does.
+
+    EVERY read verifies the manifest against `plan_manifest_digest` (the runner verifies it once, at preflight, and the plan is
+    fixed at asset start): a manifest that is present but whose digest is missing or does not match what is stored now was
+    CHANGED after dispatch — the marker may have been added, removed or replaced mid-run — and is refused by name, never read.
+    (Fable P1 on PR 3110: a key removed before the manifest substep stamped a full-horizon default candidate on a plan narrowed
+    to one class.)"""
+    if ctx.db_conn is None:
+        # Connection-free PLANNING (a dry run that only lists the plan; the lifecycle and snapshot-order tests do this). Such a call
+        # cannot read a marker and nothing executes, so it returns the default plan — ONLY for a dry run. A LIVE call with no
+        # connection is a contract violation and is refused by name: a live run must never silently fall back to the default plan
+        # because the marker could not be read.
+        if ctx.dry_run:
+            return None
+        raise TestSliceRefusal(
+            f"{ASSET_ID}: {TEST_SLICE_KEY}: a live plan needs a connection to read build_runs.plan_manifest — refused, never "
+            "planned as the default (only a dry run may plan without one)")
+
     def read():
         return ctx.db_conn.execute(
-            "SELECT plan_manifest FROM public.build_runs WHERE id = %s",
+            "SELECT plan_manifest, plan_manifest_digest FROM public.build_runs WHERE id = %s",
             (str(ctx.build_id),)).fetchone()
-    tx = getattr(ctx.db_conn, "transaction", None)   # a savepoint when the driver offers one:
-    try:                                             # an absent table must not poison the caller
-        row = read() if tx is None else _in_savepoint(tx, read)
+    try:
+        row = _in_savepoint(ctx.db_conn, read)
     except Exception as exc:  # noqa: BLE001 - the driver module is never named here (writer purity);
         if type(exc).__name__ != "UndefinedTable":   # only an ABSENT table reads as 'no marker'
             raise
@@ -212,6 +235,7 @@ def _plan_manifest(ctx: ContextSpec) -> dict | None:
     if row is None:
         return None
     manifest = row[0] if not isinstance(row, dict) else row.get("plan_manifest")
+    stored_digest = row[1] if not isinstance(row, dict) else row.get("plan_manifest_digest")
     if manifest is None:
         return None                      # a row with no manifest: the default path, as before
     if isinstance(manifest, str):
@@ -229,10 +253,37 @@ def _plan_manifest(ctx: ContextSpec) -> dict | None:
         raise TestSliceRefusal(
             f"{ASSET_ID}: {TEST_SLICE_KEY}: build_runs.plan_manifest is {type(manifest).__name__}, not an object — "
             "refused, never read as 'no marker'")
+    if not isinstance(stored_digest, str) or stored_digest != _manifest_digest(manifest):
+        raise TestSliceRefusal(
+            f"{ASSET_ID}: {TEST_SLICE_KEY}: build_runs.plan_manifest does not match its plan_manifest_digest "
+            f"(stored digest {stored_digest!r}, manifest digest {_manifest_digest(manifest)!r}) — the manifest changed after "
+            "dispatch (a marker added, removed or replaced mid-run is exactly that); refused, never read")
     return manifest
 
 
-def _in_savepoint(tx, read):
+def _in_savepoint(conn, read):
+    """Run `read` so that a failing read (an absent table) cannot poison the caller's transaction, WITHOUT ever being the
+    one that commits: the orchestrator owns commit (frozen contract).
+
+    On a connection that is IDLE and not autocommit, `conn.transaction()` would open its OWN outermost transaction and COMMIT it
+    at exit — a writer-side commit (Fable P3: `plan_substeps` can be the first thing the driver calls on a fresh connection). There
+    a manual SAVEPOINT is used: the first statement opens the connection's implicit transaction, which stays open and is never
+    committed here. In every other state (already inside a transaction, or an autocommit test connection that has no outer
+    transaction to disturb) `transaction()` is a real savepoint or the test harness's own."""
+    tx = getattr(conn, "transaction", None)
+    if tx is None:
+        return read()
+    status = getattr(getattr(conn, "info", None), "transaction_status", None)
+    idle = status is not None and getattr(status, "name", str(status)) == "IDLE"
+    if idle and not getattr(conn, "autocommit", False):
+        conn.execute("SAVEPOINT gochara_v5_marker_read")
+        try:
+            out = read()
+        except Exception:
+            conn.execute("ROLLBACK TO SAVEPOINT gochara_v5_marker_read")
+            raise
+        conn.execute("RELEASE SAVEPOINT gochara_v5_marker_read")
+        return out
     with tx():
         return read()
 
@@ -317,9 +368,23 @@ def _test_slice(ctx: ContextSpec) -> TestSlice | None:
 
 
 def _slice_component(slice_: TestSlice) -> dict:
-    """The manifest-vector component that makes a sliced candidate unsealable by construction:
-    stored_scope='test_slice' (a value no verifier vocabulary knows) plus the marker digest."""
-    return {"schema": TEST_SLICE_SCHEMA, "marker_digest": slice_.digest}
+    """The manifest-vector component that makes a sliced candidate unsealable by construction: stored_scope='test_slice' (a
+    value no verifier vocabulary knows) plus the marker digest — and, for audit (Fable P1 iii), the run shape, the classes and
+    the horizon IN CLEAR, so a reader of the manifest alone sees how narrow the candidate is."""
+    return {"schema": TEST_SLICE_SCHEMA, "marker_digest": slice_.digest, "run": slice_.run,
+            "classes": list(slice_.classes), "horizon": [slice_.horizon[0].isoformat(), slice_.horizon[1].isoformat()]}
+
+
+def _slice_excluded_agents(slice_: "TestSlice | None"):
+    """The excluded transiting bodies the writer's IN-BUILD self-checks are TOLD under a validated marker: the DEFAULT stored scope's
+    (`stored_non_moon` → the Moon), because a test slice narrows classes and horizon, never which bodies the stored tier holds. None
+    without a marker: the verifiers then read the manifest's own scope exactly as before. (Stream B P1 on PR 3110: with the stored
+    scope `test_slice`, `verify_p1_anchors` and the inventory re-derivation raised Unverifiable at the first P1 grain.) This changes
+    only what the BUILD reports about itself; the verification JOB, the seal flow and serving always pass nothing and so still read
+    the stored scope and refuse a sliced candidate by name."""
+    if slice_ is None:
+        return None
+    return gk_verifier.excluded_agents_of_scope(gk_input_vector.STORED_SCOPE)
 
 
 def _scope_normalised(vector: dict, slice_: TestSlice | None) -> dict:
@@ -658,10 +723,13 @@ class GocharaV5Writer(WriterBase):
         slice_ = _test_slice(ctx)
         grain_class = _class_of_grain(step.key)
         if slice_ is not None and grain_class is not None and grain_class not in slice_.classes:
-            return WriterResult(
-                asset_id=self.asset_id, rows_inserted=0,
-                notes=f"test slice {slice_.run}: class {grain_class!r} is not in the marker — "
-                      "not built (a plan-level absence, never a silent skip)")
+            # Fable P1 (scenario B): this used to RETURN success, so a marker replaced mid-run quietly skipped every grain
+            # outside the new marker. The plan is fixed at asset start from the marker then read; a substep for a class the
+            # marker now read does not name means the two disagree: refused by name, never skipped.
+            raise TestSliceRefusal(
+                f"{ASSET_ID}: {TEST_SLICE_KEY}: substep {step.key!r} names class {grain_class!r}, which is not in the run's "
+                f"validated marker {list(slice_.classes)} — the plan and the marker disagree (the stored plan_manifest changed "
+                "after the plan was fixed); refused, never skipped")
         if step.key == CONVENTION_SUBSTEP:
             store = SkyEventStore(ctx.db_conn)
             cid = store.register_convention()
@@ -831,7 +899,8 @@ class GocharaV5Writer(WriterBase):
                 event_class=event_class, sealed_paths=sealed,
                 path_exclusions=VERIFIER_PATH_RULINGS,
                 h_unknown_exclusion=VERIFIER_H_UNKNOWN_RULING,
-                selected_versions=stored_sel or None)
+                selected_versions=stored_sel or None,
+                excluded_agents=_slice_excluded_agents(slice_))
         except gk_verifier.Unverifiable as exc:
             return WriterResult(
                 asset_id=self.asset_id, rows_inserted=0,
@@ -1008,7 +1077,7 @@ class GocharaV5Writer(WriterBase):
             # closed nothing was minted, the class makes no P1 completeness claim, and the notes say so
             if not p1_closed:
                 verify_p1_anchors(ctx.db_conn, chart_id=chart_id, generation=GENERATION, event_class=event_class,
-                                  position_at=position_at)
+                                  position_at=position_at, excluded_agents=_slice_excluded_agents(slice_))
             # AM-20 (revised): the stored house descriptor is the count from the lagna
             verify_p1_house_descriptor(ctx.db_conn, chart_id=chart_id, generation=GENERATION,
                                        event_class=event_class)
