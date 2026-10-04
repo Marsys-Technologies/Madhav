@@ -1698,7 +1698,7 @@ def test_a_key_that_is_not_a_level_inside_expected_shift_seconds_is_refused_by_n
     for extra_key in ("typo", "04", "10", "0", "x", "level_4", "1 "):
         with pytest.raises(ValueError, match=f"expected_shift_seconds key\\(s\\) {extra_key!r} are not levels"):
             T.load_notice(_notice(tmp_path, expected_shift_seconds={**base, extra_key: 1}))
-    for bad_level_value in ({"start": 1, "end": 2, "extra": 3}, {"start": 1}, {"end": 2}, "6993", None, [6993], float("nan")):
+    for bad_level_value in ({"start": 1, "end": 2, "extra": 3}, {"start": 1}, {"end": 2}, "6993", None, [6993]):                                   # (NaN/Infinity tokens are refused at PARSE time — see the raw-JSON tests)
         with pytest.raises(ValueError, match="notice is invalid.*expected_shift_seconds\\[4\\]"):
             T.load_notice(_notice(tmp_path, expected_shift_seconds={**base, "4": bad_level_value}))                     # the tolerated extra levels are shape-checked too
         with pytest.raises(ValueError, match="notice is invalid.*expected_shift_seconds\\[2\\]"):
@@ -1733,3 +1733,96 @@ def test_a_bad_notice_is_STOP_exit_3_and_ZERO_writes_in_every_mode_including_app
     err = capsys.readouterr().err
     assert rc == 3 and "notice is invalid" in err, (rc, err)
     assert not out.exists() and sorted(p.name for p in tmp_path.iterdir()) == before                                    # ZERO writes
+
+
+# ── v1.3 (Codex): duplicate keys at EVERY depth and NaN/Infinity tokens are refused at PARSE time, in every operator-supplied JSON ───────────────────────────────────
+
+NEWB_ = NEWB
+_GOOD_RAW = ('{"settled_1": true, "source_message_id": "M1", "system_id": "vimshottari", "ayanamsha_id": "lahiri_chitrapaksha", "new_build_id": "%s", '
+             '"expected_shift_seconds": %s, "tolerance_seconds": %s}')
+
+
+def _raw_notice(tmp_path, shift='{"1": 6993, "2": 6993, "3": 6993}', tol="2", head=None, name="raw.json"):
+    p = tmp_path / name
+    p.write_text(head % (NEWB_, tol) if head else _GOOD_RAW % (NEWB_, shift, tol))
+    return str(p)
+
+
+def test_the_good_raw_notice_loads_and_every_duplicate_or_non_json_constant_is_refused_at_parse_time(tmp_path):
+    assert T.load_notice(_raw_notice(tmp_path))["tolerance_seconds"] == 2
+    bad = {
+        "top-level tolerance (0 then 2)": dict(tol="0, \"tolerance_seconds\": 2"),
+        "top-level tolerance (2 then 0)": dict(tol="2, \"tolerance_seconds\": 0"),
+        "duplicated level key hiding a boolean": dict(shift='{"1": true, "1": 6993, "2": 6993, "3": 6993}'),
+        "duplicated level key (value order swapped)": dict(shift='{"1": 6993, "1": true, "2": 6993, "3": 6993}'),
+        "duplicated boundary key": dict(shift='{"1": {"start": 1, "start": 2, "end": 3}, "2": 6993, "3": 6993}'),
+        "duplicated tolerated extra level": dict(shift='{"1": 6993, "2": 6993, "3": 6993, "4": 1, "4": 2}'),
+        "nested duplicate inside an extra level object": dict(shift='{"1": 6993, "2": 6993, "3": 6993, "4": {"start": 1, "end": 2, "end": 3}}'),
+        "NaN token": dict(tol="NaN"), "Infinity token": dict(tol="Infinity"), "-Infinity token": dict(tol="-Infinity"),
+        "NaN token inside a level": dict(shift='{"1": NaN, "2": 6993, "3": 6993}'),
+    }
+    for label, kw in bad.items():
+        with pytest.raises(ValueError, match="notice is invalid"):
+            T.load_notice(_raw_notice(tmp_path, **kw))
+        assert label
+    # a duplicated expected_shift_seconds hides an earlier object's typo (last wins in plain json): refused as a duplicate
+    dup_exp = ('{"settled_1": true, "source_message_id": "M1", "system_id": "vimshottari", "ayanamsha_id": "lahiri_chitrapaksha", "new_build_id": "%s", '
+               '"expected_shift_seconds": {"1": 6993, "2": 6993, "3": 6993, "typo": 1}, "expected_shift_seconds": {"1": 6993, "2": 6993, "3": 6993}, "tolerance_seconds": %s}')
+    with pytest.raises(ValueError, match="duplicate JSON key 'expected_shift_seconds'"):
+        T.load_notice(_raw_notice(tmp_path, tol="2", head=dup_exp))
+    with pytest.raises(ValueError, match="duplicate JSON key 'tolerance_seconds'"):
+        T.load_notice(_raw_notice(tmp_path, tol="0, \"tolerance_seconds\": 2"))
+
+
+@pytest.mark.parametrize("kw", [
+    dict(tol="0, \"tolerance_seconds\": 2"),                                                                           # Codex v1.3 counterexample
+    dict(shift='{"1": true, "1": 6993, "2": 6993, "3": 6993}'),
+    dict(shift='{"1": {"start": 1, "start": 2, "end": 3}, "2": 6993, "3": 6993}'),
+    dict(tol="NaN"),
+])
+@pytest.mark.parametrize("mode", ["dry-run", "out", "apply"])
+def test_a_duplicate_keyed_or_nan_bearing_notice_is_STOP_exit_3_and_ZERO_writes_in_every_mode(monkeypatch, tmp_path, capsys, kw, mode):
+    rows_new = T.norm_rows(ref_rows("new", 6993))
+    cap = tmp_path / "old.json"; write_old_cap(cap)
+    monkeypatch.setattr(T.DD, "fetch_dasha_periods_multilevel", lambda conn, chart, build_id=None, **kw_: rows_new if build_id == NEWB else [])
+    monkeypatch.setattr(T, "fetch_vimshottari_builds", lambda conn, chart: {NEWB: 117})
+    monkeypatch.setattr(T, "fetch_preflight_facts", lambda conn, chart: GOODFACTS)
+    monkeypatch.setattr(T, "apply_repin", lambda *a, **k: (_ for _ in ()).throw(AssertionError("apply_repin was reached with an invalid notice")))
+    fr = tmp_path / "f.md"; fr.write_text("anchors")
+    notice = _raw_notice(tmp_path, **kw)
+    out = tmp_path / "evidence.md"
+    args = ["--new-build-id", NEWB, "--old-rows", str(cap), "--settled-notice", notice, "--forensic-report", str(fr)]
+    args += {"dry-run": ["--dry-run"], "out": ["--out", str(out)], "apply": ["--apply", "--settled-received", "M1", "--out", str(out)]}[mode]
+    before = sorted(p.name for p in tmp_path.iterdir())
+    rc = T.main(args, conn=FakeConn())
+    assert rc == 3 and "notice is invalid" in capsys.readouterr().err
+    assert not out.exists() and sorted(p.name for p in tmp_path.iterdir()) == before
+
+
+def test_the_other_operator_supplied_json_files_use_the_same_strict_reader(monkeypatch, tmp_path, capsys):
+    # (1) the rulings file under --apply: a duplicate key is a named STOP BEFORE anything is applied
+    rows_new = T.norm_rows(ref_rows("new", 6993))
+    cap = tmp_path / "old.json"; write_old_cap(cap)
+    monkeypatch.setattr(T.DD, "fetch_dasha_periods_multilevel", lambda conn, chart, build_id=None, **kw: rows_new if build_id == NEWB else [])
+    monkeypatch.setattr(T, "fetch_vimshottari_builds", lambda conn, chart: {NEWB: 117})
+    monkeypatch.setattr(T, "fetch_preflight_facts", lambda conn, chart: GOODFACTS)
+    monkeypatch.setattr(T, "apply_repin", lambda *a, **k: (_ for _ in ()).throw(AssertionError("apply_repin was reached with an invalid rulings file")))
+    fr = tmp_path / "f.md"; fr.write_text("anchors")
+    rul = tmp_path / "rulings.json"; rul.write_text('{"rewrite": ["a.py:1"], "rewrite": [], "keep": []}')
+    rc = T.main(["--new-build-id", NEWB, "--old-rows", str(cap), "--settled-notice", _notice(tmp_path, new_build_id=NEWB), "--forensic-report", str(fr),
+                 "--apply", "--settled-received", "M1", "--rulings", str(rul)], conn=FakeConn())
+    err = capsys.readouterr().err
+    assert rc == 3 and "rulings file is not valid strict JSON" in err and "duplicate JSON key 'rewrite'" in err
+    # (2) the capture envelope (--old-rows / load_capture): a duplicated envelope key is refused at load
+    good = cap.read_text()
+    dup = good.replace('"chart_id":', '"chart_id": "x", "chart_id":', 1)
+    assert dup != good
+    bad_cap = tmp_path / "dup_cap.json"; bad_cap.write_text(dup)
+    with pytest.raises(ValueError, match="duplicate JSON key 'chart_id'"):
+        T.load_capture(str(bad_cap), CHART, OLDB)
+    # (3) the W0 baseline: a duplicate key is a named STOP and writes nothing
+    w0 = tmp_path / "w0.json"; w0.write_text('{"chart_id": "%s", "build_id": "%s", "rows": [], "rows": [], "natal": []}' % (CHART, OLDB))
+    import hashlib as _h
+    out = tmp_path / "w0_out.json"
+    assert T.main(["--import-w0", str(w0), "--w0-checksum", _h.sha256(w0.read_bytes()).hexdigest(), "--w0-capture-out", str(out)]) == 3
+    assert "not valid strict JSON" in capsys.readouterr().err and not out.exists()

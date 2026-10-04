@@ -447,12 +447,33 @@ def write_capture(path: str, d: dict) -> str:
     return d["sha256"]
 
 
+def _no_duplicate_keys(pairs):
+    """`object_pairs_hook`: a JSON object with a repeated key is REFUSED at EVERY depth (plain `json` keeps the last value silently, so a second `tolerance_seconds` could hide the first, or a second
+    `expected_shift_seconds` an earlier object's typo — Codex v1.3)."""
+    out: dict = {}
+    for k, v in pairs:
+        if k in out:
+            raise ValueError(f"duplicate JSON key {k!r} (a repeated key would let the last value silently win)")
+        out[k] = v
+    return out
+
+
+def _refuse_json_constant(token: str):
+    """`parse_constant`: NaN / Infinity / -Infinity tokens are REFUSED at parse time (they are not JSON)."""
+    raise ValueError(f"the JSON constant {token} is not accepted")
+
+
+def strict_json_loads(text: str):
+    """The ONE JSON reader for every operator-supplied file (the SETTLED-1 notice, the rulings, the W0 baseline, the capture envelope): duplicate keys at any depth and NaN/Infinity tokens are refused."""
+    return json.loads(text, object_pairs_hook=_no_duplicate_keys, parse_constant=_refuse_json_constant)
+
+
 def file_sha256(path: str) -> str:
     return hashlib.sha256(Path(path).read_bytes()).hexdigest()
 
 
 def load_capture_full(path: str, chart_id: str, build_id: str) -> dict:
-    d = json.loads(Path(path).read_text(encoding="utf-8"))
+    d = strict_json_loads(Path(path).read_text(encoding="utf-8"))
     bad = validate_capture(d, chart_id, build_id)
     if bad:
         raise ValueError("the captured old-rows file is invalid or malformed: " + "; ".join(bad[:8]))                  # Codex R17-4 / R18-1: a malformed or self-inconsistent capture STOPS the comparison
@@ -653,7 +674,10 @@ def import_w0(path: str, checksum: str, out_path: str, chart_id: str) -> int:
     got = hashlib.sha256(raw).hexdigest()
     if got != checksum.lower():
         print(f"STOP — the W0 file's sha256 is {got}, not the checksum {checksum} named by SETTLED-1", file=sys.stderr); return 3
-    d = json.loads(raw.decode("utf-8"))
+    try:
+        d = strict_json_loads(raw.decode("utf-8"))
+    except ValueError as exc:                                  # a malformed / duplicate-keyed / NaN-bearing W0 file: a named STOP, nothing written
+        print(f"STOP — the W0 file is not valid strict JSON: {exc}", file=sys.stderr); return 3
     old_id = PERM.DASHA_READ_CONTRACT["build_id"]
     if d.get("chart_id") != chart_id or canon_uuid(d.get("build_id")) != old_id or not isinstance(d.get("rows"), list) or not isinstance(d.get("natal"), list):
         print("STOP — the W0 file is not {chart_id, build_id, rows, natal} for this chart and the pinned build", file=sys.stderr); return 3
@@ -736,7 +760,10 @@ def _load_notice(path: str) -> dict:
     END-boundary shift expectations, NOT a range** — and ANY OTHER level (SETTLED-1 will declare level-4 deltas) is TOLERATED, echoed in the evidence and NEVER compared (this tool judges levels 1–3
     only); `tolerance_seconds` is a FINITE number >= 1 — NaN and infinities are refused; the tolerance is STATED by the notice — there is no default. The notice's sha256 is recorded."""
     raw = Path(path).read_bytes()
-    d = json.loads(raw.decode("utf-8"))
+    try:
+        d = strict_json_loads(raw.decode("utf-8"))
+    except ValueError as exc:                                  # duplicate keys (any depth), NaN/Infinity tokens, malformed JSON, bad UTF-8
+        raise ValueError(f"the SETTLED-1 notice is invalid: {exc}") from None
     problems = []
     if not isinstance(d, dict):
         raise ValueError("the SETTLED-1 notice is invalid: the notice must be a JSON object")
@@ -1249,7 +1276,10 @@ def main(argv=None, *, conn=None) -> int:
         for p_, ln, a_, b_ in scan_test_literals(inst, SIDECAR.parents[1]):
             print(f"TEST LITERAL (needs ruling at --apply): {p_}:{ln} {a_} -> {b_}")
     if a.apply:
-        rulings = json.loads(Path(a.rulings).read_text(encoding="utf-8")) if a.rulings else None
+        try:
+            rulings = strict_json_loads(Path(a.rulings).read_text(encoding="utf-8")) if a.rulings else None
+        except (OSError, ValueError) as exc:                    # an unreadable / duplicate-keyed rulings file: a named STOP BEFORE anything is applied
+            print(f"STOP — the rulings file is not valid strict JSON: {exc}", file=sys.stderr); return 3
         review: list[str] = []
         try:
             for f in apply_repin(a.new_build_id, maps, SIDECAR.parents[1], rulings=rulings, review=review):
