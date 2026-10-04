@@ -21,9 +21,9 @@
     "cascade and downstream reporting of a failed dependency (no census criterion measures it)"
   ],
   "generator": "platform/scripts/governance/nikasha_scorecard.py",
-  "generator_at_ref_sha256": null,
-  "generator_matches_ref": null,
-  "generator_sha256": "b1b151103ef312a6bb938b3e0342d72ac6af189535873e2bdd8e7360ab7cb0c1",
+  "generator_at_ref_sha256": "b1b151103ef312a6bb938b3e0342d72ac6af189535873e2bdd8e7360ab7cb0c1",
+  "generator_matches_ref": false,
+  "generator_sha256": "ba4479830dd4135d04dd5e78d91b8c436ad932903d09554436784d7a5cdacef0",
   "inputs": {
     "census": [
       {
@@ -104,10 +104,10 @@
     "t1_evidence": null
   },
   "inspector": "platform/scripts/governance/asset_census.py",
-  "inspector_blob_sha256": "e0c9118aa7e0aa0696db34cdd85fd4ff0786afa67450601e78eb9df10e293e55",
-  "inspector_commit": "1f737f96eb3d9d7aa33ded421fddeaf1911dd731",
+  "inspector_blob_sha256": "186cab2f7c949ddda7c46f4ee392ae8992237804bc564e60eda6aff00a82c37c",
+  "inspector_commit": "400c8556c205dfde0a386504eef837e710df9a13",
   "measured_offline": true,
-  "ref": "1f737f96eb3d9d7aa33ded421fddeaf1911dd731",
+  "ref": "56341456eea343a6f1d155d2156ef0765a7ac2bc",
   "registry": {
     "fingerprint": "0e78e228d140d04920cb12bcd8b5bd9c8b33ca59ac8f9105853a139b8289d698",
     "revision": 25
@@ -133,7 +133,9 @@
       "T4": "FAIL",
       "T5": "FAIL"
     },
-    "warnings": []
+    "warnings": [
+      "the generator that produced this scorecard differs from the generator blob at the ref"
+    ]
   },
   "tests": {
     "T1": {

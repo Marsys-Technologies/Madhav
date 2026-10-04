@@ -739,21 +739,33 @@ def load_t1_evidence(path):
     return dict(sha256=hashlib.sha256(raw).hexdigest(), doc=doc)
 
 
+_PLANT = {}
+
+
+def _plant_module():
+    """The plant harness, loaded from the file next to this one (so it does not depend on sys.path): the ONE place the evidence record hash is
+    defined. Loaded once under a private name, so importing the scorecard never shadows or re-executes a harness already imported elsewhere."""
+    if "m" not in _PLANT:
+        import importlib.util
+        path = Path(__file__).resolve().with_name("nikasha_plant.py")
+        try:
+            spec = importlib.util.spec_from_file_location("nikasha_plant_for_scorecard", path)
+            mod = importlib.util.module_from_spec(spec)
+            sys.modules["nikasha_plant_for_scorecard"] = mod
+            spec.loader.exec_module(mod)
+        except Exception as e:                           # noqa: BLE001 - any failure to load the harness is an unmeasured evidence record
+            sys.modules.pop("nikasha_plant_for_scorecard", None)
+            raise ScorecardError(f"the plant harness ({path.name}) cannot be loaded, so the evidence record hash cannot be recomputed: {type(e).__name__}: {e}")
+        _PLANT["m"] = mod
+    return _PLANT["m"]
+
+
 def t1_record_sha256(doc):
-    """The hash of the evidence record's own fields, as the plant harness defines it (nikasha_plant.run_record_sha256,
-    PR #3088): INTEGRITY, not authenticity. Recomputed here, never trusted: a hand-written or edited record fails."""
-    rec = dict(
-        harness_file_sha256=doc.get("harness_file_sha256"), runtime_files_sha256=doc.get("runtime_files_sha256"),
-        inspector_tree_dirty=doc.get("inspector_tree_dirty"), runtime_files_dirty=doc.get("runtime_files_dirty"),
-        inspector_blob_sha256=doc["inspector_blob_sha256"], registry=doc["registry"], partial=doc.get("partial", False),
-        plants=[{k: r.get(k) for k in ("id", "check", "asset", "planted", "detected", "verdict_before", "verdict_after",
-                                        "collateral", "same_asset_effects", "restore_ok", "error")} for r in doc["plants"]],
-        unplantable=doc["unplantable"], unplantable_stale=doc["unplantable_stale"],
-        uncovered_required=doc["uncovered_required"],
-        mutation=dict(suite_notices=doc["mutation"].get("suite_notices"),
-                      mutants=[{k: m.get(k) for k in ("id", "check", "plant", "file", "noticed", "mutant_detected",
-                                                       "mutant_verdict_after")} for m in doc["mutation"].get("mutants", [])]))
-    return hashlib.sha256(json.dumps(rec, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
+    """The hash of the evidence record's own fields, defined in ONE place: the plant harness (nikasha_plant.run_record_sha256, PR #3088):
+    INTEGRITY, not authenticity. Taken from the harness, never re-defined here (a second definition could drift: SS review of #3043), and
+    recomputed on every read, never trusted: a hand-written or edited record fails. A harness that cannot be loaded is an error the caller
+    reports as UNMEASURED, never a silent fallback to a local copy."""
+    return _plant_module().run_record_sha256(doc)
 
 
 def t1_evidence_problems(doc, rp):
@@ -770,6 +782,8 @@ def t1_evidence_problems(doc, rp):
     try:
         if t1_record_sha256(doc) != doc.get("harness_sha256"):
             why.append("harness_sha256 does not equal the hash recomputed from the record's own fields")
+    except ScorecardError as exc:
+        return [str(exc)]
     except (KeyError, TypeError, AttributeError) as exc:
         return [f"the record is malformed ({type(exc).__name__}: {exc})"]
     if not files or not all(isinstance(k, str) and isinstance(v, str) for k, v in files.items()):

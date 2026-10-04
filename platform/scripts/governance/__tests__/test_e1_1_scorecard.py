@@ -1232,6 +1232,26 @@ def test_record_hash_definition_agrees_with_the_harness_when_importable():
     assert sc.t1_record_sha256(doc) == h.run_record_sha256(doc) != doc["harness_sha256"]
 
 
+def test_the_record_hash_is_defined_once_in_the_harness_and_imported_by_the_scorecard():
+    """SS review of #3043: no second definition that could drift. The scorecard's function is a thin import of the harness's own."""
+    src = (HERE.parent / "nikasha_scorecard.py").read_text(encoding="utf-8")
+    assert "harness_file_sha256=doc.get" not in src and "run_record_sha256" in src
+    h = _importable_harness()
+    if h is None:
+        pytest.skip("the plant harness is not importable here")
+    doc = seal(new_shape_evidence())
+    assert sc.t1_record_sha256(doc) == h.run_record_sha256(doc) == doc["harness_sha256"]
+
+
+def test_an_unloadable_harness_makes_the_evidence_unmeasured_not_silently_trusted(env, monkeypatch):
+    def boom():
+        raise sc.ScorecardError("the plant harness (nikasha_plant.py) cannot be loaded, so the evidence record hash cannot be recomputed: blocked for the test")
+    monkeypatch.setattr(sc, "_plant_module", boom)
+    card = run(env, t1_evidence=t1_evidence(env))
+    t1 = card["tests"]["T1"]
+    assert t1["verdict"] == "UNMEASURED" and "cannot be loaded" in json.dumps(t1)
+
+
 def test_low4_summary_carries_the_declared_count_and_the_note(env):
     ev = t1_evidence(env)
     edit_ev(ev, lambda d: d.update(plants=d["plants"][:2], unplantable={"Idem.pattern": "reported_not_graded"}, unplantable_stale=[]))
