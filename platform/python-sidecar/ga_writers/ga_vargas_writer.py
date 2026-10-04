@@ -75,6 +75,13 @@ from pyjhora_adapter.compute import compute_chart
 from pyjhora_adapter.version import ENGINE_VERSION
 from pyjhora_adapter._names import SIGN_NAMES, SIGN_LORDS
 from ga_writers._idempotency import replace_prior_chart_divisionals
+from ga_writers._karaka_roles import (
+    KARAKA_ABBREVIATIONS_8,
+    KARAKA_SCHOOL_KN_RAO,
+    KarakaDependencyMissing,  # noqa: F401  re-exported: tests and callers import it from this module
+    fetch_kn_rao_karaka_rows,
+    kn_rao_graha_by_rank,
+)
 from ga_writers.ga_positions_writer import (
     CANONICAL_AYANAMSHAS,
     CANONICAL_CHART_ID,
@@ -301,12 +308,14 @@ LAL_KITAB_PAKKA_GHAR = {
     "Venus": 7, "Saturn": 8, "Rahu": 12, "Ketu": 6,
 }
 
-# 8 Jaimini Chara Karakas (Rahu in/out = 8 or 7 karakas — we use 8-karaka system)
-JAIMINI_KARAKA_NAMES = ["AK", "AmK", "BK", "MK", "PK", "GK", "DK", "SK"]
+# 8 Jaimini Chara Karakas — the kn_rao_rahu_included (8-karaka) scheme, rank order
+# AK AmK BK MK PiK PK GK DK (BPHS 32.13-17, sourced_ocr_unverified). ga_vargas does NOT
+# derive them: it READS ga_sensitive's kn_rao assignments (see _read_jaimini_karakas).
+JAIMINI_KARAKA_NAMES = list(KARAKA_ABBREVIATIONS_8)
 JAIMINI_KARAKA_FULL = {
     "AK": "Atmakaraka", "AmK": "Amatya_Karaka", "BK": "Bhratri_Karaka",
-    "MK": "Matru_Karaka", "PK": "Pitri_Karaka", "GK": "Gnati_Karaka",
-    "DK": "Dara_Karaka", "SK": "Saptama_Karaka",
+    "MK": "Matru_Karaka", "PiK": "Pitri_Karaka", "PK": "Putra_Karaka",
+    "GK": "Gnati_Karaka", "DK": "Dara_Karaka",
 }
 
 # Batch configuration for context-decay protection
@@ -646,23 +655,46 @@ def _compute_aspect_matrix(varga_positions: dict[str, int]) -> list[tuple[str, s
     return aspects
 
 
-def _compute_jaimini_karakas(varga_positions: dict[str, int], d1_longitudes: dict[str, float]) -> dict[str, dict]:
-    """
-    Compute 8 Jaimini Chara karakas from D1 longitudes (degrees within sign).
-    AK = highest degrees, AmK = 2nd, ..., SK = 8th (excluding Rahu+Ketu for 7-karaka or including for 8).
-    Returns {karaka_name: {graha, sign_in_varga, dignity_in_varga}}.
-    """
-    # Use 7 classical grahas for karaka assignment (8-karaka includes Rahu)
-    eligible = {g: d1_longitudes.get(g, 0.0) % 30.0 for g in CLASSICAL_7_GRAHAS}
-    # Add Rahu for 8-karaka system (Rahu's degree within sign)
-    eligible["Rahu"] = d1_longitudes.get("Rahu", 0.0) % 30.0
+def _read_jaimini_karakas(conn: Any, chart_id: str, ayanamsha_id: str) -> dict[str, str]:
+    """READ the 8 Jaimini chara-karaka assignments from ga_sensitive's L1 rows.
 
-    # Sort by degree within sign descending
-    sorted_grahas = sorted(eligible.items(), key=lambda x: x[1], reverse=True)
+    Returns ``{abbreviation: graha}`` for AK AmK BK MK PiK PK GK DK, e.g.
+    ``{"AK": "Moon", ..., "PK": "Rahu", ...}``.
 
+    ga_sensitive owns the derivation (`karaka_chara_position`); this writer inherits the
+    value and never re-derives it (CLAUDE.md N.5 / N.7 item 3). The previous in-writer
+    derivation ranked Rahu by raw degree-in-sign, which disagreed with ga_sensitive's
+    KN Rao reckoning (30 - long % 30) and mislabelled ranks 5-8.
+
+    The read (pins on fact_category + fact_key + the canonical school formula_id, total
+    ORDER BY, rank -> abbreviation by the stored `karaka_rank`, never by subject-name
+    parsing) is the one shared implementation in ga_writers/_karaka_roles.py.
+
+    Raises KarakaDependencyMissing (never silently recomputes) when ga_sensitive has not
+    built this chart/ayanamsha, or its rows are not a clean 8-rank permutation.
+    """
+    return _karakas_from_rows(fetch_kn_rao_karaka_rows(conn, chart_id, ayanamsha_id), chart_id, ayanamsha_id)
+
+
+def _karakas_from_rows(
+    fetched: list[tuple[Any, ...]], chart_id: str, ayanamsha_id: str,
+) -> dict[str, str]:
+    """Pure core of _read_jaimini_karakas: (subject, key, text, num) rows -> {abbr: graha}."""
+    grahas = kn_rao_graha_by_rank(fetched, chart_id, ayanamsha_id, consumer="ga_vargas")
+    return dict(zip(JAIMINI_KARAKA_NAMES, grahas))
+
+
+def _resolve_karakas_in_varga(
+    varga_positions: dict[str, int], karaka_assignments: dict[str, str],
+) -> dict[str, dict]:
+    """Place each already-assigned karaka graha in one varga.
+
+    ``karaka_assignments`` is the ga_sensitive-read {abbr: graha} map. Returns
+    {karaka_name: {graha, sign, sign_id, dignity}} in rank order.
+    """
     karakas = {}
-    for i, (graha, _) in enumerate(sorted_grahas[:8]):
-        k_name = JAIMINI_KARAKA_NAMES[i]
+    for k_name in JAIMINI_KARAKA_NAMES:
+        graha = karaka_assignments[k_name]
         varga_sign = varga_positions.get(graha)
         dignity = _compute_dignity(graha, varga_sign) if varga_sign is not None else "Unknown"
         karakas[k_name] = {
@@ -1886,14 +1918,18 @@ def _build_saptavargaja_rows(
 
 def _build_karaka_rows(
     chart_id: str, ayanamsha_id: str, build_id: str,
-    varga_n: int, vid: str, varga_data: dict, d1_longitudes: dict,
+    varga_n: int, vid: str, varga_data: dict, karaka_assignments: dict[str, str],
 ) -> list[dict]:
-    """Build karaka_per_varga: 8 Jaimini karakas × all 30 vargas."""
+    """Build karaka_per_varga: 8 Jaimini karakas × all 30 vargas.
+
+    ``karaka_assignments`` = {AK..DK: graha} READ from ga_sensitive (kn_rao school) by
+    _read_jaimini_karakas — never derived here.
+    """
     rows = []
     now = datetime.now(timezone.utc).isoformat()
-    karakas = _compute_jaimini_karakas(
+    karakas = _resolve_karakas_in_varga(
         {b: varga_data[b]["sign_idx"] for b in CLASSICAL_BODIES if b in varga_data},
-        d1_longitudes,
+        karaka_assignments,
     )
 
     for k_name, k_data in karakas.items():
@@ -1936,7 +1972,7 @@ def _build_karaka_rows(
             "near_sign_boundary_flag": None,
             "near_nakshatra_boundary_flag": None,
             "vargottama_flag_at_point": None,
-            "formula_provenance_text": "Jaimini_8_karaka_rahu_included",
+            "formula_provenance_text": "Jaimini_8_karaka_kn_rao_rahu_included_read_from_ga_sensitive",
             "cross_ayanamsha_divergence_arcsec": None,
         })
 
@@ -2606,6 +2642,22 @@ def _check_narration(rows: list[dict]) -> list[str]:
 
 # ── DB write ───────────────────────────────────────────────────────────────────
 
+# F-A2 (Q-L1-01, SS-ruled): the natural key of one chart_divisionals row is the
+# SEVEN columns below. `fact_subject` is part of it because it is the writer's
+# own per-row discriminator: varga_d30_lord_per_amsa carries D30.S1..S12,
+# varga_house_lord carries {varga}.H1..H12, varga_ashtakavarga carries
+# {varga}.{graha}.S1..S12. Without it those rows share the six-column key and
+# `ON CONFLICT DO NOTHING` silently drops all but the first. The explicit
+# conflict targets in the two statements below, this tuple, and the live
+# chart_divisionals_unique_idx must name exactly the same columns (PostgreSQL
+# refuses an ON CONFLICT target that no unique index matches).
+UNIQUE_KEY_COLUMNS = (
+    "chart_id", "graha", "ayanamsha_id", "varga",
+    "fact_category", "fact_key", "fact_subject",
+)
+LEGACY_UNIQUE_KEY_COLUMNS = UNIQUE_KEY_COLUMNS[:-1]
+UNIQUE_INDEX_NAME = "chart_divisionals_unique_idx"
+
 _UPSERT_SQL = """
 INSERT INTO chart_divisionals (
   id, chart_id, graha, ayanamsha_id, varga, sign, sign_number, degree_in_sign,
@@ -2626,15 +2678,14 @@ VALUES (
   %(tolerance_arcsec)s, %(near_sign_boundary_flag)s, %(near_nakshatra_boundary_flag)s,
   %(vargottama_flag_at_point)s, %(formula_provenance_text)s, %(cross_ayanamsha_divergence_arcsec)s
 )
-ON CONFLICT (chart_id, graha, ayanamsha_id, varga, fact_category, fact_key) DO NOTHING
+ON CONFLICT (chart_id, graha, ayanamsha_id, varga, fact_category, fact_key, fact_subject) DO NOTHING
 """
 
-# One row per (chart, graha, ayanamsha, varga, fact_category, fact_key) — matches
-# the chart_divisionals_unique_idx widened in migration 218 (and the granularity
-# mv_chart_vargas_summary pivots on). The pre-218 index was only
-# (chart_id, graha, ayanamsha_id, varga), which collapsed the ~25 per-planet-varga
-# category rows down to one; the explicit conflict target below now dedups at the
-# correct grain instead of silently dropping categories on a bare DO NOTHING.
+# One row per UNIQUE_KEY_COLUMNS (chart, graha, ayanamsha, varga, fact_category,
+# fact_key, fact_subject). Migration 218 widened the pre-218 four-column index to
+# six columns; F-A2 adds fact_subject (see UNIQUE_KEY_COLUMNS). The explicit
+# conflict target dedups at the correct grain instead of silently dropping rows
+# on a bare DO NOTHING.
 _UPSERT_WITH_FACT_ID_SQL = """
 INSERT INTO chart_divisionals (
   id, chart_id, graha, ayanamsha_id, varga, sign, sign_number, degree_in_sign,
@@ -2655,7 +2706,7 @@ VALUES (
   %(tolerance_arcsec)s, %(near_sign_boundary_flag)s, %(near_nakshatra_boundary_flag)s,
   %(vargottama_flag_at_point)s, %(formula_provenance_text)s, %(cross_ayanamsha_divergence_arcsec)s
 )
-ON CONFLICT (chart_id, graha, ayanamsha_id, varga, fact_category, fact_key) DO NOTHING
+ON CONFLICT (chart_id, graha, ayanamsha_id, varga, fact_category, fact_key, fact_subject) DO NOTHING
 """
 
 
@@ -2673,8 +2724,94 @@ def _check_already_written(conn, chart_id: str, ayanamsha_id: str, varga_id: str
     return count > 10  # > 10 rows means varga was written
 
 
-def _write_rows_batch(conn, rows: list[dict], cleared: set | None = None) -> int:
-    """Write a batch of rows to chart_divisionals, return count written.
+def new_write_stats() -> dict:
+    """Run-scoped accounting for _write_rows_batch (F-A2 honest counts).
+
+    attempted    rows handed to the writer
+    landed       rows the database reports as actually stored
+    collided     rows whose UNIQUE_KEY_COLUMNS key was already emitted earlier in
+                 THIS run (a deterministic, pre-write detection: two distinct rows
+                 sharing one key means one of them can never be stored)
+    db_skipped   rows the database skipped on conflict BEYOND those `collided` already
+                 explains (e.g. a stale row outside the delete scope); a colliding row
+                 is counted once, in `collided`
+    failed       rows rejected by the database on the per-row fallback path
+    """
+    return {
+        "attempted": 0, "landed": 0, "collided": 0, "db_skipped": 0, "failed": 0,
+        "collision_samples": [], "_seen": set(),
+    }
+
+
+def _row_key(row: dict) -> tuple:
+    return tuple(row.get(c) for c in UNIQUE_KEY_COLUMNS)
+
+
+def find_key_collisions(rows: list[dict], seen: set | None = None) -> list[tuple]:
+    """Return the key of every row in `rows` whose UNIQUE_KEY_COLUMNS key was
+    already taken -- by an earlier row of `rows` or by a key in `seen`.
+
+    Pure and deterministic (no database): this is the detector for the F-A2
+    defect class, rows that differ only in a column the key omits.
+    """
+    taken = set() if seen is None else seen
+    dups: list[tuple] = []
+    for r in rows:
+        k = _row_key(r)
+        if k in taken:
+            dups.append(k)
+        else:
+            taken.add(k)
+    return dups
+
+
+def assert_unique_key_grain(conn) -> None:
+    """Fail closed unless the live unique index has exactly UNIQUE_KEY_COLUMNS.
+
+    The explicit ON CONFLICT target needs an index on exactly these columns. When
+    the live index is still the six-column (pre-F-A2) one, PostgreSQL rejects
+    every INSERT -- and the per-row fallback in _write_rows_batch would otherwise
+    log and swallow each rejection. Naming the real cause up front keeps that
+    from ever reading as a quiet empty build (CLAUDE.md N.8).
+    """
+    cur = conn.execute(
+        "SELECT indexdef FROM pg_indexes "
+        "WHERE schemaname = 'public' AND tablename = 'chart_divisionals' AND indexname = %s",
+        [UNIQUE_INDEX_NAME],
+    )
+    row = cur.fetchone()
+    indexdef = None
+    if row is not None:
+        try:
+            indexdef = row["indexdef"]
+        except (KeyError, TypeError, IndexError):
+            try:
+                indexdef = row[0]
+            except (KeyError, TypeError, IndexError):
+                indexdef = None
+    if not isinstance(indexdef, str):
+        raise RuntimeError(
+            f"[ga_vargas] cannot read the definition of {UNIQUE_INDEX_NAME}; "
+            "refusing to write chart_divisionals without knowing its key grain"
+        )
+    import re  # local: a top-level import would shift every line pin below it
+    m = re.search(r"\(([^)]*)\)", indexdef)
+    live = tuple(c.strip() for c in m.group(1).split(",")) if m else ()
+    if live != UNIQUE_KEY_COLUMNS:
+        raise RuntimeError(
+            f"[ga_vargas] {UNIQUE_INDEX_NAME} is on {live}, but this writer's conflict "
+            f"target is {UNIQUE_KEY_COLUMNS}. Apply the F-A2 key-widening change "
+            "(owner path) before running this writer version."
+        )
+
+
+def _write_rows_batch(conn, rows: list[dict], cleared: set | None = None,
+                      stats: dict | None = None) -> int:
+    """Write a batch of rows to chart_divisionals, return count that LANDED.
+
+    `stats` (see new_write_stats) accumulates attempted / landed / collided /
+    db_skipped / failed across the run so the caller can report them; the return
+    value stays the batch's landed count.
 
     `cleared` carries the (chart_id, ayanamsha_id, varga) scopes this RUN has
     already deleted. It exists because the delete grain and the insert grain do
@@ -2697,7 +2834,15 @@ def _write_rows_batch(conn, rows: list[dict], cleared: set | None = None) -> int
     Deleting once per scope per run preserves §N.3 exactly — a rebuild still
     REPLACES rather than accretes — while letting the passes that legitimately
     add rows to a varga do so.
+
+    F-A2: the conflict key now includes fact_subject (UNIQUE_KEY_COLUMNS), so rows
+    that differ only in subject all land. Any row that STILL shares a key with an
+    earlier row of the run is a real emitter defect: it is counted in
+    stats['collided'], sampled in stats['collision_samples'] and logged at
+    WARNING, never absorbed into the landed count.
     """
+    if stats is None:
+        stats = new_write_stats()
     # Idempotency (§N.3): replace this chart's prior rows for the (ayanamsha,
     # varga) scopes in this batch, but only for scopes this run has not already
     # cleared -- see the note above.
@@ -2715,6 +2860,17 @@ def _write_rows_batch(conn, rows: list[dict], cleared: set | None = None) -> int
             )
     if not rows:
         return 0
+    stats["attempted"] += len(rows)
+    dups = find_key_collisions(rows, stats["_seen"])
+    if dups:
+        stats["collided"] += len(dups)
+        for k in dups:
+            if len(stats["collision_samples"]) < 10:
+                stats["collision_samples"].append(k)
+        logger.warning(
+            "[ga_vargas] %d row(s) share a unique key with an earlier row of this run and "
+            "can never be stored; first: %s", len(dups), dups[0],
+        )
     # chart_divisionals carries a REAL CHECK constraint on
     # verification_pass_status (migration 206/210: only 'two_pass_verified',
     # 'classical_match', 'divergent_flagged', 'single' are legal) — unlike
@@ -2730,8 +2886,7 @@ def _write_rows_batch(conn, rows: list[dict], cleared: set | None = None) -> int
     # without it, a mid-batch failure leaves the ambient transaction aborted and
     # the per-row fallback below would silently no-op every row (worse than the
     # original behavior it's meant to preserve). On failure, roll back to the
-    # savepoint and fall back to the original per-row try/except, which keeps
-    # writing past a single malformed row exactly as it did before batching.
+    # savepoint and fall back to the per-row path below.
     with conn.cursor() as cur:
         try:
             cur.execute("SAVEPOINT ga_vargas_batch_sp")
@@ -2753,26 +2908,49 @@ def _write_rows_batch(conn, rows: list[dict], cleared: set | None = None) -> int
                 )
                 affected = len(rows)
             elif affected < len(rows):
-                logger.info(
+                stats["db_skipped"] += max(len(rows) - affected - len(dups), 0)
+                logger.warning(
                     "[ga_vargas] %d of %d rows landed (%d skipped on conflict)",
                     affected, len(rows), len(rows) - affected,
                 )
             cur.execute("RELEASE SAVEPOINT ga_vargas_batch_sp")
+            stats["landed"] += int(affected)
             return int(affected)
         except Exception as batch_exc:
             cur.execute("ROLLBACK TO SAVEPOINT ga_vargas_batch_sp")
             logger.warning("[ga_vargas] batch write failed (%s), falling back to per-row", batch_exc)
             written = 0
+            skipped_rows = 0
+            first_error: str | None = None
             for row in rows:
                 try:
                     cur.execute("SAVEPOINT ga_vargas_row_sp")
                     cur.execute(_UPSERT_WITH_FACT_ID_SQL, row)
+                    # A DO NOTHING conflict is not a landed row: count what the
+                    # database reports, not what was attempted.
+                    if getattr(cur, "rowcount", 1) != 0:
+                        written += 1
+                    else:
+                        skipped_rows += 1
                     cur.execute("RELEASE SAVEPOINT ga_vargas_row_sp")
-                    written += 1
                 except Exception as exc:
                     cur.execute("ROLLBACK TO SAVEPOINT ga_vargas_row_sp")
+                    stats["failed"] += 1
+                    if first_error is None:
+                        first_error = f"{type(exc).__name__}: {str(exc)[:200]}"
                     logger.warning("[ga_vargas] Row write failed: %s | row keys=%s",
                                    exc, list(row.keys())[:5])
+            stats["db_skipped"] += max(skipped_rows - len(dups), 0)
+            stats["landed"] += written
+            if first_error is not None:
+                # Rows the database REJECTED (as opposed to skipped on a key
+                # conflict) are lost data. The caller runs inside an orchestrator
+                # savepoint, so raising rolls the sub-step back instead of letting
+                # a partial or zero-row write read as a lit build (CLAUDE.md N.8).
+                raise RuntimeError(
+                    f"[ga_vargas] {stats['failed']} of {len(rows)} rows were rejected by the "
+                    f"database ({written} landed); first error: {first_error}"
+                )
             return written
 
 
@@ -2885,6 +3063,10 @@ def build_ga_vargas(
     # Scoped to the run, never persisted: each fresh build clears again, so
     # rebuild-replaces (§N.3) is preserved. See _write_rows_batch (F-A3).
     cleared_scopes: set = set()
+    # Honest row accounting for the whole call (F-A2): attempted / landed /
+    # collided / db_skipped / failed. See new_write_stats.
+    write_stats = new_write_stats()
+    index_grain_checked = False
 
     # INVARIANT sentinel deletion: remove any prior scope-cap sentinel rows
     # written under ayanamsha_id='INVARIANT' for this chart before inserting new ones.
@@ -2896,6 +3078,9 @@ def build_ga_vargas(
                 "DELETE FROM chart_divisionals WHERE chart_id = %s AND ayanamsha_id = 'INVARIANT'",
                 [cid],
             )
+            # The sentinels are about to be re-emitted under the same keys; they are
+            # replaced, not duplicated, so they must not count as run collisions.
+            write_stats["_seen"] = {k for k in write_stats["_seen"] if k[2] != "INVARIANT"}
         except Exception as exc:
             logger.warning("[ga_vargas] INVARIANT sentinel delete failed (non-fatal): %s", exc)
 
@@ -2909,7 +3094,9 @@ def build_ga_vargas(
         forensic_result = forensic_gate_vargas(all_vargas, ayan_id)
         summary["forensic_results"][ayan_id] = forensic_result
         # native-anchored (D1 Sun/Lagna); only HALTS for the native chart (Phase 3B).
-        if chart_id == CANONICAL_CHART_ID and forensic_result["result"] == "FAIL":
+        # str(): the orchestrator hands a uuid.UUID, which never == the str constant, so the halt was skipped.
+        if str(chart_id) == CANONICAL_CHART_ID and forensic_result["result"] == "FAIL":
+            logger.error("FORENSIC gate ga_vargas executed passed=False chart=canonical ayanamsha=%s", ayan_id)
             logger.error("[ga_vargas] FORENSIC FAIL: %s", forensic_result["findings"])
             _write_halt_log(
                 "GA6_FORENSIC_FAIL",
@@ -2917,8 +3104,23 @@ def build_ga_vargas(
             )
             summary["status"] = "FORENSIC_FAIL"
             return summary
+        if str(chart_id) == CANONICAL_CHART_ID:
+            logger.info("FORENSIC gate ga_vargas executed passed=True chart=canonical ayanamsha=%s", ayan_id)
+        else:
+            logger.debug("FORENSIC gate ga_vargas skipped chart=skipped-non-canonical ayanamsha=%s", ayan_id)
 
         d1_data = all_vargas.get("D1", {})
+
+        # The six INVARIANT scope-cap sentinels are ayanamsha-independent, so they are written by
+        # the FIRST canonical ayanamsha pass only. Each pass used to delete and re-emit all six:
+        # five passes reported 30 sentinel rows for 6 stored (24 overwrites; TI-l1-writer-fixes-001).
+        emit_sentinels = ayan_id == next(iter(CANONICAL_AYANAMSHAS))
+        if not emit_sentinels:
+            # ... so a later pass must also not PURGE them: the unconditional purge call below
+            # becomes a no-op from the first non-first pass on (this closure name is rebound; the
+            # first pass, which emits, is always the one that ran with the real helper).
+            def _delete_invariant_sentinels(_conn, _chart_id) -> None:  # noqa: F811
+                return None
 
         # For cross-varga harmonics post-pass, collect per-body sign per varga
         all_varga_signs: dict[str, dict[str, int]] = {b: {} for b in CLASSICAL_BODIES}
@@ -2927,9 +3129,20 @@ def build_ga_vargas(
             # INVARIANT sentinel deletion: purge stale scope-cap sentinel rows for
             # this chart before inserting new ones. Runs once per ayanamsha loop
             # entry (idempotent — deletes 0 rows if nothing was written yet).
+            if not index_grain_checked:
+                # Fail closed, once per call, before any DELETE: the conflict target
+                # below needs the live unique index to carry fact_subject (F-A2).
+                assert_unique_key_grain(conn)
+                index_grain_checked = True
             _delete_invariant_sentinels(conn, chart_id)
             if owns_conn:
                 conn.commit()
+
+            # karaka_per_varga inherits ga_sensitive's kn_rao karaka assignments (no
+            # recomputation). Raises KarakaDependencyMissing if ga_sensitive has not built
+            # this chart/ayanamsha — build ga_sensitive first (registry edge:
+            # ga_vargas depends_on ga_sensitive; see KARAKA_ROLES_LANE_INTENT).
+            karaka_assignments = _read_jaimini_karakas(conn, chart_id, ayan_id)
 
             for batch_idx, batch_vargas in enumerate(VARGA_BATCHES):
                 batch_rows = []
@@ -2995,7 +3208,7 @@ def build_ga_vargas(
 
                     # 9. karaka_per_varga
                     varga_rows.extend(_build_karaka_rows(
-                        chart_id, ayan_id, build_id, varga_n, vid, varga_data, d1_longitudes))
+                        chart_id, ayan_id, build_id, varga_n, vid, varga_data, karaka_assignments))
 
                     # 10. varga_rollup
                     varga_rows.extend(_build_rollup_rows(
@@ -3041,7 +3254,7 @@ def build_ga_vargas(
 
                 # Write batch
                 if batch_rows:
-                    written = _write_rows_batch(conn, batch_rows, cleared_scopes)
+                    written = _write_rows_batch(conn, batch_rows, cleared_scopes, write_stats)
                     if owns_conn:
                         conn.commit()
                     total_rows += written
@@ -3062,7 +3275,7 @@ def build_ga_vargas(
                 d30_rows = _build_d30_lord_per_amsa_rows(
                     chart_id, ayan_id, build_id, str(build_id))
                 if d30_rows:
-                    written = _write_rows_batch(conn, d30_rows, cleared_scopes)
+                    written = _write_rows_batch(conn, d30_rows, cleared_scopes, write_stats)
                     if owns_conn:
                         conn.commit()
                     total_rows += written
@@ -3072,7 +3285,7 @@ def build_ga_vargas(
             cross_rows = _build_cross_varga_harmonic_rows(
                 chart_id, ayan_id, build_id, all_varga_signs)
             if cross_rows:
-                written = _write_rows_batch(conn, cross_rows, cleared_scopes)
+                written = _write_rows_batch(conn, cross_rows, cleared_scopes, write_stats)
                 if owns_conn:
                     conn.commit()
                 total_rows += written
@@ -3081,7 +3294,7 @@ def build_ga_vargas(
             # Scope-cap sentinel: D81 (saptatisamsa) — intentionally not computed.
             # Emitted once per ayanamsha under 'INVARIANT' so absence ≠ bug.
             # Locked decision: GA6 brief §2 decision J.
-            if not _check_already_written(conn, chart_id, "INVARIANT", "D81_SCOPE_CAP", build_id):
+            if emit_sentinels and not _check_already_written(conn, chart_id, "INVARIANT", "D81_SCOPE_CAP", build_id):
                 now = datetime.now(timezone.utc).isoformat()
                 scope_cap_row = {
                     "fact_id": hashlib.sha256(
@@ -3117,7 +3330,7 @@ def build_ga_vargas(
                     "formula_provenance_text": "scope_cap/locked_decision_J",
                     "cross_ayanamsha_divergence_arcsec": None,
                 }
-                written = _write_rows_batch(conn, [scope_cap_row], cleared_scopes)
+                written = _write_rows_batch(conn, [scope_cap_row], cleared_scopes, write_stats)
                 if owns_conn:
                     conn.commit()
                 total_rows += written
@@ -3127,7 +3340,7 @@ def build_ga_vargas(
             # One sentinel per body so absence is explicitly intentional, not a bug.
             for floored_body in FLOORED_BODIES:
                 sentinel_key = f"{floored_body.upper()}_OUTER_PLANET_SCOPE_CAP"
-                if not _check_already_written(conn, chart_id, "INVARIANT", sentinel_key, build_id):
+                if emit_sentinels and not _check_already_written(conn, chart_id, "INVARIANT", sentinel_key, build_id):
                     now = datetime.now(timezone.utc).isoformat()
                     outer_cap_row = {
                         "fact_id": hashlib.sha256(
@@ -3166,7 +3379,7 @@ def build_ga_vargas(
                         "formula_provenance_text": "scope_cap/floored_bodies",
                         "cross_ayanamsha_divergence_arcsec": None,
                     }
-                    written = _write_rows_batch(conn, [outer_cap_row], cleared_scopes)
+                    written = _write_rows_batch(conn, [outer_cap_row], cleared_scopes, write_stats)
                     if owns_conn:
                         conn.commit()
                     total_rows += written
@@ -3178,6 +3391,19 @@ def build_ga_vargas(
                                          total_batches, total_batches, total_rows)
 
     summary["total_rows_written"] = total_rows
+    summary["rows_attempted"] = write_stats["attempted"]
+    summary["rows_landed"] = write_stats["landed"]
+    summary["rows_collided"] = write_stats["collided"]
+    summary["rows_db_skipped"] = write_stats["db_skipped"]
+    summary["rows_failed"] = write_stats["failed"]
+    summary["collision_samples"] = list(write_stats["collision_samples"])
+    if write_stats["collided"] or write_stats["db_skipped"]:
+        logger.error(
+            "[ga_vargas] %d of %d rows did not land (%d key collisions within the run, "
+            "%d skipped on conflict); first collisions: %s",
+            write_stats["attempted"] - write_stats["landed"], write_stats["attempted"],
+            write_stats["collided"], write_stats["db_skipped"], write_stats["collision_samples"][:3],
+        )
     summary["status"] = "PASS"
     summary["completed_at"] = datetime.now(timezone.utc).isoformat()
     logger.info("[ga_vargas] Build COMPLETE: %d total rows written", total_rows)

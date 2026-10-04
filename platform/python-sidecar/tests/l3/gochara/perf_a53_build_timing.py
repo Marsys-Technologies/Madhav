@@ -12,12 +12,18 @@ a hostile admin DSN is a configuration ERROR, never a skip):
   * runs the writer's OWN orchestrated build — `plan_substeps` executed in order, one
     substep per transaction exactly like the orchestrator (`WriterBase.run` aggregates
     the same plan; we iterate it only so each substep is timed individually). A FAILING
-    substep is timed, its error recorded (first line), and the plan CONTINUES — on the
-    disposable stubbed-L1 world the verification substeps are EXPECTED to fail (the
-    stub L1 is not a consistent candidate: no all-lord daśā cover can exist without
-    overlapping rows — the same "the gate would refuse them; the measurement is of
-    cost" discipline as perf_a53_seal_cost's replicated clones). Against a real L1
-    export they pass;
+    substep is timed, its error recorded (first line), and the plan CONTINUES. On the
+    disposable stubbed-L1 world some substeps are EXPECTED to fail, and they are NOT only
+    the verification ones: the P1 RECORD substeps fail too ("P1 anchor verification
+    failed …") alongside the verify substeps ("contact geometry certification failed …").
+    Measured 2026-10-04 with the real .se1 corpus: 11 of 298 substeps failed (8
+    record:<class>:P1, 3 verify:<class>), 287 completed. The original explanation — the
+    stub L1 is not a consistent candidate, no all-lord daśā cover can exist without
+    overlapping rows — is the harness author's and was NOT verified here; what is
+    measured is only WHICH substeps fail. Same "the gate would refuse them; the
+    measurement is of cost" discipline as perf_a53_seal_cost's replicated clones, so the
+    timings of failing substeps are the cost up to the failure, not a full run. Against
+    a real L1 export the failures are not expected (untested here);
   * records per-substep wall time, rows_inserted, notes and any error;
   * records per-table row counts of every public ka_gochara_*/kala_gochara_* table
     after the build;

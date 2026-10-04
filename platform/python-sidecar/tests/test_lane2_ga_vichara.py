@@ -414,6 +414,8 @@ class _FakeCursor:
         elif sql_norm.startswith("DELETE FROM chart_vichara"):
             self._last_rows = []
             self.rowcount = 0
+        elif sql_norm.startswith("SELECT created_at FROM build_runs"):
+            self._last_rows = [{"created_at": datetime(2026, 9, 8, 8, 10, tzinfo=timezone.utc)}]
         elif sql_norm.startswith("INSERT INTO chart_vichara"):
             self._conn.inserted_rows.append(params)
             self._last_rows = []
@@ -422,6 +424,9 @@ class _FakeCursor:
 
     def fetchall(self):
         return self._last_rows
+
+    def fetchone(self):
+        return self._last_rows[0] if self._last_rows else None
 
 
 class _FakeConn:

@@ -60,10 +60,14 @@ class GaVicharaWriter(WriterBase):
 
         ayanamsha_id = step.key.removeprefix("ayanamsha_")
         rows = build_ga_vichara_substep(
-            chart_id=ctx.config["chart_id"],
+            # uuid.UUID from the real orchestrator (psycopg uuid decode); the writer's FORENSIC gate compares
+            # chart_id to a str constant, so convert at the boundary.
+            chart_id=str(ctx.config["chart_id"]),
             build_id=ctx.build_id,
             ayanamsha_id=ayanamsha_id,
             conn=ctx.db_conn,
             dry_run=ctx.dry_run,
+            as_of=ctx.config.get("as_of"),      # explicit override only (tests/rehearsals)
+            require_run_date=True,              # orchestrator path: NEVER fall back to the wall clock
         )
         return WriterResult(asset_id=self.asset_id, rows_inserted=rows)

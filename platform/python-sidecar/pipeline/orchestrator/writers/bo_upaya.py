@@ -186,8 +186,8 @@ def _fetch_shadbala(conn: Any, chart_id: str, aya: str) -> dict[str, float]:
     fact_subject holds the planet code (SUN/MOON/MAR/…); fact_key = 'ratio' is
     the L1-authoritative achieved/required shadbala ratio (ga_strength_writer,
     CR-18), already dividing each graha's OWN classical Parashara minimum
-    (SHADBALA_REQUIRED: Sun/Mars/Saturn=5.0, Moon=6.0, Mercury=7.0, Jupiter=6.5,
-    Venus=5.5 rupas) — read here, never recomputed (§N.5). Rahu/Ketu carry no
+    (SHADBALA_REQUIRED: Sun/Jupiter=6.5, Mars/Saturn=5.0, Moon=6.0, Mercury=7.0,
+    Venus=5.5 rupas; BPHS 27.32-33) — read here, never recomputed (§N.5). Rahu/Ketu carry no
     classical shadbala requirement (ga_strength_writer's classical_grahas list
     excludes them) and so have no 'ratio' row; the caller falls back honestly.
 

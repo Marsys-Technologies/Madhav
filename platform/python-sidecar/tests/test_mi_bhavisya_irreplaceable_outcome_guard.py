@@ -1,11 +1,16 @@
 """
-R6 fix: mi_bhavisya.py's idempotent per-chart delete-then-insert previously deleted
-ALL mimamsa_predictions rows unconditionally on every rebuild -- including rows whose
-lifecycle_status has moved to 'confirmed'/'denied'/'partial', which carry a real,
-native-verified outcome written exclusively by mi_abhilekha's journal-answer sync.
-That is IRREPLACEABLE data (JL-020 classification) and must never be destroyed by a
-routine rebuild of this writer. The delete must scope to lifecycle_status IN
-('pending', 'due') -- only this writer's own still-forecasting, rebuildable rows.
+Irreplaceable-outcome guard for mi_bhavisya.py (R6 fix, superseded by SS N-104).
+
+History: R6 first scoped the writer's per-chart DELETE to lifecycle_status IN ('pending', 'due') so a
+routine rebuild could not destroy rows carrying a native-verified outcome (confirmed/denied/partial,
+written exclusively by mi_abhilekha's journal-answer sync).  SS N-104 (an application of N-46) went
+further: calibration records are HISTORY, so the writer has NO delete or update of
+mimamsa_predictions / mimamsa_manifestation_sets at all -- a pending row is as unreplaceable as a
+confirmed one, because its emitted_at is the only evidence of WHEN the claim was made.
+
+This file keeps the source-text guards (cheap, DB-free).  The behavioural proof -- real rebuilds over
+existing rows on a fake and on a disposable PostgreSQL, byte-for-byte, with mutation proofs -- is
+tests/test_mi_bhavisya_append_only.py.
 """
 import inspect
 import re
@@ -13,39 +18,35 @@ import re
 from pipeline.orchestrator.writers import mi_bhavisya
 
 
-def _run_source() -> str:
-    return inspect.getsource(mi_bhavisya.MiBhavisyaWriter.run)
+def _run_code() -> str:
+    src = inspect.getsource(mi_bhavisya.MiBhavisyaWriter.run)
+    return "\n".join(l for l in src.splitlines() if not l.strip().startswith("#"))
 
 
-def test_predictions_delete_is_scoped_to_pending_or_due_only():
-    src = _run_source()
-    m = re.search(
-        r'DELETE FROM mimamsa_predictions WHERE chart_id = %s(.*?)"', src
-    )
-    assert m, "expected an unconditional-looking DELETE FROM mimamsa_predictions statement to scope"
-    assert "lifecycle_status" in m.group(1), (
-        "mimamsa_predictions delete must be scoped by lifecycle_status -- an unscoped "
-        "per-chart delete destroys confirmed/denied/partial rows (real recorded native "
-        "outcomes) alongside pending forecasts"
-    )
-    assert "'pending'" in m.group(1) and "'due'" in m.group(1), (
-        "must preserve exactly the non-forecasting statuses ('confirmed'/'denied'/'partial'); "
-        "only 'pending'/'due' rows are this writer's own rebuildable output"
-    )
+def test_run_has_no_delete_update_or_truncate():
+    code = _run_code()
+    for kw in ("DELETE", "TRUNCATE"):
+        assert not re.search(rf"\b{kw}\b", code), f"{kw} against the frozen tables is forbidden (SS N-104)"
+    assert not re.search(r"\bUPDATE\b", code), "UPDATE of a frozen prediction is forbidden (SS N-104)"
 
 
-def test_predictions_delete_does_not_reference_the_dropped_outcome_observed_column():
+def test_inserts_never_overwrite_on_conflict():
+    code = _run_code()
+    assert code.count("ON CONFLICT") == 2 and code.count("DO NOTHING") == 2
+    assert "DO UPDATE" not in code
+
+
+def test_only_ever_inserts_the_initial_pending_status():
+    # outcome statuses are written by mi_abhilekha's journal sync alone, never by this writer
+    code = _run_code()
+    for status in ("confirmed", "denied", "partial", "expired"):
+        assert f"'{status}'" not in code and f'"{status}"' not in code
+    assert '"pending"' in code
+
+
+def test_does_not_reference_the_dropped_outcome_columns():
     # outcome_observed/brier_score belonged to the v1.0 table dropped by migration 346a and
     # recreated with a different schema by 347_mimamsa_bhavisya.sql -- never resurrect it.
-    src = _run_source()
-    assert "outcome_observed" not in src
-    assert "brier_score" not in src
-
-
-def test_manifestation_sets_delete_remains_unconditional():
-    # mimamsa_manifestation_sets carries no outcome-tracking column -- it is fully
-    # rebuildable, unconditional per-chart delete is correct and must not regress.
-    src = _run_source()
-    assert re.search(
-        r"DELETE FROM mimamsa_manifestation_sets WHERE chart_id = %s\s*[,)\"']", src
-    ), "mimamsa_manifestation_sets delete should remain a plain per-chart delete"
+    code = _run_code()
+    assert "outcome_observed" not in code
+    assert "brier_score" not in code

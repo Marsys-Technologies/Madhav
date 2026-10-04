@@ -54,7 +54,7 @@ def _second_build_row(w, tier="single"):
 
 def test_a_clean_single_pinned_build_is_accepted_by_both_sides(built):
     w = built
-    assert dasha_read.assert_single_pinned_build(w.conn, CHART_ID) == ["1f89fd4c-7d1e-4f3a-b3ae-e7ff839a6feb"]
+    assert dasha_read.assert_single_pinned_build(w.conn, CHART_ID) == ["75524b3e-102a-43ec-8cee-3f57fee752c3"]
     _verified(w)
     assert inv.validate_consumed_dasha_population(w.conn, chart_id=CHART_ID, generation=GEN)["consumed"] > 0
 
@@ -95,7 +95,7 @@ def test_other_systems_and_other_ayanamshas_do_not_count_as_builds(built):
     w.conn.execute("INSERT INTO public.chart_dashas (dasha_row_id, chart_id, ayanamsha_id, system_id, level_n, lord_graha, start_iso, end_iso,"
                    " build_id, verification_pass_status) SELECT gen_random_uuid(), chart_id, ayanamsha_id, 'yogini', 1, lord_graha, start_iso, end_iso,"
                    " %s::uuid, 'single' FROM public.chart_dashas WHERE level_n = 1 LIMIT 1", (ANOTHER,))
-    assert dasha_read.assert_single_pinned_build(w.conn, CHART_ID) == ["1f89fd4c-7d1e-4f3a-b3ae-e7ff839a6feb"]
+    assert dasha_read.assert_single_pinned_build(w.conn, CHART_ID) == ["75524b3e-102a-43ec-8cee-3f57fee752c3"]
 
 
 # ── (d) the absolute probe ──────────────────────────────────────────────────────────────────────────────────────────
@@ -120,12 +120,12 @@ def test_the_real_probe_reproduces_the_constant_on_the_pinned_corpus_from_the_ma
 
 def test_the_two_governed_pins_of_the_canonical_dasha_build_are_equal():
     from services.gochara_rules import permission
-    assert permission.DASHA_READ_CONTRACT["build_id"] == inv._C_BUILD == "1f89fd4c-7d1e-4f3a-b3ae-e7ff839a6feb"
+    assert permission.DASHA_READ_CONTRACT["build_id"] == inv._C_BUILD == "75524b3e-102a-43ec-8cee-3f57fee752c3"
 
 
 def test_the_canonical_dasha_build_is_pinned_in_no_other_governed_module():
     from pathlib import Path
     root = Path(__file__).resolve().parents[3]
     hits = sorted(str(p.relative_to(root)) for d in ("services", "pipeline") for p in (root / d).rglob("*.py")
-                  if "1f89fd4c-7d1e-4f3a-b3ae-e7ff839a6feb" in p.read_text())
+                  if "75524b3e-102a-43ec-8cee-3f57fee752c3" in p.read_text())
     assert hits == ["services/gochara_kernel/inventory_verifier.py", "services/gochara_rules/permission.py"], hits

@@ -3,8 +3,8 @@
 O-RP-1, O-RP-3, O-RP-5b, O-RP-6, O-RP-7, O-RP-8 with LITERAL inputs per
 /tmp oracles constants (chart 482012f1-710e-4a25-994a-93821f5871aa,
 ayanamsha lahiri_chitrapaksha, natal build 1c092ffb-72eb-4614-8422-552ca6eae985;
-dasha build 1f89fd4c-7d1e-4f3a-b3ae-e7ff839a6feb — MD Mercury row
-58afa482-4bce-42df-9c0d-0b5a2e02305e).
+dasha build 75524b3e-102a-43ec-8cee-3f57fee752c3 — MD Mercury row
+1d1a80c0-53c6-5ff7-930a-52ff0f306cae).
 """
 from __future__ import annotations
 
@@ -265,9 +265,9 @@ def test_o_rp_7_one_production_qualifier_flips_with_dignity():
     qualifier = getattr(_av, "p1_qualifier", None)
     assert callable(qualifier), "no production P1 qualifier composing dignity"
     exalted = qualifier("Mercury", "Virgo", deg_in_sign=10.0,
-                        period_lord_row="58afa482-4bce-42df-9c0d-0b5a2e02305e")
+                        period_lord_row="1d1a80c0-53c6-5ff7-930a-52ff0f306cae")
     debilitated = qualifier("Mercury", "Pisces",
-                            period_lord_row="58afa482-4bce-42df-9c0d-0b5a2e02305e")
+                            period_lord_row="1d1a80c0-53c6-5ff7-930a-52ff0f306cae")
     assert exalted["direction"] == "favourable"
     assert debilitated["direction"] == "adverse"
     assert exalted["direction"] != debilitated["direction"]

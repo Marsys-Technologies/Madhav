@@ -1030,11 +1030,16 @@ def _e63_ref_run(sha, files, driver, data, what, keys):
     import tempfile
     d = tempfile.mkdtemp(prefix="e63_ref_")
     try:
+        # The ref's scripts resolve repo-root paths with `Path(__file__).resolve().parents[3]` at import time, which raises
+        # IndexError when the scripts sit directly under a shallow temp path (CI's /tmp/e63_ref_x). Nest them three levels
+        # deep so the ancestry always exists.
+        work = os.path.join(d, "a", "b", "c")
+        os.makedirs(work)
         for name, body in files.items():
-            with open(os.path.join(d, name), "wb") as f:
+            with open(os.path.join(work, name), "wb") as f:
                 f.write(body)
         try:
-            r = subprocess.run([sys.executable, "-c", driver], input=data, capture_output=True, cwd=d, timeout=120,
+            r = subprocess.run([sys.executable, "-c", driver], input=data, capture_output=True, cwd=work, timeout=120,
                                env={k: v for k, v in os.environ.items() if k not in ("PYTHONPATH", "PYTHONSTARTUP")})
         except (OSError, subprocess.SubprocessError) as e:
             _e63_fail("registry_unreadable", f"{what} at {sha[:12]} could not be run ({type(e).__name__}: {e})")
