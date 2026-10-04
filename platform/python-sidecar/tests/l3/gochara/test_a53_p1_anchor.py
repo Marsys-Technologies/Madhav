@@ -1,0 +1,330 @@
+"""A5.3 — AM-21 + part 2 (Codex round 8, R8-3): the P1 record's period ANCHOR.
+
+A P1 transit record is licensed by the running periods of ONE lord at ONE level — its anchor — and that lord is NOT
+always the transiting agent (Phaladīpikā XX.38: the Sun entering another graha's exaltation sign delivers the BHUKTI
+lord's fruit). One physical contact can therefore be several records (role aliases sharing one `contact_id`):
+the Sun in Libra is the Sun's own debilitation sign (anchor Sun) AND Saturn's exaltation sign (anchor Saturn at AD).
+
+Oracle O-PP-5 (Stream B's literal): the Sun in Libra over a span that overlaps both a Saturn AD and a Sun AD gives TWO
+records with one contact_id, anchors (Sun, AD) and (Saturn, AD), supports = span ∩ D(Sun, AD) and span ∩ D(Saturn, AD).
+Everything runs on the real applied schema (… + 1233) with the L1 tables stubbed.
+"""
+from __future__ import annotations
+
+import uuid
+
+import pytest
+
+from services.gochara_kernel import evaluator as ev
+from services.gochara_kernel import record_verifier as rv
+from services.gochara_kernel.dasha_read import LEVEL_N, make_period_rows_for
+
+from .test_a53_inventory import CHART, CHART_ID
+from .test_a53_p1_support import GEN, _supports, _t, world  # noqa: F401
+
+SUN_AD = ("sun", "ad")
+SAT_AD = ("saturn", "ad")
+
+
+def _quiet(body):
+    """A longitude in a sign where P1 reads `body` NOWHERE (so a partial world is a COMPLETE world for the contact set)."""
+    for idx in range(12):
+        if not rv.expected_p1_anchors(body, idx):
+            return idx * 30.0 + 15.0
+    raise AssertionError(body)
+
+
+def _pos(spans):
+    """The ephemeris stand-in: `spans` = {body: [(a, b)]} the body is in Libra; every other instant, and every other
+    body, sits in a P1-quiet sign."""
+    def at(body, t):
+        b = body.lower()
+        return 195.0 if any(a <= t < z for a, z in spans.get(b, ())) else _quiet(b)
+    return at
+
+
+SUN_LIBRA = _pos({"sun": [(_t(1, 10), _t(2, 20))]})
+
+
+def _anchors(w, position_at=SUN_LIBRA):
+    return rv.verify_p1_anchors(w.conn, chart_id=CHART_ID, generation=GEN, event_class="marriage",
+                                position_at=position_at)
+
+
+def _records(conn):
+    return conn.execute(
+        "SELECT r.record_id::text, r.agent, r.period_anchor_lord, r.period_anchor_level, r.contact_id::text,"
+        " r.temporal_support_intervals FROM public.ka_gochara_relationship_record r"
+        " WHERE r.path_id = 'P1' ORDER BY r.period_anchor_lord, r.period_anchor_level").fetchall()
+
+
+def _sun_in_libra(w):
+    """Sun AD [01-01, 01-20), Saturn AD [01-20, 02-05); the Sun is in Libra [01-10, 02-20)."""
+    w.set_lord_periods([("sun", 2, _t(1, 1), _t(1, 20)), ("saturn", 2, _t(1, 20), _t(2, 5))])
+    w.boot()
+    w.seed("sun", [(180.0, _t(1, 10)), (210.0, _t(2, 20))])
+    span = lambda t: _t(1, 10) <= t < _t(2, 20)                              # noqa: E731
+    w.grain("sun", span, anchors=[SUN_AD, SAT_AD])               # one grain, both readings of the one contact
+
+
+# ── enumeration ──────────────────────────────────────────────────────────────────────────────────────
+
+def test_the_sun_in_libra_is_two_readings_with_two_anchors():
+    anchors = sorted((e.period_anchor_lord, e.period_anchor_level)
+                     for e in ev.enumerate_edges("marriage", "P1", CHART)
+                     if e.transit and e.agent == "sun" and e.relation == "residence"
+                     and e.obj.canonical_target == "span:7")
+    assert anchors == [("saturn", "ad"), ("sun", "ad"), ("sun", "md"), ("sun", "pd")]
+
+
+def test_only_p1_transit_edges_carry_an_anchor_and_the_natural_key_includes_it():
+    edges = ev.enumerate_edges("marriage", "P1", CHART)
+    transit = [e for e in edges if e.transit]
+    assert transit and all(e.period_anchor_lord and e.period_anchor_level in ("md", "ad", "pd") for e in transit)
+    assert all(e.period_anchor_lord is None for e in edges if not e.transit)
+    for path in ("P2", "P3", "P4"):
+        assert all(e.period_anchor_lord is None for e in ev.enumerate_edges("marriage", path, CHART))
+    keys = {e.natural_key for e in transit}
+    assert len(keys) == len(transit)                                  # the anchor makes every reading distinct
+
+
+# ── O-PP-5 ───────────────────────────────────────────────────────────────────────────────────────────
+
+def test_o_pp_5_two_records_one_contact_two_anchors_two_supports(world):
+    w = world
+    _sun_in_libra(w)
+    rows = _records(w.conn)
+    assert [(r[2], r[3]) for r in rows] == [SAT_AD, SUN_AD]
+    assert len({r[0] for r in rows}) == 2                             # two records ...
+    assert len({r[4] for r in rows}) == 1 and rows[0][4] is not None  # ... ONE physical contact (role aliases)
+    got = {(r[2], r[3]): [(x.lower, x.upper) for x in r[5]] for r in rows}
+    assert got[SUN_AD] == [(_t(1, 10), _t(1, 20))]                    # span ∩ D(Sun, AD)
+    assert got[SAT_AD] == [(_t(1, 20), _t(2, 5))]                     # span ∩ D(Saturn, AD)
+    assert rv.verify_p1_support(w.conn, chart_id=CHART_ID, generation=GEN, event_class="marriage") == {
+        "records": 2, "restricted": 2}
+
+
+def test_the_role_aliases_are_counted_as_one_contact_not_two(world):
+    w = world
+    _sun_in_libra(w)
+    assert w.conn.execute("SELECT count(DISTINCT contact_id) FROM public.ka_gochara_relationship_record"
+                          " WHERE path_id = 'P1'").fetchone()[0] == 1
+
+
+def test_mutation_one_record_anchored_on_the_agent_only_fails_the_anchor_verifier(world):
+    """Only the Sun's own reading is stored: the contact is also Saturn's exaltation sign, so the verifier's own
+    derivation expects the (Saturn, AD) reading too."""
+    w = world
+    w.set_lord_periods([("sun", 2, _t(1, 1), _t(1, 20)), ("saturn", 2, _t(1, 20), _t(2, 5))])
+    w.boot()
+    w.seed("sun", [(180.0, _t(1, 10)), (210.0, _t(2, 20))])
+    w.grain("sun", lambda t: _t(1, 10) <= t < _t(2, 20), anchor=SUN_AD)
+    with pytest.raises(RuntimeError, match="P1 anchor verification failed"):
+        _anchors(w)
+
+
+def test_the_anchor_verifier_accepts_the_full_set_and_refuses_an_invented_anchor(world):
+    w = world
+    w.set_lord_periods([("sun", 2, _t(1, 1), _t(1, 20)), ("saturn", 2, _t(1, 20), _t(2, 5))])
+    w.boot()
+    w.seed("sun", [(180.0, _t(1, 10)), (210.0, _t(2, 20))])
+    span = lambda t: _t(1, 10) <= t < _t(2, 20)                              # noqa: E731
+    w.grain("sun", span, anchors=[SUN_AD, SAT_AD, ("sun", "md"), ("sun", "pd")])
+    assert _anchors(w)["contacts"] == 1
+    # a wrong level on an existing reading: Saturn's XX.38 reading is an AD reading, never MD
+    w.conn.execute("UPDATE public.ka_gochara_relationship_record SET period_anchor_level = 'md'"
+                   " WHERE period_anchor_lord = 'saturn'")
+    with pytest.raises(RuntimeError, match="P1 anchor verification failed"):
+        _anchors(w)
+
+
+def test_mutation_domain_taken_from_the_agents_periods_for_the_xx38_reading_fails_the_support_verifier(world):
+    """The (Saturn, AD) record's support is rewritten to what the AGENT's (Sun's) AD would give: the verifier
+    derives D(Saturn, AD) from the stored anchor, so it refuses."""
+    w = world
+    _sun_in_libra(w)
+    w.conn.execute("UPDATE public.ka_gochara_relationship_record SET temporal_support_intervals ="
+                   " ARRAY[tstzrange(%s, %s, '[)')]"
+                   " WHERE period_anchor_lord = 'saturn'", (_t(1, 10), _t(1, 20)))
+    with pytest.raises(RuntimeError, match="P1 support verification failed"):
+        rv.verify_p1_support(w.conn, chart_id=CHART_ID, generation=GEN, event_class="marriage")
+
+
+def test_o_pp_4_an_anchor_with_no_running_rows_is_unrestricted_and_unknown(world):
+    """(a) the anchor lord has no periods at that level in the pinned rows ⇒ unknown, the contact span unrestricted
+    (an unknown prerequisite is NOT admitted as running, and not invented either)."""
+    w = world
+    w.set_lord_periods([("sun", 2, _t(1, 1), _t(1, 20))])              # no Saturn rows at all
+    w.boot()
+    w.seed("sun", [(180.0, _t(1, 10)), (210.0, _t(2, 20))])
+    w.grain("sun", lambda t: _t(1, 10) <= t < _t(2, 20), anchor=SAT_AD)
+    (row,) = _records(w.conn)
+    assert [(x.lower, x.upper) for x in row[5]] == [(_t(1, 10), _t(2, 20))]
+    res = w.conn.execute("SELECT p.result FROM public.ka_gochara_record_prerequisite p WHERE p.predicate_id ="
+                         " 'period_running_at'").fetchall()
+    assert [r[0] for r in res] == ["unknown"]
+
+
+def test_o_pp_4_disjoint_pieces_are_kept_and_never_bridged(world):
+    """(b) two Sun ADs with a gap inside the contact: two pieces, the gap excluded."""
+    w = world
+    w.set_lord_periods([("sun", 2, _t(1, 1), _t(1, 15)), ("sun", 2, _t(1, 25), _t(2, 5))])
+    w.boot()
+    w.seed("sun", [(180.0, _t(1, 10)), (210.0, _t(2, 20))])
+    w.grain("sun", lambda t: _t(1, 10) <= t < _t(2, 20), anchor=SUN_AD)
+    assert _supports(w.conn) == [[(_t(1, 10), _t(1, 15)), (_t(1, 25), _t(2, 5))]]
+    rv.verify_p1_support(w.conn, chart_id=CHART_ID, generation=GEN, event_class="marriage")
+
+
+def test_o_pp_4_the_level_is_part_of_the_domain(world):
+    """(c) a Sun PD is not a Sun AD: the (Sun, AD) reading ignores it, the (Sun, PD) reading uses it."""
+    w = world
+    w.set_lord_periods([("sun", 2, _t(1, 1), _t(1, 15)), ("sun", 3, _t(1, 28), _t(2, 2))])
+    w.boot()
+    w.seed("sun", [(180.0, _t(1, 10)), (210.0, _t(2, 20))])
+    span = lambda t: _t(1, 10) <= t < _t(2, 20)                              # noqa: E731
+    w.grain("sun", span, anchors=[SUN_AD, ("sun", "pd")])
+    got = {(r[2], r[3]): [(x.lower, x.upper) for x in r[5]] for r in _records(w.conn)}
+    assert got[SUN_AD] == [(_t(1, 10), _t(1, 15))]
+    assert got[("sun", "pd")] == [(_t(1, 28), _t(2, 2))]
+    rv.verify_p1_support(w.conn, chart_id=CHART_ID, generation=GEN, event_class="marriage")
+
+
+def test_o_pp_4_an_instant_judged_prerequisite_is_not_a_domain(world):
+    """(d) the support is a half-open INTERVAL domain: a period that only touches the contact at its endpoint
+    contributes nothing (a running period ending exactly at the ingress is not running during it)."""
+    w = world
+    w.set_lord_periods([("sun", 2, _t(1, 1), _t(1, 10))])             # ends exactly when the contact starts
+    w.boot()
+    w.seed("sun", [(180.0, _t(1, 10)), (210.0, _t(2, 20))])
+    w.grain("sun", lambda t: _t(1, 10) <= t < _t(2, 20), anchor=SUN_AD)
+    (row,) = _records(w.conn)
+    assert list(row[5]) == []
+    res = w.conn.execute("SELECT p.result FROM public.ka_gochara_record_prerequisite p WHERE p.predicate_id ="
+                         " 'period_running_at'").fetchall()
+    assert [r[0] for r in res] == ["false"]
+
+
+# ── level-aware reads + 1233 ─────────────────────────────────────────────────────────────────────────
+
+def test_rows_for_filters_by_level(world):
+    w = world
+    w.set_lord_periods([("sun", 2, _t(1, 1), _t(1, 20)), ("sun", 3, _t(1, 5), _t(1, 8))])
+    w.boot()
+    rows_for, _ = make_period_rows_for(w.conn, CHART_ID)
+    span = lambda lvl: [(r["start_iso"], r["end_iso"]) for r in rows_for("sun", lvl)]   # noqa: E731
+    assert span("ad") == [(_t(1, 1), _t(1, 20))] and span("pd") == [(_t(1, 5), _t(1, 8))]
+    assert LEVEL_N == {"md": 1, "ad": 2, "pd": 3}
+    assert len(span(None)) == len(span("md")) + 2                    # the legacy union: every level
+
+
+def test_1233_checks_hold_on_the_real_schema(world):
+    """Pair / vocabulary / set-exactly-for-P1 — the migration's own CHECKs (bounded, not doctrine)."""
+    import psycopg
+    w = world
+    _sun_in_libra(w)
+    for sql in ("UPDATE public.ka_gochara_relationship_record SET period_anchor_level = NULL",
+                "UPDATE public.ka_gochara_relationship_record SET period_anchor_lord = 'Sun'",
+                "UPDATE public.ka_gochara_relationship_record SET period_anchor_level = 'xd'"):
+        with pytest.raises(psycopg.errors.CheckViolation):
+            w.conn.execute(sql)
+
+
+# ── R9-5: the PD level is explicitly authorised TESTIMONY, consistently everywhere ───────────────────
+
+PD_RULING = "ST-P1-PD-TESTIMONY-20261002"
+
+
+def test_enumeration_marks_exactly_the_pd_readings_as_testimony_under_the_named_ruling():
+    edges = [e for e in ev.enumerate_edges("marriage", "P1", CHART) if e.transit]
+    assert ev.P1_PD_LIMITATION == "p1_pd_level_no_source" and ev.P1_PD_RULING == PD_RULING
+    for e in edges:
+        want = (("testimony", "uncited_extension", PD_RULING) if e.period_anchor_level == "pd"
+                else ("scored", "verse_cited", None))
+        assert (e.operator_role, e.provenance, e.ruling_ref) == want, (e.agent, e.period_anchor_lord, e.period_anchor_level)
+    assert {e.period_anchor_level for e in edges if e.operator_role == "testimony"} == {"pd"}
+
+
+def test_sun_in_libra_is_three_scored_readings_and_one_testimony_pd(world):
+    """The corrected O-PP-5 shape: Sun MD, Sun AD, Saturn AD are scored-path; Sun PD is testimony."""
+    w = world
+    w.set_lord_periods([("sun", 2, _t(1, 1), _t(1, 20)), ("saturn", 2, _t(1, 20), _t(2, 5))])
+    w.boot()
+    w.seed("sun", [(180.0, _t(1, 10)), (210.0, _t(2, 20))])
+    w.grain("sun", lambda t: _t(1, 10) <= t < _t(2, 20), anchors=[SUN_AD, SAT_AD, ("sun", "md"), ("sun", "pd")])
+    got = {(r[0], r[1]): (r[2], r[3], r[4]) for r in w.conn.execute(
+        "SELECT period_anchor_lord, period_anchor_level, operator_role, provenance, ruling_ref"
+        " FROM public.ka_gochara_relationship_record WHERE path_id = 'P1'").fetchall()}
+    assert got == {("sun", "md"): ("scored", "verse_cited", None), ("sun", "ad"): ("scored", "verse_cited", None),
+                   ("saturn", "ad"): ("scored", "verse_cited", None),
+                   ("sun", "pd"): ("testimony", "uncited_extension", PD_RULING)}
+    out = _anchors(w)                                         # verification agrees, and names the limitation
+    assert out["limitations"] == ["p1_pd_level_no_source"]
+
+
+def _sun_full(w):
+    w.set_lord_periods([("sun", 2, _t(1, 1), _t(1, 20)), ("saturn", 2, _t(1, 20), _t(2, 5))])
+    w.boot()
+    w.seed("sun", [(180.0, _t(1, 10)), (210.0, _t(2, 20))])
+    w.grain("sun", lambda t: _t(1, 10) <= t < _t(2, 20), anchors=[SUN_AD, SAT_AD, ("sun", "md"), ("sun", "pd")])
+    assert _anchors(w)["contacts"] >= 1
+
+
+def _tamper(w, set_clause, where):
+    w.conn.execute("ALTER TABLE public.ka_gochara_relationship_record DISABLE TRIGGER USER")
+    w.conn.execute(f"UPDATE public.ka_gochara_relationship_record SET {set_clause} WHERE path_id = 'P1' AND {where}")
+
+
+@pytest.mark.parametrize("label,set_clause,where", [
+    ("a PD reading minted as SCORED", "operator_role = 'scored', provenance = 'verse_cited', ruling_ref = NULL",
+     "period_anchor_level = 'pd'"),
+    ("an AD reading minted as TESTIMONY", "operator_role = 'testimony', provenance = 'uncited_extension',"
+     " ruling_ref = 'ST-P1-PD-TESTIMONY-20261002'", "period_anchor_lord = 'saturn'"),
+    ("a PD reading under a different ruling", "ruling_ref = 'D-PADMIT'", "period_anchor_level = 'pd'"),
+])
+def test_the_verifier_refuses_a_wrong_role_for_the_level(world, label, set_clause, where):
+    w = world
+    _sun_full(w)
+    _tamper(w, set_clause, where)
+    with pytest.raises(RuntimeError, match="stored \\(role, provenance, ruling\\)"):
+        _anchors(w)
+
+
+def test_the_pd_ruling_and_limitation_are_part_of_the_manifest_identity_and_the_inventory_and_coverage():
+    from pipeline.orchestrator.writers import ka_gochara_v5 as writer_mod
+    ids = {r["id"] for r in writer_mod._applicable_rulings()}
+    assert PD_RULING in ids
+    pd = next(r for r in writer_mod._applicable_rulings() if r["id"] == PD_RULING)
+    assert pd["limitation"] == "p1_pd_level_no_source"
+    from services.gochara_kernel import scope_response as sr
+    names = {l["name"]: l for l in sr.named_limits()}
+    assert "TESTIMONY" in names["p1_pd_level_no_source"]["statement"] and "never score" in names["p1_pd_level_no_source"]["statement"]
+    assert "not covered" in names["p1_transit_subset_not_exhaustive"]["statement"]
+    assert "inimical sign" in names["p1_transit_subset_not_exhaustive"]["statement"]
+
+
+def test_the_pd_role_obligation_intervals_carry_the_limitation():
+    from .test_a53_inventory import _plan
+    plan = _plan()
+    (p1,) = [p for p in plan.pins if p.path_id == "P1"]
+    pd_ids = {o.ob_id for o in p1.obligations if o.agent == "period_lord:pd"}
+    md_ids = {o.ob_id for o in p1.obligations if o.agent == "period_lord:md"}
+    pd_iv = [iv for iv in plan.intervals if iv.ob_id in pd_ids]
+    assert pd_iv and all(iv.detail.get("limitation") == "p1_pd_level_no_source" for iv in pd_iv)
+    assert not any("limitation" in iv.detail for iv in plan.intervals if iv.ob_id in md_ids)
+
+
+def test_testimony_pd_readings_never_enter_a_window(world):
+    """The sweep admits scored records only: the PD testimony record is excluded (and counted), so a window's members are
+    the MD/AD readings alone."""
+    from services.gochara_kernel import window_sweep as ws
+    from services.gochara_kernel.window_store import WindowStore
+    w = world
+    _sun_full(w)
+    recs = WindowStore(w.conn).read_grain(chart_id=CHART_ID, generation=GEN, event_class="marriage", path_id="P1",
+                                          rule_version="1.0.0")
+    assert {r.operator_role for r in recs} == {"scored", "testimony"}
+    drafts, excluded = ws.draft_windows("marriage", recs, lambda p, v: [], policy="all_null_candidate/1")
+    assert excluded["testimony"] == 1
+    member_roles = {r.operator_role for r in recs if r.record_id in {i for d in drafts for i in d.record_ids}}
+    assert member_roles <= {"scored"}
