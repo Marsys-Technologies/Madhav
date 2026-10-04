@@ -409,6 +409,7 @@ def _require_manifest_horizon(ctx: ContextSpec, chart_id: str, slice_: "TestSlic
         raise RuntimeError(f"{ASSET_ID}: no candidate manifest for generation {GENERATION} — the manifest substep runs first")
     lo, hi = tuple(row.values()) if isinstance(row, dict) else tuple(row)
     horizon = _effective_horizon(ctx, slice_)          # the marker's horizon under a slice, else the configured one
+    # exact instants: any difference, even sub-microsecond or a zone that moves the instant, refuses (fail-closed)
     if horizon is None or (lo, hi) != (horizon[0], horizon[1]):
         raise HorizonMismatch(
             f"{ASSET_ID}: horizon guard: this run's horizon {horizon!r} is not the candidate manifest's "

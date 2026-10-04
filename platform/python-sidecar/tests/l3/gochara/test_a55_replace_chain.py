@@ -21,8 +21,11 @@ Saturn-in-the-7th); rebuilding both at a longer horizon left the contact's end a
 contact insert was `ON CONFLICT DO NOTHING` and the class replace keeps a contact another class still references."""
 from __future__ import annotations
 
+import re
+import sys
 import uuid
 from datetime import datetime, timedelta, timezone
+from pathlib import Path
 
 import pytest
 
@@ -156,9 +159,26 @@ def test_the_accuracy_columns_compare_at_float4_the_other_columns_exactly():
     assert [d.split(":")[0] for d in rs._contact_row_diffs(_ROW, tuple(exact_t))] == ["t_in"]
 
 
-def test_a_row_of_the_wrong_shape_is_refused_not_zipped_short():
-    with pytest.raises(AssertionError, match="contact row shape"):
+def test_a_row_of_the_wrong_shape_is_a_named_error_not_zipped_short():
+    with pytest.raises(rs.ContactRowShapeError, match="contact row shape"):
         rs._contact_row_diffs(_ROW[:-1], _ROW)
+    with pytest.raises(rs.ContactRowShapeError):
+        rs._contact_row_diffs(_ROW, _ROW + ("extra",))
+
+
+def test_the_shape_check_survives_python_dash_O():
+    """Assertions vanish under `python -O`; a check that can disappear is not a check (Earned-Signal rule). The shape check is an
+    explicit raise, proven in an optimised interpreter."""
+    import subprocess
+    code = ("import sys; sys.path.insert(0, '.')\n"
+            "from services.gochara_kernel import record_store as rs\n"
+            "assert not __debug__\n"
+            "row = tuple(range(len(rs._CONTACT_ROW_COLUMNS)))\n"
+            "try:\n    rs._contact_row_diffs(row[:-1], row)\nexcept rs.ContactRowShapeError:\n    print('RAISED')\n"
+            "else:\n    print('SILENT')\n")
+    out = subprocess.run([sys.executable, "-O", "-c", code], cwd=str(Path(__file__).resolve().parents[3]),
+                         capture_output=True, text=True, timeout=120)
+    assert out.stdout.strip().endswith("RAISED"), (out.stdout, out.stderr[-400:])
 
 
 def test_the_snapshot_precedes_every_substep_that_writes_chain_rows():
@@ -425,53 +445,129 @@ def test_a_retry_after_a_mid_build_failure_is_a_whole_plan_replay_and_equals_a_f
         w.close()
 
 
-def test_a_conflicting_contact_row_is_refused_by_name_not_kept(world):
-    """Span contacts (residence) AND point contacts (conjunction): the same contact derived again with a different end, as a
-    truncated row where an exact one is stored (value -> NULL) and as an exact row where a truncated one is stored (NULL ->
-    value). The derived rows are COHERENT (the table's own checks tie t_exact to truncated / solver / coverage), so the
-    refusal comes from the comparison, not from a check violation."""
+_COLS16 = ("chart_id::text, generation, contact_id::text, physical_object_id::text, occurrence_ordinal, convention_id, body,"
+           " relation_kind, t_in, t_out, t_exact, solver_method, delta_lambda, delta_t, precision_regime, coverage::text")
+# the 16 insert parameters, by index: the 13 COMPARED columns are everything except chart_id, generation and contact_id
+_P = {"physical_object_id": 3, "occurrence_ordinal": 4, "convention_id": 5, "body": 6, "relation_kind": 7, "t_in": 8, "t_out": 9,
+      "t_exact": 10, "solver_method": 11, "delta_lambda": 12, "delta_t": 13, "precision_regime": 14, "coverage": 15}
+
+
+def _pick(conn, relation, exact):
+    return conn.execute(f"SELECT {_COLS16} FROM public.ka_gochara_contact WHERE generation = %s AND relation_kind = %s"
+                        f" AND t_exact {'IS NOT NULL' if exact else 'IS NULL'} AND t_out IS NOT NULL"
+                        " ORDER BY contact_id LIMIT 1", (GEN, relation)).fetchone()
+
+
+def _refused(conn, store, stored, derived, label, columns):
+    """The derived row is refused BY NAME, naming exactly `columns`, and the stored row is untouched."""
+    with pytest.raises(rs.ContactRowMismatch, match=r"stored row differs from the derived one") as exc:
+        with conn.transaction():
+            store._insert_contact_row(tuple(derived))
+    detail = str(exc.value).split("derived one — ", 1)[1]
+    named = re.findall(r"(?:^|; )(\w+): stored", detail)
+    assert named == list(columns), f"{label}: named {named}, expected {list(columns)}"
+    kept = conn.execute("SELECT t_in, t_out, t_exact, solver_method FROM public.ka_gochara_contact WHERE contact_id = %s::uuid",
+                        (stored[2],)).fetchone()
+    assert tuple(kept) == (stored[8], stored[9], stored[10], stored[11]), f"{label}: the stored row was changed"
+
+
+def test_every_one_of_the_13_compared_columns_is_independently_checked_on_conflict(world, monkeypatch):
+    """Each column of the comparison, mutated ALONE through the shared insert, is refused by name naming exactly that column; and
+    both public insert paths (span contacts and point contacts) are shown to route through that one compared insert."""
+    routed = set()
+    original = rs.RecordStore._insert_contact_row
+
+    def spy(self, params):
+        routed.add(params[7])                                         # the relation_kind of every contact written
+        return original(self, params)
+    monkeypatch.setattr(rs.RecordStore, "_insert_contact_row", spy)
     world.build(SHORT, classes=(CLASSES[0],))
+    assert {"residence", "conjunction"} <= routed, f"a public insert path bypasses the compared insert: {routed}"
+    monkeypatch.undo()
+
     conn = world.conn
     store = rs.RecordStore(conn)
-    cols = ("chart_id::text, generation, contact_id::text, physical_object_id::text, occurrence_ordinal, convention_id, body,"
-            " relation_kind, t_in, t_out, t_exact, solver_method, delta_lambda, delta_t, precision_regime, coverage::text")
+    row = _pick(conn, "residence", True)
+    assert row is not None
+    us = timedelta(microseconds=1)
+    other_body = next(b for b in ("sun", "moon", "mars", "mercury", "jupiter", "venus", "saturn") if b != row[6])
+    other_rel = next(r for r in ("residence", "aspect", "conjunction") if r != row[7])
+    mutated = {
+        "physical_object_id": str(uuid.uuid4()),
+        "occurrence_ordinal": row[4] + 1,
+        "convention_id": row[5][:-1] + ("0" if row[5][-1] != "0" else "1"),
+        "body": other_body,
+        "relation_kind": other_rel,
+        "t_in": row[8] - us,
+        "t_out": row[9] + us,
+        "t_exact": row[10] + us,
+        "solver_method": "arc_index_bracket",
+        "delta_lambda": row[12] * 2,
+        "delta_t": row[13] * 2,
+        "precision_regime": "some_other_regime",
+        "coverage": '{"truncated": false, "note": "other"}',
+    }
+    assert set(mutated) == set(_P) and len(_P) == 13
+    for column, value in mutated.items():
+        derived = list(row)
+        derived[_P[column]] = value
+        assert derived[_P[column]] != row[_P[column]], column            # a real mutation, not a no-op
+        _refused(conn, store, row, derived, column, [column])
+    with conn.transaction():
+        store._insert_contact_row(tuple(row))                            # the identical row: still a no-op, not an error
 
-    def pick(relation, exact):
-        return conn.execute(f"SELECT {cols} FROM public.ka_gochara_contact WHERE generation = %s AND relation_kind = %s"
-                            f" AND t_exact {'IS NOT NULL' if exact else 'IS NULL'} AND t_out IS NOT NULL"
-                            " ORDER BY contact_id LIMIT 1", (GEN, relation)).fetchone()
 
-    def refused(stored, derived, label):
-        with pytest.raises(rs.ContactRowMismatch, match=r"stored row differs from the derived one"):
-            with conn.transaction():
-                store._insert_contact_row(tuple(derived))
-        kept = conn.execute("SELECT t_out, t_exact FROM public.ka_gochara_contact WHERE contact_id = %s::uuid",
-                            (stored[2],)).fetchone()
-        assert (kept[0], kept[1]) == (stored[9], stored[10]), f"{label}: the stored row was changed"
-
+def test_a_conflicting_contact_row_is_refused_for_span_and_point_contacts_both_ways(world):
+    """Span contacts (residence) AND point contacts (conjunction): a different end, a drop to a truncated row where an exact one is
+    stored (value -> NULL) and an exact row where a truncated one is stored (NULL -> value), on COHERENT rows (the table's own
+    checks tie t_exact to truncated / solver / coverage), so the refusal comes from the comparison, not from a check violation."""
+    world.build(SHORT, classes=(CLASSES[0],))
+    conn, store = world.conn, rs.RecordStore(world.conn)
     seen = set()
     for relation in ("residence", "conjunction"):
-        exact, truncated = pick(relation, True), pick(relation, False)
+        exact, truncated = _pick(conn, relation, True), _pick(conn, relation, False)
         if exact is not None:
             seen.add((relation, "exact"))
-            with conn.transaction():
-                store._insert_contact_row(tuple(exact))                  # the identical row again: a no-op, not an error
             moved = list(exact)
             moved[9] = exact[9] + timedelta(days=3)
-            refused(exact, moved, f"{relation} / t_out moved")
-            as_truncated = list(exact)                                    # value -> NULL: derived as a truncated row
+            _refused(conn, store, exact, moved, f"{relation} / t_out moved", ["t_out"])
+            as_truncated = list(exact)
             as_truncated[10:16] = [None, "clipped_truncated", None, None, None, '{"truncated": true}']
-            refused(exact, as_truncated, f"{relation} / exact -> truncated")
+            _refused(conn, store, exact, as_truncated, f"{relation} / exact -> truncated",
+                     ["t_exact", "solver_method", "delta_lambda", "delta_t", "precision_regime", "coverage"])
         if truncated is not None and exact is not None:
             seen.add((relation, "truncated"))
-            with conn.transaction():
-                store._insert_contact_row(tuple(truncated))
-            as_exact = list(truncated)                                    # NULL -> value: derived as an exact row
+            as_exact = list(truncated)
             as_exact[10] = truncated[8] + (truncated[9] - truncated[8]) / 2
             as_exact[11:16] = exact[11:16]
-            refused(truncated, as_exact, f"{relation} / truncated -> exact")
-    assert ("residence", "exact") in seen and ("conjunction", "exact") in seen, seen
-    assert ("residence", "truncated") in seen, seen                       # the NULL -> value direction was exercised
+            _refused(conn, store, truncated, as_exact, f"{relation} / truncated -> exact",
+                     ["t_exact", "solver_method", "delta_lambda", "delta_t", "precision_regime", "coverage"])
+    assert ("residence", "exact") in seen and ("conjunction", "exact") in seen and ("residence", "truncated") in seen, seen
+
+
+def test_a_truncated_point_contact_conflict_is_refused_both_ways(world):
+    """The truncated POINT case: over a horizon that starts inside a conjunction's orb (LEFT starts after the Sun-natal conjunction's
+    exact time) the point contact is stored TRUNCATED (no exact time); a derived row with an exact time, or a different end, is
+    refused by name; and an exact point contact derived as truncated is refused too."""
+    world.build(LEFT, classes=(CLASSES[0],))
+    conn, store = world.conn, rs.RecordStore(world.conn)
+    trunc, exact = _pick(conn, "conjunction", False), _pick(conn, "conjunction", True)
+    assert trunc is not None, "the LEFT horizon holds no truncated point contact — the scenario is not real"
+    assert exact is not None
+    moved = list(trunc)
+    moved[9] = trunc[9] + timedelta(hours=1)
+    _refused(conn, store, trunc, moved, "truncated point / t_out moved", ["t_out"])
+    as_exact = list(trunc)
+    as_exact[10] = trunc[8] + (trunc[9] - trunc[8]) / 2
+    as_exact[11:16] = exact[11:16]
+    _refused(conn, store, trunc, as_exact, "truncated point -> exact", ["t_exact", "solver_method", "delta_lambda", "delta_t",
+                                                                       "precision_regime", "coverage"])
+    as_truncated = list(exact)
+    as_truncated[10:16] = [None, "clipped_truncated", None, None, None, '{"truncated": true}']
+    _refused(conn, store, exact, as_truncated, "exact point -> truncated", ["t_exact", "solver_method", "delta_lambda", "delta_t",
+                                                                           "precision_regime", "coverage"])
+    with conn.transaction():
+        store._insert_contact_row(tuple(trunc))                         # the identical truncated row: a no-op
 
 
 def test_every_chain_writing_phase_refuses_a_horizon_that_is_not_its_manifests(world):
