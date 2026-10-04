@@ -1000,6 +1000,11 @@ jobs:
         # This test fails on that old path (mutation-checked) — keep it collected.
         run: python -m pytest scripts/__tests__/test_dispatch_frozen_rebuild_digest_path.py -q
 
+      - name: Gochara v5 small-test teardown - registry shape, attribution, receipts, every refusal (unit)
+        # The teardown is the only way a small test is removed. These tests pin its registry check to the migration-1304 shape, its
+        # delete orders to the writer's own, the receipt rule the Nirmana monitor depends on, and every refusal (no database).
+        run: python -m pytest scripts/__tests__/test_teardown_v5_small_test.py -q
+
       - name: NTAP monitor — provision the dedicated migration 629 contract DB
         # Dedicated disposable database on this job's local postgres:16 service.
         # The contract test also refuses any non-loopback host or any database
@@ -1185,7 +1190,7 @@ jobs:
           export SE_EPHE_PATH="$se1_dir"
           export GOCHARA_SE1_REQUIRE=1
           cd python-sidecar
-          python -m pytest tests/l3/gochara/test_a55_replace_chain.py tests/l3/gochara/test_a55_replace_chain_populated.py -q --tb=short -rs -p no:cacheprovider
+          python -m pytest tests/l3/gochara/test_a55_replace_chain.py tests/l3/gochara/test_a55_replace_chain_populated.py tests/l3/gochara/test_c38_teardown_real_db.py -q --tb=short -rs -p no:cacheprovider
 
   pratijna-v4-fixture-property-tests:
     needs: changes
