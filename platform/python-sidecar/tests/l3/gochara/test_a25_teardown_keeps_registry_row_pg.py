@@ -42,6 +42,8 @@ from _disposable_db_guard import (  # noqa: E402
     validate_disposable_dsn,
 )
 
+from ._disposable_db_guard import UnsafeAdminDSN, guarded_admin_connect  # noqa: E402
+
 ASSET_ID = "ka_gochara_v4_41_candidate"
 CHART_ID = "482012f1-710e-4a25-994a-93821f5871aa"
 
@@ -110,7 +112,9 @@ def disposable_dsn():
     created for the test, dropped afterwards. Skips (NOT_RUN) unless the
     cluster IS the pinned disposable one."""
     try:
-        admin = psycopg.connect(ADMIN_DSN, autocommit=True, connect_timeout=3)
+        admin = guarded_admin_connect(ADMIN_DSN, autocommit=True, connect_timeout=3)
+    except UnsafeAdminDSN:
+        raise                    # a hostile admin DSN is a configuration ERROR, never a skip
     except Exception as exc:  # noqa: BLE001
         pytest.skip(f"NOT_RUN: disposable cluster unreachable ({exc})")
     actual = admin.execute(
@@ -136,7 +140,7 @@ def disposable_dsn():
     finally:
         probe.close()
     yield dsn
-    admin = psycopg.connect(ADMIN_DSN, autocommit=True)
+    admin = guarded_admin_connect(ADMIN_DSN, autocommit=True)
     admin.execute(f'DROP DATABASE IF EXISTS "{dbname}" WITH (FORCE)')
     admin.close()
 
