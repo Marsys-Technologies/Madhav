@@ -15,12 +15,14 @@ from pathlib import Path
 
 import pytest
 
-from .test_a53_inventory import CHART_ID
+from pipeline.orchestrator.writers import ka_gochara_v5 as writer_mod
+
+from .test_a53_inventory import CHART_ID, H0, H1
 from .test_a53_p1_support import GEN
 from .test_a53_window_verification_roles import (_consistent_sky, _qualification_policy,  # noqa: F401  (autouse)
                                                  rworld)
 from .test_a55_replace_chain_populated import CHAIN_TABLES, OTHER_GEN, _add_survivors, _coverage, _count, _populate
-from .test_c38_teardown_real_db import STUB_DDL, STAMP  # noqa: F401
+from .test_c38_teardown_real_db import STUB_DDL  # noqa: F401
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[5] / "platform" / "scripts"))
 import teardown_v5_small_test_job as td  # noqa: E402
@@ -48,15 +50,27 @@ def _bookkeeping(w):
     w.conn.execute("INSERT INTO public.asset_freshness (asset_id, chart_id, partition_key) VALUES (%s, %s, 'p1')", (ASSET, CHART_ID))
 
 
+def _stamp_consistently(w):
+    """The populated mirror is built by the DEFAULT writer path, so its manifest carries no slice stamp. Give the manifest AND the stored
+    snapshot the SAME stamped vector, made by the writer's own validator and component builder for a marker over the world's own
+    horizon: the identity the teardown now demands (manifest = snapshot = inventory headers) holds, and everything else stays populated."""
+    marker = {"schema": writer_mod.TEST_SLICE_SCHEMA, "run": "all_classes_1y",
+              "horizon": [H0.isoformat(), H1.isoformat()], "classes": list(writer_mod.SCORED_CLASSES)}
+    sliced = writer_mod._validate_test_slice(marker)
+    stamp = {"stored_scope": writer_mod.TEST_SLICE_SCOPE, "test_slice": writer_mod._slice_component(sliced)}
+    with w.conn.transaction():                                   # behind the guards: a fixture rewrite, not a build step
+        w.conn.execute("SET LOCAL session_replication_role = replica")
+        for table in ("kala_gochara_publication", "ka_gochara_search_input_snapshot"):
+            w.conn.execute(f"UPDATE public.{table} SET input_generation_vector = input_generation_vector || %s::jsonb WHERE generation = %s",
+                           (json.dumps(stamp), GEN))
+
+
 def test_the_teardown_removes_a_populated_candidate_verification_rows_included_and_keeps_the_survivors(rworld, monkeypatch):
     w = rworld
     _populate(w)
     _add_survivors(w)
     _bookkeeping(w)
-    with w.conn.transaction():                                   # the C46 stamp
-        w.conn.execute("SET LOCAL session_replication_role = replica")
-        w.conn.execute("UPDATE public.kala_gochara_publication SET input_generation_vector = input_generation_vector || %s::jsonb"
-                       " WHERE generation = %s", (json.dumps(STAMP), GEN))
+    _stamp_consistently(w)
     for t in CHAIN_TABLES:
         assert _count(w.conn, t) >= 1, f"{t} is empty — the fixture does not populate it"
     assert w.conn.execute("SELECT count(*) FROM public.ka_gochara_eval_window_record").fetchone()[0] >= 1

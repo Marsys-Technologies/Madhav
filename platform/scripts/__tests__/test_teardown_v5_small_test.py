@@ -38,10 +38,14 @@ PRE_1304_ROW = {"scope": "per_chart", "is_active": False, "has_writer": True, "h
                 "target_floor": 0, "estimated_seconds": None}
 GEN_TABLES = [t for t, _ in teardown_mod.GENERATION_TABLES]
 RUN_1 = str(uuid.uuid4())
-STAMP = {"stored_scope": "test_slice",
-         "test_slice": {"run": "one_class_full", "classes": ["marriage"], "horizon": ["1998-01-01T00:00:00+00:00", "2026-04-17T00:00:00+00:00"]}}
-STAMPED = {"status": "candidate", "input_generation_vector": STAMP}
-UNSTAMPED = {"status": "candidate", "input_generation_vector": {"stored_scope": "stored_non_moon"}}
+_W = teardown_mod._writer()
+_SL = _W._validate_test_slice({"schema": _W.TEST_SLICE_SCHEMA, "run": "one_class_full",
+                               "horizon": [_W.DEFAULT_HORIZON[0].isoformat(), _W.DEFAULT_HORIZON[1].isoformat()],
+                               "classes": [_W.SCORED_CLASSES[0]]})
+STAMP = {"stored_scope": _W.TEST_SLICE_SCOPE, "test_slice": _W._slice_component(_SL)}      # exactly what the writer stamps
+HORIZON = types.SimpleNamespace(lower=_SL.horizon[0], upper=_SL.horizon[1])
+STAMPED = {"status": "candidate", "input_generation_vector": STAMP, "horizon": HORIZON}
+UNSTAMPED = {"status": "candidate", "input_generation_vector": {"stored_scope": "stored_non_moon"}, "horizon": HORIZON}
 
 
 def _test_run(rid=RUN_1, **kw):
@@ -50,8 +54,10 @@ def _test_run(rid=RUN_1, **kw):
 
 class _Harness:
     def __init__(self, *, lock_got=True, published=None, seal=None, authority_generation=None, active=None, members="one",
-                 foreign_on_owned=None, receipts="linked", legacy=None, absent=(), manifest="stamped", rows="default",
-                 registry_row="default", fail_on=None, connect_error=None):
+                 foreign_on_owned=None, elsewhere=None, receipts="linked", legacy=None, absent=(), manifest="stamped", rows="default",
+                 registry_row="default", fail_on=None, connect_error=None, snapshot="consistent", inventory_mismatch=0,
+                 registry_active=False, freshness_elsewhere=0, catalog_status="CURRENT", dependents=None, evidence=None,
+                 evidence_after=None, commit_error=None, rollback_error=None, retention="default"):
         self.statements: list[str] = []
         self.params: list[tuple] = []
         self.commits = self.rollbacks = 0
@@ -59,13 +65,23 @@ class _Harness:
         self.lock_got, self.published, self.seal, self.authority_generation = lock_got, published, seal, authority_generation
         self.active = active or []
         self.members = [_test_run()] if members == "one" else (members or [])
-        self.foreign_on_owned = foreign_on_owned or []
+        self.foreign_on_owned, self.elsewhere = foreign_on_owned or [], elsewhere or []
         self.receipts = [{"partition_key": "p1", "build_id": RUN_1}] if receipts == "linked" else (receipts or [])
         self.legacy, self.absent = legacy or {}, set(absent)
         self.manifest = dict(STAMPED) if manifest == "stamped" else manifest
         self.rows = dict(ROWS) if rows == "default" else (rows or {})
         self.registry_row = dict(REGISTRY_ROW) if registry_row == "default" else registry_row
         self.fail_on, self.connect_error = fail_on, connect_error
+        self.snapshot = {"same_vector": True, "input_digest": "d" * 64} if snapshot == "consistent" else snapshot
+        self.inventory_mismatch = inventory_mismatch
+        self.registry_active, self.freshness_elsewhere = registry_active, freshness_elsewhere
+        self.catalog_status, self.dependents = catalog_status, dependents or []
+        self.evidence, self.evidence_after = evidence or [], evidence_after      # evidence: rows for the end-state query (pre); after: post
+        self.commit_error, self.rollback_error = commit_error, rollback_error
+        self.retention = ([{"id": RUN_1, "created_at": "2026-10-01 10:00:00+00", "secs": 80 * 86400.0}]
+                          if retention == "default" else retention)
+        self.flipped = False
+        self.end_state_calls = 0
         harness = self
 
         class FakeCur:
@@ -74,8 +90,18 @@ class _Harness:
                 harness.statements.append(flat)
                 harness.params.append(params)
                 self._last, self._params = flat, params
+                if "SET is_active = false" in flat:
+                    harness.flipped = True
+                if flat.startswith("SELECT catalog_status"):
+                    harness.end_state_calls += 1
                 if harness.fail_on and harness.fail_on in flat:
                     raise Exception("could not connect: postgresql://svc:hunter2-secret@db.example/prod refused")
+
+            def _evidence(self):
+                # the end-state query: rows before the deletes, `evidence_after` (when given) after them
+                if harness.evidence_after is not None and harness.flipped:
+                    return harness.evidence_after
+                return harness.evidence
 
             def fetchall(self):
                 s = self._last
@@ -83,10 +109,20 @@ class _Harness:
                     return harness.active
                 if "GROUP BY r.id" in s:
                     return harness.members
-                if "build_id = ANY" in s:
+                if "build_id = ANY(%s::uuid[]) AND asset_id <> %s" in s:
                     return harness.foreign_on_owned
+                if "AND asset_id = %s AND chart_id IS DISTINCT FROM %s::uuid GROUP BY chart_id" in s:
+                    return harness.elsewhere
                 if "SELECT partition_key, build_id FROM asset_provenance_receipts" in s:
                     return harness.receipts
+                if "WHERE %s = ANY(depends_on)" in s:
+                    return harness.dependents
+                if "FROM asset_provenance_receipts r WHERE r.asset_id" in s:
+                    return [r for r in self._evidence() if r.get("kind") == "receipt"]
+                if "FROM build_run_assets a LEFT JOIN build_runs b0" in s:
+                    return [r for r in self._evidence() if r.get("kind") == "run_asset"]
+                if "EXTRACT(EPOCH FROM" in s:
+                    return harness.retention
                 return []
 
             def fetchone(self):
@@ -102,10 +138,25 @@ class _Harness:
                     return harness.seal
                 if "FROM kala_gochara_authority" in s:
                     return None if harness.authority_generation is None else {"authoritative_generation": harness.authority_generation}
+                if s.startswith("SELECT catalog_status"):
+                    return {"catalog_status": harness.catalog_status}
+                if s.startswith("SELECT is_active FROM asset_registry"):
+                    return {"is_active": harness.registry_active and not harness.flipped}
                 if "FROM asset_registry WHERE asset_id" in s:
-                    return harness.registry_row
-                if "SELECT status, input_generation_vector FROM kala_gochara_publication" in s:
+                    if harness.registry_row is None:
+                        return None
+                    row = dict(harness.registry_row)
+                    if harness.registry_active and not harness.flipped:
+                        row["is_active"] = True
+                    return row
+                if "SELECT status, input_generation_vector, horizon FROM kala_gochara_publication" in s:
                     return harness.manifest
+                if "FROM ka_gochara_search_input_snapshot s JOIN kala_gochara_publication p" in s:
+                    return harness.snapshot
+                if "FROM ka_gochara_search_inventory i JOIN" in s:
+                    return {"n": harness.inventory_mismatch}
+                if "FROM asset_freshness WHERE asset_id = %s AND chart_id IS DISTINCT FROM" in s:
+                    return {"n": harness.freshness_elsewhere}
                 m = re.search(r"count\(\*\) AS n FROM (\w+) WHERE", s)
                 if m:
                     table = m.group(1)
@@ -122,9 +173,13 @@ class _Harness:
 
             def commit(self):
                 harness.commits += 1
+                if harness.commit_error:
+                    raise harness.commit_error
 
             def rollback(self):
                 harness.rollbacks += 1
+                if harness.rollback_error and harness.rollbacks == 1:
+                    raise harness.rollback_error
 
             def close(self):
                 harness.closed = True
@@ -349,18 +404,79 @@ def test_a_test_run_alone_never_authorises_deleting_an_unstamped_candidate():
     assert h.deletes() == [] and h.commits == 0
 
 
+def _comp(**changes):
+    comp = dict(STAMP["test_slice"])
+    comp.update(changes)
+    return {"stored_scope": "test_slice", "test_slice": comp}
+
+
 @pytest.mark.parametrize("vector, why", [
     ({"stored_scope": "test_slice"}, "no 'test_slice' component"),
-    ({"stored_scope": "test_slice", "test_slice": {"run": "full", "classes": ["x"], "horizon": ["a", "b"]}}, "run is 'full'"),
-    ({"stored_scope": "test_slice", "test_slice": {"run": "one_class_full", "classes": [], "horizon": ["a", "b"]}}, "no classes"),
-    ({"stored_scope": "test_slice", "test_slice": {"run": "one_class_full", "classes": ["x"], "horizon": ["a"]}}, "no horizon"),
     ({"test_slice": STAMP["test_slice"]}, "stored_scope is None"),
-], ids=["scope_only", "bad_run", "no_classes", "no_horizon", "component_only"])
-def test_a_stamp_must_name_run_classes_and_horizon_and_the_scope_word(vector, why):
-    h = _Harness(manifest={"status": "candidate", "input_generation_vector": vector})
+    (_comp(run="full"), "fails the writer's own validation"),
+    (_comp(classes=[]), "fails the writer's own validation"),
+    (_comp(classes=[""]), "fails the writer's own validation"),                          # Codex: classes=[""] used to reach all 15 DELETEs
+    (_comp(classes=["not_a_scored_class"]), "fails the writer's own validation"),
+    (_comp(horizon=["bogus", "backwards"]), "fails the writer's own validation"),         # Codex: arbitrary horizon strings
+    (_comp(horizon=["2025-01-01T00:00:00", "2025-02-01T00:00:00"]), "fails the writer's own validation"),   # naive timestamps
+    (_comp(schema="gochara_v5_test_slice/9"), "fails the writer's own validation"),
+    (_comp(marker_digest="0" * 64), "not the writer's component for its marker"),         # the digest is recomputed and compared
+    (_comp(extra_field=1), "not the writer's component for its marker"),
+], ids=["scope_only", "component_only", "bad_run", "no_classes", "empty_class_name", "unscored_class", "bogus_horizon",
+        "naive_horizon", "wrong_schema", "wrong_digest", "extra_field"])
+def test_a_stamp_is_validated_by_the_writers_own_validator_and_digest(vector, why):
+    h = _Harness(manifest={"status": "candidate", "input_generation_vector": vector, "horizon": HORIZON})
     with pytest.raises(teardown_mod.TeardownRefused, match=re.escape(why)):
         _run(h)
     assert h.deletes() == []
+
+
+def test_the_stamp_is_validated_with_the_writers_function_not_a_second_implementation():
+    """Codex round 2 P1 ruling: import the writer's validator. The script holds no copy of the marker rules."""
+    source = SCRIPT.read_text(encoding="utf-8")
+    assert "_validate_test_slice" in source and "_slice_component" in source
+    for rule_text in ("one_class_full", "all_classes_1y", "SCORED_CLASSES", "gochara_v5_test_slice/1"):
+        assert rule_text not in source.replace("# ", ""), f"the script restates the writer's rule {rule_text!r}"
+
+
+def test_the_manifests_horizon_must_be_the_stamps_horizon():
+    other = types.SimpleNamespace(lower=_SL.horizon[0], upper=_SL.horizon[1].replace(year=2025))
+    h = _Harness(manifest={"status": "candidate", "input_generation_vector": STAMP, "horizon": other})
+    with pytest.raises(teardown_mod.TeardownRefused, match="horizon is not the stamp"):
+        _run(h)
+    assert h.deletes() == []
+
+
+def test_an_interrupted_replacement_a_stamped_manifest_over_an_older_chain_is_refused_by_name():
+    """Codex round 2 P1: a failed non-test candidate's output survives; a later small test stamps its manifest and fails before the
+    snapshot substep replaces the old output. The stamp is valid, but the stored snapshot carries the OLD vector."""
+    h = _Harness(snapshot={"same_vector": False, "input_digest": "d" * 64})
+    with pytest.raises(teardown_mod.TeardownRefused, match="interrupted replacement"):
+        _run(h)
+    assert h.deletes() == [] and h.commits == 0
+
+
+def test_output_without_a_snapshot_is_refused_and_a_manifest_alone_is_not():
+    h = _Harness(snapshot=None)                                            # output rows exist, no snapshot binds them
+    with pytest.raises(teardown_mod.TeardownRefused, match="no input snapshot binds them"):
+        _run(h)
+    h = _Harness(snapshot=None, rows={}, members=[], receipts=[])         # a stamped manifest and nothing else: removable
+    _run(h)
+    assert h.commits == 1
+
+
+def test_inventory_headers_must_carry_the_stamped_manifests_identity():
+    h = _Harness(inventory_mismatch=2)
+    with pytest.raises(teardown_mod.TeardownRefused, match="2 inventory header"):
+        _run(h)
+    assert h.deletes() == []
+    sql = next(x for x in _Harness().statements) if False else None
+    h = _Harness()
+    _run(h)
+    inventory_sql = next(x for x in h.statements if "FROM ka_gochara_search_inventory i JOIN" in x)
+    assert "i.input_digest <> s.input_digest" in inventory_sql and "i.horizon <> p.horizon" in inventory_sql
+    assert "i.event_class = ANY" in inventory_sql
+    assert h.params[h.statements.index(inventory_sql)][2] == STAMP["test_slice"]["classes"]
 
 
 def test_output_rows_without_any_manifest_are_refused():
@@ -437,12 +553,10 @@ def test_every_field_of_the_1304_shape_is_checked_before_and_after(field, bad):
     assert h.commits == 0 and h.deletes() == []                      # refused BEFORE the deletes: the dry-run path checks it too
 
 
-def test_the_registry_must_be_inert_after_the_flip_but_a_dry_run_accepts_the_active_row():
-    """A registry row left active by the test is fine to see before the flip (the teardown restores it), but the post-flip check
-    still demands is_active false."""
-    h = _Harness(registry_row=dict(REGISTRY_ROW, is_active=True))
-    _run(h, dry_run=True)                                           # the pre-flip shape check ignores is_active
-    assert h.commits == 0
+def test_an_active_registry_row_is_restored_inert_inside_the_transaction_and_validated():
+    h = _Harness(registry_active=True)
+    _run(h)
+    assert h.commits == 1 and any("SET is_active = false" in x for x in h.statements)
 
 
 def test_registry_row_missing_is_a_loud_failure_even_in_a_dry_run():
@@ -456,16 +570,36 @@ def test_registry_row_missing_is_a_loud_failure_even_in_a_dry_run():
 
 # ── the dry run ───────────────────────────────────────────────────────────────────────────────────────────────────────────────
 
-def test_dry_run_lists_every_table_rolls_back_and_closes_the_connection(capsys):
+def test_a_dry_run_runs_the_same_statements_as_an_execution_and_only_the_last_step_differs(capsys):
+    """Codex round 2 P2 ruling: both modes run the SAME statements and validation in the same transaction; the dry run then rolls
+    back, with zero commits. The statement lists are identical."""
+    dry, run = _Harness(), _Harness()
+    _run(dry, dry_run=True)
+    _run(run, dry_run=False)
+    assert dry.statements == run.statements and dry.params == run.params
+    assert dry.deletes() == run.deletes() and len(dry.deletes()) == 5 + len(GEN_TABLES)
+    assert any("SET is_active = false" in x for x in dry.statements)                # the registry restore is rehearsed too
+    assert dry.commits == 0 and dry.rollbacks >= 1 and dry.closed
+    assert run.commits == 1
+    assert any("SELECT catalog_status" in x for x in dry.statements)                # and the end-state validation
+
+
+def test_the_dry_run_listing_names_every_table_and_the_retention_remaining(capsys):
     h = _Harness()
     _run(h, dry_run=True)
-    assert h.commits == 0 and h.rollbacks >= 1 and h.deletes() == [] and h.closed
     out = capsys.readouterr().out
     listed = {line.split("\t")[0] for line in out.splitlines() if "\t" in line}
-    assert listed == {"asset_provenance_receipts", "asset_freshness", "build_run_assets", "build_runs", "asset_throughput",
-                      *GEN_TABLES, *teardown_mod.LEGACY_GUARD_TABLES}
+    assert listed >= {"asset_provenance_receipts", "asset_freshness", "build_run_assets", "build_runs", "asset_throughput",
+                      *GEN_TABLES, *teardown_mod.LEGACY_GUARD_TABLES, "retention"}
     assert "ka_gochara_contact\t5" in out and "build_runs\t1" in out
     assert "kala_gochara_windows\tguard-only (never deleted)" in out
+    assert f"run {RUN_1} created 2026-10-01 10:00:00+00: 80.0 day(s) of the 90-day cockpit retention remain" in out
+
+
+def test_a_run_past_retention_is_flagged_in_the_listing(capsys):
+    h = _Harness(retention=[{"id": RUN_1, "created_at": "2026-06-01", "secs": -3 * 86400.0}])
+    _run(h, dry_run=True)
+    assert "PAST RETENTION" in capsys.readouterr().out
 
 
 def test_the_dry_run_names_an_absent_legacy_table(capsys):
@@ -480,7 +614,7 @@ def test_with_no_flags_the_script_is_a_dry_run(capsys):
     h = _Harness()
     with _patched(h):
         assert teardown_mod.main([]) == 0
-    assert h.deletes() == [] and h.commits == 0
+    assert h.commits == 0 and h.rollbacks >= 1                          # the statements ran, then ROLLED BACK
     assert "[dry-run]" in capsys.readouterr().err
 
 
@@ -504,7 +638,7 @@ def test_the_steward_flag_alone_does_not_delete():
     h = _Harness()
     with _patched(h):
         assert teardown_mod.main(["--i-am-steward"]) == 0
-    assert h.deletes() == [] and h.commits == 0
+    assert h.commits == 0 and h.rollbacks >= 1
 
 
 def test_dry_run_and_execute_are_mutually_exclusive():
@@ -530,7 +664,7 @@ def test_a_connection_error_prints_the_class_and_never_the_text(capsys):
     with _patched(h):
         code = teardown_mod.main([])
     streams = capsys.readouterr()
-    assert code == 1 and "ValueError" in streams.err
+    assert code == 1 and "ValueError" in streams.err and "No transaction was opened" in streams.err
     assert "hunter2" not in streams.err + streams.out and "postgresql://" not in streams.err + streams.out
 
 
@@ -540,7 +674,7 @@ def test_a_failure_mid_transaction_rolls_back_and_prints_no_exception_text(capsy
         code = teardown_mod.main(["--execute", "--i-am-steward"])
     streams = capsys.readouterr()
     assert code == 1 and h.commits == 0 and h.rollbacks >= 1
-    assert "hunter2" not in streams.err + streams.out and "Nothing was committed" in streams.err
+    assert "hunter2" not in streams.err + streams.out and "ROLLBACK CONFIRMED" in streams.err
 
 
 def test_a_named_refusal_is_printed_with_its_ids(capsys):
@@ -616,3 +750,113 @@ def test_the_drift_guard_fails_when_the_helper_gains_a_table(monkeypatch):
     conn = _Recording()
     rs.RecordStore(conn).delete_generation_chain(chart_id=CHART_ID, generation="5.0")
     assert _deletes_of(conn) != [t for t, _ in teardown_mod.CHAIN_TABLES]
+
+
+# ── round 2, items 4 to 6 (ASTRA v1.1): the N-137 end state, effects outside the chart, honest failure reporting ────────────────
+
+@pytest.mark.parametrize("kw, match", [
+    (dict(catalog_status="RETIRED"), "catalog_status is RETIRED"),
+    (dict(dependents=[{"asset_id": "ka_some_dependent"}]), "ka_some_dependent"),
+    (dict(evidence=[{"kind": "receipt", "chart_id": "other-chart", "n": 2}]), r"receipts of the asset from a non-test run.*other-chart"),
+    (dict(evidence=[{"kind": "run_asset", "chart_id": "other-chart", "n": 1}]), r"build_run_assets rows of the asset from a non-test run.*other-chart"),
+], ids=["retired", "dependent", "non_test_receipt_elsewhere", "non_test_run_asset_elsewhere"])
+def test_the_n137_end_state_is_validated_before_anything_is_deleted(kw, match):
+    """Codex round 2 P2 (definitions.ts N-137): catalog_status, dependents, and non-test evidence on ANY chart."""
+    h = _Harness(**kw)
+    with pytest.raises(teardown_mod.TeardownRefused, match=match):
+        _run(h)
+    assert h.deletes() == [] and h.commits == 0
+
+
+def test_the_n137_end_state_is_validated_again_before_success_is_claimed():
+    """Evidence that appears only AFTER the deletes (the second evaluation) refuses and rolls back; success is not claimed."""
+    h = _Harness(evidence_after=[{"kind": "receipt", "chart_id": "x", "n": 1}])
+    with pytest.raises(teardown_mod.TeardownRefused, match="after the deletes, so success is not claimed"):
+        _run(h)
+    assert h.commits == 0 and h.rollbacks >= 1 and len(h.deletes()) > 0          # the deletes ran, and were rolled back
+
+
+def test_the_end_state_query_is_the_monitors_predicate_over_every_chart():
+    h = _Harness()
+    _run(h)
+    receipts = next(x for x in h.statements if "FROM asset_provenance_receipts r WHERE r.asset_id" in x)
+    run_assets = next(x for x in h.statements if "FROM build_run_assets a LEFT JOIN build_runs b0" in x)
+    for sql in (receipts, run_assets):
+        assert "chart_id = %s" not in sql.replace("GROUP BY", "")                          # asset-wide: not pinned to the chart
+        assert "NOT EXISTS (SELECT 1 FROM build_runs b WHERE b.id = " in sql and "b.triggered_by = %s" in sql
+
+
+def test_an_owned_run_with_receipts_of_the_asset_on_another_chart_is_refused():
+    """Codex round 2 P2: deleting the run would set those receipts' run link to NULL."""
+    h = _Harness(elsewhere=[{"chart_id": "other-chart", "n": 3}])
+    with pytest.raises(teardown_mod.TeardownRefused, match="other-chart"):
+        _run(h)
+    assert h.deletes() == []
+
+
+def test_an_active_registry_row_with_freshness_on_another_chart_is_refused_because_596_would_stale_it():
+    h = _Harness(registry_active=True, freshness_elsewhere=2)
+    with pytest.raises(teardown_mod.TeardownRefused, match=r"ACTIVE.*596.*EVERY chart"):
+        _run(h)
+    assert h.deletes() == []
+    h = _Harness(registry_active=False, freshness_elsewhere=2)                  # already inert: the flip changes nothing, no trigger
+    _run(h)
+    assert h.commits == 1
+
+
+def test_a_null_linked_receipt_refusal_names_the_retention_window_and_the_runbook():
+    h = _Harness(members=[], receipts=[{"partition_key": "orphan-part", "build_id": None}])
+    with pytest.raises(teardown_mod.TeardownRefused, match="90 days") as exc:
+        _run(h)
+    assert "V5_SMALLTEST_TEARDOWN_RUNBOOK_v1_0.md" in str(exc.value)
+
+
+def test_the_retention_window_is_the_watchdogs_and_the_docstring_says_to_run_within_it():
+    assert teardown_mod.RETENTION_DAYS == 90
+    watchdog = (REPO / "platform/src/app/api/cockpit/watchdog/route.ts").read_text(encoding="utf-8")
+    assert "INTERVAL '90 days'" in watchdog and "build_runs" in watchdog           # the constant is the cockpit's own
+    doc = teardown_mod.__doc__
+    assert "WITHIN 90 DAYS" in doc and "V5_SMALLTEST_TEARDOWN_RUNBOOK_v1_0.md" in doc
+    assert (REPO / "00_ARCHITECTURE/briefs/pravaha/V5_SMALLTEST_TEARDOWN_RUNBOOK_v1_0.md").exists()
+
+
+def test_a_failure_before_the_commit_reports_a_confirmed_rollback(capsys):
+    h = _Harness(fail_on="DELETE FROM build_runs")
+    with _patched(h):
+        assert teardown_mod.main(["--execute", "--i-am-steward"]) == 1
+    err = capsys.readouterr().err
+    assert "ROLLBACK CONFIRMED" in err and "COMMIT OUTCOME UNKNOWN" not in err and h.commits == 0
+
+
+def test_a_failure_AT_the_commit_is_reported_as_an_unknown_outcome_never_as_nothing_committed(capsys):
+    """Codex round 2 P2: once COMMIT has been sent, nobody may print 'nothing was committed'."""
+    h = _Harness(commit_error=ConnectionError("server closed the connection unexpectedly (postgresql://svc:hunter2-secret@db/prod)"))
+    with _patched(h):
+        assert teardown_mod.main(["--execute", "--i-am-steward"]) == 1
+    streams = capsys.readouterr()
+    text = streams.err + streams.out
+    assert "COMMIT OUTCOME UNKNOWN" in text and "may or may not have committed" in text
+    assert "ROLLBACK CONFIRMED" not in text and "changed nothing" not in text and "Nothing was committed" not in text
+    assert "hunter2" not in text
+    assert h.commits == 1 and h.rollbacks == 0                                    # no rollback was attempted after the COMMIT went out
+
+
+def test_a_failed_rollback_is_reported_as_not_confirmed(capsys):
+    h = _Harness(fail_on="DELETE FROM build_runs", rollback_error=ConnectionError("lost"))
+    with _patched(h):
+        assert teardown_mod.main(["--execute", "--i-am-steward"]) == 1
+    err = capsys.readouterr().err
+    assert "ROLLBACK NOT CONFIRMED" in err and "ROLLBACK CONFIRMED:" not in err
+
+
+def test_a_named_refusal_reports_its_confirmed_rollback(capsys):
+    h = _Harness(members=[_test_run(), {"id": "layer-9", "triggered_by": "cockpit", "scope": "layer", "scope_target": "kala", "assets": [ASSET]}])
+    with _patched(h):
+        assert teardown_mod.main([]) == 1
+    err = capsys.readouterr().err
+    assert "layer-9" in err and "ROLLBACK CONFIRMED" in err
+
+
+def test_no_message_in_the_script_can_say_nothing_was_committed_without_a_confirmed_rollback():
+    source = SCRIPT.read_text(encoding="utf-8")
+    assert "Nothing was committed" not in source and "nothing was committed" not in source

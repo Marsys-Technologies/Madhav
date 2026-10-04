@@ -28,23 +28,29 @@ from pathlib import Path
 import psycopg
 import pytest
 
-from .test_a55_replace_chain import CHART_ID, CLASSES, GEN, SHORT, _World, template  # noqa: F401
+from pipeline.orchestrator.writers import ContextSpec, SubStep
+from pipeline.orchestrator.writers import ka_gochara_v5 as writer_mod
+
+from .conftest import EPHE_PATH
+from .test_a55_replace_chain import CHART_ID, CLASSES, GEN, PATHS, SHORT, _World, template  # noqa: F401
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[5] / "platform" / "scripts"))
 import teardown_v5_small_test_job as td  # noqa: E402
 
 ASSET = td.ASSET_ID
 OTHER_GEN = "5.9"
-STAMP = {"stored_scope": "test_slice",
-         "test_slice": {"run": "one_class_full", "classes": [CLASSES[0]],
-                        "horizon": ["2025-01-01T00:00:00+00:00", "2025-01-20T00:00:00+00:00"]}}
+OTHER_CHART = "11111111-2222-3333-4444-555555555555"
+#: the marker a dispatch would stage: all 26 classes over a window inside the scored horizon (only the first classes are executed here)
+MARKER = {"schema": writer_mod.TEST_SLICE_SCHEMA, "run": "all_classes_1y",
+          "horizon": [SHORT[0].isoformat(), SHORT[1].isoformat()], "classes": list(writer_mod.SCORED_CLASSES)}
 STUB_DDL = (
     "CREATE TABLE IF NOT EXISTS public.kala_gochara_authority (chart_id uuid PRIMARY KEY, authoritative_generation text)",
     "CREATE TABLE public.asset_registry (asset_id text PRIMARY KEY, scope text, is_active boolean, has_writer boolean,"
     " has_substeps boolean, writer_timeout_seconds integer, depends_on text[], target_table text, count_sql text,"
-    " target_floor integer, estimated_seconds integer)",
+    " target_floor integer, estimated_seconds integer, catalog_status text DEFAULT 'CURRENT')",
     "CREATE TABLE public.build_runs (id uuid PRIMARY KEY DEFAULT gen_random_uuid(), chart_id uuid, scope text,"
-    " scope_target text, state text, triggered_by text)",
+    " scope_target text, state text, triggered_by text, plan_manifest jsonb, plan_manifest_digest text,"
+    " created_at timestamptz NOT NULL DEFAULT now())",
     "CREATE TABLE public.build_run_assets (run_id uuid NOT NULL REFERENCES public.build_runs(id), asset_id text)",
     "CREATE TABLE public.asset_throughput (chart_id uuid, asset_id text)",
     # migration 596: the run link is SET NULL when the run row is deleted
@@ -73,28 +79,70 @@ def tworld(template):
         w.close()
 
 
-def _stamp(w):
-    """The C46 stamp: the manifest identifies itself as a test slice (scope word AND component naming run/classes/horizon)."""
-    with w.conn.transaction():
-        w.conn.execute("SET LOCAL session_replication_role = replica")
-        w.conn.execute("UPDATE public.kala_gochara_publication SET input_generation_vector = input_generation_vector || %s::jsonb"
-                       " WHERE generation = %s", (json.dumps(STAMP), GEN))
-
-
 def _run(w, triggered_by=td.TRIGGERED_BY, scope="asset", target=ASSET, assets=(ASSET,), state="completed", receipt=True,
-         part="p1"):
-    """A build run with its child asset rows, optionally this asset's receipt/freshness/throughput linked to it."""
+         part="p1", marker=None, chart=CHART_ID):
+    """A build run with its child asset rows, optionally this asset's receipt/freshness/throughput linked to it, and optionally the
+    slice marker in build_runs.plan_manifest exactly as a dispatch stages it."""
     rid = uuid.uuid4()
-    w.conn.execute("INSERT INTO public.build_runs (id, chart_id, scope, scope_target, state, triggered_by)"
-                   " VALUES (%s, %s, %s, %s, %s, %s)", (rid, CHART_ID, scope, target, state, triggered_by))
+    manifest = None if marker is None else {writer_mod.TEST_SLICE_KEY: marker}
+    w.conn.execute("INSERT INTO public.build_runs (id, chart_id, scope, scope_target, state, triggered_by, plan_manifest,"
+                   " plan_manifest_digest) VALUES (%s, %s, %s, %s, %s, %s, %s::jsonb, %s)",
+                   (rid, chart, scope, target, state, triggered_by, None if manifest is None else json.dumps(manifest),
+                    None if manifest is None else writer_mod._manifest_digest(manifest)))
     for a in assets:
         w.conn.execute("INSERT INTO public.build_run_assets VALUES (%s, %s)", (rid, a))
     if receipt:
-        w.conn.execute("INSERT INTO public.asset_throughput VALUES (%s, %s)", (CHART_ID, ASSET))
+        w.conn.execute("INSERT INTO public.asset_throughput VALUES (%s, %s)", (chart, ASSET))
         w.conn.execute("INSERT INTO public.asset_provenance_receipts (asset_id, chart_id, partition_key, build_id)"
-                       " VALUES (%s, %s, %s, %s)", (ASSET, CHART_ID, part, rid))
+                       " VALUES (%s, %s, %s, %s)", (ASSET, chart, part, rid))
         w.conn.execute("INSERT INTO public.asset_freshness (asset_id, chart_id, partition_key) VALUES (%s, %s, %s)",
-                       (ASSET, CHART_ID, part))
+                       (ASSET, chart, part))
+    return rid
+
+
+def _step(w, rid, key, horizon=None):
+    config = {"chart_id": CHART_ID, "ephe_path": EPHE_PATH}
+    if horizon is not None:
+        config["horizon"] = horizon
+    ctx = ContextSpec(asset_id=writer_mod.ASSET_ID, build_id=str(rid), db_conn=w.conn, dry_run=False, config=config)
+    with w.conn.transaction():
+        return w._w.run_substep(ctx, SubStep(key=key, label=key))
+
+
+def _default_build(w, horizon=SHORT, classes=CLASSES, paths=PATHS):
+    """An ordinary (NON-slice, non-test) candidate build by the writer's own substeps: no marker, the default stamp, its own snapshot.
+    The build id is a fresh uuid with no build_runs row (the writer reads a missing row as 'no marker')."""
+    rid = uuid.uuid4()
+    for key in (writer_mod.MANIFEST_SUBSTEP, writer_mod.SNAPSHOT_SUBSTEP):
+        _step(w, rid, key, horizon)
+    for cls in classes:
+        _step(w, rid, f"inventory:{cls}", horizon)
+        _step(w, rid, f"coverage:{cls}", horizon)
+        for path in paths:
+            _step(w, rid, f"record:{cls}:{path}", horizon)
+
+
+def _slice_steps(w, rid, classes=CLASSES, paths=PATHS, head=True):
+    """The WRITER's own substeps under the run `rid` (it reads the marker from build_runs.plan_manifest by build id): manifest,
+    snapshot, then each class's inventory, coverage and record grains. The manifest and the snapshot it binds are the real ones."""
+    def step(key):
+        return _step(w, rid, key)
+    if head:
+        step(writer_mod.MANIFEST_SUBSTEP)
+        step(writer_mod.SNAPSHOT_SUBSTEP)
+    for cls in classes:
+        step(f"inventory:{cls}")
+        step(f"coverage:{cls}")
+        for path in paths:
+            step(f"record:{cls}:{path}")
+
+
+def _slice_run(w, *, build=True, **kw):
+    """A small-test run staged as a dispatch stages it, then built by the writer under it: a REAL stamped candidate whose snapshot and
+    inventory carry the manifest's own vector."""
+    rid = _run(w, marker=MARKER, **kw)
+    if build:
+        _slice_steps(w, rid)
     return rid
 
 
@@ -164,9 +212,7 @@ def _teardown(w, dry_run=False):
 
 
 def _built_stamped_with_test_run(w):
-    w.build(SHORT)
-    _stamp(w)
-    _run(w)
+    _slice_run(w)
     _survivors(w)
     assert _counts(w)["ka_gochara_contact"] >= 5 and _counts(w)["ka_gochara_relationship_record"] >= 1
     assert _counts(w)["ka_gochara_search_inventory"] >= 1 and _counts(w)["kala_gochara_publication"] == 1
@@ -253,16 +299,14 @@ def test_a_failure_after_a_partial_delete_rolls_everything_back(tworld, monkeypa
 def test_a_historical_test_run_never_authorises_deleting_an_unstamped_candidate(tworld):
     """ASTRA P1-3: a test run exists, the current candidate is a full unstamped build — refuse (the old suite enshrined acceptance)."""
     w = tworld
-    w.build(SHORT)
+    _default_build(w)
     _run(w)
     _refused_and_untouched(w, "not PROVEN to be a test slice")
 
 
 def test_a_null_linked_receipt_is_refused_and_named_even_with_a_stamped_manifest(tworld):
     w = tworld
-    w.build(SHORT)
-    _stamp(w)
-    rid = _run(w, part="orphan-part")
+    rid = _slice_run(w, part="orphan-part")
     _prune(w, rid)                                                   # the watchdog's prune: link -> NULL
     assert w.conn.execute("SELECT count(*), count(build_id) FROM public.asset_provenance_receipts WHERE asset_id = %s",
                           (ASSET,)).fetchone() == (1, 0)
@@ -271,9 +315,7 @@ def test_a_null_linked_receipt_is_refused_and_named_even_with_a_stamped_manifest
 
 def test_a_pruned_test_run_with_a_stamped_manifest_and_no_receipts_is_removable(tworld):
     w = tworld
-    w.build(SHORT)
-    _stamp(w)
-    rid = _run(w, receipt=False)
+    rid = _slice_run(w, receipt=False)
     _prune(w, rid)
     _teardown(w)
     assert all(n == 0 for n in _counts(w).values())
@@ -294,9 +336,7 @@ def test_legacy_ledger_rows_of_5_0_are_refused_and_named_never_deleted(tworld):
     assert not _present(w, "kala_gochara_windows")
     w.conn.execute("CREATE TABLE public.kala_gochara_windows (chart_id uuid, generation text)")
     w.conn.execute("INSERT INTO public.kala_gochara_windows VALUES (%s, '5.0'), (%s, %s)", (CHART_ID, CHART_ID, OTHER_GEN))
-    w.build(SHORT)
-    _stamp(w)
-    _run(w)
+    _slice_run(w)
     _refused_and_untouched(w, "kala_gochara_windows")
     assert w.conn.execute("SELECT count(*) FROM public.kala_gochara_windows").fetchone()[0] == 2
 
@@ -305,9 +345,7 @@ def test_a_legacy_table_holding_only_other_generations_does_not_block(tworld):
     w = tworld
     w.conn.execute("CREATE TABLE public.kala_gochara_windows (chart_id uuid, generation text)")
     w.conn.execute("INSERT INTO public.kala_gochara_windows VALUES (%s, %s)", (CHART_ID, OTHER_GEN))
-    w.build(SHORT)
-    _stamp(w)
-    _run(w)
+    _slice_run(w)
     _teardown(w)
     assert w.conn.execute("SELECT generation FROM public.kala_gochara_windows").fetchall() == [(OTHER_GEN,)]
     assert all(n == 0 for n in _counts(w).values())
@@ -318,18 +356,14 @@ def test_a_legacy_table_holding_only_other_generations_does_not_block(tworld):
 def test_a_non_test_layer_run_that_includes_the_asset_is_refused(tworld):
     """ASTRA P1-2: a layer build has scope_target 'kala' (not the asset id); membership is read from build_run_assets."""
     w = tworld
-    w.build(SHORT)
-    _stamp(w)
-    _run(w)
+    _slice_run(w)
     _run(w, triggered_by="cockpit-manual-build", scope="layer", target="kala", assets=(ASSET, "other_asset"), receipt=False, part="p2")
     _refused_and_untouched(w, "NON-test build run")
 
 
 def test_a_non_test_comma_separated_asset_set_is_refused(tworld):
     w = tworld
-    w.build(SHORT)
-    _stamp(w)
-    _run(w)
+    _slice_run(w)
     _run(w, triggered_by="cockpit-manual-build", scope="asset_set", target=f"other_asset,{ASSET}", assets=(), receipt=False)
     _refused_and_untouched(w, "NON-test build run")
 
@@ -337,9 +371,7 @@ def test_a_non_test_comma_separated_asset_set_is_refused(tworld):
 def test_a_test_run_that_also_holds_another_asset_is_refused_and_the_other_assets_rows_are_untouched(tworld):
     """ASTRA P1-4: deleting such a run would delete 'other_asset''s bookkeeping and orphan its receipt."""
     w = tworld
-    w.build(SHORT)
-    _stamp(w)
-    rid = _run(w, assets=(ASSET, "other_asset"))
+    rid = _slice_run(w, assets=(ASSET, "other_asset"))
     w.conn.execute("INSERT INTO public.asset_provenance_receipts (asset_id, chart_id, partition_key, build_id) VALUES ('other_asset', %s, 'q', %s)",
                    (CHART_ID, rid))
     _refused_and_untouched(w, "not exclusively")
@@ -347,9 +379,7 @@ def test_a_test_run_that_also_holds_another_asset_is_refused_and_the_other_asset
 
 def test_any_active_run_on_the_chart_is_refused_whatever_its_shape(tworld):
     w = tworld
-    w.build(SHORT)
-    _stamp(w)
-    _run(w)
+    _slice_run(w)
     _run(w, triggered_by="cockpit-manual-build", scope="layer", target="phala", assets=("other_asset",), state="running", receipt=False)
     _refused_and_untouched(w, "active build_runs")
 
@@ -452,3 +482,122 @@ def test_a_malformed_database_url_prints_the_class_and_never_the_credential(monk
     code = td.main([])
     streams = capsys.readouterr()
     assert code == 1 and "hunter2" not in streams.err + streams.out
+
+
+# ── round 2 (ASTRA v1.1): proven ownership of the existing output, the end state, effects outside the chart, the rehearsal ───────
+
+def _restamp(w, **changes):
+    """Rewrite the stamped manifest's component behind the guards (a corrupted or forged stamp)."""
+    with w.conn.transaction():
+        w.conn.execute("SET LOCAL session_replication_role = replica")
+        for key, value in changes.items():
+            w.conn.execute("UPDATE public.kala_gochara_publication SET input_generation_vector = jsonb_set(input_generation_vector,"
+                           " %s::text[], %s::jsonb) WHERE generation = %s", (["test_slice", key], json.dumps(value), GEN))
+
+
+def test_an_interrupted_replacement_a_later_slice_stamped_over_an_older_nontest_chain_is_refused(tworld):
+    """Codex round 2 P1, the scenario itself: a failed NON-test candidate leaves its output; a later small test commits its stamped
+    manifest and dies before the snapshot substep replaces the old output. Test run + valid stamp: the old output must NOT be deleted."""
+    w = tworld
+    _default_build(w)                                                           # the older, non-test candidate (default vector, its own snapshot)
+    rid = _run(w, marker=MARKER)                                             # the later small test ...
+    _step(w, rid, writer_mod.MANIFEST_SUBSTEP)                               # ... committed its stamped manifest, then failed
+    assert w.conn.execute("SELECT input_generation_vector->>'stored_scope' FROM public.kala_gochara_publication WHERE generation = %s",
+                          (GEN,)).fetchone()[0] == "test_slice"
+    assert _counts(w)["ka_gochara_contact"] >= 5                             # the older output is still there
+    _refused_and_untouched(w, "interrupted replacement")
+
+
+@pytest.mark.parametrize("changes", [
+    {"classes": [""]},
+    {"horizon": ["bogus", "backwards"]},
+    {"marker_digest": "0" * 64},
+    {"schema": "gochara_v5_test_slice/9"},
+    {"run": "one_class_full"},
+], ids=["empty_class", "bogus_horizon", "wrong_digest", "wrong_schema", "run_shape_contradicts_classes"])
+def test_a_forged_or_corrupted_stamp_is_refused_by_the_writers_own_validation(tworld, changes):
+    """Codex drove classes=[''] and horizon=['bogus','backwards'] through to all 15 DELETEs; the writer's validator and the digest now stand in the way."""
+    w = tworld
+    _slice_run(w)
+    _restamp(w, **changes)
+    _refused_and_untouched(w, "writer's own validation|not the writer's component")
+
+
+def test_a_valid_stamp_whose_inventory_header_has_another_identity_is_refused(tworld):
+    w = tworld
+    _slice_run(w)
+    with w.conn.transaction():
+        w.conn.execute("SET LOCAL session_replication_role = replica")
+        w.conn.execute("UPDATE public.ka_gochara_search_inventory SET horizon = tstzrange('2025-01-01', '2025-01-05') WHERE generation = %s", (GEN,))
+    _refused_and_untouched(w, "inventory header")
+
+
+def test_a_non_test_receipt_of_the_asset_on_another_chart_breaks_the_n137_end_state(tworld):
+    """The monitor's evidence query is asset-wide: any chart, any non-test (or unlinked) receipt keeps the asset out of the excluded set."""
+    w = tworld
+    _built_stamped_with_test_run(w)
+    w.conn.execute("INSERT INTO public.asset_provenance_receipts (asset_id, chart_id, partition_key, build_id) VALUES (%s, %s, 'x', NULL)",
+                   (ASSET, OTHER_CHART))
+    _refused_and_untouched(w, f"N-137 end state.*{OTHER_CHART}")
+
+
+def test_a_non_test_run_asset_row_of_the_asset_on_another_chart_breaks_the_n137_end_state(tworld):
+    w = tworld
+    _built_stamped_with_test_run(w)
+    _run(w, triggered_by="cockpit-manual-build", receipt=False, chart=OTHER_CHART)
+    _refused_and_untouched(w, f"N-137 end state.*{OTHER_CHART}")
+
+
+@pytest.mark.parametrize("break_it, match", [
+    ("UPDATE public.asset_registry SET catalog_status = 'RETIRED' WHERE asset_id = 'ka_gochara_v5'", "catalog_status is RETIRED"),
+    ("UPDATE public.asset_registry SET depends_on = '{ka_gochara_v5}' WHERE asset_id = 'other_asset'", "depends_on"),
+], ids=["retired", "a_dependent"])
+def test_the_registry_side_of_the_n137_end_state_is_validated(tworld, break_it, match):
+    w = tworld
+    _built_stamped_with_test_run(w)
+    w.conn.execute(break_it)
+    _refused_and_untouched(w, match)
+
+
+def test_an_owned_run_that_also_holds_a_receipt_of_the_asset_on_another_chart_is_refused(tworld):
+    """Deleting the run would set that receipt's run link to NULL (migration 596)."""
+    w = tworld
+    rid = _slice_run(w)
+    w.conn.execute("INSERT INTO public.asset_provenance_receipts (asset_id, chart_id, partition_key, build_id) VALUES (%s, %s, 'y', %s)",
+                   (ASSET, OTHER_CHART, rid))
+    _refused_and_untouched(w, f"other chart.*{OTHER_CHART}")
+
+
+def test_an_active_registry_row_with_freshness_on_another_chart_is_refused_but_alone_it_is_restored(tworld):
+    w = tworld
+    _built_stamped_with_test_run(w)
+    w.conn.execute("UPDATE public.asset_registry SET is_active = true WHERE asset_id = %s", (ASSET,))
+    w.conn.execute("INSERT INTO public.asset_freshness (asset_id, chart_id, partition_key) VALUES (%s, %s, 'z')", (ASSET, OTHER_CHART))
+    _refused_and_untouched(w, r"ACTIVE.*596.*EVERY chart")
+    w.conn.execute("DELETE FROM public.asset_freshness WHERE chart_id = %s", (OTHER_CHART,))
+    _teardown(w)
+    assert w.conn.execute("SELECT is_active FROM public.asset_registry WHERE asset_id = %s", (ASSET,)).fetchone()[0] is False
+
+
+def test_the_dry_run_rehearses_the_deletes_and_so_fails_where_an_execution_would(tworld):
+    """Codex round 2 P2: a dry run that returned before the DELETEs could not see a trigger or a constraint that refuses one. A trigger
+    that blocks the throughput DELETE makes the DRY RUN fail, and nothing is left changed."""
+    w = tworld
+    _built_stamped_with_test_run(w)
+    w.conn.execute("CREATE FUNCTION public.block_throughput_delete() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'blocked'; END $$")
+    w.conn.execute("CREATE TRIGGER block_it BEFORE DELETE ON public.asset_throughput FOR EACH ROW EXECUTE FUNCTION public.block_throughput_delete()")
+    before = _snapshot(w)
+    with pytest.raises(psycopg.errors.Error):
+        _teardown(w, dry_run=True)
+    assert _snapshot(w) == before
+
+
+def test_the_dry_run_prints_the_retention_remaining_for_the_owned_run(tworld, capsys):
+    w = tworld
+    _built_stamped_with_test_run(w)
+    _teardown(w, dry_run=True)
+    out = capsys.readouterr().out
+    assert "day(s) of the 90-day cockpit retention remain" in out and "PAST RETENTION" not in out
+    w.conn.execute("UPDATE public.build_runs SET created_at = now() - interval '91 days'")
+    _teardown(w, dry_run=True)
+    assert "PAST RETENTION" in capsys.readouterr().out
