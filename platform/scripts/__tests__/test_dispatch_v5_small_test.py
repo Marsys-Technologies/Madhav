@@ -145,7 +145,8 @@ def test_expected_registry_row_is_the_1304_values():
 # ── recording fake psycopg ────────────────────────────────────────────────────
 
 class _Harness:
-    def __init__(self, *, dependents=None, registry_row=None, row_missing=False):
+    def __init__(self, *, dependents=None, registry_row=None, row_missing=False, commit_error=None, rollback_error=None,
+                 fail_on=None):
         self.statements: list[str] = []
         self.params: list[tuple] = []
         self.commits: list[int] = []
@@ -153,6 +154,7 @@ class _Harness:
         self.dependents = dependents if dependents is not None else []
         self.registry_row = dict(dispatch.EXPECTED_REGISTRY_ROW) if registry_row is None else registry_row
         self.row_missing = row_missing
+        self.commit_error, self.rollback_error, self.fail_on = commit_error, rollback_error, fail_on
         harness = self
 
         class FakeCur:
@@ -160,6 +162,8 @@ class _Harness:
                 harness.statements.append(sql)
                 harness.params.append(params)
                 self._last = sql
+                if harness.fail_on and harness.fail_on in sql:
+                    raise Exception('could not connect: postgresql://svc:hunter2-secret@db.example/prod refused')
 
             def fetchall(self):
                 if "ANY(depends_on)" in self._last:
@@ -184,9 +188,13 @@ class _Harness:
 
             def commit(self):
                 harness.commits.append(len(harness.statements))
+                if harness.commit_error:
+                    raise harness.commit_error
 
             def rollback(self):
                 harness.rollbacks.append(len(harness.statements))
+                if harness.rollback_error and len(harness.rollbacks) == 1:
+                    raise harness.rollback_error
 
             def close(self):
                 pass
@@ -422,3 +430,63 @@ def test_the_cli_keeps_the_steward_exit_code(capsys):
     h = _Harness()
     code, streams, connects = _run_cli(h, ["--run", "all_classes_1y", "--horizon-start", START, "--horizon-end", END], capsys)
     assert code == 2 and connects == []
+
+
+# ── round 2 (ASTRA v1.1, items 3 and 6, applied to the dispatch): the teardown deadline and honest failure reporting ─────────────
+
+def test_a_real_dispatch_prints_the_teardown_deadline_ninety_days_out(capsys):
+    h = _Harness()
+    out = _run_main(h, BASE_ARGV, capsys)
+    assert "TEARDOWN DEADLINE" in out.err and "90 days from now" in out.err and "V5_SMALLTEST_TEARDOWN_RUNBOOK_v1_0.md" in out.err
+    assert out.out.strip() and "\n" not in out.out.strip()                       # stdout still carries only the run id
+    import datetime as dt
+    stamp = out.err.split("tear the small test down by ")[1].split(" ")[0]
+    delta = dt.datetime.fromisoformat(stamp) - dt.datetime.now(dt.timezone.utc)
+    assert dt.timedelta(days=89) < delta < dt.timedelta(days=91)
+
+
+def test_the_dry_run_names_the_deadline_a_real_dispatch_would_print(capsys):
+    out = _run_main(_Harness(), BASE + ["--dry-run"], capsys)
+    assert "teardown deadline 90 days out" in out.err
+
+
+def test_the_docstring_tells_the_steward_to_tear_down_within_ninety_days():
+    assert dispatch.RETENTION_DAYS == 90
+    assert "TEAR THE SMALL TEST DOWN WITHIN 90 DAYS" in dispatch.__doc__ and "V5_SMALLTEST_TEARDOWN_RUNBOOK_v1_0.md" in dispatch.__doc__
+
+
+def test_a_failure_before_the_commit_reports_a_confirmed_rollback(capsys):
+    h = _Harness(fail_on="INSERT INTO build_runs")
+    code, streams, _ = _run_cli(h, BASE_ARGV, capsys)
+    assert code == 1 and "ROLLBACK CONFIRMED" in streams.err and "COMMIT OUTCOME UNKNOWN" not in streams.err and not h.commits
+    assert "hunter2" not in streams.err + streams.out
+
+
+def test_a_failure_AT_the_commit_is_an_unknown_outcome_never_nothing_committed(capsys):
+    """Once COMMIT has been sent nobody may claim the database is unchanged, and no rollback is attempted."""
+    h = _Harness(commit_error=ConnectionError("server closed the connection (postgresql://svc:hunter2-secret@db/prod)"))
+    code, streams, _ = _run_cli(h, BASE_ARGV, capsys)
+    text = streams.err + streams.out
+    assert code == 1 and "COMMIT OUTCOME UNKNOWN" in text and "may or may not exist" in text
+    assert "ROLLBACK CONFIRMED" not in text and "changed nothing" not in text and "hunter2" not in text
+    assert len(h.commits) == 1 and not h.rollbacks
+
+
+def test_a_failed_rollback_is_reported_as_not_confirmed(capsys):
+    h = _Harness(fail_on="INSERT INTO build_runs", rollback_error=ConnectionError("lost"))
+    code, streams, _ = _run_cli(h, BASE_ARGV, capsys)
+    assert code == 1 and "ROLLBACK NOT CONFIRMED" in streams.err and "ROLLBACK CONFIRMED:" not in streams.err
+
+
+def test_a_connection_failure_says_no_transaction_was_opened(capsys):
+    code, streams, _ = _run_cli(_Harness(), BASE_ARGV, capsys, connect_error=ValueError("bad uri postgresql://svc:hunter2-secret@x/y"))
+    assert code == 1 and "No transaction was opened" in streams.err and "hunter2" not in streams.err + streams.out
+
+
+def test_a_named_refusal_after_the_connection_reports_its_confirmed_rollback(capsys):
+    code, streams, _ = _run_cli(_Harness(dependents=[{"asset_id": "ka_dep"}]), BASE_ARGV, capsys)
+    assert code == 1 and "ka_dep" in streams.err and "ROLLBACK CONFIRMED" in streams.err
+
+
+def test_the_script_never_claims_nothing_was_committed():
+    assert "othing was committed" not in DISPATCH.read_text(encoding="utf-8")

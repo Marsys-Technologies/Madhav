@@ -60,6 +60,14 @@ STAGING NEEDS EXPLICIT INTENT. The default is a DRY RUN: the SAME staging transa
 and prints the staged plan (run row + manifest) as JSON — nothing is written. Writing the run needs `--execute` (together with the
 two steward flags). `--dry-run` is accepted as an explicit spelling of the default; it cannot be combined with `--execute`.
 
+RETENTION: TEAR THE SMALL TEST DOWN WITHIN 90 DAYS. The cockpit watchdog deletes terminal build runs 90 days after their
+creation (`app/api/cockpit/watchdog/route.ts`, "M-4") and `asset_provenance_receipts.build_id` is ON DELETE SET NULL; the teardown
+refuses a receipt with no run link for good. The dispatch prints the teardown deadline when it stages a run. Past the window the only
+way out is the steward recovery runbook, 00_ARCHITECTURE/briefs/pravaha/V5_SMALLTEST_TEARDOWN_RUNBOOK_v1_0.md.
+
+A FAILURE reports what is KNOWN about the transaction (rollback confirmed, rollback not confirmed, or commit outcome unknown — a
+COMMIT was sent and no answer came back); it never claims the database is unchanged unless a rollback was confirmed.
+
 Execution happens separately, after steward go:
 
   gcloud run jobs execute brahma-build-pipeline-job --args=--run-id,<run_id>
@@ -96,6 +104,27 @@ from dispatch_frozen_rebuild import (
 ASSET_ID = "ka_gochara_v5"
 CHART_ID = "482012f1-710e-4a25-994a-93821f5871aa"
 TRIGGERED_BY = "gochara-v5-small-test"
+RETENTION_DAYS = 90                       # the cockpit watchdog's terminal-run retention (watchdog/route.ts, M-4)
+RUNBOOK = "00_ARCHITECTURE/briefs/pravaha/V5_SMALLTEST_TEARDOWN_RUNBOOK_v1_0.md"
+OUTCOME_TEXT = {
+    "no_transaction": "No transaction was opened.",
+    "rolled_back": "ROLLBACK CONFIRMED: this run changed nothing in the database.",
+    "rollback_unconfirmed": ("ROLLBACK NOT CONFIRMED: the rollback itself failed. No COMMIT was sent, so the server rolls the "
+                             "transaction back when the session ends, but this run did not observe that."),
+    "before_commit": ("No COMMIT was sent by this run, so it committed nothing; any open transaction is rolled back by the server "
+                      "when the session ends (this run did not observe that)."),
+    "commit_unknown": ("COMMIT OUTCOME UNKNOWN: the COMMIT statement was sent and no confirmation came back. The staged run may or "
+                       "may not exist. Run the dry run and look for an existing 'gochara-v5-small-test' run before any retry; do "
+                       "not assume either way."),
+}
+
+
+def _note_outcome(exc: BaseException, outcome: str) -> None:
+    """Attach what is KNOWN about the transaction to the exception, for the process boundary to report."""
+    try:
+        exc.dispatch_outcome = outcome        # type: ignore[attr-defined]
+    except Exception:
+        pass
 
 # The shape the ka_gochara_v5 registry row MUST have before staging — the values migration 1304
 # (PR 3101) lands, compared field by field. depends_on is compared in 1304's order.
@@ -260,7 +289,11 @@ def main(argv: list[str] | None = None) -> None:
     import psycopg
     import psycopg.rows
 
-    conn = psycopg.connect(database_url, row_factory=psycopg.rows.dict_row)
+    try:
+        conn = psycopg.connect(database_url, row_factory=psycopg.rows.dict_row)
+    except Exception as exc:
+        _note_outcome(exc, "no_transaction")
+        raise
     conn.autocommit = False
     cur = conn.cursor()
 
@@ -272,20 +305,31 @@ def main(argv: list[str] | None = None) -> None:
     )
     dependents = [r["asset_id"] for r in cur.fetchall()]
     if dependents:
-        conn.close()
-        raise RuntimeError(
+        refusal = RuntimeError(
             f"dispatch refused: asset_registry rows {dependents} list "
             f"{ASSET_ID} in depends_on — nothing may depend on this asset "
             "so no existing DAG build ever schedules it")
+        try:
+            conn.rollback()
+            _note_outcome(refusal, "rolled_back")
+        except Exception:
+            _note_outcome(refusal, "rollback_unconfirmed")
+        conn.close()
+        raise refusal
 
     try:
         _validate_registry_row(cur)
-    except Exception:
-        conn.rollback()
+    except Exception as exc:
+        try:
+            conn.rollback()
+            _note_outcome(exc, "rolled_back")
+        except Exception:
+            _note_outcome(exc, "rollback_unconfirmed")
         conn.close()
         raise
 
     run_id = None
+    phase = "open"                                   # open -> committing (COMMIT sent) -> committed
     try:
         # ONE transaction for the whole staging: the is_active flip TRUE →
         # staging → flip FALSE → single COMMIT (or, with --dry-run, one
@@ -331,10 +375,22 @@ def main(argv: list[str] | None = None) -> None:
         if dry_run:
             conn.rollback()
         else:
+            phase = "committing"
             conn.commit()
-    except Exception:
-        conn.rollback()
-        conn.close()
+            phase = "committed"
+    except Exception as exc:
+        if phase == "committing":
+            _note_outcome(exc, "commit_unknown")     # never roll back and never claim 'unchanged' once COMMIT went out
+        else:
+            try:
+                conn.rollback()
+                _note_outcome(exc, "rolled_back")
+            except Exception:
+                _note_outcome(exc, "rollback_unconfirmed")
+        try:
+            conn.close()
+        except Exception:
+            pass
         raise
     conn.close()
 
@@ -348,9 +404,14 @@ def main(argv: list[str] | None = None) -> None:
     }
     if dry_run:
         print(f"[dry-run] staged plan for a SMALL TEST build of {ASSET_ID} on chart "
-              f"{CHART_ID} — ROLLED BACK, nothing written", file=sys.stderr)
+              f"{CHART_ID} — ROLLED BACK, nothing written. A real dispatch prints a teardown deadline {RETENTION_DAYS} days out "
+              f"(cockpit retention; {RUNBOOK})", file=sys.stderr)
         print(json.dumps(plan, indent=2, sort_keys=True), flush=True)
         return
+    deadline = (datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(days=RETENTION_DAYS)).isoformat(timespec="seconds")
+    print(f"[dispatch] TEARDOWN DEADLINE: tear the small test down by {deadline} ({RETENTION_DAYS} days from now: the cockpit watchdog "
+          f"then deletes the run row and its receipts lose their run link; the teardown refuses those for good — see {RUNBOOK})",
+          file=sys.stderr)
     print(f"[dispatch] staged v5 SMALL TEST build_run {run_id} for asset "
           f"{ASSET_ID} on chart {CHART_ID} (manifest digest {manifest_digest}); "
           f"asset_registry.is_active restored to false. Execute on steward go "
@@ -361,11 +422,13 @@ def main(argv: list[str] | None = None) -> None:
 
 
 def _safe_failure(exc: BaseException) -> str:
-    """The class (and SQLSTATE) only: a connection or parse error can carry the credentials in its text."""
+    """The class (and SQLSTATE) only — a connection or parse error can carry the credentials in its text — and what is KNOWN about the
+    transaction. 'Unchanged' is claimed only when a rollback was confirmed."""
     kind = f"{type(exc).__module__}.{type(exc).__name__}"
     state = getattr(exc, "sqlstate", None)
+    known = OUTCOME_TEXT.get(getattr(exc, "dispatch_outcome", None) or "before_commit", OUTCOME_TEXT["commit_unknown"])
     return (f"dispatch failed: {kind}{f' (SQLSTATE {state})' if state else ''}. The exception text is withheld because a "
-            "connection error can carry credentials. Nothing was committed.")
+            f"connection error can carry credentials. {known}")
 
 
 def cli(argv: list[str] | None = None) -> int:
@@ -376,7 +439,8 @@ def cli(argv: list[str] | None = None) -> int:
     except SystemExit as exc:
         return exc.code if isinstance(exc.code, int) else (0 if exc.code is None else 1)
     except RuntimeError as exc:                   # the named refusals this script raises itself
-        print(f"dispatch refused: {exc}", file=sys.stderr)
+        known = OUTCOME_TEXT.get(getattr(exc, "dispatch_outcome", None) or "", "")
+        print(f"dispatch refused: {exc}" + (f"\n{known}" if known else ""), file=sys.stderr)
         return 1
     except Exception as exc:                      # noqa: BLE001 — the boundary: print the class, never the text
         print(_safe_failure(exc), file=sys.stderr)
