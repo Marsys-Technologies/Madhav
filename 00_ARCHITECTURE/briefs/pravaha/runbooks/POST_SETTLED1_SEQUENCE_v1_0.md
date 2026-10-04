@@ -1,12 +1,13 @@
 ---
 artifact: POST_SETTLED1_SEQUENCE
-version: "1.0"
+version: "1.1"
 status: "DRAFT SEQUENCE — authorises NOTHING by itself; each act still needs the steward's say-so; written during the S-L1 hold (steward ST-POST-SETTLED-PLAN, 2026-10-04T02:08Z)"
 date: 2026-10-04
 author: Stream B (Śāstra), item B6.0
 how_to_use: "From 'SETTLED-1 received' to 'window qualified', then the list of what follows. Do the stages in order. Any FALSE readback = STOP, report; no unreviewed repair. Pins below are CURRENT (2026-10-04T02:10Z) and are replaced by whatever the steward names at the time. The sitting checklist (PROTECTED_WINDOW_SITTING_CHECKLIST_v1_0.md v1.21) stays authoritative for rows 7-9."
 changelog:
   - "1.0 (2026-10-04): first version."
+  - "1.1 (2026-10-04, steward C55-RULING): rows 8a and 11 added to section C — before the small test build creates the first governed manifest, re-run W1/W2 and tell Suvarna that legacy Gochara builds of other charts will from then on take the canonical chart's lock (C55 observed behaviour, runbook 4.1); and, after the hold, capture production's real trg_kgw_* guard function definition read-only so the C55 test can use the real body."
 ---
 
 # From SETTLED-1 to a qualified window — one page
@@ -42,5 +43,7 @@ changelog:
 | 7b | **Act 2b** (sealer password behind the gate; staging secret verified deleted) — needs the GitHub admin secret **refreshed again on the owner's word** (it holds a throw-away value) | owner's word; steward | five-place credential account §5.3 |
 | 7c | **Act 6** deploy the verification job by digest from the final commit (after Codex ACCEPT of the job's code), **6b** read-only bootstrap | steward; Stream A (job code); Stream B (#2975/#2976 review/qualification) | one commit for #2975 and #2976 (P-SC) |
 | 8 | **Acts 12, 13, 14** log-view / execute / proxy rights, positive and negative reads with the workflow identity | steward under the owner's account | PERMISSION_DENIED outside the view |
+| 8a | **BEFORE the small test build creates the FIRST governed (`'5.0'`) manifest — re-run W1 and W2 (runbook 4.1) on production, read-only, and TELL SUVARNA in words:** from that manifest onward every publication UPDATE/DELETE statement of ANY chart's legacy Gochara build (`ledger.py`, the `ka_gochara_v4_41_candidate` writer, the cutover scripts) takes the CANONICAL chart's lock — it waits while a governed transaction of the canonical chart holds it and is refused at REPEATABLE READ; a governed manifest of another chart would block all of them. Observed in C55 (PR #3124); the steward's reading: fail-closed, not looser than 1240's comments, not a schema-window matter. W1 must be zero rows for non-canonical charts (W1 is the proof) and W2(c) must show no role/database isolation setting | Stream B (W1/W2 run and the readback); steward (tells Suvarna) | W1 returns a row; W2(c) shows an isolation setting; Suvarna has not been told |
 | 9 | **Small test build (Ruling 3, ~5 %)** — NOT the full build; scope pending the steward (slice, horizon ≤ default 2026-04-17, Stream A to confirm registry values and the ephemeris in the job image); the capacity checkpoint (counts, brief size, verification runtime/memory, seal timing on a disposable clone) | steward; Stream A; Stream B | the one full build and the seal move to AFTER Suvarṇa's elevation (Ruling 3) |
 | 10 | brief → approval (exact digest/run/attempt/brief-ID) → seal → reconciliation; cleanup | steward under the owner's account | gated by Ruling 3; owner informed after every approval |
+| 11 | **Capture production's real legacy windows guard, read-only, AFTER the hold** (C55 follow-up): `SELECT pg_get_functiondef('public.kala_gochara_generation_guard()'::regprocedure);` plus the two triggers `trg_kgw_generation_guard_row` / `trg_kgw_generation_guard_truncate` (`pg_get_triggerdef`), saved under the evidence folder; then Stream B extends the C55 test to install that body in the mirror instead of 1071's fresh-path pair (its current honest limit: the production guard's body is not in the repository) | steward runs or authorises the read; Stream B (test) | any difference between the captured body and 1071's text is reported, not absorbed |
