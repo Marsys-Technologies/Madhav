@@ -1,6 +1,6 @@
 ---
 artifact: DECLARED_CONTROL_PLANE_EXCEPTION_20261003
-version: "1.1"
+version: "1.2"
 status: RECORD — owner to confirm or revoke in the morning
 date: 2026-10-03
 declared_at: "2026-10-03T23:43:23Z"
@@ -16,7 +16,11 @@ changelog:
 # Declared control-plane exception — Google-managed Firebase service agent
 
 ## Residual risk — the owner must read this sentence before confirming or revoking
-Codex's statement (ASTRA review of PR #3119, recorded here in substance): **"same class" is fair for Google MANAGEMENT agents, but it is NOT equivalent AUTHORITY.** None of the ten Google service agents already on the allow-list holds `resourcemanager.projects.setIamPolicy`; the Firebase management agent does. Its project-IAM rewrite authority is materially broader — misuse of it could grant secret access or verifier impersonation to itself or to others.
+**The sentence (Codex ASTRA review v1.1, ACCEPT on PR #3119 head ab96a9fa8, verbatim): "the owner accepts that the Firebase agent's project-IAM rewrite authority can be used to grant control over the verifier."**
+
+**Condition (steward, M20261004T062516-0d64):** PR #3119 stays DRAFT and unmerged until (a) the S-L1 hold ends and (b) the OWNER has confirmed the exception with the sentence above in front of him. Merging the allow-list change makes that acceptance permanent in code, so it is the owner's decision, not the steward's or Stream B's. Codex's answer to "may this be merged and the variable then removed" is YES for the Firebase-only declared exception — a technical ACCEPT, not the owner's confirmation. Until then the declared variable stays as it is.
+
+Codex's earlier statement (v1.0 review, on head 54b33e11f; recorded here in substance): **"same class" is fair for Google MANAGEMENT agents, but it is NOT equivalent AUTHORITY.** None of the ten Google service agents already on the allow-list holds `resourcemanager.projects.setIamPolicy`; the Firebase management agent does. Its project-IAM rewrite authority is materially broader — misuse of it could grant secret access or verifier impersonation to itself or to others.
 
 What bounds that risk today (facts, not reassurance): the member is Google-owned (no principal in this project holds its key, can mint its token or impersonate it), so the authority is exercisable only through Google's Firebase management backend; and the allow-list change that PR #3119 proposes is now confined to the VERIFIER-CONTROL gate only — the builder-impersonation gate keeps the original ten entries and would still reject this agent if its role ever gained an impersonation permission (cross-gate regression test). What is NOT bounded: while the declaration (or the PR) is in force, the verifier-control gate does not flag this agent's project-level `setIamPolicy`. That is a standing, owner-visible exception to the verifier-control rule, not a neutral oversight fix.
 
@@ -56,7 +60,7 @@ The owner CONFIRMS (keep the declaration until the allow-list PR below lands, th
 ## Follow-up (after the window, reviewed — never at the sitting)
 A reviewed PR adds the exact `roles/firebase.managementServiceAgent` ↔ `serviceAccount:service-<projectNumber>@gcp-sa-firebase.iam.gserviceaccount.com` pair to `isCanonicalGoogleServiceAgentGrant` with a test (positive for that pair, negative for a different member or a conditional binding), after which the declared variable is deleted. Stream B owns that code (#2961's preflight).
 
-**Status (2026-10-04):** PR #3119 (draft) implements it. Codex ACCEPT_WITH_AMENDMENTS on head 54b33e11f: the matcher is shared with the builder gate (`assertEffectiveIsolation`), so the Firebase exemption was confined to the verifier-control gate only (head ab96a9fa8; the original ten entries byte-identical; cross-gate regression, foreign-project-resource and mixed-member tests added). Merge waits for Codex's one-line re-check; the variable is deleted only after that PR is merged and deployed, then the isolation proof is re-run.
+**Status (2026-10-04):** PR #3119 (draft) implements it. Codex ACCEPT_WITH_AMENDMENTS on head 54b33e11f: the matcher is shared with the builder gate (`assertEffectiveIsolation`), so the Firebase exemption was confined to the verifier-control gate only (head ab96a9fa8; the original ten entries byte-identical; cross-gate regression, foreign-project-resource and mixed-member tests added). Codex v1.1 ACCEPTED head ab96a9fa8 (40/40 at that head; 39/40 against 54b33e11f, failing exactly the cross-gate regression). Merge now waits on the owner, not on review: PR #3119 stays DRAFT until the hold ends AND the owner has confirmed the exception with the residual-risk sentence in front of him (steward ruling, 2026-10-04T06:25Z). Only after the merge and the deploy is the variable deleted, then the isolation proof re-run.
 
 ## Act-3 report addendum (runbook §3 terms)
 - Act: 3 — create the verifier service account and its one project role; ADDENDUM: act-7 isolation refusal, control-plane exception declared.
