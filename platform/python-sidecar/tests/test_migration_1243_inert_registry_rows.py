@@ -95,13 +95,17 @@ def world(dsn):
     from pipeline.orchestrator.runner import _WRITER_SUBASSET_IDS
     registered = _production_writer_ids()
     conn = psycopg.connect(dsn, autocommit=True)
-    conn.execute("DROP TABLE IF EXISTS asset_registry, asset_provenance_receipts, build_run_assets, asset_throughput CASCADE; DROP FUNCTION IF EXISTS nirmana_invalidate_registry_receipts() CASCADE")
+    conn.execute("DROP TABLE IF EXISTS asset_registry, asset_provenance_receipts, build_run_assets, build_runs, asset_throughput CASCADE; DROP FUNCTION IF EXISTS nirmana_invalidate_registry_receipts() CASCADE")
     for role in ("amjis_app", "nirmana_campaign_control_writer", "nirmana_evidence_ingress_writer", "outsider_role"):
         conn.execute(f"DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = '{role}') THEN CREATE ROLE {role} NOLOGIN; END IF; END $$")
     conn.execute("GRANT USAGE ON SCHEMA public TO amjis_app")                    # production: USAGE WITHOUT CREATE on public (the ordinary migration role)
     conn.execute(DDL)
-    conn.execute("CREATE TABLE asset_provenance_receipts (asset_id text); CREATE TABLE build_run_assets (asset_id text); CREATE TABLE asset_throughput (asset_id text)")
-    for tbl in ("asset_registry", "asset_provenance_receipts", "build_run_assets", "asset_throughput"):
+    # the columns the evidence predicate reads, with production's keys: build_runs(id uuid, triggered_by text NOT NULL); build_run_assets.run_id -> build_runs ON DELETE CASCADE;
+    # asset_provenance_receipts.build_id -> build_runs ON DELETE SET NULL (a pruned run leaves the receipt with a NULL build_id)
+    conn.execute("CREATE TABLE build_runs (id uuid PRIMARY KEY, triggered_by text NOT NULL); "
+                 "CREATE TABLE asset_provenance_receipts (asset_id text, build_id uuid REFERENCES build_runs(id) ON DELETE SET NULL); "
+                 "CREATE TABLE build_run_assets (run_id uuid REFERENCES build_runs(id) ON DELETE CASCADE, asset_id text); CREATE TABLE asset_throughput (asset_id text)")
+    for tbl in ("asset_registry", "build_runs", "asset_provenance_receipts", "build_run_assets", "asset_throughput"):
         conn.execute(f"ALTER TABLE {tbl} OWNER TO amjis_app")                 # production: amjis_app owns them and the migration runner authenticates as amjis_app
     others = sorted(set(registered) - _WRITER_SUBASSET_IDS - {V41, V5, "ka_gochara"})
     assert len(others) > 100, "the writer discovery probe found too few writers"
@@ -231,10 +235,9 @@ def test_d_a_wrong_pre_existing_row_or_a_dependent_makes_the_migration_fail_loud
 
 
 # ── ROWS-ONLY deployability + the ONE evidence predicate (steward M20261003T131532-b179; Suvarṇa option (A)) ──────────────────────────────────────────────────────────────────────
-# the SAME expression the loaders embed (definitions.ts runtimeEvidenceSql)
-EXPR = """CASE WHEN {a}.asset_id IN ('ka_gochara_v4_41_candidate', 'ka_gochara_v5')
-  THEN (EXISTS (SELECT 1 FROM public.asset_provenance_receipts rcpt WHERE rcpt.asset_id = {a}.asset_id)
-        OR EXISTS (SELECT 1 FROM public.build_run_assets bra WHERE bra.asset_id = {a}.asset_id)) END"""
+# the SAME expression the loaders embed (definitions.ts runtimeEvidenceSql): ONE golden text, read by the vitest test too (no drift)
+GOLDEN = Path(__file__).resolve().parents[2] / "src" / "lib" / "nirmana-elevation" / "__tests__" / "fixtures" / "runtime_evidence_sql.golden.txt"
+EXPR = GOLDEN.read_text(encoding="utf-8").rstrip("\n").replace(" AS has_non_test_runtime_evidence", "")
 ROLES = ("amjis_app", "nirmana_campaign_control_writer", "nirmana_evidence_ingress_writer")
 
 
@@ -257,7 +260,7 @@ def test_f_ONE_predicate_receipts_or_build_run_assets_gives_IDENTICAL_results_fo
     conn, _ = world
     _apply(conn)
     for role in ROLES[1:]:                                                          # production: SELECT on receipts + build_run_assets, NONE on asset_throughput
-        conn.execute(f"GRANT SELECT ON asset_provenance_receipts, build_run_assets, asset_registry TO {role}")
+        conn.execute(f"GRANT SELECT ON asset_provenance_receipts, build_run_assets, build_runs, asset_registry TO {role}")
     conn.execute("GRANT SELECT ON asset_registry TO amjis_app")
     for role in ROLES[1:]:
         assert conn.execute("SELECT has_table_privilege(%s, 'public.asset_throughput', 'SELECT')", (role,)).fetchone()[0] is False
@@ -271,10 +274,68 @@ def test_f_ONE_predicate_receipts_or_build_run_assets_gives_IDENTICAL_results_fo
     assert all_roles() == [("ka_gochara", None), (V41, False), (V5, False)]        # no evidence ⇒ False for the two (excluded), NULL for any other row (never consulted)
     conn.execute("INSERT INTO asset_throughput VALUES (%s)", (V5,))                 # a cockpit REFRESH row: not a build ⇒ NOT evidence, in BOTH paths identically
     assert all_roles() == [("ka_gochara", None), (V41, False), (V5, False)]
-    conn.execute("INSERT INTO build_run_assets VALUES (%s)", (V41,))
+    ordinary = _run(conn, "some-ordinary-dispatch")
+    conn.execute("INSERT INTO build_run_assets VALUES (%s, %s)", (ordinary, V41))
     assert all_roles() == [("ka_gochara", None), (V41, True), (V5, False)]
-    conn.execute("INSERT INTO asset_provenance_receipts VALUES (%s)", (V5,))
+    conn.execute("INSERT INTO asset_provenance_receipts VALUES (%s, %s)", (V5, ordinary))
     assert all_roles() == [("ka_gochara", None), (V41, True), (V5, True)]
     # DOCUMENTED LIMIT: the watchdog prunes build_run_assets — a candidate whose only evidence was that build row looks evidence-free again.
     conn.execute("DELETE FROM build_run_assets WHERE asset_id = %s", (V41,))
     assert all_roles() == [("ka_gochara", None), (V41, False), (V5, True)]
+
+
+def _run(conn, triggered_by):
+    run_id = str(uuid.uuid4())
+    conn.execute("INSERT INTO build_runs VALUES (%s, %s)", (run_id, triggered_by))
+    return run_id
+
+
+def test_g_N137_evidence_from_a_DECLARED_TEST_RUN_is_not_evidence_for_v5_but_any_other_run_is_for_both_ids_in_all_three_loader_roles(world):
+    """Suvarṇa N-137, on a real PostgreSQL: v5's declared test trigger is `gochara-v5-small-test`; v4.1 declares none. Receipts attribute to their run through build_id,
+    build_run_assets rows through run_id; a receipt whose run is gone (build_id NULL after pruning) is NON-test; the predicate gives identical answers to the three loader roles."""
+    conn, _ = world
+    _apply(conn)
+    for role in ROLES[1:]:
+        conn.execute(f"GRANT SELECT ON asset_provenance_receipts, build_run_assets, build_runs, asset_registry TO {role}")
+    conn.execute("GRANT SELECT ON asset_registry TO amjis_app")
+    q = f"SELECT asset_id, {EXPR.format(a='asset_registry')} AS ev FROM asset_registry WHERE asset_id IN (%s, %s, 'ka_gochara') ORDER BY 1"
+
+    def all_roles():
+        got = [_as(conn, r, q, (V41, V5)) for r in ROLES]
+        assert got[0] == got[1] == got[2], got
+        return {aid: ev for aid, ev in got[0]}
+
+    test_run = _run(conn, "gochara-v5-small-test")
+    other_run = _run(conn, "someone-else")
+    assert all_roles() == {"ka_gochara": None, V41: False, V5: False}                                   # zero evidence qualifies
+    # v5: evidence from the declared test run only ⇒ still NO non-test evidence (excluded); build_run_assets and receipt alike
+    conn.execute("INSERT INTO build_run_assets VALUES (%s, %s)", (test_run, V5))
+    conn.execute("INSERT INTO asset_provenance_receipts VALUES (%s, %s)", (V5, test_run))
+    assert all_roles()[V5] is False
+    # the SAME test run is NOT a test run for v4.1 (it declares no trigger): any evidence is non-test
+    conn.execute("INSERT INTO build_run_assets VALUES (%s, %s)", (test_run, V41))
+    assert all_roles()[V41] is True
+    conn.execute("DELETE FROM build_run_assets WHERE asset_id = %s", (V41,))
+    assert all_roles()[V41] is False
+    # ONE row from a non-test run flips v5 (either table); mutation: each must flip it
+    conn.execute("INSERT INTO build_run_assets VALUES (%s, %s)", (other_run, V5))
+    assert all_roles()[V5] is True
+    conn.execute("DELETE FROM build_run_assets WHERE run_id = %s", (other_run,))
+    assert all_roles()[V5] is False
+    conn.execute("INSERT INTO asset_provenance_receipts VALUES (%s, %s)", (V5, other_run))
+    assert all_roles()[V5] is True
+    conn.execute("DELETE FROM asset_provenance_receipts WHERE build_id = %s", (other_run,))
+    assert all_roles()[V5] is False
+    # a receipt whose run is UNKNOWN (never existed) or GONE (pruned: build_id NULL) cannot be attributed to a test run ⇒ non-test ⇒ fails closed
+    conn.execute("INSERT INTO asset_provenance_receipts VALUES (%s, NULL)", (V5,))
+    assert all_roles()[V5] is True
+    conn.execute("DELETE FROM asset_provenance_receipts WHERE build_id IS NULL")
+    assert all_roles()[V5] is False
+    conn.execute("DELETE FROM build_runs WHERE id = %s", (test_run,))                                        # pruning the test run: its build_run_assets row cascades away; its receipt keeps a NULL build_id …
+    assert all_roles()[V5] is True                                                                              # … which the rule reads as non-test (fail closed): the documented limit
+    # a different spelling of the trigger is not the trigger
+    near = _run(conn, "gochara-v5-small-test ")
+    conn.execute("DELETE FROM asset_provenance_receipts WHERE asset_id = %s", (V5,))
+    assert all_roles()[V5] is False
+    conn.execute("INSERT INTO build_run_assets VALUES (%s, %s)", (near, V5))
+    assert all_roles()[V5] is True

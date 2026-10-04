@@ -90,70 +90,160 @@ export interface NirmanaRegistryContractRow {
   data_disposition: 'RETAINED_AS_CAPITAL' | 'SUPERSEDED_IN_PLACE' | 'DROPPABLE' | null
   dead_flag: boolean | null
   /**
-   * Whether ANY provenance receipt or build_run_assets row exists for the asset (see `runtimeEvidenceSql`). Read only by `isNirmanaStagedInertCandidate`; null / undefined is NOT "none" — only `=== false` excludes.
+   * Whether the asset has ANY receipt / build_run_assets row that does NOT belong to a run whose `triggered_by` is one of that asset's DECLARED test
+   * triggers (N-137; see `NIRMANA_STAGED_INERT_CANDIDATE_RULES` and `runtimeEvidenceSql`). Zero evidence is `false`; evidence from declared test runs only is
+   * `false`; any other evidence — a non-test run, or a receipt / row whose run cannot be found — is `true`. Read only by `isNirmanaStagedInertCandidate`;
+   * null / undefined is NOT "none" — only `=== false` excludes.
    */
-  has_runtime_evidence?: boolean | null
+  has_non_test_runtime_evidence?: boolean | null
 }
 
 /**
- * PRAVĀHA (#2996, migration 1243): the two Gochara candidate writers that are STAGED in asset_registry only so the orchestrator's writer-gap
- * pre-flight finds a row for every registered writer. They are not elevation-denominator assets and, while inert, are excluded from the frozen
- * population — by ONE explicit, shape-conditioned rule (never "all inactive assets": retired identities belong to the frozen population).
+ * PRAVĀHA (#2996, migration 1243; rule generalised by Suvarṇa's decision N-137): the Gochara candidate writers that are STAGED in asset_registry only so
+ * the orchestrator's writer-gap pre-flight finds a row for every registered writer. They are not elevation-denominator assets and, while they are an
+ * unsealed test candidate, they are excluded from the frozen population — by ONE explicit rule with a real detector (never "all inactive assets":
+ * retired identities belong to the frozen population, and never a shape that merely happens to hide the row).
  *
- * REMOVAL TRIGGER: when ka_gochara_v5 or ka_gochara_v4_41_candidate is ACTIVATED or RETIRED, its id is removed from this list IN THE SAME CHANGE.
- * EVERY REAL DISPATCH is ALSO a trigger, including a successful run: it leaves build_run_assets rows and (on success) a provenance receipt. Receipts
- * survive the watchdog's pruning of old build runs, but `asset_provenance_receipts` has ON DELETE CASCADE to the registry row
- * (supabase/migrations/596:12), so a receipt is NOT permanent evidence either — deleting the registry row cascades it away (the v4.1 teardown no longer
- * deletes the row, #2997, but the cascade holds for any deletion). The exclusion therefore ends or silently resumes depending on what happened to the
- * evidence rows; the rule that does not depend on that is the PROCEDURAL commitment: every real dispatch of either candidate, successful or not,
- * requires its disposition (retire the asset or adjust its frozen-population status) and the removal of its id from this list IN THE SAME CHANGE.
+ * THE RULE (one rule for every id in the table below): an id is excluded IFF ALL of —
+ *   (1) `is_active` is false, and `has_writer` is true, and the row is not RETIRED;
+ *   (2) its `depends_on` is EXACTLY the set declared for that id (or empty) — any other dependency set is a different asset;
+ *   (3) every provenance receipt / build_run_assets row for it belongs to a run whose `triggered_by` is in that id's declared TEST-TRIGGER list; zero evidence
+ *       also qualifies (`has_non_test_runtime_evidence === false`, computed by `runtimeEvidenceSql`);
+ *   (4) nothing depends on it.
+ * ANY other state — activated, a different dependency, one evidence row from a non-test run (or whose run is gone), a served or sealed manifest, a loader that
+ * supplies no evidence column — FAILS CLOSED exactly as before: the row counts as a normal asset again and the monitor / comparisons see it (throw / count
+ * mismatch), never silently admitted and never silently excluded.
+ *
+ * VISIBILITY: the exclusion is reported, not merely absent from the count — `excludedNirmanaStagedInertCandidates` names each excluded id with its reason and decision,
+ * and the monitor logs and returns that list every run.
+ *
+ * REMOVAL TRIGGER (unchanged commitment): when an id's writer is ACTIVATED or RETIRED, or a NON-TEST build of it is dispatched, its id is removed from this table IN THE
+ * SAME CHANGE. Evidence is not permanent (the cockpit watchdog prunes old build_run_assets / build_runs rows; a receipt's `build_id` becomes NULL when its run is pruned —
+ * which this rule reads as NON-test evidence, i.e. it fails closed — and a receipt is deleted with its registry row, supabase/migrations/596:12), so the procedural commitment,
+ * not the detector alone, is what closes the loop; after a teardown the evidence rows are gone or still test-marked.
  */
-export const NIRMANA_STAGED_INERT_CANDIDATES: ReadonlySet<string> = new Set(['ka_gochara_v4_41_candidate', 'ka_gochara_v5'])
+export interface NirmanaStagedInertCandidateRule {
+  /** The exact `depends_on` set this id is declared to have (compared as a set); an EMPTY `depends_on` also qualifies. */
+  readonly declaredDependsOn: readonly string[]
+  /** `build_runs.triggered_by` values whose runs' receipts / build_run_assets rows are TEST evidence for this id. Empty = no evidence of any kind may exist. */
+  readonly testTriggers: readonly string[]
+  /** Why the id is excluded — printed by the monitor. */
+  readonly reason: string
+  /** The decision that makes the exclusion, carried in code and printed by the monitor. */
+  readonly decision: string
+}
+
+export const NIRMANA_STAGED_INERT_CANDIDATE_RULES: ReadonlyMap<string, NirmanaStagedInertCandidateRule> = new Map<string, NirmanaStagedInertCandidateRule>([
+  ['ka_gochara_v4_41_candidate', { declaredDependsOn: [], testTriggers: [], reason: 'staged inert candidate', decision: 'PRAVAHA-2996 (migration 1243)' }],
+  // N-137: v5 carries the TRUTHFUL dependencies (migration 1304) and one declared test trigger (the small test build); it stays excluded as an unsealed test candidate until its full build.
+  ['ka_gochara_v5', { declaredDependsOn: ['ga_dashas', 'ga_positions'], testTriggers: ['gochara-v5-small-test'], reason: 'unsealed test candidate', decision: 'N-137' }],
+])
 
 /**
- * The exclusion applies ONLY while the row still has the staged shape: exactly one of the two ids, is_active = false, has_writer = true, no
- * dependencies, catalog_status not RETIRED, and POSITIVELY no receipt / build-run evidence (`has_runtime_evidence === false`). Any
- * change — activation, a dependency, a receipt or a build-run row, or a loader that does not supply the evidence column — makes the row
- * count as a normal asset again, and the monitor / comparisons see it.
+ * Validates a rule table (F2, Suvarṇa's N-137 review): every id, every `declaredDependsOn` / `testTriggers` entry, the reason and the decision must be a NON-EMPTY, TRIMMED string
+ * (an empty-string trigger would match a `triggered_by` of '' and silently classify real runs as test runs; an untrimmed one would never match). Runs at module load on the real table.
+ */
+export function assertStagedInertCandidateRules(rules: ReadonlyMap<string, NirmanaStagedInertCandidateRule>): void {
+  const bad = (what: string, value: unknown) => { throw new Error(`NIRMANA_STAGED_INERT_CANDIDATE_RULES: ${what} must be a non-empty, trimmed string (got ${JSON.stringify(value)})`) }
+  for (const [id, rule] of rules) {
+    if (typeof id !== 'string' || id.length === 0 || id !== id.trim()) bad('the asset id', id)
+    for (const dep of rule.declaredDependsOn) if (typeof dep !== 'string' || dep.length === 0 || dep !== dep.trim()) bad(`${id}.declaredDependsOn entry`, dep)
+    for (const trig of rule.testTriggers) if (typeof trig !== 'string' || trig.length === 0 || trig !== trig.trim()) bad(`${id}.testTriggers entry`, trig)
+    if (typeof rule.reason !== 'string' || rule.reason.trim().length === 0 || rule.reason !== rule.reason.trim()) bad(`${id}.reason`, rule.reason)
+    if (typeof rule.decision !== 'string' || rule.decision.trim().length === 0 || rule.decision !== rule.decision.trim()) bad(`${id}.decision`, rule.decision)
+    if (new Set(rule.declaredDependsOn).size !== rule.declaredDependsOn.length) bad(`${id}.declaredDependsOn (duplicate entry)`, rule.declaredDependsOn)
+    if (new Set(rule.testTriggers).size !== rule.testTriggers.length) bad(`${id}.testTriggers (duplicate entry)`, rule.testTriggers)
+  }
+}
+assertStagedInertCandidateRules(NIRMANA_STAGED_INERT_CANDIDATE_RULES)
+
+/** The ids of the rule table — kept as the set the earlier callers and tests read. */
+export const NIRMANA_STAGED_INERT_CANDIDATES: ReadonlySet<string> = new Set(NIRMANA_STAGED_INERT_CANDIDATE_RULES.keys())
+
+function sameSet(left: readonly string[], right: readonly string[]): boolean {
+  const l = new Set(left)
+  const r = new Set(right)
+  return l.size === left.length && r.size === right.length && l.size === r.size && [...l].every((x) => r.has(x))
+}
+
+/**
+ * The row-level part of the rule (1)–(3); (4) — "nothing depends on it" — needs the complete registry and lives in `partitionNirmanaStagedInertCandidates`.
+ * `has_non_test_runtime_evidence` must be POSITIVELY `false`.
  */
 export function isNirmanaStagedInertCandidate(row: NirmanaRegistryContractRow): boolean {
-  return NIRMANA_STAGED_INERT_CANDIDATES.has(row.asset_id)
-    && row.is_active === false
+  const rule = NIRMANA_STAGED_INERT_CANDIDATE_RULES.get(row.asset_id)
+  if (!rule) return false
+  const dependsOn = row.depends_on ?? []
+  return row.is_active === false
     && row.has_writer === true
-    && (row.depends_on ?? []).length === 0
+    && (dependsOn.length === 0 || sameSet(dependsOn, rule.declaredDependsOn))
     && row.catalog_status !== 'RETIRED'
-    && row.has_runtime_evidence === false
+    && row.has_non_test_runtime_evidence === false
+}
+
+export interface NirmanaExcludedStagedCandidate {
+  asset_id: string
+  reason: string
+  decision: string
 }
 
 /**
- * Removes the staged inert candidates from a registry view — and ONLY while nothing depends on them (a dependent asset would make the candidate part
- * of the live DAG). Shared by baseline construction and both frozen-registry comparisons.
+ * Splits a registry view into the rows that stay and the staged candidates the rule excludes — and ONLY while nothing depends on them (a dependent asset would make
+ * the candidate part of the live DAG). Shared by baseline construction, both frozen-registry comparisons and the monitor's visible report.
  */
-export function excludeNirmanaStagedInertCandidates<T extends NirmanaRegistryContractRow>(rows: T[]): T[] {
+export function partitionNirmanaStagedInertCandidates<T extends NirmanaRegistryContractRow>(rows: T[]): { kept: T[]; excluded: NirmanaExcludedStagedCandidate[] } {
   const dependedOn = new Set(rows.flatMap((row) => row.depends_on ?? []))
-  return rows.filter((row) => !(isNirmanaStagedInertCandidate(row) && !dependedOn.has(row.asset_id)))
+  const kept: T[] = []
+  const excluded: NirmanaExcludedStagedCandidate[] = []
+  for (const row of rows) {
+    if (isNirmanaStagedInertCandidate(row) && !dependedOn.has(row.asset_id)) {
+      const rule = NIRMANA_STAGED_INERT_CANDIDATE_RULES.get(row.asset_id)!
+      excluded.push({ asset_id: row.asset_id, reason: rule.reason, decision: rule.decision })
+    } else {
+      kept.push(row)
+    }
+  }
+  return { kept, excluded: excluded.sort((a, b) => a.asset_id.localeCompare(b.asset_id)) }
+}
+
+export function excludeNirmanaStagedInertCandidates<T extends NirmanaRegistryContractRow>(rows: T[]): T[] {
+  return partitionNirmanaStagedInertCandidates(rows).kept
+}
+
+/** The visible side of the rule: which ids are excluded right now, why, and under which decision. */
+export function excludedNirmanaStagedInertCandidates(rows: NirmanaRegistryContractRow[]): NirmanaExcludedStagedCandidate[] {
+  return partitionNirmanaStagedInertCandidates(rows).excluded
+}
+
+function sqlLiteral(value: string): string {
+  return `'${value.replace(/'/g, "''")}'`
 }
 
 /**
- * SQL expression `has_runtime_evidence` for a registry row aliased `alias`, ONE predicate for every loader (monitor, snapshot, all five definitions
- * loaders incl. the ingress path): `EXISTS(asset_provenance_receipts) OR EXISTS(build_run_assets)` for exactly the two staged ids, NULL for every other
- * row (never consulted). All three loader roles (amjis_app, nirmana_campaign_control_writer, nirmana_evidence_ingress_writer) hold SELECT on both
- * tables (read-only production check, 2026-10-03); none of the two non-app roles holds SELECT on asset_throughput, so throughput is NOT part of the
- * predicate — a cockpit refresh row is not a build, so it is not runtime evidence. NULL is "unknown" and is NEVER read as "no evidence":
- * `isNirmanaStagedInertCandidate` excludes only on `=== false`.
+ * SQL expression `has_non_test_runtime_evidence` for a registry row aliased `alias`, ONE predicate for every loader (monitor, snapshot, all five definitions loaders
+ * incl. the ingress path), generated from `NIRMANA_STAGED_INERT_CANDIDATE_RULES` so the SQL and the rule cannot drift (a golden fixture shared with the python 1243 test pins the
+ * text). For exactly the staged ids: TRUE iff some provenance receipt (joined by `build_id`) or build_run_assets row (joined by `run_id`) does NOT belong to a
+ * `build_runs` row whose `triggered_by` is one of that id's declared test triggers — a receipt whose run is gone (build_id NULL after pruning) or an unknown run is NON-test, i.e.
+ * the rule fails closed; NULL for every other row (never consulted). All three loader roles (amjis_app, nirmana_campaign_control_writer, nirmana_evidence_ingress_writer) hold
+ * SELECT on build_runs (incl. triggered_by), build_run_assets and asset_provenance_receipts (read-only production check, 2026-10-04); none of the two non-app roles holds SELECT on
+ * asset_throughput, so throughput is NOT part of the predicate — a cockpit refresh row is not a build. NULL is "unknown" and is NEVER read as "no evidence".
  *
- * KNOWN LIMIT (documented, Suvarṇa-approved fallback (b)): the evidence is not permanent. The cockpit watchdog PRUNES old build_run_assets / build_runs
- * rows (`app/api/cockpit/watchdog/route.ts:462-475`); a FAILED run leaves no receipt; and a receipt is deleted with its registry row
- * (ON DELETE CASCADE, supabase/migrations/596:12). So a candidate whose only evidence was a pruned build row, or whose registry row was deleted and
- * re-staged, can look evidence-free again and be excluded. PROCEDURAL COMMITMENT that closes it: EVERY real dispatch of either candidate — successful or
- * not — retires the asset or adjusts its frozen-population status IN THE SAME CHANGE (and removes its id from NIRMANA_STAGED_INERT_CANDIDATES).
- * A narrow SECURITY DEFINER function that also reads asset_throughput is prepared as a separate protected-class migration (draft, 1235); the loaders
- * switch to it in a later routine change, after that migration is applied.
+ * KNOWN LIMIT (documented, unchanged): the evidence is not permanent — the watchdog prunes old build_run_assets / build_runs rows (`app/api/cockpit/watchdog/route.ts`), a FAILED run leaves
+ * no receipt, and a receipt is deleted with its registry row. The PROCEDURAL commitment closes it: a non-test dispatch removes the id from the rule table in the same change.
  */
-export function runtimeEvidenceSql(alias: string): string {
-  return `CASE WHEN ${alias}.asset_id IN ('ka_gochara_v4_41_candidate', 'ka_gochara_v5')
-              THEN (EXISTS (SELECT 1 FROM public.asset_provenance_receipts rcpt WHERE rcpt.asset_id = ${alias}.asset_id)
-                    OR EXISTS (SELECT 1 FROM public.build_run_assets bra WHERE bra.asset_id = ${alias}.asset_id)) END AS has_runtime_evidence`
+export function runtimeEvidenceSql(alias: string, rules: ReadonlyMap<string, NirmanaStagedInertCandidateRule> = NIRMANA_STAGED_INERT_CANDIDATE_RULES): string {
+  assertStagedInertCandidateRules(rules)
+  const ids = [...rules.keys()]
+  const triggers = ids
+    .filter((id) => rules.get(id)!.testTriggers.length > 0)
+    .map((id) => `WHEN ${sqlLiteral(id)} THEN ARRAY[${rules.get(id)!.testTriggers.map(sqlLiteral).join(', ')}]::text[]`)
+  // F1: with NO declared trigger anywhere a `CASE x ELSE …` with no WHEN is a syntax error — emit the empty array explicitly (any evidence is then non-test evidence)
+  const testTriggers = triggers.length === 0 ? 'ARRAY[]::text[]' : `CASE ${alias}.asset_id ${triggers.join(' ')} ELSE ARRAY[]::text[] END`
+  return `CASE WHEN ${alias}.asset_id IN (${ids.map(sqlLiteral).join(', ')})
+              THEN (EXISTS (SELECT 1 FROM public.asset_provenance_receipts rcpt WHERE rcpt.asset_id = ${alias}.asset_id
+                              AND NOT EXISTS (SELECT 1 FROM public.build_runs br WHERE br.id = rcpt.build_id AND br.triggered_by = ANY (${testTriggers})))
+                    OR EXISTS (SELECT 1 FROM public.build_run_assets bra WHERE bra.asset_id = ${alias}.asset_id
+                              AND NOT EXISTS (SELECT 1 FROM public.build_runs br WHERE br.id = bra.run_id AND br.triggered_by = ANY (${testTriggers})))) END AS has_non_test_runtime_evidence`
 }
 
 export type NirmanaExecutionObligation = Exclude<
