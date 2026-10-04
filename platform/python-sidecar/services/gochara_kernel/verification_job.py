@@ -150,25 +150,55 @@ def _role_exists(conn, name: str) -> bool:
 
 # ── preconditions ────────────────────────────────────────────────────────────────────────────────────
 
+def _claimed_classes(conn, chart_id: str, generation: str, found=()) -> list[str]:
+    """The classes a generation CLAIMS: an event_class coverage partition OR a search inventory (the 1306 function's own definition)."""
+    rows = conn.execute(
+        "SELECT partition_key FROM public.kala_gochara_coverage WHERE chart_id = %s AND generation = %s AND partition_kind = 'event_class'"
+        " UNION SELECT event_class FROM public.ka_gochara_search_inventory WHERE chart_id = %s AND generation = %s",
+        (chart_id, generation, chart_id, generation)).fetchall()
+    return sorted({_one(r) if not isinstance(r, tuple) else r[0] for r in rows} | set(found))
+
+
+def class_census_violations(vector, claimed) -> list[tuple[str, str, str]]:
+    """The G8 class census, as (event_class, violation, detail) triples — the SAME predicates, names and detail text as the census block of
+    the seal-time completeness function (migration 1306), so the verification job, the candidate adapter (and so the brief) and the seal
+    cannot disagree. `vector` is the manifest's input vector, `claimed` the classes the generation claims. A pin whose elements are not all
+    strings is MALFORMED (named) before any set operation touches it."""
+    pins = vector.get("scored_classes") if isinstance(vector, dict) else None
+    if not isinstance(pins, list):
+        return [("*", "expected_class_list_missing",
+                 "the manifest vector pins no scored_classes array (a candidate must pin the scored-class list it is built for)")]
+    if (not pins or any(not isinstance(x, str) or x.strip(" ") == "" or x != x.strip(" ") for x in pins) or len(set(pins)) != len(pins)):
+        return [("*", "expected_class_list_malformed",
+                 "scored_classes is empty, or holds a non-string, a blank, an untrimmed or a duplicated class name")]
+    claimed = set(claimed)
+    return ([(k, "class_missing", "a pinned scored class has neither an event_class coverage partition nor a search inventory")
+             for k in sorted(set(pins) - claimed)]
+            + [(k, "class_not_pinned", "a claimed class is not in the manifest's pinned scored-class list") for k in sorted(claimed - set(pins))])
+
+
 def _enforce_class_census(conn, *, chart_id, generation, vector, found) -> None:
     # G8 (steward GAPS-G8-G9): the CLASS CENSUS. The generation as a whole — not only the classes this run was asked to verify — must
     # claim EXACTLY the scored classes its manifest pins, and the pinned list must be this verifier's own universe (the vector component
     # check in verify_inputs below re-derives that). A claimed class is an event_class coverage partition OR a search inventory; a
     # candidate left with 16 of 26 classes after a failed dispatch, or carrying an unscored one, is refused BY NAME here, before any row
-    # is written, and again by the seal-time completeness function (migration 1306).
+    # is written, and again at the brief (the candidate adapter) and by the seal-time completeness function (migration 1306).
     _vec0 = vector if isinstance(vector, dict) else __import__("json").loads(vector)
-    pinned = _vec0.get("scored_classes")
-    if not isinstance(pinned, list) or not pinned:
+    problems = class_census_violations(_vec0, _claimed_classes(conn, chart_id, generation, found))
+    if not problems:
+        return
+    names = {v for _, v, _ in problems}
+    if "expected_class_list_missing" in names:
         raise VerificationRefused("class_census_unpinned", f"the manifest vector of generation {generation} pins no expected class census "
                                   "(scored_classes) — a candidate must say which classes it is built for")
-    claimed = sorted(set(found) | {_one(r) if not isinstance(r, tuple) else r[0] for r in conn.execute(
-        "SELECT partition_key FROM public.kala_gochara_coverage WHERE chart_id = %s AND generation = %s AND partition_kind = 'event_class'",
-        (chart_id, generation)).fetchall()})
-    missing, extra = sorted(set(pinned) - set(claimed)), sorted(set(claimed) - set(pinned))
-    if missing or extra:
-        raise VerificationRefused(
-            "class_census_mismatch", f"generation {generation} claims {len(claimed)} class(es) but its manifest pins {len(pinned)}: "
-            f"missing {missing or 'none'}; not in the pinned list {extra or 'none'} — a full candidate must claim exactly the scored classes")
+    if "expected_class_list_malformed" in names:
+        raise VerificationRefused("class_census_malformed", f"the manifest vector of generation {generation} pins a malformed class census: "
+                                  "scored_classes is empty, or holds a non-string, a blank, an untrimmed or a duplicated class name")
+    missing = [c for c, v, _ in problems if v == "class_missing"]
+    extra = [c for c, v, _ in problems if v == "class_not_pinned"]
+    raise VerificationRefused(
+        "class_census_mismatch", f"generation {generation} does not claim exactly the classes its manifest pins: "
+        f"missing {missing or 'none'}; not in the pinned list {extra or 'none'} — a full candidate must claim exactly the scored classes")
 
 
 def check_preconditions(conn, *, chart_id: str, generation: str, classes=None, ephe_path: str | None = None,
@@ -534,6 +564,11 @@ def candidate_gate_on_candidate_manifest(conn, chart_id: str, generation: str) -
             (chart_id, generation)).fetchall()):
         if horizon != m_horizon:
             out.append(mk(cls, "horizon_manifest_mismatch", f"{horizon} vs candidate manifest {m_horizon}"))
+    # G8: the 1306 census arms read the manifest only while it is `published`, so they are RE-EVALUATED here against the candidate's own
+    # vector (same predicates, names and detail text, one shared function): a 25-class candidate gets no approvable brief
+    mv = m_vector if isinstance(m_vector, dict) else (__import__("json").loads(m_vector) if m_vector else None)
+    for cls, name, detail in class_census_violations(mv, _claimed_classes(conn, chart_id, generation)):
+        out.append(mk(cls, name, detail))
     return out
 
 

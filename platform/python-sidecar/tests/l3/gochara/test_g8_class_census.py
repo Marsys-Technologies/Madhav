@@ -130,7 +130,8 @@ class _JobConn:
         if s.startswith("SELECT event_class FROM public.ka_gochara_search_inventory"):
             return _Rows([(c,) for c in sorted(self.inventories)])
         if s.startswith("SELECT partition_key FROM public.kala_gochara_coverage"):
-            return _Rows([(c,) for c in sorted(self.partitions)])
+            claimed = self.partitions | (self.inventories if "UNION SELECT event_class FROM public.ka_gochara_search_inventory" in s else set())
+            return _Rows([(c,) for c in sorted(claimed)])
         if s.startswith("SELECT i.inventory_digest IS NOT NULL"):
             return _Rows([(True, _Range(), _Range())]) if params[2] in self.inventories else _Rows([])
         raise AssertionError(f"the job made an unexpected query: {s[:140]}")
@@ -149,7 +150,7 @@ ALL26 = sorted(writer_mod.SCORED_CLASSES)
 
 def test_the_job_refuses_25_of_26_by_name_before_writing_anything():
     err = _refusal({"scored_classes": ALL26}, ALL26[:-1], ALL26[:-1])
-    assert err.code == "class_census_mismatch" and ALL26[-1] in err.detail and "25 class(es)" in err.detail
+    assert err.code == "class_census_mismatch" and ALL26[-1] in err.detail and "missing" in err.detail
 
 
 def test_the_job_refuses_an_extra_class_whether_claimed_by_inventory_or_by_partition_alone():
@@ -161,8 +162,15 @@ def test_the_job_refuses_an_extra_class_whether_claimed_by_inventory_or_by_parti
 
 def test_the_job_refuses_an_unpinned_or_empty_pin():
     assert _refusal({"stored_scope": "stored_non_moon"}, ALL26, ALL26).code == "class_census_unpinned"
-    assert _refusal({"scored_classes": []}, ALL26, ALL26).code == "class_census_unpinned"
     assert _refusal({"scored_classes": None}, ALL26, ALL26).code == "class_census_unpinned"
+    assert _refusal({"scored_classes": "marriage"}, ALL26, ALL26).code == "class_census_unpinned"          # not an array: the same name the SQL gives
+
+
+@pytest.mark.parametrize("pin", [[], [{}], [1], [None], [["x"]], ["marriage", ""], ["marriage", " x"], ["marriage", "marriage"]])
+def test_the_job_names_a_malformed_pin_before_any_set_operation_touches_it(pin):
+    """Codex G8 amendment 3: a pin holding an unhashable or non-string element used to raise TypeError inside the set arithmetic; it is now a NAMED refusal
+    (the SQL's expected_class_list_malformed), for every shape the seal-time function calls malformed."""
+    assert _refusal({"scored_classes": pin}, ALL26, ALL26).code == "class_census_malformed"
 
 
 def test_26_of_26_passes_the_census_and_reaches_the_input_check(monkeypatch):
@@ -198,6 +206,14 @@ def _def_sha(conn) -> str:
                         " 'UTF8')), 'hex')").fetchone()[0]
 
 
+BEFORE_1306: dict = {}
+
+
+def _function_identity(conn):
+    return conn.execute("SELECT pg_get_userbyid(p.proowner), p.proacl::text, p.prosecdef, p.provolatile, p.proconfig::text, p.proleakproof, p.proparallel,"
+                        " p.prorettype::regtype::text FROM pg_proc p WHERE p.oid = 'public.ka_gochara_search_completeness_violations(uuid,text)'::regprocedure").fetchone()
+
+
 def _function_text(sql: str) -> str:
     a = sql.index("CREATE OR REPLACE FUNCTION public.ka_gochara_search_completeness_violations")
     return sql[a:sql.index("$$;", a) + 3]
@@ -205,6 +221,7 @@ def _function_text(sql: str) -> str:
 
 def test_the_function_1306_replaces_is_exactly_what_1232_produces_and_what_production_holds(chain):
     assert _def_sha(chain) == PROD_1232_DEF_SHA256        # a fresh 1206 + 1232 chain reproduces production's function text byte for byte
+    BEFORE_1306["identity"] = _function_identity(chain)    # owner, ACL, security mode, volatility, config: compared after 1306 is applied
 
 
 def test_1306_equals_the_1232_function_with_exactly_the_declared_edits():
@@ -274,7 +291,7 @@ def test_before_1306_a_candidate_with_25_of_26_classes_is_not_refused_by_any_cen
     assert "class_missing" not in _seal_message(chain)
 
 
-def test_after_1306_the_census_refuses_25_of_26_an_extra_class_and_a_bad_pin_and_passes_26_of_26(chain):
+def test_after_1306_the_census_refuses_25_of_26_an_extra_class_and_passes_26_of_26_of_the_CENSUS_only(chain):
     chain.execute(M1306.read_text())                                       # the real migration, applied as the owner (the test connection is the superuser)
     assert _def_sha(chain) != PROD_1232_DEF_SHA256
     vec = {"stored_scope": "stored_non_moon", "scored_classes": ALL26}
@@ -329,26 +346,23 @@ def test_a_slice_stamped_vector_is_refused_for_its_own_reason_and_the_census_is_
     assert "stored_scope_missing" in got and "class_missing" in got
 
 
-def test_the_function_keeps_its_acl_and_owner_so_the_verifier_and_sealer_closure_of_1241_is_unchanged(chain):
-    row = chain.execute("SELECT p.prosecdef, p.provolatile, p.proconfig::text FROM pg_proc p"
-                        " WHERE p.oid = 'public.ka_gochara_search_completeness_violations(uuid,text)'::regprocedure").fetchone()
-    assert row == (False, "s", "{\"search_path=pg_catalog, public\"}")        # still INVOKER, STABLE, the pinned search_path (CREATE OR REPLACE keeps the ACL)
+def test_1306_leaves_the_functions_owner_acl_security_mode_volatility_config_and_return_type_exactly_as_1232_made_them(chain):
+    """What this proves: every catalog attribute that carries the 1241 verifier/sealer closure is IDENTICAL before and after 1306 (owner, proacl, security
+    mode, volatility, proconfig incl. the pinned search_path, leakproof, parallel safety, return type) — recorded before 1306 was applied, compared after."""
+    after = _function_identity(chain)
+    assert BEFORE_1306["identity"] == after, (BEFORE_1306["identity"], after)
+    assert after[2] is False and after[3] == "s" and after[4] == "{\"search_path=pg_catalog, public\"}"      # and still INVOKER, STABLE, the pinned search_path
 
 
 # ── the census can only be switched off by a suite that says so, and the list of those suites is closed ───────────────────
 
-#: EXACTLY the suites that opt out of the job census (steward G8-RULING: per-suite explicit opt-in, never a blanket fixture). Each runs the job's
-#: other mechanics on a deliberate one-class world. Adding a suite here is a reviewed decision; a new opt-out that is not listed fails below.
-G8_OPT_OUT_SUITES = frozenset({
-    "test_a53_verification_job.py", "test_a53_r10_runner_gate.py", "test_a53_r10_record_results.py", "test_a53_r10_locking.py",
-    "test_a53_r11_seal_brief.py", "test_a53_r12_boundary.py", "test_a53_r12_persisted_brief.py", "test_a53_r12_seal_job.py",
-    "test_a53_r15_amendments.py", "test_a53_r10_complete_records.py", "test_a53_r11_generation_wide.py", "test_a53_r11_p1_independence.py",
-    "test_a53_r13_own_checkout.py", "test_a53_r13_producer.py", "test_a53_r13_sealed_boundary.py", "test_a53_r13_timeouts.py",
-    "test_a53_r14_sealed_contacts.py", "test_a53_r16_amendments.py", "test_c46_slice_round2.py"})
+from .conftest import G8_OPT_OUT_ALLOWLIST as G8_OPT_OUT_SUITES      # the ONE list; the fixture enforces membership, this guard enforces that the tree matches it
 
 
 def _suite_sources():
-    return {p.name: p.read_text() for p in sorted(Path(__file__).parent.glob("test_*.py")) if p.name != Path(__file__).name}
+    """Every test module under this directory, RECURSIVELY, keyed by its path relative to it."""
+    root = Path(__file__).parent
+    return {p.relative_to(root).as_posix(): p.read_text() for p in sorted(root.rglob("test_*.py")) if p.name != Path(__file__).name}
 
 
 def test_exactly_the_listed_suites_opt_out_of_the_census_each_with_a_stated_reason():
@@ -369,14 +383,91 @@ def test_nothing_else_replaces_or_patches_the_census_step():
     for name, src in _suite_sources().items():
         if name in G8_OPT_OUT_SUITES:
             continue
-        assert "_enforce_class_census" not in src, f"{name} touches the census step directly; opt out by name instead (conftest.g8_census_opt_out)"
+        assert "_enforce_class_census" not in src and "class_census_violations" not in src, \
+            f"{name} touches the census step directly; opt out by name instead (conftest.g8_census_opt_out)"
     code = "\n".join(ln for ln in (Path(__file__).parent / "conftest.py").read_text().splitlines() if not ln.lstrip().startswith("#"))
-    assert "_enforce_class_census" not in code.split("def g8_census_opt_out")[0], \
+    assert "_enforce_class_census" not in code.split("def g8_census_opt_out")[0] and "class_census_violations" not in code.split("def g8_census_opt_out")[0], \
         "the conftest must not patch the census anywhere but inside the named opt-out fixture"
 
 
-def test_the_opt_out_fixture_refuses_a_suite_with_no_reason(pytester=None):
-    # the fixture's own rule, asserted on its source (a pytester run would need the plugin enabled): a missing or short reason is a usage error
-    src = (Path(__file__).parent / "conftest.py").read_text()
-    body = src.split("def g8_census_opt_out")[1]
-    assert "G8_CENSUS_OPT_OUT_REASON" in body and "pytest.UsageError" in body and "< 20" in body
+def _unwrapped_fixture():
+    from . import conftest as cf
+    fn = cf.g8_census_opt_out
+    return getattr(fn, "__wrapped__", None) or fn._get_wrapped_function()
+
+
+class _Req:
+    def __init__(self, path, reason="x" * 30, has_reason=True):
+        import types
+        mod = types.SimpleNamespace(__file__=str(path), __name__="m")
+        if has_reason:
+            mod.G8_CENSUS_OPT_OUT_REASON = reason
+        self.module = mod
+
+
+def test_the_opt_out_fixture_itself_refuses_an_unlisted_suite_and_a_missing_or_short_reason(monkeypatch):
+    """Codex G8 amendment 2, behaviourally: the FIXTURE (not just a guard test) refuses a file that is not on the allowlist, and one with no usable reason,
+    and only for a listed file with a reason does it set the census step aside."""
+    fixture = _unwrapped_fixture()
+    here = Path(__file__).resolve().parent
+    with pytest.raises(pytest.UsageError, match="not on the G8 census opt-out allowlist"):
+        fixture(_Req(here / "test_a53_inventory.py"), monkeypatch)                      # a real suite, but not a listed one
+    with pytest.raises(pytest.UsageError, match="not on the G8 census opt-out allowlist"):
+        fixture(_Req(here / "sub" / "test_a53_verification_job.py"), monkeypatch)      # a listed NAME in another directory is a different relative path
+    with pytest.raises(pytest.UsageError, match="without a stated reason"):
+        fixture(_Req(here / "test_a53_verification_job.py", has_reason=False), monkeypatch)
+    with pytest.raises(pytest.UsageError, match="without a stated reason"):
+        fixture(_Req(here / "test_a53_verification_job.py", reason="too short"), monkeypatch)
+    real, real_v = vj._enforce_class_census, vj.class_census_violations
+    fixture(_Req(here / "test_a53_verification_job.py"), monkeypatch)
+    assert vj._enforce_class_census is not real and vj.class_census_violations(None, []) == []    # listed + reason: only then is the census set aside (job AND adapter)
+    monkeypatch.undo()
+    assert vj._enforce_class_census is real and vj.class_census_violations is real_v
+
+
+# ── Codex G8 amendment 1: the brief (the candidate adapter) judges the census too ────────────────────────────────────────
+
+SCENARIOS = [                                                           # (vector, claimed classes): every shape the census distinguishes
+    ({"scored_classes": ALL26}, ALL26),
+    ({"scored_classes": ALL26}, ALL26[:-1]),
+    ({"scored_classes": ALL26}, ALL26[1:-1]),
+    ({"scored_classes": ALL26}, ALL26 + ["birth_anchor"]),
+    ({"scored_classes": ALL26}, []),
+    ({"stored_scope": "stored_non_moon"}, ALL26),
+    ({"scored_classes": None}, ALL26),
+    ({"scored_classes": []}, ALL26),
+    ({"scored_classes": ["marriage", ""]}, ALL26),
+    ({"scored_classes": ["marriage", "marriage"]}, ALL26),
+    ({"scored_classes": ["marriage", 3]}, ALL26),
+]
+
+
+@pytest.mark.parametrize("vector,claimed", SCENARIOS)
+def test_the_python_census_equals_the_seal_time_function_for_every_scenario(chain, vector, claimed):
+    """The job refusal and the candidate adapter use ONE python function; here it is held equal to the 1306 SQL function (names AND detail text), so the three
+    surfaces (job, brief, seal) cannot disagree."""
+    _candidate(chain, {"stored_scope": "stored_non_moon", **vector}, claimed, status="published")
+    sql = sorted((r[0], r[1], r[2]) for r in chain.execute(
+        "SELECT event_class, violation, detail FROM public.ka_gochara_search_completeness_violations(%s::uuid, '5.0') WHERE violation = ANY(%s)",
+        (CHART_ID, list(CENSUS_VIOLATIONS))).fetchall())
+    assert sorted(vj.class_census_violations({"stored_scope": "stored_non_moon", **vector}, claimed)) == sql
+
+
+def test_the_candidate_adapter_and_so_the_brief_refuse_25_of_26_by_name(chain):
+    """THE amendment-1 regression: on a CANDIDATE manifest (the only kind a brief is made for) the 1306 arms read nothing, so before this change the adapter
+    returned no census violation and a 25-class candidate could be briefed and approved. Now the adapter names the missing class and the brief's own
+    approvability check turns it into a problem."""
+    from services.gochara_kernel import seal_brief
+    vec = {"stored_scope": "stored_non_moon", "scored_classes": ALL26}
+    _candidate(chain, vec, ALL26, status="candidate")
+    full = vj.candidate_gate_on_candidate_manifest(chain, CHART_ID, "5.0")
+    assert not [v for v in full if v["violation"] in CENSUS_VIOLATIONS]
+    _candidate(chain, vec, ALL26[:-1], status="candidate")
+    got = vj.candidate_gate_on_candidate_manifest(chain, CHART_ID, "5.0")
+    assert [(v["event_class"], v["violation"]) for v in got if v["violation"] in CENSUS_VIOLATIONS] == [(ALL26[-1], "class_missing")]
+    problems = seal_brief._current_and_complete({"candidate_gate": {"violations": got}, "classes": [], "legacy_projection": {},
+                                                 "attestations": {"ka_gochara_search_inventory_verification": [1]},
+                                                 "manifest": {"status": "candidate"}, "code": {}})
+    assert any("class_missing" in str(p) and ALL26[-1] in str(p) for p in problems)         # the brief would be refused (BriefRefused: candidate_not_approvable)
+    _candidate(chain, {"stored_scope": "stored_non_moon"}, ALL26, status="candidate")       # unpinned
+    assert ("*", "expected_class_list_missing") in [(v["event_class"], v["violation"]) for v in vj.candidate_gate_on_candidate_manifest(chain, CHART_ID, "5.0")]

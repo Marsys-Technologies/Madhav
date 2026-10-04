@@ -212,13 +212,32 @@ def _fresh_contact_reconstruct_cache():
 # verification_job._enforce_class_census). A few older a53 job-mechanics suites deliberately build a ONE-class "subset world" (marriage)
 # whose manifest, written by the real writer, pins all 26 -- exactly the 25-of-26 shape the census exists to refuse. Each such suite must
 # OPT OUT BY NAME and say why: it declares a module-level `G8_CENSUS_OPT_OUT_REASON` string and `pytestmark =
-# pytest.mark.usefixtures("g8_census_opt_out")`. The fixture refuses a module with no reason, and test_g8_class_census.py carries a guard that
-# lists exactly which suites opt out and fails when a new one appears. Only the census step is set aside; everything else the job does runs.
+# pytest.mark.usefixtures("g8_census_opt_out")` (or decorates a single test). The ALLOWLIST below is the closed list of suites (paths relative to
+# this directory) that may do so, and the fixture itself enforces membership: a suite not on the list, or one with no reason, is a usage error.
+# test_g8_class_census.py additionally scans this tree recursively and fails if the set of opted-out files differs from the list. Only the census step
+# is set aside; everything else the job does runs.
+G8_OPT_OUT_ALLOWLIST = frozenset({
+    "test_a53_verification_job.py", "test_a53_r10_runner_gate.py", "test_a53_r10_record_results.py", "test_a53_r10_locking.py",
+    "test_a53_r11_seal_brief.py", "test_a53_r12_boundary.py", "test_a53_r12_persisted_brief.py", "test_a53_r12_seal_job.py",
+    "test_a53_r15_amendments.py", "test_a53_r10_complete_records.py", "test_a53_r11_generation_wide.py", "test_a53_r11_p1_independence.py",
+    "test_a53_r13_own_checkout.py", "test_a53_r13_producer.py", "test_a53_r13_sealed_boundary.py", "test_a53_r13_timeouts.py",
+    "test_a53_r14_sealed_contacts.py", "test_a53_r16_amendments.py", "test_c46_slice_round2.py"})
+
+
 @pytest.fixture()
 def g8_census_opt_out(request, monkeypatch):
+    here = Path(__file__).resolve().parent
+    try:
+        rel = Path(request.module.__file__).resolve().relative_to(here).as_posix()
+    except ValueError:
+        rel = str(request.module.__file__)
+    if rel not in G8_OPT_OUT_ALLOWLIST:
+        raise pytest.UsageError(f"{rel} is not on the G8 census opt-out allowlist (conftest.G8_OPT_OUT_ALLOWLIST); adding a suite there is a reviewed decision")
     reason = getattr(request.module, "G8_CENSUS_OPT_OUT_REASON", None)
     if not isinstance(reason, str) or len(reason.strip()) < 20:
-        raise pytest.UsageError(f"{request.module.__name__} opts out of the G8 class census without a stated reason "
+        raise pytest.UsageError(f"{rel} opts out of the G8 class census without a stated reason "
                                 "(G8_CENSUS_OPT_OUT_REASON, at least 20 characters)")
     from services.gochara_kernel import verification_job as _vj
+    # the job's refusal AND the candidate adapter (the brief / end-of-run gate) both judge the census through the one function: set both aside, for this suite only
     monkeypatch.setattr(_vj, "_enforce_class_census", lambda *a, **k: None)
+    monkeypatch.setattr(_vj, "class_census_violations", lambda *a, **k: [])
