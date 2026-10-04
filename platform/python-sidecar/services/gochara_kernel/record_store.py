@@ -358,6 +358,9 @@ def _contact_row_diffs(stored: tuple | None, derived: tuple) -> list[str]:
     by VALUE with no tolerance: the same contact derived twice is bit-identical, so a difference is a disagreement."""
     if stored is None:
         return ["row absent after insert"]
+    assert len(stored) == len(derived) == len(_CONTACT_ROW_COLUMNS), (
+        f"contact row shape: stored {len(stored)}, derived {len(derived)}, columns {len(_CONTACT_ROW_COLUMNS)} — a "
+        "column was added to one side only; zip() would silently skip it")
     out = []
     for name, have, want in zip(_CONTACT_ROW_COLUMNS, stored, derived):
         if name == "physical_object_id":
@@ -576,6 +579,10 @@ class RecordStore:
         partitions (durable query identities, never build output) are untouched. Called ONCE per build, from the
         `snapshot` substep — see the writer."""
         self._refuse_if_sealed(chart_id, generation, "generation chain replace")
+        # CANDIDATE only: a published-but-unsealed manifest is refused too (PublishedGenerationRefusal), as is a
+        # generation with no manifest at all — the replace is for the unsealed candidate the manifest substep created.
+        from . import ledger as _ledger
+        _ledger._candidate_manifest_id(self.conn, chart_id, generation)
         key = (chart_id, generation)
         where = " WHERE chart_id = %s AND generation = %s"
         windows = self.conn.execute("DELETE FROM public.ka_gochara_eval_window" + where, key).rowcount
