@@ -25,7 +25,7 @@ sys.path.insert(0, str(HERE.parent))
 import asset_census as ac  # noqa: E402
 import test_e1_9_assets_scope as e19  # noqa: E402
 
-STAMP_KEYS = {"registry_revision", "registry_fingerprint", "tool_commit", "tool_dirty", "declarations_sha256", "declarations_version"}
+STAMP_KEYS = {"registry_revision", "registry_fingerprint", "tool_commit", "tool_dirty", "declarations_sha256", "declarations_version", "db_identity"}   # db_identity: E1.7
 
 
 @pytest.fixture(autouse=True)
