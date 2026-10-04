@@ -108,7 +108,7 @@ REPO_ROOT = pathlib.Path(__file__).resolve().parents[5]
 SEARCH_PATH = "pg_catalog, public, pg_temp"  # keeps pg_get_triggerdef unqualified, as under the gate's session
 GATE_SEARCH_PATH = "public"                  # what the gate's pooled session resolves names with (default path)
 # the writer this plan was frozen against: ga_vargas in platform/src/generated/nirmana-writer-digests.json
-WRITER_DIGEST = "0d4f8a14a23fdd47efaea4c51346417ec18908de3d1047746e7036fa1fdb4c11"
+WRITER_DIGEST = "9212b478621c3572e75f606819e865de768b6212def695cf67bd368e0510e8a1"
 WRITER_IMAGE_JOB = "brahma-build-pipeline-job"
 WRITER_IMAGE_REGION = "asia-south1"
 # data-plane-ownership-status.ts passes exactly these lifecycle functions to its function-digest query
