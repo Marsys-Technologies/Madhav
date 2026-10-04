@@ -40,6 +40,8 @@ re-pinned constant equals that build and the old pin is gone.
 DECLARED SHAPE (steward ST-REPIN-PARTITION-SHAPE, scratch): the notice MAY declare the post-S-L1 `chart_dashas` shape — `expected_partitions_non_scope`, `expected_partitions_scope_cap`, `expected_dasha_build_ids` (all
 three or none; the build list must include `new_build_id`). The guard below then accepts the default OR exactly the declared shape and refuses anything else; both are recorded in the evidence. The Vimśottarī (Lahiri,
 levels 1–3) single-build check (G6 a) is NEVER relaxed — the writer and the verifier refuse a mixed Vimśottarī state by name.
+VERIFIER-PREDICATE MIRROR (vi) (steward ST-REPIN-PATCH-GO): every Vimśottarī / Lahiri row of the chart — ALL levels, ALL tiers, NULL build included — must be exactly the SETTLED-1 build (the verifier's own
+query in `validate_consumed_dasha_population`), so the tool cannot report CLEAN where the verifier would refuse after the re-pin; never relaxed by a declared shape.
 SETTLED-1 mechanical guard (steward M20261002T224436-82bd; Suvarṇa addendum 6) — the pre-flight REFUSES unless, read-only for the chart: (ii) `chart_dashas` has exactly ONE distinct build_id (whole
 table, every system); (iii) the complete shape — 45 non-scope system×ayanāṃśa partitions + 1 scope-cap; (iv) `asset_throughput.state` = 'lit' for ga_dashas and ga_positions; (v) that single
 build id equals the SETTLED-1 build id (and --apply sets the constant to it and asserts so).
@@ -349,6 +351,24 @@ def shape_evidence(facts: dict, new_id: str, declared: dict | None) -> str:
     dec = (f"declared {declared['non_scope']} non-scope + {declared['scope']} scope-cap, builds {declared['build_ids']}" if declared else "no shape declared in the notice")
     return (f"chart_dashas shape: observed {obs_shape[0]} non-scope + {obs_shape[1]} scope-cap partition(s) (matches: {shape_match}), builds {sorted(obs_builds)} (matches: {build_match}); "
             f"default {default_shape[0]} + {default_shape[1]}, exactly the SETTLED-1 build; {dec}")
+
+
+def fetch_verifier_builds(conn, chart_id: str) -> list[str]:
+    """READ-ONLY: the verifier's OWN predicate (`inventory_verifier.validate_consumed_dasha_population`): the distinct build ids — NULL included — of EVERY Vimśottarī / Lahiri row of the chart, at ALL
+    levels and ALL tiers. The verifier refuses (`dasha_builds_mixed` / `dasha_build_not_pinned`) unless this is exactly ONE build and it is the pin; the G6(a) check above reads levels 1–3 only."""
+    cur = conn.cursor()
+    cur.execute("SELECT DISTINCT coalesce(build_id::text, 'NULL') FROM public.chart_dashas WHERE chart_id = %s AND system_id = %s AND ayanamsha_id = %s ORDER BY 1",
+                (chart_id, CANONICAL_SYSTEM, CANONICAL_AYANAMSHA))
+    return [str(r[0]) for r in cur.fetchall()]
+
+
+def verifier_build_problems(builds: list[str], new_id: str) -> list[str]:
+    """Mirror of the verifier's refusal (steward ST-REPIN-PATCH-GO): every Vimśottarī / Lahiri row of the chart — all levels, all tiers, NULL included — is ONE build and it is the SETTLED-1 build, so the tool
+    cannot say CLEAN where the verifier would refuse after the re-pin. NEVER relaxed by a declared shape."""
+    if builds == [new_id]:
+        return []
+    return [f"(vi) the verifier's own predicate (every Vimśottarī / Lahiri row of the chart, ALL levels and tiers, NULL build included) sees build(s) {builds}; exactly ONE — the SETTLED-1 build {new_id} — is required "
+            "or the verifier refuses (dasha_builds_mixed / dasha_build_not_pinned) after the re-pin"]
 
 
 def build_problems(builds: dict[str, int], new_id: str) -> list[str]:
@@ -1195,7 +1215,9 @@ def main(argv=None, *, conn=None) -> int:
     builds = fetch_vimshottari_builds(conn, a.chart_id)
     pre_facts = fetch_preflight_facts(conn, a.chart_id)
     declared = notice.get("_declared_shape") if notice is not None else None
-    extra_stops = build_problems(builds, a.new_build_id) + preflight_problems(pre_facts, a.new_build_id, declared=declared)
+    verifier_builds = fetch_verifier_builds(conn, a.chart_id)
+    extra_stops = (build_problems(builds, a.new_build_id) + verifier_build_problems(verifier_builds, a.new_build_id)
+                   + preflight_problems(pre_facts, a.new_build_id, declared=declared))
     stops = decide(new_tier_ok=new_tier_ok, new_integrity=integrity(new_rows), m=m, flips=flips,
                    ref_problems=ref_problems, forensic_report=a.forensic_report, shift_issues=shift_problems(stats, notice),
                    tree_issues=tree_issues, old_totals=level_totals(old_rows), new_totals=level_totals(new_rows), refused_subtrees=refusals, edge_issues=edges["problems"])
@@ -1205,6 +1227,8 @@ def main(argv=None, *, conn=None) -> int:
     evidence = [f"window-clipped edges excluded from the shift statistics (clipped on BOTH builds, required unchanged), per level: "
                 + (", ".join(f"{LEVEL_NAME.get(lv, lv)} start {c['start']} / end {c['end']}" for lv, c in edges["clipped"].items()) or "none")]
     evidence.append(shape_evidence(pre_facts, a.new_build_id, declared))
+    evidence.append(f"verifier predicate (every Vimśottarī / Lahiri row, all levels and tiers, NULL included): builds {verifier_builds} — "
+                    + ("exactly the SETTLED-1 build" if verifier_builds == [a.new_build_id] else "NOT exactly the SETTLED-1 build"))
     if notice is not None:
         evidence.append(f"settled notice sha256: {notice['_sha256']}; source message {notice['source_message_id']}" + (f"; levels {notice['_ignored_levels']} in the notice were IGNORED (this tool judges levels 1–3 only)" if notice["_ignored_levels"] else ""))
     if a.forensic_report:

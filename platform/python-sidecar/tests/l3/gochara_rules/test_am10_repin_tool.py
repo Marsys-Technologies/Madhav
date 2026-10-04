@@ -53,6 +53,19 @@ def _flags_stub(request, monkeypatch):
         monkeypatch.setattr(T, "read_truncation", lambda conn, chart, build: _AllFalse())
 
 
+@pytest.fixture(autouse=True)
+def _verifier_builds_follow_the_mocked_vimshottari_builds(request, monkeypatch):
+    """The verifier-predicate read (`fetch_verifier_builds`) defaults, in every CLI test, to the Vimśottarī builds the test already models via `fetch_vimshottari_builds`; the tests of that
+    predicate override it explicitly."""
+    if not getattr(request.function, "_own_verifier_builds", False):
+        monkeypatch.setattr(T, "fetch_verifier_builds", lambda conn, chart: sorted(T.fetch_vimshottari_builds(conn, chart)))
+
+
+def own_verifier_builds(fn):
+    fn._own_verifier_builds = True
+    return fn
+
+
 class FakeConn:
     """A connection stand-in that LOOKS like psycopg3 (has `execute`) — used where the reader itself is monkeypatched."""
     def execute(self, *a, **k):
@@ -1466,3 +1479,57 @@ def test_the_cli_records_the_default_and_the_declared_shape_and_never_relaxes_th
     rc = T.main(["--new-build-id", NEWB, "--old-rows", str(cap), "--settled-notice", _notice(tmp_path, new_build_id=NEWB), "--forensic-report", str(fr), "--dry-run"], conn=FakeConn())
     out = capsys.readouterr().out
     assert rc == 0 and "(matches: default)" in out and "no shape declared in the notice" in out
+
+
+# ── the verifier-predicate mirror (steward ST-REPIN-PATCH-GO) ───────────────────────────────────────────────────────────────────────────────────────────
+
+def test_the_verifier_predicate_mirror_requires_exactly_the_settled_1_build_across_all_levels_and_tiers():
+    assert T.verifier_build_problems([NEWB], NEWB) == []
+    for bad in ([], [OLDB, NEWB], [NEWB, "NULL"], ["NULL"], [OLDB], [NEWB, OTHERB]):
+        out = T.verifier_build_problems(bad, NEWB)
+        assert len(out) == 1 and "(vi)" in out[0] and "verifier" in out[0], bad
+
+
+@own_verifier_builds
+def test_the_verifier_predicate_fetch_is_one_read_only_select_with_no_level_or_tier_filter():
+    class Cur:
+        def __init__(self): self.qs = []
+        def execute(self, q, p=None): self.qs.append((q, p))
+        def fetchall(self): return [("b1",), ("NULL",)]
+    class Conn:
+        def __init__(self): self.c = Cur()
+        def cursor(self): return self.c
+    c = Conn()
+    assert T.fetch_verifier_builds(c, "chart-x") == ["b1", "NULL"]
+    (q, p), = c.c.qs
+    low = q.lower()
+    assert low.lstrip().startswith("select") and "coalesce(build_id::text, 'null')" in low
+    assert "level" not in low and "verification_pass_status" not in low and "tier" not in low           # the verifier's predicate: ALL levels, ALL tiers
+    assert p == ("chart-x", T.CANONICAL_SYSTEM, T.CANONICAL_AYANAMSHA)
+    assert not any(w in low for w in ("update ", "delete ", "insert ", "truncate"))
+
+
+@own_verifier_builds
+def test_the_cli_stops_where_the_verifier_would_refuse_even_when_levels_1_to_3_and_the_declared_shape_are_clean(monkeypatch, tmp_path, capsys):
+    rows_new = T.norm_rows(ref_rows("new", 6993))
+    cap = tmp_path / "old.json"; write_old_cap(cap)
+    monkeypatch.setattr(T.DD, "fetch_dasha_periods_multilevel", lambda conn, chart, build_id=None, **kw: rows_new if build_id == NEWB else [])
+    monkeypatch.setattr(T, "fetch_vimshottari_builds", lambda conn, chart: {NEWB: 117})                 # G6(a): levels 1–3 are ONE build
+    monkeypatch.setattr(T, "fetch_preflight_facts", lambda conn, chart: GOODFACTS)
+    fr = tmp_path / "f.md"; fr.write_text("anchors")
+    args = lambda **over: ["--new-build-id", NEWB, "--old-rows", str(cap), "--settled-notice", _notice(tmp_path, new_build_id=NEWB, **over), "--forensic-report", str(fr), "--dry-run"]
+    monkeypatch.setattr(T, "fetch_verifier_builds", lambda conn, chart: [NEWB])
+    rc = T.main(args(), conn=FakeConn())
+    out = capsys.readouterr().out
+    assert rc == 0 and "verdict: **CLEAN**" in out and "verifier predicate" in out and "exactly the SETTLED-1 build" in out
+    # a level-4 (or other-tier) Vimśottarī / Lahiri row left on another build, or a NULL build: the tool's levels-1–3 read sees one build, the verifier would refuse ⇒ STOP
+    for extra in ([NEWB, OLDB], [NEWB, "NULL"], ["NULL"]):
+        monkeypatch.setattr(T, "fetch_verifier_builds", lambda conn, chart, e=extra: e)
+        rc = T.main(args(), conn=FakeConn())
+        out = capsys.readouterr().out
+        assert rc == 3 and "(vi)" in out and "NOT exactly the SETTLED-1 build" in out, (extra, out[-600:])
+    # a declared shape never relaxes it
+    monkeypatch.setattr(T, "fetch_preflight_facts", lambda conn, chart: {**GOODFACTS, "non_scope": 47, "builds": [NEWB, OTHERB]})
+    monkeypatch.setattr(T, "fetch_verifier_builds", lambda conn, chart: [NEWB, OTHERB])
+    rc = T.main(args(**_shape()), conn=FakeConn())
+    assert rc == 3 and "(vi)" in capsys.readouterr().out
