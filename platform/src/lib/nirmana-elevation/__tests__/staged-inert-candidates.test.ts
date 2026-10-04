@@ -398,6 +398,9 @@ describe('staged inert Gochara candidates — excluded while inert, visible the 
       const inactiveDependent = registryRow('ka_inactive_dependent', { layer: 'kala', sort_order: 130, depends_on: [V3], is_active: false })
       expect(excludedNirmanaStagedInertCandidates([v3(), inactiveDependent]).map((e) => e.asset_id)).toEqual([V3])
       expect(excludeNirmanaStagedInertCandidates([v3(), inactiveDependent]).map((r) => r.asset_id)).toEqual(['ka_inactive_dependent'])
+      // F3 (Suvarṇa Exec): `inactive_only` is partition-level only — at BASELINE level the inactive dependent itself is an unresolved asset whose dependency (the excluded v3) is
+      // not in the manifest, so the baseline still fails closed. The allowance changes what the monitor reports as excluded, never what it can read as healthy.
+      expect(() => buildNirmanaBaselineCandidate([...base, v3(), inactiveDependent])).toThrow()
       // the same inactive dependent does NOT free a `none` id
       const v5Dependent = registryRow('ka_inactive_on_v5', { layer: 'kala', sort_order: 131, depends_on: [V5], is_active: false })
       expect(excludedNirmanaStagedInertCandidates([staged(V5), v5Dependent])).toEqual([])

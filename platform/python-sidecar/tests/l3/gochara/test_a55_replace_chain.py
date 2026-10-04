@@ -1,20 +1,26 @@
-"""A5.5f (gap G7) — a rebuild REPLACES the whole unsealed chart x generation output chain; it never accretes.
+"""A5.5f (G7) — a rebuild REPLACES the whole unsealed candidate chart x generation output chain; it never accretes.
+
+THE CONTRACT these tests pin: every dispatch of the asset is a WHOLE-BUILD REPLAY. The orchestrator drives the full plan on
+every dispatch (it calls `_drive_substeps` without `completed_keys`), so the `snapshot` substep always runs, always before any
+substep that writes chain rows, and a failed build restarts from zero on retry. There is no resume. The replace therefore lives
+in the snapshot substep; a head-skipping invocation (harness, CLI, a future resume) is not a supported mode and the horizon
+guard refuses one that would mix horizons.
 
 Two tiers.
 
-  * no database: the delete order and scope, the sealed refusal, the contact-row comparison, and the plan shape
-    (the replace sits in the `snapshot` substep, before every substep that writes chain rows);
-  * the writer's OWN substeps on the real migration chain (the A5.3 AM-5 harness): the sky-event substrate is built once
-    into a template database and cloned per test; manifest, snapshot, inventory, coverage and record grains are production
-    code, the Swiss library is the pinned corpus (conftest). Every scenario compares the rebuilt state with a FRESH build
-    over the same horizon: a rebuild must equal a first build, byte for byte on contact ids and bounds.
+  * no database: the delete order and scope, the sealed and candidate-only refusals, the contact-row comparison, and the
+    plan shape (the snapshot precedes every chain-writing substep);
+  * the writer's OWN substeps on the real migration chain (the A5.3 AM-5 harness): the sky-event substrate is built once into
+    a template database and cloned per test; manifest, snapshot, inventory, coverage and record grains are production code, the
+    Swiss library is the pinned corpus (conftest). Every scenario compares the rebuilt state with a FRESH build over the same
+    horizon: a rebuild must equal a first build, byte for byte on contact ids and bounds. The populated-chain, builder-role case
+    (windows, memberships, prerequisites, both verification tables) is in test_a55_replace_chain_populated.py.
 
 The reproduction behind it (2026-10-04, Stream A): two classes share one physical contact (18 of the 26 classes share
 Saturn-in-the-7th); rebuilding both at a longer horizon left the contact's end at the OLD clipped value, because the
 contact insert was `ON CONFLICT DO NOTHING` and the class replace keeps a contact another class still references."""
 from __future__ import annotations
 
-import inspect
 import uuid
 from datetime import datetime, timedelta, timezone
 
@@ -29,7 +35,7 @@ from services.gochara_kernel.rule_registry import RuleRegistryStore
 from . import test_a53_inventory as base
 from .conftest import EPHE_PATH, _PROBLEMS, assert_real_ephemeris
 from .test_a53_inventory import CHART_ID, create_am5_database, drop_am5_database
-from .test_a53_record_store import _RecordingConn, _tables_deleted
+from .test_a53_record_store import _tables_deleted
 
 GEN = writer_mod.GENERATION
 UTC = timezone.utc
@@ -44,8 +50,35 @@ PATHS = ("P2", "P3")                              # P1 cannot pass on the stubbe
 
 # ── no database ─────────────────────────────────────────────────────────────────────────────────────────────────
 
+class _Rec:
+    """Records every statement; answers the sealed probe and the candidate-manifest lookup; every DELETE reports a rowcount."""
+
+    def __init__(self, sealed=False, status="candidate", manifest=True):
+        self.sealed, self.status, self.manifest = sealed, status, manifest
+        self.statements: list[str] = []
+
+    def execute(self, sql, params=None):
+        flat = " ".join(sql.split())
+        self.statements.append(flat)
+        conn = self
+
+        class _R:
+            rowcount = 1
+
+            def fetchone(self_inner):
+                if "ka_gochara_generation_is_sealed" in flat:
+                    return (conn.sealed,)
+                if "FROM kala_gochara_publication" in flat:
+                    return (uuid.uuid4(), conn.status) if conn.manifest else None
+                return None
+
+            def fetchall(self_inner):
+                return []
+        return _R()
+
+
 def test_generation_chain_delete_is_dependency_ordered_and_chart_generation_scoped():
-    conn = _RecordingConn()
+    conn = _Rec()
     out = rs.RecordStore(conn).delete_generation_chain(chart_id=CHART_ID, generation="5.0")
     assert _tables_deleted(conn) == ["ka_gochara_eval_window",          # membership cascades with it
                                      "ka_gochara_relationship_record",  # prerequisites cascade with it
@@ -60,52 +93,78 @@ def test_generation_chain_delete_is_dependency_ordered_and_chart_generation_scop
     assert set(out) == {"windows", "records", "contacts", "coverage"}
 
 
-def test_a_sealed_generation_is_refused_before_any_delete():
-    conn = _RecordingConn(sealed=True)
-    with pytest.raises(rs.SealedGenerationError, match="SEALED"):
+def test_a_sealed_generation_is_refused_first_and_by_the_new_delete():
+    conn = _Rec(sealed=True)
+    with pytest.raises(rs.SealedGenerationError, match=r"generation chain replace: .*SEALED"):
         rs.RecordStore(conn).delete_generation_chain(chart_id=CHART_ID, generation="5.0")
     assert _tables_deleted(conn) == []
     assert any("ka_gochara_generation_is_sealed" in st for st in conn.statements)    # how the code knows
 
 
+def test_only_a_candidate_manifest_may_be_replaced():
+    """Unsealed is not enough: a published-but-unsealed manifest is refused too, and so is a generation with no manifest."""
+    from services.gochara_kernel import ledger
+    for status in ("published", "superseded", "rolled_back"):
+        conn = _Rec(status=status)
+        with pytest.raises(ledger.PublishedGenerationRefusal, match="not 'candidate'"):
+            rs.RecordStore(conn).delete_generation_chain(chart_id=CHART_ID, generation="5.0")
+        assert _tables_deleted(conn) == [], status
+    conn = _Rec(manifest=False)
+    with pytest.raises(ValueError, match="no manifest"):
+        rs.RecordStore(conn).delete_generation_chain(chart_id=CHART_ID, generation="5.0")
+    assert _tables_deleted(conn) == []
+
+
+_ROW = ("po-1", 1, "conv", "mars", "residence", Y(1, 1), Y(1, 20), Y(1, 5), "swiss_refined", 0.00027777778, 1e-9, "regime",
+        {"truncated": False})
+_I = {n: i for i, n in enumerate(rs._CONTACT_ROW_COLUMNS)}
+
+
 def test_contact_row_diffs_name_every_differing_column():
-    row = ("po-1", 1, "conv", "mars", "residence", Y(1, 1), Y(1, 20), None, "clipped_truncated", None, None, None,
-           {"truncated": True})
-    assert rs._contact_row_diffs(row, row) == []
-    changed = list(row)
-    changed[6] = Y(1, 21)
-    diffs = rs._contact_row_diffs(row, tuple(changed))
+    assert rs._contact_row_diffs(_ROW, _ROW) == []
+    changed = list(_ROW)
+    changed[_I["t_out"]] = Y(1, 21)
+    diffs = rs._contact_row_diffs(_ROW, tuple(changed))
     assert len(diffs) == 1 and diffs[0].startswith("t_out:")
-    assert rs._contact_row_diffs(None, row) == ["row absent after insert"]
-    # the accuracy columns are REAL: the database's float4 rounding of the derived value is NOT a disagreement …
-    exact = 1.0 / 3600.0
-    with_real = list(row)
-    with_real[9], with_real[10] = 0.00027777778, 1e-9           # what the REAL column hands back (float4 text)
-    derived_real = list(row)
-    derived_real[9], derived_real[10] = exact, 1e-9
-    assert rs._contact_row_diffs(tuple(with_real), tuple(derived_real)) == []
-    # … a genuinely different accuracy still is
-    derived_real[9] = exact * 1.5
-    assert [d.split(":")[0] for d in rs._contact_row_diffs(tuple(with_real), tuple(derived_real))] == ["delta_lambda"]
-    one_more = list(changed)
-    one_more[7] = Y(1, 5)
-    assert [d.split(":")[0] for d in rs._contact_row_diffs(row, tuple(one_more))] == ["t_out", "t_exact"]
+    assert rs._contact_row_diffs(None, _ROW) == ["row absent after insert"]
+    two = list(changed)
+    two[_I["t_exact"]] = Y(1, 6)
+    assert [d.split(":")[0] for d in rs._contact_row_diffs(_ROW, tuple(two))] == ["t_out", "t_exact"]
 
 
-def test_the_replace_is_in_the_snapshot_substep_and_only_there():
-    src = inspect.getsource(writer_mod.GocharaV5Writer._run_inventory_phase)
-    assert src.count("delete_generation_chain(") == 1
-    snap = src[src.index("if step.key == SNAPSHOT_SUBSTEP:"):src.index("event_class = step.key.split")]
-    assert "delete_generation_chain(" in snap
-    assert "delete_class_chain" not in snap
-    whole = inspect.getsource(writer_mod)
-    assert whole.count("delete_generation_chain(") == 1
+@pytest.mark.parametrize("column", ["t_out", "t_exact", "delta_lambda", "delta_t", "precision_regime"])
+def test_a_null_transition_is_a_difference_in_both_directions(column):
+    """NULL -> value and value -> NULL are both disagreements (an enrichment flip must not be silently kept or lost)."""
+    nulled = list(_ROW)
+    nulled[_I[column]] = None
+    assert [d.split(":")[0] for d in rs._contact_row_diffs(tuple(nulled), _ROW)] == [column]       # stored NULL, derived value
+    assert [d.split(":")[0] for d in rs._contact_row_diffs(_ROW, tuple(nulled))] == [column]       # stored value, derived NULL
+    assert rs._contact_row_diffs(tuple(nulled), tuple(nulled)) == []                                # NULL = NULL agrees
+
+
+def test_the_accuracy_columns_compare_at_float4_the_other_columns_exactly():
+    exact = 1.0 / 3600.0                                     # the REAL column hands back 0.00027777778
+    stored = list(_ROW)
+    stored[_I["delta_lambda"]] = 0.00027777778
+    derived = list(_ROW)
+    derived[_I["delta_lambda"]] = exact
+    assert rs._contact_row_diffs(tuple(stored), tuple(derived)) == []
+    derived[_I["delta_lambda"]] = exact * 1.5
+    assert [d.split(":")[0] for d in rs._contact_row_diffs(tuple(stored), tuple(derived))] == ["delta_lambda"]
+    exact_t = list(_ROW)
+    exact_t[_I["t_in"]] = Y(1, 1) + timedelta(microseconds=1)     # time columns are NOT rounded
+    assert [d.split(":")[0] for d in rs._contact_row_diffs(_ROW, tuple(exact_t))] == ["t_in"]
+
+
+def test_a_row_of_the_wrong_shape_is_refused_not_zipped_short():
+    with pytest.raises(AssertionError, match="contact row shape"):
+        rs._contact_row_diffs(_ROW[:-1], _ROW)
 
 
 def test_the_snapshot_precedes_every_substep_that_writes_chain_rows():
     plan = [s.key for s in writer_mod.GocharaV5Writer().plan_substeps(ContextSpec(
         asset_id=writer_mod.ASSET_ID, build_id="b", db_conn=None, dry_run=True, config={"chart_id": CHART_ID}))]
-    assert len(plan) == 298
+    assert plan.count(writer_mod.SNAPSHOT_SUBSTEP) == 1
     snap = plan.index(writer_mod.SNAPSHOT_SUBSTEP)
     writers = [i for i, k in enumerate(plan) if k.startswith(("inventory:", "coverage:", "record:", "window:", "verify:"))]
     assert writers and min(writers) > snap
@@ -146,7 +205,8 @@ class _World:
         self.admin, tpl, dsn = template
         self.name = f"{base.DB_PREFIX}a55c_{uuid.uuid4().hex[:8]}"
         self.admin.execute(f'CREATE DATABASE "{self.name}" TEMPLATE "{tpl}"')
-        self.conn = psycopg.connect(make_conninfo(dsn, dbname=self.name), autocommit=True, connect_timeout=3)
+        self.dsn = make_conninfo(dsn, dbname=self.name)
+        self.conn = psycopg.connect(self.dsn, autocommit=True, connect_timeout=3)
         self._w = writer_mod.GocharaV5Writer()
 
     def step(self, key, horizon):
@@ -254,8 +314,10 @@ def test_narrowing_the_horizon_leaves_no_contact_beyond_the_new_end(world, fresh
 
 
 def test_a_later_start_then_an_earlier_start_leaves_no_extra_overlapping_contact(world, fresh):
-    """Start-clipped contacts are identified by their clipped t_in, so a changed start makes a NEW contact id: the old
-    one must not survive beside it (an overlapping duplicate would still pass a union-based certification)."""
+    """Moving the START of the horizon changes the bounds of the start-clipped contacts (a contact's identity is its
+    physical object and occurrence ordinal, not the horizon). Whatever the identity does, the replaced chain must hold
+    exactly the contacts a fresh build over the new horizon holds: no stale row and no overlapping duplicate beside it (a
+    duplicate would still pass a union-based certification)."""
     world.build(LEFT)
     world.build(FULLL)
     _same(world.state(), fresh(FULLL), "LEFT then FULL")
@@ -283,45 +345,165 @@ def test_a_sealed_generation_is_not_replaced(world):
         world.conn.execute("SET LOCAL session_replication_role = replica")
         world.conn.execute("INSERT INTO public.ka_gochara_generation_seal (chart_id, generation, manifest_id)"
                            " VALUES (%s::uuid, %s, %s::uuid)", (CHART_ID, GEN, mid))
-    with pytest.raises(rs.SealedGenerationError, match="SEALED"):
-        world.step(writer_mod.SNAPSHOT_SUBSTEP, LONG)
+    with pytest.raises(rs.SealedGenerationError, match=r"generation chain replace: .*SEALED"):    # the NEW delete refused first
+        world.step(writer_mod.SNAPSHOT_SUBSTEP, SHORT)          # the manifest's OWN horizon: the seal, not the horizon guard
     assert world.state() == before, "a sealed generation's chain was touched"
 
 
-def test_resume_within_one_build_keeps_what_its_earlier_substeps_wrote(world, fresh):
-    """The orchestrator skips completed substeps on a resume (`completed_keys`), snapshot included, so the replace never
-    re-runs: the first class's rows survive while the second class is built, and the result equals one uninterrupted build.
-    Then a FRESH re-run (no completed keys) replaces and rebuilds everything: also equal."""
-    world.build(SHORT, classes=(CLASSES[0],))                       # build 1: head (manifest, snapshot) + class one …
+def test_a_partial_run_that_skips_the_head_does_not_over_delete(world, fresh):
+    """NOT a resume (none exists: the orchestrator replays the whole plan on every dispatch). A partial run that skips the
+    manifest/snapshot head, as a harness or a CLI could, builds a second class BESIDE the first: the replace does not run, so
+    the first class's rows are untouched and the result equals one uninterrupted build. A whole-plan re-run then replaces and
+    rebuilds, also equal."""
+    world.build(SHORT, classes=(CLASSES[0],))                       # head (manifest, snapshot) + class one
     first = world.state()
-    assert {r[0] for r in first["records"]} == {CLASSES[0]}          # … then the timeout
-    world.build(SHORT, classes=(CLASSES[1],), head=False)           # the resume: completed head skipped, class two runs
-    resumed = world.state()
-    assert {r[0] for r in resumed["records"]} == set(CLASSES)
-    assert {c[0] for c in first["contacts"]} <= {c[0] for c in resumed["contacts"]}      # nothing of class one was wiped
-    assert [r for r in resumed["records"] if r[0] == CLASSES[0]] == [r for r in first["records"]]
-    _same(resumed, fresh(SHORT), "resumed build")
-    world.build(SHORT)                                               # a fresh full re-run: replaces, no accretion
-    _same(world.state(), fresh(SHORT), "fresh re-run")
+    assert {r[0] for r in first["records"]} == {CLASSES[0]}
+    world.build(SHORT, classes=(CLASSES[1],), head=False)           # no head: class two beside class one
+    partial = world.state()
+    assert {r[0] for r in partial["records"]} == set(CLASSES)
+    assert {c[0] for c in first["contacts"]} <= {c[0] for c in partial["contacts"]}      # nothing of class one was wiped
+    assert [r for r in partial["records"] if r[0] == CLASSES[0]] == [r for r in first["records"]]
+    _same(partial, fresh(SHORT), "head-skipping partial run")
+    world.build(SHORT)                                               # a whole-plan re-run: replaces, no accretion
+    _same(world.state(), fresh(SHORT), "whole-plan re-run")
+
+
+class _Replay(writer_mod.GocharaV5Writer):
+    """The REAL writer driven by the REAL orchestrator driver over a SUBSET plan (the manifest, the snapshot, and two classes'
+    inventory / coverage / record grains): the full plan is the full build, which this test must not run. `fail_at` injects
+    one failure at a named substep."""
+    fail_at = None
+
+    def plan_substeps(self, ctx):
+        keys = {writer_mod.MANIFEST_SUBSTEP, writer_mod.SNAPSHOT_SUBSTEP}
+        for cls in CLASSES:
+            keys |= {f"inventory:{cls}", f"coverage:{cls}"} | {f"record:{cls}:{p}" for p in PATHS}
+        return [st for st in super().plan_substeps(ctx) if st.key in keys]
+
+    def run_substep(self, ctx, step):
+        if step.key == self.fail_at:
+            raise RuntimeError(f"injected mid-build failure at {step.key}")
+        return super().run_substep(ctx, step)
+
+
+def test_a_retry_after_a_mid_build_failure_is_a_whole_plan_replay_and_equals_a_fresh_build(template, fresh):
+    """THE real contract, through the REAL orchestrator driver (`asset_runner._drive_substeps`, called exactly as production
+    calls it: no `completed_keys`, one commit per substep, a SAVEPOINT around each): the first dispatch fails part-way (earlier
+    substeps stay committed), the retry replays the WHOLE plan from the manifest, and ends equal to a fresh build."""
+    import psycopg
+    from psycopg.rows import dict_row
+    from pipeline.orchestrator import asset_runner
+    w = _World(template)
+    conn = None
+    try:
+        w.conn.execute("CREATE TABLE public.asset_throughput (chart_id uuid, asset_id text, state text,"
+                       " last_built_at timestamptz, rows_written integer, last_error text)")
+        w.conn.execute("INSERT INTO public.asset_throughput VALUES (%s::uuid, %s, 'dormant', now(), 0, NULL)",
+                       (CHART_ID, writer_mod.ASSET_ID))
+        conn = psycopg.connect(w.dsn, autocommit=False, row_factory=dict_row, connect_timeout=3)   # the orchestrator's connection
+        writer = _Replay()
+        chart = uuid.UUID(CHART_ID)
+
+        def dispatch(run_id):
+            ctx = ContextSpec(asset_id=writer_mod.ASSET_ID, build_id=run_id, db_conn=conn, dry_run=False,
+                              config={"chart_id": chart, "horizon": SHORT, "ephe_path": EPHE_PATH})
+            asset_runner._drive_substeps(conn, conn.cursor(), run_id, chart, writer_mod.ASSET_ID, writer, ctx)
+
+        writer.fail_at = f"record:{CLASSES[1]}:P2"
+        with pytest.raises(RuntimeError, match="injected mid-build failure"):
+            dispatch("run-1")
+        conn.rollback()                                              # what the orchestrator does on a failed dispatch
+        partial = w.state()
+        assert {r[0] for r in partial["records"]} == {CLASSES[0]}, "the failed dispatch left no committed earlier work"
+        assert partial["contacts"], "no earlier substep was committed"
+        writer.fail_at = None
+        dispatch("run-2")                                            # the retry: the WHOLE plan again, from the manifest
+        _same(w.state(), fresh(SHORT, CLASSES), "retry after a mid-build failure")
+    finally:
+        if conn is not None:
+            conn.close()
+        w.close()
 
 
 def test_a_conflicting_contact_row_is_refused_by_name_not_kept(world):
+    """Span contacts (residence) AND point contacts (conjunction): the same contact derived again with a different end, as a
+    truncated row where an exact one is stored (value -> NULL) and as an exact row where a truncated one is stored (NULL ->
+    value). The derived rows are COHERENT (the table's own checks tie t_exact to truncated / solver / coverage), so the
+    refusal comes from the comparison, not from a check violation."""
     world.build(SHORT, classes=(CLASSES[0],))
     conn = world.conn
-    row = conn.execute("SELECT chart_id::text, generation, contact_id::text, physical_object_id::text,"
-                       " occurrence_ordinal, convention_id, body, relation_kind, t_in, t_out, t_exact, solver_method,"
-                       " delta_lambda, delta_t, precision_regime, coverage::text FROM public.ka_gochara_contact"
-                       " WHERE generation = %s AND t_out IS NOT NULL ORDER BY contact_id LIMIT 1", (GEN,)).fetchone()
     store = rs.RecordStore(conn)
-    with conn.transaction():
-        store._insert_contact_row(tuple(row))                         # the identical row again: a no-op, not an error
-    moved = list(row)
-    moved[9] = row[9] + timedelta(days=3)                              # the same contact, a different end
-    with pytest.raises(rs.ContactRowMismatch, match=r"t_out: stored .* != derived"):
-        with conn.transaction():
-            store._insert_contact_row(tuple(moved))
-    kept = conn.execute("SELECT t_out FROM public.ka_gochara_contact WHERE contact_id = %s::uuid", (row[2],)).fetchone()[0]
-    assert kept == row[9]
+    cols = ("chart_id::text, generation, contact_id::text, physical_object_id::text, occurrence_ordinal, convention_id, body,"
+            " relation_kind, t_in, t_out, t_exact, solver_method, delta_lambda, delta_t, precision_regime, coverage::text")
+
+    def pick(relation, exact):
+        return conn.execute(f"SELECT {cols} FROM public.ka_gochara_contact WHERE generation = %s AND relation_kind = %s"
+                            f" AND t_exact {'IS NOT NULL' if exact else 'IS NULL'} AND t_out IS NOT NULL"
+                            " ORDER BY contact_id LIMIT 1", (GEN, relation)).fetchone()
+
+    def refused(stored, derived, label):
+        with pytest.raises(rs.ContactRowMismatch, match=r"stored row differs from the derived one"):
+            with conn.transaction():
+                store._insert_contact_row(tuple(derived))
+        kept = conn.execute("SELECT t_out, t_exact FROM public.ka_gochara_contact WHERE contact_id = %s::uuid",
+                            (stored[2],)).fetchone()
+        assert (kept[0], kept[1]) == (stored[9], stored[10]), f"{label}: the stored row was changed"
+
+    seen = set()
+    for relation in ("residence", "conjunction"):
+        exact, truncated = pick(relation, True), pick(relation, False)
+        if exact is not None:
+            seen.add((relation, "exact"))
+            with conn.transaction():
+                store._insert_contact_row(tuple(exact))                  # the identical row again: a no-op, not an error
+            moved = list(exact)
+            moved[9] = exact[9] + timedelta(days=3)
+            refused(exact, moved, f"{relation} / t_out moved")
+            as_truncated = list(exact)                                    # value -> NULL: derived as a truncated row
+            as_truncated[10:16] = [None, "clipped_truncated", None, None, None, '{"truncated": true}']
+            refused(exact, as_truncated, f"{relation} / exact -> truncated")
+        if truncated is not None and exact is not None:
+            seen.add((relation, "truncated"))
+            with conn.transaction():
+                store._insert_contact_row(tuple(truncated))
+            as_exact = list(truncated)                                    # NULL -> value: derived as an exact row
+            as_exact[10] = truncated[8] + (truncated[9] - truncated[8]) / 2
+            as_exact[11:16] = exact[11:16]
+            refused(truncated, as_exact, f"{relation} / truncated -> exact")
+    assert ("residence", "exact") in seen and ("conjunction", "exact") in seen, seen
+    assert ("residence", "truncated") in seen, seen                       # the NULL -> value direction was exercised
+
+
+def test_every_chain_writing_phase_refuses_a_horizon_that_is_not_its_manifests(world):
+    """Nothing used to compare the configured horizon with the manifest's, so a head-skipping invocation could mix horizons.
+    Every chain-writing phase refuses by name, writes nothing, for a horizon LONGER and for one SHORTER than the manifest's."""
+    world.build(SHORT)
+    before = world.state()
+    cls = CLASSES[0]
+    longer, shorter = LONG, (SHORT[0], SHORT[0] + timedelta(days=5))
+    phases = (writer_mod.SNAPSHOT_SUBSTEP, f"inventory:{cls}", f"coverage:{cls}", f"record:{cls}:P2",
+              f"window:{cls}:P3", f"verify:{cls}")
+    for key in phases:
+        for other in (longer, shorter):
+            with pytest.raises(writer_mod.HorizonMismatch, match="horizon guard"):
+                world.step(key, other)
+    assert world.state() == before, "a refused phase wrote something"
+    world.step(f"coverage:{cls}", SHORT)                              # the manifest's own horizon is accepted
+
+
+def test_a_published_but_unsealed_manifest_is_not_replaced(world):
+    """Unsealed is not enough: only a CANDIDATE manifest's chain may be replaced."""
+    from services.gochara_kernel import ledger
+    world.build(SHORT)
+    before = world.state()
+    with world.conn.transaction():          # the published-but-unsealed world is set up behind the guards: it is the world under test
+        world.conn.execute("SET LOCAL session_replication_role = replica")
+        world.conn.execute("UPDATE public.kala_gochara_publication SET status = 'published', published_at = now()"
+                           " WHERE generation = %s", (GEN,))
+    with pytest.raises(ledger.PublishedGenerationRefusal, match="not 'candidate'"):
+        with world.conn.transaction():
+            rs.RecordStore(world.conn).delete_generation_chain(chart_id=CHART_ID, generation=GEN)
+    assert world.state() == before
 
 
 # ── what the independent verification catches (the steward's question) ─────────────────────────────────────────────
