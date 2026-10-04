@@ -490,3 +490,49 @@ def test_a_named_refusal_after_the_connection_reports_its_confirmed_rollback(cap
 
 def test_the_script_never_claims_nothing_was_committed():
     assert "othing was committed" not in DISPATCH.read_text(encoding="utf-8")
+
+
+# ── round 3 (Codex v1.2, item 2): the marker is staged in its CANONICAL form and round-trips through writer and teardown ──────────
+
+def test_a_comma_list_in_any_order_and_any_utc_offset_is_staged_in_the_canonical_form():
+    """Sorted (scored-order) classes and +00:00 ISO timestamps, exactly the text the writer's own component stores."""
+    scrambled = ",".join(reversed(ALL))
+    marker = dispatch.build_slice_marker(run="all_classes_1y", classes=scrambled,
+                                         horizon_start="2025-04-01T00:00:00Z", horizon_end="2026-04-01T05:30:00+05:30")
+    assert marker["classes"] == ALL == sorted(ALL)
+    assert marker["horizon"] == ["2025-04-01T00:00:00+00:00", "2026-04-01T00:00:00+00:00"]
+    assert marker == {"schema": "gochara_v5_test_slice/1", "run": "all_classes_1y", "horizon": marker["horizon"], "classes": ALL}
+
+
+def test_the_staged_marker_is_the_writers_normal_form_so_its_digest_is_the_components():
+    marker = dispatch.build_slice_marker(run="all_classes_1y", classes=",".join(reversed(ALL)),
+                                         horizon_start="2025-04-01T00:00:00Z", horizon_end="2026-04-01T00:00:00Z")
+    sliced = WRITER._validate_test_slice(marker)
+    component = WRITER._slice_component(sliced)
+    # rebuilding the marker from the stored (normalised) component gives the SAME marker and the SAME digest
+    rebuilt = {"schema": component["schema"], "run": component["run"], "horizon": component["horizon"], "classes": component["classes"]}
+    assert rebuilt == marker and WRITER._validate_test_slice(rebuilt).digest == sliced.digest == component["marker_digest"]
+
+
+@pytest.mark.parametrize("run, kw", [
+    ("all_classes_1y", dict(classes="all", horizon_start="2025-04-17T00:00:00+00:00", horizon_end="2026-04-17T00:00:00+00:00")),
+    ("all_classes_1y", dict(classes=",".join(reversed(ALL)), horizon_start="2025-04-01T00:00:00Z", horizon_end="2026-03-01T00:00:00Z")),
+    ("one_class_full", dict(classes=ONE)),
+], ids=["all_default_order", "all_scrambled_Z_timestamps", "one_class_full"])
+def test_a_dispatched_marker_round_trips_through_the_writer_and_the_teardown_validation(run, kw):
+    """What a dispatch stages is accepted by the writer, stamped by the writer's own component, and the TEARDOWN's stamp validation
+    accepts that stamp (by reconstruction, with no run row at all). Skipped until the teardown script (PR 3098) is in the tree."""
+    teardown_path = DISPATCH.parent / "teardown_v5_small_test_job.py"
+    if not teardown_path.exists():
+        pytest.skip("teardown_v5_small_test_job.py is not in this tree yet (PR 3098); the round trip is asserted once both are")
+    import types as _t
+    import teardown_v5_small_test_job as td
+    marker = dispatch.build_slice_marker(run=run, **kw)
+    sliced = WRITER._validate_test_slice(marker)
+    vector = {"stored_scope": WRITER.TEST_SLICE_SCOPE, "test_slice": WRITER._slice_component(sliced)}
+    horizon = _t.SimpleNamespace(lower=sliced.horizon[0], upper=sliced.horizon[1])
+    problem, source = td._stamp_problem(vector, horizon, [])                          # no surviving run row: the reconstruction path
+    assert problem is None and "RECONSTRUCTION" in source
+    manifest = {WRITER.TEST_SLICE_KEY: marker}
+    problem, source = td._stamp_problem(vector, horizon, [("run-1", manifest, WRITER._manifest_digest(manifest))])
+    assert problem is None and "ORIGINAL marker of run run-1" in source               # and against the original preimage

@@ -224,8 +224,16 @@ def build_slice_marker(*, run: str, classes: str | None = None,
     else:
         start, end = _utc_iso("horizon_start", horizon_start), _utc_iso("horizon_end", horizon_end)
     marker = {"schema": SLICE_MARKER_SCHEMA, "run": run, "horizon": [start, end], "classes": names}
-    writer._validate_test_slice(marker)
-    return marker
+    validated = writer._validate_test_slice(marker)
+    # The marker is STAGED in its exact CANONICAL form: classes in the writer's scored order, horizon as the +00:00 ISO strings the writer's
+    # own component stores. The writer hashes the marker as given and stores the normalised form; staging the canonical form makes the two
+    # the same text, so the digest in the manifest stamp and the digest of the stored component can never disagree (Codex round 3).
+    canonical = {"schema": validated.marker["schema"], "run": validated.run,
+                 "horizon": [validated.horizon[0].isoformat(), validated.horizon[1].isoformat()], "classes": list(validated.classes)}
+    again = writer._validate_test_slice(canonical)           # the canonical form is a fixed point of the writer's normalisation
+    if (again.classes, again.horizon, again.run) != (validated.classes, validated.horizon, validated.run):  # pragma: no cover
+        raise RuntimeError("the canonical marker does not normalise to itself")
+    return canonical
 
 
 def build_small_test_manifest(*, candidate, slice_marker: dict) -> tuple[dict, str]:
