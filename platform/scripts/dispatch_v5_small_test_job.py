@@ -52,11 +52,13 @@ writer would refuse never reaches a staged run:
 
 The chart is the pinned canonical chart 482012f1-710e-4a25-994a-93821f5871aa
 ONLY — there is no chart argument; any other chart is refused by construction.
-The DSN comes from DATABASE_URL only: never on argv, never printed.
+The DSN comes from the PROCESS ENVIRONMENT only (DATABASE_URL): never on argv, never printed, and never read from a file in the
+checkout (this script no longer reads `.env.local`). A failure prints the exception CLASS, never its text: a connection error
+can carry the credentials.
 
---dry-run runs the SAME staging transaction but ROLLS BACK instead of
-committing and prints the staged plan (run row + manifest) as JSON — nothing
-is written.
+STAGING NEEDS EXPLICIT INTENT. The default is a DRY RUN: the SAME staging transaction runs but ROLLS BACK instead of committing
+and prints the staged plan (run row + manifest) as JSON — nothing is written. Writing the run needs `--execute` (together with the
+two steward flags). `--dry-run` is accepted as an explicit spelling of the default; it cannot be combined with `--execute`.
 
 Execution happens separately, after steward go:
 
@@ -69,9 +71,9 @@ Usage:
   cd <repo-root>/platform
   python3 scripts/dispatch_v5_small_test_job.py --i-am-steward --after-settled-1 \
       --run all_classes_1y --horizon-start 2025-04-01T00:00:00+00:00 \
-      --horizon-end 2026-04-01T00:00:00+00:00 [--classes all] [--dry-run]
+      --horizon-end 2026-04-01T00:00:00+00:00 [--classes all] [--execute]
   python3 scripts/dispatch_v5_small_test_job.py --i-am-steward --after-settled-1 \
-      --run one_class_full --classes <one scored class> [--dry-run]
+      --run one_class_full --classes <one scored class> [--execute]
   python3 scripts/dispatch_v5_small_test_job.py --help
 """
 from __future__ import annotations
@@ -94,15 +96,6 @@ from dispatch_frozen_rebuild import (
 ASSET_ID = "ka_gochara_v5"
 CHART_ID = "482012f1-710e-4a25-994a-93821f5871aa"
 TRIGGERED_BY = "gochara-v5-small-test"
-
-_env_file = os.path.join(os.path.dirname(__file__), "..", ".env.local")
-if os.path.exists(_env_file):
-    with open(_env_file) as f:
-        for line in f:
-            line = line.strip()
-            if line and not line.startswith("#") and "=" in line:
-                k, _, v = line.partition("=")
-                os.environ.setdefault(k.strip(), v.strip())
 
 # The shape the ka_gochara_v5 registry row MUST have before staging — the values migration 1304
 # (PR 3101) lands, compared field by field. depends_on is compared in 1304's order.
@@ -235,8 +228,11 @@ def _parse_args(argv: list[str]) -> argparse.Namespace:
                    help="tz-aware ISO timestamp, e.g. 2025-04-01T00:00:00+00:00 "
                         "(required for all_classes_1y; one_class_full defaults to the full horizon)")
     p.add_argument("--horizon-end", default=None, help="tz-aware ISO timestamp (see --horizon-start)")
-    p.add_argument("--dry-run", action="store_true",
-                   help="run the same staging transaction, ROLL BACK, print the staged plan")
+    mode = p.add_mutually_exclusive_group()
+    mode.add_argument("--dry-run", action="store_true",
+                      help="the DEFAULT: run the same staging transaction, ROLL BACK, print the staged plan")
+    mode.add_argument("--execute", action="store_true",
+                      help="actually stage the run (COMMIT); without it nothing is written")
     return p.parse_args(argv)
 
 
@@ -254,10 +250,16 @@ def main(argv: list[str] | None = None) -> None:
         print(f"REFUSAL: {exc}", file=sys.stderr)
         sys.exit(2)
 
+    database_url = os.environ.get("DATABASE_URL")
+    if not database_url:
+        print("REFUSAL: DATABASE_URL is not set in the process environment (this script reads no file and takes no URL "
+              "argument)", file=sys.stderr)
+        sys.exit(2)
+    dry_run = not args.execute                       # the default is a dry run: writing needs --execute
+
     import psycopg
     import psycopg.rows
 
-    database_url = os.environ["DATABASE_URL"]
     conn = psycopg.connect(database_url, row_factory=psycopg.rows.dict_row)
     conn.autocommit = False
     cur = conn.cursor()
@@ -326,7 +328,7 @@ def main(argv: list[str] | None = None) -> None:
             "UPDATE asset_registry SET is_active = false WHERE asset_id = %s",
             (ASSET_ID,),
         )
-        if args.dry_run:
+        if dry_run:
             conn.rollback()
         else:
             conn.commit()
@@ -344,7 +346,7 @@ def main(argv: list[str] | None = None) -> None:
         "plan_manifest_digest": manifest_digest,
         "plan_manifest": manifest,
     }
-    if args.dry_run:
+    if dry_run:
         print(f"[dry-run] staged plan for a SMALL TEST build of {ASSET_ID} on chart "
               f"{CHART_ID} — ROLLED BACK, nothing written", file=sys.stderr)
         print(json.dumps(plan, indent=2, sort_keys=True), flush=True)
@@ -358,5 +360,29 @@ def main(argv: list[str] | None = None) -> None:
     print(run_id, flush=True)
 
 
+def _safe_failure(exc: BaseException) -> str:
+    """The class (and SQLSTATE) only: a connection or parse error can carry the credentials in its text."""
+    kind = f"{type(exc).__module__}.{type(exc).__name__}"
+    state = getattr(exc, "sqlstate", None)
+    return (f"dispatch failed: {kind}{f' (SQLSTATE {state})' if state else ''}. The exception text is withheld because a "
+            "connection error can carry credentials. Nothing was committed.")
+
+
+def cli(argv: list[str] | None = None) -> int:
+    """The process boundary. `main` keeps raising its named refusals (RuntimeError: ids and counts only, never connection text);
+    here a refusal is printed, and ANY other exception prints its class only."""
+    try:
+        main(argv)
+    except SystemExit as exc:
+        return exc.code if isinstance(exc.code, int) else (0 if exc.code is None else 1)
+    except RuntimeError as exc:                   # the named refusals this script raises itself
+        print(f"dispatch refused: {exc}", file=sys.stderr)
+        return 1
+    except Exception as exc:                      # noqa: BLE001 — the boundary: print the class, never the text
+        print(_safe_failure(exc), file=sys.stderr)
+        return 1
+    return 0
+
+
 if __name__ == "__main__":
-    main()
+    sys.exit(cli())

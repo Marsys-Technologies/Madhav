@@ -218,8 +218,9 @@ def _run_main(harness: _Harness, argv: list[str], capsys):
             os.environ["DATABASE_URL"] = prior_db_url
 
 
-BASE_ARGV = ["--i-am-steward", "--after-settled-1", "--run", "all_classes_1y",
-             "--horizon-start", START, "--horizon-end", END]
+BASE = ["--i-am-steward", "--after-settled-1", "--run", "all_classes_1y",
+        "--horizon-start", START, "--horizon-end", END]
+BASE_ARGV = BASE + ["--execute"]                      # staging for real needs explicit intent (P2-7)
 
 
 def test_staging_is_one_transaction_ending_inert(capsys):
@@ -248,7 +249,7 @@ def test_staging_is_one_transaction_ending_inert(capsys):
 
 def test_dry_run_rolls_back_and_prints_the_plan(capsys):
     h = _Harness()
-    out = _run_main(h, BASE_ARGV + ["--dry-run"], capsys)
+    out = _run_main(h, BASE + ["--dry-run"], capsys)
     assert not h.commits and len(h.rollbacks) == 1
     assert "[dry-run]" in out.err and "nothing written" in out.err
     plan = json.loads(out.out)
@@ -329,3 +330,95 @@ def test_help_runs(capsys):
         _load_fresh().main(["--help"])
     assert exc.value.code == 0
     assert "--i-am-steward" in capsys.readouterr().out
+
+
+# ── round 2 (ASTRA, PR 3098 P2-6 / P2-7 applied to the dispatch): intent, environment, credentials ─────────────────────────────
+
+def test_without_execute_the_default_is_a_dry_run_that_writes_nothing(capsys):
+    h = _Harness()
+    out = _run_main(h, BASE, capsys)                  # no --execute, no --dry-run
+    assert not h.commits and len(h.rollbacks) == 1
+    assert "[dry-run]" in out.err and json.loads(out.out)["asset_id"] == "ka_gochara_v5"
+
+
+def test_only_execute_commits(capsys):
+    h = _Harness()
+    _run_main(h, BASE + ["--execute"], capsys)
+    assert len(h.commits) == 1 and not h.rollbacks
+
+
+def test_dry_run_and_execute_are_mutually_exclusive(capsys):
+    h = _Harness()
+    with pytest.raises(SystemExit) as exc:
+        _run_main(h, BASE + ["--dry-run", "--execute"], capsys)
+    assert exc.value.code == 2 and h.statements == []
+
+
+def test_execute_still_needs_both_steward_flags(capsys):
+    h = _Harness()
+    with pytest.raises(SystemExit) as exc:
+        _run_main(h, ["--run", "all_classes_1y", "--horizon-start", START, "--horizon-end", END, "--execute"], capsys)
+    assert exc.value.code == 2 and h.statements == []
+
+
+def _run_cli(harness, argv, capsys, *, connect_error=None, database_url="postgresql://fake/fake"):
+    fake_psycopg = types.ModuleType("psycopg")
+    fake_rows = types.ModuleType("psycopg.rows")
+    fake_rows.dict_row = object()
+    fake_psycopg.rows = fake_rows
+    connects = []
+
+    def connect(*a, **k):
+        connects.append(a)
+        if connect_error:
+            raise connect_error
+        return harness.conn
+    fake_psycopg.connect = connect
+    saved = {k: v for k, v in sys.modules.items() if k.startswith("psycopg")}
+    prior = os.environ.get("DATABASE_URL")
+    try:
+        sys.modules["psycopg"], sys.modules["psycopg.rows"] = fake_psycopg, fake_rows
+        if database_url is None:
+            os.environ.pop("DATABASE_URL", None)
+        else:
+            os.environ["DATABASE_URL"] = database_url
+        code = _load_fresh().cli(argv)
+        return code, capsys.readouterr(), connects
+    finally:
+        for name in ("psycopg", "psycopg.rows"):
+            sys.modules.pop(name, None)
+        sys.modules.update(saved)
+        if prior is None:
+            os.environ.pop("DATABASE_URL", None)
+        else:
+            os.environ["DATABASE_URL"] = prior
+
+
+def test_the_database_url_comes_only_from_the_process_environment(capsys):
+    h = _Harness()
+    code, streams, connects = _run_cli(h, BASE_ARGV, capsys, database_url=None)
+    assert code == 2 and connects == [] and "DATABASE_URL is not set" in streams.err
+    source = DISPATCH.read_text(encoding="utf-8")
+    assert ".env.local" not in source.replace("no longer reads `.env.local`", "") and "open(" not in source
+
+
+def test_a_connection_error_prints_the_class_and_never_the_text(capsys):
+    """Codex P2-6: a malformed-URI error carries the password token; the boundary prints the class only."""
+    h = _Harness()
+    code, streams, _ = _run_cli(h, BASE_ARGV, capsys,
+                                connect_error=ValueError("invalid percent-encoding in postgresql://svc:hunter2-secret@db.example/prod"))
+    text = streams.err + streams.out
+    assert code == 1 and "ValueError" in streams.err and "hunter2" not in text and "postgresql://" not in text
+
+
+def test_a_named_refusal_is_printed_and_exits_one(capsys):
+    h = _Harness(dependents=[{"asset_id": "ka_some_dependent"}])
+    code, streams, _ = _run_cli(h, BASE_ARGV, capsys)
+    assert code == 1 and "dispatch refused" in streams.err and "ka_some_dependent" in streams.err
+    assert not h.commits
+
+
+def test_the_cli_keeps_the_steward_exit_code(capsys):
+    h = _Harness()
+    code, streams, connects = _run_cli(h, ["--run", "all_classes_1y", "--horizon-start", START, "--horizon-end", END], capsys)
+    assert code == 2 and connects == []
