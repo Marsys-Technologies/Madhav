@@ -44,8 +44,9 @@ _SL = _W._validate_test_slice({"schema": _W.TEST_SLICE_SCHEMA, "run": "one_class
                                "classes": [_W.SCORED_CLASSES[0]]})
 STAMP = {"stored_scope": _W.TEST_SLICE_SCOPE, "test_slice": _W._slice_component(_SL)}      # exactly what the writer stamps
 HORIZON = types.SimpleNamespace(lower=_SL.horizon[0], upper=_SL.horizon[1])
-STAMPED = {"status": "candidate", "input_generation_vector": STAMP, "horizon": HORIZON}
-UNSTAMPED = {"status": "candidate", "input_generation_vector": {"stored_scope": "stored_non_moon"}, "horizon": HORIZON}
+MANIFEST_ID = str(uuid.uuid4())
+STAMPED = {"manifest_id": MANIFEST_ID, "status": "candidate", "input_generation_vector": STAMP, "horizon": HORIZON}
+UNSTAMPED = {"manifest_id": MANIFEST_ID, "status": "candidate", "input_generation_vector": {"stored_scope": "stored_non_moon"}, "horizon": HORIZON}
 
 
 def _test_run(rid=RUN_1, **kw):
@@ -57,7 +58,8 @@ class _Harness:
                  foreign_on_owned=None, elsewhere=None, receipts="linked", legacy=None, absent=(), manifest="stamped", rows="default",
                  registry_row="default", fail_on=None, connect_error=None, snapshot="consistent", inventory_mismatch=0,
                  registry_active=False, freshness_elsewhere=0, catalog_status="CURRENT", dependents=None, evidence=None,
-                 evidence_after=None, commit_error=None, rollback_error=None, retention="default"):
+                 evidence_after=None, commit_error=None, rollback_error=None, retention="default", pids=None, lock_held=1,
+                 references=None, run_manifests=None):
         self.statements: list[str] = []
         self.params: list[tuple] = []
         self.commits = self.rollbacks = 0
@@ -81,7 +83,13 @@ class _Harness:
         self.retention = ([{"id": RUN_1, "created_at": "2026-10-01 10:00:00+00", "secs": 80 * 86400.0}]
                           if retention == "default" else retention)
         self.flipped = False
+        self.deleted = False
         self.end_state_calls = 0
+        self.pids = list(pids) if pids else None
+        self.lock_held = lock_held
+        self.references = references or {}
+        self.rollback_at = []
+        self.run_manifests = run_manifests or []
         harness = self
 
         class FakeCur:
@@ -92,14 +100,18 @@ class _Harness:
                 self._last, self._params = flat, params
                 if "SET is_active = false" in flat:
                     harness.flipped = True
+                if flat.startswith("DELETE"):
+                    harness.deleted = True
                 if flat.startswith("SELECT catalog_status"):
                     harness.end_state_calls += 1
+                if "pg_backend_pid() AS pid" in flat:
+                    harness.pid_reads = getattr(harness, "pid_reads", 0) + 1
                 if harness.fail_on and harness.fail_on in flat:
                     raise Exception("could not connect: postgresql://svc:hunter2-secret@db.example/prod refused")
 
             def _evidence(self):
                 # the end-state query: rows before the deletes, `evidence_after` (when given) after them
-                if harness.evidence_after is not None and harness.flipped:
+                if harness.evidence_after is not None and harness.deleted:
                     return harness.evidence_after
                 return harness.evidence
 
@@ -123,12 +135,22 @@ class _Harness:
                     return [r for r in self._evidence() if r.get("kind") == "run_asset"]
                 if "EXTRACT(EPOCH FROM" in s:
                     return harness.retention
+                if "SELECT id, plan_manifest, plan_manifest_digest FROM build_runs" in s:
+                    return harness.run_manifests
+                if "FROM pg_constraint c" in s:
+                    parent = self._params[0].split(".")[1]
+                    return [{"tbl": t, "col": c, "action": a} for (t, c, a, _n) in harness.references.get(parent, [])]
                 return []
 
             def fetchone(self):
                 s = self._last
                 if "pg_try_advisory_lock" in s:
                     return {"got": harness.lock_got}
+                if "pg_backend_pid() AS pid" in s:
+                    i = harness.pid_reads - 1
+                    return {"pid": harness.pids[min(i, len(harness.pids) - 1)] if harness.pids else 4242}
+                if "FROM pg_locks" in s:
+                    return {"n": harness.lock_held}
                 if "to_regclass" in s:
                     table = self._params[0].split(".")[1]
                     return {"r": None if table in harness.absent else f"public.{table}"}
@@ -149,7 +171,7 @@ class _Harness:
                     if harness.registry_active and not harness.flipped:
                         row["is_active"] = True
                     return row
-                if "SELECT status, input_generation_vector, horizon FROM kala_gochara_publication" in s:
+                if "input_generation_vector, horizon FROM kala_gochara_publication" in s:
                     return harness.manifest
                 if "FROM ka_gochara_search_input_snapshot s JOIN kala_gochara_publication p" in s:
                     return harness.snapshot
@@ -160,6 +182,11 @@ class _Harness:
                 m = re.search(r"count\(\*\) AS n FROM (\w+) WHERE", s)
                 if m:
                     table = m.group(1)
+                    if "ANY(%s::uuid[])" in s:
+                        for refs in harness.references.values():
+                            for (t, c, a, n) in refs:
+                                if t == table:
+                                    return {"n": n}
                     if table in teardown_mod.LEGACY_GUARD_TABLES:
                         return {"n": harness.legacy.get(table, 0)}
                     return {"n": harness.rows.get(table, 0)}
@@ -178,7 +205,8 @@ class _Harness:
 
             def rollback(self):
                 harness.rollbacks += 1
-                if harness.rollback_error and harness.rollbacks == 1:
+                harness.rollback_at.append(len(harness.statements))
+                if harness.rollback_error and harness.rollbacks == 4:
                     raise harness.rollback_error
 
             def close(self):
@@ -260,8 +288,7 @@ def test_execute_happy_path_one_transaction_in_dependency_order_registry_kept():
         else:
             assert params == (CHART_ID, "5.0") and "chart_id = %s AND generation = %s" in s
     assert not any("DELETE FROM asset_registry" in s for s in h.statements)
-    flips = [s for s in h.statements if "SET is_active" in s]
-    assert len(flips) == 1 and "is_active = false" in flips[0]
+    assert not any("SET is_active" in s for s in h.statements)        # B2: an already-inert row is never updated
 
 
 def test_the_locks_are_taken_before_any_ownership_check_and_in_the_orchestrators_order():
@@ -270,12 +297,14 @@ def test_the_locks_are_taken_before_any_ownership_check_and_in_the_orchestrators
     h = _Harness()
     _run(h)
     s = h.statements
-    assert "pg_try_advisory_lock(hashtext(%s))" in s[0] and h.params[0] == (CHART_ID,)
-    assert "set_config('lock_timeout'" in s[1] and h.params[1] == (teardown_mod.LOCK_TIMEOUT,)
-    assert "ka_gochara_lock_chart" in s[2] and h.params[2] == (CHART_ID,)
-    assert "status = 'published'" in s[3]                              # the first check comes after all three
+    assert all("pg_backend_pid() AS pid" in x for x in s[:3])           # the direct-connection check comes first (B6)
+    assert "pg_try_advisory_lock(hashtext(%s))" in s[3] and h.params[3] == (CHART_ID,)
+    assert "FROM pg_locks" in s[4]                                      # the lock is held by THIS backend
+    assert "set_config('lock_timeout'" in s[5] and h.params[5] == (teardown_mod.LOCK_TIMEOUT,)
+    assert "ka_gochara_lock_chart" in s[6] and h.params[6] == (CHART_ID,)
+    assert "status = 'published'" in s[7]                              # the first check comes after all of them
     first_delete = next(i for i, x in enumerate(s) if x.startswith("DELETE"))
-    assert first_delete > 3 and h.commits == 1
+    assert first_delete > 7 and h.commits == 1
 
 
 def test_a_held_orchestrator_lock_refuses_before_anything_is_checked_or_deleted():
@@ -425,7 +454,7 @@ def _comp(**changes):
 ], ids=["scope_only", "component_only", "bad_run", "no_classes", "empty_class_name", "unscored_class", "bogus_horizon",
         "naive_horizon", "wrong_schema", "wrong_digest", "extra_field"])
 def test_a_stamp_is_validated_by_the_writers_own_validator_and_digest(vector, why):
-    h = _Harness(manifest={"status": "candidate", "input_generation_vector": vector, "horizon": HORIZON})
+    h = _Harness(manifest={"manifest_id": MANIFEST_ID, "status": "candidate", "input_generation_vector": vector, "horizon": HORIZON})
     with pytest.raises(teardown_mod.TeardownRefused, match=re.escape(why)):
         _run(h)
     assert h.deletes() == []
@@ -441,7 +470,7 @@ def test_the_stamp_is_validated_with_the_writers_function_not_a_second_implement
 
 def test_the_manifests_horizon_must_be_the_stamps_horizon():
     other = types.SimpleNamespace(lower=_SL.horizon[0], upper=_SL.horizon[1].replace(year=2025))
-    h = _Harness(manifest={"status": "candidate", "input_generation_vector": STAMP, "horizon": other})
+    h = _Harness(manifest={"manifest_id": MANIFEST_ID, "status": "candidate", "input_generation_vector": STAMP, "horizon": other})
     with pytest.raises(teardown_mod.TeardownRefused, match="horizon is not the stamp"):
         _run(h)
     assert h.deletes() == []
@@ -573,7 +602,7 @@ def test_registry_row_missing_is_a_loud_failure_even_in_a_dry_run():
 def test_a_dry_run_runs_the_same_statements_as_an_execution_and_only_the_last_step_differs(capsys):
     """Codex round 2 P2 ruling: both modes run the SAME statements and validation in the same transaction; the dry run then rolls
     back, with zero commits. The statement lists are identical."""
-    dry, run = _Harness(), _Harness()
+    dry, run = _Harness(registry_active=True), _Harness(registry_active=True)
     _run(dry, dry_run=True)
     _run(run, dry_run=False)
     assert dry.statements == run.statements and dry.params == run.params
@@ -838,7 +867,7 @@ def test_a_failure_AT_the_commit_is_reported_as_an_unknown_outcome_never_as_noth
     assert "COMMIT OUTCOME UNKNOWN" in text and "may or may not have committed" in text
     assert "ROLLBACK CONFIRMED" not in text and "changed nothing" not in text and "Nothing was committed" not in text
     assert "hunter2" not in text
-    assert h.commits == 1 and h.rollbacks == 0                                    # no rollback was attempted after the COMMIT went out
+    assert h.commits == 1 and h.rollbacks == 3                                    # only the three pid-check rollbacks: none after the COMMIT went out
 
 
 def test_a_failed_rollback_is_reported_as_not_confirmed(capsys):
@@ -860,3 +889,271 @@ def test_a_named_refusal_reports_its_confirmed_rollback(capsys):
 def test_no_message_in_the_script_can_say_nothing_was_committed_without_a_confirmed_rollback():
     source = SCRIPT.read_text(encoding="utf-8")
     assert "Nothing was committed" not in source and "nothing was committed" not in source
+
+
+# ── Stream B additions (TEARDOWN-B-ADD): B2 B3 B4 B5 B6 B7 ───────────────────────────────────────────────────────────────────────
+
+def test_b2_an_already_inert_registry_row_is_not_updated_and_an_active_one_is_updated_once():
+    inert, active = _Harness(registry_active=False), _Harness(registry_active=True)
+    _run(inert)
+    _run(active)
+    assert not [x for x in inert.statements if "UPDATE asset_registry" in x]
+    assert len([x for x in active.statements if "UPDATE asset_registry SET is_active = false" in x]) == 1
+
+
+def test_b6_a_changing_backend_pid_across_transactions_is_refused_before_the_lock_is_even_taken():
+    """Through a transaction-mode pooler the session advisory lock silently holds nothing."""
+    h = _Harness(pids=[101, 101, 202])
+    with pytest.raises(teardown_mod.TeardownRefused, match=r"\[101, 101, 202\].*pooled connection"):
+        _run(h)
+    assert not any("pg_try_advisory_lock" in x for x in h.statements) and h.deletes() == []
+
+
+def test_b6_the_pid_is_read_in_three_separate_transactions():
+    h = _Harness()
+    _run(h)
+    reads = [i for i, x in enumerate(h.statements) if "pg_backend_pid() AS pid" in x]
+    assert len(reads) == 3
+    assert len([r for r in h.rollback_at if r <= reads[2] + 1]) >= 3            # each read is followed by a rollback (a transaction end)
+
+
+def test_b6_a_lock_not_held_by_the_backend_running_the_transaction_is_refused():
+    h = _Harness(lock_held=0)
+    with pytest.raises(teardown_mod.TeardownRefused, match="not held by the backend running this transaction"):
+        _run(h)
+    assert h.deletes() == []
+
+
+def test_b6_the_runbook_requires_a_direct_connection():
+    runbook = (REPO / "00_ARCHITECTURE/briefs/pravaha/V5_SMALLTEST_TEARDOWN_RUNBOOK_v1_0.md").read_text(encoding="utf-8")
+    assert "DIRECT connection" in runbook and "pooler" in runbook
+    assert "A DIRECT CONNECTION IS REQUIRED" in teardown_mod.__doc__
+
+
+def test_b7_the_docstring_does_not_claim_the_locks_exclude_the_watchdog():
+    doc = teardown_mod.__doc__
+    assert "Neither excludes the cockpit WATCHDOG" in doc and "takes no advisory lock" in doc
+
+
+@pytest.mark.parametrize("parent, refs, match", [
+    ("build_runs", [("conversations", "archived_by_run_id", "n", 2)], r"conversations\.archived_by_run_id \(2 row\(s\), ON DELETE SET NULL\)"),
+    ("build_runs", [("brahma_prospective_ledger", "superseded_by_run_id", "n", 1), ("mimamsa_predictions", "run_id", "n", 4)],
+     r"brahma_prospective_ledger.*mimamsa_predictions"),
+    ("kala_gochara_publication", [("kala_gochara_contacts", "input_generation_vector_id", "a", 3)],
+     r"kala_gochara_contacts\.input_generation_vector_id \(3 row\(s\), ON DELETE NO ACTION\)"),
+], ids=["conversations", "ledgers", "legacy_contacts_on_the_manifest"])
+def test_b4_b5_other_references_to_an_owned_run_or_the_manifest_are_found_from_the_catalog_and_named(parent, refs, match):
+    h = _Harness(references={parent: refs})
+    with pytest.raises(teardown_mod.TeardownRefused, match=match):
+        _run(h)
+    assert h.deletes() == [] and h.commits == 0
+
+
+def test_b4_the_references_come_from_the_catalog_not_a_hardcoded_list_and_skip_what_the_script_deletes_itself():
+    h = _Harness()
+    _run(h)
+    queries = [x for x in h.statements if "FROM pg_constraint c" in x]
+    assert len(queries) == 2 and "c.confrelid = %s::regclass" in queries[0]
+    positions = [i for i, x in enumerate(h.statements) if "FROM pg_constraint c" in x]
+    parents = [h.params[i][0] for i in positions]
+    assert parents == ["public.build_runs", "public.kala_gochara_publication"]
+    # the receipts and the run-asset rows reference the runs but are deleted here, so they are not 'other' references
+    h2 = _Harness(references={"build_runs": [("build_run_assets", "run_id", "c", 9), ("asset_provenance_receipts", "build_id", "n", 9)]})
+    _run(h2)
+    assert h2.commits == 1
+    h3 = _Harness(references={"kala_gochara_publication": [("ka_gochara_search_input_snapshot", "manifest_id", "a", 5)]})
+    _run(h3)                                                        # a table this script deletes first is not an obstacle
+    assert h3.commits == 1
+
+
+def test_b3_every_table_the_script_touches_is_in_the_documented_privilege_list():
+    """The list a real-database test grants EXACTLY. A table the script starts to read or delete that is not in it fails here."""
+    h = _Harness(registry_active=True)
+    _run(h)
+    rp = teardown_mod.REQUIRED_PRIVILEGES
+    allowed_read = set(rp["select_delete"]) | set(rp["select"])
+    deleted = {re.match(r"DELETE FROM (\w+)", x).group(1) for x in h.statements if x.startswith("DELETE")}
+    assert deleted <= set(rp["select_delete"]), deleted - set(rp["select_delete"])
+    read = set()
+    for x in h.statements:
+        read |= {t for t in re.findall(r"(?:FROM|JOIN)\s+([a-z_][a-z0-9_]*)", x)}
+    read -= {"pg_locks", "pg_constraint", "pg_attribute", "build", "r", "s", "p", "i"}
+    assert {t for t in read if not t.startswith("(")} <= allowed_read | set(rp["when_registry_active"]), \
+        sorted(read - allowed_read)
+    assert any("UPDATE asset_registry" in x for x in h.statements)             # the conditional privilege the list names
+    assert "UPDATE(is_active)" in rp["when_registry_active"]["asset_registry"]
+    assert "ka_gochara_lock_chart(uuid)" in rp["execute"]
+    verification = {"ka_gochara_eval_window_verification", "ka_gochara_search_inventory_verification"}
+    assert not verification & (set(rp["select_delete"]) | set(rp["select"]))   # removed by cascade: no privilege needed
+
+
+def test_b3_the_runbook_names_every_object_in_the_documented_privilege_list():
+    """One list, two statements of it: a table or function added to REQUIRED_PRIVILEGES must appear in the runbook's table."""
+    runbook = (REPO / "00_ARCHITECTURE/briefs/pravaha/V5_SMALLTEST_TEARDOWN_RUNBOOK_v1_0.md").read_text(encoding="utf-8")
+    rp = teardown_mod.REQUIRED_PRIVILEGES
+    names = set(rp["select_delete"]) | set(rp["select"]) | {fn.split("(")[0] for fn in rp["execute"]}
+    missing = sorted(n for n in names if n not in runbook)
+    assert not missing, f"the runbook's privilege table omits {missing}"
+
+
+# ── Codex round 3 (v1.2): items 1 to 5 ───────────────────────────────────────────────────────────────────────────────────────────
+
+def _original_marker_stamp():
+    """A marker the WRITER accepts in a non-canonical form (Z timestamps, classes in reverse order) and the stamp the writer would store."""
+    marker = {"schema": _W.TEST_SLICE_SCHEMA, "run": "all_classes_1y",
+              "horizon": ["2025-01-01T00:00:00Z", "2025-01-20T00:00:00Z"], "classes": list(reversed(_W.SCORED_CLASSES))}
+    sliced = _W._validate_test_slice(marker)
+    stamp = {"stored_scope": _W.TEST_SLICE_SCOPE, "test_slice": _W._slice_component(sliced)}
+    horizon = types.SimpleNamespace(lower=sliced.horizon[0], upper=sliced.horizon[1])
+    manifest = {_W.TEST_SLICE_KEY: marker}
+    return marker, sliced, stamp, horizon, manifest
+
+
+def test_item2_a_marker_written_with_z_timestamps_and_another_class_order_is_proved_against_the_original_preimage():
+    """The writer hashes the ORIGINAL marker and stores the normalised component; reconstruction alone would refuse this valid stamp."""
+    marker, sliced, stamp, horizon, manifest = _original_marker_stamp()
+    assert stamp["test_slice"]["marker_digest"] == sliced.digest
+    rebuilt = {k: stamp["test_slice"][k] for k in ("schema", "run", "horizon", "classes")}
+    assert _W._validate_test_slice(rebuilt).digest != sliced.digest                    # the reconstruction's digest is NOT the stamp's
+    h = _Harness(manifest={"manifest_id": MANIFEST_ID, "status": "candidate", "input_generation_vector": stamp, "horizon": horizon},
+                 run_manifests=[{"id": RUN_1, "plan_manifest": manifest, "plan_manifest_digest": _W._manifest_digest(manifest)}])
+    _run(h)
+    assert h.commits == 1
+
+
+def test_item2_the_same_stamp_without_a_surviving_run_row_is_refused_and_the_refusal_says_why():
+    _marker, _sliced, stamp, horizon, _manifest = _original_marker_stamp()
+    h = _Harness(manifest={"manifest_id": MANIFEST_ID, "status": "candidate", "input_generation_vector": stamp, "horizon": horizon})
+    with pytest.raises(teardown_mod.TeardownRefused, match=r"original marker preimage could not prove it \(no owned run row survives\).*reconstruction"):
+        _run(h)
+    assert h.deletes() == []
+
+
+@pytest.mark.parametrize("tamper, why", [
+    ("digest", "does not match its plan_manifest_digest"),
+    ("other_marker", "is not the stamp's"),
+    ("no_marker", "carries no slice marker"),
+], ids=["digest_mismatch", "a_different_marker", "no_marker_in_the_run"])
+def test_item2_a_surviving_run_row_that_does_not_prove_the_stamp_does_not_rescue_it(tamper, why):
+    marker, _sliced, stamp, horizon, manifest = _original_marker_stamp()
+    digest = _W._manifest_digest(manifest)
+    if tamper == "digest":
+        digest = "0" * 64
+    elif tamper == "other_marker":
+        other = dict(marker, horizon=["2025-01-01T00:00:00Z", "2025-02-01T00:00:00Z"])
+        manifest = {_W.TEST_SLICE_KEY: other}
+        digest = _W._manifest_digest(manifest)
+    else:
+        manifest = {"something_else": 1}
+        digest = _W._manifest_digest(manifest)
+    h = _Harness(manifest={"manifest_id": MANIFEST_ID, "status": "candidate", "input_generation_vector": stamp, "horizon": horizon},
+                 run_manifests=[{"id": RUN_1, "plan_manifest": manifest, "plan_manifest_digest": digest}])
+    with pytest.raises(teardown_mod.TeardownRefused, match=why):
+        _run(h)
+    assert h.deletes() == []
+
+
+def test_item2_a_forged_digest_is_still_refused_even_with_a_surviving_run_row():
+    """The digest comparison is not weakened: a stamp whose digest matches neither the original preimage nor the reconstruction fails."""
+    _marker, _sliced, stamp, horizon, manifest = _original_marker_stamp()
+    forged = {"stored_scope": stamp["stored_scope"], "test_slice": dict(stamp["test_slice"], marker_digest="f" * 64)}
+    h = _Harness(manifest={"manifest_id": MANIFEST_ID, "status": "candidate", "input_generation_vector": forged, "horizon": horizon},
+                 run_manifests=[{"id": RUN_1, "plan_manifest": manifest, "plan_manifest_digest": _W._manifest_digest(manifest)}])
+    with pytest.raises(teardown_mod.TeardownRefused):
+        _run(h)
+    assert h.deletes() == []
+
+
+def test_item2_the_dry_run_listing_says_how_the_stamp_was_proved(capsys):
+    _marker, _sliced, stamp, horizon, manifest = _original_marker_stamp()
+    h = _Harness(manifest={"manifest_id": MANIFEST_ID, "status": "candidate", "input_generation_vector": stamp, "horizon": horizon},
+                 run_manifests=[{"id": RUN_1, "plan_manifest": manifest, "plan_manifest_digest": _W._manifest_digest(manifest)}])
+    _run(h, dry_run=True)
+    assert f"stamp\tproved against the ORIGINAL marker of run {RUN_1}" in capsys.readouterr().out
+    h = _Harness()                                                                    # the default stamp, no run row
+    _run(h, dry_run=True)
+    assert "stamp\tproved by RECONSTRUCTION" in capsys.readouterr().out
+
+
+def test_item2_a_canonically_dispatched_marker_round_trips_through_writer_and_teardown():
+    """Mirror of the dispatch's own pin (PR 3097): skipped until the dispatch script is in this tree."""
+    dispatch_path = SCRIPT.parent / "dispatch_v5_small_test_job.py"
+    if not dispatch_path.exists():
+        pytest.skip("dispatch_v5_small_test_job.py is not in this tree yet (PR 3097); asserted once both are")
+    import dispatch_v5_small_test_job as d
+    marker = d.build_slice_marker(run="all_classes_1y", classes=",".join(reversed(_W.SCORED_CLASSES)),
+                                  horizon_start="2025-04-01T00:00:00Z", horizon_end="2026-04-01T00:00:00Z")
+    sliced = _W._validate_test_slice(marker)
+    vector = {"stored_scope": _W.TEST_SLICE_SCOPE, "test_slice": _W._slice_component(sliced)}
+    problem, source = teardown_mod._stamp_problem(vector, types.SimpleNamespace(lower=sliced.horizon[0], upper=sliced.horizon[1]), [])
+    assert problem is None and "RECONSTRUCTION" in source
+
+
+def test_item3_a_report_that_fails_after_the_commit_keeps_the_confirmed_commit_outcome(capsys, monkeypatch):
+    """Codex round 3 P2: the success print was outside the outcome handling, so a failure there defaulted to 'no transaction'."""
+    import builtins
+    real_print = builtins.print
+
+    def print_that_fails_on_the_success_line(*args, **kwargs):
+        if args and str(args[0]).startswith("[teardown] COMMITTED"):
+            raise BrokenPipeError("stderr is gone")
+        return real_print(*args, **kwargs)
+    h = _Harness()
+    with _patched(h):
+        monkeypatch.setattr(builtins, "print", print_that_fails_on_the_success_line)
+        code = teardown_mod.main(["--execute", "--i-am-steward"])
+        monkeypatch.setattr(builtins, "print", real_print)
+    streams = capsys.readouterr()
+    assert code == 1 and h.commits == 1
+    assert "COMMIT CONFIRMED" in streams.err and "No transaction was opened" not in streams.err and "ROLLBACK CONFIRMED" not in streams.err
+
+
+def test_item3_a_report_that_fails_after_a_dry_run_keeps_the_confirmed_rollback(capsys, monkeypatch):
+    import builtins
+    real_print = builtins.print
+
+    def failing(*args, **kwargs):
+        if args and str(args[0]).startswith("[dry-run]"):
+            raise BrokenPipeError("stderr is gone")
+        return real_print(*args, **kwargs)
+    h = _Harness()
+    with _patched(h):
+        monkeypatch.setattr(builtins, "print", failing)
+        code = teardown_mod.main([])
+        monkeypatch.setattr(builtins, "print", real_print)
+    assert code == 1 and "ROLLBACK CONFIRMED" in capsys.readouterr().err
+
+
+def test_item3_an_unlabelled_failure_never_claims_no_transaction_was_opened(capsys):
+    exc = RuntimeError("something nobody labelled")
+    text = teardown_mod._safe_failure(exc)
+    assert "No transaction was opened" not in text and "was not recorded" in text
+
+
+def test_item4_the_recovery_section_is_marked_not_for_use_and_binds_the_receipt_version():
+    runbook = (REPO / "00_ARCHITECTURE/briefs/pravaha/V5_SMALLTEST_TEARDOWN_RUNBOOK_v1_0.md").read_text(encoding="utf-8")
+    section = runbook[runbook.index("## 3. "):runbook.index("## 4. ")]
+    assert "NOT FOR USE" in section and "until reviewed" in section
+    for needed in ("same locks", "observed_at", "code_digest", "config_digest", "upstream_digest", "partition_digest", "output_digest",
+                   "one transaction", "roll back"):
+        assert needed.lower() in section.lower(), needed
+
+
+def test_item5_the_privilege_recipe_names_the_trigger_side_privileges_and_when_they_apply():
+    runbook = (REPO / "00_ARCHITECTURE/briefs/pravaha/V5_SMALLTEST_TEARDOWN_RUNBOOK_v1_0.md").read_text(encoding="utf-8")
+    section = runbook[runbook.index("## 4. "):runbook.index("## 5. ")]
+    assert "invoker" in section and "nirmana_invalidate_registry_receipts" in section and "only if the registry row is found active" in section
+    assert teardown_mod.REQUIRED_PRIVILEGES["when_registry_active"]["asset_freshness"] == ("SELECT", "UPDATE")
+
+
+def test_the_ownership_proof_and_the_n137_predicate_are_the_shared_modules_not_a_copy():
+    """Codex PR 3097 ruling 2: ONE module for both scripts."""
+    import v5_small_test_shared as shared
+    assert teardown_mod._stamp_problem is shared.stamp_problem and teardown_mod._end_state_problems is shared.end_state_problems
+    assert teardown_mod.TeardownRefused is shared.Refused and teardown_mod.CHAIN_TABLES is shared.CHAIN_TABLES
+    source = SCRIPT.read_text(encoding="utf-8")
+    for definition in ("def _stamp_problem", "def _end_state_problems", "def _generation_rows", "def _writer"):
+        assert definition not in source, f"the teardown re-implements {definition}"
+    assert "v5_small_test_shared.py" in teardown_mod.__doc__
+    shared_source = (SCRIPT.parent / "v5_small_test_shared.py").read_text(encoding="utf-8")
+    assert "_validate_test_slice" in shared_source and "_slice_component" in shared_source

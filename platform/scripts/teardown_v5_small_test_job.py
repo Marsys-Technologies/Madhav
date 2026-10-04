@@ -26,6 +26,13 @@ SYNCHRONISATION
   (`pg_try_advisory_lock(hashtext(chart))`, non-blocking: if a build run holds it, the teardown refuses) and (2) the Gochara
   chart lock `ka_gochara_lock_chart` (transaction-scoped, behind a `lock_timeout` so a competing writer makes the teardown fail
   closed instead of waiting). Both are held to commit; every check below is evaluated INSIDE them.
+  WHAT THE LOCKS DO NOT DO: the advisory lock excludes ORCHESTRATOR build runs (`runner.acquire_chart_lock`) and the chart lock
+  excludes Gochara writers. Neither excludes the cockpit WATCHDOG, which takes no advisory lock and may prune terminal runs at any
+  moment; the script's reads and DELETEs are by id inside one transaction, and a run pruned in between can only make a receipt it
+  had already proven lose its run link, which the same transaction deletes as proven anyway.
+  A DIRECT CONNECTION IS REQUIRED. The orchestrator lock is a SESSION advisory lock; through a transaction-mode pooler (PgBouncer
+  and the like) it silently holds nothing. The script reads `pg_backend_pid()` across separate transactions and refuses if the backend
+  changes, and checks that the lock is held by the backend running the transaction; use the database's own host and port, never a pooler.
 
 REFUSES (loudly, nothing deleted) when ANY of these holds:
   1. the orchestrator exclusion lock or the Gochara chart lock cannot be taken;
@@ -54,15 +61,28 @@ REFUSES (loudly, nothing deleted) when ANY of these holds:
   10. the registry row is active and another chart holds a freshness row for this asset (restoring the row inert fires migration
      596's invalidation across ALL charts; the script refuses rather than stale other charts' projections).
 
+  11. any table (found from the catalog, not a hardcoded list) references an owned `build_runs` row or the manifest and is not one
+     of the tables this script deletes itself: deleting the run would set that reference to NULL (conversations, the prediction and
+     calibration ledgers, ...) and deleting the manifest would fail on a NO ACTION reference (the legacy contacts'
+     `input_generation_vector_id`). Named, with table, column and count, instead of a bare SQLSTATE.
+
 Then deletes, in ONE commit, in this order: provenance receipts and the freshness row of this asset on the chart; build_run_assets
 and build_runs of the exclusively-owned test runs (by id); the asset_throughput row; the OUTPUT CHAIN of (chart, '5.0') in the
 order RecordStore.delete_generation_chain uses; the SEARCH INVENTORY in the order InventoryStore.delete_generation_inventory uses,
-then the input snapshot; the candidate manifest. KEPT: the asset_registry row (restored inert, is_active = false, and verified
-field by field against the migration-1304 small-test shape), the global sky-event substrate, Moon on-demand coverage partitions,
-every other chart, generation and asset.
+then the input snapshot; the candidate manifest. The asset_registry row is KEPT; it is touched ONLY when it is found ACTIVE (then
+restored inert, is_active = false) — a row already inert is not updated, so the role needs no UPDATE on it — and it is verified
+field by field against the migration-1304 small-test shape either way. KEPT as well: the global sky-event substrate, Moon on-demand
+coverage partitions, every other chart, generation and asset.
 
-DATABASE ROLE. The script runs as ONE role; it never assumes the admin role. The privileges it needs, table by table, are in the
-steward runbook above (section "Which role").
+SHARED PROOF. What proves a generation '5.0' candidate is a small-test slice's, and the N-137 end-state predicate, live in ONE module,
+`v5_small_test_shared.py`, imported by this script and by the dispatch (PR 3097): neither carries a second copy.
+
+DATABASE ROLE. The script runs as ONE role; it never assumes the admin role. The privileges it needs are REQUIRED_PRIVILEGES below
+(one list; a real-database test runs the script as a role holding EXACTLY it, and shows a missing grant fails the dry run) and, with the
+runbook's reading of the migrations, in the steward runbook (section "Which role"). The role also needs SELECT on every table the
+catalog discovery (item 11) finds referencing the run or manifest; with the registry row ACTIVE, the registry restore additionally needs
+UPDATE(is_active) on asset_registry and, because migration 596's invalidation trigger fires on a real change, SELECT and UPDATE on
+asset_freshness.
 
 Usage:
   cd <repo-root>/platform
@@ -75,10 +95,16 @@ import argparse
 import os
 import sys
 
-ASSET_ID = "ka_gochara_v5"
-CHART_ID = "482012f1-710e-4a25-994a-93821f5871aa"
-TRIGGERED_BY = "gochara-v5-small-test"
-GENERATION = "5.0"
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))     # the shared proof module sits next to this script
+import v5_small_test_shared as shared  # noqa: E402
+from v5_small_test_shared import (  # noqa: E402,F401  (re-exported: the tests and the runbook read these names here)
+    ASSET_ID, CHAIN_TABLES, CHART_ID, GENERATION, INVENTORY_TABLES, OUTPUT_TABLES, TRIGGERED_BY, Refused)
+
+TeardownRefused = Refused
+_writer, _count, _table_exists = shared.writer, shared.count, shared.table_exists
+_same_instant, _stamp_problem, _stamped_classes = shared.same_instant, shared.stamp_problem, shared.stamped_classes
+_generation_rows, _end_state_problems = shared.generation_rows, shared.end_state_problems
+
 ACTIVE_STATES = ("planned", "running", "paused")
 LOCK_TIMEOUT = "10s"                                       # the chart lock is requested behind this: fail closed, never wait forever
 RETENTION_DAYS = 90                                        # the cockpit watchdog's terminal-run retention (watchdog/route.ts, M-4)
@@ -100,56 +126,24 @@ EXPECTED_REGISTRY_ROW = {
     "estimated_seconds": None,
 }
 
-# (table, extra WHERE) — the order is the deletion order and the dry-run listing order. The chain and inventory orders are
-# the kernel's own (RecordStore.delete_generation_chain, InventoryStore.delete_generation_inventory); a test runs the REAL
-# helpers against a recording connection and compares.
-CHAIN_TABLES = (
-    ("ka_gochara_eval_window", ""),                 # window membership cascades with it
-    ("ka_gochara_relationship_record", ""),         # prerequisites cascade with it
-    ("ka_gochara_contact", ""),                     # ALL of the generation's contacts (orphans and shared ones too)
-    ("kala_gochara_coverage", " AND partition_kind = 'event_class'"),   # last: records / windows reference it
-)
-INVENTORY_TABLES = (
-    ("ka_gochara_search_interval", ""),
-    ("ka_gochara_search_obligation", ""),
-    ("ka_gochara_search_path_pin", ""),
-    ("ka_gochara_search_inventory", ""),            # its verification rows cascade
-    ("ka_gochara_search_input_snapshot", ""),
-)
 MANIFEST_TABLE = ("kala_gochara_publication", "")   # the candidate manifest: last, and only once proven to be the slice's
 GENERATION_TABLES = CHAIN_TABLES + INVENTORY_TABLES + (MANIFEST_TABLE,)
-OUTPUT_TABLES = CHAIN_TABLES + INVENTORY_TABLES     # what "generation output exists" means (the manifest is judged on its own)
 # The legacy v4 ledger tables are NOT written by the v5 writer: GUARD-ONLY. A table that does not exist is skipped (named `absent`
 # in the listing); rows of '5.0' in one are not this test's, and the teardown refuses and names them.
 LEGACY_GUARD_TABLES = ("kala_gochara_windows", "kala_gochara_contacts")
 
-
-class TeardownRefused(RuntimeError):
-    """A named refusal: nothing was deleted. The message holds ids and counts only, never connection text."""
-
-
-def _writer():
-    """The sidecar writer module: its slice validator is the SINGLE implementation of what a valid stamp is."""
-    sidecar = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "python-sidecar"))
-    if sidecar not in sys.path:
-        sys.path.insert(0, sidecar)
-    try:
-        import pipeline.orchestrator.writers.ka_gochara_v5 as writer
-    except Exception as exc:  # an environment without the sidecar deps cannot validate: refuse, never skip
-        raise TeardownRefused(
-            f"cannot import the ka_gochara_v5 writer to validate the slice stamp ({type(exc).__name__}); run this from an "
-            "environment with the sidecar dependencies — the stamp is never accepted unvalidated") from None
-    return writer
-
-
-def _count(cur, sql: str, params: tuple = ()) -> int:
-    cur.execute(sql, params)
-    return int(cur.fetchone()["n"])
-
-
-def _table_exists(cur, table: str) -> bool:
-    cur.execute("SELECT to_regclass(%s) AS r", (f"public.{table}",))
-    return cur.fetchone()["r"] is not None
+#: THE list of what the script needs, by object (schema public). The runbook's table states the same; a real-database test creates a role
+#: holding EXACTLY this and runs the script as it. The two verification tables are deliberately absent: they go by foreign-key cascade.
+REQUIRED_PRIVILEGES = {
+    "select_delete": ("asset_provenance_receipts", "asset_freshness", "build_run_assets", "build_runs", "asset_throughput",
+                      *(t for t, _ in GENERATION_TABLES)),
+    "select": ("ka_gochara_generation_seal", "kala_gochara_authority", "asset_registry", *LEGACY_GUARD_TABLES),
+    "execute": ("ka_gochara_lock_chart(uuid)", "ka_gochara_generation_is_sealed(uuid, text)"),   # the second: the DELETE guards call it (invoker)
+    # only when the registry row is found ACTIVE (a row already inert is not updated): the restore UPDATE and 596's invalidation trigger
+    "when_registry_active": {"asset_registry": ("UPDATE(is_active)",), "asset_freshness": ("SELECT", "UPDATE")},
+}
+#: tables other than these (found from the catalog) that reference an owned run or the manifest are refused by name
+RUN_REFERENCES_SKIP = ("build_run_assets", "asset_provenance_receipts")
 
 
 def _validate_registry_row(cur, *, check_active: bool = True) -> None:
@@ -178,6 +172,24 @@ def _validate_registry_row(cur, *, check_active: bool = True) -> None:
                 "(apply 1304; never edit the row by hand)")
 
 
+def _require_direct_connection(conn) -> None:
+    """The orchestrator lock below is a SESSION advisory lock; through a transaction-mode pooler it silently holds nothing. Read
+    `pg_backend_pid()` in three SEPARATE transactions (each ended by a rollback — the point at which a pooler may hand the next one a
+    different backend) and refuse if it ever changes. Not proof of a direct connection (a quiet pooler can reuse a backend), which is why
+    the runbook also REQUIRES the database's own host and port; it is the check that fails loudly when pooling is in play."""
+    pids = []
+    for _ in range(3):
+        cur = conn.cursor()
+        cur.execute("SELECT pg_backend_pid() AS pid")
+        pids.append(cur.fetchone()["pid"])
+        conn.rollback()
+    if len(set(pids)) != 1:
+        raise TeardownRefused(
+            f"the database backend changed between transactions (pids {pids}): this looks like a pooled connection, through which the "
+            "orchestrator's SESSION advisory lock holds nothing. Nothing was checked or deleted; connect DIRECTLY to the database host "
+            "and port (no PgBouncer or other transaction-mode pooler) — see the runbook")
+
+
 def _take_locks(cur) -> None:
     """(1) the orchestrator's per-chart exclusion lock — the one `acquire_chart_lock` takes for a build run, session-level and
     non-blocking; (2) the Gochara chart lock the writers and the replace take, transaction-scoped, behind a lock_timeout. Both
@@ -187,6 +199,13 @@ def _take_locks(cur) -> None:
         raise TeardownRefused(
             f"the orchestrator's exclusion lock for chart {CHART_ID} is held — a build run (or another operator) is active on "
             "this chart; nothing was checked or deleted")
+    cur.execute(
+        """SELECT count(*) AS n FROM pg_locks WHERE locktype = 'advisory' AND granted AND pid = pg_backend_pid()
+             AND ((classid::bigint << 32) + objid::bigint) = hashtext(%s)::bigint""", (CHART_ID,))
+    if int(cur.fetchone()["n"]) < 1:
+        raise TeardownRefused(
+            "the orchestrator exclusion lock was granted but is not held by the backend running this transaction (a pooled connection?); "
+            "nothing was checked or deleted — connect DIRECTLY to the database host and port, see the runbook")
     cur.execute("SELECT set_config('lock_timeout', %s, true)", (LOCK_TIMEOUT,))
     cur.execute("SELECT public.ka_gochara_lock_chart(%s::uuid)", (CHART_ID,))
 
@@ -201,94 +220,45 @@ def _release_orchestrator_lock(conn) -> None:
         pass
 
 
-def _same_instant(a, b) -> bool:
-    try:
-        return a == b
-    except TypeError:
-        return False
+def _quote(identifier: str) -> str:
+    return '"' + identifier.replace('"', '""') + '"'
 
 
-def _stamp_problem(vector, horizon) -> str | None:
-    """None when the manifest's input vector PROVES a test slice, by the WRITER'S OWN validation: the stamp's marker is rebuilt from
-    the component and validated by `ka_gochara_v5._validate_test_slice` (schema, run, classes among the scored classes, tz-aware
-    ISO horizon, the run's own shape rules), and the component must equal what the writer's `_slice_component` produces for that
-    marker (which includes the marker DIGEST recomputed). The manifest's horizon must be the stamp's horizon."""
-    writer = _writer()
-    if not isinstance(vector, dict):
-        return "the manifest carries no input vector"
-    if vector.get("stored_scope") != writer.TEST_SLICE_SCOPE:
-        return f"stored_scope is {vector.get('stored_scope')!r}, not {writer.TEST_SLICE_SCOPE!r}"
-    comp = vector.get("test_slice")                   # the component key the writer stamps (ka_gochara_v5, the input-vector stamp check)
-    if not isinstance(comp, dict):
-        return "no 'test_slice' component"
-    marker = {"schema": comp.get("schema"), "run": comp.get("run"), "horizon": comp.get("horizon"), "classes": comp.get("classes")}
-    try:
-        sliced = writer._validate_test_slice(marker)
-    except writer.TestSliceRefusal as exc:
-        return f"the stamp's marker fails the writer's own validation ({exc})"
-    except Exception as exc:  # noqa: BLE001 — any other failure to validate is a refusal, never an acceptance
-        return f"the stamp's marker could not be validated ({type(exc).__name__})"
-    if comp != writer._slice_component(sliced):
-        return ("the stamp is not the writer's component for its marker (the marker digest or a normalised field differs from "
-                "what the writer's own _slice_component produces)")
-    if horizon is None or not (_same_instant(getattr(horizon, "lower", None), sliced.horizon[0])
-                               and _same_instant(getattr(horizon, "upper", None), sliced.horizon[1])):
-        return "the manifest's horizon is not the stamp's horizon"
-    return None
-
-
-def _stamped_classes(vector) -> list[str]:
-    return list((vector.get("test_slice") or {}).get("classes") or [])
-
-
-def _generation_rows(cur) -> int:
-    total = 0
-    for table, extra in OUTPUT_TABLES:
-        total += _count(cur, f"SELECT count(*) AS n FROM {table} WHERE chart_id = %s AND generation = %s{extra}",
-                        (CHART_ID, GENERATION))
-    return total
-
-
-def _end_state_problems(cur) -> list[str]:
-    """The Nirmana N-137 end state for the v5 asset (definitions.ts, NIRMANA_STAGED_INERT_CANDIDATE_RULES and runtimeEvidenceSql):
-    catalog_status not RETIRED, nothing depends on the asset, and NO receipt or build_run_assets row of the asset on ANY chart
-    from a run that is not a 'gochara-v5-small-test' run (a receipt whose run is gone reads as non-test). Returned as named
-    problems; empty means the monitor would still exclude the asset as an unsealed test candidate."""
-    problems: list[str] = []
-    cur.execute("SELECT catalog_status FROM asset_registry WHERE asset_id = %s", (ASSET_ID,))
-    row = cur.fetchone()
-    if row is None:
-        problems.append(f"asset_registry row for {ASSET_ID} is missing")
-    elif row["catalog_status"] == "RETIRED":
-        problems.append(f"the registry row's catalog_status is RETIRED (rule N-137 requires it not to be)")
-    cur.execute("SELECT asset_id FROM asset_registry WHERE %s = ANY(depends_on)", (ASSET_ID,))
-    dependents = [r["asset_id"] for r in cur.fetchall()]
-    if dependents:
-        problems.append(f"asset(s) {dependents} list {ASSET_ID} in depends_on (rule N-137: nothing may depend on it)")
+def _referencing_rows(cur, parent: str, ids: list[str], skip_tables: set[str]) -> list[str]:
+    """Every foreign key INTO `public.<parent>` from the catalog (single-column keys), minus the tables this script deletes itself:
+    the rows that reference `ids`, as named problems (table, column, delete action, count). The catalog is the list, so a reference added
+    by a later migration is found without anyone remembering to add it here."""
+    if not ids:
+        return []
     cur.execute(
-        """SELECT r.chart_id, count(*) AS n FROM asset_provenance_receipts r
-           WHERE r.asset_id = %s
-             AND NOT EXISTS (SELECT 1 FROM build_runs b WHERE b.id = r.build_id AND b.triggered_by = %s)
-           GROUP BY r.chart_id""", (ASSET_ID, TRIGGERED_BY))
-    receipts = cur.fetchall()
-    if receipts:
-        problems.append("receipts of the asset from a non-test run (or with no run link) exist on chart(s) "
-                        f"{[(str(r['chart_id']), int(r['n'])) for r in receipts]}")
-    cur.execute(
-        """SELECT b0.chart_id, count(*) AS n FROM build_run_assets a LEFT JOIN build_runs b0 ON b0.id = a.run_id
-           WHERE a.asset_id = %s
-             AND NOT EXISTS (SELECT 1 FROM build_runs b WHERE b.id = a.run_id AND b.triggered_by = %s)
-           GROUP BY b0.chart_id""", (ASSET_ID, TRIGGERED_BY))
-    run_assets = cur.fetchall()
-    if run_assets:
-        problems.append("build_run_assets rows of the asset from a non-test run exist on chart(s) "
-                        f"{[(str(r['chart_id']), int(r['n'])) for r in run_assets]}")
-    return problems
+        """SELECT c.conrelid::regclass::text AS tbl, a.attname AS col, c.confdeltype AS action
+           FROM pg_constraint c JOIN pg_attribute a ON a.attrelid = c.conrelid AND a.attnum = c.conkey[1]
+           WHERE c.contype = 'f' AND c.confrelid = %s::regclass AND cardinality(c.conkey) = 1
+           ORDER BY 1, 2""", (f"public.{parent}",))
+    found = []
+    for ref in cur.fetchall():
+        table = ref["tbl"][len("public."):] if ref["tbl"].startswith("public.") else ref["tbl"]
+        if table.strip('"') in skip_tables:
+            continue
+        n = _count(cur, f"SELECT count(*) AS n FROM {ref['tbl']} WHERE {_quote(ref['col'])} = ANY(%s::uuid[])", (ids,))
+        if n:
+            action = {"n": "SET NULL", "c": "CASCADE", "a": "NO ACTION", "r": "RESTRICT", "d": "SET DEFAULT"}.get(ref["action"], ref["action"])
+            found.append(f"{table}.{ref['col']} ({n} row(s), ON DELETE {action})")
+    return found
 
 
-def _refusal_checks(cur) -> list[str]:
+class Checked:
+    """What the refusal checks established: the runs this teardown may delete, whether the registry row was found active, and notes for
+    the listing (how the stamp was proved)."""
+
+    def __init__(self, owned: list[str], registry_active: bool, notes: list[str]):
+        self.owned, self.registry_active, self.notes = owned, registry_active, notes
+
+
+def _refusal_checks(cur) -> "Checked":
     """Every guard, fail-closed, evaluated INSIDE the locks. Raises TeardownRefused; nothing is deleted. Returns the ids of the
-    small-test runs this teardown may delete (every one proven to be exclusively this asset's)."""
+    small-test runs this teardown may delete (every one proven to be exclusively this asset's) and whether the registry row was found
+    ACTIVE (only then is it updated)."""
     cur.execute(
         """SELECT manifest_id FROM kala_gochara_publication
            WHERE chart_id = %s AND generation = %s AND status = 'published'""",
@@ -318,6 +288,7 @@ def _refusal_checks(cur) -> list[str]:
             f"kala_gochara_authority names '5.0' as the authoritative_generation for chart {CHART_ID} — a serving "
             "generation is never torn down")
 
+    notes: list[str] = []
     # ACTIVE: any run on the chart, whatever its scope or assets
     cur.execute("SELECT id, state FROM build_runs WHERE chart_id = %s AND state IN ('planned', 'running', 'paused')", (CHART_ID,))
     active = cur.fetchall()
@@ -389,6 +360,14 @@ def _refusal_checks(cur) -> list[str]:
             f"provenance receipt(s) of {ASSET_ID} on chart {CHART_ID} belong to run(s) {foreign_links} that are not "
             f"'{TRIGGERED_BY}' runs of this asset — those are not small-test evidence")
 
+    # OTHER REFERENCES to the owned runs, found from the catalog: deleting a run sets every ON DELETE SET NULL reference to NULL
+    # (conversations, the prediction and calibration ledgers, ...) and a NO ACTION one makes the DELETE fail; name them instead
+    run_refs = _referencing_rows(cur, "build_runs", owned, set(RUN_REFERENCES_SKIP))
+    if run_refs:
+        raise TeardownRefused(
+            f"other tables reference the small-test run(s) {owned}: {run_refs} — deleting the runs would change or fail on them; "
+            "this script only removes the small test's own rows; resolve them by hand")
+
     # LEGACY ledger tables: not the v5 writer's; rows of '5.0' are refused and named, never deleted
     found_legacy = {}
     for table in LEGACY_GUARD_TABLES:
@@ -402,55 +381,19 @@ def _refusal_checks(cur) -> list[str]:
             f"the legacy ledger table(s) {found_legacy} hold '5.0' rows for chart {CHART_ID}: the v5 writer writes none, so they "
             "are not this test's — this script never touches them; resolve them by hand")
 
-    # OWNERSHIP of the generation's output: the CURRENT manifest must PROVE this test's slice, and the stored snapshot and inventory
-    # headers must carry the SAME vector identity as that manifest
-    rows = _generation_rows(cur)
-    cur.execute("SELECT status, input_generation_vector, horizon FROM kala_gochara_publication WHERE chart_id = %s AND generation = %s",
-                (CHART_ID, GENERATION))
-    manifest = cur.fetchone()
-    if rows or manifest:
-        if manifest is None:
+    # OWNERSHIP of the generation's output: the SHARED proof (v5_small_test_shared, the one copy the dispatch uses too): the CURRENT
+    # manifest must PROVE this test's slice, and the stored snapshot and inventory headers must carry the SAME vector identity
+    manifest, _rows = shared.generation_ownership(cur, owned, notes=notes,
+                                                  remedy="re-dispatch the slice (which replaces the chain), then tear down")
+    if manifest is not None:
+        # the manifest is deleted last: any table that references it (found from the catalog) other than the ones this script deletes
+        # first — notably kala_gochara_contacts.input_generation_vector_id, NO ACTION — would make that DELETE fail with a bare SQLSTATE
+        manifest_refs = _referencing_rows(cur, "kala_gochara_publication", [str(manifest["manifest_id"])],
+                                          {t for t, _ in GENERATION_TABLES})
+        if manifest_refs:
             raise TeardownRefused(
-                f"{rows} generation '5.0' output row(s) exist for chart {CHART_ID} with NO manifest — nothing proves they are the "
-                "small test's; this script never touches them")
-        problem = _stamp_problem(manifest["input_generation_vector"], manifest["horizon"])
-        if manifest["status"] != "candidate" or problem:
-            raise TeardownRefused(
-                f"the '5.0' manifest of chart {CHART_ID} is not PROVEN to be a test slice ("
-                f"{'status ' + repr(manifest['status']) if manifest['status'] != 'candidate' else problem}) — a historical "
-                f"'{TRIGGERED_BY}' run never authorises deleting an unproven candidate; {rows} output row(s) are untouched")
-        classes = _stamped_classes(manifest["input_generation_vector"])
-        cur.execute(
-            """SELECT (s.input_generation_vector = p.input_generation_vector) AS same_vector, s.input_digest
-               FROM ka_gochara_search_input_snapshot s
-               JOIN kala_gochara_publication p ON p.chart_id = s.chart_id AND p.generation = s.generation
-               WHERE s.chart_id = %s AND s.generation = %s""", (CHART_ID, GENERATION))
-        snapshot = cur.fetchone()
-        if snapshot is None:
-            if rows:
-                raise TeardownRefused(
-                    f"{rows} generation '5.0' output row(s) exist for chart {CHART_ID} but no input snapshot binds them to the "
-                    "stamped manifest — their origin is unproven; re-dispatch the slice (which replaces the chain), then tear down")
-        else:
-            if snapshot["same_vector"] is not True:
-                raise TeardownRefused(
-                    f"the stored input snapshot of chart {CHART_ID} '5.0' carries a DIFFERENT input vector from the stamped "
-                    "manifest: a later slice stamped the manifest and its snapshot substep has not yet replaced the older output "
-                    "(an interrupted replacement) — the output is not provably this test's. Re-dispatch the slice (which "
-                    "replaces the chain), then tear down")
-            cur.execute(
-                """SELECT count(*) AS n FROM ka_gochara_search_inventory i
-                   JOIN ka_gochara_search_input_snapshot s ON s.chart_id = i.chart_id AND s.generation = i.generation
-                   JOIN kala_gochara_publication p ON p.chart_id = i.chart_id AND p.generation = i.generation
-                   WHERE i.chart_id = %s AND i.generation = %s
-                     AND (i.input_digest <> s.input_digest OR i.horizon <> p.horizon OR NOT (i.event_class = ANY(%s::text[])))""",
-                (CHART_ID, GENERATION, classes))
-            bad = int(cur.fetchone()["n"])
-            if bad:
-                raise TeardownRefused(
-                    f"{bad} inventory header(s) of chart {CHART_ID} '5.0' do not carry the stamped manifest's identity (input "
-                    "digest, horizon, or a class outside the stamp) — the output is not provably this test's; re-dispatch the "
-                    "slice, then tear down")
+                f"other tables reference the '5.0' manifest of chart {CHART_ID}: {manifest_refs} — deleting the manifest would fail "
+                "(or change them); the legacy ledger rows are not this writer's, resolve them by hand")
 
     # THE N-137 END STATE, before anything is deleted (and again, below, before success is claimed)
     # a freshness row elsewhere + an active registry row: the inertness restore fires migration 596's invalidation on ALL charts
@@ -468,7 +411,7 @@ def _refusal_checks(cur) -> list[str]:
     problems = _end_state_problems(cur)
     if problems:
         raise TeardownRefused("the N-137 end state does not hold: " + "; ".join(problems))
-    return owned
+    return Checked(owned, bool(reg is not None and reg["is_active"] is True), notes)
 
 
 def _retention_lines(cur, owned: list[str]) -> list[str]:
@@ -528,6 +471,10 @@ OUTCOME_TEXT = {
     "rolled_back": "ROLLBACK CONFIRMED: this run changed nothing in the database.",
     "rollback_unconfirmed": ("ROLLBACK NOT CONFIRMED: the rollback itself failed. No COMMIT was sent, so the server rolls the "
                              "transaction back when the session ends, but this run did not observe that."),
+    "committed": ("COMMIT CONFIRMED: the transaction COMMITTED; only reporting the result failed afterwards. The deletes are done. Run "
+                  "the dry run to see the state; do not run the execution again."),
+    "unlabelled": ("What happened to the transaction was not recorded for this failure. Run the dry run (it rehearses every check and shows "
+                   "what remains) before any retry."),
     "commit_unknown": ("COMMIT OUTCOME UNKNOWN: the COMMIT statement was sent and no confirmation came back. The transaction may or "
                        "may not have committed. Run the dry run (it rehearses every check and shows what remains) before any retry; "
                        "do not assume either way."),
@@ -538,32 +485,39 @@ def teardown(*, dry_run: bool = True) -> None:
     import psycopg
     import psycopg.rows
 
-    conn = psycopg.connect(os.environ["DATABASE_URL"], row_factory=psycopg.rows.dict_row)
+    try:
+        conn = psycopg.connect(os.environ["DATABASE_URL"], row_factory=psycopg.rows.dict_row)
+    except BaseException as exc:
+        _note_outcome(exc, "no_transaction")
+        raise
     conn.autocommit = False
     cur = conn.cursor()
     phase = "open"                                # open -> committing (COMMIT sent) -> committed
     report: tuple | None = None
     try:
+        _require_direct_connection(conn)                   # refuses a pooled connection (the session lock would hold nothing)
         _take_locks(cur)                                   # BEFORE any ownership check; held to commit / rollback
-        owned = _refusal_checks(cur)
+        checked = _refusal_checks(cur)
+        owned, registry_active = checked.owned, checked.registry_active
         _validate_registry_row(cur, check_active=False)
         retention = _retention_lines(cur, owned)
         counts = _plan_counts(cur, owned)
         # THE SAME STATEMENTS in both modes: the deletes, the registry restore and the end-state validation run in this transaction
         _delete_everything(cur, owned)
-        cur.execute("UPDATE asset_registry SET is_active = false WHERE asset_id = %s", (ASSET_ID,))
+        if registry_active:                                # ONLY a row found active is touched: no UPDATE privilege otherwise needed
+            cur.execute("UPDATE asset_registry SET is_active = false WHERE asset_id = %s", (ASSET_ID,))
         _validate_registry_row(cur)
         post = _end_state_problems(cur)
         if post:
             raise TeardownRefused("the N-137 end state does not hold after the deletes, so success is not claimed: " + "; ".join(post))
         if dry_run:
             conn.rollback()
-            report = ("dry_run", counts, retention)
+            report = ("dry_run", counts, retention + [f"stamp: {n}" for n in checked.notes])
         else:
             phase = "committing"
             conn.commit()
             phase = "committed"
-            report = ("executed", counts, retention)
+            report = ("executed", counts, retention + [f"stamp: {n}" for n in checked.notes])
     except BaseException as exc:
         if phase == "committing":
             _note_outcome(exc, "commit_unknown")
@@ -582,18 +536,22 @@ def teardown(*, dry_run: bool = True) -> None:
         except Exception:
             pass
     kind, counts, retention = report
-    if kind == "dry_run":
-        print(f"[dry-run] the SAME statements an execution runs (locks, checks, every DELETE, the registry restore, the end-state "
-              f"validation) ran for chart {CHART_ID} and were ROLLED BACK — zero commits; pass --execute --i-am-steward to delete:",
-              file=sys.stderr)
-        for name, n in counts.items():
-            print(f"{name}\t{n}")
-        for line in retention:
-            print(f"retention\t{line}")
-        return
-    print(f"[teardown] COMMITTED: removed the small-test run bookkeeping, its provenance receipts and freshness row, the output "
-          f"chain, the search inventory and the candidate manifest for chart {CHART_ID} generation '5.0'; asset_registry row kept "
-          f"and restored to inert (is_active=false) in its migration-1304 shape — one transaction", file=sys.stderr)
+    try:                                          # a failure while REPORTING keeps the outcome that is already known (item 3)
+        if kind == "dry_run":
+            print(f"[dry-run] the SAME statements an execution runs (locks, checks, every DELETE, the registry restore when the row is "
+                  f"active, the end-state validation) ran for chart {CHART_ID} and were ROLLED BACK — zero commits; pass --execute "
+                  f"--i-am-steward to delete:", file=sys.stderr)
+            for name, n in counts.items():
+                print(f"{name}\t{n}")
+            for line in retention:
+                print(f"stamp\t{line[len('stamp: '):]}" if line.startswith("stamp: ") else f"retention\t{line}")
+            return
+        print(f"[teardown] COMMITTED: removed the small-test run bookkeeping, its provenance receipts and freshness row, the output "
+              f"chain, the search inventory and the candidate manifest for chart {CHART_ID} generation '5.0'; asset_registry row kept "
+              f"(restored to inert only if it was found active) in its migration-1304 shape — one transaction", file=sys.stderr)
+    except BaseException as exc:
+        _note_outcome(exc, "committed" if kind == "executed" else "rolled_back")
+        raise
 
 
 def _safe_failure(exc: BaseException) -> str:
@@ -601,7 +559,7 @@ def _safe_failure(exc: BaseException) -> str:
     transaction. 'Unchanged' is claimed only when a rollback was confirmed."""
     kind = f"{type(exc).__module__}.{type(exc).__name__}"
     state = getattr(exc, "sqlstate", None)
-    known = OUTCOME_TEXT.get(getattr(exc, "teardown_outcome", None) or "no_transaction", OUTCOME_TEXT["commit_unknown"])
+    known = OUTCOME_TEXT.get(getattr(exc, "teardown_outcome", None) or "unlabelled", OUTCOME_TEXT["unlabelled"])
     return (f"teardown failed: {kind}{f' (SQLSTATE {state})' if state else ''}. The exception text is withheld because a "
             f"connection error can carry credentials. {known}")
 
@@ -626,7 +584,7 @@ def main(argv: list[str] | None = None) -> int:
     try:
         teardown(dry_run=not args.execute)
     except TeardownRefused as exc:
-        outcome = OUTCOME_TEXT.get(getattr(exc, "teardown_outcome", None) or "no_transaction", OUTCOME_TEXT["commit_unknown"])
+        outcome = OUTCOME_TEXT.get(getattr(exc, "teardown_outcome", None) or "unlabelled", OUTCOME_TEXT["unlabelled"])
         print(f"teardown refused: {exc}\n{outcome}", file=sys.stderr)
         return 1
     except Exception as exc:                       # noqa: BLE001 — the boundary: print the class, never the text

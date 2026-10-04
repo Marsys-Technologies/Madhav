@@ -601,3 +601,178 @@ def test_the_dry_run_prints_the_retention_remaining_for_the_owned_run(tworld, ca
     w.conn.execute("UPDATE public.build_runs SET created_at = now() - interval '91 days'")
     _teardown(w, dry_run=True)
     assert "PAST RETENTION" in capsys.readouterr().out
+
+
+# ── Stream B additions (TEARDOWN-B-ADD): B3 a role holding EXACTLY the documented privileges, B4/B5 catalog references ────────────
+
+ROLE = "td_exact_role"
+
+
+def _grant_documented(w, *, registry_update=False, skip=()):
+    """Grant EXACTLY td.REQUIRED_PRIVILEGES (and, with registry_update, the conditional ones) to ROLE. `skip` names a privilege to leave out
+    as 'table:PRIV' or 'execute:fn' (the missing-grant tests)."""
+    rp, c = td.REQUIRED_PRIVILEGES, w.conn
+    for t in rp["select_delete"]:
+        for priv in ("SELECT", "DELETE"):
+            if f"{t}:{priv}" not in skip and _present(w, t):
+                c.execute(f"GRANT {priv} ON public.{t} TO {ROLE}")
+    for t in rp["select"]:
+        if _present(w, t) and f"{t}:SELECT" not in skip:
+            c.execute(f"GRANT SELECT ON public.{t} TO {ROLE}")
+    for fn in rp["execute"]:
+        if f"execute:{fn}" not in skip:
+            c.execute(f"GRANT EXECUTE ON FUNCTION public.{fn} TO {ROLE}")
+    if registry_update:
+        c.execute(f"GRANT UPDATE (is_active) ON public.asset_registry TO {ROLE}")
+        c.execute(f"GRANT SELECT, UPDATE ON public.asset_freshness TO {ROLE}")
+
+
+@pytest.fixture()
+def exact_role(tworld):
+    w = tworld
+    w.admin.execute(f"DROP ROLE IF EXISTS {ROLE}")
+    w.admin.execute(f"CREATE ROLE {ROLE} LOGIN")
+    # production revokes PUBLIC EXECUTE on the functions its owner creates (migration 1220 grants the builder the guard functions
+    # explicitly for that reason); a freshly built test database leaves PUBLIC EXECUTE in place, which would MASK a missing EXECUTE
+    w.conn.execute("REVOKE EXECUTE ON ALL FUNCTIONS IN SCHEMA public FROM PUBLIC")
+    try:
+        yield w
+    finally:
+        w.conn.execute(f"DROP OWNED BY {ROLE}")
+        w.admin.execute(f"DROP ROLE IF EXISTS {ROLE}")
+
+
+def _teardown_as(w, dry_run=False):
+    from psycopg.conninfo import make_conninfo
+    prior = os.environ.get("DATABASE_URL")
+    os.environ["DATABASE_URL"] = make_conninfo(w.dsn, user=ROLE)
+    try:
+        td.teardown(dry_run=dry_run)
+    finally:
+        if prior is None:
+            os.environ.pop("DATABASE_URL", None)
+        else:
+            os.environ["DATABASE_URL"] = prior
+
+
+def test_b3_the_script_runs_as_a_role_holding_exactly_the_documented_privileges(exact_role, capsys):
+    """The other tests connect as a superuser and prove LOGIC, not privileges. Here the dry run and then the execution run as a role that
+    holds EXACTLY `REQUIRED_PRIVILEGES` (the registry row is inert, so no registry UPDATE is granted)."""
+    w = exact_role
+    _built_stamped_with_test_run(w)
+    _grant_documented(w)
+    before = _snapshot(w)
+    _teardown_as(w, dry_run=True)                                       # the rehearsal succeeds with those privileges alone
+    assert _snapshot(w) == before
+    _teardown_as(w)
+    assert all(n == 0 for n in _counts(w).values())
+    assert w.conn.execute("SELECT count(*) FROM public.asset_provenance_receipts WHERE asset_id = %s", (ASSET,)).fetchone()[0] == 0
+
+
+def test_b2_b3_an_active_registry_row_needs_the_conditional_privileges_and_without_them_the_dry_run_fails(exact_role):
+    w = exact_role
+    _built_stamped_with_test_run(w)
+    w.conn.execute("UPDATE public.asset_registry SET is_active = true WHERE asset_id = %s", (ASSET,))
+    _grant_documented(w)                                                # NOT the conditional UPDATE(is_active)
+    before = _snapshot(w)
+    with pytest.raises(psycopg.errors.InsufficientPrivilege):
+        _teardown_as(w, dry_run=True)
+    assert _snapshot(w) == before
+    _grant_documented(w, registry_update=True)
+    _teardown_as(w, dry_run=True)
+    assert _snapshot(w) == before
+    _teardown_as(w)
+    assert w.conn.execute("SELECT is_active FROM public.asset_registry WHERE asset_id = %s", (ASSET,)).fetchone()[0] is False
+
+
+@pytest.mark.parametrize("skip", ["asset_freshness:DELETE", "asset_provenance_receipts:DELETE", "build_runs:DELETE",
+                                  "kala_gochara_publication:DELETE", "ka_gochara_contact:DELETE", "execute:ka_gochara_lock_chart(uuid)"],
+                         ids=lambda s: s.replace(":", "_").replace("(uuid)", ""))
+def test_b3_a_missing_grant_fails_the_dry_run_and_changes_nothing(exact_role, skip):
+    """The rehearsal runs the real statements, so a missing privilege shows up in the DRY RUN, not at the steward's execution."""
+    w = exact_role
+    _built_stamped_with_test_run(w)
+    _grant_documented(w, skip=(skip,))
+    before = _snapshot(w)
+    with pytest.raises(psycopg.errors.InsufficientPrivilege):
+        _teardown_as(w, dry_run=True)
+    assert _snapshot(w) == before
+
+
+def test_b4_another_table_referencing_an_owned_run_is_found_from_the_catalog_and_named(tworld):
+    """build_runs deletion sets ON DELETE SET NULL references to NULL (conversations, the ledgers, ...): found from pg_constraint, not a list."""
+    w = tworld
+    rid = _slice_run(w)
+    w.conn.execute("CREATE TABLE public.conversations_like (id serial PRIMARY KEY, archived_by_run_id uuid REFERENCES public.build_runs(id) ON DELETE SET NULL)")
+    w.conn.execute("INSERT INTO public.conversations_like (archived_by_run_id) VALUES (%s)", (rid,))
+    _refused_and_untouched(w, r"conversations_like\.archived_by_run_id \(1 row\(s\), ON DELETE SET NULL\)")
+
+
+def test_b5_a_no_action_reference_to_the_manifest_is_named_not_a_bare_sqlstate(tworld):
+    w = tworld
+    _slice_run(w)
+    w.conn.execute("CREATE TABLE public.contacts_like (id serial PRIMARY KEY, input_generation_vector_id uuid REFERENCES public.kala_gochara_publication(manifest_id))")
+    w.conn.execute("INSERT INTO public.contacts_like (input_generation_vector_id) SELECT manifest_id FROM public.kala_gochara_publication WHERE generation = %s", (GEN,))
+    _refused_and_untouched(w, r"contacts_like\.input_generation_vector_id \(1 row\(s\), ON DELETE NO ACTION\)")
+
+
+def test_b6_the_pid_and_lock_checks_pass_on_a_direct_connection(tworld):
+    """On a real direct connection the backend does not change across transactions and the session lock is held by it."""
+    w = tworld
+    _built_stamped_with_test_run(w)
+    _teardown(w, dry_run=True)
+
+
+# ── Codex round 3 (v1.2): items 1 and 2 on a real database ───────────────────────────────────────────────────────────────────────
+
+#: the six foreign keys INTO build_runs that migrations 1120, 1122 and 1123 add (ON DELETE SET NULL), with their real table and column names
+RUN_FKS = (("conversations", "archived_by_run_id"),
+           ("event_chart_state_index", "chart_context_superseded_by_run_id"),
+           ("mimamsa_predictions", "chart_context_superseded_by_run_id"),
+           ("mimamsa_calibration_snapshot", "chart_context_superseded_by_run_id"),
+           ("brahma_prospective_ledger", "chart_context_superseded_by_run_id"),
+           ("brahma_mimamsa_prediction_ledger", "chart_context_superseded_by_run_id"))
+
+
+@pytest.mark.parametrize("table, column", RUN_FKS, ids=[t for t, _ in RUN_FKS])
+def test_item1_each_real_build_runs_foreign_key_is_found_from_the_catalog_and_refused_by_name(tworld, table, column):
+    """Codex round 3 P2: the six real ON DELETE SET NULL references. The list comes from pg_constraint at run time, so a future one is covered."""
+    w = tworld
+    rid = _slice_run(w)
+    w.conn.execute(f"CREATE TABLE public.{table} (id serial PRIMARY KEY, {column} uuid REFERENCES public.build_runs(id) ON DELETE SET NULL)")
+    w.conn.execute(f"INSERT INTO public.{table} ({column}) VALUES (%s)", (rid,))
+    _refused_and_untouched(w, rf"{table}\.{column} \(1 row\(s\), ON DELETE SET NULL\)")
+
+
+def test_item1_an_unreferenced_new_foreign_key_does_not_block(tworld):
+    """A table with such a key but no row pointing at an owned run is not an obstacle (a hardcoded 'any FK blocks' would be wrong too)."""
+    w = tworld
+    _slice_run(w)
+    w.conn.execute("CREATE TABLE public.some_future_table (id serial PRIMARY KEY, built_by uuid REFERENCES public.build_runs(id) ON DELETE SET NULL)")
+    w.conn.execute("INSERT INTO public.some_future_table (built_by) VALUES (NULL)")
+    _teardown(w)
+    assert all(n == 0 for n in _counts(w).values())
+
+
+NON_CANONICAL = dict(MARKER, horizon=[SHORT[0].isoformat().replace("+00:00", "Z"), SHORT[1].isoformat().replace("+00:00", "Z")],
+                     classes=list(reversed(MARKER["classes"])))
+
+
+def test_item2_a_valid_writer_stamp_from_a_non_canonical_marker_is_proved_against_the_original_marker_of_the_run(tworld, capsys):
+    """The writer hashes the marker AS GIVEN (Z timestamps, reversed class order) and stores the normalised component, so the stamp's
+    digest is not the reconstruction's. With the run row alive the proof is the original preimage and the teardown accepts it."""
+    w = tworld
+    rid = _run(w, marker=NON_CANONICAL)
+    _slice_steps(w, rid)
+    _teardown(w, dry_run=True)
+    assert f"stamp\tproved against the ORIGINAL marker of run {rid}" in capsys.readouterr().out
+    _teardown(w)
+    assert all(n == 0 for n in _counts(w).values())
+
+
+def test_item2_the_same_stamp_with_no_run_row_left_is_refused_and_the_refusal_says_why(tworld):
+    w = tworld
+    rid = _run(w, marker=NON_CANONICAL, receipt=False)
+    _slice_steps(w, rid)
+    _prune(w, rid)                                                           # the watchdog's prune: nothing left to read the preimage from
+    _refused_and_untouched(w, r"original marker preimage could not prove it \(no owned run row survives\).*reconstruction")
