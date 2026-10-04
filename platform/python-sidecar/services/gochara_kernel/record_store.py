@@ -358,9 +358,12 @@ def _contact_row_diffs(stored: tuple | None, derived: tuple) -> list[str]:
     by VALUE with no tolerance: the same contact derived twice is bit-identical, so a difference is a disagreement."""
     if stored is None:
         return ["row absent after insert"]
-    assert len(stored) == len(derived) == len(_CONTACT_ROW_COLUMNS), (
-        f"contact row shape: stored {len(stored)}, derived {len(derived)}, columns {len(_CONTACT_ROW_COLUMNS)} — a "
-        "column was added to one side only; zip() would silently skip it")
+    if not len(stored) == len(derived) == len(_CONTACT_ROW_COLUMNS):
+        # an explicit raise, never an assert: assertions vanish under python -O, and a column present on one side only would
+        # then be skipped silently by zip() (Earned-Signal rule: a check that can disappear is not a check)
+        raise ContactRowShapeError(
+            f"contact row shape: stored {len(stored)}, derived {len(derived)}, columns {len(_CONTACT_ROW_COLUMNS)} — a "
+            "column was added to one side only; zip() would silently skip it")
     out = []
     for name, have, want in zip(_CONTACT_ROW_COLUMNS, stored, derived):
         if name == "physical_object_id":
@@ -380,6 +383,10 @@ class SealedGenerationError(RuntimeError):
     """AM-3: a candidate rebuild (delete-then-insert) was attempted against a
     SEALED generation. A sealed generation is never reopened — a re-run under an
     existing sealed generation is a refusal; new evaluation is a new generation."""
+
+
+class ContactRowShapeError(RuntimeError):
+    """A5.5f: the stored and the derived contact rows do not have the same number of columns as the comparison covers."""
 
 
 class ContactRowMismatch(RuntimeError):

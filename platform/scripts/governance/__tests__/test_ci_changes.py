@@ -353,3 +353,115 @@ def test_the_step_diffs_the_merge_commit_against_its_first_parent(tmp_path):
 def test_the_classifier_has_no_unhandled_exception_path(monkeypatch):
     monkeypatch.setattr(ci_changes, "changed_files", lambda *a: (_ for _ in ()).throw(RuntimeError("boom")))
     assert ci_changes.main(["--event", "pull_request"]) == 0
+
+
+# ---------------------------------------------------------------- the A5.5f replace-chain job: a real, mandatory gate -----------------------
+
+A55_JOB = "gochara-a55-replace-chain"
+A55_SUITES = ("tests/l3/gochara/test_a55_replace_chain.py", "tests/l3/gochara/test_a55_replace_chain_populated.py")
+_FORBIDDEN_FLAGS = ("--deselect", "--ignore", "-k", "-m", "--collect-only", "--co", "--lf", "--last-failed", "--sw", "--stepwise")
+
+
+def _a55_problems(job: dict) -> list[str]:
+    """Everything that makes the job a weaker gate than it claims, by name (empty = the guard is satisfied). Codex removed one suite
+    path in memory and every earlier guard still passed, so each requirement is checked against the actual command, not the job's name."""
+    problems: list[str] = []
+    if job.get("continue-on-error"):
+        problems.append("the job is continue-on-error")
+    if "changes" not in (job["needs"] if isinstance(job.get("needs"), list) else [job.get("needs")]):
+        problems.append("the job does not need the changes job")
+    steps = job.get("steps") or []
+    pytest_steps = [s for s in steps if "pytest" in str(s.get("run", ""))]
+    if not pytest_steps:
+        problems.append("no step runs pytest")
+    for suite in A55_SUITES:
+        found = False
+        for step in pytest_steps:
+            run = str(step["run"]).replace("\\\n", " ")
+            for line in run.splitlines():
+                line = line.strip()
+                if line.startswith("#") or "pytest" not in line:
+                    continue
+                tokens = line.split()
+                if suite not in tokens:
+                    continue
+                found = True
+                args = tokens[tokens.index("pytest") + 1:] if "pytest" in tokens else tokens      # `python -m pytest`: that -m is python's
+                bad = [t for t in args if t.split("=")[0] in _FORBIDDEN_FLAGS]
+                if bad:
+                    problems.append(f"{suite}: the command uses {bad} (the suite could be narrowed or excluded)")
+                if any(t in ("||", ";", "|") for t in tokens) or re_true(line):
+                    problems.append(f"{suite}: the command can succeed when pytest fails (|| / ; / pipe)")
+                if step.get("continue-on-error"):
+                    problems.append(f"{suite}: its step is continue-on-error")
+                env = step.get("env") or {}
+                if str(env.get("GOCHARA_A53_REQUIRE_DB")) != "1":
+                    problems.append(f"{suite}: GOCHARA_A53_REQUIRE_DB is not '1' (an unreachable database would SKIP, not fail)")
+                if not env.get("GOCHARA_A53_ADMIN_DSN"):
+                    problems.append(f"{suite}: no GOCHARA_A53_ADMIN_DSN (the suite has no database to build its throwaway databases on)")
+                if "GOCHARA_SE1_REQUIRE=1" not in run or "SE_EPHE_PATH" not in run:
+                    problems.append(f"{suite}: the pinned ephemeris corpus is not required (GOCHARA_SE1_REQUIRE=1 / SE_EPHE_PATH)")
+                if "set +e" in run or "|| true" in run:
+                    problems.append(f"{suite}: the step swallows a failing command")
+        if not found:
+            problems.append(f"{suite}: not in any pytest command of the job")
+    if "postgres" not in (job.get("services") or {}):
+        problems.append("the job has no postgres service")
+    return problems
+
+
+def re_true(line: str) -> bool:
+    return "|| true" in line or "||true" in line
+
+
+def test_the_a55_job_runs_both_suites_in_a_mandatory_database_enabled_command(jobs):
+    assert _a55_problems(jobs[A55_JOB]) == []
+
+
+def _mutations(job):
+    import copy
+
+    def with_run(fn):
+        j = copy.deepcopy(job)
+        step = next(s for s in j["steps"] if "pytest" in str(s.get("run", "")))
+        step["run"] = fn(step["run"])
+        return j
+
+    def with_step(**kw):
+        j = copy.deepcopy(job)
+        next(s for s in j["steps"] if "pytest" in str(s.get("run", ""))).update(kw)
+        return j
+
+    def without_env(key):
+        j = copy.deepcopy(job)
+        step = next(s for s in j["steps"] if "pytest" in str(s.get("run", "")))
+        step["env"] = {k: v for k, v in step["env"].items() if k != key}
+        return j
+
+    muts = {}
+    for suite in A55_SUITES:
+        tag = suite.rsplit("/", 1)[1]
+        muts[f"remove {tag}"] = with_run(lambda r, s=suite: r.replace(" " + s, "", 1))
+        muts[f"deselect inside {tag}"] = with_run(lambda r, s=suite: r.replace(s, s + "::test_x --deselect " + s + "::test_y", 1))
+        muts[f"ignore {tag}"] = with_run(lambda r, s=suite: r.replace(" -q ", f" --ignore={s} -q ", 1))
+        muts[f"comment out {tag}"] = with_run(lambda r, s=suite: r.replace(" " + s, "", 1) + f"\n# {s}\n")
+    muts["-k filter"] = with_run(lambda r: r.replace(" -q ", " -q -k not_populated ", 1))
+    muts["|| true"] = with_run(lambda r: r.rstrip() + " || true\n")
+    muts["step continue-on-error"] = with_step(**{"continue-on-error": True})
+    muts["REQUIRE_DB off"] = without_env("GOCHARA_A53_REQUIRE_DB")
+    muts["no admin DSN"] = without_env("GOCHARA_A53_ADMIN_DSN")
+    muts["SE1 not required"] = with_run(lambda r: r.replace("export GOCHARA_SE1_REQUIRE=1", "export X=1"))
+    j = copy.deepcopy(job)
+    j["continue-on-error"] = True
+    muts["job continue-on-error"] = j
+    j = copy.deepcopy(job)
+    j["services"] = {}
+    muts["no postgres"] = j
+    return muts
+
+
+def test_the_a55_guard_catches_every_way_of_weakening_the_job(jobs):
+    """Mutation proof: each weakening Codex (or anyone) could make in memory is a named problem. If one of these ever passes the
+    guard, the guard is not guarding."""
+    for name, mutated in _mutations(jobs[A55_JOB]).items():
+        assert _a55_problems(mutated), f"the guard accepted the mutation: {name}"
