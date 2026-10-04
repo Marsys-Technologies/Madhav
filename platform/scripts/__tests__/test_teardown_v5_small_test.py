@@ -42,6 +42,9 @@ _W = teardown_mod._writer()
 _SL = _W._validate_test_slice({"schema": _W.TEST_SLICE_SCHEMA, "run": "one_class_full",
                                "horizon": [_W.DEFAULT_HORIZON[0].isoformat(), _W.DEFAULT_HORIZON[1].isoformat()],
                                "classes": [_W.SCORED_CLASSES[0]]})
+ONE_MARKER_FOR_TESTS = {"schema": _W.TEST_SLICE_SCHEMA, "run": "one_class_full",
+                        "horizon": [_W.DEFAULT_HORIZON[0].isoformat(), _W.DEFAULT_HORIZON[1].isoformat()],
+                        "classes": [_W.SCORED_CLASSES[0]]}
 STAMP = {"stored_scope": _W.TEST_SLICE_SCOPE, "test_slice": _W._slice_component(_SL)}      # exactly what the writer stamps
 HORIZON = types.SimpleNamespace(lower=_SL.horizon[0], upper=_SL.horizon[1])
 MANIFEST_ID = str(uuid.uuid4())
@@ -59,7 +62,7 @@ class _Harness:
                  registry_row="default", fail_on=None, connect_error=None, snapshot="consistent", inventory_mismatch=0,
                  registry_active=False, freshness_elsewhere=0, catalog_status="CURRENT", dependents=None, evidence=None,
                  evidence_after=None, commit_error=None, rollback_error=None, retention="default", pids=None, lock_held=1,
-                 references=None, run_manifests=None):
+                 references=None, run_manifests=None, fk_shapes=None, chain_outside=None):
         self.statements: list[str] = []
         self.params: list[tuple] = []
         self.commits = self.rollbacks = 0
@@ -90,6 +93,8 @@ class _Harness:
         self.references = references or {}
         self.rollback_at = []
         self.run_manifests = run_manifests or []
+        self.fk_shapes = fk_shapes or {}
+        self.chain_outside = chain_outside or {}
         harness = self
 
         class FakeCur:
@@ -139,7 +144,10 @@ class _Harness:
                     return harness.run_manifests
                 if "FROM pg_constraint c" in s:
                     parent = self._params[0].split(".")[1]
-                    return [{"tbl": t, "col": c, "action": a} for (t, c, a, _n) in harness.references.get(parent, [])]
+                    pk = {"build_runs": "id", "kala_gochara_publication": "manifest_id"}[parent]
+                    rows = [{"conname": f"{t}_{c}_fkey", "tbl": t, "action": a, "child_cols": [c], "parent_cols": [pk]}
+                            for (t, c, a, _n) in harness.references.get(parent, [])]
+                    return rows + list(harness.fk_shapes.get(parent, []))
                 return []
 
             def fetchone(self):
@@ -177,6 +185,8 @@ class _Harness:
                     return harness.snapshot
                 if "FROM ka_gochara_search_inventory i JOIN" in s:
                     return {"n": harness.inventory_mismatch}
+                if "AS windows" in s and "AS coverage" in s:
+                    return dict({"windows": 0, "records": 0, "coverage": 0}, **harness.chain_outside)
                 if "FROM asset_freshness WHERE asset_id = %s AND chart_id IS DISTINCT FROM" in s:
                     return {"n": harness.freshness_elsewhere}
                 m = re.search(r"count\(\*\) AS n FROM (\w+) WHERE", s)
@@ -977,7 +987,7 @@ def test_b3_every_table_the_script_touches_is_in_the_documented_privilege_list()
     read = set()
     for x in h.statements:
         read |= {t for t in re.findall(r"(?:FROM|JOIN)\s+([a-z_][a-z0-9_]*)", x)}
-    read -= {"pg_locks", "pg_constraint", "pg_attribute", "build", "r", "s", "p", "i"}
+    read -= {"pg_locks", "pg_constraint", "pg_attribute", "unnest", "build", "r", "s", "p", "i"}
     assert {t for t in read if not t.startswith("(")} <= allowed_read | set(rp["when_registry_active"]), \
         sorted(read - allowed_read)
     assert any("UPDATE asset_registry" in x for x in h.statements)             # the conditional privilege the list names
@@ -991,7 +1001,8 @@ def test_b3_the_runbook_names_every_object_in_the_documented_privilege_list():
     """One list, two statements of it: a table or function added to REQUIRED_PRIVILEGES must appear in the runbook's table."""
     runbook = (REPO / "00_ARCHITECTURE/briefs/pravaha/V5_SMALLTEST_TEARDOWN_RUNBOOK_v1_0.md").read_text(encoding="utf-8")
     rp = teardown_mod.REQUIRED_PRIVILEGES
-    names = set(rp["select_delete"]) | set(rp["select"]) | {fn.split("(")[0] for fn in rp["execute"]}
+    names = (set(rp["select_delete"]) | set(rp["select"]) | set(rp["update"]) | set(rp["select_referencing"])
+             | {fn.split("(")[0] for fn in rp["execute"]})
     missing = sorted(n for n in names if n not in runbook)
     assert not missing, f"the runbook's privilege table omits {missing}"
 
@@ -1169,3 +1180,145 @@ def test_the_ci_installs_the_sidecar_requirements_into_the_selected_python_befor
     assert select < install < teardown_step
     dispatch = ci.find("python -m pytest scripts/__tests__/test_dispatch_v5_small_test.py")
     assert dispatch == -1 or select < install < dispatch
+
+
+# ── Codex round 4 (v1.3): T1 to T5, D3 (teardown side) ──────────────────────────────────────────────────────────────────────────
+
+def test_t1_the_owned_run_rows_and_the_manifest_row_are_locked_for_update_before_ownership_and_references_are_validated():
+    """A concurrent transaction that sets a reference to an owned run (conversations.archived_by_run_id) needs a KEY SHARE lock on the run row
+    for its foreign key; FOR UPDATE conflicts with it, so no reference can appear between validation and the delete."""
+    h = _Harness()
+    _run(h)
+    s = [" ".join(x.split()) for x in h.statements]
+    lock_runs = next(i for i, x in enumerate(s) if x.startswith("SELECT id FROM build_runs WHERE id = ANY(%s::uuid[]) ORDER BY id FOR UPDATE"))
+    members = [i for i, x in enumerate(s) if "GROUP BY r.id" in x]
+    assert len(members) == 2 and members[0] < lock_runs < members[1]               # select, LOCK, then the validated read
+    first_check = next(i for i, x in enumerate(s) if "FROM pg_constraint c" in x)
+    assert lock_runs < first_check
+    assert h.params[lock_runs] == ([RUN_1],)
+    manifest_select = next(x for x in s if "input_generation_vector, horizon FROM kala_gochara_publication" in x)
+    assert manifest_select.endswith("FOR UPDATE")
+    assert s.index(manifest_select) < next(i for i, x in enumerate(s) if x.startswith("DELETE"))
+
+
+def test_t2_a_composite_foreign_key_or_one_aimed_at_another_column_is_refused_by_name():
+    for parent, shape, match in (
+        ("build_runs", {"conname": "audit_run_chart_fkey", "tbl": "audit_log_like", "action": "n",
+                        "child_cols": ["run_id", "chart_id"], "parent_cols": ["id", "chart_id"]}, r"audit_run_chart_fkey on audit_log_like\(run_id, chart_id\) -> build_runs\(id, chart_id\)"),
+        ("build_runs", {"conname": "other_col_fkey", "tbl": "x_like", "action": "c", "child_cols": ["run_ref"], "parent_cols": ["external_id"]},
+         r"other_col_fkey on x_like\(run_ref\) -> build_runs\(external_id\)"),
+        ("kala_gochara_publication", {"conname": "pub_composite_fkey", "tbl": "legacy_like", "action": "a",
+                                      "child_cols": ["chart_id", "generation"], "parent_cols": ["chart_id", "generation"]},
+         r"pub_composite_fkey on legacy_like"),
+    ):
+        h = _Harness(fk_shapes={parent: [shape]})
+        with pytest.raises(teardown_mod.TeardownRefused, match=match) as exc:
+            _run(h)
+        assert "v5_small_test_incoming_fks_readback.sql" in str(exc.value) and h.deletes() == []
+
+
+def test_t2_an_unsupported_shape_on_a_table_the_script_deletes_itself_is_not_an_obstacle():
+    shape = {"conname": "contact_fk", "tbl": "ka_gochara_contact", "action": "a", "child_cols": ["chart_id", "generation"],
+             "parent_cols": ["chart_id", "generation"]}
+    h = _Harness(fk_shapes={"kala_gochara_publication": [shape]})
+    _run(h)
+    assert h.commits == 1
+
+
+def test_t2_the_readback_sql_is_read_only_and_is_the_scripts_own_discovery_query():
+    import v5_small_test_shared as shared
+    text = (SCRIPT.parent / "v5_small_test_incoming_fks_readback.sql").read_text(encoding="utf-8")
+    code = "\n".join(line for line in text.splitlines() if not line.strip().startswith("--"))
+    assert not re.search(r"\b(INSERT|UPDATE|DELETE|DROP|ALTER|CREATE|GRANT|REVOKE|TRUNCATE|COPY)\b", code, re.I)
+    for parent in ("build_runs", "kala_gochara_publication"):
+        literal = shared.INCOMING_FK_SQL.replace("%s::regclass", f"'public.{parent}'::regclass")
+        assert " ".join(literal.split()) in " ".join(code.split()), parent
+    assert "v5_small_test_incoming_fks_readback.sql" in (REPO / "00_ARCHITECTURE/briefs/pravaha/V5_SMALLTEST_TEARDOWN_RUNBOOK_v1_0.md").read_text(encoding="utf-8")
+
+
+def test_t3_the_report_is_prepared_before_the_commit_and_a_failure_after_it_is_a_confirmed_commit(capsys, monkeypatch):
+    """Codex reproduced: one commit, exit 1, ROLLBACK CONFIRMED, from a failure right after the COMMIT. The phase 'committed' is handled
+    explicitly before the rollback branch; the report data is built before the COMMIT."""
+    baseline = _Harness()
+    _run(baseline)                                  # a clean committed run, before the failure is injected
+    h = _Harness()
+    fired = []
+
+    def explode_after_commit():
+        fired.append(1)
+        raise MemoryError("allocation failed right after COMMIT")
+    monkeypatch.setattr(teardown_mod, "_AFTER_COMMIT", explode_after_commit)
+    with _patched(h):
+        code = teardown_mod.main(["--execute", "--i-am-steward"])
+    streams = capsys.readouterr()
+    assert fired and code == 1 and h.commits == 1
+    assert "COMMIT CONFIRMED" in streams.err and "ROLLBACK CONFIRMED" not in streams.err
+    assert h.rollbacks == baseline.rollbacks       # the same rollbacks as a clean committed run (pid checks, lock release): none for the failure
+
+
+def test_t3_the_report_data_is_built_before_the_commit_statement():
+    source = SCRIPT.read_text(encoding="utf-8")
+    body = source[source.index("def teardown("):source.index("def _safe_failure(")]
+    assert body.index('report = ("dry_run" if dry_run else "executed"') < body.index('phase = "committing"') < body.index("conn.commit()")
+
+
+def test_t4_a_surviving_run_with_a_wrong_digest_is_refused_even_for_a_canonical_stamp():
+    """The reconstruction fallback is allowed ONLY when no owned run row survives (Codex T4: it used to rescue this)."""
+    h = _Harness(run_manifests=[{"id": RUN_1, "plan_manifest": {_W.TEST_SLICE_KEY: ONE_MARKER_FOR_TESTS}, "plan_manifest_digest": "0" * 64}])
+    with pytest.raises(teardown_mod.TeardownRefused, match=r"an owned run row survives.*ORIGINAL marker preimage must prove.*does not match its plan_manifest_digest"):
+        _run(h)
+    assert h.deletes() == []
+
+
+def test_t4_a_surviving_run_with_the_right_marker_proves_a_canonical_stamp_and_no_run_row_allows_reconstruction():
+    manifest = {_W.TEST_SLICE_KEY: ONE_MARKER_FOR_TESTS}
+    ok = _Harness(run_manifests=[{"id": RUN_1, "plan_manifest": manifest, "plan_manifest_digest": _W._manifest_digest(manifest)}])
+    _run(ok)
+    assert ok.commits == 1
+    none = _Harness(run_manifests=[])
+    _run(none)
+    assert none.commits == 1
+
+
+def test_t5_the_recovery_identity_includes_output_digest_spec_sha256():
+    runbook = (REPO / "00_ARCHITECTURE/briefs/pravaha/V5_SMALLTEST_TEARDOWN_RUNBOOK_v1_0.md").read_text(encoding="utf-8")
+    section = runbook[runbook.index("## 3. "):runbook.index("## 4. ")]
+    assert section.count("output_digest_spec_sha256") >= 3 and "NOT FOR USE" in section
+
+
+def test_d3_an_interrupted_replacement_proved_by_owned_runs_on_both_sides_is_removable_and_anything_else_stays_refused():
+    """The earlier proven test slice's snapshot under a later proven slice's manifest: both stamps are proved by owned runs' original markers."""
+    earlier_marker = dict(ONE_MARKER_FOR_TESTS, classes=[_W.SCORED_CLASSES[1]])
+    earlier_sl = _W._validate_test_slice(earlier_marker)
+    earlier_vector = {"stored_scope": _W.TEST_SLICE_SCOPE, "test_slice": _W._slice_component(earlier_sl)}
+    later = {_W.TEST_SLICE_KEY: ONE_MARKER_FOR_TESTS}
+    early = {_W.TEST_SLICE_KEY: earlier_marker}
+    snap = {"same_vector": False, "input_digest": "d" * 64, "snapshot_vector": earlier_vector}
+    runs = [{"id": RUN_1, "plan_manifest": later, "plan_manifest_digest": _W._manifest_digest(later)},
+            {"id": str(uuid.uuid4()), "plan_manifest": early, "plan_manifest_digest": _W._manifest_digest(early)}]
+    h = _Harness(snapshot=snap, run_manifests=runs, members=[_test_run(), _test_run(runs[1]["id"])])
+    _run(h)
+    assert h.commits == 1                                                             # removable: both sides are run-proven
+    # the earlier run's row is gone: the snapshot's stamp cannot be proved, so it stays refused
+    h = _Harness(snapshot=snap, run_manifests=runs[:1])
+    with pytest.raises(teardown_mod.TeardownRefused, match="older stamp is not proved by an owned test run"):
+        _run(h)
+    assert h.deletes() == []
+    # a snapshot that carries no stamp at all (a non-test older candidate) stays refused
+    h = _Harness(snapshot={"same_vector": False, "input_digest": "d" * 64, "snapshot_vector": {"stored_scope": "stored_non_moon"}}, run_manifests=runs)
+    with pytest.raises(teardown_mod.TeardownRefused, match="interrupted replacement"):
+        _run(h)
+    assert h.deletes() == []
+
+
+def test_tb1_a_window_record_or_coverage_partition_of_a_class_outside_the_stamp_is_refused_and_named():
+    for key in ("windows", "records", "coverage"):
+        h = _Harness(chain_outside={key: 2})
+        with pytest.raises(teardown_mod.TeardownRefused, match=rf"belong to a class outside the stamp.*'{key}': 2"):
+            _run(h)
+        assert h.deletes() == []
+    h = _Harness()
+    _run(h)
+    sql = next(x for x in h.statements if "AS windows" in x)
+    idx = h.statements.index(sql)
+    assert h.params[idx][2] == STAMP["test_slice"]["classes"] and h.params[idx][5] == STAMP["test_slice"]["classes"]
