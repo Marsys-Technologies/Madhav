@@ -178,6 +178,31 @@ def _applicable_rulings() -> list[dict]:
     return out
 
 
+class HorizonMismatch(RuntimeError):
+    """A5.5f: this run's horizon is not the horizon its candidate manifest was published for."""
+
+
+def _require_manifest_horizon(ctx: ContextSpec, chart_id: str) -> None:
+    """Every chain-writing substep (snapshot, inventory, coverage, record, window, verify) passes through
+    `_verify_live_inputs`, and so through this guard: the horizon this run is configured with must be EXACTLY the horizon
+    its candidate manifest (kala_gochara_publication) was published for. Nothing used to compare the two, so an
+    invocation that skipped the manifest/snapshot head under a different horizon could mix horizons in one generation
+    (the contact insert would then refuse by name, but only at the first shared contact). Refused by name, nothing
+    written, for a horizon longer OR shorter than the manifest's."""
+    row = ctx.db_conn.execute(
+        "SELECT lower(horizon), upper(horizon) FROM public.kala_gochara_publication"
+        " WHERE chart_id = %s AND generation = %s", (chart_id, GENERATION)).fetchone()
+    if row is None:
+        raise RuntimeError(f"{ASSET_ID}: no candidate manifest for generation {GENERATION} — the manifest substep runs first")
+    lo, hi = tuple(row.values()) if isinstance(row, dict) else tuple(row)
+    horizon = ctx.config.get("horizon", DEFAULT_HORIZON)
+    if horizon is None or (lo, hi) != (horizon[0], horizon[1]):
+        raise HorizonMismatch(
+            f"{ASSET_ID}: horizon guard: this run's horizon {horizon!r} is not the candidate manifest's "
+            f"[{lo.isoformat()}, {hi.isoformat()}) for chart {chart_id} generation {GENERATION} — refused, nothing "
+            "written; a different horizon is a new build through the manifest substep, never a continuation")
+
+
 def _verify_live_inputs(ctx: ContextSpec, chart_id: str) -> None:
     """R6: a substep must consume the inputs its manifest was bound to. The vector is recomputed from
     what is consumed NOW (registry rows, ephemeris files, orb policy, rulings, implementation) and
@@ -186,6 +211,7 @@ def _verify_live_inputs(ctx: ContextSpec, chart_id: str) -> None:
     if stored is None:
         raise RuntimeError(f"{ASSET_ID}: no candidate manifest vector for generation {GENERATION} — "
                            "the manifest substep runs first")
+    _require_manifest_horizon(ctx, chart_id)
     gk_input_vector.verify_live(
         ctx.db_conn, stored,
         sky_convention_id=SkyEventStore(ctx.db_conn).register_convention(),
@@ -474,6 +500,17 @@ class GocharaV5Writer(WriterBase):
             dasha_ids = [str(r["dasha_row_id"]) for r in rows
                          if int(r["level_n"]) in (1, 2, 3)
                          and r["start_iso"] < hi and r["end_iso"] > lo]
+            # A5.5f (G7): a rebuild REPLACES the whole unsealed CANDIDATE chart x generation output chain, never
+            # accretes. THE CONTRACT: every dispatch of this asset is a WHOLE-BUILD REPLAY. The orchestrator drives the
+            # full plan on every dispatch (asset_runner calls _drive_substeps without completed_keys), so this
+            # snapshot substep always runs, always first among the chain-writing substeps, and a failed build restarts
+            # from zero on retry. There is NO resume and none is built here (the orchestrator is frozen). That is why
+            # the replace can sit at this one per-plan reset point: it runs before every substep that writes chain rows
+            # (inventory / coverage / record / window), so a dispatch can never wipe what it wrote itself. An
+            # invocation that SKIPS the head (a CLI, a harness, a future resume) is not a supported mode: the horizon
+            # guard in _verify_live_inputs refuses one that would mix horizons. A sealed generation, and a manifest
+            # that is not a candidate, are refused by name before any delete.
+            replaced = rstore.delete_generation_chain(chart_id=chart_id, generation=GENERATION)
             inv_store.delete_generation_inventory(chart_id, GENERATION)
             digest = inv_store.insert_snapshot(
                 chart_id=chart_id, generation=GENERATION, convention_id=sky_cid,
@@ -483,7 +520,9 @@ class GocharaV5Writer(WriterBase):
                 asset_id=self.asset_id, rows_inserted=1,
                 notes=(f"search-input snapshot {digest[:12]}…: {len(context['source_fact_ids'])} "
                        f"L1 facts, {len(dasha_ids)} daśā rows (build "
-                       f"{contract.get('build_id')}); no AV declarations (P5 held)"))
+                       f"{contract.get('build_id')}); no AV declarations (P5 held); chain replaced "
+                       f"(windows {replaced['windows']}, records {replaced['records']}, contacts "
+                       f"{replaced['contacts']}, coverage {replaced['coverage']})"))
 
         event_class = step.key.split(":", 1)[1]
         if event_class not in SCORED_CLASSES:

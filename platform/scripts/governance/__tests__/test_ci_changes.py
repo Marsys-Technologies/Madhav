@@ -231,7 +231,7 @@ def test_cli_fails_closed(tmp_path):
 # ---------------------------------------------------------------- the workflow wiring -----------------------------------------------------
 
 HEAVY = ("typecheck", "typecheck-mcp", "unit-tests", "db-integration-tests", "pratijna-v4-fixture-property-tests", "planner-regression",
-         "icr-pr-gate", "governance-tool-tests-shard", "governance-gates-gochara")
+         "icr-pr-gate", "governance-tool-tests-shard", "governance-gates-gochara", "gochara-a55-replace-chain")
 NEVER_SKIPPED = ("changes", "secret-scan", "naming-lint", "fact-category-pin-lint", "earned-signal-lint", "registry-parity-gate", "governance-gates",
                  "coverage-gate", "density-census", "governance-tool-tests")
 
