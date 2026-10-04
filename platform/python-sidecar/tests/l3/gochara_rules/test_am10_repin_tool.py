@@ -1826,3 +1826,78 @@ def test_the_other_operator_supplied_json_files_use_the_same_strict_reader(monke
     out = tmp_path / "w0_out.json"
     assert T.main(["--import-w0", str(w0), "--w0-checksum", _h.sha256(w0.read_bytes()).hexdigest(), "--w0-capture-out", str(out)]) == 3
     assert "not valid strict JSON" in capsys.readouterr().err and not out.exists()
+
+
+# ── v1.4 (Codex): ONE validation phase before the first side effect; parser failures (deep nesting) are ValueErrors; a last-resort handler ───────────────────────────────
+
+_DEEP = "[" * 100000 + '{"a": 1, "a": 2}' + "]" * 100000                                                                # a duplicate-key object nested inside 100,000 arrays
+
+
+def test_strict_json_loads_turns_every_parser_failure_into_a_ValueError_never_a_RecursionError():
+    for raw in (_DEEP, "[" * 100000, "{" * 100000, '{"a":' * 50000, '{"a": NaN}', '{"a": 1, "a": 2}', "\x00", ""):
+        with pytest.raises(ValueError):
+            T.strict_json_loads(raw)
+    assert T.strict_json_loads('{"a": [1, {"b": 2}]}') == {"a": [1, {"b": 2}]}
+
+
+def _clean_setup(monkeypatch, tmp_path):
+    rows_new = T.norm_rows(ref_rows("new", 6993))
+    cap = tmp_path / "old.json"; write_old_cap(cap)
+    monkeypatch.setattr(T.DD, "fetch_dasha_periods_multilevel", lambda conn, chart, build_id=None, **kw: rows_new if build_id == NEWB else [])
+    monkeypatch.setattr(T, "fetch_vimshottari_builds", lambda conn, chart: {NEWB: 117})
+    monkeypatch.setattr(T, "fetch_preflight_facts", lambda conn, chart: GOODFACTS)
+    monkeypatch.setattr(T, "apply_repin", lambda *a, **k: (_ for _ in ()).throw(AssertionError("apply_repin was reached with an invalid input")))
+    fr = tmp_path / "f.md"; fr.write_text("anchors")
+    return cap, fr
+
+
+def test_bad_rulings_with_apply_and_out_write_nothing_and_print_no_CLEAN_line(monkeypatch, tmp_path, capsys):
+    """Codex v1.4 P1-1: the rulings used to be parsed AFTER the report was written and 'CLEAN' printed."""
+    cap, fr = _clean_setup(monkeypatch, tmp_path)
+    out = tmp_path / "evidence.md"
+    rul = tmp_path / "rulings.json"; rul.write_text('{"rewrite": ["a.py:1"], "rewrite": [], "keep": []}')
+    before = sorted(p.name for p in tmp_path.iterdir())
+    rc = T.main(["--new-build-id", NEWB, "--old-rows", str(cap), "--settled-notice", _notice(tmp_path, new_build_id=NEWB), "--forensic-report", str(fr),
+                 "--apply", "--settled-received", "M1", "--rulings", str(rul), "--out", str(out)], conn=_Boom())                      # _Boom: the database is never touched either
+    cap_out = capsys.readouterr()
+    assert rc == 3 and "rulings file is not valid strict JSON" in cap_out.err and "duplicate JSON key 'rewrite'" in cap_out.err
+    assert "CLEAN" not in cap_out.out and cap_out.out == "" and not out.exists()
+    assert sorted(p.name for p in tmp_path.iterdir()) == sorted(before + ["notice.json"])
+
+
+@pytest.mark.parametrize("which", ["capture", "rulings", "notice", "w0"])
+def test_a_document_nested_100000_deep_is_STOP_exit_3_with_zero_writes_through_every_input_path(monkeypatch, tmp_path, capsys, which):
+    cap, fr = _clean_setup(monkeypatch, tmp_path)
+    out = tmp_path / "evidence.md"
+    hostile = tmp_path / "hostile.json"; hostile.write_text(_DEEP)
+    notice = _notice(tmp_path, new_build_id=NEWB)
+    base = ["--new-build-id", NEWB, "--forensic-report", str(fr), "--apply", "--settled-received", "M1", "--out", str(out)]
+    if which == "capture":
+        args = base + ["--old-rows", str(hostile), "--settled-notice", notice]
+    elif which == "rulings":
+        args = base + ["--old-rows", str(cap), "--settled-notice", notice, "--rulings", str(hostile)]
+    elif which == "notice":
+        args = base + ["--old-rows", str(cap), "--settled-notice", str(hostile)]
+    else:
+        import hashlib as _h
+        w0out = tmp_path / "w0_out.json"
+        args = ["--import-w0", str(hostile), "--w0-checksum", _h.sha256(hostile.read_bytes()).hexdigest(), "--w0-capture-out", str(w0out)]
+    before = sorted(p.name for p in tmp_path.iterdir())
+    rc = T.main(args, conn=_Boom())
+    cap_out = capsys.readouterr()
+    assert rc == 3 and "STOP" in cap_out.err and "nested too deeply" in cap_out.err, cap_out.err[-300:]
+    assert "Traceback" not in cap_out.err and "CLEAN" not in cap_out.out
+    assert not out.exists() and sorted(p.name for p in tmp_path.iterdir()) == before
+
+
+def test_a_last_resort_handler_turns_any_unexpected_validation_exception_into_exit_3_before_any_read_or_write(monkeypatch, tmp_path, capsys):
+    cap, fr = _clean_setup(monkeypatch, tmp_path)
+    def boom(path):
+        raise RuntimeError("unexpected")
+    monkeypatch.setattr(T, "load_notice", boom)
+    out = tmp_path / "evidence.md"
+    before = sorted(p.name for p in tmp_path.iterdir())
+    rc = T.main(["--new-build-id", NEWB, "--old-rows", str(cap), "--settled-notice", _notice(tmp_path, new_build_id=NEWB), "--forensic-report", str(fr), "--out", str(out)], conn=_Boom())
+    err = capsys.readouterr().err
+    assert rc == 3 and "invalid operator input (RuntimeError)" in err and "nothing was written" in err and not out.exists()
+    assert sorted(p.name for p in tmp_path.iterdir()) == sorted(before + ["notice.json"])

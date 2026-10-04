@@ -465,7 +465,16 @@ def _refuse_json_constant(token: str):
 
 def strict_json_loads(text: str):
     """The ONE JSON reader for every operator-supplied file (the SETTLED-1 notice, the rulings, the W0 baseline, the capture envelope): duplicate keys at any depth and NaN/Infinity tokens are refused."""
-    return json.loads(text, object_pairs_hook=_no_duplicate_keys, parse_constant=_refuse_json_constant)
+    try:
+        return json.loads(text, object_pairs_hook=_no_duplicate_keys, parse_constant=_refuse_json_constant)
+    except ValueError:
+        raise                                                  # malformed JSON, duplicate keys, NaN/Infinity tokens, bad UTF-8: already the named refusal
+    except RecursionError:                                     # a hostile document nested ~100,000 deep (Codex v1.4): a refusal, never a traceback
+        raise ValueError("the JSON is nested too deeply to be read safely") from None
+    except MemoryError:
+        raise ValueError("the JSON is too large to be read safely") from None
+    except Exception as exc:                                   # any other parser failure
+        raise ValueError(f"the JSON could not be parsed ({type(exc).__name__})") from None
 
 
 def file_sha256(path: str) -> str:
@@ -1174,6 +1183,19 @@ def _capture_build(a, conn, build_id: str, path: str, label: str) -> int:
     return 0
 
 
+def _read_operator_inputs(a, old_id: str):
+    """Reads and validates every operator-supplied input BEFORE any side effect: (notice | None, old-rows capture | None, rulings | None). Raises only OSError / ValueError (a named STOP)."""
+    notice = load_notice(a.settled_notice) if a.settled_notice else None
+    old_rows = load_capture(a.old_rows, a.chart_id, old_id) if a.old_rows else None
+    rulings = None
+    if a.rulings:
+        try:
+            rulings = strict_json_loads(Path(a.rulings).read_text(encoding="utf-8"))
+        except (OSError, ValueError) as exc:
+            raise ValueError(f"the rulings file is not valid strict JSON: {exc}") from None
+    return notice, old_rows, rulings
+
+
 def main(argv=None, *, conn=None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     ap.add_argument("--new-build-id", default=None, help="the SETTLED-1 build — REQUIRED for comparison/application, REFUSED with --capture-old")
@@ -1212,14 +1234,19 @@ def main(argv=None, *, conn=None) -> int:
         fr = Path(a.forensic_report)
         if not fr.is_file() or fr.stat().st_size == 0:
             print(f"STOP — --forensic-report {a.forensic_report} does not exist or is empty (evidence item (e): the seven FORENSIC anchors)", file=sys.stderr); return 3
+    # ONE VALIDATION PHASE (Codex v1.4): EVERY operator-supplied input — the SETTLED-1 notice, the rulings, the capture (--old-rows) — is read and validated HERE, before the connection, the first read, the first
+    # report line, the first write and any CLEAN line. It can end only in a named exit 3 (never a traceback, never a partial write); a last-resort handler turns any unexpected exception into the same STOP.
+    try:
+        notice, old_rows_capture, rulings = _read_operator_inputs(a, old_id)
+    except (OSError, ValueError) as exc:
+        print(f"STOP — {exc}", file=sys.stderr); return 3
+    except Exception as exc:                                    # last resort: anything unexpected while validating operator input
+        print(f"STOP — invalid operator input ({type(exc).__name__}); nothing was read from the database and nothing was written", file=sys.stderr); return 3
     if conn is None:
         conn = open_readonly_connection()
     try:
         if a.old_rows:
-            try:
-                old_rows = load_capture(a.old_rows, a.chart_id, old_id)
-            except (OSError, ValueError) as exc:
-                print(f"STOP — {exc}", file=sys.stderr); return 3
+            old_rows = old_rows_capture
         else:
             old_rows = read_levels(conn, a.chart_id, old_id, "old build")
         # (a capture that carries level-4 rows is REFUSED at load by validate_capture — there is nothing to filter here; a W0 file's level-4 rows are dropped, with a count, at import)
@@ -1239,10 +1266,6 @@ def main(argv=None, *, conn=None) -> int:
     flips = path_lord_flips(old_idx, new_idx, m["matched"])                       # D7: every matched row keeps its lord — the STOP
     sensitive = lord_flips(old_rows, new_rows, oracle_instants()) if new_rows else []   # instants whose lord differs because a boundary MOVED — reported, D8
     maps, ref_problems = remeasure_reference_rows(old_idx, new_idx)
-    try:
-        notice = load_notice(a.settled_notice) if a.settled_notice else None
-    except (OSError, ValueError) as exc:
-        print(f"STOP — {exc}", file=sys.stderr); return 3
     builds = fetch_vimshottari_builds(conn, a.chart_id)
     pre_facts = fetch_preflight_facts(conn, a.chart_id)
     verifier_builds = fetch_verifier_builds(conn, a.chart_id)
@@ -1276,10 +1299,6 @@ def main(argv=None, *, conn=None) -> int:
         for p_, ln, a_, b_ in scan_test_literals(inst, SIDECAR.parents[1]):
             print(f"TEST LITERAL (needs ruling at --apply): {p_}:{ln} {a_} -> {b_}")
     if a.apply:
-        try:
-            rulings = strict_json_loads(Path(a.rulings).read_text(encoding="utf-8")) if a.rulings else None
-        except (OSError, ValueError) as exc:                    # an unreadable / duplicate-keyed rulings file: a named STOP BEFORE anything is applied
-            print(f"STOP — the rulings file is not valid strict JSON: {exc}", file=sys.stderr); return 3
         review: list[str] = []
         try:
             for f in apply_repin(a.new_build_id, maps, SIDECAR.parents[1], rulings=rulings, review=review):
