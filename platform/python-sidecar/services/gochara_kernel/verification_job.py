@@ -172,6 +172,16 @@ def check_preconditions(conn, *, chart_id: str, generation: str, classes=None, e
                                                   (chart_id, generation)).fetchone()):
         raise VerificationRefused("already_sealed", f"generation {generation} is {'published' if status == 'published' else 'sealed'}"
                                   " — a sealed generation is never re-verified")
+    # A TEST SLICE is refused POSITIVELY and by name (Fable P2-2 on PR 3110). Until now a sliced candidate was refused only because
+    # its scope is ABSENT from four separate vocabularies (this job's input check, the inventory verifier, serving's scope
+    # statement, migration 1232's completeness function); a new scope word added to any one of them would have silently made it
+    # verifiable. A sliced manifest carries stored_scope = 'test_slice' and a test_slice component: either is enough.
+    _vec = vector if isinstance(vector, dict) else __import__("json").loads(vector)
+    if _vec.get("stored_scope") == "test_slice" or "test_slice" in _vec:
+        raise VerificationRefused(
+            "test_slice_candidate", f"generation {generation} is a TEST SLICE candidate (stored_scope="
+            f"{_vec.get('stored_scope')!r}, test_slice component {'present' if 'test_slice' in _vec else 'absent'}) — a small-test "
+            "build is unsealable by construction and is never verified, sealed or served; run the full build under a real manifest")
     found = [_one(r) if not isinstance(r, tuple) else r[0] for r in conn.execute(
         "SELECT event_class FROM public.ka_gochara_search_inventory WHERE chart_id = %s AND generation = %s ORDER BY 1",
         (chart_id, generation)).fetchall()]
