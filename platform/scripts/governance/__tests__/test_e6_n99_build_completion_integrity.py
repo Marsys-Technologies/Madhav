@@ -405,7 +405,8 @@ def _migration_literals():
 # files that assign integrity_check_sql only as a DERIVED value (replace(), ||, read-modify-write of the stored text): not statically resolvable.
 # Their results are covered by the live read-only run of the stored text, not by this test.
 DERIVED_ONLY_MIGRATIONS = {"1026_nirmana_l3_ka_service_selftest_clock_timestamp_fix.sql", "1027_nirmana_l2_bo_pramana_mapa_integrity_check_literal_chart.sql",
-                           "1032_nirmana_l2_bo_grounding_set_based_integrity.sql", "1230_ka_gochara_registry_revert_1091_pin.sql",
+                           "1032_nirmana_l2_bo_grounding_set_based_integrity.sql", "1221_nirmana_l1_ga_structural_a29_integrity_conjunct.sql",
+                           "1230_ka_gochara_registry_revert_1091_pin.sql",
                            "902_nirmana_l1_ga_condition_integrity_check_scope.sql"}
 
 

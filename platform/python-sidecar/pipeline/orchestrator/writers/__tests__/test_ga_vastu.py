@@ -15,7 +15,7 @@ Coverage:
   10. West direction maps to Saturn
   11. Sun → East; compute_direction_impact(low_score) → 'weakened'
   12. Saturn → West; compute_direction_impact(high_score) → 'strengthened'
-  13. compute_direction_impact(None) → 'neutral'
+  13. compute_direction_impact(None) → 'unknown' (I-28: never an invented 'neutral')
   14. compute_direction_impact(0.39) → 'weakened' (boundary)
   15. compute_direction_impact(0.40) → 'neutral'  (boundary)
   16. compute_direction_impact(0.69) → 'neutral'  (boundary)
@@ -174,11 +174,13 @@ def test_saturn_exalted_west_strengthened():
     )
 
 
-# ── 13. compute_direction_impact(None) → 'neutral' ────────────────────────────
+# ── 13. compute_direction_impact(None) → 'unknown' (I-28) ──────────────────────
 
-def test_direction_impact_none_is_neutral():
-    """When condition_score is None (no ga_condition row), direction_impact must be 'neutral'."""
-    assert compute_direction_impact(None) == "neutral"
+def test_direction_impact_none_is_unknown_never_neutral():
+    """I-28 / Q-L1-16(c): a NULL condition_score (no ga_condition row) is missing information,
+    not a middle-band judgment. direction_impact is NOT NULL, so the honest label is 'unknown'."""
+    assert compute_direction_impact(None) == "unknown"
+    assert compute_direction_impact(None) != "neutral"
 
 
 # ── 14–17. compute_direction_impact boundary tests ────────────────────────────

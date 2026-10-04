@@ -1,0 +1,607 @@
+{
+  "change_register": {
+    "path": "00_ARCHITECTURE/briefs/nirmana/NIKASHA_CHANGE_REGISTER_v2_0.md",
+    "sha256": "457643728067ac85fe78138d71a7efa46f30fd41395bd19c71450ee67d9f6ca5",
+    "version": "2.8"
+  },
+  "engine_build_checks": {
+    "Build.completion": "UNMEASURED",
+    "Build.contract": "UNMEASURED",
+    "Build.count_integrity": "UNMEASURED",
+    "Build.dag": "UNMEASURED",
+    "Build.dep_liveness": "UNMEASURED",
+    "Build.exercised": "UNMEASURED",
+    "Build.history": "UNMEASURED",
+    "Build.registered": "UNMEASURED",
+    "Build.target": "UNMEASURED"
+  },
+  "engine_claims_not_covered": [
+    "build run-level states are written truthfully (no census criterion measures run-level state)",
+    "last_error is written on a failed asset (no census criterion measures it)",
+    "cascade and downstream reporting of a failed dependency (no census criterion measures it)"
+  ],
+  "generator": "platform/scripts/governance/nikasha_scorecard.py",
+  "generator_at_ref_sha256": null,
+  "generator_matches_ref": null,
+  "generator_sha256": "b1b151103ef312a6bb938b3e0342d72ac6af189535873e2bdd8e7360ab7cb0c1",
+  "inputs": {
+    "census": [
+      {
+        "declarations_sha256": null,
+        "fresh": false,
+        "generated": "2026-10-02T10:06:14+05:30",
+        "layer": "L0",
+        "registry_fingerprint": "1b980d1c48d19b53589db234ebeb5c2cbbffb6cddd5535ae7390b97b2a22666a",
+        "registry_revision": 10,
+        "sha256": "b4b2af4583c1b0a7cf2814765f9fc3ddb6daa4d306afef182d8928022f0ecbd9",
+        "stale_reason": "stale_census(registry rev 10 != ref rev 25)",
+        "tool_commit": "1e5781ae1e98d85c0d80ddcc229f0852dad41347",
+        "tool_dirty": false
+      },
+      {
+        "declarations_sha256": null,
+        "fresh": false,
+        "generated": "2026-10-02T10:08:05+05:30",
+        "layer": "L1",
+        "registry_fingerprint": "1b980d1c48d19b53589db234ebeb5c2cbbffb6cddd5535ae7390b97b2a22666a",
+        "registry_revision": 10,
+        "sha256": "bb2d09f0a53a9508659a097433dcca3f426aae31445cede9175806e6a4ca438a",
+        "stale_reason": "stale_census(registry rev 10 != ref rev 25)",
+        "tool_commit": "1e5781ae1e98d85c0d80ddcc229f0852dad41347",
+        "tool_dirty": false
+      },
+      {
+        "declarations_sha256": null,
+        "fresh": false,
+        "generated": "2026-10-02T10:10:03+05:30",
+        "layer": "L2",
+        "registry_fingerprint": "1b980d1c48d19b53589db234ebeb5c2cbbffb6cddd5535ae7390b97b2a22666a",
+        "registry_revision": 10,
+        "sha256": "108dc7d4b060e3e63d79528026f7322dcebf73ff48bdf736bb4336cc1c602cc3",
+        "stale_reason": "stale_census(registry rev 10 != ref rev 25)",
+        "tool_commit": "1e5781ae1e98d85c0d80ddcc229f0852dad41347",
+        "tool_dirty": false
+      },
+      {
+        "declarations_sha256": null,
+        "fresh": false,
+        "generated": "2026-10-02T10:12:08+05:30",
+        "layer": "L3",
+        "registry_fingerprint": "1b980d1c48d19b53589db234ebeb5c2cbbffb6cddd5535ae7390b97b2a22666a",
+        "registry_revision": 10,
+        "sha256": "3c26d272bd5f51f5e69862afc9c70932a93922fbb2f20b8f6fb68d36a863099f",
+        "stale_reason": "stale_census(registry rev 10 != ref rev 25)",
+        "tool_commit": "1e5781ae1e98d85c0d80ddcc229f0852dad41347",
+        "tool_dirty": false
+      },
+      {
+        "declarations_sha256": null,
+        "fresh": false,
+        "generated": "2026-10-02T10:12:59+05:30",
+        "layer": "L4",
+        "registry_fingerprint": "1b980d1c48d19b53589db234ebeb5c2cbbffb6cddd5535ae7390b97b2a22666a",
+        "registry_revision": 10,
+        "sha256": "43f8d36cf35b5d042e2947281cba1e45b4dad5d285607f7f627e4e858a93a840",
+        "stale_reason": "stale_census(registry rev 10 != ref rev 25)",
+        "tool_commit": "1e5781ae1e98d85c0d80ddcc229f0852dad41347",
+        "tool_dirty": false
+      },
+      {
+        "declarations_sha256": null,
+        "fresh": false,
+        "generated": "2026-10-02T10:13:50+05:30",
+        "layer": "L5",
+        "registry_fingerprint": "1b980d1c48d19b53589db234ebeb5c2cbbffb6cddd5535ae7390b97b2a22666a",
+        "registry_revision": 10,
+        "sha256": "9fce3ef619be316a4986b8017ee0463a625c5e1e913deb7c0e8d3f6d8b8b1c77",
+        "stale_reason": "stale_census(registry rev 10 != ref rev 25)",
+        "tool_commit": "1e5781ae1e98d85c0d80ddcc229f0852dad41347",
+        "tool_dirty": false
+      }
+    ],
+    "ledger_certs_sha256": "4d45d8a3a5132ab7b304017577af93c8d9460707c754cdf3d5c68659b95d6648",
+    "ledger_gaps_sha256": "c5bf1b43dc2c4f93889beb511dc65cbe9793e5d60f6d913518578540bd41dda7",
+    "t1_evidence": null
+  },
+  "inspector": "platform/scripts/governance/asset_census.py",
+  "inspector_blob_sha256": "e0c9118aa7e0aa0696db34cdd85fd4ff0786afa67450601e78eb9df10e293e55",
+  "inspector_commit": "1f737f96eb3d9d7aa33ded421fddeaf1911dd731",
+  "measured_offline": true,
+  "ref": "1f737f96eb3d9d7aa33ded421fddeaf1911dd731",
+  "registry": {
+    "fingerprint": "0e78e228d140d04920cb12bcd8b5bd9c8b33ca59ac8f9105853a139b8289d698",
+    "revision": 25
+  },
+  "schema": "nikasha_scorecard/1",
+  "summary": {
+    "all_tests_pass": false,
+    "all_tests_pass_note": "all_tests_pass can be true while T1 reads 'PASS, N declared unplantable': N checks are covered by a re-tested declaration, not by a plant. Read t1_declared_unplantable (and details) before treating all_tests_pass as unqualified",
+    "details": {
+      "T1": "UNMEASURED",
+      "T2": "UNMEASURED",
+      "T3": "UNMEASURED",
+      "T4": "FAIL",
+      "T5": "FAIL"
+    },
+    "note": "measured offline from saved evidence; UNMEASURED and NO_DETECTOR are never a pass",
+    "t1_declared_unplantable": 0,
+    "unmeasured_cells_total": 17,
+    "verdicts": {
+      "T1": "UNMEASURED",
+      "T2": "UNMEASURED",
+      "T3": "UNMEASURED",
+      "T4": "FAIL",
+      "T5": "FAIL"
+    },
+    "warnings": []
+  },
+  "tests": {
+    "T1": {
+      "cells": {
+        "known_defect_rows": {
+          "kind": "precondition",
+          "missing_rows": [],
+          "nonblocking_open": [
+            "R55"
+          ],
+          "open": [],
+          "partial": [],
+          "rows": {
+            "R52": "CLOSED",
+            "R56": "CLOSED"
+          },
+          "unknown_state": [],
+          "verdict": "PASS"
+        },
+        "mutation_notice": {
+          "kind": "measurement",
+          "reason": "no plant evidence supplied: the plant harness (nikasha_plant.py, PR #3088) is not on main",
+          "verdict": "NO_DETECTOR"
+        },
+        "plant_suite": {
+          "kind": "measurement",
+          "reason": "no plant evidence supplied: the plant harness (nikasha_plant.py, PR #3088) is not on main",
+          "verdict": "NO_DETECTOR"
+        }
+      },
+      "definition": "finds what is there: a planted defect makes the inspector fail that check for that asset and no other; a mutated detector is noticed by the suite",
+      "detail": "UNMEASURED",
+      "evidence": null,
+      "fail_basis": null,
+      "population": "27 registry check(s) with detector asset_census.py:measure() at registry revision 25; 0 plant(s) supplied",
+      "unmeasured_cells": [
+        "mutation_notice",
+        "plant_suite"
+      ],
+      "verdict": "UNMEASURED"
+    },
+    "T2": {
+      "cells": {
+        "build_registered_rederivation": {
+          "kind": "measurement",
+          "observed_detail": {
+            "assets_compared": 127,
+            "disagreements": [],
+            "unparsable_modules": 0
+          },
+          "observed_on_stale_input": "would_be_PASS",
+          "reason": "L0: stale_census(registry rev 10 != ref rev 25); L1: stale_census(registry rev 10 != ref rev 25); L2: stale_census(registry rev 10 != ref rev 25); L3: stale_census(registry rev 10 != ref rev 25); L4: stale_census(registry rev 10 != ref rev 25); L5: stale_census(registry rev 10 != ref rev 25)",
+          "verdict": "UNMEASURED"
+        },
+        "handverify_sample": {
+          "kind": "measurement",
+          "reason": "the stratified production hand-verification (T2_PROTOCOL.md) has no machine detector; the other checks need production count_sql and build history",
+          "verdict": "NO_DETECTOR"
+        },
+        "known_defect_rows": {
+          "kind": "precondition",
+          "missing_rows": [],
+          "nonblocking_open": [],
+          "open": [],
+          "partial": [],
+          "rows": {
+            "R42": "CLOSED",
+            "R43": "CLOSED",
+            "R48": "CLOSED"
+          },
+          "unknown_state": [],
+          "verdict": "PASS"
+        }
+      },
+      "definition": "does not invent what isn't: every census verdict of the sampled assets re-derives independently; zero disagreements per layer",
+      "detail": "UNMEASURED",
+      "evidence": "census_L*.json + platform/python-sidecar/",
+      "fail_basis": null,
+      "population": "census layers L0-L5 (6 of 6 supplied, 127 assets); @register decorators scanned (AST) under platform/python-sidecar/",
+      "unmeasured_cells": [
+        "build_registered_rederivation",
+        "handverify_sample"
+      ],
+      "verdict": "UNMEASURED"
+    },
+    "T3": {
+      "cells": {
+        "closure_by_measurement": {
+          "kind": "measurement",
+          "observed_detail": {
+            "measurement_closures": 72,
+            "retirement_closures": 123
+          },
+          "observed_on_stale_input": "would_be_PASS",
+          "reason": "L0: stale_census(registry rev 10 != ref rev 25); L1: stale_census(registry rev 10 != ref rev 25); L2: stale_census(registry rev 10 != ref rev 25); L3: stale_census(registry rev 10 != ref rev 25); L4: stale_census(registry rev 10 != ref rev 25); L5: stale_census(registry rev 10 != ref rev 25)",
+          "verdict": "UNMEASURED"
+        },
+        "closures_earned": {
+          "kind": "measurement",
+          "observed_detail": {
+            "standing_closures": 72,
+            "unearned": [],
+            "unjoinable": []
+          },
+          "observed_on_stale_input": "would_be_PASS",
+          "reason": "L0: stale_census(registry rev 10 != ref rev 25); L1: stale_census(registry rev 10 != ref rev 25); L2: stale_census(registry rev 10 != ref rev 25); L3: stale_census(registry rev 10 != ref rev 25); L4: stale_census(registry rev 10 != ref rev 25); L5: stale_census(registry rev 10 != ref rev 25)",
+          "verdict": "UNMEASURED"
+        },
+        "known_defect_rows": {
+          "kind": "precondition",
+          "missing_rows": [],
+          "nonblocking_open": [],
+          "open": [],
+          "partial": [],
+          "rows": {
+            "R57": "CLOSED",
+            "R58": "CLOSED"
+          },
+          "unknown_state": [],
+          "verdict": "PASS"
+        },
+        "regression_reopen": {
+          "kind": "measurement",
+          "observed_detail": {
+            "reopened_gap_ids": []
+          },
+          "observed_on_stale_input": "would_be_NO_DETECTOR",
+          "reason": "L0: stale_census(registry rev 10 != ref rev 25); L1: stale_census(registry rev 10 != ref rev 25); L2: stale_census(registry rev 10 != ref rev 25); L3: stale_census(registry rev 10 != ref rev 25); L4: stale_census(registry rev 10 != ref rev 25); L5: stale_census(registry rev 10 != ref rev 25)",
+          "verdict": "UNMEASURED"
+        },
+        "tracker_moves": {
+          "kind": "measurement",
+          "reason": "the tracker needs the live registry (a database); a transition needs two tracker runs around a repair",
+          "verdict": "NO_DETECTOR"
+        }
+      },
+      "definition": "a fix closes a row: the ledger row closes by measurement, never unearned, the tracker moves, a regression re-opens it",
+      "detail": "UNMEASURED",
+      "evidence": "00_ARCHITECTURE/control/asset_gaps.jsonl",
+      "fail_basis": null,
+      "population": "1874 gap id(s) in 00_ARCHITECTURE/control/asset_gaps.jsonl",
+      "unmeasured_cells": [
+        "closure_by_measurement",
+        "closures_earned",
+        "regression_reopen",
+        "tracker_moves"
+      ],
+      "verdict": "UNMEASURED"
+    },
+    "T4": {
+      "cells": {
+        "L1": {
+          "kind": "measurement",
+          "observed_detail": {
+            "assets_measured": 19,
+            "assets_without_a_measured_cell": [],
+            "duplicate_asset_ids": [],
+            "errored_cells": 0,
+            "population_active": 19
+          },
+          "observed_on_stale_input": "would_be_PASS",
+          "reason": "L1: stale_census(registry rev 10 != ref rev 25)",
+          "verdict": "UNMEASURED"
+        },
+        "L2": {
+          "kind": "measurement",
+          "observed_detail": {
+            "assets_measured": 23,
+            "assets_without_a_measured_cell": [],
+            "duplicate_asset_ids": [],
+            "errored_cells": 0,
+            "population_active": 23
+          },
+          "observed_on_stale_input": "would_be_PASS",
+          "reason": "L2: stale_census(registry rev 10 != ref rev 25)",
+          "verdict": "UNMEASURED"
+        },
+        "L3": {
+          "kind": "measurement",
+          "observed_detail": {
+            "assets_measured": 21,
+            "assets_without_a_measured_cell": [],
+            "duplicate_asset_ids": [],
+            "errored_cells": 0,
+            "population_active": 21
+          },
+          "observed_on_stale_input": "would_be_PASS",
+          "reason": "L3: stale_census(registry rev 10 != ref rev 25)",
+          "verdict": "UNMEASURED"
+        },
+        "L4": {
+          "kind": "measurement",
+          "observed_detail": {
+            "assets_measured": 9,
+            "assets_without_a_measured_cell": [],
+            "duplicate_asset_ids": [],
+            "errored_cells": 0,
+            "population_active": 9
+          },
+          "observed_on_stale_input": "would_be_PASS",
+          "reason": "L4: stale_census(registry rev 10 != ref rev 25)",
+          "verdict": "UNMEASURED"
+        },
+        "L5": {
+          "kind": "measurement",
+          "observed_detail": {
+            "assets_measured": 15,
+            "assets_without_a_measured_cell": [],
+            "duplicate_asset_ids": [],
+            "errored_cells": 0,
+            "population_active": 15
+          },
+          "observed_on_stale_input": "would_be_PASS",
+          "reason": "L5: stale_census(registry rev 10 != ref rev 25)",
+          "verdict": "UNMEASURED"
+        },
+        "known_defect_rows": {
+          "kind": "precondition",
+          "missing_rows": [],
+          "nonblocking_open": [],
+          "open": [
+            "R24"
+          ],
+          "partial": [],
+          "reason": "1 blocking register row(s) open",
+          "rows": {
+            "R24": "OPEN",
+            "R40": "CLOSED",
+            "R41": "CLOSED"
+          },
+          "unknown_state": [],
+          "verdict": "FAIL"
+        },
+        "production_provenance": {
+          "kind": "measurement",
+          "reason": "the census JSON records no database identity: 'ran in production' is not provable from it",
+          "verdict": "NO_DETECTOR"
+        }
+      },
+      "definition": "works on a layer it wasn't built against: the census runs on L1-L5 in production, no errored cell, every active asset measured",
+      "detail": "FAIL",
+      "evidence": "census_L1..L5.json",
+      "fail_basis": "precondition: known_defect_rows (R24 open)",
+      "population": "census layers L1-L5, active population per layer",
+      "unmeasured_cells": [
+        "L1",
+        "L2",
+        "L3",
+        "L4",
+        "L5",
+        "production_provenance"
+      ],
+      "verdict": "FAIL"
+    },
+    "T5": {
+      "cells": {
+        "drift_detector": {
+          "binds": [
+            "drift_detector"
+          ],
+          "kind": "measurement",
+          "reason": "drift_detector.py's schema axis reads a database; run it in CI (E1.7)",
+          "verdict": "UNMEASURED"
+        },
+        "eight_gates_text": {
+          "binds": [
+            "V1",
+            "R63",
+            "R77"
+          ],
+          "files_checked": 7,
+          "kind": "measurement",
+          "verdict": "PASS"
+        },
+        "gate_set_agreement": {
+          "binds": [
+            "V1",
+            "R63"
+          ],
+          "gates": 9,
+          "kind": "measurement",
+          "verdict": "PASS"
+        },
+        "known_defect_rows": {
+          "kind": "precondition",
+          "missing_rows": [],
+          "nonblocking_open": [
+            "R68",
+            "R72",
+            "R73",
+            "R74",
+            "R75",
+            "R76",
+            "R83"
+          ],
+          "open": [
+            "R65",
+            "R67",
+            "R71"
+          ],
+          "partial": [
+            "R84"
+          ],
+          "reason": "3 blocking register row(s) open",
+          "rows": {
+            "R63": "CLOSED",
+            "R64": "CLOSED",
+            "R65": "OPEN",
+            "R66": "CLOSED",
+            "R67": "OPEN",
+            "R71": "OPEN",
+            "R77": "CLOSED",
+            "R84": "MEASURED"
+          },
+          "unknown_state": [],
+          "verdict": "FAIL"
+        },
+        "l0_denominator": {
+          "binds": [
+            "V7",
+            "R69"
+          ],
+          "kind": "measurement",
+          "verdict": "PASS"
+        },
+        "ledger_criteria_registered": {
+          "binds": [
+            "R251"
+          ],
+          "criteria_in_ledger": 71,
+          "kind": "measurement",
+          "reason": "42 ledger criterion string(s) are not in the inspector's registry",
+          "unregistered_count": 42,
+          "unregistered_sample": [
+            "Algorithm.derive_text_class",
+            "Algorithm.one_signal",
+            "Algorithm.per_text_extraction",
+            "Algorithm.second_opinion",
+            "Architecture.grain",
+            "Architecture.key_contract",
+            "Architecture.node_convention",
+            "Architecture.one_producer",
+            "Architecture.second_school",
+            "Architecture.service_kind"
+          ],
+          "verdict": "FAIL"
+        },
+        "ledger_state_vocabulary": {
+          "binds": [
+            "T5 ledger state vocabulary"
+          ],
+          "kind": "measurement",
+          "states": [
+            "CLOSED",
+            "IN_PROGRESS",
+            "OPEN"
+          ],
+          "verdict": "PASS"
+        },
+        "manifest_root_fingerprint": {
+          "binds": [
+            "V14",
+            "manifest_fingerprint --check"
+          ],
+          "declared": "4f78acf78761dd2b4cfc4539928e1df911aa7effdfdb807c93affff5981a6ad8",
+          "entries": 131,
+          "entry_count_declared": 131,
+          "kind": "measurement",
+          "observed": "f078e02bfb7dd2fc",
+          "reason": "manifest root fingerprint or entry_count does not reproduce",
+          "verdict": "FAIL"
+        },
+        "manifest_tier_entries": {
+          "binds": [
+            "V14",
+            "R82"
+          ],
+          "kind": "measurement",
+          "reason": "the manifest at ref carries no fingerprinted entry for the Nikasha tier documents",
+          "verdict": "NO_DETECTOR"
+        },
+        "t1_review_record": {
+          "binds": [
+            "V10",
+            "R72"
+          ],
+          "kind": "measurement",
+          "reason": "T1 carries neither a review_record nor a document_reviews pointer",
+          "verdict": "NO_DETECTOR"
+        },
+        "t2_element_count": {
+          "binds": [
+            "V13",
+            "R75"
+          ],
+          "kind": "measurement",
+          "verdict": "PASS"
+        },
+        "t2_review_counts": {
+          "binds": [
+            "V11",
+            "R73"
+          ],
+          "kind": "measurement",
+          "verdict": "PASS"
+        },
+        "t3_gate_map_count": {
+          "binds": [
+            "V5",
+            "R67"
+          ],
+          "kind": "measurement",
+          "verdict": "PASS"
+        },
+        "t4_heading_checks": {
+          "binds": [
+            "V2",
+            "R64"
+          ],
+          "kind": "measurement",
+          "verdict": "PASS"
+        },
+        "tracker_comment": {
+          "binds": [
+            "V4",
+            "R66"
+          ],
+          "kind": "measurement",
+          "verdict": "PASS"
+        },
+        "transfers_contradiction": {
+          "binds": [
+            "V9",
+            "R71"
+          ],
+          "kind": "measurement",
+          "verdict": "PASS"
+        },
+        "verdict_spelling": {
+          "binds": [
+            "V6",
+            "R68"
+          ],
+          "kind": "measurement",
+          "verdict": "PASS"
+        }
+      },
+      "definition": "the pieces agree: tiers, L0 instance, pilots, tracker, ledgers, inspector and manifest agree on counts, names and vocabularies",
+      "detail": "FAIL",
+      "evidence": "00_ARCHITECTURE/briefs/nirmana/ (tier documents), 00_ARCHITECTURE/control/asset_elevation_tracker.py, 00_ARCHITECTURE/CAPABILITY_MANIFEST.json",
+      "fail_basis": "measured: ledger_criteria_registered, manifest_root_fingerprint; precondition: known_defect_rows (R65, R67, R71 open)",
+      "population": "tiers T1-T4, L0 instance, 5 pilot(s), tracker, ledgers, manifest at the ref",
+      "unmeasured_cells": [
+        "drift_detector",
+        "manifest_tier_entries",
+        "t1_review_record"
+      ],
+      "verdict": "FAIL"
+    }
+  },
+  "vocabulary": {
+    "extension": "Track E section 5 names PASS|FAIL|PARTIAL; NO_DETECTOR (no offline detector exists for the claim) and UNMEASURED (an input is missing or stale) extend it and are never a pass",
+    "verdicts": [
+      "PASS",
+      "FAIL",
+      "PARTIAL",
+      "NO_DETECTOR",
+      "UNMEASURED"
+    ]
+  }
+}

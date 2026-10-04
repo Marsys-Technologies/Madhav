@@ -529,7 +529,7 @@ def test_structural_boundary_rejects_missing_or_defaulted_geometry():
         _validate_chart_output_complete({"grahas": []})
     with pytest.raises(RuntimeError, match="required grahas missing"):
         _validate_chart_output_complete({
-            "ascendant": {"sign": "Aries", "sign_id": 1, "longitude": 0.0},
+            "ascendant": {"sign": "Aries", "sign_id": 1, "longitude_deg": 0.0},
             "grahas": [],
         })
 
