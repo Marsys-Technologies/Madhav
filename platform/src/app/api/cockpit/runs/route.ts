@@ -320,12 +320,14 @@ export async function POST(req: NextRequest) {
     const pool = await getPool()
     const client = await pool.connect()
     let runId: string
+    let clearNotices: Array<{ assetId: string; message: string }> = []
     try {
       await client.query('BEGIN')
 
       // Delete data — reverse order for FK safety (downstream first), each asset in
       // its own savepoint: the operator clear stays best effort.
-      await invalidateAssets({ db: client, chartId: chart_id, assets: clearAssets, policy: 'operator-best-effort' })
+      const invalidation = await invalidateAssets({ db: client, chartId: chart_id, assets: clearAssets, policy: 'operator-best-effort' })
+      clearNotices = invalidation.notices
 
       // Reset throughput to dormant for all cleared assets (chart-scoped)
       if (clearAssetIds.length > 0) {
@@ -405,6 +407,7 @@ export async function POST(req: NextRequest) {
         ...(buildPlan.protected_assets.length > 0 || clearProtectedAssets.length > 0
           ? { protected_assets: buildPlan.protected_assets }
           : {}),
+        ...(clearNotices.length > 0 ? { notices: clearNotices } : {}),
       },
     }, { status: 201 })
   }

@@ -35,8 +35,11 @@ describe('1265 owner-path SQL is not a migration', () => {
 
   it('migrate.ts discovery lists no 1265 file and no file carrying the guard objects', () => {
     expect(discovered.filter(x => /^1265[_.]/.test(x.file))).toEqual([])
+    // No routine migration may DEFINE (or change) the guard objects. A `--` comment that merely NAMES one (e.g. 1275's note on why its
+    // cascade interacts with the 1265 helper) is not a definition, so comment lines are not scanned.
+    const stripSqlComments = (sql: string) => sql.split('\n').filter(l => !l.trim().startsWith('--')).join('\n')
     const bad = discovered.filter(x => /mimamsa_predictions_frozen_row_guard|l5_frozen_chart_cascade_authorizes|l5_frozen_withdrawal_authorizes/.test(
-      fs.readFileSync(path.join(x.dir, x.file), 'utf8')))
+      stripSqlComments(fs.readFileSync(path.join(x.dir, x.file), 'utf8'))))
     expect(bad).toEqual([])
   })
 

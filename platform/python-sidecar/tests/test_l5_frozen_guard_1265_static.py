@@ -37,7 +37,9 @@ def test_the_sql_is_in_the_executor_package_and_nowhere_under_a_migrations_direc
         assert not [n for n in names if n.startswith("1265_")], d
     for d in MIGRATIONS:
         for p in d.glob("*.sql"):
-            text = p.read_text(encoding="utf8", errors="ignore")
+            # no routine migration may DEFINE (or change) the guard objects; a `--` comment that merely NAMES one (e.g. 1275's note on
+            # why its cascade interacts with the 1265 helper) is not a definition, so comment lines are not scanned
+            text = "\n".join(l for l in p.read_text(encoding="utf8", errors="ignore").splitlines() if not l.lstrip().startswith("--"))
             assert "mimamsa_predictions_frozen_row_guard" not in text and "l5_frozen_chart_cascade_authorizes" not in text, p
 
 

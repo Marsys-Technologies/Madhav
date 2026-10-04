@@ -45,6 +45,8 @@ export async function POST(request: Request) {
         freshness_deadline_at: observation.freshness_deadline_at,
         runtime_liveness: observation.runtime_liveness,
         release_state: observation.release_state,
+        // N-137: the staged candidates excluded from the frozen population (id, reason, decision) — visible, not merely absent from a count
+        excluded_staged_candidates: observation.excluded_staged_candidates ?? [],
       },
       { headers: { 'Cache-Control': 'no-store' } },
     )
