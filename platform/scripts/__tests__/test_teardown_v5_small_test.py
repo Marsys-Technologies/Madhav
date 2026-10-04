@@ -1157,3 +1157,15 @@ def test_the_ownership_proof_and_the_n137_predicate_are_the_shared_modules_not_a
     assert "v5_small_test_shared.py" in teardown_mod.__doc__
     shared_source = (SCRIPT.parent / "v5_small_test_shared.py").read_text(encoding="utf-8")
     assert "_validate_test_slice" in shared_source and "_slice_component" in shared_source
+
+
+def test_the_ci_installs_the_sidecar_requirements_into_the_selected_python_before_the_unit_steps_that_import_the_writer():
+    """Codex PR 3097 item 7: the unit steps import the real writer (scipy and the rest); the interpreter selected by setup-python must
+    get the sidecar's CI requirements before them."""
+    ci = (REPO / ".github/workflows/ci.yml").read_text(encoding="utf-8")
+    select = ci.index("Nirmāṇa L0 — install writer test runtime")
+    install = ci.index("python -m pip install -r python-sidecar/requirements-ci.txt", select)
+    teardown_step = ci.index("python -m pytest scripts/__tests__/test_teardown_v5_small_test.py")
+    assert select < install < teardown_step
+    dispatch = ci.find("python -m pytest scripts/__tests__/test_dispatch_v5_small_test.py")
+    assert dispatch == -1 or select < install < dispatch
