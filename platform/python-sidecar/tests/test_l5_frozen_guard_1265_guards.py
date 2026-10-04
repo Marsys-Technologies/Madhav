@@ -198,7 +198,16 @@ def test_predictions_the_live_mi_bhavisya_and_cockpit_clear_deletes_now_fail_lou
 @pytest.mark.parametrize("table,prefix", [("mimamsa_predictions", P_PRED), ("brahma_prospective_ledger", P_PRO),
                                           ("mimamsa_manifestation_sets", P_MAN), ("brahma_mimamsa_prediction_ledger", P_BMPL)])
 def test_truncate_is_refused_even_for_a_superuser_and_for_a_regranted_owner(shared, table, prefix):
-    refused(shared, "postgres", "TRUNCATE public." + table, prefix=prefix)
+    if table == "brahma_prospective_ledger":
+        # the world carries production's FK (mimamsa_intervention_ledger -> brahma_prospective_ledger): PostgreSQL refuses a plain TRUNCATE (0A000) before the guard
+        # fires; only the CASCADE form reaches the guard (see test_l5_frozen_guard_1265_truncate_fk.py for the full proof)
+        psy = shared.pg["psycopg"]
+        with shared.connect("postgres") as c:
+            with pytest.raises(psy.errors.FeatureNotSupported, match="cannot truncate a table referenced in a foreign key constraint"):
+                c.execute("TRUNCATE public." + table)
+            c.rollback()
+    else:
+        refused(shared, "postgres", "TRUNCATE public." + table, prefix=prefix)
     refused(shared, "postgres", "TRUNCATE public." + table + " CASCADE", prefix=prefix)
     assert sum(counts(shared).values()) > 0
 
@@ -791,7 +800,7 @@ def run_probes(w: World) -> list:
     for col, val in (("claim", "'x'"), ("confidence", "0.9"), ("falsifier", "'x'"), ("contact_id", "'x'"), ("model", "'x'")):
         must_refuse("pro update " + col, "amjis_app", "UPDATE brahma_prospective_ledger SET " + col + " = " + val + " WHERE prediction_id = %s", (PRO["i"],))
     must_refuse("pro delete", "amjis_app", "DELETE FROM brahma_prospective_ledger WHERE prediction_id = %s", (PRO["i"],))
-    must_refuse("pro truncate", "postgres", "TRUNCATE brahma_prospective_ledger", contains="TRUNCATE of public.brahma_prospective_ledger is refused")
+    must_refuse("pro truncate cascade", "postgres", "TRUNCATE brahma_prospective_ledger CASCADE", contains="TRUNCATE of public.brahma_prospective_ledger is refused")   # plain TRUNCATE: refused by the production FK first
     must_refuse("pro open to confirmed", "amjis_app", "UPDATE brahma_prospective_ledger SET lifecycle_status = 'confirmed' WHERE prediction_id = %s", (PRO["i"],))
     must_refuse("pro matched to open", "amjis_app", "UPDATE brahma_prospective_ledger SET lifecycle_status = 'open' WHERE prediction_id = %s", (PRO["m"],))
     must_refuse("pro match note alone", "amjis_app", "UPDATE brahma_prospective_ledger SET match_note = 'x' WHERE prediction_id = %s", (PRO["m"],))

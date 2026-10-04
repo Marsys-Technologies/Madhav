@@ -703,6 +703,56 @@ BEGIN
 END
 $h$;
 
+-- TRUNCATE probe for a table that another table may reference by a foreign key (added 2026-10-04 after the dry run of 2026-10-04T15:00Z was refused:
+-- production has mimamsa_intervention_ledger.prediction_id -> brahma_prospective_ledger, ON DELETE NO ACTION, and PostgreSQL refuses a plain TRUNCATE of a
+-- referenced table (SQLSTATE 0A000, "cannot truncate a table referenced in a foreign key constraint") BEFORE any BEFORE TRUNCATE trigger fires).
+-- Returns 'guard' (the guard refused: its message starts with prefix), 'fk' (PostgreSQL's own 0A000 refusal; honoured only when accept_fk is true AND the table
+-- really is the target of a foreign key: then the table cannot be emptied by a plain TRUNCATE at all), or a failure text.
+-- Each probe runs in its own sub-block: a statement that is NOT refused is undone at once (the sentinel RAISE rolls the sub-block back) and reported as a
+-- failure, so a TRUNCATE ... CASCADE can never survive its probe; the caller then fails the whole file and the executor's transaction is rolled back.
+-- The function-level SET scopes lock_timeout to the probe and restores the caller's value on exit (TRUNCATE takes ACCESS EXCLUSIVE on the table and, with
+-- CASCADE, on every referencing table, even when the trigger then raises: fail fast instead of queueing readers behind a long-held lock).
+-- Every outcome is reported with a RAISE NOTICE (the executor prints notices) so the evidence shows which refusal was seen.
+CREATE FUNCTION pg_temp.m1265_truncate_probe(tbl text, prefix text, with_cascade boolean, accept_fk boolean) RETURNS text
+LANGUAGE plpgsql SET lock_timeout = '2s' AS $h$
+DECLARE
+  stmt text := 'TRUNCATE public.' || tbl || CASE WHEN with_cascade THEN ' CASCADE' ELSE '' END;
+  msg text;
+  referrers text;
+BEGIN
+  BEGIN
+    EXECUTE stmt;
+    RAISE EXCEPTION 'm1265_truncate_probe_unrefused' USING ERRCODE = 'P0001';
+  EXCEPTION
+    WHEN insufficient_privilege THEN
+      GET STACKED DIAGNOSTICS msg = MESSAGE_TEXT;
+      IF msg LIKE prefix || '%' THEN
+        RAISE NOTICE '1265 self-test: % refused by the GUARD (%)', stmt, left(msg, 100);
+        RETURN 'guard';
+      END IF;
+      RETURN format('refused by something else (%s): %s', left(msg, 100), stmt);
+    WHEN feature_not_supported THEN
+      GET STACKED DIAGNOSTICS msg = MESSAGE_TEXT;
+      SELECT string_agg(c.conrelid::regclass::text || '.' || c.conname, ', ' ORDER BY c.conrelid::regclass::text, c.conname) INTO referrers
+        FROM pg_constraint c WHERE c.contype = 'f' AND c.confrelid = ('public.' || tbl)::regclass;
+      IF accept_fk AND referrers IS NOT NULL THEN
+        RAISE NOTICE '1265 self-test: % refused by POSTGRESQL (SQLSTATE 0A000: %), already impossible; referenced by %', stmt, left(msg, 100), referrers;
+        RETURN 'fk';
+      END IF;
+      RETURN format('unexpected error (%s): %s', left(msg, 100), stmt);
+    WHEN raise_exception THEN
+      IF SQLERRM = 'm1265_truncate_probe_unrefused' THEN
+        RETURN format('not refused (undone at once): %s', stmt);
+      END IF;
+      GET STACKED DIAGNOSTICS msg = MESSAGE_TEXT;
+      RETURN format('unexpected error (%s): %s', left(msg, 100), stmt);
+    WHEN OTHERS THEN
+      GET STACKED DIAGNOSTICS msg = MESSAGE_TEXT;
+      RETURN format('unexpected error (%s): %s', left(msg, 100), stmt);
+  END;
+END
+$h$;
+
 -- D2. SELF-TEST: every probe row is rolled back by the final sentinel exception; any unrefused / wrongly refused action fails the file.
 -- The probes hang on ONE EXISTING chart when there is one (the chart_id -> charts(id) foreign keys of migration 1275 would reject a random id) and every
 -- statement is scoped to the probe row's own key, so no real row of that chart is touched even for a moment beyond the rolled-back probes.
@@ -810,8 +860,12 @@ BEGIN
       IF r IS NOT NULL THEN failures := array_append(failures, 'brahma_prospective_ledger: ' || r); END IF;
     END LOOP;
     IF has_table_privilege(current_user, 'public.brahma_prospective_ledger', 'TRUNCATE') THEN
-      r := pg_temp.m1265_refused('TRUNCATE public.brahma_prospective_ledger', 'brahma_prospective_ledger_frozen_row_guard:');
-      IF r IS NOT NULL THEN failures := array_append(failures, 'brahma_prospective_ledger: ' || r); END IF;
+      -- production: mimamsa_intervention_ledger references this table (NO ACTION), so a plain TRUNCATE is refused by PostgreSQL before the guard fires; that
+      -- counts as "already impossible" and is recorded (NOTICE). The CASCADE probe is the proof the guard fires: it must be the GUARD that refuses it.
+      r := pg_temp.m1265_truncate_probe('brahma_prospective_ledger', 'brahma_prospective_ledger_frozen_row_guard:', false, true);
+      IF r NOT IN ('guard', 'fk') THEN failures := array_append(failures, 'brahma_prospective_ledger: ' || r); END IF;
+      r := pg_temp.m1265_truncate_probe('brahma_prospective_ledger', 'brahma_prospective_ledger_frozen_row_guard:', true, false);
+      IF r <> 'guard' THEN failures := array_append(failures, 'brahma_prospective_ledger: ' || r); END IF;
     END IF;
 
     IF array_length(failures, 1) > 0 THEN
@@ -828,6 +882,7 @@ $selftest$;
 
 DROP FUNCTION pg_temp.m1265_refused(text, text);
 DROP FUNCTION pg_temp.m1265_passes(text);
+DROP FUNCTION pg_temp.m1265_truncate_probe(text, text, boolean, boolean);
 
 -- E. POST-CHECK (asserting: RAISES). The final catalog state is exactly what this file describes.
 DO $post$

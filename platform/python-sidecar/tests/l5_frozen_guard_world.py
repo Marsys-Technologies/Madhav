@@ -152,6 +152,16 @@ CREATE TABLE public.brahma_mimamsa_prediction_ledger (
   created_at timestamptz NOT NULL DEFAULT now(), updated_at timestamptz NOT NULL DEFAULT now(),
   chart_context_stale_at timestamptz, chart_context_stale_reason text,
   chart_context_superseded_by_run_id uuid REFERENCES public.build_runs(id) ON DELETE SET NULL);
+-- production (read 2026-10-04): mimamsa_intervention_ledger REFERENCES brahma_prospective_ledger(prediction_id), ON DELETE NO ACTION (confdeltype 'a'),
+-- no non-internal trigger, owner amjis_app. PostgreSQL refuses a plain TRUNCATE of the referenced table (0A000) before any BEFORE TRUNCATE trigger fires:
+-- that is what refused the 2026-10-04 dry run. Only the columns the FK shape needs.
+CREATE TABLE public.mimamsa_intervention_ledger (
+  intervention_id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  chart_id uuid NOT NULL,
+  intent text NOT NULL,
+  prediction_id uuid,
+  CONSTRAINT mimamsa_intervention_ledger_chart_id_fkey FOREIGN KEY (chart_id) REFERENCES public.charts(id) ON DELETE CASCADE,
+  CONSTRAINT mimamsa_intervention_ledger_prediction_id_fkey FOREIGN KEY (prediction_id) REFERENCES public.brahma_prospective_ledger(prediction_id));
 CREATE TABLE public.chart_subject_consent (
   chart_id uuid PRIMARY KEY, consent_state text NOT NULL CHECK (consent_state IN ('granted','withdrawn')),
   withdrawn_at timestamptz, CHECK (consent_state <> 'withdrawn' OR withdrawn_at IS NOT NULL));
@@ -168,6 +178,7 @@ ALTER TABLE public.mimamsa_predictions OWNER TO amjis_app;
 ALTER TABLE public.mimamsa_manifestation_sets OWNER TO amjis_app;
 ALTER TABLE public.brahma_prospective_ledger OWNER TO amjis_app;
 ALTER TABLE public.brahma_mimamsa_prediction_ledger OWNER TO amjis_app;
+ALTER TABLE public.mimamsa_intervention_ledger OWNER TO amjis_app;
 ALTER TABLE public.chart_subject_consent OWNER TO amjis_app;
 ALTER TABLE public.chart_subject_deletion_disputes OWNER TO amjis_app;
 ALTER SEQUENCE public.chart_subject_deletion_disputes_dispute_id_seq OWNER TO amjis_app;
@@ -180,6 +191,9 @@ GRANT SELECT, INSERT, UPDATE ON public.mimamsa_predictions TO role_ledger_write;
 GRANT SELECT, INSERT, DELETE ON public.mimamsa_predictions, public.mimamsa_manifestation_sets TO data_plane_builder;   -- the live-only 'ard' grants
 GRANT SELECT ON public.brahma_prospective_ledger, public.brahma_mimamsa_prediction_ledger TO retrieval_census_ro, role_web_serve, role_jobs, suvarna_reader;
 GRANT SELECT, INSERT, UPDATE ON public.brahma_prospective_ledger, public.brahma_mimamsa_prediction_ledger TO role_ledger_write;
+GRANT SELECT ON public.mimamsa_intervention_ledger TO retrieval_census_ro, role_jobs, nirmana_evidence_ingress_writer, suvarna_reader;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.mimamsa_intervention_ledger TO role_orchestrator;
+GRANT SELECT, INSERT, UPDATE ON public.mimamsa_intervention_ledger TO role_ledger_write;
 GRANT SELECT ON public.build_runs, public.brahma_event_ontology, public.life_events, public.message_parts TO suvarna_reader, role_orchestrator;
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.chart_subject_consent TO role_web_serve;
 GRANT SELECT ON public.chart_subject_consent TO retrieval_census_ro, role_jobs;
