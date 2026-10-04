@@ -4,6 +4,7 @@ canonical_id: G3_NATAL_POSITION_TIER_OPTIONS
 version: 1.0
 status: DRAFT for the owner — an options note; authorises NOTHING
 date: 2026-10-04
+revised_by: Stream B (Śāstra) 2026-10-04 — tense corrected after SETTLED-1 (the S-L1 rebuild has happened); no option or cost changed
 authored_by: Stream C (Kimi) — steward task C48 (gap G3 of REBUILD_AND_UPSTREAM_SEQUENCING_v1_0)
 scope: >
   One-page plain-language options note for the one open owner question in
@@ -27,9 +28,9 @@ Everything the new Gochara engine concludes about a chart starts from these ten
 numbers. If one of them is off, the error does not stay in one place: it moves every
 event date derived from that position.
 
-The numbers are about to be rebuilt anyway (Suvarṇa's S-L1 rebuild, on the Swiss
-ephemeris instead of the Moshier fallback). But that rebuild is the **same method with
-a better engine** — it fixes a known small bias, it is not an independent check.
+The numbers were rebuilt anyway at SETTLED-1 (2026-10-04: Suvarṇa's S-L1 rebuild, on the
+Swiss ephemeris instead of the Moshier fallback). But that rebuild is the **same method
+with a better engine** — it fixes a known small bias, it is not an independent check.
 
 ## Option A — accept "single" natal positions
 
@@ -68,8 +69,9 @@ name, like every other refusal in the system.
 
 - The daśā timeline the engine also depends on is **already two-pass verified** — only
   the ten natal longitudes are single-check.
-- After S-L1 the stored values move by < 1″ and no cell boundary is within 828″ of any
-  of them on fixture values (to be re-confirmed on the real rows at SETTLED-1), so for
+- At S-L1 the stored values move by < 1″ and no cell boundary is within 828″ of any
+  of them on fixture values (Suvarṇa's addendum and Stream A's analysis; **not** re-measured
+  on the real rows in the SETTLED-1 record, which covers the daśā rows), so for
   the **all-NULL proof build** either option is safe — the question binds the build
   where numbers are switched on.
 - Whichever option is chosen, the first seal's brief discloses the tier honestly
