@@ -259,34 +259,7 @@ def _refusal_checks(cur) -> "Checked":
     """Every guard, fail-closed, evaluated INSIDE the locks. Raises TeardownRefused; nothing is deleted. Returns the ids of the
     small-test runs this teardown may delete (every one proven to be exclusively this asset's) and whether the registry row was found
     ACTIVE (only then is it updated)."""
-    cur.execute(
-        """SELECT manifest_id FROM kala_gochara_publication
-           WHERE chart_id = %s AND generation = %s AND status = 'published'""",
-        (CHART_ID, GENERATION),
-    )
-    published = cur.fetchone()
-    if published:
-        raise TeardownRefused(
-            f"kala_gochara_publication has a PUBLISHED '5.0' manifest {published['manifest_id']} for chart {CHART_ID} "
-            "— a published generation is immutable")
-
-    cur.execute(
-        """SELECT manifest_id FROM ka_gochara_generation_seal
-           WHERE chart_id = %s AND generation = %s""",
-        (CHART_ID, GENERATION),
-    )
-    seal = cur.fetchone()
-    if seal:
-        raise TeardownRefused(
-            f"ka_gochara_generation_seal records '5.0' (manifest {seal['manifest_id']}) for chart {CHART_ID} — a sealed "
-            "generation is permanent publication history")
-
-    cur.execute("SELECT authoritative_generation FROM kala_gochara_authority WHERE chart_id = %s", (CHART_ID,))
-    authority = cur.fetchone()
-    if authority and authority["authoritative_generation"] == GENERATION:
-        raise TeardownRefused(
-            f"kala_gochara_authority names '5.0' as the authoritative_generation for chart {CHART_ID} — a serving "
-            "generation is never torn down")
+    shared.refuse_if_frozen(cur)                      # published / sealed / serving: the SAME check the dispatch makes
 
     notes: list[str] = []
     # ACTIVE: any run on the chart, whatever its scope or assets

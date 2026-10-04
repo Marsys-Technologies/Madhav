@@ -79,6 +79,39 @@ def same_instant(a, b) -> bool:
         return False
 
 
+def refuse_if_frozen(cur) -> None:
+    """Refuse, by name, when generation '5.0' of the pinned chart is PUBLISHED (immutable), SEALED (permanent publication history) or the
+    SERVING generation. Both scripts make this check, inside their transaction and under the chart lock. Reads only."""
+    cur.execute(
+        """SELECT manifest_id FROM kala_gochara_publication
+           WHERE chart_id = %s AND generation = %s AND status = 'published'""",
+        (CHART_ID, GENERATION),
+    )
+    published = cur.fetchone()
+    if published:
+        raise Refused(
+            f"kala_gochara_publication has a PUBLISHED '5.0' manifest {published['manifest_id']} for chart {CHART_ID} "
+            "— a published generation is immutable")
+
+    cur.execute(
+        """SELECT manifest_id FROM ka_gochara_generation_seal
+           WHERE chart_id = %s AND generation = %s""",
+        (CHART_ID, GENERATION),
+    )
+    seal = cur.fetchone()
+    if seal:
+        raise Refused(
+            f"ka_gochara_generation_seal records '5.0' (manifest {seal['manifest_id']}) for chart {CHART_ID} — a sealed "
+            "generation is permanent publication history")
+
+    cur.execute("SELECT authoritative_generation FROM kala_gochara_authority WHERE chart_id = %s", (CHART_ID,))
+    authority = cur.fetchone()
+    if authority and authority["authoritative_generation"] == GENERATION:
+        raise Refused(
+            f"kala_gochara_authority names '5.0' as the authoritative_generation for chart {CHART_ID} — a serving "
+            "generation is never touched")
+
+
 def stamp_problem(vector, horizon, run_manifests=()):
     """(problem, source): problem is None when the manifest's input vector PROVES a test slice, by the WRITER'S OWN validation; source says
     HOW (or, for a refusal, what was tried).
