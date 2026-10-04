@@ -38,11 +38,8 @@ differs only because an edge moved are reported as BOUNDARY-SENSITIVE (D8), and 
 G6 (steward M20261002T223036-02f0): a mixed L1 state — more than one Vimśottarī build — is REFUSED by the writer AND the verifier since Stream A's 699638fbe (`dasha_builds_mixed` / `dasha_build_not_pinned`). This
 tool applies the same condition BEFORE the re-pin: the verdict is STOP unless chart_dashas holds EXACTLY ONE Vimśottarī build (Lahiri, levels 1–3, any tier) and it is the SETTLED-1 build; --apply asserts the
 re-pinned constant equals that build and the old pin is gone.
-DECLARED SHAPE (steward ST-REPIN-PARTITION-SHAPE, scratch): the notice MAY declare the post-S-L1 `chart_dashas` shape — `expected_partitions_non_scope`, `expected_partitions_scope_cap`, `expected_dasha_build_ids` (all
-three or none; the build list must include `new_build_id`). The guard below then accepts the default OR exactly the declared shape and refuses anything else; both are recorded in the evidence. The Vimśottarī (Lahiri,
-levels 1–3) single-build check (G6 a) is NEVER relaxed — the writer and the verifier refuse a mixed Vimśottarī state by name.
 VERIFIER-PREDICATE MIRROR (vi) (steward ST-REPIN-PATCH-GO): every Vimśottarī / Lahiri row of the chart — ALL levels, ALL tiers, NULL build included — must be exactly the SETTLED-1 build (the verifier's own
-query in `validate_consumed_dasha_population`), so the tool cannot report CLEAN where the verifier would refuse after the re-pin; never relaxed by a declared shape.
+query in `validate_consumed_dasha_population`), so the tool cannot report CLEAN where the verifier would refuse after the re-pin; never relaxed. THE POST-S-L1 SHAPE IS FIXED (Codex ASTRA_REVIEW_REPIN_TOOL_DELTA): 45 + 1 partitions and exactly the SETTLED-1 build; no notice field overrides it (the notice REFUSES expected_partitions_* / expected_dasha_build_ids as unknown).
 SETTLED-1 mechanical guard (steward M20261002T224436-82bd; Suvarṇa addendum 6) — the pre-flight REFUSES unless, read-only for the chart: (ii) `chart_dashas` has exactly ONE distinct build_id (whole
 table, every system); (iii) the complete shape — 45 non-scope system×ayanāṃśa partitions + 1 scope-cap; (iv) `asset_throughput.state` = 'lit' for ga_dashas and ga_positions; (v) that single
 build id equals the SETTLED-1 build id (and --apply sets the constant to it and asserts so).
@@ -318,40 +315,22 @@ def fetch_preflight_facts(conn, chart_id: str) -> dict:
     return {"builds": builds, "non_scope": int(non_scope), "scope": int(scope), "throughput": {str(a): str(st) for a, st in cur.fetchall()}}
 
 
-def preflight_problems(facts: dict, new_id: str, pinned_constant: str | None = None, declared: dict | None = None) -> list[str]:
+def preflight_problems(facts: dict, new_id: str, pinned_constant: str | None = None) -> list[str]:
     """G6 closure, exact form (steward M20261002T224436-82bd; Suvarṇa addendum 6) — every one REFUSES: (ii) exactly ONE distinct build_id across chart_dashas; (iii) the complete shape, 45 non-scope
     system×ayanāṃśa partitions + 1 scope-cap; (iv) `ga_dashas` and `ga_positions` are `lit` for the chart; (v) that single build id equals the SETTLED-1 build id (the re-pin constant is set to it
     by --apply, which asserts it)."""
     out = []
-    declared_builds = set(declared["build_ids"]) if declared else None
-    if declared_builds is not None and set(facts["builds"]) == declared_builds:
-        pass                                           # exactly the DECLARED build set (it includes the SETTLED-1 build — the notice is refused otherwise)
-    elif len(facts["builds"]) != 1:
-        out.append(f"(ii) chart_dashas holds {len(facts['builds'])} distinct build_id(s) {facts['builds']}; exactly ONE is required (a part-failed or unfinished L1 rebuild leaves a mix)"
-                   + (f" — or exactly the notice's declared set {sorted(declared_builds)}" if declared_builds is not None else ""))
+    if len(facts["builds"]) != 1:
+        out.append(f"(ii) chart_dashas holds {len(facts['builds'])} distinct build_id(s) {facts['builds']}; exactly ONE is required (a part-failed or unfinished L1 rebuild leaves a mix)")
     elif facts["builds"][0] != new_id:
         out.append(f"(v) the single chart_dashas build {facts['builds'][0]} is not the SETTLED-1 build {new_id}")
-    observed = (facts["non_scope"], facts["scope"])
-    accepted = [(EXPECTED_NON_SCOPE_PARTITIONS, EXPECTED_SCOPE_PARTITIONS)] + ([(declared["non_scope"], declared["scope"])] if declared else [])
-    if observed not in accepted:
-        out.append(f"(iii) incomplete shape: {facts['non_scope']} non-scope + {facts['scope']} scope-cap partition(s); expected {EXPECTED_NON_SCOPE_PARTITIONS} + {EXPECTED_SCOPE_PARTITIONS}"
-                   + (f" or exactly the notice's declared {declared['non_scope']} + {declared['scope']}" if declared else ""))
+    if (facts["non_scope"], facts["scope"]) != (EXPECTED_NON_SCOPE_PARTITIONS, EXPECTED_SCOPE_PARTITIONS):
+        out.append(f"(iii) incomplete shape: {facts['non_scope']} non-scope + {facts['scope']} scope-cap partition(s); expected {EXPECTED_NON_SCOPE_PARTITIONS} + {EXPECTED_SCOPE_PARTITIONS}")
     for asset in ("ga_dashas", "ga_positions"):
         st = facts["throughput"].get(asset)
         if st != "lit":
             out.append(f"(iv) asset_throughput.state of {asset} is {st!r}, not 'lit'")
     return out
-
-
-def shape_evidence(facts: dict, new_id: str, declared: dict | None) -> str:
-    """The `chart_dashas` shape as observed, the DEFAULT, and the notice's DECLARED one (if any) — all recorded, with which one the observation matched."""
-    obs_shape, obs_builds = (facts["non_scope"], facts["scope"]), set(facts["builds"])
-    default_shape = (EXPECTED_NON_SCOPE_PARTITIONS, EXPECTED_SCOPE_PARTITIONS)
-    shape_match = "default" if obs_shape == default_shape else ("declared" if declared and obs_shape == (declared["non_scope"], declared["scope"]) else "NONE")
-    build_match = "default" if obs_builds == {new_id} else ("declared" if declared and obs_builds == set(declared["build_ids"]) else "NONE")
-    dec = (f"declared {declared['non_scope']} non-scope + {declared['scope']} scope-cap, builds {declared['build_ids']}" if declared else "no shape declared in the notice")
-    return (f"chart_dashas shape: observed {obs_shape[0]} non-scope + {obs_shape[1]} scope-cap partition(s) (matches: {shape_match}), builds {sorted(obs_builds)} (matches: {build_match}); "
-            f"default {default_shape[0]} + {default_shape[1]}, exactly the SETTLED-1 build; {dec}")
 
 
 def fetch_verifier_builds(conn, chart_id: str) -> list[str]:
@@ -365,7 +344,7 @@ def fetch_verifier_builds(conn, chart_id: str) -> list[str]:
 
 def verifier_build_problems(builds: list[str], new_id: str) -> list[str]:
     """Mirror of the verifier's refusal (steward ST-REPIN-PATCH-GO): every Vimśottarī / Lahiri row of the chart — all levels, all tiers, NULL included — is ONE build and it is the SETTLED-1 build, so the tool
-    cannot say CLEAN where the verifier would refuse after the re-pin. NEVER relaxed by a declared shape."""
+    cannot say CLEAN where the verifier would refuse after the re-pin. NEVER relaxed."""
     if builds == [new_id]:
         return []
     return [f"(vi) the verifier's own predicate (every Vimśottarī / Lahiri row of the chart, ALL levels and tiers, NULL build included) sees build(s) {builds}; exactly ONE — the SETTLED-1 build {new_id} — is required "
@@ -721,46 +700,9 @@ def _finite_number(v) -> bool:
     return isinstance(v, (int, float)) and not isinstance(v, bool) and math.isfinite(v)
 
 
-_SHAPE_FIELDS = ("expected_partitions_non_scope", "expected_partitions_scope_cap", "expected_dasha_build_ids")
-
-
-def _declared_shape(d: dict) -> tuple[dict | None, list[str]]:
-    """The notice's OPTIONAL declaration of the post-S-L1 `chart_dashas` shape (Suvarṇa's owner-path correction may legitimately change how daśā partitions are captured and counted, and leave more than one
-    build id in the table). ALL THREE fields or NONE: `expected_partitions_non_scope` / `expected_partitions_scope_cap` (non-negative integers, the distinct (system, ayanāṃśa) partition counts) and
-    `expected_dasha_build_ids` (a non-empty list of distinct UUIDs — EVERY build id the whole table may hold — which must include `new_build_id`). Absent ⇒ (None, []): only the default (45 + 1, exactly the
-    SETTLED-1 build) is accepted. Present ⇒ the observed shape must equal the default OR EXACTLY the declared one; both are recorded in the evidence."""
-    present = [k for k in _SHAPE_FIELDS if k in d]
-    if not present:
-        return None, []
-    if len(present) != len(_SHAPE_FIELDS):
-        return None, [f"the declared shape needs ALL of {', '.join(_SHAPE_FIELDS)} (found only {', '.join(present)})"]
-    out: list[str] = []
-    counts = []
-    for k in _SHAPE_FIELDS[:2]:
-        v = d[k]
-        if not isinstance(v, int) or isinstance(v, bool) or v < 0:
-            out.append(f"{k} must be a non-negative integer")
-        counts.append(v)
-    ids = d["expected_dasha_build_ids"]
-    canon: list[str] = []
-    if not isinstance(ids, list) or not ids:
-        out.append("expected_dasha_build_ids must be a non-empty list of build UUIDs")
-    else:
-        for x in ids:
-            try:
-                canon.append(canon_uuid(x))
-            except ValueError:
-                out.append(f"expected_dasha_build_ids entry {x!r} is not a valid UUID")
-        if len(set(canon)) != len(canon):
-            out.append("expected_dasha_build_ids must not repeat a build id")
-        try:
-            if canon_uuid(d.get("new_build_id")) not in canon:
-                out.append("expected_dasha_build_ids must include new_build_id (the SETTLED-1 build)")
-        except ValueError:
-            pass                                       # new_build_id's own problem is reported separately
-    if out:
-        return None, out
-    return {"non_scope": counts[0], "scope": counts[1], "build_ids": sorted(canon)}, []
+# Codex ASTRA_REVIEW_REPIN_TOOL_DELTA: a declared shape could bless a broken rebuild (a declaration copied from the broken state) and counts/builds were accepted independently, so the post-S-L1 shape is FIXED
+# (45 + 1 partitions, exactly the SETTLED-1 build). A notice carrying any of these fields is REFUSED, so nobody believes they have an effect.
+_REFUSED_NOTICE_FIELDS = ("expected_partitions_non_scope", "expected_partitions_scope_cap", "expected_dasha_build_ids")
 
 
 def load_notice(path: str) -> dict:
@@ -797,11 +739,11 @@ def load_notice(path: str) -> dict:
     tol = d.get("tolerance_seconds")
     if not _finite_number(tol) or tol < MIN_TOLERANCE_SECONDS:
         problems.append(f"tolerance_seconds must be a FINITE number >= {MIN_TOLERANCE_SECONDS}")
-    declared, shape_problems = _declared_shape(d)
-    problems += shape_problems
+    refused = [k for k in _REFUSED_NOTICE_FIELDS if k in d]
+    if refused:
+        problems.append(f"{', '.join(refused)} NOT accepted: the post-S-L1 chart_dashas shape is fixed (45 + 1 partitions, exactly the SETTLED-1 build); no notice field may override it")
     if problems:
         raise ValueError("the SETTLED-1 notice is invalid: " + "; ".join(problems))
-    d["_declared_shape"] = declared
     d["_ignored_levels"] = sorted(k for k in exp if k not in {str(lv) for lv in LEVELS_IN_SCOPE})
     d["expected_shift_seconds"] = {k: exp[k] for k in (str(lv) for lv in LEVELS_IN_SCOPE)}          # only levels 1–3 are ever compared
     d["_sha256"] = hashlib.sha256(raw).hexdigest()
@@ -1242,10 +1184,9 @@ def main(argv=None, *, conn=None) -> int:
         print(f"STOP — {exc}", file=sys.stderr); return 3
     builds = fetch_vimshottari_builds(conn, a.chart_id)
     pre_facts = fetch_preflight_facts(conn, a.chart_id)
-    declared = notice.get("_declared_shape") if notice is not None else None
     verifier_builds = fetch_verifier_builds(conn, a.chart_id)
     extra_stops = (build_problems(builds, a.new_build_id) + verifier_build_problems(verifier_builds, a.new_build_id)
-                   + preflight_problems(pre_facts, a.new_build_id, declared=declared))
+                   + preflight_problems(pre_facts, a.new_build_id))
     stops = decide(new_tier_ok=new_tier_ok, new_integrity=integrity(new_rows), m=m, flips=flips,
                    ref_problems=ref_problems, forensic_report=a.forensic_report, shift_issues=shift_problems(stats, notice),
                    tree_issues=tree_issues, old_totals=level_totals(old_rows), new_totals=level_totals(new_rows), refused_subtrees=refusals, edge_issues=edges["problems"])
@@ -1254,7 +1195,7 @@ def main(argv=None, *, conn=None) -> int:
         stops.append(f"the SETTLED-1 notice names build {notice.get('new_build_id')}, not {a.new_build_id}")
     evidence = [f"window-clipped edges excluded from the shift statistics (clipped on BOTH builds, required unchanged), per level: "
                 + (", ".join(f"{LEVEL_NAME.get(lv, lv)} start {c['start']} / end {c['end']}" for lv, c in edges["clipped"].items()) or "none")]
-    evidence.append(shape_evidence(pre_facts, a.new_build_id, declared))
+    evidence.append(f"chart_dashas shape: observed {pre_facts['non_scope']} non-scope + {pre_facts['scope']} scope-cap partition(s), builds {sorted(pre_facts['builds'])}; required: {EXPECTED_NON_SCOPE_PARTITIONS} + {EXPECTED_SCOPE_PARTITIONS} and exactly the SETTLED-1 build {a.new_build_id} (fixed; no notice field overrides it)")
     evidence.append(f"verifier predicate (every Vimśottarī / Lahiri row, all levels and tiers, NULL included): builds {verifier_builds} — "
                     + ("exactly the SETTLED-1 build" if verifier_builds == [a.new_build_id] else "NOT exactly the SETTLED-1 build"))
     if notice is not None:

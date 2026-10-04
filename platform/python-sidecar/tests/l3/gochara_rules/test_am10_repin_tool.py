@@ -1400,87 +1400,53 @@ def test_an_instant_string_without_an_offset_is_REFUSED_by_name_on_any_machine_t
         _time.tzset()
 
 
-# ── declared post-S-L1 shape (steward ST-REPIN-PARTITION-SHAPE) ─────────────────────────────────────────────────────────────────────────────────────────────
+# ── the post-S-L1 shape is FIXED (Codex ASTRA_REVIEW_REPIN_TOOL_DELTA): 45 + 1 and exactly the SETTLED-1 build; no notice field overrides it ──────────────────────────
 
 OTHERB = "33333333-3333-4333-8333-333333333333"
 
 
-def _shape(**over):
-    d = {"expected_partitions_non_scope": 47, "expected_partitions_scope_cap": 1, "expected_dasha_build_ids": [NEWB, OTHERB]}
-    d.update(over)
-    return d
+def test_a_notice_carrying_any_expected_shape_field_is_REFUSED_so_nobody_believes_it_has_an_effect(tmp_path):
+    fields = {"expected_partitions_non_scope": 47, "expected_partitions_scope_cap": 1, "expected_dasha_build_ids": [NEWB, OTHERB]}
+    assert "_declared_shape" not in T.load_notice(_notice(tmp_path, new_build_id=NEWB))
+    for k, v in fields.items():                                                                                      # each one alone ...
+        with pytest.raises(ValueError, match=f"notice is invalid.*{k} NOT accepted"):
+            T.load_notice(_notice(tmp_path, new_build_id=NEWB, **{k: v}))
+    with pytest.raises(ValueError, match="NOT accepted: the post-S-L1 chart_dashas shape is fixed"):                # ... and all three together
+        T.load_notice(_notice(tmp_path, new_build_id=NEWB, **fields))
 
 
-def test_the_notice_may_declare_the_post_s_l1_shape_all_or_none_and_strictly(tmp_path):
-    assert T.load_notice(_notice(tmp_path))["_declared_shape"] is None                                             # no declaration ⇒ only the default is ever accepted
-    got = T.load_notice(_notice(tmp_path, new_build_id=NEWB, **_shape()))["_declared_shape"]
-    assert got == {"non_scope": 47, "scope": 1, "build_ids": sorted([NEWB, OTHERB])}
-    bad = [dict(expected_partitions_non_scope=47),                                                                  # partial declarations are refused
-           dict(expected_partitions_non_scope=47, expected_partitions_scope_cap=1),
-           dict(expected_dasha_build_ids=[NEWB]),
-           _shape(expected_partitions_non_scope=-1), _shape(expected_partitions_non_scope=True), _shape(expected_partitions_non_scope=47.0), _shape(expected_partitions_scope_cap="1"),
-           _shape(expected_dasha_build_ids=[]), _shape(expected_dasha_build_ids="x"), _shape(expected_dasha_build_ids=[NEWB, "not-a-uuid"]),
-           _shape(expected_dasha_build_ids=[NEWB, NEWB]),                                                          # a repeated build id
-           _shape(expected_dasha_build_ids=[OTHERB])]                                                              # the SETTLED-1 build must be one of them
-    for over in bad:
-        with pytest.raises(ValueError, match="notice is invalid"):
-            T.load_notice(_notice(tmp_path, new_build_id=NEWB, **over))
-
-
-def test_the_guard_accepts_the_default_or_exactly_the_declared_shape_and_nothing_else():
-    declared = {"non_scope": 47, "scope": 1, "build_ids": sorted([NEWB, OTHERB])}
-    # no declaration: unchanged (the default only)
+def test_the_guard_is_unconditionally_45_plus_1_and_exactly_the_settled_1_build_with_no_declaration_to_bless_a_broken_state():
     assert T.preflight_problems(GOODFACTS, NEWB) == []
+    broken = {**GOODFACTS, "non_scope": 44, "scope": 0, "builds": [NEWB, OLDB]}                                      # Codex's counterexample A: an incomplete, mixed-build rebuild
+    out = T.preflight_problems(broken, NEWB)
+    assert any("(ii)" in p for p in out) and any("(iii)" in p for p in out)
+    # Codex's counterexample B: the hybrids that a declaration (47, 1, {NEW, OTHER}) used to let through
+    for facts in ({**GOODFACTS, "non_scope": 47, "builds": [NEWB, OTHERB]},          # the "declared" state itself
+                  {**GOODFACTS, "builds": [NEWB, OTHERB]},                             # 45 + 1 with an extra build
+                  {**GOODFACTS, "non_scope": 47}):                                      # 47 + 1 with exactly one build
+        assert T.preflight_problems(facts, NEWB), facts
     assert any("(iii)" in p for p in T.preflight_problems({**GOODFACTS, "non_scope": 47}, NEWB))
     assert any("(ii)" in p for p in T.preflight_problems({**GOODFACTS, "builds": [NEWB, OTHERB]}, NEWB))
-    # with a declaration: the declared shape passes ...
-    assert T.preflight_problems({**GOODFACTS, "non_scope": 47, "builds": [NEWB, OTHERB]}, NEWB, declared=declared) == []
-    assert T.preflight_problems({**GOODFACTS, "non_scope": 47, "builds": [OTHERB, NEWB]}, NEWB, declared=declared) == []        # order is irrelevant
-    # ... the default still passes ...
-    assert T.preflight_problems(GOODFACTS, NEWB, declared=declared) == []
-    # ... and everything that is NEITHER is refused, each condition separately
-    assert any("(iii)" in p and "declared 47 + 1" in p for p in T.preflight_problems({**GOODFACTS, "non_scope": 46}, NEWB, declared=declared))
-    assert any("(iii)" in p for p in T.preflight_problems({**GOODFACTS, "non_scope": 47, "scope": 0}, NEWB, declared=declared))
-    assert any("(ii)" in p and "declared set" in p for p in T.preflight_problems({**GOODFACTS, "builds": [NEWB, OLDB]}, NEWB, declared=declared))   # an UNdeclared extra build
-
-    assert any("(v)" in p for p in T.preflight_problems({**GOODFACTS, "builds": [OTHERB]}, NEWB, declared=declared))                # the declared extra ALONE is one build that is not the SETTLED-1 build
-    assert any("(ii)" in p for p in T.preflight_problems({**GOODFACTS, "builds": []}, NEWB, declared=declared))
-    for st in ("stale", None):
-        bad = {**GOODFACTS, "throughput": {"ga_dashas": st or "lit", "ga_positions": "lit"}} if st else {**GOODFACTS, "throughput": {"ga_positions": "lit"}}
-        assert any("(iv)" in p for p in T.preflight_problems({**bad, "non_scope": 47, "builds": [NEWB, OTHERB]}, NEWB, declared=declared))       # (iv) is never relaxed
+    assert "declared" not in " ".join(T.preflight_problems(broken, NEWB))
 
 
-def test_the_cli_records_the_default_and_the_declared_shape_and_never_relaxes_the_vimshottari_single_build_check(monkeypatch, tmp_path, capsys):
+def test_the_cli_refuses_a_notice_with_expected_shape_fields_and_stops_on_a_47_plus_1_state(monkeypatch, tmp_path, capsys):
     rows_new = T.norm_rows(ref_rows("new", 6993))
     cap = tmp_path / "old.json"; write_old_cap(cap)
     monkeypatch.setattr(T.DD, "fetch_dasha_periods_multilevel", lambda conn, chart, build_id=None, **kw: rows_new if build_id == NEWB else [])
     monkeypatch.setattr(T, "fetch_vimshottari_builds", lambda conn, chart: {NEWB: 117})
     fr = tmp_path / "f.md"; fr.write_text("anchors")
-    notice_args = lambda **over: ["--new-build-id", NEWB, "--old-rows", str(cap), "--settled-notice", _notice(tmp_path, new_build_id=NEWB, **over), "--forensic-report", str(fr), "--dry-run"]
-    facts47 = {**GOODFACTS, "non_scope": 47, "builds": [NEWB, OTHERB]}
-    monkeypatch.setattr(T, "fetch_preflight_facts", lambda conn, chart: facts47)
-    # declared + observed == declared ⇒ CLEAN, and the evidence names the default, the declaration and the match
-    rc = T.main(notice_args(**_shape()), conn=FakeConn())
+    args = lambda **over: ["--new-build-id", NEWB, "--old-rows", str(cap), "--settled-notice", _notice(tmp_path, new_build_id=NEWB, **over), "--forensic-report", str(fr), "--dry-run"]
+    monkeypatch.setattr(T, "fetch_preflight_facts", lambda conn, chart: {**GOODFACTS, "non_scope": 47, "builds": [NEWB, OTHERB]})
+    rc = T.main(args(expected_partitions_non_scope=47, expected_partitions_scope_cap=1, expected_dasha_build_ids=[NEWB, OTHERB]), conn=FakeConn())
+    assert rc == 3 and "NOT accepted" in capsys.readouterr().err                                                      # the declaration is refused outright
+    rc = T.main(args(), conn=FakeConn())
     out = capsys.readouterr().out
-    assert rc == 0 and "verdict: **CLEAN**" in out, out[-900:]
-    assert "chart_dashas shape: observed 47 non-scope + 1 scope-cap" in out and "(matches: declared)" in out and "default 45 + 1" in out and f"declared 47 non-scope + 1 scope-cap, builds {sorted([NEWB, OTHERB])}" in out
-    # the SAME observation WITHOUT a declaration ⇒ STOP, and the evidence says no shape was declared
-    rc = T.main(notice_args(), conn=FakeConn())
-    out = capsys.readouterr().out
-    assert rc == 3 and "(iii)" in out and "no shape declared in the notice" in out and "(matches: NONE)" in out
-    # a declaration that the observation does NOT equal ⇒ STOP
-    rc = T.main(notice_args(**_shape(expected_partitions_non_scope=48)), conn=FakeConn())
-    assert rc == 3 and "declared 48 + 1" in capsys.readouterr().out
-    # the Vimśottarī (Lahiri, levels 1–3) single-build check is NEVER relaxed by a declaration: two such builds ⇒ STOP even when the declared shape matches
-    monkeypatch.setattr(T, "fetch_vimshottari_builds", lambda conn, chart: {NEWB: 117, OTHERB: 117})
-    rc = T.main(notice_args(**_shape()), conn=FakeConn())
-    assert rc == 3 and "exactly ONE" in capsys.readouterr().out
-    # default observation, default behaviour: the recorded evidence says it matched the default
-    monkeypatch.setattr(T, "fetch_vimshottari_builds", lambda conn, chart: {NEWB: 117})
+    assert rc == 3 and "(iii)" in out and "(ii)" in out and "chart_dashas shape: observed 47 non-scope + 1 scope-cap" in out        # and without it the state STOPs
     monkeypatch.setattr(T, "fetch_preflight_facts", lambda conn, chart: GOODFACTS)
-    rc = T.main(["--new-build-id", NEWB, "--old-rows", str(cap), "--settled-notice", _notice(tmp_path, new_build_id=NEWB), "--forensic-report", str(fr), "--dry-run"], conn=FakeConn())
+    rc = T.main(args(), conn=FakeConn())
     out = capsys.readouterr().out
-    assert rc == 0 and "(matches: default)" in out and "no shape declared in the notice" in out
+    assert rc == 0 and "verdict: **CLEAN**" in out and "observed 45 non-scope + 1 scope-cap" in out and "fixed; no notice field overrides it" in out
 
 
 # ── the verifier-predicate mirror (steward ST-REPIN-PATCH-GO) ───────────────────────────────────────────────────────────────────────────────────────────
@@ -1530,11 +1496,10 @@ def test_the_cli_stops_where_the_verifier_would_refuse_even_when_levels_1_to_3_a
         rc = T.main(args(), conn=FakeConn())
         out = capsys.readouterr().out
         assert rc == 3 and "(vi)" in out and "NOT exactly the SETTLED-1 build" in out, (extra, out[-600:])
-    # a declared shape never relaxes it
-    monkeypatch.setattr(T, "fetch_preflight_facts", lambda conn, chart: {**GOODFACTS, "non_scope": 47, "builds": [NEWB, OTHERB]})
+    # a notice that tries to declare another shape is refused outright (and the verifier check is independent of it)
     monkeypatch.setattr(T, "fetch_verifier_builds", lambda conn, chart: [NEWB, OTHERB])
-    rc = T.main(args(**_shape()), conn=FakeConn())
-    assert rc == 3 and "(vi)" in capsys.readouterr().out
+    rc = T.main(args(expected_dasha_build_ids=[NEWB, OTHERB], expected_partitions_non_scope=47, expected_partitions_scope_cap=1), conn=FakeConn())
+    assert rc == 3 and "NOT accepted" in capsys.readouterr().err
 
 
 # ── --capture-new (steward ST-REPIN-CAPTURE-NEW): the durable POST record in the capture format ───────────────────────────────────────────────────────────────────
@@ -1623,3 +1588,52 @@ def test_capture_new_mode_combinations_are_refused_BEFORE_any_connection_and_wri
     p = tmp_path / "cap.json"
     assert T.main([x.replace("{p}", str(p)) for x in argv], conn=_Boom()) == 2
     assert not p.exists() and not list(tmp_path.iterdir())
+
+
+# ── regressions Codex named as missing (database-free) ─────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+
+@real_reader
+def test_a_capture_transaction_that_is_not_read_only_is_refused_with_rollback_close_and_no_artifact(monkeypatch, tmp_path, capsys):
+    class ReadWrite(SpyConn):
+        def execute(self, sql, params=None):
+            if sql.strip().upper().startswith("SHOW TRANSACTION_READ_ONLY"):
+                self.calls.append(" ".join(sql.split())[:400])
+                return type("C", (), {"fetchone": lambda s_: ("off",)})()
+            return super().execute(sql, params)
+    spy = ReadWrite()
+    monkeypatch.setattr(T, "open_capture_connection", lambda: spy)
+    p = tmp_path / "cap.json"
+    assert T.main(["--capture-old", str(p)]) == 3 and not p.exists()
+    assert "read_only 'off'" in capsys.readouterr().err and spy.rolled_back == 1 and spy.closed == 1 and spy.committed == 0
+    spy = ReadWrite()
+    monkeypatch.setattr(T, "open_capture_connection", lambda: spy)
+    q = tmp_path / "new.json"
+    assert T.main(["--capture-new", str(q), "--new-build-id", NEWB]) == 3 and not q.exists()                           # the same refusal through --capture-new
+    assert spy.rolled_back == 1 and spy.closed == 1 and spy.committed == 0
+
+
+@real_reader
+def test_missing_window_truncation_flags_are_refused_at_acquisition_with_no_artifact(monkeypatch, tmp_path, capsys):
+    class NoFlags(SpyConn):
+        def execute(self, sql, params=None):
+            if "is_truncated_at_window" in sql:
+                self.calls.append(" ".join(sql.split())[:400])
+                return type("C", (), {"fetchall": lambda s_: [(r[0], False, False) for r in ref_db_tuples(self.BUILD)[:-1]]})()          # ONE row has no flags
+            return super().execute(sql, params)
+    spy = NoFlags()
+    monkeypatch.setattr(T, "open_capture_connection", lambda: spy)
+    p = tmp_path / "cap.json"
+    assert T.main(["--capture-old", str(p)]) == 3 and not p.exists()
+    assert "window-truncation flags are missing for 1 of" in capsys.readouterr().err and spy.rolled_back == 1 and spy.closed == 1 and spy.committed == 0
+
+
+def test_a_capture_whose_recorded_per_level_counts_do_not_match_its_rows_is_refused_at_load(tmp_path):
+    import json as _j
+    p = tmp_path / "cap.json"
+    write_old_cap(p)
+    d = _j.loads(p.read_text())
+    assert d["meta"]["counts_by_level"]                                                                                  # the capture records them
+    d["meta"]["counts_by_level"] = {k: v + 1 for k, v in d["meta"]["counts_by_level"].items()}                          # the digest does not cover meta, so only THIS check can catch it
+    p.write_text(_j.dumps(d))
+    with pytest.raises(ValueError, match="recorded per-level counts do not match its rows"):
+        T.load_capture(str(p), CHART, OLDB)
