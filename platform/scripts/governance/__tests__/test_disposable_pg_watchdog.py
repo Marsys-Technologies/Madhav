@@ -49,10 +49,10 @@ def _wait_until(pred, what: str, timeout: float = 30.0, step: float = 0.05):
 
 def _raw_ps(pid: int, field: str) -> str:
     """`ps` straight from the OS, independent of any monkeypatch of wd._ps in the calling test."""
-    return subprocess.run(["ps", "-ww", "-p", str(pid), "-o", f"{field}="], capture_output=True, text=True).stdout.strip()
+    return subprocess.run(["ps", "-ww", "-p", str(pid), "-o", f"{field}="], capture_output=True, text=True, timeout=10).stdout.strip()
 
 
-def _dead_pid() -> tuple[int, str]:
+def _dead_pid(need_stamp: bool = True) -> tuple[int, str]:
     """A pid that is now gone, with the start stamp it had. The process is held alive until it is visible to `ps` (a fixed short sleep let a loaded
     machine finish the process before the stamp was read, giving an empty one), then killed and reaped."""
     p = subprocess.Popen([sys.executable, "-c", "import time; time.sleep(600)"])
@@ -62,6 +62,7 @@ def _dead_pid() -> tuple[int, str]:
     finally:
         p.kill()
         p.wait()
+    assert start or not need_stamp, "ps could not give the child's start stamp (a None/empty stamp would make every marker built from it invalid)"
     return p.pid, start
 
 
@@ -188,10 +189,11 @@ def test_the_sweep_reaps_a_real_leaked_cluster_of_a_dead_owner(tmp_path):
     child = subprocess.Popen([sys.executable, "-c", CHILD.format(here=str(HERE))], stdout=subprocess.PIPE, text=True)
     root = pathlib.Path(child.stdout.readline().strip())
     try:
-        out = subprocess.run(["ps", "-ww", "-axo", "pid=,command="], capture_output=True, text=True).stdout
-        for ln in out.splitlines():
-            if "_pg_watchdog.py" in ln and str(root) in ln:
-                os.kill(int(ln.split()[0]), signal.SIGKILL)
+        def _watchdogs():
+            out = subprocess.run(["ps", "-ww", "-axo", "pid=,command="], capture_output=True, text=True, timeout=10).stdout
+            return [ln for ln in out.splitlines() if "_pg_watchdog.py" in ln and str(root) in ln]
+        for ln in _wait_until(_watchdogs, "the cluster's watchdog process (a single early snapshot could miss it and let it reap the root itself)"):
+            os.kill(int(ln.split()[0]), signal.SIGKILL)
         os.kill(child.pid, signal.SIGKILL)
         child.wait(timeout=30)
         assert root.exists() and _postgres_running_on(root / "data")      # a genuine leak (no watchdog left)
@@ -277,10 +279,18 @@ exit {rc}
 """
 
 
-def _fake_postmaster(data: pathlib.Path) -> subprocess.Popen:
-    """A process whose command line reads `postgres -D <data>`, with a pid file naming it."""
-    p = subprocess.Popen(["bash", "-c", f'exec -a "postgres -D {data}" sleep 600'])
-    _wait_until(lambda: str(data) in (wd._ps("-p", str(p.pid), "-o", "command=") or (0, ""))[1], "the fake postmaster's command line (exec -a done)")
+def _fake_postmaster(data: pathlib.Path, startup_delay: float = 0.0) -> subprocess.Popen:
+    """A process whose command line reads `postgres -D <data>`, with a pid file naming it. Returns only once `ps` shows the EXEC'D form: before the
+    `exec` the process is `bash -c ...`, whose command line already contains the data-dir string, so matching on the string alone returned too early
+    (review of #3123). `startup_delay` stands in for a loaded runner where bash takes long to reach the exec."""
+    p = subprocess.Popen(["bash", "-c", f'sleep {startup_delay}; exec -a "postgres -D {data}" sleep 600'])
+    try:
+        _wait_until(lambda: (wd._ps("-p", str(p.pid), "-o", "command=") or (0, ""))[1].strip().startswith(f"postgres -D {data}"),
+                    "the fake postmaster's exec'd command line")
+    except BaseException:
+        p.kill()
+        p.wait()
+        raise
     (data / "postmaster.pid").write_text(f"{p.pid}\n{data}\n")
     return p
 
@@ -396,14 +406,10 @@ def test_start_cluster_sweeps_first_with_its_own_pg_ctl_and_survives_a_failing_s
 def test_the_watchdog_is_detached_into_its_own_session():
     cl = dpg.start_cluster(BIN)
     try:
-        found = []
-        for _ in range(50):
-            out = subprocess.run(["ps", "-ww", "-axo", "pid=,pgid=,command="], capture_output=True, text=True).stdout
-            found = [ln.split(None, 2) for ln in out.splitlines() if "_pg_watchdog.py" in ln and str(cl.root) in ln]
-            if found:
-                break
-            time.sleep(0.1)
-        assert found, "no watchdog process for this cluster"
+        def _find():
+            out = subprocess.run(["ps", "-ww", "-axo", "pid=,pgid=,command="], capture_output=True, text=True, timeout=10).stdout
+            return [ln.split(None, 2) for ln in out.splitlines() if "_pg_watchdog.py" in ln and str(cl.root) in ln]
+        found = _wait_until(_find, "the watchdog process for this cluster")
         assert int(found[0][1]) != os.getpgrp(), "the watchdog shares this process group: a group kill would take it down too"
     finally:
         cl.stop()
@@ -463,7 +469,7 @@ def test_ps_saying_gone_is_confirmed_by_the_kernel(monkeypatch):
     """Round 2 LOW-2: `ps` exit 1 with no output is only 'gone' when kill(pid, 0) agrees; a live pid under a lying ps is 'cannot tell'."""
     monkeypatch.setattr(wd, "_ps", lambda *a: (1, ""))
     assert wd.proc_start(os.getpid()) is None and wd.owner_alive(os.getpid(), "x") is True
-    dead, _ = _dead_pid()
+    dead, _ = _dead_pid(need_stamp=False)                         # wd._ps is patched here, so the stamp is not meaningful
     assert wd.proc_start(dead) == wd.GONE
 
 
@@ -537,3 +543,37 @@ def test_the_postmaster_state_is_rechecked_after_the_stop(tmp_path, monkeypatch)
         monkeypatch.undo()
         pm.kill()
         pm.wait()
+
+
+def test_the_fake_postmaster_helper_waits_for_the_exec_even_when_bash_is_slow(tmp_path):
+    """Review of #3123 (HIGH): the wait used to be satisfied by the pre-exec `bash -c` line, so a slow exec let reap() see `bash`, skip pg_ctl and delete
+    the root. With a 1.5 s startup delay the helper must still return only after the exec'd form is visible."""
+    data = tmp_path / "data"
+    data.mkdir()
+    pm = _fake_postmaster(data, startup_delay=1.5)
+    try:
+        cmd = subprocess.run(["ps", "-ww", "-p", str(pm.pid), "-o", "command="], capture_output=True, text=True, timeout=10).stdout.strip()
+        assert cmd.startswith(f"postgres -D {data}") and (data / "postmaster.pid").exists()
+    finally:
+        pm.kill()
+        pm.wait()
+
+
+def test_reap_stops_our_postmaster_even_when_the_fake_is_slow_to_exec(tmp_path):
+    pid, start = _dead_pid()
+    r = _mk(tmp_path, "suvarna_pg_slow", pid=pid, start=start)
+    pm = _fake_postmaster(r / "data", startup_delay=1.5)
+    ctl, log = _fake_ctl(tmp_path)
+    try:
+        assert wd.reap(r, ctl) is True and not r.exists()
+        argv = log.read_text().split()
+        assert argv[:2] == ["-D", str(r / "data")] and argv[-1] == "stop"
+    finally:
+        pm.kill()
+        pm.wait()
+
+
+def test_wait_until_raises_on_timeout_instead_of_continuing():
+    with pytest.raises(AssertionError, match="timed out"):
+        _wait_until(lambda: False, "a condition that never holds", timeout=0.3, step=0.05)
+    assert _wait_until(lambda: "ok", "an immediately true condition", timeout=0.3) == "ok"
