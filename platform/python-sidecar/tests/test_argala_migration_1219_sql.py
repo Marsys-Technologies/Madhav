@@ -88,8 +88,9 @@ def test_the_migration_file_exists_with_the_right_name_and_this_change_adds_no_o
     assert "SEPARATE, HELD PR" in flat
     # the document is the explanation only: no SQL copy to drift from the file, and it points at the file
     assert "```sql" not in DOC and F1219 in DOC
-    # this change adds no migration number other than 1219 (skipped when origin/main is not fetchable;
-    # empty once the file is on main)
+    # a change that ADDS 1219 adds no migration number other than 1219 (skipped when origin/main is not fetchable). The rule binds only
+    # such a change: once 1219 is on main, a LATER PR that adds some other migration (e.g. the protected Gochara window train) is not
+    # this change and is not constrained here — the always-armed form of this assertion failed every such PR.
     try:
         r = subprocess.run(["git", "diff", "--name-only", "--diff-filter=A", "origin/main...HEAD", "--", "platform/migrations"],
                            cwd=REPO, capture_output=True, text=True)
@@ -97,7 +98,8 @@ def test_the_migration_file_exists_with_the_right_name_and_this_change_adds_no_o
         r = None
     if r is not None and r.returncode == 0:
         added = {pathlib.PurePosixPath(x).name for x in r.stdout.split()}
-        assert added <= {F1219}, added
+        if F1219 in added:
+            assert added <= {F1219}, added
 
 
 def test_lock_timeout_is_the_first_statement_and_fails_fast():

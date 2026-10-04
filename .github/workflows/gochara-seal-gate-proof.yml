@@ -1,0 +1,72 @@
+# Gochara seal GATE PROOF — a NO-SECRET, NO-OP workflow (Codex R13-6, runbook "Live-gate proof"). DRAFT: HOLD. Codex reviews this file BEFORE it is ever dispatched.
+#
+# What it proves, and only this — before any credential is placed behind the `gochara-seal` environment (act 2b):
+#   (1) WAIT      the single job below does NOT start until the environment's required reviewer approves the deployment (the run sits in "waiting");
+#   (2) BRANCH    dispatched from a NON-protected branch it is REFUSED by the environment's deployment-branch policy ("Branch … is not allowed to deploy to gochara-seal") and never
+#                 starts — the steward dispatches it from such a branch once and records the refusal text;
+#   (3) APPROVAL  the steward approves under the owner's account (native ruling #2), with a comment naming the ruling;
+#   (4) RUN       the job then runs, prints the facts below, and reads THIS run's approval history so that the API's ACTUAL ORDERING and fields are on record (F-R13-5 / R13-4:
+#                 the sealing workflow never relies on that order — this is the evidence of what the API really returns).
+# To record the ordering with two reviews in one history: after the first run finishes, "Re-run all jobs" and approve again; the second attempt's log lists both reviews.
+#
+# It reads NO secret, uses NO cloud identity, writes NOTHING, and has no `id-token`. The gate is the environment; this file only gives it something to gate.
+# It is workflow_dispatch ONLY, and it is meant to be REMOVED (or left inert) after the proof.
+name: Gochara seal gate proof (no secret; draft HOLD)
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: 'Type exactly: PROVE-GOCHARA-SEAL-GATE'
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: gochara-seal-gate-proof
+  cancel-in-progress: false
+
+jobs:
+  gate:
+    name: Gate proof (waits for approval; prints facts only)
+    if: inputs.confirm == 'PROVE-GOCHARA-SEAL-GATE'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment: gochara-seal
+    steps:
+      - name: Print the facts of this run (non-secret)
+        run: |
+          set -euo pipefail
+          echo "GATE PROOF: this step ran only AFTER the environment's approval."
+          echo "ref=${GITHUB_REF} sha=${GITHUB_SHA} run_id=${GITHUB_RUN_ID} attempt=${GITHUB_RUN_ATTEMPT} actor=${GITHUB_ACTOR} triggering_actor=${GITHUB_TRIGGERING_ACTOR}"
+
+      - name: Record THIS run's approval history exactly as the API returns it (the ordering is evidence, never relied on)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}/approvals" > approvals.json
+          echo "reviews returned: $(jq 'length' approvals.json)"
+          echo "keys of the first review: $(jq -c '.[0] | keys' approvals.json)"
+          jq -r 'to_entries[] | "position \(.key): state=\(.value.state) login=\(.value.user.login) environments=\([.value.environments[].name] | join(",")) comment=\((.value.comment // "") | gsub("\n";" ") | .[0:160])"' approvals.json
+          jq -e 'any(.[]; (.environments // []) | any(.name == "gochara-seal"))' approvals.json >/dev/null
+          {
+            echo "## Gate proof — approval history exactly as the API returned it"
+            echo
+            echo '```'
+            jq -r 'to_entries[] | "position \(.key): state=\(.value.state) login=\(.value.user.login) comment=\((.value.comment // "") | gsub("\n";" ") | .[0:160])"' approvals.json
+            echo '```'
+            echo
+            echo "Record in the proof report: the refusal text of the non-protected-branch dispatch; the position order above (oldest-first or newest-first); whether an attempt field exists (keys line)."
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Retain the history (non-secret) for the proof report
+        uses: actions/upload-artifact@v4
+        with:
+          name: gate-proof-approvals-${{ github.run_id }}-${{ github.run_attempt }}
+          path: approvals.json
+          retention-days: 30
+          if-no-files-found: error
