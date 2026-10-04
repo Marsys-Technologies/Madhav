@@ -1,0 +1,361 @@
+{
+ "table": "phala_muhurta",
+ "columns": [
+  {
+   "column_name": "muhurta_id",
+   "data_type": "uuid",
+   "is_nullable": "NO",
+   "column_default": "gen_random_uuid()"
+  },
+  {
+   "column_name": "chart_id",
+   "data_type": "uuid",
+   "is_nullable": "NO",
+   "column_default": ""
+  },
+  {
+   "column_name": "action_class",
+   "data_type": "text",
+   "is_nullable": "NO",
+   "column_default": ""
+  },
+  {
+   "column_name": "window_start",
+   "data_type": "timestamp with time zone",
+   "is_nullable": "YES",
+   "column_default": ""
+  },
+  {
+   "column_name": "window_end",
+   "data_type": "timestamp with time zone",
+   "is_nullable": "YES",
+   "column_default": ""
+  },
+  {
+   "column_name": "hora_lord",
+   "data_type": "text",
+   "is_nullable": "YES",
+   "column_default": ""
+  },
+  {
+   "column_name": "panchanga_score",
+   "data_type": "double precision",
+   "is_nullable": "YES",
+   "column_default": ""
+  },
+  {
+   "column_name": "panchanga_snapshot_jsonb",
+   "data_type": "jsonb",
+   "is_nullable": "YES",
+   "column_default": ""
+  },
+  {
+   "column_name": "chart_personalization_score",
+   "data_type": "double precision",
+   "is_nullable": "YES",
+   "column_default": ""
+  },
+  {
+   "column_name": "personalization_graha",
+   "data_type": "text",
+   "is_nullable": "YES",
+   "column_default": ""
+  },
+  {
+   "column_name": "personal_adversity_penalty",
+   "data_type": "double precision",
+   "is_nullable": "YES",
+   "column_default": ""
+  },
+  {
+   "column_name": "overlapping_obstruction_id",
+   "data_type": "bigint",
+   "is_nullable": "YES",
+   "column_default": ""
+  },
+  {
+   "column_name": "linked_anchor_id",
+   "data_type": "uuid",
+   "is_nullable": "YES",
+   "column_default": ""
+  },
+  {
+   "column_name": "composite_quality",
+   "data_type": "double precision",
+   "is_nullable": "YES",
+   "column_default": ""
+  },
+  {
+   "column_name": "window_quality_verdict",
+   "data_type": "text",
+   "is_nullable": "YES",
+   "column_default": ""
+  },
+  {
+   "column_name": "verdict_reason",
+   "data_type": "text",
+   "is_nullable": "YES",
+   "column_default": ""
+  },
+  {
+   "column_name": "classical_citation",
+   "data_type": "text",
+   "is_nullable": "YES",
+   "column_default": ""
+  },
+  {
+   "column_name": "derivation_ledger_jsonb",
+   "data_type": "jsonb",
+   "is_nullable": "NO",
+   "column_default": ""
+  },
+  {
+   "column_name": "source_citation",
+   "data_type": "text",
+   "is_nullable": "NO",
+   "column_default": ""
+  },
+  {
+   "column_name": "computed_at",
+   "data_type": "timestamp with time zone",
+   "is_nullable": "NO",
+   "column_default": "now()"
+  },
+  {
+   "column_name": "tarabala_chandrabala_jsonb",
+   "data_type": "jsonb",
+   "is_nullable": "YES",
+   "column_default": ""
+  },
+  {
+   "column_name": "significators_met_jsonb",
+   "data_type": "jsonb",
+   "is_nullable": "YES",
+   "column_default": ""
+  },
+  {
+   "column_name": "fructification_anchor",
+   "data_type": "text",
+   "is_nullable": "YES",
+   "column_default": ""
+  },
+  {
+   "column_name": "follow_up_hook_jsonb",
+   "data_type": "jsonb",
+   "is_nullable": "YES",
+   "column_default": ""
+  }
+ ],
+ "has_chart_id": true,
+ "rows_by_chart": [
+  {
+   "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+   "n": "134"
+  },
+  {
+   "chart_id": "1c826d5a-41cb-4450-b4dc-59d440e5f75a",
+   "n": "49"
+  }
+ ],
+ "chart_nonnull": {
+  "_total": "134",
+  "muhurta_id": "134",
+  "chart_id": "134",
+  "action_class": "134",
+  "window_start": "134",
+  "window_end": "134",
+  "hora_lord": "134",
+  "panchanga_score": "134",
+  "panchanga_snapshot_jsonb": "134",
+  "chart_personalization_score": "134",
+  "personalization_graha": "134",
+  "personal_adversity_penalty": "134",
+  "overlapping_obstruction_id": "37",
+  "linked_anchor_id": "4",
+  "composite_quality": "134",
+  "window_quality_verdict": "134",
+  "verdict_reason": "134",
+  "classical_citation": "134",
+  "derivation_ledger_jsonb": "134",
+  "source_citation": "134",
+  "computed_at": "134",
+  "tarabala_chandrabala_jsonb": "134",
+  "significators_met_jsonb": "134",
+  "fructification_anchor": "17",
+  "follow_up_hook_jsonb": "134"
+ },
+ "value_counts": {
+  "action_class": [
+   {
+    "v": "travel",
+    "n": "50"
+   },
+   {
+    "v": "new_venture",
+    "n": "34"
+   },
+   {
+    "v": "start_business",
+    "n": "28"
+   },
+   {
+    "v": "marriage",
+    "n": "17"
+   },
+   {
+    "v": "medical",
+    "n": "5"
+   }
+  ],
+  "hora_lord": [
+   {
+    "v": "saturn",
+    "n": "62"
+   },
+   {
+    "v": "mercury",
+    "n": "50"
+   },
+   {
+    "v": "venus",
+    "n": "17"
+   },
+   {
+    "v": "moon",
+    "n": "5"
+   }
+  ],
+  "personalization_graha": [
+   {
+    "v": "saturn",
+    "n": "62"
+   },
+   {
+    "v": "mercury",
+    "n": "50"
+   },
+   {
+    "v": "venus",
+    "n": "17"
+   },
+   {
+    "v": "moon",
+    "n": "5"
+   }
+  ],
+  "window_quality_verdict": [
+   {
+    "v": "mediocre",
+    "n": "134"
+   }
+  ],
+  "verdict_reason": [
+   {
+    "v": "Best available window scores 0.26 \u2014 below genuine threshold (0.55). Moon may be afflicted or no fixed nakshatra available.",
+    "n": "50"
+   },
+   {
+    "v": "Best available window scores 0.13 \u2014 below genuine threshold (0.55). Moon may be afflicted or no fixed nakshatra available.",
+    "n": "41"
+   },
+   {
+    "v": "Best available window scores 0.09 \u2014 below genuine threshold (0.55). Moon may be afflicted or no fixed nakshatra available.",
+    "n": "23"
+   },
+   {
+    "v": "Best available window scores 0.18 \u2014 below genuine threshold (0.55). Moon may be afflicted or no fixed nakshatra available.",
+    "n": "12"
+   },
+   {
+    "v": "Best available window scores 0.12 \u2014 below genuine threshold (0.55). Moon may be afflicted or no fixed nakshatra available.",
+    "n": "6"
+   },
+   {
+    "v": "Best available window scores 0.08 \u2014 below genuine threshold (0.55). Moon may be afflicted or no fixed nakshatra available.",
+    "n": "2"
+   }
+  ],
+  "classical_citation": [
+   {
+    "v": "Muh\u016brta-Chint\u0101ma\u1e47i + Grahalaghava",
+    "n": "117"
+   },
+   {
+    "v": "Muhurta-Chintamani ch.4",
+    "n": "17"
+   }
+  ],
+  "fructification_anchor": [
+   {
+    "v": "",
+    "n": "117"
+   },
+   {
+    "v": "tara+candra-bala",
+    "n": "17"
+   }
+  ]
+ },
+ "constraints": [
+  {
+   "conname": "phala_muhurta_chart_personalization_score_check",
+   "contype": "c",
+   "def": "CHECK (((chart_personalization_score >= (0)::double precision) AND (chart_personalization_score <= (1)::double precision)))"
+  },
+  {
+   "conname": "phala_muhurta_composite_quality_check",
+   "contype": "c",
+   "def": "CHECK (((composite_quality >= (0)::double precision) AND (composite_quality <= (1)::double precision)))"
+  },
+  {
+   "conname": "phala_muhurta_panchanga_score_check",
+   "contype": "c",
+   "def": "CHECK (((panchanga_score >= (0)::double precision) AND (panchanga_score <= (1)::double precision)))"
+  },
+  {
+   "conname": "phala_muhurta_personal_adversity_penalty_check",
+   "contype": "c",
+   "def": "CHECK (((personal_adversity_penalty >= (0)::double precision) AND (personal_adversity_penalty <= (1)::double precision)))"
+  },
+  {
+   "conname": "phala_muhurta_window_quality_verdict_check",
+   "contype": "c",
+   "def": "CHECK ((window_quality_verdict = ANY (ARRAY['strong'::text, 'adequate'::text, 'mediocre'::text, 'none_genuine'::text])))"
+  },
+  {
+   "conname": "phala_muhurta_linked_anchor_id_fkey",
+   "contype": "f",
+   "def": "FOREIGN KEY (linked_anchor_id) REFERENCES phala_anchors(anchor_id) ON DELETE SET NULL"
+  },
+  {
+   "conname": "phala_muhurta_pkey",
+   "contype": "p",
+   "def": "PRIMARY KEY (muhurta_id)"
+  }
+ ],
+ "indexes": [
+  {
+   "indexname": "phala_muhurta_pkey",
+   "indexdef": "CREATE UNIQUE INDEX phala_muhurta_pkey ON public.phala_muhurta USING btree (muhurta_id)"
+  },
+  {
+   "indexname": "phala_muhurta_natural_key",
+   "indexdef": "CREATE UNIQUE INDEX phala_muhurta_natural_key ON public.phala_muhurta USING btree (chart_id, action_class, window_start)"
+  },
+  {
+   "indexname": "phala_muhurta_chart_idx",
+   "indexdef": "CREATE INDEX phala_muhurta_chart_idx ON public.phala_muhurta USING btree (chart_id)"
+  },
+  {
+   "indexname": "phala_muhurta_anchor_idx",
+   "indexdef": "CREATE INDEX phala_muhurta_anchor_idx ON public.phala_muhurta USING btree (linked_anchor_id) WHERE (linked_anchor_id IS NOT NULL)"
+  }
+ ],
+ "referenced_by": [
+  {
+   "tbl": "phala_mitigation",
+   "conname": "phala_mitigation_initiation_muhurta_ref_fkey",
+   "def": "FOREIGN KEY (initiation_muhurta_ref) REFERENCES phala_muhurta(muhurta_id) ON DELETE SET NULL"
+  }
+ ]
+}

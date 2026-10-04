@@ -3,11 +3,15 @@ ga_writers.ga_nakshatra_compute — Pure nakshatra computation algorithms.
 
 No DB access. No chart_facts rows. Only deterministic transformations:
   - KP Vimshottari sub-lord chain (star/sub/sub-sub/prana)
-  - Gaṇḍānta detection with severity (arc-minutes from junction)
+  - Gaṇḍānta detection with severity (arc-minutes from junction), computed by the ONE
+    shared definition `brahmagyan.gandanta` (3°20' each side; the 0°48' reading is the
+    named variant `strict_0_48`)
   - Tara bala per body from Moon's nakshatra
   - Nakshatra dispositor graph (chain + cycle detection)
 """
 from __future__ import annotations
+
+from brahmagyan.gandanta import locate_gandanta, locate_gandanta_strict
 
 VIMSHOTTARI_YEARS: dict[str, int] = {
     "Ketu": 7, "Venus": 20, "Sun": 6, "Moon": 10, "Mars": 7,
@@ -17,8 +21,6 @@ PLANET_CYCLE: list[str] = [
     "Ketu","Venus","Sun","Moon","Mars","Rahu","Jupiter","Saturn","Mercury"
 ]
 NAK_SPAN_ARCMIN: float = 800.0   # 13°20' × 60 arcmin
-GANDANTA_JUNCTION_DEG: list[float] = [0.0, 120.0, 240.0]
-GANDANTA_ORB_ARCMIN: float = 48.0
 TARA_NAMES: list[str] = [
     "Janma","Sampat","Vipat","Kshema","Pratyari",
     "Sadhaka","Vadha","Mitra","Atimitra",
@@ -71,9 +73,23 @@ def compute_kp_lords(longitude: float) -> dict[str, str]:
     }
 
 
+def _gandanta_reading(located: dict) -> dict:
+    """Project a `brahmagyan.gandanta.locate_gandanta*` result onto the four keys this
+    asset has always stored (`is_gandanta`, `arc_minutes_from_junction`, `junction_type`,
+    `side`)."""
+    return {
+        "is_gandanta":               located["fired"],
+        "arc_minutes_from_junction": located["arc_minutes_from_junction"],
+        "junction_type":             located["junction_type"],
+        "side":                      located["side"],
+    }
+
+
 def compute_gandanta(longitude: float) -> dict:
     """
-    Detect gaṇḍānta (water-fire nakshatra/rashi junction) for a longitude.
+    Detect gaṇḍānta (water-fire nakshatra/rashi junction) for a longitude at the CANONICAL
+    width: 3°20' each side of the junction, from the shared `brahmagyan.gandanta` module
+    (the same function `ga_sensitive_degree` and `ga_structural` use).
 
     Returns:
       {
@@ -83,31 +99,16 @@ def compute_gandanta(longitude: float) -> dict:
         "side": str | None,            # "approaching" or "departing"
       }
     """
-    long_mod = longitude % 360.0
-    best_dist = None
-    best_junction = None
-    best_side = None
+    return _gandanta_reading(locate_gandanta(longitude))
 
-    for jdeg in GANDANTA_JUNCTION_DEG:
-        # Distance approaching (body before junction)
-        d_approach = (jdeg - long_mod) % 360.0
-        # Distance departing (body after junction)
-        d_depart   = (long_mod - jdeg) % 360.0
 
-        for dist_deg, side in [(d_approach, "approaching"), (d_depart, "departing")]:
-            dist_am = dist_deg * 60.0
-            if dist_am <= GANDANTA_ORB_ARCMIN:
-                if best_dist is None or dist_am < best_dist:
-                    best_dist = dist_am
-                    best_junction = f"water_fire_{int(jdeg)}"
-                    best_side = side
-
-    return {
-        "is_gandanta":               best_dist is not None,
-        "arc_minutes_from_junction": round(best_dist, 2) if best_dist is not None else None,
-        "junction_type":             best_junction,
-        "side":                      best_side,
-    }
+def compute_gandanta_strict(longitude: float) -> dict:
+    """
+    The named stricter variant `strict_0_48` (formula_id): 0°48' each side of the junction.
+    This is the reading `compute_gandanta` returned before decision sheet X1 (SS N-62);
+    it is now emitted only as variant rows. Same four keys as `compute_gandanta`.
+    """
+    return _gandanta_reading(locate_gandanta_strict(longitude))
 
 
 def compute_tara(nak_body_1based: int, nak_moon_1based: int) -> dict:

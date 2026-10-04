@@ -1,0 +1,12 @@
+
+  SELECT count(*) AS count FROM chart_facts
+  WHERE chart_id = $1
+    AND (
+      fact_category LIKE 'graha_shadbala_%'
+      OR fact_category IN ('graha_ishta_phala', 'graha_kashta_phala')
+      OR fact_category LIKE '%vimsopaka%'
+      OR fact_category LIKE 'ashtakavarga_%'
+      OR fact_category LIKE '%bhava_bala%'
+      OR fact_category = 'graha_saptavargaja_bala_component'
+      OR fact_category LIKE 'graha_%_bala_per_varga'
+    )

@@ -13,8 +13,12 @@ Covers:
   9.  not_diagnosis=TRUE enforced: indication_strength_from_score always returns
       a value, never changes not_diagnosis semantics
   10. indication_tier='jyotish_indication' constant enforced in every row schema
-  11. FORENSIC: Sun=Capricorn (debilitated) → indication_strength='strong';
-      Saturn=Libra (exalted) → indication_strength='mild'
+  11. indication_strength_from_score label vocabulary at the band extremes: a LOW-band score
+      -> 'strong', a HIGH-band score -> 'mild'. (The canonical chart's own Sun/Saturn values --
+      Sun in Capricorn is an ENEMY sign, not debilitation: the Sun debilitates in Libra; Saturn
+      exalted in Libra scoring 0.68-0.697, the MID band -- are pinned by the goldens in
+      tests/test_ga_medical_sun_golden.py / test_ga_medical_saturn_golden.py, which run the real
+      ga_condition compute path.)
   12. dry_run=True → 0 rows, no DB calls
   13. plan_substeps returns exactly 5 steps (one per ayanamsha)
   14. indication_strength_from_score boundary conditions
@@ -250,38 +254,34 @@ def test_medical_disclaimer_in_module_docstring():
     )
 
 
-# ── 11. FORENSIC: indication_strength_from_score ─────────────────────────────
+# ── 11. indication_strength_from_score at the band extremes ───────────────────
 
-def test_forensic_sun_capricorn_strong():
+def test_low_band_score_is_strong():
     """
-    FORENSIC: Sun = Capricorn (debilitated) → condition_score expected low (<0.4)
-    → indication_strength = 'strong'.
+    A LOW-band score (< 0.4 under the I-28 single band table) -> indication_strength = 'strong'.
 
-    We test with a representative debilitation-level score.
-    Sun in Capricorn is enemy/debilitated → DIGNITY_SCORES['debilitated'] = 0.0,
-    and the combined condition_score will be well below 0.4.
+    This exercises the label function only, on a representative low score. It is NOT a claim about
+    the canonical chart: Sun in Capricorn is an ENEMY sign (the Sun debilitates in Libra) and
+    scores 0.287-0.318 on the five ayanamshas; that is pinned by
+    tests/test_ga_medical_sun_golden.py through the real ga_condition compute path.
     """
     mod = _ga_writer_module()
-    # Simulate debilitated planet: condition_score = 0.05 (debilitated + peedit)
     strength = mod.indication_strength_from_score(0.05)
-    assert strength == "strong", (
-        f"Sun-Capricorn debilitation level (score=0.05) → 'strong', got '{strength}'"
-    )
+    assert strength == "strong", f"low-band score (0.05) -> 'strong', got '{strength}'"
 
 
-def test_forensic_saturn_libra_mild():
+def test_high_band_score_is_mild():
     """
-    FORENSIC: Saturn = Libra (exalted) → condition_score expected high (>0.6)
-    → indication_strength = 'mild'.
+    A HIGH-band score (>= 0.7) -> indication_strength = 'mild'.
 
-    We test with a representative exaltation-level score.
+    Label function only, on a representative high score (0.85). The canonical Saturn (exalted in
+    Libra) scores 0.680-0.697 -- the MID band, 'moderate' -- and is pinned by
+    tests/test_ga_medical_saturn_golden.py through the real compute path; the pre-lane build-time
+    Saturn guard no longer exists.
     """
     mod = _ga_writer_module()
-    # Simulate exalted planet: condition_score = 0.85 (exalted + deepta + yuva)
     strength = mod.indication_strength_from_score(0.85)
-    assert strength == "mild", (
-        f"Saturn-Libra exaltation level (score=0.85) → 'mild', got '{strength}'"
-    )
+    assert strength == "mild", f"high-band score (0.85) -> 'mild', got '{strength}'"
 
 
 def test_forensic_moon_nakshatra_body_part():
@@ -386,7 +386,10 @@ class TestIndicationStrengthFromScore:
         (0.4,   "moderate"),
         (0.5,   "moderate"),
         (0.6,   "moderate"),
-        (0.61,  "mild"),
+        # I-28: the cut moved 0.6 -> 0.7 (the ONE band table); 0.61 and 0.69 are now MID.
+        (0.61,  "moderate"),
+        (0.699999, "moderate"),
+        (0.7,   "mild"),
         (1.0,   "mild"),
     ])
     def test_score_to_strength(self, score, expected):

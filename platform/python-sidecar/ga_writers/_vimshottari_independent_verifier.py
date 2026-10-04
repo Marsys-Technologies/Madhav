@@ -123,17 +123,21 @@ H2 — COLUMN COVERAGE (fixed). Only 3 of `chart_dashas`' 42 columns
   and `ga_dashas_writer.py`'s row-construction code (`_build_row`,
   `_get_karakas_active`, `_planet_relationship`, `compute_sandhi_post_pass`)
   to classify all 42 columns into three honest buckets — see
-  `INDEPENDENTLY_VERIFIED_COLUMNS` (20, including the original 3),
+  `INDEPENDENTLY_VERIFIED_COLUMNS` (18, including the original 3),
   `QUERY_GUARANTEED_COLUMNS` (5, tautologically correct by the fetch
   query's WHERE clause — not a meaningful independent check), and
-  `NOT_INDEPENDENTLY_CHECKABLE_COLUMNS` (17, with a documented reason each
-  — natal-chart/shadbala columns for the LORD graha, cross-dasha-system
-  columns, and pure provenance/identity columns). `derive_extended_columns()`
-  computes the 17 newly-covered columns from data this module already has
-  (independently-derived lord/boundaries/parent chain), transcribing two
-  more static classical tables (`_FRIEND`/`_ENEMY` planet relationships,
-  `_JAIMINI_KARAKAS`) the same way `CLASSICAL_9_LORDS`/`LORD_YEARS` were
-  transcribed. `ChartVerificationResult.column_coverage_report()` reports
+  `NOT_INDEPENDENTLY_CHECKABLE_COLUMNS` (19, with a documented reason each
+  — natal-chart/shadbala columns for the LORD graha, the two chart-specific
+  Jaimini karaka-role columns, cross-dasha-system columns, and pure
+  provenance/identity columns). `derive_extended_columns()`
+  computes the 15 newly-covered columns from data this module already has
+  (independently-derived lord/boundaries/parent chain), transcribing one
+  more static classical table (`_FRIEND`/`_ENEMY` planet relationships)
+  the same way `CLASSICAL_9_LORDS`/`LORD_YEARS` were transcribed. (The two
+  karaka-role columns were originally covered by a transcribed copy of the
+  writer's lord -> role constant, which was dropped in the S-L1 karaka-roles
+  fix: roles are chart-specific L1 facts, so a fixed table could only mirror the
+  writer's own constant — see NOT_INDEPENDENTLY_CHECKABLE_COLUMNS.) `ChartVerificationResult.column_coverage_report()` reports
   the honest "N of 42" breakdown rather than letting a caller assume
   full-row verification from a lord+boundaries-only check. One confirmed
   engine quirk found while doing this and deliberately REPLICATED (not
@@ -211,11 +215,17 @@ WINDOW_END_DATE = date(2100, 12, 31)
 # ─────────────────────────────────────────────────────────────────────────────
 # H2 — additional classical tables, independently transcribed (read, not
 # imported) from `ga_dashas_writer.py`'s `_FRIEND` / `_ENEMY` /
-# `_planet_relationship` (planet-to-planet friendship) and `_JAIMINI_KARAKAS`
-# / `_get_karakas_active` (fixed graha->karaka-role table). Both are FIXED
-# classical lookup tables — not chart-specific, not re-derivations of any
-# ephemeris computation — so transcribing them here carries the same
-# independence rationale as `CLASSICAL_9_LORDS`/`LORD_YEARS` above.
+# `_planet_relationship` (planet-to-planet friendship). This table is a FIXED
+# classical lookup — not chart-specific, not a re-derivation of any ephemeris
+# computation — so transcribing it here carries the same independence rationale
+# as `CLASSICAL_9_LORDS`/`LORD_YEARS` above.
+#
+# The Jaimini karaka-role columns (karaka_role_at_period /
+# karakas_active_during_period) are deliberately NOT here any more: a role is
+# CHART-SPECIFIC (ga_sensitive's karaka_chara_position for that chart), so a
+# fixed table transcribed into this module could only ever copy the writer's
+# own constant — an unearned "verified" (CLAUDE.md N.8). They are classified in
+# NOT_INDEPENDENTLY_CHECKABLE_COLUMNS with the reason stated there.
 # ─────────────────────────────────────────────────────────────────────────────
 
 _FRIEND: dict[str, set[str]] = {
@@ -244,20 +254,6 @@ _ENEMY: dict[str, set[str]] = {
     "Rahu":    {"Sun", "Moon"},
     "Ketu":    {"Sun", "Moon"},
 }
-
-# Fixed graha -> Jaimini karaka-role abbreviation. Only 7 grahas (Rahu/Ketu
-# have no entry — `.get()` correctly returns None for them, matching the
-# engine's `_JAIMINI_KARAKAS.get(lord)` exactly).
-_JAIMINI_KARAKAS: dict[str, str] = {
-    "Sun":     "AK",    # Atmakaraka
-    "Mars":    "AmK",   # Amatyakaraka
-    "Mercury": "BK",    # Bhratrukaraka
-    "Saturn":  "MK",    # Matrukaraka
-    "Jupiter": "PK",    # Pitrukaraka
-    "Venus":   "GK",    # Gnatikaraka
-    "Moon":    "DK",    # Darakaraka
-}
-
 
 def _derive_planet_relationship(lord: str, parent_lord: str | None) -> str | None:
     """Classical Parashari lord-to-parent relationship — transcribed from
@@ -289,26 +285,6 @@ def _derive_planet_relationship(lord: str, parent_lord: str | None) -> str | Non
     return "neutral"
 
 
-def _derive_karaka_role(lord: str) -> str | None:
-    """Matches `ga_dashas_writer._JAIMINI_KARAKAS.get(lord)` exactly (fixed
-    table, function of `lord` alone)."""
-    return _JAIMINI_KARAKAS.get(lord)
-
-
-def _derive_karakas_active(lord: str, parent_lord: str | None) -> list[str] | None:
-    """Matches `ga_dashas_writer._get_karakas_active(lord, parent_lord)`
-    exactly: iterate the fixed table in its own (insertion) order, include
-    every graha matching either `lord` or `parent_lord`, return None (not
-    an empty list) when nothing matches — same `karakas if karakas else
-    None` convention as the engine."""
-    active = [
-        f"{graha}:{karaka}"
-        for graha, karaka in _JAIMINI_KARAKAS.items()
-        if graha == lord or graha == parent_lord
-    ]
-    return active if active else None
-
-
 # ─────────────────────────────────────────────────────────────────────────────
 # H2 — the full 42-column `chart_dashas` coverage classification. Every
 # column is assigned to exactly one of three buckets; the module self-test
@@ -319,22 +295,21 @@ def _derive_karakas_active(lord: str, parent_lord: str | None) -> list[str] | No
 
 TOTAL_CHART_DASHAS_COLUMNS: int = 42
 
-# The 3 original (pre-Stage-3-fix) columns plus the 17 newly-covered H2
-# columns. `derive_extended_columns()` below computes the 17 EXTENDED ones;
+# The 3 original (pre-Stage-3-fix) columns plus the 15 newly-covered H2
+# columns. `derive_extended_columns()` below computes the 15 EXTENDED ones;
 # lord_graha/start_iso/end_iso are handled by the pre-existing `compare_row`
 # positional arguments (unchanged, to keep the discrimination-probe tests
 # backward compatible).
 PRIMARY_VERIFIED_COLUMNS: tuple[str, ...] = ("lord_graha", "start_iso", "end_iso")
 EXTENDED_VERIFIED_COLUMNS: tuple[str, ...] = (
     "start_date", "end_date", "duration_days", "sandhi_flag",
-    "karaka_role_at_period", "karakas_active_during_period",
     "lord_to_parent_relationship", "applies_to_this_chart_flag",
     "period_deity_or_marker", "varsha_year_lord", "anchored_solar_return_iso",
     "kp_sub_lord", "kp_sub_sub_lord",
     "sandhi_with_next_dasha_lord", "next_dasha_start_iso",
     "is_truncated_at_window_start", "is_truncated_at_window_end",
 )
-INDEPENDENTLY_VERIFIED_COLUMNS: tuple[str, ...] = PRIMARY_VERIFIED_COLUMNS + EXTENDED_VERIFIED_COLUMNS  # 20
+INDEPENDENTLY_VERIFIED_COLUMNS: tuple[str, ...] = PRIMARY_VERIFIED_COLUMNS + EXTENDED_VERIFIED_COLUMNS  # 18
 
 # Tautologically correct by `fetch_engine_rows()`'s own WHERE clause (they
 # ARE the filter predicate) — checking them would be circular, not a
@@ -361,11 +336,13 @@ NOT_INDEPENDENTLY_CHECKABLE_COLUMNS: dict[str, str] = {
     "verification_method": "static provenance string naming which method produced the row, not a derivable astronomical value",
     "citation_ref": "generated provenance/citation string, not a derivable value",
     "citation_human": "generated human-readable citation string, not a derivable value",
+    "karaka_role_at_period": "the dasha LORD's Jaimini chara-karaka role is a chart-specific L1 fact (ga_sensitive karaka_chara_position, kn_rao_rahu_included school, by stored rank). It was verified here against a transcribed lord -> role table, which could only be a copy of the writer's own former constant (and was wrong on every chart but one): a copy of a constant is not an independent detector (CLAUDE.md N.8). An honest check needs the chart's own ga_sensitive rows read by this verifier's own query; until that exists the column is not claimed. It is covered by the writer's golden tests (tests/test_ga_dashas_karaka_roles.py), which assert the written value against the stored ranks",
+    "karakas_active_during_period": "'Graha:role' strings for the lord and parent lord: the same chart-specific ga_sensitive roles as karaka_role_at_period, so the same reason applies",
     "computed_at": "wall-clock timestamp of when the ENGINE wrote the row — not a property of the dasha period itself",
     "engine_version": "static provenance string (engine build tag), not a derivable astronomical value",
     "concurrent_system_lords_jsonb": "requires computing OTHER dasha systems (yogini, kalachakra, ashtottari, ...) at this row's start date — out of this Vimshottari-only verifier's scope",
     "convergence_count_at_start": "same cross-dasha-system dependency as concurrent_system_lords_jsonb",
-}  # 17
+}  # 19
 
 
 def _self_test_column_coverage_partition() -> None:
@@ -897,8 +874,6 @@ def derive_extended_columns(
         "end_date": end_date,
         "duration_days": duration_days,
         "sandhi_flag": sandhi_flag,
-        "karaka_role_at_period": _derive_karaka_role(row.lord),
-        "karakas_active_during_period": _derive_karakas_active(row.lord, parent_lord),
         "lord_to_parent_relationship": _derive_planet_relationship(row.lord, parent_lord),
         # applies_to_this_chart_flag / period_deity_or_marker / varsha_year_lord /
         # anchored_solar_return_iso / kp_sub_lord / kp_sub_sub_lord: NONE of
@@ -1289,7 +1264,7 @@ def fetch_engine_rows(conn: Any, chart_id: str, ayanamsha_id: str, level_n: int)
 
     H2 FIX: previously selected only (lord_graha, start_iso, end_iso).
     Now selects every EXTENDED_VERIFIED_COLUMNS column too, so
-    `compare_level()` can check the expanded 20-column coverage instead of
+    `compare_level()` can check the expanded 18-column coverage instead of
     just the original 3. Returns dict rows (column name -> value) rather
     than positional tuples, since the extra columns make positional
     unpacking unwieldy and error-prone.
@@ -1300,7 +1275,6 @@ def fetch_engine_rows(conn: Any, chart_id: str, ayanamsha_id: str, level_n: int)
             """
             SELECT lord_graha, start_iso, end_iso,
                    start_date, end_date, duration_days, sandhi_flag,
-                   karaka_role_at_period, karakas_active_during_period,
                    lord_to_parent_relationship, applies_to_this_chart_flag,
                    period_deity_or_marker, varsha_year_lord, anchored_solar_return_iso,
                    kp_sub_lord, kp_sub_sub_lord,

@@ -1,0 +1,2293 @@
+{
+ "schema": "s_l1_attribution_hooks/v1-draft",
+ "schema_note": "Compatible with flip_detector.py `rulings` (name / categories / category_regex / domain_category_regex / note); extra fields document expected direction, counts and columns for the S-L1 review.",
+ "lane": "S-L1 mandatory item Q03 (honest tiers) + Q-L1-16(a) respell single_pass -> single (stacked)",
+ "branch": "suvarna/land/TI-l1-tier-honesty-001",
+ "stacked_on": "suvarna/land/TI-l1-tier-constants-001 (PR #2854: respelling `single_pass` -> `single` in ga_panchanga / ga_strength / ga_structural, named constants)",
+ "spec": "00_ARCHITECTURE/briefs/suvarna/exec/AUDIT_L1_TIERS_PER_EMITTER_v1_0.md v1.1 (branch suvarna/land/TI-l1-tier-audit-001, PR #2852) with SS rulings N-62",
+ "population_basis": "live read 2026-10-02 as suvarna_reader (no write): chart_facts rows with verification_pass_status in (two_pass_verified, single_pass), plus the 42 ga_strength classical_match rows. Charts: canon=482012f1-710e-4a25-994a-93821f5871aa, abhi=1c826d5a-41cb-4450-b4dc-59d440e5f75a, cb73=cb73cd3d-9eba-4220-9902-0de91566e980.",
+ "applies_when": "after the S-L1 rebuild of ga_sensitive, ga_nakshatra, ga_sensitive_degree, ga_sade_sati, ga_strength, ga_panchanga, ga_structural, ga_dashas, ga_tajaka. A writer change moves no stored value until a rebuild (or targeted backfill) runs.",
+ "columns_changed": {
+  "chart_facts": [
+   "verification_pass_status"
+  ],
+  "chart_dashas": [
+   "verification_pass_status"
+  ],
+  "l1_tajik_varsha_year_lords": [
+   "verification_pass_status"
+  ]
+ },
+ "columns_changed_exceptions": [
+  "chart_facts.source_calculation and chart_facts.citation_human change ONLY for ga_strength per-varga ashtakavarga rows whose SARVA != 337 (tier `floored`, reason `sarva_mismatch` carried in provenance); 0 such rows exist today, so expected count = 0."
+ ],
+ "values_unchanged": "No fact VALUE changes: fact_value_num / fact_value_text / fact_value_jsonb, tolerance_arcsec, fact_id, citation_ref are untouched by this lane. Any class change (value change) in the categories below is NOT attributable to this lane.",
+ "expected_class_changes": 0,
+ "expected_row_count_changes": 0,
+ "expected_tier_changes_note": "Tier changes are reported by the detector under tier_changes, attributed to ruling `tiers`; a tier change in a category NOT listed in `rulings[tiers].categories` is unattributed to this lane.",
+ "rulings": [
+  {
+   "name": "tiers",
+   "categories": [
+    "anumukha_shani_period",
+    "aprakasha_position",
+    "ardha_ashtama_shani_period",
+    "arudha_pada",
+    "ashtakavarga_bindu",
+    "ashtakavarga_bindu_per_varga",
+    "ashtakavarga_bindu_sign",
+    "ashtakavarga_ekadhipathya_shodhana",
+    "ashtakavarga_kakshya_boundary",
+    "ashtakavarga_pinda_bhinna",
+    "ashtakavarga_pinda_raasi",
+    "ashtakavarga_pinda_sarva",
+    "ashtakavarga_pinda_sarva_per_varga",
+    "ashtakavarga_pinda_sodhita",
+    "ashtakavarga_trikona_shodhana",
+    "ashtama_shani_period",
+    "bhadra_flag",
+    "bhava_arudha",
+    "bhrigu_nadi_point",
+    "dhaiya_period",
+    "dosha_label",
+    "eclipse_proximity_natal",
+    "esoteric_point_avayogi",
+    "esoteric_point_bhrigu_bindu",
+    "esoteric_point_brahma",
+    "esoteric_point_mrityu",
+    "esoteric_point_pranapada_sphuta",
+    "esoteric_point_shiva",
+    "esoteric_point_sphuta_fertility",
+    "esoteric_point_vishnu",
+    "esoteric_point_yogi",
+    "esoteric_point_yogi_system",
+    "graha_composite_state_classification",
+    "graha_ishta_phala",
+    "graha_kashta_phala",
+    "graha_nakshatra_join",
+    "graha_pada_join",
+    "graha_shadbala_cheshta",
+    "graha_shadbala_dig",
+    "graha_shadbala_drik",
+    "graha_shadbala_kala",
+    "graha_shadbala_naisargika",
+    "graha_shadbala_sthana",
+    "graha_shadbala_total",
+    "graha_sthana_bala_per_varga",
+    "graha_vimsopaka_dasavarga",
+    "graha_vimsopaka_saptavarga",
+    "graha_vimsopaka_shadvarga",
+    "graha_vimsopaka_shodasavarga",
+    "janma_shani_period",
+    "kantaka_shani_period",
+    "karaka_chara_position",
+    "karakamsa_position",
+    "kp_cuspal_significators",
+    "kp_ruling_planets_natal",
+    "lal_kitab_special_point",
+    "maharsi_specific_point",
+    "midpoint",
+    "nakshatra_pada_sensitive",
+    "panchaka_flag",
+    "panchanga_abhijit_muhurta",
+    "panchanga_agni_vasa",
+    "panchanga_brahma_muhurta",
+    "panchanga_disha_shul",
+    "panchanga_durmuhurta",
+    "panchanga_godhuli_muhurta",
+    "panchanga_gulika_kalam",
+    "panchanga_krakaca",
+    "panchanga_madhyahna_sandhya",
+    "panchanga_nakshatra_shoonya_rashi",
+    "panchanga_nishita_kala",
+    "panchanga_panchaka_classification",
+    "panchanga_pratah_sandhya",
+    "panchanga_rahu_kalam",
+    "panchanga_sashtighati",
+    "panchanga_sayam_sandhya",
+    "panchanga_special_yoga_combinations",
+    "panchanga_tithi_shoonya_rashi",
+    "panchanga_varjyam",
+    "panchanga_vijaya_muhurta",
+    "panchanga_visha_ghati",
+    "panchanga_yamaganda_kalam",
+    "panchanga_yamakantaka",
+    "sade_sati_cancellation_check",
+    "sade_sati_cycle",
+    "sade_sati_downstream_cross_reference",
+    "sade_sati_modifier_overlay",
+    "sade_sati_phase",
+    "sade_sati_phase_quarter",
+    "sade_sati_saturn_retrograde_subset",
+    "saham_position",
+    "saturn_derived_point",
+    "sensitive_point_gulika_mandi",
+    "sensitive_point_yogi",
+    "special_lagna",
+    "sun_derived_upagraha",
+    "swamsa_position",
+    "tajik_hadda_lord",
+    "tajik_triraashipathi",
+    "tajik_vargottama_specific",
+    "upagraha_position",
+    "vishakha_shani_period",
+    "yoga_label"
+   ],
+   "category_regex": [],
+   "domain_category_regex": [],
+   "note": "SS N-62 / Q03: two_pass_verified only for an independent re-derivation compared through two_pass_verdict; every other tier change in these categories is verification_pass_status only (see transitions). v1.1: classical_match applies only where a check matches a classical reference table / a relay-fidelity comparison; self-referential or bounds-only checks (ga_strength shadbala, ga_tajaka varsha) are `single`."
+  }
+ ],
+ "transitions_chart_facts": [
+  {
+   "emitter": "ga_kp_significators",
+   "family": "kp_planet_significations.star_lord",
+   "fact_categories": [
+    "kp_planet_significations"
+   ],
+   "verification_pass_status": {
+    "old": "two_pass_verified",
+    "new": "two_pass_verified"
+   },
+   "rows": {
+    "canon": 45,
+    "abhi": 45,
+    "cb73": 0,
+    "total": 90
+   },
+   "direction": "unchanged"
+  },
+  {
+   "emitter": "ga_kp_significators",
+   "family": "kp_planet_significations.sub_lord",
+   "fact_categories": [
+    "kp_planet_significations"
+   ],
+   "verification_pass_status": {
+    "old": "two_pass_verified",
+    "new": "two_pass_verified"
+   },
+   "rows": {
+    "canon": 45,
+    "abhi": 45,
+    "cb73": 0,
+    "total": 90
+   },
+   "direction": "unchanged"
+  },
+  {
+   "emitter": "ga_nakshatra",
+   "family": "graha_nakshatra_join.nakshatra_id_ref",
+   "fact_categories": [
+    "graha_nakshatra_join"
+   ],
+   "verification_pass_status": {
+    "old": "two_pass_verified",
+    "new": "classical_match"
+   },
+   "rows": {
+    "canon": 50,
+    "abhi": 50,
+    "cb73": 0,
+    "total": 100
+   },
+   "direction": "down: grounded -> ungrounded"
+  },
+  {
+   "emitter": "ga_nakshatra",
+   "family": "graha_pada_join.pada_number_ref",
+   "fact_categories": [
+    "graha_pada_join"
+   ],
+   "verification_pass_status": {
+    "old": "two_pass_verified",
+    "new": "classical_match"
+   },
+   "rows": {
+    "canon": 50,
+    "abhi": 50,
+    "cb73": 0,
+    "total": 100
+   },
+   "direction": "down: grounded -> ungrounded"
+  },
+  {
+   "emitter": "ga_panchanga|ga_structural",
+   "family": "bhadra_flag",
+   "fact_categories": [
+    "bhadra_flag"
+   ],
+   "verification_pass_status": {
+    "old": "single_pass",
+    "new": "single"
+   },
+   "rows": {
+    "canon": 6,
+    "abhi": 0,
+    "cb73": 0,
+    "total": 6
+   },
+   "direction": "respell/promote: single_pass alias -> canonical tier"
+  },
+  {
+   "emitter": "ga_panchanga|ga_structural",
+   "family": "dosha_label",
+   "fact_categories": [
+    "dosha_label"
+   ],
+   "verification_pass_status": {
+    "old": "single_pass",
+    "new": "single"
+   },
+   "rows": {
+    "canon": 6,
+    "abhi": 15,
+    "cb73": 0,
+    "total": 21
+   },
+   "direction": "respell/promote: single_pass alias -> canonical tier"
+  },
+  {
+   "emitter": "ga_panchanga|ga_structural",
+   "family": "eclipse_proximity_natal",
+   "fact_categories": [
+    "eclipse_proximity_natal"
+   ],
+   "verification_pass_status": {
+    "old": "single_pass",
+    "new": "single"
+   },
+   "rows": {
+    "canon": 5,
+    "abhi": 0,
+    "cb73": 0,
+    "total": 5
+   },
+   "direction": "respell/promote: single_pass alias -> canonical tier"
+  },
+  {
+   "emitter": "ga_panchanga|ga_structural",
+   "family": "graha_composite_state_classification",
+   "fact_categories": [
+    "graha_composite_state_classification"
+   ],
+   "verification_pass_status": {
+    "old": "single_pass",
+    "new": "single"
+   },
+   "rows": {
+    "canon": 45,
+    "abhi": 45,
+    "cb73": 0,
+    "total": 90
+   },
+   "direction": "respell/promote: single_pass alias -> canonical tier"
+  },
+  {
+   "emitter": "ga_panchanga|ga_structural",
+   "family": "panchaka_flag",
+   "fact_categories": [
+    "panchaka_flag"
+   ],
+   "verification_pass_status": {
+    "old": "single_pass",
+    "new": "single"
+   },
+   "rows": {
+    "canon": 10,
+    "abhi": 0,
+    "cb73": 0,
+    "total": 10
+   },
+   "direction": "respell/promote: single_pass alias -> canonical tier"
+  },
+  {
+   "emitter": "ga_panchanga|ga_structural",
+   "family": "panchanga_abhijit_muhurta",
+   "fact_categories": [
+    "panchanga_abhijit_muhurta"
+   ],
+   "verification_pass_status": {
+    "old": "single_pass",
+    "new": "single"
+   },
+   "rows": {
+    "canon": 3,
+    "abhi": 0,
+    "cb73": 0,
+    "total": 3
+   },
+   "direction": "respell/promote: single_pass alias -> canonical tier"
+  },
+  {
+   "emitter": "ga_panchanga|ga_structural",
+   "family": "panchanga_agni_vasa",
+   "fact_categories": [
+    "panchanga_agni_vasa"
+   ],
+   "verification_pass_status": {
+    "old": "single_pass",
+    "new": "single"
+   },
+   "rows": {
+    "canon": 3,
+    "abhi": 0,
+    "cb73": 0,
+    "total": 3
+   },
+   "direction": "respell/promote: single_pass alias -> canonical tier"
+  },
+  {
+   "emitter": "ga_panchanga|ga_structural",
+   "family": "panchanga_brahma_muhurta",
+   "fact_categories": [
+    "panchanga_brahma_muhurta"
+   ],
+   "verification_pass_status": {
+    "old": "single_pass",
+    "new": "single"
+   },
+   "rows": {
+    "canon": 3,
+    "abhi": 0,
+    "cb73": 0,
+    "total": 3
+   },
+   "direction": "respell/promote: single_pass alias -> canonical tier"
+  },
+  {
+   "emitter": "ga_panchanga|ga_structural",
+   "family": "panchanga_disha_shul",
+   "fact_categories": [
+    "panchanga_disha_shul"
+   ],
+   "verification_pass_status": {
+    "old": "single_pass",
+    "new": "single"
+   },
+   "rows": {
+    "canon": 2,
+    "abhi": 0,
+    "cb73": 0,
+    "total": 2
+   },
+   "direction": "respell/promote: single_pass alias -> canonical tier"
+  },
+  {
+   "emitter": "ga_panchanga|ga_structural",
+   "family": "panchanga_durmuhurta",
+   "fact_categories": [
+    "panchanga_durmuhurta"
+   ],
+   "verification_pass_status": {
+    "old": "single_pass",
+    "new": "single"
+   },
+   "rows": {
+    "canon": 3,
+    "abhi": 0,
+    "cb73": 0,
+    "total": 3
+   },
+   "direction": "respell/promote: single_pass alias -> canonical tier"
+  },
+  {
+   "emitter": "ga_panchanga|ga_structural",
+   "family": "panchanga_godhuli_muhurta",
+   "fact_categories": [
+    "panchanga_godhuli_muhurta"
+   ],
+   "verification_pass_status": {
+    "old": "single_pass",
+    "new": "single"
+   },
+   "rows": {
+    "canon": 3,
+    "abhi": 0,
+    "cb73": 0,
+    "total": 3
+   },
+   "direction": "respell/promote: single_pass alias -> canonical tier"
+  },
+  {
+   "emitter": "ga_panchanga|ga_structural",
+   "family": "panchanga_gulika_kalam",
+   "fact_categories": [
+    "panchanga_gulika_kalam"
+   ],
+   "verification_pass_status": {
+    "old": "single_pass",
+    "new": "single"
+   },
+   "rows": {
+    "canon": 3,
+    "abhi": 0,
+    "cb73": 0,
+    "total": 3
+   },
+   "direction": "respell/promote: single_pass alias -> canonical tier"
+  },
+  {
+   "emitter": "ga_panchanga|ga_structural",
+   "family": "panchanga_krakaca",
+   "fact_categories": [
+    "panchanga_krakaca"
+   ],
+   "verification_pass_status": {
+    "old": "single_pass",
+    "new": "single"
+   },
+   "rows": {
+    "canon": 3,
+    "abhi": 0,
+    "cb73": 0,
+    "total": 3
+   },
+   "direction": "respell/promote: single_pass alias -> canonical tier"
+  },
+  {
+   "emitter": "ga_panchanga|ga_structural",
+   "family": "panchanga_madhyahna_sandhya",
+   "fact_categories": [
+    "panchanga_madhyahna_sandhya"
+   ],
+   "verification_pass_status": {
+    "old": "single_pass",
+    "new": "single"
+   },
+   "rows": {
+    "canon": 3,
+    "abhi": 0,
+    "cb73": 0,
+    "total": 3
+   },
+   "direction": "respell/promote: single_pass alias -> canonical tier"
+  },
+  {
+   "emitter": "ga_panchanga|ga_structural",
+   "family": "panchanga_nakshatra_shoonya_rashi",
+   "fact_categories": [
+    "panchanga_nakshatra_shoonya_rashi"
+   ],
+   "verification_pass_status": {
+    "old": "single_pass",
+    "new": "single"
+   },
+   "rows": {
+    "canon": 2,
+    "abhi": 0,
+    "cb73": 0,
+    "total": 2
+   },
+   "direction": "respell/promote: single_pass alias -> canonical tier"
+  },
+  {
+   "emitter": "ga_panchanga|ga_structural",
+   "family": "panchanga_nishita_kala",
+   "fact_categories": [
+    "panchanga_nishita_kala"
+   ],
+   "verification_pass_status": {
+    "old": "single_pass",
+    "new": "single"
+   },
+   "rows": {
+    "canon": 3,
+    "abhi": 0,
+    "cb73": 0,
+    "total": 3
+   },
+   "direction": "respell/promote: single_pass alias -> canonical tier"
+  },
+  {
+   "emitter": "ga_panchanga|ga_structural",
+   "family": "panchanga_panchaka_classification",
+   "fact_categories": [
+    "panchanga_panchaka_classification"
+   ],
+   "verification_pass_status": {
+    "old": "single_pass",
+    "new": "single"
+   },
+   "rows": {
+    "canon": 80,
+    "abhi": 0,
+    "cb73": 0,
+    "total": 80
+   },
+   "direction": "respell/promote: single_pass alias -> canonical tier"
+  },
+  {
+   "emitter": "ga_panchanga|ga_structural",
+   "family": "panchanga_pratah_sandhya",
+   "fact_categories": [
+    "panchanga_pratah_sandhya"
+   ],
+   "verification_pass_status": {
+    "old": "single_pass",
+    "new": "single"
+   },
+   "rows": {
+    "canon": 3,
+    "abhi": 0,
+    "cb73": 0,
+    "total": 3
+   },
+   "direction": "respell/promote: single_pass alias -> canonical tier"
+  },
+  {
+   "emitter": "ga_panchanga|ga_structural",
+   "family": "panchanga_rahu_kalam",
+   "fact_categories": [
+    "panchanga_rahu_kalam"
+   ],
+   "verification_pass_status": {
+    "old": "single_pass",
+    "new": "single"
+   },
+   "rows": {
+    "canon": 3,
+    "abhi": 0,
+    "cb73": 0,
+    "total": 3
+   },
+   "direction": "respell/promote: single_pass alias -> canonical tier"
+  },
+  {
+   "emitter": "ga_panchanga|ga_structural",
+   "family": "panchanga_sashtighati",
+   "fact_categories": [
+    "panchanga_sashtighati"
+   ],
+   "verification_pass_status": {
+    "old": "single_pass",
+    "new": "single"
+   },
+   "rows": {
+    "canon": 3,
+    "abhi": 0,
+    "cb73": 0,
+    "total": 3
+   },
+   "direction": "respell/promote: single_pass alias -> canonical tier"
+  },
+  {
+   "emitter": "ga_panchanga|ga_structural",
+   "family": "panchanga_sayam_sandhya",
+   "fact_categories": [
+    "panchanga_sayam_sandhya"
+   ],
+   "verification_pass_status": {
+    "old": "single_pass",
+    "new": "single"
+   },
+   "rows": {
+    "canon": 3,
+    "abhi": 0,
+    "cb73": 0,
+    "total": 3
+   },
+   "direction": "respell/promote: single_pass alias -> canonical tier"
+  },
+  {
+   "emitter": "ga_panchanga|ga_structural",
+   "family": "panchanga_special_yoga_combinations",
+   "fact_categories": [
+    "panchanga_special_yoga_combinations"
+   ],
+   "verification_pass_status": {
+    "old": "single_pass",
+    "new": "single"
+   },
+   "rows": {
+    "canon": 15,
+    "abhi": 0,
+    "cb73": 0,
+    "total": 15
+   },
+   "direction": "respell/promote: single_pass alias -> canonical tier"
+  },
+  {
+   "emitter": "ga_panchanga|ga_structural",
+   "family": "panchanga_tithi_shoonya_rashi",
+   "fact_categories": [
+    "panchanga_tithi_shoonya_rashi"
+   ],
+   "verification_pass_status": {
+    "old": "single_pass",
+    "new": "single"
+   },
+   "rows": {
+    "canon": 2,
+    "abhi": 0,
+    "cb73": 0,
+    "total": 2
+   },
+   "direction": "respell/promote: single_pass alias -> canonical tier"
+  },
+  {
+   "emitter": "ga_panchanga|ga_structural",
+   "family": "panchanga_varjyam",
+   "fact_categories": [
+    "panchanga_varjyam"
+   ],
+   "verification_pass_status": {
+    "old": "single_pass",
+    "new": "single"
+   },
+   "rows": {
+    "canon": 3,
+    "abhi": 0,
+    "cb73": 0,
+    "total": 3
+   },
+   "direction": "respell/promote: single_pass alias -> canonical tier"
+  },
+  {
+   "emitter": "ga_panchanga|ga_structural",
+   "family": "panchanga_vijaya_muhurta",
+   "fact_categories": [
+    "panchanga_vijaya_muhurta"
+   ],
+   "verification_pass_status": {
+    "old": "single_pass",
+    "new": "single"
+   },
+   "rows": {
+    "canon": 3,
+    "abhi": 0,
+    "cb73": 0,
+    "total": 3
+   },
+   "direction": "respell/promote: single_pass alias -> canonical tier"
+  },
+  {
+   "emitter": "ga_panchanga|ga_structural",
+   "family": "panchanga_visha_ghati",
+   "fact_categories": [
+    "panchanga_visha_ghati"
+   ],
+   "verification_pass_status": {
+    "old": "single_pass",
+    "new": "single"
+   },
+   "rows": {
+    "canon": 3,
+    "abhi": 0,
+    "cb73": 0,
+    "total": 3
+   },
+   "direction": "respell/promote: single_pass alias -> canonical tier"
+  },
+  {
+   "emitter": "ga_panchanga|ga_structural",
+   "family": "panchanga_yamaganda_kalam",
+   "fact_categories": [
+    "panchanga_yamaganda_kalam"
+   ],
+   "verification_pass_status": {
+    "old": "single_pass",
+    "new": "single"
+   },
+   "rows": {
+    "canon": 3,
+    "abhi": 0,
+    "cb73": 0,
+    "total": 3
+   },
+   "direction": "respell/promote: single_pass alias -> canonical tier"
+  },
+  {
+   "emitter": "ga_panchanga|ga_structural",
+   "family": "panchanga_yamakantaka",
+   "fact_categories": [
+    "panchanga_yamakantaka"
+   ],
+   "verification_pass_status": {
+    "old": "single_pass",
+    "new": "single"
+   },
+   "rows": {
+    "canon": 3,
+    "abhi": 0,
+    "cb73": 0,
+    "total": 3
+   },
+   "direction": "respell/promote: single_pass alias -> canonical tier"
+  },
+  {
+   "emitter": "ga_panchanga|ga_structural",
+   "family": "yoga_label",
+   "fact_categories": [
+    "yoga_label"
+   ],
+   "verification_pass_status": {
+    "old": "single_pass",
+    "new": "single"
+   },
+   "rows": {
+    "canon": 34,
+    "abhi": 41,
+    "cb73": 0,
+    "total": 75
+   },
+   "direction": "respell/promote: single_pass alias -> canonical tier"
+  },
+  {
+   "emitter": "ga_sade_sati",
+   "family": "sade_sati_cycle other keys",
+   "fact_categories": [
+    "sade_sati_cycle"
+   ],
+   "verification_pass_status": {
+    "old": "two_pass_verified",
+    "new": "single"
+   },
+   "rows": {
+    "canon": 0,
+    "abhi": 0,
+    "cb73": 80,
+    "total": 80
+   },
+   "direction": "down: grounded -> ungrounded"
+  },
+  {
+   "emitter": "ga_sade_sati",
+   "family": "sade_sati_cycle six examined keys",
+   "fact_categories": [
+    "sade_sati_cycle"
+   ],
+   "verification_pass_status": {
+    "old": "two_pass_verified",
+    "new": "classical_match"
+   },
+   "rows": {
+    "canon": 80,
+    "abhi": 80,
+    "cb73": 80,
+    "total": 240
+   },
+   "direction": "down: grounded -> ungrounded"
+  },
+  {
+   "emitter": "ga_sade_sati",
+   "family": "sade_sati_phase other keys",
+   "fact_categories": [
+    "sade_sati_phase"
+   ],
+   "verification_pass_status": {
+    "old": "two_pass_verified",
+    "new": "single"
+   },
+   "rows": {
+    "canon": 0,
+    "abhi": 0,
+    "cb73": 540,
+    "total": 540
+   },
+   "direction": "down: grounded -> ungrounded"
+  },
+  {
+   "emitter": "ga_sade_sati",
+   "family": "sade_sati_phase six examined keys",
+   "fact_categories": [
+    "sade_sati_phase"
+   ],
+   "verification_pass_status": {
+    "old": "two_pass_verified",
+    "new": "classical_match"
+   },
+   "rows": {
+    "canon": 240,
+    "abhi": 240,
+    "cb73": 240,
+    "total": 720
+   },
+   "direction": "down: grounded -> ungrounded"
+  },
+  {
+   "emitter": "ga_sensitive",
+   "family": "YAMAGANDA_SPHUTA (Saturn + 240 deg)",
+   "fact_categories": [
+    "saturn_derived_point"
+   ],
+   "verification_pass_status": {
+    "old": "two_pass_verified",
+    "new": "computed_extension"
+   },
+   "rows": {
+    "canon": 35,
+    "abhi": 35,
+    "cb73": 35,
+    "total": 105
+   },
+   "direction": "down: grounded -> ungrounded"
+  },
+  {
+   "emitter": "ga_sensitive",
+   "family": "anumukha_shani_period",
+   "fact_categories": [
+    "anumukha_shani_period"
+   ],
+   "verification_pass_status": {
+    "old": "two_pass_verified",
+    "new": "single"
+   },
+   "rows": {
+    "canon": 0,
+    "abhi": 0,
+    "cb73": 100,
+    "total": 100
+   },
+   "direction": "down: grounded -> ungrounded"
+  },
+  {
+   "emitter": "ga_sensitive",
+   "family": "aprakasha_position",
+   "fact_categories": [
+    "aprakasha_position"
+   ],
+   "verification_pass_status": {
+    "old": "two_pass_verified",
+    "new": "single"
+   },
+   "rows": {
+    "canon": 175,
+    "abhi": 175,
+    "cb73": 175,
+    "total": 525
+   },
+   "direction": "down: grounded -> ungrounded"
+  },
+  {
+   "emitter": "ga_sensitive",
+   "family": "ardha_ashtama_shani_period",
+   "fact_categories": [
+    "ardha_ashtama_shani_period"
+   ],
+   "verification_pass_status": {
+    "old": "two_pass_verified",
+    "new": "single"
+   },
+   "rows": {
+    "canon": 0,
+    "abhi": 0,
+    "cb73": 300,
+    "total": 300
+   },
+   "direction": "down: grounded -> ungrounded"
+  },
+  {
+   "emitter": "ga_sensitive",
+   "family": "arudha_pada",
+   "fact_categories": [
+    "arudha_pada"
+   ],
+   "verification_pass_status": {
+    "old": "two_pass_verified",
+    "new": "single"
+   },
+   "rows": {
+    "canon": 285,
+    "abhi": 285,
+    "cb73": 285,
+    "total": 855
+   },
+   "direction": "down: grounded -> ungrounded"
+  },
+  {
+   "emitter": "ga_sensitive",
+   "family": "ashtama_shani_period",
+   "fact_categories": [
+    "ashtama_shani_period"
+   ],
+   "verification_pass_status": {
+    "old": "two_pass_verified",
+    "new": "single"
+   },
+   "rows": {
+    "canon": 0,
+    "abhi": 0,
+    "cb73": 180,
+    "total": 180
+   },
+   "direction": "down: grounded -> ungrounded"
+  },
+  {
+   "emitter": "ga_sensitive",
+   "family": "bhava_arudha",
+   "fact_categories": [
+    "bhava_arudha"
+   ],
+   "verification_pass_status": {
+    "old": "two_pass_verified",
+    "new": "single"
+   },
+   "rows": {
+    "canon": 210,
+    "abhi": 210,
+    "cb73": 210,
+    "total": 630
+   },
+   "direction": "down: grounded -> ungrounded"
+  },
+  {
+   "emitter": "ga_sensitive",
+   "family": "bhrigu_nadi_point",
+   "fact_categories": [
+    "bhrigu_nadi_point"
+   ],
+   "verification_pass_status": {
+    "old": "two_pass_verified",
+    "new": "single"
+   },
+   "rows": {
+    "canon": 280,
+    "abhi": 280,
+    "cb73": 280,
+    "total": 840
+   },
+   "direction": "down: grounded -> ungrounded"
+  },
+  {
+   "emitter": "ga_sensitive",
+   "family": "dhaiya_period",
+   "fact_categories": [
+    "dhaiya_period"
+   ],
+   "verification_pass_status": {
+    "old": "two_pass_verified",
+    "new": "single"
+   },
+   "rows": {
+    "canon": 0,
+    "abhi": 0,
+    "cb73": 600,
+    "total": 600
+   },
+   "direction": "down: grounded -> ungrounded"
+  },
+  {
+   "emitter": "ga_sensitive",
+   "family": "esoteric_point_avayogi",
+   "fact_categories": [
+    "esoteric_point_avayogi"
+   ],
+   "verification_pass_status": {
+    "old": "two_pass_verified",
+    "new": "single"
+   },
+   "rows": {
+    "canon": 70,
+    "abhi": 70,
+    "cb73": 70,
+    "total": 210
+   },
+   "direction": "down: grounded -> ungrounded"
+  },
+  {
+   "emitter": "ga_sensitive",
+   "family": "esoteric_point_bhrigu_bindu",
+   "fact_categories": [
+    "esoteric_point_bhrigu_bindu"
+   ],
+   "verification_pass_status": {
+    "old": "two_pass_verified",
+    "new": "single"
+   },
+   "rows": {
+    "canon": 35,
+    "abhi": 35,
+    "cb73": 35,
+    "total": 105
+   },
+   "direction": "down: grounded -> ungrounded"
+  },
+  {
+   "emitter": "ga_sensitive",
+   "family": "esoteric_point_brahma",
+   "fact_categories": [
+    "esoteric_point_brahma"
+   ],
+   "verification_pass_status": {
+    "old": "two_pass_verified",
+    "new": "single"
+   },
+   "rows": {
+    "canon": 80,
+    "abhi": 80,
+    "cb73": 80,
+    "total": 240
+   },
+   "direction": "down: grounded -> ungrounded"
+  },
+  {
+   "emitter": "ga_sensitive",
+   "family": "esoteric_point_mrityu",
+   "fact_categories": [
+    "esoteric_point_mrityu"
+   ],
+   "verification_pass_status": {
+    "old": "two_pass_verified",
+    "new": "single"
+   },
+   "rows": {
+    "canon": 105,
+    "abhi": 105,
+    "cb73": 105,
+    "total": 315
+   },
+   "direction": "down: grounded -> ungrounded"
+  },
+  {
+   "emitter": "ga_sensitive",
+   "family": "esoteric_point_pranapada_sphuta",
+   "fact_categories": [
+    "esoteric_point_pranapada_sphuta"
+   ],
+   "verification_pass_status": {
+    "old": "two_pass_verified",
+    "new": "single"
+   },
+   "rows": {
+    "canon": 35,
+    "abhi": 35,
+    "cb73": 35,
+    "total": 105
+   },
+   "direction": "down: grounded -> ungrounded"
+  },
+  {
+   "emitter": "ga_sensitive",
+   "family": "esoteric_point_shiva",
+   "fact_categories": [
+    "esoteric_point_shiva"
+   ],
+   "verification_pass_status": {
+    "old": "two_pass_verified",
+    "new": "single"
+   },
+   "rows": {
+    "canon": 70,
+    "abhi": 70,
+    "cb73": 70,
+    "total": 210
+   },
+   "direction": "down: grounded -> ungrounded"
+  },
+  {
+   "emitter": "ga_sensitive",
+   "family": "esoteric_point_sphuta_fertility",
+   "fact_categories": [
+    "esoteric_point_sphuta_fertility"
+   ],
+   "verification_pass_status": {
+    "old": "two_pass_verified",
+    "new": "single"
+   },
+   "rows": {
+    "canon": 70,
+    "abhi": 70,
+    "cb73": 70,
+    "total": 210
+   },
+   "direction": "down: grounded -> ungrounded"
+  },
+  {
+   "emitter": "ga_sensitive",
+   "family": "esoteric_point_vishnu",
+   "fact_categories": [
+    "esoteric_point_vishnu"
+   ],
+   "verification_pass_status": {
+    "old": "two_pass_verified",
+    "new": "single"
+   },
+   "rows": {
+    "canon": 70,
+    "abhi": 70,
+    "cb73": 70,
+    "total": 210
+   },
+   "direction": "down: grounded -> ungrounded"
+  },
+  {
+   "emitter": "ga_sensitive",
+   "family": "esoteric_point_yogi",
+   "fact_categories": [
+    "esoteric_point_yogi"
+   ],
+   "verification_pass_status": {
+    "old": "two_pass_verified",
+    "new": "single"
+   },
+   "rows": {
+    "canon": 70,
+    "abhi": 70,
+    "cb73": 70,
+    "total": 210
+   },
+   "direction": "down: grounded -> ungrounded"
+  },
+  {
+   "emitter": "ga_sensitive",
+   "family": "esoteric_point_yogi_system",
+   "fact_categories": [
+    "esoteric_point_yogi_system"
+   ],
+   "verification_pass_status": {
+    "old": "two_pass_verified",
+    "new": "single"
+   },
+   "rows": {
+    "canon": 25,
+    "abhi": 25,
+    "cb73": 25,
+    "total": 75
+   },
+   "direction": "down: grounded -> ungrounded"
+  },
+  {
+   "emitter": "ga_sensitive",
+   "family": "janma_shani_period",
+   "fact_categories": [
+    "janma_shani_period"
+   ],
+   "verification_pass_status": {
+    "old": "two_pass_verified",
+    "new": "single"
+   },
+   "rows": {
+    "canon": 0,
+    "abhi": 0,
+    "cb73": 100,
+    "total": 100
+   },
+   "direction": "down: grounded -> ungrounded"
+  },
+  {
+   "emitter": "ga_sensitive",
+   "family": "kantaka_shani_period",
+   "fact_categories": [
+    "kantaka_shani_period"
+   ],
+   "verification_pass_status": {
+    "old": "two_pass_verified",
+    "new": "single"
+   },
+   "rows": {
+    "canon": 0,
+    "abhi": 0,
+    "cb73": 220,
+    "total": 220
+   },
+   "direction": "down: grounded -> ungrounded"
+  },
+  {
+   "emitter": "ga_sensitive",
+   "family": "karaka_chara_position",
+   "fact_categories": [
+    "karaka_chara_position"
+   ],
+   "verification_pass_status": {
+    "old": "two_pass_verified",
+    "new": "single"
+   },
+   "rows": {
+    "canon": 525,
+    "abhi": 525,
+    "cb73": 525,
+    "total": 1575
+   },
+   "direction": "down: grounded -> ungrounded"
+  },
+  {
+   "emitter": "ga_sensitive",
+   "family": "karakamsa_position",
+   "fact_categories": [
+    "karakamsa_position"
+   ],
+   "verification_pass_status": {
+    "old": "two_pass_verified",
+    "new": "single"
+   },
+   "rows": {
+    "canon": 15,
+    "abhi": 15,
+    "cb73": 15,
+    "total": 45
+   },
+   "direction": "down: grounded -> ungrounded"
+  },
+  {
+   "emitter": "ga_sensitive",
+   "family": "kp_cuspal_significators",
+   "fact_categories": [
+    "kp_cuspal_significators"
+   ],
+   "verification_pass_status": {
+    "old": "two_pass_verified",
+    "new": "single"
+   },
+   "rows": {
+    "canon": 300,
+    "abhi": 300,
+    "cb73": 300,
+    "total": 900
+   },
+   "direction": "down: grounded -> ungrounded"
+  },
+  {
+   "emitter": "ga_sensitive",
+   "family": "kp_ruling_planets_natal",
+   "fact_categories": [
+    "kp_ruling_planets_natal"
+   ],
+   "verification_pass_status": {
+    "old": "two_pass_verified",
+    "new": "single"
+   },
+   "rows": {
+    "canon": 50,
+    "abhi": 50,
+    "cb73": 50,
+    "total": 150
+   },
+   "direction": "down: grounded -> ungrounded"
+  },
+  {
+   "emitter": "ga_sensitive",
+   "family": "lal_kitab_special_point",
+   "fact_categories": [
+    "lal_kitab_special_point"
+   ],
+   "verification_pass_status": {
+    "old": "two_pass_verified",
+    "new": "single"
+   },
+   "rows": {
+    "canon": 50,
+    "abhi": 50,
+    "cb73": 50,
+    "total": 150
+   },
+   "direction": "down: grounded -> ungrounded"
+  },
+  {
+   "emitter": "ga_sensitive",
+   "family": "lal_kitab_special_point house (NULL-valued)",
+   "fact_categories": [
+    "lal_kitab_special_point"
+   ],
+   "verification_pass_status": {
+    "old": "two_pass_verified",
+    "new": "floored"
+   },
+   "rows": {
+    "canon": 50,
+    "abhi": 50,
+    "cb73": 50,
+    "total": 150
+   },
+   "direction": "down: grounded -> ungrounded"
+  },
+  {
+   "emitter": "ga_sensitive",
+   "family": "maharsi_specific_point",
+   "fact_categories": [
+    "maharsi_specific_point"
+   ],
+   "verification_pass_status": {
+    "old": "two_pass_verified",
+    "new": "single"
+   },
+   "rows": {
+    "canon": 35,
+    "abhi": 35,
+    "cb73": 35,
+    "total": 105
+   },
+   "direction": "down: grounded -> ungrounded"
+  },
+  {
+   "emitter": "ga_sensitive",
+   "family": "maharsi_specific_point longitude_sidereal (NULL-valued)",
+   "fact_categories": [
+    "maharsi_specific_point"
+   ],
+   "verification_pass_status": {
+    "old": "two_pass_verified",
+    "new": "floored"
+   },
+   "rows": {
+    "canon": 35,
+    "abhi": 35,
+    "cb73": 35,
+    "total": 105
+   },
+   "direction": "down: grounded -> ungrounded"
+  },
+  {
+   "emitter": "ga_sensitive",
+   "family": "midpoint",
+   "fact_categories": [
+    "midpoint"
+   ],
+   "verification_pass_status": {
+    "old": "two_pass_verified",
+    "new": "single"
+   },
+   "rows": {
+    "canon": 1080,
+    "abhi": 1080,
+    "cb73": 1080,
+    "total": 3240
+   },
+   "direction": "down: grounded -> ungrounded"
+  },
+  {
+   "emitter": "ga_sensitive",
+   "family": "nakshatra_pada_sensitive",
+   "fact_categories": [
+    "nakshatra_pada_sensitive"
+   ],
+   "verification_pass_status": {
+    "old": "two_pass_verified",
+    "new": "single"
+   },
+   "rows": {
+    "canon": 80,
+    "abhi": 80,
+    "cb73": 80,
+    "total": 240
+   },
+   "direction": "down: grounded -> ungrounded"
+  },
+  {
+   "emitter": "ga_sade_sati",
+   "family": "sade_sati_cancellation_check",
+   "fact_categories": [
+    "sade_sati_cancellation_check"
+   ],
+   "verification_pass_status": {
+    "old": "two_pass_verified",
+    "new": "single"
+   },
+   "rows": {
+    "canon": 0,
+    "abhi": 0,
+    "cb73": 40,
+    "total": 40
+   },
+   "direction": "down: grounded -> ungrounded"
+  },
+  {
+   "emitter": "ga_sade_sati",
+   "family": "sade_sati_downstream_cross_reference",
+   "fact_categories": [
+    "sade_sati_downstream_cross_reference"
+   ],
+   "verification_pass_status": {
+    "old": "two_pass_verified",
+    "new": "single"
+   },
+   "rows": {
+    "canon": 0,
+    "abhi": 0,
+    "cb73": 20,
+    "total": 20
+   },
+   "direction": "down: grounded -> ungrounded"
+  },
+  {
+   "emitter": "ga_sade_sati",
+   "family": "sade_sati_modifier_overlay",
+   "fact_categories": [
+    "sade_sati_modifier_overlay"
+   ],
+   "verification_pass_status": {
+    "old": "two_pass_verified",
+    "new": "single"
+   },
+   "rows": {
+    "canon": 0,
+    "abhi": 0,
+    "cb73": 300,
+    "total": 300
+   },
+   "direction": "down: grounded -> ungrounded"
+  },
+  {
+   "emitter": "ga_sade_sati",
+   "family": "sade_sati_phase_quarter quarter_start_iso / quarter_end_iso / duration_days (linear 4-way split of the phase)",
+   "fact_categories": [
+    "sade_sati_phase_quarter"
+   ],
+   "verification_pass_status": {
+    "old": "two_pass_verified",
+    "new": "documented_approximation"
+   },
+   "rows": {
+    "canon": 0,
+    "abhi": 0,
+    "cb73": 720,
+    "total": 720
+   },
+   "direction": "down: grounded -> approximation (named: even quartering of the phase)"
+  },
+  {
+   "emitter": "ga_sade_sati",
+   "family": "sade_sati_phase_quarter intensity_level / quarter_intensity_rationale_jsonb / saturn_sign / saturn_dignity",
+   "fact_categories": [
+    "sade_sati_phase_quarter"
+   ],
+   "verification_pass_status": {
+    "old": "two_pass_verified",
+    "new": "single"
+   },
+   "rows": {
+    "canon": 0,
+    "abhi": 0,
+    "cb73": 960,
+    "total": 960
+   },
+   "direction": "down: grounded -> ungrounded"
+  },
+  {
+   "emitter": "ga_sade_sati",
+   "family": "sade_sati_saturn_retrograde_subset",
+   "fact_categories": [
+    "sade_sati_saturn_retrograde_subset"
+   ],
+   "verification_pass_status": {
+    "old": "two_pass_verified",
+    "new": "single"
+   },
+   "rows": {
+    "canon": 0,
+    "abhi": 0,
+    "cb73": 620,
+    "total": 620
+   },
+   "direction": "down: grounded -> ungrounded"
+  },
+  {
+   "emitter": "ga_sensitive",
+   "family": "saham_position",
+   "fact_categories": [
+    "saham_position"
+   ],
+   "verification_pass_status": {
+    "old": "two_pass_verified",
+    "new": "single"
+   },
+   "rows": {
+    "canon": 2800,
+    "abhi": 2800,
+    "cb73": 2800,
+    "total": 8400
+   },
+   "direction": "down: grounded -> ungrounded"
+  },
+  {
+   "emitter": "ga_sensitive",
+   "family": "saturn_derived_point GULIKA_LAHIRI",
+   "fact_categories": [
+    "saturn_derived_point"
+   ],
+   "verification_pass_status": {
+    "old": "two_pass_verified",
+    "new": "single"
+   },
+   "rows": {
+    "canon": 35,
+    "abhi": 35,
+    "cb73": 35,
+    "total": 105
+   },
+   "direction": "down: grounded -> ungrounded"
+  },
+  {
+   "emitter": "ga_sensitive",
+   "family": "saturn_derived_point MAANDI",
+   "fact_categories": [
+    "saturn_derived_point"
+   ],
+   "verification_pass_status": {
+    "old": "two_pass_verified",
+    "new": "single"
+   },
+   "rows": {
+    "canon": 35,
+    "abhi": 35,
+    "cb73": 35,
+    "total": 105
+   },
+   "direction": "down: grounded -> ungrounded"
+  },
+  {
+   "emitter": "ga_sensitive",
+   "family": "saturn_derived_point MANDI",
+   "fact_categories": [
+    "saturn_derived_point"
+   ],
+   "verification_pass_status": {
+    "old": "two_pass_verified",
+    "new": "single"
+   },
+   "rows": {
+    "canon": 35,
+    "abhi": 35,
+    "cb73": 35,
+    "total": 105
+   },
+   "direction": "down: grounded -> ungrounded"
+  },
+  {
+   "emitter": "ga_sensitive",
+   "family": "sensitive_point_gulika_mandi",
+   "fact_categories": [
+    "sensitive_point_gulika_mandi"
+   ],
+   "verification_pass_status": {
+    "old": "two_pass_verified",
+    "new": "single"
+   },
+   "rows": {
+    "canon": 70,
+    "abhi": 70,
+    "cb73": 70,
+    "total": 210
+   },
+   "direction": "down: grounded -> ungrounded"
+  },
+  {
+   "emitter": "ga_sensitive",
+   "family": "special_lagna",
+   "fact_categories": [
+    "special_lagna"
+   ],
+   "verification_pass_status": {
+    "old": "two_pass_verified",
+    "new": "single"
+   },
+   "rows": {
+    "canon": 245,
+    "abhi": 245,
+    "cb73": 245,
+    "total": 735
+   },
+   "direction": "down: grounded -> ungrounded"
+  },
+  {
+   "emitter": "ga_sensitive",
+   "family": "sun_derived_upagraha",
+   "fact_categories": [
+    "sun_derived_upagraha"
+   ],
+   "verification_pass_status": {
+    "old": "two_pass_verified",
+    "new": "single"
+   },
+   "rows": {
+    "canon": 140,
+    "abhi": 140,
+    "cb73": 140,
+    "total": 420
+   },
+   "direction": "down: grounded -> ungrounded"
+  },
+  {
+   "emitter": "ga_sensitive",
+   "family": "swamsa_position",
+   "fact_categories": [
+    "swamsa_position"
+   ],
+   "verification_pass_status": {
+    "old": "two_pass_verified",
+    "new": "single"
+   },
+   "rows": {
+    "canon": 120,
+    "abhi": 120,
+    "cb73": 120,
+    "total": 360
+   },
+   "direction": "down: grounded -> ungrounded"
+  },
+  {
+   "emitter": "ga_sensitive",
+   "family": "tajik_hadda_lord",
+   "fact_categories": [
+    "tajik_hadda_lord"
+   ],
+   "verification_pass_status": {
+    "old": "two_pass_verified",
+    "new": "single"
+   },
+   "rows": {
+    "canon": 1200,
+    "abhi": 1200,
+    "cb73": 1200,
+    "total": 3600
+   },
+   "direction": "down: grounded -> ungrounded"
+  },
+  {
+   "emitter": "ga_sensitive",
+   "family": "tajik_triraashipathi",
+   "fact_categories": [
+    "tajik_triraashipathi"
+   ],
+   "verification_pass_status": {
+    "old": "two_pass_verified",
+    "new": "single"
+   },
+   "rows": {
+    "canon": 10,
+    "abhi": 10,
+    "cb73": 10,
+    "total": 30
+   },
+   "direction": "down: grounded -> ungrounded"
+  },
+  {
+   "emitter": "ga_sensitive",
+   "family": "tajik_vargottama_specific",
+   "fact_categories": [
+    "tajik_vargottama_specific"
+   ],
+   "verification_pass_status": {
+    "old": "two_pass_verified",
+    "new": "single"
+   },
+   "rows": {
+    "canon": 15,
+    "abhi": 15,
+    "cb73": 15,
+    "total": 45
+   },
+   "direction": "down: grounded -> ungrounded"
+  },
+  {
+   "emitter": "ga_sensitive",
+   "family": "upagraha KALA (PyJHora only)",
+   "fact_categories": [
+    "upagraha_position"
+   ],
+   "verification_pass_status": {
+    "old": "two_pass_verified",
+    "new": "single"
+   },
+   "rows": {
+    "canon": 35,
+    "abhi": 35,
+    "cb73": 35,
+    "total": 105
+   },
+   "direction": "down: grounded -> ungrounded"
+  },
+  {
+   "emitter": "ga_sensitive",
+   "family": "upagraha five subjects (PyJHora vs BPHS, two_pass_verdict)",
+   "fact_categories": [
+    "upagraha_position"
+   ],
+   "verification_pass_status": {
+    "old": "two_pass_verified",
+    "new": "two_pass_verified"
+   },
+   "rows": {
+    "canon": 175,
+    "abhi": 175,
+    "cb73": 175,
+    "total": 525
+   },
+   "direction": "unchanged"
+  },
+  {
+   "emitter": "ga_sensitive",
+   "family": "vishakha_shani_period",
+   "fact_categories": [
+    "vishakha_shani_period"
+   ],
+   "verification_pass_status": {
+    "old": "two_pass_verified",
+    "new": "single"
+   },
+   "rows": {
+    "canon": 0,
+    "abhi": 0,
+    "cb73": 100,
+    "total": 100
+   },
+   "direction": "down: grounded -> ungrounded"
+  },
+  {
+   "emitter": "ga_sensitive_degree",
+   "family": "sensitive_point_yogi (Yogi system)",
+   "fact_categories": [
+    "sensitive_point_yogi"
+   ],
+   "verification_pass_status": {
+    "old": "two_pass_verified",
+    "new": "classical_match"
+   },
+   "rows": {
+    "canon": 60,
+    "abhi": 60,
+    "cb73": 60,
+    "total": 180
+   },
+   "direction": "down: grounded -> ungrounded"
+  },
+  {
+   "emitter": "ga_strength",
+   "family": "ashtakavarga raw bindu (house- and sign-keyed)",
+   "fact_categories": [
+    "ashtakavarga_bindu",
+    "ashtakavarga_bindu_sign"
+   ],
+   "verification_pass_status": {
+    "old": "single_pass",
+    "new": "classical_match"
+   },
+   "rows": {
+    "canon": 960,
+    "abhi": 0,
+    "cb73": 0,
+    "total": 960
+   },
+   "direction": "respell/promote: single_pass alias -> canonical tier"
+  },
+  {
+   "emitter": "ga_strength",
+   "family": "ashtakavarga_ekadhipathya_shodhana (unexamined)",
+   "fact_categories": [
+    "ashtakavarga_ekadhipathya_shodhana"
+   ],
+   "verification_pass_status": {
+    "old": "single_pass",
+    "new": "single"
+   },
+   "rows": {
+    "canon": 420,
+    "abhi": 0,
+    "cb73": 0,
+    "total": 420
+   },
+   "direction": "respell/promote: single_pass alias -> canonical tier"
+  },
+  {
+   "emitter": "ga_strength",
+   "family": "ashtakavarga_kakshya_boundary (unexamined)",
+   "fact_categories": [
+    "ashtakavarga_kakshya_boundary"
+   ],
+   "verification_pass_status": {
+    "old": "single_pass",
+    "new": "single"
+   },
+   "rows": {
+    "canon": 120,
+    "abhi": 0,
+    "cb73": 0,
+    "total": 120
+   },
+   "direction": "respell/promote: single_pass alias -> canonical tier"
+  },
+  {
+   "emitter": "ga_strength",
+   "family": "ashtakavarga_pinda_bhinna (unexamined)",
+   "fact_categories": [
+    "ashtakavarga_pinda_bhinna"
+   ],
+   "verification_pass_status": {
+    "old": "single_pass",
+    "new": "single"
+   },
+   "rows": {
+    "canon": 40,
+    "abhi": 0,
+    "cb73": 0,
+    "total": 40
+   },
+   "direction": "respell/promote: single_pass alias -> canonical tier"
+  },
+  {
+   "emitter": "ga_strength",
+   "family": "ashtakavarga_pinda_raasi (unexamined)",
+   "fact_categories": [
+    "ashtakavarga_pinda_raasi"
+   ],
+   "verification_pass_status": {
+    "old": "single_pass",
+    "new": "single"
+   },
+   "rows": {
+    "canon": 40,
+    "abhi": 0,
+    "cb73": 0,
+    "total": 40
+   },
+   "direction": "respell/promote: single_pass alias -> canonical tier"
+  },
+  {
+   "emitter": "ga_strength",
+   "family": "ashtakavarga_pinda_sarva (unexamined)",
+   "fact_categories": [
+    "ashtakavarga_pinda_sarva"
+   ],
+   "verification_pass_status": {
+    "old": "single_pass",
+    "new": "single"
+   },
+   "rows": {
+    "canon": 40,
+    "abhi": 0,
+    "cb73": 0,
+    "total": 40
+   },
+   "direction": "respell/promote: single_pass alias -> canonical tier"
+  },
+  {
+   "emitter": "ga_strength",
+   "family": "ashtakavarga_pinda_sodhita (unexamined)",
+   "fact_categories": [
+    "ashtakavarga_pinda_sodhita"
+   ],
+   "verification_pass_status": {
+    "old": "single_pass",
+    "new": "single"
+   },
+   "rows": {
+    "canon": 40,
+    "abhi": 0,
+    "cb73": 0,
+    "total": 40
+   },
+   "direction": "respell/promote: single_pass alias -> canonical tier"
+  },
+  {
+   "emitter": "ga_strength",
+   "family": "ashtakavarga_trikona_shodhana (unexamined)",
+   "fact_categories": [
+    "ashtakavarga_trikona_shodhana"
+   ],
+   "verification_pass_status": {
+    "old": "single_pass",
+    "new": "single"
+   },
+   "rows": {
+    "canon": 420,
+    "abhi": 0,
+    "cb73": 0,
+    "total": 420
+   },
+   "direction": "respell/promote: single_pass alias -> canonical tier"
+  },
+  {
+   "emitter": "ga_strength",
+   "family": "graha_ishta_phala (unexamined)",
+   "fact_categories": [
+    "graha_ishta_phala"
+   ],
+   "verification_pass_status": {
+    "old": "single_pass",
+    "new": "single"
+   },
+   "rows": {
+    "canon": 35,
+    "abhi": 0,
+    "cb73": 0,
+    "total": 35
+   },
+   "direction": "respell/promote: single_pass alias -> canonical tier"
+  },
+  {
+   "emitter": "ga_strength",
+   "family": "graha_kashta_phala (unexamined)",
+   "fact_categories": [
+    "graha_kashta_phala"
+   ],
+   "verification_pass_status": {
+    "old": "single_pass",
+    "new": "single"
+   },
+   "rows": {
+    "canon": 35,
+    "abhi": 0,
+    "cb73": 0,
+    "total": 35
+   },
+   "direction": "respell/promote: single_pass alias -> canonical tier"
+  },
+  {
+   "emitter": "ga_strength",
+   "family": "graha_sthana_bala_per_varga (unexamined)",
+   "fact_categories": [
+    "graha_sthana_bala_per_varga"
+   ],
+   "verification_pass_status": {
+    "old": "single_pass",
+    "new": "single"
+   },
+   "rows": {
+    "canon": 210,
+    "abhi": 0,
+    "cb73": 0,
+    "total": 210
+   },
+   "direction": "respell/promote: single_pass alias -> canonical tier"
+  },
+  {
+   "emitter": "ga_strength",
+   "family": "graha_vimsopaka_dasavarga (unexamined)",
+   "fact_categories": [
+    "graha_vimsopaka_dasavarga"
+   ],
+   "verification_pass_status": {
+    "old": "single_pass",
+    "new": "single"
+   },
+   "rows": {
+    "canon": 35,
+    "abhi": 0,
+    "cb73": 0,
+    "total": 35
+   },
+   "direction": "respell/promote: single_pass alias -> canonical tier"
+  },
+  {
+   "emitter": "ga_strength",
+   "family": "graha_vimsopaka_saptavarga (unexamined)",
+   "fact_categories": [
+    "graha_vimsopaka_saptavarga"
+   ],
+   "verification_pass_status": {
+    "old": "single_pass",
+    "new": "single"
+   },
+   "rows": {
+    "canon": 35,
+    "abhi": 0,
+    "cb73": 0,
+    "total": 35
+   },
+   "direction": "respell/promote: single_pass alias -> canonical tier"
+  },
+  {
+   "emitter": "ga_strength",
+   "family": "graha_vimsopaka_shadvarga (unexamined)",
+   "fact_categories": [
+    "graha_vimsopaka_shadvarga"
+   ],
+   "verification_pass_status": {
+    "old": "single_pass",
+    "new": "single"
+   },
+   "rows": {
+    "canon": 35,
+    "abhi": 0,
+    "cb73": 0,
+    "total": 35
+   },
+   "direction": "respell/promote: single_pass alias -> canonical tier"
+  },
+  {
+   "emitter": "ga_strength",
+   "family": "graha_vimsopaka_shodasavarga (unexamined)",
+   "fact_categories": [
+    "graha_vimsopaka_shodasavarga"
+   ],
+   "verification_pass_status": {
+    "old": "single_pass",
+    "new": "single"
+   },
+   "rows": {
+    "canon": 35,
+    "abhi": 0,
+    "cb73": 0,
+    "total": 35
+   },
+   "direction": "respell/promote: single_pass alias -> canonical tier"
+  },
+  {
+   "emitter": "ga_strength",
+   "family": "naisargika / required_rupa (hard-coded classical_match today)",
+   "fact_categories": [
+    "graha_shadbala_naisargika",
+    "graha_shadbala_total"
+   ],
+   "verification_pass_status": {
+    "old": "classical_match",
+    "new": "single"
+   },
+   "rows": {
+    "canon": 14,
+    "abhi": 14,
+    "cb73": 14,
+    "total": 42
+   },
+   "direction": "down: classical_match -> single"
+  },
+  {
+   "emitter": "ga_strength",
+   "family": "nodal shadbala extension (sthana/drik/total)",
+   "fact_categories": [
+    "graha_shadbala_drik",
+    "graha_shadbala_sthana",
+    "graha_shadbala_total"
+   ],
+   "verification_pass_status": {
+    "old": "single_pass",
+    "new": "single"
+   },
+   "rows": {
+    "canon": 30,
+    "abhi": 0,
+    "cb73": 0,
+    "total": 30
+   },
+   "direction": "respell/promote: single_pass alias -> canonical tier"
+  },
+  {
+   "emitter": "ga_strength",
+   "family": "per-varga ashtakavarga",
+   "fact_categories": [
+    "ashtakavarga_bindu_per_varga",
+    "ashtakavarga_pinda_sarva_per_varga"
+   ],
+   "verification_pass_status": {
+    "old": "single_pass",
+    "new": "documented_approximation"
+   },
+   "rows": {
+    "canon": 7800,
+    "abhi": 0,
+    "cb73": 0,
+    "total": 7800
+   },
+   "direction": "respell/promote: single_pass alias -> canonical tier"
+  },
+  {
+   "emitter": "ga_strength",
+   "family": "shadbala ratio (achieved / required)",
+   "fact_categories": [
+    "graha_shadbala_total"
+   ],
+   "verification_pass_status": {
+    "old": "single_pass",
+    "new": "single"
+   },
+   "rows": {
+    "canon": 35,
+    "abhi": 0,
+    "cb73": 0,
+    "total": 35
+   },
+   "direction": "respell/promote: single_pass alias -> canonical tier"
+  },
+  {
+   "emitter": "ga_strength",
+   "family": "shadbala sthana/dig/kala/cheshta/drik/total (7 classical grahas; rows _verify_shadbala examines, tier `single` per SS ruling)",
+   "fact_categories": [
+    "graha_shadbala_cheshta",
+    "graha_shadbala_dig",
+    "graha_shadbala_drik",
+    "graha_shadbala_kala",
+    "graha_shadbala_sthana",
+    "graha_shadbala_total"
+   ],
+   "verification_pass_status": {
+    "old": "single_pass",
+    "new": "single"
+   },
+   "rows": {
+    "canon": 210,
+    "abhi": 0,
+    "cb73": 0,
+    "total": 210
+   },
+   "direction": "respell: single_pass alias -> canonical tier (v1.0 had classical_match; demoted by SS ruling: the check is self-referential)"
+  }
+ ],
+ "transitions_other_tables": [
+  {
+   "table": "chart_dashas",
+   "emitter": "ga_dashas",
+   "family": "mudda (level_n=1, kp_sublevel NULL: the rows _verify_mudda reads)",
+   "verification_pass_status": {
+    "old": "two_pass_verified",
+    "new": "classical_match"
+   },
+   "rows": {
+    "canon": 240,
+    "abhi": 235,
+    "cb73": 305,
+    "total": 780
+   },
+   "note": "chart_dashas CHECK admits {two_pass_verified, classical_match, divergent_flagged, single}; classical_match is a member."
+  },
+  {
+   "table": "chart_dashas",
+   "emitter": "ga_dashas",
+   "family": "narayana (level_n=1)",
+   "verification_pass_status": {
+    "old": "two_pass_verified",
+    "new": "classical_match"
+   },
+   "rows": {
+    "canon": 105,
+    "abhi": 105,
+    "cb73": 135,
+    "total": 345
+   }
+  },
+  {
+   "table": "l1_tajik_varsha_year_lords",
+   "emitter": "ga_tajaka",
+   "family": "varsha year-lord rows (tier `single` per SS ruling; v1.0 had classical_match)",
+   "verification_pass_status": {
+    "old": "two_pass_verified",
+    "new": "single"
+   },
+   "rows": {
+    "canon": 240,
+    "abhi": 235,
+    "cb73": 0,
+    "total": 475
+   },
+   "note": "cb73 holds 305 `single` rows (stale build); unchanged. The three checks behind a row (same +1 arithmetic twice, non-empty winners, the solar-return root-finder's residual) are not a classical-table match and not an independent derivation -> `single`."
+  },
+  {
+   "table": "chart_dashas",
+   "emitter": "ga_dashas",
+   "family": "vimshottari (per-row, independent Julian-day verifier)",
+   "verification_pass_status": {
+    "old": "two_pass_verified",
+    "new": "two_pass_verified"
+   },
+   "rows": {
+    "canon": 45664,
+    "abhi": 49768,
+    "cb73": 18623,
+    "total": 114055
+   },
+   "note": "UNCHANGED by SS ruling (stays two_pass_verified). Writer change: the row builders no longer pre-stamp two_pass_verified (every compute-stage row is `single`; the post-pass applies the per-row verdict), so a skipped verifier cannot leave a verified tier behind. Expected stored change: 0."
+  }
+ ],
+ "unchanged_tables": {
+  "chart_divisionals": "no change from this lane (the 26,344 stale two_pass_verified rows on abhi/cb73 rebuild as `single` through ga_vargas, an unchanged writer).",
+  "bodha_*": "not in this lane; L2 tables inherit the L1 tier on the next L2 rebuild (rides S-L2)."
+ },
+ "single_pass_respell": {
+  "what": "the deprecated alias `single_pass` -> canonical `single` (constants PR #2854), then split per row by this lane: only the raw ashtakavarga bindu rows an invariant examined become classical_match; per-varga ashtakavarga becomes documented_approximation; the rest `single` (including the 210 examined shadbala rows, demoted from classical_match by SS ruling in v1.1)",
+  "single_pass_population": {
+   "canon": 10836,
+   "all_charts": 10937
+  },
+  "becomes": {
+   "classical_match": {
+    "canon": 960,
+    "abhi": 0,
+    "cb73": 0,
+    "total": 960
+   },
+   "documented_approximation": {
+    "canon": 7800,
+    "abhi": 0,
+    "cb73": 0,
+    "total": 7800
+   },
+   "single": {
+    "canon": 2076,
+    "abhi": 101,
+    "cb73": 0,
+    "total": 2177
+   }
+  },
+  "by_emitter": {
+   "ga_panchanga|ga_structural": {
+    "abhi": 101,
+    "canon": 261,
+    "cb73": 0,
+    "total": 362
+   },
+   "ga_strength": {
+    "abhi": 0,
+    "canon": 10575,
+    "cb73": 0,
+    "total": 10575
+   }
+  }
+ },
+ "reconciliation_vs_audit_v1.1": {
+  "claim": "tier totals this code produces over the audited population = audit §1 plus the corrections listed in `delta_explained` (the audit's own totals are quoted unchanged below)",
+  "canon_after": {
+   "two_pass_verified": 265,
+   "classical_match": 1440,
+   "single": 10545,
+   "computed_extension": 35,
+   "floored": 85,
+   "documented_approximation": 7800
+  },
+  "all_charts_after": {
+   "two_pass_verified": 705,
+   "classical_match": 2300,
+   "single": 31744,
+   "computed_extension": 105,
+   "floored": 255,
+   "documented_approximation": 8520
+  },
+  "audit_v1.1_canon": {
+   "two_pass_verified": 265,
+   "classical_match": 1650,
+   "documented_approximation": 7800,
+   "computed_extension": 35,
+   "floored": 85,
+   "single": 10321
+  },
+  "audit_v1.1_all_charts": {
+   "two_pass_verified": 705,
+   "classical_match": 2510,
+   "documented_approximation": 7800,
+   "computed_extension": 105,
+   "floored": 255,
+   "single": 32212
+  },
+  "delta_explained": "v1.0: single was +14 canon / +42 all-charts over the audit because the 14 / 42 hard-coded ga_strength classical_match rows (naisargika, required_rupa) are now `single`. v1.1: (a) the 210 canonical shadbala rows the audit counted as classical_match are `single` (SS ruling), so canon classical_match is 210 below the audit (1,440 vs 1,650) and single 224 above (10,545 vs 10,321); (b) the 720 cb73 sade_sati_phase_quarter quarter_start/end/duration rows are documented_approximation, not single, so all-charts documented_approximation is 720 above the audit (8,520 vs 7,800) and single is 720 lower; all charts: classical_match 2,300 (audit 2,510), single 31,744 (audit 32,212: +42 naisargika/required_rupa +210 shadbala -720 phase_quarter DA), documented_approximation 8,520 (audit 7,800).",
+  "rows_whose_tier_changes_all_charts": 42924,
+  "rows_unchanged_two_pass_verified_all_charts": 705
+ },
+ "downstream_effects_not_L1_columns": [
+  "bodha_writers/formulas.py VERIFICATION_RESCALE weight moves on the next L2 rebuild: two_pass_verified 1.00 -> single 0.85 / classical_match 0.90 / computed_extension 0.75 / documented_approximation 0.60; floored rows leave salience ranking (EXCLUDED_NO_VALUE_STATUSES).",
+  "serve layer: only two_pass_verified counts as grounding; canonical grounded chart_facts rows fall from 9,320 to 265 (audit §1)."
+ ],
+ "writer_digests_moved": [
+  "ga_sensitive",
+  "ga_nakshatra",
+  "ga_sensitive_degree",
+  "ga_sade_sati",
+  "ga_strength",
+  "ga_panchanga",
+  "ga_structural",
+  "ga_dashas",
+  "ga_tajaka",
+  "ga_ayurdaya, ga_yoga, ka_vighnakara (transitive: they import ga_strength / ga_structural / ga_sensitive_degree through the local-import closure; no source edit)"
+ ],
+ "not_in_this_lane": [
+  "bo_* tier sites (ride the L2 batch)",
+  "ka_tithi_pravesha",
+  "ga_vargas (already `single`)"
+ ],
+ "evidence_version": "v1.1",
+ "supersedes": "tiers_evidence_v1_0.json (write-once, left unedited; this file is the corrected successor and the hook points here)",
+ "v1_1_changes": [
+  "SS ruling 1: ga_strength `_verify_shadbala` now returns `single` (its checks are bounds guards + a self-referential sum==total over PyJHora's own output; no classical-table match, no second derivation). The 210 canonical examined shadbala rows (graha_shadbala_{sthana,dig,kala,cheshta,drik,total} of the 7 classical grahas) become `single` instead of `classical_match` (still a `single_pass` -> `single` respell, so the changed-row counts are unchanged).",
+  "SS ruling 2: ga_tajaka `_varsha_verification` now returns `single` on a pass (muntha_ok repeats the same +1-per-year arithmetic, year_lord_ok tests non-empty winners, sr_ok is the root-finder's own residual; none is a classical-table match). l1_tajik_varsha_year_lords 240 canon / 235 abhi rows become `single` instead of `classical_match` (not a chart_facts table: the chart_facts tier totals are unaffected).",
+  "SS ruling 4: ga_sade_sati `sade_sati_phase_quarter` after-tallies corrected. The writer stamps quarter_start_iso / quarter_end_iso / duration_days `documented_approximation` (a linear 4-way split of the phase) and intensity_level / quarter_intensity_rationale_jsonb / saturn_sign / saturn_dignity `single`: of the 1,680 cb73 rows 720 are documented_approximation and 960 are single (v1.0 labelled all 1,680 `single`). Changed-row counts are unaffected (all 1,680 rows still change tier from two_pass_verified).",
+  "Emitter attribution corrected: sade_sati_cancellation_check, sade_sati_downstream_cross_reference, sade_sati_modifier_overlay, sade_sati_phase_quarter and sade_sati_saturn_retrograde_subset are emitted by ga_sade_sati_writer.py (v1.0 labelled them ga_sensitive). No count or tier changes from this.",
+  "Aggregates recomputed from the transitions: canon classical_match 1,650 -> 1,440, single 10,335 -> 10,545; all charts classical_match 2,510 -> 2,300, documented_approximation 7,800 -> 8,520, single 32,254 -> 31,744. rows_whose_tier_changes_all_charts (42,924) and rows_unchanged_two_pass_verified_all_charts (705) are unchanged."
+ ]
+}
