@@ -298,7 +298,7 @@ def render_plan(sha: str | None = None, pins: dict | None = None) -> str:
         f"-- 1. SET LOCAL ROLE {SCHEMA_OWNER}; GRANT CREATE ON SCHEMA public TO {APP_OWNER}  (transient; closed in step 3)",
         f"-- 2. SET LOCAL ROLE {APP_OWNER}; execute sql/1265_l5_frozen_row_guards.sql (sha256 {sha_file(FORWARD_SQL)}):",
         "--    A capture of the builder guard (md5 guard), B assert-and-record of the builder grants (raises, never grants) and of the repo objects, C the 6 new functions "
-        "(" + ", ".join(f"{s} md5 {m}" for s, (_, m) in sorted(NEW_FUNCTIONS.items())) + ") and the 8 triggers (ENABLE ALWAYS), D per-table self-test with rolled-back probe rows, E asserting post-check.",
+        "(" + ", ".join(f"{s} md5 {m}" for s, (_, m) in sorted(NEW_FUNCTIONS.items())) + ") and the 8 triggers (ENABLE ALWAYS), D per-table self-test with rolled-back probe rows (amended 2026-10-04 after the dry run of 2026-10-04T15:00Z was refused by production's FK mimamsa_intervention_ledger -> brahma_prospective_ledger: for brahma_prospective_ledger a plain TRUNCATE is accepted as already impossible when PostgreSQL's own refusal, SQLSTATE 0A000, is seen and the self-test records which refusal it saw as a NOTICE (printed in the log); the TRUNCATE ... CASCADE probe must be refused by the guard's own message; each TRUNCATE probe runs in its own sub-block and is undone at once if not refused, with lock_timeout 2s scoped to the probe; a failed probe raises and the whole transaction rolls back), E asserting post-check.",
         f"-- 3. SET LOCAL ROLE {SCHEMA_OWNER}; REVOKE CREATE ON SCHEMA public FROM {APP_OWNER}; then REVOKE the transient memberships.",
         "-- commit only if ALL hold (EXPECTED_DIFF): before/after snapshots of every public function, trigger, constraint, index and policy, the four tables' ACL, owner and RLS flags, the schema ACL, the memberships "
         "and the row digest (count + md5 of every row) of the four tables differ in EXACTLY the planned objects (6 functions, 8 triggers added; the captured builder guard unchanged); the schema ACL and "
@@ -622,6 +622,7 @@ def run_leg(conn, leg: Leg, mode: str, out, writer_commit=None, writer_runner=No
     writer_runner = writer_runner or _run_cmd
     ck = Checks()
     cur = CountingCursor(conn.cursor())
+    conn.add_notice_handler(lambda d: out("NOTICE: " + (d.message_primary or "")))   # the script's RAISE NOTICEs (which refusal the TRUNCATE probes saw) go to the evidence
     out("start (UTC): " + utcnow())
     cur.execute("SET LOCAL search_path = public, pg_catalog")
     cur.execute("SET LOCAL lock_timeout = '" + LOCK_TIMEOUT + "'")
