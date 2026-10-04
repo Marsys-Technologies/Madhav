@@ -9,6 +9,7 @@ audience: "the owner, reading in the morning"
 evidence: "/Users/Dev/pravaha/run/sitting-20261003/manual/{row5-create-roles.txt, act11-removal-and-inventory.txt, act3.txt, act4.txt, act10.txt, act7-live-proof.txt, act3-declared-exception.txt}"
 changelog:
   - "1.0 (2026-10-04): recorded."
+  - "1.1b (2026-10-04, steward SIT-PAUSE-NOTE-FIX M20261004T003626-2454): the password-reset recommendation REMOVED (rotation ruled out); option A is now a REFRESH from Secret Manager with the exact URL form and percent-encoding rules; the statement that the steward did not touch the credential overnight added."
   - "1.1 (2026-10-04, steward ST-SCHEDULE-SL1 M20261004T003602-7503): Suvarṇa's S-L1 schedule folded in; the stale-secret finding (their administrator login works from Secret Manager; only our GitHub environment secret is stale) replaces the password-reset ways forward with the owner's two options A/B."
 ---
 
@@ -37,16 +38,21 @@ The one-shot "create roles" job connects to the database as the administrator ac
 ## Why it failed (what I can tell, without touching any password)
 - It is NOT the Pūrṇa "disabled bootstrap" the deploy file talks about; that is a different login and a different secret.
 - The `postgres` login exists and is allowed to log in. The stored GitHub secret was last changed on 2026-09-24 — the same day the database password was rotated and the secret refreshed. So the stored password no longer matches the database's real password (rotated later, or never proven to work). I cannot tell which without using the password, which I did not.
-- There is no written re-arm procedure for this particular login. The only precedent is the 24 September fix: reset the `postgres` password with Cloud SQL admin rights and update the secret.
+- There is no written re-arm procedure for this particular login, and none is needed: a valid credential for the same login already exists in the governed place (see the update below). **Resetting or rotating the `postgres` password is ruled OUT** (steward and Suvarṇa): it would break Suvarṇa's own executors hours before their window.
 
 ## Update (steward, 00:45Z 2026-10-04): the real position is better than the diagnosis above
-Suvarṇa's own administrator login works, from the governed Secret Manager value. So the database is fine and no password needs resetting. Only OUR copy — the GitHub environment secret `DATA_PLANE_OWNERSHIP_ADMIN_DATABASE_URL`, last changed 2026-09-24 — is stale. Nobody reads or moves that credential in the meantime.
+Suvarṇa probed and their administrator login WORKS as `postgres` from the governed Google Secret Manager secret `cloudsql-postgres-admin-password` (project `madhav-astrology`, latest version — names only; no value was read for this note). So a valid credential exists and the database is fine. Only OUR copy — the GitHub environment secret `DATA_PLANE_OWNERSHIP_ADMIN_DATABASE_URL` (environment `data-plane-production-cutover`), last changed 2026-09-24 — is stale. The remedy is to REFRESH that secret from the governed source. **No rotation.**
 
-## Ways forward (what each needs from you) — the owner's two options
-- **Option A — you refresh the GitHub environment secret yourself** from the governed Secret Manager value, in your morning. Nobody else touches it. After that the steward re-grants the temporary permission (new 2-hour expiry) and re-runs the same reviewed job.
-- **Option B — you authorise the steward to move the value across without ever printing it** (Secret Manager → the GitHub environment secret, piped, never shown, never stored in a file). Same re-run afterwards.
-- (Not recommended: a dedicated temporary administrator login on the Pūrṇa pattern — new reviewed code.)
-Either way the credential stays out of every log and every message. After row 5 the stored copy can be removed again if you want the route closed.
+**The steward did not touch the credential overnight, on purpose:** moving or changing a credential is the owner's act, and the update train runs after Suvarṇa's window settles anyway, so nothing was lost by waiting.
+
+## Ways forward (what each needs from you)
+- **A (recommended) — refresh the GitHub environment secret from the Secret Manager secret; nothing is rotated.** Either you do it yourself in your morning, or you say "steward, do it" and the steward pipes the value across in ONE pipeline with nothing printed, nothing in a command line and no file (stdin only). Then the steward re-grants the temporary permission (act 11) with a NEW 2-hour expiry and re-runs the same reviewed create-roles job.
+  - **The exact form the one-shot script expects** (it parses the secret once into the standard database connection settings; it refuses anything else): `postgresql://postgres:<PASSWORD, percent-encoded>@127.0.0.1:5432/amjis` — scheme `postgres://` or `postgresql://`; user `postgres`; host exactly `127.0.0.1` (or `localhost` / `[::1]`) because the workflow's Cloud SQL proxy listens on 127.0.0.1:5432; database `amjis`; a single host (no commas); NO `host=`, `hostaddr=` or `service=` option (refused); `?sslmode=…` is allowed but not needed.
+  - **Percent-encoding:** the password must be encoded for URL use. The script takes the text after the LAST `@` as the host part and decodes the password with a standard URL decoder, so a raw `@`, `:`, `/`, `?`, `#`, `%`, space, `[` or `]` in the password would break the parse — encode EVERY character that is not a letter or digit as `%XX` (the one-liner below does this). A trailing newline from Secret Manager must be stripped.
+  - **For the steward (owner's say-so only; not run by me):** `gcloud secrets versions access latest --secret=cloudsql-postgres-admin-password --project=madhav-astrology | python3 -c 'import sys,urllib.parse as u; pw=sys.stdin.read().rstrip("\n"); sys.stdout.write("postgresql://postgres:%s@127.0.0.1:5432/amjis" % u.quote(pw, safe=""))' | gh secret set DATA_PLANE_OWNERSHIP_ADMIN_DATABASE_URL --env data-plane-production-cutover --repo Marsys-Technologies/Madhav` — the value travels only through the pipe (stdin of `gh secret set`, which reads it when no value is given); nothing is echoed. Check afterwards with `gh secret list --env data-plane-production-cutover` (the "updated" time changes; the value is never shown). The re-run of create-roles is the real proof; if the login is still rejected the run stops before any statement, exactly as before.
+- **B — the runbook's option B from this machine under your identity**, using the same governed Secret Manager secret in-process. Nothing enters GitHub; the audit log shows only your identity.
+- **C — a dedicated temporary administrator login** (the Pūrṇa pattern). Slowest: new reviewed code. Not recommended.
+Either way the credential stays out of every log and every message. After row 5 the stored GitHub copy can be removed again if you want that route closed.
 
 ## Timing (Suvarṇa's schedule)
 - Suvarṇa's S-L1 window OPENS 07:30Z today (about 3–5 hours to "SETTLED-1" or an abort). From 06:30Z our side stops: no merge to main, no work on the main chart, nothing under the Kāla paths, until "SETTLED-1 received AND the dasha re-pin is merged".
@@ -55,4 +61,4 @@ Either way the credential stays out of every log and every message. After row 5 
 - On restart the earlier read-only checks (rows 2–3) are taken again, because main will have moved.
 
 ## What I need from you
-One decision: option A or B for refreshing our GitHub secret, and, separately, whether to keep or revoke the Firebase-agent exception.
+One decision: option A (refresh, either by you or on your word by the steward) or B, and, separately, whether to keep or revoke the Firebase-agent exception.
