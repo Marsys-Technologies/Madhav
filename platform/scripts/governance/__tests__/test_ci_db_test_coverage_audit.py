@@ -156,3 +156,29 @@ def test_pytest_targets_tracks_cd():
     assert not dynamic
     _t, dynamic = audit._pytest_targets("pytest ${FILES[@]} -q", ".", Path("/nonexistent"))
     assert dynamic
+
+
+
+def test_integration_marker_distinguishes_deselected_from_unmarked():
+    assert audit.integration_marker("import pytest\npytestmark = pytest.mark.integration\n") == "module"
+    assert audit.integration_marker("import pytest\npytestmark = [pytest.mark.slow, pytest.mark.integration]\n") == "module"
+    assert audit.integration_marker("import pytest\n@pytest.mark.integration\ndef test_x(): ...\n") == "some"
+    assert audit.integration_marker("import pytest\ndef test_x(): ...\n") == ""
+    assert audit.integration_marker("# pytest.mark.integrations are described elsewhere\n") == ""      # the word boundary: `integrations` is not the marker
+
+
+def test_the_marker_reaches_the_tsv_and_the_markdown_summary(tree):
+    _write(tree, "platform/python-sidecar/tests/test_marked.py", """
+import psycopg, pytest
+pytestmark = pytest.mark.integration
+def test_a():
+    psycopg.connect("postgresql://x")
+""")
+    rows, notes = audit.run_audit(tree)
+    marked = [r for r in rows if r["file"].endswith("test_marked.py")]
+    assert marked and marked[0]["integration"] == "module"
+    tsv = audit.to_tsv(rows).splitlines()
+    assert tsv[0].endswith("\tintegration_marker")
+    assert any(line.startswith("platform/python-sidecar/tests/test_marked.py") and line.endswith("\tmodule") for line in tsv)
+    md = audit.to_markdown(rows, notes)
+    assert "carry the `integration` marker" in md

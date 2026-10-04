@@ -307,6 +307,19 @@ def scan_workflows(workflows_dir: Path, repo_root: Path
 
 # ── the audit ────────────────────────────────────────────────────────────────
 
+_MODULE_MARK_RE = re.compile(r"^pytestmark\s*=.*\bintegration\b", re.M)
+_ANY_MARK_RE = re.compile(r"pytest\.mark\.integration\b")
+
+
+def integration_marker(text: str) -> str:
+    """'module' when a module-level `pytestmark` carries `integration`; 'some' when only individual tests / classes carry `@pytest.mark.integration`; '' otherwise. CI's generic sidecar jobs run
+    `-m "not integration"`, so such tests are DESELECTED — visible in pytest's deselected count — rather than silently skipped (steward-approved follow-up to C54; the marker is a file-level hint:
+    the audit does not verify per step that the `-m` expression is present)."""
+    if _MODULE_MARK_RE.search(text):
+        return "module"
+    return "some" if _ANY_MARK_RE.search(text) else ""
+
+
 def run_audit(repo_root: Path = REPO_ROOT):
     sidecar = repo_root / "platform" / "python-sidecar"
     files = discover_test_files(sidecar)
@@ -334,13 +347,14 @@ def run_audit(repo_root: Path = REPO_ROOT):
         without_db = sorted(set(all_coverage.get(rel, [])) - set(where))
         rows.append({"file": rel, "why": why,
                      "ci_db": "; ".join(where) if where else "NEVER",
-                     "ci_no_db": "; ".join(without_db)})
+                     "ci_no_db": "; ".join(without_db),
+                     "integration": integration_marker(path.read_text(encoding="utf-8"))})
     return rows, notes
 
 
 def to_tsv(rows: list[dict]) -> str:
-    lines = ["file\tneeds_db_why\truns_with_db_in_ci\truns_without_db_in_ci"]
-    lines += [f"{r['file']}\t{r['why']}\t{r['ci_db']}\t{r['ci_no_db']}" for r in rows]
+    lines = ["file\tneeds_db_why\truns_with_db_in_ci\truns_without_db_in_ci\tintegration_marker"]
+    lines += [f"{r['file']}\t{r['why']}\t{r['ci_db']}\t{r['ci_no_db']}\t{r.get('integration', '')}" for r in rows]
     return "\n".join(lines) + "\n"
 
 
@@ -354,12 +368,19 @@ def to_markdown(rows: list[dict], notes: list[str]) -> str:
     if never:
         silently = [r for r in never if r["ci_no_db"]]
         absent = [r for r in never if not r["ci_no_db"]]
+        marked = [r for r in silently if r.get("integration")]
+        unmarked = [r for r in silently if not r.get("integration")]
         out += [f"Of the {len(never)}: **{len(silently)} ARE executed by CI but without a "
                 "database** — they skip NOT_RUN silently every run (the C54 failure class) — "
                 f"and **{len(absent)} are not executed by CI at all**.", "",
+                f"Of the {len(silently)} executed without a database, **{len(marked)} carry the `integration` marker** "
+                "(module-level or on some tests): CI's generic sidecar jobs run `-m \"not integration\"`, so those "
+                "tests are DESELECTED (visible in pytest's deselected count) rather than silently skipped — a deliberate, "
+                f"visible exclusion — and **{len(unmarked)} carry no marker** (the silent NOT_RUN risk to review first). "
+                "The marker is a file-level hint; the audit does not verify per step that the `-m` expression is present.", "",
                 "### NEVER run with a database in CI", "",
-                "| file | why it needs a database | executed WITHOUT a database in |", "|---|---|---|"]
-        out += [f"| `{r['file']}` | {r['why']} | {r['ci_no_db'] or '—'} |" for r in never]
+                "| file | why it needs a database | executed WITHOUT a database in | integration marker |", "|---|---|---|---|"]
+        out += [f"| `{r['file']}` | {r['why']} | {r['ci_no_db'] or '—'} | {r.get('integration') or '—'} |" for r in never]
         out.append("")
     out += ["### Run with a database in CI", "",
             "| file | workflow :: job :: step |", "|---|---|"]
