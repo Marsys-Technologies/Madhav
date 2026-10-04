@@ -49,20 +49,21 @@ function registryRow(): NirmanaRegistryContractRow {
 }
 
 function successfulSources({
-  definitions = [], receipts = [], labels = [], runs = [], observedAt = sourceObservedAt,
+  definitions = [], receipts = [], labels = [], runs = [], observedAt = sourceObservedAt, registryRows = [registryRow()],
 }: {
   definitions?: unknown[]
   receipts?: unknown[]
   labels?: unknown[]
   runs?: unknown[]
   observedAt?: string
+  registryRows?: unknown[]
 } = {}) {
   clientQueryMock.mockImplementation((statement: unknown) => {
     const sql = String(statement)
     if (/^BEGIN TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY$/i.test(sql)) return Promise.resolve({ rows: [], rowCount: null })
     if (/^(COMMIT|ROLLBACK)$/i.test(sql)) return Promise.resolve({ rows: [], rowCount: null })
     if (sql.includes('transaction_timestamp()')) return Promise.resolve({ rows: [{ source_observed_at: observedAt }], rowCount: 1 })
-    if (sql.includes('FROM asset_registry')) return Promise.resolve({ rows: [registryRow()], rowCount: 1 })
+    if (sql.includes('FROM asset_registry')) return Promise.resolve({ rows: registryRows, rowCount: registryRows.length })
     if (sql.includes('FROM nirmana_evidence.nirmana_elevation_campaign_definitions')) return Promise.resolve({ rows: definitions, rowCount: definitions.length })
     if (sql.includes('FROM nirmana_evidence.nirmana_elevation_campaign_events')) return Promise.resolve({ rows: receipts, rowCount: receipts.length })
     if (sql.includes('FROM nirmana_evidence.nirmana_elevation_asset_labels')) return Promise.resolve({ rows: labels, rowCount: labels.length })
@@ -178,6 +179,7 @@ describe('POST /api/admin/internal/nirmana-elevation-monitor', () => {
       ok: true, observation_id: 'a8c01784-865f-4880-b91b-0988ab7f31de',
       status: 'baseline_missing', source_state: 'available', freshness_state: 'fresh',
       freshness_deadline_at: freshnessDeadlineAt, runtime_liveness: 'quiet', release_state: 'in_sync',
+      excluded_staged_candidates: [],
     })
 
     const clientStatements = clientQueryMock.mock.calls.map(([sql]) => String(sql))
@@ -193,6 +195,118 @@ describe('POST /api/admin/internal/nirmana-elevation-monitor', () => {
       'build_substep_progress',
     ]) expect(sourceSql).toContain(table)
     expect(sourceSql).not.toMatch(/^\s*(INSERT|UPDATE|DELETE|TRUNCATE|MERGE)\b/im)
+  })
+
+  // N-137: the exclusion of the staged Gochara candidates is VISIBLE in the monitor output, and any other state fails closed
+  const stagedRow = (asset_id: string, over: Partial<NirmanaRegistryContractRow> = {}): NirmanaRegistryContractRow => ({
+    ...registryRow(), asset_id, layer: 'kala', scope: 'per_chart', is_active: false, target_table: 'kala_gochara_windows',
+    count_sql: 'SELECT count(*) FROM kala_gochara_windows', has_non_test_runtime_evidence: false, ...over,
+  })
+
+  it('N-137: names every excluded staged candidate (id, reason, decision) in the response and logs one line per id each run', async () => {
+    const info = vi.spyOn(console, 'info').mockImplementation(() => undefined)
+    successfulSources({ registryRows: [registryRow(), stagedRow('ka_gochara_v4_41_candidate'), stagedRow('ka_gochara_v5', { depends_on: ['ga_positions', 'ga_dashas'] })] })
+    const { POST } = await import('../route')
+    const response = await POST(request({ Authorization: `Bearer ${schedulerOidcToken}` }))
+    const body = await response.json()
+    expect(response.status).toBe(200)
+    expect(body.excluded_staged_candidates).toEqual([
+      { asset_id: 'ka_gochara_v4_41_candidate', reason: 'staged inert candidate', decision: 'PRAVAHA-2996 (migration 1243)' },
+      { asset_id: 'ka_gochara_v5', reason: 'unsealed test candidate', decision: 'N-137' },
+    ])
+    expect(body.status).not.toBe('source_unavailable')                                  // the two candidates did not break the baseline: they are excluded, by the rule
+    const logged = info.mock.calls.filter(([message]) => String(message).includes('staged candidate excluded'))
+    expect(logged.map(([, detail]) => (detail as { asset_id: string }).asset_id)).toEqual(['ka_gochara_v4_41_candidate', 'ka_gochara_v5'])
+    expect(logged[1][1]).toMatchObject({ reason: 'unsealed test candidate', decision: 'N-137' })
+    const registrySql = clientQueryMock.mock.calls.map(([sql]) => String(sql)).find((sql) => sql.includes('FROM asset_registry')) ?? ''
+    expect(registrySql).toContain('has_non_test_runtime_evidence')                      // the loader asks the rule's own detector (test triggers by build_runs.triggered_by)
+    expect(registrySql).toContain("ARRAY['gochara-v5-small-test']::text[]")
+    info.mockRestore()
+  })
+
+  it.each([
+    ['a non-test evidence row', { has_non_test_runtime_evidence: true }],
+    ['is_active true', { is_active: true }],
+    ['an extra dependency', { depends_on: ['ga_positions', 'ga_dashas', 'bg_reference'] }],
+    ['a MISSING dependency', { depends_on: ['ga_dashas'] }],
+    ['a DIFFERENT dependency', { depends_on: ['ga_dashas', 'bg_reference'] }],
+  ])('N-137 fails closed: a v5 with %s is NOT excluded — it is not listed and the monitor cannot read the baseline as healthy', async (_name, over) => {
+    const info = vi.spyOn(console, 'info').mockImplementation(() => undefined)
+    const error = vi.spyOn(console, 'error').mockImplementation(() => undefined)
+    successfulSources({ registryRows: [registryRow(), stagedRow('ka_gochara_v5', { depends_on: ['ga_positions', 'ga_dashas'], ...over })] })
+    const { POST } = await import('../route')
+    const response = await POST(request({ Authorization: `Bearer ${schedulerOidcToken}` }))
+    const body = await response.json()
+    expect(body.excluded_staged_candidates).toEqual([])
+    expect(body.status).toBe('source_unavailable')                                      // the unresolved candidate in the denominator makes the baseline unbuildable: a loud state, never a quiet in_sync
+    expect(info.mock.calls.filter(([message]) => String(message).includes('staged candidate excluded'))).toEqual([])
+    info.mockRestore(); error.mockRestore()
+  })
+
+  it('N-137 fails closed: an asset that DEPENDS on v5 keeps it in the denominator — not excluded, not listed, and the monitor cannot read the baseline as healthy', async () => {
+    const info = vi.spyOn(console, 'info').mockImplementation(() => undefined)
+    const error = vi.spyOn(console, 'error').mockImplementation(() => undefined)
+    const dependent = { ...registryRow(), asset_id: 'bg_depends_on_v5', sort_order: 2, depends_on: ['ka_gochara_v5'] }
+    successfulSources({ registryRows: [registryRow(), stagedRow('ka_gochara_v5', { depends_on: ['ga_positions', 'ga_dashas'] }), dependent] })
+    const { POST } = await import('../route')
+    const body = await (await POST(request({ Authorization: `Bearer ${schedulerOidcToken}` }))).json()
+    expect(body.excluded_staged_candidates).toEqual([])
+    expect(body.status).toBe('source_unavailable')
+    info.mockRestore(); error.mockRestore()
+  })
+
+  // N-138 (F5, Suvarṇa Exec's review of PR 3130): the v3 century writer is named in the monitor output, and the loader asks for the cutoff-mode predicate
+  const V3_ID = 'ka_gochara_v3_century_materialize'
+  const V3_DEPS = ['bg_sky_calendar', 'ka_gochara_resonance', 'ka_kota_chakra', 'ka_moorti_nirnaya', 'ka_tithi_pravesha', 'ka_vedha_gochara']
+  const v3Row = (over: Partial<NirmanaRegistryContractRow> = {}) => stagedRow(V3_ID, { depends_on: V3_DEPS, target_table: 'kala_gochara_windows_v2', ...over })
+
+  it('N-138: names the v3 century writer (id, reason, decision N-138) in the response, logs it, and the loader selects the cutoff predicate', async () => {
+    const info = vi.spyOn(console, 'info').mockImplementation(() => undefined)
+    successfulSources({ registryRows: [registryRow(), v3Row()] })
+    const { POST } = await import('../route')
+    const response = await POST(request({ Authorization: `Bearer ${schedulerOidcToken}` }))
+    const body = await response.json()
+    expect(response.status).toBe(200)
+    expect(body.excluded_staged_candidates).toEqual([{
+      asset_id: V3_ID, reason: 'retirement-pending legacy century writer (interim: ends with the t3 successor manifest or the registry retirement)', decision: 'N-138',
+    }])
+    expect(body.status).not.toBe('source_unavailable')                                  // the unresolved obligation of the inactive writer no longer breaks the baseline
+    const logged = info.mock.calls.filter(([message]) => String(message).includes('staged candidate excluded'))
+    expect(logged.map(([, detail]) => (detail as { asset_id: string }).asset_id)).toEqual([V3_ID])
+    expect(logged[0][1]).toMatchObject({ decision: 'N-138' })
+    const registrySql = clientQueryMock.mock.calls.map(([sql]) => String(sql)).find((sql) => sql.includes('FROM asset_registry')) ?? ''
+    expect(registrySql).toContain("'2026-10-04T13:31:57Z'::timestamptz")                // the audit instant of the cutoff mode
+    expect(registrySql).toContain('COALESCE(GREATEST(bra.started_at, bra.ended_at')
+    info.mockRestore()
+  })
+
+  it.each([
+    ['evidence newer than the audit instant', { has_non_test_runtime_evidence: true }],
+    ['a changed dependency set', { depends_on: [...V3_DEPS.slice(1), 'bg_reference'] }],
+    ['an empty dependency set', { depends_on: [] }],
+  ])('N-138 fails closed: v3 with %s is NOT excluded — not listed, and the monitor cannot read the baseline as healthy', async (_name, over) => {
+    const info = vi.spyOn(console, 'info').mockImplementation(() => undefined)
+    const error = vi.spyOn(console, 'error').mockImplementation(() => undefined)
+    successfulSources({ registryRows: [registryRow(), v3Row(over)] })
+    const { POST } = await import('../route')
+    const body = await (await POST(request({ Authorization: `Bearer ${schedulerOidcToken}` }))).json()
+    expect(body.excluded_staged_candidates).toEqual([])
+    expect(body.status).toBe('source_unavailable')
+    info.mockRestore(); error.mockRestore()
+  })
+
+  it('F4: the exclusions are reported BEFORE the baseline is built — a baseline that throws still shows what was excluded', async () => {
+    const info = vi.spyOn(console, 'info').mockImplementation(() => undefined)
+    const error = vi.spyOn(console, 'error').mockImplementation(() => undefined)
+    // v4.1 is excluded by the rule; v5 carries NON-test evidence, so it stays in the denominator and the baseline throws
+    successfulSources({ registryRows: [registryRow(), stagedRow('ka_gochara_v4_41_candidate'), stagedRow('ka_gochara_v5', { depends_on: ['ga_positions', 'ga_dashas'], has_non_test_runtime_evidence: true })] })
+    const { POST } = await import('../route')
+    const body = await (await POST(request({ Authorization: `Bearer ${schedulerOidcToken}` }))).json()
+    expect(body.status).toBe('source_unavailable')                                                               // the baseline threw …
+    expect(body.excluded_staged_candidates).toEqual([{ asset_id: 'ka_gochara_v4_41_candidate', reason: 'staged inert candidate', decision: 'PRAVAHA-2996 (migration 1243)' }])   // … and the exclusion is still shown
+    const logged = info.mock.calls.filter(([message]) => String(message).includes('staged candidate excluded'))
+    expect(logged.map(([, detail]) => (detail as { asset_id: string }).asset_id)).toEqual(['ka_gochara_v4_41_candidate'])
+    info.mockRestore(); error.mockRestore()
   })
 
   it('derives the freshness deadline in PostgreSQL from a microsecond source timestamp', async () => {
