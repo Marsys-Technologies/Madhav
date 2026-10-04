@@ -12,6 +12,10 @@ import json
 
 import pytest
 
+# G8: this suite is NOT about the class census; it opts out BY NAME (see conftest.g8_census_opt_out and the guard in test_g8_class_census.py).
+G8_CENSUS_OPT_OUT_REASON = "exercises approval invalidation at the candidate boundary on a deliberate one-class marriage world"
+pytestmark = pytest.mark.usefixtures("g8_census_opt_out")
+
 from services.gochara_kernel import candidate_boundary as cb
 from services.gochara_kernel import ledger as gk_ledger
 from services.gochara_kernel import seal_brief as sb

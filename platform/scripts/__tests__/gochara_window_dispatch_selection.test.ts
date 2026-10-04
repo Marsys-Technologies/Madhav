@@ -33,8 +33,9 @@ export const WINDOW_FILES = [
   '1232_gochara_search_moon_scope_domain.sql',
   '1233_gochara_p1_period_anchor.sql',
   '1240_gochara_window_verification_gate.sql',
+  '1306_gochara_expected_class_census.sql',
 ]
-const PENDING_FIVE = WINDOW_FILES.slice(5)
+const PENDING_SIX = WINDOW_FILES.slice(5)     // 1204, 1206, 1232, 1233, 1240, 1306 (1306 = the G8 class census, second window)
 
 /** The `run: |` block scalar of the named step, de-indented — extracted by indentation, no YAML library needed. */
 function stepScript(name: string): string {
@@ -85,15 +86,15 @@ function run(inputs: Record<string, string>): Outcome {
 }
 
 describe('owner dispatch — the protected window selection, executed from deploy.yml', () => {
-  it('gochara_contracts_schema_migration=true selects exactly 1153–1157 then 1204, 1206, 1232, 1233, 1240, in that order', () => {
+  it('gochara_contracts_schema_migration=true selects exactly 1153–1157 then 1204, 1206, 1232, 1233, 1240, 1306, in that order', () => {
     const r = run({ APPLY_GOCHARA_CONTRACTS_SCHEMA_MIGRATION: 'true' })
     expect(r.status, r.out).toBe(0)
     expect(r.only).toEqual(WINDOW_FILES)
   })
 
-  it('the ordered pending five are the last five of the selection and are strictly ascending by number', () => {
+  it('the ordered pending six are the last six of the selection and are strictly ascending by number', () => {
     const r = run({ APPLY_GOCHARA_CONTRACTS_SCHEMA_MIGRATION: 'true' })
-    expect(r.only!.slice(-5)).toEqual(PENDING_FIVE)
+    expect(r.only!.slice(-6)).toEqual(PENDING_SIX)
     const nums = r.only!.map((f) => Number(f.split('_')[0]))
     expect(nums).toEqual([...nums].sort((a, b) => a - b))
   })

@@ -508,7 +508,8 @@ def _verify_live_inputs(ctx: ContextSpec, chart_id: str) -> None:
     # proof and belongs to the verification job — the build still proves the real image (R1).
     gk_input_vector_verifier.verify_inputs(
         ctx.db_conn, _scope_normalised(stored, slice_), ephe_path=ctx.config.get("ephe_path"),
-        modules=gk_input_vector.IMPLEMENTATION_MODULES, path_refs=gk_rule_registry.bound_path_refs())
+        modules=gk_input_vector.IMPLEMENTATION_MODULES, path_refs=gk_rule_registry.bound_path_refs(),
+        require_scored_classes=True)
 
 
 def _l0_consumed() -> tuple[str, ...]:
@@ -784,6 +785,10 @@ class GocharaV5Writer(WriterBase):
                 # R9-1: the policy is an INPUT of the build, chosen here and bound into the manifest; every later
                 # stage reads it back FROM the manifest — nothing downstream holds its own constant
                 result_policy=ctx.config.get("result_policy", gk_input_vector.DEFAULT_RESULT_POLICY),
+                # G8: the EXPECTED class census this generation is built for, pinned in the manifest vector; the verification job
+                # re-derives it from the verifier's own universe and the seal-time completeness function (migration 1306) compares
+                # the claimed classes with it
+                scored_classes=SCORED_CLASSES,
                 # C46: a sliced build is unsealable by construction — stored_scope no verifier
                 # vocabulary knows, plus the marker digest; absent marker = the default, unchanged
                 stored_scope=TEST_SLICE_SCOPE if slice_ is not None else gk_input_vector.STORED_SCOPE,
@@ -795,7 +800,7 @@ class GocharaV5Writer(WriterBase):
             gk_input_vector_verifier.verify_inputs(
                 ctx.db_conn, _scope_normalised(vector, slice_), ephe_path=ephe_path, modules=gk_input_vector.IMPLEMENTATION_MODULES,
                 path_refs=gk_rule_registry.bound_path_refs(),
-                jd_range=gk_input_vector.consumed_jd_range(horizon))
+                jd_range=gk_input_vector.consumed_jd_range(horizon), require_scored_classes=True)
             jd = horizon[0].timestamp() / 86400.0 + _JD_UNIX_EPOCH
             _lon, retflag = calc_sidereal_lon("Sun", jd, ephe_path)
             if not (retflag & 2):

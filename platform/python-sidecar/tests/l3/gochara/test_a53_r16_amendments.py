@@ -6,6 +6,10 @@ import threading
 
 import pytest
 
+# G8: this suite is NOT about the class census; it opts out BY NAME (see conftest.g8_census_opt_out and the guard in test_g8_class_census.py).
+G8_CENSUS_OPT_OUT_REASON = "exercises the R16 amendments (verifier identity and input pins) on a deliberate one-class marriage world"
+pytestmark = pytest.mark.usefixtures("g8_census_opt_out")
+
 from services.gochara_kernel import dasha_read
 from services.gochara_kernel import input_vector_verifier as ivv
 from services.gochara_kernel import inventory_verifier as inv

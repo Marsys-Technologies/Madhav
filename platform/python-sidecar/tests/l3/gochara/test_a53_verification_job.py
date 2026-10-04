@@ -15,6 +15,10 @@ from pathlib import Path
 
 import psycopg
 import pytest
+
+# G8: this suite is NOT about the class census; it opts out BY NAME (see conftest.g8_census_opt_out and the guard in test_g8_class_census.py).
+G8_CENSUS_OPT_OUT_REASON = "exercises the verification job's own mechanics (refusal order, grants, exit codes, row writes) on a deliberate one-class marriage world"
+pytestmark = pytest.mark.usefixtures("g8_census_opt_out")
 from psycopg.conninfo import make_conninfo
 
 from pipeline.orchestrator import verification_job as entry
