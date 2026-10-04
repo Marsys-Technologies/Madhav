@@ -26,6 +26,7 @@ import inspect
 import json
 from datetime import datetime, timedelta
 
+import pytest
 import swisseph as swe
 
 from ga_writers import ga_dashas_writer as sut
@@ -41,6 +42,24 @@ _MOON_SID_DEG = 325.5
 _BIRTH_JD = swe.julday(1984, 2, 5, 5.21667)
 _AYANAMSHA = "lahiri"
 _BUILD_ID = "test-build-a3-wiring-00000-0000-0000-000000000000"
+
+
+# S-L1 karaka-roles fix: the writer READS the chart's karaka roles from ga_sensitive; these
+# tests compute rows directly (no DB), so they seed the canonical chart / Lahiri roles
+# (kn_rao_rahu_included by stored rank) the way the unit-test path is meant to.
+_KARAKA_ROLES_FIXTURE = {
+    "Moon": "AK", "Saturn": "AmK", "Sun": "BK", "Venus": "MK",
+    "Mars": "PiK", "Rahu": "PK", "Jupiter": "GK", "Mercury": "DK",
+}
+
+
+@pytest.fixture(autouse=True)
+def _seed_karaka_roles():
+    saved = dict(sut._KARAKA_ROLE_CACHE)
+    sut.set_karaka_roles(sut.CANONICAL_CHART_ID, _AYANAMSHA, _KARAKA_ROLES_FIXTURE)
+    yield
+    sut._KARAKA_ROLE_CACHE.clear()
+    sut._KARAKA_ROLE_CACHE.update(saved)
 
 
 def _real_engine_rows() -> list[dict]:

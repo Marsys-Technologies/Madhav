@@ -86,6 +86,7 @@ def _restore_pre_retirement(monkeypatch):
                               applicability="reaches a served capability module; PASS (structural) needs ONE capability entry (the object literal that declares density_contract) "
                                             "whose own served read of the asset's table selects a tier column; a sibling entry, a sub-select, an INSERT...SELECT or a UNION "
                                             "branch does not count")
+    reg["Build.completion"] = dict(reg["Build.completion"], revision=2, applicability="a count_sql or view target exists")     # revision 25 (N-99) re-worded and bumped it
     causes = dict(ac.NA_CAUSES)
     causes.pop("Earn.service_state", None)                 # revision 10 added `not-a-service`; revision 7 had no cause there
     causes.pop("Vocab.alias", None)                        # revision 12 (S3) added the two declaration-keyed causes

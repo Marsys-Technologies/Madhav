@@ -10,23 +10,23 @@ Algorithm:
   1. Load graha condition_scores from ga_condition_composite (already built by ga_condition).
   2. Load Ayurvedic mappings from bg_medical_mappings (L0 seed table).
   3. For each graha: derive indication_strength from condition_score:
-       condition_score < 0.4  → 'strong'   (planet under stress → heightened indication)
-       0.4 <= score <= 0.6    → 'moderate'
-       condition_score > 0.6  → 'mild'      (planet strong → indication diminished)
+       condition_score < 0.4        → 'strong'   (planet under stress → heightened indication)
+       0.4 <= score < 0.7           → 'moderate'
+       condition_score >= 0.7       → 'mild'     (planet strong → indication diminished)
+     The cut points are the ONE band table in ga_writers/ga_condition_bands.py
+     (I-28 / Q-L1-16(c); shared with ga_vastu) -- they are NOT defined in this file.
      If condition_score is NULL: indication_strength = 'unknown'
   4. For Moon: also look up nakshatra_body_part from bg_nakshatra_medical.
   5. INSERT with indication_tier='jyotish_indication' and not_diagnosis=TRUE.
 
 Idempotency: L1 pattern — DELETE WHERE (chart_id, ayanamsha_id) then INSERT.
 
-FORENSIC guard (canonical chart 482012f1-710e-4a25-994a-93821f5871aa):
-  Sun  = Capricorn (Saturn's sign — classical enemy_sign, NOT debilitation;
-         Sun debilitates in Libra) → condition_score expected moderately low
-         (measured 0.26) → 'strong'. Non-fatal: logged, not build-halting
-         (F-E5 — the prior "debilitated" rationale was factually wrong, even
-         though the threshold check it gated happened to still hold).
-  Moon = Purva Bhadrapada         → nakshatra_body_part = 'left_side'
-  Saturn = Libra (exalted)        → condition_score expected high → 'mild'
+No chart-specific assertions (SS rulings 2026-10-02): this writer runs for every chart, so it asserts
+nothing about one chart's values -- no build-halting Saturn guard, no Sun advisory, no Moon/Sun/Saturn
+FORENSIC logging. What those checks protected is pinned as golden TESTS on fixtures read from the
+canonical chart (tests/test_ga_medical_saturn_golden.py, tests/test_ga_medical_sun_golden.py), so a
+change shows in CI, not as a production halt or a log line. (The seven FORENSIC anchors are positional
+facts owned by L1; they are not asserted here.)
 
 MEDICAL DISCLAIMER (NON-NEGOTIABLE):
   Every row carries indication_tier = 'jyotish_indication' AND not_diagnosis = TRUE.
@@ -44,11 +44,22 @@ import psycopg.rows
 
 from brahmagyan.graha_vocabulary import to_title
 
+# ONE band table for condition_score, owned by ga_condition (I-28 / Q-L1-16(c)): the cut
+# points (0.4 / 0.7) live there, not here. This writer only maps a band to ITS label.
+# SCORE_BANDS is re-exported (not used for logic) so the "one table object" identity with
+# ga_condition and ga_vastu is directly checkable.
+from ga_writers.ga_condition_bands import (  # noqa: F401  (SCORE_BANDS: re-export)
+    BAND_HIGH,
+    BAND_LOW,
+    BAND_MID,
+    BAND_UNKNOWN,
+    SCORE_BANDS,
+    score_band,
+)
+
 logger = logging.getLogger(__name__)
 
 # ── Constants ─────────────────────────────────────────────────────────────────
-
-CANONICAL_CHART_ID = "482012f1-710e-4a25-994a-93821f5871aa"
 
 ALL_GRAHAS = [
     "Sun", "Moon", "Mars", "Mercury", "Jupiter",
@@ -72,6 +83,17 @@ MEDICAL_GA_CITATION = (
 
 # ── indication_strength from condition_score ──────────────────────────────────
 
+#: Band -> stored indication_strength label (medical polarity: a LOW condition_score is a
+#: HEIGHTENED indication). The CUT POINTS are not here: they are `SCORE_BANDS` (ga_condition).
+INDICATION_STRENGTH_BY_BAND: dict[str, str] = {
+    BAND_LOW:  "strong",
+    BAND_MID:  "moderate",
+    BAND_HIGH: "mild",
+}
+
+#: NULL condition_score -> 'unknown' (unchanged stored value; the same label ga_vastu now stores).
+INDICATION_STRENGTH_UNKNOWN: str = BAND_UNKNOWN
+
 def indication_strength_from_score(condition_score: Optional[float]) -> str:
     """
     Derive Ayurvedic indication strength from the planetary condition_score.
@@ -81,47 +103,22 @@ def indication_strength_from_score(condition_score: Optional[float]) -> str:
     energy is disturbed or afflicted. A strong, well-placed planet's Ayurvedic
     signatures are in equilibrium (mild indication only).
 
-    condition_score < 0.4  → 'strong'    (stressed/afflicted → heightened)
-    0.4 ≤ score ≤ 0.6     → 'moderate'
-    condition_score > 0.6  → 'mild'      (well-placed → equilibrium)
-    None                   → 'unknown'   (condition_score not available)
+    The cut points are NOT defined here: they are the single band table in
+    `ga_writers.ga_condition_bands` (score < 0.4 low; 0.4 <= score < 0.7 mid; score >= 0.7 high):
+
+    low   (score < 0.4)         → 'strong'    (stressed/afflicted → heightened)
+    mid   (0.4 <= score < 0.7)  → 'moderate'
+    high  (score >= 0.7)        → 'mild'      (well-placed → equilibrium)
+    NULL                        → 'unknown'   (condition_score not available)
 
     Source logic: BPHS Ch.18 disease-causation framework — planets in debility
-    or with enemies are chief causers of their associated ailments.
+    or with enemies are chief causers of their associated ailments. The numeric
+    cut points are project conventions (`unsourced`), not classical.
     """
-    if condition_score is None:
-        return "unknown"
-    if condition_score < 0.4:
-        return "strong"
-    if condition_score <= 0.6:
-        return "moderate"
-    return "mild"
-
-
-def sun_forensic_guard_warning(sun_score: Optional[float]) -> Optional[str]:
-    """F-E5: Sun's FORENSIC check for the canonical native, non-fatal.
-
-    The prior version raised a build-halting AssertionError on this check
-    with the stated ground "Sun debilitated in Capricorn" — Sun's actual
-    debilitation sign is Libra; Capricorn (Saturn's sign) is merely Sun's
-    classical enemy_sign, a weaker relationship. The check passed today only
-    because enemy_sign's score (0.26) happens to also fall under the 0.4
-    threshold a genuinely debilitated Sun (score 0.0) would produce — the
-    assertion's own stated claim was never what the code actually measured
-    (§N.8). Downgraded to a warning (§N.4 S7 precedent: an honest, correctly-
-    reasoned signal beats a build-fatal one resting on a false premise).
-
-    Returns a warning message when the expected 'strong' tier does not hold,
-    or None when it does.
-    """
-    sun_strength = indication_strength_from_score(sun_score)
-    if sun_strength == "strong":
-        return None
-    return (
-        f"FORENSIC ADVISORY: Sun indication_strength={sun_strength!r} but expected "
-        f"'strong' (Sun sits in Capricorn — Saturn's sign, Sun's classical enemy_sign, "
-        f"NOT debilitation; Sun debilitates in Libra), score={sun_score!r}"
-    )
+    band = score_band(condition_score)
+    if band is None:
+        return INDICATION_STRENGTH_UNKNOWN
+    return INDICATION_STRENGTH_BY_BAND[band]
 
 
 # ── DB helpers ────────────────────────────────────────────────────────────────
@@ -276,9 +273,6 @@ def build_ga_medical_substep(
        - For Moon: look up nakshatra_body_part from bg_nakshatra_medical.
     6. INSERT 9 rows with NOT NULL indication_tier + not_diagnosis enforcement.
 
-    FORENSIC log (canonical chart):
-      Sun=Capricorn → 'strong'; Moon=Purva Bhadrapada → left_side; Saturn=Libra → 'mild'.
-
     Returns: number of rows inserted.
     """
     now = datetime.now(timezone.utc)
@@ -300,37 +294,6 @@ def build_ga_medical_substep(
     condition_scores = _load_condition_scores(conn, chart_id, ayanamsha_id)
     medical_mappings = _load_medical_mappings(conn)
     positions        = _load_graha_positions(conn, chart_id, ayanamsha_id)
-
-    # FORENSIC guard for canonical chart. Saturn: assert-and-halt (the claim is
-    # classically correct). Sun: non-fatal advisory only (F-E5) — see
-    # sun_forensic_guard_warning's docstring for why.
-    if chart_id == CANONICAL_CHART_ID and ayanamsha_id == "lahiri_chitrapaksha":
-        sun_score = condition_scores.get("Sun")
-        saturn_score = condition_scores.get("Saturn")
-        moon_nak = positions.get("Moon", {}).get("nakshatra")
-        logger.info(
-            "[ga_medical_writer] FORENSIC chart=%s aya=%s — "
-            "Sun condition_score=%s (expected<0.4→'strong'); "
-            "Saturn condition_score=%s (expected>0.6→'mild'); "
-            "Moon nakshatra=%s (expected Purva Bhadrapada)",
-            chart_id, ayanamsha_id, sun_score, saturn_score, moon_nak,
-        )
-        # F-E5: Sun in Capricorn is enemy_sign, not debilitation (Sun debilitates
-        # in Libra) — non-fatal advisory, not a build-halting assertion.
-        sun_warning = sun_forensic_guard_warning(sun_score)
-        if sun_warning:
-            logger.warning(
-                "[ga_medical_writer] %s for chart_id=%s ayanamsha=%s",
-                sun_warning, CANONICAL_CHART_ID, ayanamsha_id,
-            )
-        # Saturn = Libra (exalted) → condition_score must be > 0.6 → 'mild'
-        sat_strength = indication_strength_from_score(saturn_score)
-        if sat_strength != "mild":
-            raise AssertionError(
-                f"FORENSIC VIOLATION: Saturn indication_strength={sat_strength!r} "
-                f"but expected 'mild' (Saturn exalted in Libra, score={saturn_score!r}) "
-                f"for chart_id={CANONICAL_CHART_ID} ayanamsha={ayanamsha_id}"
-            )
 
     # Step 3–5: Build rows
     rows_to_insert = []

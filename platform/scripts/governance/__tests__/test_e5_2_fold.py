@@ -521,22 +521,33 @@ def test_the_real_register_header_is_consistent_and_a_recompute_is_a_noop(tmp_pa
     assert not reg["malformed"] and not reg["duplicates"] and len(reg["rows"]) == r["counts"]["total"] > 200
 
 
-def test_folding_r244_to_deferred_on_a_real_register_copy_changes_one_row_and_the_header(tmp_path, reviews):
+def test_folding_an_open_blocks_freeze_row_to_deferred_on_a_real_register_copy_changes_one_row_and_the_header(tmp_path, reviews):
+    """Folds the FIRST currently-OPEN BLOCKS_FREEZE row of the real register on a COPY (it was R244 until SS N-119(4) deferred R244 for
+    real; the test must not depend on which row is open: header counts are compared with the BEFORE counts, not literals)."""
     src = REAL["register"]
     if not src.is_file():
         pytest.skip("register not in this checkout")
     p = tmp_path / "REAL_COPY.md"
     p.write_bytes(src.read_bytes())
-    before = nf.parse_register(p.read_text())["rows"]
-    nf.set_state(p, "R244", "DEFERRED", "fix merged; withholding kept until B.U", evidence="PR #2999")
-    after = nf.parse_register(p.read_text())["rows"]
-    assert set(before) == set(after)
-    assert [k for k in before if before[k].cells != after[k].cells] == ["R244"]
+    parsed = nf.parse_register(p.read_text())
+    before = parsed["rows"]
+    open_bf = [k for k, r in before.items() if r.state_class == "OPEN" and r.severity == "BLOCKS_FREEZE"]
+    open_any = [k for k, r in before.items() if r.state_class == "OPEN"]       # fallback: the property (one row + header) holds for any OPEN row
+    if not (open_bf or open_any):
+        pytest.skip("no OPEN row left in the real register")
+    row = (open_bf or open_any)[0]
+    counts_before = nf.computed_counts(parsed)["by_state"]
+    nf.set_state(p, row, "DEFERRED", "fix merged; withholding kept until B.U", evidence="PR #2999")
     t = p.read_text()
-    assert "| DEFERRED | 1 |" in t and "| OPEN | 179 |" in t
+    after = nf.parse_register(t)["rows"]
+    assert set(before) == set(after)
+    assert [k for k in before if before[k].cells != after[k].cells] == [row]
+    counts_after = nf.computed_counts(nf.parse_register(t))["by_state"]
+    assert counts_after.get("DEFERRED", 0) == counts_before.get("DEFERRED", 0) + 1
+    assert counts_after["OPEN"] == counts_before["OPEN"] - 1
+    assert f"| DEFERRED | {counts_after['DEFERRED']} |" in t and f"| OPEN | {counts_after['OPEN']} |" in t
     assert nf.header_drift(t) == []
-    assert nf.parse_register(t)["rows"]["R244"].state_class == "DEFERRED"
-    assert nf.parse_register(t)["rows"]["R244"].severity == "BLOCKS_FREEZE"
+    assert after[row].state_class == "DEFERRED" and after[row].severity == before[row].severity
 
 
 def test_parity_with_the_suvarna_tracker_parse_when_it_is_available():

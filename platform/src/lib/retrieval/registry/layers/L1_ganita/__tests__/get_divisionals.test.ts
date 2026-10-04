@@ -52,9 +52,29 @@ describe('getDivisionalsCapability — Task D1 receipt-grade pagination', () => 
     expect(content).not.toHaveProperty('total')
     expect(mockQuery).toHaveBeenCalledTimes(1)
     expect(mockQuery.mock.calls[0]).toEqual(expect.arrayContaining([
-      expect.stringMatching(/ORDER BY varga, ayanamsha_id, graha, fact_category, fact_key/),
+      expect.stringMatching(/ORDER BY varga, ayanamsha_id, graha, fact_category, fact_key, fact_subject LIMIT/),
       [CHART_ID, 3, 0],
     ]))
+  })
+
+  it('the default page (300) truncates honestly: a 301st row sets more_available and next_offset (F-A2: D2/D30 pages now exceed 300)', async () => {
+    const many = Array.from({ length: 301 }, (_, i) => row(`r${i}`))
+    mockQuery.mockResolvedValueOnce({ rows: many })
+
+    const result = await getDivisionalsCapability.handler({ chart_id: CHART_ID }, undefined)
+    const content = contentOf(result)
+
+    expect((content['rows'] as unknown[]).length).toBe(300)
+    expect(content['more_available']).toBe(true)
+    expect(content['next_offset']).toBe(300)
+    expect(mockQuery.mock.calls[0]).toEqual(expect.arrayContaining([[CHART_ID, 301, 0]]))
+  })
+
+  it('pages are ordered by the full seven-column key so subject-only ties cannot duplicate or skip rows', async () => {
+    mockQuery.mockResolvedValueOnce({ rows: [row('a')] })
+    await getDivisionalsCapability.handler({ chart_id: CHART_ID, limit: 5, offset: 10 }, undefined)
+    const sql = String(mockQuery.mock.calls[0]![0])
+    expect(sql).toMatch(/ORDER BY varga, ayanamsha_id, graha, fact_category, fact_key, fact_subject LIMIT \$2 OFFSET \$3/)
   })
 
   it('fences both page and varga-lagna reads to the supplied text+UUID build identity', async () => {
