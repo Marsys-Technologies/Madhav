@@ -34,10 +34,34 @@ BIN = dpg.find_bin_dir()
 NEEDS_PG = pytest.mark.skipif(BIN is None, reason="no PostgreSQL server binaries (initdb + pg_ctl) on this machine: the real kill test cannot run")
 
 
+def _wait_until(pred, what: str, timeout: float = 30.0, step: float = 0.05):
+    """Poll `pred` until it is truthy; raise (never silently continue) when the deadline passes, so a slow machine fails with a clear message and
+    cannot let the test read state that an asynchronous step has not produced yet (the merge-queue flake in the immediate-mode stop test)."""
+    deadline = time.monotonic() + timeout
+    while True:
+        got = pred()
+        if got:
+            return got
+        if time.monotonic() >= deadline:
+            raise AssertionError(f"timed out after {timeout:.0f}s waiting for {what}")
+        time.sleep(step)
+
+
+def _raw_ps(pid: int, field: str) -> str:
+    """`ps` straight from the OS, independent of any monkeypatch of wd._ps in the calling test."""
+    return subprocess.run(["ps", "-ww", "-p", str(pid), "-o", f"{field}="], capture_output=True, text=True).stdout.strip()
+
+
 def _dead_pid() -> tuple[int, str]:
-    p = subprocess.Popen([sys.executable, "-c", "import time; time.sleep(0.2)"])
-    start = wd.proc_start(p.pid)
-    p.wait()
+    """A pid that is now gone, with the start stamp it had. The process is held alive until it is visible to `ps` (a fixed short sleep let a loaded
+    machine finish the process before the stamp was read, giving an empty one), then killed and reaped."""
+    p = subprocess.Popen([sys.executable, "-c", "import time; time.sleep(600)"])
+    try:
+        _wait_until(lambda: _raw_ps(p.pid, "stat"), "the child to be visible to ps")
+        start = wd.proc_start(p.pid)
+    finally:
+        p.kill()
+        p.wait()
     return p.pid, start
 
 
@@ -220,10 +244,7 @@ def test_proc_start_tells_gone_from_alive_and_a_zombie_from_a_live_process():
     assert wd.proc_start(pid) == wd.GONE and wd.owner_alive(pid, start) is False
     assert wd.proc_start(os.getpid()) not in (None, wd.GONE)
     z = subprocess.Popen([sys.executable, "-c", "pass"])           # an exited child not yet waited for is a zombie: its owner is gone
-    for _ in range(100):
-        if wd._ps("-p", str(z.pid), "-o", "stat=")[1].strip().startswith("Z"):
-            break
-        time.sleep(0.05)
+    _wait_until(lambda: (wd._ps("-p", str(z.pid), "-o", "stat=") or (0, ""))[1].strip().startswith("Z"), "the exited child to show as a zombie")
     try:
         assert wd.proc_start(z.pid) == wd.GONE
     finally:
@@ -259,10 +280,7 @@ exit {rc}
 def _fake_postmaster(data: pathlib.Path) -> subprocess.Popen:
     """A process whose command line reads `postgres -D <data>`, with a pid file naming it."""
     p = subprocess.Popen(["bash", "-c", f'exec -a "postgres -D {data}" sleep 600'])
-    for _ in range(100):
-        if str(data) in (wd._ps("-p", str(p.pid), "-o", "command=")[1]):
-            break
-        time.sleep(0.05)
+    _wait_until(lambda: str(data) in (wd._ps("-p", str(p.pid), "-o", "command=") or (0, ""))[1], "the fake postmaster's command line (exec -a done)")
     (data / "postmaster.pid").write_text(f"{p.pid}\n{data}\n")
     return p
 
@@ -412,10 +430,8 @@ def _cmdline_state(tmp_path: pathlib.Path, argv0: str) -> str:
     data.mkdir(exist_ok=True)
     p = subprocess.Popen(["bash", "-c", f'exec -a "{argv0.format(data=data)}" sleep 600'])
     try:
-        for _ in range(100):
-            if wd._ps("-p", str(p.pid), "-o", "command=")[1].strip().startswith(argv0.split()[0].split("/")[-1][:4]):
-                break
-            time.sleep(0.05)
+        shown = argv0.format(data=data)
+        _wait_until(lambda: (wd._ps("-p", str(p.pid), "-o", "command=") or (0, ""))[1].strip().startswith(shown), "the fake process's command line (exec -a done)")
         (data / "postmaster.pid").write_text(f"{p.pid}\n")
         return wd._postmaster_state(data)
     finally:
@@ -455,7 +471,7 @@ def test_a_stopped_owner_is_alive_and_ps_is_not_looked_up_on_the_path():
     s = subprocess.Popen(["sleep", "600"])
     try:
         os.kill(s.pid, signal.SIGSTOP)
-        time.sleep(0.2)
+        _wait_until(lambda: (wd._ps("-p", str(s.pid), "-o", "stat=") or (0, ""))[1].strip().startswith("T"), "the process to show as stopped")
         assert wd.proc_start(s.pid) not in (None, wd.GONE)
     finally:
         os.kill(s.pid, signal.SIGKILL)
