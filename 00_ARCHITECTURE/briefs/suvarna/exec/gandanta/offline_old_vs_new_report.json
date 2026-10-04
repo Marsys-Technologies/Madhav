@@ -1,0 +1,272 @@
+{
+  "charts": {
+    "abhinandan": {
+      "by_ayanamsha": {
+        "krishnamurti": {
+          "canonical_true_new": 1,
+          "detail_rows_appear": 3,
+          "is_gandanta_value_changes": 1,
+          "old_true": 0,
+          "sensitive_degree_gandanta_stored": 1,
+          "sensitive_vs_nakshatra_compared": 9,
+          "sensitive_vs_nakshatra_disagree_OLD": 1,
+          "subjects": 10,
+          "variant_is_gandanta_true": 0,
+          "variant_rows_added": 10
+        },
+        "lahiri_chitrapaksha": {
+          "canonical_true_new": 1,
+          "detail_rows_appear": 3,
+          "is_gandanta_value_changes": 1,
+          "old_true": 0,
+          "sensitive_degree_gandanta_stored": 1,
+          "sensitive_vs_nakshatra_compared": 9,
+          "sensitive_vs_nakshatra_disagree_OLD": 1,
+          "subjects": 10,
+          "variant_is_gandanta_true": 0,
+          "variant_rows_added": 10
+        },
+        "raman": {
+          "canonical_true_new": 2,
+          "detail_rows_appear": 6,
+          "is_gandanta_value_changes": 2,
+          "old_true": 0,
+          "sensitive_degree_gandanta_stored": 2,
+          "sensitive_vs_nakshatra_compared": 9,
+          "sensitive_vs_nakshatra_disagree_OLD": 2,
+          "subjects": 10,
+          "variant_is_gandanta_true": 0,
+          "variant_rows_added": 10
+        },
+        "surya_siddhanta_classical": {
+          "canonical_true_new": 2,
+          "detail_rows_appear": 3,
+          "is_gandanta_value_changes": 1,
+          "old_true": 1,
+          "sensitive_degree_gandanta_stored": 2,
+          "sensitive_vs_nakshatra_compared": 9,
+          "sensitive_vs_nakshatra_disagree_OLD": 1,
+          "subjects": 10,
+          "variant_is_gandanta_true": 1,
+          "variant_rows_added": 13
+        },
+        "true_chitra": {
+          "canonical_true_new": 1,
+          "detail_rows_appear": 3,
+          "is_gandanta_value_changes": 1,
+          "old_true": 0,
+          "sensitive_degree_gandanta_stored": 1,
+          "sensitive_vs_nakshatra_compared": 9,
+          "sensitive_vs_nakshatra_disagree_OLD": 1,
+          "subjects": 10,
+          "variant_is_gandanta_true": 0,
+          "variant_rows_added": 10
+        }
+      },
+      "changed_subjects": [
+        {
+          "ay": "krishnamurti",
+          "longitude": 356.918735038979,
+          "new_arc_minutes": 184.88,
+          "new_is_gandanta": "true",
+          "new_junction": "water_fire_0",
+          "new_side": "approaching",
+          "old_is_gandanta": "false",
+          "subject": "MAR"
+        },
+        {
+          "ay": "lahiri_chitrapaksha",
+          "longitude": 356.821882707044,
+          "new_arc_minutes": 190.69,
+          "new_is_gandanta": "true",
+          "new_junction": "water_fire_0",
+          "new_side": "approaching",
+          "old_is_gandanta": "false",
+          "subject": "MAR"
+        },
+        {
+          "ay": "raman",
+          "longitude": 358.268184038979,
+          "new_arc_minutes": 103.91,
+          "new_is_gandanta": "true",
+          "new_junction": "water_fire_0",
+          "new_side": "approaching",
+          "old_is_gandanta": "false",
+          "subject": "MAR"
+        },
+        {
+          "ay": "raman",
+          "longitude": 357.588675161007,
+          "new_arc_minutes": 144.68,
+          "new_is_gandanta": "true",
+          "new_junction": "water_fire_0",
+          "new_side": "approaching",
+          "old_is_gandanta": "false",
+          "subject": "VEN"
+        },
+        {
+          "ay": "surya_siddhanta_classical",
+          "longitude": 359.104406666302,
+          "new_arc_minutes": 53.74,
+          "new_is_gandanta": "true",
+          "new_junction": "water_fire_0",
+          "new_side": "approaching",
+          "old_is_gandanta": "false",
+          "subject": "VEN"
+        },
+        {
+          "ay": "true_chitra",
+          "longitude": 356.837437254317,
+          "new_arc_minutes": 189.75,
+          "new_is_gandanta": "true",
+          "new_junction": "water_fire_0",
+          "new_side": "approaching",
+          "old_is_gandanta": "false",
+          "subject": "MAR"
+        }
+      ],
+      "label": "abhinandan",
+      "totals": {
+        "canonical_true_new": 7,
+        "detail_rows_appear": 18,
+        "is_gandanta_value_changes": 6,
+        "old_true": 1,
+        "sensitive_degree_gandanta_stored": 7,
+        "sensitive_vs_nakshatra_compared": 45,
+        "sensitive_vs_nakshatra_disagree_OLD": 6,
+        "subjects": 50,
+        "variant_is_gandanta_true": 1,
+        "variant_rows_added": 53
+      }
+    },
+    "canonical": {
+      "by_ayanamsha": {
+        "krishnamurti": {
+          "canonical_true_new": 0,
+          "old_true": 0,
+          "sensitive_degree_gandanta_stored": 0,
+          "sensitive_vs_nakshatra_compared": 9,
+          "subjects": 10,
+          "variant_is_gandanta_true": 0,
+          "variant_rows_added": 10
+        },
+        "lahiri_chitrapaksha": {
+          "canonical_true_new": 0,
+          "old_true": 0,
+          "sensitive_degree_gandanta_stored": 0,
+          "sensitive_vs_nakshatra_compared": 9,
+          "subjects": 10,
+          "variant_is_gandanta_true": 0,
+          "variant_rows_added": 10
+        },
+        "raman": {
+          "canonical_true_new": 0,
+          "old_true": 0,
+          "sensitive_degree_gandanta_stored": 0,
+          "sensitive_vs_nakshatra_compared": 9,
+          "subjects": 10,
+          "variant_is_gandanta_true": 0,
+          "variant_rows_added": 10
+        },
+        "surya_siddhanta_classical": {
+          "canonical_true_new": 0,
+          "old_true": 0,
+          "sensitive_degree_gandanta_stored": 0,
+          "sensitive_vs_nakshatra_compared": 9,
+          "subjects": 10,
+          "variant_is_gandanta_true": 0,
+          "variant_rows_added": 10
+        },
+        "true_chitra": {
+          "canonical_true_new": 0,
+          "old_true": 0,
+          "sensitive_degree_gandanta_stored": 0,
+          "sensitive_vs_nakshatra_compared": 9,
+          "subjects": 10,
+          "variant_is_gandanta_true": 0,
+          "variant_rows_added": 10
+        }
+      },
+      "changed_subjects": [],
+      "label": "canonical",
+      "totals": {
+        "canonical_true_new": 0,
+        "old_true": 0,
+        "sensitive_degree_gandanta_stored": 0,
+        "sensitive_vs_nakshatra_compared": 45,
+        "subjects": 50,
+        "variant_is_gandanta_true": 0,
+        "variant_rows_added": 50
+      }
+    },
+    "third": {
+      "by_ayanamsha": {
+        "krishnamurti": {
+          "canonical_true_new": 0,
+          "old_true": 0,
+          "sensitive_degree_gandanta_stored": 0,
+          "sensitive_vs_nakshatra_compared": 9,
+          "subjects": 10,
+          "variant_is_gandanta_true": 0,
+          "variant_rows_added": 10
+        },
+        "lahiri_chitrapaksha": {
+          "canonical_true_new": 0,
+          "old_true": 0,
+          "sensitive_degree_gandanta_stored": 0,
+          "sensitive_vs_nakshatra_compared": 9,
+          "subjects": 10,
+          "variant_is_gandanta_true": 0,
+          "variant_rows_added": 10
+        },
+        "raman": {
+          "canonical_true_new": 0,
+          "old_true": 0,
+          "sensitive_degree_gandanta_stored": 0,
+          "sensitive_vs_nakshatra_compared": 9,
+          "subjects": 10,
+          "variant_is_gandanta_true": 0,
+          "variant_rows_added": 10
+        },
+        "surya_siddhanta_classical": {
+          "canonical_true_new": 0,
+          "old_true": 0,
+          "sensitive_degree_gandanta_stored": 0,
+          "sensitive_vs_nakshatra_compared": 9,
+          "subjects": 10,
+          "variant_is_gandanta_true": 0,
+          "variant_rows_added": 10
+        },
+        "true_chitra": {
+          "canonical_true_new": 0,
+          "old_true": 0,
+          "sensitive_degree_gandanta_stored": 0,
+          "sensitive_vs_nakshatra_compared": 9,
+          "subjects": 10,
+          "variant_is_gandanta_true": 0,
+          "variant_rows_added": 10
+        }
+      },
+      "changed_subjects": [],
+      "label": "third",
+      "totals": {
+        "canonical_true_new": 0,
+        "old_true": 0,
+        "sensitive_degree_gandanta_stored": 0,
+        "sensitive_vs_nakshatra_compared": 45,
+        "subjects": 50,
+        "variant_is_gandanta_true": 0,
+        "variant_rows_added": 50
+      }
+    }
+  },
+  "reconstruction_check": {
+    "graha_gandanta_subject_readings_compared": 150,
+    "mismatch_detail": [],
+    "mismatches_vs_stored": 0,
+    "sensitive_degree_check_gandanta_rows_compared": 135,
+    "sensitive_degree_check_rows_that_differ_from_shared_module": 0
+  },
+  "stored_dosha_fires_gandanta_rows": 0,
+  "stored_graha_gandanta_variant_rows_already_present": 0
+}

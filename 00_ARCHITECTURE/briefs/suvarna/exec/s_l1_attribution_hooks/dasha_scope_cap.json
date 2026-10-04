@@ -1,0 +1,16 @@
+{
+  "lane": "dasha_scope_cap",
+  "ruling": "SD-DASHA-1 / data-plane delivery: ga_dashas writes its scope-cap sentinel into chart_facts",
+  "pr": "#2607 (fa9857f00) emitter on main; fact_category_ownership row in migration 1219 (this integration)",
+  "description": "ga_dashas.write_dasha_scope_cap_sentinels writes ONE chart_facts row per chart: category dasha_scope_cap, ayanamsha INVARIANT, subject PRANA_DASHA, key level_5_not_computed (the dasha scope cap: level 5 is never computed). It is on main (#2607) but production has not run ga_dashas since: no chart carries the row (reader count 2026-10-02: 0, 0, 0), so the S-L1 rebuild APPEARS exactly 1 row per chart. Migration 1219 adds the fact_category_ownership row for dasha_scope_cap (without it the build raises 'L1 asset ga_dashas cannot mutate chart_facts category dasha_scope_cap' at the post-pass, found in the rehearsal). The chart_dashas scope_cap rows are a different thing and are not read by the detector.",
+  "may_change": [
+    {
+      "table": "chart_facts",
+      "categories": ["dasha_scope_cap"],
+      "change_types": ["appeared"],
+      "expected_count": {"exact": 1},
+      "expected_direction": "1 row appears per chart (INVARIANT / PRANA_DASHA / level_5_not_computed).",
+      "note": "source: SS 2026-10-02 rehearsal-final decision ('dasha_scope_cap +1'); rehearsal-synthetic (19-lane rehearsal, flip_detector v2.3 compare against the origin/main baseline build on the same synthetic chart; HOOKS_COMPLETENESS_v1_0.md, Source evidence) (dasha_scope_cap 1 row after the build); production re-read: absent on all three charts."
+    }
+  ]
+}

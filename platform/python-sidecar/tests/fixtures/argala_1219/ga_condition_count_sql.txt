@@ -1,0 +1,7 @@
+SELECT (SELECT COUNT(*) FROM ga_condition_composite WHERE chart_id = $1)
+       + (SELECT count(*) FROM chart_facts
+          WHERE chart_id = $1
+            AND (fact_category LIKE 'graha_avastha_%_per_varga'
+                 OR fact_category = 'graha_avastha_sayanadi'
+                 OR fact_category = 'graha_avastha_lajjitadi'
+                 OR fact_category = 'graha_yuddha')) AS count

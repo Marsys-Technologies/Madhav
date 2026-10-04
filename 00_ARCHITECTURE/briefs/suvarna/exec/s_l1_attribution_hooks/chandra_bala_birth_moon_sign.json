@@ -1,0 +1,37 @@
+{
+  "lane": "chandra_bala_birth_moon_sign",
+  "ruling": "ga_panchanga chandra_bala birth Moon sign read from the ga_positions fact (TI-l1-panchanga-moon-sign-001)",
+  "pr": "#2969 (c287109e7)",
+  "charts": ["482012f1"],
+  "description": "chandra_bala_natal_baseline derived the birth Moon sign from the nakshatra id (Purva Bhadrapada straddles Aquarius and Pisces, so every ayanamsha got Aquarius); it now READS the per-ayanamsha Moon sign from the ga_positions fact (Aquarius for krishnamurti, lahiri_chitrapaksha, raman, true_chitra; Pisces for surya_siddhanta_classical, Moon in pada 4). Effect on the canonical chart: ONLY surya_siddhanta_classical changes: 12 rows change value or citation (fact_key classification; birth Moon sign Kumbha -> Meena in citation_human, which the detector does not read), of which 9 change fact_value_text (MEENA, MESHA, VRISHABHA, KARKA, KANYA, TULA, VRISHCHIKA, MAKARA, KUMBHA) and 3 keep their value (MITHUNA, SIMHA, DHANU). The other four ayanamshas: 0 rows change. Consequence handled by SS ruling: the ga_structural integrity conjunct (uu2) is corrected in migration 1221, and ga_panchanga must build BEFORE ga_structural (runbook W6 rule 1). Canonical only: the figures rest on the canonical Moon position.",
+  "may_change": [
+    {
+      "table": "chart_facts",
+      "categories": ["chandra_bala_natal_baseline"],
+      "fact_keys": ["classification"],
+      "ayanamsha_ids": ["surya_siddhanta_classical"],
+      "change_types": ["value"],
+      "expected_count": {"exact": 9},
+      "expected_direction": "9 of the 12 surya_siddhanta_classical classification values change (the new pattern is read from the birth Moon in Pisces).",
+      "note": "source: TI_L1_PANCHANGA_MOON_SIGN_EVIDENCE_v1_0.md (HOOK entry: 9 classification changes; 12 value-or-citation rows; the other four ayanamshas 0) and SS 2026-10-02 ('9 of 12 surya_siddhanta rows classification changes'). That evidence rests on the synthetic tests plus the stored-row read; the 19-lane rehearsal (554e046ac) predates #2969, so it is NOT confirmed by the rehearsal diff: the W7 flip report is the first full-chain measurement."
+    },
+    {
+      "table": "chart_facts",
+      "categories": ["chandra_bala_natal_baseline"],
+      "ayanamsha_ids": ["krishnamurti", "lahiri_chitrapaksha", "raman", "true_chitra"],
+      "change_types": ["value", "appeared", "disappeared", "occurrence_count", "tier"],
+      "expected_count": {"exact": 0},
+      "expected_direction": "no change on the four ayanamshas whose Moon sign is Aquarius (the old and new birth sign agree).",
+      "note": "source: same evidence note ('other_ayanamshas: 0 rows change')."
+    },
+    {
+      "table": "chart_facts",
+      "categories": ["chandra_bala_natal_baseline"],
+      "ayanamsha_ids": ["surya_siddhanta_classical"],
+      "change_types": ["appeared", "disappeared", "occurrence_count", "tier"],
+      "expected_count": {"exact": 0},
+      "expected_direction": "the 12 surya_siddhanta_classical rows stay (rows unchanged, tier single).",
+      "note": "explicit zero; source: TI_L1_PANCHANGA_MOON_SIGN_EVIDENCE_v1_0.md (12 rows, 9 value changes, nothing else)."
+    }
+  ]
+}
