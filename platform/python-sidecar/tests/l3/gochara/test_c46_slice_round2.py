@@ -362,3 +362,168 @@ def test_the_default_control_passes_every_refusal_before_the_input_check_and_a_s
         finally:
             w.close()
     assert outcome == {"default": "reached_input_check", "sliced": "test_slice_candidate"}, outcome
+
+
+# --- 8. round 3 (Codex v1.2): atomic publication, the real verifier past the scope stage, the call-site guard --------------------
+
+class _Recording:
+    """Delegates to a real connection and records every statement (and the transactions opened)."""
+
+    def __init__(self, conn):
+        self._conn = conn
+        self.statements: list[str] = []
+
+    def execute(self, sql, params=None):
+        self.statements.append(" ".join(str(sql).split()))
+        return self._conn.execute(sql, params)
+
+    def transaction(self):
+        self.statements.append("<transaction>")
+        return self._conn.transaction()
+
+
+def test_publish_takes_the_chart_lock_before_its_first_read_in_a_transaction_of_its_own(sworld):
+    """Codex round 3 P1: `publish` read the stamp with no lock. The chart transaction lock is now the first thing it does."""
+    sworld.step_as(writer_mod.MANIFEST_SUBSTEP, sworld.run_id(None), FULLL)
+    rec = _Recording(sworld.conn)
+    ledger.publish(rec, CHART_ID, GEN)
+    s = rec.statements
+    assert s[0] == "<transaction>"
+    assert "to_regprocedure('public.ka_gochara_lock_chart(uuid)')" in s[1] and "ka_gochara_lock_chart(%s::uuid)" in s[2]
+    first_read = next(i for i, x in enumerate(s) if "FROM kala_gochara_publication" in x)
+    assert first_read > 2, s[:5]
+    assert _status(sworld) == "published"
+
+
+def test_the_flip_alone_refuses_a_slice_even_when_the_earlier_checks_and_the_lock_are_bypassed(sworld, monkeypatch):
+    """The UPDATE itself is conditional (still a candidate, no test_slice scope word, no component): with the pre-check and the lock
+    both disabled, a slice-stamped candidate is still not published, and the refusal is by name."""
+    rid = sworld.run_id(sworld.marker_for(FULLL))
+    sworld.step_as(writer_mod.MANIFEST_SUBSTEP, rid)
+    monkeypatch.setattr(ledger, "_refuse_test_slice_precheck", lambda *a, **k: None, raising=False)
+    real_refuse = ledger._refuse_test_slice
+    calls = []
+
+    def refuse_only_after_the_flip(conn, manifest_id, generation):
+        calls.append(1)
+        if len(calls) == 1:
+            return None                                              # the PRE-check is bypassed; the post-flip naming still runs
+        return real_refuse(conn, manifest_id, generation)
+    monkeypatch.setattr(ledger, "_refuse_test_slice", refuse_only_after_the_flip)
+    monkeypatch.setattr(ledger, "_take_chart_lock", lambda *a, **k: None)
+    with pytest.raises(ledger.TestSlicePublicationRefusal, match="TEST SLICE"):
+        ledger.publish(sworld.conn, CHART_ID, GEN)
+    assert len(calls) == 2 and _status(sworld) == "candidate"
+
+
+def test_a_slice_stamped_between_the_publishers_start_and_its_read_is_never_published(sworld):
+    """THE interleaving (Codex round 3): a competing session holds the chart lock and replaces the candidate's vector with a slice
+    stamp, committing only after the publisher is already waiting. The publisher then reads the NEW vector and refuses; the
+    manifest never becomes `published`. (The lock-first read and the conditional flip each close this alone — see the two tests
+    above; removing BOTH lets the slice through.)"""
+    import json
+    import threading
+    import time
+
+    import psycopg
+    sworld.step_as(writer_mod.MANIFEST_SUBSTEP, sworld.run_id(None), FULLL)          # an ordinary candidate
+    assert _status(sworld) == "candidate"
+    outcome: list = []
+
+    def publisher():
+        conn = psycopg.connect(sworld.dsn, autocommit=True, connect_timeout=3)
+        try:
+            ledger.publish(conn, CHART_ID, GEN)
+            outcome.append("published")
+        except BaseException as exc:                                  # noqa: BLE001
+            outcome.append(exc)
+        finally:
+            conn.close()
+
+    rival = psycopg.connect(sworld.dsn, autocommit=False, connect_timeout=3)
+    thread = threading.Thread(target=publisher)
+    try:
+        rival.execute("SELECT public.ka_gochara_lock_chart(%s::uuid)", (CHART_ID,))
+        thread.start()
+        deadline = time.time() + 20
+        while time.time() < deadline:                                 # until the publisher is queued on the chart lock
+            if sworld.conn.execute("SELECT count(*) FROM pg_locks WHERE locktype = 'advisory' AND NOT granted").fetchone()[0]:
+                break
+            time.sleep(0.05)
+        else:
+            pytest.fail("the publisher never queued on the chart lock")
+        stamp = {"stored_scope": "test_slice", "test_slice": {"run": "one_class_full", "classes": [A], "horizon": ["a", "b"]}}
+        rival.execute("SET LOCAL session_replication_role = replica")
+        rival.execute("UPDATE public.kala_gochara_publication SET input_generation_vector = input_generation_vector || %s::jsonb"
+                      " WHERE generation = %s", (json.dumps(stamp), GEN))
+        rival.commit()                                                # releases the lock: the publisher proceeds
+        thread.join(30)
+    finally:
+        rival.close()
+    assert not thread.is_alive()
+    assert len(outcome) == 1 and isinstance(outcome[0], ledger.TestSlicePublicationRefusal), outcome
+    assert _status(sworld) == "candidate"
+    assert sworld.conn.execute("SELECT count(*) FROM public.kala_gochara_publication WHERE status = 'published'").fetchone()[0] == 0
+
+
+def test_the_real_p1_anchor_verifier_gets_past_the_scope_stage_under_a_slice_when_told_the_exclusion(sworld):
+    """Codex round 3 (narrow test): the positive P1 test used a spy. Here the REAL `verify_p1_anchors` runs on a sliced manifest up
+    to the ephemeris: told the default exclusion it reaches `position_at` (a sentinel proves the scope stage passed); told nothing
+    it refuses the scope word. (The geometry itself is not run: P1 cannot pass on the stubbed L1 — a named limit.)"""
+    from services.gochara_kernel import record_verifier as rv
+    from services.gochara_kernel.inventory_verifier import Unverifiable
+    rid = sworld.run_id(sworld.marker_for(FULLL))
+    _head(sworld, rid, (A,))
+
+    class _Reached(Exception):
+        pass
+
+    def position_at(body, t):
+        raise _Reached()
+    with pytest.raises(Unverifiable, match="not a scope this verifier knows"):
+        rv.verify_p1_anchors(sworld.conn, chart_id=CHART_ID, generation=GEN, event_class=A, position_at=position_at)
+    with pytest.raises(_Reached):
+        rv.verify_p1_anchors(sworld.conn, chart_id=CHART_ID, generation=GEN, event_class=A, position_at=position_at,
+                             excluded_agents=writer_mod._slice_excluded_agents(writer_mod._validate_test_slice(sworld.marker_for(FULLL))))
+
+
+# --- 9. the public `excluded_agents` argument: only the two writer call sites pass it --------------------------------------------
+
+def _excluded_agents_calls(root: Path):
+    """Every call, anywhere under `root`, of the two public functions that take `excluded_agents`, with that keyword present:
+    [(file name, function, source of the value)]."""
+    import ast
+    found = []
+    for path in sorted(root.rglob("*.py")):
+        try:
+            tree = ast.parse(path.read_text(encoding="utf-8"))
+        except SyntaxError:
+            continue
+        for node in ast.walk(tree):
+            if not isinstance(node, ast.Call):
+                continue
+            func = node.func.attr if isinstance(node.func, ast.Attribute) else getattr(node.func, "id", None)
+            if func not in ("verify_p1_anchors", "rederive_inventory_digest"):
+                continue
+            for kw in node.keywords:
+                if kw.arg == "excluded_agents":
+                    found.append((path.name, func, ast.unparse(kw.value)))
+    return found
+
+
+def test_only_the_two_writer_sites_pass_excluded_agents_and_only_through_the_validated_marker():
+    """`excluded_agents` is a public argument: any importing caller could pass a wrong exclusion and verify against it. The only
+    non-test call sites that pass it are the writer's two, and both go through `_slice_excluded_agents(slice_)`, which returns
+    something only for a marker that passed `_validate_test_slice`."""
+    root = Path(__file__).resolve().parents[3]                     # python-sidecar
+    calls = [c for c in _excluded_agents_calls(root) if "tests" not in c[0] and not c[0].startswith("test_")]
+    prod = [c for c in _excluded_agents_calls(root / "pipeline")] + [c for c in _excluded_agents_calls(root / "services")]
+    assert sorted(prod) == sorted([("ka_gochara_v5.py", "rederive_inventory_digest", "_slice_excluded_agents(slice_)"),
+                                   ("ka_gochara_v5.py", "verify_p1_anchors", "_slice_excluded_agents(slice_)")]), prod
+    assert calls == [] or all(c[0] == "ka_gochara_v5.py" for c in calls)
+
+
+def test_the_call_site_guard_can_fail(tmp_path):
+    """The guard is only worth having if it detects a third caller."""
+    (tmp_path / "rogue.py").write_text("from x import verify_p1_anchors\nverify_p1_anchors(c, excluded_agents=('moon',))\n")
+    assert _excluded_agents_calls(tmp_path) == [("rogue.py", "verify_p1_anchors", "('moon',)")]

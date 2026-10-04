@@ -636,6 +636,15 @@ def _refuse_test_slice(conn, manifest_id, generation: str) -> None:
             "small-test candidate is unsealable and unpublishable by construction; run the full build under a real manifest")
 
 
+def _take_chart_lock(conn, chart_id: str) -> None:
+    """The established chart TRANSACTION lock (`ka_gochara_lock_chart`, migration 1153) — the one every Gochara writer, including
+    the manifest substep that replaces a candidate's input vector, takes before it touches the chart. Taken only where the function
+    exists (ledger-only fixtures do not carry it)."""
+    probe = conn.execute("SELECT to_regprocedure('public.ka_gochara_lock_chart(uuid)') IS NOT NULL").fetchone()
+    if probe is not None and _scalar(probe):
+        conn.execute("SELECT public.ka_gochara_lock_chart(%s::uuid)", (str(chart_id),))
+
+
 def publish(conn, chart_id: str, generation: str) -> str:
     """Transition candidate -> published.
 
@@ -644,7 +653,22 @@ def publish(conn, chart_id: str, generation: str) -> str:
     already-published generation. The partial unique index
     kala_gochara_publication_one_published enforces N-10 (one published
     manifest per chart+generation) at the database level.
-    """
+
+    ATOMIC against a concurrent rebuild (Codex round 3 on PR 3110): the chart transaction lock is taken BEFORE the first read, in a
+    transaction of its own (a savepoint when the caller already holds one), so a slice build cannot replace the candidate's input
+    vector between the checks below and the flip; and the flip itself is CONDITIONAL — still a candidate, no `test_slice` scope word,
+    no `test_slice` component — refusing by name when it updates no row. The unconditional database-level guarantee (a trigger or
+    CHECK refusing `published` for a slice-stamped vector, and the builder's UPDATE grant from migration 1216) is a migration for a
+    later protected window; until then these checks, the verification job, the seal flow and the readers are the defence."""
+    transaction = getattr(conn, "transaction", None)
+    if transaction is None:                               # a ledger-only fake without transactions
+        return _publish_locked(conn, chart_id, generation)
+    with transaction():
+        return _publish_locked(conn, chart_id, generation)
+
+
+def _publish_locked(conn, chart_id: str, generation: str) -> str:
+    _take_chart_lock(conn, chart_id)
     row = _manifest_row(conn, chart_id, generation)
     if row is None:
         raise ValueError(f"no manifest for chart {chart_id} generation {generation!r}")
@@ -682,15 +706,23 @@ def publish(conn, chart_id: str, generation: str) -> str:
             else 0
         ),
     }
-    conn.execute(
+    flipped = conn.execute(
         """
         UPDATE kala_gochara_publication
         SET status = 'published', published_at = now(),
             content_digest = %s, row_counts = %s::jsonb
-        WHERE manifest_id = %s
+        WHERE manifest_id = %s AND status = 'candidate'
+          AND COALESCE(input_generation_vector->>'stored_scope', '') <> 'test_slice'
+          AND NOT COALESCE(input_generation_vector ? 'test_slice', false)
         """,
         (digest, canonical_json(counts), row[0]),
     )
+    if getattr(flipped, "rowcount", None) == 0:
+        # the row changed after it was read (or the checks above were bypassed): say WHICH, by name
+        _refuse_test_slice(conn, row[0], generation)
+        raise PublishedGenerationRefusal(
+            f"publish refused: the manifest of generation {generation!r} was no longer an unstamped candidate when it was flipped "
+            "(it changed concurrently); nothing was published")
     return str(row[0])
 
 
