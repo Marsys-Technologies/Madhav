@@ -141,7 +141,13 @@ const L0_CONTRACT_DEPENDENCIES: Record<string, string[]> = {
 // — runPreparation.ts:183 / recalibrationEnqueue.ts:141 never select it) and
 // NOT an elevation-denominator identity; it ships so the steward dispatch can
 // stage its one governed run.
-const SUPPORTING_WRITER_IDS = ['bo_grounding', 'ka_gochara_v4_41_candidate'] as const
+// Pravāha A5.3 (steward ruling M20261001T014547-357e, pins 1-2):
+// ka_gochara_v5 is a registered INERT writer skeleton, is_active: false in
+// the seed (inert to all planners — runPreparation.ts:183 /
+// recalibrationEnqueue.ts:141 never select it) and NOT an
+// elevation-denominator identity; it ships so registration conformance can be
+// proven while the geometry/solver stays blocked pending steward pins 3-7.
+const SUPPORTING_WRITER_IDS = ['bo_grounding', 'ka_gochara_v4_41_candidate', 'ka_gochara_v5'] as const
 
 const SHARED_MSR_DAG_MIGRATION = readFileSync(
   new URL('../../migrations/1030_nirmana_l2_shared_msr_consumer_dependencies.sql', import.meta.url),

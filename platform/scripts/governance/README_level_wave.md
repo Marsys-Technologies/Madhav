@@ -295,7 +295,7 @@ for the six lists and `family_set` and ignores `_stamp`. The E6.3 tracker's `_e6
 (`/Users/Dev/suvarna-evidence/census_fresh/adb0db2`); its result, recorded here so it does not rest on that path: 127 assets, and for
 all 127 the census's declared-edge count and blocking-radius direct and transitive counts equal this DAG's (census registry revision
 16, fingerprint `8b88e7b2...cb97c`). `ka_gochara_sweep` and `ka_gochara_v3_century_materialize` are live inactive rows;
-`ka_gochara_v4_41_candidate` is a seed-only inactive row that the census lists under `phantom_registered`, not a live registry row.
+`ka_gochara_v4_41_candidate` and `ka_gochara_v5` are live inactive rows too (migration 1243 stages both with is_active false: registry total 129 -> 131, active still 127), so `phantom_registered` no longer applies to them.
 
 **The J1 freeze.** `regenerate_draft_level_map.py --freeze --registry-export <live asset_registry export json> --frozen-at <ISO>`
 (the export is a JSON list of `{asset_id, layer, depends_on, active}` taken read-only by whoever holds the reader login). The
