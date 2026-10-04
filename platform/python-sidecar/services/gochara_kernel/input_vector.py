@@ -232,7 +232,8 @@ def assemble_vector(inp: dict) -> dict:
                        "activity": inp["activity_orb"]},
         "rulings_digest": _sha(canonical_json(sorted(inp["rulings"], key=canonical_json))),
         "implementation": {st: _sha(canonical_json(m)) for st, m in sorted(inp["impl_modules"].items())},
-    } | ({"scored_classes": _scored_classes_component(inp["scored_classes"])} if inp.get("scored_classes") is not None else {})
+    } | ({"scored_classes": _scored_classes_component(inp["scored_classes"])} if inp.get("scored_classes") is not None else {}) \
+      | ({"test_slice": inp["test_slice"]} if inp.get("test_slice") is not None else {})
 
 
 # ── node series / ephemeris ──────────────────────────────────────────────────
@@ -460,9 +461,12 @@ def build_input_vector(conn, *, sky_convention_id: str, ephe_path: str | None,
                        files_probe=None, series_probe=None, modules: dict | None = None,
                        l0_consumed: Iterable[str] = (), census_override=None,
                        result_policy: str = DEFAULT_RESULT_POLICY,
-                       scored_classes: Iterable[str] | None = None) -> dict:
+                       scored_classes: Iterable[str] | None = None,
+                       stored_scope: str = STORED_SCOPE, test_slice: dict | None = None) -> dict:
     """The vector of what this build CONSUMES. `l0_consumed` names the L0 authorities actually read (none ⇒
-    none is a dependency); `census_override` (historical replay) restates the ORIGINAL sealed-version census."""
+    none is a dependency); `census_override` (historical replay) restates the ORIGINAL sealed-version census.
+    `stored_scope`/`test_slice` are the writer's scope declaration: anything but the default is a scope no
+    verifier vocabulary knows, so the manifest is unsealable by construction (C46 test slice)."""
     from .substrate import SUBSTRATE_BODIES, SUBSTRATE_DOMAIN_END, SUBSTRATE_DOMAIN_START
     from .convention import ORB_TABLE
     from .record_store import POINT_ORB_SOURCE
@@ -477,7 +481,7 @@ def build_input_vector(conn, *, sky_convention_id: str, ephe_path: str | None,
         (list(EXCLUDED_AUDIT_FIELDS), sky_convention_id)).fetchone()
     sky_vector = sky_row[0] if not isinstance(sky_row, dict) else next(iter(sky_row.values()))
     return assemble_vector({
-        "stored_scope": STORED_SCOPE, "result_policy": result_policy,
+        "stored_scope": stored_scope, "result_policy": result_policy,
         "sky_id": sky_convention_id, "sky_vector": sky_vector,
         "registry": payload, "node": node_identity(), "ephemeris": eph,
         "l0_digests": l0_identities(conn, l0_consumed),
@@ -486,6 +490,7 @@ def build_input_vector(conn, *, sky_convention_id: str, ephe_path: str | None,
         "rulings": list(rulings),
         "impl_modules": _implementation_modules(modules),
         "scored_classes": None if scored_classes is None else list(scored_classes),
+        "test_slice": test_slice,
     })
 
 
@@ -522,6 +527,8 @@ def verify_replay(conn, stored: dict, path_refs: Iterable[tuple[str, str]], **kw
     kw.setdefault("l0_consumed", tuple(stored.get("l0", {})))
     kw.setdefault("result_policy", stored.get("result_policy"))
     kw.setdefault("scored_classes", stored.get("scored_classes"))
+    kw.setdefault("stored_scope", stored.get("stored_scope", STORED_SCOPE))
+    kw.setdefault("test_slice", stored.get("test_slice"))
     replayed = build_input_vector(conn, path_refs=path_refs, census_override=stored["registry"]["census"], **kw)
     diff = diff_vectors(stored, replayed)
     if diff:
@@ -539,6 +546,8 @@ def verify_live(conn, stored: dict, **kw) -> None:
     kw.setdefault("l0_consumed", tuple(stored.get("l0", {})))
     kw.setdefault("result_policy", stored.get("result_policy"))
     kw.setdefault("scored_classes", stored.get("scored_classes"))
+    kw.setdefault("stored_scope", stored.get("stored_scope", STORED_SCOPE))
+    kw.setdefault("test_slice", stored.get("test_slice"))
     live = build_input_vector(conn, **kw)
     diff = diff_vectors(stored, live)
     if diff:

@@ -344,7 +344,7 @@ G8_OPT_OUT_SUITES = frozenset({
     "test_a53_r11_seal_brief.py", "test_a53_r12_boundary.py", "test_a53_r12_persisted_brief.py", "test_a53_r12_seal_job.py",
     "test_a53_r15_amendments.py", "test_a53_r10_complete_records.py", "test_a53_r11_generation_wide.py", "test_a53_r11_p1_independence.py",
     "test_a53_r13_own_checkout.py", "test_a53_r13_producer.py", "test_a53_r13_sealed_boundary.py", "test_a53_r13_timeouts.py",
-    "test_a53_r14_sealed_contacts.py", "test_a53_r16_amendments.py"})
+    "test_a53_r14_sealed_contacts.py", "test_a53_r16_amendments.py", "test_c46_slice_round2.py"})
 
 
 def _suite_sources():
@@ -361,7 +361,8 @@ def test_exactly_the_listed_suites_opt_out_of_the_census_each_with_a_stated_reas
         src = sources[name]
         m = re.search(r'^G8_CENSUS_OPT_OUT_REASON = "([^"]+)"$', src, re.M)
         assert m and len(m.group(1).strip()) >= 20, f"{name} opts out without a stated reason"
-        assert re.search(r'^pytestmark = pytest\.mark\.usefixtures\("g8_census_opt_out"\)$', src, re.M), f"{name} does not apply the opt-out as a module mark"
+        assert re.search(r'^(pytestmark = |@)pytest\.mark\.usefixtures\("g8_census_opt_out"\)$', src, re.M), \
+            f"{name} does not apply the opt-out as a module mark or a test decorator"
 
 
 def test_nothing_else_replaces_or_patches_the_census_step():

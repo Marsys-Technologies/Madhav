@@ -188,13 +188,19 @@ def expected_p1_contacts(position_at, lo, hi, *, excluded_agents) -> list[dict]:
     return out
 
 
-def verify_p1_anchors(conn, *, chart_id: str, generation: str, event_class: str, position_at) -> dict:
+def verify_p1_anchors(conn, *, chart_id: str, generation: str, event_class: str, position_at,
+                      excluded_agents=None) -> dict:
     """Start from the EXPECTED CONTACT SET (R9-2 iii), not from the records: every P1 contact the ephemeris says exists
     over the class's inventory horizon must be in the ledger and must carry exactly the derived anchor set (minus the
     anchor lords whose period-lord relation is `testimony`, D3). A contact with EVERY anchored record omitted, a contact
     the ledger never wrote, an invented one, an omitted/extra anchor and a wrong level each fail — and a class with
     contacts but no P1 records at all (zero output) fails too. Incomplete geometry evidence (no ephemeris) raises
-    `GeometryUnavailable`: no complete-search claim is made."""
+    `GeometryUnavailable`: no complete-search claim is made.
+
+    `excluded_agents`: None (default; the verification JOB and every other caller) reads the excluded bodies from the generation's
+    BOUND manifest scope and refuses an unknown scope (`bound_excluded_agents`); an explicit value is TOLD to the verifier by the
+    writer's in-build self-check of a TEST SLICE (whose stored scope is deliberately unknown to every vocabulary), which holds a
+    validated marker and passes the DEFAULT scope's exclusion."""
     from . import contact_reconstruct as cr
     from .inventory_verifier import Unverifiable, read_chart
     if position_at is None:
@@ -208,7 +214,8 @@ def verify_p1_anchors(conn, *, chart_id: str, generation: str, event_class: str,
         raise Unverifiable(f"{event_class}: no inventory horizon to certify the contact set over")
     lo, hi = (tuple(hdr.values()) if isinstance(hdr, dict) else tuple(hdr))
     from .inventory_verifier import bound_excluded_agents
-    excluded = bound_excluded_agents(conn, chart_id, generation)     # the bodies come from the MANIFEST's scope
+    excluded = (bound_excluded_agents(conn, chart_id, generation)    # the bodies come from the MANIFEST's scope
+                if excluded_agents is None else tuple(excluded_agents))
     snap = conn.execute(
         "SELECT consumed_fact_ids FROM public.ka_gochara_search_input_snapshot WHERE chart_id = %s AND generation = %s",
         (chart_id, generation)).fetchone()
