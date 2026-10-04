@@ -128,6 +128,18 @@ def test_decide_lists_every_stop_and_is_clean_only_with_all_evidence():
     assert any("orphaned" in s for s in T.decide(**{**good, "new_integrity": {"orphans": ["o"], "duplicates": 0}}))
 
 
+FIXTURE_NEW_INSTANTS = ("2013-01-14T11:13:56", "2014-01-11T16:11:56")      # the "new build" instants the apply tests use
+
+
+def test_the_fixtures_new_instants_do_not_collide_with_the_live_pin():
+    """The apply tests treat the repository's CURRENT pinned reference rows as the OLD build and these literals as the NEW one. If a future re-pin makes a reference row equal one of
+    them, a test asserting 'the old instant is gone and the new one is present' stops testing a rewrite and fails (or worse, passes) for the wrong reason — so it is refused LOUDLY here
+    (the first run after the SETTLED-1 pin found exactly that: the previous literals WERE the pinned values). Pick other literals when this fails."""
+    perm = pathlib.Path(PERM.__file__).read_text(encoding="utf-8")
+    for inst in FIXTURE_NEW_INSTANTS:
+        assert inst not in perm, f"{inst} is now a pinned reference instant — change the fixture literal"
+
+
 def test_reference_rows_are_remeasured_from_the_new_build_by_position():
     # use the REAL pinned reference rows as the old build, shifted +6993 s with fresh ids, all paths preserved
     def real_build(prefix, shift):
@@ -175,8 +187,8 @@ def test_apply_rewrites_the_pin_the_reference_rows_and_literals_and_generates_th
     lit.write_text(f'ROW = "{ref["row_id"]}"\nT = "{ref["start_iso"]}"\nB = "{PERM.DASHA_READ_CONTRACT["build_id"]}"\nOTHER = "2099-01-01T00:00:00Z"\n', encoding="utf-8")
     monkeypatch.setattr(T, "SIDECAR", tmp_path)
     new_id = "22222222-2222-4222-8222-222222222222"
-    maps = [{"old": ref, "new": {"dasha_row_id": "99999999-9999-4999-8999-999999999999", "start_iso": "2013-01-14T09:13:56Z",
-                                 "end_iso": "2014-01-11T14:11:56Z", "lord_graha": ref["lord"]}, "key": (2, (0,))}]
+    maps = [{"old": ref, "new": {"dasha_row_id": "99999999-9999-4999-8999-999999999999", "start_iso": "2013-01-14T11:13:56Z",
+                                 "end_iso": "2014-01-11T16:11:56Z", "lord_graha": ref["lord"]}, "key": (2, (0,))}]
     # (e) a test literal equal to an old boundary is NOT rewritten automatically: apply STOPS before writing ANYTHING until the ruling classifies it
     perm_before = (tmp_path / "services" / "gochara_rules" / "permission.py").read_text(encoding="utf-8")
     with pytest.raises(T.NeedsRuling) as nr:
@@ -191,12 +203,12 @@ def test_apply_rewrites_the_pin_the_reference_rows_and_literals_and_generates_th
     old_id = PERM.DASHA_READ_CONTRACT["build_id"]
     assert f'"build_id": "{new_id}"' in p and f'"build_id": "{old_id}"' not in p     # (the old id may survive in the module docstring as history)
     assert "99999999-9999-4999-8999-999999999999" in p and ref["row_id"] not in p
-    assert "2013-01-14T09:13:56Z" in p and ref["start_iso"] not in p       # permission.py: the reference rows' instants ARE rewritten (single pass)
+    assert "2013-01-14T11:13:56Z" in p and ref["start_iso"] not in p       # permission.py: the reference rows' instants ARE rewritten (single pass)
     text = lit.read_text(encoding="utf-8")
     assert "99999999-9999-4999-8999-999999999999" in text and new_id in text
     # D8: an old BOUNDARY INSTANT in a test is NOT rewritten (it may be an event date that merely equals a boundary) — it is listed for a human
-    assert f'T = "{ref["start_iso"]}"' in text and "2013-01-14T09:13:56Z" not in text
-    assert any("test_literal.py:2" in r and ref["start_iso"] in r and "2013-01-14T09:13:56Z" in r and "[keep]" in r for r in review)
+    assert f'T = "{ref["start_iso"]}"' in text and "2013-01-14T11:13:56Z" not in text
+    assert any("test_literal.py:2" in r and ref["start_iso"] in r and "2013-01-14T11:13:56Z" in r and "[keep]" in r for r in review)
     assert "OTHER = \"2099-01-01T00:00:00Z\"" in text                        # unrelated literals untouched
     gen = tmp_path / "tests" / "l3" / "gochara_rules" / "test_am10_repin_22222222.py"
     assert gen.exists() and PERM.DASHA_READ_CONTRACT["build_id"] in gen.read_text(encoding="utf-8") and "DashaReadConflict" in gen.read_text(encoding="utf-8")
@@ -244,12 +256,12 @@ def test_rewrite_is_ONE_pass_a_new_value_equal_to_a_later_old_value_is_not_repla
 
 def test_apply_formats_the_permission_literals_whole_second_while_rows_keep_full_precision(monkeypatch, tmp_path):
     maps = _apply_world(tmp_path)
-    maps[0]["new"]["start_iso"] = "2013-01-14T09:13:56.750000Z"                                       # a measured full-precision instant
+    maps[0]["new"]["start_iso"] = "2013-01-14T11:13:56.750000Z"                                       # a measured full-precision instant
     monkeypatch.setattr(T, "SIDECAR", tmp_path)
     T.apply_repin(NEWB, maps, tmp_path)
     perm = (tmp_path / "services" / "gochara_rules" / "permission.py").read_text()
-    assert "2013-01-14T09:13:56Z" in perm and "09:13:56.75" not in perm                              # whole-second literal in permission.py only
-    assert T.full_iso("2013-01-14T09:13:56.750000Z") == "2013-01-14T09:13:56.750000Z" and T.iso("2013-01-14T09:13:56.750000Z") == "2013-01-14T09:13:56Z"
+    assert "2013-01-14T11:13:56Z" in perm and "11:13:56.75" not in perm                              # whole-second literal in permission.py only
+    assert T.full_iso("2013-01-14T11:13:56.750000Z") == "2013-01-14T11:13:56.750000Z" and T.iso("2013-01-14T11:13:56.750000Z") == "2013-01-14T11:13:56Z"
 
 
 def test_a_ruling_to_rewrite_changes_ONLY_the_ruled_line(monkeypatch, tmp_path):
@@ -261,11 +273,11 @@ def test_a_ruling_to_rewrite_changes_ONLY_the_ruled_line(monkeypatch, tmp_path):
     lit = tmp_path / "tests" / "l3" / "gochara_rules" / "test_two.py"
     lit.write_text(f'A = "{ref["start_iso"]}"   # a boundary\nB = "{ref["start_iso"]}"   # an EVENT date that merely equals it\n', encoding="utf-8")
     monkeypatch.setattr(T, "SIDECAR", tmp_path)
-    maps = [{"old": ref, "new": {"dasha_row_id": "99999999-9999-4999-8999-999999999999", "start_iso": "2013-01-14T09:13:56Z", "end_iso": "2014-01-11T14:11:56Z", "lord_graha": ref["lord"]}, "key": (2, (0,))}]
+    maps = [{"old": ref, "new": {"dasha_row_id": "99999999-9999-4999-8999-999999999999", "start_iso": "2013-01-14T11:13:56Z", "end_iso": "2014-01-11T16:11:56Z", "lord_graha": ref["lord"]}, "key": (2, (0,))}]
     rel = "tests/l3/gochara_rules/test_two.py"
     T.apply_repin("22222222-2222-4222-8222-222222222222", maps, tmp_path, rulings={"rewrite": [f"{rel}:1"], "keep": [f"{rel}:2"]})
     a, b = lit.read_text(encoding="utf-8").splitlines()[:2]
-    assert "2013-01-14T09:13:56Z" in a and ref["start_iso"] in b
+    assert "2013-01-14T11:13:56Z" in a and ref["start_iso"] in b
 
 
 def test_the_measured_shift_must_match_the_settled_notice_within_its_stated_tolerance():
@@ -651,7 +663,7 @@ def _apply_world(tmp_path, ver_line=None, with_verifier=True):
         d = tmp_path / "services" / "gochara_kernel"; d.mkdir(parents=True)
         (d / "inventory_verifier.py").write_text(ver_line if ver_line is not None else f'_C_BUILD = "{OLDB}"\n', encoding="utf-8")
     ref = PERM.AD_ROWS[0]
-    return [{"old": ref, "new": {"dasha_row_id": "99999999-9999-4999-8999-999999999999", "start_iso": "2013-01-14T09:13:56Z", "end_iso": "2014-01-11T14:11:56Z", "lord_graha": ref["lord"]}, "key": (2, (0,))}]
+    return [{"old": ref, "new": {"dasha_row_id": "99999999-9999-4999-8999-999999999999", "start_iso": "2013-01-14T11:13:56Z", "end_iso": "2014-01-11T16:11:56Z", "lord_graha": ref["lord"]}, "key": (2, (0,))}]
 
 
 def test_apply_rewrites_BOTH_pin_constants_and_the_generated_test_asserts_they_are_equal(monkeypatch, tmp_path):
@@ -2162,15 +2174,15 @@ def test_a_ruled_non_z_form_is_rewritten_on_its_line_only_and_an_unruled_one_sto
     ref = PERM.AD_ROWS[0]
     f = _l3_file(tmp_path, "test_nonz.py", f'A = "{ref["start_iso"][:-1]}+00:00"\nB = "{ref["start_iso"][:-1]}+00:00"\n', sub="gochara_rules")
     monkeypatch.setattr(T, "SIDECAR", tmp_path)
-    maps = [{"old": ref, "new": {"dasha_row_id": "99999999-9999-4999-8999-999999999999", "start_iso": "2013-01-14T09:13:56Z",
-                                 "end_iso": "2014-01-11T14:11:56Z", "lord_graha": ref["lord"]}, "key": (2, (0,))}]
+    maps = [{"old": ref, "new": {"dasha_row_id": "99999999-9999-4999-8999-999999999999", "start_iso": "2013-01-14T11:13:56Z",
+                                 "end_iso": "2014-01-11T16:11:56Z", "lord_graha": ref["lord"]}, "key": (2, (0,))}]
     rel = "tests/l3/gochara_rules/test_nonz.py"
     with pytest.raises(T.NeedsRuling) as nr:
         T.apply_repin("22222222-2222-4222-8222-222222222222", maps, tmp_path)
     assert any(f"{rel}:1" in u for u in nr.value.unclassified) and any(f"{rel}:2" in u for u in nr.value.unclassified)
     T.apply_repin("22222222-2222-4222-8222-222222222222", maps, tmp_path, rulings={"rewrite": [f"{rel}:1"], "keep": [f"{rel}:2"]})
     lines = f.read_text(encoding="utf-8").splitlines()
-    assert lines[0] == 'A = "2013-01-14T09:13:56+00:00"' and lines[1] == f'B = "{ref["start_iso"][:-1]}+00:00"'
+    assert lines[0] == 'A = "2013-01-14T11:13:56+00:00"' and lines[1] == f'B = "{ref["start_iso"][:-1]}+00:00"'
 
 
 def test_a_wrapped_old_row_id_is_rewritten_character_for_character_keeping_the_break_and_the_comment_leader(monkeypatch, tmp_path):
@@ -2195,8 +2207,8 @@ def test_apply_rewrites_a_wrapped_id_without_a_ruling_and_lists_it_for_review(mo
     a, b = ref["row_id"][:24], ref["row_id"][24:]
     f = _l3_file(tmp_path, "test_wrap2.py", f"# row {a}\n# {b}\n", sub="gochara_rules")
     monkeypatch.setattr(T, "SIDECAR", tmp_path)
-    maps = [{"old": ref, "new": {"dasha_row_id": "99999999-9999-4999-8999-999999999999", "start_iso": "2013-01-14T09:13:56Z",
-                                 "end_iso": "2014-01-11T14:11:56Z", "lord_graha": ref["lord"]}, "key": (2, (0,))}]
+    maps = [{"old": ref, "new": {"dasha_row_id": "99999999-9999-4999-8999-999999999999", "start_iso": "2013-01-14T11:13:56Z",
+                                 "end_iso": "2014-01-11T16:11:56Z", "lord_graha": ref["lord"]}, "key": (2, (0,))}]
     review: list[str] = []
     T.apply_repin("22222222-2222-4222-8222-222222222222", maps, tmp_path, review=review)
     assert f.read_text(encoding="utf-8") == "# row 99999999-9999-4999-8999-\n# 999999999999\n"
@@ -2216,11 +2228,11 @@ def test_the_wide_scan_is_report_only_and_never_blocks_or_rewrites(monkeypatch, 
     gov.write_text(f'row = ["{ref["start_iso"][:-1]}+00:00"]\n', encoding="utf-8")
     monkeypatch.setattr(T, "SIDECAR", tmp_path / "platform" / "python-sidecar")
     (tmp_path / "platform" / "python-sidecar" / "tests" / "l3").mkdir(parents=True)
-    inst = {ref["start_iso"]: "2013-01-14T09:13:56Z"}
+    inst = {ref["start_iso"]: "2013-01-14T11:13:56Z"}
     wide = T.scan_wide_literals(inst, tmp_path)
     assert {w[0] for w in wide} == {"platform/tests/integration/seed.db.test.ts", "platform/scripts/governance/__tests__/test_fixture.py"}
-    assert ("platform/tests/integration/seed.db.test.ts", 1, ref["start_iso"], "2013-01-14T09:13:56Z") in wide
-    assert any(w[2] == ref["start_iso"][:-1] and w[3] == "2013-01-14T09:13:56" for w in wide)       # the non-Z form too
+    assert ("platform/tests/integration/seed.db.test.ts", 1, ref["start_iso"], "2013-01-14T11:13:56Z") in wide
+    assert any(w[2] == ref["start_iso"][:-1] and w[3] == "2013-01-14T11:13:56" for w in wide)       # the non-Z form too
     # tests/l3 is the apply scan's, not the wide scan's
     assert T.scan_test_literals(inst, tmp_path) == []
     assert ts.read_text(encoding="utf-8").count(ref["start_iso"]) == 1                               # untouched
@@ -2272,14 +2284,14 @@ def test_p1_2_a_ruling_rewrites_only_the_listed_spans_never_the_unlisted_fractio
     monkeypatch.setattr(T, "SIDECAR", tmp_path)
     old = "2013-01-14T07:17:23"
     f = _l3_file(tmp_path, "test_two.py", f'X = ("{old}+00:00", "{old}.5+00:00", "{old}Z", "{old}.5Z")\n')
-    inst = {old + "Z": "2013-01-14T09:13:56Z"}
+    inst = {old + "Z": "2013-01-14T11:13:56Z"}
     listed = T.scan_test_literals(inst, tmp_path)
-    assert [(a_, b_) for _, _, a_, b_ in listed if a_ != old + "Z"] == [(old, "2013-01-14T09:13:56")], listed       # the fractions are NOT listed
+    assert [(a_, b_) for _, _, a_, b_ in listed if a_ != old + "Z"] == [(old, "2013-01-14T11:13:56")], listed       # the fractions are NOT listed
     spans = T.scan_test_spans(inst, tmp_path)
     line = f.read_text(encoding="utf-8").rstrip("\n")
     out = T.rewrite_spans(line, [(st, en, a_, b_) for _, _, st, en, a_, b_ in spans])
     assert f'"{old}.5+00:00"' in out and f'"{old}.5Z"' in out, "an UNLISTED instant was rewritten"
-    assert f'"2013-01-14T09:13:56+00:00"' in out and f'"2013-01-14T09:13:56Z"' in out
+    assert f'"2013-01-14T11:13:56+00:00"' in out and f'"2013-01-14T11:13:56Z"' in out
     # property: every changed character lies inside a listed span
     import difflib
     changed = set()
@@ -2303,8 +2315,8 @@ def test_p1_2_every_byte_apply_changes_lies_inside_a_ruled_span(monkeypatch, tmp
     f = _l3_file(tmp_path, "test_bytes.py", f'A = ("{z}", "{z[:-1]}.5Z", "{z[:-1]}+00:00", "{z[:-1]}.5+00:00", "keep me")\nB = "{z}"\n', sub="gochara_rules")
     before = f.read_text(encoding="utf-8")
     monkeypatch.setattr(T, "SIDECAR", tmp_path)
-    new = "2013-01-14T09:13:56Z"
-    maps = [{"old": ref, "new": {"dasha_row_id": "99999999-9999-4999-8999-999999999999", "start_iso": new, "end_iso": "2014-01-11T14:11:56Z", "lord_graha": ref["lord"]}, "key": (2, (0,))}]
+    new = "2013-01-14T11:13:56Z"
+    maps = [{"old": ref, "new": {"dasha_row_id": "99999999-9999-4999-8999-999999999999", "start_iso": new, "end_iso": "2014-01-11T16:11:56Z", "lord_graha": ref["lord"]}, "key": (2, (0,))}]
     rel = "tests/l3/gochara_rules/test_bytes.py"
     spans = [(st, en) for p_, ln, st, en, a_, b_ in T.scan_test_spans({z: new}, tmp_path) if ln == 1]
     T.apply_repin("22222222-2222-4222-8222-222222222222", maps, tmp_path, rulings={"rewrite": [f"{rel}:1"], "keep": [f"{rel}:2"]})
@@ -2331,7 +2343,7 @@ def test_p1_3_a_directory_at_a_generated_destination_is_refused_by_the_apply_che
     (tmp_path / "services" / "gochara_rules" / "permission.py").write_text(pathlib.Path(PERM.__file__).read_text(encoding="utf-8"), encoding="utf-8")
     (tmp_path / "tests" / "l3" / "gochara_rules").mkdir(parents=True)
     ref = PERM.AD_ROWS[0]
-    maps = [{"old": ref, "new": {"dasha_row_id": "99999999-9999-4999-8999-999999999999", "start_iso": "2013-01-14T09:13:56Z", "end_iso": "2014-01-11T14:11:56Z", "lord_graha": ref["lord"]}, "key": (2, (0,))}]
+    maps = [{"old": ref, "new": {"dasha_row_id": "99999999-9999-4999-8999-999999999999", "start_iso": "2013-01-14T11:13:56Z", "end_iso": "2014-01-11T16:11:56Z", "lord_graha": ref["lord"]}, "key": (2, (0,))}]
     monkeypatch.setattr(T, "SIDECAR", tmp_path)
     new_id = "22222222-2222-4222-8222-222222222222"
     gen = tmp_path / "tests" / "l3" / "gochara_rules" / f"test_am10_repin_{new_id[:8]}.py"
@@ -2420,7 +2432,7 @@ def test_v18_1_an_evidence_output_that_is_a_source_or_an_input_or_another_output
 def test_v18_2_an_existing_nonidentical_generated_test_is_refused_before_anything_is_reported_or_written(monkeypatch, tmp_path):
     perm, t = _sidecar_tree(tmp_path)
     ref = PERM.AD_ROWS[0]
-    maps = [{"old": ref, "new": {"dasha_row_id": "99999999-9999-4999-8999-999999999999", "start_iso": "2013-01-14T09:13:56Z", "end_iso": "2014-01-11T14:11:56Z", "lord_graha": ref["lord"]}, "key": (2, (0,))}]
+    maps = [{"old": ref, "new": {"dasha_row_id": "99999999-9999-4999-8999-999999999999", "start_iso": "2013-01-14T11:13:56Z", "end_iso": "2014-01-11T16:11:56Z", "lord_graha": ref["lord"]}, "key": (2, (0,))}]
     monkeypatch.setattr(T, "SIDECAR", tmp_path)
     new_id = "22222222-2222-4222-8222-222222222222"
     gen = tmp_path / "tests" / "l3" / "gochara_rules" / f"test_am10_repin_{new_id[:8]}.py"
@@ -2487,7 +2499,7 @@ def test_t_atomic_a_failed_apply_restores_every_file_it_had_written_and_removes_
     ref = PERM.AD_ROWS[0]
     lit = tmp_path / "tests" / "l3" / "gochara_rules" / "test_ids.py"
     lit.write_text(f'ROW = "{ref["row_id"]}"\n', encoding="utf-8")
-    maps = [{"old": ref, "new": {"dasha_row_id": "99999999-9999-4999-8999-999999999999", "start_iso": "2013-01-14T09:13:56Z", "end_iso": "2014-01-11T14:11:56Z", "lord_graha": ref["lord"]}, "key": (2, (0,))}]
+    maps = [{"old": ref, "new": {"dasha_row_id": "99999999-9999-4999-8999-999999999999", "start_iso": "2013-01-14T11:13:56Z", "end_iso": "2014-01-11T16:11:56Z", "lord_graha": ref["lord"]}, "key": (2, (0,))}]
     monkeypatch.setattr(T, "SIDECAR", tmp_path)
     new_id = "22222222-2222-4222-8222-222222222222"
     originals = {p: p.read_bytes() for p in (perm, lit, tmp_path / "services" / "gochara_kernel" / "inventory_verifier.py")}
