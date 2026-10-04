@@ -1011,6 +1011,8 @@ def test_a_changed_lord_sequence_with_the_same_count_is_also_refused():
 # ── the pre-S-L1 CAPTURE (Suvarṇa via the steward): ONE REPEATABLE READ read-only transaction, daśā L1–3 AND the ten natal rows, file + sha256, connection closed, elapsed printed ─────────
 class SpyConn:
     """psycopg3-shaped; records every statement and the lifecycle calls — proves ONE transaction (no commit), rolled back, then closed."""
+    BUILD = OLDB                                  # the build the stand-in database holds (`--capture-new` tests use a subclass with BUILD = NEWB)
+
     def __init__(self, natal=True):
         self.calls, self.closed, self.rolled_back, self.committed = [], 0, 0, 0
         self.natal = natal
@@ -1032,8 +1034,8 @@ class SpyConn:
         if "chart_facts" in sql:
             return type("C", (), {"fetchall": lambda s_: natal_tuples()})()
         if "is_truncated_at_window" in sql:
-            return type("C", (), {"fetchall": lambda s_: [(r[0], False, False) for r in ref_db_tuples(OLDB)]})()
-        return type("C", (), {"fetchall": lambda s_: ref_db_tuples(OLDB)})()
+            return type("C", (), {"fetchall": lambda s_: [(r[0], False, False) for r in ref_db_tuples(outer.BUILD)]})()
+        return type("C", (), {"fetchall": lambda s_: ref_db_tuples(self.BUILD)})()
 
     def commit(self): self.committed += 1
     def rollback(self): self.rolled_back += 1
@@ -1298,10 +1300,10 @@ class AllClippedMD(SpyConn):
     """A pathological but valid-looking baseline: the sole reference MD carries BOTH window bounds (flagged at level 1), so level MD has no measurable boundary at all."""
     def execute(self, sql, params=None):
         if "is_truncated_at_window" in sql:
-            return type("C", (), {"fetchall": lambda s_: [(r[0], r[2] == 1, r[2] == 1) for r in ref_db_tuples(OLDB)]})()
+            return type("C", (), {"fetchall": lambda s_: [(r[0], r[2] == 1, r[2] == 1) for r in ref_db_tuples(self.BUILD)]})()
         if "chart_dashas" in sql and "is_truncated_at_window" not in sql and "count(*)" not in sql and "DISTINCT" not in sql and "FROM public.asset_throughput" not in sql:
             self.calls.append(" ".join(sql.split())[:400])
-            rows = [(r[0], r[1], r[2], r[3], r[4], T._t(T.WINDOW_START_ISO) if r[2] == 1 else r[5], T._t(T.WINDOW_END_ISO) if r[2] == 1 else r[6], r[7], r[8]) for r in ref_db_tuples(OLDB)]
+            rows = [(r[0], r[1], r[2], r[3], r[4], T._t(T.WINDOW_START_ISO) if r[2] == 1 else r[5], T._t(T.WINDOW_END_ISO) if r[2] == 1 else r[6], r[7], r[8]) for r in ref_db_tuples(self.BUILD)]
             return type("C", (), {"fetchall": lambda s_: rows})()
         return super().execute(sql, params)
 
@@ -1533,3 +1535,91 @@ def test_the_cli_stops_where_the_verifier_would_refuse_even_when_levels_1_to_3_a
     monkeypatch.setattr(T, "fetch_verifier_builds", lambda conn, chart: [NEWB, OTHERB])
     rc = T.main(args(**_shape()), conn=FakeConn())
     assert rc == 3 and "(vi)" in capsys.readouterr().out
+
+
+# ── --capture-new (steward ST-REPIN-CAPTURE-NEW): the durable POST record in the capture format ───────────────────────────────────────────────────────────────────
+
+class NewSpy(SpyConn):
+    BUILD = NEWB
+
+
+class AllClippedNew(AllClippedMD):
+    BUILD = NEWB
+
+
+@real_reader
+def test_capture_new_is_ONE_rolled_back_transaction_and_writes_the_NEW_build_in_the_capture_format(monkeypatch, tmp_path, capsys):
+    spy = NewSpy()
+    monkeypatch.setattr(T, "open_capture_connection", lambda: spy)
+    p = tmp_path / "new.json"
+    assert T.main(["--capture-new", str(p), "--new-build-id", NEWB.upper()]) == 0                    # the id is canonicalised
+    assert spy.committed == 0 and spy.rolled_back == 1 and spy.closed == 1 and spy.calls[0].startswith("SELECT pg_current_snapshot")
+    assert any("chart_dashas" in c for c in spy.calls) and any("chart_facts" in c for c in spy.calls)
+    out = capsys.readouterr().out
+    assert f"of {NEWB}" in out and "sha256 " in out and "repeatable read read-only transaction, connection closed; elapsed" in out
+    full = T.load_capture_full(str(p), CHART, NEWB)                                                  # the loader's validation, for the NEW build
+    assert full["build_id"] == NEWB and all(r["build_id"] == NEWB for r in full["rows"]) and len(full["natal"]) == 10 and sorted({r["level_n"] for r in full["rows"]}) == [1, 2, 3]
+    assert full["meta"]["snapshot_start"] == full["meta"]["snapshot_end"] and full["sha256"] in out
+    with pytest.raises(ValueError):
+        T.load_capture_full(str(p), CHART, OLDB)                                                     # it names the NEW build, not the pin
+
+
+@real_reader
+def test_capture_new_refuses_a_wrong_build_a_clipped_baseline_and_a_malformed_tree_with_no_artifact_rollback_once_close_once_no_commit(monkeypatch, tmp_path, capsys):
+    # the database holds the OLD build's rows but the NEW build was asked for ⇒ every row carries a foreign build
+    spy = SpyConn()
+    monkeypatch.setattr(T, "open_capture_connection", lambda: spy)
+    p = tmp_path / "wrong.json"
+    assert T.main(["--capture-new", str(p), "--new-build-id", NEWB]) == 3 and not p.exists()
+    assert "a foreign or mixed build" in capsys.readouterr().err and spy.rolled_back == 1 and spy.closed == 1 and spy.committed == 0
+    # a baseline whose sole MD carries both window bounds: no measurable boundary at that level
+    spy = AllClippedNew()
+    monkeypatch.setattr(T, "open_capture_connection", lambda: spy)
+    q = tmp_path / "clipped.json"
+    assert T.main(["--capture-new", str(q), "--new-build-id", NEWB]) == 3 and not q.exists()
+    err = capsys.readouterr().err
+    assert "level MD has NO UNCLIPPED start boundary" in err and spy.rolled_back == 1 and spy.closed == 1 and spy.committed == 0
+    # a self-parented row
+    bad = list(ref_db_tuples(NEWB))
+    pd = next(i for i, r in enumerate(bad) if r[2] == 3)
+    bad[pd] = (*bad[pd][:3], bad[pd][0], *bad[pd][4:])
+    spy = _spy_with_rows(bad)
+    spy.BUILD = NEWB
+    monkeypatch.setattr(T, "open_capture_connection", lambda: spy)
+    r_ = tmp_path / "tree.json"
+    assert T.main(["--capture-new", str(r_), "--new-build-id", NEWB]) == 3 and not r_.exists()
+    assert "its own parent" in capsys.readouterr().err and spy.rolled_back == 1 and spy.closed == 1 and spy.committed == 0
+    assert not list(tmp_path.iterdir())
+
+
+@real_reader
+def test_capture_new_of_the_PINNED_build_still_enforces_the_pinned_reference_rows(monkeypatch, tmp_path, capsys):
+    """The reference-row check follows the PIN: a capture of a build the contract does not pin yet has none to check (the first test); a capture of the pinned build (after the re-pin) must carry them."""
+    tuples = [r for r in ref_db_tuples(OLDB) if r[0] != PERM.PD_ROWS[0]["row_id"]]          # a leaf reference row missing (the level itself is still read)
+    spy = _spy_with_rows(tuples)
+    monkeypatch.setattr(T, "open_capture_connection", lambda: spy)
+    p = tmp_path / "pinned.json"
+    assert T.main(["--capture-new", str(p), "--new-build-id", OLDB]) == 3 and not p.exists()
+    assert "is NOT in the capture" in capsys.readouterr().err and spy.rolled_back == 1 and spy.closed == 1 and spy.committed == 0
+
+
+@pytest.mark.parametrize("argv", [
+    ["--capture-new", "{p}"],                                                              # needs --new-build-id
+    ["--capture-new", "{p}", "--new-build-id", "not-a-uuid"],
+    ["--capture-new", "{p}", "--new-build-id", NEWB, "--dry-run"],
+    ["--capture-new", "{p}", "--new-build-id", NEWB, "--apply"],
+    ["--capture-new", "{p}", "--new-build-id", NEWB, "--settled-notice", "x.json"],
+    ["--capture-new", "{p}", "--new-build-id", NEWB, "--old-rows", "x.json"],
+    ["--capture-new", "{p}", "--new-build-id", NEWB, "--rulings", "x.json"],
+    ["--capture-new", "{p}", "--new-build-id", NEWB, "--forensic-report", "x.md"],
+    ["--capture-new", "{p}", "--new-build-id", NEWB, "--out", "x.md"],
+    ["--capture-new", "{p}", "--new-build-id", NEWB, "--settled-received", "M1"],
+    ["--capture-new", "{p}", "--new-build-id", NEWB, "--capture-old", "{p}"],              # the two capture modes exclude each other
+    ["--capture-old", "{p}", "--capture-new", "{p}"],
+    ["--capture-new", "{p}", "--new-build-id", NEWB, "--import-w0", "w0.json", "--w0-checksum", "x", "--w0-capture-out", "o.json"],
+    ["--capture-new", "{p}", "--new-build-id", NEWB, "--system", "yogini"],
+])
+def test_capture_new_mode_combinations_are_refused_BEFORE_any_connection_and_write_nothing(tmp_path, argv):
+    p = tmp_path / "cap.json"
+    assert T.main([x.replace("{p}", str(p)) for x in argv], conn=_Boom()) == 2
+    assert not p.exists() and not list(tmp_path.iterdir())

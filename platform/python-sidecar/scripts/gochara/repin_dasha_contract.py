@@ -9,6 +9,7 @@ nothing stops it, performs the single change.
     python3 scripts/gochara/repin_dasha_contract.py --new-build-id <uuid> \\
         [--chart-id 482012f1-…] [--out evidence.md] [--forensic-report path]
         [--settled-notice notice.json]      # Suvarṇa's SETTLED-1 notice: expected per-level shift + a STATED tolerance — the measured shift must match or the verdict is STOP
+        [--capture-new new.json --new-build-id <uuid>]  # AFTER SETTLED-1 (read-only): the durable POST record of the new build, in the capture format (same snapshot discipline as --capture-old)
         [--capture-old old.json]             # BEFORE S-L1 (read-only): save the pinned build's rows — the old rows may not exist afterwards; then pass --old-rows old.json
         [--old-rows old.json]                # the old rows come from this capture (sha256-checked) instead of the database
         [--dry-run]                          # print the full report and the test-literal matches; write NOTHING
@@ -452,7 +453,7 @@ def validate_capture(d: dict, chart_id: str, build_id: str) -> list[str]:
         out.append("the capture's sha256 does not match its identity, selection, rows and natal longitudes")
     out += row_contract_problems(d["rows"], build_id, "captured old rows")
     try:
-        out += capture_problems(d["rows"]) + coverage_problems(d["rows"]) + natal_problems(d.get("natal") or [])
+        out += capture_problems(d["rows"], reference=(build_id == PERM.DASHA_READ_CONTRACT["build_id"])) + coverage_problems(d["rows"]) + natal_problems(d.get("natal") or [])
     except (ValueError, KeyError, TypeError) as exc:
         out.append(f"the capture's rows cannot be read ({exc.__class__.__name__}: {exc})")                       # e.g. an instant without an offset: a named STOP, never a traceback
     counts = (d.get("meta") or {}).get("counts_by_level")
@@ -550,12 +551,12 @@ def canon_uuid(x) -> str:
     return str(uuid.UUID(str(x)))
 
 
-def capture_problems(rows: list[dict]) -> list[str]:
+def capture_problems(rows: list[dict], reference: bool = True) -> list[str]:
     """What the COMPARISON will later need, checked at CAPTURE time (Fable F-R18-2) — a useless capture must be found NOW, while a re-capture is still possible: a well-formed tree, every `permission.py`
     reference-row id present with its lord, and no flag set off the window bound."""
     out = tree_problems(rows, "captured old rows")
     by_id = {r["dasha_row_id"]: r for r in rows}
-    for ref in PERM.MD_ROWS + PERM.AD_ROWS + PERM.PD_ROWS:
+    for ref in (PERM.MD_ROWS + PERM.AD_ROWS + PERM.PD_ROWS if reference else []):       # `reference=False`: a capture of a build the contract does not pin yet (--capture-new before the re-pin)
         r = by_id.get(ref["row_id"])
         if r is None:
             out.append(f"reference row {ref['row_id']} ({ref['level']} {ref['lord']}) is NOT in the capture")
@@ -1051,13 +1052,25 @@ def _mode_error(a) -> str | None:
         if not (a.import_w0 and a.w0_checksum and a.w0_capture_out):
             return "--import-w0 needs --w0-checksum and --w0-capture-out (and only those)"
         extra = [flag for flag, val in (("--new-build-id", a.new_build_id), ("--dry-run", a.dry_run), ("--apply", a.apply), ("--settled-notice", a.settled_notice), ("--old-rows", a.old_rows),
-                                        ("--rulings", a.rulings), ("--forensic-report", a.forensic_report), ("--out", a.out), ("--settled-received", a.settled_received), ("--capture-old", a.capture_old)) if val]
+                                        ("--rulings", a.rulings), ("--forensic-report", a.forensic_report), ("--out", a.out), ("--settled-received", a.settled_received), ("--capture-old", a.capture_old), ("--capture-new", a.capture_new)) if val]
         return f"--import-w0 is an import-only mode; it cannot be combined with {', '.join(extra)}" if extra else None
     if a.capture_old:
         extra = [flag for flag, val in (("--new-build-id", a.new_build_id), ("--dry-run", a.dry_run), ("--apply", a.apply), ("--settled-notice", a.settled_notice), ("--old-rows", a.old_rows),
-                                        ("--rulings", a.rulings), ("--forensic-report", a.forensic_report), ("--out", a.out), ("--settled-received", a.settled_received)) if val]
+                                        ("--rulings", a.rulings), ("--forensic-report", a.forensic_report), ("--out", a.out), ("--settled-received", a.settled_received), ("--capture-new", a.capture_new)) if val]
         if extra:
             return f"--capture-old is a capture-only mode (read-only, writes only its own file); it cannot be combined with {', '.join(extra)}"
+        return None
+    if a.capture_new:
+        extra = [flag for flag, val in (("--dry-run", a.dry_run), ("--apply", a.apply), ("--settled-notice", a.settled_notice), ("--old-rows", a.old_rows),
+                                        ("--rulings", a.rulings), ("--forensic-report", a.forensic_report), ("--out", a.out), ("--settled-received", a.settled_received)) if val]
+        if extra:
+            return f"--capture-new is a capture-only mode (read-only, writes only its own file); it cannot be combined with {', '.join(extra)}"
+        if not a.new_build_id:
+            return "--capture-new needs --new-build-id <the build to capture>"
+        try:
+            a.new_build_id = canon_uuid(a.new_build_id)
+        except ValueError:
+            return f"--new-build-id {a.new_build_id!r} is not a valid UUID"
         return None
     if not a.new_build_id:
         return "--new-build-id is required for comparison and application (it is not used by --capture-old)"
@@ -1094,11 +1107,23 @@ def capture_census(conn, chart_id: str) -> dict:
 
 
 def _capture_old(a, conn) -> int:
+    """`--capture-old`: the PINNED (old) build, BEFORE S-L1."""
+    return _capture_build(a, conn, PERM.DASHA_READ_CONTRACT["build_id"], a.capture_old, "pinned build (capture)")
+
+
+def _capture_new(a, conn) -> int:
+    """`--capture-new --new-build-id <uuid>` (steward ST-REPIN-CAPTURE-NEW): the SAME single REPEATABLE READ / READ ONLY snapshot, the SAME acquisition validation and the SAME rollback-then-close-then-write
+    discipline as `--capture-old`, for the NEW (SETTLED-1) build — the durable POST record in the capture format (the offline intake checker reads it). The reference-row check applies only when that build is
+    the pinned one (i.e. after the re-pin); before it the new build has no pinned reference ids."""
+    return _capture_build(a, conn, a.new_build_id, a.capture_new, "new build (capture)")
+
+
+def _capture_build(a, conn, build_id: str, path: str, label: str) -> int:
     """ONE short read-only transaction (REPEATABLE READ, READ ONLY — one snapshot) reads the Vimśottarī Lahiri levels 1–3 of the pinned build (with the window-truncation flags), the ten natal
     graha_position rows and the asset-state/build census; the capture is VALIDATED — the same validation the comparison will apply — BEFORE anything is written (a malformed or unusable capture is a
     named STOP with NO artifact); the connection is rolled back and closed BEFORE the file is written; prints the data sha256, the whole-file sha256 and the elapsed time (Suvarṇa: in the hour BEFORE S-L1)."""
     started = time.monotonic()
-    old_id = PERM.DASHA_READ_CONTRACT["build_id"]
+    old_id = build_id
     own = conn is None
     if own:
         conn = open_capture_connection()
@@ -1112,7 +1137,7 @@ def _capture_old(a, conn) -> int:
                 meta["transaction_read_only"] = conn.execute("SHOW transaction_read_only").fetchone()[0]
                 if meta["transaction_isolation"] != "repeatable read" or meta["transaction_read_only"] != "on":
                     raise ReaderRefused(f"the capture transaction is {meta['transaction_isolation']!r} / read_only {meta['transaction_read_only']!r}, not repeatable read / on")
-            rows = read_levels(conn, a.chart_id, old_id, "pinned build (capture)")
+            rows = read_levels(conn, a.chart_id, old_id, label)
             natal = read_natal(conn, a.chart_id)
             meta["census"] = capture_census(conn, a.chart_id)
             if own:
@@ -1138,10 +1163,10 @@ def _capture_old(a, conn) -> int:
     if bad:
         print("STOP — this capture could NOT later be used (nothing written; fix and re-capture while the old rows exist): " + "; ".join(bad[:8]), file=sys.stderr); return 3
     cap["meta"]["elapsed_seconds"] = round(time.monotonic() - started, 3)
-    write_capture(a.capture_old, cap)
-    print(f"captured {len(rows)} daśā rows (levels 1–3) of {old_id} and {len(natal)} natal longitudes -> {a.capture_old}")
+    write_capture(path, cap)
+    print(f"captured {len(rows)} daśā rows (levels 1–3) of {old_id} and {len(natal)} natal longitudes -> {path}")
     print(f"sha256 {cap['sha256']}   (data + identity + selection)")
-    print(f"whole-file sha256 {file_sha256(a.capture_old)}   (record it separately)")
+    print(f"whole-file sha256 {file_sha256(path)}   (record it separately)")
     print(f"one {meta.get('transaction_isolation', 'injected')} read-only transaction, connection closed; elapsed {cap['meta']['elapsed_seconds']} s")
     return 0
 
@@ -1159,6 +1184,7 @@ def main(argv=None, *, conn=None) -> int:
     ap.add_argument("--system", default="vimshottari", help="REFUSED unless vimshottari — the pin is the Vimśottarī read; other systems are out of scope")
     ap.add_argument("--max-level", type=int, default=3, help="REFUSED unless 3 — levels 1–3 (MD/AD/PD) only; level-4 counts change by design at S-L1")
     ap.add_argument("--capture-old", default=None, help="READ-ONLY: write the OLD (pinned) build's rows to this file BEFORE S-L1 and exit — the old rows may not exist afterwards")
+    ap.add_argument("--capture-new", default=None, help="READ-ONLY: with --new-build-id, write the NEW (SETTLED-1) build's rows to this file in the capture format (the durable POST record) and exit; same snapshot/validation discipline as --capture-old")
     ap.add_argument("--import-w0", default=None, help="Suvarṇa's W0 fallback baseline (JSON in this tool's capture fields); needs --w0-checksum and --w0-capture-out; re-written as a capture")
     ap.add_argument("--w0-checksum", default=None, help="the SHA-256 of the W0 file named by SETTLED-1")
     ap.add_argument("--w0-capture-out", default=None, help="where the imported capture is written")
@@ -1172,6 +1198,8 @@ def main(argv=None, *, conn=None) -> int:
         return import_w0(a.import_w0, a.w0_checksum, a.w0_capture_out, a.chart_id)
     if a.capture_old:
         return _capture_old(a, conn)
+    if a.capture_new:
+        return _capture_new(a, conn)
     old_id = PERM.DASHA_READ_CONTRACT["build_id"]
     if a.chart_id != PERM.DASHA_READ_CONTRACT["chart_id"]:
         print(f"WARNING: --chart-id {a.chart_id} is not the canonical chart {PERM.DASHA_READ_CONTRACT['chart_id']}; the comparison is for evidence only and --apply is refused", file=sys.stderr)
