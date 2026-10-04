@@ -22,36 +22,12 @@ REPO_ROOT = Path(__file__).resolve().parents[5]
 GOCHARA_DIR = Path(__file__).resolve().parent
 CI_YML = REPO_ROOT / ".github" / "workflows" / "ci.yml"
 
-#: Files NOT run in the A5.3 DB step today. Reason for every entry, uniformly:
-#: not yet admitted to the DB step — admission is decided file by file by
-#: Stream A's audit of tests/l3/gochara (steward C52-ADD, 2026-10-03); the
-#: guard pins the gap explicitly so the skip is never silent. Remove an entry
-#: when the file is added to the CI list (this guard fails on stale entries).
-EXCLUDED = {
-    "test_a53_1241_fixture_pin.py": "not yet admitted — Stream A audit decides (C52-ADD)",
-    "test_a53_am5_writer.py": "not yet admitted — Stream A audit decides (C52-ADD)",
-    "test_a53_aspect_span.py": "not yet admitted — Stream A audit decides (C52-ADD)",
-    "test_a53_dasha_read.py": "not yet admitted — Stream A audit decides (C52-ADD)",
-    "test_a53_ephemeral_tier_rule.py": "not yet admitted — Stream A audit decides (C52-ADD)",
-    "test_a53_gochara_v5_writer.py": "not yet admitted — Stream A audit decides (C52-ADD)",
-    "test_a53_inventory.py": "not yet admitted — Stream A audit decides (C52-ADD)",
-    "test_a53_materialise.py": "not yet admitted — Stream A audit decides (C52-ADD)",
-    "test_a53_member_geometry.py": "not yet admitted — Stream A audit decides (C52-ADD)",
-    "test_a53_moon_on_demand.py": "not yet admitted — Stream A audit decides (C52-ADD)",
-    "test_a53_p1_house_descriptor.py": "not yet admitted — Stream A audit decides (C52-ADD)",
-    "test_a53_r18_graha_map_parity.py": "not yet admitted — Stream A audit decides (C52-ADD)",
-    "test_a53_r86_sweep.py": "not yet admitted — Stream A audit decides (C52-ADD)",
-    "test_a53_record_store.py": "not yet admitted — Stream A audit decides (C52-ADD)",
-    "test_a53_rule_registry.py": "not yet admitted — Stream A audit decides (C52-ADD)",
-    "test_a53_rule_registry_versions.py": "not yet admitted — Stream A audit decides (C52-ADD)",
-    "test_a53_substrate_store.py": "not yet admitted — Stream A audit decides (C52-ADD)",
-    "test_a53_targets.py": "not yet admitted — Stream A audit decides (C52-ADD)",
-    "test_a53_version_selection.py": "not yet admitted — Stream A audit decides (C52-ADD)",
-    "test_a53_window_evaluator.py": "not yet admitted — Stream A audit decides (C52-ADD)",
-    "test_a53_window_sweep.py": "not yet admitted — Stream A audit decides (C52-ADD)",
-    "test_a53_window_sweep_pg.py": "not yet admitted — Stream A audit decides (C52-ADD)",
-    "test_a53_writerbase_conformance.py": "not yet admitted — Stream A audit decides (C52-ADD)",
-}
+#: Files deliberately NOT run in the A5.3 DB step — one entry per file, each with the reason a
+#: person owns. EMPTY since the 23 suites C52 found unlisted were admitted (steward C-RETIRED,
+#: 2026-10-04): every `test_a53_*.py` now runs in CI. Add an entry only with a stated reason; the
+#: guard fails on stale entries (a file that is listed after all) and on entries for files that
+#: do not exist.
+EXCLUDED: dict[str, str] = {}
 
 
 def _ci_db_step_a53_files() -> set[str]:

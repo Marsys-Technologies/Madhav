@@ -191,3 +191,18 @@ def conn(wp6_schema):
         yield c
     finally:
         c.close()
+
+
+@pytest.fixture(autouse=True, scope="module")
+def _fresh_contact_reconstruct_cache():
+    """C52: `contact_reconstruct._CACHE` is a PROCESS-WIDE memo keyed by the position source's declared `cache_key`
+    (e.g. ("swiss", EPHE_PATH)) plus body/cells/horizon. Two test modules that build DIFFERENT position functions under
+    the SAME key (a stand-in sky in one, the real ephemeris in another) shared entries when the A5.3 suites run in ONE
+    pytest process (the CI step), so a module's result depended on which module ran before it —
+    test_a53_stored_scope_real_sky passed alone and failed in the combined run. Every module starts from an empty memo
+    (within a module the memo still does its job: across the classes of one build); a key that is reused for a
+    different source can no longer cross a module boundary."""
+    from services.gochara_kernel import contact_reconstruct
+    contact_reconstruct._CACHE.clear()
+    yield
+    contact_reconstruct._CACHE.clear()
