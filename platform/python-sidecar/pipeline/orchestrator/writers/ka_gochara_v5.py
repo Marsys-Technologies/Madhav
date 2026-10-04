@@ -211,6 +211,17 @@ def _plan_manifest(ctx: ContextSpec) -> dict | None:
     CHANGED after dispatch — the marker may have been added, removed or replaced mid-run — and is refused by name, never read.
     (Fable P1 on PR 3110: a key removed before the manifest substep stamped a full-horizon default candidate on a plan narrowed
     to one class.)"""
+    if ctx.db_conn is None:
+        # Connection-free PLANNING (a dry run that only lists the plan; the lifecycle and snapshot-order tests do this). Such a call
+        # cannot read a marker and nothing executes, so it returns the default plan — ONLY for a dry run. A LIVE call with no
+        # connection is a contract violation and is refused by name: a live run must never silently fall back to the default plan
+        # because the marker could not be read.
+        if ctx.dry_run:
+            return None
+        raise TestSliceRefusal(
+            f"{ASSET_ID}: {TEST_SLICE_KEY}: a live plan needs a connection to read build_runs.plan_manifest — refused, never "
+            "planned as the default (only a dry run may plan without one)")
+
     def read():
         return ctx.db_conn.execute(
             "SELECT plan_manifest, plan_manifest_digest FROM public.build_runs WHERE id = %s",
@@ -362,6 +373,18 @@ def _slice_component(slice_: TestSlice) -> dict:
     the horizon IN CLEAR, so a reader of the manifest alone sees how narrow the candidate is."""
     return {"schema": TEST_SLICE_SCHEMA, "marker_digest": slice_.digest, "run": slice_.run,
             "classes": list(slice_.classes), "horizon": [slice_.horizon[0].isoformat(), slice_.horizon[1].isoformat()]}
+
+
+def _slice_excluded_agents(slice_: "TestSlice | None"):
+    """The excluded transiting bodies the writer's IN-BUILD self-checks are TOLD under a validated marker: the DEFAULT stored scope's
+    (`stored_non_moon` → the Moon), because a test slice narrows classes and horizon, never which bodies the stored tier holds. None
+    without a marker: the verifiers then read the manifest's own scope exactly as before. (Stream B P1 on PR 3110: with the stored
+    scope `test_slice`, `verify_p1_anchors` and the inventory re-derivation raised Unverifiable at the first P1 grain.) This changes
+    only what the BUILD reports about itself; the verification JOB, the seal flow and serving always pass nothing and so still read
+    the stored scope and refuse a sliced candidate by name."""
+    if slice_ is None:
+        return None
+    return gk_verifier.excluded_agents_of_scope(gk_input_vector.STORED_SCOPE)
 
 
 def _scope_normalised(vector: dict, slice_: TestSlice | None) -> dict:
@@ -876,7 +899,8 @@ class GocharaV5Writer(WriterBase):
                 event_class=event_class, sealed_paths=sealed,
                 path_exclusions=VERIFIER_PATH_RULINGS,
                 h_unknown_exclusion=VERIFIER_H_UNKNOWN_RULING,
-                selected_versions=stored_sel or None)
+                selected_versions=stored_sel or None,
+                excluded_agents=_slice_excluded_agents(slice_))
         except gk_verifier.Unverifiable as exc:
             return WriterResult(
                 asset_id=self.asset_id, rows_inserted=0,
@@ -1053,7 +1077,7 @@ class GocharaV5Writer(WriterBase):
             # closed nothing was minted, the class makes no P1 completeness claim, and the notes say so
             if not p1_closed:
                 verify_p1_anchors(ctx.db_conn, chart_id=chart_id, generation=GENERATION, event_class=event_class,
-                                  position_at=position_at)
+                                  position_at=position_at, excluded_agents=_slice_excluded_agents(slice_))
             # AM-20 (revised): the stored house descriptor is the count from the lagna
             verify_p1_house_descriptor(ctx.db_conn, chart_id=chart_id, generation=GENERATION,
                                        event_class=event_class)

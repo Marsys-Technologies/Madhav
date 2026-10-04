@@ -198,4 +198,50 @@ describe('queryContactLedger — WP7 P-4', () => {
     expect(pageSql).toContain('(t_exact, contact_id) >')
     expect(second.page.next_cursor).toBeNull()
   })
+
+  it('refuses a TEST SLICE candidate by name — explicit generation 5.0, no contact or coverage SQL issued', async () => {
+    mockFetch.mockResolvedValueOnce(
+      jsonRes([{ manifest_id: 'm-slice', convention_id: 'conv-1', content_digest: 'sha256:x', status: 'candidate',
+                 stored_scope: 'test_slice', has_test_slice: true }])
+    )
+    const res = await queryContactLedger({ chart_id: CHART, generation: '5.0' }, principal)
+    expect(res.status).toBe('not_computed')
+    expect(res.refusal).toBe('test_slice_candidate')
+    expect(res.hard_floor).toEqual({ confirmed: [], count: 0 })
+    expect(res.coverage.partitions).toEqual([])
+    expect(res.coverage.note).toMatch(/TEST SLICE/)
+    expect(mockFetch).toHaveBeenCalledTimes(1)                    // the manifest read only
+    expect(sqlOf(0)).toContain('kala_gochara_publication')
+  })
+
+  it('refuses on EITHER marker: the test_slice component alone, or the scope word alone', async () => {
+    for (const row of [
+      { stored_scope: 'stored_non_moon', has_test_slice: true },
+      { stored_scope: 'test_slice', has_test_slice: false },
+    ]) {
+      mockFetch.mockReset()
+      mockFetch.mockResolvedValueOnce(
+        jsonRes([{ manifest_id: 'm-s', convention_id: 'conv-1', content_digest: 'sha256:x', status: 'candidate', ...row }])
+      )
+      const res = await queryContactLedger({ chart_id: CHART, generation: '5.0' }, principal)
+      expect(res.refusal).toBe('test_slice_candidate')
+      expect(mockFetch).toHaveBeenCalledTimes(1)
+    }
+  })
+
+  it('a default 5.0 manifest (stored_non_moon, no slice component) is NOT refused', async () => {
+    mockFetch
+      .mockResolvedValueOnce(
+        jsonRes([{ manifest_id: 'm-d', convention_id: 'conv-1', content_digest: 'sha256:x', status: 'candidate',
+                   stored_scope: 'stored_non_moon', has_test_slice: false }])
+      )
+      .mockResolvedValueOnce(jsonRes([{ n: '1' }]))                        // confirmed count
+      .mockResolvedValueOnce(jsonRes([episodeRow()]))                      // confirmed page
+      .mockResolvedValueOnce(jsonRes([]))                                  // context layer
+      .mockResolvedValueOnce(jsonRes([]))                                  // coverage partitions
+    const res = await queryContactLedger({ chart_id: CHART, generation: '5.0' }, principal)
+    expect(res.refusal).toBeUndefined()
+    expect(res.status).toBe('ok')
+    expect(res.hard_floor.count).toBe(1)
+  })
 })

@@ -59,6 +59,13 @@ CANONICAL_VECTOR_KEYS = (
 )
 
 
+class TestSlicePublicationRefusal(Exception):
+    """A TEST SLICE candidate (stored_scope = 'test_slice' / a test_slice component in its input vector) may never be published.
+    Raised by `publish` itself — independent of the seal flow, which only refuses when a seal exists (Codex P1 on PR 3110: the builder
+    holds UPDATE on the publication table and `publish` flipped candidate -> published without reading the vector)."""
+    __test__ = False                       # not a pytest class
+
+
 class PublishedGenerationRefusal(Exception):
     """Raised by any write/delete operation targeting a `published` generation.
 
@@ -613,6 +620,22 @@ def _canonical_row_set(conn, chart_id: str, generation: str) -> str:
     ))
 
 
+def _refuse_test_slice(conn, manifest_id, generation: str) -> None:
+    """Refuse, by name, to publish a manifest whose input vector says it is a TEST SLICE (either marker is enough: the scope word
+    or the component). Read from the stored row itself, never from a caller's say-so."""
+    row = conn.execute("SELECT input_generation_vector FROM kala_gochara_publication WHERE manifest_id = %s",
+                       (manifest_id,)).fetchone()
+    vector = (row.get("input_generation_vector") if isinstance(row, dict) else row[0]) if row is not None else None
+    if isinstance(vector, str):
+        import json as _json
+        vector = _json.loads(vector)
+    if isinstance(vector, dict) and (vector.get("stored_scope") == "test_slice" or "test_slice" in vector):
+        raise TestSlicePublicationRefusal(
+            f"publish refused: the manifest of generation {generation!r} is a TEST SLICE (stored_scope="
+            f"{vector.get('stored_scope')!r}, test_slice component {'present' if 'test_slice' in vector else 'absent'}) — a "
+            "small-test candidate is unsealable and unpublishable by construction; run the full build under a real manifest")
+
+
 def publish(conn, chart_id: str, generation: str) -> str:
     """Transition candidate -> published.
 
@@ -631,6 +654,7 @@ def publish(conn, chart_id: str, generation: str) -> str:
         raise ValueError(
             f"cannot publish generation {generation!r}: manifest status is {row[1]!r}"
         )
+    _refuse_test_slice(conn, row[0], generation)
     digest = _canonical_row_set(conn, chart_id, generation)
     counts = {
         "contacts": _scalar(conn.execute(

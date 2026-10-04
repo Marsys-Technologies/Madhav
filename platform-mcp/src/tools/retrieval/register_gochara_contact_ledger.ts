@@ -117,6 +117,8 @@ export interface CoveragePartition {
 
 export interface ContactLedgerResult {
   status: 'ok' | 'unpublished' | 'not_computed'
+  /** Present only when the capability REFUSES the generation by name (today: 'test_slice_candidate'). */
+  refusal?: 'test_slice_candidate'
   floor_overflow?: boolean
   generation: string | null
   manifest: {
@@ -301,7 +303,9 @@ export async function queryContactLedger(
   // Manifest (null for legacy generations — the publication ledger only
   // carries '4.x' rows; a lookup miss is manifest-null, not an error).
   const { rows: manifestRows } = await platformQuery(
-    `SELECT manifest_id, convention_id, content_digest, status
+    `SELECT manifest_id, convention_id, content_digest, status,
+            input_generation_vector->>'stored_scope' AS stored_scope,
+            (input_generation_vector->'test_slice') IS NOT NULL AS has_test_slice
        FROM kala_gochara_publication
       WHERE chart_id = $1::uuid AND generation = $2`,
     [input.chart_id, generation],
@@ -315,6 +319,30 @@ export async function queryContactLedger(
         status: String(manifestRows[0]['status']),
       }
     : null
+
+  // A TEST SLICE candidate (a small-test build of generation '5.0': stored_scope 'test_slice' and/or a test_slice component in its
+  // manifest) covers a handful of classes over a narrowed horizon and is unsealable and unpublishable by construction. It is REFUSED
+  // here by name — never served as an ordinary status 'ok' coverage object, which would read as a complete search (Codex P2 on
+  // PR 3110). No contact or coverage query is issued.
+  const sliceRow = manifestRows[0]
+  if (sliceRow && (sliceRow['stored_scope'] === 'test_slice' || sliceRow['has_test_slice'] === true)) {
+    return {
+      status: 'not_computed',
+      refusal: 'test_slice_candidate',
+      generation,
+      manifest,
+      hard_floor: { confirmed: [], count: 0 },
+      coverage: {
+        partitions: [],
+        searched_horizon: null,
+        unavailable_inputs: {},
+        note:
+          `generation ${generation} is a TEST SLICE candidate (a small-test build over a narrowed set of classes and horizon): ` +
+          'refused, never served as a coverage statement. Run the full build under a real manifest.',
+      },
+      page: { returned: 0, next_cursor: null, confirmed_returned: 0 },
+    }
+  }
 
   const limit = Math.min(Math.max(input.page?.limit ?? 50, 1), CONFIRMED_FLOOR_BUDGET)
 
