@@ -27,10 +27,10 @@ REFUSES (loudly, nothing deleted) when ANY of these holds:
      it is what C46 stamps on every sliced candidate).
 
 Then deletes, in ONE commit, in dependency order:
-    provenance receipts of this asset on the pinned chart (they are test evidence
-      — and deleting the run row first would set their build link to NULL, which the
-      Nirmana monitor reads as evidence whose run cannot be found, i.e. NON-test
-      evidence; see definitions.ts, rule N-137);
+    provenance receipts of this asset on the pinned chart — deleted BY ASSET AND CHART, not through their run link: they are
+      test evidence, and the link is `ON DELETE SET NULL`, so a receipt whose run row was already pruned (or is deleted below)
+      keeps a NULL link, which the Nirmana monitor reads as evidence whose run cannot be found, i.e. NON-test evidence (see
+      definitions.ts, rule N-137). They go first so the attribution checks above are still true of what is deleted;
     build_run_assets and build_runs rows of the test runs; the asset_throughput row;
     the OUTPUT CHAIN of (chart, '5.0'), in the order RecordStore.delete_generation_chain
       uses: eval_window (window membership cascades), relationship_record
@@ -114,6 +114,9 @@ LEGACY_TABLES = (
     ("kala_gochara_publication", ""),               # the candidate manifest: last
 )
 GENERATION_TABLES = CHAIN_TABLES + INVENTORY_TABLES + LEGACY_TABLES
+# The legacy v4 ledger tables are NOT written by the v5 writer and are not part of every database's migration chain: a legacy
+# table that does not exist is skipped (named in the dry-run listing as `absent`). The chain and inventory tables are the v5
+# writer's own output: they are REQUIRED, and a missing one fails loudly.
 
 _TEST_RUNS = ("SELECT id FROM build_runs WHERE triggered_by = %s AND chart_id = %s")
 
@@ -147,9 +150,22 @@ def _count(cur, sql: str, params: tuple = ()) -> int:
     return int(cur.fetchone()["n"])
 
 
+def _generation_tables(cur) -> list[tuple[str, str]]:
+    """The (table, extra WHERE) pairs this teardown works on: the chain and inventory tables always, a legacy table only
+    when it exists in this database."""
+    out = []
+    for entry in GENERATION_TABLES:
+        if entry in LEGACY_TABLES:
+            cur.execute("SELECT to_regclass(%s) AS r", (f"public.{entry[0]}",))
+            if cur.fetchone()["r"] is None:
+                continue
+        out.append(entry)
+    return out
+
+
 def _generation_rows(cur) -> int:
     total = 0
-    for table, extra in GENERATION_TABLES:
+    for table, extra in _generation_tables(cur):
         total += _count(cur, f"SELECT count(*) AS n FROM {table} WHERE chart_id = %s AND generation = %s{extra}",
                         (CHART_ID, GENERATION))
     return total
@@ -252,8 +268,8 @@ def _refusal_checks(cur) -> None:
             f"manifest is not stamped stored_scope = '{SLICE_SCOPE}' — they cannot be attributed to the small test")
 
 
-def _dry_run_counts(cur) -> dict[str, int]:
-    counts: dict[str, int] = {}
+def _dry_run_counts(cur) -> dict:
+    counts: dict = {}
     counts["asset_provenance_receipts"] = _count(
         cur, "SELECT count(*) AS n FROM asset_provenance_receipts WHERE asset_id = %s AND chart_id = %s",
         (ASSET_ID, CHART_ID))
@@ -263,7 +279,11 @@ def _dry_run_counts(cur) -> dict[str, int]:
         cur, "SELECT count(*) AS n FROM build_runs WHERE triggered_by = %s AND chart_id = %s", (TRIGGERED_BY, CHART_ID))
     counts["asset_throughput"] = _count(
         cur, "SELECT count(*) AS n FROM asset_throughput WHERE asset_id = %s AND chart_id = %s", (ASSET_ID, CHART_ID))
-    for table, extra in GENERATION_TABLES:
+    present = _generation_tables(cur)
+    for table, _extra in GENERATION_TABLES:
+        if (table, _extra) not in present:
+            counts[table] = "absent"
+    for table, extra in present:
         counts[table] = _count(
             cur, f"SELECT count(*) AS n FROM {table} WHERE chart_id = %s AND generation = %s{extra}",
             (CHART_ID, GENERATION))
@@ -275,7 +295,7 @@ def _delete_everything(cur) -> None:
     cur.execute(f"DELETE FROM build_run_assets WHERE run_id IN ({_TEST_RUNS})", (TRIGGERED_BY, CHART_ID))
     cur.execute("DELETE FROM build_runs WHERE triggered_by = %s AND chart_id = %s", (TRIGGERED_BY, CHART_ID))
     cur.execute("DELETE FROM asset_throughput WHERE asset_id = %s AND chart_id = %s", (ASSET_ID, CHART_ID))
-    for table, extra in GENERATION_TABLES:
+    for table, extra in _generation_tables(cur):
         # the inventory and the legacy ledger tables carry no event-class partitions: `extra` is only the coverage filter
         cur.execute(f"DELETE FROM {table} WHERE chart_id = %s AND generation = %s{extra}", (CHART_ID, GENERATION))
 

@@ -38,7 +38,7 @@ GEN_TABLES = [t for t, _ in teardown_mod.GENERATION_TABLES]
 class _Harness:
     def __init__(self, *, published=None, seal=None, authority_generation=None, active_runs=None, rows=None,
                  test_runs=1, non_test_runs=0, foreign_receipts=0, unlinked_receipts=0, stamped=False,
-                 receipts=0, registry_row="default"):
+                 receipts=0, registry_row="default", absent=()):
         self.statements: list[str] = []
         self.params: list[tuple] = []
         self.commits = 0
@@ -49,6 +49,7 @@ class _Harness:
         self.test_runs, self.non_test_runs = test_runs, non_test_runs
         self.foreign_receipts, self.unlinked_receipts, self.stamped, self.receipts = foreign_receipts, unlinked_receipts, stamped, receipts
         self.registry_row = dict(REGISTRY_ROW) if registry_row == "default" else registry_row
+        self.absent = set(absent)
         harness = self
 
         class FakeCur:
@@ -56,6 +57,7 @@ class _Harness:
                 harness.statements.append(" ".join(sql.split()))
                 harness.params.append(params)
                 self._last = harness.statements[-1]
+                self._params = params
 
             def fetchall(self):
                 if "state IN ('planned'" in self._last:
@@ -64,6 +66,9 @@ class _Harness:
 
             def fetchone(self):
                 sql = self._last
+                if "to_regclass" in sql:
+                    table = self._params[0].split(".")[1]
+                    return {"r": None if table in harness.absent else f"public.{table}"}
                 if "status = 'published'" in sql:
                     return harness.published
                 if "FROM ka_gochara_generation_seal" in sql:
@@ -167,10 +172,15 @@ def test_happy_path_one_transaction_in_dependency_order_registry_kept():
     assert len(flips) == 1 and "is_active = false" in flips[0]
 
 
-def test_receipts_are_deleted_before_the_run_rows():
-    """build_runs -> receipts is ON DELETE SET NULL: deleting the run first would leave a receipt whose run 'cannot be found',
-    which the Nirmana monitor (N-137) reads as NON-test evidence. The receipts go first."""
-    tables = [_table_of(s) for s in _delete_list()]
+def test_receipts_are_deleted_by_asset_and_chart_not_through_their_run_link():
+    """build_runs -> receipts is ON DELETE SET NULL, so a receipt can sit with a NULL run link (a pruned run). Deleting by
+    (asset, chart) removes those too; the Nirmana monitor (N-137) reads a receipt whose run cannot be found as NON-test
+    evidence. They are deleted first, ahead of the run rows."""
+    h = _Harness(rows=dict(ROWS))
+    _run(h)
+    receipt = next(s for s in h.deletes() if _table_of(s) == "asset_provenance_receipts")
+    assert "build_id" not in receipt and h.params[h.statements.index(receipt)] == ("ka_gochara_v5", CHART_ID)
+    tables = [_table_of(s) for s in h.deletes()]
     assert tables.index("asset_provenance_receipts") < tables.index("build_runs")
     assert tables.index("build_run_assets") < tables.index("build_runs")
 
@@ -277,3 +287,23 @@ def test_dry_run_lists_every_table_and_rolls_back(capsys):
     listed = {line.split("\t")[0] for line in out.splitlines() if "\t" in line}
     assert listed == {"asset_provenance_receipts", "build_run_assets", "build_runs", "asset_throughput", *GEN_TABLES}
     assert "ka_gochara_contact\t5" in out and "asset_provenance_receipts\t2" in out and "build_runs\t1" in out
+
+
+def test_a_legacy_table_that_does_not_exist_is_skipped_but_the_chain_tables_are_required():
+    legacy = [t for t, _ in teardown_mod.LEGACY_TABLES]
+    h = _Harness(rows=dict(ROWS), absent={"kala_gochara_windows", "kala_gochara_contacts"})
+    _run(h)
+    tables = [_table_of(s) for s in h.deletes()]
+    assert "kala_gochara_windows" not in tables and "kala_gochara_contacts" not in tables
+    assert "kala_gochara_publication" in tables and "ka_gochara_contact" in tables
+    assert set(legacy) - set(tables) == {"kala_gochara_windows", "kala_gochara_contacts"}
+
+
+def test_the_dry_run_names_an_absent_legacy_table():
+    h = _Harness(rows=dict(ROWS), absent={"kala_gochara_windows"})
+    import io
+    import contextlib
+    buf = io.StringIO()
+    with contextlib.redirect_stdout(buf):
+        _run(h, dry_run=True)
+    assert "kala_gochara_windows\tabsent" in buf.getvalue()

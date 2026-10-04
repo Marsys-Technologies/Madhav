@@ -5,9 +5,9 @@ script's SQL is valid or that its deletes respect the real foreign keys. Here th
 holding a REAL build chain (the writer's substeps on the real migration chain, cloned from PR 3132's template harness) plus the
 orchestrator tables the script touches (asset_registry, build_runs, build_run_assets, asset_throughput,
 asset_provenance_receipts), created with the same foreign keys production has — notably migration 596's
-`asset_provenance_receipts.build_id REFERENCES build_runs(id) ON DELETE SET NULL`, which is why the receipts must go BEFORE the
-run rows: a receipt left behind with a NULL run link is evidence whose run cannot be found, which the Nirmana monitor (N-137) reads as
-NON-test evidence.
+`asset_provenance_receipts.build_id REFERENCES build_runs(id) ON DELETE SET NULL`, which is why the receipts are deleted BY ASSET AND
+CHART and not through their run link: a receipt left behind with a NULL run link is evidence whose run cannot be found, which the
+Nirmana monitor (N-137) reads as NON-test evidence.
 
 DEPENDS ON PR 3132 (A5.5f): it imports that PR's `_World` / `template` harness.
 """
@@ -92,9 +92,15 @@ def _survivors(w):
     w.conn.execute("INSERT INTO public.asset_provenance_receipts (asset_id, chart_id) VALUES ('other_asset', %s)", (CHART_ID,))
 
 
+def _present(w, table):
+    return w.conn.execute("SELECT to_regclass(%s)", (f"public.{table}",)).fetchone()[0] is not None
+
+
 def _counts(w):
     out = {}
     for table, extra in td.GENERATION_TABLES:
+        if not _present(w, table):
+            continue
         out[table] = w.conn.execute(f"SELECT count(*) FROM public.{table} WHERE chart_id = %s AND generation = %s{extra}",
                                     (CHART_ID, GEN)).fetchone()[0]
     return out
@@ -150,7 +156,22 @@ def test_the_teardown_removes_the_whole_small_test_and_keeps_everything_else(two
     assert row == (False, True, 7200, ["ga_positions", "ga_dashas"])
 
 
-def test_deleting_the_run_first_would_orphan_the_receipt_which_is_why_the_receipts_go_first(tworld):
+def test_legacy_ledger_tables_are_cleaned_when_they_exist_and_skipped_when_they_do_not(tworld):
+    """In this chain `kala_gochara_windows` is absent (the teardown skips it: the first test above ran that way) while
+    `kala_gochara_contacts` exists with its real schema. When a database HAS a legacy table (production does), its '5.0' rows go and
+    another generation's stay; a table that is there stays untouched when it holds nothing of '5.0'."""
+    w = tworld
+    assert not _present(w, "kala_gochara_windows") and _present(w, "kala_gochara_contacts")
+    w.conn.execute("CREATE TABLE public.kala_gochara_windows (chart_id uuid, generation text)")
+    w.conn.execute("INSERT INTO public.kala_gochara_windows VALUES (%s, '5.0'), (%s, %s)", (CHART_ID, CHART_ID, OTHER_GEN))
+    w.build(SHORT)
+    _test_run(w)
+    _teardown(w)
+    assert w.conn.execute("SELECT generation FROM public.kala_gochara_windows").fetchall() == [(OTHER_GEN,)]
+    assert all(n == 0 for n in _counts(w).values())
+
+
+def test_deleting_the_run_orphans_the_receipt_which_is_why_receipts_are_deleted_by_asset_and_chart(tworld):
     """The real foreign key, shown: delete the run row and the receipt survives with a NULL run link."""
     w = tworld
     rid = _test_run(w)
