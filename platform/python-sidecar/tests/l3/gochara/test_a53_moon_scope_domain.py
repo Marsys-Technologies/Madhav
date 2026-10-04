@@ -315,12 +315,13 @@ def test_the_real_chain_validates_the_population_it_consumed(moon_run):
 
 def test_a_snapshot_over_a_wrong_build_moon_row_fails_the_verifiers_ledger_derivation(moon_run):
     """The adversary at the SQL level: after the build, a wrong-build Moon row appears in the pinned
-    population's place (the build of a consumed row is changed). The verifier must refuse to derive."""
+    population's place (the build of a consumed row is changed). The verifier refuses even earlier
+    than the ledger derivation: its OWN population check (G6) sees two builds and refuses to derive."""
     step, conn, has_1232 = moon_run
     _chain(step)
     conn.execute("UPDATE public.chart_dashas SET build_id = '00000000-0000-4000-8000-000000000bad'"
                  " WHERE dasha_row_id = %s", (str(uuid.UUID(int=2)),))
-    with pytest.raises(RuntimeError, match="violates the §4.0 read contract"):
+    with pytest.raises(RuntimeError, match="dasha_builds_mixed"):
         ver.rederive_ledger_digest(conn, chart_id=CHART_ID, generation=GEN, event_class="marriage",
                                    obligations=[], capability={"position_probe": True, "arc_index": True})
 
