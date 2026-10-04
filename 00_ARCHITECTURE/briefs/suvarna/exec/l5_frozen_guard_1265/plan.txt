@@ -1,0 +1,151 @@
+-- L5 FROZEN-HISTORY GUARDS (1265; SS N-104 / N-107): owner-path plan. ONE transaction by the administrator `postgres` (CREATEROLE, not a superuser, no table privilege, no USAGE on public).
+-- NOT a migration: the sql lives in this package, never under platform/migrations or platform/supabase/migrations.
+SET LOCAL search_path = public, pg_catalog; SET LOCAL lock_timeout = '5s'; SET LOCAL statement_timeout = '300s'
+-- STEP (transient role membership, part of the plan): GRANT data_plane_schema_owner TO CURRENT_USER and GRANT amjis_app TO CURRENT_USER, each only if the administrator is not already a member; REVOKEd before COMMIT; the memberships are compared with the pre-state.
+-- FORWARD (--dry-run / --apply). preconditions (read only; any failure = refuse + ROLLBACK): FIRST, on the new connection and before any other statement (exit 94 otherwise): current_user = session_user = postgres, database amjis, server major 15, NOT a superuser, CREATEROLE (facts printed); the administrator is a member of pg_read_all_stats (pre_admin_can_see_all_sessions: else the session check would pass blind); no build_runs planned/running/paused on ANY chart; no data_plane_builder session active, idle-in-transaction or with a hidden state; Python >= 3.11; schema public: owner data_plane_schema_owner, amjis_app has USAGE and NO CREATE (an already open window is refused); the four tables are owned by amjis_app; the captured builder guard is live as captured (md5 46c23854275c2712b30860a2b174adb2, 1084 bytes, secdef false, owner amjis_app, ACL {amjis_app=X/amjis_app}, trigger tgtype 15 enabled O); NONE of the 6 new functions or 8 new triggers exists; the repo objects it builds beside are the repo's (bmpl_freeze_confirmed() md5 70c2ddb261d703fa6a33a4feaf39c99c; brahma_prospective_ledger_enforce_shape() md5 acc7ec0121fa1fe0752ae938d9edfafe; their triggers); STANDING CONSTRAINT (SS): public.charts must NOT have FORCE ROW LEVEL SECURITY (relforcerowsecurity false; the chart-deletion discriminator is SECURITY DEFINER and relies on the owner bypassing row security): refused in the preconditions and re-checked after, WARN line in the dry run, RAISED by the script's gate, post-check and the discriminator itself; sql/verify_charts_rls_constraint.sql reports it; data_plane_builder holds exactly DELETE,INSERT,SELECT (grantor amjis_app) on mimamsa_predictions and mimamsa_manifestation_sets; --writer-commit: full 40-hex sha, the pipeline job image tag equals it, and at that commit platform/python-sidecar/pipeline/orchestrator/writers/mi_bhavisya.py and platform/src/lib/cockpit/assetClearSpec.ts contain no DELETE FROM mimamsa_predictions / mimamsa_manifestation_sets.
+-- 1. SET LOCAL ROLE data_plane_schema_owner; GRANT CREATE ON SCHEMA public TO amjis_app  (transient; closed in step 3)
+-- 2. SET LOCAL ROLE amjis_app; execute sql/1265_l5_frozen_row_guards.sql (sha256 7796388aa8b17e979d362ba1a51f5b8d1f26d72415d48b4e7c3804baf6ccfe3d):
+--    A capture of the builder guard (md5 guard), B assert-and-record of the builder grants (raises, never grants) and of the repo objects, C the 6 new functions (brahma_mimamsa_prediction_ledger_delete_guard() md5 53bd3d5578281090adee5b253346dc17, brahma_prospective_ledger_frozen_row_guard() md5 0e2abf47bc0b16acfdde5783e9689941, l5_frozen_chart_cascade_authorizes(uuid) md5 da32591b1be1a66b6a44cc79c851485b, l5_frozen_withdrawal_authorizes(uuid) md5 3ec94f3a5b54fdb701e56db53cb59ca3, mimamsa_manifestation_sets_frozen_row_guard() md5 e362add1186640c49dc4700dfd94c670, mimamsa_predictions_frozen_row_guard() md5 c70f89cc3be0ce3891e59d4b10f1852d) and the 8 triggers (ENABLE ALWAYS), D per-table self-test with rolled-back probe rows, E asserting post-check.
+-- 3. SET LOCAL ROLE data_plane_schema_owner; REVOKE CREATE ON SCHEMA public FROM amjis_app; then REVOKE the transient memberships.
+-- commit only if ALL hold (EXPECTED_DIFF): before/after snapshots of every public function, trigger, constraint, index and policy, the four tables' ACL, owner and RLS flags, the schema ACL, the memberships and the row digest (count + md5 of every row) of the four tables differ in EXACTLY the planned objects (6 functions, 8 triggers added; the captured builder guard unchanged); the schema ACL and memberships equal the pre-state; amjis_app has no CREATE on public; every function md5 equals its bound md5 and none is SECURITY DEFINER; --expect-plan == plan hash; --expect-evidence == this run's evidence digest (apply).
+-- ROLLBACK (--rollback-dry-run / --rollback): the inverse as amjis_app (no CREATE capability needed): precondition = every installed body and trigger is exactly as installed; drops the 8 triggers and the 6 functions (sql/1265_l5_frozen_row_guards.ROLLBACK.sql, sha256 8a1ef606104922651e255794124b92e803cf8dd58ad995033325bcac464e9c42); the captured builder guard and the existing triggers stay; asserting post-check; the snapshot equals the pre-forward state.
+-- the real run is started ONLY through exec/gate_v2/run_gated.sh <python3.11> <this file> <args> (GATE_V2): the executor REFUSES (exit 93) unless the marker verifies against the gate files pinned below; exit 92 when --apply / --rollback run under a different interpreter or driver than the matching dry run; it writes outcome.json (dry_run | applied | failed | commit_state_unknown) in every mode.
+-- every mode needs --expect-plan: the in-process administrator credential is fetched only after the plan hash matched.
+-- gate files (exec/gate_v2; GATE_V2 revision 3, bound by SS N-86): prerun_gate.py sha256 01ab1d70d0cffea015a64af5430f355dd8d419307aceeaeacf3a0cc4d715773e; run_gated.sh sha256 305b4406bba57f85944bbb57cb269368287aaa6d6f782e986afa7f857606f076; executor_standards.py sha256 bbea69552a6a92e7aed3a75758b533868e3e3d2c5b47385ccc1bf6c0660dc135
+-- plan hash = bind_gate_into_plan_hash(sha256(plan text + "\n" + json(EXPECTED_DIFF)), prerun_gate.py pin, run_gated.sh pin)
+-- verification SQL (read only, run by the operator as the reader; named in the hashed plan text): verify_before_apply.sql sha256 ebb44985178fb7315049a975cab5f9c00e59bec89efe270ada3e7adb02f87dd4; verify_after_apply.sql sha256 4f99c71eb81cf72b1757a4216ad47eb6dd9c2da7f8259f18255e68d11c9c74ac; verify_charts_rls_constraint.sql sha256 30d1c354c38c31770988e635981b4290ebd44012cd2649a121bf31031e1052ca
+-- executor: l5_frozen_guard_exec.py sha256 64ed08de6de86aeacba766196443731dd2eae979bbaec6bf6bbe3d5d6916b773
+
+-- EXPECTED_DIFF
+{
+ "captured": {
+  "attributes": "plpgsql, SECURITY INVOKER, proconfig {search_path=pg_catalog, pg_temp}, VOLATILE, owner amjis_app, proacl {amjis_app=X/amjis_app}",
+  "bytes": 1084,
+  "effect": "no change to the live object (replace of the identical body); refused if it differs",
+  "function": "mimamsa_predictions_builder_guard()",
+  "md5": "46c23854275c2712b30860a2b174adb2",
+  "trigger": [
+   "mimamsa_predictions",
+   "mimamsa_predictions_builder_guard",
+   15,
+   "O"
+  ]
+ },
+ "exception": [
+  "DELETE only through l5_frozen_withdrawal_authorizes: consent_state = 'withdrawn' and no open/reopened/escalated dispute; fail closed",
+  "DELETE only through l5_frozen_chart_cascade_authorizes (SS N-108), checked first: no charts row with that id, i.e. inside the RI cascade of deleting the chart itself the parent is already gone; SECURITY DEFINER because charts has row-level security on; pg_trigger_depth() is deliberately not used; a direct DELETE of a row whose chart exists is refused"
+ ],
+ "existing_repo_objects_asserted": {
+  "functions": {
+   "bmpl_freeze_confirmed()": "70c2ddb261d703fa6a33a4feaf39c99c",
+   "brahma_prospective_ledger_enforce_shape()": "acc7ec0121fa1fe0752ae938d9edfafe"
+  },
+  "triggers": [
+   [
+    "brahma_mimamsa_prediction_ledger",
+    "trg_bmpl_freeze_confirmed",
+    19,
+    "O"
+   ],
+   [
+    "brahma_prospective_ledger",
+    "trg_brahma_prospective_ledger_enforce_shape",
+    23,
+    "O"
+   ]
+  ]
+ },
+ "functions_added": [
+  "brahma_mimamsa_prediction_ledger_delete_guard()",
+  "brahma_prospective_ledger_frozen_row_guard()",
+  "l5_frozen_chart_cascade_authorizes(uuid)",
+  "l5_frozen_withdrawal_authorizes(uuid)",
+  "mimamsa_manifestation_sets_frozen_row_guard()",
+  "mimamsa_predictions_frozen_row_guard()"
+ ],
+ "functions_md5": {
+  "brahma_mimamsa_prediction_ledger_delete_guard()": "53bd3d5578281090adee5b253346dc17",
+  "brahma_prospective_ledger_frozen_row_guard()": "0e2abf47bc0b16acfdde5783e9689941",
+  "l5_frozen_chart_cascade_authorizes(uuid)": "da32591b1be1a66b6a44cc79c851485b",
+  "l5_frozen_withdrawal_authorizes(uuid)": "3ec94f3a5b54fdb701e56db53cb59ca3",
+  "mimamsa_manifestation_sets_frozen_row_guard()": "e362add1186640c49dc4700dfd94c670",
+  "mimamsa_predictions_frozen_row_guard()": "c70f89cc3be0ce3891e59d4b10f1852d"
+ },
+ "grants_asserted_not_issued": {
+  "grantor": "amjis_app",
+  "privileges": "DELETE,INSERT,SELECT",
+  "role": "data_plane_builder",
+  "tables": [
+   "mimamsa_predictions",
+   "mimamsa_manifestation_sets"
+  ]
+ },
+ "helper_acl": "the two l5_frozen_* helpers are NOT executable by PUBLIC (REVOKE ... FROM PUBLIC); EXECUTE is granted only to the non-owner roles that hold DELETE on a frozen table; the SECURITY DEFINER chart helper is otherwise an RLS-bypassing chart-existence oracle",
+ "invariant": "no non-owner, non-superuser role holds a write on chart_subject_consent / chart_subject_deletion_disputes AND DELETE on a frozen table (asserted by the script's gate and post-check: a forged 'withdrawn' row would otherwise open a delete)",
+ "not_guarded_by_ruling": [
+  "mimamsa_calibration",
+  "mimamsa_calibration_snapshot"
+ ],
+ "order": "after S-L1, after the append-only mi_bhavisya writer and the assetClearSpec change are deployed (--writer-commit), before any L5 rebuild",
+ "rls": "NOT armed (assessed: unsound for the live role set; see the PR)",
+ "rollback": "drops the 8 triggers and 6 functions; the captured builder guard and the existing repo triggers stay; no CREATE capability needed",
+ "standing_constraint": "public.charts relforcerowsecurity must be false (SS): checked pre and post by the executor, by the script's gate, post-check and the discriminator at run time, and by sql/verify_charts_rls_constraint.sql",
+ "triggers_added": [
+  [
+   "mimamsa_predictions",
+   "mimamsa_predictions_frozen_row_guard",
+   27,
+   "A"
+  ],
+  [
+   "mimamsa_predictions",
+   "mimamsa_predictions_frozen_row_guard_truncate",
+   34,
+   "A"
+  ],
+  [
+   "brahma_prospective_ledger",
+   "brahma_prospective_ledger_frozen_row_guard",
+   27,
+   "A"
+  ],
+  [
+   "brahma_prospective_ledger",
+   "brahma_prospective_ledger_frozen_row_guard_truncate",
+   34,
+   "A"
+  ],
+  [
+   "mimamsa_manifestation_sets",
+   "mimamsa_manifestation_sets_frozen_row_guard",
+   27,
+   "A"
+  ],
+  [
+   "mimamsa_manifestation_sets",
+   "mimamsa_manifestation_sets_frozen_row_guard_truncate",
+   34,
+   "A"
+  ],
+  [
+   "brahma_mimamsa_prediction_ledger",
+   "brahma_mimamsa_prediction_ledger_delete_guard",
+   11,
+   "A"
+  ],
+  [
+   "brahma_mimamsa_prediction_ledger",
+   "brahma_mimamsa_prediction_ledger_delete_guard_truncate",
+   34,
+   "A"
+  ]
+ ],
+ "unchanged": [
+  "every other function, trigger (incl. their enablement), constraint, index, policy and table ACL of public",
+  "schema public ACL (amjis_app has CREATE only inside the transaction)",
+  "role memberships (transient only)",
+  "RLS flags (relrowsecurity / relforcerowsecurity) of the four tables",
+  "row data of the four tables (count + md5 of every row)",
+  "asset_registry and every freshness/receipt table (no registry trigger fires)"
+ ]
+}

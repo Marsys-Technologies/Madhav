@@ -1,0 +1,18 @@
+{
+  "lane": "ga_strength_invariant_rows",
+  "ruling": "#2960 ga_strength INVARIANT rows written once per build",
+  "pr": "#2960 (3211d74bc)",
+  "description": "ga_strength used to re-emit its ayanamsha-INVARIANT rows (graha_shadbala_naisargika rupa x 9, graha_shadbala_total required_rupa x 7) in every one of the five ayanamsha passes (17,075 rows reported for 17,011 stored, in the rehearsal): delete-then-insert, so the STORED count never changed, only the writer's reported count. #2960 emits them once (ayanamsha index 0). EXPECTED STORED CHANGE: NONE on the canonical chart: 16 INVARIANT graha_shadbala rows stored before (9 + 7, one per subject; reader count 2026-10-02, identical on all three charts) and 16 after. The Sun's required_rupa VALUE change is the sun_required_rupa lane's, the tier changes are the tiers lane's.",
+  "may_change": [
+    {
+      "table": "chart_facts",
+      "categories": ["graha_shadbala_naisargika", "graha_shadbala_total"],
+      "fact_keys": ["rupa", "required_rupa"],
+      "ayanamsha_ids": ["INVARIANT"],
+      "change_types": ["appeared", "disappeared", "occurrence_count"],
+      "expected_count": {"exact": 0},
+      "expected_direction": "no change in the INVARIANT row set: 16 stored rows before and after.",
+      "note": "explicit zero (a no-change claim, so a duplicate INVARIANT row or a missing one reads EXPECTATION_MISMATCH); source: rehearsal-synthetic (19-lane rehearsal, flip_detector v2.3 compare against the origin/main baseline build on the same synthetic chart; HOOKS_COMPLETENESS_v1_0.md, Source evidence) (ga_strength rows reported 17,075 / stored 17,011 without the fix; INVARIANT rows 9 + 7 in both baseline and final) and production reader counts."
+    }
+  ]
+}

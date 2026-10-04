@@ -1,0 +1,9 @@
+platform/python-sidecar/bodha_writers/_idempotency.py
+platform/python-sidecar/pipeline/orchestrator/writers/ph_phaladesa.py
+platform/python-sidecar/pipeline/orchestrator/writers/ph_pramana.py
+platform/python-sidecar/services/ph_pramana/engine.py
+platform/src/lib/retrieval/registry/knowledge/producer_editorial_review.ts
+platform/src/lib/retrieval/registry/knowledge/source_query_availability.ts
+platform/src/lib/retrieval/registry/layers/L4_phala/index.ts
+platform/src/lib/retrieval/registry/layers/L4_phala/query_phala_calibration.ts
+platform/src/lib/retrieval/registry/layers/L4_phala/salience_order.ts

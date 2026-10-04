@@ -63,8 +63,10 @@ def test_ldgr_source_presence_fires_on_singular_classical_citation(monkeypatch, 
     _stub_layer(monkeypatch, tmp_path, {"bg_nakshatra_medical": _reg_row("bg_nakshatra_medical", "bg_nakshatra_medical")}, _TABLE)
 
     def fake_psql(sql, sep="\x1f", timeout=None):
-        if "count(*)::text FROM bg_nakshatra_medical WHERE classical_citation IS NOT NULL" in sql:
-            return [["48"]]
+        if "format_type(a.atttypid" in sql:                 # C2(ii): the column's type (a text citation is graded for placeholders)
+            return [["text"]]
+        if "jsonb_build_object('rows'" in sql and '"bg_nakshatra_medical"' in sql and '"classical_citation"::text AS v' in sql:
+            return [['{"rows":48,"null":0,"placeholder":0}']]
         raise AssertionError(f"unexpected query: {sql[:100]}")
 
     monkeypatch.setattr(ac, "psql", fake_psql)
@@ -79,8 +81,10 @@ def test_other_citation_column_names_still_work(monkeypatch, tmp_path):
     _stub_layer(monkeypatch, tmp_path, {"bg_x": _reg_row("bg_x", "bg_x")}, table)
 
     def fake_psql(sql, sep="\x1f", timeout=None):
-        if "count(*)::text FROM bg_x WHERE source_citation IS NOT NULL" in sql:
-            return [["10"]]
+        if "format_type(a.atttypid" in sql:
+            return [["text"]]
+        if "jsonb_build_object('rows'" in sql and '"bg_x"' in sql and '"source_citation"::text AS v' in sql:
+            return [['{"rows":48,"null":38,"placeholder":0}']]       # 10 of 48 rows non-NULL, none a placeholder
         raise AssertionError(f"unexpected query: {sql[:100]}")
 
     monkeypatch.setattr(ac, "psql", fake_psql)

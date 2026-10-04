@@ -1,0 +1,9 @@
+platform-mcp/src/resources/vidhi/dossier_slices/dossier_slices.generated.ts
+platform/python-sidecar/brahmagyan/domain_vocabulary.py
+platform/python-sidecar/pipeline/orchestrator/writers/mi_bhavisya.py
+platform/python-sidecar/pipeline/orchestrator/writers/ph_phaladesa.py
+platform/python-sidecar/services/ph_phaladesa/engine.py
+platform/src/lib/jyotish/asset_names.ts
+platform/src/lib/retrieval/registry/knowledge/producer_editorial_review.ts
+platform/src/lib/retrieval/registry/layers/L4_phala/index.ts
+platform/src/lib/retrieval/registry/layers/L4_phala/query_domain_result.ts

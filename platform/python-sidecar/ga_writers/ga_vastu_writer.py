@@ -12,6 +12,10 @@ Idempotency: L1 pattern — DELETE (chart_id, ayanamsha_id) then INSERT.
 
 indication_tier: 'traditional_vastu' (§N per-spec epistemic tier)
 
+direction_impact bands (I-28 / Q-L1-16(c)): the cut points over condition_score are the ONE
+band table in `ga_writers/ga_condition_bands.py` (0.4 / 0.7, shared with ga_medical); a NULL
+score stores 'unknown', never 'neutral'.
+
 Classical sources:
   Vastu Shastra (Mayamata Ch.6)
   Brihat Samhita Ch.53 (Vastu-vidya)
@@ -23,6 +27,19 @@ from datetime import datetime, timezone
 from typing import Optional
 
 import psycopg.rows
+
+# ONE band table for condition_score, owned by ga_condition (I-28 / Q-L1-16(c)): the cut
+# points (0.4 / 0.7) live there, not here. This writer only maps a band to ITS label.
+# SCORE_BANDS is re-exported (not used for logic) so the "one table object" identity with
+# ga_condition and ga_medical is directly checkable.
+from ga_writers.ga_condition_bands import (  # noqa: F401  (SCORE_BANDS: re-export)
+    BAND_HIGH,
+    BAND_LOW,
+    BAND_MID,
+    BAND_UNKNOWN,
+    SCORE_BANDS,
+    score_band,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -49,22 +66,35 @@ VASTU_CITATION = "Vastu Shastra (Mayamata Ch.6)"
 
 # ── direction_impact computation ──────────────────────────────────────────────
 
-def compute_direction_impact(condition_score: Optional[float]) -> str:
-    """Map a condition_score (0–1 float or None) to a direction_impact label.
+#: Band -> stored direction_impact label (vastu polarity: a LOW condition_score weakens the
+#: graha's direction). The CUT POINTS are not here: they are `SCORE_BANDS` (ga_condition).
+DIRECTION_IMPACT_BY_BAND: dict[str, str] = {
+    BAND_LOW:  "weakened",
+    BAND_MID:  "neutral",
+    BAND_HIGH: "strengthened",
+}
 
-    Thresholds per Gate-1 spec:
-      < 0.4  → 'weakened'
-      0.4–0.7 → 'neutral'
-      >= 0.7 → 'strengthened'
-      None   → 'neutral'
+#: A NULL condition_score is missing information, not a middle-band judgment. The column is
+#: NOT NULL, so the honest stored label is 'unknown' (it used to be an invented 'neutral' --
+#: CLAUDE.md N.7 item 6, I-28).
+DIRECTION_IMPACT_UNKNOWN: str = BAND_UNKNOWN
+
+
+def compute_direction_impact(condition_score: Optional[float]) -> str:
+    """Map a condition_score (0-1 float / Decimal, or None) to a direction_impact label.
+
+    The cut points are NOT defined here: they are the single band table in
+    `ga_writers.ga_condition_bands` (score < 0.4 low; 0.4 <= score < 0.7 mid; score >= 0.7 high):
+
+      low   -> 'weakened'
+      mid   -> 'neutral'
+      high  -> 'strengthened'
+      NULL  -> 'unknown'   (never 'neutral': a missing score is not a middle-band score)
     """
-    if condition_score is None:
-        return "neutral"
-    if condition_score < 0.4:
-        return "weakened"
-    if condition_score < 0.7:
-        return "neutral"
-    return "strengthened"
+    band = score_band(condition_score)
+    if band is None:
+        return DIRECTION_IMPACT_UNKNOWN
+    return DIRECTION_IMPACT_BY_BAND[band]
 
 
 # ── Main substep function ──────────────────────────────────────────────────────

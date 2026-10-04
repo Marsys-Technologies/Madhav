@@ -44,6 +44,7 @@ from pyjhora_adapter._jhora import drik, utils
 from pyjhora_adapter.compute import compute_chart
 from pyjhora_adapter.positions import compute_positions
 
+from brahmagyan.verification_tiers import DIVERGENT_FLAGGED, UNVERIFIED_DEFAULT
 from ga_writers._idempotency import replace_prior_tajik_varsha
 from ga_writers._telemetry import update_asset_throughput  # legacy CLI path only; orchestrator never calls this
 from ga_writers.data_plane_contracts import stable_uuid
@@ -484,6 +485,21 @@ def _read_trirashipathi(conn: Any, chart_id: str, canonical_aya: str) -> str | N
 
 # ── Core per-varsha computation ───────────────────────────────────────────────
 
+def _varsha_verification(muntha_ok: bool, year_lord_ok: bool, sr_ok: bool) -> str:
+    """Tier for a varsha row from its three checks (Q03 / SS N-62 + SS ruling, S-L1 follow-up).
+
+    `single` (UNVERIFIED_DEFAULT) when the checks pass, NOT `two_pass_verified` and NOT
+    `classical_match` (audit AUDIT_L1_TIERS_PER_EMITTER_v1_0.md §3; SS ruling): `classical_match`
+    means a match against a canonical classical reference table (brahmagyan.verification_vocab) and
+    none of the three checks is one. `muntha_ok` repeats the same +1-per-year sign arithmetic the
+    primary used (the same formula twice), `year_lord_ok` only tests that two winners are non-empty,
+    and `sr_ok` is the solar-return root-finder's own residual. They catch a broken loop, an empty
+    winner or an unconverged root-find (all of which divert to `divergent_flagged`, and the build
+    halts on that), which is a real guard but earns no tier above `single`.
+    """
+    return UNVERIFIED_DEFAULT if (muntha_ok and year_lord_ok and sr_ok) else DIVERGENT_FLAGGED
+
+
 def _compute_one(conn: Any, chart_id: str, canonical_aya: str, aya_adapter: str,
                  varsha_year: int, natal_chart: dict, natal_sun_long: float,
                  build_id: str, birth: dict | None = None) -> dict[str, Any]:
@@ -591,9 +607,7 @@ def _compute_one(conn: Any, chart_id: str, canonical_aya: str, aya_adapter: str,
 
     # ── Verification (two-pass) ──────────────────────────────────────────────
     year_lord_ok = bool(tc_winner) and bool(pv_winner)
-    verification = ("two_pass_verified"
-                    if (muntha_ok and year_lord_ok and sr_ok)
-                    else "divergent_flagged")
+    verification = _varsha_verification(muntha_ok, year_lord_ok, sr_ok)
 
     muntha_jsonb = {
         "sign": SIGNS[muntha_sign0],
@@ -760,6 +774,7 @@ def build_ga_tajaka(chart_id: str,
     specific past build (tests, backfills).
     """
     from contextlib import nullcontext
+    chart_id = str(chart_id)  # uuid.UUID from the real orchestrator path; stable_uuid("tajaka_varsha", ...) hashes canonical JSON, which refuses a UUID (REHEARSAL-LINUX P1)
     if build_id is None:
         build_id = str(uuid.uuid4())
     owns_conn = conn is None
@@ -793,7 +808,7 @@ def build_ga_tajaka(chart_id: str,
                 row = _compute_one(conn, chart_id, canonical_aya, aya_adapter,
                                    v, natal, natal_sun, build_id, birth=bp)
                 # FORENSIC gate — native-anchored Muntha; only asserted for the native.
-                if (chart_id == CANONICAL_CHART_ID
+                if (str(chart_id) == CANONICAL_CHART_ID
                         and canonical_aya == FORENSIC_AYANAMSHA
                         and v == FORENSIC_VARSHA_YEAR):
                     fc = {
@@ -806,12 +821,13 @@ def build_ga_tajaka(chart_id: str,
                     if (fc["sign"] != FORENSIC_MUNTHA_SIGN
                             or fc["house"] != FORENSIC_MUNTHA_HOUSE
                             or fc["lord"] != FORENSIC_MUNTHA_LORD):
+                        logger.error("FORENSIC gate ga_tajaka executed passed=False chart=canonical")
                         raise RuntimeError(
                             f"FORENSIC HALT: ga_tajaka Muntha gate failed for varsha "
                             f"{v} ({canonical_aya}): got {fc['sign']}/{fc['house']}H/"
                             f"{fc['lord']}, expected {FORENSIC_MUNTHA_SIGN}/"
                             f"{FORENSIC_MUNTHA_HOUSE}H/{FORENSIC_MUNTHA_LORD}.")
-                if row["verification_pass_status"] == "divergent_flagged":
+                if row["verification_pass_status"] == DIVERGENT_FLAGGED:
                     divergent.append({"varsha_year": v, "ayanamsha": canonical_aya,
                                       "audit": row["ephemeris_audit_jsonb"]})
                 aya_rows.append(row)
@@ -839,6 +855,10 @@ def build_ga_tajaka(chart_id: str,
     forensic_pass = bool(forensic_checks) and all(
         c["sign"] == FORENSIC_MUNTHA_SIGN and c["house"] == FORENSIC_MUNTHA_HOUSE
         and c["lord"] == FORENSIC_MUNTHA_LORD for c in forensic_checks)
+    if str(chart_id) == CANONICAL_CHART_ID:
+        logger.info("FORENSIC gate ga_tajaka executed passed=%s chart=canonical checks=%d", forensic_pass, len(forensic_checks))
+    else:
+        logger.debug("FORENSIC gate ga_tajaka skipped chart=skipped-non-canonical")
 
     summary = {
         "status": "PASS",
@@ -854,14 +874,18 @@ def build_ga_tajaka(chart_id: str,
         "per_ayanamsha_counts": per_aya_counts,
         "forensic_pass": forensic_pass,
         "forensic_checks": forensic_checks,
-        "two_pass_verified": len(divergent) == 0,
+        # SS ruling (S-L1 tier-honesty follow-up, CLAUDE.md §N.8): no row carries `two_pass_verified`
+        # any more and nothing here is a second derivation, so this flag has no detector behind it:
+        # null, not `len(divergent) == 0` (which was True on every return -- a divergence raises
+        # above). `divergent_flagged` below is a real count (it is what the halt reads).
+        "two_pass_verified": None,
         "divergent_flagged": len(divergent),
         # F-E17 (cycle 106): compute_varsha() exists but has zero callers -- correcting this
         # claim rather than repeating it. Only the precomputed window (varsha 1..48) is stored;
         # get_tajik.ts's own empty_reason honestly discloses the rest as genuinely not computed.
         "storage_strategy": "windowed (varsha 1..48 precomputed; outside the window is not stored, not computed on-demand)",
     }
-    logger.info("[ga_tajaka_writer] PASS rows=%d forensic=%s two_pass=%s",
+    logger.info("[ga_tajaka_writer] PASS rows=%d forensic=%s two_pass=%s (no second derivation; rows are `single`)",
                 inserted, forensic_pass, summary["two_pass_verified"])
     return summary
 

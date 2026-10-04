@@ -1,0 +1,216 @@
+"""pyjhora_adapter.special_lagnas: ``_special_ascendant`` / ``_varnada_lagna_bv_raman`` select the
+sidereal mode and the .se1 path on the thread that computes.
+
+They carried no setter of their own (only ``compute_special_lagnas`` set the mode, a different
+function): a bare call from a fresh Linux thread returned Fagan-Bradley longitudes (-0.883 deg) and
+from a reused pool thread whatever ayanamsha the previous task left.  They now take ``ayanamsha_id``
+(None = lahiri) and select it themselves; ``compute_special_lagnas`` passes its own.  Real threads:
+fresh thread and a reused pool thread left in true_chitra / raman, main thread in Fagan-Bradley.
+Synthetic birth only (no native data).
+"""
+from __future__ import annotations
+
+import pytest
+import swisseph as swe
+
+from jhora import utils
+from jhora.panchanga import drik
+from pyjhora_adapter import special_lagnas as sl
+from tests.swiss_thread_harness import (
+    SiderealModeSpy,
+    main_thread_in_fagan,  # noqa: F401  (fixture)
+    run_in_dirty_pool_thread,
+    run_in_fresh_thread,
+    run_in_lahiri_thread,
+)
+
+RUNNERS = [pytest.param(run_in_fresh_thread, id="fresh_thread"),
+           pytest.param(run_in_dirty_pool_thread, id="reused_pool_thread_left_in_true_chitra")]
+
+LAT, LON, TZ = 23.26, 77.41, 5.5  # synthetic (Bhopal-like), same as test_special_lagna_sunrise_sun CASES[0]
+DOB = drik.Date(2011, 2, 6)
+TOB = (11, 0, 0)
+JD = utils.julian_day_number(DOB, TOB)
+
+# Golden values captured from the PRE-change code (git 1499acd54) on a thread that selected the mode
+# itself; identical on macOS and linux/amd64 to < 1e-9 deg.
+LAHIRI_HORA = (1, 21.760283067830642)
+LAHIRI_BHAVA = (11, 22.325014073409875)
+LAHIRI_VARNADA = (9, 9.734767629142695)
+TC_HORA = (1, 21.77614452134361)
+TC_VARNADA = (9, 9.750629092021946)
+LAHIRI_LONGITUDES = {"bhava_lagna": 352.3250140734099, "hora_lagna": 51.76028306783064,
+                     "ghati_lagna": 230.06609005109294, "vighati_lagna": 259.0058847442351,
+                     "varnada_lagna": 279.7347676291427}
+
+
+def _place():
+    return drik.Place("subject", LAT, LON, TZ)
+
+
+def _approx(pair, want):
+    assert pair[0] == want[0]
+    assert pair[1] == pytest.approx(want[1], abs=1e-9)
+
+
+@pytest.mark.parametrize("run", RUNNERS)
+def test_special_ascendant_is_lahiri_on_a_thread_that_never_selected_it(run, main_thread_in_fagan,
+                                                                        monkeypatch):
+    spy = SiderealModeSpy(monkeypatch)
+    got = run(lambda: sl._special_ascendant(JD, _place(), lagna_rate_factor=sl._HORA_RATE_DEG_PER_MIN))
+    _approx(got, LAHIRI_HORA)
+    assert spy.calls and spy.wrong_mode_calls() == []
+
+
+@pytest.mark.parametrize("run", RUNNERS)
+def test_rate_lagnas_default_to_lahiri_on_a_thread_that_never_selected_it(run, main_thread_in_fagan):
+    _approx(run(lambda: sl.hora_lagna(JD, _place())), LAHIRI_HORA)
+    _approx(run(lambda: sl.bhava_lagna(JD, _place())), LAHIRI_BHAVA)
+
+
+@pytest.mark.parametrize("run", RUNNERS)
+def test_varnada_lagna_is_lahiri_on_a_thread_that_never_selected_it(run, main_thread_in_fagan,
+                                                                     monkeypatch):
+    spy = SiderealModeSpy(monkeypatch)
+    got = run(lambda: sl._varnada_lagna_bv_raman(DOB, TOB, _place()))
+    _approx(got, LAHIRI_VARNADA)
+    assert spy.calls and spy.wrong_mode_calls() == []
+
+
+def test_an_unprepared_value_would_differ_from_the_golden_by_the_fagan_offset(main_thread_in_fagan):
+    """Precondition: the goldens are discriminating (Fagan-Bradley moves the degree by ~0.88 deg)."""
+    # raw check through PyJHora's own upstream routine under an explicit Fagan-Bradley mode
+    def upstream_fagan():
+        swe.set_sid_mode(swe.SIDM_FAGAN_BRADLEY)
+        return drik.hora_lagna(JD, _place())
+
+    got = run_in_fresh_thread(upstream_fagan)
+    assert abs(got[1] - LAHIRI_HORA[1]) > 0.5 or got[0] != LAHIRI_HORA[0]
+
+
+@pytest.mark.parametrize("dirty", [swe.SIDM_RAMAN, swe.SIDM_FAGAN_BRADLEY],
+                         ids=["pool_left_in_raman", "pool_left_in_fagan"])
+def test_ayanamsha_id_is_honoured_not_forced_to_lahiri(dirty, main_thread_in_fagan):
+    """A non-Lahiri ayanamsha passed in is the one selected, on a fresh and on a reused thread."""
+    fresh = run_in_fresh_thread(lambda: (
+        sl.hora_lagna(JD, _place(), ayanamsha_id="true_chitra"),
+        sl._varnada_lagna_bv_raman(DOB, TOB, _place(), ayanamsha_id="true_chitra")))
+    pooled = run_in_dirty_pool_thread(lambda: (
+        sl.hora_lagna(JD, _place(), ayanamsha_id="true_chitra"),
+        sl._varnada_lagna_bv_raman(DOB, TOB, _place(), ayanamsha_id="true_chitra")), dirty_sidm=dirty)
+    for got in (fresh, pooled):
+        _approx(got[0], TC_HORA)
+        _approx(got[1], TC_VARNADA)
+
+
+@pytest.mark.parametrize("run", RUNNERS)
+def test_compute_special_lagnas_entry_point_unchanged(run, main_thread_in_fagan):
+    out = run(lambda: sl.compute_special_lagnas(JD, DOB, TOB, "lahiri", lat=LAT, lon=LON, tz=TZ))
+    ref = run_in_lahiri_thread(lambda: sl.compute_special_lagnas(JD, DOB, TOB, "lahiri",
+                                                                 lat=LAT, lon=LON, tz=TZ))
+    assert set(out) == set(ref)
+    for name, want in LAHIRI_LONGITUDES.items():
+        assert out[name]["longitude_deg"] == pytest.approx(want, abs=1e-9), name
+    for name in ref:
+        assert "error" not in out[name], (name, out[name])
+        assert out[name]["longitude_deg"] == pytest.approx(ref[name]["longitude_deg"], abs=1e-9), name
+
+
+# ---- compute_special_lagnas entry point under a NON-Lahiri ayanamsha (F-1 of the PR #2984 delta review) ----------
+# compute_special_lagnas passes ``ayanamsha_id`` through at five sites (bhava, hora, ghati, vighati and the
+# Varnada call), and _varnada_lagna_bv_raman passes it on to its inner hora_lagna.  Replacing the id with None at
+# the Hora partial, at the Varnada call or at the inner Hora call (all "= Lahiri") kept the whole suite green on
+# Linux, because every entry-point test above is Lahiri only and the non-Lahiri tests call the helpers directly.
+# These tests close the gap at the ENTRY POINT, for raman and surya_siddhanta, from a fresh thread and a reused
+# pool thread.
+#
+# The birth time is chosen so the Hora Lagna sits 29.26 deg into Taurus under Lahiri: any ayanamsha more than
+# 0.74 deg ahead of Lahiri's pushes it into Gemini.  Varnada Lagna reads the Hora SIGN, so a Hora computed under
+# the wrong ayanamsha changes the Varnada SIGN as well (the inner hora_lagna call is observable only this way).
+TOB_EDGE = (11, 15, 0)
+JD_EDGE = utils.julian_day_number(DOB, TOB_EDGE)
+NON_LAHIRI = ["raman", "surya_siddhanta"]
+
+# Goldens captured from the entry point on a fresh thread, macOS arm64 and linux/amd64 identical to < 1e-9 deg.
+EDGE_LAHIRI = {"hora_lagna": 59.26028295607193, "varnada_lagna": 284.32319581169406}
+EDGE_GOLD = {
+    "raman": {"hora_lagna": 60.70658425653687, "varnada_lagna": 105.76949711215849},
+    "surya_siddhanta": {"hora_lagna": 62.22231695691585, "varnada_lagna": 107.28522981256009},
+}
+_RATE_AND_VARNADA = ("bhava_lagna", "hora_lagna", "ghati_lagna", "vighati_lagna", "varnada_lagna")
+
+
+def _entry(aya):
+    return sl.compute_special_lagnas(JD_EDGE, DOB, TOB_EDGE, aya, lat=LAT, lon=LON, tz=TZ)
+
+
+def _direct(aya):
+    """The same five lagnas from the per-ayanamsha helpers, each called with its own ayanamsha_id."""
+    p = _place()
+    parts = {
+        "bhava_lagna": sl.bhava_lagna(JD_EDGE, p, ayanamsha_id=aya),
+        "hora_lagna": sl.hora_lagna(JD_EDGE, p, ayanamsha_id=aya),
+        "ghati_lagna": sl.ghati_lagna(JD_EDGE, p, ayanamsha_id=aya),
+        "vighati_lagna": sl.vighati_lagna(JD_EDGE, p, ayanamsha_id=aya),
+        "varnada_lagna": sl._varnada_lagna_bv_raman(DOB, TOB_EDGE, p, ayanamsha_id=aya),
+    }
+    return {k: sign * 30.0 + deg for k, (sign, deg) in parts.items()}
+
+
+def _ayanamsa_gap_from_lahiri(aya):
+    """(Lahiri ayanamsa, ``aya``'s ayanamsa) at the birth instant, each read on a thread that selected it itself."""
+    sidm = sl.resolve_mode(aya)[1]
+
+    def read():
+        swe.set_sid_mode(swe.SIDM_LAHIRI)
+        lahiri = swe.get_ayanamsa_ut(JD_EDGE)
+        swe.set_sid_mode(sidm)
+        return lahiri, swe.get_ayanamsa_ut(JD_EDGE)
+
+    return run_in_fresh_thread(read)
+
+
+def _wrap(x):
+    return ((x + 180.0) % 360.0) - 180.0
+
+
+def test_the_edge_birth_discriminates_hora_and_varnada_per_ayanamsha():
+    """Precondition: Lahiri and each tested ayanamsha disagree on the Hora SIGN and on the Varnada SIGN, so a
+    Lahiri-for-non-Lahiri substitution in either place cannot hide."""
+    for aya in NON_LAHIRI:
+        assert int(EDGE_GOLD[aya]["hora_lagna"] // 30) != int(EDGE_LAHIRI["hora_lagna"] // 30), aya
+        assert int(EDGE_GOLD[aya]["varnada_lagna"] // 30) != int(EDGE_LAHIRI["varnada_lagna"] // 30), aya
+
+
+@pytest.mark.parametrize("aya", NON_LAHIRI)
+@pytest.mark.parametrize("run", RUNNERS)
+def test_entry_point_hora_and_varnada_follow_a_non_lahiri_ayanamsha(run, aya, main_thread_in_fagan):
+    """Kills ``partial(hora_lagna, ayanamsha_id=None)`` and ``_varnada_lagna_bv_raman(..., ayanamsha_id=None)``
+    in compute_special_lagnas: Hora (and Varnada) must equal the golden for THIS ayanamsha, not Lahiri's."""
+    out = run(lambda: _entry(aya))
+    for name in ("hora_lagna", "varnada_lagna"):
+        assert "error" not in out[name], (name, out[name])
+        assert out[name]["longitude_deg"] == pytest.approx(EDGE_GOLD[aya][name], abs=1e-9), (aya, name)
+        assert abs(_wrap(out[name]["longitude_deg"] - EDGE_LAHIRI[name])) > 1.0, (aya, name, "equals Lahiri")
+
+
+@pytest.mark.parametrize("aya", NON_LAHIRI)
+@pytest.mark.parametrize("run", RUNNERS)
+def test_entry_point_equals_the_per_ayanamsha_helpers(run, aya, main_thread_in_fagan):
+    """The entry point agrees with the five helpers called with the ayanamsha_id directly."""
+    out = run(lambda: _entry(aya))
+    want = run_in_fresh_thread(lambda: _direct(aya))
+    for name in _RATE_AND_VARNADA:
+        assert out[name]["longitude_deg"] == pytest.approx(want[name], abs=1e-9), (aya, name)
+
+
+@pytest.mark.parametrize("aya", NON_LAHIRI)
+def test_entry_point_hora_is_the_lahiri_value_shifted_by_the_ayanamsa_gap(aya, main_thread_in_fagan):
+    """Independent route for Hora: sidereal Hora under ``aya`` = Lahiri's + (Lahiri ayanamsa - ``aya``'s)."""
+    lahiri = run_in_fresh_thread(lambda: _entry("lahiri"))
+    other = run_in_fresh_thread(lambda: _entry(aya))
+    lahiri_aya, other_aya = _ayanamsa_gap_from_lahiri(aya)
+    gap = lahiri_aya - other_aya
+    assert abs(gap) > 1.0  # raman 1.446 deg, surya_siddhanta 2.962 deg
+    got = _wrap(other["hora_lagna"]["longitude_deg"] - lahiri["hora_lagna"]["longitude_deg"])
+    assert got == pytest.approx(gap, abs=1e-6)

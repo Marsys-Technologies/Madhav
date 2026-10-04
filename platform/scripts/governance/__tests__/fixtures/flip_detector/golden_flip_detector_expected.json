@@ -79,6 +79,182 @@
   "verdict": "FAIL",
   "warnings": []
  },
+ "all_24_hooks_unchanged_native_chart": {
+  "absent": [
+   "DECLARED BUT ABSENT ephemeris_backend_shift[0] (chart_dashas:vimshottari): the hook declares this change and nothing changed (mark the entry \"optional\": true if absence is acceptable)",
+   "DECLARED BUT ABSENT ephemeris_backend_shift[1] (chart_dashas:vimshottari_kp): the hook declares this change and nothing changed (mark the entry \"optional\": true if absence is acceptable)",
+   "DECLARED BUT ABSENT ephemeris_backend_shift[2] (chart_dashas:kalachakra): the hook declares this change and nothing changed (mark the entry \"optional\": true if absence is acceptable)",
+   "DECLARED BUT ABSENT ephemeris_backend_shift[3] (chart_dashas:kalachakra): the hook declares this change and nothing changed (mark the entry \"optional\": true if absence is acceptable)"
+  ],
+  "by_table_category_change_lane": [],
+  "changes_total": 0,
+  "exit_allow_not_checked": 2,
+  "exit_default": 2,
+  "failure_counts": {
+   "DASHA_SHIFT_UNDECLARED": 0,
+   "DECLARED_BUT_ABSENT": 4,
+   "EMPTY_READ": 0,
+   "EXPECTATION_MISMATCH": 47,
+   "HOOK_ERROR": 0,
+   "KIND_MISMATCH": 0,
+   "UNDECLARED_CHANGE": 0
+  },
+  "not_checked": [
+   [
+    "chart_dashas.tier",
+    [
+     "tiers"
+    ]
+   ],
+   [
+    "l1_tajik_varsha_year_lords.tier",
+    [
+     "tiers"
+    ]
+   ],
+   [
+    "chart_vichara",
+    []
+   ],
+   [
+    "ga_yoga_firings.strength",
+    []
+   ],
+   [
+    "bodha_msr_signals",
+    []
+   ],
+   [
+    "bodha_rm_resonances",
+    []
+   ],
+   [
+    "ga_condition_composite",
+    []
+   ],
+   [
+    "ga_medical",
+    []
+   ],
+   [
+    "ga_vastu_*",
+    []
+   ],
+   [
+    "ga_prashna_*",
+    []
+   ],
+   [
+    "prashna_charts",
+    []
+   ],
+   [
+    "tiers[1]",
+    [
+     "tiers"
+    ]
+   ],
+   [
+    "tiers[2]",
+    [
+     "tiers"
+    ]
+   ]
+  ],
+  "verdict": "FAIL",
+  "warnings": [
+   "OPTIONAL_ABSENT ephemeris_backend_shift[4] (chart_dashas:kalachakra): optional entry observed no change",
+   "OPTIONAL_ABSENT ephemeris_backend_shift[5] (chart_dashas:mudda): optional entry observed no change"
+  ]
+ },
+ "all_24_hooks_unchanged_native_chart_with_composite_entries": {
+  "absent": [
+   "DECLARED BUT ABSENT ephemeris_backend_shift[0] (chart_dashas:vimshottari): the hook declares this change and nothing changed (mark the entry \"optional\": true if absence is acceptable)",
+   "DECLARED BUT ABSENT ephemeris_backend_shift[1] (chart_dashas:vimshottari_kp): the hook declares this change and nothing changed (mark the entry \"optional\": true if absence is acceptable)",
+   "DECLARED BUT ABSENT ephemeris_backend_shift[2] (chart_dashas:kalachakra): the hook declares this change and nothing changed (mark the entry \"optional\": true if absence is acceptable)",
+   "DECLARED BUT ABSENT ephemeris_backend_shift[3] (chart_dashas:kalachakra): the hook declares this change and nothing changed (mark the entry \"optional\": true if absence is acceptable)"
+  ],
+  "by_table_category_change_lane": [],
+  "changes_total": 0,
+  "exit_allow_not_checked": 2,
+  "exit_default": 2,
+  "failure_counts": {
+   "DASHA_SHIFT_UNDECLARED": 0,
+   "DECLARED_BUT_ABSENT": 4,
+   "EMPTY_READ": 0,
+   "EXPECTATION_MISMATCH": 49,
+   "HOOK_ERROR": 0,
+   "KIND_MISMATCH": 0,
+   "UNDECLARED_CHANGE": 0
+  },
+  "not_checked": [
+   [
+    "chart_dashas.tier",
+    [
+     "tiers"
+    ]
+   ],
+   [
+    "l1_tajik_varsha_year_lords.tier",
+    [
+     "tiers"
+    ]
+   ],
+   [
+    "chart_vichara",
+    []
+   ],
+   [
+    "ga_yoga_firings.strength",
+    []
+   ],
+   [
+    "bodha_msr_signals",
+    []
+   ],
+   [
+    "bodha_rm_resonances",
+    []
+   ],
+   [
+    "ga_condition_composite",
+    []
+   ],
+   [
+    "ga_medical",
+    []
+   ],
+   [
+    "ga_vastu_*",
+    []
+   ],
+   [
+    "ga_prashna_*",
+    []
+   ],
+   [
+    "prashna_charts",
+    []
+   ],
+   [
+    "tiers[1]",
+    [
+     "tiers"
+    ]
+   ],
+   [
+    "tiers[2]",
+    [
+     "tiers"
+    ]
+   ]
+  ],
+  "verdict": "FAIL",
+  "warnings": [
+   "OPTIONAL_ABSENT ephemeris_backend_shift[4] (chart_dashas:kalachakra): optional entry observed no change",
+   "OPTIONAL_ABSENT ephemeris_backend_shift[5] (chart_dashas:mudda): optional entry observed no change"
+  ]
+ },
  "four_lanes_counts_stripped": {
   "absent": [],
   "by_table_category_change_lane": [

@@ -44,7 +44,11 @@ class GaDashasWriter(WriterBase):
             write_dasha_scope_cap_sentinels,
         )
 
-        chart_id = ctx.config['chart_id']
+        # run_asset puts run["chart_id"] in ctx.config as-is, and psycopg decodes a uuid
+        # column to uuid.UUID. ga_dashas_writer feeds chart_id into stable_uuid /
+        # stabilize_hierarchical_uuids (canonical JSON, which rejects a UUID) and compares it
+        # to the str CANONICAL_CHART_ID, so convert once here, at the adapter boundary.
+        chart_id = str(ctx.config['chart_id'])
         if step.key == _POST_PASS_KEY:
             _run_concurrency_post_pass_db(chart_id, ctx.build_id, conn=ctx.db_conn)
             # SD-DASHA-1 (SAMĀPTI v2.0 §9.5): this path previously never wrote
