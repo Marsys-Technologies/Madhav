@@ -12,6 +12,10 @@ from __future__ import annotations
 import psycopg
 import pytest
 
+# G8: this suite is NOT about the class census; it opts out BY NAME (see conftest.g8_census_opt_out and the guard in test_g8_class_census.py).
+G8_CENSUS_OPT_OUT_REASON = "exercises the contact tables of a sealed generation (second seal, duplicates) on a deliberate one-class marriage world"
+pytestmark = pytest.mark.usefixtures("g8_census_opt_out")
+
 from services.gochara_kernel import ledger as gk_ledger
 
 from .test_a53_inventory import CHART_ID

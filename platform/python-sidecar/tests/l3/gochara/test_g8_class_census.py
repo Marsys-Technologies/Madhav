@@ -333,3 +333,49 @@ def test_the_function_keeps_its_acl_and_owner_so_the_verifier_and_sealer_closure
     row = chain.execute("SELECT p.prosecdef, p.provolatile, p.proconfig::text FROM pg_proc p"
                         " WHERE p.oid = 'public.ka_gochara_search_completeness_violations(uuid,text)'::regprocedure").fetchone()
     assert row == (False, "s", "{\"search_path=pg_catalog, public\"}")        # still INVOKER, STABLE, the pinned search_path (CREATE OR REPLACE keeps the ACL)
+
+
+# ── the census can only be switched off by a suite that says so, and the list of those suites is closed ───────────────────
+
+#: EXACTLY the suites that opt out of the job census (steward G8-RULING: per-suite explicit opt-in, never a blanket fixture). Each runs the job's
+#: other mechanics on a deliberate one-class world. Adding a suite here is a reviewed decision; a new opt-out that is not listed fails below.
+G8_OPT_OUT_SUITES = frozenset({
+    "test_a53_verification_job.py", "test_a53_r10_runner_gate.py", "test_a53_r10_record_results.py", "test_a53_r10_locking.py",
+    "test_a53_r11_seal_brief.py", "test_a53_r12_boundary.py", "test_a53_r12_persisted_brief.py", "test_a53_r12_seal_job.py",
+    "test_a53_r15_amendments.py", "test_a53_r10_complete_records.py", "test_a53_r11_generation_wide.py", "test_a53_r11_p1_independence.py",
+    "test_a53_r13_own_checkout.py", "test_a53_r13_producer.py", "test_a53_r13_sealed_boundary.py", "test_a53_r13_timeouts.py",
+    "test_a53_r14_sealed_contacts.py", "test_a53_r16_amendments.py"})
+
+
+def _suite_sources():
+    return {p.name: p.read_text() for p in sorted(Path(__file__).parent.glob("test_*.py")) if p.name != Path(__file__).name}
+
+
+def test_exactly_the_listed_suites_opt_out_of_the_census_each_with_a_stated_reason():
+    sources = _suite_sources()
+    opted = {n for n, s in sources.items() if "g8_census_opt_out" in s}
+    assert opted == G8_OPT_OUT_SUITES, (
+        f"suites that opt out of the G8 class census must be exactly the reviewed list; unexpected {sorted(opted - G8_OPT_OUT_SUITES)}, "
+        f"missing {sorted(G8_OPT_OUT_SUITES - opted)}")
+    for name in sorted(opted):
+        src = sources[name]
+        m = re.search(r'^G8_CENSUS_OPT_OUT_REASON = "([^"]+)"$', src, re.M)
+        assert m and len(m.group(1).strip()) >= 20, f"{name} opts out without a stated reason"
+        assert re.search(r'^pytestmark = pytest\.mark\.usefixtures\("g8_census_opt_out"\)$', src, re.M), f"{name} does not apply the opt-out as a module mark"
+
+
+def test_nothing_else_replaces_or_patches_the_census_step():
+    for name, src in _suite_sources().items():
+        if name in G8_OPT_OUT_SUITES:
+            continue
+        assert "_enforce_class_census" not in src, f"{name} touches the census step directly; opt out by name instead (conftest.g8_census_opt_out)"
+    code = "\n".join(ln for ln in (Path(__file__).parent / "conftest.py").read_text().splitlines() if not ln.lstrip().startswith("#"))
+    assert "_enforce_class_census" not in code.split("def g8_census_opt_out")[0], \
+        "the conftest must not patch the census anywhere but inside the named opt-out fixture"
+
+
+def test_the_opt_out_fixture_refuses_a_suite_with_no_reason(pytester=None):
+    # the fixture's own rule, asserted on its source (a pytester run would need the plugin enabled): a missing or short reason is a usage error
+    src = (Path(__file__).parent / "conftest.py").read_text()
+    body = src.split("def g8_census_opt_out")[1]
+    assert "G8_CENSUS_OPT_OUT_REASON" in body and "pytest.UsageError" in body and "< 20" in body

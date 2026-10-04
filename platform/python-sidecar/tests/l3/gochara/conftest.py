@@ -208,17 +208,17 @@ def _fresh_contact_reconstruct_cache():
     contact_reconstruct._CACHE.clear()
 
 
-# G8: the verification job now refuses a candidate that does not claim every class its manifest pins (the class census,
-# verification_job._enforce_class_census). The older a53 job-mechanics suites deliberately build a ONE-class "subset world" (marriage)
-# whose manifest, written by the real writer, pins all 26 — exactly the 25-of-26 shape the census exists to refuse. They are about the
-# job's other behaviour (runner identity, locking, digests, seal), so for them ONLY the census step is set aside; everything else the
-# job does runs for real. The census itself is proven, un-bypassed, by test_g8_class_census.py (which is exempt here).
-@pytest.fixture(autouse=True)
-def _subset_world_skips_only_the_class_census(request, monkeypatch):
-    if request.module.__name__.rsplit(".", 1)[-1] == "test_g8_class_census":
-        return
-    try:
-        from services.gochara_kernel import verification_job as _vj
-    except Exception:     # the kernel is not importable in this environment: nothing to set aside
-        return
+# G8: the verification job refuses a candidate that does not claim every class its manifest pins (the class census,
+# verification_job._enforce_class_census). A few older a53 job-mechanics suites deliberately build a ONE-class "subset world" (marriage)
+# whose manifest, written by the real writer, pins all 26 -- exactly the 25-of-26 shape the census exists to refuse. Each such suite must
+# OPT OUT BY NAME and say why: it declares a module-level `G8_CENSUS_OPT_OUT_REASON` string and `pytestmark =
+# pytest.mark.usefixtures("g8_census_opt_out")`. The fixture refuses a module with no reason, and test_g8_class_census.py carries a guard that
+# lists exactly which suites opt out and fails when a new one appears. Only the census step is set aside; everything else the job does runs.
+@pytest.fixture()
+def g8_census_opt_out(request, monkeypatch):
+    reason = getattr(request.module, "G8_CENSUS_OPT_OUT_REASON", None)
+    if not isinstance(reason, str) or len(reason.strip()) < 20:
+        raise pytest.UsageError(f"{request.module.__name__} opts out of the G8 class census without a stated reason "
+                                "(G8_CENSUS_OPT_OUT_REASON, at least 20 characters)")
+    from services.gochara_kernel import verification_job as _vj
     monkeypatch.setattr(_vj, "_enforce_class_census", lambda *a, **k: None)
