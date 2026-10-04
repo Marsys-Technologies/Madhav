@@ -2092,3 +2092,135 @@ def test_the_top_level_guard_turns_ANY_exception_into_STOP_exit_3_but_keeps_argp
     with pytest.raises(SystemExit) as e:
         T.main(["--no-such-flag"])
     assert e.value.code == 2
+
+
+# ── 2026-10-04 follow-up: non-Z forms, wrapped ids, the wider report-only scan ────────────────────────────────────────────────────────────────────
+# The first real apply (SETTLED-1) found seven forms of the Mars→Rahu boundary, one `just_before` literal and one wrapped old row id BY HAND; the Z-only exact search could not see them.
+OLD_B, NEW_B = "2020-02-14T11:47:23Z", "2020-02-14T13:43:56Z"
+OLD_MD, NEW_MD = "58afa482-4bce-42df-9c0d-0b5a2e02305e", "1d1a80c0-53c6-5ff7-930a-52ff0f306cae"
+
+
+def _l3_file(tmp_path, name, text, sub="gochara"):
+    d = tmp_path / "tests" / "l3" / sub
+    d.mkdir(parents=True, exist_ok=True)
+    f = d / name
+    f.write_text(text, encoding="utf-8")
+    return f
+
+
+def test_the_seven_forms_the_first_apply_found_by_hand_are_now_found_by_the_scan(monkeypatch, tmp_path):
+    monkeypatch.setattr(T, "SIDECAR", tmp_path)
+    _l3_file(tmp_path, "test_forms.py",
+             'BOUNDARY = datetime(2020, 2, 14, 11, 47, 23, tzinfo=UTC)  # constructor\n'
+             'assert at["t_utc"].startswith("2020-02-14T11:47:23")  # bare prefix\n'
+             '"""licence for the 11:47:23 boundary instant (Rahu)."""\n'
+             'assert w.utc_iso_of_jd(x) < "2020-02-14T11:47:23"  # comparison\n'
+             'tier=TIER, t_iso="2020-02-14T11:47:23+00:00")  # offset\n'
+             'tier=TIER, t_iso="2020-02-14T11:47:22.999999+00:00")  # one microsecond before\n'
+             'just_before = "2020-02-14T11:47:22Z"  # one second before, Z\n'
+             'EXACT = "2020-02-14T11:47:23Z"\n')
+    got = {(ln, a_): b_ for _, ln, a_, b_ in T.scan_test_literals({OLD_B: NEW_B}, tmp_path)}
+    assert got[(1, "datetime(2020, 2, 14, 11, 47, 23")] == "datetime(2020, 2, 14, 13, 43, 56"
+    assert got[(2, "2020-02-14T11:47:23")] == "2020-02-14T13:43:56"
+    assert got[(3, "11:47:23")] == "13:43:56"
+    assert got[(4, "2020-02-14T11:47:23")] == "2020-02-14T13:43:56"
+    assert got[(5, "2020-02-14T11:47:23")] == "2020-02-14T13:43:56"
+    assert got[(6, "2020-02-14T11:47:22.999999")] == "2020-02-14T13:43:55.999999"        # the fraction is kept, the second before the NEW boundary is computed
+    assert got[(7, "2020-02-14T11:47:22Z")] == "2020-02-14T13:43:55Z"
+    assert got[(8, NEW_B and OLD_B)] == NEW_B                                              # the exact Z literal is still found
+    assert not [k for k in got if k[0] == 8 and k[1] != OLD_B], "the bare time of day INSIDE the Z literal must not be a second occurrence"
+
+
+def test_ist_epoch_and_compact_forms_are_found_and_a_sub_second_after_is_not_a_boundary(monkeypatch, tmp_path):
+    monkeypatch.setattr(T, "SIDECAR", tmp_path)
+    ist_old = T._t(OLD_B).astimezone(T._IST); ist_new = T._t(NEW_B).astimezone(T._IST)
+    _l3_file(tmp_path, "test_more.py",
+             f'A = "{ist_old.strftime("%Y-%m-%d %H:%M:%S")}+05:30"\n'
+             f'B = {int(T._t(OLD_B).timestamp())}\n'
+             'C = "20200214T114723"\n'
+             'D = "2020-02-14T11:47:23.5Z"\n'                                              # 0.5 s AFTER the boundary: a different instant
+             'E = 1581680843123\n')
+    got = {(ln, a_): b_ for _, ln, a_, b_ in T.scan_test_literals({OLD_B: NEW_B}, tmp_path)}
+    assert got[(1, ist_old.strftime("%Y-%m-%d %H:%M:%S"))] == ist_new.strftime("%Y-%m-%d %H:%M:%S")
+    assert got[(2, str(int(T._t(OLD_B).timestamp())))] == str(int(T._t(NEW_B).timestamp()))
+    assert got[(3, "20200214T114723")] == "20200214T134356"
+    assert not [k for k in got if k[0] in (4, 5)], "a fraction after the boundary and a longer number are NOT boundary forms"
+
+
+def test_a_bare_time_of_day_shared_by_two_old_instants_is_not_searched(monkeypatch, tmp_path):
+    monkeypatch.setattr(T, "SIDECAR", tmp_path)
+    _l3_file(tmp_path, "test_shared.py", 'X = "see 11:47:23 here"\nY = "2020-02-14T11:47:23Z"\n')
+    two = {OLD_B: NEW_B, "2011-03-03T11:47:23Z": "2011-03-03T13:43:56Z"}               # the same time of day, two different new instants
+    got = {(ln, a_) for _, ln, a_, b_ in T.scan_test_literals(two, tmp_path)}
+    assert (1, "11:47:23") not in got and (2, OLD_B) in got
+
+
+def test_a_ruled_non_z_form_is_rewritten_on_its_line_only_and_an_unruled_one_stops_apply(monkeypatch, tmp_path):
+    _stub_verifier(tmp_path)
+    (tmp_path / "services" / "gochara_rules").mkdir(parents=True)
+    (tmp_path / "services" / "gochara_rules" / "permission.py").write_text(pathlib.Path(PERM.__file__).read_text(encoding="utf-8"), encoding="utf-8")
+    ref = PERM.AD_ROWS[0]
+    f = _l3_file(tmp_path, "test_nonz.py", f'A = "{ref["start_iso"][:-1]}+00:00"\nB = "{ref["start_iso"][:-1]}+00:00"\n', sub="gochara_rules")
+    monkeypatch.setattr(T, "SIDECAR", tmp_path)
+    maps = [{"old": ref, "new": {"dasha_row_id": "99999999-9999-4999-8999-999999999999", "start_iso": "2013-01-14T09:13:56Z",
+                                 "end_iso": "2014-01-11T14:11:56Z", "lord_graha": ref["lord"]}, "key": (2, (0,))}]
+    rel = "tests/l3/gochara_rules/test_nonz.py"
+    with pytest.raises(T.NeedsRuling) as nr:
+        T.apply_repin("22222222-2222-4222-8222-222222222222", maps, tmp_path)
+    assert any(f"{rel}:1" in u for u in nr.value.unclassified) and any(f"{rel}:2" in u for u in nr.value.unclassified)
+    T.apply_repin("22222222-2222-4222-8222-222222222222", maps, tmp_path, rulings={"rewrite": [f"{rel}:1"], "keep": [f"{rel}:2"]})
+    lines = f.read_text(encoding="utf-8").splitlines()
+    assert lines[0] == 'A = "2013-01-14T09:13:56+00:00"' and lines[1] == f'B = "{ref["start_iso"][:-1]}+00:00"'
+
+
+def test_a_wrapped_old_row_id_is_rewritten_character_for_character_keeping_the_break_and_the_comment_leader(monkeypatch, tmp_path):
+    monkeypatch.setattr(T, "SIDECAR", tmp_path)
+    txt = ('    # P1 fixture: the period lord (MD Mercury, row 58afa482-4bce-42df-9c0d-\n'
+           '    # 0b5a2e02305e) transiting sign S\n'
+           f'    x = "{OLD_MD}"\n')
+    f = _l3_file(tmp_path, "test_wrap.py", txt)
+    assert T.scan_wrapped_ids({OLD_MD: NEW_MD}, tmp_path) == [("tests/l3/gochara/test_wrap.py", 1, OLD_MD)]
+    out = T.rewrite_wrapped_ids(txt, {OLD_MD: NEW_MD})
+    assert out == ('    # P1 fixture: the period lord (MD Mercury, row 1d1a80c0-53c6-5ff7-930a-\n'
+                   '    # 52ff0f306cae) transiting sign S\n'
+                   f'    x = "{NEW_MD}"\n')
+    assert OLD_MD not in out and "0b5a2e02305e" not in out
+
+
+def test_apply_rewrites_a_wrapped_id_without_a_ruling_and_lists_it_for_review(monkeypatch, tmp_path):
+    _stub_verifier(tmp_path)
+    (tmp_path / "services" / "gochara_rules").mkdir(parents=True)
+    (tmp_path / "services" / "gochara_rules" / "permission.py").write_text(pathlib.Path(PERM.__file__).read_text(encoding="utf-8"), encoding="utf-8")
+    ref = PERM.AD_ROWS[0]
+    a, b = ref["row_id"][:24], ref["row_id"][24:]
+    f = _l3_file(tmp_path, "test_wrap2.py", f"# row {a}\n# {b}\n", sub="gochara_rules")
+    monkeypatch.setattr(T, "SIDECAR", tmp_path)
+    maps = [{"old": ref, "new": {"dasha_row_id": "99999999-9999-4999-8999-999999999999", "start_iso": "2013-01-14T09:13:56Z",
+                                 "end_iso": "2014-01-11T14:11:56Z", "lord_graha": ref["lord"]}, "key": (2, (0,))}]
+    review: list[str] = []
+    T.apply_repin("22222222-2222-4222-8222-222222222222", maps, tmp_path, review=review)
+    assert f.read_text(encoding="utf-8") == "# row 99999999-9999-4999-8999-\n# 999999999999\n"
+    assert any(r.startswith("WRAPPED ID tests/l3/gochara_rules/test_wrap2.py:1") and "rewritten character for character" in r for r in review)
+
+
+def test_the_wide_scan_is_report_only_and_never_blocks_or_rewrites(monkeypatch, tmp_path):
+    _stub_verifier(tmp_path)
+    (tmp_path / "services" / "gochara_rules").mkdir(parents=True)
+    (tmp_path / "services" / "gochara_rules" / "permission.py").write_text(pathlib.Path(PERM.__file__).read_text(encoding="utf-8"), encoding="utf-8")
+    ref = PERM.AD_ROWS[0]
+    ts = tmp_path / "platform" / "tests" / "integration" / "seed.db.test.ts"
+    ts.parent.mkdir(parents=True)
+    ts.write_text(f"await c.query(`INSERT ... VALUES ('{ref['start_iso']}', '{ref['start_iso'][:-1]}+00:00')`)\n", encoding="utf-8")
+    gov = tmp_path / "platform" / "scripts" / "governance" / "__tests__" / "test_fixture.py"
+    gov.parent.mkdir(parents=True)
+    gov.write_text(f'row = ["{ref["start_iso"][:-1]}+00:00"]\n', encoding="utf-8")
+    monkeypatch.setattr(T, "SIDECAR", tmp_path / "platform" / "python-sidecar")
+    (tmp_path / "platform" / "python-sidecar" / "tests" / "l3").mkdir(parents=True)
+    inst = {ref["start_iso"]: "2013-01-14T09:13:56Z"}
+    wide = T.scan_wide_literals(inst, tmp_path)
+    assert {w[0] for w in wide} == {"platform/tests/integration/seed.db.test.ts", "platform/scripts/governance/__tests__/test_fixture.py"}
+    assert ("platform/tests/integration/seed.db.test.ts", 1, ref["start_iso"], "2013-01-14T09:13:56Z") in wide
+    assert any(w[2] == ref["start_iso"][:-1] and w[3] == "2013-01-14T09:13:56" for w in wide)       # the non-Z form too
+    # tests/l3 is the apply scan's, not the wide scan's
+    assert T.scan_test_literals(inst, tmp_path) == []
+    assert ts.read_text(encoding="utf-8").count(ref["start_iso"]) == 1                               # untouched

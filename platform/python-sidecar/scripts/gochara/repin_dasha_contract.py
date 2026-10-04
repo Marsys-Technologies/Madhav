@@ -25,7 +25,7 @@ files in this repository:
   * services/gochara_kernel/inventory_verifier.py: the verifier's INDEPENDENT pin `_C_BUILD` (the second site — Fable F-R17-2; --apply STOPS naming it if the file is absent or the line is not unique);
   * services/gochara_rules/permission.py: DASHA_READ_CONTRACT['build_id'] and the MD/AD/PD
     reference-row tuples (re-measured from the new build, matched by (level, parent path, index));
-  * tests/l3/**/*.py: ONLY the reference rows' ids and the old pin's build id (exact-string, ONE pass). An old boundary INSTANT in a test is NOT rewritten — it may be an event date
+  * tests/l3/**/*.py: ONLY the reference rows' ids (also when a line wrap splits one — rewritten character for character) and the old pin's build id (exact-string, ONE pass). An old boundary INSTANT in a test is NOT rewritten — it may be an event date
     that merely equals a boundary (D8) — it is printed as `REVIEW path:line old -> new` for a human;
   * a generated tests/l3/gochara_rules/test_am10_repin_<build8>.py asserting the OLD id is refused
     (DashaReadConflict) and the NEW id accepted (rule 2(g)).
@@ -1041,12 +1041,136 @@ def rewrite_once(text: str, mapping: dict[str, str]) -> str:
     return pat.sub(lambda m_: mapping[m_.group(0)], text)
 
 
+_IST = timezone(timedelta(hours=5, minutes=30))
+
+
+def boundary_forms(old_z: str, new_z: str) -> list[tuple["re.Pattern[str]", "object"]]:
+    """The NON-`Z` textual forms an old boundary instant takes in source (steward ruling 2026-10-04: the first apply found seven of them by hand — a `datetime(...)` constructor, a bare
+    `T11:47:23` prefix, `+00:00`, a docstring time, a `< "…"` comparison, the sub-second `…22.999999+00:00` — the `Z`-only search could not see them). Each entry is (compiled pattern, replacement(match)).
+    Forms: (1) date-time without a trailing `Z`/digit/dot, `T` or space separated (so `+00:00`, a bare prefix and a docstring all match; the `Z` literal is the exact scan's); (2) the second BEFORE
+    the boundary, whole or with a `.9…` fraction, with or without `Z`/offset (a `just_before` literal); (3) the same two in IST (+05:30, date shift included); (4) a `datetime(y, m, d, h, mi, s`
+    constructor; (5) epoch seconds; (6) compact `YYYYMMDDTHHMMSS` / `YYYYMMDDHHMMSS`. Julian-day numbers are NOT searched (a limit, stated in the report)."""
+    o, n = _t(old_z), _t(new_z)
+    forms: list[tuple[re.Pattern[str], object]] = []
+
+    for tz in (timezone.utc, _IST):
+        ot, nt = o.astimezone(tz), n.astimezone(tz)
+        for delta, frac in ((timedelta(0), False), (timedelta(seconds=-1), True)):
+            ob, nb = ot + delta, nt + delta
+            head = re.escape(ob.strftime("%Y-%m-%d")) + r"([T ])" + re.escape(ob.strftime("%H:%M:%S"))
+            if frac:                                                          # the second before: whole, or `.9…`, with or without `Z`
+                forms.append((re.compile(head + r"(\.\d+)?(Z)?(?![\d])"),
+                              lambda m_, nb=nb: nb.strftime("%Y-%m-%d") + m_.group(1) + nb.strftime("%H:%M:%S") + (m_.group(2) or "") + (m_.group(3) or "")))
+            else:                                                             # the boundary itself, NOT followed by `Z`, a digit or a fraction (the `Z` literal is the exact scan's)
+                forms.append((re.compile(head + r"(?!\d)(?!\.\d)(?!Z)"),
+                              lambda m_, nb=nb: nb.strftime("%Y-%m-%d") + m_.group(1) + nb.strftime("%H:%M:%S")))
+    # (4) datetime(y, m, d, h, mi, s — any zero padding, any spacing
+    forms.append((re.compile(r"datetime\(\s*%d,\s*0?%d,\s*0?%d,\s*0?%d,\s*0?%d,\s*0?%d(?!\d)" % (o.year, o.month, o.day, o.hour, o.minute, o.second)),
+                  lambda m_, n=n: "datetime(%d, %d, %d, %d, %d, %d" % (n.year, n.month, n.day, n.hour, n.minute, n.second)))
+    # (5) epoch seconds
+    forms.append((re.compile(r"(?<![\d.])%d(?![\d])" % int(o.timestamp())), lambda m_, n=n: str(int(n.timestamp()))))
+    # (6) compact forms
+    forms.append((re.compile(o.strftime("%Y%m%dT?%H%M%S") + r"(?!\d)"), lambda m_, n=n: n.strftime("%Y%m%dT%H%M%S") if "T" in m_.group(0) else n.strftime("%Y%m%d%H%M%S")))
+    return forms
+
+
+def _id_wrapped_pattern(row_id: str) -> "re.Pattern[str]":
+    """An old row id that a line wrap split inside a comment/string: hyphen-joined groups with an optional newline + indentation + comment leader after any hyphen."""
+    parts = row_id.split("-")
+    gap = r"(?:\s*\n[ \t]*(?:#|//|\*)?[ \t]*)?"
+    return re.compile(r"(?<![0-9a-f])" + ("-" + gap).join(re.escape(x) for x in parts) + r"(?![0-9a-f])")
+
+
+def rewrite_wrapped_ids(text: str, ids: dict[str, str]) -> str:
+    """Replace each (possibly line-wrapped) old row id by its new id CHARACTER BY CHARACTER, leaving the break, indentation and comment leader exactly as they were (old and new ids have the same
+    36-character shape, so the break falls at the same place)."""
+    for old, new in ids.items():
+        def sub(m_: "re.Match[str]", new=new) -> str:
+            it = iter(new)
+            return "".join(next(it) if (c.isalnum() or c == "-") else c for c in m_.group(0)) if "\n" in m_.group(0) else new
+        text = _id_wrapped_pattern(old).sub(sub, text)
+    return text
+
+
+def scan_wrapped_ids(ids: dict[str, str], repo_root: Path) -> list[tuple[str, int, str]]:
+    out = []
+    for p in sorted((SIDECAR / "tests" / "l3").rglob("*.py")):
+        txt = p.read_text(encoding="utf-8")
+        for old in ids:
+            for m_ in _id_wrapped_pattern(old).finditer(txt):
+                if "\n" in m_.group(0):
+                    out.append((str(p.relative_to(repo_root)), txt.count("\n", 0, m_.start()) + 1, old))
+    return out
+
+
+def all_boundary_forms(instants: dict[str, str]) -> list[tuple["re.Pattern[str]", "object"]]:
+    """`boundary_forms` for every old instant PLUS the bare UTC time of day (`11:47:23` in a docstring or comment) — only for a time of day that belongs to exactly ONE old instant (two instants
+    sharing it would make the replacement ambiguous; those are left to the dated forms)."""
+    forms = [f for a_, b_ in instants.items() for f in boundary_forms(a_, b_)]
+    tods: dict[str, list[tuple[str, str]]] = {}
+    for a_, b_ in instants.items():
+        tods.setdefault(_t(a_).strftime("%H:%M:%S"), []).append((a_, b_))
+    for tod, owners in tods.items():
+        if len(owners) == 1:
+            nb = _t(owners[0][1]).strftime("%H:%M:%S")
+            forms.append((re.compile(r"(?<![\d:])" + re.escape(tod) + r"(?![\d:])(?!\.\d)"), lambda m_, nb=nb: nb))
+    return forms
+
+
+def line_matches(line: str, instants: dict[str, str], forms: list) -> list[tuple[str, str]]:
+    """Every old-boundary match on one line as (matched text, replacement): the exact `…Z` literals plus the form matches, with a match that lies INSIDE a longer one on the same line dropped
+    (the bare time of day inside `2020-02-14T11:47:23Z` is the same occurrence, not a second one)."""
+    spans: list[tuple[int, int, str, str]] = []
+    for a_, b_ in instants.items():
+        i = line.find(a_)
+        while i >= 0:
+            spans.append((i, i + len(a_), a_, b_)); i = line.find(a_, i + 1)
+    for pat, repl in forms:
+        for m_ in pat.finditer(line):
+            spans.append((m_.start(), m_.end(), m_.group(0), repl(m_)))
+    keep = [x for x in spans if not any(y is not x and y[0] <= x[0] and x[1] <= y[1] and (y[1] - y[0]) > (x[1] - x[0]) for y in spans)]
+    seen, out = set(), []
+    for _, _, a_, b_ in sorted(keep):
+        if (a_, b_) not in seen:
+            seen.add((a_, b_)); out.append((a_, b_))
+    return out
+
+
 def scan_test_literals(instants: dict[str, str], repo_root: Path) -> list[tuple[str, int, str, str]]:
+    """Every old boundary in tests/l3 as (path, line, matched text, replacement): the exact `…Z` literal AND the non-`Z` forms of `boundary_forms`."""
+    forms = all_boundary_forms(instants)
     out = []
     for p in sorted((SIDECAR / "tests" / "l3").rglob("*.py")):
         for ln, line in enumerate(p.read_text(encoding="utf-8").splitlines(), 1):
-            for a_, b_ in instants.items():
-                if a_ in line:
+            for a_, b_ in line_matches(line, instants, forms):
+                out.append((str(p.relative_to(repo_root)), ln, a_, b_))
+    return out
+
+
+WIDE_SCAN_SUFFIXES = (".py", ".ts", ".tsx", ".json", ".sql", ".sh", ".yml")
+
+
+def scan_wide_literals(instants: dict[str, str], repo_root: Path) -> list[tuple[str, int, str, str]]:
+    """REPORT-ONLY (never rewritten, never blocking): the same old-boundary forms OUTSIDE tests/l3 — `platform/tests/**`, every `__tests__` tree, the sidecar's other tests, scripts and services.
+    These are KEEP candidates (independent synthetic fixtures, history comments); the first apply found three TypeScript `.db.test.ts` files and one governance fixture that seed their own old-instant rows."""
+    forms = all_boundary_forms(instants)
+    roots = [repo_root / "platform" / "tests", repo_root / "platform" / "scripts", SIDECAR / "tests", SIDECAR / "scripts", SIDECAR / "services"]
+    skip = SIDECAR / "tests" / "l3"
+    perm = SIDECAR / "services" / "gochara_rules" / "permission.py"
+    seen, out = set(), []
+    for root in roots:
+        if not root.is_dir():
+            continue
+        for p in sorted(root.rglob("*")):
+            if not p.is_file() or p.suffix not in WIDE_SCAN_SUFFIXES or p in seen or p == perm or skip in p.parents:
+                continue
+            seen.add(p)
+            try:
+                lines = p.read_text(encoding="utf-8").splitlines()
+            except (UnicodeDecodeError, OSError):
+                continue
+            for ln, line in enumerate(lines, 1):
+                for a_, b_ in line_matches(line, instants, forms):
                     out.append((str(p.relative_to(repo_root)), ln, a_, b_))
     return out
 
@@ -1079,6 +1203,8 @@ def apply_repin(new_id: str, maps: list[dict], repo_root: Path, rulings: dict | 
     if ver_txt.count(ver_old_line) != 1:
         raise VerifierPinMissing(f"{ver}: expected exactly ONE `{ver_old_line}` line, found {ver_txt.count(ver_old_line)} (the verifier's pin is a second site; it must equal the permission.py pin before and after)")
     matches = scan_test_literals(instants, repo_root)
+    if review is not None:
+        review.extend(f"WRAPPED ID {p}:{ln} {o_} -> {ids[o_]} [rewritten character for character]" for p, ln, o_ in scan_wrapped_ids(ids, repo_root))
     ruled = {**{k: "rewrite" for k in (rulings or {}).get("rewrite", [])}, **{k: "keep" for k in (rulings or {}).get("keep", [])}}
     unclassified = [f"{p}:{ln} {a_} -> {b_}" for p, ln, a_, b_ in matches if f"{p}:{ln}" not in ruled]
     if review is not None:
@@ -1104,7 +1230,7 @@ def apply_repin(new_id: str, maps: list[dict], repo_root: Path, rulings: dict | 
         lines = txt.splitlines(keepends=True)
         for ln, mp in by_file.get(rel, {}).items():
             lines[ln - 1] = rewrite_once(lines[ln - 1], mp)                            # ONLY the ruled lines
-        new_txt = rewrite_once("".join(lines), {**ids, old_id: new_id})
+        new_txt = rewrite_once(rewrite_wrapped_ids("".join(lines), ids), {**ids, old_id: new_id})          # a wrapped old id is rewritten character for character first
         if new_txt != txt:
             writes.append((p, new_txt)); changed.append(rel)
     gen = SIDECAR / "tests" / "l3" / "gochara_rules" / f"test_am10_repin_{new_id[:8]}.py"
@@ -1466,6 +1592,13 @@ def _main_impl(argv=None, *, conn=None) -> int:
         inst = {x["old"][side]: iso(x["new"][side]) for x in maps for side in ("start_iso", "end_iso")}
         for p_, ln, a_, b_ in scan_test_literals(inst, SIDECAR.parents[1]):
             print(f"TEST LITERAL (needs ruling at --apply): {p_}:{ln} {a_} -> {b_}")
+        ids_ = {x["old"]["row_id"]: x["new"]["dasha_row_id"] for x in maps}
+        for p_, ln, o_ in scan_wrapped_ids(ids_, SIDECAR.parents[1]):
+            print(f"WRAPPED ID (rewritten character for character at --apply; no ruling needed): {p_}:{ln} {o_} -> {ids_[o_]}")
+        wide = scan_wide_literals(inst, SIDECAR.parents[1])
+        for p_, ln, a_, b_ in wide:
+            print(f"WIDE SCAN (report only: never rewritten, never blocking; a KEEP candidate or a follow-up): {p_}:{ln} {a_} -> {b_}")
+        print(f"WIDE SCAN summary: {len(wide)} match(es) in {len({w[0] for w in wide})} file(s) outside tests/l3 (Julian-day numbers are not searched)")
     if a.apply:
         review: list[str] = []
         try:
