@@ -29,6 +29,9 @@ import { buildNirmanaBaselineCandidate, classifyNirmanaDivergence } from '../mon
  */
 const V41 = 'ka_gochara_v4_41_candidate'
 const V5 = 'ka_gochara_v5'
+const V3 = 'ka_gochara_v3_century_materialize'
+/** The rule-entry defaults the validation tests start from (every per-id field explicit). */
+const BASE_RULE = { declaredDependsOn: [] as string[], emptyDependsOnAllowed: true, testTriggers: [] as string[], evidenceCutoff: null, dependents: 'none' as const }
 
 function registryRow(asset_id: string, overrides: Partial<NirmanaRegistryContractRow> = {}): NirmanaRegistryContractRow {
   return {
@@ -54,8 +57,8 @@ const frozen = () => buildNirmanaBaselineCandidate(population)
 const definition = (c = frozen()) => ({ definition_status: 'frozen' as const, manifest: c.manifest, manifest_sha256: c.manifest_sha256 })
 
 describe('staged inert Gochara candidates — excluded while inert, visible the moment the shape changes', () => {
-  it('the rule names exactly the two ids', () => {
-    expect([...NIRMANA_STAGED_INERT_CANDIDATES].sort()).toEqual([V41, V5])
+  it('the rule names exactly the three ids (the two staged candidates and, from N-138, the retirement-pending v3 century writer)', () => {
+    expect([...NIRMANA_STAGED_INERT_CANDIDATES].sort()).toEqual([V3, V41, V5])
   })
 
   it('INERT ⇒ excluded: the baseline equals the frozen population, both frozen-registry comparisons pass, and the monitor reads in_sync', () => {
@@ -191,7 +194,7 @@ describe('staged inert Gochara candidates — excluded while inert, visible the 
     const v5truthful = (over: Partial<NirmanaRegistryContractRow> = {}) => staged(V5, { depends_on: PAIR, ...over })
 
     it('the rule table: v5 = exactly the pair + the small-test trigger + decision N-137; v4.1 = no dependencies, no test trigger', () => {
-      expect(NIRMANA_STAGED_INERT_CANDIDATE_RULES.get(V5)).toEqual({ declaredDependsOn: ['ga_dashas', 'ga_positions'], testTriggers: ['gochara-v5-small-test'], reason: 'unsealed test candidate', decision: 'N-137' })
+      expect(NIRMANA_STAGED_INERT_CANDIDATE_RULES.get(V5)).toEqual({ declaredDependsOn: ['ga_dashas', 'ga_positions'], emptyDependsOnAllowed: true, testTriggers: ['gochara-v5-small-test'], evidenceCutoff: null, dependents: 'none', reason: 'unsealed test candidate', decision: 'N-137' })
       expect(NIRMANA_STAGED_INERT_CANDIDATE_RULES.get(V41)).toMatchObject({ declaredDependsOn: [], testTriggers: [] })
     })
 
@@ -260,7 +263,7 @@ describe('staged inert Gochara candidates — excluded while inert, visible the 
     })
 
     it('F1: with NO declared test trigger anywhere the SQL is still valid — an explicit empty array, never a CASE with no WHEN', () => {
-      const none = new Map<string, NirmanaStagedInertCandidateRule>([['ka_gochara_v4_41_candidate', { declaredDependsOn: [], testTriggers: [], reason: 'staged inert candidate', decision: 'D' }]])
+      const none = new Map<string, NirmanaStagedInertCandidateRule>([['ka_gochara_v4_41_candidate', { ...BASE_RULE, reason: 'staged inert candidate', decision: 'D' }]])
       const sql = runtimeEvidenceSql('registry', none)
       expect(sql).toContain('br.triggered_by = ANY (ARRAY[]::text[])')
       expect(sql).not.toMatch(/CASE\s+registry\.asset_id\s+(ELSE|END)/)                                  // `CASE x ELSE … END` with no WHEN is a syntax error
@@ -272,7 +275,7 @@ describe('staged inert Gochara candidates — excluded while inert, visible the 
 
     describe('F2: the rule table is validated (at module load for the real table, and for any table handed to the SQL builder)', () => {
       const ok = (over: Partial<NirmanaStagedInertCandidateRule> = {}): ReadonlyMap<string, NirmanaStagedInertCandidateRule> =>
-        new Map([['ka_x', { declaredDependsOn: ['ga_a'], testTriggers: ['t-1'], reason: 'unsealed test candidate', decision: 'N-1', ...over }]])
+        new Map([['ka_x', { ...BASE_RULE, declaredDependsOn: ['ga_a'], testTriggers: ['t-1'], reason: 'unsealed test candidate', decision: 'N-1', ...over }]])
       it('the real table passes (this is the module-load check)', () => {
         expect(() => assertStagedInertCandidateRules(NIRMANA_STAGED_INERT_CANDIDATE_RULES)).not.toThrow()
         expect(() => assertStagedInertCandidateRules(ok())).not.toThrow()
@@ -294,8 +297,8 @@ describe('staged inert Gochara candidates — excluded while inert, visible the 
         expect(() => runtimeEvidenceSql('registry', table)).toThrow(/NIRMANA_STAGED_INERT_CANDIDATE_RULES/)        // a bad table can never reach SQL
       })
       it('refuses an empty or untrimmed asset id', () => {
-        expect(() => assertStagedInertCandidateRules(new Map([['', { declaredDependsOn: [], testTriggers: [], reason: 'r', decision: 'd' }]]))).toThrow()
-        expect(() => assertStagedInertCandidateRules(new Map([[' ka_x', { declaredDependsOn: [], testTriggers: [], reason: 'r', decision: 'd' }]]))).toThrow()
+        expect(() => assertStagedInertCandidateRules(new Map([['', { ...BASE_RULE, reason: 'r', decision: 'd' }]]))).toThrow()
+        expect(() => assertStagedInertCandidateRules(new Map([[' ka_x', { ...BASE_RULE, reason: 'r', decision: 'd' }]]))).toThrow()
       })
     })
 
@@ -305,6 +308,189 @@ describe('staged inert Gochara candidates — excluded while inert, visible the 
       excludedNirmanaStagedInertCandidates(rows)
       expect(JSON.stringify(buildNirmanaBaselineCandidate(rows))).toBe(before)
       expect(before).not.toContain('N-137')
+    })
+  })
+
+
+  // ── N-138 (Suvarṇa): the retirement-pending legacy century writer — the same rule, two EXPLICIT per-id differences: dependents inactive_only and evidence by DATE ──────────────
+  describe('N-138 — ka_gochara_v3_century_materialize: inert, declared six dependencies, no ACTIVE dependent, no evidence newer than the audit instant', () => {
+    const V3_DEPS = ['bg_sky_calendar', 'ka_gochara_resonance', 'ka_kota_chakra', 'ka_moorti_nirnaya', 'ka_tithi_pravesha', 'ka_vedha_gochara']
+    const CUTOFF = '2026-10-04T13:31:57Z'
+    const depRows = V3_DEPS.map((id, i) => registryRow(id, { layer: id.startsWith('bg_') ? 'brahmagyan' : 'kala', sort_order: 10 + i }))
+    const base: NirmanaRegistryContractRow[] = [...population, ...depRows]
+    /** v3 exactly as production reads it (2026-10-04): CURRENT, inactive, has a writer, the six dependencies, no evidence newer than the cutoff. */
+    const v3 = (over: Partial<NirmanaRegistryContractRow> = {}) => registryRow(V3, {
+      layer: 'kala', sort_order: 120, scope: 'per_chart', is_active: false, has_writer: true, depends_on: V3_DEPS, has_non_test_runtime_evidence: false, target_table: 'kala_gochara_windows_v2', ...over,
+    })
+    /** The END-STATE frozen manifest (a successor that matches reality: no v3) and the INTERIM one (the t3 manifest froze v3 as an ACTIVE build writer). */
+    const endState = () => buildNirmanaBaselineCandidate(base)
+    const interim = () => buildNirmanaBaselineCandidate([...base, v3({ is_active: true })])
+    const defn = (c: ReturnType<typeof buildNirmanaBaselineCandidate>) => ({ definition_status: 'frozen' as const, manifest: c.manifest, manifest_sha256: c.manifest_sha256 })
+    /** The state the rule must refuse to hide: v3 is NOT in the excluded list and the monitor can see it (the baseline throws, or the candidate carries v3 and is not in_sync). */
+    const failsClosed = (rows: NirmanaRegistryContractRow[]) => {
+      expect(excludedNirmanaStagedInertCandidates(rows).map((e) => e.asset_id)).not.toContain(V3)
+      expect(excludeNirmanaStagedInertCandidates(rows).map((r) => r.asset_id)).toContain(V3)
+      let candidate: ReturnType<typeof buildNirmanaBaselineCandidate> | null = null
+      try { candidate = buildNirmanaBaselineCandidate(rows) } catch { return }                                     // an unresolved obligation: fails closed by throwing
+      expect(candidate.manifest.assets.map((a) => a.asset_id)).toContain(V3)
+      expect(classifyNirmanaDivergence({ definition: defn(endState()), candidate, observation: null }).status).not.toBe('in_sync')
+    }
+
+    it('the rule table entry: the six declared dependencies, no empty set, the cutoff instant, inactive_only dependents, decision N-138, a visible reason that names the end', () => {
+      expect(NIRMANA_STAGED_INERT_CANDIDATE_RULES.get(V3)).toEqual({
+        declaredDependsOn: V3_DEPS, emptyDependsOnAllowed: false, testTriggers: [], evidenceCutoff: CUTOFF, dependents: 'inactive_only',
+        reason: 'retirement-pending legacy century writer (interim: ends with the t3 successor manifest or the registry retirement)', decision: 'N-138',
+      })
+    })
+
+    it('INERT ⇒ excluded: with production\'s shape the baseline CONSTRUCTS (it threw on the unresolved obligation before) and v3 is named in the visible list', () => {
+      const rows = [...base, v3()]
+      expect(isNirmanaStagedInertCandidate(rows[rows.length - 1])).toBe(true)
+      expect(() => buildNirmanaBaselineCandidate(rows)).not.toThrow()
+      expect(buildNirmanaBaselineCandidate(rows)).toEqual(endState())
+      expect(excludedNirmanaStagedInertCandidates(rows)).toEqual([{ asset_id: V3, reason: NIRMANA_STAGED_INERT_CANDIDATE_RULES.get(V3)!.reason, decision: 'N-138' }])
+    })
+
+    it('WITHOUT the rule v3 is the reproduced defect: the same inactive, written, CURRENT shape under an unadjudicated id throws the unresolved-obligation error', () => {
+      expect(() => buildNirmanaBaselineCandidate([...base, { ...v3(), asset_id: 'ka_gochara_v3_lookalike' }])).toThrow(/cannot retain an unresolved execution obligation/)
+    })
+
+    it('END STATE ≠ INTERIM: against a successor manifest without v3 the monitor reads in_sync; against the t3 manifest that froze v3 as ACTIVE it reports plan_adaptation_required NAMING v3 — the true state, never in_sync, never source_unavailable', () => {
+      const rows = [...base, v3()]
+      expect(classifyNirmanaDivergence({ definition: defn(endState()), candidate: buildNirmanaBaselineCandidate(rows), observation: null })).toMatchObject({ status: 'in_sync', affected_asset_ids: [] })
+      const status = classifyNirmanaDivergence({ definition: defn(interim()), candidate: buildNirmanaBaselineCandidate(rows), observation: null })
+      expect(status.status).toBe('plan_adaptation_required')
+      expect(status.affected_asset_ids).toContain(V3)
+    })
+
+    // The four mutations of the ruling, each failing closed — and the neighbouring shapes the rule must not hide.
+    it.each([
+      ['NEW evidence after the audit instant (a run of any trigger)', { has_non_test_runtime_evidence: true }],
+      ['the evidence column unknown (null)', { has_non_test_runtime_evidence: null }],
+      ['the evidence column absent', { has_non_test_runtime_evidence: undefined }],
+      ['is_active true', { is_active: true }],
+      ['an EXTRA dependency', { depends_on: [...V3_DEPS, 'bg_reference'] }],
+      ['a MISSING dependency', { depends_on: V3_DEPS.slice(1) }],
+      ['a DIFFERENT dependency', { depends_on: [...V3_DEPS.slice(1), 'bg_reference'] }],
+      ['a DUPLICATED dependency', { depends_on: [...V3_DEPS, V3_DEPS[0]] }],
+      ['an EMPTY dependency set (v3 does not share v5\'s pre-migration allowance)', { depends_on: [] }],
+      ['lost its writer', { has_writer: false }],
+      ['is RETIRED', { catalog_status: 'RETIRED' as const, superseded_by: 'bg_reference', data_disposition: 'RETAINED_AS_CAPITAL' as const }],
+    ])('MUTATION — v3 with %s ⇒ NOT excluded and visible to the monitor', (_name, over) => {
+      const row = v3(over as Partial<NirmanaRegistryContractRow>)
+      expect(isNirmanaStagedInertCandidate(row)).toBe(false)
+      failsClosed([...base, row])
+    })
+
+    it('MUTATION — an ACTIVE dependent makes v3 part of the live DAG: NOT excluded (inactive_only)', () => {
+      const dependent = registryRow('ka_active_dependent', { layer: 'kala', sort_order: 130, depends_on: [V3], is_active: true })
+      expect(excludedNirmanaStagedInertCandidates([v3(), dependent])).toEqual([])
+      expect(excludeNirmanaStagedInertCandidates([v3(), dependent]).map((r) => r.asset_id)).toEqual([V3, 'ka_active_dependent'])
+      failsClosed([...base, v3(), dependent])
+    })
+
+    it.each([['null', null], ['undefined', undefined]])('MUTATION — a dependent whose is_active is %s (unknown) is NOT inactive: v3 is NOT excluded', (_name, unknown) => {
+      const dependent = { ...registryRow('ka_unknown_dependent', { layer: 'kala', sort_order: 130, depends_on: [V3] }), is_active: unknown } as unknown as NirmanaRegistryContractRow
+      expect(excludedNirmanaStagedInertCandidates([v3(), dependent])).toEqual([])
+    })
+
+    it('an INACTIVE dependent is allowed (the explicit per-id field): v3 stays excluded and the dependent stays in the kept rows; v4.1 / v5 keep their own `none` policy', () => {
+      const inactiveDependent = registryRow('ka_inactive_dependent', { layer: 'kala', sort_order: 130, depends_on: [V3], is_active: false })
+      expect(excludedNirmanaStagedInertCandidates([v3(), inactiveDependent]).map((e) => e.asset_id)).toEqual([V3])
+      expect(excludeNirmanaStagedInertCandidates([v3(), inactiveDependent]).map((r) => r.asset_id)).toEqual(['ka_inactive_dependent'])
+      // the same inactive dependent does NOT free a `none` id
+      const v5Dependent = registryRow('ka_inactive_on_v5', { layer: 'kala', sort_order: 131, depends_on: [V5], is_active: false })
+      expect(excludedNirmanaStagedInertCandidates([staged(V5), v5Dependent])).toEqual([])
+      const v41Dependent = registryRow('ka_inactive_on_v41', { layer: 'kala', sort_order: 132, depends_on: [V41], is_active: false })
+      expect(excludedNirmanaStagedInertCandidates([staged(V41), v41Dependent])).toEqual([])
+    })
+
+    it('the supporting-writer path (R20-2) holds for v3: an ACTIVE bo_grounding that depends on v3 keeps v3 in the denominator', () => {
+      const grounding = registryRow('bo_grounding', { layer: 'bodha', sort_order: 25, catalog_status: 'DRAFT', is_active: true, depends_on: [V3] })
+      expect(excludeNirmanaStagedInertCandidates([...base, v3(), grounding]).map((r) => r.asset_id)).toContain(V3)
+    })
+
+    it('the dependency order of the declared set is irrelevant; the dependents of v3 in the production registry are NONE (audit fact)', () => {
+      expect(isNirmanaStagedInertCandidate(v3({ depends_on: [...V3_DEPS].reverse() }))).toBe(true)
+      const production = JSON.parse(readFileSync(path.join(__dirname, 'fixtures', 'production_asset_registry_2026_10_04.json'), 'utf8')) as { audited_at: string; rows: NirmanaRegistryContractRow[]; dependents_of_v3: string[] }
+      expect(production.audited_at).toBe(CUTOFF)
+      expect(production.dependents_of_v3).toEqual([])
+      const prodV3 = production.rows.find((r) => r.asset_id === V3)!
+      expect([...(prodV3.depends_on ?? [])].sort()).toEqual(V3_DEPS)
+      expect(isNirmanaStagedInertCandidate(prodV3)).toBe(true)
+    })
+
+    it('PRODUCTION SHAPE (the registry as read read-only 2026-10-04, through the real predicate): the baseline CONSTRUCTS with 127 assets — 131 rows − v4.1 − v5 − v3 − bo_grounding — and exactly those three are named as excluded', () => {
+      const production = JSON.parse(readFileSync(path.join(__dirname, 'fixtures', 'production_asset_registry_2026_10_04.json'), 'utf8')) as { rows: NirmanaRegistryContractRow[] }
+      expect(production.rows).toHaveLength(131)
+      const candidate = buildNirmanaBaselineCandidate(production.rows)
+      const ids = candidate.manifest.assets.map((a) => a.asset_id)
+      expect(ids).toHaveLength(127)
+      for (const id of [V3, V5, V41, 'bo_grounding']) expect(ids).not.toContain(id)
+      expect(excludedNirmanaStagedInertCandidates(production.rows).map((e) => `${e.asset_id}:${e.decision}`)).toEqual([`${V41}:PRAVAHA-2996 (migration 1243)`, `${V3}:N-138`, `${V5}:N-137`].sort())
+      // the same registry with ONE new evidence row for v3 after the cutoff is the original failure again: fail closed, never a silent exclusion
+      const withNewRun = production.rows.map((r) => (r.asset_id === V3 ? { ...r, has_non_test_runtime_evidence: true } : r))
+      expect(() => buildNirmanaBaselineCandidate(withNewRun)).toThrow(/cannot retain an unresolved execution obligation/)
+    })
+
+    describe('the evidence predicate (cutoff mode) and the rule-table validation', () => {
+      it('the SQL has the CUTOFF arm: STRICTLY newer, the row\'s own and its run\'s timestamps, and a row with no timestamp at all counts as newer (COALESCE … TRUE)', () => {
+        const sql = runtimeEvidenceSql('registry')
+        expect(sql).toContain("WHEN registry.asset_id IN ('ka_gochara_v3_century_materialize')")
+        expect(sql).toContain("CASE registry.asset_id WHEN 'ka_gochara_v3_century_materialize' THEN '2026-10-04T13:31:57Z'::timestamptz END")
+        expect(sql).toContain('COALESCE(GREATEST(rcpt.observed_at, br.created_at, br.started_at, br.ended_at) >')
+        expect(sql).toContain('COALESCE(GREATEST(bra.started_at, bra.ended_at, br.created_at, br.started_at, br.ended_at) >')
+        expect(sql.match(/, TRUE\)/g)).toHaveLength(2)
+        expect(sql).toContain('LEFT JOIN public.build_runs br ON br.id = rcpt.build_id')
+        expect(sql).toContain('LEFT JOIN public.build_runs br ON br.id = bra.run_id')
+        expect(sql).not.toMatch(/>=\s*CASE/)                                                                        // strictly newer: evidence AT the cutoff is the audited history
+        expect(sql).toMatch(/AS has_non_test_runtime_evidence$/)
+      })
+      it('the trigger arm lists ONLY the trigger-mode ids (v3 is never read as test evidence) and the golden text is the one the python test runs', () => {
+        const sql = runtimeEvidenceSql('registry')
+        expect(sql).toContain("WHEN registry.asset_id IN ('ka_gochara_v4_41_candidate', 'ka_gochara_v5')")
+        expect(sql.indexOf('ka_gochara_v3_century_materialize')).toBeGreaterThan(sql.indexOf("'gochara-v5-small-test'"))
+        expect(runtimeEvidenceSql('{a}')).toBe(readFileSync(path.resolve(__dirname, 'fixtures/runtime_evidence_sql.golden.txt'), 'utf8').replace(/\n$/, ''))
+      })
+      it('a table with ONLY a cutoff id still produces valid SQL (no empty trigger arm), and a table with none keeps the N-137 text', () => {
+        const only = new Map<string, NirmanaStagedInertCandidateRule>([[V3, NIRMANA_STAGED_INERT_CANDIDATE_RULES.get(V3)!]])
+        const sql = runtimeEvidenceSql('registry', only)
+        expect(sql).toMatch(/^CASE WHEN registry\.asset_id IN \('ka_gochara_v3_century_materialize'\)/)
+        expect(sql).not.toContain('triggered_by')
+      })
+      const okCut = (over: Partial<NirmanaStagedInertCandidateRule> = {}): ReadonlyMap<string, NirmanaStagedInertCandidateRule> =>
+        new Map([['ka_x', { ...BASE_RULE, evidenceCutoff: CUTOFF, dependents: 'inactive_only' as const, reason: 'r', decision: 'N-1', ...over }]])
+      it('a valid cutoff entry passes', () => {
+        expect(() => assertStagedInertCandidateRules(okCut())).not.toThrow()
+      })
+      it.each([
+        ['a date without a time', { evidenceCutoff: '2026-10-04' }],
+        ['a time without the Z', { evidenceCutoff: '2026-10-04T13:31:57' }],
+        ['a numeric offset instead of Z', { evidenceCutoff: '2026-10-04T13:31:57+00:00' }],
+        ['fractional seconds', { evidenceCutoff: '2026-10-04T13:31:57.000Z' }],
+        ['an impossible date', { evidenceCutoff: '2026-13-40T00:00:00Z' }],
+        ['a rolled-over date (Feb 30)', { evidenceCutoff: '2026-02-30T00:00:00Z' }],
+        ['a quote that would end the SQL literal', { evidenceCutoff: "2026-10-04T13:31:57Z'; DROP TABLE x; --" }],
+        ['an untrimmed instant', { evidenceCutoff: ' 2026-10-04T13:31:57Z' }],
+        ['an empty instant', { evidenceCutoff: '' }],
+        ['a test trigger on a cutoff id (one evidence mode per id)', { testTriggers: ['t-1'] }],
+        ['an unknown dependents policy', { dependents: 'any' as unknown as 'none' }],
+        ['a missing dependents policy', { dependents: undefined as unknown as 'none' }],
+        ['a non-boolean emptyDependsOnAllowed', { emptyDependsOnAllowed: 'yes' as unknown as boolean }],
+      ])('refuses %s', (_name, over) => {
+        const table = okCut(over as Partial<NirmanaStagedInertCandidateRule>)
+        expect(() => assertStagedInertCandidateRules(table)).toThrow(/NIRMANA_STAGED_INERT_CANDIDATE_RULES/)
+        expect(() => runtimeEvidenceSql('registry', table)).toThrow(/NIRMANA_STAGED_INERT_CANDIDATE_RULES/)
+      })
+    })
+
+    it('the exclusion enters no digest: the candidate is byte-identical whether or not the visible list is asked for, and carries no N-138 text', () => {
+      const rows = [...base, v3()]
+      const before = JSON.stringify(buildNirmanaBaselineCandidate(rows))
+      excludedNirmanaStagedInertCandidates(rows)
+      expect(JSON.stringify(buildNirmanaBaselineCandidate(rows))).toBe(before)
+      expect(before).not.toContain('N-138')
+      expect(before).not.toContain(V3)
     })
   })
 
