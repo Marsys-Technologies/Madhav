@@ -656,3 +656,48 @@ def test_NIT7_a_script_that_writes_a_row_is_caught_by_post_rowdata_identical(wor
     code, res = run(world, "dry-run")
     assert code == 2 and "post_rowdata_identical" in res["failed_checks"]
     assert world.catalog_state() == pre
+
+
+# ================================================================ 2026-10-04: the TRUNCATE probes against production's FK (mimamsa_intervention_ledger -> brahma_prospective_ledger)
+
+def _two_table_state(world):
+    return [world.query("SELECT count(*), md5(COALESCE(string_agg(x::text, '|' ORDER BY x::text), '')) FROM public." + t + " x") for t in ("brahma_prospective_ledger", "mimamsa_intervention_ledger")]
+
+
+def _seed_interventions(world):
+    world.exec("INSERT INTO public.mimamsa_intervention_ledger (chart_id, intent, prediction_id) VALUES (%s, 'i1', '00000000-0000-4000-8000-0000000000a1'), "
+               "(%s, 'i2', NULL)", (CHART_A, CHART_A), role="amjis_app")
+
+
+def test_FK_dry_run_in_the_production_fk_world_passes_and_the_evidence_records_which_refusal_each_truncate_probe_saw(world, evid):
+    _seed_interventions(world)
+    before, rows = world.catalog_state(), _two_table_state(world)
+    code, result = run(world, "dry-run")
+    assert code == 0 and result["status"] == "DRY_RUN_ROLLED_BACK_ALL_CHECKS_HOLD" and result["failed_checks"] == []
+    log = "\n".join(result["log"])
+    assert "NOTICE: 1265 self-test: TRUNCATE public.brahma_prospective_ledger refused by POSTGRESQL (SQLSTATE 0A000: cannot truncate a table referenced in a foreign key constraint)" in log
+    assert "referenced by mimamsa_intervention_ledger.mimamsa_intervention_ledger_prediction_id_fkey" in log
+    assert "NOTICE: 1265 self-test: TRUNCATE public.brahma_prospective_ledger CASCADE refused by the GUARD (brahma_prospective_ledger_frozen_row_guard:" in log
+    assert "TRUNCATE branch skipped for mimamsa_predictions" in log                  # the pre-existing notice is now surfaced too
+    saved = json.loads((pathlib.Path(result["evidence_dir"]) / "result.json").read_text())          # the evidence file that carries the whole log
+    assert any(l.startswith("NOTICE: 1265 self-test: TRUNCATE public.brahma_prospective_ledger CASCADE refused by the GUARD") for l in saved["log"])
+    assert any(l.startswith("NOTICE: 1265 self-test: TRUNCATE public.brahma_prospective_ledger refused by POSTGRESQL") for l in saved["log"])
+    assert world.catalog_state() == before and _two_table_state(world) == rows
+
+
+def test_FK_dry_run_with_the_truncate_guard_disabled_is_refused_by_the_self_test_and_both_tables_are_intact(world, evid, monkeypatch, tmp_path):
+    _seed_interventions(world)
+    mutated = tmp_path / "disabled.sql"
+    src = FORWARD.read_text(encoding="utf8")
+    marker = "-- D1. SELF-TEST helpers"
+    assert src.count(marker) == 1
+    mutated.write_text(src.replace(marker, "ALTER TABLE public.brahma_prospective_ledger DISABLE TRIGGER brahma_prospective_ledger_frozen_row_guard_truncate;\n\n" + marker), encoding="utf8")
+    monkeypatch.setattr(EX, "FORWARD_SQL", mutated)
+    pre, rows = world.catalog_state(), _two_table_state(world)
+    assert rows[1][0][0] == 2 and rows[0][0][0] > 0
+    code, res = run(world, "dry-run")
+    assert code == 2 and any(c.startswith("sql_raised_RaiseException") for c in res["failed_checks"])
+    assert "1265 self-test FAILED: brahma_prospective_ledger: not refused (undone at once): TRUNCATE public.brahma_prospective_ledger CASCADE" in json.dumps(res["details"])
+    assert world.catalog_state() == pre and world.schema_acl() == world.baseline_acl
+    assert _two_table_state(world) == rows
+    assert world.query("SELECT count(*) FROM pg_trigger WHERE tgname LIKE '%frozen_row_guard%'") == [(0,)]
