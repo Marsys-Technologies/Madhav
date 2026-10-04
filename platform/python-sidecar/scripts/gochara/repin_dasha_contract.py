@@ -697,7 +697,13 @@ class NeedsRuling(Exception):
 
 
 def _finite_number(v) -> bool:
-    return isinstance(v, (int, float)) and not isinstance(v, bool) and math.isfinite(v)
+    """A real, finite, FLOAT-REPRESENTABLE number (Codex v1.2): a JSON integer such as 10**1000 is not — `math.isfinite` raises OverflowError on it — so it is simply not acceptable, never an exception."""
+    if not isinstance(v, (int, float)) or isinstance(v, bool):
+        return False
+    try:
+        return math.isfinite(float(v))
+    except (OverflowError, ValueError):
+        return False
 
 
 # Codex ASTRA_REVIEW_REPIN_TOOL_DELTA: a declared shape could bless a broken rebuild (a declaration copied from the broken state) and counts/builds were accepted independently, so the post-S-L1 shape is FIXED
@@ -707,7 +713,21 @@ _REFUSED_NOTICE_FIELDS = ("expected_partitions_non_scope", "expected_partitions_
 _NOTICE_KEYS = ("settled_1", "source_message_id", "system_id", "ayanamsha_id", "new_build_id", "expected_shift_seconds", "tolerance_seconds")
 
 
+_LEVEL_KEY = re.compile(r"[1-9]")        # a daśā LEVEL as a notice key: ONE decimal digit 1–9 (levels 1–3 are required and compared; 4 and deeper are tolerated, validated for shape, echoed, never compared)
+
+
 def load_notice(path: str) -> dict:
+    """The strict SETTLED-1 notice loader — EXCEPTION-PROOF (Codex v1.2): any content whatever yields either the notice or `ValueError("the SETTLED-1 notice is invalid: …")` (the CLI's STOP, exit 3, nothing
+    written); no content can raise anything else. (An unreadable FILE is still an `OSError`, which the CLI also turns into a STOP.)"""
+    try:
+        return _load_notice(path)
+    except (OSError, ValueError):
+        raise
+    except Exception as exc:                                  # RecursionError, OverflowError, TypeError … from hostile or malformed content: never an uncaught traceback
+        raise ValueError(f"the SETTLED-1 notice is invalid: unreadable content ({type(exc).__name__})") from None
+
+
+def _load_notice(path: str) -> dict:
     """Suvarṇa's SETTLED-1 notice as JSON: {"settled_1": true, "source_message_id": "<id>", "system_id": "vimshottari", "ayanamsha_id": "lahiri_chitrapaksha", "new_build_id": "<uuid>",
     "expected_shift_seconds": {"1": 6993, "2": 6993, "3": {"start": 6992, "end": 6994}}, "tolerance_seconds": 2}.
     STRICT ALLOW-LIST (Codex ASTRA_REVIEW_REPIN_TOOL_DELTA v1.1): the top level is EXACTLY the seven keys above — any other key (unknown, misspelled, the retired expected_* shape fields) is refused BY NAME.
@@ -721,13 +741,14 @@ def load_notice(path: str) -> dict:
     if not isinstance(d, dict):
         raise ValueError("the SETTLED-1 notice is invalid: the notice must be a JSON object")
     unknown = sorted(k for k in d if k not in _NOTICE_KEYS)
-    if unknown:
+    if unknown:                                               # EARLY refusal: no value of an unknown-key notice is read at all
         retired = [k for k in unknown if k in _REFUSED_NOTICE_FIELDS]
         other = [k for k in unknown if k not in _REFUSED_NOTICE_FIELDS]
         if retired:
             problems.append(f"{', '.join(retired)} NOT accepted: the post-S-L1 chart_dashas shape is fixed (45 + 1 partitions, exactly the SETTLED-1 build); no notice field may override it")
         if other:
             problems.append(f"unknown notice key(s) {', '.join(repr(k) for k in other)}: the notice allows EXACTLY {', '.join(_NOTICE_KEYS)}")
+        raise ValueError("the SETTLED-1 notice is invalid: " + "; ".join(problems))
     if d.get("settled_1") is not True:
         problems.append("settled_1 must be true")
     if d.get("system_id") != CANONICAL_SYSTEM:
@@ -744,11 +765,14 @@ def load_notice(path: str) -> dict:
     if not isinstance(exp, dict) or not {str(lv) for lv in LEVELS_IN_SCOPE} <= set(exp):
         problems.append("expected_shift_seconds must name levels 1, 2 and 3")
     else:
-        for k in (str(lv) for lv in LEVELS_IN_SCOPE):
+        bad_keys = sorted((k for k in exp if not (isinstance(k, str) and _LEVEL_KEY.fullmatch(k))), key=repr)
+        if bad_keys:                                          # a key that is not a LEVEL (a typo beside the levels) is refused by name
+            problems.append(f"expected_shift_seconds key(s) {', '.join(repr(k) for k in bad_keys)} are not levels (a level is ONE decimal digit 1–9)")
+        for k in sorted(k for k in exp if isinstance(k, str) and _LEVEL_KEY.fullmatch(k)):
             e = exp[k]
             ok = _finite_number(e) or (isinstance(e, dict) and set(e) == {"start", "end"} and _finite_number(e["start"]) and _finite_number(e["end"]))
             if not ok:
-                problems.append(f"expected_shift_seconds[{k}] must be a finite number or {{start, end}} of finite numbers (the two BOUNDARY expectations, not a range)")
+                problems.append(f"expected_shift_seconds[{k}] must be a finite number or exactly {{start, end}} of finite numbers (the two BOUNDARY expectations, not a range; no other key)")
     tol = d.get("tolerance_seconds")
     if not _finite_number(tol) or tol < MIN_TOLERANCE_SECONDS:
         problems.append(f"tolerance_seconds must be a FINITE number >= {MIN_TOLERANCE_SECONDS}")

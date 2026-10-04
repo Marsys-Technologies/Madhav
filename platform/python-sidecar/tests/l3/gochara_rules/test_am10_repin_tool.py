@@ -1674,3 +1674,62 @@ def test_the_cli_stops_on_an_unknown_or_misspelled_notice_key_and_writes_nothing
         assert rc == 3 and "notice is invalid" in err and repr(key) in err, (key, err)
         assert not out.exists()                                                                                          # no evidence file, no re-pin: nothing written
     assert sorted(p.name for p in tmp_path.iterdir()) == sorted(before + ["notice.json"])                                 # only the test's own notice file was written
+
+
+# ── v1.2 (Codex): early refusal, an EXCEPTION-PROOF loader, and nested keys ──────────────────────────────────────────────────────────────────────────────────────────────
+
+def test_an_unknown_key_is_refused_BEFORE_any_value_is_read_and_no_content_can_raise_anything_but_the_named_refusal(tmp_path):
+    huge = 10 ** 1000                                                                                                    # math.isfinite(10**1000) raises OverflowError
+    with pytest.raises(ValueError, match="notice is invalid.*unknown notice key\\(s\\) 'unexpected_field'"):
+        T.load_notice(_notice(tmp_path, unexpected_field=1, tolerance_seconds=huge))                                       # the counterexample: early refusal
+    for over in (dict(tolerance_seconds=huge), dict(tolerance_seconds=-huge), dict(expected_shift_seconds={"1": huge, "2": 6993, "3": 6993}),
+                 dict(expected_shift_seconds={"1": {"start": huge, "end": 1}, "2": 6993, "3": 6993}), dict(expected_shift_seconds={"1": 6993, "2": 6993, "3": 6993, "4": huge})):
+        with pytest.raises(ValueError, match="notice is invalid"):                                                          # never an OverflowError
+            T.load_notice(_notice(tmp_path, **over))
+    for raw in ("[" * 200000, '{"settled_1": true, "new_build_id": 5, "expected_shift_seconds": 7, "tolerance_seconds": "x", "source_message_id": 3}', '{"a": ' * 5000,
+                '{"settled_1": true, "expected_shift_seconds": [[[[1]]]], "system_id": ["x"]}', "{}", "null", "7"):
+        p = tmp_path / "hostile.json"; p.write_text(raw)
+        with pytest.raises(ValueError, match="notice is invalid|JSON|Expecting|Extra data|must be a JSON object"):
+            T.load_notice(str(p))
+
+
+def test_a_key_that_is_not_a_level_inside_expected_shift_seconds_is_refused_by_name_and_levels_are_one_digit_1_to_9(tmp_path):
+    base = {"1": 6993, "2": 6993, "3": 6993}
+    for extra_key in ("typo", "04", "10", "0", "x", "level_4", "1 "):
+        with pytest.raises(ValueError, match=f"expected_shift_seconds key\\(s\\) {extra_key!r} are not levels"):
+            T.load_notice(_notice(tmp_path, expected_shift_seconds={**base, extra_key: 1}))
+    for bad_level_value in ({"start": 1, "end": 2, "extra": 3}, {"start": 1}, {"end": 2}, "6993", None, [6993], float("nan")):
+        with pytest.raises(ValueError, match="notice is invalid.*expected_shift_seconds\\[4\\]"):
+            T.load_notice(_notice(tmp_path, expected_shift_seconds={**base, "4": bad_level_value}))                     # the tolerated extra levels are shape-checked too
+        with pytest.raises(ValueError, match="notice is invalid.*expected_shift_seconds\\[2\\]"):
+            T.load_notice(_notice(tmp_path, expected_shift_seconds={**base, "2": bad_level_value}))
+    ok = T.load_notice(_notice(tmp_path, expected_shift_seconds={**base, "4": 41000, "5": {"start": 1, "end": 2}, "9": 0}))   # documented extra levels stay tolerated and echoed
+    assert ok["_ignored_levels"] == ["4", "5", "9"] and sorted(ok["expected_shift_seconds"]) == ["1", "2", "3"]
+
+
+@pytest.mark.parametrize("over", [
+    dict(unexpected_field=1, tolerance_seconds=10 ** 1000),                                                              # Codex counterexample 1
+    dict(expected_shift_seconds={"1": 6993, "2": 6993, "3": 6993, "typo": 1}),                                           # Codex counterexample 2
+    dict(expected_shift_seconds={"1": {"start": 1, "end": 2, "extra": 3}, "2": 6993, "3": 6993}),
+    dict(tolerance_seconds=10 ** 1000),
+])
+@pytest.mark.parametrize("mode", ["dry-run", "out", "apply"])
+def test_a_bad_notice_is_STOP_exit_3_and_ZERO_writes_in_every_mode_including_apply(monkeypatch, tmp_path, capsys, over, mode):
+    rows_new = T.norm_rows(ref_rows("new", 6993))
+    cap = tmp_path / "old.json"; write_old_cap(cap)
+    monkeypatch.setattr(T.DD, "fetch_dasha_periods_multilevel", lambda conn, chart, build_id=None, **kw: rows_new if build_id == NEWB else [])
+    monkeypatch.setattr(T, "fetch_vimshottari_builds", lambda conn, chart: {NEWB: 117})
+    monkeypatch.setattr(T, "fetch_preflight_facts", lambda conn, chart: GOODFACTS)
+    def never(*a, **k):
+        raise AssertionError("apply_repin was reached with an invalid notice")
+    monkeypatch.setattr(T, "apply_repin", never)
+    fr = tmp_path / "f.md"; fr.write_text("anchors")
+    notice = _notice(tmp_path, new_build_id=NEWB, **over)
+    out = tmp_path / "evidence.md"
+    args = ["--new-build-id", NEWB, "--old-rows", str(cap), "--settled-notice", notice, "--forensic-report", str(fr)]
+    args += {"dry-run": ["--dry-run"], "out": ["--out", str(out)], "apply": ["--apply", "--settled-received", "M1", "--out", str(out)]}[mode]
+    before = sorted(p.name for p in tmp_path.iterdir())
+    rc = T.main(args, conn=FakeConn())
+    err = capsys.readouterr().err
+    assert rc == 3 and "notice is invalid" in err, (rc, err)
+    assert not out.exists() and sorted(p.name for p in tmp_path.iterdir()) == before                                    # ZERO writes
