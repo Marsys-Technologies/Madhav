@@ -474,6 +474,12 @@ class GocharaV5Writer(WriterBase):
             dasha_ids = [str(r["dasha_row_id"]) for r in rows
                          if int(r["level_n"]) in (1, 2, 3)
                          and r["start_iso"] < hi and r["end_iso"] > lo]
+            # A5.5f (G7): a rebuild REPLACES the whole unsealed chart x generation output chain, never accretes. The
+            # snapshot is the ONE per-plan reset point: it runs before every substep that writes chain rows
+            # (inventory / coverage / record / window), so nothing this build wrote can be wiped, and a resumed
+            # build (the orchestrator skips completed substeps, snapshot included) never re-runs it. A sealed
+            # generation is refused by name before any delete.
+            replaced = rstore.delete_generation_chain(chart_id=chart_id, generation=GENERATION)
             inv_store.delete_generation_inventory(chart_id, GENERATION)
             digest = inv_store.insert_snapshot(
                 chart_id=chart_id, generation=GENERATION, convention_id=sky_cid,
@@ -483,7 +489,9 @@ class GocharaV5Writer(WriterBase):
                 asset_id=self.asset_id, rows_inserted=1,
                 notes=(f"search-input snapshot {digest[:12]}…: {len(context['source_fact_ids'])} "
                        f"L1 facts, {len(dasha_ids)} daśā rows (build "
-                       f"{contract.get('build_id')}); no AV declarations (P5 held)"))
+                       f"{contract.get('build_id')}); no AV declarations (P5 held); chain replaced "
+                       f"(windows {replaced['windows']}, records {replaced['records']}, contacts "
+                       f"{replaced['contacts']}, coverage {replaced['coverage']})"))
 
         event_class = step.key.split(":", 1)[1]
         if event_class not in SCORED_CLASSES:
