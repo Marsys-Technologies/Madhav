@@ -183,11 +183,12 @@ def generation_rows(cur) -> int:
     return total
 
 
-def generation_ownership(cur, owned: list[str], *, remedy: str, notes: list[str] | None = None):
+def generation_ownership(cur, owned: list[str], *, remedy: str, unproven: str, notes: list[str] | None = None):
     """Is the existing generation '5.0' output (the chain, the inventory, the snapshot) of this chart PROVEN to be a small-test slice's?
     Returns `(manifest_row_or_None, output_rows)`; raises `Refused` by name when output or a manifest exists and is not proven. `owned` is
     the ids of the small-test runs (their original markers are the preimage of the stamp); `remedy` is the sentence that tells the
-    caller's operator what to do; `notes` (a list) receives how the stamp was proved. Reads only."""
+    operator what to do when the output is the test's but interrupted (snapshot or inventory identity differs), `unproven` the sentence for
+    output that is not provably a small test's at all; `notes` (a list) receives how the stamp was proved. Reads only."""
     notes = notes if notes is not None else []
     rows = generation_rows(cur)
     cur.execute("SELECT manifest_id, status, input_generation_vector, horizon FROM kala_gochara_publication WHERE chart_id = %s AND generation = %s",
@@ -211,7 +212,7 @@ def generation_ownership(cur, owned: list[str], *, remedy: str, notes: list[str]
         raise Refused(
             f"the '5.0' manifest of chart {CHART_ID} is not PROVEN to be a test slice ("
             f"{'status ' + repr(manifest['status']) if manifest['status'] != 'candidate' else problem}) — a historical "
-            f"'{TRIGGERED_BY}' run never authorises acting on an unproven candidate; {rows} output row(s) are left as they are")
+            f"'{TRIGGERED_BY}' run never authorises acting on an unproven candidate; {rows} output row(s) are left as they are. {unproven}")
     classes = stamped_classes(manifest["input_generation_vector"])
     cur.execute(
         """SELECT (s.input_generation_vector = p.input_generation_vector) AS same_vector, s.input_digest
