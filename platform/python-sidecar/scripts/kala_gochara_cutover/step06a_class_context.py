@@ -87,6 +87,7 @@ from services.gochara_intensity import enrichment, valence  # noqa: E402
 from services.gochara_intensity import permission as perm  # noqa: E402
 from services.gochara_intensity._dbutil import savepoint_scope  # noqa: E402
 from services.gochara_kernel import legacy_semantics as leg  # noqa: E402
+from services.gochara_kernel import dasha_read as _dasha_read  # noqa: E402
 
 CONTEXT_SOURCE = ("l1_permission_wiring:v2 (per-instant compute_permission "
                   "over MD/AD/PD periods; union over t_exact instants kept as "
@@ -224,43 +225,10 @@ def fetch_chart_operands(conn, chart_id: str,
 
 
 def select_dasha_read_contract(chart_id: str, dasha_periods: list[dict]) -> dict:
-    """The §4.0 pin step06b reads Vimśottarī rows under: the frozen contract's
-    build for the canonical chart when present; else the single build the
-    tier-filtered rows carry; several builds ⇒ a conflict — refuse (raise),
-    never row-order pick; no Vimśottarī rows ⇒ build None (disclosed)."""
-    from services.gochara_rules.permission import DASHA_READ_CONTRACT
-    vim = [p for p in dasha_periods if p.get("system_id") == "vimshottari"]
-    null_build = sum(1 for p in vim if p.get("build_id") is None)
-    builds = sorted({str(p.get("build_id")) for p in vim if p.get("build_id") is not None})
-    pinned = DASHA_READ_CONTRACT["build_id"]
-    if str(chart_id) == DASHA_READ_CONTRACT["chart_id"]:
-        # the canonical chart is PINNED by the frozen contract: any other
-        # sole build is a wrong build, never accepted (ASTRA v1.1 P1-2)
-        if pinned not in builds:
-            raise DD.DashaReadConflict(
-                f"chart_dashas §4.0: the frozen read contract pins build {pinned} "
-                f"for chart {chart_id}, but the two_pass_verified vimshottari rows "
-                f"carry {builds or 'no build'} — refusing an unpinned read")
-        build = pinned
-        basis = "GOCHARA_DESIGN_SPECS_v1_4 §4.0 pinned build"
-    elif null_build:
-        raise DD.DashaReadConflict(
-            f"chart_dashas §4.0: {null_build} two_pass_verified vimshottari rows "
-            f"for chart {chart_id} carry a NULL build_id — unpinnable, refusing")
-    elif len(builds) == 1:
-        build = builds[0]
-        basis = "single two_pass_verified build present"
-    elif not builds:
-        build = None
-        basis = "no vimshottari rows at the read tier"
-    else:
-        raise DD.DashaReadConflict(
-            f"chart_dashas §4.0: several two_pass_verified vimshottari builds "
-            f"{builds} for chart {chart_id} — an unpinned read is a defect; "
-            "refusing to pick by row order")
-    return {"system_id": "vimshottari", "build_id": build,
-            "tier": DD.READ_CONTRACT_TIER, "ayanamsha_id": AV_DONOR_AYANAMSHA,
-            "basis": basis, "builds_seen": builds}
+    """The §4.0 pin step06b reads Vimśottarī rows under. The rule lives in ONE
+    place — `services.gochara_kernel.dasha_read` — shared with the registered
+    '5.0' writer so the two readers cannot drift (A5.3)."""
+    return _dasha_read.select_dasha_read_contract(chart_id, dasha_periods)
 
 
 def load_pinned_dasha_periods(conn, chart_id: str, systems: list[str]) -> tuple[list[dict], dict]:

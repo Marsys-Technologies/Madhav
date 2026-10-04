@@ -1159,16 +1159,20 @@ export const ASSETS: AssetDef[] = [
     // Matches migration 307 (L1 Phase 3 Enrichment) — Amendment 1 adds 4 per-varga bala
     // categories covered by the new `graha_%_bala_per_varga` clause. ashtakavarga per-varga
     // rows already covered by existing `ashtakavarga_%`. Migration 217 broadened the family.
+    // Migration 1219 (Q-L1-04) narrows it so no row is counted by two assets: the bhava_bala_* rows
+    // (house_bhava_bala_% stays), vimsopaka_bala_per_graha and graha_saptavargaja_bala_component are
+    // ga_structural's (it emits and owns them), and so is ashtakavarga_anubindu (excluded from the retained
+    // 'ashtakavarga_%' clause). Same text as 1219's strength_new, byte for byte
+    // (migration-governed once a row exists: a re-seed never reverts it; this text seeds NEW rows).
     count_sql: `
   SELECT count(*) AS count FROM chart_facts
   WHERE chart_id = $1
     AND (
       fact_category LIKE 'graha_shadbala_%'
       OR fact_category IN ('graha_ishta_phala', 'graha_kashta_phala')
-      OR fact_category LIKE '%vimsopaka%'
-      OR fact_category LIKE 'ashtakavarga_%'
-      OR fact_category LIKE '%bhava_bala%'
-      OR fact_category = 'graha_saptavargaja_bala_component'
+      OR fact_category LIKE 'graha_vimsopaka_%'
+      OR (fact_category LIKE 'ashtakavarga_%' AND fact_category <> 'ashtakavarga_anubindu')
+      OR fact_category LIKE 'house_bhava_bala_%'
       OR fact_category LIKE 'graha_%_bala_per_varga'
     )
 `,
@@ -1487,7 +1491,15 @@ WHERE cf.chart_id = $1 AND fco.owning_asset_id = 'ga_structural'`,
     // Combined count: D1 composite rows (ga_condition_composite) + per-varga avastha rows (chart_facts).
     // Amendment 2 added graha_avastha_*_per_varga rows; BUG-1 fix (migration 309) removed them
     // from ga_structural count_sql so ga_condition is the sole counter of those rows.
-    count_sql: `SELECT (SELECT COUNT(*) FROM ga_condition_composite WHERE chart_id = $1) + (SELECT count(*) FROM chart_facts WHERE chart_id = $1 AND fact_category LIKE 'graha_avastha_%_per_varga') AS count`,
+    // Migration 1219 (Q-L1-04) re-declares it as the text below, byte for byte (the live text before it also carried
+    // a stale graha_yuddha clause, which ga_structural emits and owns; the seed had lagged the live text, which
+    // already carried the sayanadi / lajjitadi clauses). Migration-governed once a row exists: a re-seed never reverts it.
+    count_sql: `SELECT (SELECT COUNT(*) FROM ga_condition_composite WHERE chart_id = $1)
+       + (SELECT count(*) FROM chart_facts
+          WHERE chart_id = $1
+            AND (fact_category LIKE 'graha_avastha_%_per_varga'
+                 OR fact_category = 'graha_avastha_sayanadi'
+                 OR fact_category = 'graha_avastha_lajjitadi')) AS count`,
     size_sql: `SELECT pg_total_relation_size('ga_condition_composite')`,
     // Floor: 2,880 measured on prod chart 482012f1 (2026-06-18, migration 310).
     // Breakdown: 45 D1 composite (ga_condition_composite) + 2,835 per-varga avastha (chart_facts).
@@ -2292,16 +2304,17 @@ WHERE cf.chart_id = $1 AND fco.owning_asset_id = 'ga_structural'`,
     writer_timeout_seconds: 7200,
     asset_kind: 'data',
   },
-  // ── PRAVĀHA A5.3/C41 — ka_gochara_v5 INERT writer skeleton; the registry  ──
-  //    row ships here in the seed, exactly as PR #2799 did for               ──
-  //    ka_gochara_v4_41_candidate. Values = the row AFTER migration 1304     ──
-  //    (the seed must agree — the registry insert is ON CONFLICT DO NOTHING) ──
+  // ── PRAVĀHA A5.3 — ka_gochara_v5 INERT writer skeleton (no migration;    ──
+  //    the registry row ships here in the seed, exactly as PR #2799 did for  ──
+  //    ka_gochara_v4_41_candidate)                                            ──
   {
-    // depends_on ['ga_positions','ga_dashas'] (what the writer truly reads:
-    // natal graha longitudes via chart_context.py, Vimshottari rows via
-    // dasha_read.py) and NOTHING depends on it, so no existing DAG build
-    // ever schedules it — it runs ONLY via the steward-dispatched
-    // gochara-v5-small-test asset_set build_run (C37, A2.5 pattern).
+    // depends_on: [] and NOTHING depends on it, so no existing DAG build
+    // ever schedules it — and, unlike the A2.5 candidate, there is no
+    // steward dispatch surface yet: the writer module is a registered
+    // skeleton whose every execution path raises
+    // NotImplementedError("A5.3: geometry/solver pending steward pins 3-7")
+    // (steward ruling M20261001T014547-357e, pins 1-2; geometry blocked
+    // pending pins 3-7). A full-chart build must never pick it up.
     asset_id: 'ka_gochara_v5',
     layer: 'kala', sort_order: 142,
     catalog_status: 'CURRENT',
@@ -2309,10 +2322,6 @@ WHERE cf.chart_id = $1 AND fco.owning_asset_id = 'ga_structural'`,
     english_name: "Gochara '5.0' Writer Skeleton (Pravāha A5.3, INERT)",
     english_description: "PRAVĀHA A5.3 INERT skeleton: registered WriterBase writer ka_gochara_v5 (@register, asset_id pinned, light shape) with a hard chart-scope refusal (only chart 482012f1-710e-4a25-994a-93821f5871aa admitted) and every execution path raising NotImplementedError pending steward pins 3-7 (ruling M20261001T014547-357e pins 1-2). Never commits/rolls back/closes ctx.db_conn, opens no connection, writes no asset_throughput — no DB touch at all. Registration + inertness ONLY; the geometry/solver is a separate governed step.",
     storage_type: 'postgres_table',
-    // C41 (migration 1304): v5 does NOT write kala_gochara_windows — the 5.0
-    // outputs live in the ka_gochara_* tables, so the truth counter is the
-    // evaluation windows (Stream B confirms the target against the stats
-    // route; migration 1304 keeps it in one constant).
     target_table: 'ka_gochara_eval_window',
     count_sql: "SELECT COUNT(*) FROM ka_gochara_eval_window WHERE chart_id=$1 AND generation='5.0'",
     size_sql: "SELECT pg_total_relation_size('ka_gochara_eval_window')",
@@ -2325,13 +2334,11 @@ WHERE cf.chart_id = $1 AND fco.owning_asset_id = 'ga_structural'`,
     // of runPreparation's planning set (src/lib/build/runPreparation.ts:183,
     // WHERE is_active = true) and recalibrationEnqueue's writer sweep
     // (src/lib/build/recalibrationEnqueue.ts:141, is_active = true AND
-    // has_writer = true). The steward dispatch script flips it true only for
-    // the staging window and restores false in one transaction. The writer
+    // has_writer = true). Unlike A2.5 there is not even a dispatch script —
+    // activation is a future steward-governed step after pins 3-7. The writer
     // itself hard-refuses any chart other than the pinned candidate chart.
     scope: 'per_chart', is_active: false, estimated_seconds: null,
     has_writer: true, has_substeps: true,
-    // Migration 1304 stages the small test with a 7200s budget; the seed must
-    // agree (see the ka_gochara_v4_41_candidate row above for why).
     writer_timeout_seconds: 7200,
     asset_kind: 'data',
   },
