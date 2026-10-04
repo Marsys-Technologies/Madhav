@@ -356,8 +356,9 @@ def _refusal_checks(cur) -> "Checked":
 
     # OWNERSHIP of the generation's output: the SHARED proof (v5_small_test_shared, the one copy the dispatch uses too): the CURRENT
     # manifest must PROVE this test's slice, and the stored snapshot and inventory headers must carry the SAME vector identity
-    manifest, _rows = shared.generation_ownership(cur, owned, notes=notes,
-                                                  remedy="re-dispatch the slice (which replaces the chain), then tear down")
+    manifest, _rows = shared.generation_ownership(
+        cur, owned, notes=notes, remedy="re-dispatch the slice (which replaces the chain), then tear down",
+        unproven="this script never touches output it cannot prove is a small test's")
     if manifest is not None:
         # the manifest is deleted last: any table that references it (found from the catalog) other than the ones this script deletes
         # first — notably kala_gochara_contacts.input_generation_vector_id, NO ACTION — would make that DELETE fail with a bare SQLSTATE
