@@ -376,6 +376,94 @@ def _capture_digest(chart_id: str, build_id: str, rows: list[dict], natal: list[
     return hashlib.sha256(json.dumps(body, sort_keys=True, separators=(",", ":")).encode("utf-8")).hexdigest()
 
 
+_ROW_STR_KEYS = ("dasha_row_id", "lord_graha", "start_iso", "end_iso", "system_id", "verification_pass_status", "build_id")
+
+
+def strict_rows_problems(rows, label: str = "rows") -> list[str]:
+    """Codex v1.7 P1-1: ONE strict row schema, applied BEFORE any coercion (`int(...)`, `_t(...)`) to every row source — a loaded capture, both acquisitions and the W0 import all end in
+    `validate_capture`. Per row: an object; `level_n` an INTEGER (not a bool, a float, a string); `dasha_row_id` / `lord_graha` / `start_iso` / `end_iso` / `system_id` /
+    `verification_pass_status` / `build_id` non-empty STRINGS; ids canonical UUID text; `start_iso` / `end_iso` strings carrying an explicit offset, start strictly before end; `parent_row_id` a UUID
+    string or null; `trunc_start` / `trunc_end` booleans or null; the optional `index` an integer and `merged_row_ids` a list of strings. NOTHING is converted — a malformed value is a named problem."""
+    if not isinstance(rows, list):
+        return [f"{label}: not a list"]
+    out: list[str] = []
+    for i, r in enumerate(rows):
+        who = f"{label}[{i}]"
+        if not isinstance(r, dict):
+            out.append(f"{who}: not an object"); continue
+        lv = r.get("level_n")
+        if isinstance(lv, bool) or not isinstance(lv, int):
+            out.append(f"{who}: level_n must be an integer (got {lv!r})")
+        for k in _ROW_STR_KEYS:
+            if not isinstance(r.get(k), str) or not r[k].strip():
+                out.append(f"{who}: {k} must be a non-empty string (got {r.get(k)!r})")
+        for k in ("dasha_row_id", "parent_row_id", "build_id"):
+            v = r.get(k)
+            if isinstance(v, str) and v.strip():
+                try:
+                    uuid.UUID(v)
+                except ValueError:
+                    out.append(f"{who}: {k} is not a UUID ({v!r})")
+        if r.get("parent_row_id") is not None and not isinstance(r.get("parent_row_id"), str):
+            out.append(f"{who}: parent_row_id must be a string or null (got {r.get('parent_row_id')!r})")
+        for k in ("trunc_start", "trunc_end"):
+            if r.get(k) is not None and not isinstance(r.get(k), bool):                # absent / null = not flagged (as `edge_clipped` reads it); anything else but a boolean is refused
+                out.append(f"{who}: {k} must be true, false or null (got {r.get(k)!r})")
+        if "index" in r and (isinstance(r["index"], bool) or not isinstance(r["index"], int)):
+            out.append(f"{who}: index must be an integer (got {r['index']!r})")
+        if "merged_row_ids" in r and not (isinstance(r["merged_row_ids"], list) and all(isinstance(x, str) for x in r["merged_row_ids"])):
+            out.append(f"{who}: merged_row_ids must be a list of strings (got {r['merged_row_ids']!r})")
+        try:
+            a_, b_ = _t(r["start_iso"]), _t(r["end_iso"])
+            if not a_ < b_:
+                out.append(f"{who}: start_iso is not before end_iso")
+        except (KeyError, TypeError, ValueError, AttributeError):
+            out.append(f"{who}: start_iso / end_iso are not instants with an explicit offset ({r.get('start_iso')!r}, {r.get('end_iso')!r})")
+    return out
+
+
+def strict_natal_problems(natal) -> list[str]:
+    """Codex v1.7 P1-1: the same discipline for the ten natal rows — objects; `fact_subject`, `fact_id`, `tier` non-empty strings; `build_id` a string or null; `longitude` a FINITE number or numeric
+    text in [0, 360) — never NaN, infinity, an object, a bool or empty."""
+    if not isinstance(natal, list):
+        return ["natal: not a list"]
+    out: list[str] = []
+    for i, n in enumerate(natal):
+        who = f"natal[{i}]"
+        if not isinstance(n, dict):
+            out.append(f"{who}: not an object"); continue
+        for k in ("fact_subject", "fact_id", "tier"):
+            if not isinstance(n.get(k), str) or not n[k].strip():
+                out.append(f"{who}: {k} must be a non-empty string (got {n.get(k)!r})")
+        if n.get("build_id") is not None and not isinstance(n.get("build_id"), str):
+            out.append(f"{who}: build_id must be a string or null (got {n.get('build_id')!r})")
+        v = n.get("longitude")
+        ok = False
+        if isinstance(v, bool) or v is None:
+            ok = False
+        elif isinstance(v, (int, float)):
+            ok = math.isfinite(v)
+        elif isinstance(v, str) and v.strip():
+            try:
+                ok = math.isfinite(float(v))
+            except ValueError:
+                ok = False
+            if ok:
+                try:
+                    from decimal import Decimal
+                    ok = Decimal(v).is_finite()
+                except Exception:                      # noqa: BLE001 — any parse trouble is a refusal
+                    ok = False
+        if ok:
+            try:
+                ok = 0 <= float(v) < 360
+            except (TypeError, ValueError):
+                ok = False
+        if not ok:
+            out.append(f"{who}: longitude must be a finite number in [0, 360) (got {v!r})")
+    return out
+
+
 def row_contract_problems(rows: list[dict], build_id: str, label: str) -> list[str]:
     """EVERY row against the build and the read contract: its own `build_id` is the expected build (no foreign or mixed build), system Vimśottarī, tier `two_pass_verified`, level 1–3 (Codex R18-1).
     NOT checkable per row: `ayanamsha_id` — the §4.0 reader does not return it. The ayanāṃśa is established by the SQL predicate of the capture, recorded in the selection contract (bound into the checksum) and
@@ -431,6 +519,9 @@ def validate_capture(d: dict, chart_id: str, build_id: str) -> list[str]:
         out.append("the capture's selection contract is not the expected one (Vimśottarī / Lahiri / two_pass_verified / levels 1–3 / the ten natal subjects)")
     if d.get("sha256") != _capture_digest(d.get("chart_id"), d.get("build_id"), d["rows"], d.get("natal")):
         out.append("the capture's sha256 does not match its identity, selection, rows and natal longitudes")
+    strict = strict_rows_problems(d["rows"], "captured old rows") + strict_natal_problems(d.get("natal") or [])
+    if strict:                                                                            # Codex v1.7 P1-1: refuse BEFORE any int()/_t() coercion; the checksum is not evidence of well-formedness
+        return out + strict[:12]
     out += row_contract_problems(d["rows"], build_id, "captured old rows")
     try:
         out += capture_problems(d["rows"], reference=(build_id == PERM.DASHA_READ_CONTRACT["build_id"])) + coverage_problems(d["rows"]) + natal_problems(d.get("natal") or [])
@@ -618,6 +709,9 @@ def canon_uuid(x) -> str:
 def capture_problems(rows: list[dict], reference: bool = True) -> list[str]:
     """What the COMPARISON will later need, checked at CAPTURE time (Fable F-R18-2) — a useless capture must be found NOW, while a re-capture is still possible: a well-formed tree, every `permission.py`
     reference-row id present with its lord, and no flag set off the window bound."""
+    bad = strict_rows_problems(rows, "captured old rows")
+    if bad:
+        return bad[:12]
     out = tree_problems(rows, "captured old rows")
     by_id = {r["dasha_row_id"]: r for r in rows}
     for ref in (PERM.MD_ROWS + PERM.AD_ROWS + PERM.PD_ROWS if reference else []):       # `reference=False`: a capture of a build the contract does not pin yet (--capture-new before the re-pin)
@@ -637,7 +731,9 @@ def coverage_problems(rows: list[dict]) -> list[str]:
     """Codex R19-2: a baseline that can NEVER support a clean comparison is refused at acquisition and at load, while a re-capture is still possible — every in-scope level must have at least ONE UNCLIPPED start
     and ONE UNCLIPPED end (`edge_clipped`: the writer's flag OR the window-bound instant, so unflagged level-3 edges count correctly). If the edges are clipped there is no measurement; if they cease to be clipped
     on the new build, the one-sided-clip rule refuses — waiting for replacement rows cannot repair such a baseline."""
-    out: list[str] = []
+    out: list[str] = strict_rows_problems(rows, "captured old rows")[:12]
+    if out:
+        return out
     for lv in LEVELS_IN_SCOPE:
         at = [r for r in rows if int(r["level_n"]) == lv]
         for side in ("start", "end"):
@@ -665,6 +761,9 @@ def read_natal(conn, chart_id: str) -> list[dict]:
 
 
 def natal_problems(natal: list[dict]) -> list[str]:
+    bad = strict_natal_problems(natal)
+    if bad:
+        return bad[:12]
     got = sorted(n.get("fact_subject", "") for n in natal)
     out = [] if got == sorted(NATAL_SUBJECTS) else [f"natal subjects {got}, expected exactly {sorted(NATAL_SUBJECTS)}"]
     out += [f"natal row {n.get('fact_subject')} has no longitude" for n in natal if n.get("longitude") in (None, "")]
@@ -1094,7 +1193,7 @@ def rewrite_wrapped_ids(text: str, ids: dict[str, str]) -> str:
 
 def scan_wrapped_ids(ids: dict[str, str], repo_root: Path) -> list[tuple[str, int, str]]:
     out = []
-    for p in sorted((SIDECAR / "tests" / "l3").rglob("*.py")):
+    for p in sorted(q for q in (SIDECAR / "tests" / "l3").rglob("*.py") if q.is_file()):    # a DIRECTORY named *.py is not a file to scan or rewrite (the write plan refuses it)
         txt = p.read_text(encoding="utf-8")
         for old in ids:
             for m_ in _id_wrapped_pattern(old).finditer(txt):
@@ -1117,9 +1216,9 @@ def all_boundary_forms(instants: dict[str, str]) -> list[tuple["re.Pattern[str]"
     return forms
 
 
-def line_matches(line: str, instants: dict[str, str], forms: list) -> list[tuple[str, str]]:
-    """Every old-boundary match on one line as (matched text, replacement): the exact `…Z` literals plus the form matches, with a match that lies INSIDE a longer one on the same line dropped
-    (the bare time of day inside `2020-02-14T11:47:23Z` is the same occurrence, not a second one)."""
+def line_spans(line: str, instants: dict[str, str], forms: list) -> list[tuple[int, int, str, str]]:
+    """Every old-boundary match on one line as (start, end, matched text, replacement): the exact `…Z` literals (EVERY occurrence) plus the form matches, with a match that lies INSIDE a longer one
+    on the same line dropped (the bare time of day inside `2020-02-14T11:47:23Z` is the same occurrence). Offsets are kept (Codex v1.7 P1-2): a ruling rewrites THESE spans and nothing else."""
     spans: list[tuple[int, int, str, str]] = []
     for a_, b_ in instants.items():
         i = line.find(a_)
@@ -1129,21 +1228,49 @@ def line_matches(line: str, instants: dict[str, str], forms: list) -> list[tuple
         for m_ in pat.finditer(line):
             spans.append((m_.start(), m_.end(), m_.group(0), repl(m_)))
     keep = [x for x in spans if not any(y is not x and y[0] <= x[0] and x[1] <= y[1] and (y[1] - y[0]) > (x[1] - x[0]) for y in spans)]
+    out, seen = [], set()
+    for x in sorted(keep):
+        if (x[0], x[1]) not in seen:
+            seen.add((x[0], x[1])); out.append(x)
+    return out
+
+
+def line_matches(line: str, instants: dict[str, str], forms: list) -> list[tuple[str, str]]:
+    """The distinct (matched text, replacement) pairs of `line_spans` — what the human sees in the ruling list."""
     seen, out = set(), []
-    for _, _, a_, b_ in sorted(keep):
+    for _, _, a_, b_ in line_spans(line, instants, forms):
         if (a_, b_) not in seen:
             seen.add((a_, b_)); out.append((a_, b_))
     return out
 
 
-def scan_test_literals(instants: dict[str, str], repo_root: Path) -> list[tuple[str, int, str, str]]:
-    """Every old boundary in tests/l3 as (path, line, matched text, replacement): the exact `…Z` literal AND the non-`Z` forms of `boundary_forms`."""
+def rewrite_spans(line: str, spans: list[tuple[int, int, str, str]]) -> str:
+    """Replace EXACTLY the given spans (each must still read as its matched text) and not one other byte of the line — never a string replace over the line."""
+    out = line
+    for start, end, a_, b_ in sorted(spans, reverse=True):
+        if out[start:end] != a_:
+            raise ValueError(f"span {start}:{end} no longer reads {a_!r} (got {out[start:end]!r}); nothing written")
+        out = out[:start] + b_ + out[end:]
+    return out
+
+
+def scan_test_spans(instants: dict[str, str], repo_root: Path) -> list[tuple[str, int, int, int, str, str]]:
+    """Every old boundary in tests/l3 as (path, line, start, end, matched text, replacement): the exact `…Z` literal AND the non-`Z` forms of `boundary_forms`."""
     forms = all_boundary_forms(instants)
     out = []
-    for p in sorted((SIDECAR / "tests" / "l3").rglob("*.py")):
+    for p in sorted(q for q in (SIDECAR / "tests" / "l3").rglob("*.py") if q.is_file()):    # a DIRECTORY named *.py is not a file to scan or rewrite (the write plan refuses it)
         for ln, line in enumerate(p.read_text(encoding="utf-8").splitlines(), 1):
-            for a_, b_ in line_matches(line, instants, forms):
-                out.append((str(p.relative_to(repo_root)), ln, a_, b_))
+            for st, en, a_, b_ in line_spans(line, instants, forms):
+                out.append((str(p.relative_to(repo_root)), ln, st, en, a_, b_))
+    return out
+
+
+def scan_test_literals(instants: dict[str, str], repo_root: Path) -> list[tuple[str, int, str, str]]:
+    """(path, line, matched text, replacement) — the ruling list (one entry per distinct pair per line)."""
+    seen, out = set(), []
+    for pth, ln, _, _, a_, b_ in scan_test_spans(instants, repo_root):
+        if (pth, ln, a_, b_) not in seen:
+            seen.add((pth, ln, a_, b_)); out.append((pth, ln, a_, b_))
     return out
 
 
@@ -1173,6 +1300,27 @@ def scan_wide_literals(instants: dict[str, str], repo_root: Path) -> list[tuple[
                 for a_, b_ in line_matches(line, instants, forms):
                     out.append((str(p.relative_to(repo_root)), ln, a_, b_))
     return out
+
+
+def validate_write_plan(writes: list[tuple[Path, str]]) -> None:
+    """Everything `write_atomic` would refuse, found BEFORE any file is touched and before a CLEAN report is published: strict-UTF-8-encodable text; each destination a (new or existing) regular FILE
+    — never a directory — inside an EXISTING, writable directory (`write_atomic` creates no directories); an existing destination writable. Raises `VerifierPinMissing` (a named STOP, nothing written)."""
+    seen: set[str] = set()
+    for p_, txt_ in writes:
+        try:
+            txt_.encode("utf-8")
+        except UnicodeEncodeError as exc:
+            raise VerifierPinMissing(f"{p_}: the new text is not strict UTF-8 ({exc.reason}); nothing written") from exc
+        if str(p_) in seen:
+            raise VerifierPinMissing(f"{p_} appears twice in the write plan; nothing written")
+        seen.add(str(p_))
+        if p_.is_dir():
+            raise VerifierPinMissing(f"{p_} is a directory; nothing written")
+        if p_.exists() and (not p_.is_file() or not os.access(p_, os.W_OK)):
+            raise VerifierPinMissing(f"{p_} exists and is not a writable regular file; nothing written")
+        d = p_.parent
+        if not d.is_dir() or not os.access(d, os.W_OK | os.X_OK):
+            raise VerifierPinMissing(f"{d} (the directory of {p_.name}) does not exist or is not writable; nothing written")
 
 
 def apply_repin(new_id: str, maps: list[dict], repo_root: Path, rulings: dict | None = None, review: list[str] | None = None, check_only: bool = False) -> list[str]:
@@ -1211,8 +1359,6 @@ def apply_repin(new_id: str, maps: list[dict], repo_root: Path, rulings: dict | 
         review.extend(f"{p}:{ln} {a_} -> {b_} [{ruled.get(f'{p}:{ln}', 'UNRULED')}]" for p, ln, a_, b_ in matches)
     if unclassified:
         raise NeedsRuling(unclassified)                                              # nothing has been written
-    if check_only:                                                                   # every repository-state refusal has been evaluated; nothing has been written
-        return []
     s = rewrite_once(s, {**ids, **instants, f'"build_id": "{old_id}"': f'"build_id": "{new_id}"'})
     assert s.count(f'"build_id": "{new_id}"') == 1 and f'"build_id": "{old_id}"' not in s, "the re-pin constant must equal the SETTLED-1 build and the old pin must be gone (G6 b)"
     new_ver = rewrite_once(ver_txt, {ver_old_line: f'_C_BUILD = "{new_id}"'})
@@ -1220,26 +1366,27 @@ def apply_repin(new_id: str, maps: list[dict], repo_root: Path, rulings: dict | 
     writes: list[tuple[Path, str]] = [(perm, s), (ver, new_ver)]                    # every new text is built in memory FIRST; all are encoded/validated, then written atomically one by one
     changed.append(str(perm.relative_to(repo_root)))
     changed.append(str(ver.relative_to(repo_root)))
-    by_file: dict[str, dict[int, dict[str, str]]] = {}
-    for p, ln, a_, b_ in matches:
+    by_file: dict[str, dict[int, list[tuple[int, int, str, str]]]] = {}
+    for p, ln, st, en, a_, b_ in scan_test_spans(instants, repo_root):
         if ruled.get(f"{p}:{ln}") == "rewrite":
-            by_file.setdefault(p, {}).setdefault(ln, {})[a_] = b_
-    for p in sorted((SIDECAR / "tests" / "l3").rglob("*.py")):
+            by_file.setdefault(p, {}).setdefault(ln, []).append((st, en, a_, b_))
+    for p in sorted(q for q in (SIDECAR / "tests" / "l3").rglob("*.py") if q.is_file()):    # a DIRECTORY named *.py is not a file to scan or rewrite (the write plan refuses it)
         txt = p.read_text(encoding="utf-8")
         rel = str(p.relative_to(repo_root))
         lines = txt.splitlines(keepends=True)
-        for ln, mp in by_file.get(rel, {}).items():
-            lines[ln - 1] = rewrite_once(lines[ln - 1], mp)                            # ONLY the ruled lines
+        for ln, sp in by_file.get(rel, {}).items():
+            body = lines[ln - 1]
+            core = body.rstrip("\r\n")
+            lines[ln - 1] = rewrite_spans(core, sp) + body[len(core):]                 # ONLY the ruled spans of the ruled lines (Codex v1.7 P1-2)
         new_txt = rewrite_once(rewrite_wrapped_ids("".join(lines), ids), {**ids, old_id: new_id})          # a wrapped old id is rewritten character for character first
         if new_txt != txt:
             writes.append((p, new_txt)); changed.append(rel)
     gen = SIDECAR / "tests" / "l3" / "gochara_rules" / f"test_am10_repin_{new_id[:8]}.py"
     writes.append((gen, GENERATED_TEST.format(old=old_id, new=new_id)))
     changed.append(str(gen.relative_to(repo_root)))
-    for p_, txt_ in writes:                                                          # validate EVERYTHING before the first replace
-        txt_.encode("utf-8")
-        if p_.is_dir():
-            raise ValueError(f"{p_} is a directory; nothing written")
+    validate_write_plan(writes)                                                      # the COMPLETE plan — generated destinations and parent directories included — is validated first (Codex v1.7 P1-3)
+    if check_only:                                                                   # every repository-state refusal AND every destination has been evaluated; nothing has been written
+        return []
     for p_, txt_ in writes:
         write_atomic(p_, txt_)
     return changed
@@ -1469,6 +1616,22 @@ def main(argv=None, *, conn=None) -> int:
         return 3
 
 
+def cli_string_problems(a) -> list[str]:
+    """Every string-valued CLI argument must be strict-UTF-8 text without NUL (a lone surrogate arrives from undecodable argv bytes and breaks encoding of the report, the evidence file or a path only
+    AFTER the checks have passed). The value is never echoed — only the flag name."""
+    out = []
+    for k, v in sorted(vars(a).items()):
+        if isinstance(v, str):
+            try:
+                v.encode("utf-8")
+            except UnicodeEncodeError:
+                out.append(f"--{k.replace('_', '-')} is not valid UTF-8 text (a lone surrogate)")
+                continue
+            if "\x00" in v:
+                out.append(f"--{k.replace('_', '-')} contains a NUL character")
+    return out
+
+
 def _output_problem(a) -> str | None:
     for flag, path in (("--out", a.out), ("--capture-old", a.capture_old), ("--capture-new", a.capture_new), ("--w0-capture-out", a.w0_capture_out)):
         if path:
@@ -1498,6 +1661,9 @@ def _main_impl(argv=None, *, conn=None) -> int:
     ap.add_argument("--old-rows", default=None, help="the file written by --capture-old: the old build's rows when the DB no longer holds them")
     ap.add_argument("--rulings", default=None, help="JSON {rewrite: [path:line…], keep: [path:line…]} — the steward's ruling on test literals that equal an old boundary")
     a = ap.parse_args(argv)
+    bad_cli = cli_string_problems(a)         # Codex v1.7 P1-4: every CLI string is validated BEFORE any read, connection or write (JSON inputs get the same discipline in their own loaders)
+    if bad_cli:
+        print("STOP — " + "; ".join(bad_cli) + "; nothing was read or written", file=sys.stderr); return 3
     bad = _mode_error(a)                     # BEFORE any capture, connection or read (Codex R17-7)
     if bad:
         print(bad, file=sys.stderr); return 2

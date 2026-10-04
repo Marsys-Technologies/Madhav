@@ -2224,3 +2224,150 @@ def test_the_wide_scan_is_report_only_and_never_blocks_or_rewrites(monkeypatch, 
     # tests/l3 is the apply scan's, not the wide scan's
     assert T.scan_test_literals(inst, tmp_path) == []
     assert ts.read_text(encoding="utf-8").count(ref["start_iso"]) == 1                               # untouched
+
+
+# ── Codex v1.7: four P1 counterexamples (regressions) ───────────────────────────────────────────────────────────────────────────────────────────
+def test_p1_1_a_malformed_row_or_natal_never_reaches_clean_even_with_a_recomputed_checksum():
+    base = T.norm_rows(ref_rows("old"))
+
+    def refused(rows=None, natal=None):
+        cap = old_cap(rows, natal)                                                  # build_capture RECOMPUTES the checksum over the malformed data
+        bad = T.validate_capture(cap, CHART, OLDB)
+        assert bad, "a malformed capture was accepted"
+        return bad
+
+    frac = [dict(r) for r in base]; frac[0]["level_n"] = 1.5                       # int(1.5) == 1 would have passed every coercing check
+    assert any("level_n must be an integer" in m for m in refused(rows=frac))
+    boolean = [dict(r) for r in base]; boolean[0]["level_n"] = True
+    assert any("level_n must be an integer" in m for m in refused(rows=boolean))
+    obj = natal_dicts(); obj[0]["longitude"] = {"deg": 10}
+    assert any("longitude must be a finite number" in m for m in refused(natal=obj))
+    for bad_value in (float("nan"), "NaN", float("inf"), "inf", "", None, True, 360, -1, "361"):
+        nat = natal_dicts(); nat[0]["longitude"] = bad_value
+        assert any("longitude must be a finite number" in m for m in refused(natal=nat)), bad_value
+    nan_natal = natal_dicts(); nan_natal[3]["longitude"] = float("nan")
+    assert refused(natal=nan_natal)                                                # the acquisition path builds exactly this and validates with the same function
+    for key, value in (("start_iso", "2013-01-14T07:17:23"), ("dasha_row_id", "not-a-uuid"), ("trunc_start", "yes"), ("lord_graha", ""), ("index", 1.5), ("merged_row_ids", [1])):
+        rows = [dict(r) for r in base]; rows[1][key] = value
+        assert refused(rows=rows), (key, value)
+    ok = old_cap()
+    assert T.validate_capture(ok, CHART, OLDB) == []                              # the well-formed capture is still accepted (so the refusals above are the validator's, not the fixture's)
+
+
+def test_p1_1_the_w0_import_runs_the_same_strict_validation(tmp_path):
+    base = T.norm_rows(ref_rows("old"))
+    natal = natal_dicts(); natal[0]["longitude"] = float("nan")
+    cap = old_cap(natal=natal)
+    assert T.validate_capture(cap, CHART, OLDB), "the import validates with validate_capture; NaN natal must be refused there"
+    # the loader (strict JSON) refuses the NaN token itself, and a file with an object-valued longitude is refused by the schema
+    obj = natal_dicts(); obj[0]["longitude"] = {"x": 1}
+    f = tmp_path / "cap.json"
+    import json as _json
+    f.write_text(_json.dumps(old_cap(natal=obj)), encoding="utf-8")
+    with pytest.raises(Exception):
+        T.load_capture_full(str(f), CHART, OLDB)
+
+
+def test_p1_2_a_ruling_rewrites_only_the_listed_spans_never_the_unlisted_fraction_on_the_same_line(monkeypatch, tmp_path):
+    monkeypatch.setattr(T, "SIDECAR", tmp_path)
+    old = "2013-01-14T07:17:23"
+    f = _l3_file(tmp_path, "test_two.py", f'X = ("{old}+00:00", "{old}.5+00:00", "{old}Z", "{old}.5Z")\n')
+    inst = {old + "Z": "2013-01-14T09:13:56Z"}
+    listed = T.scan_test_literals(inst, tmp_path)
+    assert [(a_, b_) for _, _, a_, b_ in listed if a_ != old + "Z"] == [(old, "2013-01-14T09:13:56")], listed       # the fractions are NOT listed
+    spans = T.scan_test_spans(inst, tmp_path)
+    line = f.read_text(encoding="utf-8").rstrip("\n")
+    out = T.rewrite_spans(line, [(st, en, a_, b_) for _, _, st, en, a_, b_ in spans])
+    assert f'"{old}.5+00:00"' in out and f'"{old}.5Z"' in out, "an UNLISTED instant was rewritten"
+    assert f'"2013-01-14T09:13:56+00:00"' in out and f'"2013-01-14T09:13:56Z"' in out
+    # property: every changed character lies inside a listed span
+    import difflib
+    changed = set()
+    sm = difflib.SequenceMatcher(None, line, out, autojunk=False)
+    # compare by walking the spans: outside them the text is identical
+    cursor, rebuilt = 0, []
+    for st, en, a_, b_ in sorted((st, en, a_, b_) for _, _, st, en, a_, b_ in spans):
+        rebuilt.append(line[cursor:st]); rebuilt.append(b_); cursor = en
+    rebuilt.append(line[cursor:])
+    assert "".join(rebuilt) == out
+    with pytest.raises(ValueError):
+        T.rewrite_spans(line, [(0, 3, "zzz", "yyy")])                                                                # a span that no longer reads its text is refused
+
+
+def test_p1_2_every_byte_apply_changes_lies_inside_a_ruled_span(monkeypatch, tmp_path):
+    _stub_verifier(tmp_path)
+    (tmp_path / "services" / "gochara_rules").mkdir(parents=True)
+    (tmp_path / "services" / "gochara_rules" / "permission.py").write_text(pathlib.Path(PERM.__file__).read_text(encoding="utf-8"), encoding="utf-8")
+    ref = PERM.AD_ROWS[0]
+    z = ref["start_iso"]
+    f = _l3_file(tmp_path, "test_bytes.py", f'A = ("{z}", "{z[:-1]}.5Z", "{z[:-1]}+00:00", "{z[:-1]}.5+00:00", "keep me")\nB = "{z}"\n', sub="gochara_rules")
+    before = f.read_text(encoding="utf-8")
+    monkeypatch.setattr(T, "SIDECAR", tmp_path)
+    new = "2013-01-14T09:13:56Z"
+    maps = [{"old": ref, "new": {"dasha_row_id": "99999999-9999-4999-8999-999999999999", "start_iso": new, "end_iso": "2014-01-11T14:11:56Z", "lord_graha": ref["lord"]}, "key": (2, (0,))}]
+    rel = "tests/l3/gochara_rules/test_bytes.py"
+    spans = [(st, en) for p_, ln, st, en, a_, b_ in T.scan_test_spans({z: new}, tmp_path) if ln == 1]
+    T.apply_repin("22222222-2222-4222-8222-222222222222", maps, tmp_path, rulings={"rewrite": [f"{rel}:1"], "keep": [f"{rel}:2"]})
+    after = f.read_text(encoding="utf-8")
+    b_lines, a_lines = before.splitlines(), after.splitlines()
+    assert a_lines[1] == b_lines[1]                                                                                  # line 2 was ruled keep
+    # line 1: reconstruct from the listed spans only and compare byte for byte
+    cursor, rebuilt = 0, []
+    for st, en in sorted(spans):
+        rebuilt.append(b_lines[0][cursor:st]); rebuilt.append(None); cursor = en
+    rebuilt.append(b_lines[0][cursor:])
+    pieces = [x for x in rebuilt if x is not None]
+    pos = 0
+    for piece in pieces:                                                                                             # each unchanged piece must appear, in order, unchanged, in the new line
+        i = a_lines[0].find(piece, pos)
+        assert i >= 0, (piece, a_lines[0])
+        pos = i + len(piece)
+    assert f'"{z[:-1]}.5Z"' in a_lines[0] and f'"{z[:-1]}.5+00:00"' in a_lines[0] and '"keep me"' in a_lines[0]
+
+
+def test_p1_3_a_directory_at_a_generated_destination_is_refused_by_the_apply_check_before_any_clean_report(monkeypatch, tmp_path):
+    _stub_verifier(tmp_path)
+    (tmp_path / "services" / "gochara_rules").mkdir(parents=True)
+    (tmp_path / "services" / "gochara_rules" / "permission.py").write_text(pathlib.Path(PERM.__file__).read_text(encoding="utf-8"), encoding="utf-8")
+    (tmp_path / "tests" / "l3" / "gochara_rules").mkdir(parents=True)
+    ref = PERM.AD_ROWS[0]
+    maps = [{"old": ref, "new": {"dasha_row_id": "99999999-9999-4999-8999-999999999999", "start_iso": "2013-01-14T09:13:56Z", "end_iso": "2014-01-11T14:11:56Z", "lord_graha": ref["lord"]}, "key": (2, (0,))}]
+    monkeypatch.setattr(T, "SIDECAR", tmp_path)
+    new_id = "22222222-2222-4222-8222-222222222222"
+    gen = tmp_path / "tests" / "l3" / "gochara_rules" / f"test_am10_repin_{new_id[:8]}.py"
+    gen.mkdir()                                                                                                      # the generated test path is a DIRECTORY
+    perm_before = (tmp_path / "services" / "gochara_rules" / "permission.py").read_text(encoding="utf-8")
+    with pytest.raises(T.VerifierPinMissing, match="is a directory"):
+        T.apply_repin(new_id, maps, tmp_path, check_only=True)                                                       # the CHECK refuses (this is what turns the dry run into a STOP, not a CLEAN)
+    with pytest.raises(T.VerifierPinMissing, match="is a directory"):
+        T.apply_repin(new_id, maps, tmp_path)
+    assert (tmp_path / "services" / "gochara_rules" / "permission.py").read_text(encoding="utf-8") == perm_before     # nothing written
+
+
+def test_p1_3_the_write_plan_validator_names_every_destination_problem(tmp_path):
+    ok = tmp_path / "a.py"
+    T.validate_write_plan([(ok, "x")])                                                                               # a new file in an existing directory
+    with pytest.raises(T.VerifierPinMissing, match="does not exist or is not writable"):
+        T.validate_write_plan([(tmp_path / "missing_dir" / "a.py", "x")])
+    with pytest.raises(T.VerifierPinMissing, match="is a directory"):
+        T.validate_write_plan([(tmp_path, "x")])
+    with pytest.raises(T.VerifierPinMissing, match="strict UTF-8"):
+        T.validate_write_plan([(ok, "lone \ud800 surrogate")])
+    with pytest.raises(T.VerifierPinMissing, match="twice"):
+        T.validate_write_plan([(ok, "x"), (ok, "y")])
+    blocker = tmp_path / "file_as_parent"; blocker.write_text("x", encoding="utf-8")
+    with pytest.raises(T.VerifierPinMissing, match="does not exist or is not writable"):
+        T.validate_write_plan([(blocker / "child.py", "x")])
+
+
+def test_p1_4_a_cli_string_with_a_lone_surrogate_or_nul_is_refused_before_any_side_effect(tmp_path, capsys):
+    out = tmp_path / "evidence.md"
+    for bad in ("\ud800", "abc\x00def"):
+        rc = T.main(["--new-build-id", "22222222-2222-4222-8222-222222222222", "--apply", "--settled-received", bad, "--out", str(out)], conn=FakeConn())
+        err = capsys.readouterr().err
+        assert rc == 3 and err.startswith("STOP — --settled-received "), (rc, err)
+        assert "\ud800" not in err and "\x00" not in err                                                            # the value is never echoed
+        assert not out.exists(), "a file was written although a CLI string was invalid"
+    ns = type("NS", (), {})()
+    ns.__dict__.update({"out": "ok", "capture_old": None, "n": 3, "flag": True, "rulings": "bad\ud83d"})
+    assert T.cli_string_problems(ns) == ["--rulings is not valid UTF-8 text (a lone surrogate)"]
