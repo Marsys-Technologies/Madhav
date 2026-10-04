@@ -1,25 +1,26 @@
 ---
 artifact: S_L1_WINDOW_RUNBOOK_LANDING_NOTE
-version: 1.0
+version: 1.1
 status: CURRENT
 produced_by: runbook-pr (execution worker, Exec Suvarna)
 produced_on: 2026-10-04
-scope: sidecar note for the S-L1 window runbook v1.3 and its pinned window scripts. Documentation and ops only. No migration, no writer change.
+scope: sidecar note for the S-L1 window runbook v1.3.1 and its pinned window scripts. Documentation and ops only. No migration, no writer change.
 changelog:
+  - "1.1 (2026-10-04): the runbook is now v1.3.1 (SS-confirmed; sha256 783536b4...0808131), replacing v1.3 on this branch (one runbook document on main). v1.3 (sha256 042a70f3...7625d) is superseded by SS in N-123-amended and is not carried. ci_docs_pinned.json no longer exists on main (#3107). Scripts and MANIFEST.sha256 unchanged."
   - "1.0 (2026-10-04): first version. Lands the approved S-L1 window runbook (N-123) and the seven pinned window scripts byte-identical to the evidence copy."
 ---
 
-# S-L1 window runbook v1.3 and pinned window scripts
+# S-L1 window runbook v1.3.1 and pinned window scripts
 
 This folder lands, byte-identical, the approved S-L1 window runbook and the production scripts it pins by hash. The window runs from the evidence copy; this copy carries the same bytes.
 
-The runbook has its own front matter (status field `DRAFT-FOR-SS-REVIEW` inside the file). It was not edited here; approval is recorded in decision N-123, not in the runbook bytes.
+The runbook has its own front matter (status field `DRAFT-FOR-SS-REVIEW` inside the file). It was not edited here; SS confirmed v1.3.1 as the S-L1 window procedure, recorded outside the runbook bytes. v1.3 (sha256 `042a70f339f5cdfc6efaf02ed42a30ce151fdd0ec708a7274c5f168350b7625d`) was superseded by SS in N-123-amended and is not carried in this folder; v1.3.1 differs only in removing the regen-pinned / `ci_docs_pinned.json` wording after #3107.
 
 ## Source and pins
 
 | file | sha256 |
 |---|---|
-| `S_L1_WINDOW_RUNBOOK_v1_3.md` | `042a70f339f5cdfc6efaf02ed42a30ce151fdd0ec708a7274c5f168350b7625d` |
+| `S_L1_WINDOW_RUNBOOK_v1_3_1.md` | `783536b4ab7289bf06cec65f1766003e0ec4ec2f42d83471d0db55dc0b808131` |
 | `scripts/with_app_db.py` | `aa47ad4a46e0b5f483c7c3fc96aaf1405b310774ba65aba822df3f19e87b1c54` |
 | `scripts/image_routeB.py` | `e2c80fab33de06b670dc7241eac916cc5bd1f2d5e10839e97ed84ad2b7972207` |
 | `scripts/t4_stale_prod.py` | `a904048425cd2dad944860864567d50ce50154fc5d5b6f9d3c16b1906c6df31d` |

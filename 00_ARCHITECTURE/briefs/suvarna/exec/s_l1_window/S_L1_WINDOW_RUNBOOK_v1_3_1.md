@@ -1,6 +1,6 @@
 ---
 artifact: S_L1_WINDOW_RUNBOOK
-version: 1.3
+version: 1.3.1
 status: DRAFT-FOR-SS-REVIEW (local, writable; v1.2 is kept unchanged beside it; lock with chmod a-w only when SS has reviewed and it is final)
 date: 2026-10-04
 produced_by: runbook-writer (docs-only worker, Exec Suvarṇa)
@@ -8,6 +8,7 @@ canonical_chart: 482012f1-710e-4a25-994a-93821f5871aa
 scope: the production runbook for the S-L1 window (rebuild of the canonical chart's 18 ga_* assets) with the W1 migrations, the D6 owner-path apply, the W2-W6 builds, W7, SETTLED-1, and the ordered POST-WINDOW list
 authority: rehearsal_final/r2/STEPS.tsv (second rehearsal) for order and commands; the integration documents merged with PR #2984 for the checks; the rulings listed in section 1.7
 changelog:
+  - "1.3.1 (2026-10-04): ONLY the removal of the regen-pinned / ci_docs_pinned.json wording after main's #3107 (commit 4e4f4ec14: the pinned-docs set is computed at CI time by scan_pinned(); the committed ci_docs_pinned.json is deleted; nothing to regenerate). Two places: the 1.2 NOTE on the D6 plan document, and the re-freeze commit list in W0.5; and W0.5 states the D6 checkout is the merged #2964 head verified by the three hashes, not by a commit list. No other change."
   - "1.3 (2026-10-04): applies N-122 (SS answers to all 25 open questions of v1.2: 25 of 25 RESOLVED, 4 items still open, PART 8) and SS's independent review of v1.2 (READY AFTER FIXES, items 1-25, evidence table in the author's report). New: W0.2B (on-demand Cloud SQL backup, window does not start until SUCCESSFUL; restore is the owner's decision alone), W1.4B (close the six source PRs), gate A6 (explicit GO before the first dispatch), merge FREEZE and Pravāha hold (G-13), explicit-list dispatch with exact asset counts (G-12), runx/bash logging so the stderr banner is always seen, the D6 exit-1 reading rule, the in-process credential helper (Q-01 finding), route-B image verification with a proved script, hash-pinned production scripts under window_scripts/, post-window list renumbered (PW.2 = 1256, PW.9 = tests-only PR). Nothing was pushed, merged or commented; production was read through rq.sh and read-only gcloud calls only."
   - "1.2 (2026-10-04): first written document. 'Runbook v1.1' was searched for by the W1 preparer in main, all origin/suvarna/* branches and the working trees and does not exist; v1.0/v1.1/v1.2 had been lines in one session's notes. Written from the second rehearsal's executed sequence; every statement taken from the executor's running notes was verified against an artifact or is marked TO CONFIRM (PART 8). Production baselines quoted as 'read 2026-10-04' were re-measured through rq.sh (suvarna_reader) while writing. No production write, no push, no PR comment, no merge."
 ---
@@ -127,7 +128,7 @@ Where a number or value could not be verified from the artifacts it is marked TO
 | W7 | G-IDX, then the machine verdict and the hand read-backs, then the between-state check, then SETTLED-1 |
 | SETTLED-1 | the close of S-L1: every W7 check recorded as passing, SS acceptance recorded, the notice to Pravāha sent (PART 6) |
 
-NOTE (mislabel): the D6 plan document `D6_COMBINED_DATAPLANE_CAPTURE_FA2_PLAN_DRAFT.md` section 9a ends its "final sequence" with "apply -> W1". That "W1" is a MISLABEL: in this runbook W1 is the migration step and it comes BEFORE D6, exactly as in the second rehearsal. The plan document is NOT to be edited (editing it would change its sha256 and, through the pinned-docs list, the CI state; its sha256 is quoted outside the file in the owner's authorisation).
+NOTE (mislabel): the D6 plan document `D6_COMBINED_DATAPLANE_CAPTURE_FA2_PLAN_DRAFT.md` section 9a ends its "final sequence" with "apply -> W1". That "W1" is a MISLABEL: in this runbook W1 is the migration step and it comes BEFORE D6, exactly as in the second rehearsal. The plan document is NOT to be edited (editing it would change its sha256, which is quoted outside the file in the owner's authorisation; there is no pin file to regenerate: since main's #3107 the CI docs-only classification is computed at CI time over the checked-out tree and is the wildcard, nothing docs-only, if the scan errors or is empty).
 
 ## 1.3 Roles and identities
 
@@ -336,7 +337,7 @@ PY
 - **Evid:** `$EV/W0/W0.4_code_state.txt`.
 
 ### W0.5 Tooling checkout, interpreter, hash-pinned scripts, bound hashes reproduced
-- **Who:** operator. **Pre:** W0.4. The D6 checkout is a CLEAN checkout of the PR #2964 head AFTER the re-freeze commits `be83fc6fc`, `217349ff6` and the tests-only `299f2b6e9` (the local head of `/Users/Dev/suvarna-d6rf` on 2026-10-04; tests only, the plan hash is unchanged by it) are pushed and merged per the plan (N-122)  (the sha is known only then, S-4).
+- **Who:** operator. **Pre:** W0.4. The D6 checkout is a CLEAN checkout of the PR #2964 head AFTER the re-freeze commit `be83fc6fc` and the tests-only `299f2b6e9` (the local head of `/Users/Dev/suvarna-d6rf` on 2026-10-04; tests only, the plan hash is unchanged by it) are pushed (the local commit `217349ff6` only regenerated `ci_docs_pinned.json`, which main's #3107 deleted: it is DROPPED from the push, not regenerated; no pin file exists) and merged per the plan (N-122)  (the sha is known only then, S-4). The D6 checkout is the merged #2964 head on main, verified by the three hashes (executor `0437cc8fd128d3adc3bb16cb79c09060de9839a4a2202978311c5377983db5e5`, UNBOUND `8410f83cdf5348e965e506146e5cb78d225201d17563a2aaaa9e15c1751bc677`, BOUND `f7915138b0a9ba8ad5fea98d3d7ba9311a1acbcd2065138d58ff0a595250b706`) and the `ga_vargas` WRITER_DIGEST `9212b478621c3572e75f606819e865de768b6212def695cf67bd368e0510e8a1`, not by a commit list; the commit list above is history.
 - **Cmd:**
 ```
 git -C /Users/Dev/Vibe-Coding/Apps/Madhav fetch origin
