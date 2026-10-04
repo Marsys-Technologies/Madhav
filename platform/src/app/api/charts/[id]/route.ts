@@ -1,9 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server'
+import type { PoolClient } from 'pg'
 import { getServerUser } from '@/lib/firebase/server'
-import { query } from '@/lib/db/client'
+import { getPool, query } from '@/lib/db/client'
 import { authorizeChartAccess } from '@/lib/auth/authorizeChartAccess'
 import { requireChartPermission } from '@/lib/auth/requireChartPermission'
 import { ChartUpdateError, updateChartAndMaybeRecompute } from '@/lib/charts/recomputeChart'
+import {
+  CHART_DELETION_ENABLED,
+  CHART_DELETION_UNAVAILABLE_CODE,
+  CHART_DELETION_UNAVAILABLE_MESSAGE,
+} from '@/lib/charts/chartDeletionAvailability'
 
 export async function GET(
   _req: NextRequest,
@@ -84,33 +90,68 @@ export async function DELETE(
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 
+  // Chart deletion is unavailable until the full completeness program lands
+  // (CHART_DELETION_COMPLETENESS_DESIGN_v1_0.md): refuse BEFORE opening a
+  // transaction or issuing any DELETE, rather than attempt a delete that cannot
+  // complete and could lose part of the user's data. Auth/ownership above stay.
+  if (!CHART_DELETION_ENABLED) {
+    return NextResponse.json(
+      { error: CHART_DELETION_UNAVAILABLE_MESSAGE, code: CHART_DELETION_UNAVAILABLE_CODE },
+      { status: 503 },
+    )
+  }
+
   // Atomic hard wipeout — all chart-scoped rows in dependency order.
-  await query('BEGIN', [])
+  //
+  // The whole transaction runs on ONE dedicated connection. BEGIN / COMMIT /
+  // ROLLBACK issued through the pool-level query() can land on different pooled
+  // connections, so a ROLLBACK would not undo the deletes (design section 2.1,
+  // R2). NOTE: the statement list below is the legacy list and is known to be
+  // incomplete/invalid (`messages` and `conversation_branches.chart_id` do not
+  // exist); it is unreachable while CHART_DELETION_ENABLED is false and is
+  // replaced by the full program before the flag is flipped.
+  let client: PoolClient
   try {
+    client = await (await getPool()).connect()
+  } catch (err) {
+    console.error('[DELETE /api/charts/:id] could not check out a connection', err)
+    return NextResponse.json({ error: 'Delete failed' }, { status: 500 })
+  }
+  let discard = false
+  try {
+    await client.query('BEGIN')
     // Conversation data
-    await query(
+    await client.query(
       `DELETE FROM messages WHERE conversation_id IN (
          SELECT id FROM conversations WHERE chart_id = $1
        )`,
       [chartId],
     )
-    await query('DELETE FROM conversations WHERE chart_id = $1', [chartId])
-    await query('DELETE FROM conversation_branches WHERE chart_id = $1', [chartId])
+    await client.query('DELETE FROM conversations WHERE chart_id = $1', [chartId])
+    await client.query('DELETE FROM conversation_branches WHERE chart_id = $1', [chartId])
 
     // Build orchestrator data (new schema — build_run_assets cascade from build_runs)
-    await query('DELETE FROM asset_throughput WHERE chart_id = $1', [chartId])
-    await query('DELETE FROM build_runs WHERE chart_id = $1', [chartId])
+    await client.query('DELETE FROM asset_throughput WHERE chart_id = $1', [chartId])
+    await client.query('DELETE FROM build_runs WHERE chart_id = $1', [chartId])
 
     // Pyramid + chart
-    await query('DELETE FROM pyramid_layers WHERE chart_id = $1', [chartId])
-    await query('DELETE FROM chart_grants WHERE chart_id = $1', [chartId])
-    await query('DELETE FROM charts WHERE id = $1', [chartId])
+    await client.query('DELETE FROM pyramid_layers WHERE chart_id = $1', [chartId])
+    await client.query('DELETE FROM chart_grants WHERE chart_id = $1', [chartId])
+    await client.query('DELETE FROM charts WHERE id = $1', [chartId])
 
-    await query('COMMIT', [])
+    await client.query('COMMIT')
   } catch (err) {
-    await query('ROLLBACK', [])
+    // A connection that cannot even roll back is not returned to the pool.
+    try {
+      await client.query('ROLLBACK')
+    } catch {
+      discard = true
+    }
     console.error('[DELETE /api/charts/:id] rollback', err)
     return NextResponse.json({ error: 'Delete failed' }, { status: 500 })
+  } finally {
+    if (discard) client.release(true)
+    else client.release()
   }
 
   return NextResponse.json({ deleted: true, chart_id: chartId }, { status: 200 })

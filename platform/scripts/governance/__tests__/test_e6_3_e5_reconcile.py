@@ -154,14 +154,16 @@ print(json.dumps(out))
 def probe_dir():
     if E51 is None:
         pytest.skip("E5.1 (nikasha_certify.py) is not importable here: no sibling worktree and not on this branch")
-    d = pathlib.Path(tempfile.mkdtemp())
+    root = pathlib.Path(tempfile.mkdtemp())
+    d = root / "a" / "b" / "c"          # the copied scripts resolve repo paths with parents[3] at import: keep the ancestry deep enough for CI's /tmp
+    d.mkdir(parents=True)
     shutil.copy(E51 / "nikasha_certify.py", d / "nikasha_certify.py")
     shutil.copy(E51 / "asset_census.py", d / "asset_census.py")
     if E55 is not None:
         shutil.copy(E55 / "nikasha_stale_certs.py", d / "nikasha_stale_certs.py")
     (d / "probe.py").write_text(PROBE)
     yield d
-    shutil.rmtree(d, ignore_errors=True)
+    shutil.rmtree(root, ignore_errors=True)
 
 
 def run_probe(probe_dir, mode, data: bytes):

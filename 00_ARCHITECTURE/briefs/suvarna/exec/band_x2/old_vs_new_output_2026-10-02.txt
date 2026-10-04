@@ -1,0 +1,50 @@
+== counts: composite / medical / vastu rows per chart
+  canonical 482012f1: composite=45 medical=45 vastu=40
+  Abhinandan 1c826d5a: composite=45 medical=45 vastu=40
+  third cb73cd3d: composite=45 medical=45 vastu=40
+
+== A. reproduction: OLD function over the stored composite score vs the STORED label
+  ga_medical: stored label != old function(score) on 0 rows {}
+  ga_vastu: stored label != old function(score) on 0 rows {}
+  ga_vastu.condition_score copy differs from the composite score on 0 rows
+
+== B. band table ALONE (stored scores unchanged): stored label -> NEW label
+  ga_medical.indication_strength
+    canonical 482012f1: rows=45 CHANGED=15  transitions={'mild->moderate': 15}
+                      krishnamurti Ketu     score=0.69527 mild -> moderate
+                      krishnamurti Rahu     score=0.697973 mild -> moderate
+                      krishnamurti Saturn   score=0.691486 mild -> moderate
+               lahiri_chitrapaksha Ketu     score=0.69527 mild -> moderate
+               lahiri_chitrapaksha Rahu     score=0.697973 mild -> moderate
+               lahiri_chitrapaksha Saturn   score=0.683108 mild -> moderate
+                             raman Jupiter  score=0.693378 mild -> moderate
+                             raman Ketu     score=0.69527 mild -> moderate
+                             raman Rahu     score=0.692568 mild -> moderate
+                             raman Saturn   score=0.697162 mild -> moderate
+         surya_siddhanta_classical Rahu     score=0.685811 mild -> moderate
+         surya_siddhanta_classical Saturn   score=0.68 mild -> moderate
+                       true_chitra Ketu     score=0.69527 mild -> moderate
+                       true_chitra Rahu     score=0.697973 mild -> moderate
+                       true_chitra Saturn   score=0.683108 mild -> moderate
+    Abhinandan 1c826d5a: rows=45 CHANGED=0  transitions={}
+    third cb73cd3d: rows=45 CHANGED=5  transitions={'mild->moderate': 5}
+                      krishnamurti Venus    score=0.665 mild -> moderate
+               lahiri_chitrapaksha Venus    score=0.665 mild -> moderate
+                             raman Venus    score=0.64 mild -> moderate
+         surya_siddhanta_classical Venus    score=0.64 mild -> moderate
+                       true_chitra Venus    score=0.665 mild -> moderate
+    rows with a NULL composite score (the old vastu 'neutral' path): 0
+  ga_vastu.direction_impact
+    canonical 482012f1: rows=40 CHANGED=0  transitions={}
+    Abhinandan 1c826d5a: rows=40 CHANGED=0  transitions={}
+    third cb73cd3d: rows=40 CHANGED=0  transitions={}
+    rows with a NULL composite score (the old vastu 'neutral' path): 0
+
+== C. X2 scenario: re-derive the composite from the STORED varga_dignity_spread
+  canonical 482012f1: composite rows=45 reproduced-equal-to-stored=45 score-would-change=0 skipped=0
+  Abhinandan 1c826d5a: composite rows=45 reproduced-equal-to-stored=0 score-would-change=45 skipped=0
+     band changes (stored band -> re-derived band): {'high->high': 1, 'high->mid': 6, 'low->low': 24, 'mid->mid': 14}
+     label changes vs STORED labels: {'medical:mild->moderate': 6, 'vastu:strengthened->neutral': 6}
+  third cb73cd3d: composite rows=45 reproduced-equal-to-stored=0 score-would-change=45 skipped=0
+     band changes (stored band -> re-derived band): {'low->low': 10, 'mid->mid': 35}
+     label changes vs STORED labels: {'medical:mild->moderate': 5}

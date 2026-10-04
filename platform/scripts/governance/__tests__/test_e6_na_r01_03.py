@@ -40,6 +40,8 @@ R02_ASSETS = ("bg_gochara_arcs", "bg_kota_chakra_rings", "bg_kp_sublord_division
 R02_LABEL_ASSETS = ("bg_phaladeepika_latta", "bg_vedha_malefic_scale")
 R02_ALL = R02_ASSETS + R02_LABEL_ASSETS
 R03_ASSETS = ("bg_doshas", "bg_ontology", "bg_yogas", "bo_laksana_rerank")
+# L0-WAVE batch 2 (test_e6_l0_batch2_declarations.py): two more assets declare prose_fields [] and read the four Narr checks N/A under R03 on the saved censuses
+R03_BATCH2 = ("bg_transit_engine", "bg_kp_sublord_division")
 NA, NO_DET = ac.NA, ac.NO_DET
 
 
@@ -332,14 +334,14 @@ def test_saved_censuses_only_the_listed_gate_cells_move_and_all_of_them_no_detec
                 for c in with_rules[gate]["checks"]:
                     if c["v"] == NA and next(x for x in without[gate]["checks"] if x["criterion"] == c["criterion"])["v"] != NA:
                         released_checks.append((aid, c["criterion"], (m.get(c["criterion"]) or {}).get("v")))
-    assert sorted(moved) == sorted([(a, "Dens", NO_DET, NA) for a in R02_ALL] + [(a, "Narr", NO_DET, NA) for a in R03_ASSETS]), moved
+    assert sorted(moved) == sorted([(a, "Dens", NO_DET, NA) for a in R02_ALL] + [(a, "Narr", NO_DET, NA) for a in R03_ASSETS + R03_BATCH2]), moved
     assert sorted(dens_na) == sorted(R02_ALL), dens_na                                                      # the scan fires on no other asset
     assert all(v == NA for (_, _, v) in released_checks), released_checks                                   # nothing measured FAIL/PARTIAL/PASS was released
     by = {}
     for aid, crit, _ in released_checks:
         by.setdefault(crit.split(".")[0], set()).add(aid)
-    assert by == {"Build": set(R01_ASSETS), "Dens": set(R02_ALL), "Narr": set(R03_ASSETS)}, by
-    assert len(released_checks) == 6 + 5 + 16
+    assert by == {"Build": set(R01_ASSETS), "Dens": set(R02_ALL), "Narr": set(R03_ASSETS + R03_BATCH2)}, by
+    assert len(released_checks) == 6 + 5 + 16 + 8
 
 
 # ───────────────────────── F1: an empty write scan is not evidence of "no narration write" ─────────────────────────

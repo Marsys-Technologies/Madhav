@@ -18,7 +18,7 @@ T_TWINS = "2022-01-02T18:30:00Z"      # 2022-01-03 IST
 # O-PP-2 named interior instants + the AD boundary (§4.0 half-open)
 T1 = "2019-08-01T00:00:00Z"
 T2 = "2021-01-01T00:00:00Z"
-T_BOUNDARY = "2020-02-14T11:47:23Z"   # Mars→Rahu AD transition
+T_BOUNDARY = "2020-02-14T13:43:56Z"   # Mars→Rahu AD transition
 
 
 def _lords(ctx):
@@ -37,9 +37,9 @@ def test_opp1_three_event_instants(chart):
         ("Mercury", "Rahu", "Venus")
     # row ids pinned per §4.0
     ctx = permission(chart, T_MARRIAGE, "marriage")["period_context"]
-    assert ctx["md"]["row_id"] == "58afa482-4bce-42df-9c0d-0b5a2e02305e"
-    assert ctx["ad"]["row_id"] == "133b4500-ad36-4fff-8814-c6b0b253ca05"
-    assert ctx["pd"]["row_id"] == "6b843ad2-0759-4e7f-af7d-d39eac8b0325"
+    assert ctx["md"]["row_id"] == "1d1a80c0-53c6-5ff7-930a-52ff0f306cae"
+    assert ctx["ad"]["row_id"] == "2103a226-b814-5ec7-b987-dffb421d5288"
+    assert ctx["pd"]["row_id"] == "65e30373-9db8-5606-a2bb-7c540114e135"
     # mutation: a constant or absent PD fails
     pds = {_lords(permission(chart, t, "marriage")["period_context"])[2]
            for t in (T_MARRIAGE, T_FATHER, T_TWINS)}
@@ -48,7 +48,7 @@ def test_opp1_three_event_instants(chart):
 
 def test_opp1_rows_are_half_open():
     # an instant t = end_iso belongs to the NEXT row
-    assert MD_ROWS[0]["start_iso"] == "2010-08-18T15:50:23Z"
+    assert MD_ROWS[0]["start_iso"] == "2010-08-18T17:46:56Z"
     ketu = AD_ROWS[0]
     # exactly at AD Ketu's end ⇒ Ketu's AD no longer running
     from services.gochara_rules.permission import _row_at
@@ -65,8 +65,8 @@ def test_opp2_per_level_licences(chart):
     # t2 → MD Mercury / AD Rahu / PD Saturn
     assert _lords(p1) == ("Mercury", "Mars", "Saturn")
     assert _lords(p2) == ("Mercury", "Rahu", "Saturn")
-    assert p1["pd"]["row_id"] == "a4cf46db-fcb5-479c-8aab-ca87bcb551ff"
-    assert p2["pd"]["row_id"] == "73eea5c0-631f-4b48-8c8f-483c910c6fde"
+    assert p1["pd"]["row_id"] == "d4d08aca-8995-51f3-a8ba-f9238a5311b3"
+    assert p2["pd"]["row_id"] == "f72e343c-b877-516b-a089-54494031aa2d"
     # t1: ad.licence = scored (Mars: natal 7th-house occupant, Libra)
     assert p1["ad"]["licence"] == "scored"
     assert p1["ad"]["relation"] == "occupancy"
@@ -106,15 +106,15 @@ def test_opp2_class_licence_same_at_both(chart):
 
 
 def test_opp2_boundary_reads_rahu_ad(chart):
-    # 2020-02-14T11:47:23Z is the Mars→Rahu AD transition; half-open
+    # 2020-02-14T13:43:56Z is the Mars→Rahu AD transition; half-open
     # [start_iso, end_iso): the instant belongs to the Rahu AD
     ctx = permission(chart, T_BOUNDARY, "marriage")["period_context"]
     assert ctx["ad"]["lord"] == "Rahu"
-    assert ctx["ad"]["row_id"] == "25a4b815-39bb-4b4a-b922-84a71778bb4f"
+    assert ctx["ad"]["row_id"] == "a91faefa-f0d9-5a5d-950c-0adafb276fc7"
     # mutation: licensing at the boundary instant to the Mars AD fails the
     # half-open convention
     assert ctx["ad"]["lord"] != "Mars"
-    just_before = "2020-02-14T11:47:22Z"
+    just_before = "2020-02-14T13:43:55Z"
     assert permission(chart, just_before, "marriage")["period_context"]["ad"]["lord"] == "Mars"
 
 
