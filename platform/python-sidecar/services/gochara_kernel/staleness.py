@@ -31,10 +31,16 @@ def _has_copy_columns(conn: Any) -> bool:
 def sealed_generation_staleness(conn: Any, chart_id: str, generation: str) -> dict[str, Any]:
     """Per-component drift of the snapshot against LIVE L1, with two KINDS (G12 route 1, migration 1305):
 
-      HARD  (`l1_facts`, `dasha`, `input`): the IDENTITY digest of the live rows, found by their natural key, differs from the stored one — a VALUE
-            changed or a consumed row is gone. `drifted` is true only for these.
-      SOFT  (`l1_metadata`, `dasha_metadata`): only ids, build ids, tier, engine version or other metadata differ (an L1 rebuild that re-issued
-            them): REPORTED, never blocking, and never a failure to verify the generation, which owns a copy of what it consumed.
+      HARD  (`l1_facts`, `dasha`, `input`): the IDENTITY digest of the UPSTREAM SCOPE (every row the contract names over the bound horizon, whatever its
+            tier or build) differs from the stored one — a VALUE changed, a consumed row is gone, or an extra or conflicting row exists. `drifted` is
+            true only for these.
+      SOFT  (`l1_metadata`, `dasha_metadata`): only ids, build ids, tier, engine version, the ordinal path or other metadata differ (an L1 rebuild
+            that re-issued them, or a period added upstream OUTSIDE the horizon): REPORTED, never blocking, and never a failure to verify the
+            generation, which owns a copy of what it consumed.
+
+    `copy_consistent` (round 6, R7) is a detector of its own, about the stored row and nothing upstream: the stored copy recomputes to the stored identity,
+    metadata and input digests AND still satisfies the capture contract (the database's `input_snapshot_copy_inconsistent`). `self_contained` is true only
+    for a copy-bearing snapshot whose copy is consistent; an inconsistent copy is also a HARD component (`copy`), so `drifted` cannot read clean over it.
 
     A legacy snapshot (no copy) keeps the 1206 id-and-whole-row check and every component is HARD."""
     if not _has_copy_columns(conn):
@@ -61,16 +67,21 @@ def sealed_generation_staleness(conn: Any, chart_id: str, generation: str) -> di
     # change that a float cannot carry (12.5 versus 12.5000000000000001) is never erased (Codex round 1, finding 4)
     digests = conn.execute(
         "WITH lf AS (SELECT public.ka_gochara_search_facts_live_population(%s::uuid) AS j),"
-        "     ld AS (SELECT public.ka_gochara_search_dasha_live_population(%s::uuid, %s::jsonb, %s::tstzrange) AS j)"
+        "     ld AS (SELECT public.ka_gochara_search_dasha_live_population(%s::uuid, %s::tstzrange) AS j)"
         " SELECT public.ka_gochara_search_copy_digest(lf.j, 'content'), public.ka_gochara_search_copy_digest(ld.j, 'content'),"
         "        public.ka_gochara_search_copy_digest(lf.j, 'metadata'), public.ka_gochara_search_copy_digest(ld.j, 'metadata') FROM lf, ld",
-        (chart_id, chart_id, dashas_text, horizon)).fetchone()
+        (chart_id, chart_id, horizon)).fetchone()
     live_l1, live_dd, live_l1m, live_ddm = tuple(digests.values()) if isinstance(digests, dict) else tuple(digests)
     live_input = conn.execute("SELECT public.ka_gochara_search_input_digest(%s, %s::jsonb, %s, %s, %s::text[])",
                               (convention_id, vec_json, live_l1, live_dd, list(av))).fetchone()[0]
     sealed = bool(conn.execute("SELECT EXISTS (SELECT 1 FROM public.ka_gochara_generation_seal WHERE chart_id = %s AND generation = %s)",
                                (chart_id, generation)).fetchone()[0])
+    # R7: does the STORED copy recompute to its STORED digests and still satisfy the capture contract? The database's own detector, read here.
+    inconsistencies = [str(r[0] if not isinstance(r, dict) else next(iter(r.values()))) for r in conn.execute(
+        "SELECT detail FROM public.ka_gochara_search_snapshot_copy_violations(%s::uuid, %s) WHERE violation = 'input_snapshot_copy_inconsistent' ORDER BY 1",
+        (chart_id, generation)).fetchall()]
     components = {
+        "copy": {"stored": stored_input, "live": None, "same": not inconsistencies, "kind": "hard"},
         "l1_facts": {"stored": stored_l1, "live": live_l1, "same": live_l1 == stored_l1, "kind": "hard"},
         "dasha": {"stored": stored_dd, "live": live_dd, "same": live_dd == stored_dd, "kind": "hard"},
         "input": {"stored": stored_input, "live": live_input, "same": live_input == stored_input, "kind": "hard"},
@@ -82,13 +93,15 @@ def sealed_generation_staleness(conn: Any, chart_id: str, generation: str) -> di
     changes, total = ([], 0)
     if hard or soft:
         live_facts = conn.execute("SELECT public.ka_gochara_search_facts_live_population(%s::uuid)::text", (chart_id,)).fetchone()[0]
-        live_dashas = conn.execute("SELECT public.ka_gochara_search_dasha_live_population(%s::uuid, %s::jsonb, %s::tstzrange)::text", (chart_id, dashas_text, horizon)).fetchone()[0]
+        live_dashas = conn.execute("SELECT public.ka_gochara_search_dasha_live_population(%s::uuid, %s::tstzrange)::text", (chart_id, horizon)).fetchone()[0]
         changes, total = _changes(facts_text, dashas_text, live_facts, live_dashas)
     return {
         "chart_id": str(chart_id),
         "generation": generation,
         "sealed": sealed,
-        "self_contained": True,
+        "self_contained": not inconsistencies,
+        "copy_consistent": not inconsistencies,
+        "copy_inconsistencies": inconsistencies,
         "components": components,
         "drifted_components": hard,
         "drifted": bool(hard),
@@ -107,7 +120,7 @@ def _changes(facts_text: str, dashas_text: str, live_facts: str, live_dashas: st
     """What differs, by name: HARD changes first (a value changed, a row missing or moved, an EXTRA live row), metadata-only changes last; at most `limit`
     are returned and the TOTAL is disclosed so a truncation is never silent. Numerics are compared EXACTLY (Decimal). Facts and daśā rows are matched by their
     NATURAL KEY. A daśā row missing at its stored start is named MOVED only when exactly ONE live row that no stored row already matches carries the stored
-    ORDINAL path AND the same lord path (every ancestor's lord too) (the index of the period within its parent at every level: cycle-specific, so a repeated lord is never mistaken for it) and each live row can
+    ORDINAL path (read from the METADATA block: it counts siblings the snapshot never consumed, so it names a period and decides nothing; round 6, R3) AND the same lord path (every ancestor's lord too) (the index of the period within its parent at every level: cycle-specific, so a repeated lord is never mistaken for it) and each live row can
     explain at most one stored row — a deletion that merely renumbers a later sibling is a missing row plus a changed ordinal, never a 'move'."""
     from datetime import datetime
     from decimal import Decimal
@@ -131,10 +144,10 @@ def _changes(facts_text: str, dashas_text: str, live_facts: str, live_dashas: st
             if not hits:
                 change: dict[str, Any] = {"kind": kind, "key": e["key"], "change": "missing_live"}
                 if kind == "dasha":
-                    ordinal = (e.get("content") or {}).get("ordinal_path")
+                    ordinal = (e.get("metadata") or {}).get("ordinal_path")
                     # the SAME period: same level/system/ayanamsha, same ORDINAL path AND the same lord (a different lord at that ordinal is another period that
                     # inherited the index when an earlier sibling was deleted, never a move of this one)
-                    cand = [x for x in unmatched_live if id(x) not in used and ordinal and (x.get("content") or {}).get("ordinal_path") == ordinal
+                    cand = [x for x in unmatched_live if id(x) not in used and ordinal and (x.get("metadata") or {}).get("ordinal_path") == ordinal
                             and (x.get("content") or {}).get("lord_graha") == (e.get("content") or {}).get("lord_graha")
                             and (x.get("content") or {}).get("lord_path") == (e.get("content") or {}).get("lord_path")             # the FULL ancestry (parents' lords), not only the leaf
                             and x["key"]["level_n"] == e["key"]["level_n"] and x["key"]["system_id"] == e["key"]["system_id"]
@@ -195,6 +208,8 @@ def _legacy_staleness(conn: Any, chart_id: str, generation: str) -> dict[str, An
         "generation": generation,
         "sealed": sealed,
         "self_contained": False,
+        "copy_consistent": None,                     # no copy to be consistent: null, not a clean result
+        "copy_inconsistencies": [],
         "components": components,
         "drifted_components": sorted(k for k, v in components.items() if not v["same"]),
         "drifted": any(not v["same"] for v in components.values()),

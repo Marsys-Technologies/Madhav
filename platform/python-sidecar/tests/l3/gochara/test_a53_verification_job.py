@@ -61,7 +61,7 @@ def _provision(w):
     w.conn.execute(GATE_DELTA.read_text())          # R10-4 (iii): Stream B's 1241 owes these (see the fixture's header)
 
 
-def _job_position(w, spans, jupiter_spans=()):
+def _job_position(w, spans, jupiter_spans=(), venus_spans=()):
     """The ephemeris stand-in of a COMPLETE world (R10-1: the verifier derives every P1 contact and every record): Saturn is
     in Libra over `spans`; every other instant and every other body sits at a longitude that is in NO concrete obligation's
     geometry AND in a sign where P1 reads that body nowhere."""
@@ -82,6 +82,8 @@ def _job_position(w, spans, jupiter_spans=()):
         if b == "saturn" and any(a <= t < z for a, z in spans):
             return 195.0
         if b == "jupiter" and any(a <= t < z for a, z in jupiter_spans):          # a JOINT Jupiter x Saturn window (the P4 double transit)
+            return 195.0
+        if b == "venus" and any(a <= t < z for a, z in venus_spans):              # Venus in Libra while her own PD runs: an ADMITTED P1 reading (round 6, R5)
             return 195.0
         return quiet.get(b, 7.0)
     return at
@@ -380,15 +382,30 @@ def _run_entry_as_verifier(w, monkeypatch, capsys):
 
 def test_a_mixed_dasha_build_left_after_the_build_does_not_unverify_a_generation_that_owns_its_copy(built, monkeypatch, capsys):
     w = built
-    # a leftover of ANOTHER build at another start and another tier: not a row the generation consumed and not in the required scope
+    # a leftover of ANOTHER build wholly OUTSIDE the bound horizon: not a row the generation consumed and not in the required scope (the scope is every
+    # Vimśottarī / lahiri MD, AD, PD row OVERLAPPING the horizon, whatever its tier or build)
     w.conn.execute(
         "INSERT INTO public.chart_dashas (dasha_row_id, chart_id, ayanamsha_id, system_id, level_n, parent_row_id, lord_graha, start_iso, end_iso,"
-        " build_id, verification_pass_status) SELECT gen_random_uuid(), chart_id, ayanamsha_id, system_id, level_n, NULL, lord_graha, start_iso + interval '1 day',"
-        " end_iso + interval '1 day', %s::uuid, 'single' FROM public.chart_dashas WHERE system_id = 'vimshottari' AND level_n = 1 LIMIT 1", (ANOTHER_BUILD,))
+        " build_id, verification_pass_status) SELECT gen_random_uuid(), chart_id, ayanamsha_id, system_id, level_n, NULL, lord_graha, '2030-01-01'::timestamptz,"
+        " '2040-01-01'::timestamptz, %s::uuid, 'single' FROM public.chart_dashas WHERE system_id = 'vimshottari' AND level_n = 1 LIMIT 1", (ANOTHER_BUILD,))
     code, out = _run_entry_as_verifier(w, monkeypatch, capsys)
     # G12: a mix left by an L1 rebuild AFTER the build is not a failure to verify a generation that owns its copy; the mix itself is refused at CAPTURE
     # (test_a53_r16_amendments) and by the legacy (no copy) path
     assert code == 0, out
+
+
+@pytest.mark.parametrize("tier", ["single", "two_pass_verified"])
+def test_an_extra_upstream_row_inside_the_required_scope_closes_the_gate_whatever_its_tier(built, monkeypatch, capsys, tier):
+    """Round 6, R2 (TIER IS METADATA): the same leftover INSIDE the horizon, at a NEW natural key (another start), is an extra row of the required scope. It closes
+    the gate at tier `single` exactly as at tier `two_pass_verified`: no branch of the scope, of extra-row detection or of drift reads the tier. (Round 5 asserted the
+    opposite for tier `single`: relabelling that one row then flipped the gate.)"""
+    w = built
+    w.conn.execute(
+        "INSERT INTO public.chart_dashas (dasha_row_id, chart_id, ayanamsha_id, system_id, level_n, parent_row_id, lord_graha, start_iso, end_iso,"
+        " build_id, verification_pass_status) SELECT gen_random_uuid(), chart_id, ayanamsha_id, system_id, level_n, NULL, lord_graha, start_iso + interval '1 day',"
+        " end_iso + interval '1 day', %s::uuid, %s FROM public.chart_dashas WHERE system_id = 'vimshottari' AND level_n = 1 LIMIT 1", (ANOTHER_BUILD, tier))
+    code, out = _run_entry_as_verifier(w, monkeypatch, capsys)
+    assert code != 0 and "gate CLOSED" in out["cockpit"], out
 
 
 def test_a_conflicting_second_row_at_a_consumed_natural_key_is_hard_drift_the_gate_closes(built, monkeypatch, capsys):
@@ -469,34 +486,53 @@ def _live_l1_reads_fail():
 
 @pytest.fixture()
 def built_joint(rworld):
-    """The `built` world with a REAL joint Jupiter x Saturn window (Codex round 4): Saturn in Libra [01-10, 02-20) and Jupiter in Libra [01-15, 02-10), so the P4 double transit
-    intersects and P4 has a populated window; every path holds the records both agents imply."""
+    """A world in which EVERY windowed path P1..P4 holds a POPULATED window (round 6, R5; Codex round 4 for the joint window).
+      P3 / P4: a REAL joint Jupiter x Saturn window — Saturn in Libra [01-10, 02-20) and Jupiter in Libra [01-15, 02-10), so the P4 double transit intersects.
+      P2:      Jupiter's (and Venus's) own residence, houses counted from the natal Moon.
+      P1:      an ADMITTED period-lord reading. Saturn's P1 records are honestly NOT admitted in this chart (Saturn has no natal relationship with the 7th house:
+               `natal_bhava_relationship` is false), which is why the round-5 world had ZERO P1 windows and the guard ran over an empty path. Venus owns the 7th
+               (Libra), so Venus in Libra [01-12, 02-15) while her own Antardaśā runs [01-20, 04-01) is an admitted, SCORED P1 record with the support
+               [01-20, 02-15) (a Pratyantara-level reading is testimony by rule and forms no window, so the period is given at the AD level).
+    Every path holds the records all three agents imply (the verifier derives every record the obligations x certified contacts imply)."""
+    from datetime import datetime, timezone
     from .test_a53_window_verification_gate import _materialise
     w = rworld
-    _boot_complete(w)
-    SPANS["jupiter"] = [(_t(1, 15), _t(2, 10))]
-    w.seed("jupiter", [(180.0, _t(1, 15)), (210.0, _t(2, 10))])                                        # the sign ingress/egress sky events the contacts are derived from
-    both = {"saturn": (_t(1, 10), _t(2, 20)), "jupiter": (_t(1, 15), _t(2, 10))}
-    _materialise(w, "P3", both, with_natal=True)
-    _materialise(w, "P1", both)
+    a, b = datetime(2024, 12, 1, tzinfo=timezone.utc), datetime(2025, 4, 1, tzinfo=timezone.utc)
+    m = _t(1, 20)
+    w.set_lord_periods([("saturn", 2, a, m), ("venus", 2, m, b), ("saturn", 3, a, m), ("saturn", 3, m, b)])     # each PD inside ONE AD (the capture contract's hierarchy)
+    w.boot()
+    spans = {"saturn": (_t(1, 10), _t(2, 20)), "jupiter": (_t(1, 15), _t(2, 10)), "venus": (_t(1, 12), _t(2, 15))}
+    before = {k: SPANS.get(k) for k in spans}
+    for body, (lo, hi) in spans.items():
+        SPANS[body] = [(lo, hi)]
+        w.seed(body, [(180.0, lo), (210.0, hi)])                                                       # the sign ingress/egress sky events the contacts are derived from
+    both = {k: spans[k] for k in ("saturn", "jupiter")}
+    _materialise(w, "P3", spans, with_natal=True)
+    _materialise(w, "P1", spans)
     _materialise(w, "P4", both)
     signs = ["aries", "taurus", "gemini", "cancer", "leo", "virgo", "libra", "scorpio", "sagittarius", "capricorn", "aquarius", "pisces"]
     from .test_a53_inventory import CHART
 
     def moon_house(edge, sign):                                                                       # P2's houses are counted from the natal MOON
         return (signs.index(sign.lower()) - int(CHART["natal"]["Moon"] // 30)) % 12 + 1
-    _materialise(w, "P2", {"jupiter": both["jupiter"]}, house_for=moon_house)                          # P2 reads Jupiter's own residence (the individual-planet rules)
+    _materialise(w, "P2", {k: spans[k] for k in ("jupiter", "venus")}, house_for=moon_house)           # P2 reads each planet's own residence (the individual-planet rules)
     for p in ("P1", "P2", "P3", "P4"):
         w.step(f"window:{CLS}:{p}")
     _provision(w)
-    return w
+    try:
+        yield w
+    finally:
+        for k, v in before.items():                                                                   # the module-level sky stand-in is restored for the next test
+            if k == "saturn":
+                continue
+            SPANS.pop(k, None) if v is None else SPANS.__setitem__(k, v)
 
 
 def test_the_complete_computational_boundary_populated_windows_p1_to_p4_and_the_verification_job_reads_no_live_L1(built_joint, monkeypatch, capsys):
     """Windows P1-P4 with a POPULATED joint P4 window (asserted below, not assumed), the persisted window verification and the REAL verification job as the verifier login, all run
     with live chart_facts/chart_dashas reads made to FAIL at the driver (composed queries included)."""
     w = built_joint
-    kw = {k: v for k, v in _kwargs(w, _job_position(w, [LIBRA], jupiter_spans=[(_t(1, 15), _t(2, 10))])).items() if k != "classes"}            # test-helper reads happen BEFORE the guard
+    kw = {k: v for k, v in _kwargs(w, _job_position(w, [LIBRA], jupiter_spans=[(_t(1, 15), _t(2, 10))], venus_spans=[(_t(1, 12), _t(2, 15))])).items() if k != "classes"}            # test-helper reads happen BEFORE the guard
     w.conn.execute(f"ALTER ROLE gochara_verifier LOGIN PASSWORD '{PASSWORD}'")
     try:
         with _live_l1_reads_fail() as seen:
@@ -513,8 +549,10 @@ def test_the_complete_computational_boundary_populated_windows_p1_to_p4_and_the_
         assert not seen, seen
     finally:
         w.conn.execute("ALTER ROLE gochara_verifier NOLOGIN PASSWORD NULL")
-    assert populated.get("P3", 0) >= 1 and populated.get("P4", 0) >= 1, f"the guarded paths must contain POPULATED P3 and P4 windows: {populated}"
-    assert code == 0, out['classes']
+    # round 6, R5: EVERY guarded path is populated — a path with zero windows would pass the guard without exercising a single populated-window read
+    assert set(populated) == {"P1", "P2", "P3", "P4"} and all(populated[p] >= 1 for p in ("P1", "P2", "P3", "P4")), \
+        f"every guarded path P1..P4 must contain at least one POPULATED window: {populated}"
+    assert code == 0, out
 
 
 def test_the_connection_level_guard_really_trips_on_a_live_read_in_any_helper_it_is_not_a_no_op(built):

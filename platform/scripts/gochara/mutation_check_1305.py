@@ -1,29 +1,31 @@
 #!/usr/bin/env python3
 """Reproducible mutation evidence for migration 1305 and the G12 kernel changes (the same discipline as mutation_check_1206.py).
 
-Neuters ONE guard at a time (in the migration or in the sidecar code), runs the G12 live suite (tests/l3/gochara/test_g12_snapshot_copy.py) against a
-THROWAWAY database server, and requires every mutation to be caught by at least one failing or erroring test. Files are restored in a `finally` block.
-Mutants that only break the world's SETUP (the migration's own post-apply check refuses, or the fixture cannot build through the writer) are reported SETUP-ERROR and
-count as NOT caught: they prove the migration defends itself, not that a test detects the behaviour. Mutants that were dropped for that reason or because they are
-equivalent: "the writer submits no keys" (the fixtures themselves build through the writer, so nothing is left to assert), "a deleted sibling reads as a move again" (the
-lord condition now masks it: two siblings of one parent never share a lord, so the mutant is behaviourally equivalent), and the two "required scope forgets a member"
-variants (the writer's own capture then mismatches the shrunken population in the fixture; the required-scope function mutants below cover the same ground).
+Neuters ONE guard at a time (in the migration or in the sidecar code), runs the WHOLE G12 live suite (tests/l3/gochara/test_g12_snapshot_copy.py) against a
+THROWAWAY database server, and requires every mutation to be caught by an ASSERTION of a test that ran. Files are restored in a `finally` block. It REWRITES
+REPOSITORY FILES IN PLACE while it runs: run it only in a checkout of your own that nothing else is using.
 
-Exit status is non-zero if any mutation survives or a target string is missing.
+Classification (see `classify`): only an ASSERTION failure of a test's call phase counts as CAUGHT (AssertionError, a rewritten `assert`, pytest's `Failed:` such as
+DID NOT RAISE or an explicit pytest.fail). A call-phase failure of another exception type (a database error, PermissionError, TypeError ...) is
+UNEXPECTED-EXCEPTION; a mutant that merely breaks the world's SETUP (the migration's own post-apply check refuses, or the fixture cannot build through the writer)
+is SETUP-ERROR; both count as NOT caught: they prove the code defends itself, not that a test detects the behaviour. The suite's own helper
+`_answers_from_the_copy` converts ONLY an explicitly identified forbidden live read into an assertion (round 6, R4); everything else propagates to here.
 
-Only an ASSERTION failure of a test that ran counts as CAUGHT (see `classify`); a mutant that merely breaks the world's SETUP (the migration's own post-apply check refuses, or the
-fixture cannot build through the writer) is SETUP-ERROR and counts as NOT caught: it proves the migration defends itself, not that a test detects the behaviour. Dropped on
-purpose: "the writer submits no keys" (the fixtures build through the writer, so nothing is left to assert), "a deleted sibling reads as a move again" (the lord condition now masks
-it: two siblings of one parent never share a lord, so the mutant is behaviourally equivalent) and the two "required scope forgets a member" variants (the writer's own capture then
-mismatches the shrunken population in the fixture; the required-scope function mutants cover the same ground).
+The list follows the round-6 structure of the migration: the capture trigger (what is validated is what is stored), the pure contract over a copy
+(`ka_gochara_search_copy_violations`), identity and digests, what runs after capture (tier is metadata, drift, the stored copy recomputes), and the kernel.
 
-NOT in the list, on purpose: skipping the verifier's own capture-time derivation (`validate_consumed_dasha_population(against_live=True)` in the writer's snapshot
-substep) survives, because the same defects are refused earlier and independently by the daśā read (`dasha_builds_mixed`, `dasha_build_not_pinned`) and by the
-database trigger (an incomplete or conflicting population). It is kept as a third, independent derivation (defence in depth), and no claim is made that a test
-isolates it.
+NOT in the list, on purpose:
+  * "the writer submits no keys": the fixtures themselves build through the writer, so the mutant breaks setup and nothing is left to assert.
+  * skipping the writer's capture-time Python call (`validate_consumed_dasha_population(against_live=True)` in the snapshot substep) SURVIVES in this suite: the
+    same defects are refused earlier and independently by the daśā read (`dasha_builds_mixed`, `dasha_build_not_pinned`) and by the database trigger. The
+    FUNCTION is covered (its mutants are in the list); the CALL is a third, independent derivation (defence in depth) and no claim is made that a test
+    isolates it.
+  * the 1206 legacy branch of the completeness function (unchanged text; mutation_check_1206.py covers it).
 
-    GOCHARA_A53_ADMIN_DSN=postgresql://postgres@127.0.0.1:5432/postgres GOCHARA_A53_REQUIRE_DB=1 SE_EPHE_PATH=<se1 dir> \\
-      python3 scripts/gochara/mutation_check_1305.py [--list]
+Exit status is non-zero if any mutation is not CAUGHT or a target string is missing.
+
+    GOCHARA_A53_ADMIN_DSN=<the admin DSN of a local THROWAWAY server> GOCHARA_A53_REQUIRE_DB=1 SE_EPHE_PATH=<se1 dir> \\
+      python3 scripts/gochara/mutation_check_1305.py [--list] [--only <text>] [--slice i/n]
 
 Run from the platform/ directory.
 """
@@ -36,58 +38,93 @@ TEST = "tests/l3/gochara/test_g12_snapshot_copy.py"
 
 # (name, file, old, new)
 MUTATIONS = [
-    ("the dasha drift check never fires (a condition that can never be true, so the migration's own presence check still passes)", MIG,
-     "           IS DISTINCT FROM snap.dasha_digest THEN", "           IS DISTINCT FROM snap.dasha_digest AND false THEN"),
+    # ── the capture trigger: what is validated is what is stored (R1), one upstream snapshot, the whole upstream scope ──────────────────────────────────────
+    ("the trigger keeps the SUBMITTED copy instead of the one it built", MIG,
+     "SELECT public.ka_gochara_search_facts_copy(NEW.chart_id, NEW.consumed_fact_ids), public.ka_gochara_search_dasha_copy(NEW.chart_id, NEW.consumed_dasha_row_ids),",
+     "SELECT COALESCE(NEW.consumed_fact_rows, public.ka_gochara_search_facts_copy(NEW.chart_id, NEW.consumed_fact_ids)), COALESCE(NEW.consumed_dasha_rows, public.ka_gochara_search_dasha_copy(NEW.chart_id, NEW.consumed_dasha_row_ids)),"),
+    ("the trigger accepts an identity digest that does not recompute", MIG,
+     "  IF NEW.l1_facts_digest IS DISTINCT FROM public.ka_gochara_search_copy_digest(NEW.consumed_fact_rows, 'content')\n     OR NEW.dasha_digest IS DISTINCT FROM public.ka_gochara_search_copy_digest(NEW.consumed_dasha_rows, 'content') THEN",
+     "  IF false THEN"),
+    ("the trigger never applies the contract to the copy it stores", MIG,
+     "FROM public.ka_gochara_search_copy_violations(NEW.consumed_fact_rows, NEW.consumed_dasha_rows, hz, true) c",
+     "FROM public.ka_gochara_search_copy_violations(NEW.consumed_fact_rows, NEW.consumed_dasha_rows, hz, true) c WHERE false"),
+    ("the trigger judges the copy WITHOUT eligibility (the copy's own tier and build are not asserted)", MIG,
+     "FROM public.ka_gochara_search_copy_violations(NEW.consumed_fact_rows, NEW.consumed_dasha_rows, hz, true) c",
+     "FROM public.ka_gochara_search_copy_violations(NEW.consumed_fact_rows, NEW.consumed_dasha_rows, hz, false) c"),
+    ("the trigger never compares the fact copy with the whole upstream scope", MIG,
+     "FROM public.ka_gochara_search_copy_difference(NEW.consumed_fact_rows, upstream_facts) c", "FROM public.ka_gochara_search_copy_difference(NEW.consumed_fact_rows, upstream_facts) c WHERE false"),
+    ("the trigger never compares the daśā copy with the whole upstream scope", MIG,
+     "FROM public.ka_gochara_search_copy_difference(NEW.consumed_dasha_rows, upstream_dashas) c) u) v;", "FROM public.ka_gochara_search_copy_difference(NEW.consumed_dasha_rows, upstream_dashas) c WHERE false) u) v;"),
+    # ── the contract over a copy ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+    ("a child whose parent_row_id is not the row the copy holds at its parent's key is no longer a violation (the round-5 substitution)", MIG,
+     "FROM kin c WHERE c.parents > 0 AND c.parents_by_id = 0", "FROM kin c WHERE c.parents > 0 AND c.parents_by_id = 0 AND false"),
+    ("an orphan or wrong-level parent is no longer a violation", MIG, "FROM kin c WHERE c.parents = 0", "FROM kin c WHERE c.parents = 0 AND false"),
+    ("a child outside its parent is no longer a violation", MIG, "FROM kin c WHERE c.parents > 0 AND c.parents_not_containing > 0", "FROM kin c WHERE c.parents > 0 AND false"),
+    ("a lord path that is not the parent's plus the row's lord is no longer a violation", MIG, "FROM kin c WHERE c.parents > 0 AND c.parents_on_path = 0", "FROM kin c WHERE c.parents > 0 AND false"),
+    ("the copy's own tier is no longer asserted", MIG, "FROM dall a WHERE p_eligibility AND a.tier IS DISTINCT FROM 'two_pass_verified'", "FROM dall a WHERE p_eligibility AND false"),
+    ("a copy of several builds is no longer a violation", MIG, "FROM dall a WHERE p_eligibility AND a.build IS NOT NULL HAVING count(DISTINCT a.build) > 1", "FROM dall a WHERE p_eligibility AND a.build IS NOT NULL HAVING false"),
+    ("the required levels forget AD (a copy without AD rows is accepted)", MIG, "levels(l) AS (VALUES (1), (2), (3)),", "levels(l) AS (VALUES (1), (3)),"),
+    ("a duplicate natural-key fact is no longer a violation", MIG, "FROM fcount c WHERE c.n > 1", "FROM fcount c WHERE c.n > 99"),
+    ("a fact outside the contract may sit in the copy", MIG, "FROM f WHERE NOT f.in_scope", "FROM f WHERE NOT f.in_scope AND false"),
+    ("a gap inside a level is no longer a violation", MIG, "FROM d WHERE d.prev_end IS NOT NULL AND d.st > d.prev_end", "FROM d WHERE d.prev_end IS NOT NULL AND false"),
+    ("an overlap at distinct starts is no longer a violation", MIG, "FROM d WHERE d.prev_start IS NOT NULL AND d.st > d.prev_start AND d.st < d.prev_end", "FROM d WHERE d.prev_start IS NOT NULL AND false"),
+    ("the horizon END edge is no longer checked", MIG, "FROM d GROUP BY d.lv HAVING max(d.en) < upper(p_horizon)", "FROM d GROUP BY d.lv HAVING false"),
+    ("a period wholly outside the horizon may sit in the copy", MIG, "FROM dscope a WHERE a.in_scope AND NOT a.in_horizon", "FROM dscope a WHERE a.in_scope AND false"),
+    # ── identity and digests (R3, R10) ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+    ("the ordinal path is part of the identity again (a period outside the horizon changes it)", MIG,
+     "'parent_start_iso', p.start_iso, 'lord_path', public.ka_gochara_search_dasha_path(p_chart, d.dasha_row_id)),",
+     "'parent_start_iso', p.start_iso, 'lord_path', public.ka_gochara_search_dasha_path(p_chart, d.dasha_row_id), 'ordinal_path', public.ka_gochara_search_dasha_ordinal_path(p_chart, d.dasha_row_id)),"),
+    ("the copy digest ignores which block it is asked for", MIG,
+     "CASE WHEN jsonb_typeof(e.value -> p_block) = 'object'\n                      THEN public.ka_gochara_sha256_hex(public.ka_gochara_canonical_json(e.value -> p_block)) ELSE 'MISSING' END AS line",
+     "CASE WHEN jsonb_typeof(e.value -> 'content') = 'object'\n                      THEN public.ka_gochara_sha256_hex(public.ka_gochara_canonical_json(e.value -> 'content')) ELSE 'MISSING' END AS line"),
+    ("the copy digest orders by the key only again (conflicting duplicates in arrival order)", MIG,
+     "SELECT string_agg(l.line, E'\\n' ORDER BY l.line COLLATE \"C\")", "SELECT string_agg(l.line, E'\\n' ORDER BY split_part(l.line, '|', 1) COLLATE \"C\")"),
+    ("numbers inside the copy are no longer normalised", MIG,
+     "IF jsonb_typeof(j) = 'number' THEN RETURN to_jsonb(trim_scale((j #>> '{}')::numeric)); END IF;",
+     "IF jsonb_typeof(j) = 'number' THEN RETURN j; END IF;"),
+    ("the copied ancestry accepts a parent of another ayanamsha or system", MIG, "    AND p.ayanamsha_id IS NOT DISTINCT FROM d.ayanamsha_id AND p.system_id IS NOT DISTINCT FROM d.system_id        -- a parent of another ayanamsha/system never enters the copied ancestry\n", ""),
+    # ── after capture: tier is metadata (R2), drift, the stored copy recomputes (R7) ──────────────────────────────────────────────────────────────────────────
+    ("the upstream scope filters on the consumed TIER again (an extra row of another tier is invisible)", MIG,
+     "    WHERE d.chart_id = p_chart AND d.ayanamsha_id = 'lahiri_chitrapaksha' AND d.system_id = 'vimshottari' AND d.level_n IN (1, 2, 3)\n      AND d.start_iso < upper(p_horizon) AND d.end_iso > lower(p_horizon)) s;",
+     "    WHERE d.chart_id = p_chart AND d.ayanamsha_id = 'lahiri_chitrapaksha' AND d.system_id = 'vimshottari' AND d.level_n IN (1, 2, 3)\n      AND d.verification_pass_status = 'two_pass_verified' AND d.start_iso < upper(p_horizon) AND d.end_iso > lower(p_horizon)) s;"),
+    ("the drift check judges the upstream scope WITH eligibility (a tier-only change closes the gate)", MIG, "FROM public.ka_gochara_search_copy_violations(up_f, up_d, hz, false) v;", "FROM public.ka_gochara_search_copy_violations(up_f, up_d, hz, true) v;"),
+    ("the dasha drift check never fires", MIG, "IF public.ka_gochara_search_copy_digest(up_d, 'content') IS DISTINCT FROM snap.dasha_digest THEN", "IF public.ka_gochara_search_copy_digest(up_d, 'content') IS DISTINCT FROM snap.dasha_digest AND false THEN"),
+    ("the fact drift check never fires", MIG, "IF public.ka_gochara_search_copy_digest(up_f, 'content') IS DISTINCT FROM snap.l1_facts_digest THEN", "IF public.ka_gochara_search_copy_digest(up_f, 'content') IS DISTINCT FROM snap.l1_facts_digest AND false THEN"),
+    ("the structural violations of the upstream scope are no longer reported at drift", MIG, "FROM public.ka_gochara_search_copy_violations(up_f, up_d, hz, false) v;", "FROM public.ka_gochara_search_copy_violations(up_f, up_d, hz, false) v WHERE false;"),
+    ("a stored copy that does not recompute to its stored digests is no longer a violation", MIG, ") AS x(bad, d) WHERE x.bad;", ") AS x(bad, d) WHERE x.bad AND false;"),
+    ("a stored copy that violates the capture contract is no longer a violation", MIG,
+     "FROM public.ka_gochara_search_copy_violations(snap.consumed_fact_rows, snap.consumed_dasha_rows, hz, true) v;",
+     "FROM public.ka_gochara_search_copy_violations(snap.consumed_fact_rows, snap.consumed_dasha_rows, hz, true) v WHERE false;"),
     ("the Moon-resolved domain reads live chart_dashas again (the word the presence check looks for stays in a comment)", MIG,
      "COALESCE(s.consumed_dasha_rows, public.ka_gochara_search_dasha_copy(s.chart_id, s.consumed_dasha_row_ids))",
      "COALESCE(NULL::jsonb /* consumed_dasha_rows */, public.ka_gochara_search_dasha_copy(s.chart_id, s.consumed_dasha_row_ids))"),
-    ("the copy digest ignores which block it is asked for", MIG,
-     "CASE WHEN jsonb_typeof(e.value -> p_block) = 'object'\n                           THEN public.ka_gochara_sha256_hex(public.ka_gochara_canonical_json(e.value -> p_block))",
-     "CASE WHEN jsonb_typeof(e.value -> 'content') = 'object'\n                           THEN public.ka_gochara_sha256_hex(public.ka_gochara_canonical_json(e.value -> 'content'))"),
-    ("the live daśā population drops the level from the match", MIG,
-     "                     AND (c.e #>> '{key,level_n}')::int = d.level_n AND (c.e #>> '{key,start_iso}')::timestamptz = d.start_iso\n                     AND c.e #>> '{key,kp_sublevel}' = COALESCE(d.kp_sublevel, ''))\n    UNION ALL",
-     "                     AND (c.e #>> '{key,start_iso}')::timestamptz = d.start_iso\n                     AND c.e #>> '{key,kp_sublevel}' = COALESCE(d.kp_sublevel, ''))\n    UNION ALL"),
-    ("the trigger keeps the SUBMITTED copy instead of the one it built", MIG,
-     "NEW.consumed_fact_rows := facts;\n  NEW.consumed_dasha_rows := dashas;",
-     "NEW.consumed_fact_rows := COALESCE(NEW.consumed_fact_rows, facts);\n  NEW.consumed_dasha_rows := COALESCE(NEW.consumed_dasha_rows, dashas);"),
-    ("the trigger accepts an identity digest that does not recompute", MIG,
-     "IF NEW.l1_facts_digest IS DISTINCT FROM l1 OR NEW.dasha_digest IS DISTINCT FROM dd THEN", "IF false THEN"),
-    ("the trigger never checks the facts are the COMPLETE live population", MIG,
-     "IF public.ka_gochara_search_copy_digest(public.ka_gochara_search_facts_live_population(NEW.chart_id), 'content') IS DISTINCT FROM l1 THEN",
-     "IF false THEN"),
-    ("the trigger never checks the daśā rows are the COMPLETE live population", MIG,
-     "IF public.ka_gochara_search_copy_digest(public.ka_gochara_search_dasha_required_population(NEW.chart_id, hz), 'content') IS DISTINCT FROM dd THEN",
-     "IF false THEN"),
-    ("the drift view selects by the copied TIER again (a tier-only change reads as a missing row)", MIG,
-     "    WHERE d.chart_id = p_chart\n      AND EXISTS (SELECT 1 FROM jsonb_array_elements(COALESCE(p_copy, '[]'::jsonb)) AS c(e)",
-     "    WHERE d.chart_id = p_chart AND d.verification_pass_status = 'two_pass_verified'\n      AND EXISTS (SELECT 1 FROM jsonb_array_elements(COALESCE(p_copy, '[]'::jsonb)) AS c(e)"),
     ("a legacy snapshot is no longer refused at first seal by the database gate", MIG,
      "'input_snapshot_without_copy'::text", "'input_snapshot_drift'::text"),
+    ("the gate no longer refuses after G8's 1306", MIG,
+     "UNION ALL SELECT 'g8_1306_applied_first',", "UNION ALL SELECT 'g8_1306_not_checked',"),
+    # ── the kernel ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
     ("the P1 anchor SQL names live chart_dashas for a snapshot that has a copy", K + "record_verifier.py",
      "sql = _SQL_COPY if (has_copy is not None and _scalar(has_copy) is True) else _SQL_LEGACY", "sql = _SQL_LEGACY"),
     ("an exact Decimal comparison is context-rounded again", K + "targets.py",
      "    if Decimal(repr(lam)) != exact:", "    if Decimal(repr(lam)) != exact.normalize():"),
-    ("the required levels forget AD (an L1 without AD rows is accepted)", MIG, "levels(l) AS (VALUES (1), (2), (3)),", "levels(l) AS (VALUES (1), (3)),"),
-    ("a duplicate natural-key fact is no longer a violation", MIG, "WHERE f.n > 1", "WHERE f.n > 99"),
-    ("a gap inside a level is no longer a violation", MIG, "FROM d WHERE d.prev_end IS NOT NULL AND d.start_iso > d.prev_end", "FROM d WHERE d.prev_end IS NOT NULL AND false"),
-    ("the horizon END edge is no longer checked", MIG, "FROM d GROUP BY d.level_n HAVING max(d.end_iso) < upper(p_horizon)", "FROM d GROUP BY d.level_n HAVING false"),
-    ("the capture trigger no longer asserts the required scope", MIG, "  IF req IS NOT NULL THEN\n    RAISE EXCEPTION 'ka_gochara_search_input_snapshot refused (1305): the required population", "  IF false THEN\n    RAISE EXCEPTION 'ka_gochara_search_input_snapshot refused (1305): the required population"),
-    ("the Python checker ignores the required members and coverage", K + "inventory_verifier.py", "    if require_contract:\n        eligible", "    if False:\n        eligible"),
-    ("a child outside its parent is no longer a violation", MIG, "WHERE c.level_n IN (2, 3) AND NOT (c.start_iso >= p.start_iso AND c.end_iso <= p.end_iso)", "WHERE c.level_n IN (2, 3) AND false"),
-    ("an orphan or wrong-level parent is no longer a violation", MIG, "FROM d c WHERE c.level_n IN (2, 3)\n              AND NOT EXISTS", "FROM d c WHERE c.level_n IN (2, 3) AND false\n              AND NOT EXISTS"),
-    ("the drift check judges the required scope by the consumed TIER again (a tier-only change closes the gate)", MIG, "snap.consumed_dasha_rows) v;", "NULL::jsonb) v;"),
-    ("a move ignores the full lord path (ancestry) again", K + "staleness.py", "                            and (x.get(\"content\") or {}).get(\"lord_path\") == (e.get(\"content\") or {}).get(\"lord_path\")             # the FULL ancestry (parents' lords), not only the leaf\n", ""),
-    ("the copied ancestry accepts a parent of another ayanamsha or system", MIG, "    AND p.ayanamsha_id IS NOT DISTINCT FROM d.ayanamsha_id AND p.system_id IS NOT DISTINCT FROM d.system_id        -- a parent of another ayanamsha/system never enters the copied ancestry\n", ""),
-    ("the Python checker ignores the hierarchy", K + "inventory_verifier.py", "        by_id = {str(r[\"dasha_row_id\"]): r for r in eligible}\n        for r in eligible:", "        by_id = {}\n        for r in []:"),
-    ("numbers inside the copy are no longer normalised", MIG,
-     "IF jsonb_typeof(j) = 'number' THEN RETURN to_jsonb(trim_scale((j #>> '{}')::numeric)); END IF;",
-     "IF jsonb_typeof(j) = 'number' THEN RETURN j; END IF;"),
-    ("the gate no longer refuses after G8's 1306", MIG,
-     "UNION ALL SELECT 'g8_1306_applied_first',", "UNION ALL SELECT 'g8_1306_not_checked',"),
-    ("metadata-only drift counts as hard", K + "staleness.py", '"kind": "soft"}', '"kind": "hard"}'),
+    ("the Python checker ignores the parent row id (the substitution)", K + "inventory_verifier.py",
+     "        if c[\"pid\"] is None or not any(p[\"id\"] == c[\"pid\"] for p in parents):", "        if False:"),
+    ("the Python checker ignores the copy's own tier and build", K + "inventory_verifier.py", "    if eligibility:\n        for p in periods:", "    if False:\n        for p in periods:"),
+    ("the Python checker ignores gaps", K + "inventory_verifier.py", "            if nxt[\"st\"] > prev[\"en\"]:", "            if False:"),
+    ("the natal chart is read from a fact copy that violates the contract", K + "inventory_verifier.py",
+     "    if problems:                                   # a duplicated, foreign or valueless subject is refused by name, never resolved by element order", "    if False:"),
+    ("the capture-time Python check no longer requires the stored copy to hold every upstream row", K + "inventory_verifier.py",
+     "        for rid in sorted(set(theirs) - set(mine)):", "        for rid in []:"),
     ("the natal chart is read from live L1 again", K + "inventory_verifier.py",
      "    if snap[\"facts\"] is None:\n        return read_chart(conn, snap[\"fact_ids\"])\n    return chart_from_copy(snap[\"facts\"])",
      "    return read_chart(conn, snap[\"fact_ids\"])"),
+    ("a move ignores the full lord path (ancestry) again", K + "staleness.py", "                            and (x.get(\"content\") or {}).get(\"lord_path\") == (e.get(\"content\") or {}).get(\"lord_path\")             # the FULL ancestry (parents' lords), not only the leaf\n", ""),
+    ("movement naming looks for the ordinal path in the identity block again", K + "staleness.py",
+     "                    ordinal = (e.get(\"metadata\") or {}).get(\"ordinal_path\")", "                    ordinal = (e.get(\"content\") or {}).get(\"ordinal_path\")"),
+    ("metadata-only drift counts as hard", K + "staleness.py", '"kind": "soft"}', '"kind": "hard"}'),
+    ("staleness says self_contained for a copy that does not recompute", K + "staleness.py", '"self_contained": not inconsistencies,', '"self_contained": True,'),
+    ("an inconsistent copy is not a hard component of the staleness report", K + "staleness.py",
+     '"copy": {"stored": stored_input, "live": None, "same": not inconsistencies, "kind": "hard"},', '"copy": {"stored": stored_input, "live": None, "same": True, "kind": "hard"},'),
 ]
 
 
@@ -159,6 +196,9 @@ def main() -> int:
     print(f"BASELINE green: {last[-1]}")
     survivors = []
     ran = [m for m in MUTATIONS if not only or only in m[0]]
+    if "--slice" in sys.argv:                 # --slice i/n: every n-th mutation starting at i (to spread the list over several private checkouts, one run each)
+        i, n = (int(x) for x in sys.argv[sys.argv.index("--slice") + 1].split("/"))
+        ran = ran[i::n]
     for name, path, old, new in ran:
         text = open(path, encoding="utf-8").read()                  # path is relative to platform/ (this script's cwd)
         if old not in text:

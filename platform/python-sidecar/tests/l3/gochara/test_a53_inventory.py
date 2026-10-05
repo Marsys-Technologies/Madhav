@@ -273,7 +273,7 @@ def _populate_am5_database(conn, faithful=False, apply_1240=True, apply_1305=Fal
         cur.execute("CREATE TABLE public.chart_facts (fact_id text PRIMARY KEY,"
                     " chart_id uuid, ayanamsha_id text, fact_category text, fact_subject text,"
                     " fact_key text,"
-                    " fact_value_num double precision, verification_pass_status text NOT NULL DEFAULT 'single',"
+                    " fact_value_num numeric, verification_pass_status text NOT NULL DEFAULT 'single',"      # NUMERIC, as production (supabase/migrations/204_chart_facts.sql)
                     " created_at timestamptz DEFAULT now(),"
                     # the production columns migration 1305's copy reads (all nullable: the existing tests insert only the six above)
                     " fact_value_text text, fact_value_jsonb jsonb, unit text, build_id uuid, engine_version text, salience_formula_ver text,"

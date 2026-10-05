@@ -22,23 +22,25 @@ SELECT p.proname, pg_get_function_identity_arguments(p.oid) AS args, p.prosecdef
 FROM pg_proc p WHERE p.pronamespace = 'public'::regnamespace AND p.proname IN
   ('ka_gochara_search_copy_digest', 'ka_gochara_search_normalize_numbers', 'ka_gochara_search_facts_copy', 'ka_gochara_search_facts_live_population',
    'ka_gochara_search_dasha_path', 'ka_gochara_search_dasha_ordinal_path', 'ka_gochara_search_dasha_element', 'ka_gochara_search_dasha_copy',
-   'ka_gochara_search_dasha_required_population', 'ka_gochara_search_dasha_live_population', 'ka_gochara_search_dasha_scope_rows', 'ka_gochara_search_required_scope_violations',
+   'ka_gochara_search_dasha_live_population', 'ka_gochara_search_copy_violations', 'ka_gochara_search_copy_difference', 'ka_gochara_search_snapshot_copy_violations',
    'ka_gochara_search_input_snapshot_copy_build')
 ORDER BY 1;
 
 -- 5. the two replaced functions carry the 1305 bodies. expected: all three t.
-SELECT pg_get_functiondef('public.ka_gochara_search_completeness_violations(uuid,text)'::regprocedure) LIKE '%ka_gochara_search_dasha_live_population%' AS completeness_has_the_copy_drift_block,
+SELECT pg_get_functiondef('public.ka_gochara_search_completeness_violations(uuid,text)'::regprocedure) LIKE '%ka_gochara_search_snapshot_copy_violations%' AS completeness_has_the_copy_drift_block,
        pg_get_functiondef('public.ka_gochara_search_completeness_violations(uuid,text)'::regprocedure) LIKE '%ka_gochara_search_moon_scope_violations%' AS completeness_keeps_the_1232_scope_call,
        pg_get_functiondef('public.ka_gochara_search_moon_resolved_domain(uuid,text,text,uuid)'::regprocedure) LIKE '%consumed_dasha_rows%' AS moon_domain_reads_the_copy;
 
--- 6. EXECUTE on the new functions for the three roles that call them (production revokes PUBLIC EXECUTE). expected: every column t for each role that exists.
+-- 6. EXECUTE on the twelve new functions, and on the 1206 helper ka_gochara_search_input_digest the copy-consistency detector calls, for the three roles that call them
+--    (production revokes PUBLIC EXECUTE). expected: every column t for each role that exists.
 SELECT r.rolname,
-       bool_and(has_function_privilege(r.oid, f.oid, 'EXECUTE')) AS execute_on_all_twelve_copy_functions
+       bool_and(has_function_privilege(r.oid, f.oid, 'EXECUTE')) AS execute_on_all_thirteen_functions
 FROM pg_roles r
 CROSS JOIN (SELECT p.oid FROM pg_proc p WHERE p.pronamespace = 'public'::regnamespace AND p.proname IN
   ('ka_gochara_search_copy_digest', 'ka_gochara_search_normalize_numbers', 'ka_gochara_search_facts_copy', 'ka_gochara_search_facts_live_population',
    'ka_gochara_search_dasha_path', 'ka_gochara_search_dasha_ordinal_path', 'ka_gochara_search_dasha_element', 'ka_gochara_search_dasha_copy',
-   'ka_gochara_search_dasha_required_population', 'ka_gochara_search_dasha_live_population', 'ka_gochara_search_dasha_scope_rows', 'ka_gochara_search_required_scope_violations')) f
+   'ka_gochara_search_dasha_live_population', 'ka_gochara_search_copy_violations', 'ka_gochara_search_copy_difference', 'ka_gochara_search_snapshot_copy_violations',
+   'ka_gochara_search_input_digest')) f
 WHERE r.rolname IN ('data_plane_builder', 'gochara_verifier', 'gochara_sealer')
 GROUP BY r.rolname ORDER BY 1;
 

@@ -33,7 +33,9 @@ describe('migration 1305 — static contract', () => {
     // the legacy branch keeps the 1206 statements verbatim (so a snapshot without a copy is judged as before)
     const block = neu.slice(newStart, newEnd).replace(/\s+/g, ' ')
     for (const keep of ['live_l1 := public.ka_gochara_search_l1_facts_digest(p_chart, snap.consumed_fact_ids);', 'live_dasha := public.ka_gochara_search_dasha_digest(p_chart, snap.consumed_dasha_row_ids);']) expect(block).toContain(keep)
-    for (const neuName of ['ka_gochara_search_facts_live_population', 'ka_gochara_search_dasha_live_population', "'content'"]) expect(block).toContain(neuName)
+    // round 6: the copy-bearing branch is ONE call (the stored copy recomputes and satisfies the contract; upstream scope and identity), nothing else
+    expect(block).toContain("RETURN QUERY SELECT '*'::text, v.violation, v.detail FROM public.ka_gochara_search_snapshot_copy_violations(p_chart, p_generation) v;")
+    expect(block.replace(/--[^\n]*/g, '')).not.toMatch(/verification_pass_status|two_pass_verified/)
     for (const keep of ["'missing_inputs_present'", "'obligation_uncovered'", "'verification_missing_or_mismatch'", 'ka_gochara_search_moon_scope_violations(p_chart, p_generation);']) expect(neu).toContain(keep)
   })
 
@@ -47,14 +49,17 @@ describe('migration 1305 — static contract', () => {
     expect(M1305).toContain('BEFORE INSERT ON public.ka_gochara_search_input_snapshot')
     // exactly the two replaced functions are 1232 names; every other CREATE OR REPLACE is a NEW 1305 function
     const created = [...M1305.matchAll(/CREATE OR REPLACE FUNCTION public\.(\w+)/g)].map((m) => m[1]).sort()
-    expect(created).toEqual(['ka_gochara_search_completeness_violations', 'ka_gochara_search_copy_digest', 'ka_gochara_search_dasha_copy', 'ka_gochara_search_dasha_element',
-      'ka_gochara_search_dasha_live_population', 'ka_gochara_search_dasha_ordinal_path', 'ka_gochara_search_dasha_path', 'ka_gochara_search_dasha_required_population', 'ka_gochara_search_dasha_scope_rows', 'ka_gochara_search_facts_copy',
-      'ka_gochara_search_facts_live_population', 'ka_gochara_search_input_snapshot_copy_build', 'ka_gochara_search_moon_resolved_domain',
-      'ka_gochara_search_normalize_numbers', 'ka_gochara_search_required_scope_violations'])
+    expect(created).toEqual(['ka_gochara_search_completeness_violations', 'ka_gochara_search_copy_difference', 'ka_gochara_search_copy_digest', 'ka_gochara_search_copy_violations',
+      'ka_gochara_search_dasha_copy', 'ka_gochara_search_dasha_element', 'ka_gochara_search_dasha_live_population', 'ka_gochara_search_dasha_ordinal_path', 'ka_gochara_search_dasha_path',
+      'ka_gochara_search_facts_copy', 'ka_gochara_search_facts_live_population', 'ka_gochara_search_input_snapshot_copy_build', 'ka_gochara_search_moon_resolved_domain',
+      'ka_gochara_search_normalize_numbers', 'ka_gochara_search_snapshot_copy_violations'])
     // the copy is PRODUCED BY THE DATABASE: the trigger BUILDS it and overwrites what was submitted (before 1206's write guard, named 0z)
     expect(M1305).toContain('ka_gochara_search_input_snapshot_0z_copy_build')
-    expect(M1305).toMatch(/NEW\.consumed_fact_rows := facts;/)
-    expect(M1305).toMatch(/NEW\.consumed_dasha_rows := dashas;/)
+    // round 6 (R1, R9): ONE statement reads live L1 and assigns the copy straight into NEW; the contract then judges NEW (the stored value), not a local variable
+    expect(M1305).toContain('INTO NEW.consumed_fact_rows, NEW.consumed_dasha_rows, upstream_facts, upstream_dashas;')
+    expect(M1305).toContain('public.ka_gochara_search_copy_violations(NEW.consumed_fact_rows, NEW.consumed_dasha_rows, hz, true)')
+    // round 6 (R3): the ordinal path is METADATA (it counts siblings the snapshot never consumed); the identity block does not carry it
+    expect(M1305).toMatch(/'content', jsonb_build_object\('lord_graha'[^;]*'lord_path', public\.ka_gochara_search_dasha_path\(p_chart, d\.dasha_row_id\)\),\s*'metadata', jsonb_build_object\([^;]*'ordinal_path'/)
     expect(M1232).not.toContain('ka_gochara_search_copy_digest')
   })
 
@@ -64,7 +69,7 @@ describe('migration 1305 — static contract', () => {
       '707bd37ce48a3c5fbaf2de881bc7554d97bc81fc1a09a6534d36b4ec5f09cf07']) expect(M1305).toContain(g)
   })
 
-  it('grants EXECUTE on the seven copy functions to the three roles, only if they exist; no table grant', () => {
+  it('grants EXECUTE on the copy functions to the three roles, only if they exist; no table grant', () => {
     expect(M1305).toContain("ARRAY['data_plane_builder', 'gochara_verifier', 'gochara_sealer']")
     expect(M1305).toContain('IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = r)')
     expect(M1305).not.toMatch(/GRANT\s+(SELECT|INSERT|UPDATE|DELETE)/)

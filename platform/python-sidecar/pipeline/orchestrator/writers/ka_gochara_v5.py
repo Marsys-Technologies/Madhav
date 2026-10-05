@@ -940,8 +940,10 @@ class GocharaV5Writer(WriterBase):
                 consumed_fact_ids=context["source_fact_ids"],
                 consumed_dasha_row_ids=dasha_ids)
             if inv_store.snapshot_copy_available():
-                # Codex round 1, ruling 1: the CAPTURE is proved complete ONCE, here, by the verifier's own independent query of live L1 (the database
-                # trigger has already refused an incomplete or conflicting population); everything after this reads the copy
+                # Codex round 1, ruling 1 + round 6 R1: the CAPTURE is proved ONCE, here, on what was STORED. The database trigger has already judged the
+                # stored copy by the capture contract; the verifier now judges the same stored copy by its own Python statement of that contract and
+                # compares it, row for row, with the upstream scope it derives ITSELF from live L1 (every tier and build). Everything after this reads
+                # the copy
                 gk_verifier.validate_consumed_dasha_population(ctx.db_conn, chart_id=chart_id, generation=GENERATION, against_live=True)
                 identity = "SELF-CONTAINED: the snapshot owns a COPY of the consumed L1 rows (G12, migration 1305), proved the complete population at capture"
             else:
