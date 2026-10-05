@@ -816,8 +816,9 @@ def test_the_registry_revision_and_the_four_narr_criteria_carry_the_new_declared
         e = ac.CRITERION_REGISTRY[c]
         assert e["revision"] == 2 and "prose_coupling to carriage_d1" in e["applicability"] and "NARR-GUARD" in e["applicability"], c
     assert ac.NA_CAUSES["Narr.agree"] == ("no-prose",) and all(f"{c}#measured:no-prose" in ac.NA_RULE_DECISIONS for c in NARR)
-    note = pathlib.Path(ac.__file__).read_text(encoding="utf-8").split(f"REGISTRY_REVISION = {ac.REGISTRY_REVISION}", 1)[1].split("\n", 1)[0]
-    assert note[:200].lstrip(" #").startswith(f"{ac.REGISTRY_REVISION} (provisional): ") and "16 (provisional): NARR-GUARD" in note     # the leading note is the current revision's; the 16 note is carried
+    head, tail = pathlib.Path(ac.__file__).read_text(encoding="utf-8").split(f"REGISTRY_REVISION = {ac.REGISTRY_REVISION}", 1)
+    note = tail.split("\n", 1)[0]
+    assert note[:200].lstrip(" #").startswith(f"{ac.REGISTRY_REVISION} (provisional): ") and "16 (provisional): NARR-GUARD" in head     # the leading note is the current revision's; the 16 note is carried
 
 
 @pytest.mark.parametrize("bad", [["effect"], {"a": 1}, 7, None])

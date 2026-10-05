@@ -145,6 +145,42 @@ def verify_p1_house_descriptor(conn, *, chart_id: str, generation: str, event_cl
     return {"records": len(rows)}
 
 
+# ── ST-H-UNKNOWN-20261002: an EXCLUDED H-dependent path is verified by its EXCLUSION ──────────────────────────
+#: The ruling (steward, on the native's standing authority; decisions/ST-H-UNKNOWN-20261002.md, IN FORCE until lifted class by class, in a NEW
+#: generation): for a class whose signature houses H are unknown (GOCHARA_DESIGN_SPECS_v1_4 section 2.2, S:307-312) the H-dependent paths P1, P3 and P4
+#: are carried as `excluded` / `inputs_unavailable` and the class seals `searched_scoped`. THIS verifier's OWN literals (nothing imported from the
+#: builder or the rule modules; `inventory_verifier._UNKNOWN_H` is the verifier's own class table).
+H_UNKNOWN_RULING = "ST-H-UNKNOWN-20261002"
+H_UNKNOWN_PATHS = ("P1", "P3", "P4")
+
+
+def verify_h_unknown_exclusion(conn, *, chart_id: str, generation: str, event_class: str, paths=H_UNKNOWN_PATHS) -> dict:
+    """The DOCTRINE: an excluded H-dependent path is verified by its EXCLUSION (nothing minted) — never by an expected population and never by
+    emptiness. For a class in the verifier's OWN `_UNKNOWN_H` table, every named path (default P1, P3, P4) must have ZERO relationship records and
+    ZERO windows for the class; any one is a failure by name. The acceptance is keyed on the ruling, NEVER on the ledger merely being empty: for a
+    known-H class an empty P1 population is exactly the zero-output case `verify_p1_anchors` exists to catch, and this function REFUSES to be
+    called for one (ValueError), so it cannot be used to excuse an omission."""
+    from .inventory_verifier import _UNKNOWN_H
+    if event_class not in _UNKNOWN_H:
+        raise ValueError(f"{event_class}: not an H-unknown class — its P1/P3/P4 are verified by their populations, never by exclusion")
+    bad = [p for p in paths if p not in H_UNKNOWN_PATHS]
+    if bad:
+        raise ValueError(f"{bad}: not H-dependent paths of {H_UNKNOWN_RULING}")
+    params = {"chart": chart_id, "gen": generation, "cls": event_class, "paths": list(paths)}
+    found: dict[str, dict[str, int]] = {}
+    for kind, table in (("relationship records", "ka_gochara_relationship_record"), ("windows", "ka_gochara_eval_window")):
+        for path_id, n in conn.execute(
+                f"SELECT path_id, count(*) FROM public.{table} WHERE chart_id = %(chart)s AND generation = %(gen)s"
+                " AND event_class = %(cls)s AND path_id = ANY(%(paths)s) GROUP BY path_id ORDER BY path_id", params).fetchall():
+            found.setdefault(path_id, {})[kind] = int(n)
+    if found:
+        listing = "; ".join(f"{p}: " + ", ".join(f"{n} {kind}" for kind, n in sorted(k.items())) for p, k in sorted(found.items()))
+        raise RuntimeError(
+            f"{'P1 ' if tuple(paths) == ('P1',) else 'H-unknown '}exclusion verification failed {event_class}: the paths {list(paths)} are EXCLUDED for this class "
+            f"under {H_UNKNOWN_RULING} (signature houses unknown, so nothing may be minted), yet it holds {listing}")
+    return {"excluded": H_UNKNOWN_RULING, "paths": list(paths), "records": 0, "windows": 0}
+
+
 # ── AM-21 part 2 / R9-2 (iii): the ANCHOR set of every P1 CONTACT, from the EXPECTED contact set ────────────
 
 _GRAHAS7 = ("sun", "moon", "mars", "mercury", "jupiter", "venus", "saturn")
@@ -219,7 +255,12 @@ def verify_p1_anchors(conn, *, chart_id: str, generation: str, event_class: str,
     writer's in-build self-check of a TEST SLICE (whose stored scope is deliberately unknown to every vocabulary), which holds a
     validated marker and passes the DEFAULT scope's exclusion."""
     from . import contact_reconstruct as cr
-    from .inventory_verifier import Unverifiable, read_chart
+    from .inventory_verifier import _UNKNOWN_H, Unverifiable, read_chart
+    if event_class in _UNKNOWN_H:
+        # ST-H-UNKNOWN-20261002: P1 is EXCLUDED for this class (its signature houses are unknown, so P1's natal-relationship prerequisite is
+        # unevaluable and nothing is minted). There is no expected population to certify, so no geometry is needed either: verify the EXCLUSION
+        # (zero P1 records; any one fails by name) and return the excluded marker. Keyed on the verifier's OWN class table, never on emptiness.
+        return {"contacts": 0, **verify_h_unknown_exclusion(conn, chart_id=chart_id, generation=generation, event_class=event_class, paths=("P1",))}
     if position_at is None:
         raise cr.GeometryUnavailable("no ephemeris position source: the complete P1 contact set cannot be certified")
     if not _anchor_columns(conn):
@@ -296,4 +337,4 @@ def verify_p1_anchors(conn, *, chart_id: str, generation: str, event_class: str,
             "limitations": [PD_LIMITATION]}
 
 
-__all__ = ["PD_LIMITATION", "PD_RULING", "expected_p1_anchors", "verify_p1_anchors", "verify_p1_support", "verify_p1_house_descriptor"]
+__all__ = ["H_UNKNOWN_PATHS", "H_UNKNOWN_RULING", "PD_LIMITATION", "PD_RULING", "expected_p1_anchors", "verify_h_unknown_exclusion", "verify_p1_anchors", "verify_p1_support", "verify_p1_house_descriptor"]

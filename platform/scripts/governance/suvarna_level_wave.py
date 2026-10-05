@@ -4726,11 +4726,20 @@ def dispatch_command(*, run_id: str, project: str, region: str, job: str, force_
     return cmd + ["--async", "--format=value(metadata.name)"]
 
 
-def dispatch_run_with_timeout(*, run_id: str, project: str, region: str, job: str, run_command=subprocess.run,
-                              timeout: float = GCLOUD_TIMEOUT_SECONDS, force_execute: bool = False) -> str:
+def dispatch_run_with_timeout(*, run_id: str, project: str, region: str, job: str, run_command=None,
+                              timeout: float = GCLOUD_TIMEOUT_SECONDS, force_execute: bool = False,
+                              authorised: bool = False) -> str:
     """The same `gcloud run jobs execute ... --async` command dispatch_frozen_rebuild.dispatch_run issues, with a timeout, no
     stdin and no prompts. After a timeout the execution may or may not have started: the caller terminalises the planned run
-    (the runner refuses a run that is not planned/running), so a late start can not build anything."""
+    (the runner refuses a run that is not planned/running), so a late start can not build anything.
+
+    The runner is resolved by injection, never bound at import time: `run_command` is used when given (tests, other tools). With
+    none given the REAL process runner (`subprocess.run`, looked up at CALL time) is used only when `authorised=True`, which only
+    the explicit `--commit` + matching confirm-token path in `main` sets; any other call refuses before a process can start."""
+    if run_command is None:
+        if not authorised:
+            raise RuntimeError("dispatch refused: no runner injected and the call is not the authorised --commit path")
+        run_command = subprocess.run
     try:
         result = run_command(
             dispatch_command(run_id=run_id, project=project, region=region, job=job, force_execute=force_execute),
@@ -4904,8 +4913,9 @@ def _run_cli(args, *, connect, git, out, sleep, monotonic, dispatch, hook, commi
 
     send = None
     if args.commit:
+        # only reached under args.commit with the matching confirm token (CONFIRM_TOKEN_MISMATCH above refuses otherwise)
         send = dispatch or (lambda run_id: dispatch_run_with_timeout(run_id=run_id, project=args.project, region=args.region, job=args.job,
-                                                                           force_execute=force))
+                                                                           force_execute=force, authorised=True))
 
     def send_or_terminalise(receipt) -> str | None:
         """Dispatch a committed run; on failure terminalise it (or return the chart-blocking warning). Returns the warning

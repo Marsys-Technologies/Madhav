@@ -1120,7 +1120,8 @@ export const ASSETS: AssetDef[] = [
     expected_volume_formula: 'VARGAS * GRAHAS * AYANAMSHAS', // STALE_FORMULA: 60*9*5=2700 under-counts by ~8×; actual=21635 because chart_divisionals stores bhava+rashi+nakshatra sub-rows per position, not one row per varga×graha×ayanamsha
     expected_volume_inputs: null,
     volume_explanation: '60 vargas × 9 grahas × ayanamsha count — structural',
-    depends_on: ['ga_positions'],
+    // Migration 1226: ga_sensitive added — ga_vargas reads ga_sensitive's kn_rao_rahu_included karaka assignments (N-69; S-L1).
+    depends_on: ['ga_positions', 'ga_sensitive'],
     scope: 'per_chart', is_active: true, estimated_seconds: null,
   },
   {
@@ -1144,7 +1145,9 @@ export const ASSETS: AssetDef[] = [
     expected_volume_formula: '(9 + 81 + 729) * AYANAMSHAS',
     expected_volume_inputs: null,
     volume_explanation: 'target_floor = 536,471 = achieved canonical count for chart 482012f1 (2026-06-11). The legacy formula (9+81+729)*AYANAMSHAS ≈ 4,095 predates the 4-level Sukshma + KP-sublevel Vimshottari tree and under-counts by ~130×.',
-    depends_on: ['ga_positions'],
+    // Migration 1226: ga_sensitive + ga_vargas added — ga_dashas reads ga_sensitive's karaka assignments (N-69; S-L1)
+    // and chart_divisionals (ga_vargas output; Q-L1-02 a). Migration appends in dep-sorted order.
+    depends_on: ['ga_positions', 'ga_sensitive', 'ga_vargas'],
     scope: 'per_chart', is_active: true, estimated_seconds: null,
   },
   {
@@ -1531,7 +1534,8 @@ WHERE cf.chart_id = $1 AND fco.owning_asset_id = 'ga_structural'`,
     expected_volume_formula: 'YOGAS_IN_CATALOG * AYANAMSHAS_COUNT',
     expected_volume_inputs: null,
     volume_explanation: 'Sum of fired yogas across 5 ayanamshas; only Yuga Nabhasa yoga fires for chart 482012f1 (5 rows = 1 yoga × 5 ayanamshas).',
-    depends_on: ['ga_structural', 'ga_dashas'],
+    // Migration 1226: ga_vargas added — ga_yoga_writer reads D9 via ga_structural_writer._load_varga_positions (Q-L1-02 a).
+    depends_on: ['ga_structural', 'ga_dashas', 'ga_vargas'],
     scope: 'per_chart', is_active: true, estimated_seconds: null,
   },
   {
@@ -1632,7 +1636,8 @@ WHERE cf.chart_id = $1 AND fco.owning_asset_id = 'ga_structural'`,
     expected_volume_formula: null,
     expected_volume_inputs: null,
     volume_explanation: 'Signal count driven by ga_structural exhaustive enumeration; sealed count 66,738 per L2 build (chart 482012f1).',
-    depends_on: ['bg_rules', 'ga_positions', 'ga_strength', 'ga_sensitive', 'ga_panchanga', 'ga_sade_sati', 'ga_structural', 'ga_nakshatra', 'ga_condition', 'ga_vargas', 'ga_vichara'],
+    // Migration 1253: ga_yoga added — bo_laksana.py reads ga_yoga_firings (Q-L2-07).
+    depends_on: ['bg_rules', 'ga_positions', 'ga_strength', 'ga_sensitive', 'ga_panchanga', 'ga_sade_sati', 'ga_structural', 'ga_nakshatra', 'ga_condition', 'ga_vargas', 'ga_vichara', 'ga_yoga'],
     scope: 'per_chart', is_active: true, estimated_seconds: null,
   },
   {
@@ -1837,7 +1842,8 @@ WHERE cf.chart_id = $1 AND fco.owning_asset_id = 'ga_structural'`,
     // ga_dashas (chart_dashas), bo_cgm_motifs (bodha_cgm_motifs) — bo_upaya now reads all
     // three for real resonance_score_v1 inputs (dispositor_chain_weakness,
     // dasha_proximity_activation_score, cgm_motifs_weakest_node).
-    depends_on: ['bo_laksana', 'bo_sangati', 'ga_structural', 'ga_dashas', 'bo_cgm_motifs'],
+    // Migration 1253: bo_bimba added — bo_upaya.py joins bodha_cgm_nodes (bo_bimba output; Q-L2-07).
+    depends_on: ['bo_laksana', 'bo_sangati', 'ga_structural', 'ga_dashas', 'bo_cgm_motifs', 'bo_bimba'],
     scope: 'per_chart', is_active: true, estimated_seconds: null,
   },
   {

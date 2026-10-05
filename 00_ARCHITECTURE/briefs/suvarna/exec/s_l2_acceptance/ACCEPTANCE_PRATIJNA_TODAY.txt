@@ -1,0 +1,13 @@
+Read-only run on production 2026-10-05 against the CURRENT (id-citing, pre-S-L2) bodha_pratijna rows
+
+== P1_no_divisional_row_id_token_remains
+135|135|1785
+
+== P2_every_natural_key_citation_resolves_to_exactly_one_chart_divisionals_row
+0|0
+
+== P3_every_fact_id_citation_resolves_to_a_chart_facts_row
+150|0
+
+== P4_row_count_unchanged
+135

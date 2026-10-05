@@ -299,7 +299,7 @@ NARR_CITES = {
                            (_WR + "ka_bhavishya_lekha.py", 317, "_build_falsifiability("),
                            (_WR + "ka_bhavishya_lekha.py", 528, "confirm = f"), (_WR + "ka_bhavishya_lekha.py", 529, "deny = f"),
                            (_L + "L3_kala/query_projections.ts", 248, "narrative,")],
-    "bo_upaya": [(_WR + "bo_upaya.py", 1008, "reason = ("), (_WR + "bo_upaya.py", 1690, '"maraka_contraindication_verdict": maraka_verdict'),
+    "bo_upaya": [(_WR + "bo_upaya.py", 1010, "reason = ("), (_WR + "bo_upaya.py", 1714, '"maraka_contraindication_verdict": maraka_verdict'),
                  (_L + "L2_bodha/query_remedies.ts", 404, "prescription_detail_jsonb"),
                  (_L + "L2_bodha/query_remedies.ts", 564, "marakaVerdictFrom(r['prescription_detail_jsonb'])")],
     "ka_vighnakara": [(_WR + "ka_vighnakara.py", 641, "'reason': f\"Saturn in adversarial transit window"), (_WR + "ka_vighnakara.py", 693, "'reason': ("),
@@ -346,10 +346,10 @@ NARR_CITES = {
                     (_BG + "l0_ontology.py", 981, 'f"d{n}"'), (_BG + "l0_ontology.py", 1152, 'e.get("description")'),
                     (_L + "L0_brahmagyan/resolve_entity.ts", 65, "synonyms, description, source_citation")],
     "bo_laksana_rerank": [(_WR + "bo_laksana.py", 388, "_VICHARA_TO_MSR_VALENCE: dict"), (_WR + "bo_laksana.py", 433, 'target_key = f"{varga}_HOUSE_{house_num}"'),
-                          (_WR + "bo_laksana.py", 3726, "_SYNTHESIS_ROLLUP_SQL"), (_WR + "bo_laksana.py", 3756, "_CLEAR_CONTRADICTS_SQL"),
-                          (_WR + "bo_laksana.py", 3764, "_CONTRADICTS_SQL"), (_WR + "bo_laksana.py", 3823, "class BoLaksanaRerankWriter"),
-                          (_WR + "bo_laksana.py", 3872, "payload = {"), (_WR + "bo_laksana.py", 3887, "SET graph_node_strength_contribution_jsonb"),
-                          (_WR + "bo_laksana.py", 3949, "SET valence = %s, valence_source = %s"), (_WR + "bo_laksana.py", 3960, "notes=("),
+                          (_WR + "bo_laksana.py", 3786, "_SYNTHESIS_ROLLUP_SQL"), (_WR + "bo_laksana.py", 3816, "_CLEAR_CONTRADICTS_SQL"),
+                          (_WR + "bo_laksana.py", 3824, "_CONTRADICTS_SQL"), (_WR + "bo_laksana.py", 3883, "class BoLaksanaRerankWriter"),
+                          (_WR + "bo_laksana.py", 3932, "payload = {"), (_WR + "bo_laksana.py", 3947, "SET graph_node_strength_contribution_jsonb"),
+                          (_WR + "bo_laksana.py", 4009, "SET valence = %s, valence_source = %s"), (_WR + "bo_laksana.py", 4020, "notes=("),
                           (_L + "L2_bodha/query_signals.ts", 509, "bodha_msr_signals")],
     "ph_phaladesa": [(_WR + "ph_phaladesa.py", 94, "def _build_deterministic_narration"), (_WR + "ph_phaladesa.py", 103, "domain rests on {rec.anchor_count}"),
                      (_WR + "ph_phaladesa.py", 107, "No predictive anchors were derived"), (_WR + "ph_phaladesa.py", 110, "assessed magnitude of effect"),
@@ -610,7 +610,7 @@ def test_bo_upaya_maraka_reason_is_bound_into_the_prescription_json_and_composed
     roots = [nw.json_dumps_argument(v) for v in vals]
     assert all(r is not None for r in roots)
     composed, constant = _composed_lines(nw.composed_report(ast.parse(src), roots, ("maraka_contraindication_verdict", "reason")))
-    assert composed == [1023] and constant == [989]      # the fact-missing branch is a fixed string, the verdict branches compose
+    assert composed == [1025] and constant == [991]      # the fact-missing branch is a fixed string, the verdict branches compose
 
 
 def test_ka_vighnakara_every_detector_reason_is_composed_except_the_two_constant_stubs():
@@ -1250,7 +1250,7 @@ CITATION_DECISIONS = json.loads(r"""
   "cites": [
    [
     "platform/python-sidecar/pipeline/orchestrator/writers/bo_laksana.py",
-    3046,
+    3110,
     "f\"Navamsha D9 cross-check: {"
    ],
    [
@@ -1565,27 +1565,27 @@ CITATION_DECISIONS = json.loads(r"""
   "cites": [
    [
     "platform/python-sidecar/pipeline/orchestrator/writers/bo_karanajala.py",
-    625,
+    689,
     "f\"Argala: {graha_b} in {hous"
    ],
    [
     "platform/python-sidecar/pipeline/orchestrator/writers/bo_karanajala.py",
-    708,
+    773,
     "\"citation_human\":           "
    ],
    [
     "platform/python-sidecar/pipeline/orchestrator/writers/bo_karanajala.py",
-    785,
+    850,
     "\"citation_human\":           "
    ],
    [
     "platform/python-sidecar/pipeline/orchestrator/writers/bo_karanajala.py",
-    1360,
+    1425,
     "\"citation_human\": ("
    ],
    [
     "platform/python-sidecar/pipeline/orchestrator/writers/bo_karanajala.py",
-    1732,
+    1799,
     "\"citation_human\": f\"{node_su"
    ]
   ],
@@ -1617,17 +1617,17 @@ CITATION_DECISIONS = json.loads(r"""
   "cites": [
    [
     "platform/python-sidecar/pipeline/orchestrator/writers/bo_upaya.py",
-    1549,
+    1573,
     "f\"Resonance: {graha} | \""
    ],
    [
     "platform/python-sidecar/pipeline/orchestrator/writers/bo_upaya.py",
-    1798,
+    1822,
     "\"citation_human\": f\"RM chart"
    ],
    [
     "platform/python-sidecar/pipeline/orchestrator/writers/bo_upaya.py",
-    1842,
+    1866,
     "\"citation_human\": f\"Dosha re"
    ]
   ],
@@ -1660,17 +1660,17 @@ CITATION_DECISIONS = json.loads(r"""
   "cites": [
    [
     "platform/python-sidecar/pipeline/orchestrator/writers/bo_yantra_mechanism.py",
-    397,
+    401,
     "f\"CR-24 disposition (verifie"
    ],
    [
     "platform/python-sidecar/pipeline/orchestrator/writers/bo_yantra_mechanism.py",
-    571,
+    575,
     "citation_human=(f\"{display} "
    ],
    [
     "platform/python-sidecar/pipeline/orchestrator/writers/bo_yantra_mechanism.py",
-    565,
+    569,
     "mechanism_name=f\"{display} o"
    ]
   ],
@@ -2324,9 +2324,9 @@ def test_citation_composed_values_are_really_stated_in_the_declared_assets():
             ("bo_sangati", _WR + "bo_sangati.py", 365, "len(shared_ids)"), ("bo_sangati", _WR + "bo_sangati.py", 440, "len(sigs)"),
             ("bo_cdlm_summary", _WR + "bo_cdlm_summary.py", 391, "len(agg['cells'])"),
             ("bo_cgm_motifs", _WR + "bo_cgm_motifs.py", 777, "len(all_edges)"),
-            ("bo_karanajala", _WR + "bo_karanajala.py", 708, "sign_num"),
-            ("bo_upaya", _WR + "bo_upaya.py", 1798, "len(resonances)"),
-            ("bo_yantra_mechanism", _WR + "bo_yantra_mechanism.py", 571, "verdict.valence"),
+            ("bo_karanajala", _WR + "bo_karanajala.py", 773, "sign_num"),
+            ("bo_upaya", _WR + "bo_upaya.py", 1822, "len(resonances)"),
+            ("bo_yantra_mechanism", _WR + "bo_yantra_mechanism.py", 575, "verdict.valence"),
             ("ga_strength", _GW + "ga_strength_writer.py", 996, "ratio"),
             ("ga_panchanga", _GW + "ga_panchanga_writer.py", 362, "tithi_num"),
             ("ga_structural", _GW + "ga_structural_writer.py", 4855, "effective_dignity_score")):
@@ -2391,12 +2391,12 @@ def test_citation_forwarded_headline_and_mechanism_name_are_composed_by_their_ca
     names = [k for c in ast.walk(ym) if isinstance(c, ast.Call) and nw._called_name(c) == "_make_mechanism"
              for k in c.keywords if k.arg == "mechanism_name"]
     composed = {k.value.lineno: [e for e, _ in nw.fstring_interpolations(k.value)] for k in names if isinstance(k.value, ast.JoinedStr)}
-    assert composed[565] == ["display", "label", "verdict.valence"]               # the only mechanism_name that grades a value
-    assert set(composed) == {344, 388, 472, 565}
-    assert all("valence" not in "".join(v) for ln, v in composed.items() if ln != 565)
-    # :229 forwards bo_cgm_motifs' motif_name, which is itself composed and served: it is declared there, not a label
+    assert composed[569] == ["display", "label", "verdict.valence"]               # the only mechanism_name that grades a value
+    assert set(composed) == {348, 392, 476, 569}
+    assert all("valence" not in "".join(v) for ln, v in composed.items() if ln != 569)
+    # :233 forwards bo_cgm_motifs' motif_name, which is itself composed and served: it is declared there, not a label
     fwd = [k.value for k in names if not isinstance(k.value, ast.JoinedStr)]
-    assert [v.lineno for v in fwd] == [229] and ast.unparse(fwd[0]) == "m['motif_name']"
+    assert [v.lineno for v in fwd] == [233] and ast.unparse(fwd[0]) == "m['motif_name']"
     assert "motif_name" in _decl()["bo_cgm_motifs"]["prose_fields"]
     mm = _ctree(_WR + "bo_cgm_motifs.py")
     names_m = {}
