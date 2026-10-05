@@ -8574,3 +8574,13 @@ Resume condition for everything downstream: a successful protected deploy with 1
 - No application-source writes, production changes, new provider execution, migration/rebuild/deploy, credential changes, or publishing real chart/life-event data. Existing local cleanup stays unchanged; hold further application work for visual review. Truthful desktop provenance with root CLAUDE §G equivalent scoped handshake; validators unchanged.
 
 - Outcome: native-requested desktop design review created: 33 screen layouts in a self-contained HTML prototype and a private MagicPath sample-data canvas, with four successful design builds and visually inspected initial previews. Strict types, all layouts, selected preview interactions and standalone render/screen switching passed. Existing application source diff SHA256 `656a6c7d3ef230724bbde8c6f2574725268c8a0c83d97b0d900e7582f0c1386e` preserved. Further UI implementation held for native visual feedback. No product source commit/push, deployment, real Life Event Log transfer or provider call. Review packet: `00_ARCHITECTURE/briefs/portal_desktop_review/` in the task worktree.
+
+
+## 2026-10-05 — Journey 1 reviewed portal implementation
+
+- Lease ID: L-PORTAL-JOURNEY1-20261005; holder: Codex desktop; status: ACTIVE.
+- Started: 2026-10-05T11:55:10.014529+00:00; expiry: 2026-10-05T19:55:10.014529+00:00.
+- Worktree: `/Users/Dev/.codex/worktrees/portal-experience/Madhav`; branch `codex/portal-experience`; base `40e9ede5ada47b1a155cfb4f14dae607a63f38d7`.
+- Authority: native explicitly requested implementing reviewed Journey 1 and deferred Journey 2.
+- Scope: sign-in, request access, recovery/reset, birth charts, new chart, chart overview, chart details/access; necessary scoped shared typography, identity, header-language switch, real-data summary presentation and navigation; auth/account-setup username flow, tests and task-owned records.
+- Boundary: local source and tests only, uncommitted for owner review per GIP §P.4; no deployment, production records/permissions, chart rebuild, paid provider call, migration execution, foreign-worktree change, Journey 2 workflow redesign or canonical doctrine change. Existing cleanup work preserved separately. This lease claims no production window.
