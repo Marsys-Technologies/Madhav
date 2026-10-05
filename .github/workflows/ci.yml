@@ -1331,7 +1331,7 @@ jobs:
           export SE_EPHE_PATH="$se1_dir"
           export GOCHARA_SE1_REQUIRE=1
           cd python-sidecar
-          python -m pytest tests/l3/gochara/test_p1_exclusion_h_unknown.py tests/l3/gochara/test_member_geometry_seam.py tests/l3/gochara/test_graze_interim.py -q --tb=short -rs -p no:cacheprovider
+          python -m pytest tests/l3/gochara/test_p1_exclusion_h_unknown.py tests/l3/gochara/test_member_geometry_seam.py tests/l3/gochara/test_graze_interim.py tests/l3/gochara/test_d1_near_miss_geometry.py tests/l3/gochara/test_d1_near_miss_storage.py -q --tb=short -rs -p no:cacheprovider
 
   pratijna-v4-fixture-property-tests:
     needs: changes
