@@ -166,7 +166,7 @@ export function CockpitShell({ chartId, initialChartMeta, variant = 'cockpit' }:
     <div className="preparation-toolbar">
       <div><strong>{chartName ?? 'Chart'}</strong><p className="j1-note">Live chart preparation</p></div>
       <div className="preparation-actions">
-        {assetStates.length > 0 && <BuildActionButton
+        {(activeRun || assetStates.length > 0) && <BuildActionButton
           chartId={chartId} scope="global"
           stats={{ total: assetStates.length, dormant: assetStates.filter(a => a.state === 'dormant').length,
             stale: assetStates.filter(a => a.state === 'stale').length, active_run_id: activeRun?.id ?? null,

@@ -19,7 +19,8 @@
     "missing stats hide asset/layer/global build controls",
     "missing upstream status withholds downstream readiness",
     "stats outage and read-only retry",
-    "keyboard focus trap/Escape/restore via component tests"
+    "keyboard focus trap/Escape/restore via component tests",
+    "existing run Pause/Stop remain available during stats outage; Stop confirmation cancelled without execution"
   ],
   "fixture_post_requests": [
     {
@@ -36,5 +37,14 @@
     }
   ],
   "execution_requests": [],
-  "production_acceptance": "pending"
+  "production_acceptance": "pending",
+  "outage_active_run_followup": {
+    "identity": "fictional fixture only",
+    "status": "stats503 with independently returned active run",
+    "requests_observed": {
+      "GET": 17,
+      "POST": 0
+    },
+    "screenshot": "screenshots/desktop-status-outage-active-run.png"
+  }
 }

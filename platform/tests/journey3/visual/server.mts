@@ -28,7 +28,10 @@ const server = await createServer({ configFile: false, root, plugins: [react(), 
         if (referer.includes('status=error')) { res.statusCode = 503; res.end(JSON.stringify({ error: 'Fictional outage' })); return }
         body = { data: { assets: assets.filter(a => a.is_active && (!referer.includes('status=missing') || a.layer !== 'ganita')).map((a, i) => statOf({ asset_id: a.asset_id, state: i < 3 ? 'lit' : 'incomplete', actual_rows: i < 3 ? 9 : 2 })) } }
       }
-      else if (method === 'GET' && url.pathname === '/api/cockpit/runs/active') body = { data: { run: null, assets: [] } }
+      else if (method === 'GET' && url.pathname === '/api/cockpit/runs/active') body = { data: { run: (req.headers.referer ?? '').includes('run=active')
+        ? { id: 'fictional-run', scope: 'asset', scope_target: 'ganita_fixture', action: 'build', state: 'running', plan: ['ganita_fixture'],
+          current_asset_id: 'ganita_fixture', created_at: new Date().toISOString(), started_at: null, pause_requested_at: null, stop_requested_at: null }
+        : null, assets: [] } }
       else if (method === 'GET' && url.pathname === '/api/charts/fictional-chart') body = { subject_name: 'Fictional Native', birth_date: '1990-01-01', birth_place: 'Fictional birthplace' }
       else if (method === 'GET' && url.pathname === '/api/cockpit/sse') {
         res.setHeader('Content-Type', 'text/event-stream'); res.write('event: hello\ndata: {}\n\n'); req.on('close', () => res.end()); return
