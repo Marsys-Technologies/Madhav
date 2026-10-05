@@ -160,7 +160,14 @@ REQUIRED_PRIVILEGES = {
     "when_registry_active": {"asset_registry": ("UPDATE(is_active)",), "asset_freshness": ("SELECT", "UPDATE")},
 }
 #: tables other than these (found from the catalog) that reference an owned run or the manifest are refused by name
-RUN_REFERENCES_SKIP = ("build_run_assets", "asset_provenance_receipts")
+#: The foreign-key RELATIONSHIPS into build_runs that the deletion scope covers: (table, child columns, parent columns, delete action). The
+#: script deletes the owned runs' build_run_assets rows (CASCADE) and every receipt of the asset on the chart (SET NULL; each is proved linked
+#: to an owned run). Any other foreign key, including a second one from either table, is NOT exempt: it takes the shape check and the refusal.
+RUN_UNDERSTOOD_FKS = frozenset({("build_run_assets", ("run_id",), ("id",), "c"),
+                                ("asset_provenance_receipts", ("build_id",), ("id",), "n")})
+#: Into the manifest: none today (the only declared key is the legacy kala_gochara_contacts.input_generation_vector_id, NO ACTION, which
+#: this script never deletes from): every referencing table is checked.
+MANIFEST_UNDERSTOOD_FKS = frozenset()
 
 
 def _validate_registry_row(cur, *, check_active: bool = True) -> None:
@@ -226,6 +233,13 @@ def _take_locks(cur) -> None:
             "nothing was checked or deleted — connect DIRECTLY to the database host and port, see the runbook")
     cur.execute("SELECT set_config('lock_timeout', %s, true)", (LOCK_TIMEOUT,))
     cur.execute("SELECT public.ka_gochara_lock_chart(%s::uuid)", (CHART_ID,))
+
+
+def _close(conn) -> None:
+    try:
+        conn.close()
+    except Exception:
+        pass
 
 
 def _release_orchestrator_lock(conn) -> None:
@@ -341,7 +355,7 @@ def _refusal_checks(cur) -> "Checked":
 
     # OTHER REFERENCES to the owned runs, found from the catalog: deleting a run sets every ON DELETE SET NULL reference to NULL
     # (conversations, the prediction and calibration ledgers, ...) and a NO ACTION one makes the DELETE fail; name them instead
-    run_refs = shared.referencing_rows(cur, "build_runs", "id", owned, set(RUN_REFERENCES_SKIP))
+    run_refs = shared.referencing_rows(cur, "build_runs", "id", owned, RUN_UNDERSTOOD_FKS)
     if run_refs:
         raise TeardownRefused(
             f"other tables reference the small-test run(s) {owned}: {run_refs} — deleting the runs would change or fail on them; "
@@ -369,7 +383,7 @@ def _refusal_checks(cur) -> "Checked":
         # the manifest is deleted last: any table that references it (found from the catalog) other than the ones this script deletes
         # first — notably kala_gochara_contacts.input_generation_vector_id, NO ACTION — would make that DELETE fail with a bare SQLSTATE
         manifest_refs = shared.referencing_rows(cur, "kala_gochara_publication", "manifest_id", [str(manifest["manifest_id"])],
-                                                {t for t, _ in GENERATION_TABLES})
+                                                MANIFEST_UNDERSTOOD_FKS)
         if manifest_refs:
             raise TeardownRefused(
                 f"other tables reference the '5.0' manifest of chart {CHART_ID}: {manifest_refs} — deleting the manifest would fail "
@@ -516,12 +530,18 @@ def teardown(*, dry_run: bool = True) -> None:
                 _note_outcome(exc, "rollback_unconfirmed")
         raise
     finally:
-        if phase != "committing":
-            _release_orchestrator_lock(conn)
-        try:
-            conn.close()
-        except Exception:
-            pass
+        # Codex round 5 (1): a KeyboardInterrupt (or any non-Exception interruption) during CLEANUP must not erase the transaction outcome
+        # that is already known. Each cleanup action swallows ordinary errors; an interruption is held until both ran, and is raised with
+        # the outcome attached ONLY when nothing else is already propagating (a pending exception already carries its own outcome).
+        interrupted = None
+        for action in ([_release_orchestrator_lock] if phase != "committing" else []) + [_close]:
+            try:
+                action(conn)
+            except BaseException as cleanup_exc:           # noqa: BLE001 — only non-Exception interruptions get here
+                interrupted = interrupted or cleanup_exc
+        if interrupted is not None and sys.exc_info()[1] is None:
+            _note_outcome(interrupted, {"committed": "committed", "committing": "commit_unknown"}.get(phase, "rolled_back"))
+            raise interrupted
     kind, counts, retention = report
     try:                                          # a failure while REPORTING keeps the outcome that is already known (item 3)
         if kind == "dry_run":
@@ -574,6 +594,9 @@ def main(argv: list[str] | None = None) -> int:
         outcome = OUTCOME_TEXT.get(getattr(exc, "teardown_outcome", None) or "unlabelled", OUTCOME_TEXT["unlabelled"])
         print(f"teardown refused: {exc}\n{outcome}", file=sys.stderr)
         return 1
+    except KeyboardInterrupt as exc:                 # Codex round 5 (1): an interrupt is reported WITH the known transaction outcome
+        print(_safe_failure(exc), file=sys.stderr)
+        return 130
     except Exception as exc:                       # noqa: BLE001 — the boundary: print the class, never the text
         print(_safe_failure(exc), file=sys.stderr)
         return 1

@@ -63,7 +63,7 @@ class _Harness:
                  registry_row="default", fail_on=None, connect_error=None, snapshot="consistent", inventory_mismatch=0,
                  registry_active=False, freshness_elsewhere=0, catalog_status="CURRENT", dependents=None, evidence=None,
                  evidence_after=None, commit_error=None, rollback_error=None, retention="default", pids=None, lock_held=1,
-                 references=None, run_manifests=None, fk_shapes=None, chain_outside=None):
+                 references=None, run_manifests=None, fk_shapes=None, chain_outside=None, close_error=None):
         self.statements: list[str] = []
         self.params: list[tuple] = []
         self.commits = self.rollbacks = 0
@@ -96,6 +96,7 @@ class _Harness:
         self.run_manifests = run_manifests or []
         self.fk_shapes = fk_shapes or {}
         self.chain_outside = chain_outside or {}
+        self.close_error = close_error
         harness = self
 
         class FakeCur:
@@ -222,6 +223,8 @@ class _Harness:
 
             def close(self):
                 harness.closed = True
+                if harness.close_error:
+                    raise harness.close_error
 
         self.conn = FakeConn()
 
@@ -974,9 +977,11 @@ def test_b4_the_references_come_from_the_catalog_not_a_hardcoded_list_and_skip_w
     h2 = _Harness(references={"build_runs": [("build_run_assets", "run_id", "c", 9), ("asset_provenance_receipts", "build_id", "n", 9)]})
     _run(h2)
     assert h2.commits == 1
+    # Codex round 5 (3): exemptions are per RELATIONSHIP, never per table: even a table this script deletes first is NOT exempt for a key
+    # into the manifest (there is no understood relationship there), so its referencing rows are named
     h3 = _Harness(references={"kala_gochara_publication": [("ka_gochara_search_input_snapshot", "manifest_id", "a", 5)]})
-    _run(h3)                                                        # a table this script deletes first is not an obstacle
-    assert h3.commits == 1
+    with pytest.raises(teardown_mod.TeardownRefused, match=r"ka_gochara_search_input_snapshot\.manifest_id \(5 row\(s\)"):
+        _run(h3)
 
 
 def test_b3_every_table_the_script_touches_is_in_the_documented_privilege_list():
@@ -1220,12 +1225,36 @@ def test_t2_a_composite_foreign_key_or_one_aimed_at_another_column_is_refused_by
         assert "v5_small_test_incoming_fks_readback.sql" in str(exc.value) and h.deletes() == []
 
 
-def test_t2_an_unsupported_shape_on_a_table_the_script_deletes_itself_is_not_an_obstacle():
+def test_t2_an_unsupported_shape_on_a_table_the_script_deletes_itself_is_still_refused_by_name():
+    """Codex round 5 (3): the table-level exemption is gone; only the understood RELATIONSHIPS are exempt."""
     shape = {"conname": "contact_fk", "tbl": "ka_gochara_contact", "action": "a", "child_cols": ["chart_id", "generation"],
              "parent_cols": ["chart_id", "generation"]}
     h = _Harness(fk_shapes={"kala_gochara_publication": [shape]})
-    _run(h)
-    assert h.commits == 1
+    with pytest.raises(teardown_mod.TeardownRefused, match=r"contact_fk on ka_gochara_contact\(chart_id, generation\)"):
+        _run(h)
+    assert h.deletes() == []
+
+
+def test_r5_only_the_exact_understood_relationship_is_exempt_any_other_key_from_the_same_table_is_checked():
+    # the understood relationships exactly: exempt (their rows are in the deletion scope)
+    ok = _Harness(references={"build_runs": [("build_run_assets", "run_id", "c", 9), ("asset_provenance_receipts", "build_id", "n", 9)]})
+    _run(ok)
+    assert ok.commits == 1
+    # a SECOND single-column key from an allowlisted table (another column) with rows referencing an owned run: named and refused
+    second = _Harness(references={"build_runs": [("build_run_assets", "other_run_ref", "n", 3)]})
+    with pytest.raises(teardown_mod.TeardownRefused, match=r"build_run_assets\.other_run_ref \(3 row\(s\), ON DELETE SET NULL\)"):
+        _run(second)
+    # the same table and column with a DIFFERENT delete action is a different relationship: not exempt
+    other_action = _Harness(references={"build_runs": [("asset_provenance_receipts", "build_id", "c", 2)]})
+    with pytest.raises(teardown_mod.TeardownRefused, match=r"asset_provenance_receipts\.build_id \(2 row\(s\), ON DELETE CASCADE\)"):
+        _run(other_action)
+    # a composite key from an allowlisted table: refused by name through the shape check
+    composite = {"conname": "receipts_run_chart_fkey", "tbl": "asset_provenance_receipts", "action": "n",
+                 "child_cols": ["build_id", "chart_id"], "parent_cols": ["id", "chart_id"]}
+    shaped = _Harness(fk_shapes={"build_runs": [composite]})
+    with pytest.raises(teardown_mod.TeardownRefused, match=r"receipts_run_chart_fkey on asset_provenance_receipts\(build_id, chart_id\)"):
+        _run(shaped)
+    assert shaped.deletes() == [] and second.deletes() == [] and other_action.deletes() == []
 
 
 def test_t2_the_readback_sql_is_read_only_and_is_the_scripts_own_discovery_query():
@@ -1325,3 +1354,87 @@ def test_tb1_a_window_record_or_coverage_partition_of_a_class_outside_the_stamp_
     sql = next(x for x in h.statements if "AS windows" in x)
     idx = h.statements.index(sql)
     assert h.params[idx][2] == STAMP["test_slice"]["classes"] and h.params[idx][5] == STAMP["test_slice"]["classes"]
+
+
+# ── Codex round 5 (1): an interrupt never erases the known transaction outcome ──────────────────────────────────────────────────
+
+def _main_result(h, capsys, *, after_commit=None, monkeypatch=None):
+    if after_commit is not None:
+        monkeypatch.setattr(teardown_mod, "_AFTER_COMMIT", after_commit)
+    with _patched(h):
+        code = teardown_mod.main(["--execute", "--i-am-steward"])
+    return code, capsys.readouterr().err
+
+
+def _interrupt():
+    raise KeyboardInterrupt()
+
+
+def test_r5_an_interrupt_INSIDE_the_commit_is_reported_as_commit_outcome_unknown(capsys):
+    h = _Harness(commit_error=KeyboardInterrupt())
+    code, err = _main_result(h, capsys)
+    assert code == 130 and "COMMIT OUTCOME UNKNOWN" in err and "ROLLBACK CONFIRMED" not in err
+    assert h.rollbacks == 3                                      # only the pid-check rollbacks: none after the COMMIT was sent
+
+
+def test_r5_an_interrupt_JUST_AFTER_a_confirmed_commit_is_reported_as_commit_confirmed(capsys, monkeypatch):
+    h = _Harness()
+    code, err = _main_result(h, capsys, after_commit=_interrupt, monkeypatch=monkeypatch)
+    assert h.commits == 1 and code == 130 and "COMMIT CONFIRMED" in err and "ROLLBACK CONFIRMED" not in err
+
+
+def test_r5_an_interrupt_DURING_THE_CLOSE_after_a_confirmed_commit_is_reported_as_commit_confirmed(capsys):
+    h = _Harness(close_error=KeyboardInterrupt())
+    code, err = _main_result(h, capsys)
+    assert h.commits == 1 and code == 130 and "COMMIT CONFIRMED" in err
+
+
+def test_r5_an_interrupt_during_the_close_never_replaces_a_refusal_already_propagating(capsys):
+    h = _Harness(published={"manifest_id": "m-1"}, close_error=KeyboardInterrupt())
+    code, err = _main_result(h, capsys)
+    assert code == 1 and "teardown refused" in err and "PUBLISHED" in err and h.commits == 0
+
+
+def test_r5_an_interrupt_at_the_dry_run_rollback_reports_nothing_changed_not_silence(capsys):
+    h = _Harness(close_error=KeyboardInterrupt())
+    with _patched(h):
+        code = teardown_mod.main(["--i-am-steward"])            # the default: a dry run
+    err = capsys.readouterr().err
+    assert code == 130 and "ROLLBACK CONFIRMED" in err and h.commits == 0
+
+
+# ── Codex round 5 (2): the two stamps of an interrupted replacement need DISTINCT surviving owned runs ─────────────────────────────
+
+def _same_marker_snapshot():
+    """A snapshot whose vector differs from the manifest's in a NON-slice component but carries the IDENTICAL test_slice component."""
+    return {"same_vector": False, "input_digest": "d" * 64,
+            "snapshot_vector": dict(STAMP, registry="a-different-registry-component")}
+
+
+def test_r5_both_stamps_proved_by_the_SAME_single_run_are_refused_and_the_runbook_is_named():
+    manifest = {_W.TEST_SLICE_KEY: ONE_MARKER_FOR_TESTS}
+    h = _Harness(snapshot=_same_marker_snapshot(),
+                 run_manifests=[{"id": RUN_1, "plan_manifest": manifest, "plan_manifest_digest": _W._manifest_digest(manifest)}])
+    with pytest.raises(teardown_mod.TeardownRefused, match=r"not proved by two DISTINCT surviving owned runs") as exc:
+        _run(h)
+    assert "V5_SMALLTEST_TEARDOWN_RUNBOOK" in str(exc.value) and h.deletes() == []
+
+
+def test_r5_two_distinct_surviving_runs_with_identical_markers_satisfy_the_rule():
+    manifest = {_W.TEST_SLICE_KEY: ONE_MARKER_FOR_TESTS}
+    other = str(uuid.uuid4())
+    runs = [{"id": RUN_1, "plan_manifest": manifest, "plan_manifest_digest": _W._manifest_digest(manifest)},
+            {"id": other, "plan_manifest": manifest, "plan_manifest_digest": _W._manifest_digest(manifest)}]
+    h = _Harness(snapshot=_same_marker_snapshot(), run_manifests=runs, members=[_test_run(), _test_run(other)])
+    _run(h)
+    assert h.commits == 1
+
+
+def test_r5_the_proof_returns_every_matching_run_id():
+    import v5_small_test_shared as shared
+    manifest = {_W.TEST_SLICE_KEY: ONE_MARKER_FOR_TESTS}
+    other = str(uuid.uuid4())
+    runs = [(RUN_1, manifest, _W._manifest_digest(manifest)), (other, manifest, _W._manifest_digest(manifest))]
+    problem, _source, _sliced, matched = shared.prove_stamp(STAMP, runs)
+    assert problem is None and matched == [RUN_1, other]
+    assert shared.prove_stamp(STAMP, [])[3] == []                                              # a reconstruction names no run
