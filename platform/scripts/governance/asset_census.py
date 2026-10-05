@@ -191,7 +191,7 @@ CRITERION_REGISTRY: dict[str, dict] = {
     "Complete.width":        dict(gate="Complete", check="width",         applicability="always (declaring a universe is the first width gap where none exists)", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=1),
     "Vocab.identity":        dict(gate="Vocab", check="identity",         applicability="a declared key exists and the table is non-empty", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=1),
     "Vocab.alias":           dict(gate="Vocab", check="alias",            applicability="the table declares an alias-bearing class census (an undeclared asset with a `synonyms` column keeps the per-class empty-alias census); an asset's reviewed declaration `vocab_alias` makes it applicable by declaration, as a measured alias class against bg_ontology (class planet: canonical id, display name, and the ontology synonyms when an alias column is declared) or as `no_alias_class` (N/A, N-72 S3, N-73 (4)). A column pattern alone never makes it N/A; N-150 R3 (REGISTRY_REVISION 26): `no_alias_class` reads N/A only where the table carries neither an alias-like column nor a vocabulary column the registry's own ontology aliases (ALIAS_VOCAB_COLUMNS: graha, planet, star_lord, ...: such a column must be measured by a declared alias class)", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=(ALIAS_COLUMN,), asset_kinds=None, revision=3),  # S3: declared form added; was rev 1
-    "Ldgr.source_presence":  dict(gate="Ldgr",  check="source_presence",  applicability="the target table carries a recognised citation column (R60: singular classical_citation included); an asset's reviewed declaration `ldgr_source` makes it applicable by declaration, naming the column that carries the source and the citation_state it stands on, or as `no_classical_claim` (N/A, N-72 S3, N-73 (1)). A column pattern alone never makes it N/A. A row of an UNDECLARED asset names a source only when its first recognised citation column is not NULL and not a placeholder (C2(ii), pin 24, N-98): NULL, punctuation-only, the closed no-source list ('not traced', 'n/a', 'none', ...), a bare tradition label ('classical_tradition', 'classical tradition (Jyotish)') and an 'UNSOURCED ...' disclosure are not a citation; an array / JSON array names a source unless empty or every element is one of those; PASS = every row names a source, FAIL = none does, PARTIAL = some do; N-151 (REGISTRY_REVISION 26): an asset that declares `source` is read by its declared source (K1 citation + locus / K2 decision-id string / K3 generator-or-dataset + method + version-or-seed / LEDGER fact ids resolved against chart_facts.fact_id; table level or per row, entries are alternatives): FAIL on a placeholder or an unresolved id, NO_DETECTOR on an absent / empty table, PASS only where the source resolves on every row; N/A only by a CHECKED `na: no_data` (the asset owns no existing table; cause no-data) or `na: no_claims` (its own prose_none check passed and no citation or ledger column exists; cause no-claims); an undeclared L0 asset that holds data and carries no citation column reads FAIL (no source declared)", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=CITATION_COLUMNS, asset_kinds=None, revision=5),  # N-151: declared source (K1/K2/K3/LEDGER) + checked N/A; C2(ii): legacy IS NOT NULL count replaced by the placeholder-aware shared predicate; was rev 3 (S3: declared form + citation_state)
+    "Ldgr.source_presence":  dict(gate="Ldgr",  check="source_presence",  applicability="the target table carries a recognised citation column (R60: singular classical_citation included); an asset's reviewed declaration `ldgr_source` makes it applicable by declaration, naming the column that carries the source and the citation_state it stands on, or as `no_classical_claim` (N/A, N-72 S3, N-73 (1)). A column pattern alone never makes it N/A. A row of an UNDECLARED asset names a source only when its first recognised citation column is not NULL and not a placeholder (C2(ii), pin 24, N-98): NULL, punctuation-only, the closed no-source list ('not traced', 'n/a', 'none', ...), a bare tradition label ('classical_tradition', 'classical tradition (Jyotish)') and an 'UNSOURCED ...' disclosure are not a citation; an array / JSON array names a source unless empty or every element is one of those; PASS = every row names a source, FAIL = none does, PARTIAL = some do; N-151 (REGISTRY_REVISION 26): an asset that declares `source` is read by its declared source (K1 citation + locus / K2 decision-id string / K3 generator-or-dataset + method + version-or-seed / LEDGER fact ids resolved against chart_facts.fact_id; table level or per row, entries are alternatives): FAIL on a placeholder or an unresolved id, NO_DETECTOR on an absent / empty table, PASS only where the source resolves on every row; a LEDGER entry may read inside an object column (`path`, e.g. $.signal_ids, $.factor_ledger[*]) and names what its ids resolve to (`resolves_to`: chart_facts.fact_id, or bodha_msr_signals.signal_id, which must itself chain through its constituent_facts_array to chart_facts); an entry may except the rows of one declared tier (`except_when {column, equals}`: those rows are counted, never judged; all rows excepted reads NO_DETECTOR); a table-level K3 may state its version as the code digest of its generator (`version_digest {file, sha256}`, FAIL when the committed file no longer hashes to it); N/A only by a CHECKED `na: no_data` (the asset owns no existing table; cause no-data) or `na: no_claims` (its own prose_none check passed and no citation or ledger column exists; cause no-claims); an undeclared L0 asset that holds data and carries no citation column reads FAIL (no source declared)", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=CITATION_COLUMNS, asset_kinds=None, revision=5),  # N-151: declared source (K1/K2/K3/LEDGER) + checked N/A; C2(ii): legacy IS NOT NULL count replaced by the placeholder-aware shared predicate; was rev 3 (S3: declared form + citation_state)
     "Dens.served":           dict(gate="Dens",  check="served",           applicability="reaches a served capability module (one that SELECTS from the asset's table, or names it in a form the scan cannot classify; naming it only as a label, in a provenance string, prose, a type name or an import path, is not a reach; for a service-kind asset a service_probe envelope is a reach); PASS (structural) needs ONE capability entry (the object literal that declares density_contract) whose own served read of the asset's table selects a tier column; a tier column is a CLOSED list: exactly `tier` or `verification_pass_status`, or a column the asset declares in density_tier_columns (a reviewed {column, why, evidence}), and never a name carrying a deny-listed word (cost, price, pricing, plan, access, subscription, billing, fee, tariff, in any spelling: split on underscores, digits and camelCase, plurals included, or run together with tier, fail-closed; declared or not); any other `<x>_tier` (severity_tier, cost_tier, access_tier, ...) is not a tier column; a sibling entry, a sub-select, an INSERT...SELECT or a UNION branch does not count", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=6),  # E6.1(d): was file-level 'declares density_contract anywhere' (rev 1); rev 5 (N-74(a)): select vs label; rev 6 (N-98): closed tier vocabulary
     "Narr.agree":            dict(gate="Narr",  check="agree",            applicability="prose_fields declared non-empty (null = undeclared: NO_DETECTOR; [] = declared no prose: measured N/A, cause no-prose, released by the declared rule Narr.agree#measured:no-prose, N-65); an asset that declares prose_fields [] WITH a prose_coupling to carriage_d1 (NARR-GUARD, pin 16, N-94) reads N/A only while its own Carr.D1 reads PASS, else NO_DETECTOR; N-150 R1/R2 (REGISTRY_REVISION 26): a declared-none N/A (`prose_fields []`) reads N/A ONLY through the explicit `prose_none` form, CHECKED against the asset's produced tables (every text-capable column declared closed and the data inside the vocabulary, or json(b) with no string leaves; an open text column FAILs the check; a bare `prose_fields []` reads NO_DETECTOR); the rollup honours a no-prose N/A only with that checked block (a coupled Narr N/A keeps its Carr.D1 rule; PROSE_BARE_EMPTY_LEGACY enumerates the six pre-N-150 bare declarations that keep their unchecked N/A until converted)", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=3),  # E6 (c): the declaration and the table's columns agree
     "Narr.checkable":        dict(gate="Narr",  check="checkable",        applicability="prose_fields declared non-empty; zero checkable rows is INCONCLUSIVE, never PASS; an asset that declares prose_fields [] WITH a prose_coupling to carriage_d1 (NARR-GUARD, pin 16, N-94) reads N/A only while its own Carr.D1 reads PASS, else NO_DETECTOR; N-150 R1/R2 (REGISTRY_REVISION 26): a declared-none N/A (`prose_fields []`) reads N/A ONLY through the explicit `prose_none` form, CHECKED against the asset's produced tables (every text-capable column declared closed and the data inside the vocabulary, or json(b) with no string leaves; an open text column FAILs the check; a bare `prose_fields []` reads NO_DETECTOR); the rollup honours a no-prose N/A only with that checked block (a coupled Narr N/A keeps its Carr.D1 rule; PROSE_BARE_EMPTY_LEGACY enumerates the six pre-N-150 bare declarations that keep their unchecked N/A until converted)", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=3),
@@ -1265,8 +1265,12 @@ def validate_density_tier_declaration(where: str, dt, e: dict) -> None:
 SOURCE_KINDS = ("K1", "K2", "K3", "LEDGER")
 SOURCE_LEVELS = ("table", "row")
 SOURCE_NA_FORMS = ("no_data", "no_claims")
-SOURCE_DECL_FIELDS = ("na", "level", "kind", "citation", "locus", "decision_id", "generator", "dataset", "method", "version", "seed", "columns", "provenance_columns", "citation_state", "why", "evidence")
-SOURCE_COLUMN_FIELDS = ("column", "kinds", "id_prefixes", "generator_column", "dataset_column", "method_column", "version_column", "seed_column")
+SOURCE_DECL_FIELDS = ("na", "level", "kind", "citation", "locus", "decision_id", "generator", "dataset", "method", "version", "seed", "version_digest", "columns", "provenance_columns", "citation_state", "why", "evidence")
+SOURCE_COLUMN_FIELDS = ("column", "kinds", "id_prefixes", "generator_column", "dataset_column", "method_column", "version_column", "seed_column", "path", "resolves_to", "except_when")
+SOURCE_RESOLVES_TO = ("chart_facts.fact_id", "bodha_msr_signals.signal_id")
+SOURCE_EXCEPT_FIELDS = ("column", "equals")
+_LEDGER_PATH_RE = re.compile(r"\$(?:\.[A-Za-z_][A-Za-z0-9_]*(?:\[\*\])?)+")
+_SHA256_RE = re.compile(r"[0-9a-f]{64}")
 SOURCE_MAX_COLUMNS = 8
 SOURCE_DEFAULT_ID_PREFIXES = ("N", "D", "F")
 _K2_ID_RE = re.compile(r"[A-Za-z][A-Za-z0-9]{0,5}-?[0-9]{1,6}[A-Za-z0-9._-]{0,24}")     # a decision id: N-150, D-4, F-2, N-72a; never a bare word like 'ratified'
@@ -1286,6 +1290,18 @@ def _src_text_problem(v):
     n = re.sub(r"[\W_]+", " ", v).strip().casefold()
     if not n or n in _SRC_BARE_PLACEHOLDERS or n.startswith("unsourced"):
         return "is a placeholder (a status word, 'unsourced', or a bare tradition label states no source)"
+    return None
+
+
+def source_version_digest_problem(vd):
+    """None when `vd` is {file, sha256}: a repo-relative path (no `..`, not absolute) and a lower-case sha256 hex. SHAPE only; the detector reads the file."""
+    if not (isinstance(vd, dict) and set(vd) == {"file", "sha256"} and isinstance(vd["file"], str) and isinstance(vd["sha256"], str)):
+        return "must be exactly {file: <repo-relative path>, sha256: <64 lower-case hex>}"
+    f = vd["file"]
+    if not f or f.startswith("/") or ".." in f.split("/") or any(unicodedata.category(ch) in ("Cc", "Cf", "Zl", "Zp") for ch in f):
+        return "file must be a repo-relative path with no `..`"
+    if not _SHA256_RE.fullmatch(vd["sha256"]):
+        return "sha256 must be 64 lower-case hex characters"
     return None
 
 
@@ -1377,6 +1393,13 @@ def source_declaration_problem(src, entry=None):
                     return f"{f} {bad}"
             elif v is not None:
                 return f"{f} is not a field of a {kind} source"
+        vd = src.get("version_digest")
+        if vd is not None:
+            if kind != "K3":
+                return "version_digest is a field of a K3 source (the code digest of the generator, standing as its version)"
+            bad = source_version_digest_problem(vd)
+            if bad:
+                return f"version_digest {bad}"
         for f in need:
             if src.get(f) is None:
                 return f"a {kind} source needs {f}"
@@ -1389,10 +1412,10 @@ def source_declaration_problem(src, entry=None):
         if kind == "K3":
             if (src.get("generator") is None) == (src.get("dataset") is None):
                 return "a K3 source names exactly one of generator / dataset"
-            if src.get("version") is None and src.get("seed") is None:
-                return "a K3 source names a version or a seed"
+            if src.get("version") is None and src.get("seed") is None and src.get("version_digest") is None:
+                return "a K3 source names a version, a seed or a version_digest (the code digest of its generator)"
         return None
-    for f in ("kind", "citation", "locus", "decision_id", "generator", "dataset", "method", "version", "seed"):
+    for f in ("kind", "citation", "locus", "decision_id", "generator", "dataset", "method", "version", "seed", "version_digest"):
         if src.get(f) is not None:
             return f"{f} is a table-level field; a row-level source names its sources in `columns`"
     cols = src.get("columns")
@@ -1410,6 +1433,20 @@ def source_declaration_problem(src, entry=None):
         if not (isinstance(kinds, list) and kinds and len(set(kinds)) == len(kinds) and all(k in SOURCE_KINDS for k in kinds)):
             return f"{lab}.kinds must be a non-empty list of distinct kinds from {list(SOURCE_KINDS)}"
         names = []
+        if kinds != ["LEDGER"] and (c.get("path") is not None or c.get("resolves_to") is not None):
+            return f"{lab}: path / resolves_to belong to a LEDGER entry"
+        if c.get("path") is not None and not (isinstance(c["path"], str) and _LEDGER_PATH_RE.fullmatch(c["path"])):
+            return f"{lab}.path must be a JSON path into a json(b) column: $.key(.key)*, a key optionally followed by [*] (e.g. $.signal_ids, $.factor_ledger[*])"
+        if c.get("resolves_to") is not None and c["resolves_to"] not in SOURCE_RESOLVES_TO:
+            return f"{lab}.resolves_to must be one of {list(SOURCE_RESOLVES_TO)}"
+        ew = c.get("except_when")
+        if ew is not None:
+            if not (isinstance(ew, dict) and set(ew) == set(SOURCE_EXCEPT_FIELDS) and isinstance(ew.get("column"), str) and _DECL_IDENT.fullmatch(ew["column"])
+                    and isinstance(ew.get("equals"), str) and ew["equals"].strip() and ew["equals"] == ew["equals"].strip()
+                    and not any(unicodedata.category(ch) in ("Cc", "Cf", "Zl", "Zp") for ch in ew["equals"]) and "\\" not in ew["equals"] and len(ew["equals"]) <= 200):
+                return f"{lab}.except_when must be exactly {{column: <identifier>, equals: <non-blank string>}}: the rows with that value are excepted from this entry by declaration"
+            if ew["column"] in (c.get("column"), c.get("generator_column"), c.get("dataset_column"), c.get("method_column"), c.get("version_column"), c.get("seed_column")):
+                return f"{lab}.except_when names the entry's own source column"
         if kinds == ["K3"]:
             for f in ("generator_column", "dataset_column", "method_column", "version_column", "seed_column"):
                 if c.get(f) is not None:
@@ -2777,6 +2814,19 @@ def source_table_problem(src) -> str | None:
         for f in ("generator", "dataset", "method", "version", "seed"):
             if src.get(f) is not None and ldgr_placeholder_text(src[f]):
                 return f"the K3 {f} {src[f]!r} is a placeholder"
+        vd = src.get("version_digest")
+        if vd is not None:
+            import hashlib
+            try:
+                fp = (ROOT / vd["file"]).resolve()
+                if ROOT.resolve() not in fp.parents:
+                    return f"the K3 version_digest file {vd['file']} is outside the repository"
+                have = hashlib.sha256(fp.read_bytes()).hexdigest()
+            except OSError:
+                return f"the K3 version_digest file {vd['file']} cannot be read in this checkout"
+            if have != vd["sha256"]:
+                return (f"the K3 version_digest does not match: {vd['file']} hashes to {have[:12]}..., the declaration records {vd['sha256'][:12]}...: the generator changed since it was declared "
+                        "(re-read it, then re-record the digest)")
         return None
     return f"kind {kind!r} is not a table-level kind"
 
@@ -2813,7 +2863,33 @@ def _k2_regex(prefixes=None) -> str:
     return "^[A-Za-z][A-Za-z0-9]{0,5}-?[0-9]{1,6}[A-Za-z0-9._-]{0,24}$"
 
 
+def _ledger_resolves(idexpr: str, resolves_to: str) -> str:
+    """The SQL predicate 'the id `idexpr` RESOLVES': to chart_facts.fact_id, or to a bodha_msr_signals.signal_id whose OWN constituent_facts_array is non-empty and resolves, every element, to
+    chart_facts.fact_id (the id chains down to L1, N.5). An id that is NULL, absent from the target, or whose chain does not reach L1 does not resolve."""
+    if resolves_to == "bodha_msr_signals.signal_id":
+        return (f"EXISTS (SELECT 1 FROM bodha_msr_signals ms WHERE ms.signal_id::text = ({idexpr}) AND cardinality(ms.constituent_facts_array) > 0 AND NOT EXISTS "
+                f"(SELECT 1 FROM unnest(ms.constituent_facts_array) AS cf(x) WHERE NOT EXISTS (SELECT 1 FROM {LEDGER_TABLE} f WHERE f.fact_id = cf.x)))")
+    return f"EXISTS (SELECT 1 FROM {LEDGER_TABLE} f WHERE f.fact_id = ({idexpr}))"
+
+
+def source_entry_exception(entry: dict):
+    """The SQL predicate 'this row is EXCEPTED from the entry by declaration' (`except_when {column, equals}`), or None."""
+    ew = entry.get("except_when")
+    if not isinstance(ew, dict):
+        return None
+    return f'COALESCE(("{ew["column"]}")::text = {_sql_lit(ew["equals"])}, false)'
+
+
 def source_entry_lacking(entry: dict, ktypes: dict):
+    """See `_source_entry_lacking_core`; an entry with `except_when` does not lack a source on the rows it excepts (they are counted separately, never judged)."""
+    p, why = _source_entry_lacking_core(entry, ktypes)
+    exc = source_entry_exception(entry)
+    if p is None or exc is None:
+        return p, why
+    return f"(NOT {exc} AND {p})", None
+
+
+def _source_entry_lacking_core(entry: dict, ktypes: dict):
     """(SQL predicate, problem) for ONE row-level entry: the predicate is true on a row this entry does NOT source. `ktypes` is {column: ldgr_column_kind or None}. A column of a type that
     cannot carry the entry's kind returns (None, why): the cell then reads NO_DETECTOR with the type named, never a PASS."""
     kinds = entry["kinds"]
@@ -2831,13 +2907,23 @@ def source_entry_lacking(entry: dict, ktypes: dict):
         return f"({who} OR {parts['method_column']} OR ({ver}))", None
     c, kd = entry["column"], ktypes.get(entry["column"])
     if kinds == ["LEDGER"]:
+        rt = entry.get("resolves_to") or SOURCE_RESOLVES_TO[0]
+        idkey = "fact_id" if rt.endswith(".fact_id") else "signal_id"
+        path = entry.get("path")
+        if path is not None:
+            if kd != "json":
+                return None, f"{c} is not a json(b) column (a path reads inside one)"
+            jp = path if path.endswith("[*]") else path + "[*]"      # lax mode: [*] on a scalar is that scalar, on an array its elements
+            elem = f"CASE jsonb_typeof(pe.x) WHEN 'string' THEN pe.x #>> '{{}}' WHEN 'object' THEN pe.x->>'{idkey}' END"
+            return (f'("{c}" IS NULL OR NOT EXISTS (SELECT 1 FROM jsonb_path_query("{c}"::jsonb, \'{jp}\') AS pe(x)) OR EXISTS (SELECT 1 FROM jsonb_path_query("{c}"::jsonb, \'{jp}\') AS pe(x) '
+                    f"WHERE NOT {_ledger_resolves(elem, rt)}))"), None
         if kd == "array":
-            return (f'("{c}" IS NULL OR cardinality("{c}") = 0 OR EXISTS (SELECT 1 FROM unnest("{c}") AS u(x) WHERE NOT EXISTS '
-                    f"(SELECT 1 FROM {LEDGER_TABLE} f WHERE f.fact_id = u.x::text)))"), None
+            return (f'("{c}" IS NULL OR cardinality("{c}") = 0 OR EXISTS (SELECT 1 FROM unnest("{c}") AS u(x) WHERE NOT {_ledger_resolves("u.x::text", rt)}))'), None
         if kd == "json":
+            elem = f"CASE jsonb_typeof(je.x) WHEN 'string' THEN je.x #>> '{{}}' WHEN 'object' THEN je.x->>'{idkey}' END"
             return (f'("{c}" IS NULL OR jsonb_typeof("{c}"::jsonb) <> \'array\' OR jsonb_array_length("{c}"::jsonb) = 0 OR EXISTS (SELECT 1 FROM jsonb_array_elements("{c}"::jsonb) AS je(x) '
-                    f"WHERE NOT EXISTS (SELECT 1 FROM {LEDGER_TABLE} f WHERE f.fact_id = CASE jsonb_typeof(je.x) WHEN 'string' THEN je.x #>> '{{}}' WHEN 'object' THEN je.x->>'fact_id' END)))"), None
-        return None, f"{c} is not a text[] or json(b) column of fact ids"
+                    f"WHERE NOT {_ledger_resolves(elem, rt)}))"), None
+        return None, f"{c} is not a text[] or json(b) column of ids"
     if "K2" in kinds:
         if kd != "text":
             return None, f"{c} is not a text column (a decision id is a string)"
@@ -2851,7 +2937,7 @@ def source_entry_lacking(entry: dict, ktypes: dict):
     return _ldgr_lacking(c, kd), None
 
 
-def source_fetch_stats(table: str, pred: str, keycols=()) -> dict:
+def source_fetch_stats(table: str, pred: str, keycols=(), exc=None) -> dict:
     """{rows, lacking, sample}: the table's rows, the rows `pred` (a predicate built by `source_entry_lacking`, never user text) marks as sourced by NO entry, and up to 5 identities (the key
     columns, total ORDER BY) of them: ONE read-only SELECT over the WHOLE table, answered as one line of jsonb. Raises Unknown on a failed read."""
     keys = list(dict.fromkeys(keycols or ()))
@@ -2860,11 +2946,12 @@ def source_fetch_stats(table: str, pred: str, keycols=()) -> dict:
     q = ",".join('"' + k + '"' for k in keys)
     sample = ("'[]'::jsonb" if not keys else
               f"(SELECT coalesce(jsonb_agg(to_jsonb(s)),'[]'::jsonb) FROM (SELECT {q} FROM \"{table}\" WHERE {pred} ORDER BY {q} LIMIT 5) s)")
-    blob = scalar(f"SELECT jsonb_build_object('rows',count(*),'lacking',count(*) FILTER (WHERE {pred}),'sample',{sample})::text FROM \"{table}\"")
+    exc_sql = f",'excepted',count(*) FILTER (WHERE {exc})" if exc else ""
+    blob = scalar(f"SELECT jsonb_build_object('rows',count(*),'lacking',count(*) FILTER (WHERE {pred}),'sample',{sample}{exc_sql})::text FROM \"{table}\"")
     try:
         got = json.loads(blob or "{}")
-    except json.JSONDecodeError as exc:
-        raise Unknown(f"source_fetch_stats: unparseable read of {table}: {exc}") from exc
+    except json.JSONDecodeError as err:
+        raise Unknown(f"source_fetch_stats: unparseable read of {table}: {err}") from err
     if not (isinstance(got, dict) and isinstance(got.get("rows"), int) and isinstance(got.get("lacking"), int)):
         raise Unknown(f"source_fetch_stats: malformed answer for {table}")
     return got
@@ -2939,7 +3026,8 @@ def source_declared_check(aid: str, src, table, cols, *, rows=None, owned=(), ke
     blk = dict(level="row", kinds=kinds, columns=_source_cols(src))
     if not table or not known:
         return {out: dict(v=NO_DET, declared=True, citation_state=cs, source=blk, measured="NO_DETECTOR — the declared row-level source is read on the target table, which is not in production or whose columns are unknown")}
-    absent = [c for c in _source_cols(src) if c not in cols]
+    exc_cols = [e["except_when"]["column"] for e in src["columns"] if isinstance(e.get("except_when"), dict)]
+    absent = [c for c in _source_cols(src) + exc_cols if c not in cols]
     if absent:
         return {out: dict(v=FAIL, declared=True, citation_state=cs, source=blk, measured=f"the declared source column(s) {', '.join(absent)} are not columns of {table}: the declaration names a source the table does not carry")}
     kc = []
@@ -2956,11 +3044,21 @@ def source_declared_check(aid: str, src, table, cols, *, rows=None, owned=(), ke
                 return {out: dict(v=NO_DET, declared=True, citation_state=cs, source=blk, measured=f"NO_DETECTOR — {table}: {why}, so presence on it is not a source")}
             preds.append(p)
         pred = "(" + " AND ".join(preds) + ")"                      # the entries are alternatives: a row lacks a source only when EVERY entry lacks it
-        stats = source_fetch_stats(table, pred, kc[:3])
+        excs = [x for x in (source_entry_exception(e) for e in src["columns"]) if x]
+        stats = source_fetch_stats(table, pred, kc[:3], exc=("(" + " OR ".join(excs) + ")") if excs else None)
     except Unknown as exc:                                          # R41: this check's failure degrades only this check
         return {out: dict(v=ERRORED, declared=True, citation_state=cs, source=blk, measured=f"check errored: {exc}")}
-    rec = grade_ldgr_source(dict(source_column=", ".join(blk["columns"]), citation_state=cs), stats, table)
+    excepted = stats.get("excepted") if isinstance(stats.get("excepted"), int) else 0
+    if excepted:
+        blk = dict(blk, excepted=excepted)
+        if stats["rows"] - excepted <= 0:
+            return {out: dict(v=NO_DET, declared=True, citation_state=cs, source=dict(blk, rows=stats["rows"]),
+                              measured=f"NO_DETECTOR — every one of the {stats['rows']} row(s) of {table} is excepted by declaration (except_when): no row was judged")}
+        stats = dict(stats, rows=stats["rows"] - excepted)                  # the excepted rows are not judged: the grade is over the rest
+    rec = grade_ldgr_source(dict(source_column=", ".join(_source_cols(src)), citation_state=cs), stats, table)
     rec["source"] = dict(blk, rows=stats["rows"], lacking=stats["lacking"])
+    if excepted:
+        rec["measured"] += f"; {excepted} row(s) excepted by declaration (except_when) are not judged"
     rec["measured"] = f"row-level {'/'.join(kinds)} source: " + rec["measured"]
     return {out: rec}
 

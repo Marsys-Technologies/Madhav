@@ -279,3 +279,93 @@ def test_REAL_SQL_ledger_fact_ids_must_resolve_against_chart_facts(monkeypatch, 
     jrows = ["'[\"F1\",\"F2\"]'::jsonb", "'[{\"fact_id\":\"F3\"}]'::jsonb", "'[\"F1\",\"Nope\"]'::jsonb", "'[]'::jsonb", "'{\"a\":1}'::jsonb", "'[{\"x\":\"F1\"}]'::jsonb"]
     rec = _real_chk(monkeypatch, disposable_pg, facts + _tbl("lj", "facts jsonb", jrows), src, "lj", ["id", "facts"])
     assert rec["v"] == PARTIAL and rec["source"]["lacking"] == 4, rec["measured"]
+
+
+# ───────────────────────── LEDGER path / resolves_to, except_when, K3 version_digest ─────────────────────────
+
+FACTS = ["CREATE TEMP TABLE chart_facts (fact_id text PRIMARY KEY) ON COMMIT DROP;", "INSERT INTO chart_facts VALUES ('F1'), ('F2'), ('F3');"]
+SIGS = ["CREATE TEMP TABLE bodha_msr_signals (signal_id uuid PRIMARY KEY, constituent_facts_array text[] NOT NULL) ON COMMIT DROP;",
+        "INSERT INTO bodha_msr_signals VALUES ('00000000-0000-0000-0000-000000000001', ARRAY['F1','F2']), ('00000000-0000-0000-0000-000000000002', ARRAY['F3']),"
+        " ('00000000-0000-0000-0000-000000000003', ARRAY['F1','F404']), ('00000000-0000-0000-0000-000000000004', ARRAY[]::text[]);"]
+S1, S2, S3, S4 = (f"00000000-0000-0000-0000-00000000000{i}" for i in (1, 2, 3, 4))
+
+
+def test_REAL_SQL_ledger_path_into_an_object_column_resolves_to_facts(monkeypatch, disposable_pg):
+    src = _row(dict(column="refs", kinds=["LEDGER"], path="$.factor_ledger[*]"))
+    good = ["'{\"factor_ledger\":[\"F1\",\"F2\"]}'::jsonb", "'{\"factor_ledger\":[{\"fact_id\":\"F3\"}]}'::jsonb"]
+    assert _real_chk(monkeypatch, disposable_pg, FACTS + _tbl("po", "refs jsonb", good), src, "po", ["id", "refs"])["v"] == PASS
+    bad = good + ["'{\"factor_ledger\":[\"F1\",\"F404\"]}'::jsonb", "'{\"factor_ledger\":[]}'::jsonb", "'{\"other\":[\"F1\"]}'::jsonb", "NULL", "'{\"factor_ledger\":\"F1\"}'::jsonb"]
+    rec = _real_chk(monkeypatch, disposable_pg, FACTS + _tbl("po", "refs jsonb", bad), src, "po", ["id", "refs"])
+    assert rec["v"] == PARTIAL and rec["source"]["lacking"] == 4, rec["measured"]       # unresolved id, empty path, absent path, NULL lack; a scalar at the path is one id and resolves
+
+
+def test_REAL_SQL_ledger_path_without_the_star_reads_the_array_at_the_key(monkeypatch, disposable_pg):
+    src = _row(dict(column="refs", kinds=["LEDGER"], path="$.signal_ids", resolves_to="bodha_msr_signals.signal_id"))
+    rows = [f"'{{\"signal_ids\":[\"{S1}\",\"{S2}\"]}}'::jsonb"]
+    assert _real_chk(monkeypatch, disposable_pg, FACTS + SIGS + _tbl("ps", "refs jsonb", rows), src, "ps", ["id", "refs"])["v"] == PASS
+
+
+def test_REAL_SQL_a_signal_id_must_chain_down_to_chart_facts(monkeypatch, disposable_pg):
+    src = _row(dict(column="refs", kinds=["LEDGER"], path="$.signal_ids", resolves_to="bodha_msr_signals.signal_id"))
+    rows = [f"'{{\"signal_ids\":[\"{S1}\"]}}'::jsonb",                              # resolves: its constituent facts F1, F2 exist
+            f"'{{\"signal_ids\":[\"{S3}\"]}}'::jsonb",                              # the signal exists but F404 does not: the chain breaks
+            f"'{{\"signal_ids\":[\"{S4}\"]}}'::jsonb",                              # the signal exists with an empty constituent array: nothing derived
+            "'{\"signal_ids\":[\"00000000-0000-0000-0000-0000000000ff\"]}'::jsonb",  # no such signal
+            "'{\"signal_ids\":[\"F1\"]}'::jsonb"]                                   # a fact id is not a signal id
+    rec = _real_chk(monkeypatch, disposable_pg, FACTS + SIGS + _tbl("pc", "refs jsonb", rows), src, "pc", ["id", "refs"])
+    assert rec["v"] == PARTIAL and rec["source"]["lacking"] == 4 and rec["source"]["rows"] == 5, rec["measured"]
+    rows2 = [f"'[\"{S1}\",\"{S2}\"]'::jsonb", f"'[{{\"signal_id\":\"{S1}\"}}]'::jsonb"]            # no path: a json array of ids or objects carrying signal_id
+    src2 = _row(dict(column="refs", kinds=["LEDGER"], resolves_to="bodha_msr_signals.signal_id"))
+    assert _real_chk(monkeypatch, disposable_pg, FACTS + SIGS + _tbl("pc", "refs jsonb", rows2), src2, "pc", ["id", "refs"])["v"] == PASS
+    rows3 = [f"ARRAY['{S1}','{S2}']"]                                                              # a text[] of signal ids
+    assert _real_chk(monkeypatch, disposable_pg, FACTS + SIGS + _tbl("pc", "refs text[]", rows3), src2, "pc", ["id", "refs"])["v"] == PASS
+
+
+def test_a_path_on_a_non_json_column_is_no_detector(monkeypatch):
+    monkeypatch.setattr(ac, "scalar", _Fake({"refs": "text[]"}, dict(rows=1, lacking=0, sample=[])))
+    rec = _chk(_row(dict(column="refs", kinds=["LEDGER"], path="$.a")), cols=["id", "refs"])
+    assert rec["v"] == NO_DET and "json" in rec["measured"]
+
+
+def test_REAL_SQL_except_when_excepts_the_rows_of_one_tier_by_declaration(monkeypatch, disposable_pg):
+    src = _row(dict(column="derivation_chain", kinds=["K1"], except_when=dict(column="grounding_tier", equals="pratyaksa")), citation_state="sourced")
+    ddl = "grounding_tier text, derivation_chain text"
+    rows = ["'pratyaksa', NULL", "'anumana', 'BPHS 3.12'", "'anumana', 'Saravali 4'", "'pratyaksa', 'n/a'"]
+    rec = _real_chk(monkeypatch, disposable_pg, _tbl("ex", ddl, rows), src, "ex", ["id", "grounding_tier", "derivation_chain"])
+    assert rec["v"] == PASS and rec["source"]["excepted"] == 2 and rec["source"]["rows"] == 2 and "excepted by declaration" in rec["measured"]      # the other tiers are judged
+    rows += ["'anumana', NULL", "'agama', 'classical_tradition'"]
+    rec = _real_chk(monkeypatch, disposable_pg, _tbl("ex", ddl, rows), src, "ex", ["id", "grounding_tier", "derivation_chain"])
+    assert rec["v"] == PARTIAL and rec["source"]["lacking"] == 2 and rec["source"]["rows"] == 4 and rec["source"]["excepted"] == 2
+    only = ["'pratyaksa', NULL", "'pratyaksa', 'x 1'"]
+    rec = _real_chk(monkeypatch, disposable_pg, _tbl("ex", ddl, only), src, "ex", ["id", "grounding_tier", "derivation_chain"])
+    assert rec["v"] == NO_DET and "no row was judged" in rec["measured"]                               # nothing judged is never a PASS
+    absent = _row(dict(column="derivation_chain", kinds=["K1"], except_when=dict(column="ghost", equals="x")), citation_state="sourced")
+    assert _real_chk(monkeypatch, disposable_pg, _tbl("ex", ddl, rows), absent, "ex", ["id", "grounding_tier", "derivation_chain"])["v"] == FAIL
+
+
+def test_the_excepted_rows_never_count_as_sourced_when_another_entry_judges_them(monkeypatch):
+    f = _Fake({"a": "text", "b": "text"}, dict(rows=4, lacking=1, sample=[], excepted=1))
+    monkeypatch.setattr(ac, "scalar", f)
+    rec = _chk(_row(dict(column="a", kinds=["K2"], except_when=dict(column="tier", equals="p")), dict(column="b", kinds=["K2"])), cols=["id", "tier", "a", "b"])
+    assert rec["v"] == PARTIAL and rec["source"]["rows"] == 3 and rec["source"]["excepted"] == 1
+    assert "FILTER (WHERE" in f.sql[-1] and "'excepted'" in f.sql[-1]
+
+
+# a real, committed file whose digest the declaration records (the K3 version for a writer with no version constant)
+DIGEST_FILE = "platform/scripts/governance/carriage_d1.py"
+
+
+def _digest():
+    import hashlib
+    return hashlib.sha256((ac.ROOT / DIGEST_FILE).read_bytes()).hexdigest()
+
+
+def test_a_k3_code_digest_stands_as_the_version_only_while_it_matches_the_committed_file():
+    k3 = dict(level="table", kind="K3", generator="ga_transit_anchors", method="direct transcription", version_digest={"file": DIGEST_FILE, "sha256": _digest()})
+    assert _chk(_src(**k3), rows=5)["v"] == PASS
+    stale = dict(k3, version_digest={"file": DIGEST_FILE, "sha256": "0" * 64})
+    rec = _chk(_src(**stale), rows=5)
+    assert rec["v"] == FAIL and "does not match" in rec["measured"] and "generator changed" in rec["measured"]
+    gone = dict(k3, version_digest={"file": "platform/scripts/governance/no_such_writer.py", "sha256": _digest()})
+    assert _chk(_src(**gone), rows=5)["v"] == FAIL and "cannot be read" in _chk(_src(**gone), rows=5)["measured"]
+    assert _chk(_src(**{**k3, "version_digest": {"file": "00_ARCHITECTURE/../../outside.py", "sha256": _digest()}}), rows=5)["v"] in (FAIL, NO_DET)
