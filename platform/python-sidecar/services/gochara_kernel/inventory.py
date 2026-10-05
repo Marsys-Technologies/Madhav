@@ -153,7 +153,7 @@ class IntervalPlan:
     end: datetime
     state: str
     #: a role-token obligation's interval names the concrete agent it was resolved to and
-    #: the pinned daśā row it was cut at (AM-11 pin e). SQL does not check it — a named
+    #: the pinned daśā period it was cut at, as a NATURAL pointer (level, start) — never a row id, which an L1 rebuild re-issues (AM-11 pin e, G12). SQL does not check it — a named
     #: residual; the independent verifier re-derives it.
     detail: dict | None = None
 
@@ -273,7 +273,7 @@ def _plan_p1(event_class: str, chart: dict, lo: datetime, hi: datetime,
             for a, b, r in pieces:
                 if r is None:
                     intervals.append(IntervalPlan(o.ob_id, a, b, STATE_MISSING,
-                                                  {"resolved_agent": None, "dasha_row_id": None,
+                                                  {"resolved_agent": None, "dasha_period": None,
                                                    **({"limitation": "p1_pd_level_no_source"} if role == "pd" else {})}))
                 else:
                     # a period whose lord is the MOON resolves to an agent the stored build never
@@ -292,7 +292,7 @@ def _plan_p1(event_class: str, chart: dict, lo: datetime, hi: datetime,
                         state, tier = _interval_state(o, cap), None
                     intervals.append(IntervalPlan(
                         o.ob_id, a, b, state,
-                        {"resolved_agent": r.lord, "dasha_row_id": str(r.row_id),
+                        {"resolved_agent": r.lord, "dasha_period": {"level": r.level, "start": r.start.isoformat()},
                          **({"tier": tier} if tier else {}),
                          # R9-5: the PD level has no verse — searched, but its readings are TESTIMONY only
                          **({"limitation": "p1_pd_level_no_source"} if role == "pd" else {})}))

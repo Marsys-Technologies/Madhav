@@ -239,6 +239,10 @@ def _record_phase_fakes(monkeypatch):
     calls: dict[str, list] = {"coverage": [], "grain": []}
     monkeypatch.setattr(writer_mod, "fetch_chart_context",
                         lambda conn, cid: dict(_CHART_CONTEXT))
+    monkeypatch.setattr(writer_mod, "fetch_chart_context_from_snapshot",          # G12: the record phases read the snapshot's copy
+                        lambda conn, cid, generation: dict(_CHART_CONTEXT))
+    monkeypatch.setattr(writer_mod, "make_period_rows_for_snapshot",
+                        lambda conn, cid, generation: (lambda agent: [], {"build_id": None, "read": False}))
     class _FakeRecordStore:
         def __init__(self, conn):
             self.conn = conn
@@ -317,8 +321,8 @@ def test_record_grain_records_the_dasha_build_the_read_actually_used(
         contract.update(build_id="build-xyz", read=True)   # the lazy read happens
         return []
 
-    monkeypatch.setattr(writer_mod, "make_period_rows_for",
-                        lambda conn, chart_id: (rows_for, contract))
+    monkeypatch.setattr(writer_mod, "make_period_rows_for_snapshot",
+                        lambda conn, chart_id, generation: (rows_for, contract))
     # the grain (faked) triggers the read through the injected callable
     def _grain(store, **kw):
         _record_phase_fakes["grain"].append(kw)

@@ -61,8 +61,8 @@ from services.gochara_kernel import evaluator as gk_evaluator
 from services.gochara_kernel import ephemeris_pins as gk_ephemeris_pins
 from services.gochara_kernel.native_conn import native_connection
 from services.gochara_kernel import arcs as gk_arcs
-from services.gochara_kernel.dasha_read import make_period_rows_for
-from services.gochara_kernel.chart_context import (fetch_chart_context,
+from services.gochara_kernel.dasha_read import make_period_rows_for, make_period_rows_for_snapshot
+from services.gochara_kernel.chart_context import (fetch_chart_context, fetch_chart_context_from_snapshot,
                                                    require_complete)
 from services.gochara_kernel.knots import calc_sidereal_lon, sample_knots
 from services.gochara_kernel.record_store import (RecordStore,
@@ -939,11 +939,20 @@ class GocharaV5Writer(WriterBase):
                 chart_id=chart_id, generation=GENERATION, convention_id=sky_cid,
                 consumed_fact_ids=context["source_fact_ids"],
                 consumed_dasha_row_ids=dasha_ids)
+            if inv_store.snapshot_copy_available():
+                # Codex round 1, ruling 1: the CAPTURE is proved complete ONCE, here, by the verifier's own independent query of live L1 (the database
+                # trigger has already refused an incomplete or conflicting population); everything after this reads the copy
+                gk_verifier.validate_consumed_dasha_population(ctx.db_conn, chart_id=chart_id, generation=GENERATION, against_live=True)
+                identity = "SELF-CONTAINED: the snapshot owns a COPY of the consumed L1 rows (G12, migration 1305), proved the complete population at capture"
+            else:
+                identity = ("LEGACY snapshot (migration 1305 is NOT applied): ids only — it is NOT self-contained and dangles after any later L1 "
+                            "rebuild; apply 1305 before building anything meant to be sealed")
+                logger.warning("%s: %s", ASSET_ID, identity)
             return WriterResult(
                 asset_id=self.asset_id, rows_inserted=1,
                 notes=(f"search-input snapshot {digest[:12]}…: {len(context['source_fact_ids'])} "
                        f"L1 facts, {len(dasha_ids)} daśā rows (build "
-                       f"{contract.get('build_id')}); no AV declarations (P5 held); chain replaced "
+                       f"{contract.get('build_id')}); {identity}; no AV declarations (P5 held); chain replaced "
                        f"(windows {replaced['windows']}, records {replaced['records']}, contacts "
                        f"{replaced['contacts']}, coverage {replaced['coverage']})"))
 
@@ -953,7 +962,8 @@ class GocharaV5Writer(WriterBase):
                                 notes=f"unknown class {event_class!r}")
 
         if step.key.startswith(INVENTORY_SUBSTEP_PREFIX):
-            context = fetch_chart_context(ctx.db_conn, chart_id)
+            # G12 (Codex round 1, ruling 3): the ONE capture is the snapshot substep; from here on the build computes from the snapshot's COPY only
+            context = fetch_chart_context_from_snapshot(ctx.db_conn, chart_id, GENERATION)
             require_complete(context)
             chart = {"lagna_deg": context["lagna_deg"], "natal": context["natal"]}
             digest = inv_store.snapshot_input_digest(chart_id, GENERATION)
@@ -1081,7 +1091,7 @@ class GocharaV5Writer(WriterBase):
         partition (pin 7), `record:<class>:<path>` materialises the grain.
         The chart context comes from L1 chart_facts — conflicts/missing are
         NAMED by require_complete, never defaulted."""
-        context = fetch_chart_context(ctx.db_conn, chart_id)
+        context = fetch_chart_context_from_snapshot(ctx.db_conn, chart_id, GENERATION)     # the snapshot's COPY, never live L1 (G12)
         require_complete(context)
         horizon = _effective_horizon(ctx, slice_)
         ephe_path = _ephe_path(ctx)
@@ -1164,11 +1174,11 @@ class GocharaV5Writer(WriterBase):
         path_version = gk_rule_registry.selected_path_version(event_class, path_id)
         edges = gk_evaluator.enumerate_edges(event_class, path_id, chart,
                                              rule_version=path_version)
-        # P1's period_running_at reads L1 chart_dashas under the §4.0 pin; the
+        # P1's period_running_at reads the snapshot's COPY of the §4.0-pinned daśā rows; the
         # read is lazy (only P1 grains with a period_running_at prerequisite
         # ever trigger it) and its build is recorded in the notes below.
-        dasha_rows_for, dasha_contract = make_period_rows_for(
-            ctx.db_conn, chart_id)
+        dasha_rows_for, dasha_contract = make_period_rows_for_snapshot(
+            ctx.db_conn, chart_id, GENERATION)                                        # the snapshot's COPY, never live L1 (G12)
         counts = materialise_record_grain(
             store, chart_id=chart_id, generation=GENERATION,
             event_class=event_class, path_id=path_id, edges=edges,

@@ -54,6 +54,11 @@ def fetch_chart_context(conn, chart_id: str,
         out["operands_missing"] = ["chart_facts:unreadable"]
         out["error"] = str(exc)
         return out
+    return _fill_from_rows(out, rows)
+
+
+def _fill_from_rows(out: dict, rows) -> dict:
+    """The row -> context logic, ONE implementation for the live read and the snapshot-copy read (rows = (fact_id, fact_subject, fact_value_num))."""
     seen: dict[str, set] = {}
     fact_ids: dict[str, str] = {}
     for row in rows:
@@ -91,6 +96,31 @@ def fetch_chart_context(conn, chart_id: str,
     return out
 
 
+def fetch_chart_context_from_snapshot(conn, chart_id: str, generation: str) -> dict:
+    """The same context, read from the search-input SNAPSHOT's own COPY of the consumed fact rows (G12, Codex round 1 ruling 3): after the snapshot
+    substep every computation of the build reads THIS, never live L1, so the output is computed from exactly the inputs the snapshot binds even when an
+    L1 rebuild lands between substeps. A snapshot without a copy (migration 1305 not applied) falls back to the live read, as before."""
+    import json
+    from decimal import Decimal
+    out = {"chart_id": chart_id, "ayanamsha_id": CANONICAL_AYANAMSHA, "lagna_deg": None, "natal": {}, "operands_missing": [],
+           "source_fact_ids": [], "source": "snapshot copy of L1 chart_facts"}
+    has = conn.execute(
+        "SELECT count(*) FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'ka_gochara_search_input_snapshot'"
+        " AND column_name = 'consumed_fact_rows'").fetchone()
+    if int(next(iter(has.values())) if isinstance(has, dict) else has[0]) != 1:
+        return fetch_chart_context(conn, chart_id)
+    row = conn.execute("SELECT consumed_fact_rows::text FROM public.ka_gochara_search_input_snapshot WHERE chart_id = %s AND generation = %s",
+                       (chart_id, generation)).fetchone()
+    text = None if row is None else (next(iter(row.values())) if isinstance(row, dict) else row[0])
+    if text is None:
+        return fetch_chart_context(conn, chart_id)         # a legacy snapshot (no copy), or none yet: the live read
+    copy = json.loads(text, parse_float=Decimal)
+    rows = [(e["metadata"]["fact_id"], e["key"]["fact_subject"], e["content"]["fact_value_num"]) for e in copy
+            if e["key"].get("fact_category") == "graha_position" and e["key"].get("fact_key") == "longitude_sidereal"
+            and e["key"].get("ayanamsha_id") == CANONICAL_AYANAMSHA]
+    return _fill_from_rows(out, rows)
+
+
 def require_complete(context: dict) -> None:
     """Loud refusal on any missing operand — the evaluator never runs on a
     partial chart (unknown is a state, never a silent default)."""
@@ -106,5 +136,6 @@ __all__ = [
     "CANONICAL_AYANAMSHA",
     "NATAL_SUBJECTS",
     "fetch_chart_context",
+    "fetch_chart_context_from_snapshot",
     "require_complete",
 ]
