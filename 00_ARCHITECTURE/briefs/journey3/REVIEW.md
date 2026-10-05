@@ -14,8 +14,8 @@ Missing status is unavailable, not dormant or zero. Asset and layer actions are 
 
 ## Verification
 
-- Full unit suite: 1,413 files / 15,684 tests passed; 3 expected failures, 1,060 skipped and 2 todo remain separately reported. First run timed out once in the unrelated capability-census test under concurrent local load; rerun with four workers passed without increasing timeouts or skipping tests.
-- Final focused checks: 16 files / 109 tests passed. Named scope, downstream preview, explicit confirmation, cancellation, role restrictions, missing evidence, dependency readiness and unchanged-count error refresh are covered.
+- Full unit suite: 1,413 files / 15,685 tests passed; 3 expected failures, 1,060 skipped and 2 todo remain separately reported. First run timed out once in the unrelated capability-census test under concurrent local load; rerun with four workers passed without increasing timeouts or skipping tests.
+- Final focused checks: 16 files / 110 tests passed. Named scope, downstream preview, explicit confirmation, cancellation, role restrictions, missing evidence, dependency readiness and unchanged-count error refresh are covered.
 - TypeScript: zero errors. Full ESLint: zero errors; existing warnings remain. Final changed-fixture lint has no warnings.
 - Browser: actual components and polling hooks with fictional responses, normal desktop and 390×844 mobile; mobile document/body width both 390. Layer click/Enter, named asset/layer/clear previews and cancel, missing status and outage/retry inspected. Three fixture preview POSTs and zero execution POSTs. Screenshots and BROWSER_VERIFICATION.json record scope.
 - Migration number guard passes; no migration added. Handshake validation: zero violations. Local drift has two LOW live-schema-unreachable findings (no local database credentials); full corpus schema reports 43 inherited LOW/MEDIUM findings, with no higher-severity violation. Retired mirror-enforcer script is absent; no mirror update or success is claimed.
@@ -27,3 +27,5 @@ Reviewed route/metadata access checks, L0 restrictions, inactive assets, missing
 ## Release boundary
 
 CCD-023 and lease L-PORTAL-JOURNEY3-20261006 authorize protected release. Consultation review10 holds the preceding production window; this PR is not auto-merging until its window closes and current main is reconciled. Protected PR build, integration CI, no-traffic candidate smoke/canary, served revision/traffic and authenticated live UI acceptance remain pending at this source checkpoint. Release does not execute chart rebuilds or data clears.
+
+Final scope-label review: layer plan previews receive the full registry so named downstream assets outside the chosen layer remain readable. A new regression test covers the cross-layer preview and cancellation. Prepared zero-row services use the server state to choose Rebuild; missing last-build timestamps remain unrecorded. Active-run plans withhold readiness for affected assets and downstream layers, while unrelated layers retain readiness. Final full suite:15,685 passed; final focused suite:110 passed.

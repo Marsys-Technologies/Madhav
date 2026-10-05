@@ -11,17 +11,18 @@
   },
   "full_unit": {
     "files_passed": 1413,
-    "tests_passed": 15684,
+    "tests_passed": 15685,
     "unexpected_failures": 0,
     "expected_fail": 3,
     "skipped": 1060,
     "todo": 2,
     "workers": 4,
-    "initial_failure": "one capability-estate census timeout in default-worker run, resolved by contention-controlled full rerun; no test exemption"
+    "initial_failure": "one capability-estate census timeout in default-worker run, resolved by contention-controlled full rerun; no test exemption",
+    "checkpoint_note": "Final zero-row/cross-layer scope follow-up full run passed. Active-run readiness assertions additionally passed in final110-test focused run; protected CI checks exact published candidate."
   },
   "focused_unit": {
     "files_passed": 16,
-    "tests_passed": 109,
+    "tests_passed": 110,
     "unexpected_failures": 0
   },
   "migration_number_guard": {

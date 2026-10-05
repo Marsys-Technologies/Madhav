@@ -325,7 +325,7 @@ export function DataAssetsView({ chartId, onAssetsReady, header, refreshKey, cle
               onRunStarted={() => { refreshRun(); refetchLive() }} />
           </fieldset>
         ))}</div>
-        <PreparationReadiness assets={uniqueAssets} stats={stats} unavailable={!!statsError || !lastFetched} chartId={chartId} />
+        <PreparationReadiness assets={uniqueAssets} stats={stats} unavailable={!!statsError || !lastFetched} chartId={chartId} activeRun={activeRun} />
       </div>
       <p className="j1-note" style={{ marginTop: 16 }}>
         {lastFetched ? `Status checked ${lastFetched.toLocaleTimeString()}. ` : 'Checking live status. '}

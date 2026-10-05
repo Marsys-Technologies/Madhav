@@ -127,6 +127,7 @@ export function LayerPanel({
   const activeAssets = assets.filter(a => a.is_active)
   const dormantCount = activeAssets.filter(a => {
     const s = stats.get(a.asset_id)
+    if (preparation) return s?.state === 'dormant'
     return !s?.actual_rows && !s?.error
   }).length
   const staleCount = useMemo(
@@ -305,7 +306,7 @@ export function LayerPanel({
               }}
               onRunStarted={onRunStarted}
               onRunStateChange={onRunStarted}
-              assets={assets}
+              assets={preparation ? allAssets ?? assets : assets}
               preparation={preparation}
               labelSuffix={preparation ? ` ${layer === 'brahmagyan' ? 'Brahmagyan' : layerNames.sa}` : ''}
             />

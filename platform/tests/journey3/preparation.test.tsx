@@ -27,6 +27,8 @@ describe('Journey 3 truthful preparation', () => {
     expect(preparationLayerState(assets, stats, 'bodha')).toBe('Status unavailable')
     stats.set(DATA_ASSET.asset_id, statOf({ state: 'service_ok' }))
     expect(preparationLayerState(assets, stats, 'bodha')).toBe('Prepared')
+    expect(preparationLayerState(assets, stats, 'bodha', new Set([DATA_ASSET.asset_id]))).toBe('Preparation in progress')
+    expect(preparationLayerState(assets, stats, 'bodha', new Set(['unrelated_asset']))).toBe('Prepared')
     stats.set(DATA_ASSET.asset_id, statOf({ state: 'lit', build_state_stale: true }))
     expect(preparationLayerState(assets, stats, 'bodha')).toBe('Preparation incomplete')
   })
@@ -35,6 +37,7 @@ describe('Journey 3 truthful preparation', () => {
     expect(screen.getByText('Status unavailable')).toBeTruthy()
     expect(screen.queryByRole('button')).toBeNull()
     expect(screen.queryByText('NOT BUILT')).toBeNull()
+    expect(screen.getByTitle('Last build not recorded')).toBeTruthy()
   })
   it('renders an inactive candidate without runnable actions or fabricated Sanskrit', () => {
     render(<AssetRow {...rowProps} asset={{ ...DATA_ASSET, is_active: false, sanskrit_name: DATA_ASSET.asset_id }} stat={null} />)
@@ -51,6 +54,21 @@ describe('Journey 3 truthful preparation', () => {
 })
 
 describe('Journey 3 scoped confirmation', () => {
+  it('names assets outside the selected layer in the server-resolved layer plan', async () => {
+    const requests = vi.fn().mockResolvedValue({ ok: true, json: async () => ({ data: {
+      status: 'ok', plan_waves: [[DATA_ASSET.asset_id], [downstream.asset_id]], blockers: [], estimated_seconds: 12,
+    } }) })
+    vi.stubGlobal('fetch', requests)
+    render(<LayerPanel preparation defaultExpanded layer="ganita" chartId="fictional-chart" activeRun={null}
+      assets={[DATA_ASSET]} allAssets={[DATA_ASSET, downstream]} stats={new Map([[DATA_ASSET.asset_id, statOf({ state: 'lit' })]])} onRunStarted={vi.fn()} />)
+    const user = userEvent.setup()
+    await user.click(screen.getByRole('button', { name: 'Rebuild Gaṇita' }))
+    const dialog = await screen.findByRole('dialog', { name: 'Rebuild Gaṇita plan' })
+    expect(within(dialog).getAllByText('House themes')).toHaveLength(2) // list and dependency diagram
+    await user.click(within(dialog).getByRole('button', { name: 'Cancel' }))
+    expect(requests).toHaveBeenCalledTimes(1)
+    expect(JSON.parse(requests.mock.calls[0][1].body).action).toBe('rebuild')
+  })
   function setup() {
     const requests = vi.fn().mockResolvedValueOnce({ ok: true, json: async () => ({ data: {
       status: 'ok', plan_waves: [[DATA_ASSET.asset_id], [downstream.asset_id]], blockers: [], estimated_seconds: 12,

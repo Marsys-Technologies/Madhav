@@ -467,7 +467,7 @@ export function AssetRow({ asset, stat, chartId, activeRunId, activeRunPaused, i
       {/* Last built — relative time with full datetime tooltip (centered column) */}
       <div
         style={{ fontSize: '11px', color: 'var(--on-dark-faint)', fontFamily: 'var(--mono-stack)', textAlign: 'center' }}
-        title={stat?.last_built_at ? formatDateTime(stat.last_built_at) : 'never built'}
+        title={stat?.last_built_at ? formatDateTime(stat.last_built_at) : preparation ? 'Last build not recorded' : 'never built'}
       >
         {stat?.last_built_at ? (formatRelative(stat.last_built_at) ?? '—') : '—'}
       </div>
