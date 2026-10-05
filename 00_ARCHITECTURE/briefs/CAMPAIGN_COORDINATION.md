@@ -8637,7 +8637,7 @@ Consultation-10 migration allocation: **1307_consultation_tags.sql**, reserved b
 
 ## 2026-10-05T19:03:34.150253+00:00 — Journey 3 Chart Preparation implementation and release
 
-- Lease ID: L-PORTAL-JOURNEY3-20261006; holder: Codex desktop; status: ACTIVE.
+- Lease ID: L-PORTAL-JOURNEY3-20261006; holder: Codex desktop; status: RELEASED_BLOCKED_EXTERNAL.
 - Started: 2026-10-05T19:03:34.150253+00:00; expiry: 2026-10-06T01:03:34.150253+00:00.
 - Worktree: `/Users/Dev/.codex/worktrees/journey-three/Madhav`; branch: `codex/journey-three`.
 - Authority: direct native instruction “Please go ahead and implement and deploy us” following review of Journey 3 / page 14 Chart Preparation. Authorizes scoped application implementation, checks, source commit/push, PR, protected merge and normal web deployment/live verification; supersedes GIP P.4 lease-only commit restriction for this release only.
@@ -8661,9 +8661,18 @@ Consultation-10 migration allocation: **1307_consultation_tags.sql**, reserved b
 
 ## 2026-10-05T20:06:34.959128+00:00 — Journey 3 exclusive web release window
 
-- Lease: L-PORTAL-JOURNEY3-20261006; status: ACTIVE; original expiry2026-10-06T01:03:34.150253+00:00 retained.
+- Lease: L-PORTAL-JOURNEY3-20261006; status: RELEASED_BLOCKED_EXTERNAL; original expiry2026-10-06T01:03:34.150253+00:00 retained.
 - Consultation review10 release window is RELEASED_BLOCKED_EXTERNAL; PR3189 remains unmerged with automatic merge disabled. No foreign source or migration is incorporated.
 - Exclusive amjis-web merge/deployment window now belongs to Journey3. Protected main remains091362f315a2d2f7e9c44cc205aac54440c8f6a9; owned candidate1b4801932888beab175a59e4a72c244fb6e92f2b / PR3190.
 - Fresh desired and observed production traffic:100% amjis-web-probe-091362f315a2-37346348777-1. Existing limits-canary/web-iam-a/web-iam-b tags preserved. Rollback baseline refreshed immediately before this claim.
 - Local full suite15,687 / focused112, types/lint and production compilation pass. GitHub Actions runner assignment incident delays protected checks; no merge/promotion until exact-head checks and PR container build pass. Established candidate smoke/signing/RLS and normal traffic promotion only.
 - No engine/writer/migration/schema, chart rebuild/clear, paid AI, credential/permission or foreign-worktree operation. This window releases only after live acceptance or an explicit blocked release outcome.
+
+## 2026-10-05T20:39:53.639202+00:00 — Journey 3 release window yielded with external blocker
+
+- Lease L-PORTAL-JOURNEY3-20261006 is RELEASED_BLOCKED_EXTERNAL; own exclusive web window is closed. All foreign lease rows preserved.
+- Source1b4801932888beab175a59e4a72c244fb6e92f2b / PR3190 remains OPEN with automatic merge disabled. Local15,687 tests/focused112/types/lint and exact-head container packaging37366990198 plus TAP37366990121 passed.
+- GitHub hosted-runner assignment incident cancelled required checks in both exact-source quality attempts37366990087. Annotation: The job was not acquired by Runner of type hosted even after multiple attempts. Own irrecoverable PR-only attempt quiesced; no main, merge-group, foreign or production run cancelled.
+- No merge, deployment, newly applied migration, rebuild, data clear, provider call or account/permission mutation. Fresh desired and observed production traffic is still100% on amjis-web-probe-091362f315a2-37346348777-1; normal tags preserved. The requested deployment is incomplete.
+- Work order and closure evidence: /Users/Dev/.codex/worktrees/journey-three/Madhav/00_ARCHITECTURE/briefs/journey3/RELEASE.md, CI_INTERRUPTION.json, PR_STATE.json and SESSION_CLOSE.yaml. Closure/state/log delta remains task-local so the tested application head stays unchanged. Preserve these records for later evidence publication.
+- Resume with fresh own lease/main/rollback checks and exact-head failed-check retry after runner recovery, then protected queue/main CI/normal candidate smoke/signing-RLS/promotion and authenticated read-only UI acceptance. Existing owner deployment authority under CCD-023 remains valid for this unchanged scope; no new permission or emergency bypass.
