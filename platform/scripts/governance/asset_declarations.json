@@ -195,6 +195,11 @@
     "citation_state": "sourced",
     "why": "each index row names the classical text it indexes in text_id with its chapter or topic and verse range in the same row",
     "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/bg_compendium_index.py:171"
+   },
+   "vocab_alias": {
+    "na": "no_alias_class",
+    "why": "its columns are classical text ids, chapter and verse numbers, counts and generated summaries: no column carries an alias or synonym set",
+    "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/bg_compendium_index.py:171"
    }
   },
   "bg_concordance": {
@@ -408,6 +413,11 @@
     "citation_state": "sourced",
     "why": "each constant row carries citation_or_ratification, either a classical citation or the ratification text such as W1_SEED_PACKAGE_v1_0 section 7",
     "evidence": "platform/python-sidecar/brahmagyan/l0_formula_constants.py:41"
+   },
+   "vocab_alias": {
+    "na": "no_alias_class",
+    "why": "its columns are constant ids, classes, values and bounds of the ratified constants: no column carries an alias or synonym set",
+    "evidence": "platform/python-sidecar/brahmagyan/l0_formula_constants.py:240"
    }
   },
   "bg_ghatana": {
@@ -438,6 +448,11 @@
     ],
     "citation_state": "sourced",
     "why": "each event class row lists its classical sources in citations, a text array of chapter references such as BPHS ch.10",
+    "evidence": "platform/python-sidecar/brahmagyan/l0_ghatana.py:37"
+   },
+   "vocab_alias": {
+    "na": "no_alias_class",
+    "why": "its columns are the event and activity class ids, names and rule documents of the ghatana ontologies: no column carries an alias or synonym set",
     "evidence": "platform/python-sidecar/brahmagyan/l0_ghatana.py:37"
    }
   },
@@ -496,6 +511,11 @@
     "citation_state": "sourced",
     "why": "each row maps a gochara citation string to its classical text chunk and keeps the cited classical source in source_citation",
     "evidence": "platform/supabase/migrations/565_bg_gochara_citation_resolution.sql:65"
+   },
+   "vocab_alias": {
+    "na": "no_alias_class",
+    "why": "its columns are citation strings, constant names, chunk ids and resolution status: no column carries an alias or synonym set",
+    "evidence": "platform/supabase/migrations/565_bg_gochara_citation_resolution.sql:65"
    }
   },
   "bg_kota_chakra_rings": {
@@ -527,6 +547,11 @@
     "citation_state": "unsourced",
     "why": "each ring row carries citation, which states that the partition is a secondary-source transcription not yet traced to an ingested primary text",
     "evidence": "platform/python-sidecar/brahmagyan/l0_kota_chakra_rings.py:75"
+   },
+   "vocab_alias": {
+    "na": "no_alias_class",
+    "why": "its columns are ring names, ring positions and dvara assignments of one fixed partition: no column carries an alias or synonym set",
+    "evidence": "platform/python-sidecar/brahmagyan/l0_kota_chakra_rings.py:84"
    }
   },
   "bg_kp_sublord_division": {
@@ -629,6 +654,11 @@
     "citation_state": "sourced",
     "why": "each lattice row carries the source_citation of its factor family, such as Muhurta Chintamani or Brihat Samhita, composed from the family citation constants",
     "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/bg_muhurta_lattice.py:266"
+   },
+   "vocab_alias": {
+    "na": "no_alias_class",
+    "why": "its columns are factor family and key labels, time windows and a detail document: no column carries an alias or synonym set",
+    "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/bg_muhurta_lattice.py:154"
    }
   },
   "bg_nakshatra": {
@@ -1210,6 +1240,11 @@
     "citation_state": "sourced",
     "why": "each corpus chunk row carries source_citation built from the text citation and the page location, so the corpus is its own source by construction",
     "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/bg_texts.py:339"
+   },
+   "vocab_alias": {
+    "na": "no_alias_class",
+    "why": "its columns are corpus chunk ids, text ids, verse references and chunk text: no column carries an alias or synonym set",
+    "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/bg_texts.py:331"
    }
   },
   "bg_texts": {
@@ -1241,6 +1276,11 @@
     "citation_state": "sourced",
     "why": "each corpus chunk row carries source_citation built from the text citation and the page location, so the corpus is its own source by construction",
     "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/bg_texts.py:339"
+   },
+   "vocab_alias": {
+    "na": "no_alias_class",
+    "why": "its columns are corpus chunk ids, text ids, verse references and chunk text: no column carries an alias or synonym set",
+    "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/bg_texts.py:331"
    }
   },
   "bg_transit_engine": {
@@ -1390,6 +1430,11 @@
     "citation_state": "sourced",
     "why": "each scale row carries source_citation and verse_ref pinning the Phaladeepika passage the malefic count grade is read from",
     "evidence": "platform/python-sidecar/brahmagyan/l0_phaladeepika_vedha.py:151"
+   },
+   "vocab_alias": {
+    "na": "no_alias_class",
+    "why": "its columns are a malefic count, an effect grade and the passage text of one Phaladeepika scale: no column carries an alias or synonym set",
+    "evidence": "platform/python-sidecar/brahmagyan/l0_phaladeepika_vedha.py:151"
    }
   },
   "bg_vidhi_floors": {
@@ -1407,6 +1452,11 @@
     "kind": "registry kind data (seed, T0 data); writer-backed own table(s) vidhi_floor_items; census Idem.pattern PASS: INSERT … ON CONFLICT into the asset's own table(s) (upsert):",
     "carriage": "served_surface null (unknown): the negative scan is not proof. The floors are served through platform/src/lib/vidhi/registry_data.ts (a hand-synchronized TS mirror of the DB rows, its header) -> vidhi compiler; editorial map marks bg_vidhi_floors directly_serves_output for scu.catalog.query_question_lenses. No registry capability reads the DB table itself, so the two sources disagree: unknown, not false.",
     "prose_fields": null
+   },
+   "vocab_alias": {
+    "na": "no_alias_class",
+    "why": "its columns are intents, primitive ids, bands and floor flags of the vidhi registry: no column carries an alias or synonym set",
+    "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/bg_vidhi_floors.py:526"
    }
   },
   "bg_vidhi_primitives": {
@@ -1424,6 +1474,11 @@
     "kind": "registry kind data (seed, T0 data); writer-backed own table(s) vidhi_primitives; census Idem.pattern PASS: INSERT … ON CONFLICT into the asset's own table(s) (upsert):",
     "carriage": "served_surface null (unknown): same as bg_vidhi_floors (registry_data.ts VIDHI_PRIMITIVES mirror -> compiler; editorial map directly_serves_output, scu.catalog.query_question_lenses).",
     "prose_fields": null
+   },
+   "vocab_alias": {
+    "na": "no_alias_class",
+    "why": "its columns are primitive ids, categories, definitions and tool arguments of the vidhi registry: no column carries an alias or synonym set",
+    "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/bg_vidhi_primitives.py:125"
    }
   },
   "bg_yogas": {
