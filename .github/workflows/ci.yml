@@ -1140,10 +1140,20 @@ jobs:
 
   gochara-a55-replace-chain:
     # A5.5f (G7): the rebuild-replaces-the-whole-candidate-chain suites drive the writer's REAL substeps on the real migrations
-    # (a template database with the sky-event substrate, cloned per test) and take about nine minutes. They run in their OWN job,
-    # in parallel, so every PR does not wait nine minutes more on the serial A5.3 step of db-integration-tests; the job has its
-    # own Postgres service, so the cluster roles the A5.3 suites create and drop cannot collide with these. REQUIRED: an
-    # unreachable server or an absent ephemeris corpus FAILS (a skipped live suite is not evidence).
+    # (a template database with the sky-event substrate, cloned per test). They run in their OWN job, in parallel, so every PR does
+    # not wait on the serial A5.3 step of db-integration-tests; the job has its own Postgres service, so the cluster roles the A5.3
+    # suites create and drop cannot collide with these. REQUIRED: an unreachable server or an absent ephemeris corpus FAILS (a skipped
+    # live suite is not evidence).
+    #
+    # THE REAL-DATABASE SUITES ARE SPLIT ACROSS PARALLEL `gochara-a55-*` JOBS (each about 15 minutes at most; the old single job reached its
+    # 45-minute limit, CI-A55-SPLIT). EVERY suite that builds a template database must be in the pytest command of one of them (or of the
+    # A5.3 step): `platform/scripts/governance/__tests__/test_ci_changes.py` DISCOVERS such suites on disk and fails if one is in no mandatory
+    # database-enabled command. Add a new slow real-database suite to the job it belongs to, or open another `gochara-a55-<name>` job by
+    # copying this one (the guard hardens every job with that prefix): never put it in a job already near its budget.
+    #   gochara-a55-replace-chain : a55_replace_chain, a55_replace_chain_populated
+    #   gochara-a55-slice-transitions : c46_slice_transitions
+    #   gochara-a55-round2-runner     : c46_slice_round2, c47_ephe_real_runner
+    #   (next: gochara-a55-teardown for c38 real-db + populated, gochara-a55-dispatch for c37 real-db)
     needs: changes
     if: ${{ !cancelled() && needs.changes.outputs.docs_only != 'true' }}
     name: Gochara A5.5f - a rebuild replaces the whole candidate chain (real writer, throwaway Postgres)
@@ -1185,7 +1195,97 @@ jobs:
           export SE_EPHE_PATH="$se1_dir"
           export GOCHARA_SE1_REQUIRE=1
           cd python-sidecar
-          python -m pytest tests/l3/gochara/test_a55_replace_chain.py tests/l3/gochara/test_a55_replace_chain_populated.py tests/l3/gochara/test_c46_slice_transitions.py tests/l3/gochara/test_c46_slice_round2.py tests/l3/gochara/test_c47_ephe_real_runner.py -q --tb=short -rs -p no:cacheprovider
+          python -m pytest tests/l3/gochara/test_a55_replace_chain.py tests/l3/gochara/test_a55_replace_chain_populated.py -q --tb=short -rs -p no:cacheprovider
+
+  gochara-a55-slice-transitions:
+    # A5.5f / C46: the test-slice transition suite (see the split note on gochara-a55-replace-chain).
+    needs: changes
+    if: ${{ !cancelled() && needs.changes.outputs.docs_only != 'true' }}
+    name: Gochara A5.5f - test-slice transitions (real writer, throwaway Postgres)
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    defaults:
+      run:
+        working-directory: platform
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: A5.5f - test-slice transition suite (REQUIRED, never skipped)
+        env:
+          GOCHARA_A53_ADMIN_DSN: postgresql://postgres:postgres@localhost:5432/postgres
+          GOCHARA_A53_REQUIRE_DB: '1'
+        run: |
+          pip install -r python-sidecar/requirements-ci.txt --quiet
+          se1_dir="$(mktemp -d)"
+          for se1_file in sepl_18.se1 semo_18.se1 seas_18.se1; do
+            curl --fail --silent --show-error --location --retry 2 \
+              "https://storage.googleapis.com/madhav-ephemeris/se1/$se1_file" --output "$se1_dir/$se1_file"
+          done
+          (cd "$se1_dir" && printf '%s\n' \
+            'ca1393ceab3a44fbc895887cf789c68819ae6a1cbc9b22225872dbe4ccd99a66  sepl_18.se1' \
+            '1ca07bd67c24374d77226180c20a4f9996cba013697894810518e7eb582ca4f7  semo_18.se1' \
+            'a2cd8fc33807c78ca9a700c91c2e042258b12fc4796519e00781440b5ad8b2e2  seas_18.se1' \
+            | sha256sum -c -)
+          export SE_EPHE_PATH="$se1_dir"
+          export GOCHARA_SE1_REQUIRE=1
+          cd python-sidecar
+          python -m pytest tests/l3/gochara/test_c46_slice_transitions.py -q --tb=short -rs -p no:cacheprovider
+
+  gochara-a55-round2-runner:
+    # A5.5f / C46 / C47: the test-slice round-2 suite and the real-runner ephemeris suite (see the split note on gochara-a55-replace-chain).
+    needs: changes
+    if: ${{ !cancelled() && needs.changes.outputs.docs_only != 'true' }}
+    name: Gochara A5.5f - test-slice round 2 and the real runner (real writer, throwaway Postgres)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: platform
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: A5.5f - test-slice round-2 and real-runner suites (REQUIRED, never skipped)
+        env:
+          GOCHARA_A53_ADMIN_DSN: postgresql://postgres:postgres@localhost:5432/postgres
+          GOCHARA_A53_REQUIRE_DB: '1'
+        run: |
+          pip install -r python-sidecar/requirements-ci.txt --quiet
+          se1_dir="$(mktemp -d)"
+          for se1_file in sepl_18.se1 semo_18.se1 seas_18.se1; do
+            curl --fail --silent --show-error --location --retry 2 \
+              "https://storage.googleapis.com/madhav-ephemeris/se1/$se1_file" --output "$se1_dir/$se1_file"
+          done
+          (cd "$se1_dir" && printf '%s\n' \
+            'ca1393ceab3a44fbc895887cf789c68819ae6a1cbc9b22225872dbe4ccd99a66  sepl_18.se1' \
+            '1ca07bd67c24374d77226180c20a4f9996cba013697894810518e7eb582ca4f7  semo_18.se1' \
+            'a2cd8fc33807c78ca9a700c91c2e042258b12fc4796519e00781440b5ad8b2e2  seas_18.se1' \
+            | sha256sum -c -)
+          export SE_EPHE_PATH="$se1_dir"
+          export GOCHARA_SE1_REQUIRE=1
+          cd python-sidecar
+          python -m pytest tests/l3/gochara/test_c46_slice_round2.py tests/l3/gochara/test_c47_ephe_real_runner.py -q --tb=short -rs -p no:cacheprovider
 
   pratijna-v4-fixture-property-tests:
     needs: changes
@@ -1657,7 +1757,7 @@ jobs:
     # The aggregate job below keeps the original job name; this one is test steps only.
     name: Governance Tool Tests shard ${{ matrix.shard }}/3
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 20
     permissions:
       contents: read
     strategy:

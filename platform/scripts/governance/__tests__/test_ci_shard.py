@@ -113,7 +113,7 @@ def test_ci_matrix_count_and_name_agree(jobs):
     assert len(re.findall(rf"ci_shard\.py --count {n} ", runs + " ")) >= 2                       # the --verify step and the pytest step
     assert not re.findall(r"ci_shard\.py --count (?!%d\b)\d+" % n, runs)
     assert "--index ${{ matrix.shard }}" in runs and "--verify" in runs
-    assert sh.get("timeout-minutes", 0) <= 10
+    assert sh.get("timeout-minutes", 0) <= 20   # raised from 10: the shard measured 593 s on the merge-group tree, just under the old cap
 
 
 def test_the_aggregate_job_keeps_the_original_required_name_and_fails_on_any_non_success(jobs):
