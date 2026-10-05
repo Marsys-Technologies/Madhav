@@ -723,6 +723,58 @@ def _assign_domains(fact_category: str, source_subsystem: str,
     return _apply_cr62_multi_varga_gate(base, varga_id)
 
 
+# ── Random-id hygiene (S-L2 TI-b1 / N-143 / DIVID-001) ────────────────────────
+# signal_id = bodha_signal_identity(chart, ayanamsha, signal_type_id, varga_id,
+# configuration_jsonb). A random per-rebuild L1 row id (e.g. the chart_divisionals.id
+# that ga_structural_writer copies into the L1 fact value as `constituent_fact_id`)
+# embedded in the config therefore changes the signal_id on every L1 rebuild. The
+# signal cites its L1 FACT through constituent_facts_array; the config carries only
+# natural-key fields. Anything in a config that is a uuid-v4 and is NOT a
+# chart_facts.fact_id is a serialized row id and is removed (config AND summary text).
+_UUID_V4_RE = re.compile(
+    r"^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$", re.IGNORECASE,
+)
+
+# Categories whose L1 value carries no graha/identity of its own besides the random
+# row id: the natural key lives in chart_facts.fact_subject (e.g. 'D108_JUP', 'MER').
+# Once the random id is stripped, fact_subject MUST be in the config or distinct L1
+# facts collapse onto one signal (measured on production: 352 of 1,340).
+_FACT_SUBJECT_NATURAL_KEY_CATS = frozenset({
+    "vargottama_per_varga",
+    "graha_vargottama_amplification_factor",
+})
+
+
+def _is_random_row_id(v: Any, valid_fact_ids: set[str] | None) -> bool:
+    return (isinstance(v, str) and _UUID_V4_RE.match(v) is not None
+            and not (valid_fact_ids and v in valid_fact_ids))
+
+
+def _strip_random_row_ids(obj: Any, valid_fact_ids: set[str] | None = None) -> Any:
+    """Return obj with every uuid-v4 string that is not a chart_facts.fact_id removed.
+
+    Dict entries holding such a value are dropped; list elements likewise. Generic and
+    recursive so a future L1 writer that embeds another row id cannot reintroduce
+    signal-id churn.
+    """
+    if isinstance(obj, dict):
+        return {k: _strip_random_row_ids(v, valid_fact_ids)
+                for k, v in obj.items() if not _is_random_row_id(v, valid_fact_ids)}
+    if isinstance(obj, list):
+        return [_strip_random_row_ids(v, valid_fact_ids)
+                for v in obj if not _is_random_row_id(v, valid_fact_ids)]
+    return obj
+
+
+def _assert_full_root_generation(ayanamsha: str, inserted: int, expected: int) -> None:
+    """P-3 count check: the ON CONFLICT ... DO NOTHING insert must write every row."""
+    if inserted != expected:
+        raise RuntimeError(
+            f"[bo_laksana] {ayanamsha} — {inserted}/{expected} "
+            "signals written; refusing a partial root generation"
+        )
+
+
 # ── Signal text builders ──────────────────────────────────────────────────────
 
 def _build_summary_text(fact_category: str, fact_key: str,
@@ -2272,6 +2324,18 @@ def _build_signal_row(
             config[k] = v
             if k in _TAG_KEYS:
                 tags[k] = v
+    # N-143 / DIVID-001: no random row id in the config (it feeds signal_id). Natural
+    # key instead: for the categories whose only distinguishing field WAS that id,
+    # carry the L1 fact_subject (read from the fact row, never re-derived).
+    config = _strip_random_row_ids(config, valid_fact_ids)
+    if fact_cat in _FACT_SUBJECT_NATURAL_KEY_CATS:
+        _subject = str(fact_row.get("fact_subject") or "")
+        if not _subject:
+            raise ValueError(
+                f"bo_laksana: {fact_cat}/{fact_key} fact {fact_id} has no fact_subject; "
+                "refusing to emit a signal with no natural key"
+            )
+        config["fact_subject"] = _subject
 
     # Source L1 asset + subsystem
     source_l1_asset  = _infer_source_l1_asset(sc)
@@ -2959,7 +3023,7 @@ def _build_navamsha_cross_check_signals(
             "signature_tier":                           _signature_tier(computed_salience),
             "valence":                                  valence,
             "lel_origin":                               False,
-            "configuration_jsonb":                      json.dumps(config),
+            "configuration_jsonb":                      json.dumps(_strip_random_row_ids(config)),
             # B2-fix: cite the D1 dignity fact_id from chart_facts when available.
             # D9 data comes from chart_divisionals which has no fact_id column,
             # so only the D1 side is traceable to a chart_facts row.
@@ -3599,11 +3663,7 @@ class BoLaksanaWriter(WriterBase):
 
         # Batch insert (salience_pctl_in_class now carried on each row — no second pass)
         inserted = _batch_insert(conn, signal_rows)
-        if inserted != len(signal_rows):
-            raise RuntimeError(
-                f"[bo_laksana] {ayanamsha} — {inserted}/{len(signal_rows)} "
-                "signals written; refusing a partial root generation"
-            )
+        _assert_full_root_generation(ayanamsha, inserted, len(signal_rows))
 
         lane4_notes = (
             f";class_prior_hit_rate={prior_hit_rate:.3f}"
