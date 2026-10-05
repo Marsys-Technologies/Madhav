@@ -1,8 +1,8 @@
 {
  "schema": 2,
  "registry_revision": 26,
- "registry_fingerprint": "8c42d90b63b01be9c461034cba57e5c61c3c5f0690cc45b447fe45a39e9b0a55",
- "inspector_commit": "5e50e67f3ad77087acaec1c733944f2bb0b8dab0",
+ "registry_fingerprint": "9b6ba958aca664565f2e20a3f7c99857964e417e6f8683fa5a9e4db14ab562d6",
+ "inspector_commit": "8a666c450c0b673c39bacc93d24ab4aa0f5d720b",
  "inspector_commit_note": "the last commit touching asset_census.py when this report was generated; a provenance pointer, not a reachability claim (it may be unreachable after a squash or rebase); --check never compares it",
  "expected_cells": 54,
  "covered_cells": 48,
@@ -340,6 +340,10 @@
   {
    "rule_id": "Build.history#measured:never-run",
    "decision": "N-22/N-22a row 20 (APPROVED, principles 2-3); N-65 (R01)"
+  },
+  {
+   "rule_id": "Carr.D1#measured:not-a-transcription",
+   "decision": "N-156 (C8): D1 is N/A for an asset whose source is a ratification (K2) or a derivation (K3), declaration-keyed and checked against the asset's source declaration; a plain N/A, not a ceiling"
   },
   {
    "rule_id": "Carr.D1#measured:not-the-declared-carriage",
@@ -1062,6 +1066,7 @@
     "Carr.D2"
    ],
    "declared_na_rules": [
+    "Carr.D1#measured:not-a-transcription",
     "Carr.D1#measured:not-the-declared-carriage",
     "Carr.D1#measured:transcription-not-verified",
     "Carr.D2#measured:no-per-witness-values",
@@ -1091,6 +1096,7 @@
     "Carr.D2"
    ],
    "declared_na_rules": [
+    "Carr.D1#measured:not-a-transcription",
     "Carr.D1#measured:not-the-declared-carriage",
     "Carr.D1#measured:transcription-not-verified",
     "Carr.D2#measured:no-per-witness-values",
@@ -1120,6 +1126,7 @@
     "Carr.D2"
    ],
    "declared_na_rules": [
+    "Carr.D1#measured:not-a-transcription",
     "Carr.D1#measured:not-the-declared-carriage",
     "Carr.D1#measured:transcription-not-verified",
     "Carr.D2#measured:no-per-witness-values",
@@ -1149,6 +1156,7 @@
     "Carr.D2"
    ],
    "declared_na_rules": [
+    "Carr.D1#measured:not-a-transcription",
     "Carr.D1#measured:not-the-declared-carriage",
     "Carr.D1#measured:transcription-not-verified",
     "Carr.D2#measured:no-per-witness-values",
@@ -1178,6 +1186,7 @@
     "Carr.D2"
    ],
    "declared_na_rules": [
+    "Carr.D1#measured:not-a-transcription",
     "Carr.D1#measured:not-the-declared-carriage",
     "Carr.D1#measured:transcription-not-verified",
     "Carr.D2#measured:no-per-witness-values",
@@ -1207,6 +1216,7 @@
     "Carr.D2"
    ],
    "declared_na_rules": [
+    "Carr.D1#measured:not-a-transcription",
     "Carr.D1#measured:not-the-declared-carriage",
     "Carr.D1#measured:transcription-not-verified",
     "Carr.D2#measured:no-per-witness-values",
