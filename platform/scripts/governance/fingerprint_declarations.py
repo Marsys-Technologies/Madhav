@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
 """fingerprint_declarations.py -- Suvarna E5.7: the per-asset semantic-fingerprint DECLARATIONS for the 40 active L0 assets.
 
-Data file: `00_ARCHITECTURE/control/FINGERPRINT_DECLARATIONS.json`. Design: /Users/Dev/suvarna-evidence/E5.7/DESIGN.md (N-116 "build it").
+Data file: `00_ARCHITECTURE/control/FINGERPRINT_DECLARATIONS.json`. Decision N-116 ("build it"); design notes live with the campaign evidence.
 This module is the ONE place that knows the file's shape. It is a stdlib module (the E5.5 fingerprint it points at is imported lazily, only
-when a fingerprint is actually computed or a declaration is converted). Imported by `suvarna_rehearsal.py` (E5.7 comparison) and
-`suvarna_mirror_drill.py`; usable by anything else that needs "which tables does L0 asset X own and how are they fingerprinted".
+when a fingerprint is actually computed or a declaration is converted). Consumed by the E5.7 rehearsal drill (`suvarna_mirror_drill.py`, PR #3100,
+and `suvarna_rehearsal.py`); usable by anything else that needs "which tables does L0 asset X own and how are they fingerprinted" (the
+first-certificate path for L0 assets reads it for the certificate fingerprint).
 
 WHAT A DECLARATION IS. For each of the 40 active L0 assets (the registry snapshot is the list) either
   * `declared`   : tables[] (name, key columns, exclude columns each with a reason, naive_utc_columns, write evidence), plus
@@ -73,10 +74,6 @@ NOT_RUN_ALLOWED = {
     "bg_sky_calendar": {"reason": "NEEDS_LINUX_AMD64_RUNTIME", "decision": "N-121"},
     "bg_cohort": {"reason": "NEEDS_LINUX_AMD64_RUNTIME", "decision": "N-121"},
     "bg_muhurta_lattice": {"reason": "NEEDS_AS_OF_PIN", "decision": "N-121"},
-    "bg_gochara_arcs": {"reason": "NEEDS_PR_3015", "decision": "N-121",
-                        "note": "SS option (c), 2026-10-04: the bg_ephemeris writer on main does not write node_mode/epoch_convention for Rahu/Ketu, so bg_gochara_arcs "
-                                "cannot run (its reader needs node_mode = 'true' rows); #3015 is blocked on the L0 writer-inventory re-pin. not_run ONLY while #3015 is not on "
-                                "main (`complete` stays accepted); its unit is UNMEASURED via not_run_declared, never counted."},
 }
 EVIDENCE_WINDOW = 30                                  # lines of the cited statement that are read
 REPRODUCIBILITY = ("deterministic", "rolling_horizon", "platform_bound")

@@ -130,14 +130,15 @@ def test_ss_decision_2_only_kill_switch_criteria_is_excluded_from_the_event_onto
     assert {e["column"]: e["reason_code"] for e in t["exclude"]} == {"created_at": "wall_clock_timestamp", "kill_switch_criteria": "not_written_by_writer"}
 
 
-def test_ss_decision_3_ephemeris_columns_are_an_expected_difference_not_an_exclusion():
+def test_ss_decision_3_ephemeris_node_columns_are_compared_now_that_3015_is_on_main():
+    """#3015 (bg_ephemeris writes node_mode and epoch_convention) is on main: the expected-difference record that covered the gap is retired (review of the
+    split, 2026-10-05), so a rebuild that nulls those columns is a real mismatch, not an explained difference. The columns were never excluded."""
     d = fd.load_declarations()
     t = next(t for t in DOC["assets"]["bg_ephemeris"]["tables"] if t["name"] == "ephemeris_daily")
     assert {e["column"] for e in t["exclude"]} == {"id", "computed_at"}
-    assert t["expected_difference"]["columns"] == ["node_mode", "epoch_convention"] and "#3015" in t["expected_difference"]["reference"]
-    assert d.expected_differences() == [{"unit": "bg_ephemeris", "table": "ephemeris_daily", "columns": ["node_mode", "epoch_convention"],
-                                         "reference": t["expected_difference"]["reference"]}]
-    assert d.table_declaration("bg_ephemeris", "ephemeris_daily")["volatile_columns"] == ["id", "computed_at"]      # the columns stay in the fingerprint
+    assert "expected_difference" not in t and d.expected_differences() == []
+    assert d.table_declaration("bg_ephemeris", "ephemeris_daily")["volatile_columns"] == ["id", "computed_at"]      # node_mode and epoch_convention stay in the fingerprint
+    assert "bg_gochara_arcs" not in fd.NOT_RUN_ALLOWED                                                              # the writer exists on main: the unit must run
 
 
 def test_partly_writer_owned_tables_carry_the_closed_partial_ownership_field():
@@ -247,8 +248,8 @@ def _eph_rows(node_mode, epoch, n=6, speed_bump=None):
     return rows
 
 
-def test_the_projection_declaration_ignores_exactly_the_recorded_columns():
-    d = fd.load_declarations()
+def test_the_projection_declaration_ignores_exactly_the_recorded_columns(tmp_path):
+    d = _decl_with_ed(tmp_path)
     full = d.table_declaration("bg_ephemeris", "ephemeris_daily")
     proj = d.projection_declaration("bg_ephemeris", "ephemeris_daily")
     assert proj["volatile_columns"] == full["volatile_columns"] + ["node_mode", "epoch_convention"] and proj["natural_key"] == full["natural_key"]
@@ -266,8 +267,8 @@ def test_the_projection_declaration_ignores_exactly_the_recorded_columns():
         d.projection_declaration("bg_nakshatra", "nakshatra")                                      # a table with no recorded difference has no projection
 
 
-def test_a_unit_fingerprint_over_a_connection_reports_the_projection_from_the_same_rows(monkeypatch):
-    d = fd.load_declarations()
+def test_a_unit_fingerprint_over_a_connection_reports_the_projection_from_the_same_rows(monkeypatch, tmp_path):
+    d = _decl_with_ed(tmp_path)
     rows = _eph_rows("true", "noon_ut")
     fake = types.SimpleNamespace(load_rows=lambda conn, decl, chart, **kw: rows if decl["table"] == "ephemeris_daily" else [], fingerprint_rows=nsc.fingerprint_rows, validate_declaration=nsc.validate_declaration)
     monkeypatch.setattr(fd, "_e55", lambda: fake)                                                   # no database: the rows come from the stub, the hashing is E5.5's
@@ -536,6 +537,27 @@ def _t(doc, asset, name=None):
     return tabs[0] if name is None else next(t for t in tabs if t["name"] == name)
 
 
+# The committed declarations carry no expected-difference record any more (#3015 is on main), but the MECHANISM stays: a record on a table says which
+# columns a known, tracked difference is limited to. These tests exercise it on a synthetic record.
+SYN_ED = {"columns": ["node_mode", "epoch_convention"], "reference": "synthetic tracked change (test fixture)",
+          "detail": "a synthetic known difference limited to the two columns, used to exercise the expected-difference mechanism in tests",
+          "until": "the synthetic tracked change is merged: remove this record"}
+
+
+def _install_ed(doc):
+    t = _t(doc, "bg_ephemeris", "ephemeris_daily")
+    t["expected_difference"] = copy.deepcopy(SYN_ED)
+    return t
+
+
+def _decl_with_ed(tmp_path):
+    doc = copy.deepcopy(DOC)
+    _install_ed(doc)
+    f = tmp_path / "decl_with_ed.json"
+    f.write_text(json.dumps(doc), encoding="utf-8")
+    return fd.load_declarations(f)
+
+
 def _ex_append(code, col, asset="bg_medical_mappings"):
     return lambda x: _t(x, asset)["exclude"].append({"column": col, "reason_code": code, "reason": "r" * 30})
 
@@ -653,9 +675,9 @@ REFUSALS = [
      lambda x: x["groups"]["classical_text_chunks"]["tables"][0]["embedding"][0].update({"source_columns": ["no_such_col"]}), None),
     ("embedding_empty_list", "bad_embedding", lambda x: x["groups"]["classical_text_chunks"]["tables"][0].update({"embedding": []}), None),
     ("embedding_without_model", "bad_embedding", lambda x: x["groups"]["classical_text_chunks"]["tables"][0]["embedding"][0].update({"model_id": ""}), None),
-    ("expected_difference_on_an_excluded_column", "bad_expected_difference", lambda x: _t(x, "bg_ephemeris")["expected_difference"].update({"columns": ["computed_at"]}), None),
-    ("expected_difference_short_detail", "bad_expected_difference", lambda x: _t(x, "bg_ephemeris")["expected_difference"].update({"detail": "short"}), None),
-    ("expected_difference_without_until", "bad_expected_difference", lambda x: _t(x, "bg_ephemeris")["expected_difference"].update({"until": ""}), None),
+    ("expected_difference_on_an_excluded_column", "bad_expected_difference", lambda x: _install_ed(x)["expected_difference"].update({"columns": ["computed_at"]}), None),
+    ("expected_difference_short_detail", "bad_expected_difference", lambda x: _install_ed(x)["expected_difference"].update({"detail": "short"}), None),
+    ("expected_difference_without_until", "bad_expected_difference", lambda x: _install_ed(x)["expected_difference"].update({"until": ""}), None),
     ("horizon_column_is_timestamptz", "bad_horizon_column", lambda x: _t(x, "bg_sky_calendar").update({"horizon_date_column": "computed_at"}), None),
     ("horizon_column_is_not_a_date", "bad_horizon_column", lambda x: _t(x, "bg_sky_calendar").update({"horizon_date_column": "event_jd"}), None),
     ("horizon_column_does_not_exist", "bad_horizon_column", lambda x: _t(x, "bg_sky_calendar").update({"horizon_date_column": "no_such_col"}), None),
@@ -665,7 +687,7 @@ REFUSALS = [
     ("rolling_unit_with_two_horizon_columns", "horizon_column_required",
      lambda x: x["assets"]["bg_muhurta_lattice"]["tables"].append({**copy.deepcopy(_t(x, "bg_muhurta_lattice")), "name": "bg_muhurta_lattice"}), None),
     ("horizon_column_on_a_deterministic_unit", "horizon_on_non_rolling", lambda x: _t(x, "bg_nakshatra").update({"horizon_date_column": "created_at"}), None),
-    ("expected_difference_unknown_column", "unknown_column", lambda x: _t(x, "bg_ephemeris")["expected_difference"].update({"columns": ["no_such_col"]}), None),
+    ("expected_difference_unknown_column", "unknown_column", lambda x: _install_ed(x)["expected_difference"].update({"columns": ["no_such_col"]}), None),
     ("not_written_but_the_writer_writes_it", "exclude_not_written_unproven",
      lambda x: _t(x, "bg_ghatana", "brahma_event_ontology")["exclude"].append({"column": "name_en", "reason_code": "not_written_by_writer", "reason": "r" * 30}), None),
     ("not_written_without_an_insert_list", "exclude_not_written_unproven",

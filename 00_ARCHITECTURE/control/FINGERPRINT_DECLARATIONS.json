@@ -557,15 +557,6 @@
      "write_evidence": [
       "platform/python-sidecar/pipeline/orchestrator/writers/bg_ephemeris.py:126"
      ],
-     "expected_difference": {
-      "columns": [
-       "node_mode",
-       "epoch_convention"
-      ],
-      "reference": "Exec held PR #3015 (bg_ephemeris writes node_mode and epoch_convention)",
-      "detail": "Production carries node_mode and epoch_convention from the legacy bootstrap (l0_ephemeris.py:333-334) but the orchestrated bg_ephemeris writer does not write them today, so a rebuild leaves them NULL and ephemeris_daily is EXPECTED to differ. SS decision 3: not an exclusion, the columns stay in the fingerprint and the difference needs an explanation with a decision id.",
-      "until": "PR #3015 merged to main: remove this record, the drill must then show equality for ephemeris_daily"
-     },
      "notes": "Fixed range 1900-01-01..2150-12-31 (l0_ephemeris BUILD_START/BUILD_END), pinned .se1 corpus required (bg_ephemeris.py refuses the analytic fallback). node_mode and epoch_convention are NOT in the orchestrated writer INSERT list (bg_ephemeris.py) although the legacy bootstrap sets them (l0_ephemeris.py:333-334): if production carries them, a rebuild differs there and that difference is a real finding, deliberately not excluded."
     }
    ],
@@ -1746,7 +1737,7 @@
   "bg_transit_rules": {
    "status": "undeclared",
    "reason_code": "migration_owned_rows",
-   "reason": "bg_transit_rules holds rows the writer does not own: migration 397's 7 double_transit rows (title-case Jupiter/Saturn) and any vedha rule_type are structurally excluded from the writer's sweep (l0_transit.py `_owned_row_filter` comment, F-145); a schema-only mirror rebuilt by the writer cannot hold them, so the table fingerprint differs by construction. Ownership probe 2026-10-03 (read-only counts): bg_transit_rules holds 7 double_transit rows (Jupiter 5, Saturn 2) from migration 397 next to the writer's 19 favourable/unfavourable groups. bg_transit_moorti, written by the same writer, is attached to bg_transit_engine.",
+   "reason": "bg_transit_rules holds rows the writer does not own: migration 397's 7 double_transit rows (title-case Jupiter/Saturn) and any vedha rule_type are structurally excluded from the writer's sweep (l0_transit.py `_owned_row_filter` comment, F-145); a schema-only mirror rebuilt by the writer cannot hold them, so the table fingerprint differs by construction. Ownership probe 2026-10-03 (read-only counts): bg_transit_rules holds 7 double_transit rows (Jupiter 5, Saturn 2) from migration 397 next to the writer's 17 favourable/unfavourable groups. bg_transit_moorti, written by the same writer, is attached to bg_transit_engine.",
    "tables_written": [
     "bg_transit_rules"
    ],
