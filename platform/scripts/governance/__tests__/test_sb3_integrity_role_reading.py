@@ -86,9 +86,9 @@ def _ci(census, aid):
     return next(a for a in census["assets"] if a["asset_id"] == aid)["measurements"]["Build.count_integrity"]
 
 
-def test_view_with_constant_count_sql_says_the_registered_count_cannot_fail_and_verdict_is_unchanged(monkeypatch, tmp_path):
+def test_view_with_constant_count_sql_reads_partial_naming_that_count_sql_is_constant(monkeypatch, tmp_path):
     _stub(monkeypatch, tmp_path, {"bo_v": _reg("bo_v", "SELECT 0"), "bo_t": dict(_reg("bo_t", "SELECT count(*) FROM vw_x"))})
     c = _ci(ac.measure("L2"), "bo_v")
-    assert c["v"] == ac.PASS and "count_sql reads no table (a constant)" in c["measured"] and "view vw_x" in c["measured"], c
+    assert c["v"] == ac.PARTIAL and "count_sql is constant" in c["measured"] and "view vw_x" in c["measured"], c
     t = _ci(ac.measure("L2"), "bo_t")
     assert t["v"] == ac.PASS and "constant" not in t["measured"], t

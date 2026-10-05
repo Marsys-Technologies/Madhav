@@ -85,10 +85,18 @@ def test_the_cell_names_the_dependency_its_state_scope_date_and_cause():
     assert "a (error, chart 482012f1; last built 2026-09-30)" in r["measured"], r
 
 
-def test_a_service_ok_dependency_is_still_not_live_but_the_gap_with_the_engine_is_named():
-    """Finding: the engine's dependency gate accepts service_ok; this check reads only `lit`. Strictness is not weakened; the text says so."""
-    r = ac._grade_dep_liveness(["svc"], {"svc": {CH: rec("service_ok")}}, CH)
-    assert r["v"] == ac.FAIL and "accepts service_ok" in r["measured"], r
+def test_service_ok_is_live_for_a_service_dependency_by_the_engine_rule():
+    dp = {"svc": {CH: rec("service_ok")}}
+    assert ac._grade_dep_liveness(["svc"], dp, CH, None, {"svc": "service"})["v"] == ac.PASS
+    r = ac._grade_dep_liveness(["svc"], dp, CH, None, {"svc": "data"})
+    assert r["v"] == ac.FAIL and "service_ok is live only for a registry asset_kind 'service'" in r["measured"] and "kind is data" in r["measured"], r
+    r = ac._grade_dep_liveness(["svc"], dp, CH)                       # kind not read: never assumed
+    assert r["v"] == ac.FAIL and "not read" in r["measured"], r
+
+
+def test_service_ok_rule_does_not_leak_to_other_states():
+    for st in ("error", "dormant", "building", "stale"):
+        assert ac._grade_dep_liveness(["s"], {"s": {CH: rec(st)}}, CH, None, {"s": "service"})["v"] != ac.PASS, st
 
 
 # ───────────── measure() wiring ─────────────
@@ -149,3 +157,13 @@ def test_measure_reads_no_closure_when_nothing_is_stale(monkeypatch, tmp_path):
     asked = _stub(monkeypatch, tmp_path, {"ga_dep": {CH: rec("lit")}}, {"ga_x": ["ga_dep"], "ga_dep": []})
     assert _cell(ac.measure("L1"))["v"] == ac.PASS
     assert all(a != ["ga_up"] for a in asked) and len(asked) == 2     # the layer's own read and the dependency read; no closure read
+
+
+def test_measure_reads_the_dependency_kind_so_a_service_ok_service_dependency_is_live(monkeypatch, tmp_path):
+    _stub(monkeypatch, tmp_path, {"ga_dep": {CH: rec("service_ok")}}, {"ga_x": ["ga_dep"], "ga_dep": []})
+    monkeypatch.setattr(ac, "psql", lambda sql, *a, **k: [["ga_dep", "service"]] if "asset_kind" in sql else [])
+    assert _cell(ac.measure("L1"))["v"] == ac.PASS
+    monkeypatch.setattr(ac, "psql", lambda sql, *a, **k: [["ga_dep", "data"]] if "asset_kind" in sql else [])
+    assert _cell(ac.measure("L1"))["v"] == ac.FAIL
+    monkeypatch.setattr(ac, "psql", lambda sql, *a, **k: (_ for _ in ()).throw(ac.Unknown("down")))
+    assert _cell(ac.measure("L1"))["v"] == ac.FAIL
