@@ -81,7 +81,7 @@ def test_three_candidate_counts_side_by_side():
     assert cc["core_criterion_x_layer"]["auto_measured"] + cc["core_criterion_x_layer"]["detector_none"] == 150
 
 
-def test_today_uncovered_are_the_three_detector_none_core_criteria():
+def test_today_uncovered_are_the_two_detector_none_core_criteria():
     r = _report()
     assert r["uncovered_required_criteria"] == [D2]
     assert r["per_asset_pending"] == [] and r["per_asset_pending_decisions"] == {} and r["pending_cells"] == 0
