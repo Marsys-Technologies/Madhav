@@ -598,8 +598,27 @@ def _probe_contact(position_at, body, relation, target, t_in, t_out, open_start,
     return problems
 
 
+def _exact_crossing_problem(position_at, body, relation, target, t_exact, t_in, t_out, accuracy_deg) -> str | None:
+    """The stored EXACT instant of a POINT contact (the crossing of a ray level, not an orb edge) checked on its own, from the ephemeris: it lies inside the
+    contact's span and the body is at a ray level there to the contact's stated accuracy plus the reconstruction's location error. None for a contact with no
+    exact instant (clipped to the horizon with the crossing outside it), and for non-point targets."""
+    if t_exact is None or relation not in ("conjunction", "aspect") or not target.startswith("point:"):
+        return None
+    from .contact_reconstruct import BISECT_SECONDS, VMAX_DPS
+    if not (t_in <= t_exact <= t_out):
+        return f"the stored exact crossing {t_exact.isoformat()} lies outside its span [{t_in.isoformat()}, {t_out.isoformat()}]"
+    lam = float(target.split(":", 1)[1]) % 360.0
+    angles = (0.0,) if relation == "conjunction" else _ASPECT_ANGLES[body]
+    off = min(_angdiff(position_at(body, t_exact), (lam - a) % 360.0) for a in angles)
+    tol = accuracy_deg + VMAX_DPS[body.lower()] / 86400.0 * BISECT_SECONDS
+    if off > tol:
+        return (f"the stored exact crossing {t_exact.isoformat()} is {off:.6f} deg from the nearest ray level of {target}, beyond the stated accuracy "
+                f"{accuracy_deg:.6f} deg plus the location error: it is not a crossing")
+    return None
+
+
 def _probe_contact_derived(position_at, body, relation, target, t_in, t_out, open_start, open_end, accuracy_deg,
-                           floor_seconds):
+                           floor_seconds, *, seam_start=False, seam_end=False, seam_margin=None):
     """`_probe_contact` with margins DERIVED per end (see `boundary_match`): inside/outside probes sit `2 x` the time
     tolerance from the stored edge (never closer than `floor_seconds`, never more than a quarter of the span); an end where
     no time tolerance exists (a station) is verified in angle: the stored boundary must lie within the stated accuracy of an
@@ -607,7 +626,13 @@ def _probe_contact_derived(position_at, body, relation, target, t_in, t_out, ope
     span = (t_out - t_in).total_seconds()
     problems = []
     margins = []
-    for t, is_open in ((t_in, open_start), (t_out, open_end)):
+    for t, is_open, is_seam in ((t_in, open_start, seam_start), (t_out, open_end, seam_end)):
+        if is_seam:
+            # an interior JUNCTION with an abutting contact of the same (body, relation, target), already independently confirmed as a
+            # station with the body inside the geometry on both sides (`_junction_problem`): there is no edge here to cross, so the
+            # OUTSIDE probe is not made at this end; the INSIDE probe is kept, at the junction margin
+            margins.append(min(float(seam_margin), span / 4.0))
+            continue
         tol = bm.time_tolerance_seconds(position_at, body, t, accuracy_deg)
         if tol is None:
             # a station: no time margin means anything. If the body IS at an edge of the geometry the boundary is
@@ -621,8 +646,115 @@ def _probe_contact_derived(position_at, body, relation, target, t_in, t_out, ope
     if not m:
         return problems
     return problems + _probe_contact(position_at, body, relation, target, t_in, t_out,
-                                     open_start or margins[0] is None, open_end or margins[1] is None,
+                                     open_start or margins[0] is None or seam_start, open_end or margins[1] is None or seam_end,
                                      min(max(m), span / 4.0))
+
+
+def _inside_fn(position_at, body, relation, target):
+    """The ephemeris-only predicate 'the body is in the geometry at t' of `_probe_contact` (same branches), or None when the relation has none."""
+    if relation == "residence":
+        want = int(target.split(":", 1)[1]) - 1
+        return lambda t: int((position_at(body, t) % 360.0) // 30.0) == want
+    if relation == "aspect" and target.startswith("span:"):
+        n = int(target.split(":", 1)[1]) - 1
+        signs = [(n - int(a // 30.0)) % 12 for a in _ASPECT_ANGLES[body]]
+        return lambda t: int((position_at(body, t) % 360.0) // 30.0) in signs
+    if relation in ("conjunction", "aspect"):
+        lam = float(target.split(":", 1)[1]) % 360.0
+        orb = _POINT_ORB_DEG[relation]
+        angles = (0.0,) if relation == "conjunction" else _ASPECT_ANGLES[body]
+        levels = [(lam - a) % 360.0 for a in angles]
+        return lambda t: min(_angdiff(position_at(body, t), lv) for lv in levels) <= orb
+    return None
+
+
+def _station_near(position_at, body, junction, window_seconds=6 * 3600.0, h_seconds=600.0):
+    """Independently LOCATE a reversal of the body's longitude motion within +-`window_seconds` of `junction`, from the ephemeris alone: the sign of a
+    finite-difference velocity (centred, +-`h_seconds`) must DIFFER between the window's ends (a bracketed reversal), and the instant is then bisected.
+    Returns t_station, or None when no reversal is bracketed. A speed that is merely LOW (`boundary_match`'s
+    criterion) is not a reversal: a body can crawl near a station on one side."""
+    from datetime import timedelta
+
+    def v(t):
+        a = position_at(body, t - timedelta(seconds=h_seconds))
+        b = position_at(body, t + timedelta(seconds=h_seconds))
+        return (((b - a + 180.0) % 360.0) - 180.0) / (2.0 * h_seconds)
+    lo, hi = junction - timedelta(seconds=window_seconds), junction + timedelta(seconds=window_seconds)
+    v_lo, v_hi = v(lo), v(hi)
+    if v_lo == 0.0 or v_hi == 0.0 or (v_lo > 0.0) == (v_hi > 0.0):
+        return None
+    for _ in range(48):
+        mid = lo + (hi - lo) / 2
+        v_mid = v(mid)
+        if v_mid == 0.0:
+            lo = hi = mid
+            break
+        if (v_mid > 0.0) == (v_lo > 0.0):
+            lo, v_lo = mid, v_mid
+        else:
+            hi = mid
+    return lo + (hi - lo) / 2
+
+
+def _junction_problem(position_at, body, relation, target, junction, accuracy_deg, margin_seconds) -> str | None:
+    """Is `junction` (the instant SHARED, exactly, by two stored contacts of one (body, relation, target)) a LEGITIMATE seam of the contact SET?
+    A5.3 brief v1.36: the builder emits one episode per MONOTONE ARC, so a station inside the band yields two abutting episodes [entry, S] and [S, exit];
+    certification compares the UNION and a seam between abutting episodes is not a boundary of the contact set. Confirmed here INDEPENDENTLY, from
+    the ephemeris alone, never from the ledger, and ONLY for point contacts (the one family whose episodes are cut at arc stations):
+
+      (a) the body's speed is low there (`boundary_match`'s criterion: no usable time tolerance);
+      (b) a REVERSAL is bracketed (`_station_near`: the sign of the velocity differs across +-6 h of the junction), and the junction is AT the station
+          to the contact's stated angular accuracy: the ACTUAL angular displacement between the located station and the junction, from the ephemeris
+          (two longitudes, one subtraction), must not exceed that accuracy plus the reconstruction's location error. (A station is compared in
+          ANGLE, as `boundary_match` does; its time is ill-conditioned, so a tolerance in seconds would be arbitrary.) Nothing is inferred from a
+          measured curvature (steward VERIFIER-CODEX-2, item 2: a curvature measured at the station is not an upper bound on displacement away from it).
+          FAIL-CLOSED CASE, accepted: two reversals inside the +-6 h bracket give velocity of equal sign at its ends, so no reversal is bracketed and the
+          junction is refused. A real double station is far rarer than that: the shortest separation of two stations sampled on the real sky was about
+          19.75 days (Codex), so this refusal is never reached by a real arc seam;
+      (c) CONTINUITY across the exempted interval [J - margin, J + margin]: the body is inside the geometry at 2N + 1 samples including the junction itself,
+          each by a clearance of at least the farthest it can move between consecutive samples (`contact_reconstruct.VMAX_DPS`, the kernel's own per-body
+          speed bound). Between two samples the body cannot move more than that, so it cannot have left the band: no excursion of ANY duration shorter
+          than the interval can hide, under the bound the whole certification already assumes (smooth motion, speed <= VMAX).
+
+    Returns the reason it is not a seam, or None."""
+    if not (target.startswith("point:") and relation in ("conjunction", "aspect")):
+        return f"{relation} {target}: seams are exempt only for point contacts (the family whose episodes are cut at arc stations)"
+    from datetime import timedelta
+    from .contact_reconstruct import BISECT_SECONDS, VMAX_DPS
+    lam = float(target.split(":", 1)[1]) % 360.0
+    orb = _POINT_ORB_DEG[relation]
+    angles = (0.0,) if relation == "conjunction" else _ASPECT_ANGLES[body]
+    levels = [(lam - a) % 360.0 for a in angles]
+
+    def clearance(t):                                   # degrees by which the body is inside the band (negative = outside)
+        return orb - min(_angdiff(position_at(body, t), lv) for lv in levels)
+    # (a) low speed at the junction
+    if bm.time_tolerance_seconds(position_at, body, junction, accuracy_deg) is not None:
+        return f"{body} is not at a station at {junction.isoformat()} (its speed is not low there: an arc seam exists only where the motion reverses)"
+    # (b) a bracketed reversal, and the junction at the station to the stated angular accuracy
+    found = _station_near(position_at, body, junction)
+    if found is None:
+        return (f"no reversal of {body}'s motion is bracketed within 6 h of {junction.isoformat()} (the speed is low but the sign of the "
+                "velocity does not change: not a station)")
+    t_s = found
+    location_error = VMAX_DPS[body.lower()] / 86400.0 * BISECT_SECONDS
+    displacement = _angdiff(position_at(body, junction), position_at(body, t_s))
+    if displacement > accuracy_deg + location_error:
+        return (f"the junction {junction.isoformat()} is {abs((junction - t_s).total_seconds()):.0f} s and {displacement:.6f} deg (ephemeris) from "
+                f"{body}'s station at {t_s.isoformat()}, farther than the stated accuracy {accuracy_deg:.6f} deg plus the location error "
+                f"{location_error:.6f} deg")
+    # (c) continuity across the whole exempted interval
+    n = 12
+    step = margin_seconds / n
+    reach = VMAX_DPS[body.lower()] / 86400.0 * step     # the farthest the body can move between two samples
+    for k in range(-n, n + 1):
+        t = junction + timedelta(seconds=k * step)
+        c = clearance(t)
+        if c < reach:
+            where = "at the junction itself" if k == 0 else f"{abs(k) * step:.0f} s {'before' if k < 0 else 'after'} it"
+            return (f"continuity across the seam cannot be established: {body} is inside the geometry by only {c:.6f} deg {where}, less than the "
+                    f"{reach:.6f} deg it can move between samples {step:.0f} s apart")
+    return None
 
 
 def verify_member_geometry(conn, *, chart_id: str, generation: str, event_class: str, path_id: str,
@@ -631,7 +763,18 @@ def verify_member_geometry(conn, *, chart_id: str, generation: str, event_class:
     the record's support with the builder-written contact span, which is not independent). For every distinct contact
     of a member: the body is in the geometry (a sign; a point within orb of its ray level) just inside the stored start
     and end, and outside just beyond each end that is not the horizon's own edge. `position_at(body, t)` is the Swiss
-    longitude probe — no arc index, no substrate, no solver. A span that is not the physical one fails the build."""
+    longitude probe — no arc index, no substrate, no solver. A span that is not the physical one fails the build.
+
+    UNION CONTRACT, scoped (A5.3 brief v1.36; steward SEAM-RULING; Codex VERIFIER-CODEX-1). Contacts of one (body, relation, canonical target) that SHARE an
+    endpoint EXACTLY (the same stored instant) are one contact set across that junction, and no outside probe is made there, but ONLY for point contacts and only
+    when `_junction_problem` confirms the junction from the ephemeris (low speed, a bracketed reversal at the station to the stated accuracy, continuity across the
+    exempted interval). Why only SHARED endpoints and not OVERLAPS: the registered writer cannot emit overlapping point contacts. `solve_point_edges` mints one
+    contact per exact root, bounded by that root's own monotone arc (a station closes the span; arcs partition time), so two roots of one level have disjoint spans
+    that touch at most at the separating station, and roots of different aspect rays are at least 60 degrees apart (more than twice the 1 degree orb); the
+    overlapping episodes of v1.36 came from the earlier per-branch solver the writer no longer calls (pinned on Saturn's real 2025 loop in the tests). A real gap,
+    including one of a fraction of a second, keeps both outside probes (`contact_certify` also keeps every positive gap). Known, pre-existing and not changed here:
+    a single contact whose only remaining piece ends exactly at an orb-edge station passes this endpoint check and is caught only by the full contact
+    certification (`contact_certify`)."""
     grain = (chart_id, generation, event_class, path_id, rule_version)
     rows = conn.execute(
         "SELECT DISTINCT c.contact_id::text, c.body, c.relation_kind, c.t_in, c.t_out, c.t_exact, o.canonical_target,"
@@ -647,11 +790,27 @@ def verify_member_geometry(conn, *, chart_id: str, generation: str, event_class:
         " AND m.rule_version = %s ORDER BY 1", grain).fetchall()
     problems: list[str] = []
     probed = 0
+    # A5.3 brief v1.36 (union contract): the builder stores one contact per monotone ARC, so a station inside the band leaves two ABUTTING
+    # contacts of one (body, relation, target). Neighbours are looked up among ALL the generation's stored contacts of that key, not only the
+    # members (a partner need not be a member of this grain's windows); each shared instant is then confirmed independently (`_junction_problem`).
+    keys = {(r[1] if not isinstance(r, dict) else r["body"], r[2] if not isinstance(r, dict) else r["relation_kind"],
+             r[6] if not isinstance(r, dict) else r["canonical_target"]) for r in rows}
+    ledger: dict[tuple, list[tuple]] = {}
+    for body_, rel_, target_ in keys:
+        ledger[(body_, rel_, target_)] = [
+            (a, b, str(cid_)) for cid_, a, b in (tuple(x.values()) if isinstance(x, dict) else tuple(x) for x in conn.execute(
+                "SELECT c.contact_id::text, c.t_in, c.t_out FROM public.ka_gochara_contact c"
+                " JOIN public.ka_gochara_physical_object o ON o.physical_object_id = c.physical_object_id"
+                " WHERE c.chart_id = %s AND c.generation = %s AND c.body = %s AND c.relation_kind = %s AND o.canonical_target = %s"
+                " ORDER BY c.t_in", (chart_id, generation, body_, rel_, target_)).fetchall())]
     for row in rows:
         cid, body, relation, t_in, t_out, t_exact, target, h_lo, h_hi, delta_lambda = (
             tuple(row.values()) if isinstance(row, dict) else tuple(row))
         end = t_out if t_out is not None else h_hi
-        open_start = t_exact is None and t_in <= h_lo          # a span truncated at the horizon's start
+        # An end is OPEN when it coincides with the COVERAGE (horizon) boundary, independent of `t_exact` (steward VERIFIER-CODEX-3, item 1): a point contact
+        # whose exact crossing is inside the horizon is still clipped at the boundary when its band stretch began before it, and the builder then stores the
+        # support start at the boundary (record_store clips t_in, keeps t_exact). The exact crossing is checked on its own below.
+        open_start = t_in <= h_lo                              # a span truncated at the horizon's start
         open_end = t_out is None or t_out >= h_hi              # truncated at (or open to) the horizon's end
         if (end - t_in).total_seconds() <= 0:
             problems.append(f"contact {cid}: an empty span")
@@ -661,8 +820,27 @@ def verify_member_geometry(conn, *, chart_id: str, generation: str, event_class:
         # a fixed 1 s margin rejected correct contacts on the real sky (the solver is accurate to 1 arcsecond: ≈ 24 s for
         # the Sun, ≈ 12 min for Saturn). At a station (no usable time tolerance) the end is checked in ANGLE instead.
         acc = bm.accuracy_degrees(delta_lambda)
+        seam = {}
+        if relation in ("conjunction", "aspect") and target.startswith("point:"):
+            # a seam needs GENUINELY SHARED endpoints: the same stored instant, exact equality (no tolerance), the same contract `contact_certify`
+            # applies when it unions the ledger (it merges only touching or overlapping intervals and keeps every positive gap)
+            peers = ledger.get((body, relation, target), ())
+            for which, junction, others in (("start", t_in, [c for a, b, c in peers if c != cid and b is not None and b == t_in]),
+                                            ("end", t_out, [c for a, b, c in peers if c != cid and t_out is not None and a == t_out])):
+                if not others:
+                    continue                   # no touching contact: an ordinary edge, probed outside as before (a real GAP, even a small one, keeps both probes)
+                margin = max(probe_seconds, 60.0)
+                why = _junction_problem(position_at, body, rel, target, junction, acc, min(margin, (end - t_in).total_seconds() / 4.0))
+                if why is None:
+                    seam[which] = True
+                else:
+                    problems.append(f"contact {cid}: the {which} junction with a touching contact is not a legitimate seam: {why}")
+        why_exact = _exact_crossing_problem(position_at, body, rel, target, t_exact, t_in, end, acc)
+        if why_exact:
+            problems.append(f"contact {cid}: {why_exact}")
         problems.extend(f"contact {cid}: {p}" for p in _probe_contact_derived(
-            position_at, body, rel, target, t_in, end, open_start, open_end, acc, probe_seconds))
+            position_at, body, rel, target, t_in, end, open_start, open_end, acc, probe_seconds,
+            seam_start=seam.get("start", False), seam_end=seam.get("end", False), seam_margin=max(probe_seconds, 60.0)))
         probed += 1
     if problems:
         raise RuntimeError(f"member geometry verification failed {event_class}/{path_id}: " + "; ".join(problems))
