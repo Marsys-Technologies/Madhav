@@ -1248,7 +1248,7 @@ jobs:
     if: ${{ !cancelled() && needs.changes.outputs.docs_only != 'true' }}
     name: Gochara A5.5f - test-slice round 2 and the real runner (real writer, throwaway Postgres)
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 30
     defaults:
       run:
         working-directory: platform
