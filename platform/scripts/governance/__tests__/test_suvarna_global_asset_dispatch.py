@@ -2016,7 +2016,7 @@ def test_an_asset_with_own_tables_and_no_group_keeps_its_plain_unit_id(asset):
     assert gad.declared_unit_or_refuse(DECLS, asset) == asset and gad.unit_siblings(DECLS, asset, asset) == []
 
 
-@pytest.mark.parametrize("asset", ["bg_not_declared", "bg_transit_rules", "bg_compendium_index"])
+@pytest.mark.parametrize("asset", ["bg_not_declared", "bg_gochara_citation_resolution", "bg_compendium_index"])
 def test_an_undeclared_asset_never_resolves_to_a_unit(asset):
     with pytest.raises(slw.LevelWaveRefusal) as exc:
         gad.declared_unit_or_refuse(DECLS, asset)
@@ -2034,9 +2034,9 @@ def test_a_shared_writer_run_fingerprints_every_table_it_touches():
 
 def test_a_sibling_that_is_not_a_declared_unit_refuses_the_run_naming_it():
     with pytest.raises(slw.LevelWaveRefusal) as exc:
-        gad.declared_unit_or_refuse(DECLS, "bg_transit_engine", ["bg_transit_rules"])
+        gad.declared_unit_or_refuse(DECLS, "bg_ghatana", ["bg_compendium_index"])
     r = exc.value.refusals[0]
-    assert r["code"] == "WRITER_SIBLING_NOT_DECLARED" and r["asset"] == "bg_transit_rules" and "migration_owned_rows" in r["detail"]
+    assert r["code"] == "WRITER_SIBLING_NOT_DECLARED" and r["asset"] == "bg_compendium_index" and "no_plain_natural_key" in r["detail"]
     with pytest.raises(slw.LevelWaveRefusal) as exc:                                   # a declared asset with a seeded / partial sibling reports every reason
         gad.declared_unit_or_refuse(DECLS, "bg_ghatana", ["bg_texts"])
     assert [r["code"] for r in exc.value.refusals] == ["FINGERPRINT_COVERAGE_PARTIAL", "GROUP_UNIT_SEEDED"]
@@ -2090,7 +2090,7 @@ def test_an_asset_that_no_scanned_class_registers_fails_closed_never_to_its_own_
     with pytest.raises(slw.LevelWaveRefusal) as exc:
         gad.writer_siblings(repo, "nothing")
     r = exc.value.refusals[0]
-    assert r["code"] == "WRITER_SCAN_UNAVAILABLE" and "no writer class" in r["detail"] and "registers nothing" in r["detail"]
+    assert r["code"] == "WRITER_SCAN_UNAVAILABLE" and "no writer class" in r["detail"] and "registers nothing" in r["detail"] and "nothing" in r["detail"].rsplit("registers ", 1)[1]
     code, ev = run(env, argv_for(env, asset="bg_not_registered_anywhere"), db=FakeDB(candidates=[[row("bg_not_registered_anywhere", scope="global", target="t")]]))
     assert code != 0
 
@@ -2113,6 +2113,9 @@ def test_the_scan_is_recursive_and_skips_test_directories(env):
     (d / "__tests__" / "test_x.py").write_text("@register('a')\n@register('zz_fake')\nclass T:\n    pass\n@register(UNRESOLVED)\nclass U:\n    pass\n")
     assert gad.writer_siblings(repo, "b") == ["c"] and gad.writer_siblings(repo, "c") == ["b"]            # a package's __init__.py is read
     assert gad.writer_siblings(repo, "a") == []                                                            # the test directory's fake sibling and unresolved decorator are not read
+    (d / "tests").mkdir(exist_ok=True)                                                                      # a `tests` directory (writers/tests holds test files) is skipped too
+    (d / "tests" / "test_y.py").write_text("@register('a')\n@register('phantom_sibling')\nclass P:\n    pass\n@register(WHICH)\nclass Q:\n    pass\n")
+    assert gad.writer_siblings(repo, "a") == []
 
 
 def test_the_committed_writers_tree_has_no_unreadable_register_form_and_registers_the_dispatchable_assets():
@@ -2204,10 +2207,10 @@ def test_a_shared_writer_asset_is_planned_over_the_tables_of_every_sibling(env):
 
 
 def test_a_shared_writer_run_with_an_undeclared_sibling_is_refused_before_anything_is_inserted(env):
-    shared = "@register('bg_transit_rules')\n@register('bg_transit_engine')\nclass W:\n    pass\n"
-    onto, git = _mixed_env(env, asset="bg_transit_engine", **{"bg_transit_rules.py": shared})
+    shared = "@register('bg_compendium_index')\n@register('bg_ghatana')\nclass W:\n    pass\n"
+    onto, git = _mixed_env(env, asset="bg_ghatana", **{"bg_ghatana.py": shared})
     db = FakeDB(candidates=[[onto]], downstream=())
-    code, ev = run(env, argv_for(env, asset="bg_transit_engine"), db=db, fp=FakeFp((PRE_SHA,)), git=git)
+    code, ev = run(env, argv_for(env, asset="bg_ghatana"), db=db, fp=FakeFp((PRE_SHA,)), git=git)
     assert code == slw.REFUSAL_EXIT_CODE and codes_of(ev) == ["WRITER_SIBLING_NOT_DECLARED"] and db.inserts("build_runs") == []
 
 
@@ -2302,3 +2305,61 @@ def test_a_concurrent_run_of_a_sibling_is_looked_for_by_id_and_refuses(env):
     assert code == slw.REFUSAL_EXIT_CODE and codes_of(ev) == ["CONFLICTING_ACTIVE_RUN"] and db.inserts("build_runs") == []
     q = [e for e in db.statements() if "bra.asset_id = ANY(%s)" in e[1]]
     assert q and set(q[0][2][0]) == {"bg_ontology", "bg_dasha_systems", "bg_doshas", "bg_yogas"}      # the siblings are in the ids the conflict query is run for
+
+
+# ── the transit seed group (SS ruling 2): bg_transit_rules + bg_transit_engine (+ moorti) through ONE writer class ──
+
+def test_the_transit_writer_pair_is_one_group_unit_whichever_id_is_dispatched():
+    for asset, sib in (("bg_transit_rules", "bg_transit_engine"), ("bg_transit_engine", "bg_transit_rules")):
+        unit = gad.declared_unit_or_refuse(DECLS, asset, [sib])
+        assert unit == "grp_bg_transit_seed"                                            # own unit and the sibling's are the same group: composed once
+        assert gad.declared_unit_or_refuse(DECLS, asset) == unit
+        assert gad.unit_siblings(DECLS, asset, unit, [sib]) == [sib]
+    assert DECLS.tables("grp_bg_transit_seed") == ["bg_transit_rules", "bg_transit_engine", "bg_transit_moorti"]
+    assert DECLS.partial_ownership_units()["grp_bg_transit_seed"] == ["bg_transit_rules"]
+
+
+def test_the_real_writer_scan_finds_the_transit_pair_and_the_medical_triple():
+    top = str(pathlib.Path(__file__).resolve().parents[4])
+    if not (pathlib.Path(top) / gad.WRITERS_REL).is_dir():
+        pytest.skip("no writers tree in this checkout")
+    assert gad.writer_siblings(top, "bg_transit_rules") == ["bg_transit_engine"] and gad.writer_siblings(top, "bg_transit_engine") == ["bg_transit_rules"]
+    sibs = gad.writer_siblings(top, "bg_transit_rules")
+    assert gad.declared_unit_or_refuse(DECLS, "bg_transit_rules", sibs) == "grp_bg_transit_seed"
+
+
+def test_bg_transit_rules_plans_over_the_whole_transit_group_and_a_sibling_conflict_refuses(env):
+    shared = "@register('bg_transit_rules')\n@register('bg_transit_engine')\nclass W:\n    pass\n"
+    asset = "bg_transit_rules"
+    digests = {**env["digests"], asset: _hex(asset)}
+    (pathlib.Path(env["repo"]) / "platform/src/generated/nirmana-writer-digests.json").write_text(json.dumps({"version": 1, "writers": digests}))
+    _writers(env, **{"bg_transit_rules.py": shared})
+    git = FakeGit(deployed=digests)
+    cand = row(asset, scope="global", layer="brahmagyan", target="bg_transit_rules")
+    code, ev = run(env, argv_for(env, asset=asset), db=FakeDB(candidates=[[cand]], downstream=()), fp=FakeFp((PRE_SHA,)), git=git)
+    s = last(ev)
+    assert code == 0, s
+    assert s["pre_fingerprint"]["unit"] == "grp_bg_transit_seed" and set(s["pre_fingerprint"]["tables"]) == {"bg_transit_rules", "bg_transit_engine", "bg_transit_moorti"}
+    assert s["fingerprint_unit"]["writer_siblings"] == ["bg_transit_engine"] and "bg_transit_engine" in s["fingerprint_unit"]["members"]
+    rec = json.loads(pathlib.Path(env["receipt"]).read_text())
+    assert [d["asset_id"] for d in rec["impact"]["dependents"]] == ["bg_transit_engine"]
+    code, ev = run(env, argv_for(env, asset=asset), db=FakeDB(candidates=[[cand]], downstream=(), conflicts=[{"id": "r1", "chart_id": OTHER_CHART, "state": "running", "asset_id": "bg_transit_engine"}]),
+                   fp=FakeFp((PRE_SHA,)), git=git)
+    assert code == slw.REFUSAL_EXIT_CODE and codes_of(ev) == ["CONFLICTING_ACTIVE_RUN"]
+
+
+def test_the_partial_ownership_table_is_fingerprinted_whole_so_a_touched_migration_row_is_a_change(env):
+    shared = "@register('bg_transit_rules')\n@register('bg_transit_engine')\nclass W:\n    pass\n"
+    asset = "bg_transit_rules"
+    digests = {**env["digests"], asset: _hex(asset)}
+    (pathlib.Path(env["repo"]) / "platform/src/generated/nirmana-writer-digests.json").write_text(json.dumps({"version": 1, "writers": digests}))
+    _writers(env, **{"bg_transit_rules.py": shared})
+    git = FakeGit(deployed=digests)
+    cand = row(asset, scope="global", layer="brahmagyan", target="bg_transit_rules")
+    code, ev = run(env, argv_for(env, asset=asset), db=FakeDB(candidates=[[cand]], downstream=()), fp=FakeFp((PRE_SHA,)), git=git)
+    token = last(ev)["confirm_token"]
+    db = FakeDB(candidates=[[cand]], downstream=(), dispositions={asset: "build"})
+    orig = db.respond
+    db.respond = lambda sql, params: ([{"state": "lit", "last_built_at": db.ended, "duration_seconds": 5.0}] if "FROM asset_throughput WHERE asset_id = %s AND chart_id IS NULL" in sql else orig(sql, params))
+    code, ev = run(env, argv_for(env, asset=asset, commit=True, confirm=token), db=db, fp=FakeFp((PRE_SHA, POST_SHA)), git=git, dispatch=Dispatch())
+    assert code == gad.EXIT_FINGERPRINT_CHANGED

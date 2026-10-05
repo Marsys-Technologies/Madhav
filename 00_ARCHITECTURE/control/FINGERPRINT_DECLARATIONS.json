@@ -11,6 +11,87 @@
   "code_commit": "2d76bbee16353751b8e422dc44bbc310fde0e274"
  },
  "groups": {
+  "bg_transit_seed": {
+   "tables": [
+    {
+     "name": "bg_transit_rules",
+     "scope": "global",
+     "key": [
+      "graha",
+      "rule_type",
+      "primary_house"
+     ],
+     "key_evidence": "unique:bg_transit_rules_graha_type_house_unique",
+     "exclude": [
+      {
+       "column": "id",
+       "reason_code": "surrogate_identity",
+       "reason": "id is a serial/identity/gen_random_uuid() surrogate assigned by the database at insert; it is not part of the natural key and differs after any delete-then-insert or fresh rebuild"
+      }
+     ],
+     "naive_utc_columns": [],
+     "write_evidence": [
+      "platform/python-sidecar/brahmagyan/l0_transit.py:1102",
+      "platform/python-sidecar/brahmagyan/l0_transit.py:1145"
+     ],
+     "partial_ownership": {
+      "reason_code": "migration_owned_rows",
+      "detail": "bg_transit_rules holds rows the writer does not own: migration 397's 7 double_transit rows (title-case Jupiter/Saturn) and any vedha rule_type are structurally excluded from the writer's sweep (l0_transit.py `_owned_row_filter`, F-145). The WHOLE table is fingerprinted, so a forced rebuild that leaves those rows alone reads unchanged and one that touches them is reported; a schema-only mirror rebuilt by the writer cannot hold them, so a rehearsal difference here is an explained migration_owned_rows difference, never a silent PASS. Ownership probe 2026-10-03: 7 double_transit rows (Jupiter 5, Saturn 2) beside the writer's 17 favourable/unfavourable groups.",
+      "evidence": [
+       "platform/python-sidecar/brahmagyan/l0_transit.py:1102",
+       "platform/python-sidecar/brahmagyan/l0_transit.py:1145"
+      ]
+     }
+    },
+    {
+     "name": "bg_transit_engine",
+     "scope": "global",
+     "key": [
+      "graha"
+     ],
+     "key_evidence": "unique:bg_transit_engine_graha_key",
+     "exclude": [
+      {
+       "column": "id",
+       "reason_code": "surrogate_identity",
+       "reason": "id is a serial/identity/gen_random_uuid() surrogate assigned by the database at insert; it is not part of the natural key and differs after any delete-then-insert or fresh rebuild"
+      }
+     ],
+     "naive_utc_columns": [],
+     "write_evidence": [
+      "platform/python-sidecar/brahmagyan/l0_transit.py:1077"
+     ]
+    },
+    {
+     "name": "bg_transit_moorti",
+     "scope": "global",
+     "key": [
+      "nakshatra_offset"
+     ],
+     "key_evidence": "primary_key:bg_transit_moorti_pkey",
+     "exclude": [],
+     "naive_utc_columns": [],
+     "write_evidence": [
+      "platform/python-sidecar/brahmagyan/l0_transit.py:1186"
+     ],
+     "notes": "Written by the shared bg_transit_rules / bg_transit_engine writer run (seed_transit_rules, l0_transit.py); the registry count_sql claims it for neither asset."
+    }
+   ],
+   "members": {
+    "bg_transit_engine": [
+     "platform/python-sidecar/brahmagyan/l0_transit.py:1077",
+     "platform/python-sidecar/brahmagyan/l0_transit.py:1186"
+    ],
+    "bg_transit_rules": [
+     "platform/python-sidecar/brahmagyan/l0_transit.py:1102"
+    ]
+   },
+   "reproducibility": [
+    "deterministic"
+   ],
+   "seeded": false,
+   "notes": "ONE writer class (BgTransitRulesWriter, registered as bg_transit_rules and bg_transit_engine) runs seed_transit_rules, which writes all three tables; they are compared as one unit. bg_transit_rules carries migration-owned rows (partial_ownership); bg_transit_engine and bg_transit_moorti are fully writer-owned."
+  },
   "brahma_class_priors": {
    "tables": [
     {
@@ -1696,56 +1777,25 @@
    "reproducibility": [
     "deterministic"
    ],
-   "groups": [],
-   "tables": [
-    {
-     "name": "bg_transit_engine",
-     "scope": "global",
-     "key": [
-      "graha"
-     ],
-     "key_evidence": "unique:bg_transit_engine_graha_key",
-     "exclude": [
-      {
-       "column": "id",
-       "reason_code": "surrogate_identity",
-       "reason": "id is a serial/identity/gen_random_uuid() surrogate assigned by the database at insert; it is not part of the natural key and differs after any delete-then-insert or fresh rebuild"
-      }
-     ],
-     "naive_utc_columns": [],
-     "write_evidence": [
-      "platform/python-sidecar/brahmagyan/l0_transit.py:1077"
-     ]
-    },
-    {
-     "name": "bg_transit_moorti",
-     "scope": "global",
-     "key": [
-      "nakshatra_offset"
-     ],
-     "key_evidence": "primary_key:bg_transit_moorti_pkey",
-     "exclude": [],
-     "naive_utc_columns": [],
-     "write_evidence": [
-      "platform/python-sidecar/brahmagyan/l0_transit.py:1186"
-     ],
-     "notes": "Written by the shared bg_transit_rules/bg_transit_engine writer (seed_transit_rules, l0_transit.py); the registry count_sql claims it for neither asset. Attached here because bg_transit_rules is undeclared."
-    }
+   "groups": [
+    "bg_transit_seed"
    ],
+   "tables": [],
    "not_covered_tables": []
   },
   "bg_transit_rules": {
-   "status": "undeclared",
-   "reason_code": "migration_owned_rows",
-   "reason": "bg_transit_rules holds rows the writer does not own: migration 397's 7 double_transit rows (title-case Jupiter/Saturn) and any vedha rule_type are structurally excluded from the writer's sweep (l0_transit.py `_owned_row_filter` comment, F-145); a schema-only mirror rebuilt by the writer cannot hold them, so the table fingerprint differs by construction. Ownership probe 2026-10-03 (read-only counts): bg_transit_rules holds 7 double_transit rows (Jupiter 5, Saturn 2) from migration 397 next to the writer's 17 favourable/unfavourable groups. bg_transit_moorti, written by the same writer, is attached to bg_transit_engine.",
-   "tables_written": [
-    "bg_transit_rules"
+   "status": "declared",
+   "fingerprint_definition": "nikasha_stale_certs.table_fingerprint/1",
+   "scope": "global",
+   "coverage": "full",
+   "reproducibility": [
+    "deterministic"
    ],
-   "evidence": [
-    "00_ARCHITECTURE/control/FINGERPRINT_OWNERSHIP_PROBES_2026-10-03.txt:4",
-    "platform/python-sidecar/brahmagyan/l0_transit.py:1102",
-    "platform/python-sidecar/brahmagyan/l0_transit.py:985"
-   ]
+   "groups": [
+    "bg_transit_seed"
+   ],
+   "tables": [],
+   "not_covered_tables": []
   },
   "bg_vastu_directions": {
    "status": "declared",

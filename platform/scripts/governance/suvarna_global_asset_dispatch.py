@@ -621,7 +621,8 @@ UNIT_SEP = "+"        # a composed fingerprint unit is the `+`-joined ids of its
 def writer_siblings(repo: str, asset: str) -> list[str]:
     """The OTHER asset ids registered on the SAME writer class as `asset` (stacked `@register('x')` decorators: ONE class, one run, several asset ids; e.g.
     BgMedicalMappingsWriter serves bg_sign_medical, bg_nakshatra_medical and bg_medical_mappings). Read with ast from EVERY `.py` under the checkout's writers directory
-    (recursive; test directories are skipped), never imported. FAILS CLOSED (WRITER_SCAN_UNAVAILABLE): a missing writers directory; an unparseable file; ANY `register(...)`
+    (recursive; `__tests__`, `tests` and `__pycache__` directories are skipped), never imported. ONLY the decorator form `@register('x')` on a class is scanned; the call form `register('x')(Cls)` is not read (no writer in the tree uses it; a future one would be
+    invisible here, so keep the decorator form). FAILS CLOSED (WRITER_SCAN_UNAVAILABLE): a missing writers directory; an unparseable file; ANY `register(...)`
     call whose first argument is not a string literal (or a module-level string constant) or that is starred, keyword-only or empty (a `register(asset_id=...)` or
     `register(*ids)` could register the asset and the scan could not see it, whatever the file says); and an asset that NO scanned class registers (a scan that found
     nothing about the asset proves nothing about its run). Two classes in one file (bg_phaladeepika_vedha.py) are two runs: they are NOT siblings.
@@ -634,7 +635,7 @@ def writer_siblings(repo: str, asset: str) -> list[str]:
     found = False
     for f in sorted(root.rglob("*.py")):
         rel = f.relative_to(root)
-        if any(part in ("__tests__", "__pycache__") for part in rel.parts[:-1]):
+        if any(part in ("__tests__", "tests", "__pycache__") for part in rel.parts[:-1]):
             continue
         try:
             tree = ast.parse(f.read_text(encoding="utf-8"))
