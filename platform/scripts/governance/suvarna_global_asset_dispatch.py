@@ -134,7 +134,7 @@ EXIT_FORCE_NOT_EFFECTIVE = 8
 EXIT_FINGERPRINT_CHANGED = 9
 EXIT_VERIFY_FAILED = 10
 EXIT_EXPECTATION_MISMATCH = 11
-EXPECTED_CHANGE_KEYS = ("asset", "expected_post_row_count", "expected_post_fingerprint", "why", "decision", "evidence")
+EXPECTED_CHANGE_KEYS = ("asset", "expected_post_row_count", "expected_post_fingerprint", "why", "decision", "evidence", "excluded_tables_acknowledged")
 EXPECTED_CHANGE_MAX_BYTES = 65536
 EXPECTATION_CODES = ("EXPECTED_ROW_COUNT_MISMATCH", "EXPECTED_FINGERPRINT_MISMATCH", "EXPECTED_CHANGE_NOT_OBSERVED")
 _PLACEHOLDER_WORDS = frozenset({"tbd", "todo", "tba", "fixme", "xxx", "placeholder", "unknown", "none", "null", "na", "n/a", "nil", "pending", "lorem", "ipsum"})
@@ -419,8 +419,14 @@ def load_expected_change(path: str | None, asset: str) -> tuple[dict, str]:
         ev = _declared_text_problem(doc["evidence"], 10)
         if ev:
             bad(f"evidence {ev}")
+    ack = doc.get("excluded_tables_acknowledged")
+    if ack is not None and not (isinstance(ack, list) and 1 <= len(ack) <= 8 and len(set(ack)) == len(ack)
+                                and all(isinstance(a, str) and re.fullmatch(r"[a-z_][a-z0-9_]{0,62}", a) for a in ack)):
+        bad("excluded_tables_acknowledged must be null or 1 to 8 distinct table names")
     spec = {"asset": asset, "expected_post_row_count": n, "expected_post_fingerprint": fp, "why": doc["why"],
             "decision": doc.get("decision"), "evidence": doc.get("evidence")}
+    if ack is not None:
+        spec["excluded_tables_acknowledged"] = sorted(ack)
     return spec, hashlib.sha256(raw).hexdigest()
 
 
@@ -671,7 +677,7 @@ def _declared_entry(decls, asset: str):
     return assets.get(asset) if isinstance(assets, dict) else None
 
 
-def declared_unit_or_refuse(decls, asset: str, siblings: Sequence[str] = ()) -> str:
+def declared_unit_or_refuse(decls, asset: str, siblings: Sequence[str] = (), *, allow_excluded_partial: bool = False) -> str:
     """The fingerprint unit of a forced rebuild of `asset`: the comparison units of EVERY asset whose rows the run writes, joined with `+`.
     The run writes the asset itself and each writer-run sibling (`siblings`, see writer_siblings). For each such asset the units are its own tables (if any) and every
     group it belongs to, so a MIXED member (own tables and a shared table: bg_doshas, bg_yogas, bg_dasha_systems) fingerprints its shared `brahma_ontology` table too, and a
@@ -705,8 +711,13 @@ def declared_unit_or_refuse(decls, asset: str, siblings: Sequence[str] = ()) -> 
             bad.append({"code": code, "asset": m, "detail": detail})
             continue
         if m in decls.partial_assets():
-            bad.append({"code": "FINGERPRINT_COVERAGE_PARTIAL", "asset": m,
-                        "detail": f"{m}'s declaration is partial: a fingerprint of part of its output cannot show it unchanged"})
+            excl = decls.partial_exclusions(m) if hasattr(decls, "partial_exclusions") else []
+            if excl and allow_excluded_partial:
+                pass        # expected-change mode: every not-covered table is a declared workflow-owned exclusion (named in the plan and the receipt)
+            else:
+                bad.append({"code": "FINGERPRINT_COVERAGE_PARTIAL", "asset": m,
+                            "detail": f"{m}'s declaration is partial: a fingerprint of part of its output cannot show it unchanged"
+                                      + (f"; its not-covered table(s) {sorted(e['table'] for e in excl)} are declared workflow-owned exclusions, which only the expected-change mode (--expected-change) accepts" if excl else "")})
         for u in mine:
             if u not in comps:
                 comps.append(u)
@@ -720,6 +731,23 @@ def declared_unit_or_refuse(decls, asset: str, siblings: Sequence[str] = ()) -> 
     if bad:
         raise slw.LevelWaveRefusal(bad)
     return UNIT_SEP.join(comps)
+
+
+def excluded_tables_of(decls, members: Sequence[str]) -> list[dict]:
+    """The declared workflow-owned exclusions of the partial members of a run: [{asset, table, code, detail}], [] when none."""
+    if not hasattr(decls, "partial_exclusions"):
+        return []
+    return [e for m in sorted(set(members)) for e in decls.partial_exclusions(m)]
+
+
+def check_excluded_acknowledged(spec: Mapping[str, Any], excluded: Sequence[Mapping[str, Any]]) -> None:
+    """EXCLUDED_TABLES_NOT_ACKNOWLEDGED: the expected-change file must list (`excluded_tables_acknowledged`) EXACTLY the tables the run excludes by declaration, so the
+    operator has said, in the bytes the token binds, that these tables are not compared. A file naming a table that is not excluded is refused too."""
+    want = sorted({e["table"] for e in excluded})
+    have = sorted(spec.get("excluded_tables_acknowledged") or [])
+    if want != have:
+        raise _refuse("EXCLUDED_TABLES_NOT_ACKNOWLEDGED", f"this run excludes {want} from the comparison by declaration (workflow-owned, not compared): the expected-change file's "
+                      f"excluded_tables_acknowledged must be exactly that list (it is {have})", excluded=list(excluded))
 
 
 def unit_siblings(decls, asset: str, unit: str, writer_sibs: Sequence[str] = ()) -> list[str]:
@@ -790,7 +818,7 @@ def check_pre_fingerprint(fp: Mapping[str, Any], decls, *, empty_fn=fd.empty_tab
 
 def build_confirm_token(*, manifest_digest: str, asset: str, anchor_chart: str, image_sha: str, impact_sha256: str,
                         pre_fingerprint: str, accepted_lit: Sequence[str], allow_redispatch: Sequence[str],
-                        expected_change_sha256: str | None = None, accepted_changed_output: bool = False) -> str:
+                        expected_change_sha256: str | None = None, accepted_changed_output: bool = False, excluded_tables: Sequence[str] = ()) -> str:
     """`GLOBAL1ASSET_<12 hex>_FORCE_GLOBAL_REBUILD`: a hash over the plan manifest digest, the asset, the anchor chart, the deployed
     image sha and the impact statement sha, plus (stricter than the minimum) the pre fingerprint and the two operator overrides, so a
     token authorises exactly the plan, the table content and the overrides it was printed for. Never equal to a level-wave token
@@ -801,6 +829,8 @@ def build_confirm_token(*, manifest_digest: str, asset: str, anchor_chart: str, 
     if expected_change_sha256 is not None:      # expected-change mode ONLY: the file's bytes and the acceptance are bound; absent, the token is exactly what it always was
         body["expected_change_sha256"] = expected_change_sha256
         body["accepted_changed_output"] = bool(accepted_changed_output)
+        if excluded_tables:
+            body["excluded_tables"] = sorted(excluded_tables)
     h = sha256_json(body)
     return f"GLOBAL1ASSET_{h[:12].upper()}_FORCE_GLOBAL_REBUILD"
 
@@ -843,8 +873,12 @@ def validate_receipt(doc: Any) -> None:
         bad(f"keys differ (extra {sorted(set(doc) - set(RECEIPT_KEYS))}, missing {sorted(required - set(doc))})")
     ec = doc.get("expected_change")
     if ec is not None:
-        if not (isinstance(ec, dict) and set(ec) == {"file_sha256", "spec", "accepted_changed_output", "pre_row_count", "post_row_count", "outcome"}):
-            bad("expected_change must carry exactly file_sha256, spec, accepted_changed_output, pre_row_count, post_row_count, outcome")
+        base_keys = {"file_sha256", "spec", "accepted_changed_output", "pre_row_count", "post_row_count", "outcome"}
+        if not (isinstance(ec, dict) and (set(ec) == base_keys or set(ec) == base_keys | {"excluded_tables"})):
+            bad("expected_change must carry exactly file_sha256, spec, accepted_changed_output, pre_row_count, post_row_count, outcome (and excluded_tables when tables are excluded)")
+        if "excluded_tables" in ec and not (isinstance(ec["excluded_tables"], list) and ec["excluded_tables"] and all(
+                isinstance(x, dict) and set(x) == {"table", "code"} for x in ec["excluded_tables"])):
+            bad("expected_change.excluded_tables is malformed")
         if not (isinstance(ec["file_sha256"], str) and _HEX64.fullmatch(ec["file_sha256"]) and isinstance(ec["spec"], dict)
                 and ec["accepted_changed_output"] is True and isinstance(ec["pre_row_count"], int) and not isinstance(ec["pre_row_count"], bool)
                 and (ec["post_row_count"] is None or (isinstance(ec["post_row_count"], int) and not isinstance(ec["post_row_count"], bool)))
@@ -1403,7 +1437,10 @@ def _run_cli(args, *, connect, fp_connect, git, out, sleep, monotonic, dispatch,
     # 3. the fingerprint unit (declared) and the impact statement (every dependent, every chart, and every sibling writer of the unit) with the lit-dependent gate
     decls = decls or load_declarations_or_refuse(args.declarations)
     wsibs = writer_siblings(args.repo, asset)
-    unit = declared_unit_or_refuse(decls, asset, wsibs)
+    unit = declared_unit_or_refuse(decls, asset, wsibs, allow_excluded_partial=expected is not None)
+    excluded = excluded_tables_of(decls, [asset, *wsibs]) if expected is not None else []
+    if expected is not None:                      # also when nothing is excluded: an acknowledgement of a table this run does not exclude is refused
+        check_excluded_acknowledged(expected, excluded)
     siblings = unit_siblings(decls, asset, unit, wsibs)
     impact_of = lambda cur: read_impact(cur, asset=asset, anchor_chart=anchor, target_table=row.get("target_table"), unit_siblings=siblings)  # noqa: E731
     impact = read_impact_via(connect, asset=asset, anchor_chart=anchor, target_table=row.get("target_table"), unit_siblings=siblings)
@@ -1424,7 +1461,8 @@ def _run_cli(args, *, connect, fp_connect, git, out, sleep, monotonic, dispatch,
 
     token = build_confirm_token(manifest_digest=digest, asset=asset, anchor_chart=anchor, image_sha=pinned, impact_sha256=impact_sha,
                                 pre_fingerprint=pre["composite"], accepted_lit=accepted, allow_redispatch=allow_redispatch,
-                                expected_change_sha256=expected_sha, accepted_changed_output=bool(args.accept_changed_output))
+                                expected_change_sha256=expected_sha, accepted_changed_output=bool(args.accept_changed_output),
+                                excluded_tables=[e["table"] for e in excluded])
     triggered_by = build_triggered_by(anchor, impact_sha)
     estimate = slw.estimate_runtime([[asset]], by_id)
     planned_at = _utc_iso(now)
@@ -1439,7 +1477,8 @@ def _run_cli(args, *, connect, fp_connect, git, out, sleep, monotonic, dispatch,
                           planned_at=planned_at,
                           expected_change=(None if expected is None else {
                               "file_sha256": expected_sha, "spec": expected, "accepted_changed_output": True,
-                              "pre_row_count": unit_row_count(pre), "post_row_count": None, "outcome": None}))
+                              "pre_row_count": unit_row_count(pre), "post_row_count": None, "outcome": None,
+                              **({"excluded_tables": [{"table": e["table"], "code": e["code"]} for e in excluded]} if excluded else {})}))
     summary = {"asset": asset, "anchor_chart": anchor, "anchor_is_canonical": anchor == CANONICAL_CHART_ID, "scope": row["scope"],
                "manifest_digest": digest, "plan": [asset], "triggered_by": triggered_by, "deployed_job_sha": pinned,
                "force_support_check": force_support, "force_execute": True, "impact_sha256": impact_sha,
@@ -1453,6 +1492,9 @@ def _run_cli(args, *, connect, fp_connect, git, out, sleep, monotonic, dispatch,
                                        "note": "the run writes a slice of a shared table and / or tables of sibling assets; the fingerprint covers the WHOLE of every such table, "
                                                "so the rebuild passes only if every row of every one is unchanged"}
     if expected is not None:
+        if excluded:
+            summary["excluded_from_comparison"] = {"tables": excluded, "note": "these tables are workflow-owned and NOT fingerprinted: the rebuild may still write to them, and "
+                                                   "the post-state check below says nothing about them"}
         summary["expected_change"] = {"file_sha256": expected_sha, "spec": expected, "pre_row_count": unit_row_count(pre),
                                       "accepted_changed_output": True, "changed_output_lines": changed_output_lines(impact, expected, unit_row_count(pre))}
 
@@ -1594,7 +1636,8 @@ def _verify_run_mode(args, *, asset, anchor, receipt_path, connect, fp_connect, 
             or found["plan_manifest_digest"] != receipt["manifest_digest"]):
         raise _refuse("RECEIPT_RUN_MISMATCH", f"build_runs {run_id} is not this tool's run for the receipt (chart, triggered_by or digest differ)")
     decls = decls or load_declarations_or_refuse(args.declarations)
-    unit = declared_unit_or_refuse(decls, asset, writer_siblings(args.repo, asset))
+    vsibs = writer_siblings(args.repo, asset)
+    unit = declared_unit_or_refuse(decls, asset, vsibs, allow_excluded_partial=expected is not None)
     if unit != (receipt["pre_fingerprint"] or {}).get("unit"):
         raise _refuse("RECEIPT_UNIT_MISMATCH", f"the fingerprint unit of {asset} in this checkout is {unit!r} but the receipt was committed under "
                       f"{(receipt['pre_fingerprint'] or {}).get('unit')!r}: the declarations or the writers changed since the run; the post state cannot be judged against the pre state "

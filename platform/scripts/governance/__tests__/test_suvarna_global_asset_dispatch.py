@@ -313,7 +313,7 @@ def test_the_no_process_fixture_blocks_every_os_level_route():
 
 
 SINGLE_WRITERS = ("bg_ontology", "bg_doshas", "bg_yogas", "bg_dasha_systems", "bg_class_priors", "bg_class_lifetime_counts", "bg_not_declared", "bg_text_index", "bg_texts",
-                  "bg_ghatana", "bg_formula_constants")
+                  "bg_ghatana", "bg_formula_constants", "bg_remedies")
 
 
 @pytest.fixture
@@ -2363,3 +2363,117 @@ def test_the_partial_ownership_table_is_fingerprinted_whole_so_a_touched_migrati
     db.respond = lambda sql, params: ([{"state": "lit", "last_built_at": db.ended, "duration_seconds": 5.0}] if "FROM asset_throughput WHERE asset_id = %s AND chart_id IS NULL" in sql else orig(sql, params))
     code, ev = run(env, argv_for(env, asset=asset, commit=True, confirm=token), db=db, fp=FakeFp((PRE_SHA, POST_SHA)), git=git, dispatch=Dispatch())
     assert code == gad.EXIT_FINGERPRINT_CHANGED
+
+
+# ── workflow-owned exclusions (bg_remedies: remedy_review_queue), expected-change mode only ──
+
+REM = "bg_remedies"
+
+
+def _rem_env(env):
+    digests = {**env["digests"], REM: _hex(REM)}
+    (pathlib.Path(env["repo"]) / "platform/src/generated/nirmana-writer-digests.json").write_text(json.dumps({"version": 1, "writers": digests}))
+    return row(REM, scope="global", layer="brahmagyan", target="brahma_remedy_corpus"), FakeGit(deployed=digests)
+
+
+def _rem_spec(env, name="rem.json", **kw):
+    d = dict(asset=REM, excluded_tables_acknowledged=["remedy_review_queue"])
+    d.update(kw)
+    return write_spec(env, name, **d)
+
+
+def test_the_declaration_carries_the_workflow_owned_exclusion_and_only_for_every_not_covered_table():
+    ex = DECLS.partial_exclusions(REM)
+    assert [e["table"] for e in ex] == ["remedy_review_queue"] and ex[0]["code"] == "workflow_owned_rows" and "may still insert rejected rows" in ex[0]["detail"]
+    assert DECLS.partial_exclusions("bg_texts") == [] and DECLS.partial_exclusions("bg_phaladeepika_latta") == [] and DECLS.partial_exclusions("bg_nope") == []
+    doc = json.loads(json.dumps(DECLS.doc))
+    doc["assets"][REM]["not_covered_tables"].append({"name": "x_other", "reason": "r" * 70, "evidence": ["platform/python-sidecar/brahmagyan/l0_remedy_loader.py:128"]})
+    assert fd.Declarations(doc=doc, sha256="x", path="p").partial_exclusions(REM) == []             # one non-excluded not-covered table keeps the refusal
+
+
+def test_a_partial_asset_with_an_exclusion_is_refused_by_default_and_admitted_only_in_expected_change_mode():
+    with pytest.raises(slw.LevelWaveRefusal) as exc:
+        gad.declared_unit_or_refuse(DECLS, REM)
+    r = exc.value.refusals[0]
+    assert r["code"] == "FINGERPRINT_COVERAGE_PARTIAL" and "remedy_review_queue" in r["detail"] and "expected-change mode" in r["detail"]
+    assert gad.declared_unit_or_refuse(DECLS, REM, allow_excluded_partial=True) == REM
+    for a in ("bg_texts",):                                                                          # a partial asset WITHOUT exclusions stays refused in both modes
+        with pytest.raises(slw.LevelWaveRefusal) as exc2:
+            gad.declared_unit_or_refuse(DECLS, a, allow_excluded_partial=True)
+        assert "FINGERPRINT_COVERAGE_PARTIAL" in [x["code"] for x in exc2.value.refusals]
+
+
+def test_the_default_mode_refuses_bg_remedies_before_anything_is_inserted(env):
+    onto, git = _rem_env(env)
+    db = FakeDB(candidates=[[onto]], downstream=())
+    code, ev = run(env, argv_for(env, asset=REM), db=db, fp=FakeFp((PRE_SHA,)), git=git)
+    assert code == slw.REFUSAL_EXIT_CODE and codes_of(ev) == ["FINGERPRINT_COVERAGE_PARTIAL"] and db.inserts("build_runs") == []
+
+
+@pytest.mark.parametrize("ack", [None, [], ["other_table"], ["remedy_review_queue", "other_table"]])
+def test_the_expected_change_file_must_acknowledge_exactly_the_excluded_tables(env, ack):
+    onto, git = _rem_env(env)
+    path = write_spec(env, "rem.json", asset=REM, excluded_tables_acknowledged=(ack if ack is not None else ...))
+    if ack == []:
+        with pytest.raises(slw.LevelWaveRefusal):
+            gad.load_expected_change(path, REM)                                                      # an empty list is not an acknowledgement (the file schema refuses it)
+        return
+    db = FakeDB(candidates=[[onto]], downstream=())
+    code, ev = run(env, xargs(env, path, asset=REM), db=db, fp=FakeFpRows((PRE_SHA,), (ROWS_PRE,)), git=git)
+    assert code == slw.REFUSAL_EXIT_CODE and codes_of(ev) == ["EXCLUDED_TABLES_NOT_ACKNOWLEDGED"] and db.inserts("build_runs") == []
+    assert last(ev)["refusals"][0]["excluded"][0]["table"] == "remedy_review_queue"
+
+
+def test_an_acknowledgement_on_an_asset_with_no_exclusion_is_refused(env):
+    path = write_spec(env, "ack.json", excluded_tables_acknowledged=["remedy_review_queue"])
+    code, ev = run(env, xargs(env, path), fp=FakeFpRows((PRE_SHA,), (ROWS_PRE,)))
+    assert code == slw.REFUSAL_EXIT_CODE and codes_of(ev) == ["EXCLUDED_TABLES_NOT_ACKNOWLEDGED"]
+
+
+def test_the_acknowledgement_field_shape(env):
+    for bad in ("remedy_review_queue", ["Bad Name"], ["a", "a"], [1], [f"t{i}" for i in range(9)]):
+        with pytest.raises(slw.LevelWaveRefusal):
+            gad.load_expected_change(write_spec(env, "b.json", asset=ASSET, excluded_tables_acknowledged=bad), ASSET)
+    spec, _ = gad.load_expected_change(write_spec(env, "g.json", asset=ASSET, excluded_tables_acknowledged=["b_t", "a_t"]), ASSET)
+    assert spec["excluded_tables_acknowledged"] == ["a_t", "b_t"]
+    assert "excluded_tables_acknowledged" not in gad.load_expected_change(write_spec(env, "n.json"), ASSET)[0]
+
+
+def test_the_token_binds_the_excluded_tables():
+    base = dict(manifest_digest=_hex("m"), asset=REM, anchor_chart=CHART, image_sha=sha_of("x"), impact_sha256=_hex("i"), pre_fingerprint=_hex("p"), accepted_lit=[], allow_redispatch=[],
+                expected_change_sha256=_hex("f"), accepted_changed_output=True)
+    t0 = gad.build_confirm_token(**base)
+    assert gad.build_confirm_token(**base, excluded_tables=["remedy_review_queue"]) != t0
+    assert gad.build_confirm_token(**base, excluded_tables=[]) == t0
+    assert gad.build_confirm_token(**base, excluded_tables=["a", "b"]) == gad.build_confirm_token(**base, excluded_tables=["b", "a"])
+
+
+def test_bg_remedies_plans_commits_and_records_the_exclusion_in_expected_change_mode(env):
+    onto, git = _rem_env(env)
+    path = _rem_spec(env)
+    code, ev = run(env, xargs(env, path, asset=REM), db=FakeDB(candidates=[[onto]], downstream=()), fp=FakeFpRows((PRE_SHA,), (ROWS_PRE,)), git=git)
+    s = last(ev)
+    assert code == 0, s
+    ex = s["excluded_from_comparison"]
+    assert [t["table"] for t in ex["tables"]] == ["remedy_review_queue"] and "NOT fingerprinted" in ex["note"] and "may still write to them" in ex["note"]
+    assert s["pre_fingerprint"]["unit"] == REM and list(s["pre_fingerprint"]["tables"]) == ["brahma_remedy_corpus"]
+    rec = json.loads(pathlib.Path(env["receipt"]).read_text())
+    gad.validate_receipt(rec)
+    assert rec["expected_change"]["excluded_tables"] == [{"table": "remedy_review_queue", "code": "workflow_owned_rows"}]
+    token = s["confirm_token"]
+    db = FakeDB(candidates=[[onto]], downstream=(), dispositions={REM: "build"})
+    orig = db.respond
+    db.respond = lambda sql, params: ([{"state": "lit", "last_built_at": db.ended, "duration_seconds": 5.0}] if "FROM asset_throughput WHERE asset_id = %s AND chart_id IS NULL" in sql else orig(sql, params))
+    code, ev = run(env, xargs(env, path, asset=REM, commit=True, confirm=token), db=db, fp=FakeFpRows((PRE_SHA, POST_SHA), (ROWS_PRE, ROWS_POST)), git=git, dispatch=Dispatch())
+    assert code == 0, last(ev)
+    rec = json.loads(pathlib.Path(env["receipt"]).read_text())
+    assert rec["expected_change"]["outcome"] == "MET" and rec["expected_change"]["excluded_tables"][0]["table"] == "remedy_review_queue"
+
+
+def test_the_receipt_schema_checks_the_excluded_tables_block(env):
+    rec = _valid_receipt(env)
+    block = {"file_sha256": _hex("f"), "spec": _spec(), "accepted_changed_output": True, "pre_row_count": 8, "post_row_count": None, "outcome": None}
+    gad.validate_receipt(dict(rec, expected_change={**block, "excluded_tables": [{"table": "t", "code": "workflow_owned_rows"}]}))
+    for bad in ([], [{"table": "t"}], ["t"], [{"table": "t", "code": "c", "x": 1}], "t"):
+        with pytest.raises(slw.LevelWaveError):
+            gad.validate_receipt(dict(rec, expected_change={**block, "excluded_tables": bad}))

@@ -1603,7 +1603,15 @@
      "evidence": [
       "platform/python-sidecar/brahmagyan/l0_remedy_loader.py:128",
       "platform/python-sidecar/brahmagyan/l0_remedy_loader.py:274"
-     ]
+     ],
+     "exclusion": {
+      "reason_code": "workflow_owned_rows",
+      "detail": "remedy_review_queue is a review queue owned by the review workflow, not a build output: the loader only inserts the rows it rejects and deletes category='tantric' rows it no longer sources, while the other categories and every review transition belong to the workflow. It is EXCLUDED from the comparison by this declaration (it is not fingerprinted, and a forced rebuild's claim covers brahma_remedy_corpus only); the rebuild may still insert rejected rows into it and delete obsolete tantric rows.",
+      "evidence": [
+       "platform/python-sidecar/brahmagyan/l0_remedy_loader.py:128",
+       "platform/python-sidecar/brahmagyan/l0_remedy_loader.py:274"
+      ]
+     }
     }
    ]
   },
