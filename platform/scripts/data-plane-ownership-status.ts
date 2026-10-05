@@ -267,7 +267,7 @@ export async function readDataPlaneOwnershipStatus(
         count(*) FILTER (WHERE t.tgname='l1_data_plane_capture')::text AS l1,
         count(*) FILTER (WHERE t.tgname='l2_data_plane_capture')::text AS l2
       FROM pg_trigger t JOIN pg_class c ON c.oid=t.tgrelid JOIN pg_namespace n ON n.oid=c.relnamespace
-      WHERE NOT t.tgisinternal AND t.tgenabled IN ('O','A') AND n.nspname='public'
+      WHERE NOT t.tgisinternal AND t.tgenabled IN ('O','A','D') AND n.nspname='public'
         AND ((t.tgname='l1_data_plane_capture' AND c.relname=ANY($1::text[]))
           OR (t.tgname='l2_data_plane_capture' AND c.relname=ANY($2::text[])))
     `, [L1_ACTIVE_TABLES.filter((table) => table !== 'chart_dashas'), [...L2_ACTIVE_TABLES]])
@@ -309,7 +309,8 @@ export async function readDataPlaneOwnershipStatus(
       SELECT EXISTS (
         SELECT 1 FROM actual a FULL JOIN expected e
           ON a.table_name=e.table_name AND a.trigger_name=e.trigger_name
-         AND a.trigger_type=e.trigger_type AND a.enabled=e.enabled
+         AND a.trigger_type=e.trigger_type
+         AND (a.enabled=e.enabled OR (a.enabled='D' AND e.enabled IN ('O','A')))
          AND a.function_oid=e.function_oid AND a.function_signature=e.function_signature
          AND a.definition_digest=e.definition_digest
         WHERE a.table_name IS NULL OR e.table_name IS NULL
