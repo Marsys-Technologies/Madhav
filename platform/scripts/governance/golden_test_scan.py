@@ -24,6 +24,7 @@ from __future__ import annotations
 
 import ast
 import hashlib
+import re
 
 MIN_WORDS = 2
 MIN_CHARS = 10
@@ -55,18 +56,25 @@ def _leaf_of(entry_leaf: str, names) -> bool:
     return any(entry_leaf in n or n in toks for n in names)
 
 
+_KEY_LIKE = re.compile(r"[A-Za-z_][A-Za-z0-9_]*")
+
+
 def _leaves(node):
+    """The names a golden assertion uses to pick the asserted value out of the built output: identifier-like string constants (subscript / dict keys), attribute names and plain names.
+    NOT call keyword names and NOT sentence text: a column named only as an INPUT keyword of the builder call (`build(citation_human="x")`) is not asserted."""
     out = set()
     for n in ast.walk(node):
-        if isinstance(n, ast.Constant) and isinstance(n.value, str):
+        if isinstance(n, ast.Constant) and isinstance(n.value, str) and _KEY_LIKE.fullmatch(n.value):
             out.add(n.value)
         elif isinstance(n, ast.Attribute):
             out.add(n.attr)
         elif isinstance(n, ast.Name):
             out.add(n.id)
-        elif isinstance(n, ast.keyword) and n.arg:
-            out.add(n.arg)
     return out
+
+
+def _target_names(assign):
+    return {x.id for t in assign.targets for x in ast.walk(t) if isinstance(x, ast.Name)}
 
 
 def _parametrized(fn) -> dict:
@@ -227,9 +235,9 @@ def verify_test(fn_rec, tree, mods, dotted, calls_module):
             if not any(_prose_bearing(e) for e in exps):
                 last = f"line {node.lineno}: the expected literal carries no sentence (a string of >= {MIN_WORDS} words and >= {MIN_CHARS} characters)"
                 continue
-            leaves = set()
-            for x in [node] + f.defining_assigns(node):
-                leaves |= _leaves(x)
+            leaves = _leaves(lhs) | _leaves(rhs)        # the COMPARED operands only: a sibling conjunct (`and row["citation_human"] is not None`) asserts nothing about the sentence
+            for x in f.defining_assigns(node):
+                leaves |= _target_names(x)                 # `citation_human = build(...)` names the column; the assigned call's own arguments do not
             dump = "|".join(sorted(ast.dump(e) for e in exps))
             return dict(line=node.lineno, expected_sha256=hashlib.sha256(dump.encode("utf-8")).hexdigest(), leaves=leaves), "golden assertion"
     return None, last

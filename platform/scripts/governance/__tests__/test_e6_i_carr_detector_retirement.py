@@ -65,7 +65,7 @@ NARR_GUARD_CLAUSE = ("; an asset that declares prose_fields [] WITH a prose_coup
 
 E57_CHECKABLE = "; rows are scoped from a plain count_sql OR a sum of plain count subselects (one term per table), pinned to the chart by a depth-0 `chart_id = $1` conjunct (E5.7)"
 E57_FIDELITY = ("structural test discovery (N.7 item 5) caps at PARTIAL; PASS only when the asset DECLARES fidelity_tests and golden_test_scan verifies each from source (the named test calls the builder "
-                "and asserts the built output EQUAL to an independent literal sentence) and every declared prose entry is covered (E5.7, SS N-150 R7)")
+                "and asserts the built output EQUAL to an independent literal sentence) and every declared prose entry is covered (E5.7, SS N-150 R7; the golden assertion must compare the entry's own value, picked out by its key / attribute / assigned name, with an independent literal sentence of at least 2 words and 10 characters; which column a sentence belongs to is read from that reference, not proven)")
 
 
 def _restore_pre_retirement(monkeypatch):

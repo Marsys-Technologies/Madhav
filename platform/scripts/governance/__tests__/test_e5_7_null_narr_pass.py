@@ -436,3 +436,11 @@ def test_the_reader_counts_a_writer_scan_null_pass_only_over_the_declared_prose_
     T._E63_NULL_CACHE.clear()
     monkeypatch.setattr(T, "_e63_declared_entry", lambda repo, sha, a: {"prose_fields": ["citation_human", "other"]})
     assert T._e63_null_lift_earned("repo", "s" * 40, rec, b"") is False
+
+
+def test_a_column_named_only_as_an_input_keyword_or_a_sibling_conjunct_is_not_covered():
+    kw = HEAD + 'def test_sentence():\n    row = build_narration(citation_human="x")\n    assert row["fact_value_text"] == "Sun is exalted in Aries by rule"\n'
+    r = _fid(kw)
+    assert r["v"] == ac.PARTIAL and "not referenced" in r["measured"], r
+    sib = HEAD + 'def test_sentence():\n    row = build_narration({"a": 1})\n    assert row["fact_value_text"] == "Sun is exalted in Aries by rule" and row["citation_human"] is not None\n'
+    assert _fid(sib)["v"] == ac.PARTIAL
