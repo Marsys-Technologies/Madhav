@@ -16,6 +16,8 @@ import sys
 
 import pytest
 
+pytestmark = pytest.mark.skip(reason="the E6.3 certificate reader was dropped by owner decision N-152; the module stays importable, its tests are not run in CI")
+
 sys.path.insert(0, os.path.dirname(__file__))
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1]))
 from _e6_3_fixtures import (CERTS, NIKASHA, World, cert, chained, disp, load_tracker, mini_patch, nikasha_text, parse_via_validator)  # noqa: E402

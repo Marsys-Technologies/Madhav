@@ -386,3 +386,98 @@ mutation-checked refusals, golden digest equality with the existing dispatcher, 
 NOT verified without production: that one run of 23 assets / 9 waves completes; the wall time of any L2 writer at scale;
 the deployed image's real digests; the live `asset_freshness` state of every dependency; the live `depends_on` of the
 seven `bo_*` assets the rehearsal registry lacks; Cloud Run dispatch (`gcloud`) itself.
+
+## Global asset dispatch (forced single GLOBAL asset): `suvarna_global_asset_dispatch.py`
+
+The level wave builds `per_chart` assets only (`NON_PER_CHART_SCOPE`). A GLOBAL asset (an L0 `bg_*` table such as
+`bg_phaladeepika_latta`) that must be rebuilt once with `NIRMANA_FORCE_EXECUTE=1` goes through its own tool, the first piece of
+the "global request" path. It imports this module's pure functions and gates (no copy, no edit here, no orchestrator change) and
+adds: the impact statement, the pre/post semantic fingerprint (committed `FINGERPRINT_DECLARATIONS.json`), exactly one forced
+dispatch, and a mandatory verification.
+
+```
+# 1. PLAN (default): INSERT build_runs + build_run_assets, ROLLBACK; prints the impact statement, the pre fingerprint, the force
+#    support check, the anchor-chart cost and the confirm token; writes the receipt (committed=false)
+DATABASE_URL=... python3 platform/scripts/governance/suvarna_global_asset_dispatch.py \
+    --assets bg_phaladeepika_latta --anchor-chart 482012f1-710e-4a25-994a-93821f5871aa \
+    --deployed-sha <inventory commit> --deployed-job-sha <live job image sha> --receipt <path outside the repo>.json
+# 2. COMMIT: one forced dispatch, then wait + verify (no flag: the force and the verification are always on)
+DATABASE_URL=... python3 platform/scripts/governance/suvarna_global_asset_dispatch.py <same arguments> \
+    --job-sha-file <operator's job-sha file> --commit --confirm GLOBAL1ASSET_<12 hex>_FORCE_GLOBAL_REBUILD
+# 3. only after an interrupted / timed-out wait (never a second dispatch): verify the run from its receipt
+DATABASE_URL=... python3 platform/scripts/governance/suvarna_global_asset_dispatch.py --assets bg_phaladeepika_latta \
+    --anchor-chart <uuid> --receipt <the same path> --verify-run <run_id>
+```
+
+How it is recorded: ONE `build_runs` row, `scope='asset_set'`, `action='rebuild'`, plan = the one asset, `chart_id` = the real
+`--anchor-chart` (a declared anchor, never synthetic: a non-uuid, the dead phantom `362f9f17-...` or a chart not in `charts` is
+refused). The `plan_manifest` is byte-identical in shape to `build_level_manifest` / `dispatch_frozen_rebuild.build_manifest` (no
+new key; the runner verifies it). The globality is declared in `triggered_by`:
+`global-asset-dispatch:anchor_chart=<uuid>;impact_sha256=<first 16 hex>`. `build_runs.triggered_by` is `TEXT NOT NULL` (no length
+limit) and nothing parses it: the only consumers compare it for exact equality with fixed test triggers
+(`nirmana-elevation/definitions.ts`, `snapshot.ts`: `triggered_by = ANY(testTriggers)`, `<> 'nirmana-f0-machinery-canary'`), which
+this prefix-plus-payload value cannot equal. The runner keeps the asset's throughput row global (chart NULL): `runner.py`
+`eff_chart_id = None if asset_scopes.get(asset_id) == "global" else chart_id`.
+
+The cost to the anchor chart: while the run is planned/running it holds the anchor chart's per-chart `ACTIVE_RUN` lock (the same
+advisory-lock key and active-run rule as the wave), so no other build of that chart can start; the plan prints the expected
+duration. The concurrency guard protects the ANCHOR chart only (plus a per-asset lock against a second invocation of this tool):
+a build of any other chart is not locked out. The in-transaction re-reads (`CONFLICTING_ACTIVE_RUN` for the asset and its
+dependents on any chart, `IMPACT_CHANGED`, `DEPENDENCY_NOT_READY`) see only what is committed at that moment, and a race the
+tool's own checks do not see is caught, if at all, by the database as a serialization failure, which surfaces as exit 6
+(unexpected, nothing committed), never as a clean refusal.
+
+What the impact statement covers: the `depends_on` transitive closure (the runner's own `compute_downstream_closure`) plus assets
+that share the same registry `target_table`. It does NOT cover undeclared readers (code or SQL that reads the table without a
+`depends_on` edge): those are invisible to it. The runner's stale-marking after the asset's build touches only the rows of the
+RUN's chart (the anchor) in state `lit`/`service_ok` (`staleness.py`), and it is fail-open: it runs when
+`build_run_assets.output_changed` is TRUE and also when it is NULL (no delta signal recorded: a probe/service asset or a row
+predating the column); only an explicit FALSE (no delta) skips it. `runner_stales_if_output_changes` in the statement therefore
+reads "the runner will stale this row unless the output is positively recorded as unchanged", not "only if the output changed".
+The statement nevertheless lists every dependent row on every chart, and a lit row anywhere refuses (`LIT_DEPENDENT`) unless named
+with `--accept-lit-dependent <asset>@<chart|global>`.
+
+Preflights before anything is inserted (exit 4): the receipt path is validated (the directory, not inside the repo, and the clobber
+guard: an existing committed receipt of another run is never overwritten, `RECEIPT_PATH_INVALID`; in commit mode the not-yet-committed
+receipt is probe-written so a permission or disk problem refuses here, not after the COMMIT); `asset_throughput.duration_seconds`
+exists in the database (migration 1200, `DURATION_COLUMN_ABSENT`); and the deployed image's `asset_runner.py` contains the duration
+write (`IMAGE_DOES_NOT_RECORD_DURATION`: the adjacent pair `duration_seconds = %s, rows_per_second = %s` inside an `UPDATE asset_throughput` string of the parsed source; comments, docstrings and an unparseable file never satisfy it), next to the force markers. If the receipt still cannot be written after the COMMIT, the
+planned run is terminalised (same `WHERE state='planned'` statement as a dispatch failure), nothing is dispatched, the event
+`run_committed_receipt_not_written` is emitted, the run id is printed to stderr and the exit is 6. When a dispatch fails (a gcloud
+timeout included) and that terminalise UPDATE affects 0 rows, the run was no longer `planned` (it has already started): the tool then
+says the run was NOT terminalised, may be running or complete, and names `--verify-run`; it never reports "terminalised" for it.
+
+Verification (exit 0 only when all hold): run `completed`; the force took effect (`build_run_assets.disposition = build`, NOT
+`skip_no_delta`: exit 8, and a second dispatch is forbidden); the asset's global throughput row is duration-bearing
+(`duration_seconds` set, `last_built_at` = the run asset's `ended_at`, the link `asset_census._attempt_timing` reads); the post
+fingerprint equals the pre fingerprint (else `FINGERPRINT_CHANGED_ON_FORCED_REBUILD`, exit 9: the build cannot be undone); a completed
+run whose disposition is neither `build` nor `skip_no_delta` is `FORCED_EFFECT_UNVERIFIED` (exit 10), and a build record that cannot be
+read after a completed run is `BUILD_RECORD_UNREADABLE` (exit 10, the run id is not lost). A prior
+run of this tool for the asset refuses any further dispatch (`ALREADY_DISPATCHED`) unless every such run is named with
+`--allow-redispatch <run_id>`. Exit codes: those of the wave plus 8 / 9 / 10 (see the module docstring). Tests:
+`__tests__/test_suvarna_global_asset_dispatch.py` (fakes only; any real subprocess is an error there).
+
+### Expected-change mode (a rebuild that is MEANT to change rows): `--expected-change FILE`
+
+The default is unchanged: no `--expected-change`, a rebuild passes only if the content is UNCHANGED (exit 9 otherwise). For an L0 fix the operator
+declares the change in a small JSON file, names it with `--expected-change`, and accepts its consequences explicitly:
+
+```
+{"asset": "bg_phaladeepika_latta",
+ "expected_post_row_count": 11,                       # total rows of the asset's declared fingerprint unit after the rebuild (>= 1)
+ "expected_post_fingerprint": "<64 hex composite>",   # optional, from the rehearsal cluster; must differ from the pre fingerprint
+ "why": "<a real reason>", "decision": "N-150", "evidence": "<pointer>"}     # why + decision and/or evidence; placeholders are refused
+```
+
+Flow: (1) PLAN: the usual arguments plus `--expected-change F --accept-changed-output` and one `--accept-lit-dependent <asset>@<chart|global>` per lit
+dependent row. Without `--accept-changed-output` the plan refuses (`CHANGED_OUTPUT_NOT_ACCEPTED`) and prints the impact and the CHANGING REBUILD block
+(every dependent row on every chart that a changed output stales or forces to rebuild; the anchor chart's rows are the ones the runner stales itself).
+The printed confirm token binds the sha256 of the file's bytes and the acceptance, so a swapped or edited file is `CONFIRM_TOKEN_MISMATCH`.
+(2) COMMIT: the same arguments plus `--job-sha-file ... --commit --confirm <token>`. The receipt's `expected_change` records the declaration, its digest, the
+pre and post row counts and the outcome (`MET` / `MISMATCH`), next to the pre and post fingerprints. Verification still needs the run `completed`, the
+force effective (`skip_no_delta` stays exit 8, no second dispatch) and a duration-bearing build record, and then compares the post state to the
+declaration instead of to the pre state: the row count, the declared post fingerprint when one is given, and (when none is given) a post fingerprint
+that differs from the pre one. Any difference is exit 11 (`EXPECTED_ROW_COUNT_MISMATCH`, `EXPECTED_FINGERPRINT_MISMATCH`,
+`EXPECTED_CHANGE_NOT_OBSERVED`) with an honest receipt: the build cannot be undone. Precedence: 8 > 11 > 9 > 10. (3) `--verify-run <run_id>` of such a run
+needs the same `--expected-change` file (`RECEIPT_EXPECTED_CHANGE_MISMATCH` otherwise) and grades the receipt's declaration. `--accept-changed-output`
+without a file is bad input (exit 2). The file must be a regular `.json` (no symlink, no env/credential-looking name, at most 64 KiB, `why`/`evidence` at most 500 characters). A receipt of the default mode carries no `expected_change` key and no `expectation` / `row_counts` in `verification`; in this mode `outcome` is `MET` only when the whole verification passed, `MISMATCH` only when the post state was read and differs from the declaration, and null otherwise.

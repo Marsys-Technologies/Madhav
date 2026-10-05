@@ -231,7 +231,7 @@ def test_cli_fails_closed(tmp_path):
 # ---------------------------------------------------------------- the workflow wiring -----------------------------------------------------
 
 HEAVY = ("typecheck", "typecheck-mcp", "unit-tests", "db-integration-tests", "pratijna-v4-fixture-property-tests", "planner-regression",
-         "icr-pr-gate", "governance-tool-tests-shard", "governance-gates-gochara", "gochara-a55-replace-chain")
+         "icr-pr-gate", "governance-tool-tests-shard", "governance-gates-gochara", "gochara-a55-replace-chain", "gochara-a55-slice-transitions", "gochara-a55-round2-runner", "gochara-a55-verifier-fixes")
 NEVER_SKIPPED = ("changes", "secret-scan", "naming-lint", "fact-category-pin-lint", "earned-signal-lint", "registry-parity-gate", "governance-gates",
                  "coverage-gate", "density-census", "governance-tool-tests")
 
@@ -357,24 +357,48 @@ def test_the_classifier_has_no_unhandled_exception_path(monkeypatch):
 
 # ---------------------------------------------------------------- the A5.5f replace-chain job: a real, mandatory gate -----------------------
 
-A55_JOB = "gochara-a55-replace-chain"
-A55_SUITES = ("tests/l3/gochara/test_a55_replace_chain.py", "tests/l3/gochara/test_a55_replace_chain_populated.py")
+A55_PREFIX = "gochara-a55-"                      # EVERY job with this prefix is a real-database Gochara job and is hardened below (CI-A55-SPLIT)
+A55_JOBS = ("gochara-a55-replace-chain", "gochara-a55-slice-transitions", "gochara-a55-round2-runner", "gochara-a55-verifier-fixes")      # the jobs that must exist today; a new `gochara-a55-<name>` job is hardened automatically
+A55_MAX_TIMEOUT_MINUTES = 45                     # the old single job reached this limit; no job may be given more (split it instead)
 _FORBIDDEN_FLAGS = ("--deselect", "--ignore", "-k", "-m", "--collect-only", "--co", "--lf", "--last-failed", "--sw", "--stepwise")
+GOCHARA_TESTS = Path(__file__).resolve().parents[3] / "python-sidecar" / "tests" / "l3" / "gochara"
+#: A file is a REAL-DATABASE suite when it builds on the template database or the admin DSN, or imports a fixture/helper of the A5.3/A5.5 database suites. Such a suite must run in a mandatory database-enabled
+#: command (a step whose env sets GOCHARA_A53_REQUIRE_DB=1 and that requires the pinned corpus), in some job: DISCOVERED here, never listed by hand.
+_DB_MARKERS = ("import template", "_runner_world", "create_am5_database", "GOCHARA_A53_ADMIN_DSN", "GOCHARA_A53_REQUIRE_DB", "import test_a53_inventory",
+               "from .test_a53_", "from . import test_a53_", "from .test_a55_")
 
 
-def _a55_problems(job: dict) -> list[str]:
+def _pytest_suites(step_run: str) -> list[str]:
+    out: list[str] = []
+    for line in str(step_run).replace("\\\n", " ").splitlines():
+        line = line.strip()
+        if line.startswith("#") or "pytest" not in line:
+            continue
+        out += [t for t in line.split() if t.startswith("tests/") and t.endswith(".py")]
+    return out
+
+
+def _job_suites(job: dict) -> list[str]:
+    return [x for s in (job.get("steps") or []) if "pytest" in str(s.get("run", "")) for x in _pytest_suites(s["run"])]
+
+
+def _a55_problems(job: dict, expected: tuple[str, ...] | None = None) -> list[str]:
     """Everything that makes the job a weaker gate than it claims, by name (empty = the guard is satisfied). Codex removed one suite
-    path in memory and every earlier guard still passed, so each requirement is checked against the actual command, not the job's name."""
+    path in memory and every earlier guard still passed, so each requirement is checked against the actual command, not the job's name.
+    `expected` = the suites this job must still run (None: only the hardening checks)."""
     problems: list[str] = []
     if job.get("continue-on-error"):
         problems.append("the job is continue-on-error")
     if "changes" not in (job["needs"] if isinstance(job.get("needs"), list) else [job.get("needs")]):
         problems.append("the job does not need the changes job")
+    timeout = job.get("timeout-minutes")
+    if not isinstance(timeout, int) or timeout > A55_MAX_TIMEOUT_MINUTES:
+        problems.append(f"timeout-minutes is {timeout!r}: it must be an integer of at most {A55_MAX_TIMEOUT_MINUTES} (split the job instead of raising it)")
     steps = job.get("steps") or []
     pytest_steps = [s for s in steps if "pytest" in str(s.get("run", ""))]
     if not pytest_steps:
         problems.append("no step runs pytest")
-    for suite in A55_SUITES:
+    for suite in (expected or ()):
         found = False
         for step in pytest_steps:
             run = str(step["run"]).replace("\\\n", " ")
@@ -414,8 +438,62 @@ def re_true(line: str) -> bool:
     return "|| true" in line or "||true" in line
 
 
-def test_the_a55_job_runs_both_suites_in_a_mandatory_database_enabled_command(jobs):
-    assert _a55_problems(jobs[A55_JOB]) == []
+def _a55_jobs(jobs) -> dict:
+    return {k: v for k, v in jobs.items() if k.startswith(A55_PREFIX)}
+
+
+def test_the_required_a55_jobs_exist_and_every_a55_job_is_a_mandatory_database_enabled_gate(jobs):
+    found = _a55_jobs(jobs)
+    assert set(A55_JOBS) <= set(found), f"missing job(s): {sorted(set(A55_JOBS) - set(found))}"
+    for name, job in found.items():
+        assert _job_suites(job), f"{name}: no suite in its pytest command"
+        assert _a55_problems(job, tuple(_job_suites(job))) == [], name
+
+
+def _db_suites_on_disk() -> set[str]:
+    out = set()
+    for p in GOCHARA_TESTS.glob("test_*.py"):
+        text = p.read_text(encoding="utf-8")
+        if any(m in text for m in _DB_MARKERS):
+            out.add(f"tests/l3/gochara/{p.name}")
+    return out
+
+
+def _mandatory_db_steps(jobs):
+    """(job, step) for every pytest step that sets GOCHARA_A53_REQUIRE_DB=1: a database-enabled command in which a missing server FAILS."""
+    for name, job in jobs.items():
+        for step in job.get("steps") or []:
+            if "pytest" in str(step.get("run", "")) and str((step.get("env") or {}).get("GOCHARA_A53_REQUIRE_DB")) == "1":
+                yield name, step
+
+
+def test_every_real_database_suite_on_disk_runs_in_a_mandatory_database_enabled_command(jobs):
+    """DISCOVERY, so no suite can fall out (CI-A55-SPLIT): any gochara test file that builds on the template database or the admin DSN must be named in the
+    pytest command of a job step that sets GOCHARA_A53_REQUIRE_DB=1. Adding a slow suite without a job slot fails here, by name."""
+    covered = {x for _name, step in _mandatory_db_steps(jobs) for x in _pytest_suites(step["run"])}
+    missing = sorted(f for f in _db_suites_on_disk() if f not in covered)
+    assert not missing, f"real-database suites in no mandatory database-enabled CI command: {missing} (add each to a gochara-a55-* job or the A5.3 step)"
+
+
+def test_the_discovery_finds_the_suites_the_split_moved_and_would_notice_one_dropping_out(jobs):
+    on_disk = _db_suites_on_disk()
+    for f in ("tests/l3/gochara/test_a55_replace_chain.py", "tests/l3/gochara/test_a55_replace_chain_populated.py", "tests/l3/gochara/test_c46_slice_transitions.py",
+              "tests/l3/gochara/test_c46_slice_round2.py", "tests/l3/gochara/test_c47_ephe_real_runner.py"):
+        assert f in on_disk, f"the discovery no longer sees {f}: its marker list is wrong"
+    import copy
+    cut = copy.deepcopy(jobs)
+    step = next(s for s in cut["gochara-a55-round2-runner"]["steps"] if "pytest" in str(s.get("run", "")))
+    step["run"] = step["run"].replace(" tests/l3/gochara/test_c46_slice_round2.py", "", 1)
+    covered = {x for _n, st in _mandatory_db_steps(cut) for x in _pytest_suites(st["run"])}
+    assert "tests/l3/gochara/test_c46_slice_round2.py" not in covered                        # a mutant: dropped from its job, in no other command
+
+
+def test_each_a55_job_stays_within_one_job_budget_and_a_suite_is_in_exactly_one_job(jobs):
+    seen: dict[str, str] = {}
+    for name, job in _a55_jobs(jobs).items():
+        for suite in _job_suites(job):
+            assert suite not in seen, f"{suite} runs in both {seen[suite]} and {name}: one slot per suite (a duplicate doubles its cost)"
+            seen[suite] = name
 
 
 def _mutations(job):
@@ -439,7 +517,7 @@ def _mutations(job):
         return j
 
     muts = {}
-    for suite in A55_SUITES:
+    for suite in _job_suites(job):
         tag = suite.rsplit("/", 1)[1]
         muts[f"remove {tag}"] = with_run(lambda r, s=suite: r.replace(" " + s, "", 1))
         muts[f"deselect inside {tag}"] = with_run(lambda r, s=suite: r.replace(s, s + "::test_x --deselect " + s + "::test_y", 1))
@@ -457,11 +535,19 @@ def _mutations(job):
     j = copy.deepcopy(job)
     j["services"] = {}
     muts["no postgres"] = j
+    j = copy.deepcopy(job)
+    j["timeout-minutes"] = A55_MAX_TIMEOUT_MINUTES + 15
+    muts["timeout raised past the budget"] = j
+    j = copy.deepcopy(job)
+    j.pop("timeout-minutes", None)
+    muts["no timeout"] = j
     return muts
 
 
-def test_the_a55_guard_catches_every_way_of_weakening_the_job(jobs):
+def test_the_a55_guard_catches_every_way_of_weakening_each_job(jobs):
     """Mutation proof: each weakening Codex (or anyone) could make in memory is a named problem. If one of these ever passes the
     guard, the guard is not guarding."""
-    for name, mutated in _mutations(jobs[A55_JOB]).items():
-        assert _a55_problems(mutated), f"the guard accepted the mutation: {name}"
+    for jname, job in _a55_jobs(jobs).items():
+        expected = tuple(_job_suites(job))
+        for name, mutated in _mutations(job).items():
+            assert _a55_problems(mutated, expected), f"{jname}: the guard accepted the mutation: {name}"
