@@ -46,7 +46,9 @@ import dataclasses
 import hashlib
 import json
 import logging
+import os
 from datetime import datetime, timedelta, timezone
+from pathlib import Path
 
 from pipeline.orchestrator.writers import (
     ContextSpec,
@@ -56,6 +58,7 @@ from pipeline.orchestrator.writers import (
     register,
 )
 from services.gochara_kernel import evaluator as gk_evaluator
+from services.gochara_kernel import ephemeris_pins as gk_ephemeris_pins
 from services.gochara_kernel.native_conn import native_connection
 from services.gochara_kernel import arcs as gk_arcs
 from services.gochara_kernel.dasha_read import make_period_rows_for
@@ -456,6 +459,86 @@ def _applicable_rulings() -> list[dict]:
     return out
 
 
+EPHE_ENV_VAR = "SE_EPHE_PATH"
+# The pinned Swiss Ephemeris files the kernel opens, with their sha256: ONE shared constant (services/gochara_kernel/ephemeris_pins.py),
+# the same pins Dockerfile.pipeline checks at image build and CI checks at every download (a test asserts the places agree).
+PINNED_EPHE_FILES = tuple(gk_ephemeris_pins.PINNED_SE1_SHA256)
+
+
+class EphemerisConfigRefusal(RuntimeError):
+    """The Swiss Ephemeris directory this run would use is not configured, is ambiguous, does not exist, lacks a pinned file, or is not the
+    pinned bytes."""
+
+
+_PIN_VERIFIED: dict[tuple, str] = {}        # (real path, size, mtime_ns) -> sha256 already verified against the pin, per process
+
+
+def _verify_pinned_bytes(directory: Path, source: str) -> None:
+    """Every pinned file must be the pinned BYTES (sha256), checked at EVERY substep so the body substeps and the manifest that binds the file
+    digests run over the same corpus. The hash is cached per process by real path, size and mtime, so the cost is paid once; a file that is
+    replaced or touched is hashed again."""
+    for name, pinned in gk_ephemeris_pins.PINNED_SE1_SHA256.items():
+        file = (directory / name)
+        real = os.path.realpath(file)
+        stat = os.stat(real)
+        key = (real, stat.st_size, stat.st_mtime_ns)
+        if _PIN_VERIFIED.get(key) == pinned:
+            continue
+        digest = hashlib.sha256(Path(real).read_bytes()).hexdigest()
+        if digest != pinned:
+            raise EphemerisConfigRefusal(
+                f"{ASSET_ID}: {name} in the Swiss Ephemeris directory from {source} ({str(directory)!r}) is not the pinned corpus: "
+                f"sha256 {digest} != pinned {pinned} — refused before any computation")
+        _PIN_VERIFIED[key] = digest
+
+
+def _ephe_path(ctx: ContextSpec) -> str:
+    """The ephemeris directory for this substep. Resolution order: `ctx.config["ephe_path"]` when supplied (tests and any caller that
+    supplies it keep their behaviour), else the process environment `SE_EPHE_PATH` — the variable the Swiss C library itself honours, which
+    panchang_engine/swiss_backend.py requires, CI exports for every gochara test and Dockerfile.pipeline sets in the image (the real
+    orchestrator never puts ephe_path in ctx.config, so a real build used to fail at the manifest substep, after the body phase).
+    Why this name and not SWE_EPHE_PATH: ruling N-28 (panchang_engine/swiss_backend.py) makes SE_EPHE_PATH the single source of truth and
+    states SWE_EPHE_PATH is NOT consulted; the pipeline image sets both to /app/ephe. The sibling v4.41 writer's resolver (config, then
+    SWE_EPHE_PATH, then a dev-checkout default) is deliberately not copied: its silent default is what this resolver refuses.
+
+    REFUSED BY NAME, no default: (1) neither supplied; (2) an EXPLICITLY supplied config value that is not a usable path (an empty string is
+    refused, never read as 'absent': only a missing key or None falls back); (3) BOTH a config path and `SE_EPHE_PATH` present and not the
+    same real directory — the Swiss library honours the environment variable itself even after `set_ephe_path(<config path>)`
+    (panchang_engine/swiss_backend.py documents it), so two different directories would let calculations fall back to the other corpus;
+    (4) not a directory; (5) a pinned file missing; (6) a pinned file whose sha256 is not the pin. Called from every substep, so the FIRST
+    ('rules') refuses a mis-provisioned job in seconds, and every substep (bodies included) provably runs over the same pinned bytes."""
+    supplied = "ephe_path" in ctx.config and ctx.config["ephe_path"] is not None
+    env_value = os.environ.get(EPHE_ENV_VAR) or ""
+    if supplied:
+        configured = ctx.config["ephe_path"]
+        if not isinstance(configured, (str, os.PathLike)) or not str(configured).strip():
+            raise EphemerisConfigRefusal(
+                f"{ASSET_ID}: ctx.config['ephe_path'] was supplied as {configured!r}, which is not a usable path — refused (only an "
+                "absent key or None falls back to the environment)")
+        path, source = str(configured), "ctx.config['ephe_path']"
+        if env_value and os.path.realpath(env_value) != os.path.realpath(path):
+            raise EphemerisConfigRefusal(
+                f"{ASSET_ID}: ctx.config['ephe_path'] ({path!r}) and the environment variable {EPHE_ENV_VAR} ({env_value!r}) name "
+                "different directories — refused: the Swiss library honours the environment variable too, so calculations could "
+                "silently use the other corpus; make them the same directory or unset one")
+    else:
+        path, source = env_value, f"environment variable {EPHE_ENV_VAR}"
+        if not path:
+            raise EphemerisConfigRefusal(
+                f"{ASSET_ID}: no Swiss Ephemeris directory is configured: ctx.config has no 'ephe_path' and {EPHE_ENV_VAR} is not set "
+                "in the process environment — refused at the first substep, nothing built (the pipeline image sets "
+                f"{EPHE_ENV_VAR}=/app/ephe; a job that overrides it must name a directory holding {list(PINNED_EPHE_FILES)})")
+    directory = Path(path)
+    if not directory.is_dir():
+        raise EphemerisConfigRefusal(f"{ASSET_ID}: the Swiss Ephemeris directory from {source} ({path!r}) is not a directory — refused")
+    missing = [name for name in PINNED_EPHE_FILES if not (directory / name).is_file()]
+    if missing:
+        raise EphemerisConfigRefusal(
+            f"{ASSET_ID}: the Swiss Ephemeris directory from {source} ({path!r}) lacks the pinned file(s) {missing} — refused")
+    _verify_pinned_bytes(directory, source)
+    return path
+
+
 class HorizonMismatch(RuntimeError):
     """A5.5f: this run's horizon is not the horizon its candidate manifest was published for."""
 
@@ -498,7 +581,7 @@ def _verify_live_inputs(ctx: ContextSpec, chart_id: str) -> None:
     gk_input_vector.verify_live(
         ctx.db_conn, stored,
         sky_convention_id=SkyEventStore(ctx.db_conn).register_convention(),
-        ephe_path=ctx.config.get("ephe_path"), path_refs=gk_rule_registry.bound_path_refs(),
+        ephe_path=_ephe_path(ctx), path_refs=gk_rule_registry.bound_path_refs(),
         rulings=_applicable_rulings(),
         stored_scope=TEST_SLICE_SCOPE if slice_ is not None else gk_input_vector.STORED_SCOPE,
         test_slice=_slice_component(slice_) if slice_ is not None else None)
@@ -507,7 +590,7 @@ def _verify_live_inputs(ctx: ContextSpec, chart_id: str) -> None:
     # check runs on the SCOPE-NORMALISED copy: the stored vector's unknown scope is the unsealability
     # proof and belongs to the verification job — the build still proves the real image (R1).
     gk_input_vector_verifier.verify_inputs(
-        ctx.db_conn, _scope_normalised(stored, slice_), ephe_path=ctx.config.get("ephe_path"),
+        ctx.db_conn, _scope_normalised(stored, slice_), ephe_path=_ephe_path(ctx),
         modules=gk_input_vector.IMPLEMENTATION_MODULES, path_refs=gk_rule_registry.bound_path_refs())
 
 
@@ -701,6 +784,7 @@ class GocharaV5Writer(WriterBase):
         if ctx.dry_run:
             return WriterResult(asset_id=self.asset_id, rows_inserted=0,
                                 notes=f"dry_run: {step.key} not solved, nothing written")
+        _ephe_path(ctx)         # every substep resolves it, so the FIRST ('rules') refuses a mis-provisioned job in seconds
         if step.key == RULES_SUBSTEP:
             # rule_binding: registry writes ride the Gochara-5 GLOBAL family
             # key (taken by the tables' write-guard triggers). The chart
@@ -750,7 +834,7 @@ class GocharaV5Writer(WriterBase):
         if body not in SUBSTRATE_BODIES:
             return WriterResult(asset_id=self.asset_id, rows_inserted=0,
                                 notes=f"unknown body substep {step.key!r}")
-        ephe_path = ctx.config.get("ephe_path")
+        ephe_path = _ephe_path(ctx)
         store = SkyEventStore(ctx.db_conn)
         counts = store.build_boundary_substrate(body, ephe_path=ephe_path)
         return WriterResult(
@@ -769,7 +853,7 @@ class GocharaV5Writer(WriterBase):
         `manifest` → `snapshot` → `inventory:<class>` → (coverage, records) →
         `verify:<class>`. Sealing is NOT this writer's step (A6)."""
         horizon = _effective_horizon(ctx, slice_)
-        ephe_path = ctx.config.get("ephe_path")
+        ephe_path = _ephe_path(ctx)
         inv_store = InventoryStore(ctx.db_conn)
         rstore = RecordStore(ctx.db_conn)
 
@@ -930,7 +1014,7 @@ class GocharaV5Writer(WriterBase):
         # DERIVED-tolerance, union-of-contacts contract (R10-6); the fixed-tolerance sampling precheck that used to run
         # here (3 s / 6 h) contradicted it and is removed.
         horizon = _effective_horizon(ctx, slice_)
-        ephe_path = ctx.config.get("ephe_path")
+        ephe_path = _ephe_path(ctx)
 
         def position_at(body: str, t: datetime) -> float:
             jd = t.timestamp() / 86400.0 + _JD_UNIX_EPOCH
@@ -972,7 +1056,7 @@ class GocharaV5Writer(WriterBase):
         context = fetch_chart_context(ctx.db_conn, chart_id)
         require_complete(context)
         horizon = _effective_horizon(ctx, slice_)
-        ephe_path = ctx.config.get("ephe_path")
+        ephe_path = _ephe_path(ctx)
         chart = {"lagna_deg": context["lagna_deg"], "natal": context["natal"]}
         store = RecordStore(ctx.db_conn)
         sky_cid = SkyEventStore(ctx.db_conn).register_convention()
@@ -1110,7 +1194,7 @@ class GocharaV5Writer(WriterBase):
         if event_class not in SCORED_CLASSES or path_id not in WINDOW_PATHS:
             return WriterResult(asset_id=self.asset_id, rows_inserted=0,
                                 notes=f"unknown window grain {step.key!r}")
-        ephe_path = ctx.config.get("ephe_path")
+        ephe_path = _ephe_path(ctx)
 
         def position_at(body: str, t: datetime) -> float:
             jd = t.timestamp() / 86400.0 + _JD_UNIX_EPOCH
