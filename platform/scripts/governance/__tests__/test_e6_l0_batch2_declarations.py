@@ -110,8 +110,11 @@ def test_the_file_version_is_well_formed_and_the_validator_accepts_every_entry()
         assert word not in sentence.lower()
 
 
+L0_FILL_NO_ALIAS_CLASS = ["bg_compendium_index", "bg_formula_constants", "bg_ghatana", "bg_gochara_citation_resolution", "bg_kota_chakra_rings", "bg_muhurta_lattice", "bg_text_index", "bg_texts", "bg_vedha_malefic_scale", "bg_vidhi_floors", "bg_vidhi_primitives"]      # E5.7 L0 fills: `na: no_alias_class`, schema-checked
+
+
 def test_exactly_these_assets_declare_vocab_alias_and_prose_empty_and_nothing_else_of_the_s3_s1_s2_family_moves():
-    assert sorted(a for a, e in ASSETS.items() if e.get("vocab_alias")) == sorted(["bg_phaladeepika_latta", *VOCAB_ASSETS])
+    assert sorted(a for a, e in ASSETS.items() if e.get("vocab_alias")) == sorted(["bg_phaladeepika_latta", *VOCAB_ASSETS, *L0_FILL_NO_ALIAS_CLASS])
     assert sorted(a for a, e in ASSETS.items() if e.get("prose_fields") == []) == sorted([*EARLIER_EMPTY, *EMPTY_ASSETS])
     for aid in VOCAB_ASSETS:                                      # no Ldgr / Null / Carr / coupling declaration is added for these five
         e = ASSETS[aid]

@@ -94,9 +94,12 @@ def test_the_committed_file_is_1_10_0_and_the_validator_accepts_this_entry():
     assert ac.load_asset_declarations()[AID]["carriage"]["applies"] == "D1"
 
 
+L0_FILL_NO_ALIAS_CLASS = ["bg_compendium_index", "bg_formula_constants", "bg_ghatana", "bg_gochara_citation_resolution", "bg_kota_chakra_rings", "bg_muhurta_lattice", "bg_text_index", "bg_texts", "bg_vedha_malefic_scale", "bg_vidhi_floors", "bg_vidhi_primitives"]      # E5.7 L0 fills: `na: no_alias_class` for 11 more assets (no carriage, no ldgr_source)
+
+
 def test_this_asset_alone_declares_the_three_blocks_and_its_created_at_is_a_stamp_never_a_constant():
     decl = [a for a, e in DECL["assets"].items() if any(k in (e.get("carriage") or {}) for k in ac.CARRIAGE_DECL_FIELDS) or "vocab_alias" in e or "ldgr_source" in e]
-    assert sorted(decl) == sorted([AID, *BATCH2_VOCAB])                  # L0-WAVE batch 2: five more vocab_alias declarations, none a carriage or an ldgr_source
+    assert sorted(decl) == sorted([AID, *BATCH2_VOCAB, *L0_FILL_NO_ALIAS_CLASS])                  # L0-WAVE batch 2: five more vocab_alias declarations, none a carriage or an ldgr_source
     assert [a for a, e in DECL["assets"].items() if "ldgr_source" in e or any(k in (e.get("carriage") or {}) for k in ac.CARRIAGE_DECL_FIELDS)] == [AID]
     assert [a for a, e in DECL["assets"].items() if "null_convention" in e] == [AID]                  # DECL-LATTA-NULL (1.11.0)
     nc = ENTRY["null_convention"]
