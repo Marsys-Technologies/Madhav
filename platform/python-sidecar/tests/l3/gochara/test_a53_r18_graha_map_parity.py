@@ -1,7 +1,8 @@
 """A5.3 — the five closed graha adapters the R17 census excludes (steward M20261003T121341 / Suvarna M20261003T121400).
 
-* the three BUILDER maps are TEMPORARY exclusions (they migrate onto the SSoT after the protected window): each is pinned EQUAL to the
-  map derived from `brahmagyan.graha_vocabulary` (same nine keys, same values), and each parity check is itself mutation-proofed;
+* the three BUILDER maps are now DERIVED from the SSoT (they migrated onto the graha_vocabulary helpers after the
+  protected window): the equality pins below remain as drift guards — a hand-edit that re-introduces an
+  independent literal still fails here, and each parity check is itself mutation-proofed;
 * the two VERIFIER maps are PERMANENT exclusions (independence from builder and SSoT is their purpose): they are checked against FIXED
   LITERAL expectations ONLY — nothing here ties them to the SSoT.
 Doctrine note (Suvarna, M20261003T121557): the parity test pins the MEAN-node mapping (RAH_MEAN / KET_MEAN). If a builder map is ever meant

@@ -40,6 +40,8 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Sequence
 
+from brahmagyan.graha_vocabulary import to_title
+
 from . import targets
 
 
@@ -228,12 +230,14 @@ class IdentityCollisionError(RuntimeError):
     loud build failure, never a silent dedup."""
 
 
-#: Kernel body name → substrate (DB) body domain value (kgpo/kgse body checks).
-DB_BODY = {
-    "Sun": "sun", "Mars": "mars", "Mercury": "mercury", "Jupiter": "jupiter",
-    "Venus": "venus", "Saturn": "saturn", "Rahu": "rahu", "Ketu": "ketu",
-    "Moon": "moon",
-}
+#: The nine grahas of the kernel's (mean-node) convention, as SSoT subject codes (doctrine note, Suvarna
+#: M20261003T121557: the MEAN nodes; following the TRUE nodes would be a doctrine question, not a mapping edit).
+_NINE_GRAHA_CODES = ("SUN", "MOON", "MAR", "MER", "JUP", "VEN", "SAT", "RAH_MEAN", "KET_MEAN")
+
+#: Kernel body name → substrate (DB) body domain value (kgpo/kgse body checks) — derived from the
+#: brahmagyan.graha_vocabulary SSoT (R17 adoption over addition — the local literal retired onto the SSoT
+#: helpers after the protected window).
+DB_BODY = {to_title(code): to_title(code).lower() for code in _NINE_GRAHA_CODES}
 
 #: Kernel boundary relation → §6.1 event_kind (kgse_event_kind_ck).
 DB_EVENT_KIND = {
