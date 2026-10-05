@@ -211,7 +211,7 @@ CRITERION_REGISTRY: dict[str, dict] = {
     "Carr.D2":                       dict(gate="Carr", check="D2", applicability="the asset carries two independent witnesses of the same fact", detector="NONE", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=1),
     "Carr.D3":                       dict(gate="Carr", check="D3", applicability="the asset computes a value that a second method could re-derive", detector="NONE", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=1),
     "Completeness.depth.dasha_link": dict(gate="Completeness", check="depth.dasha_link", applicability="the table declares a dasha_system_id column", detector="NONE", layers=ALL_LAYERS, columns_any=("dasha_system_id",), asset_kinds=None, revision=1),
-    "Earn.service_state":            dict(gate="Earn", check="service_state", applicability="asset_kind='service' (no target_table; asset_throughput's rows_written signal cannot distinguish healthy-and-idle from broken)", detector="NONE", layers=ALL_LAYERS, columns_any=None, asset_kinds=("service",), revision=1),
+    "Earn.service_state":            dict(gate="Earn", check="service_state", applicability="asset_kind='service' (no target_table; asset_throughput's rows_written signal cannot distinguish healthy-and-idle from broken). Read from the probe the asset DECLARES (`service_probe`: probe_type, max_age_hours), against what the registry recorded for that probe: PASS = the registry names the declared probe_type, service_health is healthy and the last self-test is within max_age_hours; FAIL = unhealthy; PARTIAL = degraded; NO_DETECTOR (naming what is missing) = no declaration, a probe the registry does not name, never probed, stale, or the record unreadable", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=("service",), revision=2),
 }
 
 # E6 item (i), REGISTRY_REVISION 8: criteria that WERE registered and have been retired by a ruling. A retired criterion
@@ -850,6 +850,10 @@ def _non_claim_names_column_problem(x: dict):
 # the asset's classical source and the citation_state it stands on, or declares that the asset states no classical rule or cited fact
 # (`no_classical_claim`). N/A is reached ONLY through these words, never from a column pattern (A5). N-73 (4): `no_alias_class` may not be declared
 # where a documented alias exists. N-73 (1): a source-status disclosure is not a source.
+# Earn.service_state (E5.7, criterion revision 2): a service asset DECLARES the probe it is read against, `service_probe: {probe_type, max_age_hours, why, evidence}`. The probe's own result is what the
+# registry recorded when the engine ran it (`service_health`, `last_selftest_at`, `health_probe.probe_type`); the declaration only names WHICH probe and HOW FRESH, it never states a verdict.
+SERVICE_PROBE_DECL_FIELDS = ("probe_type", "max_age_hours", "why", "evidence")
+SERVICE_MAX_AGE_HOURS_CAP = 24 * 366
 NO_ALIAS_CLASS = "no_alias_class"
 NO_CLASSICAL_CLAIM = "no_classical_claim"
 ALIAS_CLASSES = ("planet",)                       # the bg_ontology entity classes an alias is measured against (widening is a registry revision)
@@ -1226,6 +1230,20 @@ def density_tier_measure_problem(entry, table, table_columns):
     return density_tier_problem(entry, table_columns)
 
 
+def validate_service_probe_declaration(where: str, sp, e: dict) -> None:
+    """Raises DeclarationsError when an asset's `service_probe` is malformed: only a declared `service` kind carries one; `probe_type` is an identifier (whether the registry names it is the measure-time
+    question), `max_age_hours` a positive integer within a year, `why` a real one-line reason and `evidence` a checkable pointer (`unverified:` allowed: it names a probe, it releases nothing)."""
+    if not isinstance(sp, dict):
+        raise DeclarationsError(f"{where}.service_probe must be an object or null")
+    if e.get("kind") != "service":
+        raise DeclarationsError(f"{where}.service_probe is only for a declared kind 'service', got {e.get('kind')!r}")
+    _s3_common(where, "service_probe", sp, SERVICE_PROBE_DECL_FIELDS, na=False)
+    _s3_ident(where, "service_probe", "probe_type", sp.get("probe_type"))
+    h = sp.get("max_age_hours")
+    if not (isinstance(h, int) and not isinstance(h, bool) and 1 <= h <= SERVICE_MAX_AGE_HOURS_CAP):
+        raise DeclarationsError(f"{where}.service_probe.max_age_hours must be an integer of 1..{SERVICE_MAX_AGE_HOURS_CAP}, got {h!r}")
+
+
 def validate_density_tier_declaration(where: str, dt, e: dict) -> None:
     """Raises DeclarationsError when an asset's `density_tier_columns` is malformed or unsound (see `density_tier_problem`). The validator has no database: that a declared
     column IS a column of the table is the measure-time question (Dens.served reads NO_DETECTOR with the disagreement reported, never PASS)."""
@@ -1236,7 +1254,7 @@ def validate_density_tier_declaration(where: str, dt, e: dict) -> None:
 
 _DECL_ENTRY_KEYS = ("kind", "carriage", "prose_fields", "terminal_by_construction", "cross_asset_writes",
                     "read_evidence", "read_table", "read_kind", "evidence", "evidence_kind", "vocab_alias", "ldgr_source", "null_convention",
-                    "prose_coupling", "density_tier_columns")
+                    "prose_coupling", "density_tier_columns", "service_probe")
 _DECL_EVIDENCE_KEYS = ("kind", "carriage", "prose_fields", "cross_asset_writes")
 # prose_fields entries (SS ruling 2026-10-01; CLAUDE.md N.7 concerns GENERATED prose): a column name, or a JSON path into
 # a JSONB column, `column.$.seg(.seg)*` where a seg is an identifier key, optionally followed by ONE `[*]` (every element
@@ -1346,7 +1364,8 @@ def validate_declarations(doc, registry_ids=None) -> dict:
     for _fk, _fv in (("vocab_alias_declaration_fields", VOCAB_ALIAS_DECL_FIELDS), ("ldgr_source_declaration_fields", LDGR_SOURCE_DECL_FIELDS),
                      ("null_convention_declaration_fields", NULL_CONVENTION_DECL_FIELDS),
                      ("prose_coupling_declaration_fields", PROSE_COUPLING_DECL_FIELDS),
-                     ("density_tier_declaration_fields", DENS_TIER_DECL_FIELDS)):
+                     ("density_tier_declaration_fields", DENS_TIER_DECL_FIELDS),
+                     ("service_probe_declaration_fields", SERVICE_PROBE_DECL_FIELDS)):
         if _fk in doc and doc[_fk] != list(_fv):
             raise DeclarationsError(f"`{_fk}` must be exactly {list(_fv)}")
     known = _registry_id_set(registry_ids)
@@ -1386,6 +1405,8 @@ def validate_declarations(doc, registry_ids=None) -> dict:
             validate_prose_coupling_declaration(where, e["prose_coupling"], e)
         if e.get("density_tier_columns") is not None:
             validate_density_tier_declaration(where, e["density_tier_columns"], e)
+        if e.get("service_probe") is not None:
+            validate_service_probe_declaration(where, e["service_probe"], e)
         bad = prose_empty_d1_problem(e)
         if bad:
             raise DeclarationsError(f"{where}.prose_coupling is missing: {bad}")
@@ -8112,6 +8133,53 @@ def _service_state_na(declared_kind, registry_kind):
                "(a service's rows_written cannot tell healthy-and-idle from broken)", "not-a-service")
 
 
+def service_records(layer_key: str):
+    """Earn.service_state's recorded input: for each active SERVICE-kind asset of the layer, what the registry recorded when the engine last ran its health probe: `service_health`
+    (healthy / degraded / unhealthy / NULL), `probe_type` (health_probe->>'probe_type'), `selftest_age_hours` (now() - last_selftest_at, computed by the database: no client clock). One read-only
+    SELECT, isolated from the main registry read (the columns are the engine's, migration 242): any failure returns None, which the grader reads as NO_DETECTOR, never as healthy."""
+    try:
+        blob = scalar(
+            "SELECT coalesce(json_agg(json_build_object('asset_id',asset_id,'service_health',service_health,'probe_type',health_probe->>'probe_type',"
+            "'selftest_age_hours',round((extract(epoch from (now() - last_selftest_at))/3600)::numeric, 2)) ORDER BY asset_id)::text,'[]') "
+            f"FROM asset_registry WHERE layer = '{LAYERS[layer_key]['registry_layer']}' AND is_active AND NOT coalesce(dead_flag,false) AND asset_kind = 'service'")
+        return {x["asset_id"]: x for x in json.loads(blob or "[]")}
+    except Exception:       # noqa: BLE001 -- an unreadable service record is NO_DETECTOR in the grader (the reason text is fixed: a psql error line can carry a host)
+        return None
+
+
+def grade_service_state(aid: str, decl, records) -> dict:
+    """Earn.service_state for a registry-`service` asset, from the probe it declares and the registry's recorded result of that probe (`service_records`). PASS only when ALL of: the declaration names a probe,
+    the registry's health_probe names the same probe_type, service_health is 'healthy' and the last self-test is no older than the declared max_age_hours. 'unhealthy' reads FAIL, 'degraded' PARTIAL.
+    Everything else is NO_DETECTOR and says what is missing. The recorded health is the engine's own probe verdict, read, never re-derived here."""
+    nd = lambda why: dict(v=NO_DET, measured=f"NO_DETECTOR — {why}")      # noqa: E731
+    sp = decl.get("service_probe") if isinstance(decl, dict) else None
+    if not isinstance(sp, dict):
+        return nd(f"no `service_probe` declaration for {aid}: declare the probe it is read against (probe_type, max_age_hours) in asset_declarations.json")
+    ptype, max_h = sp.get("probe_type"), sp.get("max_age_hours")
+    if not (isinstance(ptype, str) and isinstance(max_h, int) and not isinstance(max_h, bool) and max_h > 0):
+        return nd(f"the `service_probe` declaration for {aid} is malformed (it was not validated)")
+    if records is None:
+        return nd(f"the registry's service-health record could not be read (declared probe {ptype})")
+    rec = records.get(aid)
+    if rec is None:
+        return nd(f"the registry holds no active service-kind row for {aid} (declared probe {ptype})")
+    if rec.get("probe_type") != ptype:
+        return nd(f"declared probe {ptype!r} but the registry's health_probe names {rec.get('probe_type')!r}: no registered probe of that type to read")
+    health, age = rec.get("service_health"), rec.get("selftest_age_hours")
+    base = f"probe {ptype}: registry service_health={health!r}, last self-test {age}h ago (declared max {max_h}h)"
+    if health == "unhealthy":
+        return dict(v=FAIL, measured=f"the probe recorded unhealthy — {base}")
+    if health == "degraded":
+        return dict(v=PARTIAL, measured=f"the probe recorded degraded — {base}")
+    if health != "healthy":
+        return nd(f"the probe has no recorded healthy/unhealthy result ({base}): never probed")
+    if not isinstance(age, (int, float)) or isinstance(age, bool) or age < 0:
+        return nd(f"healthy but the last self-test time is missing or in the future ({base}): freshness cannot be told")
+    if age > max_h:
+        return nd(f"healthy but stale ({base}): re-run the probe")
+    return dict(v=PASS, measured=f"healthy and fresh — {base}")
+
+
 def _measure_target(r: dict, owners, declared_kind) -> dict:
     """Build.target (T4:274: "a `target_table` set, or service / multi-table declared explicitly").
 
@@ -8844,6 +8912,8 @@ def measure(layer_key: str, assets=None) -> dict:
         prose_decls, prose_vocab = exc, set()
     prose_tests = None
     produced: dict = {}                                   # E6 (h): registry-wide table -> producers, lazily, once per layer
+    _UNREAD = object()
+    svc_recs = _UNREAD                                    # Earn.service_state: the registry's recorded probe results, read lazily, once
 
     def produced_owners():
         if "map" not in produced:                         # an unreadable map raises and is NOT cached as empty
@@ -9018,6 +9088,10 @@ def measure(layer_key: str, assets=None) -> dict:
             instrument_present, r["has_writer"], era)
 
         _ss = _service_state_na(_declared_kind(declarations, aid), r.get("asset_kind"))
+        if _ss is None and r.get("asset_kind") == "service":
+            if svc_recs is _UNREAD:        # one isolated read per layer run, only when the layer holds a service
+                svc_recs = service_records(layer_key)
+            _ss = grade_service_state(aid, (declarations or {}).get(aid), svc_recs)
         if _ss is not None:
             m["Earn.service_state"] = _ss
 

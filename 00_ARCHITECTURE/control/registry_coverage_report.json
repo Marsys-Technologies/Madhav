@@ -1,17 +1,16 @@
 {
  "schema": 2,
  "registry_revision": 25,
- "registry_fingerprint": "0e78e228d140d04920cb12bcd8b5bd9c8b33ca59ac8f9105853a139b8289d698",
- "inspector_commit": "b2966b4a8518605a6fc985ef96c33761885f7843",
+ "registry_fingerprint": "d3242927ca411b84588cd524ed2b6b9144e3586cfb8a77c15d0b52dd5aaebfc4",
+ "inspector_commit": "400c8556c205dfde0a386504eef837e710df9a13",
  "inspector_commit_note": "the last commit touching asset_census.py when this report was generated; a provenance pointer, not a reachability claim (it may be unreachable after a squash or rebase); --check never compares it",
  "expected_cells": 54,
- "covered_cells": 42,
+ "covered_cells": 48,
  "covered_cells_unit": "gate_x_layer cells whose every required criterion has a registry-declared detector (a registry label; says nothing about per-asset emission); per-asset-pending cells are reported separately and never counted covered",
  "pending_cells": 0,
  "uncovered_required_criteria": [
   "Carr.D2",
-  "Carr.D3",
-  "Earn.service_state"
+  "Carr.D3"
  ],
  "per_asset_pending": [],
  "per_asset_pending_decisions": {},
@@ -173,7 +172,7 @@
   },
   {
    "criterion": "Earn.service_state",
-   "detector": "NONE",
+   "detector": "asset_census.py:measure()",
    "emitted_by_measure": true,
    "sites": [
     "measure"
@@ -420,14 +419,14 @@
    "total": 54,
    "pinned": true,
    "with_auto_detector": 54,
-   "fully_covered": 42,
+   "fully_covered": 48,
    "pending_only": 0
   },
   "core_criterion_x_layer": {
    "total": 150,
    "pinned": false,
-   "auto_measured": 132,
-   "detector_none": 18
+   "auto_measured": 138,
+   "detector_none": 12
   },
   "gate_x_asset": {
    "total": null,
@@ -650,21 +649,18 @@
   {
    "gate": "Earn",
    "layer": "L0",
-   "status": "uncovered",
+   "status": "covered",
    "required": [
     "Earn.build_record",
     "Earn.service_state"
    ],
    "auto_measured": [
-    "Earn.build_record"
-   ],
-   "detector_none": [
+    "Earn.build_record",
     "Earn.service_state"
    ],
+   "detector_none": [],
    "per_asset_pending": [],
-   "uncovered": [
-    "Earn.service_state"
-   ],
+   "uncovered": [],
    "declared_na_rules": [
     "Earn.service_state#measured:not-a-service"
    ]
@@ -672,21 +668,18 @@
   {
    "gate": "Earn",
    "layer": "L1",
-   "status": "uncovered",
+   "status": "covered",
    "required": [
     "Earn.build_record",
     "Earn.service_state"
    ],
    "auto_measured": [
-    "Earn.build_record"
-   ],
-   "detector_none": [
+    "Earn.build_record",
     "Earn.service_state"
    ],
+   "detector_none": [],
    "per_asset_pending": [],
-   "uncovered": [
-    "Earn.service_state"
-   ],
+   "uncovered": [],
    "declared_na_rules": [
     "Earn.service_state#measured:not-a-service"
    ]
@@ -694,21 +687,18 @@
   {
    "gate": "Earn",
    "layer": "L2",
-   "status": "uncovered",
+   "status": "covered",
    "required": [
     "Earn.build_record",
     "Earn.service_state"
    ],
    "auto_measured": [
-    "Earn.build_record"
-   ],
-   "detector_none": [
+    "Earn.build_record",
     "Earn.service_state"
    ],
+   "detector_none": [],
    "per_asset_pending": [],
-   "uncovered": [
-    "Earn.service_state"
-   ],
+   "uncovered": [],
    "declared_na_rules": [
     "Earn.service_state#measured:not-a-service"
    ]
@@ -716,21 +706,18 @@
   {
    "gate": "Earn",
    "layer": "L3",
-   "status": "uncovered",
+   "status": "covered",
    "required": [
     "Earn.build_record",
     "Earn.service_state"
    ],
    "auto_measured": [
-    "Earn.build_record"
-   ],
-   "detector_none": [
+    "Earn.build_record",
     "Earn.service_state"
    ],
+   "detector_none": [],
    "per_asset_pending": [],
-   "uncovered": [
-    "Earn.service_state"
-   ],
+   "uncovered": [],
    "declared_na_rules": [
     "Earn.service_state#measured:not-a-service"
    ]
@@ -738,21 +725,18 @@
   {
    "gate": "Earn",
    "layer": "L4",
-   "status": "uncovered",
+   "status": "covered",
    "required": [
     "Earn.build_record",
     "Earn.service_state"
    ],
    "auto_measured": [
-    "Earn.build_record"
-   ],
-   "detector_none": [
+    "Earn.build_record",
     "Earn.service_state"
    ],
+   "detector_none": [],
    "per_asset_pending": [],
-   "uncovered": [
-    "Earn.service_state"
-   ],
+   "uncovered": [],
    "declared_na_rules": [
     "Earn.service_state#measured:not-a-service"
    ]
@@ -760,21 +744,18 @@
   {
    "gate": "Earn",
    "layer": "L5",
-   "status": "uncovered",
+   "status": "covered",
    "required": [
     "Earn.build_record",
     "Earn.service_state"
    ],
    "auto_measured": [
-    "Earn.build_record"
-   ],
-   "detector_none": [
+    "Earn.build_record",
     "Earn.service_state"
    ],
+   "detector_none": [],
    "per_asset_pending": [],
-   "uncovered": [
-    "Earn.service_state"
-   ],
+   "uncovered": [],
    "declared_na_rules": [
     "Earn.service_state#measured:not-a-service"
    ]

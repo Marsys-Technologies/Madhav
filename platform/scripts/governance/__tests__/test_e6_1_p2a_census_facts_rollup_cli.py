@@ -292,7 +292,8 @@ def test_rollup_flag_writes_nine_gate_cells_per_asset_with_registry_versioning(m
     assert chk("bg_known", "Ldgr", "Ldgr.source_presence")["state"] == "MEASURED"
     assert chk("bg_notable", "Ldgr", "Ldgr.source_presence")["state"] == "UNKNOWN"
     assert chk("bg_known", "Earn", "Earn.service_state")["state"] == "NOT_APPLICABLE"
-    assert chk("bg_notable", "Earn", "Earn.service_state")["state"] == "APPLIES"
+    # E5.7: a registry service is now graded (no declared service_probe here: NO_DETECTOR naming it), no longer an unmeasured APPLIES
+    assert chk("bg_notable", "Earn", "Earn.service_state")["state"] == "MEASURED" and chk("bg_notable", "Earn", "Earn.service_state")["v"] == ac.NO_DET
     # nothing reads N/A while NA_RULE_DECISIONS is empty
     assert all(cell["v"] != ac.NA for cells in r["layers"]["L0"].values() for cell in cells.values())
 
