@@ -136,6 +136,24 @@ export interface NirmanaRegistryContractRow {
  * adds a row to an existing run (rows are created with their run) and the orchestrator stamps started_at = NOW() when the asset starts, which makes the row newer and blocking. Evidence is not permanent (the cockpit watchdog prunes old build_run_assets / build_runs rows; a receipt's `build_id` becomes NULL when its run is pruned —
  * which this rule reads as NON-test evidence, i.e. it fails closed — and a receipt is deleted with its registry row, supabase/migrations/596:12), so the procedural commitment,
  * not the detector alone, is what closes the loop; after a teardown the evidence rows are gone or still test-marked.
+ *
+ * N-141 — ga_fact_identity (Suvarṇa's ruling; restores the monitor reading that migration 1262 / PR #3073 broke): a REGISTERED INDEX of kind data with NO writer and NO build obligation —
+ * the Fact Identity Index is filled per chart by the hand-run script G-IDX, it has no @register()'d writer (`has_writer = false`) and nothing builds it. Registered ACTIVE, it could not be
+ * given an execution obligation, so building the baseline threw and every reading since 2026-10-04T16:35Z was source_unavailable. It is EXCLUDED FROM THE DENOMINATOR as one more row of
+ * THIS table (one mechanism), marked by the optional `noWriterIndex` field, which selects a DIFFERENT row-level shape — the rows above are inactive writers; this one is an active row
+ * with no writer — and which, UNLIKE the rows above, FAILS CLOSED BY THROWING: a registry row that is this id but no longer the declared shape is an error that names the id, the decision
+ * and every failed condition, never a row that is quietly kept (it would then silently join the denominator as a new asset) and never one that is quietly excluded. The exact predicate
+ * (every clause is a way the row could stop being "an index nobody builds"): `layer` and `asset_kind` equal the declared ones (ganita / data); `has_writer === false` (a writer is a build
+ * obligation); `is_active === true` and `catalog_status === 'CURRENT'` (an inactive, RETIRED or DRAFT row is a lifecycle event — a retired row would carry a retired_with_disposition
+ * obligation and belongs to a successor definition, not to a silent exclusion); `depends_on` EMPTY (an index that now depends on something is part of a DAG); `superseded_by` and
+ * `data_disposition` null (the retirement fields); NOTHING depends on it, active, inactive or retired (dependents `none`: a dependent would make it part of the live DAG, and the
+ * dependent's wave would otherwise be computed against a missing id); and the REAL obligation function (`nirmanaExecutionContractForRegistryRow`) still answers `unresolved` for it (an
+ * adjudicated disposition or producer coverage added in code for this id means a successor definition has taken it in). The evidence column is deliberately NOT consulted: a row with no
+ * writer has no build to leave evidence, the SQL predicate has no arm for it (so the shared golden text is unchanged), and its column is NULL by construction. A registry that has NO
+ * such row is not an error — there is nothing to exclude and the denominator is unaffected.
+ * END CONDITION — the rule is REMOVED, in the same change, when EITHER (a) ga_fact_identity gains a writer and a build obligation (then it is an ordinary asset and this predicate throws
+ * until the row is removed), OR (b) a successor frozen definition INCLUDES it (the same moment: its execution obligation is then fixed in code), OR (c) its registry row is retired or
+ * deleted — whichever comes first. It is not a permanent license to ignore an id.
  */
 export interface NirmanaStagedInertCandidateRule {
   /** The exact `depends_on` set this id is declared to have (compared as a set). */
@@ -151,6 +169,11 @@ export interface NirmanaStagedInertCandidateRule {
   readonly evidenceCutoff: string | null
   /** `none` = nothing may depend on this id; `inactive_only` = every asset that depends on it must itself be `is_active === false`. */
   readonly dependents: 'none' | 'inactive_only'
+  /**
+   * N-141. ABSENT on the staged-writer rows above. When present, the row is a REGISTERED INDEX with no writer and no build obligation (see the N-141 paragraph): the row-level shape is
+   * the one declared here plus the fixed clauses of `noWriterIndexViolations`, there is no evidence mode, and any deviation THROWS instead of keeping the row.
+   */
+  readonly noWriterIndex?: { readonly layer: keyof typeof registryLayers; readonly assetKind: 'data' }
   /** Why the id is excluded — printed by the monitor. */
   readonly reason: string
   /** The decision that makes the exclusion, carried in code and printed by the monitor. */
@@ -166,6 +189,12 @@ export const NIRMANA_STAGED_INERT_CANDIDATE_RULES: ReadonlyMap<string, NirmanaSt
     declaredDependsOn: ['bg_sky_calendar', 'ka_gochara_resonance', 'ka_kota_chakra', 'ka_moorti_nirnaya', 'ka_tithi_pravesha', 'ka_vedha_gochara'],
     emptyDependsOnAllowed: false, testTriggers: [], evidenceCutoff: '2026-10-04T13:31:57Z', dependents: 'inactive_only',
     reason: 'retirement-pending legacy century writer (interim: ends with the t3 successor manifest or the registry retirement)', decision: 'N-138',
+  }],
+  // N-141: the registered, writer-less Fact Identity Index (migration 1262) — see the N-141 paragraph above for the exact predicate and the END CONDITION.
+  ['ga_fact_identity', {
+    declaredDependsOn: [], emptyDependsOnAllowed: true, testTriggers: [], evidenceCutoff: null, dependents: 'none',
+    noWriterIndex: { layer: 'ganita', assetKind: 'data' },
+    reason: 'registered index (kind data) with no writer and no build obligation: excluded from the denominator, fails closed if that shape changes', decision: 'N-141',
   }],
 ])
 
@@ -186,6 +215,17 @@ export function assertStagedInertCandidateRules(rules: ReadonlyMap<string, Nirma
         || new Date(Date.parse(rule.evidenceCutoff)).toISOString().slice(0, 19) + 'Z' !== rule.evidenceCutoff) bad(`${id}.evidenceCutoff`, rule.evidenceCutoff)
       if (rule.testTriggers.length > 0) bad(`${id}.testTriggers (an id with an evidenceCutoff declares no test trigger: one evidence mode per id)`, rule.testTriggers)
     }
+    if (rule.noWriterIndex !== undefined) {
+      // one meaning per row: a no-writer index has no declared dependency, no evidence mode, and nothing may depend on it; its pinned layer / kind must be real
+      const index = rule.noWriterIndex as { layer?: unknown; assetKind?: unknown } | null
+      if (typeof index !== 'object' || index === null || typeof index.layer !== 'string' || !(index.layer in registryLayers)) bad(`${id}.noWriterIndex.layer`, index?.layer)
+      if (index?.assetKind !== 'data') bad(`${id}.noWriterIndex.assetKind (only 'data')`, index?.assetKind)
+      if (rule.declaredDependsOn.length > 0) bad(`${id}.declaredDependsOn (a no-writer index depends on nothing)`, rule.declaredDependsOn)
+      if (rule.testTriggers.length > 0) bad(`${id}.testTriggers (a no-writer index has no evidence mode)`, rule.testTriggers)
+      if (rule.evidenceCutoff !== null) bad(`${id}.evidenceCutoff (a no-writer index has no evidence mode)`, rule.evidenceCutoff)
+      if (rule.dependents !== 'none') bad(`${id}.dependents (nothing may depend on a no-writer index)`, rule.dependents)
+      if (rule.emptyDependsOnAllowed !== true) bad(`${id}.emptyDependsOnAllowed (a no-writer index has an empty depends_on)`, rule.emptyDependsOnAllowed)
+    }
     if (typeof rule.reason !== 'string' || rule.reason.trim().length === 0 || rule.reason !== rule.reason.trim()) bad(`${id}.reason`, rule.reason)
     if (typeof rule.decision !== 'string' || rule.decision.trim().length === 0 || rule.decision !== rule.decision.trim()) bad(`${id}.decision`, rule.decision)
     if (new Set(rule.declaredDependsOn).size !== rule.declaredDependsOn.length) bad(`${id}.declaredDependsOn (duplicate entry)`, rule.declaredDependsOn)
@@ -194,8 +234,11 @@ export function assertStagedInertCandidateRules(rules: ReadonlyMap<string, Nirma
 }
 assertStagedInertCandidateRules(NIRMANA_STAGED_INERT_CANDIDATE_RULES)
 
-/** The ids of the rule table — kept as the set the earlier callers and tests read. */
-export const NIRMANA_STAGED_INERT_CANDIDATES: ReadonlySet<string> = new Set(NIRMANA_STAGED_INERT_CANDIDATE_RULES.keys())
+/** The STAGED-WRITER ids of the rule table (N-137 / N-138) — kept as the set the earlier callers and tests read; the registered no-writer indexes (N-141) are NIRMANA_NO_WRITER_INDEXES. */
+export const NIRMANA_STAGED_INERT_CANDIDATES: ReadonlySet<string> = new Set([...NIRMANA_STAGED_INERT_CANDIDATE_RULES].filter(([, rule]) => rule.noWriterIndex === undefined).map(([id]) => id))
+
+/** The registered no-writer index ids of the rule table (N-141). */
+export const NIRMANA_NO_WRITER_INDEXES: ReadonlySet<string> = new Set([...NIRMANA_STAGED_INERT_CANDIDATE_RULES].filter(([, rule]) => rule.noWriterIndex !== undefined).map(([id]) => id))
 
 function sameSet(left: readonly string[], right: readonly string[]): boolean {
   const l = new Set(left)
@@ -204,12 +247,37 @@ function sameSet(left: readonly string[], right: readonly string[]): boolean {
 }
 
 /**
- * The row-level part of the rule (1)–(3); (4) — the id's `dependents` policy — needs the complete registry and lives in `partitionNirmanaStagedInertCandidates`.
- * `has_non_test_runtime_evidence` must be POSITIVELY `false`.
+ * N-141: every way a row of a `noWriterIndex` rule fails to be "a registered index nobody builds" — an EMPTY list is the declared shape. Row-level only (the dependents clause needs the
+ * complete registry and is added by `partitionNirmanaStagedInertCandidates`). Strict comparisons: an unknown (undefined / null) field is a violation, never a pass.
  */
-export function isNirmanaStagedInertCandidate(row: NirmanaRegistryContractRow): boolean {
-  const rule = NIRMANA_STAGED_INERT_CANDIDATE_RULES.get(row.asset_id)
+function noWriterIndexViolations(row: NirmanaRegistryContractRow, rule: NirmanaStagedInertCandidateRule): string[] {
+  const index = rule.noWriterIndex
+  if (!index) return []
+  const violations: string[] = []
+  if (row.layer !== index.layer) violations.push(`layer is ${JSON.stringify(row.layer)}, declared ${JSON.stringify(index.layer)}`)
+  if (row.asset_kind !== index.assetKind) violations.push(`asset_kind is ${JSON.stringify(row.asset_kind)}, declared ${JSON.stringify(index.assetKind)}`)
+  if (row.has_writer !== false) violations.push(`has_writer is ${JSON.stringify(row.has_writer)}, declared false (a writer is a build obligation)`)
+  if (row.is_active !== true) violations.push(`is_active is ${JSON.stringify(row.is_active)}, declared true`)
+  if (row.catalog_status !== 'CURRENT') violations.push(`catalog_status is ${JSON.stringify(row.catalog_status)}, declared "CURRENT"`)
+  if (!sameSet(row.depends_on ?? [], rule.declaredDependsOn)) violations.push(`depends_on is ${JSON.stringify(row.depends_on ?? [])}, declared ${JSON.stringify(rule.declaredDependsOn)}`)
+  if (row.superseded_by !== null) violations.push(`superseded_by is ${JSON.stringify(row.superseded_by)}, declared null`)
+  if (row.data_disposition !== null) violations.push(`data_disposition is ${JSON.stringify(row.data_disposition)}, declared null`)
+  const obligation = nirmanaExecutionContractForRegistryRow(row).execution_obligation
+  if (obligation !== 'unresolved') violations.push(`its execution obligation is ${JSON.stringify(obligation)}, declared unresolved (no build obligation)`)
+  return violations
+}
+
+/**
+ * The row-level part of the rule (1)–(3); (4) — the id's `dependents` policy — needs the complete registry and lives in `partitionNirmanaStagedInertCandidates`.
+ * `has_non_test_runtime_evidence` must be POSITIVELY `false` (staged writers); a `noWriterIndex` row is judged by `noWriterIndexViolations` instead (N-141).
+ */
+export function isNirmanaStagedInertCandidate(
+  row: NirmanaRegistryContractRow,
+  rules: ReadonlyMap<string, NirmanaStagedInertCandidateRule> = NIRMANA_STAGED_INERT_CANDIDATE_RULES,
+): boolean {
+  const rule = rules.get(row.asset_id)
   if (!rule) return false
+  if (rule.noWriterIndex) return noWriterIndexViolations(row, rule).length === 0
   const dependsOn = row.depends_on ?? []
   return row.is_active === false
     && row.has_writer === true
@@ -228,17 +296,31 @@ export interface NirmanaExcludedStagedCandidate {
  * Splits a registry view into the rows that stay and the staged candidates the rule excludes — and ONLY while their dependents policy holds (`none`: a dependent asset would make
  * the candidate part of the live DAG; `inactive_only`: only an ACTIVE dependent would). Shared by baseline construction, both frozen-registry comparisons and the monitor's visible report.
  */
-export function partitionNirmanaStagedInertCandidates<T extends NirmanaRegistryContractRow>(rows: T[]): { kept: T[]; excluded: NirmanaExcludedStagedCandidate[] } {
+export function partitionNirmanaStagedInertCandidates<T extends NirmanaRegistryContractRow>(
+  rows: T[],
+  rules: ReadonlyMap<string, NirmanaStagedInertCandidateRule> = NIRMANA_STAGED_INERT_CANDIDATE_RULES,
+): { kept: T[]; excluded: NirmanaExcludedStagedCandidate[] } {
   const dependentsOf = new Map<string, T[]>()
   for (const row of rows) for (const dep of new Set(row.depends_on ?? [])) dependentsOf.set(dep, [...(dependentsOf.get(dep) ?? []), row])
   const kept: T[] = []
   const excluded: NirmanaExcludedStagedCandidate[] = []
   for (const row of rows) {
-    const rule = NIRMANA_STAGED_INERT_CANDIDATE_RULES.get(row.asset_id)
+    const rule = rules.get(row.asset_id)
     const dependents = dependentsOf.get(row.asset_id) ?? []
+    if (rule?.noWriterIndex) {
+      // N-141: a registered no-writer index is EXCLUDED while it has exactly the declared shape and otherwise THROWS — never kept (it would silently join the denominator) and never skipped
+      const violations = noWriterIndexViolations(row, rule)
+      if (dependents.length > 0) violations.push(`it is depended on by ${JSON.stringify(dependents.map((d) => d.asset_id).sort())}, declared nothing`)
+      if (violations.length > 0) {
+        throw new Error(`NIRMANA_STAGED_INERT_CANDIDATE_RULES: ${row.asset_id} (${rule.decision}, ${rule.reason}) no longer has its declared shape and fails CLOSED — ${violations.join('; ')}. `
+          + 'Resolve it in the same change (end condition, definitions.ts N-141: it gained a writer or a build obligation, a successor definition includes it, or its row was retired / deleted).')
+      }
+      excluded.push({ asset_id: row.asset_id, reason: rule.reason, decision: rule.decision })
+      continue
+    }
     // `inactive_only`: an unknown / missing is_active is NOT inactive — only `=== false` is
     const dependentsOk = rule?.dependents === 'inactive_only' ? dependents.every((d) => d.is_active === false) : dependents.length === 0
-    if (rule && isNirmanaStagedInertCandidate(row) && dependentsOk) {
+    if (rule && isNirmanaStagedInertCandidate(row, rules) && dependentsOk) {
       excluded.push({ asset_id: row.asset_id, reason: rule.reason, decision: rule.decision })
     } else {
       kept.push(row)
@@ -276,8 +358,10 @@ function sqlLiteral(value: string): string {
 export function runtimeEvidenceSql(alias: string, rules: ReadonlyMap<string, NirmanaStagedInertCandidateRule> = NIRMANA_STAGED_INERT_CANDIDATE_RULES): string {
   assertStagedInertCandidateRules(rules)
   // two evidence modes, one per id (N-138): the declared-TEST-TRIGGER mode (N-137, evidenceCutoff null) and the CUTOFF mode (evidenceCutoff set)
-  const ids = [...rules.keys()].filter((id) => rules.get(id)!.evidenceCutoff === null)
-  const cutoffIds = [...rules.keys()].filter((id) => rules.get(id)!.evidenceCutoff !== null)
+  // N-141: a `noWriterIndex` row has NO evidence mode (it has no writer, so no build can leave evidence) and no arm here — its column stays NULL and is never consulted
+  const evidenceIds = [...rules.keys()].filter((id) => rules.get(id)!.noWriterIndex === undefined)
+  const ids = evidenceIds.filter((id) => rules.get(id)!.evidenceCutoff === null)
+  const cutoffIds = evidenceIds.filter((id) => rules.get(id)!.evidenceCutoff !== null)
   const triggers = ids
     .filter((id) => rules.get(id)!.testTriggers.length > 0)
     .map((id) => `WHEN ${sqlLiteral(id)} THEN ARRAY[${rules.get(id)!.testTriggers.map(sqlLiteral).join(', ')}]::text[]`)
@@ -301,6 +385,8 @@ export function runtimeEvidenceSql(alias: string, rules: ReadonlyMap<string, Nir
                     OR EXISTS (SELECT 1 FROM public.build_run_assets bra LEFT JOIN public.build_runs br ON br.id = bra.run_id WHERE bra.asset_id = ${alias}.asset_id
                               AND COALESCE(GREATEST(bra.started_at, bra.ended_at, br.created_at, br.started_at, br.ended_at) > ${cutoff}, TRUE)))`)
   }
+  // a table with no evidence-mode id at all (only no-writer indexes) is NULL for every row — never a CASE with no arm, which is a syntax error
+  if (arms.length === 0) return 'NULL::boolean AS has_non_test_runtime_evidence'
   return `CASE ${arms.join(' ')} END AS has_non_test_runtime_evidence`
 }
 

@@ -104,3 +104,16 @@ def run_mode(ex, mode, expect_evidence=None, plan=None, connect=None, target=Non
     def default_connect():
         return psycopg.connect(ADMIN)
     return ex.execute(Args(mode, plan or ex.plan_hash(), expect_evidence), connect or default_connect, target=target or mirror_target(ex))
+
+# --- no test may launch a real cloud command (2026-10-05 incident): installed at conftest import, see platform/scripts/governance/no_real_cloud_guard.py ---
+import pathlib as _pl
+import sys as _sys
+for _p in _pl.Path(__file__).resolve().parents:
+    for _cand in (_p / "scripts" / "governance", _p / "platform" / "scripts" / "governance"):
+        if (_cand / "no_real_cloud_pytest.py").exists():
+            _sys.path.insert(0, str(_cand))
+            break
+    else:
+        continue
+    break
+from no_real_cloud_pytest import *  # noqa: E402,F401,F403  (an ImportError here must stay loud: no silent disabling)

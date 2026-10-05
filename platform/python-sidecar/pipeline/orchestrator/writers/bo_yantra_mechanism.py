@@ -59,6 +59,7 @@ from typing import Any
 from brahmagyan import valence_doctrine as _vd
 from . import WriterBase, ContextSpec, WriterResult, register
 from bodha_writers.data_plane_contracts import l2_producer, stable_semantic_uuid
+from bodha_writers.vichara_token import assert_vichara_tokens
 from brahmagyan.graha_vocabulary import to_title
 from brahmagyan.verification_vocab import UNVERIFIED_DEFAULT
 
@@ -166,6 +167,9 @@ def _make_mechanism(
         for vid in (e.get("constituent_ga_vichara_ids_array") or []):
             if vid not in vichara_ids:
                 vichara_ids.append(vid)
+    # N-143 option B: the mechanism cites deterministic chart_vichara TOKENS (carried from its member edges, written
+    # by bo_karanajala), never bigserial ids. A serial left in an un-rebuilt edge is refused here, not propagated.
+    assert_vichara_tokens(vichara_ids, where=f"bo_yantra_mechanism {mechanism_class} {mechanism_name!r}")
     member_nodes = [nodes_by_id[n] for n in member_node_ids if n in nodes_by_id]
     return {
         "mechanism_id": stable_semantic_uuid("mechanism", {
