@@ -1,5 +1,7 @@
 'use client'
 
+import { PageTitle } from '@/components/journey1/Titles'
+
 import { useCallback, useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
@@ -633,7 +635,7 @@ export function NewClientForm() {
 
   return (
     <div
-      className="min-h-screen flex flex-col items-center justify-center px-4 py-6"
+      className="j1 j1-chart-form min-h-full flex flex-col items-center px-4 py-8"
       style={{
         background: 'var(--brand-ink)',
         '--muted-foreground': 'oklch(0.58 0.025 80)',
@@ -652,7 +654,7 @@ export function NewClientForm() {
       >
         <Link
           href="/dashboard"
-          aria-label="Back to dashboard"
+          aria-label="Back to Birth Charts"
           className="absolute left-0 flex items-center justify-center w-8 h-8 rounded-full transition-colors duration-150"
           style={{ color: 'oklch(0.58 0.025 80)' }}
           onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.color = 'var(--brand-gold)' }}
@@ -662,11 +664,8 @@ export function NewClientForm() {
         </Link>
 
         {/* Subtitle removed per R3.1 — title alone carries it */}
-        <h1 className="bt-display text-brand-gold-cream">
-          <span className="opacity-55 text-brand-gold font-serif mr-1" aria-hidden="true">॥</span>
-          Nava Jātaka
-          <span className="opacity-55 text-brand-gold font-serif ml-1" aria-hidden="true">॥</span>
-        </h1>
+        <PageTitle name="new"/>
+
       </div>
 
       {/* ── Card — wider at 680px for single-line ayanamshas (R3.2) ─────── */}
@@ -943,7 +942,7 @@ export function NewClientForm() {
         {/* R3.2: Ayanamsha checkboxes — single flex-nowrap row ─────────── */}
         <div className="flex flex-col gap-2" data-testid="section-compute">
           <span className="bt-label bt-label-upper text-brand-gold/70">Ayanamsha systems</span>
-          <div className="flex flex-nowrap gap-2">
+          <div className="j1-ayanamsha-options">
             {AYANAMSHA_OPTIONS.map((opt) => {
               const checked = form.ayanamshas.includes(opt.id)
               return (
@@ -954,7 +953,7 @@ export function NewClientForm() {
                     'transition-all duration-150 min-w-0',
                   )}
                   style={{
-                    background: checked ? 'oklch(0.78 0.13 80 / 0.12)' : 'transparent',
+                    background: checked ? 'oklch(0.78 0.13 80 / 0.055)' : 'transparent',
                     borderColor: checked ? 'var(--brand-gold)' : 'var(--brand-gold-hairline)',
                   }}
                 >

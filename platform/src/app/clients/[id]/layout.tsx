@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import { query } from '@/lib/db/client'
 import { redirect } from 'next/navigation'
+import { JourneyShell } from '@/components/journey1/JourneyShell'
 import { AppShell } from '@/components/shared/AppShell'
 import { ZoneRoot } from '@/components/shared/ZoneRoot'
 import { resolveChartPageAccess } from '@/lib/auth/chart-page-guard'
@@ -71,12 +72,12 @@ export default async function ClientLayout({
       ).rows
 
   return (
-    <ZoneRoot zone="ink">
+    <JourneyShell user={access.user} role={access.role} chartId={id} fallback={<ZoneRoot zone="ink">
       <AppShell
         user={access.user}
         profile={{ role: access.role === 'super_admin' ? 'super_admin' : 'guest', status: 'active' }}
         breadcrumb={[
-          { label: 'Roster', href: '/dashboard' },
+          { label: 'Birth Charts', href: '/dashboard' },
           { label: chart.name ?? id, href: `/clients/${id}`, current: true },
         ]}
       >
@@ -88,6 +89,6 @@ export default async function ClientLayout({
           {children}
         </div>
       </AppShell>
-    </ZoneRoot>
+    </ZoneRoot>}>{children}</JourneyShell>
   )
 }

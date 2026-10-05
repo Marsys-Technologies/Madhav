@@ -128,8 +128,8 @@ def test_seed_carries_the_four_edges_only_and_graph_stays_acyclic():
     seed = _seed_graph()
     for a, d in FOUR_EDGES:
         assert d in seed[a], f"seed {a} lacks {d}"
-    # independent of 1253: this PR's seed must NOT carry the L2 edges
-    assert "ga_yoga" not in seed["bo_laksana"] and "bo_bimba" not in seed["bo_upaya"]
+    # migration 1253's two L2 edges ride in the same seed (its own migration and test); 1226 neither adds nor needs them
+    assert "ga_yoga" in seed["bo_laksana"] and "bo_bimba" in seed["bo_upaya"]
     # the seed's own acyclicity (iterative DFS)
     colour: dict[str, int] = {}
     for root in seed:

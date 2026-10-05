@@ -1636,7 +1636,8 @@ WHERE cf.chart_id = $1 AND fco.owning_asset_id = 'ga_structural'`,
     expected_volume_formula: null,
     expected_volume_inputs: null,
     volume_explanation: 'Signal count driven by ga_structural exhaustive enumeration; sealed count 66,738 per L2 build (chart 482012f1).',
-    depends_on: ['bg_rules', 'ga_positions', 'ga_strength', 'ga_sensitive', 'ga_panchanga', 'ga_sade_sati', 'ga_structural', 'ga_nakshatra', 'ga_condition', 'ga_vargas', 'ga_vichara'],
+    // Migration 1253: ga_yoga added — bo_laksana.py reads ga_yoga_firings (Q-L2-07).
+    depends_on: ['bg_rules', 'ga_positions', 'ga_strength', 'ga_sensitive', 'ga_panchanga', 'ga_sade_sati', 'ga_structural', 'ga_nakshatra', 'ga_condition', 'ga_vargas', 'ga_vichara', 'ga_yoga'],
     scope: 'per_chart', is_active: true, estimated_seconds: null,
   },
   {
@@ -1774,7 +1775,9 @@ WHERE cf.chart_id = $1 AND fco.owning_asset_id = 'ga_structural'`,
     english_description: 'Per-chart cross-domain linkage aggregate: total linkage, dominant/weakest 3 domains, contradiction density, bridge/asymmetric link counts, strongest linkage pair, domain connectivity map. References bodha_cdlm_cells only — never invents values.',
     storage_type: 'postgres_table',
     target_table: 'bodha_cdlm_chart_summary',
-    count_sql: 'SELECT count(*) FROM bodha_cdlm_chart_summary WHERE chart_id = $1',
+    // migration 1297: the writer writes THREE tables (summary + domain rollups + pattern clusters = 70 rows on the
+    // canonical chart); $1 appears once so asset_runner._data_rows_present's single-parameter replace works
+    count_sql: 'WITH p AS (SELECT $1::uuid AS cid) SELECT (SELECT count(*) FROM bodha_cdlm_chart_summary s, p WHERE s.chart_id = p.cid) + (SELECT count(*) FROM bodha_cdlm_domain_rollups r, p WHERE r.chart_id = p.cid) + (SELECT count(*) FROM bodha_cdlm_pattern_clusters c, p WHERE c.chart_id = p.cid) AS count',
     size_sql: "SELECT pg_total_relation_size('bodha_cdlm_chart_summary')",
     target_floor: 5,
     expected_volume_formula: 'ACTUAL(bo_sangati)',
@@ -1841,7 +1844,8 @@ WHERE cf.chart_id = $1 AND fco.owning_asset_id = 'ga_structural'`,
     // ga_dashas (chart_dashas), bo_cgm_motifs (bodha_cgm_motifs) — bo_upaya now reads all
     // three for real resonance_score_v1 inputs (dispositor_chain_weakness,
     // dasha_proximity_activation_score, cgm_motifs_weakest_node).
-    depends_on: ['bo_laksana', 'bo_sangati', 'ga_structural', 'ga_dashas', 'bo_cgm_motifs'],
+    // Migration 1253: bo_bimba added — bo_upaya.py joins bodha_cgm_nodes (bo_bimba output; Q-L2-07).
+    depends_on: ['bo_laksana', 'bo_sangati', 'ga_structural', 'ga_dashas', 'bo_cgm_motifs', 'bo_bimba'],
     scope: 'per_chart', is_active: true, estimated_seconds: null,
   },
   {
