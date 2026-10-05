@@ -19,34 +19,33 @@ Independence: this module imports NOTHING from the builder, the sweep, the evalu
 written here from the specification and decision text and WILL BE compared with the builder's as data by the FB-38
 equality test once the builder side exists (no such test exists yet).
 
-Day arithmetic (FB-50 "days in the horizon"): the horizon is half-open `[start, end)` in UTC at midnight; a day is
-ADMITTED when some admitted interval overlaps its `[00:00, 24:00)` UTC span by a positive length. An interval that
-ends exactly at midnight does not admit the day it ends on; intervals touching inside one day count that day once.
-Every date here is a UTC date: the build date is the UTC date the manifest pins.
+Day arithmetic (FB-50 "days in the horizon"): a day is ADMITTED when some admitted interval overlaps its `[00:00, 24:00)` span by a positive
+length; an interval ending exactly at midnight does not admit the day it ends on; intervals touching inside one day count that day once.
+TWO conventions, never mixed in one ratio: the BUILD horizon is UTC calendar dates, half-open `[start, end)` (`class_share_report`,
+`convention` 'utc_half_open', 31,446 days for the pinned chart); the SCORED horizon is the SCORER's own (IST calendar dates, both endpoints
+inclusive, 1998-01-01 .. 2026-04-17 = 10,334 days: gochara_eval/registry.py:8-21, extract.py:65-67, metrics.py:80-87; `scored_share_report`,
+`convention` 'ist_inclusive'). Every number that feeds the 40 percent guard uses the scored grid (a one-day denominator difference can flip it:
+4,134/10,334 is 40.004 percent, 4,133/10,333 is 39.998). The instant-to-IST-date rule (a window admits an IST day it overlaps by a positive
+length) is this module's reading: the scorer receives dates, not instants — an open point flagged to the steward. Every date elsewhere is a UTC date
+(the build date is the UTC date the manifest pins).
 
-P4-alone means the P4 path's OWN union of admitted days (ND-H's sign-bin P4 shares are of that kind), NOT P4 minus what
-P1 and P3 already admit. The 40 percent comparison (FB-41) is made over the SCORED horizon of the evaluation protocol
-(`SCORED_HORIZON`), never over the build horizon: call `class_share_report(..., SCORED_HORIZON)` for it.
-
-DAY-COUNT CONVENTION OF THE SCORED HORIZON (two conventions exist and are NOT silently merged). EVALUATION_PROTOCOL v2.3 §1 (line 60-61):
-"observation mask ends 2026-04-17; scored horizon H = 1998-01-01 -> 2026-04-17 = 10,334 days" — an INCLUSIVE count of calendar days (both
-endpoints, 2026-04-17 itself is in H). FINAL_BUILD_SCOPE FB-5: "the harness reads only windows with `t_in < 2026-04-17`" — a strict-before
-INSTANT, i.e. the 17th is not read. This module is half-open `[1998-01-01, 2026-04-17)` = 10,333 days, the FB-5 convention; the protocol's
-10,334 is `PROTOCOL_SCORED_DAYS`, one day more. Which one the scoring harness uses for its denominators is an OPEN point reported to the
-steward; one day changes no decision, but the two must not differ without being named.
+P4 is the INTERSECTION, at the instant level, of Jupiter's and Saturn's influence unions (window_store.py:199-220; migration 1240:280-299), not
+their union and not a day-set intersection; "P4-alone" is the P4 path's own admitted set, which is that intersection (K-B edges count toward an
+agent's influence; DVI members only in the `with_dvi` variant).
 """
 from __future__ import annotations
 
 import dataclasses
 import json
 import math
+import re
 from datetime import date, datetime, timedelta, timezone
 
 # ── tables written from the specification text (FB-2/FB-3/FB-30/FB-35/FB-37/§13) ─────────────────────────────────
 SUBSTRATE_DOMAIN_START = date(1998, 1, 1)                # FB-3: the convention substrate domain is 1998-01-01 ..
 SUBSTRATE_DOMAIN_END = date(2085, 1, 1)                  # .. 2085-01-01
-SCORED_HORIZON = (date(1998, 1, 1), date(2026, 4, 17))   # FB-5 convention: half-open, `t_in < 2026-04-17` (10,333 days)
-PROTOCOL_SCORED_DAYS = 10334                             # EVALUATION_PROTOCOL v2.3 §1: inclusive count of the same window (10,333 + 1)
+SCORED_HORIZON_DATES = (date(1998, 1, 1), date(2026, 4, 17))   # the scorer's H0 and H1, both INCLUSIVE, IST calendar dates
+SCORED_DAYS = 10334                                            # (H1 - H0).days + 1: EVALUATION_PROTOCOL v2.3 §1 and gochara_eval.registry.H_DAYS
 MEASURING_SCOPE = "test_slice"                           # the marker's stored scope: never publishable, never sealable
 MEASURING_RUN = "all_classes_full"                       # the third run shape (steward MEASURING-BUILD)
 # The 27 registered event classes of the evaluation protocol's fixed table minus `birth_anchor` (an unscored annotation):
@@ -75,12 +74,13 @@ PATHS = ("P1", "P2", "P3", "P4")
 VIAS = ("base", "karakatva", "dvi", "kb")
 # which paths an extension tag can legally belong to (FB-34/FB-37/FB-46): DVI only in P4, K-B only in P3 and P4, karakatva only in P1
 VIA_PATHS = {"base": frozenset(PATHS), "karakatva": frozenset({"P1"}), "dvi": frozenset({"P4"}), "kb": frozenset({"P3", "P4"})}
-# The life-event log as STORED (`life_events`: 001_baseline + 457_lel_schema_v2_event_shapes + 691): `event_date`, `category`,
-# `date_confidence` in {exact, month_known, year_only}, `shape` in {point, interval, chain}, `interval_start`, `interval_end`. There is NO
-# birth flag: the birth row is identified deterministically (below). Only `exact` is fully dated (month_known / year_only carry a proxy date).
+# The life-event log as STORED (`life_events`: 001_baseline + 423 (chart_id) + 457_lel_schema_v2_event_shapes + 691): `event_id`, `event_date`,
+# `category`, `date_confidence` in {exact, month_known, year_only}, `shape` in {point, interval, chain}, `interval_start`, `interval_end`,
+# `chain_parent_event_id` (and `subcategory` / `domain` / `provenance` where the writer fills them). There is NO birth flag: the birth row is
+# identified deterministically from the documented vocabulary (`is_birth_row`).
 DATE_CONFIDENCES = frozenset({"exact", "month_known", "year_only"})
 SHAPES = frozenset({"point", "interval", "chain"})
-BIRTH_CATEGORY = "birth"                 # OPEN POINT: the stored category word of the birth row is the verifier's reading; confirm with the log's owner
+_EVENT_ID = re.compile(r"^EVT\.(\d{4})\.(\d{2})\.(\d{2})\.(\d{2})$")        # a REAL-digit id: month and day are digits (year-only ids carry XX)
 _DAY = timedelta(days=1)
 
 
@@ -123,18 +123,76 @@ def _build_date(value) -> date:
 
 
 # ── the horizon (FB-1, FB-2, FB-3): the verifier's OWN derivation ─────────────────────────────────────────────────
+def is_birth_row(row: dict) -> bool:
+    """The birth row in the DOCUMENTED vocabulary: the source log carries `category: other, subcategory: birth`
+    (LIFE_EVENT_LOG_v1_2.md:146-150) and the existing reader identifies `domain = other/birth` (lel.ts:132-138). Which stored column carries
+    the word is pinned from the read-only production read (R-LEL); until then any of the documented spellings identifies it. A plain
+    `category = birth` is NOT in the documented vocabulary."""
+    prov = row.get("provenance") if isinstance(row.get("provenance"), dict) else {}
+    return (row.get("subcategory") == "birth" or prov.get("subcategory") == "birth" or row.get("domain") == "other/birth"
+            or row.get("event_type") == "birth")
+
+
+def birth_date_of(birth_params) -> date:
+    """The civil date of `birth_params['datetime_iso']` IN ITS OWN OFFSET (the real runner passes no `birth_date` key): 1984-02-05T10:43+05:30
+    is 1984-02-05 even though it is 1984-02-05T05:13Z."""
+    iso = (birth_params or {}).get("datetime_iso")
+    if not isinstance(iso, str):
+        raise MeasuringReportError(f"birth_params_unreadable: datetime_iso {iso!r}")
+    try:
+        return datetime.fromisoformat(iso).date()
+    except ValueError:
+        raise MeasuringReportError(f"birth_params_unreadable: datetime_iso {iso!r}") from None
+
+
+def _row_dates(r: dict, by_id: dict, reading: str):
+    """The date this row would open the horizon with under `reading` ('event_date' | 'interval_start' | 'chain_root')."""
+    if reading == "interval_start" and r.get("shape") == "interval" and r.get("interval_start") is not None:
+        return as_utc_date(r["interval_start"], what="interval_start")
+    if reading == "chain_root" and r.get("shape") == "chain":
+        seen, cur = set(), r
+        while cur.get("chain_parent_event_id") is not None:
+            pid = cur["chain_parent_event_id"]
+            if pid in seen or pid not in by_id:
+                raise MeasuringReportError(f"lel_chain_unresolvable: {r.get('event_id')!r} -> {pid!r}")
+            seen.add(pid)
+            cur = by_id[pid]
+        return as_utc_date(cur["event_date"], what="chain root date")
+    return as_utc_date(r["event_date"], what="event_date")
+
+
+def _id_dated(r: dict) -> bool:
+    """A REAL-digit id `EVT.YYYY.MM.DD.NN` whose date equals the stored `event_date` (migration 457 defaulted legacy rows to `exact`, so the
+    flag alone is not trustworthy until the production read)."""
+    m = _EVENT_ID.match(str(r.get("event_id") or ""))
+    if not m or r.get("event_date") is None:
+        return False
+    try:
+        return date(int(m.group(1)), int(m.group(2)), int(m.group(3))) == as_utc_date(r["event_date"], what="event_date")
+    except (ValueError, MeasuringReportError):
+        return False
+
+
 def fully_dated_events(rows, *, birth_date: date):
-    """From STORED life-event rows ({'event_date', 'category', 'date_confidence', 'shape', 'interval_start', 'interval_end'}) ->
-    (dates of the FULLY dated events, count excluded as not fully dated). Fully dated = `date_confidence == 'exact'`; the date is
-    `event_date` for shape `point` and `interval_start` for shape `interval` (the LITERAL reading of "the first event's date", an OPEN
-    point flagged to the steward); shape `chain` with an exact date is REFUSED by name (`lel_chain_shape_not_ruled`) until ruled. The
-    birth row (aside, not counted) is the one row whose `category` is `BIRTH_CATEGORY` and whose `event_date` equals `birth_date`:
-    none or several refuse the derivation (`lel_birth_row_unidentifiable`). An unknown `date_confidence` or `shape` word is refused."""
-    births = [r for r in rows if r.get("category") == BIRTH_CATEGORY and r.get("event_date") is not None
+    """From STORED life-event rows -> {'dates', 'excluded', 'chosen', 'readings', 'birth_row'}. EMPTY log: nothing to identify (the caller falls
+    back to the rebuild date). A non-empty log must hold exactly one birth row (`is_birth_row` and `event_date == birth_date`), set aside and
+    never counted, else `lel_birth_row_unidentifiable`. FULLY DATED = `date_confidence == 'exact'` AND a real-digit id `EVT.YYYY.MM.DD.NN` whose
+    date equals `event_date`; where the two rules would give a different START the derivation is refused (`lel_dating_rules_disagree`). The date of
+    a row is its own `event_date` for EVERY shape (the literal reading of "the first event"); START is also computed under the interval-start and
+    chain-root readings and the derivation is refused (`lel_shape_reading_sensitive`) only when a reading would change START (the interval/chain
+    reading is an OPEN owner point). Unknown `date_confidence` / `shape` words, an exact row without `event_date`, and an unresolvable chain are
+    refused by name."""
+    rows = list(rows)
+    out = {"dates": [], "excluded": 0, "chosen": None, "readings": {}, "birth_row": None}
+    if not rows:
+        return out
+    births = [r for r in rows if r.get("event_date") is not None and is_birth_row(r)
               and as_utc_date(r["event_date"], what="birth row date") == birth_date]
     if len(births) != 1:
-        raise MeasuringReportError(f"lel_birth_row_unidentifiable: {len(births)} rows with category {BIRTH_CATEGORY!r} on {birth_date}")
-    dates, excluded = [], 0
+        raise MeasuringReportError(f"lel_birth_row_unidentifiable: {len(births)} birth rows on {birth_date} in a log of {len(rows)} rows")
+    out["birth_row"] = births[0]
+    by_id = {r.get("event_id"): r for r in rows}
+    flag, full = [], []
     for r in rows:
         if r is births[0]:
             continue
@@ -144,32 +202,46 @@ def fully_dated_events(rows, *, birth_date: date):
         if shape not in SHAPES:
             raise MeasuringReportError(f"lel_shape_unknown: {shape!r}")
         if conf != "exact":
-            excluded += 1
+            out["excluded"] += 1
             continue
-        if shape == "chain":
-            raise MeasuringReportError("lel_chain_shape_not_ruled: an exact chain event cannot open the horizon until the owner rules on it")
-        which = "interval_start" if shape == "interval" else "event_date"
-        if r.get(which) is None:
-            raise MeasuringReportError(f"lel_date_missing: an exact {shape} event has no {which}")
-        dates.append(as_utc_date(r[which], what=which))
-    return dates, excluded
+        if r.get("event_date") is None:
+            raise MeasuringReportError(f"lel_date_missing: an exact {shape} event has no event_date")
+        flag.append(r)
+        if _id_dated(r):
+            full.append(r)
+        else:
+            out["excluded"] += 1
+    def start_of(selected, reading):
+        ds = sorted(_row_dates(r, by_id, reading) for r in selected)
+        return date(ds[0].year, 1, 1) if ds else None
+    if start_of(flag, "event_date") != start_of(full, "event_date"):
+        raise MeasuringReportError("lel_dating_rules_disagree: the flag-only and the flag-and-id readings give different starts")
+    readings = {k: start_of(full, k) for k in ("event_date", "interval_start", "chain_root")}
+    if len(set(readings.values())) > 1:
+        raise MeasuringReportError(f"lel_shape_reading_sensitive: {sorted((k, str(v)) for k, v in readings.items())}")
+    out["readings"] = readings
+    out["dates"] = sorted(_row_dates(r, by_id, "event_date") for r in full)
+    out["chosen"] = min(full, key=lambda r: _row_dates(r, by_id, "event_date")) if full else None
+    return out
 
 
-def derive_chart_horizon_detail(birth_date: date, lel_rows, build_date) -> dict:
-    """{'start', 'end', 'basis', 'excluded_undated'}. END = birth date + 100 years; START = 1 January of the year of the
-    first FULLY dated life event in the STORED log's terms (`fully_dated_events`; year truncation is Owner Ruling 13); with none, START = the build date (UTC date) and
-    basis `build_date`. Refused by name: a 29 February birth whose +100 anniversary does not exist
-    (`horizon_birth_anniversary_undefined`, flagged to the owner, not guessed), a start before birth, before the
-    substrate domain, or in the future (`horizon_start_in_future`), an end outside the substrate domain."""
+def derive_chart_horizon_detail(birth, lel_rows, build_date) -> dict:
+    """{'start', 'end', 'basis', 'excluded_undated', 'readings', 'chosen'}. `birth` is the birth DATE or the runner's `birth_params` dict
+    (`datetime_iso`, read in its own offset). END = birth date + 100 years; START = 1 January of the year of the first FULLY dated life event
+    (year truncation is Owner Ruling 13; the dating rules are those of `fully_dated_events`); an EMPTY log, or one with no fully dated event, falls
+    back to the build date (a UTC date) with basis `build_date`. Refused by name: a 29 February birth whose +100 anniversary does not exist
+    (`horizon_birth_anniversary_undefined`), a start before birth, before the substrate domain, or in the future (`horizon_start_in_future`), an end
+    outside the substrate domain, and the log refusals of `fully_dated_events`."""
+    birth_date = birth if isinstance(birth, date) and not isinstance(birth, datetime) else birth_date_of(birth)
     build = _build_date(build_date)
     try:
         end = birth_date.replace(year=birth_date.year + 100)
     except ValueError:
         raise MeasuringReportError("horizon_birth_anniversary_undefined: "
                                    f"{birth_date.isoformat()} + 100 years does not exist") from None
-    events, excluded = fully_dated_events(lel_rows, birth_date=birth_date)
-    if events:
-        start, basis = date(min(events).year, 1, 1), "first_dated_event"
+    info = fully_dated_events(lel_rows, birth_date=birth_date)
+    if info["dates"]:
+        start, basis = date(info["dates"][0].year, 1, 1), "first_dated_event"
         if start > build:
             raise MeasuringReportError(f"horizon_start_in_future: {start} > build date {build}")
     else:
@@ -177,7 +249,8 @@ def derive_chart_horizon_detail(birth_date: date, lel_rows, build_date) -> dict:
     prob = horizon_problem((start, end), birth_date=birth_date)
     if prob:
         raise MeasuringReportError(prob)
-    return {"start": start, "end": end, "basis": basis, "excluded_undated": excluded}
+    return {"start": start, "end": end, "basis": basis, "excluded_undated": info["excluded"], "readings": info["readings"],
+            "chosen": None if info["chosen"] is None else info["chosen"].get("event_id")}
 
 
 def derive_chart_horizon(birth_date: date, lel_rows, build_date):
@@ -212,10 +285,20 @@ class MeasuringBuildView:
     horizon: tuple                      # (start, end) as stored in the manifest
     rule_versions: frozenset            # every rule_version with a stored window or record
     near_miss_rows_stored: int | None   # rows in the near_miss store; None = the store does not exist (unknown, never 0)
-    classes_with_records: frozenset     # event classes holding a stored record or window
+    class_paths_with_rows: frozenset    # {(event_class, path_id)} holding a stored record or window
     marker_classes: frozenset = frozenset()          # the classes the marker says the build was planned for
+    marker_schema: str | None = None                 # the marker's schema string
+    marker_digest: str | None = None                 # the marker's digest (presence is checked here; recomputing it is the writer's own validator's job)
     marker_horizon: tuple | None = None              # the marker's own horizon, in clear
     status: str | None = None                        # the publication row's status (candidate | published | superseded | rolled_back ...)
+
+
+    @property
+    def classes_with_records(self) -> frozenset:
+        return frozenset(c for c, _ in self.class_paths_with_rows)
+
+
+MARKER_SCHEMA = "gochara_v5_test_slice/1"
 
 
 def measuring_refusals(view: MeasuringBuildView, *, expected_horizon, birth_date: date | None = None) -> list[str]:
@@ -232,7 +315,7 @@ def measuring_refusals(view: MeasuringBuildView, *, expected_horizon, birth_date
         out.append("measuring_build_published")
     if view.status not in (None, "candidate", "published"):
         out.append(f"measuring_status_not_candidate: {view.status!r}")
-    if not view.classes_with_records:
+    if not view.class_paths_with_rows:
         out.append("measuring_build_holds_no_rows: no stored record or window in any class (an empty generation is not a measuring build)")
     try:
         stored = tuple(as_utc_date(x, what="stored horizon") for x in view.horizon)
@@ -258,12 +341,15 @@ def measuring_refusals(view: MeasuringBuildView, *, expected_horizon, birth_date
         out.append(f"rule_version_not_in_scope: {bad_versions} (selected today: {sorted(ALLOWED_RULE_VERSIONS)})")
     if view.near_miss_rows_stored:
         out.append(f"near_miss_rows_stored: {view.near_miss_rows_stored} (counts are reported, never stored, §13)")
-    excluded_present = sorted(set(view.classes_with_records) & EXCLUDED_EIGHT)
+    # ST-H-UNKNOWN excludes the PATHS P1/P3/P4 of the eight classes, not the classes: P2 rows for them are legitimate today
+    excluded_present = sorted((c, p) for c, p in view.class_paths_with_rows if c in EXCLUDED_EIGHT and p in ("P1", "P3", "P4"))
     if excluded_present:
-        out.append(f"excluded_class_has_rows: {excluded_present} (ST-H-UNKNOWN)")
+        out.append(f"excluded_path_has_rows: {excluded_present} (ST-H-UNKNOWN excludes P1/P3/P4 for these classes)")
     stray = sorted(set(view.classes_with_records) - SCORED_CLASSES)
     if stray:
         out.append(f"unknown_class_has_rows: {stray}")
+    if view.marker_horizon is None or view.marker_schema != MARKER_SCHEMA or not view.marker_digest:
+        out.append(f"marker_incomplete: horizon {view.marker_horizon!r}, schema {view.marker_schema!r}, digest {'present' if view.marker_digest else 'absent'}")
     missing, extra = sorted(SCORED_CLASSES - set(view.marker_classes)), sorted(set(view.marker_classes) - SCORED_CLASSES)
     if missing or extra:
         out.append(f"class_census_mismatch: the marker names {len(set(view.marker_classes))} classes, missing {missing}, not scored {extra}")
@@ -275,8 +361,8 @@ _SQL_PUBLICATION = ("SELECT status, input_generation_vector, lower(horizon), upp
 _SQL_SEALED = "SELECT count(*) FROM public.ka_gochara_generation_seal WHERE chart_id = %s AND generation = %s"
 _SQL_VERSIONS = ("SELECT rule_version FROM public.ka_gochara_relationship_record WHERE chart_id = %s AND generation = %s"
                  " UNION SELECT rule_version FROM public.ka_gochara_eval_window WHERE chart_id = %s AND generation = %s")
-_SQL_CLASSES = ("SELECT event_class FROM public.ka_gochara_relationship_record WHERE chart_id = %s AND generation = %s"
-                " UNION SELECT event_class FROM public.ka_gochara_eval_window WHERE chart_id = %s AND generation = %s")
+_SQL_CLASS_PATHS = ("SELECT event_class, path_id FROM public.ka_gochara_relationship_record WHERE chart_id = %s AND generation = %s"
+                    " UNION SELECT event_class, path_id FROM public.ka_gochara_eval_window WHERE chart_id = %s AND generation = %s")
 
 
 def _scalar(row):
@@ -297,7 +383,8 @@ def read_measuring_view(conn, chart_id: str, generation: str) -> MeasuringBuildV
     marker = (vector or {}).get("test_slice") or {}
     sealed = int(_scalar(conn.execute(_SQL_SEALED, (chart_id, generation)).fetchone())) > 0
     versions = frozenset(_scalar(r) for r in conn.execute(_SQL_VERSIONS, (chart_id, generation, chart_id, generation)).fetchall())
-    classes = frozenset(_scalar(r) for r in conn.execute(_SQL_CLASSES, (chart_id, generation, chart_id, generation)).fetchall())
+    class_paths = frozenset(tuple(r.values()) if isinstance(r, dict) else tuple(r)
+                            for r in conn.execute(_SQL_CLASS_PATHS, (chart_id, generation, chart_id, generation)).fetchall())
     nm = None                                                       # unknown: the store is absent until the near-miss migration lands
     if _scalar(conn.execute("SELECT to_regclass('public.ka_gochara_near_miss')").fetchone()) is not None:
         nm = int(_scalar(conn.execute("SELECT count(*) FROM public.ka_gochara_near_miss WHERE chart_id = %s AND generation = %s",
@@ -305,35 +392,97 @@ def read_measuring_view(conn, chart_id: str, generation: str) -> MeasuringBuildV
     mh = marker.get("horizon")
     return MeasuringBuildView(
         stored_scope=(vector or {}).get("stored_scope"), run=marker.get("run"), sealed=sealed, published=status == "published",
-        horizon=(h_lo, h_hi), rule_versions=versions, near_miss_rows_stored=nm, classes_with_records=classes,
-        marker_classes=frozenset(marker.get("classes") or ()), marker_horizon=tuple(mh) if mh else None, status=status)
+        horizon=(h_lo, h_hi), rule_versions=versions, near_miss_rows_stored=nm, class_paths_with_rows=class_paths,
+        marker_classes=frozenset(marker.get("classes") or ()), marker_horizon=tuple(mh) if mh else None, status=status,
+        marker_schema=marker.get("schema"), marker_digest=marker.get("marker_digest"))
 
 
-# ── day arithmetic ────────────────────────────────────────────────────────────────────────────────────────────────
+# ── day arithmetic: two conventions, never mixed in one ratio ────────────────────────────────────────────────────────
+IST = timezone(timedelta(hours=5, minutes=30))
+_SCORER_H0, _SCORER_H1 = date(1998, 1, 1), date(2026, 4, 17)       # the scorer's own constants (gochara_eval.registry H0 / H1), pinned by a test
+
+
+@dataclasses.dataclass(frozen=True)
+class DayGrid:
+    """A day-counting convention: the calendar (`tz`), the instants the grid covers `[lo, hi)` and the denominator in days."""
+    label: str
+    tz: timezone
+    lo: datetime
+    hi: datetime
+    days: int
+
+
+def build_grid(horizon) -> DayGrid:
+    """The BUILD horizon: UTC calendar dates, half-open `[start, end)` (31,446 days for the pinned chart)."""
+    if (prob := horizon_problem(horizon)):
+        raise MeasuringReportError(prob)
+    return DayGrid("utc_half_open", timezone.utc, datetime(horizon[0].year, horizon[0].month, horizon[0].day, tzinfo=timezone.utc),
+                   datetime(horizon[1].year, horizon[1].month, horizon[1].day, tzinfo=timezone.utc), (horizon[1] - horizon[0]).days)
+
+
+def scored_grid() -> DayGrid:
+    """The SCORED horizon in the SCORER's convention (gochara_eval/registry.py:8-21, extract.py:65-67, metrics.py:80-87): IST calendar dates,
+    both endpoints inclusive, 1998-01-01 .. 2026-04-17 = 10,334 days. A stored window (a UTC instant interval) admits an IST calendar day when it
+    overlaps that day's `[00:00, 24:00)` IST by a positive length — the instant-to-IST-date rule is THIS module's reading (the scorer receives
+    dates, not instants): an OPEN point flagged to the steward. Every number that feeds the 40 percent guard uses this grid."""
+    lo = datetime(_SCORER_H0.year, _SCORER_H0.month, _SCORER_H0.day, tzinfo=IST)
+    hi = datetime(_SCORER_H1.year, _SCORER_H1.month, _SCORER_H1.day, tzinfo=IST) + timedelta(days=1)
+    return DayGrid("ist_inclusive", IST, lo, hi, (_SCORER_H1 - _SCORER_H0).days + 1)
+
+
 def _utc(t: datetime) -> datetime:
+    if not isinstance(t, datetime):
+        raise MeasuringReportError(f"instant_unreadable: {t!r}")
     if t.tzinfo is None:
         raise MeasuringReportError("naive_datetime: every stored instant is timezone-aware")
     return t.astimezone(timezone.utc)
 
 
-def _midnight(d: date) -> datetime:
-    return datetime(d.year, d.month, d.day, tzinfo=timezone.utc)
-
-
-def _day_ranges(intervals, horizon) -> list[tuple[int, int]]:
-    """Merged, half-open `[first_day, last_day_exclusive)` ordinal ranges of the days the intervals admit inside the
-    horizon (an interval touching a day for zero length admits nothing). An inverted interval is refused."""
-    h0, h1 = _midnight(horizon[0]), _midnight(horizon[1])
-    ranges = []
+def _merge(intervals) -> list[tuple[datetime, datetime]]:
+    """Merged, sorted INSTANT intervals (UTC); an inverted interval is refused, an empty one dropped."""
+    xs = []
     for lo, hi in intervals:
         lo, hi = _utc(lo), _utc(hi)
         if hi < lo:
             raise MeasuringReportError(f"interval_inverted: {lo.isoformat()} > {hi.isoformat()}")
-        lo, hi = max(lo, h0), min(hi, h1)
+        if lo < hi:
+            xs.append((lo, hi))
+    xs.sort()
+    out: list[list[datetime]] = []
+    for lo, hi in xs:
+        if out and lo <= out[-1][1]:
+            out[-1][1] = max(out[-1][1], hi)
+        else:
+            out.append([lo, hi])
+    return [(a, b) for a, b in out]
+
+
+def _intersect(a, b) -> list[tuple[datetime, datetime]]:
+    """Intersection of two MERGED instant interval lists: instants first, calendar days never (disjoint morning/afternoon intervals share no instant)."""
+    i = j = 0
+    out = []
+    while i < len(a) and j < len(b):
+        lo, hi = max(a[i][0], b[j][0]), min(a[i][1], b[j][1])
+        if lo < hi:
+            out.append((lo, hi))
+        if a[i][1] < b[j][1]:
+            i += 1
+        else:
+            j += 1
+    return out
+
+
+def _day_ranges(intervals, grid: DayGrid) -> list[tuple[int, int]]:
+    """Merged half-open `[first_day, last_day_exclusive)` ordinal ranges (in the grid's calendar) of the days the intervals admit inside the grid."""
+    ranges = []
+    for lo, hi in _merge(intervals):
+        lo, hi = max(lo, grid.lo), min(hi, grid.hi)
         if not lo < hi:
             continue
-        first = lo.date().toordinal()
-        last_excl = hi.date().toordinal() + (0 if hi == _midnight(hi.date()) else 1)
+        l_lo, l_hi = lo.astimezone(grid.tz), hi.astimezone(grid.tz)
+        first = l_lo.date().toordinal()
+        midnight = datetime(l_hi.year, l_hi.month, l_hi.day, tzinfo=grid.tz)
+        last_excl = l_hi.date().toordinal() + (0 if l_hi == midnight else 1)
         ranges.append((first, last_excl))
     ranges.sort()
     merged: list[list[int]] = []
@@ -345,29 +494,28 @@ def _day_ranges(intervals, horizon) -> list[tuple[int, int]]:
     return [(a, b) for a, b in merged]
 
 
-def admitted_days(intervals, horizon) -> int:
-    return sum(b - a for a, b in _day_ranges(intervals, horizon))
+def admitted_days(intervals, horizon_or_grid) -> int:
+    grid = horizon_or_grid if isinstance(horizon_or_grid, DayGrid) else build_grid(horizon_or_grid)
+    return sum(b - a for a, b in _day_ranges(intervals, grid))
 
 
 def horizon_days(horizon) -> int:
     return (horizon[1] - horizon[0]).days
 
 
-def _share(days: int, horizon) -> float:
-    return days / horizon_days(horizon)
-
-
-def _day_set(intervals, horizon) -> set[int]:
+def _day_set(intervals, grid: DayGrid) -> set[int]:
     out: set[int] = set()
-    for a, b in _day_ranges(intervals, horizon):
+    for a, b in _day_ranges(intervals, grid):
         out.update(range(a, b))
     return out
 
 
 def length_distribution(lengths_days) -> dict:
     """count, median, p90 (nearest rank: the ceil(0.9 n)-th smallest), max — all None when there is no window
-    (an honest null, never a zero)."""
+    (an honest null, never a zero). Every length must be finite."""
     xs = sorted(lengths_days)
+    if any(not math.isfinite(x) for x in xs):
+        raise MeasuringReportError("length_not_finite")
     n = len(xs)
     if not n:
         return {"count": 0, "median": None, "p90": None, "max": None}
@@ -380,26 +528,29 @@ def length_distribution(lengths_days) -> dict:
 class SupportRecord:
     """One stored admitted relationship record: its class, path (P1..P4), agent and stored support intervals.
     `via` is 'base' for today's rules; the extension tags exist so the report can split them when they land:
-    'karakatva' (FB-46, P1), 'dvi' (FB-41, P4), 'kb' (FB-37, luminary target). Any other tag is refused."""
+    'karakatva' (FB-46, P1), 'dvi' (FB-41, P4), 'kb' (FB-37, luminary target). `role` must be `scored`: an admitted TESTIMONY record never
+    counts toward a scored share (it changes no admission), so the report refuses one by name. Any other tag is refused."""
     event_class: str
     path: str
     agent: str
     supports: tuple
     via: str = "base"
+    role: str = "scored"
 
 
-def _group(records, pred):
-    return [iv for r in records if pred(r) for iv in r.supports]
+def _union(records, pred):
+    return _merge([iv for r in records if pred(r) for iv in r.supports])
 
 
-def class_share_report(records, windows, horizon) -> dict:
-    """FB-50 items 1-3, per class: admitted-day shares by path and variant, the class union, K-B exclusive days,
-    window-length distribution per path, per-agent contribution (days the agent admits; days only it admits).
-    `records`: SupportRecord (admitted ones only); `windows`: (event_class, path, lo, hi) stored windows.
-    Refused by name: an unknown path (record or window), an unknown agent (not one of the nine, lower-case), an unknown
-    via tag, an inverted interval — a silent zero in the fast/slow shares would feed the per-class fast-planet decision."""
-    if (prob := horizon_problem(horizon)):
-        raise MeasuringReportError(prob)
+def _p4_instants(rs, vias) -> list[tuple[datetime, datetime]]:
+    """P4 is the INTERSECTION, at the instant level, of Jupiter's and Saturn's influence unions (window_store.py:199-220; migration 1240:280-299):
+    each agent's records (of the allowed `vias`) are unioned first, then the two unions are intersected."""
+    jup = _union(rs, lambda r: r.path == "P4" and r.agent == "jupiter" and r.via in vias)
+    sat = _union(rs, lambda r: r.path == "P4" and r.agent == "saturn" and r.via in vias)
+    return _intersect(jup, sat)
+
+
+def _report(records, windows, grid: DayGrid) -> dict:
     for r in records:
         if r.path not in PATHS:
             raise MeasuringReportError(f"unknown_path: {r.path!r}")
@@ -409,6 +560,10 @@ def class_share_report(records, windows, horizon) -> dict:
             raise MeasuringReportError(f"unknown_via: {r.via!r}")
         if r.path not in VIA_PATHS[r.via]:
             raise MeasuringReportError(f"via_not_valid_for_path: {r.via!r} in {r.path}")
+        if r.role != "scored":
+            raise MeasuringReportError(f"testimony_record_in_scored_share: role {r.role!r} ({r.event_class} {r.path} {r.agent})")
+        if r.path == "P4" and r.agent not in P4_AGENTS:
+            raise MeasuringReportError(f"p4_agent_not_jupiter_or_saturn: {r.agent!r}")
     for w in windows:
         if w[1] not in PATHS:
             raise MeasuringReportError(f"unknown_path: {w[1]!r} (window)")
@@ -417,28 +572,35 @@ def class_share_report(records, windows, horizon) -> dict:
     for cls in classes:
         rs = [r for r in records if r.event_class == cls]
 
-        def days(pred) -> int:
-            return admitted_days(_group(rs, pred), horizon)
+        def days(instants) -> int:
+            return sum(b - a for a, b in _day_ranges(instants, grid))
 
-        p3 = lambda r: r.path == "P3" and r.via in ("base", "kb")          # noqa: E731
-        base_days = _day_set(_group(rs, lambda r: r.via != "kb"), horizon)
-        kb_days = _day_set(_group(rs, lambda r: r.via == "kb"), horizon)
+        p1_base = _union(rs, lambda r: r.path == "P1" and r.via == "base")
+        p1_all = _union(rs, lambda r: r.path == "P1")
+        p2 = _union(rs, lambda r: r.path == "P2")
+        p3_base = _union(rs, lambda r: r.path == "P3" and r.via == "base")
+        p3_all = _union(rs, lambda r: r.path == "P3")                                  # base + kb
+        p4_wo = _p4_instants(rs, ("base", "kb"))
+        p4_with = _p4_instants(rs, ("base", "kb", "dvi"))
+        p4_nokb = _p4_instants(rs, ("base", "dvi"))
+        union_all = _merge([*p1_all, *p2, *p3_all, *p4_with])
+        union_nokb = _merge([*p1_all, *p2, *p3_base, *p4_nokb])
         shares = {
-            "P1_base": days(lambda r: r.path == "P1" and r.via == "base"),
-            "P1_with_karakatva": days(lambda r: r.path == "P1" and r.via in ("base", "karakatva")),
-            "P2": days(lambda r: r.path == "P2"),
-            "P3_fast": days(lambda r: p3(r) and r.agent in FAST_AGENTS),
-            "P3_slow": days(lambda r: p3(r) and r.agent in SLOW_AGENTS),
-            "P3_union": days(p3),
-            "P4_without_dvi": days(lambda r: r.path == "P4" and r.via == "base"),
-            "P4_with_dvi": days(lambda r: r.path == "P4" and r.via in ("base", "dvi")),
-            "kb_only": len(kb_days - base_days),
-            "class_union": days(lambda r: True),
+            "P1_base": days(p1_base),
+            "P1_with_karakatva": days(p1_all),
+            "P2": days(p2),
+            "P3_fast": days(_union(rs, lambda r: r.path == "P3" and r.via in ("base", "kb") and r.agent in FAST_AGENTS)),
+            "P3_slow": days(_union(rs, lambda r: r.path == "P3" and r.via in ("base", "kb") and r.agent in SLOW_AGENTS)),
+            "P3_union": days(p3_all),
+            "P4_without_dvi": days(p4_wo),
+            "P4_with_dvi": days(p4_with),
+            "kb_only": len(_day_set(union_all, grid) - _day_set(union_nokb, grid)),
+            "class_union": days(union_all),
         }
-        per_agent = {}
-        for agent in sorted({r.agent for r in rs}):
-            mine = _day_set(_group(rs, lambda r, a=agent: r.agent == a), horizon)
-            others = _day_set(_group(rs, lambda r, a=agent: r.agent != a), horizon)
+        per_agent = {}                                                  # P1-P3 records only: P4 admits JOINTLY (two agents), see "P4_joint"
+        for agent in sorted({r.agent for r in rs if r.path != "P4"}):
+            mine = _day_set(_union(rs, lambda r, a=agent: r.path != "P4" and r.agent == a), grid)
+            others = _day_set(_union(rs, lambda r, a=agent: r.path != "P4" and r.agent != a), grid)
             per_agent[agent] = {"days": len(mine), "exclusive_days": len(mine - others)}
         lengths = {}
         for path in PATHS:
@@ -452,11 +614,31 @@ def class_share_report(records, windows, horizon) -> dict:
             lengths[path] = length_distribution(lens)
         out[cls] = {
             "admitted_days": shares,
-            "admitted_share": {k: _share(v, horizon) for k, v in shares.items()},
+            "admitted_share": {k: v / grid.days for k, v in shares.items()},
             "window_lengths_days": lengths,
             "per_agent": per_agent,
+            "P4_joint": {"without_dvi_days": shares["P4_without_dvi"], "with_dvi_days": shares["P4_with_dvi"]},
         }
-    return {"horizon": [str(horizon[0]), str(horizon[1])], "horizon_days": horizon_days(horizon), "classes": out}
+    return {"convention": grid.label, "horizon": [grid.lo.astimezone(grid.tz).date().isoformat(),
+                                                   (grid.hi.astimezone(grid.tz) - (timedelta(days=1) if grid.label == "ist_inclusive" else timedelta(0))).date().isoformat()],
+            "horizon_days": grid.days, "classes": out}
+
+
+def class_share_report(records, windows, horizon) -> dict:
+    """FB-50 items 1-3 over the BUILD horizon (UTC calendar dates, half-open; `convention` = 'utc_half_open'), per class: admitted-day shares by
+    path and variant, the class union, K-B exclusive days, window-length distribution per path, per-agent contribution (P1-P3 records; P4's
+    admission is joint). P4 is the intersection of Jupiter's and Saturn's influence unions at the instant level. `records`: SupportRecord
+    (scored, admitted); `windows`: (event_class, path, lo, hi) stored windows. Refused by name: an unknown path / agent / via, a (via, path)
+    pair that cannot exist, a testimony record, a P4 agent other than Jupiter/Saturn, an inverted interval — a silent zero in the fast/slow
+    shares would feed the per-class fast-planet decision."""
+    return _report(records, windows, build_grid(horizon))
+
+
+def scored_share_report(records, windows) -> dict:
+    """The same report over the SCORED horizon in the scorer's convention (IST calendar dates, inclusive, 10,334 days; `convention` =
+    'ist_inclusive'). THIS is the report every 40 percent comparison uses. Its shares and `class_share_report`'s are on different grids and are
+    never to be mixed in one ratio."""
+    return _report(records, windows, scored_grid())
 
 
 def clip_windows_for_scoring(windows, scored_end: datetime):
@@ -489,7 +671,7 @@ _SQL_RECORDS = (
     "SELECT r.event_class, r.path_id, r.rule_version, r.agent, lower(s.x), upper(s.x), lower_inf(s.x), upper_inf(s.x)"
     " FROM public.ka_gochara_relationship_record r"
     " LEFT JOIN LATERAL unnest(r.temporal_support_intervals) AS s(x) ON true"
-    " WHERE r.chart_id = %s AND r.generation = %s AND r.admission_state = 'admitted'"
+    " WHERE r.chart_id = %s AND r.generation = %s AND r.admission_state = 'admitted' AND r.operator_role = 'scored'"
     " ORDER BY r.record_id, lower(s.x)")
 
 

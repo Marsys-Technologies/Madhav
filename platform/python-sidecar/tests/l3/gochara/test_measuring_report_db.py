@@ -54,7 +54,7 @@ def test_read_records_refuses_a_stored_rule_version_that_is_not_bound_today(worl
 def test_the_view_reads_a_candidate_manifest_the_marker_the_classes_with_rows_and_the_bound_versions(world):
     _boot_p3(world)
     vector = {"stored_scope": "test_slice",
-              "test_slice": {"schema": "gochara_v5_test_slice/1", "marker_digest": "d", "run": "all_classes_full",
+              "test_slice": {"schema": "gochara_v5_test_slice/1", "marker_digest": "d" * 64, "run": "all_classes_full",
                              "classes": sorted(mr.SCORED_CLASSES), "horizon": ["2025-01-01", "2025-03-01"]}}
     _set_manifest(world.conn, vector)
     v = mr.read_measuring_view(world.conn, CHART_ID, GEN)
@@ -92,8 +92,8 @@ def test_a_vector_without_a_marker_reads_as_no_scope_and_no_run_and_is_refused_n
 
 def test_a_sealed_generation_is_read_as_sealed_and_refused(world):
     _boot_p3(world)
-    _set_manifest(world.conn, {"stored_scope": "test_slice", "test_slice": {"run": "all_classes_full", "classes": sorted(mr.SCORED_CLASSES),
-                                                                         "horizon": ["2025-01-01", "2025-03-01"]}})
+    _set_manifest(world.conn, {"stored_scope": "test_slice", "test_slice": {"schema": "gochara_v5_test_slice/1", "marker_digest": "d" * 64, "run": "all_classes_full",
+                                                                         "classes": sorted(mr.SCORED_CLASSES), "horizon": ["2025-01-01", "2025-03-01"]}})
     assert mr.read_measuring_view(world.conn, CHART_ID, GEN).sealed is False
     with world.conn.transaction():
         world.conn.execute("SET LOCAL session_replication_role = replica")                 # the seal guards are not what is observed here
@@ -106,7 +106,27 @@ def test_a_sealed_generation_is_read_as_sealed_and_refused(world):
 
 def test_a_superseded_generation_is_named_not_passed_unnoticed(world):
     _boot_p3(world)
-    _set_manifest(world.conn, {"stored_scope": "test_slice", "test_slice": {"run": "all_classes_full", "classes": sorted(mr.SCORED_CLASSES),
-                                                                         "horizon": ["2025-01-01", "2025-03-01"]}}, status="superseded")
+    _set_manifest(world.conn, {"stored_scope": "test_slice", "test_slice": {"schema": "gochara_v5_test_slice/1", "marker_digest": "d" * 64, "run": "all_classes_full",
+                                                                         "classes": sorted(mr.SCORED_CLASSES), "horizon": ["2025-01-01", "2025-03-01"]}}, status="superseded")
     v = mr.read_measuring_view(world.conn, CHART_ID, GEN)
     assert v.status == "superseded" and any(x.startswith("measuring_status_not_candidate") for x in mr.measuring_refusals(v, expected_horizon=(date(2025, 1, 1), date(2025, 3, 1))))
+
+
+def test_an_admitted_testimony_record_is_not_read_into_a_scored_share(world):
+    _boot_p3(world)
+    assert len(mr.read_records(world.conn, CHART_ID, GEN)) == 1
+    with world.conn.transaction():
+        world.conn.execute("SET LOCAL session_replication_role = replica")                 # the role/provenance guards are not what is observed here
+        n = world.conn.execute("UPDATE public.ka_gochara_relationship_record SET operator_role = 'testimony' WHERE chart_id = %s AND generation = %s"
+                               " AND admission_state = 'admitted'", (CHART_ID, GEN)).rowcount
+    assert n == 1
+    assert mr.read_records(world.conn, CHART_ID, GEN) == []                                # an admitted TESTIMONY record changes no admission: never a scored share
+
+
+def test_the_view_reports_the_paths_that_hold_rows(world):
+    _boot_p3(world)
+    _set_manifest(world.conn, {"stored_scope": "test_slice", "test_slice": {"schema": "gochara_v5_test_slice/1", "marker_digest": "d" * 64,
+                                                                         "run": "all_classes_full", "classes": sorted(mr.SCORED_CLASSES),
+                                                                         "horizon": ["2025-01-01", "2025-03-01"]}})
+    v = mr.read_measuring_view(world.conn, CHART_ID, GEN)
+    assert ("marriage", "P3") in v.class_paths_with_rows and v.classes_with_records == frozenset({"marriage"})

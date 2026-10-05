@@ -26,67 +26,26 @@ def T(y, m, d, hh=0, mm=0):
     return datetime(y, m, d, hh, mm, tzinfo=timezone.utc)
 
 
-def LEL(d, conf="exact", shape="point", category="work", interval_start=None):
-    """a STORED life_events row (event_date, category, date_confidence, shape, interval_start)"""
-    return {"event_date": d, "category": category, "date_confidence": conf, "shape": shape, "interval_start": interval_start, "interval_end": None}
+_SEQ = {"n": 0}
+
+
+def LEL(d, conf="exact", shape="point", category="work", interval_start=None, event_id=None, **extra):
+    """a STORED life_events row. A REAL-digit id `EVT.YYYY.MM.DD.NN` for an exact dated row, `EVT.YYYY.XX.XX.NN` for a year-only one."""
+    _SEQ["n"] += 1
+    if event_id is None:
+        event_id = f"EVT.{d.year:04d}.XX.XX.{_SEQ['n']:02d}" if conf == "year_only" else f"EVT.{d.year:04d}.{d.month:02d}.{d.day:02d}.{_SEQ['n']:02d}"
+    row = {"event_id": event_id, "event_date": d, "category": category, "date_confidence": conf, "shape": shape, "interval_start": interval_start,
+           "interval_end": None, "chain_parent_event_id": None}
+    row.update(extra)
+    return row
 
 
 def born(d=BIRTH):
-    return LEL(d, category="birth")
+    """the birth row as the SOURCE log has it: category other, subcategory birth"""
+    return LEL(d, category="other", subcategory="birth", event_id=f"EVT.{d.year:04d}.{d.month:02d}.{d.day:02d}.00")
 
 
 BIRTH_ROW = born()
-
-
-# ── the horizon ──────────────────────────────────────────────────────────────────────────────────────────────────
-def test_the_pinned_chart_horizon_is_1998_01_01_to_2084_02_05_and_has_the_measured_day_count():
-    start, end, basis = derive_chart_horizon(BIRTH, [BIRTH_ROW, LEL(date(1998, 8, 20)), LEL(date(2003, 5, 1))], BUILD)
-    assert (start, end, basis) == (date(1998, 1, 1), date(2084, 2, 5), "first_dated_event")
-    assert mr.horizon_days((start, end)) == H_DAYS
-
-
-def test_a_chart_with_no_dated_event_starts_at_the_build_date_and_two_dates_differ():
-    a = derive_chart_horizon(BIRTH, [BIRTH_ROW], BUILD)
-    b = derive_chart_horizon(BIRTH, [BIRTH_ROW, LEL(date(2001, 1, 1), conf="year_only")], BUILD + timedelta(days=1))
-    assert a == (BUILD, date(2084, 2, 5), "build_date")
-    assert a != b and b[0] == BUILD + timedelta(days=1)                       # the build date is IN the result
-
-
-def test_the_build_date_is_a_utc_date_a_tz_aware_instant_is_taken_to_its_utc_date_and_nothing_else_is_accepted():
-    late_ist = datetime(2026, 10, 5, 23, 30, tzinfo=timezone(timedelta(hours=5, minutes=30)))     # 18:00 UTC the same day
-    early_ist = datetime(2026, 10, 6, 1, 0, tzinfo=timezone(timedelta(hours=5, minutes=30)))      # 19:30 UTC on the 5th
-    assert derive_chart_horizon(BIRTH, [BIRTH_ROW], late_ist)[0] == date(2026, 10, 5)
-    assert derive_chart_horizon(BIRTH, [BIRTH_ROW], early_ist)[0] == date(2026, 10, 5)
-    with pytest.raises(MeasuringReportError, match="naive_datetime"):
-        derive_chart_horizon(BIRTH, [BIRTH_ROW], datetime(2026, 10, 5, 12))
-    for bad in (None, "2026-10-05", 20261005):
-        with pytest.raises(MeasuringReportError, match="build_date_unreadable"):
-            derive_chart_horizon(BIRTH, [BIRTH_ROW], bad)
-
-
-def test_the_first_event_is_the_earliest_not_the_first_listed():
-    rows = [BIRTH_ROW, LEL(date(2010, 3, 3)), LEL(date(1999, 12, 31))]
-    assert derive_chart_horizon(BIRTH, rows, BUILD)[0] == date(1999, 1, 1)
-
-
-def test_only_an_exact_non_birth_event_counts_and_the_excluded_are_counted():
-    rows = [BIRTH_ROW, LEL(date(1997, 7, 1), conf="year_only"), LEL(date(1997, 5, 1), conf="month_known"),
-            LEL(date(1999, 4, 4), conf="year_only", shape="interval", interval_start=date(1999, 1, 1)), LEL(date(2001, 6, 9))]
-    dates, excluded = fully_dated_events(rows, birth_date=BIRTH)
-    assert dates == [date(2001, 6, 9)] and excluded == 3                          # the birth entry is aside, not "excluded"
-    d = derive_chart_horizon_detail(BIRTH, rows, BUILD)
-    assert d["start"] == date(2001, 1, 1) and d["excluded_undated"] == 3 and d["basis"] == "first_dated_event"
-    assert derive_chart_horizon_detail(BIRTH, [BIRTH_ROW, LEL(date(1997, 7, 1), conf="year_only")], BUILD)["basis"] == "build_date"   # a proxy date opens nothing
-
-
-def test_an_exact_interval_event_takes_its_interval_start_and_an_exact_chain_event_is_refused_until_ruled():
-    iv = LEL(date(2005, 6, 1), shape="interval", interval_start=date(2004, 3, 3))                  # the LITERAL reading: the interval's start
-    assert fully_dated_events([BIRTH_ROW, iv], birth_date=BIRTH)[0] == [date(2004, 3, 3)]
-    with pytest.raises(MeasuringReportError, match="lel_date_missing"):
-        fully_dated_events([BIRTH_ROW, LEL(date(2005, 6, 1), shape="interval", interval_start=None)], birth_date=BIRTH)
-    with pytest.raises(MeasuringReportError, match="lel_chain_shape_not_ruled"):
-        fully_dated_events([BIRTH_ROW, LEL(date(2005, 6, 1), shape="chain")], birth_date=BIRTH)
-    assert fully_dated_events([BIRTH_ROW, LEL(date(2005, 6, 1), conf="month_known", shape="chain")], birth_date=BIRTH) == ([], 1)   # not exact: not reached
 
 
 def _refuses(fn, code):
@@ -101,43 +60,121 @@ def _refuses(fn, code):
         raise AssertionError(f"no refusal ({code} expected)")
 
 
-def test_the_birth_row_is_identified_by_category_and_date_and_refused_when_it_cannot_be():
-    _refuses(lambda: fully_dated_events([LEL(date(2001, 6, 9))], birth_date=BIRTH), "lel_birth_row_unidentifiable")              # no birth row at all
-    _refuses(lambda: fully_dated_events([born(date(1984, 2, 6)), LEL(date(2001, 6, 9))], birth_date=BIRTH), "lel_birth_row_unidentifiable")   # another date
-    _refuses(lambda: fully_dated_events([BIRTH_ROW, born(), LEL(date(2001, 6, 9))], birth_date=BIRTH), "lel_birth_row_unidentifiable")        # two candidates
-    assert fully_dated_events([LEL(BIRTH, category="school"), BIRTH_ROW], birth_date=BIRTH) == ([BIRTH], 0)    # another event on the birth day still counts
+# ── the horizon ──────────────────────────────────────────────────────────────────────────────────────────────────
+def test_the_pinned_chart_horizon_is_1998_01_01_to_2084_02_05_and_has_the_measured_day_count():
+    start, end, basis = derive_chart_horizon(BIRTH, [BIRTH_ROW, LEL(date(1998, 8, 20)), LEL(date(2003, 5, 1))], BUILD)
+    assert (start, end, basis) == (date(1998, 1, 1), date(2084, 2, 5), "first_dated_event")
+    assert mr.horizon_days((start, end)) == H_DAYS
 
 
-def test_an_unknown_confidence_or_shape_word_is_refused_by_name():
-    with pytest.raises(MeasuringReportError, match="lel_date_confidence_unknown"):
-        fully_dated_events([BIRTH_ROW, LEL(date(2001, 6, 9), conf="circa")], birth_date=BIRTH)
-    with pytest.raises(MeasuringReportError, match="lel_shape_unknown"):
-        fully_dated_events([BIRTH_ROW, LEL(date(2001, 6, 9), shape="blob")], birth_date=BIRTH)
+def test_the_real_fixture_gives_the_ruled_pair_and_reordering_changes_nothing():
+    rows = [BIRTH_ROW, LEL(date(1993, 7, 1), conf="year_only"), LEL(date(1995, 7, 1), conf="year_only"), LEL(date(1998, 2, 16)), LEL(date(2003, 5, 1))]
+    d = derive_chart_horizon_detail(BIRTH, rows, BUILD)
+    assert (d["start"], d["end"], d["basis"], d["excluded_undated"]) == (date(1998, 1, 1), date(2084, 2, 5), "first_dated_event", 2)
+    assert derive_chart_horizon_detail(BIRTH, list(reversed(rows)), BUILD) == d
+    without_1998 = [r for r in rows if r["event_date"] != date(1998, 2, 16)]
+    assert derive_chart_horizon(BIRTH, without_1998, BUILD)[0] == date(2003, 1, 1)
+
+
+def test_an_empty_log_reaches_the_rebuild_date_fallback_and_a_nonempty_one_without_a_dated_event_does_too():
+    a = derive_chart_horizon(BIRTH, [], BUILD)
+    assert a == (BUILD, date(2084, 2, 5), "build_date")
+    b = derive_chart_horizon(BIRTH, [BIRTH_ROW, LEL(date(2001, 1, 1), conf="year_only")], BUILD + timedelta(days=1))
+    assert b[0] == BUILD + timedelta(days=1) and b[2] == "build_date" and a != b       # the build date is IN the result
+
+
+def test_the_birth_date_is_the_civil_date_of_datetime_iso_in_its_own_offset():
+    params = {"datetime_iso": "1984-02-05T10:43:00+05:30", "lat": 20.27}                  # the real runner passes datetime_iso and no birth_date key
+    assert mr.birth_date_of(params) == date(1984, 2, 5)                                    # 05:13Z the same day; an offset near midnight would differ
+    assert mr.birth_date_of({"datetime_iso": "1984-02-05T00:10:00+05:30"}) == date(1984, 2, 5)    # 1984-02-04T18:40Z, still the 5th in its own offset
+    assert derive_chart_horizon(params, [BIRTH_ROW, LEL(date(1998, 2, 16))], BUILD) == (date(1998, 1, 1), date(2084, 2, 5), "first_dated_event")
+    for bad in ({}, {"datetime_iso": None}, {"datetime_iso": "never"}):
+        _refuses(lambda b=bad: derive_chart_horizon(b, [], BUILD), "birth_params_unreadable")
+
+
+def test_the_build_date_is_a_utc_date_a_tz_aware_instant_is_taken_to_its_utc_date_and_nothing_else_is_accepted():
+    late_ist = datetime(2026, 10, 5, 23, 30, tzinfo=timezone(timedelta(hours=5, minutes=30)))     # 18:00 UTC the same day
+    early_ist = datetime(2026, 10, 6, 1, 0, tzinfo=timezone(timedelta(hours=5, minutes=30)))      # 19:30 UTC on the 5th
+    assert derive_chart_horizon(BIRTH, [BIRTH_ROW], late_ist)[0] == date(2026, 10, 5)
+    assert derive_chart_horizon(BIRTH, [BIRTH_ROW], early_ist)[0] == date(2026, 10, 5)
+    _refuses(lambda: derive_chart_horizon(BIRTH, [BIRTH_ROW], datetime(2026, 10, 5, 12)), "naive_datetime")
+    for bad in (None, "2026-10-05", 20261005):
+        _refuses(lambda b=bad: derive_chart_horizon(BIRTH, [BIRTH_ROW], b), "build_date_unreadable")
+
+
+def test_the_first_event_is_the_earliest_not_the_first_listed():
+    rows = [BIRTH_ROW, LEL(date(2010, 3, 3)), LEL(date(1999, 12, 31))]
+    assert derive_chart_horizon(BIRTH, rows, BUILD)[0] == date(1999, 1, 1)
+
+
+def test_the_birth_row_is_identified_by_the_documented_vocabulary_and_refused_when_a_nonempty_log_has_none_or_two():
+    for spelling in ({"category": "other", "subcategory": "birth"}, {"domain": "other/birth"}, {"event_type": "birth"},
+                     {"provenance": {"subcategory": "birth"}}):
+        assert mr.is_birth_row(LEL(BIRTH, **spelling) if "category" not in spelling else LEL(BIRTH, **spelling))
+    assert not mr.is_birth_row(LEL(BIRTH, category="birth"))                       # a plain category 'birth' is NOT in the documented vocabulary
+    assert not mr.is_birth_row(LEL(BIRTH, category="other"))
+    _refuses(lambda: fully_dated_events([LEL(date(2001, 6, 9))], birth_date=BIRTH), "lel_birth_row_unidentifiable")                 # none
+    _refuses(lambda: fully_dated_events([born(date(1984, 2, 6)), LEL(date(2001, 6, 9))], birth_date=BIRTH), "lel_birth_row_unidentifiable")   # wrong date
+    _refuses(lambda: fully_dated_events([BIRTH_ROW, born(), LEL(date(2001, 6, 9))], birth_date=BIRTH), "lel_birth_row_unidentifiable")        # two
+    assert fully_dated_events([], birth_date=BIRTH)["dates"] == []                                                                   # an empty log is not an error
+
+
+def test_fully_dated_is_exact_and_a_real_digit_id_equal_to_the_date_and_a_disagreement_that_moves_start_is_refused():
+    rows = [BIRTH_ROW, LEL(date(1997, 7, 1), conf="year_only"), LEL(date(1997, 5, 1), conf="month_known"), LEL(date(2001, 6, 9))]
+    info = fully_dated_events(rows, birth_date=BIRTH)
+    assert info["dates"] == [date(2001, 6, 9)] and info["excluded"] == 2                          # the birth entry is aside, not "excluded"
+    # a legacy row defaulted to `exact` whose id carries XX: the flag alone would open 1996, the id rule does not -> the two rules disagree
+    legacy = LEL(date(1996, 3, 3), event_id="EVT.1996.XX.XX.01")
+    _refuses(lambda: fully_dated_events([BIRTH_ROW, legacy, LEL(date(2001, 6, 9))], birth_date=BIRTH), "lel_dating_rules_disagree")
+    # a stored date that differs from its id's date is the same disagreement
+    skewed = LEL(date(1996, 3, 3), event_id="EVT.1996.03.04.01")
+    _refuses(lambda: fully_dated_events([BIRTH_ROW, skewed, LEL(date(2001, 6, 9))], birth_date=BIRTH), "lel_dating_rules_disagree")
+    # a disagreeing row that is NOT the first event changes no start and is only excluded
+    late_legacy = LEL(date(2009, 3, 3), event_id="EVT.2009.XX.XX.01")
+    assert fully_dated_events([BIRTH_ROW, late_legacy, LEL(date(2001, 6, 9))], birth_date=BIRTH)["dates"] == [date(2001, 6, 9)]
+
+
+def test_a_shape_reading_that_would_change_start_is_refused_and_one_that_does_not_is_not():
+    # the row's own event_date is 1998-06-01; its interval_start 1996-01-01 would open an earlier year: the owner's open point matters here
+    sens = LEL(date(1998, 6, 1), shape="interval", interval_start=date(1996, 1, 1))
+    _refuses(lambda: fully_dated_events([BIRTH_ROW, sens], birth_date=BIRTH), "lel_shape_reading_sensitive")
+    benign = LEL(date(1998, 6, 1), shape="interval", interval_start=date(1998, 3, 1))              # same year: START is the same under both readings
+    d = derive_chart_horizon_detail(BIRTH, [BIRTH_ROW, benign], BUILD)
+    assert d["start"] == date(1998, 1, 1) and d["readings"]["interval_start"] == d["readings"]["event_date"]
+    root = LEL(date(2005, 1, 1), event_id="EVT.2005.01.01.07")
+    child = LEL(date(2006, 1, 1), shape="chain", chain_parent_event_id="EVT.2005.01.01.07", event_id="EVT.2006.01.01.08")
+    assert derive_chart_horizon_detail(BIRTH, [BIRTH_ROW, root, child], BUILD)["start"] == date(2005, 1, 1)
+    early_child = LEL(date(1999, 1, 1), shape="chain", chain_parent_event_id="EVT.2005.01.01.07", event_id="EVT.1999.01.01.08")
+    _refuses(lambda: fully_dated_events([BIRTH_ROW, root, early_child], birth_date=BIRTH), "lel_shape_reading_sensitive")      # the root's date would open 2005
+    dangling = LEL(date(2006, 1, 1), shape="chain", chain_parent_event_id="EVT.9999.01.01.99", event_id="EVT.2006.01.01.08")
+    _refuses(lambda: fully_dated_events([BIRTH_ROW, dangling], birth_date=BIRTH), "lel_chain_unresolvable")
+
+
+def test_an_unknown_confidence_or_shape_word_or_a_missing_date_is_refused_by_name():
+    _refuses(lambda: fully_dated_events([BIRTH_ROW, LEL(date(2001, 6, 9), conf="circa")], birth_date=BIRTH), "lel_date_confidence_unknown")
+    _refuses(lambda: fully_dated_events([BIRTH_ROW, LEL(date(2001, 6, 9), shape="blob")], birth_date=BIRTH), "lel_shape_unknown")
+    _refuses(lambda: fully_dated_events([BIRTH_ROW, LEL(None, event_id="EVT.2001.06.09.01")], birth_date=BIRTH), "lel_date_missing")
 
 
 def test_the_horizon_cannot_start_before_the_substrate_domain_or_before_birth_or_in_the_future():
-    with pytest.raises(MeasuringReportError, match="horizon_start_before_substrate_domain"):
-        derive_chart_horizon(BIRTH, [BIRTH_ROW, LEL(date(1990, 5, 5))], BUILD)                # 1990-01-01 < 1998-01-01
-    with pytest.raises(MeasuringReportError, match="horizon_start_before_birth"):
-        derive_chart_horizon(BIRTH, [BIRTH_ROW, LEL(date(1983, 5, 1))], BUILD)               # the reviewer's case: 1983-01-01 is before birth
-    with pytest.raises(MeasuringReportError, match="horizon_start_in_future"):
-        derive_chart_horizon(BIRTH, [BIRTH_ROW, LEL(date(2030, 3, 3))], BUILD)
-    assert derive_chart_horizon(BIRTH, [BIRTH_ROW, LEL(date(1998, 1, 1))], BUILD)[0] == date(1998, 1, 1)   # the domain start itself is fine
+    _refuses(lambda: derive_chart_horizon(BIRTH, [BIRTH_ROW, LEL(date(1990, 5, 5))], BUILD), "horizon_start_before_substrate_domain")       # 1990-01-01 < 1998-01-01
+    _refuses(lambda: derive_chart_horizon(BIRTH, [BIRTH_ROW, LEL(date(1983, 5, 1))], BUILD), "horizon_start_before_birth")                   # the reviewer's case
+    _refuses(lambda: derive_chart_horizon(BIRTH, [BIRTH_ROW, LEL(date(2030, 3, 3))], BUILD), "horizon_start_in_future")
+    assert derive_chart_horizon(BIRTH, [BIRTH_ROW, LEL(date(1998, 1, 1))], BUILD)[0] == date(1998, 1, 1)                                     # the domain start itself is fine
 
 
 def test_a_leap_day_birth_without_an_anniversary_is_refused_by_name():
-    with pytest.raises(MeasuringReportError, match="horizon_birth_anniversary_undefined"):
-        derive_chart_horizon(date(2000, 2, 29), [born(date(2000, 2, 29))], BUILD)           # 2100 is not a leap year
+    _refuses(lambda: derive_chart_horizon(date(2000, 2, 29), [born(date(2000, 2, 29))], BUILD), "horizon_birth_anniversary_undefined")      # 2100 is not a leap year
     assert derive_chart_horizon(date(1904, 2, 29), [born(date(1904, 2, 29)), LEL(date(1999, 1, 2))], BUILD)[1] == date(2004, 2, 29)
 
 
 def test_the_substrate_rule_FB3_at_both_edges_and_birth():
     p = mr.horizon_problem
     assert p(H) is None and p((date(1998, 1, 1), date(2085, 1, 1))) is None        # both domain edges themselves
-    assert (p((date(1997, 12, 31), date(2084, 2, 5))) or "").startswith("horizon_start_before_substrate_domain")
-    assert (p((H[0], date(2085, 1, 2))) or "").startswith("horizon_outside_substrate_domain")
-    assert (p((date(2030, 1, 1), date(2030, 1, 1))) or "").startswith("horizon_empty")
-    assert p(H, birth_date=BIRTH) is None and (p(H, birth_date=date(1999, 1, 1)) or "").startswith("horizon_start_before_birth")
+    assert p((date(1997, 12, 31), date(2084, 2, 5))).startswith("horizon_start_before_substrate_domain")
+    assert p((H[0], date(2085, 1, 2))).startswith("horizon_outside_substrate_domain")
+    assert p((date(2030, 1, 1), date(2030, 1, 1))).startswith("horizon_empty")
+    assert p(H, birth_date=BIRTH) is None and p(H, birth_date=date(1999, 1, 1)).startswith("horizon_start_before_birth")
 
 
 # ── stored bounds (the builder stores tz-aware instants / tstzrange bounds) ──────────────────────────────────────
@@ -198,56 +235,122 @@ def _rec(cls, path, agent, *spans, via="base"):
     return SupportRecord(cls, path, agent, tuple(spans), via)
 
 
-def test_shares_by_path_fast_slow_union_and_per_agent_contribution():
-    d = lambda n: T(2000, 1, n)                                                    # noqa: E731
+def _p4(agent, lo, hi, via="base", cls="marriage"):
+    return _rec(cls, "P4", agent, (lo, hi), via=via)
+
+
+def test_shares_by_path_fast_slow_union_and_per_agent_contribution_with_p4_as_an_intersection():
+    d = lambda n, h=0: T(2000, 1, n, h)                                            # noqa: E731
     recs = [
         _rec("marriage", "P3", "venus", (d(1), d(4))),                             # fast: Jan 1,2,3
         _rec("marriage", "P3", "jupiter", (d(3), d(6))),                           # slow: Jan 3,4,5
         _rec("marriage", "P3", "saturn", (d(10), d(11))),                          # slow: Jan 10
-        _rec("marriage", "P4", "jupiter", (d(3), d(6))),                           # P4 alone: Jan 3,4,5
+        _p4("jupiter", d(3), d(6)),                                                # Jupiter influence Jan 3,4,5
+        _p4("saturn", d(4, 12), d(8)),                                             # Saturn influence from Jan 4 12:00 to Jan 8
         _rec("marriage", "P2", "moon", (d(20), d(22))),                            # P2: Jan 20,21
     ]
     r = class_share_report(recs, [], H)["classes"]["marriage"]
     days = r["admitted_days"]
     assert days["P3_fast"] == 3 and days["P3_slow"] == 4 and days["P3_union"] == 6      # {1,2,3} ∪ {3,4,5,10}
-    # P4-alone is the P4 path's OWN union: Jan 3,4,5 even though P3 already admits those days
-    assert days["P4_without_dvi"] == 3 and days["P4_with_dvi"] == 3 and days["P2"] == 2
-    assert days["class_union"] == 8                                                # 6 + P2's 2 (P4 inside P3's days)
+    # P4 = Jupiter ∩ Saturn at the instant level: [Jan 4 12:00, Jan 6) -> Jan 4 and Jan 5 = 2 days (a UNION would be 5)
+    assert days["P4_without_dvi"] == 2 and days["P4_with_dvi"] == 2 and days["P2"] == 2
+    assert days["class_union"] == 8                                                # P3's 6 + P2's 2; P4's two days lie inside P3's
     assert days["P1_base"] == 0 and days["kb_only"] == 0
     assert r["admitted_share"]["P3_union"] == 6 / H_DAYS
-    # per agent: venus {1,2,3} exclusive {1,2}; jupiter {3,4,5} (P3 and P4) exclusive {4,5}; saturn {10}; moon {20,21}
+    # per agent over P1-P3 records: venus {1,2,3} exclusive {1,2}; jupiter {3,4,5} exclusive {4,5}; saturn {10}; moon {20,21}; P4 is joint
     assert r["per_agent"]["venus"] == {"days": 3, "exclusive_days": 2}
     assert r["per_agent"]["jupiter"] == {"days": 3, "exclusive_days": 2}
     assert r["per_agent"]["saturn"] == {"days": 1, "exclusive_days": 1}
     assert r["per_agent"]["moon"] == {"days": 2, "exclusive_days": 2}
+    assert r["P4_joint"] == {"without_dvi_days": 2, "with_dvi_days": 2}
 
 
-def test_the_forty_percent_comparison_is_over_the_scored_horizon_not_the_build_horizon():
-    assert mr.SCORED_HORIZON == (date(1998, 1, 1), date(2026, 4, 17))
-    recs = [_rec("marriage", "P4", "saturn", (T(2000, 1, 1), T(2000, 1, 11)))]                # 10 days
-    build = class_share_report(recs, [], H)["classes"]["marriage"]["admitted_share"]["P4_with_dvi"]
-    scored = class_share_report(recs, [], mr.SCORED_HORIZON)["classes"]["marriage"]["admitted_share"]["P4_with_dvi"]
-    assert build == 10 / H_DAYS and scored == 10 / 10333 and scored > build           # 1998-01-01 .. 2026-04-17 half-open = 10,333 days
+def test_p4_is_the_intersection_of_the_two_agents_instants_not_their_union_and_not_a_day_set_intersection():
+    cls = lambda recs: class_share_report(recs, [], H)["classes"]["marriage"]["admitted_days"]            # noqa: E731
+    d = lambda n, h=0: T(2000, 1, n, h)                                            # noqa: E731
+    # the reviewer's input: Jupiter [Jan 1, Jan 6), Saturn [Jan 4, Jan 9) -> Jan 4,5 = 2 days (a union is 8)
+    assert cls([_p4("jupiter", d(1), d(6)), _p4("saturn", d(4), d(9))])["P4_without_dvi"] == 2
+    # disjoint supports -> 0 (a union is positive)
+    assert cls([_p4("jupiter", d(1), d(3)), _p4("saturn", d(5), d(8))])["P4_without_dvi"] == 0
+    # one agent alone -> 0
+    assert cls([_p4("jupiter", d(1), d(6))])["P4_without_dvi"] == 0
+    # same calendar day, disjoint instants (morning vs afternoon): a day-set intersection would say 1, the instant intersection says 0
+    assert cls([_p4("jupiter", d(4), d(4, 12)), _p4("saturn", d(4, 12), d(5))])["P4_without_dvi"] == 0
+    # several records per agent are unioned first, then intersected
+    assert cls([_p4("jupiter", d(1), d(3)), _p4("jupiter", d(5), d(7)), _p4("saturn", d(2), d(6))])["P4_without_dvi"] == 2   # Jan 2 and Jan 5
+    # the class union takes the P4 INTERSECTION, not the union of the two agents
+    assert cls([_p4("jupiter", d(1), d(6)), _p4("saturn", d(4), d(9))])["class_union"] == 2
 
 
-def test_extension_variants_split_when_they_land_and_equal_base_when_absent():
-    d = lambda n: T(2000, 2, n)                                                    # noqa: E731
+def test_k_b_and_dvi_enter_the_p4_variants_through_the_agents_influence():
+    d = lambda m, n: T(2000, m, n)                                                  # noqa: E731
     recs = [
-        _rec("marriage", "P1", "venus", (d(1), d(3))),                             # base P1: Feb 1,2
-        _rec("marriage", "P1", "jupiter", (d(10), d(12)), via="karakatva"),        # extension: Feb 10,11
-        _rec("marriage", "P4", "saturn", (d(20), d(23))),                          # base P4: Feb 20,21,22
-        _rec("marriage", "P4", "jupiter", (d(25), d(27)), via="dvi"),              # DVI member: Feb 25,26
-        _rec("marriage", "P3", "saturn", (d(20), d(23))),                          # base P3 covers 20-22
-        _rec("marriage", "P3", "saturn", (d(28), d(29)), via="kb"),                # K-B only: Feb 28
+        _rec("marriage", "P1", "venus", (d(2, 1), d(2, 3))),                       # base P1: Feb 1,2
+        _rec("marriage", "P1", "jupiter", (d(2, 10), d(2, 12)), via="karakatva"),  # extension: Feb 10,11
+        _p4("saturn", d(2, 20), d(2, 23)), _p4("jupiter", d(2, 20), d(2, 23)),     # base P4: Feb 20,21,22
+        _p4("jupiter", d(2, 25), d(2, 27), via="dvi"), _p4("saturn", d(2, 25), d(2, 27), via="dvi"),   # DVI both: Feb 25,26
+        _rec("marriage", "P3", "saturn", (d(2, 20), d(2, 23))),                    # base P3 covers 20-22
+        _rec("marriage", "P3", "saturn", (d(2, 28), d(2, 29)), via="kb"),          # K-B in P3 only: Feb 28
+        _p4("jupiter", d(3, 3), d(3, 5), via="kb"), _p4("saturn", d(3, 4), d(3, 6), via="kb"),        # K-B in P4: the two agents overlap on Mar 4
     ]
     days = class_share_report(recs, [], H)["classes"]["marriage"]["admitted_days"]
     assert days["P1_base"] == 2 and days["P1_with_karakatva"] == 4
-    assert days["P4_without_dvi"] == 3 and days["P4_with_dvi"] == 5
-    assert days["kb_only"] == 1                                                    # Feb 28 is admitted only through K-B
+    assert days["P4_without_dvi"] == 3 + 1                                         # base Feb 20-22 plus the K-B overlap Mar 4
+    assert days["P4_with_dvi"] == 3 + 1 + 2                                        # plus the DVI days Feb 25,26
+    assert days["kb_only"] == 2                                                    # Feb 28 (P3 K-B) and Mar 4 (P4 K-B) are admitted only through K-B
     assert days["P3_union"] == 4                                                   # base 20-22 plus the K-B day 28
     plain = class_share_report([r for r in recs if r.via == "base"], [], H)["classes"]["marriage"]["admitted_days"]
-    assert plain["P1_with_karakatva"] == plain["P1_base"] == 2 and plain["P4_with_dvi"] == plain["P4_without_dvi"] == 3
-    assert plain["kb_only"] == 0
+    assert plain["P1_with_karakatva"] == plain["P1_base"] == 2 and plain["P4_with_dvi"] == plain["P4_without_dvi"] == 3 and plain["kb_only"] == 0
+
+
+def test_an_admitted_testimony_record_is_refused_in_a_scored_share_and_a_p4_agent_must_be_jupiter_or_saturn():
+    ok = (T(2001, 1, 1), T(2001, 1, 11))
+    _refuses(lambda: class_share_report([SupportRecord("marriage", "P1", "venus", (ok,), "base", "testimony")], [], H), "testimony_record_in_scored_share")
+    _refuses(lambda: class_share_report([_p4("mars", *ok)], [], H), "p4_agent_not_jupiter_or_saturn")
+
+
+def test_the_two_grids_are_labelled_and_never_mixed_the_scorers_convention_is_ist_inclusive_10334():
+    from services.gochara_eval import registry as scorer
+    assert mr._SCORER_H0 == scorer.H0 and mr._SCORER_H1 == scorer.H1 and mr.SCORED_DAYS == scorer.H_DAYS == 10334
+    g = mr.scored_grid()
+    assert (g.label, g.days) == ("ist_inclusive", 10334) and g.hi - g.lo == timedelta(days=10334)
+    b = mr.build_grid(H)
+    assert (b.label, b.days) == ("utc_half_open", H_DAYS)
+    recs = [_rec("marriage", "P3", "sun", (T(2000, 1, 1), T(2000, 1, 11)))]                     # 10 days
+    assert class_share_report(recs, [], H)["convention"] == "utc_half_open"
+    sc = mr.scored_share_report(recs, [])
+    assert sc["convention"] == "ist_inclusive" and sc["horizon_days"] == 10334 and sc["horizon"] == ["1998-01-01", "2026-04-17"]
+    # 2000-01-01T00:00Z is 05:30 IST on Jan 1; 2000-01-11T00:00Z is 05:30 IST on Jan 11: ten days become ELEVEN IST calendar days
+    assert sc["classes"]["marriage"]["admitted_days"]["P3_union"] == 11
+
+
+def test_the_ist_day_boundary_is_18_30_utc_and_the_scored_horizon_includes_the_17th_of_april_2026():
+    one_ist_day = [_rec("marriage", "P3", "sun", (datetime(2000, 1, 1, 18, 30, tzinfo=timezone.utc), datetime(2000, 1, 2, 18, 30, tzinfo=timezone.utc)))]
+    assert mr.scored_share_report(one_ist_day, [])["classes"]["marriage"]["admitted_days"]["P3_union"] == 1     # exactly 2000-01-02 IST
+    last = [_rec("marriage", "P3", "sun", (datetime(2026, 4, 16, 18, 30, tzinfo=timezone.utc), datetime(2026, 4, 17, 18, 30, tzinfo=timezone.utc)))]
+    after = [_rec("marriage", "P3", "sun", (datetime(2026, 4, 17, 18, 30, tzinfo=timezone.utc), datetime(2026, 4, 18, 18, 30, tzinfo=timezone.utc)))]
+    assert mr.scored_share_report(last, [])["classes"]["marriage"]["admitted_days"]["P3_union"] == 1           # 17 April IST: inside
+    assert mr.scored_share_report(after, [])["classes"]["marriage"]["admitted_days"]["P3_union"] == 0          # 18 April IST: outside
+
+
+def test_the_forty_percent_guard_input_flips_on_the_scorers_convention_and_not_on_the_build_one():
+    # the reviewer's guard-flipping input: matching Jupiter and Saturn P4 supports over 4,133 UTC days plus the observation-end day
+    first = (T(1998, 1, 1), T(2009, 4, 26))                                                     # 4,133 UTC days
+    last = (T(2026, 4, 17), T(2026, 4, 18))
+    recs = [SupportRecord("marriage", "P4", a, (first, last), "base") for a in ("jupiter", "saturn")]
+    sc = mr.scored_share_report(recs, [])["classes"]["marriage"]
+    # IST: 2009-04-26T00:00Z is 05:30 IST on the 26th (that day is touched) -> 4,134 days; the observation-end day adds 1 -> 4,135 of 10,334
+    assert sc["admitted_days"]["P4_with_dvi"] == 4135 and sc["admitted_share"]["P4_with_dvi"] == 4135 / 10334
+    assert sc["admitted_share"]["P4_with_dvi"] > 0.40                                          # the guard fires on the scorer's grid
+    # the half-open UTC half-open 10,333-day grid would give 4,133 + 0 = 4,133 / 10,333 = 39.998 percent: NOT the number the guard uses
+    assert 4133 / 10333 < 0.40 < 4135 / 10334
+
+
+def test_extension_variants_equal_base_when_absent():
+    d = lambda n: T(2000, 2, n)                                                    # noqa: E731
+    recs = [_rec("marriage", "P1", "venus", (d(1), d(3)))]
+    days = class_share_report(recs, [], H)["classes"]["marriage"]["admitted_days"]
+    assert days["P1_with_karakatva"] == days["P1_base"] == 2 and days["P4_with_dvi"] == days["P4_without_dvi"] == 0 and days["kb_only"] == 0
 
 
 def test_classes_are_reported_independently():
@@ -318,13 +421,13 @@ def test_near_misses_are_counted_separately_and_cannot_change_any_share():
 
 # ── acceptance of the measuring build (§13) ──────────────────────────────────────────────────────────────────────
 ALL26 = frozenset(mr.SCORED_CLASSES)
-HOLDING = frozenset({"marriage", "surgery", "bereavement"})
+HOLDING_PATHS = frozenset({("marriage", "P3"), ("surgery", "P2"), ("bereavement", "P4"), ("spiritual_turn", "P2")})     # the eight hold P2 rows today
 
 
 def _view(**kw):
     base = dict(stored_scope="test_slice", run="all_classes_full", sealed=False, published=False, horizon=H,
-                rule_versions=frozenset({"1.0.0"}), near_miss_rows_stored=0, classes_with_records=HOLDING,
-                marker_classes=ALL26, marker_horizon=H)
+                rule_versions=frozenset({"1.0.0"}), near_miss_rows_stored=0, class_paths_with_rows=HOLDING_PATHS,
+                marker_classes=ALL26, marker_horizon=H, marker_schema="gochara_v5_test_slice/1", marker_digest="d" * 64)
     base.update(kw)
     return MeasuringBuildView(**base)
 
@@ -352,8 +455,15 @@ def test_a_faithful_measuring_build_is_accepted_in_date_form_and_in_the_stored_i
     (dict(rule_versions=frozenset({"9.9.9"})), "rule_version_not_in_scope"),
     (dict(rule_versions=frozenset({"1.0.0", "1.1.0"})), "rule_version_not_in_scope"),
     (dict(near_miss_rows_stored=3), "near_miss_rows_stored"),
-    (dict(classes_with_records=frozenset({"marriage", "spiritual_turn", "parental_event"})), "excluded_class_has_rows"),
-    (dict(classes_with_records=frozenset({"marriage", "pluto_transit"})), "unknown_class_has_rows"),
+    (dict(class_paths_with_rows=HOLDING_PATHS | {("spiritual_turn", "P3")}), "excluded_path_has_rows"),
+    (dict(class_paths_with_rows=HOLDING_PATHS | {("parental_event", "P1")}), "excluded_path_has_rows"),
+    (dict(class_paths_with_rows=HOLDING_PATHS | {("achievement_recognition", "P4")}), "excluded_path_has_rows"),
+    (dict(class_paths_with_rows=frozenset({("marriage", "P3"), ("pluto_transit", "P3")})), "unknown_class_has_rows"),
+    (dict(marker_horizon=None), "marker_incomplete"),
+    (dict(marker_schema=None), "marker_incomplete"),
+    (dict(marker_schema="other/1"), "marker_incomplete"),
+    (dict(marker_digest=None), "marker_incomplete"),
+    (dict(marker_digest=""), "marker_incomplete"),
     (dict(marker_classes=frozenset()), "class_census_mismatch"),
     (dict(marker_classes=frozenset({"marriage"})), "class_census_mismatch"),
     (dict(marker_classes=ALL26 | {"birth_anchor"}), "class_census_mismatch"),
@@ -442,7 +552,7 @@ def test_read_measuring_view_refuses_several_manifests_rather_than_picking_one()
 
 # ── amendments of review VERIFIER-FABLE-2 (3185) ────────────────────────────────────────────────────────────────
 def test_an_empty_generation_is_not_a_measuring_build():
-    out = measuring_refusals(_view(classes_with_records=frozenset()), expected_horizon=H)
+    out = measuring_refusals(_view(class_paths_with_rows=frozenset()), expected_horizon=H)
     assert any(x.startswith("measuring_build_holds_no_rows") for x in out), out
     assert not any(x.startswith("measuring_build_holds_no_rows") for x in measuring_refusals(_view(), expected_horizon=H))
 
@@ -469,8 +579,6 @@ def test_an_extension_tag_is_valid_only_on_its_own_paths(via, path, ok):
             class_share_report(rec, [], H)
 
 
-def test_the_two_day_count_conventions_of_the_scored_horizon_are_named_and_differ_by_exactly_one_day():
-    assert mr.horizon_days(mr.SCORED_HORIZON) == 10333                         # FB-5: `t_in < 2026-04-17`, the 17th not read
-    assert mr.PROTOCOL_SCORED_DAYS == 10334                                    # EVALUATION_PROTOCOL v2.3 §1: inclusive of the 17th
-    assert mr.PROTOCOL_SCORED_DAYS == mr.horizon_days(mr.SCORED_HORIZON) + 1
-    assert (mr.SCORED_HORIZON[1] - mr.SCORED_HORIZON[0]).days + 1 == mr.PROTOCOL_SCORED_DAYS
+def test_the_eight_classes_may_hold_p2_rows_today_and_a_faithful_build_with_them_is_accepted():
+    view = _view(class_paths_with_rows=frozenset({(c, "P2") for c in mr.EXCLUDED_EIGHT} | {("marriage", "P3"), ("bereavement", "P1")}))
+    assert measuring_refusals(view, expected_horizon=H) == []
