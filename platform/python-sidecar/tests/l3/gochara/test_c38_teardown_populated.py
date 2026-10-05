@@ -58,6 +58,11 @@ def _stamp_consistently(w):
               "horizon": [H0.isoformat(), H1.isoformat()], "classes": list(writer_mod.SCORED_CLASSES)}
     sliced = writer_mod._validate_test_slice(marker)
     stamp = {"stored_scope": writer_mod.TEST_SLICE_SCOPE, "test_slice": writer_mod._slice_component(sliced)}
+    # Codex round 4 T4: the owned run SURVIVES, so the stamp must be proved from its ORIGINAL marker (the preimage), exactly as a dispatch
+    # stages it in build_runs.plan_manifest; reconstruction is only for the case where no owned run survives
+    manifest = {writer_mod.TEST_SLICE_KEY: marker}
+    w.conn.execute("UPDATE public.build_runs SET plan_manifest = %s::jsonb, plan_manifest_digest = %s WHERE triggered_by = %s",
+                   (json.dumps(manifest), writer_mod._manifest_digest(manifest), td.TRIGGERED_BY))
     with w.conn.transaction():                                   # behind the guards: a fixture rewrite, not a build step
         w.conn.execute("SET LOCAL session_replication_role = replica")
         for table in ("kala_gochara_publication", "ka_gochara_search_input_snapshot"):
