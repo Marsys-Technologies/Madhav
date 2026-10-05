@@ -151,7 +151,7 @@ class InventoryStore:
             # digests below are computed over the SAME database-built copy (the functions are the trigger's own), so a submitted digest can only agree if
             # it is the digest of what the database will store.
             l1 = self.conn.execute(
-                "SELECT public.ka_gochara_search_copy_digest(public.ka_gochara_search_facts_copy(%s::uuid, %s::text[], true), 'content')",
+                "SELECT public.ka_gochara_search_copy_digest(public.ka_gochara_search_facts_copy(%s::uuid, %s::text[]), 'content')",
                 (chart_id, facts)).fetchone()[0]
             dd = self.conn.execute(
                 "SELECT public.ka_gochara_search_copy_digest(public.ka_gochara_search_dasha_copy(%s::uuid, %s::uuid[]), 'content')",

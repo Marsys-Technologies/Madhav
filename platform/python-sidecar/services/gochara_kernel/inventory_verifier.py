@@ -166,13 +166,13 @@ def _sha(text: str) -> str:
 
 def _exact_float(num: Any, subject: str) -> float:
     """The F-3 §3 round-trip guard, derived independently of `targets`: a stored L1 numeric
-    must equal what its float64 carries (`Decimal(repr(float(x))) == x.normalize()`),
+    must equal what its float64 carries (`Decimal(repr(float(x))) == x` (exact Decimal equality)),
     else there is no honest identity text to re-derive from — unverifiable, never rounded."""
     if isinstance(num, float):
         return num
     exact = num if isinstance(num, Decimal) else Decimal(str(num))
     value = float(exact)
-    if Decimal(repr(value)) != exact.normalize():
+    if Decimal(repr(value)) != exact:          # exact Decimal equality (.normalize() would round to the context precision and accept a tiny difference)
         raise Unverifiable(
             f"graha_position {subject} = {num!r} is not exactly representable as a float64: "
             "the identity text would be quantised — refusing to re-derive (F-3 §3)")
@@ -204,7 +204,7 @@ def chart_from_copy(copy: Sequence[Mapping[str, Any]]) -> dict[str, Any]:
     lagna, natal = None, {}
     for e in copy:
         c = e.get("content") or {}
-        subj, num = c.get("fact_subject"), c.get("fact_value_num")
+        subj, num = (e.get("key") or {}).get("fact_subject"), c.get("fact_value_num")
         if num is None:
             continue
         if subj == "LAGNA":

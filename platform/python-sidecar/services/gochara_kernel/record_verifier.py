@@ -18,7 +18,7 @@ gap), narrower (discarding a valid later portion) or on the wrong pieces fails t
 """
 from __future__ import annotations
 
-_SQL = """
+_SQL_TEMPLATE = """
 WITH snap AS (
   SELECT s.consumed_dasha_row_ids AS ids,
          (to_jsonb(s) -> 'consumed_dasha_rows') AS copy      -- the snapshot's COPY (1305, G12); JSON null / absent for a legacy snapshot
@@ -28,12 +28,7 @@ src AS (
   SELECT lower(e.value #>> '{content,lord_graha}') AS lord, (e.value #>> '{key,level_n}')::int AS level_n,
          (e.value #>> '{key,start_iso}')::timestamptz AS s, (e.value #>> '{content,end_iso}')::timestamptz AS e
   FROM snap, jsonb_array_elements(snap.copy) AS e(value)
-  WHERE jsonb_typeof(snap.copy) = 'array'
-  UNION ALL
-  SELECT lower(d.lord_graha), d.level_n, d.start_iso, d.end_iso
-  FROM public.chart_dashas d, snap
-  WHERE (snap.copy IS NULL OR jsonb_typeof(snap.copy) <> 'array')                -- LEGACY snapshot: read by id from live L1, as before
-    AND d.chart_id = %(chart)s AND d.dasha_row_id = ANY (snap.ids)),
+  WHERE jsonb_typeof(snap.copy) = 'array'@@LEGACY_ARM@@),
 runs AS (
   SELECT lord, level_n, range_agg(tstzrange(s, e, '[)')) AS m
   FROM src WHERE level_n IN (1, 2, 3)
@@ -62,6 +57,20 @@ SELECT rec.record_id::text, rec.stored::text,
 FROM rec LEFT JOIN runs ON (runs.lord, runs.level_n) = (rec.lord, rec.level_n)
 """
 
+# A snapshot WITH a copy (1305, G12) is read from the copy ALONE: the statement must not even NAME the live relation (so it runs with live L1 gone, and
+# without privileges on it). Only a LEGACY snapshot (ids, no copy) keeps the live arm, as before.
+_LEGACY_ARM = """
+  UNION ALL
+  SELECT lower(d.lord_graha), d.level_n, d.start_iso, d.end_iso
+  FROM public.chart_dashas d, snap
+  WHERE (snap.copy IS NULL OR jsonb_typeof(snap.copy) <> 'array')                -- LEGACY snapshot: read by id from live L1, as before
+    AND d.chart_id = %(chart)s AND d.dasha_row_id = ANY (snap.ids)"""
+_SQL_COPY = _SQL_TEMPLATE.replace("@@LEGACY_ARM@@", "")
+_SQL_LEGACY = _SQL_TEMPLATE.replace("@@LEGACY_ARM@@", _LEGACY_ARM)
+_SNAPSHOT_HAS_COPY = """
+SELECT jsonb_typeof(to_jsonb(s) -> 'consumed_dasha_rows') = 'array' FROM public.ka_gochara_search_input_snapshot s
+WHERE s.chart_id = %(chart)s AND s.generation = %(gen)s"""
+
 
 def _scalar(row) -> int:
     return 0 if row is None else (next(iter(row.values())) if isinstance(row, dict) else row[0])
@@ -81,7 +90,9 @@ def verify_p1_support(conn, *, chart_id: str, generation: str, event_class: str)
         if _scalar(n):
             raise RuntimeError("P1 records exist on a schema without the period-anchor columns (1233)")
         return {"records": 0, "restricted": 0}
-    rows = conn.execute(_SQL, {"chart": chart_id, "gen": generation, "cls": event_class}).fetchall()
+    has_copy = conn.execute(_SNAPSHOT_HAS_COPY, {"chart": chart_id, "gen": generation}).fetchone()
+    sql = _SQL_COPY if (has_copy is not None and _scalar(has_copy) is True) else _SQL_LEGACY
+    rows = conn.execute(sql, {"chart": chart_id, "gen": generation, "cls": event_class}).fetchall()
     problems: list[str] = []
     restricted = 0
     for rid, stored, expected, equal, expected_empty, result, has_rows in rows:

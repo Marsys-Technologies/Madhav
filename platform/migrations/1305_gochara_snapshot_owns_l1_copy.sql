@@ -24,14 +24,16 @@
 --      informational and never enters input_digest.
 --   3. THE COPY IS PRODUCED BY THE DATABASE (Codex round 1): a BEFORE INSERT trigger (named 0z, so it fires before 1206's write guard) BUILDS the copy and
 --      the metadata digests from the live rows named by the submitted keys, overwriting whatever was submitted in those columns, and refuses unless the
---      submitted identity digests are those of what it built AND the built copy is the COMPLETE live population of what it captures, in both directions
---      (a missing, extra or conflicting row of the same subjects / levels refuses by name).
+--      submitted identity digests are those of what it built AND the built copy is EXACTLY the REQUIRED live population, a contract FIXED IN THE DATABASE
+--      independent of the submitted ids (Vimśottarī MD, AD, PD of the canonical ayanamsha at the consumed tier over the bound manifest horizon; the ten
+--      natal longitude facts): a missing level, period or subject, an extra or a conflicting row refuses by name. Fact identity is the NATURAL key
+--      (fact_id is metadata), so a rebuild that re-issues fact ids is not drift.
 --   4. New functions (nothing dropped, nothing renamed): ka_gochara_search_copy_digest, _normalize_numbers, _facts_copy, _facts_live_population,
---      _dasha_path, _dasha_ordinal_path, _dasha_element, _dasha_copy, _dasha_live_population, and the copy-build trigger function.
+--      _dasha_path, _dasha_ordinal_path, _dasha_element, _dasha_copy, _dasha_required_population, _dasha_live_population, and the copy-build trigger function.
 --   5. Replaces TWO existing functions: ka_gochara_search_moon_resolved_domain (reads the copy) and ka_gochara_search_completeness_violations (the
 --      1232 body, EXACTLY, with one block replaced: the L1 drift check compares the IDENTITY digest of the COMPLETE live population with the stored one,
---      so a changed value, a missing row AND an extra or conflicting row are all hard drift; a metadata-only difference is not a violation; a legacy
---      snapshot keeps the 1206 check).
+--      so a changed value, a missing row AND an extra or conflicting row are all hard drift; a metadata-only difference (a tier, a build) is not a violation;
+--      a legacy snapshot keeps the 1206 check but is REFUSED at first seal with its own violation, `input_snapshot_without_copy`; replay is unchanged).
 --
 -- ORDER (read this): 1305 must apply BEFORE G8's 1306. BOTH replace ka_gochara_search_completeness_violations in full, so whichever applies
 -- LATER must carry the other's body. The gate below REFUSES when the applied completeness function already carries G8's census block
@@ -125,9 +127,10 @@ BEGIN
 END;
 $$;
 
--- ── 3. the L1 FACT rows: built from ids (strict: a missing row is an error) or looked up by key (live view: a missing row is MISSING) ──
--- Rendering is independent of the caller's session (timezone UTC, extra_float_digits), numerics are scale-trimmed so a rebuild that stores the
--- same value with a different trailing scale is NOT a value change.
+-- ── 3. the L1 FACT rows: built from ids (strict: a missing row is an error), keyed by NATURAL KEY ────────────────────────────────────────
+-- An element's KEY is the fact's natural key (ayanamsha, category, key, subject): a later ga_positions rebuild that re-issues fact_ids (deterministic row ids)
+-- changes none of the identity; the fact_id lives in the METADATA block. Rendering is independent of the caller's session (timezone UTC, extra_float_digits),
+-- numerics are scale-trimmed so a rebuild that stores the same value with a different trailing scale is NOT a value change.
 -- Numbers nested ANYWHERE in a jsonb get their scale trimmed (12.50 and 12.5 are the same value), so a rebuild that stores the same number with a different
 -- scale inside fact_value_jsonb is not a changed value. Pure; recursion over objects and arrays only.
 CREATE OR REPLACE FUNCTION public.ka_gochara_search_normalize_numbers(j jsonb)
@@ -145,55 +148,53 @@ BEGIN
 END;
 $$;
 
-CREATE OR REPLACE FUNCTION public.ka_gochara_search_facts_copy(p_chart uuid, p_ids text[], p_strict boolean DEFAULT true)
+CREATE OR REPLACE FUNCTION public.ka_gochara_search_facts_copy(p_chart uuid, p_ids text[])
 RETURNS jsonb LANGUAGE plpgsql STABLE
 SET search_path = pg_catalog, public SET timezone = 'UTC' SET extra_float_digits = 1 AS $$
 DECLARE missing text; r jsonb;
 BEGIN
-  IF p_strict THEN
-    SELECT string_agg(i.id, ',' ORDER BY i.id) INTO missing
-    FROM unnest(p_ids) AS i(id) WHERE NOT EXISTS (SELECT 1 FROM public.chart_facts f WHERE f.fact_id = i.id AND f.chart_id = p_chart);
-    IF missing IS NOT NULL THEN
-      RAISE EXCEPTION 'ka_gochara_search_facts_copy: consumed fact id(s) % do not exist for chart % — a snapshot is built from existing rows', missing, p_chart;
-    END IF;
+  SELECT string_agg(i.id, ',' ORDER BY i.id) INTO missing
+  FROM unnest(p_ids) AS i(id) WHERE NOT EXISTS (SELECT 1 FROM public.chart_facts f WHERE f.fact_id = i.id AND f.chart_id = p_chart);
+  IF missing IS NOT NULL THEN
+    RAISE EXCEPTION 'ka_gochara_search_facts_copy: consumed fact id(s) % do not exist for chart % — a snapshot is built from existing rows', missing, p_chart;
   END IF;
-  SELECT COALESCE(jsonb_agg(s.el ORDER BY s.fid COLLATE "C"), '[]'::jsonb) INTO r
+  SELECT COALESCE(jsonb_agg(s.el ORDER BY public.ka_gochara_canonical_json(s.el -> 'key') COLLATE "C", s.fid COLLATE "C"), '[]'::jsonb) INTO r
   FROM (
-    SELECT i.id AS fid,
+    SELECT f.fact_id AS fid,
            jsonb_build_object(
-             'key', jsonb_build_object('fact_id', i.id),
-             'content', CASE WHEN f.fact_id IS NULL THEN NULL ELSE jsonb_build_object(
-                 'ayanamsha_id', f.ayanamsha_id, 'fact_category', f.fact_category, 'fact_subject', f.fact_subject, 'fact_key', f.fact_key,
-                 'fact_value_text', f.fact_value_text, 'fact_value_num', trim_scale(f.fact_value_num::numeric), 'fact_value_jsonb', public.ka_gochara_search_normalize_numbers(f.fact_value_jsonb),
-                 'unit', f.unit) END,
-             'metadata', CASE WHEN f.fact_id IS NULL THEN NULL ELSE jsonb_build_object(
-                 'build_id', f.build_id, 'verification_pass_status', f.verification_pass_status, 'engine_version', f.engine_version,
+             'key', jsonb_build_object('ayanamsha_id', f.ayanamsha_id, 'fact_category', f.fact_category, 'fact_key', f.fact_key, 'fact_subject', f.fact_subject),
+             'content', jsonb_build_object(
+                 'fact_value_text', f.fact_value_text, 'fact_value_num', trim_scale(f.fact_value_num::numeric),
+                 'fact_value_jsonb', public.ka_gochara_search_normalize_numbers(f.fact_value_jsonb), 'unit', f.unit),
+             'metadata', jsonb_build_object(
+                 'fact_id', f.fact_id, 'build_id', f.build_id, 'verification_pass_status', f.verification_pass_status, 'engine_version', f.engine_version,
                  'salience_formula_ver', f.salience_formula_ver, 'tolerance_arcsec', f.tolerance_arcsec, 'citation_ref', f.citation_ref,
                  'citation_human', f.citation_human, 'source_calculation', f.source_calculation, 'formula_provenance_text', f.formula_provenance_text,
                  'formula_id', f.formula_id, 'near_sign_boundary_flag', f.near_sign_boundary_flag,
                  'near_nakshatra_boundary_flag', f.near_nakshatra_boundary_flag, 'vargottama_flag_at_point', f.vargottama_flag_at_point,
-                 'cross_ayanamsha_divergence_arcsec', f.cross_ayanamsha_divergence_arcsec) END) AS el
+                 'cross_ayanamsha_divergence_arcsec', f.cross_ayanamsha_divergence_arcsec)) AS el
     FROM unnest(p_ids) AS i(id)
-    LEFT JOIN public.chart_facts f ON f.fact_id = i.id AND f.chart_id = p_chart) s;
+    JOIN public.chart_facts f ON f.fact_id = i.id AND f.chart_id = p_chart) s;
   RETURN r;
 END;
 $$;
 
--- The live POPULATION a copy was a capture of (G12, Codex round 1 ruling 1): EVERY live row of the same (ayanamsha, category, key) whose subject is one of the
--- copy's subjects, in the copy's shape. A drift check that compares this with the copy sees a row that is MISSING, EXTRA (a conflicting duplicate of a
--- subject, a re-issued fact_id) or CHANGED — in both directions — not only the keys the copy happens to name.
-CREATE OR REPLACE FUNCTION public.ka_gochara_search_facts_live_population(p_chart uuid, p_copy jsonb)
+-- The REQUIRED fact population (Codex round 2, P1): a CONTRACT FIXED IN THE DATABASE, independent of the ids a builder submits and of the copy itself — every
+-- natal longitude fact of the canonical ayanamsha for the ten subjects the read contract names (LAGNA, SUN, MOON, MAR, MER, JUP, VEN, SAT, RAH_MEAN,
+-- KET_MEAN; fact_category graha_position, fact_key longitude_sidereal; a row without a numeric value is not an operand). A snapshot whose copy is not EXACTLY this
+-- population is refused at INSERT, and a drift check compares the same population, so a missing subject, an extra or conflicting row cannot hide behind
+-- the subjects the copy happens to contain. The contract values equal the Python read contract (a test pins both).
+CREATE OR REPLACE FUNCTION public.ka_gochara_search_facts_live_population(p_chart uuid)
 RETURNS jsonb LANGUAGE sql STABLE SET search_path = pg_catalog, public SET timezone = 'UTC' SET extra_float_digits = 1 AS $$
   SELECT public.ka_gochara_search_facts_copy(
     p_chart,
     COALESCE((SELECT array_agg(f.fact_id ORDER BY f.fact_id COLLATE "C")
                 FROM public.chart_facts f
                WHERE f.chart_id = p_chart
-                 AND EXISTS (SELECT 1 FROM jsonb_array_elements(COALESCE(p_copy, '[]'::jsonb)) AS c(e)
-                              WHERE c.e #>> '{content,ayanamsha_id}' = f.ayanamsha_id AND c.e #>> '{content,fact_category}' = f.fact_category
-                                AND c.e #>> '{content,fact_key}' = f.fact_key AND c.e #>> '{content,fact_subject}' = f.fact_subject)),
-             ARRAY[]::text[]),
-    false);
+                 AND f.ayanamsha_id = 'lahiri_chitrapaksha' AND f.fact_category = 'graha_position' AND f.fact_key = 'longitude_sidereal'
+                 AND f.fact_subject IN ('LAGNA', 'SUN', 'MOON', 'MAR', 'MER', 'JUP', 'VEN', 'SAT', 'RAH_MEAN', 'KET_MEAN')
+                 AND f.fact_value_num IS NOT NULL),
+             ARRAY[]::text[]));
 $$;
 
 -- ── 4. the DASHA rows: ordinal lord path, one element per row, the live view by NATURAL KEY ────────────────────────────────────────
@@ -263,22 +264,45 @@ BEGIN
 END;
 $$;
 
--- The live POPULATION a daśā copy was a capture of (Codex round 1 ruling 1): per (ayanamsha, system, level) of the copy, EVERY live row of the copy's
--- tier that overlaps the BOUND MANIFEST HORIZON (not the copy's own span: a period omitted at the edge would shrink a self-derived span and go unseen),
--- in the copy's shape. Missing, EXTRA (a conflicting or overlapping period added upstream, a second build) and CHANGED rows are all visible.
--- Selection by TIER is the read contract (v5 reads the two_pass_verified rows); builds are not filtered: a second build is an extra row, i.e. a conflict.
+-- The REQUIRED daśā population (Codex round 2, P1): a CONTRACT FIXED IN THE DATABASE, independent of the submitted ids, of the copy and of the writer — every
+-- Vimśottarī row of the canonical ayanamsha at the three levels the read contract names (MD, AD, PD), at the consumed tier (two_pass_verified), overlapping the
+-- BOUND MANIFEST HORIZON. Omitting a whole level, a period, or adding a foreign row is refused at INSERT. Builds are not filtered: a second build is an extra
+-- row, i.e. a conflict. The contract values equal the Python read contract (a test pins both).
+CREATE OR REPLACE FUNCTION public.ka_gochara_search_dasha_required_population(p_chart uuid, p_horizon tstzrange)
+RETURNS jsonb LANGUAGE sql STABLE SET search_path = pg_catalog, public SET timezone = 'UTC' SET extra_float_digits = 1 AS $$
+  SELECT COALESCE(jsonb_agg(s.el ORDER BY public.ka_gochara_canonical_json(s.el -> 'key') COLLATE "C", s.el #>> '{metadata,dasha_row_id}'), '[]'::jsonb)
+  FROM (
+    SELECT public.ka_gochara_search_dasha_element(p_chart, d.dasha_row_id) AS el
+    FROM public.chart_dashas d
+    WHERE d.chart_id = p_chart AND d.ayanamsha_id = 'lahiri_chitrapaksha' AND d.system_id = 'vimshottari' AND d.level_n IN (1, 2, 3)
+      AND d.verification_pass_status = 'two_pass_verified'
+      AND d.start_iso < upper(p_horizon) AND d.end_iso > lower(p_horizon)) s;
+$$;
+
+-- The live view a DRIFT check compares with the copy (Codex round 2, P1 + P2-4): (a) EVERY live row at a copy element's NATURAL KEY, whatever its tier or build
+-- (a tier-only change is a soft metadata difference, never a "missing" row), plus (b) every row of the REQUIRED scope (same contract as above, so a whole level
+-- the copy lacks is visible) whose natural key the copy does not name, i.e. an EXTRA row. The scope is the contract, never derived from the copy.
 CREATE OR REPLACE FUNCTION public.ka_gochara_search_dasha_live_population(p_chart uuid, p_copy jsonb, p_horizon tstzrange)
 RETURNS jsonb LANGUAGE sql STABLE SET search_path = pg_catalog, public SET timezone = 'UTC' SET extra_float_digits = 1 AS $$
   SELECT COALESCE(jsonb_agg(s.el ORDER BY public.ka_gochara_canonical_json(s.el -> 'key') COLLATE "C", s.el #>> '{metadata,dasha_row_id}'), '[]'::jsonb)
   FROM (
     SELECT public.ka_gochara_search_dasha_element(p_chart, d.dasha_row_id) AS el
     FROM public.chart_dashas d
-    JOIN (SELECT c.e #>> '{key,ayanamsha_id}' AS ayanamsha_id, c.e #>> '{key,system_id}' AS system_id, (c.e #>> '{key,level_n}')::int AS level_n,
-                 c.e #>> '{metadata,verification_pass_status}' AS tier
-            FROM jsonb_array_elements(COALESCE(p_copy, '[]'::jsonb)) AS c(e) GROUP BY 1, 2, 3, 4) sp
-      ON d.ayanamsha_id = sp.ayanamsha_id AND d.system_id = sp.system_id AND d.level_n = sp.level_n
-     AND d.verification_pass_status IS NOT DISTINCT FROM sp.tier AND d.start_iso < upper(p_horizon) AND d.end_iso > lower(p_horizon)
-    WHERE d.chart_id = p_chart) s;
+    WHERE d.chart_id = p_chart
+      AND EXISTS (SELECT 1 FROM jsonb_array_elements(COALESCE(p_copy, '[]'::jsonb)) AS c(e)
+                   WHERE c.e #>> '{key,ayanamsha_id}' = d.ayanamsha_id AND c.e #>> '{key,system_id}' = d.system_id
+                     AND (c.e #>> '{key,level_n}')::int = d.level_n AND (c.e #>> '{key,start_iso}')::timestamptz = d.start_iso
+                     AND c.e #>> '{key,kp_sublevel}' = COALESCE(d.kp_sublevel, ''))
+    UNION ALL
+    SELECT public.ka_gochara_search_dasha_element(p_chart, d.dasha_row_id)
+    FROM public.chart_dashas d
+    WHERE d.chart_id = p_chart AND d.ayanamsha_id = 'lahiri_chitrapaksha' AND d.system_id = 'vimshottari' AND d.level_n IN (1, 2, 3)
+      AND d.verification_pass_status = 'two_pass_verified'
+      AND d.start_iso < upper(p_horizon) AND d.end_iso > lower(p_horizon)
+      AND NOT EXISTS (SELECT 1 FROM jsonb_array_elements(COALESCE(p_copy, '[]'::jsonb)) AS c(e)
+                       WHERE c.e #>> '{key,ayanamsha_id}' = d.ayanamsha_id AND c.e #>> '{key,system_id}' = d.system_id
+                         AND (c.e #>> '{key,level_n}')::int = d.level_n AND (c.e #>> '{key,start_iso}')::timestamptz = d.start_iso
+                         AND c.e #>> '{key,kp_sublevel}' = COALESCE(d.kp_sublevel, ''))) s;
 $$;
 
 -- ── 5. the copy is PRODUCED BY THE DATABASE (BEFORE INSERT, before 1206's write guard) ────────────────────────────────────────────────
@@ -301,17 +325,17 @@ BEGIN
   IF hz IS NULL THEN
     RAISE EXCEPTION 'ka_gochara_search_input_snapshot refused (1305): no bound manifest horizon for this generation — the population a snapshot must cover is the manifest''s, not the copy''s own span';
   END IF;
-  facts := public.ka_gochara_search_facts_copy(NEW.chart_id, NEW.consumed_fact_ids, true);            -- raises by name if a consumed id does not exist
+  facts := public.ka_gochara_search_facts_copy(NEW.chart_id, NEW.consumed_fact_ids);            -- raises by name if a consumed id does not exist
   dashas := public.ka_gochara_search_dasha_copy(NEW.chart_id, NEW.consumed_dasha_row_ids);
   l1 := public.ka_gochara_search_copy_digest(facts, 'content');
   dd := public.ka_gochara_search_copy_digest(dashas, 'content');
   IF NEW.l1_facts_digest IS DISTINCT FROM l1 OR NEW.dasha_digest IS DISTINCT FROM dd THEN
     RAISE EXCEPTION 'ka_gochara_search_input_snapshot refused (1305): l1_facts_digest / dasha_digest are not the identity digests of the live rows the submitted keys name';
   END IF;
-  IF public.ka_gochara_search_copy_digest(public.ka_gochara_search_facts_live_population(NEW.chart_id, facts), 'content') IS DISTINCT FROM l1 THEN
+  IF public.ka_gochara_search_copy_digest(public.ka_gochara_search_facts_live_population(NEW.chart_id), 'content') IS DISTINCT FROM l1 THEN
     RAISE EXCEPTION 'ka_gochara_search_input_snapshot refused (1305): the consumed fact rows are not the COMPLETE live population (a missing, extra or conflicting row of the same subjects exists)';
   END IF;
-  IF public.ka_gochara_search_copy_digest(public.ka_gochara_search_dasha_live_population(NEW.chart_id, dashas, hz), 'content') IS DISTINCT FROM dd THEN
+  IF public.ka_gochara_search_copy_digest(public.ka_gochara_search_dasha_required_population(NEW.chart_id, hz), 'content') IS DISTINCT FROM dd THEN
     RAISE EXCEPTION 'ka_gochara_search_input_snapshot refused (1305): the consumed daśā rows are not the COMPLETE live population (a missing, extra or conflicting period overlapping the consumed span exists)';
   END IF;
   NEW.consumed_fact_rows := facts;
@@ -377,7 +401,10 @@ BEGIN
   WHERE s.chart_id = p_chart AND s.generation = p_generation;
   IF FOUND THEN
     IF snap.consumed_fact_rows IS NULL OR snap.consumed_dasha_rows IS NULL THEN
-      -- a LEGACY snapshot (written before 1305, no copy): the 1206 id-and-whole-row digests, unchanged
+      -- a LEGACY snapshot (written before 1305, no copy): the 1206 id-and-whole-row digests, unchanged ... and a FIRST SEAL needs the copy (Codex round 2, P2):
+      -- this function runs for the first-seal branch of the seal trigger and for the candidate gate; the REPLAY branch calls ka_gochara_search_replay_violations
+      -- instead, so an already sealed legacy generation replays exactly as before.
+      RETURN QUERY SELECT '*'::text, 'input_snapshot_without_copy'::text, 'the search-input snapshot is the LEGACY shape (ids only, no copy of the L1 rows it consumed): a first seal needs a self-contained snapshot (apply 1305 and rebuild)'::text;
       live_l1 := public.ka_gochara_search_l1_facts_digest(p_chart, snap.consumed_fact_ids);
       live_dasha := public.ka_gochara_search_dasha_digest(p_chart, snap.consumed_dasha_row_ids);
       IF live_l1 IS DISTINCT FROM snap.l1_facts_digest THEN
@@ -390,7 +417,7 @@ BEGIN
       -- 1305 (G12 route 1): the live rows are looked up by their NATURAL KEY and compared on their CONTENT only. A later L1 rebuild
       -- that re-issues row ids, build ids, engine versions or adds columns changes none of this; a changed VALUE or a missing row does.
       -- A metadata-only difference is NOT a violation here (it is reported by the staleness check, never blocking).
-      IF public.ka_gochara_search_copy_digest(public.ka_gochara_search_facts_live_population(p_chart, snap.consumed_fact_rows), 'content')
+      IF public.ka_gochara_search_copy_digest(public.ka_gochara_search_facts_live_population(p_chart), 'content')
            IS DISTINCT FROM snap.l1_facts_digest THEN
         RETURN QUERY SELECT '*'::text, 'input_snapshot_drift'::text, 'consumed L1 fact rows no longer match the snapshot: a value changed, a row is gone, or an extra/conflicting row exists (identity digest of the complete live population)'::text;
       END IF;
@@ -577,10 +604,10 @@ BEGIN
     IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = r) THEN
       FOREACH fn IN ARRAY ARRAY[
         'public.ka_gochara_search_copy_digest(jsonb,text)', 'public.ka_gochara_search_normalize_numbers(jsonb)',
-        'public.ka_gochara_search_facts_copy(uuid,text[],boolean)', 'public.ka_gochara_search_facts_live_population(uuid,jsonb)',
+        'public.ka_gochara_search_facts_copy(uuid,text[])', 'public.ka_gochara_search_facts_live_population(uuid)',
         'public.ka_gochara_search_dasha_path(uuid,uuid)', 'public.ka_gochara_search_dasha_ordinal_path(uuid,uuid)',
         'public.ka_gochara_search_dasha_element(uuid,uuid)', 'public.ka_gochara_search_dasha_copy(uuid,uuid[])',
-        'public.ka_gochara_search_dasha_live_population(uuid,jsonb,tstzrange)'] LOOP
+        'public.ka_gochara_search_dasha_required_population(uuid,tstzrange)', 'public.ka_gochara_search_dasha_live_population(uuid,jsonb,tstzrange)'] LOOP
         EXECUTE format('GRANT EXECUTE ON FUNCTION %s TO %I', fn, r);
       END LOOP;
     END IF;

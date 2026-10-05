@@ -407,7 +407,20 @@ def test_only_the_capture_the_independent_verifier_and_the_legacy_branches_read_
     offenders = sorted(f.name for f in files if f.name not in allowed and pat.search(f.read_text()))
     assert offenders == [], f"live L1 read outside the named capture/verifier/legacy files: {offenders}"
     # and the writer itself never reads them
-    assert not pat.search((root / "pipeline" / "orchestrator" / "writers" / "ka_gochara_v5.py").read_text())
+    writer_src = (root / "pipeline" / "orchestrator" / "writers" / "ka_gochara_v5.py").read_text()
+    assert not pat.search(writer_src)
+    # Codex round 2, P2-6: a SQL-text grep cannot see a live read hidden in a helper. The writer's LIVE helpers are called exactly once each, inside the snapshot
+    # substep (the capture); a new call anywhere else (a later substep re-reading live L1) fails here, and the instrumented drop-the-tables test above runs the
+    # computational substeps.
+    import ast
+    tree = ast.parse(writer_src)
+    live_helpers = {"fetch_chart_context", "load_pinned_vimshottari", "make_period_rows_for", "read_chart"}
+    calls = [n for n in ast.walk(tree) if isinstance(n, ast.Call) and getattr(n.func, "id", getattr(n.func, "attr", "")) in live_helpers]
+    snap = next(n for n in ast.walk(tree) if isinstance(n, ast.If) and ast.unparse(n.test) == "step.key == SNAPSHOT_SUBSTEP")
+    inside = {id(c) for c in ast.walk(snap) if isinstance(c, ast.Call)}
+    outside = [(getattr(c.func, "id", getattr(c.func, "attr", "")), c.lineno) for c in calls if id(c) not in inside]
+    assert not outside, f"live-L1 helpers called outside the snapshot substep: {outside}"
+    assert len(calls) == 2, [(getattr(c.func, "id", getattr(c.func, "attr", "")), c.lineno) for c in calls]
 
 
 def test_a_first_seal_on_a_legacy_snapshot_is_refused_and_a_replay_of_a_sealed_generation_is_not(monkeypatch, tmp_path):
@@ -431,6 +444,169 @@ def test_a_first_seal_on_a_legacy_snapshot_is_refused_and_a_replay_of_a_sealed_g
     finally:
         conn.close()
         drop_am5_database(admin, name)
+
+
+# ── round 2 (Codex): the REQUIRED population is a contract in the database; natural-key facts; tier-only drift is soft; honest moves; first seal; exact numbers ───────
+
+def test_a_whole_level_omitted_from_the_copy_is_refused_at_insert_the_required_scope_is_not_derived_from_the_submitted_ids(g12):
+    """Codex round 2, P1: omit EVERY AD row (keep the MD and PD rows, with their correct digest). The old trigger derived (system, level) from the copy, so no level-2
+    selector remained and nothing was compared. The required scope is a database contract (Vimśottarī MD, AD, PD over the bound horizon)."""
+    _step, conn = g12
+    s = _snapshot(conn)
+    assert {e["key"]["level_n"] for e in s["dashas"]} == {1, 2, 3}, "the stub world carries all three levels"
+    keep = [e["metadata"]["dasha_row_id"] for e in s["dashas"] if e["key"]["level_n"] != 2]
+    sub = conn.execute("SELECT public.ka_gochara_search_copy_digest(public.ka_gochara_search_dasha_copy(%s::uuid, %s::uuid[]), 'content')", (CHART_ID, keep)).fetchone()[0]
+    InventoryStore(conn).delete_generation_inventory(CHART_ID, GEN)
+    vec = conn.execute("SELECT input_generation_vector::text FROM public.kala_gochara_publication WHERE chart_id = %s AND generation = %s", (CHART_ID, GEN)).fetchone()[0]
+    conv = conn.execute("SELECT convention_id FROM public.ka_gochara_sky_convention LIMIT 1").fetchone()[0]
+    inp = conn.execute("SELECT public.ka_gochara_search_input_digest(%s, %s::jsonb, %s, %s, %s::text[])", (conv, vec, s["l1"], sub, [])).fetchone()[0]
+    with pytest.raises(Exception, match=r"consumed daśā rows are not the COMPLETE live population"):
+        with conn.transaction():
+            conn.execute("SELECT public.ka_gochara_lock_chart(%s::uuid)", (CHART_ID,))
+            conn.execute("INSERT INTO public.ka_gochara_search_input_snapshot (chart_id, generation, convention_id, input_generation_vector, consumed_fact_ids,"
+                         " consumed_dasha_row_ids, av_declarations, l1_facts_digest, dasha_digest, input_digest) VALUES (%s,%s,%s,%s::jsonb,%s,%s::uuid[],%s,%s,%s,%s)",
+                         (CHART_ID, GEN, conv, vec, s["fact_ids"], keep, [], s["l1"], sub, inp))
+
+
+def test_periods_of_different_levels_that_start_together_are_distinct_keys_and_a_pristine_snapshot_shows_no_drift(g12):
+    """MD, AD and PD routinely START at the same instant (the first AD of an MD begins with it). The natural key is (ayanamsha, system, LEVEL, start, kp): a live view
+    that matched by start alone would return the sibling of another level too and a pristine generation would read as drifted."""
+    step, conn = g12
+    conn.execute("UPDATE public.chart_dashas SET start_iso = (SELECT start_iso FROM public.chart_dashas WHERE level_n = 2 ORDER BY start_iso LIMIT 1)"
+                 " WHERE dasha_row_id = (SELECT dasha_row_id FROM public.chart_dashas WHERE level_n = 3 ORDER BY start_iso LIMIT 1)")
+    shared = conn.execute("SELECT count(*) FROM (SELECT start_iso FROM public.chart_dashas GROUP BY 1 HAVING count(DISTINCT level_n) > 1) x").fetchone()[0]
+    assert shared >= 1, "the arranged world has two levels starting at one instant"
+    InventoryStore(conn).delete_generation_inventory(CHART_ID, GEN)
+    step(writer_mod.SNAPSHOT_SUBSTEP)                                   # a fresh capture over the arranged L1
+    assert not _drift_violations(conn)
+    assert staleness.sealed_generation_staleness(conn, CHART_ID, GEN)["drifted"] is False
+
+
+def test_a_whole_natal_subject_omitted_from_the_copy_is_refused_at_insert(g12):
+    _step, conn = g12
+    s = _snapshot(conn)
+    keep = [e["metadata"]["fact_id"] for e in s["facts"] if e["key"]["fact_subject"] != "SUN"]
+    sub = conn.execute("SELECT public.ka_gochara_search_copy_digest(public.ka_gochara_search_facts_copy(%s::uuid, %s::text[]), 'content')", (CHART_ID, keep)).fetchone()[0]
+    InventoryStore(conn).delete_generation_inventory(CHART_ID, GEN)
+    vec = conn.execute("SELECT input_generation_vector::text FROM public.kala_gochara_publication WHERE chart_id = %s AND generation = %s", (CHART_ID, GEN)).fetchone()[0]
+    conv = conn.execute("SELECT convention_id FROM public.ka_gochara_sky_convention LIMIT 1").fetchone()[0]
+    inp = conn.execute("SELECT public.ka_gochara_search_input_digest(%s, %s::jsonb, %s, %s, %s::text[])", (conv, vec, sub, s["dd"], [])).fetchone()[0]
+    with pytest.raises(Exception, match=r"consumed fact rows are not the COMPLETE live population"):
+        with conn.transaction():
+            conn.execute("SELECT public.ka_gochara_lock_chart(%s::uuid)", (CHART_ID,))
+            conn.execute("INSERT INTO public.ka_gochara_search_input_snapshot (chart_id, generation, convention_id, input_generation_vector, consumed_fact_ids,"
+                         " consumed_dasha_row_ids, av_declarations, l1_facts_digest, dasha_digest, input_digest) VALUES (%s,%s,%s,%s::jsonb,%s,%s::uuid[],%s,%s,%s,%s)",
+                         (CHART_ID, GEN, conv, vec, keep, s["dasha_ids"], [], sub, s["dd"], inp))
+
+
+def test_the_required_scope_in_the_database_equals_the_python_read_contract():
+    """The SQL literals and the Python read contract are one contract: a change to either without the other fails here."""
+    from services.gochara_kernel import seal_brief
+    text = M1305.read_text()
+    assert f"f.ayanamsha_id = '{inv_v._C_AYANAMSHA}'" in text and f"d.ayanamsha_id = '{inv_v._C_AYANAMSHA}'" in text
+    assert f"d.system_id = '{inv_v._C_SYSTEM}'" in text and f"d.verification_pass_status = '{inv_v._C_TIER}'" in text
+    assert f"d.level_n IN ({', '.join(str(x) for x in inv_v._C_LEVELS)})" in text
+    assert "f.fact_subject IN (" + ", ".join(f"'{x}'" for x in seal_brief.NATAL_SUBJECTS) + ")" in text
+    assert "f.fact_category = 'graha_position' AND f.fact_key = 'longitude_sidereal'" in text
+
+
+def test_re_issued_fact_ids_with_the_same_values_are_metadata_only_drift_facts_are_keyed_by_natural_key(g12):
+    """A deterministic-row-id ga_positions rebuild re-issues every fact_id: the identity (natural key + content) is unchanged, so this is soft, and the report names it
+    as a metadata change, never as a missing row plus an extra row."""
+    _step, conn = g12
+    conn.execute("UPDATE public.chart_facts SET fact_id = 'reissued-' || fact_id, build_id = gen_random_uuid()")
+    assert not _drift_violations(conn)
+    rep = staleness.sealed_generation_staleness(conn, CHART_ID, GEN)
+    assert rep["drifted"] is False and rep["metadata_only_drift"] is True and "l1_metadata" in rep["metadata_drift_components"]
+    assert {c["change"] for c in rep["changes"] if c["kind"] == "fact"} == {"metadata_only"}
+    assert all("fact_id" in c["fields"] for c in rep["changes"] if c["kind"] == "fact")
+
+
+def test_an_added_conflicting_fact_is_reported_not_a_crash(g12):
+    """Codex round 2, P2-3: the formatter used to read start_iso of every new key, including facts (KeyError)."""
+    _step, conn = g12
+    conn.execute("INSERT INTO public.chart_facts (fact_id, chart_id, ayanamsha_id, fact_category, fact_subject, fact_key, fact_value_num)"
+                 " VALUES ('fact-SUN-dup', %s, 'lahiri_chitrapaksha', 'graha_position', 'SUN', 'longitude_sidereal', 12.0)", (CHART_ID,))
+    assert _drift_violations(conn)
+    rep = staleness.sealed_generation_staleness(conn, CHART_ID, GEN)
+    assert rep["drifted"] and "l1_facts" in rep["drifted_components"]
+    kinds = {(c["kind"], c["change"]) for c in rep["changes"]}
+    assert ("fact", "extra_live") in kinds, kinds
+
+
+def test_a_tier_only_change_of_a_consumed_dasha_row_is_soft_not_hard_drift(g12):
+    """Codex round 2, P2-4: the live view used to be selected by the copied TIER, so a relabelled row vanished from it and the content digest changed."""
+    _step, conn = g12
+    conn.execute("UPDATE public.chart_dashas SET verification_pass_status = 'single' WHERE level_n = 2")
+    assert not _drift_violations(conn), "a tier relabel is metadata, the completeness gate must stay quiet"
+    rep = staleness.sealed_generation_staleness(conn, CHART_ID, GEN)
+    assert rep["drifted"] is False and rep["metadata_only_drift"] is True and "dasha_metadata" in rep["metadata_drift_components"]
+    assert all(c["change"] == "metadata_only" and "verification_pass_status" in c["fields"] for c in rep["changes"] if c["kind"] == "dasha")
+
+
+def test_deleting_an_earlier_sibling_is_a_missing_row_and_a_changed_ordinal_never_a_move(g12):
+    """Codex round 2, P2-5: two stored sibling periods A (ordinal 1) and B (ordinal 2); delete A: B becomes ordinal 1. The report must not say A 'moved' to B's start."""
+    _step, conn = g12
+    ads = conn.execute("SELECT dasha_row_id, parent_row_id, start_iso FROM public.chart_dashas WHERE level_n = 2 ORDER BY parent_row_id, start_iso").fetchall()
+    first = ads[0]
+    sibs = [r for r in ads if r[1] == first[1]]
+    assert len(sibs) >= 2, "the stub world carries at least two ADs under one MD"
+    conn.execute("ALTER TABLE public.chart_dashas DISABLE TRIGGER ALL")
+    conn.execute("DELETE FROM public.chart_dashas WHERE dasha_row_id = %s OR parent_row_id = %s", (first[0], first[0]))
+    conn.execute("ALTER TABLE public.chart_dashas ENABLE TRIGGER ALL")
+    rep = staleness.sealed_generation_staleness(conn, CHART_ID, GEN)
+    assert rep["drifted"]
+    assert not [c for c in rep["changes"] if c["change"] == "moved"], rep["changes"]
+    missing = [c for c in rep["changes"] if c["kind"] == "dasha" and c["change"] == "missing_live"]
+    assert any(c["key"]["level_n"] == 2 for c in missing)
+    assert any(c["change"] == "content_differs" and "ordinal_path" in c["fields"] for c in rep["changes"] if c["kind"] == "dasha")
+
+
+def test_every_runnable_substep_after_the_snapshot_runs_with_live_L1_gone_not_only_inventory_and_coverage(g12):
+    """Codex round 2, P2-6: the single-capture guard must exercise the COMPUTATIONAL substeps, not a hand-picked pair. Every substep the writer plans for the marriage
+    class after the snapshot that this stub world can run (inventory, coverage, the four record phases, the P1 and P2 window geometry; the P3/P4 window geometry and
+    the generation verify need a real sky — the control run without the drop fails there too, on member geometry) is run with chart_facts and chart_dashas DROPPED:
+    any read of live L1 anywhere in the writer or kernel call graph fails with 'relation does not exist'. The verifier half is test_the_generation_verifies_even_when_
+    live_L1_is_gone_entirely."""
+    step, conn = g12
+    w = writer_mod.GocharaV5Writer()
+    ctx = ContextSpec(asset_id=writer_mod.ASSET_ID, build_id="b-g12-plan", db_conn=conn, config={"chart_id": CHART_ID, "horizon": (H0, H1), "ephe_path": None}, dry_run=False)
+    planned = [x.key for x in w.plan_substeps(ctx)]
+    after = planned[planned.index(writer_mod.SNAPSHOT_SUBSTEP) + 1:]
+    runnable = [k for k in after if ":marriage" in k and k not in ("window:marriage:P3", "window:marriage:P4", "verify:marriage")]
+    assert runnable == ["inventory:marriage", "coverage:marriage", "record:marriage:P1", "record:marriage:P2", "record:marriage:P3", "record:marriage:P4",
+                        "window:marriage:P1", "window:marriage:P2"], runnable
+    conn.execute("DROP TABLE public.chart_dashas CASCADE")
+    conn.execute("DROP TABLE public.chart_facts CASCADE")
+    for key in runnable:
+        step(key)
+
+
+def test_a_decimal_that_a_float_cannot_carry_is_refused_exactly_not_context_rounded():
+    """Codex round 2, P2-8: `exact.normalize()` rounds to the decimal context's 28 digits, so 12.50000000000000000000000000001 compared equal to 12.5."""
+    from decimal import Decimal
+    from services.gochara_kernel import targets
+    tiny = Decimal("12.50000000000000000000000000001")
+    with pytest.raises(ValueError, match="not exactly representable"):
+        targets.assert_float64_exact(tiny)
+    with pytest.raises(inv_v.Unverifiable, match="not exactly representable"):
+        inv_v._exact_float(tiny, "SUN")
+    assert targets.assert_float64_exact(Decimal("12.50")) == 12.5 and inv_v._exact_float(Decimal("12.50"), "SUN") == 12.5
+
+
+def test_a_first_seal_on_a_legacy_snapshot_is_refused_by_the_database_gate_and_replay_is_untouched(g12):
+    """Codex round 2, P2-2: the SQL first-seal branch (which calls the completeness function) must itself refuse a legacy-shaped snapshot; the REPLAY branch
+    (ka_gochara_search_replay_violations) is a different function and is untouched."""
+    _step, conn = g12
+    assert not [v for v in _violations(conn) if v[1] == "input_snapshot_without_copy"], "a snapshot WITH a copy is not refused"
+    conn.execute("ALTER TABLE public.ka_gochara_search_input_snapshot DROP CONSTRAINT kgsis_l1_copy_ck")
+    conn.execute("ALTER TABLE public.ka_gochara_search_input_snapshot DISABLE TRIGGER USER")
+    conn.execute("UPDATE public.ka_gochara_search_input_snapshot SET consumed_fact_rows = NULL, consumed_dasha_rows = NULL, l1_facts_metadata_digest = NULL,"
+                 " dasha_metadata_digest = NULL WHERE chart_id = %s AND generation = %s", (CHART_ID, GEN))
+    violations = _violations(conn)
+    assert [v for v in violations if v[1] == "input_snapshot_without_copy"], violations
+    replay = conn.execute("SELECT violation FROM public.ka_gochara_search_replay_violations(%s, %s)", (CHART_ID, GEN)).fetchall()
+    assert not [r for r in replay if "without_copy" in r[0]], "replay never asks for the copy"
 
 
 def test_1305_refuses_to_apply_after_g8s_1306_would_have_replaced_the_completeness_function():
@@ -576,7 +752,7 @@ def test_the_readback_sql_runs_read_only_and_reports_what_the_post_apply_check_e
     assert [r[0] for r in columns] == ["consumed_dasha_rows", "consumed_fact_rows", "dasha_metadata_digest", "l1_facts_metadata_digest"]
     assert check == [("kgsis_l1_copy_ck", False)]                              # NOT VALID: governs new rows, scans no old one
     assert len(trigger) == 1 and trigger[0][1] == "O" and trigger[0][2] is True and trigger[0][3] is True
-    assert len(functions) == 10 and all(r[2] is False for r in functions)
+    assert len(functions) == 11 and all(r[2] is False for r in functions)
     assert replaced == [(True, True, True)]
     assert {r[0] for r in shas} == {"ka_gochara_search_completeness_violations", "ka_gochara_search_moon_resolved_domain"}
     assert all(r[1] not in ("63d9e7e737b020784ca52c4cd06e66e74434c20b60d9b9d65834f4e1c773f1fb", "707bd37ce48a3c5fbaf2de881bc7554d97bc81fc1a09a6534d36b4ec5f09cf07")

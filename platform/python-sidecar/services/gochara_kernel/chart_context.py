@@ -115,9 +115,9 @@ def fetch_chart_context_from_snapshot(conn, chart_id: str, generation: str) -> d
     if text is None:
         return fetch_chart_context(conn, chart_id)         # a legacy snapshot (no copy), or none yet: the live read
     copy = json.loads(text, parse_float=Decimal)
-    rows = [(e["key"]["fact_id"], e["content"]["fact_subject"], e["content"]["fact_value_num"]) for e in copy
-            if e["content"].get("fact_category") == "graha_position" and e["content"].get("fact_key") == "longitude_sidereal"
-            and e["content"].get("ayanamsha_id") == CANONICAL_AYANAMSHA]
+    rows = [(e["metadata"]["fact_id"], e["key"]["fact_subject"], e["content"]["fact_value_num"]) for e in copy
+            if e["key"].get("fact_category") == "graha_position" and e["key"].get("fact_key") == "longitude_sidereal"
+            and e["key"].get("ayanamsha_id") == CANONICAL_AYANAMSHA]
     return _fill_from_rows(out, rows)
 
 

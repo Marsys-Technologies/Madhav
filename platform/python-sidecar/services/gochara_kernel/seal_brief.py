@@ -323,7 +323,7 @@ def natal_input_tiers(conn, chart_id: str, generation: str) -> dict[str, list[st
     copies = snapshot_copies(conn, chart_id, generation)
     if copies is not None and copies["facts"] is not None:
         for e in copies["facts"]:
-            out.setdefault(str(e["content"]["fact_subject"]), set()).add(str(e["metadata"]["verification_pass_status"]))
+            out.setdefault(str(e["key"]["fact_subject"]), set()).add(str(e["metadata"]["verification_pass_status"]))
         return {k: sorted(v) for k, v in sorted(out.items())}
     for subject, tier in _rows(
             conn, "SELECT f.fact_subject, f.verification_pass_status FROM public.chart_facts f"

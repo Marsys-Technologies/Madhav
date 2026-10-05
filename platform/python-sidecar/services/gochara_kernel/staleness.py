@@ -60,11 +60,11 @@ def sealed_generation_staleness(conn: Any, chart_id: str, generation: str) -> di
     # EVERY digest is computed INSIDE PostgreSQL over the exact text of the stored copy and of the live population: no Python round trip, so a numeric
     # change that a float cannot carry (12.5 versus 12.5000000000000001) is never erased (Codex round 1, finding 4)
     digests = conn.execute(
-        "WITH lf AS (SELECT public.ka_gochara_search_facts_live_population(%s::uuid, %s::jsonb) AS j),"
+        "WITH lf AS (SELECT public.ka_gochara_search_facts_live_population(%s::uuid) AS j),"
         "     ld AS (SELECT public.ka_gochara_search_dasha_live_population(%s::uuid, %s::jsonb, %s::tstzrange) AS j)"
         " SELECT public.ka_gochara_search_copy_digest(lf.j, 'content'), public.ka_gochara_search_copy_digest(ld.j, 'content'),"
         "        public.ka_gochara_search_copy_digest(lf.j, 'metadata'), public.ka_gochara_search_copy_digest(ld.j, 'metadata') FROM lf, ld",
-        (chart_id, facts_text, chart_id, dashas_text, horizon)).fetchone()
+        (chart_id, chart_id, dashas_text, horizon)).fetchone()
     live_l1, live_dd, live_l1m, live_ddm = tuple(digests.values()) if isinstance(digests, dict) else tuple(digests)
     live_input = conn.execute("SELECT public.ka_gochara_search_input_digest(%s, %s::jsonb, %s, %s, %s::text[])",
                               (convention_id, vec_json, live_l1, live_dd, list(av))).fetchone()[0]
@@ -81,7 +81,7 @@ def sealed_generation_staleness(conn: Any, chart_id: str, generation: str) -> di
     soft = sorted(k for k, v in components.items() if v["kind"] == "soft" and not v["same"])
     changes, total = ([], 0)
     if hard or soft:
-        live_facts = conn.execute("SELECT public.ka_gochara_search_facts_live_population(%s::uuid, %s::jsonb)::text", (chart_id, facts_text)).fetchone()[0]
+        live_facts = conn.execute("SELECT public.ka_gochara_search_facts_live_population(%s::uuid)::text", (chart_id,)).fetchone()[0]
         live_dashas = conn.execute("SELECT public.ka_gochara_search_dasha_live_population(%s::uuid, %s::jsonb, %s::tstzrange)::text", (chart_id, dashas_text, horizon)).fetchone()[0]
         changes, total = _changes(facts_text, dashas_text, live_facts, live_dashas)
     return {
@@ -105,32 +105,39 @@ _HARD_ORDER = {"missing_live": 0, "moved": 0, "content_differs": 0, "extra_live"
 
 def _changes(facts_text: str, dashas_text: str, live_facts: str, live_dashas: str, limit: int = 40) -> tuple[list[dict[str, Any]], int]:
     """What differs, by name: HARD changes first (a value changed, a row missing or moved, an EXTRA live row), metadata-only changes last; at most `limit`
-    are returned and the TOTAL is disclosed so a truncation is never silent. Numerics are compared EXACTLY (Decimal). A daśā row missing at its stored
-    start is named MOVED when a live period has the stored ORDINAL path (the index of the period within its parent at every level: cycle-specific, so a
-    repeated lord is never mistaken for it), with the start shift in seconds."""
+    are returned and the TOTAL is disclosed so a truncation is never silent. Numerics are compared EXACTLY (Decimal). Facts and daśā rows are matched by their
+    NATURAL KEY. A daśā row missing at its stored start is named MOVED only when exactly ONE live row that no stored row already matches carries the stored
+    ORDINAL path (the index of the period within its parent at every level: cycle-specific, so a repeated lord is never mistaken for it) and each live row can
+    explain at most one stored row — a deletion that merely renumbers a later sibling is a missing row plus a changed ordinal, never a 'move'."""
     from datetime import datetime
     from decimal import Decimal
+
     def parse(t: str) -> list[dict[str, Any]]:
         return _json.loads(t, parse_float=Decimal)
+
+    def kjson(k: Any) -> str:
+        return _json.dumps(k, sort_keys=True, default=str)
+
     out: list[dict[str, Any]] = []
     for kind, stored_text, live_text in (("fact", facts_text, live_facts), ("dasha", dashas_text, live_dashas)):
-        stored = {_json.dumps(e["key"], sort_keys=True, default=str): e for e in parse(stored_text)}
-        live_list = parse(live_text)
+        stored = {kjson(e["key"]): e for e in parse(stored_text)}
         live: dict[str, list[dict[str, Any]]] = {}
-        for e in live_list:
-            live.setdefault(_json.dumps(e["key"], sort_keys=True, default=str), []).append(e)
+        for e in parse(live_text):
+            live.setdefault(kjson(e["key"]), []).append(e)
+        unmatched_live = [x for k, xs in sorted(live.items()) if k not in stored for x in xs]       # live rows NO stored row names
+        used: set[int] = set()
         for key, e in sorted(stored.items()):
             hits = live.get(key, [])
-            if not hits or hits[0].get("content") is None:
+            if not hits:
                 change: dict[str, Any] = {"kind": kind, "key": e["key"], "change": "missing_live"}
                 if kind == "dasha":
                     ordinal = (e.get("content") or {}).get("ordinal_path")
-                    cand = [x for xs in live.values() for x in xs
-                            if ordinal and (x.get("content") or {}).get("ordinal_path") == ordinal
+                    cand = [x for x in unmatched_live if id(x) not in used and ordinal and (x.get("content") or {}).get("ordinal_path") == ordinal
                             and x["key"]["level_n"] == e["key"]["level_n"] and x["key"]["system_id"] == e["key"]["system_id"]
                             and x["key"]["ayanamsha_id"] == e["key"]["ayanamsha_id"]]
-                    if cand:
+                    if len(cand) == 1:
                         c = cand[0]
+                        used.add(id(c))
                         shift = (datetime.fromisoformat(c["key"]["start_iso"]) - datetime.fromisoformat(e["key"]["start_iso"])).total_seconds()
                         change.update({"change": "moved", "ordinal_path": ordinal, "lord_path": e["content"].get("lord_path"),
                                        "live_start": c["key"]["start_iso"], "start_shift_seconds": shift})
@@ -143,12 +150,10 @@ def _changes(facts_text: str, dashas_text: str, live_facts: str, live_dashas: st
             elif hits[0]["metadata"] != e["metadata"]:
                 out.append({"kind": kind, "key": e["key"], "change": "metadata_only",
                             "fields": sorted(k for k in set(e["metadata"]) | set(hits[0]["metadata"]) if e["metadata"].get(k) != hits[0]["metadata"].get(k))})
-        moved_keys = {_json.dumps(c["key"], sort_keys=True, default=str) for c in out if c["kind"] == kind and c["change"] == "moved"}
-        live_by_start = {c.get("live_start") for c in out if c["kind"] == kind and c["change"] == "moved"}
-        for key, xs in sorted(live.items()):
-            if key not in stored and not any(x["key"]["start_iso"] in live_by_start for x in xs):
-                out.append({"kind": kind, "key": xs[0]["key"], "change": "extra_live"})
-    out.sort(key=lambda c: (_HARD_ORDER[c["change"]], c["kind"], _json.dumps(c["key"], sort_keys=True, default=str)))
+        for x in unmatched_live:
+            if id(x) not in used:
+                out.append({"kind": kind, "key": x["key"], "change": "extra_live"})
+    out.sort(key=lambda c: (_HARD_ORDER[c["change"]], c["kind"], kjson(c["key"])))
     return out[:limit], len(out)
 
 
