@@ -231,7 +231,7 @@ def test_ids_ordinals_and_every_non_wrap_span_are_unchanged_for_the_whole_chart(
                     if (n.t_in, n.t_out) != (o.t_in, o.t_out):
                         differing.append((body, relation, lam, n.t_exact))
                         level = n.level_deg
-                        assert min(level, 360.0 - level) < 1.0 + 1e-9, (body, relation, lam, level)   # ONLY where the band contains the cut
+                        assert min(level, 360.0 - level) < 1.0 - 1e-9, (body, relation, lam, level)   # ONLY where the band STRICTLY contains the cut
     assert total > 500 and len(differing) >= 1, (total, differing)
     assert ("saturn", "aspect") in {(b.lower(), r) for b, r, _l, _t in differing}
 
@@ -267,3 +267,23 @@ def test_a_fresh_build_before_and_after_has_the_same_contact_ids_and_only_the_wr
     assert len(changed) == 1, changed
     (old, new), = changed.values()
     assert old[1] == new[1] and (old[0] - new[0]) > timedelta(hours=29), (old, new)               # only the START moved, by about 30.6 hours
+
+
+# ── a band that merely TOUCHES the cut is unchanged, bit for bit (Codex WRAP-CODEX-1) ──────────────────────────────────────────────────
+
+@pytest.mark.parametrize("body", ["Sun", "Saturn", "Rahu", "Ketu"])
+@pytest.mark.parametrize("level", [1.0, 359.0])
+def test_a_band_whose_edge_lies_exactly_on_the_cut_keeps_the_arc_derived_span_bit_for_bit(body, level):
+    """Conjunction at level 1 (band 0 to 2) or 359 (band 358 to 360): the band touches the cut but lies wholly inside its arc, so EVERY occurrence over
+    the whole horizon is exactly (==) what the arc-only derivation gives. The first version of the fix re-solved the endpoint here and moved every
+    occurrence by seconds."""
+    idx = real_index(body)
+    try:
+        edge = point_edge("marriage", "conjunction", level, body.lower())
+    except AssertionError:
+        pytest.skip(f"{body}: no conjunction edge in marriage/P3")
+    domain = (SUBSTRATE_DOMAIN_START, SUBSTRATE_DOMAIN_END)            # the whole 87-year domain: the slow bodies cross a level only a few times
+    new, old = solve(idx, edge, domain), solve(legacy_index(idx), edge, domain)
+    assert len(new) == len(old) >= (80 if body == "Sun" else 1), (body, level, len(new))
+    for n, o in zip(new, old):
+        assert (n.t_in, n.t_out) == (o.t_in, o.t_out), (body, level, n.t_exact, n.t_in - o.t_in, n.t_out - o.t_out)

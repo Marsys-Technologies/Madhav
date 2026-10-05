@@ -256,9 +256,17 @@ def _in_orb_span_around_root(index, root, orb_deg: float) -> tuple[float, float]
     # (the arc ends strictly inside its segment, so the end is not a station or the knot window's edge) is that end taken from the SEGMENT instead:
     # the band continues across the cut until its own edge or the segment's station.
     a, b = _span_within(arc)
-    if a == arc.start_jd and arc.start_jd > seg.start_jd + 1e-9:
+    # The band must extend STRICTLY past the arc's end for it to be continued (Codex WRAP-CODEX-1): a band that merely TOUCHES the cut (its edge
+    # exactly on the 360-degree level) is fully inside the arc and keeps the arc-derived span bit for bit.
+    if arc.direction == 1:
+        past_start = lo < arc.start_lon_unwrapped - 1e-12
+        past_end = hi > arc.end_lon_unwrapped + 1e-12
+    else:
+        past_start = hi > arc.start_lon_unwrapped + 1e-12
+        past_end = lo < arc.end_lon_unwrapped - 1e-12
+    if past_start and a == arc.start_jd and arc.start_jd > seg.start_jd + 1e-9:
         a = _span_within(seg)[0]
-    if b == arc.end_jd and arc.end_jd < seg.end_jd - 1e-9:
+    if past_end and b == arc.end_jd and arc.end_jd < seg.end_jd - 1e-9:
         b = _span_within(seg)[1]
     return a, b
 
