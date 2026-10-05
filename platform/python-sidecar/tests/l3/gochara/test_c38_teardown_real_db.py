@@ -47,7 +47,8 @@ STUB_DDL = (
     "CREATE TABLE IF NOT EXISTS public.kala_gochara_authority (chart_id uuid PRIMARY KEY, authoritative_generation text)",
     "CREATE TABLE public.asset_registry (asset_id text PRIMARY KEY, scope text, is_active boolean, has_writer boolean,"
     " has_substeps boolean, writer_timeout_seconds integer, depends_on text[], target_table text, count_sql text,"
-    " target_floor integer, estimated_seconds integer, catalog_status text DEFAULT 'CURRENT')",
+    " target_floor integer, estimated_seconds integer, catalog_status text DEFAULT 'CURRENT', asset_kind text DEFAULT 'data',"
+    " asset_type text DEFAULT 'data', health_probe text, integrity_check_sql text, rebuild_on_probe_fail boolean DEFAULT false)",
     "CREATE TABLE public.build_runs (id uuid PRIMARY KEY DEFAULT gen_random_uuid(), chart_id uuid, scope text,"
     " scope_target text, state text, triggered_by text, plan_manifest jsonb, plan_manifest_digest text,"
     " created_at timestamptz NOT NULL DEFAULT now())",
