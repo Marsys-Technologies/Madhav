@@ -308,8 +308,8 @@ def _populate_am5_database(conn, faithful=False, apply_1240=True, apply_1305=Fal
         for fname in MIGRATION_CHAIN + ["1206_gochara_search_inventory_completeness.sql"] + (
                 ["1232_gochara_search_moon_scope_domain.sql"] if (faithful or apply_1305) else []) + (
                 ["1240_gochara_window_verification_gate.sql"] if apply_1240 else []) + (
-                ["1305_gochara_snapshot_owns_l1_copy.sql"] if apply_1305 else []) + (
-                [f for f in BUILDER_GRANT_MIGRATIONS if apply_1240 or not f.startswith("1241")] if faithful else []):
+                [f for f in BUILDER_GRANT_MIGRATIONS if apply_1240 or not f.startswith("1241")] if faithful else []) + (
+                ["1305_gochara_snapshot_owns_l1_copy.sql"] if apply_1305 else []):          # the PRODUCTION order: 1241's closed-ACL check runs before 1305 exists
             if fname == M1241_NAME:
                 # 1241 is Stream B's (PR #2949). While it is not in platform/migrations on this branch
                 # (protected-window rule) the mirror applies the byte-exact, sha-pinned v7 fixture;

@@ -5,6 +5,11 @@ Neuters ONE guard at a time (in the migration or in the sidecar code), runs the 
 THROWAWAY database server, and requires every mutation to be caught by at least one failing or erroring test. Files are restored in a `finally` block.
 Exit status is non-zero if any mutation survives or a target string is missing.
 
+NOT in the list, on purpose: skipping the verifier's own capture-time derivation (`validate_consumed_dasha_population(against_live=True)` in the writer's snapshot
+substep) survives, because the same defects are refused earlier and independently by the daśā read (`dasha_builds_mixed`, `dasha_build_not_pinned`) and by the
+database trigger (an incomplete or conflicting population). It is kept as a third, independent derivation (defence in depth), and no claim is made that a test
+isolates it.
+
     GOCHARA_A53_ADMIN_DSN=postgresql://postgres@127.0.0.1:5432/postgres GOCHARA_A53_REQUIRE_DB=1 SE_EPHE_PATH=<se1 dir> \\
       python3 scripts/gochara/mutation_check_1305.py [--list]
 
@@ -20,29 +25,39 @@ TEST = "tests/l3/gochara/test_g12_snapshot_copy.py"
 # (name, file, old, new)
 MUTATIONS = [
     ("the dasha drift check never fires", MIG,
-     "IF public.ka_gochara_search_copy_digest(public.ka_gochara_search_dasha_live_copy(p_chart, snap.consumed_dasha_rows), 'content')\n           IS DISTINCT FROM snap.dasha_digest THEN",
+     "IF public.ka_gochara_search_copy_digest(public.ka_gochara_search_dasha_live_population(p_chart, snap.consumed_dasha_rows,\n           (SELECT q.horizon FROM public.kala_gochara_publication q WHERE q.chart_id = p_chart AND q.generation = p_generation)), 'content')\n           IS DISTINCT FROM snap.dasha_digest THEN",
      "IF false THEN"),
     ("the copy digest ignores which block it is asked for", MIG,
      "CASE WHEN jsonb_typeof(e.value -> p_block) = 'object'\n                           THEN public.ka_gochara_sha256_hex(public.ka_gochara_canonical_json(e.value -> p_block))",
      "CASE WHEN jsonb_typeof(e.value -> 'content') = 'object'\n                           THEN public.ka_gochara_sha256_hex(public.ka_gochara_canonical_json(e.value -> 'content'))"),
-    ("the live daśā lookup drops the level from the natural key", MIG,
-     "AND d.level_n = (k.key ->> 'level_n')::int AND d.start_iso", "AND d.start_iso"),
+    ("the live daśā population drops the level from the match", MIG,
+     "AND d.system_id = sp.system_id AND d.level_n = sp.level_n", "AND d.system_id = sp.system_id"),
     ("the Moon-resolved domain reads live chart_dashas again", MIG,
      "COALESCE(s.consumed_dasha_rows, public.ka_gochara_search_dasha_copy(s.chart_id, s.consumed_dasha_row_ids))",
      "public.ka_gochara_search_dasha_copy(s.chart_id, s.consumed_dasha_row_ids)"),
-    ("the copy-check trigger accepts a digest that does not recompute", MIG,
-     "IF NEW.l1_facts_digest IS DISTINCT FROM public.ka_gochara_search_copy_digest(NEW.consumed_fact_rows, 'content')",
-     "IF false AND NEW.l1_facts_digest IS DISTINCT FROM public.ka_gochara_search_copy_digest(NEW.consumed_fact_rows, 'content')"),
-    ("the copy-check trigger accepts metadata digests that do not recompute", MIG,
-     "IF NEW.l1_facts_metadata_digest IS DISTINCT FROM public.ka_gochara_search_copy_digest(NEW.consumed_fact_rows, 'metadata')",
-     "IF false AND NEW.l1_facts_metadata_digest IS DISTINCT FROM public.ka_gochara_search_copy_digest(NEW.consumed_fact_rows, 'metadata')"),
+    ("the trigger keeps the SUBMITTED copy instead of the one it built", MIG,
+     "NEW.consumed_fact_rows := facts;\n  NEW.consumed_dasha_rows := dashas;",
+     "NEW.consumed_fact_rows := COALESCE(NEW.consumed_fact_rows, facts);\n  NEW.consumed_dasha_rows := COALESCE(NEW.consumed_dasha_rows, dashas);"),
+    ("the trigger accepts an identity digest that does not recompute", MIG,
+     "IF NEW.l1_facts_digest IS DISTINCT FROM l1 OR NEW.dasha_digest IS DISTINCT FROM dd THEN", "IF false THEN"),
+    ("the trigger never checks the facts are the COMPLETE live population", MIG,
+     "IF public.ka_gochara_search_copy_digest(public.ka_gochara_search_facts_live_population(NEW.chart_id, facts), 'content') IS DISTINCT FROM l1 THEN",
+     "IF false THEN"),
+    ("the trigger never checks the daśā rows are the COMPLETE live population", MIG,
+     "IF public.ka_gochara_search_copy_digest(public.ka_gochara_search_dasha_live_population(NEW.chart_id, dashas, hz), 'content') IS DISTINCT FROM dd THEN",
+     "IF false THEN"),
+    ("the live daśā population takes its span from the copy's own rows again (an omitted edge period goes unseen)", MIG,
+     "AND d.start_iso < upper(p_horizon) AND d.end_iso > lower(p_horizon)",
+     "AND d.start_iso < (SELECT max((c.e #>> '{content,end_iso}')::timestamptz) FROM jsonb_array_elements(p_copy) c(e) WHERE (c.e #>> '{key,level_n}')::int = d.level_n)"
+     " AND d.end_iso > (SELECT min((c.e #>> '{key,start_iso}')::timestamptz) FROM jsonb_array_elements(p_copy) c(e) WHERE (c.e #>> '{key,level_n}')::int = d.level_n)"),
+    ("numbers inside the copy are no longer normalised", MIG,
+     "IF jsonb_typeof(j) = 'number' THEN RETURN to_jsonb(trim_scale((j #>> '{}')::numeric)); END IF;",
+     "IF jsonb_typeof(j) = 'number' THEN RETURN j; END IF;"),
     ("the gate no longer refuses after G8's 1306", MIG,
      "UNION ALL SELECT 'g8_1306_applied_first',", "UNION ALL SELECT 'g8_1306_not_checked',"),
-    ("the verifier validates the population against live L1 again", K + "inventory_verifier.py",
-     "if copies is not None and copies[\"dashas\"] is not None:\n        horizon = conn.execute(", "if False:\n        horizon = conn.execute("),
     ("metadata-only drift counts as hard", K + "staleness.py", '"kind": "soft"}', '"kind": "hard"}'),
-    ("the writer never writes the copy", K + "inventory_store.py",
-     "if self.snapshot_copy_available():\n            facts_copy", "if False and self.snapshot_copy_available():\n            facts_copy"),
+    ("the writer submits no keys (nothing for the database to build the copy from)", K + "inventory_store.py",
+     "if self.snapshot_copy_available():\n            # G12 (Codex round 1, ruling 2)", "if False and self.snapshot_copy_available():\n            # G12 (Codex round 1, ruling 2)"),
     ("the natal chart is read from live L1 again", K + "inventory_verifier.py",
      "    if snap[\"facts\"] is None:\n        return read_chart(conn, snap[\"fact_ids\"])\n    return chart_from_copy(snap[\"facts\"])",
      "    return read_chart(conn, snap[\"fact_ids\"])"),

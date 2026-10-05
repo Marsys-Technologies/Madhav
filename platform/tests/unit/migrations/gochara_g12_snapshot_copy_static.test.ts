@@ -33,7 +33,7 @@ describe('migration 1305 — static contract', () => {
     // the legacy branch keeps the 1206 statements verbatim (so a snapshot without a copy is judged as before)
     const block = neu.slice(newStart, newEnd).replace(/\s+/g, ' ')
     for (const keep of ['live_l1 := public.ka_gochara_search_l1_facts_digest(p_chart, snap.consumed_fact_ids);', 'live_dasha := public.ka_gochara_search_dasha_digest(p_chart, snap.consumed_dasha_row_ids);']) expect(block).toContain(keep)
-    for (const neuName of ['ka_gochara_search_facts_live_copy', 'ka_gochara_search_dasha_live_copy', "'content'"]) expect(block).toContain(neuName)
+    for (const neuName of ['ka_gochara_search_facts_live_population', 'ka_gochara_search_dasha_live_population', "'content'"]) expect(block).toContain(neuName)
     for (const keep of ["'missing_inputs_present'", "'obligation_uncovered'", "'verification_missing_or_mismatch'", 'ka_gochara_search_moon_scope_violations(p_chart, p_generation);']) expect(neu).toContain(keep)
   })
 
@@ -48,8 +48,13 @@ describe('migration 1305 — static contract', () => {
     // exactly the two replaced functions are 1232 names; every other CREATE OR REPLACE is a NEW 1305 function
     const created = [...M1305.matchAll(/CREATE OR REPLACE FUNCTION public\.(\w+)/g)].map((m) => m[1]).sort()
     expect(created).toEqual(['ka_gochara_search_completeness_violations', 'ka_gochara_search_copy_digest', 'ka_gochara_search_dasha_copy', 'ka_gochara_search_dasha_element',
-      'ka_gochara_search_dasha_live_copy', 'ka_gochara_search_dasha_path', 'ka_gochara_search_facts_copy', 'ka_gochara_search_facts_live_copy',
-      'ka_gochara_search_input_snapshot_copy_check', 'ka_gochara_search_moon_resolved_domain'])
+      'ka_gochara_search_dasha_live_population', 'ka_gochara_search_dasha_ordinal_path', 'ka_gochara_search_dasha_path', 'ka_gochara_search_facts_copy',
+      'ka_gochara_search_facts_live_population', 'ka_gochara_search_input_snapshot_copy_build', 'ka_gochara_search_moon_resolved_domain',
+      'ka_gochara_search_normalize_numbers'])
+    // the copy is PRODUCED BY THE DATABASE: the trigger BUILDS it and overwrites what was submitted (before 1206's write guard, named 0z)
+    expect(M1305).toContain('ka_gochara_search_input_snapshot_0z_copy_build')
+    expect(M1305).toMatch(/NEW\.consumed_fact_rows := facts;/)
+    expect(M1305).toMatch(/NEW\.consumed_dasha_rows := dashas;/)
     expect(M1232).not.toContain('ka_gochara_search_copy_digest')
   })
 
@@ -78,6 +83,6 @@ describe('migration 1305 — static contract', () => {
     const rb = fs.readFileSync(path.resolve(__dirname, '../../../scripts/gochara/readback_1305_snapshot_copy.sql'), 'utf8')
     expect(rb).toContain('BEGIN READ ONLY;')
     expect(rb.replace(/--.*$/gm, '')).not.toMatch(/\b(INSERT|UPDATE|DELETE|DROP|ALTER|CREATE|GRANT|REVOKE|TRUNCATE)\b/i)
-    for (const o of ['kgsis_l1_copy_ck', 'ka_gochara_search_input_snapshot_3_copy_check', 'ka_gochara_search_dasha_live_copy', 'consumed_dasha_rows', 'legacy_snapshots']) expect(rb).toContain(o)
+    for (const o of ['kgsis_l1_copy_ck', 'ka_gochara_search_input_snapshot_0z_copy_build', 'ka_gochara_search_dasha_live_population', 'consumed_dasha_rows', 'legacy_snapshots']) expect(rb).toContain(o)
   })
 })

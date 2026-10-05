@@ -52,19 +52,24 @@ def sealed_generation_staleness(conn: Any, chart_id: str, generation: str) -> di
         return _legacy_staleness(conn, chart_id, generation)         # a snapshot written before 1305
     vec_json = vector if isinstance(vector, str) else _json.dumps(vector)
 
-    def one(sql: str, *params: Any) -> Any:
-        return conn.execute(sql, params).fetchone()[0]
-    live_facts = _json.dumps(one("SELECT public.ka_gochara_search_facts_live_copy(%s::uuid, %s::jsonb)", chart_id, facts_text))
-    live_dashas = _json.dumps(one("SELECT public.ka_gochara_search_dasha_live_copy(%s::uuid, %s::jsonb)", chart_id, dashas_text))
+    hz = conn.execute("SELECT horizon::text FROM public.kala_gochara_publication WHERE chart_id = %s AND generation = %s", (chart_id, generation)).fetchone()
+    horizon = (tuple(hz.values())[0] if isinstance(hz, dict) else hz[0]) if hz is not None else None
+    if horizon is None:
+        return _legacy_staleness(conn, chart_id, generation)         # no bound manifest to take the live population's horizon from
 
-    def digest(copy: str, block: str) -> str:
-        return one("SELECT public.ka_gochara_search_copy_digest(%s::jsonb, %s)", copy, block)
-    live_l1, live_dd = digest(live_facts, "content"), digest(live_dashas, "content")
-    live_l1m, live_ddm = digest(live_facts, "metadata"), digest(live_dashas, "metadata")
-    live_input = one("SELECT public.ka_gochara_search_input_digest(%s, %s::jsonb, %s, %s, %s::text[])",
-                     convention_id, vec_json, live_l1, live_dd, list(av))
-    sealed = bool(one("SELECT EXISTS (SELECT 1 FROM public.ka_gochara_generation_seal WHERE chart_id = %s AND generation = %s)",
-                      chart_id, generation))
+    # EVERY digest is computed INSIDE PostgreSQL over the exact text of the stored copy and of the live population: no Python round trip, so a numeric
+    # change that a float cannot carry (12.5 versus 12.5000000000000001) is never erased (Codex round 1, finding 4)
+    digests = conn.execute(
+        "WITH lf AS (SELECT public.ka_gochara_search_facts_live_population(%s::uuid, %s::jsonb) AS j),"
+        "     ld AS (SELECT public.ka_gochara_search_dasha_live_population(%s::uuid, %s::jsonb, %s::tstzrange) AS j)"
+        " SELECT public.ka_gochara_search_copy_digest(lf.j, 'content'), public.ka_gochara_search_copy_digest(ld.j, 'content'),"
+        "        public.ka_gochara_search_copy_digest(lf.j, 'metadata'), public.ka_gochara_search_copy_digest(ld.j, 'metadata') FROM lf, ld",
+        (chart_id, facts_text, chart_id, dashas_text, horizon)).fetchone()
+    live_l1, live_dd, live_l1m, live_ddm = tuple(digests.values()) if isinstance(digests, dict) else tuple(digests)
+    live_input = conn.execute("SELECT public.ka_gochara_search_input_digest(%s, %s::jsonb, %s, %s, %s::text[])",
+                              (convention_id, vec_json, live_l1, live_dd, list(av))).fetchone()[0]
+    sealed = bool(conn.execute("SELECT EXISTS (SELECT 1 FROM public.ka_gochara_generation_seal WHERE chart_id = %s AND generation = %s)",
+                               (chart_id, generation)).fetchone()[0])
     components = {
         "l1_facts": {"stored": stored_l1, "live": live_l1, "same": live_l1 == stored_l1, "kind": "hard"},
         "dasha": {"stored": stored_dd, "live": live_dd, "same": live_dd == stored_dd, "kind": "hard"},
@@ -74,6 +79,11 @@ def sealed_generation_staleness(conn: Any, chart_id: str, generation: str) -> di
     }
     hard = sorted(k for k, v in components.items() if v["kind"] == "hard" and not v["same"])
     soft = sorted(k for k, v in components.items() if v["kind"] == "soft" and not v["same"])
+    changes, total = ([], 0)
+    if hard or soft:
+        live_facts = conn.execute("SELECT public.ka_gochara_search_facts_live_population(%s::uuid, %s::jsonb)::text", (chart_id, facts_text)).fetchone()[0]
+        live_dashas = conn.execute("SELECT public.ka_gochara_search_dasha_live_population(%s::uuid, %s::jsonb, %s::tstzrange)::text", (chart_id, dashas_text, horizon)).fetchone()[0]
+        changes, total = _changes(facts_text, dashas_text, live_facts, live_dashas)
     return {
         "chart_id": str(chart_id),
         "generation": generation,
@@ -84,54 +94,62 @@ def sealed_generation_staleness(conn: Any, chart_id: str, generation: str) -> di
         "drifted": bool(hard),
         "metadata_drift_components": soft,
         "metadata_only_drift": bool(soft) and not hard,
-        "changes": _changes(conn, chart_id, facts_text, dashas_text, live_facts, live_dashas) if (hard or soft) else [],
+        "changes": changes,
+        "changes_total": total,
+        "changes_truncated": total > len(changes),
     }
 
 
-def _changes(conn: Any, chart_id: str, facts_text: str, dashas_text: str, live_facts: str, live_dashas: str, limit: int = 40) -> list[dict[str, Any]]:
-    """What differs, by name (at most `limit`): a fact or daśā row whose content changed or is missing live; for a daśā row missing at its stored start, the
-    live period with the same ordinal lord path, if there is one, is named as MOVED with the shift in seconds — never just 'row missing'."""
+_HARD_ORDER = {"missing_live": 0, "moved": 0, "content_differs": 0, "extra_live": 0, "metadata_only": 1}
+
+
+def _changes(facts_text: str, dashas_text: str, live_facts: str, live_dashas: str, limit: int = 40) -> tuple[list[dict[str, Any]], int]:
+    """What differs, by name: HARD changes first (a value changed, a row missing or moved, an EXTRA live row), metadata-only changes last; at most `limit`
+    are returned and the TOTAL is disclosed so a truncation is never silent. Numerics are compared EXACTLY (Decimal). A daśā row missing at its stored
+    start is named MOVED when a live period has the stored ORDINAL path (the index of the period within its parent at every level: cycle-specific, so a
+    repeated lord is never mistaken for it), with the start shift in seconds."""
+    from datetime import datetime
+    from decimal import Decimal
+    def parse(t: str) -> list[dict[str, Any]]:
+        return _json.loads(t, parse_float=Decimal)
     out: list[dict[str, Any]] = []
     for kind, stored_text, live_text in (("fact", facts_text, live_facts), ("dasha", dashas_text, live_dashas)):
-        stored = {_json.dumps(e["key"], sort_keys=True): e for e in _json.loads(stored_text)}
-        live = {_json.dumps(e["key"], sort_keys=True): e for e in _json.loads(live_text)}
+        stored = {_json.dumps(e["key"], sort_keys=True, default=str): e for e in parse(stored_text)}
+        live_list = parse(live_text)
+        live: dict[str, list[dict[str, Any]]] = {}
+        for e in live_list:
+            live.setdefault(_json.dumps(e["key"], sort_keys=True, default=str), []).append(e)
         for key, e in sorted(stored.items()):
-            lv = live.get(key)
-            if lv is None or lv.get("content") is None:
+            hits = live.get(key, [])
+            if not hits or hits[0].get("content") is None:
                 change: dict[str, Any] = {"kind": kind, "key": e["key"], "change": "missing_live"}
                 if kind == "dasha":
-                    moved = _moved(conn, chart_id, e)
-                    if moved:
-                        change.update(moved)
+                    ordinal = (e.get("content") or {}).get("ordinal_path")
+                    cand = [x for xs in live.values() for x in xs
+                            if ordinal and (x.get("content") or {}).get("ordinal_path") == ordinal
+                            and x["key"]["level_n"] == e["key"]["level_n"] and x["key"]["system_id"] == e["key"]["system_id"]
+                            and x["key"]["ayanamsha_id"] == e["key"]["ayanamsha_id"]]
+                    if cand:
+                        c = cand[0]
+                        shift = (datetime.fromisoformat(c["key"]["start_iso"]) - datetime.fromisoformat(e["key"]["start_iso"])).total_seconds()
+                        change.update({"change": "moved", "ordinal_path": ordinal, "lord_path": e["content"].get("lord_path"),
+                                       "live_start": c["key"]["start_iso"], "start_shift_seconds": shift})
                 out.append(change)
-            elif lv["content"] != e["content"]:
+            elif len(hits) > 1:
+                out.append({"kind": kind, "key": e["key"], "change": "extra_live", "detail": f"{len(hits)} live rows share this key (a conflicting duplicate)"})
+            elif hits[0]["content"] != e["content"]:
                 out.append({"kind": kind, "key": e["key"], "change": "content_differs",
-                            "fields": sorted(k for k in set(e["content"]) | set(lv["content"]) if e["content"].get(k) != lv["content"].get(k))})
-            elif lv["metadata"] != e["metadata"]:
+                            "fields": sorted(k for k in set(e["content"]) | set(hits[0]["content"]) if e["content"].get(k) != hits[0]["content"].get(k))})
+            elif hits[0]["metadata"] != e["metadata"]:
                 out.append({"kind": kind, "key": e["key"], "change": "metadata_only",
-                            "fields": sorted(k for k in set(e["metadata"]) | set(lv["metadata"]) if e["metadata"].get(k) != lv["metadata"].get(k))})
-            if len(out) >= limit:
-                return out
-    return out
-
-
-def _moved(conn: Any, chart_id: str, element: dict[str, Any]) -> dict[str, Any] | None:
-    """The live period with the stored ORDINAL lord path (same level, system, ayanamsha), if any: the boundary moved, the period did not vanish."""
-    k, path = element["key"], element["content"].get("lord_path")
-    if not path:
-        return None
-    rows = conn.execute(
-        "SELECT d.start_iso, d.end_iso, public.ka_gochara_search_dasha_path(d.chart_id, d.dasha_row_id)"
-        " FROM public.chart_dashas d WHERE d.chart_id = %s AND d.ayanamsha_id = %s AND d.system_id = %s AND d.level_n = %s",
-        (chart_id, k["ayanamsha_id"], k["system_id"], int(k["level_n"]))).fetchall()
-    from datetime import datetime
-    stored_start = datetime.fromisoformat(k["start_iso"])
-    best = [(abs((r[0] - stored_start).total_seconds()), r) for r in rows if r[2] == path]
-    if not best:
-        return None
-    delta, r = min(best, key=lambda x: x[0])
-    return {"change": "moved", "lord_path": path, "live_start": r[0].isoformat(), "live_end": r[1].isoformat(),
-            "start_shift_seconds": (r[0] - stored_start).total_seconds()}
+                            "fields": sorted(k for k in set(e["metadata"]) | set(hits[0]["metadata"]) if e["metadata"].get(k) != hits[0]["metadata"].get(k))})
+        moved_keys = {_json.dumps(c["key"], sort_keys=True, default=str) for c in out if c["kind"] == kind and c["change"] == "moved"}
+        live_by_start = {c.get("live_start") for c in out if c["kind"] == kind and c["change"] == "moved"}
+        for key, xs in sorted(live.items()):
+            if key not in stored and not any(x["key"]["start_iso"] in live_by_start for x in xs):
+                out.append({"kind": kind, "key": xs[0]["key"], "change": "extra_live"})
+    out.sort(key=lambda c: (_HARD_ORDER[c["change"]], c["kind"], _json.dumps(c["key"], sort_keys=True, default=str)))
+    return out[:limit], len(out)
 
 
 def _legacy_staleness(conn: Any, chart_id: str, generation: str) -> dict[str, Any]:
@@ -174,6 +192,8 @@ def _legacy_staleness(conn: Any, chart_id: str, generation: str) -> dict[str, An
         "metadata_drift_components": [],
         "metadata_only_drift": False,
         "changes": [],
+        "changes_total": 0,
+        "changes_truncated": False,
     }
 
 

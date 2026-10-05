@@ -376,24 +376,23 @@ def _run_entry_as_verifier(w, monkeypatch, capsys):
         w.conn.execute("ALTER ROLE gochara_verifier NOLOGIN PASSWORD NULL")
 
 
-def test_a_mixed_dasha_build_ends_the_job_in_refused_not_error(built, monkeypatch, capsys):
+def test_a_mixed_dasha_build_left_after_the_build_does_not_unverify_a_generation_that_owns_its_copy(built, monkeypatch, capsys):
     w = built
     w.conn.execute(
         "INSERT INTO public.chart_dashas (dasha_row_id, chart_id, ayanamsha_id, system_id, level_n, parent_row_id, lord_graha, start_iso, end_iso,"
         " build_id, verification_pass_status) SELECT gen_random_uuid(), chart_id, ayanamsha_id, system_id, level_n, NULL, lord_graha, start_iso, end_iso,"
         " %s::uuid, 'single' FROM public.chart_dashas WHERE system_id = 'vimshottari' AND level_n = 1 LIMIT 1", (ANOTHER_BUILD,))
     code, out = _run_entry_as_verifier(w, monkeypatch, capsys)
-    assert code == vj.EXIT_REFUSED == 2, out
-    assert out["status"] == "REFUSED" and out["code"] == "stale_inputs" and "dasha_builds_mixed" in out["detail"], out
-    assert _counts(w.conn, vj.VERIFICATION_TABLES) == {t: 0 for t in vj.VERIFICATION_TABLES}
+    # G12: a mix left by an L1 rebuild AFTER the build is drift (reported by staleness / the completeness gate), not a failure to verify a generation that owns its copy;
+    # the mix itself is refused at CAPTURE (test_a53_r16_amendments) and by the legacy (no copy) path
+    assert code == 0, out
 
 
-def test_a_single_unpinned_dasha_build_ends_the_job_in_refused_not_error(built, monkeypatch, capsys):
+def test_a_later_rebuild_under_another_build_id_does_not_unverify_a_generation_that_owns_its_copy(built, monkeypatch, capsys):
     w = built
     w.conn.execute("UPDATE public.chart_dashas SET build_id = %s::uuid", (ANOTHER_BUILD,))
     code, out = _run_entry_as_verifier(w, monkeypatch, capsys)
-    assert code == vj.EXIT_REFUSED == 2, out
-    assert out["status"] == "REFUSED" and out["code"] == "stale_inputs" and "dasha_build_not_pinned" in out["detail"], out
+    assert code == 0, out                  # G12: a later rebuild under another build id is metadata-only drift; the generation's copy still verifies
 
 
 def test_an_absolute_ephemeris_probe_mismatch_ends_the_job_in_refused_not_error(built, monkeypatch, capsys):

@@ -13,29 +13,31 @@ WHERE table_schema = 'public' AND table_name = 'ka_gochara_search_input_snapshot
 SELECT conname, convalidated FROM pg_constraint
 WHERE conrelid = 'public.ka_gochara_search_input_snapshot'::regclass AND conname = 'kgsis_l1_copy_ck';
 
--- 3. the copy-check trigger fires BEFORE INSERT FOR EACH ROW. expected: 1 row, the trigger enabled ('O').
+-- 3. the copy-BUILD trigger (the database produces the copy; it fires before 1206's write guard) fires BEFORE INSERT FOR EACH ROW. expected: 1 row, enabled ('O').
 SELECT tgname, tgenabled, (tgtype & 2) <> 0 AS before_row_trigger, (tgtype & 4) <> 0 AS on_insert
-FROM pg_trigger WHERE tgrelid = 'public.ka_gochara_search_input_snapshot'::regclass AND tgname = 'ka_gochara_search_input_snapshot_3_copy_check';
+FROM pg_trigger WHERE tgrelid = 'public.ka_gochara_search_input_snapshot'::regclass AND tgname = 'ka_gochara_search_input_snapshot_0z_copy_build';
 
--- 4. the new functions exist, all invoker-rights (prosecdef false). expected: 8 rows, secdef f.
+-- 4. the new functions exist, all invoker-rights (prosecdef false). expected: 10 rows, secdef f.
 SELECT p.proname, pg_get_function_identity_arguments(p.oid) AS args, p.prosecdef AS secdef
 FROM pg_proc p WHERE p.pronamespace = 'public'::regnamespace AND p.proname IN
-  ('ka_gochara_search_copy_digest', 'ka_gochara_search_facts_copy', 'ka_gochara_search_facts_live_copy', 'ka_gochara_search_dasha_path',
-   'ka_gochara_search_dasha_element', 'ka_gochara_search_dasha_copy', 'ka_gochara_search_dasha_live_copy', 'ka_gochara_search_input_snapshot_copy_check')
+  ('ka_gochara_search_copy_digest', 'ka_gochara_search_normalize_numbers', 'ka_gochara_search_facts_copy', 'ka_gochara_search_facts_live_population',
+   'ka_gochara_search_dasha_path', 'ka_gochara_search_dasha_ordinal_path', 'ka_gochara_search_dasha_element', 'ka_gochara_search_dasha_copy',
+   'ka_gochara_search_dasha_live_population', 'ka_gochara_search_input_snapshot_copy_build')
 ORDER BY 1;
 
 -- 5. the two replaced functions carry the 1305 bodies. expected: all three t.
-SELECT pg_get_functiondef('public.ka_gochara_search_completeness_violations(uuid,text)'::regprocedure) LIKE '%ka_gochara_search_dasha_live_copy%' AS completeness_has_the_copy_drift_block,
+SELECT pg_get_functiondef('public.ka_gochara_search_completeness_violations(uuid,text)'::regprocedure) LIKE '%ka_gochara_search_dasha_live_population%' AS completeness_has_the_copy_drift_block,
        pg_get_functiondef('public.ka_gochara_search_completeness_violations(uuid,text)'::regprocedure) LIKE '%ka_gochara_search_moon_scope_violations%' AS completeness_keeps_the_1232_scope_call,
        pg_get_functiondef('public.ka_gochara_search_moon_resolved_domain(uuid,text,text,uuid)'::regprocedure) LIKE '%consumed_dasha_rows%' AS moon_domain_reads_the_copy;
 
 -- 6. EXECUTE on the new functions for the three roles that call them (production revokes PUBLIC EXECUTE). expected: every column t for each role that exists.
 SELECT r.rolname,
-       bool_and(has_function_privilege(r.oid, f.oid, 'EXECUTE')) AS execute_on_all_seven_copy_functions
+       bool_and(has_function_privilege(r.oid, f.oid, 'EXECUTE')) AS execute_on_all_nine_copy_functions
 FROM pg_roles r
 CROSS JOIN (SELECT p.oid FROM pg_proc p WHERE p.pronamespace = 'public'::regnamespace AND p.proname IN
-  ('ka_gochara_search_copy_digest', 'ka_gochara_search_facts_copy', 'ka_gochara_search_facts_live_copy', 'ka_gochara_search_dasha_path',
-   'ka_gochara_search_dasha_element', 'ka_gochara_search_dasha_copy', 'ka_gochara_search_dasha_live_copy')) f
+  ('ka_gochara_search_copy_digest', 'ka_gochara_search_normalize_numbers', 'ka_gochara_search_facts_copy', 'ka_gochara_search_facts_live_population',
+   'ka_gochara_search_dasha_path', 'ka_gochara_search_dasha_ordinal_path', 'ka_gochara_search_dasha_element', 'ka_gochara_search_dasha_copy',
+   'ka_gochara_search_dasha_live_population')) f
 WHERE r.rolname IN ('data_plane_builder', 'gochara_verifier', 'gochara_sealer')
 GROUP BY r.rolname ORDER BY 1;
 

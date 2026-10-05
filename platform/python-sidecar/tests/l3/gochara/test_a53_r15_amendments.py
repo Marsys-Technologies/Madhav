@@ -90,8 +90,15 @@ def test_the_brief_reads_the_actual_tiers_and_prints_the_sentence_only_when_all_
     d = one["payload"]["disclosures"]
     assert d["natal_inputs"] == VERBATIM and set(d["natal_input_tiers"]) == set(sb.NATAL_SUBJECTS)
     assert all(t == ["single"] for t in d["natal_input_tiers"].values())
-    # an L1 relabel of ONE consumed row: the next brief prints the observed tiers instead (the disclosure cannot go stale)
+    # G12: the disclosure is the tier the rows carried WHEN CONSUMED (the snapshot's copy): a later L1 relabel is drift, not a change of what was consumed
     w.conn.execute("UPDATE public.chart_facts SET verification_pass_status = 'two_pass_verified' WHERE fact_subject = 'MOON'")
+    assert sb.build_payload(w.conn, CHART_ID, GEN, sealing_commit="abcdef1")["disclosures"]["natal_inputs"] == VERBATIM
+    # a relabel of ONE consumed row IN THE COPY (what the generation consumed): the next brief prints the observed tiers instead (the disclosure cannot go stale)
+    w.conn.execute("ALTER TABLE public.ka_gochara_search_input_snapshot DISABLE TRIGGER USER")
+    w.conn.execute("UPDATE public.ka_gochara_search_input_snapshot SET consumed_fact_rows = (SELECT jsonb_agg(CASE WHEN e #>> '{content,fact_subject}' = 'MOON'"
+                   " THEN jsonb_set(e, '{metadata,verification_pass_status}', '\"two_pass_verified\"') ELSE e END) FROM jsonb_array_elements(consumed_fact_rows) e)"
+                   " WHERE chart_id = %s AND generation = %s", (CHART_ID, GEN))
+    w.conn.execute("ALTER TABLE public.ka_gochara_search_input_snapshot ENABLE TRIGGER USER")
     payload = sb.build_payload(w.conn, CHART_ID, GEN, sealing_commit="abcdef1")
     d2 = payload["disclosures"]
     assert d2["natal_inputs"] != VERBATIM and "MOON=two_pass_verified" in d2["natal_inputs"]

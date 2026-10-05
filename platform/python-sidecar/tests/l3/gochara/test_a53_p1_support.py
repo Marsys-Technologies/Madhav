@@ -52,9 +52,15 @@ def world(monkeypatch, tmp_path):
     yield from _world(monkeypatch, tmp_path, faithful=False)
 
 
-def _world(monkeypatch, tmp_path, faithful):
+@pytest.fixture()
+def legacy_world(monkeypatch, tmp_path):
+    """The same world on a LEGACY snapshot (migration 1305 not applied): the verifier reads the pinned periods from live L1, as before G12."""
+    yield from _world(monkeypatch, tmp_path, faithful=False, apply_1305=False)
+
+
+def _world(monkeypatch, tmp_path, faithful, apply_1305=True):
     import psycopg
-    admin, name, dsn = create_am5_database("p1s", faithful=faithful)
+    admin, name, dsn = create_am5_database("p1s", faithful=faithful, apply_1305=apply_1305)
     conn = psycopg.connect(dsn, autocommit=True, connect_timeout=3)
     monkeypatch.setattr(writer_mod, "calc_sidereal_lon", lambda body, jd, ephe: (10.0, 2))
     RuleRegistryStore(conn).seed()
@@ -237,8 +243,19 @@ def test_an_agent_with_no_daśā_rows_is_unrestricted_with_an_explicit_unknown(w
                              event_class="marriage") == {"records": 1, "restricted": 0}
 
 
-def test_the_verifier_refuses_a_support_that_admits_a_period_gap_or_discards_a_valid_portion(world):
+def test_a_later_change_of_live_periods_does_not_unverify_a_generation_that_owns_its_copy(world):
+    """G12: the verifier reads the periods the SNAPSHOT owns; a later L1 change is drift (reported by staleness), never a failure to verify."""
     w = world
+    w.set_periods([(2, _t(1, 1), _t(1, 12)), (2, _t(1, 18), _t(2, 1))])
+    w.boot()
+    w.seed("venus", [(180.0, _t(1, 10)), (210.0, _t(1, 25))])
+    w.grain("venus", lambda t: _t(1, 10) <= t < _t(1, 25))
+    w.conn.execute("UPDATE public.chart_dashas SET end_iso = %s WHERE dasha_row_id = %s", (_t(1, 18), str(uuid.UUID(int=900))))
+    verify_p1_support(w.conn, chart_id=CHART_ID, generation=GEN, event_class="marriage")          # still verifies, from the copy
+
+
+def test_the_verifier_refuses_a_support_that_admits_a_period_gap_or_discards_a_valid_portion(legacy_world):
+    w = legacy_world
     w.set_periods([(2, _t(1, 1), _t(1, 12)), (2, _t(1, 18), _t(2, 1))])
     w.boot()
     w.seed("venus", [(180.0, _t(1, 10)), (210.0, _t(1, 25))])

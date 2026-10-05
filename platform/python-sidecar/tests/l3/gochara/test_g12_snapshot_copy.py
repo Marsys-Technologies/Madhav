@@ -1,15 +1,17 @@
 """G12 route 1 — the search-input snapshot OWNS a COPY of the L1 rows it consumed (migration 1305; steward G12-ROUTE1; design note
-decisions/G12_ROUTE1_SNAPSHOT_DESIGN_v1_0.md).
+decisions/G12_ROUTE1_SNAPSHOT_DESIGN_v1_0.md; Codex round 1 rulings in reviews/ASTRA_REVIEW_G12_SNAPSHOT_COPY_v1_0.md).
 
 THE DEFECT THIS CLOSES: 1206's snapshot pointed at its L1 inputs by id and digested whole rows (row ids, build ids, parent ids included). After ANY later
 `ga_dashas` / `ga_positions` rebuild (new `dasha_row_id`s, a new build id, an engine bump) a SEALED generation read every consumed row as MISSING or
 changed: completeness reported `input_snapshot_drift` forever, the verification job could not re-derive, and a sealed generation cannot be repaired.
 
 Real migration chain on a disposable database (1206, 1232, 1240, 1305); the L1 tables are the stubs of the A5.3 suites with the production columns.
-Shown: the snapshot stores a copy and its digests recompute from it; an L1 rebuild with NEW row ids and a NEW build id and the SAME values is METADATA-only
-drift (completeness clean, staleness soft, the verifier and the ledger re-derivation still pass, the Moon domain unchanged); a changed VALUE (a daśā
-end, a natal longitude) is HARD drift; a moved boundary is NAMED (ordinal lord path), not 'row missing'; the copy check refuses a digest that does not
-recompute; 1305 refuses to apply after G8's 1306; the legacy path (no 1305) is unchanged."""
+Shown: the snapshot stores a copy PRODUCED BY THE DATABASE (a submitted copy is overwritten, a false digest is refused), proved the COMPLETE live
+population at capture (a missing, extra or conflicting row refuses by name); an L1 rebuild with NEW row ids and a NEW build id and the SAME values is
+METADATA-only drift (completeness clean, staleness soft, the verifier and the ledger re-derivation still pass, the Moon domain unchanged); a changed VALUE,
+a missing row or an EXTRA conflicting row is HARD drift in both directions; a moved boundary is NAMED by its ORDINAL path (a repeated lord in another
+cycle is not mistaken for it); numbers are compared exactly in PostgreSQL (and normalised inside jsonb); after the snapshot substep NO live L1 read
+happens in the writer or kernel (instrumented and grepped); a first seal on a legacy snapshot is refused; 1305 refuses to apply after G8's 1306."""
 from __future__ import annotations
 
 import json
@@ -123,28 +125,26 @@ def test_the_snapshot_stores_a_copy_and_its_digests_recompute_from_it(g12):
     assert "dasha_row_id" not in detail
 
 
-def _reinsert(conn, s, *, facts=None, dashas=None, l1=None, ddm=None, l1m=None, with_copy=True):
-    """Delete the snapshot (the candidate replacement path) and insert it again with the given copies / digests. 1206's own guard recomputes input_digest from
-    l1_facts_digest and dasha_digest AS GIVEN, so a tampered COPY with the original digests passes that guard and reaches 1305's copy check."""
+def _reinsert(conn, s, *, facts=None, dashas=None, l1=None, fact_ids=None, dasha_ids=None, with_copy=True):
+    """Delete the snapshot (the candidate replacement path) and insert it again as the BUILDER does: the keys and the identity digests, and — only when asked —
+    a SUBMITTED copy (which the database must ignore). 1206's own guard then recomputes input_digest from the digests as given."""
     InventoryStore(conn).delete_generation_inventory(CHART_ID, GEN)
     vec = conn.execute("SELECT input_generation_vector::text FROM public.kala_gochara_publication WHERE chart_id = %s AND generation = %s",
                        (CHART_ID, GEN)).fetchone()[0]
     conv = conn.execute("SELECT convention_id FROM public.ka_gochara_sky_convention LIMIT 1").fetchone()[0]
+    cols = ("chart_id, generation, convention_id, input_generation_vector, consumed_fact_ids, consumed_dasha_row_ids, av_declarations, l1_facts_digest,"
+            " dasha_digest, input_digest")
+    vals = [CHART_ID, GEN, conv, vec, fact_ids if fact_ids is not None else s["fact_ids"], dasha_ids if dasha_ids is not None else s["dasha_ids"], [],
+            l1 or s["l1"], s["dd"], s["input"]]
+    marks = "%s,%s,%s,%s::jsonb,%s,%s::uuid[],%s,%s,%s,%s"
+    if with_copy:
+        cols += ", consumed_fact_rows, consumed_dasha_rows, l1_facts_metadata_digest, dasha_metadata_digest"
+        marks += ",%s::jsonb,%s::jsonb,%s,%s"
+        vals += [json.dumps(facts if facts is not None else s["facts"], default=_jsonable), json.dumps(dashas if dashas is not None else s["dashas"], default=_jsonable),
+                 "f" * 64, "f" * 64]
     with conn.transaction():
         conn.execute("SELECT public.ka_gochara_lock_chart(%s::uuid)", (CHART_ID,))
-        if with_copy:
-            conn.execute(
-                "INSERT INTO public.ka_gochara_search_input_snapshot (chart_id, generation, convention_id, input_generation_vector, consumed_fact_ids,"
-                " consumed_dasha_row_ids, av_declarations, l1_facts_digest, dasha_digest, input_digest, consumed_fact_rows, consumed_dasha_rows,"
-                " l1_facts_metadata_digest, dasha_metadata_digest) VALUES (%s,%s,%s,%s::jsonb,%s,%s::uuid[],%s,%s,%s,%s,%s::jsonb,%s::jsonb,%s,%s)",
-                (CHART_ID, GEN, conv, vec, s["fact_ids"], s["dasha_ids"], [], l1 or s["l1"], s["dd"], s["input"],
-                 json.dumps(facts if facts is not None else s["facts"], default=_jsonable), json.dumps(dashas if dashas is not None else s["dashas"], default=_jsonable),
-                 l1m or s["l1m"], ddm or s["ddm"]))
-        else:
-            conn.execute(
-                "INSERT INTO public.ka_gochara_search_input_snapshot (chart_id, generation, convention_id, input_generation_vector, consumed_fact_ids,"
-                " consumed_dasha_row_ids, av_declarations, l1_facts_digest, dasha_digest, input_digest) VALUES (%s,%s,%s,%s::jsonb,%s,%s::uuid[],%s,%s,%s,%s)",
-                (CHART_ID, GEN, conv, vec, s["fact_ids"], s["dasha_ids"], [], s["l1"], s["dd"], s["input"]))
+        conn.execute(f"INSERT INTO public.ka_gochara_search_input_snapshot ({cols}) VALUES ({marks})", vals)
 
 
 def _jsonable(o):
@@ -153,46 +153,99 @@ def _jsonable(o):
     raise TypeError(type(o))
 
 
-def test_the_copy_check_refuses_a_copy_whose_digests_do_not_recompute(g12):
+def test_the_copy_is_produced_by_the_database_a_submitted_false_copy_is_overwritten(g12):
+    """Codex round 1, ruling 2: matching digests prove consistency, not authenticity. The builder holds INSERT, so it submits only KEYS; whatever copy (and
+    metadata digests) it submits is OVERWRITTEN by the copy the database builds from the live rows in the insert transaction."""
     _step, conn = g12
     s = _snapshot(conn)
-    tampered = json.loads(json.dumps(s["facts"], default=_jsonable))
-    tampered[0]["content"]["fact_value_num"] = float(tampered[0]["content"]["fact_value_num"]) + 1.0     # the digests stay as stored: the COPY lies
-    with pytest.raises(Exception, match=r"l1_facts_digest / dasha_digest do not recompute from the stored copies"):
-        _reinsert(conn, s, facts=tampered)
-    tampered_d = json.loads(json.dumps(s["dashas"], default=_jsonable))
-    tampered_d[0]["content"]["lord_graha"] = "moon" if tampered_d[0]["content"]["lord_graha"] != "moon" else "sun"
-    with pytest.raises(Exception, match=r"l1_facts_digest / dasha_digest do not recompute from the stored copies"):
-        _reinsert(conn, s, dashas=tampered_d)
+    lie = json.loads(json.dumps(s["facts"], default=_jsonable))
+    lie[0]["content"]["fact_value_num"] = 999.0
+    lie[0]["metadata"]["verification_pass_status"] = "two_pass_verified"                  # a false tier, with every hash 'consistent' (f*64 is ignored too)
+    lie_d = json.loads(json.dumps(s["dashas"], default=_jsonable))
+    lie_d[0]["content"]["lord_graha"] = "moon"
+    _reinsert(conn, s, facts=lie, dashas=lie_d)
+    after = _snapshot(conn)
+    assert after["facts"] == s["facts"] and after["dashas"] == s["dashas"], "the stored copy is the database's, not the submitted one"
+    assert after["l1m"] == s["l1m"] and after["ddm"] == s["ddm"] and after["input"] == s["input"]
 
 
-def test_the_copy_check_refuses_metadata_that_does_not_recompute(g12):
+def test_a_false_identity_digest_is_refused(g12):
     _step, conn = g12
     s = _snapshot(conn)
-    tampered = json.loads(json.dumps(s["facts"], default=_jsonable))
-    tampered[0]["metadata"]["engine_version"] = "someone-edited-this"
-    with pytest.raises(Exception, match=r"the metadata digests do not recompute"):
-        _reinsert(conn, s, facts=tampered)
+    with pytest.raises(Exception, match=r"not the identity digests of the live rows the submitted keys name"):
+        _reinsert(conn, s, l1="0" * 64, with_copy=False)
 
 
-def test_the_copy_check_refuses_a_row_that_was_not_found_and_provenance_ids_that_are_not_the_copys(g12):
+def test_an_incomplete_capture_is_refused_by_name_a_period_left_out_and_a_fact_left_out(g12):
+    """Codex round 1, ruling 1: a snapshot that names FEWER rows than the live population (an overlapping period omitted) is refused at capture."""
     _step, conn = g12
     s = _snapshot(conn)
-    no_content = json.loads(json.dumps(s["facts"], default=_jsonable))
-    no_content[0]["content"] = None
-    with pytest.raises(Exception, match=r"has no key, content or metadata"):
-        _reinsert(conn, s, facts=no_content)
-    s2 = dict(s)
-    s2["fact_ids"] = s["fact_ids"][:-1]                                       # the provenance array no longer names every row of the copy
-    with pytest.raises(Exception, match=r"provenance id arrays are not the ids of the stored copies"):
-        _reinsert(conn, s2)
+    # the builder submits keys of a subset of the daśā rows but the digest of exactly that subset (so the digest check passes): the population check refuses
+    keep = s["dasha_ids"][:-1]
+    sub = conn.execute("SELECT public.ka_gochara_search_copy_digest(public.ka_gochara_search_dasha_copy(%s::uuid, %s::uuid[]), 'content')",
+                       (CHART_ID, keep)).fetchone()[0]
+    InventoryStore(conn).delete_generation_inventory(CHART_ID, GEN)
+    vec = conn.execute("SELECT input_generation_vector::text FROM public.kala_gochara_publication WHERE chart_id = %s AND generation = %s", (CHART_ID, GEN)).fetchone()[0]
+    conv = conn.execute("SELECT convention_id FROM public.ka_gochara_sky_convention LIMIT 1").fetchone()[0]
+    inp = conn.execute("SELECT public.ka_gochara_search_input_digest(%s, %s::jsonb, %s, %s, %s::text[])", (conv, vec, s["l1"], sub, [])).fetchone()[0]
+    with pytest.raises(Exception, match=r"consumed daśā rows are not the COMPLETE live population"):
+        with conn.transaction():
+            conn.execute("SELECT public.ka_gochara_lock_chart(%s::uuid)", (CHART_ID,))
+            conn.execute("INSERT INTO public.ka_gochara_search_input_snapshot (chart_id, generation, convention_id, input_generation_vector, consumed_fact_ids,"
+                         " consumed_dasha_row_ids, av_declarations, l1_facts_digest, dasha_digest, input_digest) VALUES (%s,%s,%s,%s::jsonb,%s,%s::uuid[],%s,%s,%s,%s)",
+                         (CHART_ID, GEN, conv, vec, s["fact_ids"], keep, [], s["l1"], sub, inp))
 
 
-def test_a_snapshot_without_a_copy_is_refused_when_1305_is_applied(g12):
+def test_a_conflicting_extra_period_or_fact_present_at_capture_refuses_the_snapshot(g12):
     _step, conn = g12
     s = _snapshot(conn)
-    with pytest.raises(Exception, match=r"JSON arrays|kgsis_l1_copy_ck"):
+    # an OVERLAPPING second period at the same level and tier (a conflicting row from another build) appears upstream before the capture
+    conn.execute("INSERT INTO public.chart_dashas (dasha_row_id, chart_id, ayanamsha_id, system_id, level_n, parent_row_id, lord_graha, start_iso, end_iso, build_id,"
+                 " verification_pass_status) SELECT gen_random_uuid(), chart_id, ayanamsha_id, system_id, level_n, parent_row_id, 'Ketu', start_iso, end_iso,"
+                 " gen_random_uuid(), verification_pass_status FROM public.chart_dashas WHERE level_n = 2 LIMIT 1")
+    with pytest.raises(Exception, match=r"consumed daśā rows are not the COMPLETE live population"):
         _reinsert(conn, s, with_copy=False)
+    conn.execute("DELETE FROM public.chart_dashas WHERE lord_graha = 'Ketu'")
+    # a conflicting duplicate of a natal subject (another fact_id, another value)
+    conn.execute("INSERT INTO public.chart_facts (fact_id, chart_id, ayanamsha_id, fact_category, fact_subject, fact_key, fact_value_num)"
+                 " VALUES ('fact-SUN-dup', %s, 'lahiri_chitrapaksha', 'graha_position', 'SUN', 'longitude_sidereal', 12.0)", (CHART_ID,))
+    with pytest.raises(Exception, match=r"consumed fact rows are not the COMPLETE live population"):
+        _reinsert(conn, s, with_copy=False)
+
+
+def test_a_second_build_of_another_tier_present_at_capture_refuses_the_snapshot_by_name(g12):
+    """The trigger compares rows of the consumed TIER only; a chart whose Vimśottarī rows of ANY tier come from more than one build (a mixed L1 state) is refused
+    at capture by the daśā read, by name, before a copy is taken."""
+    step, conn = g12
+    conn.execute("INSERT INTO public.chart_dashas (dasha_row_id, chart_id, ayanamsha_id, system_id, level_n, parent_row_id, lord_graha, start_iso, end_iso, build_id,"
+                 " verification_pass_status) SELECT gen_random_uuid(), chart_id, ayanamsha_id, system_id, level_n, parent_row_id, lord_graha, start_iso, end_iso,"
+                 " gen_random_uuid(), 'single' FROM public.chart_dashas WHERE level_n = 1 LIMIT 1")
+    with pytest.raises(Exception, match=r"dasha_builds_mixed"):
+        step(writer_mod.SNAPSHOT_SUBSTEP)
+
+
+def test_a_snapshot_whose_keys_name_a_missing_row_is_refused_by_name(g12):
+    _step, conn = g12
+    s = _snapshot(conn)
+    with pytest.raises(Exception, match=r"do not exist for chart"):
+        _reinsert(conn, s, fact_ids=s["fact_ids"] + ["fact-NOT-THERE"], with_copy=False)
+
+
+def test_a_snapshot_without_keys_is_refused(g12):
+    _step, conn = g12
+    s = _snapshot(conn)
+    with pytest.raises(Exception, match=r"KEYS the database builds the copy from|null value"):
+        _reinsert(conn, s, fact_ids=None, with_copy=False) if False else _reinsert_nulls(conn, s)
+
+
+def _reinsert_nulls(conn, s):
+    InventoryStore(conn).delete_generation_inventory(CHART_ID, GEN)
+    vec = conn.execute("SELECT input_generation_vector::text FROM public.kala_gochara_publication WHERE chart_id = %s AND generation = %s", (CHART_ID, GEN)).fetchone()[0]
+    conv = conn.execute("SELECT convention_id FROM public.ka_gochara_sky_convention LIMIT 1").fetchone()[0]
+    with conn.transaction():
+        conn.execute("SELECT public.ka_gochara_lock_chart(%s::uuid)", (CHART_ID,))
+        conn.execute("INSERT INTO public.ka_gochara_search_input_snapshot (chart_id, generation, convention_id, input_generation_vector, av_declarations, l1_facts_digest,"
+                     " dasha_digest, input_digest) VALUES (%s,%s,%s,%s::jsonb,%s,%s,%s,%s)", (CHART_ID, GEN, conv, vec, [], s["l1"], s["dd"], s["input"]))
 
 
 # ── an L1 rebuild with NEW ids and a NEW build id: METADATA-only drift, the generation stays verifiable ────────────────────────────────
@@ -310,6 +363,75 @@ def test_a_moved_boundary_is_named_by_its_ordinal_lord_path_not_reported_as_a_mi
 
 
 # ── the migration itself ────────────────────────────────────────────────────────────────────────────────────────────────────────────
+
+def test_numbers_are_compared_exactly_in_postgresql_a_difference_a_float_cannot_carry_is_hard_drift(g12):
+    """Codex round 1, finding 4: 12.5 and 12.5000000000000000001 are the SAME float64. The digest is computed in PostgreSQL over the exact numeric, so
+    the difference is a value change; the same number with a different trailing scale (12.5 vs 12.50) is not."""
+    _step, conn = g12
+    conn.execute("ALTER TABLE public.chart_facts ALTER COLUMN fact_value_num TYPE numeric(38,22) USING fact_value_num::numeric(38,22)")
+    assert staleness.sealed_generation_staleness(conn, CHART_ID, GEN)["components"]["l1_facts"]["same"]
+    conn.execute("UPDATE public.chart_facts SET fact_value_num = fact_value_num + 0.0000000000000000001 WHERE fact_subject = 'SUN'")
+    rep = staleness.sealed_generation_staleness(conn, CHART_ID, GEN)
+    assert not rep["components"]["l1_facts"]["same"] and "l1_facts" in rep["drifted_components"]
+
+
+def test_numbers_inside_nested_jsonb_are_normalised_in_the_database(g12):
+    _step, conn = g12
+    out = conn.execute("SELECT public.ka_gochara_search_normalize_numbers('{\"a\": [1.50, {\"b\": 2.000}], \"c\": 12.5000, \"d\": \"1.50\", \"e\": null}'::jsonb)::text").fetchone()[0]
+    assert json.loads(out) == {"a": [1.5, {"b": 2}], "c": 12.5, "d": "1.50", "e": None} and "1.50," not in out and '"b": 2}' in out
+
+
+def test_after_the_snapshot_substep_no_substep_reads_live_L1(g12):
+    """Codex round 1, ruling 3: ONE capture. With live L1 gone entirely, the inventory and coverage substeps still run and write the same rows."""
+    step, conn = g12
+    q = "SELECT count(*), md5(string_agg(ob_id::text || search_range::text || state, '|' ORDER BY ob_id::text, search_range::text)) FROM public.ka_gochara_search_interval"
+    before = conn.execute(q).fetchone()
+    conn.execute("DROP TABLE public.chart_dashas CASCADE")
+    conn.execute("DROP TABLE public.chart_facts CASCADE")
+    step("inventory:marriage")
+    step("coverage:marriage")
+    after = conn.execute(q).fetchone()
+    assert after == before and after[0] > 0, "the same intervals, from the copy alone"
+
+
+def test_only_the_capture_the_independent_verifier_and_the_legacy_branches_read_live_L1():
+    """The grep half of ruling 3: every SQL reference to the live L1 tables in the writer and kernel sits in a file that is the capture, the verifier's own
+    independent derivation, the legacy (no copy) branch, or the seal brief's report. A new reader anywhere else fails here until it is named."""
+    import pathlib
+    import re
+    root = pathlib.Path(__file__).resolve().parents[3]
+    allowed = {"chart_context.py", "dasha_read.py", "inventory_store.py", "inventory_verifier.py", "record_verifier.py", "seal_brief.py", "verification_job.py",
+               "staleness.py", "record_store.py"}
+    files = list((root / "services" / "gochara_kernel").glob("*.py")) + [root / "pipeline" / "orchestrator" / "writers" / "ka_gochara_v5.py"]
+    pat = re.compile(r"\b(FROM|JOIN)\s+(public\.)?(chart_facts|chart_dashas)\b")        # SQL is upper-case in this code; prose comments are not
+    offenders = sorted(f.name for f in files if f.name not in allowed and pat.search(f.read_text()))
+    assert offenders == [], f"live L1 read outside the named capture/verifier/legacy files: {offenders}"
+    # and the writer itself never reads them
+    assert not pat.search((root / "pipeline" / "orchestrator" / "writers" / "ka_gochara_v5.py").read_text())
+
+
+def test_a_first_seal_on_a_legacy_snapshot_is_refused_and_a_replay_of_a_sealed_generation_is_not(monkeypatch, tmp_path):
+    import psycopg
+    from services.gochara_kernel import seal_brief
+    admin, name, dsn = create_am5_database("g12legacyseal")                       # 1206 only: a legacy snapshot
+    conn = psycopg.connect(dsn, autocommit=True, connect_timeout=3)
+    try:
+        monkeypatch.setattr(writer_mod, "calc_sidereal_lon", lambda body, jd, ephe: (10.0, 2))
+        RuleRegistryStore(conn).seed()
+        ephe = make_ephe(tmp_path, monkeypatch)
+        w = writer_mod.GocharaV5Writer()
+        for k in (writer_mod.CONVENTION_SUBSTEP, writer_mod.MANIFEST_SUBSTEP, writer_mod.SNAPSHOT_SUBSTEP):
+            ctx = ContextSpec(asset_id=writer_mod.ASSET_ID, build_id="b-legacyseal", db_conn=conn,
+                              config={"chart_id": CHART_ID, "horizon": (H0, H1), "ephe_path": ephe}, dry_run=False)
+            with conn.transaction():
+                w.run_substep(ctx, SubStep(key=k, label=k))
+        with pytest.raises(seal_brief.BriefRefused) as e:
+            seal_brief._build_payload(conn, CHART_ID, GEN)
+        assert e.value.args[0] == "snapshot_without_copy" or "snapshot_without_copy" in repr(e.value)
+    finally:
+        conn.close()
+        drop_am5_database(admin, name)
+
 
 def test_1305_refuses_to_apply_after_g8s_1306_would_have_replaced_the_completeness_function():
     """Both migrations replace ka_gochara_search_completeness_violations in full: applying 1305 AFTER 1306 would silently revert G8's census."""
@@ -454,7 +576,7 @@ def test_the_readback_sql_runs_read_only_and_reports_what_the_post_apply_check_e
     assert [r[0] for r in columns] == ["consumed_dasha_rows", "consumed_fact_rows", "dasha_metadata_digest", "l1_facts_metadata_digest"]
     assert check == [("kgsis_l1_copy_ck", False)]                              # NOT VALID: governs new rows, scans no old one
     assert len(trigger) == 1 and trigger[0][1] == "O" and trigger[0][2] is True and trigger[0][3] is True
-    assert len(functions) == 8 and all(r[2] is False for r in functions)
+    assert len(functions) == 10 and all(r[2] is False for r in functions)
     assert replaced == [(True, True, True)]
     assert {r[0] for r in shas} == {"ka_gochara_search_completeness_violations", "ka_gochara_search_moon_resolved_domain"}
     assert all(r[1] not in ("63d9e7e737b020784ca52c4cd06e66e74434c20b60d9b9d65834f4e1c773f1fb", "707bd37ce48a3c5fbaf2de881bc7554d97bc81fc1a09a6534d36b4ec5f09cf07")

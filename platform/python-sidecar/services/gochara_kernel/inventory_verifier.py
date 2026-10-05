@@ -793,10 +793,15 @@ def _population_rows_from_copy(copy: Sequence[Mapping[str, Any]]) -> list[dict[s
     return out
 
 
-def validate_consumed_dasha_population(conn: Any, *, chart_id: str, generation: str) -> dict:
+def validate_consumed_dasha_population(conn: Any, *, chart_id: str, generation: str, against_live: bool = False) -> dict:
     """The §4.0 population contract. With a COPY in the snapshot (G12 route 1) it is checked ON THE COPY alone: the verification of a generation
     never depends on live L1 (which a later rebuild may have re-issued); the comparison with live L1 (omitted pinned rows, a build that is no longer
-    pinned) is the drift REPORT (`staleness`), never a failure to verify. A LEGACY snapshot is checked against live L1 as before."""
+    pinned) is the drift REPORT (`staleness`), never a failure to verify.
+
+    `against_live=True` is the CAPTURE-TIME check (Codex round 1, ruling 1): the writer runs it once, right after the snapshot is taken, so the copy is
+    proved to be the COMPLETE §4.0 population by THIS verifier's own independent query of live L1 (every pinned row overlapping the horizon is consumed,
+    no foreign build, tier or conflict) — and the frozen-build pin is enforced there, at build time, where it belongs. A LEGACY snapshot is always
+    checked against live L1."""
     snap = conn.execute(
         "SELECT consumed_dasha_row_ids FROM public.ka_gochara_search_input_snapshot"
         " WHERE chart_id = %s AND generation = %s", (chart_id, generation)).fetchone()
@@ -804,7 +809,7 @@ def validate_consumed_dasha_population(conn: Any, *, chart_id: str, generation: 
         raise Unverifiable("no search-input snapshot to validate the consumed daśā population against")
     ids = [str(x) for x in snap[0]]
     copies = snapshot_copies(conn, chart_id, generation)
-    if copies is not None and copies["dashas"] is not None:
+    if copies is not None and copies["dashas"] is not None and not against_live:
         horizon = conn.execute(
             "SELECT min(lower(horizon)), max(upper(horizon)) FROM public.ka_gochara_search_inventory"
             " WHERE chart_id = %s AND generation = %s", (chart_id, generation)).fetchone()
@@ -816,11 +821,16 @@ def validate_consumed_dasha_population(conn: Any, *, chart_id: str, generation: 
         if problems:
             raise Unverifiable("consumed daśā population (the snapshot's copy) violates the §4.0 read contract: " + "; ".join(problems))
         return {"consumed": len(rows), "pinned_overlapping": len(rows), "source": "snapshot_copy"}
-    horizon = conn.execute(
-        "SELECT min(lower(horizon)), max(upper(horizon)) FROM public.ka_gochara_search_inventory"
-        " WHERE chart_id = %s AND generation = %s", (chart_id, generation)).fetchone()
+    if against_live:
+        # at capture no inventory exists yet: the horizon is the BOUND MANIFEST's (the snapshot substep follows the manifest substep)
+        horizon = conn.execute("SELECT lower(horizon), upper(horizon) FROM public.kala_gochara_publication WHERE chart_id = %s AND generation = %s",
+                               (chart_id, generation)).fetchone()
+    else:
+        horizon = conn.execute(
+            "SELECT min(lower(horizon)), max(upper(horizon)) FROM public.ka_gochara_search_inventory"
+            " WHERE chart_id = %s AND generation = %s", (chart_id, generation)).fetchone()
     if horizon is None or horizon[0] is None:
-        raise Unverifiable("no inventory horizon to validate the consumed daśā population against")
+        raise Unverifiable("no horizon (manifest at capture, inventory otherwise) to validate the consumed daśā population against")
     cols = ("dasha_row_id, level_n, parent_row_id, lord_graha, start_iso, end_iso, build_id, system_id,"
             " ayanamsha_id, verification_pass_status")
 

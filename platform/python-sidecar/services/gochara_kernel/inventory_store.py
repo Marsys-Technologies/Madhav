@@ -130,8 +130,9 @@ class InventoryStore:
         functions over the live rows; the insert trigger recomputes `input_digest`.
 
         With migration 1305 the snapshot stores a COPY of the consumed L1 rows (`consumed_fact_rows`, `consumed_dasha_rows`: {key, content,
-        metadata}) and `l1_facts_digest` / `dasha_digest` are the IDENTITY digests of that copy (content columns only), so the generation
-        stays self-contained and verifiable after any later L1 rebuild; the ids stay as provenance. Without it, the legacy shape is written."""
+        metadata}) PRODUCED BY THE DATABASE from the keys submitted here, and `l1_facts_digest` / `dasha_digest` are the IDENTITY digests of that copy
+        (content columns only), so the generation stays self-contained and verifiable after any later L1 rebuild; the ids stay as provenance and keys.
+        Without 1305, the legacy shape is written."""
         vector = self.manifest_vector(chart_id, generation)
         if vector is None:
             raise SnapshotUnboundError(
@@ -145,35 +146,24 @@ class InventoryStore:
         av = [r[0] for r in av]
         vec_json = _json.dumps(vector)
         if self.snapshot_copy_available():
-            facts_copy = _json.dumps(self.conn.execute(
-                "SELECT public.ka_gochara_search_facts_copy(%s::uuid, %s::text[], true)", (chart_id, facts)).fetchone()[0])
-            dashas_copy = _json.dumps(self.conn.execute(
-                "SELECT public.ka_gochara_search_dasha_copy(%s::uuid, %s::uuid[])", (chart_id, dashas)).fetchone()[0])
-
-            def _digest(copy: str, block: str) -> str:
-                return self.conn.execute("SELECT public.ka_gochara_search_copy_digest(%s::jsonb, %s)", (copy, block)).fetchone()[0]
-            l1, dd = _digest(facts_copy, "content"), _digest(dashas_copy, "content")
-            l1m, ddm = _digest(facts_copy, "metadata"), _digest(dashas_copy, "metadata")
-            digest = self.conn.execute(
-                "SELECT public.ka_gochara_search_input_digest(%s, %s::jsonb, %s, %s, %s::text[])",
-                (convention_id, vec_json, l1, dd, av)).fetchone()[0]
-            self.conn.execute(
-                "INSERT INTO public.ka_gochara_search_input_snapshot"
-                " (chart_id, generation, convention_id, input_generation_vector,"
-                "  consumed_fact_ids, consumed_dasha_row_ids, av_declarations,"
-                "  l1_facts_digest, dasha_digest, input_digest,"
-                "  consumed_fact_rows, consumed_dasha_rows, l1_facts_metadata_digest, dasha_metadata_digest)"
-                " VALUES (%s,%s,%s,%s::jsonb,%s,%s::uuid[],%s,%s,%s,%s,%s::jsonb,%s::jsonb,%s,%s)",
-                (chart_id, generation, convention_id, vec_json, facts, dashas, av, l1, dd, digest,
-                 facts_copy, dashas_copy, l1m, ddm))
-            return digest
-        # LEGACY shape (no migration 1305): 1206's live-input digests keyed by (chart, id)
-        l1 = self.conn.execute(
-            "SELECT public.ka_gochara_search_l1_facts_digest(%s::uuid, %s::text[])",
-            (chart_id, facts)).fetchone()[0]
-        dd = self.conn.execute(
-            "SELECT public.ka_gochara_search_dasha_digest(%s::uuid, %s::uuid[])",
-            (chart_id, dashas)).fetchone()[0]
+            # G12 (Codex round 1, ruling 2): the builder submits only the KEYS and the identity digests; the database BUILDS the copy and the metadata
+            # digests itself from the live rows in this transaction (a BEFORE INSERT trigger) and refuses an incomplete or conflicting population. The
+            # digests below are computed over the SAME database-built copy (the functions are the trigger's own), so a submitted digest can only agree if
+            # it is the digest of what the database will store.
+            l1 = self.conn.execute(
+                "SELECT public.ka_gochara_search_copy_digest(public.ka_gochara_search_facts_copy(%s::uuid, %s::text[], true), 'content')",
+                (chart_id, facts)).fetchone()[0]
+            dd = self.conn.execute(
+                "SELECT public.ka_gochara_search_copy_digest(public.ka_gochara_search_dasha_copy(%s::uuid, %s::uuid[]), 'content')",
+                (chart_id, dashas)).fetchone()[0]
+        else:
+            # LEGACY shape (no migration 1305): 1206's live-input digests keyed by (chart, id)
+            l1 = self.conn.execute(
+                "SELECT public.ka_gochara_search_l1_facts_digest(%s::uuid, %s::text[])",
+                (chart_id, facts)).fetchone()[0]
+            dd = self.conn.execute(
+                "SELECT public.ka_gochara_search_dasha_digest(%s::uuid, %s::uuid[])",
+                (chart_id, dashas)).fetchone()[0]
         digest = self.conn.execute(
             "SELECT public.ka_gochara_search_input_digest(%s, %s::jsonb, %s, %s, %s::text[])",
             (convention_id, vec_json, l1, dd, av)).fetchone()[0]
