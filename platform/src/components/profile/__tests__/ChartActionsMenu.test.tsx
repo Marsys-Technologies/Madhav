@@ -60,8 +60,8 @@ describe('ChartActionsMenu', () => {
     unmount()
     render(<ChartActionsMenu {...BASE} canShare isSuperAdmin />)
     open()
-    expect(screen.getByRole('link', { name: /sharing/i })).toHaveAttribute('href', '#sharing')
-    expect(screen.getByRole('link', { name: /audit/i })).toHaveAttribute('href', '/cockpit/audit?chart=c1')
+    expect(screen.getByRole('link', { name: /sharing/i })).toHaveAttribute('href', '/clients/c1/edit#sharing')
+    expect(screen.getByRole('link', { name: /audit/i })).toHaveAttribute('href', '/admin?tab=audit')
   })
 
   it('Escape closes the menu and returns focus to the trigger', () => {

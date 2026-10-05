@@ -86,14 +86,14 @@ export function ChartActionsMenu({ chartId, chartName, canBuild, isSuperAdmin, c
           )}
           {canShare && (
             <li>
-              <Link href="#sharing" className={ITEM} onClick={() => setOpen(false)}>
+              <Link href={`/clients/${chartId}/edit#sharing`} className={ITEM} onClick={() => setOpen(false)}>
                 Sharing
               </Link>
             </li>
           )}
           {isSuperAdmin && (
             <li>
-              <Link href={`/cockpit/audit?chart=${chartId}`} className={ITEM} onClick={() => setOpen(false)}>
+              <Link href="/admin?tab=audit" className={ITEM} onClick={() => setOpen(false)}>
                 Audit log
               </Link>
             </li>

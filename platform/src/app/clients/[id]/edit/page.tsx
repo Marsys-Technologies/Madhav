@@ -1,6 +1,8 @@
 import { redirect } from 'next/navigation'
 import { resolveChartPageAccess } from '@/lib/auth/chart-page-guard'
 import { EditClientForm } from '@/components/clients/EditClientForm'
+import { SharingPanel } from '@/components/sharing/SharingPanel'
+import { PageTitle } from '@/components/journey1/Titles'
 import { query } from '@/lib/db/client'
 import { normalizeStoredChart, resolveTimezoneOffsetMinutes, type StoredChartRow } from '@/lib/charts/updateChart'
 import '@/components/profile/jataka-workspace.css'
@@ -55,6 +57,7 @@ export default async function EditPage({ params }: { params: Promise<{ id: strin
           ayanamshas: stored.ayanamshas,
         }}
       />
+      {access.role === 'super_admin' && <section id="sharing" className="j1-panel mx-auto mb-8 max-w-2xl" aria-label="Chart access"><PageTitle name="access" as="h2" compact/><SharingPanel chartId={id}/></section>}
     </div>
   )
 }
