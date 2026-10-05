@@ -10,7 +10,7 @@ before touching anything.
 
 PRECONDITION: migration 1304 (PR 3101) has been applied — it is the ONLY source
 of the ka_gochara_v5 registry row's small-test shape (has_substeps true,
-writer_timeout_seconds 7200, depends_on [ga_positions, ga_dashas], the
+writer_timeout_seconds 28800, depends_on [ga_positions, ga_dashas], the
 ka_gochara_eval_window counter). This script does NOT insert or alter that row;
 it VALIDATES it field by field and refuses on any difference or if the row is
 absent (A2 review: the old INSERT carried the pre-1304 shape and could never

@@ -151,7 +151,7 @@ def test_manifest_carries_the_slice_marker_and_digests_it_and_the_registry_depen
 def test_expected_registry_row_is_the_1304_values():
     e = dispatch.EXPECTED_REGISTRY_ROW
     assert (e["has_substeps"], e["writer_timeout_seconds"], e["depends_on"], e["target_table"], e["is_active"]) == (
-        True, 7200, ["ga_positions", "ga_dashas"], "ka_gochara_eval_window", False)
+        True, 28800, ["ga_positions", "ga_dashas"], "ka_gochara_eval_window", False)
 
 
 import re as _re  # noqa: E402
@@ -210,7 +210,7 @@ DECLARE
 BEGIN
   UPDATE asset_registry
      SET has_substeps = true,
-         writer_timeout_seconds = 7200,
+         writer_timeout_seconds = 28800,
          depends_on = ARRAY['a','b']::text[],
          count_sql = v_count_sql,
          target_table = 'tt',
@@ -228,7 +228,7 @@ BEGIN
 def test_the_1304_parser_reads_every_field_from_the_migration_text():
     got = parse_1304(SAMPLE_1304)
     assert got["count_sql"] == "SELECT COUNT(*) FROM t WHERE chart_id=$1 AND generation='5.0'"
-    assert got["depends_on"] == ["a", "b"] and got["writer_timeout_seconds"] == 7200 and got["has_substeps"] is True
+    assert got["depends_on"] == ["a", "b"] and got["writer_timeout_seconds"] == 28800 and got["has_substeps"] is True
     assert (got["asset_kind"], got["asset_type"], got["health_probe"], got["integrity_check_sql"], got["rebuild_on_probe_fail"]) == (
         "data", "data", None, None, False)
     mutated = parse_1304(SAMPLE_1304.replace("rebuild_on_probe_fail IS FALSE", "true").replace("asset_kind = 'data'", "asset_kind = 'service'"))
