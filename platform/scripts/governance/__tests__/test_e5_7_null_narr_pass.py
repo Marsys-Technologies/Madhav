@@ -526,3 +526,65 @@ def test_review_med4_an_attribute_constant_with_no_assignment_is_unresolved():
 ])
 def test_review_med5_chart_pin_reads_the_depth0_boolean_structure_by_characters(tail, pinned):
     assert ac._chart_pinned(tail) is pinned, tail
+
+
+# ───────────────────────── review fixes MED-6 / LOW: what a golden test must really be ─────────────────────────
+
+def test_review_med6_expected_failure_decorator_is_a_skip():
+    r = _fid(GOLD.replace("def test_sentence", "@unittest.expectedFailure\ndef test_sentence").replace("import pytest", "import pytest, unittest"))
+    assert r["v"] != ac.PASS
+
+
+@pytest.mark.parametrize("body", [
+    '    if False:\n        assert out["citation_human"] == "Sun is exalted in Aries by rule"\n',
+    '    def inner():\n        assert out["citation_human"] == "Sun is exalted in Aries by rule"\n',
+    '    return\n    assert out["citation_human"] == "Sun is exalted in Aries by rule"\n',
+    '    with pytest.raises(AssertionError):\n        assert out["citation_human"] == "Sun is exalted in Aries by rule"\n',
+    '    try:\n        assert out["citation_human"] == "Sun is exalted in Aries by rule"\n    except AssertionError:\n        pass\n',
+])
+def test_review_med6_dead_or_swallowed_assertions_are_not_golden(body):
+    r = _fid(HEAD + 'def test_sentence():\n    out = build_narration({"a": 1})\n' + body)
+    assert r["v"] == ac.PARTIAL and "golden" not in r, (body, r)
+
+
+def test_review_med6_a_live_assertion_after_a_conditional_still_counts():
+    src = HEAD + 'def test_sentence():\n    out = build_narration({"a": 1})\n    if out:\n        assert out["citation_human"] == "Sun is exalted in Aries by rule"\n'
+    assert _fid(src)["v"] == ac.PASS
+
+
+def test_review_med6_a_duplicate_test_name_is_verified_from_the_last_definition():
+    bad_last = GOLD + '\ndef test_sentence():\n    out = build_narration({"a": 1})\n    assert out\n'
+    assert _fid(bad_last)["v"] != ac.PASS
+    good_last = HEAD + 'def test_sentence():\n    assert True\n\n' + GOLD.split(HEAD, 1)[1]
+    assert _fid(good_last)["v"] == ac.PASS
+
+
+def test_review_med6_coverage_is_by_exact_key_never_by_a_name_token():
+    for pick in ('citation = build_narration({"a": 1})\n    assert citation == "Sun is exalted in Aries by rule"',
+                 'out = build_narration({"a": 1})\n    assert out["citation"] == "Sun is exalted in Aries by rule"',
+                 'out = build_narration({"a": 1})\n    assert out["human"] == "Sun is exalted in Aries by rule"'):
+        r = _fid(HEAD + f'def test_sentence():\n    {pick}\n')
+        assert r["v"] == ac.PARTIAL and "not referenced" in r["measured"], (pick, r)
+    exact = HEAD + 'def test_sentence():\n    citation_human = build_narration({"a": 1})\n    assert citation_human == "Sun is exalted in Aries by rule"\n'
+    assert _fid(exact)["v"] == ac.PASS
+    get = HEAD + 'def test_sentence():\n    out = build_narration({"a": 1})\n    assert out.get("citation_human") == "Sun is exalted in Aries by rule"\n'
+    assert _fid(get)["v"] == ac.PASS
+
+
+def test_review_med6_the_prose_test_applies_to_the_covered_keys_own_value():
+    src = HEAD + ('def test_sentence():\n    out = build_narration({"a": 1})\n'
+                  '    assert out == {"citation_human": "high", "note": "an unrelated sentence here"}\n')
+    r = _fid(src)
+    assert r["v"] == ac.PARTIAL and "not referenced" in r["measured"], r
+    ok = HEAD + 'def test_sentence():\n    out = build_narration({"a": 1})\n    assert out == {"citation_human": "Sun is exalted in Aries by rule", "note": "x"}\n'
+    assert _fid(ok)["v"] == ac.PASS
+
+
+def test_review_low_a_test_that_patches_the_builder_is_not_golden():
+    for patch in ('monkeypatch.setattr(ph_x, "build_narration", lambda *a, **k: {"citation_human": "Sun is exalted in Aries by rule"})',
+                  'ph_x.build_narration = lambda *a, **k: {"citation_human": "Sun is exalted in Aries by rule"}',
+                  'mock.patch("pipeline.orchestrator.writers.ph_x.build_narration", return_value={"citation_human": "Sun is exalted in Aries by rule"}).start()'):
+        src = ("from pipeline.orchestrator.writers.ph_x import build_narration\nfrom pipeline.orchestrator.writers import ph_x\nfrom unittest import mock\n\n"
+               f'def test_sentence(monkeypatch):\n    {patch}\n    out = build_narration({{"a": 1}})\n    assert out["citation_human"] == "Sun is exalted in Aries by rule"\n')
+        r = _fid(src)
+        assert r["v"] == ac.PARTIAL and "patches" in r["measured"] or "assigns over" in r["measured"], (patch, r)

@@ -4997,7 +4997,7 @@ def _dotted(node, bound):
 _GENERIC_LEAVES = ("statement", "reason", "text", "summary", "description", "note")
 
 
-_SKIP_WORD = re.compile(r"\b(?:skip\w*|xfail)\b", re.I)
+_SKIP_WORD = re.compile(r"\b(?:skip\w*|xfail|expected_?failure)\b", re.I)
 
 
 def _skips(node, aliases=()) -> bool:

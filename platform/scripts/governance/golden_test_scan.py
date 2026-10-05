@@ -51,21 +51,17 @@ def _names(node):
     return {n.id for n in ast.walk(node) if isinstance(n, ast.Name)}
 
 
-def _leaf_of(entry_leaf: str, names) -> bool:
-    toks = {t for t in entry_leaf.split("_") if len(t) >= 5}
-    return any(entry_leaf in n or n in toks for n in names)
-
-
-_KEY_LIKE = re.compile(r"[A-Za-z_][A-Za-z0-9_]*")
-
-
-def _leaves(node):
-    """The names a golden assertion uses to pick the asserted value out of the built output: identifier-like string constants (subscript / dict keys), attribute names and plain names.
-    NOT call keyword names and NOT sentence text: a column named only as an INPUT keyword of the builder call (`build(citation_human="x")`) is not asserted."""
+def _picked_keys(node):
+    """The names a compared operand uses to PICK a value out of the built output, EXACTLY: a constant subscript key (`row["k"]`, a chain `row["a"][0]["k"]`), the first constant argument of `.get("k")` /
+    `.pop("k")`, an attribute name (`row.k`) and a plain name (`k = build(...)`). Not call keyword names (an INPUT of the builder), not sentence text, and never a token of a longer name
+    (a variable `citation` does not cover `citation_human`)."""
     out = set()
     for n in ast.walk(node):
-        if isinstance(n, ast.Constant) and isinstance(n.value, str) and _KEY_LIKE.fullmatch(n.value):
-            out.add(n.value)
+        if isinstance(n, ast.Subscript) and isinstance(n.slice, ast.Constant) and isinstance(n.slice.value, str):
+            out.add(n.slice.value)
+        elif isinstance(n, ast.Call) and isinstance(n.func, ast.Attribute) and n.func.attr in ("get", "pop") and n.args \
+                and isinstance(n.args[0], ast.Constant) and isinstance(n.args[0].value, str):
+            out.add(n.args[0].value)
         elif isinstance(n, ast.Attribute):
             out.add(n.attr)
         elif isinstance(n, ast.Name):
@@ -73,8 +69,133 @@ def _leaves(node):
     return out
 
 
+def _dict_values_by_key(node, depth=0):
+    """{key: [value nodes]} of every constant-keyed dict display inside the literal `node`, at any depth."""
+    out = {}
+    if depth > 6:
+        return out
+    if isinstance(node, ast.Dict):
+        for k, v in zip(node.keys, node.values):
+            if isinstance(k, ast.Constant) and isinstance(k.value, str):
+                out.setdefault(k.value, []).append(v)
+            out_sub = _dict_values_by_key(v, depth + 1)
+            for kk, vv in out_sub.items():
+                out.setdefault(kk, []).extend(vv)
+    elif isinstance(node, (ast.List, ast.Tuple, ast.Set)):
+        for e in node.elts:
+            for kk, vv in _dict_values_by_key(e, depth + 1).items():
+                out.setdefault(kk, []).extend(vv)
+    return out
+
+
 def _target_names(assign):
     return {x.id for t in assign.targets for x in ast.walk(t) if isinstance(x, ast.Name)}
+
+
+_CONST_FALSE = (False, 0, None, "")
+
+
+def _const_truth(test):
+    """True / False for a constant test (`if False:`, `if 0:`, `if True:`), None otherwise."""
+    if isinstance(test, ast.Constant):
+        return bool(test.value)
+    return None
+
+
+_SWALLOW = ("AssertionError", "Exception", "BaseException")
+
+
+def _swallows(handler) -> bool:
+    t = handler.type
+    names = [x.id for x in ast.walk(t) if isinstance(x, ast.Name)] if t is not None else ["BaseException"]
+    return any(n in _SWALLOW for n in names) and not any(isinstance(x, ast.Raise) for x in ast.walk(handler))
+
+
+def _expects_failure(w) -> bool:
+    for it in w.items:
+        c = it.context_expr
+        if isinstance(c, ast.Call):
+            nm = c.func.attr if isinstance(c.func, ast.Attribute) else c.func.id if isinstance(c.func, ast.Name) else ""
+            if nm in ("raises", "assertRaises", "assertRaisesRegex", "warns", "assertWarns", "expectedFailure"):
+                return True
+    return False
+
+
+def reachable(body):
+    """The statements of `body` that RUN: recursing through if / for / while / with / try, but not into nested function or class definitions, not into a branch a constant test excludes, not
+    after a return / raise / continue / break, not into a `with pytest.raises(...)` body (an assertion there is expected to fail) and not into a `try` body whose handler swallows AssertionError."""
+    for st in body:
+        yield st
+        if isinstance(st, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
+            continue
+        if isinstance(st, ast.If):
+            t = _const_truth(st.test)
+            if t is not False:
+                yield from reachable(st.body)
+            if t is not True:
+                yield from reachable(st.orelse)
+        elif isinstance(st, (ast.For, ast.AsyncFor)):
+            yield from reachable(st.body)
+            yield from reachable(st.orelse)
+        elif isinstance(st, ast.While):
+            if _const_truth(st.test) is not False:
+                yield from reachable(st.body)
+            yield from reachable(st.orelse)
+        elif isinstance(st, (ast.With, ast.AsyncWith)):
+            if not _expects_failure(st):
+                yield from reachable(st.body)
+        elif isinstance(st, ast.Try):
+            if not any(_swallows(h) for h in st.handlers):
+                yield from reachable(st.body)
+            for h in st.handlers:
+                yield from reachable(h.body)
+            yield from reachable(st.orelse)
+            yield from reachable(st.finalbody)
+        if isinstance(st, (ast.Return, ast.Raise, ast.Continue, ast.Break)):
+            break
+
+
+_COMPOUND_BODY = ("body", "orelse", "finalbody", "handlers", "cases")
+
+
+def _own_nodes(st):
+    """Every ast node of statement `st` itself: all of a simple statement, only the header expressions of a compound one."""
+    if not isinstance(st, (ast.If, ast.For, ast.AsyncFor, ast.While, ast.With, ast.AsyncWith, ast.Try, ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
+        yield from ast.walk(st)
+        return
+    if isinstance(st, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
+        return
+    for name, val in ast.iter_fields(st):
+        if name in _COMPOUND_BODY:
+            continue
+        for v in (val if isinstance(val, list) else [val]):
+            if isinstance(v, ast.AST):
+                yield from ast.walk(v)
+
+
+_PATCHERS = ("setattr", "patch", "object", "setitem", "multiple", "dict")
+
+
+def _patches_builder(fn, called_names) -> str | None:
+    """A reason when the test replaces the builder it claims to test (monkeypatch.setattr / mock.patch / patch.object / `mod.builder = ...`): the expected literal could then be what the stub returns."""
+    for n in ast.walk(fn):
+        if isinstance(n, ast.Call):
+            nm = n.func.attr if isinstance(n.func, ast.Attribute) else n.func.id if isinstance(n.func, ast.Name) else ""
+            if nm in _PATCHERS:
+                for a in list(n.args) + [k.value for k in n.keywords]:
+                    for c in ast.walk(a):
+                        if isinstance(c, ast.Constant) and isinstance(c.value, str) and c.value.rsplit(".", 1)[-1] in called_names:
+                            return f"line {n.lineno}: the test patches the builder `{c.value.rsplit('.', 1)[-1]}` it calls"
+        elif isinstance(n, ast.Assign):
+            for t in n.targets:
+                if isinstance(t, ast.Attribute) and t.attr in called_names:
+                    return f"line {n.lineno}: the test assigns over the builder `{t.attr}` it calls"
+    for d in fn.decorator_list:
+        for c in ast.walk(d):
+            if isinstance(c, ast.Constant) and isinstance(c.value, str) and "." in c.value and c.value.rsplit(".", 1)[-1] in called_names \
+                    and ast.unparse(d).startswith(("patch", "mock.patch", "unittest.mock.patch")):
+                return f"line {d.lineno}: the test is decorated with a patch of the builder `{c.value.rsplit('.', 1)[-1]}`"
+    return None
 
 
 def _parametrized(fn) -> dict:
@@ -118,6 +239,8 @@ class _Fn:
                     if isinstance(t, ast.Name):
                         self.module_consts.setdefault(t.id, []).append(st.value)
         self.params = _parametrized(fn)
+        self.stmts = list(reachable(fn.body))
+        self.nodes = [n for st in self.stmts for n in _own_nodes(st)]
         self.tainted = set()
         self._taint()
 
@@ -136,7 +259,7 @@ class _Fn:
     def _taint(self):
         for _ in range(4):
             before = len(self.tainted)
-            for n in ast.walk(self.fn):
+            for n in self.stmts:
                 tgt, val = None, None
                 if isinstance(n, ast.Assign):
                     tgt, val = n.targets, n.value
@@ -144,7 +267,7 @@ class _Fn:
                     tgt, val = [n.target], n.value
                 elif isinstance(n, (ast.For, ast.AsyncFor)):
                     tgt, val = [n.target], n.iter
-                elif isinstance(n, ast.With):
+                elif isinstance(n, (ast.With, ast.AsyncWith)):
                     for it in n.items:
                         if it.optional_vars is not None and self.derived(it.context_expr):
                             self.tainted |= _names(it.optional_vars)
@@ -189,38 +312,49 @@ class _Fn:
         return [node]
 
     def equalities(self):
-        """[(lhs, rhs, assert node)] for every equality inside an assert statement or an assertEqual-style call."""
+        """[(lhs, rhs, node)] for every equality inside a REACHABLE assert statement or assertEqual-style call statement."""
         out = []
-        for n in ast.walk(self.fn):
-            if isinstance(n, ast.Assert):
-                t = n.test
+        for st in self.stmts:
+            if isinstance(st, ast.Assert):
+                t = st.test
                 cands = t.values if isinstance(t, ast.BoolOp) and isinstance(t.op, ast.And) else [t]
                 for c in cands:
                     if isinstance(c, ast.Compare) and len(c.ops) == 1 and isinstance(c.ops[0], ast.Eq):
-                        out.append((c.left, c.comparators[0], n))
-            elif isinstance(n, ast.Call):
+                        out.append((c.left, c.comparators[0], st))
+            elif isinstance(st, ast.Expr) and isinstance(st.value, ast.Call):
+                n = st.value
                 nm = n.func.attr if isinstance(n.func, ast.Attribute) else n.func.id if isinstance(n.func, ast.Name) else None
                 if nm in _EQ_CALLS and len(n.args) >= 2:
-                    out.append((n.args[0], n.args[1], n))
+                    out.append((n.args[0], n.args[1], st))
         return out
 
     def defining_assigns(self, node):
         used = _names(node) & self.tainted
-        out = []
-        for n in ast.walk(self.fn):
-            if isinstance(n, ast.Assign) and any(_names(t) & used for t in n.targets):
-                out.append(n)
+        return [n for n in self.stmts if isinstance(n, ast.Assign) and any(_names(t) & used for t in n.targets)]
+
+    def called_builder_names(self):
+        out = set()
+        for n in self.nodes:
+            if self.builder_call(n):
+                d = self.dotted(n.func, self.bound)
+                out.add(d.rsplit(".", 1)[-1])
         return out
 
 
 def verify_test(fn_rec, tree, mods, dotted, calls_module):
-    """(golden dict | None, reason) for one test function record (`node`, `bound` keys present)."""
+    """(golden dict | None, reason) for one test function record (`node`, `bound` keys present). The golden dict carries `keys`: {key: line} for every key a verified golden equality
+    COVERS: the key the actual side picks out exactly (subscript / `.get` / attribute / name) beside a prose-bearing literal, or a key of a literal expected dict whose OWN value is prose."""
     f = _Fn(fn_rec["node"], tree, fn_rec["bound"], dotted, calls_module, mods)
     if fn_rec.get("skipped"):
         return None, "the test is skipped / xfailed"
-    if not any(calls_module(c, m) for c in fn_rec["calls"] for m in mods):
-        return None, "the test does not call the builder module(s) " + ", ".join(mods)
-    last = "no equality assertion found"
+    names = f.called_builder_names()
+    if not names:
+        return None, "the test does not (reachably) call the builder module(s) " + ", ".join(mods)
+    patched = _patches_builder(fn_rec["node"], names)
+    if patched:
+        return None, patched
+    last = "no reachable equality assertion found"
+    first, keys = None, {}
     for lhs, rhs, node in f.equalities():
         for actual, exp in ((lhs, rhs), (rhs, lhs)):
             if not f.derived(actual):
@@ -235,12 +369,25 @@ def verify_test(fn_rec, tree, mods, dotted, calls_module):
             if not any(_prose_bearing(e) for e in exps):
                 last = f"line {node.lineno}: the expected literal carries no sentence (a string of >= {MIN_WORDS} words and >= {MIN_CHARS} characters)"
                 continue
-            leaves = _leaves(lhs) | _leaves(rhs)        # the COMPARED operands only: a sibling conjunct (`and row["citation_human"] is not None`) asserts nothing about the sentence
+            picked = _picked_keys(actual)
             for x in f.defining_assigns(node):
-                leaves |= _target_names(x)                 # `citation_human = build(...)` names the column; the assigned call's own arguments do not
-            dump = "|".join(sorted(ast.dump(e) for e in exps))
-            return dict(line=node.lineno, expected_sha256=hashlib.sha256(dump.encode("utf-8")).hexdigest(), leaves=leaves), "golden assertion"
-    return None, last
+                picked |= _target_names(x)                 # `citation_human = build(...)` names the column; the assigned call's own arguments do not
+            by_key = {}
+            for e in exps:
+                for k, vs in _dict_values_by_key(e).items():
+                    by_key.setdefault(k, []).extend(vs)
+            for k, vs in by_key.items():
+                if any(_prose_bearing(v) for v in vs):
+                    keys.setdefault(k, node.lineno)         # the dict key's OWN value is the sentence
+            if not by_key:
+                for k in picked:
+                    keys.setdefault(k, node.lineno)         # a scalar sentence compared with the value picked out by key k
+            if first is None:
+                dump = "|".join(sorted(ast.dump(e) for e in exps))
+                first = dict(line=node.lineno, expected_sha256=hashlib.sha256(dump.encode("utf-8")).hexdigest())
+    if first is None:
+        return None, last
+    return dict(first, keys=keys), "golden assertion"
 
 
 def scan(entries, declared, mods, tests, test_facts, dotted, calls_module, leaf_of_entry, root_rel):
@@ -279,7 +426,7 @@ def scan(entries, declared, mods, tests, test_facts, dotted, calls_module, leaf_
             row.update(ok=False, reason="the test module is skipped")
             results.append(row)
             continue
-        rec = cand[0]
+        rec = cand[-1]                                       # pytest runs the LAST of two definitions with one name
         g, why = verify_test(rec, ast.parse(text), mods, dotted, calls_module)
         if g is None:
             row.update(ok=False, reason=why)
@@ -288,8 +435,7 @@ def scan(entries, declared, mods, tests, test_facts, dotted, calls_module, leaf_
         ok_cov, bad_cov = [], []
         for e in d["covers"]:
             lf = leaf_of_entry(e)
-            hit = (lf in g["leaves"]) if lf in _GENERIC_LEAVES else _leaf_of(lf, g["leaves"])
-            (ok_cov if hit else bad_cov).append(e)
+            (ok_cov if lf in g["keys"] else bad_cov).append(e)
         covered |= set(ok_cov)
         row.update(ok=not bad_cov, reason=("golden assertion verified" if not bad_cov else
                                            f"golden assertion verified but the entry/entries {', '.join(bad_cov)} are not referenced in it"),
