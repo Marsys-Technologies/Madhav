@@ -98,7 +98,11 @@ def _restore_pre_retirement(monkeypatch):
     reg["Build.completion"] = dict(reg["Build.completion"], revision=2, applicability="a count_sql or view target exists")     # revision 25 (N-99) re-worded and bumped it
     reg["Earn.service_state"] = dict(reg["Earn.service_state"], revision=1, detector="NONE",       # E5.7 (revision 2) gave it a real detector and re-worded it
                                      applicability="asset_kind='service' (no target_table; asset_throughput's rows_written signal cannot distinguish healthy-and-idle from broken)")
+    reg["Build.count_integrity"] = dict(reg["Build.count_integrity"], revision=1, applicability="always")     # revision 26 (role reading) re-worded and bumped it
+    reg["Build.dep_liveness"] = dict(reg["Build.dep_liveness"], revision=1, applicability="declares at least one depends_on")     # revision 26 (cause text) re-worded and bumped it
+    reg["Build.history"] = dict(reg["Build.history"], revision=1, applicability="has been exercised at least once")     # revision 26 (SS Build.history window) re-worded and bumped it
     causes = dict(ac.NA_CAUSES)
+    causes["Count.floor"] = ("target-floor-zero",)          # revision 26 (N-149) added `zero-row-convention-holds`
     causes.pop("Earn.service_state", None)                 # revision 10 added `not-a-service`; revision 7 had no cause there
     causes.pop("Vocab.alias", None)                        # revision 12 (S3) added the two declaration-keyed causes
     causes.pop("Ldgr.source_presence", None)

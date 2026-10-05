@@ -2938,7 +2938,14 @@
     {
      "table": "ga_prashna_judgment"
     }
-   ]
+   ],
+   "zero_row_convention": {
+    "scope_table": "prashna_charts",
+    "scope_column": "chart_id",
+    "applies_when": "chart_absent",
+    "why": "ga_prashna judges prashna (horary) charts only: a chart with no row in prashna_charts, such as the natal chart, has no prashna judgment rows by design, and the writer returns zero rows for it (SS N-149)",
+    "evidence": "platform/python-sidecar/ga_writers/ga_prashna_writer.py:134"
+   }
   },
   "ga_sade_sati": {
    "kind": "data",
@@ -4096,6 +4103,13 @@
  "service_probe_declaration_fields": [
   "probe_type",
   "max_age_hours",
+  "why",
+  "evidence"
+ ],
+ "zero_row_convention_declaration_fields": [
+  "scope_table",
+  "scope_column",
+  "applies_when",
   "why",
   "evidence"
  ]

@@ -173,11 +173,11 @@ CRITERION_REGISTRY: dict[str, dict] = {
     "Build.contract":        dict(gate="Build", check="contract",         applicability="has_writer=true",       detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=1),
     "Build.target":          dict(gate="Build", check="target",          applicability="always",                detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=2),
     "Build.dag":             dict(gate="Build", check="dag",              applicability="always",                detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=2),
-    "Build.count_integrity": dict(gate="Build", check="count_integrity", applicability="always",                detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=1),
-    "Build.completion":      dict(gate="Build", check="completion",       applicability="a count_sql or view target exists; PASS also requires, WHEN the asset declares an integrity_check_sql, that it holds: one read-only SELECT/WITH statement (conservative lexer and closed allow-list, run only as a subquery in a READ ONLY session, no bind parameters, at most 120000 bytes, the engine's own convention in asset_runner._probe_asset) whose first column of its first row is true (a boolean or a finite non-zero number); counts equal but the integrity SQL false, refused, oversize, errored or timed out reads PARTIAL naming which; an integrity SQL the census role is not permitted to read (SQLSTATE 42501 permission denied) reads NO_DETECTOR (not measurable under the census role: never PASS, never a verdict on the data); the text carries sha256(sql)[:12] and the elapsed seconds; no declared integrity_check_sql reads exactly as before. An asset that DECLARES `produced_tables` (N-150) is compared against that declared set, not count_sql: each declared table (filtered slice of a shared table, chart-scoped where it carries chart_id) is counted read-only, an UPDATE-only table the writer scan shows is excluded, PASS needs rows_written = the SUM of the declared set, a different sum reads FAIL, and a table the writer writes that the set does not name (the orchestrator bookkeeping tables excepted) reads FAIL, a writer scope the scan could not read fully reads PARTIAL; a declaration is not a tolerance; no declaration reads exactly as before", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=4),  # R99 bumped: a writer-backed empty table under target_floor=0 now reads PARTIAL, not the R52-era blanket PASS; N-99 bumped (rev 3): count equality alone no longer reads PASS when a declared integrity_check_sql does not hold
+    "Build.count_integrity": dict(gate="Build", check="count_integrity", applicability="always; presence of count_sql and integrity_check_sql is what is graded: a view target whose registered count_sql reads no table (a constant) is said so in the cell, the verdict unchanged", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=2),
+    "Build.completion":      dict(gate="Build", check="completion",       applicability="a count_sql or view target exists; a writer-backed asset with live 0 and rows_written 0 reads PASS only where it DECLARES a zero_row_convention (SS N-149: the chart is absent from the declared scope_table.scope_column) AND the census verified that against the live table for the measured chart (a declared convention that does not hold, or cannot be verified, keeps the PARTIAL); PASS also requires, WHEN the asset declares an integrity_check_sql, that it holds: one read-only SELECT/WITH statement (conservative lexer and closed allow-list, run only as a subquery in a READ ONLY session, no bind parameters, at most 1000000 bytes (one -c argument up to 120000 bytes; a larger text goes on psql stdin through the same wrapper and guards; past 1000000 it is refused), the engine's own convention in asset_runner._probe_asset) whose first column of its first row is true (a boolean or a finite non-zero number); counts equal but the integrity SQL false, refused, oversize, errored or timed out reads PARTIAL naming which; an integrity SQL the census role is not permitted to read (SQLSTATE 42501 permission denied) reads NO_DETECTOR (not measurable under the census role: never PASS, never a verdict on the data), and the text names the denied object and the declared way to measure it (the engine runs the same SQL at build time under the runner role; the census role is not widened); the text carries sha256(sql)[:12] and the elapsed seconds; no declared integrity_check_sql reads exactly as before. An asset that DECLARES `produced_tables` (N-150) is compared against that declared set, not count_sql: each declared table (filtered slice of a shared table, chart-scoped where it carries chart_id) is counted read-only, an UPDATE-only table the writer scan shows is excluded, PASS needs rows_written = the SUM of the declared set, a different sum reads FAIL, and a table the writer writes that the set does not name (the orchestrator bookkeeping tables excepted) reads FAIL, a writer scope the scan could not read fully reads PARTIAL; a declaration is not a tolerance; no declaration reads exactly as before", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=4),  # SS role reading bumped (rev 4); R99 bumped: a writer-backed empty table under target_floor=0 now reads PARTIAL, not the R52-era blanket PASS; N-99 bumped (rev 3): count equality alone no longer reads PASS when a declared integrity_check_sql does not hold
     "Build.exercised":       dict(gate="Build", check="exercised",        applicability="always",                detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=1),
-    "Build.history":         dict(gate="Build", check="history",          applicability="has been exercised at least once", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=1),
-    "Build.dep_liveness":     dict(gate="Build", check="dep_liveness",     applicability="declares at least one depends_on", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=1),
+    "Build.history":         dict(gate="Build", check="history",          applicability="has been exercised at least once; judges the attempts SINCE the later of the asset's last writer-digest change on main (newest commit on origin/main, else main, touching the engine's writer source set, build_window.py) and its last registry-identity change (newest commit on that ref touching a migration that names asset_registry and the asset id, or changing the asset's own row in the registry seed); older errors and aborts are REPORTED as pre-window history, never judged; no attempt since (a skip_no_delta, cascade-blocked or never-started row is not an attempt of the current code; a forced rebuild is) reads NO_DETECTOR, never PASS; an undeterminable window (shallow clone, no main ref, working tree differing from main in the writer files, a path not tracked, no migration or seed naming the asset, git failing, the timed attempt log unreadable or disagreeing with the history tally) reads NO_DETECTOR naming why", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=2),  # SS Build.history window
+    "Build.dep_liveness":     dict(gate="Build", check="dep_liveness",     applicability="declares at least one depends_on; the cell names each not-lit dependency with its state, scope and last build date, and for a stale one the upstream(s) built after it (or that none is on record)", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=2),  # cause text only: the verdict logic is unchanged
     "Idem.pattern":          dict(gate="Idem",  check="pattern",          applicability="has_writer=true",       detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=2),
     "Earn.build_record":     dict(gate="Earn",  check="build_record",     applicability="has a build/attempt record to grade", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=1),
     # NOTE: "Cost", "Count", "Complete" and "Reach" are not among the nine gates in
@@ -365,7 +365,7 @@ NA_CAUSES: dict[str, tuple[str, ...]] = {
     "Build.target": ("service-no-target-table", "no-writer-no-target-table"),
     "Build.count_integrity": ("no-writer-no-count-sql",),
     "Build.completion": ("no-writer-no-count-sql", "service-no-target-table-no-count-sql"),
-    "Count.floor": ("target-floor-zero",),
+    "Count.floor": ("target-floor-zero", "zero-row-convention-holds"),
     "Dens.served": ("no-served-surface",),
     "Carr.D1": ("no-carriage", "not-the-declared-carriage", "ratified_judgment", "transcription-not-verified"),
     "Carr.D2": ("no-carriage", "not-the-declared-carriage", "ratified_judgment", "no-per-witness-values"),
@@ -1833,7 +1833,7 @@ def validate_density_facet_declaration(where: str, e: dict) -> None:
 
 _DECL_ENTRY_KEYS = ("kind", "carriage", "prose_fields", "terminal_by_construction", "cross_asset_writes",
                     "read_evidence", "read_table", "read_kind", "evidence", "evidence_kind", "vocab_alias", "ldgr_source", "null_convention",
-                    "prose_coupling", "density_tier_columns", "source", "prose_none", "produced_tables", "density_facet", "uniform_authority", "service_probe")
+                    "prose_coupling", "density_tier_columns", "source", "prose_none", "produced_tables", "density_facet", "uniform_authority", "service_probe", "zero_row_convention")
 _DECL_EVIDENCE_KEYS = ("kind", "carriage", "prose_fields", "cross_asset_writes")
 # E5.7 (Worker E, SS N-150 R7): `fidelity_tests` declares the golden-value test(s) of the asset's narration builder: [{test: "platform/python-sidecar/<...>/test_x.py::[Class::]test_name",
 # covers: [<declared prose entries>]}]. The census VERIFIES each from the test's source (golden_test_scan.py); the declaration names, it never decides.
@@ -1978,7 +1978,8 @@ def validate_declarations(doc, registry_ids=None) -> dict:
                      ("density_tier_declaration_fields", DENS_TIER_DECL_FIELDS), ("source_declaration_fields", SOURCE_DECL_FIELDS),
                      ("source_column_declaration_fields", SOURCE_COLUMN_FIELDS), ("prose_none_declaration_fields", PROSE_NONE_DECL_FIELDS),
                      ("prose_none_column_declaration_fields", PROSE_NONE_COLUMN_FIELDS), ("produced_table_declaration_fields", PRODUCED_TABLE_FIELDS),
-                     ("service_probe_declaration_fields", SERVICE_PROBE_DECL_FIELDS)):
+                     ("service_probe_declaration_fields", SERVICE_PROBE_DECL_FIELDS),
+                     ("zero_row_convention_declaration_fields", ZERO_ROW_DECL_FIELDS)):
         if _fk in doc and doc[_fk] != list(_fv):
             raise DeclarationsError(f"`{_fk}` must be exactly {list(_fv)}")
     known = _registry_id_set(registry_ids)
@@ -2014,6 +2015,8 @@ def validate_declarations(doc, registry_ids=None) -> dict:
             validate_ldgr_source_declaration(where, e["ldgr_source"], e)
         if e.get("null_convention") is not None:
             validate_null_convention_declaration(where, e["null_convention"], e)
+        if e.get("zero_row_convention") is not None:
+            validate_zero_row_convention_declaration(where, e["zero_row_convention"], e)
         if e.get("prose_coupling") is not None:
             validate_prose_coupling_declaration(where, e["prose_coupling"], e)
         if e.get("fidelity_tests") is not None:
@@ -3983,6 +3986,50 @@ def _validate_stamp_columns(where: str, nc: dict, e: dict) -> list:
     return cols
 
 
+# ZERO-ROW CONVENTION (SS N-149; the same declared-convention shape as null_convention): a writer-backed asset whose table is LEGITIMATELY empty for
+# some charts declares WHEN: `scope_table.scope_column` holds the charts the asset produces rows for, and a chart absent from it has no rows by design
+# (ga_prashna: a natal chart is not in prashna_charts, and the writer returns 0 rows for it, ga_prashna_writer.py:134). The census VERIFIES the
+# declared condition against the live scope table for the chart it measures; it never takes the declaration as the answer.
+ZERO_ROW_DECL_FIELDS = ("scope_table", "scope_column", "applies_when", "why", "evidence")
+ZERO_ROW_APPLIES = ("chart_absent",)
+
+
+def validate_zero_row_convention_declaration(where: str, zr, e: dict) -> None:
+    """Raises DeclarationsError when an asset's `zero_row_convention` is malformed: `scope_table` and `scope_column` (identifiers), `applies_when` (one of
+    ZERO_ROW_APPLIES: `chart_absent` = the measured chart has no row in scope_table.scope_column), `why` (a real reason) and `evidence` (a real repo file
+    pointer: `unverified:` is refused, the convention releases a verdict)."""
+    if not isinstance(zr, dict):
+        raise DeclarationsError(f"{where}.zero_row_convention must be an object or null")
+    _s3_common(where, "zero_row_convention", zr, ZERO_ROW_DECL_FIELDS, na=True)
+    _s3_ident(where, "zero_row_convention", "scope_table", zr.get("scope_table"))
+    _s3_ident(where, "zero_row_convention", "scope_column", zr.get("scope_column"))
+    if zr.get("applies_when") not in ZERO_ROW_APPLIES:
+        raise DeclarationsError(f"{where}.zero_row_convention.applies_when must be one of {list(ZERO_ROW_APPLIES)}, got {zr.get('applies_when')!r}")
+
+
+def zero_row_convention_outcome(zr: dict, chart_id: str) -> dict:
+    """Verify a declared zero-row convention for `chart_id` against the live scope table (two census-written read-only SELECTs over validated
+    identifiers; nothing here is registry-stored text). `state`: `holds` (the chart is absent from scope_table.scope_column: zero rows is the declared
+    by-design reading), `does_not_hold` (the chart IS in it: the asset should have produced rows, so zero is a defect), `unverified` (table/column
+    missing or a read failed: never read as holding). Never raises."""
+    t, c = zr["scope_table"], zr["scope_column"]
+    where = f"{t}.{c}"
+    try:
+        have = psql("SELECT count(*)::text FROM information_schema.columns WHERE table_schema='public' "
+                    f"AND table_name='{t}' AND column_name='{c}'")
+        if not have or have[0][0] != "1":
+            return dict(state="unverified", detail=f"{where} does not exist in this database, so the declared condition cannot be read")
+        rows = psql(f'SELECT (NOT EXISTS (SELECT 1 FROM "{t}" WHERE "{c}"::text = \'{chart_id}\'))::text')
+    except Unknown as exc:
+        return dict(state="unverified", detail=f"the read of {where} failed: {' '.join(str(exc).split())[:160]}")
+    v = rows[0][0] if rows and rows[0] else ""
+    if v in ("t", "true"):
+        return dict(state="holds", detail=f"chart {chart_id[:8]} has no row in {where}")
+    if v in ("f", "false"):
+        return dict(state="does_not_hold", detail=f"chart {chart_id[:8]} IS in {where}")
+    return dict(state="unverified", detail=f"the read of {where} returned {v!r}")
+
+
 def validate_null_convention_declaration(where: str, nc, e: dict) -> None:
     """Raises DeclarationsError when an asset's `null_convention` declaration is malformed: `table` (an identifier), `nullable` and `constants` (lists, empty
     when none), optional `allowed_literals`, `why` (a real one-line reason) and `evidence` (a checkable pointer). A nullable entry names its column, what NULL means
@@ -5372,11 +5419,11 @@ class _Capped:
         self.returncode, self.stdout, self.stderr, self.over = returncode, stdout, stderr, over
 
 
-def _run_capped(argv: list[str], env: dict, limit: int, cap: int) -> _Capped:
+def _run_capped(argv: list[str], env: dict, limit: int, cap: int, stdin: bytes | None = None) -> _Capped:
     """`subprocess.run` for SQL the census did not write: stdout and stderr are each kept up to `cap` bytes and the rest is drained and dropped, so a
     value of hundreds of megabytes (`SELECT repeat('x', 400000000)`) cannot grow the census' memory. The wall-clock kill is the same (`limit`):
     raises `subprocess.TimeoutExpired` after killing psql."""
-    p = subprocess.Popen(argv, stdout=subprocess.PIPE, stderr=subprocess.PIPE, env=env)
+    p = subprocess.Popen(argv, stdout=subprocess.PIPE, stderr=subprocess.PIPE, env=env, **({} if stdin is None else dict(stdin=subprocess.PIPE)))
     kept: dict[str, bytearray] = {"out": bytearray(), "err": bytearray()}
     over = {"out": False, "err": False}
 
@@ -5391,6 +5438,18 @@ def _run_capped(argv: list[str], env: dict, limit: int, cap: int) -> _Capped:
             if len(chunk) > room:
                 over[key] = True
     threads = [threading.Thread(target=drain, args=(p.stdout, "out"), daemon=True), threading.Thread(target=drain, args=(p.stderr, "err"), daemon=True)]
+    if stdin is not None:
+        def feed():                              # a script too large for one -c argument is fed on stdin; a psql that exits early closes the pipe
+            try:
+                p.stdin.write(stdin)
+            except (BrokenPipeError, OSError):
+                pass
+            finally:
+                try:
+                    p.stdin.close()
+                except OSError:
+                    pass
+        threads.append(threading.Thread(target=feed, daemon=True))
     for t in threads:
         t.start()
     try:
@@ -5407,18 +5466,27 @@ def _run_capped(argv: list[str], env: dict, limit: int, cap: int) -> _Capped:
 
 
 def _psql_run(cmds: list[str], sep: str, limit: int, width: int | None, quiet: bool = False, label: int = 0, verbose: bool = False,
-              cap: int | None = None) -> list[list[str]]:
+              cap: int | None = None, via_stdin: bool = False) -> list[list[str]]:
     """The ONE psql subprocess runner: `cmds` are sent as separate `-c` commands in one session (a single command for every ordinary
     read). Timeout, error and parse handling are shared by `psql` and `psql_read_only`. `label` is the index of the command named in a timeout
-    message; `verbose` asks for error text carrying the SQLSTATE (`ERROR:  42501: ...`)."""
+    message; `verbose` asks for error text carrying the SQLSTATE (`ERROR:  42501: ...`). `via_stdin` (needs `cap`) sends the same commands as ONE
+    script on psql's stdin (each command ends `;` + newline) instead of separate `-c` arguments, for a command past the OS limit of one argument;
+    the caller guarantees the large text sits inside a dollar-quoted body, which psql's scanner passes through untouched (no backslash command, no
+    variable interpolation)."""
     env = dict(os.environ)
     env.setdefault("PGCONNECT_TIMEOUT", "10")
     argv = ["psql", "-qtAX" if quiet else "-tAX", "-F", sep, "-v", "ON_ERROR_STOP=1"] + (["-v", "VERBOSITY=verbose"] if verbose else [])
-    for c in cmds:
-        argv += ["-c", c]
+    script = None
+    if via_stdin:
+        if cap is None:
+            raise Unknown("psql stdin script requires the capped runner")
+        script = ("".join(c + ";\n" for c in cmds)).encode("utf-8")
+    else:
+        for c in cmds:
+            argv += ["-c", c]
     try:
         # bytes, decoded here: `text=True` would translate a lone CR (or CRLF) inside a value into a newline
-        p = subprocess.run(argv, capture_output=True, env=env, timeout=limit) if cap is None else _run_capped(argv, env, limit, cap)
+        p = subprocess.run(argv, capture_output=True, env=env, timeout=limit) if cap is None else _run_capped(argv, env, limit, cap, script)
     except subprocess.TimeoutExpired as exc:
         raise CheckTimeout(f"client-side timeout after {limit}s (psql killed): "
                            f"{' '.join(cmds[label].split())[:120]}") from exc
@@ -5497,9 +5565,12 @@ def psql_read_only(sql: str, sep: str = "\x1f", timeout: int | None = None, widt
     commands in one session, never PGOPTIONS (a pooled connection refuses startup options), never `-f -` (psql would parse backslash commands).
     OPERATIONAL NOTE: `SET default_transaction_read_only` is SESSION-level: safe on a direct connection (the census reader runs through a local
     127.0.0.1 proxy, not a transaction-mode pooler); behind a transaction-mode pooler it would have to move inside the transaction (guards 1-3 do not
-    depend on it). Raises `Unknown` for oversize text (one `-c` argument is capped by the OS at 128 KiB on Linux: the limit is fixed, not host-dependent)."""
+    depend on it). TEXT BEYOND ONE `-c` ARGUMENT (INTEGRITY_ARG_MAX_BYTES, under Linux's 128 KiB per-argument limit) goes on psql's STDIN as the SAME
+    commands in the same order, same wrapper, same guards: the stored text is the body of the dollar-quoted DO block (tags chosen so it cannot close its own
+    quotation), and psql's scanner does not interpret a backslash or a `:name` inside a dollar-quoted body. Raises `Unknown` past INTEGRITY_MAX_BYTES
+    (an explicit cap, fixed, not host-dependent; the cell then reads PARTIAL naming it, never PASS)."""
     if not isinstance(sql, str) or len(sql.encode("utf-8", errors="replace")) > INTEGRITY_MAX_BYTES:
-        raise Unknown(f"integrity SQL too large to run via psql -c (> {INTEGRITY_MAX_BYTES} bytes)")
+        raise Unknown(f"integrity SQL too large to run via psql (> {INTEGRITY_MAX_BYTES} bytes)")
     stmt = sql.rstrip()
     while stmt.endswith(";"):
         stmt = stmt[:-1].rstrip()
@@ -5515,7 +5586,8 @@ def psql_read_only(sql: str, sep: str = "\x1f", timeout: int | None = None, widt
     run_sql = "DO $" + outer + "$ " + body + " $" + outer + "$"
     read_back = f"SELECT coalesce(current_setting('{guc}', true), 'none')"
     rows = _psql_run(["SET default_transaction_read_only = on", "BEGIN READ ONLY", f"SET LOCAL statement_timeout = {ms}", run_sql, read_back, "ROLLBACK"],
-                     sep, limit, width, quiet=True, label=3, verbose=True, cap=INTEGRITY_OUTPUT_CAP)
+                     sep, limit, width, quiet=True, label=3, verbose=True, cap=INTEGRITY_OUTPUT_CAP,
+                     via_stdin=len(run_sql.encode("utf-8", errors="replace")) > INTEGRITY_ARG_MAX_BYTES)
     return _integrity_first_value(rows)
 
 
@@ -5533,7 +5605,8 @@ def scalar(sql: str) -> str | None:
 #      a `;`, a COMMIT / BEGIN / SET, DML or a second statement as a syntax error whatever the lexer in (1) missed;
 #   3. the session is `SET default_transaction_read_only = on` + `BEGIN READ ONLY`: even a transaction boundary that somehow got through the
 #      parser opens the next transaction read-only, and a write / sequence advance / DDL is refused by the server.
-INTEGRITY_MAX_BYTES = 120_000      # < Linux MAX_ARG_STRLEN (128 KiB) for ONE psql -c argument: the verdict must not depend on the host OS
+INTEGRITY_ARG_MAX_BYTES = 120_000  # < Linux MAX_ARG_STRLEN (128 KiB) for ONE psql -c argument: past this the SAME wrapped commands go on psql's stdin (host-independent)
+INTEGRITY_MAX_BYTES = 1_000_000    # the explicit cap on a stored integrity SQL (ga_structural's is ~208 KB): past it the run is refused, never attempted
 _INTEGRITY_WRITE_WORDS = frozenset({"insert", "update", "delete", "merge", "into", "share"})   # data-modifying CTE, SELECT INTO, row locks
 _INTEGRITY_WRITE_FUNCS = frozenset({"nextval", "setval", "currval", "lastval", "set_config", "dblink", "query_to_xml", "query_to_xml_and_xmlschema",
                                     "cursor_to_xml", "table_to_xml", "schema_to_xml", "database_to_xml", "lowrite", "lo_import", "lo_export",
@@ -5648,7 +5721,7 @@ def _integrity_statement(sql) -> tuple[str | None, str]:
     if not isinstance(sql, str) or not sql.strip():
         return "integrity_check_sql is blank", ""
     if len(sql.encode("utf-8", errors="replace")) > INTEGRITY_MAX_BYTES:
-        return f"integrity SQL too large to run via psql -c ({len(sql.encode('utf-8', errors='replace'))} bytes > {INTEGRITY_MAX_BYTES})", ""
+        return f"integrity SQL too large to run via psql ({len(sql.encode('utf-8', errors='replace'))} bytes > {INTEGRITY_MAX_BYTES})", ""
     try:
         m = _integrity_mask(sql)
     except Unknown as exc:
@@ -5726,6 +5799,16 @@ def _integrity_holds(rows: list[list[str]]) -> tuple[bool, str]:
 _PERMISSION_DENIED = re.compile(r"^ERROR:\s+42501:\s+permission denied\b", re.I)
 
 
+_DENIED_OBJECT = re.compile(r"permission denied for (materialized view|function|table|view|schema|sequence|relation)\s+(\"?[\w.$]+\"?)", re.I)
+
+
+def denied_object(detail: str) -> str | None:
+    """The object a SQLSTATE 42501 message names (`permission denied for function chart_identity` -> `function chart_identity`); None when the
+    message does not name one. Pure; used only to say WHICH object the census role may not read."""
+    m = _DENIED_OBJECT.search(detail or "")
+    return f"{m.group(1).lower()} {m.group(2)}" if m else None
+
+
 def _integrity_outcome(sql: str) -> dict:
     """The ONE place a registry-stored integrity_check_sql is run and graded. Returns dict(state, detail, sha, secs) with state one of
     `holds` | `fails` | `refused` (never run) | `unrunnable` (oversize / error / timeout / unreadable) | `not_measurable` (the census role lacks
@@ -5764,9 +5847,13 @@ def _completion_integrity(rec: dict, r: dict) -> dict:
     if o["state"] == "holds":
         return dict(rec, measured=rec["measured"] + f"; the declared integrity_check_sql holds ({o['detail']}) {audit}")
     if o["state"] == "not_measurable":
-        return dict(v=NO_DET, measured=f"NO_DETECTOR — integrity not measurable under the census role: {o['detail']}; the asset's integrity SQL needs "
-                                       "objects the census role may not read (Track I: rewrite the check to need neither charts nor the identity "
-                                       f"function; do NOT widen the census role) {audit}; counts: {rec['measured']}")
+        obj = denied_object(o["detail"])
+        return dict(v=NO_DET, measured=f"NO_DETECTOR — integrity not measurable under the census role: {o['detail']}; "
+                                       f"denied object: {obj or 'not named by the server message'}; the asset's integrity SQL needs "
+                                       "objects the census role may not read. Declared way to measure it: the engine runs this same integrity_check_sql at "
+                                       "build time under the runner role (asset_runner._probe_asset), which is where it is measured; to make it "
+                                       "census-measurable, Track I: rewrite the check to need neither charts nor the identity function; do NOT widen the "
+                                       f"census role (it is NOT widened, and this is not a verdict on the data) {audit}; counts: {rec['measured']}")
     what = {"fails": "does NOT hold", "refused": "was REFUSED (never run)", "unrunnable": "could NOT be run"}[o["state"]]
     return dict(v=PARTIAL, measured=f"{rec['measured']}; but the declared integrity_check_sql {what}: {o['detail']} {audit} — count equality alone "
                                     "is not a completion when the asset declares an integrity check (N-99)")
@@ -8580,6 +8667,45 @@ def catalog(tables: list[str]) -> dict:
                 types_error=types_error)
 
 
+def _tally_attempt(per: dict, aid: str, scope: str, state: str, disp: str, when: str, err: str, started: str) -> None:
+    """Fold ONE build_run_assets attempt into `per[aid]` (the build_history() per-asset tally). Extracted unchanged from
+    build_history()'s loop so the Build.history WINDOW (`_grade_build_history_windowed`) tallies the attempts it keeps with
+    EXACTLY the arithmetic the whole-history read uses; rows must arrive in ascending (created_at, run_id) order."""
+    d = per.setdefault(aid, dict(runs=0, error=0, aborted=0, complete=0, queued=0, skipped=0,
+                                 blocked=0, scopes=set(), last_state="", last_when="",
+                                 last_disposition="", sample_error="", sample_blocked="",
+                                 executed=0, executed_scopes=set(), last_executed_when="",
+                                 states={}))
+    d["runs"] += 1
+    d[state] = d.get(state, 0) + 1
+    d["states"][state] = d["states"].get(state, 0) + 1
+    if started in ("t", "true"):
+        d["executed"] += 1
+        d["executed_scopes"].add(scope)
+        d["last_executed_when"] = when
+    if disp == "skip_no_delta":
+        d["skipped"] += 1
+    # Packet B1: 'blocked_dependency' (migration 1095) marks a row whose writer never
+    # ran because an upstream dependency failed/was blocked in the SAME run — a
+    # cascade CONSEQUENCE, not its own root cause. Tracked separately from the plain
+    # `error` tally so grading below can count "one cause, N blocked" instead of
+    # grading a chart FAIL/PARTIAL purely from downstream cascade noise
+    # (B1_before_20260926T173931Z.json §4 — asset_census was the worst offender:
+    # it already read `disposition` for skip_no_delta but never checked this value).
+    if state == "error" and disp == "blocked_dependency":
+        d["blocked"] += 1
+        if err and not d["sample_blocked"]:
+            d["sample_blocked"] = err
+    d["scopes"].add(scope)
+    d["last_state"], d["last_when"], d["last_disposition"] = state, when, disp
+    if state == "error" and disp != "blocked_dependency" and err:
+        # R49 (L3 handverify ka_avadhi, ka_kshetra): the quoted error is the LATEST one, dated —
+        # the read is in ascending attempt order, so each later error replaces the earlier. It
+        # used to keep the FIRST error ever recorded ("not d['sample_error']"), so a FAIL reading
+        # "most recent run error" quoted a months-old error the asset had long since moved past.
+        d["sample_error"], d["sample_error_when"] = err, when
+
+
 def build_history(prefix: str, ids=None) -> dict:
     """What the orchestrator ACTUALLY did, from build_runs / build_run_assets.
 
@@ -8629,39 +8755,7 @@ def build_history(prefix: str, ids=None) -> dict:
         raise Unknown(f"build_history: {len(bad)} line(s) did not parse into the 7 selected fields "
                       f"(first: {bad[0][:3]!r}) — the attempt tallies would be wrong; not counted")
     for aid, scope, state, disp, when, err, started in rows:
-        d = per.setdefault(aid, dict(runs=0, error=0, aborted=0, complete=0, queued=0, skipped=0,
-                                     blocked=0, scopes=set(), last_state="", last_when="",
-                                     last_disposition="", sample_error="", sample_blocked="",
-                                     executed=0, executed_scopes=set(), last_executed_when="",
-                                     states={}))
-        d["runs"] += 1
-        d[state] = d.get(state, 0) + 1
-        d["states"][state] = d["states"].get(state, 0) + 1
-        if started in ("t", "true"):
-            d["executed"] += 1
-            d["executed_scopes"].add(scope)
-            d["last_executed_when"] = when
-        if disp == "skip_no_delta":
-            d["skipped"] += 1
-        # Packet B1: 'blocked_dependency' (migration 1095) marks a row whose writer never
-        # ran because an upstream dependency failed/was blocked in the SAME run — a
-        # cascade CONSEQUENCE, not its own root cause. Tracked separately from the plain
-        # `error` tally so grading below can count "one cause, N blocked" instead of
-        # grading a chart FAIL/PARTIAL purely from downstream cascade noise
-        # (B1_before_20260926T173931Z.json §4 — asset_census was the worst offender:
-        # it already read `disposition` for skip_no_delta but never checked this value).
-        if state == "error" and disp == "blocked_dependency":
-            d["blocked"] += 1
-            if err and not d["sample_blocked"]:
-                d["sample_blocked"] = err
-        d["scopes"].add(scope)
-        d["last_state"], d["last_when"], d["last_disposition"] = state, when, disp
-        if state == "error" and disp != "blocked_dependency" and err:
-            # R49 (L3 handverify ka_avadhi, ka_kshetra): the quoted error is the LATEST one, dated —
-            # the read is in ascending attempt order, so each later error replaces the earlier. It
-            # used to keep the FIRST error ever recorded ("not d['sample_error']"), so a FAIL reading
-            # "most recent run error" quoted a months-old error the asset had long since moved past.
-            d["sample_error"], d["sample_error_when"] = err, when
+        _tally_attempt(per, aid, scope, state, disp, when, err, started)
     glob = int(scalar("SELECT count(*)::text FROM build_runs WHERE scope='global'") or 0)
     glob_l0 = int(scalar("SELECT count(*)::text FROM build_runs r JOIN build_run_assets a ON a.run_id=r.id "
                          f"WHERE r.scope='global' AND {_asset_scope(prefix, ids, 'a.asset_id')}") or 0)
@@ -8785,6 +8879,243 @@ def _grade_build_history(h: dict) -> dict:
                                        f"build_run_assets row(s) (states: {h.get('states') or 'n/a'}): no "
                                        "attempt reached an outcome to grade")
     return dict(v=PASS, measured=f"{h['complete']} complete, no error or abort; {h['skipped']} skip_no_delta (healthy)")
+
+
+# ───────────────────────── Build.history WINDOW (SS definition, binding; revision 2) ─────────────────────────
+#
+# Build.history judges the attempts SINCE the later of (i) the asset's last writer-digest change on main and (ii) its last registry-
+# identity change, because an earlier error belongs to code or to a contract that no longer exists. What "last change" reads, and how it
+# fails closed, is documented in build_window.py (git only, read-only). The count of older errors/aborts is REPORTED as "pre-window
+# history", never hidden. An asset with NO attempt since that point reads NO_DETECTOR (nothing has exercised the current code), not PASS.
+# A forced-unchanged rebuild is an attempt of the current code (the writer ran: disposition 'build'); a `skip_no_delta` row is not (the
+# engine skipped the writer), and neither is a cascade-blocked row.
+
+_PROBE_SOURCE_PATHS = ("platform/python-sidecar/pipeline/orchestrator/asset_runner.py",
+                       "platform/python-sidecar/pipeline/orchestrator/service_probes.py")
+_NON_EXERCISING_DISPOSITIONS = ("skip_no_delta", "blocked_dependency")
+
+
+def build_attempt_log(prefix: str, ids=None) -> dict[str, list[dict]]:
+    """Every build_run_assets attempt per asset, ascending (created_at, run_id), with the run's creation time as an epoch. The SAME rows
+    and order as build_history() plus the epoch the window compares; a line that does not parse into the 8 selected fields, or a
+    timestamp that is not a number, fails the read (fail-closed, as R50), never padded or guessed."""
+    rows = psql("SELECT a.asset_id, r.scope, a.state, coalesce(a.disposition,''), "
+                "coalesce(r.created_at::date::text,''), "
+                "coalesce(left(translate(a.error, E'\\n\\r' || chr(31), '   '),200),''), "
+                "(a.started_at IS NOT NULL)::text, coalesce(extract(epoch FROM r.created_at)::text,'') "
+                "FROM build_run_assets a JOIN build_runs r ON r.id=a.run_id "
+                f"WHERE {_asset_scope(prefix, ids, 'a.asset_id')} "
+                "ORDER BY a.asset_id, r.created_at, a.run_id")
+    bad = [x for x in rows if len(x) != 8]
+    if bad:
+        raise Unknown(f"build_attempt_log: {len(bad)} line(s) did not parse into the 8 selected fields (first: {bad[0][:3]!r}) — "
+                      "the windowed attempt tallies would be wrong; not counted")
+    out: dict[str, list[dict]] = {}
+    for aid, scope, state, disp, when, err, started, ep in rows:
+        epoch = _epoch(ep)
+        if epoch == float("-inf"):
+            raise Unknown(f"build_attempt_log: {aid} has an attempt with no readable run creation time ({ep!r}) — it cannot be placed "
+                          "against the window")
+        out.setdefault(aid, []).append(dict(scope=scope, state=state, disposition=disp, when=when, error=err,
+                                            started=(started in ("t", "true")), epoch=epoch))
+    return out
+
+
+def _utc(epoch: float) -> str:
+    return dt.datetime.fromtimestamp(epoch, dt.timezone.utc).strftime("%Y-%m-%d %H:%M:%SZ")
+
+
+def _grade_build_history_windowed(aid: str, attempts: list[dict] | None, attempts_error: str | None, window: dict, h_all: dict) -> dict:
+    """Build.history for one asset that HAS executed attempts, judged inside its window. Pure.
+
+    `attempts`: that asset's build_attempt_log rows (None + `attempts_error` when the log could not be read); `window`:
+    build_window.compute_window()'s answer; `h_all`: the whole-history tally (build_history()'s per-asset dict), used for the cross-check
+    and to NAME the verdict the unwindowed reading would give, never to grade."""
+    whole = _grade_build_history(h_all)["v"]
+    if not window.get("ok"):
+        return dict(v=NO_DET, measured=f"NO_DETECTOR — the Build.history window could not be determined: {window.get('reason', 'unknown')}; "
+                                       f"the whole-history reading would be {whole} but it is not used (it judges attempts of code or a "
+                                       "contract that may no longer exist, and a PASS cannot rest on it)")
+    if attempts is None:
+        return dict(v=NO_DET, measured=f"NO_DETECTOR — the attempt log could not be read ({attempts_error or 'unknown'}), so no attempt "
+                                       f"can be placed against the window that opens {window['opens']}; whole-history reading would be {whole}")
+    if len(attempts) != h_all["runs"]:
+        return dict(v=NO_DET, measured=f"NO_DETECTOR — two reads of build_run_assets disagree ({len(attempts)} attempt row(s) in the timed log, "
+                                       f"{h_all['runs']} in the history tally): the window cannot be applied to a history that moved between "
+                                       "reads; run the census again")
+    opens = window["epoch"]
+    per: dict = {}
+    pre = dict(n=0, error=0, aborted=0, complete=0, blocked=0)
+    for a in attempts:
+        if a["epoch"] > opens:
+            _tally_attempt(per, aid, a["scope"], a["state"], a["disposition"], a["when"], a["error"], "t" if a["started"] else "f")
+            continue
+        pre["n"] += 1
+        if a["state"] == "error" and a["disposition"] == "blocked_dependency":
+            pre["blocked"] += 1
+        elif a["state"] == "error":
+            pre["error"] += 1
+        elif a["state"] == "aborted":
+            pre["aborted"] += 1
+        elif a["state"] == "complete":
+            pre["complete"] += 1
+    pre_text = (f"pre-window history (before {_utc(opens)}: attempts of code or a contract that no longer exists, REPORTED and not judged): "
+                + (f"{pre['n']} attempt(s), {pre['error']} error(s), {pre['aborted']} abort(s), {pre['complete']} complete, "
+                   f"{pre['blocked']} blocked_dependency" if pre["n"] else "none"))
+    head = f"window opens {_utc(opens)} ({window['basis']})"
+    hw = per.get(aid)
+    exercised = [a for a in attempts if a["epoch"] > opens and a["started"] and a["disposition"] not in _NON_EXERCISING_DISPOSITIONS]
+    if not exercised:
+        since = (f"{hw['runs']} attempt row(s) since (states: {hw['states']}), none of which executed the current code "
+                 "(a skip_no_delta, cascade-blocked, queued or never-started row does not)" if hw else "no attempt since")
+        return dict(v=NO_DET, measured=f"NO_DETECTOR — nothing has exercised the current code and contract: {since}; {head}; {pre_text}. "
+                                       "A forced rebuild (which runs the writer) is what would close it")
+    g = _grade_build_history(hw)
+    return dict(v=g["v"], measured=f"{g['measured']} [judged inside the window only; {head}; {pre_text}]")
+
+
+def _class_source_paths(cls: ast.ClassDef) -> list[str] | None:
+    """A registered class's literal `source_paths = [...]` (the engine's `getattr(cls, 'source_paths')` for a class that sets it in its own
+    body). None when the class does not set it; Unknown when it sets it to anything but a literal list/tuple of strings."""
+    for node in cls.body:
+        tgt, val = None, None
+        if isinstance(node, ast.Assign) and any(isinstance(t, ast.Name) and t.id == "source_paths" for t in node.targets):
+            val = node.value
+        elif isinstance(node, ast.AnnAssign) and isinstance(node.target, ast.Name) and node.target.id == "source_paths":
+            val = node.value
+        else:
+            continue
+        if isinstance(val, (ast.List, ast.Tuple)) and all(isinstance(e, ast.Constant) and isinstance(e.value, str) for e in val.elts):
+            return [e.value for e in val.elts]
+        raise Unknown(f"{cls.name}.source_paths is not a literal list of strings: the writer's source set cannot be read statically")
+    return None
+
+
+def _engine_local_module_path(module: str) -> Path | None:
+    """asset_runner._local_module_path: an in-repo sidecar module, resolved without importing it."""
+    if not module:
+        return None
+    rel = Path(*module.split("."))
+    f, init = SIDECAR / rel.with_suffix(".py"), SIDECAR / rel / "__init__.py"
+    return f if f.is_file() else init if init.is_file() else None
+
+
+def _engine_local_imports(path: Path) -> list[Path]:
+    """asset_runner._local_import_files / _module_name_for_path, reproduced (the engine module imports the database driver at load, so the
+    census cannot import it; test_sb1 pins the two together over every registered writer): the direct local imports of one file, including
+    each `from a.b import c` as the module `a.b.c` too."""
+    try:
+        rel = path.resolve().relative_to(SIDECAR.resolve())
+    except ValueError:
+        return []
+    if rel.suffix != ".py":
+        return []
+    parts = list(rel.with_suffix("").parts)
+    if parts[-1] == "__init__":
+        parts.pop()
+    module_name = ".".join(parts) or None
+    if module_name is None:
+        return []
+    package = module_name if path.name == "__init__.py" else module_name.rpartition(".")[0]
+    try:
+        tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
+    except (OSError, SyntaxError, UnicodeDecodeError):
+        return []
+    imports: set[str] = set()
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Import):
+            imports.update(a.name for a in node.names)
+        elif isinstance(node, ast.ImportFrom):
+            if node.level:
+                pp = package.split(".") if package else []
+                base_parts = pp[:len(pp) - node.level + 1]
+                if not base_parts:
+                    continue
+                base = ".".join(base_parts)
+                target = f"{base}.{node.module}" if node.module else base
+            else:
+                target = node.module or ""
+            if target:
+                imports.add(target)
+                imports.update(f"{target}.{a.name}" for a in node.names)
+    return [p for m in sorted(imports) if (p := _engine_local_module_path(m)) is not None]
+
+
+def _writer_code_paths(aid: str, files: list[str], has_writer: bool) -> list[str]:
+    """The repo-relative files whose bytes the engine's writer digest (`asset_runner.get_writer_source_hash`) covers for `aid`: the registered
+    class's declared `source_paths` (else its own module file), directories expanded to their non-test `*.py`, plus the transitive closure
+    of their local imports. An asset with no writer is digested over the generic probe sources (`get_probe_source_hash`). [] when a
+    writer-backed asset's registered file is not known; raises Unknown when the set cannot be read statically (never a guess)."""
+    if not has_writer:
+        return list(_PROBE_SOURCE_PATHS)
+    roots: list[Path] = []
+    for name in files:
+        f = _writer_path(name)
+        cls = _writer_class(f, aid) if f.is_file() else None
+        declared = _class_source_paths(cls) if cls is not None else None
+        for raw in (declared if declared else [str(f)]):
+            p = Path(raw) if Path(raw).is_absolute() else ROOT / raw
+            if p.is_file():
+                roots.append(p)
+            elif p.is_dir():
+                roots += [x for x in sorted(p.rglob("*.py")) if x.is_file() and "tests" not in x.parts]
+            else:
+                raise Unknown(f"the writer source path {raw!r} for {aid} is not a file or directory in this checkout")
+    if not roots:
+        return []
+    seen: set[Path] = set()
+    pending = sorted(roots, key=lambda x: x.as_posix())
+    done: list[Path] = []
+    while pending:
+        p = pending.pop(0).resolve()
+        if p in seen:
+            continue
+        seen.add(p)
+        done.append(p)
+        pending.extend(_engine_local_imports(p))
+    top = ROOT.resolve()
+    out = []
+    for p in sorted(done, key=lambda x: x.as_posix()):
+        try:
+            out.append(p.relative_to(top).as_posix())
+        except ValueError:
+            raise Unknown(f"the writer source file {p} of {aid} lies outside the repository") from None
+    return out
+
+
+class _WindowedHistory:
+    """Per-measure() run: the git reader, the timed attempt log (read once, fault-isolated) and the per-asset window cell."""
+
+    def __init__(self, prefix: str, ids, reader=None):
+        self.prefix, self.ids = prefix, ids
+        self._reader_arg = reader
+        self._bw = None                                # loaded and built on the first asset that needs a window (a layer with none loads nothing)
+        self.reader = None
+        self._log: dict | None = None
+        self._err: str | None = None
+        self._read = False
+
+    def _attempts(self) -> None:
+        if not self._read:
+            self._read = True
+            try:
+                self._log = build_attempt_log(self.prefix, self.ids)
+            except Unknown as exc:
+                self._err = str(exc)
+
+    def cell(self, aid: str, h: dict, has_writer: bool, files: list[str]) -> dict:
+        if self._bw is None:
+            self._bw = _lint_module("build_window")
+            self.reader = self._reader_arg if self._reader_arg is not None else self._bw.WindowReader(ROOT, env=_git_env())
+        self._attempts()
+        try:
+            paths = _writer_code_paths(aid, files, has_writer)
+            window = self._bw.compute_window(self.reader, aid, paths)
+        except Unknown as exc:
+            window = dict(ok=False, reason=str(exc))
+        except Exception as exc:                       # noqa: BLE001  R41: one asset's check degrades to ERRORED, never aborts the layer
+            return dict(v=ERRORED, measured=f"check errored: the Build.history window raised {type(exc).__name__}: {' '.join(str(exc).split())[:160]}")
+        return _grade_build_history_windowed(aid, None if self._log is None else self._log.get(aid, []), self._err, window, h)
 
 
 def duration_instrument_present() -> bool | None:
@@ -10050,7 +10381,55 @@ def _grade_target_less(r: dict, owners) -> dict:
                                  "orchestrator's clear/count steps have nothing to aim at")
 
 
-def _grade_dep_liveness(deps: list[str], deprec: dict, chart_id: str) -> dict:
+def _scope_record(by: dict, chart_id: str):
+    """A dependency's build record at the census's chart scope: its row for `chart_id`, else its global (chart_id NULL) row, else None."""
+    return by[chart_id] if chart_id in by else by[""] if "" in by else None
+
+
+def _upstream_closure(graph: dict, start: str) -> list[str]:
+    """The declared upstream closure of `start` (every asset it transitively depends on), nearest first, `start` excluded."""
+    out, seen, queue = [], {start}, list(graph.get(start, []))
+    while queue:
+        u = queue.pop(0)
+        if u in seen:
+            continue
+        seen.add(u)
+        out.append(u)
+        queue.extend(graph.get(u, []))
+    return out
+
+
+def stale_dependency_causes(stale: list[str], graph: dict | None, records: dict | None, chart_id: str, why_unread: str | None = None) -> dict[str, str]:
+    """For each dependency whose record reads `stale` at the census's chart scope, WHY: the engine marks a completed build stale when something
+    upstream of it completes a build afterwards, so the candidates are the assets in the dependency's declared upstream closure whose build record at
+    the same scope is LATER than its own. `records` is asset -> {chart -> record} for the dependencies and their closure. Names the rebuilt
+    upstream(s) with their build dates, or says plainly that none is on record (the mark then did not come from a recorded upstream rebuild, e.g. it
+    was set by a registry change or by a build on another chart): never a guess. Pure."""
+    out: dict[str, str] = {}
+    for d in stale:
+        if graph is None or records is None:
+            out[d] = f"cause not determinable: {why_unread or 'the dependency graph or the upstream build records were not read'}"
+            continue
+        rec = _scope_record(records.get(d, {}), chart_id)
+        built = _epoch(rec.get("built_epoch", "")) if rec else float("-inf")
+        if built == float("-inf"):
+            out[d] = "cause not determinable: its own build time is not recorded"
+            continue
+        later = []
+        for u in _upstream_closure(graph, d):
+            ur = _scope_record(records.get(u, {}), chart_id)
+            if ur and _epoch(ur.get("built_epoch", "")) > built:
+                later.append(f"{u} (built {ur.get('last_built') or 'undated'}, state {ur.get('state') or 'none'})")
+        if later:
+            shown = ", ".join(later[:5]) + (f", +{len(later) - 5} more" if len(later) > 5 else "")
+            out[d] = f"stale because upstream built after it ({rec.get('last_built') or 'undated'}): {shown}"
+        else:
+            out[d] = (f"no asset in its upstream closure has a build record later than its own ({rec.get('last_built') or 'undated'}) at this "
+                      "scope: the stale mark did not come from a recorded upstream rebuild (a registry change or a build on another chart can set it)")
+    return out
+
+
+def _grade_dep_liveness(deps: list[str], deprec: dict, chart_id: str, causes: dict | None = None) -> dict:
     """R45 (L2 handverify; W2-1_REVIEW C2): Build.dep_liveness at the census's CHART SCOPE.
 
     The claim is "every declared dependency is live for the chart this census measures". It used to
@@ -10061,8 +10440,12 @@ def _grade_dep_liveness(deps: list[str], deprec: dict, chart_id: str) -> dict:
     moved) → stale; no record at this scope, or any other state (error, dormant, incomplete,
     building) → not live; an R44-ambiguous record → undetermined. Verdict: any not live → FAIL;
     else any undetermined → ERRORED (never closable); else any stale → PARTIAL; else PASS, naming
-    the scope measured."""
+    the scope measured.
+
+    The verdict logic is unchanged by the cause text: `causes` (dep -> why, from `stale_dependency_causes`) only says, for each STALE dependency,
+    which upstream was rebuilt after it; every not-live dependency carries its state, scope and last build date."""
     short = chart_id[:8]
+    causes = causes or {}
     live, stale, dead, undet = [], [], [], []
     for d in deps:
         by = deprec.get(d, {})
@@ -10077,9 +10460,12 @@ def _grade_dep_liveness(deps: list[str], deprec: dict, chart_id: str) -> dict:
         elif rec.get("state") == "lit":
             live.append(d)
         elif rec.get("state") == "stale":
-            stale.append(f"{d} (stale, {where})")
+            stale.append(f"{d} (stale, {where}; last built {rec.get('last_built') or 'undated'}"
+                         + (f"; {causes[d]}" if d in causes else "") + ")")
         else:
-            dead.append(f"{d} ({rec.get('state') or 'no state'}, {where})")
+            note = (" — the engine's dependency gate accepts service_ok, this check reads only `lit` (finding, verdict unchanged)"
+                    if rec.get("state") == "service_ok" else "")
+            dead.append(f"{d} ({rec.get('state') or 'no state'}, {where}; last built {rec.get('last_built') or 'undated'}{note})")
     head = f"{len(live)}/{len(deps)} declared dependencies lit at chart {short} (or global)"
     if dead:
         return dict(v=FAIL, measured=f"{head}; not live: {dead}" + (f"; stale: {stale}" if stale else "")
@@ -10753,6 +11139,23 @@ def measure(layer_key: str, assets=None) -> dict:
         if "map" not in produced:                         # an unreadable map raises and is NOT cached as empty
             produced["map"] = produced_table_owners()
         return produced["map"]
+    # Build.dep_liveness cause text: why each STALE dependency is stale (the upstream built after it). One batched read of the stale dependencies'
+    # upstream closure, once per layer run; a failed read leaves the cause "not determinable" with its reason, the verdict never moves.
+    _stale_all = sorted({d for d, by in deprec.items() if (_scope_record(by, CHART_ID) or {}).get("state") == "stale"})
+    _cause_cache: dict = {}
+    if _stale_all:
+        try:
+            if dep_graph is None:
+                raise Unknown("the dependency graph could not be read")
+            _closure = sorted({u for d in _stale_all for u in _upstream_closure(dep_graph, d)} - set(deprec))
+            _crec = dict(deprec, **(throughput("", _closure) if _closure else {}))
+            _cause_cache.update(stale_dependency_causes(_stale_all, dep_graph, _crec, CHART_ID))
+        except Unknown as exc:
+            _cause_cache.update(stale_dependency_causes(_stale_all, None, None, CHART_ID, str(exc)))
+
+    def dep_causes(deps):
+        return {d: _cause_cache[d] for d in deps if d in _cause_cache}
+    whist = _WindowedHistory(cfg["prefix"], ids)             # SS Build.history window: read lazily, once per layer run
     assets = []
     for aid, r in reg.items():
         m: dict[str, dict] = {}
@@ -10785,6 +11188,9 @@ def measure(layer_key: str, assets=None) -> dict:
 
         ok_ci = bool(r["count_sql"]) and r["has_integrity"]
         ci_text = f"count_sql={'yes' if r['count_sql'] else 'no'}, integrity_check_sql={'yes' if r['has_integrity'] else 'no'}"
+        if aid in view_counts:       # R46: a view target whose registry count_sql reads no table (a constant): the count comes from the view
+            ci_text += (f"; count_sql reads no table (a constant), so the live count is taken from the view {r['target_table']} (R46) and the "
+                        "registered count_sql itself cannot fail (finding: presence is what is graded here; verdict unchanged)")
         if ok_ci:
             m["Build.count_integrity"] = dict(v=PASS, measured=ci_text)
         elif not r["has_writer"] and not r["count_sql"]:
@@ -10793,6 +11199,7 @@ def measure(layer_key: str, assets=None) -> dict:
             m["Build.count_integrity"] = dict(v=PARTIAL, measured=ci_text)
 
         live = counts.get(aid)
+        zr_holds = False                                                   # N-149: set True only where a declared zero-row convention was verified
         is_view = aid in view_counts                                       # R46
         ctables = [r["target_table"]] if is_view else _count_tables(r["count_sql"])
         multi = len(ctables) > 1 or (bool(ctables) and r["target_table"] not in ctables)
@@ -10816,6 +11223,9 @@ def measure(layer_key: str, assets=None) -> dict:
         if t.get("n_rows", 1) > 1 and not t.get("ambiguous"):
             rec_scope += f"; latest of {t['n_rows']} rows, last_built {t.get('last_built') or 'NULL'}"   # R44
         rw = t.get("rows_written", "")
+        zr_decl = ((declarations or {}).get(aid) or {}).get("zero_row_convention") if isinstance(declarations, dict) else None
+        zr_out = (zero_row_convention_outcome(zr_decl, CHART_ID)       # read only where the case arises: a writer-backed asset that declares one, counted 0
+                  if (zr_decl is not None and live == 0 and r["has_writer"] and aid not in count_errors) else None)
         if pset is not None and pset.get("error"):
             m["Build.completion"] = dict(v=ERRORED, measured=f"check errored: the declared produced-table set could not be counted: {pset['error']}")
         elif aid in count_errors and pset is None:
@@ -10855,6 +11265,16 @@ def measure(layer_key: str, assets=None) -> dict:
             # R42: a count_sql that reads no relation is a constant — it cannot disagree with anything.
             m["Build.completion"] = dict(v=NO_DET, measured=f"NO_DETECTOR — count_sql reads no table (a constant "
                                                            f"{live}); completion cannot be measured")
+        elif (live == 0 and zr_out is not None and zr_out["state"] == "holds" and not t.get("ambiguous") and rw.isdigit() and int(rw) == 0
+              and t.get("state") in COMPLETED_STATES):
+            # N-149: a DECLARED zero-row convention whose condition the census just verified against the live scope table (the measured chart is
+            # absent from it): zero rows is the by-design reading for THIS chart, the completed build record agrees (rows_written 0 = live 0), so
+            # the comparison is a PASS whatever the registry floor. The declaration never answers by itself: it is read only where the verification
+            # says `holds`, and every record condition (completed, not tied, rows_written 0) is still required.
+            zr_holds = True
+            m["Build.completion"] = dict(v=PASS, measured=f"rows_written={rw} = live=0 ({basis}; {rec_scope}); zero rows by declared convention "
+                                                          f"(zero_row_convention, N-149), verified: {zr_out['detail']}; {zr_decl['why']}")
+            m["Build.completion"] = _completion_integrity(m["Build.completion"], r)
         elif live == 0 and (r["target_floor"] or "").strip() != "0":
             # R52 (T1 plant build_completion_truncate): NON-EMPTINESS, measured on its own and first.
             # The check used to be only a rows_written<->live consistency test, so emptying a table
@@ -10907,7 +11327,10 @@ def measure(layer_key: str, assets=None) -> dict:
                 measured=f"rows_written={rw} = live=0 ({basis}; {rec_scope}); target_floor=0 declares zero "
                          "rows complete, but this is a writer-backed data asset (has_writer=true) with no "
                          "layer-plan claim that the emptiness is by design — indistinguishable from a "
-                         "writer that has never produced a row")
+                         "writer that has never produced a row"
+                         + ("" if zr_out is None else f"; a zero_row_convention is declared but does not hold here ({zr_out['detail']}): zero rows is not by design for this chart"
+                            if zr_out["state"] == "does_not_hold" else
+                            f"; a zero_row_convention is declared but could not be verified ({zr_out['detail']})"))
         else:
             # Consistency (R42), reached for live == 0 only under the target_floor=0 declaration (R52)
             # AND (R99) has_writer=false — no writer at all, the one signal honest enough to read as
@@ -10941,6 +11364,11 @@ def measure(layer_key: str, assets=None) -> dict:
             m["Earn.service_state"] = _ss
 
         cf = _grade_count_floor(r, live, count_errors.get(aid), ctables)
+        if cf is not None and zr_holds and cf["v"] == FAIL:
+            # N-149: Count.floor is an INFO-ONLY family (measured, never a gap, outside the rollup gates). The floor is the registry's, for a chart the
+            # asset produces rows for; this chart legitimately has none (the convention was verified above), so the breach is N/A by design, said so.
+            cf = _na(f"{cf['measured']} — but this chart legitimately has no rows (zero_row_convention verified, N-149): the floor does not apply to it",
+                     "zero-row-convention-holds")
         if cf is not None:
             m["Count.floor"] = cf
 
@@ -11159,9 +11587,9 @@ def measure(layer_key: str, assets=None) -> dict:
                 v=PASS, measured=f"{h['executed']} executed run(s) of {h['runs']} build_run_assets row(s), "
                                  f"scope(s): {', '.join(sorted(h['executed_scopes']))}, last executed "
                                  f"{h['last_executed_when']}")
-            m["Build.history"] = _grade_build_history(h)
+            m["Build.history"] = whist.cell(aid, h, r["has_writer"], files)      # SS window: the attempts since the code / registry identity last changed
 
-        m["Build.dep_liveness"] = (_grade_dep_liveness(r["depends_on"], deprec, CHART_ID) if r["depends_on"]
+        m["Build.dep_liveness"] = (_grade_dep_liveness(r["depends_on"], deprec, CHART_ID, dep_causes(r["depends_on"])) if r["depends_on"]
                                    else _grade_dep_liveness_none(m.get("Build.dag"), scanned=bool(files)))
 
         m["Complete.width"] = dict(v=NOT_GENERIC, measured="no declared universe for this asset — declaring one is the first width gap")
