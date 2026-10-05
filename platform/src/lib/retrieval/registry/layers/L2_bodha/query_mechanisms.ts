@@ -267,6 +267,12 @@ export const queryMechanismsCapability: CapabilityDescriptor = {
     'divisional chart or a special lagna, this tool does NOT answer that part of it; the response',
     'carries a `varga_scope` block with drill pointers to the surfaces that do serve per-varga data',
     '(assess_wealth varga_analysis, ganita_chart_facts_get divisional_chart=…, ganita_special_lagnas_get).',
+    'SERVED FIELD MEANING (N-143): each row is served raw, and its constituent_ga_vichara_ids_array (TEXT[], name unchanged)',
+    'now holds deterministic chart_vichara TOKENS, not chart_vichara row ids: token = first 16 hex chars of the sha256 of the',
+    'canonical JSON of the vichara natural key (ayanamsha_id, vichara_family, subject, actor, target, domain, varga_id, varga,',
+    'value_text, value_num, value_jsonb, constituent_facts_array). It resolves to its chart_vichara row through the read-only view',
+    'vw_chart_vichara_token (chart_id + vichara_token). Rows built before this change carry bigserial ids that already dangle',
+    'after the L1 rebuild and are replaced at the next bo_yantra_mechanism build; a vichara row whose cited facts change gets a new token.',
   ].join(' '),
 
   input_schema: {

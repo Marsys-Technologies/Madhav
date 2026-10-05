@@ -35,6 +35,11 @@ from brahmagyan import valence_doctrine as _vd
 from brahmagyan.domain_vocabulary import CANONICAL_DOMAINS, CANONICAL_DOMAINS_SORTED
 from . import WriterBase, ContextSpec, WriterResult, register
 from bodha_writers.data_plane_contracts import l2_producer
+from bodha_writers.vichara_token import (
+    VICHARA_KEY_SELECT_SQL,
+    assert_vichara_tokens,
+    vichara_token_from_row,
+)
 from pipeline.orchestrator.writers.bo_bimba import (
     _SUBJECT_TO_GRAHA as _GRAHA_SUBJECT_MAP,
     yoga_node_subject as _yoga_node_subject,
@@ -213,13 +218,34 @@ def _vichara_code(graha_title: str) -> str | None:
     return _GRAHA_TO_VICHARA_CODE.get(graha_title)
 
 
+def _row_get(r, name: str, idx: int):
+    """Column `name` of a fetched row, dict rows by key and tuple rows by position."""
+    return r[name] if isinstance(r, dict) else r[idx]
+
+
+def _first_by_token(rows: list) -> dict:
+    """{key: (payload, token)} keeping, for a key that several rows share, the row whose token sorts FIRST.
+
+    chart_vichara can hold several rows for one lookup key (production's valence_pass has 250 D1 rows for 130
+    (actor, target) pairs). Which one a lookup keeps used to be whatever the heap returned last; the citation must not
+    depend on row order or on a serial id, so the deterministic rule is the smallest token (N-143 option B)."""
+    best: dict = {}
+    for key, payload, token in rows:
+        cur = best.get(key)
+        if cur is None or token < cur[1]:
+            best[key] = (payload, token)
+    return best
+
+
 def _fetch_vichara_valence_by_actor_house(conn, chart_id: str, aya: str) -> dict:
-    """(actor_code, house) -> (value_text, chart_vichara.id) for varga='D1'
-    valence_pass rows. Chart-vichara unavailable degrades to {} — every caller
-    then falls back to valence_factor=1.0 (neutral), honestly, never a guess."""
+    """(actor_code, house) -> (value_text, vichara_token) for varga='D1' valence_pass rows.
+
+    The token is the deterministic natural-key token of the chart_vichara row (bodha_writers.vichara_token), never
+    chart_vichara.id. Chart-vichara unavailable degrades to {} — every caller then falls back to
+    valence_factor=1.0 (neutral), honestly, never a guess."""
     try:
         rows = conn.execute(
-            """SELECT id, actor, target, value_text FROM chart_vichara
+            f"""SELECT {VICHARA_KEY_SELECT_SQL} FROM chart_vichara
                WHERE chart_id = %s AND ayanamsha_id = %s
                  AND vichara_family = 'valence_pass' AND varga = 'D1'""",
             [chart_id, aya],
@@ -228,25 +254,24 @@ def _fetch_vichara_valence_by_actor_house(conn, chart_id: str, aya: str) -> dict
         logger.warning("[bo_karanajala] chart_vichara valence_pass unavailable (%s); "
                         "valence_factor=1.0 for every edge this build", exc)
         return {}
-    out: dict = {}
+    cand: list = []
     for r in rows:
-        rid, actor, target, val = (r["id"], r["actor"], r["target"], r["value_text"]) \
-            if isinstance(r, dict) else (r[0], r[1], r[2], r[3])
+        actor, target, val = _row_get(r, "actor", 3), _row_get(r, "target", 4), _row_get(r, "value_text", 8)
         if not actor or not target:
             continue
         try:
             house = int(str(target).rsplit("_HOUSE_", 1)[-1])
         except (ValueError, IndexError):
             continue
-        out[(str(actor), house)] = (str(val or "neutral"), str(rid))
-    return out
+        cand.append(((str(actor), house), str(val or "neutral"), vichara_token_from_row(r)))
+    return _first_by_token(cand)
 
 
 def _fetch_vichara_consistency_by_subject(conn, chart_id: str, aya: str) -> dict:
-    """subject_code -> (varga_consistency 0..1, chart_vichara.id)."""
+    """subject_code -> (varga_consistency 0..1, vichara_token)."""
     try:
         rows = conn.execute(
-            """SELECT id, subject, value_num FROM chart_vichara
+            f"""SELECT {VICHARA_KEY_SELECT_SQL} FROM chart_vichara
                WHERE chart_id = %s AND ayanamsha_id = %s AND vichara_family = 'varga_consistency'""",
             [chart_id, aya],
         ).fetchall()
@@ -254,20 +279,21 @@ def _fetch_vichara_consistency_by_subject(conn, chart_id: str, aya: str) -> dict
         logger.warning("[bo_karanajala] chart_vichara varga_consistency unavailable (%s); "
                         "consistency_weight=1.0 for every edge this build", exc)
         return {}
-    out: dict = {}
+    cand: list = []
     for r in rows:
-        rid, subj, val = (r["id"], r["subject"], r["value_num"]) if isinstance(r, dict) else (r[0], r[1], r[2])
-        if subj is None or val is None:
+        subj, val_text = _row_get(r, "subject", 2), _row_get(r, "value_num_text", 9)
+        if subj is None or val_text is None:
             continue
-        out[str(subj)] = (float(val), str(rid))
-    return out
+        cand.append((str(subj), float(val_text), vichara_token_from_row(r)))
+    return _first_by_token(cand)
 
 
 def _fetch_vichara_ratification_by_subject_domain(conn, chart_id: str, aya: str) -> dict:
-    """(subject_code, domain) -> (ratification_factor [0.6,1.4], chart_vichara.id)."""
+    """(subject_code, domain) -> (ratification_factor [0.6,1.4], vichara_token)."""
     try:
         rows = conn.execute(
-            """SELECT id, subject, domain, ratification_factor FROM chart_vichara
+            f"""SELECT {VICHARA_KEY_SELECT_SQL}, ratification_factor::text AS ratification_factor_text
+               FROM chart_vichara
                WHERE chart_id = %s AND ayanamsha_id = %s AND vichara_family = 'varga_ratification'""",
             [chart_id, aya],
         ).fetchall()
@@ -275,14 +301,14 @@ def _fetch_vichara_ratification_by_subject_domain(conn, chart_id: str, aya: str)
         logger.warning("[bo_karanajala] chart_vichara varga_ratification unavailable (%s); "
                         "ratification_factor=1.0 for every domain-tagged edge this build", exc)
         return {}
-    out: dict = {}
+    cand: list = []
     for r in rows:
-        rid, subj, dom, factor = (r["id"], r["subject"], r["domain"], r["ratification_factor"]) \
-            if isinstance(r, dict) else (r[0], r[1], r[2], r[3])
-        if not subj or not dom or factor is None:
+        subj, dom = _row_get(r, "subject", 2), _row_get(r, "domain", 5)
+        factor_text = _row_get(r, "ratification_factor_text", 12)
+        if not subj or not dom or factor_text is None:
             continue
-        out[(str(subj), str(dom))] = (float(factor), str(rid))
-    return out
+        cand.append(((str(subj), str(dom)), float(factor_text), vichara_token_from_row(r)))
+    return _first_by_token(cand)
 
 
 class ViharaLookups:
@@ -1546,6 +1572,8 @@ def _batch_insert(conn, rows: list[dict], sql: str) -> int:
             # default to empty so their %(constituent_fact_ids_array)s param binds.
             row.setdefault("constituent_fact_ids_array", [])
             row.setdefault("constituent_ga_vichara_ids_array", [])
+            # N-143: the column holds deterministic vichara tokens, never a chart_vichara serial id.
+            assert_vichara_tokens(row["constituent_ga_vichara_ids_array"], where=f"bo_karanajala {row.get('edge_type')}")
             row.setdefault("cancelled_by_jsonb", None)
             conn.execute(sql, row)
         inserted += len(rows[i:i + _BATCH_SIZE])

@@ -70,6 +70,25 @@ type ProducerContractDisposition =
   | 'service_effect_contract'
   | 'user_authored_source_contract'
 
+/**
+ * Meaning notes for value columns whose CONTENT changed while the reviewed output-digest spec did not.
+ * A spec is hash-bound (spec_sha256 is pinned in asset_output_digest_specs and, for bo_yantra_mechanism, in query_mechanisms.ts),
+ * so a note cannot live inside it without a new spec row (a migration plus a retirement). The note is recorded here, in the
+ * asset's known_gaps, instead (N-143 option B, SS 2026-10-05: serials -> deterministic tokens; spec text and column name unchanged).
+ */
+const SPEC_COLUMN_MEANING_NOTES: Readonly<Record<string, readonly string[]>> = {
+  bo_karanajala: [
+    'column_meaning_changed_spec_unchanged:bodha_cgm_edges.constituent_ga_vichara_ids_array holds deterministic chart_vichara tokens '
+      + '(sha256 of the canonical JSON of the vichara natural key, first 16 hex; resolver public.vw_chart_vichara_token, migration 1295), '
+      + 'not chart_vichara serial ids (N-143 option B); output digest spec 976 not re-stated',
+  ],
+  bo_yantra_mechanism: [
+    'column_meaning_changed_spec_unchanged:bodha_mechanisms.constituent_ga_vichara_ids_array holds deterministic chart_vichara tokens '
+      + '(sha256 of the canonical JSON of the vichara natural key, first 16 hex; resolver public.vw_chart_vichara_token, migration 1295), '
+      + 'not chart_vichara serial ids (N-143 option B); output digest spec 1009 not re-stated',
+  ],
+}
+
 interface ProducerOutputContract {
   asset_id: string
   producer_kind: 'relational' | 'service' | 'user_authored_source'
@@ -777,9 +796,12 @@ export async function buildCapabilityEstateCensus(options: {
               ? [`asset_registry_count_sql:${asset.asset_id}`]
               : [],
           tests: ['platform/python-sidecar/pipeline/orchestrator/tests/test_output_digest.py'],
-          known_gaps: currentSpec.migration_path.endsWith('1034_nirmana_purna_anvesana_wave1_output_digest_specs.sql')
-            ? ['disposable_schema_and_key_validation_passed_not_deployed', 'deployed_current_state_not_read']
-            : ['disposable_schema_and_key_validation_not_replayed_this_wave', 'deployed_current_state_not_read'],
+          known_gaps: [
+            ...(currentSpec.migration_path.endsWith('1034_nirmana_purna_anvesana_wave1_output_digest_specs.sql')
+              ? ['disposable_schema_and_key_validation_passed_not_deployed', 'deployed_current_state_not_read']
+              : ['disposable_schema_and_key_validation_not_replayed_this_wave', 'deployed_current_state_not_read']),
+            ...(SPEC_COLUMN_MEANING_NOTES[asset.asset_id] ?? []),
+          ],
         }
       }
       const blockers: Record<string, string> = {

@@ -29,10 +29,12 @@ import json
 import logging
 from collections import defaultdict
 from datetime import datetime, timezone
+from decimal import Decimal
 from typing import Any
 
 from . import WriterBase, ContextSpec, WriterResult, register
 from bodha_writers.data_plane_contracts import l2_producer, stable_semantic_uuid
+from bodha_writers.vichara_token import VICHARA_KEY_SELECT_SQL, vichara_token_from_row
 from brahmagyan.graha_vocabulary import to_title
 from brahmagyan.verification_vocab import UNVERIFIED_DEFAULT
 
@@ -1102,18 +1104,31 @@ def _fetch_wealth_leverage_index(conn: Any, chart_id: str, aya: str) -> list[dic
     never recomputed (§N.5). Ranked DESC: highest leverage_index = the graha
     most structurally on the hook for wealth (lordship/karakatva/occupancy/
     yoga participation) relative to its own capability — i.e. the "weakest
-    load-bearing graha" BRIEF_D4B §1 B-4 names."""
+    load-bearing graha" BRIEF_D4B §1 B-4 names.
+
+    N-143 option B: each row carries `vichara_token` (the deterministic natural-key token of the chart_vichara row,
+    bodha_writers.vichara_token), NOT the bigserial `chart_vichara.id` this function used to return as
+    `vichara_row_id`: a ga_vichara rebuild renumbers the serial, the token survives it. Ties on value_num are broken
+    by (subject, token) so the order never depends on a row id."""
     rows = conn.execute(
-        """SELECT id AS vichara_row_id, subject, value_num, constituent_fact_ids
+        f"""SELECT {VICHARA_KEY_SELECT_SQL}, constituent_fact_ids
            FROM chart_vichara
            WHERE chart_id = %s AND ayanamsha_id = %s
              AND vichara_family = 'leverage_index' AND domain = 'wealth'
-             AND value_num IS NOT NULL AND value_num > 0
-           ORDER BY value_num DESC""",
+             AND value_num IS NOT NULL AND value_num > 0""",
         [chart_id, aya],
     ).fetchall()
-    keys = ["vichara_row_id", "subject", "value_num", "constituent_fact_ids"]
-    return [dict(zip(keys, r)) if not isinstance(r, dict) else r for r in rows]
+    out: list[dict] = []
+    for r in rows:
+        get = (lambda name, idx: r[name]) if isinstance(r, dict) else (lambda name, idx: r[idx])
+        out.append({
+            "vichara_token": vichara_token_from_row(r),
+            "subject": get("subject", 2),
+            "value_num": Decimal(get("value_num_text", 9)),
+            "constituent_fact_ids": get("constituent_fact_ids", 12),
+        })
+    out.sort(key=lambda d: (-d["value_num"], str(d["subject"]), d["vichara_token"]))
+    return out
 
 
 def _fetch_dasha_runway_fresh(*_args: Any, **_kwargs: Any) -> None:

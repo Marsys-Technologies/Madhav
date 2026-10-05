@@ -136,6 +136,16 @@ describe('capability estate census', () => {
     })
     expect(producerContracts.find((contract) => contract.asset_id === 'ph_nimitta')?.disposition)
       .toBe('excluded_nondeterministic')
+    // N-143 option B: the digest specs 976 / 1009 are hash-bound and unchanged; the changed MEANING of
+    // constituent_ga_vichara_ids_array (serials -> deterministic tokens) is carried in the asset's known_gaps instead.
+    for (const assetId of ['bo_karanajala', 'bo_yantra_mechanism']) {
+      const contract = producerContracts.find((candidate) => candidate.asset_id === assetId)
+      expect(contract?.disposition).toBe('relational_digest_current_source_intent')
+      const notes = (contract?.known_gaps ?? []).filter((gap) => gap.startsWith('column_meaning_changed_spec_unchanged:'))
+      expect(notes).toHaveLength(1)
+      expect(notes[0]).toContain('constituent_ga_vichara_ids_array')
+      expect(notes[0]).toContain('vw_chart_vichara_token')
+    }
     for (const assetId of ['ka_gochara_v3_century_materialize']) {
       const blocked = producerContracts.find((contract) => contract.asset_id === assetId)
       expect(blocked?.disposition).toBe('relational_contract_blocked')
