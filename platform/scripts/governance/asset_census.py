@@ -173,11 +173,11 @@ CRITERION_REGISTRY: dict[str, dict] = {
     "Build.contract":        dict(gate="Build", check="contract",         applicability="has_writer=true",       detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=1),
     "Build.target":          dict(gate="Build", check="target",          applicability="always",                detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=2),
     "Build.dag":             dict(gate="Build", check="dag",              applicability="always",                detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=2),
-    "Build.count_integrity": dict(gate="Build", check="count_integrity", applicability="always; presence of count_sql and integrity_check_sql is what is graded: a view target whose registered count_sql reads no table (a constant) is said so in the cell, the verdict unchanged", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=2),
+    "Build.count_integrity": dict(gate="Build", check="count_integrity", applicability="always; presence of count_sql and integrity_check_sql is what is graded: a view target whose registered count_sql reads no table (a constant stub) reads PARTIAL naming that count_sql is constant", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=2),
     "Build.completion":      dict(gate="Build", check="completion",       applicability="a count_sql or view target exists; a writer-backed asset with live 0 and rows_written 0 reads PASS only where it DECLARES a zero_row_convention (SS N-149: the chart is absent from the declared scope_table.scope_column) AND the census verified that against the live table for the measured chart (a declared convention that does not hold, or cannot be verified, keeps the PARTIAL); PASS also requires, WHEN the asset declares an integrity_check_sql, that it holds: one read-only SELECT/WITH statement (conservative lexer and closed allow-list, run only as a subquery in a READ ONLY session, no bind parameters, at most 1000000 bytes (one -c argument up to 120000 bytes; a larger text goes on psql stdin through the same wrapper and guards; past 1000000 it is refused), the engine's own convention in asset_runner._probe_asset) whose first column of its first row is true (a boolean or a finite non-zero number); counts equal but the integrity SQL false, refused, oversize, errored or timed out reads PARTIAL naming which; an integrity SQL the census role is not permitted to read (SQLSTATE 42501 permission denied) reads NO_DETECTOR (not measurable under the census role: never PASS, never a verdict on the data), and the text names the denied object and the declared way to measure it (the engine runs the same SQL at build time under the runner role; the census role is not widened); the text carries sha256(sql)[:12] and the elapsed seconds; no declared integrity_check_sql reads exactly as before. An asset that DECLARES `produced_tables` (N-150) is compared against that declared set, not count_sql: each declared table (filtered slice of a shared table, chart-scoped where it carries chart_id) is counted read-only, an UPDATE-only table the writer scan shows is excluded, PASS needs rows_written = the SUM of the declared set, a different sum reads FAIL, and a table the writer writes that the set does not name (the orchestrator bookkeeping tables excepted) reads FAIL, a writer scope the scan could not read fully reads PARTIAL; a declaration is not a tolerance; no declaration reads exactly as before", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=4),  # SS role reading bumped (rev 4); R99 bumped: a writer-backed empty table under target_floor=0 now reads PARTIAL, not the R52-era blanket PASS; N-99 bumped (rev 3): count equality alone no longer reads PASS when a declared integrity_check_sql does not hold
     "Build.exercised":       dict(gate="Build", check="exercised",        applicability="always",                detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=1),
     "Build.history":         dict(gate="Build", check="history",          applicability="has been exercised at least once; judges the attempts SINCE the later of the asset's last writer-digest change on main (newest commit on origin/main, else main, touching the engine's writer source set, build_window.py) and its last registry-identity change (newest commit on that ref touching a migration that names asset_registry and the asset id, or changing the asset's own row in the registry seed); older errors and aborts are REPORTED as pre-window history, never judged; no attempt since (a skip_no_delta, cascade-blocked or never-started row is not an attempt of the current code; a forced rebuild is) reads NO_DETECTOR, never PASS; an undeterminable window (shallow clone, no main ref, working tree differing from main in the writer files, a path not tracked, no migration or seed naming the asset, git failing, the timed attempt log unreadable or disagreeing with the history tally) reads NO_DETECTOR naming why", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=2),  # SS Build.history window
-    "Build.dep_liveness":     dict(gate="Build", check="dep_liveness",     applicability="declares at least one depends_on; the cell names each not-lit dependency with its state, scope and last build date, and for a stale one the upstream(s) built after it (or that none is on record)", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=2),  # cause text only: the verdict logic is unchanged
+    "Build.dep_liveness":     dict(gate="Build", check="dep_liveness",     applicability="declares at least one depends_on; a dependency in state service_ok is live when its registry asset_kind is service (the engine gate rule); the cell names each not-lit dependency with its state, scope and last build date, and for a stale one the upstream(s) built after it (or that none is on record)", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=2),  # cause text only: the verdict logic is unchanged
     "Idem.pattern":          dict(gate="Idem",  check="pattern",          applicability="has_writer=true",       detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=2),
     "Earn.build_record":     dict(gate="Earn",  check="build_record",     applicability="has a build/attempt record to grade", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=1),
     # NOTE: "Cost", "Count", "Complete" and "Reach" are not among the nine gates in
@@ -10485,7 +10485,7 @@ def stale_dependency_causes(stale: list[str], graph: dict | None, records: dict 
     return out
 
 
-def _grade_dep_liveness(deps: list[str], deprec: dict, chart_id: str, causes: dict | None = None) -> dict:
+def _grade_dep_liveness(deps: list[str], deprec: dict, chart_id: str, causes: dict | None = None, kinds: dict | None = None) -> dict:
     """R45 (L2 handverify; W2-1_REVIEW C2): Build.dep_liveness at the census's CHART SCOPE.
 
     The claim is "every declared dependency is live for the chart this census measures". It used to
@@ -10499,7 +10499,12 @@ def _grade_dep_liveness(deps: list[str], deprec: dict, chart_id: str, causes: di
     the scope measured.
 
     The verdict logic is unchanged by the cause text: `causes` (dep -> why, from `stale_dependency_causes`) only says, for each STALE dependency,
-    which upstream was rebuilt after it; every not-live dependency carries its state, scope and last build date."""
+    which upstream was rebuilt after it; every not-live dependency carries its state, scope and last build date.
+
+    SS (service_ok): the engine's dependency gate (asset_runner.deps_unsatisfied) accepts a dependency in state `service_ok` when its registry
+    asset_kind is `service` (a service has no data-freshness receipt; its readiness IS a green probe). The census reads that rule: `kinds` (dep ->
+    asset_kind, from the registry) makes a `service_ok` record of a `service` dependency live. A `service_ok` record of any other kind (the engine would
+    then also need a `fresh` receipt, which this check does not read), or of a dependency whose kind was not read, stays not live and says why."""
     short = chart_id[:8]
     causes = causes or {}
     live, stale, dead, undet = [], [], [], []
@@ -10515,12 +10520,15 @@ def _grade_dep_liveness(deps: list[str], deprec: dict, chart_id: str, causes: di
             undet.append(f"{d} ({where}: {rec.get('n_rows')} tied rows)")
         elif rec.get("state") == "lit":
             live.append(d)
+        elif rec.get("state") == "service_ok" and (kinds or {}).get(d) == "service":
+            live.append(d)
         elif rec.get("state") == "stale":
             stale.append(f"{d} (stale, {where}; last built {rec.get('last_built') or 'undated'}"
                          + (f"; {causes[d]}" if d in causes else "") + ")")
         else:
-            note = (" — the engine's dependency gate accepts service_ok, this check reads only `lit` (finding, verdict unchanged)"
-                    if rec.get("state") == "service_ok" else "")
+            note = ("" if rec.get("state") != "service_ok" else
+                    f" — service_ok is live only for a registry asset_kind 'service' (the engine's rule); this dependency's kind is "
+                    f"{(kinds or {}).get(d) or 'not read'}, and the engine would also need a fresh receipt, which is not read here")
             dead.append(f"{d} ({rec.get('state') or 'no state'}, {where}; last built {rec.get('last_built') or 'undated'}{note})")
     head = f"{len(live)}/{len(deps)} declared dependencies lit at chart {short} (or global)"
     if dead:
@@ -11151,6 +11159,13 @@ def measure(layer_key: str, assets=None) -> dict:
     # (asset, chart) by R44's rule — read only when some asset declares a dependency.
     dep_ids = sorted({d for r in reg.values() for d in r["depends_on"]})
     deprec = _layer_read("dependency_records", throughput, "", dep_ids) if dep_ids else {}
+    dep_kinds: dict = {}                                   # dep -> registry asset_kind (service_ok is live for a service); a failed read leaves it empty
+    if dep_ids and any((x.get("state") == "service_ok") for by in deprec.values() for x in by.values()):
+        try:
+            _lit = ", ".join("'" + d.replace("'", "''") + "'" for d in dep_ids)
+            dep_kinds = {a: k for a, k in psql(f"SELECT asset_id, coalesce(asset_kind,'') FROM asset_registry WHERE asset_id IN ({_lit})")}
+        except (Unknown, ValueError):
+            dep_kinds = {}
     lmaps = local_map_candidates(cfg["prefix"]) if layer_key == "L0" else -1
     # R21: the blocking radius, registry-wide. Fault-isolated: an unreadable graph leaves every asset's
     # radius UNMEASURED (None, with the reason) — never 0, which would read as "an isolated leaf".
@@ -11246,8 +11261,12 @@ def measure(layer_key: str, assets=None) -> dict:
         ci_text = f"count_sql={'yes' if r['count_sql'] else 'no'}, integrity_check_sql={'yes' if r['has_integrity'] else 'no'}"
         if aid in view_counts:       # R46: a view target whose registry count_sql reads no table (a constant): the count comes from the view
             ci_text += (f"; count_sql reads no table (a constant), so the live count is taken from the view {r['target_table']} (R46) and the "
-                        "registered count_sql itself cannot fail (finding: presence is what is graded here; verdict unchanged)")
-        if ok_ci:
+                        "registered count_sql itself cannot fail")
+        if ok_ci and aid in view_counts:
+            # SS: a view target whose registered count_sql reads no table is a constant (a stub): it cannot fail, so presence of it is not a detector.
+            m["Build.count_integrity"] = dict(v=PARTIAL, measured=ci_text.replace("count_sql reads no table (a constant)", "count_sql is constant (reads no table)", 1)
+                                              + " — a constant count_sql cannot fail, so it is not a count detector (the census counts the view itself)")
+        elif ok_ci:
             m["Build.count_integrity"] = dict(v=PASS, measured=ci_text)
         elif not r["has_writer"] and not r["count_sql"]:
             m["Build.count_integrity"] = _na(ci_text, "no-writer-no-count-sql")
@@ -11645,7 +11664,7 @@ def measure(layer_key: str, assets=None) -> dict:
                                  f"{h['last_executed_when']}")
             m["Build.history"] = whist.cell(aid, h, r["has_writer"], files)      # SS window: the attempts since the code / registry identity last changed
 
-        m["Build.dep_liveness"] = (_grade_dep_liveness(r["depends_on"], deprec, CHART_ID, dep_causes(r["depends_on"])) if r["depends_on"]
+        m["Build.dep_liveness"] = (_grade_dep_liveness(r["depends_on"], deprec, CHART_ID, dep_causes(r["depends_on"]), dep_kinds) if r["depends_on"]
                                    else _grade_dep_liveness_none(m.get("Build.dag"), scanned=bool(files)))
 
         m["Complete.width"] = dict(v=NOT_GENERIC, measured="no declared universe for this asset — declaring one is the first width gap")
