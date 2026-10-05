@@ -207,3 +207,32 @@ def test_the_forty_percent_guard_reverts_only_a_class_with_a_dvi_member_and_only
     assert not nd.dvi_reverts_to_support("marriage", 0.99)
     assert {c for c, t in nd.TIERS.items() if t.dvi} == {"achievement_recognition", "financial_deception",
                                                         "foreign_settlement", "property_acquisition"}
+
+
+# ── ND-P2 rule 4: karakatva and P1 prerequisite (2) ─────────────────────────────────────────────────────────────
+def test_o_k6_the_class_karaka_as_md_or_ad_anchor_satisfies_prerequisite_2_and_pd_is_testimony():
+    R = nd.karakatva_relation
+    assert R("property_acquisition", None, "mars", "MD") == "karakatva_scored"
+    assert R("property_acquisition", None, "mars", "AD") == "karakatva_scored"
+    assert R("property_acquisition", None, "mars", "PD") == "karakatva_testimony"
+    assert R("property_acquisition", None, "venus", "MD") is None                       # not the significator: today's result stands
+    assert R("parental_event", "father", "sun", "AD") == "karakatva_scored"
+    assert R("parental_event", None, "sun", "AD") == "karakatva_scored"                 # the class resolves to the father
+    assert R("parental_event", "mother", "moon", "MD") is None                          # registered, unbuilt: no mapping
+    assert R("spiritual_turn", None, "ketu", "MD") == "karakatva_scored" and R("spiritual_turn", None, "saturn", "MD") is None
+    assert R("psychological_arc", None, "moon", "MD") == "karakatva_scored"             # K-B only is still a significator
+    with pytest.raises(ValueError, match="unknown_anchor_level"):
+        R("property_acquisition", None, "mars", "SD")
+
+
+def test_o_k7_a_class_without_a_mapping_is_untouched_so_the_extension_is_purely_additive():
+    assert nd.karakatva_relation("marriage", None, "venus", "MD") is None               # no mapping: unknown-input behaviour preserved
+    assert nd.karakatva_relation("bereavement", None, "sun", "MD") is None
+    assert {c for c, _ in nd.KARAKATVA} == nd.EIGHT and nd.KARAKATVA_VERSION == "1.0.0"
+    assert nd.KARAKATVA[("financial_deception", None)] == {"rahu"}
+
+
+# ── ND-P2 rule 5: no blanket slow/fast gate ──────────────────────────────────────────────────────────────────────
+def test_p3_keeps_all_nine_agents_and_no_blanket_fast_planet_rule_exists():
+    assert nd.P3_ADMITTING_AGENTS == set(nd.NINE) and len(nd.P3_ADMITTING_AGENTS) == 9
+    assert nd.BLANKET_SLOW_OPENS_FAST_REFINES is False

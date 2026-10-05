@@ -186,3 +186,36 @@ def dvi_reverts_to_support(event_class: str, p4_alone_with_dvi_share: float) -> 
     member(s) to SUPPORT in the NEXT generation. False for a class with no DVI member (nothing to revert)."""
     t = TIERS.get(event_class)
     return bool(t and t.dvi) and p4_alone_with_dvi_share > GAIN_BAND
+
+
+# ── karakatva and P1 prerequisite (2) (ND-P2 rule 4; AM-K.3) ──────────────────────────────────────────────────────
+KARAKATVA_VERSION = "1.0.0"
+# Versioned, AFFECTED-PERSON-SPECIFIC class-kāraka mapping: (class, person) -> significator planets. Built from the
+# kāraka tables above (K-A union K-B); a class or person without an entry has NO mapping and keeps today's behaviour
+# (the extension is purely additive; an unmapped class is `unknown`, never silently `false`). The mother row is
+# registered and unbuilt, so it carries no mapping.
+KARAKATVA: dict[tuple, frozenset] = {
+    (cls, AFFECTED_PERSON.get(cls)): KARAKA_A[cls] | ({KARAKA_B_LUMINARY[cls]} if cls in KARAKA_B_LUMINARY else frozenset())
+    for cls in sorted(EIGHT)
+}
+
+
+def karakatva_relation(event_class: str, person: str | None, anchor_lord: str, anchor_level: str) -> str | None:
+    """The relation the extension grants P1's prerequisite (2) for a transit record whose period ANCHOR is `anchor_lord`
+    at `anchor_level` ('MD', 'AD' or 'PD'): 'karakatva_scored' when the lord is a significator of the class for that
+    person and the anchor runs at MD or AD (explicitly ruled extension, uncited_extension/scored); 'karakatva_testimony'
+    at PD (Pratyantardasha stays testimony, ST-P1-PD-TESTIMONY-20261002); None when the lord is not a significator
+    (today's result stands) or the class/person has no mapping (unknown-input behaviour preserved)."""
+    sig = KARAKATVA.get((event_class, AFFECTED_PERSON.get(event_class) if person is None else person))
+    if not sig or anchor_lord not in sig:
+        return None
+    if anchor_level in ("MD", "AD"):
+        return "karakatva_scored"
+    if anchor_level == "PD":
+        return "karakatva_testimony"
+    raise ValueError(f"unknown_anchor_level: {anchor_level!r}")
+
+
+# ── no blanket fast-planet rule (ND-P2 rule 5) ────────────────────────────────────────────────────────────────────
+P3_ADMITTING_AGENTS = frozenset(NINE)        # P3 keeps its present contract: all nine agents, union, no opener/refiner split
+BLANKET_SLOW_OPENS_FAST_REFINES = False      # a per-class, per-mechanism, separately versioned rule decided BEFORE outcomes
