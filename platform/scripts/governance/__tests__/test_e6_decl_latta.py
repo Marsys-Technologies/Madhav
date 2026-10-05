@@ -94,7 +94,7 @@ def test_the_committed_file_is_1_10_0_and_the_validator_accepts_this_entry():
     assert ac.load_asset_declarations()[AID]["carriage"]["applies"] == "D1"
 
 
-L0_FILL_NO_ALIAS_CLASS = ["bg_compendium_index", "bg_formula_constants", "bg_ghatana", "bg_gochara_citation_resolution", "bg_kota_chakra_rings", "bg_muhurta_lattice", "bg_text_index", "bg_texts", "bg_vedha_malefic_scale", "bg_vidhi_floors", "bg_vidhi_primitives"]      # E5.7 L0 fills: `na: no_alias_class` for 11 more assets (no carriage, no ldgr_source)
+L0_FILL_NO_ALIAS_CLASS = ["bg_compendium_index", "bg_formula_constants", "bg_ghatana", "bg_gochara_citation_resolution", "bg_kota_chakra_rings", "bg_muhurta_lattice", "bg_text_index", "bg_texts", "bg_vedha_malefic_scale", "bg_vidhi_floors", "bg_vidhi_primitives", "bo_chart_gestalt", "bo_drishti", "bo_grounding", "bo_pramana_mapa", "bo_samskara", "bo_karanajala", "bo_anveshana"]      # E5.7 L0 fills: `na: no_alias_class` for 11 more assets (no carriage, no ldgr_source)
 
 
 def test_this_asset_alone_declares_the_three_blocks_and_its_created_at_is_a_stamp_never_a_constant():

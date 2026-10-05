@@ -110,7 +110,7 @@ def test_the_file_version_is_well_formed_and_the_validator_accepts_every_entry()
         assert word not in sentence.lower()
 
 
-L0_FILL_NO_ALIAS_CLASS = ["bg_compendium_index", "bg_formula_constants", "bg_ghatana", "bg_gochara_citation_resolution", "bg_kota_chakra_rings", "bg_muhurta_lattice", "bg_text_index", "bg_texts", "bg_vedha_malefic_scale", "bg_vidhi_floors", "bg_vidhi_primitives"]      # E5.7 L0 fills: `na: no_alias_class`, schema-checked
+L0_FILL_NO_ALIAS_CLASS = ["bg_compendium_index", "bg_formula_constants", "bg_ghatana", "bg_gochara_citation_resolution", "bg_kota_chakra_rings", "bg_muhurta_lattice", "bg_text_index", "bg_texts", "bg_vedha_malefic_scale", "bg_vidhi_floors", "bg_vidhi_primitives", "bo_chart_gestalt", "bo_drishti", "bo_grounding", "bo_pramana_mapa", "bo_samskara", "bo_karanajala", "bo_anveshana"]      # E5.7 L0 fills: `na: no_alias_class`, schema-checked
 
 
 def test_exactly_these_assets_declare_vocab_alias_and_prose_empty_and_nothing_else_of_the_s3_s1_s2_family_moves():
@@ -1071,11 +1071,11 @@ def test_mutation_the_kp_guard_kills_a_writer_module_that_executes_sql():
 # ───────────────────────── Part 9: scope, wording and tripwire facts the declarations state ─────────────────────────
 
 def test_the_reverse_leg_uses_the_global_declared_prose_vocabulary_so_another_lane_declaring_a_matching_column_flips_these_assets_from_na_to_fail():
-    """TRIPWIRE (intended): `prose_reverse_leg` compares the writer's INSERT columns with the prose vocabulary declared by ANY asset (26 names today), not with a per-asset list.
+    """TRIPWIRE (intended): `prose_reverse_leg` compares the writer's INSERT columns with the prose vocabulary declared by ANY asset (27 names today), not with a per-asset list.
     If another lane declares a column that these writers also write (here the hypothetical `classical_citation`), Narr.agree for bg_transit_engine / bg_kp_sublord_division reads
     FAIL, not N/A, until the overlap is decided. The names declared today do not overlap what they write (test_the_writer_scope_is_readable...)."""
     vocab = ac.prose_vocabulary(ASSETS)
-    assert len(vocab) == 26
+    assert len(vocab) == 27      # E5.7 L1/L2 fill: bo_cgm_paths adds path_label_human
     for aid, col in (("bg_transit_engine", "classical_citation"), ("bg_kp_sublord_division", "source_citation")):
         out = ac.prose_checks(aid, ASSETS[aid], _ctx(aid, vocabulary=vocab | {col}))
         assert out["Narr.agree"]["v"] == FAIL and col in out["Narr.agree"]["measured"], aid

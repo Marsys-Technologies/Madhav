@@ -148,7 +148,7 @@ def test_validator_doc_level_field_lists_must_match_when_present():
                 ac.validate_declarations(ok)
 
 
-L0_FILL_NO_ALIAS_CLASS = ["bg_compendium_index", "bg_formula_constants", "bg_ghatana", "bg_gochara_citation_resolution", "bg_kota_chakra_rings", "bg_muhurta_lattice", "bg_text_index", "bg_texts", "bg_vedha_malefic_scale", "bg_vidhi_floors", "bg_vidhi_primitives"]      # E5.7 L0 fills: declared `na: no_alias_class`, schema-checked
+L0_FILL_NO_ALIAS_CLASS = ["bg_compendium_index", "bg_formula_constants", "bg_ghatana", "bg_gochara_citation_resolution", "bg_kota_chakra_rings", "bg_muhurta_lattice", "bg_text_index", "bg_texts", "bg_vedha_malefic_scale", "bg_vidhi_floors", "bg_vidhi_primitives", "bo_chart_gestalt", "bo_drishti", "bo_grounding", "bo_pramana_mapa", "bo_samskara", "bo_karanajala", "bo_anveshana"]      # E5.7 L0 fills: declared `na: no_alias_class`, schema-checked
 
 
 def test_the_committed_file_declares_neither_key_beyond_the_latta_and_lists_the_fields():
