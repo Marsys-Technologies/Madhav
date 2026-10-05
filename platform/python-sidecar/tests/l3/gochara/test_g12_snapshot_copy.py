@@ -482,6 +482,17 @@ def test_periods_of_different_levels_that_start_together_are_distinct_keys_and_a
     assert staleness.sealed_generation_staleness(conn, CHART_ID, GEN)["drifted"] is False
 
 
+def test_a_leftover_of_another_tier_at_the_start_of_a_consumed_row_of_a_different_level_is_not_drift(g12):
+    """A non-consumed, non-eligible row (tier 'single') of ANOTHER level that happens to start where a consumed row starts is neither consumed nor in the required scope:
+    the key match includes the level, so it must not enter the live view."""
+    _step, conn = g12
+    conn.execute("INSERT INTO public.chart_dashas (dasha_row_id, chart_id, ayanamsha_id, system_id, level_n, parent_row_id, lord_graha, start_iso, end_iso, build_id,"
+                 " verification_pass_status) SELECT gen_random_uuid(), chart_id, ayanamsha_id, system_id, 2, NULL, 'Ketu', start_iso, end_iso, build_id, 'single'"
+                 " FROM public.chart_dashas WHERE level_n = 1 LIMIT 1")
+    assert not _drift_violations(conn)
+    assert staleness.sealed_generation_staleness(conn, CHART_ID, GEN)["drifted"] is False
+
+
 def test_a_whole_natal_subject_omitted_from_the_copy_is_refused_at_insert(g12):
     _step, conn = g12
     s = _snapshot(conn)
@@ -607,6 +618,14 @@ def test_a_first_seal_on_a_legacy_snapshot_is_refused_by_the_database_gate_and_r
     assert [v for v in violations if v[1] == "input_snapshot_without_copy"], violations
     replay = conn.execute("SELECT violation FROM public.ka_gochara_search_replay_violations(%s, %s)", (CHART_ID, GEN)).fetchall()
     assert not [r for r in replay if "without_copy" in r[0]], "replay never asks for the copy"
+    # the REAL first-seal attempt (publish, then the sealing function whose BEFORE INSERT trigger runs the completeness function): refused, and the refusal names the
+    # missing copy among the violations of this partial stub world
+    from services.gochara_kernel import ledger as gk_ledger
+    with pytest.raises(Exception, match=r"input_snapshot_without_copy"):
+        with conn.transaction():
+            conn.execute("SELECT public.ka_gochara_lock_chart(%s::uuid)", (CHART_ID,))
+            gk_ledger.publish(conn, CHART_ID, GEN)
+            conn.execute("SELECT public.ka_gochara_seal_generation(%s::uuid, %s)", (CHART_ID, GEN))
 
 
 def test_1305_refuses_to_apply_after_g8s_1306_would_have_replaced_the_completeness_function():

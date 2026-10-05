@@ -378,14 +378,26 @@ def _run_entry_as_verifier(w, monkeypatch, capsys):
 
 def test_a_mixed_dasha_build_left_after_the_build_does_not_unverify_a_generation_that_owns_its_copy(built, monkeypatch, capsys):
     w = built
+    # a leftover of ANOTHER build at another start and another tier: not a row the generation consumed and not in the required scope
+    w.conn.execute(
+        "INSERT INTO public.chart_dashas (dasha_row_id, chart_id, ayanamsha_id, system_id, level_n, parent_row_id, lord_graha, start_iso, end_iso,"
+        " build_id, verification_pass_status) SELECT gen_random_uuid(), chart_id, ayanamsha_id, system_id, level_n, NULL, lord_graha, start_iso + interval '1 day',"
+        " end_iso + interval '1 day', %s::uuid, 'single' FROM public.chart_dashas WHERE system_id = 'vimshottari' AND level_n = 1 LIMIT 1", (ANOTHER_BUILD,))
+    code, out = _run_entry_as_verifier(w, monkeypatch, capsys)
+    # G12: a mix left by an L1 rebuild AFTER the build is not a failure to verify a generation that owns its copy; the mix itself is refused at CAPTURE
+    # (test_a53_r16_amendments) and by the legacy (no copy) path
+    assert code == 0, out
+
+
+def test_a_conflicting_second_row_at_a_consumed_natural_key_is_hard_drift_the_gate_closes(built, monkeypatch, capsys):
+    """The same leftover but AT a consumed row's natural key (same level, same start): two live rows share the key — a conflict, reported as drift by the gate."""
+    w = built
     w.conn.execute(
         "INSERT INTO public.chart_dashas (dasha_row_id, chart_id, ayanamsha_id, system_id, level_n, parent_row_id, lord_graha, start_iso, end_iso,"
         " build_id, verification_pass_status) SELECT gen_random_uuid(), chart_id, ayanamsha_id, system_id, level_n, NULL, lord_graha, start_iso, end_iso,"
         " %s::uuid, 'single' FROM public.chart_dashas WHERE system_id = 'vimshottari' AND level_n = 1 LIMIT 1", (ANOTHER_BUILD,))
     code, out = _run_entry_as_verifier(w, monkeypatch, capsys)
-    # G12: a mix left by an L1 rebuild AFTER the build is drift (reported by staleness / the completeness gate), not a failure to verify a generation that owns its copy;
-    # the mix itself is refused at CAPTURE (test_a53_r16_amendments) and by the legacy (no copy) path
-    assert code == 0, out
+    assert code != 0 and "gate CLOSED" in out["cockpit"], out
 
 
 def test_a_later_rebuild_under_another_build_id_does_not_unverify_a_generation_that_owns_its_copy(built, monkeypatch, capsys):

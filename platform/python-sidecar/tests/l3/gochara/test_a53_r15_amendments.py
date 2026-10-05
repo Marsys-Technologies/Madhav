@@ -95,7 +95,7 @@ def test_the_brief_reads_the_actual_tiers_and_prints_the_sentence_only_when_all_
     assert sb.build_payload(w.conn, CHART_ID, GEN, sealing_commit="abcdef1")["disclosures"]["natal_inputs"] == VERBATIM
     # a relabel of ONE consumed row IN THE COPY (what the generation consumed): the next brief prints the observed tiers instead (the disclosure cannot go stale)
     w.conn.execute("ALTER TABLE public.ka_gochara_search_input_snapshot DISABLE TRIGGER USER")
-    w.conn.execute("UPDATE public.ka_gochara_search_input_snapshot SET consumed_fact_rows = (SELECT jsonb_agg(CASE WHEN e #>> '{content,fact_subject}' = 'MOON'"
+    w.conn.execute("UPDATE public.ka_gochara_search_input_snapshot SET consumed_fact_rows = (SELECT jsonb_agg(CASE WHEN e #>> '{key,fact_subject}' = 'MOON'"
                    " THEN jsonb_set(e, '{metadata,verification_pass_status}', '\"two_pass_verified\"') ELSE e END) FROM jsonb_array_elements(consumed_fact_rows) e)"
                    " WHERE chart_id = %s AND generation = %s", (CHART_ID, GEN))
     w.conn.execute("ALTER TABLE public.ka_gochara_search_input_snapshot ENABLE TRIGGER USER")

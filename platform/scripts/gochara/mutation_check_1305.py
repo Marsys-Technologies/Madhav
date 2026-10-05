@@ -82,8 +82,11 @@ def main() -> int:
         for name, f, _o, _n in MUTATIONS:
             print(f"{name}  [{f}]")
         return 0
+    only = sys.argv[sys.argv.index("--only") + 1] if "--only" in sys.argv else None        # run just the mutations whose name contains this text
     survivors = []
     for name, f, old, new in MUTATIONS:
+        if only and only not in name:
+            continue
         path = f                                       # relative to platform/ (this script's cwd)
         text = open(path, encoding="utf-8").read()
         if old not in text:
@@ -100,7 +103,8 @@ def main() -> int:
         print(("CAUGHT  " if caught else "SURVIVED") + f" {name}")
         if not caught:
             survivors.append(name)
-    print(f"{len(MUTATIONS) - len(survivors)}/{len(MUTATIONS)} caught")
+    ran = [m for m in MUTATIONS if not only or only in m[0]]
+    print(f"{len(ran) - len(survivors)}/{len(ran)} caught")
     return 1 if survivors else 0
 
 
