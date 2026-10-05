@@ -87,6 +87,7 @@ def _restore_pre_retirement(monkeypatch):
                                             "whose own served read of the asset's table selects a tier column; a sibling entry, a sub-select, an INSERT...SELECT or a UNION "
                                             "branch does not count")
     reg["Build.completion"] = dict(reg["Build.completion"], revision=2, applicability="a count_sql or view target exists")     # revision 25 (N-99) re-worded and bumped it
+    reg["Build.count_integrity"] = dict(reg["Build.count_integrity"], revision=1, applicability="always")     # revision 26 (role reading) re-worded and bumped it
     reg["Build.dep_liveness"] = dict(reg["Build.dep_liveness"], revision=1, applicability="declares at least one depends_on")     # revision 26 (cause text) re-worded and bumped it
     reg["Build.history"] = dict(reg["Build.history"], revision=1, applicability="has been exercised at least once")     # revision 26 (SS Build.history window) re-worded and bumped it
     causes = dict(ac.NA_CAUSES)

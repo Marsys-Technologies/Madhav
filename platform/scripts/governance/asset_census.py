@@ -172,8 +172,8 @@ CRITERION_REGISTRY: dict[str, dict] = {
     "Build.contract":        dict(gate="Build", check="contract",         applicability="has_writer=true",       detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=1),
     "Build.target":          dict(gate="Build", check="target",          applicability="always",                detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=2),
     "Build.dag":             dict(gate="Build", check="dag",              applicability="always",                detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=2),
-    "Build.count_integrity": dict(gate="Build", check="count_integrity", applicability="always",                detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=1),
-    "Build.completion":      dict(gate="Build", check="completion",       applicability="a count_sql or view target exists; PASS also requires, WHEN the asset declares an integrity_check_sql, that it holds: one read-only SELECT/WITH statement (conservative lexer and closed allow-list, run only as a subquery in a READ ONLY session, no bind parameters, at most 120000 bytes, the engine's own convention in asset_runner._probe_asset) whose first column of its first row is true (a boolean or a finite non-zero number); counts equal but the integrity SQL false, refused, oversize, errored or timed out reads PARTIAL naming which; an integrity SQL the census role is not permitted to read (SQLSTATE 42501 permission denied) reads NO_DETECTOR (not measurable under the census role: never PASS, never a verdict on the data); the text carries sha256(sql)[:12] and the elapsed seconds; no declared integrity_check_sql reads exactly as before", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=3),  # R99 bumped: a writer-backed empty table under target_floor=0 now reads PARTIAL, not the R52-era blanket PASS; N-99 bumped (rev 3): count equality alone no longer reads PASS when a declared integrity_check_sql does not hold
+    "Build.count_integrity": dict(gate="Build", check="count_integrity", applicability="always; presence of count_sql and integrity_check_sql is what is graded: a view target whose registered count_sql reads no table (a constant) is said so in the cell, the verdict unchanged", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=2),
+    "Build.completion":      dict(gate="Build", check="completion",       applicability="a count_sql or view target exists; PASS also requires, WHEN the asset declares an integrity_check_sql, that it holds: one read-only SELECT/WITH statement (conservative lexer and closed allow-list, run only as a subquery in a READ ONLY session, no bind parameters, at most 120000 bytes, the engine's own convention in asset_runner._probe_asset) whose first column of its first row is true (a boolean or a finite non-zero number); counts equal but the integrity SQL false, refused, oversize, errored or timed out reads PARTIAL naming which; an integrity SQL the census role is not permitted to read (SQLSTATE 42501 permission denied) reads NO_DETECTOR (not measurable under the census role: never PASS, never a verdict on the data), and the text names the denied object and the declared way to measure it (the engine runs the same SQL at build time under the runner role; the census role is not widened); the text carries sha256(sql)[:12] and the elapsed seconds; no declared integrity_check_sql reads exactly as before", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=4),  # SS role reading bumped (rev 4); R99 bumped: a writer-backed empty table under target_floor=0 now reads PARTIAL, not the R52-era blanket PASS; N-99 bumped (rev 3): count equality alone no longer reads PASS when a declared integrity_check_sql does not hold
     "Build.exercised":       dict(gate="Build", check="exercised",        applicability="always",                detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=1),
     "Build.history":         dict(gate="Build", check="history",          applicability="has been exercised at least once; judges the attempts SINCE the later of the asset's last writer-digest change on main (newest commit on origin/main, else main, touching the engine's writer source set, build_window.py) and its last registry-identity change (newest commit on that ref touching a migration that names asset_registry and the asset id, or changing the asset's own row in the registry seed); older errors and aborts are REPORTED as pre-window history, never judged; no attempt since (a skip_no_delta, cascade-blocked or never-started row is not an attempt of the current code; a forced rebuild is) reads NO_DETECTOR, never PASS; an undeterminable window (shallow clone, no main ref, working tree differing from main in the writer files, a path not tracked, no migration or seed naming the asset, git failing, the timed attempt log unreadable or disagreeing with the history tally) reads NO_DETECTOR naming why", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=2),  # SS Build.history window
     "Build.dep_liveness":     dict(gate="Build", check="dep_liveness",     applicability="declares at least one depends_on; the cell names each not-lit dependency with its state, scope and last build date, and for a stale one the upstream(s) built after it (or that none is on record)", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=2),  # cause text only: the verdict logic is unchanged
@@ -4251,6 +4251,16 @@ def _integrity_holds(rows: list[list[str]]) -> tuple[bool, str]:
 _PERMISSION_DENIED = re.compile(r"^ERROR:\s+42501:\s+permission denied\b", re.I)
 
 
+_DENIED_OBJECT = re.compile(r"permission denied for (materialized view|function|table|view|schema|sequence|relation)\s+(\"?[\w.$]+\"?)", re.I)
+
+
+def denied_object(detail: str) -> str | None:
+    """The object a SQLSTATE 42501 message names (`permission denied for function chart_identity` -> `function chart_identity`); None when the
+    message does not name one. Pure; used only to say WHICH object the census role may not read."""
+    m = _DENIED_OBJECT.search(detail or "")
+    return f"{m.group(1).lower()} {m.group(2)}" if m else None
+
+
 def _integrity_outcome(sql: str) -> dict:
     """The ONE place a registry-stored integrity_check_sql is run and graded. Returns dict(state, detail, sha, secs) with state one of
     `holds` | `fails` | `refused` (never run) | `unrunnable` (oversize / error / timeout / unreadable) | `not_measurable` (the census role lacks
@@ -4289,9 +4299,13 @@ def _completion_integrity(rec: dict, r: dict) -> dict:
     if o["state"] == "holds":
         return dict(rec, measured=rec["measured"] + f"; the declared integrity_check_sql holds ({o['detail']}) {audit}")
     if o["state"] == "not_measurable":
-        return dict(v=NO_DET, measured=f"NO_DETECTOR — integrity not measurable under the census role: {o['detail']}; the asset's integrity SQL needs "
-                                       "objects the census role may not read (Track I: rewrite the check to need neither charts nor the identity "
-                                       f"function; do NOT widen the census role) {audit}; counts: {rec['measured']}")
+        obj = denied_object(o["detail"])
+        return dict(v=NO_DET, measured=f"NO_DETECTOR — integrity not measurable under the census role: {o['detail']}; "
+                                       f"denied object: {obj or 'not named by the server message'}; the asset's integrity SQL needs "
+                                       "objects the census role may not read. Declared way to measure it: the engine runs this same integrity_check_sql at "
+                                       "build time under the runner role (asset_runner._probe_asset), which is where it is measured; to make it "
+                                       "census-measurable, Track I: rewrite the check to need neither charts nor the identity function; do NOT widen the "
+                                       f"census role (it is NOT widened, and this is not a verdict on the data) {audit}; counts: {rec['measured']}")
     what = {"fails": "does NOT hold", "refused": "was REFUSED (never run)", "unrunnable": "could NOT be run"}[o["state"]]
     return dict(v=PARTIAL, measured=f"{rec['measured']}; but the declared integrity_check_sql {what}: {o['detail']} {audit} — count equality alone "
                                     "is not a completion when the asset declares an integrity check (N-99)")
@@ -9197,6 +9211,9 @@ def measure(layer_key: str, assets=None) -> dict:
 
         ok_ci = bool(r["count_sql"]) and r["has_integrity"]
         ci_text = f"count_sql={'yes' if r['count_sql'] else 'no'}, integrity_check_sql={'yes' if r['has_integrity'] else 'no'}"
+        if aid in view_counts:       # R46: a view target whose registry count_sql reads no table (a constant): the count comes from the view
+            ci_text += (f"; count_sql reads no table (a constant), so the live count is taken from the view {r['target_table']} (R46) and the "
+                        "registered count_sql itself cannot fail (finding: presence is what is graded here; verdict unchanged)")
         if ok_ci:
             m["Build.count_integrity"] = dict(v=PASS, measured=ci_text)
         elif not r["has_writer"] and not r["count_sql"]:

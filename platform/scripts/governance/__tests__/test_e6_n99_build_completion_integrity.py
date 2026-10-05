@@ -444,7 +444,7 @@ def test_every_resolvable_literal_parses_when_wrapped_as_the_server_will_see_it(
 
 def test_registry_entry_states_the_semantics_and_bumps_the_revision():
     e = ac.CRITERION_REGISTRY["Build.completion"]
-    assert e["revision"] == 3 and "integrity_check_sql" in e["applicability"] and "PARTIAL" in e["applicability"]
+    assert e["revision"] == 4 and "integrity_check_sql" in e["applicability"] and "PARTIAL" in e["applicability"]
     assert "READ ONLY" in e["applicability"] and "first column of its first row" in e["applicability"]
     assert ac.REGISTRY_REVISION >= 25
 
