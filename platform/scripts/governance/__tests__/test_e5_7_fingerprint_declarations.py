@@ -163,6 +163,32 @@ def test_ss_decision_5_bg_rules_is_declared_on_the_probe_evidence():
     assert "python_regex_v2|3002" in probe and "double_transit|Jupiter|5" in probe and "double_transit|Saturn|2" in probe
 
 
+def test_the_drill_coverage_block_says_what_the_verdict_covers():
+    cov = fd.load_declarations().drill_coverage()
+    assert cov["scope"] == "declared_only" and len(cov["units"]) == 32 and len(cov["declared"]) == 34
+    assert sorted(cov["undeclared"]) == ["bg_compendium_index", "bg_ephemeris_engine", "bg_gochara_citation_resolution", "bg_panchanga",
+                                         "bg_sarvatobhadra_grid", "bg_transit_rules"] and sorted(cov["partial"]) == ["bg_remedies", "bg_texts"]
+    assert cov["non_deterministic"] == {"bg_cohort": ["platform_bound"], "bg_muhurta_lattice": ["rolling_horizon"],
+                                        "bg_sky_calendar": ["rolling_horizon", "platform_bound"]}
+    assert cov["declarations_sha256"] == fd.load_declarations().sha256 and sr.check_coverage(cov, cov["units"]) == cov
+    assert cov["seeded"] == ["grp_classical_text_chunks"] and fd.load_declarations().coverage_report()["seeded"] == ["grp_classical_text_chunks"]
+    assert {g: v["seeded"] for g, v in DOC["groups"].items()} == {"brahma_ontology": False, "brahma_class_priors": False, "classical_text_chunks": True}
+
+
+def test_the_not_run_list_is_closed_decided_by_n_121_and_limited_to_declared_plain_units():
+    assert fd.NOT_RUN_ALLOWED == {"bg_sky_calendar": {"reason": "NEEDS_LINUX_AMD64_RUNTIME", "decision": "N-121"},
+                                  "bg_cohort": {"reason": "NEEDS_LINUX_AMD64_RUNTIME", "decision": "N-121"},
+                                  "bg_muhurta_lattice": {"reason": "NEEDS_AS_OF_PIN", "decision": "N-121"}}
+    assert "bg_gochara_arcs" not in fd.NOT_RUN_ALLOWED                    # #3015 is on main: the unit must run (the permission was retired in the split review)
+    d = fd.load_declarations()
+    assert d.not_run_allowed() == {"bg_cohort": "NEEDS_LINUX_AMD64_RUNTIME", "bg_muhurta_lattice": "NEEDS_AS_OF_PIN", "bg_sky_calendar": "NEEDS_LINUX_AMD64_RUNTIME"}
+    assert set(d.not_run_allowed()) <= set(d.declared_assets()) and not set(d.not_run_allowed()) & set(d.drill_coverage()["groups"])
+    assert d.drill_coverage()["not_run_allowed"] == d.not_run_allowed() and d.coverage_report()["not_run_allowed"] == d.not_run_allowed()
+    assert d.drill_coverage()["scope"] == "declared_only" and sr.check_coverage(d.drill_coverage(), d.expected_assets())["not_run_allowed"] == d.not_run_allowed()
+    # no decision text other than N-121 anywhere in the declarations or the module's constant
+    assert "SS round" not in json.dumps(DOC) and "N-121" in json.dumps(DOC)
+
+
 @pytest.mark.parametrize("old,new", [
     ('    "bg_cohort": {"reason": "NEEDS_LINUX_AMD64_RUNTIME", "decision": "N-121"},', '    "bg_cohort": {"reason": "NEEDS_LINUX_AMD64_RUNTIME", "decision": "N-121"},\n    "bg_ephemeris": {"reason": "NEEDS_X", "decision": "N-121"},'),
     ('        return {a: v["reason"] for a, v in sorted(NOT_RUN_ALLOWED.items()) if a in units}', '        return {a: v["reason"] for a, v in sorted(NOT_RUN_ALLOWED.items())}'),
@@ -718,11 +744,14 @@ REFUSALS = [
 ]
 
 
-def refusal_results(validate_fn) -> dict[str, bool]:
-    """For every refusal: True when `validate_fn` (the validator under test) reports the expected problem code on the mutated document."""
+def refusal_results(validate_fn, first_only: bool = False) -> dict[str, bool]:
+    """For every refusal: True when `validate_fn` (the validator under test) reports the expected problem code on the mutated document.
+    `first_only` stops at the first refusal that fails (enough to kill a validator mutant). The document and the schema extract are copied
+    only when the refusal edits them: the validator does not modify its inputs."""
     out = {}
     for rid, code, mdoc, msch in REFUSALS:
-        doc, sch = copy.deepcopy(DOC), copy.deepcopy(EXT)
+        doc = copy.deepcopy(DOC) if mdoc else DOC
+        sch = copy.deepcopy(EXT) if msch else EXT
         if mdoc:
             mdoc(doc)
         if msch:
@@ -731,6 +760,8 @@ def refusal_results(validate_fn) -> dict[str, bool]:
             out[rid] = code in {c for c, _p, _m in validate_fn(doc, registry=REG, schema=sch, repo_root=REPO)}
         except Exception:                                         # noqa: BLE001 - the validator never raises: a crash is a failed refusal
             out[rid] = False
+        if first_only and not out[rid]:
+            return out
     return out
 
 
@@ -1053,3 +1084,126 @@ def load_module(src: str, name: str):
     return mod
 
 
+MUTANTS = [
+    ('probs.append(("exclude_no_reason"', 'probs.append(("exclude_no_reason_x"'),
+    ('                if hz not in cols:', '                if False:'),
+    ('                elif cols[hz]["type"] not in HORIZON_TYPES:', '                elif False:'),
+    ('                elif cols[hz]["type"] == TIMESTAMP_NAIVE and hz not in naive:', '                elif False:'),
+    ('        if len(carriers) != 1:', '        if False:'),
+    ('    elif carriers:\n        probs.append(("horizon_on_non_rolling"', '    elif False:\n        probs.append(("horizon_on_non_rolling"'),
+    ('    if "rolling_horizon" in repro:\n        if len(carriers)', '    if False:\n        if len(carriers)'),
+    ('        if col in key:\n            probs.append(("exclude_key"', '        if False:\n            probs.append(("exclude_key"'),
+    ('        if code not in EXCLUDE_REASON_CODES:', '        if False:'),
+    ('    if len(set(key)) != len(key):', '    if False:'),
+    ('and not cols[c]["generated"]:', 'and False:'),
+    ('        elif sorted(named[ke]) != sorted(key):', '        elif False:'),
+    ('        if ke not in named:', '        if False:'),
+    ('        for a in sorted(set(assets) - set(registry)):', '        for a in []:'),
+    ('        for a in sorted(set(registry) - set(assets)):', '        for a in []:'),
+    ('if code == "surrogate_identity" and not meta["identity"]:', 'if False:'),
+    ('if code == "wall_clock_timestamp" and not meta["type"].startswith("timestamp"):', 'if False:'),
+    ('if code == "build_identity" and col != "build_id":', 'if False:'),
+    ('        if meta["type"] == TIMESTAMP_NAIVE and c not in ex_cols and c not in naive:', '        if False:'),
+    ('        if c in cols and cols[c]["type"] != TIMESTAMP_NAIVE:', '        if False:'),
+    ('        if (d["coverage"] == "partial") != bool(notcov):', '        if False:'),
+    ('    if doc["fingerprint_definition"] != FINGERPRINT_DEFINITION:', '    if False:'),
+    ('        if d["fingerprint_definition"] != FINGERPRINT_DEFINITION:', '        if False:'),
+    ('    if int(line) > len(lines):', '    if False:'),
+    ('    if tables and not any(_mentions(win, t, lines) for t in tables):', '    if False:'),
+    ('                if n in claimed and claimed[n] != f"asset {asset}":', '                if False:'),
+    ('        if others:', '        if False:'),
+    ('            if d["reason_code"] not in UNDECLARED_CODES:', '            if False:'),
+    ('        if d["coverage"] not in COVERAGE:', '        if False:'),
+    ('    if doc["schema"] != SCHEMA_ID:', '    if False:'),
+    ('    if t["scope"] != SCOPE:', '    if False:'),
+    ('        if d["scope"] != SCOPE:', '        if False:'),
+    ('        if status != "declared":', '        if False:'),
+    ('    if tab is None:', '    if False:'),
+    ('        if not tables and not gids:', '        if False:'),
+    ('elif len(reason.strip()) < MIN_REASON_CHARS:', 'elif False:'),
+    ('            if registry is not None and asset in registry and registry[asset].get("target_table") not in (None, *(tw if isinstance(tw, list) else [])):', '            if False:'),
+    ('        if registry is not None and asset in registry and registry[asset].get("target_table") not in (None, *accounted):', '        if False:'),
+    ('        for k in ("registry_snapshot_sha256", "schema_dump_sha256"):', '        for k in ():'),
+    ('        if not (isinstance(src["code_commit"], str) and _HEX40.fullmatch(src["code_commit"])):', '        if False:'),
+    ('    elif write and not _WRITE_VERB.search(win):', '    elif False:'),
+    ('    if ctx.tracked is not None and rel not in ctx.tracked:', '    if False:'),
+    ('    if rel.startswith("/") or ".." in parts or "." in parts or "" in parts:', '    if rel.startswith("/") or ".." in parts:'),
+    ('    if rel.startswith("/") or ".." in parts or "." in parts or "" in parts:', '    if rel.startswith("/") or "." in parts or "" in parts:'),
+    ('            elif any(col in c for c in lists):', '            elif False:'),
+    ('            if not lists:', '            if False:'),
+    ('        if ctx is not None and code == "wall_clock_timestamp" and col not in WALL_CLOCK_NAMES and not any(_CLOCK.search(w) for w in wins):', '        if False:'),
+    ('    if non_key and non_key <= (set(ex_cols) | set(emb_cols)):', '    if False:'),
+    ('            if n not in accounted:', '            if False:'),
+    ('                        if n in universe and n not in accounted and n not in known and n not in seen:', '                        if False:'),
+    ('        if not (isinstance(mem, Mapping) and len(mem) >= 2):', '        if False:'),
+    ('        if not isinstance(g["seeded"], bool):', '        if False:'),
+    ('        if po["reason_code"] != PARTIAL_OWNERSHIP_CODE:', '        if False:'),
+    ('            elif asset not in group_members.get(gid, []):', '            elif False:'),
+    ('            elif gid not in (a.get("groups") or []):', '            elif False:'),
+    ('        others = side.get(n, set()) - {owner}', '        others = set()'),
+    ('        if not (isinstance(gid, str) and _IDENT.fullmatch(gid)) or gid in assets or (GROUP_PREFIX + gid) in assets:', '        if False:'),
+    ('                if e["column"] in key or e["column"] in ex_cols:', '                if False:'),
+    ('                    if c in ex_cols or c in key:', '                    if False:'),
+    ('                    if s in ex_cols:', '                    if False:'),
+    ('        return json.loads(text, object_pairs_hook=_no_dup_pairs, parse_constant=_refuse_constant)', '        return json.loads(text, object_pairs_hook=_no_dup_pairs)'),
+    ('    if len(table_shas) == 1:\n        return next(iter(table_shas.values()))', '    if len(table_shas) == 0:\n        return next(iter(table_shas.values()))'),
+    ('"tables": dict(sorted(table_shas.items()))', '"tables": {k: "0" * 64 for k in table_shas}'),
+    ('            raise DeclarationError([("duplicate_json_key"', '            pass\n            DeclarationError([("duplicate_json_key"'),
+]
+
+
+def _judge_validator_mutant(args):
+    """One validator mutant -> (index, verdict). Module-level so a process pool can run it."""
+    i, old, new = args
+    if SRC_FD.count(old) < 1:
+        return i, "TARGET_ABSENT"
+    mutated = SRC_FD.replace(old, new, 1)
+    if mutated == SRC_FD:
+        return i, "NO_CHANGE"
+    try:
+        m = load_module(mutated, "fd_mut_" + str(abs(hash(old + new)) % 10**8))
+    except Exception:                                             # noqa: BLE001 - a mutant that does not even load is trivially dead
+        return i, "dead"
+    base = {rid: ok for rid, ok in refusal_results(m.validate, first_only=True).items()}
+    failed = [rid for rid, ok in base.items() if not ok]
+    ok_clean = m.validate(copy.deepcopy(DOC), registry=REG, schema=EXT, repo_root=REPO) == []
+    comp = False
+    try:
+        comp = (m.composite_fingerprint({"t1": "a" * 64}) == "a" * 64
+                and m.composite_fingerprint({"t1": "a" * 64, "t2": "b" * 64}) == fd.composite_fingerprint({"t1": "a" * 64, "t2": "b" * 64}))
+    except Exception:                                             # noqa: BLE001
+        comp = False
+    try:
+        m.strict_loads('{"a": 1, "a": 2}')
+        dup_refused = False
+    except Exception:                                             # noqa: BLE001 - DeclarationError from the mutant's own class
+        dup_refused = True
+    try:
+        m.strict_loads('{"a": NaN}')
+        nan_refused = False
+    except Exception:                                             # noqa: BLE001
+        nan_refused = True
+    dead = bool(failed or not ok_clean or not comp or not dup_refused or not nan_refused)
+    return i, ("dead" if dead else "SURVIVED")
+
+
+def _validator_mutant_verdicts(items):
+    """Every mutant judged in parallel where `fork` exists (each judgement is independent and CPU-bound; serially these ~60 mutants took about
+    five minutes on a CI runner and, with the other E5.7 suites, pushed one governance shard past its 10-minute ceiling), serially elsewhere."""
+    import concurrent.futures
+    import multiprocessing
+    import os
+    jobs = [(i, o, n) for i, (o, n) in enumerate(items)]
+    workers = max(1, min(8, os.cpu_count() or 1))
+    if workers > 1 and "fork" in multiprocessing.get_all_start_methods():
+        with concurrent.futures.ProcessPoolExecutor(max_workers=workers, mp_context=multiprocessing.get_context("fork")) as pool:
+            return sorted(pool.map(_judge_validator_mutant, jobs, chunksize=2))
+    return sorted(_judge_validator_mutant(j) for j in jobs)
+
+
+def test_validator_source_mutants_are_caught():
+    """Each mutant removes one refusal from the validator; the refusal matrix (and the composition checks) must notice."""
+    verdicts = _validator_mutant_verdicts(MUTANTS)
+    assert len(verdicts) == len(MUTANTS) and len(MUTANTS) >= 50
+    bad = [(i, v, MUTANTS[i][0][:90]) for i, v in verdicts if v != "dead"]
+    assert not bad, f"{len(bad)} mutant(s) not caught (SURVIVING or target moved): {bad[:5]}"
