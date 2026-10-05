@@ -3,8 +3,7 @@
  *
  * Access control + composition contract: shared readiness (never
  * pyramid_layers), D1 from this chart's own L1 rows (never the canonical
- * snapshot), permission-aware capability deck, viewer-scoped non-archived
- * recent conversations.
+ * snapshot), permission-aware capability deck, reviewed service summaries without recent conversations.
  */
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, render } from '@testing-library/react'
@@ -177,45 +176,45 @@ describe('clients/[id] workspace — composition', () => {
     setAccess('all')
     const { doc } = await renderPage()
     expect(mockGetForensicSnapshot).not.toHaveBeenCalled()
-    expect(mockWorkspaceSummary).toHaveBeenCalledWith(TEST_CHART_ID)
-    expect(byTestId(doc, 'd1-chart')).not.toBeNull()
+    expect(mockWorkspaceSummary).toHaveBeenCalledWith(TEST_CHART_ID, 'lahiri_chitrapaksha')
+    expect(byTestId(doc, 'varga-chart')).not.toBeNull()
   })
 
   it('places D1 before identity in source order and shows name, birth line and timezone', async () => {
     setAccess('all')
     const { doc, html } = await renderPage()
-    expect(html.indexOf('data-testid="d1-chart"')).toBeLessThan(html.indexOf('id="jw-identity-name"'))
-    expect(doc.querySelector('h1')?.textContent).toBe('Test Native')
+    expect(html.indexOf('data-testid="varga-chart"')).toBeLessThan(html.indexOf('Test Native'))
+    expect(doc.querySelector('h1')?.textContent).toBe('Jātaka DarśanaChart Overview')
+    expect(doc.querySelector('.j1-chart-info h2')?.textContent).toBe('Test Native')
     expect(doc.body.textContent).toMatch(/06:30 Asia\/Kolkata/)
     expect(doc.body.textContent).toMatch(/Puri/)
   })
 
-  it('lists only the viewer’s own non-archived conversations', async () => {
+  it('omits recent conversations and does not fetch them', async () => {
     setAccess('all')
-    setQueries([{ id: 'conv-1', title: 'First reading', created_at: '2026-09-01T00:00:00Z' }])
     const { doc } = await renderPage()
-    const [convSql, convParams] = mockQuery.mock.calls.find(([q]) => typeof q === 'string' && q.includes('FROM conversations'))!
-    expect(convSql).toMatch(/archived_at IS NULL/)
-    expect(convSql).toMatch(/user_id\s*=\s*\$2/)
-    expect(convParams).toEqual([TEST_CHART_ID, 'viewer-uid'])
-    expect(doc.querySelector(`a[href="/clients/${TEST_CHART_ID}/consult/conv-1"]`)?.textContent).toBe('First reading')
+    expect(mockQuery.mock.calls.some(([sql]) => typeof sql === 'string' && sql.includes('FROM conversations'))).toBe(false)
+    expect(doc.body.textContent).not.toMatch(/recent conversations/i)
+    expect(doc.querySelector(`a[href="/clients/${TEST_CHART_ID}/samiksha"]`)).not.toBeNull()
+    expect(doc.querySelector(`a[href="/clients/${TEST_CHART_ID}/timeline"]`)).not.toBeNull()
+    expect(doc.querySelector(`a[href="/clients/${TEST_CHART_ID}/reports"]`)).not.toBeNull()
   })
 
   it.each([
-    ['building', 'dim', true, false],
-    ['needs-rebuild', 'dim', true, false],
-    ['failed', 'lit', true, false],
-    ['partially-built', 'lit', true, true],
-    ['not-built', 'dim', true, false],
-    ['ready', 'lit', true, true],
-  ] as const)('readiness %s (Gaṇita %s) → Paripraśna available=%s, Pañcāṅga available=%s', async (state, ganita, pariprashna, panchang) => {
+    ['building', 'dim'],
+    ['needs-rebuild', 'dim'],
+    ['failed', 'lit'],
+    ['partially-built', 'lit'],
+    ['not-built', 'dim'],
+    ['ready', 'lit'],
+  ] as const)('readiness %s (Gaṇita %s) preserves service links', async (state, ganita) => {
     setAccess('all')
     setReadiness(state, ganita)
     const { doc } = await renderPage()
-    expect(byTestId(doc, 'consult-room-card')?.getAttribute('data-available')).toBe(String(pariprashna))
-    expect(byTestId(doc, 'panchang-room-card')?.getAttribute('data-available')).toBe(String(panchang))
+    expect(byTestId(doc, 'consult-room-card')?.getAttribute('href')).toBe(`/clients/${TEST_CHART_ID}/pariprashna`)
+    expect(byTestId(doc, 'panchang-room-card')?.getAttribute('href')).toBe(`/clients/${TEST_CHART_ID}/panchang`)
     // Nirmāṇa stays reachable so the owner can inspect or retry any build.
-    expect(byTestId(doc, 'build-room-card')?.getAttribute('data-available')).toBe('true')
+    expect(byTestId(doc, 'build-room-card')?.getAttribute('href')).toBe(`/clients/${TEST_CHART_ID}/nirmana`)
   })
 
   it('keeps Paripraśna linked during recomputation while the readiness band remains visible', async () => {
