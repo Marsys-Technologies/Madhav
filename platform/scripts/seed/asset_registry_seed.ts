@@ -1774,7 +1774,9 @@ WHERE cf.chart_id = $1 AND fco.owning_asset_id = 'ga_structural'`,
     english_description: 'Per-chart cross-domain linkage aggregate: total linkage, dominant/weakest 3 domains, contradiction density, bridge/asymmetric link counts, strongest linkage pair, domain connectivity map. References bodha_cdlm_cells only — never invents values.',
     storage_type: 'postgres_table',
     target_table: 'bodha_cdlm_chart_summary',
-    count_sql: 'SELECT count(*) FROM bodha_cdlm_chart_summary WHERE chart_id = $1',
+    // migration 1297: the writer writes THREE tables (summary + domain rollups + pattern clusters = 70 rows on the
+    // canonical chart); $1 appears once so asset_runner._data_rows_present's single-parameter replace works
+    count_sql: 'WITH p AS (SELECT $1::uuid AS cid) SELECT (SELECT count(*) FROM bodha_cdlm_chart_summary s, p WHERE s.chart_id = p.cid) + (SELECT count(*) FROM bodha_cdlm_domain_rollups r, p WHERE r.chart_id = p.cid) + (SELECT count(*) FROM bodha_cdlm_pattern_clusters c, p WHERE c.chart_id = p.cid) AS count',
     size_sql: "SELECT pg_total_relation_size('bodha_cdlm_chart_summary')",
     target_floor: 5,
     expected_volume_formula: 'ACTUAL(bo_sangati)',
