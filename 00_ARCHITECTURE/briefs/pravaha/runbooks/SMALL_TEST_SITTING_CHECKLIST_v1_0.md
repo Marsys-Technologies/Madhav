@@ -1,12 +1,13 @@
 ---
 artifact: SMALL_TEST_SITTING_CHECKLIST
-version: "1.1"
+version: "1.2"
 status: "DRAFT — authorises NOTHING. Written for the steward (steward SMALLTEST-CHECKLIST, 2026-10-05). Commands are as of the heads named in section 'Heads this was written against'; re-read the scripts at the FINAL merged heads before the sitting (Stream A's fixes may rename flags)."
 date: 2026-10-05
 author: Stream B (Śāstra), session madhav-8b
 owner_ruling: "ST-OWNER-SMALL-TEST-1 (Ruling 3, 2026-10-03): a very small test rebuild of Gochara 5 first; the one full build waits for Suvarna's elevation."
 how_to_use: "Do the rows in order. Any FALSE readback = STOP, report, no unreviewed repair. Nothing here is a go: every row that touches production for a Gochara build, dry run or measurement on chart 482012f1 needs the steward's explicit word first (the standing hold is in force until the steward lifts it). Read-only readbacks on production are rows 3 and 9/11 readbacks; they are not builds."
 changelog:
+  - "1.2 (2026-10-05, Stream B, found reviewing PR 3142 / ephemeris fix): the sitting ALSO writes GLOBAL rows the teardown keeps (rule registry and seals, sky convention and bridge, physical objects, sky events for the 8 bodies 1998-2085; all 0 in production today, read R2b); owner told in row 1.4; the 7200 s asset timeout must cover that first-ever substrate build; R9/9.4/11.1 expect those rows to remain."
   - "1.1 (2026-10-05, steward CHECKLIST-ADD): HARD RULE in row 7 — the runner process exits 0 even when the run ends FAILED, so the Cloud Run execution status proves nothing and success or failure is read ONLY from build_runs, build_run_assets, asset_throughput and the manifest (query R7c); a P1 anchor failure on production stops the sitting (row 7 table); the unset-ephemeris failure is named and takes under a second."
   - "1.0 (2026-10-05): first version, from everything found on 2026-10-04/05 (G8, teardown 3098, dispatch 3097, ephemeris gap, production catalog reads)."
 ---
@@ -63,7 +64,7 @@ Columns: **#**, **Step**, **Who**, **Cred** (needs a write-capable credential), 
 | 1.1 | **Teardown role decision** | **owner** | none | Present the table in section "Teardown role: the question for the owner" below | owner names ONE role and says how the teardown's DATABASE_URL is provided; steward records it | no decision: do not dispatch run 1 (a small test that cannot be torn down is stuck for 90 days, then unrecoverable by script) |
 | 1.2 | **Notice to Suvarna before the FIRST governed `5.0` manifest** | steward tells; Stream B runs W1/W2 | none (read-only) | Re-run W1 and W2 (ROLES_AND_SEAL_PROVISIONING_RUNBOOK §4.1) on production, then tell Suvarna in words: from that manifest onward every publication UPDATE/DELETE statement of ANY chart's legacy Gochara build (`ledger.py`, the `ka_gochara_v4_41_candidate` writer, the cutover scripts) takes the CANONICAL chart's lock; it waits while a governed transaction of the canonical chart holds it and is refused at REPEATABLE READ; a governed manifest of another chart would block all of them (POST_SETTLED1_SEQUENCE row 8a, observed in C55) | W1 returns zero rows; W2(c) shows no role or database isolation setting; Suvarna has acknowledged | W1 returns a row, W2(c) shows an isolation setting, or Suvarna has not been told: stop |
 | 1.3 | Window courtesy | steward | none | Confirm Suvarna's S-L1/W1 windows are not open and the standing hold on builds for chart 482012f1 is lifted by the steward for this test only | steward's explicit word recorded | hold not lifted: nothing below runs |
-| 1.4 | Owner informed that the sitting starts | steward | none | one line to the owner: what will be written, to which chart, and the 90-day teardown clock | recorded | — |
+| 1.4 | Owner informed that the sitting starts | steward | none | one line to the owner: what will be written, to which chart, and the 90-day teardown clock; **and that the test also writes GLOBAL rows that stay after the teardown** (rule registry and seals, sky convention and bridge, physical objects, sky events for 8 bodies 1998-2085: all empty today, read R2b); they are idempotent and the full build reuses them, but they are not removable by the teardown | recorded | the owner does not want global rows written by a test: stop |
 
 ### Row 2 — migration 1304 applied and read back
 
@@ -76,7 +77,7 @@ Columns: **#**, **Step**, **Who**, **Cred** (needs a write-capable credential), 
 
 | # | Step | Who | Cred | Action / readback | Expected | STOP if / told |
 |---|---|---|---|---|---|---|
-| 3.1 | Clean state | steward | none | **R2** | every count 0 (receipts, freshness, throughput, substep progress, runs naming the asset, every `5.0` output table, manifest, seal, authority naming 5.0, legacy windows/contacts rows of 5.0). Production on 2026-10-05: all 0 | any non-zero: stop; a prior candidate means the dispatch refuses (it refuses ANY prior 5.0 candidate/output/snapshot/inventory/manifest, test or not: always tear down first) |
+| 3.1 | Clean state | steward | none | **R2** and **R2b** (record both) | every count 0 (receipts, freshness, throughput, substep progress, runs naming the asset, every `5.0` output table, manifest, seal, authority naming 5.0, legacy windows/contacts rows of 5.0). Production on 2026-10-05: all 0 | any non-zero: stop; a prior candidate means the dispatch refuses (it refuses ANY prior 5.0 candidate/output/snapshot/inventory/manifest, test or not: always tear down first) |
 | 3.2 | Dependencies lit and fresh | steward | none | **R3** | `ga_positions` and `ga_dashas`: state `lit`, freshness `fresh`, for the canonical chart (2026-10-05: both lit/fresh). The build only runs when its declared deps are lit | not lit or not fresh: stop; the writer would be blocked ('BLOCKED: upstream dependency did not complete') |
 | 3.3 | Incoming foreign keys | steward | none | **R4** | the nine single-column keys listed in R4 (no composite, none deferrable). The teardown refuses by name any incoming FK shape it does not support and any table that references an owned run or the manifest | a new or composite key appears: report to Stream A before the teardown is relied on |
 | 3.4 | Image corpus probe (PR 3102) | steward (needs docker + gcloud read access on the steward's machine) | none on the database | see "Corpus probe" below | `RESULT: all three .se1 digests match the conftest pins` and `SE_EPHE_PATH=/app/ephe` | mismatch or missing file: stop, report; re-run after any change to the image |
@@ -138,7 +139,7 @@ Phases and what a failure in each means (writer plan order: `rules` → `convent
 | exit before any substep (the process may still report exit 0: read R7c) | frozen-manifest validation or the writer-gap check or the sidecar code digest | image/checkout skew (row 0.3), tampered manifest, or registry row missing `has_writer`. Run is terminalised `failed`. No output written |
 | exit 3 | chart locked / too many runs | another run holds the chart lock; the run stays planned; if it is not started within 10 minutes the watchdog fails it |
 | `rules`, `convention` | rule registry / convention row | global-key work; no chart output yet |
-| `body:*` | sky substrate (boundary events and stations) | the Swiss library uses `SE_EPHE_PATH` from the image environment when no path is configured; a Moshier-fallback refusal (retflag) means the corpus is not being read |
+| `body:*` | sky substrate (boundary events and stations); **built from EMPTY in production: the global tables are all 0 today, so run 1 solves 87 years for 8 bodies inside the 7200 s budget (unknown cost; the largest single completion risk).** If the asset times out the substeps already committed stay (idempotent insert-if-absent), so after the teardown a re-dispatch resumes the body phase cheaply | the Swiss library uses `SE_EPHE_PATH` from the image environment when no path is configured; a Moshier-fallback refusal (retflag) means the corpus is not being read |
 | `manifest` | `InputDrift` | **ephemeris: no ephe_path configured** (the known gap, until the fix is deployed); a registry/rule/L0/ephemeris identity that the writer derives two ways and that disagree; a marker the writer refuses. **Nothing past this has run** |
 | `snapshot` | replaces the WHOLE chart x generation chain (candidate-only) | a failure here leaves the manifest stamped and possibly the previous chain; teardown refuses an "interrupted replacement" (stamped manifest, snapshot of another vector) by name: re-dispatch the slice, then tear down |
 | `inventory`/`coverage`/records | per class | a partial chain: manifest + snapshot + some inventories. The teardown can remove it (every inventory header must carry the snapshot's input digest, the manifest horizon and a stamped class) |
@@ -170,7 +171,7 @@ Record under `/Users/Dev/pravaha/run/smalltest-<date>/` (raw outputs, one file p
 | 9.1 | Read what exists and the verdict | steward | none | **R2**, **R7a**, **R7c** (record the verdict BEFORE tearing down: the teardown deletes the evidence) | the run is terminal (completed/failed/stopped), no planned/running/paused run on the chart | a run still active: stop it first (the teardown refuses active runs) |
 | 9.2 | Teardown dry run | steward | teardown role | `DATABASE_URL=… python3 scripts/teardown_v5_small_test_job.py` (direct connection) | lists would-delete counts (receipts, freshness, run assets, runs, throughput, the output chain, inventory, snapshot, manifest), **each owned run's creation time and the days of the 90-day retention remaining**, how the stamp was proved (ORIGINAL marker of run X, or RECONSTRUCTION when no run row survives); end state N-137 validated; ROLLED BACK | any refusal: it is named. **A receipt with NO run link is refused for good**: it means the run was pruned (the cockpit watchdog deletes terminal runs after 90 days, `asset_provenance_receipts.build_id` is ON DELETE SET NULL). That is why this row runs well inside the window; the recovery in the teardown runbook section 3 is NOT FOR USE and not needed for a timely teardown |
 | 9.3 | Teardown execute | steward | teardown role | the same command plus `--execute --i-am-steward` | "COMMITTED"; exit 0. If it says COMMIT OUTCOME UNKNOWN: do not run again; run the dry run and read the counts | an error: the script states rollback confirmed / not confirmed / commit unknown; act on that sentence |
-| 9.4 | End-state readback | steward | none | **R1** (registry row inert, 1304 shape), **R2** (everything 0), **R3** (deps still lit/fresh), **R9** (leftovers the teardown does not delete) | row `is_active = false`; all zero; deps unchanged | anything left: report before run 2 |
+| 9.4 | End-state readback | steward | none | **R1** (registry row inert, 1304 shape), **R2** (everything 0), **R2b** (the global rows REMAIN: expected, recorded), **R3** (deps still lit/fresh), **R9** (leftovers the teardown does not delete) | row `is_active = false`; all zero; deps unchanged | anything left: report before run 2 |
 | 9.5 | Monitor reading | steward | none | read the Nirmana monitor/cockpit for the asset (open question 4: Stream A names the screen); rule N-137 excludes an unsealed test candidate only while: catalog_status is not RETIRED, nothing depends on the asset, and no receipt or run-asset row of the asset on ANY chart comes from a non-test run (a NULL run link counts as non-test) | the asset reads as an excluded unsealed test candidate, then, after the teardown, as the inert registered asset it was | the monitor reports the asset as a defect: report, do not act |
 
 ### Row 10 — run 2 (one class, marriage, full horizon): rows 5 to 9 again
@@ -186,7 +187,7 @@ Record under `/Users/Dev/pravaha/run/smalltest-<date>/` (raw outputs, one file p
 
 | # | Step | Who | Cred | Action | Expected | STOP if / told |
 |---|---|---|---|---|---|---|
-| 11.1 | Final state | steward | none | **R1**, **R2**, **R3**, **R4**, **R9** once more | registry row inert in the 1304 shape; all zero; dependencies lit/fresh; FKs unchanged | anything left: report, do not repair |
+| 11.1 | Final state | steward | none | **R1**, **R2**, **R2b** (global rows remain, unchanged by run 2), **R3**, **R4**, **R9** once more | registry row inert in the 1304 shape; all zero; dependencies lit/fresh; FKs unchanged | anything left: report, do not repair |
 | 11.2 | Dry run on the final state | steward | teardown role | the teardown dry run | "nothing to remove"; end state valid | — |
 | 11.3 | Report to the owner | steward (Stream B drafts from the measurement files) | none | plain words: what ran, how long it took, what it cost, what the test found, that nothing was sealed, published or served, that the test is fully removed, what changes for the full build (time estimate, whether the 7200 s asset timeout is enough, certification cost) | the owner has the numbers needed to decide the full build after Suvarna's elevation | — |
 
@@ -241,6 +242,22 @@ UNION ALL SELECT 'legacy windows 5.0', count(*) FROM kala_gochara_windows WHERE 
 UNION ALL SELECT 'legacy contacts 5.0', count(*) FROM kala_gochara_contacts WHERE generation='5.0';
 ```
 (2026-10-05: every row 0.) Note the Moon on-demand coverage partitions (`partition_kind` other than `event_class`) and the global sky-event substrate are KEPT by the teardown by design.
+
+**R2b — GLOBAL tables the sitting populates and the teardown KEEPS (read before run 1 and after each teardown; all `0` in production on 2026-10-05 except the legacy convention row `1`):**
+```sql
+SELECT 'sky_event', count(*) FROM ka_gochara_sky_event
+UNION ALL SELECT 'sky_convention', count(*) FROM ka_gochara_sky_convention
+UNION ALL SELECT 'physical_object', count(*) FROM ka_gochara_physical_object
+UNION ALL SELECT 'convention_bridge', count(*) FROM ka_gochara_convention_bridge
+UNION ALL SELECT 'kala_convention (legacy row expected 1)', count(*) FROM kala_gochara_convention
+UNION ALL SELECT 'rule_path', count(*) FROM ka_gochara_rule_path
+UNION ALL SELECT 'rule_path_seal', count(*) FROM ka_gochara_rule_path_seal
+UNION ALL SELECT 'rule_path_soft_factor', count(*) FROM ka_gochara_rule_path_soft_factor
+UNION ALL SELECT 'rule_path_prerequisite', count(*) FROM ka_gochara_rule_path_prerequisite
+UNION ALL SELECT 'factor', count(*) FROM ka_gochara_factor
+UNION ALL SELECT 'predicate', count(*) FROM ka_gochara_predicate;
+```
+Why it matters: the `rules` substep seeds the rule registry and its seals (global key), the `convention` substep registers the sky convention and the legacy bridge, and the 8 `body:*` substeps solve and persist the boundary events and stations of Sun, Mercury, Venus, Mars, Jupiter, Saturn, Rahu and Ketu over 1998-01-01 to 2085-01-01 (idempotent insert-if-absent; the Moon is never materialised). **None of this is chart-scoped and the teardown does not remove it**, by design (the full build reuses it); it is a production write that stays. Run 1 therefore builds the substrate from empty, **inside the one 7200 s asset budget**.
 
 **R3 — dependencies lit and fresh (canonical chart):**
 ```sql
@@ -335,6 +352,7 @@ Options: (1) `amjis_app` for the one-off teardown, from a direct connection, aft
 10. **PR 3141 (G8)** stays unmerged until after this test (it changes the vector and the lock); after it merges, a small test cannot be repeated from the older checkout without re-dispatching from the matching one.
 11. **Concurrent work on the canonical chart during the sitting:** the orchestrator exclusion lock and the Gochara chart lock make a concurrent build or the teardown refuse by name, but the cockpit watchdog takes no advisory lock; confirm no other build or Suvarna window is scheduled on this chart for the sitting.
 12. **Cloud Run status is not a signal** (exit 0 on a FAILED run): should the dispatch or a monitor print R7c's verdict for the run id automatically, so the steward is not left reading logs? (the orchestrator is frozen; a read-only helper script would be a Stream A item)
-13. **Run 2's class:** `marriage` is the class the tests use; confirm it is the class the owner wants for the full-horizon check.
+13. **The 7200 s budget versus the first-ever global substrate build** (8 bodies, 1998-2085, from empty) plus the rule registry seed plus one year of 26 classes: if run 1 times out in the body phase the registry timeout (a 1304 value) is too small for a first build; decide beforehand whether to accept that as the finding or to have the timeout raised by a reviewed registry change before the sitting.
+14. **Run 2's class:** `marriage` is the class the tests use; confirm it is the class the owner wants for the full-horizon check.
 
 *End of draft v1.0. Authorises nothing; the steward's explicit word is needed for each production write and for lifting the standing hold.*
