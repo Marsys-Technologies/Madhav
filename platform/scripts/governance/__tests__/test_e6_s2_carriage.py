@@ -1167,7 +1167,7 @@ def test_validator_ratified_judgment_discipline():
 
 
 def test_validator_spec_only_for_d1_and_well_formed():
-    _bad(dict(applies="D3", nature="computation", why=WHY, evidence=EVID, spec=SPEC), "only defined for applies D1")
+    _bad(dict(applies="D3", nature="computation", why=WHY, evidence=EVID, spec=SPEC), r"unknown field\(s\)")     # C1-3: a D3 declaration's spec is the D3 spec; a D1-shaped one is refused by the D3 validator
     for name, spec in {"unknown field": dict(SPEC, extra=1), "missing": {k: v for k, v in SPEC.items() if k != "chunk_ids"},
                        "matcher": dict(SPEC, matcher="nope"), "table": dict(SPEC, table="bad table"),
                        "empty chunks": dict(SPEC, chunk_ids=[]), "dup chunks": dict(SPEC, chunk_ids=[IDS[0], IDS[0]]),
@@ -1261,7 +1261,7 @@ def test_a_seeded_wrong_row_holds_the_carr_cell_below_pass(monkeypatch):
 def test_a_declared_d2_or_d3_has_no_detector_yet_and_the_other_two_read_na(applies, nature):
     got = ac.carriage_declared_checks("x", dict(applies=applies, nature=nature, why="w", evidence=EVID), None, **KW)
     own = f"Carr.{applies}"
-    assert got[own]["v"] == NO_DET and "detector is built yet" in got[own]["measured"]
+    assert got[own]["v"] == NO_DET and ("detector is built yet" in got[own]["measured"] or "without a `spec`" in got[own]["measured"])
     assert sorted(c for c in got if got[c]["v"] == NA) == sorted(c for c in ("Carr.D1", "Carr.D2", "Carr.D3") if c != own)
     assert ac.rollup_asset("L0", got)["Carr"]["v"] == NO_DET
     assert ac.CRITERION_REGISTRY[own]["detector"] == "NONE"

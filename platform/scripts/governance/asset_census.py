@@ -574,6 +574,13 @@ def _check_contribution(crit: str, layer: str, meas: dict | None, facts: dict | 
             # PASS (with Carr.detector gone, a measured PARTIAL on D1-D3 would otherwise have made Carr PARTIAL).
             return dict(criterion=crit, v=NO_DET, state="MEASURED",
                         reason=f"detector NONE never reaches {v}")
+        if crit == "Carr.D3" and v in (PASS, PARTIAL):
+            # C1-3: a D3 verdict is honoured ONLY with its evidence (population digest, independence class, declared conventions) and a PASS only when its own fields show every
+            # logical row re-derived by an independent formula under the declared row count (carriage_d3.d3_evidence_problem).
+            bad = _carriage_d3().d3_evidence_problem(meas)
+            if bad:
+                return dict(criterion=crit, v=NO_DET, state="MEASURED",
+                            reason=f"D3 {v} without re-derivation evidence ({bad}): not honoured")
         # E6 packet (c): the rollup does not trust a record's own verdict where the claim cannot be established
         # (INCONCLUSIVE is a state: nothing was measured), and the two capped checks cannot read PASS (SS: Null "never
         # PASS alone"; Narr.fidelity_test structural only)
@@ -730,6 +737,22 @@ def _carriage_d1():
     return _CARR_D1_MOD[0]
 
 
+_CARR_D3_MOD: list = []
+
+
+def _carriage_d3():
+    """The generic D3 engine (carriage_d3.py, a pure sibling module; its methods load from carriage_d3_methods.py), loaded by file path once."""
+    if not _CARR_D3_MOD:
+        import importlib.util
+        p = Path(__file__).resolve().parent / "carriage_d3.py"
+        spec = importlib.util.spec_from_file_location("carriage_d3_for_census", p)
+        mod = importlib.util.module_from_spec(spec)
+        sys.modules.setdefault("carriage_d3_for_census", mod)
+        spec.loader.exec_module(mod)
+        _CARR_D3_MOD.append(mod)
+    return _CARR_D3_MOD[0]
+
+
 def _evidence_pointer_ok(ev) -> bool:
     """A declared evidence pointer is `unverified:<where>` or a repo-relative FILE (optionally `:line`) that exists. The resolved
     path must stay inside the repository: a symlink (or `..`) that leads out of it is not evidence."""
@@ -803,9 +826,22 @@ def validate_carriage_declaration(where: str, car: dict, e: dict) -> None:
     elif cs is not None:
         raise DeclarationsError(f"{where}.carriage.citation_state is only declared for nature transcription")
     spec = car.get("spec")
+    if spec is not None and want == "D3":
+        d3m = _carriage_d3()
+        try:
+            d3m.validate_spec(spec, f"{where}.carriage")
+        except ValueError as exc:
+            raise DeclarationsError(str(exc)) from exc
+        ptrs = [(f"{where}.carriage.spec.conventions[{k}].evidence", v["evidence"]) for k, v in spec["conventions"].items()]
+        ptrs += [(f"{where}.carriage.spec.uncovered[{u['column']}].evidence", u["evidence"]) for u in spec["uncovered"]]
+        for label, ev in ptrs:
+            if not _evidence_pointer_ok(ev):
+                raise DeclarationsError(f"{label} {ev!r} is not an existing repo-relative file (optionally :line) or 'unverified:<where>'")
+            _carriage_pointer_strict(label, ev)
+        return
     if spec is not None:
         if want != "D1":
-            raise DeclarationsError(f"{where}.carriage.spec is only defined for applies D1")
+            raise DeclarationsError(f"{where}.carriage.spec is only defined for applies D1 and D3")
         try:
             _carriage_d1().validate_spec(spec, f"{where}.carriage")
         except ValueError as exc:
@@ -2101,7 +2137,66 @@ def carriage_fetch_column_types(table: str) -> dict:
     return pg_column_type_facts(table)
 
 
-def carriage_declared_checks(aid: str, car, target_table, chart_scoped: bool = False, *, column_types, prose_columns) -> dict:
+D3_READ_ROW_CAP = 200_000       # a declared D3 read over more rows than this is refused (chunked reads are a later method's job): never one jsonb_agg of a huge table (the documented trap)
+
+
+def _d3_where_sql(where) -> str:
+    """The SQL for a closed D3 `where` list (validated by carriage_d3.validate_spec: identifiers and plain-string values only, re-checked here)."""
+    out = []
+    for c in where or []:
+        col = c["column"]
+        vals = [c["equals"]] if "equals" in c else list(c["in"])
+        if not (_D1_SQL_IDENT.fullmatch(col) and vals and all(isinstance(v, str) and re.fullmatch(r"[A-Za-z0-9_.:+\- ]{1,80}", v) for v in vals)):
+            raise Unknown(f"d3 read: malformed condition on {col!r}")
+        out.append(f'"{col}" IN (' + ",".join(f"'{v}'" for v in vals) + ")")
+    return " AND ".join(out)
+
+
+def d3_fetch_rows(table: str, read: dict, chart_id: str | None = None):
+    """The asset's own table rows for a D3 spec's stated `read` (columns, closed where, chart scope): ONE read-only SELECT, one line of jsonb (the d1_fetch_rows shape),
+    in a total order. A read over more than D3_READ_ROW_CAP rows is refused (Unknown). Raises Unknown on a failed read."""
+    cols = list(dict.fromkeys(read["columns"]))
+    if not (isinstance(table, str) and _D1_SQL_IDENT.fullmatch(table) and cols and all(_D1_SQL_IDENT.fullmatch(c) for c in cols)):
+        raise Unknown(f"d3_fetch_rows: malformed identifier(s) {table!r} / {cols!r}")
+    conds = []
+    if read.get("chart_scoped"):
+        if not (isinstance(chart_id, str) and _UUID.fullmatch(chart_id)):
+            raise Unknown(f"d3_fetch_rows: malformed chart id {chart_id!r}")
+        conds.append(f"\"chart_id\" = '{chart_id}'")
+    w = _d3_where_sql(read.get("where"))
+    if w:
+        conds.append(w)
+    where = (" WHERE " + " AND ".join(conds)) if conds else ""
+    n = scalar(f'SELECT count(*) FROM "{table}"{where}')
+    try:
+        n = int(n)
+    except (TypeError, ValueError) as exc:
+        raise Unknown(f"d3_fetch_rows: unreadable row count of {table}") from exc
+    if n > D3_READ_ROW_CAP:
+        raise Unknown(f"d3_fetch_rows: the declared read of {table} holds {n} rows (cap {D3_READ_ROW_CAP}): a chunked read is not built")
+    sel = ",".join(f'"{c}"' for c in cols)
+    order = ",".join(f't."{c}"' for c in cols)
+    blob = scalar(f"SELECT coalesce(jsonb_agg(to_jsonb(t) ORDER BY {order})::text,'[]') FROM (SELECT {sel} FROM \"{table}\"{where}) t")
+    try:
+        return json.loads(blob or "[]")
+    except json.JSONDecodeError as exc:
+        raise Unknown(f"d3_fetch_rows: unparseable read of {table}: {exc}") from exc
+
+
+def d3_fetch_inputs(inputs: dict, chart_id: str):
+    """The chart's own birth parameters for a D3 spec's `read.inputs` {table, columns, id_column}: ONE row, WHERE id_column = <census chart>. Raises Unknown on a failed read."""
+    t, cols, idc = inputs["table"], list(dict.fromkeys(inputs["columns"])), inputs["id_column"]
+    if not (_D1_SQL_IDENT.fullmatch(t) and _D1_SQL_IDENT.fullmatch(idc) and cols and all(_D1_SQL_IDENT.fullmatch(c) for c in cols) and isinstance(chart_id, str) and _UUID.fullmatch(chart_id)):
+        raise Unknown("d3_fetch_inputs: malformed identifier or chart id")
+    sel = ",".join(f'"{c}"' for c in cols)
+    blob = scalar(f"SELECT coalesce(jsonb_agg(to_jsonb(t))::text,'[]') FROM (SELECT {sel} FROM \"{t}\" WHERE \"{idc}\"::text = '{chart_id}' LIMIT 2) t")
+    try:
+        return json.loads(blob or "[]")
+    except json.JSONDecodeError as exc:
+        raise Unknown(f"d3_fetch_inputs: unparseable read of {t}: {exc}") from exc
+
+
+def carriage_declared_checks(aid: str, car, target_table, chart_scoped: bool = False, *, column_types, prose_columns, asset_rows=None) -> dict:
     """measure()'s Carr.D1/D2/D3 records for an asset that DECLARES its carriage check (SS N-72 S2): {} unless `car.nature` is
     declared (an undeclared asset emits nothing here, so its cell reads exactly as before).
 
@@ -2120,6 +2215,24 @@ def carriage_declared_checks(aid: str, car, target_table, chart_scoped: bool = F
     own = f"Carr.{applies}"
     out = {c: _na(f"the asset's declared carriage check is {applies} (nature {car['nature']}; reviewed, evidence: {car.get('evidence')}); "
                   f"{c.split('.')[1]} is not it", "not-the-declared-carriage") for c in CARR_D_CHECKS if c != own}
+    if applies == "D3":
+        spec = car.get("spec")
+        if not isinstance(spec, dict):
+            out[own] = dict(v=NO_DET, measured=f"NO_DETECTOR — D3 is declared (nature {car['nature']}) but without a `spec` (the method, the stated read, the declared comparators "
+                                               "and tolerances): there is nothing to re-derive", declared_carriage=dict(applies=applies, nature=car["nature"]))
+            return out
+        d3m = _carriage_d3()
+        if spec.get("table") != target_table:
+            out[own] = d3m.d3_measure(spec, None, target_table, asset_rows=asset_rows)
+            return out
+        try:
+            rd = d3m.spec_read(spec)
+            rows = d3_fetch_rows(spec["table"], rd, CHART_ID if rd.get("chart_scoped") else None)
+            inputs = d3_fetch_inputs(rd["inputs"], CHART_ID) if rd.get("inputs") else None
+            out[own] = d3m.d3_measure(spec, rows, target_table, inputs=inputs, asset_rows=asset_rows)
+        except Unknown as exc:                                  # R41: this check's failure degrades only this check
+            out[own] = dict(v=ERRORED, measured=f"check errored: {exc}")
+        return out
     if applies != "D1":
         out[own] = dict(v=NO_DET, measured=f"NO_DETECTOR — the declared carriage check is {applies} (nature {car['nature']}), and no {applies} "
                                            "detector is built yet: nothing measures it", declared_carriage=dict(applies=applies, nature=car["nature"]))
@@ -9529,7 +9642,8 @@ def measure(layer_key: str, assets=None) -> dict:
         _ledger_types, _ledger_prose = _carriage_ledger_inputs(_decl_entry, r["target_table"])
         m.update(carriage_declared_checks(aid, (_decl_entry or {}).get("carriage"), r["target_table"],
                                           chart_scoped="chart_id" in (_target_columns_fact(r["target_table"], cat) or ()),
-                                          column_types=_ledger_types, prose_columns=_ledger_prose))
+                                          column_types=_ledger_types, prose_columns=_ledger_prose,
+                                          asset_rows=live if isinstance(live, int) and not isinstance(live, bool) else None))
         m.update(carr_checks(dict(declared_facts(declarations, aid), blocking_radius=radius.get(aid),
                                   measured_served=m["Dens.served"]["v"])))
         if "Reach.fields" not in m:

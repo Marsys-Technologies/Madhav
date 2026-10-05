@@ -141,7 +141,8 @@ def test_the_census_path_for_the_committed_latta_declaration_writes_the_golden_r
 # ───────────────────────── Part 2: the kernel registry is closed ─────────────────────────
 
 def test_the_registry_holds_exactly_the_latta_kernel_with_its_exact_current_required_fields():
-    assert list(d1.KERNELS) == [d1.MATCHER] == ["ordinal_count_direction_effect_v2"] and set(d1.KERNELS) == set(d1.MATCHERS)
+    # C1-2 added the second kernel (paired_enumeration_v1, pinned in test_c1_2_paired_enumeration.py): the closed set is exactly these two, the latta's first and unchanged
+    assert list(d1.KERNELS) == [d1.MATCHER, d1.PAIRED] == ["ordinal_count_direction_effect_v2", "paired_enumeration_v1"] and set(d1.KERNELS) == set(d1.MATCHERS)
     k = d1.KERNELS[d1.MATCHER]
     assert set(k) == set(d1.KERNEL_HOOKS) == {"spec_required", "spec_optional", "result_keys", "columns", "key_column", "matched_columns", "coverage", "validate", "span_check",
                                               "evidence_pointers", "rule_text"}
@@ -792,7 +793,7 @@ def test_derivation_maps_to_d3_and_no_nature_maps_to_d2():
 
 def test_a_declared_derivation_carriage_is_never_measured_as_d2():
     got = ac.carriage_declared_checks("x", dict(CAR_BASE, applies="D3", nature="derivation"), None, column_types=None, prose_columns=[])
-    assert got["Carr.D3"]["v"] == NO_DET and "no D3 detector is built yet" in got["Carr.D3"]["measured"] and got["Carr.D3"]["declared_carriage"] == dict(applies="D3", nature="derivation")
+    assert got["Carr.D3"]["v"] == NO_DET and "D3 is declared (nature derivation) but without a `spec`" in got["Carr.D3"]["measured"] and got["Carr.D3"]["declared_carriage"] == dict(applies="D3", nature="derivation")
     assert got["Carr.D1"]["v"] == NA and got["Carr.D2"]["v"] == NA and got["Carr.D1"]["cause"] == got["Carr.D2"]["cause"] == "not-the-declared-carriage"
     assert ac.rollup_asset("L0", got)["Carr"]["v"] == NO_DET and ac.CRITERION_REGISTRY["Carr.D3"]["detector"] == "NONE"
 
