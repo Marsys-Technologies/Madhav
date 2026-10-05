@@ -1,0 +1,50 @@
+{
+  "verified_at": "2026-10-05T19:24:07.631464+00:00",
+  "actual_components": true,
+  "actual_polling_hooks": true,
+  "identity": "fictional fixture only",
+  "desktop": "default 1512px viewport; six canonical layers and readiness",
+  "mobile": {
+    "viewport": "390x844",
+    "document_scroll_width": 390,
+    "body_scroll_width": 390
+  },
+  "verified": [
+    "layer expansion via click and Enter",
+    "bilingual names",
+    "partial readiness",
+    "named asset preview and cancel",
+    "named layer plan, clear warning and cancel",
+    "clear scope preview and cancel",
+    "missing stats hide asset/layer/global build controls",
+    "missing upstream status withholds downstream readiness",
+    "stats outage and read-only retry",
+    "keyboard focus trap/Escape/restore via component tests",
+    "existing run Pause/Stop remain available during stats outage; Stop confirmation cancelled without execution"
+  ],
+  "fixture_post_requests": [
+    {
+      "method": "POST",
+      "pathname": "/api/cockpit/plan"
+    },
+    {
+      "method": "POST",
+      "pathname": "/api/cockpit/plan"
+    },
+    {
+      "method": "POST",
+      "pathname": "/api/cockpit/clear"
+    }
+  ],
+  "execution_requests": [],
+  "production_acceptance": "pending",
+  "outage_active_run_followup": {
+    "identity": "fictional fixture only",
+    "status": "stats503 with independently returned active run",
+    "requests_observed": {
+      "GET": 17,
+      "POST": 0
+    },
+    "screenshot": "screenshots/desktop-status-outage-active-run.png"
+  }
+}
