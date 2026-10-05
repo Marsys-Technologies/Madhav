@@ -12,7 +12,7 @@ Edge types created:
   'yoga_domain'  — yoga signal → domain node (positive)
   'dosha_domain' — dosha signal → domain node (antagonist)
   'sade_sati'    — Saturn → Moon / house 12 (transit-period)
-  'argala'       — B intervenes on A (BPHS Ch. 28: 2nd/4th/11th from A)
+  'argala'       — B intervenes on A; READ from L1 chart_facts argala_graha_natal by fact_id (N-61; offsets/pairing owned by L1)
 
 Contradiction detection:
   - A yoga signal and a dosha signal share the same domain AND same graha
@@ -35,6 +35,10 @@ from brahmagyan import valence_doctrine as _vd
 from brahmagyan.domain_vocabulary import CANONICAL_DOMAINS, CANONICAL_DOMAINS_SORTED
 from . import WriterBase, ContextSpec, WriterResult, register
 from bodha_writers.data_plane_contracts import l2_producer
+from bodha_writers.vichara_token import (
+    assert_vichara_tokens,
+    vichara_token_from_row,
+)
 from pipeline.orchestrator.writers.bo_bimba import (
     _SUBJECT_TO_GRAHA as _GRAHA_SUBJECT_MAP,
     yoga_node_subject as _yoga_node_subject,
@@ -213,13 +217,43 @@ def _vichara_code(graha_title: str) -> str | None:
     return _GRAHA_TO_VICHARA_CODE.get(graha_title)
 
 
+# The natural-key SELECT list of bodha_writers.vichara_token.VICHARA_KEY_SELECT_SQL, written out as THIS FILE's own literal: the
+# governance footprint scan (suvarna_level_wave) reads only a file's own SQL literals and refuses an imported SQL constant, so the
+# shared constant cannot be interpolated here. tests/l2/test_vichara_token.py pins the two strings equal.
+_VICHARA_KEY_SELECT_SQL = (
+    "ayanamsha_id, vichara_family, subject, actor, target, domain, varga_id, varga, value_text, "
+    "value_num::text AS value_num_text, value_jsonb::text AS value_jsonb_text, constituent_facts_array"
+)
+
+
+def _row_get(r, name: str, idx: int):
+    """Column `name` of a fetched row, dict rows by key and tuple rows by position."""
+    return r[name] if isinstance(r, dict) else r[idx]
+
+
+def _first_by_token(rows: list) -> dict:
+    """{key: (payload, token)} keeping, for a key that several rows share, the row whose token sorts FIRST.
+
+    chart_vichara can hold several rows for one lookup key (production's valence_pass has 250 D1 rows for 130
+    (actor, target) pairs). Which one a lookup keeps used to be whatever the heap returned last; the citation must not
+    depend on row order or on a serial id, so the deterministic rule is the smallest token (N-143 option B)."""
+    best: dict = {}
+    for key, payload, token in rows:
+        cur = best.get(key)
+        if cur is None or token < cur[1]:
+            best[key] = (payload, token)
+    return best
+
+
 def _fetch_vichara_valence_by_actor_house(conn, chart_id: str, aya: str) -> dict:
-    """(actor_code, house) -> (value_text, chart_vichara.id) for varga='D1'
-    valence_pass rows. Chart-vichara unavailable degrades to {} — every caller
-    then falls back to valence_factor=1.0 (neutral), honestly, never a guess."""
+    """(actor_code, house) -> (value_text, vichara_token) for varga='D1' valence_pass rows.
+
+    The token is the deterministic natural-key token of the chart_vichara row (bodha_writers.vichara_token), never
+    chart_vichara.id. Chart-vichara unavailable degrades to {} — every caller then falls back to
+    valence_factor=1.0 (neutral), honestly, never a guess."""
     try:
         rows = conn.execute(
-            """SELECT id, actor, target, value_text FROM chart_vichara
+            f"""SELECT {_VICHARA_KEY_SELECT_SQL} FROM chart_vichara
                WHERE chart_id = %s AND ayanamsha_id = %s
                  AND vichara_family = 'valence_pass' AND varga = 'D1'""",
             [chart_id, aya],
@@ -228,25 +262,24 @@ def _fetch_vichara_valence_by_actor_house(conn, chart_id: str, aya: str) -> dict
         logger.warning("[bo_karanajala] chart_vichara valence_pass unavailable (%s); "
                         "valence_factor=1.0 for every edge this build", exc)
         return {}
-    out: dict = {}
+    cand: list = []
     for r in rows:
-        rid, actor, target, val = (r["id"], r["actor"], r["target"], r["value_text"]) \
-            if isinstance(r, dict) else (r[0], r[1], r[2], r[3])
+        actor, target, val = _row_get(r, "actor", 3), _row_get(r, "target", 4), _row_get(r, "value_text", 8)
         if not actor or not target:
             continue
         try:
             house = int(str(target).rsplit("_HOUSE_", 1)[-1])
         except (ValueError, IndexError):
             continue
-        out[(str(actor), house)] = (str(val or "neutral"), str(rid))
-    return out
+        cand.append(((str(actor), house), str(val or "neutral"), vichara_token_from_row(r)))
+    return _first_by_token(cand)
 
 
 def _fetch_vichara_consistency_by_subject(conn, chart_id: str, aya: str) -> dict:
-    """subject_code -> (varga_consistency 0..1, chart_vichara.id)."""
+    """subject_code -> (varga_consistency 0..1, vichara_token)."""
     try:
         rows = conn.execute(
-            """SELECT id, subject, value_num FROM chart_vichara
+            f"""SELECT {_VICHARA_KEY_SELECT_SQL} FROM chart_vichara
                WHERE chart_id = %s AND ayanamsha_id = %s AND vichara_family = 'varga_consistency'""",
             [chart_id, aya],
         ).fetchall()
@@ -254,20 +287,21 @@ def _fetch_vichara_consistency_by_subject(conn, chart_id: str, aya: str) -> dict
         logger.warning("[bo_karanajala] chart_vichara varga_consistency unavailable (%s); "
                         "consistency_weight=1.0 for every edge this build", exc)
         return {}
-    out: dict = {}
+    cand: list = []
     for r in rows:
-        rid, subj, val = (r["id"], r["subject"], r["value_num"]) if isinstance(r, dict) else (r[0], r[1], r[2])
-        if subj is None or val is None:
+        subj, val_text = _row_get(r, "subject", 2), _row_get(r, "value_num_text", 9)
+        if subj is None or val_text is None:
             continue
-        out[str(subj)] = (float(val), str(rid))
-    return out
+        cand.append((str(subj), float(val_text), vichara_token_from_row(r)))
+    return _first_by_token(cand)
 
 
 def _fetch_vichara_ratification_by_subject_domain(conn, chart_id: str, aya: str) -> dict:
-    """(subject_code, domain) -> (ratification_factor [0.6,1.4], chart_vichara.id)."""
+    """(subject_code, domain) -> (ratification_factor [0.6,1.4], vichara_token)."""
     try:
         rows = conn.execute(
-            """SELECT id, subject, domain, ratification_factor FROM chart_vichara
+            f"""SELECT {_VICHARA_KEY_SELECT_SQL}, ratification_factor::text AS ratification_factor_text
+               FROM chart_vichara
                WHERE chart_id = %s AND ayanamsha_id = %s AND vichara_family = 'varga_ratification'""",
             [chart_id, aya],
         ).fetchall()
@@ -275,14 +309,14 @@ def _fetch_vichara_ratification_by_subject_domain(conn, chart_id: str, aya: str)
         logger.warning("[bo_karanajala] chart_vichara varga_ratification unavailable (%s); "
                         "ratification_factor=1.0 for every domain-tagged edge this build", exc)
         return {}
-    out: dict = {}
+    cand: list = []
     for r in rows:
-        rid, subj, dom, factor = (r["id"], r["subject"], r["domain"], r["ratification_factor"]) \
-            if isinstance(r, dict) else (r[0], r[1], r[2], r[3])
-        if not subj or not dom or factor is None:
+        subj, dom = _row_get(r, "subject", 2), _row_get(r, "domain", 5)
+        factor_text = _row_get(r, "ratification_factor_text", 12)
+        if not subj or not dom or factor_text is None:
             continue
-        out[(str(subj), str(dom))] = (float(factor), str(rid))
-    return out
+        cand.append(((str(subj), str(dom)), float(factor_text), vichara_token_from_row(r)))
+    return _first_by_token(cand)
 
 
 class ViharaLookups:
@@ -382,13 +416,13 @@ KNOWN_GRAHAS = {
 # (domain_promise_vs_denial) operates over all 13 canonical domains.
 _KNOWN_DOMAINS = CANONICAL_DOMAINS  # module-local alias; not re-exported
 
-# ── Argala constants (BPHS Ch. 28) ───────────────────────────────────────────
-# Argala positions: B creates argala on A when B is in the 2nd, 4th, or 11th house FROM A
-ARGALA_POSITIONS = {2, 4, 11}
-# Virodha positions: a planet here can cancel argala (BPHS Ch.28: 12th, 3rd, 10th from A)
-# 12th cancels 2nd argala, 3rd cancels 4th argala, 10th cancels 11th argala
-VIRODHA_POSITIONS = {12, 3, 10}
-
+# ── Argala (L1 is the authority; N-61 / CLAUDE.md §N.5) ──────────────────────
+# L2 NEVER computes argala offsets, obstruction pairing, node reversal or occupancy itself: the
+# L1 ga_structural writer owns the ONE definition (offsets 2/4/5/11 paired 12/10/9/3, a node as the
+# reference counts in reverse) and emits one `argala_graha_natal` chart_facts row per
+# (target graha, source graha). bo_karanajala READS those rows by fact_id (`_fetch_argala_facts`)
+# and cites each in `constituent_fact_ids_array`. The previous local ARGALA_POSITIONS /
+# VIRODHA_POSITIONS / `_house_of_b_from_a` constants and the `ARGALA_TO_VIRODHA` map are removed.
 # Classical Parashari sign lordship: sign_number (1-12) → graha name.
 # Rahu and Ketu have no sign lordship in Parashari tradition.
 SIGN_LORD: dict[int, str] = {
@@ -408,8 +442,6 @@ SIGN_LORD: dict[int, str] = {
 
 MALEFIC_GRAHAS  = {"Saturn", "Mars", "Rahu", "Ketu"}
 BENEFIC_GRAHAS  = {"Jupiter", "Venus", "Moon", "Mercury"}
-
-_ARGALA_DEFAULT_SIGN_NUMBERS: dict[str, int] = {}  # populated at runtime from DB
 
 
 def _fetch_node_map(conn, chart_id: str, aya: str) -> dict[tuple[str, str], str]:
@@ -484,151 +516,184 @@ def _fetch_graha_sign_numbers(conn, chart_id: str, aya: str) -> dict[str, int]:
     return result
 
 
-def _house_of_b_from_a(sign_a: int, sign_b: int) -> int:
-    """1-based house of B counted from A (A = house 1).
+def _fetch_argala_facts(conn, chart_id: str, aya: str) -> list[dict]:
+    """Read L1's graha-level argala rows (`argala_graha_natal`, D1) for one (chart, ayanamsha).
 
-    Example: A=Aries(1), B=Taurus(2) → house 2.
+    One row per (target graha, source graha) where the source stands in an argala sign of the
+    target (N-61). Returns, per row, the L1 `fact_id` and the L1-computed reading carried in the
+    row's value (target/source graha, argala offset, the paired obstruction offset, the obstructing
+    grahas, the count direction). Nothing is computed here: every field is READ from the fact.
+    Ordered totally (subject, key, fact_id) so the edge order is stable.
     """
-    return ((sign_b - sign_a) % 12) + 1
+    rows = conn.execute(
+        """SELECT fact_id, fact_subject, fact_key, fact_value_jsonb
+           FROM chart_facts
+           WHERE chart_id = %s AND ayanamsha_id = %s
+             AND fact_category = 'argala_graha_natal'
+             AND fact_key LIKE 'from\\_%%\\_offset\\_%%'
+           ORDER BY fact_subject, fact_key, fact_id""",
+        [chart_id, aya],
+    ).fetchall()
+    out: list[dict] = []
+    seen: set[tuple[str, str]] = set()
+    for r in rows:
+        if isinstance(r, dict):
+            fid, subject, key, val = r["fact_id"], r["fact_subject"], r["fact_key"], r["fact_value_jsonb"]
+        else:
+            fid, subject, key, val = r[0], r[1], r[2], r[3]
+        if isinstance(val, (str, bytes)):
+            val = json.loads(val)
+        where = f"argala_graha_natal fact_id={fid} ({subject}/{key})"
+        if not isinstance(val, dict):
+            raise RuntimeError(f"[bo_karanajala] {where}: fact_value_jsonb is not an object")
+        target, source = val.get("target_graha"), val.get("source_graha")
+        if target not in KNOWN_GRAHAS or source not in KNOWN_GRAHAS:
+            raise RuntimeError(
+                f"[bo_karanajala] {where}: target_graha={target!r} / source_graha={source!r} "
+                "is not a known graha; refusing to invent an edge"
+            )
+        try:
+            offset = int(val["argala_offset"])
+            obstruction_offset = int(val["obstruction_offset"])
+        except (KeyError, TypeError, ValueError) as exc:
+            raise RuntimeError(f"[bo_karanajala] {where}: offsets missing or not integers ({exc})") from exc
+        obstructors = val.get("obstructor_grahas")
+        if not isinstance(obstructors, list) or any(g not in KNOWN_GRAHAS for g in obstructors):
+            raise RuntimeError(f"[bo_karanajala] {where}: obstructor_grahas is not a list of known grahas")
+        direction = val.get("count_direction")
+        if direction not in ("forward", "reverse"):
+            raise RuntimeError(
+                f"[bo_karanajala] {where}: count_direction={direction!r} is not 'forward' or 'reverse'; "
+                "a missing direction is not read as forward (N.7 item 6)"
+            )
+        if (target, source) in seen:
+            raise RuntimeError(
+                f"[bo_karanajala] {where}: second argala row for ({target}, {source}); "
+                "an argala edge is one per (source, target) pair"
+            )
+        seen.add((target, source))
+        out.append({
+            "fact_id": str(fid),
+            "target": target,
+            "source": source,
+            "offset": offset,
+            "obstruction_offset": obstruction_offset,
+            "obstructors": list(obstructors),
+            "direction": direction,
+        })
+    return out
 
 
 def _build_argala_edges(
     chart_id: str, aya: str, build_id: str,
-    graha_signs: dict[str, int], node_map: dict[tuple[str, str], str], now: str,
+    argala_facts: list[dict], node_map: dict[tuple[str, str], str], now: str,
     lookups: "ViharaLookups | None" = None,
 ) -> list[dict]:
-    """Build argala edges per BPHS Ch. 28.
+    """Build argala edges FROM L1's `argala_graha_natal` facts (N-61, CLAUDE.md §N.5).
 
-    For each pair (A, B) of grahas:
-      - Compute house of B from A.
-      - If that house is in ARGALA_POSITIONS → B creates argala on A.
-      - Determine if virodha-argala (B is malefic) vs. benefic argala.
-      - Check virodha cancellation: if B is malefic, check if there is a
-        planet in the corresponding virodha position; if so, mark cancelled.
+    One edge per L1 row (`_fetch_argala_facts`): B (source) intervenes on A (target). Nothing about
+    offsets, pairing, reversal or occupancy is computed here; the edge cites its L1 fact in
+    `constituent_fact_ids_array`.
+      - relationship_class: argala_virodha when the source is a (local, unchanged) malefic, else
+        argala_positive.
+      - cancelled_flag / cancelled_by_jsonb: UNCHANGED semantics (TI-L2-37 is out of scope): only a
+        malefic's argala is flagged cancelled, and it is cancelled when the L1 row lists any
+        obstructing graha in its paired obstruction sign (`obstructor_grahas` at
+        `obstruction_offset`).
     """
     edges: list[dict] = []
-    grahas = [g for g in graha_signs if g in KNOWN_GRAHAS]
-
-    # Map: virodha_position_from_a → grahas occupying that position
-    # Built once per A to check cancellation
-    for graha_a in grahas:
-        sign_a = graha_signs[graha_a]
+    for fact in argala_facts:
+        graha_a, graha_b = fact["target"], fact["source"]
         node_a = node_map.get(("graha", graha_a))
-        if not node_a:
+        node_b = node_map.get(("graha", graha_b))
+        if not node_a or not node_b:
             continue
 
-        # For virodha cancellation: collect planets at virodha positions from A
-        virodha_occupants: dict[int, list[str]] = defaultdict(list)
-        for graha_x in grahas:
-            if graha_x == graha_a:
-                continue
-            h = _house_of_b_from_a(sign_a, graha_signs[graha_x])
-            if h in VIRODHA_POSITIONS:
-                virodha_occupants[h].append(graha_x)
+        house_b_from_a = fact["offset"]
+        is_malefic = graha_b in MALEFIC_GRAHAS
+        relationship_class = "argala_virodha" if is_malefic else "argala_positive"
 
-        for graha_b in grahas:
-            if graha_b == graha_a:
-                continue
-            sign_b = graha_signs[graha_b]
-            node_b = node_map.get(("graha", graha_b))
-            if not node_b:
-                continue
+        cancelling_grahas: list[str] = sorted(fact["obstructors"]) if is_malefic else []
+        cancelled = bool(cancelling_grahas)
 
-            house_b_from_a = _house_of_b_from_a(sign_a, sign_b)
-            if house_b_from_a not in ARGALA_POSITIONS:
-                continue
-
-            # Determine argala class
-            is_malefic = graha_b in MALEFIC_GRAHAS
-            relationship_class = "argala_virodha" if is_malefic else "argala_positive"
-
-            # Virodha cancellation: applies only to malefic (virodha-argala)
-            # The virodha position corresponding to each argala position (BPHS Ch.28):
-            #   2nd argala cancelled by 12th, 4th by 3rd, 11th by 10th
-            ARGALA_TO_VIRODHA = {2: 12, 4: 3, 11: 10}
-            cancelled = False
-            cancelling_grahas: list[str] = []
-            if is_malefic:
-                virodha_h = ARGALA_TO_VIRODHA.get(house_b_from_a)
-                cancelling_grahas = sorted(virodha_occupants.get(virodha_h or 0, []))
-                cancelled = bool(cancelling_grahas)
-
-            cancellation_payload = None
-            if cancelled:
-                cancellation_payload = {
-                    "cancelling_actors": cancelling_grahas,
-                    "cancelling_roots": [
-                        {
-                            "actor": actor,
-                            "node_id": node_map.get(("graha", actor)),
-                            "virodha_position_from_target": ARGALA_TO_VIRODHA[house_b_from_a],
-                        }
-                        for actor in cancelling_grahas
-                    ],
-                    "target": {
-                        "actor": graha_b,
-                        "target": graha_a,
-                        "relationship_class": relationship_class,
-                        "argala_position": house_b_from_a,
-                    },
-                    "original_polarity": -1 if is_malefic else 1,
-                    "resulting_role": (
-                        "attenuated_opposition" if is_malefic else "attenuated_support"
-                    ),
-                }
-
-            _strength, _vichara_ids = _edge_strength_v1(0.5, graha_a, None, lookups)
-            _traditions = ["parashari"]
-            edges.append({
-                # Placeholder only. Overwritten by assign_deterministic_edge_ids()
-                # before any write; see migration 950. Never reaches the database.
-                "edge_id": None,
-                "chart_id": chart_id,
-                "ayanamsha_id": aya,
-                "build_id": build_id,
-                "snapshot_type": SNAPSHOT_TYPE,
-                "edge_type": "argala",
-                "from_node_id": node_b,   # B is the argala-karaka (intervener)
-                "to_node_id": node_a,     # A is the argala-subject
-                "direction": "directed",
-                "computed_strength": _strength,
-                "weight_formula_version": EDGE_STRENGTH_FORMULA_VERSION,
-                "constituent_ga_vichara_ids_array": _vichara_ids,
-                "edge_properties_jsonb": json.dumps({
-                    "argala_subject": graha_a,
-                    "argala_karaka": graha_b,
-                    "house_of_karaka_from_subject": house_b_from_a,
+        cancellation_payload = None
+        if cancelled:
+            cancellation_payload = {
+                "cancelling_actors": cancelling_grahas,
+                "cancelling_roots": [
+                    {
+                        "actor": actor,
+                        "node_id": node_map.get(("graha", actor)),
+                        "virodha_position_from_target": fact["obstruction_offset"],
+                    }
+                    for actor in cancelling_grahas
+                ],
+                "target": {
+                    "actor": graha_b,
+                    "target": graha_a,
+                    "relationship_class": relationship_class,
                     "argala_position": house_b_from_a,
-                }),
-                "relationship_class": relationship_class,
-                "semantic_path_class": "argala_intervention",
-                "active_duration_class": "natal_permanent",
-                "active_dasha_periods_jsonb": None,
-                "underlying_msr_signal_ids_array": [],
-                "cross_system_consensus_count": len(_traditions),
-                "cancelled_flag": cancelled,
-                "cancelled_by_jsonb": (
-                    json.dumps(cancellation_payload, sort_keys=True)
-                    if cancellation_payload is not None else None
+                },
+                "original_polarity": -1 if is_malefic else 1,
+                "resulting_role": (
+                    "attenuated_opposition" if is_malefic else "attenuated_support"
                 ),
-                "present_in_traditions_array": _traditions,
-                "graph_compute_library": GRAPH_LIB,
-                "graph_compute_library_version": GRAPH_LIB_VER,
-                "is_cross_subsystem": False,
-                "subsystem_from": "parashari",
-                "subsystem_to": "parashari",
-                **_typed_edge_fields("argala", relationship_class=relationship_class,
-                                     graha_a=graha_a, graha_b=graha_b),
-                "verification_pass_status": "documented_approximation",
-                "citation_ref": "BPHS_Ch28/argala",
-                "citation_human": (
-                    f"Argala: {graha_b} in {house_b_from_a}th from {graha_a} "
-                    f"({'virodha-argala' if is_malefic else 'argala'}"
-                    f"{', cancelled' if cancelled else ''})"
-                ),
-                "computed_at": now,
-                "engine_version": ENGINE_VERSION,
-            })
+            }
+
+        _strength, _vichara_ids = _edge_strength_v1(0.5, graha_a, None, lookups)
+        _traditions = ["parashari"]
+        edges.append({
+            # Placeholder only. Overwritten by assign_deterministic_edge_ids()
+            # before any write; see migration 950. Never reaches the database.
+            "edge_id": None,
+            "chart_id": chart_id,
+            "ayanamsha_id": aya,
+            "build_id": build_id,
+            "snapshot_type": SNAPSHOT_TYPE,
+            "edge_type": "argala",
+            "from_node_id": node_b,   # B is the argala-karaka (intervener)
+            "to_node_id": node_a,     # A is the argala-subject
+            "direction": "directed",
+            "computed_strength": _strength,
+            "weight_formula_version": EDGE_STRENGTH_FORMULA_VERSION,
+            "constituent_ga_vichara_ids_array": _vichara_ids,
+            "constituent_fact_ids_array": [fact["fact_id"]],
+            "edge_properties_jsonb": json.dumps({
+                "argala_subject": graha_a,
+                "argala_karaka": graha_b,
+                "house_of_karaka_from_subject": house_b_from_a,
+                "argala_position": house_b_from_a,
+            }),
+            "relationship_class": relationship_class,
+            "semantic_path_class": "argala_intervention",
+            "active_duration_class": "natal_permanent",
+            "active_dasha_periods_jsonb": None,
+            "underlying_msr_signal_ids_array": [],
+            "cross_system_consensus_count": len(_traditions),
+            "cancelled_flag": cancelled,
+            "cancelled_by_jsonb": (
+                json.dumps(cancellation_payload, sort_keys=True)
+                if cancellation_payload is not None else None
+            ),
+            "present_in_traditions_array": _traditions,
+            "graph_compute_library": GRAPH_LIB,
+            "graph_compute_library_version": GRAPH_LIB_VER,
+            "is_cross_subsystem": False,
+            "subsystem_from": "parashari",
+            "subsystem_to": "parashari",
+            **_typed_edge_fields("argala", relationship_class=relationship_class,
+                                 graha_a=graha_a, graha_b=graha_b),
+            "verification_pass_status": "documented_approximation",
+            "citation_ref": "BPHS_Ch28/argala",
+            "citation_human": (
+                f"Argala: {graha_b} in {house_b_from_a}th from {graha_a}"
+                f"{' (counted in reverse)' if fact['direction'] == 'reverse' else ''} "
+                f"({'virodha-argala' if is_malefic else 'argala'}"
+                f"{', cancelled' if cancelled else ''})"
+            ),
+            "computed_at": now,
+            "engine_version": ENGINE_VERSION,
+        })
 
     return edges
 
@@ -1521,6 +1586,8 @@ def _batch_insert(conn, rows: list[dict], sql: str) -> int:
             # default to empty so their %(constituent_fact_ids_array)s param binds.
             row.setdefault("constituent_fact_ids_array", [])
             row.setdefault("constituent_ga_vichara_ids_array", [])
+            # N-143: the column holds deterministic vichara tokens, never a chart_vichara serial id.
+            assert_vichara_tokens(row["constituent_ga_vichara_ids_array"], where=f"bo_karanajala {row.get('edge_type')}")
             row.setdefault("cancelled_by_jsonb", None)
             conn.execute(sql, row)
         inserted += len(rows[i:i + _BATCH_SIZE])
@@ -1791,8 +1858,16 @@ class BoKaranajalaWriter(WriterBase):
                 chart_id, aya, build_id, signals, node_map, now, lookups
             )
 
+            argala_facts = _fetch_argala_facts(conn, chart_id, aya)
+            if graha_signs and not argala_facts:
+                raise RuntimeError(
+                    f"[bo_karanajala] G3: chart_id={chart_id} ayanamsha={aya} — "
+                    "chart_facts has 0 argala_graha_natal rows while graha positions exist; "
+                    "ga_structural (N-61) must have built the L1 argala facts before bo_karanajala; "
+                    "L2 does not compute argala itself (CLAUDE.md N.5)"
+                )
             argala_edges = _build_argala_edges(
-                chart_id, aya, build_id, graha_signs, node_map, now, lookups
+                chart_id, aya, build_id, argala_facts, node_map, now, lookups
             )
             edges.extend(argala_edges)
 
