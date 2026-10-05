@@ -771,6 +771,45 @@ def test_the_mutation_harness_distinguishes_a_caught_mutation_from_collection_se
     assert classify(4, "usage: pytest ...") == "INFRASTRUCTURE(exit 4)"
 
 
+def test_chronological_a_generation_sealed_with_a_legacy_snapshot_then_1305_applied_replays_and_a_first_seal_is_refused(monkeypatch, tmp_path):
+    """Codex round 3 (absent test): sealed LEGACY snapshot -> apply 1305 -> replay. A generation sealed under the pre-1305 schema (a legacy-shaped snapshot: ids and 1206 digests,
+    no copy) keeps replaying after 1305 is applied (the replay branch asks nothing of the copy), while any NEW first seal that would rest on a legacy snapshot is refused by the
+    SQL gate. The seal here is the pre-1240 shape (no approval receipt), as in the 1240 chronological test."""
+    import psycopg
+    admin, name, dsn = create_am5_database("g12chron", faithful=True, apply_1240=False)              # 1206 + 1232 + grants, no 1240, no 1305
+    conn = psycopg.connect(dsn, autocommit=True, connect_timeout=3)
+    try:
+        monkeypatch.setattr(writer_mod, "calc_sidereal_lon", lambda body, jd, ephe: (10.0, 2))
+        RuleRegistryStore(conn).seed()
+        ephe = make_ephe(tmp_path, monkeypatch)
+        w = writer_mod.GocharaV5Writer()
+        for k in (writer_mod.CONVENTION_SUBSTEP, writer_mod.MANIFEST_SUBSTEP, writer_mod.SNAPSHOT_SUBSTEP):
+            ctx = ContextSpec(asset_id=writer_mod.ASSET_ID, build_id="b-chron", db_conn=conn, config={"chart_id": CHART_ID, "horizon": (H0, H1), "ephe_path": ephe}, dry_run=False)
+            with conn.transaction():
+                w.run_substep(ctx, SubStep(key=k, label=k))
+        assert InventoryStore(conn).snapshot_copy_available() is False, "the pre-1305 schema: the snapshot is legacy-shaped"
+        from services.gochara_kernel import ledger as gk_ledger
+        with conn.transaction():
+            conn.execute("SELECT public.ka_gochara_lock_chart(%s::uuid)", (CHART_ID,))
+            gk_ledger.publish(conn, CHART_ID, GEN)
+            mid = conn.execute("SELECT public.ka_gochara_seal_generation(%s::uuid, %s)", (CHART_ID, GEN)).fetchone()[0]
+        conn.execute(M1305.read_text())                                                                # 1305 applied on top of the sealed generation
+        assert InventoryStore(conn).snapshot_copy_available() is True
+        legacy = conn.execute("SELECT consumed_fact_rows IS NULL AND consumed_dasha_rows IS NULL FROM public.ka_gochara_search_input_snapshot WHERE chart_id = %s AND generation = %s",
+                              (CHART_ID, GEN)).fetchone()[0]
+        assert legacy is True, "the sealed snapshot stays legacy-shaped (1305 is additive; nothing rewrites it)"
+        with conn.transaction():                                                                       # REPLAY: same manifest, no refusal, no copy asked for
+            conn.execute("SELECT public.ka_gochara_lock_chart(%s::uuid)", (CHART_ID,))
+            assert conn.execute("SELECT public.ka_gochara_seal_generation(%s::uuid, %s)", (CHART_ID, GEN)).fetchone()[0] == mid
+        replay = conn.execute("SELECT violation FROM public.ka_gochara_search_replay_violations(%s, %s)", (CHART_ID, GEN)).fetchall()
+        assert not [r for r in replay if "without_copy" in r[0]]
+        # the completeness function (the FIRST-seal branch and the candidate gate) now names the missing copy for that same legacy snapshot
+        assert [v for v in _violations(conn) if v[1] == "input_snapshot_without_copy"]
+    finally:
+        conn.close()
+        drop_am5_database(admin, name)
+
+
 def test_1305_refuses_to_apply_after_g8s_1306_would_have_replaced_the_completeness_function():
     """Both migrations replace ka_gochara_search_completeness_violations in full: applying 1305 AFTER 1306 would silently revert G8's census."""
     import psycopg
