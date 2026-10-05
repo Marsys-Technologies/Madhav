@@ -87,7 +87,7 @@ def test_the_plants_and_the_unplantable_declarations_cover_exactly_the_registry_
 
 def test_the_unplantable_reasons_are_in_the_scorecards_closed_list_and_say_what_is_true_of_the_check():
     assert set(np_.UNPLANTABLE.values()) <= set(CLOSED_REASONS)
-    assert np_.UNPLANTABLE == {"Complete.width": "constant_verdict_no_per_asset_input", "Reach.fields": "reported_not_graded"}
+    assert np_.UNPLANTABLE == {"Complete.width": "constant_verdict_no_per_asset_input", "Reach.fields": "reported_not_graded", "Carr.D3": "needs_external_service"}
 
 
 @ALL
@@ -168,12 +168,16 @@ def test_judge_every_also_cell_must_move_too():
 
 
 def test_unplantable_stale_names_a_declared_check_that_became_gradeable():
-    ok = {"a": {"Complete.width": "NOT_GENERIC", "Reach.fields": "NOT_GENERIC"}, "b": {"Complete.width": "NOT_GENERIC", "Reach.fields": "NOT_GENERIC"}}
+    ok = {"a": {"Complete.width": "NOT_GENERIC", "Reach.fields": "NOT_GENERIC", "Carr.D3": "NO_DETECTOR"},
+          "b": {"Complete.width": "NOT_GENERIC", "Reach.fields": "NOT_GENERIC", "Carr.D3": "NO_DETECTOR"}}
     assert np_.unplantable_stale([ok]) == []
+    d3 = copy.deepcopy(ok)
+    d3["b"]["Carr.D3"] = "PASS"                                            # a measured D3 verdict in the synthetic world: the needs_external_service claim is stale
+    assert any("Carr.D3" in x for x in np_.unplantable_stale([ok, d3]))
     bad = copy.deepcopy(ok)
     bad["b"]["Reach.fields"] = "FAIL"
     assert any("Reach.fields" in x for x in np_.unplantable_stale([ok, bad]))
-    gone = {"a": {"Complete.width": "NOT_GENERIC"}}                                    # the check vanished from the census entirely
+    gone = {"a": {"Complete.width": "NOT_GENERIC", "Carr.D3": "NO_DETECTOR"}}                                    # the check vanished from the census entirely
     assert any("Reach.fields" in x for x in np_.unplantable_stale([gone]))
 
 

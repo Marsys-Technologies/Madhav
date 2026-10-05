@@ -89,6 +89,10 @@ UNPLANTABLE = {
     "Complete.width": "constant_verdict_no_per_asset_input",
     "Reach.fields": "reported_not_graded",
     "Earn.service_state": "needs_external_service",   # E5.7: reads the engine's recorded probe result (service_health / last_selftest_at on the registry row); a disposable plant world has no health_probe or self-test history
+    # N-156: Carr.D3 has a real detector, but a D3 method serves only the named real assets (carriage_d3_methods `assets`: ga_positions, bg_sky_calendar) and re-derives through the Swiss
+    # Ephemeris library against chart_facts / bg_sky_calendar rows: a synthetic bg_t1_* asset can neither declare a D3 spec nor be re-derived, so no fault can be planted in this disposable world.
+    # The detector's faults are caught by its own real-fixture tests (test_c1_3_carriage_d3.py, test_c1_3_census_d3_wiring.py, test_n156_carriage_ceilings.py).
+    "Carr.D3": "needs_external_service",
 }
 NOT_GENERIC = "NOT_GENERIC"
 FAILING = ("FAIL", "PARTIAL", "NO_DETECTOR")        # the inspector's own gap-opening verdicts (asset_census.FAILING)
@@ -727,15 +731,23 @@ def judge(p: Plant, base: dict, post: dict) -> dict:
     return rec
 
 
+UNPLANTABLE_NOT_GENERIC = ("constant_verdict_no_per_asset_input", "reported_not_graded")      # reasons that predict a constant NOT_GENERIC reading
+
+
 def unplantable_stale(censuses: list, claims: dict = UNPLANTABLE) -> list:
-    """Names every declared-unplantable check that is NOT constant NOT_GENERIC across the supplied cell maps (a reason that stopped being
-    true: the check became gradeable and so plantable, and the declaration would hide a gap in T1)."""
+    """Names every declared-unplantable check whose reading no longer matches its reason (a reason that stopped being true: the check became gradeable and so plantable, and the
+    declaration would hide a gap in T1). A NOT_GENERIC reason must read constant NOT_GENERIC; `needs_external_service` (Carr.D3, N-156) must read only NO_DETECTOR / N/A on the
+    synthetic world (no fixture asset can declare a D3 spec: a PASS, a PARTIAL or any measured verdict there means the claim is stale; NO_DETECTOR or N/A are the only readings)."""
     bad = []
     for check in sorted(claims):
         for cm in censuses:
             vs = {cm[aid][check] for aid in cm if check in cm[aid]}
-            if vs != {NOT_GENERIC}:
-                bad.append(f"{check} reads {sorted(map(str, vs))} (declared {claims[check]}: it must read only {NOT_GENERIC})")
+            if claims[check] in UNPLANTABLE_NOT_GENERIC:
+                ok, said = vs == {NOT_GENERIC}, NOT_GENERIC
+            else:      # needs_external_service: never a measured verdict in the synthetic world (NO_DETECTOR for an undeclared asset, N/A beside the latta's D1 declaration)
+                ok, said = bool(vs) and vs <= {"NO_DETECTOR", "N/A"}, "NO_DETECTOR or N/A"
+            if not ok:
+                bad.append(f"{check} reads {sorted(map(str, vs))} (declared {claims[check]}: it must read only {said})")
                 break
     return bad
 
