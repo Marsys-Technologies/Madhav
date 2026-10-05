@@ -45,16 +45,16 @@ def test_the_partition_is_deterministic_and_balanced_by_size():
     assert max(loads) - min(loads) <= max(ci_shard.weight(f) for f in files)   # LPT: never off by more than the heaviest file
 
 
-def test_every_weighted_file_exists_and_the_two_heavy_suites_do_not_share_a_shard():
-    """The CI_SECONDS table cannot rot silently, and the shard run time is balanced by it: the E5.7 mutant suites (the two heaviest files) are in
-    different shards (they were together in one shard that hit the 10-minute ceiling)."""
+def test_every_weighted_file_exists_and_the_heaviest_suites_do_not_share_a_shard():
+    """The CI_SECONDS table cannot rot silently, and the shard run time is balanced by it: the five heaviest files (measured on the 2026-10-05
+    merge-group runs) are in five different shards (a shard that held two of them timed out at the 20-minute cap), and no shard is estimated
+    more than 25 percent above the mean. The workflow runs 5 shards."""
     files = ci_shard.test_files()
     assert set(ci_shard.CI_SECONDS) <= {f.name for f in files}, sorted(set(ci_shard.CI_SECONDS) - {f.name for f in files})
-    shards = ci_shard.partition(files, 3)
+    shards = ci_shard.partition(files, 5)
     where = {f.name: i for i, s in enumerate(shards) for f in s}
-    heavy = ("test_e5_7_mirror_wiring.py", "test_e5_7_fingerprint_declarations.py")
-    if all(n in where for n in heavy):
-        assert where[heavy[0]] != where[heavy[1]]
+    heaviest = [n for n, _ in sorted(ci_shard.CI_SECONDS.items(), key=lambda kv: -kv[1])[:5]]
+    assert len({where[n] for n in heaviest}) == 5, heaviest
     est = [sum(ci_shard.CI_SECONDS.get(f.name, f.stat().st_size / ci_shard.BYTES_PER_SECOND) for f in s) for s in shards]
     assert max(est) <= 1.25 * (sum(est) / len(est)), est                       # no shard is estimated more than 25 percent above the mean
 
@@ -166,7 +166,7 @@ def test_no_step_can_turn_a_failing_shard_green_or_narrow_what_runs(jobs):
 
 def test_the_shard_step_stops_when_ci_shard_returns_no_files(jobs):
     run = next(st["run"] for st in jobs["governance-tool-tests-shard"]["steps"] if "python -m pytest" in str(st.get("run", "")))
-    assert "mapfile -t FILES < <(python platform/scripts/governance/ci_shard.py --count 3 --index ${{ matrix.shard }})" in run and '"${#FILES[@]}" -gt 0' in run and '"${FILES[@]}"' in run and "$(python" not in run
+    assert "mapfile -t FILES < <(python platform/scripts/governance/ci_shard.py --count 5 --index ${{ matrix.shard }})" in run and '"${#FILES[@]}" -gt 0' in run and '"${FILES[@]}"' in run and "$(python" not in run
 
 
 def test_verify_exits_nonzero_on_a_broken_partition(tmp_path):
