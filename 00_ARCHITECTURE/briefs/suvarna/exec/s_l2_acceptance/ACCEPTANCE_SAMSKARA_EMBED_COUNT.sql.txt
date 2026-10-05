@@ -1,0 +1,12 @@
+-- ACCEPTANCE_SAMSKARA_EMBED_COUNT.sql.txt (lane TI-run2-hardening-001, bo_samskara embedding retry; for the pinned S-L2 acceptance set)
+--
+-- Criterion: after S-L2, bo_samskara wrote exactly one bodha_signal_embeddings row per bodha_msr_signals row of the canonical chart
+-- (482012f1-710e-4a25-994a-93821f5871aa), in every ayanamsha: a retried embedding batch must never leave a partial generation.
+-- The statement is ONE read-only SELECT, no semicolon inside.
+-- PASS after S-L2: every row has signals = embeddings and missing = 0 (five rows, one per ayanamsha).
+
+-- G1_every_signal_has_exactly_one_embedding_per_ayanamsha
+SELECT s.ayanamsha_id, count(*) AS signals, count(e.signal_id) AS embeddings, count(*) - count(e.signal_id) AS missing FROM bodha_msr_signals s
+LEFT JOIN bodha_signal_embeddings e ON e.signal_id = s.signal_id AND e.chart_id = s.chart_id AND e.ayanamsha_id = s.ayanamsha_id
+WHERE s.chart_id = '482012f1-710e-4a25-994a-93821f5871aa'
+GROUP BY s.ayanamsha_id ORDER BY s.ayanamsha_id
