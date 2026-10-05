@@ -261,8 +261,10 @@ def refine_station(body: str, jd_spline: float, ephe_path: str | None, *, bracke
       1. bisect the sign of the speed in [jd-bracket, jd+bracket] down to STATION_COARSE_TOL_DAYS (signal 100x the speed noise) to locate it;
       2. fit a cubic to the longitude at the sampled points within ±STATION_FIT_HALF_WINDOW_DAYS around that; the station is the stationary point (root of the
          fitted derivative); its standard error comes from the fit covariance;
-      3. cross-check with a quadratic fit of the speed, at several window sizes; the stored uncertainty `delta_t` is the LARGER of K sigma of the longitude fit and
-         the greatest disagreement of a speed root with the longitude's stationary point, so it covers what the two quantities of the ephemeris do not agree on.
+      3. cross-check with a quadratic fit of the speed, at several window sizes. The returned `delta_t_days` (the larger of K sigma of the longitude fit and the greatest
+         disagreement of a speed root with the longitude's stationary point) and the `sigma_longitude_days` / `speed_spread_days` attributes are DIAGNOSTIC for this one
+         station: they are NOT the stored uncertainty. The value a station row stores is the documented per-body domain bound, `station_delta_t_bound_days(body)`
+         (`STATION_DELTA_T_BOUND_SECONDS`), pinned over every station of the domain by test_station_refine.
     Raises `StationRefinementError` when the speed has the same sign at both ends of the bracket (the spline station is not an ephemeris station) or a fit has no
     real root inside its window."""
     import numpy as np

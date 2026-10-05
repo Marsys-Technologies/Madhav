@@ -30,8 +30,12 @@ MUTATIONS = [
      '"Jupiter": 10.0, "Venus"', '"Jupiter": 4.0, "Venus"'),
     ("the Mercury spline-gap bound shrinks below the measured gap", K + "knots.py",
      '"Mercury": 30.0, "Jupiter": 3.0', '"Mercury": 10.0, "Jupiter": 3.0'),
+    ("the ROUND-1 DESIGN: the arc index takes the ephemeris-refined stations (as the withdrawn design fed them through the production wiring)", K + "arcs.py",
+     "    stations = _station_times(spline, knot_jds)\n", "    from .knots import refine_station as _rs\n    stations = [_rs(body, s, None).jd for s in _station_times(spline, knot_jds)]\n"),
     ("the arc index moves its stations by ~8.6 s (computation touched)", K + "arcs.py",
      "    stations = _station_times(spline, knot_jds)\n", "    stations = [s + 1e-4 for s in _station_times(spline, knot_jds)]\n"),
+    ("the production index wiring is bypassed (the writer builds its own index again)", "python-sidecar/pipeline/orchestrator/writers/ka_gochara_v5.py",
+     "arc_cache[body] = production_arc_index(body, ephe_path)", "arc_cache[body] = gk_arcs.build_arc_index(body, *(lambda k: (k.knot_jds, k.longitudes_deg))(sample_knots(body, SUBSTRATE_DOMAIN_START.date(), SUBSTRATE_DOMAIN_END.date(), ephe_path)))"),
     ("the record store starts to use the refinement", K + "record_store.py",
      "from __future__ import annotations\n", "from __future__ import annotations\nfrom .knots import refine_station  # noqa: F401\n"),
 ]

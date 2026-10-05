@@ -53,16 +53,30 @@ def _knots(body, start=date(1998, 1, 1), end=date(2085, 1, 1)):
 
 # ── A. the computation is untouched ──────────────────────────────────────────────────────────────────────────────────────────────────
 
-def test_the_computation_is_bit_identical_to_main_over_the_whole_domain_including_the_mercury_295_8493_case():
-    """Arcs, segments, stations, point-contact roots (conjunction and dṛṣṭi), their in-orb spans and the boundary roots: one digest per (body, relation, target) over
-    1998-2085, produced by `station_golden_matrix.compute` on the UNMODIFIED main tree (the golden file). The Mercury conjunction at 295.8493268245402 has 111 roots on
-    main; the withdrawn design produced 109."""
+def test_the_computation_is_bit_identical_to_main_through_the_production_wiring_and_solve_point_edges():
+    """Codex STATION-CODEX-2: the regression exercises the PRODUCTION index wiring (`substrate.production_arc_index`, the one function the substrate and the v5 writer's record
+    phase build their index with) and `record_store.solve_point_edges`, and compares for every occurrence (ordinal, contact_id, t_exact, t_in, t_out, truncated, solver_method)
+    over the whole 1998-2085 domain and over the scored horizon, with digests of the index and of the boundary roots, against the golden produced on the UNMODIFIED main tree.
+    Both Mercury cases of the reviews are in: 295.8493268245402 (111 roots on main; the withdrawn design produced 109) and 5.39 (103; the withdrawn design moved its exit by
+    up to 70 s). A design that reaches the index through the production wiring changes a digest and fails here (shown by the harness mutation 'round-1 design')."""
     golden = json.loads(GOLDEN.read_text())
-    got = matrix.compute(EPHE_PATH)
-    assert set(got) == set(golden) and len(golden) >= 100
-    assert golden["Mercury|conjunction|295.8493268245402"]["n"] == 111
+    got = matrix.compute(EPHE_PATH, gk_substrate.production_arc_index)
+    assert set(got) == set(golden) and len(golden) >= 200
+    assert golden["Mercury|domain|conjunction|295.8493268245402"]["n"] == 111 and golden["Mercury|domain|conjunction|5.39"]["n"] == 103
     differing = sorted(k for k in golden if got[k] != golden[k])
     assert not differing, f"computation changed for: {differing[:10]}"
+
+
+def test_the_substrate_and_the_writer_build_their_arc_index_only_through_the_one_production_function():
+    """The wiring the regression above exercises is the wiring production uses: neither the substrate nor the writer builds an arc index any other way."""
+    for rel in ("services/gochara_kernel/substrate.py", "pipeline/orchestrator/writers/ka_gochara_v5.py"):
+        tree = ast.parse((ROOT / rel).read_text())
+        calls = [n for n in ast.walk(tree) if isinstance(n, ast.Call) and getattr(n.func, "attr", getattr(n.func, "id", "")) == "build_arc_index"]
+        in_fn = []
+        for fn in [n for n in ast.walk(tree) if isinstance(n, ast.FunctionDef) and n.name == "production_arc_index"]:
+            in_fn = [c for c in ast.walk(fn) if isinstance(c, ast.Call) and getattr(c.func, "attr", getattr(c.func, "id", "")) == "build_arc_index"]
+        assert len(calls) == len(in_fn), f"{rel}: build_arc_index called outside production_arc_index"
+    assert "production_arc_index" in (ROOT / "pipeline/orchestrator/writers/ka_gochara_v5.py").read_text()
 
 
 def test_no_production_code_feeds_a_refined_station_into_the_arc_index_the_episodes_the_record_store_or_the_writer():

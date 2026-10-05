@@ -285,6 +285,17 @@ class SkyEvent:
     coverage: dict
 
 
+def production_arc_index(body: str, ephe_path: str | None):
+    """THE production arc index of one body: daily noon knots over the whole substrate domain, built at the kernel defaults. The substrate (which stores the stations) and the
+    v5 writer's record phase (which solves every point contact on it) BOTH call this one function, so a change of the index wiring cannot reach one and not the other — and
+    the numerical regression (tests/l3/gochara/test_station_refine.py) exercises exactly this function. NO station refinement is fed in: arcs must be monotone on the spline
+    they are solved on (STATION-FIX, Codex STATION-CODEX-1)."""
+    from services.gochara_kernel import arcs as gk_arcs
+    from services.gochara_kernel.knots import sample_knots
+    ks = sample_knots(body, SUBSTRATE_DOMAIN_START.date(), SUBSTRATE_DOMAIN_END.date(), ephe_path)
+    return gk_arcs.build_arc_index(body, ks.knot_jds, ks.longitudes_deg)
+
+
 class SkyEventStore:
     """Persistence over ka_gochara_sky_convention / ka_gochara_physical_object /
     ka_gochara_sky_event (migration 1153, spec §6.1).
@@ -499,9 +510,7 @@ class SkyEventStore:
                 f"{body}: {n_old} station row(s) of this convention were written under the old regime {STATION_OLD_FALSE_REGIME!r} (spline-grade instants labelled "
                 "swiss_refined, delta_t 1e-9); a mixed substrate is refused — rebuild the convention's stations from scratch")
         if index is None:
-            ks = sample_knots(body, SUBSTRATE_DOMAIN_START.date(),
-                              SUBSTRATE_DOMAIN_END.date(), ephe_path)
-            index = gk_arcs.build_arc_index(body, ks.knot_jds, ks.longitudes_deg)
+            index = production_arc_index(body, ephe_path)
 
         solver_method = "swiss_refined" if refine else "arc_index_bracket"
         precision_regime = (
@@ -573,6 +582,7 @@ class SkyEventStore:
 
 
 __all__ += [
+    "production_arc_index",
     "STATION_OLD_FALSE_REGIME",
     "STATION_PRECISION_REGIME",
     "StationRegimeConflict",
