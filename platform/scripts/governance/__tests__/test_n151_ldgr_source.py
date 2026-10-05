@@ -369,3 +369,45 @@ def test_a_k3_code_digest_stands_as_the_version_only_while_it_matches_the_commit
     gone = dict(k3, version_digest={"file": "platform/scripts/governance/no_such_writer.py", "sha256": _digest()})
     assert _chk(_src(**gone), rows=5)["v"] == FAIL and "cannot be read" in _chk(_src(**gone), rows=5)["measured"]
     assert _chk(_src(**{**k3, "version_digest": {"file": "00_ARCHITECTURE/../../outside.py", "sha256": _digest()}}), rows=5)["v"] in (FAIL, NO_DET)
+
+
+# ───────────────────────── uuid[] ids and `na: not_built` ─────────────────────────
+
+def test_REAL_SQL_a_uuid_array_ledger_resolves_each_id_cast_to_text(monkeypatch, disposable_pg):
+    src = _row(dict(column="sigs", kinds=["LEDGER"], resolves_to="bodha_msr_signals.signal_id"))
+    rows = [f"ARRAY['{S1}'::uuid,'{S2}'::uuid]", f"ARRAY['{S2}'::uuid]"]
+    assert _real_chk(monkeypatch, disposable_pg, FACTS + SIGS + _tbl("ua", "sigs uuid[]", rows), src, "ua", ["id", "sigs"])["v"] == PASS
+    rows += [f"ARRAY['{S3}'::uuid]", f"ARRAY['{S4}'::uuid]", "ARRAY['00000000-0000-0000-0000-0000000000ff'::uuid]", "ARRAY[]::uuid[]", "NULL"]
+    rec = _real_chk(monkeypatch, disposable_pg, FACTS + SIGS + _tbl("ua", "sigs uuid[]", rows), src, "ua", ["id", "sigs"])
+    assert rec["v"] == PARTIAL and rec["source"]["lacking"] == 5, rec["measured"]
+
+
+def test_a_uuid_array_is_read_only_by_a_ledger_entry(monkeypatch):
+    monkeypatch.setattr(ac, "scalar", _Fake({"u": "uuid[]"}, dict(rows=1, lacking=0, sample=[])))
+    for kinds in (["K1"], ["K2"], ["K1", "K2"]):
+        rec = _chk(_row(dict(column="u", kinds=kinds), citation_state="sourced"), cols=["id", "u"])
+        assert rec["v"] == NO_DET and "uuid[]" in rec["measured"], kinds
+    rec = _chk(_row(dict(kinds=["K3"], generator_column="u", method_column="u2", seed_column="u3")), cols=["id", "u", "u2", "u3"])
+    assert rec["v"] == NO_DET
+    assert ac.source_column_kind("uuid[]") == "uuid_array" and ac.source_column_kind("UUID[]") == "uuid_array" and ac.source_column_kind("text[]") == "array" and ac.source_column_kind("uuid") is None
+    assert ac.ldgr_column_kind("uuid[]") is None                                          # the legacy reading is unchanged: it never reads a uuid[]
+
+
+@pytest.mark.parametrize("table,cols,rows,frag", [
+    ("t_empty", ["id"], 0, "t_empty exists and holds no rows"),
+    ("t_gone", None, None, "t_gone is not in production"),
+    (None, None, None, "no target table"),
+])
+def test_not_built_reads_FAIL_with_honest_wording_never_na(table, cols, rows, frag):
+    rec = ac.source_declared_check("x", _src(na="not_built"), table, cols, rows=rows)[LDGR]
+    assert rec["v"] == FAIL and rec["declared"] is True and rec["measured"].startswith("not built:") and frag in rec["measured"] and "cause" not in rec
+    assert "owns existing table" not in rec["measured"]                                  # the no_data wording is for a contradiction, not for an unbuilt asset
+    assert ac.rollup_asset("L0", {LDGR: rec})["Ldgr"]["v"] == FAIL
+
+
+def test_not_built_is_contradicted_by_a_table_that_holds_rows_and_validates_as_an_na_form():
+    rec = ac.source_declared_check("x", _src(na="not_built"), "t", ["id"], rows=12)[LDGR]
+    assert rec["v"] == FAIL and "holds 12 row(s)" in rec["measured"] and rec["declaration_disagreements"][0]["declared"] == "not_built"
+    assert ac.source_declaration_problem(_src(na="not_built")) is None
+    assert ac.source_declaration_problem(_src(na="not_built", kind="K2")) is not None
+    assert "not_built" in ac.SOURCE_NA_FORMS
