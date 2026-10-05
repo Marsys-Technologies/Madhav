@@ -85,7 +85,7 @@ PINNED_FINGERPRINTS = {
     25: "0e78e228d140d04920cb12bcd8b5bd9c8b33ca59ac8f9105853a139b8289d698",
     # 26 (the engine 100% build-out revision, N-150 / N-151; provisional): ONE revision for the whole build-out. Step 1 is the bare bump (content unchanged, so the fingerprint equals pin 25's);
     # each later detector commit of the build-out re-pins this line to the content it lands
-    26: "0e78e228d140d04920cb12bcd8b5bd9c8b33ca59ac8f9105853a139b8289d698",
+    26: "628a95e4b0a693cc606d90b3b9893a084af484e85af6e793d85a9164053477ce",
 }
 
 

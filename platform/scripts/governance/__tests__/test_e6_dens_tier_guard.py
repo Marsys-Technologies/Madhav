@@ -527,12 +527,11 @@ def test_the_pin_the_revision_the_criterion_and_the_declarations_file():
     assert ac.REGISTRY_REVISION >= 23 and 23 in p1.PINNED_FINGERPRINTS
     assert p1.PINNED_FINGERPRINTS[23] and len(p1.PINNED_FINGERPRINTS[23]) == 64
     e = ac.CRITERION_REGISTRY["Dens.served"]
-    assert e["revision"] == 6
+    assert e["revision"] == 7        # 6 at pin 23; 7 at pin 26 (DENS-SCANNER) re-worded and bumped it
     for phrase in ("CLOSED list", "exactly `tier` or `verification_pass_status`", "density_tier_columns", "deny-listed", "cost, price, pricing, plan, access, subscription, billing, fee, tariff",
                    "severity_tier, cost_tier, access_tier"):
         assert phrase.replace("CLOSED list", "closed list") in e["applicability"] or phrase in e["applicability"], phrase
-    src = pathlib.Path(ac.__file__).read_text(encoding="utf-8")
-    assert "23 (provisional): DENS-TIER-GUARD" in src.split("REGISTRY_REVISION = ", 1)[1].split("\n", 1)[0]
+    # (the REGISTRY_REVISION line's own comment text is not pinned here: the line is rewritten by every later revision, 26 = the engine build-out revision)
     raw = json.loads(ac.DECLARATIONS_PATH.read_text(encoding="utf-8"))
     assert raw["version"] == _decl_version.CURRENT and raw["density_tier_declaration_fields"] == ["column", "why", "evidence"] == list(ac.DENS_TIER_DECL_FIELDS)
     assert "density_tier_columns" in raw["description"] and "N-98" in raw["description"]
@@ -540,7 +539,7 @@ def test_the_pin_the_revision_the_criterion_and_the_declarations_file():
 
 
 def test_only_dens_served_changed_in_the_criterion_registry_at_23():
-    assert {k for k, v in ac.CRITERION_REGISTRY.items() if v["revision"] == 6} == {"Dens.served"}
+    assert {k for k, v in ac.CRITERION_REGISTRY.items() if v["revision"] == 7} == {"Dens.served"}      # 6 at pin 23; 7 at pin 26 (DENS-SCANNER)
     assert set(ac.NA_CAUSES["Dens.served"]) == {"no-served-surface"} and list(r for r in ac.NA_RULE_DECISIONS if r.startswith("Dens.served")) == ["Dens.served#measured:no-served-surface"]
 
 
