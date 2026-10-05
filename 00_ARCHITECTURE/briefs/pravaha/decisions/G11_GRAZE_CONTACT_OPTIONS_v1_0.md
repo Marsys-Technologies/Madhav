@@ -1,10 +1,11 @@
 ---
 artifact: G11_GRAZE_CONTACT_OPTIONS
-version: "1.1"
+version: "1.2"
 status: "DRAFT for the owner — a plain-language options note; authorises NOTHING. The decision is the owner's (steward GRAZE-INTERIM, 2026-10-05; corrected by steward GRAZE-CORRECTION and Codex VERIFIER-CODEX-1)."
 date: 2026-10-05
 author: Stream B (Śāstra)
 changelog:
+  - "1.2 (2026-10-05, steward WRAP-TANGENCY / Codex on PR 3156): addendum — the exact-zero station TANGENCY is NOT this gap; separate pre-existing builder limit, never triggered on the real chart; counts and disposition added at the end."
   - "1.1 (2026-10-05): the worked example is from the TEST database's stub chart, not the native's chart (steward GRAZE-CORRECTION); the real-chart count is now given, computed read-only with the real natal longitudes and the pinned ephemeris (no build); the real cost of option A is stated (contact identities are numbered by the order of exact crossings, so adding grazes can renumber existing ones; Codex VERIFIER-CODEX-1)."
   - "1.0 (2026-10-05): first version (its example wrongly called the stub point the native's)."
 ---
@@ -55,3 +56,14 @@ The design specification defines a contact as a conjunction or an aspect **withi
 
 ## Recommendation
 Decide **after the small test confirms the count through the pipeline**, but lean to **A** as the end state, because it is what the specification says and with 24 stretches on the real chart a silent drop is not small. Settle the numbering question (renumber versus separate numbering) before choosing A. B is acceptable only as a **stated, temporary limit** with the owner's approval; C only if you want near misses *never* to count. Whichever is chosen must be written down before the full build results are read, because A, B and C change which readings the product has.
+
+## Addendum (v1.2): the station TANGENCY is a different defect, not a graze
+
+Codex (on PR 3156) noted that when the body reaches the ray level EXACTLY at its station and turns back (a tangency with a root), `contacts.py` keeps only one of the two station-end candidates, so the support covers the approach and omits the return, and the independent certification rejects it (synthetic reproduction only).
+
+**Disposition: a separate builder defect, not part of this gap.** A graze has NO exact crossing, so no contact is minted at all, and the decision (mint / ignore / require a crossing) is the owner's. A tangency HAS an exact root, so a contact is minted; what is wrong is which piece of it is kept. The mechanism is the seam de-duplication in `contacts.py` (about line 313): it exists for the 0/360 wrap, where two wrap-cut arcs report the same physical crossing, and it is gated on the ray level being EXACTLY 0 modulo 360 (`float(level) % 360.0 == 0.0`); with the body also exactly at a station there, the two station-end candidates look like that wrap twin and one is dropped. It does not need an owner decision: the right behaviour is simply to keep both (they are in different arcs on opposite sides of the station, so they are not the same crossing), as the seam rule already treats a station inside a band.
+
+**Real chart (read-only arithmetic, 140 ray levels over the 98 point obligations):** the smallest distance of any ray level from exactly 0 or 360 is 0.8388 degrees (Saturn's aspect ray to natal Mercury); **0 ray levels are within 0.000001 degree of 0/360, so the gated path is never taken on this chart.** Independently, of the 112 stations inside an in-band stretch over 1998 to 2085, the closest approach to the ray level AT a station is 0.00170 degrees (Jupiter aspect to natal Venus, 2016-05-09) and 0.00179 (Mercury conjunction to natal Sun, 2047-02-26): **0 within one solver accuracy (0.00028 degree), 0 within 0.001, 2 within 0.01, 5 within 0.05.** The two closest are real transversal pairs of roots either side of the station and go through the ordinary two-contact path (the 2016 one is among the 20 seams of the scored horizon that all pass the strict junction test).
+
+**What to do:** record it as a known limit (it can only appear for a point whose longitude is exactly a multiple of 30 degrees or a ray derived exactly to 0, e.g. a placeholder at a sign cusp, with the body at a station exactly there); fix it the next time `contacts.py` is touched, with a test that builds the exact tangency from a synthetic curve; it does not block the small test or the full build for the pinned chart. Stream A owns the fix (builder code).
+
