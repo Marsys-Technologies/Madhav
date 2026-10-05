@@ -1976,6 +1976,70 @@ def _fetch_valid_fact_ids(conn: Any, chart_id: str) -> set[str]:
 
 # ── WP-2.4 (LCA-9b-1): per-varga flood aggregation ────────────────────────────
 
+def _fact_natural_key(r: dict) -> tuple:
+    return (str(r.get("fact_category") or ""), str(r.get("fact_key") or ""),
+            str(r.get("fact_subject") or ""), str(r.get("formula_id") or ""))
+
+
+def _fact_value_signature(r: dict) -> str:
+    fvj = r.get("fact_value_jsonb")
+    if isinstance(fvj, str):
+        try:
+            fvj = json.loads(fvj)
+        except Exception:
+            pass
+    return json.dumps(
+        [r.get("fact_value_text"),
+         float(r["fact_value_num"]) if r.get("fact_value_num") is not None else None,
+         fvj],
+        sort_keys=True, default=str,
+    )
+
+
+def _merge_invariant_shadowed_duplicates(
+    ayanamsha_rows: list[dict], invariant_rows: list[dict],
+) -> tuple[list[dict], int]:
+    """Return ayanamsha_rows + invariant_rows with each INVARIANT fact that restates an
+    ayanamsha-specific fact (same category/key/subject/formula_id AND same value) folded
+    into that fact: ONE signal, and the INVARIANT fact_id stays cited in the survivor's
+    constituent_facts_array. Without this the two L1 rows (e.g. bhadra_flag
+    active_at_birth_flag, present as both the ayanamsha row and the INVARIANT row) emit
+    two signals with the identical identity -- a true duplicate, not a distinct signal.
+    INVARIANT facts with no ayanamsha-specific twin, or a twin with a different value,
+    pass through unchanged (a different value is a different signal)."""
+    by_key: dict[tuple, list[int]] = {}
+    for i, r in enumerate(ayanamsha_rows):
+        by_key.setdefault(_fact_natural_key(r), []).append(i)
+    out = [dict(r) for r in ayanamsha_rows]
+    kept_invariant: list[dict] = []
+    folded = 0
+    for inv in invariant_rows:
+        twin = None
+        for i in by_key.get(_fact_natural_key(inv), []):
+            if _fact_value_signature(out[i]) == _fact_value_signature(inv):
+                twin = i
+                break
+        if twin is None:
+            kept_invariant.append(inv)
+            continue
+        folded += 1
+        tw = out[twin]
+        fvj = tw.get("fact_value_jsonb")
+        if isinstance(fvj, str):
+            try:
+                fvj = json.loads(fvj)
+            except Exception:
+                fvj = None
+        fvj = dict(fvj) if isinstance(fvj, dict) else {}
+        cited = list(fvj.get("constituent_facts_array") or [])
+        for fid in (str(tw.get("fact_id")), str(inv.get("fact_id"))):
+            if fid and fid not in cited:
+                cited.append(fid)
+        fvj["constituent_facts_array"] = cited
+        tw["fact_value_jsonb"] = fvj
+    return out + kept_invariant, folded
+
+
 def _make_aggregate_fact_row(members: list[dict], varga: str | None) -> dict:
     """Collapse a large (category × varga) member group into ONE synthetic fact
     row. Fed to _build_signal_row like any real fact, it yields a single aggregate
@@ -2328,14 +2392,27 @@ def _build_signal_row(
     # key instead: for the categories whose only distinguishing field WAS that id,
     # carry the L1 fact_subject (read from the fact row, never re-derived).
     config = _strip_random_row_ids(config, valid_fact_ids)
-    if fact_cat in _FACT_SUBJECT_NATURAL_KEY_CATS:
-        _subject = str(fact_row.get("fact_subject") or "")
-        if not _subject:
-            raise ValueError(
-                f"bo_laksana: {fact_cat}/{fact_key} fact {fact_id} has no fact_subject; "
-                "refusing to emit a signal with no natural key"
-            )
-        config["fact_subject"] = _subject
+    _subject = str(fact_row.get("fact_subject") or "")
+    if fact_cat in _FACT_SUBJECT_NATURAL_KEY_CATS and not _subject:
+        raise ValueError(
+            f"bo_laksana: {fact_cat}/{fact_key} fact {fact_id} has no fact_subject; "
+            "refusing to emit a signal with no natural key"
+        )
+    # N-143 / S-L2 LAKSANA-COLLISION: chart_facts' natural key is
+    # (category, key, subject, formula_id) -- fact_subject / formula_id are L1 columns
+    # that many post-S-L1 facts (argala/virodha matrices, ashtakavarga per-varga and
+    # contributor, sambandha_grade, saham, sade_sati*, ...) carry INSTEAD of a jsonb
+    # discriminator (fact_value_jsonb is NULL). Without them the identity tuple
+    # collapses distinct facts (measured: 15,010 of 25,361 lahiri rows). Both are
+    # deterministic L1 columns, read here and never re-derived. Aggregate flood
+    # rollups are keyed by (category x varga) already and their "first member"
+    # subject is arbitrary, so they never carry one.
+    if not fvj.get("aggregated"):
+        if _subject:
+            config["fact_subject"] = _subject
+        _formula = fact_row.get("formula_id")
+        if _formula:
+            config["l1_formula_id"] = str(_formula)
 
     # Source L1 asset + subsystem
     source_l1_asset  = _infer_source_l1_asset(sc)
@@ -3501,9 +3578,12 @@ class BoLaksanaWriter(WriterBase):
         # included via IN (%s, 'INVARIANT') → 5× duplicate signals).
         fact_rows = _fetch_all_facts(conn, chart_id, ayanamsha)
         invariant_rows = _fetch_invariant_facts(conn, chart_id)
-        fact_rows = fact_rows + invariant_rows
-        logger.info("[bo_laksana] %s — fetched %d fact rows (%d INVARIANT)",
-                    ayanamsha, len(fact_rows), len(invariant_rows))
+        fact_rows, _invariant_folded = _merge_invariant_shadowed_duplicates(
+            fact_rows, invariant_rows)
+        logger.info("[bo_laksana] %s — fetched %d fact rows (%d INVARIANT, %d folded "
+                    "into an identical ayanamsha-specific twin)",
+                    ayanamsha, len(fact_rows) + _invariant_folded, len(invariant_rows),
+                    _invariant_folded)
 
         if not fact_rows:
             raise RuntimeError(

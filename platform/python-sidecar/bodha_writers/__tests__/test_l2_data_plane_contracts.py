@@ -540,3 +540,73 @@ def test_msr_replacement_invokes_cross_layer_guard_before_delete():
     guard = next(i for i, (sql, _) in enumerate(conn.calls) if "assert_l2_msr_delete_safe" in sql)
     first_delete = next(i for i, (sql, _) in enumerate(conn.calls) if sql.startswith("DELETE"))
     assert guard < first_delete
+
+
+def test_open_generation_logs_bind_and_open_timing_without_extra_sql(monkeypatch, caplog):
+    """Logging only: INFO start/end/elapsed lines around bind_l2_exact_inputs and
+    open_generation, same SQL statements as before, none added."""
+    import logging
+
+    executed = []
+
+    class Cursor:
+        description = None
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_args):
+            return False
+
+        def execute(self, sql, params=None):
+            executed.append(sql)
+
+    class Conn:
+        _l2_contract_test_double = True
+
+        def cursor(self):
+            return Cursor()
+
+    @l2_producer("bo_samskara")
+    class Heavy:
+        asset_id = "bo_samskara"
+
+        def run_substep(self, ctx, step):
+            return SimpleNamespace(rows_inserted=1, rows_updated=0, rows_skipped=0, notes="")
+
+    ctx = SimpleNamespace(
+        build_id="00000000-0000-0000-0000-000000000001",
+        config={"chart_id": "00000000-0000-0000-0000-000000000002"},
+        db_conn=Conn(),
+        dry_run=False,
+    )
+    vector, context = _upstream_context(ctx.config["chart_id"], "lahiri")
+    monkeypatch.setattr(
+        contract_module, "_resolve_upstream_context", lambda *_a, **_k: (vector, context),
+    )
+    monkeypatch.setattr(contract_module, "_writer_source_digest", lambda _asset_id: "a" * 64)
+    with caplog.at_level(logging.INFO, logger=contract_module.logger.name):
+        Heavy().run_substep(ctx, SimpleNamespace(key="lahiri"))
+
+    lines = [r.getMessage() for r in caplog.records if r.getMessage().startswith("[l2-contract]")]
+    pattern = (
+        r"^\[l2-contract\] (bind_l2_exact_inputs|open_generation) asset=bo_samskara "
+        r"start=\d{4}-\d\d-\d\dT[\d:.]+\+00:00 end=\d{4}-\d\d-\d\dT[\d:.]+\+00:00 "
+        r"elapsed=\d+\.\d{3}s partition=lahiri$"
+    )
+    assert [re.match(pattern, ln).group(1) for ln in lines] == ["bind_l2_exact_inputs", "open_generation"]
+    assert all(r.levelno == logging.INFO for r in caplog.records if r.getMessage().startswith("[l2-contract]"))
+    # no new DB statements: exactly the pre-existing bind and open calls are present once each
+    sql = "\n".join(executed)
+    assert sql.count("public.bind_l2_exact_inputs(") == 1
+    assert sql.count("public.open_l2_data_plane_generation(") == 1
+
+
+def test_timed_step_logs_end_line_when_statement_raises_and_propagates(caplog):
+    import logging
+
+    with caplog.at_level(logging.INFO, logger=contract_module.logger.name):
+        with pytest.raises(ZeroDivisionError):
+            with contract_module._timed_l2_step("open_generation", "bo_x", "p"):
+                1 / 0
+    assert any("[l2-contract] open_generation asset=bo_x" in r.getMessage() for r in caplog.records)
