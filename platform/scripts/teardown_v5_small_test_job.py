@@ -129,6 +129,12 @@ EXPECTED_REGISTRY_ROW = {
                   "WHERE chart_id=$1 AND generation='5.0'"),
     "target_floor": 0,
     "estimated_seconds": None,
+    # Codex round 4 D2: how asset_runner.py routes the asset (see the dispatch's copy); a data writer with no probe or integrity check
+    "asset_kind": "data",
+    "asset_type": "data",
+    "health_probe": None,
+    "integrity_check_sql": None,
+    "rebuild_on_probe_fail": False,
 }
 
 MANIFEST_TABLE = ("kala_gochara_publication", "")   # the candidate manifest: last, and only once proven to be the slice's
@@ -160,7 +166,8 @@ RUN_REFERENCES_SKIP = ("build_run_assets", "asset_provenance_receipts")
 def _validate_registry_row(cur, *, check_active: bool = True) -> None:
     cur.execute(
         """SELECT scope, is_active, has_writer, has_substeps, writer_timeout_seconds,
-                  depends_on, target_table, count_sql, target_floor, estimated_seconds
+                  depends_on, target_table, count_sql, target_floor, estimated_seconds,
+                  asset_kind, asset_type, health_probe, integrity_check_sql, rebuild_on_probe_fail
            FROM asset_registry WHERE asset_id = %s""",
         (ASSET_ID,),
     )

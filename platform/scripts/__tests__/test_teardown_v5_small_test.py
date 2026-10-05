@@ -35,7 +35,8 @@ REGISTRY_ROW = dict(teardown_mod.EXPECTED_REGISTRY_ROW)
 PRE_1304_ROW = {"scope": "per_chart", "is_active": False, "has_writer": True, "has_substeps": False,
                 "writer_timeout_seconds": 600, "depends_on": [], "target_table": "kala_gochara_windows",
                 "count_sql": "SELECT COUNT(*) FROM kala_gochara_windows WHERE chart_id=$1 AND generation='5.0'",
-                "target_floor": 0, "estimated_seconds": None}
+                "target_floor": 0, "estimated_seconds": None, "asset_kind": "data", "asset_type": "data", "health_probe": None,
+                "integrity_check_sql": None, "rebuild_on_probe_fail": False}
 GEN_TABLES = [t for t, _ in teardown_mod.GENERATION_TABLES]
 RUN_1 = str(uuid.uuid4())
 _W = teardown_mod._writer()
@@ -584,7 +585,9 @@ def test_the_pre_1304_registry_row_is_refused_and_everything_rolls_back():
 
 
 @pytest.mark.parametrize("field, bad", [("has_substeps", False), ("writer_timeout_seconds", 600), ("depends_on", []),
-                                        ("target_table", "kala_gochara_windows")])
+                                        ("target_table", "kala_gochara_windows"),
+                                        ("rebuild_on_probe_fail", True), ("integrity_check_sql", "SELECT 1"), ("health_probe", "probe"),
+                                        ("asset_kind", "service"), ("asset_type", "service")])
 def test_every_field_of_the_1304_shape_is_checked_before_and_after(field, bad):
     h = _Harness(registry_row=dict(REGISTRY_ROW, **{field: bad}))
     with pytest.raises(RuntimeError, match=field):
