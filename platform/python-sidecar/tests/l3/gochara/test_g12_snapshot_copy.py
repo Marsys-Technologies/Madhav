@@ -86,6 +86,17 @@ def _violations(conn):
                             (CHART_ID, GEN)).fetchall()
 
 
+def _answers_from_the_copy(fn):
+    """Run `fn` with live L1 gone. A database error (a relation that no longer exists, a consumed row that is gone) means the code READ LIVE L1: reported as a FAILED ASSERTION
+    (pytest.fail), so that detection is an assertion and never an incidental infrastructure-looking exception (the mutation harness only counts assertions)."""
+    try:
+        return fn()
+    except pytest.fail.Exception:
+        raise
+    except Exception as exc:
+        pytest.fail(f"the code read live L1 (it needed rows that are gone): {type(exc).__name__}: {str(exc)[:200]}")
+
+
 def _drift_violations(conn):
     return [v for v in _violations(conn) if v[1] == "input_snapshot_drift"]
 
@@ -472,17 +483,17 @@ def test_the_moon_resolved_domain_is_unchanged_by_an_L1_rebuild_it_reads_the_sna
     before = conn.execute(q, (CHART_ID, GEN, ob)).fetchone()[0]
     assert before != "{}", "setup: the Moon Antardaśā puts a non-empty Moon-resolved domain under the AD obligation"
     _rebuild_l1_with_new_ids(conn)
-    assert conn.execute(q, (CHART_ID, GEN, ob)).fetchone()[0] == before
+    assert _answers_from_the_copy(lambda: conn.execute(q, (CHART_ID, GEN, ob)).fetchone()[0]) == before
     conn.execute("DELETE FROM public.chart_dashas")                                          # even with live L1 EMPTY the function answers from the copy
-    assert conn.execute(q, (CHART_ID, GEN, ob)).fetchone()[0] == before
+    assert _answers_from_the_copy(lambda: conn.execute(q, (CHART_ID, GEN, ob)).fetchone()[0]) == before
 
 
 def test_the_generation_verifies_even_when_live_L1_is_gone_entirely(g12):
     _step, conn = g12
     conn.execute("DELETE FROM public.chart_dashas")
     conn.execute("DELETE FROM public.chart_facts")
-    assert _verify_marriage(conn)                                                            # the copy is all the verifier needs
-    rep = staleness.sealed_generation_staleness(conn, CHART_ID, GEN)
+    assert _answers_from_the_copy(lambda: _verify_marriage(conn))                            # the copy is all the verifier needs
+    rep = _answers_from_the_copy(lambda: staleness.sealed_generation_staleness(conn, CHART_ID, GEN))
     assert rep["drifted"] is True and {"l1_facts", "dasha", "input"} <= set(rep["drifted_components"])       # ... and drift is REPORTED as hard, honestly
     assert {c["change"] for c in rep["changes"]} == {"missing_live"}
 
@@ -784,7 +795,7 @@ def test_every_runnable_substep_after_the_snapshot_runs_with_live_L1_gone_not_on
     conn.execute("DROP TABLE public.chart_dashas CASCADE")
     conn.execute("DROP TABLE public.chart_facts CASCADE")
     for key in runnable:
-        step(key)
+        _answers_from_the_copy(lambda key=key: step(key))
 
 
 def test_a_decimal_that_a_float_cannot_carry_is_refused_exactly_not_context_rounded():

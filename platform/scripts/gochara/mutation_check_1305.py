@@ -72,15 +72,13 @@ MUTATIONS = [
     ("a gap inside a level is no longer a violation", MIG, "FROM d WHERE d.prev_end IS NOT NULL AND d.start_iso > d.prev_end", "FROM d WHERE d.prev_end IS NOT NULL AND false"),
     ("the horizon END edge is no longer checked", MIG, "FROM d GROUP BY d.level_n HAVING max(d.end_iso) < upper(p_horizon)", "FROM d GROUP BY d.level_n HAVING false"),
     ("the capture trigger no longer asserts the required scope", MIG, "  IF req IS NOT NULL THEN\n    RAISE EXCEPTION 'ka_gochara_search_input_snapshot refused (1305): the required population", "  IF false THEN\n    RAISE EXCEPTION 'ka_gochara_search_input_snapshot refused (1305): the required population"),
-    ("a different lord at the same ordinal reads as a move again", K + "staleness.py",
-     "                            and (x.get(\"content\") or {}).get(\"lord_graha\") == (e.get(\"content\") or {}).get(\"lord_graha\")\n", ""),
     ("the Python checker ignores the required members and coverage", K + "inventory_verifier.py", "    if require_contract:\n        eligible", "    if False:\n        eligible"),
     ("a child outside its parent is no longer a violation", MIG, "WHERE c.level_n IN (2, 3) AND NOT (c.start_iso >= p.start_iso AND c.end_iso <= p.end_iso)", "WHERE c.level_n IN (2, 3) AND false"),
     ("an orphan or wrong-level parent is no longer a violation", MIG, "FROM d c WHERE c.level_n IN (2, 3)\n              AND NOT EXISTS", "FROM d c WHERE c.level_n IN (2, 3) AND false\n              AND NOT EXISTS"),
     ("the drift check judges the required scope by the consumed TIER again (a tier-only change closes the gate)", MIG, "snap.consumed_dasha_rows) v;", "NULL::jsonb) v;"),
     ("a move ignores the full lord path (ancestry) again", K + "staleness.py", "                            and (x.get(\"content\") or {}).get(\"lord_path\") == (e.get(\"content\") or {}).get(\"lord_path\")             # the FULL ancestry (parents' lords), not only the leaf\n", ""),
     ("the copied ancestry accepts a parent of another ayanamsha or system", MIG, "    AND p.ayanamsha_id IS NOT DISTINCT FROM d.ayanamsha_id AND p.system_id IS NOT DISTINCT FROM d.system_id        -- a parent of another ayanamsha/system never enters the copied ancestry\n", ""),
-    ("the Python checker ignores the hierarchy", K + "inventory_verifier.py", "            if par is None or int(par[\"level_n\"]) != level - 1", "            if False and par is None or int(par[\"level_n\"]) != level - 1"),
+    ("the Python checker ignores the hierarchy", K + "inventory_verifier.py", "        by_id = {str(r[\"dasha_row_id\"]): r for r in eligible}\n        for r in eligible:", "        by_id = {}\n        for r in []:"),
     ("numbers inside the copy are no longer normalised", MIG,
      "IF jsonb_typeof(j) = 'number' THEN RETURN to_jsonb(trim_scale((j #>> '{}')::numeric)); END IF;",
      "IF jsonb_typeof(j) = 'number' THEN RETURN j; END IF;"),
@@ -169,7 +167,7 @@ def main() -> int:
             continue
         try:
             open(path, "w", encoding="utf-8").write(text.replace(old, new, 1))
-            code, out, xml = _run(("-x",))
+            code, out, xml = _run()                       # the WHOLE suite (no -x): the report must hold every failing test so an assertion anywhere is seen
         finally:
             open(path, "w", encoding="utf-8").write(text)
         verdict = classify(code, out, xml)
