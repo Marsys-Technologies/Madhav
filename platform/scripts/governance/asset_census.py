@@ -1236,9 +1236,294 @@ def validate_density_tier_declaration(where: str, dt, e: dict) -> None:
         raise DeclarationsError(f"{where}.{bad}" if bad.startswith("density_tier_columns") else f"{where}.density_tier_columns: {bad}")
 
 
+# ─────────────────── N-150 / N-151 (REGISTRY_REVISION 26): the engine build-out declarations ───────────────────
+# Four declaration forms, validated here (SHAPE only: no database, no register). Each is inert until an asset declares it; the detectors that READ them are separate
+# (Ldgr.source_presence for `source`; the Narr.* / Null.* N/A for `prose_none`; Build.completion's produced-table clause for `produced_tables`).
+#
+# `source` (N-151, R4 final): EVERY L0 asset that holds data carries a SOURCE of kind K1 (classical citation: text + locus), K2 (ratification: a decision id) or K3 (derivation:
+# generator or dataset + method + version or seed); computed L1/L2 assets declare LEDGER (the fact ids a column carries resolve to chart_facts.fact_id, N.5). TABLE level: one declared
+# source for the whole table (the constants are in the declaration). ROW level: `columns` names the column(s) that carry the source per row; the entries are ALTERNATIVES (a row is
+# sourced when at least one entry resolves). N/A exists ONLY as `na: no_data` (the asset holds no data: no owned table) or `na: no_claims` (the asset makes no claims), each CHECKED by the detector.
+SOURCE_KINDS = ("K1", "K2", "K3", "LEDGER")
+SOURCE_LEVELS = ("table", "row")
+SOURCE_NA_FORMS = ("no_data", "no_claims")
+SOURCE_DECL_FIELDS = ("na", "level", "kind", "citation", "locus", "decision_id", "generator", "dataset", "method", "version", "seed", "columns", "citation_state", "why", "evidence")
+SOURCE_COLUMN_FIELDS = ("column", "kinds", "id_prefixes", "generator_column", "dataset_column", "method_column", "version_column", "seed_column")
+SOURCE_MAX_COLUMNS = 8
+SOURCE_DEFAULT_ID_PREFIXES = ("N", "D", "F")
+_K2_ID_RE = re.compile(r"[A-Za-z][A-Za-z0-9]{0,5}-?[0-9]{1,6}[A-Za-z0-9._-]{0,24}")     # a decision id: N-150, D-4, F-2, N-72a; never a bare word like 'ratified'
+_ID_PREFIX_RE = re.compile(r"[A-Z]{1,4}")
+
+
+def _src_text(v) -> bool:
+    return isinstance(v, str) and bool(v.strip()) and v == v.strip() and not _blank_text(v)
+
+
+def source_declaration_problem(src, entry=None):
+    """None when `src` (an asset's `source` declaration) is well formed, else why not (SHAPE only). Exactly one of: `na` ('no_data' | 'no_claims': no other field but why / evidence;
+    evidence may not be `unverified:`), or `level` 'table' (`kind` K1: citation + locus + citation_state; K2: decision_id; K3: generator xor dataset, method, version and/or seed) or `level`
+    'row' (`columns`: 1..SOURCE_MAX_COLUMNS entries; an entry with `kinds` ['K3'] names generator_column xor dataset_column, method_column and version_column and/or seed_column; an entry
+    with ['LEDGER'] names `column` (alone: LEDGER is not mixed); any other entry names `column` and `kinds` a distinct non-empty subset of K1 / K2, optional `id_prefixes` only with K2).
+    K2 is a decision-id STRING (N-154): a non-placeholder id shape, not a bare word. Every form needs `why` and `evidence` (S3 text and pointer rules). A row entry's column names are distinct
+    across the declaration. `citation_state` (one of CITATION_STATES) is required when any K1 source is declared."""
+    if not isinstance(src, dict):
+        return "source must be an object or null"
+    extra = sorted(set(src) - set(SOURCE_DECL_FIELDS))
+    if extra:
+        return f"unknown field(s) {extra}"
+    na = src.get("na")
+    bad = _s3_text_problem(src.get("why"), min_chars=15, min_words=3)
+    if bad:
+        return f"why {bad}"
+    bad = _s3_evidence_problem(src.get("evidence"), allow_unverified=na is None)
+    if bad:
+        return f"evidence {src.get('evidence')!r} {bad}"
+    if na is not None:
+        if na not in SOURCE_NA_FORMS:
+            return f"na must be null or one of {list(SOURCE_NA_FORMS)}, got {na!r}"
+        other = sorted(k for k in src if k not in ("na", "why", "evidence") and src[k] is not None)
+        if other:
+            return f"na {na!r} declares no source, so {other} must be absent"
+        return None
+    level = src.get("level")
+    if level not in SOURCE_LEVELS:
+        return f"level must be one of {list(SOURCE_LEVELS)} (or na one of {list(SOURCE_NA_FORMS)}), got {level!r}"
+    cs = src.get("citation_state")
+    if cs is not None and cs not in CITATION_STATES:
+        return f"citation_state must be null or one of {list(CITATION_STATES)}, got {cs!r}"
+    if level == "table":
+        kind = src.get("kind")
+        if kind not in ("K1", "K2", "K3"):
+            return f"a table-level source has kind K1, K2 or K3, got {kind!r}"
+        if src.get("columns") is not None:
+            return "a table-level source names no columns (the declared source is for the whole table)"
+        need = {"K1": ("citation", "locus"), "K2": ("decision_id",), "K3": ("method",)}[kind]
+        allowed = {"K1": ("citation", "locus"), "K2": ("decision_id",), "K3": ("generator", "dataset", "method", "version", "seed")}[kind]
+        for f in ("citation", "locus", "decision_id", "generator", "dataset", "method", "version", "seed"):
+            v = src.get(f)
+            if f in allowed:
+                if v is not None and not _src_text(v):
+                    return f"{f} must be a non-blank one-line string"
+            elif v is not None:
+                return f"{f} is not a field of a {kind} source"
+        for f in need:
+            if not _src_text(src.get(f)):
+                return f"a {kind} source needs {f}"
+        if kind == "K1" and cs is None:
+            return "a K1 source states its citation_state (sourced / sourced_ocr_unverified / unsourced / refuted): a citation is never assumed verified"
+        if kind == "K2" and not _K2_ID_RE.fullmatch(src["decision_id"]):
+            return f"decision_id {src['decision_id']!r} is not a decision id (shape like N-150, D-4, F-2): a bare word is not a source"
+        if kind == "K3":
+            if (src.get("generator") is None) == (src.get("dataset") is None):
+                return "a K3 source names exactly one of generator / dataset"
+            if src.get("version") is None and src.get("seed") is None:
+                return "a K3 source names a version or a seed"
+        return None
+    for f in ("kind", "citation", "locus", "decision_id", "generator", "dataset", "method", "version", "seed"):
+        if src.get(f) is not None:
+            return f"{f} is a table-level field; a row-level source names its sources in `columns`"
+    cols = src.get("columns")
+    if not (isinstance(cols, list) and 1 <= len(cols) <= SOURCE_MAX_COLUMNS):
+        return f"a row-level source needs `columns`: a list of 1 to {SOURCE_MAX_COLUMNS} entries"
+    seen, k1 = set(), False
+    for i, c in enumerate(cols):
+        lab = f"columns[{i}]"
+        if not isinstance(c, dict):
+            return f"{lab} must be an object"
+        bad_f = sorted(set(c) - set(SOURCE_COLUMN_FIELDS))
+        if bad_f:
+            return f"{lab}: unknown field(s) {bad_f}"
+        kinds = c.get("kinds")
+        if not (isinstance(kinds, list) and kinds and len(set(kinds)) == len(kinds) and all(k in SOURCE_KINDS for k in kinds)):
+            return f"{lab}.kinds must be a non-empty list of distinct kinds from {list(SOURCE_KINDS)}"
+        names = []
+        if kinds == ["K3"]:
+            for f in ("generator_column", "dataset_column", "method_column", "version_column", "seed_column"):
+                if c.get(f) is not None:
+                    if not (isinstance(c[f], str) and _DECL_IDENT.fullmatch(c[f])):
+                        return f"{lab}.{f} must be a column name (an identifier)"
+                    names.append(c[f])
+            if c.get("column") is not None or c.get("id_prefixes") is not None:
+                return f"{lab}: a K3 entry names generator_column / dataset_column, method_column, version_column / seed_column, not `column` or `id_prefixes`"
+            if (c.get("generator_column") is None) == (c.get("dataset_column") is None):
+                return f"{lab}: a K3 entry names exactly one of generator_column / dataset_column"
+            if c.get("method_column") is None:
+                return f"{lab}: a K3 entry names method_column"
+            if c.get("version_column") is None and c.get("seed_column") is None:
+                return f"{lab}: a K3 entry names version_column or seed_column"
+        else:
+            if "K3" in kinds:
+                return f"{lab}: K3 is declared alone (its sources are three columns), not mixed with {kinds}"
+            if "LEDGER" in kinds and kinds != ["LEDGER"]:
+                return f"{lab}: LEDGER (fact ids resolved against chart_facts) is declared alone, not mixed with {kinds}"
+            if not (isinstance(c.get("column"), str) and _DECL_IDENT.fullmatch(c["column"])):
+                return f"{lab}.column must be a column name (an identifier)"
+            names.append(c["column"])
+            if any(c.get(f) is not None for f in ("generator_column", "dataset_column", "method_column", "version_column", "seed_column")):
+                return f"{lab}: generator_column / dataset_column / method_column / version_column / seed_column belong to a K3 entry"
+            pre = c.get("id_prefixes")
+            if pre is not None:
+                if "K2" not in kinds:
+                    return f"{lab}.id_prefixes is only for an entry that carries K2"
+                if not (isinstance(pre, list) and 1 <= len(pre) <= 8 and len(set(pre)) == len(pre) and all(isinstance(p, str) and _ID_PREFIX_RE.fullmatch(p) for p in pre)):
+                    return f"{lab}.id_prefixes must be 1 to 8 distinct upper-case letter prefixes (default {list(SOURCE_DEFAULT_ID_PREFIXES)})"
+            k1 = k1 or "K1" in kinds
+        if len(set(names)) != len(names) or seen & set(names):
+            return f"{lab}: a column is named twice in the declaration"
+        seen |= set(names)
+    if k1 and cs is None:
+        return "a source that carries K1 states its citation_state"
+    return None
+
+
+def validate_source_declaration(where: str, src, e: dict) -> None:
+    """Raises DeclarationsError when an asset's `source` declaration is malformed (see `source_declaration_problem`), or sits beside the older `ldgr_source` (one source declaration per asset)."""
+    bad = source_declaration_problem(src, e)
+    if bad:
+        raise DeclarationsError(f"{where}.source: {bad}")
+    if isinstance(e, dict) and e.get("ldgr_source") is not None:
+        raise DeclarationsError(f"{where}.source: an asset declares `source` (N-151) or the older `ldgr_source`, not both")
+
+
+# `prose_none` (N-150 R1/R2): the EXPLICIT declared-none form of `prose_fields []`. `prose_fields: []` alone says "this writer composes no prose" and nothing checks it against the
+# schema; with `prose_none` the detector CHECKS the claim against the live schema: every text-capable column of the asset's produced tables (text / varchar / citext / array / json(b) /
+# user-defined types) must be listed in `closed_columns` with a CLOSED vocabulary (`values`: the data must stay inside it) or, for a json(b) column, `no_string_leaves: true`; an open
+# text column contradicts the declaration (FAIL, not N/A). Narr.* and Null.* read N/A only through a passing check.
+PROSE_NONE_DECL_FIELDS = ("why", "closed_columns")
+PROSE_NONE_COLUMN_FIELDS = ("table", "column", "values", "no_string_leaves", "why")
+PROSE_NONE_MAX_COLUMNS = 64
+PROSE_NONE_MAX_VALUES = 300
+
+
+def prose_none_problem(entry):
+    """None when `entry` has no `prose_none` or a sound one, else why not (SHAPE only). Sound: an object with exactly the fields why / closed_columns; `why` a real one-line reason; the entry
+    declares `prose_fields` EXACTLY [] (a declared-none form qualifies the empty list) and no `prose_coupling` (a coupled asset's N/A rests on Carr.D1, not on this); `closed_columns` is a
+    list (possibly empty: the produced tables have no text-capable column) of at most PROSE_NONE_MAX_COLUMNS objects: `column` an identifier, optional `table` an identifier, `why` a real
+    reason, and exactly one of `values` (1..PROSE_NONE_MAX_VALUES distinct non-blank strings) or `no_string_leaves: true`; no (table, column) listed twice."""
+    if not isinstance(entry, dict) or entry.get("prose_none") is None:
+        return None
+    pn = entry["prose_none"]
+    if not isinstance(pn, dict):
+        return "prose_none must be an object or null"
+    extra = sorted(set(pn) - set(PROSE_NONE_DECL_FIELDS))
+    if extra:
+        return f"unknown field(s) {extra}"
+    if entry.get("prose_fields") != []:
+        return f"prose_none qualifies a declared prose_fields [] (this asset declares prose_fields {entry.get('prose_fields')!r})"
+    if entry.get("prose_coupling") is not None:
+        return "an asset declares a prose_coupling (its N/A rests on Carr.D1) or the prose_none form (its N/A rests on the schema check), not both"
+    bad = _s3_text_problem(pn.get("why"), min_chars=15, min_words=3)
+    if bad:
+        return f"why {bad}"
+    cc = pn.get("closed_columns")
+    if not (isinstance(cc, list) and len(cc) <= PROSE_NONE_MAX_COLUMNS):
+        return f"closed_columns must be a list of at most {PROSE_NONE_MAX_COLUMNS} objects ([] = the produced tables carry no text-capable column)"
+    seen = set()
+    for i, c in enumerate(cc):
+        lab = f"closed_columns[{i}]"
+        if not isinstance(c, dict):
+            return f"{lab} must be an object"
+        bad_f = sorted(set(c) - set(PROSE_NONE_COLUMN_FIELDS))
+        if bad_f:
+            return f"{lab}: unknown field(s) {bad_f}"
+        if not (isinstance(c.get("column"), str) and _DECL_IDENT.fullmatch(c["column"])):
+            return f"{lab}.column must be a column name (an identifier)"
+        if c.get("table") is not None and not (isinstance(c["table"], str) and _DECL_IDENT.fullmatch(c["table"])):
+            return f"{lab}.table must be null or a table name (an identifier)"
+        bad = _s3_text_problem(c.get("why"), min_chars=15, min_words=3)
+        if bad:
+            return f"{lab}.why {bad}"
+        vals, nsl = c.get("values"), c.get("no_string_leaves")
+        if (vals is None) == (nsl is None):
+            return f"{lab} declares exactly one of values (a closed vocabulary) or no_string_leaves true"
+        if nsl is not None and nsl is not True:
+            return f"{lab}.no_string_leaves must be true or absent"
+        if vals is not None and not (isinstance(vals, list) and 1 <= len(vals) <= PROSE_NONE_MAX_VALUES and len(set(vals)) == len(vals)
+                                     and all(isinstance(v, str) and v.strip() and len(v) <= 200 and "\\" not in v
+                                             and not any(unicodedata.category(ch) in ("Cc", "Cf", "Zl", "Zp") for ch in v) for v in vals)):
+            return f"{lab}.values must be 1 to {PROSE_NONE_MAX_VALUES} distinct non-blank strings (at most 200 characters each)"
+        key = (c.get("table"), c["column"])
+        if key in seen:
+            return f"{lab}: ({key[0] or 'the target table'}, {key[1]}) is listed twice"
+        seen.add(key)
+    return None
+
+
+def validate_prose_none_declaration(where: str, pn, e: dict) -> None:
+    """Raises DeclarationsError when an asset's `prose_none` is malformed (see `prose_none_problem`)."""
+    bad = prose_none_problem(e)
+    if bad:
+        raise DeclarationsError(f"{where}.prose_none: {bad}")
+
+
+# `produced_tables` (N-150): the asset's DECLARED produced-table set, e.g. ga_dashas = chart_dashas + chart_facts[fact_category = dasha_scope_cap]. A table the writer writes that is not
+# in the set is an undeclared extra (the Build.completion clause that reads it is Worker B's; this block is the schema and the validator only).
+PRODUCED_TABLE_FIELDS = ("table", "filter", "why")
+PRODUCED_FILTER_FIELDS = ("column", "equals")
+PRODUCED_MAX_TABLES = 8
+
+
+def produced_tables_problem(entry):
+    """None when `entry` has no `produced_tables` or a sound one, else why not. Sound: a non-empty list of at most PRODUCED_MAX_TABLES objects {table, filter?, why?}: `table` an identifier,
+    `filter` null or {column, equals} (identifier, non-blank string: the slice of a SHARED table the asset produces), `why` null or a real one-line reason; no (table, filter) listed twice."""
+    if not isinstance(entry, dict) or entry.get("produced_tables") is None:
+        return None
+    pt = entry["produced_tables"]
+    if not (isinstance(pt, list) and 1 <= len(pt) <= PRODUCED_MAX_TABLES):
+        return f"produced_tables must be a list of 1 to {PRODUCED_MAX_TABLES} objects"
+    seen = set()
+    for i, t in enumerate(pt):
+        lab = f"produced_tables[{i}]"
+        if not isinstance(t, dict):
+            return f"{lab} must be an object"
+        extra = sorted(set(t) - set(PRODUCED_TABLE_FIELDS))
+        if extra:
+            return f"{lab}: unknown field(s) {extra}"
+        if not (isinstance(t.get("table"), str) and _DECL_IDENT.fullmatch(t["table"])):
+            return f"{lab}.table must be a table name (an identifier)"
+        f = t.get("filter")
+        if f is not None:
+            if not (isinstance(f, dict) and set(f) == set(PRODUCED_FILTER_FIELDS) and isinstance(f.get("column"), str) and _DECL_IDENT.fullmatch(f["column"])
+                    and _src_text(f.get("equals"))):
+                return f"{lab}.filter must be null or exactly {{column: <identifier>, equals: <non-blank string>}}"
+        if t.get("why") is not None:
+            bad = _s3_text_problem(t["why"], min_chars=15, min_words=3)
+            if bad:
+                return f"{lab}.why {bad}"
+        key = (t["table"], None if f is None else (f["column"], f["equals"]))
+        if key in seen:
+            return f"{lab}: {t['table']} with this filter is listed twice"
+        seen.add(key)
+    return None
+
+
+def validate_produced_tables_declaration(where: str, pt, e: dict) -> None:
+    """Raises DeclarationsError when an asset's `produced_tables` is malformed (see `produced_tables_problem`)."""
+    bad = produced_tables_problem(e)
+    if bad:
+        raise DeclarationsError(f"{where}.{bad}" if bad.startswith("produced_tables") else f"{where}.produced_tables: {bad}")
+
+
+def declared_produced_tables(entry) -> list | None:
+    """The asset's declared produced-table set as [{table, filter}] (filter None or {column, equals}), or None when undeclared (UNKNOWN, never 'none')."""
+    if not isinstance(entry, dict) or produced_tables_problem(entry) or entry.get("produced_tables") is None:
+        return None
+    return [dict(table=t["table"], filter=(dict(t["filter"]) if t.get("filter") else None)) for t in entry["produced_tables"]]
+
+
+def produced_tables_extra(entry, observed) -> list | None:
+    """The tables of `observed` (an iterable of table names a writer writes) that the entry's declared produced-table set does not name, sorted; None when the entry declares no set (nothing to
+    compare against). An extra table is a FAIL for the clause that reads this (Build.completion, Worker B), never a tolerance."""
+    decl = declared_produced_tables(entry)
+    if decl is None:
+        return None
+    names = {d["table"] for d in decl}
+    return sorted({t for t in observed if isinstance(t, str) and t not in names})
+
+
 _DECL_ENTRY_KEYS = ("kind", "carriage", "prose_fields", "terminal_by_construction", "cross_asset_writes",
                     "read_evidence", "read_table", "read_kind", "evidence", "evidence_kind", "vocab_alias", "ldgr_source", "null_convention",
-                    "prose_coupling", "density_tier_columns")
+                    "prose_coupling", "density_tier_columns", "source", "prose_none", "produced_tables")
 _DECL_EVIDENCE_KEYS = ("kind", "carriage", "prose_fields", "cross_asset_writes")
 # prose_fields entries (SS ruling 2026-10-01; CLAUDE.md N.7 concerns GENERATED prose): a column name, or a JSON path into
 # a JSONB column, `column.$.seg(.seg)*` where a seg is an identifier key, optionally followed by ONE `[*]` (every element
@@ -1348,7 +1633,9 @@ def validate_declarations(doc, registry_ids=None) -> dict:
     for _fk, _fv in (("vocab_alias_declaration_fields", VOCAB_ALIAS_DECL_FIELDS), ("ldgr_source_declaration_fields", LDGR_SOURCE_DECL_FIELDS),
                      ("null_convention_declaration_fields", NULL_CONVENTION_DECL_FIELDS),
                      ("prose_coupling_declaration_fields", PROSE_COUPLING_DECL_FIELDS),
-                     ("density_tier_declaration_fields", DENS_TIER_DECL_FIELDS)):
+                     ("density_tier_declaration_fields", DENS_TIER_DECL_FIELDS), ("source_declaration_fields", SOURCE_DECL_FIELDS),
+                     ("source_column_declaration_fields", SOURCE_COLUMN_FIELDS), ("prose_none_declaration_fields", PROSE_NONE_DECL_FIELDS),
+                     ("prose_none_column_declaration_fields", PROSE_NONE_COLUMN_FIELDS), ("produced_table_declaration_fields", PRODUCED_TABLE_FIELDS)):
         if _fk in doc and doc[_fk] != list(_fv):
             raise DeclarationsError(f"`{_fk}` must be exactly {list(_fv)}")
     known = _registry_id_set(registry_ids)
@@ -1388,6 +1675,12 @@ def validate_declarations(doc, registry_ids=None) -> dict:
             validate_prose_coupling_declaration(where, e["prose_coupling"], e)
         if e.get("density_tier_columns") is not None:
             validate_density_tier_declaration(where, e["density_tier_columns"], e)
+        if e.get("source") is not None:
+            validate_source_declaration(where, e["source"], e)
+        if e.get("prose_none") is not None:
+            validate_prose_none_declaration(where, e["prose_none"], e)
+        if e.get("produced_tables") is not None:
+            validate_produced_tables_declaration(where, e["produced_tables"], e)
         bad = prose_empty_d1_problem(e)
         if bad:
             raise DeclarationsError(f"{where}.prose_coupling is missing: {bad}")
@@ -1584,6 +1877,9 @@ def declared_facts(declarations, asset_id, registry_kind=None, measured_dependen
     cw = e.get("cross_asset_writes")
     if isinstance(cw, list):
         facts["declared_cross_asset_writes"] = list(cw)
+    dpt = declared_produced_tables(e)
+    if dpt is not None:
+        facts["declared_produced_tables"] = dpt          # N-150: the DECLARED produced-table set (read by the Build.completion clause; undeclared = key left out)
     rev, rtab = e.get("read_evidence"), e.get("read_table")
     if isinstance(rev, str) and rev.strip() and isinstance(rtab, str) and rtab.strip():
         facts["declared_read_evidence"] = rev
