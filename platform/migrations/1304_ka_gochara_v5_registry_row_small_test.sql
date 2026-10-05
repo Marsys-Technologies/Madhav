@@ -36,7 +36,7 @@
 --   target_floor            = 0       — floors are aspirational;
 --   estimated_seconds       = NULL    — honest until timed.
 -- CHECKED, NOT WRITTEN (the landed-shape post-check below): asset_kind = 'data', asset_type = 'data', health_probe empty, integrity_check_sql
---   empty, rebuild_on_probe_fail = false — the routing fields the runner reads; the dispatch and teardown scripts validate the same five.
+--   NULL or empty (NEVER assigned here: no declared integrity is the honest statement for an unverifiable small-test row, steward CHAIN-3101-RULING; 1243 never set it; the empty-string tolerance is the reviewed one), rebuild_on_probe_fail = false — the routing fields the runner reads; the dispatch and teardown scripts validate the same five.
 --
 -- HOW IT APPLIES: a plain UPDATE migration, NOT in PROTECTED_DATA_PLANE_MIGRATIONS or PROTECTED_PUBLIC_SCHEMA_MIGRATIONS (platform/scripts/migrate.ts), so
 -- the ROUTINE deploy-time runner applies it on the first deploy after it merges. The gate is therefore the MERGE TIMING (post-window, above), not a
@@ -113,7 +113,7 @@ BEGIN
      AND asset_kind = 'data'
      AND asset_type = 'data'
      AND (health_probe IS NULL OR health_probe = '')
-     AND (integrity_check_sql IS NULL OR integrity_check_sql = '')
+     AND coalesce(integrity_check_sql, '') = ''
      AND rebuild_on_probe_fail IS FALSE;
   IF v_ok <> 1 THEN
     RAISE EXCEPTION '1304: the ka_gochara_v5 row did not land in the expected small-test shape (is_active=false, has_substeps=true, timeout 28800, depends_on [ga_positions,ga_dashas], the ka_gochara_eval_window counter, plain data routing: asset_kind/asset_type data, no health_probe, no integrity_check_sql, rebuild_on_probe_fail false)';
