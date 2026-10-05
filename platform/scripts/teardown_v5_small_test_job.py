@@ -1,6 +1,6 @@
 """
 teardown_v5_small_test_job.py — Pravāha C38: teardown for the SMALL TEST build
-of ka_gochara_v5 staged by dispatch_v5_small_test_job.py (C37).
+of ka_gochara_v5 (staged by the C37 small-test dispatch).
 
 Pinned chart only (482012f1-710e-4a25-994a-93821f5871aa; there is no chart argument), ONE transaction, fail-closed.
 
@@ -50,9 +50,14 @@ REFUSES (loudly, nothing deleted) when ANY of these holds:
      test's slice. Proof is the writer's OWN validation (`ka_gochara_v5._validate_test_slice`, imported, no second implementation)
      of the stamp's marker, the marker digest and the whole component recomputed with the writer's own `_slice_component`, the
      manifest's horizon equal to the stamp's, AND the stored input snapshot and every inventory header carrying the SAME vector
-     identity as the stamped manifest (snapshot vector equal; inventory input digest, horizon and class inside the stamp). A
-     manifest stamped by a later slice whose snapshot substep has not yet replaced an older chain (an interrupted replacement) is
-     refused by name: re-dispatch the slice (which replaces the chain), then tear down;
+identity as the stamped manifest (snapshot vector equal; inventory input digest, horizon and class inside the stamp), and every
+     window, record and event_class coverage partition being of a stamped class. A manifest stamped by a later slice whose snapshot
+     substep has not yet replaced an older chain (an interrupted replacement) is REMOVABLE only when both stamps are proved by owned
+     test runs' original markers (the snapshot's own stamp is proved exactly as the manifest's); anything not provable is refused by
+     name with a pointer to the runbook;
+     A planned run that was never executed (the cockpit watchdog fails it after 10 minutes) carries no receipts and no output: once the
+     watchdog has failed it, this script removes it (run row, run-asset row, throughput row); before the watchdog acts it is an ACTIVE
+     run and blocks the teardown by name;
   8. the legacy ledger tables `kala_gochara_windows` / `kala_gochara_contacts` hold '5.0' rows for the chart (never this
      writer's; named, never deleted);
   9. the Nirmana N-137 end state would not hold: the registry row's catalog_status is RETIRED, any asset lists this asset in
@@ -138,6 +143,12 @@ REQUIRED_PRIVILEGES = {
     "select_delete": ("asset_provenance_receipts", "asset_freshness", "build_run_assets", "build_runs", "asset_throughput",
                       *(t for t, _ in GENERATION_TABLES)),
     "select": ("ka_gochara_generation_seal", "kala_gochara_authority", "asset_registry", *LEGACY_GUARD_TABLES),
+    # T1 (Codex round 4): the rows are locked FOR UPDATE before validation and held through the delete, which needs UPDATE on them
+    "update": ("build_runs", "kala_gochara_publication"),
+    # the catalog-found tables that reference a build_runs row (counted, to refuse by name if any row references an owned run): on
+    # production these are the ones the data-plane builder cannot read today (Stream B, 2026-10-05)
+    "select_referencing": ("conversations", "event_chart_state_index", "mimamsa_predictions", "mimamsa_calibration_snapshot",
+                           "brahma_prospective_ledger", "brahma_mimamsa_prediction_ledger"),
     "execute": ("ka_gochara_lock_chart(uuid)", "ka_gochara_generation_is_sealed(uuid, text)"),   # the second: the DELETE guards call it (invoker)
     # only when the registry row is found ACTIVE (a row already inert is not updated): the restore UPDATE and 596's invalidation trigger
     "when_registry_active": {"asset_registry": ("UPDATE(is_active)",), "asset_freshness": ("SELECT", "UPDATE")},
@@ -220,39 +231,25 @@ def _release_orchestrator_lock(conn) -> None:
         pass
 
 
-def _quote(identifier: str) -> str:
-    return '"' + identifier.replace('"', '""') + '"'
-
-
-def _referencing_rows(cur, parent: str, ids: list[str], skip_tables: set[str]) -> list[str]:
-    """Every foreign key INTO `public.<parent>` from the catalog (single-column keys), minus the tables this script deletes itself:
-    the rows that reference `ids`, as named problems (table, column, delete action, count). The catalog is the list, so a reference added
-    by a later migration is found without anyone remembering to add it here."""
-    if not ids:
-        return []
-    cur.execute(
-        """SELECT c.conrelid::regclass::text AS tbl, a.attname AS col, c.confdeltype AS action
-           FROM pg_constraint c JOIN pg_attribute a ON a.attrelid = c.conrelid AND a.attnum = c.conkey[1]
-           WHERE c.contype = 'f' AND c.confrelid = %s::regclass AND cardinality(c.conkey) = 1
-           ORDER BY 1, 2""", (f"public.{parent}",))
-    found = []
-    for ref in cur.fetchall():
-        table = ref["tbl"][len("public."):] if ref["tbl"].startswith("public.") else ref["tbl"]
-        if table.strip('"') in skip_tables:
-            continue
-        n = _count(cur, f"SELECT count(*) AS n FROM {ref['tbl']} WHERE {_quote(ref['col'])} = ANY(%s::uuid[])", (ids,))
-        if n:
-            action = {"n": "SET NULL", "c": "CASCADE", "a": "NO ACTION", "r": "RESTRICT", "d": "SET DEFAULT"}.get(ref["action"], ref["action"])
-            found.append(f"{table}.{ref['col']} ({n} row(s), ON DELETE {action})")
-    return found
-
-
 class Checked:
     """What the refusal checks established: the runs this teardown may delete, whether the registry row was found active, and notes for
     the listing (how the stamp was proved)."""
 
     def __init__(self, owned: list[str], registry_active: bool, notes: list[str]):
         self.owned, self.registry_active, self.notes = owned, registry_active, notes
+
+
+def _members(cur) -> list:
+    cur.execute(
+        """SELECT r.id, r.triggered_by, r.scope, r.scope_target,
+                  COALESCE(array_agg(DISTINCT a.asset_id) FILTER (WHERE a.asset_id IS NOT NULL), '{}') AS assets
+           FROM build_runs r LEFT JOIN build_run_assets a ON a.run_id = r.id
+           WHERE r.chart_id = %s
+           GROUP BY r.id, r.triggered_by, r.scope, r.scope_target
+           HAVING bool_or(a.asset_id = %s)
+               OR (r.scope_target IS NOT NULL AND %s = ANY(string_to_array(r.scope_target, ',')))""",
+        (CHART_ID, ASSET_ID, ASSET_ID))
+    return cur.fetchall()
 
 
 def _refusal_checks(cur) -> "Checked":
@@ -269,17 +266,19 @@ def _refusal_checks(cur) -> "Checked":
         raise TeardownRefused(
             f"active build_runs {[(str(r['id']), r['state']) for r in active]} on chart {CHART_ID} — stop active execution first")
 
-    # MEMBERSHIP: the runs that actually include this asset (build_run_assets, or the asset named in a comma-separated scope_target)
-    cur.execute(
-        """SELECT r.id, r.triggered_by, r.scope, r.scope_target,
-                  COALESCE(array_agg(DISTINCT a.asset_id) FILTER (WHERE a.asset_id IS NOT NULL), '{}') AS assets
-           FROM build_runs r LEFT JOIN build_run_assets a ON a.run_id = r.id
-           WHERE r.chart_id = %s
-           GROUP BY r.id, r.triggered_by, r.scope, r.scope_target
-           HAVING bool_or(a.asset_id = %s)
-               OR (r.scope_target IS NOT NULL AND %s = ANY(string_to_array(r.scope_target, ',')))""",
-        (CHART_ID, ASSET_ID, ASSET_ID))
-    members = cur.fetchall()
+    # MEMBERSHIP: the runs that actually include this asset (build_run_assets, or the asset named in a comma-separated scope_target).
+    # T1 (Codex round 4): select, LOCK the selected rows FOR UPDATE, then read the membership again and validate THAT read. A concurrent
+    # transaction that sets a reference to one of these runs needs a KEY SHARE lock on the run row for its foreign key; FOR UPDATE
+    # conflicts with it, so after this point no reference can appear (one already committed is seen by the validated read), and the lock
+    # is held through the delete.
+    selected = [str(r["id"]) for r in _members(cur)]
+    if selected:
+        cur.execute("SELECT id FROM build_runs WHERE id = ANY(%s::uuid[]) ORDER BY id FOR UPDATE", (selected,))
+        cur.fetchall()
+    members = _members(cur)
+    locked = {str(r["id"]) for r in members}
+    if not locked <= set(selected) or (set(selected) - locked):
+        raise TeardownRefused("the set of small-test runs changed while it was being locked; nothing was deleted — run it again")
     non_test = [str(r["id"]) for r in members if r["triggered_by"] != TRIGGERED_BY]
     if non_test:
         raise TeardownRefused(
@@ -335,7 +334,7 @@ def _refusal_checks(cur) -> "Checked":
 
     # OTHER REFERENCES to the owned runs, found from the catalog: deleting a run sets every ON DELETE SET NULL reference to NULL
     # (conversations, the prediction and calibration ledgers, ...) and a NO ACTION one makes the DELETE fail; name them instead
-    run_refs = _referencing_rows(cur, "build_runs", owned, set(RUN_REFERENCES_SKIP))
+    run_refs = shared.referencing_rows(cur, "build_runs", "id", owned, set(RUN_REFERENCES_SKIP))
     if run_refs:
         raise TeardownRefused(
             f"other tables reference the small-test run(s) {owned}: {run_refs} — deleting the runs would change or fail on them; "
@@ -357,13 +356,13 @@ def _refusal_checks(cur) -> "Checked":
     # OWNERSHIP of the generation's output: the SHARED proof (v5_small_test_shared, the one copy the dispatch uses too): the CURRENT
     # manifest must PROVE this test's slice, and the stored snapshot and inventory headers must carry the SAME vector identity
     manifest, _rows = shared.generation_ownership(
-        cur, owned, notes=notes, remedy="re-dispatch the slice (which replaces the chain), then tear down",
+        cur, owned, notes=notes, lock=True, remedy=f"see the runbook {RUNBOOK}",
         unproven="this script never touches output it cannot prove is a small test's")
     if manifest is not None:
         # the manifest is deleted last: any table that references it (found from the catalog) other than the ones this script deletes
         # first — notably kala_gochara_contacts.input_generation_vector_id, NO ACTION — would make that DELETE fail with a bare SQLSTATE
-        manifest_refs = _referencing_rows(cur, "kala_gochara_publication", [str(manifest["manifest_id"])],
-                                          {t for t, _ in GENERATION_TABLES})
+        manifest_refs = shared.referencing_rows(cur, "kala_gochara_publication", "manifest_id", [str(manifest["manifest_id"])],
+                                                {t for t, _ in GENERATION_TABLES})
         if manifest_refs:
             raise TeardownRefused(
                 f"other tables reference the '5.0' manifest of chart {CHART_ID}: {manifest_refs} — deleting the manifest would fail "
@@ -455,6 +454,10 @@ OUTCOME_TEXT = {
 }
 
 
+def _AFTER_COMMIT() -> None:
+    """The point right after a confirmed COMMIT. Does nothing; it exists so a test can fail exactly here (Codex round 4 T3)."""
+
+
 def teardown(*, dry_run: bool = True) -> None:
     import psycopg
     import psycopg.rows
@@ -484,17 +487,20 @@ def teardown(*, dry_run: bool = True) -> None:
         post = _end_state_problems(cur)
         if post:
             raise TeardownRefused("the N-137 end state does not hold after the deletes, so success is not claimed: " + "; ".join(post))
+        # the report is prepared BEFORE the COMMIT: nothing after the COMMIT can fail for want of data or work
+        report = ("dry_run" if dry_run else "executed", counts, retention + [f"stamp: {n}" for n in checked.notes])
         if dry_run:
             conn.rollback()
-            report = ("dry_run", counts, retention + [f"stamp: {n}" for n in checked.notes])
         else:
             phase = "committing"
             conn.commit()
             phase = "committed"
-            report = ("executed", counts, retention + [f"stamp: {n}" for n in checked.notes])
+            _AFTER_COMMIT()
     except BaseException as exc:
         if phase == "committing":
             _note_outcome(exc, "commit_unknown")
+        elif phase == "committed":                 # T3: the COMMIT is confirmed; a rollback is neither attempted nor reported
+            _note_outcome(exc, "committed")
         else:
             try:
                 conn.rollback()
