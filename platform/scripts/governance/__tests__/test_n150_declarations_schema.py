@@ -47,10 +47,16 @@ def _row(*cols, **kw):
 
 # ───────────────────────── the committed file is unchanged ─────────────────────────
 
-def test_the_committed_declarations_file_still_validates_and_declares_none_of_the_new_forms():
+def test_the_committed_declarations_file_validates_and_the_new_forms_are_declared_only_where_filled():
+    """The L0 fills (N-151 `source`, N-150 `produced_tables`) are the only declarations of the new forms so far; `prose_none` is declared by no asset."""
     decl = ac.load_asset_declarations()
     assert decl
-    assert not [a for a, e in decl.items() if any(k in e for k in ("source", "prose_none", "produced_tables"))]
+    for a, e in decl.items():
+        if "source" in e:
+            assert a.startswith("bg_") and ac.source_declaration_problem(e["source"], e) is None, a
+        if "produced_tables" in e:
+            assert a.startswith("bg_") and ac.produced_tables_problem(e) is None, a
+    assert not [a for a, e in decl.items() if "prose_none" in e]
 
 
 def test_the_new_keys_are_known_entry_keys_and_the_existing_carriage_and_vocab_alias_fields_are_kept():
