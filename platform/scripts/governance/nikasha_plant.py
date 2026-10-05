@@ -96,6 +96,7 @@ FAILING = ("FAIL", "PARTIAL", "NO_DETECTOR")        # the inspector's own gap-op
 RUNTIME_FILES = (
     INSPECTOR_REL,
     "platform/scripts/governance/carriage_d1.py",
+    "platform/scripts/governance/build_window.py",
     "platform/scripts/governance/check_fact_category_pinning.py",
     "platform/scripts/governance/fact_category_pin_allowlist.json",
     "platform/scripts/governance/check_no_raw_token_in_narrative.py",
@@ -272,7 +273,10 @@ def tree_files(assets=ASSETS) -> dict:
              DECLARATIONS_REL: declarations_text(assets),
              "platform-mcp/src/tools/README.md": "fixture serving root (no capability here)\n",
              "platform-mcp/src/lib/README.md": "fixture serving root (no capability here)\n",
-             "00_ARCHITECTURE/control/README.md": "fixture control directory\n"}
+             "00_ARCHITECTURE/control/README.md": "fixture control directory\n",
+             # Build.history window (SS): the registry identity of each fixture asset is dated by the migration that registers it
+             "platform/migrations/001_t1_fixture_registry.sql": "".join(
+                 f"INSERT INTO asset_registry (asset_id) VALUES ('{a.aid}');\n" for a in assets)}
     files[f"{WRITERS_REL}/{D1_AID}.py"] = d1_writer_text()
     for rel in d1_declaration()[1]:                      # files the D1 declaration cites (copied byte-for-byte; read by the validator)
         files[rel] = (REPO / rel).read_text(encoding="utf-8")
@@ -302,8 +306,11 @@ def write_tree(dest: Path, files: dict, overrides: dict | None = None) -> None:
     for rel, data in overrides.items():                  # EARNED: a mutant that did not reach the tree would make "noticed" vacuous
         if (dest / rel).read_bytes() != data:
             raise HarnessError(f"the mutated {rel} did not reach the fixture tree")
-    env = {"PATH": os.environ.get("PATH", "/usr/bin:/bin"), "HOME": str(dest), "GIT_CONFIG_NOSYSTEM": "1"}
-    for args in (["init", "-q"], ["add", "-A"],
+    # The fixture commit is dated BEFORE the synthetic build history (T_RUN, 2026-01-01) so that history lies inside the Build.history window
+    # (the later of the code and the registry-identity dates, both this one commit); the branch is `main`, the ref the window reads.
+    env = {"PATH": os.environ.get("PATH", "/usr/bin:/bin"), "HOME": str(dest), "GIT_CONFIG_NOSYSTEM": "1",
+           "GIT_COMMITTER_DATE": "2025-12-31T00:00:00 +0000", "GIT_AUTHOR_DATE": "2025-12-31T00:00:00 +0000"}
+    for args in (["init", "-q", "-b", "main"], ["add", "-A"],
                  ["-c", "user.name=nikasha_plant", "-c", "user.email=nikasha_plant@invalid", "commit", "-q", "-m", "fixture"]):
         p = subprocess.run(["git", "-C", str(dest), *args], capture_output=True, env=env)
         if p.returncode != 0:
@@ -586,7 +593,8 @@ plant(id="build_registered", check="Build.registered", asset=a("reg"),
       apply=reg_update(a("reg"), "has_writer = false"), allow=("Earn.build_record",))
 plant(id="build_contract", check="Build.contract", asset=a("contract"),
       desc="CODE: a real ctx.db_conn.commit() call is inserted into the writer's run() (the orchestrator owns the transaction)",
-      apply=lambda i: i.edit(wpath(a("contract")), "        cur = ctx.db_conn.cursor()\n", "        cur = ctx.db_conn.cursor()\n        ctx.db_conn.commit()\n"))
+      apply=lambda i: i.edit(wpath(a("contract")), "        cur = ctx.db_conn.cursor()\n", "        cur = ctx.db_conn.cursor()\n        ctx.db_conn.commit()\n"),
+      allow=("Build.history",))                                                       # the writer no longer equals main's: no window can be certified
 plant(id="build_target", check="Build.target", asset=a("target"),
       desc="target_table is cleared on a writer-backed data asset whose count_sql still names its own table, which no asset declares",
       apply=reg_update(a("target"), "target_table = NULL"),
@@ -630,7 +638,8 @@ plant(id="build_dep_liveness", check="Build.dep_liveness", asset=a("dep"),
       apply=thr_update(a("anchor"), "state = 'error'", f"chart_id = '{CHART}'"))
 plant(id="idem_pattern", check="Idem.pattern", asset=a("idem"), expect=("FAIL",),
       desc="CODE: the writer's upsert clause is removed: a plain INSERT into the asset's own table with no replacement (accretes on rebuild)",
-      apply=lambda i: i.edit(wpath(a("idem")), " ON CONFLICT (code, variant) DO UPDATE SET note = EXCLUDED.note", ""))
+      apply=lambda i: i.edit(wpath(a("idem")), " ON CONFLICT (code, variant) DO UPDATE SET note = EXCLUDED.note", ""),
+      allow=("Build.history",))
 plant(id="earn_build_record", check="Earn.build_record", asset=a("earn"), expect=("NO_DETECTOR",),
       also=(("Cost.baseline", ("NO_DETECTOR",)),),
       desc="the build record's last_built_at is moved off the attempt's completion (a later write touched it): its duration cannot be attributed",
@@ -670,7 +679,8 @@ plant(id="narr_fidelity_test", check="Narr.fidelity_test", asset=a("nfid"), base
       apply=lambda i: i.delete(f"platform/python-sidecar/pipeline/orchestrator/__tests__/test_{a('nfid')}.py"))
 plant(id="narr_lint", check="Narr.lint", asset=a("nlint"),
       desc="CODE: the narrative builder emits a raw internal-token prefix (GRAHA:) into the narrative field",
-      apply=lambda i: i.edit(wpath(a("nlint")), 'f"row {n} verified"', 'f"GRAHA: row {n} verified"'))
+      apply=lambda i: i.edit(wpath(a("nlint")), 'f"row {n} verified"', 'f"GRAHA: row {n} verified"'),
+      allow=("Build.history",))
 plant(id="null_schema_default", check="Null.schema_default", asset=a("nsd"), base="PARTIAL",
       desc="the declared prose column gains a non-NULL schema default ('n/a' standing in for NULL)",
       apply=tbl_sql(a("nsd"), "ALTER TABLE {t} ALTER COLUMN story_narrative SET DEFAULT 'n/a'"))

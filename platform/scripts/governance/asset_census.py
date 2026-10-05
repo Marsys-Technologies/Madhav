@@ -175,7 +175,7 @@ CRITERION_REGISTRY: dict[str, dict] = {
     "Build.count_integrity": dict(gate="Build", check="count_integrity", applicability="always",                detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=1),
     "Build.completion":      dict(gate="Build", check="completion",       applicability="a count_sql or view target exists; PASS also requires, WHEN the asset declares an integrity_check_sql, that it holds: one read-only SELECT/WITH statement (conservative lexer and closed allow-list, run only as a subquery in a READ ONLY session, no bind parameters, at most 120000 bytes, the engine's own convention in asset_runner._probe_asset) whose first column of its first row is true (a boolean or a finite non-zero number); counts equal but the integrity SQL false, refused, oversize, errored or timed out reads PARTIAL naming which; an integrity SQL the census role is not permitted to read (SQLSTATE 42501 permission denied) reads NO_DETECTOR (not measurable under the census role: never PASS, never a verdict on the data); the text carries sha256(sql)[:12] and the elapsed seconds; no declared integrity_check_sql reads exactly as before", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=3),  # R99 bumped: a writer-backed empty table under target_floor=0 now reads PARTIAL, not the R52-era blanket PASS; N-99 bumped (rev 3): count equality alone no longer reads PASS when a declared integrity_check_sql does not hold
     "Build.exercised":       dict(gate="Build", check="exercised",        applicability="always",                detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=1),
-    "Build.history":         dict(gate="Build", check="history",          applicability="has been exercised at least once", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=1),
+    "Build.history":         dict(gate="Build", check="history",          applicability="has been exercised at least once; judges the attempts SINCE the later of the asset's last writer-digest change on main (newest commit on origin/main, else main, touching the engine's writer source set, build_window.py) and its last registry-identity change (newest commit on that ref touching a migration that names asset_registry and the asset id, or changing the asset's own row in the registry seed); older errors and aborts are REPORTED as pre-window history, never judged; no attempt since (a skip_no_delta, cascade-blocked or never-started row is not an attempt of the current code; a forced rebuild is) reads NO_DETECTOR, never PASS; an undeterminable window (shallow clone, no main ref, working tree differing from main in the writer files, a path not tracked, no migration or seed naming the asset, git failing, the timed attempt log unreadable or disagreeing with the history tally) reads NO_DETECTOR naming why", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=2),  # SS Build.history window
     "Build.dep_liveness":     dict(gate="Build", check="dep_liveness",     applicability="declares at least one depends_on", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=1),
     "Idem.pattern":          dict(gate="Idem",  check="pattern",          applicability="has_writer=true",       detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=2),
     "Earn.build_record":     dict(gate="Earn",  check="build_record",     applicability="has a build/attempt record to grade", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=1),
@@ -6743,6 +6743,45 @@ def catalog(tables: list[str]) -> dict:
                 types_error=types_error)
 
 
+def _tally_attempt(per: dict, aid: str, scope: str, state: str, disp: str, when: str, err: str, started: str) -> None:
+    """Fold ONE build_run_assets attempt into `per[aid]` (the build_history() per-asset tally). Extracted unchanged from
+    build_history()'s loop so the Build.history WINDOW (`_grade_build_history_windowed`) tallies the attempts it keeps with
+    EXACTLY the arithmetic the whole-history read uses; rows must arrive in ascending (created_at, run_id) order."""
+    d = per.setdefault(aid, dict(runs=0, error=0, aborted=0, complete=0, queued=0, skipped=0,
+                                 blocked=0, scopes=set(), last_state="", last_when="",
+                                 last_disposition="", sample_error="", sample_blocked="",
+                                 executed=0, executed_scopes=set(), last_executed_when="",
+                                 states={}))
+    d["runs"] += 1
+    d[state] = d.get(state, 0) + 1
+    d["states"][state] = d["states"].get(state, 0) + 1
+    if started in ("t", "true"):
+        d["executed"] += 1
+        d["executed_scopes"].add(scope)
+        d["last_executed_when"] = when
+    if disp == "skip_no_delta":
+        d["skipped"] += 1
+    # Packet B1: 'blocked_dependency' (migration 1095) marks a row whose writer never
+    # ran because an upstream dependency failed/was blocked in the SAME run — a
+    # cascade CONSEQUENCE, not its own root cause. Tracked separately from the plain
+    # `error` tally so grading below can count "one cause, N blocked" instead of
+    # grading a chart FAIL/PARTIAL purely from downstream cascade noise
+    # (B1_before_20260926T173931Z.json §4 — asset_census was the worst offender:
+    # it already read `disposition` for skip_no_delta but never checked this value).
+    if state == "error" and disp == "blocked_dependency":
+        d["blocked"] += 1
+        if err and not d["sample_blocked"]:
+            d["sample_blocked"] = err
+    d["scopes"].add(scope)
+    d["last_state"], d["last_when"], d["last_disposition"] = state, when, disp
+    if state == "error" and disp != "blocked_dependency" and err:
+        # R49 (L3 handverify ka_avadhi, ka_kshetra): the quoted error is the LATEST one, dated —
+        # the read is in ascending attempt order, so each later error replaces the earlier. It
+        # used to keep the FIRST error ever recorded ("not d['sample_error']"), so a FAIL reading
+        # "most recent run error" quoted a months-old error the asset had long since moved past.
+        d["sample_error"], d["sample_error_when"] = err, when
+
+
 def build_history(prefix: str, ids=None) -> dict:
     """What the orchestrator ACTUALLY did, from build_runs / build_run_assets.
 
@@ -6792,39 +6831,7 @@ def build_history(prefix: str, ids=None) -> dict:
         raise Unknown(f"build_history: {len(bad)} line(s) did not parse into the 7 selected fields "
                       f"(first: {bad[0][:3]!r}) — the attempt tallies would be wrong; not counted")
     for aid, scope, state, disp, when, err, started in rows:
-        d = per.setdefault(aid, dict(runs=0, error=0, aborted=0, complete=0, queued=0, skipped=0,
-                                     blocked=0, scopes=set(), last_state="", last_when="",
-                                     last_disposition="", sample_error="", sample_blocked="",
-                                     executed=0, executed_scopes=set(), last_executed_when="",
-                                     states={}))
-        d["runs"] += 1
-        d[state] = d.get(state, 0) + 1
-        d["states"][state] = d["states"].get(state, 0) + 1
-        if started in ("t", "true"):
-            d["executed"] += 1
-            d["executed_scopes"].add(scope)
-            d["last_executed_when"] = when
-        if disp == "skip_no_delta":
-            d["skipped"] += 1
-        # Packet B1: 'blocked_dependency' (migration 1095) marks a row whose writer never
-        # ran because an upstream dependency failed/was blocked in the SAME run — a
-        # cascade CONSEQUENCE, not its own root cause. Tracked separately from the plain
-        # `error` tally so grading below can count "one cause, N blocked" instead of
-        # grading a chart FAIL/PARTIAL purely from downstream cascade noise
-        # (B1_before_20260926T173931Z.json §4 — asset_census was the worst offender:
-        # it already read `disposition` for skip_no_delta but never checked this value).
-        if state == "error" and disp == "blocked_dependency":
-            d["blocked"] += 1
-            if err and not d["sample_blocked"]:
-                d["sample_blocked"] = err
-        d["scopes"].add(scope)
-        d["last_state"], d["last_when"], d["last_disposition"] = state, when, disp
-        if state == "error" and disp != "blocked_dependency" and err:
-            # R49 (L3 handverify ka_avadhi, ka_kshetra): the quoted error is the LATEST one, dated —
-            # the read is in ascending attempt order, so each later error replaces the earlier. It
-            # used to keep the FIRST error ever recorded ("not d['sample_error']"), so a FAIL reading
-            # "most recent run error" quoted a months-old error the asset had long since moved past.
-            d["sample_error"], d["sample_error_when"] = err, when
+        _tally_attempt(per, aid, scope, state, disp, when, err, started)
     glob = int(scalar("SELECT count(*)::text FROM build_runs WHERE scope='global'") or 0)
     glob_l0 = int(scalar("SELECT count(*)::text FROM build_runs r JOIN build_run_assets a ON a.run_id=r.id "
                          f"WHERE r.scope='global' AND {_asset_scope(prefix, ids, 'a.asset_id')}") or 0)
@@ -6948,6 +6955,243 @@ def _grade_build_history(h: dict) -> dict:
                                        f"build_run_assets row(s) (states: {h.get('states') or 'n/a'}): no "
                                        "attempt reached an outcome to grade")
     return dict(v=PASS, measured=f"{h['complete']} complete, no error or abort; {h['skipped']} skip_no_delta (healthy)")
+
+
+# ───────────────────────── Build.history WINDOW (SS definition, binding; revision 2) ─────────────────────────
+#
+# Build.history judges the attempts SINCE the later of (i) the asset's last writer-digest change on main and (ii) its last registry-
+# identity change, because an earlier error belongs to code or to a contract that no longer exists. What "last change" reads, and how it
+# fails closed, is documented in build_window.py (git only, read-only). The count of older errors/aborts is REPORTED as "pre-window
+# history", never hidden. An asset with NO attempt since that point reads NO_DETECTOR (nothing has exercised the current code), not PASS.
+# A forced-unchanged rebuild is an attempt of the current code (the writer ran: disposition 'build'); a `skip_no_delta` row is not (the
+# engine skipped the writer), and neither is a cascade-blocked row.
+
+_PROBE_SOURCE_PATHS = ("platform/python-sidecar/pipeline/orchestrator/asset_runner.py",
+                       "platform/python-sidecar/pipeline/orchestrator/service_probes.py")
+_NON_EXERCISING_DISPOSITIONS = ("skip_no_delta", "blocked_dependency")
+
+
+def build_attempt_log(prefix: str, ids=None) -> dict[str, list[dict]]:
+    """Every build_run_assets attempt per asset, ascending (created_at, run_id), with the run's creation time as an epoch. The SAME rows
+    and order as build_history() plus the epoch the window compares; a line that does not parse into the 8 selected fields, or a
+    timestamp that is not a number, fails the read (fail-closed, as R50), never padded or guessed."""
+    rows = psql("SELECT a.asset_id, r.scope, a.state, coalesce(a.disposition,''), "
+                "coalesce(r.created_at::date::text,''), "
+                "coalesce(left(translate(a.error, E'\\n\\r' || chr(31), '   '),200),''), "
+                "(a.started_at IS NOT NULL)::text, coalesce(extract(epoch FROM r.created_at)::text,'') "
+                "FROM build_run_assets a JOIN build_runs r ON r.id=a.run_id "
+                f"WHERE {_asset_scope(prefix, ids, 'a.asset_id')} "
+                "ORDER BY a.asset_id, r.created_at, a.run_id")
+    bad = [x for x in rows if len(x) != 8]
+    if bad:
+        raise Unknown(f"build_attempt_log: {len(bad)} line(s) did not parse into the 8 selected fields (first: {bad[0][:3]!r}) — "
+                      "the windowed attempt tallies would be wrong; not counted")
+    out: dict[str, list[dict]] = {}
+    for aid, scope, state, disp, when, err, started, ep in rows:
+        epoch = _epoch(ep)
+        if epoch == float("-inf"):
+            raise Unknown(f"build_attempt_log: {aid} has an attempt with no readable run creation time ({ep!r}) — it cannot be placed "
+                          "against the window")
+        out.setdefault(aid, []).append(dict(scope=scope, state=state, disposition=disp, when=when, error=err,
+                                            started=(started in ("t", "true")), epoch=epoch))
+    return out
+
+
+def _utc(epoch: float) -> str:
+    return dt.datetime.fromtimestamp(epoch, dt.timezone.utc).strftime("%Y-%m-%d %H:%M:%SZ")
+
+
+def _grade_build_history_windowed(aid: str, attempts: list[dict] | None, attempts_error: str | None, window: dict, h_all: dict) -> dict:
+    """Build.history for one asset that HAS executed attempts, judged inside its window. Pure.
+
+    `attempts`: that asset's build_attempt_log rows (None + `attempts_error` when the log could not be read); `window`:
+    build_window.compute_window()'s answer; `h_all`: the whole-history tally (build_history()'s per-asset dict), used for the cross-check
+    and to NAME the verdict the unwindowed reading would give, never to grade."""
+    whole = _grade_build_history(h_all)["v"]
+    if not window.get("ok"):
+        return dict(v=NO_DET, measured=f"NO_DETECTOR — the Build.history window could not be determined: {window.get('reason', 'unknown')}; "
+                                       f"the whole-history reading would be {whole} but it is not used (it judges attempts of code or a "
+                                       "contract that may no longer exist, and a PASS cannot rest on it)")
+    if attempts is None:
+        return dict(v=NO_DET, measured=f"NO_DETECTOR — the attempt log could not be read ({attempts_error or 'unknown'}), so no attempt "
+                                       f"can be placed against the window that opens {window['opens']}; whole-history reading would be {whole}")
+    if len(attempts) != h_all["runs"]:
+        return dict(v=NO_DET, measured=f"NO_DETECTOR — two reads of build_run_assets disagree ({len(attempts)} attempt row(s) in the timed log, "
+                                       f"{h_all['runs']} in the history tally): the window cannot be applied to a history that moved between "
+                                       "reads; run the census again")
+    opens = window["epoch"]
+    per: dict = {}
+    pre = dict(n=0, error=0, aborted=0, complete=0, blocked=0)
+    for a in attempts:
+        if a["epoch"] > opens:
+            _tally_attempt(per, aid, a["scope"], a["state"], a["disposition"], a["when"], a["error"], "t" if a["started"] else "f")
+            continue
+        pre["n"] += 1
+        if a["state"] == "error" and a["disposition"] == "blocked_dependency":
+            pre["blocked"] += 1
+        elif a["state"] == "error":
+            pre["error"] += 1
+        elif a["state"] == "aborted":
+            pre["aborted"] += 1
+        elif a["state"] == "complete":
+            pre["complete"] += 1
+    pre_text = (f"pre-window history (before {_utc(opens)}: attempts of code or a contract that no longer exists, REPORTED and not judged): "
+                + (f"{pre['n']} attempt(s), {pre['error']} error(s), {pre['aborted']} abort(s), {pre['complete']} complete, "
+                   f"{pre['blocked']} blocked_dependency" if pre["n"] else "none"))
+    head = f"window opens {_utc(opens)} ({window['basis']})"
+    hw = per.get(aid)
+    exercised = [a for a in attempts if a["epoch"] > opens and a["started"] and a["disposition"] not in _NON_EXERCISING_DISPOSITIONS]
+    if not exercised:
+        since = (f"{hw['runs']} attempt row(s) since (states: {hw['states']}), none of which executed the current code "
+                 "(a skip_no_delta, cascade-blocked, queued or never-started row does not)" if hw else "no attempt since")
+        return dict(v=NO_DET, measured=f"NO_DETECTOR — nothing has exercised the current code and contract: {since}; {head}; {pre_text}. "
+                                       "A forced rebuild (which runs the writer) is what would close it")
+    g = _grade_build_history(hw)
+    return dict(v=g["v"], measured=f"{g['measured']} [judged inside the window only; {head}; {pre_text}]")
+
+
+def _class_source_paths(cls: ast.ClassDef) -> list[str] | None:
+    """A registered class's literal `source_paths = [...]` (the engine's `getattr(cls, 'source_paths')` for a class that sets it in its own
+    body). None when the class does not set it; Unknown when it sets it to anything but a literal list/tuple of strings."""
+    for node in cls.body:
+        tgt, val = None, None
+        if isinstance(node, ast.Assign) and any(isinstance(t, ast.Name) and t.id == "source_paths" for t in node.targets):
+            val = node.value
+        elif isinstance(node, ast.AnnAssign) and isinstance(node.target, ast.Name) and node.target.id == "source_paths":
+            val = node.value
+        else:
+            continue
+        if isinstance(val, (ast.List, ast.Tuple)) and all(isinstance(e, ast.Constant) and isinstance(e.value, str) for e in val.elts):
+            return [e.value for e in val.elts]
+        raise Unknown(f"{cls.name}.source_paths is not a literal list of strings: the writer's source set cannot be read statically")
+    return None
+
+
+def _engine_local_module_path(module: str) -> Path | None:
+    """asset_runner._local_module_path: an in-repo sidecar module, resolved without importing it."""
+    if not module:
+        return None
+    rel = Path(*module.split("."))
+    f, init = SIDECAR / rel.with_suffix(".py"), SIDECAR / rel / "__init__.py"
+    return f if f.is_file() else init if init.is_file() else None
+
+
+def _engine_local_imports(path: Path) -> list[Path]:
+    """asset_runner._local_import_files / _module_name_for_path, reproduced (the engine module imports the database driver at load, so the
+    census cannot import it; test_sb1 pins the two together over every registered writer): the direct local imports of one file, including
+    each `from a.b import c` as the module `a.b.c` too."""
+    try:
+        rel = path.resolve().relative_to(SIDECAR.resolve())
+    except ValueError:
+        return []
+    if rel.suffix != ".py":
+        return []
+    parts = list(rel.with_suffix("").parts)
+    if parts[-1] == "__init__":
+        parts.pop()
+    module_name = ".".join(parts) or None
+    if module_name is None:
+        return []
+    package = module_name if path.name == "__init__.py" else module_name.rpartition(".")[0]
+    try:
+        tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
+    except (OSError, SyntaxError, UnicodeDecodeError):
+        return []
+    imports: set[str] = set()
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Import):
+            imports.update(a.name for a in node.names)
+        elif isinstance(node, ast.ImportFrom):
+            if node.level:
+                pp = package.split(".") if package else []
+                base_parts = pp[:len(pp) - node.level + 1]
+                if not base_parts:
+                    continue
+                base = ".".join(base_parts)
+                target = f"{base}.{node.module}" if node.module else base
+            else:
+                target = node.module or ""
+            if target:
+                imports.add(target)
+                imports.update(f"{target}.{a.name}" for a in node.names)
+    return [p for m in sorted(imports) if (p := _engine_local_module_path(m)) is not None]
+
+
+def _writer_code_paths(aid: str, files: list[str], has_writer: bool) -> list[str]:
+    """The repo-relative files whose bytes the engine's writer digest (`asset_runner.get_writer_source_hash`) covers for `aid`: the registered
+    class's declared `source_paths` (else its own module file), directories expanded to their non-test `*.py`, plus the transitive closure
+    of their local imports. An asset with no writer is digested over the generic probe sources (`get_probe_source_hash`). [] when a
+    writer-backed asset's registered file is not known; raises Unknown when the set cannot be read statically (never a guess)."""
+    if not has_writer:
+        return list(_PROBE_SOURCE_PATHS)
+    roots: list[Path] = []
+    for name in files:
+        f = _writer_path(name)
+        cls = _writer_class(f, aid) if f.is_file() else None
+        declared = _class_source_paths(cls) if cls is not None else None
+        for raw in (declared if declared else [str(f)]):
+            p = Path(raw) if Path(raw).is_absolute() else ROOT / raw
+            if p.is_file():
+                roots.append(p)
+            elif p.is_dir():
+                roots += [x for x in sorted(p.rglob("*.py")) if x.is_file() and "tests" not in x.parts]
+            else:
+                raise Unknown(f"the writer source path {raw!r} for {aid} is not a file or directory in this checkout")
+    if not roots:
+        return []
+    seen: set[Path] = set()
+    pending = sorted(roots, key=lambda x: x.as_posix())
+    done: list[Path] = []
+    while pending:
+        p = pending.pop(0).resolve()
+        if p in seen:
+            continue
+        seen.add(p)
+        done.append(p)
+        pending.extend(_engine_local_imports(p))
+    top = ROOT.resolve()
+    out = []
+    for p in sorted(done, key=lambda x: x.as_posix()):
+        try:
+            out.append(p.relative_to(top).as_posix())
+        except ValueError:
+            raise Unknown(f"the writer source file {p} of {aid} lies outside the repository") from None
+    return out
+
+
+class _WindowedHistory:
+    """Per-measure() run: the git reader, the timed attempt log (read once, fault-isolated) and the per-asset window cell."""
+
+    def __init__(self, prefix: str, ids, reader=None):
+        self.prefix, self.ids = prefix, ids
+        self._reader_arg = reader
+        self._bw = None                                # loaded and built on the first asset that needs a window (a layer with none loads nothing)
+        self.reader = None
+        self._log: dict | None = None
+        self._err: str | None = None
+        self._read = False
+
+    def _attempts(self) -> None:
+        if not self._read:
+            self._read = True
+            try:
+                self._log = build_attempt_log(self.prefix, self.ids)
+            except Unknown as exc:
+                self._err = str(exc)
+
+    def cell(self, aid: str, h: dict, has_writer: bool, files: list[str]) -> dict:
+        if self._bw is None:
+            self._bw = _lint_module("build_window")
+            self.reader = self._reader_arg if self._reader_arg is not None else self._bw.WindowReader(ROOT, env=_git_env())
+        self._attempts()
+        try:
+            paths = _writer_code_paths(aid, files, has_writer)
+            window = self._bw.compute_window(self.reader, aid, paths)
+        except Unknown as exc:
+            window = dict(ok=False, reason=str(exc))
+        except Exception as exc:                       # noqa: BLE001  R41: one asset's check degrades to ERRORED, never aborts the layer
+            return dict(v=ERRORED, measured=f"check errored: the Build.history window raised {type(exc).__name__}: {' '.join(str(exc).split())[:160]}")
+        return _grade_build_history_windowed(aid, None if self._log is None else self._log.get(aid, []), self._err, window, h)
 
 
 def duration_instrument_present() -> bool | None:
@@ -8849,6 +9093,7 @@ def measure(layer_key: str, assets=None) -> dict:
         if "map" not in produced:                         # an unreadable map raises and is NOT cached as empty
             produced["map"] = produced_table_owners()
         return produced["map"]
+    whist = _WindowedHistory(cfg["prefix"], ids)             # SS Build.history window: read lazily, once per layer run
     assets = []
     for aid, r in reg.items():
         m: dict[str, dict] = {}
@@ -9220,7 +9465,7 @@ def measure(layer_key: str, assets=None) -> dict:
                 v=PASS, measured=f"{h['executed']} executed run(s) of {h['runs']} build_run_assets row(s), "
                                  f"scope(s): {', '.join(sorted(h['executed_scopes']))}, last executed "
                                  f"{h['last_executed_when']}")
-            m["Build.history"] = _grade_build_history(h)
+            m["Build.history"] = whist.cell(aid, h, r["has_writer"], files)      # SS window: the attempts since the code / registry identity last changed
 
         m["Build.dep_liveness"] = (_grade_dep_liveness(r["depends_on"], deprec, CHART_ID) if r["depends_on"]
                                    else _grade_dep_liveness_none(m.get("Build.dag"), scanned=bool(files)))

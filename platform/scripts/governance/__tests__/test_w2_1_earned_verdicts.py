@@ -674,6 +674,16 @@ def test_c1_history_never_passes_with_zero_completions():
     assert ac._grade_build_history(h)["v"] == ac.NO_DET
 
 
+def _open_window(monkeypatch, aid, attempts):
+    """Build.history is judged inside its window (SS): give `aid` a window that opened before every attempt and the timed attempt log the same
+    rows describe, so a test about the TALLY of an executed history keeps testing it."""
+    bw = ac._lint_module("build_window")
+    monkeypatch.setattr(bw, "compute_window", lambda reader, a, paths: dict(ok=True, epoch=0.0, basis="test window", opens="1970-01-01T00:00:00Z"))
+    monkeypatch.setattr(bw.WindowReader, "__init__", lambda self, *a, **k: None)
+    monkeypatch.setattr(ac, "_writer_code_paths", lambda a, f, h: ["x"])
+    monkeypatch.setattr(ac, "build_attempt_log", lambda prefix, ids=None: {aid: [dict(a, epoch=float(i + 1)) for i, a in enumerate(attempts)]})
+
+
 def test_c1_an_executed_row_still_exercises(monkeypatch, tmp_path):
     """Positive control: one started, completed row keeps Build.exercised PASS and history PASS; the
     queued leftover beside it is reported, not counted."""
@@ -681,6 +691,8 @@ def test_c1_an_executed_row_still_exercises(monkeypatch, tmp_path):
     _stub_layer(monkeypatch, tmp_path, reg)
     _with_real_history(monkeypatch, [("bg_x", "layer", "complete", "build", "2026-09-20", "", "t"),
                                      ("bg_x", "global", "queued", "", "2026-09-21", "", "f")])
+    _open_window(monkeypatch, "bg_x", [dict(scope="layer", state="complete", disposition="build", when="2026-09-20", error="", started=True),
+                                       dict(scope="global", state="queued", disposition="", when="2026-09-21", error="", started=False)])
     c = ac.measure("L0")
     ex = _m(c, "bg_x", "Build.exercised")
     assert ex["v"] == ac.PASS and "1 executed run(s) of 2" in ex["measured"], ex
