@@ -64,16 +64,16 @@ describe('useVisualViewport', () => {
 })
 
 describe('PariprashnaApp shell consumes the hook (not a static 100vh)', () => {
-  it('falls back to 100dvh (never a bare 100vh) when visualViewport is unsupported', () => {
+  it('uses dynamic viewport height minus the shared 68px header when visualViewport is unsupported', () => {
     const { container } = render(<PariprashnaApp chartPin={{ name: 'Test Native', bornLine: '05 Feb 1984' }} />)
     const shell = container.querySelector('.pp-root') as HTMLElement
     expect(shell).not.toBeNull()
     expect(shell.getAttribute('data-vh-source')).toBe('fallback')
-    expect(shell.style.height).toBe('100dvh')
+    expect(shell.style.height).toBe('calc(100dvh - 68px)')
     expect(shell.style.height).not.toBe('100vh')
   })
 
-  it('pins to the live visualViewport height when supported, and updates on keyboard-open resize', () => {
+  it('reserves the shared header within the live visualViewport when supported, and updates on keyboard-open resize', () => {
     const fake = new FakeVisualViewport()
     fake.height = 844
     // @ts-expect-error test double
@@ -82,12 +82,12 @@ describe('PariprashnaApp shell consumes the hook (not a static 100vh)', () => {
     const { container } = render(<PariprashnaApp chartPin={{ name: 'Test Native', bornLine: '05 Feb 1984' }} />)
     const shell = container.querySelector('.pp-root') as HTMLElement
     expect(shell.getAttribute('data-vh-source')).toBe('visual-viewport')
-    expect(shell.style.height).toBe('844px')
+    expect(shell.style.height).toBe('776px')
 
     act(() => {
       fake.height = 360 // keyboard open on a 390x844 device
       fake.fire('resize')
     })
-    expect(shell.style.height).toBe('360px')
+    expect(shell.style.height).toBe('292px')
   })
 })

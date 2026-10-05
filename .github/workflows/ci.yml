@@ -852,7 +852,11 @@ jobs:
           python-version: '3.11'
 
       - name: Nirmāṇa L0 — install writer test dependencies
-        run: python -m pip install 'psycopg[binary]>=3.2' 'psycopg2-binary>=2.9' 'pyyaml>=6.0' 'pytest>=8.0'
+        run: |
+          python -m pip install 'psycopg[binary]>=3.2' 'psycopg2-binary>=2.9' 'pyyaml>=6.0' 'pytest>=8.0'
+          # The v5 small-test dispatch and teardown unit tests import the REAL writer (scipy and the rest of the sidecar's CI
+          # requirements). Earlier installs in this job went into a different interpreter than the 3.11 selected above.
+          python -m pip install -r python-sidecar/requirements-ci.txt --quiet
 
       - name: Nirmāṇa L0 — migration 607 bg_reference contract against real Postgres
         env:
@@ -999,6 +1003,16 @@ jobs:
         # dispatched build would have recorded a provenance receipt for code that never ran.
         # This test fails on that old path (mutation-checked) — keep it collected.
         run: python -m pytest scripts/__tests__/test_dispatch_frozen_rebuild_digest_path.py -q
+
+      - name: Gochara v5 small-test dispatch — the marker it builds is accepted by the writer's own validator
+        # The dispatch used to carry its own copy of the slice rules (classes the writer never scored, date-only
+        # horizons it refuses) and a registry INSERT of the pre-1304 row. These tests use the REAL writer as oracle.
+        run: python -m pytest scripts/__tests__/test_dispatch_v5_small_test.py -q
+
+      - name: Gochara v5 small-test teardown - registry shape, attribution, receipts, every refusal (unit)
+        # The teardown is the only way a small test is removed. These tests pin its registry check to the migration-1304 shape, its
+        # delete orders to the writer's own, the receipt rule the Nirmana monitor depends on, and every refusal (no database).
+        run: python -m pytest scripts/__tests__/test_teardown_v5_small_test.py -q
 
       - name: NTAP monitor — provision the dedicated migration 629 contract DB
         # Dedicated disposable database on this job's local postgres:16 service.
@@ -1152,9 +1166,9 @@ jobs:
     # copying this one (the guard hardens every job with that prefix): never put it in a job already near its budget.
     #   gochara-a55-replace-chain : a55_replace_chain, a55_replace_chain_populated
     #   gochara-a55-slice-transitions : c46_slice_transitions
-    #   gochara-a55-round2-runner     : c46_slice_round2, c47_ephe_real_runner
+    #   gochara-a55-round2-runner     : c46_slice_round2, c47_ephe_real_runner, c49_wrap_cut_support
     #   gochara-a55-verifier-fixes    : p1_exclusion_h_unknown, member_geometry_seam, graze_interim
-    #   (next: gochara-a55-teardown for c38 real-db + populated, gochara-a55-dispatch for c37 real-db)
+    #   (next: gochara-a55-teardown, -round2 and -round3 for the c38 real-db modules, gochara-a55-dispatch for c37 real-db)
     needs: changes
     if: ${{ !cancelled() && needs.changes.outputs.docs_only != 'true' }}
     name: Gochara A5.5f - a rebuild replaces the whole candidate chain (real writer, throwaway Postgres)
@@ -1243,6 +1257,190 @@ jobs:
           cd python-sidecar
           python -m pytest tests/l3/gochara/test_c46_slice_transitions.py -q --tb=short -rs -p no:cacheprovider
 
+  gochara-a55-teardown:
+    # C38: the small-test TEARDOWN executed for real against the chain tables (real writer, real foreign keys, roles, lock races); about 10 minutes locally (module test_c38_teardown_real_db plus the populated case); split into three parallel jobs so each stays well inside its budget.
+    # See the split note on gochara-a55-replace-chain.
+    needs: changes
+    if: ${{ !cancelled() && needs.changes.outputs.docs_only != 'true' }}
+    name: Gochara C38 - the small-test teardown (real writer, throwaway Postgres)
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    defaults:
+      run:
+        working-directory: platform
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: C38 - teardown real-database and populated suites (REQUIRED, never skipped)
+        env:
+          GOCHARA_A53_ADMIN_DSN: postgresql://postgres:postgres@localhost:5432/postgres
+          GOCHARA_A53_REQUIRE_DB: '1'
+        run: |
+          pip install -r python-sidecar/requirements-ci.txt --quiet
+          se1_dir="$(mktemp -d)"
+          for se1_file in sepl_18.se1 semo_18.se1 seas_18.se1; do
+            curl --fail --silent --show-error --location --retry 2 \
+              "https://storage.googleapis.com/madhav-ephemeris/se1/$se1_file" --output "$se1_dir/$se1_file"
+          done
+          (cd "$se1_dir" && printf '%s\n' \
+            'ca1393ceab3a44fbc895887cf789c68819ae6a1cbc9b22225872dbe4ccd99a66  sepl_18.se1' \
+            '1ca07bd67c24374d77226180c20a4f9996cba013697894810518e7eb582ca4f7  semo_18.se1' \
+            'a2cd8fc33807c78ca9a700c91c2e042258b12fc4796519e00781440b5ad8b2e2  seas_18.se1' \
+            | sha256sum -c -)
+          export SE_EPHE_PATH="$se1_dir"
+          export GOCHARA_SE1_REQUIRE=1
+          cd python-sidecar
+          python -m pytest tests/l3/gochara/test_c38_teardown_real_db.py tests/l3/gochara/test_c38_teardown_populated.py -q --tb=short -rs -p no:cacheprovider
+
+  gochara-a55-teardown-round2:
+    # C38: the small-test TEARDOWN executed for real against the chain tables (real writer, real foreign keys, roles, lock races); about 14 minutes locally (26 tests).
+    # See the split note on gochara-a55-replace-chain.
+    needs: changes
+    if: ${{ !cancelled() && needs.changes.outputs.docs_only != 'true' }}
+    name: Gochara C38 - the small-test teardown, round 2 (ownership, end state, rehearsal) (real writer, throwaway Postgres)
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    defaults:
+      run:
+        working-directory: platform
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: C38 - teardown round 2 (ownership, end state, rehearsal) (REQUIRED, never skipped)
+        env:
+          GOCHARA_A53_ADMIN_DSN: postgresql://postgres:postgres@localhost:5432/postgres
+          GOCHARA_A53_REQUIRE_DB: '1'
+        run: |
+          pip install -r python-sidecar/requirements-ci.txt --quiet
+          se1_dir="$(mktemp -d)"
+          for se1_file in sepl_18.se1 semo_18.se1 seas_18.se1; do
+            curl --fail --silent --show-error --location --retry 2 \
+              "https://storage.googleapis.com/madhav-ephemeris/se1/$se1_file" --output "$se1_dir/$se1_file"
+          done
+          (cd "$se1_dir" && printf '%s\n' \
+            'ca1393ceab3a44fbc895887cf789c68819ae6a1cbc9b22225872dbe4ccd99a66  sepl_18.se1' \
+            '1ca07bd67c24374d77226180c20a4f9996cba013697894810518e7eb582ca4f7  semo_18.se1' \
+            'a2cd8fc33807c78ca9a700c91c2e042258b12fc4796519e00781440b5ad8b2e2  seas_18.se1' \
+            | sha256sum -c -)
+          export SE_EPHE_PATH="$se1_dir"
+          export GOCHARA_SE1_REQUIRE=1
+          cd python-sidecar
+          python -m pytest tests/l3/gochara/test_c38_teardown_real_db_round2.py -q --tb=short -rs -p no:cacheprovider
+
+  gochara-a55-teardown-round3:
+    # C38: the small-test TEARDOWN executed for real against the chain tables (real writer, real foreign keys, roles, lock races); about 9 minutes locally (16 tests).
+    # See the split note on gochara-a55-replace-chain.
+    needs: changes
+    if: ${{ !cancelled() && needs.changes.outputs.docs_only != 'true' }}
+    name: Gochara C38 - the small-test teardown, round 3 (real catalog foreign keys, lock race, interrupted replacement) (real writer, throwaway Postgres)
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    defaults:
+      run:
+        working-directory: platform
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: C38 - teardown round 3 (real catalog foreign keys, lock race, interrupted replacement) (REQUIRED, never skipped)
+        env:
+          GOCHARA_A53_ADMIN_DSN: postgresql://postgres:postgres@localhost:5432/postgres
+          GOCHARA_A53_REQUIRE_DB: '1'
+        run: |
+          pip install -r python-sidecar/requirements-ci.txt --quiet
+          se1_dir="$(mktemp -d)"
+          for se1_file in sepl_18.se1 semo_18.se1 seas_18.se1; do
+            curl --fail --silent --show-error --location --retry 2 \
+              "https://storage.googleapis.com/madhav-ephemeris/se1/$se1_file" --output "$se1_dir/$se1_file"
+          done
+          (cd "$se1_dir" && printf '%s\n' \
+            'ca1393ceab3a44fbc895887cf789c68819ae6a1cbc9b22225872dbe4ccd99a66  sepl_18.se1' \
+            '1ca07bd67c24374d77226180c20a4f9996cba013697894810518e7eb582ca4f7  semo_18.se1' \
+            'a2cd8fc33807c78ca9a700c91c2e042258b12fc4796519e00781440b5ad8b2e2  seas_18.se1' \
+            | sha256sum -c -)
+          export SE_EPHE_PATH="$se1_dir"
+          export GOCHARA_SE1_REQUIRE=1
+          cd python-sidecar
+          python -m pytest tests/l3/gochara/test_c38_teardown_real_db_round3.py -q --tb=short -rs -p no:cacheprovider
+
+  gochara-a55-dispatch:
+    # C37: the small-test DISPATCH executed for real (staging, refusals, dry run, exact-privilege role, and the end-to-end run through the real orchestrator entry point, then the teardown); about 4 minutes.
+    # See the split note on gochara-a55-replace-chain.
+    needs: changes
+    if: ${{ !cancelled() && needs.changes.outputs.docs_only != 'true' }}
+    name: Gochara C37 - the small-test dispatch (real runner, throwaway Postgres)
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    defaults:
+      run:
+        working-directory: platform
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: C37 - dispatch real-database suite (REQUIRED, never skipped)
+        env:
+          GOCHARA_A53_ADMIN_DSN: postgresql://postgres:postgres@localhost:5432/postgres
+          GOCHARA_A53_REQUIRE_DB: '1'
+        run: |
+          pip install -r python-sidecar/requirements-ci.txt --quiet
+          se1_dir="$(mktemp -d)"
+          for se1_file in sepl_18.se1 semo_18.se1 seas_18.se1; do
+            curl --fail --silent --show-error --location --retry 2 \
+              "https://storage.googleapis.com/madhav-ephemeris/se1/$se1_file" --output "$se1_dir/$se1_file"
+          done
+          (cd "$se1_dir" && printf '%s\n' \
+            'ca1393ceab3a44fbc895887cf789c68819ae6a1cbc9b22225872dbe4ccd99a66  sepl_18.se1' \
+            '1ca07bd67c24374d77226180c20a4f9996cba013697894810518e7eb582ca4f7  semo_18.se1' \
+            'a2cd8fc33807c78ca9a700c91c2e042258b12fc4796519e00781440b5ad8b2e2  seas_18.se1' \
+            | sha256sum -c -)
+          export SE_EPHE_PATH="$se1_dir"
+          export GOCHARA_SE1_REQUIRE=1
+          cd python-sidecar
+          python -m pytest tests/l3/gochara/test_c37_dispatch_real_db.py -q --tb=short -rs -p no:cacheprovider
+
   gochara-a55-round2-runner:
     # A5.5f / C46 / C47: the test-slice round-2 suite and the real-runner ephemeris suite (see the split note on gochara-a55-replace-chain).
     needs: changes
@@ -1286,7 +1484,7 @@ jobs:
           export SE_EPHE_PATH="$se1_dir"
           export GOCHARA_SE1_REQUIRE=1
           cd python-sidecar
-          python -m pytest tests/l3/gochara/test_c46_slice_round2.py tests/l3/gochara/test_c47_ephe_real_runner.py -q --tb=short -rs -p no:cacheprovider
+          python -m pytest tests/l3/gochara/test_c46_slice_round2.py tests/l3/gochara/test_c47_ephe_real_runner.py tests/l3/gochara/test_c49_wrap_cut_support.py -q --tb=short -rs -p no:cacheprovider
 
   gochara-a55-verifier-fixes:
     # C48 / PR 3143 (the in-build verifier fixes: P1 exclusion for H-unknown classes, the member-geometry seam and horizon-edge rules, the slice-only graze interim): three real-database suites, about 14 minutes together.

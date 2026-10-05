@@ -66,6 +66,10 @@ describe("Journey 1 shared navigation", () => {
     const view = render(<JourneyShell {...props}>Chart overview</JourneyShell>);
     state.path = "/clients/chart-test/pariprashna";
     view.rerender(<JourneyShell {...props}>Chart overview</JourneyShell>);
+    expect(screen.getByText("Chart overview")).toBeInTheDocument();
+    expect(screen.queryByText("Existing consultation shell")).toBeNull();
+    state.path = "/clients/chart-test/samiksha";
+    view.rerender(<JourneyShell {...props}>Prediction review</JourneyShell>);
     expect(screen.getByText("Existing consultation shell")).toBeInTheDocument();
     state.path = "/clients/chart-test/edit";
     view.rerender(<JourneyShell {...props}>Chart details</JourneyShell>);

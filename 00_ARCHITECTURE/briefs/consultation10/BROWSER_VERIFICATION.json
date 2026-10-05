@@ -1,0 +1,35 @@
+{
+  "testOnlyFictionalData": true,
+  "actualComponents": true,
+  "results": [
+    {
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "mainWidth": 1224,
+      "composerVisible": true,
+      "noOverflow": true,
+      "defaultClosed": true,
+      "threeTabs": true,
+      "inlineGrounding": true,
+      "languageToggle": true,
+      "compactViewport": false
+    },
+    {
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "mainWidth": 366,
+      "composerVisible": true,
+      "noOverflow": true,
+      "defaultClosed": true,
+      "threeTabs": true,
+      "inlineGrounding": true,
+      "languageToggle": true,
+      "compactViewport": true
+    }
+  ],
+  "errors": []
+}
