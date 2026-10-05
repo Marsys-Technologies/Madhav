@@ -248,7 +248,8 @@ def test_known_columns_without_a_citation_column_are_not_applicable_but_the_cell
     assert ac.criterion_applicability("Ldgr.source_presence", "L0", facts)["state"] == "NOT_APPLICABLE"
     cells = ac.rollup_asset("L0", a["measurements"], facts)
     ch = next(x for x in cells["Ldgr"]["checks"] if x["criterion"] == "Ldgr.source_presence")
-    assert ch["state"] == "NOT_APPLICABLE" and ch["v"] == ac.NO_DET and "undecided" in ch["reason"]   # no declared rule
+    # N-151: an undeclared L0 asset that holds data and names no source is MEASURED FAIL ("no source declared"), never an N/A (the column pattern still reads NOT_APPLICABLE on the facts)
+    assert ch["state"] == "MEASURED" and ch["v"] == ac.FAIL and "no source declared" in a["measurements"]["Ldgr.source_presence"]["measured"]
     import test_e6_na_r01_03 as r13
     assert set(ac.NA_RULE_DECISIONS) == r13.DECLARED_IDS     # exactly the six approved ids, so the refused column-pattern rule is absent too
     assert all(c["v"] != ac.NA for c in cells.values())

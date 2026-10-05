@@ -253,11 +253,18 @@ def test_every_registered_cause_is_observed_emitted_under_its_criterion(monkeypa
         rec = ac._grade_earn_cost(attempt, True, None, attempt_linkage_wired=True)[0]
         assert rec["v"] == NA, rec
         observed.add(("Earn.build_record", rec["cause"]))
-    for crit, rec in ac.prose_checks("x", {"prose_fields": [], "evidence": {"prose_fields": "w.py:1"}},
+    for crit, rec in ac.prose_checks("bg_doshas", {"prose_fields": [], "evidence": {"prose_fields": "w.py:1"}},
                                      dict(written={"t": set()}, vocabulary=set())).items():
         assert rec["v"] == NA, rec           # E6 packet (c): the declared-no-prose measured N/A candidates
         observed.add((crit, rec["cause"]))
     observed.add(("Earn.service_state", ac._service_state_na("data", "data")["cause"]))     # S4/N-72: keyed on the declared kind
+    _src_ev = "platform/scripts/governance/asset_census.py:1"
+    for na_form, kw2 in (("no_data", dict(table=None, cols=None)),                               # N-151: the two checked source N/A words
+                         ("no_claims", dict(table="t", cols=["id", "name"], prose_record=dict(v=NA, prose_none=dict(checked=True))))):
+        got = ac.source_declared_check("x", dict(na=na_form, why="a reviewed reason for this word", evidence=_src_ev), kw2["table"], kw2["cols"],
+                                       prose_record=kw2.get("prose_record"))
+        assert got["Ldgr.source_presence"]["v"] == NA, got
+        observed.add(("Ldgr.source_presence", got["Ldgr.source_presence"]["cause"]))
     for got in (ac.vocab_alias_declared_check("x", dict(na="no_alias_class", why="w", evidence="e:1"), "t", ["id"]),   # S3: the declared N/A words
                 ac.ldgr_source_declared_check("x", dict(na="no_classical_claim", why="w", evidence="e:1"), "t", ["id"])):
         for crit, rec in got.items():
