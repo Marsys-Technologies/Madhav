@@ -305,7 +305,7 @@ def test_the_set_of_migrations_that_mention_depends_on_is_the_pinned_set_in_both
     assert PIN_FILE.read_text(encoding="utf-8") == R.migration_pin_text(found)               # the pin is what the tool writes
 
 
-def test_the_seed_and_the_input_differ_on_exactly_eight_assets_in_exactly_these_edges():
+def test_the_seed_and_the_input_differ_on_exactly_ten_assets_in_exactly_these_edges():
     seed = {r["asset_id"]: set(r["depends_on"]) for r in G.parse_seed_text((REPO / "platform/scripts/seed/asset_registry_seed.ts").read_text(encoding="utf-8"))}
     diff = {r["asset_id"]: (sorted(set(r["depends_on"]) - seed[r["asset_id"]]), sorted(seed[r["asset_id"]] - set(r["depends_on"])))
             for r in ROWS if r["active"] and set(r["depends_on"]) != seed[r["asset_id"]]}
@@ -316,6 +316,9 @@ def test_the_seed_and_the_input_differ_on_exactly_eight_assets_in_exactly_these_
         "ga_dashas": ([], ["ga_sensitive", "ga_vargas"]),
         "ga_vargas": ([], ["ga_sensitive"]),
         "ga_yoga": ([], ["ga_vargas"]),
+        # migration 1253's two L2 edges: the seed carries them, the stale draft input (registry revision 16) does not
+        "bo_laksana": ([], ["ga_yoga"]),
+        "bo_upaya": ([], ["bo_bimba"]),
         "bo_nakshatra_semantic": (["ga_structural"], []),
         "ka_kshetra": (["ka_vedha_gochara"], []),
         "ka_muhurta_seva": ([], ["ka_graha_sancara"]),
