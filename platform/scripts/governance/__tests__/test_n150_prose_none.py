@@ -249,6 +249,7 @@ def test_a_declared_produced_table_is_read_by_the_catalog(monkeypatch, tmp_path)
     real_cat = ac.catalog
     monkeypatch.setattr(ac, "catalog", lambda ts: (seen.append(list(ts)), real_cat(ts))[1])
     monkeypatch.setattr(ac, "load_asset_declarations", lambda *a, **k: {"x": {"produced_tables": [dict(table="chart_facts", filter=dict(column="fact_category", equals="dasha_scope_cap"))]}})
+    monkeypatch.setattr(ac, "produced_set_reading", lambda *a, **k: dict(error="stubbed: this test is about the catalog read, not the Build.completion count"))
     ac.measure("L0")
     assert "chart_facts" in seen[0]
 
