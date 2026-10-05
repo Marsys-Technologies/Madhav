@@ -693,8 +693,17 @@ def _in_stored_tier(edge: RecordEdge) -> bool:
     return not (edge.transit and edge.agent in EPHEMERAL_TIER_AGENTS)
 
 
+def _p2_suppressed(event_class: str) -> bool:
+    """ND-H item 5, enforced in the ONE enumerator every consumer shares (inventory, coverage, the writer's record
+    phase call `enumerate_edges` directly — an inventory pin alone would not stop a record being minted)."""
+    from services.gochara_kernel import rule_registry      # lazy: rule_registry does not import this module
+    return rule_registry.p2_emits_no_row(event_class)
+
+
 def _enumerate_all(event_class: str, path_id: str, chart: dict,
                    convention_id: str | None, rule_version: str) -> list[RecordEdge]:
+    if path_id == "P2" and _p2_suppressed(event_class):
+        return []
     if path_id == "P1":
         return enumerate_p1_edges(event_class, chart, convention_id, rule_version=rule_version)
     if path_id == "P2":

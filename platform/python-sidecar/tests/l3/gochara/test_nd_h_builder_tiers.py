@@ -330,7 +330,9 @@ def test_every_other_class_is_byte_identical_at_the_stored_row_level():
     assert (len(rows), _digest(rows)) == GOLDEN_OTHERS
 
 
-def test_the_eight_classes_are_still_reproducible_under_the_pre_nd_h_versions():
+def test_the_eight_classes_are_still_reproducible_under_the_pre_nd_h_versions(monkeypatch):
+    # a PRE-ND-H generation runs under the pre-ND-H SELECTION (no class override): P2's parental_event rows included
+    monkeypatch.setattr(rr, "CLASS_SELECTION_OVERRIDES", {})
     rows = _stored_rows(EIGHT, ("1.0.0", "1.1.0"))
     assert (len(rows), _digest(rows)) == GOLDEN_EIGHT_PRE_ND_H
     for cls in EIGHT:
@@ -443,6 +445,9 @@ def test_a_class_outside_the_eight_plans_exactly_as_before_and_accounts_1_2_0_as
 
 
 def test_p2_emits_no_parental_event_row_once_the_class_runs_under_its_nd_h_rows():
+    assert ev.enumerate_edges("parental_event", "P2", CHART, "conv", rule_version="1.0.0") == []
+    assert ev.ephemeral_tier_edges("parental_event", "P2", CHART, "conv", rule_version="1.0.0") == []
+    assert ev.enumerate_edges("financial_deception", "P2", CHART, "conv", rule_version="1.0.0")
     pin = _plan("parental_event")[("P2", "1.0.0")]
     assert (pin.disposition, pin.exclusion_reason, pin.basis) == (
         "excluded", "not_applicable_to_class", f"ruling:{RULING}")

@@ -443,3 +443,38 @@ def test_writer_module_source_has_no_connection_lifecycle_or_throughput():
             f"writer module must not contain {forbidden!r} — it never commits, "
             "rolls back or closes the caller-owned connection, opens none, and "
             "never writes build state")
+
+
+# ── ND-H-20261005 item 5: the WRITER mints no P2 record for parental_event under its ND-H selection ──────────
+
+def test_the_writer_hands_the_materialiser_no_p2_edge_for_parental_event(_record_phase_fakes):
+    """Not the inventory pin: the record substep itself. The writer enumerates each (class, path) grain directly, so
+    the suppression must hold in the enumerator it calls — zero edges reach the materialiser, so nothing is minted."""
+    w = writer_mod.GocharaV5Writer()
+    w.run_substep(_ctx(), SubStep(key="record:parental_event:P2", label=""))
+    (kw,) = _record_phase_fakes["grain"]
+    assert (kw["event_class"], kw["path_id"]) == ("parental_event", "P2")
+    assert kw["edges"] == []
+
+
+def test_the_coverage_partition_of_parental_event_declares_no_p2_edge(_record_phase_fakes):
+    w = writer_mod.GocharaV5Writer()
+    w.run_substep(_ctx(), SubStep(key="coverage:parental_event", label=""))
+    (kw,) = _record_phase_fakes["coverage"]
+    assert kw["class_edges"] and not [e for e in kw["class_edges"] if e.path_id == "P2"]
+    assert {e.path_id for e in kw["class_edges"]} == {"P1", "P3", "P4"}
+    assert {e.rule_version for e in kw["class_edges"]} == {"1.2.0"}
+
+
+def test_the_p2_suppression_is_parental_event_only_and_lifts_with_the_selection(_record_phase_fakes, monkeypatch):
+    """Controls: (a) another adverse ND-H class keeps its P2 records; (b) with parental_event back on its pre-ND-H
+    selection the writer mints the P2 rows it used to (so the suppression is the ruling's, not a blanket edit)."""
+    from services.gochara_kernel import rule_registry as rr
+    w = writer_mod.GocharaV5Writer()
+    w.run_substep(_ctx(), SubStep(key="record:financial_deception:P2", label=""))
+    assert _record_phase_fakes["grain"][-1]["edges"]
+    monkeypatch.setattr(rr, "CLASS_SELECTION_OVERRIDES",
+                        {k: v for k, v in rr.CLASS_SELECTION_OVERRIDES.items() if k[0] != "parental_event"})
+    w.run_substep(_ctx(), SubStep(key="record:parental_event:P2", label=""))
+    edges = _record_phase_fakes["grain"][-1]["edges"]
+    assert edges and {(e.path_id, e.rule_version, e.affected_person) for e in edges} == {("P2", "1.0.0", "native")}

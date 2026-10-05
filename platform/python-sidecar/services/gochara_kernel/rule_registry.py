@@ -118,6 +118,14 @@ def selected_versions_for(event_class: str) -> dict[str, str]:
     return selected
 
 
+def p2_emits_no_row(event_class: str) -> bool:
+    """ND-H-20261005 item 5: P2 emits NO row for a parent class once that class runs under its ND-H rows (the
+    native's Moon never evidences the parent, §1.2 inv 6). Read from the CURRENT selection at call time: with the
+    class back on its pre-ND-H selection the P2 rows it had are enumerated again (a past generation is replayable)."""
+    return (event_class in rules_registry.P2_NO_ROW_CLASSES
+            and selected_versions_for(event_class).get("P3") == rules_registry.ND_H_VERSION)
+
+
 def selected_path_version(event_class: str, path_id: str) -> str:
     """The version `event_class`'s search runs `path_id` under — the one every enumerator, inventory pin and
     record of that class/path must carry (never the global RULE_VERSION, never merely the first bound)."""
@@ -594,6 +602,7 @@ __all__ = [
     "CLASS_SELECTION_OVERRIDES",
     "selected_path_version",
     "selected_versions_for",
+    "p2_emits_no_row",
     "BOUND_PREDICATE_REFS",
     "decode_factor_selector",
     "factor_operand_selector",
