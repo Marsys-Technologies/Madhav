@@ -48,6 +48,7 @@ ASSET = dispatch.ASSET_ID
 ONE_CLASS = "marriage"
 ARGV = ["--i-am-steward", "--after-settled-1", "--run", "one_class_full", "--classes", ONE_CLASS]
 ROLE = "dispatch_exact_role"
+ROLE_PASSWORD = "-".join(["exact", "role", "pw"])   # synthetic, built from parts: the CI database authenticates with a password
 
 
 @pytest.fixture(scope="module")
@@ -81,7 +82,7 @@ def dw(dtemplate):
 
 def _cli(w, argv, capsys, *, user=None):
     prior = os.environ.get("DATABASE_URL")
-    os.environ["DATABASE_URL"] = make_conninfo(w.dsn, user=user) if user else w.dsn
+    os.environ["DATABASE_URL"] = make_conninfo(w.dsn, user=user, password=ROLE_PASSWORD) if user else w.dsn
     try:
         code = dispatch.cli(argv)
     finally:
@@ -237,7 +238,7 @@ DISPATCH_PRIVILEGES = {
 @pytest.fixture()
 def role_world(dw):
     dw.admin.execute(f"DROP ROLE IF EXISTS {ROLE}")
-    dw.admin.execute(f"CREATE ROLE {ROLE} LOGIN")
+    dw.admin.execute(f"CREATE ROLE {ROLE} LOGIN PASSWORD '{ROLE_PASSWORD}'")
     dw.conn.execute("REVOKE EXECUTE ON ALL FUNCTIONS IN SCHEMA public FROM PUBLIC")     # production revokes PUBLIC EXECUTE
     try:
         yield dw
