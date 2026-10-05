@@ -127,6 +127,24 @@ def test_level_map_metadata_is_validated(kw):
         G.build_level_map(DIAMOND, **args)
 
 
+def test_notes_are_appended_after_the_pinned_keys_of_both_documents_and_only_when_given():
+    note = {"_stamp": {"status": "DRAFT"}}
+    lm = G.build_level_map(DIAMOND, version="0.2-draft", frozen_at=FRESH, registry_revision=7, notes=note)
+    assert list(lm) == ["version", "frozen_at", "registry_revision", "levels", "_stamp"]
+    fa = G.build_family_assets(LISTS, REG, version="0.2-draft", frozen_at=FRESH, registry_revision=7, notes=note)
+    assert list(fa)[-1] == "_stamp" and fa["_stamp"] == {"status": "DRAFT"}
+    assert list(G.build_level_map(DIAMOND, version="1.0", frozen_at=FRESH, registry_revision=7)) == [
+        "version", "frozen_at", "registry_revision", "levels"]
+
+
+@pytest.mark.parametrize("bad", [{"stamp": 1}, {"_": 1}, ["_x"], {"_x": float("nan")}, {5: 1}])
+def test_notes_must_be_underscore_keys_of_strict_json(bad):
+    with pytest.raises(G.LevelMapError):
+        G.build_level_map(DIAMOND, version="1.0", frozen_at=FRESH, registry_revision=7, notes=bad)
+    with pytest.raises(G.LevelMapError):
+        G.build_family_assets(LISTS, REG, version="1.0", frozen_at=FRESH, registry_revision=7, notes=bad)
+
+
 # ───────────────────────── FAMILY_ASSETS.json ─────────────────────────
 
 REG = [row("ka_gochara", layer="kala"), row("ka_gochara_resonance", layer="kala"), row("ka_sangam", layer="kala"),
@@ -261,9 +279,11 @@ def test_the_seed_loader_parses_every_asset_and_reproduces_the_measured_family_l
     rows = G.load_registry_from_seed(SEED)
     assert len(rows) > 100 and all(set(r) == {"asset_id", "layer", "depends_on", "active"} for r in rows)
     levels = G.compute_levels(rows)
-    # arch 6.1 (measured 2026-09-28/29): family assets at levels 1, 1, 5, 12, 13; 27 levels in all
-    assert [levels[a] for a in ("ka_gochara_resonance", "ka_vedha_gochara", "ka_gochara", "ka_kshetra", "ka_sangam")] == [1, 1, 5, 12, 13]
-    assert max(levels.values()) + 1 == 27
+    # arch 6.1 measured 2026-09-28/29 (before migration 1226): family assets at levels 1, 1, 5, 12, 13; 27 levels in all.
+    # The seed now carries 1226's four applied L1 edges (ga_sensitive -> ga_vargas -> ga_dashas / ga_yoga), which lengthen
+    # the longest paths through ga_*: the same seed now yields 1, 1, 7, 14, 15 and 29 levels (re-measured on this seed).
+    assert [levels[a] for a in ("ka_gochara_resonance", "ka_vedha_gochara", "ka_gochara", "ka_kshetra", "ka_sangam")] == [1, 1, 7, 14, 15]
+    assert max(levels.values()) + 1 == 29
 
 
 def test_the_seed_loader_handles_comments_strings_and_nested_braces(tmp_path):

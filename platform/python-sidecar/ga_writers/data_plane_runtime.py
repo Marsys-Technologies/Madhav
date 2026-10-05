@@ -60,6 +60,36 @@ def _contract_sql_enabled(conn: Any) -> bool:
     return conn.__class__.__module__.split(".", 1)[0] == "psycopg"
 
 
+def _assert_transaction_not_aborted(conn: Any, asset_id: str, partition_key: str) -> None:
+    """Fail loudly if the writer left the shared transaction in the aborted state.
+
+    A writer that catches a database error (e.g. a swallowed ``except
+    Exception``) after a failed statement leaves the orchestrator's single
+    transaction in ``INERROR``: every later statement -- including
+    ``complete_l1_data_plane_partition`` -- then fails with the opaque
+    ``InFailedSqlTransaction``, far from the cause, or a writer that returns
+    without touching the DB again looks successful.  This turns that state
+    into a named error at the writer boundary.
+
+    psycopg 3: ``Connection.info.transaction_status`` is a
+    ``psycopg.pq.TransactionStatus`` (``INERROR`` == aborted, needs ROLLBACK).
+    Contract test doubles (``_l1_contract_test_double``) have no transaction
+    state and stay ignored.
+    """
+    if getattr(conn, "_l1_contract_test_double", False):
+        return
+    info = getattr(conn, "info", None)
+    if info is None:
+        return
+    from psycopg.pq import TransactionStatus
+
+    if info.transaction_status == TransactionStatus.INERROR:
+        raise ContractError(
+            "writer swallowed a DB error: transaction is aborted "
+            f"(asset_id={asset_id}, partition={partition_key})"
+        )
+
+
 def _validate_invocation(ctx: Any, asset_id: str) -> tuple[str, str]:
     if asset_id not in CONTRACTED_L1_ASSETS:
         raise ContractError(f"unregistered L1 producer boundary: {asset_id!r}")
@@ -179,6 +209,7 @@ def l1_producer_contract(cls: _T) -> _T:
                 expected_partitions=expected,
             )
             result = method(self, ctx, *args, **kwargs)
+            _assert_transaction_not_aborted(ctx.db_conn, asset_id, partition_key)
             _complete_partition(
                 ctx,
                 asset_id=asset_id,

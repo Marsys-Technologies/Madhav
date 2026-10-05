@@ -1,6 +1,7 @@
 """test_e6_s2_carriage.py: E6 S2 (SS N-72 S2, N-73): declared carriage + the generic D1 (source correspondence) detector.
 
-An asset declares ONE carriage check chosen by its NATURE (transcription -> D1, computation -> D3, derivation -> D2); the validator
+An asset declares ONE carriage check chosen by its NATURE (transcription -> D1, computation -> D3, derivation -> D3 since C1-1 / N-101 (a): D2 is witness
+carriage); the validator
 refuses a mismatch; the other two read N/A by the declaration-keyed cause `not-the-declared-carriage`; D1 is measured by the
 engine in carriage_d1.py against the declared passage (verified by its stored hash) and PASSES only if every row matches. The
 Phaladipika latta (8 rows transcribed from Phaladipika Sloka 42-44) is the first instance, as a FIXTURE (no real asset declares a
@@ -20,11 +21,13 @@ HERE = pathlib.Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE.parent))
 
 import asset_census as ac  # noqa: E402
+import _decl_version  # noqa: E402
 import carriage_d1 as d1  # noqa: E402
 import test_e6_a_na_causes as na_causes  # noqa: E402
 import test_e6_na_r01_03 as r13  # noqa: E402
 
 EVID = "00_ARCHITECTURE/briefs/suvarna/layers/L0/assets/bg_phaladeepika_latta_ELEVATION_BRIEF_v1_0.md"
+WHY = "a declared carriage check, with the one-line reason it applies to this asset"      # S2 strictness (E6.1 follow-up): a real why, as S3's
 FX = json.loads((HERE / "fixtures" / "phaladeepika_latta_d1_fixture.json").read_text(encoding="utf-8"))
 CHUNKS = {c["chunk_id"]: c for c in FX["classical_text_chunks"]}
 ROWS = FX["bg_phaladeepika_latta"]
@@ -60,6 +63,10 @@ CAR_D1 = dict(applies="D1", nature="transcription", why="eight rows transcribed 
               evidence=EVID,
               citation_state="sourced_ocr_unverified", spec=SPEC)
 NA, NO_DET = ac.NA, ac.NO_DET
+# C1-1: carriage_declared_checks REQUIRES the table's pg_catalog column facts (no default: the column ledger cannot be forgotten). This table is the six columns the s2 SPEC classifies.
+_TXT, _N2 = dict(t="text", c="S", ec=None, et=None), dict(t="int2", c="N", ec=None, et=None)
+D1_FACTS = dict(graha=_TXT, count_from_graha=_N2, direction=_TXT, effect_description=_TXT, affliction_condition=_TXT, verse_ref=_TXT)
+KW = dict(column_types=D1_FACTS, prose_columns=[])
 S2_RULES = {f"Carr.D{i}#measured:not-the-declared-carriage": "test" for i in (1, 2, 3)}
 
 
@@ -409,7 +416,7 @@ def test_a_genuine_d1_record_with_its_evidence_is_honoured_and_a_genuine_partial
 
 def test_d1_an_asset_with_no_table_is_never_measured_against_a_spec_table(fetch):
     assert _measure(table=None)["v"] == NO_DET and "no table" in _measure(table=None)["measured"].lower()
-    got = ac.carriage_declared_checks("x", CAR_D1, None)
+    got = ac.carriage_declared_checks("x", CAR_D1, None, **KW)
     assert got["Carr.D1"]["v"] == NO_DET and got["Carr.D2"]["v"] == NA and "does not guess" in got["Carr.D1"]["measured"]
 
 
@@ -1079,11 +1086,11 @@ def test_the_table_guard_runs_before_any_select(monkeypatch):
     called = []
     monkeypatch.setattr(ac, "d1_fetch_chunks", lambda ids: called.append("chunks") or dict(CHUNKS))
     monkeypatch.setattr(ac, "d1_fetch_rows", lambda t, c, chart=None: called.append("rows") or copy.deepcopy(ROWS))
-    got = ac.carriage_declared_checks("x", CAR_D1, "some_other_table")
+    got = ac.carriage_declared_checks("x", CAR_D1, "some_other_table", **KW)
     assert got["Carr.D1"]["v"] == NO_DET and "does not guess" in got["Carr.D1"]["measured"] and called == []
-    got = ac.carriage_declared_checks("x", CAR_D1, None)
+    got = ac.carriage_declared_checks("x", CAR_D1, None, **KW)
     assert got["Carr.D1"]["v"] == NO_DET and called == []
-    ac.carriage_declared_checks("x", CAR_D1, "bg_phaladeepika_latta")
+    ac.carriage_declared_checks("x", CAR_D1, "bg_phaladeepika_latta", **KW)
     assert called == ["chunks", "rows"]
 
 
@@ -1122,17 +1129,17 @@ def _bad(car, match, extra=None):
 
 def test_validator_accepts_the_latta_declaration_and_the_other_two_natures():
     ac.validate_declarations(_doc(copy.deepcopy(CAR_D1)))
-    ac.validate_declarations(_doc(dict(applies="D3", nature="computation", why="w", evidence=EVID)))
-    ac.validate_declarations(_doc(dict(applies="D2", nature="derivation", why="w", evidence=EVID)))
-    ac.validate_declarations(_doc(dict(nature="ratified_judgment", ruling="N-73", why="w", evidence=EVID)))
+    ac.validate_declarations(_doc(dict(applies="D3", nature="computation", why=WHY, evidence=EVID)))
+    ac.validate_declarations(_doc(dict(applies="D3", nature="derivation", why=WHY, evidence=EVID)))        # C1-1 (N-101 (a)): a derivation is re-derived, D3
+    ac.validate_declarations(_doc(dict(nature="ratified_judgment", ruling="N-73", why=WHY, evidence=EVID)))
     ac.validate_declarations(_doc(dict(served_surface=True, **{k: v for k, v in CAR_D1.items()}),
                                   dict(read_evidence="platform/src/x.ts:1", read_table="t")))      # served_surface coexists
 
 
 @pytest.mark.parametrize("nature, applies", [("transcription", "D3"), ("transcription", "D2"), ("computation", "D1"), ("computation", "D2"),
-                                             ("derivation", "D1"), ("derivation", "D3")])
+                                             ("derivation", "D1"), ("derivation", "D2")])
 def test_validator_refuses_a_nature_check_mismatch(nature, applies):
-    car = dict(applies=applies, nature=nature, why="w", evidence=EVID, **({"citation_state": "sourced"} if nature == "transcription" else {}))
+    car = dict(applies=applies, nature=nature, why=WHY, evidence=EVID, **({"citation_state": "sourced"} if nature == "transcription" else {}))
     _bad(car, "requires applies")
 
 
@@ -1151,7 +1158,7 @@ def test_validator_refuses_missing_or_blank_parts():
 
 
 def test_validator_ratified_judgment_discipline():
-    ok = dict(nature="ratified_judgment", ruling="N-73", why="w", evidence=EVID)
+    ok = dict(nature="ratified_judgment", ruling="N-73", why=WHY, evidence=EVID)
     _bad({kk: v for kk, v in ok.items() if kk != "ruling"}, "ruling")
     _bad({**ok, "ruling": "yes"}, "ruling")
     _bad({**ok, "applies": "D1"}, "declares no check")
@@ -1160,7 +1167,7 @@ def test_validator_ratified_judgment_discipline():
 
 
 def test_validator_spec_only_for_d1_and_well_formed():
-    _bad(dict(applies="D3", nature="computation", why="w", evidence=EVID, spec=SPEC), "only defined for applies D1")
+    _bad(dict(applies="D3", nature="computation", why=WHY, evidence=EVID, spec=SPEC), "only defined for applies D1")
     for name, spec in {"unknown field": dict(SPEC, extra=1), "missing": {k: v for k, v in SPEC.items() if k != "chunk_ids"},
                        "matcher": dict(SPEC, matcher="nope"), "table": dict(SPEC, table="bad table"),
                        "empty chunks": dict(SPEC, chunk_ids=[]), "dup chunks": dict(SPEC, chunk_ids=[IDS[0], IDS[0]]),
@@ -1193,7 +1200,7 @@ def test_validator_doc_level_field_list_must_match():
 
 def test_the_committed_file_declares_one_carriage_check_the_latta_and_lists_the_fields():
     raw = json.loads(ac.DECLARATIONS_PATH.read_text(encoding="utf-8"))
-    assert raw["version"] == "1.11.0" and raw["carriage_declaration_fields"] == list(ac.CARRIAGE_DECL_FIELDS)
+    assert raw["version"] == _decl_version.CURRENT and raw["carriage_declaration_fields"] == list(ac.CARRIAGE_DECL_FIELDS)
     assert [a for a, e in raw["assets"].items() if any(k in (e.get("carriage") or {}) for k in ac.CARRIAGE_DECL_FIELDS)] == ["bg_phaladeepika_latta"]   # DECL-LATTA: the first declared D1
     ac.load_asset_declarations()
 
@@ -1207,13 +1214,13 @@ def fetch(monkeypatch):
 
 
 def test_an_undeclared_asset_emits_nothing_and_reads_as_today(fetch):
-    assert ac.carriage_declared_checks("bg_x", None, "t") == {} and ac.carriage_declared_checks("bg_x", {"served_surface": True}, "t") == {}
+    assert ac.carriage_declared_checks("bg_x", None, "t", **KW) == {} and ac.carriage_declared_checks("bg_x", {"served_surface": True}, "t", **KW) == {}
     cell = ac.rollup_asset("L0", {})["Carr"]
     assert cell["v"] == NO_DET and all(c["state"] == "APPLIES" for c in cell["checks"])
 
 
 def test_a_declared_d1_asset_measures_d1_and_the_other_two_read_na_by_the_declaration_keyed_cause(fetch):
-    got = ac.carriage_declared_checks("bg_phaladeepika_latta", CAR_D1, "bg_phaladeepika_latta")
+    got = ac.carriage_declared_checks("bg_phaladeepika_latta", CAR_D1, "bg_phaladeepika_latta", **KW)
     assert got["Carr.D1"]["v"] == "PASS" and got["Carr.D1"]["citation_state"] == "sourced_ocr_unverified"
     for c in ("Carr.D2", "Carr.D3"):
         assert got[c]["v"] == NA and got[c]["cause"] == "not-the-declared-carriage" and "declared carriage check is D1" in got[c]["measured"]
@@ -1224,7 +1231,7 @@ def test_a_declared_d1_asset_measures_d1_and_the_other_two_read_na_by_the_declar
 
 def test_the_na_is_released_only_by_the_declared_rule(fetch, monkeypatch):
     monkeypatch.setattr(ac, "NA_RULE_DECISIONS", {k: v for k, v in ac.NA_RULE_DECISIONS.items() if "not-the-declared-carriage" not in k})
-    got = ac.carriage_declared_checks("bg_phaladeepika_latta", CAR_D1, "bg_phaladeepika_latta")
+    got = ac.carriage_declared_checks("bg_phaladeepika_latta", CAR_D1, "bg_phaladeepika_latta", **KW)
     cell = ac.rollup_asset("L0", got)["Carr"]
     assert cell["v"] == NO_DET and [c["v"] for c in cell["checks"]] == ["PASS", NO_DET, NO_DET]
 
@@ -1246,13 +1253,13 @@ def test_a_seeded_wrong_row_holds_the_carr_cell_below_pass(monkeypatch):
     [r.update(count_from_graha=21) for r in rows if r["graha"] == "Moon"]
     monkeypatch.setattr(ac, "d1_fetch_chunks", lambda ids: dict(CHUNKS))
     monkeypatch.setattr(ac, "d1_fetch_rows", lambda t, c, chart=None: rows)
-    cell = ac.rollup_asset("L0", ac.carriage_declared_checks("bg_phaladeepika_latta", CAR_D1, "bg_phaladeepika_latta"))["Carr"]
+    cell = ac.rollup_asset("L0", ac.carriage_declared_checks("bg_phaladeepika_latta", CAR_D1, "bg_phaladeepika_latta", **KW))["Carr"]
     assert cell["v"] == "PARTIAL"
 
 
-@pytest.mark.parametrize("applies, nature", [("D2", "derivation"), ("D3", "computation")])
+@pytest.mark.parametrize("applies, nature", [("D3", "derivation"), ("D3", "computation")])
 def test_a_declared_d2_or_d3_has_no_detector_yet_and_the_other_two_read_na(applies, nature):
-    got = ac.carriage_declared_checks("x", dict(applies=applies, nature=nature, why="w", evidence=EVID), None)
+    got = ac.carriage_declared_checks("x", dict(applies=applies, nature=nature, why="w", evidence=EVID), None, **KW)
     own = f"Carr.{applies}"
     assert got[own]["v"] == NO_DET and "detector is built yet" in got[own]["measured"]
     assert sorted(c for c in got if got[c]["v"] == NA) == sorted(c for c in ("Carr.D1", "Carr.D2", "Carr.D3") if c != own)
@@ -1261,7 +1268,7 @@ def test_a_declared_d2_or_d3_has_no_detector_yet_and_the_other_two_read_na(appli
 
 
 def test_a_d1_declaration_without_a_spec_is_no_detector_not_pass():
-    got = ac.carriage_declared_checks("x", {k: v for k, v in CAR_D1.items() if k != "spec"}, "t")
+    got = ac.carriage_declared_checks("x", {k: v for k, v in CAR_D1.items() if k != "spec"}, "t", **KW)
     assert got["Carr.D1"]["v"] == NO_DET and "without a `spec`" in got["Carr.D1"]["measured"]
 
 
@@ -1269,13 +1276,13 @@ def test_a_failed_database_read_degrades_only_d1_to_errored(monkeypatch):
     def boom(*a, **k):
         raise ac.Unknown("connection refused")
     monkeypatch.setattr(ac, "d1_fetch_chunks", boom)
-    got = ac.carriage_declared_checks("x", CAR_D1, "bg_phaladeepika_latta")
+    got = ac.carriage_declared_checks("x", CAR_D1, "bg_phaladeepika_latta", **KW)
     assert got["Carr.D1"]["v"] == ac.ERRORED and got["Carr.D1"]["citation_state"] == "sourced_ocr_unverified"
     assert got["Carr.D2"]["v"] == NA
 
 
 def test_a_ratified_judgment_seed_reads_na_on_all_three_by_its_own_cause_and_needs_its_own_rule(monkeypatch):
-    got = ac.carriage_declared_checks("x", dict(nature="ratified_judgment", ruling="N-73", why="w", evidence=EVID), None)
+    got = ac.carriage_declared_checks("x", dict(nature="ratified_judgment", ruling="N-73", why="w", evidence=EVID), None, **KW)
     assert {c: got[c]["cause"] for c in got} == {c: "ratified_judgment" for c in ("Carr.D1", "Carr.D2", "Carr.D3")}
     assert ac.rollup_asset("L0", got)["Carr"]["v"] == NO_DET                       # no rule declared for ratified_judgment: not released
     monkeypatch.setattr(ac, "NA_RULE_DECISIONS", {**ac.NA_RULE_DECISIONS, **{f"Carr.D{i}#measured:ratified_judgment": "SS (test)" for i in (1, 2, 3)}})
@@ -1294,6 +1301,8 @@ def test_measure_wires_the_declared_carriage_through_to_the_asset_record(monkeyp
     decl = {"x": dict(kind="data", carriage=CAR_D1)}
     na_causes._stub_layer(monkeypatch, tmp_path, reg, tables={"bg_phaladeepika_latta": (["graha"], [])})
     monkeypatch.setattr(ac, "load_asset_declarations", lambda *a, **k: decl)
+    # C1-1: measure() reads the table's pg_catalog column facts for a declared D1 carriage; this stub has no database, so supply them
+    monkeypatch.setattr(ac, "carriage_fetch_column_types", lambda table: dict(D1_FACTS))
     ms = {a["asset_id"]: a["measurements"] for a in ac.measure("L0")["assets"]}
     assert ms["x"]["Carr.D1"]["v"] == "PASS" and ms["x"]["Carr.D1"]["d1"]["rows_matched"] == 8
     assert ms["x"]["Carr.D2"]["cause"] == "not-the-declared-carriage"
@@ -1427,7 +1436,7 @@ def test_REAL_SQL_the_chunk_read_and_the_whole_d1_measurement_run_end_to_end(mon
     _rolled_back_psql(monkeypatch, disposable_pg)
     got = ac.d1_fetch_chunks(IDS)
     assert set(got) == set(IDS) and all(d1.verify_chunk(c)["verified"] for c in got.values())
-    rec = ac.carriage_declared_checks("bg_phaladeepika_latta", CAR_D1, "bg_phaladeepika_latta")
+    rec = ac.carriage_declared_checks("bg_phaladeepika_latta", CAR_D1, "bg_phaladeepika_latta", **KW)
     assert rec["Carr.D1"]["v"] == "PASS" and rec["Carr.D1"]["d1"]["rows_total"] == 8
 
 

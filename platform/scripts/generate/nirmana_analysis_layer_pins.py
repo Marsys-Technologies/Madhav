@@ -200,6 +200,21 @@ AUTHORITY_BINDINGS = {
         "decision_binding": "status: PINS_READMISSION_AUTHORIZED",
         "authority_identity_binding": "`26cbb7e004db6f443658cbf0018603891ef7f2ed`",
     },
+    "NATIVE-2026-10-04-L0-BG-EPHEMERIS-SUCCESSOR": {
+        # L0 analysis-receipts pin successor admission for the bg_ephemeris writer digest change (PR #3015,
+        # Suvarna, 2026-10-04; tracker N-134). The approval is the OWNER's, typed in the Exec Suvarna window and
+        # recorded verbatim in the authority record. The authority identity is the tip of PR #3015 at the moment
+        # of approval (149874958e32...), which is also this successor's source commit, so what was approved and
+        # what is pinned cannot diverge; the evidence commit is the record's squash delivery on main
+        # (byte-identical blob). Scope of THIS successor: exactly one L0 writer digest (bg_ephemeris,
+        # approved_intentional_change); no membership change; the other 35 bg_* digests are byte-identical.
+        "authority_commit": "149874958e32c1759563e8475ce15853b0912c0c",
+        "evidence_commit": "feb58b0569bc8e55951853ca5937c2875c34a9b9",
+        "path": "00_ARCHITECTURE/briefs/nirmana/L0_BG_EPHEMERIS_SUCCESSOR_AUTHORITY_v1_0.md",
+        "sha256": "4907c191a48ccc252176a67cf7be67dfe9a7459ace402303d579b1a05e59257b",
+        "decision_binding": "status: SUCCESSOR_ADMISSION_AUTHORIZED",
+        "authority_identity_binding": "`149874958e32c1759563e8475ce15853b0912c0c`",
+    },
 }
 
 # These source identities were accepted on an earlier lane branch.  They stay
@@ -260,6 +275,18 @@ EXPECTED_REVIEW_ARTIFACTS = {
 AUTHORIZED_SOURCE_COMMITS = {
     "N-71": {
         "L0": frozenset({"48c2d55f159605e9b9feea7ed2aabc30cbfdebe6"}),
+    },
+    # The authority identity (149874958e32...) is the PR #3015 tip at the moment of the owner's approval; the source commit
+    # actually pinned is 5819c96ae64e..., the same branch after merging main (Pravaha's train landed ka_gochara_v4_41_candidate
+    # and ka_gochara_v5 writer digest changes in between). The two differ ONLY in those two L3 writer digests: every bg_*
+    # writer digest and the bg_ephemeris writer source are byte-identical, and the candidate inventory must equal its
+    # source commit's inventory byte for byte, which only the merged commit satisfies. Both are authorized for L0; disclosed
+    # like the L0 repair precedent (source commit differs from the approved-state identity).
+    "NATIVE-2026-10-04-L0-BG-EPHEMERIS-SUCCESSOR": {
+        "L0": frozenset({
+            "149874958e32c1759563e8475ce15853b0912c0c",
+            "5819c96ae64e4865196abe0dc9ee70a0a4594bd9",
+        }),
     },
     "CCD-018": {
         "L5": frozenset({"ed5ad601c5e568f5d6c5d8ec72bc7c8f9ff2bd2b"}),

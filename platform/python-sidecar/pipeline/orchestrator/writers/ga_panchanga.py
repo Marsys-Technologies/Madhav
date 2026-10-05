@@ -17,7 +17,9 @@ class GaPanchangaWriter(WriterBase):
         from ga_writers.ga_panchanga_writer import build_ga_panchanga
 
         s = build_ga_panchanga(
-            chart_id=ctx.config['chart_id'],
+            # uuid.UUID from the real orchestrator (psycopg uuid decode); the writer's FORENSIC gate compares
+            # chart_id to a str constant, so convert at the boundary.
+            chart_id=str(ctx.config['chart_id']),
             build_id=ctx.build_id,
             conn=ctx.db_conn,
             birth_params=ctx.config.get('birth_params'),

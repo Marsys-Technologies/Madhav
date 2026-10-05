@@ -17,7 +17,9 @@ class GaTajakaWriter(WriterBase):
         from ga_writers.ga_tajaka_writer import build_ga_tajaka
 
         s = build_ga_tajaka(
-            chart_id=ctx.config['chart_id'],
+            # uuid.UUID from the real orchestrator (psycopg uuid decode); build_ga_tajaka feeds
+            # chart_id into stable_uuid (canonical JSON rejects a UUID): convert at the boundary.
+            chart_id=str(ctx.config['chart_id']),
             build_id=ctx.build_id,
             conn=ctx.db_conn,
             birth_params=ctx.config.get('birth_params'),

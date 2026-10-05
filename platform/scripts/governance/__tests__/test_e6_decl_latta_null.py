@@ -21,6 +21,7 @@ HERE = pathlib.Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE.parent))
 
 import asset_census as ac  # noqa: E402
+import _decl_version  # noqa: E402
 import test_e6_decl_latta as dl  # noqa: E402
 import test_e6_s3_alias_ldgr as s3  # noqa: E402
 import test_e6_s1_elevation_reader as rd  # noqa: E402
@@ -62,7 +63,7 @@ def _line(ptr_or_path, n=None):
 # ───────────────────────── Part 1: the entry ─────────────────────────
 
 def test_the_file_is_1_11_0_the_validator_accepts_it_and_only_this_asset_changed_its_entry_and_the_description_names_it():
-    assert DECL["version"] == "1.11.0"
+    assert DECL["version"] == _decl_version.CURRENT      # 1.11.0 added the null_convention; 1.12.0 (NARR-GUARD) the latta prose_fields [] + prose_coupling
     ac.validate_declarations(DECL)
     sentence = DECL["description"].split("Version 1.11.0 (DECL-LATTA-NULL)", 1)[1]
     assert "bg_phaladeepika_latta's entry ONLY" in sentence and "no other asset or structure changed" in sentence
@@ -292,7 +293,7 @@ def test_REAL_F1_table_a_single_valued_corrected_form_passes_and_a_per_row_form_
 
 def test_REAL_F1_a_per_row_verse_ref_breaks_the_carriage_d1_spec_too_which_pins_one_string(monkeypatch, disposable_pg):
     s3._real(monkeypatch, disposable_pg, dl._setup() + _per_row_verse_ref())
-    r = ac.carriage_declared_checks(AID, ENTRY["carriage"], AID, False)["Carr.D1"]
+    r = ac.carriage_declared_checks(AID, ENTRY["carriage"], AID, False, column_types=ac.carriage_fetch_column_types(AID), prose_columns=[])["Carr.D1"]
     assert r["v"] == PARTIAL and sorted(u["row"] for u in r["d1"]["unmatched"]) == sorted(EFFECT_ROWS)
     assert all(u["failed"] == ["verse_ref"] for u in r["d1"]["unmatched"])
     ef = [e for e in ENTRY["carriage"]["spec"]["extra_fields"] if e["column"] == "verse_ref"]
@@ -385,7 +386,7 @@ def test_REAL_only_the_latta_null_cell_changes_across_every_l0_asset(monkeypatch
     # BEFORE = main after #2991 (declarations 1.10.0): the saved measurements with the latta's three declared blocks measured (carriage, vocab_alias, ldgr_source)
     s3._real(monkeypatch, disposable_pg, dl._setup())
     three = {}
-    three.update(ac.carriage_declared_checks(AID, ENTRY["carriage"], AID, False))
+    three.update(ac.carriage_declared_checks(AID, ENTRY["carriage"], AID, False, column_types=ac.carriage_fetch_column_types(AID), prose_columns=[]))
     three.update(ac.vocab_alias_declared_check(AID, ENTRY["vocab_alias"], AID, COLS))
     three.update(ac.ldgr_source_declared_check(AID, ENTRY["ldgr_source"], AID, COLS, [["table_version", "graha"]]))
     nul = _measure(monkeypatch, disposable_pg)

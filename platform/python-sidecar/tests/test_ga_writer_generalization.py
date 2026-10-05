@@ -118,6 +118,26 @@ def _dashas():
     return gdw
 
 
+# S-L1 karaka-roles fix: ga_dashas READS ga_sensitive's per-chart karaka roles (no
+# hard-coded constant). These skip_db tests build a vimshottari system directly, so they
+# seed the roles the way the unit-test path is meant to (set_karaka_roles).
+_KARAKA_ROLES_FIXTURE = {
+    "Moon": "AK", "Saturn": "AmK", "Sun": "BK", "Venus": "MK",
+    "Mars": "PiK", "Rahu": "PK", "Jupiter": "GK", "Mercury": "DK",
+}
+
+
+@pytest.fixture(autouse=True)
+def _seed_karaka_roles():
+    import ga_writers.ga_dashas_writer as gdw
+    saved = dict(gdw._KARAKA_ROLE_CACHE)
+    for chart in (CANONICAL_CHART_ID, 'non-native-chart-xyz'):
+        gdw.set_karaka_roles(chart, 'lahiri_chitrapaksha', _KARAKA_ROLES_FIXTURE)
+    yield
+    gdw._KARAKA_ROLE_CACHE.clear()
+    gdw._KARAKA_ROLE_CACHE.update(saved)
+
+
 _NATIVE_BIRTH_JD_DICT = {
     "datetime_iso": "1984-02-05T10:43:00",
     "tz_offset_hours": 5.5,

@@ -5,14 +5,14 @@ Tests:
     1. _rows_to_parquet — round-trip serialization (range assertions, not exact values)
     2. export_table — DB mock: export_log entry created with non-null source_citation
     3. export_table — DB mock: BQ dataset accessible check
-    4. export_table — leakage guard: life_events without calibration prefix raises
+    4. life_events egress guard: every life_events / LEL table key is refused
     5. export_table — source_citation non-null enforced at row level (skips null rows)
     6. run_export — smoke: returns result per table_key
     7. run_acceptance_gate — AC1: export_log reachable (mock DB)
     8. run_acceptance_gate — AC3: null citation detected → gate fails
-    9. run_acceptance_gate — AC4: leakage guard catches life_events without prefix
-    10. _assert_not_prediction_feed — hardcoded leakage guard unit test
-    11. LEL: life_events_calibration export uses calibration-only SQL filter
+    9. run_acceptance_gate — AC4: any life_events row in export_log fails the gate
+    10. (retired) former LEL leakage-guard unit tests, replaced by section 4
+    11. LEL: no life_events spec, no --include-life-events flag, no SQL reads life_events
 
 No live DB or GCP credentials required. All external calls are mocked.
 """
@@ -69,31 +69,6 @@ _BODHA_SIGNAL_ROW = {
     "computed_at": datetime.now(timezone.utc).isoformat(),
     "build_id": "test-build-001",
 }
-
-_LEL_ROW = {
-    "event_id": "EVT.1984.02.05.01",
-    "event_date": "1984-02-05",
-    "date_confidence": "exact",
-    "category": "other",
-    "subcategory": "birth",
-    "description": "Born in Bhubaneswar",
-    "magnitude": "life-altering",
-    "valence": "neutral",
-    "vimshottari_md": "Jupiter",
-    "vimshottari_ad": "Venus",
-    "yogini_md": "Bhramari",
-    "chara_md_ad": "Aries / Taurus",
-    "sade_sati_phase": None,
-    "retrodictive_match": "yes",
-    "signals_matched": json.dumps(["SIG.01", "SIG.04", "CVG.01"]),
-    "confidence": 0.89,
-    "source_citation": (
-        "LIFE_EVENT_LOG_v1_2.md §3 EVT.1984.02.05.01 | "
-        "FORENSIC v8.0 §2.1 (chart_facts via forensic_render; md archived 99_ARCHIVE/01_FACTS_LAYER/FORENSIC_DATA_v8_0_SUPPLEMENT.md) (birth chart anchor) | "
-        "LEL v1.7 calibration — CALIBRATION ONLY not prediction"
-    ),
-}
-
 
 # ── 1. Parquet serialization ───────────────────────────────────────────────────
 
@@ -235,34 +210,93 @@ class TestBigQueryAccessible:
         assert ac2["passed"] is True  # Skipped = pass (not a hard requirement in CI)
 
 
-# ── 4. Leakage guard ──────────────────────────────────────────────────────────
+# ── 4. life_events egress guard (SS N-109 / lifeevents-audit F1) ───────────────
 
-class TestLeakageGuard:
-    def test_lel_without_calibration_prefix_raises(self):
-        m = _mod()
-        with pytest.raises(RuntimeError, match="leakage guard violation"):
-            m._assert_not_prediction_feed("life_events", is_lel=True)
+_LIFE_EVENT_KEYS = [
+    "life_events",
+    "life_events_calibration",
+    "life_events_calibration_v2",
+    "life_events_prediction",
+    "LIFE_EVENTS",
+    "life-events",
+    "life_event",
+    "lel",
+    "lel_events",
+    "lel_event_class_resolution",
+]
 
-    def test_lel_with_calibration_prefix_passes(self):
-        m = _mod()
-        # Should not raise
-        m._assert_not_prediction_feed("life_events_calibration", is_lel=True)
 
-    def test_non_lel_table_always_passes(self):
+class TestLifeEventsEgressGuard:
+    @pytest.mark.parametrize("key", _LIFE_EVENT_KEYS)
+    def test_export_table_refuses_life_event_keys(self, key):
         m = _mod()
-        m._assert_not_prediction_feed("chart_facts", is_lel=False)
-        m._assert_not_prediction_feed("bodha_signals", is_lel=False)
+        with patch.object(m, "_get_conn") as get_conn:
+            with pytest.raises(m.LifeEventsExportRefused, match="life_events export refused"):
+                m.export_table(key, chart_id=NATIVE_CHART_ID, dry_run=True)
+        get_conn.assert_not_called()  # refused before any DB access
 
-    def test_unknown_lel_variant_raises(self):
-        """life_events_raw or life_events_prediction should raise."""
+    @pytest.mark.parametrize("key", _LIFE_EVENT_KEYS)
+    def test_run_export_refuses_life_event_keys(self, key):
         m = _mod()
-        with pytest.raises(RuntimeError, match="leakage guard violation"):
-            m._assert_not_prediction_feed("life_events_prediction", is_lel=True)
+        with patch.object(m, "export_table") as export_table:
+            with pytest.raises(m.LifeEventsExportRefused):
+                m.run_export(NATIVE_CHART_ID, tables=[key])
+        export_table.assert_not_called()
 
-    def test_lel_calibration_extended_passes(self):
-        """life_events_calibration_v2 passes (starts with correct prefix)."""
+    def test_run_export_refuses_before_exporting_anything(self):
+        """A life_events key AFTER a legitimate key must still abort the whole run."""
         m = _mod()
-        m._assert_not_prediction_feed("life_events_calibration_v2", is_lel=True)
+        with patch.object(m, "export_table") as export_table:
+            with pytest.raises(m.LifeEventsExportRefused):
+                m.run_export(NATIVE_CHART_ID, tables=["chart_facts", "life_events_calibration"])
+        export_table.assert_not_called()
+
+    def test_legitimate_keys_are_not_refused(self):
+        m = _mod()
+        for key in ("chart_facts", "bodha_signals", "parallel_table", "model_runs"):
+            m._refuse_life_events_key(key)  # must not raise
+
+    def test_spec_sql_reading_life_events_is_refused_under_any_key(self):
+        """Re-adding a life_events SELECT under an innocuous key must still be blocked."""
+        m = _mod()
+        sneaky = {
+            "sql": "SELECT event_id, description, source_citation FROM life_events "
+                   "WHERE source_citation IS NOT NULL",
+            "bq_table": "innocuous_table",
+            "description": "sneaky",
+        }
+        with patch.dict(m._TABLE_SPECS, {"innocuous": sneaky}):
+            with patch.object(m, "_get_conn") as get_conn:
+                with pytest.raises(m.LifeEventsExportRefused):
+                    m.export_table("innocuous", chart_id=NATIVE_CHART_ID, dry_run=True)
+            get_conn.assert_not_called()
+
+    def test_spec_sql_reading_lel_tables_is_refused(self):
+        m = _mod()
+        sneaky = {
+            "sql": "SELECT * FROM lel_event_class_resolution WHERE source_citation IS NOT NULL",
+            "bq_table": "innocuous_table",
+            "description": "sneaky",
+        }
+        with patch.dict(m._TABLE_SPECS, {"innocuous": sneaky}):
+            with patch.object(m, "_get_conn") as get_conn:  # never touch a real DB
+                with pytest.raises(m.LifeEventsExportRefused):
+                    m.export_table("innocuous", chart_id=NATIVE_CHART_ID, dry_run=True)
+            get_conn.assert_not_called()
+
+    def test_spec_bq_table_named_life_events_is_refused(self):
+        m = _mod()
+        sneaky = {
+            "sql": "SELECT 1 AS x, 'c' AS source_citation FROM chart_facts "
+                   "WHERE source_citation IS NOT NULL",
+            "bq_table": "life_events_copy",
+            "description": "sneaky",
+        }
+        with patch.dict(m._TABLE_SPECS, {"innocuous": sneaky}):
+            with patch.object(m, "_get_conn") as get_conn:  # never touch a real DB
+                with pytest.raises(m.LifeEventsExportRefused):
+                    m.export_table("innocuous", chart_id=NATIVE_CHART_ID, dry_run=True)
+            get_conn.assert_not_called()
 
 
 # ── 5. Source citation non-null filter ─────────────────────────────────────────
@@ -344,8 +378,8 @@ class TestRunExport:
         assert "chart_facts" in table_names
         assert "bodha_signals" in table_names
 
-    def test_run_export_default_excludes_lel(self):
-        """Default export does NOT include life_events (calibration only)."""
+    def test_run_export_default_excludes_life_events(self):
+        """Default export is exactly chart_facts + bodha_signals; no life_events key."""
         m = _mod()
         exported_tables: list[str] = []
 
@@ -356,22 +390,18 @@ class TestRunExport:
         with patch.object(m, "export_table", side_effect=fake_export_table):
             m.run_export(NATIVE_CHART_ID)
 
-        assert "life_events_calibration" not in exported_tables
-        assert "chart_facts" in exported_tables
-        assert "bodha_signals" in exported_tables
+        assert sorted(exported_tables) == ["bodha_signals", "chart_facts"]
 
-    def test_run_export_include_life_events_adds_calibration_table(self):
+    def test_run_export_has_no_include_life_events_parameter(self):
+        """The opt-in is gone: passing it is a TypeError, never an export."""
+        import inspect
+
         m = _mod()
-        exported_tables: list[str] = []
-
-        def fake_export_table(table_key, **kwargs):
-            exported_tables.append(table_key)
-            return {"table_name": table_key, "row_count": 57, "source_citation": "LEL v1.7"}
-
-        with patch.object(m, "export_table", side_effect=fake_export_table):
-            m.run_export(NATIVE_CHART_ID, include_life_events=True)
-
-        assert "life_events_calibration" in exported_tables
+        assert "include_life_events" not in inspect.signature(m.run_export).parameters
+        with patch.object(m, "export_table") as export_table:
+            with pytest.raises(TypeError):
+                m.run_export(NATIVE_CHART_ID, include_life_events=True)  # type: ignore[call-arg]
+        export_table.assert_not_called()
 
     def test_run_export_handles_table_failure_gracefully(self):
         """A failed table should not crash the entire run."""
@@ -499,16 +529,16 @@ class TestAcceptanceGateAC3:
         assert ac3["value"] == 0
 
 
-# ── 9. Acceptance gate — AC4: leakage guard ───────────────────────────────────
+# ── 9. Acceptance gate — AC4: no life_events rows in export_log ───────────────
 
 class TestAcceptanceGateAC4:
-    def test_ac4_fails_when_lel_without_calibration_prefix(self):
+    def test_ac4_fails_when_any_life_events_row_logged(self):
         m = _mod()
 
         def mock_execute(sql, params=None):
             mock_result = MagicMock()
-            if "life_events_calibration" in sql and "NOT LIKE" in sql:
-                # AC4 check: 1 row violates leakage guard
+            if "life_events" in sql and "export_log" in sql:
+                # AC4 check: 1 life_events row was logged -> gate must fail
                 mock_result.fetchone.return_value = (1,)
             else:
                 mock_result.fetchone.return_value = (0,)
@@ -528,6 +558,32 @@ class TestAcceptanceGateAC4:
         ac4 = next(c for c in result["checks"] if c["id"] == "AC4")
         assert ac4["passed"] is False
         assert ac4["value"] == 1
+
+    def test_ac4_sql_has_no_calibration_exemption(self):
+        """A 'life_events_calibration' log row must NOT be treated as acceptable."""
+        m = _mod()
+        seen: list[str] = []
+
+        def mock_execute(sql, params=None):
+            seen.append(sql)
+            mock_result = MagicMock()
+            mock_result.fetchone.return_value = (0,)
+            return mock_result
+
+        mock_conn = MagicMock()
+        mock_conn.__enter__ = MagicMock(return_value=mock_conn)
+        mock_conn.__exit__ = MagicMock(return_value=False)
+        mock_conn.execute.side_effect = mock_execute
+
+        with (
+            patch.object(m, "_get_conn", return_value=mock_conn),
+            patch.dict("sys.modules", {"google.cloud.bigquery": None}),
+        ):
+            m.run_acceptance_gate()
+
+        ac4_sql = next(q for q in seen if "life_events" in q)
+        assert "NOT LIKE" not in ac4_sql.upper()
+        assert "calibration" not in ac4_sql.lower()
 
     def test_ac4_passes_when_no_lel_leakage(self):
         m = _mod()
@@ -603,33 +659,64 @@ class TestWriteExportLog:
         mock_conn.commit.assert_called_once()
 
 
-# ── 11. LEL SQL includes calibration_only filter ──────────────────────────────
+# ── 11. No life_events spec / flag; no spec SQL reads life_events ─────────────
 
-class TestLELCalibrationFilter:
-    def test_lel_sql_has_calibration_only_filter(self):
-        """Verify the SQL for life_events_calibration includes calibration_only = TRUE."""
+class TestNoLifeEventsSurface:
+    def test_table_specs_contain_no_life_events_entry(self):
         m = _mod()
-        spec = m._TABLE_SPECS["life_events_calibration"]
-        sql = spec["sql"]
-        assert "calibration_only = TRUE" in sql, (
-            "life_events_calibration SQL must filter calibration_only=TRUE "
-            "to prevent prediction leakage"
+        assert sorted(m._TABLE_SPECS) == ["bodha_signals", "chart_facts"]
+        for key, spec in m._TABLE_SPECS.items():
+            assert not m._LIFE_EVENTS_NAME_RE.search(key)
+            assert not m._LIFE_EVENTS_NAME_RE.search(spec["bq_table"])
+
+    def test_no_spec_sql_reads_life_events(self):
+        m = _mod()
+        for key, spec in m._TABLE_SPECS.items():
+            assert not m._LIFE_EVENTS_SQL_RE.search(spec["sql"]), key
+            assert "description" not in spec["sql"].lower(), key  # no free-text column
+            assert "FROM life_events" not in spec["sql"], key
+
+    def test_cli_has_no_include_life_events_flag(self, monkeypatch, capsys):
+        m = _mod()
+        monkeypatch.setattr(
+            "sys.argv",
+            ["export_to_bigquery", "--chart-id", NATIVE_CHART_ID, "--include-life-events"],
         )
+        with patch.object(m, "run_export") as run_export:
+            with pytest.raises(SystemExit) as exc:
+                m.main()
+        assert exc.value.code == 2  # argparse: unrecognized argument
+        run_export.assert_not_called()
+        assert "--include-life-events" in capsys.readouterr().err
 
-    def test_lel_spec_is_marked_lel(self):
+    def test_cli_tables_choices_exclude_life_events(self, monkeypatch, capsys):
         m = _mod()
-        spec = m._TABLE_SPECS["life_events_calibration"]
-        assert spec["is_lel"] is True
+        monkeypatch.setattr(
+            "sys.argv",
+            ["export_to_bigquery", "--chart-id", NATIVE_CHART_ID,
+             "--tables", "life_events_calibration"],
+        )
+        with patch.object(m, "run_export") as run_export:
+            with pytest.raises(SystemExit) as exc:
+                m.main()
+        assert exc.value.code == 2  # argparse: invalid choice
+        run_export.assert_not_called()
 
-    def test_chart_facts_spec_is_not_lel(self):
+    def test_cli_still_runs_for_legitimate_tables(self, monkeypatch, capsys):
         m = _mod()
-        spec = m._TABLE_SPECS["chart_facts"]
-        assert spec["is_lel"] is False
+        monkeypatch.setattr(
+            "sys.argv",
+            ["export_to_bigquery", "--chart-id", NATIVE_CHART_ID,
+             "--tables", "chart_facts", "--dry-run"],
+        )
+        with patch.object(m, "run_export", return_value=[{"table_name": "chart_facts"}]) as run_export:
+            m.main()
+        run_export.assert_called_once_with(NATIVE_CHART_ID, tables=["chart_facts"], dry_run=True)
 
-    def test_bodha_signals_spec_is_not_lel(self):
+    def test_chart_facts_spec_unchanged_shape(self):
         m = _mod()
-        spec = m._TABLE_SPECS["bodha_signals"]
-        assert spec["is_lel"] is False
+        assert set(m._TABLE_SPECS["chart_facts"]) == {"sql", "bq_table", "description"}
+        assert set(m._TABLE_SPECS["bodha_signals"]) == {"sql", "bq_table", "description"}
 
 
 # ── 12. Provenance envelope on export result ───────────────────────────────────
@@ -883,15 +970,15 @@ class TestGate3Contract:
         assert isinstance(result["row_count"], int), "row_count must be int"
         assert result["row_count"] >= 0, "row_count must be >= 0"
 
-    def test_g3_3_table_specs_count_is_three(self):
-        """_TABLE_SPECS must have exactly 3 entries (chart_facts, bodha_signals, life_events_calibration)."""
+    def test_g3_3_table_specs_count_is_two(self):
+        """_TABLE_SPECS must have exactly 2 entries (chart_facts, bodha_signals); no life_events."""
         m = _mod()
-        assert len(m._TABLE_SPECS) == 3, (
-            f"Expected 3 table specs, got {len(m._TABLE_SPECS)}: {sorted(m._TABLE_SPECS.keys())}"
+        assert len(m._TABLE_SPECS) == 2, (
+            f"Expected 2 table specs, got {len(m._TABLE_SPECS)}: {sorted(m._TABLE_SPECS.keys())}"
         )
         assert "chart_facts" in m._TABLE_SPECS
         assert "bodha_signals" in m._TABLE_SPECS
-        assert "life_events_calibration" in m._TABLE_SPECS
+        assert "life_events_calibration" not in m._TABLE_SPECS
 
     # ── G3.4: provenance_envelope ─────────────────────────────────────────────
 
@@ -997,9 +1084,8 @@ class TestGate3Contract:
                 f"to enforce non-null contract at DB level"
             )
 
-    def test_g3_5_lel_calibration_prefix_constant_matches_table_key(self):
-        """_LEL_CALIBRATION_PREFIX must match the life_events_calibration table key prefix."""
+    def test_g3_5_life_events_calibration_prefix_constant_is_gone(self):
+        """The calibration-prefix leakage guard was removed with the life_events spec."""
         m = _mod()
-        assert m._LEL_CALIBRATION_PREFIX == "life_events_calibration"
-        # Verify the table key starts with the prefix
-        assert "life_events_calibration".startswith(m._LEL_CALIBRATION_PREFIX)
+        assert not hasattr(m, "_LEL_CALIBRATION_PREFIX")
+        assert not hasattr(m, "_assert_not_prediction_feed")

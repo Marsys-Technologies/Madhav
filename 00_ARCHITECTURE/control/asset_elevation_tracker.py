@@ -400,6 +400,9 @@ E63_E51_PATH = "platform/scripts/governance/nikasha_certify.py"            # E5.
 E63_DECLARATIONS_PATH = "platform/scripts/governance/asset_declarations.json"   # a gate certificate is bound to its sha256 at `ref`
 E63_CENSUS_DIR = E63_CONTROL_DIR + "/census/"      # the trusted root of the census files a certificate cites (E5.1's TRUSTED_CENSUS_ROOT; a drift only ever stays capped)
 E63_NULL_CHECKS = ("Null.schema_default", "Null.blank_rows")   # the two Null criteria the census may lift together (S1, pin 13)
+E63_NARR_CHECKS = ("Narr.agree", "Narr.checkable", "Narr.fidelity_test", "Narr.lint")   # the four Narr criteria a coupled prose N/A may release (NARR-GUARD, pin 16, N-94)
+E63_NARR_COUPLING_REQUIRED = frozenset({"bg_phaladeepika_latta"})   # assets whose Narr N/A is ONLY ever the coupled one (asset_census.PROSE_COUPLING_REQUIRED; a parity test pins the two equal)
+E63_CARRIAGE_D1_PATH = "platform/scripts/governance/carriage_d1.py"   # the census loads it as a sibling file: the ref's copy runs with the ref's census
 
 # FLOOR: how many criteria each core gate must have, per layer, in asset_census.CRITERION_REGISTRY. Pinned from the
 # registry at origin/main bf6fe712b (REGISTRY_REVISION 7). A registry edit that REMOVES a core-gate criterion (or a
@@ -1027,11 +1030,16 @@ def _e63_ref_run(sha, files, driver, data, what, keys):
     import tempfile
     d = tempfile.mkdtemp(prefix="e63_ref_")
     try:
+        # The ref's scripts resolve repo-root paths with `Path(__file__).resolve().parents[3]` at import time, which raises
+        # IndexError when the scripts sit directly under a shallow temp path (CI's /tmp/e63_ref_x). Nest them three levels
+        # deep so the ancestry always exists.
+        work = os.path.join(d, "a", "b", "c")
+        os.makedirs(work)
         for name, body in files.items():
-            with open(os.path.join(d, name), "wb") as f:
+            with open(os.path.join(work, name), "wb") as f:
                 f.write(body)
         try:
-            r = subprocess.run([sys.executable, "-c", driver], input=data, capture_output=True, cwd=d, timeout=120,
+            r = subprocess.run([sys.executable, "-c", driver], input=data, capture_output=True, cwd=work, timeout=120,
                                env={k: v for k, v in os.environ.items() if k not in ("PYTHONPATH", "PYTHONSTARTUP")})
         except (OSError, subprocess.SubprocessError) as e:
             _e63_fail("registry_unreadable", f"{what} at {sha[:12]} could not be run ({type(e).__name__}: {e})")
@@ -1230,6 +1238,95 @@ def _e63_null_lift_earned(repo, sha, rec, census_src):
             and out.get("earned") is True and out.get("verified") is True and out.get("check") == "PASS" and out.get("cell") == "PASS")
 
 
+# ---- NARR-GUARD (REGISTRY_REVISION 16, N-94): a Narr N/A that is COUPLED to Carr.D1 ---------------------------------------------------
+# An asset that declares `prose_coupling` (asset_declarations.json AT THE REF) has its four Narr checks released to N/A by the declared Narr.*#measured:no-prose
+# rules only while its own Carr.D1 reads PASS. The reader holds NO copy of that rule: for a Narr N/A certificate of such an asset it takes the census file the certificate
+# cites (same trusted-root, hash-checked lookup as the Null lift), runs the REF'S OWN asset_census.py (with the ref's carriage_d1.py) on that asset's Narr and Carr
+# measurements and the declared-facts the ref's census derives from the ref's own declaration, and requires the Narr check to still read N/A, Carr.D1 to read PASS and
+# the head's registry revision and fingerprint to be the ones of the census at the ref. Anything else (no census, a ref whose census has no guard, an error) is NOT satisfied.
+# An asset whose declaration at the ref has no prose_coupling is untouched: the declared rule alone satisfies it, as before.
+_E63_NARR_DRIVER = r'''
+import json, sys
+sys.path.insert(0, ".")
+import asset_census as ac
+req = json.loads(sys.stdin.read())
+names = ("narr_coupling_problem", "rollup_asset", "registry_fingerprint", "declared_facts", "NARR_CHECKS")
+out = {"has": all(hasattr(ac, n) for n in names)}
+if out["has"]:
+    out["constants"] = {"NARR_CHECKS": list(ac.NARR_CHECKS)}
+    out["revision"] = ac.REGISTRY_REVISION
+    out["fingerprint"] = ac.registry_fingerprint()
+    try:
+        facts = ac.declared_facts({req["asset"]: req["entry"]}, req["asset"])
+        cells = ac.rollup_asset(req["layer"], req["measurements"], facts)
+        narr = {c["criterion"]: c for c in cells["Narr"]["checks"]}.get(req["criterion"], {})
+        d1 = {c["criterion"]: c for c in cells["Carr"]["checks"]}.get("Carr.D1", {})
+        out["coupled"] = "declared_prose_coupling" in facts or facts.get("declared_prose_coupling_missing") is True
+        out["check"], out["d1"] = narr.get("v"), d1.get("v")
+    except Exception as e:
+        out["error"] = type(e).__name__ + ": " + str(e)[:200]
+print(json.dumps(out))
+'''
+
+_E63_NARR_CACHE = {}
+_E63_NARR_CACHE_MAX = 64
+
+
+def _e63_declared_entry(repo, sha, asset):
+    """The asset's entry in the declarations file AT THE REF (strict JSON), or None when the file / entry cannot be read."""
+    try:
+        doc = _e63_strict_loads(_e63_show(repo, sha, E63_DECLARATIONS_PATH).decode("utf-8"))
+    except (ElevatedInputError, ValueError, UnicodeDecodeError):
+        return None
+    ents = doc.get("assets") if isinstance(doc, dict) else None
+    ent = ents.get(asset) if isinstance(ents, dict) else None
+    return ent if isinstance(ent, dict) else None
+
+
+def _e63_narr_coupling_ok(repo, sha, rec, census_src):
+    """True when the Narr N/A certificate `rec` may stand: its asset's declaration at the ref has NO prose_coupling (the declared rule alone decides, as before), or it has one and
+    the ref's own census, run on the census the certificate cites, still reads this Narr check N/A with Carr.D1 PASS (see the block comment above). False otherwise."""
+    ent = _e63_declared_entry(repo, sha, rec.get("asset"))
+    required = rec.get("asset") in E63_NARR_COUPLING_REQUIRED
+    if ent is None:
+        return not required      # an asset whose coupling is REQUIRED has no declaration at the ref: nothing ties its N/A to Carr.D1, so it does not count (fail closed)
+    car = ent.get("carriage")
+    # the declaration at the ref decides WHETHER the ref's census is asked: a coupling, or a prose_fields [] beside a carriage check (a [] D1 asset with its coupling deleted must be refused
+    # by the ref's own census, never read as a plain N/A), or an asset whose coupling is REQUIRED (deleting its coupling AND its carriage leaves a bare `prose_fields []`: the ref's own
+    # census, which holds the same required table, must still refuse it); the answer itself is the ref census's, this reader copies none of its rule
+    if ent.get("prose_coupling") is None and not required and not (ent.get("prose_fields") == [] and isinstance(car, dict) and car.get("nature") is not None):
+        return True
+    got = _e63_null_census_record(repo, sha, rec)       # the generic lookup of the census a certificate cites (hash-checked, trusted root, one head, one asset)
+    if got is None:
+        return False
+    head, arec = got
+    try:
+        d1_src = _e63_show(repo, sha, E63_CARRIAGE_D1_PATH)
+    except ElevatedInputError:
+        return False
+    ms = {c: m for c, m in arec["measurements"].items() if c.startswith(("Narr.", "Carr."))}
+    entry = {k: ent.get(k) for k in ("prose_fields", "prose_coupling", "carriage") if ent.get(k) is not None}
+    req = json.dumps({"asset": rec["asset"], "layer": rec["layer"], "criterion": rec["criterion"], "entry": entry, "measurements": ms},
+                     sort_keys=True, default=str).encode("utf-8")
+    key = (sha, _e63_sha(census_src), _e63_sha(d1_src), _e63_sha(req), _e63_sha(_E63_NARR_DRIVER.encode("utf-8")))
+    out = _E63_NARR_CACHE.get(key)
+    if out is None:
+        out = _e63_ref_run(sha, {"asset_census.py": census_src, "carriage_d1.py": d1_src}, _E63_NARR_DRIVER, req, "the census rollup's coupled Narr N/A", ("has",))
+        while len(_E63_NARR_CACHE) >= _E63_NARR_CACHE_MAX:
+            _E63_NARR_CACHE.pop(next(iter(_E63_NARR_CACHE)))
+        _E63_NARR_CACHE[key] = out
+    if out["has"] is not True:
+        return False                        # a ref whose census has no guard cannot vouch for a coupled declaration: fail closed
+    if out.get("constants") != {"NARR_CHECKS": list(E63_NARR_CHECKS)}:
+        _e63_fail("registry_unreadable", f"the census at {sha[:12]} and this reader disagree on which Narr checks a coupling covers "
+                                         f"({out.get('constants')!r} vs {list(E63_NARR_CHECKS)!r}): a rule one side changed")
+    if "error" in out:
+        return False
+    return (rec.get("verdict") == "N/A" and head.get("registry_revision") == out.get("revision")
+            and head.get("registry_fingerprint") == out.get("fingerprint")
+            and out.get("check") == "N/A" and ((ent.get("prose_coupling") is None and not required) or (out.get("coupled") is True and out.get("d1") == "PASS")))
+
+
 def _e63_parse_certs(records, facts):
     """-> _Ledger, from the records E5.1's validator accepted (chain, seq, generations, citation and declarations fields are
     already settled there). Added here: the generic certificate field checks against the registry, E5.5's event shapes and
@@ -1401,7 +1498,7 @@ class LedgerState:
         self.by_key, self.invalidated = by_key, invalidated
         self.pos = pos if pos is not None else {r["cert_id"]: i for i, rs in enumerate(by_key.values()) for r in rs}
         self.kinds = kinds or {}
-        self._hash_cache, self._cur_cache, self._decl, self._null_cache = {}, {}, None, {}
+        self._hash_cache, self._cur_cache, self._decl, self._null_cache, self._narr_cache = {}, {}, None, {}, {}
 
     @property
     def declarations_sha256(self):
@@ -1416,6 +1513,12 @@ class LedgerState:
         if rec["cert_id"] not in self._null_cache:
             self._null_cache[rec["cert_id"]] = _e63_null_lift_earned(self.repo, self.sha, rec, _e63_show(self.repo, self.sha, E63_CENSUS_PATH))
         return self._null_cache[rec["cert_id"]]
+
+    def narr_coupling_ok(self, rec):
+        """May this Narr N/A certificate stand under NARR-GUARD (`_e63_narr_coupling_ok`)? Memoised per cert."""
+        if rec["cert_id"] not in self._narr_cache:
+            self._narr_cache[rec["cert_id"]] = _e63_narr_coupling_ok(self.repo, self.sha, rec, _e63_show(self.repo, self.sha, E63_CENSUS_PATH))
+        return self._narr_cache[rec["cert_id"]]
 
     def writer_sha256(self, path):
         """sha256 of `path` at the ledger commit, or None when the file is absent there."""
@@ -1507,8 +1610,11 @@ def _e63_satisfies(rec, state, addition):
     if v == "N/A" and not addition:
         na = rec.get("na") or {}
         rid = na.get("rule_id")
-        return (isinstance(rid, str) and rid.startswith(crit + "#") and _e63_nonblank(na.get("decision_id"))
-                and state.facts.na_rules.get(rid) == na["decision_id"])
+        if not (isinstance(rid, str) and rid.startswith(crit + "#") and _e63_nonblank(na.get("decision_id"))
+                and state.facts.na_rules.get(rid) == na["decision_id"]):
+            return False
+        # NARR-GUARD (pin 16): a Narr N/A of an asset whose declaration at the ref couples it to Carr.D1 stands only while the ref's own census still reads Carr.D1 PASS
+        return crit not in E63_NARR_CHECKS or rec["kind"] != "gate" or state.narr_coupling_ok(rec)
     return False
 
 

@@ -1,0 +1,16 @@
+{
+  "lane": "ashtakavarga_bindu_contributor",
+  "ruling": "WP8 8.5 G-10 (per-contributor ashtakavarga bindu matrix)",
+  "pr": "commit 285bff17c on main (#2731); emitted by ga_strength_writer",
+  "description": "chart_facts.ashtakavarga_bindu_contributor: the per-contributor BAV matrix (PyJHora prastara: 7 grahas x 8 contributors x 12 signs = 672 rows per ayanamsha, 3,360 per chart) added by G-10 in #2731 (commit 285bff17c, migration 1086 revises the ga_strength output-digest spec). It is on main but production has not run ga_strength since: production holds NO ashtakavarga_bindu_contributor row on any of the three charts (reader count 2026-10-02: 0, 0, 0), so the S-L1 rebuild APPEARS exactly 3,360 rows per chart. Code-driven (7 x 8 x 12 x 5), chart independent. The tiers lane does not declare this category: on production the rows appear, they do not change tier (the rehearsal's 3,360 'tier' changes were main-versus-integration, because the rehearsal baseline was built from main's own code).",
+  "may_change": [
+    {
+      "table": "chart_facts",
+      "categories": ["ashtakavarga_bindu_contributor"],
+      "change_types": ["appeared"],
+      "expected_count": {"exact": 3360},
+      "expected_direction": "3,360 rows appear per chart (7 grahas x 8 contributors x 12 signs x 5 ayanamshas).",
+      "note": "source: SS 2026-10-02 rehearsal-final decision ('EXACT: ashtakavarga_bindu_contributor +3,360'); rehearsal-synthetic (19-lane rehearsal, flip_detector v2.3 compare against the origin/main baseline build on the same synthetic chart; HOOKS_COMPLETENESS_v1_0.md, Source evidence) (3,360 rows in the rehearsal final); production re-read: category absent on 482012f1, 1c826d5a, cb73cd3d. If a chart's stored generation already carries the category the count would be 0 and EXPECTATION_MISMATCH would say so."
+    }
+  ]
+}

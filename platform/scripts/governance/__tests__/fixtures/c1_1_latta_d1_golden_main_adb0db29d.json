@@ -1,0 +1,1642 @@
+{
+ "pass": {
+  "v": "PASS",
+  "measured": "D1 PASS (citation_state sourced_ocr_unverified): every one of the 8 row(s) of bg_phaladeepika_latta (the 8 declared) is found in the declared passage (phaladeepika_pg0338_c01, phaladeepika_pg0339_c01, from 'Sloka 42-44') under rule ordinal_count_direction_effect_v2. D1 matches the ENGLISH translation (content_en) only; the Sanskrit column (content_sa) is NULL for all 2 declared chunk(s) and is not matched; the passages are OCR text not checked against the printed book (citation_state: sourced_ocr_unverified); the stored chunk hashes were verified with the text_id::content_en preimage (text_id-prefixed sha256(utf8(text_id + '::' + content_en)) is the bg_texts.py convention)",
+  "citation_state": "sourced_ocr_unverified",
+  "d1": {
+   "matcher": "ordinal_count_direction_effect_v2",
+   "matching_rule": "per row, in the declared span of the English translation: the stored count appears as a whole ordinal before 'that of <claimant>' (no other ordinal between, <=90 characters, no '.' or ';'); the first direction word after it is the stored direction's declared word; the stored effect EQUALS the claimant's declared effect and the declared clause equals the claimant's whole passage clause (cut at sentence punctuation and clause-initial capitals) with only the unit anchor and the declared frame words around the effect (the declared effect may itself drop frame words: the stored effect must equal the DECLARED effect, not the frame-padded clause; a NULL effect needs NO anchor of the claimant in the effect section); every declared extra column equals its declared value, or (passage_text) its words after the declared OCR repairs EQUAL the declared condition, which must equal ONE WHOLE passage sentence: it starts with a declared opener (If/When/Where/Whenever/While/Should) at a true sentence start (the passage start, or after a stop; a stop the OCR lost is declared as `ocr_lost_stop`: the last <= 5 words before the start), holds exactly one terminal stop apart from <= 2 declared `ocr_stops` (each followed by a lower-case letter or digit) and is <= 1.5 x the declared text; per-claimant conditions share the start; each escape hatch carries evidence and an observed_garble note; repairs are <= 8 plain-text WORD-FOR-WORD maps (equal word counts, each pair >= 60% alike) whose `to` is a run of the sentence (a real word turned into another real word is NOT detectable: a repair is a claim the reader checks against the passage); words are compared after NFKC and lower-casing, ignoring only punctuation and whitespace (non-ASCII letters and combining marks are NOT ignored or folded); the table holds exactly the declared number of rows and no claimant twice (claimants compared trimmed and case-insensitively)",
+   "span": {
+    "start": "Sloka 42-44"
+   },
+   "chunk_ids": [
+    "phaladeepika_pg0338_c01",
+    "phaladeepika_pg0339_c01"
+   ],
+   "translation_only": true,
+   "expected_rows": 8,
+   "reads": [
+    "classical_text_chunks WHERE chunk_id IN (the declared chunk ids)",
+    "the asset's own table: the declared claim and extra columns (chart-scoped when the table has chart_id)"
+   ],
+   "pass_basis": "sourced_ocr_unverified",
+   "chunks": [
+    {
+     "chunk_id": "phaladeepika_pg0338_c01",
+     "text_id": "phaladeepika",
+     "stored_sha256": "028354a7b1cf72de839bfe87ce2caa8dac5ac86bc09e45247b7131cb01cb5b60",
+     "preimage": "text_id::content_en",
+     "computed_sha256": "028354a7b1cf72de839bfe87ce2caa8dac5ac86bc09e45247b7131cb01cb5b60",
+     "verified": true,
+     "content_sa_null": true,
+     "reason": ""
+    },
+    {
+     "chunk_id": "phaladeepika_pg0339_c01",
+     "text_id": "phaladeepika",
+     "stored_sha256": "870d228be22cf486c1224091ba359aac99bf22a6160dfaec741e4c8c8eb61e44",
+     "preimage": "text_id::content_en",
+     "computed_sha256": "870d228be22cf486c1224091ba359aac99bf22a6160dfaec741e4c8c8eb61e44",
+     "verified": true,
+     "content_sa_null": true,
+     "reason": ""
+    }
+   ],
+   "chunks_sha256": "bc7b5dd1b9f8f47eaad18c776da44d9a134bc2389add02993761e75fe3ec7c9a",
+   "claims": "D1 matches the ENGLISH translation (content_en) only; the Sanskrit column (content_sa) is NULL for all 2 declared chunk(s) and is not matched; the passages are OCR text not checked against the printed book (citation_state: sourced_ocr_unverified); the stored chunk hashes were verified with the text_id::content_en preimage (text_id-prefixed sha256(utf8(text_id + '::' + content_en)) is the bg_texts.py convention)",
+   "content_sa_all_null": true,
+   "passage_sha256": "722eb58be5401433cfe5b7319f9d030cab6ac4464f91952c180c4691dc14a215",
+   "passage": "Sloka 42-44 ,—The 12th asterism counted from that occupied by the Sun at the time, the 3rd from that of Mars, the 6th from that of Jupiter, and the 8th from that of Saturn are termed ^tsrfTCi or forward Lattas. The 5th star reckoned from that of Venus, the 7th from that Adh. XXVI MX of Mercury; the 9th from that of Rahu and the 22nd from that of the Moon are called or rear Lattaa If, when thus counting, the tJanmunukshatra. natal star) happens to come as the Latta star, there will be sickness and anguish. wxw ^r?rw m m g \\ wapwr 3 it^n Shkos 4 l^ 4r>. -During the Sun's Latin there will bo the ruin of every business Misery will result during the Latta of Rahu and Ketu. In the Latin of Jupiter/ death, ruin of relations and a sort of general fear or insecurity may occur There will be quarrel in the Latta of Venus. In Mercury's Latta will occur loss of position or similar untoward event. A great loss will mark the Moon's Latta. Thus the separate effects of the Lattas have been described, ( oTccrrati^ fjjjnrmsjorife^n i gnni CTSfrsfcrtf^r^^JTr^ iivmii SJoka 47. —When two or more Lattas synchronise, the cumulative effect will proportionately increase in intensity being twice or thrice and one ought only to predict evil as the outcome of the combination. «n<r%«n g-.^ercr errs? ra?fr^ nacn Sloka 48 .—The Vedhas pronounced as auspicious in the (Sarvatobhadrachakra) bring happi- ness, while those declared as evil produce only misery. One should note this also while considering the effect caused by transit (of a plauet).",
+   "rows_total": 8,
+   "rows_matched": 8,
+   "unmatched": [],
+   "rows": [
+    {
+     "row": "Jupiter",
+     "result": {
+      "count": true,
+      "direction": true,
+      "effect": true,
+      "affliction_condition": true,
+      "verse_ref": true
+     },
+     "matched": true
+    },
+    {
+     "row": "Mars",
+     "result": {
+      "count": true,
+      "direction": true,
+      "effect": "NULL-ok",
+      "affliction_condition": true,
+      "verse_ref": true
+     },
+     "matched": true
+    },
+    {
+     "row": "Mercury",
+     "result": {
+      "count": true,
+      "direction": true,
+      "effect": true,
+      "affliction_condition": true,
+      "verse_ref": true
+     },
+     "matched": true
+    },
+    {
+     "row": "Moon",
+     "result": {
+      "count": true,
+      "direction": true,
+      "effect": true,
+      "affliction_condition": true,
+      "verse_ref": true
+     },
+     "matched": true
+    },
+    {
+     "row": "Rahu",
+     "result": {
+      "count": true,
+      "direction": true,
+      "effect": true,
+      "affliction_condition": true,
+      "verse_ref": true
+     },
+     "matched": true
+    },
+    {
+     "row": "Saturn",
+     "result": {
+      "count": true,
+      "direction": true,
+      "effect": "NULL-ok",
+      "affliction_condition": true,
+      "verse_ref": true
+     },
+     "matched": true
+    },
+    {
+     "row": "Sun",
+     "result": {
+      "count": true,
+      "direction": true,
+      "effect": true,
+      "affliction_condition": true,
+      "verse_ref": true
+     },
+     "matched": true
+    },
+    {
+     "row": "Venus",
+     "result": {
+      "count": true,
+      "direction": true,
+      "effect": true,
+      "affliction_condition": true,
+      "verse_ref": true
+     },
+     "matched": true
+    }
+   ],
+   "row_count_ok": true
+  }
+ },
+ "partial_moon_count": {
+  "v": "PARTIAL",
+  "measured": "D1 PARTIAL: 7 of 8 row(s) found in the declared passage; NOT found: Moon (count/direction). D1 matches the ENGLISH translation (content_en) only; the Sanskrit column (content_sa) is NULL for all 2 declared chunk(s) and is not matched; the passages are OCR text not checked against the printed book (citation_state: sourced_ocr_unverified); the stored chunk hashes were verified with the text_id::content_en preimage (text_id-prefixed sha256(utf8(text_id + '::' + content_en)) is the bg_texts.py convention)",
+  "citation_state": "sourced_ocr_unverified",
+  "d1": {
+   "matcher": "ordinal_count_direction_effect_v2",
+   "matching_rule": "per row, in the declared span of the English translation: the stored count appears as a whole ordinal before 'that of <claimant>' (no other ordinal between, <=90 characters, no '.' or ';'); the first direction word after it is the stored direction's declared word; the stored effect EQUALS the claimant's declared effect and the declared clause equals the claimant's whole passage clause (cut at sentence punctuation and clause-initial capitals) with only the unit anchor and the declared frame words around the effect (the declared effect may itself drop frame words: the stored effect must equal the DECLARED effect, not the frame-padded clause; a NULL effect needs NO anchor of the claimant in the effect section); every declared extra column equals its declared value, or (passage_text) its words after the declared OCR repairs EQUAL the declared condition, which must equal ONE WHOLE passage sentence: it starts with a declared opener (If/When/Where/Whenever/While/Should) at a true sentence start (the passage start, or after a stop; a stop the OCR lost is declared as `ocr_lost_stop`: the last <= 5 words before the start), holds exactly one terminal stop apart from <= 2 declared `ocr_stops` (each followed by a lower-case letter or digit) and is <= 1.5 x the declared text; per-claimant conditions share the start; each escape hatch carries evidence and an observed_garble note; repairs are <= 8 plain-text WORD-FOR-WORD maps (equal word counts, each pair >= 60% alike) whose `to` is a run of the sentence (a real word turned into another real word is NOT detectable: a repair is a claim the reader checks against the passage); words are compared after NFKC and lower-casing, ignoring only punctuation and whitespace (non-ASCII letters and combining marks are NOT ignored or folded); the table holds exactly the declared number of rows and no claimant twice (claimants compared trimmed and case-insensitively)",
+   "span": {
+    "start": "Sloka 42-44"
+   },
+   "chunk_ids": [
+    "phaladeepika_pg0338_c01",
+    "phaladeepika_pg0339_c01"
+   ],
+   "translation_only": true,
+   "expected_rows": 8,
+   "reads": [
+    "classical_text_chunks WHERE chunk_id IN (the declared chunk ids)",
+    "the asset's own table: the declared claim and extra columns (chart-scoped when the table has chart_id)"
+   ],
+   "chunks": [
+    {
+     "chunk_id": "phaladeepika_pg0338_c01",
+     "text_id": "phaladeepika",
+     "stored_sha256": "028354a7b1cf72de839bfe87ce2caa8dac5ac86bc09e45247b7131cb01cb5b60",
+     "preimage": "text_id::content_en",
+     "computed_sha256": "028354a7b1cf72de839bfe87ce2caa8dac5ac86bc09e45247b7131cb01cb5b60",
+     "verified": true,
+     "content_sa_null": true,
+     "reason": ""
+    },
+    {
+     "chunk_id": "phaladeepika_pg0339_c01",
+     "text_id": "phaladeepika",
+     "stored_sha256": "870d228be22cf486c1224091ba359aac99bf22a6160dfaec741e4c8c8eb61e44",
+     "preimage": "text_id::content_en",
+     "computed_sha256": "870d228be22cf486c1224091ba359aac99bf22a6160dfaec741e4c8c8eb61e44",
+     "verified": true,
+     "content_sa_null": true,
+     "reason": ""
+    }
+   ],
+   "chunks_sha256": "bc7b5dd1b9f8f47eaad18c776da44d9a134bc2389add02993761e75fe3ec7c9a",
+   "claims": "D1 matches the ENGLISH translation (content_en) only; the Sanskrit column (content_sa) is NULL for all 2 declared chunk(s) and is not matched; the passages are OCR text not checked against the printed book (citation_state: sourced_ocr_unverified); the stored chunk hashes were verified with the text_id::content_en preimage (text_id-prefixed sha256(utf8(text_id + '::' + content_en)) is the bg_texts.py convention)",
+   "content_sa_all_null": true,
+   "passage_sha256": "722eb58be5401433cfe5b7319f9d030cab6ac4464f91952c180c4691dc14a215",
+   "passage": "Sloka 42-44 ,—The 12th asterism counted from that occupied by the Sun at the time, the 3rd from that of Mars, the 6th from that of Jupiter, and the 8th from that of Saturn are termed ^tsrfTCi or forward Lattas. The 5th star reckoned from that of Venus, the 7th from that Adh. XXVI MX of Mercury; the 9th from that of Rahu and the 22nd from that of the Moon are called or rear Lattaa If, when thus counting, the tJanmunukshatra. natal star) happens to come as the Latta star, there will be sickness and anguish. wxw ^r?rw m m g \\ wapwr 3 it^n Shkos 4 l^ 4r>. -During the Sun's Latin there will bo the ruin of every business Misery will result during the Latta of Rahu and Ketu. In the Latin of Jupiter/ death, ruin of relations and a sort of general fear or insecurity may occur There will be quarrel in the Latta of Venus. In Mercury's Latta will occur loss of position or similar untoward event. A great loss will mark the Moon's Latta. Thus the separate effects of the Lattas have been described, ( oTccrrati^ fjjjnrmsjorife^n i gnni CTSfrsfcrtf^r^^JTr^ iivmii SJoka 47. —When two or more Lattas synchronise, the cumulative effect will proportionately increase in intensity being twice or thrice and one ought only to predict evil as the outcome of the combination. «n<r%«n g-.^ercr errs? ra?fr^ nacn Sloka 48 .—The Vedhas pronounced as auspicious in the (Sarvatobhadrachakra) bring happi- ness, while those declared as evil produce only misery. One should note this also while considering the effect caused by transit (of a plauet).",
+   "rows_total": 8,
+   "rows_matched": 7,
+   "unmatched": [
+    {
+     "row": "Moon",
+     "failed": [
+      "count",
+      "direction"
+     ]
+    }
+   ],
+   "rows": [
+    {
+     "row": "Jupiter",
+     "result": {
+      "count": true,
+      "direction": true,
+      "effect": true,
+      "affliction_condition": true,
+      "verse_ref": true
+     },
+     "matched": true
+    },
+    {
+     "row": "Mars",
+     "result": {
+      "count": true,
+      "direction": true,
+      "effect": "NULL-ok",
+      "affliction_condition": true,
+      "verse_ref": true
+     },
+     "matched": true
+    },
+    {
+     "row": "Mercury",
+     "result": {
+      "count": true,
+      "direction": true,
+      "effect": true,
+      "affliction_condition": true,
+      "verse_ref": true
+     },
+     "matched": true
+    },
+    {
+     "row": "Moon",
+     "result": {
+      "count": false,
+      "direction": false,
+      "effect": true,
+      "affliction_condition": true,
+      "verse_ref": true
+     },
+     "matched": false
+    },
+    {
+     "row": "Rahu",
+     "result": {
+      "count": true,
+      "direction": true,
+      "effect": true,
+      "affliction_condition": true,
+      "verse_ref": true
+     },
+     "matched": true
+    },
+    {
+     "row": "Saturn",
+     "result": {
+      "count": true,
+      "direction": true,
+      "effect": "NULL-ok",
+      "affliction_condition": true,
+      "verse_ref": true
+     },
+     "matched": true
+    },
+    {
+     "row": "Sun",
+     "result": {
+      "count": true,
+      "direction": true,
+      "effect": true,
+      "affliction_condition": true,
+      "verse_ref": true
+     },
+     "matched": true
+    },
+    {
+     "row": "Venus",
+     "result": {
+      "count": true,
+      "direction": true,
+      "effect": true,
+      "affliction_condition": true,
+      "verse_ref": true
+     },
+     "matched": true
+    }
+   ],
+   "row_count_ok": true
+  }
+ },
+ "partial_direction": {
+  "v": "PARTIAL",
+  "measured": "D1 PARTIAL: 4 of 8 row(s) found in the declared passage; NOT found: Mercury (direction), Moon (direction), Rahu (direction), Venus (direction). D1 matches the ENGLISH translation (content_en) only; the Sanskrit column (content_sa) is NULL for all 2 declared chunk(s) and is not matched; the passages are OCR text not checked against the printed book (citation_state: sourced_ocr_unverified); the stored chunk hashes were verified with the text_id::content_en preimage (text_id-prefixed sha256(utf8(text_id + '::' + content_en)) is the bg_texts.py convention)",
+  "citation_state": "sourced_ocr_unverified",
+  "d1": {
+   "matcher": "ordinal_count_direction_effect_v2",
+   "matching_rule": "per row, in the declared span of the English translation: the stored count appears as a whole ordinal before 'that of <claimant>' (no other ordinal between, <=90 characters, no '.' or ';'); the first direction word after it is the stored direction's declared word; the stored effect EQUALS the claimant's declared effect and the declared clause equals the claimant's whole passage clause (cut at sentence punctuation and clause-initial capitals) with only the unit anchor and the declared frame words around the effect (the declared effect may itself drop frame words: the stored effect must equal the DECLARED effect, not the frame-padded clause; a NULL effect needs NO anchor of the claimant in the effect section); every declared extra column equals its declared value, or (passage_text) its words after the declared OCR repairs EQUAL the declared condition, which must equal ONE WHOLE passage sentence: it starts with a declared opener (If/When/Where/Whenever/While/Should) at a true sentence start (the passage start, or after a stop; a stop the OCR lost is declared as `ocr_lost_stop`: the last <= 5 words before the start), holds exactly one terminal stop apart from <= 2 declared `ocr_stops` (each followed by a lower-case letter or digit) and is <= 1.5 x the declared text; per-claimant conditions share the start; each escape hatch carries evidence and an observed_garble note; repairs are <= 8 plain-text WORD-FOR-WORD maps (equal word counts, each pair >= 60% alike) whose `to` is a run of the sentence (a real word turned into another real word is NOT detectable: a repair is a claim the reader checks against the passage); words are compared after NFKC and lower-casing, ignoring only punctuation and whitespace (non-ASCII letters and combining marks are NOT ignored or folded); the table holds exactly the declared number of rows and no claimant twice (claimants compared trimmed and case-insensitively)",
+   "span": {
+    "start": "Sloka 42-44"
+   },
+   "chunk_ids": [
+    "phaladeepika_pg0338_c01",
+    "phaladeepika_pg0339_c01"
+   ],
+   "translation_only": true,
+   "expected_rows": 8,
+   "reads": [
+    "classical_text_chunks WHERE chunk_id IN (the declared chunk ids)",
+    "the asset's own table: the declared claim and extra columns (chart-scoped when the table has chart_id)"
+   ],
+   "chunks": [
+    {
+     "chunk_id": "phaladeepika_pg0338_c01",
+     "text_id": "phaladeepika",
+     "stored_sha256": "028354a7b1cf72de839bfe87ce2caa8dac5ac86bc09e45247b7131cb01cb5b60",
+     "preimage": "text_id::content_en",
+     "computed_sha256": "028354a7b1cf72de839bfe87ce2caa8dac5ac86bc09e45247b7131cb01cb5b60",
+     "verified": true,
+     "content_sa_null": true,
+     "reason": ""
+    },
+    {
+     "chunk_id": "phaladeepika_pg0339_c01",
+     "text_id": "phaladeepika",
+     "stored_sha256": "870d228be22cf486c1224091ba359aac99bf22a6160dfaec741e4c8c8eb61e44",
+     "preimage": "text_id::content_en",
+     "computed_sha256": "870d228be22cf486c1224091ba359aac99bf22a6160dfaec741e4c8c8eb61e44",
+     "verified": true,
+     "content_sa_null": true,
+     "reason": ""
+    }
+   ],
+   "chunks_sha256": "bc7b5dd1b9f8f47eaad18c776da44d9a134bc2389add02993761e75fe3ec7c9a",
+   "claims": "D1 matches the ENGLISH translation (content_en) only; the Sanskrit column (content_sa) is NULL for all 2 declared chunk(s) and is not matched; the passages are OCR text not checked against the printed book (citation_state: sourced_ocr_unverified); the stored chunk hashes were verified with the text_id::content_en preimage (text_id-prefixed sha256(utf8(text_id + '::' + content_en)) is the bg_texts.py convention)",
+   "content_sa_all_null": true,
+   "passage_sha256": "722eb58be5401433cfe5b7319f9d030cab6ac4464f91952c180c4691dc14a215",
+   "passage": "Sloka 42-44 ,—The 12th asterism counted from that occupied by the Sun at the time, the 3rd from that of Mars, the 6th from that of Jupiter, and the 8th from that of Saturn are termed ^tsrfTCi or forward Lattas. The 5th star reckoned from that of Venus, the 7th from that Adh. XXVI MX of Mercury; the 9th from that of Rahu and the 22nd from that of the Moon are called or rear Lattaa If, when thus counting, the tJanmunukshatra. natal star) happens to come as the Latta star, there will be sickness and anguish. wxw ^r?rw m m g \\ wapwr 3 it^n Shkos 4 l^ 4r>. -During the Sun's Latin there will bo the ruin of every business Misery will result during the Latta of Rahu and Ketu. In the Latin of Jupiter/ death, ruin of relations and a sort of general fear or insecurity may occur There will be quarrel in the Latta of Venus. In Mercury's Latta will occur loss of position or similar untoward event. A great loss will mark the Moon's Latta. Thus the separate effects of the Lattas have been described, ( oTccrrati^ fjjjnrmsjorife^n i gnni CTSfrsfcrtf^r^^JTr^ iivmii SJoka 47. —When two or more Lattas synchronise, the cumulative effect will proportionately increase in intensity being twice or thrice and one ought only to predict evil as the outcome of the combination. «n<r%«n g-.^ercr errs? ra?fr^ nacn Sloka 48 .—The Vedhas pronounced as auspicious in the (Sarvatobhadrachakra) bring happi- ness, while those declared as evil produce only misery. One should note this also while considering the effect caused by transit (of a plauet).",
+   "rows_total": 8,
+   "rows_matched": 4,
+   "unmatched": [
+    {
+     "row": "Mercury",
+     "failed": [
+      "direction"
+     ]
+    },
+    {
+     "row": "Moon",
+     "failed": [
+      "direction"
+     ]
+    },
+    {
+     "row": "Rahu",
+     "failed": [
+      "direction"
+     ]
+    },
+    {
+     "row": "Venus",
+     "failed": [
+      "direction"
+     ]
+    }
+   ],
+   "rows": [
+    {
+     "row": "Jupiter",
+     "result": {
+      "count": true,
+      "direction": true,
+      "effect": true,
+      "affliction_condition": true,
+      "verse_ref": true
+     },
+     "matched": true
+    },
+    {
+     "row": "Mars",
+     "result": {
+      "count": true,
+      "direction": true,
+      "effect": "NULL-ok",
+      "affliction_condition": true,
+      "verse_ref": true
+     },
+     "matched": true
+    },
+    {
+     "row": "Mercury",
+     "result": {
+      "count": true,
+      "direction": false,
+      "effect": true,
+      "affliction_condition": true,
+      "verse_ref": true
+     },
+     "matched": false
+    },
+    {
+     "row": "Moon",
+     "result": {
+      "count": true,
+      "direction": false,
+      "effect": true,
+      "affliction_condition": true,
+      "verse_ref": true
+     },
+     "matched": false
+    },
+    {
+     "row": "Rahu",
+     "result": {
+      "count": true,
+      "direction": false,
+      "effect": true,
+      "affliction_condition": true,
+      "verse_ref": true
+     },
+     "matched": false
+    },
+    {
+     "row": "Saturn",
+     "result": {
+      "count": true,
+      "direction": true,
+      "effect": "NULL-ok",
+      "affliction_condition": true,
+      "verse_ref": true
+     },
+     "matched": true
+    },
+    {
+     "row": "Sun",
+     "result": {
+      "count": true,
+      "direction": true,
+      "effect": true,
+      "affliction_condition": true,
+      "verse_ref": true
+     },
+     "matched": true
+    },
+    {
+     "row": "Venus",
+     "result": {
+      "count": true,
+      "direction": false,
+      "effect": true,
+      "affliction_condition": true,
+      "verse_ref": true
+     },
+     "matched": false
+    }
+   ],
+   "row_count_ok": true
+  }
+ },
+ "partial_effect_suffix": {
+  "v": "PARTIAL",
+  "measured": "D1 PARTIAL: 2 of 8 row(s) found in the declared passage; NOT found: Jupiter (effect), Mercury (effect), Moon (effect), Rahu (effect), Sun (effect), Venus (effect). D1 matches the ENGLISH translation (content_en) only; the Sanskrit column (content_sa) is NULL for all 2 declared chunk(s) and is not matched; the passages are OCR text not checked against the printed book (citation_state: sourced_ocr_unverified); the stored chunk hashes were verified with the text_id::content_en preimage (text_id-prefixed sha256(utf8(text_id + '::' + content_en)) is the bg_texts.py convention)",
+  "citation_state": "sourced_ocr_unverified",
+  "d1": {
+   "matcher": "ordinal_count_direction_effect_v2",
+   "matching_rule": "per row, in the declared span of the English translation: the stored count appears as a whole ordinal before 'that of <claimant>' (no other ordinal between, <=90 characters, no '.' or ';'); the first direction word after it is the stored direction's declared word; the stored effect EQUALS the claimant's declared effect and the declared clause equals the claimant's whole passage clause (cut at sentence punctuation and clause-initial capitals) with only the unit anchor and the declared frame words around the effect (the declared effect may itself drop frame words: the stored effect must equal the DECLARED effect, not the frame-padded clause; a NULL effect needs NO anchor of the claimant in the effect section); every declared extra column equals its declared value, or (passage_text) its words after the declared OCR repairs EQUAL the declared condition, which must equal ONE WHOLE passage sentence: it starts with a declared opener (If/When/Where/Whenever/While/Should) at a true sentence start (the passage start, or after a stop; a stop the OCR lost is declared as `ocr_lost_stop`: the last <= 5 words before the start), holds exactly one terminal stop apart from <= 2 declared `ocr_stops` (each followed by a lower-case letter or digit) and is <= 1.5 x the declared text; per-claimant conditions share the start; each escape hatch carries evidence and an observed_garble note; repairs are <= 8 plain-text WORD-FOR-WORD maps (equal word counts, each pair >= 60% alike) whose `to` is a run of the sentence (a real word turned into another real word is NOT detectable: a repair is a claim the reader checks against the passage); words are compared after NFKC and lower-casing, ignoring only punctuation and whitespace (non-ASCII letters and combining marks are NOT ignored or folded); the table holds exactly the declared number of rows and no claimant twice (claimants compared trimmed and case-insensitively)",
+   "span": {
+    "start": "Sloka 42-44"
+   },
+   "chunk_ids": [
+    "phaladeepika_pg0338_c01",
+    "phaladeepika_pg0339_c01"
+   ],
+   "translation_only": true,
+   "expected_rows": 8,
+   "reads": [
+    "classical_text_chunks WHERE chunk_id IN (the declared chunk ids)",
+    "the asset's own table: the declared claim and extra columns (chart-scoped when the table has chart_id)"
+   ],
+   "chunks": [
+    {
+     "chunk_id": "phaladeepika_pg0338_c01",
+     "text_id": "phaladeepika",
+     "stored_sha256": "028354a7b1cf72de839bfe87ce2caa8dac5ac86bc09e45247b7131cb01cb5b60",
+     "preimage": "text_id::content_en",
+     "computed_sha256": "028354a7b1cf72de839bfe87ce2caa8dac5ac86bc09e45247b7131cb01cb5b60",
+     "verified": true,
+     "content_sa_null": true,
+     "reason": ""
+    },
+    {
+     "chunk_id": "phaladeepika_pg0339_c01",
+     "text_id": "phaladeepika",
+     "stored_sha256": "870d228be22cf486c1224091ba359aac99bf22a6160dfaec741e4c8c8eb61e44",
+     "preimage": "text_id::content_en",
+     "computed_sha256": "870d228be22cf486c1224091ba359aac99bf22a6160dfaec741e4c8c8eb61e44",
+     "verified": true,
+     "content_sa_null": true,
+     "reason": ""
+    }
+   ],
+   "chunks_sha256": "bc7b5dd1b9f8f47eaad18c776da44d9a134bc2389add02993761e75fe3ec7c9a",
+   "claims": "D1 matches the ENGLISH translation (content_en) only; the Sanskrit column (content_sa) is NULL for all 2 declared chunk(s) and is not matched; the passages are OCR text not checked against the printed book (citation_state: sourced_ocr_unverified); the stored chunk hashes were verified with the text_id::content_en preimage (text_id-prefixed sha256(utf8(text_id + '::' + content_en)) is the bg_texts.py convention)",
+   "content_sa_all_null": true,
+   "passage_sha256": "722eb58be5401433cfe5b7319f9d030cab6ac4464f91952c180c4691dc14a215",
+   "passage": "Sloka 42-44 ,—The 12th asterism counted from that occupied by the Sun at the time, the 3rd from that of Mars, the 6th from that of Jupiter, and the 8th from that of Saturn are termed ^tsrfTCi or forward Lattas. The 5th star reckoned from that of Venus, the 7th from that Adh. XXVI MX of Mercury; the 9th from that of Rahu and the 22nd from that of the Moon are called or rear Lattaa If, when thus counting, the tJanmunukshatra. natal star) happens to come as the Latta star, there will be sickness and anguish. wxw ^r?rw m m g \\ wapwr 3 it^n Shkos 4 l^ 4r>. -During the Sun's Latin there will bo the ruin of every business Misery will result during the Latta of Rahu and Ketu. In the Latin of Jupiter/ death, ruin of relations and a sort of general fear or insecurity may occur There will be quarrel in the Latta of Venus. In Mercury's Latta will occur loss of position or similar untoward event. A great loss will mark the Moon's Latta. Thus the separate effects of the Lattas have been described, ( oTccrrati^ fjjjnrmsjorife^n i gnni CTSfrsfcrtf^r^^JTr^ iivmii SJoka 47. —When two or more Lattas synchronise, the cumulative effect will proportionately increase in intensity being twice or thrice and one ought only to predict evil as the outcome of the combination. «n<r%«n g-.^ercr errs? ra?fr^ nacn Sloka 48 .—The Vedhas pronounced as auspicious in the (Sarvatobhadrachakra) bring happi- ness, while those declared as evil produce only misery. One should note this also while considering the effect caused by transit (of a plauet).",
+   "rows_total": 8,
+   "rows_matched": 2,
+   "unmatched": [
+    {
+     "row": "Jupiter",
+     "failed": [
+      "effect"
+     ]
+    },
+    {
+     "row": "Mercury",
+     "failed": [
+      "effect"
+     ]
+    },
+    {
+     "row": "Moon",
+     "failed": [
+      "effect"
+     ]
+    },
+    {
+     "row": "Rahu",
+     "failed": [
+      "effect"
+     ]
+    },
+    {
+     "row": "Sun",
+     "failed": [
+      "effect"
+     ]
+    },
+    {
+     "row": "Venus",
+     "failed": [
+      "effect"
+     ]
+    }
+   ],
+   "rows": [
+    {
+     "row": "Jupiter",
+     "result": {
+      "count": true,
+      "direction": true,
+      "effect": false,
+      "affliction_condition": true,
+      "verse_ref": true
+     },
+     "matched": false
+    },
+    {
+     "row": "Mars",
+     "result": {
+      "count": true,
+      "direction": true,
+      "effect": "NULL-ok",
+      "affliction_condition": true,
+      "verse_ref": true
+     },
+     "matched": true
+    },
+    {
+     "row": "Mercury",
+     "result": {
+      "count": true,
+      "direction": true,
+      "effect": false,
+      "affliction_condition": true,
+      "verse_ref": true
+     },
+     "matched": false
+    },
+    {
+     "row": "Moon",
+     "result": {
+      "count": true,
+      "direction": true,
+      "effect": false,
+      "affliction_condition": true,
+      "verse_ref": true
+     },
+     "matched": false
+    },
+    {
+     "row": "Rahu",
+     "result": {
+      "count": true,
+      "direction": true,
+      "effect": false,
+      "affliction_condition": true,
+      "verse_ref": true
+     },
+     "matched": false
+    },
+    {
+     "row": "Saturn",
+     "result": {
+      "count": true,
+      "direction": true,
+      "effect": "NULL-ok",
+      "affliction_condition": true,
+      "verse_ref": true
+     },
+     "matched": true
+    },
+    {
+     "row": "Sun",
+     "result": {
+      "count": true,
+      "direction": true,
+      "effect": false,
+      "affliction_condition": true,
+      "verse_ref": true
+     },
+     "matched": false
+    },
+    {
+     "row": "Venus",
+     "result": {
+      "count": true,
+      "direction": true,
+      "effect": false,
+      "affliction_condition": true,
+      "verse_ref": true
+     },
+     "matched": false
+    }
+   ],
+   "row_count_ok": true
+  }
+ },
+ "partial_dropped_row": {
+  "v": "PARTIAL",
+  "measured": "D1 PARTIAL: 7 of 7 row(s) found in the declared passage; the table holds 7 row(s) but 8 are declared. D1 matches the ENGLISH translation (content_en) only; the Sanskrit column (content_sa) is NULL for all 2 declared chunk(s) and is not matched; the passages are OCR text not checked against the printed book (citation_state: sourced_ocr_unverified); the stored chunk hashes were verified with the text_id::content_en preimage (text_id-prefixed sha256(utf8(text_id + '::' + content_en)) is the bg_texts.py convention)",
+  "citation_state": "sourced_ocr_unverified",
+  "d1": {
+   "matcher": "ordinal_count_direction_effect_v2",
+   "matching_rule": "per row, in the declared span of the English translation: the stored count appears as a whole ordinal before 'that of <claimant>' (no other ordinal between, <=90 characters, no '.' or ';'); the first direction word after it is the stored direction's declared word; the stored effect EQUALS the claimant's declared effect and the declared clause equals the claimant's whole passage clause (cut at sentence punctuation and clause-initial capitals) with only the unit anchor and the declared frame words around the effect (the declared effect may itself drop frame words: the stored effect must equal the DECLARED effect, not the frame-padded clause; a NULL effect needs NO anchor of the claimant in the effect section); every declared extra column equals its declared value, or (passage_text) its words after the declared OCR repairs EQUAL the declared condition, which must equal ONE WHOLE passage sentence: it starts with a declared opener (If/When/Where/Whenever/While/Should) at a true sentence start (the passage start, or after a stop; a stop the OCR lost is declared as `ocr_lost_stop`: the last <= 5 words before the start), holds exactly one terminal stop apart from <= 2 declared `ocr_stops` (each followed by a lower-case letter or digit) and is <= 1.5 x the declared text; per-claimant conditions share the start; each escape hatch carries evidence and an observed_garble note; repairs are <= 8 plain-text WORD-FOR-WORD maps (equal word counts, each pair >= 60% alike) whose `to` is a run of the sentence (a real word turned into another real word is NOT detectable: a repair is a claim the reader checks against the passage); words are compared after NFKC and lower-casing, ignoring only punctuation and whitespace (non-ASCII letters and combining marks are NOT ignored or folded); the table holds exactly the declared number of rows and no claimant twice (claimants compared trimmed and case-insensitively)",
+   "span": {
+    "start": "Sloka 42-44"
+   },
+   "chunk_ids": [
+    "phaladeepika_pg0338_c01",
+    "phaladeepika_pg0339_c01"
+   ],
+   "translation_only": true,
+   "expected_rows": 8,
+   "reads": [
+    "classical_text_chunks WHERE chunk_id IN (the declared chunk ids)",
+    "the asset's own table: the declared claim and extra columns (chart-scoped when the table has chart_id)"
+   ],
+   "chunks": [
+    {
+     "chunk_id": "phaladeepika_pg0338_c01",
+     "text_id": "phaladeepika",
+     "stored_sha256": "028354a7b1cf72de839bfe87ce2caa8dac5ac86bc09e45247b7131cb01cb5b60",
+     "preimage": "text_id::content_en",
+     "computed_sha256": "028354a7b1cf72de839bfe87ce2caa8dac5ac86bc09e45247b7131cb01cb5b60",
+     "verified": true,
+     "content_sa_null": true,
+     "reason": ""
+    },
+    {
+     "chunk_id": "phaladeepika_pg0339_c01",
+     "text_id": "phaladeepika",
+     "stored_sha256": "870d228be22cf486c1224091ba359aac99bf22a6160dfaec741e4c8c8eb61e44",
+     "preimage": "text_id::content_en",
+     "computed_sha256": "870d228be22cf486c1224091ba359aac99bf22a6160dfaec741e4c8c8eb61e44",
+     "verified": true,
+     "content_sa_null": true,
+     "reason": ""
+    }
+   ],
+   "chunks_sha256": "bc7b5dd1b9f8f47eaad18c776da44d9a134bc2389add02993761e75fe3ec7c9a",
+   "claims": "D1 matches the ENGLISH translation (content_en) only; the Sanskrit column (content_sa) is NULL for all 2 declared chunk(s) and is not matched; the passages are OCR text not checked against the printed book (citation_state: sourced_ocr_unverified); the stored chunk hashes were verified with the text_id::content_en preimage (text_id-prefixed sha256(utf8(text_id + '::' + content_en)) is the bg_texts.py convention)",
+   "content_sa_all_null": true,
+   "passage_sha256": "722eb58be5401433cfe5b7319f9d030cab6ac4464f91952c180c4691dc14a215",
+   "passage": "Sloka 42-44 ,—The 12th asterism counted from that occupied by the Sun at the time, the 3rd from that of Mars, the 6th from that of Jupiter, and the 8th from that of Saturn are termed ^tsrfTCi or forward Lattas. The 5th star reckoned from that of Venus, the 7th from that Adh. XXVI MX of Mercury; the 9th from that of Rahu and the 22nd from that of the Moon are called or rear Lattaa If, when thus counting, the tJanmunukshatra. natal star) happens to come as the Latta star, there will be sickness and anguish. wxw ^r?rw m m g \\ wapwr 3 it^n Shkos 4 l^ 4r>. -During the Sun's Latin there will bo the ruin of every business Misery will result during the Latta of Rahu and Ketu. In the Latin of Jupiter/ death, ruin of relations and a sort of general fear or insecurity may occur There will be quarrel in the Latta of Venus. In Mercury's Latta will occur loss of position or similar untoward event. A great loss will mark the Moon's Latta. Thus the separate effects of the Lattas have been described, ( oTccrrati^ fjjjnrmsjorife^n i gnni CTSfrsfcrtf^r^^JTr^ iivmii SJoka 47. —When two or more Lattas synchronise, the cumulative effect will proportionately increase in intensity being twice or thrice and one ought only to predict evil as the outcome of the combination. «n<r%«n g-.^ercr errs? ra?fr^ nacn Sloka 48 .—The Vedhas pronounced as auspicious in the (Sarvatobhadrachakra) bring happi- ness, while those declared as evil produce only misery. One should note this also while considering the effect caused by transit (of a plauet).",
+   "rows_total": 7,
+   "rows_matched": 7,
+   "unmatched": [],
+   "rows": [
+    {
+     "row": "Jupiter",
+     "result": {
+      "count": true,
+      "direction": true,
+      "effect": true,
+      "affliction_condition": true,
+      "verse_ref": true
+     },
+     "matched": true
+    },
+    {
+     "row": "Mars",
+     "result": {
+      "count": true,
+      "direction": true,
+      "effect": "NULL-ok",
+      "affliction_condition": true,
+      "verse_ref": true
+     },
+     "matched": true
+    },
+    {
+     "row": "Mercury",
+     "result": {
+      "count": true,
+      "direction": true,
+      "effect": true,
+      "affliction_condition": true,
+      "verse_ref": true
+     },
+     "matched": true
+    },
+    {
+     "row": "Moon",
+     "result": {
+      "count": true,
+      "direction": true,
+      "effect": true,
+      "affliction_condition": true,
+      "verse_ref": true
+     },
+     "matched": true
+    },
+    {
+     "row": "Rahu",
+     "result": {
+      "count": true,
+      "direction": true,
+      "effect": true,
+      "affliction_condition": true,
+      "verse_ref": true
+     },
+     "matched": true
+    },
+    {
+     "row": "Saturn",
+     "result": {
+      "count": true,
+      "direction": true,
+      "effect": "NULL-ok",
+      "affliction_condition": true,
+      "verse_ref": true
+     },
+     "matched": true
+    },
+    {
+     "row": "Sun",
+     "result": {
+      "count": true,
+      "direction": true,
+      "effect": true,
+      "affliction_condition": true,
+      "verse_ref": true
+     },
+     "matched": true
+    }
+   ],
+   "row_count_ok": false
+  }
+ },
+ "partial_extra_row": {
+  "v": "PARTIAL",
+  "measured": "D1 PARTIAL: 8 of 9 row(s) found in the declared passage; NOT found: Ketu (count/direction/effect); the table holds 9 row(s) but 8 are declared. D1 matches the ENGLISH translation (content_en) only; the Sanskrit column (content_sa) is NULL for all 2 declared chunk(s) and is not matched; the passages are OCR text not checked against the printed book (citation_state: sourced_ocr_unverified); the stored chunk hashes were verified with the text_id::content_en preimage (text_id-prefixed sha256(utf8(text_id + '::' + content_en)) is the bg_texts.py convention)",
+  "citation_state": "sourced_ocr_unverified",
+  "d1": {
+   "matcher": "ordinal_count_direction_effect_v2",
+   "matching_rule": "per row, in the declared span of the English translation: the stored count appears as a whole ordinal before 'that of <claimant>' (no other ordinal between, <=90 characters, no '.' or ';'); the first direction word after it is the stored direction's declared word; the stored effect EQUALS the claimant's declared effect and the declared clause equals the claimant's whole passage clause (cut at sentence punctuation and clause-initial capitals) with only the unit anchor and the declared frame words around the effect (the declared effect may itself drop frame words: the stored effect must equal the DECLARED effect, not the frame-padded clause; a NULL effect needs NO anchor of the claimant in the effect section); every declared extra column equals its declared value, or (passage_text) its words after the declared OCR repairs EQUAL the declared condition, which must equal ONE WHOLE passage sentence: it starts with a declared opener (If/When/Where/Whenever/While/Should) at a true sentence start (the passage start, or after a stop; a stop the OCR lost is declared as `ocr_lost_stop`: the last <= 5 words before the start), holds exactly one terminal stop apart from <= 2 declared `ocr_stops` (each followed by a lower-case letter or digit) and is <= 1.5 x the declared text; per-claimant conditions share the start; each escape hatch carries evidence and an observed_garble note; repairs are <= 8 plain-text WORD-FOR-WORD maps (equal word counts, each pair >= 60% alike) whose `to` is a run of the sentence (a real word turned into another real word is NOT detectable: a repair is a claim the reader checks against the passage); words are compared after NFKC and lower-casing, ignoring only punctuation and whitespace (non-ASCII letters and combining marks are NOT ignored or folded); the table holds exactly the declared number of rows and no claimant twice (claimants compared trimmed and case-insensitively)",
+   "span": {
+    "start": "Sloka 42-44"
+   },
+   "chunk_ids": [
+    "phaladeepika_pg0338_c01",
+    "phaladeepika_pg0339_c01"
+   ],
+   "translation_only": true,
+   "expected_rows": 8,
+   "reads": [
+    "classical_text_chunks WHERE chunk_id IN (the declared chunk ids)",
+    "the asset's own table: the declared claim and extra columns (chart-scoped when the table has chart_id)"
+   ],
+   "chunks": [
+    {
+     "chunk_id": "phaladeepika_pg0338_c01",
+     "text_id": "phaladeepika",
+     "stored_sha256": "028354a7b1cf72de839bfe87ce2caa8dac5ac86bc09e45247b7131cb01cb5b60",
+     "preimage": "text_id::content_en",
+     "computed_sha256": "028354a7b1cf72de839bfe87ce2caa8dac5ac86bc09e45247b7131cb01cb5b60",
+     "verified": true,
+     "content_sa_null": true,
+     "reason": ""
+    },
+    {
+     "chunk_id": "phaladeepika_pg0339_c01",
+     "text_id": "phaladeepika",
+     "stored_sha256": "870d228be22cf486c1224091ba359aac99bf22a6160dfaec741e4c8c8eb61e44",
+     "preimage": "text_id::content_en",
+     "computed_sha256": "870d228be22cf486c1224091ba359aac99bf22a6160dfaec741e4c8c8eb61e44",
+     "verified": true,
+     "content_sa_null": true,
+     "reason": ""
+    }
+   ],
+   "chunks_sha256": "bc7b5dd1b9f8f47eaad18c776da44d9a134bc2389add02993761e75fe3ec7c9a",
+   "claims": "D1 matches the ENGLISH translation (content_en) only; the Sanskrit column (content_sa) is NULL for all 2 declared chunk(s) and is not matched; the passages are OCR text not checked against the printed book (citation_state: sourced_ocr_unverified); the stored chunk hashes were verified with the text_id::content_en preimage (text_id-prefixed sha256(utf8(text_id + '::' + content_en)) is the bg_texts.py convention)",
+   "content_sa_all_null": true,
+   "passage_sha256": "722eb58be5401433cfe5b7319f9d030cab6ac4464f91952c180c4691dc14a215",
+   "passage": "Sloka 42-44 ,—The 12th asterism counted from that occupied by the Sun at the time, the 3rd from that of Mars, the 6th from that of Jupiter, and the 8th from that of Saturn are termed ^tsrfTCi or forward Lattas. The 5th star reckoned from that of Venus, the 7th from that Adh. XXVI MX of Mercury; the 9th from that of Rahu and the 22nd from that of the Moon are called or rear Lattaa If, when thus counting, the tJanmunukshatra. natal star) happens to come as the Latta star, there will be sickness and anguish. wxw ^r?rw m m g \\ wapwr 3 it^n Shkos 4 l^ 4r>. -During the Sun's Latin there will bo the ruin of every business Misery will result during the Latta of Rahu and Ketu. In the Latin of Jupiter/ death, ruin of relations and a sort of general fear or insecurity may occur There will be quarrel in the Latta of Venus. In Mercury's Latta will occur loss of position or similar untoward event. A great loss will mark the Moon's Latta. Thus the separate effects of the Lattas have been described, ( oTccrrati^ fjjjnrmsjorife^n i gnni CTSfrsfcrtf^r^^JTr^ iivmii SJoka 47. —When two or more Lattas synchronise, the cumulative effect will proportionately increase in intensity being twice or thrice and one ought only to predict evil as the outcome of the combination. «n<r%«n g-.^ercr errs? ra?fr^ nacn Sloka 48 .—The Vedhas pronounced as auspicious in the (Sarvatobhadrachakra) bring happi- ness, while those declared as evil produce only misery. One should note this also while considering the effect caused by transit (of a plauet).",
+   "rows_total": 9,
+   "rows_matched": 8,
+   "unmatched": [
+    {
+     "row": "Ketu",
+     "failed": [
+      "count",
+      "direction",
+      "effect"
+     ]
+    }
+   ],
+   "rows": [
+    {
+     "row": "Jupiter",
+     "result": {
+      "count": true,
+      "direction": true,
+      "effect": true,
+      "affliction_condition": true,
+      "verse_ref": true
+     },
+     "matched": true
+    },
+    {
+     "row": "Mars",
+     "result": {
+      "count": true,
+      "direction": true,
+      "effect": "NULL-ok",
+      "affliction_condition": true,
+      "verse_ref": true
+     },
+     "matched": true
+    },
+    {
+     "row": "Mercury",
+     "result": {
+      "count": true,
+      "direction": true,
+      "effect": true,
+      "affliction_condition": true,
+      "verse_ref": true
+     },
+     "matched": true
+    },
+    {
+     "row": "Moon",
+     "result": {
+      "count": true,
+      "direction": true,
+      "effect": true,
+      "affliction_condition": true,
+      "verse_ref": true
+     },
+     "matched": true
+    },
+    {
+     "row": "Rahu",
+     "result": {
+      "count": true,
+      "direction": true,
+      "effect": true,
+      "affliction_condition": true,
+      "verse_ref": true
+     },
+     "matched": true
+    },
+    {
+     "row": "Saturn",
+     "result": {
+      "count": true,
+      "direction": true,
+      "effect": "NULL-ok",
+      "affliction_condition": true,
+      "verse_ref": true
+     },
+     "matched": true
+    },
+    {
+     "row": "Sun",
+     "result": {
+      "count": true,
+      "direction": true,
+      "effect": true,
+      "affliction_condition": true,
+      "verse_ref": true
+     },
+     "matched": true
+    },
+    {
+     "row": "Venus",
+     "result": {
+      "count": true,
+      "direction": true,
+      "effect": true,
+      "affliction_condition": true,
+      "verse_ref": true
+     },
+     "matched": true
+    },
+    {
+     "row": "Ketu",
+     "result": {
+      "count": false,
+      "direction": false,
+      "effect": false,
+      "affliction_condition": true,
+      "verse_ref": true
+     },
+     "matched": false
+    }
+   ],
+   "row_count_ok": false
+  }
+ },
+ "partial_duplicate_claimant": {
+  "v": "PARTIAL",
+  "measured": "D1 PARTIAL: 7 of 9 row(s) found in the declared passage; NOT found: Jupiter (duplicate), Jupiter (duplicate); the table holds 9 row(s) but 8 are declared. D1 matches the ENGLISH translation (content_en) only; the Sanskrit column (content_sa) is NULL for all 2 declared chunk(s) and is not matched; the passages are OCR text not checked against the printed book (citation_state: sourced_ocr_unverified); the stored chunk hashes were verified with the text_id::content_en preimage (text_id-prefixed sha256(utf8(text_id + '::' + content_en)) is the bg_texts.py convention)",
+  "citation_state": "sourced_ocr_unverified",
+  "d1": {
+   "matcher": "ordinal_count_direction_effect_v2",
+   "matching_rule": "per row, in the declared span of the English translation: the stored count appears as a whole ordinal before 'that of <claimant>' (no other ordinal between, <=90 characters, no '.' or ';'); the first direction word after it is the stored direction's declared word; the stored effect EQUALS the claimant's declared effect and the declared clause equals the claimant's whole passage clause (cut at sentence punctuation and clause-initial capitals) with only the unit anchor and the declared frame words around the effect (the declared effect may itself drop frame words: the stored effect must equal the DECLARED effect, not the frame-padded clause; a NULL effect needs NO anchor of the claimant in the effect section); every declared extra column equals its declared value, or (passage_text) its words after the declared OCR repairs EQUAL the declared condition, which must equal ONE WHOLE passage sentence: it starts with a declared opener (If/When/Where/Whenever/While/Should) at a true sentence start (the passage start, or after a stop; a stop the OCR lost is declared as `ocr_lost_stop`: the last <= 5 words before the start), holds exactly one terminal stop apart from <= 2 declared `ocr_stops` (each followed by a lower-case letter or digit) and is <= 1.5 x the declared text; per-claimant conditions share the start; each escape hatch carries evidence and an observed_garble note; repairs are <= 8 plain-text WORD-FOR-WORD maps (equal word counts, each pair >= 60% alike) whose `to` is a run of the sentence (a real word turned into another real word is NOT detectable: a repair is a claim the reader checks against the passage); words are compared after NFKC and lower-casing, ignoring only punctuation and whitespace (non-ASCII letters and combining marks are NOT ignored or folded); the table holds exactly the declared number of rows and no claimant twice (claimants compared trimmed and case-insensitively)",
+   "span": {
+    "start": "Sloka 42-44"
+   },
+   "chunk_ids": [
+    "phaladeepika_pg0338_c01",
+    "phaladeepika_pg0339_c01"
+   ],
+   "translation_only": true,
+   "expected_rows": 8,
+   "reads": [
+    "classical_text_chunks WHERE chunk_id IN (the declared chunk ids)",
+    "the asset's own table: the declared claim and extra columns (chart-scoped when the table has chart_id)"
+   ],
+   "chunks": [
+    {
+     "chunk_id": "phaladeepika_pg0338_c01",
+     "text_id": "phaladeepika",
+     "stored_sha256": "028354a7b1cf72de839bfe87ce2caa8dac5ac86bc09e45247b7131cb01cb5b60",
+     "preimage": "text_id::content_en",
+     "computed_sha256": "028354a7b1cf72de839bfe87ce2caa8dac5ac86bc09e45247b7131cb01cb5b60",
+     "verified": true,
+     "content_sa_null": true,
+     "reason": ""
+    },
+    {
+     "chunk_id": "phaladeepika_pg0339_c01",
+     "text_id": "phaladeepika",
+     "stored_sha256": "870d228be22cf486c1224091ba359aac99bf22a6160dfaec741e4c8c8eb61e44",
+     "preimage": "text_id::content_en",
+     "computed_sha256": "870d228be22cf486c1224091ba359aac99bf22a6160dfaec741e4c8c8eb61e44",
+     "verified": true,
+     "content_sa_null": true,
+     "reason": ""
+    }
+   ],
+   "chunks_sha256": "bc7b5dd1b9f8f47eaad18c776da44d9a134bc2389add02993761e75fe3ec7c9a",
+   "claims": "D1 matches the ENGLISH translation (content_en) only; the Sanskrit column (content_sa) is NULL for all 2 declared chunk(s) and is not matched; the passages are OCR text not checked against the printed book (citation_state: sourced_ocr_unverified); the stored chunk hashes were verified with the text_id::content_en preimage (text_id-prefixed sha256(utf8(text_id + '::' + content_en)) is the bg_texts.py convention)",
+   "content_sa_all_null": true,
+   "passage_sha256": "722eb58be5401433cfe5b7319f9d030cab6ac4464f91952c180c4691dc14a215",
+   "passage": "Sloka 42-44 ,—The 12th asterism counted from that occupied by the Sun at the time, the 3rd from that of Mars, the 6th from that of Jupiter, and the 8th from that of Saturn are termed ^tsrfTCi or forward Lattas. The 5th star reckoned from that of Venus, the 7th from that Adh. XXVI MX of Mercury; the 9th from that of Rahu and the 22nd from that of the Moon are called or rear Lattaa If, when thus counting, the tJanmunukshatra. natal star) happens to come as the Latta star, there will be sickness and anguish. wxw ^r?rw m m g \\ wapwr 3 it^n Shkos 4 l^ 4r>. -During the Sun's Latin there will bo the ruin of every business Misery will result during the Latta of Rahu and Ketu. In the Latin of Jupiter/ death, ruin of relations and a sort of general fear or insecurity may occur There will be quarrel in the Latta of Venus. In Mercury's Latta will occur loss of position or similar untoward event. A great loss will mark the Moon's Latta. Thus the separate effects of the Lattas have been described, ( oTccrrati^ fjjjnrmsjorife^n i gnni CTSfrsfcrtf^r^^JTr^ iivmii SJoka 47. —When two or more Lattas synchronise, the cumulative effect will proportionately increase in intensity being twice or thrice and one ought only to predict evil as the outcome of the combination. «n<r%«n g-.^ercr errs? ra?fr^ nacn Sloka 48 .—The Vedhas pronounced as auspicious in the (Sarvatobhadrachakra) bring happi- ness, while those declared as evil produce only misery. One should note this also while considering the effect caused by transit (of a plauet).",
+   "rows_total": 9,
+   "rows_matched": 7,
+   "unmatched": [
+    {
+     "row": "Jupiter",
+     "failed": [
+      "duplicate"
+     ]
+    },
+    {
+     "row": "Jupiter",
+     "failed": [
+      "duplicate"
+     ]
+    }
+   ],
+   "rows": [
+    {
+     "row": "Jupiter",
+     "result": {
+      "count": true,
+      "direction": true,
+      "effect": true,
+      "affliction_condition": true,
+      "verse_ref": true
+     },
+     "matched": false
+    },
+    {
+     "row": "Mars",
+     "result": {
+      "count": true,
+      "direction": true,
+      "effect": "NULL-ok",
+      "affliction_condition": true,
+      "verse_ref": true
+     },
+     "matched": true
+    },
+    {
+     "row": "Mercury",
+     "result": {
+      "count": true,
+      "direction": true,
+      "effect": true,
+      "affliction_condition": true,
+      "verse_ref": true
+     },
+     "matched": true
+    },
+    {
+     "row": "Moon",
+     "result": {
+      "count": true,
+      "direction": true,
+      "effect": true,
+      "affliction_condition": true,
+      "verse_ref": true
+     },
+     "matched": true
+    },
+    {
+     "row": "Rahu",
+     "result": {
+      "count": true,
+      "direction": true,
+      "effect": true,
+      "affliction_condition": true,
+      "verse_ref": true
+     },
+     "matched": true
+    },
+    {
+     "row": "Saturn",
+     "result": {
+      "count": true,
+      "direction": true,
+      "effect": "NULL-ok",
+      "affliction_condition": true,
+      "verse_ref": true
+     },
+     "matched": true
+    },
+    {
+     "row": "Sun",
+     "result": {
+      "count": true,
+      "direction": true,
+      "effect": true,
+      "affliction_condition": true,
+      "verse_ref": true
+     },
+     "matched": true
+    },
+    {
+     "row": "Venus",
+     "result": {
+      "count": true,
+      "direction": true,
+      "effect": true,
+      "affliction_condition": true,
+      "verse_ref": true
+     },
+     "matched": true
+    },
+    {
+     "row": "Jupiter",
+     "result": {
+      "count": true,
+      "direction": true,
+      "effect": true,
+      "affliction_condition": true,
+      "verse_ref": true
+     },
+     "matched": false
+    }
+   ],
+   "row_count_ok": false
+  }
+ },
+ "no_det_unsourced": {
+  "v": "NO_DETECTOR",
+  "measured": "NO_DETECTOR: 8 of 8 row(s) matched the declared passage, but the citation_state is 'unsourced': anchor matching cannot tell a contradicted source from one not found, so the match is not evidence. D1 matches the ENGLISH translation (content_en) only; the Sanskrit column (content_sa) is NULL for all 2 declared chunk(s) and is not matched; the passages are OCR text not checked against the printed book (citation_state: unsourced); the stored chunk hashes were verified with the text_id::content_en preimage (text_id-prefixed sha256(utf8(text_id + '::' + content_en)) is the bg_texts.py convention)",
+  "citation_state": "unsourced",
+  "d1": {
+   "matcher": "ordinal_count_direction_effect_v2",
+   "matching_rule": "per row, in the declared span of the English translation: the stored count appears as a whole ordinal before 'that of <claimant>' (no other ordinal between, <=90 characters, no '.' or ';'); the first direction word after it is the stored direction's declared word; the stored effect EQUALS the claimant's declared effect and the declared clause equals the claimant's whole passage clause (cut at sentence punctuation and clause-initial capitals) with only the unit anchor and the declared frame words around the effect (the declared effect may itself drop frame words: the stored effect must equal the DECLARED effect, not the frame-padded clause; a NULL effect needs NO anchor of the claimant in the effect section); every declared extra column equals its declared value, or (passage_text) its words after the declared OCR repairs EQUAL the declared condition, which must equal ONE WHOLE passage sentence: it starts with a declared opener (If/When/Where/Whenever/While/Should) at a true sentence start (the passage start, or after a stop; a stop the OCR lost is declared as `ocr_lost_stop`: the last <= 5 words before the start), holds exactly one terminal stop apart from <= 2 declared `ocr_stops` (each followed by a lower-case letter or digit) and is <= 1.5 x the declared text; per-claimant conditions share the start; each escape hatch carries evidence and an observed_garble note; repairs are <= 8 plain-text WORD-FOR-WORD maps (equal word counts, each pair >= 60% alike) whose `to` is a run of the sentence (a real word turned into another real word is NOT detectable: a repair is a claim the reader checks against the passage); words are compared after NFKC and lower-casing, ignoring only punctuation and whitespace (non-ASCII letters and combining marks are NOT ignored or folded); the table holds exactly the declared number of rows and no claimant twice (claimants compared trimmed and case-insensitively)",
+   "span": {
+    "start": "Sloka 42-44"
+   },
+   "chunk_ids": [
+    "phaladeepika_pg0338_c01",
+    "phaladeepika_pg0339_c01"
+   ],
+   "translation_only": true,
+   "expected_rows": 8,
+   "reads": [
+    "classical_text_chunks WHERE chunk_id IN (the declared chunk ids)",
+    "the asset's own table: the declared claim and extra columns (chart-scoped when the table has chart_id)"
+   ],
+   "chunks": [
+    {
+     "chunk_id": "phaladeepika_pg0338_c01",
+     "text_id": "phaladeepika",
+     "stored_sha256": "028354a7b1cf72de839bfe87ce2caa8dac5ac86bc09e45247b7131cb01cb5b60",
+     "preimage": "text_id::content_en",
+     "computed_sha256": "028354a7b1cf72de839bfe87ce2caa8dac5ac86bc09e45247b7131cb01cb5b60",
+     "verified": true,
+     "content_sa_null": true,
+     "reason": ""
+    },
+    {
+     "chunk_id": "phaladeepika_pg0339_c01",
+     "text_id": "phaladeepika",
+     "stored_sha256": "870d228be22cf486c1224091ba359aac99bf22a6160dfaec741e4c8c8eb61e44",
+     "preimage": "text_id::content_en",
+     "computed_sha256": "870d228be22cf486c1224091ba359aac99bf22a6160dfaec741e4c8c8eb61e44",
+     "verified": true,
+     "content_sa_null": true,
+     "reason": ""
+    }
+   ],
+   "chunks_sha256": "bc7b5dd1b9f8f47eaad18c776da44d9a134bc2389add02993761e75fe3ec7c9a",
+   "claims": "D1 matches the ENGLISH translation (content_en) only; the Sanskrit column (content_sa) is NULL for all 2 declared chunk(s) and is not matched; the passages are OCR text not checked against the printed book (citation_state: unsourced); the stored chunk hashes were verified with the text_id::content_en preimage (text_id-prefixed sha256(utf8(text_id + '::' + content_en)) is the bg_texts.py convention)",
+   "content_sa_all_null": true,
+   "passage_sha256": "722eb58be5401433cfe5b7319f9d030cab6ac4464f91952c180c4691dc14a215",
+   "passage": "Sloka 42-44 ,—The 12th asterism counted from that occupied by the Sun at the time, the 3rd from that of Mars, the 6th from that of Jupiter, and the 8th from that of Saturn are termed ^tsrfTCi or forward Lattas. The 5th star reckoned from that of Venus, the 7th from that Adh. XXVI MX of Mercury; the 9th from that of Rahu and the 22nd from that of the Moon are called or rear Lattaa If, when thus counting, the tJanmunukshatra. natal star) happens to come as the Latta star, there will be sickness and anguish. wxw ^r?rw m m g \\ wapwr 3 it^n Shkos 4 l^ 4r>. -During the Sun's Latin there will bo the ruin of every business Misery will result during the Latta of Rahu and Ketu. In the Latin of Jupiter/ death, ruin of relations and a sort of general fear or insecurity may occur There will be quarrel in the Latta of Venus. In Mercury's Latta will occur loss of position or similar untoward event. A great loss will mark the Moon's Latta. Thus the separate effects of the Lattas have been described, ( oTccrrati^ fjjjnrmsjorife^n i gnni CTSfrsfcrtf^r^^JTr^ iivmii SJoka 47. —When two or more Lattas synchronise, the cumulative effect will proportionately increase in intensity being twice or thrice and one ought only to predict evil as the outcome of the combination. «n<r%«n g-.^ercr errs? ra?fr^ nacn Sloka 48 .—The Vedhas pronounced as auspicious in the (Sarvatobhadrachakra) bring happi- ness, while those declared as evil produce only misery. One should note this also while considering the effect caused by transit (of a plauet).",
+   "rows_total": 8,
+   "rows_matched": 8,
+   "unmatched": [],
+   "rows": [
+    {
+     "row": "Jupiter",
+     "result": {
+      "count": true,
+      "direction": true,
+      "effect": true,
+      "affliction_condition": true,
+      "verse_ref": true
+     },
+     "matched": true
+    },
+    {
+     "row": "Mars",
+     "result": {
+      "count": true,
+      "direction": true,
+      "effect": "NULL-ok",
+      "affliction_condition": true,
+      "verse_ref": true
+     },
+     "matched": true
+    },
+    {
+     "row": "Mercury",
+     "result": {
+      "count": true,
+      "direction": true,
+      "effect": true,
+      "affliction_condition": true,
+      "verse_ref": true
+     },
+     "matched": true
+    },
+    {
+     "row": "Moon",
+     "result": {
+      "count": true,
+      "direction": true,
+      "effect": true,
+      "affliction_condition": true,
+      "verse_ref": true
+     },
+     "matched": true
+    },
+    {
+     "row": "Rahu",
+     "result": {
+      "count": true,
+      "direction": true,
+      "effect": true,
+      "affliction_condition": true,
+      "verse_ref": true
+     },
+     "matched": true
+    },
+    {
+     "row": "Saturn",
+     "result": {
+      "count": true,
+      "direction": true,
+      "effect": "NULL-ok",
+      "affliction_condition": true,
+      "verse_ref": true
+     },
+     "matched": true
+    },
+    {
+     "row": "Sun",
+     "result": {
+      "count": true,
+      "direction": true,
+      "effect": true,
+      "affliction_condition": true,
+      "verse_ref": true
+     },
+     "matched": true
+    },
+    {
+     "row": "Venus",
+     "result": {
+      "count": true,
+      "direction": true,
+      "effect": true,
+      "affliction_condition": true,
+      "verse_ref": true
+     },
+     "matched": true
+    }
+   ],
+   "row_count_ok": true
+  }
+ },
+ "no_det_refuted": {
+  "v": "NO_DETECTOR",
+  "measured": "NO_DETECTOR: 8 of 8 row(s) matched the declared passage, but the citation_state is 'refuted': anchor matching cannot tell a contradicted source from one not found, so the match is not evidence. D1 matches the ENGLISH translation (content_en) only; the Sanskrit column (content_sa) is NULL for all 2 declared chunk(s) and is not matched; the passages are OCR text not checked against the printed book (citation_state: refuted); the stored chunk hashes were verified with the text_id::content_en preimage (text_id-prefixed sha256(utf8(text_id + '::' + content_en)) is the bg_texts.py convention)",
+  "citation_state": "refuted",
+  "d1": {
+   "matcher": "ordinal_count_direction_effect_v2",
+   "matching_rule": "per row, in the declared span of the English translation: the stored count appears as a whole ordinal before 'that of <claimant>' (no other ordinal between, <=90 characters, no '.' or ';'); the first direction word after it is the stored direction's declared word; the stored effect EQUALS the claimant's declared effect and the declared clause equals the claimant's whole passage clause (cut at sentence punctuation and clause-initial capitals) with only the unit anchor and the declared frame words around the effect (the declared effect may itself drop frame words: the stored effect must equal the DECLARED effect, not the frame-padded clause; a NULL effect needs NO anchor of the claimant in the effect section); every declared extra column equals its declared value, or (passage_text) its words after the declared OCR repairs EQUAL the declared condition, which must equal ONE WHOLE passage sentence: it starts with a declared opener (If/When/Where/Whenever/While/Should) at a true sentence start (the passage start, or after a stop; a stop the OCR lost is declared as `ocr_lost_stop`: the last <= 5 words before the start), holds exactly one terminal stop apart from <= 2 declared `ocr_stops` (each followed by a lower-case letter or digit) and is <= 1.5 x the declared text; per-claimant conditions share the start; each escape hatch carries evidence and an observed_garble note; repairs are <= 8 plain-text WORD-FOR-WORD maps (equal word counts, each pair >= 60% alike) whose `to` is a run of the sentence (a real word turned into another real word is NOT detectable: a repair is a claim the reader checks against the passage); words are compared after NFKC and lower-casing, ignoring only punctuation and whitespace (non-ASCII letters and combining marks are NOT ignored or folded); the table holds exactly the declared number of rows and no claimant twice (claimants compared trimmed and case-insensitively)",
+   "span": {
+    "start": "Sloka 42-44"
+   },
+   "chunk_ids": [
+    "phaladeepika_pg0338_c01",
+    "phaladeepika_pg0339_c01"
+   ],
+   "translation_only": true,
+   "expected_rows": 8,
+   "reads": [
+    "classical_text_chunks WHERE chunk_id IN (the declared chunk ids)",
+    "the asset's own table: the declared claim and extra columns (chart-scoped when the table has chart_id)"
+   ],
+   "chunks": [
+    {
+     "chunk_id": "phaladeepika_pg0338_c01",
+     "text_id": "phaladeepika",
+     "stored_sha256": "028354a7b1cf72de839bfe87ce2caa8dac5ac86bc09e45247b7131cb01cb5b60",
+     "preimage": "text_id::content_en",
+     "computed_sha256": "028354a7b1cf72de839bfe87ce2caa8dac5ac86bc09e45247b7131cb01cb5b60",
+     "verified": true,
+     "content_sa_null": true,
+     "reason": ""
+    },
+    {
+     "chunk_id": "phaladeepika_pg0339_c01",
+     "text_id": "phaladeepika",
+     "stored_sha256": "870d228be22cf486c1224091ba359aac99bf22a6160dfaec741e4c8c8eb61e44",
+     "preimage": "text_id::content_en",
+     "computed_sha256": "870d228be22cf486c1224091ba359aac99bf22a6160dfaec741e4c8c8eb61e44",
+     "verified": true,
+     "content_sa_null": true,
+     "reason": ""
+    }
+   ],
+   "chunks_sha256": "bc7b5dd1b9f8f47eaad18c776da44d9a134bc2389add02993761e75fe3ec7c9a",
+   "claims": "D1 matches the ENGLISH translation (content_en) only; the Sanskrit column (content_sa) is NULL for all 2 declared chunk(s) and is not matched; the passages are OCR text not checked against the printed book (citation_state: refuted); the stored chunk hashes were verified with the text_id::content_en preimage (text_id-prefixed sha256(utf8(text_id + '::' + content_en)) is the bg_texts.py convention)",
+   "content_sa_all_null": true,
+   "passage_sha256": "722eb58be5401433cfe5b7319f9d030cab6ac4464f91952c180c4691dc14a215",
+   "passage": "Sloka 42-44 ,—The 12th asterism counted from that occupied by the Sun at the time, the 3rd from that of Mars, the 6th from that of Jupiter, and the 8th from that of Saturn are termed ^tsrfTCi or forward Lattas. The 5th star reckoned from that of Venus, the 7th from that Adh. XXVI MX of Mercury; the 9th from that of Rahu and the 22nd from that of the Moon are called or rear Lattaa If, when thus counting, the tJanmunukshatra. natal star) happens to come as the Latta star, there will be sickness and anguish. wxw ^r?rw m m g \\ wapwr 3 it^n Shkos 4 l^ 4r>. -During the Sun's Latin there will bo the ruin of every business Misery will result during the Latta of Rahu and Ketu. In the Latin of Jupiter/ death, ruin of relations and a sort of general fear or insecurity may occur There will be quarrel in the Latta of Venus. In Mercury's Latta will occur loss of position or similar untoward event. A great loss will mark the Moon's Latta. Thus the separate effects of the Lattas have been described, ( oTccrrati^ fjjjnrmsjorife^n i gnni CTSfrsfcrtf^r^^JTr^ iivmii SJoka 47. —When two or more Lattas synchronise, the cumulative effect will proportionately increase in intensity being twice or thrice and one ought only to predict evil as the outcome of the combination. «n<r%«n g-.^ercr errs? ra?fr^ nacn Sloka 48 .—The Vedhas pronounced as auspicious in the (Sarvatobhadrachakra) bring happi- ness, while those declared as evil produce only misery. One should note this also while considering the effect caused by transit (of a plauet).",
+   "rows_total": 8,
+   "rows_matched": 8,
+   "unmatched": [],
+   "rows": [
+    {
+     "row": "Jupiter",
+     "result": {
+      "count": true,
+      "direction": true,
+      "effect": true,
+      "affliction_condition": true,
+      "verse_ref": true
+     },
+     "matched": true
+    },
+    {
+     "row": "Mars",
+     "result": {
+      "count": true,
+      "direction": true,
+      "effect": "NULL-ok",
+      "affliction_condition": true,
+      "verse_ref": true
+     },
+     "matched": true
+    },
+    {
+     "row": "Mercury",
+     "result": {
+      "count": true,
+      "direction": true,
+      "effect": true,
+      "affliction_condition": true,
+      "verse_ref": true
+     },
+     "matched": true
+    },
+    {
+     "row": "Moon",
+     "result": {
+      "count": true,
+      "direction": true,
+      "effect": true,
+      "affliction_condition": true,
+      "verse_ref": true
+     },
+     "matched": true
+    },
+    {
+     "row": "Rahu",
+     "result": {
+      "count": true,
+      "direction": true,
+      "effect": true,
+      "affliction_condition": true,
+      "verse_ref": true
+     },
+     "matched": true
+    },
+    {
+     "row": "Saturn",
+     "result": {
+      "count": true,
+      "direction": true,
+      "effect": "NULL-ok",
+      "affliction_condition": true,
+      "verse_ref": true
+     },
+     "matched": true
+    },
+    {
+     "row": "Sun",
+     "result": {
+      "count": true,
+      "direction": true,
+      "effect": true,
+      "affliction_condition": true,
+      "verse_ref": true
+     },
+     "matched": true
+    },
+    {
+     "row": "Venus",
+     "result": {
+      "count": true,
+      "direction": true,
+      "effect": true,
+      "affliction_condition": true,
+      "verse_ref": true
+     },
+     "matched": true
+    }
+   ],
+   "row_count_ok": true
+  }
+ },
+ "no_det_wrong_table": {
+  "v": "NO_DETECTOR",
+  "measured": "NO_DETECTOR: the spec names table 'bg_phaladeepika_latta' but the asset's registry target table is 'some_other_table': D1 does not guess (an asset with no table is never measured against a spec's table)",
+  "citation_state": "sourced_ocr_unverified",
+  "d1": {
+   "matcher": "ordinal_count_direction_effect_v2",
+   "matching_rule": "per row, in the declared span of the English translation: the stored count appears as a whole ordinal before 'that of <claimant>' (no other ordinal between, <=90 characters, no '.' or ';'); the first direction word after it is the stored direction's declared word; the stored effect EQUALS the claimant's declared effect and the declared clause equals the claimant's whole passage clause (cut at sentence punctuation and clause-initial capitals) with only the unit anchor and the declared frame words around the effect (the declared effect may itself drop frame words: the stored effect must equal the DECLARED effect, not the frame-padded clause; a NULL effect needs NO anchor of the claimant in the effect section); every declared extra column equals its declared value, or (passage_text) its words after the declared OCR repairs EQUAL the declared condition, which must equal ONE WHOLE passage sentence: it starts with a declared opener (If/When/Where/Whenever/While/Should) at a true sentence start (the passage start, or after a stop; a stop the OCR lost is declared as `ocr_lost_stop`: the last <= 5 words before the start), holds exactly one terminal stop apart from <= 2 declared `ocr_stops` (each followed by a lower-case letter or digit) and is <= 1.5 x the declared text; per-claimant conditions share the start; each escape hatch carries evidence and an observed_garble note; repairs are <= 8 plain-text WORD-FOR-WORD maps (equal word counts, each pair >= 60% alike) whose `to` is a run of the sentence (a real word turned into another real word is NOT detectable: a repair is a claim the reader checks against the passage); words are compared after NFKC and lower-casing, ignoring only punctuation and whitespace (non-ASCII letters and combining marks are NOT ignored or folded); the table holds exactly the declared number of rows and no claimant twice (claimants compared trimmed and case-insensitively)",
+   "span": {
+    "start": "Sloka 42-44"
+   },
+   "chunk_ids": [
+    "phaladeepika_pg0338_c01",
+    "phaladeepika_pg0339_c01"
+   ],
+   "translation_only": true,
+   "expected_rows": 8,
+   "reads": [
+    "classical_text_chunks WHERE chunk_id IN (the declared chunk ids)",
+    "the asset's own table: the declared claim and extra columns (chart-scoped when the table has chart_id)"
+   ],
+   "chunks": []
+  }
+ },
+ "no_det_empty_rows": {
+  "v": "NO_DETECTOR",
+  "measured": "NO_DETECTOR: table bg_phaladeepika_latta is empty: there is no row to match the passage against",
+  "citation_state": "sourced_ocr_unverified",
+  "d1": {
+   "matcher": "ordinal_count_direction_effect_v2",
+   "matching_rule": "per row, in the declared span of the English translation: the stored count appears as a whole ordinal before 'that of <claimant>' (no other ordinal between, <=90 characters, no '.' or ';'); the first direction word after it is the stored direction's declared word; the stored effect EQUALS the claimant's declared effect and the declared clause equals the claimant's whole passage clause (cut at sentence punctuation and clause-initial capitals) with only the unit anchor and the declared frame words around the effect (the declared effect may itself drop frame words: the stored effect must equal the DECLARED effect, not the frame-padded clause; a NULL effect needs NO anchor of the claimant in the effect section); every declared extra column equals its declared value, or (passage_text) its words after the declared OCR repairs EQUAL the declared condition, which must equal ONE WHOLE passage sentence: it starts with a declared opener (If/When/Where/Whenever/While/Should) at a true sentence start (the passage start, or after a stop; a stop the OCR lost is declared as `ocr_lost_stop`: the last <= 5 words before the start), holds exactly one terminal stop apart from <= 2 declared `ocr_stops` (each followed by a lower-case letter or digit) and is <= 1.5 x the declared text; per-claimant conditions share the start; each escape hatch carries evidence and an observed_garble note; repairs are <= 8 plain-text WORD-FOR-WORD maps (equal word counts, each pair >= 60% alike) whose `to` is a run of the sentence (a real word turned into another real word is NOT detectable: a repair is a claim the reader checks against the passage); words are compared after NFKC and lower-casing, ignoring only punctuation and whitespace (non-ASCII letters and combining marks are NOT ignored or folded); the table holds exactly the declared number of rows and no claimant twice (claimants compared trimmed and case-insensitively)",
+   "span": {
+    "start": "Sloka 42-44"
+   },
+   "chunk_ids": [
+    "phaladeepika_pg0338_c01",
+    "phaladeepika_pg0339_c01"
+   ],
+   "translation_only": true,
+   "expected_rows": 8,
+   "reads": [
+    "classical_text_chunks WHERE chunk_id IN (the declared chunk ids)",
+    "the asset's own table: the declared claim and extra columns (chart-scoped when the table has chart_id)"
+   ],
+   "chunks": [
+    {
+     "chunk_id": "phaladeepika_pg0338_c01",
+     "text_id": "phaladeepika",
+     "stored_sha256": "028354a7b1cf72de839bfe87ce2caa8dac5ac86bc09e45247b7131cb01cb5b60",
+     "preimage": "text_id::content_en",
+     "computed_sha256": "028354a7b1cf72de839bfe87ce2caa8dac5ac86bc09e45247b7131cb01cb5b60",
+     "verified": true,
+     "content_sa_null": true,
+     "reason": ""
+    },
+    {
+     "chunk_id": "phaladeepika_pg0339_c01",
+     "text_id": "phaladeepika",
+     "stored_sha256": "870d228be22cf486c1224091ba359aac99bf22a6160dfaec741e4c8c8eb61e44",
+     "preimage": "text_id::content_en",
+     "computed_sha256": "870d228be22cf486c1224091ba359aac99bf22a6160dfaec741e4c8c8eb61e44",
+     "verified": true,
+     "content_sa_null": true,
+     "reason": ""
+    }
+   ],
+   "chunks_sha256": "bc7b5dd1b9f8f47eaad18c776da44d9a134bc2389add02993761e75fe3ec7c9a",
+   "claims": "D1 matches the ENGLISH translation (content_en) only; the Sanskrit column (content_sa) is NULL for all 2 declared chunk(s) and is not matched; the passages are OCR text not checked against the printed book (citation_state: sourced_ocr_unverified); the stored chunk hashes were verified with the text_id::content_en preimage (text_id-prefixed sha256(utf8(text_id + '::' + content_en)) is the bg_texts.py convention)",
+   "content_sa_all_null": true,
+   "passage_sha256": "722eb58be5401433cfe5b7319f9d030cab6ac4464f91952c180c4691dc14a215",
+   "passage": "Sloka 42-44 ,—The 12th asterism counted from that occupied by the Sun at the time, the 3rd from that of Mars, the 6th from that of Jupiter, and the 8th from that of Saturn are termed ^tsrfTCi or forward Lattas. The 5th star reckoned from that of Venus, the 7th from that Adh. XXVI MX of Mercury; the 9th from that of Rahu and the 22nd from that of the Moon are called or rear Lattaa If, when thus counting, the tJanmunukshatra. natal star) happens to come as the Latta star, there will be sickness and anguish. wxw ^r?rw m m g \\ wapwr 3 it^n Shkos 4 l^ 4r>. -During the Sun's Latin there will bo the ruin of every business Misery will result during the Latta of Rahu and Ketu. In the Latin of Jupiter/ death, ruin of relations and a sort of general fear or insecurity may occur There will be quarrel in the Latta of Venus. In Mercury's Latta will occur loss of position or similar untoward event. A great loss will mark the Moon's Latta. Thus the separate effects of the Lattas have been described, ( oTccrrati^ fjjjnrmsjorife^n i gnni CTSfrsfcrtf^r^^JTr^ iivmii SJoka 47. —When two or more Lattas synchronise, the cumulative effect will proportionately increase in intensity being twice or thrice and one ought only to predict evil as the outcome of the combination. «n<r%«n g-.^ercr errs? ra?fr^ nacn Sloka 48 .—The Vedhas pronounced as auspicious in the (Sarvatobhadrachakra) bring happi- ness, while those declared as evil produce only misery. One should note this also while considering the effect caused by transit (of a plauet)."
+  }
+ },
+ "no_det_rows_unreadable": {
+  "v": "NO_DETECTOR",
+  "measured": "NO_DETECTOR: the asset's table rows could not be read",
+  "citation_state": "sourced_ocr_unverified",
+  "d1": {
+   "matcher": "ordinal_count_direction_effect_v2",
+   "matching_rule": "per row, in the declared span of the English translation: the stored count appears as a whole ordinal before 'that of <claimant>' (no other ordinal between, <=90 characters, no '.' or ';'); the first direction word after it is the stored direction's declared word; the stored effect EQUALS the claimant's declared effect and the declared clause equals the claimant's whole passage clause (cut at sentence punctuation and clause-initial capitals) with only the unit anchor and the declared frame words around the effect (the declared effect may itself drop frame words: the stored effect must equal the DECLARED effect, not the frame-padded clause; a NULL effect needs NO anchor of the claimant in the effect section); every declared extra column equals its declared value, or (passage_text) its words after the declared OCR repairs EQUAL the declared condition, which must equal ONE WHOLE passage sentence: it starts with a declared opener (If/When/Where/Whenever/While/Should) at a true sentence start (the passage start, or after a stop; a stop the OCR lost is declared as `ocr_lost_stop`: the last <= 5 words before the start), holds exactly one terminal stop apart from <= 2 declared `ocr_stops` (each followed by a lower-case letter or digit) and is <= 1.5 x the declared text; per-claimant conditions share the start; each escape hatch carries evidence and an observed_garble note; repairs are <= 8 plain-text WORD-FOR-WORD maps (equal word counts, each pair >= 60% alike) whose `to` is a run of the sentence (a real word turned into another real word is NOT detectable: a repair is a claim the reader checks against the passage); words are compared after NFKC and lower-casing, ignoring only punctuation and whitespace (non-ASCII letters and combining marks are NOT ignored or folded); the table holds exactly the declared number of rows and no claimant twice (claimants compared trimmed and case-insensitively)",
+   "span": {
+    "start": "Sloka 42-44"
+   },
+   "chunk_ids": [
+    "phaladeepika_pg0338_c01",
+    "phaladeepika_pg0339_c01"
+   ],
+   "translation_only": true,
+   "expected_rows": 8,
+   "reads": [
+    "classical_text_chunks WHERE chunk_id IN (the declared chunk ids)",
+    "the asset's own table: the declared claim and extra columns (chart-scoped when the table has chart_id)"
+   ],
+   "chunks": [
+    {
+     "chunk_id": "phaladeepika_pg0338_c01",
+     "text_id": "phaladeepika",
+     "stored_sha256": "028354a7b1cf72de839bfe87ce2caa8dac5ac86bc09e45247b7131cb01cb5b60",
+     "preimage": "text_id::content_en",
+     "computed_sha256": "028354a7b1cf72de839bfe87ce2caa8dac5ac86bc09e45247b7131cb01cb5b60",
+     "verified": true,
+     "content_sa_null": true,
+     "reason": ""
+    },
+    {
+     "chunk_id": "phaladeepika_pg0339_c01",
+     "text_id": "phaladeepika",
+     "stored_sha256": "870d228be22cf486c1224091ba359aac99bf22a6160dfaec741e4c8c8eb61e44",
+     "preimage": "text_id::content_en",
+     "computed_sha256": "870d228be22cf486c1224091ba359aac99bf22a6160dfaec741e4c8c8eb61e44",
+     "verified": true,
+     "content_sa_null": true,
+     "reason": ""
+    }
+   ],
+   "chunks_sha256": "bc7b5dd1b9f8f47eaad18c776da44d9a134bc2389add02993761e75fe3ec7c9a",
+   "claims": "D1 matches the ENGLISH translation (content_en) only; the Sanskrit column (content_sa) is NULL for all 2 declared chunk(s) and is not matched; the passages are OCR text not checked against the printed book (citation_state: sourced_ocr_unverified); the stored chunk hashes were verified with the text_id::content_en preimage (text_id-prefixed sha256(utf8(text_id + '::' + content_en)) is the bg_texts.py convention)",
+   "content_sa_all_null": true,
+   "passage_sha256": "722eb58be5401433cfe5b7319f9d030cab6ac4464f91952c180c4691dc14a215",
+   "passage": "Sloka 42-44 ,—The 12th asterism counted from that occupied by the Sun at the time, the 3rd from that of Mars, the 6th from that of Jupiter, and the 8th from that of Saturn are termed ^tsrfTCi or forward Lattas. The 5th star reckoned from that of Venus, the 7th from that Adh. XXVI MX of Mercury; the 9th from that of Rahu and the 22nd from that of the Moon are called or rear Lattaa If, when thus counting, the tJanmunukshatra. natal star) happens to come as the Latta star, there will be sickness and anguish. wxw ^r?rw m m g \\ wapwr 3 it^n Shkos 4 l^ 4r>. -During the Sun's Latin there will bo the ruin of every business Misery will result during the Latta of Rahu and Ketu. In the Latin of Jupiter/ death, ruin of relations and a sort of general fear or insecurity may occur There will be quarrel in the Latta of Venus. In Mercury's Latta will occur loss of position or similar untoward event. A great loss will mark the Moon's Latta. Thus the separate effects of the Lattas have been described, ( oTccrrati^ fjjjnrmsjorife^n i gnni CTSfrsfcrtf^r^^JTr^ iivmii SJoka 47. —When two or more Lattas synchronise, the cumulative effect will proportionately increase in intensity being twice or thrice and one ought only to predict evil as the outcome of the combination. «n<r%«n g-.^ercr errs? ra?fr^ nacn Sloka 48 .—The Vedhas pronounced as auspicious in the (Sarvatobhadrachakra) bring happi- ness, while those declared as evil produce only misery. One should note this also while considering the effect caused by transit (of a plauet)."
+  }
+ },
+ "no_det_missing_chunk": {
+  "v": "NO_DETECTOR",
+  "measured": "NO_DETECTOR: declared chunk(s) not found in classical_text_chunks: phaladeepika_pg0339_c01",
+  "citation_state": "sourced_ocr_unverified",
+  "d1": {
+   "matcher": "ordinal_count_direction_effect_v2",
+   "matching_rule": "per row, in the declared span of the English translation: the stored count appears as a whole ordinal before 'that of <claimant>' (no other ordinal between, <=90 characters, no '.' or ';'); the first direction word after it is the stored direction's declared word; the stored effect EQUALS the claimant's declared effect and the declared clause equals the claimant's whole passage clause (cut at sentence punctuation and clause-initial capitals) with only the unit anchor and the declared frame words around the effect (the declared effect may itself drop frame words: the stored effect must equal the DECLARED effect, not the frame-padded clause; a NULL effect needs NO anchor of the claimant in the effect section); every declared extra column equals its declared value, or (passage_text) its words after the declared OCR repairs EQUAL the declared condition, which must equal ONE WHOLE passage sentence: it starts with a declared opener (If/When/Where/Whenever/While/Should) at a true sentence start (the passage start, or after a stop; a stop the OCR lost is declared as `ocr_lost_stop`: the last <= 5 words before the start), holds exactly one terminal stop apart from <= 2 declared `ocr_stops` (each followed by a lower-case letter or digit) and is <= 1.5 x the declared text; per-claimant conditions share the start; each escape hatch carries evidence and an observed_garble note; repairs are <= 8 plain-text WORD-FOR-WORD maps (equal word counts, each pair >= 60% alike) whose `to` is a run of the sentence (a real word turned into another real word is NOT detectable: a repair is a claim the reader checks against the passage); words are compared after NFKC and lower-casing, ignoring only punctuation and whitespace (non-ASCII letters and combining marks are NOT ignored or folded); the table holds exactly the declared number of rows and no claimant twice (claimants compared trimmed and case-insensitively)",
+   "span": {
+    "start": "Sloka 42-44"
+   },
+   "chunk_ids": [
+    "phaladeepika_pg0338_c01",
+    "phaladeepika_pg0339_c01"
+   ],
+   "translation_only": true,
+   "expected_rows": 8,
+   "reads": [
+    "classical_text_chunks WHERE chunk_id IN (the declared chunk ids)",
+    "the asset's own table: the declared claim and extra columns (chart-scoped when the table has chart_id)"
+   ],
+   "chunks": [
+    {
+     "chunk_id": "phaladeepika_pg0338_c01",
+     "text_id": "phaladeepika",
+     "stored_sha256": "028354a7b1cf72de839bfe87ce2caa8dac5ac86bc09e45247b7131cb01cb5b60",
+     "preimage": "text_id::content_en",
+     "computed_sha256": "028354a7b1cf72de839bfe87ce2caa8dac5ac86bc09e45247b7131cb01cb5b60",
+     "verified": true,
+     "content_sa_null": true,
+     "reason": ""
+    }
+   ],
+   "missing_chunks": [
+    "phaladeepika_pg0339_c01"
+   ]
+  }
+ },
+ "no_det_bad_hash": {
+  "v": "NO_DETECTOR",
+  "measured": "NO_DETECTOR: unreadable passage(s) for D1: phaladeepika_pg0338_c01: the stored content_sha256 matches neither sha256(text_id + '::' + content_en) nor sha256(content_en): the passage is unreadable for D1 (it may have changed since it was hashed)",
+  "citation_state": "sourced_ocr_unverified",
+  "d1": {
+   "matcher": "ordinal_count_direction_effect_v2",
+   "matching_rule": "per row, in the declared span of the English translation: the stored count appears as a whole ordinal before 'that of <claimant>' (no other ordinal between, <=90 characters, no '.' or ';'); the first direction word after it is the stored direction's declared word; the stored effect EQUALS the claimant's declared effect and the declared clause equals the claimant's whole passage clause (cut at sentence punctuation and clause-initial capitals) with only the unit anchor and the declared frame words around the effect (the declared effect may itself drop frame words: the stored effect must equal the DECLARED effect, not the frame-padded clause; a NULL effect needs NO anchor of the claimant in the effect section); every declared extra column equals its declared value, or (passage_text) its words after the declared OCR repairs EQUAL the declared condition, which must equal ONE WHOLE passage sentence: it starts with a declared opener (If/When/Where/Whenever/While/Should) at a true sentence start (the passage start, or after a stop; a stop the OCR lost is declared as `ocr_lost_stop`: the last <= 5 words before the start), holds exactly one terminal stop apart from <= 2 declared `ocr_stops` (each followed by a lower-case letter or digit) and is <= 1.5 x the declared text; per-claimant conditions share the start; each escape hatch carries evidence and an observed_garble note; repairs are <= 8 plain-text WORD-FOR-WORD maps (equal word counts, each pair >= 60% alike) whose `to` is a run of the sentence (a real word turned into another real word is NOT detectable: a repair is a claim the reader checks against the passage); words are compared after NFKC and lower-casing, ignoring only punctuation and whitespace (non-ASCII letters and combining marks are NOT ignored or folded); the table holds exactly the declared number of rows and no claimant twice (claimants compared trimmed and case-insensitively)",
+   "span": {
+    "start": "Sloka 42-44"
+   },
+   "chunk_ids": [
+    "phaladeepika_pg0338_c01",
+    "phaladeepika_pg0339_c01"
+   ],
+   "translation_only": true,
+   "expected_rows": 8,
+   "reads": [
+    "classical_text_chunks WHERE chunk_id IN (the declared chunk ids)",
+    "the asset's own table: the declared claim and extra columns (chart-scoped when the table has chart_id)"
+   ],
+   "chunks": [
+    {
+     "chunk_id": "phaladeepika_pg0338_c01",
+     "text_id": "phaladeepika",
+     "stored_sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+     "preimage": null,
+     "computed_sha256": null,
+     "verified": false,
+     "content_sa_null": true,
+     "reason": "the stored content_sha256 matches neither sha256(text_id + '::' + content_en) nor sha256(content_en): the passage is unreadable for D1 (it may have changed since it was hashed)"
+    },
+    {
+     "chunk_id": "phaladeepika_pg0339_c01",
+     "text_id": "phaladeepika",
+     "stored_sha256": "870d228be22cf486c1224091ba359aac99bf22a6160dfaec741e4c8c8eb61e44",
+     "preimage": "text_id::content_en",
+     "computed_sha256": "870d228be22cf486c1224091ba359aac99bf22a6160dfaec741e4c8c8eb61e44",
+     "verified": true,
+     "content_sa_null": true,
+     "reason": ""
+    }
+   ]
+  }
+ },
+ "no_det_span_marker_absent": {
+  "v": "NO_DETECTOR",
+  "measured": "NO_DETECTOR: the span start marker 'no such marker in the passage' is absent from the declared passage",
+  "citation_state": "sourced_ocr_unverified",
+  "d1": {
+   "matcher": "ordinal_count_direction_effect_v2",
+   "matching_rule": "per row, in the declared span of the English translation: the stored count appears as a whole ordinal before 'that of <claimant>' (no other ordinal between, <=90 characters, no '.' or ';'); the first direction word after it is the stored direction's declared word; the stored effect EQUALS the claimant's declared effect and the declared clause equals the claimant's whole passage clause (cut at sentence punctuation and clause-initial capitals) with only the unit anchor and the declared frame words around the effect (the declared effect may itself drop frame words: the stored effect must equal the DECLARED effect, not the frame-padded clause; a NULL effect needs NO anchor of the claimant in the effect section); every declared extra column equals its declared value, or (passage_text) its words after the declared OCR repairs EQUAL the declared condition, which must equal ONE WHOLE passage sentence: it starts with a declared opener (If/When/Where/Whenever/While/Should) at a true sentence start (the passage start, or after a stop; a stop the OCR lost is declared as `ocr_lost_stop`: the last <= 5 words before the start), holds exactly one terminal stop apart from <= 2 declared `ocr_stops` (each followed by a lower-case letter or digit) and is <= 1.5 x the declared text; per-claimant conditions share the start; each escape hatch carries evidence and an observed_garble note; repairs are <= 8 plain-text WORD-FOR-WORD maps (equal word counts, each pair >= 60% alike) whose `to` is a run of the sentence (a real word turned into another real word is NOT detectable: a repair is a claim the reader checks against the passage); words are compared after NFKC and lower-casing, ignoring only punctuation and whitespace (non-ASCII letters and combining marks are NOT ignored or folded); the table holds exactly the declared number of rows and no claimant twice (claimants compared trimmed and case-insensitively)",
+   "span": {
+    "start": "no such marker in the passage"
+   },
+   "chunk_ids": [
+    "phaladeepika_pg0338_c01",
+    "phaladeepika_pg0339_c01"
+   ],
+   "translation_only": true,
+   "expected_rows": 8,
+   "reads": [
+    "classical_text_chunks WHERE chunk_id IN (the declared chunk ids)",
+    "the asset's own table: the declared claim and extra columns (chart-scoped when the table has chart_id)"
+   ],
+   "chunks": [
+    {
+     "chunk_id": "phaladeepika_pg0338_c01",
+     "text_id": "phaladeepika",
+     "stored_sha256": "028354a7b1cf72de839bfe87ce2caa8dac5ac86bc09e45247b7131cb01cb5b60",
+     "preimage": "text_id::content_en",
+     "computed_sha256": "028354a7b1cf72de839bfe87ce2caa8dac5ac86bc09e45247b7131cb01cb5b60",
+     "verified": true,
+     "content_sa_null": true,
+     "reason": ""
+    },
+    {
+     "chunk_id": "phaladeepika_pg0339_c01",
+     "text_id": "phaladeepika",
+     "stored_sha256": "870d228be22cf486c1224091ba359aac99bf22a6160dfaec741e4c8c8eb61e44",
+     "preimage": "text_id::content_en",
+     "computed_sha256": "870d228be22cf486c1224091ba359aac99bf22a6160dfaec741e4c8c8eb61e44",
+     "verified": true,
+     "content_sa_null": true,
+     "reason": ""
+    }
+   ],
+   "chunks_sha256": "bc7b5dd1b9f8f47eaad18c776da44d9a134bc2389add02993761e75fe3ec7c9a",
+   "claims": "D1 matches the ENGLISH translation (content_en) only; the Sanskrit column (content_sa) is NULL for all 2 declared chunk(s) and is not matched; the passages are OCR text not checked against the printed book (citation_state: sourced_ocr_unverified); the stored chunk hashes were verified with the text_id::content_en preimage (text_id-prefixed sha256(utf8(text_id + '::' + content_en)) is the bg_texts.py convention)",
+   "content_sa_all_null": true
+  }
+ }
+}
