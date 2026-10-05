@@ -482,11 +482,39 @@ def test_the_share_is_days_with_an_admitted_span_over_days_in_the_horizon_per_cl
     assert got["dvi_guard"]["exceeds_band"] is False and got["dvi_guard"]["revert_dvi_to_support_next_generation"] == []
 
 
-def test_a_series_that_was_not_supplied_is_null_never_zero():
-    rep = density.admitted_day_share_report([_span("business_launch", "P3", "2001-01-01", "2001-01-10")], HORIZON)
-    got = rep["classes"]["business_launch"]
+def test_a_series_that_cannot_be_derived_is_null_never_zero_and_says_why():
+    spans = [_span("property_acquisition", "P3", "2001-01-01", "2001-01-10"),
+             _span("property_acquisition", "P4", "2001-02-01", "2001-02-10")]
+    rep = density.admitted_day_share_report(spans, HORIZON, dvi_members={"property_acquisition": [11]})
+    got = rep["classes"]["property_acquisition"]
     assert got["admitted_day_share"]["P4_no_dvi"] is None and got["admitted_day_share"]["P3_fast"] is None
     assert got["not_supplied"] == ["P3_fast", "P3_slow", "P4_no_dvi"]
+    # no null without its reason, in words
+    assert "separate rerun required" in got["series_notes"]["P4_no_dvi"]
+    assert "agent" in got["series_notes"]["P3_fast"] and got["series_notes"]["P3_fast"] == got["series_notes"]["P3_slow"]
+    assert set(got["not_supplied"]) <= set(got["series_notes"])
+
+
+def test_p4_without_dvi_is_p4_itself_for_a_class_with_no_dvi_member():
+    spans = [_span("business_launch", "P4", "2001-02-01", "2001-02-10")]
+    got = density.admitted_day_share_report(spans, HORIZON)["classes"]["business_launch"]
+    assert got["admitted_day_share"]["P4_no_dvi"] == got["admitted_day_share"]["P4"] == 0.10
+    assert got["series_notes"]["P4_no_dvi"] == density.P4_NO_DVI_SAME
+
+
+def test_member_spans_give_the_p3_split_and_the_k_b_lower_bound_under_window_spans():
+    """The stored-window form: one P3 window (a union over agents) plus its member supports."""
+    spans = [_span("psychological_arc", "P3", "2001-01-01", "2001-01-20"),
+             _span("psychological_arc", "P3", "2001-01-01", "2001-01-10", agent="saturn", via_kb=True, level="member"),
+             _span("psychological_arc", "P3", "2001-01-08", "2001-01-20", agent="mars", level="member"),
+             _span("psychological_arc", "P4", "2001-01-03", "2001-01-04")]
+    got = density.admitted_day_share_report(spans, HORIZON)["classes"]["psychological_arc"]
+    assert got["admitted_days"] == {"P1": 0, "P2": 0, "P3": 20, "P3_fast": 13, "P3_slow": 10, "P4": 2,
+                                    "P4_no_dvi": 2, "kb_only": 5, "union": 20}
+    # days 1-7 are K-B-only in P3; days 3-4 are also a P4 window, which is NOT attributed to K-B without a rerun
+    assert "LOWER bound" in got["series_notes"]["kb_only"]
+    with pytest.raises(ValueError):
+        _span("psychological_arc", "P3", "2001-01-01", "2001-01-02", level="member")       # a member needs its agent
 
 
 def test_the_k_b_contribution_is_days_admitted_only_through_a_luminary_target():
