@@ -477,13 +477,19 @@ class SkyEventStore:
             raise ValueError(f"{body}: not a substrate body {SUBSTRATE_BODIES}")
         from services.gochara_kernel import arcs as gk_arcs
         from services.gochara_kernel import contacts as gk_contacts
-        from services.gochara_kernel.knots import sample_knots
+        from services.gochara_kernel.knots import sample_knots, station_refiner
 
         cid = convention_id or self.register_convention()
         if index is None:
             ks = sample_knots(body, SUBSTRATE_DOMAIN_START.date(),
                               SUBSTRATE_DOMAIN_END.date(), ephe_path)
-            index = gk_arcs.build_arc_index(body, ks.knot_jds, ks.longitudes_deg)
+            index = gk_arcs.build_arc_index(body, ks.knot_jds, ks.longitudes_deg,
+                                            station_refiner=station_refiner(body, ephe_path))
+
+        if index.stations and not index.station_refined:
+            raise ValueError(
+                f"{body}: the arc index was built without a station refiner — its stations are spline-derivative roots (up to ~16 s from the ephemeris "
+                "station) and must not be stored as swiss_refined; build it with build_arc_index(..., station_refiner=knots.station_refiner(body, ephe_path))")
 
         solver_method = "swiss_refined" if refine else "arc_index_bracket"
         precision_regime = (
@@ -524,10 +530,13 @@ class SkyEventStore:
                     )
                     counts["events"] += 1
 
-        # Stations — each at its own solved longitude (one object, ordinal 1);
-        # ALWAYS swiss_refined (§7.1: δt unstable near a station).
-        for jd_station in index.stations:
-            lon = float(index.evaluate(jd_station)) % 360.0
+        # Stations — each at its own solved longitude (one object, ordinal 1).
+        # The instant is the EPHEMERIS station (the root of the Swiss longitudinal speed, fitted — `knots.refine_station`; delta_t is its own 3-sigma, NOT a nominal 1e-9 d: Swiss's
+        # speed noise limits the root to about 1e-7 d), which is the same value the
+        # arc index uses for its boundaries and the episode layer for its station branch (ONE station instant, STATION-FIX); an index that was not built with the
+        # station refiner would store spline-grade instants under the `swiss_refined` label the database requires (kgse CHECK), so it is refused.
+        for jd_station, lon, dt_days in zip(index.stations, index.station_lons_deg, index.station_delta_t_days):
+            lon = float(lon) % 360.0
             poid = physical_object_id(
                 body=DB_BODY[body], relation_kind="station",
                 canonical_target=boundary_target(lon), convention_id=cid,
@@ -540,7 +549,7 @@ class SkyEventStore:
             self.insert_event(
                 contact, event_kind="station", longitude=lon,
                 solver_method="swiss_refined", delta_lambda=delta_lambda,
-                delta_t=1e-9, precision_regime="swiss_bisect_tol_1e-9d",
+                delta_t=float(dt_days), precision_regime="swiss_speed_root_fit_3sigma",
                 coverage={"truncated": False},
             )
             counts["stations"] += 1

@@ -181,6 +181,137 @@ def calc_sidereal_lon(body: str, jd_ut: float, ephe_path: str | None) -> tuple[f
     return lon, int(retflag)
 
 
+@serialized_swiss_state
+def calc_sidereal_lon_speed(body: str, jd_ut: float, ephe_path: str | None) -> tuple[float, float, int]:
+    """One sidereal longitude AND its Swiss longitudinal speed (deg/day): (longitude_deg, speed_deg_per_day, retflag).
+
+    The same flags, node model and Moon file probe as `calc_sidereal_lon`, plus FLG_SPEED. Swiss returns the speed as the derivative of its own series, so
+    its sign changes exactly at a station of the ephemeris. A serialized Swiss-state owner (DP-SD-010) like `calc_sidereal_lon`."""
+    if ephe_path is not None:
+        swe.set_ephe_path(ephe_path)
+    swe.set_sid_mode(swe.SIDM_LAHIRI)
+    swe_id = GRAHA_TO_SWE[body]
+    if body in ("Rahu", "Ketu") and swe_id != swe.MEAN_NODE:
+        raise NodeModelError(f"{body}: swe id {swe_id} is not MEAN_NODE — node_model='mean' is the only admitted model (N-4a(b″)); refusing the calc.")
+    if body == "Moon":
+        _assert_moon_file_backend(jd_ut, ephe_path)
+    out, retflag = swe.calc_ut(jd_ut, swe_id, EPHE_FLAGS | swe.FLG_SPEED)
+    lon = float(out[0])
+    if body == "Ketu":
+        lon = (lon + 180.0) % 360.0
+    return lon, float(out[3]), int(retflag)
+
+
+class StationRefinementError(ValueError):
+    """A spline station could not be refined against the ephemeris (the speed does not change sign in the bracket around it). Never papered over: a station
+    row labelled `swiss_refined` must have been refined (the earned-signal rule)."""
+
+
+STATION_BRACKET_DAYS = 1.0         # the spline station is within ~16 s (measured, Mercury) of the true one; one day each side is a wide, safe bracket
+STATION_COARSE_TOL_DAYS = 1e-4     # the sign bisection stops where the speed (about 1e-6 deg/d) is still far above Swiss's speed noise (about 1e-8 deg/d)
+STATION_FIT_HALF_WINDOW_DAYS = 0.05
+STATION_SPEED_WINDOWS_DAYS = (0.01, 0.02, 0.05, 0.1)
+STATION_SAMPLE_POINTS = 201            # over ±max(STATION_SPEED_WINDOWS_DAYS)
+STATION_SIGMA_K = 3.0              # the stored uncertainty is at least K standard errors of the fitted instant
+
+
+class StationFix(tuple):
+    """(jd, sidereal longitude in [0, 360), delta_t_days): one ephemeris station and the uncertainty of its instant (days). Audit attributes (not part of the tuple):
+    `centre_jd` (where the fit grid was centred), `sigma_longitude_days` (1 sigma of the longitude fit), `speed_spread_days` (greatest disagreement of a speed
+    root with the longitude's stationary point)."""
+
+    def __new__(cls, jd: float, lon_deg: float, delta_t_days: float, *, centre_jd: float = float("nan"), sigma_longitude_days: float = float("nan"),
+                speed_spread_days: float = float("nan")):
+        self = tuple.__new__(cls, (float(jd), float(lon_deg), float(delta_t_days)))
+        self.centre_jd, self.sigma_longitude_days, self.speed_spread_days = float(centre_jd), float(sigma_longitude_days), float(speed_spread_days)
+        return self
+
+    jd = property(lambda self: self[0])
+    lon_deg = property(lambda self: self[1])
+    delta_t_days = property(lambda self: self[2])
+
+
+def refine_station(body: str, jd_spline: float, ephe_path: str | None, *, bracket_days: float = STATION_BRACKET_DAYS) -> StationFix:
+    """The ephemeris station nearest a spline station: where the ephemeris LONGITUDE is stationary.
+
+    Measured on the pinned files, Swiss's longitudinal SPEED is too noisy for a sign test below about 1e-6 day (it flips sign several times within ±1e-6 d of a
+    station), and its root also differs by up to ~5e-6 d (0.4 s, slow planets) from the stationary point of the returned longitudes themselves (the speed has a small
+    systematic error against the derivative of the longitude it ships with). The station is therefore defined by the LONGITUDE, which is the primary product:
+      1. bisect the sign of the speed in [jd-bracket, jd+bracket] down to STATION_COARSE_TOL_DAYS (signal 100x the speed noise) to locate it;
+      2. fit a cubic to the longitude at the sampled points within ±STATION_FIT_HALF_WINDOW_DAYS around that; the station is the stationary point (root of the
+         fitted derivative); its standard error comes from the fit covariance;
+      3. cross-check with a quadratic fit of the speed, at several window sizes; the stored uncertainty `delta_t` is the LARGER of K sigma of the longitude fit and
+         the greatest disagreement of a speed root with the longitude's stationary point, so it covers what the two quantities of the ephemeris do not agree on.
+    Raises `StationRefinementError` when the speed has the same sign at both ends of the bracket (the spline station is not an ephemeris station) or a fit has no
+    real root inside its window."""
+    import numpy as np
+
+    a, b = float(jd_spline) - bracket_days, float(jd_spline) + bracket_days
+    _lon_a, speed_a, rf = calc_sidereal_lon_speed(body, a, ephe_path)
+    _check_retflag(body, rf)
+    _lon_b, speed_b, rf = calc_sidereal_lon_speed(body, b, ephe_path)
+    _check_retflag(body, rf)
+    if (speed_a > 0.0) == (speed_b > 0.0):
+        raise StationRefinementError(
+            f"{body}: the Swiss longitudinal speed has the same sign at jd {a} ({speed_a:.6g}) and jd {b} ({speed_b:.6g}): the spline station at jd "
+            f"{jd_spline} is not an ephemeris station within ±{bracket_days} d")
+    positive_at_a = speed_a > 0.0
+    while b - a > STATION_COARSE_TOL_DAYS:
+        mid = 0.5 * (a + b)
+        _lon_m, speed_m, rf = calc_sidereal_lon_speed(body, mid, ephe_path)
+        _check_retflag(body, rf)
+        if (speed_m > 0.0) == positive_at_a:
+            a = mid
+        else:
+            b = mid
+    centre = 0.5 * (a + b)
+    half = STATION_FIT_HALF_WINDOW_DAYS
+    wide = max(STATION_SPEED_WINDOWS_DAYS)
+    xs_all = np.linspace(-wide, wide, STATION_SAMPLE_POINTS)
+    lons_all, speeds_all = [], []
+    for x in xs_all:
+        lo, sp, rf = calc_sidereal_lon_speed(body, centre + float(x), ephe_path)
+        _check_retflag(body, rf)
+        lons_all.append(lo)
+        speeds_all.append(sp)
+    lon_arr = np.degrees(np.unwrap(np.radians(np.asarray(lons_all))))                  # continuous across the 0/360 cut
+    speed_arr = np.asarray(speeds_all)
+    # (a) the stationary point of the longitude: cubic fit over the central ±STATION_FIT_HALF_WINDOW_DAYS
+    m = np.abs(xs_all) <= half + 1e-12
+    xs = xs_all[m]
+    c, cov = np.polyfit(xs, lon_arr[m], 3, cov=True)
+    c3, c2, c1 = (float(v) for v in c[:3])
+    roots = [r.real for r in np.roots([3.0 * c3, 2.0 * c2, c1]) if abs(r.imag) < 1e-12] if c3 != 0.0 else ([-c1 / (2.0 * c2)] if c2 != 0.0 else [])
+    roots = [r for r in roots if abs(r) <= half]
+    if not roots:
+        raise StationRefinementError(f"{body}: the longitude fit around jd {centre} has no stationary point inside ±{half} d")
+    xv = min(roots, key=abs)
+    slope = 6.0 * c3 * xv + 2.0 * c2                                                # d(g)/dx of g = 3 c3 x^2 + 2 c2 x + c1
+    grad = np.array([3.0 * xv * xv, 2.0 * xv, 1.0]) / -slope
+    sigma_v = float(np.sqrt(grad @ np.asarray(cov)[:3, :3] @ grad))
+    # (b) the cross-check: the root of a quadratic fit of the speed, over SEVERAL window sizes (the speed's noise is not white, so its root moves by ~0.1 s with the
+    #     window alone); the spread against the longitude's stationary point is part of the uncertainty
+    spread = 0.0
+    for w in STATION_SPEED_WINDOWS_DAYS:
+        mw = np.abs(xs_all) <= w + 1e-12
+        q = np.polyfit(xs_all[mw], speed_arr[mw], 2)
+        q2, q1, q0 = (float(v) for v in q)
+        qroots = [r.real for r in np.roots([q2, q1, q0]) if abs(r.imag) < 1e-12] if q2 != 0.0 else ([-q0 / q1] if q1 != 0.0 else [])
+        qroots = [r for r in qroots if abs(r) <= w]
+        if not qroots:
+            raise StationRefinementError(f"{body}: the speed fit (±{w} d) around jd {centre} has no root inside its window")
+        spread = max(spread, abs(min(qroots, key=abs) - xv))
+    jd = centre + xv
+    lon, _speed, rf = calc_sidereal_lon_speed(body, jd, ephe_path)
+    _check_retflag(body, rf)
+    return StationFix(jd, lon % 360.0, max(STATION_SIGMA_K * sigma_v, spread, 1e-9), centre_jd=centre, sigma_longitude_days=sigma_v, speed_spread_days=spread)
+
+
+def station_refiner(body: str, ephe_path: str | None):
+    """The callable `build_arc_index(station_refiner=...)` takes: spline station jd -> StationFix."""
+    return lambda jd_spline: refine_station(body, jd_spline, ephe_path)
+
+
 def sample_knots(
     body: str,
     start_date: date,

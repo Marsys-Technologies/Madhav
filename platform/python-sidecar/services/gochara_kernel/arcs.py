@@ -32,6 +32,7 @@ from scipy.interpolate import CubicSpline
 
 ARCSEC_PER_DEG = 3600.0
 DEFAULT_ROOT_FIND_TOLERANCE_ARCSEC = 1.0
+STATION_REFINE_MAX_SHIFT_DAYS = 1.0     # a refined station may differ from its spline station by at most the refiner's bracket (measured spline error: 16 s)
 MAX_BISECTION_ITERATIONS = 80
 
 
@@ -197,6 +198,13 @@ class ArcIndex:
     evaluate: Callable[[float], float]
     spline: CubicSpline
     tolerance_arcsec: float
+    # ONE station instant (STATION-FIX): when the index was built with a `station_refiner`, `stations` ARE the ephemeris-refined instants — the SAME values the
+    # substrate stores and the arc/segment boundaries, the episode station branch and the seam junctions use. `stations_spline` keeps the spline instants they
+    # replaced (audit only; nothing computes from it) and `station_lons_deg` the sidereal longitude at each refined instant. Unrefined: both stay empty.
+    stations_spline: tuple[float, ...] = ()
+    station_lons_deg: tuple[float, ...] = ()
+    station_delta_t_days: tuple[float, ...] = ()
+    station_refined: bool = False
 
     def lon_unwrapped(self, jd: float) -> float:
         return float(self.evaluate(jd))
@@ -244,8 +252,13 @@ def build_arc_index(
     knot_jds: Sequence[float],
     wrapped_longitudes_deg: Sequence[float],
     tolerance_arcsec: float = DEFAULT_ROOT_FIND_TOLERANCE_ARCSEC,
+    station_refiner: Callable[[float], tuple[float, float, float]] | None = None,
 ) -> ArcIndex:
     """Decompose one body's sidereal longitude history into an arc index.
+
+    `station_refiner` (spline station jd -> (ephemeris station jd, longitude, delta_t_days)) replaces every spline-derivative station by the ephemeris one BEFORE the
+    boundaries are cut, so a station has exactly one instant everywhere downstream. It must move a station by less than STATION_REFINE_MAX_SHIFT_DAYS and
+    keep the stations strictly ordered inside the knot window, else ValueError.
 
     Raises ValueError on fewer than 4 knots — an empty arc set would silently
     drop every contact this body ever makes (inherited from w2g, kept).
@@ -265,6 +278,21 @@ def build_arc_index(
 
     tol_deg = float(tolerance_arcsec) / ARCSEC_PER_DEG
     stations = _station_times(spline, knot_jds)
+    stations_spline: tuple[float, ...] = ()
+    station_lons: tuple[float, ...] = ()
+    station_dts: tuple[float, ...] = ()
+    if station_refiner is not None:
+        stations_spline = tuple(stations)
+        refined: list[tuple[float, float, float]] = [(float(j), float(l), float(d)) for j, l, d in (station_refiner(s) for s in stations)]
+        for (r, _l, _d), s0 in zip(refined, stations):
+            if abs(r - s0) > STATION_REFINE_MAX_SHIFT_DAYS:
+                raise ValueError(f"{body}: the refined station {r} moved {abs(r - s0)} d from the spline station {s0} (limit {STATION_REFINE_MAX_SHIFT_DAYS} d)")
+        jds_r = [r for r, _l, _d in refined]
+        if any(b <= a for a, b in zip(jds_r, jds_r[1:])) or (jds_r and not (float(knot_jds[0]) < jds_r[0] and jds_r[-1] < float(knot_jds[-1]))):
+            raise ValueError(f"{body}: the refined stations are not strictly ordered inside the knot window: {jds_r}")
+        stations = jds_r
+        station_lons = tuple(l for _r, l, _d in refined)
+        station_dts = tuple(d for _r, _l, d in refined)
 
     boundaries: list[float] = [float(knot_jds[0])]
     boundaries.extend(stations)
@@ -362,10 +390,15 @@ def build_arc_index(
         evaluate=evaluate,
         spline=spline,
         tolerance_arcsec=float(tolerance_arcsec),
+        stations_spline=stations_spline,
+        station_lons_deg=station_lons,
+        station_delta_t_days=station_dts,
+        station_refined=station_refiner is not None,
     )
 
 
 __all__ = [
+    "STATION_REFINE_MAX_SHIFT_DAYS",
     "ARCSEC_PER_DEG",
     "DEFAULT_ROOT_FIND_TOLERANCE_ARCSEC",
     "ArcIndex",

@@ -64,7 +64,7 @@ from services.gochara_kernel import arcs as gk_arcs
 from services.gochara_kernel.dasha_read import make_period_rows_for
 from services.gochara_kernel.chart_context import (fetch_chart_context,
                                                    require_complete)
-from services.gochara_kernel.knots import calc_sidereal_lon, sample_knots
+from services.gochara_kernel.knots import calc_sidereal_lon, sample_knots, station_refiner
 from services.gochara_kernel.record_store import (RecordStore,
                                                   materialise_record_grain,
                                                   write_class_coverage)
@@ -1085,7 +1085,8 @@ class GocharaV5Writer(WriterBase):
                 ks = sample_knots(body, SUBSTRATE_DOMAIN_START.date(),
                                   SUBSTRATE_DOMAIN_END.date(), ephe_path)
                 arc_cache[body] = gk_arcs.build_arc_index(
-                    body, ks.knot_jds, ks.longitudes_deg)
+                    body, ks.knot_jds, ks.longitudes_deg,
+                    station_refiner=station_refiner(body, ephe_path))      # ONE station instant: the ephemeris one, as the substrate stores it
             return arc_cache[body]
 
         if step.key.startswith(COVERAGE_SUBSTEP_PREFIX):
