@@ -219,10 +219,8 @@ class FakeFp:
             raise RuntimeError("fake unreadable table")
         sha = self.shas[min(self.calls, len(self.shas) - 1)]
         self.calls += 1
-        (unit,) = units
-        tables = {t: {"sha256": sha, "rows": self.rows} for t in decls.tables(unit)}
-        return {"definition": fd.FINGERPRINT_DEFINITION, "declarations_sha256": decls.sha256, "fingerprints": {unit: sha},
-                "tables": {unit: tables}, "projections": {}, "horizons": {}}
+        return {"definition": fd.FINGERPRINT_DEFINITION, "declarations_sha256": decls.sha256, "fingerprints": {u: sha for u in units},
+                "tables": {u: {t: {"sha256": sha, "rows": self.rows} for t in decls.tables(u)} for u in units}, "projections": {}, "horizons": {}}
 
 
 RUNNER_WITH_FORCE = 'force = os.environ.get("NIRMANA_FORCE_EXECUTE", "").strip().lower() in ("1", "true", "yes")\n'
@@ -314,6 +312,10 @@ def test_the_no_process_fixture_blocks_every_os_level_route():
         subprocess.getoutput("true")
 
 
+SINGLE_WRITERS = ("bg_ontology", "bg_doshas", "bg_yogas", "bg_dasha_systems", "bg_class_priors", "bg_class_lifetime_counts", "bg_not_declared", "bg_text_index", "bg_texts",
+                  "bg_ghatana", "bg_formula_constants", "bg_remedies")
+
+
 @pytest.fixture
 def env(tmp_path):
     repo = tmp_path / "repo"
@@ -321,6 +323,14 @@ def env(tmp_path):
     gen.mkdir(parents=True)
     digests = {ASSET: _hex(ASSET)}
     (gen / "nirmana-writer-digests.json").write_text(json.dumps({"version": 1, "writers": digests}))
+    wr = repo / "platform" / "python-sidecar" / "pipeline" / "orchestrator" / "writers"
+    wr.mkdir(parents=True)
+    # the real shape: two classes in one file are two runs (no siblings)
+    (wr / "bg_phaladeepika_vedha.py").write_text("@register('bg_vedha_malefic_scale')\nclass A:\n    pass\n\n\n@register('bg_phaladeepika_latta')\nclass B:\n    pass\n")
+    (wr / "singles.py").write_text("".join(f"@register('{a}')\nclass C{i}:\n    pass\n\n\n" for i, a in enumerate(SINGLE_WRITERS)))
+    nested = wr / "ph_sub"
+    nested.mkdir()
+    (nested / "__init__.py").write_text("@register('bg_nested_writer')\nclass N:\n    pass\n")
     outdir = tmp_path / "out"
     outdir.mkdir()
     jobfile = tmp_path / "job-sha"
@@ -1970,3 +1980,606 @@ def test_verify_run_names_what_differs(env):
     rec["expected_change"]["spec"] = dict(rec["expected_change"]["spec"], why="an altered but still valid reason text")
     pathlib.Path(env["receipt"]).write_text(json.dumps(rec))
     assert "recorded spec differs" in detail(base + ["--expected-change", path])
+
+
+# ═════════════════════════ group members (non-seeded, deterministic groups) ═════════════════════════
+
+GROUP_MEMBERS = {"bg_ontology": ("grp_brahma_ontology", "brahma_ontology"), "bg_class_priors": ("grp_brahma_class_priors", "brahma_class_priors"),
+                 "bg_class_lifetime_counts": ("grp_brahma_class_priors", "brahma_class_priors")}
+
+
+@pytest.mark.parametrize("asset", sorted(GROUP_MEMBERS))
+def test_a_pure_member_of_a_deterministic_group_resolves_to_its_group_unit(asset):
+    unit, table = GROUP_MEMBERS[asset]
+    assert gad.declared_unit_or_refuse(DECLS, asset) == unit
+    assert DECLS.tables(unit) == [table] and asset in DECLS.members(unit)
+
+
+def test_a_seeded_group_member_and_a_partial_one_are_refused_with_every_reason():
+    with pytest.raises(slw.LevelWaveRefusal) as exc:
+        gad.declared_unit_or_refuse(DECLS, "bg_text_index")
+    assert [r["code"] for r in exc.value.refusals] == ["GROUP_UNIT_SEEDED"]
+    with pytest.raises(slw.LevelWaveRefusal) as exc:
+        gad.declared_unit_or_refuse(DECLS, "bg_texts")
+    assert [r["code"] for r in exc.value.refusals] == ["FINGERPRINT_COVERAGE_PARTIAL", "GROUP_UNIT_SEEDED"]
+
+
+@pytest.mark.parametrize("asset", ["bg_doshas", "bg_yogas", "bg_dasha_systems"])
+def test_a_mixed_member_fingerprints_its_own_tables_and_the_shared_group_table(asset):
+    """SS ruling 1: bg_doshas / bg_yogas / bg_dasha_systems write brahma_ontology rows too; the unit includes that table."""
+    assert gad.declared_unit_or_refuse(DECLS, asset) == f"{asset}+grp_brahma_ontology"
+    assert set(gad.unit_siblings(DECLS, asset, f"{asset}+grp_brahma_ontology")) == {"bg_ontology", "bg_dasha_systems", "bg_doshas", "bg_yogas"} - {asset}
+
+
+@pytest.mark.parametrize("asset", ["bg_ghatana", "bg_formula_constants", "bg_phaladeepika_latta"])
+def test_an_asset_with_own_tables_and_no_group_keeps_its_plain_unit_id(asset):
+    assert gad.declared_unit_or_refuse(DECLS, asset) == asset and gad.unit_siblings(DECLS, asset, asset) == []
+
+
+@pytest.mark.parametrize("asset", ["bg_not_declared", "bg_gochara_citation_resolution", "bg_compendium_index"])
+def test_an_undeclared_asset_never_resolves_to_a_unit(asset):
+    with pytest.raises(slw.LevelWaveRefusal) as exc:
+        gad.declared_unit_or_refuse(DECLS, asset)
+    assert exc.value.refusals[0]["code"] == "ASSET_NOT_DECLARED"
+
+
+def test_a_shared_writer_run_fingerprints_every_table_it_touches():
+    sibs = ["bg_nakshatra_medical", "bg_sign_medical"]
+    unit = gad.declared_unit_or_refuse(DECLS, "bg_medical_mappings", sibs)
+    assert unit == "bg_medical_mappings+bg_nakshatra_medical+bg_sign_medical"
+    assert gad.unit_siblings(DECLS, "bg_medical_mappings", unit, sibs) == sibs
+    # dispatching the sign-medical id runs the same class: the same three tables, the asset's own unit first
+    assert gad.declared_unit_or_refuse(DECLS, "bg_sign_medical", ["bg_medical_mappings", "bg_nakshatra_medical"]) == "bg_sign_medical+bg_medical_mappings+bg_nakshatra_medical"
+
+
+def test_a_sibling_that_is_not_a_declared_unit_refuses_the_run_naming_it():
+    with pytest.raises(slw.LevelWaveRefusal) as exc:
+        gad.declared_unit_or_refuse(DECLS, "bg_ghatana", ["bg_compendium_index"])
+    r = exc.value.refusals[0]
+    assert r["code"] == "WRITER_SIBLING_NOT_DECLARED" and r["asset"] == "bg_compendium_index" and "no_plain_natural_key" in r["detail"]
+    with pytest.raises(slw.LevelWaveRefusal) as exc:                                   # a declared asset with a seeded / partial sibling reports every reason
+        gad.declared_unit_or_refuse(DECLS, "bg_ghatana", ["bg_texts"])
+    assert [r["code"] for r in exc.value.refusals] == ["FINGERPRINT_COVERAGE_PARTIAL", "GROUP_UNIT_SEEDED"]
+
+
+# ── the writer scan ──
+
+def _writers(env, **files):
+    d = pathlib.Path(env["repo"]) / gad.WRITERS_REL
+    for f in list(d.glob("*.py")):
+        f.unlink()
+    for name, body in files.items():
+        (d / name).write_text(body)
+    return env["repo"]
+
+
+def test_stacked_register_decorators_on_one_class_are_siblings_and_two_classes_are_not(env):
+    repo = _writers(env, **{"w.py": "@register('a')\n@register('b')\n@register('c')\nclass W:\n    pass\n", "v.py": "@register('x')\nclass A:\n    pass\n\n@register('y')\nclass B:\n    pass\n"})
+    assert gad.writer_siblings(repo, "a") == ["b", "c"] and gad.writer_siblings(repo, "c") == ["a", "b"]
+    assert gad.writer_siblings(repo, "x") == [] and gad.writer_siblings(repo, "y") == []
+
+
+def test_the_scan_resolves_a_module_constant_and_the_real_shapes(env):
+    repo = _writers(env, **{"w.py": "ID = 'a'\n@register(ID)\n@register(\"b\")\nclass W:\n    pass\n"})
+    assert gad.writer_siblings(repo, "a") == ["b"]
+    top = str(pathlib.Path(__file__).resolve().parents[4])
+    if (pathlib.Path(top) / gad.WRITERS_REL).is_dir():                                      # the committed tree: the two shared classes and nothing else we depend on
+        assert gad.writer_siblings(top, "bg_medical_mappings") == ["bg_nakshatra_medical", "bg_sign_medical"]
+        assert gad.writer_siblings(top, "bg_transit_rules") == ["bg_transit_engine"] and gad.writer_siblings(top, "bg_phaladeepika_latta") == []
+        assert gad.writer_siblings(top, "bg_vedha_malefic_scale") == []
+
+
+def test_the_scan_refuses_what_it_cannot_establish(env):
+    import shutil  # noqa: PLC0415
+    repo = _writers(env, **{"w.py": "@register(WHICH)\nclass W:\n    pass\n"})
+    with pytest.raises(slw.LevelWaveRefusal) as exc:
+        gad.writer_siblings(repo, "a")
+    assert exc.value.refusals[0]["code"] == "WRITER_SCAN_UNAVAILABLE" and "not a literal positional id" in exc.value.refusals[0]["detail"]
+    repo = _writers(env, **{"bad.py": "def (:\n"})
+    with pytest.raises(slw.LevelWaveRefusal) as exc:
+        gad.writer_siblings(repo, "a")
+    assert "cannot be parsed" in exc.value.refusals[0]["detail"]
+    shutil.rmtree(pathlib.Path(env["repo"]) / gad.WRITERS_REL)
+    with pytest.raises(slw.LevelWaveRefusal) as exc:
+        gad.writer_siblings(env["repo"], "a")
+    assert exc.value.refusals[0]["code"] == "WRITER_SCAN_UNAVAILABLE"
+
+
+def test_an_asset_that_no_scanned_class_registers_fails_closed_never_to_its_own_unit(env):
+    repo = _writers(env, **{"w.py": "@register('a')\nclass W:\n    pass\n"})
+    with pytest.raises(slw.LevelWaveRefusal) as exc:
+        gad.writer_siblings(repo, "nothing")
+    r = exc.value.refusals[0]
+    assert r["code"] == "WRITER_SCAN_UNAVAILABLE" and "no writer class" in r["detail"] and "registers nothing" in r["detail"] and "nothing" in r["detail"].rsplit("registers ", 1)[1]
+    code, ev = run(env, argv_for(env, asset="bg_not_registered_anywhere"), db=FakeDB(candidates=[[row("bg_not_registered_anywhere", scope="global", target="t")]]))
+    assert code != 0
+
+
+@pytest.mark.parametrize("decorator", ["@register(asset_id='a')", "@register(*IDS)", "@register()", "@writers.register(some_call())", "@register(f'{X}')", "@register(ID_NOT_A_CONSTANT)"])
+def test_every_register_form_the_scan_cannot_read_refuses_whatever_the_file_names(env, decorator):
+    # the asset 'a' is NOT named anywhere in this file: the old `asset in text` shortcut would have let it through
+    repo = _writers(env, **{"w.py": f"{decorator}\nclass W:\n    pass\n", "ok.py": "@register('a')\nclass K:\n    pass\n"})
+    with pytest.raises(slw.LevelWaveRefusal) as exc:
+        gad.writer_siblings(repo, "a")
+    assert exc.value.refusals[0]["code"] == "WRITER_SCAN_UNAVAILABLE" and "w.py" in exc.value.refusals[0]["detail"]
+
+
+def test_the_scan_is_recursive_and_skips_test_directories(env):
+    repo = _writers(env, **{"top.py": "@register('a')\nclass A:\n    pass\n"})
+    d = pathlib.Path(repo) / gad.WRITERS_REL
+    (d / "ph_sub").mkdir(exist_ok=True)
+    (d / "ph_sub" / "__init__.py").write_text("@register('b')\n@register('c')\nclass B:\n    pass\n")
+    (d / "__tests__").mkdir()
+    (d / "__tests__" / "test_x.py").write_text("@register('a')\n@register('zz_fake')\nclass T:\n    pass\n@register(UNRESOLVED)\nclass U:\n    pass\n")
+    assert gad.writer_siblings(repo, "b") == ["c"] and gad.writer_siblings(repo, "c") == ["b"]            # a package's __init__.py is read
+    assert gad.writer_siblings(repo, "a") == []                                                            # the test directory's fake sibling and unresolved decorator are not read
+    (d / "tests").mkdir(exist_ok=True)                                                                      # a `tests` directory (writers/tests holds test files) is skipped too
+    (d / "tests" / "test_y.py").write_text("@register('a')\n@register('phantom_sibling')\nclass P:\n    pass\n@register(WHICH)\nclass Q:\n    pass\n")
+    assert gad.writer_siblings(repo, "a") == []
+
+
+def test_the_committed_writers_tree_has_no_unreadable_register_form_and_registers_the_dispatchable_assets():
+    top = str(pathlib.Path(__file__).resolve().parents[4])
+    if not (pathlib.Path(top) / gad.WRITERS_REL).is_dir():
+        pytest.skip("no writers tree in this checkout")
+    for asset in ("bg_phaladeepika_latta", "bg_ontology", "bg_doshas", "bg_sign_medical", "bg_ghatana", "bg_remedies"):
+        gad.writer_siblings(top, asset)                                                                    # does not raise: every register form in the tree is readable
+
+
+def test_verify_run_refuses_when_the_checkouts_unit_differs_from_the_receipts(env):
+    onto, git = _mixed_env(env)
+    code, ev = run(env, argv_for(env, asset="bg_doshas"), db=FakeDB(candidates=[[onto]], downstream=()), fp=FakeFp((PRE_SHA,)), git=git)
+    token = last(ev)["confirm_token"]
+    db = FakeDB(candidates=[[onto]], downstream=(), dispositions={"bg_doshas": "build"})
+    orig = db.respond
+    db.respond = lambda sql, params: ([{"state": "lit", "last_built_at": db.ended, "duration_seconds": 5.0}] if "FROM asset_throughput WHERE asset_id = %s AND chart_id IS NULL" in sql else orig(sql, params))
+    code, ev = run(env, argv_for(env, asset="bg_doshas", commit=True, confirm=token), db=db, fp=FakeFp((PRE_SHA, PRE_SHA)), git=git, dispatch=Dispatch())
+    assert code == 0
+    rec = json.loads(pathlib.Path(env["receipt"]).read_text())
+    rec["pre_fingerprint"]["unit"] = "bg_doshas"                                                              # the receipt was committed under another unit than this checkout computes
+    pathlib.Path(env["receipt"]).write_text(json.dumps(rec))
+    run_row = {"id": rec["run_id"], "chart_id": CHART, "state": "completed", "triggered_by": rec["triggered_by"], "plan_manifest_digest": rec["manifest_digest"]}
+    args = gad.build_parser().parse_args(["--assets", "bg_doshas", "--anchor-chart", CHART, "--receipt", env["receipt"], "--repo", env["repo"], "--verify-run", rec["run_id"]])
+    code, ev = run(env, args, db=FakeDB(run_row=run_row), fp=FakeFp((PRE_SHA,)))
+    assert code == slw.REFUSAL_EXIT_CODE and codes_of(ev) == ["RECEIPT_UNIT_MISMATCH"] and "drift" in last(ev)["refusals"][0]["detail"]
+
+
+# ── the composed unit end to end ──
+
+def _mixed_env(env, asset="bg_doshas", **writer_files):
+    digests = {**env["digests"], asset: _hex(asset)}
+    (pathlib.Path(env["repo"]) / "platform/src/generated/nirmana-writer-digests.json").write_text(json.dumps({"version": 1, "writers": digests}))
+    if writer_files:
+        _writers(env, **writer_files)
+    return row(asset, scope="global", layer="brahmagyan", target="reference_doshas"), FakeGit(deployed=digests)
+
+
+def test_a_mixed_member_plans_over_both_units_with_a_composite_and_per_table_units(env):
+    onto, git = _mixed_env(env)
+    code, ev = run(env, argv_for(env, asset="bg_doshas"), db=FakeDB(candidates=[[onto]], downstream=()), fp=FakeFp((PRE_SHA,)), git=git)
+    s = last(ev)
+    assert code == 0, s
+    pre = s["pre_fingerprint"]
+    assert pre["unit"] == "bg_doshas+grp_brahma_ontology" and pre["units"] == ["bg_doshas", "grp_brahma_ontology"]
+    assert pre["table_units"]["brahma_ontology"] == "grp_brahma_ontology" and pre["table_units"]["reference_doshas"] == "bg_doshas"
+    assert pre["composite"] == gad.sha256_json({"schema": "suvarna-composed-unit/v1", "units": {"bg_doshas": PRE_SHA, "grp_brahma_ontology": PRE_SHA}})
+    fu = s["fingerprint_unit"]
+    assert fu["units"] == ["bg_doshas", "grp_brahma_ontology"] and "brahma_ontology" in fu["tables"] and "reference_doshas" in fu["tables"] and "bg_ontology" in fu["members"]
+    assert "WHOLE of every such table" in fu["note"]
+    rec = json.loads(pathlib.Path(env["receipt"]).read_text())
+    gad.validate_receipt(rec)
+    assert rec["pre_fingerprint"]["unit"] == "bg_doshas+grp_brahma_ontology"
+
+
+def test_a_change_confined_to_the_shared_table_is_caught_by_a_mixed_member(env):
+    onto, git = _mixed_env(env)
+    code, ev = run(env, argv_for(env, asset="bg_doshas"), db=FakeDB(candidates=[[onto]], downstream=()), fp=FakeFp((PRE_SHA,)), git=git)
+    token = last(ev)["confirm_token"]
+    db = FakeDB(candidates=[[onto]], downstream=(), dispositions={"bg_doshas": "build"})
+    orig = db.respond
+    db.respond = lambda sql, params: ([{"state": "lit", "last_built_at": db.ended, "duration_seconds": 5.0}] if "FROM asset_throughput WHERE asset_id = %s AND chart_id IS NULL" in sql else orig(sql, params))
+
+    class SliceChange(FakeFp):
+        def reader(self, conn, decls, units):
+            out = super().reader(conn, decls, units)
+            if self.calls >= 2:                                                  # the post read: only the shared group table differs
+                out["fingerprints"]["grp_brahma_ontology"] = POST_SHA
+                out["tables"]["grp_brahma_ontology"] = {t: {"sha256": POST_SHA, "rows": v["rows"]} for t, v in out["tables"]["grp_brahma_ontology"].items()}
+            return out
+    code, ev = run(env, argv_for(env, asset="bg_doshas", commit=True, confirm=token), db=db, fp=SliceChange((PRE_SHA,)), git=git, dispatch=Dispatch())
+    assert code == gad.EXIT_FINGERPRINT_CHANGED and last(ev)["verification"]["codes"] == ["FINGERPRINT_CHANGED_ON_FORCED_REBUILD"]
+
+
+def test_a_shared_writer_asset_is_planned_over_the_tables_of_every_sibling(env):
+    shared = "@register('bg_sign_medical')\n@register('bg_nakshatra_medical')\n@register('bg_medical_mappings')\nclass W:\n    pass\n"
+    onto, git = _mixed_env(env, asset="bg_medical_mappings", **{"bg_medical_mappings.py": shared})
+    reg = [row(a, scope="global", layer="brahmagyan", target=a) for a in ("bg_sign_medical", "bg_nakshatra_medical")]
+    code, ev = run(env, argv_for(env, asset="bg_medical_mappings"), db=FakeDB(candidates=[[onto]], downstream=(), registry=reg), fp=FakeFp((PRE_SHA,)), git=git)
+    s = last(ev)
+    assert code == 0, s
+    assert s["pre_fingerprint"]["unit"] == "bg_medical_mappings+bg_nakshatra_medical+bg_sign_medical" and set(s["pre_fingerprint"]["tables"]) == {"bg_medical_mappings", "bg_nakshatra_medical", "bg_sign_medical"}
+    assert s["fingerprint_unit"]["writer_siblings"] == ["bg_nakshatra_medical", "bg_sign_medical"]
+    rec = json.loads(pathlib.Path(env["receipt"]).read_text())
+    assert {d["asset_id"]: d["relations"] for d in rec["impact"]["dependents"]} == {a: ["sibling_in_fingerprint_unit"] for a in ("bg_nakshatra_medical", "bg_sign_medical")}
+    code, ev = run(env, argv_for(env, asset="bg_medical_mappings"), db=FakeDB(candidates=[[onto]], downstream=(), registry=reg, conflicts=[{"id": "r1", "chart_id": OTHER_CHART, "state": "running", "asset_id": "bg_sign_medical"}]),
+                   fp=FakeFp((PRE_SHA,)), git=git)
+    assert code == slw.REFUSAL_EXIT_CODE and codes_of(ev) == ["CONFLICTING_ACTIVE_RUN"]
+
+
+def test_a_shared_writer_run_with_an_undeclared_sibling_is_refused_before_anything_is_inserted(env):
+    shared = "@register('bg_compendium_index')\n@register('bg_ghatana')\nclass W:\n    pass\n"
+    onto, git = _mixed_env(env, asset="bg_ghatana", **{"bg_ghatana.py": shared})
+    db = FakeDB(candidates=[[onto]], downstream=())
+    code, ev = run(env, argv_for(env, asset="bg_ghatana"), db=db, fp=FakeFp((PRE_SHA,)), git=git)
+    assert code == slw.REFUSAL_EXIT_CODE and codes_of(ev) == ["WRITER_SIBLING_NOT_DECLARED"] and db.inserts("build_runs") == []
+
+
+def test_verify_run_recomputes_the_composed_unit_from_the_checkout(env):
+    onto, git = _mixed_env(env)
+    code, ev = run(env, argv_for(env, asset="bg_doshas"), db=FakeDB(candidates=[[onto]], downstream=()), fp=FakeFp((PRE_SHA,)), git=git)
+    token = last(ev)["confirm_token"]
+    db = FakeDB(candidates=[[onto]], downstream=(), dispositions={"bg_doshas": "build"})
+    orig = db.respond
+    db.respond = lambda sql, params: ([{"state": "lit", "last_built_at": db.ended, "duration_seconds": 5.0}] if "FROM asset_throughput WHERE asset_id = %s AND chart_id IS NULL" in sql else orig(sql, params))
+    code, ev = run(env, argv_for(env, asset="bg_doshas", commit=True, confirm=token), db=db, fp=FakeFp((PRE_SHA, PRE_SHA)), git=git, dispatch=Dispatch())
+    assert code == 0, last(ev)
+    rec = json.loads(pathlib.Path(env["receipt"]).read_text())
+    run_row = {"id": rec["run_id"], "chart_id": CHART, "state": "completed", "triggered_by": rec["triggered_by"], "plan_manifest_digest": rec["manifest_digest"]}
+    args = gad.build_parser().parse_args(["--assets", "bg_doshas", "--anchor-chart", CHART, "--receipt", env["receipt"], "--repo", env["repo"], "--verify-run", rec["run_id"]])
+    db2 = FakeDB(run_row=run_row, dispositions={"bg_doshas": "build"})
+    orig2 = db2.respond
+    db2.respond = lambda sql, params: ([{"state": "lit", "last_built_at": db2.ended, "duration_seconds": 5.0}] if "FROM asset_throughput WHERE asset_id = %s AND chart_id IS NULL" in sql else orig2(sql, params))
+    code, ev = run(env, args, db=db2, fp=FakeFp((PRE_SHA,)))
+    assert code == 0 and last(ev)["post_fingerprint"]["unit"] == "bg_doshas+grp_brahma_ontology"
+
+
+def test_a_group_whose_declaration_is_not_deterministic_is_refused_for_its_members(monkeypatch):
+    doc = json.loads(json.dumps(DECLS.doc))
+    doc["groups"]["brahma_ontology"]["reproducibility"] = ["platform_bound"]
+    d2 = fd.Declarations(doc=doc, sha256=DECLS.sha256, path=DECLS.path)
+    with pytest.raises(slw.LevelWaveRefusal) as exc:
+        gad.declared_unit_or_refuse(d2, "bg_ontology")
+    assert exc.value.refusals[0]["code"] == "FINGERPRINT_NOT_DETERMINISTIC"
+
+
+def test_a_group_member_plans_and_verifies_over_the_whole_shared_table(env):
+    asset, (unit, table) = "bg_ontology", GROUP_MEMBERS["bg_ontology"]
+    onto = row(asset, scope="global", layer="brahmagyan", target=table, part="entity_class, canonical_id")
+    digests = {**env["digests"], asset: _hex(asset)}
+    (pathlib.Path(env["repo"]) / "platform/src/generated/nirmana-writer-digests.json").write_text(json.dumps({"version": 1, "writers": digests}))
+    git = FakeGit(deployed=digests)
+    code, ev = run(env, argv_for(env, asset=asset), db=FakeDB(candidates=[[onto]]), fp=FakeFp((PRE_SHA,)), git=git)
+    s = last(ev)
+    assert code == 0, s
+    assert s["pre_fingerprint"]["unit"] == unit and list(s["pre_fingerprint"]["tables"]) == [table]
+    assert s["fingerprint_unit"]["unit"] == unit and asset in s["fingerprint_unit"]["members"] and "WHOLE of every such table" in s["fingerprint_unit"]["note"]
+    token = s["confirm_token"]
+    db2 = FakeDB(candidates=[[onto]], dispositions={asset: "build"})
+    orig2 = db2.respond
+    db2.respond = lambda sql, params: ([{"state": "lit", "last_built_at": db2.ended, "duration_seconds": 12.0}] if "FROM asset_throughput WHERE asset_id = %s AND chart_id IS NULL" in sql
+                                       else orig2(sql, params))
+    code, ev = run(env, argv_for(env, asset=asset, commit=True, confirm=token), db=db2, fp=FakeFp((PRE_SHA, POST_SHA)), git=git, dispatch=Dispatch())
+    assert code == gad.EXIT_FINGERPRINT_CHANGED and last(ev)["verification"]["codes"] == ["FINGERPRINT_CHANGED_ON_FORCED_REBUILD"]       # another member's slice changing is caught too
+
+
+# ── group siblings: listed in the impact, their lit rows need acceptance, a concurrent run of one refuses ──
+
+def _onto(env):
+    asset, table = "bg_ontology", "brahma_ontology"
+    onto = row(asset, scope="global", layer="brahmagyan", target=table, part="entity_class, canonical_id")
+    digests = {**env["digests"], asset: _hex(asset)}
+    (pathlib.Path(env["repo"]) / "platform/src/generated/nirmana-writer-digests.json").write_text(json.dumps({"version": 1, "writers": digests}))
+    return asset, onto, FakeGit(deployed=digests)
+
+
+def test_the_siblings_of_a_group_unit_are_listed_in_the_impact_with_their_relation(env):
+    asset, onto, git = _onto(env)
+    assert gad.unit_siblings(DECLS, asset, "grp_brahma_ontology") == ["bg_dasha_systems", "bg_doshas", "bg_yogas"]
+    assert gad.unit_siblings(DECLS, ASSET, ASSET) == []
+    reg = [row(a, scope="global", layer="brahmagyan", target="brahma_ontology") for a in ("bg_dasha_systems", "bg_doshas", "bg_yogas")]
+    code, ev = run(env, argv_for(env, asset=asset), db=FakeDB(candidates=[[onto]], downstream=(), registry=reg), fp=FakeFp((PRE_SHA,)), git=git)
+    s = last(ev)
+    assert code == 0, s
+    rec = json.loads(pathlib.Path(env["receipt"]).read_text())
+    deps = {d["asset_id"]: d["relations"] for d in rec["impact"]["dependents"]}
+    assert deps == {a: ["sibling_in_fingerprint_unit"] for a in ("bg_dasha_systems", "bg_doshas", "bg_yogas")}
+    assert s["impact_summary"]["dependents"] == 3
+
+
+def test_a_lit_row_of_a_sibling_needs_its_own_acceptance(env):
+    asset, onto, git = _onto(env)
+    sib = {"asset_id": "bg_doshas", "chart_id": None, "state": "lit", "last_built_at": T0, "freshness_state": "fresh"}
+    db = FakeDB(candidates=[[onto]], downstream=(), throughput=[sib])
+    code, ev = run(env, argv_for(env, asset=asset), db=db, fp=FakeFp((PRE_SHA,)), git=git)
+    assert code == slw.REFUSAL_EXIT_CODE and last(ev)["refusals"][0]["rows"] == ["bg_doshas@global"] and db.inserts("build_runs") == []
+    code, ev = run(env, argv_for(env, "--accept-lit-dependent", "bg_doshas@global", asset=asset), db=FakeDB(candidates=[[onto]], downstream=(), throughput=[sib]),
+                   fp=FakeFp((PRE_SHA,)), git=git)
+    assert code == 0
+
+
+def test_a_concurrent_run_of_a_sibling_is_looked_for_by_id_and_refuses(env):
+    asset, onto, git = _onto(env)
+    conflict = {"id": "r9", "chart_id": OTHER_CHART, "state": "running", "asset_id": "bg_yogas"}
+    db = FakeDB(candidates=[[onto]], downstream=(), conflicts=[conflict])
+    code, ev = run(env, argv_for(env, asset=asset), db=db, fp=FakeFp((PRE_SHA,)), git=git)
+    assert code == slw.REFUSAL_EXIT_CODE and codes_of(ev) == ["CONFLICTING_ACTIVE_RUN"] and db.inserts("build_runs") == []
+    q = [e for e in db.statements() if "bra.asset_id = ANY(%s)" in e[1]]
+    assert q and set(q[0][2][0]) == {"bg_ontology", "bg_dasha_systems", "bg_doshas", "bg_yogas"}      # the siblings are in the ids the conflict query is run for
+
+
+# ── the transit seed group (SS ruling 2): bg_transit_rules + bg_transit_engine (+ moorti) through ONE writer class ──
+
+def test_the_transit_writer_pair_is_one_group_unit_whichever_id_is_dispatched():
+    for asset, sib in (("bg_transit_rules", "bg_transit_engine"), ("bg_transit_engine", "bg_transit_rules")):
+        unit = gad.declared_unit_or_refuse(DECLS, asset, [sib])
+        assert unit == "grp_bg_transit_seed"                                            # own unit and the sibling's are the same group: composed once
+        assert gad.declared_unit_or_refuse(DECLS, asset) == unit
+        assert gad.unit_siblings(DECLS, asset, unit, [sib]) == [sib]
+    assert DECLS.tables("grp_bg_transit_seed") == ["bg_transit_rules", "bg_transit_engine", "bg_transit_moorti"]
+    assert DECLS.partial_ownership_units()["grp_bg_transit_seed"] == ["bg_transit_rules"]
+
+
+def test_the_real_writer_scan_finds_the_transit_pair_and_the_medical_triple():
+    top = str(pathlib.Path(__file__).resolve().parents[4])
+    if not (pathlib.Path(top) / gad.WRITERS_REL).is_dir():
+        pytest.skip("no writers tree in this checkout")
+    assert gad.writer_siblings(top, "bg_transit_rules") == ["bg_transit_engine"] and gad.writer_siblings(top, "bg_transit_engine") == ["bg_transit_rules"]
+    sibs = gad.writer_siblings(top, "bg_transit_rules")
+    assert gad.declared_unit_or_refuse(DECLS, "bg_transit_rules", sibs) == "grp_bg_transit_seed"
+
+
+def test_bg_transit_rules_plans_over_the_whole_transit_group_and_a_sibling_conflict_refuses(env):
+    shared = "@register('bg_transit_rules')\n@register('bg_transit_engine')\nclass W:\n    pass\n"
+    asset = "bg_transit_rules"
+    digests = {**env["digests"], asset: _hex(asset)}
+    (pathlib.Path(env["repo"]) / "platform/src/generated/nirmana-writer-digests.json").write_text(json.dumps({"version": 1, "writers": digests}))
+    _writers(env, **{"bg_transit_rules.py": shared})
+    git = FakeGit(deployed=digests)
+    cand = row(asset, scope="global", layer="brahmagyan", target="bg_transit_rules")
+    code, ev = run(env, argv_for(env, asset=asset), db=FakeDB(candidates=[[cand]], downstream=()), fp=FakeFp((PRE_SHA,)), git=git)
+    s = last(ev)
+    assert code == 0, s
+    assert s["pre_fingerprint"]["unit"] == "grp_bg_transit_seed" and set(s["pre_fingerprint"]["tables"]) == {"bg_transit_rules", "bg_transit_engine", "bg_transit_moorti"}
+    assert s["fingerprint_unit"]["writer_siblings"] == ["bg_transit_engine"] and "bg_transit_engine" in s["fingerprint_unit"]["members"]
+    rec = json.loads(pathlib.Path(env["receipt"]).read_text())
+    assert [d["asset_id"] for d in rec["impact"]["dependents"]] == ["bg_transit_engine"]
+    code, ev = run(env, argv_for(env, asset=asset), db=FakeDB(candidates=[[cand]], downstream=(), conflicts=[{"id": "r1", "chart_id": OTHER_CHART, "state": "running", "asset_id": "bg_transit_engine"}]),
+                   fp=FakeFp((PRE_SHA,)), git=git)
+    assert code == slw.REFUSAL_EXIT_CODE and codes_of(ev) == ["CONFLICTING_ACTIVE_RUN"]
+
+
+def test_the_partial_ownership_table_is_fingerprinted_whole_so_a_touched_migration_row_is_a_change(env):
+    shared = "@register('bg_transit_rules')\n@register('bg_transit_engine')\nclass W:\n    pass\n"
+    asset = "bg_transit_rules"
+    digests = {**env["digests"], asset: _hex(asset)}
+    (pathlib.Path(env["repo"]) / "platform/src/generated/nirmana-writer-digests.json").write_text(json.dumps({"version": 1, "writers": digests}))
+    _writers(env, **{"bg_transit_rules.py": shared})
+    git = FakeGit(deployed=digests)
+    cand = row(asset, scope="global", layer="brahmagyan", target="bg_transit_rules")
+    code, ev = run(env, argv_for(env, asset=asset), db=FakeDB(candidates=[[cand]], downstream=()), fp=FakeFp((PRE_SHA,)), git=git)
+    token = last(ev)["confirm_token"]
+    db = FakeDB(candidates=[[cand]], downstream=(), dispositions={asset: "build"})
+    orig = db.respond
+    db.respond = lambda sql, params: ([{"state": "lit", "last_built_at": db.ended, "duration_seconds": 5.0}] if "FROM asset_throughput WHERE asset_id = %s AND chart_id IS NULL" in sql else orig(sql, params))
+    code, ev = run(env, argv_for(env, asset=asset, commit=True, confirm=token), db=db, fp=FakeFp((PRE_SHA, POST_SHA)), git=git, dispatch=Dispatch())
+    assert code == gad.EXIT_FINGERPRINT_CHANGED
+
+
+# ── workflow-owned exclusions (bg_remedies: remedy_review_queue), expected-change mode only ──
+
+REM = "bg_remedies"
+
+
+def _rem_env(env):
+    digests = {**env["digests"], REM: _hex(REM)}
+    (pathlib.Path(env["repo"]) / "platform/src/generated/nirmana-writer-digests.json").write_text(json.dumps({"version": 1, "writers": digests}))
+    return row(REM, scope="global", layer="brahmagyan", target="brahma_remedy_corpus"), FakeGit(deployed=digests)
+
+
+def _rem_spec(env, name="rem.json", **kw):
+    d = dict(asset=REM, excluded_tables_acknowledged=["remedy_review_queue"])
+    d.update(kw)
+    return write_spec(env, name, **d)
+
+
+def test_the_declaration_carries_the_workflow_owned_exclusion_and_only_for_every_not_covered_table():
+    ex = DECLS.partial_exclusions(REM)
+    assert [e["table"] for e in ex] == ["remedy_review_queue"] and ex[0]["code"] == "workflow_owned_rows" and "may still insert rejected rows" in ex[0]["detail"]
+    assert DECLS.partial_exclusions("bg_texts") == [] and DECLS.partial_exclusions("bg_phaladeepika_latta") == [] and DECLS.partial_exclusions("bg_nope") == []
+    doc = json.loads(json.dumps(DECLS.doc))
+    doc["assets"][REM]["not_covered_tables"].append({"name": "x_other", "reason": "r" * 70, "evidence": ["platform/python-sidecar/brahmagyan/l0_remedy_loader.py:128"]})
+    assert fd.Declarations(doc=doc, sha256="x", path="p").partial_exclusions(REM) == []             # one non-excluded not-covered table keeps the refusal
+
+
+def test_a_partial_asset_with_an_exclusion_is_refused_by_default_and_admitted_only_in_expected_change_mode():
+    with pytest.raises(slw.LevelWaveRefusal) as exc:
+        gad.declared_unit_or_refuse(DECLS, REM)
+    r = exc.value.refusals[0]
+    assert r["code"] == "FINGERPRINT_COVERAGE_PARTIAL" and "remedy_review_queue" in r["detail"] and "expected-change mode" in r["detail"]
+    assert gad.declared_unit_or_refuse(DECLS, REM, allow_excluded_partial=True) == REM
+    for a in ("bg_texts",):                                                                          # a partial asset WITHOUT exclusions stays refused in both modes
+        with pytest.raises(slw.LevelWaveRefusal) as exc2:
+            gad.declared_unit_or_refuse(DECLS, a, allow_excluded_partial=True)
+        assert "FINGERPRINT_COVERAGE_PARTIAL" in [x["code"] for x in exc2.value.refusals]
+
+
+def test_the_default_mode_refuses_bg_remedies_before_anything_is_inserted(env):
+    onto, git = _rem_env(env)
+    db = FakeDB(candidates=[[onto]], downstream=())
+    code, ev = run(env, argv_for(env, asset=REM), db=db, fp=FakeFp((PRE_SHA,)), git=git)
+    assert code == slw.REFUSAL_EXIT_CODE and codes_of(ev) == ["FINGERPRINT_COVERAGE_PARTIAL"] and db.inserts("build_runs") == []
+
+
+@pytest.mark.parametrize("ack", [None, [], ["other_table"], ["remedy_review_queue", "other_table"]])
+def test_the_expected_change_file_must_acknowledge_exactly_the_excluded_tables(env, ack):
+    onto, git = _rem_env(env)
+    path = write_spec(env, "rem.json", asset=REM, excluded_tables_acknowledged=(ack if ack is not None else ...))
+    if ack == []:
+        with pytest.raises(slw.LevelWaveRefusal):
+            gad.load_expected_change(path, REM)                                                      # an empty list is not an acknowledgement (the file schema refuses it)
+        return
+    db = FakeDB(candidates=[[onto]], downstream=())
+    code, ev = run(env, xargs(env, path, asset=REM), db=db, fp=FakeFpRows((PRE_SHA,), (ROWS_PRE,)), git=git)
+    assert code == slw.REFUSAL_EXIT_CODE and codes_of(ev) == ["EXCLUDED_TABLES_NOT_ACKNOWLEDGED"] and db.inserts("build_runs") == []
+    assert last(ev)["refusals"][0]["excluded"][0]["table"] == "remedy_review_queue"
+
+
+def test_an_acknowledgement_on_an_asset_with_no_exclusion_is_refused(env):
+    path = write_spec(env, "ack.json", excluded_tables_acknowledged=["remedy_review_queue"])
+    code, ev = run(env, xargs(env, path), fp=FakeFpRows((PRE_SHA,), (ROWS_PRE,)))
+    assert code == slw.REFUSAL_EXIT_CODE and codes_of(ev) == ["EXCLUDED_TABLES_NOT_ACKNOWLEDGED"]
+
+
+def test_the_acknowledgement_field_shape(env):
+    for bad in ("remedy_review_queue", ["Bad Name"], ["a", "a"], [1], [f"t{i}" for i in range(9)]):
+        with pytest.raises(slw.LevelWaveRefusal):
+            gad.load_expected_change(write_spec(env, "b.json", asset=ASSET, excluded_tables_acknowledged=bad), ASSET)
+    spec, _ = gad.load_expected_change(write_spec(env, "g.json", asset=ASSET, excluded_tables_acknowledged=["b_t", "a_t"]), ASSET)
+    assert spec["excluded_tables_acknowledged"] == ["a_t", "b_t"]
+    assert "excluded_tables_acknowledged" not in gad.load_expected_change(write_spec(env, "n.json"), ASSET)[0]
+
+
+def test_the_token_binds_the_excluded_tables():
+    base = dict(manifest_digest=_hex("m"), asset=REM, anchor_chart=CHART, image_sha=sha_of("x"), impact_sha256=_hex("i"), pre_fingerprint=_hex("p"), accepted_lit=[], allow_redispatch=[],
+                expected_change_sha256=_hex("f"), accepted_changed_output=True)
+    t0 = gad.build_confirm_token(**base)
+    assert gad.build_confirm_token(**base, excluded_tables=["remedy_review_queue"]) != t0
+    assert gad.build_confirm_token(**base, excluded_tables=[]) == t0
+    assert gad.build_confirm_token(**base, excluded_tables=["a", "b"]) == gad.build_confirm_token(**base, excluded_tables=["b", "a"])
+
+
+def test_the_token_binds_the_declared_exclusion_text_only_when_a_table_is_excluded():
+    base = dict(manifest_digest=_hex("m"), asset=REM, anchor_chart=CHART, image_sha=sha_of("x"), impact_sha256=_hex("i"), pre_fingerprint=_hex("p"), accepted_lit=[], allow_redispatch=[],
+                expected_change_sha256=_hex("f"), accepted_changed_output=True)
+    t_names = gad.build_confirm_token(**base, excluded_tables=["remedy_review_queue"])
+    t_a = gad.build_confirm_token(**base, excluded_tables=["remedy_review_queue"], excluded_text_sha256=_hex("text-a"))
+    t_b = gad.build_confirm_token(**base, excluded_tables=["remedy_review_queue"], excluded_text_sha256=_hex("text-b"))
+    assert len({t_names, t_a, t_b}) == 3 and t_a == gad.build_confirm_token(**base, excluded_tables=["remedy_review_queue"], excluded_text_sha256=_hex("text-a"))
+    # nothing excluded: the text digest is not part of the token (default tokens unchanged), and neither is it in default (non expected-change) mode
+    t0 = gad.build_confirm_token(**base)
+    assert gad.build_confirm_token(**base, excluded_text_sha256=_hex("text-a")) == t0
+    assert gad.build_confirm_token(**base, excluded_tables=[], excluded_text_sha256=_hex("text-a")) == t0
+    d0 = {k: v for k, v in base.items() if k not in ("expected_change_sha256", "accepted_changed_output")}
+    assert gad.build_confirm_token(**d0, excluded_tables=["t"], excluded_text_sha256=_hex("x")) == gad.build_confirm_token(**d0)
+    # the digest is over the sorted [table, code, detail] triples
+    ex = [{"asset": REM, "table": "b_t", "code": "workflow_owned_rows", "detail": "d2"}, {"asset": REM, "table": "a_t", "code": "workflow_owned_rows", "detail": "d1"}]
+    assert gad.exclusion_text_digest(ex) == gad.sha256_json([["a_t", "workflow_owned_rows", "d1"], ["b_t", "workflow_owned_rows", "d2"]]) == gad.exclusion_text_digest(ex[::-1])
+    assert gad.exclusion_text_digest([]) is None
+    assert gad.exclusion_text_digest([{**ex[0], "detail": "d2 edited"}, ex[1]]) != gad.exclusion_text_digest(ex)
+
+
+def test_editing_the_declared_exclusion_text_changes_the_plan_token_and_the_old_token_is_refused(env):
+    onto, git = _rem_env(env)
+    path = _rem_spec(env)
+    kw = dict(db=FakeDB(candidates=[[onto]], downstream=()), fp=FakeFpRows((PRE_SHA,), (ROWS_PRE,)), git=git)
+    code, ev = run(env, xargs(env, path, asset=REM), **kw)
+    assert code == 0, last(ev)
+    t0 = last(ev)["confirm_token"]
+    code, ev = run(env, xargs(env, path, asset=REM), **{**kw, "fp": FakeFpRows((PRE_SHA,), (ROWS_PRE,))})
+    assert last(ev)["confirm_token"] == t0                                              # same declarations: same token
+    doc = json.loads(json.dumps(DECLS.doc))
+    nc = doc["assets"][REM]["not_covered_tables"]
+    assert nc[0]["exclusion"]["detail"]
+    nc[0]["exclusion"]["detail"] = nc[0]["exclusion"]["detail"] + " (reworded)"
+    edited = fd.Declarations(doc=doc, sha256=DECLS.sha256, path=DECLS.path)
+    code, ev = run(env, xargs(env, path, asset=REM), **{**kw, "fp": FakeFpRows((PRE_SHA,), (ROWS_PRE,))}, decls=edited)
+    assert code == 0, last(ev)
+    assert last(ev)["confirm_token"] != t0                                              # the declared text is bound: a reworded exclusion needs a new confirmation
+    db = FakeDB(candidates=[[onto]], downstream=(), dispositions={REM: "build"})
+    code, ev = run(env, xargs(env, path, asset=REM, commit=True, confirm=t0), db=db, fp=FakeFpRows((PRE_SHA, POST_SHA), (ROWS_PRE, ROWS_POST)), git=git, dispatch=Dispatch(), decls=edited)
+    assert code == slw.REFUSAL_EXIT_CODE and codes_of(ev) == ["CONFIRM_TOKEN_MISMATCH"], last(ev)      # the token printed for the old text does not authorise the reworded one
+
+
+def test_bg_remedies_plans_commits_and_records_the_exclusion_in_expected_change_mode(env):
+    onto, git = _rem_env(env)
+    path = _rem_spec(env)
+    code, ev = run(env, xargs(env, path, asset=REM), db=FakeDB(candidates=[[onto]], downstream=()), fp=FakeFpRows((PRE_SHA,), (ROWS_PRE,)), git=git)
+    s = last(ev)
+    assert code == 0, s
+    ex = s["excluded_from_comparison"]
+    assert [t["table"] for t in ex["tables"]] == ["remedy_review_queue"] and "NOT fingerprinted" in ex["note"] and "may still WRITE to them" in ex["note"]
+    assert "may still insert rejected rows into it and delete obsolete tantric rows" in ex["note"] and ex["note"].startswith("EXCLUDED FROM THE COMPARISON: remedy_review_queue:")
+    assert s["pre_fingerprint"]["unit"] == REM and list(s["pre_fingerprint"]["tables"]) == ["brahma_remedy_corpus"]
+    rec = json.loads(pathlib.Path(env["receipt"]).read_text())
+    gad.validate_receipt(rec)
+    et = rec["expected_change"]["excluded_tables"]
+    assert [(x["table"], x["code"]) for x in et] == [("remedy_review_queue", "workflow_owned_rows")] and "may still insert rejected rows into it and delete obsolete tantric rows" in et[0]["detail"]
+    token = s["confirm_token"]
+    db = FakeDB(candidates=[[onto]], downstream=(), dispositions={REM: "build"})
+    orig = db.respond
+    db.respond = lambda sql, params: ([{"state": "lit", "last_built_at": db.ended, "duration_seconds": 5.0}] if "FROM asset_throughput WHERE asset_id = %s AND chart_id IS NULL" in sql else orig(sql, params))
+    code, ev = run(env, xargs(env, path, asset=REM, commit=True, confirm=token), db=db, fp=FakeFpRows((PRE_SHA, POST_SHA), (ROWS_PRE, ROWS_POST)), git=git, dispatch=Dispatch())
+    assert code == 0, last(ev)
+    rec = json.loads(pathlib.Path(env["receipt"]).read_text())
+    assert rec["expected_change"]["outcome"] == "MET" and rec["expected_change"]["excluded_tables"][0]["table"] == "remedy_review_queue"
+
+
+def test_the_receipt_schema_checks_the_excluded_tables_block(env):
+    rec = _valid_receipt(env)
+    block = {"file_sha256": _hex("f"), "spec": _spec(), "accepted_changed_output": True, "pre_row_count": 8, "post_row_count": None, "outcome": None}
+    gad.validate_receipt(dict(rec, expected_change={**block, "excluded_tables": [{"table": "t", "code": "workflow_owned_rows", "detail": "the loader may write here"}]}))
+    for bad in ([], [{"table": "t"}], ["t"], [{"table": "t", "code": "c", "detail": "d", "x": 1}], [{"table": "t", "code": "c", "detail": " "}], [{"table": "t", "code": "c"}], "t"):
+        with pytest.raises(slw.LevelWaveError):
+            gad.validate_receipt(dict(rec, expected_change={**block, "excluded_tables": bad}))
+
+
+# ── review fixes: the exclusion is stated in the CHANGING REBUILD block, and verify-run refuses a drifted exclusion ──
+
+def test_the_changing_rebuild_block_and_the_not_accepted_refusal_state_the_exclusion_and_that_the_loader_may_write(env):
+    onto, git = _rem_env(env)
+    path = _rem_spec(env)
+    code, ev = run(env, xargs(env, path, accept=False, asset=REM), db=FakeDB(candidates=[[onto]], downstream=()), fp=FakeFpRows((PRE_SHA,), (ROWS_PRE,)), git=git)
+    r = last(ev)["refusals"][0]
+    assert code == slw.REFUSAL_EXIT_CODE and r["code"] == "CHANGED_OUTPUT_NOT_ACCEPTED"
+    block = "\n".join(r["changed_output_lines"])
+    assert "EXCLUDED FROM THE COMPARISON: remedy_review_queue:" in block and "may still insert rejected rows into it and delete obsolete tantric rows" in block and "may still WRITE to it" in block
+    code, ev = run(env, xargs(env, path, asset=REM), db=FakeDB(candidates=[[onto]], downstream=()), fp=FakeFpRows((PRE_SHA,), (ROWS_PRE,)), git=git)
+    plan_block = "\n".join(last(ev)["expected_change"]["changed_output_lines"])
+    assert "EXCLUDED FROM THE COMPARISON: remedy_review_queue:" in plan_block and "may still WRITE to it" in plan_block
+    assert gad.changed_output_lines({"asset": "a", "dependents": []}, _spec(), 3) == gad.changed_output_lines({"asset": "a", "dependents": []}, _spec(), 3, [])      # no exclusion: no extra line
+
+
+def _committed_rem_receipt(env):
+    onto, git = _rem_env(env)
+    path = _rem_spec(env)
+    code, ev = run(env, xargs(env, path, asset=REM), db=FakeDB(candidates=[[onto]], downstream=()), fp=FakeFpRows((PRE_SHA,), (ROWS_PRE,)), git=git)
+    token = last(ev)["confirm_token"]
+    db = FakeDB(candidates=[[onto]], downstream=(), dispositions={REM: "build"})
+    orig = db.respond
+    db.respond = lambda sql, params: ([{"state": "lit", "last_built_at": db.ended, "duration_seconds": 5.0}] if "FROM asset_throughput WHERE asset_id = %s AND chart_id IS NULL" in sql else orig(sql, params))
+    code, ev = run(env, xargs(env, path, asset=REM, commit=True, confirm=token), db=db, fp=FakeFpRows((PRE_SHA, POST_SHA), (ROWS_PRE, ROWS_POST)), git=git, dispatch=Dispatch())
+    assert code == 0
+    rec = json.loads(pathlib.Path(env["receipt"]).read_text())
+    run_row = {"id": rec["run_id"], "chart_id": CHART, "state": "completed", "triggered_by": rec["triggered_by"], "plan_manifest_digest": rec["manifest_digest"]}
+    args = gad.build_parser().parse_args(["--assets", REM, "--anchor-chart", CHART, "--receipt", env["receipt"], "--repo", env["repo"], "--verify-run", rec["run_id"], "--expected-change", path])
+    return rec, args, run_row, git
+
+
+def test_verify_run_accepts_an_unchanged_exclusion_and_refuses_a_drifted_one(env):
+    rec, args, run_row, git = _committed_rem_receipt(env)
+    db = FakeDB(run_row=run_row, dispositions={REM: "build"})
+    orig = db.respond
+    db.respond = lambda sql, params: ([{"state": "lit", "last_built_at": db.ended, "duration_seconds": 5.0}] if "FROM asset_throughput WHERE asset_id = %s AND chart_id IS NULL" in sql else orig(sql, params))
+    code, ev = run(env, args, db=db, fp=FakeFpRows((POST_SHA,), (ROWS_POST,)), git=git)
+    assert code == 0, last(ev)
+    # the declared text edited after the commit
+    doc = json.loads(json.dumps(DECLS.doc))
+    doc["assets"][REM]["not_covered_tables"][0]["exclusion"]["detail"] += " Edited after the run."
+    drifted = fd.Declarations(doc=doc, sha256=DECLS.sha256, path=DECLS.path)
+    code, ev = run(env, args, db=FakeDB(run_row=run_row), fp=FakeFpRows((POST_SHA,), (ROWS_POST,)), git=git, decls=drifted)
+    assert code == slw.REFUSAL_EXIT_CODE and codes_of(ev) == ["RECEIPT_EXCLUSION_DRIFT"] and "declared text differs" in last(ev)["refusals"][0]["detail"]
+    # the exclusion removed from the declarations: the file's acknowledgement no longer matches
+    doc2 = json.loads(json.dumps(DECLS.doc))
+    del doc2["assets"][REM]["not_covered_tables"][0]["exclusion"]
+    code, ev = run(env, args, db=FakeDB(run_row=run_row), fp=FakeFpRows((POST_SHA,), (ROWS_POST,)), git=git, decls=fd.Declarations(doc=doc2, sha256=DECLS.sha256, path=DECLS.path))
+    assert code == slw.REFUSAL_EXIT_CODE and codes_of(ev)[0] in ("FINGERPRINT_COVERAGE_PARTIAL", "EXCLUDED_TABLES_NOT_ACKNOWLEDGED")
+
+
+def test_a_receipt_without_exclusions_must_see_none_now():
+    gad.check_receipt_exclusions(None, [])
+    gad.check_receipt_exclusions({"excluded_tables": []}, [])
+    with pytest.raises(slw.LevelWaveRefusal) as exc:
+        gad.check_receipt_exclusions(None, [{"table": "t", "code": "workflow_owned_rows", "detail": "d"}])
+    assert exc.value.refusals[0]["code"] == "RECEIPT_EXCLUSION_DRIFT"
+    with pytest.raises(slw.LevelWaveRefusal):
+        gad.check_receipt_exclusions({"excluded_tables": [{"table": "t", "code": "c", "detail": "d"}]}, [])

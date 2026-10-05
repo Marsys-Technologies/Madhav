@@ -1,0 +1,14 @@
+-- ACCEPTANCE_SANGATI_INTEGRITY.sql.txt (lane TI-mig-1299, bo_sangati integrity conjunct 3; for the pinned S-L2 acceptance set)
+--
+-- Criterion: after migration 1299 is applied and bo_sangati is rebuilt in S-L2 run 2, (a) the registered integrity_check_sql of bo_sangati is the
+-- 1299 text, and (b) every bodha_cdlm_cells row of the canonical chart (482012f1-710e-4a25-994a-93821f5871aa) satisfies the relation that holds:
+-- both counts >= 0 and (shared_signal_count > 0) = (shared_factor_count > 0). shared_factor_count is the number of DISTINCT constituent-fact roots
+-- across the shared signals, so it legitimately differs from shared_signal_count; unequal_counts is reported for information, NOT a failure.
+-- Each statement is ONE read-only SELECT, no semicolon inside.
+-- PASS after S-L2: S1 md5 = 222188fd9a48644176f34311fd3ea5f6 and chars = 2539; S2 violating_cells = 0 (cells > 0).
+
+-- S1_bo_sangati_integrity_text_is_the_1299_text
+SELECT md5(integrity_check_sql) AS md5, length(integrity_check_sql) AS chars, position('shared_signal_count != shared_factor_count' IN integrity_check_sql) AS old_conjunct_position FROM asset_registry WHERE asset_id = 'bo_sangati'
+
+-- S2_every_canonical_cdlm_cell_has_shared_roots_exactly_when_it_has_shared_signals
+SELECT count(*) AS cells, count(*) FILTER (WHERE shared_signal_count <> shared_factor_count) AS unequal_counts, count(*) FILTER (WHERE shared_signal_count < 0 OR shared_factor_count < 0 OR (shared_signal_count > 0) <> (shared_factor_count > 0)) AS violating_cells FROM bodha_cdlm_cells WHERE chart_id = '482012f1-710e-4a25-994a-93821f5871aa'
