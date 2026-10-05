@@ -67,7 +67,7 @@ on:
         required: false
         default: false
       gochara_contracts_schema_migration:
-        description: 'Explicitly authorize the temporary protected schema window for exact Gochara contract migrations 1153-1157, 1204, 1206, 1232, 1233, 1240 (Pravāha A5.1 + B6.0 v1.5 amendment AM-7 + AM-5 search-completeness storage)'
+        description: 'Explicitly authorize the temporary protected schema window for exact Gochara contract migrations 1153-1157, 1204, 1206, 1232, 1233, 1240, 1308 (Pravāha A5.1 + B6.0 v1.5 amendment AM-7 + AM-5 search-completeness storage)'
         type: boolean
         required: false
         default: false
@@ -1107,6 +1107,11 @@ jobs:
             # migration numbered below 1240 (1234 builder grants, and any of 1235/1236 that exist) must ALREADY be applied by an
             # ordinary deploy BEFORE this window is dispatched.
             migrations+=(1240_gochara_window_verification_gate.sql)
+            # Pravāha ND-P2-20261005 near-miss storage — 1308, SECOND protected window, LAST of its train (after G12's 1305, G8's 1306 and the
+            # publication CHECK 1307, each of which adds its own line above this one). Additive only: three NEW tables (near-miss object,
+            # occurrence = the standalone unscored interval, search coverage), their triggers on EXISTING guard functions, indexes and grants to
+            # the roles that exist. It creates no function, alters no existing table and replaces nothing. PRECONDITION: as above.
+            migrations+=(1308_gochara_near_miss_storage.sql)
           fi
           if [ "$APPLY_AI_METERING_SCHEMA_MIGRATION" = "true" ]; then
             migrations+=(1202_ai_metering_ledger.sql)

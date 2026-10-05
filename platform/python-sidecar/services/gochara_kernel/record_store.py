@@ -179,25 +179,46 @@ class PointOccurrence:
     precision_regime: str | None
 
 
+def _root_segment(index, root):
+    """The station-bounded monotone SEGMENT (arcs.build_arc_index stage 1, `index.segments`) that contains the root's arc. Stage 2 of the arc
+    index splits every segment at each 360-degree band so the root SEARCH can be range-joined by degree; those splits are artefacts of the
+    longitude representation, not physical boundaries. Only a station (or the knot window's edge) ends a contact's support."""
+    arc = root.arc
+    for seg in index.segments:
+        if seg.start_jd - 1e-9 <= arc.start_jd and arc.end_jd <= seg.end_jd + 1e-9:
+            return seg
+    raise RuntimeError(
+        f"{arc.body}: no station-bounded segment contains the root's arc [{arc.start_jd}, {arc.end_jd}] — arc index defect, refusing to derive a support")
+
+
 def _in_orb_span_around_root(index, root, orb_deg: float) -> tuple[float, float]:
     """The in-orb interval around one refined root, derived from the root's
-    OWN arc (monotone, station-bounded — a turnaround inside the orb closes
-    the interval at the arc's station boundary, E8-2).
+    station-bounded SEGMENT (monotone — a turnaround inside the orb closes the
+    interval at the segment's station boundary, E8-2).
+
+    WRAP CUTS ARE NOT BOUNDARIES (steward WRAP-FIX, 2026-10-05). This used to
+    stop at the root's ARC, but an arc is also cut at every 360-degree band, so
+    a support for a ray level within one degree of 0/360 stopped at the cut: on
+    the real chart Saturn's aspect to natal Mercury (ray level 0.839) started
+    its 1998 contact 30.6 hours late. The segment is the same piece the
+    episode layer and the residence spans use. The in-orb band is solved on
+    the continuous UNWRAPPED spline, so it runs across the cut, and a station
+    inside the band still ends the span.
 
     Deliberately NOT episodes.in_orb_intervals: that helper resolves ONE
     unwrapped representative per SEGMENT (_segment_band_level, nearest the
     midpoint), so on a multi-revolution segment (any stationless body over
     years) every band but one is silently missed — reported to the steward
-    2026-10-01 (M20261001T172758-6f81). The arc-local derivation is exact
-    per occurrence by construction.
+    2026-10-01 (M20261001T172758-6f81). The occurrence-local derivation
+    (the unwrapped level nearest the root) is exact per occurrence by
+    construction.
     """
     arc = root.arc
+    seg = _root_segment(index, root)
     tol_deg = max(index.tolerance_arcsec / 3600.0, 1e-9)
-    lon_at_root = arc.unwrapped_longitude_at(root.exact_jd)
+    lon_at_root = index.evaluate(root.exact_jd)
     level_u = root.level_deg + 360.0 * round((lon_at_root - root.level_deg) / 360.0)
     lo, hi = level_u - orb_deg, level_u + orb_deg
-    span_lo = min(arc.start_lon_unwrapped, arc.end_lon_unwrapped)
-    span_hi = max(arc.start_lon_unwrapped, arc.end_lon_unwrapped)
 
     def _bisect(jd_a: float, jd_b: float, target_u: float) -> float:
         fa = index.evaluate(jd_a) - target_u
@@ -213,17 +234,40 @@ def _in_orb_span_around_root(index, root, orb_deg: float) -> tuple[float, float]
                 jd_b, fb = mid, fm
         return mid
 
-    a, b = arc.start_jd, arc.end_jd
+    def _span_within(piece) -> tuple[float, float]:
+        """The in-orb interval around the root, clipped to `piece` (a monotone arc or segment)."""
+        span_lo = min(piece.start_lon_unwrapped, piece.end_lon_unwrapped)
+        span_hi = max(piece.start_lon_unwrapped, piece.end_lon_unwrapped)
+        a, b = piece.start_jd, piece.end_jd
+        if piece.direction == 1:
+            if span_lo < lo - 1e-12:
+                a = _bisect(piece.start_jd, root.exact_jd, lo)
+            if span_hi > hi + 1e-12:
+                b = _bisect(root.exact_jd, piece.end_jd, hi)
+        else:
+            if span_hi > hi + 1e-12:
+                a = _bisect(piece.start_jd, root.exact_jd, hi)
+            if span_lo < lo - 1e-12:
+                b = _bisect(root.exact_jd, piece.end_jd, lo)
+        return a, b
+
+    # The span is derived within the root's ARC exactly as before, so every contact whose band stays inside its arc is BIT-IDENTICAL to what the
+    # arc-only derivation produced (ids, ordinals and spans unchanged). Only where the support runs all the way to an arc end that is a WRAP CUT
+    # (the arc ends strictly inside its segment, so the end is not a station or the knot window's edge) is that end taken from the SEGMENT instead:
+    # the band continues across the cut until its own edge or the segment's station.
+    a, b = _span_within(arc)
+    # The band must extend STRICTLY past the arc's end for it to be continued (Codex WRAP-CODEX-1): a band that merely TOUCHES the cut (its edge
+    # exactly on the 360-degree level) is fully inside the arc and keeps the arc-derived span bit for bit.
     if arc.direction == 1:
-        if span_lo < lo - 1e-12:
-            a = _bisect(arc.start_jd, root.exact_jd, lo)
-        if span_hi > hi + 1e-12:
-            b = _bisect(root.exact_jd, arc.end_jd, hi)
+        past_start = lo < arc.start_lon_unwrapped - 1e-12
+        past_end = hi > arc.end_lon_unwrapped + 1e-12
     else:
-        if span_hi > hi + 1e-12:
-            a = _bisect(arc.start_jd, root.exact_jd, hi)
-        if span_lo < lo - 1e-12:
-            b = _bisect(root.exact_jd, arc.end_jd, lo)
+        past_start = hi > arc.start_lon_unwrapped + 1e-12
+        past_end = lo < arc.end_lon_unwrapped - 1e-12
+    if past_start and a == arc.start_jd and arc.start_jd > seg.start_jd + 1e-9:
+        a = _span_within(seg)[0]
+    if past_end and b == arc.end_jd and arc.end_jd < seg.end_jd - 1e-9:
+        b = _span_within(seg)[1]
     return a, b
 
 
