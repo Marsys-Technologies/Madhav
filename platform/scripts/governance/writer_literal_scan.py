@@ -299,6 +299,20 @@ class _Scope:
                         self.funcs.setdefault(n.name, []).append(n)
                     elif isinstance(n, ast.Call):
                         self.calls.append(n)
+        self.attr_assigns: dict[str, list] = {}          # `self.X = v` / `cls.X = v` / `Obj.X = v`, and class-level `X = v`, by attribute name
+        for n in self.nodes:
+            if isinstance(n, ast.Assign):
+                for t in n.targets:
+                    if isinstance(t, ast.Attribute):
+                        self.attr_assigns.setdefault(t.attr, []).append(n.value)
+            elif isinstance(n, ast.ClassDef):
+                for st in n.body:
+                    if isinstance(st, ast.Assign):
+                        for t in st.targets:
+                            if isinstance(t, ast.Name):
+                                self.attr_assigns.setdefault(t.id, []).append(st.value)
+                    elif isinstance(st, ast.AnnAssign) and isinstance(st.target, ast.Name) and st.value is not None:
+                        self.attr_assigns.setdefault(st.target.id, []).append(st.value)
         self.module_assigns: dict[str, list] = {}
         for u in units:
             for st in getattr(u["tree"], "body", []):
@@ -424,6 +438,27 @@ class _Acc:
             self.unresolved.append(why)
 
 
+class _PartAcc:
+    """The accumulator used while following a FRAGMENT of a composed value (an f-string field, a `+` operand, a join argument): a placeholder-vocabulary fallback inside it is a real problem (the
+    sentence reads `Graha: unknown`), but what the fragment is made of is not the column's value, so an unresolved fragment source is not a gap and a constant fragment is not a constant write."""
+
+    def __init__(self, acc):
+        self.acc = acc
+        self.sources = 0
+
+    @property
+    def problems(self):
+        return self.acc.problems
+
+    def problem(self, kind, where, text):
+        if kind == "literal_fallback":
+            self.acc.problem(kind, where, text)
+
+    def unres(self, why):
+        if why.startswith("source chain deeper"):
+            self.acc.unres(why)
+
+
 class _Analyzer:
     def __init__(self, scope: _Scope, is_placeholder):
         self.s = scope
@@ -439,10 +474,36 @@ class _Analyzer:
         else:
             acc.problem("constant_write", self.s.where(n), f"{how}: {v!r}")
 
+    def flag(self, v, n, acc, how, role):
+        """A literal that stands in for a missing value: in the VALUE role any literal fallback / constant; in a fragment only a placeholder-vocabulary one."""
+        if role == "value":
+            self.literal(v, n, acc, how)
+        elif isinstance(v, str) and self.ph(v):
+            acc.problem("literal_fallback", self.s.where(n), f"{how}: {v!r}")
+
+    @staticmethod
+    def _missing_test(test) -> bool:
+        """The test of a conditional expression asks whether a value is missing / empty: `x`, `not x`, `x is None`, `x is not None`, `x == None`, `len(x) == 0`, `not x.y`, `x[...]`, `bool(x)`."""
+        t = test
+        while isinstance(t, ast.UnaryOp) and isinstance(t.op, ast.Not):
+            t = t.operand
+        if isinstance(t, (ast.Name, ast.Attribute, ast.Subscript)):
+            return True
+        if isinstance(t, ast.Call):
+            nm = t.func.id if isinstance(t.func, ast.Name) else t.func.attr if isinstance(t.func, ast.Attribute) else None
+            return nm in ("bool", "len", "any", "all", "isinstance") and nm != "isinstance"
+        if isinstance(t, ast.Compare) and len(t.ops) == 1:
+            r = t.comparators[0]
+            if isinstance(r, ast.Constant) and (r.value is None or r.value in (0, "", False)):
+                return True
+            if isinstance(t.left, ast.Call) and isinstance(t.left.func, ast.Name) and t.left.func.id == "len":
+                return True
+        return isinstance(t, ast.BoolOp) and all(_Analyzer._missing_test(v) for v in t.values)
+
     def expr(self, n, acc, depth=0, seen=None, role="value"):
         """role 'value': the expression IS the written value (a bare literal is a constant write). role 'part': a fragment of a composed value (a bare literal is a template piece)."""
-        if role == "part":
-            return                                   # a fragment of a composed sentence cannot make the column a placeholder or a constant: nothing to follow
+        if role == "part" and not isinstance(acc, _PartAcc):
+            acc = _PartAcc(acc)                      # a fragment: only a placeholder-vocabulary fallback inside it is a finding
         seen = seen if seen is not None else set()
         if depth > MAX_DEPTH:
             acc.unres(f"{self.s.where(n)} source chain deeper than {MAX_DEPTH} steps")
@@ -483,11 +544,9 @@ class _Analyzer:
             if isinstance(n.op, ast.Or):
                 for i, v in enumerate(n.values):
                     if i > 0 and isinstance(v, ast.Constant) and v.value is not None:
-                        if role == "value":
-                            self.literal(v.value, v, acc, "literal fallback `or`")
+                        self.flag(v.value, v, acc, "literal fallback `or`", role)
                     elif i > 0 and isinstance(v, ast.JoinedStr) and _flat(v) is not None:
-                        if role == "value":
-                            self.literal(_flat(v), v, acc, "literal fallback `or`")
+                        self.flag(_flat(v), v, acc, "literal fallback `or`", role)
                     else:
                         self.expr(v, acc, depth + 1, seen, role)
             else:
@@ -495,16 +554,21 @@ class _Analyzer:
                     self.expr(v, acc, depth + 1, seen, "part")
             return
         if isinstance(n, ast.IfExp):
+            missing = self._missing_test(n.test)
             for br, other in ((n.body, n.orelse), (n.orelse, n.body)):
                 lit = br if isinstance(br, ast.Constant) and br.value is not None else (br if isinstance(br, ast.JoinedStr) and _flat(br) is not None else None)
                 if lit is not None:
                     val = lit.value if isinstance(lit, ast.Constant) else _flat(lit)
-                    if role != "value":
-                        continue                         # a literal branch inside a composed value is a fragment, not the value
-                    if self.ph(val) if isinstance(val, str) else False:
+                    other_lit = isinstance(other, ast.Constant) or (isinstance(other, ast.JoinedStr) and _flat(other) is not None)
+                    if isinstance(val, str) and self.ph(val):
                         acc.problem("literal_fallback", self.s.where(lit), f"placeholder literal in a conditional expression: {val!r}")
-                    elif ast.unparse(other) and ast.unparse(other) in ast.unparse(n.test):
-                        acc.problem("literal_fallback", self.s.where(lit), f"literal default for a missing value (`{ast.unparse(n.test)[:60]}`): {val!r}")
+                    elif missing and not other_lit and isinstance(val, str):
+                        # a literal returned when a value is missing / empty, the other branch being a computed value: a default sentence standing in for the sentence the value would have made
+                        acc.problem("literal_fallback", self.s.where(lit), f"literal default for a missing / empty value (`{ast.unparse(n.test)[:60]}`): {val!r}")
+                    elif role == "value" and not other_lit:
+                        pass
+                    elif role == "value" and other_lit:
+                        pass                             # an enumerated choice between two labels: not a default for a missing value
                 else:
                     self.expr(br, acc, depth + 1, seen, role)
             return
@@ -532,8 +596,35 @@ class _Analyzer:
             for x in srcs:
                 self.expr(x, acc, depth + 1, seen, role)
             return
-        if isinstance(n, (ast.Attribute, ast.Subscript)):
-            return                                   # data read from an object / row: not a literal
+        if isinstance(n, ast.Attribute):
+            base = n.value
+            const_like = n.attr.isupper() or (isinstance(base, ast.Name) and base.id in ("self", "cls"))
+            if not const_like:
+                return                               # data read from an object / row (`row.citation`): not a literal
+            if ("attr", n.attr) in seen:
+                return
+            seen = seen | {("attr", n.attr)}
+            vals = self.s.attr_assigns.get(n.attr) or (self.s.module_assigns.get(n.attr) if n.attr.isupper() else None)
+            if not vals:
+                acc.unres(f"{self.s.where(n)} `{ast.unparse(n)[:40]}` is a constant / instance attribute with no assignment in the scanned scope (its value is not read)")
+                return
+            for v in vals:
+                self.expr(v, acc, depth + 1, seen, role)
+            return
+        if isinstance(n, ast.Subscript):
+            base = n.value
+            if isinstance(base, ast.Name) and base.id in self.s.module_assigns and self.s.enclosing(n) is not None and not self._local_name(n, base.id):
+                for v in self.s.module_assigns[base.id]:
+                    if isinstance(v, (ast.List, ast.Tuple, ast.Set)):
+                        for e in v.elts:
+                            self.expr(e, acc, depth + 1, seen, role)
+                    elif isinstance(v, ast.Dict):
+                        for e in v.values:
+                            self.expr(e, acc, depth + 1, seen, role)
+                    else:
+                        self.expr(v, acc, depth + 1, seen, role)
+                return
+            return                                   # data read from a row / object: not a literal
         if isinstance(n, ast.Starred):
             self.expr(n.value, acc, depth + 1, seen, role)
             return
@@ -548,20 +639,30 @@ class _Analyzer:
             return
         acc.unres(f"{self.s.where(n)} an expression of kind {type(n).__name__} the scan does not follow")
 
+    def _local_name(self, n, name: str) -> bool:
+        """`name` is a local variable or parameter of the function enclosing `n` (so it is not the module constant of that name)."""
+        fn = self.s.enclosing(n)
+        if fn is None or isinstance(fn, ast.Lambda):
+            return False
+        a = fn.args
+        if name in [x.arg for x in list(a.posonlyargs) + list(a.args) + list(a.kwonlyargs)]:
+            return True
+        return any(isinstance(r, ast.Name) and isinstance(r.ctx, ast.Store) and r.id == name for r in self.s.fn_nodes(fn))
+
     def call(self, n: ast.Call, acc, depth, seen, role):
         f = n.func
         nm = f.id if isinstance(f, ast.Name) else f.attr if isinstance(f, ast.Attribute) else None
         if nm in _DEFAULT_ARG_METHODS:
             pos = _DEFAULT_ARG_METHODS[nm]
-            cands = [] if role != "value" else [a for i, a in enumerate(n.args) if i >= pos] + [kw.value for kw in n.keywords if kw.arg in ("default", "fallback")]
-            if nm in ("coalesce", "nvl", "ifnull") and role == "value":
+            cands = [a for i, a in enumerate(n.args) if i >= pos] + [kw.value for kw in n.keywords if kw.arg in ("default", "fallback")]
+            if nm in ("coalesce", "nvl", "ifnull"):
                 cands = list(n.args[1:]) or cands
             for a in cands:
                 v = a.value if isinstance(a, ast.Constant) else (_flat(a) if isinstance(a, ast.JoinedStr) else None)
                 if isinstance(a, ast.Constant) and a.value is not None:
-                    self.literal(a.value, a, acc, f"literal default of `{nm}(...)`")
+                    self.flag(a.value, a, acc, f"literal default of `{nm}(...)`", role)
                 elif isinstance(v, str):
-                    self.literal(v, a, acc, f"literal default of `{nm}(...)`")
+                    self.flag(v, a, acc, f"literal default of `{nm}(...)`", role)
             for a in list(n.args[:pos]) + ([f.value] if isinstance(f, ast.Attribute) else []):
                 if isinstance(a, ast.Constant):
                     continue

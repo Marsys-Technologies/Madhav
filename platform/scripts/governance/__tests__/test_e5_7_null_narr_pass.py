@@ -478,3 +478,39 @@ def test_review_high2_select_sourced_and_expression_writes_are_never_silently_cl
     ok = _scan('SQL = "INSERT INTO t (chart_id, citation_human) VALUES (%s, %s) ON CONFLICT (chart_id) DO UPDATE SET citation_human = EXCLUDED.citation_human"\n\n'
                'def run(conn, c, gs):\n    for g in gs:\n        conn.execute(SQL, (c, f"Graha node: {g}"))\n')
     assert ok["v"] == "PASS", ok
+
+
+# ───────────────────────── review fixes, family 2: composed values and constants reached through attributes ─────────────────────────
+
+def _val(expr, pre=""):
+    return _scan(f'SQL = "INSERT INTO t (chart_id, citation_human) VALUES (%(chart_id)s, %(citation_human)s)"\n{pre}\n'
+                 f'def run(conn, c, rows, g, d):\n    for r in rows:\n        conn.execute(SQL, {{"chart_id": c, "citation_human": {expr}}})\n')
+
+
+@pytest.mark.parametrize("expr", [
+    "f\"Graha: {g or 'unknown'}\"", "f\"{d.get('k', 'n/a')}\"", "\"No data available\" if not rows else f\"Graha {g}\"",
+    "\", \".join(r) if r else \"none listed\"", "\"Graha: \" + (g or \"None\")", "f\"{getattr(r, 'name', '-')}\"",
+])
+def test_review_med3_a_fallback_inside_a_composed_value_is_found(expr):
+    r = _val(expr)
+    assert r["v"] == "PARTIAL" and any(p["kind"] == "literal_fallback" for p in r["problems"]), (expr, r)
+
+
+@pytest.mark.parametrize("expr", ["f\"Graha: {g}\"", "\"Graha: \" + g", "f\"Graha: {g or 'the Sun'}\"", "\"Bhava\" if g else \"Domain\""])
+def test_review_med3_clean_composed_values_stay_clean(expr):
+    assert _val(expr)["v"] == "PASS", expr
+
+
+@pytest.mark.parametrize("expr,pre", [
+    ("self.NA", ""), ("consts.NA_TEXT", "NA_TEXT = 'N/A'\n"), ("TEXTS[0]", "TEXTS = ['n/a', 'x']\n"), ("MISSING", "MISSING = 'unknown'\n"),
+])
+def test_review_med4_constants_reached_through_attributes_and_module_names_are_followed(expr, pre):
+    r = _val(expr, pre + ("class W:\n    NA = 'none'\n" if expr == "self.NA" else ""))
+    assert r["v"] == "PARTIAL" and (r["problems"] or r["unresolved"]), (expr, r)
+    if pre or expr == "self.NA":
+        assert any(p["kind"] == "literal_fallback" for p in r["problems"]), (expr, r)
+
+
+def test_review_med4_an_attribute_constant_with_no_assignment_is_unresolved():
+    r = _val("consts.NA_TEXT")
+    assert r["v"] == "PARTIAL" and any("no assignment" in u for u in r["unresolved"]), r
