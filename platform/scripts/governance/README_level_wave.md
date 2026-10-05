@@ -481,3 +481,25 @@ that differs from the pre one. Any difference is exit 11 (`EXPECTED_ROW_COUNT_MI
 `EXPECTED_CHANGE_NOT_OBSERVED`) with an honest receipt: the build cannot be undone. Precedence: 8 > 11 > 9 > 10. (3) `--verify-run <run_id>` of such a run
 needs the same `--expected-change` file (`RECEIPT_EXPECTED_CHANGE_MISMATCH` otherwise) and grades the receipt's declaration. `--accept-changed-output`
 without a file is bad input (exit 2). The file must be a regular `.json` (no symlink, no env/credential-looking name, at most 64 KiB, `why`/`evidence` at most 500 characters). A receipt of the default mode carries no `expected_change` key and no `expectation` / `row_counts` in `verification`; in this mode `outcome` is `MET` only when the whole verification passed, `MISMATCH` only when the post state was read and differs from the declaration, and null otherwise.
+
+
+### Fingerprint unit of a forced rebuild (SS ruling 1): every table the run touches
+
+The unit is no longer "the asset's own tables". It is the comparison units of every asset whose rows the run writes, joined with `+`: the asset's own tables (if any),
+every group it belongs to (so `bg_doshas`, `bg_yogas`, `bg_dasha_systems` also fingerprint the shared `brahma_ontology`; a pure group member such as `bg_ontology` is judged
+on `grp_brahma_ontology`), and the same for every writer-run sibling (several `@register('x')` decorators stacked on ONE writer class: bg_medical_mappings serves
+bg_sign_medical and bg_nakshatra_medical; bg_transit_rules serves bg_transit_engine; two classes in one file are two runs and are not siblings; read with `ast` from the checkout's
+writers directory, `WRITER_SCAN_UNAVAILABLE` when it cannot be established). A plain asset keeps its plain unit id and its receipt is unchanged; a composed unit reads
+`own+sibling+grp_x` in the receipt (`pre_fingerprint.unit`), with `units`, `table_units` (table -> unit) and a composite over the unit composites. Every sibling (group member or writer
+sibling) is listed in the impact statement (relation `sibling_in_fingerprint_unit`, its lit rows need `--accept-lit-dependent`), a planned / running / paused run of any of them is
+`CONFLICTING_ACTIVE_RUN`, and a sibling that is not a declared unit is `WRITER_SIBLING_NOT_DECLARED`. A seeded group (`GROUP_UNIT_SEEDED`), partial coverage and a non-deterministic unit stay refused.
+
+
+### Workflow-owned exclusions (SS ruling 2): bg_remedies in expected-change mode
+
+A partial-coverage asset is refused (`FINGERPRINT_COVERAGE_PARTIAL`) unless EVERY one of its not-covered tables carries an `exclusion` in `FINGERPRINT_DECLARATIONS.json`
+(code `workflow_owned_rows`, a detail and `path:line` evidence: the table is owned by a workflow, not a build output), AND the run is in expected-change mode. Today only
+`bg_remedies` qualifies (`remedy_review_queue`). The expected-change file must then list EXACTLY those tables in `excluded_tables_acknowledged` (a table the run does not exclude is refused
+too, `EXCLUDED_TABLES_NOT_ACKNOWLEDGED`); the token binds them AND the declared text of each exclusion (sha256 of the sorted [table, code, detail] triples; a reworded exclusion needs a new confirmation; an asset with no exclusion has the token it always had); the plan prints `excluded_from_comparison`; the receipt's `expected_change.excluded_tables` records them. The excluded table
+is NOT fingerprinted and the post-state check says nothing about it: the loader may still insert the rows it rejects into it and delete obsolete `category='tantric'` rows
+(`l0_remedy_loader.py:128`, `:274`), so "excluded" means "not compared", not "left untouched". Unchanged-content mode never admits a partial asset.
