@@ -321,3 +321,15 @@ def test_k3_accepts_a_code_digest_as_its_version():
         _bad(_table(kind="K3", generator="g", method="m", version_digest=vd), "version_digest")
     _bad(_table(kind="K2", decision_id="N-150", version_digest={"file": "x.py", "sha256": DIG}), "K3 source")
     _bad(_row({"column": "c", "kinds": ["K2"]}, version_digest={"file": "x.py", "sha256": DIG}), "table-level")
+
+
+def test_the_committed_declarations_file_loads_and_every_doc_level_field_list_equals_its_code_constant():
+    """Guard (E5.7): a schema commit that extends a *_DECL_FIELDS tuple must update the doc-level `<name>_declaration_fields` list in the same commit, or the file stops loading."""
+    import json
+    ac.load_asset_declarations()
+    raw = json.loads(ac.DECLARATIONS_PATH.read_text(encoding="utf-8"))
+    pairs = {"source_declaration_fields": ac.SOURCE_DECL_FIELDS, "source_column_declaration_fields": ac.SOURCE_COLUMN_FIELDS,
+             "prose_none_declaration_fields": ac.PROSE_NONE_DECL_FIELDS, "prose_none_column_declaration_fields": ac.PROSE_NONE_COLUMN_FIELDS,
+             "produced_table_declaration_fields": ac.PRODUCED_TABLE_FIELDS}
+    for k, v in pairs.items():
+        assert raw[k] == list(v), k
