@@ -44,12 +44,12 @@
   "sha256": "2bb33c18b07d476062a415fce0babec87e8557123a1b523181c26d9541b8d71c"
  },
  "Jupiter|domain|conjunction|0.0": {
-  "n": -1,
-  "sha256": "98456a3003754284229e83e1e5d1b728ca9e389f7760c6a22dcf396ea3a37c7c"
+  "n": 12,
+  "sha256": "67ac2a59f6bbc9e79f7e9ea5bd30754fe6f598137782b36c05f53574483fd14b"
  },
  "Jupiter|domain|conjunction|0.3": {
   "n": 12,
-  "sha256": "4c81cd30d8334f9e44e5de9a02af92f2b10d30b34dc80c48300be04ddbcc904e"
+  "sha256": "6fe19f107a02eaffb2e1ad96163ad0bd57cfd2990e27bf2720471eb1fbb04105"
  },
  "Jupiter|domain|conjunction|1.0": {
   "n": 12,
@@ -77,7 +77,7 @@
  },
  "Jupiter|domain|conjunction|359.7": {
   "n": 10,
-  "sha256": "491a6114091e61222d83016af79784e04baa29c9be5f210fe72da0b6ab479144"
+  "sha256": "f881ee559bde02ef4ab64e5228bbeac58fea3ff7d1af394927e82ba16cf6786e"
  },
  "Jupiter|domain|conjunction|5.39": {
   "n": 12,
@@ -140,12 +140,12 @@
   "sha256": "4a22ad5789e35a3c1520e5ce692ee05c525bad67d25218d22cf8a3ae65b820ce"
  },
  "Jupiter|scored|conjunction|0.0": {
-  "n": -1,
-  "sha256": "98456a3003754284229e83e1e5d1b728ca9e389f7760c6a22dcf396ea3a37c7c"
+  "n": 3,
+  "sha256": "d22e670128ae027709a7b1d2b1908b292c0934cb54a6bfac9ce7c21b1944c7e6"
  },
  "Jupiter|scored|conjunction|0.3": {
   "n": 3,
-  "sha256": "2b52e5084a9f253101134c9fae1efed54ff3ebbf8aa33b62f87785972973e465"
+  "sha256": "969730ab08fefe527e9fc73d4c78538f0800fa9b9f3d953779c2701c28911a36"
  },
  "Jupiter|scored|conjunction|1.0": {
   "n": 3,
@@ -173,7 +173,7 @@
  },
  "Jupiter|scored|conjunction|359.7": {
   "n": 3,
-  "sha256": "4d6fc1579631e0932b2be18cb06e6ef6e9bd168e7969fb86a100ed0cdc870abf"
+  "sha256": "11b6f9b6e835a396a77f38b9e5352f930da66360757abbba84082292e0610e54"
  },
  "Jupiter|scored|conjunction|5.39": {
   "n": 5,
@@ -205,7 +205,7 @@
  },
  "Mars|domain|aspect|210.5": {
   "n": 151,
-  "sha256": "8431c83332a879671af9480f93d27a212298d2257d9241049bc3c515fbcfb826"
+  "sha256": "e00b96cec4753fe8ad3cfbeae5b212dfc634074dcce4d8b2e135f0bf44b36eab"
  },
  "Mars|domain|aspect|295.8493268245402": {
   "n": 152,
@@ -228,16 +228,16 @@
   "sha256": "d89b9b11bb8b25d46a87bbd8cdd23a98fc1b109736cda589bddc37a85f7f3a47"
  },
  "Mars|domain|aspect|90.0": {
-  "n": -1,
-  "sha256": "283091378b13dbbc13705cb33b14bbfab7afeb70b396aee9ea7f477e97e6597d"
+  "n": 147,
+  "sha256": "696f69da93b99290c3d454141da7d6aa8178764b54aee24e62c9c04d527dd5ff"
  },
  "Mars|domain|conjunction|0.0": {
-  "n": -1,
-  "sha256": "e85ac3cdb68a8f23a01b54be5f642fcfa2a9bafb07249bf285d7ca5d61653a61"
+  "n": 49,
+  "sha256": "166bb105605ebe31c6bfa06edeff62bb8101d1f3ffb0ece2b8e41f036ecff832"
  },
  "Mars|domain|conjunction|0.3": {
   "n": 49,
-  "sha256": "495eb49a71cc44f5b9c209f3996610dd0a308700719866d8c8c075a0c8079607"
+  "sha256": "a673347373d7c7dabc8b0ebe8fc56f82d58c5b29918d2449166d48af41efdedc"
  },
  "Mars|domain|conjunction|1.0": {
   "n": 49,
@@ -265,7 +265,7 @@
  },
  "Mars|domain|conjunction|359.7": {
   "n": 49,
-  "sha256": "4d436ed0a078fc89d71e9862975c84cbe5f6f40c47a72ce67e08600c1b181ba3"
+  "sha256": "1e697202a1d12ff1df7797239d7742d29a797359ecd6cb8e510c58f7829b067d"
  },
  "Mars|domain|conjunction|5.39": {
   "n": 49,
@@ -301,7 +301,7 @@
  },
  "Mars|scored|aspect|210.5": {
   "n": 47,
-  "sha256": "1f3244ab35a20640251ce7004aee13256ae466a8ff1313504b09efe9cd9e2737"
+  "sha256": "41bbd9fb71e062d5af5b990458f8b0bcc5ba0a515ef46a4e13555c278233e63b"
  },
  "Mars|scored|aspect|295.8493268245402": {
   "n": 47,
@@ -324,16 +324,16 @@
   "sha256": "59a284e18be9999962925a9acee90880905495489529bbf0da4afc78c58097cc"
  },
  "Mars|scored|aspect|90.0": {
-  "n": -1,
-  "sha256": "283091378b13dbbc13705cb33b14bbfab7afeb70b396aee9ea7f477e97e6597d"
+  "n": 49,
+  "sha256": "af4381b70635a4b5546e07abc4e2ce86b8da698b8a23fa14f888a7b9d0e4dd24"
  },
  "Mars|scored|conjunction|0.0": {
-  "n": -1,
-  "sha256": "e85ac3cdb68a8f23a01b54be5f642fcfa2a9bafb07249bf285d7ca5d61653a61"
+  "n": 17,
+  "sha256": "23cd0e943009c4eda9a8ce415434fc34e0d1458eb1abbe56c56fb1a0fd987525"
  },
  "Mars|scored|conjunction|0.3": {
   "n": 17,
-  "sha256": "53fa4712dfcc19e846a206e316d9f44fd13a036ac32b8cdc8053a73d4927ddd8"
+  "sha256": "153a43ddae61238d6c116182545641ea82f645dd856fd29099428355ff8b27fd"
  },
  "Mars|scored|conjunction|1.0": {
   "n": 17,
@@ -361,7 +361,7 @@
  },
  "Mars|scored|conjunction|359.7": {
   "n": 17,
-  "sha256": "ff9067ec9b49e292abe7e61fbdc35e4576b9f23fdf9d715c5d69feaf11245af3"
+  "sha256": "067d47daf0697397b6cc0a535d9eb38d9dc46e0aef9139fcecf084d03656ffed"
  },
  "Mars|scored|conjunction|5.39": {
   "n": 15,
@@ -420,12 +420,12 @@
   "sha256": "1b9df0fa378326ba76d58d45ff41d7d37fa1aec02d10adb099ac868933db4d84"
  },
  "Mercury|domain|conjunction|0.0": {
-  "n": -1,
-  "sha256": "90ed8ff6975fa56b889f2cffb518c708bdb58217586c1c750c55c478a484d33d"
+  "n": 103,
+  "sha256": "5be51b6692a382e1efa82776483e55f30f54bf1d180e5139ef1e66323956b607"
  },
  "Mercury|domain|conjunction|0.3": {
   "n": 105,
-  "sha256": "b9cc8b48c6f531f71b64f1ac3330e4e60acbc04959c90dbfc31729b5c99e3e5e"
+  "sha256": "bae9a27a732562890a6c9284391da464e4802d66b580cdf4020d72420f1afcd3"
  },
  "Mercury|domain|conjunction|1.0": {
   "n": 103,
@@ -453,7 +453,7 @@
  },
  "Mercury|domain|conjunction|359.7": {
   "n": 103,
-  "sha256": "7908f7359e61948250c6b4a68217360559c05b9f92b771c07aa5aaf436c46d4a"
+  "sha256": "c47e76a27f7244d3d5e2d057fc8ac0e12a2bbb69bd267f9ef62902dbe33e6f8e"
  },
  "Mercury|domain|conjunction|5.39": {
   "n": 103,
@@ -516,12 +516,12 @@
   "sha256": "332e586f7ae76c70c7e35f1a7e8f8a13e6d207d64097a38a40cbb920ca33b18e"
  },
  "Mercury|scored|conjunction|0.0": {
-  "n": -1,
-  "sha256": "90ed8ff6975fa56b889f2cffb518c708bdb58217586c1c750c55c478a484d33d"
+  "n": 34,
+  "sha256": "dcca84d022d856f962bca30ed1e5af5fa9f878bc5b89856a082e0b5036a03a0f"
  },
  "Mercury|scored|conjunction|0.3": {
   "n": 36,
-  "sha256": "f36837b4d2cde037a2d057e3d505e516eb302ef6ad176b957701ff1a58734f33"
+  "sha256": "d5755778de3509dc58346b284ee9888b8efce85a594463aab740e445d86193dc"
  },
  "Mercury|scored|conjunction|1.0": {
   "n": 34,
@@ -549,7 +549,7 @@
  },
  "Mercury|scored|conjunction|359.7": {
   "n": 34,
-  "sha256": "2e39c37ef48ee80cf8955a2c0780b0c73b8175a83819697fadd6e1769870f347"
+  "sha256": "09a7f2eea7d098efb3e8e8a7ab7473257bbff8eebc425d6abcd1e5072780305a"
  },
  "Mercury|scored|conjunction|5.39": {
   "n": 32,
@@ -608,12 +608,12 @@
   "sha256": "9e2ee90d3db60f97f17bc83604952c2dcf4501f430ef7864d65aab9cda8bd493"
  },
  "Saturn|domain|conjunction|0.0": {
-  "n": -1,
-  "sha256": "9de4019c0b41d19abda2d3bd6c4df9f0bd200ec20b2decd6528724a8b5b588ee"
+  "n": 5,
+  "sha256": "ee0a85f1e3c8ba6cb34c5a3c8f3f8d70cc5bb1fd6c03162bf791d7b401f3eb3c"
  },
  "Saturn|domain|conjunction|0.3": {
   "n": 5,
-  "sha256": "f855bc673de3d3070f5bb3aaf81607fa8d8838f917aaa36c837147394278ff17"
+  "sha256": "ace674aac31bbf4d880a90207da95f6898c053e28893283641c6a0ddc3883638"
  },
  "Saturn|domain|conjunction|1.0": {
   "n": 5,
@@ -641,7 +641,7 @@
  },
  "Saturn|domain|conjunction|359.7": {
   "n": 5,
-  "sha256": "2b81590767504d941020b1cead60e38341a53709b0647416888d2d37fe895c3d"
+  "sha256": "59cf9ae13fc43eedcb37b698b1029c1c3475b3bf4402e3bdcef6d5a7c2df4827"
  },
  "Saturn|domain|conjunction|5.39": {
   "n": 7,
@@ -704,12 +704,12 @@
   "sha256": "e5a0c38d31e1d21f90fddb5472ccbd07bee72f0d62c265f6623107cf90c04b4c"
  },
  "Saturn|scored|conjunction|0.0": {
-  "n": -1,
-  "sha256": "9de4019c0b41d19abda2d3bd6c4df9f0bd200ec20b2decd6528724a8b5b588ee"
+  "n": 1,
+  "sha256": "c9fab36c119784247077832b85d818ee361dfe042ef14c2d8cd95f9e1498527e"
  },
  "Saturn|scored|conjunction|0.3": {
   "n": 1,
-  "sha256": "e2ceb074fca9676bc3694292ad7cda0cacbd5e81bca46c3bad8c1c1d1af28240"
+  "sha256": "bdcf2bafe88bf699d799dd34922a8eaf4015dd1e2f3d13334f6628487cd84040"
  },
  "Saturn|scored|conjunction|1.0": {
   "n": 1,
@@ -737,7 +737,7 @@
  },
  "Saturn|scored|conjunction|359.7": {
   "n": 1,
-  "sha256": "cae1ad197f02a0a4e0254b51523759b9078cb253b29a2c95996f5a59383076ae"
+  "sha256": "7257712608ccd5af1ee6e82fc58109878c02a91fd11ba2df54616924f177ac5e"
  },
  "Saturn|scored|conjunction|5.39": {
   "n": 3,
@@ -796,12 +796,12 @@
   "sha256": "a4be090cbd66a81ca7e18c7729701850716142285d8adf466d894751f8af9cb0"
  },
  "Venus|domain|conjunction|0.0": {
-  "n": -1,
-  "sha256": "464a269e0210c2dbc267be96ba5e24f72b7e13b42bd0c239780c0b1063a504df"
+  "n": 87,
+  "sha256": "567d530b6a8d19d6bd062ce4d02a9849007df537cbdbc876dd976ca209d089d4"
  },
  "Venus|domain|conjunction|0.3": {
   "n": 87,
-  "sha256": "7cab532967c62c796befba9aee5b75c7373321211d8881bfb8b86169704e2956"
+  "sha256": "2f3fc37cdf381199e777c2ad9dc96a5e6541d1ba69d25540c3747ca5169d3387"
  },
  "Venus|domain|conjunction|1.0": {
   "n": 87,
@@ -829,7 +829,7 @@
  },
  "Venus|domain|conjunction|359.7": {
   "n": 87,
-  "sha256": "7ef1e9ef81a68bc2ba281da1665b909aced855295d8c123ab2a3ac104e968fcd"
+  "sha256": "a6a52f3ca8fb28f32ecfd37ee7ca83b3058abfa09514faa05c690a713208ad64"
  },
  "Venus|domain|conjunction|5.39": {
   "n": 87,
@@ -892,12 +892,12 @@
   "sha256": "46bf1f5c54ada036edd86e0bd581196cfe752bd1db634b8a36b8d41a48227dab"
  },
  "Venus|scored|conjunction|0.0": {
-  "n": -1,
-  "sha256": "464a269e0210c2dbc267be96ba5e24f72b7e13b42bd0c239780c0b1063a504df"
+  "n": 29,
+  "sha256": "ad30f6ce6e03176a50f64384afb768941cff49917a2f013e8848ca1db99e100d"
  },
  "Venus|scored|conjunction|0.3": {
   "n": 29,
-  "sha256": "130f5deebb4fcb04efb805580f052af0d1a474cdac8aee756779de03e2216ca4"
+  "sha256": "59f0ad5d2021d2a65d50a864ac5b6417f17626a41327418de1b701d6dcf9471b"
  },
  "Venus|scored|conjunction|1.0": {
   "n": 29,
@@ -925,7 +925,7 @@
  },
  "Venus|scored|conjunction|359.7": {
   "n": 29,
-  "sha256": "048bbf3de94dc7b15cab7814df835ab7223bb278a531bebca070c37de6acb8c1"
+  "sha256": "95cde18091d3ac0a4c6702b6934d44f32d0beb1a31780bae002a3eb2751d4423"
  },
  "Venus|scored|conjunction|5.39": {
   "n": 29,
