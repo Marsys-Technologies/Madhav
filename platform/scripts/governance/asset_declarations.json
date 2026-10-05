@@ -191,7 +191,15 @@
     "na": "no_alias_class",
     "why": "its columns are classical text ids, chapter and verse numbers, counts and generated summaries: no column carries an alias or synonym set",
     "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/bg_compendium_index.py:171"
-   }
+   },
+   "fidelity_tests": [
+    {
+     "test": "platform/python-sidecar/tests/test_bg_compendium_index_narr_golden.py::test_bg_compendium_index_significance_states_the_passage_count",
+     "covers": [
+      "significance"
+     ]
+    }
+   ]
   },
   "bg_concordance": {
    "kind": "data",
@@ -1508,7 +1516,33 @@
     "citation_state": "sourced",
     "why": "each remedy row carries source_citation naming the classical remedy source; rows that name only a status word read as placeholders and fail the check",
     "evidence": "platform/python-sidecar/brahmagyan/l0_remedy_corpus.py:264"
-   }
+   },
+   "fidelity_tests": [
+    {
+     "test": "platform/python-sidecar/tests/test_bg_remedies_narr_golden.py::test_bg_remedies_charity_row_narrates_item_day_and_planet",
+     "covers": [
+      "prescription_text"
+     ]
+    },
+    {
+     "test": "platform/python-sidecar/tests/test_bg_remedies_narr_golden.py::test_bg_remedies_charity_action_states_item_and_day",
+     "covers": [
+      "charity_action"
+     ]
+    },
+    {
+     "test": "platform/python-sidecar/tests/test_bg_remedies_narr_golden.py::test_bg_remedies_mantra_row_names_saturn_beej_and_saturday",
+     "covers": [
+      "prescription_text"
+     ]
+    },
+    {
+     "test": "platform/python-sidecar/tests/test_bg_remedies_narr_golden.py::test_bg_remedies_nakshatra_row_names_devata_and_vimshottari_lord",
+     "covers": [
+      "prescription_text"
+     ]
+    }
+   ]
   },
   "bg_rules": {
    "kind": "data",
@@ -3126,7 +3160,15 @@
     "version": "condition_formula_v1",
     "why": "the composite is computed by the writer from L1 facts at one declared condition formula version, so its source is the derivation rather than a citation",
     "evidence": "platform/python-sidecar/ga_writers/ga_condition_writer.py:1780"
-   }
+   },
+   "fidelity_tests": [
+    {
+     "test": "platform/python-sidecar/tests/test_ga_condition_narr_golden.py::test_per_varga_deeptaadi_citation_human_names_graha_varga_and_state",
+     "covers": [
+      "citation_human"
+     ]
+    }
+   ]
   },
   "ga_dashas": {
    "kind": "data",
@@ -3221,7 +3263,15 @@
     "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L1_ganita/get_nakshatra.ts:92 reads `chart_facts` (`FROM chart_facts`). Dens.served=PASS. Shared table chart_facts: the query filters fact_category = ANY(NAKSHATRA_CATEGORIES), 15 of the asset's 16 count_sql categories (nakshatra_lord_placement is not in the file).",
     "prose_fields": "citation_human (SS ruling 2026-10-01: a composed string that states or grades a computed value is narration, counts included): citation_human restates each fact: '{subject} {key}: {value} [{category}]'. Composed at platform/python-sidecar/pipeline/orchestrator/writers/ga_nakshatra.py:212, platform/python-sidecar/pipeline/orchestrator/writers/ga_nakshatra.py:214. AST census of the writer's citation_human sites (platform/python-sidecar/pipeline/orchestrator/writers/ga_nakshatra.py): 4 composed, 0 constant, 0 forwarded, 0 other. Column bound at platform/python-sidecar/pipeline/orchestrator/writers/ga_nakshatra.py:327 (INSERT INTO chart_facts); platform/python-sidecar/pipeline/orchestrator/writers/ga_nakshatra.py:357 (INSERT INTO chart_facts); platform/python-sidecar/pipeline/orchestrator/writers/ga_nakshatra.py:563 (INSERT INTO chart_facts); served by platform/src/lib/ganita/facts_store.ts:447."
    },
-   "evidence_kind": "writer"
+   "evidence_kind": "writer",
+   "fidelity_tests": [
+    {
+     "test": "platform/python-sidecar/tests/test_ga_nakshatra_narr_golden.py::test_nakshatra_citation_human_restates_subject_key_value_category",
+     "covers": [
+      "citation_human"
+     ]
+    }
+   ]
   },
   "ga_panchanga": {
    "kind": "data",
@@ -3241,7 +3291,15 @@
     "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L1_ganita/get_panchanga.ts:103 reads `chart_facts` (`FROM chart_facts`). Dens.served=PASS. Shared table chart_facts: the query filters fact_category = ANY(PANCHANGA_CATEGORIES) (panchanga_* categories, this asset's LIKE 'panchanga%' set).",
     "prose_fields": "citation_human (SS ruling 2026-10-01: a composed string that states or grades a computed value is narration, counts included): citations state the computed tithi, vara, yoga, karana numbers and names, end times and solar arc. Composed at platform/python-sidecar/ga_writers/ga_panchanga_writer.py:362, platform/python-sidecar/ga_writers/ga_panchanga_writer.py:528. AST census of the writer's citation_human sites (platform/python-sidecar/ga_writers/ga_panchanga_writer.py): 148 composed, 0 constant, 1 forwarded, 0 other. Column bound at platform/python-sidecar/ga_writers/ga_panchanga_writer.py:1329 (INSERT INTO chart_facts); served by platform/src/lib/ganita/facts_store.ts:447."
    },
-   "evidence_kind": "writer"
+   "evidence_kind": "writer",
+   "fidelity_tests": [
+    {
+     "test": "platform/python-sidecar/tests/test_ga_panchanga_narr_golden.py::test_panchanga_citation_human_birth_anchor_sentences",
+     "covers": [
+      "citation_human"
+     ]
+    }
+   ]
   },
   "ga_positions": {
    "kind": "data",
@@ -3261,7 +3319,15 @@
     "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L1_ganita/get_positions.ts:193 reads `chart_facts` (`FROM chart_facts`). Dens.served=PASS. Shared table chart_facts: the query filters fact_category = ANY($2) whose default includes graha_position (this asset's category; bhava_cusps/graha_sign_attributes are not in the file, so a subset is served).",
     "prose_fields": "citation_human (SS ruling 2026-10-01: a composed string that states or grades a computed value is narration, counts included): citations state longitudes, signs, pada and house numbers (helper _citation_human_position and the chalit rows). Composed at platform/python-sidecar/ga_writers/ga_positions_writer.py:132, platform/python-sidecar/ga_writers/ga_positions_writer.py:469, platform/python-sidecar/ga_writers/ga_positions_writer.py:487. AST census of the writer's citation_human sites (platform/python-sidecar/ga_writers/ga_positions_writer.py): 10 composed, 0 constant, 1 forwarded, 2 other. Column bound at platform/python-sidecar/ga_writers/ga_positions_writer.py:537 (INSERT INTO chart_facts); served by platform/src/lib/ganita/facts_store.ts:447."
    },
-   "evidence_kind": "writer"
+   "evidence_kind": "writer",
+   "fidelity_tests": [
+    {
+     "test": "platform/python-sidecar/tests/test_ga_positions_narr_golden.py::test_positions_citation_human_sign_nakshatra_longitude_and_chalit_house",
+     "covers": [
+      "citation_human"
+     ]
+    }
+   ]
   },
   "ga_prashna": {
    "kind": "data",
@@ -3327,7 +3393,15 @@
     "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L1_ganita/get_sade_sati.ts:100 reads `chart_facts` (`FROM chart_facts`). Dens.served=PASS. Shared table chart_facts: the query filters fact_category = ANY(SS_CATEGORIES), all 15 of the asset's count_sql categories.",
     "prose_fields": "citation_human (SS ruling 2026-10-01: a composed string that states or grades a computed value is narration, counts included): citations state cycle dates, durations, Saturn signs and dignities, rule counts. Composed at platform/python-sidecar/ga_writers/ga_sade_sati_writer.py:936, platform/python-sidecar/ga_writers/ga_sade_sati_writer.py:1283. AST census of the writer's citation_human sites (platform/python-sidecar/ga_writers/ga_sade_sati_writer.py): 136 composed, 0 constant, 3 forwarded, 0 other. Column bound at platform/python-sidecar/ga_writers/ga_sade_sati_writer.py:1882 (INSERT INTO chart_facts); served by platform/src/lib/ganita/facts_store.ts:447."
    },
-   "evidence_kind": "writer"
+   "evidence_kind": "writer",
+   "fidelity_tests": [
+    {
+     "test": "platform/python-sidecar/tests/test_ga_sade_sati_narr_golden.py::test_sade_sati_citation_human_cycle_and_phase_sentences",
+     "covers": [
+      "citation_human"
+     ]
+    }
+   ]
   },
   "ga_sensitive": {
    "kind": "data",
@@ -3347,7 +3421,15 @@
     "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L1_ganita/get_sensitive_points.ts:114 reads `chart_facts` (`FROM chart_facts`). Dens.served=PASS. Shared table chart_facts: the query filters fact_category = ANY(categories) of which 7 of the asset's 20 count_sql categories appear in the file (upagraha/saham/saturn_derived/lal_kitab/maharsi...): a subset is served.",
     "prose_fields": "citation_human (SS ruling 2026-10-01: a composed string that states or grades a computed value is narration, counts included): helper _citation_human renders '{category}.{subject}.{key} = {value} (ayanamsha).' from the computed value; the other composed strings are honest-gap/error text. Composed at platform/python-sidecar/ga_writers/ga_sensitive_writer.py:270. AST census of the writer's citation_human sites (platform/python-sidecar/ga_writers/ga_sensitive_writer.py): 4 composed, 0 constant, 0 forwarded, 1 other. Column bound at platform/python-sidecar/ga_writers/ga_sensitive_writer.py:3066 (INSERT INTO chart_facts); served by platform/src/lib/ganita/facts_store.ts:447."
    },
-   "evidence_kind": "writer"
+   "evidence_kind": "writer",
+   "fidelity_tests": [
+    {
+     "test": "platform/python-sidecar/tests/test_ga_sensitive_narr_golden.py::test_citation_human_states_the_computed_value_and_ayanamsha",
+     "covers": [
+      "citation_human"
+     ]
+    }
+   ]
   },
   "ga_sensitive_degree": {
    "kind": "data",
@@ -3398,7 +3480,15 @@
     "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L1_ganita/get_strength.ts:189 reads `chart_facts` (`FROM chart_facts`). Dens.served=NO_DETECTOR. Shared table chart_facts: the query filters fact_category = ANY(STRENGTH_CATEGORIES) (graha_shadbala_*, graha_vimsopaka_*, ishta/kashta phala...: the asset's categories).",
     "prose_fields": "citation_human (SS ruling 2026-10-01: a composed string that states or grades a computed value is narration, counts included): citations state shadbala rupa values, ratios against the classical minimum, bindu and pinda counts. Composed at platform/python-sidecar/ga_writers/ga_strength_writer.py:959, platform/python-sidecar/ga_writers/ga_strength_writer.py:996. AST census of the writer's citation_human sites (platform/python-sidecar/ga_writers/ga_strength_writer.py): 21 composed, 0 constant, 0 forwarded, 1 other. Column bound at platform/python-sidecar/ga_writers/ga_strength_writer.py:1848 (INSERT INTO chart_facts); served by platform/src/lib/ganita/facts_store.ts:447."
    },
-   "evidence_kind": "writer"
+   "evidence_kind": "writer",
+   "fidelity_tests": [
+    {
+     "test": "platform/python-sidecar/tests/test_ga_strength_narr_golden.py::test_citation_human_grades_total_shadbala_against_classical_minimum",
+     "covers": [
+      "citation_human"
+     ]
+    }
+   ]
   },
   "ga_structural": {
    "kind": "data",
@@ -3418,7 +3508,15 @@
     "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L1_ganita/get_structural_signals.ts:138 reads `chart_facts` (`FROM chart_facts`). Dens.served=PASS. Shared table chart_facts: the query filters fact_category = ANY(STRUCTURAL_SIGNAL_CATEGORIES) (19 categories) which get_structural_signals.ts:1-12 documents as ga_structural's residual categories; the fact_category_ownership table was not checked offline.",
     "prose_fields": "citation_human (SS ruling 2026-10-01: a composed string that states or grades a computed value is narration, counts included): citations state aspect counts, classifications with totals, dignity scores, house and sign placements. Composed at platform/python-sidecar/ga_writers/ga_structural_writer.py:1390, platform/python-sidecar/ga_writers/ga_structural_writer.py:1789, platform/python-sidecar/ga_writers/ga_structural_writer.py:4855. AST census of the writer's citation_human sites (platform/python-sidecar/ga_writers/ga_structural_writer.py): 191 composed, 5 constant, 0 forwarded, 6 other. Column bound at platform/python-sidecar/ga_writers/ga_structural_writer.py:5293 (column list); platform/python-sidecar/ga_writers/ga_structural_writer.py:5302 (INSERT INTO chart_facts); served by platform/src/lib/ganita/facts_store.ts:447."
    },
-   "evidence_kind": "writer"
+   "evidence_kind": "writer",
+   "fidelity_tests": [
+    {
+     "test": "platform/python-sidecar/tests/test_ga_structural_narr_golden.py::test_citation_human_states_special_states_from_the_graha_row",
+     "covers": [
+      "citation_human"
+     ]
+    }
+   ]
   },
   "ga_tajaka": {
    "kind": "data",
@@ -3452,7 +3550,15 @@
     "citation_state": "sourced",
     "why": "each varsha year lord row carries classical_source_citation naming the Tajika text the year lord method follows",
     "evidence": "platform/python-sidecar/ga_writers/ga_tajaka_writer.py:660"
-   }
+   },
+   "fidelity_tests": [
+    {
+     "test": "platform/python-sidecar/tests/test_ga_tajaka_narr_golden.py::test_citation_human_states_varsha_window_muntha_and_year_lord",
+     "covers": [
+      "citation_human"
+     ]
+    }
+   ]
   },
   "ga_transit_anchors": {
    "kind": "data",
@@ -3501,7 +3607,15 @@
     "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L1_ganita/get_divisionals.ts:90 reads `chart_divisionals` (`let sql = `SELECT * FROM chart_divisionals WHERE chart_id = $1``). Dens.served=PASS.",
     "prose_fields": "citation_human (SS ruling 2026-10-01: a composed string that states or grades a computed value is narration, counts included): citations state varga signs, dignities, house placements, contributions and scores (also helper _citation_human). Composed at platform/python-sidecar/ga_writers/ga_vargas_writer.py:1234, platform/python-sidecar/ga_writers/ga_vargas_writer.py:1683. AST census of the writer's citation_human sites (platform/python-sidecar/ga_writers/ga_vargas_writer.py): 26 composed, 1 constant, 0 forwarded, 0 other. Column bound at platform/python-sidecar/ga_writers/ga_vargas_writer.py:2662 (INSERT INTO chart_divisionals); platform/python-sidecar/ga_writers/ga_vargas_writer.py:2690 (INSERT INTO chart_divisionals); emitted by the writer INSERT (no served read of this table's citation_human confirmed)."
    },
-   "evidence_kind": "writer"
+   "evidence_kind": "writer",
+   "fidelity_tests": [
+    {
+     "test": "platform/python-sidecar/tests/test_ga_vargas_narr_golden.py::test_citation_human_states_varga_dignity_house_and_vargottama",
+     "covers": [
+      "citation_human"
+     ]
+    }
+   ]
   },
   "ga_vastu": {
    "kind": "data",
@@ -3595,7 +3709,15 @@
     ],
     "why": "each yoga firing row lists the chart_facts fact ids of the planets that formed it in constituent_fact_ids, a JSON array of fact ids",
     "evidence": "platform/python-sidecar/ga_writers/ga_yoga_writer.py:494"
-   }
+   },
+   "fidelity_tests": [
+    {
+     "test": "platform/python-sidecar/tests/test_ga_yoga_narr_golden.py::test_citation_human_names_constituent_grahas_and_cancelling_ground",
+     "covers": [
+      "citation_human"
+     ]
+    }
+   ]
   },
   "ka_avadhi": {
    "kind": "data",
