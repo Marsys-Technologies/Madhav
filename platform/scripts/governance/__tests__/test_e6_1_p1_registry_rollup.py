@@ -83,6 +83,9 @@ PINNED_FINGERPRINTS = {
     # 25 (N-99; provisional; stacked on pin 24 (C2 Ldgr) and pin 23 (DENS-TIER-GUARD)): Build.completion revision 3 (applicability text): count equality alone no longer reads PASS when the asset declares an
     # integrity_check_sql that does not hold (false / refused / oversize / errored / timed out reads PARTIAL naming which; permission denied under the census role reads NO_DETECTOR); an undeclared asset is unchanged; NA_CAUSES / NA_RULE_DECISIONS unchanged
     25: "0e78e228d140d04920cb12bcd8b5bd9c8b33ca59ac8f9105853a139b8289d698",
+    # 26 (the engine 100% build-out revision, N-150 / N-151; provisional): ONE revision for the whole build-out. Step 1 is the bare bump (content unchanged, so the fingerprint equals pin 25's);
+    # each later detector commit of the build-out re-pins this line to the content it lands
+    26: "0e78e228d140d04920cb12bcd8b5bd9c8b33ca59ac8f9105853a139b8289d698",
 }
 
 

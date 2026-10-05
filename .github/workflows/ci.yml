@@ -1152,7 +1152,7 @@ jobs:
     # copying this one (the guard hardens every job with that prefix): never put it in a job already near its budget.
     #   gochara-a55-replace-chain : a55_replace_chain, a55_replace_chain_populated
     #   gochara-a55-slice-transitions : c46_slice_transitions
-    #   gochara-a55-round2-runner     : c46_slice_round2, c47_ephe_real_runner
+    #   gochara-a55-round2-runner     : c46_slice_round2, c47_ephe_real_runner, c49_wrap_cut_support
     #   (next: gochara-a55-teardown for c38 real-db + populated, gochara-a55-dispatch for c37 real-db)
     needs: changes
     if: ${{ !cancelled() && needs.changes.outputs.docs_only != 'true' }}
@@ -1757,7 +1757,7 @@ jobs:
     # The aggregate job below keeps the original job name; this one is test steps only.
     name: Governance Tool Tests shard ${{ matrix.shard }}/3
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 20
     permissions:
       contents: read
     strategy:

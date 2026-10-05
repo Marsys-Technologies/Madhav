@@ -82,8 +82,11 @@ def test_occupants_h7_d1_matches_probe(reader, chart_label):
         assert r["house"] == 7
         assert r["varga"] == "D1"
         assert r["provenance"], "every answer must carry non-empty provenance"
-        assert r["provenance"][0]["id_kind"] == "chart_divisionals_id"
-        assert r["provenance"][0]["id"]
+        assert r["provenance"][0]["id_kind"] == "natural_key"
+        assert "id" not in r["provenance"][0], "must cite the natural key, never the random row id"
+        assert set(r["provenance"][0]["natural_key"]) == {
+            "graha", "ayanamsha_id", "varga", "fact_category", "fact_key", "fact_subject"
+        }
 
 
 @requires_db
@@ -106,7 +109,7 @@ def test_sign_of_venus_d9_matches_probe(reader, chart_label):
     assert result["varga"] == "D9"
     assert result["sign"]
     assert 1 <= result["sign_number"] <= 12
-    assert result["provenance"][0]["id_kind"] == "chart_divisionals_id"
+    assert result["provenance"][0]["id_kind"] == "natural_key"
 
 
 @requires_db
@@ -135,7 +138,7 @@ def test_lord_of_h7_d1_matches_probe_fallback_logic(reader, chart_label):
     assert result["lord"] in SIGN_LORD.values()
     assert result["provenance"], "every answer must carry non-empty provenance"
     for p in result["provenance"]:
-        assert p["id_kind"] in ("fact_id", "chart_divisionals_id", "derivation_note")
+        assert p["id_kind"] in ("fact_id", "natural_key", "derivation_note")
 
 
 @requires_db
@@ -229,7 +232,7 @@ def test_aspect_between_returns_boolean_with_provenance(reader):
     assert isinstance(result["aspects"], bool)
     assert result["target_house"]
     assert result["provenance"], "every answer must carry non-empty provenance"
-    assert result["provenance"][0]["id_kind"] == "chart_divisionals_id"
+    assert result["provenance"][0]["id_kind"] == "natural_key"
 
 
 @requires_db
