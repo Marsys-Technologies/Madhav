@@ -43,14 +43,17 @@ Usage:
   suvarna_rehearsal.py self-test --out PATH [--tracker-dir DIR] [--repo DIR]     (writes a self_test evidence document)
   suvarna_rehearsal.py validate PATH [--evidence-root DIR]                       (exit 0 valid, 2 invalid)
   suvarna_rehearsal.py cluster init|start|stop|status|reap|adopt [--root DIR] [--port N] [--pg-bin DIR] [--remove-data --confirm ROOT]
-  suvarna_rehearsal.py compare-fingerprints --pre prod.json --post rehearsal.json --expected assets.json --commit SHA [--explained e.json] [--out drill.json]
+  suvarna_rehearsal.py compare-fingerprints --pre prod.json --post rehearsal.json --expected assets.json|declarations --rows rows.json --runtime runtime.json [--coverage cov.json] --commit SHA [--explained e.json] [--out drill.json]
   suvarna_rehearsal.py validate-drill PATH
+  suvarna_rehearsal.py drill expected|reader-spec|baseline|validate-baseline|rehearsal-fingerprints|compare|status ...   (E5.7 mirror wiring, suvarna_mirror_drill.py)
+  (compare-fingerprints --expected declarations  = the DECLARED L0 assets of 00_ARCHITECTURE/control/FINGERPRINT_DECLARATIONS.json)
 Exit: 0 ok · 2 refused / invalid · 4 a measured case failed (self-test) · 5 error.
 """
 from __future__ import annotations
 
 import argparse
 import contextlib
+import copy
 import fcntl
 import hashlib
 import io
@@ -1178,8 +1181,8 @@ def write_evidence(doc: Mapping, path: str | Path, *, evidence_root: str | Path 
 FINGERPRINT_DEFINITION = "nikasha_stale_certs.table_fingerprint/1"     # E5.5's definition: the ONE fingerprint in this campaign
 EXPLAIN_CODES_BY_KIND = {
     "fingerprint_differs": ("rolling_horizon", "embedding_equivalence_policy", "seeded_not_rebuilt", "production_ahead_of_commit",
-                            "fixed_before_drill"),
-    "missing_in_rehearsal": ("source_unavailable_offline",),
+                            "fixed_before_drill", "migration_owned_rows"),
+    "missing_in_rehearsal": ("source_unavailable_offline", "not_run_declared"),
     "missing_in_production": ("asset_new_at_commit",),
 }
 EXPLAIN_CODES = tuple(sorted({c for v in EXPLAIN_CODES_BY_KIND.values() for c in v}))
@@ -1187,7 +1190,24 @@ MIN_DETAIL_CHARS = 40
 DEFAULT_LIMITS = (0.0, 0.25)                   # (max_undecided_share, max_difference_share)
 DRILL_KEYS = ("schema", "item", "result", "commit", "tool_sha256", "definition", "expected_assets", "production", "rehearsal",
               "explained_input", "inputs", "equal", "differences", "unexplained", "uncovered", "unexpected",
-              "explanations_without_difference", "problems", "limits")
+              "explanations_without_difference", "problems", "limits", "coverage", "rows", "empty_both_sides", "seeded", "not_run", "unmeasured", "runtime", "claimed_unverified", "projections", "known_differences", "horizons")
+RESULTS_PASS = ("PASS", "PASS_DECLARED_ONLY")   # PASS only when every L0 asset is declared, full and deterministic; otherwise the scoped label
+COVERAGE_KEYS = ("declarations_sha256", "units", "declared", "partial", "undeclared", "non_deterministic", "groups", "seeded", "partial_ownership", "not_run_allowed", "expected_differences", "scope")
+NON_DETERMINISTIC_FLAGS = ("rolling_horizon", "platform_bound")
+CODE_REQUIRES_FLAG = {"rolling_horizon": "rolling_horizon", "source_unavailable_offline": "platform_bound"}   # an explanation code only a flagged unit may carry
+# Where the rebuild ran (decision B1: the L0 rebuild runs inside a linux/amd64 Debian container, so platform-bound assets are in the proof). A closed block
+# of the rehearsal receipt (`rebuild.runtime`) and of the drill document. A run whose platform is not linux/amd64 leaves the platform-bound units
+# CLAIMED_UNVERIFIED (never equal, never counted).
+RUNTIME_KEYS = ("platform", "os", "postgres_version", "python_version", "swisseph_version", "collation")
+RUNTIME_PLATFORM = "linux/amd64"
+_RT_PLATFORM = re.compile(r"[a-z0-9_.-]+/[a-z0-9_.-]+")
+_RT_PG = re.compile(r"[0-9]+(\.[0-9]+){0,2}")
+_RT_PY = re.compile(r"[0-9]+\.[0-9]+(\.[0-9]+)?")
+_RT_COLLATION = re.compile(r"[A-Za-z0-9_.@-]{1,100}")
+NOT_RUN_CODE = "not_run_declared"      # decision N-121: a unit the rebuild legitimately did not run (closed list; the unit stays UNMEASURED, never equal)
+PARTIAL_OWNERSHIP_CODE = "migration_owned_rows"                                   # the fixed code for a difference on a partly writer-owned table
+PARTIAL_OWNERSHIP_DETAIL = ("the table holds rows owned by migrations, not by the writer, which a rebuild from source cannot reproduce: the whole table "
+                            "is fingerprinted and this difference is expected (partial: writer-only rows are what the rebuild claim covers)")
 _DECISION_ID = re.compile(r"N-[0-9]{1,6}")
 _ASSET_ID = re.compile(r"[a-z][a-z0-9_]*")
 
@@ -1225,16 +1245,258 @@ def _explanation_problem(kind: str, e: Any) -> str | None:
     return None
 
 
-def compare_fingerprint_sets(production: Any, rehearsal: Any, explained: Any = None, *, expected_assets: Any, commit: Any,
+def _plain_text(v: Any, limit: int) -> bool:
+    return isinstance(v, str) and 0 < len(v.strip()) <= limit and v == v.strip() and not any(ord(ch) < 32 for ch in v)
+
+
+HORIZON_RULE = "N-135"                                    # SS decision: a rolling-horizon difference is expected ONLY when evidence shows the shared range row-for-row equal
+HORIZON_BLOCK_KEYS = ("date_column", "min_date", "max_date", "rows", "overlap_cutoff", "overlap_rows", "overlap_sha256")
+
+
+def _fd_module():
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    import fingerprint_declarations as fd  # noqa: PLC0415
+    return fd
+
+
+def horizon_block_problem(b: Any) -> str | None:
+    """Why `b` is not a valid closed `horizon` block (or None): the keys, the types and every internal consistency rule (rows <-> min/max, the cutoff and the
+    overlap). Never raises."""
+    if not (isinstance(b, Mapping) and set(b) == set(HORIZON_BLOCK_KEYS)):
+        return f"a horizon block is exactly {HORIZON_BLOCK_KEYS}"
+    ok = _fd_module().horizon_iso_ok
+    if not (isinstance(b["date_column"], str) and _ASSET_ID.fullmatch(b["date_column"])):
+        return "date_column must be a column identifier"
+    mn, mx, cut = b["min_date"], b["max_date"], b["overlap_cutoff"]
+    for k in ("rows", "overlap_rows"):
+        if not (isinstance(b[k], int) and not isinstance(b[k], bool) and b[k] >= 0):
+            return f"{k} must be an int >= 0"
+    if not _h64(b["overlap_sha256"]):
+        return "overlap_sha256 must be a sha256"
+    if b["overlap_rows"] > b["rows"]:
+        return "overlap_rows exceeds rows"
+    if (mn is None) != (mx is None) or (b["rows"] == 0) != (mn is None):
+        return "min_date and max_date are both null exactly when rows is 0"
+    if mn is not None and not (ok(mn) and ok(mx) and len(mn) == len(mx) and mn <= mx):
+        return "min_date and max_date must be horizon dates of one format with min_date <= max_date"
+    if cut is not None and not (ok(cut) and (mn is None or len(cut) == len(mn))):
+        return "overlap_cutoff must be null or a horizon date of the same format as min_date"
+    if cut is None and b["overlap_rows"] != 0:
+        return "a null overlap_cutoff has no overlap rows"
+    if cut is not None and mn is not None:
+        if cut < mn and b["overlap_rows"] != 0:
+            return "overlap_cutoff precedes min_date but overlap_rows is not 0"
+        if cut >= mx and b["overlap_rows"] != b["rows"]:
+            return "overlap_cutoff is not before max_date, so every row is in the overlap"
+        if cut >= mn and b["overlap_rows"] == 0:
+            return "overlap_cutoff reaches min_date, so at least one row is in the overlap"
+    return None
+
+
+def check_horizons(horizons: Any, cov: Mapping) -> dict:
+    """{unit: {table, production, rehearsal}} for units flagged rolling_horizon in the coverage; each side a valid horizon block or null (unit not read there)."""
+    if horizons is None:
+        return {}
+    rolling = {u for u, f in cov["non_deterministic"].items() if "rolling_horizon" in f}
+    if not (isinstance(horizons, Mapping) and all(
+            k in rolling and isinstance(v, Mapping) and set(v) == {"table", "production", "rehearsal"} and isinstance(v["table"], str) and _ASSET_ID.fullmatch(v["table"])
+            and all(v[x] is None or horizon_block_problem(v[x]) is None for x in ("production", "rehearsal")) for k, v in horizons.items())):
+        raise RehearsalError("horizons must map a unit flagged rolling_horizon to {table, production, rehearsal} (a valid closed horizon block or null)")
+    return {k: {"table": horizons[k]["table"], "production": copy.deepcopy(horizons[k]["production"]), "rehearsal": copy.deepcopy(horizons[k]["rehearsal"])}
+            for k in sorted(horizons)}
+
+
+def horizon_evidence(entry: Any) -> tuple[str | None, dict | None]:
+    """N-135: (why the evidence does not hold, None) or (None, the evidence record). The rolling_horizon explanation is accepted ONLY when both blocks are
+    present, the production overlap is its own max_date, the rehearsal was cut at the PRODUCTION max_date, the rehearsal was built later (max_date >=), and the
+    shared range is row-for-row equal (same overlap rows and the same overlap fingerprint): so every extra row is after the production horizon."""
+    if not entry:
+        return "no horizon blocks were given for the unit", None
+    p, r = entry["production"], entry["rehearsal"]
+    if p is None:
+        return "the production file carries no horizon block for the unit", None
+    if r is None:
+        return "the rehearsal file carries no horizon block for the unit", None
+    if p["date_column"] != r["date_column"]:
+        return f"the date columns differ ({p['date_column']} vs {r['date_column']})", None
+    if p["rows"] == 0:
+        return "production holds no rows: there is no shared range to compare", None
+    if p["overlap_cutoff"] != p["max_date"]:
+        return "the production overlap_cutoff is not its own max_date", None
+    if r["overlap_cutoff"] != p["max_date"]:
+        return (f"the rehearsal overlap_cutoff ({r['overlap_cutoff']}) is not the production max_date ({p['max_date']}): the rehearsal block must be computed with the "
+                "production file's max_date as its cutoff"), None
+    if r["max_date"] is None or r["max_date"] < p["max_date"]:
+        return f"the rehearsal max_date ({r['max_date']}) is before the production max_date ({p['max_date']}): the rehearsal was not built later", None
+    if r["overlap_rows"] != p["overlap_rows"]:
+        return f"the overlap row counts differ (rehearsal {r['overlap_rows']} vs production {p['overlap_rows']}): the shared range is not row-for-row equal", None
+    if r["overlap_sha256"] != p["overlap_sha256"]:
+        return "the overlap fingerprints differ: the shared range is not row-for-row equal", None
+    summary = (f"{HORIZON_RULE}: rows {r['rows']} vs {p['rows']} (rehearsal vs production), built-through dates {r['max_date']} vs {p['max_date']} (rehearsal vs "
+               f"production), overlap equal over {p['overlap_rows']} rows (count and fingerprint, through {p['max_date']})")
+    return None, {"rule": HORIZON_RULE, "rows_rehearsal": r["rows"], "rows_production": p["rows"], "max_date_rehearsal": r["max_date"], "max_date_production": p["max_date"],
+                  "overlap_cutoff": p["max_date"], "overlap_rows": p["overlap_rows"], "overlap_sha256": p["overlap_sha256"], "summary": summary}
+
+
+def check_projections(projections: Any, cov: Mapping) -> dict:
+    """The projection fingerprints of the units that carry a recorded expected difference: {unit: {table, production, rehearsal}} with each side a sha256 or
+    null (the unit was not read on that side). A projection is the table's fingerprint with the expected-difference columns IGNORED."""
+    if projections is None:
+        return {}
+    units = {e["unit"]: e for e in cov["expected_differences"]}
+    if not (isinstance(projections, Mapping) and all(
+            k in units and isinstance(v, Mapping) and set(v) == {"table", "production", "rehearsal"} and v["table"] == units[k]["table"]
+            and all(v[x] is None or _h64(v[x]) for x in ("production", "rehearsal")) for k, v in projections.items())):
+        raise RehearsalError("projections must map a unit with a recorded expected_difference to {table (the recorded table), production, rehearsal} (sha256 or null)")
+    return {k: dict(projections[k]) for k in sorted(projections)}
+
+
+def runtime_problem(rt: Any) -> str | None:
+    """Why `rt` is not a valid closed `runtime` block ({platform 'os/arch', os, postgres_version, python_version, swisseph_version (text or null),
+    collation}), or None. Never raises."""
+    if not (isinstance(rt, Mapping) and set(rt) == set(RUNTIME_KEYS)):
+        return f"runtime must be an object with exactly the keys {RUNTIME_KEYS}"
+    if not (isinstance(rt["platform"], str) and _RT_PLATFORM.fullmatch(rt["platform"])):
+        return "runtime.platform must be '<os>/<arch>' in lower case (for example linux/amd64)"
+    if not _plain_text(rt["os"], 200):
+        return "runtime.os must be non-empty text"
+    if not (isinstance(rt["postgres_version"], str) and _RT_PG.fullmatch(rt["postgres_version"])):
+        return "runtime.postgres_version must be a version number such as 15.18"
+    if not (isinstance(rt["python_version"], str) and _RT_PY.fullmatch(rt["python_version"])):
+        return "runtime.python_version must be a version number such as 3.11.9"
+    if not (rt["swisseph_version"] is None or _plain_text(rt["swisseph_version"], 60)):
+        return "runtime.swisseph_version must be text, or null when it is not available"
+    if not (isinstance(rt["collation"], str) and _RT_COLLATION.fullmatch(rt["collation"])):
+        return "runtime.collation must be the database collation name (for example C or en_US.UTF-8)"
+    return None
+
+
+def check_runtime(rt: Any) -> dict:
+    why = runtime_problem(rt)
+    if why:
+        raise RehearsalError(why)
+    return {k: rt[k] for k in RUNTIME_KEYS}
+
+
+def _unit_list(v: Any) -> bool:
+    return isinstance(v, list) and all(isinstance(x, str) and _ASSET_ID.fullmatch(x) for x in v) and len(set(v)) == len(v)
+
+
+def check_coverage(coverage: Any, expected: Sequence[str]) -> dict:
+    """The closed coverage block of an E5.7 drill (what the verdict covers and what it does not), checked against the expected units.
+    Returns a normalised copy; raises RehearsalError. `scope` is DERIVED, never trusted: all_declared_full only when nothing is partial,
+    undeclared or non-deterministic."""
+    if not (isinstance(coverage, Mapping) and set(coverage) == set(COVERAGE_KEYS)):
+        raise RehearsalError(f"coverage must be an object with exactly the keys {COVERAGE_KEYS}")
+    c = copy.deepcopy(dict(coverage))
+    if not (isinstance(c["declarations_sha256"], str) and _h64(c["declarations_sha256"]) or c["declarations_sha256"] is None):
+        raise RehearsalError("coverage.declarations_sha256 must be a sha256 or null")
+    if not (_unit_list(c["units"]) and _unit_list(c["declared"]) and c["units"] == sorted(expected)):
+        raise RehearsalError("coverage.units must be exactly the sorted expected_assets (the comparison units)")
+    if not (isinstance(c["partial"], Mapping) and all(isinstance(k, str) and _unit_list(v) and v for k, v in c["partial"].items())):
+        raise RehearsalError("coverage.partial must map an asset to the non-empty list of tables it does not cover")
+    if not (isinstance(c["undeclared"], Mapping) and all(isinstance(k, str) and isinstance(v, str) and v for k, v in c["undeclared"].items())):
+        raise RehearsalError("coverage.undeclared must map an asset to its reason code")
+    nd = c["non_deterministic"]
+    if not (isinstance(nd, Mapping) and all(k in c["units"] and isinstance(v, list) and v and set(v) <= set(NON_DETERMINISTIC_FLAGS) and len(set(v)) == len(v)
+                                          for k, v in nd.items())):
+        raise RehearsalError(f"coverage.non_deterministic must map a unit to a non-empty list of flags from {NON_DETERMINISTIC_FLAGS}")
+    if not (isinstance(c["groups"], Mapping) and all(k in c["units"] and _unit_list(v) and len(v) >= 2 for k, v in c["groups"].items())):
+        raise RehearsalError("coverage.groups must map a unit to its (at least two) member assets")
+    if not (_unit_list(c["seeded"]) and set(c["seeded"]) <= set(c["units"]) and c["seeded"] == sorted(c["seeded"])):
+        raise RehearsalError("coverage.seeded must be a sorted list of units from coverage.units (units seeded from production, not rebuilt)")
+    po = c["partial_ownership"]
+    if not (isinstance(po, Mapping) and all(k in c["units"] and _unit_list(v) and v and v == sorted(v) for k, v in po.items())):
+        raise RehearsalError("coverage.partial_ownership must map a unit of coverage.units to the sorted, non-empty list of its partly writer-owned tables")
+    nra = c["not_run_allowed"]
+    if not (isinstance(nra, Mapping) and all(k in c["units"] and k not in c["groups"] and k not in c["seeded"] and isinstance(v, str)
+                                             and re.fullmatch(r"NEEDS_[A-Z0-9_]+", v) for k, v in nra.items()) and list(nra) == sorted(nra)):
+        raise RehearsalError("coverage.not_run_allowed must map a sorted, plain (not group, not seeded) unit of coverage.units to its NEEDS_ reason")
+    ed = c["expected_differences"]
+    if not (isinstance(ed, list) and all(isinstance(e, Mapping) and set(e) == {"unit", "table", "columns", "reference"} and e["unit"] in c["units"]
+                                         and isinstance(e["table"], str) and _unit_list(e["columns"]) and e["columns"]
+                                         and isinstance(e["reference"], str) and e["reference"].strip() for e in ed)):
+        raise RehearsalError("coverage.expected_differences must list {unit, table, columns, reference} records of units in coverage.units")
+    scope = "declared_only" if (c["partial"] or c["undeclared"] or c["non_deterministic"] or c["seeded"] or c["partial_ownership"]) else "all_declared_full"
+    if c["scope"] != scope:
+        raise RehearsalError(f"coverage.scope is derived: it must be {scope!r} for this coverage")
+    return c
+
+
+def check_rows(rows: Any, prod: Mapping, reh: Mapping) -> dict:
+    """Row counts per unit per table for each side: {unit: {"production": {table: n} | null, "rehearsal": {...} | null}}, present for every
+    unit that has a fingerprint on that side, non-negative ints."""
+    if not isinstance(rows, Mapping):
+        raise RehearsalError("rows must be an object of unit -> {production, rehearsal} per-table row counts")
+    out: dict = {}
+    for u, v in rows.items():
+        if not (isinstance(u, str) and _ASSET_ID.fullmatch(u) and isinstance(v, Mapping) and set(v) == {"production", "rehearsal"}):
+            raise RehearsalError("rows entries must be {production, rehearsal} per unit")
+        for side in ("production", "rehearsal"):
+            t = v[side]
+            if t is not None and not (isinstance(t, Mapping) and t and all(isinstance(k, str) and isinstance(n, int) and not isinstance(n, bool) and n >= 0
+                                                                         for k, n in t.items())):
+                raise RehearsalError(f"rows.{u}.{side} must be null or a non-empty object of table -> non-negative int")
+        out[u] = {"production": dict(v["production"]) if v["production"] is not None else None,
+                  "rehearsal": dict(v["rehearsal"]) if v["rehearsal"] is not None else None}
+    for side, env in (("production", prod), ("rehearsal", reh)):
+        for u in env:
+            if out.get(u, {}).get(side) is None:
+                raise RehearsalError(f"rows.{u}.{side} is missing: a unit with a fingerprint must carry its row counts")
+    return out
+
+
+def check_not_run(not_run: Any, expected: Sequence[str]) -> dict:
+    """The build record's `not_run` entries as {unit: NEEDS_ reason} (the drill's input from the verified build record; {} when no record). Structure
+    only here: that a unit is on the closed list, that the reason matches and that the rehearsal really has no fingerprint for it are checked by
+    the comparison, which reports them as problems (a FAIL), never as an accepted explanation."""
+    if not_run is None:
+        return {}
+    if not (isinstance(not_run, Mapping) and all(isinstance(k, str) and k in expected and isinstance(v, str) and re.fullmatch(r"NEEDS_[A-Z0-9_]+", v)
+                                                 for k, v in not_run.items())):
+        raise RehearsalError("not_run must be an object of comparison unit -> NEEDS_ reason (from the verified build record)")
+    return {k: not_run[k] for k in sorted(not_run)}
+
+
+def compare_fingerprint_sets(production: Any, rehearsal: Any, explained: Any = None, *, expected_assets: Any, commit: Any, coverage: Any, rows: Any, runtime: Any, not_run: Any = None, projections: Any = None, horizons: Any = None,
                              max_undecided_share: float = DEFAULT_LIMITS[0], max_difference_share: float = DEFAULT_LIMITS[1]) -> dict:
-    """E5.7: compare per-asset semantic fingerprints (E5.5's definition; both inputs carry its marker) of production (read as
-    suvarna_reader) with the rehearsal rebuild, over the L0 assets the drill MUST cover (`expected_assets`, required).
-    FAIL if any expected asset is on neither side (`uncovered`), any compared asset is outside the expected list, any
-    difference is unexplained, an explanation has no difference, an explanation is malformed (reason code valid for the
-    difference kind, detail >= 40 characters and not repeated across assets), the share of EXPLAINED differences without an
-    SS-recorded decision id `N-<n>` exceeds `max_undecided_share` (default 0: every difference needs a decision), or the
-    share of differing assets exceeds `max_difference_share`. PASS only when none of those holds; the output document
-    embeds both fingerprint sets, the explanations, input hashes, the commit and the tool hash, and `validate_drill`
+    """E5.7: compare per-unit semantic fingerprints (E5.5's definition; both inputs carry its marker) of production (read as
+    suvarna_reader) with the rehearsal rebuild, over the units the drill MUST cover (`expected_assets`, required: declared assets with tables
+    of their own and groups). FAIL if any expected unit is on neither side (`uncovered`), any compared unit is outside the expected list,
+    any difference is unexplained, an explanation has no difference, an explanation is malformed (reason code valid for the difference
+    kind, detail >= 40 characters and not repeated across units; `rolling_horizon` / `source_unavailable_offline` only on a unit flagged
+    rolling_horizon / platform_bound in `coverage`), the share of EXPLAINED differences without an SS-recorded decision id `N-<n>` exceeds
+    `max_undecided_share` (default 0), the share of differing units exceeds `max_difference_share`, or two equal fingerprints carry different
+    row counts. A unit that is EMPTY on both sides (zero rows everywhere) is never `equal`: it is listed in `empty_both_sides` and the
+    verdict cannot be PASS (it reads UNMEASURED). SEEDED units (`coverage.seeded`: copied from production, not rebuilt) are SHOWN (key
+    `seeded`: unit -> equal | differs kind | empty_both_sides | uncovered) but EXCLUDED from the rebuilt-equals-source claim: an equal
+    seeded unit is not in `equal`, never counts toward PASS or PASS_DECLARED_ONLY (a drill whose only equal units are seeded reads
+    UNMEASURED: it needs at least one non-seeded unit equal or explained-different). PARTIAL-OWNERSHIP units (`coverage.partial_ownership`:
+    tables whose rows are only partly writer-owned) are compared on the WHOLE table, never filtered: a difference there is explained
+    AUTOMATICALLY with the fixed code `migration_owned_rows` (expected, not unexplained, not counted in the share limits), the code is
+    refused on a unit without the declaration, and such a unit keeps the scope PASS_DECLARED_ONLY. A seeded unit that differs is still reported in
+    `differences` but is not `unexplained`, does not count in the share limits and does not by itself fail the drill. RUNTIME (decision B1): `runtime` is the closed
+    block of where the rebuild ran (the rehearsal receipt's `rebuild.runtime`); when its platform is not linux/amd64 every platform-bound unit
+    (`coverage.non_deterministic` flag platform_bound) that would read equal is listed in `claimed_unverified` instead: never `equal`, never counted
+    toward PASS or PASS_DECLARED_ONLY (a platform-bound unit is always flagged non-deterministic, so the verdict is never a bare PASS anyway).
+    ROLLING HORIZON (decision N-135): the explanation code `rolling_horizon` is accepted ONLY with `horizons[unit]` evidence: both blocks present and valid, the
+    production overlap_cutoff equal to its own max_date, the REHEARSAL overlap_cutoff equal to the production max_date, rehearsal max_date >= production
+    max_date, and the shared range row-for-row equal (same overlap_rows and the same overlap_sha256, the E5.5 fingerprint over the rows up to the cutoff); every
+    extra rehearsal row is then after the production horizon. An accepted explanation carries `decision` N-135 and an `evidence` record whose `summary`
+    reads "N-135: rows 31101 vs 31081 (rehearsal vs production), built-through dates D1 vs D2, overlap equal over N rows"; otherwise the unit stays an unexplained
+    difference. A `horizons` entry for a unit not flagged rolling_horizon is refused.
+    EXPECTED DIFFERENCES (`coverage.expected_differences`: a recorded difference limited to named columns): a unit that differs and carries such a record can be
+    explained ONLY if `projections[unit]` (the table's fingerprint with those columns ignored, both sides) is given and EQUAL; otherwise something else in the unit
+    changed, no explanation covers it and a problem says so. `known_differences` lists each record with observed / limited_to_columns / explained.
+    NOT-RUN units (decision N-121):
+    `not_run` ({unit: NEEDS_ reason}, from the verified build record) plus the explanation code `not_run_declared` (valid only on a
+    `missing_in_rehearsal` difference of a unit on the closed list `coverage.not_run_allowed` whose build-record entry is `not_run` with the matching
+    reason; refused for a unit outside the list, for a complete asset and for a unit missing for any other reason) explain a missing unit WITHOUT
+    measuring it: it is listed in `unmeasured`, is never `equal`, never counts toward PASS or PASS_DECLARED_ONLY (a PASS with any is
+    PASS_DECLARED_ONLY) and is not in the share limits. Otherwise PASS, or
+    PASS_DECLARED_ONLY whenever `coverage` says any asset is partial, undeclared, non-deterministic or seeded: a bare PASS means every
+    L0 asset was declared, full, deterministic and rebuilt. The output embeds both
+    fingerprint sets, the explanations, the coverage block, the row counts, input hashes, the commit and the tool hash, and `validate_drill`
     re-derives it."""
     if not (isinstance(commit, str) and HEX40.fullmatch(commit)):
         raise RehearsalError("commit must be 40-hex")
@@ -1251,44 +1513,130 @@ def compare_fingerprint_sets(production: Any, rehearsal: Any, explained: Any = N
         if isinstance(share, bool) or not isinstance(share, (int, float)) or not 0 <= share <= 1:
             raise RehearsalError(f"{name} must be a number in [0, 1]")
     prod, reh = _check_envelope("production", production), _check_envelope("rehearsal", rehearsal)
+    cov = check_coverage(coverage, exp)
+    rws = check_rows(rows, prod, reh)
+    nr = check_not_run(not_run, exp)
+    rt = check_runtime(runtime)
+    proj = check_projections(projections, cov)
+    hz = check_horizons(horizons, cov)
+    on_linux = rt["platform"] == RUNTIME_PLATFORM
     expected = sorted(exp)
-    uncovered = [a for a in expected if a not in prod and a not in reh]
+    seeded = set(cov["seeded"])
+    uncovered_all = [a for a in expected if a not in prod and a not in reh]
+    uncovered = [a for a in uncovered_all if a not in seeded]
     unexpected = sorted((set(prod) | set(reh)) - set(expected))
-    equal, diffs, problems = [], [], []
+    equal, diffs, problems, empty, seeded_status, claimed = [], [], [], [], {}, []
     for a in expected:
-        if a in uncovered:
+        if a in uncovered_all:
+            if a in seeded:
+                seeded_status[a] = "uncovered"
             continue
         if a in prod and a in reh and prod[a] == reh[a]:
-            equal.append(a)
+            if rws[a]["production"] != rws[a]["rehearsal"]:
+                problems.append(f"{a}: equal fingerprints but different row counts {rws[a]['production']} vs {rws[a]['rehearsal']}: a fingerprint covers its rows, so one side is wrong")
+            elif a in seeded:
+                seeded_status[a] = "empty_both_sides" if sum(rws[a]["production"].values()) == 0 else "equal"      # shown, never counted
+            elif sum(rws[a]["production"].values()) == 0:
+                empty.append(a)                                # equal because both are empty is not equality of content
+            elif not on_linux and "platform_bound" in cov["non_deterministic"].get(a, []):
+                claimed.append(a)                              # a platform-bound unit rebuilt off linux/amd64: equal-looking, never counted
+            else:
+                equal.append(a)
             continue
         kind = "missing_in_rehearsal" if a not in reh else "missing_in_production" if a not in prod else "fingerprint_differs"
+        if a in seeded:
+            seeded_status[a] = kind
         diffs.append({"asset": a, "kind": kind, "production": prod.get(a), "rehearsal": reh.get(a), "explained": None})
     seen: dict[str, str] = {}
     undecided = 0
+    auto: set[str] = set()
+    for u, why_nr in nr.items():                           # the build record's not_run entries must be on the closed list, carry its reason, and have no rehearsal fingerprint
+        if u not in cov["not_run_allowed"]:
+            problems.append(f"{u}: not_run in the build record but not in the closed not_run list {sorted(cov['not_run_allowed'])} (decision N-121): an asset cannot become not_run")
+        elif why_nr != cov["not_run_allowed"][u]:
+            problems.append(f"{u}: not_run needs the reason {cov['not_run_allowed'][u]!r}, the build record says {why_nr!r}")
+        elif u in reh:
+            problems.append(f"{u}: the build record says not_run but the rehearsal has a fingerprint for it")
+    declared_not_run: set[str] = set()
+    ed_units = {e["unit"]: e for e in cov["expected_differences"]}
+    limited: dict[str, bool] = {}
     for d in diffs:
+        if d["kind"] == "fingerprint_differs" and d["asset"] in ed_units:
+            pj = proj.get(d["asset"])
+            limited[d["asset"]] = bool(pj and pj["production"] is not None and pj["production"] == pj["rehearsal"])
+            if not limited[d["asset"]]:
+                problems.append(f"{d['asset']}: the difference is not limited to the expected columns {ed_units[d['asset']]['columns']} of "
+                                f"{ed_units[d['asset']]['table']}: the fingerprint WITHOUT them "
+                                f"{'is not given on both sides' if not pj or pj['production'] is None or pj['rehearsal'] is None else 'still differs'}, so something else "
+                                "in the unit changed and the recorded difference cannot explain it")
+    for d in diffs:
+        if limited.get(d["asset"]) is False:
+            continue                                         # not limited to the recorded columns: no explanation can cover it (reported above)
         e = explained.get(d["asset"])
         if e is None:
+            if d["kind"] == "fingerprint_differs" and d["asset"] in cov["partial_ownership"]:
+                d["explained"] = {"reason_code": PARTIAL_OWNERSHIP_CODE, "detail": PARTIAL_OWNERSHIP_DETAIL}      # fixed, automatic, expected
+                auto.add(d["asset"])
             continue
         why = _explanation_problem(d["kind"], e)
         if why:
             problems.append(f"{d['asset']}: {why}")
             continue
+        if e["reason_code"] == PARTIAL_OWNERSHIP_CODE and d["asset"] not in cov["partial_ownership"]:
+            problems.append(f"{d['asset']}: reason code {PARTIAL_OWNERSHIP_CODE} needs a table declared partial_ownership in this unit "
+                            "(coverage.partial_ownership): the declaration is what makes migration-owned rows an expected difference")
+            continue
+        if e["reason_code"] == NOT_RUN_CODE:
+            if d["asset"] not in cov["not_run_allowed"]:
+                problems.append(f"{d['asset']}: reason code {NOT_RUN_CODE} is refused: the unit is not in the closed not_run list {sorted(cov['not_run_allowed'])} (N-121)")
+                continue
+            if d["asset"] not in nr:
+                problems.append(f"{d['asset']}: reason code {NOT_RUN_CODE} is refused: the build record has no `not_run` entry for it (a complete asset, an asset "
+                                "missing for another reason or no build record is never covered)")
+                continue
+            if nr[d["asset"]] != cov["not_run_allowed"][d["asset"]]:
+                problems.append(f"{d['asset']}: reason code {NOT_RUN_CODE} is refused: the build record's reason {nr[d['asset']]!r} is not "
+                                f"{cov['not_run_allowed'][d['asset']]!r}")
+                continue
+        need = CODE_REQUIRES_FLAG.get(e["reason_code"])
+        if need is not None and need not in cov["non_deterministic"].get(d["asset"], []):
+            problems.append(f"{d['asset']}: reason code {e['reason_code']} needs the unit to be flagged {need} in the declarations "
+                            f"(flags: {cov['non_deterministic'].get(d['asset'], [])})")
+            continue
+        evidence = None
+        if e["reason_code"] == "rolling_horizon":                # N-135: accepted ONLY with the evidence that the shared range is row-for-row equal
+            why_h, evidence = horizon_evidence(hz.get(d["asset"]))
+            if why_h:
+                problems.append(f"{d['asset']}: reason code rolling_horizon is refused ({HORIZON_RULE}): {why_h}")
+                continue
+            if "decision" in e and e["decision"] != HORIZON_RULE:
+                problems.append(f"{d['asset']}: a rolling_horizon explanation is decided by {HORIZON_RULE}; the decision id {e['decision']!r} is not accepted")
+                continue
         norm = _normal_detail(e["detail"])
         if norm in seen:
             problems.append(f"{d['asset']}: detail repeats the one given for {seen[norm]} (an explanation is per asset)")
             continue
         seen[norm] = d["asset"]
-        d["explained"] = dict(e)
-        if "decision" not in e:
+        d["explained"] = {**e, "decision": HORIZON_RULE, "evidence": evidence} if evidence is not None else dict(e)
+        if e["reason_code"] == NOT_RUN_CODE:
+            declared_not_run.add(d["asset"])                   # decided by N-121 itself (the closed list); never measured
+        elif evidence is not None:
+            pass                                               # decided by N-135 itself, on evidence
+        elif "decision" not in e and d["asset"] not in seeded:
             undecided += 1
     stray = sorted(set(explained) - {d["asset"] for d in diffs})
-    unexplained = [d["asset"] for d in diffs if d["explained"] is None]
-    if expected and undecided / len(expected) > max_undecided_share:
+    rebuilt = [a for a in expected if a not in seeded]                    # the units the rebuilt-equals-source claim is about
+    rebuilt_diffs = [d for d in diffs if d["asset"] not in seeded and d["asset"] not in auto and d["asset"] not in declared_not_run]            # expected (migration-owned) ones are not "too many"
+    unexplained = [d["asset"] for d in diffs if d["asset"] not in seeded and d["explained"] is None]
+    if rebuilt and undecided / len(rebuilt) > max_undecided_share:
         problems.append(f"{undecided} explained difference(s) have no decision id: over the allowed share {max_undecided_share}")
-    if expected and len(diffs) / len(expected) > max_difference_share:
-        problems.append(f"{len(diffs)} of {len(expected)} expected assets differ: over the allowed share {max_difference_share}")
+    if rebuilt and len(rebuilt_diffs) / len(rebuilt) > max_difference_share:
+        problems.append(f"{len(rebuilt_diffs)} of {len(rebuilt)} expected assets differ: over the allowed share {max_difference_share}")
     failed = bool(unexplained or stray or uncovered or unexpected or problems)
-    return {"schema": DRILL_SCHEMA, "item": "E5.7", "result": "FAIL" if failed else "PASS", "commit": commit,
+    measured = len(equal) + sum(1 for d in diffs if d["asset"] not in seeded and d["explained"] is not None and d["asset"] not in declared_not_run)
+    result = ("FAIL" if failed else "UNMEASURED" if (empty or measured == 0)
+              else ("PASS" if cov["scope"] == "all_declared_full" and not declared_not_run else "PASS_DECLARED_ONLY"))
+    return {"schema": DRILL_SCHEMA, "item": "E5.7", "result": result, "commit": commit,
             "tool_sha256": tool_sha256(), "definition": FINGERPRINT_DEFINITION, "expected_assets": expected,
             "production": fingerprint_set(prod), "rehearsal": fingerprint_set(reh), "explained_input": dict(explained),
             "inputs": {"production_sha256": sha256_text(canonical_json(fingerprint_set(prod))),
@@ -1297,10 +1645,15 @@ def compare_fingerprint_sets(production: Any, rehearsal: Any, explained: Any = N
             "equal": equal, "differences": diffs, "unexplained": unexplained, "uncovered": uncovered, "unexpected": unexpected,
             "explanations_without_difference": stray, "problems": problems,
             "limits": {"max_undecided_share": max_undecided_share, "max_difference_share": max_difference_share,
-                       "min_detail_chars": MIN_DETAIL_CHARS}}
+                       "min_detail_chars": MIN_DETAIL_CHARS},
+            "coverage": cov, "rows": rws, "empty_both_sides": empty, "seeded": seeded_status,
+            "not_run": nr, "unmeasured": sorted(declared_not_run), "runtime": rt, "claimed_unverified": claimed, "horizons": hz, "projections": proj,
+            "known_differences": [{"unit": e["unit"], "table": e["table"], "columns": list(e["columns"]), "reference": e["reference"],
+                                   "observed": e["unit"] in limited, "limited_to_columns": limited.get(e["unit"]),
+                                   "explained": any(d["asset"] == e["unit"] and d["explained"] is not None for d in diffs)} for e in cov["expected_differences"]]}
 
 
-def validate_drill(doc: Any, tool_sha: str | None = None) -> list[str]:
+def validate_drill(doc: Any, tool_sha: str | None = None, declarations_coverage: Mapping | None = None) -> list[str]:
     """Problems with an E5.7 comparison document ([] = valid): closed keys, the repo tool's hash, and every derived field
     (result, differences, coverage, problems, input hashes) re-derived from the embedded inputs. Never raises."""
     try:
@@ -1313,6 +1666,7 @@ def validate_drill(doc: Any, tool_sha: str | None = None) -> list[str]:
             return p + ["limits malformed"]
         again = compare_fingerprint_sets(doc["production"], doc["rehearsal"], doc["explained_input"],
                                          expected_assets=doc["expected_assets"], commit=doc["commit"],
+                                         coverage=doc["coverage"], rows=doc["rows"], not_run=doc["not_run"], runtime=doc["runtime"], projections=doc["projections"], horizons=doc["horizons"],
                                          max_undecided_share=lim["max_undecided_share"],
                                          max_difference_share=lim["max_difference_share"])
         again["tool_sha256"] = doc["tool_sha256"]
@@ -1323,11 +1677,36 @@ def validate_drill(doc: Any, tool_sha: str | None = None) -> list[str]:
                      "not a PASS this validator can give")
         if again != dict(doc):
             p.append("the document differs from the comparison re-derived from its embedded inputs")
+        if declarations_coverage is not None and doc["coverage"] != dict(declarations_coverage):
+            p.append("the coverage block is not the one the declarations file in use yields: the drill was made under other declarations")
         return p
     except RehearsalError as exc:
         return [f"drill inputs refused: {exc}"]
     except (KeyError, TypeError, AttributeError, ValueError) as exc:
         return [f"malformed drill document ({type(exc).__name__}: {str(exc)[:120]})"]
+
+
+def _load_declarations(declarations_path: str | Path | None = None):
+    import fingerprint_declarations as fd  # noqa: PLC0415
+    if fd.FINGERPRINT_DEFINITION != FINGERPRINT_DEFINITION:
+        raise RehearsalError("fingerprint_declarations and the harness name different fingerprint definitions")
+    try:
+        return fd.load_declarations(declarations_path) if declarations_path else fd.load_declarations()
+    except fd.DeclarationError as exc:
+        raise RehearsalError(f"the fingerprint declarations are refused: {exc}") from exc
+
+
+def drill_expected_assets(declarations_path: str | Path | None = None) -> list[str]:
+    """The comparison units an E5.7 drill must cover: every DECLARED asset with tables of its own plus every GROUP (`grp_<id>`: a shared table
+    is compared as one unit) of FINGERPRINT_DECLARATIONS.json (the loader validates the file against the registry snapshot, the schema extract
+    and the writer evidence). Undeclared assets are reported by `suvarna_mirror_drill.py expected` and carried in the drill's `coverage`
+    block, not silently dropped."""
+    return _load_declarations(declarations_path).expected_assets()
+
+
+def drill_coverage(declarations_path: str | Path | None = None) -> dict:
+    """The `coverage` block the drill document embeds (declared / partial / undeclared / non-deterministic / groups / expected differences)."""
+    return _load_declarations(declarations_path).drill_coverage()
 
 
 # ═════════════════════════ D. self-test (disposable PG, synthetic data) ═════════════════════════
@@ -1621,6 +2000,8 @@ def main(argv: Sequence[str] | None = None) -> int:
     v.add_argument("--repo", default=str(REPO_ROOT))
     vd = sub.add_parser("validate-drill")
     vd.add_argument("path")
+    vd.add_argument("--declarations", nargs="?", const="default", help="also require the coverage block to be the one these declarations yield "
+                                                                      "(no value: the committed FINGERPRINT_DECLARATIONS.json)")
     c = sub.add_parser("cluster")
     c.add_argument("action", choices=("init", "start", "stop", "status", "reap", "adopt"))
     c.add_argument("--root", default=DEFAULT_ROOT)
@@ -1628,13 +2009,24 @@ def main(argv: Sequence[str] | None = None) -> int:
     c.add_argument("--pg-bin", default=DEFAULT_PG_BIN)
     c.add_argument("--remove-data", action="store_true")
     c.add_argument("--confirm")
+    sub.add_parser("drill", add_help=False)                       # delegated to suvarna_mirror_drill.py (E5.7 mirror wiring)
     cf = sub.add_parser("compare-fingerprints")
     cf.add_argument("--pre", required=True, help="production envelope {definition, fingerprints}")
     cf.add_argument("--post", required=True, help="rehearsal envelope {definition, fingerprints}")
-    cf.add_argument("--expected", required=True, help="JSON list of the L0 asset ids the drill must cover")
+    cf.add_argument("--expected", required=True, help="JSON list of the L0 asset ids the drill must cover, or the word `declarations`")
     cf.add_argument("--commit", required=True)
     cf.add_argument("--explained")
+    cf.add_argument("--projections", help="JSON {unit: {table, production, rehearsal}}: the fingerprints WITHOUT the recorded expected-difference columns (needed to explain such a unit)")
+    cf.add_argument("--horizons", help="JSON {unit: {table, production, rehearsal}}: the N-135 horizon blocks of the rolling_horizon units (needed to explain such a unit)")
+    cf.add_argument("--runtime", required=True, help="JSON of where the rebuild ran: {platform, os, postgres_version, python_version, swisseph_version, collation}")
+    cf.add_argument("--rows", required=True, help="JSON {unit: {production: {table: n}, rehearsal: {table: n}}}: the row counts of both sides")
+    cf.add_argument("--coverage", help="JSON coverage block (not needed with --expected declarations, which derives it)")
     cf.add_argument("--out")
+    if argv is None:
+        argv = sys.argv[1:]
+    if argv and argv[0] == "drill":
+        import suvarna_mirror_drill as smd  # noqa: PLC0415
+        return smd.main(list(argv[1:]))
     a = ap.parse_args(argv)
     rd = lambda p: json.loads(Path(p).read_text(encoding="utf-8"))  # noqa: E731
     try:
@@ -1661,17 +2053,27 @@ def main(argv: Sequence[str] | None = None) -> int:
                 _print({"valid": False, "problems": [f"unreadable drill file ({type(exc).__name__})"]})
                 return 2
             commit = doc.get("commit") if isinstance(doc, Mapping) else None
-            problems = validate_drill(doc, tool_sha256_at_commit(REPO_ROOT, commit))
+            dcov = None
+            if a.declarations:
+                dcov = drill_coverage(None if a.declarations == "default" else a.declarations)
+            problems = validate_drill(doc, tool_sha256_at_commit(REPO_ROOT, commit), declarations_coverage=dcov)
             _print({"valid": not problems, "problems": problems})
             return 0 if not problems else 2
         if a.cmd == "compare-fingerprints":
+            if a.expected == "declarations":
+                exp, cov = drill_expected_assets(), drill_coverage()
+            else:
+                if not a.coverage:
+                    raise RehearsalError("--coverage is required with an explicit --expected list (a verdict must say what it covers)")
+                exp, cov = rd(a.expected), rd(a.coverage)
             out = compare_fingerprint_sets(rd(a.pre), rd(a.post), rd(a.explained) if a.explained else None,
-                                           expected_assets=rd(a.expected), commit=a.commit)
+                                           expected_assets=exp, commit=a.commit, coverage=cov, rows=rd(a.rows), runtime=rd(a.runtime),
+                                           projections=rd(a.projections) if a.projections else None, horizons=rd(a.horizons) if a.horizons else None)
             if a.out:
                 Path(a.out).parent.mkdir(parents=True, exist_ok=True)
                 Path(a.out).write_text(json.dumps(out, sort_keys=True, indent=2, ensure_ascii=True) + "\n", encoding="utf-8")
             _print(out)
-            return 0 if out["result"] == "PASS" else 4
+            return 0 if out["result"] in RESULTS_PASS else 4
         started, reason = None, "NEEDS_DISPOSABLE_PG"
         if not _psycopg_available():
             reason = "NEEDS_PSYCOPG"                       # the driver is not installed: UNMEASURED, not an error

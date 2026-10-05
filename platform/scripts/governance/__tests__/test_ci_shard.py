@@ -41,8 +41,22 @@ def test_the_partition_is_deterministic_and_balanced_by_size():
     files = ci_shard.test_files()
     a, b = ci_shard.partition(files, 3), ci_shard.partition(files, 3)
     assert a == b
-    loads = [sum(f.stat().st_size for f in s) for s in a]
-    assert max(loads) - min(loads) <= max(f.stat().st_size for f in files)     # LPT: never off by more than the largest file
+    loads = [sum(ci_shard.weight(f) for f in s) for s in a]
+    assert max(loads) - min(loads) <= max(ci_shard.weight(f) for f in files)   # LPT: never off by more than the heaviest file
+
+
+def test_every_weighted_file_exists_and_the_two_heavy_suites_do_not_share_a_shard():
+    """The CI_SECONDS table cannot rot silently, and the shard run time is balanced by it: the E5.7 mutant suites (the two heaviest files) are in
+    different shards (they were together in one shard that hit the 10-minute ceiling)."""
+    files = ci_shard.test_files()
+    assert set(ci_shard.CI_SECONDS) <= {f.name for f in files}, sorted(set(ci_shard.CI_SECONDS) - {f.name for f in files})
+    shards = ci_shard.partition(files, 3)
+    where = {f.name: i for i, s in enumerate(shards) for f in s}
+    heavy = ("test_e5_7_mirror_wiring.py", "test_e5_7_fingerprint_declarations.py")
+    if all(n in where for n in heavy):
+        assert where[heavy[0]] != where[heavy[1]]
+    est = [sum(ci_shard.CI_SECONDS.get(f.name, f.stat().st_size / ci_shard.BYTES_PER_SECOND) for f in s) for s in shards]
+    assert max(est) <= 1.25 * (sum(est) / len(est)), est                       # no shard is estimated more than 25 percent above the mean
 
 
 def test_collection_matches_pytest_default_patterns(tmp_path):
