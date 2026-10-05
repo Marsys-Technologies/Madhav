@@ -1,0 +1,6854 @@
+{
+ "schema": "suvarna-l0-schema-extract/v1",
+ "source": {
+  "file": "prod_schema.sql",
+  "sha256": "f5639b432c84a4bc3db1f600fef7ea842643cf3b70f744fc96223168f2c6dd13"
+ },
+ "table_names": [
+  "_migrations_applied",
+  "ai_cli_installations",
+  "ai_cli_models",
+  "ai_connection_models",
+  "ai_turn_role_invocations",
+  "asset_coefficients",
+  "asset_freshness",
+  "asset_output_digest_specs",
+  "asset_provenance_receipts",
+  "asset_registry",
+  "asset_throughput",
+  "asset_throughput__ssv_20260728c",
+  "asset_throughput_state_audit",
+  "bg_avastha_schemes",
+  "bg_combustion_orbs",
+  "bg_dignity_reference",
+  "bg_gochara_arcs",
+  "bg_gochara_citation_resolution",
+  "bg_graha_dik",
+  "bg_graha_naisargika_friendship",
+  "bg_kota_chakra_rings",
+  "bg_kp_sublord_division",
+  "bg_medical_mappings",
+  "bg_motion_state_thresholds",
+  "bg_muhurta_activity_rules",
+  "bg_muhurta_factor_census",
+  "bg_muhurta_lattice",
+  "bg_nakshatra_medical",
+  "bg_parihara_rules",
+  "bg_phaladeepika_latta",
+  "bg_prashna_fructification_rules",
+  "bg_prashna_lagna_methods",
+  "bg_prashna_significators",
+  "bg_prashna_special_techniques",
+  "bg_prashna_tajik_yogas",
+  "bg_sarvatobhadra_grid",
+  "bg_shashtiamsha_deities",
+  "bg_sign_medical",
+  "bg_sky_calendar",
+  "bg_synthetic_cohort",
+  "bg_synthetic_cohort_md",
+  "bg_transit_av_gates",
+  "bg_transit_engine",
+  "bg_transit_moorti",
+  "bg_transit_rules",
+  "bg_transit_vedha",
+  "bg_vastu_direction_remedials",
+  "bg_vastu_directions",
+  "bg_vedha_malefic_scale",
+  "bodha_anomalies",
+  "bodha_cdlm_cells",
+  "bodha_cdlm_cells__ssv_20260728a",
+  "bodha_cdlm_chart_summary",
+  "bodha_cdlm_domain_rollups",
+  "bodha_cdlm_evolution_gradients",
+  "bodha_cdlm_pattern_clusters",
+  "bodha_cgm_chart_topology_summary",
+  "bodha_cgm_edges",
+  "bodha_cgm_edges__ssv_20260728a",
+  "bodha_cgm_motifs",
+  "bodha_cgm_nodes",
+  "bodha_cgm_nodes__ssv_20260728a",
+  "bodha_cgm_paths",
+  "bodha_cgm_sub_graphs",
+  "bodha_chart_gestalt",
+  "bodha_contradictions",
+  "bodha_convergence",
+  "bodha_discoveries",
+  "bodha_grounding_matches",
+  "bodha_mechanisms",
+  "bodha_msr_signals",
+  "bodha_msr_signals__ssv_20260728a",
+  "bodha_pratijna",
+  "bodha_question_lenses",
+  "bodha_rm_chart_summary",
+  "bodha_rm_dasha_windowed_prescriptions",
+  "bodha_rm_dosha_remedy_bundles",
+  "bodha_rm_pattern_remedies",
+  "bodha_rm_remedy_prescriptions",
+  "bodha_rm_resonances",
+  "bodha_rm_resonances__ssv_20260728a",
+  "bodha_signal_embeddings",
+  "bodha_signal_embeddings__ssv_20260728a",
+  "bodha_spine_bundles",
+  "bodha_triangulation",
+  "brahma_activity_ontology",
+  "brahma_class_priors",
+  "brahma_compendium_index",
+  "brahma_dasha_systems",
+  "brahma_dosha_catalog",
+  "brahma_event_ontology",
+  "brahma_formula_constants",
+  "brahma_mimamsa_prediction_ledger",
+  "brahma_ontology",
+  "brahma_prospective_ledger",
+  "brahma_remedy_corpus",
+  "brahma_vichara_constants",
+  "brahma_yoga_catalog",
+  "brahma_yoga_source_chunks",
+  "build_checkpoints",
+  "build_dependencies",
+  "build_engine_versions",
+  "build_events",
+  "build_notifications",
+  "build_protected_assets",
+  "build_run_assets",
+  "build_runs",
+  "build_substep_progress",
+  "build_substep_progress__ssv_20260728c",
+  "build_substep_progress_archive_20260805",
+  "builds_staging",
+  "capability_asset_tool_bindings",
+  "capability_tool_registry",
+  "chart_dashas",
+  "chart_divisionals",
+  "chart_fact_identity",
+  "chart_facts",
+  "chart_facts_history",
+  "chart_facts_supersedence",
+  "chart_panchanga",
+  "chart_panchanga_cache",
+  "chart_subject_deletion_disputes",
+  "chart_subject_deletion_tombstones",
+  "chart_subject_exclusions",
+  "chart_vichara",
+  "classical_attributions",
+  "classical_chunks",
+  "classical_text_chunks",
+  "classical_texts",
+  "classical_texts_source",
+  "concept_ledger",
+  "concordance_ayanamsha_flags",
+  "concordance_ayanamsha_flags_staging",
+  "context_assembly_item_log",
+  "convergence_scores",
+  "engine_versions",
+  "ephemeris_daily",
+  "event_chart_state_index",
+  "fact_category_ownership",
+  "ga_condition_composite",
+  "ga_medical",
+  "ga_prashna_judgment",
+  "ga_prashna_lagna",
+  "ga_transit_anchors",
+  "ga_vastu_planet_direction_map",
+  "ga_yoga_firings",
+  "ganita_dashas",
+  "ganita_graha_sthana",
+  "gochara_resonance_map",
+  "gochara_v3_calibration",
+  "ka_kshetra_tier_basis",
+  "kala_activation",
+  "kala_activation_predicates",
+  "kala_avadhi",
+  "kala_bhavishya",
+  "kala_convergence",
+  "kala_convergence_staging",
+  "kala_darshana",
+  "kala_field",
+  "kala_field_boundaries",
+  "kala_field_clocks",
+  "kala_field_gof",
+  "kala_field_kinematics",
+  "kala_field_null",
+  "kala_field_primitives",
+  "kala_field_promise_edges",
+  "kala_field_promise_nodes",
+  "kala_field_provenance",
+  "kala_field_routes",
+  "kala_field_salience",
+  "kala_field_skill",
+  "kala_field_snapshots",
+  "kala_field_weight_versions",
+  "kala_field_weights",
+  "kala_field_windows",
+  "kala_gochara_authority",
+  "kala_gochara_contacts",
+  "kala_gochara_convention",
+  "kala_gochara_coverage",
+  "kala_gochara_cutover_step05_snapshot",
+  "kala_gochara_publication",
+  "kala_gochara_v2_build_state",
+  "kala_gochara_windows",
+  "kala_gochara_windows__ssv_20260728c",
+  "kala_gochara_windows_archive_20260805",
+  "kala_gochara_windows_v2",
+  "kala_insights",
+  "kala_jivana_parva",
+  "kala_kota_chakra",
+  "kala_moorti_nirnaya",
+  "kala_obstruction",
+  "kala_paddhati_profile",
+  "kala_sudarshana_varsha",
+  "kala_taranga",
+  "kala_timeline_spec",
+  "kala_tithi_pravesha",
+  "kala_vedha_gochara",
+  "l1_data_plane_function_attestations",
+  "l1_data_plane_policy_attestations",
+  "l1_data_plane_sequence_attestations",
+  "l1_data_plane_trigger_attestations",
+  "l1_data_plane_view_attestations",
+  "l1_tajik_varsha_year_lords",
+  "l1_tajik_varsha_year_lords__ssv_20260728b",
+  "l25_cdlm_cells",
+  "l25_cgm_edges",
+  "l25_cgm_nodes",
+  "l25_msr_signals",
+  "l25_rm_resonances",
+  "l25_ucn_digests",
+  "l2_data_plane_asset_outputs",
+  "l2_data_plane_function_attestations",
+  "l2_data_plane_manifest_attestations",
+  "l2_data_plane_policy_attestations",
+  "l2_data_plane_sequence_attestations",
+  "l2_data_plane_trigger_attestations",
+  "l2_data_plane_view_attestations",
+  "layer_approvals",
+  "lel_event_class_resolution",
+  "life_events",
+  "life_events_staging",
+  "llm_budget_rules",
+  "llm_call_log",
+  "llm_cost_reconciliation",
+  "llm_pricing_versions",
+  "llm_provider_cost_reports",
+  "llm_stack_config",
+  "mcp_alerts_config",
+  "mcp_disagreements",
+  "mcp_prediction_outcomes",
+  "mcp_predictions_retired_backup",
+  "mcp_rate_buckets",
+  "mimamsa_adjudication_log",
+  "mimamsa_anchor_adjustment",
+  "mimamsa_attribution",
+  "mimamsa_calibration",
+  "mimamsa_calibration__ssv_20260728b",
+  "mimamsa_calibration_snapshot",
+  "mimamsa_convergence_adjustment",
+  "mimamsa_discoveries",
+  "mimamsa_event_provenance",
+  "mimamsa_export_log",
+  "mimamsa_fact_adjustment",
+  "mimamsa_insight_embeddings",
+  "mimamsa_insight_units",
+  "mimamsa_insight_units__ssv_20260728a",
+  "mimamsa_insight_units__ssv_20260728b",
+  "mimamsa_intervention_ledger",
+  "mimamsa_journal",
+  "mimamsa_journal__ssv_20260728b",
+  "mimamsa_load_bearing",
+  "mimamsa_load_bearing__ssv_20260728b",
+  "mimamsa_manifestation_grammar",
+  "mimamsa_manifestation_grammar__ssv_20260728b",
+  "mimamsa_manifestation_sets",
+  "mimamsa_multipliers",
+  "mimamsa_multipliers__ssv_20260728b",
+  "mimamsa_negative_controls",
+  "mimamsa_pool_contributions",
+  "mimamsa_predictions",
+  "mimamsa_predictions__ssv_20260728b",
+  "mimamsa_preferences",
+  "mimamsa_qa_eval",
+  "mimamsa_qa_eval__ssv_20260728b",
+  "mimamsa_reliability",
+  "mimamsa_resonance_feedback",
+  "mimamsa_signal_adjustment",
+  "mimamsa_signal_families",
+  "mimamsa_snapshot_cosign",
+  "nirmana_bg_texts_integrity_baselines",
+  "nirmana_elevation_monitor_observations",
+  "orchestrator_event_register",
+  "panchanga_daily",
+  "pariprashna_ledger_outbox",
+  "pariprashna_persistence_outbox",
+  "pariprashna_predictive_samples",
+  "pariprashna_retraction_notifications",
+  "pariprashna_retraction_prediction_notes",
+  "pariprashna_retractions",
+  "pariprashna_safety_decisions",
+  "pariprashna_safety_notifications",
+  "pariprashna_safety_review_events",
+  "pariprashna_safety_review_passes",
+  "pariprashna_safety_reviews",
+  "pariprashna_samiksha_digest_journal",
+  "pariprashna_stream_capture",
+  "performance_judge_verdict",
+  "performance_queries",
+  "phala_anchors",
+  "phala_anchors__ssv_20260728a",
+  "phala_anchors__ssv_20260728b",
+  "phala_mitigation",
+  "phala_mitigation__ssv_20260728b",
+  "phala_muhurta",
+  "phala_muhurta__ssv_20260728b",
+  "phala_phaladesa",
+  "phala_phaladesa__ssv_20260728b",
+  "phala_pramana",
+  "phala_pramana__ssv_20260728b",
+  "phala_rectification",
+  "phala_rectification__ssv_20260728b",
+  "phala_rectification_best",
+  "phala_sankrama",
+  "phala_sankrama__ssv_20260728b",
+  "phala_sodhana",
+  "phala_sodhana__ssv_20260728b",
+  "phala_suddha_sodhana",
+  "phala_suddha_sodhana__ssv_20260728b",
+  "plan_alternatives_log",
+  "prashna_charts",
+  "prashna_followup_schedule",
+  "project_conversations",
+  "project_files",
+  "pyramid_layers",
+  "query_plan_log",
+  "reference_aspects",
+  "reference_constants",
+  "reference_dasha_systems",
+  "reference_doshas",
+  "reference_glossary",
+  "reference_houses",
+  "reference_karakas",
+  "reference_nakshatra",
+  "reference_nakshatra_matrix",
+  "reference_nakshatra_pada",
+  "reference_nakshatras",
+  "reference_planets",
+  "reference_signs",
+  "reference_strength_systems",
+  "reference_topic_tags",
+  "reference_upagrahas",
+  "reference_vargas",
+  "reference_yogas",
+  "remedy_review_queue",
+  "runtime_config",
+  "school_analysis_runs",
+  "school_disagreements",
+  "school_signal_coverage",
+  "sutravali_review",
+  "sutravali_rules",
+  "synthesis_quality_scorecard",
+  "synthesis_quality_scorecard__ssv_20260728a",
+  "system_health",
+  "tool_execution_log",
+  "tool_registry",
+  "vidhi_floor_items",
+  "vidhi_intent_floors",
+  "vidhi_primitives",
+  "yoga_families",
+  "yoga_family_members",
+  "yoga_interaction_rules"
+ ],
+ "tables": {
+  "bg_avastha_schemes": {
+   "columns": {
+    "classical_citation": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": false,
+     "type": "text"
+    },
+    "determination_rule": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "jsonb"
+    },
+    "id": {
+     "default": null,
+     "generated": false,
+     "identity": true,
+     "not_null": true,
+     "type": "integer"
+    },
+    "notes": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": false,
+     "type": "text"
+    },
+    "scheme_name": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "state_name": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "state_order": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "integer"
+    }
+   },
+   "primary_key": [
+    "id"
+   ],
+   "primary_key_name": "bg_avastha_schemes_pkey",
+   "unique": [
+    {
+     "columns": [
+      "scheme_name",
+      "state_name"
+     ],
+     "name": "bg_avastha_schemes_scheme_name_state_name_key"
+    }
+   ],
+   "unique_other": []
+  },
+  "bg_combustion_orbs": {
+   "columns": {
+    "classical_citation": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": false,
+     "type": "text"
+    },
+    "deep_orb_degrees": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "numeric"
+    },
+    "graha": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "id": {
+     "default": null,
+     "generated": false,
+     "identity": true,
+     "not_null": true,
+     "type": "integer"
+    },
+    "orb_degrees": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "numeric"
+    },
+    "retrograde_note": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": false,
+     "type": "text"
+    }
+   },
+   "primary_key": [
+    "id"
+   ],
+   "primary_key_name": "bg_combustion_orbs_pkey",
+   "unique": [
+    {
+     "columns": [
+      "graha"
+     ],
+     "name": "bg_combustion_orbs_graha_key"
+    }
+   ],
+   "unique_other": []
+  },
+  "bg_dignity_reference": {
+   "columns": {
+    "classical_citation": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": false,
+     "type": "text"
+    },
+    "debilitation_degree": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": false,
+     "type": "numeric"
+    },
+    "debilitation_sign": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": false,
+     "type": "text"
+    },
+    "exaltation_degree": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": false,
+     "type": "numeric"
+    },
+    "exaltation_sign": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": false,
+     "type": "text"
+    },
+    "graha": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "id": {
+     "default": null,
+     "generated": false,
+     "identity": true,
+     "not_null": true,
+     "type": "integer"
+    },
+    "moolatrikona_from": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": false,
+     "type": "numeric"
+    },
+    "moolatrikona_sign": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": false,
+     "type": "text"
+    },
+    "moolatrikona_to": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": false,
+     "type": "numeric"
+    },
+    "notes": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": false,
+     "type": "text"
+    },
+    "own_signs": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": false,
+     "type": "text[]"
+    },
+    "variant_traditions": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": false,
+     "type": "jsonb"
+    }
+   },
+   "primary_key": [
+    "id"
+   ],
+   "primary_key_name": "bg_dignity_reference_pkey",
+   "unique": [
+    {
+     "columns": [
+      "graha"
+     ],
+     "name": "bg_dignity_reference_graha_key"
+    }
+   ],
+   "unique_other": []
+  },
+  "bg_gochara_arcs": {
+   "columns": {
+    "arc_fingerprint": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "arc_index": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "integer"
+    },
+    "ayanamsha_id": {
+     "default": "'tropical'::text",
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "body": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "build_id": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": false,
+     "type": "text"
+    },
+    "computed_at": {
+     "default": "now()",
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "timestamp with time zone"
+    },
+    "direction": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "smallint"
+    },
+    "end_jd": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "double precision"
+    },
+    "end_lon_unwrapped_deg": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "double precision"
+    },
+    "engine_version": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "lon_hi_deg": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "double precision"
+    },
+    "lon_lo_deg": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "double precision"
+    },
+    "start_jd": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "double precision"
+    },
+    "start_lon_unwrapped_deg": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "double precision"
+    },
+    "substrate_version": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "wrap_index": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "integer"
+    }
+   },
+   "primary_key": [
+    "substrate_version",
+    "body",
+    "arc_index"
+   ],
+   "primary_key_name": "bg_gochara_arcs_pk",
+   "unique": [],
+   "unique_other": []
+  },
+  "bg_gochara_citation_resolution": {
+   "columns": {
+    "chunk_id": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "citation_string": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "constant_name": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": false,
+     "type": "text"
+    },
+    "created_at": {
+     "default": "now()",
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "timestamp with time zone"
+    },
+    "note": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": false,
+     "type": "text"
+    },
+    "source_citation": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "status": {
+     "default": "'resolved'::text",
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "text_id": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "verse_ref": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    }
+   },
+   "primary_key": [
+    "citation_string",
+    "chunk_id"
+   ],
+   "primary_key_name": "bg_gochara_citation_resolution_pk",
+   "unique": [],
+   "unique_other": []
+  },
+  "bg_graha_naisargika_friendship": {
+   "columns": {
+    "classical_citation": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": false,
+     "type": "text"
+    },
+    "graha": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "id": {
+     "default": null,
+     "generated": false,
+     "identity": true,
+     "not_null": true,
+     "type": "integer"
+    },
+    "other_graha": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "relation": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    }
+   },
+   "primary_key": [
+    "id"
+   ],
+   "primary_key_name": "bg_graha_naisargika_friendship_pkey",
+   "unique": [
+    {
+     "columns": [
+      "graha",
+      "other_graha"
+     ],
+     "name": "bg_graha_naisargika_friendship_graha_other_graha_key"
+    }
+   ],
+   "unique_other": []
+  },
+  "bg_kota_chakra_rings": {
+   "columns": {
+    "citation": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "corpus_status": {
+     "default": "'not_in_corpus'::text",
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "created_at": {
+     "default": "now()",
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "timestamp with time zone"
+    },
+    "dvara_assignment": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": false,
+     "type": "text"
+    },
+    "ratified_by": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": false,
+     "type": "text"
+    },
+    "ring_index": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "smallint"
+    },
+    "ring_name": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "ring_position": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "smallint"
+    },
+    "table_version": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    }
+   },
+   "primary_key": [
+    "table_version",
+    "ring_position"
+   ],
+   "primary_key_name": "bg_kota_chakra_rings_pk",
+   "unique": [],
+   "unique_other": []
+  },
+  "bg_kp_sublord_division": {
+   "columns": {
+    "created_at": {
+     "default": "now()",
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "timestamp with time zone"
+    },
+    "division_index": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "smallint"
+    },
+    "end_longitude_deg": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "numeric(18,15)"
+    },
+    "nakshatra_number": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "smallint"
+    },
+    "pada_at_end": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "smallint"
+    },
+    "pada_at_start": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "smallint"
+    },
+    "sign_number": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "smallint"
+    },
+    "source_citation": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "span_arcmin": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "numeric(18,12)"
+    },
+    "split_by_sign_boundary": {
+     "default": "false",
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "boolean"
+    },
+    "star_lord": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "start_longitude_deg": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "numeric(18,15)"
+    },
+    "sub_lord": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "table_version": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    }
+   },
+   "primary_key": [
+    "table_version",
+    "division_index"
+   ],
+   "primary_key_name": "bg_kp_sublord_division_pk",
+   "unique": [
+    {
+     "columns": [
+      "table_version",
+      "start_longitude_deg"
+     ],
+     "name": "bg_kp_sublord_division_start_uniq"
+    }
+   ],
+   "unique_other": []
+  },
+  "bg_medical_mappings": {
+   "columns": {
+    "body_part": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": false,
+     "type": "text[]"
+    },
+    "classical_citation": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "dhatu": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": false,
+     "type": "text[]"
+    },
+    "disease_tendency": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": false,
+     "type": "text[]"
+    },
+    "dosha": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": false,
+     "type": "text[]"
+    },
+    "graha": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "id": {
+     "default": null,
+     "generated": false,
+     "identity": true,
+     "not_null": true,
+     "type": "integer"
+    },
+    "organ_systems": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": false,
+     "type": "text[]"
+    }
+   },
+   "primary_key": [
+    "id"
+   ],
+   "primary_key_name": "bg_medical_mappings_pkey",
+   "unique": [
+    {
+     "columns": [
+      "graha"
+     ],
+     "name": "bg_medical_mappings_graha_key"
+    }
+   ],
+   "unique_other": []
+  },
+  "bg_motion_state_thresholds": {
+   "columns": {
+    "classical_citation": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": false,
+     "type": "text"
+    },
+    "graha": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "id": {
+     "default": null,
+     "generated": false,
+     "identity": true,
+     "not_null": true,
+     "type": "integer"
+    },
+    "motion_state": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "notes": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": false,
+     "type": "text"
+    },
+    "speed_threshold_high": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": false,
+     "type": "numeric"
+    },
+    "speed_threshold_low": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": false,
+     "type": "numeric"
+    },
+    "threshold_type": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "typical_speed_dps": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": false,
+     "type": "numeric"
+    }
+   },
+   "primary_key": [
+    "id"
+   ],
+   "primary_key_name": "bg_motion_state_thresholds_pkey",
+   "unique": [
+    {
+     "columns": [
+      "graha",
+      "motion_state"
+     ],
+     "name": "bg_motion_state_thresholds_graha_motion_state_key"
+    }
+   ],
+   "unique_other": []
+  },
+  "bg_muhurta_activity_rules": {
+   "columns": {
+    "activity_class": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "build_id": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": false,
+     "type": "uuid"
+    },
+    "computed_at": {
+     "default": "now()",
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "timestamp with time zone"
+    },
+    "factor_id": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "integer"
+    },
+    "factor_type": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "id": {
+     "default": null,
+     "generated": false,
+     "identity": true,
+     "not_null": true,
+     "type": "bigint"
+    },
+    "quality_score": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "numeric(4,3)"
+    },
+    "source_citation": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    }
+   },
+   "primary_key": [
+    "id"
+   ],
+   "primary_key_name": "bg_muhurta_activity_rules_pkey",
+   "unique": [
+    {
+     "columns": [
+      "activity_class",
+      "factor_type",
+      "factor_id"
+     ],
+     "name": "bg_muhurta_activity_rules_natural_key"
+    }
+   ],
+   "unique_other": []
+  },
+  "bg_muhurta_factor_census": {
+   "columns": {
+    "build_id": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": false,
+     "type": "uuid"
+    },
+    "citation_or_gap_note": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "computed_at": {
+     "default": "now()",
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "timestamp with time zone"
+    },
+    "disposition": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "evidence_pointer": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "factor_family": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "factor_name": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "id": {
+     "default": null,
+     "generated": false,
+     "identity": true,
+     "not_null": true,
+     "type": "bigint"
+    },
+    "school_tag": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": false,
+     "type": "text"
+    }
+   },
+   "primary_key": [
+    "id"
+   ],
+   "primary_key_name": "bg_muhurta_factor_census_pkey",
+   "unique": [
+    {
+     "columns": [
+      "factor_family",
+      "factor_name"
+     ],
+     "name": "bg_muhurta_factor_census_natural_key"
+    }
+   ],
+   "unique_other": []
+  },
+  "bg_muhurta_lattice": {
+   "columns": {
+    "ayanamsha_key": {
+     "default": "'lahiri'::text",
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "build_id": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": false,
+     "type": "uuid"
+    },
+    "computed_at": {
+     "default": "now()",
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "timestamp with time zone"
+    },
+    "corpus_status": {
+     "default": "'computed_cited'::text",
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "detail": {
+     "default": "'{}'::jsonb",
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "jsonb"
+    },
+    "end_utc": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "timestamp without time zone"
+    },
+    "factor_family": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "factor_key": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "id": {
+     "default": null,
+     "generated": false,
+     "identity": true,
+     "not_null": true,
+     "type": "bigint"
+    },
+    "reference_lat": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "numeric(7,4)"
+    },
+    "reference_location_key": {
+     "default": "'bhubaneswar'::text",
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "reference_lon": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "numeric(7,4)"
+    },
+    "reference_tz_offset_minutes": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "integer"
+    },
+    "sampling_method": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "source_citation": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "start_utc": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "timestamp without time zone"
+    }
+   },
+   "primary_key": [
+    "id"
+   ],
+   "primary_key_name": "bg_muhurta_lattice_pkey",
+   "unique": [
+    {
+     "columns": [
+      "factor_family",
+      "factor_key",
+      "start_utc"
+     ],
+     "name": "bg_muhurta_lattice_natural_key"
+    }
+   ],
+   "unique_other": []
+  },
+  "bg_nakshatra_medical": {
+   "columns": {
+    "body_part": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "classical_citation": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "dosha": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": false,
+     "type": "text"
+    },
+    "id": {
+     "default": null,
+     "generated": false,
+     "identity": true,
+     "not_null": true,
+     "type": "integer"
+    },
+    "nakshatra_name": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "nakshatra_number": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": false,
+     "type": "integer"
+    }
+   },
+   "primary_key": [
+    "id"
+   ],
+   "primary_key_name": "bg_nakshatra_medical_pkey",
+   "unique": [
+    {
+     "columns": [
+      "nakshatra_name"
+     ],
+     "name": "bg_nakshatra_medical_nakshatra_name_key"
+    }
+   ],
+   "unique_other": []
+  },
+  "bg_parihara_rules": {
+   "columns": {
+    "build_id": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": false,
+     "type": "uuid"
+    },
+    "cancellation_condition_text": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "cancellation_index": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "integer"
+    },
+    "computed_at": {
+     "default": "now()",
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "timestamp with time zone"
+    },
+    "dosha_canonical_id": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "dosha_category": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "dosha_name_en": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "extraction_context": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": false,
+     "type": "text"
+    },
+    "id": {
+     "default": null,
+     "generated": false,
+     "identity": true,
+     "not_null": true,
+     "type": "bigint"
+    },
+    "net_standing": {
+     "default": "'cancellable_by_condition'::text",
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "scope": {
+     "default": "'natal'::text",
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "source_chapter": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": false,
+     "type": "integer"
+    },
+    "source_citation": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "source_text_id": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    }
+   },
+   "primary_key": [
+    "id"
+   ],
+   "primary_key_name": "bg_parihara_rules_pkey",
+   "unique": [
+    {
+     "columns": [
+      "dosha_canonical_id",
+      "cancellation_index"
+     ],
+     "name": "bg_parihara_rules_natural_key"
+    }
+   ],
+   "unique_other": []
+  },
+  "bg_phaladeepika_latta": {
+   "columns": {
+    "affliction_condition": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "count_from_graha": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "smallint"
+    },
+    "created_at": {
+     "default": "now()",
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "timestamp with time zone"
+    },
+    "direction": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "effect_description": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": false,
+     "type": "text"
+    },
+    "graha": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "source_citation": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "table_version": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "verse_ref": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    }
+   },
+   "primary_key": [
+    "table_version",
+    "graha"
+   ],
+   "primary_key_name": "bg_phaladeepika_latta_pk",
+   "unique": [],
+   "unique_other": []
+  },
+  "bg_prashna_fructification_rules": {
+   "columns": {
+    "applicable_when": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "classical_citation": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "degree_conversion_rule": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "id": {
+     "default": null,
+     "generated": false,
+     "identity": true,
+     "not_null": true,
+     "type": "integer"
+    },
+    "rule_id": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "time_unit": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    }
+   },
+   "primary_key": [
+    "id"
+   ],
+   "primary_key_name": "bg_prashna_fructification_rules_pkey",
+   "unique": [
+    {
+     "columns": [
+      "rule_id"
+     ],
+     "name": "bg_prashna_fructification_rules_rule_id_key"
+    }
+   ],
+   "unique_other": []
+  },
+  "bg_prashna_lagna_methods": {
+   "columns": {
+    "classical_citation": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "derivation_rule": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "derivation_rule_jsonb": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": false,
+     "type": "jsonb"
+    },
+    "id": {
+     "default": null,
+     "generated": false,
+     "identity": true,
+     "not_null": true,
+     "type": "integer"
+    },
+    "is_primary": {
+     "default": "false",
+     "generated": false,
+     "identity": false,
+     "not_null": false,
+     "type": "boolean"
+    },
+    "method_id": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "method_name": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "method_name_sa": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": false,
+     "type": "text"
+    },
+    "tradition": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    }
+   },
+   "primary_key": [
+    "id"
+   ],
+   "primary_key_name": "bg_prashna_lagna_methods_pkey",
+   "unique": [
+    {
+     "columns": [
+      "method_id"
+     ],
+     "name": "bg_prashna_lagna_methods_method_id_key"
+    }
+   ],
+   "unique_other": []
+  },
+  "bg_prashna_significators": {
+   "columns": {
+    "classical_citation": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "id": {
+     "default": null,
+     "generated": false,
+     "identity": true,
+     "not_null": true,
+     "type": "integer"
+    },
+    "querent_house": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": false,
+     "type": "integer"
+    },
+    "querent_planet": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": false,
+     "type": "text"
+    },
+    "quesited_house": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "integer"
+    },
+    "quesited_planet": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": false,
+     "type": "text"
+    },
+    "question_class": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "significator_rule": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    }
+   },
+   "primary_key": [
+    "id"
+   ],
+   "primary_key_name": "bg_prashna_significators_pkey",
+   "unique": [
+    {
+     "columns": [
+      "question_class"
+     ],
+     "name": "bg_prashna_significators_question_class_key"
+    }
+   ],
+   "unique_other": []
+  },
+  "bg_prashna_special_techniques": {
+   "columns": {
+    "application_rule": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "classical_citation": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "id": {
+     "default": null,
+     "generated": false,
+     "identity": true,
+     "not_null": true,
+     "type": "integer"
+    },
+    "technique_id": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "technique_name": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "technique_name_sa": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": false,
+     "type": "text"
+    }
+   },
+   "primary_key": [
+    "id"
+   ],
+   "primary_key_name": "bg_prashna_special_techniques_pkey",
+   "unique": [
+    {
+     "columns": [
+      "technique_id"
+     ],
+     "name": "bg_prashna_special_techniques_technique_id_key"
+    }
+   ],
+   "unique_other": []
+  },
+  "bg_prashna_tajik_yogas": {
+   "columns": {
+    "classical_citation": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "formation_rule": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "formation_rule_jsonb": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": false,
+     "type": "jsonb"
+    },
+    "id": {
+     "default": null,
+     "generated": false,
+     "identity": true,
+     "not_null": true,
+     "type": "integer"
+    },
+    "is_fructification_indicator": {
+     "default": "false",
+     "generated": false,
+     "identity": false,
+     "not_null": false,
+     "type": "boolean"
+    },
+    "judgment_meaning": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "yoga_id": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "yoga_name": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "yoga_name_sa": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": false,
+     "type": "text"
+    }
+   },
+   "primary_key": [
+    "id"
+   ],
+   "primary_key_name": "bg_prashna_tajik_yogas_pkey",
+   "unique": [
+    {
+     "columns": [
+      "yoga_id"
+     ],
+     "name": "bg_prashna_tajik_yogas_yoga_id_key"
+    }
+   ],
+   "unique_other": []
+  },
+  "bg_sarvatobhadra_grid": {
+   "columns": {
+    "cell_index": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "integer"
+    },
+    "cell_kind": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "cell_value": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "created_at": {
+     "default": "now()",
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "timestamp with time zone"
+    },
+    "id": {
+     "default": null,
+     "generated": false,
+     "identity": true,
+     "not_null": true,
+     "type": "bigint"
+    },
+    "native_confirmed": {
+     "default": "false",
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "boolean"
+    },
+    "school_tag": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "source_citation": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": false,
+     "type": "text"
+    },
+    "source_text_id": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": false,
+     "type": "text"
+    },
+    "table_version": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    }
+   },
+   "primary_key": [
+    "id"
+   ],
+   "primary_key_name": "bg_sarvatobhadra_grid_pkey",
+   "unique": [
+    {
+     "columns": [
+      "school_tag",
+      "cell_kind",
+      "cell_index",
+      "table_version"
+     ],
+     "name": "bg_sarvatobhadra_grid_natural_key"
+    }
+   ],
+   "unique_other": []
+  },
+  "bg_sign_medical": {
+   "columns": {
+    "body_part": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "classical_citation": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "dosha": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "element": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "organ_systems": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": false,
+     "type": "text[]"
+    },
+    "sign_name": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "sign_number": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "integer"
+    }
+   },
+   "primary_key": [
+    "sign_number"
+   ],
+   "primary_key_name": "bg_sign_medical_pkey",
+   "unique": [
+    {
+     "columns": [
+      "sign_name"
+     ],
+     "name": "bg_sign_medical_sign_name_key"
+    }
+   ],
+   "unique_other": []
+  },
+  "bg_sky_calendar": {
+   "columns": {
+    "ayanamsha_key": {
+     "default": "'lahiri'::text",
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "build_id": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": false,
+     "type": "uuid"
+    },
+    "computed_at": {
+     "default": "now()",
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "timestamp with time zone"
+    },
+    "detail": {
+     "default": "'{}'::jsonb",
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "jsonb"
+    },
+    "event_datetime_utc": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "timestamp without time zone"
+    },
+    "event_jd": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "double precision"
+    },
+    "event_type": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "id": {
+     "default": null,
+     "generated": false,
+     "identity": true,
+     "not_null": true,
+     "type": "bigint"
+    },
+    "longitude_deg": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": false,
+     "type": "double precision"
+    },
+    "nakshatra": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": false,
+     "type": "text"
+    },
+    "primary_body": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "sampling_method": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "secondary_body": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": false,
+     "type": "text"
+    },
+    "secondary_body_key": {
+     "default": null,
+     "generated": true,
+     "identity": false,
+     "not_null": false,
+     "type": "text"
+    },
+    "sign": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": false,
+     "type": "text"
+    },
+    "source_citation": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "speed_dps": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": false,
+     "type": "double precision"
+    }
+   },
+   "primary_key": [
+    "id"
+   ],
+   "primary_key_name": "bg_sky_events_pkey",
+   "unique": [
+    {
+     "columns": [
+      "event_type",
+      "primary_body",
+      "secondary_body_key",
+      "event_jd"
+     ],
+     "name": "bg_sky_events_natural_key"
+    }
+   ],
+   "unique_other": []
+  },
+  "bg_synthetic_cohort": {
+   "columns": {
+    "ayanamsha_key": {
+     "default": "'lahiri'::text",
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "birth_datetime_utc": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "timestamp with time zone"
+    },
+    "birth_lat": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "numeric(7,4)"
+    },
+    "birth_lon": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "numeric(7,4)"
+    },
+    "build_id": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": false,
+     "type": "uuid"
+    },
+    "computed_at": {
+     "default": "now()",
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "timestamp with time zone"
+    },
+    "id": {
+     "default": null,
+     "generated": false,
+     "identity": true,
+     "not_null": true,
+     "type": "bigint"
+    },
+    "positions": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "jsonb"
+    },
+    "sampling_method": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "source_citation": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "synthetic_id": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "integer"
+    }
+   },
+   "primary_key": [
+    "id"
+   ],
+   "primary_key_name": "bg_synthetic_cohort_pkey",
+   "unique": [
+    {
+     "columns": [
+      "synthetic_id"
+     ],
+     "name": "bg_synthetic_cohort_synthetic_id_key"
+    }
+   ],
+   "unique_other": []
+  },
+  "bg_synthetic_cohort_md": {
+   "columns": {
+    "chain_version": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "computed_at": {
+     "default": "now()",
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "timestamp with time zone"
+    },
+    "end_age_years": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "numeric(9,6)"
+    },
+    "id": {
+     "default": null,
+     "generated": false,
+     "identity": true,
+     "not_null": true,
+     "type": "bigint"
+    },
+    "is_partial": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "boolean"
+    },
+    "md_full_years": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "smallint"
+    },
+    "md_index": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "smallint"
+    },
+    "md_lord": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "start_age_years": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "numeric(9,6)"
+    },
+    "synthetic_id": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "integer"
+    }
+   },
+   "primary_key": [
+    "id"
+   ],
+   "primary_key_name": "bg_synthetic_cohort_md_pkey",
+   "unique": [
+    {
+     "columns": [
+      "synthetic_id",
+      "md_index"
+     ],
+     "name": "bg_synthetic_cohort_md_uk"
+    }
+   ],
+   "unique_other": []
+  },
+  "bg_transit_engine": {
+   "columns": {
+    "avg_daily_motion_deg": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "double precision"
+    },
+    "classical_citation": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "graha": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "id": {
+     "default": null,
+     "generated": false,
+     "identity": true,
+     "not_null": true,
+     "type": "integer"
+    },
+    "sign_residence_days": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "double precision"
+    },
+    "zodiac_period_days": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "double precision"
+    }
+   },
+   "primary_key": [
+    "id"
+   ],
+   "primary_key_name": "bg_transit_engine_pkey",
+   "unique": [
+    {
+     "columns": [
+      "graha"
+     ],
+     "name": "bg_transit_engine_graha_key"
+    }
+   ],
+   "unique_other": []
+  },
+  "bg_transit_moorti": {
+   "columns": {
+    "classical_citation": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "moorti_name": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "nakshatra_offset": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "integer"
+    },
+    "phala_brief": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "quality_tier": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "integer"
+    },
+    "rule_notes": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": false,
+     "type": "text"
+    }
+   },
+   "primary_key": [
+    "nakshatra_offset"
+   ],
+   "primary_key_name": "bg_transit_moorti_pkey",
+   "unique": [],
+   "unique_other": []
+  },
+  "bg_transit_rules": {
+   "columns": {
+    "classical_citation": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "graha": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "id": {
+     "default": null,
+     "generated": false,
+     "identity": true,
+     "not_null": true,
+     "type": "integer"
+    },
+    "phala": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "primary_house": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "integer"
+    },
+    "rule_notes": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": false,
+     "type": "text"
+    },
+    "rule_type": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "vedha_house": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": false,
+     "type": "integer"
+    }
+   },
+   "primary_key": [
+    "id"
+   ],
+   "primary_key_name": "bg_transit_rules_pkey",
+   "unique": [
+    {
+     "columns": [
+      "graha",
+      "rule_type",
+      "primary_house"
+     ],
+     "name": "bg_transit_rules_graha_type_house_unique"
+    }
+   ],
+   "unique_other": []
+  },
+  "bg_vastu_direction_remedials": {
+   "columns": {
+    "classical_citation": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "direction": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "id": {
+     "default": null,
+     "generated": false,
+     "identity": true,
+     "not_null": true,
+     "type": "integer"
+    },
+    "remedy_description": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "remedy_type": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    }
+   },
+   "primary_key": [
+    "id"
+   ],
+   "primary_key_name": "bg_vastu_direction_remedials_pkey",
+   "unique": [
+    {
+     "columns": [
+      "direction",
+      "remedy_type"
+     ],
+     "name": "bg_vastu_direction_remedials_direction_remedy_type_key"
+    }
+   ],
+   "unique_other": []
+  },
+  "bg_vastu_directions": {
+   "columns": {
+    "classical_citation": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "direction": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "direction_deg": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": false,
+     "type": "integer"
+    },
+    "element": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": false,
+     "type": "text"
+    },
+    "favorable_color": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": false,
+     "type": "text"
+    },
+    "id": {
+     "default": null,
+     "generated": false,
+     "identity": true,
+     "not_null": true,
+     "type": "integer"
+    },
+    "ruling_graha": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "secondary_graha": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": false,
+     "type": "text"
+    }
+   },
+   "primary_key": [
+    "id"
+   ],
+   "primary_key_name": "bg_vastu_directions_pkey",
+   "unique": [
+    {
+     "columns": [
+      "direction"
+     ],
+     "name": "bg_vastu_directions_direction_key"
+    }
+   ],
+   "unique_other": []
+  },
+  "bg_vedha_malefic_scale": {
+   "columns": {
+    "created_at": {
+     "default": "now()",
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "timestamp with time zone"
+    },
+    "effect_description": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "effect_grade": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "malefic_count": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "smallint"
+    },
+    "source_citation": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "table_version": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "verse_ref": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    }
+   },
+   "primary_key": [
+    "table_version",
+    "malefic_count"
+   ],
+   "primary_key_name": "bg_vedha_malefic_scale_pk",
+   "unique": [],
+   "unique_other": []
+  },
+  "brahma_activity_ontology": {
+   "columns": {
+    "activity_class_id": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "citations": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": false,
+     "type": "text[]"
+    },
+    "created_at": {
+     "default": "now()",
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "timestamp with time zone"
+    },
+    "fructification_rules": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "jsonb"
+    },
+    "name_en": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "related_event_class": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": false,
+     "type": "text"
+    },
+    "significators": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "jsonb"
+    },
+    "version": {
+     "default": "'1.0'::text",
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    }
+   },
+   "primary_key": [
+    "activity_class_id"
+   ],
+   "primary_key_name": "brahma_activity_ontology_pkey",
+   "unique": [],
+   "unique_other": []
+  },
+  "brahma_class_priors": {
+   "columns": {
+    "citation": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": false,
+     "type": "text"
+    },
+    "class_prior": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "numeric"
+    },
+    "contested": {
+     "default": "false",
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "boolean"
+    },
+    "created_at": {
+     "default": "now()",
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "timestamp with time zone"
+    },
+    "fact_kind": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "prior_basis": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": false,
+     "type": "text"
+    },
+    "prior_version": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "ratified_by": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": false,
+     "type": "text"
+    },
+    "signal_tradition": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "signal_type_class": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "source_ref": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": false,
+     "type": "text"
+    },
+    "source_subsystem": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "varga_weights": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": false,
+     "type": "jsonb"
+    }
+   },
+   "primary_key": [
+    "prior_version",
+    "signal_type_class",
+    "fact_kind",
+    "source_subsystem",
+    "signal_tradition"
+   ],
+   "primary_key_name": "brahma_class_priors_pk",
+   "unique": [],
+   "unique_other": []
+  },
+  "brahma_compendium_index": {
+   "columns": {
+    "chapter_num": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": false,
+     "type": "integer"
+    },
+    "chapter_title_en": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": false,
+     "type": "text"
+    },
+    "chapter_title_sa": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": false,
+     "type": "text"
+    },
+    "chunk_ids": {
+     "default": "ARRAY[]::bigint[]",
+     "generated": false,
+     "identity": false,
+     "not_null": false,
+     "type": "bigint[]"
+    },
+    "classical_significance_score": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": false,
+     "type": "numeric(4,3)"
+    },
+    "created_at": {
+     "default": "now()",
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "timestamp with time zone"
+    },
+    "index_id": {
+     "default": null,
+     "generated": false,
+     "identity": true,
+     "not_null": true,
+     "type": "bigint"
+    },
+    "significance": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": false,
+     "type": "text"
+    },
+    "summary_text": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": false,
+     "type": "text"
+    },
+    "text_id": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "topic_id": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": false,
+     "type": "text"
+    },
+    "verse_end": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": false,
+     "type": "integer"
+    },
+    "verse_start": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": false,
+     "type": "integer"
+    }
+   },
+   "primary_key": [
+    "index_id"
+   ],
+   "primary_key_name": "brahma_compendium_index_pkey",
+   "unique": [],
+   "unique_other": [
+    {
+     "definition": "text_id, COALESCE(chapter_num, '-1'::integer), COALESCE(topic_id, ''::text)",
+     "name": "compendium_dedup_idx"
+    }
+   ]
+  },
+  "brahma_dasha_systems": {
+   "columns": {
+    "base_unit": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "canonical_id": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "classical_citations": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": false,
+     "type": "jsonb"
+    },
+    "computation_method": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "computation_pseudocode": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "conditions_for_use": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": false,
+     "type": "text"
+    },
+    "created_at": {
+     "default": "now()",
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "timestamp with time zone"
+    },
+    "name_en": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "name_sa": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "python_impl_module": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": false,
+     "type": "text"
+    },
+    "school": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "sequence_jsonb": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "jsonb"
+    },
+    "source_chunk_ids": {
+     "default": "ARRAY[]::bigint[]",
+     "generated": false,
+     "identity": false,
+     "not_null": false,
+     "type": "bigint[]"
+    },
+    "total_cycle_years": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "numeric"
+    }
+   },
+   "primary_key": [
+    "canonical_id"
+   ],
+   "primary_key_name": "brahma_dasha_systems_pkey",
+   "unique": [],
+   "unique_other": []
+  },
+  "brahma_dosha_catalog": {
+   "columns": {
+    "associated_remedies": {
+     "default": "ARRAY[]::uuid[]",
+     "generated": false,
+     "identity": false,
+     "not_null": false,
+     "type": "uuid[]"
+    },
+    "cancellation_conditions": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": false,
+     "type": "jsonb"
+    },
+    "canonical_id": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "category": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "classical_citations": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": false,
+     "type": "jsonb"
+    },
+    "created_at": {
+     "default": "now()",
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "timestamp with time zone"
+    },
+    "effects_text": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "formation_rule_jsonb": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "jsonb"
+    },
+    "formation_text": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "name_en": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "name_sa": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "school": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "severity_grades": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": false,
+     "type": "jsonb"
+    },
+    "source_chunk_ids": {
+     "default": "ARRAY[]::bigint[]",
+     "generated": false,
+     "identity": false,
+     "not_null": false,
+     "type": "bigint[]"
+    }
+   },
+   "primary_key": [
+    "canonical_id"
+   ],
+   "primary_key_name": "brahma_dosha_catalog_pkey",
+   "unique": [],
+   "unique_other": []
+  },
+  "brahma_event_ontology": {
+   "columns": {
+    "adjacency": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": false,
+     "type": "jsonb"
+    },
+    "base_rate_by_age": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "jsonb"
+    },
+    "citations": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": false,
+     "type": "text[]"
+    },
+    "created_at": {
+     "default": "now()",
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "timestamp with time zone"
+    },
+    "domain": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "duration_prior": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": false,
+     "type": "jsonb"
+    },
+    "event_class_id": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "evidence_requirements": {
+     "default": "'{}'::jsonb",
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "jsonb"
+    },
+    "irreversibility_milestone": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": false,
+     "type": "text"
+    },
+    "kill_switch_criteria": {
+     "default": "'[]'::jsonb",
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "jsonb"
+    },
+    "lel_category": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "magnitude_floor": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "matching_rules": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": false,
+     "type": "jsonb"
+    },
+    "milestone_template": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": false,
+     "type": "jsonb"
+    },
+    "name_en": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "self_report_non_discriminating": {
+     "default": "false",
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "boolean"
+    },
+    "signature_model": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "jsonb"
+    },
+    "temporal_shape": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "version": {
+     "default": "'1.0'::text",
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    }
+   },
+   "primary_key": [
+    "event_class_id"
+   ],
+   "primary_key_name": "brahma_event_ontology_pkey",
+   "unique": [],
+   "unique_other": []
+  },
+  "brahma_formula_constants": {
+   "columns": {
+    "bounds": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": false,
+     "type": "jsonb"
+    },
+    "calibratable": {
+     "default": "false",
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "boolean"
+    },
+    "citation_or_ratification": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "class": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "constant_id": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "consumer_assets": {
+     "default": "'{}'::text[]",
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text[]"
+    },
+    "created_at": {
+     "default": "now()",
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "timestamp with time zone"
+    },
+    "value_jsonb": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "jsonb"
+    },
+    "version": {
+     "default": "'1.0'::text",
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    }
+   },
+   "primary_key": [
+    "constant_id"
+   ],
+   "primary_key_name": "brahma_formula_constants_pkey",
+   "unique": [],
+   "unique_other": []
+  },
+  "brahma_ontology": {
+   "columns": {
+    "canonical_id": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "canonical_name_en": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "canonical_name_sa": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": false,
+     "type": "text"
+    },
+    "created_at": {
+     "default": "now()",
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "timestamp with time zone"
+    },
+    "description": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": false,
+     "type": "text"
+    },
+    "entity_class": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "id": {
+     "default": "gen_random_uuid()",
+     "generated": false,
+     "identity": true,
+     "not_null": true,
+     "type": "uuid"
+    },
+    "source_citation": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "synonyms": {
+     "default": "'{}'::text[]",
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text[]"
+    }
+   },
+   "primary_key": [
+    "id"
+   ],
+   "primary_key_name": "brahma_ontology_pkey",
+   "unique": [
+    {
+     "columns": [
+      "entity_class",
+      "canonical_id"
+     ],
+     "name": "brahma_ontology_canonical_unique"
+    }
+   ],
+   "unique_other": []
+  },
+  "brahma_remedy_corpus": {
+   "columns": {
+    "category": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": false,
+     "type": "text"
+    },
+    "charity_action": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": false,
+     "type": "text"
+    },
+    "classical_attestation_text": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": false,
+     "type": "text"
+    },
+    "classical_ref": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": false,
+     "type": "text"
+    },
+    "color_associated": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": false,
+     "type": "text"
+    },
+    "confidence": {
+     "default": "0.85",
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "numeric(3,2)"
+    },
+    "contraindications": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": false,
+     "type": "text"
+    },
+    "cost_tier": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": false,
+     "type": "text"
+    },
+    "created_at": {
+     "default": "now()",
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "timestamp with time zone"
+    },
+    "day_of_week": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": false,
+     "type": "text"
+    },
+    "deity": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": false,
+     "type": "text"
+    },
+    "domain": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "gemstone": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": false,
+     "type": "text"
+    },
+    "id": {
+     "default": "gen_random_uuid()",
+     "generated": false,
+     "identity": true,
+     "not_null": true,
+     "type": "uuid"
+    },
+    "ingredients_jsonb": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": false,
+     "type": "jsonb"
+    },
+    "mantra_sanskrit": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": false,
+     "type": "text"
+    },
+    "mantra_text": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": false,
+     "type": "text"
+    },
+    "mantra_transliteration": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": false,
+     "type": "text"
+    },
+    "planet": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "prescription_text": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "remedy_id": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "remedy_type": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "scaffold_status": {
+     "default": "'live'::text",
+     "generated": false,
+     "identity": false,
+     "not_null": false,
+     "type": "text"
+    },
+    "source_canonical_id": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "source_citation": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "timing_rules_jsonb": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": false,
+     "type": "jsonb"
+    }
+   },
+   "primary_key": [
+    "id"
+   ],
+   "primary_key_name": "brahma_remedy_corpus_pkey",
+   "unique": [
+    {
+     "columns": [
+      "remedy_id"
+     ],
+     "name": "brahma_remedy_corpus_remedy_id_key"
+    }
+   ],
+   "unique_other": []
+  },
+  "brahma_yoga_catalog": {
+   "columns": {
+    "bhanga_rules_jsonb": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": false,
+     "type": "jsonb"
+    },
+    "cancellation_conditions": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": false,
+     "type": "jsonb"
+    },
+    "canonical_id": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "category": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "classical_citations": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": false,
+     "type": "jsonb"
+    },
+    "computed_strength_formula": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": false,
+     "type": "text"
+    },
+    "created_at": {
+     "default": "now()",
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "timestamp with time zone"
+    },
+    "formation_rule_jsonb": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "jsonb"
+    },
+    "formation_text": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "name_en": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "name_sa": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "partial_formation_threshold": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": false,
+     "type": "numeric"
+    },
+    "rare": {
+     "default": "false",
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "boolean"
+    },
+    "result_class": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": false,
+     "type": "text"
+    },
+    "school": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "significations_jsonb": {
+     "default": "'{}'::jsonb",
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "jsonb"
+    },
+    "significations_text": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "source_chunk_ids": {
+     "default": "ARRAY[]::bigint[]",
+     "generated": false,
+     "identity": false,
+     "not_null": false,
+     "type": "bigint[]"
+    },
+    "strength_formula_ref": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": false,
+     "type": "text"
+    }
+   },
+   "primary_key": [
+    "canonical_id"
+   ],
+   "primary_key_name": "brahma_yoga_catalog_pkey",
+   "unique": [],
+   "unique_other": []
+  },
+  "brahma_yoga_source_chunks": {
+   "columns": {
+    "canonical_id": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "source_chunk_id": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "uuid"
+    }
+   },
+   "primary_key": [
+    "canonical_id",
+    "source_chunk_id"
+   ],
+   "primary_key_name": "brahma_yoga_source_chunks_pkey",
+   "unique": [],
+   "unique_other": []
+  },
+  "classical_attributions": {
+   "columns": {
+    "attribution_id": {
+     "default": null,
+     "generated": false,
+     "identity": true,
+     "not_null": true,
+     "type": "bigint"
+    },
+    "created_at": {
+     "default": "now()",
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "timestamp with time zone"
+    },
+    "match_confidence": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": false,
+     "type": "numeric(4,3)"
+    },
+    "match_method": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "rule_ids": {
+     "default": "ARRAY[]::uuid[]",
+     "generated": false,
+     "identity": false,
+     "not_null": false,
+     "type": "uuid[]"
+    },
+    "school": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "source_chunk_ids": {
+     "default": "ARRAY[]::bigint[]",
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "bigint[]"
+    },
+    "source_text_ids": {
+     "default": "ARRAY[]::text[]",
+     "generated": false,
+     "identity": false,
+     "not_null": false,
+     "type": "text[]"
+    },
+    "topic_canonical_name": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "topic_category": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "topic_id": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    }
+   },
+   "primary_key": [
+    "attribution_id"
+   ],
+   "primary_key_name": "classical_attributions_pkey",
+   "unique": [
+    {
+     "columns": [
+      "topic_id",
+      "school"
+     ],
+     "name": "uq_topic_school"
+    }
+   ],
+   "unique_other": []
+  },
+  "classical_text_chunks": {
+   "columns": {
+    "chapter": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "smallint"
+    },
+    "chunk_id": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "cleaned_devanagari_text": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": false,
+     "type": "text"
+    },
+    "cleaned_translation_text": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": false,
+     "type": "text"
+    },
+    "content_en": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "content_sa": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": false,
+     "type": "text"
+    },
+    "content_sha256": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": false,
+     "type": "text"
+    },
+    "content_summary": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": false,
+     "type": "text"
+    },
+    "embedding": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": false,
+     "type": "public.vector(768)"
+    },
+    "id": {
+     "default": "gen_random_uuid()",
+     "generated": false,
+     "identity": true,
+     "not_null": true,
+     "type": "uuid"
+    },
+    "ingested_at": {
+     "default": "now()",
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "timestamp with time zone"
+    },
+    "low_confidence_flag": {
+     "default": "false",
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "boolean"
+    },
+    "ocr_cleanup_pass_version": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": false,
+     "type": "text"
+    },
+    "ocr_confidence_score": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": false,
+     "type": "numeric(4,3)"
+    },
+    "ocr_review_note": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": false,
+     "type": "text"
+    },
+    "source_citation": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "text_id": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "topic_tag": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": false,
+     "type": "text"
+    },
+    "topics": {
+     "default": "'{}'::text[]",
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text[]"
+    },
+    "tradition_school": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": false,
+     "type": "text"
+    },
+    "translation_provenance": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": false,
+     "type": "text"
+    },
+    "translation_status": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": false,
+     "type": "text"
+    },
+    "translator": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": false,
+     "type": "text"
+    },
+    "verse_end": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "smallint"
+    },
+    "verse_ref": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "verse_start": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "smallint"
+    }
+   },
+   "primary_key": [
+    "id"
+   ],
+   "primary_key_name": "classical_text_chunks_pkey",
+   "unique": [
+    {
+     "columns": [
+      "chunk_id"
+     ],
+     "name": "classical_text_chunks_chunk_id_key"
+    }
+   ],
+   "unique_other": []
+  },
+  "classical_texts": {
+   "columns": {
+    "author": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": false,
+     "type": "text"
+    },
+    "id": {
+     "default": "gen_random_uuid()",
+     "generated": false,
+     "identity": true,
+     "not_null": true,
+     "type": "uuid"
+    },
+    "ingested_at": {
+     "default": "now()",
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "timestamp with time zone"
+    },
+    "license": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "license_cleared": {
+     "default": "true",
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "boolean"
+    },
+    "school": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "source_edition": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": false,
+     "type": "text"
+    },
+    "text_id": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "tier": {
+     "default": "1",
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "smallint"
+    },
+    "title_en": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "title_sa": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": false,
+     "type": "text"
+    },
+    "total_chapters": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": false,
+     "type": "smallint"
+    },
+    "total_verses": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": false,
+     "type": "integer"
+    },
+    "tradition": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    }
+   },
+   "primary_key": [
+    "id"
+   ],
+   "primary_key_name": "classical_texts_pkey",
+   "unique": [
+    {
+     "columns": [
+      "text_id"
+     ],
+     "name": "classical_texts_text_id_key"
+    }
+   ],
+   "unique_other": []
+  },
+  "ephemeris_daily": {
+   "columns": {
+    "ayanamsha_id": {
+     "default": "'tropical'::text",
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "body": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "computed_at": {
+     "default": "now()",
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "timestamp with time zone"
+    },
+    "date": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "date"
+    },
+    "degree_in_sign": {
+     "default": null,
+     "generated": true,
+     "identity": false,
+     "not_null": false,
+     "type": "numeric(6,3)"
+    },
+    "epoch_convention": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": false,
+     "type": "text"
+    },
+    "id": {
+     "default": "gen_random_uuid()",
+     "generated": false,
+     "identity": true,
+     "not_null": true,
+     "type": "uuid"
+    },
+    "is_retrograde": {
+     "default": "false",
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "boolean"
+    },
+    "latitude": {
+     "default": "0.0",
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "numeric(8,6)"
+    },
+    "nakshatra_number": {
+     "default": null,
+     "generated": true,
+     "identity": false,
+     "not_null": false,
+     "type": "smallint"
+    },
+    "node_mode": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": false,
+     "type": "text"
+    },
+    "sign_number": {
+     "default": null,
+     "generated": true,
+     "identity": false,
+     "not_null": false,
+     "type": "smallint"
+    },
+    "source_citation": {
+     "default": "'pyswisseph DE441 + Swiss Ephemeris'::text",
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "speed_dps": {
+     "default": "0.0",
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "numeric(10,7)"
+    },
+    "tropical_longitude": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "numeric(9,6)"
+    }
+   },
+   "primary_key": [
+    "id"
+   ],
+   "primary_key_name": "ephemeris_daily_pkey",
+   "unique": [
+    {
+     "columns": [
+      "date",
+      "body",
+      "ayanamsha_id"
+     ],
+     "name": "ephemeris_daily_date_body_ayanamsha_id_key"
+    }
+   ],
+   "unique_other": []
+  },
+  "nirmana_bg_texts_integrity_baselines": {
+   "columns": {
+    "content_sha256": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "contract_revision": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "identity_sha256": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "recorded_at": {
+     "default": "now()",
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "timestamp with time zone"
+    },
+    "row_count": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "bigint"
+    }
+   },
+   "primary_key": [
+    "contract_revision"
+   ],
+   "primary_key_name": "nirmana_bg_texts_integrity_baselines_pkey",
+   "unique": [],
+   "unique_other": []
+  },
+  "reference_aspects": {
+   "columns": {
+    "aspect_house": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "smallint"
+    },
+    "aspect_strength": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "created_at": {
+     "default": "now()",
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "timestamp with time zone"
+    },
+    "id": {
+     "default": "gen_random_uuid()",
+     "generated": false,
+     "identity": true,
+     "not_null": true,
+     "type": "uuid"
+    },
+    "is_special": {
+     "default": "false",
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "boolean"
+    },
+    "notes": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": false,
+     "type": "text"
+    },
+    "planet_id": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "source_citation": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "strength_value": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "numeric(3,2)"
+    }
+   },
+   "primary_key": [
+    "id"
+   ],
+   "primary_key_name": "reference_aspects_pkey",
+   "unique": [
+    {
+     "columns": [
+      "planet_id",
+      "aspect_house"
+     ],
+     "name": "reference_aspects_planet_id_aspect_house_key"
+    }
+   ],
+   "unique_other": []
+  },
+  "reference_constants": {
+   "columns": {
+    "category": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "classical_context": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": false,
+     "type": "text"
+    },
+    "constant_id": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "name": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "source_citation": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "unit": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": false,
+     "type": "text"
+    },
+    "value_numeric": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": false,
+     "type": "numeric"
+    },
+    "value_text": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": false,
+     "type": "text"
+    }
+   },
+   "primary_key": [
+    "constant_id"
+   ],
+   "primary_key_name": "reference_constants_pkey",
+   "unique": [],
+   "unique_other": []
+  },
+  "reference_dasha_systems": {
+   "columns": {
+    "canonical_id": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "name_en": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "school": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    }
+   },
+   "primary_key": [
+    "canonical_id"
+   ],
+   "primary_key_name": "reference_dasha_systems_pkey",
+   "unique": [],
+   "unique_other": []
+  },
+  "reference_doshas": {
+   "columns": {
+    "canonical_id": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "category": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "name_en": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    }
+   },
+   "primary_key": [
+    "canonical_id"
+   ],
+   "primary_key_name": "reference_doshas_pkey",
+   "unique": [],
+   "unique_other": []
+  },
+  "reference_glossary": {
+   "columns": {
+    "category": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": false,
+     "type": "text"
+    },
+    "classical_citation": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "definition": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "related_concepts": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": false,
+     "type": "text[]"
+    },
+    "term_en": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": false,
+     "type": "text"
+    },
+    "term_id": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "term_sa": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    }
+   },
+   "primary_key": [
+    "term_id"
+   ],
+   "primary_key_name": "reference_glossary_pkey",
+   "unique": [],
+   "unique_other": []
+  },
+  "reference_houses": {
+   "columns": {
+    "category": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "classical_doctrine_jsonb": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "jsonb"
+    },
+    "house_num": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "integer"
+    },
+    "karakas": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "jsonb"
+    },
+    "name_en": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "name_sa": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "natural_significations": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "jsonb"
+    },
+    "source_citation": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    }
+   },
+   "primary_key": [
+    "house_num"
+   ],
+   "primary_key_name": "reference_houses_pkey",
+   "unique": [],
+   "unique_other": []
+  },
+  "reference_karakas": {
+   "columns": {
+    "applies_to": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": false,
+     "type": "text"
+    },
+    "classical_significations": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "jsonb"
+    },
+    "karaka_id": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "karaka_type": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "name_en": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "name_sa": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "source_citation": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    }
+   },
+   "primary_key": [
+    "karaka_id"
+   ],
+   "primary_key_name": "reference_karakas_pkey",
+   "unique": [],
+   "unique_other": []
+  },
+  "reference_nakshatra": {
+   "columns": {
+    "alt_names": {
+     "default": "'{}'::text[]",
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text[]"
+    },
+    "basis_above": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": false,
+     "type": "text"
+    },
+    "basis_below": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": false,
+     "type": "text"
+    },
+    "body_part": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": false,
+     "type": "text"
+    },
+    "build_id": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": false,
+     "type": "text"
+    },
+    "classical_source": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "created_at": {
+     "default": "now()",
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "timestamp with time zone"
+    },
+    "degree_in_rashi_ranges": {
+     "default": "'[]'::jsonb",
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "jsonb"
+    },
+    "deity_domain": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": false,
+     "type": "text"
+    },
+    "disha": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": false,
+     "type": "text"
+    },
+    "end_longitude": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "numeric(9,5)"
+    },
+    "favorable_acts": {
+     "default": "'{}'::text[]",
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text[]"
+    },
+    "gana": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "guna": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "is_abhijit": {
+     "default": "false",
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "boolean"
+    },
+    "is_gandanta": {
+     "default": "false",
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "boolean"
+    },
+    "is_mula_sangya": {
+     "default": "false",
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "boolean"
+    },
+    "is_panchaka": {
+     "default": "false",
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "boolean"
+    },
+    "motivation": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "muhurta_type": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "nadi": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": false,
+     "type": "text"
+    },
+    "naisargika_maturity_age": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": false,
+     "type": "smallint"
+    },
+    "nakshatra_gender": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "nakshatra_id": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "smallint"
+    },
+    "name_en": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "name_sa_devanagari": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "name_sa_iast": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "net_result": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": false,
+     "type": "text"
+    },
+    "pakshi": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": false,
+     "type": "text"
+    },
+    "paramayus": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": false,
+     "type": "text"
+    },
+    "presiding_deity": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "prohibited_acts": {
+     "default": "'{}'::text[]",
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text[]"
+    },
+    "rashis_spanned": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text[]"
+    },
+    "ruling_planet": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": false,
+     "type": "text"
+    },
+    "secondary_deities": {
+     "default": "'{}'::text[]",
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text[]"
+    },
+    "shakti": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": false,
+     "type": "text"
+    },
+    "span_degrees": {
+     "default": "13.33333",
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "numeric(7,5)"
+    },
+    "start_longitude": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "numeric(9,5)"
+    },
+    "symbol": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": false,
+     "type": "text"
+    },
+    "tatva": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "tradition_scope": {
+     "default": "'classical'::text",
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "varna": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "vimshottari_lord": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "yoni_en": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": false,
+     "type": "text"
+    },
+    "yoni_sa": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": false,
+     "type": "text"
+    },
+    "yoni_sex": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": false,
+     "type": "character(1)"
+    }
+   },
+   "primary_key": [
+    "nakshatra_id"
+   ],
+   "primary_key_name": "reference_nakshatra_pkey",
+   "unique": [],
+   "unique_other": []
+  },
+  "reference_nakshatra_matrix": {
+   "columns": {
+    "build_id": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": false,
+     "type": "text"
+    },
+    "classical_source": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "created_at": {
+     "default": "now()",
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "timestamp with time zone"
+    },
+    "from_key": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "guna_points": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": false,
+     "type": "numeric(4,2)"
+    },
+    "id": {
+     "default": null,
+     "generated": false,
+     "identity": true,
+     "not_null": true,
+     "type": "integer"
+    },
+    "matrix_type": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "max_points": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": false,
+     "type": "numeric(4,2)"
+    },
+    "notes": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": false,
+     "type": "text"
+    },
+    "relation_value": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "to_key": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "tradition_scope": {
+     "default": "'classical'::text",
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    }
+   },
+   "primary_key": [
+    "id"
+   ],
+   "primary_key_name": "reference_nakshatra_matrix_pkey",
+   "unique": [
+    {
+     "columns": [
+      "matrix_type",
+      "from_key",
+      "to_key"
+     ],
+     "name": "reference_nakshatra_matrix_matrix_type_from_key_to_key_key"
+    }
+   ],
+   "unique_other": []
+  },
+  "reference_nakshatra_pada": {
+   "columns": {
+    "absolute_pada": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "smallint"
+    },
+    "bija_sound": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": false,
+     "type": "text"
+    },
+    "build_id": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": false,
+     "type": "text"
+    },
+    "classical_source": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "created_at": {
+     "default": "now()",
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "timestamp with time zone"
+    },
+    "dosha_shading": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": false,
+     "type": "text"
+    },
+    "element_shading": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": false,
+     "type": "text"
+    },
+    "end_longitude": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "numeric(9,5)"
+    },
+    "mantra_prefix": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": false,
+     "type": "text"
+    },
+    "nakshatra_id": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "smallint"
+    },
+    "pada_akshara": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "pada_deity_nuance": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": false,
+     "type": "text"
+    },
+    "pada_id": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "smallint"
+    },
+    "pada_lord": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "pada_navamsa_sign": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "pada_number": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "smallint"
+    },
+    "start_longitude": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "numeric(9,5)"
+    },
+    "tradition_scope": {
+     "default": "'classical'::text",
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    }
+   },
+   "primary_key": [
+    "pada_id"
+   ],
+   "primary_key_name": "reference_nakshatra_pada_pkey",
+   "unique": [
+    {
+     "columns": [
+      "nakshatra_id",
+      "pada_number"
+     ],
+     "name": "reference_nakshatra_pada_nakshatra_id_pada_number_key"
+    }
+   ],
+   "unique_other": []
+  },
+  "reference_nakshatras": {
+   "columns": {
+    "body_part": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": false,
+     "type": "text"
+    },
+    "canonical_name_en": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "canonical_name_sa": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "created_at": {
+     "default": "now()",
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "timestamp with time zone"
+    },
+    "deity": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "end_degree": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "numeric(6,3)"
+    },
+    "guna": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "id": {
+     "default": "gen_random_uuid()",
+     "generated": false,
+     "identity": true,
+     "not_null": true,
+     "type": "uuid"
+    },
+    "lord": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "nakshatra_id": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "smallint"
+    },
+    "nature": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "pada_lords": {
+     "default": "'{}'::text[]",
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text[]"
+    },
+    "source_citation": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "start_degree": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "numeric(6,3)"
+    }
+   },
+   "primary_key": [
+    "id"
+   ],
+   "primary_key_name": "reference_nakshatras_pkey",
+   "unique": [
+    {
+     "columns": [
+      "nakshatra_id"
+     ],
+     "name": "reference_nakshatras_nakshatra_id_key"
+    }
+   ],
+   "unique_other": []
+  },
+  "reference_planets": {
+   "columns": {
+    "canonical_name_en": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "canonical_name_sa": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "created_at": {
+     "default": "now()",
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "timestamp with time zone"
+    },
+    "dasha_years": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": false,
+     "type": "numeric(4,1)"
+    },
+    "debilitation_sign": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": false,
+     "type": "smallint"
+    },
+    "exaltation_degree": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": false,
+     "type": "numeric(5,2)"
+    },
+    "exaltation_sign": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": false,
+     "type": "smallint"
+    },
+    "id": {
+     "default": "gen_random_uuid()",
+     "generated": false,
+     "identity": true,
+     "not_null": true,
+     "type": "uuid"
+    },
+    "karak_domains": {
+     "default": "'{}'::text[]",
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text[]"
+    },
+    "mooltrikona_sign": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": false,
+     "type": "smallint"
+    },
+    "natural_benefic": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "boolean"
+    },
+    "own_signs": {
+     "default": "'{}'::smallint[]",
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "smallint[]"
+    },
+    "planet_id": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "source_citation": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    }
+   },
+   "primary_key": [
+    "id"
+   ],
+   "primary_key_name": "reference_planets_pkey",
+   "unique": [
+    {
+     "columns": [
+      "planet_id"
+     ],
+     "name": "reference_planets_planet_id_key"
+    }
+   ],
+   "unique_other": []
+  },
+  "reference_signs": {
+   "columns": {
+    "canonical_name_en": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "canonical_name_sa": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "created_at": {
+     "default": "now()",
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "timestamp with time zone"
+    },
+    "element": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "id": {
+     "default": "gen_random_uuid()",
+     "generated": false,
+     "identity": true,
+     "not_null": true,
+     "type": "uuid"
+    },
+    "is_biped": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "boolean"
+    },
+    "is_odd": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "boolean"
+    },
+    "lord": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "modality": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "natural_house": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "smallint"
+    },
+    "sign_id": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "smallint"
+    },
+    "significations": {
+     "default": "'{}'::text[]",
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text[]"
+    },
+    "source_citation": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    }
+   },
+   "primary_key": [
+    "id"
+   ],
+   "primary_key_name": "reference_signs_pkey",
+   "unique": [
+    {
+     "columns": [
+      "sign_id"
+     ],
+     "name": "reference_signs_sign_id_key"
+    }
+   ],
+   "unique_other": []
+  },
+  "reference_strength_systems": {
+   "columns": {
+    "category": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "classical_interpretation": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": false,
+     "type": "text"
+    },
+    "formula_text": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "max_value": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": false,
+     "type": "numeric"
+    },
+    "name_en": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "name_sa": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "source_citation": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "strength_id": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "units": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": false,
+     "type": "text"
+    }
+   },
+   "primary_key": [
+    "strength_id"
+   ],
+   "primary_key_name": "reference_strength_systems_pkey",
+   "unique": [],
+   "unique_other": []
+  },
+  "reference_topic_tags": {
+   "columns": {
+    "canonical_id": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "category": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "description": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": false,
+     "type": "text"
+    },
+    "example_chunks": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": false,
+     "type": "jsonb"
+    },
+    "name": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    }
+   },
+   "primary_key": [
+    "canonical_id"
+   ],
+   "primary_key_name": "reference_topic_tags_pkey",
+   "unique": [],
+   "unique_other": []
+  },
+  "reference_upagrahas": {
+   "columns": {
+    "computation_method": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "name_en": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "name_sa": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "parent_planet": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": false,
+     "type": "text"
+    },
+    "significations": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "jsonb"
+    },
+    "source_citation": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "upagraha_id": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    }
+   },
+   "primary_key": [
+    "upagraha_id"
+   ],
+   "primary_key_name": "reference_upagrahas_pkey",
+   "unique": [],
+   "unique_other": []
+  },
+  "reference_vargas": {
+   "columns": {
+    "canonical_name_en": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "canonical_name_sa": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "created_at": {
+     "default": "now()",
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "timestamp with time zone"
+    },
+    "division_count": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "smallint"
+    },
+    "id": {
+     "default": "gen_random_uuid()",
+     "generated": false,
+     "identity": true,
+     "not_null": true,
+     "type": "uuid"
+    },
+    "primary_signification": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "secondary_signification": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": false,
+     "type": "text"
+    },
+    "source_citation": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "varga_id": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "varga_number": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "smallint"
+    }
+   },
+   "primary_key": [
+    "id"
+   ],
+   "primary_key_name": "reference_vargas_pkey",
+   "unique": [
+    {
+     "columns": [
+      "varga_id"
+     ],
+     "name": "reference_vargas_varga_id_key"
+    }
+   ],
+   "unique_other": []
+  },
+  "reference_yogas": {
+   "columns": {
+    "canonical_id": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "category": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "name_en": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    }
+   },
+   "primary_key": [
+    "canonical_id"
+   ],
+   "primary_key_name": "reference_yogas_pkey",
+   "unique": [],
+   "unique_other": []
+  },
+  "remedy_review_queue": {
+   "columns": {
+    "category": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": false,
+     "type": "text"
+    },
+    "charity_action": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": false,
+     "type": "text"
+    },
+    "classical_attestation_text": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": false,
+     "type": "text"
+    },
+    "classical_ref": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": false,
+     "type": "text"
+    },
+    "color_associated": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": false,
+     "type": "text"
+    },
+    "confidence": {
+     "default": "0.85",
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "numeric(3,2)"
+    },
+    "contraindications": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": false,
+     "type": "text"
+    },
+    "cost_tier": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": false,
+     "type": "text"
+    },
+    "created_at": {
+     "default": "now()",
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "timestamp with time zone"
+    },
+    "day_of_week": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": false,
+     "type": "text"
+    },
+    "deity": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": false,
+     "type": "text"
+    },
+    "domain": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "gemstone": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": false,
+     "type": "text"
+    },
+    "id": {
+     "default": "gen_random_uuid()",
+     "generated": false,
+     "identity": true,
+     "not_null": true,
+     "type": "uuid"
+    },
+    "ingredients_jsonb": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": false,
+     "type": "jsonb"
+    },
+    "mantra_sanskrit": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": false,
+     "type": "text"
+    },
+    "mantra_text": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": false,
+     "type": "text"
+    },
+    "mantra_transliteration": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": false,
+     "type": "text"
+    },
+    "planet": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "prescription_text": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "rejection_reason": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": false,
+     "type": "text"
+    },
+    "remedy_id": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "remedy_type": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "review_status": {
+     "default": "'pending'::text",
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "source_canonical_id": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "source_citation": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "timing_rules_jsonb": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": false,
+     "type": "jsonb"
+    }
+   },
+   "primary_key": [
+    "id"
+   ],
+   "primary_key_name": "remedy_review_queue_pkey",
+   "unique": [
+    {
+     "columns": [
+      "remedy_id"
+     ],
+     "name": "ux_remedy_review_queue_remedy_id"
+    }
+   ],
+   "unique_other": []
+  },
+  "sutravali_rules": {
+   "columns": {
+    "antecedent_jsonb": {
+     "default": "'[]'::jsonb",
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "jsonb"
+    },
+    "confidence": {
+     "default": "0.0",
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "numeric(4,3)"
+    },
+    "created_at": {
+     "default": "now()",
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "timestamp with time zone"
+    },
+    "dasha_system_id": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": false,
+     "type": "text"
+    },
+    "extracted_by": {
+     "default": "'stream_d'::text",
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "extraction_pass_log": {
+     "default": "'[]'::jsonb",
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "jsonb"
+    },
+    "predicate_jsonb": {
+     "default": "'{}'::jsonb",
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "jsonb"
+    },
+    "prediction_jsonb": {
+     "default": "'{}'::jsonb",
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "jsonb"
+    },
+    "quality_score": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": false,
+     "type": "numeric(4,3)"
+    },
+    "rule_id": {
+     "default": "gen_random_uuid()",
+     "generated": false,
+     "identity": true,
+     "not_null": true,
+     "type": "uuid"
+    },
+    "text_id": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "transit_marker": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": false,
+     "type": "boolean"
+    },
+    "verse_ref": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "yoga_canonical_id": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": false,
+     "type": "text"
+    }
+   },
+   "primary_key": [
+    "rule_id"
+   ],
+   "primary_key_name": "sutravali_rules_pkey",
+   "unique": [],
+   "unique_other": []
+  },
+  "vidhi_floor_items": {
+   "columns": {
+    "args_override": {
+     "default": "'{}'::jsonb",
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "jsonb"
+    },
+    "band": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "hard_floor": {
+     "default": "false",
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "boolean"
+    },
+    "id": {
+     "default": null,
+     "generated": false,
+     "identity": true,
+     "not_null": true,
+     "type": "integer"
+    },
+    "intent": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "item_order": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "integer"
+    },
+    "primitive_id": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    }
+   },
+   "primary_key": [
+    "id"
+   ],
+   "primary_key_name": "vidhi_floor_items_pkey",
+   "unique": [
+    {
+     "columns": [
+      "intent",
+      "item_order"
+     ],
+     "name": "vidhi_floor_items_intent_order_unique"
+    }
+   ],
+   "unique_other": []
+  },
+  "vidhi_intent_floors": {
+   "columns": {
+    "cr27_coverage": {
+     "default": "ARRAY[]::text[]",
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text[]"
+    },
+    "intent": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "notes": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": false,
+     "type": "text"
+    },
+    "updated_at": {
+     "default": "now()",
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "timestamp with time zone"
+    },
+    "version": {
+     "default": "1",
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "integer"
+    }
+   },
+   "primary_key": [
+    "intent"
+   ],
+   "primary_key_name": "vidhi_intent_floors_pkey",
+   "unique": [],
+   "unique_other": []
+  },
+  "vidhi_primitives": {
+   "columns": {
+    "category": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "cr27_prevents": {
+     "default": "ARRAY[]::text[]",
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text[]"
+    },
+    "definition": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "fallback_face": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": false,
+     "type": "text"
+    },
+    "known_gap": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": false,
+     "type": "text"
+    },
+    "live_tool": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "mandatory_tags": {
+     "default": "ARRAY[]::text[]",
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text[]"
+    },
+    "primitive_id": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "tool_args": {
+     "default": "'{}'::jsonb",
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "jsonb"
+    },
+    "updated_at": {
+     "default": "now()",
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "timestamp with time zone"
+    },
+    "version": {
+     "default": "1",
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "integer"
+    }
+   },
+   "primary_key": [
+    "primitive_id"
+   ],
+   "primary_key_name": "vidhi_primitives_pkey",
+   "unique": [],
+   "unique_other": []
+  },
+  "yoga_families": {
+   "columns": {
+    "classical_citation": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": false,
+     "type": "text"
+    },
+    "created_at": {
+     "default": "now()",
+     "generated": false,
+     "identity": false,
+     "not_null": false,
+     "type": "timestamp with time zone"
+    },
+    "description": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": false,
+     "type": "text"
+    },
+    "family_id": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "id": {
+     "default": null,
+     "generated": false,
+     "identity": true,
+     "not_null": true,
+     "type": "integer"
+    },
+    "name_en": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": true,
+     "type": "text"
+    },
+    "name_sa": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": false,
+     "type": "text"
+    },
+    "parent_family_id": {
+     "default": null,
+     "generated": false,
+     "identity": false,
+     "not_null": false,
+     "type": "text"
+    }
+   },
+   "primary_key": [
+    "id"
+   ],
+   "primary_key_name": "yoga_families_pkey",
+   "unique": [
+    {
+     "columns": [
+      "family_id"
+     ],
+     "name": "yoga_families_family_id_key"
+    }
+   ],
+   "unique_other": []
+  }
+ }
+}
