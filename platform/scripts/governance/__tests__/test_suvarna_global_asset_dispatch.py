@@ -1938,3 +1938,35 @@ def test_the_unit_total_sums_every_table_and_the_expectation_is_compared_to_that
     assert ok["row_counts"] == {"pre": ROWS_PRE, "post": ROWS_POST, "expected_post": ROWS_POST} and ok["expectation"] == "MET" and ok["verdict"] == "PASS", ok
     off = verify({"t1": 7, "t2": 5})                                             # one table off by one: the total differs
     assert off["exit_code"] == 11 and off["codes"] == ["EXPECTED_ROW_COUNT_MISMATCH"] and off["expectation"] == "MISMATCH"
+
+
+def test_a_fifo_named_like_a_spec_is_refused_without_blocking(env):
+    import signal  # noqa: PLC0415
+    fifo = env["tmp"] / "pipe.json"
+    os.mkfifo(fifo)
+    signal.signal(signal.SIGALRM, lambda *a: (_ for _ in ()).throw(AssertionError("the open blocked on a FIFO")))
+    signal.alarm(5)
+    try:
+        with pytest.raises(slw.LevelWaveRefusal) as exc:
+            gad.load_expected_change(str(fifo), ASSET)
+    finally:
+        signal.alarm(0)
+    assert exc.value.refusals[0]["code"] == "EXPECTED_CHANGE_INVALID" and "regular file" in exc.value.refusals[0]["detail"]
+
+
+def test_verify_run_names_what_differs(env):
+    path = write_spec(env)
+    code, ev, db, disp, token = commit_expected(env, path, fp=FakeFpRows((PRE_SHA, POST_SHA), (ROWS_PRE, ROWS_POST)))
+    rec = json.loads(pathlib.Path(env["receipt"]).read_text())
+    run_row = {"id": rec["run_id"], "chart_id": CHART, "state": "completed", "triggered_by": rec["triggered_by"], "plan_manifest_digest": rec["manifest_digest"]}
+    base = ["--assets", ASSET, "--anchor-chart", CHART, "--receipt", env["receipt"], "--repo", env["repo"], "--verify-run", rec["run_id"]]
+
+    def detail(argv):
+        code, ev = run(env, gad.build_parser().parse_args(argv), db=FakeDB(run_row=run_row), fp=FakeFpRows((POST_SHA,), (ROWS_POST,)))
+        assert code == slw.REFUSAL_EXIT_CODE and codes_of(ev) == ["RECEIPT_EXPECTED_CHANGE_MISMATCH"]
+        return last(ev)["refusals"][0]["detail"]
+    assert "none was given" in detail(base)
+    assert "file sha differs" in detail(base + ["--expected-change", write_spec(env, "o.json", expected_post_row_count=ROWS_POST + 9)])
+    rec["expected_change"]["spec"] = dict(rec["expected_change"]["spec"], why="an altered but still valid reason text")
+    pathlib.Path(env["receipt"]).write_text(json.dumps(rec))
+    assert "recorded spec differs" in detail(base + ["--expected-change", path])

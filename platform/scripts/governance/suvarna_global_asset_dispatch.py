@@ -357,7 +357,7 @@ def load_expected_change(path: str | None, asset: str) -> tuple[dict, str]:
         if not name.endswith(".json") or _CREDENTIAL_NAME.search(name):
             bad("must be a .json file that is not named like an environment or credential file")
     try:
-        fd_ = os.open(str(resolved), os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0))
+        fd_ = os.open(str(resolved), os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0) | getattr(os, "O_NONBLOCK", 0))   # O_NONBLOCK: a FIFO named x.json must not block the open; S_ISREG refuses it next
     except OSError as exc:
         bad(f"cannot be opened ({type(exc).__name__})")
     try:
@@ -1445,9 +1445,15 @@ def _verify_run_mode(args, *, asset, anchor, receipt_path, connect, fp_connect, 
     rec_ec = receipt.get("expected_change")
     if (rec_ec is None) != (expected is None) or (rec_ec is not None and (rec_ec["file_sha256"] != expected_sha or rec_ec["spec"] != expected)):
         # the declaration is the one the token bound: a verify with another file (or none, or one for a receipt that has none) would grade another claim
-        raise _refuse("RECEIPT_EXPECTED_CHANGE_MISMATCH", "the receipt " + ("carries no expected change" if rec_ec is None else
-                      "was committed under an expected-change file with a different digest") + ": pass the same --expected-change file "
-                      "the plan used (and none for a receipt of the unchanged-content mode)")
+        if rec_ec is None and expected is not None:
+            what = "the receipt carries no expected change (it is a receipt of the unchanged-content mode) but an --expected-change file was given"
+        elif rec_ec is not None and expected is None:
+            what = "the receipt was committed under an expected-change file but none was given"
+        elif rec_ec["file_sha256"] != expected_sha:
+            what = "the file sha differs: the --expected-change file is not the one the receipt was committed under"
+        else:
+            what = "the recorded spec differs from the file's spec (the receipt was altered after the commit)"
+        raise _refuse("RECEIPT_EXPECTED_CHANGE_MISMATCH", f"{what}: pass the same --expected-change file the plan used (and none for a receipt of the unchanged-content mode)")
     conn = connect()
     try:
         cur = conn.cursor()
