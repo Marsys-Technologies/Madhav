@@ -6,7 +6,7 @@
     "A reviewed output-digest specification establishes deterministic output hashing, not semantic value, population, planner reachability, or empirical validity.",
     "The full MCP profile is registration-gated by the reviewed route authority; its real registration set is exact-set tested independently."
   ],
-  "content_sha256": "9e87c6617d5f06d8b0b92ede5afa85e96be1edd632b07bc1c924ec198a33fa2a",
+  "content_sha256": "f28703275e21c2f964d67d6ab0f2a7e1863b20f921d4bcaf858527182705816a",
   "denominators": {
     "descriptor_route_contracts": {
       "by_public_route_disposition": {
@@ -3411,6 +3411,10 @@
         "empty_result_state": "declared",
         "full_profile_enforcement": "enforced",
         "input_contract": {
+          "entity_class": {
+            "description": "Optional: restrict the match to one ontology class (planet, sign, nakshatra, yoga, dosha, ...).",
+            "type": "string"
+          },
           "name": {
             "description": "Entity name to resolve — Sanskrit (e.g. \"Sūrya\", \"Meṣa\") or English (e.g. \"Sun\", \"Aries\"). Case-insensitive.",
             "type": "string"
@@ -20994,7 +20998,7 @@
       {
         "id": "live_runtime_catalog_projection",
         "path": "platform/src/lib/retrieval/registry/catalog.ts",
-        "sha256": "eb66c018343ec0fe84b3e64168db8bc8e626fe5550a73b25903c8fed20042962"
+        "sha256": "c203639ccdc1480020c0d2eb929096c3858ac7fdb707fa01c4eaaf4b57650568"
       },
       {
         "id": "output_digest_migration_source_set",
@@ -21689,7 +21693,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/knowledge/source_query_availability.ts",
-            "sha256": "1c9700d31145e14f0b4c96415228a825b74e9b9d2f0e9e0979cedf82fcaa31c3"
+            "sha256": "ac01290b859542611daeb455cea50c25609502db51e7f9032fe04b8e7db2fea0"
           },
           {
             "path": "platform/src/lib/retrieval/registry/knowledge/stable.ts",
@@ -21885,7 +21889,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/resolve_entity.ts",
-            "sha256": "6563c8c8e1ab42790bba38bb0fce7d49470791d295f45c87e9e2437e9e6abed8"
+            "sha256": "e24c8639dc29c8df1ebe4316503821e9b38571e1c52d1bf3265d2146a590a341"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/tool_search.ts",
@@ -22425,7 +22429,7 @@
           }
         ],
         "path": "platform/src/lib/retrieval/{registry,synthesis}/**/*.ts (excluding tests)",
-        "sha256": "3e957d981f9490e048fc31def58307de5844aa64dd21c0021ed6b8836dda2b6e"
+        "sha256": "be345bf79a21598de2a3cf2e82ba5f5eb50bef51662bc2f2d67765ab6489f75e"
       },
       {
         "id": "service_effect_contracts",
