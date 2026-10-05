@@ -500,6 +500,6 @@ sibling) is listed in the impact statement (relation `sibling_in_fingerprint_uni
 A partial-coverage asset is refused (`FINGERPRINT_COVERAGE_PARTIAL`) unless EVERY one of its not-covered tables carries an `exclusion` in `FINGERPRINT_DECLARATIONS.json`
 (code `workflow_owned_rows`, a detail and `path:line` evidence: the table is owned by a workflow, not a build output), AND the run is in expected-change mode. Today only
 `bg_remedies` qualifies (`remedy_review_queue`). The expected-change file must then list EXACTLY those tables in `excluded_tables_acknowledged` (a table the run does not exclude is refused
-too, `EXCLUDED_TABLES_NOT_ACKNOWLEDGED`); the token binds them; the plan prints `excluded_from_comparison`; the receipt's `expected_change.excluded_tables` records them. The excluded table
+too, `EXCLUDED_TABLES_NOT_ACKNOWLEDGED`); the token binds them AND the declared text of each exclusion (sha256 of the sorted [table, code, detail] triples; a reworded exclusion needs a new confirmation; an asset with no exclusion has the token it always had); the plan prints `excluded_from_comparison`; the receipt's `expected_change.excluded_tables` records them. The excluded table
 is NOT fingerprinted and the post-state check says nothing about it: the loader may still insert the rows it rejects into it and delete obsolete `category='tantric'` rows
 (`l0_remedy_loader.py:128`, `:274`), so "excluded" means "not compared", not "left untouched". Unchanged-content mode never admits a partial asset.

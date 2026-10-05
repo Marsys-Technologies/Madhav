@@ -2448,6 +2448,48 @@ def test_the_token_binds_the_excluded_tables():
     assert gad.build_confirm_token(**base, excluded_tables=["a", "b"]) == gad.build_confirm_token(**base, excluded_tables=["b", "a"])
 
 
+def test_the_token_binds_the_declared_exclusion_text_only_when_a_table_is_excluded():
+    base = dict(manifest_digest=_hex("m"), asset=REM, anchor_chart=CHART, image_sha=sha_of("x"), impact_sha256=_hex("i"), pre_fingerprint=_hex("p"), accepted_lit=[], allow_redispatch=[],
+                expected_change_sha256=_hex("f"), accepted_changed_output=True)
+    t_names = gad.build_confirm_token(**base, excluded_tables=["remedy_review_queue"])
+    t_a = gad.build_confirm_token(**base, excluded_tables=["remedy_review_queue"], excluded_text_sha256=_hex("text-a"))
+    t_b = gad.build_confirm_token(**base, excluded_tables=["remedy_review_queue"], excluded_text_sha256=_hex("text-b"))
+    assert len({t_names, t_a, t_b}) == 3 and t_a == gad.build_confirm_token(**base, excluded_tables=["remedy_review_queue"], excluded_text_sha256=_hex("text-a"))
+    # nothing excluded: the text digest is not part of the token (default tokens unchanged), and neither is it in default (non expected-change) mode
+    t0 = gad.build_confirm_token(**base)
+    assert gad.build_confirm_token(**base, excluded_text_sha256=_hex("text-a")) == t0
+    assert gad.build_confirm_token(**base, excluded_tables=[], excluded_text_sha256=_hex("text-a")) == t0
+    d0 = {k: v for k, v in base.items() if k not in ("expected_change_sha256", "accepted_changed_output")}
+    assert gad.build_confirm_token(**d0, excluded_tables=["t"], excluded_text_sha256=_hex("x")) == gad.build_confirm_token(**d0)
+    # the digest is over the sorted [table, code, detail] triples
+    ex = [{"asset": REM, "table": "b_t", "code": "workflow_owned_rows", "detail": "d2"}, {"asset": REM, "table": "a_t", "code": "workflow_owned_rows", "detail": "d1"}]
+    assert gad.exclusion_text_digest(ex) == gad.sha256_json([["a_t", "workflow_owned_rows", "d1"], ["b_t", "workflow_owned_rows", "d2"]]) == gad.exclusion_text_digest(ex[::-1])
+    assert gad.exclusion_text_digest([]) is None
+    assert gad.exclusion_text_digest([{**ex[0], "detail": "d2 edited"}, ex[1]]) != gad.exclusion_text_digest(ex)
+
+
+def test_editing_the_declared_exclusion_text_changes_the_plan_token_and_the_old_token_is_refused(env):
+    onto, git = _rem_env(env)
+    path = _rem_spec(env)
+    kw = dict(db=FakeDB(candidates=[[onto]], downstream=()), fp=FakeFpRows((PRE_SHA,), (ROWS_PRE,)), git=git)
+    code, ev = run(env, xargs(env, path, asset=REM), **kw)
+    assert code == 0, last(ev)
+    t0 = last(ev)["confirm_token"]
+    code, ev = run(env, xargs(env, path, asset=REM), **{**kw, "fp": FakeFpRows((PRE_SHA,), (ROWS_PRE,))})
+    assert last(ev)["confirm_token"] == t0                                              # same declarations: same token
+    doc = json.loads(json.dumps(DECLS.doc))
+    nc = doc["assets"][REM]["not_covered_tables"]
+    assert nc[0]["exclusion"]["detail"]
+    nc[0]["exclusion"]["detail"] = nc[0]["exclusion"]["detail"] + " (reworded)"
+    edited = fd.Declarations(doc=doc, sha256=DECLS.sha256, path=DECLS.path)
+    code, ev = run(env, xargs(env, path, asset=REM), **{**kw, "fp": FakeFpRows((PRE_SHA,), (ROWS_PRE,))}, decls=edited)
+    assert code == 0, last(ev)
+    assert last(ev)["confirm_token"] != t0                                              # the declared text is bound: a reworded exclusion needs a new confirmation
+    db = FakeDB(candidates=[[onto]], downstream=(), dispositions={REM: "build"})
+    code, ev = run(env, xargs(env, path, asset=REM, commit=True, confirm=t0), db=db, fp=FakeFpRows((PRE_SHA, POST_SHA), (ROWS_PRE, ROWS_POST)), git=git, dispatch=Dispatch(), decls=edited)
+    assert code == slw.REFUSAL_EXIT_CODE and codes_of(ev) == ["CONFIRM_TOKEN_MISMATCH"], last(ev)      # the token printed for the old text does not authorise the reworded one
+
+
 def test_bg_remedies_plans_commits_and_records_the_exclusion_in_expected_change_mode(env):
     onto, git = _rem_env(env)
     path = _rem_spec(env)

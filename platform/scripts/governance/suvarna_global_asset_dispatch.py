@@ -742,6 +742,13 @@ def excluded_tables_of(decls, members: Sequence[str]) -> list[dict]:
     return [e for m in sorted(set(members)) for e in decls.partial_exclusions(m)]
 
 
+def exclusion_text_digest(excluded: Sequence[Mapping[str, Any]]) -> str | None:
+    """sha256 of the sorted [[table, code, detail]] of the declared exclusions of a run (the text the receipt records); None when nothing is excluded (the token then carries no such field)."""
+    if not excluded:
+        return None
+    return sha256_json(sorted([e["table"], e["code"], e["detail"]] for e in excluded))
+
+
 def check_excluded_acknowledged(spec: Mapping[str, Any], excluded: Sequence[Mapping[str, Any]]) -> None:
     """EXCLUDED_TABLES_NOT_ACKNOWLEDGED: the expected-change file must list (`excluded_tables_acknowledged`) EXACTLY the tables the run excludes by declaration, so the
     operator has said, in the bytes the token binds, that these tables are not compared. A file naming a table that is not excluded is refused too."""
@@ -830,7 +837,8 @@ def check_pre_fingerprint(fp: Mapping[str, Any], decls, *, empty_fn=fd.empty_tab
 
 def build_confirm_token(*, manifest_digest: str, asset: str, anchor_chart: str, image_sha: str, impact_sha256: str,
                         pre_fingerprint: str, accepted_lit: Sequence[str], allow_redispatch: Sequence[str],
-                        expected_change_sha256: str | None = None, accepted_changed_output: bool = False, excluded_tables: Sequence[str] = ()) -> str:
+                        expected_change_sha256: str | None = None, accepted_changed_output: bool = False, excluded_tables: Sequence[str] = (),
+                        excluded_text_sha256: str | None = None) -> str:
     """`GLOBAL1ASSET_<12 hex>_FORCE_GLOBAL_REBUILD`: a hash over the plan manifest digest, the asset, the anchor chart, the deployed
     image sha and the impact statement sha, plus (stricter than the minimum) the pre fingerprint and the two operator overrides, so a
     token authorises exactly the plan, the table content and the overrides it was printed for. Never equal to a level-wave token
@@ -843,6 +851,8 @@ def build_confirm_token(*, manifest_digest: str, asset: str, anchor_chart: str, 
         body["accepted_changed_output"] = bool(accepted_changed_output)
         if excluded_tables:
             body["excluded_tables"] = sorted(excluded_tables)
+            if excluded_text_sha256 is not None:    # ... and the declared TEXT of each exclusion (what "not compared" means): editing the text changes the token; no exclusion, no field
+                body["excluded_text_sha256"] = excluded_text_sha256
     h = sha256_json(body)
     return f"GLOBAL1ASSET_{h[:12].upper()}_FORCE_GLOBAL_REBUILD"
 
@@ -1474,7 +1484,7 @@ def _run_cli(args, *, connect, fp_connect, git, out, sleep, monotonic, dispatch,
     token = build_confirm_token(manifest_digest=digest, asset=asset, anchor_chart=anchor, image_sha=pinned, impact_sha256=impact_sha,
                                 pre_fingerprint=pre["composite"], accepted_lit=accepted, allow_redispatch=allow_redispatch,
                                 expected_change_sha256=expected_sha, accepted_changed_output=bool(args.accept_changed_output),
-                                excluded_tables=[e["table"] for e in excluded])
+                                excluded_tables=[e["table"] for e in excluded], excluded_text_sha256=exclusion_text_digest(excluded))
     triggered_by = build_triggered_by(anchor, impact_sha)
     estimate = slw.estimate_runtime([[asset]], by_id)
     planned_at = _utc_iso(now)
