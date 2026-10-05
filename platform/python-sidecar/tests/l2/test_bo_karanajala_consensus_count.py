@@ -49,8 +49,12 @@ def test_dispositor_edges_consensus_count_matches_traditions():
 
 def test_argala_edges_consensus_count_matches_traditions():
     node_map = {("graha", "Sun"): "node-sun", ("graha", "Jupiter"): "node-jup"}
-    graha_signs = {"Sun": 1, "Jupiter": 2}  # Jupiter 2nd from Sun → argala
-    edges = _build_argala_edges(CHART_ID, AYA, BUILD_ID, graha_signs, node_map, NOW)
+    # An L1 argala_graha_natal reading (N-61): Jupiter stands in the 2nd from Sun. L2 reads it, it does not compute it.
+    argala_facts = [{
+        "fact_id": "l1-fact-1", "target": "Sun", "source": "Jupiter", "offset": 2,
+        "obstruction_offset": 12, "obstructors": [], "direction": "forward",
+    }]
+    edges = _build_argala_edges(CHART_ID, AYA, BUILD_ID, argala_facts, node_map, NOW)
     _assert_consensus_matches_traditions(edges)
 
 

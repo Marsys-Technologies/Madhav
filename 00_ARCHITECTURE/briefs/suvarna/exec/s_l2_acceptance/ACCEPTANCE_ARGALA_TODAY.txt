@@ -1,0 +1,13 @@
+Read-only run on production 2026-10-05 against the CURRENT (self-computed, pre-S-L2) edges
+
+== G1_every_argala_edge_cites_exactly_one_resolving_argala_graha_natal_fact
+119|0|119
+
+== G2_edge_matches_its_fact_graha_and_offset
+119|0|0
+
+== G3_cancelled_flag_equals_malefic_with_listed_obstructors
+119|75|10
+
+== G4_one_edge_per_l1_argala_fact
+156|119|156

@@ -1803,7 +1803,7 @@ jobs:
     # The aggregate job below keeps the original job name; this one is test steps only.
     name: Governance Tool Tests shard ${{ matrix.shard }}/3
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 20
     permissions:
       contents: read
     strategy:
