@@ -411,15 +411,15 @@ DERIVED_ONLY_MIGRATIONS = {"1026_nirmana_l3_ka_service_selftest_clock_timestamp_
                            "902_nirmana_l1_ga_condition_integrity_check_scope.sql"}
 
 
-def test_every_integrity_sql_literal_in_the_migrations_passes_the_allow_list_except_oversize():
+def test_every_integrity_sql_literal_in_the_migrations_passes_the_allow_list():
     """False refusals would be spurious downward moves. Every statically resolvable literal (all assignment forms: `= $tag$..$tag$`, `= '..'`,
-    nested DO-block variables, INSERT ... VALUES bodies) is a single SELECT/WITH and is accepted; the ONLY refusal is the explicit oversize one
-    (the ga_structural family: ~200 KB, past the 128 KiB per-argument OS cap, so its verdict cannot depend on the host)."""
+    nested DO-block variables, INSERT ... VALUES bodies) is a single SELECT/WITH and is accepted, INCLUDING the ga_structural family (~135-204 KB:
+    past one -c argument, so run on psql's stdin; the explicit cap is INTEGRITY_MAX_BYTES, which none reaches)."""
     lits, unresolved = _migration_literals()
     assert len(lits) > 150, len(lits)
     refused = [(f, ac.integrity_sql_problem(b)) for f, b in lits if ac.integrity_sql_problem(b)]
-    assert all("too large to run via psql -c" in why for _f, why in refused), [r for r in refused if "too large" not in r[1]][:5]
-    assert {f.split("_")[0] for f, _ in refused} <= {str(n) for n in range(806, 842)} | {"904"}, sorted({f for f, _ in refused})
+    assert refused == [], refused[:5]
+    assert max(len(b.encode()) for _f, b in lits) > ac.INTEGRITY_ARG_MAX_BYTES       # the large family is really among them
     assert set(unresolved) <= DERIVED_ONLY_MIGRATIONS, sorted(set(unresolved) - DERIVED_ONLY_MIGRATIONS)
 
 
@@ -865,21 +865,82 @@ def test_pg_sleep_is_refused_and_so_are_the_other_pg_functions_that_lock_or_sign
 
 
 def test_oversize_sql_is_refused_with_an_explicit_reason_independent_of_the_host(pg, monkeypatch, tmp_path):
-    big = "SELECT true /* " + "x" * 130_000 + " */"
+    big = "SELECT true /* " + "x" * (ac.INTEGRITY_MAX_BYTES + 10) + " */"
     assert len(big.encode()) > ac.INTEGRITY_MAX_BYTES
     spy = _Spy(monkeypatch)
     c = _cell(_run(monkeypatch, tmp_path, big), "ph_x")
-    assert c["v"] == ac.PARTIAL and "could NOT be run" in c["measured"] and "integrity SQL too large to run via psql -c" in c["measured"], c
+    assert c["v"] == ac.PARTIAL and "could NOT be run" in c["measured"] and "integrity SQL too large to run via psql" in c["measured"], c
     assert not spy.sent, "an oversize SQL must never reach psql"
     with pytest.raises(ac.Unknown, match="too large"):
         ac.psql_read_only(big)
-    ok = "SELECT true /* " + "x" * 100_000 + " */"            # under the limit: runs (host-independent: the cap is ours, not the OS')
+    ok = "SELECT true /* " + "x" * 100_000 + " */"            # under one -c argument: runs as before
     assert ac.integrity_sql_problem(ok) is None
     assert _cell(_run(monkeypatch, tmp_path, ok), "ph_x")["v"] == ac.PASS
 
 
-def test_mutation_oversize_limit_removed_the_lexer_accepts_a_203kb_sql(monkeypatch):
-    big = "SELECT true /* " + "x" * 203_000 + " */"
+def test_a_208kb_sql_runs_on_stdin_against_a_real_server_and_reads_pass_or_fail_by_its_value(pg, monkeypatch, tmp_path):
+    """ga_structural's shape: ~208 KB, past one -c argument. Same wrapper, same guards; the verdict follows the value."""
+    pad = "x" * 207_968
+    holds = f"SELECT count(*) = 3 AS ok FROM t_guard /* {pad} */"
+    fails = f"SELECT count(*) = 4 AS ok FROM t_guard /* {pad} */"
+    assert len(holds.encode()) > 200_000 and ac.integrity_sql_problem(holds) is None
+    assert _cell(_run(monkeypatch, tmp_path, holds), "ph_x")["v"] == ac.PASS
+    c = _cell(_run(monkeypatch, tmp_path, fails), "ph_x")
+    assert c["v"] == ac.PARTIAL and "does NOT hold" in c["measured"], c
+    _untouched(pg)
+
+
+def test_a_large_stdin_sql_cannot_smuggle_a_psql_meta_command_or_a_write(pg, monkeypatch, tmp_path):
+    """The stdin path's one new surface: psql scans stdin for backslash commands. The stored text sits inside a dollar-quoted body, which the
+    psql scanner passes through, so a backslash command in a literal / a hostile statement after a `;` do nothing."""
+    marker = tmp_path / "pwned"
+    pad = "x" * 130_000
+    hostile = (f"SELECT count(*) = 3 AS ok FROM t_guard WHERE 'a' <> '\\! touch {marker}\n\\i /etc/hosts' /* {pad} */")
+    c = _cell(_run(monkeypatch, tmp_path, hostile), "ph_x")
+    assert not marker.exists(), "a psql meta command inside the stored text ran"
+    assert c["v"] in (ac.PASS, ac.PARTIAL), c
+    for bad in (f"SELECT true; DELETE FROM t_guard /* {pad} */", f"SELECT true) AS q; DELETE FROM t_guard; SELECT 1 FROM (SELECT 1 /* {pad} */"):
+        assert _cell(_run(monkeypatch, tmp_path, bad), "ph_x")["v"] == ac.PARTIAL
+        _untouched(pg)
+
+
+def test_large_sql_reaches_the_runner_on_stdin_with_the_same_wrapped_commands_fake_runner(monkeypatch):
+    """Through a fake runner (no database): a >120,000-byte SQL is NOT passed as -c arguments; it is one stdin script holding the same commands in
+    the same order, wrapped the same way. A small SQL still goes as separate -c commands."""
+    seen = {}
+
+    def fake(argv, env, limit, cap, stdin=None):
+        seen.update(argv=list(argv), stdin=stdin, cap=cap)
+        return ac._Capped(0, b"row 4 true\n\n".replace(b"\n\n", b"\n") if False else b"row 4 true\n", b"", False)
+    monkeypatch.setattr(ac, "_run_capped", fake)
+    big = "SELECT true /* " + "y" * 150_000 + " */"
+    assert ac.integrity_sql_problem(big) is None
+    rows = ac.psql_read_only(big)
+    assert "-c" not in seen["argv"] and isinstance(seen["stdin"], bytes) and len(seen["stdin"]) > 150_000
+    text = seen["stdin"].decode()
+    order = ["SET default_transaction_read_only = on;", "BEGIN READ ONLY;", "SET LOCAL statement_timeout =", "DO $n99d", "SELECT * FROM (SELECT true /* ",
+             ") AS _integrity LIMIT 1", "SELECT coalesce(current_setting(", "ROLLBACK;"]
+    pos = [text.index(x) for x in order]
+    assert pos == sorted(pos), pos
+    assert rows == [["t"]] or rows == [[]] or isinstance(rows, list)
+    seen.clear()
+    ac.psql_read_only("SELECT true")
+    assert seen["stdin"] is None and seen["argv"].count("-c") == 6
+
+
+def test_oversize_past_the_explicit_cap_never_reaches_the_runner(monkeypatch):
+    calls = []
+    monkeypatch.setattr(ac, "_run_capped", lambda *a, **k: calls.append(1))
+    big = "SELECT true /* " + "z" * (ac.INTEGRITY_MAX_BYTES + 1) + " */"
+    with pytest.raises(ac.Unknown, match="too large"):
+        ac.psql_read_only(big)
+    assert "too large" in ac.integrity_sql_problem(big) and not calls
+    o = ac._integrity_outcome(big)
+    assert o["state"] == "unrunnable" and "too large" in o["detail"]
+
+
+def test_mutation_oversize_limit_removed_the_lexer_accepts_a_1_1mb_sql(monkeypatch):
+    big = "SELECT true /* " + "x" * 1_100_000 + " */"
     assert "too large" in ac.integrity_sql_problem(big)
     _mutant(monkeypatch, "_integrity_statement", "> INTEGRITY_MAX_BYTES", "> 10**9")
     assert ac.integrity_sql_problem(big) is None

@@ -173,7 +173,7 @@ CRITERION_REGISTRY: dict[str, dict] = {
     "Build.target":          dict(gate="Build", check="target",          applicability="always",                detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=2),
     "Build.dag":             dict(gate="Build", check="dag",              applicability="always",                detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=2),
     "Build.count_integrity": dict(gate="Build", check="count_integrity", applicability="always; presence of count_sql and integrity_check_sql is what is graded: a view target whose registered count_sql reads no table (a constant) is said so in the cell, the verdict unchanged", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=2),
-    "Build.completion":      dict(gate="Build", check="completion",       applicability="a count_sql or view target exists; a writer-backed asset with live 0 and rows_written 0 reads PASS only where it DECLARES a zero_row_convention (SS N-149: the chart is absent from the declared scope_table.scope_column) AND the census verified that against the live table for the measured chart (a declared convention that does not hold, or cannot be verified, keeps the PARTIAL); PASS also requires, WHEN the asset declares an integrity_check_sql, that it holds: one read-only SELECT/WITH statement (conservative lexer and closed allow-list, run only as a subquery in a READ ONLY session, no bind parameters, at most 120000 bytes, the engine's own convention in asset_runner._probe_asset) whose first column of its first row is true (a boolean or a finite non-zero number); counts equal but the integrity SQL false, refused, oversize, errored or timed out reads PARTIAL naming which; an integrity SQL the census role is not permitted to read (SQLSTATE 42501 permission denied) reads NO_DETECTOR (not measurable under the census role: never PASS, never a verdict on the data), and the text names the denied object and the declared way to measure it (the engine runs the same SQL at build time under the runner role; the census role is not widened); the text carries sha256(sql)[:12] and the elapsed seconds; no declared integrity_check_sql reads exactly as before", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=4),  # SS role reading bumped (rev 4); R99 bumped: a writer-backed empty table under target_floor=0 now reads PARTIAL, not the R52-era blanket PASS; N-99 bumped (rev 3): count equality alone no longer reads PASS when a declared integrity_check_sql does not hold
+    "Build.completion":      dict(gate="Build", check="completion",       applicability="a count_sql or view target exists; a writer-backed asset with live 0 and rows_written 0 reads PASS only where it DECLARES a zero_row_convention (SS N-149: the chart is absent from the declared scope_table.scope_column) AND the census verified that against the live table for the measured chart (a declared convention that does not hold, or cannot be verified, keeps the PARTIAL); PASS also requires, WHEN the asset declares an integrity_check_sql, that it holds: one read-only SELECT/WITH statement (conservative lexer and closed allow-list, run only as a subquery in a READ ONLY session, no bind parameters, at most 1000000 bytes (one -c argument up to 120000 bytes; a larger text goes on psql stdin through the same wrapper and guards; past 1000000 it is refused), the engine's own convention in asset_runner._probe_asset) whose first column of its first row is true (a boolean or a finite non-zero number); counts equal but the integrity SQL false, refused, oversize, errored or timed out reads PARTIAL naming which; an integrity SQL the census role is not permitted to read (SQLSTATE 42501 permission denied) reads NO_DETECTOR (not measurable under the census role: never PASS, never a verdict on the data), and the text names the denied object and the declared way to measure it (the engine runs the same SQL at build time under the runner role; the census role is not widened); the text carries sha256(sql)[:12] and the elapsed seconds; no declared integrity_check_sql reads exactly as before", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=4),  # SS role reading bumped (rev 4); R99 bumped: a writer-backed empty table under target_floor=0 now reads PARTIAL, not the R52-era blanket PASS; N-99 bumped (rev 3): count equality alone no longer reads PASS when a declared integrity_check_sql does not hold
     "Build.exercised":       dict(gate="Build", check="exercised",        applicability="always",                detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=1),
     "Build.history":         dict(gate="Build", check="history",          applicability="has been exercised at least once; judges the attempts SINCE the later of the asset's last writer-digest change on main (newest commit on origin/main, else main, touching the engine's writer source set, build_window.py) and its last registry-identity change (newest commit on that ref touching a migration that names asset_registry and the asset id, or changing the asset's own row in the registry seed); older errors and aborts are REPORTED as pre-window history, never judged; no attempt since (a skip_no_delta, cascade-blocked or never-started row is not an attempt of the current code; a forced rebuild is) reads NO_DETECTOR, never PASS; an undeterminable window (shallow clone, no main ref, working tree differing from main in the writer files, a path not tracked, no migration or seed naming the asset, git failing, the timed attempt log unreadable or disagreeing with the history tally) reads NO_DETECTOR naming why", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=2),  # SS Build.history window
     "Build.dep_liveness":     dict(gate="Build", check="dep_liveness",     applicability="declares at least one depends_on; the cell names each not-lit dependency with its state, scope and last build date, and for a stale one the upstream(s) built after it (or that none is on record)", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=2),  # cause text only: the verdict logic is unchanged
@@ -3944,11 +3944,11 @@ class _Capped:
         self.returncode, self.stdout, self.stderr, self.over = returncode, stdout, stderr, over
 
 
-def _run_capped(argv: list[str], env: dict, limit: int, cap: int) -> _Capped:
+def _run_capped(argv: list[str], env: dict, limit: int, cap: int, stdin: bytes | None = None) -> _Capped:
     """`subprocess.run` for SQL the census did not write: stdout and stderr are each kept up to `cap` bytes and the rest is drained and dropped, so a
     value of hundreds of megabytes (`SELECT repeat('x', 400000000)`) cannot grow the census' memory. The wall-clock kill is the same (`limit`):
     raises `subprocess.TimeoutExpired` after killing psql."""
-    p = subprocess.Popen(argv, stdout=subprocess.PIPE, stderr=subprocess.PIPE, env=env)
+    p = subprocess.Popen(argv, stdout=subprocess.PIPE, stderr=subprocess.PIPE, env=env, **({} if stdin is None else dict(stdin=subprocess.PIPE)))
     kept: dict[str, bytearray] = {"out": bytearray(), "err": bytearray()}
     over = {"out": False, "err": False}
 
@@ -3963,6 +3963,18 @@ def _run_capped(argv: list[str], env: dict, limit: int, cap: int) -> _Capped:
             if len(chunk) > room:
                 over[key] = True
     threads = [threading.Thread(target=drain, args=(p.stdout, "out"), daemon=True), threading.Thread(target=drain, args=(p.stderr, "err"), daemon=True)]
+    if stdin is not None:
+        def feed():                              # a script too large for one -c argument is fed on stdin; a psql that exits early closes the pipe
+            try:
+                p.stdin.write(stdin)
+            except (BrokenPipeError, OSError):
+                pass
+            finally:
+                try:
+                    p.stdin.close()
+                except OSError:
+                    pass
+        threads.append(threading.Thread(target=feed, daemon=True))
     for t in threads:
         t.start()
     try:
@@ -3979,18 +3991,27 @@ def _run_capped(argv: list[str], env: dict, limit: int, cap: int) -> _Capped:
 
 
 def _psql_run(cmds: list[str], sep: str, limit: int, width: int | None, quiet: bool = False, label: int = 0, verbose: bool = False,
-              cap: int | None = None) -> list[list[str]]:
+              cap: int | None = None, via_stdin: bool = False) -> list[list[str]]:
     """The ONE psql subprocess runner: `cmds` are sent as separate `-c` commands in one session (a single command for every ordinary
     read). Timeout, error and parse handling are shared by `psql` and `psql_read_only`. `label` is the index of the command named in a timeout
-    message; `verbose` asks for error text carrying the SQLSTATE (`ERROR:  42501: ...`)."""
+    message; `verbose` asks for error text carrying the SQLSTATE (`ERROR:  42501: ...`). `via_stdin` (needs `cap`) sends the same commands as ONE
+    script on psql's stdin (each command ends `;` + newline) instead of separate `-c` arguments, for a command past the OS limit of one argument;
+    the caller guarantees the large text sits inside a dollar-quoted body, which psql's scanner passes through untouched (no backslash command, no
+    variable interpolation)."""
     env = dict(os.environ)
     env.setdefault("PGCONNECT_TIMEOUT", "10")
     argv = ["psql", "-qtAX" if quiet else "-tAX", "-F", sep, "-v", "ON_ERROR_STOP=1"] + (["-v", "VERBOSITY=verbose"] if verbose else [])
-    for c in cmds:
-        argv += ["-c", c]
+    script = None
+    if via_stdin:
+        if cap is None:
+            raise Unknown("psql stdin script requires the capped runner")
+        script = ("".join(c + ";\n" for c in cmds)).encode("utf-8")
+    else:
+        for c in cmds:
+            argv += ["-c", c]
     try:
         # bytes, decoded here: `text=True` would translate a lone CR (or CRLF) inside a value into a newline
-        p = subprocess.run(argv, capture_output=True, env=env, timeout=limit) if cap is None else _run_capped(argv, env, limit, cap)
+        p = subprocess.run(argv, capture_output=True, env=env, timeout=limit) if cap is None else _run_capped(argv, env, limit, cap, script)
     except subprocess.TimeoutExpired as exc:
         raise CheckTimeout(f"client-side timeout after {limit}s (psql killed): "
                            f"{' '.join(cmds[label].split())[:120]}") from exc
@@ -4069,9 +4090,12 @@ def psql_read_only(sql: str, sep: str = "\x1f", timeout: int | None = None, widt
     commands in one session, never PGOPTIONS (a pooled connection refuses startup options), never `-f -` (psql would parse backslash commands).
     OPERATIONAL NOTE: `SET default_transaction_read_only` is SESSION-level: safe on a direct connection (the census reader runs through a local
     127.0.0.1 proxy, not a transaction-mode pooler); behind a transaction-mode pooler it would have to move inside the transaction (guards 1-3 do not
-    depend on it). Raises `Unknown` for oversize text (one `-c` argument is capped by the OS at 128 KiB on Linux: the limit is fixed, not host-dependent)."""
+    depend on it). TEXT BEYOND ONE `-c` ARGUMENT (INTEGRITY_ARG_MAX_BYTES, under Linux's 128 KiB per-argument limit) goes on psql's STDIN as the SAME
+    commands in the same order, same wrapper, same guards: the stored text is the body of the dollar-quoted DO block (tags chosen so it cannot close its own
+    quotation), and psql's scanner does not interpret a backslash or a `:name` inside a dollar-quoted body. Raises `Unknown` past INTEGRITY_MAX_BYTES
+    (an explicit cap, fixed, not host-dependent; the cell then reads PARTIAL naming it, never PASS)."""
     if not isinstance(sql, str) or len(sql.encode("utf-8", errors="replace")) > INTEGRITY_MAX_BYTES:
-        raise Unknown(f"integrity SQL too large to run via psql -c (> {INTEGRITY_MAX_BYTES} bytes)")
+        raise Unknown(f"integrity SQL too large to run via psql (> {INTEGRITY_MAX_BYTES} bytes)")
     stmt = sql.rstrip()
     while stmt.endswith(";"):
         stmt = stmt[:-1].rstrip()
@@ -4087,7 +4111,8 @@ def psql_read_only(sql: str, sep: str = "\x1f", timeout: int | None = None, widt
     run_sql = "DO $" + outer + "$ " + body + " $" + outer + "$"
     read_back = f"SELECT coalesce(current_setting('{guc}', true), 'none')"
     rows = _psql_run(["SET default_transaction_read_only = on", "BEGIN READ ONLY", f"SET LOCAL statement_timeout = {ms}", run_sql, read_back, "ROLLBACK"],
-                     sep, limit, width, quiet=True, label=3, verbose=True, cap=INTEGRITY_OUTPUT_CAP)
+                     sep, limit, width, quiet=True, label=3, verbose=True, cap=INTEGRITY_OUTPUT_CAP,
+                     via_stdin=len(run_sql.encode("utf-8", errors="replace")) > INTEGRITY_ARG_MAX_BYTES)
     return _integrity_first_value(rows)
 
 
@@ -4105,7 +4130,8 @@ def scalar(sql: str) -> str | None:
 #      a `;`, a COMMIT / BEGIN / SET, DML or a second statement as a syntax error whatever the lexer in (1) missed;
 #   3. the session is `SET default_transaction_read_only = on` + `BEGIN READ ONLY`: even a transaction boundary that somehow got through the
 #      parser opens the next transaction read-only, and a write / sequence advance / DDL is refused by the server.
-INTEGRITY_MAX_BYTES = 120_000      # < Linux MAX_ARG_STRLEN (128 KiB) for ONE psql -c argument: the verdict must not depend on the host OS
+INTEGRITY_ARG_MAX_BYTES = 120_000  # < Linux MAX_ARG_STRLEN (128 KiB) for ONE psql -c argument: past this the SAME wrapped commands go on psql's stdin (host-independent)
+INTEGRITY_MAX_BYTES = 1_000_000    # the explicit cap on a stored integrity SQL (ga_structural's is ~208 KB): past it the run is refused, never attempted
 _INTEGRITY_WRITE_WORDS = frozenset({"insert", "update", "delete", "merge", "into", "share"})   # data-modifying CTE, SELECT INTO, row locks
 _INTEGRITY_WRITE_FUNCS = frozenset({"nextval", "setval", "currval", "lastval", "set_config", "dblink", "query_to_xml", "query_to_xml_and_xmlschema",
                                     "cursor_to_xml", "table_to_xml", "schema_to_xml", "database_to_xml", "lowrite", "lo_import", "lo_export",
@@ -4220,7 +4246,7 @@ def _integrity_statement(sql) -> tuple[str | None, str]:
     if not isinstance(sql, str) or not sql.strip():
         return "integrity_check_sql is blank", ""
     if len(sql.encode("utf-8", errors="replace")) > INTEGRITY_MAX_BYTES:
-        return f"integrity SQL too large to run via psql -c ({len(sql.encode('utf-8', errors='replace'))} bytes > {INTEGRITY_MAX_BYTES})", ""
+        return f"integrity SQL too large to run via psql ({len(sql.encode('utf-8', errors='replace'))} bytes > {INTEGRITY_MAX_BYTES})", ""
     try:
         m = _integrity_mask(sql)
     except Unknown as exc:
