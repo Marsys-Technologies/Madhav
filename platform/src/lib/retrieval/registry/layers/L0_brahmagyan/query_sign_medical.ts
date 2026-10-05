@@ -38,6 +38,13 @@ export const querySignMedicalCapability: CapabilityDescriptor = {
     bulk_context: { pre_fetch_priority: 40, always_include: false },
   },
 
+  // Suvarna DENS (§N.6, §N.8): hand-authored from what this handler actually does, not the derived default.
+  density_contract: {
+    paginated: false, // unpaged: the whole matching set is returned in one response
+    facets: ['sign_number', 'sign_name'],
+    empty_reason: true, // handler sets `empty_reason` when zero rows match
+  },
+
   async handler(args: Record<string, unknown>, _ctx: unknown) {
     void _ctx
     const signNumber = args['sign_number'] != null ? Number(args['sign_number']) : null

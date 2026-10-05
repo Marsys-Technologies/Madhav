@@ -88,6 +88,13 @@ export const queryClassPriorsCapability: CapabilityDescriptor = {
     bulk_context: { pre_fetch_priority: 10, always_include: false },
   },
 
+  // Suvarna DENS (§N.6, §N.8): hand-authored from what this handler actually does, not the derived default.
+  density_contract: {
+    paginated: false, // fixed LIMIT 200 with no offset, no cursor
+    facets: ['prior_version', 'signal_type_class', 'source_subsystem'],
+    empty_reason: true, // handler sets `empty_reason` when zero rows match
+  },
+
   async handler(args: Record<string, unknown>, _ctx: unknown) {
     void _ctx
     const priorVersion = args['prior_version'] ? String(args['prior_version']) : null

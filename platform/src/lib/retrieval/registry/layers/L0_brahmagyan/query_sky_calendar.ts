@@ -77,6 +77,13 @@ export const querySkyCalendarCapability: CapabilityDescriptor = {
     bulk_context: { pre_fetch_priority: 20, always_include: false },
   },
 
+  // Suvarna DENS (§N.6, §N.8): hand-authored from what this handler actually does, not the derived default.
+  density_contract: {
+    paginated: false, // `limit` is a hard cap with a `truncated` flag; no offset, no cursor
+    facets: ['start_utc', 'end_utc', 'event_type', 'primary_body'],
+    empty_reason: true, // handler sets `empty_reason` when zero rows match
+  },
+
   async handler(args: Record<string, unknown>, _ctx: unknown) {
     void _ctx
     const startUtc = args['start_utc'] != null ? String(args['start_utc']) : ''

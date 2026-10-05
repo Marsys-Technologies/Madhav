@@ -49,6 +49,13 @@ export const queryFormulaConstantsCapability: CapabilityDescriptor = {
     bulk_context: { pre_fetch_priority: 10, always_include: false },
   },
 
+  // Suvarna DENS (§N.6, §N.8): hand-authored from what this handler actually does, not the derived default.
+  density_contract: {
+    paginated: false, // unpaged: the whole matching set is returned in one response
+    facets: ['constant_id', 'class'],
+    empty_reason: true, // handler sets `empty_reason` when zero rows match
+  },
+
   async handler(args: Record<string, unknown>, _ctx: unknown) {
     void _ctx
     const constantId = args['constant_id'] ? String(args['constant_id']) : null

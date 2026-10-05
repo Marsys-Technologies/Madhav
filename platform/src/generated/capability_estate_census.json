@@ -6,7 +6,7 @@
     "A reviewed output-digest specification establishes deterministic output hashing, not semantic value, population, planner reachability, or empirical validity.",
     "The full MCP profile is registration-gated by the reviewed route authority; its real registration set is exact-set tested independently."
   ],
-  "content_sha256": "9e87c6617d5f06d8b0b92ede5afa85e96be1edd632b07bc1c924ec198a33fa2a",
+  "content_sha256": "3bf43a72acb179ba2535e0b372a67ec6e84b1a71d7009c45cb692b7a79181c55",
   "denominators": {
     "descriptor_route_contracts": {
       "by_public_route_disposition": {
@@ -17,7 +17,7 @@
       "descriptor_content_untyped": 181,
       "exhaustible_paginated": 5,
       "full_profile_allowlist_enforced": true,
-      "non_exhaustible_paginated": 91
+      "non_exhaustible_paginated": 88
     },
     "planner_addressable_descriptors": {
       "excluded": 3,
@@ -108,7 +108,7 @@
       },
       "callable": 186,
       "output_schema_declared": 5,
-      "paginated_declared": 96,
+      "paginated_declared": 93,
       "prompts": 1,
       "resources": 5,
       "tools": 180,
@@ -1582,9 +1582,7 @@
         "output_contract": null,
         "output_contract_state": "descriptor_content_untyped",
         "pagination": {
-          "blocker": "response collection and exhaustion paths are not source-reviewed",
-          "declared": "bounded_without_position",
-          "disposition": "non_exhaustible"
+          "disposition": "not_paginated"
         },
         "planner_disposition": "addressable",
         "planner_reason": null,
@@ -1716,8 +1714,8 @@
         "capability_uri": "marsys://tool/L0/query_dosha_catalog",
         "descriptor_name": "query_dosha_catalog",
         "descriptor_type": "tool",
-        "empty_reason_declared": true,
-        "empty_result_state": "declared",
+        "empty_reason_declared": false,
+        "empty_result_state": "missing",
         "full_profile_enforcement": "enforced",
         "input_contract": {
           "domain": {
@@ -2031,9 +2029,7 @@
         "output_contract": null,
         "output_contract_state": "descriptor_content_untyped",
         "pagination": {
-          "blocker": "response collection and exhaustion paths are not source-reviewed",
-          "declared": "bounded_without_position",
-          "disposition": "non_exhaustible"
+          "disposition": "not_paginated"
         },
         "planner_disposition": "addressable",
         "planner_reason": null,
@@ -2821,9 +2817,7 @@
         "output_contract": null,
         "output_contract_state": "descriptor_content_untyped",
         "pagination": {
-          "blocker": "response collection and exhaustion paths are not source-reviewed",
-          "declared": "bounded_without_position",
-          "disposition": "non_exhaustible"
+          "disposition": "not_paginated"
         },
         "planner_disposition": "addressable",
         "planner_reason": null,
@@ -4677,8 +4671,8 @@
         "capability_uri": "marsys://tool/L1/get_graha_yuddha",
         "descriptor_name": "get_graha_yuddha",
         "descriptor_type": "tool",
-        "empty_reason_declared": true,
-        "empty_result_state": "declared",
+        "empty_reason_declared": false,
+        "empty_result_state": "missing",
         "full_profile_enforcement": "enforced",
         "input_contract": {
           "ayanamsha_id": {
@@ -20994,7 +20988,7 @@
       {
         "id": "live_runtime_catalog_projection",
         "path": "platform/src/lib/retrieval/registry/catalog.ts",
-        "sha256": "eb66c018343ec0fe84b3e64168db8bc8e626fe5550a73b25903c8fed20042962"
+        "sha256": "d813295c06fbdb1c077e2c7515d4c19e80cd62cf7f2f543764f7f1eff0ef1fb5"
       },
       {
         "id": "output_digest_migration_source_set",
@@ -21689,7 +21683,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/knowledge/source_query_availability.ts",
-            "sha256": "1c9700d31145e14f0b4c96415228a825b74e9b9d2f0e9e0979cedf82fcaa31c3"
+            "sha256": "b7b7249e357f25479906a4f15e886ad860de192b2fd7e24e5f27f3bd325eba25"
           },
           {
             "path": "platform/src/lib/retrieval/registry/knowledge/stable.ts",
@@ -21745,7 +21739,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_class_priors.ts",
-            "sha256": "6ce0b5fbcaf55a9254f9462639e47d73228529885833e4bc04b88ebf99483dde"
+            "sha256": "70dfffe35759b6c917787b6365a8c7257e304c7834dc2975ed7cebe803256247"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_classical_texts.ts",
@@ -21757,7 +21751,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_compendium_index.ts",
-            "sha256": "3fa81ee07629dc93273316f305e9136a558bef8332f898d745802769a5690d91"
+            "sha256": "b3f5630cb290176f5861f96e9fe9ca68dc87435628d7cb83dd2a18f38655d8fb"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_current_transit_snapshot.ts",
@@ -21765,15 +21759,15 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_dasha_systems.ts",
-            "sha256": "d3117124a4bc84fd3489f488f0bedfc206f15b5810c520a38c4ea01787046499"
+            "sha256": "530d28563edf2224283c8979d2be55fc34dc55e816a4c96a92176871ff1a0427"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_dosha_catalog.ts",
-            "sha256": "5b881f2045f1e30a4ca0457b6d08fcced69a9df55ee632bc892b66106997f848"
+            "sha256": "14d96d4c67d17f61005876c82f5eecfb7fc196a1390ecbbd9447c86988dccb14"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_formula_constants.ts",
-            "sha256": "6b09c1c3b613058ec80c5056a8632310b559b3fc16463743fc82de98861dae75"
+            "sha256": "2473c5c7221903257c8c1d4a56541b14bf02cd1ea075e5473cd5e6adaebce541"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_graha_dik.ts",
@@ -21785,7 +21779,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_medical_mappings.ts",
-            "sha256": "502c02535c1c0a5bee73e066586ea59036c07c3b87c0a1cc142bda34a5298454"
+            "sha256": "023680d5e1cd549c81db921bfc203beb369b1b8b841e44bf89b5e567f49be185"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_motion_state_thresholds.ts",
@@ -21793,15 +21787,15 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_muhurta_lattice.ts",
-            "sha256": "6f302cb2fa9bf8e2f17469fc11e1978033a08285ad34ab025197c1e4249c256c"
+            "sha256": "ede24886459f76018ecd05513ddb4b6f3e9cfefdc53f5a412fc23f1a963d60be"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_nakshatra_medical.ts",
-            "sha256": "9d0e18f352f64e99c3f815adf66d96ba6d630ee1c192a24f3ee422aa0a1f1bc2"
+            "sha256": "20f60b44bffe9314004eb6882dd70d407a841602b97bb46218fc71b65fc69b77"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_parihara_graph.ts",
-            "sha256": "f748e728170871d39479991da3e428f4006c02aa72993de4e8635b7a0fc2e1d4"
+            "sha256": "5e3082271c18c62fa9ba306e08761d25b4da9f071b8d112f550754544022f8d6"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_planet_position.ts",
@@ -21813,23 +21807,23 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_prashna_fructification_rules.ts",
-            "sha256": "9b816b2e190ea8e6633703aefc7d4b2787a049f48a7bb67127fd81c298d79693"
+            "sha256": "b871442183f7e947daf9c0a0018b89f22c685aa80a048187d2c79d88e25cf3b4"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_prashna_lagna_methods.ts",
-            "sha256": "f5388e1b2abc5e42c7a67decec7961d49929097ac631fa805b9e40efca241b0a"
+            "sha256": "2133defbb7f362b314b45171932472e54be0e44fe2042e67028ecbfc36f97344"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_prashna_significators.ts",
-            "sha256": "0a6d88a3474b1b18ed0c46b43a2e9189a4a3c59e7a4d9fe0f5c53cfb287ed809"
+            "sha256": "f6747b1b694f5c393ee4a0dec05c469055da5b883563cc83399e2663a55c5c5f"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_prashna_special_techniques.ts",
-            "sha256": "c16962eb8a8a2477064729e798134a070370e1b2d4e14fbc99fe0f40a7c595a0"
+            "sha256": "c9cc06b7dc51ad974aa58594d809ad935e4dc466a28fbf744d267949756fab7b"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_prashna_tajik_yogas.ts",
-            "sha256": "9dd6a42d2c1b196ba5f92fb2a732ec59f9e885ef5d831e948354128038f13df0"
+            "sha256": "7396f7f0c861b6494fee5075a26ac31453d210b5c3fc95f18d3a0705509b6800"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_remedy_corpus.ts",
@@ -21845,11 +21839,11 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_sign_medical.ts",
-            "sha256": "24a057ee6d1a17ac168c9a36ea2a234e36f8a89fc9b101905eec9982472e2d79"
+            "sha256": "53ebbc772f899e0f169c34949b96059070551b3a05c9a2cda65fb4b071e7be80"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_sky_calendar.ts",
-            "sha256": "7a2549f5f51cc1b12a07f449f5d63adadf76269861b5baeccad09cf60c90727f"
+            "sha256": "615202c1c2453c92ca169c4e6bc1c41b3b63b496c809efe02b3e0ecdbe04e749"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_transit_av_gates.ts",
@@ -21857,7 +21851,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_transit_engine.ts",
-            "sha256": "00d1681cf7339593e4c9f5352a88c36814d144a66e3803757d51c9ea4657ad01"
+            "sha256": "ef8a91e8f3fe2ad5511b1905146465b3d9085f04b1d3b4971d011a7f6a997729"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_transit_moorti.ts",
@@ -21977,7 +21971,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_graha_yuddha.ts",
-            "sha256": "7be753fcb7ecb40d6ef494b3cc493692a47c47393103e571975d1a464042e9bd"
+            "sha256": "17734c987318022102cfb0818fa329b0ea1af46f8aafc8726fb87450af0f7b62"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_karakas.ts",
@@ -22425,7 +22419,7 @@
           }
         ],
         "path": "platform/src/lib/retrieval/{registry,synthesis}/**/*.ts (excluding tests)",
-        "sha256": "3e957d981f9490e048fc31def58307de5844aa64dd21c0021ed6b8836dda2b6e"
+        "sha256": "a1e81949d9364745de9475439fa588857e7697a134ef9187bfa127437a2212be"
       },
       {
         "id": "service_effect_contracts",

@@ -1130,7 +1130,7 @@ describe('binding availability contracts', () => {
       'LIMIT 0',
     ]) expect(contract.sql).toContain(marker)
     expect(contract.source_refs).toEqual([
-      'platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_parihara_graph.ts:125-227',
+      'platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_parihara_graph.ts:132-234',
       'platform/supabase/migrations/485_bg_parihara_rules.sql:63-138',
       'platform/scripts/ci/migration_renumber_disclosed.json:30-36',
       'platform/supabase/migrations/524_bg_parihara_rules_muhurta_extraction_context.sql:52-65',
