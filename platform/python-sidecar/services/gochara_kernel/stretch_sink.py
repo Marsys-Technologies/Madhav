@@ -100,7 +100,8 @@ def build_records(*, event_class: str, horizon: tuple[datetime, datetime], stret
     out = []
     for st in stretches:
         t0, t1 = (datetime.fromisoformat(x) for x in st["interval"])
-        orb = float(orb_for(st["relation"]))
+        raw_orb = orb_for(st["relation"])                       # None for a relation with no point orb (a span stretch): no wrap notion, orb_deg null
+        orb = None if raw_orb is None else float(raw_orb)
         if st["kind"] in CAUSE_KINDS:
             extra = {k: st[k] for k in ("level_deg", "closest_approach_deg", "closest_approach_at", "peak_activity", "full_interval", "detail") if st.get(k) is not None}
             out.append(_record(st["kind"], st["reason"], event_class, st, orb, horizon, episode_count=st.get("episode_count"), **extra))
@@ -110,7 +111,7 @@ def build_records(*, event_class: str, horizon: tuple[datetime, datetime], stret
                                detail={"stations": stations}))
         if (st.get("episode_count") or 0) >= 2:
             out.append(_record("multi_episode_stretch", "two_or_more_ledger_episodes", event_class, st, orb, horizon, episode_count=st["episode_count"]))
-        wraps = [lv for lv in levels_for(st["body"], st["relation"], st["target"]) if band_straddles_the_cut(lv, orb)]
+        wraps = [] if orb is None else [lv for lv in levels_for(st["body"], st["relation"], st["target"]) if band_straddles_the_cut(lv, orb)]
         if wraps:
             out.append(_record("wrap", "ray_band_contains_wrap_cut", event_class, st, orb, horizon, level_deg=round(wraps[0], 4),
                                episode_count=st.get("episode_count"), detail={"body_wrapped_inside": bool(body_wrapped_inside(st["body"], t0, t1))}))

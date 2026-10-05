@@ -478,7 +478,7 @@ def _stretch_sink_records(event_class: str, horizon, stretch_sink: list, positio
         event_class=event_class, horizon=(horizon[0], horizon[1]), stretches=stretch_sink,
         stations_in=lambda body, t0, t1: _station_instants_in(body, t0, t1, ephe_path),
         levels_for=lambda body, relation, target: gk_stretch_sink.levels_of(relation, target, _ASPECT_ANGLES.get(body, ())),
-        orb_for=lambda relation: _POINT_ORB_DEG[relation], body_wrapped_inside=wrapped_inside)
+        orb_for=lambda relation: _POINT_ORB_DEG.get(relation), body_wrapped_inside=wrapped_inside)
 
 
 def _emit_stretch_sink(event_class: str, horizon, stretch_sink: list, position_at, ephe_path: str | None) -> dict:
@@ -980,8 +980,8 @@ class GocharaV5Writer(WriterBase):
         if ctx.dry_run:
             return WriterResult(asset_id=self.asset_id, rows_inserted=0,
                                 notes=f"dry_run: {step.key} not solved, nothing written")
-        _require_building(ctx, chart_id)    # the state guard: refuses by name once the orchestrator has marked the asset anything but building
-        _ephe_path(ctx)         # every substep resolves it, so the FIRST ('rules') refuses a mis-provisioned job in seconds
+        _ephe_path(ctx)         # every substep resolves it, so the FIRST ('rules') refuses a mis-provisioned job in seconds (no database use)
+        _require_building(ctx, chart_id)    # the state guard: refuses by name once the orchestrator has marked the asset anything but building, before any write
         if step.key == RULES_SUBSTEP:
             # rule_binding: registry writes ride the Gochara-5 GLOBAL family
             # key (taken by the tables' write-guard triggers). The chart

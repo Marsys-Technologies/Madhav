@@ -304,8 +304,8 @@ def test_a_database_error_other_than_a_missing_table_is_not_swallowed():
 
 
 def test_every_substep_kind_passes_through_the_guard_before_anything_is_resolved_or_written(monkeypatch):
-    """The guard sits at the top of run_substep, after only the pinned-chart check and the dry-run return: a non-building row refuses a substep of EVERY
-    kind (rules, convention, manifest, snapshot, body, inventory, coverage, record, window, verify) by name, before the ephemeris is even resolved."""
+    """The guard sits at the top of run_substep, after only the pinned-chart check, the dry-run return and the (database-free) ephemeris resolution: a non-building
+    row refuses a substep of EVERY kind (rules, convention, manifest, snapshot, body, inventory, coverage, record, window, verify) by name, before anything is written."""
     monkeypatch.setattr(writer_mod, "_require_pinned_chart", lambda ch: None)
     called = []
     monkeypatch.setattr(writer_mod, "_ephe_path", lambda c: called.append(1) or "/x")
@@ -316,7 +316,7 @@ def test_every_substep_kind_passes_through_the_guard_before_anything_is_resolved
     for key in keys:
         with pytest.raises(writer_mod.AssetNotBuilding):
             writer_mod.GocharaV5Writer().run_substep(_ctx(_Conn(throughput="error"), horizon=FULL), SubStep(key=key, label=""))
-    assert not called, "the ephemeris was never resolved: the guard comes first"
+    assert len(called) == len(keys), "the ephemeris resolver (no database use) runs first, so a mis-provisioned job still refuses in seconds; the guard follows it"
 
 
 def test_the_guard_is_the_only_reader_of_asset_throughput_and_the_writer_never_writes_it():
