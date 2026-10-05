@@ -29,12 +29,12 @@ def test_files(root: Path = TESTS) -> list[Path]:
 
 # File size is a poor proxy for run time for a few files: the mutation-testing suites of the E5.7 drill run their mutants in a process pool and take
 # minutes on a CI runner while being no larger than their neighbours. For the 15 files that dominate, the measured CI run time (seconds, from the
-# 2026-10-05 shard logs and a full timing run; the serial files were about half their time on a loaded workstation) replaces the size proxy, converted
+# 2026-10-05 shard logs and a full timing run, re-measured after the mutant suites were parallelised: the mirror wiring file went from 330 s to about 80 s; the serial files were about half their time on a loaded workstation) replaces the size proxy, converted
 # to "bytes" at BYTES_PER_SECOND so one greedy pass still orders everything. Still a pure function of the tree plus this table: no timings are read
 # at run time, a shard's content does not move between runs. A listed name that is not a test file fails test_ci_shard (the table cannot rot silently).
 BYTES_PER_SECOND = 3300
 CI_SECONDS = {
-    "test_e5_7_mirror_wiring.py": 330, "test_e5_7_fingerprint_declarations.py": 110, "test_e6_s1_elevation_reader.py": 89,
+    "test_e5_7_mirror_wiring.py": 80, "test_e5_7_fingerprint_declarations.py": 110, "test_e6_s1_elevation_reader.py": 89,
     "test_e1_1_scorecard.py": 57, "test_e6_na_r01_03.py": 53, "test_e6_emit_gaps_withholding.py": 50, "test_e1_7_nikasha_plant.py": 50,
     "test_e6_n99_build_completion_integrity.py": 45, "test_e5_6_rehearsal.py": 43, "test_gate_v2_prerun_gate.py": 35,
     "test_flip_detector_mutations.py": 33, "test_e5_5_stale_certs.py": 32, "test_e5_1_certify.py": 32, "test_e5_2_fold.py": 28,
