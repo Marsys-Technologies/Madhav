@@ -361,6 +361,20 @@ def _validate_test_slice(marker) -> TestSlice:
     return TestSlice(run=run, horizon=horizon, classes=ordered, marker=dict(marker), digest=digest)
 
 
+def _log_verify_outcome(substep_key: str, result: WriterResult) -> WriterResult:
+    """VERIFIER-R2-GO: the in-build verification outcome reaches the run log — the runner never reads a substep's notes
+    (the run exits 0 and the verdict is read from the database), so without this a class the verifier could not derive
+    would be invisible. INFO for every verify/window outcome; WARNING when the notes say UNVERIFIED (a class or window the
+    verifier could not independently derive: it cannot seal and does not satisfy a verification gate). Logging only: the
+    result is returned unchanged, so the frozen orchestrator contract and the substep's stored outcome are untouched."""
+    notes = result.notes or ""
+    if "UNVERIFIED" in notes:
+        logger.warning("%s: %s: %s", ASSET_ID, substep_key, notes)
+    else:
+        logger.info("%s: %s: %s", ASSET_ID, substep_key, notes)
+    return result
+
+
 def _test_slice(ctx: ContextSpec) -> TestSlice | None:
     """The run's validated test-slice marker, or None — the ABSENT key is today's behaviour,
     byte-identical."""
@@ -823,13 +837,14 @@ class GocharaV5Writer(WriterBase):
                 or step.key.startswith((INVENTORY_SUBSTEP_PREFIX, VERIFY_SUBSTEP_PREFIX))):
             if step.key != MANIFEST_SUBSTEP:
                 _verify_live_inputs(ctx, chart_id)
-            return self._run_inventory_phase(ctx, step, chart_id, slice_)
+            result = self._run_inventory_phase(ctx, step, chart_id, slice_)
+            return _log_verify_outcome(step.key, result) if step.key.startswith(VERIFY_SUBSTEP_PREFIX) else result
         if step.key.startswith((COVERAGE_SUBSTEP_PREFIX, RECORD_SUBSTEP_PREFIX)):
             _verify_live_inputs(ctx, chart_id)
             return self._run_record_phase(ctx, step, chart_id, slice_)
         if step.key.startswith(WINDOW_SUBSTEP_PREFIX):
             _verify_live_inputs(ctx, chart_id)
-            return self._run_window_phase(ctx, step, chart_id)
+            return _log_verify_outcome(step.key, self._run_window_phase(ctx, step, chart_id))
         body = step.key[len(BODY_SUBSTEP_PREFIX):]
         if body not in SUBSTRATE_BODIES:
             return WriterResult(asset_id=self.asset_id, rows_inserted=0,

@@ -184,3 +184,46 @@ def test_the_writer_hands_the_certifier_a_sink_only_under_a_validated_test_slice
         assert "closest 0.396 deg" in result.notes and "peak activity 0.604" in result.notes
     finally:
         sliced.close()
+
+
+# ── VERIFIER-R2-GO: the verify outcome reaches the run log (the runner never reads notes) ────────────────────────────────────
+
+def test_the_verify_log_helper_is_info_normally_and_warning_on_unverified_and_returns_the_result_unchanged(caplog):
+    import logging
+    from pipeline.orchestrator.writers import ka_gochara_v5 as writer_mod
+    WriterResult = writer_mod.WriterResult
+    ok = WriterResult(asset_id=writer_mod.ASSET_ID, rows_inserted=1, notes="verify marriage: inventory + ledger digests independently reproduced")
+    bad = WriterResult(asset_id=writer_mod.ASSET_ID, rows_inserted=0, notes="verify business_launch: UNVERIFIED — no derivation (no verification row)")
+    with caplog.at_level(logging.INFO, logger=writer_mod.logger.name):
+        assert writer_mod._log_verify_outcome("verify:marriage", ok) is ok
+        assert writer_mod._log_verify_outcome("verify:business_launch", bad) is bad
+    by_level = {r.levelno: r.getMessage() for r in caplog.records}
+    assert logging.INFO in by_level and "verify:marriage" in by_level[logging.INFO]
+    assert logging.WARNING in by_level and "UNVERIFIED" in by_level[logging.WARNING] and "verify:business_launch" in by_level[logging.WARNING]
+
+
+def test_an_unverifiable_class_is_logged_at_warning_from_the_real_verify_substep_and_the_run_still_completes(template, monkeypatch, caplog):
+    """The writer does not RAISE for a class the verifier cannot derive (that is a designed limit: the class cannot seal; raising would fail the
+    whole replayed build over one class): it completes with an UNVERIFIED note, and now ALSO logs it at WARNING so the steward can see it."""
+    import logging
+    from pipeline.orchestrator.writers import ka_gochara_v5 as writer_mod
+    from services.gochara_kernel import inventory_verifier as inv_v
+    from .test_a55_replace_chain import FULLL
+    from .test_c46_slice_transitions import _SliceWorld
+
+    def refuse(*a, **k):
+        raise inv_v.Unverifiable("synthetic: no independent derivation of this path")
+    monkeypatch.setattr(writer_mod.gk_verifier, "rederive_inventory_digest", refuse)
+    sliced = _SliceWorld(template)
+    try:
+        rid = sliced.run_id(sliced.marker_for(FULLL))
+        sliced.step_as(writer_mod.MANIFEST_SUBSTEP, rid)
+        sliced.step_as(writer_mod.SNAPSHOT_SUBSTEP, rid)
+        sliced.step_as("inventory:marriage", rid)
+        with caplog.at_level(logging.INFO, logger=writer_mod.logger.name):
+            result = sliced.step_as("verify:marriage", rid)
+        assert "UNVERIFIED" in result.notes and result.rows_inserted == 0
+        warned = [r for r in caplog.records if r.levelno == logging.WARNING and "verify:marriage" in r.getMessage()]
+        assert warned and "UNVERIFIED" in warned[0].getMessage()
+    finally:
+        sliced.close()

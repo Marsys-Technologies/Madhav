@@ -690,7 +690,12 @@ def _junction_problem(position_at, body, relation, target, junction, accuracy_de
       (a) the body's speed is low there (`boundary_match`'s criterion: no usable time tolerance);
       (b) a REVERSAL is bracketed (`_station_near`: the sign of the velocity differs across +-6 h of the junction) and the junction lies within the time at
           which the body is, at the contact's own stated angular accuracy plus the reconstruction's location error, at the station's longitude (a station is
-          compared in ANGLE, as `boundary_match` does; its time is ill-conditioned, so a tolerance in seconds would be arbitrary);
+          compared in ANGLE, as `boundary_match` does; its time is ill-conditioned, so a tolerance in seconds would be arbitrary).
+          THE BOUND (steward VERIFIER-R2-GO ruling a): near a reversal the longitude differs from the station's longitude by at most
+          (1/2)·c·dt**2 (c = the measured curvature, deg/s**2, dt = time from the station), so every junction with dt <= tau = sqrt(2·eps/c) is
+          within eps = (the contact's stated angular accuracy + the reconstruction's location error VMAX·BISECT) of the station in ANGLE. A junction
+          that differs from the true station by tens of minutes but by less than eps in angle is therefore NOT a defect: the two stored contacts
+          are indistinguishable from an exact split at the station at the accuracy the whole certification states. Any dt > tau is refused;
       (c) CONTINUITY across the exempted interval [J - margin, J + margin]: the body is inside the geometry at 2N + 1 samples including the junction itself,
           each by a clearance of at least the farthest it can move between consecutive samples (`contact_reconstruct.VMAX_DPS`, the kernel's own per-body
           speed bound). Between two samples the body cannot move more than that, so it cannot have left the band: no excursion of ANY duration shorter
