@@ -39,7 +39,7 @@ CI_SECONDS = {
     "test_e6_1_p2a_census_facts_rollup_cli.py": 20,
     "test_e6_c11_carr_harness.py": 20,
     "test_e6_1_p1_registry_rollup.py": 111,
-    "test_e1_7_census_db_identity.py": 20,
+    "test_e1_7_census_db_identity.py": 56,
     "test_e6_1_declarations.py": 35,
     "test_e6_3_report_and_dispositions.py": 1,
     "test_e5_7_null_narr_pass.py": 75,
