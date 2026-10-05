@@ -1,7 +1,7 @@
 ---
 artifact: JOURNEY1_RELEASE
 version: 1.0
-status: PREPARING
+status: LOCALLY_QUALIFIED
 ---
 
 # Journey 1 release
@@ -13,3 +13,7 @@ Release authority narrowly supersedes GIP §P.4 for this delivery only; CCD-021 
 Baseline: main `944ccf22c250b6ebd0507c18d0f23438efceade4`; 100% live `amjis-web-probe-944ccf22c250-37310776256-1`. This is the rollback reference, not a deployment claim for the new UI.
 
 Steps: typed test lint fixes, current-main reconciliation, full lint/types/unit, production build via protected PR, merge queue, established no-traffic smoke/promotion, authenticated read-only UI verification and traffic/revision proof. Real account creation/reset remains a separate manual acceptance task; no production records will be created to demonstrate it.
+
+## Local qualification
+
+Reconciled current protected main `944ccf22c250` into the owned branch with no conflicts. Full ESLint: zero errors,628 inherited warnings; TypeScript including tests: zero errors; full unit suite:1,409 files and15,655 tests passed, zero unexpected failures. Three lint-error test fixtures are now explicitly typed, with all security/provisioning assertions retained. In-session adversarial review: `RED_TEAM.md`, limitations disclosed. Repository merge protections and zero-traffic release checks remain required.
