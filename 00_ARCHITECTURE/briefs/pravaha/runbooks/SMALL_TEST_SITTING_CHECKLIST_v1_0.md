@@ -1,12 +1,13 @@
 ---
 artifact: SMALL_TEST_SITTING_CHECKLIST
-version: "1.0"
+version: "1.1"
 status: "DRAFT — authorises NOTHING. Written for the steward (steward SMALLTEST-CHECKLIST, 2026-10-05). Commands are as of the heads named in section 'Heads this was written against'; re-read the scripts at the FINAL merged heads before the sitting (Stream A's fixes may rename flags)."
 date: 2026-10-05
 author: Stream B (Śāstra), session madhav-8b
 owner_ruling: "ST-OWNER-SMALL-TEST-1 (Ruling 3, 2026-10-03): a very small test rebuild of Gochara 5 first; the one full build waits for Suvarna's elevation."
 how_to_use: "Do the rows in order. Any FALSE readback = STOP, report, no unreviewed repair. Nothing here is a go: every row that touches production for a Gochara build, dry run or measurement on chart 482012f1 needs the steward's explicit word first (the standing hold is in force until the steward lifts it). Read-only readbacks on production are rows 3 and 9/11 readbacks; they are not builds."
 changelog:
+  - "1.1 (2026-10-05, steward CHECKLIST-ADD): HARD RULE in row 7 — the runner process exits 0 even when the run ends FAILED, so the Cloud Run execution status proves nothing and success or failure is read ONLY from build_runs, build_run_assets, asset_throughput and the manifest (query R7c); a P1 anchor failure on production stops the sitting (row 7 table); the unset-ephemeris failure is named and takes under a second."
   - "1.0 (2026-10-05): first version, from everything found on 2026-10-04/05 (G8, teardown 3098, dispatch 3097, ephemeris gap, production catalog reads)."
 ---
 
@@ -108,15 +109,33 @@ What to read (all read-only; times in UTC):
 
 | Read | Command / query | Meaning |
 |---|---|---|
-| Run and asset state | **R7a** | `build_runs.state`, `current_asset_id`, `last_error`; `build_run_assets.state`, `started_at`, `ended_at` |
+| Run and asset state, and THE VERDICT | **R7a** and **R7c** (the verdict; never the Cloud Run status) | `build_runs.state`, `current_asset_id`, `last_error`; `build_run_assets.state`, `started_at`, `ended_at` |
 | Progress | **R7b** | `build_substep_progress` rows for the asset accumulate as substeps commit; the substep keys are the phases (below). The full-class plan is 298 static substeps |
 | Cloud Run execution and logs | `gcloud run jobs executions list --job=brahma-build-pipeline-job --region=asia-south1 --project=madhav-astrology --limit=3`; logs in Cloud Logging for the job; the writer's per-substep notes and the in-build verification lines are in the log | exit code and per-substep text |
+
+**HARD RULE (steward CHECKLIST-ADD; Stream A found it with the real runner entry point; the orchestrator is frozen and is not changed): the runner process EXITS 0 even when the run ends FAILED.** The Cloud Run execution status (`Succeeded`, exit code 0) therefore proves NOTHING. Success or failure is read ONLY from the database, with **R7c** below, and the result is recorded verbatim in the evidence folder before anything else is done. **A run is a SUCCESS only if ALL of these hold:** `build_runs.state = 'completed'`; the asset's `build_run_assets.state = 'complete'` **and** `disposition = 'build'` (`skip_no_delta` means the writer did NOT run; `blocked_dependency` means a dependency did not complete); `asset_throughput.state = 'lit'` (`incomplete` = the plan completeness could not be proven, `dormant` = nothing written, `error`/`building` = not finished); the manifest is `candidate` with `stored_scope = test_slice`; and the inventory and output counts match the slice (all classes for run 1, one class for run 2). Anything else is a FAILED run whatever Cloud Run says: stop, keep the evidence, tell the steward.
+
+**R7c — THE VERDICT (read-only; read this, never the Cloud Run status):**
+```sql
+SELECT r.state AS run_state, left(coalesce(r.last_error,''), 400) AS run_error,
+       a.state AS asset_state, a.disposition, left(coalesce(a.error,''), 400) AS asset_error,
+       (SELECT t.state FROM asset_throughput t WHERE t.asset_id = 'ka_gochara_v5' AND t.chart_id = r.chart_id) AS throughput_state,
+       (SELECT p.status FROM kala_gochara_publication p WHERE p.chart_id = r.chart_id AND p.generation = '5.0') AS manifest_status,
+       (SELECT p.input_generation_vector ->> 'stored_scope' FROM kala_gochara_publication p WHERE p.chart_id = r.chart_id AND p.generation = '5.0') AS stored_scope,
+       (SELECT count(*) FROM ka_gochara_search_inventory i WHERE i.chart_id = r.chart_id AND i.generation = '5.0') AS inventories,
+       (SELECT count(*) FROM ka_gochara_search_inventory i WHERE i.chart_id = r.chart_id AND i.generation = '5.0' AND i.finalized_at IS NOT NULL) AS finalised_inventories,
+       (SELECT count(*) FROM build_substep_progress s WHERE s.chart_id = r.chart_id AND s.asset_id = 'ka_gochara_v5') AS substeps_done
+  FROM build_runs r LEFT JOIN build_run_assets a ON a.run_id = r.id AND a.asset_id = 'ka_gochara_v5' WHERE r.id = '<run id>';
+```
+Expected for a success: `completed | | complete | build | | lit | candidate | test_slice | 26 | 26 | <substeps>` for run 1 (`1 | 1` inventories for run 2). Run states seen in production: planned, running, paused, completed, failed, stopped; build_run_assets states: queued, building, complete, error, aborted; dispositions: build, skip_no_delta, blocked_dependency.
+
+**Known fast failures and the first completion.** With no ephemeris path configured (the variable unset) the run now fails in under a second, by name, at the first substep (the fallback fix refuses at `rules`, not after the 8 body substeps): that is the environment fault, read in R7c as `failed` with the asset error naming the ephemeris path; nothing was written. **The first slice that ever completes through the real runner is the production small test itself** (the stubbed L1 used in tests cannot pass the P1 grain), so a failure in the P1 grain is the most likely first real finding and must be read as such (table below).
 
 Phases and what a failure in each means (writer plan order: `rules` → `convention` → `body:<Body>` ×8 → `manifest` → `snapshot` → per class `inventory:<c>`, `coverage:<c>`, records, `verify:<c>`):
 
 | Phase | If it fails | Meaning |
 |---|---|---|
-| exit before any substep (exit 1) | frozen-manifest validation or the writer-gap check or the sidecar code digest | image/checkout skew (row 0.3), tampered manifest, or registry row missing `has_writer`. Run is terminalised `failed`. No output written |
+| exit before any substep (the process may still report exit 0: read R7c) | frozen-manifest validation or the writer-gap check or the sidecar code digest | image/checkout skew (row 0.3), tampered manifest, or registry row missing `has_writer`. Run is terminalised `failed`. No output written |
 | exit 3 | chart locked / too many runs | another run holds the chart lock; the run stays planned; if it is not started within 10 minutes the watchdog fails it |
 | `rules`, `convention` | rule registry / convention row | global-key work; no chart output yet |
 | `body:*` | sky substrate (boundary events and stations) | the Swiss library uses `SE_EPHE_PATH` from the image environment when no path is configured; a Moshier-fallback refusal (retflag) means the corpus is not being read |
@@ -124,6 +143,7 @@ Phases and what a failure in each means (writer plan order: `rules` → `convent
 | `snapshot` | replaces the WHOLE chart x generation chain (candidate-only) | a failure here leaves the manifest stamped and possibly the previous chain; teardown refuses an "interrupted replacement" (stamped manifest, snapshot of another vector) by name: re-dispatch the slice, then tear down |
 | `inventory`/`coverage`/records | per class | a partial chain: manifest + snapshot + some inventories. The teardown can remove it (every inventory header must carry the snapshot's input digest, the manifest horizon and a stamped class) |
 | `verify:<class>` | in-build self-checks | in-build verification disagreeing with the build; record which class and path |
+| **a P1 anchor failure** (any record or verification failure on grain `P1`, in the records phase or in `verify:<class>`; the asset error names path P1 / an anchor) | **STOPS THE SITTING** | P1 is the grain of anchor records (the natal-placement and daśā-anchor readings the writer derives from L1 facts). This is the first time the writer meets the real production L1 inputs through the real runner, so a P1 failure is a **writer-versus-L1 finding, not an environment fault**: either the writer's P1 derivation or its in-build check disagrees with what production's L1 holds. Do not retry and do not run 2. Keep the logs and R7c/R8 outputs, tear the partial chain down (row 9 dry run first), and report to Stream A and the owner: the full build would fail the same way |
 | asset timeout | **7200 s** (`writer_timeout_seconds`, 1304) | the asset is marked timed out as the root cause; downstream (none) blocked. Cloud Run task timeout is 86400 s, memory 16Gi |
 | the watchdog | marks a `has_substeps` asset whose plan completeness cannot be proven as **incomplete**, not lit | `incomplete` is not a pass |
 
@@ -147,7 +167,7 @@ Record under `/Users/Dev/pravaha/run/smalltest-<date>/` (raw outputs, one file p
 
 | # | Step | Who | Cred | Action | Expected | STOP if / told |
 |---|---|---|---|---|---|---|
-| 9.1 | Read what exists | steward | none | **R2**, **R7a** | the run is terminal (completed/failed/stopped), no planned/running/paused run on the chart | a run still active: stop it first (the teardown refuses active runs) |
+| 9.1 | Read what exists and the verdict | steward | none | **R2**, **R7a**, **R7c** (record the verdict BEFORE tearing down: the teardown deletes the evidence) | the run is terminal (completed/failed/stopped), no planned/running/paused run on the chart | a run still active: stop it first (the teardown refuses active runs) |
 | 9.2 | Teardown dry run | steward | teardown role | `DATABASE_URL=… python3 scripts/teardown_v5_small_test_job.py` (direct connection) | lists would-delete counts (receipts, freshness, run assets, runs, throughput, the output chain, inventory, snapshot, manifest), **each owned run's creation time and the days of the 90-day retention remaining**, how the stamp was proved (ORIGINAL marker of run X, or RECONSTRUCTION when no run row survives); end state N-137 validated; ROLLED BACK | any refusal: it is named. **A receipt with NO run link is refused for good**: it means the run was pruned (the cockpit watchdog deletes terminal runs after 90 days, `asset_provenance_receipts.build_id` is ON DELETE SET NULL). That is why this row runs well inside the window; the recovery in the teardown runbook section 3 is NOT FOR USE and not needed for a timely teardown |
 | 9.3 | Teardown execute | steward | teardown role | the same command plus `--execute --i-am-steward` | "COMMITTED"; exit 0. If it says COMMIT OUTCOME UNKNOWN: do not run again; run the dry run and read the counts | an error: the script states rollback confirmed / not confirmed / commit unknown; act on that sentence |
 | 9.4 | End-state readback | steward | none | **R1** (registry row inert, 1304 shape), **R2** (everything 0), **R3** (deps still lit/fresh), **R9** (leftovers the teardown does not delete) | row `is_active = false`; all zero; deps unchanged | anything left: report before run 2 |
@@ -182,7 +202,8 @@ Record under `/Users/Dev/pravaha/run/smalltest-<date>/` (raw outputs, one file p
 | Corpus probe mismatch | stop | steward, Stream A |
 | Dispatch refusal | stop, read the named refusal | steward; Stream A if it is a script defect |
 | Run not executed within 10 minutes | re-stage | steward |
-| Build failure in any phase | stop; keep the logs; teardown, then re-dispatch if the steward decides | steward; Stream A (writer), owner informed |
+| Build failure in any phase (read from R7c, NOT from Cloud Run, which reports success even when the run FAILED) | stop; keep the logs; teardown, then re-dispatch if the steward decides | steward; Stream A (writer), owner informed |
+| A P1 anchor failure on production | stop the sitting; no run 2 | steward; Stream A; owner informed |
 | Teardown refusal (especially a NULL-linked receipt) | stop; no manual repair | steward; owner |
 | Anything written outside the pinned chart and generation | stop immediately | owner |
 
@@ -313,6 +334,7 @@ Options: (1) `amjis_app` for the one-off teardown, from a direct connection, aft
 9. **Image redeploy after the ephemeris fix:** the writer digest, the dispatch's expected digest, the lock aggregate and PR 3141's lock all move; confirm Stream A's deploy sequence (merge, deploy, then row 0.3) so the printed digest matches the image.
 10. **PR 3141 (G8)** stays unmerged until after this test (it changes the vector and the lock); after it merges, a small test cannot be repeated from the older checkout without re-dispatching from the matching one.
 11. **Concurrent work on the canonical chart during the sitting:** the orchestrator exclusion lock and the Gochara chart lock make a concurrent build or the teardown refuse by name, but the cockpit watchdog takes no advisory lock; confirm no other build or Suvarna window is scheduled on this chart for the sitting.
-12. **Run 2's class:** `marriage` is the class the tests use; confirm it is the class the owner wants for the full-horizon check.
+12. **Cloud Run status is not a signal** (exit 0 on a FAILED run): should the dispatch or a monitor print R7c's verdict for the run id automatically, so the steward is not left reading logs? (the orchestrator is frozen; a read-only helper script would be a Stream A item)
+13. **Run 2's class:** `marriage` is the class the tests use; confirm it is the class the owner wants for the full-horizon check.
 
 *End of draft v1.0. Authorises nothing; the steward's explicit word is needed for each production write and for lifting the standing hold.*
