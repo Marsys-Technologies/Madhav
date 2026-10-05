@@ -72,6 +72,7 @@ import argparse
 import ast
 import bisect
 import collections
+import copy
 import datetime as dt
 import functools
 import hashlib
@@ -6474,6 +6475,12 @@ def _memoized_run(fn):
     return run
 
 
+def _run_declarations() -> dict:
+    """The committed declarations as `load_asset_declarations()` reads them, loaded and validated ONCE per measure() run (three sites of one run asked for the same file: ~0.3 s of a 0.45 s
+    run) and handed out as a deep copy, so no site sees another's edit. A DeclarationsError propagates every time (a failed load is not cached)."""
+    return copy.deepcopy(_memo(("declarations",), lambda: load_asset_declarations()))
+
+
 def _memo(key, compute):
     if _MEMO is None:
         return compute()
@@ -11660,7 +11667,7 @@ def measure(layer_key: str, assets=None) -> dict:
         reg = {aid: r for aid, r in reg_all.items() if aid in set(sel)}     # registry order, like a full run
         assets_sel = sorted(sel)
     try:                                                   # N-150: a DECLARED produced table is read by the catalog like a target (its columns and types feed the R1 schema check)
-        _early_decls = load_asset_declarations()
+        _early_decls = _run_declarations()
     except DeclarationsError:
         _early_decls = {}
     _produced_decl = [d["table"] for aid_ in reg for d in (declared_produced_tables((_early_decls or {}).get(aid_)) or [])]
@@ -11711,7 +11718,7 @@ def measure(layer_key: str, assets=None) -> dict:
     # E6 item (g): the asset-declarations file's kinds (a declared service satisfies Build.target by declaration).
     # An unreadable file leaves every declared kind UNKNOWN: Build.target then reads exactly as before.
     try:
-        declarations = load_asset_declarations()
+        declarations = _run_declarations()
     except DeclarationsError:
         declarations = None
     # R23: every capability module's SQL, read once per layer run.
@@ -11730,7 +11737,7 @@ def measure(layer_key: str, assets=None) -> dict:
     dens_shared = frozenset(t for t, who in _decl.items() if len(who) > 1)
     owners: dict = {}                                     # R53: read lazily, at most once per layer
     try:                                                   # E6 packet (c): read once per layer run
-        prose_decls = load_asset_declarations()
+        prose_decls = _run_declarations()
         prose_vocab = prose_vocabulary(prose_decls)
     except DeclarationsError as exc:
         prose_decls, prose_vocab = exc, set()
