@@ -1,11 +1,12 @@
 ---
 artifact: V5_SMALLTEST_TEARDOWN_RUNBOOK
-version: "1.1"
+version: "1.2"
 status: DRAFT for steward review — nothing in it has been executed against any database
 date: 2026-10-04
 author: Stream A (Exec A), answering Codex rounds 2 and 3 and Stream B on PR 3098 (steward TEARDOWN-CODEX-2, TEARDOWN-B-ADD)
 scope: How the small-test teardown (`platform/scripts/teardown_v5_small_test_job.py`) is run, when it refuses and what the steward does then, and which database role it needs.
 changelog:
+  - "1.2 (2026-10-05): §7 added from steward TIMEOUT-RULING: the registry cap is 28800 s (8 h) for the small test and the measuring build, what a fired cap leaves behind, the misleading BLOCKED text it writes, and the pre-dispatch check against the Cloud Run task timeout."
   - "1.1 (2026-10-04): Stream B additions: direct connection required (B6), what the locks do not do (B7), the recovery conditions for NULL links (B9), the role section with Stream B's production verification and the conditional registry privileges (B1, B2), the catalog-discovered references (B4, B5)."
   - "1.0 (2026-10-04): first version."
 ---
@@ -76,3 +77,10 @@ It proves the locks can be taken (on a direct connection), every refusal check p
 - **Look a run up (read-only) with `--lookup <run id>` or `--list-runs`**, never with a dry run: once a staged run exists, the dry run refuses (an active run) by design.
 - **Before the dispatch dry run**, run the read-only readbacks as the steward: `platform/scripts/v5_small_test_predispatch_readback.sql` (registry shape, dependencies lit and fresh, chart birth data, nothing of the small test exists, no resumption-ledger rows, concurrency cap, the writer-gap check, the role's privileges) and `platform/scripts/v5_small_test_registry_row_readback.sql`.
 - **Any prior generation '5.0' output refuses the dispatch** (proven small test or not): clear it with the teardown first. A staged run that was never executed is failed by the cockpit watchdog after 10 minutes and then carries no receipts and no output, so the teardown removes it; before the watchdog acts it is an active run and blocks both scripts by name. Execute within 10 minutes of staging or re-stage.
+
+## 7. If the writer timeout fires (operating note; steward TIMEOUT-RULING, 2026-10-05)
+**The cap.** The migration-1304 registry row carries `writer_timeout_seconds = 28800` (8 h), one value for the small test and the measuring build, so no second registry migration is needed. The orchestrator applies it to the WHOLE asset as wall-clock from the asset's dispatch (not per substep), and the registry value wins over the job's `WRITER_TIMEOUT_SECONDS`. A healthy run must never be ended by the cap; the cost of a large cap is slower detection of a genuinely hung writer, and every run is supervised. Before dispatch, the pre-dispatch readback notes must show that the Cloud Run job task timeout (86400 s per Stream B's read-only describe) is above the cap.
+
+**What a fired cap looks like.** The asset and its `build_run_assets` row read `error` with this text, which is misleading (nothing upstream failed): `BLOCKED: upstream dependency(ies) timeout:28800s did not complete in this run; skipped to avoid building on incomplete data`. A message of that shape on `ka_gochara_v5` means the CAP fired. The run ends `failed` (the runner still exits 0).
+
+**What it leaves behind.** The orchestrator only marks the asset and stops waiting; it does not stop the writer thread. For the seconds until the process exits (a single-asset run) the writer can finish the substep it is in and commit it, so the chain holds a contiguous PREFIX of the plan, never a half-committed substep. In the rare case the thread finishes the whole plan before the process exits, the asset can read built while the run reads failed (not exercised by a test today). **A fired cap is a teardown case:** run the reviewed teardown (this runbook, §2) and do not resume or hand-edit.

@@ -124,7 +124,7 @@ EXPECTED_REGISTRY_ROW = {
     "is_active": False,
     "has_writer": True,
     "has_substeps": True,
-    "writer_timeout_seconds": 7200,
+    "writer_timeout_seconds": 28800,
     "depends_on": ["ga_positions", "ga_dashas"],
     "target_table": "ka_gochara_eval_window",
     "count_sql": ("SELECT COUNT(*) FROM ka_gochara_eval_window "
