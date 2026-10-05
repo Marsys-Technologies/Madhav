@@ -26,12 +26,12 @@ function resourceBlock(terraform: string, resourceStart: string): string {
 }
 
 // The apply script can reach a real gcloud token call and terraform apply when the host already carries the production approval
-// variables. The child therefore gets an explicit allow-list, never the merged host environment: only what bash needs to run,
-// plus the variables the test case itself sets.
-const CHILD_ENV_ALLOW_LIST = ['PATH', 'HOME', 'TMPDIR'] as const
+// variables. The child therefore gets an explicit allow-list, never the merged host environment: only PATH (bash needs it; HOME is left out so gcloud
+// Application Default Credentials can never be discovered), plus the variables the test case itself sets.
+const CHILD_ENV_ALLOW_LIST = ['PATH'] as const
 
-function scrubbedChildEnv(environment: Record<string, string | undefined>): Record<string, string> {
-  const child: Record<string, string> = {}
+function scrubbedChildEnv(environment: Record<string, string | undefined>): NodeJS.ProcessEnv {
+  const child = {} as NodeJS.ProcessEnv
   for (const name of CHILD_ENV_ALLOW_LIST) {
     const value = process.env[name]
     if (value !== undefined) child[name] = value
@@ -50,6 +50,7 @@ function invokeMonitorApply(environment: Record<string, string | undefined>) {
     return spawnSync('bash', [monitorApply, 'apply', planFile], {
       encoding: 'utf8',
       env: scrubbedChildEnv(environment),
+      timeout: 30_000,
     })
   } finally {
     rmSync(tempDirectory, { recursive: true, force: true })
@@ -185,6 +186,9 @@ describe('Nirmana elevation monitor scheduler contract', () => {
       const printed = spawnSync('env', { encoding: 'utf8', env: child })
       expect(printed.status).toBe(0)
       for (const name of names) expect(printed.stdout).not.toContain(`${name}=`)
+
+      // nothing beyond the allow-list reaches the child: the key set is exactly the allow-listed names that exist on the host
+      expect(Object.keys(child).sort()).toEqual(CHILD_ENV_ALLOW_LIST.filter((name) => process.env[name] !== undefined).sort())
 
       // a case-supplied variable still reaches the child (the allow-list is not a blanket drop)
       expect(scrubbedChildEnv({ IAC_APPLY_ENVIRONMENT: 'staging' }).IAC_APPLY_ENVIRONMENT).toBe('staging')
