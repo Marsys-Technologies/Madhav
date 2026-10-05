@@ -1,11 +1,12 @@
 ---
 artifact: SECOND_WINDOW_PLAN
-version: "1.0"
+version: "1.1"
 status: DRAFT — planning document; authorises NOTHING (no merge, no dispatch, no credential act); each stage still needs the steward's say-so and, where marked, the owner's
 date: 2026-10-05
 author: Stream B (Śāstra) (steward WINDOW2-PLAN, M20261004T192303-ff2d)
 state_as_of: "main 9c1f42970 and later (PR 3137 merged); production ledger read-only 2026-10-04T19:4xZ: 1236 and 1302 applied, 1235, 1241, 1303, 1304 NOT applied"
 changelog:
+  - "1.1 (2026-10-05, steward G12-DESIGN-ACK): item 16 added (G12 route 1, migration 1305: the search-input snapshot owns a copy of the L1 rows it consumed); stage 1 now carries items 3, 4 and 16; MIGRATION NUMBERING and the stacking rule recorded in section 2."
   - "1.0 (2026-10-05): first version."
 ---
 
@@ -34,12 +35,15 @@ Legend — **Class**: P = protected-class migration (a function or trigger in sc
 | 13 | **C53 / #3119 (Firebase agent allow-list)** | Lets the isolation preflight recognise one more Google service agent as legitimate. | #3119 draft until the owner confirms the declared exception | The owner confirms the residual-risk sentence in front of them. | The preflight passes with the allow-list; the declared variable deleted; re-proven. | **O** + merge | Y (the declared exception must not outlive the window) |
 | 14 | **1236** | The authority pointer refuses a 5.x generation. | **ALREADY APPLIED** (read-only catalog check 2026-10-04: constraint kga_governed_generation_refused_ck exists; the ledger names it). Nothing to do; recorded so it is not scheduled again. | — | — | R | done |
 | 15 | **1304 (small-test registry row)** | Corrects the v5 registry row so the orchestrator runs it as the multi-step writer it is. | #3101 (Stream A) — BEFORE THE SMALL TEST, not part of this window | Reviewed (C41-REVIEW-B) | Registry row shape read back. | R | — |
+| 16 | **1305 — the snapshot owns a copy of its L1 inputs (G12 route 1)** | Stores a copy of the consumed fact and daśā rows inside the search-input snapshot and digests their CONTENT, so a sealed generation stays verifiable after any later L1 rebuild (new row ids, build ids, engine versions); the old id check becomes a drift report (values changed = hard, metadata only = soft). | Draft PR (Stream B authors, Stream A + Codex review); design note decisions/G12_ROUTE1_SNAPSHOT_DESIGN_v1_0.md | Codex + Fable; the real-chain tests (an L1 rebuild with new ids and build id verifies with a metadata-only drift report; a changed value is a hard drift); the static proof that its completeness function is the 1232 body with ONE block changed. | Presence checks in the migration; readback SQL: the four columns and the CHECK, the copy-check trigger, the two replaced functions, EXECUTE for the three roles. | P | **Y** (a sealed generation cannot be repaired) |
 
 ## 2. Proposed order and train shape
 
+**Migration numbering and stacking in the train (steward G12-DESIGN-ACK, 2026-10-05).** 1305 = G12 snapshot copy (item 16); 1306 = G8 class census (item 4), RE-SYNCED onto 1305; 1307 = the publication CHECK (item 3, PR 3140's draft). RULE: any two migrations that replace the SAME function in full are STACKED, the later carrying the earlier body, with a test that asserts it. 1305 and 1306 both replace `ka_gochara_search_completeness_violations`: 1305's body is 1232's with ONE block changed (a static test proves it); 1306's body must be 1305's with the census block appended (its static test asserts that, not equality with 1232). 1305 REFUSES to apply after 1306 (its gate detects the census block and names `g8_1306_applied_first`); 1306 is refused if 1305 is not applied (re-sync adds that gate). 1307 replaces a status-transition guard function that neither of the other two touches, so it is independent of them; it only needs the number.
+
 **Stage 0 — preparation, nothing changes in production.** (a) Stream A writes items 3 and 4 (migrations and code), Codex + Fable review them; (b) Stream B and Stream A finish the item-1 ACCEPT and the item-7 job ACCEPT; (c) the runner set (item 9) is folded, reviewed and merged; (d) the owner decides items 5 (scope), 12 and 13 and gives the word for item 6 when the time comes; (e) the readback expectations (counts, hashes, the ten-hash manifest, the trigger manifest) are re-measured on the then-current main, never forced. **Exit:** every item above reviewed to ACCEPT; the steward names the final commit.
 
-**Stage 1 — ONE protected train (items 3 and 4)**, same shape as the first window: merge in the stated order, the ONE-automatic-run rule, the stage checks (the six required checks and the stage-specific qualification), the protected deployment, then the runner's post-window phase. These two are protected-class because each replaces a guard or completeness function in public. Qualified twice (a second independent qualification), as the first window was.
+**Stage 1 — ONE protected train (items 16, 4 and 3, in the order of the numbering below)**, same shape as the first window: merge in the stated order, the ONE-automatic-run rule, the stage checks (the six required checks and the stage-specific qualification), the protected deployment, then the runner's post-window phase. These three are protected-class because each replaces a guard or completeness function in public (or adds columns and a trigger to a protected table). Qualified twice (a second independent qualification), as the first window was.
 
 **Stage 2 — routines by the ordinary deploy (items 1 and 5), after stage 1.** 1241 v7 and 1303 (with the owner-approved extension) merge one at a time; the routine runner applies them; read back by the exact-ACL query and the audit SQL. Item 2 (L1 read grants) is done by the ACL owner in the same stage.
 
