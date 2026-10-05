@@ -30,6 +30,13 @@ from bodha_writers.data_plane_resource_mechanism_slice import (
 )
 
 
+@pytest.fixture(autouse=True)
+def _data_plane_build_path_on(monkeypatch):
+    """N-165: the data-plane build path is OFF by default. This module exercises the dormant
+    contract machinery, so it switches the one explicit switch on for each test."""
+    monkeypatch.setattr("ga_writers.data_plane_contracts.DATA_PLANE_BUILD_PATH_ENABLED", True)
+
+
 FIXTURE = Path(__file__).parent / "fixtures" / "l2_resource_mechanism_non_person_v1.json"
 
 

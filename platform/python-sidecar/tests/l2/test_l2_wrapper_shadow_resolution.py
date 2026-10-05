@@ -19,6 +19,14 @@ import pytest
 import bodha_writers.data_plane_contracts as dpc
 from bodha_writers.data_plane_contracts import l2_producer
 
+
+@pytest.fixture(autouse=True)
+def _data_plane_build_path_on(monkeypatch):
+    """N-165: the data-plane build path is OFF by default. This module exercises the dormant
+    contract machinery, so it switches the one explicit switch on for each test."""
+    monkeypatch.setattr("ga_writers.data_plane_contracts.DATA_PLANE_BUILD_PATH_ENABLED", True)
+
+
 CHART = uuid.UUID("00000000-0000-4000-8000-0000000000a1")
 BUILD = "00000000-0000-4000-8000-0000000000b1"
 

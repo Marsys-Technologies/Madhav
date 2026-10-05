@@ -105,7 +105,9 @@ def _run_facts_build(conn, rows):
     conn.insert(rows, CF_KEY)               # the writer's INSERT
 
 
-def test_chart_facts_double_run_replaces_not_accretes():
+def test_chart_facts_double_run_replaces_not_accretes(monkeypatch):
+    # N-165: the delete receipt is only requested with the data-plane build path on.
+    monkeypatch.setattr("ga_writers.data_plane_contracts.DATA_PLANE_BUILD_PATH_ENABLED", True)
     conn = FakeConn("chart_facts")
     _run_facts_build(conn, _facts("build-1"))
     single = conn.count(CID)
@@ -305,7 +307,9 @@ class _DispatcherConn:
         self.pending_mutations.clear()
 
 
-def test_dispatcher_rebuild_authorizes_existing_fact_prefix_without_semantic_drift():
+def test_dispatcher_rebuild_authorizes_existing_fact_prefix_without_semantic_drift(monkeypatch):
+    # N-165: the delete receipt is only requested with the data-plane build path on.
+    monkeypatch.setattr("ga_writers.data_plane_contracts.DATA_PLANE_BUILD_PATH_ENABLED", True)
     from pipeline import dispatcher
 
     dispatcher.reset_dep_graph()

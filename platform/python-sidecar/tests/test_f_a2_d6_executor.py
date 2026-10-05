@@ -90,6 +90,12 @@ def test_the_gate_queries_equal_the_gates_own_source_after_normalisation() -> No
     """Real drift fails: the three queries are compared with the gate's source, placeholders and %% normalised."""
     ts_shape = _ts_query("triggerShape").replace("$1::text[]", "%(tables)s::text[]")
     ts_surface = _ts_query("triggerSurface").replace("$1::text[]", "%(tables)s::text[]")
+    # N-165 (data-plane revert): the gate now also accepts a trigger that is attested enabled and is
+    # currently disabled ('D'). The F-A2 draft executor is hash-bound and unchanged; its copy keeps the
+    # stricter enabled-only join (green whenever the gate is green with triggers enabled). Everything
+    # else must still match, so fold ONLY that one clause back before comparing.
+    ts_surface = ts_surface.replace(
+        "(a.enabled=e.enabled OR (a.enabled='D' AND e.enabled IN ('O','A')))", "a.enabled=e.enabled")
     ts_fn = _ts_query("functionDigests").replace("$1::text[]", "%(owners)s::text[]").replace("$2::text[]", "%(lifecycle)s::text[]")
     assert _squash(d6.GATE_TRIGGER_SHAPE.replace("%%", "%")) == _squash(ts_shape.replace("%%", "%"))
     assert _squash(d6.GATE_TRIGGER_SURFACE) == _squash(ts_surface)
