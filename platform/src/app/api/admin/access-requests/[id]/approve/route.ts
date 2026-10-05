@@ -32,9 +32,12 @@ export async function POST(
     return res.badRequest('invalid request body')
   }
 
-  const username = (body.username ?? '').trim().toLowerCase()
-  const usernameError = validateUsername(username)
-  if (usernameError) return res.badRequest(usernameError)
+  if (!body || typeof body !== 'object' || Array.isArray(body)) return res.badRequest('invalid request body')
+  if (body.username != null && typeof body.username !== 'string') return res.badRequest('Invalid username.')
+  // No username is reserved during a request; the approved user chooses it after sign-in.
+  // Retain compatibility for existing admin callers that explicitly assign one.
+  const username = body.username?.trim().toLowerCase() || null
+  if (username) { const error = validateUsername(username); if (error) return res.badRequest(error) }
 
   const role = body.role === 'super_admin' ? 'super_admin' : 'guest'
 
@@ -112,7 +115,7 @@ export async function POST(
 
   // 6. Generate a password-reset link.
   const resetLink = await adminAuth
-    .generatePasswordResetLink(req.email)
+    .generatePasswordResetLink(req.email, { url: new URL('/setup-account', request.url).href })
     .catch(() => null)
 
   return NextResponse.json({ ok: true, user_id: uid, reset_link: resetLink })

@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next'
 import { Inter, Cormorant_Garamond, JetBrains_Mono } from 'next/font/google'
 import './globals.css'
+import './journey1.css'
 import '@/styles/theme_tokens.css'
 import '@/lib/styles/marsys-theme.css'
 import { Toaster } from '@/components/ui/sonner'

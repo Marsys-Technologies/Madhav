@@ -1,0 +1,152 @@
+session_open:
+  session_id: MADHAV_JOURNEY1_RELEASE_20261005
+  cowork_thread_name: Madhav — Journey 1 deployment
+  agent_name: Codex
+  agent_version: GPT-6
+  tool: Codex
+  tool_profile: madhav-parity
+  worktree_path: /Users/Dev/.codex/worktrees/portal-experience/Madhav
+  step_number_or_layer: Owner-authorized Journey 1 protected integration and deployment
+  predecessor_session: MADHAV_JOURNEY1_IMPLEMENTATION_20261005
+  coordination:
+    coordination_ref: origin/campaign-coordination
+    lease_id: L-PORTAL-JOURNEY1-RELEASE-20261005
+    lease_status_verified: true
+    lease_verified_at: '2026-10-05T13:17:26.355001+00:00'
+    work_order_surface: 00_ARCHITECTURE/briefs/journey1/release/RELEASE.md
+  cross_tool_state_read:
+    cross_cutting_decision_register: true
+    consumed_decisions:
+    - CCD-001
+    - CCD-004
+    - CCD-011
+  mandatory_reading_confirmation:
+  - file: CLAUDE.md
+    fingerprint_sha256: a364863fc3efcf416ca16773093dda72ea7b632d6d63cd1c13a387889121e12e
+    read_at: '2026-10-05T13:17:26.355001+00:00'
+    read_scope: Mandatory orientation refreshed; relevant release/integrity sections
+      read. Prior full implementation-session context retained.
+  - file: 00_ARCHITECTURE/CAPABILITY_MANIFEST.json
+    fingerprint_sha256: 8f8ea9449e3f0d382a978f16a1282182e449ea34c64a134535fee9db3ba7bb88
+    read_at: '2026-10-05T13:17:26.355001+00:00'
+    read_scope: Mandatory orientation refreshed; relevant release/integrity sections
+      read. Prior full implementation-session context retained.
+  - file: 00_ARCHITECTURE/PROJECT_ARCHITECTURE_v2_2.md
+    fingerprint_sha256: 61dd9355223378d517c09a59ddcfc7dddddfbdabfa64b0865f9cd55153223e5b
+    read_at: '2026-10-05T13:17:26.355001+00:00'
+    read_scope: Mandatory orientation refreshed; relevant release/integrity sections
+      read. Prior full implementation-session context retained.
+  - file: 00_ARCHITECTURE/MACRO_PLAN_v2_0.md
+    fingerprint_sha256: 8e98ad46d7f0ba5ee4a9605f17f8ef21ba6da6d126092f7e0c52d318bc9e6c6e
+    read_at: '2026-10-05T13:17:26.355001+00:00'
+    read_scope: Mandatory orientation refreshed; relevant release/integrity sections
+      read. Prior full implementation-session context retained.
+  - file: 00_ARCHITECTURE/CURRENT_STATE_v1_0.md
+    fingerprint_sha256: 2a944a1e9b7731f9bc9eafb8dfcf5ec425d119a01d3e47d7a96a39a24e467ac5
+    read_at: '2026-10-05T13:17:26.355001+00:00'
+    read_scope: Mandatory orientation refreshed; relevant release/integrity sections
+      read. Prior full implementation-session context retained.
+  - file: 00_ARCHITECTURE/GOVERNANCE_INTEGRITY_PROTOCOL_v1_0.md
+    fingerprint_sha256: a78f67309611dd483555f52221e2894c65ef87d5c94a36958e1777ee73962533
+    read_at: '2026-10-05T13:17:26.355001+00:00'
+    read_scope: Mandatory orientation refreshed; relevant release/integrity sections
+      read. Prior full implementation-session context retained.
+  - file: 00_ARCHITECTURE/SESSION_OPEN_TEMPLATE_v1_0.md
+    fingerprint_sha256: 414807baef6ee57efc4db2f14e0d399c9afa5735c6240f40c5d87a1f81b51db6
+    read_at: '2026-10-05T13:17:26.355001+00:00'
+    read_scope: Mandatory orientation refreshed; relevant release/integrity sections
+      read. Prior full implementation-session context retained.
+  - file: 00_ARCHITECTURE/SESSION_CLOSE_TEMPLATE_v1_0.md
+    fingerprint_sha256: 45e9a8f549ee1a1bf7586875b12f906f288d547ea58498bac193e1af9a3e55d0
+    read_at: '2026-10-05T13:17:26.355001+00:00'
+    read_scope: Mandatory orientation refreshed; relevant release/integrity sections
+      read. Prior full implementation-session context retained.
+  - file: 00_ARCHITECTURE/GROUNDING_AUDIT_v1_0.md
+    fingerprint_sha256: 8bbdc249686b3c528abb38dc0e6fb66c80214c4ab780ec64efec888a7b1d5223
+    read_at: '2026-10-05T13:17:26.355001+00:00'
+    read_scope: Mandatory orientation refreshed; relevant release/integrity sections
+      read. Prior full implementation-session context retained.
+  - file: 00_ARCHITECTURE/NATIVE_DIRECTIVES_FOR_REVISION_v1_0.md
+    fingerprint_sha256: 8789493e231293613e08ec2294d766f3e88ed2077828f541b0be6e30bee3ca3c
+    read_at: '2026-10-05T13:17:26.355001+00:00'
+    read_scope: Mandatory orientation refreshed; relevant release/integrity sections
+      read. Prior full implementation-session context retained.
+  - file: 00_ARCHITECTURE/ONGOING_HYGIENE_POLICIES_v1_0.md
+    fingerprint_sha256: ca9b37a754ac61896215e22bd2d2199916d9783c74238ecf4dce3049b67674b3
+    read_at: '2026-10-05T13:17:26.355001+00:00'
+    read_scope: Mandatory orientation refreshed; relevant release/integrity sections
+      read. Prior full implementation-session context retained.
+  - file: 00_ARCHITECTURE/CROSS_CUTTING_DECISION_REGISTER_v1_0.md
+    fingerprint_sha256: 18e1e9912bd5494b647ff60035f4c03d7fecfa7d2241cdd54e11d4be359d79d1
+    read_at: '2026-10-05T13:17:26.355001+00:00'
+    read_scope: Mandatory orientation refreshed; relevant release/integrity sections
+      read. Prior full implementation-session context retained.
+  canonical_artifact_fingerprint_check: []
+  declared_scope:
+    may_touch:
+    - platform/src/app/login/**
+    - platform/src/app/request-access/**
+    - platform/src/app/recover-account/**
+    - platform/src/app/reset-password/**
+    - platform/src/app/setup-account/**
+    - platform/src/app/dashboard/**
+    - platform/src/app/clients/[[]id]/page.tsx
+    - platform/src/app/clients/[[]id]/layout.tsx
+    - platform/src/app/clients/[[]id]/edit/**
+    - platform/src/app/clients/[[]id]/reports/**
+    - platform/src/app/clients/new/**
+    - platform/src/app/clients/__tests__/**
+    - platform/src/app/clients/[[]id]/__tests__/**
+    - platform/src/app/api/auth/**
+    - platform/src/app/api/account/**
+    - platform/src/components/auth/**
+    - platform/src/components/brand/**
+    - platform/src/components/profile/**
+    - platform/src/components/charts/**
+    - platform/src/components/clients/**
+    - platform/src/components/dashboard/**
+    - platform/src/components/journey1/**
+    - platform/src/lib/auth/**
+    - platform/src/app/journey1.css
+    - platform/src/app/layout.tsx
+    - platform/public/brand/**
+    - platform/public/fonts/**
+    - platform/tests/journey1/**
+    - 00_ARCHITECTURE/briefs/journey1/**
+    - 00_ARCHITECTURE/SESSION_LOG.md
+    - Assets/screenshots/journey1/**
+    - platform/src/lib/charts/journey1.ts
+    - platform/src/lib/charts/__tests__/journey1.test.ts
+    - platform/src/app/api/admin/access-requests/[[]id]/approve/route.ts
+    - platform/src/components/admin/ApproveDialog.tsx
+    - 00_ARCHITECTURE/CURRENT_STATE_v1_0.md
+    - platform/tests/unit/data_plane_verifier_secret_isolation.test.ts
+    - platform/tests/unit/gochara_role_provisioning_workflow_static.test.ts
+    - platform/tests/unit/gochara_seal_gate_proof_workflow_static.test.ts
+    - 00_ARCHITECTURE/CROSS_CUTTING_DECISION_REGISTER_v1_0.md
+    - 00_ARCHITECTURE/CAPABILITY_MANIFEST.json
+    must_not_touch:
+    - platform/src/components/consume/**
+    - platform/src/components/chat/**
+    - platform/src/lib/build/**
+    - platform/python-sidecar/**
+    - platform/src/lib/retrieval/**
+    - platform/src/app/clients/[[]id]/samiksha/**
+    - platform/src/app/clients/[[]id]/nirmana/**
+    - platform/src/app/api/build/**
+    - platform/migrations/**
+    - platform-mcp/**
+    - 01_FACTS_LAYER/**
+    - 025_HOLISTIC_SYNTHESIS/**
+    - 06_LEARNING_LAYER/**
+  mirror_pair_freshness_check: []
+  native_directive_obligations: []
+  red_team_due: true
+  notes: 'Direct owner instruction: Go ahead and deploy it. Necessary source commit/push,
+    PR, protected queue merge and established no-traffic web release are authorized;
+    narrowly supersedes GIP P.4 for Journey1. Existing controls unchanged. No migration
+    authoring, credential changes, real account approval/reset, chart rebuilds, paid
+    provider calls or Journey2. In-session adversarial review required; not claiming
+    an independent agent review.'
+desktop_provenance: Codex desktop; madhav-safe is scope class, not a claim of launching
+  named CLI profile.

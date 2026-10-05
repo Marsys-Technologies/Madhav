@@ -6,7 +6,13 @@ import { parse } from 'yaml'
 
 const root = resolve(__dirname, '../../..')
 const text = readFileSync(resolve(root, '.github/workflows/gochara-seal-gate-proof.yml'), 'utf8')
-const wf = parse(text) as any
+type Workflow = {
+  on: Record<string, unknown>
+  permissions: Record<string, string>
+  concurrency: { group: string }
+  jobs: Record<string, { environment: string; if: string; 'timeout-minutes': number; steps: { run?: string }[] }>
+}
+const wf = parse(text) as Workflow
 const job = wf.jobs.gate
 const code = text.split('\n').filter((l) => !l.trim().startsWith('#')).join('\n')
 
@@ -25,7 +31,7 @@ describe('gochara-seal-gate-proof.yml', () => {
     expect(code).not.toMatch(/git push|gh (pr|release|workflow run)|--method (POST|PUT|PATCH|DELETE)|-X (POST|PUT|PATCH|DELETE)/)
   })
   it('records the approval history exactly as the API returns it and does not rely on its order', () => {
-    const run = (job.steps as any[]).map((s) => String(s.run ?? '')).join('\n')
+    const run = (job.steps).map((s) => String(s.run ?? '')).join('\n')
     expect(run).toContain('actions/runs/${GITHUB_RUN_ID}/approvals')
     expect(run).toContain('to_entries')            // prints every position as returned
     expect(run).not.toMatch(/\.\[-1\]|last\(|\| reverse|sort_by/)   // it never picks "latest" or re-orders: ordering is evidence only
