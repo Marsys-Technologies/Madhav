@@ -399,7 +399,7 @@ class TestORX1OccurrenceOrdinalIdentity:
         )
 
         poid = physical_object_id(
-            body="Mars", relation_kind="conjunction",
+            body="mars", relation_kind="conjunction",
             canonical_target="point:198.52", convention_id="c0",
         )
         contacts = assign_occurrence_ordinals(
@@ -411,9 +411,9 @@ class TestORX1OccurrenceOrdinalIdentity:
         assert {c.physical_object_id for c in contacts} == {poid}
         assert [c.occurrence_ordinal for c in contacts] == [1, 2, 3]
         assert [contact_identity_bytes(c) for c in contacts] == [
-            "Mars|conjunction|point:198.52|c0|1",
-            "Mars|conjunction|point:198.52|c0|2",
-            "Mars|conjunction|point:198.52|c0|3",
+            "mars|conjunction|point:198.52|c0|1",
+            "mars|conjunction|point:198.52|c0|2",
+            "mars|conjunction|point:198.52|c0|3",
         ]
         published_ids = [c.contact_id for c in contacts]
 
@@ -429,14 +429,8 @@ class TestORX1OccurrenceOrdinalIdentity:
         assert extended[3].occurrence_ordinal == 4
         assert (
             contact_identity_bytes(extended[3])
-            == "Mars|conjunction|point:198.52|c0|4"
+            == "mars|conjunction|point:198.52|c0|4"
         )
-
-    test_occurrence_ordinals_under_one_physical_object = pytest.mark.xfail(
-        reason="A5.2 substrate not built: services.gochara_kernel.substrate "
-        "(physical_object_id / assign_occurrence_ordinals / contact_identity_bytes)",
-        strict=False,
-    )(test_occurrence_ordinals_under_one_physical_object)
 
 
 # ── O-SM-3 (§7): every station event swiss_refined ───────────────────────────

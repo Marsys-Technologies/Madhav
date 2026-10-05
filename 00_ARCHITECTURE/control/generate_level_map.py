@@ -13,6 +13,10 @@ FAMILY_ASSETS.json  {"version", "frozen_at", "registry_revision", "family_gochar
     The six lists are INPUT (`--family-input`); this script invents no member. Every member must be an active registry
     asset; a reader list's members must sit in that layer.
 
+Both documents may carry optional `_`-prefixed notes (`--notes-json`, e.g. the `_stamp` of a DRAFT: status, registry revision and
+fingerprint) appended after the pinned keys; a plain run adds none. The pre-J1 DRAFT pair is produced by
+regenerate_draft_level_map.py (SS ruling N-97 item 6; freeze at J1).
+
 Registry input: JSON list of {"asset_id", "layer", "depends_on", "active"} rows, exported read-only from the live
 `asset_registry` by whoever holds the reader login (this script and its tests never connect to anything), or -- as a
 NON-AUTHORITATIVE stand-in -- parsed from the repo's seed `platform/scripts/seed/asset_registry_seed.ts`
@@ -168,10 +172,27 @@ def _check_meta(version, frozen_at, registry_revision):
         raise LevelMapError(f"registry_revision must be an int >= 1, got {registry_revision!r}")
 
 
-def build_level_map(rows, *, version, frozen_at, registry_revision) -> dict:
+def check_notes(notes) -> dict:
+    """Optional `_`-prefixed notes (a draft stamp, a provenance line) appended after the pinned keys of BOTH documents.
+    None/empty adds nothing, so the pinned key schema of a plain run is unchanged."""
+    if notes is None:
+        return {}
+    if not isinstance(notes, dict) or any(not (isinstance(k, str) and k.startswith("_") and len(k) > 1) for k in notes):
+        raise LevelMapError("notes must be an object whose keys all start with '_'")
+    try:
+        json.dumps(notes, allow_nan=False)
+    except (TypeError, ValueError) as e:
+        raise LevelMapError(f"notes are not strict JSON: {e}") from e
+    return notes
+
+
+def build_level_map(rows, *, version, frozen_at, registry_revision, notes=None) -> dict:
     _check_meta(version, frozen_at, registry_revision)
-    return {"version": version, "frozen_at": frozen_at, "registry_revision": registry_revision,
-            "levels": compute_levels(rows)}
+    notes = check_notes(notes)
+    doc = {"version": version, "frozen_at": frozen_at, "registry_revision": registry_revision,
+           "levels": compute_levels(rows)}
+    doc.update(notes)
+    return doc
 
 
 def load_family_input(path) -> dict:
@@ -221,11 +242,12 @@ def family_inactive_allowed(data) -> set:
     return {x["asset"] for x in items}
 
 
-def build_family_assets(lists, rows, *, version, frozen_at, registry_revision) -> dict:
+def build_family_assets(lists, rows, *, version, frozen_at, registry_revision, notes=None) -> dict:
     """`lists` is the family input document (or just the six lists). Every member must be an active registry asset, or be
     recorded in the input's `_notes.inactive` WITH a reason and really be inactive in the registry. `_`-prefixed notes of
     the input are carried into the output."""
     _check_meta(version, frozen_at, registry_revision)
+    notes = check_notes(notes)
     raw = lists
     lists = validate_family_input(raw)
     allowed = family_inactive_allowed(raw)
@@ -252,6 +274,7 @@ def build_family_assets(lists, rows, *, version, frozen_at, registry_revision) -
         for k, v in raw.items():
             if str(k).startswith("_"):
                 doc[k] = v
+    doc.update(notes)
     return doc
 
 
@@ -414,6 +437,8 @@ def main(argv=None) -> int:
     ap.add_argument("--version", default="1.0")
     ap.add_argument("--frozen-at", default=None, help="ISO-8601 with timezone (default: now, UTC)")
     ap.add_argument("--registry-revision", type=int, default=None, help="default: asset_census.REGISTRY_REVISION")
+    ap.add_argument("--notes-json", default=None,
+                    help="JSON object of `_`-prefixed notes (e.g. a draft stamp) appended to BOTH documents")
     ap.add_argument("--force", action="store_true", help="overwrite existing files (a frozen map is otherwise refused)")
     a = ap.parse_args(argv)
     try:
@@ -425,9 +450,15 @@ def main(argv=None) -> int:
             rows = load_registry_json(a.registry_json)
         rev = a.registry_revision if a.registry_revision is not None else _default_registry_revision()
         frozen = a.frozen_at or dt.datetime.now(dt.timezone.utc).isoformat(timespec="seconds")
-        lm = build_level_map(rows, version=a.version, frozen_at=frozen, registry_revision=rev)
+        notes = None
+        if a.notes_json:
+            try:
+                notes = strict_json_loads(Path(a.notes_json).read_text(encoding="utf-8"))
+            except (OSError, ValueError) as e:
+                raise LevelMapError(f"cannot read --notes-json {a.notes_json}: {type(e).__name__}: {e}") from e
+        lm = build_level_map(rows, version=a.version, frozen_at=frozen, registry_revision=rev, notes=notes)
         fa = build_family_assets(load_family_input(a.family_input), rows, version=a.version, frozen_at=frozen,
-                                 registry_revision=rev)
+                                 registry_revision=rev, notes=notes)
         out = Path(a.out_dir)
         if not out.is_dir():
             raise LevelMapError(f"--out-dir {out} is not a directory")

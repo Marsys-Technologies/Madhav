@@ -1,0 +1,72 @@
+{
+  "lane": "sun_required_rupa",
+  "ruling": "Sun required shadbala (SS S-L1 MANDATORY)",
+  "pr": "branch suvarna/land/TI-l1-sun-required-rupa-001",
+  "description": "The Sun's classical required (minimum) total shadbala is corrected from 5.0 to 6.5 rupa (BPHS ch.27 sl.32-33: 390 virupa = 6.5 rupa; corroborated by Phaladipika IV.22-23 and Pravaha sad_bala_sufficient v1.0, PR #2869). The other six values (Moon 6, Mars 5, Mercury 7, Jupiter 6.5, Venus 5.5, Saturn 5) are unchanged. Stored facts that change for the SUN only: graha_shadbala_total|required_rupa (ayanamsha INVARIANT, 1 row per chart: 5 -> 6.5; the old value 5 is integral, so the detector reports it as ONE class-level `value` change per chart) and graha_shadbala_total|ratio (achieved/required, one row per ayanamsha: the old ratio times 5/6.5; continuous, reported only as a continuous statistic). ga_structural composite strength now READS the L1 required_rupa fact instead of a shadow copy, so graha_in_house_composite_strength bphs_weighted / cross_formula_divergence for SUN_IN_HOUSE_n change only where the Sun's achieved rupa is below 6.5 (ratio is capped at 1.0): measured from stored facts, 0 rows on the native chart and Abhinandan, 120 rows on cb73cd3d (continuous). SS ruling 2026-10-02: the Rahu/Ketu composite rows (no classical required minimum) become honest nulls: per chart, 120 bphs_weighted rows (2 nodes x 12 houses x 5 ayanamshas) change tier single -> floored with value NULL, and the 120 simple_multiplication + 120 cross_formula_divergence rows disappear (continuous values: disappearance is not a class change). DECLARED citation_human change (text only, no value; SS ruling): the citation_human of all NINE graha_shadbala_total|rupa rows per ayanamsha per chart (7 classical grahas + RAH_MEAN + KET_MEAN) changes. It was a served-text defect: the lookup used the SUBJECT string ('SUN') against a Title-case table ('Sun'), silently missed, and fell back to a 5.0 default, so EVERY graha read 'vs required 5.00 rupa' (e.g. Moon 'surplus 0.65 vs required 5.00' beside a ratio row below minimum). It now states the graha's own required value (Sun 6.5, Moon 6, Mars 5, Mercury 7, Jupiter 6.5, Venus 5.5, Saturn 5) and, for the nodes, that no classical minimum exists. citation_human is not a detector field and no fact value moves. The citation_human of the composite simple_multiplication rows also changes (it printed shadbala_ratio, which the value does not use; it now prints dignity_weight and bhava_ratio). No achieved shadbala value, no other graha's required/ratio, no position, no FORENSIC anchor moves. Downstream tables outside the detector's four tables also change (ga_yoga_firings.strength via constituent_bala_v1, bodha_msr_signals.shadbala_norm, bodha_rm_resonances): see SUN_REQUIRED_RUPA_INTENT_v1_0.md.",
+  "may_change": [
+    {
+      "table": "chart_facts",
+      "categories": ["graha_shadbala_total"],
+      "fact_keys": ["required_rupa"],
+      "ayanamsha_ids": ["INVARIANT"],
+      "change_types": ["value"],
+      "expected_count": {"exact": 1},
+      "expected_direction": "SUN subject only, ONE row per chart (ayanamsha INVARIANT): 5 -> 6.5. The old value 5 is integral, so the detector classifies it class_num and reports the change as a class-level `value` change (not a continuous statistic): exactly 1 per chart compared. MOON/MAR/MER/JUP/VEN/SAT required_rupa are unchanged (6 / 5 / 7 / 6.5 / 5.5 / 5).",
+      "note": "expected_count 1 = the Sun's single INVARIANT row (the other six grahas are unchanged and generate no change). Review finding LOW-5: an earlier version of this note said the predicted class-level count was 0, which was wrong. REBUILD CHECKLIST (review LOW-4): platform/src/lib/retrieval/registry/layers/__tests__/chart_query.integration.test.ts:132 asserts the LIVE Sun required_rupa == 5 and goes red the moment the rebuild lands; it is data-dependent, skipped in CI (describe.skip unless INTEGRATION=true; ci.yml unit-tests job sets neither INTEGRATION nor DATABASE_URL), and intentionally NOT edited here: flip it 5 -> 6.5 in the same step as the rebuild. source: rehearsal-synthetic (19-lane rehearsal, flip_detector v2.3 compare against the origin/main baseline build on the same synthetic chart; HOOKS_COMPLETENESS_v1_0.md, Source evidence) (graha_shadbala_total value +1 on the synthetic chart, tier +87: the tier entries belong to the tiers lane)."
+    },
+    {
+      "table": "chart_facts",
+      "categories": ["graha_shadbala_total"],
+      "fact_keys": ["ratio"],
+      "change_types": ["value"],
+      "expected_count": {"exact": 0},
+      "expected_direction": "SUN ratio on each of 5 ayanamshas moves by old_ratio * 5 / 6.5 (native Lahiri 1.694 -> 1.3031; Abhinandan 1.44 -> 1.1077; cb73cd3d 1.148 -> 0.8831). Both sides are non-integral (continuous): the detector counts that in its continuous statistics and never as a class change, so the class-level count is exactly 0. The hand read-back (HOOKS_W7_HAND_READBACK_v1_0.md) reads the actual ratios.",
+      "note": "Explicit zero, was: no count (read DECLARED_BUT_ABSENT on an unchanged chart, and on a changed one too, since a continuous change is never attributed). source: rehearsal-synthetic (19-lane rehearsal, flip_detector v2.3 compare against the origin/main baseline build on the same synthetic chart; HOOKS_COMPLETENESS_v1_0.md, Source evidence) (graha_shadbala_total: 1 value change = required_rupa only, 0 ratio). A class-level change under this entry would be a real surprise (for example a ratio that becomes NULL or text)."
+    },
+    {
+      "table": "chart_facts",
+      "categories": ["graha_in_house_composite_strength"],
+      "fact_keys": ["bphs_weighted"],
+      "change_types": ["value"],
+      "expected_count": {"exact": 120},
+      "expected_direction": "the node composite rows RAH_MEAN_IN_HOUSE_1..12 and KET_MEAN_IN_HOUSE_1..12 (2 nodes x 12 houses x 5 ayanamshas = 120 per chart) go from a number to NULL (SS ruling 2026-10-02: no classical required value for a node, reason no_classical_required_value_for_node). A continuous number that becomes NULL is a detector `value` change. The Sun-driven bphs_weighted changes on cb73cd3d (120 rows) stay continuous and add nothing to this count.",
+      "note": "source: lane evidence (stored per chart, all three charts alike: 120 bphs_weighted node rows) and rehearsal-synthetic (19-lane rehearsal, flip_detector v2.3 compare against the origin/main baseline build on the same synthetic chart; HOOKS_COMPLETENESS_v1_0.md, Source evidence) (graha_in_house_composite_strength value 120). Code-driven, chart independent. REPLACES the earlier two entries on this category (a value entry without a count and a mixed entry without a count): the earlier value entry also matched these 120 changes, so it could never have read zero."
+    },
+    {
+      "table": "chart_facts",
+      "categories": ["graha_in_house_composite_strength"],
+      "fact_keys": ["bphs_weighted"],
+      "change_types": ["tier"],
+      "expected_count": {"exact": 120},
+      "expected_direction": "the same 120 node rows change tier single -> floored.",
+      "note": "source: lane evidence and rehearsal-synthetic (19-lane rehearsal, flip_detector v2.3 compare against the origin/main baseline build on the same synthetic chart; HOOKS_COMPLETENESS_v1_0.md, Source evidence) (graha_in_house_composite_strength tier 120). Code-driven. Not declared by the tiers lane (this category is not in its list)."
+    },
+    {
+      "table": "chart_facts",
+      "categories": ["graha_in_house_composite_strength"],
+      "fact_keys": ["simple_multiplication", "cross_formula_divergence"],
+      "change_types": ["disappeared"],
+      "expected_count": {"exact": 240},
+      "expected_direction": "the node rows' simple_multiplication (120) and cross_formula_divergence (120) disappear (Option A: no node simple_multiplication; the node cross_formula_divergence needs it). The chart's composite total goes 1,620 -> 1,380 rows.",
+      "note": "source: lane evidence and rehearsal-synthetic (19-lane rehearsal, flip_detector v2.3 compare against the origin/main baseline build on the same synthetic chart; HOOKS_COMPLETENESS_v1_0.md, Source evidence) (graha_in_house_composite_strength disappeared 240: simple_multiplication 120 + cross_formula_divergence 120; production canonical today 1,620 rows, rehearsal baseline 1,620, rehearsal final 1,380). Code-driven, chart independent."
+    },
+    {
+      "table": "chart_facts",
+      "categories": ["graha_in_house_composite_strength"],
+      "fact_keys": ["simple_multiplication", "cross_formula_divergence"],
+      "change_types": ["value", "appeared", "occurrence_count", "tier"],
+      "expected_count": {"exact": 0},
+      "expected_direction": "no other change on these two keys: simple_multiplication does not depend on the Sun's ratio and is unchanged for the seven classical grahas; cross_formula_divergence for the Sun rows moves only as a continuous value.",
+      "note": "explicit zero; source: rehearsal-synthetic (19-lane rehearsal, flip_detector v2.3 compare against the origin/main baseline build on the same synthetic chart; HOOKS_COMPLETENESS_v1_0.md, Source evidence) (no such change)."
+    },
+    {
+      "table": "chart_facts",
+      "categories": ["graha_in_house_composite_strength"],
+      "fact_keys": ["bphs_weighted"],
+      "change_types": ["appeared", "disappeared", "occurrence_count"],
+      "expected_count": {"exact": 0},
+      "expected_direction": "the node rows stay in the table (value NULL, tier floored); no bphs_weighted row appears or disappears.",
+      "note": "explicit zero; source: rehearsal-synthetic (19-lane rehearsal, flip_detector v2.3 compare against the origin/main baseline build on the same synthetic chart; HOOKS_COMPLETENESS_v1_0.md, Source evidence)."
+    }
+  ]
+}

@@ -1,0 +1,9 @@
+CASE WHEN {a}.asset_id IN ('ka_gochara_v4_41_candidate', 'ka_gochara_v5')
+              THEN (EXISTS (SELECT 1 FROM public.asset_provenance_receipts rcpt WHERE rcpt.asset_id = {a}.asset_id
+                              AND NOT EXISTS (SELECT 1 FROM public.build_runs br WHERE br.id = rcpt.build_id AND br.triggered_by = ANY (CASE {a}.asset_id WHEN 'ka_gochara_v5' THEN ARRAY['gochara-v5-small-test']::text[] ELSE ARRAY[]::text[] END)))
+                    OR EXISTS (SELECT 1 FROM public.build_run_assets bra WHERE bra.asset_id = {a}.asset_id
+                              AND NOT EXISTS (SELECT 1 FROM public.build_runs br WHERE br.id = bra.run_id AND br.triggered_by = ANY (CASE {a}.asset_id WHEN 'ka_gochara_v5' THEN ARRAY['gochara-v5-small-test']::text[] ELSE ARRAY[]::text[] END)))) WHEN {a}.asset_id IN ('ka_gochara_v3_century_materialize')
+              THEN (EXISTS (SELECT 1 FROM public.asset_provenance_receipts rcpt LEFT JOIN public.build_runs br ON br.id = rcpt.build_id WHERE rcpt.asset_id = {a}.asset_id
+                              AND COALESCE(GREATEST(rcpt.observed_at, br.created_at, br.started_at, br.ended_at) > CASE {a}.asset_id WHEN 'ka_gochara_v3_century_materialize' THEN '2026-10-04T13:31:57Z'::timestamptz END, TRUE))
+                    OR EXISTS (SELECT 1 FROM public.build_run_assets bra LEFT JOIN public.build_runs br ON br.id = bra.run_id WHERE bra.asset_id = {a}.asset_id
+                              AND COALESCE(GREATEST(bra.started_at, bra.ended_at, br.created_at, br.started_at, br.ended_at) > CASE {a}.asset_id WHEN 'ka_gochara_v3_century_materialize' THEN '2026-10-04T13:31:57Z'::timestamptz END, TRUE))) END AS has_non_test_runtime_evidence

@@ -4,7 +4,7 @@ import { query, getPool } from '@/lib/db/client'
 import { computeDownstreamClosure, type RegistryEntry } from '@/lib/build/plan'
 import { createHash } from 'crypto'
 import { filterScopeAssets } from '@/lib/cockpit/clearScopeFilter'
-import { deriveDeleteSqlFromCountSql, EXPLICIT_CLEAR_OPS } from '@/lib/cockpit/assetClearSpec'
+import { deriveDeleteSqlFromCountSql, EXPLICIT_CLEAR_NOTICES, EXPLICIT_CLEAR_OPS } from '@/lib/cockpit/assetClearSpec'
 import { authorizeChartAccess, type DbLike } from '@/lib/auth/authorizeChartAccess'
 
 interface RegistryRow extends RegistryEntry {
@@ -153,11 +153,6 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  // Compute downstream (to be marked stale)
-  const downstreamSet = computeDownstreamClosure(affectedAssetIds, registry)
-  for (const id of affectedAssetIds) downstreamSet.delete(id)
-  const downstreamAssets = Array.from(downstreamSet)
-
   // Execute: delete data + reset throughput + mark downstream stale
   // Delete in reverse topo order (downstream-first for FK safety)
   // No pre-filter by target_table — every scope asset must either clear or report failure
@@ -166,6 +161,10 @@ export async function POST(req: NextRequest) {
   let cleared_op_count = 0
   let cleared_rows_total = 0
   const failed_tables: { table: string; error: string }[] = []
+  // Assets whose clear is an explicit null because their rows are history (SS N-104): no statement
+  // is issued, and the operator is told so instead of a silent skip.
+  const notices: { asset_id: string; message: string }[] = []
+  let downstreamAssets: string[] = []
 
   const pool = await getPool()
   const client = await pool.connect()
@@ -179,7 +178,11 @@ export async function POST(req: NextRequest) {
 
       if (asset.asset_id in EXPLICIT_CLEAR_OPS) {
         const explicitOps = EXPLICIT_CLEAR_OPS[asset.asset_id]
-        if (explicitOps === null) continue  // no data rows, skip cleanly
+        if (explicitOps === null) {
+          const message = EXPLICIT_CLEAR_NOTICES[asset.asset_id]
+          if (message) notices.push({ asset_id: asset.asset_id, message })
+          continue  // no data rows, skip cleanly
+        }
 
         // WP7 C-1 guard: an op carrying `guard` must be evaluated BEFORE any
         // statement of the asset runs. Guard matches + non-release principal →
@@ -281,7 +284,9 @@ export async function POST(req: NextRequest) {
     // exact false-success bug this fix closes (ga_structural's JOIN-derived DELETE used to
     // fail here every time while the UI reported a clean clear).
     const failedAssetIds = new Set(failed_tables.map(f => f.table))
-    const successfulAssetIds = affectedAssetIds.filter(id => !failedAssetIds.has(id))
+    // A noticed asset (append-only history) was NOT cleared: its throughput row must keep saying so.
+    const noticedAssetIds = new Set(notices.map(n => n.asset_id))
+    const successfulAssetIds = affectedAssetIds.filter(id => !failedAssetIds.has(id) && !noticedAssetIds.has(id))
     if (successfulAssetIds.length > 0) {
       await client.query(
         `UPDATE asset_throughput
@@ -310,6 +315,12 @@ export async function POST(req: NextRequest) {
       )
     }
 
+    // Downstream is computed from the assets that were really cleared: an append-only asset
+    // (SS N-104) kept every row, so nothing downstream of it became stale because of this clear.
+    const downstreamSet = computeDownstreamClosure(affectedAssetIds.filter(id => !noticedAssetIds.has(id)), registry)
+    for (const id of affectedAssetIds) downstreamSet.delete(id)
+    downstreamAssets = Array.from(downstreamSet)
+
     // Mark downstream as stale (only those currently lit/building/error — dormant stays dormant)
     if (downstreamAssets.length > 0) {
       await client.query(
@@ -336,11 +347,13 @@ export async function POST(req: NextRequest) {
 
   return NextResponse.json({
     cleared: {
-      assets: affectedAssetIds.length,
+      assets: affectedAssetIds.length - notices.length,
+      preserved: notices.length,
       ops: cleared_op_count,
       rows: cleared_rows_total,
       downstream_stale: downstreamAssets.length,
     },
     ...(failed_tables.length > 0 ? { failed_tables } : {}),
+    ...(notices.length > 0 ? { notices, preserved_assets: notices.map(n => n.asset_id) } : {}),
   })
 }

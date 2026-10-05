@@ -6,7 +6,7 @@
     "A reviewed output-digest specification establishes deterministic output hashing, not semantic value, population, planner reachability, or empirical validity.",
     "The full MCP profile is registration-gated by the reviewed route authority; its real registration set is exact-set tested independently."
   ],
-  "content_sha256": "9ac3a7bd76dfa7d6a3b7c04d9c70a13c560be334969b156fcea029a83fa5dc9f",
+  "content_sha256": "9e87c6617d5f06d8b0b92ede5afa85e96be1edd632b07bc1c924ec198a33fa2a",
   "denominators": {
     "descriptor_route_contracts": {
       "by_public_route_disposition": {
@@ -50,9 +50,9 @@
         "service": 8
       },
       "non_writer_identities": 6,
-      "retired": 2,
-      "total": 130,
-      "writer_identities": 124
+      "retired": 3,
+      "total": 131,
+      "writer_identities": 125
     },
     "producer_output_contracts": {
       "by_disposition": {
@@ -81,9 +81,9 @@
     "reviewed_output_digest_coverage": {
       "active_asset_denominator": 128,
       "active_assets_without_any_reviewed_spec": 8,
-      "asset_denominator": 130,
+      "asset_denominator": 131,
       "assets_with_any_reviewed_spec": 120,
-      "assets_without_any_reviewed_spec": 10,
+      "assets_without_any_reviewed_spec": 11,
       "basis": "distinct static INSERT identities plus ordered append/retire source replay across both governed migration trees; no database was queried",
       "current_source_intended_active_spec_rows": 119,
       "current_source_intended_spec_rows": 119
@@ -10814,7 +10814,8 @@
       ],
       "retired_asset_ids": [
         "ka_gochara_sweep",
-        "ka_gochara_v4_41_candidate"
+        "ka_gochara_v4_41_candidate",
+        "ka_gochara_v5"
       ],
       "writer_identity_ids": [
         "bg_class_lifetime_counts",
@@ -10902,6 +10903,7 @@
         "ka_gochara_resonance",
         "ka_gochara_v3_century_materialize",
         "ka_gochara_v4_41_candidate",
+        "ka_gochara_v5",
         "ka_graha_sancara",
         "ka_jivana_parva",
         "ka_kala_darshana",
@@ -14018,6 +14020,7 @@
         "ka_gochara_sweep",
         "ka_gochara_v3_century_materialize",
         "ka_gochara_v4_41_candidate",
+        "ka_gochara_v5",
         "ka_graha_sancara",
         "ka_tulana",
         "lel_events",
@@ -20893,6 +20896,9 @@
         "platform/migrations/1086_nirmana_l1_gochara_g10_ga_strength_contributor_digest_spec.sql",
         "platform/migrations/1212_nirmana_l3_ka_vighnakara_output_digest_spec.sql",
         "platform/migrations/1213_nirmana_l3_service_selftest_output_digest_specs.sql",
+        "platform/migrations/1219_nirmana_l1_ga_structural_argala_graha_natal_ownership_and_count_sql.sql",
+        "platform/migrations/1221_nirmana_l1_ga_structural_a29_integrity_conjunct.sql",
+        "platform/migrations/1223_nirmana_l1_ga_vargas_output_digest_spec_seven_column_key.sql",
         "platform/migrations/632_nirmana_evidence_server_writer_guard.sql",
         "platform/migrations/820_nirmana_l5_mi_jivanaghatana_output_digest_spec.sql",
         "platform/migrations/821_nirmana_l5_mi_vistara_output_digest_spec.sql",
@@ -20966,14 +20972,14 @@
       ]
     }
   },
-  "generated_at": "2026-10-02T15:36:47.000Z",
+  "generated_at": "2026-10-04T00:00:00.000Z",
   "provenance": {
     "method": "DB-free source census with recursively key-sorted canonical JSON and SHA-256 fingerprints",
     "sources": [
       {
         "id": "analysis_layer_pins",
         "path": "platform/src/generated/nirmana-analysis-layer-pins.json",
-        "sha256": "c56dd0337fb94d39bcc4a5334a03088206bb3fa60ec8b8542572afd61af7f824"
+        "sha256": "8f6c67b5dfa1736cea675393001442e0d8895020d533ecc466af33ea5dde1238"
       },
       {
         "id": "canonical_public_faces",
@@ -20992,7 +20998,7 @@
       },
       {
         "id": "output_digest_migration_source_set",
-        "member_count": 91,
+        "member_count": 94,
         "members": [
           {
             "path": "platform/migrations/1000_nirmana_l2_bo_cgm_motifs_output_digest_spec.sql",
@@ -21077,6 +21083,18 @@
           {
             "path": "platform/migrations/1213_nirmana_l3_service_selftest_output_digest_specs.sql",
             "sha256": "4ce3ad91d85c3352d3b0ebc1a3c720800b52a5fba452a98c159a48fb5acbf5a5"
+          },
+          {
+            "path": "platform/migrations/1219_nirmana_l1_ga_structural_argala_graha_natal_ownership_and_count_sql.sql",
+            "sha256": "dc9d65c0c23b423847c0dc35516cdb046d9231ed22b878e718ec805055edb55b"
+          },
+          {
+            "path": "platform/migrations/1221_nirmana_l1_ga_structural_a29_integrity_conjunct.sql",
+            "sha256": "42b1c7c0f4cb695c1190d7c46385bd90fc37c8f95b9e07e3355356538fb41dbc"
+          },
+          {
+            "path": "platform/migrations/1223_nirmana_l1_ga_vargas_output_digest_spec_seven_column_key.sql",
+            "sha256": "7dd8bf53c5fe3bd6ca916125149052088822c7e6bfee09fdedaffdf6b125e9f9"
           },
           {
             "path": "platform/migrations/632_nirmana_evidence_server_writer_guard.sql",
@@ -21360,12 +21378,12 @@
           }
         ],
         "path": "platform/{migrations,supabase/migrations}/*.sql containing asset_output_digest_specs",
-        "sha256": "ac2322e63cd47ae55b44446a3c9a5048254dce32203389ee291b4800ac788084"
+        "sha256": "c65eb64e3e40938d7e7b4f049b82f64d1ef3878a17cbd88ae7559d0d280f9168"
       },
       {
         "id": "producer_asset_seed",
         "path": "platform/scripts/seed/asset_registry_seed.ts",
-        "sha256": "7aba6aa581b1f980750edf1fdd49d5e9e9378126a055ca685151492b55fc7ec7"
+        "sha256": "9bf496893b16555e949102bde260fa3684c423fe4a531240d52faa56086ea950"
       },
       {
         "id": "public_registrar_source_set",
@@ -21509,7 +21527,7 @@
           },
           {
             "path": "platform-mcp/src/tools/register_p1_synthesis.ts",
-            "sha256": "d3778eeb851376159098d6822a9d562f5acfc51859b0c8f88d7dafb0a6840b29"
+            "sha256": "8893f20181e2ee78c1176833119b03b921b26c9d049000f79404928795397e4a"
           },
           {
             "path": "platform-mcp/src/tools/register_p2_dasha_lord.ts",
@@ -21549,7 +21567,7 @@
           },
           {
             "path": "platform-mcp/src/tools/retrieval/register_gochara_contact_ledger.ts",
-            "sha256": "e9a72eb19312e581a460f3f7aec38456917c9c2ec98624ca53473e192eb6392e"
+            "sha256": "40efd0025c2e8fdc50322099226c1feae17f78e79837a27e570ad2f73d7b730e"
           },
           {
             "path": "platform-mcp/src/tools/retrieval/register_gochara_windows.ts",
@@ -21569,7 +21587,7 @@
           }
         ],
         "path": "platform-mcp/src/tools/**/*.ts (excluding tests)",
-        "sha256": "da94f67d3f3e874167452050a3d64b01ce9014bcc8c7fd00bb2309a1842c51d4"
+        "sha256": "2c226c52d581f9927359795911844ac43a62effd2a6eea4150396a2819542f9c"
       },
       {
         "id": "registrar_bridge_extractor",
@@ -21583,7 +21601,7 @@
       },
       {
         "id": "runtime_registry_source_set",
-        "member_count": 204,
+        "member_count": 205,
         "members": [
           {
             "path": "platform/src/lib/retrieval/registry/catalog.ts",
@@ -21951,7 +21969,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_divisionals.ts",
-            "sha256": "698e0eda76165653ab92b623b1097d5613ec53285b97b61eab3aeda2ec2caa76"
+            "sha256": "280a7b9ef495f7f923843a1d2779a925abaf05935bac25549736b65f5502855c"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_eclipse_flags.ts",
@@ -21975,7 +21993,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_nakshatra.ts",
-            "sha256": "c886b525b5da16b38d11fa8fa02c5d7378bd405a3d80a8ce0b048c201c9f4f55"
+            "sha256": "89a3be7a74ae55e183aba36fe556233edc4c97052f12fc1968f6f07ff3ece6eb"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_panchanga.ts",
@@ -22131,7 +22149,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts",
-            "sha256": "5c27c1acfe4b161f6c570de1e8571113320c01c316997a1ed48ec253894f4cc4"
+            "sha256": "60a3f0320632c4a4e86212ab61aa97f334e519695fc5aabf4ae85963ca5473f8"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_triangulation.ts",
@@ -22139,7 +22157,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_ucd.ts",
-            "sha256": "d79982f694adcc50024efc0d0eaea09e100860f93fd1eb97da0edf0d8527ded4"
+            "sha256": "2f54eb2e3c2420831cff1a9b0198fb742f2113f3bd9377fed5c98e6713280f1f"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L2_bodha/register_d4_graph.ts",
@@ -22258,20 +22276,24 @@
             "sha256": "62494adeda0d4d75fb583e61e8b19fc36317411b3e852a3810559f4a1519d69c"
           },
           {
+            "path": "platform/src/lib/retrieval/registry/layers/L5_mimamsa/prefix_generation.ts",
+            "sha256": "ff1ddaf82624c8bc4d8f6b7b85378283d7e0b89db9f3dfddf472149b2cb61a0f"
+          },
+          {
             "path": "platform/src/lib/retrieval/registry/layers/L5_mimamsa/query_attribution.ts",
             "sha256": "49b2080584e721b8e9f0a6be79a51c934752012a083fa43a9e6e86220a3cce12"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L5_mimamsa/query_calibration.ts",
-            "sha256": "d91bca4a45e12e1df13f946f940d442ff1a2073e11d247c2dc986eda4a19451e"
+            "sha256": "f5919ffb3752efe1c4a6bf24640bc4b93a2cecf279d8a57840db8959f61b2d31"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L5_mimamsa/query_insight_embeddings.ts",
-            "sha256": "fd3f34081a8143f8de9da588eaa88cd25b86ad0f32ef747ae50127697312da64"
+            "sha256": "77a1b0c97734dc60e6f944781dd78c2598572d498a98cefde4915177272fd719"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L5_mimamsa/query_insights.ts",
-            "sha256": "74c5e100fdfdbf3126dd65ed772a203dfb84bda1018cf2684334fbddcd655d35"
+            "sha256": "1fcb8c2c3808cb6f7076fb5e0e33eb785751f127569ec6fee1a5c8cbe158804c"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L5_mimamsa/query_journal.ts",
@@ -22283,11 +22305,11 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L5_mimamsa/query_load_bearing.ts",
-            "sha256": "a3d464c485361b001179f0d3b4a3b551a10b3eec03bb97d6a09783f6e7aadc5c"
+            "sha256": "029e3d886de3d02fbf8a38002e28f11c35778ff589fd2805ed1b136ffa909b39"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L5_mimamsa/query_manifestation_grammar.ts",
-            "sha256": "8ec5997db3a7ca6ae1ff38a5a45fe085f77898146c23380ad4c405ee9f52a03d"
+            "sha256": "1e66fe3d4c81455ce450d112a961240aa1e5ce8a81b19aeb3e47e524311d8e91"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L5_mimamsa/query_manifestation_sets.ts",
@@ -22299,7 +22321,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L5_mimamsa/query_mimamsa_discoveries.ts",
-            "sha256": "0d5890eb60b80b23ad87ec8f30b2e2b216a39e454ece3fcb73aaf7adec82fde8"
+            "sha256": "e9a9e031776800f269c3302e1d89a5f1b18fe6992e61066073c212395beadb51"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L5_mimamsa/query_predictions.ts",
@@ -22315,7 +22337,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/register_d10_pact.ts",
-            "sha256": "34e0139cbf7573ac4751ec7effd4678c002b8aeda1cd3410a4843dcffc8261f9"
+            "sha256": "25125ec63749a3648cdc1372c36e42fb50237afc6c3dd5dfedeceac1e8ae294a"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/register_d5_fanout.ts",
@@ -22331,11 +22353,11 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/register_d8_assess_domain.ts",
-            "sha256": "dd9dc1d1201781599582acd18d7870ab8cf851881d7065849ae01156619b4f7a"
+            "sha256": "8eed667ce4020730d48358bcc4e67aa36091faa3e41ca176ca65c52fa40b2943"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/register_d9_judgment.ts",
-            "sha256": "989e7a988695195e6b0e8f435e5bcdd1b3d8b8fc972a8797003ea89826fe32d7"
+            "sha256": "3dff951d46cbed29bbb7796b5b8df1955eb27ef29c92d4b74364826e9c552de9"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/register_spine_bundle.ts",
@@ -22379,7 +22401,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/synthesis/capability.ts",
-            "sha256": "09d511731016257fc359aeece12aa0b8fb096dab582cbdbe8144080009871117"
+            "sha256": "4dede4e018f30a05fd86be6513bf9fdb7058ed778ea21d0bb1117ef3e5974583"
           },
           {
             "path": "platform/src/lib/retrieval/synthesis/index.ts",
@@ -22403,7 +22425,7 @@
           }
         ],
         "path": "platform/src/lib/retrieval/{registry,synthesis}/**/*.ts (excluding tests)",
-        "sha256": "92e24c370c6de44986b9bd09ae501a2de5dc16f9ca5db5e451b16375692a17e2"
+        "sha256": "3e957d981f9490e048fc31def58307de5844aa64dd21c0021ed6b8836dda2b6e"
       },
       {
         "id": "service_effect_contracts",
@@ -22423,10 +22445,10 @@
       {
         "id": "writer_digest_inventory",
         "path": "platform/src/generated/nirmana-writer-digests.json",
-        "sha256": "afdd3b9c2e9cdf47fb0d24b46d05f0290b9f8e15f2be3600d39d95f74bfea251"
+        "sha256": "566bfed6e09612c00396008bc5d52b182e138e02e3d5ec7f408d697e484908df"
       }
     ]
   },
   "schema_version": "capability-estate-census/v1.2",
-  "source_revision": "906970df58fcd2e315d101128a3b0b720fe1cc60"
+  "source_revision": "867621fd205f1f309020d0e6300b103825d2acaf"
 }

@@ -12,6 +12,7 @@ import { describe, expect, it, vi } from 'vitest'
 vi.mock('server-only', () => ({}))
 
 import { EXPLICIT_CLEAR_OPS } from '@/lib/cockpit/assetClearSpec'
+import { markChartContextStale } from '@/lib/charts/chartContextStaleness'
 import {
   CORRECTION_NOTHING_TO_CLEAR,
   CORRECTION_PRESERVATION,
@@ -45,7 +46,7 @@ function recorder(fail?: RegExp) {
 
 describe('correction preservation boundary', () => {
   it('names exactly the governed skip-clean assets that hold non-regenerable data, with a reason each', () => {
-    expect(Object.keys(CORRECTION_PRESERVATION).sort()).toEqual(['lel_events', 'mi_seva', 'mi_vistara'])
+    expect(Object.keys(CORRECTION_PRESERVATION).sort()).toEqual(['lel_events', 'mi_bhavisya', 'mi_seva', 'mi_vistara'])
     for (const id of Object.keys(CORRECTION_PRESERVATION)) {
       expect(EXPLICIT_CLEAR_OPS[id]).toBeNull()
       expect(CORRECTION_PRESERVATION[id as keyof typeof CORRECTION_PRESERVATION].length).toBeGreaterThan(10)
@@ -56,7 +57,19 @@ describe('correction preservation boundary', () => {
 
   it('every null clear op is classified — a new skip-clean asset cannot slip through unclassified', () => {
     const nulls = Object.entries(EXPLICIT_CLEAR_OPS).filter(([, ops]) => ops === null).map(([id]) => id).sort()
-    expect(nulls).toEqual([...Object.keys(CORRECTION_PRESERVATION), ...Object.keys(CORRECTION_NOTHING_TO_CLEAR)].sort())
+    // ga_fact_identity (migration 1262, has_writer=false) is classified by strictDecision's has_writer rule, not by name.
+    const noWriterNulls = ['ga_fact_identity']
+    expect(nulls).toEqual([...Object.keys(CORRECTION_PRESERVATION), ...Object.keys(CORRECTION_NOTHING_TO_CLEAR), ...noWriterNulls].sort())
+  })
+
+  it('ga_fact_identity (hand-run G-IDX index, has_writer=false) is preserved by a correction and issues no statement', async () => {
+    const { db, calls } = recorder()
+    const result = await invalidateAssets({
+      db, chartId: CHART, assets: [asset('ga_fact_identity', { layer: 'ganita', has_writer: false })], policy: 'chart-correction-strict',
+    })
+    expect(calls).toEqual([])
+    expect(result.preservedAssetIds).toEqual(['ga_fact_identity'])
+    expect(result.clearedAssetIds).toEqual([])
   })
 
   it('answered journal rows survive: mi_abhilekha clears only unanswered prompts', async () => {
@@ -65,10 +78,51 @@ describe('correction preservation boundary', () => {
     expect(calls.map((c) => c.sql)).toEqual(['DELETE FROM mimamsa_journal WHERE chart_id = $1 AND answered_at IS NULL'])
   })
 
-  it('confirmed/denied outcomes survive: mi_bhavisya uses its governed scoped operations', async () => {
+  it('predictions and manifestation sets survive a correction: mi_bhavisya issues no statement at all (SS N-104)', async () => {
+    for (const policy of ['chart-correction-strict', 'operator-best-effort'] as const) {
+      const { db, calls } = recorder()
+      const result = await invalidateAssets({ db, chartId: CHART, assets: [asset('mi_bhavisya', { layer: 'mimamsa' })], policy })
+      expect(calls, policy).toEqual([])
+      expect(result.clearedAssetIds, policy).toEqual([])
+    }
+  })
+
+  it('an append-only asset is never a silent skip: both policies return the explicit message and issue no statement (SS N-104)', async () => {
+    for (const policy of ['chart-correction-strict', 'operator-best-effort'] as const) {
+      const { db, calls } = recorder()
+      const result = await invalidateAssets({ db, chartId: CHART, assets: [asset('mi_bhavisya', { layer: 'mimamsa' })], policy })
+      expect(calls, policy).toEqual([])
+      expect(result.notices, policy).toEqual([
+        { assetId: 'mi_bhavisya', message: 'mi_bhavisya is append-only (N-104): nothing cleared' },
+      ])
+    }
+  })
+
+  it('other assets produce no notice (the message channel is a narrow opt-in)', async () => {
+    const { db } = recorder()
+    const result = await invalidateAssets({
+      db, chartId: CHART, assets: [asset('mi_abhilekha', { layer: 'mimamsa' })], policy: 'chart-correction-strict',
+    })
+    expect(result.notices).toEqual([])
+  })
+
+  it('a strict birth-detail correction leaves predictions undeleted and only SETS the stale marker + superseding run (SS N-104/N-107)', async () => {
+    // The order recomputeChart.ts runs inside one transaction: strict invalidation, then markChartContextStale.
+    const RUN = '11111111-2222-3333-4444-555555555555'
     const { db, calls } = recorder()
     await invalidateAssets({ db, chartId: CHART, assets: [asset('mi_bhavisya', { layer: 'mimamsa' })], policy: 'chart-correction-strict' })
-    expect(calls.map((c) => c.sql)).toEqual((EXPLICIT_CLEAR_OPS.mi_bhavisya ?? []).map((op) => op.sql))
+    await markChartContextStale({ db, chartId: CHART, runId: RUN })
+    const onPredictions = calls.filter((c) => /mimamsa_predictions/i.test(c.sql))
+    // exactly one statement touches the table, and it is an UPDATE - never a DELETE / TRUNCATE / INSERT
+    expect(onPredictions).toHaveLength(1)
+    expect(onPredictions[0].sql).toMatch(/^\s*UPDATE\s+mimamsa_predictions\b/i)
+    expect(calls.filter((c) => /^\s*(DELETE|TRUNCATE|INSERT)\b/i.test(c.sql))).toEqual([])
+    // it sets the marker pair and the superseding run (the set-once allow-list of migration 1265), nothing else
+    const set = onPredictions[0].sql.match(/SET([\s\S]*?)WHERE/i)![1]
+    const assigned = [...set.matchAll(/(\w+)\s*=/g)].map((m) => m[1]).sort()
+    expect(assigned).toEqual(['chart_context_stale_at', 'chart_context_stale_reason', 'chart_context_superseded_by_run_id'])
+    expect(onPredictions[0].sql).toMatch(/chart_context_stale_at\s+IS\s+NULL/i) // set once: an already-marked row is not touched
+    expect(onPredictions[0].params).toEqual([CHART, RUN])
   })
 
   it('service-only writers with no chart rows require no destructive clear', async () => {

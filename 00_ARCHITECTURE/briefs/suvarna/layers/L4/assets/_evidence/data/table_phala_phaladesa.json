@@ -1,0 +1,586 @@
+{
+ "table": "phala_phaladesa",
+ "columns": [
+  {
+   "column_name": "phaladesa_id",
+   "data_type": "uuid",
+   "is_nullable": "NO",
+   "column_default": "gen_random_uuid()"
+  },
+  {
+   "column_name": "chart_id",
+   "data_type": "uuid",
+   "is_nullable": "NO",
+   "column_default": ""
+  },
+  {
+   "column_name": "domain",
+   "data_type": "text",
+   "is_nullable": "NO",
+   "column_default": ""
+  },
+  {
+   "column_name": "anchor_count",
+   "data_type": "smallint",
+   "is_nullable": "NO",
+   "column_default": "0"
+  },
+  {
+   "column_name": "clean_anchor_count",
+   "data_type": "smallint",
+   "is_nullable": "NO",
+   "column_default": "0"
+  },
+  {
+   "column_name": "staged_revision_count",
+   "data_type": "smallint",
+   "is_nullable": "NO",
+   "column_default": "0"
+  },
+  {
+   "column_name": "anomaly_flag_count",
+   "data_type": "smallint",
+   "is_nullable": "NO",
+   "column_default": "0"
+  },
+  {
+   "column_name": "top_anchor_id",
+   "data_type": "uuid",
+   "is_nullable": "YES",
+   "column_default": ""
+  },
+  {
+   "column_name": "prediction_window_start",
+   "data_type": "date",
+   "is_nullable": "YES",
+   "column_default": ""
+  },
+  {
+   "column_name": "prediction_window_end",
+   "data_type": "date",
+   "is_nullable": "YES",
+   "column_default": ""
+  },
+  {
+   "column_name": "peak_date",
+   "data_type": "date",
+   "is_nullable": "YES",
+   "column_default": ""
+  },
+  {
+   "column_name": "magnitude",
+   "data_type": "text",
+   "is_nullable": "YES",
+   "column_default": ""
+  },
+  {
+   "column_name": "confidence_low",
+   "data_type": "double precision",
+   "is_nullable": "YES",
+   "column_default": ""
+  },
+  {
+   "column_name": "confidence_high",
+   "data_type": "double precision",
+   "is_nullable": "YES",
+   "column_default": ""
+  },
+  {
+   "column_name": "malleability",
+   "data_type": "text",
+   "is_nullable": "YES",
+   "column_default": ""
+  },
+  {
+   "column_name": "spillover_domains_jsonb",
+   "data_type": "jsonb",
+   "is_nullable": "YES",
+   "column_default": ""
+  },
+  {
+   "column_name": "incoming_spillover_count",
+   "data_type": "smallint",
+   "is_nullable": "YES",
+   "column_default": "0"
+  },
+  {
+   "column_name": "mitigation_available",
+   "data_type": "boolean",
+   "is_nullable": "NO",
+   "column_default": "false"
+  },
+  {
+   "column_name": "muhurta_available",
+   "data_type": "boolean",
+   "is_nullable": "NO",
+   "column_default": "false"
+  },
+  {
+   "column_name": "pramana_window_status",
+   "data_type": "text",
+   "is_nullable": "YES",
+   "column_default": ""
+  },
+  {
+   "column_name": "evidence_type",
+   "data_type": "text",
+   "is_nullable": "YES",
+   "column_default": ""
+  },
+  {
+   "column_name": "precedent_refs_jsonb",
+   "data_type": "jsonb",
+   "is_nullable": "YES",
+   "column_default": ""
+  },
+  {
+   "column_name": "contradiction_summary_jsonb",
+   "data_type": "jsonb",
+   "is_nullable": "YES",
+   "column_default": ""
+  },
+  {
+   "column_name": "derivation_summary_jsonb",
+   "data_type": "jsonb",
+   "is_nullable": "NO",
+   "column_default": ""
+  },
+  {
+   "column_name": "narration_status",
+   "data_type": "text",
+   "is_nullable": "NO",
+   "column_default": "'pending'::text"
+  },
+  {
+   "column_name": "narration_requested_at",
+   "data_type": "timestamp with time zone",
+   "is_nullable": "YES",
+   "column_default": ""
+  },
+  {
+   "column_name": "narration_model",
+   "data_type": "text",
+   "is_nullable": "YES",
+   "column_default": ""
+  },
+  {
+   "column_name": "narration_jsonb",
+   "data_type": "jsonb",
+   "is_nullable": "YES",
+   "column_default": ""
+  },
+  {
+   "column_name": "derivation_ledger_jsonb",
+   "data_type": "jsonb",
+   "is_nullable": "NO",
+   "column_default": ""
+  },
+  {
+   "column_name": "source_citation",
+   "data_type": "text",
+   "is_nullable": "NO",
+   "column_default": ""
+  },
+  {
+   "column_name": "computed_at",
+   "data_type": "timestamp with time zone",
+   "is_nullable": "NO",
+   "column_default": "now()"
+  }
+ ],
+ "has_chart_id": true,
+ "rows_by_chart": [
+  {
+   "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+   "n": "13"
+  },
+  {
+   "chart_id": "1c826d5a-41cb-4450-b4dc-59d440e5f75a",
+   "n": "13"
+  }
+ ],
+ "chart_nonnull": {
+  "_total": "13",
+  "phaladesa_id": "13",
+  "chart_id": "13",
+  "domain": "13",
+  "anchor_count": "13",
+  "clean_anchor_count": "13",
+  "staged_revision_count": "13",
+  "anomaly_flag_count": "13",
+  "top_anchor_id": "7",
+  "prediction_window_start": "7",
+  "prediction_window_end": "7",
+  "peak_date": "6",
+  "magnitude": "7",
+  "confidence_low": "7",
+  "confidence_high": "7",
+  "malleability": "7",
+  "spillover_domains_jsonb": "5",
+  "incoming_spillover_count": "13",
+  "mitigation_available": "13",
+  "muhurta_available": "13",
+  "pramana_window_status": "7",
+  "evidence_type": "7",
+  "precedent_refs_jsonb": "7",
+  "contradiction_summary_jsonb": "7",
+  "derivation_summary_jsonb": "13",
+  "narration_status": "13",
+  "narration_requested_at": "0",
+  "narration_model": "0",
+  "narration_jsonb": "13",
+  "derivation_ledger_jsonb": "13",
+  "source_citation": "13",
+  "computed_at": "13"
+ },
+ "value_counts": {
+  "domain": [
+   {
+    "v": "career",
+    "n": "1"
+   },
+   {
+    "v": "character",
+    "n": "1"
+   },
+   {
+    "v": "education",
+    "n": "1"
+   },
+   {
+    "v": "family",
+    "n": "1"
+   },
+   {
+    "v": "general",
+    "n": "1"
+   },
+   {
+    "v": "health",
+    "n": "1"
+   },
+   {
+    "v": "progeny",
+    "n": "1"
+   },
+   {
+    "v": "relationship",
+    "n": "1"
+   },
+   {
+    "v": "residence",
+    "n": "1"
+   },
+   {
+    "v": "spirituality",
+    "n": "1"
+   },
+   {
+    "v": "transition",
+    "n": "1"
+   },
+   {
+    "v": "travel",
+    "n": "1"
+   },
+   {
+    "v": "wealth",
+    "n": "1"
+   }
+  ],
+  "anchor_count": [
+   {
+    "v": "0",
+    "n": "6"
+   },
+   {
+    "v": "5",
+    "n": "2"
+   },
+   {
+    "v": "50",
+    "n": "1"
+   },
+   {
+    "v": "26",
+    "n": "1"
+   },
+   {
+    "v": "29",
+    "n": "1"
+   },
+   {
+    "v": "18",
+    "n": "1"
+   },
+   {
+    "v": "6",
+    "n": "1"
+   }
+  ],
+  "clean_anchor_count": [
+   {
+    "v": "0",
+    "n": "8"
+   },
+   {
+    "v": "1",
+    "n": "2"
+   },
+   {
+    "v": "10",
+    "n": "1"
+   },
+   {
+    "v": "4",
+    "n": "1"
+   },
+   {
+    "v": "28",
+    "n": "1"
+   }
+  ],
+  "staged_revision_count": [
+   {
+    "v": "0",
+    "n": "6"
+   },
+   {
+    "v": "4",
+    "n": "2"
+   },
+   {
+    "v": "50",
+    "n": "1"
+   },
+   {
+    "v": "5",
+    "n": "1"
+   },
+   {
+    "v": "6",
+    "n": "1"
+   },
+   {
+    "v": "22",
+    "n": "1"
+   },
+   {
+    "v": "1",
+    "n": "1"
+   }
+  ],
+  "anomaly_flag_count": [
+   {
+    "v": "0",
+    "n": "6"
+   },
+   {
+    "v": "6",
+    "n": "2"
+   },
+   {
+    "v": "22",
+    "n": "1"
+   },
+   {
+    "v": "1",
+    "n": "1"
+   },
+   {
+    "v": "50",
+    "n": "1"
+   },
+   {
+    "v": "8",
+    "n": "1"
+   },
+   {
+    "v": "4",
+    "n": "1"
+   }
+  ],
+  "magnitude": [
+   {
+    "v": "minor",
+    "n": "6"
+   },
+   {
+    "v": "",
+    "n": "6"
+   },
+   {
+    "v": "major",
+    "n": "1"
+   }
+  ],
+  "malleability": [
+   {
+    "v": "",
+    "n": "6"
+   },
+   {
+    "v": "semi_influenceable",
+    "n": "4"
+   },
+   {
+    "v": "influenceable",
+    "n": "3"
+   }
+  ],
+  "incoming_spillover_count": [
+   {
+    "v": "170",
+    "n": "3"
+   },
+   {
+    "v": "195",
+    "n": "2"
+   },
+   {
+    "v": "0",
+    "n": "2"
+   },
+   {
+    "v": "315",
+    "n": "2"
+   },
+   {
+    "v": "290",
+    "n": "1"
+   },
+   {
+    "v": "145",
+    "n": "1"
+   },
+   {
+    "v": "260",
+    "n": "1"
+   },
+   {
+    "v": "285",
+    "n": "1"
+   }
+  ],
+  "mitigation_available": [
+   {
+    "v": "false",
+    "n": "12"
+   },
+   {
+    "v": "true",
+    "n": "1"
+   }
+  ],
+  "muhurta_available": [
+   {
+    "v": "true",
+    "n": "7"
+   },
+   {
+    "v": "false",
+    "n": "6"
+   }
+  ],
+  "pramana_window_status": [
+   {
+    "v": "",
+    "n": "6"
+   },
+   {
+    "v": "pending",
+    "n": "5"
+   },
+   {
+    "v": "past_window",
+    "n": "1"
+   },
+   {
+    "v": "open",
+    "n": "1"
+   }
+  ],
+  "evidence_type": [
+   {
+    "v": "",
+    "n": "6"
+   },
+   {
+    "v": "pending_observation",
+    "n": "6"
+   },
+   {
+    "v": "life_event_miss",
+    "n": "1"
+   }
+  ],
+  "narration_status": [
+   {
+    "v": "ready",
+    "n": "13"
+   }
+  ],
+  "narration_model": [
+   {
+    "v": "",
+    "n": "13"
+   }
+  ]
+ },
+ "constraints": [
+  {
+   "conname": "phala_phaladesa_domain_canonical",
+   "contype": "c",
+   "def": "CHECK ((domain = ANY (ARRAY['career'::text, 'wealth'::text, 'relationship'::text, 'progeny'::text, 'health'::text, 'education'::text, 'family'::text, 'residence'::text, 'travel'::text, 'spirituality'::text, 'character'::text, 'transition'::text, 'general'::text])))"
+  },
+  {
+   "conname": "phala_phaladesa_magnitude_check",
+   "contype": "c",
+   "def": "CHECK ((magnitude = ANY (ARRAY['pivotal'::text, 'major'::text, 'moderate'::text, 'minor'::text])))"
+  },
+  {
+   "conname": "phala_phaladesa_malleability_check",
+   "contype": "c",
+   "def": "CHECK ((malleability = ANY (ARRAY['fated'::text, 'semi_influenceable'::text, 'influenceable'::text])))"
+  },
+  {
+   "conname": "phala_phaladesa_narration_model_check",
+   "contype": "c",
+   "def": "CHECK (((narration_model IS NULL) OR (narration_model = ANY (ARRAY['gemini-pro'::text, 'gemini-ultra'::text, 'gemini-2.0-flash'::text, 'deepseek-chat'::text, 'deepseek-r1'::text]))))"
+  },
+  {
+   "conname": "phala_phaladesa_narration_status_check",
+   "contype": "c",
+   "def": "CHECK ((narration_status = ANY (ARRAY['pending'::text, 'ready'::text, 'failed'::text])))"
+  },
+  {
+   "conname": "phala_phaladesa_pramana_window_status_check",
+   "contype": "c",
+   "def": "CHECK ((pramana_window_status = ANY (ARRAY['pending'::text, 'open'::text, 'past_window'::text])))"
+  },
+  {
+   "conname": "phala_phaladesa_pkey",
+   "contype": "p",
+   "def": "PRIMARY KEY (phaladesa_id)"
+  }
+ ],
+ "indexes": [
+  {
+   "indexname": "phala_phaladesa_pkey",
+   "indexdef": "CREATE UNIQUE INDEX phala_phaladesa_pkey ON public.phala_phaladesa USING btree (phaladesa_id)"
+  },
+  {
+   "indexname": "phala_phaladesa_natural_key",
+   "indexdef": "CREATE UNIQUE INDEX phala_phaladesa_natural_key ON public.phala_phaladesa USING btree (chart_id, domain)"
+  },
+  {
+   "indexname": "phala_phaladesa_chart_id",
+   "indexdef": "CREATE INDEX phala_phaladesa_chart_id ON public.phala_phaladesa USING btree (chart_id)"
+  },
+  {
+   "indexname": "phala_phaladesa_narration",
+   "indexdef": "CREATE INDEX phala_phaladesa_narration ON public.phala_phaladesa USING btree (chart_id, narration_status)"
+  }
+ ],
+ "referenced_by": []
+}

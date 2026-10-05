@@ -4,7 +4,43 @@ mi_bhavisya — Frozen Prediction Bundle (L5 Mīmāṃsā)
 Freezes L4 Phala predictions into mimamsa_predictions (immutable bundle) and
 captures manifestation sets from L4 outcome channels.
 
-PER-CHART scope: DELETE WHERE chart_id = %s, then re-insert.
+APPEND-ONLY (SS N-104, an application of N-46) -- DOCUMENTED EXCEPTION TO §N.3
+-------------------------------------------------------------------------------
+CLAUDE.md §N.3 says L1+ writers are per-chart delete-then-insert. That standard
+does NOT apply to this writer. ``mimamsa_predictions`` and
+``mimamsa_manifestation_sets`` are calibration HISTORY, not rebuildable state:
+a prediction is a claim issued at a point in time, and the whole point of the
+table is to be compared with what later happened. Deleting it, or re-stamping
+its ``emitted_at`` / ``frozen_bundle_hash``, turns a frozen claim into a
+hindsight artefact. So this writer:
+
+* never DELETEs a row of either table (pending, due, stale or otherwise);
+* never UPDATEs a row of either table (so ``emitted_at``,
+  ``frozen_bundle_hash``, ``source_pramana_id``, ... of an existing row keep
+  their bytes);
+* INSERTs a prediction only when none exists yet for the anchor, and a
+  manifestation set only for a prediction inserted in the same run.
+
+Natural key. The only unique constraint is the primary key
+``(chart_id, prediction_id)`` and ``prediction_id = 'pred_' || anchor_id``, but
+the anchor id a prediction was frozen under is NOT stable across the table's
+life: migration 680 re-pointed ``source_pramana_id`` to the deterministic
+anchor id while ``prediction_id`` kept the original id. A PK-only check would
+therefore re-insert a second copy of every already-frozen claim. The writer
+treats an anchor as ALREADY FROZEN when, for the same chart, either
+``prediction_id = 'pred_<anchor_id>'`` (the freeze-time key) or
+``source_pramana_id = '<anchor_id>'`` (the current anchor reference) exists.
+The insert itself is ``ON CONFLICT (chart_id, prediction_id) DO NOTHING`` as a
+belt over that check. A prediction whose anchor has since vanished or moved is
+left alone here; recording that reference gap is the job of a separate
+computed side ledger, never of a rewrite of the frozen row.
+
+Consequences a reader should not be surprised by: ``rows_inserted`` is the
+number of rows ADDED this run (0 on a no-op rebuild; the asset's ``count_sql``
+and integrity SQL read the table, not this figure); an existing prediction that
+carries ``chart_context_stale_at`` still blocks a fresh insert for the same
+anchor (reported in the result notes, never "fixed" by rewriting it).
+
 FROZEN orchestrator contract: @register, run(ctx) -> WriterResult.
 NEVER commits or closes ctx.db_conn.
 If L4 tables are absent or empty → 0 rows, WriterResult with note.
@@ -49,6 +85,10 @@ class MiBhavisyaWriter(WriterBase):
     Freezes L4 Phala prediction rows into mimamsa_predictions.
     Reads phala_anchors (primary) + bodha_msr_signals (driving signals).
     Builds mimamsa_manifestation_sets from phala outcome channel specs.
+
+    APPEND-ONLY (SS N-104): inserts only the predictions (and their manifestation
+    sets) that are absent; never DELETEs or UPDATEs an existing row. See the module
+    docstring for the natural key and the documented exception to CLAUDE.md §N.3.
     """
 
     asset_id = "mi_bhavisya"
@@ -211,24 +251,53 @@ class MiBhavisyaWriter(WriterBase):
                 emitted_at,
             ))
 
+        # ------------------------------------------------------------------
+        # Append-only (SS N-104): read what is already frozen for this chart and
+        # emit only the anchors that have no prediction yet.  Nothing below ever
+        # DELETEs or UPDATEs an existing row of either table.
+        # ------------------------------------------------------------------
+        with conn.cursor(row_factory=psycopg.rows.dict_row) as cur:
+            cur.execute(
+                "SELECT prediction_id, source_pramana_id, "
+                "(chart_context_stale_at IS NOT NULL) AS is_stale "
+                "FROM mimamsa_predictions WHERE chart_id = %s",
+                (chart_id,),
+            )
+            existing = cur.fetchall()
+        frozen_prediction_ids = {str(r["prediction_id"]) for r in existing}
+        frozen_anchor_refs = {str(r["source_pramana_id"]) for r in existing}
+        stale_prediction_ids = {str(r["prediction_id"]) for r in existing if r["is_stale"]}
+        stale_anchor_refs = {str(r["source_pramana_id"]) for r in existing if r["is_stale"]}
+
+        new_pred_rows: list[tuple] = []
+        skipped_existing = 0
+        skipped_existing_stale = 0
+        for row in pred_rows:
+            prediction_id, anchor_id = row[1], row[2]
+            if prediction_id in frozen_prediction_ids or anchor_id in frozen_anchor_refs:
+                skipped_existing += 1
+                if prediction_id in stale_prediction_ids or anchor_id in stale_anchor_refs:
+                    skipped_existing_stale += 1
+                continue
+            new_pred_rows.append(row)
+        new_pred_ids = {r[1] for r in new_pred_rows}
+        new_mset_rows = [m for m in mset_rows if m[1] in new_pred_ids]
+
+        existing_note = (
+            f"{skipped_existing} anchor(s) already frozen left untouched "
+            f"({skipped_existing_stale} of them stale-marked); "
+            f"{len(existing)} existing prediction row(s) for chart never deleted or rewritten"
+        )
+
         if ctx.dry_run:
             return WriterResult(
                 asset_id=self.asset_id,
-                rows_inserted=len(pred_rows) + len(mset_rows),
+                rows_inserted=len(new_pred_rows) + len(new_mset_rows),
                 duration_seconds=time.time() - t0,
-                notes=f"dry_run: would freeze {len(pred_rows)} predictions, {len(mset_rows)} manifestation_sets",
-            )
-
-        # Idempotency: delete per chart. mimamsa_predictions rows whose lifecycle_status
-        # has moved past 'pending'/'due' (i.e. 'confirmed'/'denied'/'partial') carry a real,
-        # native-verified outcome written exclusively by mi_abhilekha's journal-answer sync
-        # (see mi_abhilekha.py) — IRREPLACEABLE, never destroy them on a routine rebuild.
-        # Only still-forecasting rows are this writer's own rebuildable output.
-        with conn.cursor() as cur:
-            cur.execute("DELETE FROM mimamsa_manifestation_sets WHERE chart_id = %s", (chart_id,))
-            cur.execute(
-                "DELETE FROM mimamsa_predictions WHERE chart_id = %s AND lifecycle_status IN ('pending', 'due')",
-                (chart_id,),
+                notes=(
+                    f"dry_run: would freeze {len(new_pred_rows)} new predictions, "
+                    f"{len(new_mset_rows)} manifestation_sets; {existing_note}"
+                ),
             )
 
         if not pred_rows:
@@ -251,24 +320,44 @@ class MiBhavisyaWriter(WriterBase):
                 %s::numrange,
                 %s,%s,%s,%s,%s,%s,%s,%s
             )
+            ON CONFLICT (chart_id, prediction_id) DO NOTHING
         """
         MSET_SQL = """
             INSERT INTO mimamsa_manifestation_sets (
                 chart_id, prediction_id, channel_id, domain, source, citation_ref, is_literal, frozen_at
             ) VALUES (%s,%s,%s,%s,%s,%s,%s,%s)
+            ON CONFLICT (chart_id, prediction_id, channel_id) DO NOTHING
         """
 
+        # One statement per row so the count of rows actually added is exact
+        # (a DO NOTHING conflict reports rowcount 0).  A set is added only for a
+        # prediction that was really inserted by this statement.
+        preds_inserted = 0
+        msets_inserted = 0
+        mset_by_pred = {m[1]: m for m in new_mset_rows}
         with conn.cursor() as cur:
-            cur.executemany(PRED_SQL, pred_rows)
-            cur.executemany(MSET_SQL, mset_rows)
+            for row in new_pred_rows:
+                cur.execute(PRED_SQL, row)
+                if cur.rowcount == 1:
+                    preds_inserted += 1
+                    mset = mset_by_pred.get(row[1])
+                    if mset is not None:
+                        cur.execute(MSET_SQL, mset)
+                        if cur.rowcount == 1:
+                            msets_inserted += 1
 
         logger.info(
-            "[mi_bhavisya] frozen %d predictions, %d manifestation_sets for chart %s",
-            len(pred_rows), len(mset_rows), chart_id,
+            "[mi_bhavisya] froze %d new predictions, %d manifestation_sets for chart %s; %s",
+            preds_inserted, msets_inserted, chart_id, existing_note,
         )
 
         return WriterResult(
             asset_id=self.asset_id,
-            rows_inserted=len(pred_rows) + len(mset_rows),
+            rows_inserted=preds_inserted + msets_inserted,
+            rows_skipped=skipped_existing,
             duration_seconds=time.time() - t0,
+            notes=(
+                f"append-only (SS N-104): {preds_inserted} predictions + "
+                f"{msets_inserted} manifestation_sets added; {existing_note}"
+            ),
         )

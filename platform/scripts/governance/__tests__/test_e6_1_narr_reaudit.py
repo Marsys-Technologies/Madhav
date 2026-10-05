@@ -63,8 +63,8 @@ MSR_CLASSES = {
 
 # (file, line, substring the line must contain): every cite the evidence text carries as `<basename>:<line>`
 _QS = _L + "L2_bodha/query_signals.ts"
-MSR_SERVED = [(_QS, 140, "'signal_type_class'"), (_QS, 141, "'signal_summary_text', 'signal_headline_text'"),
-              (_QS, 449, "m.signal_type_class = "), (_QS, 507, "FROM bodha_msr_signals m")]
+MSR_SERVED = [(_QS, 142, "'signal_type_class'"), (_QS, 143, "'signal_summary_text', 'signal_headline_text'"),
+              (_QS, 451, "m.signal_type_class = "), (_QS, 509, "FROM bodha_msr_signals m")]
 
 KEPT = {
     "bo_arudha": dict(table=MSR, cols=MSR_COLS, writer=_WR + "bo_arudha.py", emitter=_BW + "arudha_emitter.py", cites=MSR_SERVED + [
