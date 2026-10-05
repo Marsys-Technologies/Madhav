@@ -787,8 +787,8 @@ def _carriage_d3():
 def _carriage_d3_served_assets() -> dict:
     """{asset id: method id} for every asset a reviewed D3 method serves (carriage_d3 METHODS `assets`): such an asset cannot declare single_derivation."""
     out = {}
-    for mid, m in _carriage_d3().load_methods().items():
-        for a in m["assets"]:
+    for mid, meth in _carriage_d3().load_methods().items():       # the loop variable is not named m: test_r78 reads every m-subscript as a measurement key
+        for a in meth["assets"]:
             out[a] = mid
     return out
 

@@ -21,7 +21,7 @@ REPO = HERE.parents[3]
 COMMITTED = REPO / ac.REGISTRY_COVERAGE_REPORT_REL
 SHA_A, SHA_B = "a" * 40, "b" * 40
 D2 = "Carr.D2"
-NONE3 = (D2, "Carr.D3")      # E5.7: Earn.service_state has a real detector (revision 2), so two criteria are still detector NONE
+NONE3 = (D2,)      # E5.7: Earn.service_state (revision 2) and Carr.D3 (N-156) have real detectors, so one core criterion is still detector NONE
 PEND3 = {c: "N-97" for c in NONE3}
 DEFERRED = ["bg_gochara_citation_resolution", "bg_kota_chakra_rings", "bg_medical_mappings", "bg_nakshatra_medical",
             "bg_sign_medical", "bg_vastu_directions"]
@@ -83,7 +83,7 @@ def test_three_candidate_counts_side_by_side():
 
 def test_today_uncovered_are_the_three_detector_none_core_criteria():
     r = _report()
-    assert r["uncovered_required_criteria"] == [D2, "Carr.D3"]
+    assert r["uncovered_required_criteria"] == [D2]
     assert r["per_asset_pending"] == [] and r["per_asset_pending_decisions"] == {} and r["pending_cells"] == 0
     assert r["non_core_detector_none"] == ["Completeness.depth.dasha_link"]      # information, never a core cell
     assert "not gate-scoped" in r["non_core_detector_none_note"]
@@ -136,9 +136,7 @@ def test_detector_none_without_rule_is_uncovered(monkeypatch):
 def test_a_measured_detector_removes_the_uncovered_entry(monkeypatch):
     monkeypatch.setitem(ac.CRITERION_REGISTRY, D2, dict(ac.CRITERION_REGISTRY[D2], detector="asset_census.py:measure()"))
     r = _report()
-    assert D2 not in r["uncovered_required_criteria"] and r["covered_cells"] == 48      # Carr.D3 still holds every Carr cell open
-    monkeypatch.setitem(ac.CRITERION_REGISTRY, "Carr.D3", dict(ac.CRITERION_REGISTRY["Carr.D3"], detector="asset_census.py:measure()"))
-    assert _report()["covered_cells"] == 54
+    assert D2 not in r["uncovered_required_criteria"] and r["covered_cells"] == 54      # Carr.D3 already has its detector: D2 was the last open Carr criterion
 
 
 def test_a_bogus_detector_string_is_refused_never_counted(monkeypatch):
