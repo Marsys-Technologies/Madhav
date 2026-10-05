@@ -1976,7 +1976,8 @@ def uniform_authority_measure_problem(entry, table, table_columns, asset_id=None
         return "the asset has no target table, so the declared uniform authority cannot be checked against its columns (declaration unverifiable)"
     if table_columns is None:
         return f"table columns unknown for {table} (a view, or the catalog lists no columns for it), declaration unverifiable"
-    tiers = sorted(c for c in table_columns if isinstance(c, str) and dens_tier_counts(c))
+    declared = [d.get("column") for d in (entry.get("density_tier_columns") or []) if isinstance(d, dict)]      # the asset's own declared tier columns count as tier columns too
+    tiers = sorted(c for c in table_columns if isinstance(c, str) and dens_tier_counts(c, declared))
     if tiers:
         return (f"the table {table} carries the tier column(s) {tiers}: its rows have per-row authority, so a uniform-authority PASS would bypass the tier requirement; select the "
                 "tier column in the serving capability instead")
@@ -8469,7 +8470,14 @@ def capability_scan(caps_dirs, tables: list[str], shared=(), columns: dict | Non
                             scope = [c for p, c in mod["spans"] if _decl_of(mod, p) == d0]
                         else:
                             scope = [c for p, c in mod["spans"] if lo0 <= p < hi0]
-                        pins, bound, or_seen = _facet_pins(scope, fct["column"])
+                        # review fix (re-check MED): the pin must sit in THIS select's own SQL (its literal and the literals directly joined to it). Only when the select's WHERE is a run-time
+                        # `${...}` the pin may come from a STANDALONE filter literal of the same entry (one holding no SELECT: `const filters = ["fact_category = 'x'"]`), never from another select.
+                        own = _literal_chain(mod, li)
+                        pins, bound, or_seen = _facet_pins([own], fct["column"])
+                        if not pins and re.search(r"\bWHERE\b[^;]*\$\{", own, re.I | re.S):
+                            filt = [c for c in scope if not re.search(r"\bSELECT\b", c, re.I)]
+                            pins, bound2, or_seen = _facet_pins(filt, fct["column"])
+                            bound = bound or bound2
                         if pins and pins <= set(fct["values"]) and not or_seen:
                             facet_pos.add(pos0)
                             facet_decls.add(_decl_of(mod, pos0))

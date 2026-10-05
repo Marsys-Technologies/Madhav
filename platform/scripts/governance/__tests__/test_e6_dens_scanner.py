@@ -410,12 +410,37 @@ def test_med1_the_attributed_select_in_its_own_contract_entry_still_passes(tree)
     assert g["v"] == PASS, g
 
 
-def test_med1_an_entry_pinning_two_categories_in_two_selects_is_refused_whole(tree):
+def test_med1_two_selects_in_one_entry_each_judged_on_its_own_pin(tree):
+    """Re-check MED: attribution is per SELECT. One entry: select 1 pins the declared value, select 2 pins an undeclared one: only select 1 is the asset's."""
     tree.write(tree.layers / "L0_x", "q.ts", "export const cap = {\n  id: 'c',\n  density_contract: { paginated: true, facets: [], empty_reason: true },\n"
                                               "  run: async () => { await query(`SELECT fact_id, verification_pass_status FROM t_shared WHERE fact_category = 'ayurdaya'`); "
                                               "return query(`SELECT fact_id FROM t_shared WHERE fact_category = 'dasha'`) },\n}\n")
     cap = _scan(tree, ["t_shared", "bg_x"], shared={"t_shared"}, columns=SHARED_COLS, facets=FACET)
-    assert not cap["facet_attributed"] and cap["served"] == 0
+    assert cap["facet_attributed"] == ["L0_x/q.ts"] and cap["served"] == 1
+
+
+def test_recheck_an_unpinned_select_in_an_entry_with_a_pinned_one_is_not_attributed_and_cannot_supply_the_tier(tree):
+    """The re-check's shape: the entry holds a pinned select (no tier column) and an UNPINNED select of the shared table that carries the tier. The unpinned one must not be attributed,
+    so the contract + tier cannot be assembled from it: no PASS."""
+    tree.write(tree.layers / "L0_x", "q.ts", "export const cap = {\n  id: 'c',\n  density_contract: { paginated: true, facets: [], empty_reason: true },\n"
+                                              "  run: async () => { await query(`SELECT fact_id FROM t_shared WHERE fact_category = 'ayurdaya'`); "
+                                              "return query(`SELECT fact_id, verification_pass_status FROM t_shared WHERE chart_id = $1`) },\n}\n")
+    cap = _scan(tree, ["t_shared", "bg_x"], shared={"t_shared"}, columns=SHARED_COLS, facets=FACET)
+    assert cap["served"] == 1 and cap["density"] == 0, cap
+    assert ac._grade_dens(cap, "t_shared")["v"] != PASS
+
+
+def test_recheck_a_dynamic_where_takes_its_pin_only_from_a_standalone_filter_literal(tree):
+    """`WHERE ${where}` with the pin in a standalone filters literal (the real get_ayurdaya shape) is attributed; the same select with the pin only inside ANOTHER select is not."""
+    ok = ("export const cap = {\n  id: 'c',\n  run: async () => { const filters = [\"chart_id = $1\", \"fact_category = 'ayurdaya'\"]; const where = filters.join(' AND ');\n"
+          "    return query(`SELECT fact_id FROM t_shared WHERE ${where}`) },\n}\n")
+    tree.write(tree.layers / "L0_x", "q.ts", ok)
+    assert _scan(tree, ["t_shared", "bg_x"], shared={"t_shared"}, columns=SHARED_COLS, facets=FACET)["facet_attributed"] == ["L0_x/q.ts"]
+    bad = ("export const cap = {\n  id: 'c',\n  run: async () => { await query(`SELECT fact_id FROM t_shared WHERE fact_category = 'ayurdaya'`);\n"
+           "    return query(`SELECT fact_id FROM t_shared WHERE ${where}`) },\n}\n")
+    tree.write(tree.layers / "L0_x", "q.ts", bad)
+    cap = _scan(tree, ["t_shared", "bg_x"], shared={"t_shared"}, columns=SHARED_COLS, facets=FACET)
+    assert cap["served"] == 1, cap                                  # only the inline-pinned select; the dynamic one borrows nothing from it
 
 
 def test_med1_entry_object_picks_the_capability_entry_not_the_registering_function():
@@ -539,3 +564,25 @@ def test_low5_a_lower_case_concatenated_select_is_dynamic(src):
 ])
 def test_low5_prose_with_a_lower_case_from_is_still_not_a_table_name(src):
     assert not ac._dynamic_from(src, ac._ts_literal_spans(src))
+
+
+# ── re-check LOWs: declared tier columns and whole-identifier evidence ──
+
+def test_recheck_the_tier_refusal_counts_the_assets_declared_tier_columns():
+    e = _ua()
+    assert ac.uniform_authority_measure_problem(e, "t", ["id", "indication_tier"], "ga_ayurdaya") is None          # not in the closed vocabulary, not declared
+    e["density_tier_columns"] = [dict(column="indication_tier", why="verification tier", evidence="x:1")]
+    got = ac.uniform_authority_measure_problem(e, "t", ["id", "indication_tier"], "ga_ayurdaya")
+    assert got and "per-row authority" in got and "indication_tier" in got
+
+
+def test_recheck_the_evidence_must_name_the_asset_as_a_whole_identifier(tmp_path, monkeypatch):
+    f = tmp_path / "ev.ts"
+    f.write_text("// reads ga_yogas only\n")
+    monkeypatch.setattr(ac, "ROOT", tmp_path)
+    monkeypatch.setattr(ac, "_s3_evidence_problem", lambda *a, **k: None)
+    e = dict(why="every row of this reference vocabulary is of uniform authority", evidence="ev.ts:1")
+    assert "mentions neither" in ac.uniform_authority_problem({"uniform_authority": e}, "ga_yoga")
+    assert ac.uniform_authority_problem({"uniform_authority": e}, "ga_yogas") is None
+    f.write_text("// reads ga_yoga\n")
+    assert ac.uniform_authority_problem({"uniform_authority": e}, "ga_yoga") is None
