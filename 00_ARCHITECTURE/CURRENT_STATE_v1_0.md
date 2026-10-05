@@ -9752,13 +9752,14 @@ current_state:
   # updated but this dedicated pointer field was missed, which schema_validator.py's
   # current_state_last_session_id_disagreement check caught at this session's open. Fixed
   # here rather than carried forward as a second miss.)
-  last_session_id: MADHAV_JOURNEY1_RELEASE_20261005
-  last_session_closed_at: "2026-10-05T15:04:40.267676+00:00"
+  last_session_id: MADHAV_CONSULTATION10_IMPLEMENTATION_20261005
+  last_session_closed_at: "2026-10-05T18:52:55.417347+00:00"
   last_session_agent: Codex
-  last_session_cowork_thread_name: "Madhav — Journey 1 deployment"
-  predecessor_session: MADHAV_JOURNEY1_IMPLEMENTATION_20261005
+  last_session_cowork_thread_name: "Madhav — Consultation implementation"
+  predecessor_session: MADHAV_JOURNEY1_RELEASE_20261005
   last_product_strategy_session: MADHAV-DATA-PLANE-V2-20260913
-  last_session_drift_verdict: "Journey1 deployed at052ac7e89856 / web revision37325087280-1, 100% traffic; PR build, queue/main CI, candidate smoke/signing/RLS passed. Actual entry/chart/divisional/Places/username availability/responsive controls verified;49 Journey1 HTTP200, zero5xx. Activation lookup unavailable; automatic consultation smoke remains HTTP400, same6/11 failures as baseline. Real account/reset/CRUD acceptance pending; Journey2 deferred. Two LOW local DB schema checks booked; no other campaign advanced."
+  last_session_drift_verdict: "Consultation review10 implemented locally, uncommitted. Lint/types/15,663 tests and actual-component desktop/mobile/compact checks passed; disposable PostgreSQL parent-lock race and canonical history passed; independent migration/integration SAFE. Migration1307 authored, not applied to application DB; no deploy or production/provider call. Two inherited LOW local schema checks booked."
+  next_portal_consultation_objective: "Owner reviews local review10; any protected release must separately authorize and verify migration1307, authenticated stream/history/tag/share/model behavior, and pre-existing HTTP400 engine residual. Other Journey2 reviews remain deferred."
   product_definition: 00_ARCHITECTURE/MADHAV_PRODUCT_DEFINITION_v3_0.md
   data_plane_proposal: 00_ARCHITECTURE/briefs/nirmana/MADHAV_DATA_PLANE_VALUE_ARCHITECTURE_v2_0.md
   planner_knowledge_candidate: 00_ARCHITECTURE/briefs/nirmana/MADHAV_PLANNER_CAPABILITY_KNOWLEDGE_AND_INQUIRY_IMPLEMENTATION_v1_0.md
@@ -9774,7 +9775,9 @@ current_state:
 
 ## §3 — Narrative (human-reading surface — must agree with §2)
 
-Portal Journey1 (2026-10-05) is deployed at052ac7e89856 with live entry/chart screen verification and explicit engine/account/CRUD residuals. Journey2 remains deferred. See `briefs/journey1/release/RELEASE.md`; other campaigns are not advanced.
+Consultation review10 (2026-10-06 IST) is implemented and verified locally in `codex/portal-experience`, uncommitted and not deployed. Shared shell, default-closed pinnable panels, Grounding/Windows/History, grounding placement, owned tags and reopened history are covered by full unit checks and actual-component responsive verification. Migration1307 is authored and disposable-tested, not applied to an application database. See `briefs/consultation10/IMPLEMENTATION.md`. Other Journey2 pages and engine/provider acceptance remain deferred.
+
+Journey1 remains deployed at052ac7e89856 with its recorded live screen verification and account/CRUD/activation residuals. See `briefs/journey1/release/RELEASE.md`; no other campaign is advanced.
 
 The production AI Console can now reach the four authenticated personal CLIs on the dedicated
 `marsys-jis-ai-cli` VM through a private, fixed-operation bridge. PR #2753 merged as

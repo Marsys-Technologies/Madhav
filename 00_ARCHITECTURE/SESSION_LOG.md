@@ -47198,3 +47198,763 @@ session_close:
 Owner review of deployed Journey1; Journey2 remains deferred until review resumes. Separately investigate activation lookup and existing consultation smokeHTTP400. Complete explicitly authorized non-production account/reset/CRUD acceptance before claiming those paths accepted.
 
 *End of MADHAV_JOURNEY1_RELEASE_20261005 entry — 2026-10-05.*
+
+
+## MADHAV_CONSULTATION10_IMPLEMENTATION_20261005 — 2026-10-05T18:52:55.417347+00:00
+
+### Session-open handshake
+
+```yaml
+session_open:
+  session_id: MADHAV_CONSULTATION10_IMPLEMENTATION_20261005
+  cowork_thread_name: "Madhav \u2014 Consultation implementation"
+  agent_name: Codex
+  agent_version: GPT-6
+  tool: Codex
+  tool_profile: madhav-safe
+  worktree_path: /Users/Dev/.codex/worktrees/portal-experience/Madhav
+  step_number_or_layer: Review 10 Consultation only
+  predecessor_session: MADHAV_JOURNEY1_RELEASE_20261005
+  coordination:
+    coordination_ref: origin/campaign-coordination
+    lease_id: L-PORTAL-CONSULTATION-10-20261005
+    lease_status_verified: true
+    lease_verified_at: '2026-10-05T18:11:44.061903+00:00'
+    work_order_surface: 00_ARCHITECTURE/briefs/consultation10/IMPLEMENTATION.md
+  cross_tool_state_read:
+    cross_cutting_decision_register: true
+    consumed_decisions:
+    - CCD-001
+    - CCD-004
+    - CCD-011
+    - CCD-021
+  mandatory_reading_confirmation:
+  - file: CLAUDE.md
+    fingerprint_sha256: a364863fc3efcf416ca16773093dda72ea7b632d6d63cd1c13a387889121e12e
+    read_at: '2026-10-05T18:11:44.061903+00:00'
+    read_scope: Orientation and relevant scoped sections read; prior portal implementation
+      context retained.
+  - file: 00_ARCHITECTURE/CAPABILITY_MANIFEST.json
+    fingerprint_sha256: 309bd3057968d75a86cb95274709ec0a3446b90c5a1094c5605508f56fee3c87
+    read_at: '2026-10-05T18:11:44.061903+00:00'
+    read_scope: Orientation and relevant scoped sections read; prior portal implementation
+      context retained.
+  - file: 00_ARCHITECTURE/PROJECT_ARCHITECTURE_v2_2.md
+    fingerprint_sha256: 61dd9355223378d517c09a59ddcfc7dddddfbdabfa64b0865f9cd55153223e5b
+    read_at: '2026-10-05T18:11:44.061903+00:00'
+    read_scope: Orientation and relevant scoped sections read; prior portal implementation
+      context retained.
+  - file: 00_ARCHITECTURE/MACRO_PLAN_v2_0.md
+    fingerprint_sha256: 8e98ad46d7f0ba5ee4a9605f17f8ef21ba6da6d126092f7e0c52d318bc9e6c6e
+    read_at: '2026-10-05T18:11:44.061903+00:00'
+    read_scope: Orientation and relevant scoped sections read; prior portal implementation
+      context retained.
+  - file: 00_ARCHITECTURE/CURRENT_STATE_v1_0.md
+    fingerprint_sha256: 0847ce167d680bc8ab9ccf3e933086c656915ff58e0b41fe1ba957bdf72a763a
+    read_at: '2026-10-05T18:11:44.061903+00:00'
+    read_scope: Orientation and relevant scoped sections read; prior portal implementation
+      context retained.
+  - file: 00_ARCHITECTURE/GOVERNANCE_INTEGRITY_PROTOCOL_v1_0.md
+    fingerprint_sha256: a78f67309611dd483555f52221e2894c65ef87d5c94a36958e1777ee73962533
+    read_at: '2026-10-05T18:11:44.061903+00:00'
+    read_scope: Orientation and relevant scoped sections read; prior portal implementation
+      context retained.
+  - file: 00_ARCHITECTURE/SESSION_OPEN_TEMPLATE_v1_0.md
+    fingerprint_sha256: 414807baef6ee57efc4db2f14e0d399c9afa5735c6240f40c5d87a1f81b51db6
+    read_at: '2026-10-05T18:11:44.061903+00:00'
+    read_scope: Orientation and relevant scoped sections read; prior portal implementation
+      context retained.
+  - file: 00_ARCHITECTURE/SESSION_CLOSE_TEMPLATE_v1_0.md
+    fingerprint_sha256: 45e9a8f549ee1a1bf7586875b12f906f288d547ea58498bac193e1af9a3e55d0
+    read_at: '2026-10-05T18:11:44.061903+00:00'
+    read_scope: Orientation and relevant scoped sections read; prior portal implementation
+      context retained.
+  - file: 00_ARCHITECTURE/GROUNDING_AUDIT_v1_0.md
+    fingerprint_sha256: 8bbdc249686b3c528abb38dc0e6fb66c80214c4ab780ec64efec888a7b1d5223
+    read_at: '2026-10-05T18:11:44.061903+00:00'
+    read_scope: Orientation and relevant scoped sections read; prior portal implementation
+      context retained.
+  - file: 00_ARCHITECTURE/NATIVE_DIRECTIVES_FOR_REVISION_v1_0.md
+    fingerprint_sha256: 8789493e231293613e08ec2294d766f3e88ed2077828f541b0be6e30bee3ca3c
+    read_at: '2026-10-05T18:11:44.061903+00:00'
+    read_scope: Orientation and relevant scoped sections read; prior portal implementation
+      context retained.
+  - file: 00_ARCHITECTURE/ONGOING_HYGIENE_POLICIES_v1_0.md
+    fingerprint_sha256: ca9b37a754ac61896215e22bd2d2199916d9783c74238ecf4dce3049b67674b3
+    read_at: '2026-10-05T18:11:44.061903+00:00'
+    read_scope: Orientation and relevant scoped sections read; prior portal implementation
+      context retained.
+  - file: 00_ARCHITECTURE/CROSS_CUTTING_DECISION_REGISTER_v1_0.md
+    fingerprint_sha256: 4cf744eecf99ada575275d2f1dae448b6743cfaf265cdd3e2a4bac080c3063de
+    read_at: '2026-10-05T18:11:44.061903+00:00'
+    read_scope: Orientation and relevant scoped sections read; prior portal implementation
+      context retained.
+  canonical_artifact_fingerprint_check: []
+  declared_scope:
+    may_touch:
+    - platform/src/components/consume/**
+    - platform/src/components/chat/**
+    - platform/src/components/journey1/**
+    - platform/src/app/clients/[[]id]/consult/**
+    - platform/src/app/api/conversations/**
+    - platform/src/lib/conversations/**
+    - platform/src/lib/conversations.ts
+    - platform/src/app/journey1.css
+    - platform/tests/consultation10/**
+    - platform/tests/journey1/shell.test.tsx
+    - platform/tests/pariprashna/a11y/use_visual_viewport.test.tsx
+    - platform/tests/unit/*consult*
+    - 00_ARCHITECTURE/briefs/consultation10/**
+    - 00_ARCHITECTURE/CURRENT_STATE_v1_0.md
+    - 00_ARCHITECTURE/SESSION_LOG.md
+    - Assets/screenshots/consultation10/**
+    - platform/src/components/pariprashna/**
+    - platform/src/app/clients/[[]id]/pariprashna/**
+    - platform/supabase/migrations/*_consultation_tags.sql
+    must_not_touch:
+    - platform/src/lib/pariprashna/pipeline/**
+    - platform/src/lib/build/**
+    - platform/python-sidecar/**
+    - platform/src/lib/retrieval/**
+    - platform/src/app/clients/[[]id]/samiksha/**
+    - platform/src/app/clients/[[]id]/nirmana/**
+    - platform/src/app/share/**
+    - platform-mcp/**
+    - 01_FACTS_LAYER/**
+    - 025_HOLISTIC_SYNTHESIS/**
+    - 06_LEARNING_LAYER/**
+    - platform/migrations/**
+  mirror_pair_freshness_check: []
+  native_directive_obligations: []
+  red_team_due: true
+  notes: Direct owner request to implement review 10 only. Local uncommitted source/checks;
+    no new deploy authority consumed from Journey1-specific CCD-021. Engine and provider
+    execution unchanged. No independent agent review claimed. Desktop profile is scope
+    classification only.
+desktop_provenance: Codex desktop; madhav-safe is scope class, not a claim of launching
+  named CLI profile.
+```
+
+### Outcome
+
+Review10 consultation implemented locally in `codex/portal-experience`: shared Madhav shell, default-closed persistent-pin history/evidence panels, exact Grounding/Windows/History tabs, inline/right-pane grounding selection below Ask composer, owned durable conversation/answer tags and restored canonical conversation history. Stream identity, stop/reconnect, actual evidence and share/export controls preserved.
+
+Full lint (zero errors /628 inherited warnings), TypeScript and1,413 unit files /15,663 tests passed; zero unexpected failures. Actual-component browser checks passed on desktop1440×1000, mobile390×844 and compact390×480 with fictional transport-only data. Dedicated disposable PostgreSQL17 proves migration rerun, owner isolation, canonical/legacy history, invalid-receipt refusal and a real chart-correction/answer-tag lock race. Independent migration/integration review returned MIGRATION SAFE.
+
+Application source uncommitted, no app PR/push/merge/deploy. Migration1307 authored/reserved, not applied to an application DB. Existing production consultationHTTP400/engine issue remains unqualified. Other Journey2 pages and foreign worktrees untouched. Coordination-only lease release pushed and verified as `bd80de8b0cbff525467318d882817cab5845ca34`; task-owned test runtimes stopped. Two inherited LOW local DB-schema checks booked, with no production fallback.
+
+Evidence and release boundaries: `00_ARCHITECTURE/briefs/consultation10/IMPLEMENTATION.md`, `CHECKS.json`, `BROWSER_VERIFICATION.json`, `DATABASE_VERIFICATION.json`, `RED_TEAM.md` and actual-component screenshots.
+
+### Session-close checklist
+
+```yaml
+session_close:
+  session_id: MADHAV_CONSULTATION10_IMPLEMENTATION_20261005
+  closed_at: '2026-10-05T18:52:55.417347+00:00'
+  tool: Codex
+  step_completed: Review10 consultation local implementation and verification only
+  files_touched:
+  - path: 00_ARCHITECTURE/CURRENT_STATE_v1_0.md
+    mutation_type: modified
+    sha256_before: 0847ce167d680bc8ab9ccf3e933086c656915ff58e0b41fe1ba957bdf72a763a
+    sha256_after: 1090e48a469724ad6575b0563239829cbc25dbc53989434aa0a4e4885667fc0a
+    justification: Review10 runtime, scoped regression/browser/disposable checks, owned verification evidence or session state/log.
+      No engine, foreign source or other journey change.
+    reason: Scoped local implementation or evidence; exact content digest recorded.
+    within_declared_scope: true
+  - path: 00_ARCHITECTURE/SESSION_LOG.md
+    mutation_type: modified
+    sha256_before: cddd616da965de451812c3e541d17200cdcc96047d54a18b0af07ac841aa5afa
+    sha256_after: null
+    justification: Review10 runtime, scoped regression/browser/disposable checks, owned verification evidence or session state/log.
+      No engine, foreign source or other journey change.
+    reason: Validated atomic append / self-referential closure artifact; no recursive after hash.
+    within_declared_scope: true
+  - path: 00_ARCHITECTURE/briefs/consultation10/BROWSER_VERIFICATION.json
+    mutation_type: created
+    sha256_before: null
+    sha256_after: 18e2b1173805c20957062c99247bd58cb60f186c1c44c212c886714052fcec05
+    justification: Review10 runtime, scoped regression/browser/disposable checks, owned verification evidence or session state/log.
+      No engine, foreign source or other journey change.
+    reason: Scoped local implementation or evidence; exact content digest recorded.
+    within_declared_scope: true
+  - path: 00_ARCHITECTURE/briefs/consultation10/CHECKS.json
+    mutation_type: created
+    sha256_before: null
+    sha256_after: 87ae62e0dd39f45706ae2da02c01b2df13ab86b988d4529f7ca66a65ae4c80e8
+    justification: Review10 runtime, scoped regression/browser/disposable checks, owned verification evidence or session state/log.
+      No engine, foreign source or other journey change.
+    reason: Scoped local implementation or evidence; exact content digest recorded.
+    within_declared_scope: true
+  - path: 00_ARCHITECTURE/briefs/consultation10/CLOSE_VALIDATION.json
+    mutation_type: created
+    sha256_before: null
+    sha256_after: null
+    justification: Review10 runtime, scoped regression/browser/disposable checks, owned verification evidence or session state/log.
+      No engine, foreign source or other journey change.
+    reason: Validated atomic append / self-referential closure artifact; no recursive after hash.
+    within_declared_scope: true
+  - path: 00_ARCHITECTURE/briefs/consultation10/CLOSE_VALIDATION.md
+    mutation_type: created
+    sha256_before: null
+    sha256_after: null
+    justification: Review10 runtime, scoped regression/browser/disposable checks, owned verification evidence or session state/log.
+      No engine, foreign source or other journey change.
+    reason: Validated atomic append / self-referential closure artifact; no recursive after hash.
+    within_declared_scope: true
+  - path: 00_ARCHITECTURE/briefs/consultation10/DATABASE_VERIFICATION.json
+    mutation_type: created
+    sha256_before: null
+    sha256_after: 6bf987cb36788f11fcfc3d4bd42325fbb16921b2a395afa70fa4c768cb55cef0
+    justification: Review10 runtime, scoped regression/browser/disposable checks, owned verification evidence or session state/log.
+      No engine, foreign source or other journey change.
+    reason: Scoped local implementation or evidence; exact content digest recorded.
+    within_declared_scope: true
+  - path: 00_ARCHITECTURE/briefs/consultation10/DRIFT.json
+    mutation_type: created
+    sha256_before: null
+    sha256_after: 977febb3192381ebeb2ebc959aadeadc117bae46ad2a0b5f60992739570c0e94
+    justification: Review10 runtime, scoped regression/browser/disposable checks, owned verification evidence or session state/log.
+      No engine, foreign source or other journey change.
+    reason: Scoped local implementation or evidence; exact content digest recorded.
+    within_declared_scope: true
+  - path: 00_ARCHITECTURE/briefs/consultation10/DRIFT.md
+    mutation_type: created
+    sha256_before: null
+    sha256_after: 962008d7898aad7ca8df0fd35b9e9617192af05b32c8333dd7127283a783e0fa
+    justification: Review10 runtime, scoped regression/browser/disposable checks, owned verification evidence or session state/log.
+      No engine, foreign source or other journey change.
+    reason: Scoped local implementation or evidence; exact content digest recorded.
+    within_declared_scope: true
+  - path: 00_ARCHITECTURE/briefs/consultation10/IMPLEMENTATION.md
+    mutation_type: created
+    sha256_before: null
+    sha256_after: 81db115d645f3b773bdd512085d00e7958b14500694b72f59d0a067cea610a95
+    justification: Review10 runtime, scoped regression/browser/disposable checks, owned verification evidence or session state/log.
+      No engine, foreign source or other journey change.
+    reason: Scoped local implementation or evidence; exact content digest recorded.
+    within_declared_scope: true
+  - path: 00_ARCHITECTURE/briefs/consultation10/OPEN_VALIDATION.json
+    mutation_type: created
+    sha256_before: null
+    sha256_after: 1f82f40a0fc9e5c83842325c594f15276993a54d28eb0b0c39600288e6925a6b
+    justification: Review10 runtime, scoped regression/browser/disposable checks, owned verification evidence or session state/log.
+      No engine, foreign source or other journey change.
+    reason: Scoped local implementation or evidence; exact content digest recorded.
+    within_declared_scope: true
+  - path: 00_ARCHITECTURE/briefs/consultation10/OPEN_VALIDATION.md
+    mutation_type: created
+    sha256_before: null
+    sha256_after: acba280415d5a9c66bd6c3c1b490d39871dacfbb2e281ef7663b3fb3a515706a
+    justification: Review10 runtime, scoped regression/browser/disposable checks, owned verification evidence or session state/log.
+      No engine, foreign source or other journey change.
+    reason: Scoped local implementation or evidence; exact content digest recorded.
+    within_declared_scope: true
+  - path: 00_ARCHITECTURE/briefs/consultation10/RED_TEAM.md
+    mutation_type: created
+    sha256_before: null
+    sha256_after: a922f656710faec5d327d59a810a94419a953ecc1e7c0edfc169adbe9eca1f98
+    justification: Review10 runtime, scoped regression/browser/disposable checks, owned verification evidence or session state/log.
+      No engine, foreign source or other journey change.
+    reason: Scoped local implementation or evidence; exact content digest recorded.
+    within_declared_scope: true
+  - path: 00_ARCHITECTURE/briefs/consultation10/SESSION_CLOSE.yaml
+    mutation_type: created
+    sha256_before: null
+    sha256_after: null
+    justification: Review10 runtime, scoped regression/browser/disposable checks, owned verification evidence or session state/log.
+      No engine, foreign source or other journey change.
+    reason: Validated atomic append / self-referential closure artifact; no recursive after hash.
+    within_declared_scope: true
+  - path: 00_ARCHITECTURE/briefs/consultation10/SESSION_OPEN.yaml
+    mutation_type: created
+    sha256_before: null
+    sha256_after: 22c8f4acd1297fbbfbae40596a4b23f5789a5573a4d7f80a94295d8ed00de01c
+    justification: Review10 runtime, scoped regression/browser/disposable checks, owned verification evidence or session state/log.
+      No engine, foreign source or other journey change.
+    reason: Scoped local implementation or evidence; exact content digest recorded.
+    within_declared_scope: true
+  - path: Assets/screenshots/consultation10/1440-closed.png
+    mutation_type: created
+    sha256_before: null
+    sha256_after: 66055578c196eadd1d13d1b27d9a1dfe6b44f9d1b0c907c758941346ee666955
+    justification: Review10 runtime, scoped regression/browser/disposable checks, owned verification evidence or session state/log.
+      No engine, foreign source or other journey change.
+    reason: Scoped local implementation or evidence; exact content digest recorded.
+    within_declared_scope: true
+  - path: Assets/screenshots/consultation10/1440-grounding.png
+    mutation_type: created
+    sha256_before: null
+    sha256_after: 7334f8ae1e7c659ade6b348e28c4002667e95cb1fd8e9ab37f48e4299889e972
+    justification: Review10 runtime, scoped regression/browser/disposable checks, owned verification evidence or session state/log.
+      No engine, foreign source or other journey change.
+    reason: Scoped local implementation or evidence; exact content digest recorded.
+    within_declared_scope: true
+  - path: Assets/screenshots/consultation10/390-closed.png
+    mutation_type: created
+    sha256_before: null
+    sha256_after: 430337d77ed18a5c5902c6210b62f0b4c0870a3e78ea8508a543a6ab74735ff0
+    justification: Review10 runtime, scoped regression/browser/disposable checks, owned verification evidence or session state/log.
+      No engine, foreign source or other journey change.
+    reason: Scoped local implementation or evidence; exact content digest recorded.
+    within_declared_scope: true
+  - path: Assets/screenshots/consultation10/390-grounding.png
+    mutation_type: created
+    sha256_before: null
+    sha256_after: ea09cd4fd9344f8b81d34093810e8b6c9e5a06b4ee35e2f608e2be7d560bddf6
+    justification: Review10 runtime, scoped regression/browser/disposable checks, owned verification evidence or session state/log.
+      No engine, foreign source or other journey change.
+    reason: Scoped local implementation or evidence; exact content digest recorded.
+    within_declared_scope: true
+  - path: Assets/screenshots/consultation10/390-keyboard-sized.png
+    mutation_type: created
+    sha256_before: null
+    sha256_after: 278ebd96f40470a3d44d0f67434bf179be3573a698bbf02deb8639b91e10f14f
+    justification: Review10 runtime, scoped regression/browser/disposable checks, owned verification evidence or session state/log.
+      No engine, foreign source or other journey change.
+    reason: Scoped local implementation or evidence; exact content digest recorded.
+    within_declared_scope: true
+  - path: platform/src/app/api/conversations/[id]/consultation/route.ts
+    mutation_type: modified
+    sha256_before: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+    sha256_after: 08b407c3215a9b0eab8b35640009e1832c7f253d7c54dbb71e4c60ca6db65704
+    justification: Review10 runtime, scoped regression/browser/disposable checks, owned verification evidence or session state/log.
+      No engine, foreign source or other journey change.
+    reason: Scoped local implementation or evidence; exact content digest recorded.
+    within_declared_scope: true
+  - path: platform/src/app/api/conversations/consultation/route.ts
+    mutation_type: created
+    sha256_before: null
+    sha256_after: 00b5cadd215bc4505cc1d87b11573ac98ac4f9d5d3d4b30030bad8f18dcbd347
+    justification: Review10 runtime, scoped regression/browser/disposable checks, owned verification evidence or session state/log.
+      No engine, foreign source or other journey change.
+    reason: Scoped local implementation or evidence; exact content digest recorded.
+    within_declared_scope: true
+  - path: platform/src/app/clients/[id]/pariprashna/layout.tsx
+    mutation_type: modified
+    sha256_before: d3015a2b5b08d588630ad71c9f03b43c7b44764db81b7aa4e5314ddae5a8df8e
+    sha256_after: c78fc2065ca8351cdf0f6a68aaada58e0c2ea6c7db1379f32b12be356c89507d
+    justification: Review10 runtime, scoped regression/browser/disposable checks, owned verification evidence or session state/log.
+      No engine, foreign source or other journey change.
+    reason: Scoped local implementation or evidence; exact content digest recorded.
+    within_declared_scope: true
+  - path: platform/src/app/clients/[id]/pariprashna/page.tsx
+    mutation_type: modified
+    sha256_before: 715a6723cba4b5597a05199d276563121b154772f8ef4ec9ac41d28400d268e9
+    sha256_after: 2277331c8eb30739b18f9fdc31c49399b48f4ac0c1280d84fc26f7314fe6aaac
+    justification: Review10 runtime, scoped regression/browser/disposable checks, owned verification evidence or session state/log.
+      No engine, foreign source or other journey change.
+    reason: Scoped local implementation or evidence; exact content digest recorded.
+    within_declared_scope: true
+  - path: platform/src/components/journey1/JourneyShell.tsx
+    mutation_type: modified
+    sha256_before: 92d667f547e668c20216cd211579a36652e098d24e7843a0b85c44831c771fd4
+    sha256_after: 58dd8f92ac9aeb4a04e0792a81907aa065f5f4b6083a9e75a27d792c2e90b579
+    justification: Review10 runtime, scoped regression/browser/disposable checks, owned verification evidence or session state/log.
+      No engine, foreign source or other journey change.
+    reason: Scoped local implementation or evidence; exact content digest recorded.
+    within_declared_scope: true
+  - path: platform/src/components/pariprashna/PariprashnaApp.tsx
+    mutation_type: modified
+    sha256_before: 483f12382bfca272f3fe3f6047af663226319f48d9de6c4b6ebee7daf05faac2
+    sha256_after: c443568b24e741d92c0fb85ed0818337a30de27e28ca3768622b51239de1862f
+    justification: Review10 runtime, scoped regression/browser/disposable checks, owned verification evidence or session state/log.
+      No engine, foreign source or other journey change.
+    reason: Scoped local implementation or evidence; exact content digest recorded.
+    within_declared_scope: true
+  - path: platform/src/components/pariprashna/ThreadHeader.tsx
+    mutation_type: modified
+    sha256_before: 83901b34b4034f390faf61e211133d544ca43f375572357121269d4e472dec82
+    sha256_after: e6374f3120af80b999e99b2c724012d3b8ec3cab657c06318ff1fa3ed5206ac3
+    justification: Review10 runtime, scoped regression/browser/disposable checks, owned verification evidence or session state/log.
+      No engine, foreign source or other journey change.
+    reason: Scoped local implementation or evidence; exact content digest recorded.
+    within_declared_scope: true
+  - path: platform/src/components/pariprashna/Turn.tsx
+    mutation_type: modified
+    sha256_before: ec825ac7655ee25a83570418dcc05c3586e24aaece9d6c940aa1eab080465d44
+    sha256_after: adc520ddf320b8cebc34a429c59b16a5d8fbc4e2e7fb2c5af51fdae67b8b9a7e
+    justification: Review10 runtime, scoped regression/browser/disposable checks, owned verification evidence or session state/log.
+      No engine, foreign source or other journey change.
+    reason: Scoped local implementation or evidence; exact content digest recorded.
+    within_declared_scope: true
+  - path: platform/src/components/pariprashna/__tests__/ThreadHeader.test.tsx
+    mutation_type: modified
+    sha256_before: 8355e62591980e5372ab7e6b44caf3e02e93f9ba72bc7b1483520033f53faeb9
+    sha256_after: 2ebad7034a1d357df9e275f473904cf29fce46a689e1474c6edeaaf07d29cab5
+    justification: Review10 runtime, scoped regression/browser/disposable checks, owned verification evidence or session state/log.
+      No engine, foreign source or other journey change.
+    reason: Scoped local implementation or evidence; exact content digest recorded.
+    within_declared_scope: true
+  - path: platform/src/components/pariprashna/__tests__/history_merge.test.tsx
+    mutation_type: modified
+    sha256_before: cbfec8daf8fb2db3cc3fb5d19afe5e9cc085cc0b676da9eba68de062251d6449
+    sha256_after: cb6e19a2e9a3621eb474c528276afcb4913e7be1ff3d478f3b7d656330aada65
+    justification: Review10 runtime, scoped regression/browser/disposable checks, owned verification evidence or session state/log.
+      No engine, foreign source or other journey change.
+    reason: Scoped local implementation or evidence; exact content digest recorded.
+    within_declared_scope: true
+  - path: platform/src/components/pariprashna/composer/Composer.tsx
+    mutation_type: modified
+    sha256_before: 4b33ae1d04bf55a115b22c040ff2025ec0f4e73cefa8a85c6bb105b8fca1e24b
+    sha256_after: 200ac6f3dc9eab382855536591dcfc62928cfd7e24670cc242c501f6caadf0c5
+    justification: Review10 runtime, scoped regression/browser/disposable checks, owned verification evidence or session state/log.
+      No engine, foreign source or other journey change.
+    reason: Scoped local implementation or evidence; exact content digest recorded.
+    within_declared_scope: true
+  - path: platform/src/components/pariprashna/dock/DockController.tsx
+    mutation_type: modified
+    sha256_before: 50eec3c6cc6131a3ffc18402ed5b375e1a731a375ab76ee5c356f075af970dc1
+    sha256_after: 2f139fb1df2b1a6c0d7a51c55b23c4c91209264f9fb29324d25ae835bbd1f066
+    justification: Review10 runtime, scoped regression/browser/disposable checks, owned verification evidence or session state/log.
+      No engine, foreign source or other journey change.
+    reason: Scoped local implementation or evidence; exact content digest recorded.
+    within_declared_scope: true
+  - path: platform/src/components/pariprashna/dock/RightDock.tsx
+    mutation_type: modified
+    sha256_before: 3e1be02f25ff09746841a63221468639c9cebe268e85d70aacbdb33761d40a56
+    sha256_after: 147267490879b39a85b89cc5d51c5493d53b8d5d9ca9bd5469705d9aa3a21c77
+    justification: Review10 runtime, scoped regression/browser/disposable checks, owned verification evidence or session state/log.
+      No engine, foreign source or other journey change.
+    reason: Scoped local implementation or evidence; exact content digest recorded.
+    within_declared_scope: true
+  - path: platform/src/components/pariprashna/dock/WorkspacePanel.tsx
+    mutation_type: created
+    sha256_before: null
+    sha256_after: 03fd77a41d7755b26074fde02ddc57bdae55a32b010b69a16b233725fc43ea91
+    justification: Review10 runtime, scoped regression/browser/disposable checks, owned verification evidence or session state/log.
+      No engine, foreign source or other journey change.
+    reason: Scoped local implementation or evidence; exact content digest recorded.
+    within_declared_scope: true
+  - path: platform/src/components/pariprashna/history/ConsultationHistory.tsx
+    mutation_type: created
+    sha256_before: null
+    sha256_after: 2a7d58ab87c3655c6c38a7826e544ed18e22f1353ad1b48a163fa2aea3e5411c
+    justification: Review10 runtime, scoped regression/browser/disposable checks, owned verification evidence or session state/log.
+      No engine, foreign source or other journey change.
+    reason: Scoped local implementation or evidence; exact content digest recorded.
+    within_declared_scope: true
+  - path: platform/src/components/pariprashna/history/TagActions.tsx
+    mutation_type: created
+    sha256_before: null
+    sha256_after: 23c3fcc55c6ccd0886f1772422145bcf513c1d5f4d3cd14081dc3b3cf98ded15
+    justification: Review10 runtime, scoped regression/browser/disposable checks, owned verification evidence or session state/log.
+      No engine, foreign source or other journey change.
+    reason: Scoped local implementation or evidence; exact content digest recorded.
+    within_declared_scope: true
+  - path: platform/src/components/pariprashna/history/restore.ts
+    mutation_type: created
+    sha256_before: null
+    sha256_after: 241e81ab25fea755915f7b74ef3fc84766679185e93ce35de18bd41e731702ad
+    justification: Review10 runtime, scoped regression/browser/disposable checks, owned verification evidence or session state/log.
+      No engine, foreign source or other journey change.
+    reason: Scoped local implementation or evidence; exact content digest recorded.
+    within_declared_scope: true
+  - path: platform/src/components/pariprashna/hooks/useLiveStream.ts
+    mutation_type: modified
+    sha256_before: d09e94fba93975944d9f05960d4eed00c98b7d7e458b3b774c6e806f25f58a64
+    sha256_after: 6d92cc90290979114bed08916dce2ff2faa825fded70657af6b3cd773ab0ca7f
+    justification: Review10 runtime, scoped regression/browser/disposable checks, owned verification evidence or session state/log.
+      No engine, foreign source or other journey change.
+    reason: Scoped local implementation or evidence; exact content digest recorded.
+    within_declared_scope: true
+  - path: platform/src/components/pariprashna/pariprashna.css
+    mutation_type: modified
+    sha256_before: 794f3380875ed15502b017aa8bcbc96c2989d8d152108a6492e4f89909d13b72
+    sha256_after: 85087eae458c6ffb4b2e84ab80040cd2d9fae3e164769b985f78af840bccaa1b
+    justification: Review10 runtime, scoped regression/browser/disposable checks, owned verification evidence or session state/log.
+      No engine, foreign source or other journey change.
+    reason: Scoped local implementation or evidence; exact content digest recorded.
+    within_declared_scope: true
+  - path: platform/src/components/pariprashna/state/reducer.ts
+    mutation_type: modified
+    sha256_before: fcbb52b992c3250f5bdaba0f1b1d258b4ccf4091671dffda3415e82cf6217436
+    sha256_after: 66738b3787f0a4ed54d3fe90c45696263ba458c5fb53165c65338d18b5024650
+    justification: Review10 runtime, scoped regression/browser/disposable checks, owned verification evidence or session state/log.
+      No engine, foreign source or other journey change.
+    reason: Scoped local implementation or evidence; exact content digest recorded.
+    within_declared_scope: true
+  - path: platform/src/components/pariprashna/state/s1LiveAdapter.ts
+    mutation_type: modified
+    sha256_before: be251e6a9a0ff438c7df90a1db8f9a10b6bcf1999469498d038b9dcba94e6fbd
+    sha256_after: c1f360b7d964096f23da333c57cec247a1c18c93d8d4c9d5553f98536f85e8c1
+    justification: Review10 runtime, scoped regression/browser/disposable checks, owned verification evidence or session state/log.
+      No engine, foreign source or other journey change.
+    reason: Scoped local implementation or evidence; exact content digest recorded.
+    within_declared_scope: true
+  - path: platform/src/components/pariprashna/state/types.ts
+    mutation_type: modified
+    sha256_before: ee0528819aca534496be7ee4aefb426e4b680abf2f0d3b7e16a13fad52adbe3d
+    sha256_after: 8b575e47cfa2416212920ff5d1dea2c43010fbd99ef6bf03d18fb3ab29f8cbab
+    justification: Review10 runtime, scoped regression/browser/disposable checks, owned verification evidence or session state/log.
+      No engine, foreign source or other journey change.
+    reason: Scoped local implementation or evidence; exact content digest recorded.
+    within_declared_scope: true
+  - path: platform/src/lib/conversations/consultation.ts
+    mutation_type: created
+    sha256_before: null
+    sha256_after: 8852867ed634b6da9a341e766f4d2fb9d7acdaef2ab80e6ae9f42896e096e6c7
+    justification: Review10 runtime, scoped regression/browser/disposable checks, owned verification evidence or session state/log.
+      No engine, foreign source or other journey change.
+    reason: Scoped local implementation or evidence; exact content digest recorded.
+    within_declared_scope: true
+  - path: platform/supabase/migrations/1307_consultation_tags.sql
+    mutation_type: created
+    sha256_before: null
+    sha256_after: fe9f8c56493a60eb6800fb79875944ee2c26192ed0e356acd8eca7da5259e95f
+    justification: Review10 runtime, scoped regression/browser/disposable checks, owned verification evidence or session state/log.
+      No engine, foreign source or other journey change.
+    reason: Scoped local implementation or evidence; exact content digest recorded.
+    within_declared_scope: true
+  - path: platform/tests/consultation10/browser-check.mts
+    mutation_type: created
+    sha256_before: null
+    sha256_after: 22e5103e0680fb0df440d6abe0e4504b833c76b82cd159980212b2dc2aa972ec
+    justification: Review10 runtime, scoped regression/browser/disposable checks, owned verification evidence or session state/log.
+      No engine, foreign source or other journey change.
+    reason: Scoped local implementation or evidence; exact content digest recorded.
+    within_declared_scope: true
+  - path: platform/tests/consultation10/browser/index.html
+    mutation_type: created
+    sha256_before: null
+    sha256_after: 04ae144b0b86fcf4925d547886b9f6afa96e9cc84847ca8346e3f6da15989a58
+    justification: Review10 runtime, scoped regression/browser/disposable checks, owned verification evidence or session state/log.
+      No engine, foreign source or other journey change.
+    reason: Scoped local implementation or evidence; exact content digest recorded.
+    within_declared_scope: true
+  - path: platform/tests/consultation10/browser/link.tsx
+    mutation_type: created
+    sha256_before: null
+    sha256_after: 115d94799268839e722c07bae7b500933d45daaaa81f11e7d10260309a5d8a75
+    justification: Review10 runtime, scoped regression/browser/disposable checks, owned verification evidence or session state/log.
+      No engine, foreign source or other journey change.
+    reason: Scoped local implementation or evidence; exact content digest recorded.
+    within_declared_scope: true
+  - path: platform/tests/consultation10/browser/main.tsx
+    mutation_type: created
+    sha256_before: null
+    sha256_after: 2cd4c4bba34442c840c045ffd5fa7bed1f67ad326cd117151d7a8e33731866ae
+    justification: Review10 runtime, scoped regression/browser/disposable checks, owned verification evidence or session state/log.
+      No engine, foreign source or other journey change.
+    reason: Scoped local implementation or evidence; exact content digest recorded.
+    within_declared_scope: true
+  - path: platform/tests/consultation10/browser/navigation.ts
+    mutation_type: created
+    sha256_before: null
+    sha256_after: efddc628b4f6a88b202f9134beee42445739f7f3de0ccd9b12b2a8c84fec3548
+    justification: Review10 runtime, scoped regression/browser/disposable checks, owned verification evidence or session state/log.
+      No engine, foreign source or other journey change.
+    reason: Scoped local implementation or evidence; exact content digest recorded.
+    within_declared_scope: true
+  - path: platform/tests/consultation10/browser/vite.config.ts
+    mutation_type: created
+    sha256_before: null
+    sha256_after: 639f57fb958657d3ea31283b6458ef844e0a43dd32b2cf2fa99d63209b48a991
+    justification: Review10 runtime, scoped regression/browser/disposable checks, owned verification evidence or session state/log.
+      No engine, foreign source or other journey change.
+    reason: Scoped local implementation or evidence; exact content digest recorded.
+    within_declared_scope: true
+  - path: platform/tests/consultation10/database-verification.mts
+    mutation_type: created
+    sha256_before: null
+    sha256_after: b25cec4f570372276a2434f547933b2cd57fc728906decbb2e2b64edef7e750c
+    justification: Review10 runtime, scoped regression/browser/disposable checks, owned verification evidence or session state/log.
+      No engine, foreign source or other journey change.
+    reason: Scoped local implementation or evidence; exact content digest recorded.
+    within_declared_scope: true
+  - path: platform/tests/consultation10/restore.test.ts
+    mutation_type: created
+    sha256_before: null
+    sha256_after: 7de46443f0fd06eff8fa14fcb4f92f10c8e47e52b366a6e3e0369f62d7987569
+    justification: Review10 runtime, scoped regression/browser/disposable checks, owned verification evidence or session state/log.
+      No engine, foreign source or other journey change.
+    reason: Scoped local implementation or evidence; exact content digest recorded.
+    within_declared_scope: true
+  - path: platform/tests/consultation10/tags.test.ts
+    mutation_type: created
+    sha256_before: null
+    sha256_after: e561127f19f690e6610b7df36b75fe1705124769f3915864153df02a5ab383b9
+    justification: Review10 runtime, scoped regression/browser/disposable checks, owned verification evidence or session state/log.
+      No engine, foreign source or other journey change.
+    reason: Scoped local implementation or evidence; exact content digest recorded.
+    within_declared_scope: true
+  - path: platform/tests/consultation10/transport.test.tsx
+    mutation_type: created
+    sha256_before: null
+    sha256_after: 8d2e4a4e94937811e87dfa123f58824247974b3707a8e6c1c6ef709ab7e12378
+    justification: Review10 runtime, scoped regression/browser/disposable checks, owned verification evidence or session state/log.
+      No engine, foreign source or other journey change.
+    reason: Scoped local implementation or evidence; exact content digest recorded.
+    within_declared_scope: true
+  - path: platform/tests/consultation10/workspace.test.tsx
+    mutation_type: created
+    sha256_before: null
+    sha256_after: 523db45eb4658a8a6c3332a8d2bb00d912c35f9dc688f8111fc42292baceeb75
+    justification: Review10 runtime, scoped regression/browser/disposable checks, owned verification evidence or session state/log.
+      No engine, foreign source or other journey change.
+    reason: Scoped local implementation or evidence; exact content digest recorded.
+    within_declared_scope: true
+  - path: platform/tests/journey1/shell.test.tsx
+    mutation_type: modified
+    sha256_before: b6916edd8118fa2d407e7f99f820a781ae7dabc85002e046c04b8ae9df88fed2
+    sha256_after: d6f092b2c15d2d2cea83ad327cc802ccd63c82b6a9be6dfc2b1f438a4dcf2158
+    justification: Review10 runtime, scoped regression/browser/disposable checks, owned verification evidence or session state/log.
+      No engine, foreign source or other journey change.
+    reason: Scoped local implementation or evidence; exact content digest recorded.
+    within_declared_scope: true
+  - path: platform/tests/pariprashna/a11y/use_visual_viewport.test.tsx
+    mutation_type: modified
+    sha256_before: 5ea8240153be78c9ad87d5a4fd42a342fc44258d6affe2a501420b3644d1e15e
+    sha256_after: 122e814955c53bf312bb3f143b0541d587b8ff28def3f3d30cf17edfd98951d3
+    justification: Review10 runtime, scoped regression/browser/disposable checks, owned verification evidence or session state/log.
+      No engine, foreign source or other journey change.
+    reason: Scoped local implementation or evidence; exact content digest recorded.
+    within_declared_scope: true
+  - path: 00_ARCHITECTURE/briefs/consultation10/CLOSE_TIMESTAMP.txt
+    mutation_type: created
+    sha256_before: null
+    sha256_after: f818801f36168a6f6a0ebdcf61293fc9a49345755823c66b2df73baa303b7433
+    justification: Own closure timestamp
+    reason: created_this_session
+    within_declared_scope: true
+  artifacts_produced: &id001
+  - 00_ARCHITECTURE/CURRENT_STATE_v1_0.md
+  - 00_ARCHITECTURE/SESSION_LOG.md
+  - 00_ARCHITECTURE/briefs/consultation10/BROWSER_VERIFICATION.json
+  - 00_ARCHITECTURE/briefs/consultation10/CHECKS.json
+  - 00_ARCHITECTURE/briefs/consultation10/CLOSE_VALIDATION.json
+  - 00_ARCHITECTURE/briefs/consultation10/CLOSE_VALIDATION.md
+  - 00_ARCHITECTURE/briefs/consultation10/DATABASE_VERIFICATION.json
+  - 00_ARCHITECTURE/briefs/consultation10/DRIFT.json
+  - 00_ARCHITECTURE/briefs/consultation10/DRIFT.md
+  - 00_ARCHITECTURE/briefs/consultation10/IMPLEMENTATION.md
+  - 00_ARCHITECTURE/briefs/consultation10/OPEN_VALIDATION.json
+  - 00_ARCHITECTURE/briefs/consultation10/OPEN_VALIDATION.md
+  - 00_ARCHITECTURE/briefs/consultation10/RED_TEAM.md
+  - 00_ARCHITECTURE/briefs/consultation10/SESSION_CLOSE.yaml
+  - 00_ARCHITECTURE/briefs/consultation10/SESSION_OPEN.yaml
+  - Assets/screenshots/consultation10/1440-closed.png
+  - Assets/screenshots/consultation10/1440-grounding.png
+  - Assets/screenshots/consultation10/390-closed.png
+  - Assets/screenshots/consultation10/390-grounding.png
+  - Assets/screenshots/consultation10/390-keyboard-sized.png
+  - platform/src/app/api/conversations/[id]/consultation/route.ts
+  - platform/src/app/api/conversations/consultation/route.ts
+  - platform/src/app/clients/[id]/pariprashna/layout.tsx
+  - platform/src/app/clients/[id]/pariprashna/page.tsx
+  - platform/src/components/journey1/JourneyShell.tsx
+  - platform/src/components/pariprashna/PariprashnaApp.tsx
+  - platform/src/components/pariprashna/ThreadHeader.tsx
+  - platform/src/components/pariprashna/Turn.tsx
+  - platform/src/components/pariprashna/__tests__/ThreadHeader.test.tsx
+  - platform/src/components/pariprashna/__tests__/history_merge.test.tsx
+  - platform/src/components/pariprashna/composer/Composer.tsx
+  - platform/src/components/pariprashna/dock/DockController.tsx
+  - platform/src/components/pariprashna/dock/RightDock.tsx
+  - platform/src/components/pariprashna/dock/WorkspacePanel.tsx
+  - platform/src/components/pariprashna/history/ConsultationHistory.tsx
+  - platform/src/components/pariprashna/history/TagActions.tsx
+  - platform/src/components/pariprashna/history/restore.ts
+  - platform/src/components/pariprashna/hooks/useLiveStream.ts
+  - platform/src/components/pariprashna/pariprashna.css
+  - platform/src/components/pariprashna/state/reducer.ts
+  - platform/src/components/pariprashna/state/s1LiveAdapter.ts
+  - platform/src/components/pariprashna/state/types.ts
+  - platform/src/lib/conversations/consultation.ts
+  - platform/supabase/migrations/1307_consultation_tags.sql
+  - platform/tests/consultation10/browser-check.mts
+  - platform/tests/consultation10/browser/index.html
+  - platform/tests/consultation10/browser/link.tsx
+  - platform/tests/consultation10/browser/main.tsx
+  - platform/tests/consultation10/browser/navigation.ts
+  - platform/tests/consultation10/browser/vite.config.ts
+  - platform/tests/consultation10/database-verification.mts
+  - platform/tests/consultation10/restore.test.ts
+  - platform/tests/consultation10/tags.test.ts
+  - platform/tests/consultation10/transport.test.tsx
+  - platform/tests/consultation10/workspace.test.tsx
+  - platform/tests/journey1/shell.test.tsx
+  - platform/tests/pariprashna/a11y/use_visual_viewport.test.tsx
+  - 00_ARCHITECTURE/briefs/consultation10/CLOSE_TIMESTAMP.txt
+  - 00_ARCHITECTURE/briefs/consultation10/CLOSE_TIMESTAMP.txt
+  may_touch_actual: *id001
+  must_not_touch_respected: true
+  registry_updates_made:
+    file_registry:
+    - row_before: n/a
+      row_after: 'No registry update required: scoped runtime/tests and owned evidence; live state/session pointer updates
+        only. No canonical declaration, doctrine or schema registry definition changed.'
+      version_of_registry: unchanged
+    governance_stack: []
+    canonical_artifacts: []
+  red_team_due: true
+  red_team_discharged: true
+  red_team_pass:
+    due: true
+    performed: true
+    verdict: PASS_WITH_FIXES
+    artifact_path: 00_ARCHITECTURE/briefs/consultation10/RED_TEAM.md
+  drift_detector_run:
+    script: platform/scripts/governance/drift_detector.py
+    exit_code: 3
+    report_path: 00_ARCHITECTURE/briefs/consultation10/DRIFT.md
+    divergences_found: 2
+  known_residuals:
+  - finding_id: schema_db_unreachable
+    severity: LOW
+    booking_reference:
+      step_id: CONSULTATION10_AUTHENTICATED_RELEASE_ACCEPTANCE
+      rationale: Inherited local PostgreSQL5433 schema-check connection lacks password; no production substitute. Actual migration/history/tag
+        race qualified only in a dedicated disposable PostgreSQL55439 fixture.
+  - finding_id: a3_schema_db_unreachable
+    severity: LOW
+    booking_reference:
+      step_id: CONSULTATION10_AUTHENTICATED_RELEASE_ACCEPTANCE
+      rationale: Inherited local PostgreSQL5433 schema-check connection lacks password; no production substitute. Actual migration/history/tag
+        race qualified only in a dedicated disposable PostgreSQL55439 fixture.
+  schema_validator_run:
+    script: platform/scripts/governance/schema_validator.py
+    exit_code: 0
+    report_path: 00_ARCHITECTURE/briefs/consultation10/CLOSE_VALIDATION.md
+    violations_found: 0
+  current_state_updated: true
+  session_log_appended: true
+  session_log_append_protocol: Validated immediately before atomic append; true attests completion only after append succeeds.
+  cross_tool_sync:
+    ccd_entries_appended: []
+    work_order_outcome_recorded: true
+    work_order_surface: 00_ARCHITECTURE/briefs/consultation10/IMPLEMENTATION.md
+    lease_release_recorded: true
+    lease_release_verified_on_remote: true
+    lease_release_commit: bd80de8b0cbff525467318d882817cab5845ca34
+    coordination_ref: origin/campaign-coordination
+    next_session_can_resume_from:
+    - 00_ARCHITECTURE/briefs/consultation10/IMPLEMENTATION.md
+    - 00_ARCHITECTURE/briefs/consultation10/CHECKS.json
+    - 00_ARCHITECTURE/briefs/consultation10/SESSION_CLOSE.yaml
+    - 00_ARCHITECTURE/CURRENT_STATE_v1_0.md
+  native_overrides: []
+  halts_encountered: []
+  disagreement_register_entries_opened: []
+  disagreement_register_entries_resolved: []
+  native_directive_per_step_verification: []
+  build_state_serialized:
+    serialized: false
+    rationale: No chart asset writer/build state changed.
+  close_criteria_met: true
+  close_criteria_scope: Local uncommitted review10 implementation and hermetic/actual-component/disposable verification only.
+    Does not certify application migration, deployment, authenticated production acceptance or engine/provider behavior.
+  outcome: IMPLEMENTED_LOCALLY_VERIFIED
+  unblocks: Owner review of consultation10 implementation; separately authorized protected release after migration and authenticated
+    acceptance gates. Other review pages remain deferred.
+  handoff_notes: Based on32a463c1a007, local uncommitted code; full lint/types/15,663 tests green. Actual component browser1440/390/compact
+    and disposable PostgreSQL concurrency/canonical SQL passed. Independent migration/integration SAFE.1307 reserved/unapplied
+    application DB; pre-existing productionHTTP400 remains unqualified. No app PR/push/commit/deploy or paid calls; coordination-only
+    lease bookkeeping pushed. Test runtimes stopped, pre-existing untracked portal evidence preserved.
+```
+
+### Next session objective
+
+Owner review of local consultation implementation; any protected release must separately authorize/verify migration1307 and authenticated streaming/history/tag/share/model acceptance. Other review pages remain deferred.
+
+*End of MADHAV_CONSULTATION10_IMPLEMENTATION_20261005 entry.*
