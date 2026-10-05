@@ -30,11 +30,9 @@ import pytest
 # is not evidence).
 EPHE_PATH = os.environ.get("SE_EPHE_PATH", "")
 
-SE1_CHECKSUMS = {
-    "sepl_18.se1": "ca1393ceab3a44fbc895887cf789c68819ae6a1cbc9b22225872dbe4ccd99a66",
-    "semo_18.se1": "1ca07bd67c24374d77226180c20a4f9996cba013697894810518e7eb582ca4f7",
-    "seas_18.se1": "a2cd8fc33807c78ca9a700c91c2e042258b12fc4796519e00781440b5ad8b2e2",
-}
+from services.gochara_kernel.ephemeris_pins import PINNED_SE1_SHA256 as _PINS  # the ONE shared constant
+
+SE1_CHECKSUMS = dict(_PINS)
 
 
 def _verify_se1() -> dict[str, str]:
