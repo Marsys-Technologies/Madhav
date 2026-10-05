@@ -2537,7 +2537,7 @@
       "column": "node_type",
       "equals": "arudha"
      },
-     "why": "the writer inserts the arudha node rows (ON CONFLICT DO NOTHING) and counts each in rows_written; it also updates the centrality columns of the node rows bo_bimba inserts, which this slice excludes"
+     "why": "the writer inserts the arudha node rows (ON CONFLICT DO NOTHING) but its rows_written excludes them, a writer finding for Exec; it also updates the centrality columns of the node rows bo_bimba inserts, which this slice excludes"
     },
     {
      "table": "bodha_cgm_nodes",
@@ -2545,7 +2545,7 @@
       "column": "node_type",
       "equals": "special_lagna"
      },
-     "why": "the writer inserts the special-lagna node rows (ON CONFLICT DO NOTHING) and counts each in rows_written, the same slice rule as the arudha nodes"
+     "why": "the writer inserts the special-lagna node rows (ON CONFLICT DO NOTHING) but its rows_written excludes them, the same writer finding for Exec as the arudha nodes"
     }
    ],
    "vocab_alias": {

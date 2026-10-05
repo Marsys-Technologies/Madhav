@@ -1820,7 +1820,6 @@ class BoKaranajalaWriter(WriterBase):
         now       = datetime.now(timezone.utc).isoformat()
         total_e   = 0
         total_c   = 0
-        total_n   = 0      # arudha + special-lagna node rows this writer inserts into bodha_cgm_nodes (E5.7: reported in rows_written, so the declared produced-table set matches the build record)
 
         for aya in CANONICAL_AYAS:
             signals     = _fetch_signals(conn, chart_id, aya)
@@ -1991,9 +1990,8 @@ class BoKaranajalaWriter(WriterBase):
                 aya, len(edges), len(argala_edges), len(dispositor_edges),
                 len(bhava_edges), len(membership_edges), arudha_nodes_inserted, len(contradictions),
             )
-            total_n += arudha_nodes_inserted
             total_e += _batch_insert(conn, edges, _EDGE_INSERT)
             total_c += _batch_insert(conn, contradictions, _CONTRADICTION_INSERT)
 
-        return WriterResult(asset_id=self.asset_id, rows_inserted=total_e + total_c + total_n,
-                            notes=f"edges={total_e} contradictions={total_c} arudha_special_lagna_nodes={total_n}")
+        return WriterResult(asset_id=self.asset_id, rows_inserted=total_e + total_c,
+                            notes=f"edges={total_e} contradictions={total_c}")

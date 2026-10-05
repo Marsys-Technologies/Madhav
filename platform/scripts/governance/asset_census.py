@@ -6075,10 +6075,10 @@ def produced_set_counts(decl: list, chart_id: str) -> list:
     return out
 
 
-def produced_set_reading(aid: str, decl: list, files: list[str], chart_id: str) -> dict:
+def produced_set_reading(aid: str, decl: list, files: list[str], chart_id: str, raw=None) -> dict:
     """The Build.completion comparison figure for an asset that declares `produced_tables`: `total` = the SUM over the declared tables the writer does not merely UPDATE, `parts` (every declared
     table, counted), `excluded` (declared UPDATE-only tables), `extra` (tables the writer writes that the set does not name), `complete` (the scan read the whole scope). `error` is set, and the
-    rest absent, when the counts cannot be read."""
+    rest absent, when the counts cannot be read. `raw` (the declaration's own `produced_tables` entries) supplies the `why` notes a mismatch is explained by."""
     try:
         counts = produced_set_counts(decl, chart_id)
         w = produced_set_written(aid, files) if files else dict(written=[], update_only=[], delete_only=[], complete=False)      # no recognised writer file: nothing was scanned, so no extra table is ruled out
@@ -6087,9 +6087,11 @@ def produced_set_reading(aid: str, decl: list, files: list[str], chart_id: str) 
     upd = (set(w["update_only"]) | set(w.get("delete_only") or ())) if w["complete"] else set()      # a declared table the writer only UPDATEs or DELETEs from is touched, not produced: read, not summed
     parts = [dict(table=t, filter=f, rows=n, counted=t not in upd) for t, f, n in counts]
     names = {d["table"] for d in decl}
-    return dict(total=sum(p["rows"] for p in parts if p["counted"]), parts=parts, excluded=sorted(p["table"] for p in parts if not p["counted"]),
+    notes = [f"{d['table']}{'[' + d['filter']['column'] + '=' + d['filter']['equals'] + ']' if d.get('filter') else ''}: {d['why']}" for d in (raw or []) if isinstance(d, dict) and d.get("why")]
+    return dict(notes=notes, total=sum(p["rows"] for p in parts if p["counted"]), parts=parts, excluded=sorted(p["table"] for p in parts if not p["counted"]),
                 extra=sorted(t for t in set(w["written"]) | set(w["update_only"]) if t not in names), complete=w["complete"], error=None,
-                unproven=([] if w["complete"] else sorted(n for n in names if n not in set(w["written"]) | set(w["update_only"]))))
+                unproven=([] if w["complete"] else sorted(n for n in names if n not in set(w["written"]) | set(w["update_only"]))),
+                )
 
 
 def produced_set_text(pr: dict) -> str:
@@ -6110,6 +6112,8 @@ def produced_set_verdict(rec: dict, pr: dict) -> dict:
         return rec
     if pr["extra"]:
         return dict(v=FAIL, measured=f"{rec['measured']}; the writer also writes {', '.join(pr['extra'])}, which the declared produced-table set does not name (an undeclared extra table)")
+    if v == FAIL and "disagrees with" in rec.get("measured", "") and not pr.get("unproven") and pr.get("notes"):
+        return dict(rec, measured=f"{rec['measured']}; declared-set notes (the declaration's own reasons for its tables): {' | '.join(pr['notes'])}")      # a mismatch is explained by what the declaration says about each table
     if v == FAIL and pr.get("unproven") and "disagrees with" in rec.get("measured", ""):
         return dict(v=PARTIAL, measured=f"{rec['measured']}; but the writer scan could not read the whole writer scope and {', '.join(pr['unproven'])} is not proven written (it may only be updated), so the declared sum may "
                                         "overcount: the mismatch is not shown to be a defect")
@@ -11435,7 +11439,7 @@ def measure(layer_key: str, assets=None) -> dict:
         pset, pv_done = None, False                                        # N-150: the DECLARED produced-table set replaces count_sql as the comparison
         _dpt = None if is_view else declared_produced_tables((declarations or {}).get(aid) if isinstance(declarations, dict) else None)
         if _dpt is not None:
-            pset = produced_set_reading(aid, _dpt, files, CHART_ID)
+            pset = produced_set_reading(aid, _dpt, files, CHART_ID, ((declarations or {}).get(aid) or {}).get("produced_tables") if isinstance(declarations, dict) else None)
             if pset.get("error") is None:
                 live, ctables, multi, basis = pset["total"], [d["table"] for d in _dpt], True, produced_set_text(pset)
         t, rec_scope = _build_record(thru.get(aid, {}),
