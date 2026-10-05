@@ -1372,8 +1372,8 @@
     "prose_fields": null
    },
    "source": {
-    "na": "no_data",
-    "why": "the sarvatobhadra grid table exists but no writer builds it and it holds no rows: the asset is declared not built",
+    "na": "not_built",
+    "why": "the sarvatobhadra grid table exists but no writer builds it and it holds no rows, so the asset is declared not built and reads as a failure of the build",
     "evidence": "platform/supabase/migrations/529_bg_sarvatobhadra_grid.sql:1"
    }
   },
