@@ -441,7 +441,7 @@ Preflights before anything is inserted (exit 4): the receipt path is validated (
 guard: an existing committed receipt of another run is never overwritten, `RECEIPT_PATH_INVALID`; in commit mode the not-yet-committed
 receipt is probe-written so a permission or disk problem refuses here, not after the COMMIT); `asset_throughput.duration_seconds`
 exists in the database (migration 1200, `DURATION_COLUMN_ABSENT`); and the deployed image's `asset_runner.py` contains the duration
-write (`IMAGE_DOES_NOT_RECORD_DURATION`), next to the force markers. If the receipt still cannot be written after the COMMIT, the
+write (`IMAGE_DOES_NOT_RECORD_DURATION`: the adjacent pair `duration_seconds = %s, rows_per_second = %s` inside an `UPDATE asset_throughput` string of the parsed source; comments, docstrings and an unparseable file never satisfy it), next to the force markers. If the receipt still cannot be written after the COMMIT, the
 planned run is terminalised (same `WHERE state='planned'` statement as a dispatch failure), nothing is dispatched, the event
 `run_committed_receipt_not_written` is emitted, the run id is printed to stderr and the exit is 6. When a dispatch fails (a gcloud
 timeout included) and that terminalise UPDATE affects 0 rows, the run was no longer `planned` (it has already started): the tool then

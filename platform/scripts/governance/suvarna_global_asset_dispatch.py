@@ -63,6 +63,7 @@ Exec runs it; the tests use fakes only. Nothing here is run against production b
 from __future__ import annotations
 
 import argparse
+import ast
 import hashlib
 import json
 import os
@@ -641,7 +642,8 @@ class ReceiptNotWritten(Exception):
         self.detail = (f"run committed, receipt not written: run {run_id} (chart {chart_id}); the receipt write failed "
                        f"({type(cause).__name__}: {cause}). "
                        + ("The planned run was terminalised (state 'failed') and NOTHING was dispatched; fix the receipt path and "
-                          "plan again (--allow-redispatch <run_id> names this run)." if self.terminalised else self.warning or ""))
+                          "plan again (--allow-redispatch <run_id> names this run)." if self.terminalised is True else
+                          (self.warning or f"The run's state is UNKNOWN: verify it with --verify-run {run_id}.")))
         super().__init__(self.detail)
 
 
@@ -674,7 +676,12 @@ def terminalise_planned_run(connect, run_id: str, chart_id: str, error: str, fro
                 "warning": (f"run {run_id} was NOT terminalised: the UPDATE affected 0 rows, so the run was no longer 'planned' (it "
                             f"has already started or ended). It may be running or complete. Do NOT dispatch again; verify it with "
                             f"--verify-run {run_id}.")}
-    return {"terminalised": True if rows is not None else None, "rows": rows, "warning": None}
+    if rows is None or rows < 0:
+        return {"terminalised": None, "rows": rows,
+                "warning": (f"the terminalise statement for run {run_id} ran but reported no affected-row count: the run's state is "
+                            f"UNKNOWN (it may still be 'planned' and block chart {chart_id}, or already running or complete). Verify "
+                            f"it with --verify-run {run_id}; do NOT dispatch again.")}
+    return {"terminalised": True, "rows": rows, "warning": None}
 
 
 # ───────────────────────── the transaction (plan: rolled back; commit: committed) ─────────────────────────
@@ -709,20 +716,45 @@ def check_duration_column(connect) -> None:
                       "1200_asset_throughput_duration_seconds.sql has not applied): a rebuild here could never carry a duration")
 
 
-# What the deployed image's asset_runner must contain for the completion write to record a duration (migration 1200's column).
-DURATION_MARKERS = ((slw.ASSET_RUNNER_REL, re.compile(r"duration_seconds\s*=\s*%s"),
+# What the deployed image's asset_runner must contain for the completion write to record a duration (migration 1200's column): the
+# UPDATE of asset_throughput that sets the ADJACENT pair `duration_seconds = %s, rows_per_second = %s` (asset_runner.py ~1353). The
+# pattern is matched against each of the code's string constants (duration_write_strings), never against comments or docstrings: the
+# comment above `_DURATION_COLUMNS_PRESENT` also says `duration_seconds = %s` and must not satisfy the check.
+DURATION_MARKERS = ((slw.ASSET_RUNNER_REL,
+                     re.compile(r"UPDATE\s+asset_throughput\b.*?duration_seconds\s*=\s*%s\s*,\s*rows_per_second\s*=\s*%s", re.DOTALL),
                      "writes asset_throughput.duration_seconds on completion"),)
 
 
+def duration_write_strings(source: str) -> list[str]:
+    """The texts a duration-write marker is matched against, ONE AT A TIME (a pattern may not span two strings): the source's string
+    constants (the SQL), with comments gone (the parser never produces them) and every bare-expression string statement (a docstring or a stray string) left out. Raises ValueError when
+    the source does not parse: an unreadable runner is never a pass. A string assigned to a variable is not distinguished from SQL
+    passed to execute(): this is a marker, not a proof, and it only ever narrows what passes."""
+    try:
+        tree = ast.parse(source)
+    except (SyntaxError, ValueError) as exc:
+        raise ValueError(f"not parseable Python ({type(exc).__name__}: {exc})") from None
+    skip = {id(n.value) for n in ast.walk(tree) if isinstance(n, ast.Expr) and isinstance(n.value, ast.Constant)
+            and isinstance(n.value.value, str)}
+    return [n.value for n in ast.walk(tree) if isinstance(n, ast.Constant) and isinstance(n.value, str) and id(n) not in skip]
+
+
 def check_image_records_duration(repo: str, job_sha: str, *, git=slw._git) -> None:
-    """IMAGE_DOES_NOT_RECORD_DURATION: the deployed image (read at the pinned job sha) must carry the duration write; an unreadable
-    file refuses too. Companion of slw.check_image_supports_force, which covers the force markers only."""
+    """IMAGE_DOES_NOT_RECORD_DURATION: the deployed image (read at the pinned job sha) must carry the duration write in CODE (not in a
+    comment or docstring); an unreadable or unparseable file refuses too. Companion of slw.check_image_supports_force, which covers
+    the force markers only."""
     problems = []
     for rel, pat, what in DURATION_MARKERS:
         cp = git(str(repo), ["show", f"{job_sha}:{rel}"])
         if cp.returncode != 0:
             problems.append(f"{rel} at {job_sha} is unreadable ({(cp.stderr or '').strip()[:120]})")
-        elif not pat.search(cp.stdout or ""):
+            continue
+        try:
+            texts = duration_write_strings(cp.stdout or "")
+        except ValueError as exc:
+            problems.append(f"{rel} at {job_sha} could not be checked: {exc}")
+            continue
+        if not any(pat.search(t) for t in texts):
             problems.append(f"{rel} at {job_sha} does not contain code that {what}")
     if problems:
         raise _refuse("IMAGE_DOES_NOT_RECORD_DURATION", "the deployed job image would complete the rebuild without recording a "
@@ -974,7 +1006,7 @@ def run_cli(args: argparse.Namespace, *, connect, fp_connect=None, git=slw._git,
         _emit(out, "run_committed_receipt_not_written", unexpected=True, run_id=exc.run_id, chart_id=exc.chart_id, error=exc.detail,
               terminalised=exc.terminalised, committed_runs=committed, warning=exc.detail)
         print(f"RUN {exc.run_id} COMMITTED, RECEIPT NOT WRITTEN: " + (
-            "the planned run was terminalised and nothing was dispatched." if exc.terminalised else (exc.warning or exc.detail)),
+            "the planned run was terminalised and nothing was dispatched." if exc.terminalised is True else (exc.warning or exc.detail)),
               file=sys.stderr)
         return EXIT_UNEXPECTED
     except KeyboardInterrupt:

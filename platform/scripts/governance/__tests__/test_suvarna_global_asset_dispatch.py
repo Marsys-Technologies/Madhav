@@ -226,8 +226,10 @@ class FakeFp:
 
 
 RUNNER_WITH_FORCE = 'force = os.environ.get("NIRMANA_FORCE_EXECUTE", "").strip().lower() in ("1", "true", "yes")\n'
-ASSET_RUNNER_WITH_FORCE = ("    if declared_deps is not None and has_cowriters is not None and not force:\n        return _skip()\n"
-                           "    SET state = 'lit', last_error = NULL, duration_seconds = %s, rows_per_second = %s\n")
+FORCE_GATE = "    if declared_deps is not None and has_cowriters is not None and not force:\n        return _skip()\n"
+DURATION_WRITE = ('    cur.execute("""UPDATE asset_throughput\n               SET state = %s, last_error = NULL, duration_seconds = %s, rows_per_second = %s\n'
+                  '               WHERE asset_id = %s""", ())\n')
+ASSET_RUNNER_WITH_FORCE = "def _complete(cur, force):\n" + FORCE_GATE + DURATION_WRITE
 RUNNER_WITHOUT_FORCE = "def execute_run(run_id):\n    pass\n"
 
 
@@ -279,6 +281,11 @@ class Stream(io.StringIO):
         super().flush()
 
 
+class RealProcessAttempt(BaseException):
+    """Raised when a test reaches for a real process. A BaseException on purpose: the tool's broad `except Exception` paths can
+    never swallow it into an exit code, so an attempt always fails the test loudly."""
+
+
 BLOCKED_OS_PROCESS_CALLS = ("system", "popen", "posix_spawn", "posix_spawnp", "execl", "execle", "execlp", "execlpe", "execv", "execve",
                             "execvp", "execvpe", "spawnl", "spawnle", "spawnlp", "spawnlpe", "spawnv", "spawnve", "spawnvp",
                             "spawnvpe", "fork", "forkpty")
@@ -289,7 +296,7 @@ def no_real_subprocess(monkeypatch):
     """No test may start a real process: not gcloud, not git, by ANY route (subprocess.* and os.system / popen / exec* / spawn* /
     posix_spawn* / fork). A test that wants to observe a command patches subprocess.run itself (a later patch wins over this one)."""
     def blocked(*a, **k):
-        raise AssertionError(f"a real subprocess was requested in a test: {a[:1]}")
+        raise RealProcessAttempt(f"a real subprocess was requested in a test: {a[:1]}")
     for name in ("run", "Popen", "check_output", "check_call", "call", "getoutput", "getstatusoutput"):
         monkeypatch.setattr(subprocess, name, blocked)
     for name in BLOCKED_OS_PROCESS_CALLS:
@@ -301,9 +308,9 @@ def test_the_no_process_fixture_blocks_every_os_level_route():
     import os
     for name in BLOCKED_OS_PROCESS_CALLS:
         if hasattr(os, name):
-            with pytest.raises(AssertionError, match="real subprocess"):
+            with pytest.raises(RealProcessAttempt, match="real subprocess"):
                 getattr(os, name)("true")
-    with pytest.raises(AssertionError, match="real subprocess"):
+    with pytest.raises(RealProcessAttempt, match="real subprocess"):
         subprocess.getoutput("true")
 
 
@@ -1199,11 +1206,12 @@ def test_the_duration_probe_is_the_runners_own_and_the_marker_is_in_the_real_ass
     assert " ".join(gad.DURATION_COLUMN_SQL.split()) in runner
     real = (REPO / "platform/python-sidecar/pipeline/orchestrator/asset_runner.py").read_text()
     for _rel, pattern, _what in gad.DURATION_MARKERS:
-        assert pattern.search(real)
+        assert any(pattern.search(t) for t in gad.duration_write_strings(real))          # the REAL write, matched as code
+        assert "duration_seconds = %s, rows_per_second = %s" in " ".join(real.split())   # the adjacent pair, as the runner writes it
 
 
 def test_an_image_without_the_duration_write_is_refused_in_plan_mode_before_any_database_contact(env):
-    no_duration = "    if declared_deps is not None and has_cowriters is not None and not force:\n        return _skip()\n"
+    no_duration = "def _complete(cur, force):\n" + FORCE_GATE
     db = FakeDB()
     code, ev = run(env, argv_for(env), db=db, git=FakeGit(deployed=env["digests"], asset_runner_text=no_duration))
     assert code == slw.REFUSAL_EXIT_CODE and codes_of(ev) == ["IMAGE_DOES_NOT_RECORD_DURATION"] and db.log == []
@@ -1421,3 +1429,92 @@ def test_write_receipt_itself_never_clobbers_a_committed_receipt_of_another_run(
         gad.write_receipt(pathlib.Path(env["receipt"]), other)
     assert exc.value.refusals[0]["code"] == "RECEIPT_PATH_INVALID" and _bytes(env) == before
     gad.write_receipt(pathlib.Path(env["receipt"]), json.loads(before.decode()))        # the very run it continues is allowed
+
+
+# ───────────────────────── round 2: the duration marker is code, the fixture error is unswallowable, UNKNOWN run state ─────────────────────────
+
+COMMENT_DECOY = "# the completion UPDATE named `duration_seconds = %s` unconditionally (a comment, not a write)\n"
+
+
+@pytest.mark.parametrize("name,runner", [
+    ("only the comment line", "def _complete(cur, force):\n" + FORCE_GATE + "\n" + COMMENT_DECOY),
+    ("comment holding the whole pair", "def _complete(cur, force):\n" + FORCE_GATE + "# SET duration_seconds = %s, rows_per_second = %s\n"),
+    ("inline comment", "def _complete(cur, force):\n" + FORCE_GATE + "    x = 1  # UPDATE asset_throughput SET duration_seconds = %s, rows_per_second = %s\n"),
+    ("docstring", 'def _complete(cur, force):\n    """UPDATE asset_throughput SET duration_seconds = %s, rows_per_second = %s"""\n' + FORCE_GATE),
+    ("module docstring", '"""UPDATE asset_throughput SET duration_seconds = %s, rows_per_second = %s"""\ndef f(force):\n' + FORCE_GATE),
+    ("the write without the adjacent pair", "def _complete(cur, force):\n" + FORCE_GATE +
+     '    cur.execute("UPDATE asset_throughput SET last_error = NULL, duration_seconds = %s WHERE x", ())\n'),
+    ("pair in an unrelated statement", "def _complete(cur, force):\n" + FORCE_GATE +
+     '    cur.execute("UPDATE other_table SET duration_seconds = %s, rows_per_second = %s", ())\n'),
+    ("pattern split across two strings", "def _complete(cur, force):\n" + FORCE_GATE +
+     '    a = "UPDATE asset_throughput SET x = 1"\n    b = "duration_seconds = %s, rows_per_second = %s"\n'),
+    ("not parseable (the whole write present as text)", FORCE_GATE + DURATION_WRITE),
+])
+def test_a_decoy_without_a_real_duration_write_is_refused(env, name, runner):
+    # the runner passes the force check (its marker is present as text) but its duration "write" is only a comment / doc / fragment
+    git = FakeGit(deployed=env["digests"], asset_runner_text=runner)
+    db = FakeDB()
+    code, ev = run(env, argv_for(env), db=db, git=git)
+    assert code == slw.REFUSAL_EXIT_CODE and codes_of(ev) == ["IMAGE_DOES_NOT_RECORD_DURATION"], name
+    assert db.log == []
+    if name.startswith("not parseable"):
+        assert "could not be checked" in last(ev)["refusals"][0]["detail"]
+
+
+def test_the_real_write_passes_and_its_strings_are_matched_one_at_a_time():
+    pattern = gad.DURATION_MARKERS[0][1]
+    assert any(pattern.search(t) for t in gad.duration_write_strings(ASSET_RUNNER_WITH_FORCE))
+    assert gad.duration_write_strings(COMMENT_DECOY) == []
+    with pytest.raises(ValueError):
+        gad.duration_write_strings("def broken(:\n")
+
+
+@pytest.mark.parametrize("route", ["default_dispatch", "os_system_in_the_database_fake"])
+def test_a_real_process_attempt_is_never_swallowed_by_the_tools_broad_except_paths(env, route):
+    token = plan_token(env)
+    db = FakeDB()
+    if route == "os_system_in_the_database_fake":
+        orig = db.respond
+
+        def respond(sql, params):
+            if "FROM asset_throughput WHERE asset_id = %s AND chart_id IS NULL" in sql:
+                os.system("true")                                  # reached inside verify_forced_run's `except Exception`
+            return orig(sql, params)
+
+        db.respond = respond
+    with pytest.raises(RealProcessAttempt):
+        # default_dispatch: no injected dispatch and no subprocess patch -> slw.dispatch_run_with_timeout -> blocked subprocess.run,
+        # inside the tool's `except Exception` around the dispatch; the other route is inside the build-record `except Exception`
+        run(env, argv_for(env, commit=True, confirm=token), db=db, fp=FakeFp((PRE_SHA, PRE_SHA)),
+            dispatch=None if route == "default_dispatch" else Dispatch())
+    assert RealProcessAttempt.__mro__[1] is BaseException and not issubclass(RealProcessAttempt, Exception)
+
+
+@pytest.mark.parametrize("rows", [None, -1])
+def test_a_receipt_failure_with_an_unreported_terminalise_count_says_the_run_state_is_unknown(env, monkeypatch, capsys, rows):
+    token = plan_token(env)
+    pathlib.Path(env["receipt"]).unlink()
+    _fail_when_committed(monkeypatch, OSError(28, "No space left on device"))
+    db, disp = FakeDB(terminalise_rows=rows), Dispatch()
+    code, ev = run(env, argv_for(env, commit=True, confirm=token), db=db, fp=FakeFp((PRE_SHA,)), dispatch=disp)
+    e, run_id = last(ev), db.inserted_run[0]
+    assert code == slw.EXIT_UNEXPECTED and e["event"] == "run_committed_receipt_not_written" and e["terminalised"] is None
+    for text in (e["warning"], e["error"], capsys.readouterr().err):
+        assert "UNKNOWN" in text and f"--verify-run {run_id}" in text and "was terminalised" not in text
+    assert disp.calls == []
+
+
+def test_a_dispatch_failure_with_an_unreported_terminalise_count_is_not_reported_as_terminalised(env):
+    token = plan_token(env)
+    db = FakeDB(terminalise_rows=None)
+    code, ev = run(env, argv_for(env, commit=True, confirm=token), db=db, dispatch=Dispatch(fail=True), fp=FakeFp((PRE_SHA,)))
+    e = [x for x in ev if x["event"] == "dispatch_failed"][0]
+    assert code == gad.EXIT_DISPATCH_FAILED and e["terminalised"] is None and "UNKNOWN" in e["warning"]
+    assert json.loads(_bytes(env).decode())["verification"]["notes"][-1] != "terminalised"
+
+
+def test_receipt_not_written_never_leaves_the_run_state_blank():
+    exc = gad.ReceiptNotWritten("55555555-5555-4555-8555-555555555555", CHART, OSError("disk"), {"terminalised": None, "warning": None})
+    assert "UNKNOWN" in exc.detail and "--verify-run 55555555-5555-4555-8555-555555555555" in exc.detail and exc.terminalised is None
+    ok = gad.ReceiptNotWritten("55555555-5555-4555-8555-555555555555", CHART, OSError("disk"), {"terminalised": True, "warning": None})
+    assert "was terminalised" in ok.detail and "UNKNOWN" not in ok.detail
