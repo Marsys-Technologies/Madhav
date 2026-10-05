@@ -56,7 +56,9 @@ SELECTs — the engine library is READ-ONLY by construction, see
 """
 from __future__ import annotations
 
+import gzip
 import inspect
+import json
 import os
 import pathlib
 import re
@@ -163,8 +165,10 @@ def test_marriage_and_separation_have_distinct_evidence_sets(all_scores):
 
     # Full provenance sets must also differ (not just the karaka subset) —
     # the strongest form of "distinct evidence" this ledger can express.
-    marriage_provenance_ids = {p["id"] for p in marriage.provenance}
-    separation_provenance_ids = {p["id"] for p in separation.provenance}
+    # (provenance entries are either {"id": <fact_id>, ...} or a structured
+    # natural-key citation — compare them as canonical JSON, not by an "id" key)
+    marriage_provenance_ids = {json.dumps(p, sort_keys=True) for p in marriage.provenance}
+    separation_provenance_ids = {json.dumps(p, sort_keys=True) for p in separation.provenance}
     assert marriage_provenance_ids != separation_provenance_ids
 
 
@@ -516,3 +520,117 @@ def test_lane_b0_identical_factor_sets_property_is_importable():
     # DB-free, pure KARYATVA_REGISTRY iteration) without redefining its
     # logic here, keeping a single source of truth for the property itself.
     test_no_two_classes_share_an_identical_populated_factor_set()
+
+
+# ── S-L2 lane B2 (N-143): divisional citations are natural keys, never the
+#    random chart_divisionals.id (a gen_random_uuid() minted afresh by every
+#    ga_vargas rebuild). The pre-change payloads were captured from this same
+#    fixture with the id-citing Reader (golden file below); the new payload
+#    must equal them except that each {"id_kind": "chart_divisionals_id",
+#    "id": <uuid>} provenance token is replaced by the structured natural key.
+
+_GOLDEN_PRE_NK = (
+    pathlib.Path(__file__).resolve().parent
+    / "fixtures" / "pratijna_v4_snapshot" / "golden_pre_natural_key_payload.json.gz"
+)
+_UUID_RE = re.compile(r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}")
+_NK_FIELDS = ("graha", "ayanamsha_id", "varga", "fact_category", "fact_key", "fact_subject")
+_FIXED_BUILD_ID = "00000000-0000-0000-0000-0000000000b2"
+_FIXED_NOW = "2026-01-01T00:00:00+00:00"
+
+
+def _payload_rows(connection):
+    from pipeline.orchestrator.writers.bo_pratijna import _row_for_score
+
+    scores = PratijnaV4Engine(ChartReaderV4(connection, ayanamsha=AYANAMSHA)).score_all(CHART_482012F1)
+    return {
+        cid: _row_for_score(
+            chart_id=CHART_482012F1, aya=AYANAMSHA, build_id=_FIXED_BUILD_ID,
+            event_class_id=cid, score=sc, now=_FIXED_NOW, varga_confirmation=None,
+        )
+        for cid, sc in scores.items()
+    }
+
+
+def _canon(row):
+    out = dict(row)
+    out["derivation"] = json.loads(row["derivation"])
+    return out
+
+
+@requires_fixture_db
+def test_pratijna_payload_unchanged_except_divisional_ids_became_natural_keys(conn):
+    golden = json.loads(gzip.open(_GOLDEN_PRE_NK, "rt").read())
+    with conn.cursor() as cur:
+        cur.execute(
+            "SELECT id::text AS id, graha, ayanamsha_id, varga, fact_category, fact_key, fact_subject "
+            "FROM chart_divisionals WHERE chart_id=%s",
+            (CHART_482012F1,),
+        )
+        nk_by_id = {r["id"]: {k: r[k] for k in _NK_FIELDS} for r in cur.fetchall()}
+
+    n_replaced = 0
+    expected = {}
+    for cid, row in golden.items():
+        row = _canon(row)
+        prov = []
+        for entry in row["derivation"]["provenance"]:
+            if entry.get("id_kind") == "chart_divisionals_id":
+                prov.append({
+                    "source_table": "chart_divisionals",
+                    "id_kind": "natural_key",
+                    "natural_key": nk_by_id[entry["id"]],
+                })
+                n_replaced += 1
+            else:
+                prov.append(entry)
+        row["derivation"]["provenance"] = prov
+        expected[cid] = row
+    assert n_replaced > 0, "golden holds no divisional id token - the test would prove nothing"
+
+    actual = {cid: _canon(r) for cid, r in _payload_rows(conn).items()}
+    assert actual.keys() == expected.keys()
+    for cid in expected:
+        assert actual[cid] == expected[cid], f"{cid}: payload differs beyond the divisional-id substitution"
+
+
+@requires_fixture_db
+def test_pratijna_payload_has_no_random_row_id_and_every_citation_resolves(conn):
+    rows = _payload_rows(conn)
+    with conn.cursor() as cur:
+        for cid, row in rows.items():
+            # (the chart's own id legitimately appears in "DATA GAP" ledger text)
+            stripped = row["derivation"].replace(CHART_482012F1, "<chart>")
+            assert not _UUID_RE.search(stripped), f"{cid}: a uuid token remains in derivation"
+            for entry in json.loads(row["derivation"])["provenance"]:
+                assert entry["id_kind"] != "chart_divisionals_id"
+                if entry["id_kind"] == "natural_key":
+                    assert set(entry["natural_key"]) == set(_NK_FIELDS)
+                    cur.execute(
+                        "SELECT count(*) AS n FROM chart_divisionals WHERE chart_id=%s AND "
+                        + " AND ".join(f"{k} IS NOT DISTINCT FROM %s" for k in _NK_FIELDS),
+                        (CHART_482012F1, *(entry["natural_key"][k] for k in _NK_FIELDS)),
+                    )
+                    assert cur.fetchone()["n"] == 1, f"{cid}: natural key does not resolve to exactly one row"
+                elif entry["id_kind"] == "fact_id":
+                    cur.execute("SELECT count(*) AS n FROM chart_facts WHERE fact_id=%s", (entry["id"],))
+                    assert cur.fetchone()["n"] == 1, f"{cid}: fact_id {entry['id']} does not resolve"
+
+
+@requires_fixture_db
+def test_pratijna_payload_is_independent_of_chart_divisionals_row_ids():
+    """The property the lane exists for: a ga_vargas rebuild re-mints every
+    chart_divisionals.id; the pratijna payload must not move. The fixture DB
+    is a throwaway; the re-mint is rolled back."""
+    import psycopg
+    import psycopg.rows
+
+    c = psycopg.connect(DATABASE_URL, row_factory=psycopg.rows.dict_row)
+    try:
+        before = {cid: _canon(r) for cid, r in _payload_rows(c).items()}
+        c.execute("UPDATE chart_divisionals SET id = gen_random_uuid()")
+        after = {cid: _canon(r) for cid, r in _payload_rows(c).items()}
+        assert before == after
+    finally:
+        c.rollback()
+        c.close()

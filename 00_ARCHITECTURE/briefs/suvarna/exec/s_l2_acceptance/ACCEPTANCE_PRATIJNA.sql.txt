@@ -1,0 +1,23 @@
+-- ACCEPTANCE_PRATIJNA.sql.txt (lane B2, bo_pratijna + chart_reader_v4; for the pinned S-L2 acceptance set)
+--
+-- Criterion (N-143 / N.5): after S-L2, no bodha_pratijna row of the canonical chart (482012f1-710e-4a25-994a-93821f5871aa) carries a
+-- serialized chart_divisionals.id (a gen_random_uuid() re-minted by every ga_vargas rebuild); every divisional citation in derivation->'provenance'
+-- is the structured natural key (graha, ayanamsha_id, varga, fact_category, fact_key, fact_subject) and RESOLVES to exactly one chart_divisionals
+-- row of the same chart (chart_divisionals_unique_idx); every fact_id citation resolves to a chart_facts row of the same chart and ayanamsha.
+-- Each statement is ONE read-only SELECT, no semicolon inside.
+-- PASS after S-L2: P1 rows_with_uuid_token = 0 and legacy_id_citations = 0; P2 not_resolving = 0 and natural_key_citations > 0;
+-- P3 not_resolving = 0 and fact_id_citations > 0; P4 rows = 135 (5 ayanamshas x 27 event classes, unchanged).
+-- Today's run (pre-S-L2, ACCEPTANCE_PRATIJNA_TODAY.txt): the current rows were built by the id-citing reader, so P1 reports the id tokens and
+-- P2 reports 0 natural-key citations.
+
+-- P1_no_divisional_row_id_token_remains
+SELECT count(*) AS pratijna_rows, count(*) FILTER (WHERE replace(derivation::text, chart_id::text, '') ~ '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}') AS rows_with_uuid_token, (SELECT count(*) FROM bodha_pratijna b2, jsonb_array_elements(b2.derivation->'provenance') p WHERE b2.chart_id = '482012f1-710e-4a25-994a-93821f5871aa' AND p->>'id_kind' = 'chart_divisionals_id') AS legacy_id_citations FROM bodha_pratijna WHERE chart_id = '482012f1-710e-4a25-994a-93821f5871aa'
+
+-- P2_every_natural_key_citation_resolves_to_exactly_one_chart_divisionals_row
+SELECT count(*) AS natural_key_citations, count(*) FILTER (WHERE (SELECT count(*) FROM chart_divisionals d WHERE d.chart_id = b.chart_id AND d.graha = p->'natural_key'->>'graha' AND d.ayanamsha_id = p->'natural_key'->>'ayanamsha_id' AND d.varga = p->'natural_key'->>'varga' AND d.fact_category = p->'natural_key'->>'fact_category' AND d.fact_key = p->'natural_key'->>'fact_key' AND d.fact_subject IS NOT DISTINCT FROM p->'natural_key'->>'fact_subject') <> 1) AS not_resolving FROM bodha_pratijna b, jsonb_array_elements(b.derivation->'provenance') p WHERE b.chart_id = '482012f1-710e-4a25-994a-93821f5871aa' AND p->>'id_kind' = 'natural_key'
+
+-- P3_every_fact_id_citation_resolves_to_a_chart_facts_row
+SELECT count(*) AS fact_id_citations, count(*) FILTER (WHERE NOT EXISTS (SELECT 1 FROM chart_facts f WHERE f.fact_id = p->>'id' AND f.chart_id = b.chart_id AND f.ayanamsha_id = b.ayanamsha_id)) AS not_resolving FROM bodha_pratijna b, jsonb_array_elements(b.derivation->'provenance') p WHERE b.chart_id = '482012f1-710e-4a25-994a-93821f5871aa' AND p->>'id_kind' = 'fact_id'
+
+-- P4_row_count_unchanged
+SELECT count(*) AS rows FROM bodha_pratijna WHERE chart_id = '482012f1-710e-4a25-994a-93821f5871aa'

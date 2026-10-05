@@ -129,7 +129,7 @@ class TestRowShaping:
             denials=[{"config_id": "CFG-1", "fired": False, "deduction": 0.0, "reason": "n/a"}],
             condition_ledger=[{"malefic": "Saturn", "contribution": 0.5}],
             weights=[{"slot": "house_lord", "item": "7", "weight": 0.5}],
-            provenance=[{"source_table": "chart_divisionals", "id_kind": "chart_divisionals_id", "id": "x"}],
+            provenance=[{"source_table": "chart_divisionals", "id_kind": "natural_key", "natural_key": {"graha": "Sun", "ayanamsha_id": "lahiri_chitrapaksha", "varga": "D1", "fact_category": "varga_house_occupant", "fact_key": "house", "fact_subject": "D1.SUN"}}],
         )
         base.update(overrides)
         return ClassScore(**base)
