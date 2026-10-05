@@ -231,3 +231,59 @@ def test_REAL_SQL_the_python_mirror_and_the_sql_judge_every_shape_alike(monkeypa
         py_ok = ac.split_citation_k1_problem(text, chunks) is None
         sql_ok = rec["v"] == PASS
         assert py_ok == sql_ok, (name, ac.split_citation_k1_problem(text, chunks), rec["measured"])
+
+
+# ───────────────────────── the six REAL seed texts of suvarna/engine-citation-transit, through the engine ─────────────────────────
+
+SEED_SIX = [
+ [
+  "rahu",
+  3,
+  9,
+  "UNSOURCED (vedha partner: inference, not in the cited verses) — transit result: Phaladīpikā Adh. XXVI, Śl. 24 [machine locus phaladeepika:PG331:C1] \"effects caused by Rahu ... (3) happiness\""
+ ],
+ [
+  "rahu",
+  6,
+  12,
+  "UNSOURCED (vedha partner: inference, not in the cited verses) — transit result: Phaladīpikā Adh. XXVI, Śl. 24 [machine locus phaladeepika:PG331:C1] \"effects caused by Rahu ... (6) happiness\""
+ ],
+ [
+  "rahu",
+  11,
+  5,
+  "UNSOURCED (vedha partner: inference, not in the cited verses) — transit result: Phaladīpikā Adh. XXVI, Śl. 24 [machine locus phaladeepika:PG331:C1] \"effects caused by Rahu ... (11) happiness\""
+ ],
+ [
+  "ketu",
+  3,
+  9,
+  "UNSOURCED (vedha partner: inference, not in the cited verses) — transit result: Phaladīpikā Adh. XXVI, Śl. 2 [machine locus phaladeepika:PG321:C1] \"Sun gives good results ... in the 6th, 3rd and 10th (from the Moon) ... Rahu and Ketu are similar to the Sun\""
+ ],
+ [
+  "ketu",
+  6,
+  12,
+  "UNSOURCED (vedha partner: inference, not in the cited verses) — transit result: Phaladīpikā Adh. XXVI, Śl. 2 [machine locus phaladeepika:PG321:C1] \"Sun gives good results ... in the 6th, 3rd and 10th (from the Moon) ... Rahu and Ketu are similar to the Sun\""
+ ],
+ [
+  "ketu",
+  11,
+  5,
+  "UNSOURCED (vedha partner: inference, not in the cited verses) — transit result: Phaladīpikā Adh. XXVI, Śl. 2 [machine locus phaladeepika:PG321:C1] \"all planets in the 11th ... Rahu and Ketu are similar to the Sun\""
+ ]
+]
+
+
+def test_REAL_SQL_the_six_exact_seed_texts_are_unsourced_to_the_generic_predicate_and_sourced_through_the_declaration(monkeypatch, disposable_pg):
+    """The six strings the transit seed writes (copied verbatim): the generic placeholder predicate flags all six (they start with UNSOURCED, which the vedha loader requires); the declared
+    split_citation of bg_transit_rules reads them sourced because each machine locus resolves; remove the corpus chunk of one page and exactly that page's rows go lacking."""
+    rows = [(g, "favourable", ph, vh, text) for g, ph, vh, text in SEED_SIX]
+    s3._real(monkeypatch, disposable_pg, setup(rows))
+    generic = ac._ldgr_lacking("classical_citation", "text")
+    assert s3.ac.scalar(f"SELECT count(*) FROM t_rules WHERE {generic}") == "6"
+    rec = ac.source_declared_check("bg_transit_rules", SRC, "t_rules", COLS, rows=6)["Ldgr.source_presence"]
+    assert rec["v"] == PASS and rec["source"]["split_citation_rows"] == 6 and rec["source"]["split_citation_ok"] == 6, rec["measured"]
+    chunks = {"phaladeepika_pg0331_c01", "phaladeepika_pg0321_c01"}
+    assert all(ac.split_citation_k1_problem(t, chunks) is None for _g, _p, _v, t in SEED_SIX)
+    assert [ac.split_citation_k1_problem(t, {"phaladeepika_pg0321_c01"}) is None for _g, _p, _v, t in SEED_SIX] == [False, False, False, True, True, True]
