@@ -138,11 +138,11 @@ def test_spans_move_only_at_station_seams_and_by_at_most_the_measured_spline_err
                 else:
                     assert x == y, "a non-station boundary never moves"
         assert moved > 0
-        for relation in ("sign_ingress",):
-            ro = gk_contacts.find_boundary_roots(old, body, relation, EPHE_PATH, refine=False)
-            rn = gk_contacts.find_boundary_roots(new, body, relation, EPHE_PATH, refine=False)
+        for relation in gk_contacts.BOUNDARY_RELATIONS:
+            ro = gk_contacts.find_boundary_roots(old, body, relation, EPHE_PATH, refine=True)
+            rn = gk_contacts.find_boundary_roots(new, body, relation, EPHE_PATH, refine=True)
             assert [r.level_deg for r in ro] == [r.level_deg for r in rn], f"{body}: the ordered contact list (its ordinals) is unchanged"
-            assert max(abs(a.exact_jd - b.exact_jd) for a, b in zip(ro, rn)) < 1e-6, f"{body}: contact instants unchanged to the solver's own tolerance"
+            assert max(abs(a.exact_jd - b.exact_jd) for a, b in zip(ro, rn)) < 1e-8, f"{body}: contact instants unchanged (the production mode: Swiss-refined roots; the unrefined spline roots carry a 1-arcsec solver tolerance and move by seconds with the bracket, so they are not the comparison)"
 
 
 def test_a_spline_station_that_is_not_an_ephemeris_station_is_refused_not_papered_over():
