@@ -3187,7 +3187,7 @@ def grade_prose_none(aid: str, decl: dict, tables: dict, target, outside: dict) 
 # TEMPORARY GRANDFATHER TABLE (N-150 R1): the assets whose committed declarations carry a bare `prose_fields []` from before the checked `prose_none` form existed. Their unchecked NARR N/A
 # (the four Narr checks only: the Null rules are new and release nothing unchecked) keeps reading as before ONLY until the declaration-fill converts them to `prose_none`; every OTHER asset's bare `[]` reads NO_DETECTOR. Converting an asset (adding `prose_none`) makes its entry
 # here inert; the fill DELETES the row. Adding an asset here is a ruling, not a convenience (the table is not fingerprinted content: it decides no cell for an asset that declares prose_none).
-PROSE_BARE_EMPTY_LEGACY = frozenset({"bg_doshas", "bg_kp_sublord_division", "bg_ontology", "bg_transit_engine", "bg_yogas", "bo_laksana_rerank"})
+PROSE_BARE_EMPTY_LEGACY = frozenset({"bg_doshas", "bg_ontology", "bg_yogas", "bo_laksana_rerank"})      # bg_kp_sublord_division and bg_transit_engine converted to prose_none (E5.7 fills): the four left have open transcribed text columns that no closed vocabulary can state
 
 
 def prose_none_na_problem(crit: str, meas, facts=None) -> str | None:
