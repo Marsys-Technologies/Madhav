@@ -8633,3 +8633,14 @@ Consultation-10 migration allocation: **1307_consultation_tags.sql**, reserved b
 - Migration 1307 remains reserved, authored and unapplied to any application database. It was executed twice only against a task-owned disposable PostgreSQL 17 fixture to prove additive rerun, owner isolation, canonical/legacy history and the real chart-correction/tag lock race. No production data, credentials, provider calls, permission changes or asset rebuild.
 - Release acceptance remains separate: apply/verify migration through an authorized release, authenticated stream/history/tag/share/model checks, and the pre-existing production consultation HTTP400 engine residual.
 - Evidence: `00_ARCHITECTURE/briefs/consultation10/IMPLEMENTATION.md`, `CHECKS.json`, `BROWSER_VERIFICATION.json`, `DATABASE_VERIFICATION.json`, `RED_TEAM.md`, screenshots and session closure. Existing foreign worktrees and untracked planning evidence preserved.
+
+
+## 2026-10-05T19:03:34.150253+00:00 — Journey 3 Chart Preparation implementation and release
+
+- Lease ID: L-PORTAL-JOURNEY3-20261006; holder: Codex desktop; status: ACTIVE.
+- Started: 2026-10-05T19:03:34.150253+00:00; expiry: 2026-10-06T01:03:34.150253+00:00.
+- Worktree: `/Users/Dev/.codex/worktrees/journey-three/Madhav`; branch: `codex/journey-three`.
+- Authority: direct native instruction “Please go ahead and implement and deploy us” following review of Journey 3 / page 14 Chart Preparation. Authorizes scoped application implementation, checks, source commit/push, PR, protected merge and normal web deployment/live verification; supersedes GIP P.4 lease-only commit restriction for this release only.
+- Scope: chart preparation page and directly required live layer/asset display, existing guarded action controls, truthful readiness and confirmations, responsive layout, scoped tests and own release/session evidence.
+- Excludes engine/writer/orchestrator contract changes, migration/schema changes, chart rebuild/data cleanup execution, paid AI calls, credentials, permission changes, unrelated journeys and foreign worktrees. Deploy UI and preserve current server safety controls.
+- Source/read-only verification now; exclusive release window checked afresh before merge/deploy. Expired prior leases are expired only, no foreign entries changed.
