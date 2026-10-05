@@ -3007,7 +3007,7 @@
     "applies": "D3",
     "nature": "single_derivation",
     "why": "computed once by its writer; no independent second route exists; verified by integrity checks and internal consistency (the single tier)",
-    "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/bo_karanajala.py:1739",
+    "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/bo_karanajala.py:1806",
     "per_witness_values": false
    },
    "prose_fields": [
@@ -3074,7 +3074,7 @@
     "applies": "D3",
     "nature": "single_derivation",
     "why": "computed once by its writer; no independent second route exists; verified by integrity checks and internal consistency (the single tier)",
-    "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/bo_laksana.py:3355",
+    "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/bo_laksana.py:3419",
     "per_witness_values": false
    },
    "prose_fields": [
@@ -3131,7 +3131,7 @@
     "applies": "D3",
     "nature": "single_derivation",
     "why": "computed once by its writer; no independent second route exists; verified by integrity checks and internal consistency (the single tier)",
-    "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/bo_laksana.py:3355",
+    "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/bo_laksana.py:3419",
     "per_witness_values": false
    },
    "prose_fields": [],
@@ -3499,7 +3499,7 @@
     "applies": "D3",
     "nature": "single_derivation",
     "why": "computed once by its writer; no independent second route exists; verified by integrity checks and internal consistency (the single tier)",
-    "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/bo_upaya.py:1898",
+    "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/bo_upaya.py:1922",
     "per_witness_values": false
    },
    "prose_fields": [
@@ -3610,7 +3610,7 @@
     "applies": "D3",
     "nature": "single_derivation",
     "why": "computed once by its writer; no independent second route exists; verified by integrity checks and internal consistency (the single tier)",
-    "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/bo_yantra_mechanism.py:590",
+    "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/bo_yantra_mechanism.py:594",
     "per_witness_values": false
    },
    "prose_fields": [
