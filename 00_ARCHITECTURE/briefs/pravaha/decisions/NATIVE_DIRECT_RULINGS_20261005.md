@@ -1,10 +1,11 @@
 ---
 artifact: NATIVE_DIRECT_RULINGS_20261005
-version: "1.2"
+version: "1.3"
 status: RECORD
 date: 2026-10-05
 source: "Owner's statements to the operating steward (madhav-f2) and, for Ruling 8, to the strategy conversation, recorded verbatim by the steward (steward M20261005T070426-90c6 OWNER-RULING-6-7, M20261005T070846-dac9 OWNER-RULING-6, M20261005T070906-1469 RULING-NUMBERING); written down by Stream B"
 changelog:
+  - "1.3 (2026-10-05): Ruling 8 marked AMENDED BY Ruling 9 (steward M20261005T071447-5816)."
   - "1.2 (2026-10-05): Ruling 9 added, verbatim from steward M20261005T071422-9cfe (text in run/RULING9.txt); the strategy session's reading is marked as the strategy session's. It amends Ruling 8."
   - "1.1 (2026-10-05): Ruling 8 added (the event-registry revision). NUMBERING: it reached the steward as 'OWNER-RULING-6' from the strategy conversation on the same day as the two rulings the operating steward received; the steward numbered the three 6, 7 and 8 (steward M20261005T070906-1469, RULING-NUMBERING). The text of each is verbatim as received."
   - "1.0 (2026-10-05): recorded."
@@ -30,7 +31,7 @@ Open point the steward put back to the owner: the native's log opens with the bi
 
 Stream B's notes for the record (consequences read from the code, not rulings): (1) the sky-event substrate and the per-body arc index cover 1998-01-01 to 2085-01-01 (`SUBSTRATE_DOMAIN_START/END`): a start before 1998 (the birth, or the 1995 entry) lies OUTSIDE what the builder can see, so it needs the domain extended first and the whole substrate rebuilt; a start of 1998-02-16 or later and an end of 2084-02-05 are inside it. (2) It supersedes the scored horizon (1998-01-01 to 2026-04-17) as the horizon for a build meant to be served, and settles gap G9 in principle; the one-year small test (all_classes_1y) and the one_class_full slice are unaffected. (3) A start that is a date of build moves with every rebuild, so a generation's horizon would be part of its identity (the manifest vector already carries it).
 
-## Ruling 8 — the event registry is revised: process events become a SPAN with dated milestones and one defining moment
+## Ruling 8 — the event registry is revised: process events become a SPAN with dated milestones and one defining moment  [AMENDED BY RULING 9: the 47-event review no longer gates anything]
 
 (Numbering: this arrived through the strategy conversation labelled "OWNER-RULING-6"; the operating steward numbered the day's three rulings 6, 7 and 8.)
 
