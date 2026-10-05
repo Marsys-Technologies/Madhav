@@ -88,6 +88,14 @@ def psql(port: int, db: str, sql: str | None = None, file: pathlib.Path | None =
            "-v", "ON_ERROR_STOP=1"]
     if single_transaction:          # the migrate.ts shape: one transaction, rolled back whole on any error
         cmd.append("--single-transaction")
+    if not file and len(sql.encode("utf-8")) > 100_000:
+        # One argv string is capped at 128 KiB on Linux (MAX_ARG_STRLEN): a large generated INSERT passed as `-c` dies with
+        # OSError "Argument list too long" there (macOS has no such cap). Feed it as a file, in ONE transaction, which is
+        # what `-c` does for a multi-statement string.
+        with tempfile.TemporaryDirectory(prefix="psql_big_") as td:
+            big = pathlib.Path(td) / "big.sql"
+            big.write_text(sql, encoding="utf-8")
+            return subprocess.run(cmd + ["--single-transaction", "-f", str(big)], capture_output=True, text=True)
     cmd += ["-f", str(file)] if file else ["-c", sql]
     return subprocess.run(cmd, capture_output=True, text=True)
 
