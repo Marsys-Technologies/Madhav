@@ -924,11 +924,17 @@ class GocharaV5Writer(WriterBase):
                 chart_id=chart_id, generation=GENERATION, convention_id=sky_cid,
                 consumed_fact_ids=context["source_fact_ids"],
                 consumed_dasha_row_ids=dasha_ids)
+            if inv_store.snapshot_copy_available():
+                identity = "SELF-CONTAINED: the snapshot owns a COPY of the consumed L1 rows (G12, migration 1305)"
+            else:
+                identity = ("LEGACY snapshot (migration 1305 is NOT applied): ids only — it is NOT self-contained and dangles after any later L1 "
+                            "rebuild; apply 1305 before building anything meant to be sealed")
+                logger.warning("%s: %s", ASSET_ID, identity)
             return WriterResult(
                 asset_id=self.asset_id, rows_inserted=1,
                 notes=(f"search-input snapshot {digest[:12]}…: {len(context['source_fact_ids'])} "
                        f"L1 facts, {len(dasha_ids)} daśā rows (build "
-                       f"{contract.get('build_id')}); no AV declarations (P5 held); chain replaced "
+                       f"{contract.get('build_id')}); {identity}; no AV declarations (P5 held); chain replaced "
                        f"(windows {replaced['windows']}, records {replaced['records']}, contacts "
                        f"{replaced['contacts']}, coverage {replaced['coverage']})"))
 

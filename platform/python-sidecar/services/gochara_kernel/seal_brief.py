@@ -308,8 +308,15 @@ NATAL_SINGLE_TIER_DISCLOSURE = (
 
 
 def natal_input_tiers(conn, chart_id: str, generation: str) -> dict[str, list[str]]:
-    """{subject: sorted distinct verification_pass_status} of the L1 rows the generation's search-input snapshot CONSUMED — read, never assumed."""
+    """{subject: sorted distinct verification_pass_status} of the L1 rows the generation's search-input snapshot CONSUMED — read, never assumed.
+    From the snapshot's own COPY (metadata block) when it has one (G12): the tier the rows carried WHEN CONSUMED, not whatever live L1 says today."""
     out: dict[str, set[str]] = {}
+    from .inventory_verifier import snapshot_copies
+    copies = snapshot_copies(conn, chart_id, generation)
+    if copies is not None and copies["facts"] is not None:
+        for e in copies["facts"]:
+            out.setdefault(str(e["content"]["fact_subject"]), set()).add(str(e["metadata"]["verification_pass_status"]))
+        return {k: sorted(v) for k, v in sorted(out.items())}
     for subject, tier in _rows(
             conn, "SELECT f.fact_subject, f.verification_pass_status FROM public.chart_facts f"
                   " JOIN public.ka_gochara_search_input_snapshot s ON s.chart_id = f.chart_id AND f.fact_id = ANY (s.consumed_fact_ids)"

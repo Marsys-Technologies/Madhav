@@ -197,6 +197,63 @@ def read_chart(conn: Any, fact_ids: Sequence[str]) -> dict[str, Any]:
     return {"lagna": lagna, "natal": natal}
 
 
+def chart_from_copy(copy: Sequence[Mapping[str, Any]]) -> dict[str, Any]:
+    """The natal chart from a snapshot's COPY of the consumed fact rows (G12 route 1): the same subjects and the same exactness guard as
+    `read_chart`, read from the stored content instead of live L1. `copy` must have been parsed with `parse_float=Decimal` (see
+    `read_chart_snapshot`) so a numeric is never quantised on the way."""
+    lagna, natal = None, {}
+    for e in copy:
+        c = e.get("content") or {}
+        subj, num = c.get("fact_subject"), c.get("fact_value_num")
+        if num is None:
+            continue
+        if subj == "LAGNA":
+            lagna = _exact_float(num, subj)
+        elif subj in _FACT_SUBJECT:
+            natal[_FACT_SUBJECT[subj]] = _exact_float(num, subj)
+    missing = [s for s in ("lagna",) if lagna is None] + [g for g in _GRAHAS if g not in natal]
+    if missing:
+        raise Unverifiable(f"the snapshot's consumed facts lack {missing}: nothing to derive from")
+    return {"lagna": lagna, "natal": natal}
+
+
+def snapshot_copies(conn: Any, chart_id: str, generation: str) -> dict[str, Any] | None:
+    """The snapshot's COPIES of its consumed L1 rows, numerics kept EXACT (`Decimal`): {"facts": [...], "dashas": [...],
+    "fact_ids": [...], "dasha_row_ids": [...]} — or None when the generation has no snapshot. `facts` / `dashas` are None for a LEGACY snapshot
+    (written before migration 1305: ids only; not self-contained)."""
+    import json
+    row = conn.execute(
+        "SELECT consumed_fact_ids, consumed_dasha_row_ids FROM public.ka_gochara_search_input_snapshot WHERE chart_id = %s AND generation = %s",
+        (chart_id, generation)).fetchone()
+    if row is None:
+        return None
+    ids = tuple(row.values()) if isinstance(row, dict) else tuple(row)
+    out: dict[str, Any] = {"fact_ids": list(ids[0]), "dasha_row_ids": [str(x) for x in ids[1]], "facts": None, "dashas": None}
+    has_copy = conn.execute(
+        "SELECT count(*) FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'ka_gochara_search_input_snapshot'"
+        " AND column_name IN ('consumed_fact_rows', 'consumed_dasha_rows')").fetchone()
+    if int(next(iter(has_copy.values())) if isinstance(has_copy, dict) else has_copy[0]) == 2:
+        cp = conn.execute(
+            "SELECT consumed_fact_rows::text, consumed_dasha_rows::text FROM public.ka_gochara_search_input_snapshot"
+            " WHERE chart_id = %s AND generation = %s", (chart_id, generation)).fetchone()
+        cp = tuple(cp.values()) if isinstance(cp, dict) else tuple(cp)
+        if cp[0] is not None and cp[1] is not None:
+            out["facts"] = json.loads(cp[0], parse_float=Decimal)
+            out["dashas"] = json.loads(cp[1], parse_float=Decimal)
+    return out
+
+
+def read_chart_snapshot(conn: Any, chart_id: str, generation: str) -> dict[str, Any]:
+    """The natal chart the generation was built from: read from the snapshot's own COPY (so it exists after any later L1 rebuild); a LEGACY
+    snapshot is read by id from live L1, as before."""
+    snap = snapshot_copies(conn, chart_id, generation)
+    if snap is None:
+        raise Unverifiable("no search-input snapshot to read the natal chart from")
+    if snap["facts"] is None:
+        return read_chart(conn, snap["fact_ids"])
+    return chart_from_copy(snap["facts"])
+
+
 def _sign_index(lon: float) -> int:
     return int((lon % 360.0) // 30.0)
 
@@ -482,7 +539,7 @@ def rederive_inventory_digest(
         (chart_id, generation, event_class)).fetchone()
     if snap is None or hdr is None:
         raise Unverifiable("no snapshot / inventory header to verify against")
-    chart = read_chart(conn, snap[1])           # every class: P2 needs the natal Moon even where H is unknown
+    chart = read_chart_snapshot(conn, chart_id, generation)           # every class: P2 needs the natal Moon even where H is unknown (the snapshot's COPY, G12)
     pins = derive_class_pins(event_class, chart, sealed_paths,
                              excluded_agents=(bound_excluded_agents(conn, chart_id, generation)       # R9-10: the manifest's scope
                                               if excluded_agents is None else tuple(excluded_agents)),
@@ -517,10 +574,17 @@ def rederive_ledger_digest(
         " WHERE chart_id = %s AND generation = %s AND event_class = %s",
         (chart_id, generation, event_class)).fetchone()
     lo, hi = hdr
-    rows = conn.execute(
-        "SELECT level_n, start_iso, end_iso, lower(lord_graha) FROM public.chart_dashas"
-        " WHERE chart_id = %s AND dasha_row_id = ANY(%s::uuid[]) ORDER BY level_n, start_iso",
-        (chart_id, [str(x) for x in snap[0]])).fetchall()
+    copies = snapshot_copies(conn, chart_id, generation)
+    if copies is not None and copies["dashas"] is not None:         # G12: the rows the snapshot OWNS, not live L1
+        from datetime import datetime as _dt, timezone as _tz
+        rows = sorted((int(e["key"]["level_n"]), _dt.fromisoformat(e["key"]["start_iso"]).astimezone(_tz.utc),
+                       _dt.fromisoformat(e["content"]["end_iso"]).astimezone(_tz.utc), str(e["content"]["lord_graha"]).lower())
+                      for e in copies["dashas"])
+    else:
+        rows = conn.execute(
+            "SELECT level_n, start_iso, end_iso, lower(lord_graha) FROM public.chart_dashas"
+            " WHERE chart_id = %s AND dasha_row_id = ANY(%s::uuid[]) ORDER BY level_n, start_iso",
+            (chart_id, [str(x) for x in snap[0]])).fetchall()
     lines = []
     for ob in obligations:
         agent, relation = ob.split("|")[3], ob.split("|")[4]
@@ -673,11 +737,13 @@ _C_LEVELS = (1, 2, 3)
 
 
 def check_dasha_population(consumed: Sequence[Mapping[str, Any]], pinned: Sequence[Mapping[str, Any]], *,
-                           chart_id: str, horizon: tuple, consumed_ids: Sequence[str]) -> list[str]:
+                           chart_id: str, horizon: tuple, consumed_ids: Sequence[str], pin_build: bool = True) -> list[str]:
     """Pure: the violations (empty = the population is the §4.0 population). `consumed` are the rows the
     snapshot's ids resolve to for this chart; `pinned` the rows the contract selects (ayanāṃśa, system,
     tier, build, levels) — both with level_n, start_iso, end_iso, lord_graha, build_id, system_id,
-    ayanamsha_id, verification_pass_status, parent_row_id, dasha_row_id."""
+    ayanamsha_id, verification_pass_status, parent_row_id, dasha_row_id. `pin_build=False` (the snapshot's own COPY, G12): the canonical chart's frozen
+    build constant is a BUILD-time acceptance (the writer's `assert_single_pinned_build`), not a property a sealed generation must keep after a later
+    re-pin; one build in the population is still required."""
     lo, hi = horizon
     out: list[str] = []
     found = {str(r["dasha_row_id"]) for r in consumed}
@@ -696,7 +762,7 @@ def check_dasha_population(consumed: Sequence[Mapping[str, Any]], pinned: Sequen
             out.append(f"row {rid}: level {r['level_n']} is not MD/AD/PD")
         if not (r["start_iso"] < hi and r["end_iso"] > lo):
             out.append(f"row {rid}: lies wholly outside the horizon (an extra row)")
-    if str(chart_id) == _C_CHART:
+    if pin_build and str(chart_id) == _C_CHART:
         wrong = sorted(b for b in builds if b != _C_BUILD)
         if wrong:
             out.append(f"canonical chart: consumed build(s) {wrong} are not the frozen {_C_BUILD}")
@@ -714,13 +780,42 @@ def check_dasha_population(consumed: Sequence[Mapping[str, Any]], pinned: Sequen
     return out
 
 
+def _population_rows_from_copy(copy: Sequence[Mapping[str, Any]]) -> list[dict[str, Any]]:
+    """The snapshot's COPY of its daśā rows in the shape `check_dasha_population` reads (ids, build and tier come from the metadata block)."""
+    from datetime import datetime as _dt, timezone as _tz
+    out = []
+    for e in copy:
+        k, c, m = e["key"], e["content"], e["metadata"]
+        out.append({"dasha_row_id": str(m["dasha_row_id"]), "level_n": int(k["level_n"]), "parent_row_id": m.get("parent_row_id"),
+                    "lord_graha": c["lord_graha"], "start_iso": _dt.fromisoformat(k["start_iso"]).astimezone(_tz.utc),
+                    "end_iso": _dt.fromisoformat(c["end_iso"]).astimezone(_tz.utc), "build_id": str(m["build_id"]),
+                    "system_id": k["system_id"], "ayanamsha_id": k["ayanamsha_id"], "verification_pass_status": m["verification_pass_status"]})
+    return out
+
+
 def validate_consumed_dasha_population(conn: Any, *, chart_id: str, generation: str) -> dict:
+    """The §4.0 population contract. With a COPY in the snapshot (G12 route 1) it is checked ON THE COPY alone: the verification of a generation
+    never depends on live L1 (which a later rebuild may have re-issued); the comparison with live L1 (omitted pinned rows, a build that is no longer
+    pinned) is the drift REPORT (`staleness`), never a failure to verify. A LEGACY snapshot is checked against live L1 as before."""
     snap = conn.execute(
         "SELECT consumed_dasha_row_ids FROM public.ka_gochara_search_input_snapshot"
         " WHERE chart_id = %s AND generation = %s", (chart_id, generation)).fetchone()
     if snap is None:
         raise Unverifiable("no search-input snapshot to validate the consumed daśā population against")
     ids = [str(x) for x in snap[0]]
+    copies = snapshot_copies(conn, chart_id, generation)
+    if copies is not None and copies["dashas"] is not None:
+        horizon = conn.execute(
+            "SELECT min(lower(horizon)), max(upper(horizon)) FROM public.ka_gochara_search_inventory"
+            " WHERE chart_id = %s AND generation = %s", (chart_id, generation)).fetchone()
+        if horizon is None or horizon[0] is None:
+            raise Unverifiable("no inventory horizon to validate the consumed daśā population against")
+        rows = _population_rows_from_copy(copies["dashas"])
+        problems = check_dasha_population(rows, rows, chart_id=chart_id, horizon=(horizon[0], horizon[1]),
+                                          consumed_ids=ids, pin_build=False)
+        if problems:
+            raise Unverifiable("consumed daśā population (the snapshot's copy) violates the §4.0 read contract: " + "; ".join(problems))
+        return {"consumed": len(rows), "pinned_overlapping": len(rows), "source": "snapshot_copy"}
     horizon = conn.execute(
         "SELECT min(lower(horizon)), max(upper(horizon)) FROM public.ka_gochara_search_inventory"
         " WHERE chart_id = %s AND generation = %s", (chart_id, generation)).fetchone()

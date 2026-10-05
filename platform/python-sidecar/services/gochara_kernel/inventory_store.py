@@ -111,13 +111,27 @@ class InventoryStore:
 
     # ── snapshot (item 0) ────────────────────────────────────────────────
 
+    def snapshot_copy_available(self) -> bool:
+        """Does the APPLIED schema give the snapshot a COPY of what it consumed (migration 1305, G12 route 1)? Read, never assumed: without it the
+        snapshot is the LEGACY shape (ids and whole-row digests) and is NOT self-contained — it dangles after any later L1 rebuild — which the
+        build notes name and the seal path refuses."""
+        row = self.conn.execute(
+            "SELECT count(*) FROM information_schema.columns WHERE table_schema = 'public'"
+            " AND table_name = 'ka_gochara_search_input_snapshot'"
+            " AND column_name IN ('consumed_fact_rows', 'consumed_dasha_rows', 'l1_facts_metadata_digest', 'dasha_metadata_digest')").fetchone()
+        return int(row[0]) == 4
+
     def insert_snapshot(self, *, chart_id: str, generation: str, convention_id: str,
                         consumed_fact_ids: Sequence[str],
                         consumed_dasha_row_ids: Sequence[str],
                         av_declaration_keys: Sequence[str] = ()) -> str:
         """The ONE immutable input identity of the generation. Its vector is the
         manifest's (read, never invented); the digests come from the database's own
-        functions over the live rows; the insert trigger recomputes `input_digest`."""
+        functions over the live rows; the insert trigger recomputes `input_digest`.
+
+        With migration 1305 the snapshot stores a COPY of the consumed L1 rows (`consumed_fact_rows`, `consumed_dasha_rows`: {key, content,
+        metadata}) and `l1_facts_digest` / `dasha_digest` are the IDENTITY digests of that copy (content columns only), so the generation
+        stays self-contained and verifiable after any later L1 rebuild; the ids stay as provenance. Without it, the legacy shape is written."""
         vector = self.manifest_vector(chart_id, generation)
         if vector is None:
             raise SnapshotUnboundError(
@@ -129,15 +143,37 @@ class InventoryStore:
             "SELECT public.ka_gochara_search_av_entry(k) FROM unnest(%s::text[]) k",
             (list(av_declaration_keys),)).fetchall()) if av_declaration_keys else []
         av = [r[0] for r in av]
-        # 1206 v1.2 (accepted): the live-input digests are keyed by (chart, id) — the chart is the
-        # first argument — and the daśā ids are uuid[] (joined without a text cast).
+        vec_json = _json.dumps(vector)
+        if self.snapshot_copy_available():
+            facts_copy = _json.dumps(self.conn.execute(
+                "SELECT public.ka_gochara_search_facts_copy(%s::uuid, %s::text[], true)", (chart_id, facts)).fetchone()[0])
+            dashas_copy = _json.dumps(self.conn.execute(
+                "SELECT public.ka_gochara_search_dasha_copy(%s::uuid, %s::uuid[])", (chart_id, dashas)).fetchone()[0])
+
+            def _digest(copy: str, block: str) -> str:
+                return self.conn.execute("SELECT public.ka_gochara_search_copy_digest(%s::jsonb, %s)", (copy, block)).fetchone()[0]
+            l1, dd = _digest(facts_copy, "content"), _digest(dashas_copy, "content")
+            l1m, ddm = _digest(facts_copy, "metadata"), _digest(dashas_copy, "metadata")
+            digest = self.conn.execute(
+                "SELECT public.ka_gochara_search_input_digest(%s, %s::jsonb, %s, %s, %s::text[])",
+                (convention_id, vec_json, l1, dd, av)).fetchone()[0]
+            self.conn.execute(
+                "INSERT INTO public.ka_gochara_search_input_snapshot"
+                " (chart_id, generation, convention_id, input_generation_vector,"
+                "  consumed_fact_ids, consumed_dasha_row_ids, av_declarations,"
+                "  l1_facts_digest, dasha_digest, input_digest,"
+                "  consumed_fact_rows, consumed_dasha_rows, l1_facts_metadata_digest, dasha_metadata_digest)"
+                " VALUES (%s,%s,%s,%s::jsonb,%s,%s::uuid[],%s,%s,%s,%s,%s::jsonb,%s::jsonb,%s,%s)",
+                (chart_id, generation, convention_id, vec_json, facts, dashas, av, l1, dd, digest,
+                 facts_copy, dashas_copy, l1m, ddm))
+            return digest
+        # LEGACY shape (no migration 1305): 1206's live-input digests keyed by (chart, id)
         l1 = self.conn.execute(
             "SELECT public.ka_gochara_search_l1_facts_digest(%s::uuid, %s::text[])",
             (chart_id, facts)).fetchone()[0]
         dd = self.conn.execute(
             "SELECT public.ka_gochara_search_dasha_digest(%s::uuid, %s::uuid[])",
             (chart_id, dashas)).fetchone()[0]
-        vec_json = _json.dumps(vector)
         digest = self.conn.execute(
             "SELECT public.ka_gochara_search_input_digest(%s, %s::jsonb, %s, %s, %s::text[])",
             (convention_id, vec_json, l1, dd, av)).fetchone()[0]
@@ -151,8 +187,20 @@ class InventoryStore:
         return digest
 
     def consumed_dasha_rows(self, chart_id: str, generation: str) -> list[DashaRow]:
-        """The pinned daśā rows the snapshot CONSUMED (read by id — the inventory is cut at
-        exactly the rows the snapshot's digest covers, never a fresh read)."""
+        """The pinned daśā rows the snapshot CONSUMED (the inventory is cut at exactly the rows the snapshot's digest covers, never a fresh read).
+        With 1305 they come from the snapshot's own COPY (so they exist after any later L1 rebuild); a legacy snapshot is read by id."""
+        copy = None
+        if self.snapshot_copy_available():
+            r = self.conn.execute(
+                "SELECT consumed_dasha_rows FROM public.ka_gochara_search_input_snapshot WHERE chart_id = %s AND generation = %s",
+                (chart_id, generation)).fetchone()
+            copy = r[0] if r else None
+        if copy is not None:
+            from datetime import timezone as _tz
+            rows = sorted(copy, key=lambda e: (int(e["key"]["level_n"]), e["key"]["start_iso"]))
+            return [DashaRow(str(e["metadata"]["dasha_row_id"]), int(e["key"]["level_n"]), str(e["content"]["lord_graha"]).lower(),
+                             datetime.fromisoformat(e["key"]["start_iso"]).astimezone(_tz.utc),
+                             datetime.fromisoformat(e["content"]["end_iso"]).astimezone(_tz.utc)) for e in rows]
         rows = self.conn.execute(
             "SELECT d.dasha_row_id::text, d.level_n, d.lord_graha, d.start_iso, d.end_iso"
             " FROM public.chart_dashas d"

@@ -1,0 +1,462 @@
+"""G12 route 1 — the search-input snapshot OWNS a COPY of the L1 rows it consumed (migration 1305; steward G12-ROUTE1; design note
+decisions/G12_ROUTE1_SNAPSHOT_DESIGN_v1_0.md).
+
+THE DEFECT THIS CLOSES: 1206's snapshot pointed at its L1 inputs by id and digested whole rows (row ids, build ids, parent ids included). After ANY later
+`ga_dashas` / `ga_positions` rebuild (new `dasha_row_id`s, a new build id, an engine bump) a SEALED generation read every consumed row as MISSING or
+changed: completeness reported `input_snapshot_drift` forever, the verification job could not re-derive, and a sealed generation cannot be repaired.
+
+Real migration chain on a disposable database (1206, 1232, 1240, 1305); the L1 tables are the stubs of the A5.3 suites with the production columns.
+Shown: the snapshot stores a copy and its digests recompute from it; an L1 rebuild with NEW row ids and a NEW build id and the SAME values is METADATA-only
+drift (completeness clean, staleness soft, the verifier and the ledger re-derivation still pass, the Moon domain unchanged); a changed VALUE (a daśā
+end, a natal longitude) is HARD drift; a moved boundary is NAMED (ordinal lord path), not 'row missing'; the copy check refuses a digest that does not
+recompute; 1305 refuses to apply after G8's 1306; the legacy path (no 1305) is unchanged."""
+from __future__ import annotations
+
+import json
+import uuid
+from decimal import Decimal
+
+import pytest
+
+from pipeline.orchestrator.writers import ContextSpec, SubStep
+from pipeline.orchestrator.writers import ka_gochara_v5 as writer_mod
+from services.gochara_kernel import inventory_verifier as inv_v
+from services.gochara_kernel import staleness
+from services.gochara_kernel.inventory_store import InventoryStore
+from services.gochara_kernel.rule_registry import RuleRegistryStore
+
+from . import test_a53_inventory as base
+from .test_a53_am5_writer import make_ephe
+from .test_a53_inventory import CHART_ID, H0, H1, create_am5_database, drop_am5_database
+
+GEN = writer_mod.GENERATION
+M1305 = base.MIGRATIONS / "1305_gochara_snapshot_owns_l1_copy.sql"
+
+
+@pytest.fixture(params=[True], ids=["with_1305"])
+def g12(request, monkeypatch, tmp_path):
+    import psycopg
+    admin, name, dsn = create_am5_database("g12", apply_1305=True)
+    conn = psycopg.connect(dsn, autocommit=True, connect_timeout=3)
+    try:
+        monkeypatch.setattr(writer_mod, "calc_sidereal_lon", lambda body, jd, ephe: (10.0, 2))
+        RuleRegistryStore(conn).seed()
+        # the AD stub row 2 is the Moon's Antardaśā in this chart (as in the AM-14 suite), so the Moon-resolved domain is non-empty
+        conn.execute("UPDATE public.chart_dashas SET lord_graha = 'Moon' WHERE dasha_row_id = %s", (str(uuid.UUID(int=2)),))
+        ephe = make_ephe(tmp_path, monkeypatch)
+        w = writer_mod.GocharaV5Writer()
+
+        def step(key):
+            ctx = ContextSpec(asset_id=writer_mod.ASSET_ID, build_id="b-g12", db_conn=conn,
+                              config={"chart_id": CHART_ID, "horizon": (H0, H1), "ephe_path": ephe}, dry_run=False)
+            with conn.transaction():
+                return w.run_substep(ctx, SubStep(key=key, label=key))
+        for k in (writer_mod.CONVENTION_SUBSTEP, writer_mod.MANIFEST_SUBSTEP, writer_mod.SNAPSHOT_SUBSTEP, "inventory:marriage", "coverage:marriage"):
+            step(k)
+        yield step, conn
+    finally:
+        conn.close()
+        drop_am5_database(admin, name)
+
+
+def _snapshot(conn):
+    cur = conn.execute("SELECT consumed_fact_ids, consumed_dasha_row_ids, l1_facts_digest, dasha_digest, input_digest, consumed_fact_rows::text,"
+                       " consumed_dasha_rows::text, l1_facts_metadata_digest, dasha_metadata_digest"
+                       " FROM public.ka_gochara_search_input_snapshot WHERE chart_id = %s AND generation = %s", (CHART_ID, GEN))
+    row = cur.fetchone()
+    keys = ("fact_ids", "dasha_ids", "l1", "dd", "input", "facts", "dashas", "l1m", "ddm")
+    d = dict(zip(keys, row))
+    d["facts"], d["dashas"] = json.loads(d["facts"], parse_float=Decimal), json.loads(d["dashas"], parse_float=Decimal)
+    return d
+
+
+def _digest(conn, column, block):
+    """The digest the DATABASE computes over a stored copy (the column), never over a Python re-serialisation (a Decimal would become a string)."""
+    return conn.execute(f"SELECT public.ka_gochara_search_copy_digest({column}, %s) FROM public.ka_gochara_search_input_snapshot"
+                        " WHERE chart_id = %s AND generation = %s", (block, CHART_ID, GEN)).fetchone()[0]
+
+
+def _violations(conn):
+    with conn.transaction():
+        conn.execute("SELECT public.ka_gochara_lock_chart(%s::uuid)", (CHART_ID,))
+        conn.execute("SELECT public.ka_gochara_lock_global_shared()")
+        return conn.execute("SELECT event_class, violation, detail FROM public.ka_gochara_search_completeness_violations(%s::uuid, %s)",
+                            (CHART_ID, GEN)).fetchall()
+
+
+def _drift_violations(conn):
+    return [v for v in _violations(conn) if v[1] == "input_snapshot_drift"]
+
+
+def _rebuild_l1_with_new_ids(conn):
+    """What a ga_dashas / ga_positions rebuild does to the rows: every dasha_row_id and parent_row_id re-issued, a NEW build id, a NEW engine version
+    and a different created time — the VALUES are identical."""
+    new_build = str(uuid.uuid4())
+    conn.execute("CREATE TEMP TABLE _idmap AS SELECT dasha_row_id AS old_id, gen_random_uuid() AS new_id FROM public.chart_dashas")
+    with conn.transaction():
+        conn.execute("ALTER TABLE public.chart_dashas DISABLE TRIGGER ALL")
+        conn.execute("UPDATE public.chart_dashas d SET parent_row_id = m.new_id FROM _idmap m WHERE d.parent_row_id = m.old_id")
+        conn.execute("UPDATE public.chart_dashas d SET dasha_row_id = m.new_id, build_id = %s, engine_version = 'ga_dashas@v2', computed_at = now() + interval '1 day'"
+                     " FROM _idmap m WHERE d.dasha_row_id = m.old_id", (new_build,))
+        conn.execute("ALTER TABLE public.chart_dashas ENABLE TRIGGER ALL")
+    conn.execute("UPDATE public.chart_facts SET build_id = %s, engine_version = 'ga_positions@v2', created_at = now() + interval '1 day'", (new_build,))
+    return new_build
+
+
+# ── the copy ────────────────────────────────────────────────────────────────────────────────────────
+
+def test_the_snapshot_stores_a_copy_and_its_digests_recompute_from_it(g12):
+    _step, conn = g12
+    s = _snapshot(conn)
+    assert len(s["facts"]) == len(s["fact_ids"]) == 10 and len(s["dashas"]) == len(s["dasha_ids"]) and len(s["dashas"]) > 0
+    assert s["l1"] == _digest(conn, "consumed_fact_rows", "content") and s["dd"] == _digest(conn, "consumed_dasha_rows", "content")
+    assert s["l1m"] == _digest(conn, "consumed_fact_rows", "metadata") and s["ddm"] == _digest(conn, "consumed_dasha_rows", "metadata")
+    assert len({s["l1"], s["l1m"]}) == 2, "the identity and the metadata digests differ (different blocks)"
+    one = s["dashas"][0]
+    assert set(one) == {"key", "content", "metadata"} and "dasha_row_id" in one["metadata"] and "dasha_row_id" not in json.dumps(one["content"])
+    assert set(one["key"]) == {"ayanamsha_id", "system_id", "level_n", "start_iso", "kp_sublevel"}
+    assert one["content"]["lord_path"], "the ordinal lord path is stored"
+    fact = s["facts"][0]
+    assert "build_id" in fact["metadata"] and "build_id" not in fact["content"]
+    # no interval of the inventory carries a regenerated row id any more: a natural pointer instead
+    detail = conn.execute("SELECT detail::text FROM public.ka_gochara_search_interval WHERE detail IS NOT NULL LIMIT 1").fetchone()[0]
+    assert "dasha_row_id" not in detail
+
+
+def _reinsert(conn, s, *, facts=None, dashas=None, l1=None, ddm=None, l1m=None, with_copy=True):
+    """Delete the snapshot (the candidate replacement path) and insert it again with the given copies / digests. 1206's own guard recomputes input_digest from
+    l1_facts_digest and dasha_digest AS GIVEN, so a tampered COPY with the original digests passes that guard and reaches 1305's copy check."""
+    InventoryStore(conn).delete_generation_inventory(CHART_ID, GEN)
+    vec = conn.execute("SELECT input_generation_vector::text FROM public.kala_gochara_publication WHERE chart_id = %s AND generation = %s",
+                       (CHART_ID, GEN)).fetchone()[0]
+    conv = conn.execute("SELECT convention_id FROM public.ka_gochara_sky_convention LIMIT 1").fetchone()[0]
+    with conn.transaction():
+        conn.execute("SELECT public.ka_gochara_lock_chart(%s::uuid)", (CHART_ID,))
+        if with_copy:
+            conn.execute(
+                "INSERT INTO public.ka_gochara_search_input_snapshot (chart_id, generation, convention_id, input_generation_vector, consumed_fact_ids,"
+                " consumed_dasha_row_ids, av_declarations, l1_facts_digest, dasha_digest, input_digest, consumed_fact_rows, consumed_dasha_rows,"
+                " l1_facts_metadata_digest, dasha_metadata_digest) VALUES (%s,%s,%s,%s::jsonb,%s,%s::uuid[],%s,%s,%s,%s,%s::jsonb,%s::jsonb,%s,%s)",
+                (CHART_ID, GEN, conv, vec, s["fact_ids"], s["dasha_ids"], [], l1 or s["l1"], s["dd"], s["input"],
+                 json.dumps(facts if facts is not None else s["facts"], default=_jsonable), json.dumps(dashas if dashas is not None else s["dashas"], default=_jsonable),
+                 l1m or s["l1m"], ddm or s["ddm"]))
+        else:
+            conn.execute(
+                "INSERT INTO public.ka_gochara_search_input_snapshot (chart_id, generation, convention_id, input_generation_vector, consumed_fact_ids,"
+                " consumed_dasha_row_ids, av_declarations, l1_facts_digest, dasha_digest, input_digest) VALUES (%s,%s,%s,%s::jsonb,%s,%s::uuid[],%s,%s,%s,%s)",
+                (CHART_ID, GEN, conv, vec, s["fact_ids"], s["dasha_ids"], [], s["l1"], s["dd"], s["input"]))
+
+
+def _jsonable(o):
+    if isinstance(o, Decimal):
+        return float(o)                      # a JSON number again (a Decimal must not become a string)
+    raise TypeError(type(o))
+
+
+def test_the_copy_check_refuses_a_copy_whose_digests_do_not_recompute(g12):
+    _step, conn = g12
+    s = _snapshot(conn)
+    tampered = json.loads(json.dumps(s["facts"], default=_jsonable))
+    tampered[0]["content"]["fact_value_num"] = float(tampered[0]["content"]["fact_value_num"]) + 1.0     # the digests stay as stored: the COPY lies
+    with pytest.raises(Exception, match=r"l1_facts_digest / dasha_digest do not recompute from the stored copies"):
+        _reinsert(conn, s, facts=tampered)
+    tampered_d = json.loads(json.dumps(s["dashas"], default=_jsonable))
+    tampered_d[0]["content"]["lord_graha"] = "moon" if tampered_d[0]["content"]["lord_graha"] != "moon" else "sun"
+    with pytest.raises(Exception, match=r"l1_facts_digest / dasha_digest do not recompute from the stored copies"):
+        _reinsert(conn, s, dashas=tampered_d)
+
+
+def test_the_copy_check_refuses_metadata_that_does_not_recompute(g12):
+    _step, conn = g12
+    s = _snapshot(conn)
+    tampered = json.loads(json.dumps(s["facts"], default=_jsonable))
+    tampered[0]["metadata"]["engine_version"] = "someone-edited-this"
+    with pytest.raises(Exception, match=r"the metadata digests do not recompute"):
+        _reinsert(conn, s, facts=tampered)
+
+
+def test_the_copy_check_refuses_a_row_that_was_not_found_and_provenance_ids_that_are_not_the_copys(g12):
+    _step, conn = g12
+    s = _snapshot(conn)
+    no_content = json.loads(json.dumps(s["facts"], default=_jsonable))
+    no_content[0]["content"] = None
+    with pytest.raises(Exception, match=r"has no key, content or metadata"):
+        _reinsert(conn, s, facts=no_content)
+    s2 = dict(s)
+    s2["fact_ids"] = s["fact_ids"][:-1]                                       # the provenance array no longer names every row of the copy
+    with pytest.raises(Exception, match=r"provenance id arrays are not the ids of the stored copies"):
+        _reinsert(conn, s2)
+
+
+def test_a_snapshot_without_a_copy_is_refused_when_1305_is_applied(g12):
+    _step, conn = g12
+    s = _snapshot(conn)
+    with pytest.raises(Exception, match=r"JSON arrays|kgsis_l1_copy_ck"):
+        _reinsert(conn, s, with_copy=False)
+
+
+# ── an L1 rebuild with NEW ids and a NEW build id: METADATA-only drift, the generation stays verifiable ────────────────────────────────
+
+def _verify_marriage(conn):
+    """The independent re-derivation the verification job runs (the inventory digest from the snapshot's natal COPY, then the ledger digest from the
+    snapshot's daśā COPY), compared with the stored header — exactly the writer's verify phase, minus the geometry."""
+    inv = InventoryStore(conn)
+    sealed = inv.sealed_rule_paths()
+    stored_sel = inv_v.stored_selection(conn, chart_id=CHART_ID, generation=GEN, event_class="marriage")
+    res = inv_v.rederive_inventory_digest(conn, chart_id=CHART_ID, generation=GEN, event_class="marriage", sealed_paths=sealed,
+                                          path_exclusions=writer_mod.VERIFIER_PATH_RULINGS, h_unknown_exclusion=writer_mod.VERIFIER_H_UNKNOWN_RULING,
+                                          selected_versions=stored_sel or None)
+    led = inv_v.rederive_ledger_digest(conn, chart_id=CHART_ID, generation=GEN, event_class="marriage", obligations=res["obligations"],
+                                       capability={"position_probe": True, "arc_index": True, "aspect_span_solver": True,
+                                                   "moon_scope_domain": inv.moon_scope_available()})
+    hdr = conn.execute("SELECT inventory_digest, ledger_digest FROM public.ka_gochara_search_inventory WHERE chart_id = %s AND generation = %s"
+                       " AND event_class = 'marriage'", (CHART_ID, GEN)).fetchone()
+    return res["digest"] == hdr[0] and led == hdr[1]
+
+
+def test_rebuilding_L1_with_new_row_ids_and_a_new_build_id_is_metadata_only_drift_and_the_generation_still_verifies(g12):
+    _step, conn = g12
+    inv = InventoryStore(conn)
+    before_rows = inv.consumed_dasha_rows(CHART_ID, GEN)
+    assert _verify_marriage(conn) and not _drift_violations(conn)
+    fresh = staleness.sealed_generation_staleness(conn, CHART_ID, GEN)
+    assert fresh["self_contained"] and not fresh["drifted"] and not fresh["metadata_drift_components"] and fresh["changes"] == []
+
+    _rebuild_l1_with_new_ids(conn)
+    # the old ids no longer exist anywhere in L1
+    old_ids = _snapshot(conn)["dasha_ids"]
+    assert conn.execute("SELECT count(*) FROM public.chart_dashas WHERE dasha_row_id = ANY(%s::uuid[])", (old_ids,)).fetchone()[0] == 0
+
+    assert _drift_violations(conn) == [], "completeness must not report drift for an id / build / engine re-issue"
+    rep = staleness.sealed_generation_staleness(conn, CHART_ID, GEN)
+    assert rep["drifted"] is False and rep["drifted_components"] == [], rep["components"]
+    assert rep["metadata_only_drift"] is True and set(rep["metadata_drift_components"]) == {"l1_metadata", "dasha_metadata"}
+    assert rep["components"]["l1_facts"]["same"] and rep["components"]["dasha"]["same"] and rep["components"]["input"]["same"]
+    assert {c["change"] for c in rep["changes"]} == {"metadata_only"}
+    # the generation is still VERIFIABLE from its own copy: the daśā rows, the natal chart, the population contract, the ledger digest
+    assert inv.consumed_dasha_rows(CHART_ID, GEN) == before_rows
+    assert _verify_marriage(conn)
+    assert inv_v.validate_consumed_dasha_population(conn, chart_id=CHART_ID, generation=GEN)["source"] == "snapshot_copy"
+    assert inv_v.read_chart_snapshot(conn, CHART_ID, GEN)["lagna"] == base.CHART["lagna_deg"]
+
+
+def test_the_moon_resolved_domain_is_unchanged_by_an_L1_rebuild_it_reads_the_snapshots_copy(g12):
+    _step, conn = g12
+    ob = conn.execute("SELECT ob_id FROM public.ka_gochara_search_obligation WHERE chart_id = %s AND generation = %s AND agent ~ '^period_lord:'"
+                      " LIMIT 1", (CHART_ID, GEN)).fetchone()[0]
+    q = "SELECT public.ka_gochara_search_moon_resolved_domain(%s::uuid, %s, 'marriage', %s::uuid)::text"
+    # make the Moon the lord of one stored period BEFORE the snapshot is taken is not possible here (it is built); compare before / after instead
+    ob = conn.execute("SELECT ob_id FROM public.ka_gochara_search_obligation WHERE chart_id = %s AND generation = %s AND agent = 'period_lord:ad' LIMIT 1",
+                      (CHART_ID, GEN)).fetchone()[0]
+    before = conn.execute(q, (CHART_ID, GEN, ob)).fetchone()[0]
+    assert before != "{}", "setup: the Moon Antardaśā puts a non-empty Moon-resolved domain under the AD obligation"
+    _rebuild_l1_with_new_ids(conn)
+    assert conn.execute(q, (CHART_ID, GEN, ob)).fetchone()[0] == before
+    conn.execute("DELETE FROM public.chart_dashas")                                          # even with live L1 EMPTY the function answers from the copy
+    assert conn.execute(q, (CHART_ID, GEN, ob)).fetchone()[0] == before
+
+
+def test_the_generation_verifies_even_when_live_L1_is_gone_entirely(g12):
+    _step, conn = g12
+    conn.execute("DELETE FROM public.chart_dashas")
+    conn.execute("DELETE FROM public.chart_facts")
+    assert _verify_marriage(conn)                                                            # the copy is all the verifier needs
+    rep = staleness.sealed_generation_staleness(conn, CHART_ID, GEN)
+    assert rep["drifted"] is True and {"l1_facts", "dasha", "input"} <= set(rep["drifted_components"])       # ... and drift is REPORTED as hard, honestly
+    assert {c["change"] for c in rep["changes"]} == {"missing_live"}
+
+
+# ── a changed VALUE is HARD drift; a moved boundary is NAMED ────────────────────────────────────────────────────────────────────────
+
+def test_a_changed_dasha_end_is_hard_drift_in_completeness_and_staleness(g12):
+    _step, conn = g12
+    conn.execute("UPDATE public.chart_dashas SET end_iso = end_iso + interval '1 hour' WHERE dasha_row_id ="
+                 " (SELECT dasha_row_id FROM public.chart_dashas ORDER BY level_n DESC, start_iso LIMIT 1)")
+    drift = _drift_violations(conn)
+    assert len(drift) == 1 and "dasha rows no longer match" in drift[0][2] and "a value changed" in drift[0][2]
+    rep = staleness.sealed_generation_staleness(conn, CHART_ID, GEN)
+    assert rep["drifted"] and rep["drifted_components"] == ["dasha", "input"]
+    (change,) = [c for c in rep["changes"] if c["change"] != "metadata_only"]
+    assert change["change"] == "content_differs" and change["fields"] == ["end_iso"]
+
+
+def test_a_changed_natal_longitude_is_hard_drift(g12):
+    _step, conn = g12
+    conn.execute("UPDATE public.chart_facts SET fact_value_num = fact_value_num + 0.5 WHERE fact_subject = 'SUN'")
+    drift = _drift_violations(conn)
+    assert len(drift) == 1 and "fact rows no longer match" in drift[0][2]
+    rep = staleness.sealed_generation_staleness(conn, CHART_ID, GEN)
+    assert rep["drifted"] and "l1_facts" in rep["drifted_components"]
+    assert any(c["kind"] == "fact" and c["change"] == "content_differs" and c["fields"] == ["fact_value_num"] for c in rep["changes"])
+
+
+def test_a_trailing_scale_difference_in_a_numeric_is_not_a_value_change(g12):
+    """A rebuild that stores the same number with a different trailing scale (12.5 vs 12.50) must not read as a changed value (the digest trims scale)."""
+    _step, conn = g12
+    conn.execute("ALTER TABLE public.chart_facts ALTER COLUMN fact_value_num TYPE numeric(30,12) USING fact_value_num::numeric(30,12)")
+    # the snapshot was taken on the double stub; recompute the live view under a wider scale: the SAME numbers
+    rep = staleness.sealed_generation_staleness(conn, CHART_ID, GEN)
+    assert rep["components"]["l1_facts"]["same"], rep["changes"]
+
+
+def test_a_moved_boundary_is_named_by_its_ordinal_lord_path_not_reported_as_a_missing_row(g12):
+    _step, conn = g12
+    row = conn.execute("SELECT dasha_row_id, start_iso FROM public.chart_dashas WHERE level_n = 2 ORDER BY start_iso LIMIT 1").fetchone()
+    conn.execute("UPDATE public.chart_dashas SET start_iso = start_iso + interval '6992 seconds' WHERE dasha_row_id = %s", (row[0],))
+    rep = staleness.sealed_generation_staleness(conn, CHART_ID, GEN)
+    assert rep["drifted"] and "dasha" in rep["drifted_components"]
+    moved = [c for c in rep["changes"] if c["change"] == "moved"]
+    assert len(moved) == 1 and moved[0]["start_shift_seconds"] == 6992.0 and moved[0]["lord_path"]
+
+
+# ── the migration itself ────────────────────────────────────────────────────────────────────────────────────────────────────────────
+
+def test_1305_refuses_to_apply_after_g8s_1306_would_have_replaced_the_completeness_function():
+    """Both migrations replace ka_gochara_search_completeness_violations in full: applying 1305 AFTER 1306 would silently revert G8's census."""
+    import psycopg
+    admin, name, dsn = create_am5_database("g12gate", faithful=True)            # 1206 + 1232 + 1240, no 1305
+    conn = psycopg.connect(dsn, autocommit=True, connect_timeout=3)
+    try:
+        fn = conn.execute("SELECT pg_get_functiondef('public.ka_gochara_search_completeness_violations(uuid,text)'::regprocedure)").fetchone()[0]
+        conn.execute(fn.replace("BEGIN", "BEGIN\n  -- expected_class_list_missing (stand-in for G8's 1306 block)", 1))
+        with pytest.raises(Exception, match="g8_1306_applied_first"):
+            with conn.transaction():
+                conn.execute(M1305.read_text())
+    finally:
+        conn.close()
+        drop_am5_database(admin, name)
+
+
+def test_1305_refuses_a_second_application_and_a_schema_without_1232():
+    import psycopg
+    admin, name, dsn = create_am5_database("g12twice", apply_1305=True)
+    conn = psycopg.connect(dsn, autocommit=True, connect_timeout=3)
+    try:
+        with pytest.raises(Exception, match="migration_1305_already_applied"):
+            with conn.transaction():
+                conn.execute(M1305.read_text())
+    finally:
+        conn.close()
+        drop_am5_database(admin, name)
+    admin, name, dsn = create_am5_database("g12no1232")                          # 1206 only: no Moon-domain function
+    conn = psycopg.connect(dsn, autocommit=True, connect_timeout=3)
+    try:
+        with pytest.raises(Exception, match="migration_1232_not_applied"):
+            with conn.transaction():
+                conn.execute(M1305.read_text())
+    finally:
+        conn.close()
+        drop_am5_database(admin, name)
+
+
+def test_the_replaced_completeness_function_is_the_1232_body_with_exactly_one_block_changed():
+    """A static proof, in the 1232 tradition: take 1232's function, substitute the 1305 drift block, compare with 1305's function."""
+    import re
+    m1232 = (base.MIGRATIONS / "1232_gochara_search_moon_scope_domain.sql").read_text()
+    m1305 = M1305.read_text()
+
+    def fn(text):
+        a = text.index("CREATE OR REPLACE FUNCTION public.ka_gochara_search_completeness_violations(p_chart uuid, p_generation text)")
+        return text[a:text.index("$$;", text.index("RETURN QUERY SELECT * FROM public.ka_gochara_search_moon_scope_violations", a)) + 3]
+    f1232, f1305 = fn(m1232), fn(m1305)
+    a, b = f1305.index("    IF snap.consumed_fact_rows IS NULL OR"), f1305.index("    FOREACH e IN ARRAY snap.av_declarations LOOP")
+    legacy_then = f1305[a:b]
+    old_block = f1232[f1232.index("    live_l1 := public.ka_gochara_search_l1_facts_digest"):f1232.index("    FOREACH e IN ARRAY snap.av_declarations LOOP")]
+    assert f1232.replace(old_block, legacy_then) == f1305, "1305's completeness function differs from 1232's in more than the drift block"
+    # and the legacy branch contains the 1232 block's statements unchanged (modulo indentation)
+    norm = lambda t: re.sub(r"\s+", " ", t).strip()
+    assert norm(old_block) in norm(legacy_then)
+
+
+# ── the legacy path (no 1305) is unchanged ─────────────────────────────────────────────────────────────────────────────────────────
+
+def test_without_1305_the_writer_builds_the_legacy_snapshot_and_the_note_says_so(monkeypatch, tmp_path):
+    import psycopg
+    admin, name, dsn = create_am5_database("g12legacy")                          # 1206 only
+    conn = psycopg.connect(dsn, autocommit=True, connect_timeout=3)
+    try:
+        monkeypatch.setattr(writer_mod, "calc_sidereal_lon", lambda body, jd, ephe: (10.0, 2))
+        RuleRegistryStore(conn).seed()
+        ephe = make_ephe(tmp_path, monkeypatch)
+        w = writer_mod.GocharaV5Writer()
+        notes = {}
+        for k in (writer_mod.CONVENTION_SUBSTEP, writer_mod.MANIFEST_SUBSTEP, writer_mod.SNAPSHOT_SUBSTEP):
+            ctx = ContextSpec(asset_id=writer_mod.ASSET_ID, build_id="b-legacy", db_conn=conn,
+                              config={"chart_id": CHART_ID, "horizon": (H0, H1), "ephe_path": ephe}, dry_run=False)
+            with conn.transaction():
+                notes[k] = w.run_substep(ctx, SubStep(key=k, label=k)).notes
+        assert "LEGACY snapshot (migration 1305 is NOT applied)" in notes[writer_mod.SNAPSHOT_SUBSTEP]
+        assert InventoryStore(conn).snapshot_copy_available() is False
+        rep = staleness.sealed_generation_staleness(conn, CHART_ID, GEN)
+        assert rep["self_contained"] is False and rep["drifted"] is False
+        conn.execute("UPDATE public.chart_dashas SET end_iso = end_iso + interval '1 hour' WHERE level_n = 1")
+        assert staleness.sealed_generation_staleness(conn, CHART_ID, GEN)["drifted"] is True        # legacy: every component is hard
+    finally:
+        conn.close()
+        drop_am5_database(admin, name)
+
+
+def test_with_1305_the_snapshot_note_says_self_contained(g12):
+    step, conn = g12
+    assert InventoryStore(conn).snapshot_copy_available() is True
+    assert "SELF-CONTAINED: the snapshot owns a COPY of the consumed L1 rows" in step(writer_mod.SNAPSHOT_SUBSTEP).notes
+
+
+def test_the_gate_pins_are_the_shas_a_fresh_1206_1232_chain_produces_and_production_has():
+    """The sha256 values 1305's gate pins (read read-only from production 2026-10-05) are what a fresh 1206+1232 chain gives, so the gate accepts the real
+    schema and the migration applies on it (the `faithful` DB is exactly 1206+1232+1240 and 1305 applies cleanly on top in the other tests)."""
+    import hashlib
+    import psycopg
+    admin, name, dsn = create_am5_database("g12sha", faithful=True)
+    conn = psycopg.connect(dsn, autocommit=True, connect_timeout=3)
+    try:
+        got = {fn.split("(")[0]: hashlib.sha256(conn.execute(f"SELECT pg_get_functiondef('public.{fn}'::regprocedure)").fetchone()[0].encode()).hexdigest()
+               for fn in ("ka_gochara_search_completeness_violations(uuid,text)", "ka_gochara_search_moon_resolved_domain(uuid,text,text,uuid)")}
+    finally:
+        conn.close()
+        drop_am5_database(admin, name)
+    assert got == {"ka_gochara_search_completeness_violations": "63d9e7e737b020784ca52c4cd06e66e74434c20b60d9b9d65834f4e1c773f1fb",
+                   "ka_gochara_search_moon_resolved_domain": "707bd37ce48a3c5fbaf2de881bc7554d97bc81fc1a09a6534d36b4ec5f09cf07"}
+    text = M1305.read_text()
+    assert all(v in text for v in got.values())
+
+
+def test_a_changed_1232_function_blocks_1305_by_name():
+    import psycopg
+    admin, name, dsn = create_am5_database("g12chg", faithful=True)
+    conn = psycopg.connect(dsn, autocommit=True, connect_timeout=3)
+    try:
+        fn = conn.execute("SELECT pg_get_functiondef('public.ka_gochara_search_moon_resolved_domain(uuid,text,text,uuid)'::regprocedure)").fetchone()[0]
+        conn.execute(fn.replace("SELECT COALESCE(", "SELECT COALESCE( /* edited by hand */ ", 1))
+        with pytest.raises(Exception, match="moon_domain_function_is_not_the_1232_body"):
+            with conn.transaction():
+                conn.execute(M1305.read_text())
+    finally:
+        conn.close()
+        drop_am5_database(admin, name)
+
+
+# ── the production readback ─────────────────────────────────────────────────────────────────────────────────────────────────────────
+
+def test_the_readback_sql_runs_read_only_and_reports_what_the_post_apply_check_expects(g12):
+    _step, conn = g12
+    text = (base.MIGRATIONS.parent / "scripts" / "gochara" / "readback_1305_snapshot_copy.sql").read_text()
+    code_only = "\n".join(x for x in text.splitlines() if not x.strip().startswith("--"))
+    results = []
+    with conn.transaction():
+        conn.execute("SET TRANSACTION READ ONLY")
+        for statement in [x for x in code_only.split(";") if x.strip()]:
+            sql = statement.strip()
+            if sql.upper() in ("BEGIN READ ONLY", "COMMIT"):
+                continue
+            results.append(conn.execute(sql).fetchall())
+    columns, check, trigger, functions, replaced, grants, shas, ledger = results
+    assert [r[0] for r in columns] == ["consumed_dasha_rows", "consumed_fact_rows", "dasha_metadata_digest", "l1_facts_metadata_digest"]
+    assert check == [("kgsis_l1_copy_ck", False)]                              # NOT VALID: governs new rows, scans no old one
+    assert len(trigger) == 1 and trigger[0][1] == "O" and trigger[0][2] is True and trigger[0][3] is True
+    assert len(functions) == 8 and all(r[2] is False for r in functions)
+    assert replaced == [(True, True, True)]
+    assert {r[0] for r in shas} == {"ka_gochara_search_completeness_violations", "ka_gochara_search_moon_resolved_domain"}
+    assert all(r[1] not in ("63d9e7e737b020784ca52c4cd06e66e74434c20b60d9b9d65834f4e1c773f1fb", "707bd37ce48a3c5fbaf2de881bc7554d97bc81fc1a09a6534d36b4ec5f09cf07")
+               for r in shas), "the replaced functions are NOT the 1232 bodies any more"
+    assert ledger == [(1, 1, 0)]                                               # recorded; one snapshot (this test's); none without a copy

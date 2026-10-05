@@ -394,9 +394,9 @@ def _verify_class(conn, *, chart_id: str, generation: str, event_class: str, pos
     out["geometry"] = stage("contact_geometry", lambda: cc.certify_contact_geometry(
         conn, chart_id=chart_id, generation=generation, event_class=event_class, position_at=position_at))
     from . import record_derivation as rd
-    snap_facts = _one(conn.execute("SELECT consumed_fact_ids FROM public.ka_gochara_search_input_snapshot"
-                                   " WHERE chart_id = %s AND generation = %s", (chart_id, generation)).fetchone())
-    chart = inv_v.read_chart(conn, snap_facts) if snap_facts is not None else None
+    has_snapshot = _one(conn.execute("SELECT count(*) FROM public.ka_gochara_search_input_snapshot"
+                                     " WHERE chart_id = %s AND generation = %s", (chart_id, generation)).fetchone())
+    chart = inv_v.read_chart_snapshot(conn, chart_id, generation) if has_snapshot else None   # the snapshot's COPY (G12), never live L1
     from .result_policy import manifest_policy
     policy = manifest_policy(conn, chart_id, generation)
     pins = _included_pins(conn, chart_id, generation, event_class)
