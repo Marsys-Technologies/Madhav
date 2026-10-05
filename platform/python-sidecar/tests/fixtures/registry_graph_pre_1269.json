@@ -1,0 +1,1236 @@
+{
+ "_provenance": "Snapshot of the live asset_registry graph (asset_id, depends_on, is_active, asset_kind, has_writer) read through the read-only reader role on 2026-10-03, origin/main 6758c39b1, BEFORE migration 1269. 129 rows. Used by test_migration_1269 to prove the new edge keeps the full graph acyclic and to measure the blast radius with the real asset_runner functions. Reference configuration only; no chart data.",
+ "assets": {
+  "bg_class_lifetime_counts": {
+   "asset_kind": "data",
+   "depends_on": [
+    "bg_ghatana"
+   ],
+   "has_writer": true,
+   "is_active": true
+  },
+  "bg_class_priors": {
+   "asset_kind": "data",
+   "depends_on": [],
+   "has_writer": true,
+   "is_active": true
+  },
+  "bg_cohort": {
+   "asset_kind": "data",
+   "depends_on": [
+    "bg_ephemeris_engine"
+   ],
+   "has_writer": true,
+   "is_active": true
+  },
+  "bg_compendium_index": {
+   "asset_kind": "data",
+   "depends_on": [
+    "bg_reference",
+    "bg_texts"
+   ],
+   "has_writer": true,
+   "is_active": true
+  },
+  "bg_concordance": {
+   "asset_kind": "data",
+   "depends_on": [
+    "bg_reference",
+    "bg_rules",
+    "bg_text_index",
+    "bg_texts"
+   ],
+   "has_writer": true,
+   "is_active": true
+  },
+  "bg_dasha_systems": {
+   "asset_kind": "data",
+   "depends_on": [
+    "bg_ontology"
+   ],
+   "has_writer": true,
+   "is_active": true
+  },
+  "bg_dignity_reference": {
+   "asset_kind": "data",
+   "depends_on": [],
+   "has_writer": true,
+   "is_active": true
+  },
+  "bg_doshas": {
+   "asset_kind": "data",
+   "depends_on": [
+    "bg_ontology"
+   ],
+   "has_writer": true,
+   "is_active": true
+  },
+  "bg_ephemeris": {
+   "asset_kind": "data",
+   "depends_on": [],
+   "has_writer": true,
+   "is_active": true
+  },
+  "bg_ephemeris_engine": {
+   "asset_kind": "service",
+   "depends_on": [],
+   "has_writer": false,
+   "is_active": true
+  },
+  "bg_formula_constants": {
+   "asset_kind": "data",
+   "depends_on": [],
+   "has_writer": true,
+   "is_active": true
+  },
+  "bg_ghatana": {
+   "asset_kind": "data",
+   "depends_on": [],
+   "has_writer": true,
+   "is_active": true
+  },
+  "bg_gochara_arcs": {
+   "asset_kind": "data",
+   "depends_on": [
+    "bg_ephemeris"
+   ],
+   "has_writer": true,
+   "is_active": true
+  },
+  "bg_gochara_citation_resolution": {
+   "asset_kind": "data",
+   "depends_on": [
+    "bg_texts"
+   ],
+   "has_writer": false,
+   "is_active": true
+  },
+  "bg_kota_chakra_rings": {
+   "asset_kind": "data",
+   "depends_on": [],
+   "has_writer": true,
+   "is_active": true
+  },
+  "bg_kp_sublord_division": {
+   "asset_kind": "data",
+   "depends_on": [
+    "bg_nakshatra"
+   ],
+   "has_writer": true,
+   "is_active": true
+  },
+  "bg_medical_mappings": {
+   "asset_kind": "data",
+   "depends_on": [],
+   "has_writer": true,
+   "is_active": true
+  },
+  "bg_muhurta_lattice": {
+   "asset_kind": "data",
+   "depends_on": [],
+   "has_writer": true,
+   "is_active": true
+  },
+  "bg_nakshatra": {
+   "asset_kind": "data",
+   "depends_on": [],
+   "has_writer": true,
+   "is_active": true
+  },
+  "bg_nakshatra_medical": {
+   "asset_kind": "data",
+   "depends_on": [],
+   "has_writer": false,
+   "is_active": true
+  },
+  "bg_ontology": {
+   "asset_kind": "data",
+   "depends_on": [],
+   "has_writer": true,
+   "is_active": true
+  },
+  "bg_panchanga": {
+   "asset_kind": "service",
+   "depends_on": [],
+   "has_writer": false,
+   "is_active": true
+  },
+  "bg_parihara_rules": {
+   "asset_kind": "data",
+   "depends_on": [
+    "bg_doshas",
+    "bg_texts"
+   ],
+   "has_writer": true,
+   "is_active": true
+  },
+  "bg_phaladeepika_latta": {
+   "asset_kind": "data",
+   "depends_on": [],
+   "has_writer": true,
+   "is_active": true
+  },
+  "bg_prashna_rules": {
+   "asset_kind": "data",
+   "depends_on": [],
+   "has_writer": true,
+   "is_active": true
+  },
+  "bg_reference": {
+   "asset_kind": "data",
+   "depends_on": [
+    "bg_ontology"
+   ],
+   "has_writer": true,
+   "is_active": true
+  },
+  "bg_remedies": {
+   "asset_kind": "data",
+   "depends_on": [
+    "bg_texts"
+   ],
+   "has_writer": true,
+   "is_active": true
+  },
+  "bg_rules": {
+   "asset_kind": "data",
+   "depends_on": [
+    "bg_dasha_systems",
+    "bg_texts",
+    "bg_yogas"
+   ],
+   "has_writer": true,
+   "is_active": true
+  },
+  "bg_sarvatobhadra_grid": {
+   "asset_kind": "data",
+   "depends_on": [],
+   "has_writer": false,
+   "is_active": true
+  },
+  "bg_sign_medical": {
+   "asset_kind": "data",
+   "depends_on": [],
+   "has_writer": true,
+   "is_active": true
+  },
+  "bg_sky_calendar": {
+   "asset_kind": "data",
+   "depends_on": [],
+   "has_writer": true,
+   "is_active": true
+  },
+  "bg_text_index": {
+   "asset_kind": "data",
+   "depends_on": [
+    "bg_reference",
+    "bg_texts"
+   ],
+   "has_writer": true,
+   "is_active": true
+  },
+  "bg_texts": {
+   "asset_kind": "data",
+   "depends_on": [],
+   "has_writer": true,
+   "is_active": true
+  },
+  "bg_transit_engine": {
+   "asset_kind": "data",
+   "depends_on": [],
+   "has_writer": false,
+   "is_active": true
+  },
+  "bg_transit_rules": {
+   "asset_kind": "data",
+   "depends_on": [],
+   "has_writer": true,
+   "is_active": true
+  },
+  "bg_vastu_directions": {
+   "asset_kind": "data",
+   "depends_on": [],
+   "has_writer": true,
+   "is_active": true
+  },
+  "bg_vedha_malefic_scale": {
+   "asset_kind": "data",
+   "depends_on": [],
+   "has_writer": true,
+   "is_active": true
+  },
+  "bg_vidhi_floors": {
+   "asset_kind": "data",
+   "depends_on": [
+    "bg_vidhi_primitives"
+   ],
+   "has_writer": true,
+   "is_active": true
+  },
+  "bg_vidhi_primitives": {
+   "asset_kind": "data",
+   "depends_on": [],
+   "has_writer": true,
+   "is_active": true
+  },
+  "bg_yogas": {
+   "asset_kind": "data",
+   "depends_on": [
+    "bg_ontology",
+    "bg_texts"
+   ],
+   "has_writer": true,
+   "is_active": true
+  },
+  "bo_anveshana": {
+   "asset_kind": "data",
+   "depends_on": [
+    "bo_sangati",
+    "bo_karanajala",
+    "bo_samskara",
+    "bo_drishti",
+    "bo_bimba",
+    "bo_laksana"
+   ],
+   "has_writer": true,
+   "is_active": true
+  },
+  "bo_arudha": {
+   "asset_kind": "data",
+   "depends_on": [
+    "ga_structural",
+    "ga_positions"
+   ],
+   "has_writer": true,
+   "is_active": true
+  },
+  "bo_bimba": {
+   "asset_kind": "data",
+   "depends_on": [
+    "bo_laksana",
+    "bo_sudarshana",
+    "bo_nakshatra_semantic",
+    "bo_arudha",
+    "bo_special_lagna",
+    "bo_vargottama_dhana"
+   ],
+   "has_writer": true,
+   "is_active": true
+  },
+  "bo_cdlm_summary": {
+   "asset_kind": "data",
+   "depends_on": [
+    "bo_sangati"
+   ],
+   "has_writer": true,
+   "is_active": true
+  },
+  "bo_cgm_motifs": {
+   "asset_kind": "data",
+   "depends_on": [
+    "bo_bimba",
+    "bo_karanajala"
+   ],
+   "has_writer": true,
+   "is_active": true
+  },
+  "bo_cgm_paths": {
+   "asset_kind": "data",
+   "depends_on": [
+    "bo_bimba",
+    "bo_karanajala"
+   ],
+   "has_writer": true,
+   "is_active": true
+  },
+  "bo_chart_gestalt": {
+   "asset_kind": "data",
+   "depends_on": [
+    "bo_laksana",
+    "bo_sangati",
+    "bo_bimba",
+    "bo_cgm_paths",
+    "bo_anveshana"
+   ],
+   "has_writer": true,
+   "is_active": true
+  },
+  "bo_drishti": {
+   "asset_kind": "data",
+   "depends_on": [
+    "bo_laksana",
+    "bo_sangati",
+    "bo_karanajala"
+   ],
+   "has_writer": true,
+   "is_active": true
+  },
+  "bo_grounding": {
+   "asset_kind": "data",
+   "depends_on": [
+    "ga_yoga",
+    "bo_laksana",
+    "bo_sudarshana",
+    "bo_nakshatra_semantic",
+    "bo_arudha",
+    "bo_special_lagna",
+    "bo_vargottama_dhana"
+   ],
+   "has_writer": true,
+   "is_active": true
+  },
+  "bo_karanajala": {
+   "asset_kind": "data",
+   "depends_on": [
+    "bo_laksana",
+    "bo_bimba",
+    "ga_positions",
+    "bo_sudarshana",
+    "bo_nakshatra_semantic",
+    "bo_arudha",
+    "bo_special_lagna",
+    "bo_vargottama_dhana",
+    "ga_vichara"
+   ],
+   "has_writer": true,
+   "is_active": true
+  },
+  "bo_laksana": {
+   "asset_kind": "data",
+   "depends_on": [
+    "bg_rules",
+    "ga_positions",
+    "ga_strength",
+    "ga_sensitive",
+    "ga_panchanga",
+    "ga_sade_sati",
+    "ga_structural",
+    "ga_nakshatra",
+    "ga_condition",
+    "ga_vargas",
+    "ga_vichara"
+   ],
+   "has_writer": true,
+   "is_active": true
+  },
+  "bo_laksana_rerank": {
+   "asset_kind": "data",
+   "depends_on": [
+    "bo_laksana",
+    "bo_karanajala",
+    "bo_sudarshana",
+    "bo_nakshatra_semantic",
+    "bo_arudha",
+    "bo_special_lagna",
+    "bo_vargottama_dhana",
+    "bo_bimba",
+    "ga_vichara"
+   ],
+   "has_writer": true,
+   "is_active": true
+  },
+  "bo_nakshatra_semantic": {
+   "asset_kind": "data",
+   "depends_on": [
+    "ga_nakshatra",
+    "ga_positions",
+    "ga_structural"
+   ],
+   "has_writer": true,
+   "is_active": true
+  },
+  "bo_pramana_mapa": {
+   "asset_kind": "data",
+   "depends_on": [
+    "bo_upaya",
+    "bo_drishti",
+    "bo_anveshana",
+    "bo_laksana",
+    "bo_sangati",
+    "bo_bimba",
+    "bo_karanajala",
+    "bo_samskara"
+   ],
+   "has_writer": true,
+   "is_active": true
+  },
+  "bo_pratijna": {
+   "asset_kind": "data",
+   "depends_on": [
+    "bo_laksana",
+    "bo_sangati",
+    "ga_vargas"
+   ],
+   "has_writer": true,
+   "is_active": true
+  },
+  "bo_samskara": {
+   "asset_kind": "data",
+   "depends_on": [
+    "bo_arudha",
+    "bo_laksana",
+    "bo_nakshatra_semantic",
+    "bo_special_lagna",
+    "bo_sudarshana",
+    "bo_vargottama_dhana"
+   ],
+   "has_writer": true,
+   "is_active": true
+  },
+  "bo_samvada": {
+   "asset_kind": "data",
+   "depends_on": [
+    "bo_laksana",
+    "bo_karanajala",
+    "bo_upaya",
+    "bo_sangati",
+    "bo_pramana_mapa"
+   ],
+   "has_writer": true,
+   "is_active": true
+  },
+  "bo_sangati": {
+   "asset_kind": "data",
+   "depends_on": [
+    "bo_laksana",
+    "bo_karanajala",
+    "bo_sudarshana",
+    "bo_nakshatra_semantic",
+    "bo_arudha",
+    "bo_special_lagna",
+    "bo_vargottama_dhana",
+    "bo_laksana_rerank"
+   ],
+   "has_writer": true,
+   "is_active": true
+  },
+  "bo_special_lagna": {
+   "asset_kind": "data",
+   "depends_on": [
+    "ga_sensitive"
+   ],
+   "has_writer": true,
+   "is_active": true
+  },
+  "bo_sudarshana": {
+   "asset_kind": "data",
+   "depends_on": [
+    "ga_positions"
+   ],
+   "has_writer": true,
+   "is_active": true
+  },
+  "bo_upaya": {
+   "asset_kind": "data",
+   "depends_on": [
+    "bo_laksana",
+    "bo_sangati",
+    "ga_structural",
+    "ga_dashas",
+    "bo_cgm_motifs"
+   ],
+   "has_writer": true,
+   "is_active": true
+  },
+  "bo_vargottama_dhana": {
+   "asset_kind": "data",
+   "depends_on": [
+    "ga_vargas",
+    "ga_positions"
+   ],
+   "has_writer": true,
+   "is_active": true
+  },
+  "bo_yantra_mechanism": {
+   "asset_kind": "data",
+   "depends_on": [
+    "bo_karanajala",
+    "bo_cgm_motifs",
+    "bo_cgm_paths",
+    "bo_bimba"
+   ],
+   "has_writer": true,
+   "is_active": true
+  },
+  "ga_ayurdaya": {
+   "asset_kind": "data",
+   "depends_on": [
+    "ga_positions"
+   ],
+   "has_writer": true,
+   "is_active": true
+  },
+  "ga_condition": {
+   "asset_kind": "data",
+   "depends_on": [
+    "ga_positions",
+    "ga_vargas",
+    "ga_dashas"
+   ],
+   "has_writer": true,
+   "is_active": true
+  },
+  "ga_dashas": {
+   "asset_kind": "data",
+   "depends_on": [
+    "ga_positions"
+   ],
+   "has_writer": true,
+   "is_active": true
+  },
+  "ga_medical": {
+   "asset_kind": "data",
+   "depends_on": [
+    "ga_condition",
+    "ga_positions"
+   ],
+   "has_writer": true,
+   "is_active": true
+  },
+  "ga_nakshatra": {
+   "asset_kind": "data",
+   "depends_on": [
+    "bg_nakshatra",
+    "ga_positions",
+    "bg_kp_sublord_division"
+   ],
+   "has_writer": true,
+   "is_active": true
+  },
+  "ga_panchanga": {
+   "asset_kind": "data",
+   "depends_on": [
+    "ga_positions",
+    "bg_panchanga"
+   ],
+   "has_writer": true,
+   "is_active": true
+  },
+  "ga_positions": {
+   "asset_kind": "data",
+   "depends_on": [],
+   "has_writer": true,
+   "is_active": true
+  },
+  "ga_prashna": {
+   "asset_kind": "data",
+   "depends_on": [
+    "ga_positions",
+    "bg_prashna_rules"
+   ],
+   "has_writer": true,
+   "is_active": true
+  },
+  "ga_sade_sati": {
+   "asset_kind": "data",
+   "depends_on": [
+    "ga_positions",
+    "ga_strength",
+    "ga_panchanga",
+    "ga_vargas",
+    "ga_dashas",
+    "ga_structural",
+    "ga_nakshatra"
+   ],
+   "has_writer": true,
+   "is_active": true
+  },
+  "ga_sensitive": {
+   "asset_kind": "data",
+   "depends_on": [
+    "ga_positions",
+    "bg_reference"
+   ],
+   "has_writer": true,
+   "is_active": true
+  },
+  "ga_sensitive_degree": {
+   "asset_kind": "data",
+   "depends_on": [
+    "ga_positions"
+   ],
+   "has_writer": true,
+   "is_active": true
+  },
+  "ga_strength": {
+   "asset_kind": "data",
+   "depends_on": [
+    "ga_positions",
+    "ga_vargas"
+   ],
+   "has_writer": true,
+   "is_active": true
+  },
+  "ga_structural": {
+   "asset_kind": "data",
+   "depends_on": [
+    "ga_dashas",
+    "ga_nakshatra",
+    "ga_panchanga",
+    "ga_positions",
+    "ga_sensitive",
+    "ga_strength",
+    "ga_vargas"
+   ],
+   "has_writer": true,
+   "is_active": true
+  },
+  "ga_tajaka": {
+   "asset_kind": "data",
+   "depends_on": [
+    "ga_positions",
+    "ga_dashas",
+    "ga_sensitive"
+   ],
+   "has_writer": true,
+   "is_active": true
+  },
+  "ga_transit_anchors": {
+   "asset_kind": "data",
+   "depends_on": [
+    "ga_positions"
+   ],
+   "has_writer": true,
+   "is_active": true
+  },
+  "ga_vargas": {
+   "asset_kind": "data",
+   "depends_on": [
+    "ga_positions"
+   ],
+   "has_writer": true,
+   "is_active": true
+  },
+  "ga_vastu": {
+   "asset_kind": "data",
+   "depends_on": [
+    "ga_condition"
+   ],
+   "has_writer": true,
+   "is_active": true
+  },
+  "ga_vichara": {
+   "asset_kind": "data",
+   "depends_on": [
+    "ga_structural",
+    "ga_strength",
+    "ga_dashas",
+    "ga_yoga"
+   ],
+   "has_writer": true,
+   "is_active": true
+  },
+  "ga_yoga": {
+   "asset_kind": "data",
+   "depends_on": [
+    "ga_structural",
+    "ga_dashas"
+   ],
+   "has_writer": true,
+   "is_active": true
+  },
+  "ka_avadhi": {
+   "asset_kind": "data",
+   "depends_on": [
+    "ga_dashas",
+    "bo_pratijna",
+    "bg_ghatana"
+   ],
+   "has_writer": true,
+   "is_active": true
+  },
+  "ka_bhavishya_lekha": {
+   "asset_kind": "artifact",
+   "depends_on": [
+    "ka_kala_darshana",
+    "ka_vighnakara",
+    "ka_sangam",
+    "bo_laksana"
+   ],
+   "has_writer": true,
+   "is_active": true
+  },
+  "ka_dasha_kala": {
+   "asset_kind": "service",
+   "depends_on": [
+    "ga_dashas"
+   ],
+   "has_writer": true,
+   "is_active": true
+  },
+  "ka_gochara": {
+   "asset_kind": "data",
+   "depends_on": [
+    "bg_ephemeris",
+    "bg_transit_rules",
+    "ka_gochara_resonance",
+    "ka_vedha_gochara",
+    "ka_moorti_nirnaya",
+    "ga_positions",
+    "ga_dashas",
+    "ga_yoga"
+   ],
+   "has_writer": true,
+   "is_active": true
+  },
+  "ka_gochara_resonance": {
+   "asset_kind": "data",
+   "depends_on": [
+    "bg_transit_rules"
+   ],
+   "has_writer": true,
+   "is_active": true
+  },
+  "ka_gochara_sweep": {
+   "asset_kind": "data",
+   "depends_on": [
+    "ka_gochara_resonance"
+   ],
+   "has_writer": true,
+   "is_active": false
+  },
+  "ka_gochara_v3_century_materialize": {
+   "asset_kind": "data",
+   "depends_on": [
+    "ka_gochara_resonance",
+    "ka_vedha_gochara",
+    "ka_moorti_nirnaya",
+    "ka_kota_chakra",
+    "ka_tithi_pravesha",
+    "bg_sky_calendar"
+   ],
+   "has_writer": true,
+   "is_active": false
+  },
+  "ka_graha_sancara": {
+   "asset_kind": "service",
+   "depends_on": [
+    "bg_ephemeris"
+   ],
+   "has_writer": true,
+   "is_active": true
+  },
+  "ka_jivana_parva": {
+   "asset_kind": "artifact",
+   "depends_on": [
+    "ka_kala_darshana",
+    "ka_dasha_kala",
+    "ka_sangam",
+    "ka_yojaka",
+    "ga_dashas"
+   ],
+   "has_writer": true,
+   "is_active": true
+  },
+  "ka_kala_darshana": {
+   "asset_kind": "artifact",
+   "depends_on": [
+    "ka_sangam",
+    "ka_vighnakara",
+    "ka_kalasutra"
+   ],
+   "has_writer": true,
+   "is_active": true
+  },
+  "ka_kalasutra": {
+   "asset_kind": "artifact",
+   "depends_on": [
+    "ka_yojaka",
+    "ka_sangam",
+    "bo_laksana",
+    "ga_dashas"
+   ],
+   "has_writer": true,
+   "is_active": true
+  },
+  "ka_kota_chakra": {
+   "asset_kind": "data",
+   "depends_on": [
+    "ga_positions",
+    "bg_ephemeris",
+    "bg_kota_chakra_rings"
+   ],
+   "has_writer": true,
+   "is_active": true
+  },
+  "ka_kshetra": {
+   "asset_kind": "data",
+   "depends_on": [
+    "ka_dasha_kala",
+    "ka_gochara_resonance",
+    "ga_panchanga",
+    "bo_pratijna",
+    "bo_sangati",
+    "bo_upaya",
+    "bg_cohort",
+    "bg_class_lifetime_counts",
+    "ka_vedha_gochara"
+   ],
+   "has_writer": true,
+   "is_active": true
+  },
+  "ka_moorti_nirnaya": {
+   "asset_kind": "data",
+   "depends_on": [
+    "ga_positions",
+    "bg_ephemeris",
+    "bg_transit_rules"
+   ],
+   "has_writer": true,
+   "is_active": true
+  },
+  "ka_muhurta_seva": {
+   "asset_kind": "service",
+   "depends_on": [],
+   "has_writer": true,
+   "is_active": true
+  },
+  "ka_sangam": {
+   "asset_kind": "artifact",
+   "depends_on": [
+    "ka_yojaka",
+    "ka_dasha_kala",
+    "ka_gochara",
+    "ka_muhurta_seva",
+    "bo_laksana",
+    "ga_dashas",
+    "ga_strength",
+    "ga_positions",
+    "ga_tajaka",
+    "bg_transit_rules",
+    "ka_vedha_gochara"
+   ],
+   "has_writer": true,
+   "is_active": true
+  },
+  "ka_sudarshana_varsha": {
+   "asset_kind": "data",
+   "depends_on": [
+    "ga_positions"
+   ],
+   "has_writer": true,
+   "is_active": true
+  },
+  "ka_taranga": {
+   "asset_kind": "data",
+   "depends_on": [
+    "ka_avadhi",
+    "bo_pratijna",
+    "ka_sangam",
+    "ga_dashas",
+    "bg_ghatana"
+   ],
+   "has_writer": true,
+   "is_active": true
+  },
+  "ka_tithi_pravesha": {
+   "asset_kind": "data",
+   "depends_on": [
+    "ga_positions"
+   ],
+   "has_writer": true,
+   "is_active": true
+  },
+  "ka_tulana": {
+   "asset_kind": "service",
+   "depends_on": [
+    "ka_sangam",
+    "ka_vighnakara",
+    "ka_kala_darshana"
+   ],
+   "has_writer": true,
+   "is_active": true
+  },
+  "ka_vedha_gochara": {
+   "asset_kind": "data",
+   "depends_on": [
+    "ga_positions",
+    "bg_ephemeris",
+    "bg_transit_rules",
+    "bg_sarvatobhadra_grid",
+    "bg_vedha_malefic_scale",
+    "bg_phaladeepika_latta"
+   ],
+   "has_writer": true,
+   "is_active": true
+  },
+  "ka_vighnakara": {
+   "asset_kind": "artifact",
+   "depends_on": [
+    "ka_sangam",
+    "ka_muhurta_seva",
+    "ga_positions",
+    "bg_dignity_reference",
+    "ka_yojaka",
+    "ga_dashas"
+   ],
+   "has_writer": true,
+   "is_active": true
+  },
+  "ka_yojaka": {
+   "asset_kind": "artifact",
+   "depends_on": [
+    "bo_laksana",
+    "bg_transit_rules",
+    "ga_dashas",
+    "bo_bimba",
+    "bo_sangati",
+    "bo_pratijna",
+    "bg_ghatana",
+    "ga_yoga"
+   ],
+   "has_writer": true,
+   "is_active": true
+  },
+  "lel_events": {
+   "asset_kind": "data",
+   "depends_on": [],
+   "has_writer": false,
+   "is_active": true
+  },
+  "mi_abhilekha": {
+   "asset_kind": "service",
+   "depends_on": [
+    "mi_bhavisya"
+   ],
+   "has_writer": true,
+   "is_active": true
+  },
+  "mi_adhilepa": {
+   "asset_kind": "data",
+   "depends_on": [
+    "mi_gunanaka",
+    "bo_laksana",
+    "ka_sangam",
+    "ph_nimitta",
+    "ga_positions"
+   ],
+   "has_writer": true,
+   "is_active": true
+  },
+  "mi_bhara": {
+   "asset_kind": "data",
+   "depends_on": [
+    "ka_kshetra"
+   ],
+   "has_writer": true,
+   "is_active": true
+  },
+  "mi_bhavisya": {
+   "asset_kind": "data",
+   "depends_on": [
+    "ph_pramana",
+    "ph_nimitta",
+    "ph_phaladesa",
+    "mi_kula",
+    "mi_jivanaghatana",
+    "bo_laksana"
+   ],
+   "has_writer": true,
+   "is_active": true
+  },
+  "mi_darshana": {
+   "asset_kind": "data",
+   "depends_on": [
+    "mi_pramana",
+    "mi_adhilepa",
+    "mi_sambandha",
+    "mi_pariksha",
+    "mi_gunanaka",
+    "mi_kula",
+    "mi_jivanaghatana",
+    "bo_pratijna",
+    "bo_laksana",
+    "bo_sangati"
+   ],
+   "has_writer": true,
+   "is_active": true
+  },
+  "mi_gunanaka": {
+   "asset_kind": "data",
+   "depends_on": [
+    "mi_pramana",
+    "mi_kula",
+    "bg_formula_constants"
+   ],
+   "has_writer": true,
+   "is_active": true
+  },
+  "mi_jivanaghatana": {
+   "asset_kind": "data",
+   "depends_on": [
+    "bg_ghatana"
+   ],
+   "has_writer": true,
+   "is_active": true
+  },
+  "mi_kula": {
+   "asset_kind": "data",
+   "depends_on": [
+    "bg_rules",
+    "bg_class_priors"
+   ],
+   "has_writer": true,
+   "is_active": true
+  },
+  "mi_pariksha": {
+   "asset_kind": "data",
+   "depends_on": [
+    "mi_pramana",
+    "mi_kula",
+    "bg_formula_constants",
+    "bo_laksana",
+    "mi_jivanaghatana"
+   ],
+   "has_writer": true,
+   "is_active": true
+  },
+  "mi_pramana": {
+   "asset_kind": "data",
+   "depends_on": [
+    "mi_bhavisya",
+    "mi_jivanaghatana",
+    "bg_ghatana",
+    "bg_formula_constants"
+   ],
+   "has_writer": true,
+   "is_active": true
+  },
+  "mi_sambandha": {
+   "asset_kind": "data",
+   "depends_on": [
+    "mi_pramana",
+    "mi_pariksha",
+    "mi_bhavisya"
+   ],
+   "has_writer": true,
+   "is_active": true
+  },
+  "mi_sankalpa": {
+   "asset_kind": "data",
+   "depends_on": [
+    "ka_kshetra"
+   ],
+   "has_writer": true,
+   "is_active": true
+  },
+  "mi_seva": {
+   "asset_kind": "service",
+   "depends_on": [
+    "mi_adhilepa"
+   ],
+   "has_writer": true,
+   "is_active": true
+  },
+  "mi_vistara": {
+   "asset_kind": "data",
+   "depends_on": [],
+   "has_writer": true,
+   "is_active": true
+  },
+  "ph_muhurta": {
+   "asset_kind": "artifact",
+   "depends_on": [
+    "ph_nimitta",
+    "ka_kalasutra",
+    "ga_panchanga",
+    "ka_vighnakara",
+    "ga_condition",
+    "ka_gochara",
+    "ga_positions",
+    "ka_sangam"
+   ],
+   "has_writer": true,
+   "is_active": true
+  },
+  "ph_nimitta": {
+   "asset_kind": "artifact",
+   "depends_on": [
+    "ka_sangam",
+    "ka_bhavishya_lekha",
+    "bo_bimba",
+    "bo_samskara",
+    "bo_karanajala",
+    "bo_sangati",
+    "bo_anveshana",
+    "bo_cgm_paths",
+    "bo_laksana"
+   ],
+   "has_writer": true,
+   "is_active": true
+  },
+  "ph_phaladesa": {
+   "asset_kind": "artifact",
+   "depends_on": [
+    "ph_nimitta",
+    "ph_muhurta",
+    "ph_pratikara",
+    "ph_suddha_sodhana",
+    "ph_sankrama",
+    "ph_pramana",
+    "bo_laksana"
+   ],
+   "has_writer": true,
+   "is_active": true
+  },
+  "ph_pramana": {
+   "asset_kind": "artifact",
+   "depends_on": [
+    "ph_nimitta",
+    "ph_sankrama",
+    "ph_muhurta",
+    "ph_pratikara",
+    "ph_sodhana",
+    "ph_suddha_sodhana"
+   ],
+   "has_writer": true,
+   "is_active": true
+  },
+  "ph_pratikara": {
+   "asset_kind": "artifact",
+   "depends_on": [
+    "ph_nimitta",
+    "bo_upaya",
+    "ka_vighnakara",
+    "ka_sangam"
+   ],
+   "has_writer": true,
+   "is_active": true
+  },
+  "ph_rectification": {
+   "asset_kind": "artifact",
+   "depends_on": [
+    "ph_nimitta"
+   ],
+   "has_writer": true,
+   "is_active": true
+  },
+  "ph_sankrama": {
+   "asset_kind": "artifact",
+   "depends_on": [
+    "ph_nimitta",
+    "bo_sangati"
+   ],
+   "has_writer": true,
+   "is_active": true
+  },
+  "ph_sodhana": {
+   "asset_kind": "artifact",
+   "depends_on": [
+    "ph_nimitta",
+    "bo_laksana"
+   ],
+   "has_writer": true,
+   "is_active": true
+  },
+  "ph_suddha_sodhana": {
+   "asset_kind": "artifact",
+   "depends_on": [
+    "ph_sodhana",
+    "ph_nimitta"
+   ],
+   "has_writer": true,
+   "is_active": true
+  }
+ }
+}
