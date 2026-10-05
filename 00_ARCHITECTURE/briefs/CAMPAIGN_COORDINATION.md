@@ -8676,3 +8676,14 @@ Consultation-10 migration allocation: **1307_consultation_tags.sql**, reserved b
 - No merge, deployment, newly applied migration, rebuild, data clear, provider call or account/permission mutation. Fresh desired and observed production traffic is still100% on amjis-web-probe-091362f315a2-37346348777-1; normal tags preserved. The requested deployment is incomplete.
 - Work order and closure evidence: /Users/Dev/.codex/worktrees/journey-three/Madhav/00_ARCHITECTURE/briefs/journey3/RELEASE.md, CI_INTERRUPTION.json, PR_STATE.json and SESSION_CLOSE.yaml. Closure/state/log delta remains task-local so the tested application head stays unchanged. Preserve these records for later evidence publication.
 - Resume with fresh own lease/main/rollback checks and exact-head failed-check retry after runner recovery, then protected queue/main CI/normal candidate smoke/signing-RLS/promotion and authenticated read-only UI acceptance. Existing owner deployment authority under CCD-023 remains valid for this unchanged scope; no new permission or emergency bypass.
+
+
+## 2026-10-05T22:24:40.982919+00:00 — Consultation review10 protected release resume
+
+- Lease ID: L-PORTAL-CONSULTATION10-RESUME-20261006; holder: Codex desktop; status: ACTIVE.
+- Started: 2026-10-05T22:24:40.982919+00:00; expiry: 2026-10-06T02:24:40.982919+00:00.
+- Worktree `/Users/Dev/.codex/worktrees/portal-experience/Madhav`; branch `codex/portal-experience`; published PR3189 sourcec55f53e4c, local doc-only close8f1b98bb0 preserved.
+- Continuing owner deployment authority CCD-022. Latest GitHub update reports Actions operating normally; resume interrupted checks and existing protected merge/normal deployment with no gate change.
+- Exclusive amjis-web release window claimed fresh. Previous consultation and Journey3 windows RELEASED_BLOCKED_EXTERNAL; Journey3 PR3190 remains separate with auto-merge disabled. Protected main and live source091362f315a2 remain unchanged; baseline revision amjis-web-probe-091362f315a2-37346348777-1 at100% desired/observed traffic. Preserve tagged revisions. Backup1791227240277 SUCCESSFUL and less than one day old.
+- Migration1307 only through routine runner; recheck all main/open-PR claims before protected integration and verify application. No engine/asset repair/rebuild, paid AI call, existing chart/account/permission mutation, credential/IAM/other schema changes or foreign-worktree edits. Existing owned history/UI preferences may be read and checked.
+- Work order `00_ARCHITECTURE/briefs/consultation10/release/resume/RELEASE.md`. Record exact queue/main/deploy and live evidence, or truthful blocker.
