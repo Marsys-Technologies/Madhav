@@ -125,30 +125,38 @@ class BgEphemerisWriter(WriterBase):
                         """
                         INSERT INTO ephemeris_daily
                           (date, body, ayanamsha_id, tropical_longitude, latitude,
-                           speed_dps, is_retrograde, source_citation, computed_at)
+                           speed_dps, is_retrograde, source_citation, computed_at,
+                           node_mode, epoch_convention)
                         VALUES
                           (%(date)s, %(body)s, %(ayanamsha_id)s, %(tropical_longitude)s,
                            %(latitude)s, %(speed_dps)s, %(is_retrograde)s,
-                           %(source_citation)s, %(computed_at)s)
+                           %(source_citation)s, %(computed_at)s,
+                           %(node_mode)s, %(epoch_convention)s)
                         ON CONFLICT (date, body, ayanamsha_id) DO UPDATE SET
                           tropical_longitude = EXCLUDED.tropical_longitude,
                           latitude = EXCLUDED.latitude,
                           speed_dps = EXCLUDED.speed_dps,
                           is_retrograde = EXCLUDED.is_retrograde,
                           source_citation = EXCLUDED.source_citation,
+                          node_mode = EXCLUDED.node_mode,
+                          epoch_convention = EXCLUDED.epoch_convention,
                           computed_at = EXCLUDED.computed_at
                         WHERE ROW(
                           ephemeris_daily.tropical_longitude,
                           ephemeris_daily.latitude,
                           ephemeris_daily.speed_dps,
                           ephemeris_daily.is_retrograde,
-                          ephemeris_daily.source_citation
+                          ephemeris_daily.source_citation,
+                          ephemeris_daily.node_mode,
+                          ephemeris_daily.epoch_convention
                         ) IS DISTINCT FROM ROW(
                           EXCLUDED.tropical_longitude,
                           EXCLUDED.latitude,
                           EXCLUDED.speed_dps,
                           EXCLUDED.is_retrograde,
-                          EXCLUDED.source_citation
+                          EXCLUDED.source_citation,
+                          EXCLUDED.node_mode,
+                          EXCLUDED.epoch_convention
                         )
                         """,
                         batch_rows,

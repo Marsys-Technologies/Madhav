@@ -208,3 +208,30 @@ def test_a_stopped_cluster_is_gone_directory_removed_and_port_closed(disposable_
     with pytest.raises(OSError):
         socket.create_connection(("127.0.0.1", port), timeout=1).close()
     second.stop()                                                      # idempotent
+
+
+class _FakeCluster:
+    def __init__(self, stopped):
+        self.stopped = stopped
+
+
+def test_get_cluster_restarts_a_cluster_that_was_started_and_then_stopped(monkeypatch):
+    """A session fixture imported into two test modules is finalised (shutdown) when pytest moves to the second module's copy; that module must get a
+    LIVE cluster, not the stopped one (the E1.7 plant tests got 'connection refused' behind test_e1_7_census_db_identity)."""
+    fresh = _FakeCluster(stopped=False)
+    monkeypatch.setattr(dpg, "_state", {"cluster": _FakeCluster(stopped=True), "error": None, "unavailable": None, "tried": True})
+    monkeypatch.setattr(dpg, "find_bin_dir", lambda: pathlib.Path("/x/bin"))
+    monkeypatch.setattr(dpg, "start_cluster", lambda bin_dir: fresh)
+    monkeypatch.setattr(dpg.atexit, "register", lambda fn: fn)                      # the fake must not register a real shutdown
+    assert dpg.get_cluster() is fresh
+
+
+def test_get_cluster_keeps_a_live_cluster_and_does_not_retry_a_failed_start(monkeypatch):
+    live = _FakeCluster(stopped=False)
+    monkeypatch.setattr(dpg, "_state", {"cluster": live, "error": None, "unavailable": None, "tried": True})
+    monkeypatch.setattr(dpg, "start_cluster", lambda bin_dir: pytest.fail("a live cluster must not be restarted"))
+    assert dpg.get_cluster() is live
+    boom = dpg.PGStartError("initdb failed")
+    monkeypatch.setattr(dpg, "_state", {"cluster": None, "error": boom, "unavailable": None, "tried": True})
+    with pytest.raises(dpg.PGStartError):
+        dpg.get_cluster()                                                              # a failed start is remembered, not retried per test

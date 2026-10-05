@@ -6,7 +6,7 @@
     "A reviewed output-digest specification establishes deterministic output hashing, not semantic value, population, planner reachability, or empirical validity.",
     "The full MCP profile is registration-gated by the reviewed route authority; its real registration set is exact-set tested independently."
   ],
-  "content_sha256": "b9b76878871ceab2df764403b016ae953eb35069f2941f547cf7a545d19914e0",
+  "content_sha256": "16ef79e0a7831a883ee393409be22c75a71a1c9aa8e032fd00c54c0c6d3ff398",
   "denominators": {
     "descriptor_route_contracts": {
       "by_public_route_disposition": {
@@ -20979,7 +20979,7 @@
       {
         "id": "analysis_layer_pins",
         "path": "platform/src/generated/nirmana-analysis-layer-pins.json",
-        "sha256": "c56dd0337fb94d39bcc4a5334a03088206bb3fa60ec8b8542572afd61af7f824"
+        "sha256": "8f6c67b5dfa1736cea675393001442e0d8895020d533ecc466af33ea5dde1238"
       },
       {
         "id": "canonical_public_faces",
@@ -21383,7 +21383,7 @@
       {
         "id": "producer_asset_seed",
         "path": "platform/scripts/seed/asset_registry_seed.ts",
-        "sha256": "648cd91729e80b0cbbde03b0bb09f79e70f8e5ddc955ec0876e6af2c20b85dab"
+        "sha256": "9242838dd919250f562126f5208d51428265445432c972efc617e8777ec3b531"
       },
       {
         "id": "public_registrar_source_set",
@@ -21567,7 +21567,7 @@
           },
           {
             "path": "platform-mcp/src/tools/retrieval/register_gochara_contact_ledger.ts",
-            "sha256": "e9a72eb19312e581a460f3f7aec38456917c9c2ec98624ca53473e192eb6392e"
+            "sha256": "40efd0025c2e8fdc50322099226c1feae17f78e79837a27e570ad2f73d7b730e"
           },
           {
             "path": "platform-mcp/src/tools/retrieval/register_gochara_windows.ts",
@@ -21587,7 +21587,7 @@
           }
         ],
         "path": "platform-mcp/src/tools/**/*.ts (excluding tests)",
-        "sha256": "45daeb8492dd4934354b073d769633a63199bf1f2e6737ce7715f57f6d16baa4"
+        "sha256": "2c226c52d581f9927359795911844ac43a62effd2a6eea4150396a2819542f9c"
       },
       {
         "id": "registrar_bridge_extractor",
@@ -22445,10 +22445,10 @@
       {
         "id": "writer_digest_inventory",
         "path": "platform/src/generated/nirmana-writer-digests.json",
-        "sha256": "536fec7d55f4e7cc1abc08b2a5185af5b4eb9038195687f5716074149cad0203"
+        "sha256": "566bfed6e09612c00396008bc5d52b182e138e02e3d5ec7f408d697e484908df"
       }
     ]
   },
   "schema_version": "capability-estate-census/v1.2",
-  "source_revision": "9088bd167d8d553050610f8934c580754ebbff9b"
+  "source_revision": "867621fd205f1f309020d0e6300b103825d2acaf"
 }

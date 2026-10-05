@@ -405,28 +405,28 @@ describe('OWNER-PATH SCAN — owner-path numbers cannot collide with routine or 
 
   it('E6 — two owner-path files claiming the same number in DIFFERENT packages fail', () => {
     const owner = [
-      entry(`${O}/pkg_a/1275_first.sql`),
-      entry(`${O}/pkg_b/1275_second.sql`),
+      entry(`${O}/pkg_a/9975_first.sql`),
+      entry(`${O}/pkg_b/9975_second.sql`),
     ]
     const out = checkMigrationNumbers(real, baseline, { ownerEntries: owner })
-    expect(out.errors.some(e => e.startsWith('[E6 OWNER-DUPLICATE]') && e.includes('1275'))).toBe(true)
+    expect(out.errors.some(e => e.startsWith('[E6 OWNER-DUPLICATE]') && e.includes('9975'))).toBe(true)
   })
 
   it('E6 — two distinct forward files with one number inside ONE package also fail', () => {
     const owner = [
-      entry(`${O}/pkg_a/1275_first.sql`),
-      entry(`${O}/pkg_a/1275_second.sql`),
+      entry(`${O}/pkg_a/9975_first.sql`),
+      entry(`${O}/pkg_a/9975_second.sql`),
     ]
     const out = checkMigrationNumbers(real, baseline, { ownerEntries: owner })
-    expect(out.errors.some(e => e.startsWith('[E6 OWNER-DUPLICATE]') && e.includes('1275'))).toBe(true)
+    expect(out.errors.some(e => e.startsWith('[E6 OWNER-DUPLICATE]') && e.includes('9975'))).toBe(true)
   })
 
   it('a ROLLBACK companion of a forward file is NOT a second claim, but an ORPHAN rollback still claims its number', () => {
     const paired = [
-      entry(`${O}/pkg_a/1275_x.sql`),
-      entry(`${O}/pkg_a/1275_x_ROLLBACK.sql`),
-      entry(`${O}/pkg_b/sql/1276_y.sql`),
-      entry(`${O}/pkg_b/sql/1276_y.ROLLBACK.sql`),
+      entry(`${O}/pkg_a/9975_x.sql`),
+      entry(`${O}/pkg_a/9975_x_ROLLBACK.sql`),
+      entry(`${O}/pkg_b/sql/9976_y.sql`),
+      entry(`${O}/pkg_b/sql/9976_y.ROLLBACK.sql`),
     ]
     expect(checkMigrationNumbers(real, baseline, { ownerEntries: paired }).errors).toEqual([])
 
@@ -490,10 +490,10 @@ describe('OWNER-PATH SCAN — owner-path numbers cannot collide with routine or 
 
   it('NIT-2 — lowercase / mixed-case rollback suffixes are companions too', () => {
     const owner = [
-      entry(`${O}/pkg_a/1275_x.sql`),
-      entry(`${O}/pkg_a/1275_x.rollback.sql`),
-      entry(`${O}/pkg_b/1276_y.sql`),
-      entry(`${O}/pkg_b/1276_y_Rollback.sql`),
+      entry(`${O}/pkg_a/9975_x.sql`),
+      entry(`${O}/pkg_a/9975_x.rollback.sql`),
+      entry(`${O}/pkg_b/9976_y.sql`),
+      entry(`${O}/pkg_b/9976_y_Rollback.sql`),
     ]
     expect(checkMigrationNumbers(real, baseline, { ownerEntries: owner }).errors).toEqual([])
   })

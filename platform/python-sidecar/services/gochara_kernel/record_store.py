@@ -57,6 +57,7 @@ stored row is a loud build failure, never a silent dedup.
 from __future__ import annotations
 
 import json as _json
+import struct
 import uuid as _uuid
 import logging
 from dataclasses import dataclass
@@ -338,6 +339,42 @@ def _byte_check(stored: tuple | None, expected: tuple, what: str) -> None:
             f"{what}: stored {stored} != derived {expected}")
 
 
+_CONTACT_ROW_COLUMNS = ("physical_object_id", "occurrence_ordinal", "convention_id", "body", "relation_kind",
+                        "t_in", "t_out", "t_exact", "solver_method", "delta_lambda", "delta_t",
+                        "precision_regime", "coverage")
+
+
+#: the two accuracy columns are REAL (float4, migration 1153): the database rounds what it is given, so both sides are
+#: brought to float4 before they are compared — every OTHER column is compared exactly.
+_REAL_COLUMNS = ("delta_lambda", "delta_t")
+
+
+def _as_float4(x):
+    return None if x is None else struct.unpack("f", struct.pack("f", float(x)))[0]
+
+
+def _contact_row_diffs(stored: tuple | None, derived: tuple) -> list[str]:
+    """Column-by-column differences between the stored contact row and the derived one (empty = identical). Compared
+    by VALUE with no tolerance: the same contact derived twice is bit-identical, so a difference is a disagreement."""
+    if stored is None:
+        return ["row absent after insert"]
+    if not len(stored) == len(derived) == len(_CONTACT_ROW_COLUMNS):
+        # an explicit raise, never an assert: assertions vanish under python -O, and a column present on one side only would
+        # then be skipped silently by zip() (Earned-Signal rule: a check that can disappear is not a check)
+        raise ContactRowShapeError(
+            f"contact row shape: stored {len(stored)}, derived {len(derived)}, columns {len(_CONTACT_ROW_COLUMNS)} — a "
+            "column was added to one side only; zip() would silently skip it")
+    out = []
+    for name, have, want in zip(_CONTACT_ROW_COLUMNS, stored, derived):
+        if name == "physical_object_id":
+            have, want = str(have), str(want)
+        elif name in _REAL_COLUMNS:
+            have, want = _as_float4(have), _as_float4(want)
+        if have != want:
+            out.append(f"{name}: stored {have!r} != derived {want!r}")
+    return out
+
+
 class MissingCoverageError(RuntimeError):
     """pin 7: a record grain ran before its class coverage partition."""
 
@@ -346,6 +383,18 @@ class SealedGenerationError(RuntimeError):
     """AM-3: a candidate rebuild (delete-then-insert) was attempted against a
     SEALED generation. A sealed generation is never reopened — a re-run under an
     existing sealed generation is a refusal; new evaluation is a new generation."""
+
+
+class ContactRowShapeError(RuntimeError):
+    """A5.5f: the stored and the derived contact rows do not have the same number of columns as the comparison covers."""
+
+
+class ContactRowMismatch(RuntimeError):
+    """A5.5f (G7): a contact insert met an existing row for the SAME contact id whose stored row differs from the one
+    just derived (bounds, exact time, solver, accuracy, precision, coverage …). `ON CONFLICT DO NOTHING` used to make
+    that a silent no-op that kept the OLD row. After the generation-chain replace a conflict inside ONE build can only
+    be the same contact reached from another class with IDENTICAL columns; any difference is a real disagreement
+    between two derivations of one contact and is refused by name, never reconciled."""
 
 
 P1_ANCHOR_COLUMNS = ("period_anchor_lord", "period_anchor_level")      # Stream B's additive migration 1233
@@ -525,6 +574,31 @@ class RecordStore:
         contacts = self._delete_orphaned_contacts(chart_id, generation, contact_ids)
         return {"windows": windows, "records": records, "contacts": contacts}
 
+    def delete_generation_chain(self, *, chart_id: str, generation: str) -> dict[str, int]:
+        """Replace-prelude of a whole REBUILD (A5.5f / G7): every window, record, contact (including contacts no record
+        references — orphans of a crashed run — and contacts shared across classes) and event-class coverage partition of
+        (chart, generation), in dependency order: window membership → windows → records (prerequisites cascade) →
+        contacts → event-class partitions. A rebuild REPLACES, it never accretes (CLAUDE.md N.3).
+
+        The generation must be an UNSEALED candidate: the same `ka_gochara_generation_is_sealed` check the class and grain
+        deletes use refuses a sealed generation up front, before any delete (the DB's own DELETE guards would refuse too;
+        this names it). The global tables (physical objects, contact identities, sky events) and the Moon on-demand
+        partitions (durable query identities, never build output) are untouched. Called ONCE per build, from the
+        `snapshot` substep — see the writer."""
+        self._refuse_if_sealed(chart_id, generation, "generation chain replace")
+        # CANDIDATE only: a published-but-unsealed manifest is refused too (PublishedGenerationRefusal), as is a
+        # generation with no manifest at all — the replace is for the unsealed candidate the manifest substep created.
+        from . import ledger as _ledger
+        _ledger._candidate_manifest_id(self.conn, chart_id, generation)
+        key = (chart_id, generation)
+        where = " WHERE chart_id = %s AND generation = %s"
+        windows = self.conn.execute("DELETE FROM public.ka_gochara_eval_window" + where, key).rowcount
+        records = self.conn.execute("DELETE FROM public.ka_gochara_relationship_record" + where, key).rowcount
+        contacts = self.conn.execute("DELETE FROM public.ka_gochara_contact" + where, key).rowcount
+        coverage = self.conn.execute(
+            "DELETE FROM public.kala_gochara_coverage" + where + " AND partition_kind = 'event_class'", key).rowcount
+        return {"windows": windows, "records": records, "contacts": contacts, "coverage": coverage}
+
     def delete_class_chain(self, *, chart_id: str, generation: str,
                            event_class: str) -> dict[str, int]:
         """Replace-prelude of one CLASS: every path's windows and records of the
@@ -681,6 +755,38 @@ class RecordStore:
 
     # ── contact chain (identity → chart-ledger contact) ───────────────────
 
+    def _insert_contact_row(self, params: tuple) -> None:
+        """Insert one ledger contact; on a conflict the stored row must be IDENTICAL to the derived one (every column,
+        bounds included) or the build refuses by name. `params` is the 16-tuple of the INSERT below."""
+        (chart_id, generation, contact_id, physical_object_id, occurrence_ordinal, convention_id, body,
+         relation_kind, t_in, t_out, t_exact, solver_method, delta_lambda, delta_t, precision_regime,
+         coverage_json) = params
+        self.conn.execute(
+            "INSERT INTO public.ka_gochara_contact ("
+            " chart_id, generation, contact_id, physical_object_id,"
+            " occurrence_ordinal, convention_id, body, relation_kind,"
+            " t_in, t_out, t_exact, solver_method, delta_lambda, delta_t,"
+            " precision_regime, coverage)"
+            " VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)"
+            " ON CONFLICT (chart_id, generation, contact_id) DO NOTHING",
+            params,
+        )
+        row = self.conn.execute(
+            "SELECT physical_object_id, occurrence_ordinal, convention_id, body, relation_kind,"
+            " t_in, t_out, t_exact, solver_method, delta_lambda, delta_t, precision_regime, coverage"
+            " FROM public.ka_gochara_contact"
+            " WHERE chart_id = %s AND generation = %s AND contact_id = %s",
+            (chart_id, generation, contact_id),
+        ).fetchone()
+        derived = (physical_object_id, occurrence_ordinal, convention_id, body, relation_kind, t_in, t_out, t_exact,
+                   solver_method, delta_lambda, delta_t, precision_regime, _json.loads(coverage_json))
+        diffs = _contact_row_diffs(tuple(row) if row is not None else None, derived)
+        if diffs:
+            raise ContactRowMismatch(
+                f"contact {contact_id} (chart {chart_id}, generation {generation}): the stored row differs from the "
+                f"derived one — {'; '.join(diffs)}. A rebuild replaces the whole chart x generation chain first "
+                "(delete_generation_chain), so inside one build this is a real disagreement, not stale data to keep.")
+
     def insert_contact(self, *, chart_id: str, generation: str,
                        contact: SubstrateContact, span: ResidenceSpan,
                        poid: PhysicalObjectId, convention_id: str,
@@ -717,25 +823,7 @@ class RecordStore:
             None if truncated else (crossing.precision_regime if crossing else None),
             _json.dumps(coverage),
         )
-        self.conn.execute(
-            "INSERT INTO public.ka_gochara_contact ("
-            " chart_id, generation, contact_id, physical_object_id,"
-            " occurrence_ordinal, convention_id, body, relation_kind,"
-            " t_in, t_out, t_exact, solver_method, delta_lambda, delta_t,"
-            " precision_regime, coverage)"
-            " VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)"
-            " ON CONFLICT (chart_id, generation, contact_id) DO NOTHING",
-            params,
-        )
-        row = self.conn.execute(
-            "SELECT physical_object_id, occurrence_ordinal, body, relation_kind"
-            " FROM public.ka_gochara_contact"
-            " WHERE chart_id = %s AND generation = %s AND contact_id = %s",
-            (chart_id, generation, str(contact.contact_id)),
-        ).fetchone()
-        _byte_check(row, (str(poid.uuid), contact.occurrence_ordinal,
-                          DB_BODY.get(poid.body, poid.body.lower()), poid.relation_kind),
-                    f"contact {contact.contact_id}")
+        self._insert_contact_row(params)
 
     # ── point contacts (conjunction/aspect on point:<λ>, 3/N) ─────────────
 
@@ -766,26 +854,7 @@ class RecordStore:
             occ.solver_method, occ.delta_lambda, occ.delta_t,
             occ.precision_regime, _json.dumps({"truncated": occ.truncated}),
         )
-        self.conn.execute(
-            "INSERT INTO public.ka_gochara_contact ("
-            " chart_id, generation, contact_id, physical_object_id,"
-            " occurrence_ordinal, convention_id, body, relation_kind,"
-            " t_in, t_out, t_exact, solver_method, delta_lambda, delta_t,"
-            " precision_regime, coverage)"
-            " VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)"
-            " ON CONFLICT (chart_id, generation, contact_id) DO NOTHING",
-            params,
-        )
-        row = self.conn.execute(
-            "SELECT physical_object_id, occurrence_ordinal, body, relation_kind"
-            " FROM public.ka_gochara_contact"
-            " WHERE chart_id = %s AND generation = %s AND contact_id = %s",
-            (chart_id, generation, str(occ.contact.contact_id)),
-        ).fetchone()
-        _byte_check(row, (str(poid.uuid), occ.contact.occurrence_ordinal,
-                          DB_BODY.get(poid.body, poid.body.lower()),
-                          poid.relation_kind),
-                    f"contact {occ.contact.contact_id}")
+        self._insert_contact_row(params)
 
     # ── record rows (kgrr) ────────────────────────────────────────────────
 
