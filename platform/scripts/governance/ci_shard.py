@@ -41,7 +41,7 @@ CI_SECONDS = {
     "test_e6_1_p1_registry_rollup.py": 111,
     "test_e1_7_census_db_identity.py": 102,
     "test_e6_1_declarations.py": 93,
-    "test_e6_3_report_and_dispositions.py": 83,
+    "test_e6_3_report_and_dispositions.py": 1,
     "test_e5_7_null_narr_pass.py": 75,
     "test_e5_6_rehearsal.py": 72,
     "test_e6_a_na_causes.py": 70,
