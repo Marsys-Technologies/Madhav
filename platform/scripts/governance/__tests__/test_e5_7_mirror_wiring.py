@@ -909,7 +909,7 @@ def test_reader_spec_lists_exactly_the_unit_tables_and_aggregate_only_probes():
         assert re.fullmatch(r"SELECT (?:[a-z_]+, )*count\(\*\) FROM [a-z_]+(?: GROUP BY [0-9, ]+)?", sql), sql          # aggregate-only, one statement
         assert ";" not in sql and "WHERE" not in sql and "*)" in sql and pr["outcome"]
     real = smd.reader_spec(fd.load_declarations())
-    assert len(real["selects"]) == 63 and real["expected_differences"][0]["unit"] == "bg_ephemeris"
+    assert len(real["selects"]) == 63 and real["expected_differences"] == [] and real["projections"] == []
     assert {p["asset"] for p in smd.OWNERSHIP_PROBES} == {"bg_rules", "bg_transit_rules", "bg_gochara_citation_resolution", "bg_sarvatobhadra_grid"}
     assert "bg_rules" not in real["undeclared"] and {"bg_transit_rules", "bg_gochara_citation_resolution", "bg_sarvatobhadra_grid"} <= set(real["undeclared"])
 
@@ -1008,24 +1008,27 @@ def test_drill_cli_compare_writes_the_drill_and_the_coverage_report(tmp_path, ca
     printed = json.loads(capsys.readouterr().out)
     assert printed["undeclared"] == sorted(decls.undeclared_assets()) and printed["partial"] == sorted(decls.partial_assets())
     assert printed["scope"] == "declared_only" and set(printed["groups"]) == {"grp_brahma_class_priors", "grp_brahma_ontology", "grp_classical_text_chunks"}
-    assert printed["expected_differences"][0]["unit"] == "bg_ephemeris" and printed["expected_differences"][0]["status"] == "not_observed"
+    assert printed["expected_differences"] == [] and printed["resolved_findings"][0].startswith("9. (resolved) bg_ephemeris writer did not write node_mode/epoch_convention")
     (tmp_path / "reh2.json").write_text(json.dumps({**reh, "as_of": "2026-01-01"}))
     assert smd.main(["compare", "--production", str(tmp_path / "prod.json"), "--rehearsal", str(tmp_path / "reh2.json"), "--commit", SHA40, "--out", str(out)]) == 2
 
 
-def test_the_ephemeris_expected_difference_is_printed_and_never_hides_the_difference(tmp_path, capsys):
+def test_a_rebuild_that_nulls_the_ephemeris_node_columns_is_a_real_mismatch_now_that_3015_is_on_main(tmp_path, capsys):
     decls = fd.load_declarations()
+    assert decls.expected_differences() == [] and decls.projection_tables() == {} and decls.drill_coverage()["expected_differences"] == []
+    assert out_doc(decls, "production")["projections"] == {}
     prod, reh = out_doc(decls, "production"), out_doc(decls, "rehearsal")
     _set = lambda d, u: [d["tables"][u][t].update(sha256=hashlib.sha256(f"{u}{t}x".encode()).hexdigest()) for t in d["tables"][u]]  # noqa: E731
     _set(reh, "bg_ephemeris")
     reh["fingerprints"]["bg_ephemeris"] = reh["tables"]["bg_ephemeris"]["ephemeris_daily"]["sha256"]
     drill, cov = smd.build_drill(prod, reh, decls, None, commit=SHA40)
-    assert drill["result"] == "FAIL" and drill["unexplained"] == ["bg_ephemeris"]                 # not an exclusion: the difference still needs an explanation
-    st = cov["expected_differences_status"][0]
-    assert st["status"] == "observed" and st["columns"] == ["node_mode", "epoch_convention"] and "#3015" in st["reference"] and "production_ahead_of_commit" in st["hint"]
-    ok, _ = smd.build_drill(prod, reh, decls, {"bg_ephemeris": {"reason_code": "production_ahead_of_commit", "decision": "N-300",
-                                                                "detail": "production carries node_mode and epoch_convention that the writer at this commit does not write (PR #3015 held)"}}, commit=SHA40)
-    assert ok["result"] == "PASS_DECLARED_ONLY"
+    assert drill["result"] == "FAIL" and drill["unexplained"] == ["bg_ephemeris"] and "bg_ephemeris" not in drill["equal"]       # nothing expected: a real mismatch
+    assert drill["known_differences"] == [] and drill["projections"] == {} and cov["expected_differences_status"] == [] and cov["known_differences"] == []
+    assert cov["differences_with_hints"][0]["asset"] == "bg_ephemeris" and sr.validate_drill(drill) == []
+    # the equal drill is the expected one: the unit is equal, nothing is known, nothing is open about it
+    de, ce = smd.build_drill(prod, out_doc(decls, "rehearsal"), decls, None, commit=SHA40)
+    assert "bg_ephemeris" in de["equal"] and de["known_differences"] == [] and "ephemeris_daily" not in json.dumps(ce["expected_differences_status"])
+    assert not any("bg_ephemeris" in f and "9." in f[:3] for f in ce["open_findings"]) and ce["resolved_findings"] == list(smd.RESOLVED_FINDINGS)
 
 
 def test_the_real_declarations_cover_the_real_drill_end_to_end_offline():
@@ -1142,7 +1145,7 @@ def test_status_states_the_exact_build_record_it_expects(capsys):
     assert claimed["state"] == "CLAIMED_UNVERIFIED" and "--build-record PATH" in claimed["detail"]["expects"]
     assert smd.main(["build-record-spec"]) == 0
     real = json.loads(capsys.readouterr().out)
-    assert real["schema"] == "suvarna-build-record/v1" and len(real["declared_assets_that_must_be_complete"]) == 30 and "bg_ontology" in real["declared_assets_that_must_be_complete"]
+    assert real["schema"] == "suvarna-build-record/v1" and len(real["declared_assets_that_must_be_complete"]) == 31 and "bg_ontology" in real["declared_assets_that_must_be_complete"]
     assert real["declared_assets_that_may_be_not_run"] == {a: v for a, v in smd.NOT_RUN_ALLOWED.items()} and not set(real["declared_assets_that_may_be_not_run"]) & set(real["declared_assets_that_must_be_complete"])
     assert smd.main(["status"]) == 0 and json.loads(capsys.readouterr().out)["build_record_expected"]["schema"] == "suvarna-build-record/v1"
 
@@ -1150,6 +1153,26 @@ def test_status_states_the_exact_build_record_it_expects(capsys):
 # ═════════════════ round 4: not_run, partial ownership, open findings, the config seed ═════════════════
 
 RD = fd.load_declarations()
+
+# The committed declarations carry no expected-difference record any more (#3015 is on main: the rebuild writes node_mode/epoch_convention), but the MECHANISM
+# stays in the code: these tests exercise it on a SYNTHETIC record installed on bg_ephemeris/ephemeris_daily (the same record the declarations tests use).
+SYN_ED = {"columns": ["node_mode", "epoch_convention"], "reference": "synthetic tracked change (test fixture)",
+          "detail": "a synthetic known difference limited to the two columns, used to exercise the expected-difference mechanism in tests",
+          "until": "the synthetic tracked change is merged: remove this record"}
+
+
+def _ed_doc():
+    doc = json.loads(fd.DEFAULT_DECLARATIONS.read_text(encoding="utf-8"))
+    next(t for t in doc["assets"]["bg_ephemeris"]["tables"] if t["name"] == "ephemeris_daily")["expected_difference"] = copy.deepcopy(SYN_ED)
+    return doc
+
+
+def _decls_with_ed():
+    doc = _ed_doc()
+    return fd.Declarations(doc=doc, sha256=hashlib.sha256(json.dumps(doc, sort_keys=True).encode()).hexdigest())
+
+
+RD_ED = _decls_with_ed()
 
 
 def _rrec(over=None, *, drop=(), extra=(), **top):
@@ -1171,31 +1194,28 @@ RECEIPT = {"run_id": "5e57e57e-5e57-4e57-8e57-5e57e57e57e5", "orchestrator_commi
 
 
 def test_the_not_run_list_is_closed_and_every_entry_has_a_needs_reason_and_a_decision():
-    assert set(smd.NOT_RUN_ALLOWED) == {"bg_sky_calendar", "bg_cohort", "bg_muhurta_lattice", "bg_gochara_arcs"}
+    assert set(smd.NOT_RUN_ALLOWED) == {"bg_sky_calendar", "bg_cohort", "bg_muhurta_lattice"}                  # bg_gochara_arcs runs now: it is not on the list
     assert {a: v["reason"] for a, v in smd.NOT_RUN_ALLOWED.items()} == {"bg_sky_calendar": "NEEDS_LINUX_AMD64_RUNTIME", "bg_cohort": "NEEDS_LINUX_AMD64_RUNTIME",
-                                                                         "bg_muhurta_lattice": "NEEDS_AS_OF_PIN", "bg_gochara_arcs": "NEEDS_PR_3015"}
-    assert all({"reason", "decision"} <= set(v) <= {"reason", "decision", "note"} and v["reason"].startswith("NEEDS_") and v["decision"] == "N-121" for v in smd.NOT_RUN_ALLOWED.values())
-    note = smd.NOT_RUN_ALLOWED["bg_gochara_arcs"]["note"]                                          # the note is only on the #3015 entry
-    assert "SS option (c), 2026-10-04" in note and "node_mode/epoch_convention for Rahu/Ketu" in note and "#3015" in note and "ONLY while #3015 is not on main" in note
-    assert "complete` stays accepted" in note and "UNMEASURED via not_run_declared" in note and "never counted" in note
-    assert [a for a, v in smd.NOT_RUN_ALLOWED.items() if "note" in v] == ["bg_gochara_arcs"]
+                                                                         "bg_muhurta_lattice": "NEEDS_AS_OF_PIN"}
+    assert all(set(v) == {"reason", "decision"} and v["reason"].startswith("NEEDS_") and v["decision"] == "N-121" for v in smd.NOT_RUN_ALLOWED.values())
     assert smd.NOT_RUN_ALLOWED is fd.NOT_RUN_ALLOWED and RD.not_run_allowed() == {a: v["reason"] for a, v in smd.NOT_RUN_ALLOWED.items()}
     assert RD.drill_coverage()["not_run_allowed"] == RD.not_run_allowed() and RD.coverage_report()["not_run_allowed"] == RD.not_run_allowed()
     assert set(smd.NOT_RUN_ALLOWED) <= set(RD.declared_assets()) and set(smd.RECORD_STATES) == {"complete", "not_run", "failed", "error", "incomplete", "blocked", "skipped"}
 
 
-def test_bg_gochara_arcs_is_not_run_only_with_needs_pr_3015_and_that_reason_is_refused_for_any_other_asset():
-    ok = _rrec()                                                                                      # all four listed assets not_run with their reasons
-    assert [x for x in ok["assets"] if x["asset_id"] == "bg_gochara_arcs"] == [{"asset_id": "bg_gochara_arcs", "state": "not_run", "reason": "NEEDS_PR_3015"}]
+def test_bg_gochara_arcs_runs_now_so_it_must_be_complete_and_no_not_run_reason_is_accepted_for_it():
+    assert "bg_gochara_arcs" not in smd.NOT_RUN_ALLOWED and "bg_gochara_arcs" not in RD.not_run_allowed() and "bg_gochara_arcs" in smd.build_record_spec(RD)["declared_assets_that_must_be_complete"]
+    ok = _rrec()
+    assert [x for x in ok["assets"] if x["asset_id"] == "bg_gochara_arcs"] == [{"asset_id": "bg_gochara_arcs", "state": "complete"}]
     assert smd.verify_rebuild_receipt(RECEIPT, ok, RD) == []
-    assert smd.verify_rebuild_receipt(RECEIPT, _rrec({"bg_gochara_arcs": {"asset_id": "bg_gochara_arcs", "state": "complete"}}), RD) == []     # once #3015 is on main it runs
-    for bad_reason in ("NEEDS_AS_OF_PIN", "NEEDS_LINUX_AMD64_RUNTIME", "NEEDS_PR_3016", "waiting for 3015", ""):
-        assert smd.verify_rebuild_receipt(RECEIPT, _rrec({"bg_gochara_arcs": {"asset_id": "bg_gochara_arcs", "state": "not_run", "reason": bad_reason}}), RD)
+    for reason in ("NEEDS_PR_3015", "NEEDS_AS_OF_PIN", "NEEDS_LINUX_AMD64_RUNTIME", "waiting for 3015", ""):
+        probs = smd.verify_rebuild_receipt(RECEIPT, _rrec({"bg_gochara_arcs": {"asset_id": "bg_gochara_arcs", "state": "not_run", "reason": reason}}), RD)
+        assert any("bg_gochara_arcs is not_run but is not in the closed not_run list" in x for x in probs), reason
     assert smd.verify_rebuild_receipt(RECEIPT, _rrec({"bg_gochara_arcs": {"asset_id": "bg_gochara_arcs", "state": "not_run"}}), RD)               # no reason
+    assert smd.verify_rebuild_receipt(RECEIPT, _rrec({"bg_gochara_arcs": {"asset_id": "bg_gochara_arcs", "state": "failed"}}), RD)               # a failure is never accepted
+    # the retired reason code is accepted for no asset
     for other in ("bg_ephemeris", "bg_ghatana", "bg_nakshatra", "bg_ontology", "bg_sky_calendar", "bg_cohort", "bg_muhurta_lattice"):
-        probs = smd.verify_rebuild_receipt(RECEIPT, _rrec({other: {"asset_id": other, "state": "not_run", "reason": "NEEDS_PR_3015"}}), RD)
-        assert probs, other
-    assert smd.verify_rebuild_receipt(RECEIPT, _rrec({"bg_gochara_arcs": {"asset_id": "bg_gochara_arcs", "state": "failed", "reason": "NEEDS_PR_3015"}}), RD)  # a failure is never not_run
+        assert smd.verify_rebuild_receipt(RECEIPT, _rrec({other: {"asset_id": other, "state": "not_run", "reason": "NEEDS_PR_3015"}}), RD), other
 
 
 def test_a_record_with_the_allowed_not_run_assets_and_everything_else_complete_verifies():
@@ -1242,7 +1262,7 @@ def test_a_failed_asset_is_never_accepted_as_complete_or_as_not_run_and_the_mess
 
 # ═════════════════ round 5: the explanation code not_run_declared (decision N-121) ═════════════════
 
-NOT_RUN_UNITS = ("bg_cohort", "bg_gochara_arcs", "bg_muhurta_lattice", "bg_sky_calendar")
+NOT_RUN_UNITS = ("bg_cohort", "bg_muhurta_lattice", "bg_sky_calendar")
 
 
 def _rrec_nr(units=(), **kw):
@@ -1263,20 +1283,19 @@ def _nr_pair(missing=NOT_RUN_UNITS):
 
 def test_not_run_declared_covers_the_muhurta_lattice_gap_and_the_unit_stays_unmeasured():
     prod, reh = _nr_pair()
-    expl = {**_nr_expl(("bg_muhurta_lattice", "bg_gochara_arcs")), **{u: {"reason_code": "source_unavailable_offline", "detail": NR_DETAIL % u, "decision": "N-121"} for u in ("bg_cohort", "bg_sky_calendar")}}
+    expl = {**_nr_expl(), **{u: {"reason_code": "source_unavailable_offline", "detail": NR_DETAIL % u, "decision": "N-121"} for u in ("bg_cohort", "bg_sky_calendar")}}
     drill, cov = smd.build_drill(prod, reh, RD, expl, commit=SHA40, build_record=_rrec())
     assert drill["result"] == "PASS_DECLARED_ONLY" and drill["problems"] == [] and drill["unexplained"] == []
-    assert drill["unmeasured"] == ["bg_gochara_arcs", "bg_muhurta_lattice"] and not {"bg_muhurta_lattice", "bg_gochara_arcs"} & set(drill["equal"]) and len(drill["equal"]) == 27
+    assert drill["unmeasured"] == ["bg_muhurta_lattice"] and "bg_muhurta_lattice" not in drill["equal"] and len(drill["equal"]) == 28
     assert drill["not_run"] == {u: smd.NOT_RUN_ALLOWED[u]["reason"] for u in NOT_RUN_UNITS} and sr.validate_drill(drill) == []
     assert cov["unit_status"]["bg_muhurta_lattice"]["status"] == "UNMEASURED:not_run_declared" and cov["unit_status"]["bg_muhurta_lattice"]["reason"] == "NEEDS_AS_OF_PIN"
-    assert cov["unmeasured"] == ["bg_gochara_arcs", "bg_muhurta_lattice"] and cov["not_run"] == drill["not_run"]
-    assert cov["unit_status"]["bg_gochara_arcs"]["reason"] == "NEEDS_PR_3015"
-    assert ("2 not-run units, UNMEASURED (never equal, never counted toward the verdict; not_run_declared, N-121): "
-            "bg_gochara_arcs [NEEDS_PR_3015], bg_muhurta_lattice [NEEDS_AS_OF_PIN]") in cov["headline"]
-    # a platform-bound unit may use either code; the four together are four UNMEASURED units, still never a bare PASS
+    assert cov["unmeasured"] == ["bg_muhurta_lattice"] and cov["not_run"] == drill["not_run"]
+    assert "1 not-run units, UNMEASURED (never equal, never counted toward the verdict; not_run_declared, N-121): bg_muhurta_lattice [NEEDS_AS_OF_PIN]" in cov["headline"]
+    assert "bg_gochara_arcs" in drill["equal"]                                                                 # it runs now and is compared like any other unit
+    # a platform-bound unit may use either code; the three together are three UNMEASURED units, still never a bare PASS
     drill3, cov3 = smd.build_drill(prod, reh, RD, _nr_expl(NOT_RUN_UNITS), commit=SHA40, build_record=_rrec())
-    assert drill3["result"] == "PASS_DECLARED_ONLY" and drill3["unmeasured"] == list(NOT_RUN_UNITS) and len(drill3["equal"]) == 27
-    assert "4 not-run units, UNMEASURED" in cov3["headline"]
+    assert drill3["result"] == "PASS_DECLARED_ONLY" and drill3["unmeasured"] == list(NOT_RUN_UNITS) and len(drill3["equal"]) == 28
+    assert "3 not-run units, UNMEASURED" in cov3["headline"]
 
 
 def test_not_run_declared_is_refused_without_a_record_for_a_complete_asset_or_an_unlisted_unit():
@@ -1398,33 +1417,33 @@ def test_the_runtime_is_printed_by_the_compare_cli_and_a_status_for_an_off_linux
     assert {x["step"]: x for x in smd.drill_status(RD, rehearsal=out_doc(RD, "rehearsal"))["steps"]}["linux_amd64_runtime"]["state"] == "SHAPE_CHECKED"
 
 
-def test_the_container_run_expects_32_of_34_complete_and_two_not_run():
+def test_the_container_run_expects_33_of_34_complete_and_only_the_muhurta_lattice_not_run():
     ce = smd.build_record_spec(RD)["container_run_expectation"]
-    assert ce["expected_complete_count"] == "32 of 34" and len(ce["expected_complete"]) == 32
-    assert ce["expected_not_run"] == {"bg_muhurta_lattice": "NEEDS_AS_OF_PIN", "bg_gochara_arcs": "NEEDS_PR_3015"}
-    assert {"bg_sky_calendar", "bg_cohort"} <= set(ce["expected_complete"]) and not {"bg_muhurta_lattice", "bg_gochara_arcs"} & set(ce["expected_complete"])
-    assert smd.CONTAINER_EXPECTED_NOT_RUN == ("bg_muhurta_lattice", "bg_gochara_arcs") and set(smd.CONTAINER_EXPECTED_NOT_RUN) <= set(smd.NOT_RUN_ALLOWED)
+    assert ce["expected_complete_count"] == "33 of 34" and len(ce["expected_complete"]) == 33 and ce["expected_not_run"] == {"bg_muhurta_lattice": "NEEDS_AS_OF_PIN"}
+    assert {"bg_sky_calendar", "bg_cohort", "bg_gochara_arcs"} <= set(ce["expected_complete"]) and "bg_muhurta_lattice" not in ce["expected_complete"]
+    assert smd.CONTAINER_EXPECTED_NOT_RUN == ("bg_muhurta_lattice",) and set(smd.CONTAINER_EXPECTED_NOT_RUN) <= set(smd.NOT_RUN_ALLOWED)
     assert "SS B1" in ce["decision"] and "linux/amd64 Debian container" in ce["decision"] and "EXPECTED `complete`" in ce["note"]
     rules = " ".join(smd.build_record_spec(RD)["rules"])
-    assert "32 of the 34 declared assets `complete`" in rules and "2 `not_run`: bg_muhurta_lattice with NEEDS_AS_OF_PIN and bg_gochara_arcs with NEEDS_PR_3015" in rules
-    assert "ONLY while #3015 is not on main" in rules
+    assert ("33 of the 34 declared assets `complete`, including bg_sky_calendar, bg_cohort and bg_gochara_arcs, and 1 `not_run`: bg_muhurta_lattice with NEEDS_AS_OF_PIN") in rules
+    assert "3015" not in rules and "bg_gochara_arcs with" not in rules                                    # no stale #3015 wording anywhere in the spec
     # the validator is unchanged: a record with the two platform-bound assets complete verifies; not_run for them is still accepted as listed
     assert smd.verify_rebuild_receipt(RECEIPT, _rrec({"bg_cohort": {"asset_id": "bg_cohort", "state": "complete"}, "bg_sky_calendar": {"asset_id": "bg_sky_calendar", "state": "complete"}}), RD) == []
     assert smd.verify_rebuild_receipt(RECEIPT, _rrec(), RD) == []
     assert smd.verify_rebuild_receipt(RECEIPT, _rrec({"bg_ephemeris": {"asset_id": "bg_ephemeris", "state": "not_run", "reason": "NEEDS_AS_OF_PIN"}}), RD)
     st = {x["step"]: x for x in smd.drill_status(RD, rehearsal=out_doc(RD, "rehearsal"))["steps"]}["rehearsal_l0_rebuild"]
-    assert "32 of 34 declared assets are expected complete (bg_sky_calendar and bg_cohort among them)" in st["detail"]["expects"]
-    assert "bg_gochara_arcs not_run (NEEDS_PR_3015), bg_muhurta_lattice not_run (NEEDS_AS_OF_PIN)" in st["detail"]["expects"]
+    assert "33 of 34 declared assets are expected complete (bg_sky_calendar and bg_cohort among them)" in st["detail"]["expects"]
+    assert "bg_muhurta_lattice not_run (NEEDS_AS_OF_PIN)" in st["detail"]["expects"] and "bg_gochara_arcs not_run" not in st["detail"]["expects"]
     s0 = {x["step"]: x for x in smd.drill_status(RD)["steps"]}["rehearsal_l0_rebuild"]
-    assert "32 of 34 declared assets are expected complete" in s0["detail"]["expects"]
+    assert "33 of 34 declared assets are expected complete" in s0["detail"]["expects"]
 
 
 # ═════════════════ round 8: a recorded expected difference is limited to its columns (projection fingerprints) ═════════════════
 
-def _eph_pair(*, change_columns_only=True, drop=False):
+def _eph_pair(*, change_columns_only=True, drop=False, decls=None):
     """production vs rehearsal for the REAL declarations, where bg_ephemeris/ephemeris_daily differs. `change_columns_only` keeps the projection (the fingerprint
-    WITHOUT node_mode / epoch_convention) equal on both sides, as a rebuild without #3015 would; otherwise the projection differs too (something else changed)."""
-    prod, reh = out_doc(RD, "production"), out_doc(RD, "rehearsal")
+    WITHOUT node_mode / epoch_convention) equal on both sides, as a rebuild that nulled the two columns would; otherwise the projection differs too (something else changed)."""
+    decls = decls or RD_ED
+    prod, reh = out_doc(decls, "production"), out_doc(decls, "rehearsal")
     reh["tables"]["bg_ephemeris"]["ephemeris_daily"]["sha256"] = hashlib.sha256(b"eph-differs").hexdigest()
     reh["fingerprints"]["bg_ephemeris"] = reh["tables"]["bg_ephemeris"]["ephemeris_daily"]["sha256"]
     if not change_columns_only:
@@ -1435,41 +1454,42 @@ def _eph_pair(*, change_columns_only=True, drop=False):
 
 
 EPH_EXPL = {"bg_ephemeris": {"reason_code": "production_ahead_of_commit", "decision": "N-300",
-                             "detail": "production carries node_mode and epoch_convention that the writer at this commit does not write (PR #3015 held)"}}
+                             "detail": "production carries node_mode and epoch_convention that the writer at this commit does not write (synthetic tracked change)"}}
 
 
-def test_the_ephemeris_difference_is_a_known_open_finding_limited_to_its_two_columns():
+def test_a_recorded_difference_is_a_known_difference_limited_to_its_two_columns():
     prod, reh = _eph_pair()
-    drill, cov = smd.build_drill(prod, reh, RD, EPH_EXPL, commit=SHA40)
+    drill, cov = smd.build_drill(prod, reh, RD_ED, EPH_EXPL, commit=SHA40)
     assert drill["result"] == "PASS_DECLARED_ONLY" and drill["problems"] == [] and drill["unexplained"] == [] and "bg_ephemeris" not in drill["equal"]
     k = drill["known_differences"]
     assert len(k) == 1 and k[0]["unit"] == "bg_ephemeris" and k[0]["table"] == "ephemeris_daily" and k[0]["columns"] == ["node_mode", "epoch_convention"]
-    assert k[0]["observed"] is True and k[0]["limited_to_columns"] is True and k[0]["explained"] is True and "#3015" in k[0]["reference"]
+    assert k[0]["observed"] is True and k[0]["limited_to_columns"] is True and k[0]["explained"] is True and k[0]["reference"] == "synthetic tracked change (test fixture)"
     st = cov["expected_differences_status"][0]
     assert st["status"] == "observed" and st["limited_to_columns"] is True and st["explained"] is True
-    assert "limited to ['node_mode', 'epoch_convention']: explained. KNOWN OPEN FINDING 9 (#3015): expected, visible, never equal." == st["hint"]
+    assert ("limited to ['node_mode', 'epoch_convention']: explained. KNOWN DIFFERENCE (tracked: synthetic tracked change (test fixture)): expected, visible, never equal."
+            == st["hint"])
     assert cov["known_differences"] == k and cov["projections"]["bg_ephemeris"]["production"] == cov["projections"]["bg_ephemeris"]["rehearsal"]
-    assert sr.validate_drill(drill) == [] and "9. bg_ephemeris writer on main" in cov["open_findings"][-1]
+    assert sr.validate_drill(drill) == [] and not any("#3015" in f for f in cov["open_findings"])
     # unexplained: still expected and visible, but it needs its explanation
-    d0, c0 = smd.build_drill(prod, reh, RD, None, commit=SHA40)
+    d0, c0 = smd.build_drill(prod, reh, RD_ED, None, commit=SHA40)
     assert d0["result"] == "FAIL" and d0["unexplained"] == ["bg_ephemeris"] and "explain it (reason code production_ahead_of_commit" in c0["expected_differences_status"][0]["hint"]
-    # the fully equal drill: the record is not observed (the change has landed: remove the record)
-    de, ce = smd.build_drill(out_doc(RD, "production"), out_doc(RD, "rehearsal"), RD, None, commit=SHA40)
+    # the fully equal drill: the record is not observed (the tracked change has landed: remove the record)
+    de, ce = smd.build_drill(out_doc(RD_ED, "production"), out_doc(RD_ED, "rehearsal"), RD_ED, None, commit=SHA40)
     assert de["known_differences"][0]["observed"] is False and ce["expected_differences_status"][0]["status"] == "not_observed"
 
 
 def test_something_else_changing_in_the_ephemeris_unit_cannot_hide_behind_the_recorded_difference():
     prod, reh = _eph_pair(change_columns_only=False)
-    drill, cov = smd.build_drill(prod, reh, RD, EPH_EXPL, commit=SHA40)
+    drill, cov = smd.build_drill(prod, reh, RD_ED, EPH_EXPL, commit=SHA40)
     assert drill["result"] == "FAIL" and drill["unexplained"] == ["bg_ephemeris"] and drill["known_differences"][0]["limited_to_columns"] is False
     assert any("bg_ephemeris: the difference is not limited to the expected columns ['node_mode', 'epoch_convention'] of ephemeris_daily" in x and "still differs" in x for x in drill["problems"])
     st = cov["expected_differences_status"][0]
     assert st["limited_to_columns"] is False and st["hint"].startswith("NOT limited to ['node_mode', 'epoch_convention']") and "something else in the unit changed" in st["hint"]
     # a rehearsal file that carries no projections cannot be validated at all (the file validator refuses it before any comparison)
     prod2, reh2 = _eph_pair(drop=True)
-    assert any("projections must cover exactly the units" in x for x in smd.validate_fingerprint_output(reh2, RD, side="rehearsal"))
+    assert any("projections must cover exactly the units" in x for x in smd.validate_fingerprint_output(reh2, RD_ED, side="rehearsal"))
     with pytest.raises(smd.MirrorError, match="projections"):
-        smd.build_drill(prod2, reh2, RD, EPH_EXPL, commit=SHA40)
+        smd.build_drill(prod2, reh2, RD_ED, EPH_EXPL, commit=SHA40)
 
 
 @pytest.mark.parametrize("label,edit", [
@@ -1482,42 +1502,47 @@ def test_something_else_changing_in_the_ephemeris_unit_cannot_hide_behind_the_re
     ("bool_rows", lambda d: d["projections"]["bg_ephemeris"]["ephemeris_daily"].update(rows=True)),
     ("rows_differ_from_table", lambda d: d["projections"]["bg_ephemeris"]["ephemeris_daily"].update(rows=6)),
     ("extra_key", lambda d: d["projections"]["bg_ephemeris"]["ephemeris_daily"].update(x=1)),
-    ("zero_rows_nonempty_hash", lambda d: (d["tables"]["bg_ephemeris"]["ephemeris_daily"].update(rows=0, sha256=fd.empty_table_fingerprint(RD, "bg_ephemeris", "ephemeris_daily")),
-                                            d["fingerprints"].update(bg_ephemeris=fd.empty_table_fingerprint(RD, "bg_ephemeris", "ephemeris_daily")),
+    ("zero_rows_nonempty_hash", lambda d: (d["tables"]["bg_ephemeris"]["ephemeris_daily"].update(rows=0, sha256=fd.empty_table_fingerprint(RD_ED, "bg_ephemeris", "ephemeris_daily")),
+                                            d["fingerprints"].update(bg_ephemeris=fd.empty_table_fingerprint(RD_ED, "bg_ephemeris", "ephemeris_daily")),
                                             d["projections"]["bg_ephemeris"]["ephemeris_daily"].update(rows=0))),
-    ("rows_with_empty_hash", lambda d: d["projections"]["bg_ephemeris"]["ephemeris_daily"].update(sha256=fd.empty_projection_fingerprint(RD, "bg_ephemeris", "ephemeris_daily"))),
+    ("rows_with_empty_hash", lambda d: d["projections"]["bg_ephemeris"]["ephemeris_daily"].update(sha256=fd.empty_projection_fingerprint(RD_ED, "bg_ephemeris", "ephemeris_daily"))),
 ])
 def test_the_projections_block_of_a_fingerprint_file_is_validated_on_both_sides(label, edit):
     for side in ("production", "rehearsal"):
-        d = out_doc(RD, side)
-        assert smd.validate_fingerprint_output(d, RD, side=side) == []
+        d = out_doc(RD_ED, side)
+        assert smd.validate_fingerprint_output(d, RD_ED, side=side) == []
         edit(d)
-        probs = smd.validate_fingerprint_output(d, RD, side=side)
+        probs = smd.validate_fingerprint_output(d, RD_ED, side=side)
         assert probs, (label, side)
 
 
 def test_the_projection_block_is_exactly_the_units_with_a_recorded_difference_and_the_reader_spec_says_how():
-    d = out_doc(RD, "production")
-    assert list(d["projections"]) == ["bg_ephemeris"] and list(d["projections"]["bg_ephemeris"]) == ["ephemeris_daily"] and RD.projection_tables() == {"bg_ephemeris": "ephemeris_daily"}
+    d = out_doc(RD_ED, "production")
+    assert list(d["projections"]) == ["bg_ephemeris"] and list(d["projections"]["bg_ephemeris"]) == ["ephemeris_daily"] and RD_ED.projection_tables() == {"bg_ephemeris": "ephemeris_daily"}
     assert "projections" in smd.OUTPUT_KEYS
-    spec = smd.reader_spec(RD)
+    spec = smd.reader_spec(RD_ED)
     assert spec["projections"][0]["unit"] == "bg_ephemeris" and spec["projections"][0]["excluded_columns"] == ["node_mode", "epoch_convention"]
     assert "added to volatile_columns" in spec["projections"][0]["how"] and "no second read is needed" in spec["projections"][0]["how"]
     # a unit set without bg_ephemeris has no projections
-    sub = out_doc(RD, "production", assets=[u for u in RD.expected_assets() if u != "bg_ephemeris"])
-    assert sub["projections"] == {} and smd.validate_fingerprint_output(sub, RD, side="production") == []
+    sub = out_doc(RD_ED, "production", assets=[u for u in RD_ED.expected_assets() if u != "bg_ephemeris"])
+    assert sub["projections"] == {} and smd.validate_fingerprint_output(sub, RD_ED, side="production") == []
 
 
 def test_the_compare_cli_prints_the_known_difference(tmp_path, capsys):
-    prod, reh = _eph_pair()
+    decl_file = tmp_path / "decl_with_ed.json"
+    decl_file.write_text(json.dumps(_ed_doc()), encoding="utf-8")
+    loaded = fd.load_declarations(decl_file)                                                                 # the synthetic record is valid under the real validator
+    assert loaded.projection_tables() == {"bg_ephemeris": "ephemeris_daily"}
+    prod, reh = _eph_pair(decls=loaded)
     for n, d in (("prod", prod), ("reh", reh), ("expl", EPH_EXPL)):
         (tmp_path / f"{n}.json").write_text(json.dumps(d))
     out = tmp_path / "drill.json"
     assert smd.main(["compare", "--production", str(tmp_path / "prod.json"), "--rehearsal", str(tmp_path / "reh.json"), "--commit", SHA40, "--explained", str(tmp_path / "expl.json"),
-                     "--out", str(out)]) == 0
+                     "--declarations", str(decl_file), "--out", str(out)]) == 0
     printed = json.loads(capsys.readouterr().out)
     assert printed["known_differences"][0]["limited_to_columns"] is True and printed["expected_differences"][0]["status"] == "observed"
-    assert "KNOWN OPEN FINDING 9" in printed["expected_differences"][0]["hint"] and printed["open_findings"][-1].startswith("9. ")
+    assert "KNOWN DIFFERENCE (tracked: synthetic tracked change (test fixture))" in printed["expected_differences"][0]["hint"] and printed["resolved_findings"][0].startswith("9. (resolved)")
+    assert not any("#3015" in f for f in printed["open_findings"])
 
 
 # ═════════════════ round 9: N-135, the rolling-horizon evidence in the fingerprint files and the drill ═════════════════
@@ -2042,7 +2067,8 @@ def test_the_status_cli_reads_the_drill_and_the_text_seed_check_and_the_spec_com
 def test_the_spec_and_the_status_text_state_the_not_run_rule(capsys):
     spec = smd.build_record_spec(RD)
     assert spec["declared_assets_that_may_be_not_run"] == {a: smd.NOT_RUN_ALLOWED[a] for a in sorted(smd.NOT_RUN_ALLOWED)}
-    assert len(spec["declared_assets_that_must_be_complete"]) == 30 and not {"bg_sky_calendar", "bg_cohort", "bg_muhurta_lattice", "bg_gochara_arcs"} & set(spec["declared_assets_that_must_be_complete"])
+    assert len(spec["declared_assets_that_must_be_complete"]) == 31 and not {"bg_sky_calendar", "bg_cohort", "bg_muhurta_lattice"} & set(spec["declared_assets_that_must_be_complete"])
+    assert "bg_gochara_arcs" in spec["declared_assets_that_must_be_complete"]
     rules = " ".join(spec["rules"])
     assert "not_run" in rules and "closed not_run_allowed list" in rules and "never accepted as `complete` or as `not_run`" in rules and "decision id" in rules
     assert "reason: NEEDS_" in spec["required_fields"]["assets"] and any(x["state"] == "not_run" and x["reason"].startswith("NEEDS_") for x in spec["shape_example"]["assets"])
@@ -2081,7 +2107,7 @@ def test_a_partial_ownership_unit_in_the_real_drill_is_reported_and_never_a_bare
 
 def test_the_open_findings_are_printed_with_every_report_in_factual_words(tmp_path, capsys):
     f = smd.OPEN_FINDINGS
-    assert len(f) == 9 and [x[:2] for x in f] == ["1.", "2.", "3.", "4.", "5.", "6.", "7.", "8.", "9."]
+    assert len(f) == 8 and [x[:2] for x in f] == ["1.", "2.", "3.", "4.", "5.", "6.", "7.", "8."]
     assert "bg_ghatana" in f[0] and "event-ontology" in f[0] and "matches no migration" in f[0] and "activity-ontology" in f[0] and "does match" in f[0]
     assert "bg_transit_engine" in f[1] and "69 rows" in f[1] and "bg_transit_rules" in f[1] and "undeclared" in f[1]
     assert "bg_medical_mappings" in f[2] and "21 rows" in f[2] and "9 graha rows" in f[2]
@@ -2093,8 +2119,10 @@ def test_the_open_findings_are_printed_with_every_report_in_factual_words(tmp_pa
     assert "returns TRUE on production" in f[6] and 'COLLATE "C"' in f[6]
     assert "ephemeris_daily speed_dps (all 9 bodies)" in f[7] and "aarch64/Darwin" in f[7] and "x86_64/Linux" in f[7] and "node_mode, epoch_convention, source_citation and row counts equal" in f[7]
     assert "linux/amd64 Debian container (SS decision B1)" in f[7]
-    assert ("bg_ephemeris writer on main does not write node_mode/epoch_convention (#3015, blocked on the L0 writer-inventory re-pin by the Nirmāṇa authority)" in f[8]
-            and "KNOWN" in f[8] and "limited to them" in f[8] and "bg_gochara_arcs" in f[8] and "NEEDS_PR_3015" in f[8] and "UNMEASURED" in f[8])
+    assert not any("#3015" in x or "NEEDS_PR_3015" in x or "KNOWN" in x for x in f)                       # nothing open names the retired known difference
+    rf = smd.RESOLVED_FINDINGS
+    assert len(rf) == 1 and rf[0] == ("9. (resolved) bg_ephemeris writer did not write node_mode/epoch_convention; fixed by #3015, on main 2026-10-05; the drill must now show "
+                                       "equality for ephemeris_daily. bg_gochara_arcs, which needs the Rahu/Ketu node_mode rows, runs and is expected complete.")
     drill, cov = smd.build_drill(out_doc(RD, "production"), out_doc(RD, "rehearsal"), RD, None, commit=SHA40)
     assert cov["open_findings"] == list(f)
     for n, d in (("prod", out_doc(RD, "production")), ("reh", out_doc(RD, "rehearsal"))):
@@ -2102,9 +2130,8 @@ def test_the_open_findings_are_printed_with_every_report_in_factual_words(tmp_pa
     assert smd.main(["compare", "--production", str(tmp_path / "prod.json"), "--rehearsal", str(tmp_path / "reh.json"), "--commit", SHA40, "--out", str(tmp_path / "d.json")]) == 0
     printed = json.loads(capsys.readouterr().out)
     assert printed["open_findings"] == list(f) and json.loads((tmp_path / "d.json.coverage.json").read_text())["open_findings"] == list(f)
-    dep = smd.DEPENDENCIES
-    assert len(dep) == 1 and "bg_gochara_arcs is DEPENDENT on PR #3015" in dep[0] and "node_mode" in dep[0] and "NOT seeded" in dep[0] and "Rahu/Ketu" in dep[0]
-    assert cov["dependencies"] == list(dep) and printed["dependencies"] == list(dep) and json.loads((tmp_path / "d.json.coverage.json").read_text())["dependencies"] == list(dep)
+    assert cov["resolved_findings"] == list(rf) and printed["resolved_findings"] == list(rf) and json.loads((tmp_path / "d.json.coverage.json").read_text())["resolved_findings"] == list(rf)
+    assert not hasattr(smd, "DEPENDENCIES") and "dependencies" not in cov and "dependencies" not in printed
     assert printed["partial_ownership"] == RD.partial_ownership_units()
 
 
@@ -2253,7 +2280,8 @@ def test_the_seed_spec_has_the_two_round_7_tables_with_their_reasons_and_the_not
     assert "schema-only mirror has no baseline row" in bl["why"] and "audited constants of migration 610" in bl["why"]
     assert all("why" not in sel[t] for t in ("asset_registry", "asset_output_digest_specs", "brahma_formula_constants", "brahma_event_ontology", "bg_transit_rules"))
     notes = " ".join(spec["notes"])
-    assert "NOT seeded (SS): the Rahu/Ketu rows of ephemeris_daily (wait for PR #3015)" in notes and "bg_gochara_arcs is DEPENDENT on #3015" in notes
+    assert ("NOT seeded: the Rahu/Ketu rows of ephemeris_daily. The orchestrated bg_ephemeris writer writes node_mode/epoch_convention (PR #3015, on main 2026-10-05), "
+            "so the rebuild produces them and the drill compares them.") in notes and "DEPENDENT" not in notes and "wait for" not in notes
     assert "only the dasha_system, dosha and yoga classes are seeded (332 rows)" in notes
     assert "exactly the seven tables of this spec" in " ".join(spec["evidence"]["rules"])
     assert spec["schema"] == "suvarna-l0-config-seed/v1" and spec["spec_sha256"] != "7ce73b761d47d58982510dba01d364594a7e24577161a9087470456a40ac2c82"   # the round 6 hash
@@ -2878,7 +2906,7 @@ def _invariants_body(m, tmp: pathlib.Path, first_only: bool, round10: bool = Tru
     check("rec_reason_on_complete", lambda: vr(_rrec({"bg_nakshatra": {"asset_id": "bg_nakshatra", "state": "complete", "reason": "NEEDS_X"}})) != [])
     check("rec_blocked_refused", lambda: vr(_rrec({"bg_nakshatra": {"asset_id": "bg_nakshatra", "state": "blocked"}})) != [])
     check("rec_complete_listed_asset_ok", lambda: vr(_rrec({"bg_cohort": {"asset_id": "bg_cohort", "state": "complete"}})) == [])
-    check("rec_spec_lists", lambda: set(m.build_record_spec(RD)["declared_assets_that_may_be_not_run"]) == {"bg_sky_calendar", "bg_cohort", "bg_muhurta_lattice", "bg_gochara_arcs"}
+    check("rec_spec_lists", lambda: set(m.build_record_spec(RD)["declared_assets_that_may_be_not_run"]) == {"bg_sky_calendar", "bg_cohort", "bg_muhurta_lattice"}
           and "bg_sky_calendar" not in m.build_record_spec(RD)["declared_assets_that_must_be_complete"])
     check("status_expects_not_run", lambda: "not_run" in {x["step"]: x for x in m.drill_status(RD)["steps"]}["rehearsal_l0_rebuild"]["detail"]["expects"])
     pdr, prr = out_doc(RD, "production"), out_doc(RD, "rehearsal")
@@ -2911,37 +2939,38 @@ def _invariants_body(m, tmp: pathlib.Path, first_only: bool, round10: bool = Tru
     check("rt_status_linux_step", lambda: {x["step"]: x["state"] for x in m.drill_status(RD, rehearsal=offr)["steps"]}["linux_amd64_runtime"] == "CLAIMED_UNVERIFIED"
           and {x["step"]: x["state"] for x in m.drill_status(RD, rehearsal=out_doc(RD, "rehearsal"))["steps"]}["linux_amd64_runtime"] == "SHAPE_CHECKED"
           and {x["step"]: x["state"] for x in m.drill_status(RD)["steps"]}["linux_amd64_runtime"] == "UNMEASURED")
-    check("container_expectation", lambda: m.build_record_spec(RD)["container_run_expectation"]["expected_complete_count"] == "32 of 34"
-          and m.build_record_spec(RD)["container_run_expectation"]["expected_not_run"] == {"bg_muhurta_lattice": "NEEDS_AS_OF_PIN", "bg_gochara_arcs": "NEEDS_PR_3015"}
-          and "bg_cohort" in m.build_record_spec(RD)["container_run_expectation"]["expected_complete"])
-    check("container_status_text", lambda: "32 of 34 declared assets are expected complete" in {x["step"]: x for x in m.drill_status(RD)["steps"]}["rehearsal_l0_rebuild"]["detail"]["expects"])
+    check("container_expectation", lambda: m.build_record_spec(RD)["container_run_expectation"]["expected_complete_count"] == "33 of 34"
+          and m.build_record_spec(RD)["container_run_expectation"]["expected_not_run"] == {"bg_muhurta_lattice": "NEEDS_AS_OF_PIN"}
+          and "bg_cohort" in m.build_record_spec(RD)["container_run_expectation"]["expected_complete"] and "bg_gochara_arcs" in m.build_record_spec(RD)["container_run_expectation"]["expected_complete"])
+    check("container_status_text", lambda: "33 of 34 declared assets are expected complete" in {x["step"]: x for x in m.drill_status(RD)["steps"]}["rehearsal_l0_rebuild"]["detail"]["expects"])
     check("receipt_spec_in_record_spec", lambda: m.build_record_spec(RD)["receipt_expected"]["keys"]["runtime"].startswith("REQUIRED"))
     # round 8: projections
     ep, er = _eph_pair()
     ep2, er2 = _eph_pair(change_columns_only=False)
-    check("eph_limited_passes", lambda: m.build_drill(ep, er, RD, EPH_EXPL, commit=SHA40)[0]["result"] == "PASS_DECLARED_ONLY"
-          and m.build_drill(ep, er, RD, EPH_EXPL, commit=SHA40)[0]["known_differences"][0]["limited_to_columns"] is True)
-    check("eph_not_limited_fails", lambda: m.build_drill(ep2, er2, RD, EPH_EXPL, commit=SHA40)[0]["result"] == "FAIL"
-          and m.build_drill(ep2, er2, RD, EPH_EXPL, commit=SHA40)[0]["unexplained"] == ["bg_ephemeris"])
-    check("eph_hints", lambda: m.build_drill(ep, er, RD, EPH_EXPL, commit=SHA40)[1]["expected_differences_status"][0]["hint"].endswith("KNOWN OPEN FINDING 9 (#3015): expected, visible, never equal.")
-          and m.build_drill(ep2, er2, RD, EPH_EXPL, commit=SHA40)[1]["expected_differences_status"][0]["hint"].startswith("NOT limited to"))
-    check("eph_report_fields", lambda: m.build_drill(ep, er, RD, EPH_EXPL, commit=SHA40)[1]["known_differences"] == m.build_drill(ep, er, RD, EPH_EXPL, commit=SHA40)[0]["known_differences"] != []
-          and m.build_drill(ep, er, RD, EPH_EXPL, commit=SHA40)[1]["projections"]["bg_ephemeris"]["table"] == "ephemeris_daily")
-    check("eph_projections_required_in_file", lambda: m.validate_fingerprint_output(_eph_pair(drop=True)[1], RD, side="rehearsal") != [] and raises(m.MirrorError, lambda: m.build_drill(*_eph_pair(drop=True), RD, EPH_EXPL, commit=SHA40)))
-    pbad = lambda edit: (lambda d: (edit(d), m.validate_fingerprint_output(d, RD, side="production"))[1])(out_doc(RD, "production"))  # noqa: E731
-    check("proj_valid", lambda: m.validate_fingerprint_output(out_doc(RD, "production"), RD, side="production") == [] and m.validate_fingerprint_output(out_doc(RD, "rehearsal"), RD, side="rehearsal") == [])
+    check("eph_limited_passes", lambda: m.build_drill(ep, er, RD_ED, EPH_EXPL, commit=SHA40)[0]["result"] == "PASS_DECLARED_ONLY"
+          and m.build_drill(ep, er, RD_ED, EPH_EXPL, commit=SHA40)[0]["known_differences"][0]["limited_to_columns"] is True)
+    check("eph_not_limited_fails", lambda: m.build_drill(ep2, er2, RD_ED, EPH_EXPL, commit=SHA40)[0]["result"] == "FAIL"
+          and m.build_drill(ep2, er2, RD_ED, EPH_EXPL, commit=SHA40)[0]["unexplained"] == ["bg_ephemeris"])
+    check("eph_hints", lambda: m.build_drill(ep, er, RD_ED, EPH_EXPL, commit=SHA40)[1]["expected_differences_status"][0]["hint"].endswith("KNOWN DIFFERENCE (tracked: synthetic tracked change (test fixture)): expected, visible, never equal.")
+          and m.build_drill(ep2, er2, RD_ED, EPH_EXPL, commit=SHA40)[1]["expected_differences_status"][0]["hint"].startswith("NOT limited to"))
+    check("eph_report_fields", lambda: m.build_drill(ep, er, RD_ED, EPH_EXPL, commit=SHA40)[1]["known_differences"] == m.build_drill(ep, er, RD_ED, EPH_EXPL, commit=SHA40)[0]["known_differences"] != []
+          and m.build_drill(ep, er, RD_ED, EPH_EXPL, commit=SHA40)[1]["projections"]["bg_ephemeris"]["table"] == "ephemeris_daily")
+    check("eph_projections_required_in_file", lambda: m.validate_fingerprint_output(_eph_pair(drop=True)[1], RD_ED, side="rehearsal") != [] and raises(m.MirrorError, lambda: m.build_drill(*_eph_pair(drop=True), RD_ED, EPH_EXPL, commit=SHA40)))
+    pbad = lambda edit: (lambda d: (edit(d), m.validate_fingerprint_output(d, RD_ED, side="production"))[1])(out_doc(RD_ED, "production"))  # noqa: E731
+    check("proj_valid", lambda: m.validate_fingerprint_output(out_doc(RD_ED, "production"), RD_ED, side="production") == [] and m.validate_fingerprint_output(out_doc(RD_ED, "rehearsal"), RD_ED, side="rehearsal") == [])
     check("proj_units_exact", lambda: pbad(lambda d: d["projections"].update(bg_nakshatra={"nakshatra": {"sha256": H, "rows": 5}})) and pbad(lambda d: d.update(projections={})))
     check("proj_table_exact", lambda: pbad(lambda d: d["projections"].update(bg_ephemeris={"other": {"sha256": H, "rows": 5}})) and pbad(lambda d: d["projections"]["bg_ephemeris"].update(other={"sha256": H, "rows": 5})))
     check("proj_shape", lambda: pbad(lambda d: d["projections"]["bg_ephemeris"]["ephemeris_daily"].update(sha256="short")) and pbad(lambda d: d["projections"]["bg_ephemeris"]["ephemeris_daily"].update(rows=True))
           and pbad(lambda d: d["projections"]["bg_ephemeris"]["ephemeris_daily"].update(x=1)) and pbad(lambda d: d.update(projections=[])))
     check("proj_not_object_message", lambda: any("projections must be an object" in x for x in pbad(lambda d: d.update(projections=[]))))
-    check("eph_status_explained_flag", lambda: m.build_drill(ep, er, RD, None, commit=SHA40)[1]["expected_differences_status"][0]["explained"] is False
-          and m.build_drill(ep, er, RD, EPH_EXPL, commit=SHA40)[1]["expected_differences_status"][0]["explained"] is True)
-    check("open_finding_9_text", lambda: m.OPEN_FINDINGS[8].startswith("9. bg_ephemeris writer on main does not write node_mode/epoch_convention (#3015, blocked on the L0 writer-inventory re-pin")
-          and "NEEDS_PR_3015" in m.OPEN_FINDINGS[8] and "limited to them" in m.OPEN_FINDINGS[8])
+    check("eph_status_explained_flag", lambda: m.build_drill(ep, er, RD_ED, None, commit=SHA40)[1]["expected_differences_status"][0]["explained"] is False
+          and m.build_drill(ep, er, RD_ED, EPH_EXPL, commit=SHA40)[1]["expected_differences_status"][0]["explained"] is True)
+    check("no_stale_open_finding", lambda: len(m.OPEN_FINDINGS) == 8 and not any("#3015" in x or "NEEDS_PR_3015" in x for x in m.OPEN_FINDINGS))
+    check("real_declarations_have_no_known_difference", lambda: RD.expected_differences() == [] and RD.projection_tables() == {} and out_doc(RD, "production")["projections"] == {}
+          and m.build_drill(out_doc(RD, "production"), out_doc(RD, "rehearsal"), RD, None, commit=SHA40)[0]["known_differences"] == [])
     check("proj_rows_equal_table_rows", lambda: pbad(lambda d: d["projections"]["bg_ephemeris"]["ephemeris_daily"].update(rows=6)))
-    check("proj_empty_hash_rule", lambda: pbad(lambda d: d["projections"]["bg_ephemeris"]["ephemeris_daily"].update(sha256=fd.empty_projection_fingerprint(RD, "bg_ephemeris", "ephemeris_daily"))))
-    check("reader_spec_projections", lambda: m.reader_spec(RD)["projections"][0]["excluded_columns"] == ["node_mode", "epoch_convention"])
+    check("proj_empty_hash_rule", lambda: pbad(lambda d: d["projections"]["bg_ephemeris"]["ephemeris_daily"].update(sha256=fd.empty_projection_fingerprint(RD_ED, "bg_ephemeris", "ephemeris_daily"))))
+    check("reader_spec_projections", lambda: m.reader_spec(RD_ED)["projections"][0]["excluded_columns"] == ["node_mode", "epoch_convention"])
     # round 9: N-135
     hp, hr = _hz_pair()
     hd = lambda p_=None, r_=None, e=A_ROLL_EXPL: m.build_drill(p_ or hp, r_ or hr, D5, e, commit=SHA40)  # noqa: E731
@@ -3105,13 +3134,13 @@ def _invariants_body(m, tmp: pathlib.Path, first_only: bool, round10: bool = Tru
           and m.migration_610_constants(_migration().replace("row_count = 10651", "row_count > 5").encode()) is None and m.migration_610_constants(b"\xff") is None)
     check("ts_status_wired", lambda: {x["step"]: x["state"] for x in m.drill_status(RD, text_seed_check=_check(shT), rehearsal=out_doc(RD, "rehearsal", commit=shT), build_record=_rrec(orchestrator_commit=shT),
                                                                                  repo=repoT)["steps"]}["text_seed"] == "MEASURED")
-    check("report_open_findings", lambda: m.build_drill(pdr, prr, RD, None, commit=SHA40)[1]["open_findings"] == list(m.OPEN_FINDINGS) and len(m.OPEN_FINDINGS) == 9)
+    check("report_open_findings", lambda: m.build_drill(pdr, prr, RD, None, commit=SHA40)[1]["open_findings"] == list(m.OPEN_FINDINGS) and len(m.OPEN_FINDINGS) == 8)
     # round 5: not_run_declared
     nrp, nrr = out_doc(RD, "production"), out_doc(RD, "rehearsal", assets=[u for u in RD.expected_assets() if u not in NOT_RUN_UNITS])
     nrx = {u: {"reason_code": "not_run_declared", "detail": NR_DETAIL % u} for u in NOT_RUN_UNITS}
     nrd = lambda **kw: m.build_drill(nrp, nrr, RD, kw.pop("expl", nrx), commit=SHA40, **kw)  # noqa: E731
     check("nr_ok", lambda: nrd(build_record=_rrec())[0]["result"] == "PASS_DECLARED_ONLY" and nrd(build_record=_rrec())[0]["unmeasured"] == list(NOT_RUN_UNITS))
-    check("nr_never_equal", lambda: not set(nrd(build_record=_rrec())[0]["equal"]) & set(NOT_RUN_UNITS) and len(nrd(build_record=_rrec())[0]["equal"]) == 27)
+    check("nr_never_equal", lambda: not set(nrd(build_record=_rrec())[0]["equal"]) & set(NOT_RUN_UNITS) and len(nrd(build_record=_rrec())[0]["equal"]) == 28)
     check("nr_needs_record", lambda: nrd()[0]["result"] == "FAIL" and nrd()[0]["unmeasured"] == [])
     check("nr_complete_refused", lambda: nrd(build_record=_rrec({"bg_muhurta_lattice": {"asset_id": "bg_muhurta_lattice", "state": "complete"}}))[0]["result"] == "FAIL")
     check("nr_unlisted_refused", lambda: m.build_drill(out_doc(RD, "production"), out_doc(RD, "rehearsal", assets=[u for u in RD.expected_assets() if u != "bg_ephemeris"]), RD,
@@ -3120,17 +3149,19 @@ def _invariants_body(m, tmp: pathlib.Path, first_only: bool, round10: bool = Tru
     check("nr_report_status", lambda: nrd(build_record=_rrec())[1]["unit_status"]["bg_muhurta_lattice"]["status"] == "UNMEASURED:not_run_declared"
           and nrd(build_record=_rrec())[1]["unmeasured"] == list(NOT_RUN_UNITS)
           and nrd(build_record=_rrec())[1]["not_run"] == nrd(build_record=_rrec())[0]["not_run"] != {})
-    check("nr_headline", lambda: "4 not-run units, UNMEASURED" in nrd(build_record=_rrec())[1]["headline"] and "bg_muhurta_lattice [NEEDS_AS_OF_PIN]" in nrd(build_record=_rrec())[1]["headline"])
+    check("nr_headline", lambda: "3 not-run units, UNMEASURED" in nrd(build_record=_rrec())[1]["headline"] and "bg_muhurta_lattice [NEEDS_AS_OF_PIN]" in nrd(build_record=_rrec())[1]["headline"])
     sp = m.seed_spec(RD)
     check("seed_round7_tables", lambda: [t["table"] for t in sp["tables"]][5:] == ["brahma_ontology", "nirmana_bg_texts_integrity_baselines"]
           and sp["tables"][5]["select"].count("'") == 6 and all(f"'{c}'" in sp["tables"][5]["select"] for c in ("dasha_system", "dosha", "yoga"))
           and " WHERE " not in sp["tables"][6]["select"] and "REPLACED by the rebuild" in sp["tables"][5]["why"] and "COUNT(*) >= 737" in sp["tables"][5]["why"]
           and "audited constants of migration 610" in sp["tables"][6]["why"])
-    check("seed_not_seeded_statement", lambda: "NOT seeded (SS): the Rahu/Ketu rows of ephemeris_daily" in " ".join(sp["notes"]) and "DEPENDENT on #3015" in " ".join(sp["notes"]))
+    check("seed_not_seeded_statement", lambda: "NOT seeded: the Rahu/Ketu rows of ephemeris_daily. The orchestrated bg_ephemeris writer writes node_mode/epoch_convention" in " ".join(sp["notes"])
+          and "DEPENDENT" not in " ".join(sp["notes"]))
     check("seed_evidence_seven_tables", lambda: m.validate_seed_evidence(_seed_evidence(), RD) == []
           and all(m.validate_seed_evidence({**_seed_evidence(), "tables": {k: v for k, v in _seed_evidence()["tables"].items() if k != d}}, RD) for d in ("brahma_ontology", "nirmana_bg_texts_integrity_baselines")))
-    check("dependencies_text", lambda: len(m.DEPENDENCIES) == 1 and "bg_gochara_arcs is DEPENDENT on PR #3015" in m.DEPENDENCIES[0]
-          and m.build_drill(out_doc(RD, "production"), out_doc(RD, "rehearsal"), RD, None, commit=SHA40)[1]["dependencies"] == list(m.DEPENDENCIES))
+    check("resolved_findings_text", lambda: len(m.RESOLVED_FINDINGS) == 1 and m.RESOLVED_FINDINGS[0].startswith("9. (resolved) bg_ephemeris writer did not write node_mode/epoch_convention; fixed by #3015, on main 2026-10-05")
+          and m.build_drill(out_doc(RD, "production"), out_doc(RD, "rehearsal"), RD, None, commit=SHA40)[1]["resolved_findings"] == list(m.RESOLVED_FINDINGS)
+          and not hasattr(m, "DEPENDENCIES"))
     check("seed_collate_c_on_every_text_key", lambda: seed_order_problems(m.seed_tables()) == [])
     check("seed_spec_tables", lambda: [t["table"] for t in sp["tables"]] == ["asset_registry", "asset_output_digest_specs", "brahma_formula_constants", "brahma_event_ontology", "bg_transit_rules", "brahma_ontology", "nirmana_bg_texts_integrity_baselines"])
     check("seed_writer_ids", lambda: len(m.writer_owned_ids("brahma_formula_constants")) == 10 and len(m.writer_owned_ids("brahma_event_ontology")) == 27)
@@ -3230,8 +3261,8 @@ MUTANTS = [
     ('ORDER BY b.contract_revision COLLATE \\"C\\""}', 'ORDER BY b.contract_revision"}'),
     ('FROM nirmana_bg_texts_integrity_baselines b ORDER BY', 'FROM nirmana_bg_texts_integrity_baselines b WHERE b.contract_revision = \'x\' ORDER BY'),
     ('"why": "a schema-only mirror has no baseline row', '"why": "x", "why2": "a schema-only mirror has no baseline row'),
-    ('"NOT seeded (SS): the Rahu/Ketu rows of ephemeris_daily (wait for PR #3015). bg_gochara_arcs is DEPENDENT on #3015:', '"x: bg_gochara_arcs is DEPENDENT on #3015:'),
-    ('    cov["dependencies"] = list(DEPENDENCIES)', '    cov["dependencies"] = []'),
+    ('"NOT seeded: the Rahu/Ketu rows of ephemeris_daily. The orchestrated bg_ephemeris writer writes node_mode/epoch_convention (PR #3015, on main 2026-10-05), "', '"x: the orchestrated bg_ephemeris writer writes node_mode/epoch_convention (PR #3015, on main 2026-10-05), "'),
+    ('    cov["resolved_findings"] = list(RESOLVED_FINDINGS)', '    cov["resolved_findings"] = []'),
     ('    p += _horizon_problems(doc["horizons"], tabs, decls, side)', '    pass'),
     ('    if set(hz) != present:', '    if False:'),
     ('        if not (isinstance(hu, Mapping) and set(hu) == {t}):', '        if not isinstance(hu, Mapping) or t not in hu:'),
@@ -3266,12 +3297,12 @@ MUTANTS = [
     ('    cov["known_differences"] = [dict(k) for k in drill["known_differences"]]', '    cov["known_differences"] = []'),
     ('    cov["projections"] = {u: dict(v) for u, v in drill["projections"].items()}', '    cov["projections"] = {}'),
     ('        if k["limited_to_columns"] is False:\n            return (f"NOT limited', '        if False:\n            return (f"NOT limited'),
-    ('        tail = "" if "#3015" not in e["reference"] else " KNOWN OPEN FINDING 9 (#3015): expected, visible, never equal."', '        tail = ""'),
+    ('        tail = f" KNOWN DIFFERENCE (tracked: {e[\'reference\']}): expected, visible, never equal."', '        tail = ""'),
     ('"explained": kd[e["unit"]]["explained"], "hint": _hint(e)}', '"explained": True, "hint": _hint(e)}'),
     ('            "projections": [{"unit": u, "table": t,', '            "projections_x": [{"unit": u, "table": t,'),
-    ('    "9. bg_ephemeris writer on main does not write node_mode/epoch_convention (#3015, blocked on the L0 writer-inventory re-pin by the Nirmāṇa authority). "', '    "9. x. "'),
-    ('CONTAINER_EXPECTED_NOT_RUN = ("bg_muhurta_lattice", "bg_gochara_arcs")', 'CONTAINER_EXPECTED_NOT_RUN = ("bg_muhurta_lattice",)'),
-    ('CONTAINER_EXPECTED_NOT_RUN = ("bg_muhurta_lattice", "bg_gochara_arcs")', 'CONTAINER_EXPECTED_NOT_RUN = ("bg_gochara_arcs",)'),
+    ('    "9. (resolved) bg_ephemeris writer did not write node_mode/epoch_convention; fixed by #3015, on main 2026-10-05; the drill must now show equality for "', '    "9. x. "'),
+    ('CONTAINER_EXPECTED_NOT_RUN = ("bg_muhurta_lattice",)', 'CONTAINER_EXPECTED_NOT_RUN = ()'),
+    ('CONTAINER_EXPECTED_NOT_RUN = ("bg_muhurta_lattice",)', 'CONTAINER_EXPECTED_NOT_RUN = ("bg_muhurta_lattice", "bg_cohort")'),
     # round 10: decision register and text seed
     ('    if not (isinstance(commit, str) and HEX40.fullmatch(commit)):\n        raise MirrorError("the commit under test must be 40-hex")', '    if False:\n        raise MirrorError("x")'),
     ('        if run("cat-file", "-e", f"{commit}^{{commit}}").returncode != 0:', '        if False:'),
@@ -3336,8 +3367,6 @@ MUTANTS = [
     ('    steps.append(text_seed_step(text_seed_check, repo, commit=ts_commit, rehearsal=rehearsal if (rehearsal is not None and not reh_p) else None, build_record=build_record, decls=decls))', '    steps.append({"step": "text_seed", "state": "UNMEASURED", "reason": NEEDS["text_seed"]})'),
     ('    "text_seed": "NEEDS_TEXT_SEED_CHECK",', '    "text_seed": "NEEDS_TEXT_SEED",'),
 
-    ('CONTAINER_EXPECTED_NOT_RUN = ("bg_muhurta_lattice", "bg_gochara_arcs")', 'CONTAINER_EXPECTED_NOT_RUN = ()'),
-    ('CONTAINER_EXPECTED_NOT_RUN = ("bg_muhurta_lattice", "bg_gochara_arcs")', 'CONTAINER_EXPECTED_NOT_RUN = ("bg_muhurta_lattice", "bg_gochara_arcs", "bg_cohort")'),
     ('                                        runtime=rehearsal["rebuild"]["runtime"], projections=pjs, horizons=hzs, not_run=', '                                        runtime={**rehearsal["rebuild"]["runtime"], "platform": "linux/amd64"}, projections=pjs, not_run='),
     ('    cov["claimed_unverified"] = list(drill["claimed_unverified"])', '    cov["claimed_unverified"] = []'),
     ('    cov["runtime"] = dict(drill["runtime"])', '    cov["runtime"] = {}'),

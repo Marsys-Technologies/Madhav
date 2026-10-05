@@ -116,10 +116,10 @@ LIMITS_TEXT = (
 # so the drill's coverage block, the explanation code `not_run_declared` and the build-record verifier all read the same list.
 NOT_RUN_ALLOWED = fd.NOT_RUN_ALLOWED
 # SS decision B1: the L0 rebuild runs inside a linux/amd64 Debian container, which brings bg_sky_calendar and bg_cohort into the proof. In that run every
-# declared asset is expected `complete` EXCEPT bg_muhurta_lattice (needs the as-of pin) and bg_gochara_arcs (NEEDS_PR_3015, SS option (c) 2026-10-04: the bg_ephemeris
-# writer on main does not write node_mode/epoch_convention, so it cannot run while #3015 is not on main), which stay `not_run`. bg_sky_calendar / bg_cohort stay on the
-# closed list only for the case the container cannot run them; the validator still accepts `complete` for every listed asset and `not_run` only as listed.
-CONTAINER_EXPECTED_NOT_RUN = ("bg_muhurta_lattice", "bg_gochara_arcs")
+# declared asset is expected `complete` EXCEPT bg_muhurta_lattice (needs the as-of pin), which stays `not_run`. bg_gochara_arcs runs now (PR #3015 is on main: the
+# bg_ephemeris writer writes node_mode/epoch_convention) and is expected complete. bg_sky_calendar / bg_cohort stay on the closed list only for the case the
+# container cannot run them; the validator still accepts `complete` for every listed asset and `not_run` only as listed.
+CONTAINER_EXPECTED_NOT_RUN = ("bg_muhurta_lattice",)
 assert set(CONTAINER_EXPECTED_NOT_RUN) <= set(NOT_RUN_ALLOWED)
 # States a build-record entry may carry. `complete` and (for NOT_RUN_ALLOWED assets only) `not_run` are the only ones a DECLARED asset may have;
 # every other state is a failure to be reported, never accepted as complete or as not_run.
@@ -144,10 +144,9 @@ BUILD_RECORD_SPEC = {
         "`not_run` is accepted ONLY for the assets in the closed not_run_allowed list (decision N-121; extended only by editing NOT_RUN_ALLOWED in fingerprint_declarations.py with a decision id). On `compare --build-record`, a `not_run` entry is what makes the explanation code not_run_declared valid: that unit stays UNMEASURED, never equal, never counted toward the verdict.",
         "An asset that failed, errored, is incomplete, blocked or skipped is never accepted as `complete` or as `not_run`: it makes the record refuse, "
         "whatever the build_run_assets row says (build_run_assets.state is `complete` for terminal outcomes: see OPEN FINDINGS 4).",
-        "Expected in the linux/amd64 container run (SS decision B1; SS option (c) 2026-10-04): 32 of the 34 declared assets `complete`, including bg_sky_calendar and "
-        "bg_cohort, and 2 `not_run`: bg_muhurta_lattice with NEEDS_AS_OF_PIN and bg_gochara_arcs with NEEDS_PR_3015 (see container_run_expectation). bg_gochara_arcs is "
-        "`not_run` ONLY while #3015 is not on main (`complete` stays accepted). bg_sky_calendar and bg_cohort stay on the closed not_run list only for the case the "
-        "container cannot run them; the validator accepts `complete` for every listed asset and `not_run` only as listed.",
+        "Expected in the linux/amd64 container run (SS decision B1): 33 of the 34 declared assets `complete`, including bg_sky_calendar, bg_cohort and bg_gochara_arcs, "
+        "and 1 `not_run`: bg_muhurta_lattice with NEEDS_AS_OF_PIN (see container_run_expectation). bg_sky_calendar and bg_cohort stay on the closed not_run list only "
+        "for the case the container cannot run them; the validator accepts `complete` for every listed asset and `not_run` only as listed.",
         "A `reason` appears on a not_run entry only; an unknown asset id or state, a duplicate asset id or any extra key refuses the record.",
     ],
     "closed": "no other top-level key; an assets entry has exactly {asset_id, state}, plus `reason` when state is not_run",
@@ -177,15 +176,12 @@ OPEN_FINDINGS = (
     "8. ephemeris_daily speed_dps (all 9 bodies) and some Moon/Venus longitude/latitude digits differ between aarch64/Darwin and production's x86_64/Linux "
     "(float noise at the last digits; node_mode, epoch_convention, source_citation and row counts equal), which is why the rebuild is run inside a linux/amd64 "
     "Debian container (SS decision B1).",
-    "9. bg_ephemeris writer on main does not write node_mode/epoch_convention (#3015, blocked on the L0 writer-inventory re-pin by the Nirmāṇa authority). "
-    "KNOWN: ephemeris_daily is expected to differ on exactly those two columns (a recorded expected difference, limited to them: the fingerprint without them must "
-    "be equal), and bg_gochara_arcs, which needs the Rahu/Ketu node_mode rows, is not_run (NEEDS_PR_3015, SS option (c) 2026-10-04) and UNMEASURED.",
 )
 
-# Dependencies the report states (facts, not fixes).
-DEPENDENCIES = (
-    "bg_gochara_arcs is DEPENDENT on PR #3015 (SS option (c), 2026-10-04: not_run with NEEDS_PR_3015 while #3015 is not on main; UNMEASURED, never counted): its reader filters (body NOT IN ('Rahu','Ketu') OR node_mode = 'true') and the orchestrated bg_ephemeris writer does "
-    "not write node_mode/epoch_convention, so it cannot complete in the rehearsal until #3015 lands. The Rahu/Ketu ephemeris_daily rows are NOT seeded (SS).",
+# Findings that were open and are RESOLVED: stated as resolved, never as a known difference that no longer exists (printed with every report).
+RESOLVED_FINDINGS = (
+    "9. (resolved) bg_ephemeris writer did not write node_mode/epoch_convention; fixed by #3015, on main 2026-10-05; the drill must now show equality for "
+    "ephemeris_daily. bg_gochara_arcs, which needs the Rahu/Ketu node_mode rows, runs and is expected complete.",
 )
 
 
@@ -1010,8 +1006,8 @@ def seed_spec(decls: fd.Declarations, repo_root: str | Path | None = None) -> di
                   "that the writer does not own and does not patch the writer-owned rows.",
                   "bg_transit_rules: the 7 migration-owned double_transit rows only; the 69 rows the bg_transit_engine writer also writes are its own output.",
                   "brahma_ontology: only the dasha_system, dosha and yoga classes are seeded (332 rows); the other classes are bg_ontology's own output and are never seeded.",
-                  "NOT seeded (SS): the Rahu/Ketu rows of ephemeris_daily (wait for PR #3015). bg_gochara_arcs is DEPENDENT on #3015: its reader needs node_mode = 'true' "
-                  "rows that the orchestrated bg_ephemeris writer does not write, so it cannot complete in the rehearsal until #3015 lands."],
+                  "NOT seeded: the Rahu/Ketu rows of ephemeris_daily. The orchestrated bg_ephemeris writer writes node_mode/epoch_convention (PR #3015, on main 2026-10-05), "
+                  "so the rebuild produces them and the drill compares them."],
         "evidence": {
             "file": "a JSON file written by the reader, validated by `validate-seed-evidence PATH`",
             "schema": SEED_SCHEMA,
@@ -1153,7 +1149,7 @@ def build_drill(production: Mapping, rehearsal: Mapping, decls: fd.Declarations,
         if k["limited_to_columns"] is False:
             return (f"NOT limited to {e['columns']}: the fingerprint without them still differs (or is not given): something else in the unit changed; "
                     "the recorded difference does not explain it")
-        tail = "" if "#3015" not in e["reference"] else " KNOWN OPEN FINDING 9 (#3015): expected, visible, never equal."
+        tail = f" KNOWN DIFFERENCE (tracked: {e['reference']}): expected, visible, never equal."
         return ("limited to " + str(e["columns"]) + ": " + ("explained." if k["explained"] else "explain it (reason code production_ahead_of_commit, an SS decision id).") + tail)
     cov["expected_differences_status"] = [{**e, "status": "observed" if kd[e["unit"]]["observed"] else "not_observed", "limited_to_columns": kd[e["unit"]]["limited_to_columns"],
                                            "explained": kd[e["unit"]]["explained"], "hint": _hint(e)} for e in decls.expected_differences()]
@@ -1183,7 +1179,7 @@ def build_drill(production: Mapping, rehearsal: Mapping, decls: fd.Declarations,
                                       drill["runtime"], drill["claimed_unverified"], [f"{h['unit']}: {h['summary']}" for h in cov["horizon_evidence"]])
     cov["limits"] = list(LIMITS_TEXT)
     cov["open_findings"] = list(OPEN_FINDINGS)
-    cov["dependencies"] = list(DEPENDENCIES)
+    cov["resolved_findings"] = list(RESOLVED_FINDINGS)
     cov["note"] = "undeclared assets are NOT in expected_assets: they are reported here and in the drill's coverage block, not compared"
     return drill, cov
 
@@ -1742,7 +1738,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                     "seeded": drill["seeded"], "unmeasured": drill["unmeasured"], "not_run": drill["not_run"],
                     "non_deterministic": drill["coverage"]["non_deterministic"], "groups": cov["groups"],
                     "partial_ownership": cov["partial_ownership"], "expected_differences": cov["expected_differences_status"], "limits": cov["limits"],
-                    "open_findings": cov["open_findings"], "dependencies": cov["dependencies"], "known_differences": cov["known_differences"]})
+                    "open_findings": cov["open_findings"], "resolved_findings": cov["resolved_findings"], "known_differences": cov["known_differences"]})
             return 0 if drill["result"] in sr.RESULTS_PASS else 4
         if a.cmd == "text-seed-spec":
             _print(text_seed_spec())

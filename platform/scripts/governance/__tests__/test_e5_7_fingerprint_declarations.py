@@ -451,6 +451,90 @@ def test_horizon_source_mutants_are_caught(old, new):
     assert _horizon_invariants(mod), f"SURVIVING MUTANT: {old!r} -> {new!r}"
 
 
+# ----- round 11 (speed): `Declarations._unit` builds ONE unit, from the same helpers as `units()` -----
+
+def _old_unit(d, unit):
+    """What `_unit` did before: rebuild the dict of ALL units and look one up."""
+    u = d.units().get(unit)
+    if u is None:
+        raise fd.DeclarationError([("unknown_asset", unit, "not a comparison unit (a declared asset with tables, or a group)")])
+    return u
+
+
+def _unit_outcome(fn):
+    try:
+        return ("ok", fn())
+    except fd.DeclarationError as exc:
+        return ("err", [tuple(x) for x in exc.problems])
+
+
+def _unit_invariants(m, decls_list) -> list[str]:
+    bad: list[str] = []
+
+    def check(name, cond):
+        try:
+            ok = bool(cond())
+        except Exception:                                                  # noqa: BLE001 - a crash is a failed invariant
+            ok = False
+        if not ok:
+            bad.append(name)
+    for tag, d in decls_list:
+        probes = sorted(set(d.assets) | {d.group_unit(g) for g in d.groups} | set(d.units()) | {"nope", "", "grp_", "grp_nope", "grp_" + "x" * 5, "GRP_x", "bg_"})
+        check(f"{tag}:every_unit_equals_the_units_entry", lambda d=d: all(d._unit(u) == d.units()[u] for u in d.units()) and len(d.units()) > 0)
+        check(f"{tag}:same_outcome_for_every_probe", lambda d=d, probes=probes: all(_unit_outcome(lambda u=u: d._unit(u)) == _unit_outcome(lambda u=u: _old_unit(d, u)) for u in probes))
+        check(f"{tag}:unknown_raises_the_same_error", lambda d=d: _unit_outcome(lambda: d._unit("nope")) == ("err", [("unknown_asset", "nope", "not a comparison unit (a declared asset with tables, or a group)")]))
+        check(f"{tag}:undeclared_asset_raises", lambda d=d: all(_unit_outcome(lambda a=a: d._unit(a))[0] == "err" for a in d.undeclared_assets()))
+        check(f"{tag}:asset_without_tables_raises", lambda d=d: all(_unit_outcome(lambda a=a: d._unit(a))[0] == "err" for a in d.declared_assets() if not d.assets[a]["tables"]))
+        check(f"{tag}:bad_group_id_raises", lambda d=d: all(_unit_outcome(lambda g=g: d._unit(g))[0] == "err" for g in ("grp_nope", "grp_", "grp_" + "z" * 40)))
+        check(f"{tag}:group_prefix_alone_is_not_a_unit", lambda d=d: _unit_outcome(lambda: d._unit(fd.GROUP_PREFIX))[0] == "err")
+        check(f"{tag}:tables_and_reproducibility_follow", lambda d=d: all(d.tables(u) == d.units()[u]["tables"] and d.reproducibility(u) == d.units()[u]["reproducibility"] for u in d.units()))
+        check(f"{tag}:unit_dicts_are_independent_copies", lambda d=d: d._unit(next(iter(d.units())))["members"] is not d._unit(next(iter(d.units())))["members"])
+    check("helpers_are_shared", lambda: all(hasattr(m.Declarations, h) for h in ("_asset_unit", "_group_unit")))
+    return bad
+
+
+def _unit_cases():
+    real = fd.load_declarations()
+    syn = fd.Declarations(doc=copy.deepcopy(SYN_DOC), sha256="9" * 64)
+    return [("real", real), ("syn", syn)]
+
+
+def test_unit_builds_one_unit_and_matches_units_for_every_unit_and_raises_the_same_errors():
+    assert _unit_invariants(fd, _unit_cases()) == []
+    real = fd.load_declarations()
+    assert len(real.units()) == 32 and any(not real.assets[a]["tables"] for a in real.declared_assets()) and real.undeclared_assets() and real.groups
+    # `_unit` never rebuilds the dict of all units
+    calls = []
+    orig = fd.Declarations.units
+    fd.Declarations.units = lambda self: calls.append(1) or orig(self)
+    try:
+        real._unit("bg_sky_calendar")
+        real._unit("grp_brahma_ontology")
+        real.tables("bg_sky_calendar")
+        real.table_declaration("bg_sky_calendar", "bg_sky_calendar")
+    finally:
+        fd.Declarations.units = orig
+    assert calls == []
+
+
+@pytest.mark.parametrize("old,new", [
+    ('        if isinstance(unit, str) and unit.startswith(GROUP_PREFIX) and unit[len(GROUP_PREFIX):] in self.groups:', '        if False:'),
+    ('        if isinstance(unit, str) and unit.startswith(GROUP_PREFIX) and unit[len(GROUP_PREFIX):] in self.groups:', '        if isinstance(unit, str) and unit.startswith(GROUP_PREFIX):'),
+    ('        elif unit in self.assets and self.assets[unit]["status"] == "declared":', '        elif unit in self.assets:'),
+    ('        elif unit in self.assets and self.assets[unit]["status"] == "declared":', '        elif False:'),
+    ('        if not d["tables"]:\n            return None', '        if False:\n            return None'),
+    ('"reproducibility": list(g["reproducibility"]),\n                "seeded": bool(g["seeded"])}', '"reproducibility": list(g["reproducibility"]),\n                "seeded": False}'),
+    ('"members": [a], "tables": [t["name"] for t in d["tables"]], "reproducibility": list(d["reproducibility"]), "seeded": False}', '"members": [a], "tables": [t["name"] for t in d["tables"]][:1], "reproducibility": list(d["reproducibility"]), "seeded": False}'),
+    ('            u = self._asset_unit(a)\n            if u is not None:\n                out[a] = u', '            out[a] = self._asset_unit(a)'),
+    ('            raise DeclarationError([("unknown_asset", unit, "not a comparison unit (a declared asset with tables, or a group)")])\n        return u', '            return {"kind": "asset", "members": [unit], "tables": [], "reproducibility": ["deterministic"], "seeded": False}\n        return u'),
+], ids=["no_group_branch", "group_prefix_without_membership", "undeclared_accepted", "no_asset_branch", "no_tables_accepted", "group_seeded_false", "tables_truncated", "units_keeps_none", "unknown_returns_a_unit"])
+def test_unit_source_mutants_are_caught(old, new):
+    assert SRC_FD.count(old) == 1, f"the mutant target is absent or not unique: {old!r}"
+    mod = load_module(SRC_FD.replace(old, new, 1), "fd_unit_mut_" + str(abs(hash(old + new)) % 10**8))
+    cases = [("real", mod.load_declarations()), ("syn", mod.Declarations(doc=copy.deepcopy(SYN_DOC), sha256="9" * 64))]
+    assert _unit_invariants(mod, cases), f"SURVIVING MUTANT: {old!r} -> {new!r}"
+
+
 def test_one_fingerprint_definition_everywhere():
     assert fd.FINGERPRINT_DEFINITION == sr.FINGERPRINT_DEFINITION == "nikasha_stale_certs.table_fingerprint/1"
     assert DOC["fingerprint_definition"] == fd.FINGERPRINT_DEFINITION

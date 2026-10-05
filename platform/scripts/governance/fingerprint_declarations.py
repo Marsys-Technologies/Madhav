@@ -922,17 +922,28 @@ class Declarations:
     def group_unit(gid: str) -> str:
         return GROUP_PREFIX + gid
 
+    def _asset_unit(self, a: str) -> dict | None:
+        """The comparison unit of DECLARED asset `a`, or None when it has no table of its own (it is then a group member only). The ONE definition that both
+        `units()` and `_unit()` use, so they cannot disagree."""
+        d = self.assets[a]
+        if not d["tables"]:
+            return None
+        return {"kind": "asset", "members": [a], "tables": [t["name"] for t in d["tables"]], "reproducibility": list(d["reproducibility"]), "seeded": False}
+
+    def _group_unit(self, gid: str) -> dict:
+        """The comparison unit of group `gid` (see `_asset_unit`)."""
+        g = self.groups[gid]
+        return {"kind": "group", "members": sorted(g["members"]), "tables": [t["name"] for t in g["tables"]], "reproducibility": list(g["reproducibility"]),
+                "seeded": bool(g["seeded"])}
+
     def units(self) -> dict[str, dict]:
         out: dict[str, dict] = {}
         for a in self.declared_assets():
-            d = self.assets[a]
-            if d["tables"]:
-                out[a] = {"kind": "asset", "members": [a], "tables": [t["name"] for t in d["tables"]], "reproducibility": list(d["reproducibility"]),
-                          "seeded": False}
+            u = self._asset_unit(a)
+            if u is not None:
+                out[a] = u
         for gid in sorted(self.groups):
-            g = self.groups[gid]
-            out[self.group_unit(gid)] = {"kind": "group", "members": sorted(g["members"]), "tables": [t["name"] for t in g["tables"]],
-                                         "reproducibility": list(g["reproducibility"]), "seeded": bool(g["seeded"])}
+            out[self.group_unit(gid)] = self._group_unit(gid)
         return out
 
     def expected_assets(self) -> list[str]:
@@ -940,7 +951,13 @@ class Declarations:
         return sorted(self.units())
 
     def _unit(self, unit: str) -> dict:
-        u = self.units().get(unit)
+        """One comparison unit, built alone (not by rebuilding the dict of every unit): a group when `grp_<id>` names a declared group (a group wins over an
+        asset of the same name, as in `units()`), else a declared asset with tables of its own."""
+        u = None
+        if isinstance(unit, str) and unit.startswith(GROUP_PREFIX) and unit[len(GROUP_PREFIX):] in self.groups:
+            u = self._group_unit(unit[len(GROUP_PREFIX):])
+        elif unit in self.assets and self.assets[unit]["status"] == "declared":
+            u = self._asset_unit(unit)
         if u is None:
             raise DeclarationError([("unknown_asset", unit, "not a comparison unit (a declared asset with tables, or a group)")])
         return u

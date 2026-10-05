@@ -1768,7 +1768,7 @@ def test_a_differing_platform_bound_unit_still_needs_its_explanation_and_the_run
 
 # ----- round 8: a recorded expected difference is limited to its columns (projection fingerprints) -----
 
-ED = {"unit": "bg_b", "table": "t", "columns": ["node_mode", "epoch_convention"], "reference": "Exec held PR #3015 (bg_ephemeris writes node_mode and epoch_convention)"}
+ED = {"unit": "bg_b", "table": "t", "columns": ["node_mode", "epoch_convention"], "reference": "synthetic tracked change (test fixture)"}
 P1, P2 = fp(501), fp(502)
 
 
