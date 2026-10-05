@@ -219,10 +219,8 @@ class FakeFp:
             raise RuntimeError("fake unreadable table")
         sha = self.shas[min(self.calls, len(self.shas) - 1)]
         self.calls += 1
-        (unit,) = units
-        tables = {t: {"sha256": sha, "rows": self.rows} for t in decls.tables(unit)}
-        return {"definition": fd.FINGERPRINT_DEFINITION, "declarations_sha256": decls.sha256, "fingerprints": {unit: sha},
-                "tables": {unit: tables}, "projections": {}, "horizons": {}}
+        return {"definition": fd.FINGERPRINT_DEFINITION, "declarations_sha256": decls.sha256, "fingerprints": {u: sha for u in units},
+                "tables": {u: {t: {"sha256": sha, "rows": self.rows} for t in decls.tables(u)} for u in units}, "projections": {}, "horizons": {}}
 
 
 RUNNER_WITH_FORCE = 'force = os.environ.get("NIRMANA_FORCE_EXECUTE", "").strip().lower() in ("1", "true", "yes")\n'
@@ -321,6 +319,10 @@ def env(tmp_path):
     gen.mkdir(parents=True)
     digests = {ASSET: _hex(ASSET)}
     (gen / "nirmana-writer-digests.json").write_text(json.dumps({"version": 1, "writers": digests}))
+    wr = repo / "platform" / "python-sidecar" / "pipeline" / "orchestrator" / "writers"
+    wr.mkdir(parents=True)
+    # the real shape: two classes in one file are two runs (no siblings)
+    (wr / "bg_phaladeepika_vedha.py").write_text("@register('bg_vedha_malefic_scale')\nclass A:\n    pass\n\n\n@register('bg_phaladeepika_latta')\nclass B:\n    pass\n")
     outdir = tmp_path / "out"
     outdir.mkdir()
     jobfile = tmp_path / "job-sha"
@@ -1981,7 +1983,7 @@ GROUP_MEMBERS = {"bg_ontology": ("grp_brahma_ontology", "brahma_ontology"), "bg_
 @pytest.mark.parametrize("asset", sorted(GROUP_MEMBERS))
 def test_a_pure_member_of_a_deterministic_group_resolves_to_its_group_unit(asset):
     unit, table = GROUP_MEMBERS[asset]
-    assert gad.declared_unit_or_refuse(DECLS, asset) == unit and gad.group_unit_for_member(DECLS, asset) == unit
+    assert gad.declared_unit_or_refuse(DECLS, asset) == unit
     assert DECLS.tables(unit) == [table] and asset in DECLS.members(unit)
 
 
@@ -1994,15 +1996,175 @@ def test_a_seeded_group_member_and_a_partial_one_are_refused_with_every_reason()
     assert [r["code"] for r in exc.value.refusals] == ["FINGERPRINT_COVERAGE_PARTIAL", "GROUP_UNIT_SEEDED"]
 
 
-@pytest.mark.parametrize("asset", ["bg_doshas", "bg_yogas", "bg_dasha_systems", "bg_ghatana", "bg_not_declared", "bg_transit_rules", "bg_compendium_index"])
-def test_a_mixed_member_an_undeclared_or_a_non_member_asset_never_resolves_to_a_group_unit(asset):
-    assert gad.group_unit_for_member(DECLS, asset) is None
-    if asset in ("bg_doshas", "bg_yogas", "bg_dasha_systems", "bg_ghatana"):
-        assert gad.declared_unit_or_refuse(DECLS, asset) == asset                 # own tables only (the finding: the shared table is not in its unit)
-    else:
-        with pytest.raises(slw.LevelWaveRefusal) as exc:
-            gad.declared_unit_or_refuse(DECLS, asset)
-        assert exc.value.refusals[0]["code"] in ("ASSET_NOT_DECLARED", "FINGERPRINT_COVERAGE_PARTIAL")
+@pytest.mark.parametrize("asset", ["bg_doshas", "bg_yogas", "bg_dasha_systems"])
+def test_a_mixed_member_fingerprints_its_own_tables_and_the_shared_group_table(asset):
+    """SS ruling 1: bg_doshas / bg_yogas / bg_dasha_systems write brahma_ontology rows too; the unit includes that table."""
+    assert gad.declared_unit_or_refuse(DECLS, asset) == f"{asset}+grp_brahma_ontology"
+    assert set(gad.unit_siblings(DECLS, asset, f"{asset}+grp_brahma_ontology")) == {"bg_ontology", "bg_dasha_systems", "bg_doshas", "bg_yogas"} - {asset}
+
+
+@pytest.mark.parametrize("asset", ["bg_ghatana", "bg_formula_constants", "bg_phaladeepika_latta"])
+def test_an_asset_with_own_tables_and_no_group_keeps_its_plain_unit_id(asset):
+    assert gad.declared_unit_or_refuse(DECLS, asset) == asset and gad.unit_siblings(DECLS, asset, asset) == []
+
+
+@pytest.mark.parametrize("asset", ["bg_not_declared", "bg_transit_rules", "bg_compendium_index"])
+def test_an_undeclared_asset_never_resolves_to_a_unit(asset):
+    with pytest.raises(slw.LevelWaveRefusal) as exc:
+        gad.declared_unit_or_refuse(DECLS, asset)
+    assert exc.value.refusals[0]["code"] == "ASSET_NOT_DECLARED"
+
+
+def test_a_shared_writer_run_fingerprints_every_table_it_touches():
+    sibs = ["bg_nakshatra_medical", "bg_sign_medical"]
+    unit = gad.declared_unit_or_refuse(DECLS, "bg_medical_mappings", sibs)
+    assert unit == "bg_medical_mappings+bg_nakshatra_medical+bg_sign_medical"
+    assert gad.unit_siblings(DECLS, "bg_medical_mappings", unit, sibs) == sibs
+    # dispatching the sign-medical id runs the same class: the same three tables, the asset's own unit first
+    assert gad.declared_unit_or_refuse(DECLS, "bg_sign_medical", ["bg_medical_mappings", "bg_nakshatra_medical"]) == "bg_sign_medical+bg_medical_mappings+bg_nakshatra_medical"
+
+
+def test_a_sibling_that_is_not_a_declared_unit_refuses_the_run_naming_it():
+    with pytest.raises(slw.LevelWaveRefusal) as exc:
+        gad.declared_unit_or_refuse(DECLS, "bg_transit_engine", ["bg_transit_rules"])
+    r = exc.value.refusals[0]
+    assert r["code"] == "WRITER_SIBLING_NOT_DECLARED" and r["asset"] == "bg_transit_rules" and "migration_owned_rows" in r["detail"]
+    with pytest.raises(slw.LevelWaveRefusal) as exc:                                   # a declared asset with a seeded / partial sibling reports every reason
+        gad.declared_unit_or_refuse(DECLS, "bg_ghatana", ["bg_texts"])
+    assert [r["code"] for r in exc.value.refusals] == ["FINGERPRINT_COVERAGE_PARTIAL", "GROUP_UNIT_SEEDED"]
+
+
+# ── the writer scan ──
+
+def _writers(env, **files):
+    d = pathlib.Path(env["repo"]) / gad.WRITERS_REL
+    for f in list(d.glob("*.py")):
+        f.unlink()
+    for name, body in files.items():
+        (d / name).write_text(body)
+    return env["repo"]
+
+
+def test_stacked_register_decorators_on_one_class_are_siblings_and_two_classes_are_not(env):
+    repo = _writers(env, **{"w.py": "@register('a')\n@register('b')\n@register('c')\nclass W:\n    pass\n", "v.py": "@register('x')\nclass A:\n    pass\n\n@register('y')\nclass B:\n    pass\n"})
+    assert gad.writer_siblings(repo, "a") == ["b", "c"] and gad.writer_siblings(repo, "c") == ["a", "b"]
+    assert gad.writer_siblings(repo, "x") == [] and gad.writer_siblings(repo, "y") == [] and gad.writer_siblings(repo, "nothing") == []
+
+
+def test_the_scan_resolves_a_module_constant_and_the_real_shapes(env):
+    repo = _writers(env, **{"w.py": "ID = 'a'\n@register(ID)\n@register(\"b\")\nclass W:\n    pass\n"})
+    assert gad.writer_siblings(repo, "a") == ["b"]
+    top = str(pathlib.Path(__file__).resolve().parents[4])
+    if (pathlib.Path(top) / gad.WRITERS_REL).is_dir():                                      # the committed tree: the two shared classes and nothing else we depend on
+        assert gad.writer_siblings(top, "bg_medical_mappings") == ["bg_nakshatra_medical", "bg_sign_medical"]
+        assert gad.writer_siblings(top, "bg_transit_rules") == ["bg_transit_engine"] and gad.writer_siblings(top, "bg_phaladeepika_latta") == []
+        assert gad.writer_siblings(top, "bg_vedha_malefic_scale") == []
+
+
+def test_the_scan_refuses_what_it_cannot_establish(env):
+    import shutil  # noqa: PLC0415
+    repo = _writers(env, **{"w.py": "@register(WHICH)\nclass W:\n    pass\n# a\n"})
+    with pytest.raises(slw.LevelWaveRefusal) as exc:
+        gad.writer_siblings(repo, "a")
+    assert exc.value.refusals[0]["code"] == "WRITER_SCAN_UNAVAILABLE" and "non-literal" in exc.value.refusals[0]["detail"]
+    assert gad.writer_siblings(repo, "unrelated_asset_zzz") == []                          # an unresolved decorator in a file that does not name the asset is not a refusal
+    repo = _writers(env, **{"bad.py": "def (:\n"})
+    with pytest.raises(slw.LevelWaveRefusal) as exc:
+        gad.writer_siblings(repo, "a")
+    assert "cannot be parsed" in exc.value.refusals[0]["detail"]
+    shutil.rmtree(pathlib.Path(env["repo"]) / gad.WRITERS_REL)
+    with pytest.raises(slw.LevelWaveRefusal) as exc:
+        gad.writer_siblings(env["repo"], "a")
+    assert exc.value.refusals[0]["code"] == "WRITER_SCAN_UNAVAILABLE"
+
+
+# ── the composed unit end to end ──
+
+def _mixed_env(env, asset="bg_doshas", **writer_files):
+    digests = {**env["digests"], asset: _hex(asset)}
+    (pathlib.Path(env["repo"]) / "platform/src/generated/nirmana-writer-digests.json").write_text(json.dumps({"version": 1, "writers": digests}))
+    if writer_files:
+        _writers(env, **writer_files)
+    return row(asset, scope="global", layer="brahmagyan", target="reference_doshas"), FakeGit(deployed=digests)
+
+
+def test_a_mixed_member_plans_over_both_units_with_a_composite_and_per_table_units(env):
+    onto, git = _mixed_env(env)
+    code, ev = run(env, argv_for(env, asset="bg_doshas"), db=FakeDB(candidates=[[onto]], downstream=()), fp=FakeFp((PRE_SHA,)), git=git)
+    s = last(ev)
+    assert code == 0, s
+    pre = s["pre_fingerprint"]
+    assert pre["unit"] == "bg_doshas+grp_brahma_ontology" and pre["units"] == ["bg_doshas", "grp_brahma_ontology"]
+    assert pre["table_units"]["brahma_ontology"] == "grp_brahma_ontology" and pre["table_units"]["reference_doshas"] == "bg_doshas"
+    assert pre["composite"] == gad.sha256_json({"schema": "suvarna-composed-unit/v1", "units": {"bg_doshas": PRE_SHA, "grp_brahma_ontology": PRE_SHA}})
+    fu = s["fingerprint_unit"]
+    assert fu["units"] == ["bg_doshas", "grp_brahma_ontology"] and "brahma_ontology" in fu["tables"] and "reference_doshas" in fu["tables"] and "bg_ontology" in fu["members"]
+    assert "WHOLE of every such table" in fu["note"]
+    rec = json.loads(pathlib.Path(env["receipt"]).read_text())
+    gad.validate_receipt(rec)
+    assert rec["pre_fingerprint"]["unit"] == "bg_doshas+grp_brahma_ontology"
+
+
+def test_a_change_confined_to_the_shared_table_is_caught_by_a_mixed_member(env):
+    onto, git = _mixed_env(env)
+    code, ev = run(env, argv_for(env, asset="bg_doshas"), db=FakeDB(candidates=[[onto]], downstream=()), fp=FakeFp((PRE_SHA,)), git=git)
+    token = last(ev)["confirm_token"]
+    db = FakeDB(candidates=[[onto]], downstream=(), dispositions={"bg_doshas": "build"})
+    orig = db.respond
+    db.respond = lambda sql, params: ([{"state": "lit", "last_built_at": db.ended, "duration_seconds": 5.0}] if "FROM asset_throughput WHERE asset_id = %s AND chart_id IS NULL" in sql else orig(sql, params))
+
+    class SliceChange(FakeFp):
+        def reader(self, conn, decls, units):
+            out = super().reader(conn, decls, units)
+            if self.calls >= 2:                                                  # the post read: only the shared group table differs
+                out["fingerprints"]["grp_brahma_ontology"] = POST_SHA
+                out["tables"]["grp_brahma_ontology"] = {t: {"sha256": POST_SHA, "rows": v["rows"]} for t, v in out["tables"]["grp_brahma_ontology"].items()}
+            return out
+    code, ev = run(env, argv_for(env, asset="bg_doshas", commit=True, confirm=token), db=db, fp=SliceChange((PRE_SHA,)), git=git, dispatch=Dispatch())
+    assert code == gad.EXIT_FINGERPRINT_CHANGED and last(ev)["verification"]["codes"] == ["FINGERPRINT_CHANGED_ON_FORCED_REBUILD"]
+
+
+def test_a_shared_writer_asset_is_planned_over_the_tables_of_every_sibling(env):
+    shared = "@register('bg_sign_medical')\n@register('bg_nakshatra_medical')\n@register('bg_medical_mappings')\nclass W:\n    pass\n"
+    onto, git = _mixed_env(env, asset="bg_medical_mappings", **{"bg_medical_mappings.py": shared})
+    reg = [row(a, scope="global", layer="brahmagyan", target=a) for a in ("bg_sign_medical", "bg_nakshatra_medical")]
+    code, ev = run(env, argv_for(env, asset="bg_medical_mappings"), db=FakeDB(candidates=[[onto]], downstream=(), registry=reg), fp=FakeFp((PRE_SHA,)), git=git)
+    s = last(ev)
+    assert code == 0, s
+    assert s["pre_fingerprint"]["unit"] == "bg_medical_mappings+bg_nakshatra_medical+bg_sign_medical" and set(s["pre_fingerprint"]["tables"]) == {"bg_medical_mappings", "bg_nakshatra_medical", "bg_sign_medical"}
+    assert s["fingerprint_unit"]["writer_siblings"] == ["bg_nakshatra_medical", "bg_sign_medical"]
+    rec = json.loads(pathlib.Path(env["receipt"]).read_text())
+    assert {d["asset_id"]: d["relations"] for d in rec["impact"]["dependents"]} == {a: ["sibling_in_fingerprint_unit"] for a in ("bg_nakshatra_medical", "bg_sign_medical")}
+    code, ev = run(env, argv_for(env, asset="bg_medical_mappings"), db=FakeDB(candidates=[[onto]], downstream=(), registry=reg, conflicts=[{"id": "r1", "chart_id": OTHER_CHART, "state": "running", "asset_id": "bg_sign_medical"}]),
+                   fp=FakeFp((PRE_SHA,)), git=git)
+    assert code == slw.REFUSAL_EXIT_CODE and codes_of(ev) == ["CONFLICTING_ACTIVE_RUN"]
+
+
+def test_a_shared_writer_run_with_an_undeclared_sibling_is_refused_before_anything_is_inserted(env):
+    shared = "@register('bg_transit_rules')\n@register('bg_transit_engine')\nclass W:\n    pass\n"
+    onto, git = _mixed_env(env, asset="bg_transit_engine", **{"bg_transit_rules.py": shared})
+    db = FakeDB(candidates=[[onto]], downstream=())
+    code, ev = run(env, argv_for(env, asset="bg_transit_engine"), db=db, fp=FakeFp((PRE_SHA,)), git=git)
+    assert code == slw.REFUSAL_EXIT_CODE and codes_of(ev) == ["WRITER_SIBLING_NOT_DECLARED"] and db.inserts("build_runs") == []
+
+
+def test_verify_run_recomputes_the_composed_unit_from_the_checkout(env):
+    onto, git = _mixed_env(env)
+    code, ev = run(env, argv_for(env, asset="bg_doshas"), db=FakeDB(candidates=[[onto]], downstream=()), fp=FakeFp((PRE_SHA,)), git=git)
+    token = last(ev)["confirm_token"]
+    db = FakeDB(candidates=[[onto]], downstream=(), dispositions={"bg_doshas": "build"})
+    orig = db.respond
+    db.respond = lambda sql, params: ([{"state": "lit", "last_built_at": db.ended, "duration_seconds": 5.0}] if "FROM asset_throughput WHERE asset_id = %s AND chart_id IS NULL" in sql else orig(sql, params))
+    code, ev = run(env, argv_for(env, asset="bg_doshas", commit=True, confirm=token), db=db, fp=FakeFp((PRE_SHA, PRE_SHA)), git=git, dispatch=Dispatch())
+    assert code == 0, last(ev)
+    rec = json.loads(pathlib.Path(env["receipt"]).read_text())
+    run_row = {"id": rec["run_id"], "chart_id": CHART, "state": "completed", "triggered_by": rec["triggered_by"], "plan_manifest_digest": rec["manifest_digest"]}
+    args = gad.build_parser().parse_args(["--assets", "bg_doshas", "--anchor-chart", CHART, "--receipt", env["receipt"], "--repo", env["repo"], "--verify-run", rec["run_id"]])
+    db2 = FakeDB(run_row=run_row, dispositions={"bg_doshas": "build"})
+    orig2 = db2.respond
+    db2.respond = lambda sql, params: ([{"state": "lit", "last_built_at": db2.ended, "duration_seconds": 5.0}] if "FROM asset_throughput WHERE asset_id = %s AND chart_id IS NULL" in sql else orig2(sql, params))
+    code, ev = run(env, args, db=db2, fp=FakeFp((PRE_SHA,)))
+    assert code == 0 and last(ev)["post_fingerprint"]["unit"] == "bg_doshas+grp_brahma_ontology"
 
 
 def test_a_group_whose_declaration_is_not_deterministic_is_refused_for_its_members(monkeypatch):
@@ -2024,7 +2186,7 @@ def test_a_group_member_plans_and_verifies_over_the_whole_shared_table(env):
     s = last(ev)
     assert code == 0, s
     assert s["pre_fingerprint"]["unit"] == unit and list(s["pre_fingerprint"]["tables"]) == [table]
-    assert s["fingerprint_unit"]["unit"] == unit and asset in s["fingerprint_unit"]["members"] and "whole table" in s["fingerprint_unit"]["note"]
+    assert s["fingerprint_unit"]["unit"] == unit and asset in s["fingerprint_unit"]["members"] and "WHOLE of every such table" in s["fingerprint_unit"]["note"]
     token = s["confirm_token"]
     db2 = FakeDB(candidates=[[onto]], dispositions={asset: "build"})
     orig2 = db2.respond

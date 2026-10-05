@@ -614,71 +614,140 @@ def load_declarations_or_refuse(path: str | Path):
             f"{c} {p}: {m}" for c, p, m in exc.problems[:10])}]) from None
 
 
-def group_unit_for_member(decls, asset: str) -> str | None:
-    """The group comparison unit (`grp_<id>`) of a declared asset that owns NO table of its own and belongs to exactly one group, else None.
-    Such a member writes one disjoint slice of a SHARED table; the group's unit fingerprints the WHOLE table, so a forced rebuild of one
-    member passes only if every row of the table (its own slice and every other member's) is unchanged: stricter than a slice would be."""
+WRITERS_REL = "platform/python-sidecar/pipeline/orchestrator/writers"
+UNIT_SEP = "+"        # a composed fingerprint unit is the `+`-joined ids of its comparison units (ids are [a-z0-9_], so `+` never occurs in one)
+
+
+def writer_siblings(repo: str, asset: str) -> list[str]:
+    """The OTHER asset ids registered on the SAME writer class as `asset` (stacked `@register('x')` decorators: ONE class, one run, several asset ids; e.g.
+    BgMedicalMappingsWriter serves bg_sign_medical, bg_nakshatra_medical and bg_medical_mappings). Read from the checkout's writers directory with ast, never
+    imported. Refuses (WRITER_SCAN_UNAVAILABLE) a missing writers directory, an unparseable writer file, or a class whose `@register(<non-literal>)` cannot be resolved
+    in a file that names the asset: a sibling the scan cannot see would be a table the run writes and the fingerprint never reads. Two classes in one file
+    (bg_phaladeepika_vedha.py) are two runs: they are NOT siblings."""
+    root = Path(repo) / WRITERS_REL
+    if not root.is_dir():
+        raise _refuse("WRITER_SCAN_UNAVAILABLE", f"the writers directory {WRITERS_REL} is not in the checkout: the writer-run siblings of {asset} cannot be established")
+    out: set[str] = set()
+    for f in sorted(root.glob("*.py")):
+        try:
+            text = f.read_text(encoding="utf-8")
+            tree = ast.parse(text)
+        except (OSError, ValueError, SyntaxError) as exc:
+            raise _refuse("WRITER_SCAN_UNAVAILABLE", f"{f.name} cannot be parsed ({type(exc).__name__}): the writer-run siblings of {asset} cannot be established") from None
+        consts = {n.targets[0].id: n.value.value for n in tree.body if isinstance(n, ast.Assign) and len(n.targets) == 1 and isinstance(n.targets[0], ast.Name)
+                  and isinstance(n.value, ast.Constant) and isinstance(n.value.value, str)}
+        for node in ast.walk(tree):
+            if not isinstance(node, ast.ClassDef):
+                continue
+            ids, unresolved = [], False
+            for dec in node.decorator_list:
+                if isinstance(dec, ast.Call) and getattr(dec.func, "id", getattr(dec.func, "attr", None)) == "register" and dec.args:
+                    a0 = dec.args[0]
+                    if isinstance(a0, ast.Constant) and isinstance(a0.value, str):
+                        ids.append(a0.value)
+                    elif isinstance(a0, ast.Name) and a0.id in consts:
+                        ids.append(consts[a0.id])
+                    else:
+                        unresolved = True
+            if asset in ids:
+                out |= set(ids)
+            elif unresolved and asset in text:
+                raise _refuse("WRITER_SCAN_UNAVAILABLE", f"{f.name} registers a class with a non-literal @register(...) in a file that names {asset}: its siblings cannot be established")
+    return sorted(out - {asset})
+
+
+def _declared_entry(decls, asset: str):
     assets = getattr(decls, "assets", None)
-    if not isinstance(assets, dict):
-        return None
-    d = assets.get(asset)
-    if not (isinstance(d, dict) and d.get("status") == "declared" and not d.get("tables") and isinstance(d.get("groups"), list) and len(d["groups"]) == 1):
-        return None
-    unit = decls.group_unit(d["groups"][0])
-    u = decls.units().get(unit)
-    return unit if u is not None and u["kind"] == "group" and asset in u["members"] else None
+    return assets.get(asset) if isinstance(assets, dict) else None
 
 
-def unit_siblings(decls, asset: str, unit: str) -> list[str]:
-    """The OTHER assets whose rows are inside the fingerprint unit (the members of a group unit): a concurrent run of one of them would change the very
-    table this run is judged on, so they are listed in the impact statement (and their lit rows need acceptance) and a planned / running / paused run
-    of any of them refuses (CONFLICTING_ACTIVE_RUN). [] for an asset whose unit is its own."""
-    if unit == asset:
-        return []
+def declared_unit_or_refuse(decls, asset: str, siblings: Sequence[str] = ()) -> str:
+    """The fingerprint unit of a forced rebuild of `asset`: the comparison units of EVERY asset whose rows the run writes, joined with `+`.
+    The run writes the asset itself and each writer-run sibling (`siblings`, see writer_siblings). For each such asset the units are its own tables (if any) and every
+    group it belongs to, so a MIXED member (own tables and a shared table: bg_doshas, bg_yogas, bg_dasha_systems) fingerprints its shared `brahma_ontology` table too, and a
+    shared writer (bg_medical_mappings: bg_sign_medical, bg_nakshatra_medical) fingerprints every table the run touches (SS ruling 1). One unit -> that unit's id
+    (receipts of plain assets are unchanged); several -> `own+sibling+grp_x`, with a composite over the unit composites. Refused, all reasons together: an asset or sibling
+    that is undeclared or has no tables and no group (ASSET_NOT_DECLARED / WRITER_SIBLING_NOT_DECLARED), a partial declaration, a SEEDED group (copied from production,
+    never rebuilt), and any unit that is not deterministic: none can show that a forced rebuild left the content alone."""
     units = decls.units()
-    return sorted(m for m in units.get(unit, {}).get("members", []) if m != asset)
-
-
-def declared_unit_or_refuse(decls, asset: str) -> str:
-    """The asset must be a comparison unit of its own (declared, with tables), or the only-group member of a non-seeded deterministic group (its
-    group's unit), and fully covered and deterministic. An asset that has own tables AND belongs to a group is judged on its own tables only (this
-    function's historical reading; the group's shared table is NOT in its unit: see the mixed-member finding in DISPATCH_L0_COVERAGE.md); an undeclared
-    asset, a partial declaration, a SEEDED group (copied from production, never rebuilt) or a non-deterministic one is refused: it cannot show that a
-    forced rebuild left the content alone."""
-    units = decls.units()
-    gunit = None
-    if asset not in units or units[asset]["kind"] != "asset":
-        gunit = group_unit_for_member(decls, asset)
-        if gunit is None:
-            un = decls.undeclared_assets().get(asset)
-            raise _refuse("ASSET_NOT_DECLARED", f"{asset} is not a declared fingerprint unit of its own in {Path(decls.path).name}"
-                          + (f" (undeclared: {un['reason_code']})" if un else ""), asset=asset)
-    bad = []
-    if asset in decls.partial_assets():
-        bad.append({"code": "FINGERPRINT_COVERAGE_PARTIAL", "asset": asset,
-                    "detail": f"{asset}'s declaration is partial: a fingerprint of part of its output cannot show it unchanged"})
-    unit = gunit or asset
-    if gunit is not None and units[gunit].get("seeded"):
-        bad.append({"code": "GROUP_UNIT_SEEDED", "asset": asset, "unit": gunit,
-                    "detail": f"{asset} is a member of {gunit}, a SEEDED group (copied from production, never rebuilt: its content is not reproducible): "
-                              "an equal fingerprint is not expected from a rebuild"})
-    if decls.reproducibility(unit) != ["deterministic"]:
-        bad.append({"code": "FINGERPRINT_NOT_DETERMINISTIC", "asset": asset,
-                    "detail": f"{asset} is declared {decls.reproducibility(unit)}: an equal fingerprint is not expected from a rebuild"})
+    members = [asset] + sorted(set(siblings) - {asset})
+    comps: list[str] = []
+    bad: list[dict] = []
+    for m in members:
+        entry = _declared_entry(decls, m)
+        mine: list[str] = []
+        if entry is None:                                                  # a stand-in declarations object (no `assets`): the asset-only reading
+            if m in units and units[m]["kind"] == "asset":
+                mine.append(m)
+        elif entry.get("status") == "declared":
+            if entry.get("tables"):
+                mine.append(m)
+            for g in entry.get("groups") or []:
+                mine.append(decls.group_unit(g))
+        if not mine or any(u not in units for u in mine):
+            un = decls.undeclared_assets().get(m)
+            code = "ASSET_NOT_DECLARED" if m == asset else "WRITER_SIBLING_NOT_DECLARED"
+            if m == asset:
+                detail = f"{m} is not a declared fingerprint unit of its own in {Path(decls.path).name}" + (f" (undeclared: {un['reason_code']})" if un else "")
+            else:
+                detail = (f"{m} is written by the same writer run as {asset} but is not a declared fingerprint unit in {Path(decls.path).name}"
+                          + (f" (undeclared: {un['reason_code']})" if un else "") + ": a table the run writes would never be fingerprinted")
+            bad.append({"code": code, "asset": m, "detail": detail})
+            continue
+        if m in decls.partial_assets():
+            bad.append({"code": "FINGERPRINT_COVERAGE_PARTIAL", "asset": m,
+                        "detail": f"{m}'s declaration is partial: a fingerprint of part of its output cannot show it unchanged"})
+        for u in mine:
+            if u not in comps:
+                comps.append(u)
+    for u in comps:
+        if units[u].get("seeded"):
+            bad.append({"code": "GROUP_UNIT_SEEDED", "asset": asset, "unit": u,
+                        "detail": f"{u} is a SEEDED group (copied from production, never rebuilt: its content is not reproducible): an equal fingerprint is not expected from a rebuild"})
+        if decls.reproducibility(u) != ["deterministic"]:
+            bad.append({"code": "FINGERPRINT_NOT_DETERMINISTIC", "asset": asset, "unit": u,
+                        "detail": f"{u} is declared {decls.reproducibility(u)}: an equal fingerprint is not expected from a rebuild"})
     if bad:
         raise slw.LevelWaveRefusal(bad)
-    return unit
+    return UNIT_SEP.join(comps)
+
+
+def unit_siblings(decls, asset: str, unit: str, writer_sibs: Sequence[str] = ()) -> list[str]:
+    """The OTHER assets whose rows are inside the fingerprint unit or written by the same run: the members of every group unit of `unit` and the writer-run siblings.
+    A concurrent run of one of them would change the very tables this run is judged on, so they are listed in the impact statement (their lit rows need acceptance)
+    and a planned / running / paused run of any of them refuses (CONFLICTING_ACTIVE_RUN). [] for an asset whose unit is its own and which shares no writer run."""
+    units = decls.units()
+    out = set(writer_sibs)
+    for u in unit.split(UNIT_SEP):
+        if u != asset:
+            out |= set(units.get(u, {}).get("members", []))
+    return sorted(out - {asset})
 
 
 def read_fingerprint(fp_connect, decls, unit: str, *, reader=fd.unit_fingerprints, code: str = "FINGERPRINT_UNREADABLE") -> dict:
     """The unit's fingerprint through the committed declarations, on a READ-ONLY connection with TUPLE rows (E5.5's load_rows
-    zips column names with row values). {unit, definition, declarations_sha256, composite, tables: {t: {sha256, rows}}}."""
+    zips column names with row values). {unit, definition, declarations_sha256, composite, tables: {t: {sha256, rows}}}. A composed unit (`a+b+grp_x`) is read in
+    ONE reader call; its composite is the sha256 of the canonical JSON {"units": {unit: composite}} and the result also carries `units` and `table_units`
+    (table -> its unit). A table claimed by two of the units is refused (a declaration defect)."""
+    parts = unit.split(UNIT_SEP)
     conn = fp_connect()
     try:
-        raw = reader(conn, decls, [unit])
+        raw = reader(conn, decls, parts)
         conn.rollback()
-        composite = raw["fingerprints"][unit]
-        tables = {t: {"sha256": v["sha256"], "rows": int(v["rows"])} for t, v in sorted(raw["tables"][unit].items())}
+        if len(parts) == 1:
+            composite = raw["fingerprints"][unit]
+            tables = {t: {"sha256": v["sha256"], "rows": int(v["rows"])} for t, v in sorted(raw["tables"][unit].items())}
+            extra: dict[str, Any] = {}
+        else:
+            composite = sha256_json({"schema": "suvarna-composed-unit/v1", "units": {u: raw["fingerprints"][u] for u in parts}})
+            tables, table_units = {}, {}
+            for u in parts:
+                for t, v in sorted(raw["tables"][u].items()):
+                    if t in tables:
+                        raise ValueError(f"table {t} is claimed by two units of {unit}")
+                    tables[t] = {"sha256": v["sha256"], "rows": int(v["rows"])}
+                    table_units[t] = u
+            extra = {"units": parts, "table_units": dict(sorted(table_units.items()))}
     except slw.LevelWaveError:
         raise
     except Exception as exc:  # noqa: BLE001 -- an unreadable table is a refusal / failure, never an empty fingerprint
@@ -689,7 +758,7 @@ def read_fingerprint(fp_connect, decls, unit: str, *, reader=fd.unit_fingerprint
         except Exception:  # noqa: BLE001
             pass
     return {"unit": unit, "definition": raw["definition"], "declarations_sha256": raw["declarations_sha256"],
-            "composite": composite, "tables": tables}
+            "composite": composite, "tables": tables, **extra}
 
 
 def check_pre_fingerprint(fp: Mapping[str, Any], decls, *, empty_fn=fd.empty_table_fingerprint) -> None:
@@ -698,7 +767,7 @@ def check_pre_fingerprint(fp: Mapping[str, Any], decls, *, empty_fn=fd.empty_tab
         if v["rows"] == 0:
             bad.append({"code": "FINGERPRINT_TABLE_EMPTY", "table": table,
                         "detail": f"{table} holds 0 rows: a fingerprint of nothing proves nothing about a forced rebuild"})
-        if v["sha256"] == empty_fn(decls, fp["unit"], table):
+        if v["sha256"] == empty_fn(decls, (fp.get("table_units") or {}).get(table, fp["unit"]), table):
             bad.append({"code": "FINGERPRINT_EQUALS_EMPTY", "table": table,
                         "detail": f"{table}'s fingerprint equals the fingerprint of an empty table"})
     if not _HEX64.fullmatch(str(fp.get("composite", ""))):
@@ -1323,8 +1392,9 @@ def _run_cli(args, *, connect, fp_connect, git, out, sleep, monotonic, dispatch,
 
     # 3. the fingerprint unit (declared) and the impact statement (every dependent, every chart, and every sibling writer of the unit) with the lit-dependent gate
     decls = decls or load_declarations_or_refuse(args.declarations)
-    unit = declared_unit_or_refuse(decls, asset)
-    siblings = unit_siblings(decls, asset, unit)
+    wsibs = writer_siblings(args.repo, asset)
+    unit = declared_unit_or_refuse(decls, asset, wsibs)
+    siblings = unit_siblings(decls, asset, unit, wsibs)
     impact_of = lambda cur: read_impact(cur, asset=asset, anchor_chart=anchor, target_table=row.get("target_table"), unit_siblings=siblings)  # noqa: E731
     impact = read_impact_via(connect, asset=asset, anchor_chart=anchor, target_table=row.get("target_table"), unit_siblings=siblings)
     impact_sha = sha256_json(impact)
@@ -1366,10 +1436,12 @@ def _run_cli(args, *, connect, fp_connect, git, out, sleep, monotonic, dispatch,
                "impact_summary": impact["summary"], "impact_lines": impact_lines(impact), "pre_fingerprint": pre,
                "declarations_sha256": decls.sha256, "anchor_chart_cost": cost, "confirm_token": token, "committed": False,
                "receipt_path": str(receipt_path), "committed_runs": committed}
-    if unit != asset:                      # a group member: the fingerprint is of the WHOLE shared table (every member's slice)
-        gu = decls.units()[unit]
-        summary["fingerprint_unit"] = {"unit": unit, "kind": gu["kind"], "members": gu["members"], "tables": gu["tables"],
-                                       "note": "this asset writes one slice of a shared table; the fingerprint covers the whole table, so the rebuild passes only if every row is unchanged"}
+    if unit != asset:                      # a group member, a mixed member or a shared writer: the fingerprint is of every table the run touches
+        gus = decls.units()
+        summary["fingerprint_unit"] = {"unit": unit, "units": unit.split(UNIT_SEP), "members": sorted({m for u in unit.split(UNIT_SEP) for m in gus[u]["members"]} | set(wsibs) | {asset}),
+                                       "tables": [t for u in unit.split(UNIT_SEP) for t in gus[u]["tables"]], "writer_siblings": wsibs,
+                                       "note": "the run writes a slice of a shared table and / or tables of sibling assets; the fingerprint covers the WHOLE of every such table, "
+                                               "so the rebuild passes only if every row of every one is unchanged"}
     if expected is not None:
         summary["expected_change"] = {"file_sha256": expected_sha, "spec": expected, "pre_row_count": unit_row_count(pre),
                                       "accepted_changed_output": True, "changed_output_lines": changed_output_lines(impact, expected, unit_row_count(pre))}
@@ -1512,7 +1584,7 @@ def _verify_run_mode(args, *, asset, anchor, receipt_path, connect, fp_connect, 
             or found["plan_manifest_digest"] != receipt["manifest_digest"]):
         raise _refuse("RECEIPT_RUN_MISMATCH", f"build_runs {run_id} is not this tool's run for the receipt (chart, triggered_by or digest differ)")
     decls = decls or load_declarations_or_refuse(args.declarations)
-    unit = declared_unit_or_refuse(decls, asset)
+    unit = declared_unit_or_refuse(decls, asset, writer_siblings(args.repo, asset))
     summary = {"asset": asset, "anchor_chart": anchor, "run_id": run_id, "mode": "verify-run", "receipt_path": str(receipt_path)}
     return _finish(summary, receipt, receipt_path, connect=connect, fp_connect=fp_connect, decls=decls, unit=unit,
                    pre=receipt["pre_fingerprint"], run_id=run_id, asset=asset, args=args, out=out, sleep=sleep, monotonic=monotonic,
