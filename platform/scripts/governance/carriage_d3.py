@@ -20,10 +20,12 @@ THE SPEC (validated by `validate_spec`, read by `d3_measure`):
   columns          {logical column: {kind: circular_deg | circular_30 | linear | exact, tol: number, basis: text}}: what is re-derived, the comparator and the DECLARED tolerance
   strata           optional: one logical column the record groups its counts by (reporting; a verdict never rests on a sample)
   sample           optional: {per_stratum: n, seed: text}: re-derive only n rows per stratum (deterministic by hash). A sampled run can never read PASS.
-  expected_rows    the number of logical rows the table must hold (completeness: a dropped row is not a PASS)
+  expected_rows    the number of logical rows the table must hold (completeness: a dropped row is not a PASS), or the string "method": the method's own INDEPENDENT completeness check
+                   (it re-enumerates the events and compares counts), for a table whose horizon rolls
   conventions      {name: {value, evidence}}: every convention the method names as required, declared with a pointer
   uncovered        [{column, reason, evidence}]: logical columns the method does not re-derive, declared; any entry caps PARTIAL
   backend          {allowed: [names], basis: text}: the reference leg backends the declared tolerance covers (only for a method that probes a backend)
+  (a method may also mark a re-derived value AMBIGUOUS: within a reviewed margin of a classification boundary; a stored neighbour is then accepted and listed in boundary_tolerated)
   boundary         optional {column: {source: logical column, width: number, cells: n}}: a discrete value derived from a continuous one is accepted at a cell edge only when the
                    stored cell is the NEIGHBOUR of the reference cell (modulo `cells`) and the reference value is within the declared tolerance of the edge (listed, never silent)
 A PASS needs: an `independent_formula` method AND every logical row re-derived (no sample) AND row count equal to `expected_rows` AND zero mismatch AND no uncovered
@@ -198,8 +200,11 @@ def validate_spec(spec, where: str, methods=None, asset_id=None) -> dict:
     if sorted(set(spec["key"]) & set(cols)):
         raise SpecError(f"{where}.spec.key and spec.columns must be disjoint")
     er = spec["expected_rows"]
-    if not (isinstance(er, int) and not isinstance(er, bool) and er >= 1):
-        raise SpecError(f"{where}.spec.expected_rows must be a positive integer")
+    if er == "method":
+        if m.get("completeness") is None:
+            raise SpecError(f"{where}.spec.expected_rows 'method' needs a method with an independent completeness check; {spec['method']!r} has none")
+    elif not (isinstance(er, int) and not isinstance(er, bool) and er >= 1):
+        raise SpecError(f"{where}.spec.expected_rows must be a positive integer (or 'method': the method's own independent completeness check, for a table with a rolling horizon)")
     cv = spec["conventions"]
     need = set(m["required_conventions"])
     if not (isinstance(cv, dict) and set(cv) == need and all(isinstance(v, dict) and set(v) == {"value", "evidence"} and isinstance(v["value"], str) and v["value"].strip()
@@ -333,14 +338,25 @@ def d3_measure(spec: dict, rows, table, method=None, inputs=None, asset_rows=Non
                     if edge <= tol_for(spec["columns"][b["source"]]["tol"], r):
                         tolerated.append(dict(row=keyf(r), column=c, edge_distance=edge))
                         continue
+            if not ok and isinstance(ref.get("_ambiguous"), dict) and c in ref["_ambiguous"]:
+                tolerated.append(dict(row=keyf(r), column=c, ambiguity=ref["_ambiguous"][c]))      # the stored value is a NEIGHBOUR of the re-derived one at a classification boundary the method reviewed
+                continue
             if not ok:
                 bad.append(c)
         if bad or keyf(r) in dup:
             mism.append(dict(row=keyf(r), columns=bad + (["duplicate"] if keyf(r) in dup else [])))
         else:
             agree += 1
-    count_ok = len(logical) == spec["expected_rows"]
-    ev.update(asset_rows=asset_rows, rows_checked=len(chosen), rows_agree=agree, n_mismatch=len(mism), mismatches=mism[:MAX_NAMED], max_residual=resid, boundary_tolerated=tolerated[:MAX_NAMED],
+    comp = None
+    if spec["expected_rows"] == "method":
+        try:
+            comp_ok, comp = m["completeness"](logical, ctx, spec)
+        except (KeyError, TypeError, ValueError) as exc:
+            return out(NO_DET, f"NO_DETECTOR: the independent completeness check could not run ({type(exc).__name__}: {exc})", **ev)
+        count_ok = bool(comp_ok)
+    else:
+        count_ok = len(logical) == spec["expected_rows"]
+    ev.update(completeness_problems=comp, asset_rows=asset_rows, rows_checked=len(chosen), rows_agree=agree, n_mismatch=len(mism), mismatches=mism[:MAX_NAMED], max_residual=resid, boundary_tolerated=tolerated[:MAX_NAMED],
               full_population=full, row_count_ok=count_ok, duplicate_keys=dup[:MAX_NAMED], claims=_claims(spec, m, backend))
     if mism and agree == 0:
         return out(FAIL, f"D3 FAIL: none of the {len(chosen)} checked row(s) of {table} agree with the {spec['method']} re-derivation. {ev['claims']}", **ev)
@@ -353,7 +369,7 @@ def d3_measure(spec: dict, rows, table, method=None, inputs=None, asset_rows=Non
                            f"tolerance. {ev['claims']}", **ev)
     why = [w for w, c in (("the method is a relation, not an independent formula", m["independence"] != "independent_formula"),
                           ("only a sample was re-derived", not full),
-                          (f"the table yields {len(logical)} logical row(s) but {spec['expected_rows']} are declared", not count_ok),
+                          ((f"the independent completeness check names: {'; '.join(comp[:3])}" if comp else f"the table yields {len(logical)} logical row(s) but {spec['expected_rows']} are declared"), not count_ok),
                           ("declared uncovered column(s) " + ", ".join(u["column"] for u in spec["uncovered"]), bool(spec["uncovered"])),
                           (f"the declared read covers {len(rows)} of the asset's {asset_rows} row(s): the rest are outside every re-derivation",
                            isinstance(asset_rows, int) and not isinstance(asset_rows, bool) and asset_rows > len(rows))) if c]
@@ -392,7 +408,7 @@ def d3_evidence_problem(meas) -> str:
 
 
 # ───────────────────────── the method registry (closed) ─────────────────────────
-METHOD_HOOKS = ("tables", "assets", "independence", "max_tol", "required_conventions", "reads", "logical_rows", "context", "ref", "rule_text", "version", "inputs_table")
+METHOD_HOOKS = ("tables", "assets", "completeness", "independence", "max_tol", "required_conventions", "reads", "logical_rows", "context", "ref", "rule_text", "version", "inputs_table")
 METHODS: dict = {}
 
 
