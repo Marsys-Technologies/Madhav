@@ -8687,3 +8687,13 @@ Consultation-10 migration allocation: **1307_consultation_tags.sql**, reserved b
 - Exclusive amjis-web release window claimed fresh. Previous consultation and Journey3 windows RELEASED_BLOCKED_EXTERNAL; Journey3 PR3190 remains separate with auto-merge disabled. Protected main and live source091362f315a2 remain unchanged; baseline revision amjis-web-probe-091362f315a2-37346348777-1 at100% desired/observed traffic. Preserve tagged revisions. Backup1791227240277 SUCCESSFUL and less than one day old.
 - Migration1307 only through routine runner; recheck all main/open-PR claims before protected integration and verify application. No engine/asset repair/rebuild, paid AI call, existing chart/account/permission mutation, credential/IAM/other schema changes or foreign-worktree edits. Existing owned history/UI preferences may be read and checked.
 - Work order `00_ARCHITECTURE/briefs/consultation10/release/resume/RELEASE.md`. Record exact queue/main/deploy and live evidence, or truthful blocker.
+
+## 2026-10-05T22:25:41.989701+00:00 — Journey 3 source qualification resumed after runner recovery
+
+- Lease ID: L-PORTAL-JOURNEY3-RESUME-20261006; holder: Codex desktop; status: ACTIVE_SOURCE_ONLY_WAITING_RELEASE_WINDOW.
+- Started: 2026-10-05T22:25:41.989701+00:00; expiry: 2026-10-06T04:25:41.989701+00:00.
+- Worktree: /Users/Dev/.codex/worktrees/journey-three/Madhav; branch codex/journey-three; PR3190 candidate1b4801932888beab175a59e4a72c244fb6e92f2b.
+- Existing owner implementation/deployment authority CCD-023 persists; owner asks to check now. GitHub Actions operational at2026-10-05T21:54:23Z. Retry own exact-head PR quality checks; normal protected queue/main CI/deploy and read-only authenticated acceptance remain intended.
+- Consultation10 lease L-PORTAL-CONSULTATION10-RESUME-20261006 claimed exclusive amjis-web window at22:24:40Z, expiry02:24:40Z. Journey3 source checks may proceed but no merge/deploy/promotion until that window releases and fresh main/rollback/lease are checked. Foreign source/campaign entries are preserved.
+- Production unchanged at observation: main091362f315a2, desired/observed rollback amjis-web-probe-091362f315a2-37346348777-1 serving100%; preserve tags and historical own blocked closure.
+- No chart rebuild/clear, paid AI, engine/writer/migration change, credentials/IAM or foreign-worktree mutation. Source qualification lease does not itself claim a production window.
