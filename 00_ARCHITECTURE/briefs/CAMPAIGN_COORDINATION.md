@@ -8648,7 +8648,7 @@ Consultation-10 migration allocation: **1307_consultation_tags.sql**, reserved b
 
 ## 2026-10-06 — Consultation review 10 owner-authorized release
 
-- Lease ID: L-PORTAL-CONSULTATION10-RELEASE-20261006; holder: Codex desktop; status: ACTIVE.
+- Lease ID: L-PORTAL-CONSULTATION10-RELEASE-20261006; holder: Codex desktop; status: RELEASED_BLOCKED_EXTERNAL.
 - Started: 2026-10-05T19:04:03.250289+00:00; expiry: 2026-10-06T01:04:03.250289+00:00.
 - Worktree: `/Users/Dev/.codex/worktrees/portal-experience/Madhav`; branch `codex/portal-experience`.
 - Authority: direct owner instruction, “Please go ahead and deploy this.” after local review10 implementation was disclosed as not deployed and migration1307 unapplied. Necessary source commit/push, focused PR, protected merge/CI and standard zero-traffic web release, migration1307 through the established routine runner, verification and rollback are authorized. Supersedes GIP P.4 publication ceiling only for this release; no standing gate changes.
@@ -8656,3 +8656,5 @@ Consultation-10 migration allocation: **1307_consultation_tags.sql**, reserved b
 - Production window: exclusive consultation release for amjis-web; baseline `amjis-web-probe-091362f315a2-37346348777-1` at100% desired/observed traffic. Preserve existing tagged revisions. Routine migration path only; no new privilege, IAM, credential or infrastructure change.
 - Excludes other Journey2 pages, engine/asset rebuild or repair, paid AI executions, real chart/account/permission mutation, foreign worktrees and separate cleanup. Live verification may read existing owned conversations and exercise UI preferences; no generated readings or share creation required.
 - Evidence surface: `00_ARCHITECTURE/briefs/consultation10/release/RELEASE.md`.
+
+- Release outcome 2026-10-05T19:54:06.365101+00:00: PR3189 OPEN at c55f53e4c; automatic merge disabled. Local lint/types/15,679 tests, independent migration review, backup1791227240277 and PR image packaging passed. GitHub Actions runner incident cancelled two retry checks after first attempt interruption; no protected merge/deploy/migration application performed. Live091362f315a2 remains100%; normal production tags preserved. Remaining PR tests may complete but cannot trigger production deployment while unmerged. Work order: `briefs/consultation10/release/RELEASE.md` BLOCKED_GITHUB_ACTIONS. Next release session must reclaim a fresh exclusive window and refresh main/checks/migration claims/backup; no emergency bypass. Other leases preserved.
