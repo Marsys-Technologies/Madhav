@@ -6,7 +6,7 @@
     "A reviewed output-digest specification establishes deterministic output hashing, not semantic value, population, planner reachability, or empirical validity.",
     "The full MCP profile is registration-gated by the reviewed route authority; its real registration set is exact-set tested independently."
   ],
-  "content_sha256": "68b3b163082917a19eb1afd437f823593661bb131489a64331117c319b6c72f1",
+  "content_sha256": "d769cde3eac0af19755596f31949271ae91513fc8b21dba86f53933e4604800b",
   "denominators": {
     "descriptor_route_contracts": {
       "by_public_route_disposition": {
@@ -22333,7 +22333,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/reading_checklist.ts",
-            "sha256": "c8b5dd31bb39bc9bb2f2516228b3e21e541f2b59a125af8da22a5f4cf85f6ea5"
+            "sha256": "ccf9704c917e1775261c58578427461b1de954829eee600fcfb8a5552e298fbf"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/register_d10_pact.ts",
@@ -22425,7 +22425,7 @@
           }
         ],
         "path": "platform/src/lib/retrieval/{registry,synthesis}/**/*.ts (excluding tests)",
-        "sha256": "3e957d981f9490e048fc31def58307de5844aa64dd21c0021ed6b8836dda2b6e"
+        "sha256": "79956e66e65e8f751c0571b4f78ba6fdd34da22241c9ae80338a31d070789bcf"
       },
       {
         "id": "service_effect_contracts",
@@ -22445,7 +22445,7 @@
       {
         "id": "writer_digest_inventory",
         "path": "platform/src/generated/nirmana-writer-digests.json",
-        "sha256": "c875de7dbdc361a78e0a08d05e2d1ef8b9f4f28dede48c74372ef8c07f97793a"
+        "sha256": "aaeb4e6c4b9aaf572472d631d289c5fbca2f3d18703ffb4fe6f82bcd81a99a42"
       }
     ]
   },
