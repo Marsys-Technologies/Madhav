@@ -121,6 +121,7 @@ def _corpus_copy(tmp_path):
     import shutil
     for name in writer_mod.PINNED_EPHE_FILES:
         shutil.copy(os.path.join(EPHE_PATH, name), tmp_path / name)
+        os.chmod(tmp_path / name, 0o644)           # a read-only local corpus (mode 444) must not make the byte-flip tests fail
     return tmp_path
 
 
