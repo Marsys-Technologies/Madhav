@@ -88,6 +88,7 @@ CHART = "482012f1-710e-4a25-994a-93821f5871aa"   # the census's canonical chart 
 UNPLANTABLE = {
     "Complete.width": "constant_verdict_no_per_asset_input",
     "Reach.fields": "reported_not_graded",
+    "Earn.service_state": "needs_external_service",   # E5.7: reads the engine's recorded probe result (service_health / last_selftest_at on the registry row); a disposable plant world has no health_probe or self-test history
 }
 NOT_GENERIC = "NOT_GENERIC"
 FAILING = ("FAIL", "PARTIAL", "NO_DETECTOR")        # the inspector's own gap-opening verdicts (asset_census.FAILING)
