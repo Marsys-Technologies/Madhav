@@ -97,16 +97,38 @@ def _full_stretch(position_at, body: str, levels, orb: float, a, b, lo, hi, *, m
         stretches = cr.band_intervals(position_at, body, levels, orb, w_lo, w_hi)
         mine = [s for s in stretches if s[0] < b and a < s[1]]
         if len(mine) != 1:
+            _full_stretch.last_detail = "ambiguous_extension"          # why it could not be settled (read by `classify_graze_detail`'s caller)
             return None
         A, B = mine[0]
         if not ((a <= lo and A <= w_lo) or (b >= hi and B >= w_hi)):
             return A, B
         ext *= 2.0
+    _full_stretch.last_detail = "exceeds_1500_days"
     return None
 
 
+_full_stretch.last_detail = None
+
+
+#: Why a stretch was NOT classified a graze (MB-ADDITIONS 4): the reasons `classify_graze_detail` returns with a None. Only the first four are UNRESOLVED
+#: (the builder cannot tell a graze from an omission); `level_crossed` is a PROVEN omission (an exact crossing exists and the ledger has no contact for it).
+REASON_NOT_APPLICABLE = "not_applicable"                   # a span target or a relation that is not a point contact: no graze notion
+REASON_EXTENSION_NOT_SETTLED = "extension_not_settled"     # a horizon-clipped stretch whose extension beyond the horizon cannot be settled
+REASON_CROSSING_NOT_PROVED = "crossing_not_proved"         # "no exact crossing" could not be PROVED for some step at the floor
+REASON_APPROACH_BELOW_MINIMUM = "approach_below_minimum"   # the closest approach is within GRAZE_MIN_APPROACH_DEG of a level: a near-contact, never a graze
+REASON_NO_LEVEL_IN_BAND = "no_level_in_band"               # no ray level of the target is within the orb of the stretch
+REASON_LEVEL_CROSSED = "level_crossed"                     # an exact crossing exists: an omission, not a graze
+UNRESOLVED_REASONS = (REASON_EXTENSION_NOT_SETTLED, REASON_CROSSING_NOT_PROVED, REASON_APPROACH_BELOW_MINIMUM, REASON_NO_LEVEL_IN_BAND)
+
+
 def classify_graze(position_at, body: str, relation: str, target: str, interval, lo, hi, *, step_seconds: float = 3600.0):
-    """Is the reconstructed in-band `interval` of a POINT contact a GRAZE: the body is inside the 1 degree band yet NEVER reaches the ray level (the signed
+    """The graze dict or None (see `classify_graze_detail`, which also says WHY a None)."""
+    return classify_graze_detail(position_at, body, relation, target, interval, lo, hi, step_seconds=step_seconds)[0]
+
+
+def classify_graze_detail(position_at, body: str, relation: str, target: str, interval, lo, hi, *, step_seconds: float = 3600.0):
+    """(graze dict | None, reason | None): `classify_graze` plus the REASON for a None, one of the REASON_* constants above. Identical decisions, nothing
+    else changes. Is the reconstructed in-band `interval` of a POINT contact a GRAZE: the body is inside the 1 degree band yet NEVER reaches the ray level (the signed
     distance to every level of the target keeps one sign throughout)? Independent of the ledger, from the ephemeris alone. Returns a dict (body,
     relation, target, interval, closest approach in degrees and its instant, peak activity = 1 - closest/orb) or None when it is not a graze.
 
@@ -124,7 +146,7 @@ def classify_graze(position_at, body: str, relation: str, target: str, interval,
     from .window_verifier import _ASPECT_ANGLES, _POINT_ORB_DEG
     kind, _, arg = target.partition(":")
     if kind != "point" or relation not in ("conjunction", "aspect"):
-        return None
+        return None, REASON_NOT_APPLICABLE
     a, b = interval
     lam = float(arg) % 360.0
     angles = (0.0,) if relation == "conjunction" else _ASPECT_ANGLES[body]
@@ -140,7 +162,7 @@ def classify_graze(position_at, body: str, relation: str, target: str, interval,
         # an omission too (the builder could not see it, the contact exists): it is not a graze and raises.
         full = _full_stretch(position_at, body, levels, orb, a, b, lo, hi)
         if full is None:
-            return None                                        # the extension could not be settled: never classified
+            return None, REASON_EXTENSION_NOT_SETTLED          # the extension could not be settled: never classified
         a, b = full
         clipped = [x for x, hit in (("start", horizon_interval[0] <= lo), ("end", horizon_interval[1] >= hi)) if hit]
     n = max(3, int((b - a).total_seconds() // step_seconds) + 2)
@@ -152,24 +174,45 @@ def classify_graze(position_at, body: str, relation: str, target: str, interval,
         if min(abs(v) for v in d) > orb + 1e-9:
             continue                                           # this ray's band is not the one the interval belongs to
         if min(d) <= 0.0 <= max(d):
-            return None                                        # the ray level is reached: an exact crossing exists, not a graze
+            return None, REASON_LEVEL_CROSSED                  # the ray level is reached: an exact crossing exists, not a graze
         if not all(_no_crossing_proved(position_at, body, lv, times[i], d[i], times[i + 1], d[i + 1]) for i in range(n - 1)):
-            return None                                        # a crossing cannot be excluded between two samples: not a graze, the omission raises
+            return None, REASON_CROSSING_NOT_PROVED            # a crossing cannot be excluded between two samples: not a graze, the omission raises
         k = min(range(n), key=lambda i: abs(d[i]))
         if best is None or abs(d[k]) < best[0]:
             best = (abs(d[k]), times[k], lv)
-    if best is None or best[0] < GRAZE_MIN_APPROACH_DEG:
-        return None
+    if best is None:
+        return None, REASON_NO_LEVEL_IN_BAND
+    if best[0] < GRAZE_MIN_APPROACH_DEG:
+        return None, REASON_APPROACH_BELOW_MINIMUM
     out = {"body": body, "relation": relation, "target": target, "level_deg": round(best[2], 4),
            "interval": [a.isoformat(), b.isoformat()], "closest_approach_deg": round(best[0], 4),
            "closest_approach_at": best[1].isoformat(), "peak_activity": round(1.0 - best[0] / orb, 4)}
     if clipped:
         out["clipped_by_horizon"] = clipped                     # the interval above is the WHOLE stretch; the horizon part is `horizon_interval`
         out["horizon_interval"] = [horizon_interval[0].isoformat(), horizon_interval[1].isoformat()]
-    return out
+    return out, None
 
 
-def compare_contact_sets(position_at, body: str, relation: str, target: str, want, have, lo, hi, graze_sink=None) -> list[str]:
+POLICY_RAISE = "raise"            # a stretch no ledger contact touches is a certification problem unless it is a graze (every run but the measuring build)
+POLICY_SINK_ALL = "sink_all"      # the MEASURING build (all_classes_full): near-misses, UNRESOLVED stretches and OMISSIONS are sunk with their reason and the build continues
+SINK_POLICIES = (POLICY_RAISE, POLICY_SINK_ALL)
+
+#: the sink KIND and REASON each `classify_graze_detail` outcome becomes (MEASURING_BUILD_CONTRACT MB-2.2, closed lists). `anomaly` is NOT sunk under sink_all: the
+#: steward's ruling names near-misses, unresolved stretches and omissions only.
+OUTCOME_KIND_REASON = {
+    None: ("near_miss", "certified_positive_clearance"),
+    REASON_APPROACH_BELOW_MINIMUM: ("unresolved", "clearance_below_min_approach"),
+    REASON_EXTENSION_NOT_SETTLED: ("unresolved", "extension_unsettled"),
+    REASON_CROSSING_NOT_PROVED: ("unresolved", "no_crossing_unproved"),
+    REASON_LEVEL_CROSSED: ("omission", "crossing_detected"),
+    REASON_NOT_APPLICABLE: ("omission", "unsupported_target"),
+    REASON_NO_LEVEL_IN_BAND: ("anomaly", "no_relevant_level"),
+}
+SUNK_KINDS_UNDER_SINK_ALL = ("near_miss", "unresolved", "omission")
+
+
+def compare_contact_sets(position_at, body: str, relation: str, target: str, want, have, lo, hi, graze_sink=None, stretch_sink=None,
+                         sink_policy: str = POLICY_RAISE) -> list[str]:
     """Compare the reconstructed in-geometry intervals `want` with the ledger's contacts `have` — [(t_in, t_out, accuracy_deg)]
     clipped to [lo, hi) — for ONE (body, relation, target). Returns the problems (empty = they agree).
 
@@ -182,19 +225,46 @@ def compare_contact_sets(position_at, body: str, relation: str, target: str, wan
     not a boundary of the contact SET, so it is not (and must not be) required to sit on an edge."""
     label = f"{body} {relation} {target}"
     problems: list[str] = []
+    if sink_policy not in SINK_POLICIES:
+        raise ValueError(f"sink_policy {sink_policy!r} is not one of {SINK_POLICIES}")
     if graze_sink is not None:
         # INTERIM (steward GRAZE-INTERIM), only when the caller holds a VALIDATED test-slice marker: an in-band interval with NO ledger contact touching it and
         # NO exact crossing of any ray level (a graze: the builder mints a point contact only around an exact root) is REPORTED into `graze_sink` instead
         # of raised; every other difference still raises. Without a sink (any full build, the verification job) nothing changes.
+        # `stretch_sink` (optional, MEASURING_BUILD_CONTRACT MB-2) receives ONE record per reconstructed in-band stretch (every one, in `t_in` order, with its
+        # 1-based `stretch_ordinal`): `kind` contact when a ledger contact touches it, else the kind and reason `OUTCOME_KIND_REASON` names. Under POLICY_SINK_ALL
+        # (the measuring build) near-miss, unresolved and omission stretches are recorded and not raised and the build continues; under POLICY_RAISE only a
+        # near-miss is not raised. A stretch a contact touches that does not match it is the old, raised problem under every policy.
         kept = []
-        for w in want:
-            if not any(h[0] < w[1] and w[0] < h[1] for h in have):
-                g = classify_graze(position_at, body, relation, target, w, lo, hi)
-                if g is not None:
-                    graze_sink.append(g)
-                    continue
+        for ordinal, w in enumerate(want, start=1):
+            episodes = sum(1 for h in have if h[0] < w[1] and w[0] < h[1])
+            rec = {"body": body, "relation": relation, "target": target, "interval": [w[0].isoformat(), w[1].isoformat()], "stretch_ordinal": ordinal,
+                   "clipped_at_horizon": [x for x, hit in (("start", w[0] <= lo), ("end", w[1] >= hi)) if hit], "episode_count": episodes}
+            if episodes:
+                if stretch_sink is not None:
+                    stretch_sink.append({**rec, "kind": "contact", "reason": None})
+                kept.append(w)
+                continue
+            g, reason = classify_graze_detail(position_at, body, relation, target, w, lo, hi)
+            kind, why = OUTCOME_KIND_REASON[reason]
+            if stretch_sink is not None:
+                detail = {"extension": _full_stretch.last_detail} if reason == REASON_EXTENSION_NOT_SETTLED else None
+                extra = {} if g is None else {"closest_approach_deg": g["closest_approach_deg"], "closest_approach_at": g["closest_approach_at"],
+                                                "peak_activity": g["peak_activity"], "level_deg": g["level_deg"], "full_interval": g.get("interval") if g.get("clipped_by_horizon") else None}
+                stretch_sink.append({**rec, "kind": kind, "reason": why, "detail": detail, **extra})
+            if g is not None:
+                graze_sink.append(g)
+                continue
+            if sink_policy == POLICY_SINK_ALL and kind in SUNK_KINDS_UNDER_SINK_ALL:
+                continue
             kept.append(w)
         want = kept
+    elif stretch_sink is not None:
+        stretch_sink.extend({"body": body, "relation": relation, "target": target, "interval": [w[0].isoformat(), w[1].isoformat()], "stretch_ordinal": i,
+                             "clipped_at_horizon": [x for x, hit in (("start", w[0] <= lo), ("end", w[1] >= hi)) if hit],
+                             "episode_count": sum(1 for h in have if h[0] < w[1] and w[0] < h[1]),
+                             "kind": "contact" if any(h[0] < w[1] and w[0] < h[1] for h in have) else "unclassified", "reason": None}
+                            for i, w in enumerate(want, start=1))
     acc = max([h[2] for h in have] or [bm.DEFAULT_ACCURACY_DEG])
     union = _merge([(h[0], h[1]) for h in have])
 
@@ -215,7 +285,8 @@ def compare_contact_sets(position_at, body: str, relation: str, target: str, wan
     return problems
 
 
-def certify_contact_geometry(conn, *, chart_id: str, generation: str, event_class: str, position_at, graze_sink=None) -> dict:
+def certify_contact_geometry(conn, *, chart_id: str, generation: str, event_class: str, position_at, graze_sink=None, stretch_sink=None,
+                             sink_policy: str = POLICY_RAISE) -> dict:
     """Compare the ledger's contacts with the reconstructed ones for every concrete transit obligation of the class."""
     from .inventory_verifier import Unverifiable
     if position_at is None:
@@ -249,7 +320,8 @@ def certify_contact_geometry(conn, *, chart_id: str, generation: str, event_clas
         want = expected_intervals(position_at, agent, relation, target, lo, hi)
         have = sorted(ledger.get((agent, relation, target), []))
         expected_total += len(want)
-        problems.extend(compare_contact_sets(position_at, agent, relation, target, want, have, lo, hi, graze_sink=graze_sink))
+        problems.extend(compare_contact_sets(position_at, agent, relation, target, want, have, lo, hi, graze_sink=graze_sink,
+                                             stretch_sink=stretch_sink, sink_policy=sink_policy))
     if problems:
         raise RuntimeError(f"contact geometry certification failed {event_class}: " + "; ".join(problems))
     return {"obligations_certified": len(concrete), "contacts_expected": expected_total,
@@ -258,4 +330,6 @@ def certify_contact_geometry(conn, *, chart_id: str, generation: str, event_clas
             "boundary_tolerance": BOUNDARY_TOLERANCE_STATEMENT}
 
 
-__all__ = ["BOUNDARY_TOLERANCE_STATEMENT", "GRAZE_MIN_APPROACH_DEG", "certify_contact_geometry", "classify_graze", "compare_contact_sets", "expected_intervals"]
+__all__ = ["BOUNDARY_TOLERANCE_STATEMENT", "GRAZE_MIN_APPROACH_DEG", "REASON_APPROACH_BELOW_MINIMUM", "REASON_CROSSING_NOT_PROVED", "REASON_EXTENSION_NOT_SETTLED",
+           "REASON_LEVEL_CROSSED", "REASON_NO_LEVEL_IN_BAND", "REASON_NOT_APPLICABLE", "POLICY_RAISE", "POLICY_SINK_ALL", "OUTCOME_KIND_REASON", "SINK_POLICIES", "UNRESOLVED_REASONS",
+           "certify_contact_geometry", "classify_graze", "classify_graze_detail", "compare_contact_sets", "expected_intervals"]

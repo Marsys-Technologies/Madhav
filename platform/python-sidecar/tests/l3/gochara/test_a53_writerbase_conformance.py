@@ -80,11 +80,23 @@ def test_it_never_commits_rolls_back_closes_or_opens_a_connection():
 
 
 def test_it_writes_nothing_to_asset_throughput():
+    """Build state is the orchestrator's: no string in the writer's closure names asset_throughput — EXCEPT the writer's state guard `_require_building`
+    (steward TIMEOUT-RULING 2 / GUARD-PRECHECK-ACK: ONE read-only SELECT of the row's state is inside the frozen contract, whose section 5 forbids WRITING it)."""
+    guard_spans = []
+    for rel, tree in _trees():
+        for node in ast.walk(tree):
+            if isinstance(node, ast.FunctionDef) and node.name == "_require_building" and rel.endswith("writers/ka_gochara_v5.py"):
+                guard_spans.append((rel, node.lineno, node.end_lineno))
+                sql = [c.value for c in ast.walk(node) if isinstance(c, ast.Constant) and isinstance(c.value, str) and "public.asset_throughput" in c.value]
+                assert sql and all(x.lstrip().upper().startswith("SELECT") for x in sql), f"the state guard may only SELECT asset_throughput: {sql}"
+    assert len(guard_spans) == 1, "exactly one state guard exists"
     for rel, tree in _trees():
         for node in ast.walk(tree):
             if (isinstance(node, ast.Constant) and isinstance(node.value, str)
                     and "asset_throughput" in node.value
                     and not (len(node.value) > 120 or "\n" in node.value)):   # docstrings may name it
+                if any(rel == r and a <= node.lineno <= b for r, a, b in guard_spans):
+                    continue                                                  # the state guard's own read-only SQL and its refusal text
                 pytest.fail(f"{rel}:{node.lineno} names asset_throughput in a string: {node.value!r}")
 
 

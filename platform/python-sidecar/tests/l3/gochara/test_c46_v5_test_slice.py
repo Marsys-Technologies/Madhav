@@ -75,10 +75,11 @@ class _ManifestConn:
         self.statements.append((sql, params))
         manifest = self.manifest
         digest = _digest_of(manifest) if self.digest == "auto" else self.digest
+        absent = "asset_throughput" in sql          # the state guard's read: no orchestrator row in a unit test (skip-on-absent)
 
         class _R:
             def fetchone(self):
-                return (manifest, digest) if manifest is not None else None
+                return None if absent else (manifest, digest) if manifest is not None else None
 
             def fetchall(self):
                 return []
@@ -103,7 +104,7 @@ def _ctx(manifest=None, **config) -> ContextSpec:
 
 def _marker(**over):
     m = {"schema": writer_mod.TEST_SLICE_SCHEMA, "run": "one_class_full",
-         "horizon": ["1998-01-01T00:00:00+00:00", "2026-04-17T00:00:00+00:00"],
+         "horizon": ["1998-01-01T00:00:00+00:00", "2084-02-05T00:00:00+00:00"],
          "classes": [writer_mod.SCORED_CLASSES[0]]}
     m.update(over)
     return m
@@ -207,7 +208,7 @@ def test_without_a_marker_the_config_horizon_still_governs():
     cfg = (datetime(2000, 1, 1, tzinfo=timezone.utc), datetime(2001, 1, 1, tzinfo=timezone.utc))
     ctx = _ctx(None, horizon=cfg)
     assert writer_mod._effective_horizon(ctx, None) == cfg
-    assert writer_mod._effective_horizon(_ctx(), None) == writer_mod.DEFAULT_HORIZON
+    assert writer_mod._effective_horizon(_ctx(horizon=writer_mod.DEFAULT_HORIZON), None) == writer_mod.DEFAULT_HORIZON
 
 
 # ── (c) every refusal is named ────────────────────────────────────────────────
@@ -233,13 +234,13 @@ REFUSALS = {
     "horizon_not_strings": ("not a pair", _marker(horizon=[1, 2])),
     "horizon_unparseable": ("ISO 8601", _marker(horizon=["jan", "feb"])),
     "horizon_naive": ("naive", _marker(horizon=["1998-01-01T00:00:00",
-                                                "2026-04-17T00:00:00"])),
+                                                "2084-02-05T00:00:00"])),
     "horizon_inverted": ("empty or inverted", _marker(
-        horizon=["2026-04-17T00:00:00+00:00", "1998-01-01T00:00:00+00:00"])),
+        horizon=["2084-02-05T00:00:00+00:00", "1998-01-01T00:00:00+00:00"])),
     "horizon_before_default": ("outside DEFAULT_HORIZON", _marker(
-        horizon=["1997-12-31T00:00:00+00:00", "2026-04-17T00:00:00+00:00"])),
+        horizon=["1997-12-31T00:00:00+00:00", "2084-02-05T00:00:00+00:00"])),
     "horizon_after_default": ("outside DEFAULT_HORIZON", _marker(
-        horizon=["1998-01-01T00:00:00+00:00", "2026-04-18T00:00:00+00:00"])),
+        horizon=["1998-01-01T00:00:00+00:00", "2084-02-06T00:00:00+00:00"])),
     "all_classes_subset": ("all_classes_1y", _marker(
         run="all_classes_1y",
         horizon=["2025-01-01T00:00:00+00:00", "2026-01-01T00:00:00+00:00"],
@@ -273,14 +274,14 @@ def test_the_refusal_names_the_marker_key():
 def test_a_grain_outside_the_marker_is_refused_by_name_never_skipped():
     """Fable P1 (scenario B): this branch used to RETURN success. The plan is fixed at asset start; a substep for a class the marker
     now read does not name means the stored plan_manifest changed — refused, and nothing but the chart lock and the marker read
-    was issued."""
+    was issued (and the state guard's read-only SELECT of asset_throughput, which precedes everything)."""
     cls = writer_mod.SCORED_CLASSES[0]
     other = writer_mod.SCORED_CLASSES[1]
     ctx = _ctx({writer_mod.TEST_SLICE_KEY: _marker(classes=[cls])})
     ctx = writer_mod._native_ctx(ctx)
     with pytest.raises(writer_mod.TestSliceRefusal, match=r"not in the run's validated marker"):
         writer_mod.GocharaV5Writer().run_substep(ctx, SubStep(key=f"record:{other}:P1"))
-    assert all(("build_runs" in sql) or ("ka_gochara_lock_chart" in sql) for sql, _ in ctx.db_conn.statements)
+    assert all(("build_runs" in sql) or ("ka_gochara_lock_chart" in sql) or ("SELECT state FROM public.asset_throughput" in sql) for sql, _ in ctx.db_conn.statements)
 
 
 def test_class_of_grain_parses_every_per_class_prefix():
@@ -307,7 +308,7 @@ def test_slice_component_binds_the_marker_digest():
     assert len(comp["marker_digest"]) == 64
     # audit (Fable P1 iii): the run shape, the classes and the horizon are readable from the manifest alone
     assert comp["run"] == "one_class_full" and comp["classes"] == [writer_mod.SCORED_CLASSES[0]]
-    assert comp["horizon"] == ["1998-01-01T00:00:00+00:00", "2026-04-17T00:00:00+00:00"]
+    assert comp["horizon"] == ["1998-01-01T00:00:00+00:00", "2084-02-05T00:00:00+00:00"]
 
 
 def test_default_vector_has_no_test_slice_key_and_the_default_scope():
@@ -611,6 +612,8 @@ def _drift_conn(monkeypatch, stored, marker_manifest, manifest_horizon_override=
     if manifest_horizon_override is not None:
         manifest_horizon = manifest_horizon_override
     ctx = dataclasses.replace(ctx, db_conn=_HorizonConn(marker_manifest, manifest_horizon))
+    if marker_manifest is None:         # a default run is CONFIGURED with its horizon here (an absent one is derived from the database, FB-2: tested in test_horizon_run_path)
+        ctx = dataclasses.replace(ctx, config={**ctx.config, "horizon": writer_mod.DEFAULT_HORIZON})
     return ctx, seen
 
 
@@ -752,7 +755,7 @@ def test_a_permission_error_on_the_marker_read_propagates_but_an_absent_table_re
 
 # ── Codex P2-4: an explicit null horizon keeps main's behaviour without a marker ────────────────────────────────────
 
-def test_without_a_marker_absent_and_explicit_null_horizons_behave_as_on_main():
+def test_without_a_marker_an_absent_horizon_is_underivable_here_and_an_explicit_null_behaves_as_on_main():
     absent = ContextSpec(asset_id=writer_mod.ASSET_ID, build_id="b", db_conn=None, config={"chart_id": CHART_ID},
                          dry_run=False)
     null = ContextSpec(asset_id=writer_mod.ASSET_ID, build_id="b", db_conn=None,
@@ -760,7 +763,8 @@ def test_without_a_marker_absent_and_explicit_null_horizons_behave_as_on_main():
     listed = ["a", "b"]
     given = ContextSpec(asset_id=writer_mod.ASSET_ID, build_id="b", db_conn=None,
                         config={"chart_id": CHART_ID, "horizon": listed}, dry_run=False)
-    assert writer_mod._effective_horizon(absent, None) == writer_mod.DEFAULT_HORIZON
+    with pytest.raises(writer_mod.HorizonUnderivable, match="birth date"):
+        writer_mod._effective_horizon(absent, None)       # FB-2: absent is DERIVED (or refused by name), never the constant
     assert writer_mod._effective_horizon(null, None) is None            # main passed the null through (and failed later)
     assert writer_mod._effective_horizon(given, None) is listed         # exactly what main returned, not a copy
 

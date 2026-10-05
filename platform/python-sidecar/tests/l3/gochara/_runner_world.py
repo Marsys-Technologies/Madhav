@@ -29,7 +29,7 @@ MIGRATION_ORDER = (167, 169, 171, 172, 184, 202, 223, 242, 342, 417, 426, 474, 4
 SEED_MARK = "INSERT INTO asset_output_digest_specs"
 CHART = "482012f1-710e-4a25-994a-93821f5871aa"
 #: the migration-1304 shape of the small-test registry row (dispatch_v5_small_test_job.EXPECTED_REGISTRY_ROW), INACTIVE
-V5_ROW = {"scope": "per_chart", "is_active": False, "has_writer": True, "has_substeps": True, "writer_timeout_seconds": 7200,
+V5_ROW = {"scope": "per_chart", "is_active": False, "has_writer": True, "has_substeps": True, "writer_timeout_seconds": 28800,
           "depends_on": ["ga_positions", "ga_dashas"], "target_table": "ka_gochara_eval_window",
           "count_sql": "SELECT COUNT(*) FROM ka_gochara_eval_window WHERE chart_id=$1 AND generation='5.0'",
           "target_floor": 0, "estimated_seconds": None}
@@ -66,6 +66,7 @@ def apply_orchestrator_schema(conn) -> None:
                  " ON CONFLICT (id) DO UPDATE SET chart_id = EXCLUDED.chart_id, name = EXCLUDED.name, birth_date = EXCLUDED.birth_date,"
                  " birth_time = EXCLUDED.birth_time, birth_lat = EXCLUDED.birth_lat, birth_lng = EXCLUDED.birth_lng,"
                  " birth_place = EXCLUDED.birth_place, timezone_id = EXCLUDED.timezone_id", (CHART, CHART))
+    apply_life_events(conn)         # the writer DERIVES its horizon from the chart's life-event-log rows (MEASURING_BUILD_CONTRACT MB-1): a real run needs the table
 
 
 def seed_registry(conn, asset_ids, v5_row=V5_ROW) -> None:
@@ -120,7 +121,8 @@ def run_real_entry_point(dsn: str, run_id: str, *, ephe_env: str | None, timeout
     """`python -m pipeline.orchestrator.main --run-id <id>` as a SUBPROCESS: the real entry point, the real runner, the real asset_runner.
     Nothing is patched; ctx.config is whatever the runner builds. `ephe_env` sets (or, when None, REMOVES) SE_EPHE_PATH and SWE_EPHE_PATH."""
     env = {k: v for k, v in os.environ.items() if k not in ("SE_EPHE_PATH", "SWE_EPHE_PATH", "NIRMANA_FORCE_EXECUTE")}
-    env.update({"DATABASE_URL": dsn, "PUBSUB_DISABLED": "1", "ORCHESTRATOR_WORKER_LIMIT": "1", "PYTHONPATH": str(SIDECAR),
+    env.update({"DATABASE_URL": dsn, "PUBSUB_DISABLED": "1", "ORCHESTRATOR_WORKER_LIMIT": "1",
+                "PYTHONPATH": str(SIDECAR),
                 "PYTHONUNBUFFERED": "1"})
     if ephe_env is not None:
         env["SE_EPHE_PATH"] = ephe_env
@@ -142,3 +144,43 @@ def substep_events(stdout: str) -> list[dict]:
             except ValueError:
                 pass
     return out
+
+
+#: the life-event-log rows of the pinned chart the horizon derivation reads (LEL id, date, confidence, domain), stored as the INTAKE stores them: a uuid5 `event_id`, the
+#: canonical `EVT.YYYY.MM.DD.NN` id in `provenance->>'lel_id'`, domain `<event_type>/<subcategory>`; the proxy-dated rows carry 457's default `exact`.
+PINNED_LEL_ROWS = (("EVT.1984.02.05.01", "1984-02-05", "exact", "other/birth"), ("EVT.1995.XX.XX.01", "1995-07-01", "exact", "other/other"),
+                   ("EVT.1998.02.16.01", "1998-02-16", "exact", "other/other"), ("EVT.2001.03.XX.01", "2001-03-01", "exact", "other/other"),
+                   ("EVT.2007.06.10.01", "2007-06-10", "exact", "other/other"))
+OTHER_CHART = "11111111-2222-4333-8444-555555555555"
+
+
+def lel_event_uuid(lel_id: str) -> str:
+    import uuid
+    return str(uuid.uuid5(uuid.NAMESPACE_DNS, "BRAHMA-MI-5-1:" + lel_id))
+
+
+def apply_life_events(conn, rows=PINNED_LEL_ROWS) -> None:
+    """`public.life_events` from the REAL DDL: the baseline's CREATE TABLE, migration 457's shape columns and checks, and migration 423's per-chart key (`chart_id uuid NOT NULL
+    REFERENCES charts(id)`, unique with event_id). `rows` (event_id, event_date, date_confidence, category) are inserted for the pinned chart, plus ONE row of another chart that the
+    chart filter must never read. The horizon derivation reads every raw row of its chart."""
+    import re
+    baseline = (REPO / "platform" / "migrations" / "001_baseline.sql").read_text(encoding="utf-8")
+    ddl = re.search(r"CREATE TABLE IF NOT EXISTS public\.life_events \(.*?\n\);", baseline, re.S)
+    assert ddl, "the baseline CREATE TABLE for life_events was not found"
+    conn.execute(ddl.group(0))
+    for f in _files(457):
+        conn.execute(Path(f).read_text(encoding="utf-8"))
+    conn.execute("ALTER TABLE public.life_events ADD COLUMN IF NOT EXISTS chart_id uuid REFERENCES public.charts(id)")        # migration 423 (empty table at that point: no backfill)
+    conn.execute("ALTER TABLE public.life_events ADD COLUMN IF NOT EXISTS event_type text")                                    # SM/0001_brahma_baseline.sql (the intake's columns)
+    conn.execute("ALTER TABLE public.life_events ADD COLUMN IF NOT EXISTS domain text")
+    conn.execute("INSERT INTO public.charts (id, chart_id, name) VALUES (%s, %s, 'other') ON CONFLICT (id) DO NOTHING", (OTHER_CHART, OTHER_CHART))
+    def insert(chart, lel_id, event_date, confidence, domain):
+        conn.execute("INSERT INTO public.life_events (chart_id, event_id, event_date, category, event_type, domain, description, chart_state, source_section, build_id, provenance,"
+                     " date_confidence) VALUES (%s, %s, %s, 'other', 'other', %s, 'test row', '{}'::jsonb, 'test', 'test', %s::jsonb, %s)",
+                     (chart, lel_event_uuid(lel_id), event_date, domain, json.dumps({"lel_id": lel_id}), confidence))
+    conn.execute("ALTER TABLE public.life_events DROP CONSTRAINT IF EXISTS life_events_event_id_key")
+    for lel_id, event_date, confidence, domain in rows:
+        insert(CHART, lel_id, event_date, confidence, domain)
+    insert(OTHER_CHART, "EVT.1990.01.01.01", "1990-01-01", "exact", "other/other")                                                  # another chart's row: must never be read
+    conn.execute("ALTER TABLE public.life_events ALTER COLUMN chart_id SET NOT NULL")
+    conn.execute("ALTER TABLE public.life_events ADD CONSTRAINT life_events_chart_event_uq UNIQUE (chart_id, event_id)")
