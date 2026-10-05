@@ -1,0 +1,29 @@
+{
+  "source_head": "32a463c1a0071d735ab3b8cb640f4f0eba758762",
+  "local_source_uncommitted": true,
+  "lint": {
+    "exit_code": 0,
+    "errors": 0,
+    "inherited_warnings": 628
+  },
+  "typescript": {
+    "exit_code": 0
+  },
+  "full_unit_suite": {
+    "exit_code": 0,
+    "files_passed": 1413,
+    "tests_passed": 15663,
+    "expected_failures": 3,
+    "skipped_tests": 1060,
+    "todo": 2,
+    "unexpected_failures": 0
+  },
+  "diff_whitespace": {
+    "exit_code": 0
+  },
+  "browser": "BROWSER_VERIFICATION.json",
+  "disposable_database": "DATABASE_VERIFICATION.json",
+  "production_access": false,
+  "application_migration_applied": false,
+  "deployed": false
+}

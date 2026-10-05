@@ -15,9 +15,11 @@ import { render, screen } from '@testing-library/react'
 import { ThreadHeader } from '../ThreadHeader'
 
 describe('ThreadHeader', () => {
-  it('renders the chart-holder name as a real h1 heading', () => {
+  it('renders the bilingual page name as h1 and retains chart identity', () => {
     render(<ThreadHeader chartPin={{ name: 'Abhisek Mohanty', bornLine: '05 Feb 1984 · 10:43 · Bhubaneswar' }} />)
     const heading = screen.getByRole('heading', { level: 1 })
-    expect(heading).toHaveTextContent('Abhisek Mohanty')
+    expect(heading).toHaveTextContent('Paripraśna')
+    expect(heading).toHaveTextContent('Consultation')
+    expect(screen.getByText('Abhisek Mohanty')).toBeInTheDocument()
   })
 })
