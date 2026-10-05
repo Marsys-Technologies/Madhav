@@ -8644,3 +8644,15 @@ Consultation-10 migration allocation: **1307_consultation_tags.sql**, reserved b
 - Scope: chart preparation page and directly required live layer/asset display, existing guarded action controls, truthful readiness and confirmations, responsive layout, scoped tests and own release/session evidence.
 - Excludes engine/writer/orchestrator contract changes, migration/schema changes, chart rebuild/data cleanup execution, paid AI calls, credentials, permission changes, unrelated journeys and foreign worktrees. Deploy UI and preserve current server safety controls.
 - Source/read-only verification now; exclusive release window checked afresh before merge/deploy. Expired prior leases are expired only, no foreign entries changed.
+
+
+## 2026-10-06 — Consultation review 10 owner-authorized release
+
+- Lease ID: L-PORTAL-CONSULTATION10-RELEASE-20261006; holder: Codex desktop; status: ACTIVE.
+- Started: 2026-10-05T19:04:03.250289+00:00; expiry: 2026-10-06T01:04:03.250289+00:00.
+- Worktree: `/Users/Dev/.codex/worktrees/portal-experience/Madhav`; branch `codex/portal-experience`.
+- Authority: direct owner instruction, “Please go ahead and deploy this.” after local review10 implementation was disclosed as not deployed and migration1307 unapplied. Necessary source commit/push, focused PR, protected merge/CI and standard zero-traffic web release, migration1307 through the established routine runner, verification and rollback are authorized. Supersedes GIP P.4 publication ceiling only for this release; no standing gate changes.
+- Scope: reviewed consultation runtime, owned tags/history/panel integration and scoped tests/evidence; reconcile current protected main without changing foreign campaign source. Migration1307 additive columns only, recheck all claims and verify applied state.
+- Production window: exclusive consultation release for amjis-web; baseline `amjis-web-probe-091362f315a2-37346348777-1` at100% desired/observed traffic. Preserve existing tagged revisions. Routine migration path only; no new privilege, IAM, credential or infrastructure change.
+- Excludes other Journey2 pages, engine/asset rebuild or repair, paid AI executions, real chart/account/permission mutation, foreign worktrees and separate cleanup. Live verification may read existing owned conversations and exercise UI preferences; no generated readings or share creation required.
+- Evidence surface: `00_ARCHITECTURE/briefs/consultation10/release/RELEASE.md`.
