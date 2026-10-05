@@ -1155,6 +1155,66 @@ def kb_luminaries(event_class: str, rule_version: str = RULE_VERSION) -> frozens
     return karakas_with_role(event_class, KARAKA_ADMISSION, rule_version) & LUMINARIES
 
 
+# ── ND-P2-20261005 rule 4 — kārakatva and P1 ─────────────────────────────────────────────────────────
+# A class's significator planet running as the Mahādaśā or Antardaśā ANCHOR lord satisfies P1's
+# prerequisite (2) (`natal_bhava_relationship`) — an explicitly RULED EXTENSION of the frozen design (which
+# requires a natal house relationship), `uncited_extension / scored`, under a VERSIONED,
+# AFFECTED-PERSON-SPECIFIC class-kāraka mapping. Preserved unchanged: period restrictions, the existing
+# transit forms, unknown-input behaviour, and Pratyantardaśā-as-testimony. No density bound is claimed.
+#
+# OPEN — the business owner's point (flagged, not decided here). The decision does not say WHICH classes the
+# rule reaches: only the eight ND-H classes, or every class that has a kāraka. The NARROWEST literal reading
+# is taken and isolated in this ONE constant: the classes whose kāraka mapping the same campaign ruled
+# (ND-H-20261005) and whose P1 runs under 1.2.0. Widening it is a one-line data change plus a P1 selection.
+KARAKATVA_P1_CLASSES: frozenset[str] = ND_H_CLASSES
+#: the anchor levels the rule reaches (rule 4: "Mahadasha or Antardasha"); PD stays testimony
+KARAKATVA_P1_LEVELS = ("md", "ad")
+KARAKATVA_RELATION = "karakatva"
+
+
+def karakatva_mapping(rule_version: str) -> dict[str, dict]:
+    """{class: {affected_person, karakas}} — the versioned, affected-person-specific class-kāraka mapping
+    P1 prerequisite (2) reads at `rule_version`. Empty before the ruling's version. A class's significators
+    are EVERY kāraka its ruled row names (rank and admission roles alike: "a class's significator planet")."""
+    if rule_version not in ND_VERSIONS:
+        return {}
+    out = {}
+    for name in sorted(KARAKATVA_P1_CLASSES):
+        row = nd_h_row(name, rule_version)
+        if row is None:
+            raise ValueError(f"{name}: kārakatva is ruled only for a class with a ruled kāraka row")
+        out[name] = {"affected_person": row["affected_person"],
+                     "karakas": tuple(sorted(k["karaka"] for k in row["karakas"]))}
+    return out
+
+
+def karakatva_karakas(event_class: str, rule_version: str, affected_person: str | None = None) -> frozenset[str]:
+    """The planets whose MD/AD anchor lordship satisfies P1 prerequisite (2) for the class at this version.
+    `affected_person`, when given, must be the mapping's own (a father row never answers for another person)."""
+    row = karakatva_mapping(rule_version).get(event_class)
+    if row is None or (affected_person is not None and affected_person != row["affected_person"]):
+        return frozenset()
+    return frozenset(row["karakas"])
+
+
+#: the relation-kind row the rule adds (the REAL consumer is `permission.period_lord_relation`)
+P1_RELATION_KIND_KARAKATVA = {
+    "relation": KARAKATVA_RELATION, "target": "class_karaka",
+    **ND_P2_STAMP,
+    "levels": KARAKATVA_P1_LEVELS,
+    "source": "ruled extension ND-P2-20261005 rule 4 — an amendment of the frozen design, not an "
+              "interpretation; the kāraka meanings are the premise loci of each class row",
+}
+
+
+def p1_relation_kinds(rule_version: str = RULE_VERSION) -> tuple[dict, ...]:
+    """P1's prerequisite-(2) relation-kind table AT `rule_version`: the §2.2 table, plus the kārakatva row
+    from the ruling's version on (the 1.0.0 table is byte-for-byte `P1_RELATION_KINDS`)."""
+    if rule_version in ND_VERSIONS:
+        return P1_RELATION_KINDS + (P1_RELATION_KIND_KARAKATVA,)
+    return P1_RELATION_KINDS
+
+
 def kb_targets(event_class: str, rule_version: str = RULE_VERSION) -> tuple[dict, ...]:
     """Every K-B admission target of the class at this version, each with ITS OWN stamp and premise text:
     the ND-H luminary kārakas (ND-H-20261005) and the ND-P2 rule 3 target (natal Sun, father-bereavement).
@@ -1212,7 +1272,13 @@ def h_table(rule_version: str) -> dict:
                            TIER_CORE: sorted(row.get("H", row.get("H_offsets_from_anchor", ())))}
         if rule_version in ND_VERSIONS and name in ND_P2_KB_TARGETS:
             table[name]["kb_targets"] = sorted([t["luminary"], t["ruling_ref"]] for t in ND_P2_KB_TARGETS[name])
-    return {"h_table": H_TABLE_VERSIONS[rule_version], "rule_version": rule_version, "classes": table}
+    out = {"h_table": H_TABLE_VERSIONS[rule_version], "rule_version": rule_version, "classes": table}
+    if rule_version in ND_VERSIONS:
+        # ND-P2 rule 4: the kārakatva mapping is versioned data, pinned with the H it is read beside
+        out["karakatva_p1"] = {"levels": list(KARAKATVA_P1_LEVELS), "ruling_ref": ND_P2_RULING,
+                               "classes": {c: [m["affected_person"], list(m["karakas"])]
+                                           for c, m in karakatva_mapping(rule_version).items()}}
+    return out
 
 
 def h_table_sha256(rule_version: str) -> str:

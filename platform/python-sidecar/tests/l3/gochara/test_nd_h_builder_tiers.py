@@ -605,3 +605,104 @@ def test_rule_3_inventory_bereavement_p3_p4_included_at_1_2_0_and_1_0_0_supersed
 def test_rule_3_target_is_pinned_in_the_versioned_h_table():
     assert reg.h_table(V)["classes"]["bereavement"]["kb_targets"] == [["Sun", P2_RULING]]
     assert "kb_targets" not in reg.h_table("1.0.0")["classes"]["bereavement"]
+
+
+# ── 9. ND-P2-20261005 rule 4: a class kāraka as the MD/AD anchor lord satisfies P1 prerequisite (2) ──────
+from services.gochara_rules import permission as perm  # noqa: E402
+
+GRAHAS = ("Sun", "Moon", "Mars", "Mercury", "Jupiter", "Venus", "Saturn", "Rahu", "Ketu")
+# transcribed from ND-H's table (every kāraka named for the class, any role) — the mapping rule 4 reads
+RULED_SIGNIFICATORS = {c: set(k) for c, k in RULED_KARAKAS.items()}
+
+
+def _cited(lord, cls, version=V):
+    """The relation the lord would get from the cited kinds alone (the rule switched off)."""
+    saved = reg.KARAKATVA_P1_CLASSES
+    reg.KARAKATVA_P1_CLASSES = frozenset()
+    try:
+        return perm.period_lord_relation(lord, cls, CHART, rule_version=version)
+    finally:
+        reg.KARAKATVA_P1_CLASSES = saved
+
+
+def test_rule_4_the_mapping_is_the_ruled_karakas_of_the_eight_classes_person_specific():
+    mapping = reg.karakatva_mapping(V)
+    assert {c: set(m["karakas"]) for c, m in mapping.items()} == RULED_SIGNIFICATORS
+    assert mapping["parental_event"]["affected_person"] == "father"
+    assert {m["affected_person"] for c, m in mapping.items() if c != "parental_event"} == {"native"}
+    assert reg.karakatva_mapping("1.0.0") == {} and reg.karakatva_mapping("1.1.0") == {}
+    assert reg.karakatva_karakas("parental_event", V, "mother") == frozenset()      # never another person's row
+    assert reg.karakatva_karakas("parental_event", V, "father") == {"Sun"}
+
+
+def test_rule_4_the_class_reach_is_one_named_constant_at_its_narrowest_reading():
+    assert reg.KARAKATVA_P1_CLASSES == frozenset(EIGHT)
+    for cls in OTHERS:                                # bereavement and the 17 cited classes: not reached
+        assert reg.karakatva_karakas(cls, V) == frozenset()
+        for lord in GRAHAS[:7]:
+            assert perm.period_lord_relation(lord, cls, CHART, rule_version=V) == perm.period_lord_relation(lord, cls, CHART)
+
+
+def test_rule_4_the_relation_kind_row_is_ruled_scored_and_absent_before_1_2_0():
+    assert reg.p1_relation_kinds("1.0.0") is reg.P1_RELATION_KINDS
+    (row,) = [k for k in reg.p1_relation_kinds(V) if k["relation"] == "karakatva"]
+    assert (row["provenance"], row["operator_role"], row["ruling_ref"], row["levels"]) == (
+        "uncited_extension", "scored", P2_RULING, ("md", "ad"))
+    assert reg.p1_relation_kinds(V)[:-1] == reg.P1_RELATION_KINDS
+
+
+@pytest.mark.parametrize("cls", EIGHT)
+def test_rule_4_a_karaka_anchor_lord_satisfies_prerequisite_2_and_only_adds_never_removes(cls):
+    for lord in GRAHAS:
+        before = _cited(lord, cls)
+        after = perm.period_lord_relation(lord, cls, CHART, rule_version=V)
+        if lord in RULED_SIGNIFICATORS[cls] and before["licence"] != "scored":
+            assert (after["relation"], after["licence"], after["ruling_ref"], after["provenance"]) == (
+                "karakatva", "scored", P2_RULING, "uncited_extension"), (cls, lord)
+        else:
+            assert after == before, (cls, lord)       # a non-kāraka, or a lord already licensed by a cited kind
+
+
+def test_rule_4_is_discriminating_some_karaka_gains_a_licence_it_did_not_have():
+    gained = [(c, lord) for c in EIGHT for lord in sorted(RULED_SIGNIFICATORS[c])
+              if _cited(lord, c)["licence"] != "scored"
+              and perm.period_lord_relation(lord, c, CHART, rule_version=V)["licence"] == "scored"]
+    assert gained, "on the stub chart at least one class kāraka must be licensed by the rule alone"
+    # and a kāraka upgrades a testimony-only dispositorship relation, where it has one
+    for c, lord in gained:
+        assert perm.period_lord_relation(lord, c, CHART, rule_version=V)["relation"] == "karakatva"
+
+
+def test_rule_4_reaches_md_and_ad_only_pd_stays_what_the_cited_kinds_make_it():
+    cls, lord = "business_launch", "Mercury"
+    for level in ("md", "ad"):
+        got = perm.period_lord_relation(lord, cls, CHART, rule_version=V, level=level)
+        assert got["relation"] in ("karakatva", "occupancy", "ownership") and got["licence"] == "scored"
+    assert perm.period_lord_relation(lord, cls, CHART, rule_version=V, level="pd") == _cited(lord, cls)
+    # the PD transit edges are testimony under their own ruling, untouched by rule 4
+    pd = [e for e in edges(cls, "P1") if e.period_anchor_level == "pd"]
+    assert pd and {(e.operator_role, e.ruling_ref) for e in pd} == {("testimony", "ST-P1-PD-TESTIMONY-20261002")}
+
+
+def test_rule_4_preserves_unknown_inputs_and_the_pre_ruling_behaviour():
+    # H unknown at 1.0.0 stays `unknown` — a kāraka does not manufacture a relation where the version has no H
+    for cls in EIGHT:
+        for lord in sorted(RULED_SIGNIFICATORS[cls]):
+            assert perm.period_lord_relation(lord, cls, CHART)["relation"] == "unknown"
+            assert perm.period_lord_relation(lord, cls, CHART, rule_version="1.0.0")["relation"] == "unknown"
+    # an unreadable natal position is still a KeyError for the caller to turn into `unknown` (not a licence)
+    # — for a class KĀRAKA too: Mercury (business_launch) with no readable natal position gains nothing
+    chart = {**CHART, "natal": {k: v for k, v in CHART["natal"].items() if k != "Mercury"}}
+    assert perm.period_lord_relation("Mercury", "business_launch", CHART, rule_version=V)["relation"] == "karakatva"
+    with pytest.raises(KeyError):
+        perm.period_lord_relation("Mercury", "business_launch", chart, rule_version=V)
+
+
+def test_rule_4_changes_no_enumerated_edge_and_is_pinned_in_the_h_table(monkeypatch):
+    before = {(c, p): repr(edges(c, p)) for c in EIGHT for p in ("P1", "P3", "P4")}
+    digest = reg.h_table_sha256(V)
+    assert reg.h_table(V)["karakatva_p1"]["classes"]["spiritual_turn"] == ["native", ["Jupiter", "Ketu"]]
+    assert "karakatva_p1" not in reg.h_table("1.0.0")
+    monkeypatch.setattr(reg, "KARAKATVA_P1_CLASSES", frozenset())
+    assert {(c, p): repr(edges(c, p)) for c in EIGHT for p in ("P1", "P3", "P4")} == before
+    assert reg.h_table_sha256(V) != digest            # the mapping IS part of what a generation pins
