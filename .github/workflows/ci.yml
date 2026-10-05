@@ -1152,7 +1152,7 @@ jobs:
     # copying this one (the guard hardens every job with that prefix): never put it in a job already near its budget.
     #   gochara-a55-replace-chain : a55_replace_chain, a55_replace_chain_populated
     #   gochara-a55-slice-transitions : c46_slice_transitions
-    #   gochara-a55-round2-runner     : c46_slice_round2, c47_ephe_real_runner
+    #   gochara-a55-round2-runner     : c46_slice_round2, c47_ephe_real_runner, c49_wrap_cut_support
     #   gochara-a55-verifier-fixes    : p1_exclusion_h_unknown, member_geometry_seam, graze_interim
     #   (next: gochara-a55-teardown for c38 real-db + populated, gochara-a55-dispatch for c37 real-db)
     needs: changes
@@ -1286,7 +1286,7 @@ jobs:
           export SE_EPHE_PATH="$se1_dir"
           export GOCHARA_SE1_REQUIRE=1
           cd python-sidecar
-          python -m pytest tests/l3/gochara/test_c46_slice_round2.py tests/l3/gochara/test_c47_ephe_real_runner.py -q --tb=short -rs -p no:cacheprovider
+          python -m pytest tests/l3/gochara/test_c46_slice_round2.py tests/l3/gochara/test_c47_ephe_real_runner.py tests/l3/gochara/test_c49_wrap_cut_support.py -q --tb=short -rs -p no:cacheprovider
 
   gochara-a55-verifier-fixes:
     # C48 / PR 3143 (the in-build verifier fixes: P1 exclusion for H-unknown classes, the member-geometry seam and horizon-edge rules, the slice-only graze interim): three real-database suites, about 14 minutes together.
