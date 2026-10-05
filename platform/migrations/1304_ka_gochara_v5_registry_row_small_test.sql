@@ -30,6 +30,13 @@
 --                                       target against the stats route before the window);
 --   target_floor            = 0       — floors are aspirational;
 --   estimated_seconds       = NULL    — honest until timed.
+-- CHECKED, NOT WRITTEN (the landed-shape post-check below): asset_kind = 'data', asset_type = 'data', health_probe empty, integrity_check_sql
+--   empty, rebuild_on_probe_fail = false — the routing fields the runner reads; the dispatch and teardown scripts validate the same five.
+--
+-- HOW IT APPLIES: a plain UPDATE migration, NOT in PROTECTED_DATA_PLANE_MIGRATIONS or PROTECTED_PUBLIC_SCHEMA_MIGRATIONS (platform/scripts/migrate.ts), so
+-- the ROUTINE deploy-time runner applies it on the first deploy after it merges. The gate is therefore the MERGE TIMING (post-window, above), not a
+-- protected window. READBACK after the apply (read-only): platform/scripts/v5_small_test_registry_row_readback.sql (PR 3097) shows the row and its
+-- expected values.
 --
 -- WHAT IT DOES NOT TOUCH: is_active (stays false), every other column, every other asset_registry
 -- row, every other table. No INSERT, no DELETE, no grant, no DDL, no chart data.
@@ -93,9 +100,18 @@ BEGIN
      AND target_table = 'ka_gochara_eval_window'
      AND size_sql = v_size_sql
      AND target_floor = 0
-     AND estimated_seconds IS NULL;
+     AND estimated_seconds IS NULL
+     -- ROUTING FIELDS (Codex round 4 D2; steward DB4): checked, never written. asset_runner.py reads these to decide HOW the asset runs
+     -- ("Asset metadata" block): an integrity check or probe PLUS rebuild_on_probe_fail = true takes the probe-green shortcut, where a passing
+     -- probe marks the asset built WITHOUT running the writer. The dispatch and the teardown refuse a row that differs, so the migration
+     -- refuses to land one (an empty string reads as NULL: the runner tests them with bool()).
+     AND asset_kind = 'data'
+     AND asset_type = 'data'
+     AND (health_probe IS NULL OR health_probe = '')
+     AND (integrity_check_sql IS NULL OR integrity_check_sql = '')
+     AND rebuild_on_probe_fail IS FALSE;
   IF v_ok <> 1 THEN
-    RAISE EXCEPTION '1304: the ka_gochara_v5 row did not land in the expected small-test shape (is_active=false, has_substeps=true, timeout 7200, depends_on [ga_positions,ga_dashas], the ka_gochara_eval_window counter)';
+    RAISE EXCEPTION '1304: the ka_gochara_v5 row did not land in the expected small-test shape (is_active=false, has_substeps=true, timeout 7200, depends_on [ga_positions,ga_dashas], the ka_gochara_eval_window counter, plain data routing: asset_kind/asset_type data, no health_probe, no integrity_check_sql, rebuild_on_probe_fail false)';
   END IF;
 
   -- Supplementary check of visible tuple versions (see the header): no OTHER asset_registry row

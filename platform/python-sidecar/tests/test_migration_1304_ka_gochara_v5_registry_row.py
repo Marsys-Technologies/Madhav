@@ -50,7 +50,12 @@ CREATE TABLE public.asset_registry (
     target_table text,
     size_sql text,
     target_floor int,
-    estimated_seconds int
+    estimated_seconds int,
+    asset_kind text NOT NULL DEFAULT 'data',
+    asset_type text NOT NULL DEFAULT 'data',
+    health_probe text,
+    integrity_check_sql text,
+    rebuild_on_probe_fail boolean NOT NULL DEFAULT false
 )
 """
 
@@ -243,3 +248,33 @@ def test_assertion_fires_when_the_landed_shape_is_wrong(env):
     with pytest.raises(Exception, match="1304: the ka_gochara_v5 row did not land in the expected small-test shape"):
         env.apply(mutant)
     assert env.row("ka_gochara_v5") == V5_1243            # rolled back: the 1243 shape survives
+
+
+@pytest.mark.parametrize("column, value", [
+    ("rebuild_on_probe_fail", True), ("integrity_check_sql", "SELECT true"), ("health_probe", "probe"),
+    ("asset_kind", "service"), ("asset_type", "service"),
+], ids=lambda v: str(v))
+def test_a_row_with_non_data_routing_is_refused_by_the_landed_shape_check(env, column, value):
+    """Codex round 4 D2 / steward DB4: the routing fields the runner reads are CHECKED by the migration (never written); a row an operator left
+    with a probe, an integrity check, rebuild_on_probe_fail or service routing must not be declared ready."""
+    with env.cl.connect(env.db, autocommit=True) as c:
+        c.execute(f"UPDATE public.asset_registry SET {column} = %s WHERE asset_id = 'ka_gochara_v5'", (value,))
+    with pytest.raises(Exception, match="1304: the ka_gochara_v5 row did not land in the expected small-test shape"):
+        env.apply(REAL_SQL)
+    assert env.row("ka_gochara_v5") == V5_1243                              # rolled back
+
+
+def test_an_empty_string_probe_or_check_reads_as_null_and_does_not_block_the_deploy(env):
+    with env.cl.connect(env.db, autocommit=True) as c:
+        c.execute("UPDATE public.asset_registry SET health_probe = '', integrity_check_sql = '' WHERE asset_id = 'ka_gochara_v5'")
+    env.apply(REAL_SQL)
+    assert env.row("ka_gochara_v5") == V5_1304
+
+
+def test_the_migration_never_writes_the_routing_fields(env):
+    """CHECKED, NOT WRITTEN: the apply leaves a harmless difference such as an empty-string health_probe byte-for-byte as it was."""
+    with env.cl.connect(env.db, autocommit=True) as c:
+        c.execute("UPDATE public.asset_registry SET health_probe = '' WHERE asset_id = 'ka_gochara_v5'")
+    env.apply(REAL_SQL)
+    with env.cl.connect(env.db, autocommit=True) as c:
+        assert c.execute("SELECT health_probe FROM public.asset_registry WHERE asset_id = 'ka_gochara_v5'").fetchone()[0] == ""
