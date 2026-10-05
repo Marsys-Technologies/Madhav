@@ -1840,8 +1840,9 @@ jobs:
   governance-tool-tests:
     # The ORIGINAL job name, kept as ONE check: green only when every shard above is green (a cancelled or failed shard is not green; a
     # SKIPPED shard is green ONLY on a docs-only pull request, where the `changes` job skipped it on purpose). The Suvarṇa plan's
-    # `ci_job_passed` detectors name this job, so they keep meaning "the whole governance test directory passed". (It is not in the
-    # branch ruleset's required list today; that is unchanged.)
+    # `ci_job_passed` detectors name this job, so they keep meaning "the whole governance test directory passed". (It IS the
+    # required check 'Governance Tool Tests (pytest)' of ruleset 20141220 since 2026-10-05; no per-shard context is required, so the shard
+    # count can change without touching the ruleset.)
     name: Governance Tool Tests (pytest)
     needs: [changes, governance-tool-tests-shard]
     if: ${{ always() }}
