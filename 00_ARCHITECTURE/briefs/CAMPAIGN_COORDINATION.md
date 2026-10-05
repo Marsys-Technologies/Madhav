@@ -8595,7 +8595,7 @@ Resume condition for everything downstream: a successful protected deploy with 1
 
 ## 2026-10-05 — Journey 1 owner-authorized release
 
-- Lease ID: L-PORTAL-JOURNEY1-RELEASE-20261005; holder: Codex desktop; status: ACTIVE.
+- Lease ID: L-PORTAL-JOURNEY1-RELEASE-20261005; holder: Codex desktop; status: RELEASED.
 - Started: 2026-10-05T13:16:35.150394+00:00; expiry: 2026-10-05T19:16:35.150394+00:00.
 - Worktree: `/Users/Dev/.codex/worktrees/portal-experience/Madhav`; branch `codex/portal-experience`.
 - Authority: direct native instruction, “Go ahead and deploy it.” Authorizes necessary source commit/push, focused PR, protected merge queue and established no-traffic web deployment/promotion after gates. GIP §P.4 lease-only restriction is superseded only for this Journey 1 release.
@@ -8603,3 +8603,11 @@ Resume condition for everything downstream: a successful protected deploy with 1
 - Production operation: exclusive amjis-web release window, no concurrent web traffic shift from this campaign; rollback baseline `amjis-web-probe-944ccf22c250-37310776256-1` at 100%, protected main `944ccf22c250b6ebd0507c18d0f23438efceade4`. Normal pipeline only, no emergency CI bypass.
 - Excludes Journey2, separate cleanup worktree, foreign source/campaign state, chart rebuilds, paid AI calls, credential/account/permission changes, new migrations or infrastructure changes. Routine existing deploy runner remains gated; no new schema is authored.
 - Evidence surface: `00_ARCHITECTURE/briefs/journey1/release/RELEASE.md`.
+
+### Journey 1 release lease closed — 2026-10-05T15:03:30.577886+00:00
+
+- Lease: L-PORTAL-JOURNEY1-RELEASE-20261005, RELEASED. Owner-authorized PR #3178 merged through protected queue to `052ac7e89856757bbb2564688ff111a9a2c2cc05`.
+- Deploy run 37325087280 succeeded. Candidate smoke and Pūrṇa signing/RLS canary passed; desired and observed web traffic are 100% on `amjis-web-probe-052ac7e89856-37325087280-1`, image/label match. Only web deployed, existing tags preserved, no newly applied migration.
+- Entry and chart screens, distinct stored D1/D9/D10, five ayanamshas, Places, username availability and responsive controls verified read-only in Chrome. 49 Journey 1 HTTP responses were 200, zero 5xx.
+- Residuals: activation-window lookup unavailable; separate automatic Paripraśna smoke HTTP 400 / six of eleven blocking assertions, same as prior live baseline. Real account/reset/approval/username-save/chart CRUD/recompute acceptance remains pending. Journey 2 deferred; separate cleanup worktree untouched.
+- Evidence: owned `00_ARCHITECTURE/briefs/journey1/release/RELEASE.md`, `LIVE_REVIEW.json`, `LIVE_SERVICE.json`, CI/deploy/HTTP receipts and screenshot files. This release does not close another engine campaign.
