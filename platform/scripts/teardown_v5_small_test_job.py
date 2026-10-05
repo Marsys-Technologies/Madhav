@@ -192,6 +192,8 @@ def _validate_registry_row(cur, *, check_active: bool = True) -> None:
         actual = row[field]
         if field == "depends_on":
             actual = list(actual or [])
+        if field in ("health_probe", "integrity_check_sql") and actual == "":
+            actual = None                             # an empty string reads as NULL: the runner tests both with bool() (migration 1304 agrees)
         if actual != expected:
             raise TeardownRefused(
                 f"{ASSET_ID}.{field} is {actual!r}, expected {expected!r} — "

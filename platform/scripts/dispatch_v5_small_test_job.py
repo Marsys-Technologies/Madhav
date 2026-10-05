@@ -144,6 +144,9 @@ OUTCOME_TEXT = {
                       "when the session ends (this run did not observe that)."),
     "committed": ("COMMIT CONFIRMED: the transaction COMMITTED and the small-test run IS STAGED; only reporting the result failed "
                   "afterwards. Do not dispatch again; the run id is named above."),
+    "unlabelled": ("What happened to the transaction was NOT recorded for this failure, so nothing is claimed either way: look the attempted "
+                   "run id up with the READ-ONLY lookup (python3 scripts/dispatch_v5_small_test_job.py --lookup <the attempted run id>, or "
+                   "--list-runs) before any retry."),
     "commit_unknown": ("COMMIT OUTCOME UNKNOWN: the COMMIT statement was sent and no confirmation came back. The staged run may or "
                        "may not exist. Look it up with the READ-ONLY lookup (it needs no admission checks and stages nothing): "
                        "python3 scripts/dispatch_v5_small_test_job.py --lookup <the attempted run id named above> (or --list-runs); do not retry "
@@ -208,6 +211,8 @@ def _validate_registry_row(cur) -> None:
         actual = row[field]
         if field == "depends_on":
             actual = list(actual or [])
+        if field in ("health_probe", "integrity_check_sql") and actual == "":
+            actual = None                             # an empty string reads as NULL: the runner tests both with bool() (migration 1304 agrees)
         if actual != expected:
             raise RuntimeError(
                 f"{ASSET_ID}.{field} is {actual!r}, expected {expected!r} — the registry row "
@@ -554,40 +559,48 @@ def main(argv: list[str] | None = None) -> None:
                VALUES (%s, %s, 0, 'queued')""",
             (run_id, ASSET_ID),
         )
+        # Codex round 6 (1): EVERYTHING that will be printed is prepared BEFORE the COMMIT, so nothing that can fail after it needs data or work
+        report = _prepare_report(dry_run=dry_run, run_id=run_id, manifest=manifest, manifest_digest=manifest_digest, existing=existing,
+                                 notes=notes, created_at=created_at)
         if dry_run:
             conn.rollback()
+            phase = "rolled_back"
         else:
             phase = "committing"
             conn.commit()
             phase = "committed"
             _AFTER_COMMIT()
+        try:
+            conn.close()
+        except Exception:
+            pass
+        _emit_report(report)
     except BaseException as exc:
+        # ONE handler for the whole transaction life, including the close and the printing: the outcome and the attempted run id are attached
+        # to ANY exception, whatever phase it came from (an interrupt included), and the phase alone decides what is claimed
         exc.dispatch_run_id = run_id                 # type: ignore[attr-defined]
         if phase == "committing":                    # the COMMIT was sent and nothing came back: never roll back or claim 'unchanged'
             _note_outcome(exc, "commit_unknown")
-        elif phase == "committed":                   # Codex round 5 (1): confirmed; no rollback is attempted or reported
+        elif phase == "committed":                   # confirmed: no rollback is attempted or reported
             _note_outcome(exc, "committed")
-        else:
-            _note_outcome(exc, None)
+        elif phase == "rolled_back":                 # the dry run's ROLLBACK completed
+            _note_outcome(exc, "rolled_back")
+        else:                                        # still open: roll back and say whether it was confirmed
+            _note_outcome(exc, "rollback_unconfirmed")
             try:
                 conn.rollback()
                 _note_outcome(exc, "rolled_back")
             except BaseException:
-                _note_outcome(exc, "rollback_unconfirmed")
+                pass
         try:
             conn.close()
         except BaseException:                        # an interruption here must not replace the exception already propagating
             pass
         raise
-    try:
-        conn.close()
-    except Exception:
-        pass
-    except BaseException as exc:                     # Codex round 5 (1): an interrupt during the close keeps the known outcome
-        _note_outcome(exc, "rolled_back" if dry_run else "committed")
-        exc.dispatch_run_id = run_id                 # type: ignore[attr-defined]
-        raise
 
+
+def _prepare_report(*, dry_run: bool, run_id: str, manifest: dict, manifest_digest: str, existing: list, notes: list, created_at) -> dict:
+    """Everything the run will print, built BEFORE the COMMIT: {'stderr': [lines], 'stdout': [lines]}."""
     plan = {
         "run_id": run_id,
         "chart_id": CHART_ID,
@@ -598,40 +611,39 @@ def main(argv: list[str] | None = None) -> None:
         "existing_small_test_runs": existing,
         "admission_notes": notes,
     }
-    try:                                             # a failure while REPORTING keeps what is already known (and the run id)
-        if dry_run:
-            print(f"[dry-run] staged plan for a SMALL TEST build of {ASSET_ID} on chart "
-                  f"{CHART_ID} — ROLLED BACK, nothing written. Existing small-test runs of this chart: "
-                  f"{[(r['id'], r['state'], r['created_at']) for r in existing] or 'none'} (an attempted run after an unknown commit outcome "
-                  f"is looked up with --lookup <run id> or --list-runs, not with this dry run). A real dispatch prints a teardown deadline {RETENTION_DAYS} days out "
-                  f"(cockpit retention; {RUNBOOK}) and must be executed within {EXECUTE_WITHIN_MINUTES} minutes", file=sys.stderr)
-            for line in image_skew_notice(manifest):
-                print(line, file=sys.stderr)
-            print(json.dumps(plan, indent=2, sort_keys=True), flush=True)
-            return
-        if created_at is None:                       # cannot happen on a committed run; never fall back to the client clock
-            raise RuntimeError("the INSERT returned no created_at, so no deadline can be derived from the database")
-        execute_by = (created_at + datetime.timedelta(minutes=EXECUTE_WITHIN_MINUTES)).isoformat(timespec="seconds")
-        deadline = (created_at + datetime.timedelta(days=RETENTION_DAYS)).isoformat(timespec="seconds")
-        print(f"[dispatch] EXECUTE WITHIN {EXECUTE_WITHIN_MINUTES} MINUTES of the stored creation time {created_at.isoformat(timespec='seconds')}: "
-              f"the cockpit watchdog fails a planned run that was never started after {EXECUTE_WITHIN_MINUTES} minutes (by {execute_by}); "
-              f"launch the command below promptly or re-stage", file=sys.stderr)
-        print(f"[dispatch] TEARDOWN DEADLINE: tear the small test down by {deadline} ({RETENTION_DAYS} days after the stored creation time: the "
-              f"cockpit watchdog then deletes the run row and its receipts lose their run link; the teardown refuses those for good — see {RUNBOOK})",
-              file=sys.stderr)
-        for line in image_skew_notice(manifest):
-            print(line, file=sys.stderr)
-        print(f"[dispatch] staged v5 SMALL TEST build_run {run_id} for asset "
-              f"{ASSET_ID} on chart {CHART_ID} (manifest digest {manifest_digest}); "
-              f"asset_registry was not touched. Execute on steward go "
-              f"via `gcloud run jobs execute brahma-build-pipeline-job "
-              f"--args=--run-id,{run_id}`",
-              file=sys.stderr)
-        print(run_id, flush=True)
-    except BaseException as exc:
-        _note_outcome(exc, "committed" if not dry_run else "rolled_back")
-        exc.dispatch_run_id = run_id                 # type: ignore[attr-defined]
-        raise
+    skew = image_skew_notice(manifest)
+    if dry_run:
+        return {"stderr": [
+            f"[dry-run] staged plan for a SMALL TEST build of {ASSET_ID} on chart "
+            f"{CHART_ID} — ROLLED BACK, nothing written. Existing small-test runs of this chart: "
+            f"{[(r['id'], r['state'], r['created_at']) for r in existing] or 'none'} (an attempted run after an unknown commit outcome "
+            f"is looked up with --lookup <run id> or --list-runs, not with this dry run). A real dispatch prints a teardown deadline {RETENTION_DAYS} days out "
+            f"(cockpit retention; {RUNBOOK}) and must be executed within {EXECUTE_WITHIN_MINUTES} minutes", *skew],
+            "stdout": [json.dumps(plan, indent=2, sort_keys=True)]}
+    if created_at is None:                           # cannot happen on a real insert; never fall back to the client clock
+        raise RuntimeError("the INSERT returned no created_at, so no deadline can be derived from the database")
+    execute_by = (created_at + datetime.timedelta(minutes=EXECUTE_WITHIN_MINUTES)).isoformat(timespec="seconds")
+    deadline = (created_at + datetime.timedelta(days=RETENTION_DAYS)).isoformat(timespec="seconds")
+    return {"stderr": [
+        f"[dispatch] EXECUTE WITHIN {EXECUTE_WITHIN_MINUTES} MINUTES of the stored creation time {created_at.isoformat(timespec='seconds')}: "
+        f"the cockpit watchdog fails a planned run that was never started after {EXECUTE_WITHIN_MINUTES} minutes (by {execute_by}); "
+        f"launch the command below promptly or re-stage",
+        f"[dispatch] TEARDOWN DEADLINE: tear the small test down by {deadline} ({RETENTION_DAYS} days after the stored creation time: the "
+        f"cockpit watchdog then deletes the run row and its receipts lose their run link; the teardown refuses those for good — see {RUNBOOK})",
+        *skew,
+        f"[dispatch] staged v5 SMALL TEST build_run {run_id} for asset "
+        f"{ASSET_ID} on chart {CHART_ID} (manifest digest {manifest_digest}); "
+        f"asset_registry was not touched. Execute on steward go "
+        f"via `gcloud run jobs execute brahma-build-pipeline-job "
+        f"--args=--run-id,{run_id}`"],
+        "stdout": [run_id]}
+
+
+def _emit_report(report: dict) -> None:
+    for line in report["stderr"]:
+        print(line, file=sys.stderr)
+    for line in report["stdout"]:
+        print(line, flush=True)
 
 
 def _safe_failure(exc: BaseException) -> str:
@@ -639,7 +651,7 @@ def _safe_failure(exc: BaseException) -> str:
     transaction, naming the attempted run. 'Unchanged' is claimed only when a rollback was confirmed."""
     kind = f"{type(exc).__module__}.{type(exc).__name__}"
     state = getattr(exc, "sqlstate", None)
-    known = OUTCOME_TEXT.get(getattr(exc, "dispatch_outcome", None) or "before_commit", OUTCOME_TEXT["commit_unknown"])
+    known = OUTCOME_TEXT.get(getattr(exc, "dispatch_outcome", None) or "unlabelled", OUTCOME_TEXT["unlabelled"])   # never defaults to a no-commit claim
     run = getattr(exc, "dispatch_run_id", None)
     return (f"dispatch failed: {kind}{f' (SQLSTATE {state})' if state else ''}. The exception text is withheld because a "
             f"connection error can carry credentials. {f'Attempted run id: {run}. ' if run else ''}{known}")

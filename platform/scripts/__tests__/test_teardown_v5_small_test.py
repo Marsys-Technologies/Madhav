@@ -1448,3 +1448,9 @@ def test_r5_the_proof_returns_every_matching_run_id():
     problem, _source, _sliced, matched = shared.prove_stamp(STAMP, runs)
     assert problem is None and matched == [RUN_1, other]
     assert shared.prove_stamp(STAMP, [])[3] == []                                              # a reconstruction names no run
+
+
+def test_an_empty_string_probe_or_integrity_check_reads_as_null_in_the_teardown_too():
+    h = _Harness(registry_row=dict(REGISTRY_ROW, health_probe="", integrity_check_sql=""))
+    _run(h)
+    assert h.commits == 1

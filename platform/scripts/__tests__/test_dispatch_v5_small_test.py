@@ -152,9 +152,87 @@ def test_expected_registry_row_is_the_1304_values():
     e = dispatch.EXPECTED_REGISTRY_ROW
     assert (e["has_substeps"], e["writer_timeout_seconds"], e["depends_on"], e["target_table"], e["is_active"]) == (
         True, 7200, ["ga_positions", "ga_dashas"], "ka_gochara_eval_window", False)
-    sql = (REPO / "platform/migrations/1304_ka_gochara_v5_registry_row_small_test.sql")
-    if sql.exists():   # present once PR 3101 is in the tree: the two must agree on the counter text
-        assert e["count_sql"].replace("'", "''") in sql.read_text(encoding="utf-8")
+
+
+import re as _re  # noqa: E402
+
+MIGRATION_1304 = REPO / "platform/migrations/1304_ka_gochara_v5_registry_row_small_test.sql"
+
+
+def parse_1304(sql: str) -> dict:
+    """Every admission field migration 1304 lands or checks, read from the migration's own text: the UPDATE's SET list and its count_sql
+    constant (WRITTEN), and the landed-shape post-check (is_active, has_writer and the five routing fields: CHECKED)."""
+    update = sql[sql.index("UPDATE asset_registry"):sql.index("WHERE asset_id = 'ka_gochara_v5'")]
+    check = sql[sql.index("SELECT count(*) INTO v_ok"):sql.index("IF v_ok <> 1")]
+    constant = _re.search(r"v_count_sql CONSTANT text := '((?:[^']|'')*)';", sql).group(1).replace("''", "'")
+    depends = _re.search(r"depends_on = ARRAY\[([^\]]*)\]::text\[\]", update).group(1)
+    return {
+        "is_active": False if "is_active IS FALSE" in check else None,
+        "has_writer": True if "has_writer IS TRUE" in check else None,
+        "has_substeps": _re.search(r"has_substeps = (true|false)", update).group(1) == "true",
+        "writer_timeout_seconds": int(_re.search(r"writer_timeout_seconds = (\d+)", update).group(1)),
+        "depends_on": [x.strip().strip("'") for x in depends.split(",")],
+        "target_table": _re.search(r"target_table = '([^']*)'", update).group(1),
+        "count_sql": constant,
+        "target_floor": int(_re.search(r"target_floor = (\d+)", update).group(1)),
+        "estimated_seconds": None if _re.search(r"estimated_seconds = NULL", update) else "?",
+        "asset_kind": _re.search(r"asset_kind = '([^']*)'", check).group(1),
+        "asset_type": _re.search(r"asset_type = '([^']*)'", check).group(1),
+        "health_probe": None if "health_probe IS NULL" in check else "?",
+        "integrity_check_sql": None if "integrity_check_sql IS NULL" in check else "?",
+        "rebuild_on_probe_fail": False if "rebuild_on_probe_fail IS FALSE" in check else None,
+    }
+
+
+REQUIRED_PARITY_FIELDS = {"is_active", "has_writer", "has_substeps", "writer_timeout_seconds", "depends_on", "target_table", "count_sql",
+                          "target_floor", "estimated_seconds", "asset_kind", "asset_type", "health_probe", "integrity_check_sql",
+                          "rebuild_on_probe_fail"}
+
+
+def test_the_1304_parity_covers_every_admission_field_when_the_migration_is_in_the_tree():
+    """Codex round 6 (2): the dispatch's EXPECTED_REGISTRY_ROW equals what migration 1304 lands or checks, FIELD BY FIELD (not only the counter text).
+    Absent migration: an explicit, named skip, never a silent pass (the migration is PR 3101's; this assertion runs once both are in one tree)."""
+    if not MIGRATION_1304.exists():
+        pytest.skip("migration 1304 (PR 3101) is not in this tree: the field-by-field parity assertion cannot run here and is NOT being claimed")
+    landed = parse_1304(MIGRATION_1304.read_text(encoding="utf-8"))
+    expected = dispatch.EXPECTED_REGISTRY_ROW
+    assert REQUIRED_PARITY_FIELDS <= set(landed)
+    for field in REQUIRED_PARITY_FIELDS:
+        assert landed[field] is not None or field in ("health_probe", "integrity_check_sql", "estimated_seconds"), f"{field}: not found in 1304"
+        assert expected[field] == landed[field], f"{field}: the dispatch expects {expected[field]!r}, migration 1304 lands/checks {landed[field]!r}"
+    assert set(expected) == REQUIRED_PARITY_FIELDS | {"scope"}                 # every expected field is covered (scope: 1243's, untouched by 1304)
+
+
+SAMPLE_1304 = """
+DO $mig$
+DECLARE
+  v_count_sql CONSTANT text := 'SELECT COUNT(*) FROM t WHERE chart_id=$1 AND generation=''5.0''';
+BEGIN
+  UPDATE asset_registry
+     SET has_substeps = true,
+         writer_timeout_seconds = 7200,
+         depends_on = ARRAY['a','b']::text[],
+         count_sql = v_count_sql,
+         target_table = 'tt',
+         target_floor = 0,
+         estimated_seconds = NULL
+   WHERE asset_id = 'ka_gochara_v5';
+  SELECT count(*) INTO v_ok FROM asset_registry
+   WHERE asset_id = 'ka_gochara_v5' AND is_active IS FALSE AND has_writer IS TRUE
+     AND asset_kind = 'data' AND asset_type = 'data' AND (health_probe IS NULL OR health_probe = '')
+     AND (integrity_check_sql IS NULL OR integrity_check_sql = '') AND rebuild_on_probe_fail IS FALSE;
+  IF v_ok <> 1 THEN
+"""
+
+
+def test_the_1304_parser_reads_every_field_from_the_migration_text():
+    got = parse_1304(SAMPLE_1304)
+    assert got["count_sql"] == "SELECT COUNT(*) FROM t WHERE chart_id=$1 AND generation='5.0'"
+    assert got["depends_on"] == ["a", "b"] and got["writer_timeout_seconds"] == 7200 and got["has_substeps"] is True
+    assert (got["asset_kind"], got["asset_type"], got["health_probe"], got["integrity_check_sql"], got["rebuild_on_probe_fail"]) == (
+        "data", "data", None, None, False)
+    mutated = parse_1304(SAMPLE_1304.replace("rebuild_on_probe_fail IS FALSE", "true").replace("asset_kind = 'data'", "asset_kind = 'service'"))
+    assert mutated["rebuild_on_probe_fail"] is None and mutated["asset_kind"] == "service"      # a changed migration changes the parse
 
 
 # ── recording fake psycopg ────────────────────────────────────────────────────
@@ -434,7 +512,7 @@ def test_execute_still_needs_both_steward_flags(capsys):
     assert exc.value.code == 2 and h.statements == []
 
 
-def _run_cli(harness, argv, capsys, *, connect_error=None, database_url="postgresql://fake/fake", after_commit=None):
+def _run_cli(harness, argv, capsys, *, connect_error=None, database_url="postgresql://fake/fake", after_commit=None, patches=None):
     fake_psycopg = types.ModuleType("psycopg")
     fake_rows = types.ModuleType("psycopg.rows")
     fake_rows.dict_row = object()
@@ -458,6 +536,8 @@ def _run_cli(harness, argv, capsys, *, connect_error=None, database_url="postgre
         module = _load_fresh()
         if after_commit is not None:
             module._AFTER_COMMIT = after_commit
+        for name, value in (patches or {}).items():
+            setattr(module, name, value)
         code = module.cli(argv)
         return code, capsys.readouterr(), connects
     finally:
@@ -945,3 +1025,52 @@ def test_r5_an_interrupt_during_the_close_never_replaces_a_refusal_already_propa
     h = _Harness(active_runs=[{"id": "r-1", "state": "planned"}], close_error=KeyboardInterrupt())
     code, streams, _ = _run_cli(h, BASE_ARGV, capsys)
     assert code == 1 and "a build run is already active" in streams.err and not h.commits
+
+
+# ── Codex round 6 (1): the report is built BEFORE the commit; one handler; an unknown failure never claims 'no commit' ──────────────
+
+def test_r6_an_interrupt_while_the_report_is_prepared_BEFORE_the_commit_is_a_confirmed_rollback_naming_the_run(capsys):
+    h = _Harness()
+    code, streams, _ = _run_cli(h, BASE_ARGV, capsys, patches={"image_skew_notice": lambda manifest: _interrupt()})
+    assert code == 130 and not h.commits and "ROLLBACK CONFIRMED" in streams.err and "Attempted run id:" in streams.err
+
+
+def test_r6_an_interrupt_while_the_report_is_PRINTED_after_a_confirmed_commit_is_commit_confirmed_with_the_run_id(capsys):
+    h = _Harness()
+
+    def emit(report):
+        raise KeyboardInterrupt()
+    code, streams, _ = _run_cli(h, BASE_ARGV, capsys, patches={"_emit_report": emit})
+    assert len(h.commits) == 1 and code == 130 and "COMMIT CONFIRMED" in streams.err and "Attempted run id:" in streams.err
+    assert "No COMMIT was sent" not in streams.err and "ROLLBACK CONFIRMED" not in streams.err
+
+
+def test_r6_everything_printed_is_prepared_before_the_commit_statement(capsys):
+    order = []
+    h = _Harness()
+    real_commit = h.conn.commit
+
+    def commit():
+        order.append("commit")
+        return real_commit()
+    h.conn.commit = commit
+
+    def skew(manifest):
+        order.append("prepare")
+        return []
+    _run_cli(h, BASE_ARGV, capsys, patches={"image_skew_notice": skew})
+    assert order == ["prepare", "commit"], order
+
+
+def test_r6_a_failure_with_no_recorded_outcome_never_claims_that_nothing_was_committed():
+    text = dispatch._safe_failure(RuntimeError("anything"))
+    assert "NOT recorded" in text and "--lookup" in text
+    assert "No COMMIT was sent" not in text and "ROLLBACK CONFIRMED" not in text and "committed nothing" not in text
+
+
+def test_an_empty_string_probe_or_integrity_check_reads_as_null(capsys):
+    h = _Harness(registry_row=dict(dispatch.EXPECTED_REGISTRY_ROW, health_probe="", integrity_check_sql=""))
+    _run_main(h, BASE + ["--dry-run"], capsys)                    # admitted: bool("") is False in the runner, as NULL
+    h2 = _Harness(registry_row=dict(dispatch.EXPECTED_REGISTRY_ROW, integrity_check_sql=" "))
+    with pytest.raises(RuntimeError, match="integrity_check_sql"):
+        _run_main(h2, BASE + ["--dry-run"], capsys)               # a non-empty value is still refused
