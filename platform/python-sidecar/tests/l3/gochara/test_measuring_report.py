@@ -29,20 +29,26 @@ def T(y, m, d, hh=0, mm=0):
 _SEQ = {"n": 0}
 
 
-def LEL(d, conf="exact", shape="point", category="work", interval_start=None, event_id=None, **extra):
-    """a STORED life_events row. A REAL-digit id `EVT.YYYY.MM.DD.NN` for an exact dated row, `EVT.YYYY.XX.XX.NN` for a year-only one."""
+_NOID = object()
+
+
+def LEL(d, conf="exact", shape="point", category="work", interval_start=None, event_id=None, lel_id=_NOID, **extra):
+    """a STORED life_events row as the intake writes it: a uuid5-style `event_id` and the human id in `provenance.lel_id`
+    (`EVT.YYYY.MM.DD.NN`, `EVT.YYYY.XX.XX.NN` for a year-only row). `lel_id=None` = no lel id at all."""
     _SEQ["n"] += 1
+    if lel_id is _NOID:
+        lel_id = (f"EVT.{d.year:04d}.XX.XX.{_SEQ['n']:02d}" if conf == "year_only" else f"EVT.{d.year:04d}.{d.month:02d}.{d.day:02d}.{_SEQ['n']:02d}")
     if event_id is None:
-        event_id = f"EVT.{d.year:04d}.XX.XX.{_SEQ['n']:02d}" if conf == "year_only" else f"EVT.{d.year:04d}.{d.month:02d}.{d.day:02d}.{_SEQ['n']:02d}"
+        event_id = f"1234abcd-0000-5000-8000-{_SEQ['n']:012d}"
     row = {"event_id": event_id, "event_date": d, "category": category, "date_confidence": conf, "shape": shape, "interval_start": interval_start,
-           "interval_end": None, "chain_parent_event_id": None}
+           "interval_end": None, "chain_parent_event_id": None, "provenance": ({"lel_id": lel_id} if lel_id is not None else {})}
     row.update(extra)
     return row
 
 
 def born(d=BIRTH):
     """the birth row as the SOURCE log has it: category other, subcategory birth"""
-    return LEL(d, category="other", subcategory="birth", event_id=f"EVT.{d.year:04d}.{d.month:02d}.{d.day:02d}.00")
+    return LEL(d, category="other", subcategory="birth", lel_id=f"EVT.{d.year:04d}.{d.month:02d}.{d.day:02d}.00")
 
 
 BIRTH_ROW = born()
@@ -125,19 +131,35 @@ def test_the_birth_row_is_identified_by_the_documented_vocabulary_and_refused_wh
     assert fully_dated_events([], birth_date=BIRTH)["dates"] == []                                                                   # an empty log is not an error
 
 
-def test_fully_dated_is_exact_and_a_real_digit_id_equal_to_the_date_and_a_disagreement_that_moves_start_is_refused():
+def test_fully_dated_is_a_conjunction_of_exact_and_a_dated_lel_id_and_a_failing_row_is_excluded_and_reported_never_a_refusal():
     rows = [BIRTH_ROW, LEL(date(1997, 7, 1), conf="year_only"), LEL(date(1997, 5, 1), conf="month_known"), LEL(date(2001, 6, 9))]
     info = fully_dated_events(rows, birth_date=BIRTH)
-    assert info["dates"] == [date(2001, 6, 9)] and info["excluded"] == 2                          # the birth entry is aside, not "excluded"
-    # a legacy row defaulted to `exact` whose id carries XX: the flag alone would open 1996, the id rule does not -> the two rules disagree
-    legacy = LEL(date(1996, 3, 3), event_id="EVT.1996.XX.XX.01")
-    _refuses(lambda: fully_dated_events([BIRTH_ROW, legacy, LEL(date(2001, 6, 9))], birth_date=BIRTH), "lel_dating_rules_disagree")
-    # a stored date that differs from its id's date is the same disagreement
-    skewed = LEL(date(1996, 3, 3), event_id="EVT.1996.03.04.01")
-    _refuses(lambda: fully_dated_events([BIRTH_ROW, skewed, LEL(date(2001, 6, 9))], birth_date=BIRTH), "lel_dating_rules_disagree")
-    # a disagreeing row that is NOT the first event changes no start and is only excluded
-    late_legacy = LEL(date(2009, 3, 3), event_id="EVT.2009.XX.XX.01")
-    assert fully_dated_events([BIRTH_ROW, late_legacy, LEL(date(2001, 6, 9))], birth_date=BIRTH)["dates"] == [date(2001, 6, 9)]
+    assert info["dates"] == [date(2001, 6, 9)] and info["excluded"] == 2 and info["flag_exact_but_id_undated"] == []
+    # the reviewer's input: the intake's uuid `event_id` with the EVT id in provenance.lel_id is a VALID fully dated event (no refusal)
+    ok = LEL(date(1998, 2, 16), event_id="12345678-1234-1234-1234-123456789abc", lel_id="EVT.1998.02.16.01")
+    d = derive_chart_horizon_detail(BIRTH, [BIRTH_ROW, ok], BUILD)
+    assert (d["start"], d["basis"], d["chosen"]) == (date(1998, 1, 1), "first_dated_event", "12345678-1234-1234-1234-123456789abc")
+    # an exact-flagged row whose lel id is undated (457 defaulted legacy rows to exact) before a valid 1998 event: EXCLUDED and REPORTED, start 1998
+    legacy = LEL(date(1995, 7, 1), lel_id="EVT.1995.XX.XX.01")
+    d = derive_chart_horizon_detail(BIRTH, [BIRTH_ROW, legacy, ok], BUILD)
+    assert d["start"] == date(1998, 1, 1) and d["excluded_undated"] == 1
+    assert [r["lel_id"] for r in d["flag_exact_but_id_undated"]] == ["EVT.1995.XX.XX.01"]
+    # a stored date that differs from its lel id's date is the same exclusion
+    skewed = LEL(date(1996, 3, 3), lel_id="EVT.1996.03.04.01")
+    assert derive_chart_horizon_detail(BIRTH, [BIRTH_ROW, skewed, ok], BUILD)["start"] == date(1998, 1, 1)
+    # the reverse: a dated top-level event_id (EVT form) with an UNDATED provenance.lel_id is disqualified, not accepted
+    reverse = LEL(date(1996, 3, 3), event_id="EVT.1996.03.03.01", lel_id="EVT.1996.XX.XX.01")
+    assert derive_chart_horizon_detail(BIRTH, [BIRTH_ROW, reverse, ok], BUILD)["start"] == date(1998, 1, 1)
+
+
+def test_a_candidate_first_event_with_no_lel_id_at_all_is_the_one_refusal():
+    no_id = LEL(date(1996, 3, 3), lel_id=None)                                    # exact-flagged, no provenance.lel_id, uuid event_id
+    _refuses(lambda: fully_dated_events([BIRTH_ROW, no_id, LEL(date(2001, 6, 9))], birth_date=BIRTH), "lel_id_missing_on_candidate_first_event")
+    # a row WITHOUT an id that is not the earliest exact-flagged row is merely excluded
+    late = LEL(date(2009, 3, 3), lel_id=None)
+    assert fully_dated_events([BIRTH_ROW, late, LEL(date(2001, 6, 9))], birth_date=BIRTH)["dates"] == [date(2001, 6, 9)]
+    # the contract's fallback: no provenance lel_id, but an event_id of the EVT form stands in
+    assert fully_dated_events([BIRTH_ROW, LEL(date(2001, 6, 9), event_id="EVT.2001.06.09.07", lel_id=None)], birth_date=BIRTH)["dates"] == [date(2001, 6, 9)]
 
 
 def test_a_shape_reading_that_would_change_start_is_refused_and_one_that_does_not_is_not():
@@ -159,7 +181,7 @@ def test_a_shape_reading_that_would_change_start_is_refused_and_one_that_does_no
 def test_an_unknown_confidence_or_shape_word_or_a_missing_date_is_refused_by_name():
     _refuses(lambda: fully_dated_events([BIRTH_ROW, LEL(date(2001, 6, 9), conf="circa")], birth_date=BIRTH), "lel_date_confidence_unknown")
     _refuses(lambda: fully_dated_events([BIRTH_ROW, LEL(date(2001, 6, 9), shape="blob")], birth_date=BIRTH), "lel_shape_unknown")
-    _refuses(lambda: fully_dated_events([BIRTH_ROW, LEL(None, event_id="EVT.2001.06.09.01")], birth_date=BIRTH), "lel_date_missing")
+    _refuses(lambda: fully_dated_events([BIRTH_ROW, LEL(None, lel_id="EVT.2001.06.09.01")], birth_date=BIRTH), "lel_date_missing")
 
 
 def test_the_horizon_cannot_start_before_the_substrate_domain_or_before_birth_or_in_the_future():
@@ -266,7 +288,9 @@ def test_shares_by_path_fast_slow_union_and_per_agent_contribution_with_p4_as_an
     # per agent over P1-P3 records: venus {1,2,3} exclusive {1,2}; jupiter {3,4,5} exclusive {4,5}; saturn {10}; moon {20,21}; P4 is joint
     # `exclusive_days` is against the other agents' P1-P3 records; `exclusive_days_vs_class` also removes the P4 intersection {Jan 4, 5}:
     assert r["per_agent"]["venus"] == {"days": 3, "exclusive_days": 2, "exclusive_days_vs_class": 2}
-    assert r["per_agent"]["jupiter"] == {"days": 3, "exclusive_days": 2, "exclusive_days_vs_class": 0}      # Jupiter's days 4,5 are P4's too
+    # removing Jupiter removes its P3 days {3,4,5}... of which only {4,5} are left uncovered by Venus, AND it breaks the P4 intersection: 2 days lost
+    assert r["per_agent"]["jupiter"] == {"days": 3, "exclusive_days": 2, "exclusive_days_vs_class": 2}
+    # removing Saturn removes P3 {10} and breaks P4 (Jupiter alone), whose days {4,5} stay covered by Jupiter's P3: 1 day lost
     assert r["per_agent"]["saturn"] == {"days": 1, "exclusive_days": 1, "exclusive_days_vs_class": 1}
     assert r["per_agent"]["moon"] == {"days": 2, "exclusive_days": 2, "exclusive_days_vs_class": 2}
     assert r["P4_joint"] == {"without_dvi_days": 2, "with_dvi_days": 2}
@@ -618,3 +642,22 @@ def test_the_marker_digest_is_never_presented_as_verified_and_a_malformed_one_is
     assert measuring_refusals(v, expected_horizon=H) == []                         # well-formed: accepted, but not 'verified'
     for bad in ("garbage", "d" * 63, "d" * 65, "D" * 64, "g" * 64, "zz" + "d" * 62):
         assert any(x.startswith("marker_digest_malformed") for x in measuring_refusals(_view(marker_digest=bad), expected_horizon=H)), bad
+
+
+def test_an_agents_contribution_against_complete_class_admission_includes_the_p4_it_breaks():
+    d = lambda n: T(2000, 1, n)                                                    # noqa: E731
+    ten = (d(1), d(11))
+    recs = [_rec("marriage", "P3", "jupiter", ten), _p4("jupiter", *ten), _p4("saturn", *ten)]
+    r = class_share_report(recs, [], H)["classes"]["marriage"]
+    assert r["admitted_days"]["class_union"] == 10
+    pa = r["per_agent"]
+    assert pa["jupiter"]["exclusive_days_vs_class"] == 10                          # without Jupiter: no P3 and no P4 -> 0 days (the reviewer's input)
+    assert pa["saturn"]["exclusive_days_vs_class"] == 0                            # without Saturn Jupiter's P3 still admits all ten days
+    only_p4 = class_share_report([_p4("jupiter", *ten), _p4("saturn", *ten)], [], H)["classes"]["marriage"]["per_agent"]
+    assert set(only_p4) == {"jupiter", "saturn"} and only_p4["jupiter"]["exclusive_days_vs_class"] == only_p4["saturn"]["exclusive_days_vs_class"] == 10
+
+
+def test_a_digest_with_a_trailing_newline_or_any_extra_character_is_refused():
+    for bad in ("d" * 64 + "\n", "d" * 64 + " ", "\n" + "d" * 64, "d" * 64 + "\x00"):
+        assert any(x.startswith("marker_digest_malformed") for x in measuring_refusals(_view(marker_digest=bad), expected_horizon=H)), repr(bad)
+    assert measuring_refusals(_view(marker_digest="a1" * 32), expected_horizon=H) == []
