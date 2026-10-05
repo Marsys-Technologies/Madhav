@@ -59,6 +59,13 @@ export const queryTriangulationCapability: CapabilityDescriptor = {
     bulk_context: { pre_fetch_priority: 25, always_include: false },
   },
 
+  // Suvarna DENS (§N.6, §N.8): hand-authored from what this handler actually does, not the derived default.
+  density_contract: {
+    paginated: false, // `limit` is a cap with a disclosed total; no offset, no cursor
+    facets: ['ayanamsha_id', 'question_class', 'tradition'],
+    empty_reason: true, // handler sets `empty_reason` when zero rows match
+  },
+
   async handler(args: Record<string, unknown>, _ctx: unknown) {
     void _ctx
     const chart_id = args['chart_id'] ? String(args['chart_id']) : ''

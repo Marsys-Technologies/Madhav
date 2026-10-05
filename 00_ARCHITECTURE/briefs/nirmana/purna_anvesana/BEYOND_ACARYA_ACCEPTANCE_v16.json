@@ -1,0 +1,82 @@
+{
+    "schema_version": "madhav-purna-anvesana/beyond-acarya-acceptance/v16",
+    "campaign_id": "madhav-purna-anvesana",
+    "packet_id": "SUVARNA-DENS-PR1-L2-DENSITY-CONTRACT-SNAPSHOT-REGEN",
+    "predecessor": {
+        "artifact": "BEYOND_ACARYA_ACCEPTANCE_v15.json",
+        "acceptance_version": "beyond-acarya-source-acceptance-v2",
+        "capability_content_hash": "sha256:bff49e66b133a837aab85a209679b0a0f8c476b2a13734765fe7d064dc0d417b",
+        "report_hash": "sha256:f35696cc07f5df555e07dbb33b096e46501896048b8be45456a895f75b03f558"
+    },
+    "preserves_historical_predecessor": true,
+    "acceptance_version": "beyond-acarya-source-acceptance-v2",
+    "corpus_version": "beyond-acarya-inquiry-corpus-v1",
+    "temporal_anchor_date": "2026-10-02",
+    "evaluated_source_revision": "f72dc9d93921c1fd5c9497d72c044483fc7ba8a2",
+    "generated_snapshot": {
+        "path": "platform/src/generated/capability_knowledge.snapshot.json",
+        "generated_at": "2026-10-02T02:18:40.000Z",
+        "snapshot_file_sha256": "sha256:4eea70821d71699754be16411a7597c4fae40ad92c23706e9aac6be0f31a0aba",
+        "capability_content_hash": "sha256:33c8b73f73ec1ac89056a36691f821a28f6b7876e95a9b82ce71063f95678ad1",
+        "source_catalog_fingerprint": "sha256:62d4dda63cfacb2a5c358b1a929959779fca2d08739ce575cc007b740c498460",
+        "semantic_review_fingerprint": "sha256:f48e5a0bb1d5d6b496e23a3b030bfeae145a424ade44eff64b3b28c8659e5b12",
+        "producer_contract_fingerprint": "sha256:e52114464a82bb9ff6c3392202fdda7a31770dcffc6e49d93eebcf4fffeba4e5"
+    },
+    "capability_content_hash": "sha256:33c8b73f73ec1ac89056a36691f821a28f6b7876e95a9b82ce71063f95678ad1",
+    "report_hash": "sha256:b6b7939999746b75d4fd17c5ec99d13db4bfb937a0ce6b8562bcb083b0de55de",
+    "evidence_kind": "synthetic_source_local",
+    "source_status": "SOURCE_ONLY_NOT_LIVE",
+    "verdict": "ACCEPTED_SOURCE_LOCAL",
+    "metrics": {
+        "novel_combination_suite": {
+            "passed": true,
+            "cases": 5,
+            "expected_novel_capabilities": 13,
+            "missing_novel_capabilities": 0
+        },
+        "omission_rate": {
+            "passed": true,
+            "omitted": 0,
+            "expected": 25,
+            "rate": 0
+        },
+        "route_coverage": {
+            "passed": true,
+            "covered": 34,
+            "expected": 34,
+            "rate": 1
+        },
+        "semantic_edge_coverage": {
+            "passed": true,
+            "covered": 9,
+            "expected": 9,
+            "rate": 1
+        },
+        "long_inquiry_closure": {
+            "passed": true,
+            "completed_cases": 1,
+            "total_cases": 1,
+            "blocked_case_ids": [],
+            "minimum_iterations_observed": 10,
+            "pagination_continuations": 1,
+            "retained_earlier_evidence": true
+        },
+        "abstention_quality": {
+            "passed": true,
+            "passed_cases": 3,
+            "total_cases": 3,
+            "cases": {
+                "missing_required_floor_rejected": true,
+                "capped_material_frontier_blocked": true,
+                "unavailable_channel_abstained": true
+            }
+        }
+    },
+    "claim_ceiling": "SOURCE_SCOPE_COMPLETE_WITH_AUTHORITY_BOUND_REMAINDER",
+    "expert_domain_review": "REQUIRED_BEFORE_EMPIRICAL_ACCEPTANCE",
+    "empirical_answer_quality": "NOT_RUN",
+    "production_validation": "NOT_RUN",
+    "deployed_route_validation": "NOT_RUN",
+    "candidate_validation": "NOT_RUN",
+    "provenance_note": "Suvarna DENS PR-1 (L2) successor: hand-authored, handler-corroborated density_contract literals on six L2 serving capabilities (query_cgm_motifs, query_cgm_paths, query_quality_scorecard, query_triangulation, query_remedies, query_domain_reading) replace the machine-derived default. The honest paginated:false on the four limit-capped readers (query_cgm_motifs, query_cgm_paths, query_triangulation, query_remedies: a cap, no offset, no cursor) moved their route pagination dispositions from non_exhaustible to not_paginated, query_domain_reading (real LIMIT/OFFSET over lens_limit/lens_offset) moved the other way, and the honest empty_reason:false on motifs/paths/remedies/domain_reading moved their empty_result_state from declared (a derived, handler-unbacked default) to missing; the estate census therefore moved source_catalog_fingerprint (9a3190... -> 62d4dd...), capability_content_hash (bff49e... -> 33c8b7...) and report_hash (f35696... -> b6b793...). semantic_review_fingerprint moved only because six source_ref line ranges were re-pointed after the inserted literals (76d0e6... -> f48e5a...); producer_contract_fingerprint coincides byte-for-byte with v15's and no SCU, edge, proof kind or availability disposition changed - all six metrics are identical to v15; no acceptance logic or criterion changed. The snapshot (including the re-pointed query_* source_ref line ranges in source_query_availability.ts) was regenerated with the explicit generated_at already committed (182 SCUs, codegen:capability-knowledge:check green) and the Pariprashna route_ports baselines were regenerated against it (PARIPRASHNA_PORTS_BASELINE=write; stable across two writes). Source-provenance acceptance only: candidate_validation remains NOT_RUN; no live, deployed, empirical, expert or production acceptance is claimed."
+}

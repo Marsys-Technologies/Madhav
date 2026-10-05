@@ -2509,7 +2509,7 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
           SELECT handler_page.*, handler_count.total
             FROM handler_page CROSS JOIN handler_count`,
     source_refs: [
-      'platform/src/lib/retrieval/registry/layers/L2_bodha/query_cgm_motifs.ts:67-84',
+      'platform/src/lib/retrieval/registry/layers/L2_bodha/query_cgm_motifs.ts:74-91',
       'platform/migrations/1000_nirmana_l2_bo_cgm_motifs_output_digest_spec.sql:1-80',
     ],
   },
@@ -2541,7 +2541,7 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
           SELECT handler_page.*, handler_count.total
             FROM handler_page CROSS JOIN handler_count`,
     source_refs: [
-      'platform/src/lib/retrieval/registry/layers/L2_bodha/query_cgm_paths.ts:66-83',
+      'platform/src/lib/retrieval/registry/layers/L2_bodha/query_cgm_paths.ts:73-90',
       'platform/migrations/982_nirmana_l2_bo_cgm_paths_output_digest_spec.sql:1-80',
     ],
   },
@@ -2803,7 +2803,7 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
           ) SELECT scorecard_probe.*, defect001_probe.total_refs, defect001_probe.orphan_refs
               FROM scorecard_probe CROSS JOIN defect001_probe`,
     source_refs: [
-      'platform/src/lib/retrieval/registry/layers/L2_bodha/query_quality_scorecard.ts:78-97',
+      'platform/src/lib/retrieval/registry/layers/L2_bodha/query_quality_scorecard.ts:85-104',
       'platform/src/lib/retrieval/provenance/freshness_notes.ts:73-107',
     ],
   },
@@ -3257,7 +3257,7 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
              CROSS JOIN l1_context_facts CROSS JOIN l1_context_dashas CROSS JOIN defect001_freshness`,
     source_refs: [
       'platform/src/lib/retrieval/registry/layers/L2_bodha/query_domain_reading.ts:174-533',
-      'platform/src/lib/retrieval/registry/layers/L2_bodha/query_domain_reading.ts:680-1010',
+      'platform/src/lib/retrieval/registry/layers/L2_bodha/query_domain_reading.ts:680-1017',
       'platform/src/lib/retrieval/ranking/l1_context_fetcher.ts:93-157',
       'platform/src/lib/retrieval/provenance/freshness_notes.ts:84-111',
     ],
@@ -3735,7 +3735,7 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
           ) SELECT * FROM resonances`,
     source_refs: [
       'platform/src/lib/retrieval/registry/layers/L2_bodha/query_remedies.ts:126-175',
-      'platform/src/lib/retrieval/registry/layers/L2_bodha/query_remedies.ts:320-422',
+      'platform/src/lib/retrieval/registry/layers/L2_bodha/query_remedies.ts:327-429',
     ],
   },
   {
@@ -3762,7 +3762,7 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
                AND (NULL::text IS NULL OR question_class = NULL::text)
                AND (NULL::text IS NULL OR tradition = NULL::text)
           ) SELECT handler_page.*, handler_count.total FROM handler_page CROSS JOIN handler_count`,
-    source_refs: ['platform/src/lib/retrieval/registry/layers/L2_bodha/query_triangulation.ts:74-98'],
+    source_refs: ['platform/src/lib/retrieval/registry/layers/L2_bodha/query_triangulation.ts:81-105'],
   },
   {
     contract_id: 'source-query:query-prospective-ledger:v1',

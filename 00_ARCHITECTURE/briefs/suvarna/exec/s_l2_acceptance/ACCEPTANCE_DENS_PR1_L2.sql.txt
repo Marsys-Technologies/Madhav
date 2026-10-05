@@ -1,0 +1,14 @@
+-- ACCEPTANCE_DENS_PR1_L2 (Suvarna DENS lane, PR-1 L2). READ-ONLY, one SELECT, chart 482012f1-710e-4a25-994a-93821f5871aa.
+-- Statement of what must be true after this PR: NO row count changes in any served table (serving-layer TypeScript only; no data,
+-- no registry, no migration). The only expected movement is in the asset census Dens.served cells, re-read from source:
+--   bo_cgm_motifs FAIL->PASS, bo_cgm_paths FAIL->PASS (contract + verification_pass_status in the same capability entry),
+--   bo_pramana_mapa FAIL->PARTIAL, bo_sangati FAIL->PARTIAL, bo_upaya NO_DETECTOR->PARTIAL (no tier column in the served select).
+-- Run before and after merge: the counts below must be identical.
+SELECT 'bodha_cgm_motifs' AS served_table, COUNT(*) AS rows_for_chart FROM bodha_cgm_motifs WHERE chart_id = '482012f1-710e-4a25-994a-93821f5871aa'
+UNION ALL SELECT 'bodha_cgm_paths', COUNT(*) FROM bodha_cgm_paths WHERE chart_id = '482012f1-710e-4a25-994a-93821f5871aa'
+UNION ALL SELECT 'synthesis_quality_scorecard', COUNT(*) FROM synthesis_quality_scorecard WHERE chart_id = '482012f1-710e-4a25-994a-93821f5871aa'
+UNION ALL SELECT 'bodha_triangulation', COUNT(*) FROM bodha_triangulation WHERE chart_id = '482012f1-710e-4a25-994a-93821f5871aa'
+UNION ALL SELECT 'bodha_cdlm_cells', COUNT(*) FROM bodha_cdlm_cells WHERE chart_id = '482012f1-710e-4a25-994a-93821f5871aa'
+UNION ALL SELECT 'bodha_rm_resonances', COUNT(*) FROM bodha_rm_resonances WHERE chart_id = '482012f1-710e-4a25-994a-93821f5871aa'
+UNION ALL SELECT 'bodha_rm_remedy_prescriptions', COUNT(*) FROM bodha_rm_remedy_prescriptions WHERE chart_id = '482012f1-710e-4a25-994a-93821f5871aa'
+UNION ALL SELECT 'bodha_question_lenses', COUNT(*) FROM bodha_question_lenses WHERE chart_id = '482012f1-710e-4a25-994a-93821f5871aa'

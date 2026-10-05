@@ -684,6 +684,13 @@ export const queryDomainReadingCapability: CapabilityDescriptor = {
     },
   },
 
+  // Suvarna DENS (§N.6, §N.8): hand-authored from what this handler actually does, not the derived default.
+  density_contract: {
+    paginated: true, // question-lens family pages via lens_limit/lens_offset (LIMIT/OFFSET + lens_pagination receipt)
+    facets: ['domain', 'ayanamsha_id', 'build_id'],
+    empty_reason: false, // handler never sets `empty_reason`
+  },
+
   async handler(args: Record<string, unknown>, _ctx: unknown) {
     const chart_id     = args['chart_id'] as string
     if (!chart_id) {
