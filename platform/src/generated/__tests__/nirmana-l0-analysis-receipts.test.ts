@@ -25,7 +25,11 @@ describe('generated Nirmana L0 analysis receipt bases', () => {
   // re-pinned NIRMANA_L0_WRITER_INVENTORY_SHA256 fails this test on the
   // offending PR -- not six days later as a silently closed gate discovered
   // only when something tries to use it in production.
-  it('keeps the pinned writer-inventory digest in sync with the checked-in inventory', () => {
+  // S3 of the Nirmana retirement (owner approval 2026-10-05, option A; decision N-144/N-152): the L0 writer-inventory pin no longer forces an
+  // owner-authorised successor for an L0 writer or seed change. Its protective purpose is now carried by the writer-digest inventory check
+  // (ci.yml provenance_inventory --check), the sealed integrity checks, the engine's re-measurement after each rebuild and one independent
+  // review per L0 code change. Skipped, not deleted: re-enable to restore the pin. See 00_ARCHITECTURE L0_PLAN_AND_NIRMANA_RETIREMENT (stage S3).
+  it.skip('keeps the pinned writer-inventory digest in sync with the checked-in inventory', () => {
     const writers = writerDigestInventory.writers as Record<string, string>
     const l0Inventory = Object.fromEntries(Object.entries(writers)
       .filter(([assetId]) => assetId.startsWith('bg_'))
@@ -34,7 +38,11 @@ describe('generated Nirmana L0 analysis receipt bases', () => {
     expect(computedDigest).toBe(NIRMANA_L0_WRITER_INVENTORY_SHA256)
   })
 
-  it('is available, with exactly the expected receipt count, when the pin matches', () => {
+  // S3 of the Nirmana retirement (owner approval 2026-10-05, option A; decision N-144/N-152): the L0 writer-inventory pin no longer forces an
+  // owner-authorised successor for an L0 writer or seed change. Its protective purpose is now carried by the writer-digest inventory check
+  // (ci.yml provenance_inventory --check), the sealed integrity checks, the engine's re-measurement after each rebuild and one independent
+  // review per L0 code change. Skipped, not deleted: re-enable to restore the pin. See 00_ARCHITECTURE L0_PLAN_AND_NIRMANA_RETIREMENT (stage S3).
+  it.skip('is available, with exactly the expected receipt count, when the pin matches', () => {
     expect(NIRMANA_L0_ANALYSIS_RECEIPTS_AVAILABLE).toBe(true)
     expect(Object.keys(NIRMANA_L0_ANALYSIS_RECEIPTS)).toHaveLength(NIRMANA_L0_ANALYSIS_RECEIPT_COUNT)
   })
