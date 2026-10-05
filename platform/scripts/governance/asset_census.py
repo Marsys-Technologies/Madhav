@@ -208,7 +208,7 @@ CRITERION_REGISTRY: dict[str, dict] = {
     # Carr.D1/D2/D3 had the generic Carr.detector until it was retired at revision 8 — Carr is now exactly
     # these three) — registered so a hand row has somewhere to point,
     # never auto-measured because no in-repo detector exists for the specific claim yet.
-    "Carr.D1":                       dict(gate="Carr", check="D1", applicability="the asset DECLARES D1 (it transcribes cited classical content, N-73) with a spec naming a kernel of the closed registry carriage_d1.KERNELS: every row is matched against the declared passage of the English translation (carriage_d1.py); an asset that declares unverified_transcription reads N/A by the declared rule Carr.D1#measured:transcription-not-verified (N-156: no passage-level spec; the certified list prints the ceiling); an asset with no declaration reads not measured", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=3),  # E6 S2: was detector NONE (rev 1); C1-2 / N-156 rev 3
+    "Carr.D1":                       dict(gate="Carr", check="D1", applicability="the asset DECLARES D1 (it transcribes cited classical content, N-73) with a spec naming a kernel of the closed registry carriage_d1.KERNELS: every row is matched against the declared passage of the English translation (carriage_d1.py); an asset that declares unverified_transcription reads N/A by the declared rule Carr.D1#measured:transcription-not-verified (N-156: no passage-level spec; the certified list prints the ceiling); an asset that declares not_a_transcription reads N/A by the declared rule Carr.D1#measured:not-a-transcription (N-156 C8: its source declaration names only K2 / K3 / LEDGER, checked; a plain N/A, not a ceiling); an asset with no declaration reads not measured", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=4),  # E6 S2: was detector NONE (rev 1); C1-2 / N-156 rev 3; N-156 C8 rev 4
     "Carr.D2":                       dict(gate="Carr", check="D2", applicability="the asset carries two independent witnesses of the same fact; no detector exists and no asset stores per-witness values, so an asset's D2 reads N/A by the declared rule Carr.D2#measured:no-per-witness-values (carriage.per_witness_values false, N-156, supersedes N-118)", detector="NONE", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=2),
     "Carr.D3":                       dict(gate="Carr", check="D3", applicability="the asset DECLARES D3 (it computes a value a second method can re-derive, N-73) with a spec naming a reviewed method of the closed registry carriage_d3.METHODS that serves THIS asset: every logical row is re-derived by that method within the declared tolerances (carriage_d3.py); PASS needs an independent_formula method, every row (no sample), the declared row count, no uncovered column and a declared read that covers the asset's rows; an asset that declares single_derivation reads N/A by the declared rule Carr.D3#measured:single-derivation (N-156), refused where a method serves it; an asset with no declaration reads not measured", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=2),  # C1-3 / N-156: was detector NONE (rev 1)
     "Completeness.depth.dasha_link": dict(gate="Completeness", check="depth.dasha_link", applicability="the table declares a dasha_system_id column", detector="NONE", layers=ALL_LAYERS, columns_any=("dasha_system_id",), asset_kinds=None, revision=1),
@@ -337,6 +337,7 @@ NA_RULE_DECISIONS: dict[str, str] = {
     # for every asset with a method or a passage spec, and the certified list prints the ceiling as a known limitation.
     "Carr.D3#measured:single-derivation": "N-156 (C1 declared ceiling): single-derivation, declaration-keyed; refused for an asset a reviewed D3 method serves",
     "Carr.D1#measured:transcription-not-verified": "N-156 (C1 declared ceiling): transcription not verified against a passage, declaration-keyed; the certified list prints it as a known limitation",
+    "Carr.D1#measured:not-a-transcription": "N-156 (C8): D1 is N/A for an asset whose source is a ratification (K2) or a derivation (K3), declaration-keyed and checked against the asset's source declaration; a plain N/A, not a ceiling",
     "Carr.D2#measured:no-per-witness-values": "N-156 (C8): no asset stores per-witness values, declaration-keyed per_witness_values false; supersedes N-118 'D2 required'",
     # S3 (SS N-72 S3, N-73 (1)/(4), N-74 (b)): the two N/A words an asset may declare, each with evidence and one line of reason, never a column pattern (A5).
     # Inert until an asset declares one; refused (NO_DETECTOR) where the table contradicts the declaration.
@@ -367,7 +368,7 @@ NA_CAUSES: dict[str, tuple[str, ...]] = {
     "Build.completion": ("no-writer-no-count-sql", "service-no-target-table-no-count-sql"),
     "Count.floor": ("target-floor-zero", "zero-row-convention-holds"),
     "Dens.served": ("no-served-surface",),
-    "Carr.D1": ("no-carriage", "not-the-declared-carriage", "ratified_judgment", "transcription-not-verified"),
+    "Carr.D1": ("no-carriage", "not-the-declared-carriage", "ratified_judgment", "transcription-not-verified", "not-a-transcription"),
     "Carr.D2": ("no-carriage", "not-the-declared-carriage", "ratified_judgment", "no-per-witness-values"),
     "Carr.D3": ("no-carriage", "not-the-declared-carriage", "ratified_judgment", "single-derivation"),
     "Earn.service_state": ("not-a-service",),
@@ -746,8 +747,13 @@ CARRIAGE_DECL_FIELDS = ("applies", "nature", "why", "evidence", "spec", "citatio
 #                            Refused for an asset a reviewed D3 method serves (carriage_d3 METHODS `assets`): where a second route exists the check is MEASURED, not waived.
 #   unverified_transcription applies D1: hand-typed or corpus-absent content with no passage-level spec: the transcription is not verified against a passage.
 # and `per_witness_values: false` (any declared nature): the asset stores no per-witness values, so Carr.D2 reads N/A `no-per-witness-values` (supersedes N-118 "D2 required").
-CARRIAGE_NATURE_CHECK = {"transcription": "D1", "computation": "D3", "derivation": "D3", "single_derivation": "D3", "unverified_transcription": "D1"}
-CEILING_NATURES = ("single_derivation", "unverified_transcription")     # ONE definition (C1-1, N-101 (a)): the validator, its message and the comments above read this
+# and (N-156 C8) `not_a_transcription` (applies D1): the asset's SOURCE is a ratification (K2) or a derivation (K3), not a classical passage, so Carr.D1 reads N/A `not-a-transcription`: a plain N/A,
+# NOT a ceiling. It is declaration-keyed AND checked: the asset's `source` declaration must exist and name only K2 / K3 / LEDGER kinds (`source_kinds`), at validation and at measure time; and
+# `unverified_transcription` is refused where the source declaration is K2 / K3 only (that label is for K1 classical citations).
+CARRIAGE_NATURE_CHECK = {"transcription": "D1", "computation": "D3", "derivation": "D3", "single_derivation": "D3", "unverified_transcription": "D1", "not_a_transcription": "D1"}
+CEILING_NATURES = ("single_derivation", "unverified_transcription")
+NOT_A_TRANSCRIPTION = "not_a_transcription"
+NO_SPEC_NATURES = CEILING_NATURES + (NOT_A_TRANSCRIPTION,)     # ONE definition (C1-1, N-101 (a)): the validator, its message and the comments above read this
 RATIFIED_JUDGMENT = "ratified_judgment"
 CITATION_STATES = ("sourced", "sourced_ocr_unverified", "unsourced", "refuted")
 CITATION_CAPPED_STATES = ("unsourced", "refuted")   # ONE cap for Carr.D1 (carriage_d1) and Ldgr.source_presence (grade_ldgr_source, _check_contribution), and nikasha CITATION_PASS_REFUSED
@@ -782,6 +788,29 @@ def _carriage_d3():
         spec.loader.exec_module(mod)
         _CARR_D3_MOD.append(mod)
     return _CARR_D3_MOD[0]
+
+
+def source_kinds(src) -> set:
+    """The set of source kinds an asset's `source` declaration names: a table-level kind, or the union of every row-level entry's `kinds`; empty for an undeclared source or an na form."""
+    if not isinstance(src, dict) or src.get("na") is not None:
+        return set()
+    if src.get("level") == "table":
+        return {src["kind"]} if isinstance(src.get("kind"), str) else set()
+    out = set()
+    for c in src.get("columns") or []:
+        if isinstance(c, dict):
+            out |= {k for k in (c.get("kinds") or []) if isinstance(k, str)}
+    return out
+
+
+def not_a_transcription_problem(src):
+    """None when the source declaration supports `not_a_transcription` (it names at least one kind and every kind is K2, K3 or LEDGER), else why not."""
+    ks = source_kinds(src)
+    if not ks:
+        return "the asset's `source` declaration is absent or names no kind: not_a_transcription is checked against it, never declared alone"
+    if ks - {"K2", "K3", "LEDGER"}:
+        return f"the asset's source declaration names {sorted(ks)}: a K1 classical citation makes it a (possibly unverified) transcription, not a ratification or derivation"
+    return None
 
 
 def _carriage_d3_served_assets() -> dict:
@@ -838,7 +867,7 @@ def validate_carriage_declaration(where: str, car: dict, e: dict) -> None:
     bad = _s3_text_problem(car["why"], min_chars=15, min_words=3, placeholder="any" if nature == RATIFIED_JUDGMENT else "prose")
     if bad:
         raise DeclarationsError(f"{where}.carriage.why {bad}")
-    bad = _s3_evidence_problem(car["evidence"], allow_unverified=nature != RATIFIED_JUDGMENT and nature not in CEILING_NATURES)      # an N/A release rests on a real file:line
+    bad = _s3_evidence_problem(car["evidence"], allow_unverified=nature != RATIFIED_JUDGMENT and nature not in NO_SPEC_NATURES)      # an N/A release rests on a real file:line
     if bad:
         raise DeclarationsError(f"{where}.carriage.evidence {car['evidence']!r} {bad}")
     if car.get("per_witness_values") is not None and car["per_witness_values"] is not False:
@@ -865,14 +894,20 @@ def validate_carriage_declaration(where: str, car: dict, e: dict) -> None:
     if nature == "transcription":
         if cs not in CITATION_STATES:
             raise DeclarationsError(f"{where}.carriage.citation_state must be one of {list(CITATION_STATES)} for a transcription, got {cs!r}")
-    elif nature == "unverified_transcription":
+    elif nature in ("unverified_transcription", NOT_A_TRANSCRIPTION):
+        if nature == NOT_A_TRANSCRIPTION and cs is not None:
+            raise DeclarationsError(f"{where}.carriage.citation_state is not declared for not_a_transcription (the source is not a citation)")
         if cs is not None and cs not in CITATION_STATES:
             raise DeclarationsError(f"{where}.carriage.citation_state must be one of {list(CITATION_STATES)} (or absent) for an unverified transcription, got {cs!r}")
     elif cs is not None:
         raise DeclarationsError(f"{where}.carriage.citation_state is only declared for nature transcription / unverified_transcription")
-    if nature in CEILING_NATURES:
+    if nature == NOT_A_TRANSCRIPTION:
+        bad = not_a_transcription_problem(e.get("source"))
+        if bad:
+            raise DeclarationsError(f"{where}.carriage: nature not_a_transcription: {bad}")
+    if nature in NO_SPEC_NATURES:
         if car.get("spec") is not None:
-            raise DeclarationsError(f"{where}.carriage: nature {nature} is a declared ceiling and carries no `spec` (a spec means the check is MEASURED: declare transcription / computation instead)")
+            raise DeclarationsError(f"{where}.carriage: nature {nature} is a declared ceiling and carries no `spec` (a spec means the check is MEASURED: declare transcription / computation instead)" if nature in CEILING_NATURES else f"{where}.carriage: nature {nature} carries no `spec`")
         if nature == "single_derivation":
             aid = (re.match(r"assets\['([^']+)'\]", where) or [None, None])[1]
             served = _carriage_d3_served_assets()
@@ -2609,7 +2644,7 @@ def d3_fetch_inputs(inputs: dict, chart_id: str):
         raise Unknown(f"d3_fetch_inputs: unparseable read of {t}: {exc}") from exc
 
 
-def carriage_declared_checks(aid: str, car, target_table, chart_scoped: bool = False, *, column_types, prose_columns, asset_rows=None) -> dict:
+def carriage_declared_checks(aid: str, car, target_table, chart_scoped: bool = False, *, column_types, prose_columns, asset_rows=None, source=None) -> dict:
     """measure()'s Carr.D1/D2/D3 records for an asset that DECLARES its carriage check (SS N-72 S2): {} unless `car.nature` is
     declared (an undeclared asset emits nothing here, so its cell reads exactly as before).
 
@@ -2639,6 +2674,14 @@ def carriage_declared_checks(aid: str, car, target_table, chart_scoped: bool = F
         else:
             out[own] = _na(f"single derivation (N-156): no independent second route; verified by integrity checks and internal consistency (reviewed, evidence: {car.get('evidence')}): {why}",
                            "single-derivation")
+        return out
+    if car["nature"] == NOT_A_TRANSCRIPTION:
+        bad = not_a_transcription_problem(source)
+        if bad:                              # a declaration the asset's own source declaration contradicts: reported, never resolved
+            out[own] = dict(v=NO_DET, measured=f"NO_DETECTOR — {aid} declares not_a_transcription but {bad}", declaration_disagreements=[bad])
+        else:
+            out[own] = _na(f"not a transcription (N-156 C8): the asset's source is {'/'.join(sorted(source_kinds(source)))} (a ratification or derivation, not a classical passage; reviewed, evidence: "
+                           f"{car.get('evidence')}): {why}", "not-a-transcription")
         return out
     if car["nature"] == "unverified_transcription":
         out[own] = _na(f"transcription not verified against a passage (N-156): no passage-level spec (reviewed, evidence: {car.get('evidence')}): {why}", "transcription-not-verified")
@@ -11927,7 +11970,8 @@ def measure(layer_key: str, assets=None) -> dict:
         m.update(carriage_declared_checks(aid, (_decl_entry or {}).get("carriage"), r["target_table"],
                                           chart_scoped="chart_id" in (_target_columns_fact(r["target_table"], cat) or ()),
                                           column_types=_ledger_types, prose_columns=_ledger_prose,
-                                          asset_rows=live if isinstance(live, int) and not isinstance(live, bool) else None))
+                                          asset_rows=live if isinstance(live, int) and not isinstance(live, bool) else None,
+                                          source=(_decl_entry or {}).get("source")))
         m.update(carr_checks(dict(declared_facts(declarations, aid), blocking_radius=radius.get(aid),
                                   measured_served=m["Dens.served"]["v"])))
         if "Reach.fields" not in m:

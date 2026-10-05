@@ -774,14 +774,14 @@ def _doc(car):
 
 
 def _mapping_is_right():
-    return (ac.CARRIAGE_NATURE_CHECK == {"transcription": "D1", "computation": "D3", "derivation": "D3", "single_derivation": "D3", "unverified_transcription": "D1"}
+    return (ac.CARRIAGE_NATURE_CHECK == {"transcription": "D1", "computation": "D3", "derivation": "D3", "single_derivation": "D3", "unverified_transcription": "D1", "not_a_transcription": "D1"}
             and "D2" not in ac.CARRIAGE_NATURE_CHECK.values())
 
 
 def test_derivation_maps_to_d3_and_no_nature_maps_to_d2():
     assert _mapping_is_right()
     assert ac.validate_declarations(_doc(dict(CAR_BASE, applies="D3", nature="derivation")))
-    for nature in ("transcription", "computation", "derivation", "single_derivation", "unverified_transcription"):
+    for nature in ("transcription", "computation", "derivation", "single_derivation", "unverified_transcription", "not_a_transcription"):
         for applies in ("D1", "D2", "D3"):
             if applies == ac.CARRIAGE_NATURE_CHECK[nature]:
                 continue
@@ -801,7 +801,7 @@ def test_a_declared_derivation_carriage_is_never_measured_as_d2():
 
 def test_the_registry_still_defines_d2_as_witness_carriage_and_is_unchanged():
     assert "two independent witnesses of the same fact" in ac.CRITERION_REGISTRY["Carr.D2"]["applicability"]
-    assert (ac.CRITERION_REGISTRY["Carr.D1"]["revision"], ac.CRITERION_REGISTRY["Carr.D2"]["revision"], ac.CRITERION_REGISTRY["Carr.D3"]["revision"]) == (3, 2, 2)           # N-156: D1 rev 3, D2 rev 2 (text), D3 rev 2 (detector lifted)
+    assert (ac.CRITERION_REGISTRY["Carr.D1"]["revision"], ac.CRITERION_REGISTRY["Carr.D2"]["revision"], ac.CRITERION_REGISTRY["Carr.D3"]["revision"]) == (4, 2, 2)           # N-156: D1 rev 3 (rev 4 for C8), D2 rev 2 (text), D3 rev 2 (detector lifted)
     assert ac.CRITERION_REGISTRY["Carr.D2"]["detector"] == "NONE"
 
 
@@ -811,7 +811,7 @@ def test_no_committed_declaration_uses_nature_derivation_so_no_cell_can_move():
     assert "derivation" not in natures.values()
     # N-156: the 82 L0-L2 assets all declare; the four with a spec are measured, the rest declare a ceiling
     measured = {a: n for a, n in natures.items() if n in ("transcription", "computation")}
-    assert measured == {"bg_phaladeepika_latta": "transcription", "bg_vedha_malefic_scale": "transcription", "ga_positions": "computation", "bg_sky_calendar": "computation"} and len(natures) == 82 and set(natures.values()) <= {"transcription", "computation", *ac.CEILING_NATURES}
+    assert measured == {"bg_phaladeepika_latta": "transcription", "bg_vedha_malefic_scale": "transcription", "ga_positions": "computation", "bg_sky_calendar": "computation"} and len(natures) == 82 and set(natures.values()) <= {"transcription", "computation", *ac.CEILING_NATURES, ac.NOT_A_TRANSCRIPTION}
 
 
 def test_the_nature_to_check_map_has_one_definition_no_other_consumer_re_implements_it():

@@ -38,6 +38,22 @@ def unverified(**o):
     return dict(applies="D1", nature="unverified_transcription", why="hand-typed seed rows with no passage-level spec in the held corpus", evidence=EV, per_witness_values=False, **o)
 
 
+SRC_K2 = dict(level="table", kind="K2", decision_id="N-156", why="ratified engineering floors mirrored from the TypeScript source by decision", evidence=EV)
+SRC_K3 = dict(level="table", kind="K3", method="drawn by a seeded generator", seed="s1", generator="bg_cohort writer", why="synthetic rows drawn by the generator, not a passage", evidence=EV)
+SRC_K1 = dict(level="table", kind="K1", citation="Brihat Parashara Hora Shastra", locus="ch. 3", citation_state="sourced", why="verse-cited rows of the classical text", evidence=EV)
+SRC_MIX = dict(level="row", columns=[dict(column="citation", kinds=["K1", "K2"])], citation_state="sourced", why="rows cite a verse or a ratifying decision", evidence=EV)
+
+
+def not_a_tr(**o):
+    return dict(applies="D1", nature="not_a_transcription", why="the rows are ratified engineering floors, not transcribed from a passage", evidence=EV, per_witness_values=False, **o)
+
+
+def decl_src(aid, c, src):
+    d = decl(aid, c)
+    d["assets"][aid]["source"] = src
+    return d
+
+
 # ───────────────────────── registry ─────────────────────────
 
 def test_the_three_rules_are_declared_with_n156_and_every_cause_is_registered():
@@ -160,3 +176,54 @@ def test_a_bare_pass_is_still_not_honoured_and_unrelated_assets_are_unmoved():
     c = ac.rollup_asset("L1", m)["Carr"]
     assert c["v"] == NO_DET and next(x for x in c["checks"] if x["criterion"] == "Carr.D3")["v"] == NO_DET
     assert ac.rollup_asset("L1", {})["Carr"]["v"] == NO_DET
+
+
+# ───────────────────────── N-156 C8: not_a_transcription (source K2 / K3, checked) ─────────────────────────
+
+def test_the_not_a_transcription_rule_is_declared_and_is_a_plain_na_not_a_ceiling():
+    assert "N-156" in ac.NA_RULE_DECISIONS["Carr.D1#measured:not-a-transcription"] and "not-a-transcription" in ac.NA_CAUSES["Carr.D1"]
+    assert ac.NOT_A_TRANSCRIPTION not in ac.CEILING_NATURES and ac.CARRIAGE_NATURE_CHECK[ac.NOT_A_TRANSCRIPTION] == "D1"
+    ac.validate_na_rule_decisions()
+
+
+def test_source_kinds_reads_table_row_and_na_forms():
+    assert ac.source_kinds(SRC_K2) == {"K2"} and ac.source_kinds(SRC_MIX) == {"K1", "K2"}
+    assert ac.source_kinds(dict(na="no_data", why="a service that holds no data", evidence=EV)) == set() and ac.source_kinds(None) == set()
+
+
+@pytest.mark.parametrize("src", [SRC_K2, SRC_K3])
+def test_validator_accepts_not_a_transcription_on_a_k2_or_k3_source(src):
+    ac.validate_declarations(decl_src("bg_vidhi_floors", not_a_tr(), src))
+
+
+@pytest.mark.parametrize("src,msg", [(None, "absent or names no kind"), (SRC_K1, "K1 classical citation"), (SRC_MIX, "K1 classical citation"),
+                                     (dict(na="no_data", why="a service that holds no data", evidence=EV), "absent or names no kind")])
+def test_validator_refuses_not_a_transcription_without_a_k2_k3_source(src, msg):
+    d = decl("bg_vidhi_floors", not_a_tr())
+    if src is not None:
+        d["assets"]["bg_vidhi_floors"]["source"] = src
+    with pytest.raises(ac.DeclarationsError, match=msg):
+        ac.validate_declarations(d)
+
+
+def test_validator_refuses_a_spec_a_citation_state_and_refuses_unverified_on_a_k2_k3_source():
+    for mutate, msg in ((lambda c: c.__setitem__("spec", {"method": "x"}), "no `spec`"), (lambda c: c.__setitem__("citation_state", "sourced"), "citation_state")):
+        c = not_a_tr()
+        mutate(c)
+        with pytest.raises(ac.DeclarationsError, match=msg):
+            ac.validate_declarations(decl_src("bg_vidhi_floors", c, SRC_K2))
+    ac.validate_declarations(decl_src("bg_vidhi_floors", unverified(), SRC_K1))             # K1 keeps the label
+    ac.validate_declarations(decl_src("bg_vidhi_floors", unverified(), SRC_MIX))            # a mixed K1 / K2 source is still (partly) a transcription
+
+
+def test_not_a_transcription_reads_d1_na_by_its_rule_only_with_a_checked_source():
+    got = ac.carriage_declared_checks("bg_vidhi_floors", not_a_tr(), "vidhi_floor_items", False, source=SRC_K2, **KW)
+    assert (got["Carr.D1"]["v"], got["Carr.D1"]["cause"]) == (NA, "not-a-transcription")
+    assert (got["Carr.D3"]["cause"], got["Carr.D2"]["cause"]) == ("not-the-declared-carriage", "no-per-witness-values")
+    cell = ac.rollup_asset("L0", got)["Carr"]
+    assert cell["v"] == NA and "Carr.D1#measured:not-a-transcription" in {c["rule_id"] for c in cell["checks"]}
+    for src in (None, SRC_K1, SRC_MIX):                          # the declaration alone releases nothing: the measured source contradicts it
+        bad = ac.carriage_declared_checks("bg_vidhi_floors", not_a_tr(), "vidhi_floor_items", False, source=src, **KW)
+        assert bad["Carr.D1"]["v"] == NO_DET and bad["Carr.D1"]["declaration_disagreements"], src
+        assert ac.rollup_asset("L0", bad)["Carr"]["v"] == NO_DET
+    assert ac.carriage_declared_checks("bg_vidhi_floors", not_a_tr(), "vidhi_floor_items", False, **KW)["Carr.D1"]["v"] == NO_DET       # no source passed: never N/A

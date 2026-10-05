@@ -35,7 +35,7 @@ S2_IDS = frozenset(f"Carr.D{i}#measured:not-the-declared-carriage" for i in (1, 
 S3_IDS = frozenset({"Vocab.alias#measured:no-alias-class", "Ldgr.source_presence#measured:no-classical-claim"})   # SS N-72 S3, N-73 (1)/(4)
 N151_IDS = frozenset({"Ldgr.source_presence#measured:no-data", "Ldgr.source_presence#measured:no-claims"})              # SS N-151 (REGISTRY_REVISION 26): N/A only by a checked declaration
 N150_IDS = frozenset({"Null.schema_default#measured:no-prose-declared", "Null.blank_rows#measured:no-prose-declared"})     # SS N-150 R1: released only through the checked prose_none block
-N156_IDS = frozenset({"Carr.D3#measured:single-derivation", "Carr.D1#measured:transcription-not-verified", "Carr.D2#measured:no-per-witness-values"})       # SS N-156 (the Carr declared ceiling)
+N156_IDS = frozenset({"Carr.D1#measured:not-a-transcription", "Carr.D3#measured:single-derivation", "Carr.D1#measured:transcription-not-verified", "Carr.D2#measured:no-per-witness-values"})       # SS N-156 (the Carr declared ceiling)
 DECLARED_IDS = N65_IDS | PIN10_IDS | S2_IDS | S3_IDS | N151_IDS | N150_IDS | N156_IDS     # the exact production table since REGISTRY_REVISION 26
 R01_ASSETS = ("bg_gochara_citation_resolution", "bg_nakshatra_medical", "bg_sarvatobhadra_grid", "bg_sign_medical",
               "bg_transit_engine", "lel_events")

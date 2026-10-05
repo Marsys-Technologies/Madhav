@@ -281,8 +281,10 @@ def test_every_registered_cause_is_observed_emitted_under_its_criterion(monkeypa
                 dict(nature="transcription", applies="D1", citation_state="sourced", why="w", evidence="e:1"),
                 dict(nature="ratified_judgment", ruling="N-73", why="w", evidence="e:1"),
                 dict(nature="single_derivation", applies="D3", why="w", evidence="e:1", per_witness_values=False),          # N-156: the three declared ceilings
-                dict(nature="unverified_transcription", applies="D1", why="w", evidence="e:1", per_witness_values=False)):
-        for crit, rec in ac.carriage_declared_checks("x", car, None, column_types=None, prose_columns=[]).items():
+                dict(nature="unverified_transcription", applies="D1", why="w", evidence="e:1", per_witness_values=False),
+                dict(nature="not_a_transcription", applies="D1", why="w", evidence="e:1", per_witness_values=False)):          # N-156 C8 (source passed above: K2)
+        for crit, rec in ac.carriage_declared_checks("x", car, None, column_types=None, prose_columns=[],
+                                                     source=dict(level="table", kind="K2", decision_id="N-156")).items():
             if rec["v"] == NA:
                 observed.add((crit, rec["cause"]))
     for crit, rec in ac.carr_checks(dict(declared_terminal_by_construction="writer x.py:1 writes nothing read",
