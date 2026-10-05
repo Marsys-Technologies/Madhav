@@ -25,7 +25,7 @@ THE SPEC (validated by `validate_spec`, read by `d3_measure`):
   conventions      {name: {value, evidence}}: every convention the method names as required, declared with a pointer
   uncovered        [{column, reason, evidence}]: logical columns the method does not re-derive, declared; any entry caps PARTIAL
   backend          {allowed: [names], basis: text}: the reference leg backends the declared tolerance covers (only for a method that probes a backend)
-  (a method may also mark a re-derived value AMBIGUOUS: within a reviewed margin of a classification boundary; a stored neighbour is then accepted and listed in boundary_tolerated)
+  (a method may also mark a re-derived value AMBIGUOUS: {column: {note, neighbours: [values]}}, within a reviewed margin of a classification boundary; ONLY a stored value in `neighbours` is then accepted, listed in boundary_tolerated)
   boundary         optional {column: {source: logical column, width: number, cells: n}}: a discrete value derived from a continuous one is accepted at a cell edge only when the
                    stored cell is the NEIGHBOUR of the reference cell (modulo `cells`) and the reference value is within the declared tolerance of the edge (listed, never silent)
 A PASS needs: an `independent_formula` method AND every logical row re-derived (no sample) AND row count equal to `expected_rows` AND zero mismatch AND no uncovered
@@ -42,6 +42,7 @@ whether the declared convention is the right one (it is a declared fact the stra
 """
 from __future__ import annotations
 
+import collections
 import hashlib
 import json
 import math
@@ -299,7 +300,7 @@ def d3_measure(spec: dict, rows, table, method=None, inputs=None, asset_rows=Non
         return out(NO_DET, f"NO_DETECTOR: table {table} yields no logical row to re-derive")
     keyf = lambda r: "|".join(str(r.get(k)) for k in spec["key"])
     keys = [keyf(r) for r in logical]
-    dup = sorted({k for k in keys if keys.count(k) > 1})
+    dup = sorted(k for k, n in collections.Counter(keys).items() if n > 1)
     ev = dict(rows_read=len(rows), rows_total=len(logical), population_sha256=rows_digest([[keyf(r), {c: r.get(c) for c in spec["columns"]}] for r in sorted(logical, key=keyf)]), backend=backend)
     strata_col = spec.get("strata")
     by = {}
@@ -339,8 +340,9 @@ def d3_measure(spec: dict, rows, table, method=None, inputs=None, asset_rows=Non
                     if edge <= tol_for(spec["columns"][b["source"]]["tol"], r):
                         tolerated.append(dict(row=keyf(r), column=c, edge_distance=edge))
                         continue
-            if not ok and isinstance(ref.get("_ambiguous"), dict) and c in ref["_ambiguous"]:
-                tolerated.append(dict(row=keyf(r), column=c, ambiguity=ref["_ambiguous"][c]))      # the stored value is a NEIGHBOUR of the re-derived one at a classification boundary the method reviewed
+            amb = ref.get("_ambiguous", {}).get(c) if isinstance(ref.get("_ambiguous"), dict) else None
+            if not ok and isinstance(amb, dict) and r.get(c) in amb.get("neighbours", ()):
+                tolerated.append(dict(row=keyf(r), column=c, ambiguity=amb["note"]))      # the stored value is the declared NEIGHBOUR of the re-derived one at a classification boundary the method reviewed
                 continue
             if not ok:
                 bad.append(c)
@@ -365,7 +367,7 @@ def d3_measure(spec: dict, rows, table, method=None, inputs=None, asset_rows=Non
     if mism:
         return out(PARTIAL, f"D3 PARTIAL: {len(mism)} of {len(chosen)} checked row(s) disagree beyond the declared tolerance: "
                             + ", ".join(f"{x['row']} ({'/'.join(x['columns'])})" for x in mism[:5]) + f". {ev['claims']}", **ev)
-    covers_asset = not (isinstance(asset_rows, int) and not isinstance(asset_rows, bool) and asset_rows > len(rows))
+    covers_asset = isinstance(asset_rows, int) and not isinstance(asset_rows, bool) and asset_rows <= len(rows)      # N-156 review MED-2: an unreadable live count is not coverage
     if m["independence"] == "independent_formula" and full and count_ok and not spec["uncovered"] and covers_asset:
         return out(PASS_V, f"D3 PASS: every one of the {len(chosen)} logical row(s) of {table} (the {spec['expected_rows']} declared) re-derived by {spec['method']} within the declared "
                            f"tolerance. {ev['claims']}", **ev)
@@ -373,8 +375,8 @@ def d3_measure(spec: dict, rows, table, method=None, inputs=None, asset_rows=Non
                           ("only a sample was re-derived", not full),
                           ((f"the independent completeness check names: {'; '.join(comp[:3])}" if comp else f"the table yields {len(logical)} logical row(s) but {spec['expected_rows']} are declared"), not count_ok),
                           ("declared uncovered column(s) " + ", ".join(u["column"] for u in spec["uncovered"]), bool(spec["uncovered"])),
-                          (f"the declared read covers {len(rows)} of the asset's {asset_rows} row(s): the rest are outside every re-derivation",
-                           isinstance(asset_rows, int) and not isinstance(asset_rows, bool) and asset_rows > len(rows))) if c]
+                          ((f"the declared read covers {len(rows)} of the asset's {asset_rows} row(s): the rest are outside every re-derivation" if isinstance(asset_rows, int) and not isinstance(asset_rows, bool)
+                            else "the asset's live row count is unreadable, so nothing shows the declared read covers every row it holds"), not covers_asset)) if c]
     return out(PARTIAL, f"D3 PARTIAL: {len(chosen)} checked row(s) agree but the cell cannot read PASS: {'; '.join(why)}. {ev['claims']}", **ev)
 
 
@@ -402,7 +404,9 @@ def d3_evidence_problem(meas) -> str:
         if ev.get("uncovered"):
             return "PASS but the spec declares uncovered column(s)"
         ar = ev.get("asset_rows")
-        if isinstance(ar, int) and not isinstance(ar, bool) and ar > ev.get("rows_read", 0):
+        if not (isinstance(ar, int) and not isinstance(ar, bool)):
+            return "PASS but the asset's live row count was not read, so coverage of every row the asset holds is not shown"
+        if ar > ev.get("rows_read", 0):
             return "PASS but the declared read covers fewer rows than the asset holds"
         if "backend" in ev and ev["backend"] is not None and not (isinstance(ev["backend"], dict) and ev["backend"].get("name")):
             return "PASS but the reference backend is not named"

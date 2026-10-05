@@ -6,6 +6,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"eclipse_type\": \"partial\", \"begin_jd\": 2455373.928445, \"end_jd\": 2455374.041569}",
+"event_datetime_utc": "2010-06-26T11:38:24",
 "event_jd": 2455373.98501,
 "event_type": "eclipse_lunar",
 "longitude_deg": 250.8313,
@@ -18,6 +19,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"eclipse_type\": \"total\", \"begin_jd\": 2455551.772654, \"end_jd\": 2455551.917612}",
+"event_datetime_utc": "2010-12-21T08:16:59",
 "event_jd": 2455551.84513,
 "event_type": "eclipse_lunar",
 "longitude_deg": 65.3647,
@@ -30,6 +32,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"eclipse_type\": \"total\", \"begin_jd\": 2455728.265912, \"end_jd\": 2455728.418254}",
+"event_datetime_utc": "2011-06-15T20:12:36",
 "event_jd": 2455728.34209,
 "event_type": "eclipse_lunar",
 "longitude_deg": 240.3601,
@@ -42,6 +45,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"eclipse_type\": \"total\", \"begin_jd\": 2455906.031759, \"end_jd\": 2455906.179155}",
+"event_datetime_utc": "2011-12-10T14:31:51",
 "event_jd": 2455906.10546,
 "event_type": "eclipse_lunar",
 "longitude_deg": 54.1113,
@@ -54,6 +58,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"eclipse_type\": \"annular\", \"is_central\": true, \"begin_jd\": 2455211.670456, \"end_jd\": 2455211.921818}",
+"event_datetime_utc": "2010-01-15T07:06:33",
 "event_jd": 2455211.79622,
 "event_type": "eclipse_solar",
 "longitude_deg": 271.0178,
@@ -66,6 +71,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"eclipse_type\": \"total\", \"is_central\": true, \"begin_jd\": 2455389.215041, \"end_jd\": 2455389.414604}",
+"event_datetime_utc": "2010-07-11T19:33:30",
 "event_jd": 2455389.31494,
 "event_type": "eclipse_solar",
 "longitude_deg": 85.3835,
@@ -78,6 +84,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"eclipse_type\": \"partial\", \"is_central\": false, \"begin_jd\": 2455565.778068, \"end_jd\": 2455565.958715}",
+"event_datetime_utc": "2011-01-04T08:50:40",
 "event_jd": 2455565.86852,
 "event_type": "eclipse_solar",
 "longitude_deg": 259.6218,
@@ -90,6 +97,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"eclipse_type\": \"partial\", \"is_central\": false, \"begin_jd\": 2455714.309526, \"end_jd\": 2455714.46287}",
+"event_datetime_utc": "2011-06-01T21:16:06",
 "event_jd": 2455714.38618,
 "event_type": "eclipse_solar",
 "longitude_deg": 47.0191,
@@ -102,6 +110,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"eclipse_type\": \"partial\", \"is_central\": false, \"begin_jd\": 2455743.829671, \"end_jd\": 2455743.890176}",
+"event_datetime_utc": "2011-07-01T08:38:14",
 "event_jd": 2455743.85989,
 "event_type": "eclipse_solar",
 "longitude_deg": 75.1736,
@@ -114,6 +123,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"eclipse_type\": \"partial\", \"is_central\": false, \"begin_jd\": 2455890.682995, \"end_jd\": 2455890.845126}",
+"event_datetime_utc": "2011-11-25T06:20:20",
 "event_jd": 2455890.76412,
 "event_type": "eclipse_solar",
 "longitude_deg": 218.5934,
@@ -126,6 +136,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Pisces\"}",
+"event_datetime_utc": "2010-05-02T02:37:43",
 "event_jd": 2455318.60953,
 "event_type": "ingress",
 "longitude_deg": 330.0,
@@ -138,6 +149,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Aquarius\"}",
+"event_datetime_utc": "2010-11-01T07:23:54",
 "event_jd": 2455501.80827,
 "event_type": "ingress",
 "longitude_deg": 330.0,
@@ -150,6 +162,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Pisces\"}",
+"event_datetime_utc": "2010-12-06T03:39:51",
 "event_jd": 2455536.65267,
 "event_type": "ingress",
 "longitude_deg": 330.0,
@@ -162,6 +175,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Aries\"}",
+"event_datetime_utc": "2011-05-08T08:44:06",
 "event_jd": 2455689.86397,
 "event_type": "ingress",
 "longitude_deg": 0.0,
@@ -174,6 +188,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Taurus\"}",
+"event_datetime_utc": "2011-05-03T02:10:23",
 "event_jd": 2455684.59055,
 "event_type": "ingress",
 "longitude_deg": 60.0,
@@ -186,6 +201,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Leo\"}",
+"event_datetime_utc": "2010-05-26T10:26:59",
 "event_jd": 2455342.93541,
 "event_type": "ingress",
 "longitude_deg": 120.0,
@@ -198,6 +214,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Virgo\"}",
+"event_datetime_utc": "2010-07-20T01:05:37",
 "event_jd": 2455397.54557,
 "event_type": "ingress",
 "longitude_deg": 150.0,
@@ -210,6 +227,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Libra\"}",
+"event_datetime_utc": "2010-09-05T21:34:45",
 "event_jd": 2455445.39914,
 "event_type": "ingress",
 "longitude_deg": 180.0,
@@ -222,6 +240,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Scorpio\"}",
+"event_datetime_utc": "2010-10-19T20:51:39",
 "event_jd": 2455489.3692,
 "event_type": "ingress",
 "longitude_deg": 210.0,
@@ -234,6 +253,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Sagittarius\"}",
+"event_datetime_utc": "2010-11-30T00:56:07",
 "event_jd": 2455530.53897,
 "event_type": "ingress",
 "longitude_deg": 240.0,
@@ -246,6 +266,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Capricorn\"}",
+"event_datetime_utc": "2011-01-08T06:33:13",
 "event_jd": 2455569.77307,
 "event_type": "ingress",
 "longitude_deg": 270.0,
@@ -258,6 +279,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Aquarius\"}",
+"event_datetime_utc": "2011-02-15T11:18:34",
 "event_jd": 2455607.97124,
 "event_type": "ingress",
 "longitude_deg": 300.0,
@@ -270,6 +292,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Pisces\"}",
+"event_datetime_utc": "2011-03-25T13:08:47",
 "event_jd": 2455646.04777,
 "event_type": "ingress",
 "longitude_deg": 330.0,
@@ -282,6 +305,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Aries\"}",
+"event_datetime_utc": "2011-05-03T09:18:33",
 "event_jd": 2455684.88789,
 "event_type": "ingress",
 "longitude_deg": 360.0,
@@ -294,6 +318,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Taurus\"}",
+"event_datetime_utc": "2011-06-12T19:25:05",
 "event_jd": 2455725.3091,
 "event_type": "ingress",
 "longitude_deg": 30.0,
@@ -306,6 +331,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Gemini\"}",
+"event_datetime_utc": "2011-07-25T12:55:45",
 "event_jd": 2455768.03872,
 "event_type": "ingress",
 "longitude_deg": 60.0,
@@ -318,6 +344,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Cancer\"}",
+"event_datetime_utc": "2011-09-09T10:15:42",
 "event_jd": 2455813.92758,
 "event_type": "ingress",
 "longitude_deg": 90.0,
@@ -330,6 +357,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Leo\"}",
+"event_datetime_utc": "2011-10-30T16:37:08",
 "event_jd": 2455865.19245,
 "event_type": "ingress",
 "longitude_deg": 120.0,
@@ -342,6 +370,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Capricorn\"}",
+"event_datetime_utc": "2010-02-05T23:45:00",
 "event_jd": 2455233.48959,
 "event_type": "ingress",
 "longitude_deg": 270.0,
@@ -354,6 +383,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Aquarius\"}",
+"event_datetime_utc": "2010-02-26T00:16:53",
 "event_jd": 2455253.51173,
 "event_type": "ingress",
 "longitude_deg": 300.0,
@@ -366,6 +396,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Pisces\"}",
+"event_datetime_utc": "2010-03-14T15:10:34",
 "event_jd": 2455270.13234,
 "event_type": "ingress",
 "longitude_deg": 330.0,
@@ -378,6 +409,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Aries\"}",
+"event_datetime_utc": "2010-03-29T23:08:05",
 "event_jd": 2455285.46396,
 "event_type": "ingress",
 "longitude_deg": 0.0,
@@ -390,6 +422,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Taurus\"}",
+"event_datetime_utc": "2010-06-06T11:33:35",
 "event_jd": 2455353.98167,
 "event_type": "ingress",
 "longitude_deg": 30.0,
@@ -402,6 +435,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Gemini\"}",
+"event_datetime_utc": "2010-06-22T16:00:26",
 "event_jd": 2455370.16697,
 "event_type": "ingress",
 "longitude_deg": 60.0,
@@ -414,6 +448,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Cancer\"}",
+"event_datetime_utc": "2010-07-06T15:56:57",
 "event_jd": 2455384.16456,
 "event_type": "ingress",
 "longitude_deg": 90.0,
@@ -426,6 +461,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Leo\"}",
+"event_datetime_utc": "2010-07-23T16:35:48",
 "event_jd": 2455401.19153,
 "event_type": "ingress",
 "longitude_deg": 120.0,
@@ -438,6 +474,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Virgo\"}",
+"event_datetime_utc": "2010-09-30T05:24:23",
 "event_jd": 2455469.72527,
 "event_type": "ingress",
 "longitude_deg": 150.0,
@@ -450,6 +487,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Libra\"}",
+"event_datetime_utc": "2010-10-17T07:26:41",
 "event_jd": 2455486.8102,
 "event_type": "ingress",
 "longitude_deg": 180.0,
@@ -462,6 +500,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Scorpio\"}",
+"event_datetime_utc": "2010-11-05T00:45:36",
 "event_jd": 2455505.53168,
 "event_type": "ingress",
 "longitude_deg": 210.0,
@@ -474,6 +513,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Sagittarius\"}",
+"event_datetime_utc": "2010-11-25T22:29:42",
 "event_jd": 2455526.4373,
 "event_type": "ingress",
 "longitude_deg": 240.0,
@@ -486,6 +526,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Scorpio\"}",
+"event_datetime_utc": "2010-12-23T02:34:14",
 "event_jd": 2455553.60711,
 "event_type": "ingress",
 "longitude_deg": 240.0,
@@ -498,6 +539,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Sagittarius\"}",
+"event_datetime_utc": "2011-01-07T19:02:32",
 "event_jd": 2455569.29343,
 "event_type": "ingress",
 "longitude_deg": 240.0,
@@ -510,6 +552,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Capricorn\"}",
+"event_datetime_utc": "2011-01-31T00:24:04",
 "event_jd": 2455592.51672,
 "event_type": "ingress",
 "longitude_deg": 270.0,
@@ -522,6 +565,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Aquarius\"}",
+"event_datetime_utc": "2011-02-18T12:04:07",
 "event_jd": 2455611.00287,
 "event_type": "ingress",
 "longitude_deg": 300.0,
@@ -534,6 +578,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Pisces\"}",
+"event_datetime_utc": "2011-03-06T14:48:01",
 "event_jd": 2455627.11668,
 "event_type": "ingress",
 "longitude_deg": 330.0,
@@ -546,6 +591,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Aries\"}",
+"event_datetime_utc": "2011-03-28T12:48:08",
 "event_jd": 2455649.03343,
 "event_type": "ingress",
 "longitude_deg": 0.0,
@@ -558,6 +604,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Pisces\"}",
+"event_datetime_utc": "2011-04-02T06:15:17",
 "event_jd": 2455653.76062,
 "event_type": "ingress",
 "longitude_deg": 360.0,
@@ -570,6 +617,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Aries\"}",
+"event_datetime_utc": "2011-05-11T03:16:37",
 "event_jd": 2455692.63655,
 "event_type": "ingress",
 "longitude_deg": 360.0,
@@ -582,6 +630,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Taurus\"}",
+"event_datetime_utc": "2011-05-30T18:37:13",
 "event_jd": 2455712.27585,
 "event_type": "ingress",
 "longitude_deg": 30.0,
@@ -594,6 +643,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Gemini\"}",
+"event_datetime_utc": "2011-06-14T01:26:37",
 "event_jd": 2455726.56015,
 "event_type": "ingress",
 "longitude_deg": 60.0,
@@ -606,6 +656,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Cancer\"}",
+"event_datetime_utc": "2011-06-28T19:12:28",
 "event_jd": 2455741.30033,
 "event_type": "ingress",
 "longitude_deg": 90.0,
@@ -618,6 +669,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Leo\"}",
+"event_datetime_utc": "2011-07-20T06:13:38",
 "event_jd": 2455762.75947,
 "event_type": "ingress",
 "longitude_deg": 120.0,
@@ -630,6 +682,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Cancer\"}",
+"event_datetime_utc": "2011-08-16T19:02:45",
 "event_jd": 2455790.29359,
 "event_type": "ingress",
 "longitude_deg": 120.0,
@@ -642,6 +695,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Leo\"}",
+"event_datetime_utc": "2011-09-04T20:56:30",
 "event_jd": 2455809.37258,
 "event_type": "ingress",
 "longitude_deg": 120.0,
@@ -654,6 +708,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Virgo\"}",
+"event_datetime_utc": "2011-09-22T15:25:43",
 "event_jd": 2455827.14287,
 "event_type": "ingress",
 "longitude_deg": 150.0,
@@ -666,6 +721,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Libra\"}",
+"event_datetime_utc": "2011-10-09T18:02:03",
 "event_jd": 2455844.25144,
 "event_type": "ingress",
 "longitude_deg": 180.0,
@@ -678,6 +734,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Scorpio\"}",
+"event_datetime_utc": "2011-10-29T09:49:10",
 "event_jd": 2455863.90915,
 "event_type": "ingress",
 "longitude_deg": 210.0,
@@ -690,6 +747,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Cancer\"}",
+"event_datetime_utc": "2010-01-01T17:08:11",
 "event_jd": 2455198.21402,
 "event_type": "ingress",
 "longitude_deg": 90.0,
@@ -702,6 +760,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Leo\"}",
+"event_datetime_utc": "2010-01-03T17:07:54",
 "event_jd": 2455200.21383,
 "event_type": "ingress",
 "longitude_deg": 120.0,
@@ -714,6 +773,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Virgo\"}",
+"event_datetime_utc": "2010-01-05T18:44:17",
 "event_jd": 2455202.28076,
 "event_type": "ingress",
 "longitude_deg": 150.0,
@@ -726,6 +786,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Libra\"}",
+"event_datetime_utc": "2010-01-07T23:08:28",
 "event_jd": 2455204.46422,
 "event_type": "ingress",
 "longitude_deg": 180.0,
@@ -738,6 +799,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Scorpio\"}",
+"event_datetime_utc": "2010-01-10T06:42:21",
 "event_jd": 2455206.77942,
 "event_type": "ingress",
 "longitude_deg": 210.0,
@@ -750,6 +812,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Sagittarius\"}",
+"event_datetime_utc": "2010-01-12T16:59:26",
 "event_jd": 2455209.20794,
 "event_type": "ingress",
 "longitude_deg": 240.0,
@@ -762,6 +825,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Capricorn\"}",
+"event_datetime_utc": "2010-01-15T05:07:18",
 "event_jd": 2455211.71341,
 "event_type": "ingress",
 "longitude_deg": 270.0,
@@ -774,6 +838,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Aquarius\"}",
+"event_datetime_utc": "2010-01-17T18:05:42",
 "event_jd": 2455214.25396,
 "event_type": "ingress",
 "longitude_deg": 300.0,
@@ -786,6 +851,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Pisces\"}",
+"event_datetime_utc": "2010-01-20T06:40:32",
 "event_jd": 2455216.77815,
 "event_type": "ingress",
 "longitude_deg": 330.0,
@@ -798,6 +864,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Aries\"}",
+"event_datetime_utc": "2010-01-22T17:18:18",
 "event_jd": 2455219.22104,
 "event_type": "ingress",
 "longitude_deg": 360.0,
@@ -810,6 +877,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Taurus\"}",
+"event_datetime_utc": "2010-01-25T00:35:44",
 "event_jd": 2455221.52482,
 "event_type": "ingress",
 "longitude_deg": 30.0,
@@ -822,6 +890,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Gemini\"}",
+"event_datetime_utc": "2010-01-27T04:07:20",
 "event_jd": 2455223.67176,
 "event_type": "ingress",
 "longitude_deg": 60.0,
@@ -834,6 +903,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Cancer\"}",
+"event_datetime_utc": "2010-01-29T04:40:47",
 "event_jd": 2455225.695,
 "event_type": "ingress",
 "longitude_deg": 90.0,
@@ -846,6 +916,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Leo\"}",
+"event_datetime_utc": "2010-01-31T03:55:14",
 "event_jd": 2455227.66336,
 "event_type": "ingress",
 "longitude_deg": 120.0,
@@ -858,6 +929,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Virgo\"}",
+"event_datetime_utc": "2010-02-02T03:51:18",
 "event_jd": 2455229.66063,
 "event_type": "ingress",
 "longitude_deg": 150.0,
@@ -870,6 +942,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Libra\"}",
+"event_datetime_utc": "2010-02-04T06:23:07",
 "event_jd": 2455231.76606,
 "event_type": "ingress",
 "longitude_deg": 180.0,
@@ -882,6 +955,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Scorpio\"}",
+"event_datetime_utc": "2010-02-06T12:43:18",
 "event_jd": 2455234.03008,
 "event_type": "ingress",
 "longitude_deg": 210.0,
@@ -894,6 +968,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Sagittarius\"}",
+"event_datetime_utc": "2010-02-08T22:46:46",
 "event_jd": 2455236.44915,
 "event_type": "ingress",
 "longitude_deg": 240.0,
@@ -906,6 +981,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Capricorn\"}",
+"event_datetime_utc": "2010-02-11T11:11:39",
 "event_jd": 2455238.96643,
 "event_type": "ingress",
 "longitude_deg": 270.0,
@@ -918,6 +994,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Aquarius\"}",
+"event_datetime_utc": "2010-02-14T00:13:46",
 "event_jd": 2455241.50956,
 "event_type": "ingress",
 "longitude_deg": 300.0,
@@ -930,6 +1007,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Pisces\"}",
+"event_datetime_utc": "2010-02-16T12:35:48",
 "event_jd": 2455244.02487,
 "event_type": "ingress",
 "longitude_deg": 330.0,
@@ -942,6 +1020,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Aries\"}",
+"event_datetime_utc": "2010-02-18T23:25:07",
 "event_jd": 2455246.47578,
 "event_type": "ingress",
 "longitude_deg": 0.0,
@@ -954,6 +1033,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Taurus\"}",
+"event_datetime_utc": "2010-02-21T07:51:27",
 "event_jd": 2455248.8274,
 "event_type": "ingress",
 "longitude_deg": 30.0,
@@ -966,6 +1046,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Gemini\"}",
+"event_datetime_utc": "2010-02-23T13:12:23",
 "event_jd": 2455251.05027,
 "event_type": "ingress",
 "longitude_deg": 60.0,
@@ -978,6 +1059,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Cancer\"}",
+"event_datetime_utc": "2010-02-25T15:24:52",
 "event_jd": 2455253.14228,
 "event_type": "ingress",
 "longitude_deg": 90.0,
@@ -990,6 +1072,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Leo\"}",
+"event_datetime_utc": "2010-02-27T15:24:16",
 "event_jd": 2455255.14186,
 "event_type": "ingress",
 "longitude_deg": 120.0,
@@ -1002,6 +1085,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Virgo\"}",
+"event_datetime_utc": "2010-03-01T14:54:05",
 "event_jd": 2455257.12089,
 "event_type": "ingress",
 "longitude_deg": 150.0,
@@ -1014,6 +1098,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Libra\"}",
+"event_datetime_utc": "2010-03-03T16:00:05",
 "event_jd": 2455259.16673,
 "event_type": "ingress",
 "longitude_deg": 180.0,
@@ -1026,6 +1111,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Scorpio\"}",
+"event_datetime_utc": "2010-03-05T20:34:27",
 "event_jd": 2455261.35726,
 "event_type": "ingress",
 "longitude_deg": 210.0,
@@ -1038,6 +1124,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Sagittarius\"}",
+"event_datetime_utc": "2010-03-08T05:24:20",
 "event_jd": 2455263.72524,
 "event_type": "ingress",
 "longitude_deg": 240.0,
@@ -1050,6 +1137,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Capricorn\"}",
+"event_datetime_utc": "2010-03-10T17:29:53",
 "event_jd": 2455266.22909,
 "event_type": "ingress",
 "longitude_deg": 270.0,
@@ -1062,6 +1150,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Aquarius\"}",
+"event_datetime_utc": "2010-03-13T06:35:19",
 "event_jd": 2455268.77453,
 "event_type": "ingress",
 "longitude_deg": 300.0,
@@ -1074,6 +1163,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Pisces\"}",
+"event_datetime_utc": "2010-03-15T18:43:08",
 "event_jd": 2455271.27995,
 "event_type": "ingress",
 "longitude_deg": 330.0,
@@ -1086,6 +1176,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Aries\"}",
+"event_datetime_utc": "2010-03-18T05:03:34",
 "event_jd": 2455273.71081,
 "event_type": "ingress",
 "longitude_deg": 0.0,
@@ -1098,6 +1189,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Taurus\"}",
+"event_datetime_utc": "2010-03-20T13:26:51",
 "event_jd": 2455276.06032,
 "event_type": "ingress",
 "longitude_deg": 30.0,
@@ -1110,6 +1202,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Gemini\"}",
+"event_datetime_utc": "2010-03-22T19:42:07",
 "event_jd": 2455278.32092,
 "event_type": "ingress",
 "longitude_deg": 60.0,
@@ -1122,6 +1215,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Cancer\"}",
+"event_datetime_utc": "2010-03-24T23:33:59",
 "event_jd": 2455280.48194,
 "event_type": "ingress",
 "longitude_deg": 90.0,
@@ -1134,6 +1228,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Leo\"}",
+"event_datetime_utc": "2010-03-27T01:13:10",
 "event_jd": 2455282.55082,
 "event_type": "ingress",
 "longitude_deg": 120.0,
@@ -1146,6 +1241,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Virgo\"}",
+"event_datetime_utc": "2010-03-29T01:40:09",
 "event_jd": 2455284.56956,
 "event_type": "ingress",
 "longitude_deg": 150.0,
@@ -1158,6 +1254,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Libra\"}",
+"event_datetime_utc": "2010-03-31T02:39:04",
 "event_jd": 2455286.61046,
 "event_type": "ingress",
 "longitude_deg": 180.0,
@@ -1170,6 +1267,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Scorpio\"}",
+"event_datetime_utc": "2010-04-02T06:08:19",
 "event_jd": 2455288.75578,
 "event_type": "ingress",
 "longitude_deg": 210.0,
@@ -1182,6 +1280,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Sagittarius\"}",
+"event_datetime_utc": "2010-04-04T13:32:45",
 "event_jd": 2455291.06441,
 "event_type": "ingress",
 "longitude_deg": 240.0,
@@ -1194,6 +1293,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Capricorn\"}",
+"event_datetime_utc": "2010-04-07T00:43:24",
 "event_jd": 2455293.53014,
 "event_type": "ingress",
 "longitude_deg": 270.0,
@@ -1206,6 +1306,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Aquarius\"}",
+"event_datetime_utc": "2010-04-09T13:38:55",
 "event_jd": 2455296.0687,
 "event_type": "ingress",
 "longitude_deg": 300.0,
@@ -1218,6 +1319,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Pisces\"}",
+"event_datetime_utc": "2010-04-12T01:45:17",
 "event_jd": 2455298.57312,
 "event_type": "ingress",
 "longitude_deg": 330.0,
@@ -1230,6 +1332,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Aries\"}",
+"event_datetime_utc": "2010-04-14T11:37:53",
 "event_jd": 2455300.98465,
 "event_type": "ingress",
 "longitude_deg": 360.0,
@@ -1242,6 +1345,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Taurus\"}",
+"event_datetime_utc": "2010-04-16T19:14:41",
 "event_jd": 2455303.30187,
 "event_type": "ingress",
 "longitude_deg": 30.0,
@@ -1254,6 +1358,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Gemini\"}",
+"event_datetime_utc": "2010-04-19T01:04:23",
 "event_jd": 2455305.54472,
 "event_type": "ingress",
 "longitude_deg": 60.0,
@@ -1266,6 +1371,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Cancer\"}",
+"event_datetime_utc": "2010-04-21T05:24:37",
 "event_jd": 2455307.72544,
 "event_type": "ingress",
 "longitude_deg": 90.0,
@@ -1278,6 +1384,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Leo\"}",
+"event_datetime_utc": "2010-04-23T08:21:48",
 "event_jd": 2455309.84848,
 "event_type": "ingress",
 "longitude_deg": 120.0,
@@ -1290,6 +1397,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Virgo\"}",
+"event_datetime_utc": "2010-04-25T10:19:43",
 "event_jd": 2455311.93036,
 "event_type": "ingress",
 "longitude_deg": 150.0,
@@ -1302,6 +1410,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Libra\"}",
+"event_datetime_utc": "2010-04-27T12:20:34",
 "event_jd": 2455314.01429,
 "event_type": "ingress",
 "longitude_deg": 180.0,
@@ -1314,6 +1423,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Scorpio\"}",
+"event_datetime_utc": "2010-04-29T15:57:05",
 "event_jd": 2455316.16464,
 "event_type": "ingress",
 "longitude_deg": 210.0,
@@ -1326,6 +1436,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Sagittarius\"}",
+"event_datetime_utc": "2010-05-01T22:37:49",
 "event_jd": 2455318.44293,
 "event_type": "ingress",
 "longitude_deg": 240.0,
@@ -1338,6 +1449,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Capricorn\"}",
+"event_datetime_utc": "2010-05-04T08:52:24",
 "event_jd": 2455320.86973,
 "event_type": "ingress",
 "longitude_deg": 270.0,
@@ -1350,6 +1462,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Aquarius\"}",
+"event_datetime_utc": "2010-05-06T21:24:49",
 "event_jd": 2455323.39224,
 "event_type": "ingress",
 "longitude_deg": 300.0,
@@ -1362,6 +1475,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Pisces\"}",
+"event_datetime_utc": "2010-05-09T09:41:09",
 "event_jd": 2455325.90358,
 "event_type": "ingress",
 "longitude_deg": 330.0,
@@ -1374,6 +1488,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Aries\"}",
+"event_datetime_utc": "2010-05-11T19:35:15",
 "event_jd": 2455328.31615,
 "event_type": "ingress",
 "longitude_deg": 0.0,
@@ -1386,6 +1501,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Taurus\"}",
+"event_datetime_utc": "2010-05-14T02:36:07",
 "event_jd": 2455330.60842,
 "event_type": "ingress",
 "longitude_deg": 30.0,
@@ -1398,6 +1514,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Gemini\"}",
+"event_datetime_utc": "2010-05-16T07:23:32",
 "event_jd": 2455332.80802,
 "event_type": "ingress",
 "longitude_deg": 60.0,
@@ -1410,6 +1527,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Cancer\"}",
+"event_datetime_utc": "2010-05-18T10:53:59",
 "event_jd": 2455334.95416,
 "event_type": "ingress",
 "longitude_deg": 90.0,
@@ -1422,6 +1540,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Leo\"}",
+"event_datetime_utc": "2010-05-20T13:49:32",
 "event_jd": 2455337.07608,
 "event_type": "ingress",
 "longitude_deg": 120.0,
@@ -1434,6 +1553,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Virgo\"}",
+"event_datetime_utc": "2010-05-22T16:38:38",
 "event_jd": 2455339.1935,
 "event_type": "ingress",
 "longitude_deg": 150.0,
@@ -1446,6 +1566,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Libra\"}",
+"event_datetime_utc": "2010-05-24T19:54:53",
 "event_jd": 2455341.32978,
 "event_type": "ingress",
 "longitude_deg": 180.0,
@@ -1458,6 +1579,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Scorpio\"}",
+"event_datetime_utc": "2010-05-27T00:30:06",
 "event_jd": 2455343.52091,
 "event_type": "ingress",
 "longitude_deg": 210.0,
@@ -1470,6 +1592,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Sagittarius\"}",
+"event_datetime_utc": "2010-05-29T07:24:59",
 "event_jd": 2455345.80902,
 "event_type": "ingress",
 "longitude_deg": 240.0,
@@ -1482,6 +1605,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Capricorn\"}",
+"event_datetime_utc": "2010-05-31T17:15:02",
 "event_jd": 2455348.21877,
 "event_type": "ingress",
 "longitude_deg": 270.0,
@@ -1494,6 +1618,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Aquarius\"}",
+"event_datetime_utc": "2010-06-03T05:25:04",
 "event_jd": 2455350.72575,
 "event_type": "ingress",
 "longitude_deg": 300.0,
@@ -1506,6 +1631,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Pisces\"}",
+"event_datetime_utc": "2010-06-05T17:55:19",
 "event_jd": 2455353.24676,
 "event_type": "ingress",
 "longitude_deg": 330.0,
@@ -1518,6 +1644,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Aries\"}",
+"event_datetime_utc": "2010-06-08T04:23:07",
 "event_jd": 2455355.68273,
 "event_type": "ingress",
 "longitude_deg": 0.0,
@@ -1530,6 +1657,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Taurus\"}",
+"event_datetime_utc": "2010-06-10T11:33:03",
 "event_jd": 2455357.98129,
 "event_type": "ingress",
 "longitude_deg": 30.0,
@@ -1542,6 +1670,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Gemini\"}",
+"event_datetime_utc": "2010-06-12T15:41:23",
 "event_jd": 2455360.15374,
 "event_type": "ingress",
 "longitude_deg": 60.0,
@@ -1554,6 +1683,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Cancer\"}",
+"event_datetime_utc": "2010-06-14T17:57:46",
 "event_jd": 2455362.24845,
 "event_type": "ingress",
 "longitude_deg": 90.0,
@@ -1566,6 +1696,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Leo\"}",
+"event_datetime_utc": "2010-06-16T19:42:12",
 "event_jd": 2455364.32098,
 "event_type": "ingress",
 "longitude_deg": 120.0,
@@ -1578,6 +1709,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Virgo\"}",
+"event_datetime_utc": "2010-06-18T22:01:24",
 "event_jd": 2455366.41765,
 "event_type": "ingress",
 "longitude_deg": 150.0,
@@ -1590,6 +1722,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Libra\"}",
+"event_datetime_utc": "2010-06-21T01:41:44",
 "event_jd": 2455368.57066,
 "event_type": "ingress",
 "longitude_deg": 180.0,
@@ -1602,6 +1735,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Scorpio\"}",
+"event_datetime_utc": "2010-06-23T07:13:15",
 "event_jd": 2455370.80088,
 "event_type": "ingress",
 "longitude_deg": 210.0,
@@ -1614,6 +1748,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Sagittarius\"}",
+"event_datetime_utc": "2010-06-25T14:56:34",
 "event_jd": 2455373.12262,
 "event_type": "ingress",
 "longitude_deg": 240.0,
@@ -1626,6 +1761,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Capricorn\"}",
+"event_datetime_utc": "2010-06-28T01:00:24",
 "event_jd": 2455375.54196,
 "event_type": "ingress",
 "longitude_deg": 270.0,
@@ -1638,6 +1774,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Aquarius\"}",
+"event_datetime_utc": "2010-06-30T13:01:58",
 "event_jd": 2455378.04303,
 "event_type": "ingress",
 "longitude_deg": 300.0,
@@ -1650,6 +1787,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Pisces\"}",
+"event_datetime_utc": "2010-07-03T01:42:49",
 "event_jd": 2455380.57141,
 "event_type": "ingress",
 "longitude_deg": 330.0,
@@ -1662,6 +1800,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Aries\"}",
+"event_datetime_utc": "2010-07-05T12:59:19",
 "event_jd": 2455383.04119,
 "event_type": "ingress",
 "longitude_deg": 0.0,
@@ -1674,6 +1813,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Taurus\"}",
+"event_datetime_utc": "2010-07-07T21:05:20",
 "event_jd": 2455385.37871,
 "event_type": "ingress",
 "longitude_deg": 30.0,
@@ -1686,6 +1826,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Gemini\"}",
+"event_datetime_utc": "2010-07-10T01:32:23",
 "event_jd": 2455387.56416,
 "event_type": "ingress",
 "longitude_deg": 60.0,
@@ -1698,6 +1839,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Cancer\"}",
+"event_datetime_utc": "2010-07-12T03:10:53",
 "event_jd": 2455389.63256,
 "event_type": "ingress",
 "longitude_deg": 90.0,
@@ -1710,6 +1852,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Leo\"}",
+"event_datetime_utc": "2010-07-14T03:34:44",
 "event_jd": 2455391.64913,
 "event_type": "ingress",
 "longitude_deg": 120.0,
@@ -1722,6 +1865,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Virgo\"}",
+"event_datetime_utc": "2010-07-16T04:26:59",
 "event_jd": 2455393.68541,
 "event_type": "ingress",
 "longitude_deg": 150.0,
@@ -1734,6 +1878,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Libra\"}",
+"event_datetime_utc": "2010-07-18T07:14:19",
 "event_jd": 2455395.80161,
 "event_type": "ingress",
 "longitude_deg": 180.0,
@@ -1746,6 +1891,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Scorpio\"}",
+"event_datetime_utc": "2010-07-20T12:46:16",
 "event_jd": 2455398.03213,
 "event_type": "ingress",
 "longitude_deg": 210.0,
@@ -1758,6 +1904,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Sagittarius\"}",
+"event_datetime_utc": "2010-07-22T21:06:04",
 "event_jd": 2455400.37922,
 "event_type": "ingress",
 "longitude_deg": 240.0,
@@ -1770,6 +1917,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Capricorn\"}",
+"event_datetime_utc": "2010-07-25T07:43:04",
 "event_jd": 2455402.82157,
 "event_type": "ingress",
 "longitude_deg": 270.0,
@@ -1782,6 +1930,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Aquarius\"}",
+"event_datetime_utc": "2010-07-27T19:52:33",
 "event_jd": 2455405.32817,
 "event_type": "ingress",
 "longitude_deg": 300.0,
@@ -1794,6 +1943,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Pisces\"}",
+"event_datetime_utc": "2010-07-30T08:36:43",
 "event_jd": 2455407.85884,
 "event_type": "ingress",
 "longitude_deg": 330.0,
@@ -1806,6 +1956,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Aries\"}",
+"event_datetime_utc": "2010-08-01T20:30:32",
 "event_jd": 2455410.35455,
 "event_type": "ingress",
 "longitude_deg": 360.0,
@@ -1818,6 +1969,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Taurus\"}",
+"event_datetime_utc": "2010-08-04T05:52:24",
 "event_jd": 2455412.74472,
 "event_type": "ingress",
 "longitude_deg": 30.0,
@@ -1830,6 +1982,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Gemini\"}",
+"event_datetime_utc": "2010-08-06T11:33:56",
 "event_jd": 2455414.98191,
 "event_type": "ingress",
 "longitude_deg": 60.0,
@@ -1842,6 +1995,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Cancer\"}",
+"event_datetime_utc": "2010-08-08T13:42:02",
 "event_jd": 2455417.07086,
 "event_type": "ingress",
 "longitude_deg": 90.0,
@@ -1854,6 +2008,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Leo\"}",
+"event_datetime_utc": "2010-08-10T13:33:50",
 "event_jd": 2455419.06516,
 "event_type": "ingress",
 "longitude_deg": 120.0,
@@ -1866,6 +2021,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Virgo\"}",
+"event_datetime_utc": "2010-08-12T13:04:54",
 "event_jd": 2455421.04508,
 "event_type": "ingress",
 "longitude_deg": 150.0,
@@ -1878,6 +2034,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Libra\"}",
+"event_datetime_utc": "2010-08-14T14:16:05",
 "event_jd": 2455423.09451,
 "event_type": "ingress",
 "longitude_deg": 180.0,
@@ -1890,6 +2047,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Scorpio\"}",
+"event_datetime_utc": "2010-08-16T18:39:23",
 "event_jd": 2455425.27736,
 "event_type": "ingress",
 "longitude_deg": 210.0,
@@ -1902,6 +2060,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Sagittarius\"}",
+"event_datetime_utc": "2010-08-19T02:42:26",
 "event_jd": 2455427.6128,
 "event_type": "ingress",
 "longitude_deg": 240.0,
@@ -1914,6 +2073,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Capricorn\"}",
+"event_datetime_utc": "2010-08-21T13:38:10",
 "event_jd": 2455430.06818,
 "event_type": "ingress",
 "longitude_deg": 270.0,
@@ -1926,6 +2086,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Aquarius\"}",
+"event_datetime_utc": "2010-08-24T02:03:07",
 "event_jd": 2455432.58551,
 "event_type": "ingress",
 "longitude_deg": 300.0,
@@ -1938,6 +2099,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Pisces\"}",
+"event_datetime_utc": "2010-08-26T14:45:02",
 "event_jd": 2455435.11462,
 "event_type": "ingress",
 "longitude_deg": 330.0,
@@ -1950,6 +2112,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Aries\"}",
+"event_datetime_utc": "2010-08-29T02:46:39",
 "event_jd": 2455437.61573,
 "event_type": "ingress",
 "longitude_deg": 360.0,
@@ -1962,6 +2125,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Taurus\"}",
+"event_datetime_utc": "2010-08-31T13:01:09",
 "event_jd": 2455440.04247,
 "event_type": "ingress",
 "longitude_deg": 30.0,
@@ -1974,6 +2138,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Gemini\"}",
+"event_datetime_utc": "2010-09-02T20:14:58",
 "event_jd": 2455442.34374,
 "event_type": "ingress",
 "longitude_deg": 60.0,
@@ -1986,6 +2151,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Cancer\"}",
+"event_datetime_utc": "2010-09-04T23:51:19",
 "event_jd": 2455444.49397,
 "event_type": "ingress",
 "longitude_deg": 90.0,
@@ -1998,6 +2164,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Leo\"}",
+"event_datetime_utc": "2010-09-07T00:25:02",
 "event_jd": 2455446.51739,
 "event_type": "ingress",
 "longitude_deg": 120.0,
@@ -2010,6 +2177,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Virgo\"}",
+"event_datetime_utc": "2010-09-08T23:34:38",
 "event_jd": 2455448.48239,
 "event_type": "ingress",
 "longitude_deg": 150.0,
@@ -2022,6 +2190,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Libra\"}",
+"event_datetime_utc": "2010-09-10T23:30:01",
 "event_jd": 2455450.47919,
 "event_type": "ingress",
 "longitude_deg": 180.0,
@@ -2034,6 +2203,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Scorpio\"}",
+"event_datetime_utc": "2010-09-13T02:15:29",
 "event_jd": 2455452.59409,
 "event_type": "ingress",
 "longitude_deg": 210.0,
@@ -2046,6 +2216,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Sagittarius\"}",
+"event_datetime_utc": "2010-09-15T09:04:07",
 "event_jd": 2455454.87787,
 "event_type": "ingress",
 "longitude_deg": 240.0,
@@ -2058,6 +2229,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Capricorn\"}",
+"event_datetime_utc": "2010-09-17T19:35:24",
 "event_jd": 2455457.31625,
 "event_type": "ingress",
 "longitude_deg": 270.0,
@@ -2070,6 +2242,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Aquarius\"}",
+"event_datetime_utc": "2010-09-20T08:06:13",
 "event_jd": 2455459.83765,
 "event_type": "ingress",
 "longitude_deg": 300.0,
@@ -2082,6 +2255,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Pisces\"}",
+"event_datetime_utc": "2010-09-22T20:45:57",
 "event_jd": 2455462.36525,
 "event_type": "ingress",
 "longitude_deg": 330.0,
@@ -2094,6 +2268,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Aries\"}",
+"event_datetime_utc": "2010-09-25T08:30:37",
 "event_jd": 2455464.8546,
 "event_type": "ingress",
 "longitude_deg": 0.0,
@@ -2106,6 +2281,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Taurus\"}",
+"event_datetime_utc": "2010-09-27T18:46:31",
 "event_jd": 2455467.28231,
 "event_type": "ingress",
 "longitude_deg": 30.0,
@@ -2118,6 +2294,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Gemini\"}",
+"event_datetime_utc": "2010-09-30T02:53:19",
 "event_jd": 2455469.62036,
 "event_type": "ingress",
 "longitude_deg": 60.0,
@@ -2130,6 +2307,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Cancer\"}",
+"event_datetime_utc": "2010-10-02T08:06:10",
 "event_jd": 2455471.83762,
 "event_type": "ingress",
 "longitude_deg": 90.0,
@@ -2142,6 +2320,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Leo\"}",
+"event_datetime_utc": "2010-10-04T10:16:53",
 "event_jd": 2455473.9284,
 "event_type": "ingress",
 "longitude_deg": 120.0,
@@ -2154,6 +2333,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Virgo\"}",
+"event_datetime_utc": "2010-10-06T10:21:46",
 "event_jd": 2455475.93179,
 "event_type": "ingress",
 "longitude_deg": 150.0,
@@ -2166,6 +2346,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Libra\"}",
+"event_datetime_utc": "2010-10-08T10:09:56",
 "event_jd": 2455477.92357,
 "event_type": "ingress",
 "longitude_deg": 180.0,
@@ -2178,6 +2359,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Scorpio\"}",
+"event_datetime_utc": "2010-10-10T11:50:11",
 "event_jd": 2455479.99319,
 "event_type": "ingress",
 "longitude_deg": 210.0,
@@ -2190,6 +2372,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Sagittarius\"}",
+"event_datetime_utc": "2010-10-12T17:08:04",
 "event_jd": 2455482.21394,
 "event_type": "ingress",
 "longitude_deg": 240.0,
@@ -2202,6 +2385,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Capricorn\"}",
+"event_datetime_utc": "2010-10-15T02:32:08",
 "event_jd": 2455484.60566,
 "event_type": "ingress",
 "longitude_deg": 270.0,
@@ -2214,6 +2398,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Aquarius\"}",
+"event_datetime_utc": "2010-10-17T14:43:08",
 "event_jd": 2455487.11329,
 "event_type": "ingress",
 "longitude_deg": 300.0,
@@ -2226,6 +2411,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Pisces\"}",
+"event_datetime_utc": "2010-10-20T03:23:13",
 "event_jd": 2455489.64113,
 "event_type": "ingress",
 "longitude_deg": 330.0,
@@ -2238,6 +2424,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Aries\"}",
+"event_datetime_utc": "2010-10-22T14:50:12",
 "event_jd": 2455492.1182,
 "event_type": "ingress",
 "longitude_deg": 0.0,
@@ -2250,6 +2437,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Taurus\"}",
+"event_datetime_utc": "2010-10-25T00:29:59",
 "event_jd": 2455494.52083,
 "event_type": "ingress",
 "longitude_deg": 30.0,
@@ -2262,6 +2450,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Gemini\"}",
+"event_datetime_utc": "2010-10-27T08:19:35",
 "event_jd": 2455496.84694,
 "event_type": "ingress",
 "longitude_deg": 60.0,
@@ -2274,6 +2463,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Cancer\"}",
+"event_datetime_utc": "2010-10-29T14:09:34",
 "event_jd": 2455499.08999,
 "event_type": "ingress",
 "longitude_deg": 90.0,
@@ -2286,6 +2476,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Leo\"}",
+"event_datetime_utc": "2010-10-31T17:47:54",
 "event_jd": 2455501.24161,
 "event_type": "ingress",
 "longitude_deg": 120.0,
@@ -2298,6 +2489,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Virgo\"}",
+"event_datetime_utc": "2010-11-02T19:31:54",
 "event_jd": 2455503.31383,
 "event_type": "ingress",
 "longitude_deg": 150.0,
@@ -2310,6 +2502,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Libra\"}",
+"event_datetime_utc": "2010-11-04T20:27:00",
 "event_jd": 2455505.35209,
 "event_type": "ingress",
 "longitude_deg": 180.0,
@@ -2322,6 +2515,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Scorpio\"}",
+"event_datetime_utc": "2010-11-06T22:15:05",
 "event_jd": 2455507.42714,
 "event_type": "ingress",
 "longitude_deg": 210.0,
@@ -2334,6 +2528,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Sagittarius\"}",
+"event_datetime_utc": "2010-11-09T02:42:21",
 "event_jd": 2455509.61275,
 "event_type": "ingress",
 "longitude_deg": 240.0,
@@ -2346,6 +2541,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Capricorn\"}",
+"event_datetime_utc": "2010-11-11T10:52:55",
 "event_jd": 2455511.95342,
 "event_type": "ingress",
 "longitude_deg": 270.0,
@@ -2358,6 +2554,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Aquarius\"}",
+"event_datetime_utc": "2010-11-13T22:18:53",
 "event_jd": 2455514.42979,
 "event_type": "ingress",
 "longitude_deg": 300.0,
@@ -2370,6 +2567,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Pisces\"}",
+"event_datetime_utc": "2010-11-16T10:57:04",
 "event_jd": 2455516.95631,
 "event_type": "ingress",
 "longitude_deg": 330.0,
@@ -2382,6 +2580,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Aries\"}",
+"event_datetime_utc": "2010-11-18T22:27:40",
 "event_jd": 2455519.43589,
 "event_type": "ingress",
 "longitude_deg": 0.0,
@@ -2394,6 +2593,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Taurus\"}",
+"event_datetime_utc": "2010-11-21T07:38:34",
 "event_jd": 2455521.81845,
 "event_type": "ingress",
 "longitude_deg": 30.0,
@@ -2406,6 +2606,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Gemini\"}",
+"event_datetime_utc": "2010-11-23T14:30:55",
 "event_jd": 2455524.10481,
 "event_type": "ingress",
 "longitude_deg": 60.0,
@@ -2418,6 +2619,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Cancer\"}",
+"event_datetime_utc": "2010-11-25T19:35:49",
 "event_jd": 2455526.31654,
 "event_type": "ingress",
 "longitude_deg": 90.0,
@@ -2430,6 +2632,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Leo\"}",
+"event_datetime_utc": "2010-11-27T23:21:29",
 "event_jd": 2455528.47326,
 "event_type": "ingress",
 "longitude_deg": 120.0,
@@ -2442,6 +2645,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Virgo\"}",
+"event_datetime_utc": "2010-11-30T02:10:55",
 "event_jd": 2455530.59092,
 "event_type": "ingress",
 "longitude_deg": 150.0,
@@ -2454,6 +2658,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Libra\"}",
+"event_datetime_utc": "2010-12-02T04:37:44",
 "event_jd": 2455532.69288,
 "event_type": "ingress",
 "longitude_deg": 180.0,
@@ -2466,6 +2671,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Scorpio\"}",
+"event_datetime_utc": "2010-12-04T07:38:09",
 "event_jd": 2455534.81817,
 "event_type": "ingress",
 "longitude_deg": 210.0,
@@ -2478,6 +2684,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Sagittarius\"}",
+"event_datetime_utc": "2010-12-06T12:24:57",
 "event_jd": 2455537.01733,
 "event_type": "ingress",
 "longitude_deg": 240.0,
@@ -2490,6 +2697,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Capricorn\"}",
+"event_datetime_utc": "2010-12-08T20:01:46",
 "event_jd": 2455539.33457,
 "event_type": "ingress",
 "longitude_deg": 270.0,
@@ -2502,6 +2710,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Aquarius\"}",
+"event_datetime_utc": "2010-12-11T06:41:23",
 "event_jd": 2455541.77874,
 "event_type": "ingress",
 "longitude_deg": 300.0,
@@ -2514,6 +2723,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Pisces\"}",
+"event_datetime_utc": "2010-12-13T19:09:39",
 "event_jd": 2455544.29838,
 "event_type": "ingress",
 "longitude_deg": 330.0,
@@ -2526,6 +2736,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Aries\"}",
+"event_datetime_utc": "2010-12-16T07:06:41",
 "event_jd": 2455546.79632,
 "event_type": "ingress",
 "longitude_deg": 0.0,
@@ -2538,6 +2749,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Taurus\"}",
+"event_datetime_utc": "2010-12-18T16:32:38",
 "event_jd": 2455549.18933,
 "event_type": "ingress",
 "longitude_deg": 30.0,
@@ -2550,6 +2762,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Gemini\"}",
+"event_datetime_utc": "2010-12-20T22:51:42",
 "event_jd": 2455551.45258,
 "event_type": "ingress",
 "longitude_deg": 60.0,
@@ -2562,6 +2775,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Cancer\"}",
+"event_datetime_utc": "2010-12-23T02:41:55",
 "event_jd": 2455553.61244,
 "event_type": "ingress",
 "longitude_deg": 90.0,
@@ -2574,6 +2788,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Leo\"}",
+"event_datetime_utc": "2010-12-25T05:12:38",
 "event_jd": 2455555.71711,
 "event_type": "ingress",
 "longitude_deg": 120.0,
@@ -2586,6 +2801,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Virgo\"}",
+"event_datetime_utc": "2010-12-27T07:31:54",
 "event_jd": 2455557.81382,
 "event_type": "ingress",
 "longitude_deg": 150.0,
@@ -2598,6 +2814,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Libra\"}",
+"event_datetime_utc": "2010-12-29T10:31:09",
 "event_jd": 2455559.93831,
 "event_type": "ingress",
 "longitude_deg": 180.0,
@@ -2610,6 +2827,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Scorpio\"}",
+"event_datetime_utc": "2010-12-31T14:44:41",
 "event_jd": 2455562.11437,
 "event_type": "ingress",
 "longitude_deg": 210.0,
@@ -2622,6 +2840,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Sagittarius\"}",
+"event_datetime_utc": "2011-01-02T20:39:03",
 "event_jd": 2455564.36045,
 "event_type": "ingress",
 "longitude_deg": 240.0,
@@ -2634,6 +2853,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Capricorn\"}",
+"event_datetime_utc": "2011-01-05T04:40:11",
 "event_jd": 2455566.69457,
 "event_type": "ingress",
 "longitude_deg": 270.0,
@@ -2646,6 +2866,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Aquarius\"}",
+"event_datetime_utc": "2011-01-07T15:02:34",
 "event_jd": 2455569.12679,
 "event_type": "ingress",
 "longitude_deg": 300.0,
@@ -2658,6 +2879,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Pisces\"}",
+"event_datetime_utc": "2011-01-10T03:16:50",
 "event_jd": 2455571.63669,
 "event_type": "ingress",
 "longitude_deg": 330.0,
@@ -2670,6 +2892,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Aries\"}",
+"event_datetime_utc": "2011-01-12T15:44:01",
 "event_jd": 2455574.15558,
 "event_type": "ingress",
 "longitude_deg": 360.0,
@@ -2682,6 +2905,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Taurus\"}",
+"event_datetime_utc": "2011-01-15T02:08:06",
 "event_jd": 2455576.58896,
 "event_type": "ingress",
 "longitude_deg": 30.0,
@@ -2694,6 +2918,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Gemini\"}",
+"event_datetime_utc": "2011-01-17T08:59:03",
 "event_jd": 2455578.87434,
 "event_type": "ingress",
 "longitude_deg": 60.0,
@@ -2706,6 +2931,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Cancer\"}",
+"event_datetime_utc": "2011-01-19T12:20:24",
 "event_jd": 2455581.01418,
 "event_type": "ingress",
 "longitude_deg": 90.0,
@@ -2718,6 +2944,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Leo\"}",
+"event_datetime_utc": "2011-01-21T13:28:48",
 "event_jd": 2455583.06168,
 "event_type": "ingress",
 "longitude_deg": 120.0,
@@ -2730,6 +2957,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Virgo\"}",
+"event_datetime_utc": "2011-01-23T14:10:13",
 "event_jd": 2455585.09043,
 "event_type": "ingress",
 "longitude_deg": 150.0,
@@ -2742,6 +2970,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Libra\"}",
+"event_datetime_utc": "2011-01-25T16:03:26",
 "event_jd": 2455587.16905,
 "event_type": "ingress",
 "longitude_deg": 180.0,
@@ -2754,6 +2983,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Scorpio\"}",
+"event_datetime_utc": "2011-01-27T20:12:23",
 "event_jd": 2455589.34194,
 "event_type": "ingress",
 "longitude_deg": 210.0,
@@ -2766,6 +2996,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Sagittarius\"}",
+"event_datetime_utc": "2011-01-30T02:52:56",
 "event_jd": 2455591.6201,
 "event_type": "ingress",
 "longitude_deg": 240.0,
@@ -2778,6 +3009,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Capricorn\"}",
+"event_datetime_utc": "2011-02-01T11:46:41",
 "event_jd": 2455593.99076,
 "event_type": "ingress",
 "longitude_deg": 270.0,
@@ -2790,6 +3022,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Aquarius\"}",
+"event_datetime_utc": "2011-02-03T22:29:57",
 "event_jd": 2455596.43747,
 "event_type": "ingress",
 "longitude_deg": 300.0,
@@ -2802,6 +3035,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Pisces\"}",
+"event_datetime_utc": "2011-02-06T10:39:10",
 "event_jd": 2455598.94387,
 "event_type": "ingress",
 "longitude_deg": 330.0,
@@ -2814,6 +3048,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Aries\"}",
+"event_datetime_utc": "2011-02-08T23:20:52",
 "event_jd": 2455601.47283,
 "event_type": "ingress",
 "longitude_deg": 360.0,
@@ -2826,6 +3061,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Taurus\"}",
+"event_datetime_utc": "2011-02-11T10:48:53",
 "event_jd": 2455603.95061,
 "event_type": "ingress",
 "longitude_deg": 30.0,
@@ -2838,6 +3074,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Gemini\"}",
+"event_datetime_utc": "2011-02-13T19:04:38",
 "event_jd": 2455606.29489,
 "event_type": "ingress",
 "longitude_deg": 60.0,
@@ -2850,6 +3087,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Cancer\"}",
+"event_datetime_utc": "2011-02-15T23:16:17",
 "event_jd": 2455608.46965,
 "event_type": "ingress",
 "longitude_deg": 90.0,
@@ -2862,6 +3100,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Leo\"}",
+"event_datetime_utc": "2011-02-18T00:08:51",
 "event_jd": 2455610.50616,
 "event_type": "ingress",
 "longitude_deg": 120.0,
@@ -2874,6 +3113,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Virgo\"}",
+"event_datetime_utc": "2011-02-19T23:32:38",
 "event_jd": 2455612.481,
 "event_type": "ingress",
 "longitude_deg": 150.0,
@@ -2886,6 +3126,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Libra\"}",
+"event_datetime_utc": "2011-02-21T23:37:52",
 "event_jd": 2455614.48463,
 "event_type": "ingress",
 "longitude_deg": 180.0,
@@ -2898,6 +3139,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Scorpio\"}",
+"event_datetime_utc": "2011-02-24T02:15:30",
 "event_jd": 2455616.59411,
 "event_type": "ingress",
 "longitude_deg": 210.0,
@@ -2910,6 +3152,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Sagittarius\"}",
+"event_datetime_utc": "2011-02-26T08:20:22",
 "event_jd": 2455618.84748,
 "event_type": "ingress",
 "longitude_deg": 240.0,
@@ -2922,6 +3165,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Capricorn\"}",
+"event_datetime_utc": "2011-02-28T17:32:57",
 "event_jd": 2455621.23122,
 "event_type": "ingress",
 "longitude_deg": 270.0,
@@ -2934,6 +3178,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Aquarius\"}",
+"event_datetime_utc": "2011-03-03T04:48:29",
 "event_jd": 2455623.70034,
 "event_type": "ingress",
 "longitude_deg": 300.0,
@@ -2946,6 +3191,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Pisces\"}",
+"event_datetime_utc": "2011-03-05T17:08:02",
 "event_jd": 2455626.21392,
 "event_type": "ingress",
 "longitude_deg": 330.0,
@@ -2958,6 +3204,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Aries\"}",
+"event_datetime_utc": "2011-03-08T05:48:21",
 "event_jd": 2455628.74191,
 "event_type": "ingress",
 "longitude_deg": 0.0,
@@ -2970,6 +3217,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Taurus\"}",
+"event_datetime_utc": "2011-03-10T17:46:53",
 "event_jd": 2455631.2409,
 "event_type": "ingress",
 "longitude_deg": 30.0,
@@ -2982,6 +3230,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Gemini\"}",
+"event_datetime_utc": "2011-03-13T03:25:17",
 "event_jd": 2455633.64256,
 "event_type": "ingress",
 "longitude_deg": 60.0,
@@ -2994,6 +3243,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Cancer\"}",
+"event_datetime_utc": "2011-03-15T09:17:45",
 "event_jd": 2455635.88733,
 "event_type": "ingress",
 "longitude_deg": 90.0,
@@ -3006,6 +3256,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Leo\"}",
+"event_datetime_utc": "2011-03-17T11:17:02",
 "event_jd": 2455637.97017,
 "event_type": "ingress",
 "longitude_deg": 120.0,
@@ -3018,6 +3269,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Virgo\"}",
+"event_datetime_utc": "2011-03-19T10:43:03",
 "event_jd": 2455639.94657,
 "event_type": "ingress",
 "longitude_deg": 150.0,
@@ -3030,6 +3282,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Libra\"}",
+"event_datetime_utc": "2011-03-21T09:44:44",
 "event_jd": 2455641.90607,
 "event_type": "ingress",
 "longitude_deg": 180.0,
@@ -3042,6 +3295,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Scorpio\"}",
+"event_datetime_utc": "2011-03-23T10:37:14",
 "event_jd": 2455643.94253,
 "event_type": "ingress",
 "longitude_deg": 210.0,
@@ -3054,6 +3308,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Sagittarius\"}",
+"event_datetime_utc": "2011-03-25T15:01:15",
 "event_jd": 2455646.12588,
 "event_type": "ingress",
 "longitude_deg": 240.0,
@@ -3066,6 +3321,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Capricorn\"}",
+"event_datetime_utc": "2011-03-27T23:21:41",
 "event_jd": 2455648.4734,
 "event_type": "ingress",
 "longitude_deg": 270.0,
@@ -3078,6 +3334,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Aquarius\"}",
+"event_datetime_utc": "2011-03-30T10:37:02",
 "event_jd": 2455650.94239,
 "event_type": "ingress",
 "longitude_deg": 300.0,
@@ -3090,6 +3347,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Pisces\"}",
+"event_datetime_utc": "2011-04-01T23:09:27",
 "event_jd": 2455653.4649,
 "event_type": "ingress",
 "longitude_deg": 330.0,
@@ -3102,6 +3360,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Aries\"}",
+"event_datetime_utc": "2011-04-04T11:44:55",
 "event_jd": 2455655.98953,
 "event_type": "ingress",
 "longitude_deg": 360.0,
@@ -3114,6 +3373,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Taurus\"}",
+"event_datetime_utc": "2011-04-06T23:35:33",
 "event_jd": 2455658.48303,
 "event_type": "ingress",
 "longitude_deg": 30.0,
@@ -3126,6 +3386,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Gemini\"}",
+"event_datetime_utc": "2011-04-09T09:44:36",
 "event_jd": 2455660.90598,
 "event_type": "ingress",
 "longitude_deg": 60.0,
@@ -3138,6 +3399,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Cancer\"}",
+"event_datetime_utc": "2011-04-11T17:01:08",
 "event_jd": 2455663.20913,
 "event_type": "ingress",
 "longitude_deg": 90.0,
@@ -3150,6 +3412,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Leo\"}",
+"event_datetime_utc": "2011-04-13T20:45:22",
 "event_jd": 2455665.36484,
 "event_type": "ingress",
 "longitude_deg": 120.0,
@@ -3162,6 +3425,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Virgo\"}",
+"event_datetime_utc": "2011-04-15T21:29:36",
 "event_jd": 2455667.39556,
 "event_type": "ingress",
 "longitude_deg": 150.0,
@@ -3174,6 +3438,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Libra\"}",
+"event_datetime_utc": "2011-04-17T20:51:13",
 "event_jd": 2455669.3689,
 "event_type": "ingress",
 "longitude_deg": 180.0,
@@ -3186,6 +3451,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Scorpio\"}",
+"event_datetime_utc": "2011-04-19T20:57:41",
 "event_jd": 2455671.37339,
 "event_type": "ingress",
 "longitude_deg": 210.0,
@@ -3198,6 +3464,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Sagittarius\"}",
+"event_datetime_utc": "2011-04-21T23:48:49",
 "event_jd": 2455673.49224,
 "event_type": "ingress",
 "longitude_deg": 240.0,
@@ -3210,6 +3477,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Capricorn\"}",
+"event_datetime_utc": "2011-04-24T06:35:16",
 "event_jd": 2455675.7745,
 "event_type": "ingress",
 "longitude_deg": 270.0,
@@ -3222,6 +3490,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Aquarius\"}",
+"event_datetime_utc": "2011-04-26T17:00:24",
 "event_jd": 2455678.20861,
 "event_type": "ingress",
 "longitude_deg": 300.0,
@@ -3234,6 +3503,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Pisces\"}",
+"event_datetime_utc": "2011-04-29T05:26:30",
 "event_jd": 2455680.72675,
 "event_type": "ingress",
 "longitude_deg": 330.0,
@@ -3246,6 +3516,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Aries\"}",
+"event_datetime_utc": "2011-05-01T18:00:19",
 "event_jd": 2455683.25022,
 "event_type": "ingress",
 "longitude_deg": 360.0,
@@ -3258,6 +3529,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Taurus\"}",
+"event_datetime_utc": "2011-05-04T05:28:58",
 "event_jd": 2455685.72846,
 "event_type": "ingress",
 "longitude_deg": 30.0,
@@ -3270,6 +3542,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Gemini\"}",
+"event_datetime_utc": "2011-05-06T15:15:23",
 "event_jd": 2455688.13568,
 "event_type": "ingress",
 "longitude_deg": 60.0,
@@ -3282,6 +3555,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Cancer\"}",
+"event_datetime_utc": "2011-05-08T22:49:14",
 "event_jd": 2455690.45087,
 "event_type": "ingress",
 "longitude_deg": 90.0,
@@ -3294,6 +3568,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Leo\"}",
+"event_datetime_utc": "2011-05-11T03:45:03",
 "event_jd": 2455692.6563,
 "event_type": "ingress",
 "longitude_deg": 120.0,
@@ -3306,6 +3581,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Virgo\"}",
+"event_datetime_utc": "2011-05-13T06:08:11",
 "event_jd": 2455694.75569,
 "event_type": "ingress",
 "longitude_deg": 150.0,
@@ -3318,6 +3594,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Libra\"}",
+"event_datetime_utc": "2011-05-15T06:52:37",
 "event_jd": 2455696.78655,
 "event_type": "ingress",
 "longitude_deg": 180.0,
@@ -3330,6 +3607,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Scorpio\"}",
+"event_datetime_utc": "2011-05-17T07:31:44",
 "event_jd": 2455698.81371,
 "event_type": "ingress",
 "longitude_deg": 210.0,
@@ -3342,6 +3620,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Sagittarius\"}",
+"event_datetime_utc": "2011-05-19T09:52:48",
 "event_jd": 2455700.91167,
 "event_type": "ingress",
 "longitude_deg": 240.0,
@@ -3354,6 +3633,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Capricorn\"}",
+"event_datetime_utc": "2011-05-21T15:24:30",
 "event_jd": 2455703.14202,
 "event_type": "ingress",
 "longitude_deg": 270.0,
@@ -3366,6 +3646,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Aquarius\"}",
+"event_datetime_utc": "2011-05-24T00:36:47",
 "event_jd": 2455705.52555,
 "event_type": "ingress",
 "longitude_deg": 300.0,
@@ -3378,6 +3659,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Pisces\"}",
+"event_datetime_utc": "2011-05-26T12:31:04",
 "event_jd": 2455708.02158,
 "event_type": "ingress",
 "longitude_deg": 330.0,
@@ -3390,6 +3672,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Aries\"}",
+"event_datetime_utc": "2011-05-29T01:04:02",
 "event_jd": 2455710.54448,
 "event_type": "ingress",
 "longitude_deg": 0.0,
@@ -3402,6 +3685,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Taurus\"}",
+"event_datetime_utc": "2011-05-31T12:21:55",
 "event_jd": 2455713.01522,
 "event_type": "ingress",
 "longitude_deg": 30.0,
@@ -3414,6 +3698,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Gemini\"}",
+"event_datetime_utc": "2011-06-02T21:29:46",
 "event_jd": 2455715.39568,
 "event_type": "ingress",
 "longitude_deg": 60.0,
@@ -3426,6 +3711,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Cancer\"}",
+"event_datetime_utc": "2011-06-05T04:22:02",
 "event_jd": 2455717.68198,
 "event_type": "ingress",
 "longitude_deg": 90.0,
@@ -3438,6 +3724,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Leo\"}",
+"event_datetime_utc": "2011-06-07T09:13:41",
 "event_jd": 2455719.8845,
 "event_type": "ingress",
 "longitude_deg": 120.0,
@@ -3450,6 +3737,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Virgo\"}",
+"event_datetime_utc": "2011-06-09T12:27:08",
 "event_jd": 2455722.01885,
 "event_type": "ingress",
 "longitude_deg": 150.0,
@@ -3462,6 +3750,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Libra\"}",
+"event_datetime_utc": "2011-06-11T14:36:45",
 "event_jd": 2455724.10886,
 "event_type": "ingress",
 "longitude_deg": 180.0,
@@ -3474,6 +3763,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Scorpio\"}",
+"event_datetime_utc": "2011-06-13T16:35:53",
 "event_jd": 2455726.19159,
 "event_type": "ingress",
 "longitude_deg": 210.0,
@@ -3486,6 +3776,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Sagittarius\"}",
+"event_datetime_utc": "2011-06-15T19:35:12",
 "event_jd": 2455728.31612,
 "event_type": "ingress",
 "longitude_deg": 240.0,
@@ -3498,6 +3789,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Capricorn\"}",
+"event_datetime_utc": "2011-06-18T00:49:19",
 "event_jd": 2455730.53426,
 "event_type": "ingress",
 "longitude_deg": 270.0,
@@ -3510,6 +3802,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Aquarius\"}",
+"event_datetime_utc": "2011-06-20T09:09:04",
 "event_jd": 2455732.8813,
 "event_type": "ingress",
 "longitude_deg": 300.0,
@@ -3522,6 +3815,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Pisces\"}",
+"event_datetime_utc": "2011-06-22T20:22:14",
 "event_jd": 2455735.34878,
 "event_type": "ingress",
 "longitude_deg": 330.0,
@@ -3534,6 +3828,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Aries\"}",
+"event_datetime_utc": "2011-06-25T08:52:25",
 "event_jd": 2455737.86974,
 "event_type": "ingress",
 "longitude_deg": 0.0,
@@ -3546,6 +3841,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Taurus\"}",
+"event_datetime_utc": "2011-06-27T20:21:49",
 "event_jd": 2455740.34849,
 "event_type": "ingress",
 "longitude_deg": 30.0,
@@ -3558,6 +3854,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Gemini\"}",
+"event_datetime_utc": "2011-06-30T05:14:16",
 "event_jd": 2455742.71824,
 "event_type": "ingress",
 "longitude_deg": 60.0,
@@ -3570,6 +3867,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Cancer\"}",
+"event_datetime_utc": "2011-07-02T11:14:23",
 "event_jd": 2455744.96833,
 "event_type": "ingress",
 "longitude_deg": 90.0,
@@ -3582,6 +3880,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Leo\"}",
+"event_datetime_utc": "2011-07-04T15:05:19",
 "event_jd": 2455747.1287,
 "event_type": "ingress",
 "longitude_deg": 120.0,
@@ -3594,6 +3893,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Virgo\"}",
+"event_datetime_utc": "2011-07-06T17:49:49",
 "event_jd": 2455749.24293,
 "event_type": "ingress",
 "longitude_deg": 150.0,
@@ -3606,6 +3906,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Libra\"}",
+"event_datetime_utc": "2011-07-08T20:24:02",
 "event_jd": 2455751.35003,
 "event_type": "ingress",
 "longitude_deg": 180.0,
@@ -3618,6 +3919,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Scorpio\"}",
+"event_datetime_utc": "2011-07-10T23:29:19",
 "event_jd": 2455753.47869,
 "event_type": "ingress",
 "longitude_deg": 210.0,
@@ -3630,6 +3932,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Sagittarius\"}",
+"event_datetime_utc": "2011-07-13T03:39:08",
 "event_jd": 2455755.65218,
 "event_type": "ingress",
 "longitude_deg": 240.0,
@@ -3642,6 +3945,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Capricorn\"}",
+"event_datetime_utc": "2011-07-15T09:30:28",
 "event_jd": 2455757.89616,
 "event_type": "ingress",
 "longitude_deg": 270.0,
@@ -3654,6 +3958,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Aquarius\"}",
+"event_datetime_utc": "2011-07-17T17:42:05",
 "event_jd": 2455760.23756,
 "event_type": "ingress",
 "longitude_deg": 300.0,
@@ -3666,6 +3971,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Pisces\"}",
+"event_datetime_utc": "2011-07-20T04:27:39",
 "event_jd": 2455762.68588,
 "event_type": "ingress",
 "longitude_deg": 330.0,
@@ -3678,6 +3984,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Aries\"}",
+"event_datetime_utc": "2011-07-22T16:53:55",
 "event_jd": 2455765.20411,
 "event_type": "ingress",
 "longitude_deg": 0.0,
@@ -3690,6 +3997,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Taurus\"}",
+"event_datetime_utc": "2011-07-25T04:53:10",
 "event_jd": 2455767.70359,
 "event_type": "ingress",
 "longitude_deg": 30.0,
@@ -3702,6 +4010,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Gemini\"}",
+"event_datetime_utc": "2011-07-27T14:12:04",
 "event_jd": 2455770.09172,
 "event_type": "ingress",
 "longitude_deg": 60.0,
@@ -3714,6 +4023,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Cancer\"}",
+"event_datetime_utc": "2011-07-29T19:56:44",
 "event_jd": 2455772.33107,
 "event_type": "ingress",
 "longitude_deg": 90.0,
@@ -3726,6 +4036,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Leo\"}",
+"event_datetime_utc": "2011-07-31T22:47:01",
 "event_jd": 2455774.44932,
 "event_type": "ingress",
 "longitude_deg": 120.0,
@@ -3738,6 +4049,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Virgo\"}",
+"event_datetime_utc": "2011-08-03T00:14:19",
 "event_jd": 2455776.50995,
 "event_type": "ingress",
 "longitude_deg": 150.0,
@@ -3750,6 +4062,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Libra\"}",
+"event_datetime_utc": "2011-08-05T01:54:54",
 "event_jd": 2455778.57979,
 "event_type": "ingress",
 "longitude_deg": 180.0,
@@ -3762,6 +4075,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Scorpio\"}",
+"event_datetime_utc": "2011-08-07T04:57:41",
 "event_jd": 2455780.70673,
 "event_type": "ingress",
 "longitude_deg": 210.0,
@@ -3774,6 +4088,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Sagittarius\"}",
+"event_datetime_utc": "2011-08-09T09:51:40",
 "event_jd": 2455782.91089,
 "event_type": "ingress",
 "longitude_deg": 240.0,
@@ -3786,6 +4101,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Capricorn\"}",
+"event_datetime_utc": "2011-08-11T16:39:06",
 "event_jd": 2455785.19383,
 "event_type": "ingress",
 "longitude_deg": 270.0,
@@ -3798,6 +4114,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Aquarius\"}",
+"event_datetime_utc": "2011-08-14T01:21:44",
 "event_jd": 2455787.55677,
 "event_type": "ingress",
 "longitude_deg": 300.0,
@@ -3810,6 +4127,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Pisces\"}",
+"event_datetime_utc": "2011-08-16T12:05:52",
 "event_jd": 2455790.00408,
 "event_type": "ingress",
 "longitude_deg": 330.0,
@@ -3822,6 +4140,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Aries\"}",
+"event_datetime_utc": "2011-08-19T00:29:19",
 "event_jd": 2455792.52036,
 "event_type": "ingress",
 "longitude_deg": 0.0,
@@ -3834,6 +4153,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Taurus\"}",
+"event_datetime_utc": "2011-08-21T13:00:59",
 "event_jd": 2455795.04236,
 "event_type": "ingress",
 "longitude_deg": 30.0,
@@ -3846,6 +4166,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Gemini\"}",
+"event_datetime_utc": "2011-08-23T23:20:08",
 "event_jd": 2455797.47233,
 "event_type": "ingress",
 "longitude_deg": 60.0,
@@ -3858,6 +4179,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Cancer\"}",
+"event_datetime_utc": "2011-08-26T05:47:12",
 "event_jd": 2455799.74112,
 "event_type": "ingress",
 "longitude_deg": 90.0,
@@ -3870,6 +4192,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Leo\"}",
+"event_datetime_utc": "2011-08-28T08:27:38",
 "event_jd": 2455801.85253,
 "event_type": "ingress",
 "longitude_deg": 120.0,
@@ -3882,6 +4205,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Virgo\"}",
+"event_datetime_utc": "2011-08-30T08:52:13",
 "event_jd": 2455803.8696,
 "event_type": "ingress",
 "longitude_deg": 150.0,
@@ -3894,6 +4218,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Libra\"}",
+"event_datetime_utc": "2011-09-01T09:03:25",
 "event_jd": 2455805.87738,
 "event_type": "ingress",
 "longitude_deg": 180.0,
@@ -3906,6 +4231,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Scorpio\"}",
+"event_datetime_utc": "2011-09-03T10:50:29",
 "event_jd": 2455807.95173,
 "event_type": "ingress",
 "longitude_deg": 210.0,
@@ -3918,6 +4244,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Sagittarius\"}",
+"event_datetime_utc": "2011-09-05T15:16:33",
 "event_jd": 2455810.1365,
 "event_type": "ingress",
 "longitude_deg": 240.0,
@@ -3930,6 +4257,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Capricorn\"}",
+"event_datetime_utc": "2011-09-07T22:26:06",
 "event_jd": 2455812.4348,
 "event_type": "ingress",
 "longitude_deg": 270.0,
@@ -3942,6 +4270,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Aquarius\"}",
+"event_datetime_utc": "2011-09-10T07:47:56",
 "event_jd": 2455814.82496,
 "event_type": "ingress",
 "longitude_deg": 300.0,
@@ -3954,6 +4283,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Pisces\"}",
+"event_datetime_utc": "2011-09-12T18:52:50",
 "event_jd": 2455817.28669,
 "event_type": "ingress",
 "longitude_deg": 330.0,
@@ -3966,6 +4296,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Aries\"}",
+"event_datetime_utc": "2011-09-15T07:17:13",
 "event_jd": 2455819.80363,
 "event_type": "ingress",
 "longitude_deg": 360.0,
@@ -3978,6 +4309,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Taurus\"}",
+"event_datetime_utc": "2011-09-17T20:05:45",
 "event_jd": 2455822.33734,
 "event_type": "ingress",
 "longitude_deg": 30.0,
@@ -3990,6 +4322,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Gemini\"}",
+"event_datetime_utc": "2011-09-20T07:26:21",
 "event_jd": 2455824.80997,
 "event_type": "ingress",
 "longitude_deg": 60.0,
@@ -4002,6 +4335,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Cancer\"}",
+"event_datetime_utc": "2011-09-22T15:18:23",
 "event_jd": 2455827.13778,
 "event_type": "ingress",
 "longitude_deg": 90.0,
@@ -4014,6 +4348,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Leo\"}",
+"event_datetime_utc": "2011-09-24T18:58:22",
 "event_jd": 2455829.29053,
 "event_type": "ingress",
 "longitude_deg": 120.0,
@@ -4026,6 +4361,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Virgo\"}",
+"event_datetime_utc": "2011-09-26T19:24:51",
 "event_jd": 2455831.30893,
 "event_type": "ingress",
 "longitude_deg": 150.0,
@@ -4038,6 +4374,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Libra\"}",
+"event_datetime_utc": "2011-09-28T18:37:47",
 "event_jd": 2455833.27624,
 "event_type": "ingress",
 "longitude_deg": 180.0,
@@ -4050,6 +4387,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Scorpio\"}",
+"event_datetime_utc": "2011-09-30T18:48:52",
 "event_jd": 2455835.28394,
 "event_type": "ingress",
 "longitude_deg": 210.0,
@@ -4062,6 +4400,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Sagittarius\"}",
+"event_datetime_utc": "2011-10-02T21:42:45",
 "event_jd": 2455837.40469,
 "event_type": "ingress",
 "longitude_deg": 240.0,
@@ -4074,6 +4413,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Capricorn\"}",
+"event_datetime_utc": "2011-10-05T04:04:41",
 "event_jd": 2455839.66992,
 "event_type": "ingress",
 "longitude_deg": 270.0,
@@ -4086,6 +4426,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Aquarius\"}",
+"event_datetime_utc": "2011-10-07T13:30:26",
 "event_jd": 2455842.0628,
 "event_type": "ingress",
 "longitude_deg": 300.0,
@@ -4098,6 +4439,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Pisces\"}",
+"event_datetime_utc": "2011-10-10T00:57:35",
 "event_jd": 2455844.53999,
 "event_type": "ingress",
 "longitude_deg": 330.0,
@@ -4110,6 +4452,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Aries\"}",
+"event_datetime_utc": "2011-10-12T13:28:29",
 "event_jd": 2455847.06146,
 "event_type": "ingress",
 "longitude_deg": 0.0,
@@ -4122,6 +4465,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Taurus\"}",
+"event_datetime_utc": "2011-10-15T02:13:09",
 "event_jd": 2455849.59247,
 "event_type": "ingress",
 "longitude_deg": 30.0,
@@ -4134,6 +4478,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Gemini\"}",
+"event_datetime_utc": "2011-10-17T13:59:18",
 "event_jd": 2455852.08286,
 "event_type": "ingress",
 "longitude_deg": 60.0,
@@ -4146,6 +4491,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Cancer\"}",
+"event_datetime_utc": "2011-10-19T23:08:57",
 "event_jd": 2455854.46455,
 "event_type": "ingress",
 "longitude_deg": 90.0,
@@ -4158,6 +4504,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Leo\"}",
+"event_datetime_utc": "2011-10-22T04:30:54",
 "event_jd": 2455856.68814,
 "event_type": "ingress",
 "longitude_deg": 120.0,
@@ -4170,6 +4517,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Virgo\"}",
+"event_datetime_utc": "2011-10-24T06:14:26",
 "event_jd": 2455858.76003,
 "event_type": "ingress",
 "longitude_deg": 150.0,
@@ -4182,6 +4530,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Libra\"}",
+"event_datetime_utc": "2011-10-26T05:45:44",
 "event_jd": 2455860.7401,
 "event_type": "ingress",
 "longitude_deg": 180.0,
@@ -4194,6 +4543,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Scorpio\"}",
+"event_datetime_utc": "2011-10-28T05:08:47",
 "event_jd": 2455862.71444,
 "event_type": "ingress",
 "longitude_deg": 210.0,
@@ -4206,6 +4556,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Sagittarius\"}",
+"event_datetime_utc": "2011-10-30T06:27:10",
 "event_jd": 2455864.76887,
 "event_type": "ingress",
 "longitude_deg": 240.0,
@@ -4218,6 +4569,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Capricorn\"}",
+"event_datetime_utc": "2011-11-01T11:10:07",
 "event_jd": 2455866.96536,
 "event_type": "ingress",
 "longitude_deg": 270.0,
@@ -4230,6 +4582,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Aquarius\"}",
+"event_datetime_utc": "2011-11-03T19:39:35",
 "event_jd": 2455869.31916,
 "event_type": "ingress",
 "longitude_deg": 300.0,
@@ -4242,6 +4595,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Pisces\"}",
+"event_datetime_utc": "2011-11-06T07:00:43",
 "event_jd": 2455871.79217,
 "event_type": "ingress",
 "longitude_deg": 330.0,
@@ -4254,6 +4608,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Aries\"}",
+"event_datetime_utc": "2011-11-08T19:39:18",
 "event_jd": 2455874.31897,
 "event_type": "ingress",
 "longitude_deg": 360.0,
@@ -4266,6 +4621,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Taurus\"}",
+"event_datetime_utc": "2011-11-11T08:12:35",
 "event_jd": 2455876.84208,
 "event_type": "ingress",
 "longitude_deg": 30.0,
@@ -4278,6 +4634,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Gemini\"}",
+"event_datetime_utc": "2011-11-13T19:40:47",
 "event_jd": 2455879.31999,
 "event_type": "ingress",
 "longitude_deg": 60.0,
@@ -4290,6 +4647,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Cancer\"}",
+"event_datetime_utc": "2011-11-16T05:09:24",
 "event_jd": 2455881.71487,
 "event_type": "ingress",
 "longitude_deg": 90.0,
@@ -4302,6 +4660,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Leo\"}",
+"event_datetime_utc": "2011-11-18T11:48:30",
 "event_jd": 2455883.99202,
 "event_type": "ingress",
 "longitude_deg": 120.0,
@@ -4314,6 +4673,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Virgo\"}",
+"event_datetime_utc": "2011-11-20T15:20:35",
 "event_jd": 2455886.1393,
 "event_type": "ingress",
 "longitude_deg": 150.0,
@@ -4326,6 +4686,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Libra\"}",
+"event_datetime_utc": "2011-11-22T16:23:16",
 "event_jd": 2455888.18282,
 "event_type": "ingress",
 "longitude_deg": 180.0,
@@ -4338,6 +4699,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Scorpio\"}",
+"event_datetime_utc": "2011-11-24T16:22:14",
 "event_jd": 2455890.18212,
 "event_type": "ingress",
 "longitude_deg": 210.0,
@@ -4350,6 +4712,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Sagittarius\"}",
+"event_datetime_utc": "2011-11-26T17:07:04",
 "event_jd": 2455892.21325,
 "event_type": "ingress",
 "longitude_deg": 240.0,
@@ -4362,6 +4725,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Capricorn\"}",
+"event_datetime_utc": "2011-11-28T20:23:47",
 "event_jd": 2455894.34986,
 "event_type": "ingress",
 "longitude_deg": 270.0,
@@ -4374,6 +4738,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Aquarius\"}",
+"event_datetime_utc": "2011-12-01T03:21:25",
 "event_jd": 2455896.63988,
 "event_type": "ingress",
 "longitude_deg": 300.0,
@@ -4386,6 +4751,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Pisces\"}",
+"event_datetime_utc": "2011-12-03T13:53:23",
 "event_jd": 2455899.07875,
 "event_type": "ingress",
 "longitude_deg": 330.0,
@@ -4398,6 +4764,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Aries\"}",
+"event_datetime_utc": "2011-12-06T02:27:43",
 "event_jd": 2455901.60258,
 "event_type": "ingress",
 "longitude_deg": 0.0,
@@ -4410,6 +4777,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Taurus\"}",
+"event_datetime_utc": "2011-12-08T14:58:49",
 "event_jd": 2455904.12418,
 "event_type": "ingress",
 "longitude_deg": 30.0,
@@ -4422,6 +4790,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Gemini\"}",
+"event_datetime_utc": "2011-12-11T01:56:36",
 "event_jd": 2455906.58097,
 "event_type": "ingress",
 "longitude_deg": 60.0,
@@ -4434,6 +4803,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Cancer\"}",
+"event_datetime_utc": "2011-12-13T10:45:26",
 "event_jd": 2455908.94823,
 "event_type": "ingress",
 "longitude_deg": 90.0,
@@ -4446,6 +4816,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Leo\"}",
+"event_datetime_utc": "2011-12-15T17:21:39",
 "event_jd": 2455911.22337,
 "event_type": "ingress",
 "longitude_deg": 120.0,
@@ -4458,6 +4829,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Virgo\"}",
+"event_datetime_utc": "2011-12-17T21:52:42",
 "event_jd": 2455913.4116,
 "event_type": "ingress",
 "longitude_deg": 150.0,
@@ -4470,6 +4842,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Libra\"}",
+"event_datetime_utc": "2011-12-20T00:36:42",
 "event_jd": 2455915.52549,
 "event_type": "ingress",
 "longitude_deg": 180.0,
@@ -4482,6 +4855,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Scorpio\"}",
+"event_datetime_utc": "2011-12-22T02:12:57",
 "event_jd": 2455917.59234,
 "event_type": "ingress",
 "longitude_deg": 210.0,
@@ -4494,6 +4868,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Sagittarius\"}",
+"event_datetime_utc": "2011-12-24T03:47:39",
 "event_jd": 2455919.6581,
 "event_type": "ingress",
 "longitude_deg": 240.0,
@@ -4506,6 +4881,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Capricorn\"}",
+"event_datetime_utc": "2011-12-26T06:47:17",
 "event_jd": 2455921.78284,
 "event_type": "ingress",
 "longitude_deg": 270.0,
@@ -4518,6 +4894,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Aquarius\"}",
+"event_datetime_utc": "2011-12-28T12:37:02",
 "event_jd": 2455924.02573,
 "event_type": "ingress",
 "longitude_deg": 300.0,
@@ -4530,6 +4907,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Pisces\"}",
+"event_datetime_utc": "2011-12-30T21:59:51",
 "event_jd": 2455926.41657,
 "event_type": "ingress",
 "longitude_deg": 330.0,
@@ -4542,6 +4920,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Scorpio\"}",
+"event_datetime_utc": "2011-05-03T02:10:23",
 "event_jd": 2455684.59055,
 "event_type": "ingress",
 "longitude_deg": 240.0,
@@ -4554,6 +4933,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Libra\"}",
+"event_datetime_utc": "2011-11-15T04:42:04",
 "event_jd": 2455880.69589,
 "event_type": "ingress",
 "longitude_deg": 180.0,
@@ -4566,6 +4946,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Capricorn\"}",
+"event_datetime_utc": "2010-01-14T07:08:09",
 "event_jd": 2455210.79733,
 "event_type": "ingress",
 "longitude_deg": 270.0,
@@ -4578,6 +4959,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Aquarius\"}",
+"event_datetime_utc": "2010-02-12T20:07:57",
 "event_jd": 2455240.33886,
 "event_type": "ingress",
 "longitude_deg": 300.0,
@@ -4590,6 +4972,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Pisces\"}",
+"event_datetime_utc": "2010-03-14T16:59:37",
 "event_jd": 2455270.20808,
 "event_type": "ingress",
 "longitude_deg": 330.0,
@@ -4602,6 +4985,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Aries\"}",
+"event_datetime_utc": "2010-04-14T01:27:24",
 "event_jd": 2455300.5607,
 "event_type": "ingress",
 "longitude_deg": 360.0,
@@ -4614,6 +4998,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Taurus\"}",
+"event_datetime_utc": "2010-05-14T22:17:00",
 "event_jd": 2455331.42848,
 "event_type": "ingress",
 "longitude_deg": 30.0,
@@ -4626,6 +5011,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Gemini\"}",
+"event_datetime_utc": "2010-06-15T04:50:48",
 "event_jd": 2455362.70195,
 "event_type": "ingress",
 "longitude_deg": 60.0,
@@ -4638,6 +5024,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Cancer\"}",
+"event_datetime_utc": "2010-07-16T15:41:24",
 "event_jd": 2455394.15375,
 "event_type": "ingress",
 "longitude_deg": 90.0,
@@ -4650,6 +5037,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Leo\"}",
+"event_datetime_utc": "2010-08-17T00:04:11",
 "event_jd": 2455425.50291,
 "event_type": "ingress",
 "longitude_deg": 120.0,
@@ -4662,6 +5050,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Virgo\"}",
+"event_datetime_utc": "2010-09-16T23:59:27",
 "event_jd": 2455456.49962,
 "event_type": "ingress",
 "longitude_deg": 150.0,
@@ -4674,6 +5063,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Libra\"}",
+"event_datetime_utc": "2010-10-17T11:57:20",
 "event_jd": 2455486.99815,
 "event_type": "ingress",
 "longitude_deg": 180.0,
@@ -4686,6 +5076,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Scorpio\"}",
+"event_datetime_utc": "2010-11-16T11:47:36",
 "event_jd": 2455516.99139,
 "event_type": "ingress",
 "longitude_deg": 210.0,
@@ -4698,6 +5089,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Sagittarius\"}",
+"event_datetime_utc": "2010-12-16T02:28:45",
 "event_jd": 2455546.6033,
 "event_type": "ingress",
 "longitude_deg": 240.0,
@@ -4710,6 +5102,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Capricorn\"}",
+"event_datetime_utc": "2011-01-14T13:14:06",
 "event_jd": 2455576.05147,
 "event_type": "ingress",
 "longitude_deg": 270.0,
@@ -4722,6 +5115,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Aquarius\"}",
+"event_datetime_utc": "2011-02-13T02:12:52",
 "event_jd": 2455605.59228,
 "event_type": "ingress",
 "longitude_deg": 300.0,
@@ -4734,6 +5128,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Pisces\"}",
+"event_datetime_utc": "2011-03-14T23:03:19",
 "event_jd": 2455635.46064,
 "event_type": "ingress",
 "longitude_deg": 330.0,
@@ -4746,6 +5141,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Aries\"}",
+"event_datetime_utc": "2011-04-14T07:30:09",
 "event_jd": 2455665.81261,
 "event_type": "ingress",
 "longitude_deg": 0.0,
@@ -4758,6 +5154,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Taurus\"}",
+"event_datetime_utc": "2011-05-15T04:20:08",
 "event_jd": 2455696.68065,
 "event_type": "ingress",
 "longitude_deg": 30.0,
@@ -4770,6 +5167,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Gemini\"}",
+"event_datetime_utc": "2011-06-15T10:56:23",
 "event_jd": 2455727.95583,
 "event_type": "ingress",
 "longitude_deg": 60.0,
@@ -4782,6 +5180,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Cancer\"}",
+"event_datetime_utc": "2011-07-16T21:51:17",
 "event_jd": 2455759.41062,
 "event_type": "ingress",
 "longitude_deg": 90.0,
@@ -4794,6 +5193,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Leo\"}",
+"event_datetime_utc": "2011-08-17T06:18:55",
 "event_jd": 2455790.76314,
 "event_type": "ingress",
 "longitude_deg": 120.0,
@@ -4806,6 +5206,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Virgo\"}",
+"event_datetime_utc": "2011-09-17T06:17:46",
 "event_jd": 2455821.76235,
 "event_type": "ingress",
 "longitude_deg": 150.0,
@@ -4818,6 +5219,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Libra\"}",
+"event_datetime_utc": "2011-10-17T18:16:21",
 "event_jd": 2455852.26136,
 "event_type": "ingress",
 "longitude_deg": 180.0,
@@ -4830,6 +5232,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Scorpio\"}",
+"event_datetime_utc": "2011-11-16T18:04:44",
 "event_jd": 2455882.25329,
 "event_type": "ingress",
 "longitude_deg": 210.0,
@@ -4842,6 +5245,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Sagittarius\"}",
+"event_datetime_utc": "2011-12-16T08:43:45",
 "event_jd": 2455911.86372,
 "event_type": "ingress",
 "longitude_deg": 240.0,
@@ -4854,6 +5258,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Capricorn\"}",
+"event_datetime_utc": "2010-01-13T20:06:55",
 "event_jd": 2455210.33814,
 "event_type": "ingress",
 "longitude_deg": 270.0,
@@ -4866,6 +5271,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Aquarius\"}",
+"event_datetime_utc": "2010-02-06T17:20:48",
 "event_jd": 2455234.22279,
 "event_type": "ingress",
 "longitude_deg": 300.0,
@@ -4878,6 +5284,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Pisces\"}",
+"event_datetime_utc": "2010-03-02T17:01:31",
 "event_jd": 2455258.20939,
 "event_type": "ingress",
 "longitude_deg": 330.0,
@@ -4890,6 +5297,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Aries\"}",
+"event_datetime_utc": "2010-03-26T20:58:37",
 "event_jd": 2455282.37405,
 "event_type": "ingress",
 "longitude_deg": 0.0,
@@ -4902,6 +5310,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Taurus\"}",
+"event_datetime_utc": "2010-04-20T07:04:58",
 "event_jd": 2455306.79512,
 "event_type": "ingress",
 "longitude_deg": 30.0,
@@ -4914,6 +5323,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Gemini\"}",
+"event_datetime_utc": "2010-05-15T01:13:58",
 "event_jd": 2455331.55137,
 "event_type": "ingress",
 "longitude_deg": 60.0,
@@ -4926,6 +5336,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Cancer\"}",
+"event_datetime_utc": "2010-06-09T06:15:54",
 "event_jd": 2455356.76105,
 "event_type": "ingress",
 "longitude_deg": 90.0,
@@ -4938,6 +5349,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Leo\"}",
+"event_datetime_utc": "2010-07-05T04:15:03",
 "event_jd": 2455382.67713,
 "event_type": "ingress",
 "longitude_deg": 120.0,
@@ -4950,6 +5362,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Virgo\"}",
+"event_datetime_utc": "2010-08-01T10:18:05",
 "event_jd": 2455409.92923,
 "event_type": "ingress",
 "longitude_deg": 150.0,
@@ -4962,6 +5375,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Libra\"}",
+"event_datetime_utc": "2010-09-01T06:30:53",
 "event_jd": 2455440.77146,
 "event_type": "ingress",
 "longitude_deg": 180.0,
@@ -4974,6 +5388,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Scorpio\"}",
+"event_datetime_utc": "2011-01-01T11:14:59",
 "event_jd": 2455562.96875,
 "event_type": "ingress",
 "longitude_deg": 210.0,
@@ -4986,6 +5401,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Sagittarius\"}",
+"event_datetime_utc": "2011-01-29T22:30:05",
 "event_jd": 2455591.43757,
 "event_type": "ingress",
 "longitude_deg": 240.0,
@@ -4998,6 +5414,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Capricorn\"}",
+"event_datetime_utc": "2011-02-25T00:42:35",
 "event_jd": 2455617.52958,
 "event_type": "ingress",
 "longitude_deg": 270.0,
@@ -5010,6 +5427,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Aquarius\"}",
+"event_datetime_utc": "2011-03-22T07:09:54",
 "event_jd": 2455642.79854,
 "event_type": "ingress",
 "longitude_deg": 300.0,
@@ -5022,6 +5440,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Pisces\"}",
+"event_datetime_utc": "2011-04-16T05:20:53",
 "event_jd": 2455667.72284,
 "event_type": "ingress",
 "longitude_deg": 330.0,
@@ -5034,6 +5453,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Aries\"}",
+"event_datetime_utc": "2011-05-10T23:55:00",
 "event_jd": 2455692.49653,
 "event_type": "ingress",
 "longitude_deg": 360.0,
@@ -5046,6 +5466,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Taurus\"}",
+"event_datetime_utc": "2011-06-04T16:31:29",
 "event_jd": 2455717.18854,
 "event_type": "ingress",
 "longitude_deg": 30.0,
@@ -5058,6 +5479,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Gemini\"}",
+"event_datetime_utc": "2011-06-29T06:59:51",
 "event_jd": 2455741.79156,
 "event_type": "ingress",
 "longitude_deg": 60.0,
@@ -5070,6 +5492,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Cancer\"}",
+"event_datetime_utc": "2011-07-23T18:24:11",
 "event_jd": 2455766.26679,
 "event_type": "ingress",
 "longitude_deg": 90.0,
@@ -5082,6 +5505,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Leo\"}",
+"event_datetime_utc": "2011-08-17T02:15:40",
 "event_jd": 2455790.59422,
 "event_type": "ingress",
 "longitude_deg": 120.0,
@@ -5094,6 +5518,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Virgo\"}",
+"event_datetime_utc": "2011-09-10T07:11:04",
 "event_jd": 2455814.79936,
 "event_type": "ingress",
 "longitude_deg": 150.0,
@@ -5106,6 +5531,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Libra\"}",
+"event_datetime_utc": "2011-10-04T10:31:37",
 "event_jd": 2455838.93863,
 "event_type": "ingress",
 "longitude_deg": 180.0,
@@ -5118,6 +5544,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Scorpio\"}",
+"event_datetime_utc": "2011-10-28T13:33:12",
 "event_jd": 2455863.06472,
 "event_type": "ingress",
 "longitude_deg": 210.0,
@@ -5130,6 +5557,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Sagittarius\"}",
+"event_datetime_utc": "2011-11-21T17:06:14",
 "event_jd": 2455887.21267,
 "event_type": "ingress",
 "longitude_deg": 240.0,
@@ -5142,6 +5570,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"target_sign\": \"Capricorn\"}",
+"event_datetime_utc": "2011-12-15T22:19:31",
 "event_jd": 2455911.43023,
 "event_type": "ingress",
 "longitude_deg": 270.0,
@@ -5154,6 +5583,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"station_type\": \"retrograde\"}",
+"event_datetime_utc": "2010-07-23T11:32:06",
 "event_jd": 2455400.98063,
 "event_type": "station",
 "longitude_deg": 339.3924,
@@ -5166,6 +5596,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"station_type\": \"direct\"}",
+"event_datetime_utc": "2010-11-18T17:03:25",
 "event_jd": 2455519.21071,
 "event_type": "station",
 "longitude_deg": 329.4812,
@@ -5178,6 +5609,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"station_type\": \"retrograde\"}",
+"event_datetime_utc": "2011-08-30T09:17:36",
 "event_jd": 2455803.88723,
 "event_type": "station",
 "longitude_deg": 16.3305,
@@ -5190,6 +5622,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"station_type\": \"direct\"}",
+"event_datetime_utc": "2011-12-25T22:38:05",
 "event_jd": 2455921.44311,
 "event_type": "station",
 "longitude_deg": 6.3353,
@@ -5202,6 +5635,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"station_type\": \"direct\"}",
+"event_datetime_utc": "2010-03-10T17:13:22",
 "event_jd": 2455266.21762,
 "event_type": "station",
 "longitude_deg": 96.2906,
@@ -5214,6 +5648,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"station_type\": \"direct\"}",
+"event_datetime_utc": "2010-01-15T16:52:21",
 "event_jd": 2455212.20303,
 "event_type": "station",
 "longitude_deg": 251.5522,
@@ -5226,6 +5661,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"station_type\": \"retrograde\"}",
+"event_datetime_utc": "2010-04-18T04:05:08",
 "event_jd": 2455304.67024,
 "event_type": "station",
 "longitude_deg": 18.6266,
@@ -5238,6 +5674,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"station_type\": \"direct\"}",
+"event_datetime_utc": "2010-05-11T22:27:01",
 "event_jd": 2455328.43544,
 "event_type": "station",
 "longitude_deg": 8.6535,
@@ -5250,6 +5687,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"station_type\": \"retrograde\"}",
+"event_datetime_utc": "2010-08-20T19:57:44",
 "event_jd": 2455429.33177,
 "event_type": "station",
 "longitude_deg": 145.0482,
@@ -5262,6 +5700,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"station_type\": \"direct\"}",
+"event_datetime_utc": "2010-09-12T23:09:05",
 "event_jd": 2455452.46464,
 "event_type": "station",
 "longitude_deg": 131.3547,
@@ -5274,6 +5713,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"station_type\": \"retrograde\"}",
+"event_datetime_utc": "2010-12-10T12:04:04",
 "event_jd": 2455541.00284,
 "event_type": "station",
 "longitude_deg": 251.9213,
@@ -5286,6 +5726,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"station_type\": \"direct\"}",
+"event_datetime_utc": "2010-12-30T07:21:05",
 "event_jd": 2455560.80631,
 "event_type": "station",
 "longitude_deg": 235.6091,
@@ -5298,6 +5739,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"station_type\": \"retrograde\"}",
+"event_datetime_utc": "2011-03-30T20:47:30",
 "event_jd": 2455651.36633,
 "event_type": "station",
 "longitude_deg": 0.3374,
@@ -5310,6 +5752,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"station_type\": \"direct\"}",
+"event_datetime_utc": "2011-04-23T10:04:53",
 "event_jd": 2455674.92006,
 "event_type": "station",
 "longitude_deg": 348.8669,
@@ -5322,6 +5765,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"station_type\": \"retrograde\"}",
+"event_datetime_utc": "2011-08-03T03:49:52",
 "event_jd": 2455776.65964,
 "event_type": "station",
 "longitude_deg": 127.1772,
@@ -5334,6 +5778,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"station_type\": \"direct\"}",
+"event_datetime_utc": "2011-08-26T22:03:21",
 "event_jd": 2455800.419,
 "event_type": "station",
 "longitude_deg": 114.6719,
@@ -5346,6 +5791,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"station_type\": \"retrograde\"}",
+"event_datetime_utc": "2011-11-24T07:18:51",
 "event_jd": 2455889.80476,
 "event_type": "station",
 "longitude_deg": 236.0937,
@@ -5358,6 +5804,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"station_type\": \"direct\"}",
+"event_datetime_utc": "2011-12-14T01:43:17",
 "event_jd": 2455909.57173,
 "event_type": "station",
 "longitude_deg": 219.827,
@@ -5370,6 +5817,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"station_type\": \"retrograde\"}",
+"event_datetime_utc": "2010-01-13T15:00:03",
 "event_jd": 2455210.12505,
 "event_type": "station",
 "longitude_deg": 160.6506,
@@ -5382,6 +5830,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"station_type\": \"direct\"}",
+"event_datetime_utc": "2010-05-30T19:06:53",
 "event_jd": 2455347.29645,
 "event_type": "station",
 "longitude_deg": 153.8256,
@@ -5394,6 +5843,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"station_type\": \"retrograde\"}",
+"event_datetime_utc": "2011-01-26T05:40:16",
 "event_jd": 2455587.7363,
 "event_type": "station",
 "longitude_deg": 173.2097,
@@ -5406,6 +5856,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"station_type\": \"direct\"}",
+"event_datetime_utc": "2011-06-13T04:42:42",
 "event_jd": 2455725.69633,
 "event_type": "station",
 "longitude_deg": 166.4225,
@@ -5418,6 +5869,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"station_type\": \"retrograde\"}",
+"event_datetime_utc": "2010-10-08T07:04:57",
 "event_jd": 2455477.79511,
 "event_type": "station",
 "longitude_deg": 199.2208,
@@ -5430,6 +5882,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"station_type\": \"direct\"}",
+"event_datetime_utc": "2010-11-18T21:18:31",
 "event_jd": 2455519.38786,
 "event_type": "station",
 "longitude_deg": 183.6438,
@@ -5447,6 +5900,7 @@
 {
 "ayanamsha_key": "lahiri",
 "detail": "{\"orb_deg\": 0.0, \"planet_b_lon\": 276.3407}",
+"event_datetime_utc": "2020-12-21T18:20:27",
 "event_jd": 2459205.26421,
 "event_type": "double_transit",
 "longitude_deg": 276.3407,

@@ -246,7 +246,7 @@ def positions_ref(r, ctx):
 _AU_KM = 149597870.7
 _RS, _RM, _RE = 696000.0, 1738.15, 6378.137          # swecl.c DSUN / 2, DMOON / 2, DEARTH / 2 (km)
 _ECL_ENL = 1.0 / 0.99                                   # the lunar umbra / penumbra enlargement swecl.c applies (measured: 1.0 mismatches 12 of 311, 1/0.99 mismatches 2 boundary cases)
-SKY_COLUMNS = ("sign", "nakshatra_num", "longitude_deg", "speed_dps", "ayanamsha_key", "edge_distance_deg", "station_type", "station_zero_speed", "conj_orb_deg", "conj_offset_deg",
+SKY_COLUMNS = ("event_datetime_s", "target_sign", "sign", "nakshatra_num", "longitude_deg", "speed_dps", "ayanamsha_key", "edge_distance_deg", "station_type", "station_zero_speed", "conj_orb_deg", "conj_offset_deg",
                "planet_b_lon", "eclipse_type", "is_central", "ecl_time_offset_s", "begin_offset_s", "end_offset_s")
 _STATION_BODIES = ("Mars", "Mercury", "Jupiter", "Venus", "Saturn")
 
@@ -288,6 +288,26 @@ def _detail(v):
     return v if isinstance(v, dict) else {}
 
 
+def _epoch_s(v):
+    """Seconds since 1970-01-01 of a naive-UTC datetime or its ISO text (the `event_datetime_utc` column as the census reads it: a jsonb string), else None."""
+    from datetime import datetime as _dt
+    if isinstance(v, str):
+        try:
+            v = _dt.fromisoformat(v.replace("Z", "").replace("T", " ").split("+")[0])
+        except ValueError:
+            return None
+    if not isinstance(v, _dt):
+        return None
+    return (v - _dt(1970, 1, 1)).total_seconds()
+
+
+def _jd_epoch_s(jd):
+    """Seconds since 1970-01-01 of a Julian day (UT) by the library's own calendar conversion (swe.revjul), truncated to the second as the writer stores it."""
+    from datetime import datetime as _dt, timedelta
+    y, m, d, h = _swe().revjul(jd)
+    return (_dt(int(y), int(m), int(d)) + timedelta(seconds=int(h * 3600.0)) - _dt(1970, 1, 1)).total_seconds()
+
+
 def sky_logical_rows(rows, inputs):
     """One logical row per stored event. The claims a row makes about itself are stored as the value the re-derivation must reproduce: an ingress is ON a sign edge (distance 0), a
     station has speed 0, a double-transit row is at the minimum separation, an eclipse row is at its greatest-eclipse instant (offset 0) with its begin / end contacts (offset 0)."""
@@ -296,6 +316,7 @@ def sky_logical_rows(rows, inputs):
         d = _detail(r.get("detail"))
         et = r["event_type"]
         row = dict(event_type=et, primary_body=r["primary_body"], secondary_body=r.get("secondary_body") or "", event_jd=_num(r["event_jd"]), sign=r.get("sign"),
+                   event_datetime_s=_epoch_s(r.get("event_datetime_utc")), target_sign=(d.get("target_sign") if r["event_type"] == "ingress" else None),
                    nakshatra_num=nakshatra_number(r.get("nakshatra")) if r.get("nakshatra") else None, longitude_deg=_num(r.get("longitude_deg")), speed_dps=_num(r.get("speed_dps")),
                    ayanamsha_key=r.get("ayanamsha_key"), edge_distance_deg=None, station_type=None, station_zero_speed=None, conj_orb_deg=None, conj_offset_deg=None,
                    planet_b_lon=None, eclipse_type=None, is_central=None, ecl_time_offset_s=None, begin_offset_s=None, end_offset_s=None, _detail=d)
@@ -404,10 +425,14 @@ def _bisect(f, a, b, it=60):
     return (a + b) / 2
 
 
+_SOLAR_NEIGHBOURS = {"partial": ("total", "annular", "annular_total"), "total": ("partial", "annular_total"), "annular": ("partial", "annular_total"), "annular_total": ("total", "annular")}
+_LUNAR_NEIGHBOURS = {"total": ("partial",), "partial": ("total", "penumbral"), "penumbral": ("partial",)}
+
+
 def _solar_type(g, u, us, l1):
     """(type, ambiguity margin in Earth radii). Ambiguous = the type would flip within the margin of the classification boundaries."""
     if g >= 1 + l1:
-        return None, 0.0
+        return None, float("inf")          # no eclipse: no classification boundary near, so nothing is ambiguous (N-156 review LOW-4)
     if g >= 1 + abs(u):
         return "partial", abs(g - (1 + abs(u)))
     if u > 0:
@@ -426,6 +451,7 @@ def sky_ref(r, ctx):
         raise ValueError("event_jd is not a number")
     sd = lambda l, b: (l - b + 180.0) % 360.0 - 180.0
     ref["ayanamsha_key"] = ctx["ayanamsha"]
+    ref["event_datetime_s"] = _jd_epoch_s(j)
     if et == "ingress":
         if body not in _ING_BODY or r["sign"] not in _SIGNS:
             raise ValueError("unknown body or sign")
@@ -438,6 +464,7 @@ def sky_ref(r, ctx):
             raise ValueError("no crossing of the nearest sign edge within 0.2 day of the stored instant")
         ref.update(edge_distance_deg=abs(sd(l, edge)), longitude_deg=l, speed_dps=sp, sign=_SIGNS[int(_lon_speed(ctx, body, t + 0.001)[0] // 30.0) % 12],
                    nakshatra_num=int(l // (360.0 / 27)) + 1)
+        ref["target_sign"] = ref["sign"]               # the writer stores the sign it searched for in detail.target_sign; it must equal the sign entered
     elif et == "station":
         if body not in _STATION_BODIES:
             raise ValueError("unknown station body")
@@ -467,8 +494,12 @@ def sky_ref(r, ctx):
         b, e = _bisect(pen, tg - 0.3, tg), _bisect(pen, tg, tg + 0.3)
         sb, se = r["_detail"].get("begin_jd"), r["_detail"].get("end_jd")
         l, sp = _lon_speed(ctx, "Sun", j)
-        if _m <= 1.5e-4 or abs(g - (1 - abs(u))) <= 1.5e-4:
-            ref["_ambiguous"] = {"eclipse_type": f"within {max(_m, 0):.6f} Earth radii of a solar type boundary", "is_central": "within 1.5e-4 Earth radii of the central limit"}
+        if ty is not None and _m <= 1.5e-4:
+            ref["_ambiguous"] = {"eclipse_type": {"note": f"within {_m:.6f} Earth radii of a solar type boundary", "neighbours": list(_SOLAR_NEIGHBOURS[ty])}}
+        elif ty is None and abs(g - (1 + l1)) <= 1.5e-4:
+            ref["_ambiguous"] = {"eclipse_type": {"note": "within 1.5e-4 Earth radii of the penumbral limit", "neighbours": ["partial"]}}
+        if ty is not None and abs(g - (1 - abs(u))) <= 1.5e-4:
+            ref.setdefault("_ambiguous", {})["is_central"] = {"note": "within 1.5e-4 Earth radii of the central limit", "neighbours": [not (g < 1 - abs(u) + 1e-9)]}
         ref.update(eclipse_type=ty, is_central=bool(ty and g < 1 - abs(u) + 1e-9) if ty else None, ecl_time_offset_s=(tg - j) * 86400.0,
                    begin_offset_s=(b - sb) * 86400.0 if (b is not None and sb) else None, end_offset_s=(e - se) * 86400.0 if (e is not None and se) else None,
                    longitude_deg=l, speed_dps=sp, sign=_SIGNS[int(l // 30.0) % 12])
@@ -476,8 +507,10 @@ def sky_ref(r, ctx):
         tg = _golden_min(lambda x: _lunar_state(x)[0], j - 0.1, j + 0.1)
         rho, m, ru, rp = _lunar_state(tg)
         ty = "total" if rho + m <= ru else "partial" if rho - m < ru else "penumbral" if rho - m < rp else None
-        if min(abs(rho + m - ru), abs(rho - m - ru), abs(rho - m - rp)) <= 3.0e-4:             # 3e-4 rad = 62 arcsec of a type boundary
-            ref["_ambiguous"] = {"eclipse_type": "within 62 arcsec of a lunar type boundary"}
+        if ty is not None and min(abs(rho + m - ru), abs(rho - m - ru), abs(rho - m - rp)) <= 3.0e-4:             # 3e-4 rad = 62 arcsec of a type boundary
+            ref["_ambiguous"] = {"eclipse_type": {"note": "within 62 arcsec of a lunar type boundary", "neighbours": list(_LUNAR_NEIGHBOURS[ty])}}
+        elif ty is None and abs(rho - m - rp) <= 3.0e-4:
+            ref["_ambiguous"] = {"eclipse_type": {"note": "within 62 arcsec of the penumbral limit", "neighbours": ["penumbral"]}}
         fu = lambda x: (lambda s: s[0] - s[1] - s[2])(_lunar_state(x))
         sb, se = r["_detail"].get("begin_jd"), r["_detail"].get("end_jd")
         b = _bisect(fu, tg - 0.3, tg) if ty in ("total", "partial") else None
@@ -504,6 +537,9 @@ def sky_completeness(rows, ctx, spec):
     for r in rows:
         by.setdefault(r["event_type"], []).append(r)
     problems = []
+    early = [r for r in rows if isinstance(r["event_jd"], float) and r["event_jd"] < start - 0.01]
+    if early:
+        problems.append(f"{len(early)} stored event(s) lie before the declared history_start {ctx['history_start']} (first: {early[0]['event_type']} {early[0]['primary_body']} {early[0]['event_jd']})")
 
     def span(et):
         js = [r["event_jd"] for r in by.get(et, ()) if r["event_jd"] is not None]
@@ -620,10 +656,10 @@ def register_all(d3) -> None:
     d3.register_method(
         "swisseph_sky_events_v1", tables=("bg_sky_calendar",), assets=("bg_sky_calendar",), independence="independent_formula",
         max_tol={"edge_distance_deg": {"default": 0.002, "values": {"Rahu": 0.01, "Ketu": 0.01}}, "longitude_deg": {"default": 0.002, "values": {"Rahu": 0.01, "Ketu": 0.01}},
-                 "speed_dps": 0.01, "sign": 0, "nakshatra_num": 0, "ayanamsha_key": 0, "station_type": 0, "station_zero_speed": 0.002, "conj_orb_deg": 0.002, "conj_offset_deg": 0.002,
+                 "speed_dps": 0.01, "event_datetime_s": 2.0, "target_sign": 0, "sign": 0, "nakshatra_num": 0, "ayanamsha_key": 0, "station_type": 0, "station_zero_speed": 0.002, "conj_orb_deg": 0.002, "conj_offset_deg": 0.002,
                  "planet_b_lon": 0.002, "eclipse_type": 0, "is_central": 0, "ecl_time_offset_s": 240.0, "begin_offset_s": 240.0, "end_offset_s": 240.0},
         required_conventions={"position_model": ("apparent",), "node_model": ("true_node",), "ayanamsha": ("lahiri",), "eclipse_geometry": ("swecl_radii_fundamental_plane",),
-                              "shadow_enlargement": ("1_over_0.99",), "history_start": ("1900-01-01", "2010-01-01", "2020-01-01")},
+                              "shadow_enlargement": ("1_over_0.99",), "history_start": ("1900-01-01",)},
         reads=("bg_sky_calendar: the declared columns of every row (all event families)",),
         logical_rows=sky_logical_rows, context=sky_context, ref=sky_ref, completeness=sky_completeness, version="2", backend_probe=backend_probe, backends=BACKENDS, inputs_table=None,
         rule_text=("per stored event, by pyswisseph called directly: ingress = the body's distance from the nearest sign edge at the stored instant (claimed 0), a crossing of that edge within "

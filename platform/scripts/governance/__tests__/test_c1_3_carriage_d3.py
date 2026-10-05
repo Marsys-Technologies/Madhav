@@ -91,6 +91,7 @@ def _setrow(rows, subj, ay, key, **vals):
 
 
 def measure_pos(spec=None, rows=None, **kw):
+    kw.setdefault("asset_rows", 1205)                       # the asset's live count (its count_sql, 1,205 for the canonical chart): N-156 review MED-2, an unread count is never coverage
     return d3.d3_measure(spec or pos_spec(), rows if rows is not None else pos_rows(), "chart_facts", inputs=kw.pop("inputs", pos_inputs()), **kw)
 
 
@@ -293,7 +294,7 @@ def test_boundary_tolerance_is_listed_never_silent():
     rows = [dict(subject="X", ayanamsha="a", longitude_sidereal=29.9999, degree_in_sign=29.9999, sign_num=1, nakshatra_num=3, pada=1, house_d1=1, retrograde_flag="direct")]
     m = dict(base, logical_rows=lambda r, i: rows, ref=ref, context=lambda r, i, s: None)
     spec = pos_spec(expected_rows=1, key=["subject", "ayanamsha"])
-    r = d3.d3_measure(spec, [{"x": 1}], "chart_facts", method=m, inputs=[])
+    r = d3.d3_measure(spec, [{"x": 1}], "chart_facts", method=m, inputs=[], asset_rows=1)
     assert r["v"] == "PASS" and [b["column"] for b in r["d3"]["boundary_tolerated"]] == ["sign_num"]
     rows[0]["sign_num"] = 7                                    # not adjacent: no tolerance
     assert d3.d3_measure(spec, [{"x": 1}], "chart_facts", method=m, inputs=[])["v"] == "FAIL"
@@ -321,9 +322,11 @@ def _tol(default):
 
 def sky_spec(window="window_a", **over):
     s = dict(method="swisseph_sky_events_v1", table="bg_sky_calendar", expected_rows="method", key=["event_type", "primary_body", "secondary_body", "event_jd"],
-             read=dict(columns=["event_type", "primary_body", "secondary_body", "event_jd", "sign", "nakshatra", "longitude_deg", "speed_dps", "ayanamsha_key", "detail"], where=[], chart_scoped=False),
+             read=dict(columns=["event_type", "primary_body", "secondary_body", "event_jd", "event_datetime_utc", "sign", "nakshatra", "longitude_deg", "speed_dps", "ayanamsha_key", "detail"], where=[], chart_scoped=False),
              columns={"sign": dict(kind="exact", tol=0, basis="the sign at the re-derived instant"),
                       "nakshatra_num": dict(kind="exact", tol=0, basis="the nakshatra of the re-derived longitude"),
+                      "event_datetime_s": dict(kind="linear", tol=2.0, basis="the writer stores event_jd to 5 decimals (0.86 s) and truncates the datetime to the second"),
+                      "target_sign": dict(kind="exact", tol=0, basis="the ingress detail target_sign equals the sign entered"),
                       "longitude_deg": dict(kind="circular_deg", tol=_tol(0.001), basis="writer stores 4 decimals; true node wider; same ephemeris"),
                       "speed_dps": dict(kind="linear", tol=0.005, basis="writer stores 6 decimals; speed changes under 0.5 degree a day squared"),
                       "ayanamsha_key": dict(kind="exact", tol=0, basis="stored label equals the declared ayanamsha"),
@@ -354,8 +357,10 @@ def sky_rows(window="window_a"):
     return copy.deepcopy(SKY[window]["rows"])
 
 
-def sky_measure(window="window_a", spec=None, rows=None):
-    return d3.d3_measure(spec or sky_spec(window), rows if rows is not None else sky_rows(window), "bg_sky_calendar")
+def sky_measure(window="window_a", spec=None, rows=None, **kw):
+    rows = rows if rows is not None else sky_rows(window)
+    kw.setdefault("asset_rows", len(SKY[window]["rows"]))
+    return d3.d3_measure(spec or sky_spec(window), rows, "bg_sky_calendar", **kw)
 
 
 def _types(rows):
@@ -456,7 +461,7 @@ def test_double_transit_mutations_are_caught():
 
 def test_a_sampled_sky_run_cannot_pass_and_method_completeness_needs_a_method_that_has_one():
     s = sky_spec(strata="event_type", sample=dict(per_stratum=4, seed="s"))
-    m = d3.d3_measure(s, sky_rows(), "bg_sky_calendar")
+    m = d3.d3_measure(s, sky_rows(), "bg_sky_calendar", asset_rows=len(SKY["window_a"]["rows"]))
     assert m["v"] == "PARTIAL" and m["d3"]["rows_checked"] == 16 and "sample" in m["measured"]
     with pytest.raises(d3.SpecError, match="completeness"):
         d3.validate_spec(pos_spec(expected_rows="method"), "x")
@@ -472,3 +477,76 @@ def test_the_two_methods_are_the_closed_registry():
         d3.register_method("swisseph_sidereal_positions_v1", **METHODS["swisseph_sidereal_positions_v1"])
     with pytest.raises(d3.SpecError):
         d3.register_method("incomplete", independence="independent_formula")
+
+
+# ───────────────────────── N-156 review fixes ─────────────────────────
+
+def test_med2_an_unread_live_count_is_never_coverage():
+    rows = fix_nodes(pos_rows())
+    m = d3.d3_measure(pos_spec(), rows, "chart_facts", inputs=pos_inputs())                  # asset_rows None: the count_sql could not be read
+    assert m["v"] == "PARTIAL" and "live row count is unreadable" in m["measured"]
+    assert d3.d3_evidence_problem(dict(m, v="PASS")) != "" and "not read" in d3.d3_evidence_problem(dict(m, v="PASS"))
+    ok = d3.d3_measure(pos_spec(), rows, "chart_facts", inputs=pos_inputs(), asset_rows=1205)
+    assert ok["v"] == "PASS" and d3.d3_evidence_problem(ok) == ""
+    assert d3.d3_measure(pos_spec(), rows, "chart_facts", inputs=pos_inputs(), asset_rows=True)["v"] == "PARTIAL"     # a bool is not a count
+
+
+def test_med3_a_datetime_disagreeing_with_event_jd_and_a_wrong_target_sign_are_caught():
+    rows = sky_rows()
+    i = _row(rows, "ingress", primary_body="Mars")
+    rows[i]["event_datetime_utc"] = "2010-01-01T00:00:00"
+    m = sky_measure(rows=rows)
+    assert m["v"] == "PARTIAL" and m["d3"]["mismatches"][0]["columns"] == ["event_datetime_s"]
+    rows = sky_rows()
+    i = _row(rows, "ingress", primary_body="Jupiter")
+    rows[i]["detail"] = json.dumps({"target_sign": "Aries" if json.loads(rows[i]["detail"])["target_sign"] != "Aries" else "Taurus"})
+    m = sky_measure(rows=rows)
+    assert m["v"] == "PARTIAL" and m["d3"]["mismatches"][0]["columns"] == ["target_sign"]
+    rows = sky_rows()
+    rows[_row(rows, "eclipse_lunar")]["event_datetime_utc"] = None                         # a missing stored datetime is a mismatch, not a skip
+    assert sky_measure(rows=rows)["v"] == "PARTIAL"
+
+
+def test_low4_no_eclipse_is_never_ambiguous_and_an_ambiguous_value_needs_an_adjacent_stored_one():
+    import carriage_d3_methods as cm
+    assert cm._solar_type(1.5, 0.01, 0.01, 0.5)[1] == float("inf") and cm._solar_type(1.5, 0.01, 0.01, 0.5)[0] is None
+    base = METHODS["swisseph_sky_events_v1"]
+    cols = {c: d for c, d in sky_spec()["columns"].items() if c == "eclipse_type"}
+    spec = sky_spec(columns=cols, expected_rows=1, key=["event_type", "primary_body", "secondary_body", "event_jd"])
+    row = dict(event_type="eclipse_solar", primary_body="Sun", secondary_body="Moon", event_jd=1.0, eclipse_type="total")
+    ref = lambda r, ctx: {"eclipse_type": "partial", "_ambiguous": {"eclipse_type": {"note": "near a boundary", "neighbours": ["total", "annular_total"]}}}
+    m = dict(base, logical_rows=lambda r, i: [dict(row)], ref=ref, context=lambda r, i, s: None, backend_probe=None, completeness=None)
+    spec.pop("backend", None)
+    spec["expected_rows"] = 1
+    spec["conventions"] = {}
+    r = d3.d3_measure(dict(spec, uncovered=[]), [{"x": 1}], "bg_sky_calendar", method=dict(m, required_conventions={}), asset_rows=1)
+    assert r["d3"]["boundary_tolerated"] and r["d3"]["boundary_tolerated"][0]["column"] == "eclipse_type" and r["v"] == "PASS"
+    far = dict(m, logical_rows=lambda r, i: [dict(row, eclipse_type="annular")])         # not an adjacent classification: ambiguity does not excuse it
+    r = d3.d3_measure(dict(spec, uncovered=[]), [{"x": 1}], "bg_sky_calendar", method=dict(far, required_conventions={}), asset_rows=1)
+    assert r["v"] == "FAIL" and not r["d3"]["boundary_tolerated"]
+
+
+def test_low4_the_real_writer_eclipse_rows_use_no_blanket_ambiguity():
+    m = sky_measure()
+    assert m["v"] == "PASS" and all(b.get("column") != "eclipse_type" or "boundary" in b.get("ambiguity", "") or "limit" in b.get("ambiguity", "") for b in m["d3"]["boundary_tolerated"])
+
+
+def test_low5_history_start_is_the_production_value_and_early_rows_are_named():
+    with pytest.raises(d3.SpecError, match="not one the method implements"):
+        d3.validate_spec(sky_spec(), "x")                                                  # the fixture window start 2010-01-01 is not a production value
+    s = sky_spec()
+    s["conventions"]["history_start"] = dict(value="1900-01-01", evidence="platform/python-sidecar/pipeline/orchestrator/writers/bg_sky_calendar.py:100")
+    d3.validate_spec(s, "x")
+    early = sky_rows()
+    e = copy.deepcopy(early[_row(early, "ingress", primary_body="Mars")])
+    e["event_jd"] -= 3650.0
+    early.append(e)
+    m = sky_measure(rows=early)
+    assert m["v"] != "PASS" and any("before the declared history_start" in p for p in m["d3"]["completeness_problems"])
+
+
+def test_low5_duplicate_keys_use_a_counter_and_stay_named():
+    rows = sky_rows()
+    rows.append(copy.deepcopy(rows[_row(rows, "station", primary_body="Venus")]))
+    m = sky_measure(rows=rows)
+    assert m["v"] == "PARTIAL" and m["d3"]["duplicate_keys"] and any("duplicate" in x["columns"] for x in m["d3"]["mismatches"])
