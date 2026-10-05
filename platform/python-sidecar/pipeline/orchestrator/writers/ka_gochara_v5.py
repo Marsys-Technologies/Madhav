@@ -58,6 +58,7 @@ from pipeline.orchestrator.writers import (
     register,
 )
 from services.gochara_kernel import evaluator as gk_evaluator
+from services.gochara_kernel import ephemeris_pins as gk_ephemeris_pins
 from services.gochara_kernel.native_conn import native_connection
 from services.gochara_kernel import arcs as gk_arcs
 from services.gochara_kernel.dasha_read import make_period_rows_for
@@ -459,18 +460,40 @@ def _applicable_rulings() -> list[dict]:
 
 
 EPHE_ENV_VAR = "SE_EPHE_PATH"
-# The pinned Swiss Ephemeris files the kernel opens (sha256 pins: Dockerfile.pipeline's build-time `sha256sum -c`, tests/l3/gochara/conftest.py
-# SE1_CHECKSUMS; this module deliberately carries no third copy of the digests: the manifest vector binds the sha256 of the files ACTUALLY
-# OPENED, and every later substep re-verifies it). Existence is what the first substep can refuse on, in seconds.
-PINNED_EPHE_FILES = ("sepl_18.se1", "semo_18.se1", "seas_18.se1")
+# The pinned Swiss Ephemeris files the kernel opens, with their sha256: ONE shared constant (services/gochara_kernel/ephemeris_pins.py),
+# the same pins Dockerfile.pipeline checks at image build and CI checks at every download (a test asserts the places agree).
+PINNED_EPHE_FILES = tuple(gk_ephemeris_pins.PINNED_SE1_SHA256)
 
 
 class EphemerisConfigRefusal(RuntimeError):
-    """The Swiss Ephemeris directory this run would use is not configured, does not exist, or lacks a pinned file."""
+    """The Swiss Ephemeris directory this run would use is not configured, is ambiguous, does not exist, lacks a pinned file, or is not the
+    pinned bytes."""
+
+
+_PIN_VERIFIED: dict[tuple, str] = {}        # (real path, size, mtime_ns) -> sha256 already verified against the pin, per process
+
+
+def _verify_pinned_bytes(directory: Path, source: str) -> None:
+    """Every pinned file must be the pinned BYTES (sha256), checked at EVERY substep so the body substeps and the manifest that binds the file
+    digests run over the same corpus. The hash is cached per process by real path, size and mtime, so the cost is paid once; a file that is
+    replaced or touched is hashed again."""
+    for name, pinned in gk_ephemeris_pins.PINNED_SE1_SHA256.items():
+        file = (directory / name)
+        real = os.path.realpath(file)
+        stat = os.stat(real)
+        key = (real, stat.st_size, stat.st_mtime_ns)
+        if _PIN_VERIFIED.get(key) == pinned:
+            continue
+        digest = hashlib.sha256(Path(real).read_bytes()).hexdigest()
+        if digest != pinned:
+            raise EphemerisConfigRefusal(
+                f"{ASSET_ID}: {name} in the Swiss Ephemeris directory from {source} ({str(directory)!r}) is not the pinned corpus: "
+                f"sha256 {digest} != pinned {pinned} — refused before any computation")
+        _PIN_VERIFIED[key] = digest
 
 
 def _ephe_path(ctx: ContextSpec) -> str:
-    """The ephemeris directory for this substep. Resolution order: `ctx.config["ephe_path"]` when present (tests and any caller that
+    """The ephemeris directory for this substep. Resolution order: `ctx.config["ephe_path"]` when supplied (tests and any caller that
     supplies it keep their behaviour), else the process environment `SE_EPHE_PATH` — the variable the Swiss C library itself honours, which
     panchang_engine/swiss_backend.py requires, CI exports for every gochara test and Dockerfile.pipeline sets in the image (the real
     orchestrator never puts ephe_path in ctx.config, so a real build used to fail at the manifest substep, after the body phase).
@@ -478,14 +501,28 @@ def _ephe_path(ctx: ContextSpec) -> str:
     states SWE_EPHE_PATH is NOT consulted; the pipeline image sets both to /app/ephe. The sibling v4.41 writer's resolver (config, then
     SWE_EPHE_PATH, then a dev-checkout default) is deliberately not copied: its silent default is what this resolver refuses.
 
-    NO silent default: neither set, a path that is not a directory, or a directory lacking one of the pinned files is REFUSED BY NAME. It is
-    called from every substep, so the FIRST substep ('rules') refuses a mis-provisioned job in seconds. A config-supplied path that is bad
-    is refused, never replaced by the environment's."""
-    configured = ctx.config.get("ephe_path")
-    if configured:
+    REFUSED BY NAME, no default: (1) neither supplied; (2) an EXPLICITLY supplied config value that is not a usable path (an empty string is
+    refused, never read as 'absent': only a missing key or None falls back); (3) BOTH a config path and `SE_EPHE_PATH` present and not the
+    same real directory — the Swiss library honours the environment variable itself even after `set_ephe_path(<config path>)`
+    (panchang_engine/swiss_backend.py documents it), so two different directories would let calculations fall back to the other corpus;
+    (4) not a directory; (5) a pinned file missing; (6) a pinned file whose sha256 is not the pin. Called from every substep, so the FIRST
+    ('rules') refuses a mis-provisioned job in seconds, and every substep (bodies included) provably runs over the same pinned bytes."""
+    supplied = "ephe_path" in ctx.config and ctx.config["ephe_path"] is not None
+    env_value = os.environ.get(EPHE_ENV_VAR) or ""
+    if supplied:
+        configured = ctx.config["ephe_path"]
+        if not isinstance(configured, (str, os.PathLike)) or not str(configured).strip():
+            raise EphemerisConfigRefusal(
+                f"{ASSET_ID}: ctx.config['ephe_path'] was supplied as {configured!r}, which is not a usable path — refused (only an "
+                "absent key or None falls back to the environment)")
         path, source = str(configured), "ctx.config['ephe_path']"
+        if env_value and os.path.realpath(env_value) != os.path.realpath(path):
+            raise EphemerisConfigRefusal(
+                f"{ASSET_ID}: ctx.config['ephe_path'] ({path!r}) and the environment variable {EPHE_ENV_VAR} ({env_value!r}) name "
+                "different directories — refused: the Swiss library honours the environment variable too, so calculations could "
+                "silently use the other corpus; make them the same directory or unset one")
     else:
-        path, source = os.environ.get(EPHE_ENV_VAR) or "", f"environment variable {EPHE_ENV_VAR}"
+        path, source = env_value, f"environment variable {EPHE_ENV_VAR}"
         if not path:
             raise EphemerisConfigRefusal(
                 f"{ASSET_ID}: no Swiss Ephemeris directory is configured: ctx.config has no 'ephe_path' and {EPHE_ENV_VAR} is not set "
@@ -498,6 +535,7 @@ def _ephe_path(ctx: ContextSpec) -> str:
     if missing:
         raise EphemerisConfigRefusal(
             f"{ASSET_ID}: the Swiss Ephemeris directory from {source} ({path!r}) lacks the pinned file(s) {missing} — refused")
+    _verify_pinned_bytes(directory, source)
     return path
 
 

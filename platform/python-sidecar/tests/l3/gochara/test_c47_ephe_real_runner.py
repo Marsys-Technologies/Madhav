@@ -14,7 +14,9 @@ orchestrator tables (migrations 167..1201) and an INACTIVE registry row in the 1
 from __future__ import annotations
 
 import json
+import os
 import types
+from pathlib import Path
 
 import psycopg
 import pytest
@@ -28,7 +30,7 @@ from . import _runner_world as rw
 from .conftest import EPHE_PATH
 from .test_a55_replace_chain import CHART_ID, _World, template  # noqa: F401
 
-ONE_CLASS = writer_mod.SCORED_CLASSES[0]
+ONE_CLASS = "marriage"
 MARKER = {"schema": writer_mod.TEST_SLICE_SCHEMA, "run": "one_class_full",
           "horizon": [writer_mod.DEFAULT_HORIZON[0].isoformat(), writer_mod.DEFAULT_HORIZON[1].isoformat()],
           "classes": [ONE_CLASS]}
@@ -40,14 +42,19 @@ def _ctx(**config):
     return types.SimpleNamespace(config=config)
 
 
-def test_a_config_supplied_path_wins_and_the_environment_is_not_consulted(monkeypatch, tmp_path):
-    monkeypatch.setenv("SE_EPHE_PATH", str(tmp_path / "does-not-exist"))
+def test_a_config_supplied_path_is_used_and_the_same_directory_in_the_environment_is_accepted(monkeypatch, tmp_path):
+    monkeypatch.delenv("SE_EPHE_PATH", raising=False)
+    assert writer_mod._ephe_path(_ctx(ephe_path=EPHE_PATH)) == EPHE_PATH
+    link = tmp_path / "corpus"
+    link.symlink_to(EPHE_PATH)                                  # the same REAL directory under another spelling
+    monkeypatch.setenv("SE_EPHE_PATH", str(link))
     assert writer_mod._ephe_path(_ctx(ephe_path=EPHE_PATH)) == EPHE_PATH
 
 
 def test_with_no_config_the_environment_variable_is_used(monkeypatch):
     monkeypatch.setenv("SE_EPHE_PATH", EPHE_PATH)
     assert writer_mod._ephe_path(_ctx()) == EPHE_PATH
+    assert writer_mod._ephe_path(_ctx(ephe_path=None)) == EPHE_PATH         # None is 'absent': it falls back
 
 
 def test_neither_configured_is_refused_by_name_there_is_no_default(monkeypatch):
@@ -58,6 +65,14 @@ def test_neither_configured_is_refused_by_name_there_is_no_default(monkeypatch):
     monkeypatch.setenv("SE_EPHE_PATH", "")
     with pytest.raises(writer_mod.EphemerisConfigRefusal, match="no Swiss Ephemeris directory is configured"):
         writer_mod._ephe_path(_ctx(ephe_path=None))
+
+
+@pytest.mark.parametrize("value", ["", "   ", 0, 5, [], {}])
+def test_an_explicitly_supplied_unusable_config_value_is_refused_and_never_read_as_absent(monkeypatch, value):
+    """Codex P3: only a missing key or None falls back to the environment; anything else that is supplied must be a usable path."""
+    monkeypatch.setenv("SE_EPHE_PATH", EPHE_PATH)
+    with pytest.raises(writer_mod.EphemerisConfigRefusal, match="was supplied as .* not a usable path"):
+        writer_mod._ephe_path(_ctx(ephe_path=value))
 
 
 def test_a_missing_directory_or_a_missing_pinned_file_is_refused_by_name(monkeypatch, tmp_path):
@@ -72,9 +87,90 @@ def test_a_missing_directory_or_a_missing_pinned_file_is_refused_by_name(monkeyp
 
 
 def test_a_bad_config_path_is_refused_and_is_never_replaced_by_the_environment(monkeypatch, tmp_path):
-    monkeypatch.setenv("SE_EPHE_PATH", EPHE_PATH)
+    monkeypatch.delenv("SE_EPHE_PATH", raising=False)
     with pytest.raises(writer_mod.EphemerisConfigRefusal, match=r"ctx\.config\['ephe_path'\].*is not a directory"):
         writer_mod._ephe_path(_ctx(ephe_path=str(tmp_path / "nowhere")))
+    monkeypatch.setenv("SE_EPHE_PATH", EPHE_PATH)
+    with pytest.raises(writer_mod.EphemerisConfigRefusal, match="name different directories"):    # and a valid environment does not rescue it
+        writer_mod._ephe_path(_ctx(ephe_path=str(tmp_path / "nowhere")))
+
+
+def test_a_config_path_and_an_environment_path_that_differ_are_refused_on_real_calculations_too(monkeypatch, tmp_path):
+    """Codex P2: the string precedence alone is not enough. The Swiss library honours SE_EPHE_PATH itself after set_ephe_path(<config>),
+    so a valid config path with an environment variable naming ANOTHER directory would let calculations use the other corpus. The
+    resolver refuses before any calculation, in the real substep path; and with both naming the same directory a real calculation runs."""
+    monkeypatch.setenv("SE_EPHE_PATH", str(tmp_path / "nonexistent"))
+
+    class Untouched:
+        row_factory = None
+
+        def __getattr__(self, name):
+            raise AssertionError(f"connection used: {name}")
+    ctx = ContextSpec(asset_id=writer_mod.ASSET_ID, build_id="x", db_conn=Untouched(), dry_run=False,
+                      config={"chart_id": CHART_ID, "ephe_path": EPHE_PATH})
+    for key in (writer_mod.RULES_SUBSTEP, f"{writer_mod.BODY_SUBSTEP_PREFIX}Sun", writer_mod.MANIFEST_SUBSTEP):
+        with pytest.raises(writer_mod.EphemerisConfigRefusal, match="name different directories"):
+            writer_mod.GocharaV5Writer().run_substep(ctx, SubStep(key=key, label=key))
+    monkeypatch.setenv("SE_EPHE_PATH", EPHE_PATH)
+    from services.gochara_kernel.knots import calc_sidereal_lon
+    lon, retflag = calc_sidereal_lon("Sun", 2451545.0, writer_mod._ephe_path(_ctx(ephe_path=EPHE_PATH)))
+    assert retflag & 2 and 0.0 <= lon < 360.0                    # a real Swiss-file calculation through the resolved path
+
+
+def _corpus_copy(tmp_path):
+    import shutil
+    for name in writer_mod.PINNED_EPHE_FILES:
+        shutil.copy(os.path.join(EPHE_PATH, name), tmp_path / name)
+    return tmp_path
+
+
+def test_a_file_that_is_not_the_pinned_bytes_is_refused_before_any_computation(monkeypatch, tmp_path):
+    """Codex P2: one corpus across the build. Same names and sizes, one byte changed: refused by name (every substep, so the bodies and the
+    manifest cannot run over different bytes)."""
+    monkeypatch.delenv("SE_EPHE_PATH", raising=False)
+    corpus = _corpus_copy(tmp_path)
+    assert writer_mod._ephe_path(_ctx(ephe_path=str(corpus))) == str(corpus)                       # an exact copy passes
+    target = corpus / "semo_18.se1"
+    data = bytearray(target.read_bytes())
+    data[len(data) // 2] ^= 0x01
+    target.write_bytes(bytes(data))
+    with pytest.raises(writer_mod.EphemerisConfigRefusal, match=r"semo_18\.se1 .* is not the pinned corpus: sha256 [0-9a-f]{64} != pinned "):
+        writer_mod._ephe_path(_ctx(ephe_path=str(corpus)))
+
+
+def test_the_pin_check_is_cached_per_path_size_and_mtime_so_the_cost_is_paid_once(monkeypatch, tmp_path):
+    monkeypatch.delenv("SE_EPHE_PATH", raising=False)
+    corpus = _corpus_copy(tmp_path)
+    reads = []
+    original = Path.read_bytes
+
+    def counting(self):
+        reads.append(self.name)
+        return original(self)
+    monkeypatch.setattr(Path, "read_bytes", counting)
+    writer_mod._PIN_VERIFIED.clear()
+    for _ in range(5):
+        writer_mod._ephe_path(_ctx(ephe_path=str(corpus)))
+    assert sorted(reads) == sorted(writer_mod.PINNED_EPHE_FILES), reads                         # each file hashed ONCE for five substeps
+    os.utime(corpus / "sepl_18.se1", (1, 1))                                                    # a touched file is hashed again
+    writer_mod._ephe_path(_ctx(ephe_path=str(corpus)))
+    assert reads.count("sepl_18.se1") == 2 and reads.count("semo_18.se1") == 1
+
+
+def test_the_pins_agree_across_the_constant_the_dockerfile_ci_swiss_backend_and_the_conftest():
+    import re
+    from panchang_engine import swiss_backend
+    from services.gochara_kernel.ephemeris_pins import PINNED_SE1_SHA256 as pins
+    from .conftest import SE1_CHECKSUMS
+    assert dict(SE1_CHECKSUMS) == pins and dict(swiss_backend._PINNED_SHA256) == pins
+    docker = (rw.REPO / "platform/python-sidecar/Dockerfile.pipeline").read_text(encoding="utf-8")
+    ci = (rw.REPO / ".github/workflows/ci.yml").read_text(encoding="utf-8")
+    for name, digest in pins.items():
+        assert re.search(rf"{digest}\s+/app/ephe/{re.escape(name)}", docker), f"Dockerfile.pipeline does not pin {name} to {digest}"
+        assert re.search(rf"{digest}\s+{re.escape(name)}", ci), f"ci.yml does not pin {name} to {digest}"
+    # every sha256sum line CI writes for a corpus file carries one of the pins (a stale digest anywhere fails here)
+    for digest, name in re.findall(r"'([0-9a-f]{64})\s+((?:sepl|semo|seas)_18\.se1)'", ci):
+        assert pins[name] == digest, f"ci.yml pins {name} to a different digest {digest}"
 
 
 def test_the_first_substep_refuses_before_anything_is_written(monkeypatch):
@@ -94,7 +190,7 @@ def test_the_first_substep_refuses_before_anything_is_written(monkeypatch):
 def test_no_substep_reads_ephe_path_straight_from_the_config():
     """The seven bare reads are gone: every use goes through the resolver (mutation guard for a half-applied fix)."""
     source = open(writer_mod.__file__, encoding="utf-8").read()
-    assert 'config.get("ephe_path")' not in source.replace('configured = ctx.config.get("ephe_path")', "")
+    assert 'config.get("ephe_path")' not in source
     assert source.count("_ephe_path(ctx)") >= 8
 
 
@@ -140,14 +236,17 @@ def test_real_runner_with_the_variable_unset_refuses_at_the_first_substep_in_sec
 
 
 def test_real_runner_with_the_variable_set_runs_the_slice(rworld, template):
-    """Through the real runner, SE_EPHE_PATH set, no config path. What this shows and what it does not:
+    """Through the real runner, SE_EPHE_PATH set, no config path, class `marriage`. What this shows and what it does not:
 
     SHOWN: the writer runs under the real orchestrator past the point where it used to die: rules, convention, the 8 body substeps, the
-    manifest (stamped test_slice, vector binds the sha256 of the .se1 files actually opened), the snapshot, the first class's inventory and
-    coverage all COMPLETE, and the ephemeris identity equals the one a config-supplied path produces. The registry row stayed INACTIVE.
-    NOT SHOWN: a completed slice. The first record grain (P1) fails on THIS database because its L1 is a stub (10 graha rows, one dasha
-    build): the existing a53/a55/c46 tests record the same limit ('P1 cannot pass on the stubbed L1'). That is a property of the stub
-    database, not of the ephemeris path; a production-shaped L1 is what the steward's real run has and this test does not."""
+    manifest (stamped test_slice, vector binds the sha256 of the .se1 files actually opened), the snapshot, the class's inventory and
+    coverage and its FIRST record grain (P1, whose anchor verification passes for this class) all COMPLETE, and the ephemeris identity equals
+    the one a config-supplied path produces. The registry row stayed INACTIVE.
+    NOT ASSERTED (observed, and deliberately not pinned here so a fix does not need this test changed): the run does not complete. On this
+    database it goes on through record P2 to P4 and window P1 and P2, then stops at window P3 on 'member geometry verification' of
+    zero-length (grazing) contacts (window_verifier.py:668); that is a separate defect awaiting its own ruling. The class is `marriage`, not
+    the first scored class: achievement_recognition (and 7 other classes whose signature houses are unknown) fail at P1 for a structural
+    reason that does not depend on the ephemeris path (ruling P1-EMPTY-CLASS). So NO completed slice through the real runner is shown."""
     w = rworld
     out = rw.run_real_entry_point(w.dsn, w.run_id, ephe_env=EPHE_PATH)
     events = rw.substep_events(out["stdout"])
@@ -159,13 +258,14 @@ def test_real_runner_with_the_variable_set_runs_the_slice(rworld, template):
     print("SET:", {"code": out["code"], "seconds": round(out["seconds"], 1), "run": run, "asset_state": asset[0], "substeps": keys,
                    "error_head": (asset[1] or "")[:160]})
     expected_head = ["rules", "convention"] + [f"body:{b}" for b in writer_mod.SUBSTRATE_BODIES] + \
-        [writer_mod.MANIFEST_SUBSTEP, writer_mod.SNAPSHOT_SUBSTEP, f"inventory:{ONE_CLASS}", f"coverage:{ONE_CLASS}"]
+        [writer_mod.MANIFEST_SUBSTEP, writer_mod.SNAPSHOT_SUBSTEP, f"inventory:{ONE_CLASS}", f"coverage:{ONE_CLASS}",
+         f"record:{ONE_CLASS}:P1"]
     assert keys[:len(expected_head)] == expected_head, (keys, out["stderr"][-2000:])
     assert manifest is not None and manifest[0]["stored_scope"] == "test_slice"
     assert manifest[0]["ephemeris"]["files"], "the vector binds the sha256 of the files actually opened"
     assert _row(w, "SELECT is_active FROM public.asset_registry WHERE asset_id = 'ka_gochara_v5'")[0] is False
     assert "no Swiss Ephemeris directory" not in (asset[1] or "")
-    assert run == "failed" and "P1 anchor verification failed" in (asset[1] or ""), (run, (asset[1] or "")[:400])   # the stub-L1 limit
+    assert "P1 anchor verification failed" not in (asset[1] or ""), (asset[1] or "")[:400]
     # the env fallback must give the SAME ephemeris identity as a config-supplied path (content digests, not the path string)
     clone = _World(template)
     try:
