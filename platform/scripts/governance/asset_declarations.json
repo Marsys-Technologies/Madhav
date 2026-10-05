@@ -631,6 +631,7 @@
   },
   "bg_ephemeris_engine": {
    "kind": "service",
+   "has_writer": false,
    "carriage": {
     "served_surface": null,
     "applies": "D3",
@@ -832,6 +833,7 @@
   },
   "bg_gochara_citation_resolution": {
    "kind": "static",
+   "has_writer": false,
    "carriage": {
     "served_surface": true,
     "applies": "D1",
@@ -1240,6 +1242,7 @@
   },
   "bg_panchanga": {
    "kind": "service",
+   "has_writer": false,
    "carriage": {
     "served_surface": null,
     "applies": "D3",
@@ -1713,6 +1716,7 @@
   },
   "bg_sarvatobhadra_grid": {
    "kind": "static",
+   "has_writer": false,
    "carriage": {
     "served_surface": null,
     "applies": "D1",

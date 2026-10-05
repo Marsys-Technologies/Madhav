@@ -166,3 +166,14 @@ def test_every_saved_no_writer_n_a_is_a_registry_writerless_asset_and_only_the_f
                 if a in REGISTERED_BUT_FALSE:
                     assert _cell(c, dict(m, no_writer=dict(declared=True, registry_has_writer=False, register_files=1)))["v"] == NO_DET
     assert seen == set(NO_WRITER_L0) | set(REGISTERED_BUT_FALSE)
+
+
+# ───────────────────────── the committed declarations ─────────────────────────
+
+def test_the_four_l0_no_writer_assets_declare_has_writer_false_and_nothing_else_does(l0):
+    decl = ac.load_asset_declarations()
+    assert sorted(a for a, e in decl.items() if e.get("has_writer") is False) == sorted(NO_WRITER_L0)
+    for a in NO_WRITER_L0:
+        assert l0[a]["has_writer"] is False and l0[a]["measurements"]["Build.registered"]["cause"] == "no-writer-registry-agrees"   # the registry row agrees
+    for a in REGISTERED_BUT_FALSE:
+        assert decl[a].get("has_writer") is None          # an @register exists: the declaration would be false
