@@ -1565,27 +1565,27 @@ CITATION_DECISIONS = json.loads(r"""
   "cites": [
    [
     "platform/python-sidecar/pipeline/orchestrator/writers/bo_karanajala.py",
-    625,
+    655,
     "f\"Argala: {graha_b} in {hous"
    ],
    [
     "platform/python-sidecar/pipeline/orchestrator/writers/bo_karanajala.py",
-    708,
+    739,
     "\"citation_human\":           "
    ],
    [
     "platform/python-sidecar/pipeline/orchestrator/writers/bo_karanajala.py",
-    785,
+    816,
     "\"citation_human\":           "
    ],
    [
     "platform/python-sidecar/pipeline/orchestrator/writers/bo_karanajala.py",
-    1360,
+    1391,
     "\"citation_human\": ("
    ],
    [
     "platform/python-sidecar/pipeline/orchestrator/writers/bo_karanajala.py",
-    1732,
+    1763,
     "\"citation_human\": f\"{node_su"
    ]
   ],
@@ -2324,7 +2324,7 @@ def test_citation_composed_values_are_really_stated_in_the_declared_assets():
             ("bo_sangati", _WR + "bo_sangati.py", 365, "len(shared_ids)"), ("bo_sangati", _WR + "bo_sangati.py", 440, "len(sigs)"),
             ("bo_cdlm_summary", _WR + "bo_cdlm_summary.py", 391, "len(agg['cells'])"),
             ("bo_cgm_motifs", _WR + "bo_cgm_motifs.py", 777, "len(all_edges)"),
-            ("bo_karanajala", _WR + "bo_karanajala.py", 708, "sign_num"),
+            ("bo_karanajala", _WR + "bo_karanajala.py", 739, "sign_num"),
             ("bo_upaya", _WR + "bo_upaya.py", 1798, "len(resonances)"),
             ("bo_yantra_mechanism", _WR + "bo_yantra_mechanism.py", 571, "verdict.valence"),
             ("ga_strength", _GW + "ga_strength_writer.py", 996, "ratio"),
