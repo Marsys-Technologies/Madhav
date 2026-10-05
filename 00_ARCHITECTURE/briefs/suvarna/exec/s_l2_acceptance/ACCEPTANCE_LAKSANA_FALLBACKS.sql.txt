@@ -1,0 +1,19 @@
+-- ACCEPTANCE_LAKSANA_FALLBACKS.sql.txt (lane TI-laksana-fallbacks-001; for the S-L2 rebuild acceptance set)
+--
+-- Acceptance criterion: no bo_laksana MSR signal carries an invented blank. The writer used `.get(k) or ""` / `.get(k, "")` on L1 values
+-- (varga_ratification_divergence: chart_vichara subject/domain/value_text; fact rows: chart_facts fact_category/fact_key) and so could write an empty
+-- piece into signal_headline_text / signal_summary_text / citation_human / signal_type_id / domains_affected_array. Now a missing piece REFUSES the substep
+-- (ValueError naming the row), it is never written as ''. CLAUDE.md N.7 item 6 / N.8: an honest refusal beats an invented default.
+--
+-- PASS condition (each statement is ONE read-only SELECT with no semicolon inside):
+--   F1: divergence_signals_with_a_blank_piece = 0 (subject, domain, value_text, headline, summary, citation_human non-blank; domains_affected_array non-empty).
+--   F2: blank_prose = 0 AND blank_natural_key_piece = 0 over every bo_laksana signal (no blank headline/summary/citation; no 'L1 chart_facts: /' or ':'-edged signal_type_id).
+-- TODAY (read 2026-10-05; statements validated read-only): F1 9 divergence signals (3 per ayanamsha with ga_vichara rows), 0 blank; F2 65712 signals, 0 blank prose, 0 blank natural-key piece.
+-- The fallbacks do not fire on today's data: chart_vichara has 16 varga_ratification_divergence rows in total (all charts), 0 missing subject/domain/value_text; chart_facts
+-- has 0 blank fact_category/fact_key on the canonical chart (147751 rows; both NOT NULL in the schema).
+
+-- F1_divergence_signals_have_no_blank_piece
+SELECT count(*) AS divergence_signals, count(*) FILTER (WHERE btrim(coalesce(configuration_jsonb->>'subject','')) = '' OR btrim(coalesce(configuration_jsonb->>'domain','')) = '' OR btrim(coalesce(configuration_jsonb->>'value_text','')) = '' OR btrim(coalesce(signal_headline_text,'')) = '' OR btrim(coalesce(signal_summary_text,'')) = '' OR btrim(coalesce(citation_human,'')) = '' OR cardinality(coalesce(domains_affected_array, '{}'::text[])) = 0) AS divergence_signals_with_a_blank_piece FROM bodha_msr_signals WHERE chart_id = '482012f1-710e-4a25-994a-93821f5871aa' AND producer_asset_id = 'bo_laksana' AND signal_type_class = 'varga_ratification_divergence'
+
+-- F2_no_bo_laksana_signal_has_blank_prose_or_blank_natural_key_piece
+SELECT count(*) AS signals, count(*) FILTER (WHERE btrim(coalesce(signal_headline_text,'')) = '' OR btrim(coalesce(signal_summary_text,'')) = '' OR btrim(coalesce(citation_human,'')) = '') AS blank_prose, count(*) FILTER (WHERE citation_human LIKE 'L1 chart_facts: /%' OR citation_human LIKE 'L1 chart_facts: %/' OR signal_type_id LIKE ':%' OR signal_type_id LIKE '%:') AS blank_natural_key_piece FROM bodha_msr_signals WHERE chart_id = '482012f1-710e-4a25-994a-93821f5871aa' AND producer_asset_id = 'bo_laksana'

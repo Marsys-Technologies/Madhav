@@ -819,8 +819,14 @@ def _build_headline_text(fact_category: str, fact_key: str,
             loc_parts.append(f"H{house}")
         if varga_id:
             loc_parts.append(str(varga_id))
-        loc = f" ({', '.join(loc_parts)})" if loc_parts else ""
-        return f"{str(fact_subject).upper()}{loc}: {body} [{source_l1_asset}]"
+        # CR-45 "parts genuinely absent are omitted": the location suffix is
+        # APPENDED to the subject lead only when a part exists. There is no
+        # stand-in value for an absent house/varga (no `... else ""`), so this
+        # is an omission by construction, not a blank written for a missing piece.
+        lead = str(fact_subject).upper()
+        if loc_parts:
+            lead += f" ({', '.join(loc_parts)})"
+        return f"{lead}: {body} [{source_l1_asset}]"
     return f"{body} [{source_l1_asset}]"
 
 
@@ -1420,11 +1426,30 @@ def _load_vichara_divergence_signals(
             "missing/partial, not permanently absent).", exc,
         )
         return []
+    # An honest refusal beats an invented blank (CLAUDE.md N.7 item 6 / N.8): the
+    # ga_vichara producer always writes subject, domain and value_text for a
+    # varga_ratification_divergence row, so a row missing one is malformed L1. It is
+    # never turned into a signal whose headline/summary/citation/signal_type_id carry
+    # an empty piece, and never silently dropped (a dropped row is a partial root
+    # generation, which this writer refuses everywhere else too).
+    malformed: list[str] = []
+    for r in rows:
+        absent = [k for k in ("subject", "domain", "value_text")
+                  if not (isinstance(r.get(k), str) and r[k].strip())]
+        if absent:
+            malformed.append(f"subject={r.get('subject')!r} missing {'/'.join(absent)}")
+    if malformed:
+        raise ValueError(
+            f"[bo_laksana] {ayanamsha_id}: {len(malformed)} chart_vichara "
+            f"varga_ratification_divergence row(s) for chart_id={chart_id} lack a "
+            "required field (subject/domain/value_text); refusing to write a signal "
+            "with a blank piece: " + "; ".join(malformed[:5])
+        )
     signals: list[dict] = []
     for r in rows:
-        subj = str(r.get("subject") or "")
-        dom = str(r.get("domain") or "")
-        value_text = str(r.get("value_text") or "")
+        subj = str(r["subject"])
+        dom = str(r["domain"])
+        value_text = str(r["value_text"])
         value_num = r.get("value_num")
         constituents = r.get("constituent_facts_array") or []
         valence = "malefic" if (value_num is not None and float(value_num) < 0) else (
@@ -1447,6 +1472,9 @@ def _load_vichara_divergence_signals(
                 f"category=varga_ratification_divergence | subject={subj} | domain={dom} | "
                 f"value_text={value_text} | value_num={value_num}"
             ),
+            # value_text is guaranteed non-blank by the refusal guard above, so the composed
+            # branch is unreachable; the verbatim-first shape is kept because the Narr audit
+            # (test_e6_1_narr_reaudit: PINS verbatim_first) pins this site, not as a fallback.
             "signal_headline_text": value_text or f"{subj}: divergent varga ratification in {dom}",
             "classical_sources_jsonb": None,
             "varga_id": None,
@@ -1515,8 +1543,8 @@ def _load_vichara_divergence_signals(
             "verification_rescale": None,
             "bala_gate": None,
             "functional_context_score": None,
-            "domains_affected_array": [dom] if dom else [],
-            "domain_salience_jsonb": json.dumps({dom: 1.2} if dom else {}),
+            "domains_affected_array": [dom],
+            "domain_salience_jsonb": json.dumps({dom: 1.2}),
             "shared_factor_keys_jsonb": None,
             "cross_domain_shared_factor_count": None,
             "graph_edge_pattern_jsonb": None,
@@ -2299,6 +2327,25 @@ def _compute_salience(
 
 # ── Row builder ───────────────────────────────────────────────────────────────
 
+def _required_fact_text(fact_row: dict, column: str) -> str:
+    """Return a NOT NULL L1 chart_facts text column of ``fact_row``, or raise.
+
+    chart_facts.fact_category / fact_key are NOT NULL in the schema, so a row
+    without them is not a conforming L1 fact. A ``.get(col, "")`` default would
+    turn that violation into a signal_type_id / citation_human with a blank
+    piece (``L1 chart_facts: /``) -- an invented value (CLAUDE.md N.7 item 6).
+    The caller (run_substep) already skips-and-counts a fact that raises here and
+    then refuses a partial root generation, so the violation is loud."""
+    v = fact_row.get(column)
+    if not isinstance(v, str) or not v.strip():
+        raise ValueError(
+            f"bo_laksana: fact {fact_row.get('fact_id')} has no {column} "
+            "(NOT NULL L1 column); refusing to emit a signal with a blank "
+            "natural-key piece"
+        )
+    return v
+
+
 def _build_signal_row(
     fact_row: dict,
     chart_id: str,
@@ -2317,8 +2364,8 @@ def _build_signal_row(
     argala_lookup: dict[tuple[str, int], float] | None = None,
 ) -> dict:
     fact_id  = str(fact_row.get("fact_id", ""))
-    fact_cat = str(fact_row.get("fact_category", ""))
-    fact_key = str(fact_row.get("fact_key", ""))
+    fact_cat = _required_fact_text(fact_row, "fact_category")
+    fact_key = _required_fact_text(fact_row, "fact_key")
     # For INVARIANT facts the row carries ayanamsha_id='INVARIANT'; use the substep ayanamsha
     raw_aya  = str(fact_row.get("ayanamsha_id", ""))
     aya      = ayanamsha_override if (raw_aya == "INVARIANT" and ayanamsha_override) else raw_aya
