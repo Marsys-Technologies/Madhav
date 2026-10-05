@@ -61,7 +61,7 @@ SIX = [("rahu", "favourable", 3, 9), ("rahu", "favourable", 6, 12), ("rahu", "fa
 
 def test_the_committed_declaration_is_valid_and_names_the_rows():
     sc = SRC["columns"][0]["split_citation"]
-    assert ac.source_declaration_problem(SRC) is None and sc["vedha_prefix"] == ac.SPLIT_VEDHA_PREFIX
+    assert ac.source_declaration_problem(SRC, None, 'bg_transit_rules') is None and sc["vedha_prefix"] == ac.SPLIT_VEDHA_PREFIX
     assert [c["column"] for c in sc["applies_to"]] == ["rule_type", "graha", "vedha_house"] and "ND-NODE-VEDHA" in sc["why"]
     assert "split_citation" in ac.SOURCE_COLUMN_FIELDS
     doc = json.loads((HERE.parent / "asset_declarations.json").read_text(encoding="utf-8"))
@@ -90,15 +90,36 @@ def _with(**kw):
     dict(extra=1),
 ])
 def test_a_malformed_split_citation_is_refused(kw):
-    assert ac.source_declaration_problem(_with(**kw)), kw
+    assert ac.source_declaration_problem(_with(**kw), None, 'bg_transit_rules'), kw
 
 
 def test_split_citation_belongs_to_a_k1_only_entry():
     s = copy.deepcopy(SRC)
     s["columns"][0]["kinds"] = ["K1", "K2"]
-    assert "K1 alone" in ac.source_declaration_problem(s)
+    assert "K1 alone" in ac.source_declaration_problem(s, None, "bg_transit_rules")
     s["columns"][0]["kinds"] = ["K2"]
-    assert "K1 alone" in ac.source_declaration_problem(s)
+    assert "K1 alone" in ac.source_declaration_problem(s, None, "bg_transit_rules")
+
+
+# ───────────────────────── the exception exists for ONE table and column ─────────────────────────
+
+@pytest.mark.parametrize("aid,col", [("bg_compendium_index", "classical_citation"), ("bg_concordance", "source_citation"), ("bg_dasha_systems", "classical_citations"),
+                                      ("bg_transit_rules", "rule_notes"), (None, "classical_citation")])
+def test_copying_the_declaration_onto_another_asset_or_column_is_refused(aid, col):
+    s = copy.deepcopy(SRC)
+    s["columns"][0]["column"] = col
+    why = ac.source_declaration_problem(s, None, aid)
+    assert why and "SPLIT_ALLOWED" in why, (aid, col, why)
+    assert ac.SPLIT_ALLOWED == {("bg_transit_rules", "classical_citation")}
+    with pytest.raises(ac.DeclarationsError, match="SPLIT_ALLOWED"):
+        doc = copy.deepcopy(json.loads((HERE.parent / "asset_declarations.json").read_text(encoding="utf-8")))
+        doc["assets"]["bg_dasha_systems"]["source"] = copy.deepcopy(SRC)
+        ac.validate_declarations(doc)
+
+
+def test_source_declared_check_refuses_it_for_another_asset_without_reading():
+    rec = ac.source_declared_check("bg_concordance", SRC, "t_rules", COLS, rows=1)["Ldgr.source_presence"]
+    assert rec["v"] == NO_DET and "SPLIT_ALLOWED" in rec["measured"]
 
 
 # ───────────────────────── real SQL ─────────────────────────
@@ -109,8 +130,8 @@ def test_REAL_SQL_the_six_split_rows_are_sourced_and_counted(monkeypatch, dispos
     rows += [("sun", "favourable", 3, 9, BPHS), ("sun", "unfavourable", 2, None, "Phaladeepika Ch.26 (Gochara Vedha and Transit Phala)")]
     rec = run(monkeypatch, disposable_pg, rows)
     assert rec["v"] == PASS, rec["measured"]
-    assert rec["source"]["rows"] == 8 and rec["source"]["lacking"] == 0 and rec["source"]["split_citation_rows"] == 6
-    assert "6 row(s) carry a split citation" in rec["measured"] and "ND-NODE-VEDHA" in rec["measured"]
+    assert rec["source"]["rows"] == 8 and rec["source"]["lacking"] == 0 and rec["source"]["split_citation_rows"] == 6 and rec["source"]["split_citation_ok"] == 6
+    assert "6 row(s) carry a split-shaped citation" in rec["measured"] and "6 of them pass on the K1 part" in rec["measured"] and "ND-NODE-VEDHA" in rec["measured"]
 
 
 NEGATIVES = {
@@ -130,6 +151,14 @@ NEGATIVES = {
     "lower-case unsourced": good().replace("UNSOURCED", "unsourced"),
     "vedha text with parentheses": good().replace("inference, not in the cited verses", "inference (not in the verses)"),
     "NULL": None,
+    "tab-only excerpt": good(excerpt="\t"),
+    "newline-only excerpt": good(excerpt="\n"),
+    "NBSP-only excerpt": good(excerpt="\u00a0\u00a0"),
+    "NBSP-joined 30 words": good(excerpt="\u00a0".join(f"w{i}" for i in range(30))),
+    "tab-joined 30 words": good(excerpt="\t".join(f"w{i}" for i in range(30))),
+    "blank vedha text": good().replace("inference, not in the cited verses", " "),
+    "NBSP-only vedha text": good().replace("inference, not in the cited verses", "\u00a0"),
+    "punctuation-only excerpt": good(excerpt="... --"),
 }
 
 
@@ -179,3 +208,26 @@ def test_REAL_SQL_a_non_text_column_is_refused_not_guessed(monkeypatch, disposab
                                           "INSERT INTO t_rules VALUES (1, 'rahu', 'favourable', 3, 9, '\"x\"');"])
     rec = ac.source_declared_check("bg_transit_rules", SRC, "t_rules", COLS, rows=1)["Ldgr.source_presence"]
     assert rec["v"] == NO_DET and "not a text column" in rec["measured"]
+
+
+def test_REAL_SQL_the_record_counts_the_rows_that_pass_the_k1_part_separately_from_the_shaped_rows(monkeypatch, disposable_pg):
+    rows = [(g, rt, ph, vh, good()) for g, rt, ph, vh in SIX[:4]] + [("ketu", "favourable", 6, 12, good(locus="phaladeepika:PG9999:C1")), ("ketu", "favourable", 11, 5, good(excerpt="\t"))]
+    rec = run(monkeypatch, disposable_pg, rows)
+    assert rec["v"] == PARTIAL and rec["source"]["lacking"] == 2
+    assert rec["source"]["split_citation_rows"] == 6 and rec["source"]["split_citation_ok"] == 4          # six are split-shaped; only four pass on the K1 part
+    assert "6 row(s) carry a split-shaped citation" in rec["measured"] and "4 of them pass on the K1 part" in rec["measured"]
+    assert "machine locus resolves on" not in rec["measured"]
+
+
+# ───────────────────────── the Python mirror agrees with the SQL on every shape ─────────────────────────
+
+def test_REAL_SQL_the_python_mirror_and_the_sql_judge_every_shape_alike(monkeypatch, disposable_pg):
+    chunks = {"phaladeepika_pg0331_c01", "phaladeepika_pg0321_c01"}
+    cases = {"good": good(), "good ketu": good("2", "phaladeepika:PG321:C1", "Sun gives good results")}
+    cases.update({k: v for k, v in NEGATIVES.items() if v is not None})
+    for name, text in cases.items():
+        rows = [("rahu", "favourable", 3, 9, text)]
+        rec = run(monkeypatch, disposable_pg, rows)
+        py_ok = ac.split_citation_k1_problem(text, chunks) is None
+        sql_ok = rec["v"] == PASS
+        assert py_ok == sql_ok, (name, ac.split_citation_k1_problem(text, chunks), rec["measured"])
