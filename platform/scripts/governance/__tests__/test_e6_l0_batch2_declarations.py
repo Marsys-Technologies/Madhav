@@ -418,8 +418,8 @@ def test_the_four_narr_checks_read_na_no_prose_and_the_null_checks_stay_unreleas
     out = ac.prose_checks(aid, legacy, _ctx(aid))
     for c in ac.NARR_CHECKS:
         assert out[c]["v"] == NA and out[c]["cause"] == "no-prose", (c, out[c])
-    for c in ac.NULL_CHECKS:                                      # Null.*#no-prose-declared is DECLINED: the cause has no rule, so the rollup never releases it
-        assert out[c]["cause"] == "no-prose-declared"
+    for c in ac.NULL_CHECKS:                                      # the grandfather is Narr-ONLY: a Null record is a measured NO_DETECTOR (no N/A candidate, no cause)
+        assert out[c]["v"] == ac.NO_DET and "cause" not in out[c]
     cells = ac.rollup_asset("L0", {**out, "Vocab.identity": dict(v=PASS, measured="m")}, ac.facts_for_asset(dict(asset_id=aid, layer="L0"), {**ac.load_asset_declarations(), aid: legacy}))
     assert cells["Narr"]["v"] == NA and cells["Null"]["v"] == NO_DET and cells["Carr"]["v"] == NO_DET and cells["Ldgr"]["v"] == NO_DET
 

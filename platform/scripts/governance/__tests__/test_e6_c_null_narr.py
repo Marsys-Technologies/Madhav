@@ -433,8 +433,8 @@ def test_a_bare_empty_declaration_is_no_release_except_for_the_enumerated_legacy
     got = ac.prose_checks("bo_laksana_rerank", _decl([]), _ctx(written={"t": {"valence"}}))      # the enumerated pre-N-150 declaration keeps its measured N/A candidates
     for c in NARR:
         assert got[c]["v"] == ac.NA and got[c]["cause"] == "no-prose", (c, got[c])
-    for c in NULL:
-        assert got[c]["v"] == ac.NA and got[c]["cause"] == "no-prose-declared", (c, got[c])
+    for c in NULL:                                                              # the grandfather is Narr-ONLY: the rollup would read a Null N/A as NO_DETECTOR, so the record says so
+        assert got[c]["v"] == ac.NO_DET and "cause" not in got[c] and "Narr only" in got[c]["measured"], (c, got[c])
 
 
 def test_an_empty_declaration_with_a_contradicting_write_fails_agree_and_the_rest_are_no_detector():
@@ -478,8 +478,10 @@ def test_the_na_candidates_read_no_detector_in_the_rollup_until_a_rule_is_declar
     m = ac.prose_checks("bo_laksana_rerank", _decl([]), _ctx(written={"t": set()}))
     cells = ac.rollup_asset("L2", m)
     assert cells["Narr"]["v"] == ac.NO_DET and cells["Null"]["v"] == ac.NO_DET
-    for c in cells["Narr"]["checks"] + cells["Null"]["checks"]:
+    for c in cells["Narr"]["checks"]:
         assert c["v"] == ac.NO_DET and "undecided" in c["reason"], c
+    for c in cells["Null"]["checks"]:                                           # the grandfather is Narr-only: a Null record is a measured NO_DETECTOR, not an N/A candidate
+        assert c["v"] == ac.NO_DET and c["reason"] == "measured", c
 
 
 def test_the_null_cell_never_reads_pass_and_the_narr_cell_never_reads_pass_through_fidelity():

@@ -188,7 +188,7 @@ def test_inert_until_declared_the_four_earlier_empty_assets_read_exactly_as_befo
         out = ac.prose_checks(a, ent, dict(table="t", own={"t": (["a"], {"a": "text"}, {})}, tests=(), vocabulary=set(), counts=None, paths=[], written={"t": {"a"}}))
         for c in NARR:
             assert out[c]["v"] == NA and out[c]["cause"] == "no-prose" and "prose_coupling" not in out[c], (a, c)
-        assert all(out[c]["v"] == NA and out[c]["cause"] == "no-prose-declared" for c in ac.NULL_CHECKS)
+        assert all(out[c]["v"] == NO_DET and "cause" not in out[c] for c in ac.NULL_CHECKS)      # the grandfather is Narr-only: Null reads a measured NO_DETECTOR
         assert out[NARR[0]]["measured"].startswith("prose_fields [] declared and no write")
     undeclared = ac.prose_checks(AID, dict(ENTRY, prose_fields=None, prose_coupling=None), _ctx())
     assert all(undeclared[c]["v"] == NO_DET and "undeclared" in undeclared[c]["measured"] for c in NARR)

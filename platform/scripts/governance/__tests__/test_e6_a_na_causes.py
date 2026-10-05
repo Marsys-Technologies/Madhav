@@ -255,7 +255,14 @@ def test_every_registered_cause_is_observed_emitted_under_its_criterion(monkeypa
         observed.add(("Earn.build_record", rec["cause"]))
     for crit, rec in ac.prose_checks("bg_doshas", {"prose_fields": [], "evidence": {"prose_fields": "w.py:1"}},
                                      dict(written={"t": set()}, vocabulary=set())).items():
+        if crit.startswith("Null."):         # the grandfather is Narr-only: a Null record is a measured NO_DETECTOR (its cause is observed through the checked prose_none form below)
+            assert rec["v"] == "NO_DETECTOR", rec
+            continue
         assert rec["v"] == NA, rec           # E6 packet (c): the declared-no-prose measured N/A candidates
+        observed.add((crit, rec["cause"]))
+    pn_decl = {"prose_fields": [], "evidence": {"prose_fields": "w.py:1"}, "prose_none": dict(why="the reviewed reason this declaration is true", closed_columns=[])}
+    for crit, rec in ac.grade_prose_none("x", pn_decl, {"t": (["id"], {"id": "integer"}, None)}, "t", {}).items():     # N-150 R1: the checked declared-none form emits the Narr and the Null causes
+        assert rec["v"] == NA, rec
         observed.add((crit, rec["cause"]))
     observed.add(("Earn.service_state", ac._service_state_na("data", "data")["cause"]))     # S4/N-72: keyed on the declared kind
     _src_ev = "platform/scripts/governance/asset_census.py:1"

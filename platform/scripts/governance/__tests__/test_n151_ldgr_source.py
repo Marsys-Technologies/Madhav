@@ -210,7 +210,7 @@ def test_measure_reads_a_declared_source_and_fails_an_undeclared_l0_asset_that_h
     decl = {"x": {"source": _src(**K2)}, "z": {"source": _src(na="no_data")}}
     monkeypatch.setattr(ac, "load_asset_declarations", lambda *a, **k: decl)
     ms = {a["asset_id"]: a["measurements"] for a in ac.measure("L0")["assets"]}
-    assert ms["x"][LDGR]["v"] in (PASS, NO_DET) and ms["x"][LDGR]["declared"] is True           # declared: read by the declared source (rows come from the stub's depth census)
+    assert ms["x"][LDGR]["v"] == PASS and ms["x"][LDGR]["declared"] is True and ms["x"][LDGR]["source"]["rows"] == 48   # declared K2 on a table the stub's depth census says holds 48 rows: PASS exactly
     assert ms["y"][LDGR]["v"] == FAIL and "no source declared" in ms["y"][LDGR]["measured"]
     assert ms["z"][LDGR]["v"] == NA and ms["z"][LDGR]["cause"] == "no-data"
 
@@ -421,3 +421,42 @@ def test_not_built_is_contradicted_by_a_table_that_holds_rows_and_validates_as_a
     assert ac.source_declaration_problem(_src(na="not_built")) is None
     assert ac.source_declaration_problem(_src(na="not_built", kind="K2")) is not None
     assert "not_built" in ac.SOURCE_NA_FORMS
+
+
+# ───────────────────────── review fixes: two-entry except_when on real SQL; no_claims over every owned table ─────────────────────────
+
+def test_REAL_SQL_two_entries_with_except_when_are_alternatives_and_each_excepts_its_own_rows(monkeypatch, disposable_pg):
+    # entry a: sourced by column a unless tier = 'p'; entry b: sourced by column b unless tier = 'q'. A row lacks a source only when EVERY entry lacks it; an excepted entry lacks nothing
+    src = _row(dict(column="a", kinds=["K2"], except_when=dict(column="tier", equals="p")), dict(column="b", kinds=["K2"], except_when=dict(column="tier", equals="q")))
+    ddl = "tier text, a text, b text"
+    rows = ["'p', NULL, 'N-1'",     # entry a excepted (p), entry b sources it
+            "'q', 'N-2', NULL",     # entry b excepted (q), entry a sources it
+            "'r', 'N-3', NULL",     # neither excepted: a sources it
+            "'r', NULL, 'N-4'",     # neither excepted: b sources it
+            "'r', NULL, NULL",      # nothing sources it: lacks
+            "'r', 'TBD-1', 'N-0'",  # placeholders in both: lacks
+            "'p', NULL, NULL",      # excepted by entry a: a row excepted by ANY entry's except_when is not judged at all (the declaration says that tier needs no source)
+            ]
+    rec = _real_chk(monkeypatch, disposable_pg, _tbl("ew", ddl, rows), src, "ew", ["id", "tier", "a", "b"])
+    assert rec["v"] == PARTIAL, rec["measured"]
+    assert rec["source"]["excepted"] == 3 and rec["source"]["rows"] == 4 and rec["source"]["lacking"] == 2, rec["source"]      # 7 rows: 3 excepted (p, q, p), 4 judged, 2 of them unsourced
+
+
+def test_no_claims_reads_every_owned_table_not_only_the_target():
+    ok = dict(v=NA, prose_none=dict(checked=True, tables=["t", "t2"]))
+    base = dict(table="t", prose_record=ok)
+    rec = ac.source_declared_check("x", _src(na="no_claims"), "t", ["id", "name"], owned_columns={"t": ["id", "name"], "t2": ["id", "note"]}, **{k: v for k, v in base.items() if k != "table"})[LDGR]
+    assert rec["v"] == NA and rec["cause"] == "no-claims"
+    for col in ("source_citation", "constituent_facts_array", "derivation_ledger"):
+        rec = ac.source_declared_check("x", _src(na="no_claims"), "t", ["id", "name"], owned_columns={"t": ["id", "name"], "t2": ["id", col]}, prose_record=ok)[LDGR]
+        assert rec["v"] == FAIL and "t2:" in rec["measured"] and col in rec["measured"], col
+    rec = ac.source_declared_check("x", _src(na="no_claims"), "t", ["id", "name"], owned_columns={"t": ["id", "name"]}, prose_record=ok)[LDGR]       # t2 is a produced table the catalog did not read
+    assert rec["v"] == NO_DET and "t2" in rec["measured"] and "not read" in rec["measured"]
+    rec = ac.source_declared_check("x", _src(na="no_claims"), "t", ["id", "name"], prose_record=dict(v=NA, prose_none=dict(checked=True, tables=["t"])))[LDGR]    # the target alone: unchanged
+    assert rec["v"] == NA
+
+
+def test_the_criterion_text_states_the_ruled_no_claims_exception_for_bo_samskara_and_bo_samvada():
+    t = ac.CRITERION_REGISTRY[LDGR]["applicability"]
+    assert "N-151 ruled this exception" in t and "bo_samskara" in t and "bo_samvada" in t and "NO owned / produced table" in t
+    assert "six pre-N-150" not in "".join(e["applicability"] for e in ac.CRITERION_REGISTRY.values())
