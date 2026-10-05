@@ -260,7 +260,7 @@ def test_the_teardown_removes_the_whole_small_test_and_keeps_everything_else(two
     assert c.execute("SELECT count(*) FROM public.ka_gochara_sky_event").fetchone()[0] == sky_before
     row = c.execute("SELECT is_active, has_substeps, writer_timeout_seconds, depends_on FROM public.asset_registry"
                     " WHERE asset_id = %s", (ASSET,)).fetchone()
-    assert row == (False, True, 7200, ["ga_positions", "ga_dashas"])
+    assert row == (False, True, 28800, ["ga_positions", "ga_dashas"])
 
 
 def test_a_second_execution_is_a_clean_noop(tworld):
