@@ -236,6 +236,16 @@ def test_REAL_SQL_k2_decision_id_strings(monkeypatch, disposable_pg):
     assert rec["v"] == PARTIAL and rec["source"]["lacking"] == 5 and rec["source"]["rows"] == 6
     rec = _real_chk(monkeypatch, disposable_pg, _tbl("k2t", "ratified_by text", bad[1:]), src, "k2t", ["id", "ratified_by"])
     assert rec["v"] == FAIL
+    # the placeholder ids and zero numbers that the table-level reading refuses (HIGH review finding): none may read as sourced
+    ph = ["'TBD-1'", "'N-0'", "'xxx-000'", "'none-1'", "'TODO1'", "'NA-1'", "'null-9'", "'tbc-4'", "'unknown-2'", "'pending-3'", "'D-00'", "'F-0.1'"]
+    rec = _real_chk(monkeypatch, disposable_pg, _tbl("k2t", "ratified_by text", ph), src, "k2t", ["id", "ratified_by"])
+    assert rec["v"] == FAIL and rec["source"]["lacking"] == len(ph), rec["measured"]
+    mixed = ["'N-150'", "'D-4'", "'F-2'", "'N72a'", "'N-72a'", "'AR-12'"]
+    rec = _real_chk(monkeypatch, disposable_pg, _tbl("k2t", "ratified_by text", mixed), _row(dict(column="ratified_by", kinds=["K2"], id_prefixes=["N", "D", "F", "AR"])), "k2t", ["id", "ratified_by"])
+    assert rec["v"] == PASS
+    # the SQL reading and the table-level python reading agree on every one of these values
+    for v in [x.strip("'") for x in ph + mixed + ["'ratified'", "'N-'", "'N-150'"]]:
+        assert (ac._k2_problem(v) is None) is (v in {m.strip("'") for m in mixed + ["'N-150'"]}), v
 
 
 def test_REAL_SQL_a_mixed_k1_k2_column_reads_each_value_by_its_shape(monkeypatch, disposable_pg):
@@ -243,9 +253,9 @@ def test_REAL_SQL_a_mixed_k1_k2_column_reads_each_value_by_its_shape(monkeypatch
     good = ["'N-150'", "'Brihat Parashara Hora Shastra 3.12'", "'BPHS ch. 4'", "'D-4'"]
     rec = _real_chk(monkeypatch, disposable_pg, _tbl("mx", "citation_or_ratification text", good), src, "mx", ["id", "citation_or_ratification"])
     assert rec["v"] == PASS
-    bad = good + ["'classical_tradition'", "'UNSOURCED - none'", "'n/a'", "NULL"]
+    bad = good + ["'classical_tradition'", "'UNSOURCED - none'", "'n/a'", "NULL", "'N-0'", "'TBD-1'"]
     rec = _real_chk(monkeypatch, disposable_pg, _tbl("mx", "citation_or_ratification text", bad), src, "mx", ["id", "citation_or_ratification"])
-    assert rec["v"] == PARTIAL and rec["source"]["lacking"] == 4, rec["measured"]
+    assert rec["v"] == PARTIAL and rec["source"]["lacking"] == 6, rec["measured"]
 
 
 def test_REAL_SQL_k1_on_arrays_and_json(monkeypatch, disposable_pg):

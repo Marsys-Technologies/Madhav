@@ -3282,6 +3282,23 @@ def _k2_regex(prefixes=None) -> str:
     return "^[A-Za-z][A-Za-z0-9]{0,5}-?[0-9]{1,6}[A-Za-z0-9._-]{0,24}$"
 
 
+def _k2_sql_prefix_ok(raw: str) -> str:
+    """The prefix half of `_k2_sql_ok`: the alphabetic prefix is no placeholder word. In a mixed K1 / K2 column a value in the GENERAL id shape (letters then a number) whose prefix is a placeholder
+    (TBD-1, TODO1) is no source either, even though its prefix is not one of the declared id prefixes (it would otherwise read as a K1 citation text)."""
+    words = sorted(set(_S3_PLACEHOLDER_WORDS) | set(_SRC_BARE_PLACEHOLDERS) | {"tbc"})
+    lst = ",".join("'" + w.replace("'", "''") + "'" for w in words)
+    return f"(lower(substring({raw} from '^[A-Za-z]+')) NOT IN ({lst}))"
+
+
+def _k2_sql_ok(raw: str) -> str:
+    """The SQL mirror of `_k2_problem`'s two refusals beyond the shape regex, for a value that already matches the id shape: the alphabetic prefix is no placeholder word (TBD-1, TODO1, none-1,
+    XXX-7, NA-1, null-9, tbc-4), and the number is NON-ZERO (N-0, XXX-000). `raw` is a SQL text expression. ONE list: `_S3_PLACEHOLDER_WORDS` + `_SRC_BARE_PLACEHOLDERS` + 'tbc'."""
+    words = sorted(set(_S3_PLACEHOLDER_WORDS) | set(_SRC_BARE_PLACEHOLDERS) | {"tbc"})
+    lst = ",".join("'" + w.replace("'", "''") + "'" for w in words)
+    return (f"(lower(substring({raw} from '^[A-Za-z]+')) NOT IN ({lst}) "
+            f"AND COALESCE(substring({raw} from '^[A-Za-z]+-?([0-9]+)')::numeric, 0) > 0)")
+
+
 def _ledger_resolves(idexpr: str, resolves_to: str) -> str:
     """The SQL predicate 'the id `idexpr` RESOLVES': to chart_facts.fact_id, or to a bodha_msr_signals.signal_id whose OWN constituent_facts_array is non-empty and resolves, every element, to
     chart_facts.fact_id (the id chains down to L1, N.5). An id that is NULL, absent from the target, or whose chain does not reach L1 does not resolve."""
@@ -3350,9 +3367,10 @@ def _source_entry_lacking_core(entry: dict, ktypes: dict):
             return None, f"{c} is not a text column (a decision id is a string)"
         raw = f'btrim("{c}")'
         if kinds == ["K2"]:
-            return f"(\"{c}\" IS NULL OR NOT ({raw} ~ '{_k2_regex()}'))", None
-        return (f"(\"{c}\" IS NULL OR NOT (CASE WHEN {raw} ~ '{_k2_regex(entry.get('id_prefixes') or SOURCE_DEFAULT_ID_PREFIXES)}' THEN true "
-                f"ELSE NOT {_ldgr_lacking(c, 'text')} END))"), None
+            return f"(\"{c}\" IS NULL OR NOT ({raw} ~ '{_k2_regex()}' AND {_k2_sql_ok(raw)}))", None
+        # mixed K1 / K2: a value in the id shape is judged AS AN ID (a placeholder prefix or a zero number is no source, never re-read as a citation); any other value is a K1 citation
+        return (f"(\"{c}\" IS NULL OR NOT (CASE WHEN {raw} ~ '{_k2_regex(entry.get('id_prefixes') or SOURCE_DEFAULT_ID_PREFIXES)}' THEN {_k2_sql_ok(raw)} "
+                f"ELSE (NOT {_ldgr_lacking(c, 'text')} AND NOT ({raw} ~ '{_k2_regex()}' AND NOT {_k2_sql_prefix_ok(raw)})) END))"), None
     if kd is None:
         return None, f"{c} is not a text, text[] or json column"
     return _ldgr_lacking(c, kd), None
