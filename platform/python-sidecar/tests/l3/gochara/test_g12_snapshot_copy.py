@@ -304,6 +304,23 @@ def test_a_parent_of_another_ayanamsha_or_system_never_enters_the_copied_ancestr
     assert foreign["parent_level_n"] is None and "/" not in foreign["lord_path"] and "." not in foreign["ordinal_path"], foreign
 
 
+def test_rows_of_another_chart_cannot_be_submitted_as_this_charts_inputs(g12):
+    """Foreign-chart rows: the copy is built chart-scoped, so ids of ANOTHER chart's facts and daśā rows are refused by name ('do not exist for chart')."""
+    _step, conn = g12
+    other = "00000000-0000-0000-0000-0000000000f1"
+    conn.execute("INSERT INTO public.charts(id) VALUES (%s)", (other,))
+    conn.execute("INSERT INTO public.chart_facts (fact_id, chart_id, ayanamsha_id, fact_category, fact_subject, fact_key, fact_value_num)"
+                 " VALUES ('fact-OTHER-SUN', %s, 'lahiri_chitrapaksha', 'graha_position', 'SUN', 'longitude_sidereal', 12.0)", (other,))
+    s = _snapshot(conn)
+    with pytest.raises(Exception, match=r"do not exist for chart"):
+        _submit_all_eligible_ids(conn, s, fact_ids=s["fact_ids"][:-1] + ["fact-OTHER-SUN"])
+    foreign_dasha = conn.execute("INSERT INTO public.chart_dashas (dasha_row_id, chart_id, ayanamsha_id, system_id, level_n, parent_row_id, lord_graha, start_iso, end_iso, build_id,"
+                                 " verification_pass_status) SELECT gen_random_uuid(), %s, ayanamsha_id, system_id, level_n, NULL, lord_graha, start_iso, end_iso, build_id,"
+                                 " verification_pass_status FROM public.chart_dashas WHERE level_n = 1 RETURNING dasha_row_id", (other,)).fetchone()[0]
+    with pytest.raises(Exception, match=r"do not exist for chart"):
+        _submit_all_eligible_ids(conn, s, dasha_ids=[str(x) for x in s["dasha_ids"][:-1]] + [str(foreign_dasha)])
+
+
 def test_an_ad_spanning_two_mds_is_refused_at_capture(g12):
     _step, conn = g12
     conn.execute("UPDATE public.chart_dashas SET end_iso = '2025-01-10' WHERE level_n = 1")
