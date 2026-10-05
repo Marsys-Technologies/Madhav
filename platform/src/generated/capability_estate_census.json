@@ -6,7 +6,7 @@
     "A reviewed output-digest specification establishes deterministic output hashing, not semantic value, population, planner reachability, or empirical validity.",
     "The full MCP profile is registration-gated by the reviewed route authority; its real registration set is exact-set tested independently."
   ],
-  "content_sha256": "d769cde3eac0af19755596f31949271ae91513fc8b21dba86f53933e4604800b",
+  "content_sha256": "cba44b83198ea53a91f16462f32cc8030379e0fb9c77624f4f54fd5f03c34358",
   "denominators": {
     "descriptor_route_contracts": {
       "by_public_route_disposition": {
@@ -11942,7 +11942,8 @@
         ],
         "known_gaps": [
           "disposable_schema_and_key_validation_not_replayed_this_wave",
-          "deployed_current_state_not_read"
+          "deployed_current_state_not_read",
+          "column_meaning_changed_spec_unchanged:bodha_cgm_edges.constituent_ga_vichara_ids_array holds deterministic chart_vichara tokens (sha256 of the canonical JSON of the vichara natural key, first 16 hex; defined by the committed expression 00_ARCHITECTURE/briefs/suvarna/exec/s_l2_acceptance/vichara_token_expression.sql, no database object), not chart_vichara serial ids (N-143 option B); output digest spec 976 not re-stated"
         ],
         "producer_kind": "relational",
         "tests": [
@@ -12202,7 +12203,8 @@
         ],
         "known_gaps": [
           "disposable_schema_and_key_validation_not_replayed_this_wave",
-          "deployed_current_state_not_read"
+          "deployed_current_state_not_read",
+          "column_meaning_changed_spec_unchanged:bodha_mechanisms.constituent_ga_vichara_ids_array holds deterministic chart_vichara tokens (sha256 of the canonical JSON of the vichara natural key, first 16 hex; defined by the committed expression 00_ARCHITECTURE/briefs/suvarna/exec/s_l2_acceptance/vichara_token_expression.sql, no database object), not chart_vichara serial ids (N-143 option B); output digest spec 1009 not re-stated"
         ],
         "producer_kind": "relational",
         "tests": [
@@ -20989,7 +20991,7 @@
       {
         "id": "census_generator",
         "path": "platform/scripts/generate_capability_estate_census.ts",
-        "sha256": "286fb17d0393ff97d98b164b4f108ac8f16643e6b58499ce6f26d2a743e9ac60"
+        "sha256": "267b24039f15a6843f0aba1e1964d38681b9d5ec21d0022dc48a5d7a7dbf7e46"
       },
       {
         "id": "live_runtime_catalog_projection",
@@ -22105,7 +22107,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_mechanisms.ts",
-            "sha256": "b6de31d3dcd49127f5d392b17cb43f807059bef87e45970a911d1d3336add8d1"
+            "sha256": "e0b9285c44a570f30e2f1b7068d8ca4611757de9c7565c99185be77fbbd23ef8"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_pratijna.ts",
@@ -22425,7 +22427,7 @@
           }
         ],
         "path": "platform/src/lib/retrieval/{registry,synthesis}/**/*.ts (excluding tests)",
-        "sha256": "79956e66e65e8f751c0571b4f78ba6fdd34da22241c9ae80338a31d070789bcf"
+        "sha256": "0f5eebae36e2d27f660569a43dd5c7c6fb4322427e17f4de1b9ef8e250624ab4"
       },
       {
         "id": "service_effect_contracts",
@@ -22445,7 +22447,7 @@
       {
         "id": "writer_digest_inventory",
         "path": "platform/src/generated/nirmana-writer-digests.json",
-        "sha256": "aaeb4e6c4b9aaf572472d631d289c5fbca2f3d18703ffb4fe6f82bcd81a99a42"
+        "sha256": "e9cf756a03e5e0f1d8f0b91da9ae34a5e70e0030c8a0270febbdd5f6d84595be"
       }
     ]
   },
