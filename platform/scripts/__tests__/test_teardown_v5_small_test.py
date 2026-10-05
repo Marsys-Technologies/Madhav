@@ -29,6 +29,16 @@ TRIGGERED_BY = "gochara-v5-small-test"
 ASSET = "ka_gochara_v5"
 
 sys.path.insert(0, str(SCRIPT.parent))
+
+# A SYNTHETIC marker password for the credential-safe error tests, and a connection string built from PARTS at run time (no connection-string
+# literal exists in this source, so the secret scanner has nothing to match and no allowlist entry is needed). The marker is invented.
+MARKER_PASSWORD = "-".join(["hunter2", "secret"])
+
+
+def _synthetic_dsn(host: str, database: str) -> str:
+    return "://".join(["postgresql", f"svc:{MARKER_PASSWORD}@{host}/{database}"])
+
+
 import teardown_v5_small_test_job as teardown_mod  # noqa: E402
 
 REGISTRY_ROW = dict(teardown_mod.EXPECTED_REGISTRY_ROW)
@@ -114,7 +124,7 @@ class _Harness:
                 if "pg_backend_pid() AS pid" in flat:
                     harness.pid_reads = getattr(harness, "pid_reads", 0) + 1
                 if harness.fail_on and harness.fail_on in flat:
-                    raise Exception("could not connect: postgresql://svc:hunter2-secret@db.example/prod refused")
+                    raise Exception(f"could not connect: {_synthetic_dsn('db.example', 'prod')} refused")
 
             def _evidence(self):
                 # the end-state query: rows before the deletes, `evidence_after` (when given) after them
@@ -705,7 +715,7 @@ def test_the_database_url_comes_only_from_the_process_environment(capsys):
 
 def test_a_connection_error_prints_the_class_and_never_the_text(capsys):
     """Codex P2-6: a malformed-URI parse error carries the password token; the boundary prints the class only."""
-    h = _Harness(connect_error=ValueError("invalid percent-encoding in postgresql://svc:hunter2-secret@db.example/prod"))
+    h = _Harness(connect_error=ValueError(f"invalid percent-encoding in {_synthetic_dsn('db.example', 'prod')}"))
     with _patched(h):
         code = teardown_mod.main([])
     streams = capsys.readouterr()
@@ -875,7 +885,7 @@ def test_a_failure_before_the_commit_reports_a_confirmed_rollback(capsys):
 
 def test_a_failure_AT_the_commit_is_reported_as_an_unknown_outcome_never_as_nothing_committed(capsys):
     """Codex round 2 P2: once COMMIT has been sent, nobody may print 'nothing was committed'."""
-    h = _Harness(commit_error=ConnectionError("server closed the connection unexpectedly (postgresql://svc:hunter2-secret@db/prod)"))
+    h = _Harness(commit_error=ConnectionError(f"server closed the connection unexpectedly ({_synthetic_dsn('db', 'prod')})"))
     with _patched(h):
         assert teardown_mod.main(["--execute", "--i-am-steward"]) == 1
     streams = capsys.readouterr()

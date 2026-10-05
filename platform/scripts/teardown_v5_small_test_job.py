@@ -27,9 +27,11 @@ SYNCHRONISATION
   chart lock `ka_gochara_lock_chart` (transaction-scoped, behind a `lock_timeout` so a competing writer makes the teardown fail
   closed instead of waiting). Both are held to commit; every check below is evaluated INSIDE them.
   WHAT THE LOCKS DO NOT DO: the advisory lock excludes ORCHESTRATOR build runs (`runner.acquire_chart_lock`) and the chart lock
-  excludes Gochara writers. Neither excludes the cockpit WATCHDOG, which takes no advisory lock and may prune terminal runs at any
-  moment; the script's reads and DELETEs are by id inside one transaction, and a run pruned in between can only make a receipt it
-  had already proven lose its run link, which the same transaction deletes as proven anyway.
+  excludes Gochara writers. Neither excludes the cockpit WATCHDOG, which takes no advisory lock. What protects the SELECTED rows is the
+  row lock: the owned build_runs rows and the manifest row are locked FOR UPDATE before validation and held to commit, so a watchdog
+  trying to DELETE one of those parent rows WAITS for the teardown to finish. It does NOT cover the watchdog's separate deletion of a
+  run's CHILD rows (build_run_assets): that is a different statement on a different table, not blocked by the parent lock; the script's
+  reads and DELETEs are by id inside one transaction, so it can only remove bookkeeping the same transaction deletes anyway.
   A DIRECT CONNECTION IS REQUIRED. The orchestrator lock is a SESSION advisory lock; through a transaction-mode pooler (PgBouncer
   and the like) it silently holds nothing. The script reads `pg_backend_pid()` across separate transactions and refuses if the backend
   changes, and checks that the lock is held by the backend running the transaction; use the database's own host and port, never a pooler.

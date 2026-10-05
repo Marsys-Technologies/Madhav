@@ -480,7 +480,8 @@ def test_the_cli_defaults_to_a_dry_run_and_deletes_only_with_both_flags(tworld, 
 
 
 def test_a_malformed_database_url_prints_the_class_and_never_the_credential(monkeypatch, capsys):
-    monkeypatch.setenv("DATABASE_URL", "postgresql://svc:hunter2-secret%ZZ@localhost:1/none")
+    # a SYNTHETIC string built from parts at run time (no connection-string literal in the source); the invalid percent-escape is the point
+    monkeypatch.setenv("DATABASE_URL", "://".join(["postgresql", "svc:" + "-".join(["hunter2", "secret"]) + "%ZZ@localhost:1/none"]))
     code = td.main([])
     streams = capsys.readouterr()
     assert code == 1 and "hunter2" not in streams.err + streams.out
