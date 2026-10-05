@@ -95,6 +95,24 @@ def test_in_window_attempt_that_is_the_last_error_fails_even_after_complete():
     assert r["v"] == ac.FAIL
 
 
+def test_review_skip_then_an_in_flight_started_attempt_is_not_a_pass():
+    """Reproduced by the review: a skip_no_delta row (counted complete) followed by a started `building` row used to read PASS '1 complete'."""
+    r = _grade([_a(OPEN + 1, "complete", "skip_no_delta"), _a(OPEN + 2, "building", "", started=True)])
+    assert r["v"] == ac.NO_DET and "no exercising attempt completed since the window opened" in r["measured"], r
+
+
+def test_review_a_started_building_attempt_alone_is_not_a_pass():
+    assert _grade([_a(OPEN + 1, "building", "")])["v"] == ac.NO_DET
+
+
+def test_review_a_real_complete_beside_an_in_flight_attempt_still_passes():
+    assert _grade([_a(OPEN + 1, "complete", "build"), _a(OPEN + 2, "building", "")])["v"] == ac.PASS
+
+
+def test_review_a_real_error_in_the_window_is_still_judged_not_hidden_by_the_new_guard():
+    assert _grade([_a(OPEN + 1, "building", ""), _a(OPEN + 2, "error", err="late")])["v"] == ac.FAIL
+
+
 # ───────────────────────────── fail closed ─────────────────────────────
 
 def test_undeterminable_window_is_no_detector_naming_why_and_the_whole_history_verdict():
@@ -244,3 +262,4 @@ def test_measure_degrades_a_raising_window_to_errored_not_an_aborted_layer(monke
 
 def test_the_criterion_is_revision_2():
     assert ac.CRITERION_REGISTRY["Build.history"]["revision"] == 2
+

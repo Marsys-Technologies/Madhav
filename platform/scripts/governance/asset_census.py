@@ -9165,6 +9165,12 @@ def _grade_build_history_windowed(aid: str, attempts: list[dict] | None, attempt
         return dict(v=NO_DET, measured=f"NO_DETECTOR — nothing has exercised the current code and contract: {since}; {head}; {pre_text}. "
                                        "A forced rebuild (which runs the writer) is what would close it")
     g = _grade_build_history(hw)
+    if g["v"] == PASS and not any(a["state"] == "complete" for a in exercised):
+        # review fix: PASS needs a REAL completed attempt since the window opened. `hw['complete']` also counts a skip_no_delta row (state complete,
+        # not an exercise), and a started attempt may still be in flight (`building`): neither earns a PASS for the current code.
+        return dict(v=NO_DET, measured=f"NO_DETECTOR — no exercising attempt completed since the window opened: {len(exercised)} started attempt(s) "
+                                       f"of the current code (states: {sorted({a['state'] for a in exercised})}), none complete (in flight, or ended without "
+                                       f"completing), and a skip_no_delta row is not an exercise; {head}; {pre_text}. {g['measured']}")
     return dict(v=g["v"], measured=f"{g['measured']} [judged inside the window only; {head}; {pre_text}]")
 
 
