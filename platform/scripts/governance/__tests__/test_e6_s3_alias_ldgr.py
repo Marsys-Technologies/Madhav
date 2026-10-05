@@ -739,7 +739,8 @@ def test_every_alias_like_spelling_blocks_na_and_identity_only_and_a_phaladeepik
     monkeypatch.setattr(ac, "alias_fetch_forms", lambda c: pytest.fail("not read"))
     assert ac.vocab_alias_declared_check("bg_x", ident, "t", ["graha", like])[ALIAS]["v"] == NO_DET
     monkeypatch.undo()
-    assert ac.vocab_alias_declared_check("bg_x", VA_NA, "t", PHALA_COLS)[ALIAS]["v"] == NA
+    assert ac.vocab_alias_declared_check("bg_x", VA_NA, "t", PHALA_COLS)[ALIAS]["v"] == NO_DET                 # N-150 R3: graha is a vocabulary column the ontology aliases
+    assert ac.vocab_alias_declared_check("bg_x", VA_NA, "t", [c for c in PHALA_COLS if c.casefold() not in ac.ALIAS_VOCAB_COLUMNS])[ALIAS]["v"] == NA
     monkeypatch.setattr(ac, "alias_fetch_forms", lambda c: FORMS)
     monkeypatch.setattr(ac, "alias_fetch_values", lambda t, v, a=None: _pairs(("Sun", None, 1)))
     assert ac.vocab_alias_declared_check("bg_x", ident, "t", PHALA_COLS)[ALIAS]["v"] == PASS
@@ -915,7 +916,7 @@ def test_the_declared_ldgr_check_checks_the_table_exists_in_the_measure_wiring(m
 
 def test_revision_12_pins_the_s3_content():
     assert ac.REGISTRY_REVISION >= 12
-    assert ac.CRITERION_REGISTRY[ALIAS]["revision"] == 2 and ac.CRITERION_REGISTRY[LDGR]["revision"] == 5      # 3 at the S3 merge (pin 12), 4 at pin 24 (C2(ii)), 5 at pin 26 (N-151)
+    assert ac.CRITERION_REGISTRY[ALIAS]["revision"] == 3 and ac.CRITERION_REGISTRY[LDGR]["revision"] == 5      # 3 at the S3 merge (pin 12), 4 at pin 24 (C2(ii)), 5 at pin 26 (N-151)
     assert r13.S3_IDS <= set(ac.NA_RULE_DECISIONS) and r13.S3_IDS <= r13.DECLARED_IDS
     for rid in r13.S3_IDS:
         why = ac.NA_RULE_DECISIONS[rid]

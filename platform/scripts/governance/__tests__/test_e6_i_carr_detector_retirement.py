@@ -26,6 +26,7 @@ from __future__ import annotations
 
 import json
 import pathlib
+import re
 import sys
 
 import pytest
@@ -73,7 +74,7 @@ def _restore_pre_retirement(monkeypatch):
     monkeypatch.setattr(ac, "RETIRED_CRITERIA", {}, raising=False)
     reg["Narr.agree"] = dict(reg["Narr.agree"], revision=1, applicability=NARR_AGREE_REV7)    # its text said "undecided" until revision 9; revision 16 (NARR-GUARD) re-worded and bumped all four Narr checks
     for crit in ("Narr.checkable", "Narr.fidelity_test", "Narr.lint"):
-        reg[crit] = dict(reg[crit], revision=1, applicability=reg[crit]["applicability"].replace(NARR_GUARD_CLAUSE, ""))
+        reg[crit] = dict(reg[crit], revision=1, applicability=re.sub(r"; N-150 R1/R2.*$", "", reg[crit]["applicability"]).replace(NARR_GUARD_CLAUSE, ""))     # pin 26 (N-150 R1/R2) appended its clause last
     reg["Vocab.alias"] = dict(reg["Vocab.alias"], revision=1, applicability="the table declares an alias-bearing class census")     # revision 12 (S3) re-worded and bumped both
     reg["Ldgr.source_presence"] = dict(reg["Ldgr.source_presence"], revision=2,
                                        applicability="the target table carries a recognised citation column (R60: singular classical_citation included)")

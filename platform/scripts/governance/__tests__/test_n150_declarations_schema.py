@@ -259,3 +259,16 @@ def test_produced_tables_extra_never_drops_a_non_string_observed_name():
     e = {"produced_tables": [dict(table="t")]}
     assert ac.produced_tables_extra(e, ["t", None, 5, ("t",)]) == sorted(["None", "5", "('t',)"])
     assert ac.produced_tables_extra(e, ["t"]) == []
+
+
+# ───────────────────────── provenance_columns (N-156 F4) ─────────────────────────
+
+def test_provenance_columns_are_accepted_on_a_measured_source_and_refused_elsewhere():
+    _ok(_table(kind="K2", decision_id="N-150", provenance_columns=["source_ref", "content_sha256"]))
+    _ok(_row({"column": "src", "kinds": ["K2"]}, provenance_columns=["content_sha256"]))
+    _bad(_table(kind="K2", decision_id="N-150", provenance_columns=[]), "provenance_columns")
+    _bad(_table(kind="K2", decision_id="N-150", provenance_columns=["a", "a"]), "provenance_columns")
+    _bad(_table(kind="K2", decision_id="N-150", provenance_columns=["bad col"]), "provenance_columns")
+    _bad(_table(kind="K2", decision_id="N-150", provenance_columns="source_ref"), "provenance_columns")
+    _bad(_table(kind="K2", decision_id="N-150", provenance_columns=[f"c{i}" for i in range(ac.SOURCE_MAX_COLUMNS + 1)]), "provenance_columns")
+    _bad({"source": dict(na="no_data", why=WHY, evidence=EV, provenance_columns=["a"])}, "declares no source")
