@@ -1,0 +1,10 @@
+{
+  "postgres": "17",
+  "migrationAppliedTwice": true,
+  "ownership": true,
+  "historySql": true,
+  "canonicalHistory": true,
+  "invalidReceiptRejected": true,
+  "realCorrectionRace": "PASS",
+  "productionAccess": false
+}

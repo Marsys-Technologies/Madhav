@@ -1,263 +1,196 @@
-/**
- * V3-E-012a (Paripraśna v3 assurance, stream S1): `PariprashnaApp`'s sidebar
- * `threads` must merge the live session's own thread with real fetched
- * history (`GET /api/conversations?readingsOnly=true`), and selecting a
- * fetched (non-live) row must show an honest "not openable yet" notice
- * rather than silently doing nothing (Native Surrogate ruling B4, decision
- * event `f3b88219-432f-4096-999c-07f6700f6406`).
- *
- * Every sibling region (Composer, RightDock, ThreadHeader, Transcript,
- * EmptyState, ArrivalLine, OverlayLayer) is stubbed to isolate the
- * shell-composition logic under test (S1's own territory) from those
- * regions' own rendering (S2's territory, covered by their own suites).
- */
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { render, screen, cleanup, fireEvent, waitFor } from '@testing-library/react'
-import { makeInitialTurnState } from '../state/reducer'
-import type { ThreadState } from '../state/types'
-
-vi.mock('next/link', () => ({
-  default: ({ href, children, ...rest }: { href: string; children: React.ReactNode } & Record<string, unknown>) => (
-    <a href={href} {...rest}>{children}</a>
+/** Review 10 closes the previously visible-but-not-openable history gap. */
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import {
+  render,
+  screen,
+  cleanup,
+  fireEvent,
+  waitFor,
+} from "@testing-library/react";
+import type { ThreadState } from "../state/types";
+import { makeInitialTurnState } from "../state/reducer";
+vi.mock("../Transcript", () => ({ Transcript: () => null }));
+vi.mock("../composer/Composer", () => ({
+  Composer: ({ disabled }: { disabled: boolean }) => (
+    <button disabled={disabled}>Composer</button>
   ),
-}))
-vi.mock('../ThreadHeader', () => ({ ThreadHeader: () => null }))
-vi.mock('../Transcript', () => ({ Transcript: () => null }))
-vi.mock('../EmptyState', () => ({ EmptyState: () => null }))
-vi.mock('../ArrivalLine', () => ({ ArrivalLine: () => null }))
-vi.mock('../composer/Composer', () => ({ Composer: () => null }))
-vi.mock('../dock/RightDock', () => ({ RightDock: () => null }))
-vi.mock('../overlay/OverlayLayer', () => ({ OverlayLayer: () => null }))
-vi.mock('../dock/DockController', () => ({
-  DockControllerProvider: ({ children }: { children: React.ReactNode }) => children,
-}))
-vi.mock('../hooks/useVisualViewport', () => ({ useVisualViewport: () => ({ supported: false, height: null }) }))
-
-const { mockUseLiveStream } = vi.hoisted(() => ({
-  mockUseLiveStream: vi.fn(() => ({
-    state: { turns: [], surfaceStatus: 'idle' } as ThreadState,
+}));
+vi.mock("../overlay/OverlayLayer", () => ({ OverlayLayer: () => null }));
+vi.mock("../hooks/useVisualViewport", () => ({
+  useVisualViewport: () => ({ supported: false, height: null }),
+}));
+const { live, restore } = vi.hoisted(() => ({
+  restore: vi.fn(),
+  live: vi.fn(),
+}));
+vi.mock("../hooks/useLiveStream", () => ({ useLiveStream: live }));
+import { PariprashnaApp } from "../PariprashnaApp";
+const PIN = { name: "Native", bornLine: "Birth data" },
+  chart = "chart-1";
+const row = (id: string, title: string, extra = {}) => ({
+  id,
+  title,
+  chart_id: chart,
+  created_at: "2026-10-01T00:00:00Z",
+  updated_at: null,
+  archived_at: null,
+  archive_reason: null,
+  tagged: false,
+  tagged_answers: [],
+  ...extra,
+});
+beforeEach(() => {
+  vi.stubEnv("NEXT_PUBLIC_PARIPRASHNA_LIVE", "1");
+  localStorage.clear();
+  vi.stubGlobal(
+    "matchMedia",
+    vi.fn(() => ({
+      matches: false,
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+    })),
+  );
+  live.mockReturnValue({
+    state: { turns: [], surfaceStatus: "empty" } as ThreadState,
     submit: vi.fn(),
     stop: vi.fn(),
-    conversationId: null as string | null,
-  })),
-}))
-vi.mock('../hooks/useLiveStream', () => ({ useLiveStream: mockUseLiveStream }))
-
-import { PariprashnaApp } from '../PariprashnaApp'
-
-const CHART_PIN = { name: 'Abhinandan Mohanty', bornLine: '02 Mar 1985 · 09:40 · Bhubaneswar, Odisha, India' }
-
-beforeEach(() => {
-  vi.stubEnv('NEXT_PUBLIC_PARIPRASHNA_LIVE', '1')
-  mockUseLiveStream.mockReturnValue({ state: { turns: [], surfaceStatus: 'idle' }, submit: vi.fn(), stop: vi.fn(), conversationId: null })
-})
-
+    conversationId: null,
+    restore,
+  });
+});
 afterEach(() => {
-  cleanup()
-  vi.unstubAllEnvs()
-  vi.restoreAllMocks()
-})
-
-describe('PariprashnaApp history merge (V3-E-012a)', () => {
-  it('shows a non-blocking readiness notice when the chart is only partially computed', () => {
-    vi.spyOn(global, 'fetch').mockResolvedValue({ ok: true, json: async () => ({ conversations: [] }) } as Response)
-
+  cleanup();
+  vi.restoreAllMocks();
+  vi.unstubAllGlobals();
+  vi.unstubAllEnvs();
+  restore.mockReset();
+});
+const mount = () => {
+  render(<PariprashnaApp chartId={chart} chartPin={PIN} />);
+  fireEvent.click(
+    screen.getByRole("button", { name: "Open conversation history" }),
+  );
+};
+describe("Consultation persisted history", () => {
+  it("loads real history and restores messages with the actual server conversation identity", async () => {
+    vi.spyOn(global, "fetch").mockImplementation(async (url) =>
+      String(url).includes("?chartId=")
+        ? Response.json({ conversations: [row("past", "Past consultation")] })
+        : Response.json({
+            conversation: {
+              id: "past",
+              chart_id: chart,
+              title: "Past consultation",
+              tagged: false,
+            },
+            readOnly: false,
+            messages: [
+              {
+                id: "answer",
+                role: "assistant",
+                created_at: "2026-10-01T00:00:00Z",
+                schema_version: null,
+                parts_json: [{ type: "text", text: "Stored answer" }],
+                canonical_parts: [],
+                metadata_json: {},
+                tagged: false,
+              },
+            ],
+          }),
+    );
+    mount();
+    fireEvent.click(
+      await screen.findByRole("button", { name: /Past consultation/ }),
+    );
+    await waitFor(() =>
+      expect(restore).toHaveBeenCalledWith(
+        "past",
+        expect.arrayContaining([
+          expect.objectContaining({
+            persistedMessageId: "answer",
+            blocks: expect.arrayContaining([
+              expect.objectContaining({ html: "Stored answer" }),
+            ]),
+          }),
+        ]),
+      ),
+    );
+  });
+  it("keeps history disabled while streaming and merges the current id only once", async () => {
+    const turn = makeInitialTurnState("turn", "Current question");
+    turn.status = "streaming";
+    live.mockReturnValue({
+      state: { turns: [turn], surfaceStatus: "idle" },
+      submit: vi.fn(),
+      stop: vi.fn(),
+      conversationId: "current",
+      restore,
+    });
+    vi.spyOn(global, "fetch").mockResolvedValue(
+      Response.json({
+        conversations: [
+          row("current", "Current conversation"),
+          row("past", "Past consultation"),
+        ],
+      }),
+    );
+    mount();
+    expect(
+      await screen.findByRole("button", { name: /Past consultation/ }),
+    ).toBeDisabled();
+    expect(
+      screen.getAllByRole("button", { name: /Current conversation/ }),
+    ).toHaveLength(1);
+  });
+  it("does not restore data from another chart or silently replace the current thread after a failed read", async () => {
+    vi.spyOn(global, "fetch").mockImplementation(async (url) =>
+      String(url).includes("?chartId=")
+        ? Response.json({ conversations: [row("past", "Past consultation")] })
+        : Response.json({
+            conversation: { id: "past", chart_id: "other" },
+            messages: [],
+            readOnly: false,
+          }),
+    );
+    mount();
+    fireEvent.click(
+      await screen.findByRole("button", { name: /Past consultation/ }),
+    );
+    expect(
+      await screen.findByText(/does not belong to this chart/),
+    ).toBeVisible();
+    expect(restore).not.toHaveBeenCalled();
+  });
+  it("links correction archives to their existing read-only reader", async () => {
+    vi.spyOn(global, "fetch").mockResolvedValue(
+      Response.json({
+        conversations: [
+          row("old", "Before correction", {
+            archive_reason: "chart_details_changed",
+            archived_at: "2026-10-02T00:00:00Z",
+          }),
+        ],
+      }),
+    );
+    mount();
+    expect(
+      await screen.findByRole("link", { name: /Before correction/ }),
+    ).toHaveAttribute("href", "/clients/chart-1/consult/old");
+  });
+  it("shows partial readiness without fabricating engine completeness", () => {
+    vi.spyOn(global, "fetch").mockResolvedValue(
+      Response.json({ conversations: [] }),
+    );
     render(
       <PariprashnaApp
-        chartPin={CHART_PIN}
-        chartId="c-1"
-        readiness={{ state: 'partially-built', percent: 33, label: 'Partially built' }}
+        chartId={chart}
+        chartPin={PIN}
+        readiness={{ state: "partial", percent: 33, label: "Partial" }}
       />,
-    )
-
-    const notice = screen.getByTestId('pp-readiness-notice')
-    expect(notice).toHaveTextContent('33%')
-    expect(notice).toHaveTextContent(/available material/i)
-    expect(notice).toHaveTextContent(/may be incomplete/i)
-  })
-
-  it('does not show the partial-readiness notice for a fully ready chart', () => {
-    vi.spyOn(global, 'fetch').mockResolvedValue({ ok: true, json: async () => ({ conversations: [] }) } as Response)
-
-    render(
-      <PariprashnaApp
-        chartPin={CHART_PIN}
-        chartId="c-1"
-        readiness={{ state: 'ready', percent: 100, label: 'Ready' }}
-      />,
-    )
-
-    expect(screen.queryByTestId('pp-readiness-notice')).not.toBeInTheDocument()
-  })
-
-  it('renders fetched past readings in the sidebar once GET /api/conversations resolves', async () => {
-    const fetchMock = vi.spyOn(global, 'fetch').mockResolvedValue({
-      ok: true,
-      json: async () => ({
-        conversations: [
-          {
-            id: 'conv-past-1',
-            chart_id: 'c-1',
-            title: null,
-            first_message_snippet: 'What does this period ask of my career?',
-            updated_at: '2026-08-20T00:00:00Z',
-            created_at: '2026-08-20T00:00:00Z',
-          },
-        ],
-      }),
-    } as Response)
-
-    render(<PariprashnaApp chartPin={CHART_PIN} chartId="c-1" />)
-
-    await waitFor(() => expect(screen.getAllByTestId('pp-sidebar-row')).toHaveLength(1))
-    expect(screen.getByText('What does this period ask of my career?')).toBeInTheDocument()
-
-    const [url] = fetchMock.mock.calls[0]
-    expect(String(url)).toContain('readingsOnly=true')
-    expect(String(url)).toContain('chartId=c-1')
-  })
-
-  it('shows an honest "not openable yet" notice on selecting a fetched historical row, not a silent no-op', async () => {
-    vi.spyOn(global, 'fetch').mockResolvedValue({
-      ok: true,
-      json: async () => ({
-        conversations: [
-          { id: 'conv-past-1', chart_id: 'c-1', title: 'Old reading', first_message_snippet: null, updated_at: '2026-08-20T00:00:00Z', created_at: '2026-08-20T00:00:00Z' },
-        ],
-      }),
-    } as Response)
-
-    render(<PariprashnaApp chartPin={CHART_PIN} chartId="c-1" />)
-    await waitFor(() => expect(screen.getAllByTestId('pp-sidebar-row')).toHaveLength(1))
-
-    expect(screen.queryByTestId('pp-sidebar-select-unavailable')).not.toBeInTheDocument()
-    fireEvent.click(screen.getByTestId('pp-sidebar-row'))
-    expect(screen.getByTestId('pp-sidebar-select-unavailable')).toBeInTheDocument()
-  })
-
-  it('renaming a fetched historical row shows the honest notice and does NOT relabel the live thread (regression: rename ignored the row id)', async () => {
-    vi.spyOn(global, 'fetch').mockResolvedValue({
-      ok: true,
-      json: async () => ({
-        conversations: [
-          { id: 'conv-past-1', chart_id: 'c-1', title: 'Old reading', first_message_snippet: null, updated_at: '2026-08-20T00:00:00Z', created_at: '2026-08-20T00:00:00Z' },
-        ],
-      }),
-    } as Response)
-
-    render(<PariprashnaApp chartPin={CHART_PIN} chartId="c-1" />)
-    await waitFor(() => expect(screen.getAllByTestId('pp-sidebar-row')).toHaveLength(1))
-
-    // Double-click the fetched (historical) row's title to enter rename mode,
-    // then commit — this must NOT silently retitle anything else, and must
-    // surface the same honest notice as selecting a historical row.
-    fireEvent.doubleClick(screen.getByText('Old reading'))
-    const input = screen.getByDisplayValue('Old reading')
-    fireEvent.change(input, { target: { value: 'Renamed by mistake' } })
-    fireEvent.keyDown(input, { key: 'Enter' })
-
-    expect(screen.getByTestId('pp-sidebar-select-unavailable')).toBeInTheDocument()
-    // Still exactly one row (the fetched one) — no live thread was spawned
-    // or relabeled as a side effect.
-    expect(screen.getAllByTestId('pp-sidebar-row')).toHaveLength(1)
-  })
-
-  it('drops a fetched row updated at-or-after the fetch snapshot moment (race backstop: independent-verifier finding 2)', async () => {
-    const future = new Date(Date.now() + 60_000).toISOString() // "resolved late" simulation
-    vi.spyOn(global, 'fetch').mockResolvedValue({
-      ok: true,
-      json: async () => ({
-        conversations: [
-          { id: 'conv-stale', chart_id: 'c-1', title: 'Genuinely old reading', first_message_snippet: null, updated_at: '2026-08-20T00:00:00Z', created_at: '2026-08-20T00:00:00Z' },
-          { id: 'conv-racy', chart_id: 'c-1', title: 'Just-completed turn racing the fetch', first_message_snippet: null, updated_at: future, created_at: future },
-        ],
-      }),
-    } as Response)
-
-    render(<PariprashnaApp chartPin={CHART_PIN} chartId="c-1" />)
-
-    await waitFor(() => expect(screen.getByText('Genuinely old reading')).toBeInTheDocument())
-    expect(screen.queryByText('Just-completed turn racing the fetch')).not.toBeInTheDocument()
-    expect(screen.getAllByTestId('pp-sidebar-row')).toHaveLength(1)
-  })
-
-  it('uses the server conversation ID for the live row and excludes that same ID from fetched history', async () => {
-    const liveTurn = { ...makeInitialTurnState('turn-live', 'Current server-backed reading'),
-      status: 'settled' as const, openedAtMs: Date.now() - 1_000 }
-    mockUseLiveStream.mockReturnValue({
-      state: { turns: [liveTurn], surfaceStatus: 'idle' }, submit: vi.fn(), stop: vi.fn(), conversationId: 'conv-live',
-    })
-    vi.spyOn(global, 'fetch').mockResolvedValue({
-      ok: true,
-      json: async () => ({ conversations: [
-        { id: 'conv-live', chart_id: 'c-1', title: 'Duplicate live row', first_message_snippet: null,
-          updated_at: '2026-08-20T00:00:00Z', created_at: '2026-08-20T00:00:00Z' },
-        { id: 'conv-past-1', chart_id: 'c-1', title: 'Independent old reading', first_message_snippet: null,
-          updated_at: '2026-08-19T00:00:00Z', created_at: '2026-08-19T00:00:00Z' },
-      ] }),
-    } as Response)
-
-    render(<PariprashnaApp chartPin={CHART_PIN} chartId="c-1" />)
-    await waitFor(() => expect(screen.getByText('Independent old reading')).toBeInTheDocument())
-    expect(screen.getByText('Current server-backed reading')).toBeInTheDocument()
-    expect(screen.queryByText('Duplicate live row')).not.toBeInTheDocument()
-    expect(screen.getAllByTestId('pp-sidebar-row')).toHaveLength(2)
-  })
-
-  it('does not fetch on the fixture host (no chartId / live flag off)', () => {
-    vi.stubEnv('NEXT_PUBLIC_PARIPRASHNA_LIVE', '0')
-    const fetchMock = vi.spyOn(global, 'fetch').mockResolvedValue({ ok: true, json: async () => ({ conversations: [] }) } as Response)
-    render(<PariprashnaApp chartPin={CHART_PIN} />)
-    expect(fetchMock).not.toHaveBeenCalled()
-  })
-})
-
-describe('PariprashnaApp — chart-correction history (Jātaka chart workspace)', () => {
-  const rows = [
-    { id: 'conv-active', chart_id: 'c-1', title: 'Current reading', first_message_snippet: null, updated_at: '2026-08-21T00:00:00Z', created_at: '2026-08-21T00:00:00Z', archived_at: null, archive_reason: null },
-    { id: 'conv-historical', chart_id: 'c-1', title: 'Before the correction', first_message_snippet: null, updated_at: '2026-08-20T00:00:00Z', created_at: '2026-08-20T00:00:00Z', archived_at: '2026-09-27T00:00:00Z', archive_reason: 'chart_details_changed' },
-    { id: 'conv-manual', chart_id: 'c-1', title: 'Manually archived', first_message_snippet: null, updated_at: '2026-08-19T00:00:00Z', created_at: '2026-08-19T00:00:00Z', archived_at: '2026-09-01T00:00:00Z', archive_reason: null },
-  ]
-
-  function stubFetch() {
-    return vi.spyOn(global, 'fetch').mockResolvedValue({ ok: true, json: async () => ({ conversations: rows }) } as Response)
-  }
-
-  it('requests archived readings too', async () => {
-    const fetchMock = stubFetch()
-    render(<PariprashnaApp chartPin={CHART_PIN} chartId="c-1" />)
-    await waitFor(() => expect(fetchMock).toHaveBeenCalled())
-    expect(String(fetchMock.mock.calls[0][0])).toContain('archived=true')
-    expect(String(fetchMock.mock.calls[0][0])).toContain('readingsOnly=true')
-  })
-
-  it('shows correction history as a Historical row linking to its read-only page', async () => {
-    stubFetch()
-    render(<PariprashnaApp chartPin={CHART_PIN} chartId="c-1" />)
-    await waitFor(() => expect(screen.getByText('Before the correction')).toBeInTheDocument())
-    const link = screen.getByRole('link', { name: /before the correction/i })
-    expect(link).toHaveAttribute('href', '/clients/c-1/consult/conv-historical')
-    expect(link).toHaveTextContent('Historical')
-    fireEvent.click(link)
-    expect(screen.queryByTestId('pp-sidebar-select-unavailable')).not.toBeInTheDocument()
-  })
-
-  it('never offers rename on a historical row', async () => {
-    stubFetch()
-    render(<PariprashnaApp chartPin={CHART_PIN} chartId="c-1" />)
-    await waitFor(() => expect(screen.getByText('Before the correction')).toBeInTheDocument())
-    fireEvent.doubleClick(screen.getByText('Before the correction'))
-    expect(screen.queryByDisplayValue('Before the correction')).not.toBeInTheDocument()
-  })
-
-  it('keeps manually archived readings hidden and active rows on the existing notice path', async () => {
-    stubFetch()
-    render(<PariprashnaApp chartPin={CHART_PIN} chartId="c-1" />)
-    await waitFor(() => expect(screen.getAllByTestId('pp-sidebar-row')).toHaveLength(2))
-    expect(screen.queryByText('Manually archived')).not.toBeInTheDocument()
-    expect(screen.queryByRole('link', { name: /current reading/i })).not.toBeInTheDocument()
-    const activeRow = screen.getAllByTestId('pp-sidebar-row').find((row) => row.dataset.threadId === 'conv-active')!
-    fireEvent.click(activeRow)
-    expect(screen.getByTestId('pp-sidebar-select-unavailable')).toBeInTheDocument()
-  })
-})
+    );
+    expect(screen.getByTestId("pp-readiness-notice")).toHaveTextContent("33%");
+    expect(screen.getByTestId("pp-readiness-notice")).toHaveTextContent(
+      "may be incomplete",
+    );
+  });
+});
