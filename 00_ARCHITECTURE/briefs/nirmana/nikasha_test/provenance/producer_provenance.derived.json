@@ -1,7 +1,7 @@
 {
   "generated_at": "2026-10-02T09:53:35.237921+00:00",
   "generator": "platform/scripts/governance/catalog_provenance.py",
-  "snapshot_content_hash": "sha256:fc009008460b839da93b99789fd47675124c97a4f2cac3938f6524f060a6c254",
+  "snapshot_content_hash": "sha256:ea6996564bb434c74ce7fcc5137ea0617f4df6ef8c2ac96154732a00d6bfec91",
   "snapshot_scu_count": 182,
   "summary": {
     "total_scus": 182,
@@ -158,7 +158,7 @@
         {
           "asset_id": "ga_sensitive",
           "table": "chart_facts",
-          "source_ref": "platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:770-829 | platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:972-1008 | platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:1128-1189 | platform/supabase/migrations/204_chart_facts.sql:10-29 | platform/migrations/002_ganita_divisionals.sql:31-65",
+          "source_ref": "platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:777-836 | platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:979-1015 | platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:1135-1196 | platform/supabase/migrations/204_chart_facts.sql:10-29 | platform/migrations/002_ganita_divisionals.sql:31-65",
           "disposition": "derived_from_source_query",
           "via_helper": null,
           "shared": true
@@ -166,7 +166,7 @@
         {
           "asset_id": "ga_sade_sati",
           "table": "chart_facts",
-          "source_ref": "platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:770-829 | platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:972-1008 | platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:1128-1189 | platform/supabase/migrations/204_chart_facts.sql:10-29 | platform/migrations/002_ganita_divisionals.sql:31-65",
+          "source_ref": "platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:777-836 | platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:979-1015 | platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:1135-1196 | platform/supabase/migrations/204_chart_facts.sql:10-29 | platform/migrations/002_ganita_divisionals.sql:31-65",
           "disposition": "derived_from_source_query",
           "via_helper": null,
           "shared": true
@@ -174,7 +174,7 @@
         {
           "asset_id": "ga_panchanga",
           "table": "chart_facts",
-          "source_ref": "platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:770-829 | platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:972-1008 | platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:1128-1189 | platform/supabase/migrations/204_chart_facts.sql:10-29 | platform/migrations/002_ganita_divisionals.sql:31-65",
+          "source_ref": "platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:777-836 | platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:979-1015 | platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:1135-1196 | platform/supabase/migrations/204_chart_facts.sql:10-29 | platform/migrations/002_ganita_divisionals.sql:31-65",
           "disposition": "derived_from_source_query",
           "via_helper": null,
           "shared": true
@@ -182,7 +182,7 @@
         {
           "asset_id": "ga_positions",
           "table": "chart_facts",
-          "source_ref": "platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:770-829 | platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:972-1008 | platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:1128-1189 | platform/supabase/migrations/204_chart_facts.sql:10-29 | platform/migrations/002_ganita_divisionals.sql:31-65",
+          "source_ref": "platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:777-836 | platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:979-1015 | platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:1135-1196 | platform/supabase/migrations/204_chart_facts.sql:10-29 | platform/migrations/002_ganita_divisionals.sql:31-65",
           "disposition": "derived_from_source_query",
           "via_helper": null,
           "shared": true
@@ -190,7 +190,7 @@
         {
           "asset_id": "ga_ayurdaya",
           "table": "chart_facts",
-          "source_ref": "platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:770-829 | platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:972-1008 | platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:1128-1189 | platform/supabase/migrations/204_chart_facts.sql:10-29 | platform/migrations/002_ganita_divisionals.sql:31-65",
+          "source_ref": "platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:777-836 | platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:979-1015 | platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:1135-1196 | platform/supabase/migrations/204_chart_facts.sql:10-29 | platform/migrations/002_ganita_divisionals.sql:31-65",
           "disposition": "derived_from_source_query",
           "via_helper": null,
           "shared": true
@@ -198,7 +198,7 @@
         {
           "asset_id": "ga_sensitive_degree",
           "table": "chart_facts",
-          "source_ref": "platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:770-829 | platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:972-1008 | platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:1128-1189 | platform/supabase/migrations/204_chart_facts.sql:10-29 | platform/migrations/002_ganita_divisionals.sql:31-65",
+          "source_ref": "platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:777-836 | platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:979-1015 | platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:1135-1196 | platform/supabase/migrations/204_chart_facts.sql:10-29 | platform/migrations/002_ganita_divisionals.sql:31-65",
           "disposition": "derived_from_source_query",
           "via_helper": null,
           "shared": true
@@ -206,7 +206,7 @@
         {
           "asset_id": "ga_nakshatra",
           "table": "chart_facts",
-          "source_ref": "platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:770-829 | platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:972-1008 | platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:1128-1189 | platform/supabase/migrations/204_chart_facts.sql:10-29 | platform/migrations/002_ganita_divisionals.sql:31-65",
+          "source_ref": "platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:777-836 | platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:979-1015 | platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:1135-1196 | platform/supabase/migrations/204_chart_facts.sql:10-29 | platform/migrations/002_ganita_divisionals.sql:31-65",
           "disposition": "derived_from_source_query",
           "via_helper": null,
           "shared": true
@@ -333,7 +333,7 @@
         {
           "asset_id": "bg_texts",
           "table": "classical_text_chunks",
-          "source_ref": "platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:2167-2188 | platform/src/lib/tools/classical_text_tools.ts:133-157 | platform/src/lib/tools/classical_text_search.ts:72-193",
+          "source_ref": "platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:2174-2195 | platform/src/lib/tools/classical_text_tools.ts:133-157 | platform/src/lib/tools/classical_text_search.ts:72-193",
           "disposition": "derived_from_source_query",
           "via_helper": null,
           "shared": true
@@ -341,7 +341,7 @@
         {
           "asset_id": "bg_text_index",
           "table": "classical_text_chunks",
-          "source_ref": "platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:2167-2188 | platform/src/lib/tools/classical_text_tools.ts:133-157 | platform/src/lib/tools/classical_text_search.ts:72-193",
+          "source_ref": "platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:2174-2195 | platform/src/lib/tools/classical_text_tools.ts:133-157 | platform/src/lib/tools/classical_text_search.ts:72-193",
           "disposition": "derived_from_source_query",
           "via_helper": null,
           "shared": true
@@ -967,7 +967,7 @@
         {
           "asset_id": "ga_vargas",
           "table": "chart_divisionals",
-          "source_ref": "platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:1298-1376 | platform-mcp/src/tools/register_p1_aliases.ts:1546-1581 | platform/migrations/002_ganita_divisionals.sql:31-59",
+          "source_ref": "platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:1305-1383 | platform-mcp/src/tools/register_p1_aliases.ts:1546-1581 | platform/migrations/002_ganita_divisionals.sql:31-59",
           "disposition": "derived_from_source_query",
           "via_helper": null,
           "shared": false
@@ -1722,7 +1722,7 @@
         {
           "asset_id": "bg_texts",
           "table": "classical_text_chunks",
-          "source_ref": "platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:2063-2075 | platform/src/lib/tools/classical_text_tools.ts:77-116 | platform/supabase/migrations/600_nirmana_l0_wave0_output_digest_specs.sql:16 | platform/python-sidecar/pipeline/orchestrator/writers/bg_texts.py:39-59 | platform/supabase/migrations/610_nirmana_bg_texts_integrity_contract.sql:56-110",
+          "source_ref": "platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:2070-2082 | platform/src/lib/tools/classical_text_tools.ts:77-116 | platform/supabase/migrations/600_nirmana_l0_wave0_output_digest_specs.sql:16 | platform/python-sidecar/pipeline/orchestrator/writers/bg_texts.py:39-59 | platform/supabase/migrations/610_nirmana_bg_texts_integrity_contract.sql:56-110",
           "disposition": "derived_from_source_query",
           "via_helper": null,
           "shared": true
@@ -1730,7 +1730,7 @@
         {
           "asset_id": "bg_text_index",
           "table": "classical_text_chunks",
-          "source_ref": "platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:2063-2075 | platform/src/lib/tools/classical_text_tools.ts:77-116 | platform/supabase/migrations/600_nirmana_l0_wave0_output_digest_specs.sql:16 | platform/python-sidecar/pipeline/orchestrator/writers/bg_texts.py:39-59 | platform/supabase/migrations/610_nirmana_bg_texts_integrity_contract.sql:56-110",
+          "source_ref": "platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:2070-2082 | platform/src/lib/tools/classical_text_tools.ts:77-116 | platform/supabase/migrations/600_nirmana_l0_wave0_output_digest_specs.sql:16 | platform/python-sidecar/pipeline/orchestrator/writers/bg_texts.py:39-59 | platform/supabase/migrations/610_nirmana_bg_texts_integrity_contract.sql:56-110",
           "disposition": "derived_from_source_query",
           "via_helper": null,
           "shared": true
@@ -1772,7 +1772,7 @@
         "source_query"
       ],
       "producers": [],
-      "no_detector": "NO_DETECTOR \u2014 no_relation_in_range: resolved source range(s) contain no relation name in asset_registry.target_table \u222a information_schema.tables ('platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:616-643 | platform/python-sidecar/routers/sutravali.py:181-203 | platform/src/lib/retrieval/registry/layers/__tests__/register_d7_channel.sutravali_contracts.test.ts')"
+      "no_detector": "NO_DETECTOR \u2014 no_relation_in_range: resolved source range(s) contain no relation name in asset_registry.target_table \u222a information_schema.tables ('platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:623-650 | platform/python-sidecar/routers/sutravali.py:181-203 | platform/src/lib/retrieval/registry/layers/__tests__/register_d7_channel.sutravali_contracts.test.ts')"
     },
     "scu.catalog.maro_mcp_surface": {
       "requirement_kinds": [
@@ -2479,7 +2479,7 @@
         {
           "asset_id": "bg_remedies",
           "table": "brahma_remedy_corpus",
-          "source_ref": "platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:1921-1936 | platform/migrations/ws2_l0_remedy_corpus.sql:16-33 | platform/supabase/migrations/081_l0fr_schema.sql:113-123 | platform/supabase/migrations/177_l0_phase_alpha_existing_table_schema.sql:17-20",
+          "source_ref": "platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:1928-1943 | platform/migrations/ws2_l0_remedy_corpus.sql:16-33 | platform/supabase/migrations/081_l0fr_schema.sql:113-123 | platform/supabase/migrations/177_l0_phase_alpha_existing_table_schema.sql:17-20",
           "disposition": "derived_from_source_query",
           "via_helper": null,
           "shared": false
@@ -2932,14 +2932,14 @@
         "source_query"
       ],
       "producers": [],
-      "no_detector": "NO_DETECTOR \u2014 no_relation_in_range: resolved source range(s) contain no relation name in asset_registry.target_table \u222a information_schema.tables ('platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:1842-1849 | platform/migrations/ws2_l0_remedy_corpus.sql:16-33 | platform/supabase/migrations/081_l0fr_schema.sql:113-123')"
+      "no_detector": "NO_DETECTOR \u2014 no_relation_in_range: resolved source range(s) contain no relation name in asset_registry.target_table \u222a information_schema.tables ('platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:1849-1856 | platform/migrations/ws2_l0_remedy_corpus.sql:16-33 | platform/supabase/migrations/081_l0fr_schema.sql:113-123')"
     },
     "scu.catalog.query_remedies_for_chart": {
       "requirement_kinds": [
         "source_query"
       ],
       "producers": [],
-      "no_detector": "NO_DETECTOR \u2014 no_relation_in_range: resolved source range(s) contain no relation name in asset_registry.target_table \u222a information_schema.tables ('platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:1501-1517 | platform/migrations/ws2_l0_remedy_corpus.sql:16-33 | platform/supabase/migrations/081_l0fr_schema.sql:113-123')"
+      "no_detector": "NO_DETECTOR \u2014 no_relation_in_range: resolved source range(s) contain no relation name in asset_registry.target_table \u222a information_schema.tables ('platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:1508-1524 | platform/migrations/ws2_l0_remedy_corpus.sql:16-33 | platform/supabase/migrations/081_l0fr_schema.sql:113-123')"
     },
     "scu.catalog.query_remedy_corpus": {
       "requirement_kinds": [
@@ -3275,7 +3275,7 @@
         {
           "asset_id": "bg_remedies",
           "table": "brahma_remedy_corpus",
-          "source_ref": "platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:1763-1776 | platform/migrations/ws2_l0_remedy_corpus.sql:16-33 | platform/supabase/migrations/081_l0fr_schema.sql:113-123",
+          "source_ref": "platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:1770-1783 | platform/migrations/ws2_l0_remedy_corpus.sql:16-33 | platform/supabase/migrations/081_l0fr_schema.sql:113-123",
           "disposition": "derived_from_source_query",
           "via_helper": null,
           "shared": false
@@ -3549,7 +3549,7 @@
         {
           "asset_id": "bg_remedies",
           "table": "brahma_remedy_corpus",
-          "source_ref": "platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:1961-2026 | platform/src/lib/tools/classical_text_tools.ts:35-58 | platform/migrations/ws2_l0_texts.sql:42-65 | platform/python-sidecar/pipeline/orchestrator/writers/bg_texts.py:355-385 | platform/python-sidecar/pipeline/orchestrator/writers/bg_texts.py:660-683 | platform/supabase/migrations/609_nirmana_l0_digest_spec_revision.sql:25-27 | platform/supabase/migrations/610_nirmana_bg_texts_integrity_contract.sql:56-128",
+          "source_ref": "platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:1968-2033 | platform/src/lib/tools/classical_text_tools.ts:35-58 | platform/migrations/ws2_l0_texts.sql:42-65 | platform/python-sidecar/pipeline/orchestrator/writers/bg_texts.py:355-385 | platform/python-sidecar/pipeline/orchestrator/writers/bg_texts.py:660-683 | platform/supabase/migrations/609_nirmana_l0_digest_spec_revision.sql:25-27 | platform/supabase/migrations/610_nirmana_bg_texts_integrity_contract.sql:56-128",
           "disposition": "derived_from_source_query",
           "via_helper": null,
           "shared": false
@@ -3557,7 +3557,7 @@
         {
           "asset_id": "bg_texts",
           "table": "classical_text_chunks",
-          "source_ref": "platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:1961-2026 | platform/src/lib/tools/classical_text_tools.ts:35-58 | platform/migrations/ws2_l0_texts.sql:42-65 | platform/python-sidecar/pipeline/orchestrator/writers/bg_texts.py:355-385 | platform/python-sidecar/pipeline/orchestrator/writers/bg_texts.py:660-683 | platform/supabase/migrations/609_nirmana_l0_digest_spec_revision.sql:25-27 | platform/supabase/migrations/610_nirmana_bg_texts_integrity_contract.sql:56-128",
+          "source_ref": "platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:1968-2033 | platform/src/lib/tools/classical_text_tools.ts:35-58 | platform/migrations/ws2_l0_texts.sql:42-65 | platform/python-sidecar/pipeline/orchestrator/writers/bg_texts.py:355-385 | platform/python-sidecar/pipeline/orchestrator/writers/bg_texts.py:660-683 | platform/supabase/migrations/609_nirmana_l0_digest_spec_revision.sql:25-27 | platform/supabase/migrations/610_nirmana_bg_texts_integrity_contract.sql:56-128",
           "disposition": "derived_from_source_query",
           "via_helper": null,
           "shared": true
@@ -3565,7 +3565,7 @@
         {
           "asset_id": "bg_text_index",
           "table": "classical_text_chunks",
-          "source_ref": "platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:1961-2026 | platform/src/lib/tools/classical_text_tools.ts:35-58 | platform/migrations/ws2_l0_texts.sql:42-65 | platform/python-sidecar/pipeline/orchestrator/writers/bg_texts.py:355-385 | platform/python-sidecar/pipeline/orchestrator/writers/bg_texts.py:660-683 | platform/supabase/migrations/609_nirmana_l0_digest_spec_revision.sql:25-27 | platform/supabase/migrations/610_nirmana_bg_texts_integrity_contract.sql:56-128",
+          "source_ref": "platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:1968-2033 | platform/src/lib/tools/classical_text_tools.ts:35-58 | platform/migrations/ws2_l0_texts.sql:42-65 | platform/python-sidecar/pipeline/orchestrator/writers/bg_texts.py:355-385 | platform/python-sidecar/pipeline/orchestrator/writers/bg_texts.py:660-683 | platform/supabase/migrations/609_nirmana_l0_digest_spec_revision.sql:25-27 | platform/supabase/migrations/610_nirmana_bg_texts_integrity_contract.sql:56-128",
           "disposition": "derived_from_source_query",
           "via_helper": null,
           "shared": true
@@ -3577,7 +3577,7 @@
         "source_query"
       ],
       "producers": [],
-      "no_detector": "NO_DETECTOR \u2014 no_relation_in_range: resolved source range(s) contain no relation name in asset_registry.target_table \u222a information_schema.tables ('platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:1700-1710 | platform/migrations/ws2_l0_remedy_corpus.sql:16-33 | platform/supabase/migrations/081_l0fr_schema.sql:113-123 | platform/supabase/migrations/177_l0_phase_alpha_existing_table_schema.sql:17-20')"
+      "no_detector": "NO_DETECTOR \u2014 no_relation_in_range: resolved source range(s) contain no relation name in asset_registry.target_table \u222a information_schema.tables ('platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:1707-1717 | platform/migrations/ws2_l0_remedy_corpus.sql:16-33 | platform/supabase/migrations/081_l0fr_schema.sql:113-123 | platform/supabase/migrations/177_l0_phase_alpha_existing_table_schema.sql:17-20')"
     },
     "scu.catalog.read_sutravali_rule": {
       "requirement_kinds": [
@@ -3587,7 +3587,7 @@
         {
           "asset_id": "bg_rules",
           "table": "sutravali_rules",
-          "source_ref": "platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:517-549 | platform/src/lib/retrieval/registry/layers/__tests__/register_d7_channel.read_sutravali_rule_contract.test.ts:42-59",
+          "source_ref": "platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:524-556 | platform/src/lib/retrieval/registry/layers/__tests__/register_d7_channel.read_sutravali_rule_contract.test.ts:42-59",
           "disposition": "derived_from_source_query",
           "via_helper": null,
           "shared": false

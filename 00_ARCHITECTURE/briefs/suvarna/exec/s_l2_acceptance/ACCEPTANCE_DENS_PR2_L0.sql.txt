@@ -2,8 +2,8 @@
 -- Statement of what must be true after this PR: NO row count changes in any served L0 table (serving-layer TypeScript only; no data,
 -- no registry, no migration). The only expected movement is in the asset census Dens.served cells, re-read from source:
 --   FAIL->PARTIAL for bg_class_lifetime_counts, bg_compendium_index, bg_dasha_systems, bg_doshas, bg_ephemeris, bg_formula_constants,
---   bg_medical_mappings, bg_muhurta_lattice, bg_nakshatra_medical, bg_parihara_rules, bg_prashna_rules, bg_sign_medical, bg_sky_calendar,
---   bg_transit_engine ("no tier column in its served select": no L0 table carries one). Run before and after merge: counts identical.
+--   bg_medical_mappings, bg_muhurta_lattice, bg_nakshatra_medical, bg_parihara_rules, bg_prashna_rules, bg_rules, bg_sign_medical,
+--   bg_sky_calendar, bg_transit_engine ("no tier column in its served select": no L0 table carries one). Run before and after merge: counts identical.
 SELECT 'brahma_class_priors' AS served_table, COUNT(*) AS n FROM brahma_class_priors
 UNION ALL SELECT 'brahma_compendium_index', COUNT(*) FROM brahma_compendium_index
 UNION ALL SELECT 'brahma_dasha_systems', COUNT(*) FROM brahma_dasha_systems
@@ -21,4 +21,5 @@ UNION ALL SELECT 'bg_prashna_tajik_yogas', COUNT(*) FROM bg_prashna_tajik_yogas
 UNION ALL SELECT 'bg_sign_medical', COUNT(*) FROM bg_sign_medical
 UNION ALL SELECT 'bg_sky_calendar', COUNT(*) FROM bg_sky_calendar
 UNION ALL SELECT 'bg_transit_engine', COUNT(*) FROM bg_transit_engine
+UNION ALL SELECT 'sutravali_rules', COUNT(*) FROM sutravali_rules
 UNION ALL SELECT 'ephemeris_daily', COUNT(*) FROM ephemeris_daily

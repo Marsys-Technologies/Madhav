@@ -985,7 +985,7 @@ describe('first-slice availability coverage', () => {
         "OR domain ILIKE '%' || NULL::text || '%'",
         'ORDER BY confidence DESC NULLS LAST, cost_tier ASC',
       ],
-      handlerRef: 'platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:1501-1517',
+      handlerRef: 'platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:1508-1524',
     },
     {
       scuId: 'scu.catalog.query_remedies_by_planet',
@@ -999,7 +999,7 @@ describe('first-slice availability coverage', () => {
         'LOWER(planet) = LOWER(NULL::text)',
         'ORDER BY category, remedy_id',
       ],
-      handlerRef: 'platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:1842-1849',
+      handlerRef: 'platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:1849-1856',
     },
     {
       scuId: 'scu.catalog.read_remedy',
@@ -1016,7 +1016,7 @@ describe('first-slice availability coverage', () => {
         'classical_attestation_text, scaffold_status',
         'remedy_id = NULL::text',
       ],
-      handlerRef: 'platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:1700-1710',
+      handlerRef: 'platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:1707-1717',
     },
     {
       scuId: 'scu.catalog.query_mantras',
@@ -1033,7 +1033,7 @@ describe('first-slice availability coverage', () => {
         '(NULL::text IS NULL OR LOWER(planet) = LOWER(NULL::text))',
         'ORDER BY planet, remedy_id',
       ],
-      handlerRef: 'platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:1921-1936',
+      handlerRef: 'platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:1928-1943',
     },
     {
       scuId: 'scu.catalog.query_tantric_remedies',
@@ -1050,7 +1050,7 @@ describe('first-slice availability coverage', () => {
         '(NULL::text IS NULL OR LOWER(planet) = LOWER(NULL::text))',
         'ORDER BY planet, remedy_id',
       ],
-      handlerRef: 'platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:1763-1776',
+      handlerRef: 'platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:1770-1783',
     },
     {
       scuId: 'scu.catalog.query_parihara_graph',

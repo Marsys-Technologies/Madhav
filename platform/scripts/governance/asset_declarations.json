@@ -145,7 +145,7 @@
    "read_kind": null,
    "evidence": {
     "kind": "registry kind data (seed default, T0 data); writer-backed own table(s) classical_attributions; census Idem.pattern PASS: the asset's own table(s) replaced by delete-then-insert: cla",
-    "carriage": "served_surface null (unknown): the only evidence is the asset's own table name in an unavailable stub: platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:662 (classical_attribution_lookup 'UNAVAILABLE - fails closed', the classical_attributions store was dropped); Dens.served N/A. (The editorial map lists it as a classical-text source: the sources disagree.)",
+    "carriage": "served_surface null (unknown): the only evidence is the asset's own table name in an unavailable stub: platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:669 (classical_attribution_lookup 'UNAVAILABLE - fails closed', the classical_attributions store was dropped); Dens.served N/A. (The editorial map lists it as a classical-text source: the sources disagree.)",
     "prose_fields": null
    }
   },
@@ -752,12 +752,12 @@
    "prose_fields": null,
    "terminal_by_construction": null,
    "cross_asset_writes": null,
-   "read_evidence": "platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:536",
+   "read_evidence": "platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:543",
    "read_table": "sutravali_rules",
    "read_kind": null,
    "evidence": {
     "kind": "registry kind data (seed default, T0 data); writer-backed own table(s) sutravali_rules; census Idem.pattern PASS: INSERT … ON CONFLICT into the asset's own table(s) (upsert):",
-    "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:536 reads `sutravali_rules` (`FROM sutravali_rules r`). Dens.served=N/A (scanner gap: the scan does not see this read). read_sutravali_rule handler (returns the row), NOT the fail-closed classical_attribution_lookup stub at :662; siblings query_sutravali_rules / _for_planet in the same file.",
+    "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:543 reads `sutravali_rules` (`FROM sutravali_rules r`). Dens.served=N/A (scanner gap: the scan does not see this read). read_sutravali_rule handler (returns the row), NOT the fail-closed classical_attribution_lookup stub at :662; siblings query_sutravali_rules / _for_planet in the same file.",
     "prose_fields": null
    }
   },

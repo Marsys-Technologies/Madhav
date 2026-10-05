@@ -175,7 +175,7 @@ describe('Purna Anvesana Wave 7 Beyond-Acarya source acceptance', () => {
     // edge, proof kind or availability disposition changed (the metric assertions above are
     // unchanged). Only this pinned hash was re-pinned.
     // Suvarna DENS (v16): SUVARNA-DENS-PR2-L0-DENSITY-CONTRACT-SNAPSHOT-REGEN - capability_content_hash/report_hash re-pinned; metric assertions above unchanged.
-    expect(report.report_hash).toBe('sha256:655a9bdc5153af174ff279f109ba8f6243771e6984ada68abd0ebb9b248bef6a')
+    expect(report.report_hash).toBe('sha256:154f56f29e55e8213ab17fb0775d21df1cda62306bfe3f5a50cf8dd50df76f22')
   })
 
   it('detects an independently expected concept omitted from the snapshot', () => {
@@ -642,7 +642,7 @@ describe('Purna Anvesana Wave 7 Beyond-Acarya source acceptance', () => {
         producer_contract_fingerprint: snapshot.producer_contract_fingerprint,
       },
       // Suvarna DENS (v16): SUVARNA-DENS-PR2-L0-DENSITY-CONTRACT-SNAPSHOT-REGEN.
-      evaluated_source_revision: 'f72dc9d93921c1fd5c9497d72c044483fc7ba8a2',
+      evaluated_source_revision: '963791fede05427aeec7737a6ba0dfa3b585e4d1',
     })
   })
 })

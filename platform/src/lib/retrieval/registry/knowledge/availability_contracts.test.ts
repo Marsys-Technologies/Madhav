@@ -1004,7 +1004,7 @@ describe('binding availability contracts', () => {
     expect(contract.sql).not.toMatch(/\b(?:source_canonical_id|source_citation|classical_attestation_text)\s+IS\s+NOT\s+NULL\b/i)
     expect(contract.sql).not.toMatch(/\b(?:chart_id|build_id|chart_facts|bodha_[a-z0-9_]+)\b/i)
     expect(contract.source_refs).toEqual([
-      'platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:1501-1517',
+      'platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:1508-1524',
       'platform/migrations/ws2_l0_remedy_corpus.sql:16-33',
       'platform/supabase/migrations/081_l0fr_schema.sql:113-123',
     ])
@@ -1034,7 +1034,7 @@ describe('binding availability contracts', () => {
     expect(contract.sql).not.toMatch(/\bscaffold_status\s*=/i)
     expect(contract.sql).not.toMatch(/\b(?:chart_id|build_id|chart_facts|bodha_[a-z0-9_]+)\b/i)
     expect(contract.source_refs).toEqual([
-      'platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:1700-1710',
+      'platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:1707-1717',
       'platform/migrations/ws2_l0_remedy_corpus.sql:16-33',
       'platform/supabase/migrations/081_l0fr_schema.sql:113-123',
       'platform/supabase/migrations/177_l0_phase_alpha_existing_table_schema.sql:17-20',

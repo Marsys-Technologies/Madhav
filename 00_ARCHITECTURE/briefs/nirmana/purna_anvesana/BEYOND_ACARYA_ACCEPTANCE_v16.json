@@ -12,18 +12,18 @@
     "acceptance_version": "beyond-acarya-source-acceptance-v2",
     "corpus_version": "beyond-acarya-inquiry-corpus-v1",
     "temporal_anchor_date": "2026-10-02",
-    "evaluated_source_revision": "f72dc9d93921c1fd5c9497d72c044483fc7ba8a2",
+    "evaluated_source_revision": "963791fede05427aeec7737a6ba0dfa3b585e4d1",
     "generated_snapshot": {
         "path": "platform/src/generated/capability_knowledge.snapshot.json",
         "generated_at": "2026-10-02T02:18:40.000Z",
-        "snapshot_file_sha256": "sha256:b2f58f062b5291eb2f448778c6e6fc111b0204424ec5f699119c08f6b55c38c3",
-        "capability_content_hash": "sha256:fc009008460b839da93b99789fd47675124c97a4f2cac3938f6524f060a6c254",
-        "source_catalog_fingerprint": "sha256:b4b6ef253f61424eb61ffc233761690e5655fae840a5f6a03b5759189447d46c",
-        "semantic_review_fingerprint": "sha256:c2bfb56208cde017832b900a6627466052e50e7ccd65db2278d1ac2ab0ac8a7a",
+        "snapshot_file_sha256": "sha256:cc4162bf25dc71c19593cbea5a7f3777f65df7512b3e93bb954572ad6ea3e63e",
+        "capability_content_hash": "sha256:ea6996564bb434c74ce7fcc5137ea0617f4df6ef8c2ac96154732a00d6bfec91",
+        "source_catalog_fingerprint": "sha256:a4908aa78a10bb9d2cdd7f8f1c86668158929e472d73f8777a0f698454bb0281",
+        "semantic_review_fingerprint": "sha256:bf537982d054d3a9cb6c993b0fd91911e992b05d7c1ca01c19c1f3654000f809",
         "producer_contract_fingerprint": "sha256:e52114464a82bb9ff6c3392202fdda7a31770dcffc6e49d93eebcf4fffeba4e5"
     },
-    "capability_content_hash": "sha256:fc009008460b839da93b99789fd47675124c97a4f2cac3938f6524f060a6c254",
-    "report_hash": "sha256:655a9bdc5153af174ff279f109ba8f6243771e6984ada68abd0ebb9b248bef6a",
+    "capability_content_hash": "sha256:ea6996564bb434c74ce7fcc5137ea0617f4df6ef8c2ac96154732a00d6bfec91",
+    "report_hash": "sha256:154f56f29e55e8213ab17fb0775d21df1cda62306bfe3f5a50cf8dd50df76f22",
     "evidence_kind": "synthetic_source_local",
     "source_status": "SOURCE_ONLY_NOT_LIVE",
     "verdict": "ACCEPTED_SOURCE_LOCAL",
@@ -78,5 +78,5 @@
     "production_validation": "NOT_RUN",
     "deployed_route_validation": "NOT_RUN",
     "candidate_validation": "NOT_RUN",
-    "provenance_note": "Suvarna DENS PR-2 (L0) successor: hand-authored, handler-corroborated density_contract literals on seventeen L0 query modules and get_graha_yuddha (L1) replace the machine-derived default. The honest paginated:false on query_compendium_index, query_muhurta_lattice and query_sky_calendar (a cap, no offset, no cursor) moved their route pagination dispositions from non_exhaustible to not_paginated, and the honest empty_reason:false on query_dosha_catalog and get_graha_yuddha moved their empty_result_state from declared (a derived, handler-unbacked default) to missing; six source_ref line ranges in source_query_availability.ts shifted with the inserted literals, moving source_catalog_fingerprint, semantic_review_fingerprint and, with them, capability_content_hash and report_hash; producer_contract_fingerprint coincides byte-for-byte with the predecessor's and no SCU, edge, proof kind or availability disposition changed - all six metrics are identical; no acceptance logic or criterion changed. The snapshot was regenerated with the explicit generated_at already committed (182 SCUs, codegen:capability-knowledge:check green) and the Pariprashna route_ports baselines were regenerated against it (PARIPRASHNA_PORTS_BASELINE=write; stable across two writes). Source-provenance acceptance only: candidate_validation remains NOT_RUN; no live, deployed, empirical, expert or production acceptance is claimed."
+    "provenance_note": "Suvarna DENS PR-2 (L0) successor: hand-authored, handler-corroborated density_contract literals on seventeen L0 query modules, read_sutravali_rule (register_d7_channel) and get_graha_yuddha (L1) replace the machine-derived default. The honest paginated:false on query_compendium_index, query_muhurta_lattice and query_sky_calendar (a cap, no offset, no cursor) moved their route pagination dispositions from non_exhaustible to not_paginated, and the honest empty_reason:false on query_dosha_catalog, read_sutravali_rule and get_graha_yuddha moved their empty_result_state from declared (a derived, handler-unbacked default) to missing; source_ref line ranges in source_query_availability.ts shifted with the inserted literals, moving source_catalog_fingerprint, semantic_review_fingerprint and, with them, capability_content_hash and report_hash; producer_contract_fingerprint coincides byte-for-byte with the predecessor's and no SCU, edge, proof kind or availability disposition changed - all six metrics are identical; no acceptance logic or criterion changed. The snapshot was regenerated with the explicit generated_at already committed (182 SCUs, codegen:capability-knowledge:check green) and the Pariprashna route_ports baselines were regenerated against it (PARIPRASHNA_PORTS_BASELINE=write; stable across two writes). Source-provenance acceptance only: candidate_validation remains NOT_RUN; no live, deployed, empirical, expert or production acceptance is claimed."
 }

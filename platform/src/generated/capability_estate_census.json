@@ -6,7 +6,7 @@
     "A reviewed output-digest specification establishes deterministic output hashing, not semantic value, population, planner reachability, or empirical validity.",
     "The full MCP profile is registration-gated by the reviewed route authority; its real registration set is exact-set tested independently."
   ],
-  "content_sha256": "d84981b2fdbecf284b067964c6945595b9fdabc274fdebc2e3a1f21deb6a122c",
+  "content_sha256": "0cdffa687389414cee0d559d951bd6717351298812b0ad6f2631270dbd9073c1",
   "denominators": {
     "descriptor_route_contracts": {
       "by_public_route_disposition": {
@@ -3366,8 +3366,8 @@
         "capability_uri": "marsys://tool/L0/read_sutravali_rule",
         "descriptor_name": "read_sutravali_rule",
         "descriptor_type": "tool",
-        "empty_reason_declared": true,
-        "empty_result_state": "declared",
+        "empty_reason_declared": false,
+        "empty_result_state": "missing",
         "full_profile_enforcement": "enforced",
         "input_contract": {
           "rule_id": {
@@ -20988,7 +20988,7 @@
       {
         "id": "live_runtime_catalog_projection",
         "path": "platform/src/lib/retrieval/registry/catalog.ts",
-        "sha256": "d813295c06fbdb1c077e2c7515d4c19e80cd62cf7f2f543764f7f1eff0ef1fb5"
+        "sha256": "bf7f499aaf9063ac181af34c4a7d3ddb0c4c5a01d0cb384fe6fbbcde165ea116"
       },
       {
         "id": "output_digest_migration_source_set",
@@ -21683,7 +21683,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/knowledge/source_query_availability.ts",
-            "sha256": "b7b7249e357f25479906a4f15e886ad860de192b2fd7e24e5f27f3bd325eba25"
+            "sha256": "93c8e05949814f49204427893bee547eaea03c2a511e608afc820c9aec741d7d"
           },
           {
             "path": "platform/src/lib/retrieval/registry/knowledge/stable.ts",
@@ -22343,7 +22343,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/register_d7_channel.ts",
-            "sha256": "5a447a1ef507b43b883a4400ae540b6c7ef9e8bb4ba419f6c6d470eae19be73f"
+            "sha256": "087ebbde8cc17c9bbee0179bbc2a135908c2a0cf44cc0aec835f9fd33651b0b3"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/register_d8_assess_domain.ts",
@@ -22419,7 +22419,7 @@
           }
         ],
         "path": "platform/src/lib/retrieval/{registry,synthesis}/**/*.ts (excluding tests)",
-        "sha256": "fad0cd80340f5a417962cecb63766945ffea7359103d433cc0ae89833f92c88d"
+        "sha256": "c173e2c8178d37b67a9ac7e3ea2c9e61c02b2194f10fb47b7d962e7990ef8340"
       },
       {
         "id": "service_effect_contracts",

@@ -514,6 +514,13 @@ const readSutravaliRuleTool: CapabilityDescriptor = {
 
   mcp_annotations: { readOnly: true, destructive: false },
 
+  // Suvarna DENS (§N.6, §N.8): hand-authored from what this handler actually does, not the derived default.
+  density_contract: {
+    paginated: false, // single-row lookup by rule_id; nothing to page
+    facets: ['rule_id'], // the one real filter (exact key lookup)
+    empty_reason: false, // not-found is an error response, never an `empty_reason`
+  },
+
   async handler(args: Record<string, unknown>, _ctx?: unknown) {
     const rule_id = args['rule_id'] as string | undefined
     if (!rule_id) {
