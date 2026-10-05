@@ -125,3 +125,21 @@ def _isolate_conductor_halt_log(tmp_path_factory: pytest.TempPathFactory):
             os.environ.pop("CONDUCTOR_HALT_LOG_DIR_OVERRIDE", None)
         else:
             os.environ["CONDUCTOR_HALT_LOG_DIR_OVERRIDE"] = prior
+
+# --- no test may launch a real cloud command (2026-10-05 incident: see platform/scripts/governance/no_real_cloud_guard.py) ---------------------------
+import pathlib as _pathlib
+import sys as _sys
+
+
+@pytest.fixture(autouse=True, scope="session")
+def _no_real_cloud_commands():
+    gov = _pathlib.Path(__file__).resolve().parents[1] / "scripts" / "governance"
+    _sys.path.insert(0, str(gov))
+    try:
+        import no_real_cloud_guard
+    except ImportError:                                                  # a checkout without the guard must not break the sidecar suite
+        yield
+        return
+    uninstall = no_real_cloud_guard.install()
+    yield
+    uninstall()
