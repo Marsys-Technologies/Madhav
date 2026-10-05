@@ -480,4 +480,4 @@ declaration instead of to the pre state: the row count, the declared post finger
 that differs from the pre one. Any difference is exit 11 (`EXPECTED_ROW_COUNT_MISMATCH`, `EXPECTED_FINGERPRINT_MISMATCH`,
 `EXPECTED_CHANGE_NOT_OBSERVED`) with an honest receipt: the build cannot be undone. Precedence: 8 > 11 > 9 > 10. (3) `--verify-run <run_id>` of such a run
 needs the same `--expected-change` file (`RECEIPT_EXPECTED_CHANGE_MISMATCH` otherwise) and grades the receipt's declaration. `--accept-changed-output`
-without a file is bad input (exit 2).
+without a file is bad input (exit 2). The file must be a regular `.json` (no symlink, no env/credential-looking name, at most 64 KiB, `why`/`evidence` at most 500 characters). A receipt of the default mode carries no `expected_change` key and no `expectation` / `row_counts` in `verification`; in this mode `outcome` is `MET` only when the whole verification passed, `MISMATCH` only when the post state was read and differs from the declaration, and null otherwise.

@@ -315,6 +315,9 @@ def parse_redispatch(values: Sequence[str] | None) -> list[str]:
     return sorted(set(out))
 
 
+EXPECTED_TEXT_MAX_CHARS = 500
+
+
 def _declared_text_problem(v: Any, min_chars: int) -> str | None:
     """None when `v` is a real one-line declaration text: a str, trimmed, no control / line-separator character, at least `min_chars`
     characters and two words, no placeholder word (tbd, todo, n/a, none, unknown, pending ...)."""
@@ -324,6 +327,8 @@ def _declared_text_problem(v: Any, min_chars: int) -> str | None:
     if any(unicodedata.category(ch) in ("Cc", "Cf", "Zl", "Zp") for ch in v):
         return "contains a control or line-separator character (one visible line)"
     words = re.findall(r"[^\W_]+(?:[./'-][^\W_]+)*", v)
+    if len(v) > EXPECTED_TEXT_MAX_CHARS:
+        return f"is longer than {EXPECTED_TEXT_MAX_CHARS} characters"
     if len(v) < min_chars or len(words) < 2:
         return f"is too short to be a real statement (at least {min_chars} characters and 2 words)"
     if any(w.casefold() in _PLACEHOLDER_WORDS for w in words):
@@ -342,14 +347,35 @@ def load_expected_change(path: str | None, asset: str) -> tuple[dict, str]:
     if not path:
         bad("no path")
     p = Path(path).expanduser()
-    if p.suffix != ".json" or _CREDENTIAL_NAME.search(p.name):
-        bad("must be a .json file that is not named like an environment or credential file")
+    if p.is_symlink():
+        bad("is a symbolic link: name the file itself")
     try:
-        if not p.is_file():
-            bad("is not a file")
-        raw = p.read_bytes()
+        resolved = p.resolve(strict=True)
+    except (OSError, RuntimeError):
+        bad("cannot be resolved (missing, or a link loop)")
+    for name in (p.name, resolved.name):                 # the resolved name too: a parent-directory link must not hide an env / credential file
+        if not name.endswith(".json") or _CREDENTIAL_NAME.search(name):
+            bad("must be a .json file that is not named like an environment or credential file")
+    try:
+        fd_ = os.open(str(resolved), os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0))
+    except OSError as exc:
+        bad(f"cannot be opened ({type(exc).__name__})")
+    try:
+        import stat as _stat  # noqa: PLC0415
+        if not _stat.S_ISREG(os.fstat(fd_).st_mode):
+            bad("is not a regular file")
+        chunks, total = [], 0
+        while total <= EXPECTED_CHANGE_MAX_BYTES:        # at most MAX+1 bytes are ever read
+            chunk = os.read(fd_, EXPECTED_CHANGE_MAX_BYTES + 1 - total)
+            if not chunk:
+                break
+            chunks.append(chunk)
+            total += len(chunk)
+        raw = b"".join(chunks)
     except OSError as exc:
         bad(f"cannot be read ({type(exc).__name__})")
+    finally:
+        os.close(fd_)
     if len(raw) > EXPECTED_CHANGE_MAX_BYTES:
         bad(f"is larger than {EXPECTED_CHANGE_MAX_BYTES} bytes")
 
@@ -357,13 +383,15 @@ def load_expected_change(path: str | None, asset: str) -> tuple[dict, str]:
         d = {}
         for k, v in pairs:
             if k in d:
-                raise ValueError(f"duplicate key {k!r}")
+                raise ValueError("duplicate key")       # the key itself is never echoed
             d[k] = v
         return d
     try:
         doc = json.loads(raw.decode("utf-8"), object_pairs_hook=no_dups)
+    except json.JSONDecodeError as exc:
+        bad(f"is not valid JSON (line {exc.lineno}, column {exc.colno})")
     except (ValueError, RecursionError) as exc:
-        bad(f"is not valid JSON ({exc})")
+        bad("is not valid JSON" + (" (a duplicate key)" if str(exc) == "duplicate key" else f" ({type(exc).__name__})"))
     if not isinstance(doc, dict):
         bad("must be a JSON object")
     extra = sorted(set(doc) - set(EXPECTED_CHANGE_KEYS))
@@ -678,6 +706,8 @@ def new_receipt(**fields: Any) -> dict:
     if unknown:
         raise slw.LevelWaveError(f"receipt fields outside the closed schema: {sorted(unknown)}")
     base.update(fields)
+    if base["expected_change"] is None:
+        del base["expected_change"]                     # without --expected-change the receipt has exactly the keys it always had
     return base
 
 
@@ -1084,7 +1114,7 @@ def verify_forced_run(connect, fp_connect, decls, *, run_id: str, asset: str, un
         except slw.LevelWaveRefusal as exc:
             codes.append("POST_FINGERPRINT_UNREADABLE")
             notes.append("; ".join(r["detail"] for r in exc.refusals))
-    out.setdefault("expectation", None if expected is None else "MISMATCH")      # a run that never reached its post fingerprint did not meet the declaration
+    out.setdefault("expectation", None)      # None: not in expected-change mode, or the post state was never read (nothing established)
     out["codes"] = codes
     out["notes"] = notes
     out["verdict"] = "PASS" if not codes else codes
@@ -1378,11 +1408,13 @@ def _finish(summary, receipt, receipt_path, *, connect, fp_connect, decls, unit,
     receipt["post_fingerprint"] = ver["post_fingerprint"]
     receipt["verification"] = {k: ver[k] for k in ("verdict", "run_state", "wait", "disposition", "duration_seconds", "fingerprint_equal",
                                                    "codes", "notes")}
-    receipt["verification"].update(expectation=ver["expectation"], row_counts=ver.get("row_counts"))      # None outside expected-change mode
-    if expected is not None:
+    if expected is not None:                              # expected-change mode ONLY: the default receipt keeps its shape
         post = ver["post_fingerprint"]
+        receipt["verification"].update(expectation=ver["expectation"], row_counts=ver.get("row_counts"))
         ec = dict(receipt["expected_change"])
-        ec.update(post_row_count=None if post is None else unit_row_count(post), outcome=ver["expectation"])
+        # MET only when the whole verification passed; MISMATCH only when the post state was read and differs from the declaration; otherwise null (not established)
+        outcome = "MET" if (ver["expectation"] == "MET" and ver["verdict"] == "PASS") else ("MISMATCH" if ver["expectation"] == "MISMATCH" else None)
+        ec.update(post_row_count=None if post is None else unit_row_count(post), outcome=outcome)
         receipt["expected_change"] = ec
 
     receipt["verified_at"] = _utc_iso(now)
@@ -1411,7 +1443,7 @@ def _verify_run_mode(args, *, asset, anchor, receipt_path, connect, fp_connect, 
     if not (receipt["committed"] and receipt["run_id"] == run_id and receipt["asset"] == asset and receipt["anchor_chart"] == anchor):
         raise _refuse("RECEIPT_RUN_MISMATCH", "the receipt is not the committed receipt of this run, asset and anchor chart")
     rec_ec = receipt.get("expected_change")
-    if (rec_ec is None) != (expected is None) or (rec_ec is not None and rec_ec["file_sha256"] != expected_sha):
+    if (rec_ec is None) != (expected is None) or (rec_ec is not None and (rec_ec["file_sha256"] != expected_sha or rec_ec["spec"] != expected)):
         # the declaration is the one the token bound: a verify with another file (or none, or one for a receipt that has none) would grade another claim
         raise _refuse("RECEIPT_EXPECTED_CHANGE_MISMATCH", "the receipt " + ("carries no expected change" if rec_ec is None else
                       "was committed under an expected-change file with a different digest") + ": pass the same --expected-change file "
@@ -1432,7 +1464,7 @@ def _verify_run_mode(args, *, asset, anchor, receipt_path, connect, fp_connect, 
     summary = {"asset": asset, "anchor_chart": anchor, "run_id": run_id, "mode": "verify-run", "receipt_path": str(receipt_path)}
     return _finish(summary, receipt, receipt_path, connect=connect, fp_connect=fp_connect, decls=decls, unit=unit,
                    pre=receipt["pre_fingerprint"], run_id=run_id, asset=asset, args=args, out=out, sleep=sleep, monotonic=monotonic,
-                   now=now, fp_reader=fp_reader, expected=None if rec_ec is None else rec_ec["spec"])
+                   now=now, fp_reader=fp_reader, expected=expected)      # the FILE is graded: its bytes matched the receipt's digest and its spec equals the recorded one
 
 
 def main(argv: Sequence[str] | None = None) -> int:
