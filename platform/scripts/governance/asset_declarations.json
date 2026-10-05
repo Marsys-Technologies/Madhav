@@ -1841,7 +1841,18 @@
     ],
     "why": "each discovery row lists the MSR signal ids it rests on in constituent_refs_jsonb under signal_ids, and each signal id resolves through its own constituent facts to chart_facts",
     "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/bo_anveshana.py:412"
-   }
+   },
+   "fidelity_tests": [
+    {
+     "test": "platform/python-sidecar/tests/l2/test_bo_anveshana_fidelity_golden.py::test_anveshana_discovery_prose_golden",
+     "covers": [
+      "surface_reading",
+      "depth_reading",
+      "surface_depth_delta",
+      "why_an_acharya_misses_it"
+     ]
+    }
+   ]
   },
   "bo_arudha": {
    "kind": "data",
@@ -1876,7 +1887,17 @@
     ],
     "why": "each MSR signal row lists the L1 chart_facts fact ids it rests on in constituent_facts_array, which must resolve back to chart_facts per the N.5 rule",
     "evidence": "platform/migrations/325_l2_bodha_enriched_schema.sql:84"
-   }
+   },
+   "fidelity_tests": [
+    {
+     "test": "platform/python-sidecar/tests/l2/test_bo_arudha_fidelity_golden.py::test_arudha_prose_golden",
+     "covers": [
+      "signal_headline_text",
+      "signal_summary_text",
+      "citation_human"
+     ]
+    }
+   ]
   },
   "bo_bimba": {
    "kind": "data",
@@ -1900,6 +1921,14 @@
    "produced_tables": [
     {
      "table": "bodha_cgm_nodes"
+    }
+   ],
+   "fidelity_tests": [
+    {
+     "test": "platform/python-sidecar/tests/l2/test_bo_bimba_fidelity_golden.py::test_yoga_and_dosha_node_citation_human_names_class_and_configuration",
+     "covers": [
+      "citation_human"
+     ]
     }
    ]
   },
@@ -1931,6 +1960,14 @@
     },
     {
      "table": "bodha_cdlm_pattern_clusters"
+    }
+   ],
+   "fidelity_tests": [
+    {
+     "test": "platform/python-sidecar/tests/l2/test_bo_cdlm_summary_fidelity_golden.py::test_pattern_cluster_citation_human_states_hand_counted_cell_total",
+     "covers": [
+      "citation_human"
+     ]
     }
    ]
   },
@@ -1964,6 +2001,15 @@
     {
      "table": "bodha_cgm_chart_topology_summary"
     }
+   ],
+   "fidelity_tests": [
+    {
+     "test": "platform/python-sidecar/tests/l2/test_bo_cgm_motifs_fidelity_golden.py::test_stellium_motif_name_and_citation_human_golden",
+     "covers": [
+      "citation_human",
+      "motif_name"
+     ]
+    }
    ]
   },
   "bo_cgm_paths": {
@@ -1984,7 +2030,15 @@
     "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L2_bodha/query_cgm_paths.ts:76 reads `bodha_cgm_paths` (`FROM bodha_cgm_paths`). Dens.served=FAIL.",
     "prose_fields": "path_label_human (SS ruling 2026-10-01: a composed string that states or grades a computed value is narration): the label is composed from the graha chain and states the computed final dispositor, composed at platform/python-sidecar/pipeline/orchestrator/writers/bo_cgm_paths.py:181, platform/python-sidecar/pipeline/orchestrator/writers/bo_cgm_paths.py:225 and platform/python-sidecar/pipeline/orchestrator/writers/bo_cgm_paths.py:227; bound at platform/python-sidecar/pipeline/orchestrator/writers/bo_cgm_paths.py:109 (INSERT INTO bodha_cgm_paths); citation_human on this asset is one constant string at platform/python-sidecar/pipeline/orchestrator/writers/bo_cgm_paths.py:350 and is not narration"
    },
-   "evidence_kind": "writer"
+   "evidence_kind": "writer",
+   "fidelity_tests": [
+    {
+     "test": "platform/python-sidecar/tests/l2/test_bo_cgm_paths_fidelity_golden.py::test_path_label_human_golden_two_hop_chain_to_self_ruling_graha",
+     "covers": [
+      "path_label_human"
+     ]
+    }
+   ]
   },
   "bo_chart_gestalt": {
    "kind": "data",
@@ -2162,7 +2216,24 @@
     ],
     "why": "each MSR signal row lists the L1 chart_facts fact ids it rests on in constituent_facts_array, which must resolve back to chart_facts per the N.5 rule",
     "evidence": "platform/migrations/325_l2_bodha_enriched_schema.sql:84"
-   }
+   },
+   "fidelity_tests": [
+    {
+     "test": "platform/python-sidecar/tests/l2/test_bo_laksana_fidelity_golden.py::test_bo_laksana_fact_path_headline_summary_golden",
+     "covers": [
+      "signal_headline_text",
+      "signal_summary_text"
+     ]
+    },
+    {
+     "test": "platform/python-sidecar/tests/l2/test_bo_laksana_fidelity_golden.py::test_bo_laksana_d9_cross_check_headline_summary_citation_golden",
+     "covers": [
+      "signal_headline_text",
+      "signal_summary_text",
+      "citation_human"
+     ]
+    }
+   ]
   },
   "bo_laksana_rerank": {
    "kind": "data",
@@ -2227,7 +2298,16 @@
     ],
     "why": "each MSR signal row lists the L1 chart_facts fact ids it rests on in constituent_facts_array, which must resolve back to chart_facts per the N.5 rule",
     "evidence": "platform/migrations/325_l2_bodha_enriched_schema.sql:84"
-   }
+   },
+   "fidelity_tests": [
+    {
+     "test": "platform/python-sidecar/tests/l2/test_bo_nakshatra_semantic_fidelity_golden.py::test_nakshatra_semantic_headline_and_summary_golden",
+     "covers": [
+      "signal_headline_text",
+      "signal_summary_text"
+     ]
+    }
+   ]
   },
   "bo_pramana_mapa": {
    "kind": "data",
@@ -2292,7 +2372,27 @@
     ],
     "why": "each pratijna row cites the MSR signals that support or contradict it in supporting_signal_ids and contradicting_signal_ids, each resolving through its constituent facts to chart_facts",
     "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/bo_pratijna.py:220"
-   }
+   },
+   "fidelity_tests": [
+    {
+     "test": "platform/python-sidecar/tests/l2/test_bo_pratijna_fidelity_golden.py::test_pratijna_factor_ledger_detail_golden",
+     "covers": [
+      "derivation.$.factor_ledger[*].detail"
+     ]
+    },
+    {
+     "test": "platform/python-sidecar/tests/l2/test_bo_pratijna_fidelity_golden.py::test_pratijna_denials_reason_golden",
+     "covers": [
+      "derivation.$.denials[*].reason"
+     ]
+    },
+    {
+     "test": "platform/python-sidecar/tests/l2/test_bo_pratijna_fidelity_golden.py::test_pratijna_connections_reason_golden",
+     "covers": [
+      "derivation.$.factor_ledger[*].connections[*].reason"
+     ]
+    }
+   ]
   },
   "bo_samskara": {
    "kind": "data",
@@ -2362,6 +2462,14 @@
     {
      "table": "bodha_triangulation"
     }
+   ],
+   "fidelity_tests": [
+    {
+     "test": "platform/python-sidecar/tests/l2/test_bo_sangati_fidelity_golden.py::test_cdlm_cell_and_convergence_citation_human_state_hand_counted_signals",
+     "covers": [
+      "citation_human"
+     ]
+    }
    ]
   },
   "bo_special_lagna": {
@@ -2396,7 +2504,16 @@
     ],
     "why": "each MSR signal row lists the L1 chart_facts fact ids it rests on in constituent_facts_array, which must resolve back to chart_facts per the N.5 rule",
     "evidence": "platform/migrations/325_l2_bodha_enriched_schema.sql:84"
-   }
+   },
+   "fidelity_tests": [
+    {
+     "test": "platform/python-sidecar/tests/l2/test_bo_special_lagna_fidelity_golden.py::test_special_lagna_prose_golden",
+     "covers": [
+      "signal_headline_text",
+      "signal_summary_text"
+     ]
+    }
+   ]
   },
   "bo_sudarshana": {
    "kind": "data",
@@ -2430,7 +2547,16 @@
     ],
     "why": "each MSR signal row lists the L1 chart_facts fact ids it rests on in constituent_facts_array, which must resolve back to chart_facts per the N.5 rule",
     "evidence": "platform/migrations/325_l2_bodha_enriched_schema.sql:84"
-   }
+   },
+   "fidelity_tests": [
+    {
+     "test": "platform/python-sidecar/tests/l2/test_bo_sudarshana_fidelity_golden.py::test_sudarshana_prose_golden",
+     "covers": [
+      "signal_headline_text",
+      "signal_summary_text"
+     ]
+    }
+   ]
   },
   "bo_upaya": {
    "kind": "data",
@@ -2468,6 +2594,20 @@
     {
      "table": "bodha_rm_pattern_remedies"
     }
+   ],
+   "fidelity_tests": [
+    {
+     "test": "platform/python-sidecar/tests/l2/test_bo_upaya_fidelity_golden.py::test_upaya_maraka_verdict_reason_golden",
+     "covers": [
+      "prescription_detail_jsonb.$.maraka_contraindication_verdict.reason"
+     ]
+    },
+    {
+     "test": "platform/python-sidecar/tests/l2/test_bo_upaya_fidelity_golden.py::test_upaya_citation_human_golden",
+     "covers": [
+      "citation_human"
+     ]
+    }
    ]
   },
   "bo_vargottama_dhana": {
@@ -2503,7 +2643,17 @@
     ],
     "why": "each MSR signal row lists the L1 chart_facts fact ids it rests on in constituent_facts_array, which must resolve back to chart_facts per the N.5 rule",
     "evidence": "platform/migrations/325_l2_bodha_enriched_schema.sql:84"
-   }
+   },
+   "fidelity_tests": [
+    {
+     "test": "platform/python-sidecar/tests/l2/test_bo_vargottama_dhana_fidelity_golden.py::test_vargottama_dhana_headline_summary_citation_golden",
+     "covers": [
+      "signal_headline_text",
+      "signal_summary_text",
+      "citation_human"
+     ]
+    }
+   ]
   },
   "bo_yantra_mechanism": {
    "kind": "data",
@@ -2524,7 +2674,16 @@
     "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L2_bodha/query_mechanisms.ts:446 reads `bodha_mechanisms` (`FROM bodha_mechanisms d`). Dens.served=PASS.",
     "prose_fields": "citation_human (SS ruling 2026-10-01: a composed string that states or grades a computed value is narration, counts included): citation_human embeds the converging-graha count (:397) and valence, net score, natural score and dignity modifier (:571); mechanism_name embeds the valence (:565); the labels at :344 :352 :388 :472 :480 name MEMBERS of a computed dispositor / house-lordship cycle: the cycle membership is itself computed, but the strings state no value of it, so no declaration change; :237 forwards motif_name (declared on bo_cgm_motifs). Composed at platform/python-sidecar/pipeline/orchestrator/writers/bo_yantra_mechanism.py:397, platform/python-sidecar/pipeline/orchestrator/writers/bo_yantra_mechanism.py:571, platform/python-sidecar/pipeline/orchestrator/writers/bo_yantra_mechanism.py:565. AST census of the writer's citation_human sites (platform/python-sidecar/pipeline/orchestrator/writers/bo_yantra_mechanism.py): 10 composed, 0 constant, 1 forwarded, 0 other. Column bound at platform/python-sidecar/pipeline/orchestrator/writers/bo_yantra_mechanism.py:77 (INSERT INTO bodha_mechanisms); served by platform/src/lib/retrieval/registry/layers/register_d9_judgment.ts:1498."
    },
-   "evidence_kind": "writer"
+   "evidence_kind": "writer",
+   "fidelity_tests": [
+    {
+     "test": "platform/python-sidecar/tests/l2/test_bo_yantra_mechanism_fidelity_golden.py::test_tenancy_mechanism_name_and_citation_human_golden",
+     "covers": [
+      "citation_human",
+      "mechanism_name"
+     ]
+    }
+   ]
   },
   "ga_ayurdaya": {
    "kind": "data",
