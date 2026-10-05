@@ -120,13 +120,14 @@ describe('migration 1218: writer_timeout_seconds is outside the frozen-manifest 
     expect(definitions).not.toContain('writer_timeout_seconds')
   })
 
-  it('seed preserves the live value on conflict and carries no per-asset override for the two assets', () => {
+  it('seed preserves the live value on conflict; its per-asset value for the two assets is the 1296 value (10800)', () => {
     expect(seed).toContain('writer_timeout_seconds = asset_registry.writer_timeout_seconds')
     for (const assetId of ['bo_grounding', 'bo_laksana_rerank']) {
       const start = seed.indexOf(`asset_id: '${assetId}'`)
       expect(start).toBeGreaterThan(-1)
       const block = seed.slice(start, seed.indexOf('\n  },', start))
-      expect(block).not.toContain('writer_timeout_seconds')
+      // migration 1296 (raised 1800 -> 10800) added the seed value so a fresh database matches the live one
+      expect(block).toMatch(/writer_timeout_seconds: 10800,/)
     }
   })
 })
