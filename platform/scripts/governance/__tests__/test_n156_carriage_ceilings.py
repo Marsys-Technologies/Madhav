@@ -148,7 +148,7 @@ def test_a_measured_d3_pass_counts_now_and_a_method_asset_reads_d1_d2_na(monkeyp
     monkeypatch.setattr(ac, "d3_fetch_rows", lambda *a, **k: t3.fix_nodes(t3.pos_rows()))
     monkeypatch.setattr(ac, "d3_fetch_inputs", lambda *a, **k: t3.pos_inputs())
     c = dict(applies="D3", nature="computation", why="graha longitudes re-derived by the Swiss Ephemeris called directly", evidence=EV, spec=t3.pos_spec(), per_witness_values=False)
-    got = ac.carriage_declared_checks("ga_positions", c, "chart_facts", True, asset_rows=530, **KW)
+    got = ac.carriage_declared_checks("ga_positions", c, "chart_facts", True, asset_rows=1205, **KW)
     assert got["Carr.D3"]["v"] == PASS and got["Carr.D2"]["cause"] == "no-per-witness-values"
     cell = ac.rollup_asset("L1", got)["Carr"]
     assert cell["v"] == PASS, cell

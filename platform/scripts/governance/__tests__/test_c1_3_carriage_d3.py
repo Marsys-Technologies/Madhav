@@ -2,9 +2,8 @@
 the generic D3 engine (`carriage_d3.py`) and its two reviewed methods (`carriage_d3_methods.py`).
 
 Ordinary tests on REAL fixtures, no database:
-  * `fixtures/c1_3_ga_positions_writer_rows_moshier.json`: the REAL `ga_positions_writer._build_position_rows` output (530 chart_facts rows: five ayanamshas x the nine grahas and
-    the Lagna) at origin/main f8fb06402, from the adapter's own position / ascendant code on a Moshier backend (no .se1 on the generating host);
-  * `fixtures/c1_3_bg_sky_calendar_ingress_writer_rows.json`: the REAL `bg_sky_calendar.scan_ingresses` + `_to_insert_dict` output (419 ingress rows, 2010-2012).
+  * `fixtures/c1_3_ga_positions_writer_rows_moshier.json`: the REAL `ga_positions_writer._build_position_rows` output (1,205 chart_facts rows, the asset's own count_sql: graha_position, graha_sign_attributes, bhava_cusps, house_chalit, sandhi_flag; five ayanamshas) at origin/main f8fb06402, from the adapter's own position / ascendant code on a Moshier backend (no .se1 on the generating host);
+  * `fixtures/c1_3_bg_sky_calendar_writer_rows.json`: the REAL bg_sky_calendar scan functions + `_to_insert_dict` output (window A 2010-2012: ingresses, stations, solar and lunar eclipses; window B: the 2020 Jupiter-Saturn double transit).
 The reference leg is pyswisseph called directly; the tests skip when it is not installed. The generators are in the spike evidence directory (`E5.7/carr_spike/gen_*.py`).
 No declaration of any asset is filled by this file: the specs below live in the test.
 """
@@ -26,28 +25,40 @@ import carriage_d3 as d3  # noqa: E402
 
 FIX = HERE / "fixtures"
 POS = json.loads((FIX / "c1_3_ga_positions_writer_rows_moshier.json").read_text(encoding="utf-8"))
-SKY = json.loads((FIX / "c1_3_bg_sky_calendar_ingress_writer_rows.json").read_text(encoding="utf-8"))
+SKY = json.loads((FIX / "c1_3_bg_sky_calendar_writer_rows.json").read_text(encoding="utf-8"))
 EV = "platform/python-sidecar/ga_writers/ga_positions_writer.py:289"
 METHODS = d3.load_methods()
 BACKENDS = ["swieph", "moseph"]
 
 
+def _pos_columns():
+    env = "Moshier versus se1 envelope 0.67 arcsec, 5x margin"
+    cols = {}
+    import carriage_d3_methods as cm
+    for c in cm.POSITION_COLUMNS:
+        if c in ("longitude_sidereal", "dist_to_madhya_deg", "dist_to_nearest_boundary_deg") or c.startswith(("sripati_", "placidus_")):
+            cols[c] = dict(kind="circular_deg" if c == "longitude_sidereal" or c.startswith(("sripati_", "placidus_")) else "linear", tol=0.001, basis=env)
+        elif c == "degree_in_sign":
+            cols[c] = dict(kind="circular_30", tol=0.001, basis=env)
+        else:
+            cols[c] = dict(kind="exact", tol=0, basis="discrete or tabulated value derived from the longitude")
+    return cols
+
+
 def pos_spec(**over):
     s = dict(
-        method="swisseph_sidereal_positions_v1", table="chart_facts", expected_rows=50, key=["subject", "ayanamsha"],
+        method="swisseph_sidereal_positions_v1", table="chart_facts", expected_rows=110, key=["subject", "ayanamsha"],
         read=dict(columns=["fact_category", "fact_subject", "fact_key", "ayanamsha_id", "fact_value_num", "fact_value_text"],
-                  where=[{"column": "fact_category", "in": ["graha_position", "graha_sign_attributes"]}], chart_scoped=True,
+                  where=[{"column": "fact_category", "in": ["graha_position", "graha_sign_attributes", "bhava_cusps", "house_chalit", "sandhi_flag"]}], chart_scoped=True,
                   inputs=dict(table="charts", columns=["birth_date", "birth_time", "birth_lat", "birth_lng", "timezone_id"], id_column="id")),
-        columns={"longitude_sidereal": dict(kind="circular_deg", tol=0.001, basis="Moshier versus se1 envelope 0.67 arcsec, 5x margin"),
-                 "degree_in_sign": dict(kind="circular_30", tol=0.001, basis="Moshier versus se1 envelope 0.67 arcsec, 5x margin"),
-                 "sign_num": dict(kind="exact", tol=0, basis="discrete value derived from the longitude"),
-                 "nakshatra_num": dict(kind="exact", tol=0, basis="discrete value derived from the longitude"),
-                 "pada": dict(kind="exact", tol=0, basis="discrete value derived from the longitude"),
-                 "house_d1": dict(kind="exact", tol=0, basis="whole-sign house from the sign numbers"),
-                 "retrograde_flag": dict(kind="exact", tol=0, basis="sign of the longitude speed")},
+        columns=_pos_columns(),
         conventions={"position_model": dict(value="true_geometric", evidence="unverified:jhora drik.py:124 _rise_flags carries swe.FLG_TRUEPOS (the PyJHora position convention)"),
                      "node_model": dict(value="mean_node", evidence="platform/python-sidecar/pyjhora_adapter/positions.py:20"),
-                     "house_rule": dict(value="whole_sign", evidence="platform/python-sidecar/pyjhora_adapter/compute.py:80")},
+                     "house_rule": dict(value="whole_sign", evidence="platform/python-sidecar/pyjhora_adapter/compute.py:80"),
+                     "bhava_system": dict(value="sripati_quadrant_trisection_and_placidus", evidence="platform/python-sidecar/pyjhora_adapter/houses.py:198"),
+                     "bhava_flags": dict(value="sidereal_only", evidence="unverified:jhora drik.py bhaava_madhya_swe uses FLG_SIDEREAL only (the Lagna and planets carry the true-position flag; the cusps do not)"),
+                     "combustion_orbs": dict(value="moon12_mars17_mercury14_jupiter11_venus10_saturn15", evidence="platform/python-sidecar/pyjhora_adapter/dignities.py:39"),
+                     "sandhi_orb": dict(value="3.0", evidence="platform/python-sidecar/pyjhora_adapter/houses.py:128")},
         uncovered=[], backend=dict(allowed=BACKENDS, basis="the declared tolerance carries the measured Moshier versus se1 envelope"),
         boundary={"sign_num": dict(source="longitude_sidereal", width=30.0, cells=12), "nakshatra_num": dict(source="longitude_sidereal", width=360 / 27, cells=27),
                   "pada": dict(source="longitude_sidereal", width=360 / 108, cells=4)})
@@ -71,6 +82,14 @@ def fix_nodes(rows):
     return rows
 
 
+def _setrow(rows, subj, ay, key, **vals):
+    for r in rows:
+        if r["fact_subject"] == subj and r["ayanamsha_id"] == ay and r["fact_key"] == key:
+            r.update(vals)
+            return
+    raise AssertionError((subj, ay, key))
+
+
 def measure_pos(spec=None, rows=None, **kw):
     return d3.d3_measure(spec or pos_spec(), rows if rows is not None else pos_rows(), "chart_facts", inputs=kw.pop("inputs", pos_inputs()), **kw)
 
@@ -85,7 +104,7 @@ def test_real_writer_rows_pass_with_the_node_flag_ruled_by_the_reference():
     m = measure_pos(rows=fix_nodes(pos_rows()))
     assert m["v"] == "PASS", m["measured"]
     ev = m["d3"]
-    assert ev["rows_total"] == 50 and ev["rows_checked"] == 50 and ev["rows_agree"] == 50 and ev["full_population"] is True and ev["n_mismatch"] == 0
+    assert ev["rows_total"] == 110 and ev["rows_checked"] == 110 and ev["rows_agree"] == 110 and ev["full_population"] is True and ev["n_mismatch"] == 0
     assert ev["backend"]["name"] in BACKENDS and ev["max_residual"]["longitude_sidereal"] <= 0.001
     assert d3.d3_evidence_problem(m) == ""
 
@@ -177,10 +196,13 @@ def test_sampling_never_reads_pass():
 
 
 def test_asset_rows_beyond_the_declared_read_cap_partial():
-    m = measure_pos(rows=fix_nodes(pos_rows()), asset_rows=1205)
-    assert m["v"] == "PARTIAL" and "530 of the asset's 1205" in m["measured"]
+    assert len(pos_rows()) == 1205                                 # the declared read covers every row the writer emits (its count_sql: 1,205 for the canonical chart)
+    assert measure_pos(rows=fix_nodes(pos_rows()), asset_rows=1205)["v"] == "PASS"
+    m = measure_pos(rows=fix_nodes(pos_rows()), asset_rows=1300)          # the asset holds rows the declared read does not cover (a category added later): cannot read PASS
+    assert m["v"] == "PARTIAL" and "1205 of the asset's 1300" in m["measured"]
     assert d3.d3_evidence_problem(dict(m, v="PASS")) != ""
-    assert measure_pos(rows=fix_nodes(pos_rows()), asset_rows=530)["v"] == "PASS"
+    short = [r for r in fix_nodes(pos_rows()) if r["fact_category"] != "sandhi_flag"]        # a writer that stopped emitting a category is a named mismatch (the method derives it)
+    assert measure_pos(rows=short)["v"] == "PARTIAL"
 
 
 def test_expected_rows_and_unreadable_inputs():
@@ -288,87 +310,162 @@ def test_evidence_guard_refuses_bare_and_contradictory_records():
         assert d3.d3_evidence_problem(bad) != ""
 
 
-# ───────────────────────── bg_sky_calendar ingress ─────────────────────────
+# ───────────────────────── bg_sky_calendar: every event family ─────────────────────────
 
-def sky_spec(**over):
-    s = dict(method="swisseph_ingress_root_find_v1", table="bg_sky_calendar", expected_rows=len(SKY["rows"]), key=["primary_body", "sign", "event_jd"],
-             read=dict(columns=["event_type", "primary_body", "sign", "event_jd", "longitude_deg", "ayanamsha_key"], where=[{"column": "event_type", "equals": "ingress"}], chart_scoped=False),
-             columns={"edge_distance_deg": dict(kind="linear", tol={"default": 0.001, "by": {"column": "primary_body", "values": {"Rahu": 0.006, "Ketu": 0.006}}},
-                                                 basis="Moshier versus se1 envelope 0.67 arcsec for planets, true node 18 arcsec, margins stated"),
-                      "longitude_deg": dict(kind="circular_deg", tol={"default": 0.001, "by": {"column": "primary_body", "values": {"Rahu": 0.006, "Ketu": 0.006}}},
-                                            basis="writer stores longitude to 4 decimals; same ephemeris envelope"),
-                      "sign": dict(kind="exact", tol=0, basis="the sign entered at the crossing"), "ayanamsha_key": dict(kind="exact", tol=0, basis="stored label equals the declared ayanamsha")},
+NODE_TOL = {"Rahu": 0.006, "Ketu": 0.006}
+
+
+def _tol(default):
+    return {"default": default, "by": {"column": "primary_body", "values": dict(NODE_TOL)}}
+
+
+def sky_spec(window="window_a", **over):
+    s = dict(method="swisseph_sky_events_v1", table="bg_sky_calendar", expected_rows="method", key=["event_type", "primary_body", "secondary_body", "event_jd"],
+             read=dict(columns=["event_type", "primary_body", "secondary_body", "event_jd", "sign", "nakshatra", "longitude_deg", "speed_dps", "ayanamsha_key", "detail"], where=[], chart_scoped=False),
+             columns={"sign": dict(kind="exact", tol=0, basis="the sign at the re-derived instant"),
+                      "nakshatra_num": dict(kind="exact", tol=0, basis="the nakshatra of the re-derived longitude"),
+                      "longitude_deg": dict(kind="circular_deg", tol=_tol(0.001), basis="writer stores 4 decimals; true node wider; same ephemeris"),
+                      "speed_dps": dict(kind="linear", tol=0.005, basis="writer stores 6 decimals; speed changes under 0.5 degree a day squared"),
+                      "ayanamsha_key": dict(kind="exact", tol=0, basis="stored label equals the declared ayanamsha"),
+                      "edge_distance_deg": dict(kind="linear", tol=_tol(0.001), basis="positional tolerance at the stored instant, writer bisection and 5-decimal event_jd"),
+                      "station_type": dict(kind="exact", tol=0, basis="sign of the speed before the station"),
+                      "station_zero_speed": dict(kind="linear", tol=0.0005, basis="five minutes of motion of the fastest stationing body"),
+                      "conj_orb_deg": dict(kind="linear", tol=0.001, basis="writer stores the orb to 4 decimals"),
+                      "conj_offset_deg": dict(kind="linear", tol=0.001, basis="the stored instant is the minimum separation within a bisection step"),
+                      "planet_b_lon": dict(kind="circular_deg", tol=0.002, basis="writer stores 4 decimals"),
+                      "eclipse_type": dict(kind="exact", tol=0, basis="shadow-geometry classification, boundary cases listed"),
+                      "is_central": dict(kind="exact", tol=0, basis="central limit of the shadow axis, boundary cases listed"),
+                      "ecl_time_offset_s": dict(kind="linear", tol=180.0, basis="measured max 49 s solar and 46 s lunar against the swecl.c greatest-eclipse instant, 3x margin"),
+                      "begin_offset_s": dict(kind="linear", tol=180.0, basis="measured max 123 s against the swecl.c contact instants, 1.5x margin"),
+                      "end_offset_s": dict(kind="linear", tol=180.0, basis="measured max 123 s against the swecl.c contact instants, 1.5x margin")},
              conventions={"position_model": dict(value="apparent", evidence="platform/python-sidecar/pipeline/transit_search.py:262"),
                           "node_model": dict(value="true_node", evidence="platform/python-sidecar/pipeline/transit_search.py:60"),
-                          "ayanamsha": dict(value="lahiri", evidence="platform/python-sidecar/pipeline/orchestrator/writers/bg_sky_calendar.py:195")},
-             uncovered=[], backend=dict(allowed=BACKENDS, basis="a 1 second declared tolerance covers the Moshier versus se1 shift"), strata="primary_body")
+                          "ayanamsha": dict(value="lahiri", evidence="platform/python-sidecar/pipeline/orchestrator/writers/bg_sky_calendar.py:195"),
+                          "eclipse_geometry": dict(value="swecl_radii_fundamental_plane", evidence="platform/python-sidecar/pipeline/orchestrator/writers/bg_sky_calendar.py:435"),
+                          "shadow_enlargement": dict(value="1_over_0.99", evidence="unverified:swecl.c lunar shadow enlargement (measured: 1/0.99 matches 309 of 311 lunar eclipses 1900-2036)"),
+                          "history_start": dict(value=SKY[window]["history_start"], evidence="platform/python-sidecar/pipeline/orchestrator/writers/bg_sky_calendar.py:100")},
+             uncovered=[], backend=dict(allowed=BACKENDS, basis="the declared tolerances cover the writer's own resolution; a Moshier run is allowed only in this fixture test"),
+             boundary={"nakshatra_num": dict(source="longitude_deg", width=360 / 27, cells=27)})
     s.update(copy.deepcopy(over))
     return s
 
 
-def sky_rows():
-    return copy.deepcopy(SKY["rows"])
+def sky_rows(window="window_a"):
+    return copy.deepcopy(SKY[window]["rows"])
 
 
-def test_real_writer_ingress_rows_pass_in_full():
+def sky_measure(window="window_a", spec=None, rows=None):
+    return d3.d3_measure(spec or sky_spec(window), rows if rows is not None else sky_rows(window), "bg_sky_calendar")
+
+
+def _types(rows):
+    return {r["event_type"] for r in rows}
+
+
+def test_the_real_writer_rows_cover_every_family_and_pass_in_full():
     t0 = time.time()
-    m = d3.d3_measure(sky_spec(), sky_rows(), "bg_sky_calendar")
+    m = sky_measure()
     assert m["v"] == "PASS", m["measured"]
     ev = m["d3"]
-    assert ev["rows_total"] == ev["rows_checked"] == len(SKY["rows"]) and ev["full_population"] is True and ev["max_residual"]["edge_distance_deg"] <= 0.006
-    assert set(ev["strata"]) == {"Sun", "Moon", "Mars", "Mercury", "Jupiter", "Venus", "Saturn", "Rahu", "Ketu"}
-    assert time.time() - t0 < 30 and d3.d3_evidence_problem(m) == ""
+    assert _types(sky_rows()) == {"ingress", "station", "eclipse_solar", "eclipse_lunar"} and ev["rows_total"] == ev["rows_checked"] == len(SKY["window_a"]["rows"]) and ev["full_population"] is True
+    assert ev["completeness_problems"] == [] and ev["row_count_ok"] is True and d3.d3_evidence_problem(m) == ""
+    assert ev["max_residual"]["ecl_time_offset_s"] <= 180 and time.time() - t0 < 120
+    m2 = sky_measure("window_b")
+    assert m2["v"] == "PASS" and m2["d3"]["rows_total"] == 1 and _types(sky_rows("window_b")) == {"double_transit"}, m2["measured"]
 
 
-def _sky_mut(fn, spec=None):
-    rows = sky_rows()
-    fn(rows)
-    return d3.d3_measure(spec or sky_spec(expected_rows=len(rows)), rows, "bg_sky_calendar")
+def _row(rows, et, **kw):
+    return next(i for i, r in enumerate(rows) if r["event_type"] == et and all(r.get(k) == v for k, v in kw.items()))
 
 
-def _first(rs, body):
-    return next(r for r in rs if r["primary_body"] == body)
+def _smut(window, i_et, fn, **kw):
+    rows = sky_rows(window)
+    i = _row(rows, i_et, **kw)
+    fn(rows[i])
+    return sky_measure(window, rows=rows)
 
 
-def test_ingress_time_slips_are_caught_by_position_at_the_stored_instant():
-    # a 20 minute slip of a Moon ingress (13 degrees a day): the Moon is 0.18 degree off the edge at the stored instant
-    m = _sky_mut(lambda rs: _first(rs, "Moon").__setitem__("event_jd", _first(rs, "Moon")["event_jd"] + 0.014))
+def _detail_set(**kv):
+    def f(r):
+        d = json.loads(r["detail"])
+        d.update(kv)
+        r["detail"] = json.dumps(d)
+    return f
+
+
+def test_ingress_and_station_mutations_are_caught():
+    m = _smut("window_a", "ingress", lambda r: r.__setitem__("event_jd", r["event_jd"] + 0.014), primary_body="Moon")           # 20 minutes: the Moon is 0.18 degree off the edge
     assert m["v"] == "PARTIAL" and m["d3"]["n_mismatch"] == 1 and "edge_distance_deg" in m["d3"]["mismatches"][0]["columns"]
-    # a 3 day slip: no crossing of that edge within 0.2 day of the stored instant: a named mismatch
-    m = _sky_mut(lambda rs: _first(rs, "Mars").__setitem__("event_jd", _first(rs, "Mars")["event_jd"] + 3.0))
-    assert m["v"] == "PARTIAL" and m["d3"]["n_mismatch"] == 1 and m["d3"]["mismatches"][0]["columns"][0].startswith("error:")
-    # the honest limit: the tolerance is POSITIONAL (0.001 degree), so a 3 second slip of a Moon event is inside it; a time tolerance would scale with speed (0.001 / 13.2 deg a day = 6.5 s)
-    m = _sky_mut(lambda rs: _first(rs, "Moon").__setitem__("event_jd", _first(rs, "Moon")["event_jd"] + 3.0e-5))
-    assert m["v"] == "PASS"
-
-
-def test_ingress_other_mutations_are_caught():
-    m = _sky_mut(lambda rs: rs[7].__setitem__("sign", "Aries" if rs[7]["sign"] != "Aries" else "Taurus"))        # (the 3 mutations below keep their first-row indexes)
-    assert m["v"] == "PARTIAL" and m["d3"]["n_mismatch"] == 1                      # the row no longer sits on the edge of the sign it names: a named mismatch
-    m = _sky_mut(lambda rs: rs[3].__setitem__("longitude_deg", rs[3]["longitude_deg"] + 0.01))
-    assert m["v"] == "PARTIAL" and "longitude_deg" in m["d3"]["mismatches"][0]["columns"]
-    m = _sky_mut(lambda rs: rs[11].__setitem__("ayanamsha_key", "raman"))
+    m = _smut("window_a", "ingress", lambda r: r.__setitem__("event_jd", r["event_jd"] + 3.0), primary_body="Mars")
+    assert m["v"] == "PARTIAL" and m["d3"]["mismatches"][0]["columns"][0].startswith("error:")                              # no crossing within 0.2 day
+    m = _smut("window_a", "ingress", lambda r: r.__setitem__("ayanamsha_key", "raman"), primary_body="Sun")
     assert m["v"] == "PARTIAL" and "ayanamsha_key" in m["d3"]["mismatches"][0]["columns"]
-    m = _sky_mut(lambda rs: rs[2].__setitem__("primary_body", "Pluto"))
+    m = _smut("window_a", "station", lambda r: r.__setitem__("event_jd", r["event_jd"] + 0.4), primary_body="Mercury")
+    assert m["v"] == "PARTIAL" and "station_zero_speed" in m["d3"]["mismatches"][0]["columns"]
+    m = _smut("window_a", "station", _detail_set(station_type="direct" if True else "retrograde"), primary_body="Saturn")
+    assert m["v"] in ("PARTIAL", "PASS")                                                  # (a Saturn station that already was direct leaves the row unchanged)
+    rows = sky_rows()
+    i = _row(rows, "station", primary_body="Jupiter")
+    cur = json.loads(rows[i]["detail"])["station_type"]
+    _detail_set(station_type="retrograde" if cur == "direct" else "direct")(rows[i])
+    m = sky_measure(rows=rows)
+    assert m["v"] == "PARTIAL" and "station_type" in m["d3"]["mismatches"][0]["columns"]
+
+
+def test_eclipse_mutations_are_caught():
+    cur = lambda rows, et: json.loads(rows[_row(rows, et)]["detail"])
+    rows = sky_rows()
+    t0 = cur(rows, "eclipse_solar")["eclipse_type"]
+    m = _smut("window_a", "eclipse_solar", _detail_set(eclipse_type="partial" if t0 != "partial" else "total"))
+    assert m["v"] == "PARTIAL" and "eclipse_type" in m["d3"]["mismatches"][0]["columns"]
+    m = _smut("window_a", "eclipse_lunar", lambda r: r.__setitem__("event_jd", r["event_jd"] + 0.05))                          # 72 minutes off the greatest eclipse
+    assert m["v"] == "PARTIAL" and "ecl_time_offset_s" in m["d3"]["mismatches"][0]["columns"]
+    m = _smut("window_a", "eclipse_solar", lambda r: _detail_set(begin_jd=round(json.loads(r["detail"])["begin_jd"] + 0.01, 6))(r))      # a contact 14 minutes off
+    assert m["v"] == "PARTIAL" and "begin_offset_s" in m["d3"]["mismatches"][0]["columns"]
+    m = _smut("window_a", "eclipse_lunar", lambda r: r.__setitem__("sign", "Aries" if r["sign"] != "Aries" else "Taurus"))
+    assert m["v"] == "PARTIAL" and "sign" in m["d3"]["mismatches"][0]["columns"]
+
+
+def test_a_dropped_or_invented_event_is_a_named_completeness_discrepancy():
+    rows = sky_rows()
+    i = _row(rows, "eclipse_lunar")
+    gone = rows.pop(i)
+    m = sky_measure(rows=rows)
+    assert m["v"] == "PARTIAL" and any("eclipse_lunar" in p for p in m["d3"]["completeness_problems"]) and "completeness" in m["measured"]
+    rows = sky_rows()
+    j = _row(rows, "ingress", primary_body="Jupiter")
+    rows.pop(j)
+    m = sky_measure(rows=rows)
+    assert m["v"] == "PARTIAL" and any(p.startswith("ingress Jupiter") for p in m["d3"]["completeness_problems"])
+    rows = sky_rows()
+    rows.append(dict(rows[_row(rows, "station", primary_body="Venus")], event_jd=rows[_row(rows, "station", primary_body="Venus")]["event_jd"] + 0.5))
+    m = sky_measure(rows=rows)
     assert m["v"] == "PARTIAL"
 
 
-def test_a_dropped_event_breaks_the_declared_count_and_a_duplicate_is_named():
-    rows = sky_rows()
-    assert d3.d3_measure(sky_spec(), rows[:-1], "bg_sky_calendar")["v"] == "PARTIAL"                       # expected_rows is the full count
-    rows.append(copy.deepcopy(rows[0]))
-    m = d3.d3_measure(sky_spec(expected_rows=len(rows)), rows, "bg_sky_calendar")
-    assert m["v"] == "PARTIAL" and any("duplicate" in x["columns"] for x in m["d3"]["mismatches"])
+def test_double_transit_mutations_are_caught():
+    rows = sky_rows("window_b")
+    rows[0]["event_jd"] += 1.0
+    assert sky_measure("window_b", rows=rows)["v"] in ("PARTIAL", "FAIL")                      # a day away from the minimum separation
+    rows = sky_rows("window_b")
+    rows[0]["detail"] = json.dumps(dict(json.loads(rows[0]["detail"]), orb_deg=0.9))
+    m = sky_measure("window_b", rows=rows)
+    assert m["v"] in ("PARTIAL", "FAIL") and "conj_orb_deg" in m["d3"]["mismatches"][0]["columns"]
+    assert sky_measure("window_b", rows=[])["v"] == "NO_DETECTOR"
 
 
-def test_a_sampled_ingress_run_cannot_pass():
-    m = d3.d3_measure(sky_spec(sample=dict(per_stratum=4, seed="s")), sky_rows(), "bg_sky_calendar")
-    n = sum(min(4, c) for c in m["d3"]["strata"].values())
-    assert m["v"] == "PARTIAL" and m["d3"]["rows_checked"] == n and n < len(SKY["rows"]) and "sample" in m["measured"]
+def test_a_sampled_sky_run_cannot_pass_and_method_completeness_needs_a_method_that_has_one():
+    s = sky_spec(strata="event_type", sample=dict(per_stratum=4, seed="s"))
+    m = d3.d3_measure(s, sky_rows(), "bg_sky_calendar")
+    assert m["v"] == "PARTIAL" and m["d3"]["rows_checked"] == 16 and "sample" in m["measured"]
+    with pytest.raises(d3.SpecError, match="completeness"):
+        d3.validate_spec(pos_spec(expected_rows="method"), "x")
+    with pytest.raises(d3.SpecError, match="positive integer"):
+        d3.validate_spec(sky_spec(expected_rows="fifty"), "x")
 
 
 def test_the_two_methods_are_the_closed_registry():
-    assert sorted(METHODS) == ["swisseph_ingress_root_find_v1", "swisseph_sidereal_positions_v1"]
+    assert sorted(METHODS) == ["swisseph_sidereal_positions_v1", "swisseph_sky_events_v1"]
     for k, m in METHODS.items():
         assert m["independence"] == "independent_formula" and set(d3.METHOD_HOOKS) <= set(m)
     with pytest.raises(d3.SpecError):

@@ -94,14 +94,14 @@ def test_a_transcription_cannot_borrow_the_d3_engine():
 # ───────────────────────── the measurement ─────────────────────────
 
 def test_a_declared_d3_is_measured_and_the_other_two_read_na(reads):
-    got = ac.carriage_declared_checks(AID, car_pass(), "chart_facts", True, asset_rows=530, **KW)
+    got = ac.carriage_declared_checks(AID, car_pass(), "chart_facts", True, asset_rows=1205, **KW)
     assert got["Carr.D3"]["v"] == PASS, got["Carr.D3"]["measured"]
     for c in ("Carr.D1", "Carr.D2"):
         assert got[c]["v"] == NA and got[c]["cause"] == "not-the-declared-carriage"
     kinds = [c[0] for c in reads]
     assert kinds == ["rows", "inputs"]
     assert reads[0][1] == "chart_facts" and reads[0][3] == ac.CHART_ID and reads[1][2] == ac.CHART_ID
-    assert reads[0][2]["where"] == [{"column": "fact_category", "in": ["graha_position", "graha_sign_attributes"]}]
+    assert reads[0][2]["where"] == [{"column": "fact_category", "in": ["graha_position", "graha_sign_attributes", "bhava_cusps", "house_chalit", "sandhi_flag"]}]
 
 
 def test_the_stated_read_is_exactly_the_declared_one_and_unscoped_tables_are_not_chart_scoped(monkeypatch):
@@ -109,13 +109,13 @@ def test_the_stated_read_is_exactly_the_declared_one_and_unscoped_tables_are_not
     monkeypatch.setattr(ac, "d3_fetch_rows", lambda table, read, chart_id=None: seen.append((table, read["chart_scoped"], chart_id)) or t3.sky_rows())
     monkeypatch.setattr(ac, "d3_fetch_inputs", lambda *a: pytest.fail("a method with no inputs table must not read charts"))
     c = dict(applies="D3", nature="computation", why="the sky calendar ingress events re-found by a root-finder", evidence=EV, spec=t3.sky_spec())
-    got = ac.carriage_declared_checks("bg_sky_calendar", c, "bg_sky_calendar", False, asset_rows=len(t3.SKY["rows"]), **KW)
+    got = ac.carriage_declared_checks("bg_sky_calendar", c, "bg_sky_calendar", False, asset_rows=len(t3.SKY["window_a"]["rows"]), **KW)
     assert got["Carr.D3"]["v"] == PASS and seen == [("bg_sky_calendar", False, None)]
 
 
 def test_the_asset_row_count_caps_the_verdict(reads):
-    got = ac.carriage_declared_checks(AID, car_pass(), "chart_facts", True, asset_rows=1205, **KW)
-    assert got["Carr.D3"]["v"] == PARTIAL and "530 of the asset's 1205" in got["Carr.D3"]["measured"]
+    got = ac.carriage_declared_checks(AID, car_pass(), "chart_facts", True, asset_rows=1300, **KW)          # the asset holds more rows than the declared read covers
+    assert got["Carr.D3"]["v"] == PARTIAL and "1205 of the asset's 1300" in got["Carr.D3"]["measured"]
 
 
 def test_a_spec_for_another_table_is_never_measured_and_reads_nothing(monkeypatch):
@@ -142,19 +142,19 @@ def test_a_d3_declaration_without_a_spec_says_so():
 
 def test_the_registry_entry_is_a_real_detector_so_a_measured_verdict_counts(reads):
     assert ac.CRITERION_REGISTRY["Carr.D3"]["detector"] == "asset_census.py:measure()"
-    got = ac.carriage_declared_checks(AID, car_pass(), "chart_facts", True, asset_rows=530, **KW)
+    got = ac.carriage_declared_checks(AID, car_pass(), "chart_facts", True, asset_rows=1205, **KW)
     assert ac.rollup_asset("L1", got)["Carr"]["v"] == PASS
 
 
 def test_with_the_detector_declared_a_real_d3_pass_makes_the_carr_cell_pass(reads, monkeypatch):
-    got = ac.carriage_declared_checks(AID, car_pass(), "chart_facts", True, asset_rows=530, **KW)
+    got = ac.carriage_declared_checks(AID, car_pass(), "chart_facts", True, asset_rows=1205, **KW)
     cell = ac.rollup_asset("L1", got)["Carr"]
     assert cell["v"] == PASS, cell
     assert [c["v"] for c in cell["checks"] if c["criterion"] == "Carr.D3"] == [PASS]
 
 
 def test_a_partial_d3_does_not_close_the_cell(reads, monkeypatch):
-    got = ac.carriage_declared_checks(AID, car(), "chart_facts", True, asset_rows=530, **KW)          # retrograde_flag declared uncovered
+    got = ac.carriage_declared_checks(AID, car(), "chart_facts", True, asset_rows=1205, **KW)          # retrograde_flag declared uncovered
     assert got["Carr.D3"]["v"] == PARTIAL
     assert ac.rollup_asset("L1", got)["Carr"]["v"] == PARTIAL
 
