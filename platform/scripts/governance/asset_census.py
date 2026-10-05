@@ -85,6 +85,7 @@ import sys
 import tempfile
 import threading
 import time
+import string
 import unicodedata
 from pathlib import Path
 
@@ -194,11 +195,11 @@ CRITERION_REGISTRY: dict[str, dict] = {
     "Ldgr.source_presence":  dict(gate="Ldgr",  check="source_presence",  applicability="the target table carries a recognised citation column (R60: singular classical_citation included); an asset's reviewed declaration `ldgr_source` makes it applicable by declaration, naming the column that carries the source and the citation_state it stands on, or as `no_classical_claim` (N/A, N-72 S3, N-73 (1)). A column pattern alone never makes it N/A. A row of an UNDECLARED asset names a source only when its first recognised citation column is not NULL and not a placeholder (C2(ii), pin 24, N-98): NULL, punctuation-only, the closed no-source list ('not traced', 'n/a', 'none', ...), a bare tradition label ('classical_tradition', 'classical tradition (Jyotish)') and an 'UNSOURCED ...' disclosure are not a citation; an array / JSON array names a source unless empty or every element is one of those; PASS = every row names a source, FAIL = none does, PARTIAL = some do", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=CITATION_COLUMNS, asset_kinds=None, revision=4),  # C2(ii): legacy IS NOT NULL count replaced by the placeholder-aware shared predicate; was rev 3 (S3: declared form + citation_state)
     "Dens.served":           dict(gate="Dens",  check="served",           applicability="reaches a served capability module (one that SELECTS from the asset's table, or names it in a form the scan cannot classify; naming it only as a label, in a provenance string, prose, a type name or an import path, is not a reach; for a service-kind asset a service_probe envelope is a reach); PASS (structural) needs ONE capability entry (the object literal that declares density_contract) whose own served read of the asset's table selects a tier column; a tier column is a CLOSED list: exactly `tier` or `verification_pass_status`, or a column the asset declares in density_tier_columns (a reviewed {column, why, evidence}), and never a name carrying a deny-listed word (cost, price, pricing, plan, access, subscription, billing, fee, tariff, in any spelling: split on underscores, digits and camelCase, plurals included, or run together with tier, fail-closed; declared or not); any other `<x>_tier` (severity_tier, cost_tier, access_tier, ...) is not a tier column; a sibling entry, a sub-select, an INSERT...SELECT or a UNION branch does not count", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=6),  # E6.1(d): was file-level 'declares density_contract anywhere' (rev 1); rev 5 (N-74(a)): select vs label; rev 6 (N-98): closed tier vocabulary
     "Narr.agree":            dict(gate="Narr",  check="agree",            applicability="prose_fields declared non-empty (null = undeclared: NO_DETECTOR; [] = declared no prose: measured N/A, cause no-prose, released by the declared rule Narr.agree#measured:no-prose, N-65); an asset that declares prose_fields [] WITH a prose_coupling to carriage_d1 (NARR-GUARD, pin 16, N-94) reads N/A only while its own Carr.D1 reads PASS, else NO_DETECTOR", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=2),  # E6 (c): the declaration and the table's columns agree
-    "Narr.checkable":        dict(gate="Narr",  check="checkable",        applicability="prose_fields declared non-empty; zero checkable rows is INCONCLUSIVE, never PASS; an asset that declares prose_fields [] WITH a prose_coupling to carriage_d1 (NARR-GUARD, pin 16, N-94) reads N/A only while its own Carr.D1 reads PASS, else NO_DETECTOR", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=2),
-    "Narr.fidelity_test":    dict(gate="Narr",  check="fidelity_test",    applicability="prose_fields declared non-empty; structural test discovery (N.7 item 5); never PASS; an asset that declares prose_fields [] WITH a prose_coupling to carriage_d1 (NARR-GUARD, pin 16, N-94) reads N/A only while its own Carr.D1 reads PASS, else NO_DETECTOR", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=2),
+    "Narr.checkable":        dict(gate="Narr",  check="checkable",        applicability="prose_fields declared non-empty; zero checkable rows is INCONCLUSIVE, never PASS; rows are scoped from a plain count_sql OR a sum of plain count subselects (one term per table), pinned to the chart by a depth-0 `chart_id = $1` conjunct (E5.7); an asset that declares prose_fields [] WITH a prose_coupling to carriage_d1 (NARR-GUARD, pin 16, N-94) reads N/A only while its own Carr.D1 reads PASS, else NO_DETECTOR", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=3),
+    "Narr.fidelity_test":    dict(gate="Narr",  check="fidelity_test",    applicability="prose_fields declared non-empty; structural test discovery (N.7 item 5) caps at PARTIAL; PASS only when the asset DECLARES fidelity_tests and golden_test_scan verifies each from source (the named test calls the builder and asserts the built output EQUAL to an independent literal sentence) and every declared prose entry is covered (E5.7, SS N-150 R7); an asset that declares prose_fields [] WITH a prose_coupling to carriage_d1 (NARR-GUARD, pin 16, N-94) reads N/A only while its own Carr.D1 reads PASS, else NO_DETECTOR", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=3),
     "Narr.lint":             dict(gate="Narr",  check="lint",             applicability="prose_fields declared non-empty; the fact-category-pin and raw-token narration lints over the writer scope; an asset that declares prose_fields [] WITH a prose_coupling to carriage_d1 (NARR-GUARD, pin 16, N-94) reads N/A only while its own Carr.D1 reads PASS, else NO_DETECTOR", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=2),
-    "Null.schema_default":   dict(gate="Null",  check="schema_default",   applicability="prose_fields declared non-empty, or a declared null_convention; a non-NULL DEFAULT on a declared prose or nullable column; never PASS alone: PASS only for an asset whose declared null_convention the detector verifies (S1, pin 13), the cap otherwise; a declared stamp_columns word (pin 15) exempts a NOT NULL timestamp column that holds no NULL and no sentinel timestamp (epoch, 1970-01-01, infinity, -infinity, year 0001) from the constant test only", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=3),
-    "Null.blank_rows":       dict(gate="Null",  check="blank_rows",       applicability="prose_fields declared non-empty, or a declared null_convention; blank or placeholder rows standing in for NULL; never PASS alone: PASS only for an asset whose declared null_convention the detector verifies (S1, pin 13), the cap otherwise; a declared stamp_columns word (pin 15) exempts a NOT NULL timestamp column that holds no NULL and no sentinel timestamp (epoch, 1970-01-01, infinity, -infinity, year 0001) from the constant test only", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=3),
+    "Null.schema_default":   dict(gate="Null",  check="schema_default",   applicability="prose_fields declared non-empty, or a declared null_convention; a non-NULL DEFAULT on a declared prose or nullable column; never PASS alone: PASS only for an asset whose declared null_convention the detector verifies (S1, pin 13) OR whose writer source the static writer scan reads clean (every write path to every declared prose column found, no literal fallback or constant write, nothing unresolved; E5.7, SS N-150 R7), the cap otherwise; a declared stamp_columns word (pin 15) exempts a NOT NULL timestamp column that holds no NULL and no sentinel timestamp (epoch, 1970-01-01, infinity, -infinity, year 0001) from the constant test only", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=4),
+    "Null.blank_rows":       dict(gate="Null",  check="blank_rows",       applicability="prose_fields declared non-empty, or a declared null_convention; blank or placeholder rows standing in for NULL; never PASS alone: PASS only for an asset whose declared null_convention the detector verifies (S1, pin 13) OR whose writer source the static writer scan reads clean (every write path to every declared prose column found, no literal fallback or constant write, nothing unresolved; E5.7, SS N-150 R7), the cap otherwise; a declared stamp_columns word (pin 15) exempts a NOT NULL timestamp column that holds no NULL and no sentinel timestamp (epoch, 1970-01-01, infinity, -infinity, year 0001) from the constant test only", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=4),
     "Reach.fields":          dict(gate="Reach", check="fields",           applicability="a served capability module selects specific columns", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=1),
     # ── registered, hand-observed only (detector NONE — D4 finding #5's honest, visible form) ──
     # These are the specific criteria R81's migration re-keys the 11 T5_LEDGER_DRIFT.md §A pairs
@@ -579,7 +580,15 @@ def _check_contribution(crit: str, layer: str, meas: dict | None, facts: dict | 
         if infl and v in (PASS, PARTIAL):
             return dict(criterion=crit, v=NO_DET, state="MEASURED", inconclusive=True,
                         reason="INCONCLUSIVE record: nothing was established, so it cannot read PASS or PARTIAL")
-        if v == PASS and crit.startswith("Null.") and null_lift_earned(crit, meas, all_meas):
+        if v == PASS and crit.startswith("Null.") and not _convention_lift_earned(crit, meas, all_meas) and writer_scan_earned(crit, meas, all_meas, facts):
+            # E5.7 (SS N-150 R7): the cap LIFTS by the static writer scan: both Null records carry the verified writer_scan block (every write path to every declared prose column found,
+            # no literal fallback, no constant write, nothing unresolved), no INCONCLUSIVE, no basis, over the asset's declared prose_fields.
+            return dict(criterion=crit, v=PASS, state="MEASURED", null_writer_scan_verified=True,
+                        reason="measured; PASS earned: schema_default and blank_rows are clean and the writer's source writes no literal fallback or constant to the declared prose columns")
+        if v == PASS and crit == "Narr.fidelity_test" and fidelity_pass_earned(meas, facts):
+            return dict(criterion=crit, v=PASS, state="MEASURED", fidelity_golden_verified=True,
+                        reason="measured; PASS earned: every declared prose entry is covered by a verified golden-value test (built output asserted equal to an independent literal sentence)")
+        if v == PASS and crit.startswith("Null.") and _convention_lift_earned(crit, meas, all_meas):
             # S1 (pin 13): the cap LIFTS for this asset only. Both Null checks carry the verified null_convention block (declared, evidence and reason
             # echoed, both siblings clean, the detector's verdict PASS), no INCONCLUSIVE, no basis. Anything else falls through to the cap below.
             return dict(criterion=crit, v=PASS, state="MEASURED", null_convention_verified=True,
@@ -1238,6 +1247,38 @@ _DECL_ENTRY_KEYS = ("kind", "carriage", "prose_fields", "terminal_by_constructio
                     "read_evidence", "read_table", "read_kind", "evidence", "evidence_kind", "vocab_alias", "ldgr_source", "null_convention",
                     "prose_coupling", "density_tier_columns")
 _DECL_EVIDENCE_KEYS = ("kind", "carriage", "prose_fields", "cross_asset_writes")
+# E5.7 (Worker E, SS N-150 R7): `fidelity_tests` declares the golden-value test(s) of the asset's narration builder: [{test: "platform/python-sidecar/<...>/test_x.py::[Class::]test_name",
+# covers: [<declared prose entries>]}]. The census VERIFIES each from the test's source (golden_test_scan.py); the declaration names, it never decides.
+DECL_FIDELITY_KEYS = ("fidelity_tests",)
+FIDELITY_TEST_FIELDS = ("test", "covers")
+MAX_FIDELITY_TESTS = 16
+_FIDELITY_REF_RE = re.compile(r"platform/python-sidecar/[A-Za-z0-9_./-]+\.py::[A-Za-z_][A-Za-z0-9_]*(?:::[A-Za-z_][A-Za-z0-9_]*)?")
+
+
+def validate_fidelity_tests_declaration(where: str, ft, e: dict) -> None:
+    """Raises DeclarationsError when `fidelity_tests` is not a list of {test, covers}: a sidecar test file `::` test (optionally `::Class::test`), and the distinct declared prose entries it covers.
+    Needs a non-empty `prose_fields` (the golden test is a claim about the declared narration)."""
+    pf = e.get("prose_fields")
+    if not (isinstance(pf, list) and pf):
+        raise DeclarationsError(f"{where}.fidelity_tests needs a non-empty prose_fields (the golden test is a claim about the declared narration)")
+    if not (isinstance(ft, list) and ft and len(ft) <= MAX_FIDELITY_TESTS):
+        raise DeclarationsError(f"{where}.fidelity_tests must be a non-empty list of at most {MAX_FIDELITY_TESTS} {{test, covers}} entries")
+    seen = set()
+    for i, d in enumerate(ft):
+        w = f"{where}.fidelity_tests[{i}]"
+        if not isinstance(d, dict) or set(d) != set(FIDELITY_TEST_FIELDS):
+            raise DeclarationsError(f"{w} must be an object with exactly the fields {list(FIDELITY_TEST_FIELDS)}")
+        t = d["test"]
+        if not (isinstance(t, str) and _FIDELITY_REF_RE.fullmatch(t)) or ".." in t.split("::")[0].split("/"):
+            raise DeclarationsError(f"{w}.test must be 'platform/python-sidecar/<path>.py::[Class::]test_name'")
+        if not _EVIDENCE_TEST_PATH_RE.search(t.split("::")[0]):
+            raise DeclarationsError(f"{w}.test: {t.split('::')[0]} is not a test file path")
+        if t in seen:
+            raise DeclarationsError(f"{w}.test {t!r} is declared twice")
+        seen.add(t)
+        cv = d["covers"]
+        if not (isinstance(cv, list) and cv and len(set(cv)) == len(cv) and all(isinstance(c, str) and c in pf for c in cv)):
+            raise DeclarationsError(f"{w}.covers must be a non-empty list of distinct entries of this asset's prose_fields")
 # prose_fields entries (SS ruling 2026-10-01; CLAUDE.md N.7 concerns GENERATED prose): a column name, or a JSON path into
 # a JSONB column, `column.$.seg(.seg)*` where a seg is an identifier key, optionally followed by ONE `[*]` (every element
 # of the array at that key; grammar 1.6.0). No index numbers, no `[*][*]`, no `[*]` on the column itself, no quoting.
@@ -1358,7 +1399,7 @@ def validate_declarations(doc, registry_ids=None) -> dict:
             raise DeclarationsError(f"{where}: asset id is not in the census registry set")
         if not isinstance(e, dict):
             raise DeclarationsError(f"{where}: must be an object")
-        extra = sorted(set(e) - set(_DECL_ENTRY_KEYS))
+        extra = sorted(set(e) - set(_DECL_ENTRY_KEYS) - set(DECL_FIDELITY_KEYS))
         if extra:
             raise DeclarationsError(f"{where}: unknown field(s) {extra}")
         k = e.get("kind")
@@ -1384,6 +1425,8 @@ def validate_declarations(doc, registry_ids=None) -> dict:
             validate_null_convention_declaration(where, e["null_convention"], e)
         if e.get("prose_coupling") is not None:
             validate_prose_coupling_declaration(where, e["prose_coupling"], e)
+        if e.get("fidelity_tests") is not None:
+            validate_fidelity_tests_declaration(where, e["fidelity_tests"], e)
         if e.get("density_tier_columns") is not None:
             validate_density_tier_declaration(where, e["density_tier_columns"], e)
         bad = prose_empty_d1_problem(e)
@@ -2134,6 +2177,33 @@ def _ldgr_lacking_text(x: str, citation: bool = False) -> str:
             f"OR (v.n0 !~ '[[:alnum:]]' AND v.n0 !~ '[^\\x01-\\x7f]') FROM ({mid}) v))")
 
 
+def _py_junk(ch: str) -> bool:
+    """Python reading of `_LDGR_JUNK` (the SQL class is POSIX [[:space:][:punct:]] plus explicit ranges, which `re` cannot express): whitespace, ASCII punctuation, any Unicode
+    punctuation category, and the same explicit extras."""
+    o = ord(ch)
+    return (ch.isspace() or ch in string.punctuation or unicodedata.category(ch).startswith("P") or ch in "\u00a0\u00a1\u00ab\u00b7\u00bb\u00bf\u0964\u0965\u1680\u2212"
+            or 0x2000 <= o <= 0x206f or 0x2e00 <= o <= 0x2e7f or 0x3000 <= o <= 0x303f or 0xfe00 <= o <= 0xfe6f or o == 0xfeff or 0xff01 <= o <= 0xff0f or 0xff1a <= o <= 0xff20)
+
+
+def ldgr_placeholder_py(x) -> bool:
+    """E5.7 (Worker E): the PYTHON form of `_ldgr_lacking_text` with its default (the Null convention's fallback test, not the citation extension): True when the text value `x` states
+    nothing: empty, or after NFKC, removal of invisible characters, stripping of junk at the ends, whitespace collapse and case folding one of LDGR_PLACEHOLDERS (also with the spaces
+    removed), or an all-ASCII value with no alphanumeric character. ONE vocabulary for the SQL predicate and the writer-source scan (writer_literal_scan.py takes this as `is_placeholder`)."""
+    if not isinstance(x, str):
+        return False
+    n0 = re.sub(_LDGR_INVISIBLE + "+", "", unicodedata.normalize("NFKC", x))
+    lo, hi = 0, len(n0)
+    while lo < hi and _py_junk(n0[lo]):
+        lo += 1
+    while hi > lo and _py_junk(n0[hi - 1]):
+        hi -= 1
+    norm = re.sub(r"[\s\u00a0\u1680\u2000-\u200b\u2028\u2029\u202f\u205f\u3000\ufeff]+", " ", n0[lo:hi]).lower()
+    words = set(LDGR_PLACEHOLDERS)
+    if norm in words or norm.replace(" ", "") in {w.replace(" ", "") for w in words}:
+        return True
+    return (not any(ch.isalnum() for ch in n0) and all(ord(ch) < 0x80 for ch in n0)) if n0 else True
+
+
 def _ldgr_lacking(col: str, kind: str, any_element: bool = True) -> str:
     """The SQL predicate 'this row's source column states no source' for a text / text[] / json(b) column. An array, or a JSON array, is lacking when empty or when ANY
     element is (`any_element=True`, the declared ldgr_source reading: every cited element must be a source); with `any_element=False` (the legacy undeclared presence count,
@@ -2450,18 +2520,96 @@ _SCOPE_COUNT = re.compile(r"\s*select\s+count\(\s*(?:\*|1)\s*\)(?:\s+as\s+\w+)?\
 _SCOPE_BANNED = re.compile(r"\b(?:select|join|group|having|union|limit|order|intersect|except)\b|;", re.I)
 
 
+def _split_depth0(s: str, sep: str):
+    """Split `s` at depth-0 occurrences of the single character `sep` (parentheses and single-quoted literals respected)."""
+    out, depth, q, start, j = [], 0, False, 0, 0
+    while j < len(s):
+        ch = s[j]
+        if q:
+            if ch == "'":
+                if j + 1 < len(s) and s[j + 1] == "'":
+                    j += 1
+                else:
+                    q = False
+        elif ch == "'":
+            q = True
+        elif ch == "(":
+            depth += 1
+        elif ch == ")":
+            depth -= 1
+        elif ch == sep and depth == 0:
+            out.append(s[start:j])
+            start = j + 1
+        j += 1
+    out.append(s[start:])
+    return out
+
+
 def _count_scope_tail(count_sql: str, table: str):
     """The ` WHERE ...` tail (or "") of a registry count_sql that is a plain `SELECT count(*) FROM <table> [WHERE ...]`
-    over `table`; None for any other shape (join, group, union, subselect, constant, another table): the asset's
-    own rows cannot then be scoped from it."""
+    over `table`, OR (E5.7) a SUM of such counts `SELECT (SELECT count(*) FROM a WHERE ..) + (SELECT count(*) FROM b WHERE ..) [AS n]` in which `table`
+    is counted by EXACTLY ONE term (that term's tail); None for any other shape (join, group, union, nested subselect, constant, another table,
+    the table counted twice): the asset's own rows cannot then be scoped from it."""
     q = re.sub(r"--[^\n]*", "", count_sql or "")
     m = _SCOPE_COUNT.fullmatch(q)
-    if not m or m.group(1).lower() != (table or "").lower():
+    if m:
+        if m.group(1).lower() != (table or "").lower():
+            return None
+        tail = (m.group(2) or "").strip()
+        if tail and _SCOPE_BANNED.search(tail):
+            return None
+        return " " + tail if tail else ""
+    body = re.fullmatch(r"\s*select\s+(.*?)(?:\s+as\s+\w+)?\s*;?\s*", q, re.I | re.S)
+    if not body:
         return None
-    tail = (m.group(2) or "").strip()
-    if tail and _SCOPE_BANNED.search(tail):
+    inner = body.group(1).strip()
+    while inner.startswith("(") and len(_split_depth0(inner, "\x00")) == 1:
+        # one pair of parentheses wrapping the WHOLE sum (`SELECT ( (SELECT count(*) ..) + (SELECT count(*) ..) ) AS count`): unwrap it when its match is the last character
+        depth, close = 0, -1
+        for j, ch in enumerate(inner):
+            depth += ch == "("
+            depth -= ch == ")"
+            if depth == 0:
+                close = j
+                break
+        if close != len(inner) - 1:
+            break
+        inner = inner[1:-1].strip()
+    terms = _split_depth0(inner, "+")
+    if len(terms) < 2:
         return None
-    return " " + tail if tail else ""
+    tails = []
+    for t in terms:
+        t = t.strip()
+        if not (t.startswith("(") and t.endswith(")")):
+            return None
+        mt = _SCOPE_COUNT.fullmatch(t[1:-1])
+        if not mt:
+            return None                                  # a term the scan cannot read: the whole sum is unreadable
+        tl = (mt.group(2) or "").strip()
+        if tl and _SCOPE_BANNED.search(tl):
+            return None
+        if mt.group(1).lower() == (table or "").lower():
+            tails.append(" " + tl if tl else "")
+    return tails[0] if len(tails) == 1 else None
+
+
+def _chart_pinned(tail: str) -> bool:
+    """True when a ` WHERE ...` tail PINS the chart: no depth-0 OR anywhere (a depth-0 OR could let rows of other charts in) and a depth-0 AND-conjunct that is exactly `chart_id = $1`
+    (an OR inside parentheses, as in `chart_id = $1 AND (a OR b)`, is fine)."""
+    t = re.sub(r"^\s*where\s+", "", tail or "", flags=re.I)
+    words = _split_depth0(re.sub(r"\s+", " ", t), " ")
+    if any(w.upper() == "OR" for w in words):
+        return False
+    conj, cur = [], []
+    for w in words:
+        if w.upper() == "AND":
+            conj.append(" ".join(cur))
+            cur = []
+        else:
+            cur.append(w)
+    conj.append(" ".join(cur))
+    return any(re.fullmatch(r"\(?\s*(?:\w+\.)?chart_id\s*=\s*\$1(?!\d)\s*\)?", c.strip()) for c in conj)
 
 
 def _in_list() -> str:
@@ -3290,8 +3438,86 @@ def null_lift_problem(meas) -> str | None:
     return None
 
 
-def null_lift_earned(crit: str, meas, all_meas) -> bool:
-    """True when the cap lifts for `crit`: this record AND its sibling Null record both carry a complete verified block, naming the same table and columns."""
+def writer_scan_problem(meas, facts=None) -> str | None:
+    """E5.7 (Worker E, SS N-150 R7): None when this ONE Null record carries a complete verified `writer_scan` block (the static writer scan found every write path to every declared prose
+    column, no literal fallback, no constant write, nothing unresolved; schema_default and blank_rows both clean), else the reason it does not. When `facts` carries the declared prose fields
+    the block's entries must equal them (a record cannot narrow the claim)."""
+    if not isinstance(meas, dict):
+        return "no record"
+    ws = meas.get("writer_scan")
+    if not isinstance(ws, dict):
+        return "no writer_scan block"
+    if ws.get("verified") is not True or ws.get("v") != PASS:
+        return "the writer scan is not verified and PASS"
+    ents = ws.get("entries")
+    if not (isinstance(ents, list) and ents and all(isinstance(x, str) and x for x in ents) and len(set(ents)) == len(ents)):
+        return "the block names no covered prose entry"
+    pe = ws.get("paths_per_entry")
+    if not (isinstance(pe, dict) and set(pe) == set(ents) and all(isinstance(v, int) and not isinstance(v, bool) and v >= 1 for v in pe.values())):
+        return "a covered entry has no found write path"
+    fl = ws.get("files")
+    if not (isinstance(fl, list) and fl and all(isinstance(x, str) and x for x in fl)):
+        return "the block names no scanned source file"
+    if ws.get("schema_default_clean") is not True or ws.get("blank_rows_clean") is not True:
+        return "schema_default and blank_rows are not both clean"
+    if isinstance(facts, dict) and isinstance(facts.get("declared_prose_fields"), list) and sorted(facts["declared_prose_fields"]) != sorted(ents):
+        return "the block's entries are not the asset's declared prose_fields"
+    if meas.get("inconclusive") or meas.get("basis") is not None or meas.get("v") != PASS:
+        return "the record is inconclusive, carries a basis, or is not PASS"
+    return None
+
+
+def writer_scan_earned(crit: str, meas, all_meas, facts=None) -> bool:
+    """True when the cap lifts for `crit` by the writer scan: this record AND its sibling Null record both carry a complete verified writer_scan block over the same entries and files."""
+    if writer_scan_problem(meas, facts) is not None or not isinstance(all_meas, dict):
+        return False
+    sib = all_meas.get("Null.blank_rows" if crit == "Null.schema_default" else "Null.schema_default")
+    if writer_scan_problem(sib, facts) is not None:
+        return False
+    a, b = meas["writer_scan"], sib["writer_scan"]
+    return sorted(a["entries"]) == sorted(b["entries"]) and sorted(a["files"]) == sorted(b["files"])
+
+
+def null_lift_earned(crit: str, meas, all_meas, facts=None) -> bool:
+    """True when the Null cap lifts for `crit`: by the declared null convention (`_convention_lift_earned`, S1 pin 13) OR by the static writer scan (`writer_scan_earned`, E5.7)."""
+    return _convention_lift_earned(crit, meas, all_meas) or writer_scan_earned(crit, meas, all_meas, facts)
+
+
+def fidelity_pass_problem(meas, facts=None) -> str | None:
+    """E5.7 (Worker E, SS N-150 R7): None when the Narr.fidelity_test record carries a complete verified `golden` block (each declared test verified by golden_test_scan: the built output asserted
+    equal to an independent literal sentence), else the reason it does not. With `facts` carrying the declared prose fields, the covered entries must equal them."""
+    if not isinstance(meas, dict):
+        return "no record"
+    g = meas.get("golden")
+    if not isinstance(g, dict) or g.get("verified") is not True:
+        return "no verified golden block"
+    ents, tests = g.get("entries"), g.get("tests")
+    if not (isinstance(ents, list) and ents and all(isinstance(x, str) and x for x in ents)):
+        return "the block names no covered prose entry"
+    if not (isinstance(tests, list) and tests):
+        return "the block names no verified test"
+    covered = set()
+    for t in tests:
+        if not (isinstance(t, dict) and isinstance(t.get("test"), str) and "::" in t["test"] and isinstance(t.get("line"), int) and t["line"] >= 1
+                and all(isinstance(t.get(k), str) and re.fullmatch(r"[0-9a-f]{64}", t[k]) for k in ("expected_sha256", "file_sha256"))
+                and isinstance(t.get("covers"), list) and t["covers"] and all(isinstance(c, str) for c in t["covers"])):
+            return "a verified test entry is incomplete (test, line, expected_sha256, file_sha256, covers)"
+        covered |= set(t["covers"])
+    if not set(ents) <= covered:
+        return "a covered prose entry is named by no verified test"
+    if isinstance(facts, dict) and isinstance(facts.get("declared_prose_fields"), list) and sorted(facts["declared_prose_fields"]) != sorted(ents):
+        return "the block's entries are not the asset's declared prose_fields"
+    if meas.get("inconclusive") or meas.get("basis") is not None or meas.get("v") != PASS:
+        return "the record is inconclusive, carries a basis, or is not PASS"
+    return None
+
+
+def fidelity_pass_earned(meas, facts=None) -> bool:
+    return fidelity_pass_problem(meas, facts) is None
+
+
+def _convention_lift_earned(crit: str, meas, all_meas) -> bool:
+    """True when the cap lifts for `crit` by the declared null convention: this record AND its sibling Null record both carry a complete verified block, naming the same table and columns."""
     if null_lift_problem(meas) is not None or not isinstance(all_meas, dict):
         return False
     sib = all_meas.get("Null.blank_rows" if crit == "Null.schema_default" else "Null.schema_default")
@@ -3443,6 +3669,7 @@ def _test_facts(path: Path, text: str):
                for t in n.targets if isinstance(t, ast.Name) and t.id != "pytestmark"}
     mod_skip = any(isinstance(n, ast.Assign) and any(isinstance(t, ast.Name) and t.id == "pytestmark" for t in n.targets)
                    and _SKIP_WORD.search(ast.unparse(n.value)) for n in tree.body)
+    cls_of = {id(c): k.name for k in ast.walk(tree) if isinstance(k, ast.ClassDef) for c in k.body if isinstance(c, (ast.FunctionDef, ast.AsyncFunctionDef))}
     cls_skip = {id(c): _skips(k, aliases) for k in ast.walk(tree) if isinstance(k, ast.ClassDef)
                 for c in k.body if isinstance(c, (ast.FunctionDef, ast.AsyncFunctionDef))}
 
@@ -3479,7 +3706,7 @@ def _test_facts(path: Path, text: str):
                     asserts = True
                     leaves_of(n.test, aleaves)
         return dict(name=fn.name, calls=calls, asserts=asserts, leaves=leaves, assert_leaves=aleaves, skipped=skipped,
-                    called=called)
+                    called=called, node=fn, bound=bound, cls=cls_of.get(id(fn)))
     helpers = {n.name: facts_of(n) for n in tree.body
                if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef)) and not n.name.startswith("test")}
     funcs = []
@@ -3511,7 +3738,40 @@ def _leaf_in(leaf: str, names) -> bool:
     return any(leaf in n or n in toks for n in names)
 
 
-def narr_fidelity_scan(entries, evidence, tests) -> dict:
+def narr_fidelity_scan(entries, evidence, tests, declared=None, root=None) -> dict:
+    """The structural reading (`_narr_fidelity_structural`) PLUS, when the asset DECLARES `fidelity_tests` (E5.7, SS N-150 R7), the verification of each declared golden-value test
+    (golden_test_scan.py: the named test exists, calls the builder and asserts the built output EQUAL to an independent literal sentence, covering the declared entries). PASS only when every
+    declared prose entry is covered by a verified golden test and every declared test verifies; the record then carries the `golden` block the rollup re-checks. A structural FAIL / NO_DETECTOR
+    is never raised by a declaration; without a declaration the reading is exactly the structural one (never PASS)."""
+    base = _narr_fidelity_structural(entries, evidence, tests)
+    if not declared:
+        return base
+    mods = _cited_modules(evidence)
+    if not mods or base["v"] in (NO_DET, FAIL):
+        return dict(base, golden_declared=True, measured=base["measured"] + "; the declared fidelity_tests were not verified (no builder module cited, or no test calls the builder)")
+    try:
+        gold = _lint_module("golden_test_scan")
+    except (OSError, ImportError, SyntaxError) as exc:         # a tree without the sibling module (a plant fixture): the declared tests are not verified, the cap stands
+        return dict(base, golden_declared=True, measured=f"{base['measured']}; the declared fidelity_tests were not verified (golden_test_scan.py could not be loaded: {type(exc).__name__})")
+    rt = Path(root) if root is not None else ROOT
+
+    def rel(p):
+        try:
+            return Path(p).resolve().relative_to(rt.resolve()).as_posix()
+        except ValueError:
+            return Path(p).as_posix()
+    try:
+        got = gold.scan(list(entries), declared, mods, tests, _test_facts, _dotted, _calls_module,
+                        lambda e: (lambda c, pth: [k for k in (pth or ()) if k != PROSE_WILDCARD][-1] if pth else c)(*parse_prose_field(e)), rel)
+    except (SyntaxError, ValueError, RecursionError, KeyError, AttributeError, TypeError) as exc:     # R41: a failed verification degrades only this check to its structural reading
+        return dict(base, golden_declared=True, measured=f"{base['measured']}; the declared fidelity_tests could not be verified ({type(exc).__name__}: {str(exc)[:100]})")
+    if got["v"] == PASS:
+        return dict(got, tests=base.get("tests", []), measured="PASS: " + got["measured"])
+    return dict(base, golden_tests=got["golden_tests"], covered_golden=got["covered"],
+                measured=base["measured"] + "; declared golden-value tests NOT yet PASS: " + got["measured"])
+
+
+def _narr_fidelity_structural(entries, evidence, tests) -> dict:
     """Narr.fidelity_test (CLAUDE.md N.7 item 5): a test exists that exercises the narration builder. Builder modules
     = the .py files the declaration's evidence cites. A test QUALIFIES when it calls a name imported from a builder
     module and contains an assert; it COVERS an entry when it also references the entry's leaf (column or last key).
@@ -3704,6 +3964,40 @@ def _own3(ctx: dict) -> dict:
     return {ctx["table"]: (ctx.get("columns"), ctx.get("types"), ctx.get("defaults"))} if ctx.get("table") else {}
 
 
+def _apply_writer_scan(out: dict, pf, ctx: dict) -> None:
+    """E5.7 (Worker E, SS N-150 R7): run the static writer scan (writer_literal_scan.py) over `ctx['units']` (the writer's resolved scope) for the declared prose entries and fold it into the two
+    Null records. Both records clean (the PARTIAL `clean` reading of the data-level graders) AND the scan clean = both read PASS, each carrying the `writer_scan` block the rollup re-checks.
+    Otherwise the records keep their verdict and say what the scan found / could not resolve. No units = no scan (the records are exactly what the graders produced). Fault-isolated (R41)."""
+    units = ctx.get("units")
+    if not units or not pf:
+        return
+    own = _own3(ctx)
+    holders = {parse_prose_field(e)[0]: _holders(parse_prose_field(e)[0], own) for e in pf}
+    try:
+        ws = _lint_module("writer_literal_scan").scan(units, list(pf), holders, is_placeholder=ldgr_placeholder_py, sql_texts=_sql_texts,
+                                                      parse_entry=parse_prose_field, beyond=ctx.get("beyond") or ())
+    except Exception as exc:                                  # a failed scan degrades only the writer-scan evidence: the data-level records stay as they are
+        for crit in NULL_CHECKS:
+            if out.get(crit, {}).get("v") == PARTIAL:
+                out[crit] = dict(out[crit], measured=out[crit]["measured"] + f"; writer scan errored ({type(exc).__name__}: {str(exc)[:120]}), so this stays PARTIAL")
+        return
+    summary = dict(v=ws["v"], problems=ws["problems"][:10], unresolved=ws["unresolved"][:10], files=ws["files"])
+    sd, br = out.get("Null.schema_default", {}), out.get("Null.blank_rows", {})
+    clean = all(r.get("v") == PARTIAL and r.get("clean") is True for r in (sd, br))
+    if clean and ws["v"] == PASS:
+        block = dict(verified=True, v=PASS, entries=list(pf), columns=sorted({parse_prose_field(e)[0] for e in pf}), files=list(ws["files"]),
+                     paths_per_entry={e: ws["entries"][e]["writes"] for e in pf}, schema_default_clean=True, blank_rows_clean=True, scan=ws["measured"])
+        for crit in NULL_CHECKS:
+            out[crit] = dict(out[crit], v=PASS, writer_scan=dict(block),
+                             measured=f"PASS earned by the writer scan: {out[crit]['measured'].split('; schema defaults')[0].split('; writer literal')[0]}; {ws['measured']}")
+        return
+    for crit in NULL_CHECKS:
+        rec = out.get(crit)
+        if isinstance(rec, dict) and rec.get("v") == PARTIAL:
+            txt = rec["measured"].replace("so this is never PASS", "so the writer source is scanned for them (E5.7) and the scan is not clean")
+            out[crit] = dict(rec, writer_scan_summary=summary, measured=f"{txt}; {ws['measured']}")
+
+
 def prose_checks(aid: str, decl, ctx: dict) -> dict:
     """The six Narr/Null records for one asset, from its declaration entry (`prose_fields`, `evidence`) and `ctx`:
     table, columns, types, defaults, counts (None = not read), paths (writer scope files), tests, vocabulary, written
@@ -3758,7 +4052,7 @@ def prose_checks(aid: str, decl, ctx: dict) -> dict:
     for crit, fn in (
             ("Narr.agree", lambda: grade_narr_agree_tables(pf, {t: (v[0], v[1]) for t, v in _own3(ctx).items()})),
             ("Narr.checkable", lambda: grade_narr_checkable(pf, ctx.get("counts"))),
-            ("Narr.fidelity_test", lambda: narr_fidelity_scan(pf, ev, ctx.get("tests") or ())),
+            ("Narr.fidelity_test", lambda: narr_fidelity_scan(pf, ev, ctx.get("tests") or (), decl.get("fidelity_tests"), ctx.get("root"))),
             ("Narr.lint", lambda: narr_lint_scan(ctx.get("paths") or (), [parse_prose_field(e)[0] for e in pf])),
             ("Null.schema_default", lambda: grade_null_schema_default_tables(pf, _own3(ctx))),
             ("Null.blank_rows", lambda: grade_null_blank_rows(pf, ctx.get("counts")))):
@@ -3766,6 +4060,7 @@ def prose_checks(aid: str, decl, ctx: dict) -> dict:
             out[crit] = fn()
         except (Unknown, DeclarationsError) as exc:      # R41: one check's failure degrades only that check
             out[crit] = dict(v=ERRORED, measured=f"check errored: {exc}")
+    _apply_writer_scan(out, pf, ctx)
     if out.get("Narr.agree", {}).get("v") == PASS and ctx.get("written") is None:
         out["Narr.agree"] = dict(v=PARTIAL, measured=out["Narr.agree"]["measured"] + "; reverse leg unavailable: the writer's "
                                  "writes could not be read, so a prose-vocabulary column it writes without declaring is unchecked")
@@ -4761,6 +5056,35 @@ def _sql_texts(unit: dict):
     out: list[tuple[str, int]] = []
     done: set[int] = set()
 
+    fn_stack: list = []
+
+    def _str_list(a, depth=0):
+        """The string constants of a literal list/tuple, or of a Name bound exactly once (in the enclosing function, else at module level) to one and never mutated; None otherwise."""
+        if isinstance(a, (ast.List, ast.Tuple)) and a.elts and all(isinstance(x, ast.Constant) and isinstance(x.value, str) for x in a.elts):
+            return [x.value for x in a.elts]
+        if isinstance(a, ast.Name) and depth < 3:
+            for sc in (([fn_stack[-1]] if fn_stack else []) + [tree]):
+                pool = list(tree.body) if sc is tree else list(ast.walk(sc))
+                vals = [x.value for x in pool if isinstance(x, ast.Assign) and any(isinstance(t, ast.Name) and t.id == a.id for t in x.targets)]
+                if vals:
+                    mutated = any((isinstance(x, ast.AugAssign) and isinstance(x.target, ast.Name) and x.target.id == a.id)
+                                  or (isinstance(x, ast.Call) and isinstance(x.func, ast.Attribute) and isinstance(x.func.value, ast.Name) and x.func.value.id == a.id
+                                      and x.func.attr in ("append", "extend", "insert", "remove", "pop", "clear", "sort", "reverse", "__iadd__"))
+                                  for x in ast.walk(sc))
+                    return None if len(vals) != 1 or mutated else _str_list(vals[0], depth + 1)
+        return None
+
+    def _joined(e, depth=0):
+        """`', '.join(<literal list | name bound to one>)`, or a name bound once to such a join: the joined text (a column list built from a literal list), else None."""
+        if isinstance(e, ast.Name) and fn_stack and depth < 3:
+            vals = [x.value for x in ast.walk(fn_stack[-1]) if isinstance(x, ast.Assign) and any(isinstance(t, ast.Name) and t.id == e.id for t in x.targets)]
+            return _joined(vals[0], depth + 1) if len(vals) == 1 else None
+        if (isinstance(e, ast.Call) and isinstance(e.func, ast.Attribute) and e.func.attr == "join" and isinstance(e.func.value, ast.Constant)
+                and isinstance(e.func.value.value, str) and len(e.args) == 1 and not e.keywords):
+            items = _str_list(e.args[0])
+            return None if items is None else [e.func.value.value.join(items)]
+        return None
+
     def parts_of(n, loops) -> list[str] | None:
         if isinstance(n, ast.Constant) and isinstance(n.value, str):
             return [n.value]
@@ -4773,6 +5097,8 @@ def _sql_texts(unit: dict):
                     e = v.value
                     names = (loops.get(e.id) or ([consts[e.id]] if e.id in consts else None)) \
                         if isinstance(e, ast.Name) else None
+                    if names is None:
+                        names = _joined(e)           # E5.7: a column list `", ".join(COLUMNS)` the writer builds from a literal list
                     texts = [t + x for t in texts for x in (names or ["{?}"])]
             return texts
         if isinstance(n, ast.BinOp) and isinstance(n.op, ast.Add):
@@ -4782,6 +5108,16 @@ def _sql_texts(unit: dict):
         return None
 
     def visit(n, loops):
+        pushed = isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef))
+        if pushed:
+            fn_stack.append(n)
+        try:
+            _visit(n, loops)
+        finally:
+            if pushed:
+                fn_stack.pop()
+
+    def _visit(n, loops):
         if isinstance(n, (ast.For, ast.AsyncFor)):
             it = n.iter
             names = _literal_names(it) or (seqs.get(it.id, []) if isinstance(it, ast.Name) else [])
@@ -8316,7 +8652,7 @@ def _table_scope(t, r, own, shared):
     if tail is not None:
         # chart-scoped only when the predicate BINDS chart_id to the census chart (`chart_id = $1`, no OR); a
         # parseable count_sql without it on a table that carries chart_id counts every chart: an upper bound
-        if re.search(r"\bchart_id\s*=\s*\$1(?!\d)", tail) and not re.search(r"\bOR\b", tail, re.I):
+        if _chart_pinned(tail):
             scope = "chart-scoped by count_sql"
         elif "chart_id" in (own[t][0] or ()):
             scope = UPPER_BOUND
@@ -8412,6 +8748,7 @@ def _measure_prose(aid, decl, r, files, cat, ctables, shared, ptests, vocab) -> 
     if files and pf is not None:
         try:
             units, _beyond = _delegation_scope(aid, files)
+            ctx["units"], ctx["beyond"] = units, _beyond
             ctx["paths"] = [u["path"] for u in units]
             ctx["written"] = written_columns(units, [tbl] + list(ctables))
         except Unknown:

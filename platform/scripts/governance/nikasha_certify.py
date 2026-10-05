@@ -1059,7 +1059,9 @@ def build_record(*, asset, layer, criterion, evidence, verified_by, verdict=None
     # the one this writer can certify: the same `ac.null_lift_earned` the rollup runs, read from the census record, never typed by the caller
     null_earned = (kind == "gate" and criterion.startswith("Null.") and meas is not None
                    and ac.null_lift_earned(criterion, meas, (record or {}).get("measurements")))
-    if kind == "gate" and verdict == "PASS" and not null_earned and (criterion.startswith("Null.") or criterion == "Narr.fidelity_test"):
+    # E5.7 (SS N-150 R7): the same for a Narr.fidelity_test PASS the census EARNED (the record carries the verified `golden` block: each declared test verified from source)
+    fidelity_earned = (kind == "gate" and criterion == "Narr.fidelity_test" and meas is not None and ac.fidelity_pass_earned(meas))
+    if kind == "gate" and verdict == "PASS" and not null_earned and not fidelity_earned and (criterion.startswith("Null.") or criterion == "Narr.fidelity_test"):
         _refuse("capped_verdict", f"{criterion} is capped at PARTIAL (Null: never PASS alone; fidelity_test: "
                                   "structural only)")
     if inconclusive and verdict in ("PASS", "PARTIAL"):

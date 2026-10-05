@@ -63,6 +63,11 @@ def _assets():
 NARR_GUARD_CLAUSE = ("; an asset that declares prose_fields [] WITH a prose_coupling to carriage_d1 (NARR-GUARD, pin 16, N-94) reads N/A only while its own Carr.D1 reads PASS, else NO_DETECTOR")
 
 
+E57_CHECKABLE = "; rows are scoped from a plain count_sql OR a sum of plain count subselects (one term per table), pinned to the chart by a depth-0 `chart_id = $1` conjunct (E5.7)"
+E57_FIDELITY = ("structural test discovery (N.7 item 5) caps at PARTIAL; PASS only when the asset DECLARES fidelity_tests and golden_test_scan verifies each from source (the named test calls the builder "
+                "and asserts the built output EQUAL to an independent literal sentence) and every declared prose entry is covered (E5.7, SS N-150 R7)")
+
+
 def _restore_pre_retirement(monkeypatch):
     """Rebuild the revision-7 inspector around the real rollup code: the criterion back in the registry, nothing retired."""
     reg = dict(ac.CRITERION_REGISTRY)
@@ -73,7 +78,8 @@ def _restore_pre_retirement(monkeypatch):
     monkeypatch.setattr(ac, "RETIRED_CRITERIA", {}, raising=False)
     reg["Narr.agree"] = dict(reg["Narr.agree"], revision=1, applicability=NARR_AGREE_REV7)    # its text said "undecided" until revision 9; revision 16 (NARR-GUARD) re-worded and bumped all four Narr checks
     for crit in ("Narr.checkable", "Narr.fidelity_test", "Narr.lint"):
-        reg[crit] = dict(reg[crit], revision=1, applicability=reg[crit]["applicability"].replace(NARR_GUARD_CLAUSE, ""))
+        reg[crit] = dict(reg[crit], revision=1, applicability=reg[crit]["applicability"].replace(NARR_GUARD_CLAUSE, "")
+                         .replace(E57_CHECKABLE, "").replace(E57_FIDELITY, "structural test discovery (N.7 item 5); never PASS"))   # revision 26 (E5.7) re-worded and bumped both
     reg["Vocab.alias"] = dict(reg["Vocab.alias"], revision=1, applicability="the table declares an alias-bearing class census")     # revision 12 (S3) re-worded and bumped both
     reg["Ldgr.source_presence"] = dict(reg["Ldgr.source_presence"], revision=2,
                                        applicability="the target table carries a recognised citation column (R60: singular classical_citation included)")
