@@ -361,6 +361,20 @@ def _validate_test_slice(marker) -> TestSlice:
     return TestSlice(run=run, horizon=horizon, classes=ordered, marker=dict(marker), digest=digest)
 
 
+def _log_verify_outcome(substep_key: str, result: WriterResult) -> WriterResult:
+    """VERIFIER-R2-GO: the in-build verification outcome reaches the run log — the runner never reads a substep's notes
+    (the run exits 0 and the verdict is read from the database), so without this a class the verifier could not derive
+    would be invisible. INFO for every verify/window outcome; WARNING when the notes say UNVERIFIED (a class or window the
+    verifier could not independently derive: it cannot seal and does not satisfy a verification gate). Logging only: the
+    result is returned unchanged, so the frozen orchestrator contract and the substep's stored outcome are untouched."""
+    notes = result.notes or ""
+    if "UNVERIFIED" in notes:
+        logger.warning("%s: %s: %s", ASSET_ID, substep_key, notes)
+    else:
+        logger.info("%s: %s: %s", ASSET_ID, substep_key, notes)
+    return result
+
+
 def _test_slice(ctx: ContextSpec) -> TestSlice | None:
     """The run's validated test-slice marker, or None — the ABSENT key is today's behaviour,
     byte-identical."""
@@ -823,13 +837,14 @@ class GocharaV5Writer(WriterBase):
                 or step.key.startswith((INVENTORY_SUBSTEP_PREFIX, VERIFY_SUBSTEP_PREFIX))):
             if step.key != MANIFEST_SUBSTEP:
                 _verify_live_inputs(ctx, chart_id)
-            return self._run_inventory_phase(ctx, step, chart_id, slice_)
+            result = self._run_inventory_phase(ctx, step, chart_id, slice_)
+            return _log_verify_outcome(step.key, result) if step.key.startswith(VERIFY_SUBSTEP_PREFIX) else result
         if step.key.startswith((COVERAGE_SUBSTEP_PREFIX, RECORD_SUBSTEP_PREFIX)):
             _verify_live_inputs(ctx, chart_id)
             return self._run_record_phase(ctx, step, chart_id, slice_)
         if step.key.startswith(WINDOW_SUBSTEP_PREFIX):
             _verify_live_inputs(ctx, chart_id)
-            return self._run_window_phase(ctx, step, chart_id)
+            return _log_verify_outcome(step.key, self._run_window_phase(ctx, step, chart_id))
         body = step.key[len(BODY_SUBSTEP_PREFIX):]
         if body not in SUBSTRATE_BODIES:
             return WriterResult(asset_id=self.asset_id, rows_inserted=0,
@@ -1028,8 +1043,21 @@ class GocharaV5Writer(WriterBase):
         # R9-3: the COMPLETE contact geometry of every concrete transit obligation, reconstructed from the ephemeris
         # and compared with the ledger both ways (interior exits/re-entries, bridged and omitted contacts all fail);
         # incomplete evidence raises GeometryUnavailable — no complete-search claim without it
+        # INTERIM (steward GRAZE-INTERIM), a VALIDATED test slice ONLY: in-band intervals that contain no exact crossing (grazes: this builder mints a
+        # point contact only around an exact root) are REPORTED in the notes below, not raised; every other certification failure still raises. Without a
+        # slice marker (any full build) nothing changes, so a full build keeps failing on a graze until the owner's decision on grazes is implemented.
+        graze_sink: list | None = [] if slice_ is not None else None
         geometry = gk_contact_certify.certify_contact_geometry(
-            ctx.db_conn, chart_id=chart_id, generation=GENERATION, event_class=event_class, position_at=position_at)
+            ctx.db_conn, chart_id=chart_id, generation=GENERATION, event_class=event_class, position_at=position_at,
+            graze_sink=graze_sink)
+        graze_note = ""
+        if graze_sink:
+            graze_note = (f"; GRAZES REPORTED, NOT RAISED (validated test slice; {len(graze_sink)}): " + " | ".join(
+                f"{g['body']} {g['relation']} {g['target']} level {g['level_deg']} in band {g['interval'][0]} to {g['interval'][1]}, closest "
+                f"{g['closest_approach_deg']} deg at {g['closest_approach_at']}, peak activity {g['peak_activity']}"
+                + (f", whole stretch clipped by the horizon at its {' and '.join(g['clipped_by_horizon'])} (horizon part {g['horizon_interval'][0]} to {g['horizon_interval'][1]})"
+                   if g.get("clipped_by_horizon") else "") for g in graze_sink))
+            logger.warning("%s: %s %s", ASSET_ID, event_class, graze_note.strip("; "))
         # R9-6.1: the builder NEVER persists a verification row (it holds no privilege to, and the database cannot tell a
         # builder-written "independent" verification from a real one). Everything above is the builder's in-build
         # SELF-CHECK, reported; persistence of the 1206 inventory row and every 1240 window row belongs to the separate
@@ -1044,7 +1072,7 @@ class GocharaV5Writer(WriterBase):
                                   "independently reproduced (report only); "
                                   f"contact geometry (aspect-to-span included) certified complete for "
                                   f"{geometry['obligations_certified']} concrete obligation(s) "
-                                  f"({geometry['contacts_expected']} contacts; {geometry['named_limit']}){gate_note}")
+                                  f"({geometry['contacts_expected']} contacts; {geometry['named_limit']}){graze_note}{gate_note}")
 
     def _run_record_phase(self, ctx: ContextSpec, step: SubStep,
                           chart_id: str, slice_: TestSlice | None = None) -> WriterResult:
