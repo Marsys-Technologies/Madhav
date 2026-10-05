@@ -1,213 +1,184 @@
-import Link from 'next/link'
-import { redirect } from 'next/navigation'
-import { query } from '@/lib/db/client'
-import { resolveChartPageAccess } from '@/lib/auth/chart-page-guard'
-import { emptyChartReadiness, getChartReadinessMap, type ChartReadiness } from '@/lib/charts/readiness'
-import { getChartWorkspaceSummary } from '@/lib/charts/workspaceSummary'
-import { formatDate } from '@/lib/utils/date'
-import { ChartHero } from '@/components/profile/ChartHero'
-import { ChartReadinessBand } from '@/components/profile/ChartReadinessBand'
-import { CapabilityCard } from '@/components/profile/CapabilityCard'
-import { ChartActionsMenu } from '@/components/profile/ChartActionsMenu'
-import { SharingPanel } from '@/components/sharing/SharingPanel'
-import '@/components/profile/jataka-workspace.css'
+import Link from "next/link";
+import { redirect } from "next/navigation";
+import { query } from "@/lib/db/client";
+import { resolveChartPageAccess } from "@/lib/auth/chart-page-guard";
+import {
+  emptyChartReadiness,
+  getChartReadinessMap,
+} from "@/lib/charts/readiness";
+import { getChartWorkspaceSummary } from "@/lib/charts/workspaceSummary";
+import {
+  getJourney1ChartData,
+  journey1Frame,
+  journey1FrameLabel,
+} from "@/lib/charts/journey1";
+import { formatDate } from "@/lib/utils/date";
+import { ChartReadinessBand } from "@/components/profile/ChartReadinessBand";
+import { ChartActionsMenu } from "@/components/profile/ChartActionsMenu";
+import { PageTitle } from "@/components/journey1/Titles";
+import { VargaChart } from "@/components/journey1/VargaChart";
+import { ActivationTimeline } from "@/components/journey1/ActivationTimeline";
+import { ChartNav } from "@/components/journey1/ChartNav";
+import "@/components/profile/jataka-workspace.css";
 
-/**
- * Jātaka workspace — the durable home for one chart.
- *
- * D1/Rāśi hero and identity, the shared readiness band (same authority as the
- * Jātakas directory), an extensible capability deck, and only grounded
- * at-a-glance summaries. D1, daśā and yogas come from this chart's own L1 rows;
- * nothing is borrowed from another chart or invented for a missing value.
- */
-
-function panchangReason(readiness: ChartReadiness): string {
-  if (readiness.state === 'building') return 'Chart recomputation is in progress.'
-  if (readiness.state === 'needs-rebuild' || readiness.state === 'failed') return 'The chart needs rebuilding first.'
-  return 'Needs this chart’s Gaṇita facts.'
-}
-
-function GlanceItem({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <div className="flex flex-col gap-1.5">
-      <dt className="jw-eyebrow">{label}</dt>
-      <dd className="text-sm text-[var(--jw-ink)]">{children}</dd>
-    </div>
-  )
-}
-
-function Unavailable({ children }: { children: React.ReactNode }) {
-  return <span className="text-[var(--jw-ink-dim)]">{children}</span>
-}
-
-export default async function ClientPage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = await params
-  const access = await resolveChartPageAccess(id)
-  if (!access) redirect('/login')
-  if (access.permission === 'deny') redirect('/dashboard')
-
-  const chartResult = await query<{
-    id: string
-    name: string
-    birth_date: string
-    birth_time: string
-    birth_place: string
-    timezone_id: string | null
-    owner_id: string | null
-    client_id: string
+export default async function ClientPage({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
+  const { id } = await params;
+  const access = await resolveChartPageAccess(id);
+  if (!access) redirect("/login");
+  if (access.permission === "deny") redirect("/dashboard");
+  const { rows } = await query<{
+    id: string;
+    name: string;
+    birth_date: string;
+    birth_time: string;
+    birth_place: string;
+    timezone_id: string | null;
+    ayanamsa: string | null;
   }>(
-    `SELECT id, name, birth_date::text AS birth_date, birth_time::text AS birth_time,
-            birth_place, timezone_id, owner_id, client_id
-       FROM charts WHERE id=$1`,
+    `SELECT id,name,birth_date::text,birth_time::text,birth_place,timezone_id,ayanamsa FROM charts WHERE id=$1`,
     [id],
-  )
-  const chart = chartResult.rows[0] ?? null
-  if (!chart) redirect('/dashboard')
-
-  const isSuperAdmin = access.role === 'super_admin'
-  const canBuild = access.canBuild
-  // Sharing follows its existing authorisation: the grant panel is super-admin only.
-  const canShare = isSuperAdmin
-
-  const [readinessMap, summary, conversationsResult] = await Promise.all([
+  );
+  const chart = rows[0];
+  if (!chart) redirect("/dashboard");
+  const frame = journey1Frame(chart.ayanamsa);
+  const [readinessMap, summary, extra] = await Promise.all([
     getChartReadinessMap([id]),
-    getChartWorkspaceSummary(id),
-    query<{ id: string; title: string | null; created_at: string }>(
-      `SELECT id, title, created_at FROM conversations
-        WHERE chart_id=$1 AND user_id=$2 AND module='consume' AND archived_at IS NULL
-        ORDER BY created_at DESC, id DESC LIMIT 3`,
-      [id, access.user.uid],
-    ),
-  ])
-  const readiness = readinessMap.get(id) ?? emptyChartReadiness()
-  const recentConversations = conversationsResult.rows
-
-  const panchangAvailable =
-    !['building', 'needs-rebuild', 'failed'].includes(readiness.state) &&
-    readiness.layerPips.some((pip) => pip.layer === 'ganita' && pip.state === 'lit')
-
+    getChartWorkspaceSummary(id, frame),
+    getJourney1ChartData(id, frame),
+  ]);
+  const readiness = readinessMap.get(id) ?? emptyChartReadiness();
+  const isSuperAdmin = access.role === "super_admin";
   return (
-    <div className="jw-root min-h-full" data-permission={access.permission}>
-      <ChartHero
-        chart={summary.d1}
-        nativeName={chart.name}
-        birthDate={chart.birth_date}
-        birthTime={chart.birth_time}
-        birthPlace={chart.birth_place}
-        timezoneId={chart.timezone_id}
-        actions={
-          <ChartActionsMenu
-            chartId={id}
-            chartName={chart.name}
-            canBuild={canBuild}
-            isSuperAdmin={isSuperAdmin}
-            canShare={canShare}
-          />
-        }
-      />
-
-      <div className="mx-auto flex w-full max-w-6xl flex-col gap-8 px-4 pb-16 sm:px-6">
-        <ChartReadinessBand readiness={readiness} chartId={id} canBuild={canBuild} />
-
-        <section aria-labelledby="jw-capabilities-heading" className="flex flex-col gap-3">
-          <h2 id="jw-capabilities-heading" className="jw-eyebrow">
-            Capabilities
-          </h2>
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {canBuild && (
-              <CapabilityCard
-                testId="build-room-card"
-                name="Nirmāṇa"
-                description="Construct, inspect and maintain this chart’s computed corpus."
-                href={`/clients/${id}/nirmana`}
-                available
-                stateHint={readiness.label}
-              />
-            )}
-            <CapabilityCard
-              testId="consult-room-card"
-              name="Paripraśna"
-              description="Ask and explore this chart."
+    <div className="j1 j1-container" data-permission={access.permission}>
+      <Link href="/dashboard" className="j1-note">
+        ← Birth charts
+      </Link>
+      <section className="j1-chart-hero" aria-label="Chart identity">
+        <VargaChart
+          charts={[summary.d1, extra.d9, extra.d10]}
+          ayanamsha={journey1FrameLabel(frame)}
+        />
+        <div className="j1-chart-info">
+          <PageTitle name="overview" />
+          <h2>{chart.name}</h2>
+          <p className="j1-note">
+            {formatDate(chart.birth_date)} · {chart.birth_time?.slice(0, 5)}{" "}
+            {chart.timezone_id} <br />
+            {chart.birth_place}
+          </p>
+          <p>
+            {summary.d1.isEmpty
+              ? "Lagna not yet computed"
+              : `Lagna · ${summary.d1.lagnaSign} ${summary.d1.lagnaDegreeDms}`}
+          </p>
+          <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
+            <Link
               href={`/clients/${id}/pariprashna`}
-              available
-              stateHint="Ask"
-            />
-            <CapabilityCard
-              testId="panchang-room-card"
-              name="Pañcāṅga"
-              description="Personalised daily timing for this chart."
-              href={`/clients/${id}/panchang`}
-              available={panchangAvailable}
-              stateHint="Today"
-              reason={panchangAvailable ? undefined : panchangReason(readiness)}
+              className="j1-btn"
+              data-testid="consult-room-card"
+            >
+              <PageTitle name="consultation" as="span" compact />
+            </Link>
+            <ChartActionsMenu
+              chartId={id}
+              chartName={chart.name}
+              canBuild={access.canBuild}
+              isSuperAdmin={isSuperAdmin}
+              canShare={isSuperAdmin}
             />
           </div>
+        </div>
+      </section>
+      <ChartNav chartId={id} canBuild={access.canBuild} />
+      <ChartReadinessBand
+        readiness={readiness}
+        chartId={id}
+        canBuild={access.canBuild}
+      />
+      <div className="j1-summary-grid" style={{ marginTop: 24 }}>
+        <section className="j1-panel">
+          <PageTitle name="review" as="h2" compact />
+          <p className="j1-note">Qualified transit activation windows</p>
+          {extra.windows.length ? (
+            <ActivationTimeline windows={extra.windows} />
+          ) : (
+            <p className="j1-note" style={{ marginBlock: 16 }}>
+              {extra.flags.includes("windows_unavailable")
+                ? "Activation windows are temporarily unavailable."
+                : "No qualified upcoming activation windows are available for this chart."}
+            </p>
+          )}
+          <Link href={`/clients/${id}/samiksha`}>Open prediction review →</Link>
         </section>
-
-        <section aria-labelledby="jw-glance-heading" className="jw-panel px-5 py-5">
-          <h2 id="jw-glance-heading" className="jw-eyebrow mb-4">
-            At a glance
-          </h2>
-          <dl className="grid grid-cols-1 gap-6 sm:grid-cols-2">
-            <GlanceItem label="Current daśā">
-              {summary.currentDasha ? (
-                <>
-                  {summary.currentDasha.md} mahādaśā · {summary.currentDasha.ad} antardaśā
-                  <span className="block text-xs text-[var(--jw-ink-dim)]">
-                    Antardaśā until {formatDate(summary.currentDasha.adEnd)}
-                  </span>
-                </>
-              ) : (
-                <Unavailable>Not yet computed</Unavailable>
+        <section className="j1-panel">
+          <PageTitle name="periods" as="h2" compact />
+          <dl>
+            <div>
+              <dt>Current daśā</dt>
+              <dd>
+                {summary.currentDasha
+                  ? `${summary.currentDasha.md} mahādaśā · ${summary.currentDasha.ad} antardaśā`
+                  : "Not yet computed"}
+              </dd>
+              {summary.currentDasha && (
+                <dd className="j1-note">
+                  Antardaśā until {formatDate(summary.currentDasha.adEnd)}
+                </dd>
               )}
-            </GlanceItem>
-            <GlanceItem label="Confirmed yogas">
-              {summary.confirmedYogas.length > 0 ? (
-                <ul className="flex flex-wrap gap-1.5" aria-label="Confirmed yoga firings">
-                  {summary.confirmedYogas.map((yoga) => (
-                    <li key={yoga.id} className="rounded-full border border-[var(--jw-rule)] px-2.5 py-0.5 text-xs">
-                      {yoga.name}
-                    </li>
-                  ))}
-                </ul>
-              ) : (
-                <Unavailable>{summary.flags.includes('yogas_unresolved') ? 'Unavailable' : 'None confirmed yet'}</Unavailable>
-              )}
-            </GlanceItem>
-            <GlanceItem label="Recent readings">
-              {recentConversations.length > 0 ? (
-                <ul className="flex flex-col gap-1">
-                  {recentConversations.map((conversation) => (
-                    <li key={conversation.id}>
-                      <Link
-                        href={`/clients/${id}/consult/${conversation.id}`}
-                        className="jw-touch inline-flex min-h-11 items-center truncate text-[var(--jw-gold)] hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--jw-gold)]"
-                      >
-                        {conversation.title ?? 'Untitled reading'}
-                      </Link>
-                    </li>
-                  ))}
-                </ul>
-              ) : (
-                <Unavailable>No readings yet</Unavailable>
-              )}
-            </GlanceItem>
-            <GlanceItem label="Data freshness">
-              {readiness.lastActivity ? (
-                <>Last built {formatDate(readiness.lastActivity)}</>
-              ) : (
-                <Unavailable>No computed data yet</Unavailable>
-              )}
-            </GlanceItem>
+            </div>
+            <div>
+              <dt>Transit timing</dt>
+              <dd>
+                {extra.windows.length
+                  ? `${extra.windows.length} upcoming or active recorded windows shown. `
+                  : "No transit timing summary available."}
+              </dd>
+            </div>
+            <div>
+              <dt>Confirmed yogas</dt>
+              <dd>
+                {summary.confirmedYogas.length
+                  ? summary.confirmedYogas.map((y) => y.name).join(" · ")
+                  : summary.flags.includes("yogas_unresolved")
+                    ? "Temporarily unavailable"
+                    : "None confirmed yet"}
+              </dd>
+            </div>
           </dl>
         </section>
-
-        {canShare && (
-          <section id="sharing" aria-label="Sharing" className="scroll-mt-8">
-            <SharingPanel chartId={id} />
-          </section>
-        )}
+        <section className="j1-panel">
+          <PageTitle name="preparation" as="h2" compact />
+          <p>{readiness.label}</p>
+          <p className="j1-note">
+            {readiness.lastActivity
+              ? `Last activity ${formatDate(readiness.lastActivity)}`
+              : "No computed data yet"}
+          </p>
+          {access.canBuild && (
+            <Link href={`/clients/${id}/nirmana`} data-testid="build-room-card">
+              Open chart preparation →
+            </Link>
+          )}
+        </section>
+        <section className="j1-panel">
+          <PageTitle name="almanac" as="h2" compact />
+          <p className="j1-note">
+            Chart context: {chart.birth_place}. The daily almanac and its
+            chart-specific interpretation are not yet integrated.
+          </p>
+          <Link
+            href={`/clients/${id}/panchang`}
+            data-testid="panchang-room-card"
+          >
+            Open personal almanac →
+          </Link>
+        </section>
       </div>
+      <footer className="j1-footer">Marsys Jyotish Intelligence System</footer>
     </div>
-  )
+  );
 }

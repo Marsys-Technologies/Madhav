@@ -1,121 +1,132 @@
-'use client'
-
-import { useState } from 'react'
+"use client";
+import { useState } from "react";
+import Link from "next/link";
 import {
   Dialog,
   DialogContent,
   DialogDescription,
   DialogHeader,
   DialogTitle,
-} from '@/components/ui/dialog'
-import { toast } from 'sonner'
+} from "@/components/ui/dialog";
 
-const FORM_CLASSES = {
-  input:
-    'w-full rounded-[10px] border border-[#2a2210] bg-[#0e0b06] px-3.5 py-3 text-sm text-[#fce29a] placeholder:text-[#6a5830] focus:border-[#d4af37] focus:outline-none focus:ring-2 focus:ring-[#d4af37]/20',
-  button:
-    'w-full rounded-[10px] bg-gradient-to-b from-[#f4d160] to-[#a26d0e] px-3.5 py-3 text-xs font-semibold uppercase tracking-[0.18em] text-[#1a1409] shadow-[0_0_0_1px_rgba(212,175,55,0.5),0_6px_20px_rgba(212,175,55,0.18)] transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50',
+export function RequestAccessForm() {
+  const [fullName, setFullName] = useState(""),
+    [email, setEmail] = useState(""),
+    [reason, setReason] = useState("");
+  const [busy, setBusy] = useState(false),
+    [done, setDone] = useState(false),
+    [error, setError] = useState<string | null>(null);
+  async function submit(e: React.FormEvent) {
+    e.preventDefault();
+    if (busy) return;
+    setBusy(true);
+    setError(null);
+    try {
+      const response = await fetch("/api/access-requests", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          full_name: fullName.trim(),
+          email: email.trim(),
+          reason: reason.trim() || undefined,
+        }),
+      });
+      const body = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        setError(
+          typeof body.error === "string"
+            ? body.error
+            : (body.error?.detail ??
+                "Could not submit request. Please try again."),
+        );
+        return;
+      }
+      setDone(true);
+    } catch {
+      setError("Network error. Your details are kept; please try again.");
+    } finally {
+      setBusy(false);
+    }
+  }
+  if (done)
+    return (
+      <div className="j1-form">
+        <p className="j1-status" role="status">
+          Your request has been received. An administrator will review it and
+          share account setup instructions after approval.
+        </p>
+        <Link href="/login">← Back to sign in</Link>
+      </div>
+    );
+  return (
+    <form className="j1-form" onSubmit={submit} aria-busy={busy}>
+      <p className="j1-note">
+        Submit your details for review. You’ll choose your username when setting
+        up your approved account.
+      </p>
+      <label className="j1-field">
+        <span>Full name</span>
+        <input
+          required
+          autoComplete="name"
+          maxLength={100}
+          value={fullName}
+          onChange={(e) => setFullName(e.target.value)}
+          disabled={busy}
+        />
+      </label>
+      <label className="j1-field">
+        <span>Email</span>
+        <input
+          required
+          type="email"
+          autoComplete="email"
+          maxLength={254}
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          disabled={busy}
+        />
+      </label>
+      <label className="j1-field">
+        <span>Reason for access (optional)</span>
+        <textarea
+          maxLength={500}
+          rows={3}
+          value={reason}
+          onChange={(e) => setReason(e.target.value)}
+          disabled={busy}
+        />
+      </label>
+      {error && (
+        <p role="alert" className="j1-error">
+          {error}
+        </p>
+      )}
+      <button className="j1-btn" disabled={busy}>
+        {busy ? "Submitting…" : "Submit request"}
+      </button>
+      <Link href="/login">← Back to sign in</Link>
+    </form>
+  );
 }
-
 export function RequestAccessModal({
   open,
   onOpenChange,
 }: {
-  open: boolean
-  onOpenChange: (open: boolean) => void
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
 }) {
-  const [fullName, setFullName] = useState('')
-  const [email, setEmail] = useState('')
-  const [reason, setReason] = useState('')
-  const [submitting, setSubmitting] = useState(false)
-  const [submitted, setSubmitted] = useState(false)
-
-  function reset() {
-    setFullName('')
-    setEmail('')
-    setReason('')
-    setSubmitting(false)
-    setSubmitted(false)
-  }
-
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault()
-    setSubmitting(true)
-    try {
-      const res = await fetch('/api/access-requests', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ full_name: fullName, email, reason: reason || undefined }),
-      })
-      const body = await res.json().catch(() => ({}))
-      if (!res.ok) {
-        toast.error(body?.error ?? 'Could not submit request.')
-        setSubmitting(false)
-        return
-      }
-      setSubmitted(true)
-    } catch {
-      toast.error('Network error. Please try again.')
-      setSubmitting(false)
-    }
-  }
-
   return (
-    <Dialog
-      open={open}
-      onOpenChange={(next) => {
-        onOpenChange(next)
-        if (!next) setTimeout(reset, 200)
-      }}
-    >
-      <DialogContent className="border-[rgba(212,175,55,0.35)] bg-[rgba(8,6,3,0.96)] text-[#fce29a] sm:max-w-md">
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="j1">
         <DialogHeader>
-          <DialogTitle className="font-serif text-xl font-medium tracking-wide text-[#fce29a]">
-            {submitted ? 'Request received' : 'Request access'}
-          </DialogTitle>
-          <DialogDescription className="text-sm text-[#9b834f]">
-            {submitted
-              ? "You'll receive an email when the administrator approves your request."
-              : "Submit your details. The administrator will review and respond by email."}
+          <DialogTitle>Request access</DialogTitle>
+          <DialogDescription>
+            Administrator approval is required.
           </DialogDescription>
         </DialogHeader>
-
-        {submitted ? null : (
-          <form onSubmit={handleSubmit} className="space-y-3">
-            <input
-              required
-              autoFocus
-              type="text"
-              maxLength={100}
-              value={fullName}
-              onChange={(e) => setFullName(e.target.value)}
-              placeholder="Full name"
-              className={FORM_CLASSES.input}
-            />
-            <input
-              required
-              type="email"
-              autoComplete="email"
-              maxLength={254}
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="Email"
-              className={FORM_CLASSES.input}
-            />
-            <textarea
-              maxLength={500}
-              value={reason}
-              onChange={(e) => setReason(e.target.value)}
-              placeholder="Reason for access (optional)"
-              rows={3}
-              className={FORM_CLASSES.input + ' resize-none'}
-            />
-            <button type="submit" disabled={submitting} className={FORM_CLASSES.button}>
-              {submitting ? 'Submitting…' : 'Submit request'}
-            </button>
-          </form>
-        )}
+        {open && <RequestAccessForm />}
       </DialogContent>
     </Dialog>
-  )
+  );
 }

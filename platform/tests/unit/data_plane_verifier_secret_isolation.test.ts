@@ -285,7 +285,7 @@ describe('R16-1: one project canonicaliser and one annotation parser through the
       { name: 'DATABASE_URL', valueFrom: { secretKeyRef: { name: BUILDER_SECRET, key: 'latest' } } }] }] } } } } } } }
   const resolved = { 'roles/owner': ['iam.serviceAccounts.getAccessToken', 'iam.serviceAccountKeys.create', 'iam.serviceAccounts.setIamPolicy', 'secretmanager.versions.access'],
                      'roles/run.serviceAgent': ['run.jobs.run'] }
-  const composed = (effective: any[], surfaces: any[] = [buildJob], exceptions = '') => {
+  const composed = (effective: Parameters<typeof assertVerifierInheritedControl>[0], surfaces: Parameters<typeof assertEffectiveIsolation>[2] = [buildJob], exceptions = '') => {
     process.env.DATA_PLANE_DEPLOY_PRINCIPAL = DEPLOYER
     assertVerifierInheritedControl(effective, resolved, OWNER, NUMBER, exceptions)
     assertEffectiveIsolation(effective, builderPolicy, surfaces, resolved, OWNER, NUMBER)
@@ -337,7 +337,7 @@ describe('R16-1: one project canonicaliser and one annotation parser through the
     }
     // a redirected verifier credential is still refused: an annotation on ANOTHER resource that resolves to the verifier secret
     const redirected = annotated(`a:projects/${NUMBER}/secrets/${VERIFIER_SECRET}`)
-    redirected.definition.spec.template.spec.containers = [{ image: 'x', env: [{ name: 'X', valueFrom: { secretKeyRef: { name: 'a', key: 'latest' } } }] }] as any
+    Object.assign(redirected.definition.spec.template.spec, { containers: [{ image: 'x', env: [{ name: 'X', valueFrom: { secretKeyRef: { name: 'a', key: 'latest' } } }] }] })
     expect(() => composed([], [buildJob, redirected])).toThrow(/Verifier credential or identity is used outside/)
   })
 })

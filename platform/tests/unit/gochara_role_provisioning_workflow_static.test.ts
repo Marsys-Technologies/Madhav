@@ -7,7 +7,14 @@ import { parse } from 'yaml'
 const root = resolve(__dirname, '../../..')
 const workflowText = readFileSync(resolve(root, '.github/workflows/gochara-role-provisioning-oneshot.yml'), 'utf8')
 const scriptText = readFileSync(resolve(root, 'platform/scripts/gochara-provision-roles.sh'), 'utf8')
-const wf = parse(workflowText) as any
+type WorkflowStep = { name?: string; run?: string; shell?: string; env?: Record<string, string> }
+type Workflow = {
+  on: Record<string, unknown>
+  permissions: Record<string, string>
+  concurrency: Record<string, string | boolean>
+  jobs: Record<string, { if: string; environment: string; steps: WorkflowStep[] }>
+}
+const wf = parse(workflowText) as Workflow
 const code = (text: string) => text.split('\n').filter((l) => !l.trim().startsWith('#')).join('\n')
 
 describe('gochara-role-provisioning-oneshot.yml', () => {
@@ -27,16 +34,18 @@ describe('gochara-role-provisioning-oneshot.yml', () => {
     expect(workflowText).not.toMatch(/upload-artifact|actions\/cache|tee |>>\s*"?\$GITHUB_(OUTPUT|ENV|STEP_SUMMARY)/)
   })
   it('passes inputs only through env (never interpolated into a shell script) and reads the admin secret only into ADMIN_DATABASE_URL', () => {
-    const steps = wf.jobs.provision.steps as any[]
+    const steps = wf.jobs.provision.steps
     for (const s of steps) if (s.run) expect(s.run).not.toContain('${{')
     const run = steps.find((s) => s.name?.startsWith('Run the reviewed provisioning script'))
+    if (!run?.env) throw new Error('Provisioning step and environment are required')
     expect(run.env.ADMIN_DATABASE_URL).toBe('${{ secrets.DATA_PLANE_OWNERSHIP_ADMIN_DATABASE_URL }}')
     expect(run.run).toBe('bash platform/scripts/gochara-provision-roles.sh')
     expect(run.shell).toBe('bash')
-    expect(JSON.stringify(wf.jobs.provision.steps.filter((s: any) => s !== run))).not.toContain('secrets.')
+    expect(JSON.stringify(wf.jobs.provision.steps.filter((s) => s !== run))).not.toContain('secrets.')
   })
   it('verifies the downloaded Cloud SQL proxy against a pinned sha256 before running it', () => {
-    const proxy = (wf.jobs.provision.steps as any[]).find((s) => s.name === 'Start Cloud SQL Auth Proxy')
+    const proxy = (wf.jobs.provision.steps).find((s) => s.name === 'Start Cloud SQL Auth Proxy')
+    if (!proxy?.run) throw new Error('Proxy startup script is required')
     expect(proxy.run).toContain('276139ff5d5dc484c51e1a9c065d69a9f6e47d5b726f94dced253b0227df2056  cloud-sql-proxy' .replace('$PIN', '276139ff5d5dc484c51e1a9c065d69a9f6e47d5b726f94dced253b0227df2056'))
     expect(proxy.run.indexOf('sha256sum -c')).toBeLessThan(proxy.run.indexOf('chmod +x'))
   })

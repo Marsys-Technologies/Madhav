@@ -6155,6 +6155,17 @@ block (post-rebuild era), and proceeds.
 
 ## §2 — Canonical state block
 
+> **MADHAV PORTAL JOURNEY 1 — LOCAL IMPLEMENTATION (2026-10-05).**
+> Native-authorized pages 03–09 have been implemented in the isolated worktree
+> `/Users/Dev/.codex/worktrees/portal-experience/Madhav`, branch `codex/portal-experience`,
+> based on `40e9ede5ada47b1a155cfb4f14dae607a63f38d7`. Source remains uncommitted under
+> GIP §P.4; no release, production mutation, chart rebuild or migration was performed.
+> Anonymous entry runtime and fictional-data component checks are distinct from
+> authenticated Firebase/DB/full-recompute acceptance, which remains pending.
+> Journey 2 and the separate cleanup worktree are deferred/preserved. Evidence and
+> exact check results: `briefs/journey1/REVIEW.md`; session
+> `MADHAV_JOURNEY1_IMPLEMENTATION_20261005`. Other campaign authority is unchanged.
+
 > **AI CONSOLE CATALOGUE REFRESH — CORRECTED PRODUCTION SCOPE VERIFIED (2026-10-03).**
 > PR #2985 released runtime main `55a666f8943bcda313f1e9bc52f3ea3d47916c96` through
 > protected CI/deployment. The paired private bridge matches reviewed source and
@@ -9741,13 +9752,13 @@ current_state:
   # updated but this dedicated pointer field was missed, which schema_validator.py's
   # current_state_last_session_id_disagreement check caught at this session's open. Fixed
   # here rather than carried forward as a second miss.)
-  last_session_id: AI-CONSOLE-CATALOG-CORRECTION-20261003
-  last_session_closed_at: "2026-10-02T22:52:57Z"
+  last_session_id: MADHAV_JOURNEY1_IMPLEMENTATION_20261005
+  last_session_closed_at: "2026-10-05T13:04:41.890573+00:00"
   last_session_agent: Codex
-  last_session_cowork_thread_name: "Madhav — AI Console catalogue release correction"
-  predecessor_session: AI-CONSOLE-CATALOG-RELEASE-20261003
+  last_session_cowork_thread_name: "Madhav — Journey 1 implementation"
+  predecessor_session: AI-CONSOLE-CATALOG-CORRECTION-20261003
   last_product_strategy_session: MADHAV-DATA-PLANE-V2-20260913
-  last_session_drift_verdict: "AI Console corrected catalogue scope production-verified at runtime 55a666f: 15,099 tests passed, 975 skipped, 2 todo; TypeScript/lint zero errors, 595 existing warnings; 22 guarded disposable-DB tests passed. Independent review and 15-minute live watch passed; all 32 AI Console requests returned 200, no 5xx/ERROR. Applied migration 1301 immutable, exact private bridge pair live, authenticated model/effort controls and AGY subscription validation passed. First rollout failed and was rolled back. Two LOW unrelated local chart-schema checks remain unqualified; minor AGY stale refresh hint booked. Main advanced through unrelated b4c4b89 and its deployment is tracked separately; separate full Pariprasna smoke failed. No saved roles/default/keys changed and no paid API generation test was run."
+  last_session_drift_verdict: "Journey1 local implementation; 15,648 unit tests pass, types pass, changed-file lint zero errors. Real account/CRUD acceptance pending; no deployment claimed. Two LOW local schema credential findings booked. Subsequent owner-authorized release is in progress under CCD-021; Journey2 deferred and other campaigns unchanged."
   product_definition: 00_ARCHITECTURE/MADHAV_PRODUCT_DEFINITION_v3_0.md
   data_plane_proposal: 00_ARCHITECTURE/briefs/nirmana/MADHAV_DATA_PLANE_VALUE_ARCHITECTURE_v2_0.md
   planner_knowledge_candidate: 00_ARCHITECTURE/briefs/nirmana/MADHAV_PLANNER_CAPABILITY_KNOWLEDGE_AND_INQUIRY_IMPLEMENTATION_v1_0.md
@@ -9762,6 +9773,8 @@ current_state:
 ---
 
 ## §3 — Narrative (human-reading surface — must agree with §2)
+
+Portal Journey 1 (2026-10-05) is locally implemented, uncommitted and unreleased; authenticated acceptance remains pending. Journey 2 is deferred. See `briefs/journey1/REVIEW.md`; this parallel product work does not advance another campaign.
 
 The production AI Console can now reach the four authenticated personal CLIs on the dedicated
 `marsys-jis-ai-cli` VM through a private, fixed-operation bridge. PR #2753 merged as
