@@ -1668,7 +1668,12 @@
     {
      "table": "bodha_anomalies"
     }
-   ]
+   ],
+   "vocab_alias": {
+    "na": "no_alias_class",
+    "why": "its columns are the own identifiers, class labels, scores and documents of bodha_discoveries: no column carries an alias or synonym set or a planet or entity name vocabulary",
+    "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/bo_anveshana.py:54"
+   }
   },
   "bo_arudha": {
    "kind": "data",
@@ -1828,6 +1833,11 @@
     "kind": "registry kind data (seed default, T0 data); writer-backed own table(s) bodha_chart_gestalt; census Idem.pattern PASS: DELETE FROM the asset's own table(s) (delete-then-insert): b",
     "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L2_bodha/query_chart_gestalt.ts:89 reads `bodha_chart_gestalt` (`FROM bodha_chart_gestalt`). Dens.served=PASS.",
     "prose_fields": null
+   },
+   "vocab_alias": {
+    "na": "no_alias_class",
+    "why": "its columns are the own identifiers, class labels, scores and documents of bodha_chart_gestalt: no column carries an alias or synonym set or a planet or entity name vocabulary",
+    "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/bo_chart_gestalt.py:61"
    }
   },
   "bo_drishti": {
@@ -1845,6 +1855,11 @@
     "kind": "registry kind data (seed default, T0 data); writer-backed own table(s) bodha_question_lenses; census Idem.pattern PASS: DELETE FROM the asset's own table(s) (delete-then-insert): b",
     "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L2_bodha/query_domain_reading.ts:777 reads `bodha_question_lenses` (`FROM bodha_question_lenses`). Dens.served=PASS.",
     "prose_fields": null
+   },
+   "vocab_alias": {
+    "na": "no_alias_class",
+    "why": "its columns are the own identifiers, class labels, scores and documents of bodha_question_lenses: no column carries an alias or synonym set or a planet or entity name vocabulary",
+    "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/bo_drishti.py:56"
    }
   },
   "bo_grounding": {
@@ -1862,6 +1877,11 @@
     "kind": "registry kind data (seed); writer-backed own table(s) bodha_grounding_matches; census Idem.pattern PASS: DELETE FROM the asset's own table(s) (delete-then-insert): b",
     "carriage": "served_surface null (unknown): negative scan is not proof; editorial map marks it directly_serves_output for scu.catalog.query_attribution, but no consumer is built yet (designed-to-be-consumed): the two sources disagree.",
     "prose_fields": null
+   },
+   "vocab_alias": {
+    "na": "no_alias_class",
+    "why": "its columns are the own identifiers, class labels, scores and documents of bodha_grounding_matches: no column carries an alias or synonym set or a planet or entity name vocabulary",
+    "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/bo_grounding.py:176"
    }
   },
   "bo_karanajala": {
@@ -1907,7 +1927,12 @@
      "table": "bodha_cgm_nodes",
      "why": "the writer updates the centrality columns of the node rows that bo_bimba inserts and inserts no node row"
     }
-   ]
+   ],
+   "vocab_alias": {
+    "na": "no_alias_class",
+    "why": "its columns are the own identifiers, class labels, scores and documents of bodha_cgm_edges: no column carries an alias or synonym set or a planet or entity name vocabulary",
+    "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/bo_karanajala.py:59"
+   }
   },
   "bo_laksana": {
    "kind": "data",
@@ -2024,6 +2049,11 @@
     "kind": "registry kind data (seed default, T0 data); writer-backed own table(s) synthesis_quality_scorecard; census Idem.pattern PASS: DELETE FROM the asset's own table(s) (delete-then-insert): s",
     "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L2_bodha/query_quality_scorecard.ts:86 reads `synthesis_quality_scorecard` (`FROM synthesis_quality_scorecard`). Dens.served=FAIL.",
     "prose_fields": null
+   },
+   "vocab_alias": {
+    "na": "no_alias_class",
+    "why": "its columns are the own identifiers, class labels, scores and documents of synthesis_quality_scorecard: no column carries an alias or synonym set or a planet or entity name vocabulary",
+    "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/bo_pramana_mapa.py:42"
    }
   },
   "bo_pratijna": {
@@ -2063,6 +2093,11 @@
     "kind": "registry kind data (seed default, T0 data); writer-backed own table(s) bodha_signal_embeddings; census Idem.pattern PASS: DELETE FROM the asset's own table(s) (delete-then-insert): b",
     "carriage": "served_surface null (unknown): the only pointer was a description; query_signals.ts:486 states the semantic (embedding) path is unavailable at query time and salience ranking is used instead, and no served capability SELECTs bodha_signal_embeddings.",
     "prose_fields": null
+   },
+   "vocab_alias": {
+    "na": "no_alias_class",
+    "why": "its columns are the own identifiers, class labels, scores and documents of bodha_signal_embeddings: no column carries an alias or synonym set or a planet or entity name vocabulary",
+    "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/bo_samskara.py:45"
    }
   },
   "bo_samvada": {
