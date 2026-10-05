@@ -649,22 +649,92 @@ def _inside_fn(position_at, body, relation, target):
     return None
 
 
-def _junction_problem(position_at, body, relation, target, junction, accuracy_deg, margin_seconds) -> str | None:
-    """Is `junction` (the shared instant of two abutting stored contacts of one (body, relation, target)) a LEGITIMATE seam of the contact SET?
-    A5.3 brief v1.36: the builder emits one episode per MONOTONE ARC, so a station inside the band yields two abutting episodes [entry, S] and
-    [S, exit]; certification compares the UNION and a seam between abutting episodes is not a boundary of the contact set. Confirmed here
-    INDEPENDENTLY, from the ephemeris alone, never from the ledger: (a) the body is at a STATION at the junction (`boundary_match`'s own
-    criterion: no usable time tolerance), and (b) the body is INSIDE the geometry on both sides of it. Returns the reason it is not, or None."""
-    inside = _inside_fn(position_at, body, relation, target)
-    if inside is None:
-        return f"no independent geometry for {relation}"
-    if bm.time_tolerance_seconds(position_at, body, junction, accuracy_deg) is not None:
-        return f"{body} is not at a station at {junction.isoformat()} (an arc seam exists only where the motion reverses)"
+def _station_near(position_at, body, junction, window_seconds=6 * 3600.0, h_seconds=600.0):
+    """Independently LOCATE a reversal of the body's longitude motion within +-`window_seconds` of `junction`, from the ephemeris alone: the sign of a
+    finite-difference velocity (centred, +-`h_seconds`) must DIFFER between the window's ends (a bracketed reversal), and the instant is then bisected.
+    Returns (t_station, curvature in degrees per second squared) or None when no reversal is bracketed. A speed that is merely LOW (`boundary_match`'s
+    criterion) is not a reversal: a body can crawl near a station on one side."""
     from datetime import timedelta
-    dt = timedelta(seconds=margin_seconds)
-    for side, t in (("before", junction - dt), ("after", junction + dt)):
-        if not inside(t):
-            return f"{body} is not inside the geometry just {side} the junction {junction.isoformat()} (the seam is not interior to one continuous span)"
+
+    def v(t):
+        a = position_at(body, t - timedelta(seconds=h_seconds))
+        b = position_at(body, t + timedelta(seconds=h_seconds))
+        return (((b - a + 180.0) % 360.0) - 180.0) / (2.0 * h_seconds)
+    lo, hi = junction - timedelta(seconds=window_seconds), junction + timedelta(seconds=window_seconds)
+    v_lo, v_hi = v(lo), v(hi)
+    if v_lo == 0.0 or v_hi == 0.0 or (v_lo > 0.0) == (v_hi > 0.0):
+        return None
+    for _ in range(48):
+        mid = lo + (hi - lo) / 2
+        v_mid = v(mid)
+        if v_mid == 0.0:
+            lo = hi = mid
+            break
+        if (v_mid > 0.0) == (v_lo > 0.0):
+            lo, v_lo = mid, v_mid
+        else:
+            hi = mid
+    t_s = lo + (hi - lo) / 2
+    one_hour = 3600.0
+    second = (((position_at(body, t_s + timedelta(seconds=one_hour)) - position_at(body, t_s) + 180.0) % 360.0) - 180.0
+              - (((position_at(body, t_s) - position_at(body, t_s - timedelta(seconds=one_hour)) + 180.0) % 360.0) - 180.0))
+    return t_s, abs(second) / (one_hour * one_hour)
+
+
+def _junction_problem(position_at, body, relation, target, junction, accuracy_deg, margin_seconds) -> str | None:
+    """Is `junction` (the instant SHARED, exactly, by two stored contacts of one (body, relation, target)) a LEGITIMATE seam of the contact SET?
+    A5.3 brief v1.36: the builder emits one episode per MONOTONE ARC, so a station inside the band yields two abutting episodes [entry, S] and [S, exit];
+    certification compares the UNION and a seam between abutting episodes is not a boundary of the contact set. Confirmed here INDEPENDENTLY, from
+    the ephemeris alone, never from the ledger, and ONLY for point contacts (the one family whose episodes are cut at arc stations):
+
+      (a) the body's speed is low there (`boundary_match`'s criterion: no usable time tolerance);
+      (b) a REVERSAL is bracketed (`_station_near`: the sign of the velocity differs across +-6 h of the junction) and the junction lies within the time at
+          which the body is, at the contact's own stated angular accuracy plus the reconstruction's location error, at the station's longitude (a station is
+          compared in ANGLE, as `boundary_match` does; its time is ill-conditioned, so a tolerance in seconds would be arbitrary);
+      (c) CONTINUITY across the exempted interval [J - margin, J + margin]: the body is inside the geometry at 2N + 1 samples including the junction itself,
+          each by a clearance of at least the farthest it can move between consecutive samples (`contact_reconstruct.VMAX_DPS`, the kernel's own per-body
+          speed bound). Between two samples the body cannot move more than that, so it cannot have left the band: no excursion of ANY duration shorter
+          than the interval can hide, under the bound the whole certification already assumes (smooth motion, speed <= VMAX).
+
+    Returns the reason it is not a seam, or None."""
+    if not (target.startswith("point:") and relation in ("conjunction", "aspect")):
+        return f"{relation} {target}: seams are exempt only for point contacts (the family whose episodes are cut at arc stations)"
+    from datetime import timedelta
+    from .contact_reconstruct import BISECT_SECONDS, VMAX_DPS
+    lam = float(target.split(":", 1)[1]) % 360.0
+    orb = _POINT_ORB_DEG[relation]
+    angles = (0.0,) if relation == "conjunction" else _ASPECT_ANGLES[body]
+    levels = [(lam - a) % 360.0 for a in angles]
+
+    def clearance(t):                                   # degrees by which the body is inside the band (negative = outside)
+        return orb - min(_angdiff(position_at(body, t), lv) for lv in levels)
+    # (a) low speed at the junction
+    if bm.time_tolerance_seconds(position_at, body, junction, accuracy_deg) is not None:
+        return f"{body} is not at a station at {junction.isoformat()} (its speed is not low there: an arc seam exists only where the motion reverses)"
+    # (b) a bracketed reversal, and the junction at the station to the stated angular accuracy
+    found = _station_near(position_at, body, junction)
+    if found is None:
+        return (f"no reversal of {body}'s motion is bracketed within 6 h of {junction.isoformat()} (the speed is low but the sign of the "
+                "velocity does not change: not a station)")
+    t_s, curvature = found
+    location_error = VMAX_DPS[body.lower()] / 86400.0 * BISECT_SECONDS
+    if curvature <= 0.0:
+        return f"{body}'s reversal near {junction.isoformat()} has no measurable curvature: its instant cannot be tied to the junction"
+    tau = (2.0 * (accuracy_deg + location_error) / curvature) ** 0.5
+    if abs((junction - t_s).total_seconds()) > tau:
+        return (f"the junction {junction.isoformat()} is {abs((junction - t_s).total_seconds()):.0f} s from {body}'s station at {t_s.isoformat()}, "
+                f"farther than the {tau:.0f} s at which the body is still at the station's longitude to the stated accuracy")
+    # (c) continuity across the whole exempted interval
+    n = 12
+    step = margin_seconds / n
+    reach = VMAX_DPS[body.lower()] / 86400.0 * step     # the farthest the body can move between two samples
+    for k in range(-n, n + 1):
+        t = junction + timedelta(seconds=k * step)
+        c = clearance(t)
+        if c < reach:
+            where = "at the junction itself" if k == 0 else f"{abs(k) * step:.0f} s {'before' if k < 0 else 'after'} it"
+            return (f"continuity across the seam cannot be established: {body} is inside the geometry by only {c:.6f} deg {where}, less than the "
+                    f"{reach:.6f} deg it can move between samples {step:.0f} s apart")
     return None
 
 
@@ -674,7 +744,18 @@ def verify_member_geometry(conn, *, chart_id: str, generation: str, event_class:
     the record's support with the builder-written contact span, which is not independent). For every distinct contact
     of a member: the body is in the geometry (a sign; a point within orb of its ray level) just inside the stored start
     and end, and outside just beyond each end that is not the horizon's own edge. `position_at(body, t)` is the Swiss
-    longitude probe — no arc index, no substrate, no solver. A span that is not the physical one fails the build."""
+    longitude probe — no arc index, no substrate, no solver. A span that is not the physical one fails the build.
+
+    UNION CONTRACT, scoped (A5.3 brief v1.36; steward SEAM-RULING; Codex VERIFIER-CODEX-1). Contacts of one (body, relation, canonical target) that SHARE an
+    endpoint EXACTLY (the same stored instant) are one contact set across that junction, and no outside probe is made there, but ONLY for point contacts and only
+    when `_junction_problem` confirms the junction from the ephemeris (low speed, a bracketed reversal at the station to the stated accuracy, continuity across the
+    exempted interval). Why only SHARED endpoints and not OVERLAPS: the registered writer cannot emit overlapping point contacts. `solve_point_edges` mints one
+    contact per exact root, bounded by that root's own monotone arc (a station closes the span; arcs partition time), so two roots of one level have disjoint spans
+    that touch at most at the separating station, and roots of different aspect rays are at least 60 degrees apart (more than twice the 1 degree orb); the
+    overlapping episodes of v1.36 came from the earlier per-branch solver the writer no longer calls (pinned on Saturn's real 2025 loop in the tests). A real gap,
+    including one of a fraction of a second, keeps both outside probes (`contact_certify` also keeps every positive gap). Known, pre-existing and not changed here:
+    a single contact whose only remaining piece ends exactly at an orb-edge station passes this endpoint check and is caught only by the full contact
+    certification (`contact_certify`)."""
     grain = (chart_id, generation, event_class, path_id, rule_version)
     rows = conn.execute(
         "SELECT DISTINCT c.contact_id::text, c.body, c.relation_kind, c.t_in, c.t_out, c.t_exact, o.canonical_target,"
@@ -718,16 +799,20 @@ def verify_member_geometry(conn, *, chart_id: str, generation: str, event_class:
         # the Sun, ≈ 12 min for Saturn). At a station (no usable time tolerance) the end is checked in ANGLE instead.
         acc = bm.accuracy_degrees(delta_lambda)
         seam = {}
-        for which, junction, others in (("start", t_in, [b for a, b, c in ledger.get((body, relation, target), ()) if c != cid and b is not None and abs((b - t_in).total_seconds()) <= probe_seconds]),
-                                        ("end", t_out, [a for a, b, c in ledger.get((body, relation, target), ()) if c != cid and t_out is not None and abs((a - t_out).total_seconds()) <= probe_seconds])):
-            if not others:
-                continue                       # no abutting contact: an ordinary edge, probed outside as before (a real GAP keeps both probes)
-            margin = max(probe_seconds, 60.0)
-            why = _junction_problem(position_at, body, rel, target, junction, acc, min(margin, (end - t_in).total_seconds() / 4.0))
-            if why is None:
-                seam[which] = True
-            else:
-                problems.append(f"contact {cid}: the {which} junction with an abutting contact is not a legitimate seam: {why}")
+        if relation in ("conjunction", "aspect") and target.startswith("point:"):
+            # a seam needs GENUINELY SHARED endpoints: the same stored instant, exact equality (no tolerance), the same contract `contact_certify`
+            # applies when it unions the ledger (it merges only touching or overlapping intervals and keeps every positive gap)
+            peers = ledger.get((body, relation, target), ())
+            for which, junction, others in (("start", t_in, [c for a, b, c in peers if c != cid and b is not None and b == t_in]),
+                                            ("end", t_out, [c for a, b, c in peers if c != cid and t_out is not None and a == t_out])):
+                if not others:
+                    continue                   # no touching contact: an ordinary edge, probed outside as before (a real GAP, even a small one, keeps both probes)
+                margin = max(probe_seconds, 60.0)
+                why = _junction_problem(position_at, body, rel, target, junction, acc, min(margin, (end - t_in).total_seconds() / 4.0))
+                if why is None:
+                    seam[which] = True
+                else:
+                    problems.append(f"contact {cid}: the {which} junction with a touching contact is not a legitimate seam: {why}")
         problems.extend(f"contact {cid}: {p}" for p in _probe_contact_derived(
             position_at, body, rel, target, t_in, end, open_start, open_end, acc, probe_seconds,
             seam_start=seam.get("start", False), seam_end=seam.get("end", False), seam_margin=max(probe_seconds, 60.0)))

@@ -144,6 +144,82 @@ def test_the_derived_predicates_agree_with_the_probe_the_junction_check_reuses()
     assert wv._junction_problem(curve, "venus", "conjunction", f"point:{RAY}", T0, 0.00027777778, 60.0) is None
 
 
+# ── Codex VERIFIER-CODEX-1 amendments to the seam fix ───────────────────────────────────────────────────────────────────────
+
+def test_amendment_1_a_seam_needs_genuinely_shared_endpoints_even_a_half_second_gap_is_a_gap():
+    """contact_certify unions touching intervals and keeps every positive gap, so the member check must agree: no tolerance in the shared instant."""
+    b_late = ("B", T0 + timedelta(seconds=0.5), T0 + EDGE_DAYS * DAY, T0 + 5 * DAY)
+    with pytest.raises(RuntimeError) as exc:
+        _verify(_Conn([_A(), b_late]))
+    assert "just after the stored end" in str(exc.value) and "just before the stored start" in str(exc.value)
+    assert _verify(_Conn([_A(), _B()])) == {"contacts": 2}                                      # exact equality is accepted
+
+
+def test_amendment_2_continuity_is_proved_across_the_exempted_interval_and_the_junction_itself_is_sampled(monkeypatch):
+    """A 4 s excursion OUTSIDE the band centred on the junction (two inside samples at +-60 s, or any grid not containing the junction, would never see it) is
+    refused because the junction itself is a sample. Isolated from criteria (a) and (b) so only the continuity proof is under test."""
+    def spike(body, t):
+        d = (t - T0).total_seconds()
+        base = curve(body, t)
+        return base + (2.0 if abs(d) <= 2.0 else 0.0)             # a +2 degree excursion for the 4 s around the junction (the grid step is 5 s)
+    monkeypatch.setattr(wv.bm, "time_tolerance_seconds", lambda *a, **k: None)
+    monkeypatch.setattr(wv, "_station_near", lambda *a, **k: (T0, 0.01))
+    why = wv._junction_problem(spike, "venus", "conjunction", f"point:{RAY}", T0, 0.00027777778, 60.0)
+    assert why and "continuity across the seam cannot be established" in why and "at the junction itself" in why
+    assert wv._junction_problem(curve, "venus", "conjunction", f"point:{RAY}", T0, 0.00027777778, 60.0) is None
+
+
+def test_amendment_2_the_clearance_bound_is_what_excludes_a_short_excursion(monkeypatch):
+    """The proof: every sample must be inside by at least the farthest the body can move between samples (VMAX x step). A junction that is inside by
+    LESS than that cannot be shown continuous, even if every sample happens to be inside."""
+    def edge(body, t):                                              # sits 0.000001 degrees inside the band edge at the junction
+        d = (t - T0).total_seconds() / 86400.0
+        return RAY - 1.0 + 0.000001 + 0.02 * d * d
+    monkeypatch.setattr(wv.bm, "time_tolerance_seconds", lambda *a, **k: None)
+    monkeypatch.setattr(wv, "_station_near", lambda *a, **k: (T0, 0.01))
+    why = wv._junction_problem(edge, "venus", "conjunction", f"point:{RAY}", T0, 0.00027777778, 60.0)
+    assert why and "less than the" in why and "it can move between samples" in why
+
+
+def test_amendment_4_a_slow_body_that_never_reverses_is_not_a_station():
+    """Low speed alone (boundary_match's criterion) is not a reversal: a monotone inflection with zero speed at the junction is refused."""
+    def inflection(body, t):
+        d = (t - T0).total_seconds() / 86400.0
+        return RAY + 0.0002 * d ** 3                                 # speed 0 at the junction, increasing on both sides, no reversal
+    a = ("A", T0 - 17.0 * DAY, T0, T0)
+    b = ("B", T0, T0 + 17.0 * DAY, T0)
+    assert wv.bm.time_tolerance_seconds(inflection, "venus", T0, 0.00027777778) is None          # criterion (a) alone WOULD accept it
+    with pytest.raises(RuntimeError, match=r"no reversal of venus's motion is bracketed within 6 h"):
+        _verify(_Conn([a, b]), position_at=inflection)
+
+
+def test_amendment_4_the_junction_must_sit_at_the_located_station_to_the_stated_accuracy():
+    """A split hours away from the true station is refused; a split minutes away (indistinguishable from the station at the stated 1 arcsecond) is accepted."""
+    for hours, ok in ((6.0, False), (0.25, True)):
+        j = T0 + timedelta(hours=hours)
+        a = ("A", T0 - EDGE_DAYS * DAY, j, T0 - 5 * DAY)
+        b = ("B", j, T0 + EDGE_DAYS * DAY, T0 + 5 * DAY)
+        if ok:
+            assert _verify(_Conn([a, b])) == {"contacts": 2}
+        else:
+            with pytest.raises(RuntimeError, match="not a legitimate seam"):
+                _verify(_Conn([a, b]))
+
+
+def test_amendment_4_the_station_distance_bound_alone_refuses_a_far_junction(monkeypatch):
+    """Isolated from the low-speed criterion: with (a) bypassed, a junction 4 h from the located station (inside the 6 h search window, beyond the roughly 2.9 h
+    at which this curve is still at the station's longitude to 1 arcsecond) is refused by the angular-accuracy bound; one 5 minutes away is accepted."""
+    monkeypatch.setattr(wv.bm, "time_tolerance_seconds", lambda *a, **k: None)
+    why = wv._junction_problem(curve, "venus", "conjunction", f"point:{RAY}", T0 + timedelta(hours=4), 0.00027777778, 60.0)
+    assert why and "farther than the" in why and "at which the body is still at the station's longitude to the stated accuracy" in why
+    assert wv._junction_problem(curve, "venus", "conjunction", f"point:{RAY}", T0 + timedelta(minutes=5), 0.00027777778, 60.0) is None
+
+
+def test_the_seam_exemption_is_only_for_point_contacts():
+    why = wv._junction_problem(curve, "venus", "residence", "span:5", T0, 0.00027777778, 60.0)
+    assert why and "seams are exempt only for point contacts" in why
+
+
 # ── the aside: a no-exact graze ─────────────────────────────────────────────────────────────────────────────────────────────
 
 def test_the_certifier_would_report_a_graze_as_omitted_because_it_reconstructs_the_whole_band():
@@ -239,3 +315,39 @@ def test_on_the_real_sky_a_truncated_station_pair_still_fails(rworld):
     with pytest.raises(RuntimeError, match=r"member geometry verification failed marriage/P3.*still in the geometry just after the stored end"):
         wvm.verify_member_geometry(rworld.conn, chart_id=CHART_ID, generation=GEN, event_class="marriage", path_id="P3",
                                    rule_version="1.0.0", position_at=_position_at)
+
+
+# ── amendment 3: the registered writer cannot emit OVERLAPPING point contacts ──────────────────────────────────────────────
+
+def test_amendment_3_point_contacts_of_a_retrograde_loop_abut_at_stations_and_never_overlap_on_the_real_sky():
+    """Codex reproduced overlapping episodes with the Saturn fixture of A5.3 v1.36 (Oct 2025 to Jan 2026) failing the member check. The REGISTERED writer's point
+    contacts cannot overlap: `solve_point_edges` mints one contact per EXACT ROOT of the ray level, each bounded by that root's own MONOTONE ARC
+    (`record_store._in_orb_span_around_root`: a station closes the span; arcs partition time), and two roots of the same level lie in different arcs, so their spans
+    are disjoint and touch at most at the station that separates the arcs; roots of different aspect rays are at least 60 degrees apart (more than twice the 1 degree
+    orb). The overlapping episodes of v1.36 came from the earlier per-branch `episodes.in_orb_intervals` solver, which the writer no longer calls for point
+    contacts (E8-2, 2026-10-01). This pins it on Saturn's real 2025 loop, for a level near the station (two roots) and one inside the loop (three roots)."""
+    from datetime import date
+    from services.gochara_kernel import arcs as gk_arcs
+    from services.gochara_kernel import record_store as rs
+    from services.gochara_kernel.contacts import find_roots
+    from services.gochara_kernel.knots import calc_sidereal_lon, sample_knots
+    from .conftest import EPHE_PATH, assert_real_ephemeris
+    assert_real_ephemeris()
+    ks = sample_knots("Saturn", date(2025, 3, 1), date(2026, 3, 1), EPHE_PATH)
+    index = gk_arcs.build_arc_index("Saturn", ks.knot_jds, ks.longitudes_deg)
+    jd0 = 2440587.5
+    lons = [(datetime(2025, 11, 1, tzinfo=UTC) + timedelta(hours=h), None) for h in range(0, 24 * 60, 6)]
+    vals = [(t, calc_sidereal_lon("Saturn", t.timestamp() / 86400.0 + jd0, EPHE_PATH)[0]) for t, _ in lons]
+    station_min = min(v for _t, v in vals)                         # the retrograde -> direct station (Nov 28 2025) is the minimum of this stretch
+    peak = max(calc_sidereal_lon("Saturn", (datetime(2025, 7, 13, tzinfo=UTC)).timestamp() / 86400.0 + jd0, EPHE_PATH)[0], station_min)
+    for label, level, want_roots in (("a level 0.5 deg above the station: the loop's two crossings abut at the station", station_min + 0.5, 3),
+                                     ("a level inside the loop: three crossings", (station_min + peak) / 2.0, 3)):
+        roots = find_roots(index, "Saturn", rs.POINT_KERNEL_RELATION["conjunction"], level % 360.0, EPHE_PATH, refine=True)
+        assert len(roots) == want_roots, (label, [r.exact_jd for r in roots])      # (the first is the direct pass of spring 2025, far from the loop)
+        spans = sorted(rs._in_orb_span_around_root(index, r, 1.0) for r in roots)
+        for (a0, b0), (a1, b1) in zip(spans, spans[1:]):
+            assert b0 <= a1 + 1e-9, (label, "OVERLAP", (a0, b0), (a1, b1))                   # never overlapping
+            assert a1 - b0 <= 1e-6 or a1 > b0, (label, "touch or gap", b0, a1)                # and a touch is exact (a shared station), never a sliver of overlap
+        touching = [(b0, a1) for (a0, b0), (a1, b1) in zip(spans, spans[1:]) if abs(a1 - b0) <= 1e-9]
+        if level == station_min + 0.5:
+            assert len(touching) == 1                                                        # the retrograde and the later direct crossing abut at the station
