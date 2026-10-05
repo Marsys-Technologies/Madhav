@@ -113,8 +113,9 @@ def refuse_if_frozen(cur) -> None:
 
 
 def prove_stamp(vector, run_manifests=(), *, require_run: bool = False):
-    """(problem, source, sliced): problem is None when the input vector PROVES a test slice, by the WRITER'S OWN validation; source says HOW
-    (or, for a refusal, what was tried); sliced is the writer's validated slice (None on a refusal).
+    """(problem, source, sliced, matched): problem is None when the input vector PROVES a test slice, by the WRITER'S OWN validation; source says HOW
+    (or, for a refusal, what was tried); sliced is the writer's validated slice (None on a refusal); `matched` is the list of EVERY surviving owned run id whose original marker proves the
+    stamp (empty for a reconstruction or a refusal): the caller of an interrupted replacement needs two DISTINCT runs.
 
     The writer hashes the ORIGINAL marker (`_validate_test_slice` digest) but stores the NORMALISED component (`_slice_component`: scored
     class order, UTC timestamps). The proof is:
@@ -129,13 +130,13 @@ def prove_stamp(vector, run_manifests=(), *, require_run: bool = False):
     when no run survives (used for the snapshot's stamp in an interrupted replacement)."""
     module = writer()
     if not isinstance(vector, dict):
-        return "the manifest carries no input vector", None, None
+        return "the manifest carries no input vector", None, None, []
     if vector.get("stored_scope") != module.TEST_SLICE_SCOPE:
-        return f"stored_scope is {vector.get('stored_scope')!r}, not {module.TEST_SLICE_SCOPE!r}", None, None
+        return f"stored_scope is {vector.get('stored_scope')!r}, not {module.TEST_SLICE_SCOPE!r}", None, None, []
     comp = vector.get("test_slice")                   # the component key the writer stamps (ka_gochara_v5, the input-vector stamp check)
     if not isinstance(comp, dict):
-        return "no 'test_slice' component", None, None
-    sliced, source, notes = None, None, []
+        return "no 'test_slice' component", None, None, []
+    sliced, source, notes, matched = None, None, [], []
     for run_id, manifest, manifest_digest in run_manifests:
         if not isinstance(manifest, dict) or module.TEST_SLICE_KEY not in manifest:
             notes.append(f"run {run_id} carries no slice marker")
@@ -149,41 +150,49 @@ def prove_stamp(vector, run_manifests=(), *, require_run: bool = False):
             notes.append(f"run {run_id}: its marker fails the writer's own validation ({exc})")
             continue
         if candidate.digest == comp.get("marker_digest") and module._slice_component(candidate) == comp:
-            sliced, source = candidate, f"proved against the ORIGINAL marker of run {run_id} (digest {candidate.digest[:12]})"
-            break
+            matched.append(run_id)                    # EVERY run whose original marker proves the stamp, not just the first
+            if sliced is None:
+                sliced, source = candidate, f"proved against the ORIGINAL marker of run {run_id} (digest {candidate.digest[:12]})"
+            continue
         notes.append(f"run {run_id}: its marker digest {candidate.digest[:12]} is not the stamp's")
     if sliced is None:
         if run_manifests:
             return ("an owned run row survives, so its ORIGINAL marker preimage must prove the stamp, and it does not "
-                    f"(reconstruction is not allowed while a run survives): {'; '.join(notes)}"), None, None
+                    f"(reconstruction is not allowed while a run survives): {'; '.join(notes)}"), None, None, []
         if require_run:
-            return "no owned run row survives to prove this stamp against its original marker (a run-proven stamp is required)", None, None
+            return "no owned run row survives to prove this stamp against its original marker (a run-proven stamp is required)", None, None, []
         marker = {"schema": comp.get("schema"), "run": comp.get("run"), "horizon": comp.get("horizon"), "classes": comp.get("classes")}
         preimage = "no owned run row survives"
         try:
             reconstructed = module._validate_test_slice(marker)
         except module.TestSliceRefusal as exc:
             return (f"the stamp's marker fails the writer's own validation ({exc}); the original marker preimage could not prove it "
-                    f"({preimage}), so the reconstruction from the normalised component was used and failed"), None, None
+                    f"({preimage}), so the reconstruction from the normalised component was used and failed"), None, None, []
         except Exception as exc:  # noqa: BLE001 — any other failure to validate is a refusal, never an acceptance
-            return f"the stamp's marker could not be validated ({type(exc).__name__}); preimage: {preimage}", None, None
+            return f"the stamp's marker could not be validated ({type(exc).__name__}); preimage: {preimage}", None, None, []
         if comp != module._slice_component(reconstructed):
             return ("the stamp is not the writer's component for its marker (the marker digest or a normalised field differs from what "
                     f"the writer's own _slice_component produces); the original marker preimage could not prove it ({preimage}), so "
-                    "the reconstruction from the normalised component was used and failed"), None, None
+                    "the reconstruction from the normalised component was used and failed"), None, None, []
         sliced, source = reconstructed, f"proved by RECONSTRUCTION from the normalised component (original marker preimage unavailable: {preimage})"
-    return None, source, sliced
+    return None, source, sliced, matched
+
+
+def stamp_proof(vector, horizon, run_manifests=()):
+    """(problem, source, matched): `prove_stamp`, plus the manifest's horizon must be the stamp's horizon."""
+    problem, source, sliced, matched = prove_stamp(vector, run_manifests)
+    if problem:
+        return problem, None, []
+    if horizon is None or not (same_instant(getattr(horizon, "lower", None), sliced.horizon[0])
+                               and same_instant(getattr(horizon, "upper", None), sliced.horizon[1])):
+        return "the manifest's horizon is not the stamp's horizon", None, []
+    return None, source, matched
 
 
 def stamp_problem(vector, horizon, run_manifests=()):
-    """(problem, source): `prove_stamp`, plus the manifest's horizon must be the stamp's horizon."""
-    problem, source, sliced = prove_stamp(vector, run_manifests)
-    if problem:
-        return problem, None
-    if horizon is None or not (same_instant(getattr(horizon, "lower", None), sliced.horizon[0])
-                               and same_instant(getattr(horizon, "upper", None), sliced.horizon[1])):
-        return "the manifest's horizon is not the stamp's horizon", None
-    return None, source
+    """(problem, source): `stamp_proof` without the matched run ids."""
+    problem, source, _matched = stamp_proof(vector, horizon, run_manifests)
+    return problem, source
 
 
 def stamped_classes(vector) -> list[str]:
@@ -214,9 +223,11 @@ def _quote(identifier: str) -> str:
     return '"' + identifier.replace('"', '""') + '"'
 
 
-def referencing_rows(cur, parent: str, parent_pk: str, ids: list[str], skip_tables) -> list[str]:
+def referencing_rows(cur, parent: str, parent_pk: str, ids: list[str], understood=()) -> list[str]:
     """Every foreign key INTO `public.<parent>` from the catalog, with the complete child and parent column lists, minus the tables the
-    calling script deletes itself. A SUPPORTED key is a single child column referencing the parent's primary-key column (`parent_pk`):
+    calling script deletes itself. `understood` is a set of whole RELATIONSHIPS `(table, child columns, parent columns, delete action)` the
+    caller has analysed and whose referencing rows its deletion scope covers (Codex round 5 (3): exempt the relationship, never the table —
+    any OTHER foreign key from the same table goes through the shape check and the refusal). A SUPPORTED key is a single child column referencing the parent's primary-key column (`parent_pk`):
     the rows that reference `ids` come back as named problems (table, column, delete action, count). ANY OTHER SHAPE (a composite key, or a
     key that targets a different column) is REFUSED BY NAME: this code cannot prove deleting the parent row safe for it, and a silent
     skip would let the delete cascade into or null an audit row (Codex round 4 T2). The catalog is the list, so a reference added by a
@@ -227,9 +238,9 @@ def referencing_rows(cur, parent: str, parent_pk: str, ids: list[str], skip_tabl
     found, unsupported = [], []
     for ref in cur.fetchall():
         table = ref["tbl"][len("public."):] if ref["tbl"].startswith("public.") else ref["tbl"]
-        if table.strip('"') in skip_tables:
-            continue
         child, target = list(ref["child_cols"]), list(ref["parent_cols"])
+        if (table.strip('"'), tuple(child), tuple(target), ref["action"]) in understood:
+            continue
         if len(child) != 1 or target != [parent_pk]:
             unsupported.append(f"{ref['conname']} on {table}({', '.join(child)}) -> {parent}({', '.join(target)})")
             continue
@@ -281,7 +292,7 @@ def generation_ownership(cur, owned: list[str], *, remedy: str, unproven: str, n
         cur.execute("SELECT id, plan_manifest, plan_manifest_digest FROM build_runs WHERE id = ANY(%s::uuid[]) ORDER BY created_at DESC",
                     (owned,))
         run_manifests = [(str(r["id"]), r["plan_manifest"], r["plan_manifest_digest"]) for r in cur.fetchall()]
-    problem, stamp_source = stamp_problem(manifest["input_generation_vector"], manifest["horizon"], run_manifests)
+    problem, stamp_source, manifest_runs = stamp_proof(manifest["input_generation_vector"], manifest["horizon"], run_manifests)
     if stamp_source:
         notes.append(stamp_source)
     if manifest["status"] != "candidate" or problem:
@@ -313,13 +324,21 @@ def generation_ownership(cur, owned: list[str], *, remedy: str, unproven: str, n
                  AND (i.input_digest <> s.input_digest OR i.horizon <> p.horizon OR NOT (i.event_class = ANY(%s::text[])))""",
             (CHART_ID, GENERATION, classes))
     else:
-        problem2, source2, earlier = prove_stamp(snapshot.get("snapshot_vector"), run_manifests, require_run=True)
+        problem2, source2, earlier, snapshot_runs = prove_stamp(snapshot.get("snapshot_vector"), run_manifests, require_run=True)
         if problem2:
             raise Refused(
                 f"the stored input snapshot of chart {CHART_ID} '5.0' carries a DIFFERENT input vector from the stamped "
                 "manifest: a later slice stamped the manifest and its snapshot substep has not yet replaced the older output "
                 f"(an interrupted replacement), and the older stamp is not proved by an owned test run ({problem2}) — the output "
                 f"is not provably this test's. {remedy}")
+        # Codex round 5 (D3): the two stamps must be proved by DISTINCT surviving owned runs. One run cannot be both the later slice that
+        # stamped the manifest and the earlier slice that built the snapshot (identical markers over a different vector component would
+        # otherwise satisfy both proofs from the same run).
+        if not manifest_runs or not any(a != b for a in manifest_runs for b in snapshot_runs):
+            raise Refused(
+                f"the stored input snapshot of chart {CHART_ID} '5.0' carries a DIFFERENT input vector from the stamped manifest, but the "
+                f"two stamps are not proved by two DISTINCT surviving owned runs (manifest: {manifest_runs or 'no run'}, snapshot: "
+                f"{snapshot_runs}) — one run cannot be both slices; the output is not provably this test's. {remedy}")
         notes.append(f"interrupted replacement: the stored snapshot is an EARLIER test slice's, {source2}; the current manifest "
                      "stamped by a later slice never replaced it")
         cur.execute(

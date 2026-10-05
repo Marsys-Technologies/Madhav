@@ -52,7 +52,8 @@ STUB_DDL = (
     "CREATE TABLE public.build_runs (id uuid PRIMARY KEY DEFAULT gen_random_uuid(), chart_id uuid, scope text,"
     " scope_target text, state text, triggered_by text, plan_manifest jsonb, plan_manifest_digest text,"
     " created_at timestamptz NOT NULL DEFAULT now())",
-    "CREATE TABLE public.build_run_assets (run_id uuid NOT NULL REFERENCES public.build_runs(id), asset_id text)",
+    # migration 171: ON DELETE CASCADE (the stub used to omit it; the teardown's understood-relationship exemption is keyed on the action)
+    "CREATE TABLE public.build_run_assets (run_id uuid NOT NULL REFERENCES public.build_runs(id) ON DELETE CASCADE, asset_id text)",
     "CREATE TABLE public.asset_throughput (chart_id uuid, asset_id text)",
     # migration 596: the run link is SET NULL when the run row is deleted
     "CREATE TABLE public.asset_provenance_receipts (asset_id text NOT NULL REFERENCES public.asset_registry(asset_id)"
@@ -909,3 +910,13 @@ def test_d3_the_same_state_is_refused_once_the_older_run_is_pruned_and_the_runbo
         _teardown(w)
     assert "V5_SMALLTEST_TEARDOWN_RUNBOOK" in str(exc.value) and "dispatch" not in str(exc.value).lower()
     assert _snapshot(w) == before
+
+
+def test_r5_a_second_foreign_key_from_an_exempt_table_is_checked_on_the_real_catalog_not_exempted_by_table_name(tworld):
+    """Codex round 5 (3): build_run_assets.run_id (CASCADE) is the understood relationship; ANOTHER key from the same table into build_runs
+    is not exempt, so rows that reference an owned run through it are named instead of being silently nulled."""
+    w = tworld
+    rid = _slice_run(w)
+    w.conn.execute("ALTER TABLE public.build_run_assets ADD COLUMN superseded_by_run uuid REFERENCES public.build_runs(id) ON DELETE SET NULL")
+    w.conn.execute("UPDATE public.build_run_assets SET superseded_by_run = %s WHERE run_id = %s", (rid, rid))
+    _refused_and_untouched(w, r"build_run_assets\.superseded_by_run \(1 row\(s\), ON DELETE SET NULL\)")
