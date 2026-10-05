@@ -1,5 +1,5 @@
 """Migration 1304 (Pravāha C41-P2): UPDATE ONLY the asset_registry row ka_gochara_v5 into the
-steward-dispatched SMALL TEST shape (has_substeps=true, writer_timeout_seconds=7200,
+steward-dispatched SMALL TEST shape (has_substeps=true, writer_timeout_seconds=28800,
 depends_on=[ga_positions,ga_dashas], the ka_gochara_eval_window truth counter, target_floor=0,
 estimated_seconds=NULL), leaving is_active=false and every other row untouched.
 
@@ -69,7 +69,7 @@ V5_1243 = dict(
 )
 # The shape migration 1304 must land (kept in sync with the v_count_sql/v_size_sql constants).
 V5_1304 = dict(
-    is_active=False, has_writer=True, has_substeps=True, writer_timeout_seconds=7200,
+    is_active=False, has_writer=True, has_substeps=True, writer_timeout_seconds=28800,
     depends_on=["ga_positions", "ga_dashas"], target_table="ka_gochara_eval_window",
     count_sql="SELECT COUNT(*) FROM ka_gochara_eval_window WHERE chart_id=$1 AND generation='5.0'",
     size_sql="SELECT pg_total_relation_size('ka_gochara_eval_window')",

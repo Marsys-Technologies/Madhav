@@ -12,11 +12,16 @@
 -- M20261003T181341-51ab):
 --   has_substeps            = true    — the completeness probe (asset_runner.py:1267-1290) and
 --                                       substep handling key off it;
---   writer_timeout_seconds  = 7200    — the watchdog deadline (runner.py:704-705) is per ASSET
---                                       DISPATCH, bounding the whole substep plan of one run; 7200
---                                       is deliberately generous so the first timing measurement is
---                                       readable, not cut off. The FULL build's value is set later
---                                       from measured timings, by its own migration;
+--   writer_timeout_seconds  = 28800   — the watchdog deadline (runner.py execute_dag) is per ASSET
+--                                       DISPATCH, bounding the whole substep plan of one run. 28800 s
+--                                       (8 h) is ONE value for the small test AND the measuring build
+--                                       over the whole 1998-2085 horizon (steward TIMEOUT-RULING
+--                                       2026-10-05), so no second registry migration is needed: a
+--                                       healthy run must never be ended by the cap. The cost is only
+--                                       slower detection of a genuinely hung writer, and every run is
+--                                       supervised. (A fired cap is a teardown case; the Cloud Run
+--                                       job task timeout, 86400 s, sits above it.) The sealed FULL
+--                                       build's value is set later, from the measured timings;
 --   depends_on              = ['ga_positions','ga_dashas'] — what the writer truly reads: natal
 --                                       graha longitudes via chart_context.py (ga_positions) and
 --                                       Vimshottari rows via dasha_read.py (ga_dashas). NOT
@@ -74,7 +79,7 @@ DECLARE
 BEGIN
   UPDATE asset_registry
      SET has_substeps = true,
-         writer_timeout_seconds = 7200,
+         writer_timeout_seconds = 28800,
          depends_on = ARRAY['ga_positions','ga_dashas']::text[],
          count_sql = v_count_sql,
          target_table = 'ka_gochara_eval_window',
@@ -94,7 +99,7 @@ BEGIN
      AND is_active IS FALSE
      AND has_writer IS TRUE
      AND has_substeps IS TRUE
-     AND writer_timeout_seconds = 7200
+     AND writer_timeout_seconds = 28800
      AND depends_on = ARRAY['ga_positions','ga_dashas']::text[]
      AND count_sql = v_count_sql
      AND target_table = 'ka_gochara_eval_window'
@@ -111,7 +116,7 @@ BEGIN
      AND (integrity_check_sql IS NULL OR integrity_check_sql = '')
      AND rebuild_on_probe_fail IS FALSE;
   IF v_ok <> 1 THEN
-    RAISE EXCEPTION '1304: the ka_gochara_v5 row did not land in the expected small-test shape (is_active=false, has_substeps=true, timeout 7200, depends_on [ga_positions,ga_dashas], the ka_gochara_eval_window counter, plain data routing: asset_kind/asset_type data, no health_probe, no integrity_check_sql, rebuild_on_probe_fail false)';
+    RAISE EXCEPTION '1304: the ka_gochara_v5 row did not land in the expected small-test shape (is_active=false, has_substeps=true, timeout 28800, depends_on [ga_positions,ga_dashas], the ka_gochara_eval_window counter, plain data routing: asset_kind/asset_type data, no health_probe, no integrity_check_sql, rebuild_on_probe_fail false)';
   END IF;
 
   -- Supplementary check of visible tuple versions (see the header): no OTHER asset_registry row
