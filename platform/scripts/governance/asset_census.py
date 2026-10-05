@@ -6565,6 +6565,8 @@ def register_call_mentions(asset_id: str) -> list[str]:
 def _register_call_facts(f: Path) -> list:
     """Per `register(` call of one module (`register(x)`, `mod.register(x)`) with at least one argument: ([string constants of each argument], [names of each argument], the module's string
     constants). The asset-independent half of `register_call_mentions` (the full AST walk), computed once per module per run."""
+    if not re.search(r"register\s*\(", f.read_text(encoding="utf-8", errors="replace")):
+        return []                                         # no `register(...)` call can exist in a module whose text has no `register` followed by `(`: skip the AST walk
     tree = _parse(f)
     consts = _module_constants(tree)
     out = []
