@@ -143,7 +143,9 @@ def test_no_contract_anywhere_is_still_fail(tree, monkeypatch):
 def test_the_tier_column_pass_is_unchanged_and_wins(tree, monkeypatch):
     d = _dens(monkeypatch, tree, _cap("SELECT fact_id, verification_pass_status FROM t_x"),
               tables={"t_x": (["fact_id", "verification_pass_status"], [])})
-    assert d["v"] == ac.PASS and "verification_pass_status" in d["measured"] and "uniform_authority" not in d["measured"], d
+    # review fix MED-2: a uniform_authority declaration on a table that carries a tier-vocabulary column is REFUSED (per-row authority exists): NO_DETECTOR naming it, the tier PASS it would have
+    # bypassed reported as the graded-without reading; never a PASS that rests on the refused declaration
+    assert d["v"] == ac.NO_DET and "refused" in d["measured"] and "graded without it: PASS" in d["measured"], d
 
 
 def test_a_module_that_cannot_be_parsed_never_passes_on_the_declaration_alone(tree, monkeypatch):

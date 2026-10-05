@@ -219,15 +219,15 @@ def _faceted(tree, pred, facets=FACET):
     return ac._grade_dens(cap, "t_shared"), cap
 
 
-@pytest.mark.parametrize("pred", ["fact_category = 'ayurdaya'", "fact_category IN ('x', 'ayurdaya')", "fact_category = ANY(ARRAY['ayurdaya'])",
-                                  "fact_category = ANY('{ayurdaya,z}')", "f.fact_category = 'ayurdaya'"])
+@pytest.mark.parametrize("pred", ["fact_category = 'ayurdaya'", "fact_category IN ('ayurdaya')", "fact_category = ANY(ARRAY['ayurdaya'])",
+                                  "fact_category = ANY('{ayurdaya}')", "f.fact_category = 'ayurdaya'"])
 def test_a_pinned_declared_facet_value_attributes_the_shared_select_and_can_pass(tree, pred):
     g, cap = _faceted(tree, pred)
     assert g["v"] == PASS and cap["facet_attributed"], g
     assert "attributed by the declared facet" in g["measured"]
 
 
-@pytest.mark.parametrize("pred", ["fact_category = 'other'", "fact_category <> 'ayurdaya'", "fact_category NOT IN ('ayurdaya')",
+@pytest.mark.parametrize("pred", ["fact_category = 'other'", "fact_category IN ('x', 'ayurdaya')", "fact_category = ANY('{ayurdaya,z}')", "fact_category <> 'ayurdaya'", "fact_category NOT IN ('ayurdaya')",
                                   "fact_category = '${cat}'", "fact_category = $2", "fact_category = ANY($2)", "chart_id = $1"])
 def test_a_predicate_that_does_not_pin_a_declared_value_attributes_nothing(tree, pred):
     g, cap = _faceted(tree, pred)
@@ -362,3 +362,180 @@ def test_the_cells_that_move_are_exactly_the_ones_the_repair_reads(real):
 def test_the_shared_table_cells_name_the_real_cause_not_a_dynamic_table_false_positive(real):
     for a in ("bg_ontology", "bg_text_index", "ga_panchanga"):
         assert real[a][1]["v"] == NO_DET and "only a table other assets share" in real[a][1]["measured"], a
+
+
+# ───────────────────────── independent-review fixes (PR #3176): MED-1, MED-2, MED-3, LOW-4, LOW-5 ─────────────────────────
+
+TWO_TOOLS = """
+export function registerAll(r) {
+  r.register({
+    id: 'A',
+    density_contract: { paginated: true, facets: [], empty_reason: true },
+    run: async () => query(`SELECT fact_id, verification_pass_status FROM t_shared WHERE chart_id = $1 AND fact_category = 'dasha'`),
+  })
+  r.register({
+    id: 'B',
+    run: async () => query(`SELECT fact_id FROM t_shared WHERE chart_id = $1 AND %s`),
+  })
+}
+"""
+
+
+def _two(tree, b_pred, facets=FACET):
+    tree.write(tree.layers / "L0_x", "q.ts", TWO_TOOLS % b_pred)
+    cap = _scan(tree, ["t_shared", "bg_x"], shared={"t_shared"}, columns=SHARED_COLS, facets=facets)
+    return ac._grade_dens(cap, "t_shared"), cap
+
+
+def test_med1_a_facet_literal_in_tool_b_does_not_credit_tool_as_contract_entry(tree):
+    """The review's shape: tool A's contract entry selects a tier from chart_facts for fact_category='dasha'; tool B (same register function) pins 'ayurdaya'.
+    Only B's own select is the asset's; A's select credits nothing, so there is no PASS (the contract and a tier select are not in one attributed entry)."""
+    g, cap = _two(tree, "fact_category = 'ayurdaya'")
+    assert g["v"] != PASS, g
+    assert cap["served"] == 1 and cap["density"] == 0, cap                    # only B's select is attributed
+    assert cap["facet_attributed"]
+
+
+@pytest.mark.parametrize("pred", ["fact_category IN ('x', 'ayurdaya')", "fact_category = 'ayurdaya' OR fact_category = 'dasha'", "fact_category = 'ayurdaya' OR 1 = 1",
+                                  "fact_category = ANY(ARRAY['ayurdaya', 'dasha'])"])
+def test_med1_a_pin_that_is_not_wholly_declared_or_sits_beside_an_or_attributes_nothing(tree, pred):
+    g, cap = _two(tree, pred)
+    assert cap["served"] == 0 and not cap["facet_attributed"], (pred, cap)
+    assert g["v"] == NO_DET, g
+
+
+def test_med1_the_attributed_select_in_its_own_contract_entry_still_passes(tree):
+    tree.write(tree.layers / "L0_x", "q.ts", TWO_TOOLS.replace("fact_category = 'dasha'", "fact_category = 'ayurdaya'").replace("%s", "fact_category = 'ayurdaya'"))
+    g = ac._grade_dens(_scan(tree, ["t_shared", "bg_x"], shared={"t_shared"}, columns=SHARED_COLS, facets=FACET), "t_shared")
+    assert g["v"] == PASS, g
+
+
+def test_med1_an_entry_pinning_two_categories_in_two_selects_is_refused_whole(tree):
+    tree.write(tree.layers / "L0_x", "q.ts", "export const cap = {\n  id: 'c',\n  density_contract: { paginated: true, facets: [], empty_reason: true },\n"
+                                              "  run: async () => { await query(`SELECT fact_id, verification_pass_status FROM t_shared WHERE fact_category = 'ayurdaya'`); "
+                                              "return query(`SELECT fact_id FROM t_shared WHERE fact_category = 'dasha'`) },\n}\n")
+    cap = _scan(tree, ["t_shared", "bg_x"], shared={"t_shared"}, columns=SHARED_COLS, facets=FACET)
+    assert not cap["facet_attributed"] and cap["served"] == 0
+
+
+def test_med1_entry_object_picks_the_capability_entry_not_the_registering_function():
+    src = "function f() { r({ id: 'A', run: () => q(`x`) }); r({ id: 'B', run: () => q(`y`) }) }"
+    blank = ac._ts_mask(src, blank_strings=True)
+    pos = src.index("`y`")
+    lo, hi = ac._entry_object(blank, pos)
+    assert "'B'" in src[lo:hi] and "'A'" not in src[lo:hi]
+
+
+# ── MED-2: uniform_authority is bound to the asset and refused on a table with per-row authority ──
+
+UA_EV = "platform/scripts/governance/asset_census.py:1"
+
+
+def _ua(**over):
+    d = dict(why="every row of this reference vocabulary is of uniform authority", evidence="platform/src/lib/retrieval/registry/layers/L1_ganita/get_ayurdaya.ts:71")
+    d.update(over)
+    return {"uniform_authority": d, "read_table": "chart_facts"}
+
+
+def test_med2_the_evidence_file_must_mention_the_asset_or_its_table():
+    assert ac.uniform_authority_problem(_ua(), "ga_ayurdaya") is None
+    bad = ac.uniform_authority_problem(_ua(evidence=UA_EV), "bg_zzz_not_in_that_file")
+    assert bad is None or "mentions neither" in bad                       # asset_census.py does name the read_table chart_facts, so the table needle is enough here
+    e = _ua(evidence=UA_EV)
+    e["read_table"] = "qqq_not_a_table_anywhere"
+    assert "mentions neither" in ac.uniform_authority_problem(e, "qqq_not_an_asset_either")
+
+
+def test_med2_the_validator_passes_the_asset_id():
+    with pytest.raises(ac.DeclarationsError, match="mentions neither"):
+        ac.validate_declarations(dict(version="9.9.9", kind_enum=list(ac.DECLARED_KINDS),
+                                      assets={"qqq_asset": dict(kind="data", uniform_authority=dict(why="every row is of uniform authority here", evidence=UA_EV), read_table="qqq_tbl")}))
+
+
+@pytest.mark.parametrize("cols,ok", [(["id", "tier"], False), (["id", "verification_pass_status"], False), (["id", "name"], True)])
+def test_med2_a_table_with_a_tier_vocabulary_column_refuses_the_uniform_authority_declaration(cols, ok):
+    got = ac.uniform_authority_measure_problem(_ua(), "t", cols, "ga_ayurdaya")
+    assert (got is None) is ok, got
+    if not ok:
+        assert "per-row authority" in got
+
+
+def test_med2_an_unknown_table_or_columns_is_unverifiable_never_accepted():
+    assert "unverifiable" in ac.uniform_authority_measure_problem(_ua(), None, ["id"], "ga_ayurdaya")
+    assert "unverifiable" in ac.uniform_authority_measure_problem(_ua(), "t", None, "ga_ayurdaya")
+    assert ac.uniform_authority_measure_problem({}, "t", None) is None
+
+
+# ── MED-3: the uniform_authority PASS needs the entry's own select and a non-label reference inside that same entry ──
+
+UA_FACETS = "density_contract: { paginated: true, facets: ['a'], empty_reason: true },"
+
+
+def _ua_scan(tree, src, **kw):
+    tree.write(tree.layers / "L0_x", "q.ts", src)
+    return _scan(tree, ["t_x", "bg_x"], columns={"t_x": ["id", "name"]}, **kw)
+
+
+def test_med3_a_contract_entry_with_its_own_select_and_a_reference_inside_it_carries_the_pass(tree):
+    cap = _ua_scan(tree, "export const cap = {\n  id: 'bg_x',\n  " + UA_FACETS + "\n  run: () => query(`SELECT id, name FROM t_x`),\n}\n")
+    assert cap["facet_dense"] and ac._grade_dens(cap, "t_x", True)["v"] == PASS
+
+
+def test_med3_a_contract_entry_that_does_not_hold_the_select_does_not(tree):
+    cap = _ua_scan(tree, "export const a = {\n  id: 'bg_x',\n  " + UA_FACETS + "\n  run: () => query(`SELECT 1 FROM other`),\n}\n"
+                         "export const b = {\n  id: 'b2',\n  run: () => query(`SELECT id, name FROM t_x`),\n}\n")
+    assert not cap["facet_dense"] and ac._grade_dens(cap, "t_x", True)["v"] != PASS
+
+
+def test_med3_a_label_only_mention_of_the_asset_inside_the_entry_is_not_a_reference(tree):
+    """The contract entry's select reads ANOTHER table; the asset's table is only a provenance label in it, its real select sits in a sibling entry of the same declaration."""
+    src = ("export function reg(r) {\n  r({ id: 'c1', " + UA_FACETS + " run: () => query(`SELECT id FROM other_tbl`),\n"
+           "    out: () => ({ provenance: { tables: ['t_x'] } }) })\n"
+           "  r({ id: 'c2', run: () => query(`SELECT id, name FROM t_x`) })\n}\n")
+    cap = _ua_scan(tree, src)
+    assert not cap["facet_dense"] and ac._grade_dens(cap, "t_x", True)["v"] != PASS
+
+
+def test_med3_a_shared_table_select_attributed_by_facet_never_carries_a_uniform_authority_pass(tree):
+    tree.write(tree.layers / "L0_x", "q.ts", "export const cap = {\n  id: 'bg_x',\n  " + UA_FACETS + "\n  run: () => query(`SELECT fact_id FROM t_shared WHERE fact_category = 'ayurdaya'`),\n}\n")
+    cap = _scan(tree, ["t_shared", "bg_x"], shared={"t_shared"}, columns=SHARED_COLS, facets=FACET)
+    assert cap["facet_attributed"] and not cap["facet_dense"]
+    assert ac._grade_dens(cap, "t_shared", True)["v"] != PASS
+
+
+# ── LOW-4: the facet declaration is a tenth FAIL move, asserted on the real tree ──
+
+def test_low4_ga_ayurdaya_with_its_committed_facet_reads_fail_on_the_real_tree():
+    decl = ac.load_asset_declarations()
+    if not (decl.get("ga_ayurdaya") or {}).get("density_facet"):
+        pytest.skip("ga_ayurdaya declares no density_facet in this tree")
+    d = FX["layers"]["L1"]
+    r = next(x for x in d["assets"] if x["asset_id"] == "ga_ayurdaya")
+    f = decl["ga_ayurdaya"]["density_facet"]
+    base = ac.capability_scan(ac.CAPS_ROOTS, r["tokens"], shared=frozenset(d["shared"]), columns=d["columns"], outside_roots=ac.DENS_OUTSIDE_ROOTS)
+    assert ac._grade_dens(base, "chart_facts")["v"] == NO_DET                       # without the facet: only a shared table is referenced
+    cap = ac.capability_scan(ac.CAPS_ROOTS, r["tokens"], shared=frozenset(d["shared"]), columns=d["columns"], outside_roots=ac.DENS_OUTSIDE_ROOTS,
+                             facets={"chart_facts": dict(column=f["column"], values=list(f["values"]))})
+    g = ac._grade_dens(cap, "chart_facts")
+    assert g["v"] == FAIL and cap["facet_attributed"] == ["L1_ganita/get_ayurdaya.ts"], g          # attributed by its own entry's pin, FAIL: the capability declares no density_contract
+
+
+# ── LOW-5: a lower-case concatenated select is still a run-time table read ──
+
+@pytest.mark.parametrize("src", [
+    "const q = 'select a ' + 'from ' + t\n",
+    "const q = ['select a', 'from', t]\n",
+    "const q = 'select a ' + 'from ${t}'\n".replace("'from ${t}'", "`from ${t}`"),
+    "const q = 'select a '.concat('join ', t)\n",
+])
+def test_low5_a_lower_case_concatenated_select_is_dynamic(src):
+    assert ac._dynamic_from(src, ac._ts_literal_spans(src))
+
+
+@pytest.mark.parametrize("src", [
+    "const d = { a: 'isolated from generation', b: 'x' }\n",
+    "const x = 'rows from ' + n + ' sources'\n",
+    "const x = `see ${a} from ${b}`\n",
+])
+def test_low5_prose_with_a_lower_case_from_is_still_not_a_table_name(src):
+    assert not ac._dynamic_from(src, ac._ts_literal_spans(src))
