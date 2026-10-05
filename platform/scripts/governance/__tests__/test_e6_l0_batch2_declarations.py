@@ -468,7 +468,9 @@ def test_these_assets_cannot_be_coupled_because_none_declares_a_d1_transcription
 # ───────────────────────── Part 5: the code really builds no narration (syntax-tree proofs with mutants) ─────────────────────────
 
 EXPECTED_INVENTORY = {         # (kind, source) of every text-building expression in the module: pinned, so a new one must be decided
-    WR + "bg_transit_rules.py": [("fstr", "f\"bg_transit_engine={counts.get('bg_transit_engine', 0)}; bg_transit_rules={counts.get('bg_transit_rules', 0)}\"")],
+    WR + "bg_transit_rules.py": [
+        ("fstr", "f\"bg_transit_engine={counts.get('bg_transit_engine', 0)}; bg_transit_rules={counts.get('bg_transit_rules', 0)}; bg_transit_moorti={counts.get('bg_transit_moorti', 0)}; rows_written reports {ctx.asset_id!r} = {own[ctx.asset_id]} of {counts.get('total', 0)} total\""),
+        ("fstr", "f\"bg_transit_rules writer dispatched as {ctx.asset_id!r}; it reports {sorted(own)} - refusing to report another asset's total\"")],
     BG + "l0_transit.py": [
         ("binop", "engine_count + rules_count"), ("binop", "engine_count + rules_count + moorti_count"),
         ("binop", "len(BG_TRANSIT_ENGINE) + len(BG_TRANSIT_RULES)"), ("binop", "len(BG_TRANSIT_ENGINE) + len(BG_TRANSIT_RULES) + len(BG_TRANSIT_MOORTI)"),

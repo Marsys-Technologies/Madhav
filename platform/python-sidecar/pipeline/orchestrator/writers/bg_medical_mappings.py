@@ -1,5 +1,5 @@
 """
-bg_medical_mappings writer — seeds bg_medical_mappings and bg_nakshatra_medical.
+bg_medical_mappings writer — seeds bg_medical_mappings, bg_nakshatra_medical and bg_sign_medical.
 
 L0 brahmagyan light writer. Delegates to brahmagyan.l0_medical.seed_medical_mappings()
 for all INSERT logic. ON CONFLICT DO UPDATE idempotency (L0 standard per §N.3).
@@ -46,10 +46,22 @@ class BgMedicalMappingsWriter(WriterBase):
             dry_run=ctx.dry_run,
             autocommit=False,
         )
+        # TI-L0-32 (CF-02): this class is registered for THREE asset ids and writes three tables
+        # every time. The build record's `rows_written` must be the partition of the asset that was
+        # dispatched (counts[ctx.asset_id]), not the sum of all three (60 = 21 + 27 + 12) against a
+        # count_sql that sees 21. Record-only: no row, no table, no seed changes. An id this class is
+        # not registered for is a wiring defect and fails loudly rather than reporting a total.
+        if ctx.asset_id not in counts and not ctx.dry_run:
+            raise RuntimeError(
+                f'bg_medical_mappings writer dispatched as {ctx.asset_id!r}; it owns '
+                f'{sorted(counts)} - refusing to report another asset\'s total'
+            )
         total = sum(counts.values())
         return WriterResult(
             asset_id=self.asset_id,
-            rows_inserted=total,
+            rows_inserted=counts.get(ctx.asset_id, 0),
             duration_seconds=time.time() - t0,
-            notes=f'2 medical reference tables: {counts}',
+            notes=(f'3 medical reference tables written (shared writer): {counts}; '
+                   f'rows_written reports the dispatched asset {ctx.asset_id!r} = {counts.get(ctx.asset_id, 0)} '
+                   f'of {total} total'),
         )
