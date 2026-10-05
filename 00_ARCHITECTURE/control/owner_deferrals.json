@@ -1,0 +1,12 @@
+{
+ "schema": 1,
+ "_doc": "E6.5 owner deferrals (SS ruling N-102, owner decision). Read by `asset_census.py --registry-check` and echoed into registry_coverage_report.json `deferred_by_owner`. Each entry: {asset_id: a registry asset id (validated against the committed registry seed), criterion_gate: one of the nine core gates, decision: 'N-<n>', state: non-blank}. A deferred asset is reported SEPARATELY: it is not an uncovered criterion, it never fails the check, and it is not a covered cell. Unknown ids, unknown keys, duplicates or a malformed entry fail --registry-check.",
+ "deferrals": [
+  {"asset_id": "bg_gochara_citation_resolution", "criterion_gate": "Carr", "decision": "N-102", "state": "deferred by owner (N-102)"},
+  {"asset_id": "bg_kota_chakra_rings", "criterion_gate": "Carr", "decision": "N-102", "state": "deferred by owner (N-102)"},
+  {"asset_id": "bg_medical_mappings", "criterion_gate": "Carr", "decision": "N-102", "state": "deferred by owner (N-102)"},
+  {"asset_id": "bg_nakshatra_medical", "criterion_gate": "Carr", "decision": "N-102", "state": "deferred by owner (N-102)"},
+  {"asset_id": "bg_sign_medical", "criterion_gate": "Carr", "decision": "N-102", "state": "deferred by owner (N-102)"},
+  {"asset_id": "bg_vastu_directions", "criterion_gate": "Carr", "decision": "N-102", "state": "deferred by owner (N-102)"}
+ ]
+}

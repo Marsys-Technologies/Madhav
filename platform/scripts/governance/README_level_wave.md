@@ -165,6 +165,23 @@ A template made of this file's own constants is READ as the statement it runs: `
 `f'{V}ETE FROM t'`, `'DELETE FROM'.strip() + ' t'`, `'DELETE FROM x'.replace('x', 't')`, `v, f = 'DELETE', 'FROM'` are rendered
 with the constants written out (only `str` methods on literals are evaluated; nothing is imported or called) and scanned as well.
 
+A closed evaluator reads constant-only SQL (E6.1 follow-up, review round): an execute / SQL argument built ONLY from constants and constant-bound names, through any operator,
+subscript, container, comprehension, conditional or call of a closed list of pure builtins and str / bytes / dict / sequence methods, is EVALUATED and the text it evaluates to is
+scanned as the statement it runs: `'%c%c%c' % (68, 69, 76)`, `'%(v)s FROM t' % {'v': 'DELETE'}`, `'ETELED'[::-1]`, `' '.join(w for w in (...))`, `('%c' + 'ELETE FROM t') % 68`,
+`A = 68; '%cELETE FROM t' % A`, `PARTS = [...]; ''.join(PARTS)`, `'DEL' + ('ETE FROM t' if 1 else 'x')`, `S = 'DEL'; S += 'ETE FROM t'`, a loop that builds the text, a name assigned in
+several places (each value is scanned). A constant-only expression that cannot be evaluated is **not scanned**, never clean (reason `write_form_not_analysed: a constant-only template
+whose text this scan cannot read`): a method outside the closed list, a set iterated into a text (its order is arbitrary), a container built up by `.append` / item stores then
+iterated or joined (`conds = []; conds.append(..); ' AND '.join(conds)`: its order and count are not known; indexing it is fine, each element is scanned), a text assembled from more
+than 64 pieces or by a non-`+=` augmented operator. The evaluator only ever ADDS tables and reasons; the closed allow-list still judges the expression afterwards. A parameter, an
+unknown call, an attribute and a name with a non-assignment binding are not constants and keep their existing handling. **Remaining, by design:** a text assembled from NON-constant
+pieces is the existing (placeholder / call-site) machinery's, and arrangements the straight-line model cannot see (pieces appended conditionally in an order a loop or branch changes)
+are read as the cumulative arrangements in source order, not every subset. **Cost:** a where-clause builder that `' AND '.join(...)`s a mutated list now reads not scanned (10
+non-writer files under platform/ do; none of the 121 orchestrator writers). Also (same follow-up): a starred unpack target (`first, *rest = SRC`) is a
+list, so its aliases / escapes are policed like any other container, and a container that carries another mutable container at ANY depth
+(`[('a', ['b'])]`, `dict(k=['b'])`, `[['a']] * 2`) is not provable. The resolver's work is bounded deterministically: `_WriteScan.work_steps`
+(read-only) against `MAX_RESOLVER_STEPS`, asserted in `test_e5_9_footprint_steps.py` (steps per source line over the reviewer corpora and the
+hostile shapes), with the old wall-clock asserts kept only as a generous backstop.
+
 Documented, not detected: `VACUUM FULL` / `CLUSTER` (they rewrite a table, they write no rows), `COPY ... TO` with a runtime target
 (an export), an instance of another module's class that is called instead of this file's class (an imported delegate), `__dict__`
 on an instance (it only matters for class attributes, which it already disables), and a name collision elsewhere that makes an
@@ -226,10 +243,65 @@ The family set is what the WAVE tool refuses. Family assets and their readers ar
 production session with the single-asset dispatcher, each under a stage the strategist approves (Pravaha's own assets only by
 Pravaha). The wave tool is for level waves of non-family assets (first use: the 23 bo_* assets).
 
-`FAMILY_ASSETS.json` (draft `0.1-draft`, branch `suvarna/engine-E6.3-family`, 21 members) now includes, beyond the five R8 names
+`FAMILY_ASSETS.json` (draft `0.2-draft`, 25 members, regenerated at registry revision 16; see the draft level map below) includes, beyond the five R8 names
 and the 13 other readers: `ka_yojaka` (Sangam's stale prerequisite), `ka_gochara_v3_century_materialize` (Gochara's century
 writer) and `ka_moorti_nirnaya` (Pravaha's gochara writer, not covered by any name pattern). `ka_kota_chakra` is deliberately not
 in the set (that reader is ours by agreement). None of the 23 bo_* assets is a member; a test pins that.
+
+### The draft level map (SS ruling N-97 item 6; freeze at J1)
+
+`00_ARCHITECTURE/control/LEVEL_MAP.json` is a **draft** pre-J1 snapshot of the dependency levels of the 127 active registry assets
+(`version` `0.2-draft`, `_stamp.status` `DRAFT`). `FAMILY_ASSETS.json` is regenerated with it. Both are generated, never hand-edited:
+`python3 00_ARCHITECTURE/control/regenerate_draft_level_map.py --frozen-at <ISO-8601>` rewrites `registry_input_draft.json`,
+`LEVEL_MAP.json` and `FAMILY_ASSETS.json` all-or-nothing, and refuses (exit 2) to overwrite a set that is not a plain DRAFT unless
+`--force`. `--check` compares all three files with a regeneration made at the recorded stamp.
+
+**What the stamp binds.** `_stamp.registry_revision` / `registry_fingerprint` are `asset_census.REGISTRY_REVISION` and
+`registry_fingerprint()`: they hash the **census criteria registry, not the `asset_registry` dependency graph**. A stale census stamp
+says nothing about whether the DAG moved. The DAG is bound by `_stamp.registry_input_sha256` (the committed input rows) and
+`_stamp.dag_sha256` (the active edges). A DRAFT whose census stamp is behind is only STALE: a pytest warning, and `--check` prints
+`STALE (draft)` and exits 0 (`--check --strict` exits 1), so engine PRs that bump the census revision do not churn these files. A
+stamp whose status is not DRAFT fails on staleness. Because a status can be relabelled, **`--check --pre-freeze` is the J1 gate**: it
+fails on any DRAFT and on any stale census stamp.
+
+**Levels are dependency depth, not dispatch wave indices.** Level = longest path in the registry dependency DAG (27 levels, 0 to
+26). A wave band is a level range: W0 0-2, W1 3-5, W2 6-11, W3 12-16, W4 17-21, W5 22-26. The counts 65/13/14/17/9/9 are band sizes
+and **include family assets**. The dispatch set of a band is the band minus `family_set`, as measured on this map:
+
+| Band | Levels | In band | Dispatchable (non-family) |
+|---|---|---|---|
+| W0 | 0-2 | 65 | 60 |
+| W1 | 3-5 | 13 | 12 |
+| W2 | 6-11 | 14 | 14 |
+| W3 | 12-16 | 17 | 5 |
+| W4 | 17-21 | 9 | 6 |
+| W5 | 22-26 | 9 | 8 |
+
+The dispatcher's own wave index (`derive_waves` over the non-family set) differs from the level for 14 `ph_*` / `mi_*` assets (6
+`ph_*`, 8 `mi_*`), because the family assets they depend on drop out of the set: W4 and W5 depend on the family assets `ph_muhurta`,
+`ph_nimitta`, `ph_pratikara` and `mi_adhilepa`. Use the level for dependency depth and `derive_waves` for dispatch order.
+
+**Who reads these files.** The dispatcher (`suvarna_level_wave.py`) never reads `LEVEL_MAP.json`; it reads `FAMILY_ASSETS.json` only
+for the six lists and `family_set` and ignores `_stamp`. The E6.3 tracker's `_e63_registry_assets` unions the keys of
+`LEVEL_MAP.levels` into the registry asset ids it knows (beside the seed), so the level map's ids are treated as registry assets.
+
+**Where the DAG comes from (offline, no database).** The repo's frozen pre-1210 reconstruction of the live registry plus migration
+1210's 12 edges (`regenerate_draft_level_map.py` docstring has the full provenance). It is not a live export. The seed's own
+`depends_on` is bootstrap-only and differs from this DAG on exactly five assets (`bo_nakshatra_semantic`, `ka_kshetra`, `ka_sangam`,
+`ka_muhurta_seva`, `ka_vighnakara`; pinned in a test). The exact set of migrations in both runner directories
+(`platform/migrations`, `platform/supabase/migrations`) whose SQL mentions `depends_on` is pinned in
+`registry_depends_on_migrations.json`; a new or removed entry fails the test until the registry input and the pin are updated
+(`--write-migration-pin`). The cross-check against the E6 census of `adb0db29d` lives outside the repo
+(`/Users/Dev/suvarna-evidence/census_fresh/adb0db2`); its result, recorded here so it does not rest on that path: 127 assets, and for
+all 127 the census's declared-edge count and blocking-radius direct and transitive counts equal this DAG's (census registry revision
+16, fingerprint `8b88e7b2...cb97c`). `ka_gochara_sweep` and `ka_gochara_v3_century_materialize` are live inactive rows;
+`ka_gochara_v4_41_candidate` and `ka_gochara_v5` are live inactive rows too (migration 1243 stages both with is_active false: registry total 129 -> 131, active still 127), so `phantom_registered` no longer applies to them.
+
+**The J1 freeze.** `regenerate_draft_level_map.py --freeze --registry-export <live asset_registry export json> --frozen-at <ISO>`
+(the export is a JSON list of `{asset_id, layer, depends_on, active}` taken read-only by whoever holds the reader login). The
+export's active ids and edges must equal `registry_input_draft.json`'s, otherwise the differences are printed and nothing is written.
+On a match the three files are written with status `FROZEN`, version `1.0` and a stamp at the current census pin;
+`--check --pre-freeze` then passes. The tool does not merge or push anything.
 
 ## Stop hook between waves
 

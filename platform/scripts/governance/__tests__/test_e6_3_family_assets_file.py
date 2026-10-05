@@ -28,14 +28,14 @@ def test_each_list_is_sorted_unique_asset_ids_and_family_set_is_their_union():
         v = DOC[k]
         assert v == sorted(set(v)) and all(re.fullmatch(r"[a-z][a-z0-9_]*", a) for a in v), k
         union |= set(v)
-    assert DOC["family_set"] == sorted(union) and len(DOC["family_set"]) == 25
+    assert DOC["family_set"] == sorted(union) and len(DOC["family_set"]) == 26
 
 
 def test_the_lists_are_exactly_what_the_focus_families_doc_names():
     # the doc's lists plus the strategist's rulings (Q2: ka_yojaka, ka_gochara_v3_century_materialize; ka_moorti_nirnaya)
     assert DOC["family_gochara"] == ["bg_gochara_arcs", "bg_gochara_citation_resolution", "ka_gochara",
                                      "ka_gochara_resonance", "ka_gochara_sweep", "ka_gochara_v3_century_materialize",
-                                     "ka_gochara_v4_41_candidate",
+                                     "ka_gochara_v4_41_candidate", "ka_gochara_v5",
                                      "ka_moorti_nirnaya", "ka_vedha_gochara"]
     assert DOC["family_sangam"] == ["ka_sangam", "ka_yojaka"] and DOC["family_kshetra"] == ["ka_kshetra"]
     assert DOC["family_readers_L3"] == ["ka_bhavishya_lekha", "ka_jivana_parva", "ka_kala_darshana", "ka_kalasutra",
@@ -146,8 +146,13 @@ def test_the_committed_file_is_byte_identical_to_what_the_generator_makes_from_t
         import pytest
         pytest.skip("generate_level_map.py is not part of this checkout (it lands with the E6.3 PR #2891, whose "
                     "test_e6_3_family_file_roundtrip.py then checks this pair): round trip not run here")
-    rows = g.load_registry_from_seed(SEED)
+    # the registry is the committed draft registry input (the live active registry; the seed is a stale stand-in that still
+    # holds ka_gochara_v3_century_materialize active), and the draft stamp is carried as a generator note
+    reg = REPO / "00_ARCHITECTURE/control/registry_input_draft.json"
+    assert reg.exists(), "registry_input_draft.json must be committed beside FAMILY_ASSETS.json (a skip would hide a missing input)"
+    rows = g.load_registry_json(reg)
     inp = g.load_family_input(REPO / "00_ARCHITECTURE/control/family_lists_input.json")
+    notes = {"_stamp": DOC["_stamp"]} if "_stamp" in DOC else None
     doc = g.build_family_assets(inp, rows, version=DOC["version"], frozen_at=DOC["frozen_at"],
-                                registry_revision=DOC["registry_revision"])
+                                registry_revision=DOC["registry_revision"], notes=notes)
     assert json.dumps(doc, indent=2, ensure_ascii=False) + "\n" == FILE.read_text(encoding="utf-8")

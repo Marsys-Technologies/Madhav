@@ -1,0 +1,19 @@
+-- ordinary-migration shape (fact_category_ownership is owned by amjis_app); rehearsal seed for the 3 lanes only
+INSERT INTO public.fact_category_ownership(fact_category,owning_asset_id) VALUES ('bhava_chalit_rasi_divergence','ga_structural') ON CONFLICT DO NOTHING;
+INSERT INTO public.fact_category_ownership(fact_category,owning_asset_id) VALUES ('conjunction_special_point','ga_structural') ON CONFLICT DO NOTHING;
+INSERT INTO public.fact_category_ownership(fact_category,owning_asset_id) VALUES ('dosha_fires','ga_structural') ON CONFLICT DO NOTHING;
+INSERT INTO public.fact_category_ownership(fact_category,owning_asset_id) VALUES ('graha_saptavargaja_bala_component','ga_structural') ON CONFLICT DO NOTHING;
+INSERT INTO public.fact_category_ownership(fact_category,owning_asset_id) VALUES ('karaka_web_per_varga','ga_structural') ON CONFLICT DO NOTHING;
+INSERT INTO public.fact_category_ownership(fact_category,owning_asset_id) VALUES ('kendradhipati_dosha','ga_structural') ON CONFLICT DO NOTHING;
+INSERT INTO public.fact_category_ownership(fact_category,owning_asset_id) VALUES ('nakshatra_co_tenancy','ga_structural') ON CONFLICT DO NOTHING;
+INSERT INTO public.fact_category_ownership(fact_category,owning_asset_id) VALUES ('nakshatra_lord_relationship','ga_structural') ON CONFLICT DO NOTHING;
+INSERT INTO public.fact_category_ownership(fact_category,owning_asset_id) VALUES ('panchadha_maitri','ga_structural') ON CONFLICT DO NOTHING;
+INSERT INTO public.fact_category_ownership(fact_category,owning_asset_id) VALUES ('retrograde_aspect_modification','ga_structural') ON CONFLICT DO NOTHING;
+INSERT INTO public.fact_category_ownership(fact_category,owning_asset_id) VALUES ('significator_path','ga_structural') ON CONFLICT DO NOTHING;
+INSERT INTO public.fact_category_ownership(fact_category,owning_asset_id) VALUES ('tara_bala','ga_structural') ON CONFLICT DO NOTHING;
+INSERT INTO public.fact_category_ownership(fact_category,owning_asset_id) VALUES ('upapada_lagna','ga_structural') ON CONFLICT DO NOTHING;
+INSERT INTO public.fact_category_ownership(fact_category,owning_asset_id) VALUES ('vimsopaka_bala_per_graha','ga_structural') ON CONFLICT DO NOTHING;
+INSERT INTO public.fact_category_ownership(fact_category,owning_asset_id) VALUES ('virupa_drishti','ga_structural') ON CONFLICT DO NOTHING;
+INSERT INTO public.fact_category_ownership(fact_category,owning_asset_id) VALUES ('yoga_fires','ga_structural') ON CONFLICT DO NOTHING;
+INSERT INTO public.fact_category_ownership(fact_category,owning_asset_id) VALUES ('sensitive_degree_check','ga_sensitive_degree') ON CONFLICT DO NOTHING;
+INSERT INTO public.fact_category_ownership(fact_category,owning_asset_id) VALUES ('sensitive_point_yogi','ga_sensitive_degree') ON CONFLICT DO NOTHING;

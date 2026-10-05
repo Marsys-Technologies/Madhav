@@ -142,7 +142,71 @@ DATABASE_URL=... python platform/scripts/governance/schema_pin_mimamsa_predictio
 
 Full runbook: `00_ARCHITECTURE/briefs/pariprashna_build/PB_SCHEMA_HASH_PIN_v1_0.md`.
 
+### `asset_dispositions.py` ← **Suvarna E6.3 (N-97 item 5)**
+Validator and the one sanctioned writer for `00_ARCHITECTURE/control/asset_dispositions.jsonl`, the
+append-only, hash-chained ledger that `elevated_assets(ref, repo)` reads (a terminal retire/consolidate
+with a decision id and a reason counts as ELEVATED). It defines nothing the reader defines: it loads
+`asset_elevation_tracker.py` by path and reuses its vocabulary, chain rule and its own parser, and adds only
+the `evidence` field, the closed key set, no-op/terminal-revert checks and the git append-only check.
+
+**For the Track A lanes (A.L0r … A.L5): how to append.** One row per asset per decision, from your brief,
+only through this tool (never hand-edit, rewrite, delete or reorder a line). `--evidence` is required and the
+file it names must exist. Leave `--decision-id` off for a proposed disposition (it reads `unresolved` until
+Strategic Suvarṇa's accepting PR at J1 appends the row carrying the decision id). The latest row per asset
+governs; a row that ends a terminal disposition must cite a different decision id.
+
+```
+python3 platform/scripts/governance/asset_dispositions.py --append --asset <asset_id> --disposition <value> \
+    --evidence <brief path>#<anchor> --reason "<one sentence>" [--decision-id N-<n>] [--addition <id> ...]
+python3 platform/scripts/governance/asset_dispositions.py --check --base origin/main   # before you push
+python3 platform/scripts/governance/asset_dispositions.py --schema                      # vocabulary and patterns
+```
+
+`--check` prints the real status of the git append-only rule in its OK line: "prefix rule checked against
+<sha>", "no ledger at base: prefix rule not applicable" or "NOT CHECKED: <why>" (path outside the repo
+toplevel, not the canonical ledger path, unresolvable base). NOT CHECKED exits 1 when `--base` was passed or
+the canonical ledger is being checked. With no `--base` the default is the merge-base with `origin/main`;
+with no `origin/main` it is HEAD and the line says the check is VACUOUS. There is no CI caller yet (the
+workflow files are shared and not touched here); wire `--check --base origin/main` into a lane's CI when one is
+added.
+
+Caveats. `--ref` is a committed snapshot of the registry: an asset removed at HEAD but present at an older
+`--ref` passes the validator while the reader at HEAD rejects it, so keep `--ref` at the commit the reader will
+read. A process killed mid-append (SIGKILL, power loss) can leave a torn partial last line; `--check` reports
+it as not strict JSON. Remove only that partial line by truncating the file back to its last newline
+(`python3 -c "p='<path>'; b=open(p,'rb').read(); open(p,'wb').write(b[:b.rfind(b'\n')+1])"`), re-run
+`--check`, then re-run your `--append`.
+
+Tests: `__tests__/test_e6_3_dispositions.py`.
+
 ---
+
+### `nikasha_fold.py` ← **Suvarṇa E5.2 (fold script)**
+
+Register state transitions, withholding-aware `--emit-gaps`, computed tallies, fingerprints and drift for the Nikaṣa
+register and ledgers (full contract: the module docstring; tests `__tests__/test_e5_2_fold.py`). Exit codes: 0 ok · 1
+drift found · 2 refused (`REFUSED <code>`, nothing written) · 5 script error · 75 lock held.
+
+**Review records (SS ruling N-100).** `set-state … --review <file>` closes a row (CLOSED, DONE, CLOSED_ON_BRANCH,
+PARTIAL) only if the file is under `00_ARCHITECTURE/briefs/suvarna/reviews/`, tracked and clean at git HEAD, its
+frontmatter is exactly these keys (strict, closed; no duplicates, no other key, no blank or comment line), reviewed_sha is
+merged (ancestor of origin/main; HEAD for CLOSED_ON_BRANCH and PARTIAL) and touches one of the paths the register row
+declares in backticks (if it declares none, that is reported and not a refusal), and — for `ACCEPT_WITH_CORRECTIONS`,
+which closes nothing by itself — a second tracked, clean record with `verdict: RE_ACCEPTED` and a `corrections_sha` that
+descends from reviewed_sha exists for the same row. `REJECT` or any parse failure leaves the row open.
+
+```
+---
+row: R244
+reviewed_sha: 9f2c1ab
+verdict: ACCEPT
+reviewer: gate-reviewer
+---
+# Review of E4.2-build-001 ... (free text; a quoted `> verdict: REJECT` or a fenced one is ignored)
+```
+`verdict` is one of ACCEPT, ACCEPT_WITH_CORRECTIONS, REJECT (RE_ACCEPTED only in a re-accept record); no
+trailing comments are allowed on a frontmatter line. Re-accept record: the same four keys with `verdict: RE_ACCEPTED`, the original `reviewed_sha`, plus
+`corrections_sha: <commit descending from reviewed_sha>`.
 
 ## Shared library: `_ca_loader.py`
 
