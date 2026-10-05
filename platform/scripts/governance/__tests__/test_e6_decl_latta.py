@@ -34,6 +34,7 @@ import test_e6_s3_alias_ldgr as s3  # noqa: E402
 from _disposable_pg import disposable_pg  # noqa: E402,F401  (the session fixture)
 
 AID = "bg_phaladeepika_latta"
+BATCH2_VOCAB = ["bg_dignity_reference", "bg_kp_sublord_division", "bg_transit_engine", "bg_transit_rules", "bg_vastu_directions"]      # declared by L0-WAVE batch 2
 PASS, FAIL, PARTIAL, NO_DET, NA = ac.PASS, ac.FAIL, ac.PARTIAL, ac.NO_DET, ac.NA
 DECL = json.loads(ac.DECLARATIONS_PATH.read_text(encoding="utf-8"))
 ENTRY = DECL["assets"][AID]
@@ -95,7 +96,8 @@ def test_the_committed_file_is_1_10_0_and_the_validator_accepts_this_entry():
 
 def test_this_asset_alone_declares_the_three_blocks_and_its_created_at_is_a_stamp_never_a_constant():
     decl = [a for a, e in DECL["assets"].items() if any(k in (e.get("carriage") or {}) for k in ac.CARRIAGE_DECL_FIELDS) or "vocab_alias" in e or "ldgr_source" in e]
-    assert decl == [AID]
+    assert sorted(decl) == sorted([AID, *BATCH2_VOCAB])                  # L0-WAVE batch 2: five more vocab_alias declarations, none a carriage or an ldgr_source
+    assert [a for a, e in DECL["assets"].items() if "ldgr_source" in e or any(k in (e.get("carriage") or {}) for k in ac.CARRIAGE_DECL_FIELDS)] == [AID]
     assert [a for a, e in DECL["assets"].items() if "null_convention" in e] == [AID]                  # DECL-LATTA-NULL (1.11.0)
     nc = ENTRY["null_convention"]
     assert "created_at" not in [c["column"] for c in nc["constants"]]            # option A is refused: no created_at constant; it is a declared stamp column

@@ -11,7 +11,9 @@ import {
   canonicalRegistryContractDigest,
   CANONICAL_NIRMANA_CHART_ID,
   excludeNirmanaStagedInertCandidates,
+  excludedNirmanaStagedInertCandidates,
   runtimeEvidenceSql,
+  type NirmanaExcludedStagedCandidate,
   nirmanaExecutionContractForRegistryRow,
   NirmanaElevationManifestSchema,
   registryContractFingerprintInput,
@@ -143,6 +145,11 @@ export interface NirmanaMonitorObservation {
   release_age_seconds: number | null
   public_detail: string
   source_error_code: string | null
+  /**
+   * N-137: the staged Gochara candidates the frozen-population rule excluded in THIS observation, each with its reason and decision — the exclusion is visible, not merely
+   * absent from the count. In-memory only (the observation table has no column for it); the monitor also logs one line per excluded id every run.
+   */
+  excluded_staged_candidates?: NirmanaExcludedStagedCandidate[]
 }
 
 interface StoredFrozenDefinition {
@@ -434,8 +441,9 @@ export function classifyNirmanaDivergence(input: {
 
 type MonitorReadClient = Pick<PoolClient, 'query'>
 
-async function loadMonitorInputs(client: MonitorReadClient): Promise<{
+async function loadMonitorInputs(client: MonitorReadClient, onExcluded: (excluded: NirmanaExcludedStagedCandidate[]) => void = () => undefined): Promise<{
   candidate: NirmanaBaselineCandidate
+  excludedStagedCandidates: NirmanaExcludedStagedCandidate[]
   definition: StoredFrozenDefinition | null
   selectedCatalogueSha256: string | null
   selectedCatalogueAssetIds: string[]
@@ -462,6 +470,9 @@ async function loadMonitorInputs(client: MonitorReadClient): Promise<{
        FROM asset_registry
       ORDER BY layer, sort_order, asset_id`,
   )
+  // F4 (N-137 review): the exclusions are computed and REPORTED before the baseline is built, so a baseline that throws (an unresolved asset in the denominator) still shows what was excluded
+  const excludedStagedCandidates = excludedNirmanaStagedInertCandidates(registry.rows)
+  onExcluded(excludedStagedCandidates)
   const candidate = buildNirmanaBaselineCandidate(registry.rows)
 
   const definitions = await client.query<StoredFrozenDefinition>(
@@ -567,6 +578,7 @@ async function loadMonitorInputs(client: MonitorReadClient): Promise<{
 
   return {
     candidate,
+    excludedStagedCandidates,
     definition,
     selectedCatalogueSha256,
     selectedCatalogueAssetIds,
@@ -577,11 +589,11 @@ async function loadMonitorInputs(client: MonitorReadClient): Promise<{
   }
 }
 
-async function readMonitorInputs(): Promise<Awaited<ReturnType<typeof loadMonitorInputs>>> {
+async function readMonitorInputs(onExcluded?: (excluded: NirmanaExcludedStagedCandidate[]) => void): Promise<Awaited<ReturnType<typeof loadMonitorInputs>>> {
   const client = await (await getPool()).connect()
   try {
     await client.query('BEGIN TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY')
-    const inputs = await loadMonitorInputs(client)
+    const inputs = await loadMonitorInputs(client, onExcluded)
     await client.query('COMMIT')
     return inputs
   } catch (error) {
@@ -659,8 +671,14 @@ async function insertMonitorObservation(input: Omit<NirmanaMonitorObservation, '
 
 export async function runNirmanaElevationMonitor(): Promise<NirmanaMonitorObservation> {
   let observation: Omit<NirmanaMonitorObservation, 'id' | 'observed_at' | 'freshness_deadline_at'>
+  let excludedStagedCandidates: NirmanaExcludedStagedCandidate[] = []
   try {
-    const inputs = await readMonitorInputs()
+    const inputs = await readMonitorInputs((excludedNow) => {
+      excludedStagedCandidates = excludedNow
+      for (const excluded of excludedNow) {                                    // N-137: the exclusion is VISIBLE in the monitor output every run — even when the baseline then throws
+        console.info('[nirmana-elevation] staged candidate excluded from the frozen population', excluded)
+      }
+    })
     const release = await loadNirmanaReleaseStatus()
     const releaseObservedAt = release.release.observed_at
     if (!releaseObservedAt || Number.isNaN(Date.parse(releaseObservedAt))) {
@@ -729,5 +747,6 @@ export async function runNirmanaElevationMonitor(): Promise<NirmanaMonitorObserv
       source_error_code: SOURCE_UNAVAILABLE_CODE,
     }
   }
-  return insertMonitorObservation(observation)
+  const recorded = await insertMonitorObservation(observation)
+  return { ...recorded, excluded_staged_candidates: excludedStagedCandidates }
 }

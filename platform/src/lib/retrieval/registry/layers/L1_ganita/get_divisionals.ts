@@ -106,11 +106,13 @@ export const getDivisionalsCapability: CapabilityDescriptor = {
         sql += ` AND graha = $${params.length + 1}`
         params.push(args.graha as string)
       }
-      // Migration 883 documents the DB-enforced natural unique key as
-      // (chart_id, graha, ayanamsha_id, varga, fact_category, fact_key).
-      // chart_id is fixed by this query, so the remaining terms make offset
-      // pagination repeatable for a fixed filtered snapshot.
-      sql += ` ORDER BY varga, ayanamsha_id, graha, fact_category, fact_key LIMIT $2 OFFSET $3`
+      // The DB-enforced natural unique key is
+      // (chart_id, graha, ayanamsha_id, varga, fact_category, fact_key, fact_subject)
+      // (F-A2 widened it from six columns; migration 883 still documents the six-column form).
+      // chart_id is fixed by this query, so the remaining terms (fact_subject included: rows that
+      // differ only by subject would otherwise tie and OFFSET paging could duplicate or skip them)
+      // make offset pagination repeatable for a fixed filtered snapshot.
+      sql += ` ORDER BY varga, ayanamsha_id, graha, fact_category, fact_key, fact_subject LIMIT $2 OFFSET $3`
 
       const result = await query<Record<string, unknown>>(sql, params)
       const fetchedRows = result.rows ?? []

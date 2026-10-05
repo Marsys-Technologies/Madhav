@@ -169,7 +169,9 @@ def run_e5_1(e51_dir, data):
     import subprocess
     import sys
     import tempfile
-    d = pathlib.Path(tempfile.mkdtemp())
+    root = pathlib.Path(tempfile.mkdtemp())
+    d = root / "a" / "b" / "c"                  # the copied asset_census resolves repo paths with parents[3] at import: keep the ancestry deep enough for CI's /tmp
+    d.mkdir(parents=True)
     try:
         shutil.copy(pathlib.Path(e51_dir) / "nikasha_certify.py", d / "nikasha_certify.py")
         shutil.copy(pathlib.Path(e51_dir) / "asset_census.py", d / "asset_census.py")
@@ -178,7 +180,7 @@ def run_e5_1(e51_dir, data):
         out = subprocess.run([sys.executable, "probe.py", "ledger.bin"], capture_output=True, text=True, cwd=str(d)).stdout
         return json.loads(out.strip().splitlines()[-1])
     finally:
-        shutil.rmtree(d, ignore_errors=True)
+        shutil.rmtree(root, ignore_errors=True)
 
 
 def record(e51_dir, e51_commit):

@@ -9,7 +9,14 @@ Natural key: (chart_id, ayanamsha_id, graha)
 Rows per chart: 9 grahas × 5 ayanamshas = 45
 
 Idempotency: L1 pattern — DELETE (chart_id, ayanamsha_id) then INSERT.
-FORENSIC guard: Sun in Capricorn must NOT be exalted/own/moolatrikona.
+No chart-specific assertion: this writer runs for every chart. The canonical chart's Sun (enemy sign,
+not exalted/own/moolatrikona) and Saturn (exalted in Libra) are pinned by the real-compute-path goldens
+(tests/test_ga_medical_sun_golden.py, tests/test_ga_medical_saturn_golden.py), not by a build halt.
+
+Band table (I-28): `condition_score` is bucketed into bands (0.4 / 0.7) by ONE table, defined in
+`ga_writers/ga_condition_bands.py`, re-exported here, read by ga_medical and ga_vastu.
+D1 fallback (X2 / I-29): `condition_score_breakdown.varga_fallback_used` marks a score computed on
+D1 dignity alone; the build RAISES if that would happen on a chart that has divisional rows.
 
 Classical sources:
     BPHS    = Brihat Parashara Hora Shastra
@@ -29,14 +36,26 @@ import psycopg.rows
 from brahmagyan.graha_vocabulary import to_title
 
 from ga_writers.data_plane_contracts import stable_fact_id
+# I-28 / Q-L1-16(c): the ONE band table over condition_score. Defined in its own module (so
+# ga_medical / ga_vastu can import it without pulling this writer's closure into their
+# digests) and RE-EXPORTED here: ga_condition is the score's owner and the table's home.
+from ga_writers.ga_condition_bands import (  # noqa: F401  (re-exports)
+    BAND_HIGH,
+    BAND_LOW,
+    BAND_MID,
+    BAND_UNKNOWN,
+    CUT_LOW_MID,
+    CUT_MID_HIGH,
+    DASHA_PERIOD_CONDITION_CUTS,
+    SCORE_BANDS,
+    score_band,
+)
 from ga_writers.ga_positions_writer import CANONICAL_AYANAMSHAS, PLANET_TO_SUBJECT
 from pyjhora_adapter.version import ENGINE_VERSION
 
 logger = logging.getLogger(__name__)
 
 # ── Constants ─────────────────────────────────────────────────────────────────
-
-CANONICAL_CHART_ID = "482012f1-710e-4a25-994a-93821f5871aa"
 
 # All 9 classical Jyotish grahas (same order as ga_positions)
 ALL_GRAHAS = ["Sun", "Moon", "Mars", "Mercury", "Jupiter", "Venus", "Saturn", "Rahu", "Ketu"]
@@ -847,11 +866,145 @@ def _compute_varga_composite(spread: Optional[dict]) -> Optional[float]:
     return round(total_s / total_w, 6)
 
 
+# ── X2 / I-29: a D1-fallback composite on a chart that HAS divisionals is a failure ───────
+#
+# `compute_condition_score_v1` substitutes the D1 dignity score for a missing varga composite and
+# records `breakdown["varga_fallback_used"] = True`. That substitution is legitimate ONLY when the
+# chart genuinely has no divisional rows to read. Two of three charts were built on the fallback
+# with divisionals present (decision sheet X2 / F-7: 90 rows, `varga_dignity_composite` NULL while
+# `varga_dignity_spread` was populated on the SAME row). Root cause, established read-only
+# (BAND_X2_LANE_INTENT_v1_0.md): the pre-F-C8 label bug (PR #1853, 2026-09-06) -- not an RLS
+# window -- and nothing detected it, because the flag was only a JSON key nothing read.
+#
+# The guard below is a real detector (CLAUDE.md N.8): it asks the table directly whether the
+# chart has divisional rows, and it can only pass when that answer is a trustworthy "no".
+
+#: Stored in `condition_score_breakdown["varga_fallback_reason"]` whenever the fallback was used.
+VARGA_FALLBACK_REASON_NO_DIVISIONALS = "no_divisionals_for_chart"
+
+#: The chart_divisionals categories `_load_varga_dignity_spread` reads; their presence is what
+#: "this chart has divisionals" means for the composite.
+_DIVISIONAL_EVIDENCE_CATEGORIES = ("varga_position", "varga_dignity")
+
+
+class VargaFallbackWithDivisionalsError(RuntimeError):
+    """The D1 fallback would be used for a chart that has divisional rows (or whose divisional
+    table cannot be proven empty). The build fails; the composite is never written on D1 alone."""
+
+
+def count_visible_divisional_rows(conn: Any, chart_id: str, ayanamsha_id: str, graha: str) -> int:
+    """Rows of chart_divisionals this connection can SEE for (chart, ayanamsha, graha).
+
+    Deliberately NOT swallowed: if the read fails, the guard fails with it (fail closed). RLS-blind
+    visibility (rows exist but are hidden from this role) is handled by `divisional_table_rls_active`.
+    """
+    with conn.cursor(row_factory=psycopg.rows.tuple_row) as cur:
+        cur.execute(
+            """
+            SELECT count(*)
+            FROM chart_divisionals
+            WHERE chart_id     = %s
+              AND ayanamsha_id = %s
+              AND graha        = %s
+              AND fact_category IN ('varga_position', 'varga_dignity')
+            """,
+            (chart_id, ayanamsha_id, graha),
+        )
+        row = cur.fetchone()
+    return int(row[0]) if row and row[0] is not None else 0
+
+
+def divisional_table_rls_active(conn: Any) -> bool:
+    """True when row-level security applies to the CURRENT role on chart_divisionals.
+
+    The 2026-09-18 incident (INCIDENT_CHART_DIVISIONALS_REVIEW): RLS on with zero policies made the
+    table read as EMPTY to every non-owner. An empty read under active RLS proves nothing."""
+    with conn.cursor(row_factory=psycopg.rows.tuple_row) as cur:
+        cur.execute("SELECT row_security_active('public.chart_divisionals')")
+        row = cur.fetchone()
+    return bool(row and row[0])
+
+
+def divisional_table_blind_to_us(conn: Any) -> bool:
+    """True when an empty chart_divisionals read cannot be trusted: row-level security applies to the
+    current role AND no divisional row at all is visible to it. Mirrors registry clause (f) of the
+    ga_condition integrity SQL: `NOT row_security_active(...) OR EXISTS (SELECT 1 FROM
+    chart_divisionals LIMIT 1)` is the legitimate (can-see) case; this is its negation. Under RLS
+    with other rows visible the role demonstrably can read the table, so an empty read for one
+    (chart, ayanamsha, graha) is a real empty."""
+    if not divisional_table_rls_active(conn):
+        return False
+    with conn.cursor(row_factory=psycopg.rows.tuple_row) as cur:
+        cur.execute("SELECT EXISTS (SELECT 1 FROM chart_divisionals LIMIT 1)")
+        row = cur.fetchone()
+    return not bool(row and row[0])
+
+
+def assert_fallback_legitimate(
+    conn: Any, chart_id: str, ayanamsha_id: str, graha: str, varga_spread: Optional[dict] = None,
+) -> None:
+    """Raise `VargaFallbackWithDivisionalsError` unless using the D1 fallback for this graha is
+    legitimate: the chart has NO visible divisional rows AND the table is not RLS-blind to us (RLS
+    active and no divisional row visible at all; see `divisional_table_blind_to_us`).
+
+    Called ONLY when `compute_condition_score_v1` reports `varga_fallback_used` (i.e. a score is
+    being computed on D1 alone), so it measures the claim "a fallback is being used"."""
+    visible = count_visible_divisional_rows(conn, chart_id, ayanamsha_id, graha)
+    if visible > 0:
+        raise VargaFallbackWithDivisionalsError(
+            f"ga_condition D1 fallback refused for chart={chart_id} ayanamsha={ayanamsha_id} "
+            f"graha={graha}: chart_divisionals has {visible} divisional row(s) for it "
+            f"(spread vargas loaded={len(varga_spread or {})}) but no usable varga composite was "
+            f"derived. The composite must read divisional dignity, not fall back to D1 "
+            f"(X2 / I-29; the F-C8 class: a stored dignity label the composite could not score)."
+        )
+    if divisional_table_blind_to_us(conn):
+        raise VargaFallbackWithDivisionalsError(
+            f"ga_condition D1 fallback refused for chart={chart_id} ayanamsha={ayanamsha_id} "
+            f"graha={graha}: chart_divisionals reads empty but row-level security is ACTIVE for "
+            f"this role and no divisional row is visible to it, so the empty read cannot prove the chart has no divisionals "
+            f"(2026-09-18 chart_divisionals RLS incident class)."
+        )
+
+
+#: The violation predicate (alias `gc` = ga_condition_composite): a stored composite row whose
+#: breakdown says the D1 fallback was used, on a chart that HAS divisional rows for that
+#: (chart, ayanamsha, graha). This is the SAME claim `assert_fallback_legitimate` enforces at write
+#: time, as a read-side detector. The registry `integrity_check_sql` clause (intent document, not a
+#: migration) is `NOT EXISTS (SELECT 1 FROM ga_condition_composite gc WHERE <scope> AND <this>)`.
+FALLBACK_VIOLATION_PREDICATE_SQL = """COALESCE((gc.condition_score_breakdown->>'varga_fallback_used') = 'true', false)
+      AND EXISTS (
+        SELECT 1 FROM chart_divisionals cd
+        WHERE cd.chart_id = gc.chart_id AND cd.ayanamsha_id = gc.ayanamsha_id AND cd.graha = gc.graha
+          AND cd.fact_category IN ('varga_position', 'varga_dignity')
+      )"""
+
+
+def fallback_integrity_violations(conn: Any, chart_id: Optional[str] = None) -> list[tuple]:
+    """Verifier side of X2: (chart_id, ayanamsha_id, graha) of every stored composite row that used
+    the D1 fallback on a chart with divisionals. Empty list = the invariant holds.
+
+    `chart_id=None` checks every chart in the table (what the table-wide registry clause would do).
+    """
+    sql = (
+        "SELECT gc.chart_id, gc.ayanamsha_id, gc.graha FROM ga_condition_composite gc WHERE "
+        + FALLBACK_VIOLATION_PREDICATE_SQL
+        + ("" if chart_id is None else " AND gc.chart_id = %s")
+        + " ORDER BY gc.chart_id, gc.ayanamsha_id, gc.graha"
+    )
+    with conn.cursor(row_factory=psycopg.rows.tuple_row) as cur:
+        cur.execute(sql, () if chart_id is None else (chart_id,))
+        return [tuple(r) for r in cur.fetchall()]
+
+
 # Condition-score thresholds gating peak vs weak dasha-trajectory classification.
 # Mirrors ga_condition_composite migration comment: peak = "high-condition periods",
 # weak = "low-condition periods" (see migrations/251_ga_condition_composite.sql).
-_PEAK_CONDITION_THRESHOLD = 0.65
-_WEAK_CONDITION_THRESHOLD = 0.35
+# The cut points themselves live in ga_condition_bands.DASHA_PERIOD_CONDITION_CUTS (a SEPARATELY
+# named table: a different concept from the three-band label, values unchanged, provenance
+# `unsourced`; SS ruling 2026-10-02). These module names are kept as aliases of it.
+_PEAK_CONDITION_THRESHOLD = DASHA_PERIOD_CONDITION_CUTS.peak_at_or_above
+_WEAK_CONDITION_THRESHOLD = DASHA_PERIOD_CONDITION_CUTS.weak_at_or_below
 
 
 def _load_dasha_periods(
@@ -1180,10 +1333,17 @@ def _build_per_varga_avastha_rows(
     return rows
 
 
-def _insert_per_varga_avastha_rows(conn: Any, rows: list[dict]) -> None:
-    """Delete-then-insert per (chart_id, ayanamsha_id, fact_category) for per-varga avastha categories."""
+def _insert_per_varga_avastha_rows(conn: Any, rows: list[dict]) -> int:
+    """Delete-then-insert per (chart_id, ayanamsha_id, fact_category) for per-varga avastha categories.
+
+    Returns the number of ``chart_facts`` rows actually INSERTed (summed from each statement's
+    ``rowcount``).  The caller adds it to the substep's reported ``rows_inserted``: these rows are
+    written inside the same L1 partition as the ``ga_condition_composite`` rows, so the protected
+    capture counts them, and ``complete_l1_data_plane_partition`` rejects a partition whose reported
+    count omits them ("reported 9 rows but protected capture contains 594").
+    """
     if not rows:
-        return
+        return 0
 
     # ── Idempotent delete scoped to the categories we are about to write ──────
     cats = sorted({r["fact_category"] for r in rows})
@@ -1209,9 +1369,12 @@ def _insert_per_varga_avastha_rows(conn: Any, rows: list[dict]) -> None:
     placeholders = ", ".join(["%s"] * len(cols))
     col_str = ", ".join(cols)
     sql = f"INSERT INTO chart_facts ({col_str}) VALUES ({placeholders})"
+    landed = 0
     for row in rows:
         values = [row[c] for c in cols]
-        conn.execute(sql, values)
+        cur = conn.execute(sql, values)
+        landed += max(0, cur.rowcount)
+    return landed
 
 
 # ── Amendment BA-P3A: D1 sayanadi + lajjitadi + yuddha chart_facts rows ──────
@@ -1425,14 +1588,15 @@ def build_ga_condition_substep(
     Steps:
       1. Load reference tables (dignity, combustion orbs, naisargika friendship)
       2. Load graha positions from chart_facts
-      3. Load varga dignity spread from chart_divisionals (best-effort)
+      3. Load varga dignity spread from chart_divisionals (best-effort; a D1 fallback
+         is REFUSED -- the build raises -- when the chart has divisional rows: X2 / I-29)
       4. Compute all condition fields for each graha
       5. Detect graha yuddha pairs
-      6. FORENSIC assertion for canonical chart
-      7. Delete-then-insert (idempotent replace)
+      6. Delete-then-insert (idempotent replace)
 
     Returns:
-        Number of rows inserted.
+        Number of rows inserted across everything this partition writes: the
+        ``ga_condition_composite`` rows PLUS the per-varga and D1 avastha ``chart_facts`` rows.
     """
     computed_at = datetime.now(timezone.utc).isoformat()
 
@@ -1463,7 +1627,6 @@ def build_ga_condition_substep(
 
     # ── Build one row per graha ────────────────────────────────────────────────
     insert_rows: list[dict] = []
-    forensic_rows: dict[str, dict] = {}   # graha → computed row for FORENSIC check
 
     for graha in ALL_GRAHAS:
         pos = position_map.get(graha)
@@ -1573,6 +1736,14 @@ def build_ga_condition_substep(
             varga_score      = varga_composite,
         )
 
+        # ── X2 / I-29: refuse a D1 fallback on a chart that has divisionals ──────────
+        # `varga_fallback_used` is set by compute_condition_score_v1 only when a score is
+        # actually computed on D1 alone. Whether that is legitimate is asked of the table,
+        # not assumed: raise unless the chart genuinely has no divisional rows.
+        if breakdown.get("varga_fallback_used"):
+            assert_fallback_legitimate(conn, chart_id, ayanamsha_id, graha, varga_spread)
+            breakdown["varga_fallback_reason"] = VARGA_FALLBACK_REASON_NO_DIVISIONALS
+
         # ── Dasha trajectory ──────────────────────────────────────────────────
         peak_periods, weak_periods = _load_dasha_periods(
             conn, chart_id, graha, ayanamsha_id, str(build_id),
@@ -1613,33 +1784,9 @@ def build_ga_condition_substep(
             "computed_at":              computed_at,
         }
         insert_rows.append(row)
-        forensic_rows[graha] = row
 
     if not insert_rows:
         return 0
-
-    # ── FORENSIC assertions for canonical chart ────────────────────────────────
-    if chart_id == CANONICAL_CHART_ID:
-        sun_row = forensic_rows.get("Sun")
-        if sun_row is not None:
-            sun_dignity = sun_row.get("dignity_d1")
-            assert sun_dignity not in ("exalted", "moolatrikona", "own"), (
-                f"FORENSIC FAIL: Sun in Capricorn cannot be in dignity (exalted/moolatrikona/own), "
-                f"got dignity_d1='{sun_dignity}'. "
-                f"Sun's exaltation=Aries, own=Leo, moolatrikona=Leo. "
-                f"Capricorn is owned by Saturn; Sun–Saturn are enemies."
-            )
-            logger.info(
-                "[ga_condition_writer] FORENSIC PASS: Sun dignity_d1='%s' (correctly NOT exalted/own/moolatrikona) "
-                "for ayanamsha=%s",
-                sun_dignity, ayanamsha_id,
-            )
-
-        # FORENSIC: Saturn=Libra → exalted (BPHS Ch.3)
-        saturn_rows = [r for r in insert_rows if r.get("graha") == "Saturn"]
-        if saturn_rows:
-            assert saturn_rows[0].get("dignity_d1") == "exalted", \
-                f"FORENSIC FAIL: Saturn=Libra must be exalted, got {saturn_rows[0].get('dignity_d1')}"
 
     # ── Idempotent replace: DELETE then INSERT ─────────────────────────────────
     with conn.cursor() as cur:
@@ -1689,8 +1836,9 @@ def build_ga_condition_substep(
         conn, chart_id, str(build_id) if build_id else None, ayanamsha_id, computed_at, ENGINE_VERSION
     )
     if per_varga_rows:
-        _insert_per_varga_avastha_rows(conn, per_varga_rows)
-        logger.info("[ga_condition_writer] per_varga_avastha_rows=%d", len(per_varga_rows))
+        per_varga_landed = _insert_per_varga_avastha_rows(conn, per_varga_rows)
+        inserted += per_varga_landed
+        logger.info("[ga_condition_writer] per_varga_avastha_rows=%d", per_varga_landed)
 
     # ── Amendment BA-P3A: D1 sayanadi + lajjitadi + yuddha chart_facts rows ────
     d1_avastha_rows = _build_d1_avastha_rows(
@@ -1698,7 +1846,8 @@ def build_ga_condition_substep(
         ayanamsha_id, computed_at, ENGINE_VERSION
     )
     if d1_avastha_rows:
-        _insert_per_varga_avastha_rows(conn, d1_avastha_rows)
-        logger.info("[ga_condition_writer] d1_avastha_rows=%d", len(d1_avastha_rows))
+        d1_landed = _insert_per_varga_avastha_rows(conn, d1_avastha_rows)
+        inserted += d1_landed
+        logger.info("[ga_condition_writer] d1_avastha_rows=%d", d1_landed)
 
     return inserted
