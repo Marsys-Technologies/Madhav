@@ -8611,3 +8611,13 @@ Resume condition for everything downstream: a successful protected deploy with 1
 - Entry and chart screens, distinct stored D1/D9/D10, five ayanamshas, Places, username availability and responsive controls verified read-only in Chrome. 49 Journey 1 HTTP responses were 200, zero 5xx.
 - Residuals: activation-window lookup unavailable; separate automatic Paripraśna smoke HTTP 400 / six of eleven blocking assertions, same as prior live baseline. Real account/reset/approval/username-save/chart CRUD/recompute acceptance remains pending. Journey 2 deferred; separate cleanup worktree untouched.
 - Evidence: owned `00_ARCHITECTURE/briefs/journey1/release/RELEASE.md`, `LIVE_REVIEW.json`, `LIVE_SERVICE.json`, CI/deploy/HTTP receipts and screenshot files. This release does not close another engine campaign.
+
+
+## 2026-10-05 — Consultation review 10 implementation
+
+- Lease ID: L-PORTAL-CONSULTATION-10-20261005; holder: Codex desktop; status: ACTIVE.
+- Started: 2026-10-05T18:11:08.467096+00:00; expiry: 2026-10-06T02:11:08.467096+00:00.
+- Worktree: `/Users/Dev/.codex/worktrees/portal-experience/Madhav`; branch `codex/portal-experience`.
+- Authority: native instruction “Just implement review number 10: consultation Paripraśna.”
+- Scope: Consultation workspace shell/panels/grounding placement/history/tagging and necessary scoped persistence/access tests; task-owned records under briefs/consultation10.
+- Boundary: local uncommitted source and checks for owner review per GIP P.4. No production window, deployment, real user/chart/permission change, paid provider call, migration execution, Samiksha redesign, shared reader redesign, foreign-worktree edit or engine/orchestrator change. Preserve existing untracked planning evidence.
