@@ -1,0 +1,82 @@
+{
+    "schema_version": "madhav-purna-anvesana/beyond-acarya-acceptance/v16",
+    "campaign_id": "madhav-purna-anvesana",
+    "packet_id": "TI-L0-14-RESOLVE-ENTITY-CLASS-AWARE-SNAPSHOT-REGEN",
+    "predecessor": {
+        "artifact": "BEYOND_ACARYA_ACCEPTANCE_v15.json",
+        "acceptance_version": "beyond-acarya-source-acceptance-v2",
+        "capability_content_hash": "sha256:bff49e66b133a837aab85a209679b0a0f8c476b2a13734765fe7d064dc0d417b",
+        "report_hash": "sha256:f35696cc07f5df555e07dbb33b096e46501896048b8be45456a895f75b03f558"
+    },
+    "preserves_historical_predecessor": true,
+    "acceptance_version": "beyond-acarya-source-acceptance-v2",
+    "corpus_version": "beyond-acarya-inquiry-corpus-v1",
+    "temporal_anchor_date": "2026-10-02",
+    "evaluated_source_revision": "f72dc9d93921c1fd5c9497d72c044483fc7ba8a2",
+    "generated_snapshot": {
+        "path": "platform/src/generated/capability_knowledge.snapshot.json",
+        "generated_at": "2026-10-02T02:18:40.000Z",
+        "snapshot_file_sha256": "sha256:395a10095641e3f725fafb04426da745832ca9722dc63e4ed2e35da481ccbcae",
+        "capability_content_hash": "sha256:64990da92f7508ff3994945205757c608ed49f77484c247d2772e8815cfa04bf",
+        "source_catalog_fingerprint": "sha256:19030a7701bb5f5b62102d4ac4ad8b677ce4cf0b2c5c34565cd2e93c039eb8f9",
+        "semantic_review_fingerprint": "sha256:a4d01f8d903a82efdb4701a82e68fd8b7f758c829d336e6c7bcfc4748c7448e4",
+        "producer_contract_fingerprint": "sha256:e52114464a82bb9ff6c3392202fdda7a31770dcffc6e49d93eebcf4fffeba4e5"
+    },
+    "capability_content_hash": "sha256:64990da92f7508ff3994945205757c608ed49f77484c247d2772e8815cfa04bf",
+    "report_hash": "sha256:d6cd22312a4c03df5b48c4e8d2900d16e5ad5a8423874e8f34d63e169aa588c9",
+    "evidence_kind": "synthetic_source_local",
+    "source_status": "SOURCE_ONLY_NOT_LIVE",
+    "verdict": "ACCEPTED_SOURCE_LOCAL",
+    "metrics": {
+        "novel_combination_suite": {
+            "passed": true,
+            "cases": 5,
+            "expected_novel_capabilities": 13,
+            "missing_novel_capabilities": 0
+        },
+        "omission_rate": {
+            "passed": true,
+            "omitted": 0,
+            "expected": 25,
+            "rate": 0
+        },
+        "route_coverage": {
+            "passed": true,
+            "covered": 34,
+            "expected": 34,
+            "rate": 1
+        },
+        "semantic_edge_coverage": {
+            "passed": true,
+            "covered": 9,
+            "expected": 9,
+            "rate": 1
+        },
+        "long_inquiry_closure": {
+            "passed": true,
+            "completed_cases": 1,
+            "total_cases": 1,
+            "blocked_case_ids": [],
+            "minimum_iterations_observed": 10,
+            "pagination_continuations": 1,
+            "retained_earlier_evidence": true
+        },
+        "abstention_quality": {
+            "passed": true,
+            "passed_cases": 3,
+            "total_cases": 3,
+            "cases": {
+                "missing_required_floor_rejected": true,
+                "capped_material_frontier_blocked": true,
+                "unavailable_channel_abstained": true
+            }
+        }
+    },
+    "claim_ceiling": "SOURCE_SCOPE_COMPLETE_WITH_AUTHORITY_BOUND_REMAINDER",
+    "expert_domain_review": "REQUIRED_BEFORE_EMPIRICAL_ACCEPTANCE",
+    "empirical_answer_quality": "NOT_RUN",
+    "production_validation": "NOT_RUN",
+    "deployed_route_validation": "NOT_RUN",
+    "candidate_validation": "NOT_RUN",
+    "provenance_note": "TI-L0-14 successor (resolve_entity made class-aware: the descriptor gains the optional entity_class input and an ambiguity sentence, and its source_query availability contract source_ref line range moves 45-92 -> 50-102). Only capability descriptions and one source_ref changed, which moved source_catalog_fingerprint and semantic_review_fingerprint and with them capability_content_hash (bff49e... -> 64990d...) and report_hash (f35696... -> d6cd22...); producer_contract_fingerprint is unchanged and all six metrics are identical to v15; no SCU, edge, proof kind or availability disposition changed and no acceptance logic or criterion changed. The snapshot was regenerated with the committed generated_at (182 SCUs, codegen:capability-knowledge:check green). The Pariprashna route_ports baselines (branch-deep-dive.json, branch-completeness-receipt.json) were regenerated against this snapshot (PARIPRASHNA_PORTS_BASELINE=write). Source-provenance acceptance only: candidate_validation remains NOT_RUN; no live, deployed, empirical, expert or production acceptance is claimed."
+}
