@@ -214,7 +214,7 @@ def sql_writes(text: str, tables):
                     issues.append(f"INSERT into {t}: {len(cols)} column(s) but {len(pieces)} select-list item(s)")
                 else:
                     for c, (pc, st) in zip(cols, pieces):
-                        writes.append(dict(table=t, column=c, piece=re.sub(r"^\s*DISTINCT\s+", "", pc, flags=re.I), start=st))
+                        writes.append(dict(table=t, column=c, piece=re.sub(r"^\s*DISTINCT\s+", "", pc, flags=re.I), start=st, select=True))
         else:
             issues.append(f"INSERT into {t}: an INSERT form the scan does not read (DEFAULT VALUES / other)")
         # ON CONFLICT ... DO UPDATE SET c = expr
@@ -716,11 +716,30 @@ class _Analyzer:
             acc.unres(f"{self.s.where(fn)} parameter `{pname}` of `{fn.name}` has no caller in the scanned scope")
 
 
-def _piece_problems(piece: str, where: str, is_placeholder, acc: _Acc):
-    """The SQL expression written for the column: literals in it. Pure literal / numeric literal -> constant (or placeholder) write; a quoted literal beside COALESCE / NULLIF / CASE -> literal fallback."""
+_SQL_VALUE_FREE = re.compile(r"\s*(?:now\(\)|current_timestamp|current_date|statement_timestamp\(\)|clock_timestamp\(\)|transaction_timestamp\(\)|gen_random_uuid\(\)|uuid_generate_v4\(\))\s*(?:::\s*[A-Za-z_][\w ]*)?\s*", re.I)
+
+
+def _piece_problems(piece: str, where: str, is_placeholder, acc: _Acc, *, column: str = "", whole: str | None = None) -> bool:
+    """The SQL expression written for the column. Returns True when the value is FOLLOWED elsewhere (it carries a bind placeholder). Pure literal / numeric literal -> constant (or placeholder) write;
+    a quoted literal beside COALESCE / NULLIF / CASE -> literal fallback; NULL / DEFAULT / a clock or uuid function / `EXCLUDED.<same column>` need nothing. ANYTHING ELSE with no bind placeholder
+    (`s.x`, `col || 'x'`, a sub-select) takes its value from the database, which the scan does not read: UNRESOLVED. `whole` (the full statement text of a SELECT-sourced write: INSERT ... SELECT,
+    UPDATE ... FROM, a sub-select in the piece) is also searched for a placeholder-vocabulary literal inside a fallback function anywhere in the statement."""
     p = piece.strip()
+    if whole is not None:
+        for m in re.finditer(r"\b(?:COALESCE|NULLIF|IFNULL|NVL)\s*\(", whole, re.I):
+            g = _balanced(whole, m.end() - 1)
+            seg = g[0] if g else whole[m.end():m.end() + 200]
+            for lit in _SQL_STR_LITERAL.finditer(seg):
+                t = lit.group(1).replace("''", "'")
+                if is_placeholder(t):
+                    acc.problem("literal_fallback", where, f"SQL fallback literal {t!r} in the SELECT / FROM source of the write (`{re.sub(r'[ \n]+', ' ', whole[m.start():m.start() + 70])}`)")
+        for m in re.finditer(r"\bCASE\b.*?\bEND\b", whole, re.I | re.S):
+            for lit in _SQL_STR_LITERAL.finditer(m.group(0)):
+                t = lit.group(1).replace("''", "'")
+                if is_placeholder(t):
+                    acc.problem("literal_fallback", where, f"SQL CASE literal {t!r} in the SELECT / FROM source of the write")
     if re.fullmatch(r"NULL(?:\s*::\s*[A-Za-z_][\w ]*)?", p, re.I) or re.fullmatch(r"DEFAULT", p, re.I):
-        return
+        return False
     if _SQL_PURE_LITERAL.fullmatch(p):
         txt = _SQL_STR_LITERAL.search(p).group(1).replace("''", "'")
         acc.problem("literal_fallback" if is_placeholder(txt) else "constant_write", where, f"the SQL writes the literal {txt!r}")
@@ -733,6 +752,15 @@ def _piece_problems(piece: str, where: str, is_placeholder, acc: _Acc):
         flat_p = re.sub(r"\s+", " ", p)
         for t in lits:
             acc.problem("literal_fallback", where, f"SQL fallback literal {t!r} in `{flat_p[:70]}`")
+    if _PH_ANY.search(p):
+        return True
+    if _SQL_VALUE_FREE.fullmatch(p) or (column and re.fullmatch(r"\s*EXCLUDED\s*\.\s*\"?" + re.escape(column) + r"\"?\s*", p, re.I)):
+        return False
+    if lits and not re.search(r"[A-Za-z_]\w*\s*(?:\.|\()", re.sub(r"'(?:[^']|'')*'", "''", p)) and not re.sub(r"'(?:[^']|'')*'|\|\||\s|::\w+", "", p):
+        acc.problem("constant_write", where, f"the SQL writes a concatenation of literals: {re.sub(r'[ \n]+', ' ', p)[:60]!r}")
+        return False
+    acc.unres(f"{where} the SQL writes `{re.sub(r'[ \n]+', ' ', p)[:70]}`, a value taken from another column / table / expression the scan does not read")
+    return False
 
 
 def _execute_bindings(scope: _Scope, unit, line: int):
@@ -750,6 +778,28 @@ def _execute_bindings(scope: _Scope, unit, line: int):
             if (_is_string_node(a) and a.lineno == line and scope.unit_of.get(id(c)) is unit) or (isinstance(a, ast.Name) and a.id in names):
                 out.append((c, i))
     return out
+
+
+_MUTATORS = frozenset({"append", "extend", "insert", "add", "update", "setdefault", "__iadd__", "appendleft", "extendleft", "remove", "pop", "clear", "sort", "reverse"})
+
+
+def _mutated(scope: _Scope, fn, name: str) -> bool:
+    """True when `name` is changed inside `fn` after its assignment: `.append/.extend/...(...)`, `name += ...`, `name[i] = ...`, `del name[i]`, or a second plain assignment."""
+    plain = 0
+    for r in (scope.fn_nodes(fn) if fn is not None else []):
+        if isinstance(r, ast.Call) and isinstance(r.func, ast.Attribute) and r.func.attr in _MUTATORS and isinstance(r.func.value, ast.Name) and r.func.value.id == name:
+            return True
+        if isinstance(r, ast.AugAssign) and isinstance(r.target, ast.Name) and r.target.id == name:
+            return True
+        if isinstance(r, ast.Assign):
+            for t in r.targets:
+                if isinstance(t, ast.Subscript) and isinstance(t.value, ast.Name) and t.value.id == name:
+                    return True
+                if isinstance(t, ast.Name) and t.id == name:
+                    plain += 1
+        if isinstance(r, ast.Delete) and any(isinstance(t, ast.Subscript) and isinstance(t.value, ast.Name) and t.value.id == name for t in r.targets):
+            return True
+    return plain > 1
 
 
 def _positional_exprs(scope: _Scope, call: ast.Call, sql_i: int, idx: int, many: bool, acc: _Acc):
@@ -770,14 +820,21 @@ def _positional_exprs(scope: _Scope, call: ast.Call, sql_i: int, idx: int, many:
             if isinstance(r, ast.Assign) and any(isinstance(t, ast.Name) and t.id == params.id for t in r.targets):
                 vals.append(r.value)
         if len(vals) == 1:
+            pname = params.id
             params = vals[0]
+            if _mutated(scope, fn, pname):
+                acc.unres(f"{scope.where(call)} the parameter rows are the name `{pname}`, which the function also mutates (append / extend / insert / += / item store): the literal it was assigned is not the complete row set")
+                return None
         else:
             acc.unres(f"{scope.where(call)} the parameters are the name `{params.id}` ({len(vals)} assignment(s) in the function): positional values not read")
             return None
     rows = [params] if not many else None
     if many:
-        if isinstance(params, (ast.List, ast.Tuple)):
+        if isinstance(params, (ast.List, ast.Tuple)) and params.elts:
             rows = list(params.elts)
+        elif isinstance(params, (ast.List, ast.Tuple)):
+            acc.unres(f"{scope.where(call)} executemany over an EMPTY literal sequence: the rows written are not in the source")
+            return None
         else:
             acc.unres(f"{scope.where(call)} executemany over a sequence the scan cannot enumerate ({type(params).__name__}): the per-row values are not read")
             return None
@@ -829,7 +886,9 @@ def scan(units, entries, holders, *, is_placeholder, sql_texts, parse_entry, bey
                 found += 1
                 where = f"{u['rel']}:{ln}"
                 write_paths.append(dict(entry=e, table=t, column=col, where=where, update=bool(w.get("update"))))
-                _piece_problems(w["piece"], where, is_placeholder, acc) if path is None else None
+                select_sourced = bool(w.get("select")) or bool(re.search(r"\bSELECT\b", w["piece"], re.I)) or (w.get("update") and bool(re.search(r"\bFROM\b", text[w["start"]:], re.I)))
+                if path is None:
+                    _piece_problems(w["piece"], where, is_placeholder, acc, column=col, whole=text if select_sourced else None)
                 phs = _placeholders(text, w["start"], w["start"] + len(w["piece"]))
                 if path is not None:
                     pass                                      # the nested value is the leaf key's business (below)

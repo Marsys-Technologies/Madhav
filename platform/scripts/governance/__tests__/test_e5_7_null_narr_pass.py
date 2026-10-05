@@ -444,3 +444,37 @@ def test_a_column_named_only_as_an_input_keyword_or_a_sibling_conjunct_is_not_co
     assert r["v"] == ac.PARTIAL and "not referenced" in r["measured"], r
     sib = HEAD + 'def test_sentence():\n    row = build_narration({"a": 1})\n    assert row["fact_value_text"] == "Sun is exalted in Aries by rule" and row["citation_human"] is not None\n'
     assert _fid(sib)["v"] == ac.PARTIAL
+
+
+# ───────────────────────── review fixes, family 1: row lists that are mutated, and SELECT-sourced / expression writes ─────────────────────────
+
+_EM = 'SQL = "INSERT INTO t (chart_id, citation_human) VALUES (%s, %s)"\n\n'
+
+
+def test_review_high1_a_literal_row_list_that_is_appended_to_is_not_the_complete_row_set():
+    bad = _EM + ('def run(conn, c, gs):\n    rows = []\n    for g in gs:\n        rows.append((c, g.get("t") or "N/A"))\n    conn.cursor().executemany(SQL, rows)\n')
+    r = _scan(bad)
+    assert r["v"] == "PARTIAL" and any("mutates" in u for u in r["unresolved"]), r
+    for mut in ("rows.extend(more)", "rows += more", 'rows[0] = (c, "n/a")', "rows.insert(0, (c, 'x'))"):
+        src = _EM + f'def run(conn, c, more):\n    rows = [(c, "Graha node: Sun")]\n    {mut}\n    conn.cursor().executemany(SQL, rows)\n'
+        assert _scan(src)["v"] == "PARTIAL", mut
+    assert _scan(_EM + 'def run(conn, c):\n    conn.cursor().executemany(SQL, [])\n')["v"] == "PARTIAL"
+    assert _scan(_EM + 'def run(conn, c):\n    rows = []\n    conn.cursor().executemany(SQL, rows)\n')["v"] == "PARTIAL"
+    good = _EM + 'def run(conn, c):\n    rows = [(c, "Graha node: Sun"), (c, "Graha node: Moon")]\n    conn.cursor().executemany(SQL, rows)\n'
+    assert _scan(good)["v"] == "PASS" or _scan(good)["problems"]      # a clean literal list is read; its constant sentences are the reported problem, never silence
+
+
+def test_review_high2_select_sourced_and_expression_writes_are_never_silently_clean():
+    base = "INSERT INTO t (chart_id, citation_human) {}"
+    for sql in (base.format("SELECT %s, s.x FROM staging s"), base.format("SELECT %s, s.x FROM (SELECT x FROM staging) s")):
+        r = _scan(f'SQL = """{sql}"""\n\ndef run(conn, c):\n    conn.execute(SQL, (c,))\n')
+        assert r["v"] == "PARTIAL" and any("another column" in u for u in r["unresolved"]), (sql, r)
+    r = _scan('SQL = "UPDATE t SET citation_human = s.x FROM staging s WHERE t.id = s.id"\n\ndef run(conn):\n    conn.execute(SQL)\n')
+    assert r["v"] == "PARTIAL" and r["unresolved"], r
+    r = _scan('SQL = """INSERT INTO t (chart_id, citation_human) SELECT %s, q.txt FROM (SELECT COALESCE(a, \'n/a\') AS txt FROM staging) q"""\n\ndef run(conn, c):\n    conn.execute(SQL, (c,))\n')
+    assert r["v"] == "PARTIAL" and any(p["kind"] == "literal_fallback" and "n/a" in p["text"] for p in r["problems"]), r
+    r = _scan('SQL = "INSERT INTO t (chart_id, citation_human) VALUES (%s, lower(col))"\n\ndef run(conn, c):\n    conn.execute(SQL, (c,))\n')
+    assert r["v"] == "PARTIAL" and r["unresolved"], r
+    ok = _scan('SQL = "INSERT INTO t (chart_id, citation_human) VALUES (%s, %s) ON CONFLICT (chart_id) DO UPDATE SET citation_human = EXCLUDED.citation_human"\n\n'
+               'def run(conn, c, gs):\n    for g in gs:\n        conn.execute(SQL, (c, f"Graha node: {g}"))\n')
+    assert ok["v"] == "PASS", ok
