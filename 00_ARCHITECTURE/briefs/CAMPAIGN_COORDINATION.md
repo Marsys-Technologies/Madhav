@@ -8658,3 +8658,12 @@ Consultation-10 migration allocation: **1307_consultation_tags.sql**, reserved b
 - Evidence surface: `00_ARCHITECTURE/briefs/consultation10/release/RELEASE.md`.
 
 - Release outcome 2026-10-05T19:54:06.365101+00:00: PR3189 OPEN at c55f53e4c; automatic merge disabled. Local lint/types/15,679 tests, independent migration review, backup1791227240277 and PR image packaging passed. GitHub Actions runner incident cancelled two retry checks after first attempt interruption; no protected merge/deploy/migration application performed. Live091362f315a2 remains100%; normal production tags preserved. Remaining PR tests may complete but cannot trigger production deployment while unmerged. Work order: `briefs/consultation10/release/RELEASE.md` BLOCKED_GITHUB_ACTIONS. Next release session must reclaim a fresh exclusive window and refresh main/checks/migration claims/backup; no emergency bypass. Other leases preserved.
+
+## 2026-10-05T20:06:34.959128+00:00 — Journey 3 exclusive web release window
+
+- Lease: L-PORTAL-JOURNEY3-20261006; status: ACTIVE; original expiry2026-10-06T01:03:34.150253+00:00 retained.
+- Consultation review10 release window is RELEASED_BLOCKED_EXTERNAL; PR3189 remains unmerged with automatic merge disabled. No foreign source or migration is incorporated.
+- Exclusive amjis-web merge/deployment window now belongs to Journey3. Protected main remains091362f315a2d2f7e9c44cc205aac54440c8f6a9; owned candidate1b4801932888beab175a59e4a72c244fb6e92f2b / PR3190.
+- Fresh desired and observed production traffic:100% amjis-web-probe-091362f315a2-37346348777-1. Existing limits-canary/web-iam-a/web-iam-b tags preserved. Rollback baseline refreshed immediately before this claim.
+- Local full suite15,687 / focused112, types/lint and production compilation pass. GitHub Actions runner assignment incident delays protected checks; no merge/promotion until exact-head checks and PR container build pass. Established candidate smoke/signing/RLS and normal traffic promotion only.
+- No engine/writer/migration/schema, chart rebuild/clear, paid AI, credential/permission or foreign-worktree operation. This window releases only after live acceptance or an explicit blocked release outcome.
