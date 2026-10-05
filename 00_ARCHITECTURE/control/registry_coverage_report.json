@@ -2,7 +2,7 @@
  "schema": 2,
  "registry_revision": 26,
  "registry_fingerprint": "f51f643d3d8a2d6d58f7e1f31be0cb566c865f427741c52e9f3d43ad4790433c",
- "inspector_commit": "c88a086f26d85ab05b2dc62eccfa23987121a573",
+ "inspector_commit": "bbf7642387a5309e539ec295e9ce8e18e10d6d25",
  "inspector_commit_note": "the last commit touching asset_census.py when this report was generated; a provenance pointer, not a reachability claim (it may be unreachable after a squash or rebase); --check never compares it",
  "expected_cells": 54,
  "covered_cells": 48,
