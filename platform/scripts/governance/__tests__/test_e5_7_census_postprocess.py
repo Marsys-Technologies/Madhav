@@ -214,6 +214,26 @@ def test_mutant_non_pass_verdict_counted_as_pass(tmp_path, v):
     assert [c["asset"] for c in json.loads((out / "CERTIFIED_LIST.json").read_text())["certified"]] == ["a2", "b1", "c1"]
 
 
+def test_ceilings_come_from_the_ruled_na_rule_ids_and_are_counted(tmp_path):
+    d3 = cell("Idem.pattern", "N/A", rule_id="Carr.D3#measured:single-derivation", decision="N-156")      # the fixture registry has no Carr.D3 row: any criterion carries the rule id
+    d1 = cell("Carr.D1", "N/A", rule_id="Carr.D1#measured:transcription-not-verified", decision="N-156")
+    other = cell("Ldgr.source_presence", "N/A", rule_id="Ldgr.source_presence#measured:no-data", decision="N-151")
+    spec = {"a1": good_cells(**{"Idem.pattern": d3, "Carr.D1": d1}), "a2": good_cells(**{"Ldgr.source_presence": other}), "b1": good_cells(**{"Idem.pattern": d3})}
+    rc, out = run(world(tmp_path, spec), tmp_path)
+    cert = {c["asset"]: c for c in json.loads((out / "CERTIFIED_LIST.json").read_text())["certified"]}
+    assert rc == 0 and cert["a1"]["ceilings"] == ["Carr: single-derivation", "D1: unverified transcription"]
+    assert cert["a2"]["ceilings"] == [] and cert["b1"]["ceilings"] == ["Carr: single-derivation"] and cert["c1"]["ceilings"] == []
+    md = (out / "CERTIFIED_LIST.md").read_text()
+    assert "2 of 4 certified assets are certified at a ceiling" in md and "Carr: single-derivation; D1: unverified transcription" in md
+    assert json.loads((out / "CERTIFIED_LIST.json").read_text())["certified_at_a_ceiling"] == 2
+
+
+def test_an_unlisted_ruled_na_rule_id_is_not_a_ceiling(tmp_path):
+    odd = cell("Idem.pattern", "N/A", rule_id="Carr.D3#measured:no-carriage", decision="N-72")
+    rc, out = run(world(tmp_path, {"a1": good_cells(**{"Idem.pattern": odd})}), tmp_path)
+    assert next(c for c in json.loads((out / "CERTIFIED_LIST.json").read_text())["certified"] if c["asset"] == "a1")["ceilings"] == []
+
+
 def test_build_history_ruled_na_certifies_n154(tmp_path):
     rc, out = run(world(tmp_path, {"a1": good_cells(**{"Build.history": ruled("Build.history")})}), tmp_path)
     assert json.loads((out / "FIX_LIST.json").read_text())["fix_list"] == {}

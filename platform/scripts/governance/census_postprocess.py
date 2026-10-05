@@ -27,6 +27,9 @@ PASS, NA = "PASS", "N/A"
 SCRATCH_LABEL = re.compile(r"synthetic|scratch|fixture|sandbox", re.I)
 SCRATCH_DB = re.compile(r"^(nt_|scratch|synthetic|fixture|sandbox|disposable)", re.I)
 UNCLASSIFIED = "(?) unclassified"
+# Carr ceilings: a ruled N/A under one of these rule ids certifies the asset AT A CEILING; the limitation is shown on its line (SS N-156)
+CEILING_RULES = {"Carr.D3#measured:single-derivation": "Carr: single-derivation",
+                 "Carr.D1#measured:transcription-not-verified": "D1: unverified transcription"}
 
 # Ordered cause-class table: first row whose predicate holds wins.  (class, test on (criterion, verdict, state, text))
 CAUSE_CLASSES = (
@@ -154,6 +157,7 @@ def build(files: list[pathlib.Path], layers: list[str], expected: int | None, cr
             certified.append(dict(asset=aid, layer=ref[aid][0], revision=rev, census=ref[aid][1],
                                   measured_pass=sum(c["v"] == PASS for c in cells.values()),
                                   ruled_na=sum(is_ruled_na(c) for c in cells.values()), date=date,
+                                  ceilings=sorted({CEILING_RULES[c["rule_id"]] for c in cells.values() if is_ruled_na(c) and c.get("rule_id") in CEILING_RULES}),
                                   findings=str(findings.get(aid, ""))))
     return dict(registry_revision=rev, registry_fingerprint=loaded[0]["fp"], db_identity=dict(zip(("database", "system_id_sha256"), loaded[0]["db"])),
                 layers=sorted(layers), date=date,
@@ -168,11 +172,16 @@ def tool_str(r: dict) -> str:
     return ",".join(f"{str(t['tool_commit'])[:9]}{'(dirty)' if t['tool_dirty'] else ''}" for t in r["tool"])
 
 
+def ceiling_summary(r: dict) -> str:
+    at = [c for c in r["certified"] if c["ceilings"]]
+    return f"{len(at)} of {len(r['certified'])} certified assets are certified at a ceiling ({', '.join(sorted(set(CEILING_RULES.values())))})"
+
+
 def render_certified(r: dict) -> str:
     out = [f"# CERTIFIED_LIST", f"registry revision {r['registry_revision']} (fingerprint {r['registry_fingerprint'][:12]}); layers {','.join(r['layers'])}; "
-           f"date {r['date']}; tool {tool_str(r)}; {len(r['certified'])} of {r['assets']} assets certified", "",
-           "| asset | revision | census file | measured PASS | ruled N/A | date | known findings |", "|---|---|---|---|---|---|---|"]
-    out += [f"| {_cell(c['asset'])} | {c['revision']} | {_cell(c['census'])} | {c['measured_pass']} | {c['ruled_na']} | {c['date']} | {_cell(c['findings'])} |"
+           f"date {r['date']}; tool {tool_str(r)}; {len(r['certified'])} of {r['assets']} assets certified", ceiling_summary(r), "",
+           "| asset | revision | census file | measured PASS | ruled N/A | date | ceilings | known findings |", "|---|---|---|---|---|---|---|---|"]
+    out += [f"| {_cell(c['asset'])} | {c['revision']} | {_cell(c['census'])} | {c['measured_pass']} | {c['ruled_na']} | {c['date']} | {_cell('; '.join(c['ceilings']))} | {_cell(c['findings'])} |"
             for c in r["certified"]]
     return "\n".join(out) + "\n"
 
@@ -221,6 +230,7 @@ def main(argv=None) -> int:
         print(f"REFUSED: {e if isinstance(e, Refused) else type(e).__name__ + ': ' + str(e)}", file=sys.stderr)
         return 2
     res["totals_by_layer_and_class"] = totals(res)
+    res["certified_at_a_ceiling"] = sum(1 for c in res["certified"] if c["ceilings"])
     head = {k: v for k, v in res.items() if k not in ("certified", "fix_list")}
     a.out_dir.mkdir(parents=True, exist_ok=True)
     dump = lambda o: json.dumps(o, indent=1, sort_keys=True) + "\n"
@@ -228,7 +238,7 @@ def main(argv=None) -> int:
     (a.out_dir / "CERTIFIED_LIST.json").write_text(dump(dict(head, certified=res["certified"])))
     (a.out_dir / "FIX_LIST.md").write_text(render_fix(res))
     (a.out_dir / "FIX_LIST.json").write_text(dump(dict(head, fix_list=res["fix_list"])))
-    print(f"revision {res['registry_revision']}: {len(res['certified'])} of {res['assets']} CERTIFIED")
+    print(f"revision {res['registry_revision']}: {len(res['certified'])} of {res['assets']} CERTIFIED; {ceiling_summary(res)}")
     for l, cs in res["totals_by_layer_and_class"].items():
         print(f"  {l}: " + "; ".join(f"{c} {n}" for c, n in cs.items()))
     return 0
