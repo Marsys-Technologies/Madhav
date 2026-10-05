@@ -8,8 +8,8 @@ every `ci_job_passed` plan detector that names it keep meaning "the whole govern
   python3 ci_shard.py --index I --count K     print the test files of shard I (1-based), one per line
   python3 ci_shard.py --count K --verify      fail unless the K shards together are exactly every test file, each once
 
-Assignment: every `test_*.py` / `*_test.py` under `__tests__/` (the files pytest would collect), largest file first (a size proxy for run
-time; ties by path), each placed on the currently lightest shard (ties: lowest index). Pure function of the tree: no timings, no randomness,
+Assignment: every `test_*.py` / `*_test.py` under `__tests__/` (the files pytest would collect), heaviest file first (a size proxy for run
+time, replaced by measured seconds for the few files in CI_SECONDS; ties by path), each placed on the currently lightest shard (ties: lowest index). Pure function of the tree: no timings, no randomness,
 so a shard's content does not move between runs. A new test file lands in some shard automatically; nothing is listed by hand.
 """
 from __future__ import annotations
@@ -27,15 +27,35 @@ def test_files(root: Path = TESTS) -> list[Path]:
     return sorted(found, key=lambda p: p.as_posix())
 
 
+# File size is a poor proxy for run time for a few files: the mutation-testing suites of the E5.7 drill run their mutants in a process pool and take
+# minutes on a CI runner while being no larger than their neighbours. For the 15 files that dominate, the measured CI run time (seconds, from the
+# 2026-10-05 shard logs and a full timing run, re-measured after the mutant suites were parallelised: the mirror wiring file went from 330 s to about 80 s; the serial files were about half their time on a loaded workstation) replaces the size proxy, converted
+# to "bytes" at BYTES_PER_SECOND so one greedy pass still orders everything. Still a pure function of the tree plus this table: no timings are read
+# at run time, a shard's content does not move between runs. A listed name that is not a test file fails test_ci_shard (the table cannot rot silently).
+BYTES_PER_SECOND = 3300
+CI_SECONDS = {
+    "test_e5_7_mirror_wiring.py": 80, "test_e5_7_fingerprint_declarations.py": 110, "test_e6_s1_elevation_reader.py": 89,
+    "test_e1_1_scorecard.py": 57, "test_e6_na_r01_03.py": 53, "test_e6_emit_gaps_withholding.py": 50, "test_e1_7_nikasha_plant.py": 50,
+    "test_e6_n99_build_completion_integrity.py": 45, "test_e5_6_rehearsal.py": 43, "test_gate_v2_prerun_gate.py": 35,
+    "test_flip_detector_mutations.py": 33, "test_e5_5_stale_certs.py": 32, "test_e5_1_certify.py": 32, "test_e5_2_fold.py": 28,
+    "test_e6_narr_guard.py": 27,
+}
+
+
+def weight(path: Path) -> int:
+    """The balancing weight of a test file: the file size, or for a file in CI_SECONDS its measured seconds converted to size units."""
+    return CI_SECONDS[path.name] * BYTES_PER_SECOND if path.name in CI_SECONDS else path.stat().st_size
+
+
 def partition(files: list[Path], count: int) -> list[list[Path]]:
     if count < 1:
         raise ValueError("count must be >= 1")
     shards: list[list[Path]] = [[] for _ in range(count)]
     load = [0] * count
-    for f in sorted(files, key=lambda p: (-p.stat().st_size, p.as_posix())):
+    for f in sorted(files, key=lambda p: (-weight(p), p.as_posix())):
         i = min(range(count), key=lambda k: (load[k], k))
         shards[i].append(f)
-        load[i] += f.stat().st_size
+        load[i] += weight(f)
     return [sorted(s, key=lambda p: p.as_posix()) for s in shards]
 
 
