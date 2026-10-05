@@ -281,7 +281,7 @@ BUILD = RP.DASHA_READ_CONTRACT["build_id"]
 TIER = RP.DASHA_READ_CONTRACT["tier"]
 T1 = datetime(2019, 8, 1, tzinfo=UTC)             # MD Mercury / AD Mars / PD Saturn
 T2 = datetime(2021, 1, 1, tzinfo=UTC)             # MD Mercury / AD Rahu / PD Saturn
-BOUNDARY = datetime(2020, 2, 14, 11, 47, 23, tzinfo=UTC)  # Mars→Rahu AD, half-open
+BOUNDARY = datetime(2020, 2, 14, 13, 43, 56, tzinfo=UTC)  # Mars→Rahu AD, half-open
 
 
 def _l1_rows(*, build=BUILD, tier=TIER, extra=()):
@@ -318,10 +318,10 @@ def test_o_pp_2_per_level_licences_at_t1_and_t2():
     assert p1["pd"]["licence"] == p2["pd"]["licence"] == "scored"
     assert p1["md"]["licence"] == p2["md"]["licence"]
     # row ids are the printed §4.0 / O-PP-2 rows
-    assert p1["ad"]["row_id"] == "b1e4d515-6a94-4054-89ff-1ed2487f66ae"
-    assert p2["ad"]["row_id"] == "25a4b815-39bb-4b4a-b922-84a71778bb4f"
-    assert p1["pd"]["row_id"] == "a4cf46db-fcb5-479c-8aab-ca87bcb551ff"
-    assert p2["pd"]["row_id"] == "73eea5c0-631f-4b48-8c8f-483c910c6fde"
+    assert p1["ad"]["row_id"] == "c4821baa-f4b0-51d5-b035-28ba2bd36a78"
+    assert p2["ad"]["row_id"] == "a91faefa-f0d9-5a5d-950c-0adafb276fc7"
+    assert p1["pd"]["row_id"] == "d4d08aca-8995-51f3-a8ba-f9238a5311b3"
+    assert p2["pd"]["row_id"] == "f72e343c-b877-516b-a089-54494031aa2d"
     # class-level licence is the SAME at t₁ and t₂ (the AD level is the only
     # level that differs; the PD keeps the class licensed)
     assert _c5(rows, T1)["class_licence"] == _c5(rows, T2)["class_licence"] == "scored"
@@ -338,12 +338,12 @@ def test_o_pp_2_boundary_instant_belongs_to_rahu_half_open():
     before = _c5(rows, BOUNDARY - timedelta(seconds=1))["period_context"]
     assert at_boundary["ad"]["lord"] == "Rahu"
     assert before["ad"]["lord"] == "Mars"
-    assert at_boundary["t_utc"].startswith("2020-02-14T11:47:23")
+    assert at_boundary["t_utc"].startswith("2020-02-14T13:43:56")
 
 
 def test_memoization_is_by_exact_instant_not_date(monkeypatch):
     """The reviewer's mutation: a per-date cache returns the 00:00 (Mars AD)
-    licence for the 11:47:23 boundary instant (Rahu). The factory must not
+    licence for the 13:43:56 boundary instant (Rahu). The factory must not
     bucket by date."""
     rows = _l1_rows()
     calls = []
@@ -383,7 +383,7 @@ def test_orphan_pd_is_ignored_never_accepted():
               "verification_pass_status": TIER}
     ctx = _c5(_l1_rows(extra=[orphan]), T1)["period_context"]
     assert ctx["pd"]["lord"] == "Saturn"
-    assert ctx["pd"]["row_id"] == "a4cf46db-fcb5-479c-8aab-ca87bcb551ff"
+    assert ctx["pd"]["row_id"] == "d4d08aca-8995-51f3-a8ba-f9238a5311b3"
     assert [o["dasha_row_id"] for o in ctx["orphans_ignored"]] == ["orphan-pd"]
     # an orphan AD (parent not the covering MD) is likewise ignored
     orphan_ad = dict(orphan, dasha_row_id="orphan-ad", level_n=2,
@@ -399,9 +399,9 @@ def test_conflicting_rows_for_one_period_identity_raise():
     — never silently pick one (§4.0). The reviewer's probe retained
     conflicting starts."""
     conflict = {"dasha_row_id": "ad-conflict", "system_id": "vimshottari",
-                "level_n": 2, "parent_row_id": "58afa482-4bce-42df-9c0d-0b5a2e02305e",
-                "lord_graha": "Jupiter", "start_iso": "2019-02-17T06:50:23Z",
-                "end_iso": "2020-02-14T11:47:23Z", "build_id": BUILD,
+                "level_n": 2, "parent_row_id": "1d1a80c0-53c6-5ff7-930a-52ff0f306cae",
+                "lord_graha": "Jupiter", "start_iso": "2019-02-17T08:46:56Z",
+                "end_iso": "2020-02-14T13:43:56Z", "build_id": BUILD,
                 "verification_pass_status": TIER}
     with pytest.raises(DD.DashaReadConflict):
         _c5(_l1_rows(extra=[conflict]), T1)
@@ -410,7 +410,7 @@ def test_conflicting_rows_for_one_period_identity_raise():
     ctx = _c5(_l1_rows(extra=[dup]), T1)["period_context"]
     assert ctx["ad"]["lord"] == "Mars"
     assert set(ctx["ad"]["merged_row_ids"]) == {
-        "b1e4d515-6a94-4054-89ff-1ed2487f66ae", "ad-dup"}
+        "c4821baa-f4b0-51d5-b035-28ba2bd36a78", "ad-dup"}
 
 
 def test_pinned_build_and_tier_exclude_other_rows():
@@ -604,7 +604,7 @@ def test_step06a_read_contract_pins_the_frozen_build_or_refuses():
 
 # ── ASTRA v1.1 P1-2: the frozen daśā read contract and C5 identity ───────────
 
-MD_ID = "58afa482-4bce-42df-9c0d-0b5a2e02305e"
+MD_ID = "1d1a80c0-53c6-5ff7-930a-52ff0f306cae"
 
 
 def _l1row(rid, level, parent, lord, start, end, *, build=BUILD, tier=TIER,
@@ -657,7 +657,7 @@ def test_conflicting_level_parent_index_rows_raise_even_when_t_is_elsewhere():
     with pytest.raises(DD.DashaReadConflict, match="index"):
         _c5(_l1_rows(extra=[bogus]), T2)  # t₂ is inside the Rahu AD, not the overlap
     # non-overlapping extra siblings are fine and get their own index
-    fine = _l1row("ad-fine", 2, MD_ID, "Jupiter", "2022-09-02T21:05:23Z",
+    fine = _l1row("ad-fine", 2, MD_ID, "Jupiter", "2022-09-02T23:01:56Z",
                 "2024-01-01T00:00:00Z")
     ctx = _c5(_l1_rows(extra=[fine]), T2)["period_context"]
     assert ctx["ad"]["lord"] == "Rahu" and ctx["ad"]["index"] == 3
@@ -667,10 +667,10 @@ def test_duplicate_parent_collapse_canonicalizes_children_never_orphans():
     """Two identical MD rows (different ids) collapse; an AD parented to the
     dropped duplicate is re-pointed to the keeper and still selected."""
     rows = _l1_rows()
-    dup_md = _l1row("md-dup", 1, None, "Mercury", "2010-08-18T15:50:23Z",
-                  "2027-08-18T21:50:23Z")
+    dup_md = _l1row("md-dup", 1, None, "Mercury", "2010-08-18T17:46:56Z",
+                  "2027-08-18T23:46:56Z")
     for r in rows:
-        if r["dasha_row_id"] == "b1e4d515-6a94-4054-89ff-1ed2487f66ae":  # Mars AD
+        if r["dasha_row_id"] == "c4821baa-f4b0-51d5-b035-28ba2bd36a78":  # Mars AD
             r["parent_row_id"] = "md-dup"
     ctx = _c5(rows + [dup_md], T1)["period_context"]
     assert ctx["md"]["lord"] == "Mercury"
@@ -684,17 +684,17 @@ def test_duplicate_parent_collapse_canonicalizes_children_never_orphans():
 def test_exact_instants_are_never_advanced_by_rounding():
     rows = _l1_rows()
     one_ms_before = BOUNDARY - timedelta(milliseconds=1)
-    assert w.utc_iso_of_jd(w.jd_of(one_ms_before)) < "2020-02-14T11:47:23"
+    assert w.utc_iso_of_jd(w.jd_of(one_ms_before)) < "2020-02-14T13:43:56"
     assert _c5(rows, one_ms_before)["period_context"]["ad"]["lord"] == "Mars"
     # the exact boundary via the exact instant (half-open ⇒ Rahu)
     at = w.frozen_c5_permission_context(
         rows, w.jd_of(BOUNDARY), "marriage", CHART, pinned_build_id=BUILD,
-        tier=TIER, t_iso="2020-02-14T11:47:23+00:00")
+        tier=TIER, t_iso="2020-02-14T13:43:56+00:00")
     assert at["period_context"]["ad"]["lord"] == "Rahu"
-    assert at["period_context"]["t_utc"] == "2020-02-14T11:47:23+00:00"
+    assert at["period_context"]["t_utc"] == "2020-02-14T13:43:56+00:00"
     before = w.frozen_c5_permission_context(
         rows, w.jd_of(BOUNDARY), "marriage", CHART, pinned_build_id=BUILD,
-        tier=TIER, t_iso="2020-02-14T11:47:22.999999+00:00")
+        tier=TIER, t_iso="2020-02-14T13:43:55.999999+00:00")
     assert before["period_context"]["ad"]["lord"] == "Mars"
 
 

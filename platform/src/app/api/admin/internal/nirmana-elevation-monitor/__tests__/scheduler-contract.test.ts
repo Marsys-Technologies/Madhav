@@ -25,6 +25,23 @@ function resourceBlock(terraform: string, resourceStart: string): string {
   return terraform.slice(start, nextResource === -1 ? undefined : nextResource)
 }
 
+// The apply script can reach a real gcloud token call and terraform apply when the host already carries the production approval
+// variables. The child therefore gets an explicit allow-list, never the merged host environment: only PATH (bash needs it; HOME is left out so gcloud
+// Application Default Credentials can never be discovered), plus the variables the test case itself sets.
+const CHILD_ENV_ALLOW_LIST = ['PATH'] as const
+
+function scrubbedChildEnv(environment: Record<string, string | undefined>): NodeJS.ProcessEnv {
+  const child = {} as NodeJS.ProcessEnv
+  for (const name of CHILD_ENV_ALLOW_LIST) {
+    const value = process.env[name]
+    if (value !== undefined) child[name] = value
+  }
+  for (const [name, value] of Object.entries(environment)) {
+    if (value !== undefined) child[name] = value
+  }
+  return child
+}
+
 function invokeMonitorApply(environment: Record<string, string | undefined>) {
   const tempDirectory = mkdtempSync(join(tmpdir(), 'nirmana-monitor-apply-'))
   const planFile = join(tempDirectory, 'monitor.tfplan')
@@ -32,7 +49,8 @@ function invokeMonitorApply(environment: Record<string, string | undefined>) {
   try {
     return spawnSync('bash', [monitorApply, 'apply', planFile], {
       encoding: 'utf8',
-      env: { ...process.env, ...environment },
+      env: scrubbedChildEnv(environment),
+      timeout: 30_000,
     })
   } finally {
     rmSync(tempDirectory, { recursive: true, force: true })
@@ -149,6 +167,42 @@ describe('Nirmana elevation monitor scheduler contract', () => {
       const result = invokeMonitorApply(environment)
       expect(result.status).toBe(2)
       expect(result.stderr).toContain('GCP-native reviewed release')
+    }
+  })
+
+  it('never hands the host production approval variables to the apply child', () => {
+    const names = ['IAC_APPLY_ENVIRONMENT', 'GOOGLE_CLOUD_RELEASE_APPROVAL', 'GOOGLE_APPLICATION_CREDENTIALS', 'CLOUDSDK_CORE_PROJECT'] as const
+    const saved = names.map((name) => [name, process.env[name]] as const)
+    try {
+      process.env.IAC_APPLY_ENVIRONMENT = 'production'
+      process.env.GOOGLE_CLOUD_RELEASE_APPROVAL = 'CHG-12345678'
+      process.env.GOOGLE_APPLICATION_CREDENTIALS = '/nonexistent/dummy-key.json'
+      process.env.CLOUDSDK_CORE_PROJECT = 'dummy-project'
+
+      const child = scrubbedChildEnv({})
+      for (const name of names) expect(child, `${name} leaked into the child env`).not.toHaveProperty(name)
+
+      // the real child process, not just the helper: it prints its own environment
+      const printed = spawnSync('env', { encoding: 'utf8', env: child })
+      expect(printed.status).toBe(0)
+      for (const name of names) expect(printed.stdout).not.toContain(`${name}=`)
+
+      // nothing beyond the allow-list reaches the child: the key set is exactly the allow-listed names that exist on the host
+      expect(Object.keys(child).sort()).toEqual(CHILD_ENV_ALLOW_LIST.filter((name) => process.env[name] !== undefined).sort())
+
+      // a case-supplied variable still reaches the child (the allow-list is not a blanket drop)
+      expect(scrubbedChildEnv({ IAC_APPLY_ENVIRONMENT: 'staging' }).IAC_APPLY_ENVIRONMENT).toBe('staging')
+
+      // with a valid-looking production approval in the host env the script still stops at its approval check
+      const result = invokeMonitorApply({})
+      expect(result.status).toBe(2)
+      expect(result.stderr).toContain('GCP-native reviewed release')
+      expect(result.stderr).toContain('IAC_APPLY_ENVIRONMENT=production')
+    } finally {
+      for (const [name, value] of saved) {
+        if (value === undefined) delete process.env[name]
+        else process.env[name] = value
+      }
     }
   })
 })

@@ -350,10 +350,11 @@ class TestO2MiBhavisyaDomainSignals:
         # 2. SELECT * FROM phala_anchors           -> anchors
         # 3. _table_exists('bodha_msr_signals')    -> True
         # 4. SELECT signal_id, computed_salience, domains_affected_array -> msr_signals
-        # 5. DELETE mimamsa_manifestation_sets
-        # 6. DELETE mimamsa_predictions
-        # 7. executemany INSERT mimamsa_predictions
-        # 8. executemany INSERT mimamsa_manifestation_sets
+        # 5. SELECT already-frozen predictions for the chart (append-only, SS N-104)
+        #    -> none: this harness exercises the insert of every anchor
+        # 6. one execute() per new prediction (INSERT ... ON CONFLICT DO NOTHING) and per
+        #    its manifestation set; rowcount 1 = the row was added.  mi_bhavisya no longer
+        #    issues any DELETE.
 
         cur_phala_exists = MagicMock()
         cur_phala_exists.__enter__ = lambda s: s
@@ -375,9 +376,10 @@ class TestO2MiBhavisyaDomainSignals:
         cur_msr.__exit__ = MagicMock(return_value=False)
         cur_msr.fetchall = MagicMock(return_value=msr_signals)
 
-        cur_deletes = MagicMock()
-        cur_deletes.__enter__ = lambda s: s
-        cur_deletes.__exit__ = MagicMock(return_value=False)
+        cur_existing = MagicMock()
+        cur_existing.__enter__ = lambda s: s
+        cur_existing.__exit__ = MagicMock(return_value=False)
+        cur_existing.fetchall = MagicMock(return_value=[])
 
         cur_inserts = MagicMock()
         cur_inserts.__enter__ = lambda s: s
@@ -385,13 +387,15 @@ class TestO2MiBhavisyaDomainSignals:
         inserted_pred_rows = []
         inserted_mset_rows = []
 
-        def _executemany(sql, rows):
-            if 'mimamsa_predictions' in sql:
-                inserted_pred_rows.extend(rows)
-            elif 'mimamsa_manifestation_sets' in sql:
-                inserted_mset_rows.extend(rows)
+        def _execute(sql, row=None):
+            assert 'DELETE' not in sql and 'UPDATE' not in sql.replace('DO UPDATE', ''), sql
+            if 'INSERT INTO mimamsa_predictions' in sql:
+                inserted_pred_rows.append(row)
+            elif 'INSERT INTO mimamsa_manifestation_sets' in sql:
+                inserted_mset_rows.append(row)
+            cur_inserts.rowcount = 1
 
-        cur_inserts.executemany = MagicMock(side_effect=_executemany)
+        cur_inserts.execute = MagicMock(side_effect=_execute)
 
         # We need to supply cursors in the order MiBhavisyaWriter calls them.
         # _table_exists calls conn.cursor() (no row_factory); SELECT calls use row_factory.
@@ -401,8 +405,8 @@ class TestO2MiBhavisyaDomainSignals:
             cur_anchors,         # SELECT * FROM phala_anchors
             cur_msr_exists,      # _table_exists('bodha_msr_signals')
             cur_msr,             # SELECT signal_id, ... FROM bodha_msr_signals
-            cur_deletes,         # DELETE + DELETE (same cursor reused via __enter__)
-            cur_inserts,         # executemany PRED + MSET
+            cur_existing,        # SELECT already-frozen predictions (none)
+            cur_inserts,         # INSERT PRED / MSET, one execute() each
         ]
 
         def _cursor(**kwargs):

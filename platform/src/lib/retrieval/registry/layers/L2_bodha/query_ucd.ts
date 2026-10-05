@@ -168,6 +168,88 @@ export function orientationEchoMatches(payload: unknown, chart_id: string): bool
   return orientationChartIdOf(payload) === chart_id
 }
 
+/**
+ * DEFECT-1 (FactId served-impact audit) — distinct, non-empty constituent fact_ids cited by
+ * a candidate signal pool. This is the DENOMINATOR for grounding resolvability: the ids the
+ * pool CLAIMS, as opposed to the (possibly smaller) set `resolveConstituentFactSubjects`
+ * proved present in chart_facts.
+ */
+export function citedFactIdsOf(
+  rows: Array<{ constituent_facts_array?: string[] | null }>,
+): Set<string> {
+  return new Set(
+    rows.flatMap(r => r.constituent_facts_array ?? []).filter((v): v is string => typeof v === 'string' && v.length > 0),
+  )
+}
+
+/** Number of distinct cited fact_ids that are absent from the resolved map (stale/orphaned). */
+export function countUnresolvedFactIds(cited: ReadonlySet<string>, resolvedMap: ReadonlyMap<string, string>): number {
+  let unresolved = 0
+  for (const id of cited) if (!resolvedMap.has(id)) unresolved++
+  return unresolved
+}
+
+/**
+ * DEFECT-1 — build the envelope `grounding` block. `resolvable` is EARNED (§N.8): it is true
+ * iff every cited fact_id resolved in chart_facts (unresolved === 0), never a literal. An
+ * empty cited set is vacuously resolvable (nothing was claimed, nothing is stale). The
+ * unresolved ids are still excluded from `fact_ids` upstream (composite_ranker drop filter,
+ * deliberately unchanged); this block DISCLOSES the exclusion instead of hiding it.
+ */
+export function deriveGroundingBlock(args: {
+  cited: ReadonlySet<string>
+  resolvedMap: ReadonlyMap<string, string>
+  groundingFactIds: string[]
+}) {
+  const { cited, resolvedMap, groundingFactIds } = args
+  const unresolved = countUnresolvedFactIds(cited, resolvedMap)
+  const resolvable = unresolved === 0
+  return {
+    fact_ids: groundingFactIds,
+    resolvable,
+    resolved_fact_count: resolvedMap.size,
+    cited_fact_count: cited.size,
+    unresolved_fact_count: unresolved,
+    note: 'WP-1.2(a): fact_ids are the resolvable L1 chart_facts.fact_id set backing the ' +
+      'ranked entity_profiles (each id verified present in chart_facts, §N.5). Per-entity ' +
+      'fact_ids live on entity_profiles[].fact_ids; per-signal on top_signals[].constituent_facts_array.' +
+      (resolvable
+        ? ''
+        : ` DEFECT-1 disclosure: ${unresolved} of ${cited.size} distinct fact_id(s) cited by the candidate signal pool ` +
+          'do NOT resolve in chart_facts (stale/orphaned ids, typically after an L1 rebuild until L2 is rebuilt); ' +
+          'they are EXCLUDED from fact_ids and from entity attribution, so resolvable=false and the served ' +
+          'attribution is partial, not complete.'),
+  }
+}
+
+/**
+ * WP-1.2β attribution note. Unchanged text when every cited id resolved; when some did not
+ * (DEFECT-1) the excluded bucket is explained by its REAL cause (stale/unresolved fact ids)
+ * rather than blamed wholly on panchāṅga/muhūrta descriptors.
+ */
+export function deriveAttributionNote(args: {
+  servedUnattributed: number
+  unresolvedFactCount: number
+}): string {
+  const { servedUnattributed, unresolvedFactCount } = args
+  if (servedUnattributed !== 0) {
+    return `WP-1.2β: ${servedUnattributed} UNATTRIBUTED entity(ies) surfaced — attribution gap to disclose, not hide.`
+  }
+  if (unresolvedFactCount > 0) {
+    return 'WP-1.2β: 0% UNATTRIBUTED entities are SERVED, but attribution is PARTIAL — ' +
+      `${unresolvedFactCount} distinct constituent fact_id(s) cited by the candidate pool do not resolve in ` +
+      'chart_facts (stale/unresolved ids, typically after an L1 rebuild until L2 is rebuilt). ' +
+      'Signals whose attribution depends on those ids are in candidate_pool_unattributed and are EXCLUDED from ' +
+      'the served profiles — this is a stale-id gap, not (only) panchāṅga/muhūrta descriptors lacking a graha ' +
+      'or bhāva. Disclosed, not silently dropped (B.10); see grounding.unresolved_fact_count; drill via query_signals if needed.'
+  }
+  return 'WP-1.2β: 0% UNATTRIBUTED on the served ranked surface — every served entity_profile ' +
+    'resolves to a graha or a bhāva (chart address). candidate_pool_unattributed genuinely ' +
+    'un-attributable signals (typically panchāṅga/muhūrta birth-moment descriptors carrying ' +
+    'neither a graha nor a bhāva) are EXCLUDED from the served profiles and disclosed here ' +
+    '(not silently dropped — B.10); drill them via query_signals if needed.'
+}
+
 export const queryUcdCapability: CapabilityDescriptor = {
   uri:   'marsys://tool/L2/query_ucd',
   type:  'tool',
@@ -382,7 +464,12 @@ export const queryUcdCapability: CapabilityDescriptor = {
       // the map are surfaced as grounding) and supplies fact_subject-based entity
       // attribution so the per-varga dignity flood is attributed to its real graha rather
       // than a giant UNATTRIBUTED bucket.
-      const factSubjectByFactId = await resolveConstituentFactSubjects(chart_id, signalResult.rows as Array<{ constituent_facts_array?: string[] | null }>)
+      const poolRows = signalResult.rows as Array<{ constituent_facts_array?: string[] | null }>
+      const factSubjectByFactId = await resolveConstituentFactSubjects(chart_id, poolRows)
+      // DEFECT-1: the ids the pool CITES (denominator) vs those that resolved — drives the
+      // honest `grounding.resolvable` and the attribution note's real-cause branch.
+      const citedFactIds = citedFactIdsOf(poolRows)
+      const unresolvedFactCount = countUnresolvedFactIds(citedFactIds, factSubjectByFactId)
 
       // WP-1.2β: exclude the residual UNATTRIBUTED bucket from the served profiles (0%
       // UNATTRIBUTED, ND-W1.2) — the residual is disclosed below in `attribution`.
@@ -404,13 +491,7 @@ export const queryUcdCapability: CapabilityDescriptor = {
         served_unattributed_share: entity_profiles.length > 0 ? servedUnattributed / entity_profiles.length : 0,
         candidate_pool_size: scoredAll.length,
         candidate_pool_unattributed: poolUnattributed,
-        note: servedUnattributed === 0
-          ? 'WP-1.2β: 0% UNATTRIBUTED on the served ranked surface — every served entity_profile ' +
-            'resolves to a graha or a bhāva (chart address). candidate_pool_unattributed genuinely ' +
-            'un-attributable signals (typically panchāṅga/muhūrta birth-moment descriptors carrying ' +
-            'neither a graha nor a bhāva) are EXCLUDED from the served profiles and disclosed here ' +
-            '(not silently dropped — B.10); drill them via query_signals if needed.'
-          : `WP-1.2β: ${servedUnattributed} UNATTRIBUTED entity(ies) surfaced — attribution gap to disclose, not hide.`,
+        note: deriveAttributionNote({ servedUnattributed, unresolvedFactCount }),
       }
 
       // response_format bounding (E-5 — this facet is now actually load-bearing;
@@ -456,14 +537,7 @@ export const queryUcdCapability: CapabilityDescriptor = {
         }
         if (groundingFactIds.length >= GROUNDING_FACT_IDS_CAP) break
       }
-      const grounding = {
-        fact_ids: groundingFactIds,
-        resolvable: true as const,
-        resolved_fact_count: factSubjectByFactId.size,
-        note: 'WP-1.2(a): fact_ids are the resolvable L1 chart_facts.fact_id set backing the ' +
-          'ranked entity_profiles (each id verified present in chart_facts, §N.5). Per-entity ' +
-          'fact_ids live on entity_profiles[].fact_ids; per-signal on top_signals[].constituent_facts_array.',
-      }
+      const grounding = deriveGroundingBlock({ cited: citedFactIds, resolvedMap: factSubjectByFactId, groundingFactIds })
 
       const result = {
         content: {
