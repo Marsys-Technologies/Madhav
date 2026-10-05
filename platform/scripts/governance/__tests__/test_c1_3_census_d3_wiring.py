@@ -2,8 +2,7 @@
 measures a declared D3 asset through the engine (the stated reads monkeypatched with the REAL writer-row fixtures: no database), the other two Carr checks read N/A
 `not-the-declared-carriage`, and a D3 verdict is honoured only with its evidence.
 
-The registry's Carr.D3 entry still reads `detector NONE` on main until its revision bump (the REGISTRY_REVISION line is another lane's): the tests that need the verdict to COUNT flip
-the entry in memory (monkeypatch), and one test pins that without the flip the clamp still holds. No declaration of any real asset is filled by this file.
+The Carr.D3 registry entry is a real detector since N-156 (this branch lifts it from NONE). No declaration of any real asset is filled by this file.
 """
 from __future__ import annotations
 
@@ -60,11 +59,6 @@ def reads(monkeypatch):
     monkeypatch.setattr(ac, "d3_fetch_rows", rows)
     monkeypatch.setattr(ac, "d3_fetch_inputs", inputs)
     return calls
-
-
-def flip(monkeypatch):
-    e = dict(ac.CRITERION_REGISTRY["Carr.D3"], detector="asset_census.py:measure()")
-    monkeypatch.setitem(ac.CRITERION_REGISTRY, "Carr.D3", e)
 
 
 KW = dict(column_types=None, prose_columns=[])
@@ -146,14 +140,13 @@ def test_a_d3_declaration_without_a_spec_says_so():
 
 # ───────────────────────── the rollup ─────────────────────────
 
-def test_without_the_registry_flip_the_clamp_holds(reads):
+def test_the_registry_entry_is_a_real_detector_so_a_measured_verdict_counts(reads):
+    assert ac.CRITERION_REGISTRY["Carr.D3"]["detector"] == "asset_census.py:measure()"
     got = ac.carriage_declared_checks(AID, car_pass(), "chart_facts", True, asset_rows=530, **KW)
-    assert ac.CRITERION_REGISTRY["Carr.D3"]["detector"] == "NONE"
-    assert ac.rollup_asset("L1", got)["Carr"]["v"] == NO_DET
+    assert ac.rollup_asset("L1", got)["Carr"]["v"] == PASS
 
 
 def test_with_the_detector_declared_a_real_d3_pass_makes_the_carr_cell_pass(reads, monkeypatch):
-    flip(monkeypatch)
     got = ac.carriage_declared_checks(AID, car_pass(), "chart_facts", True, asset_rows=530, **KW)
     cell = ac.rollup_asset("L1", got)["Carr"]
     assert cell["v"] == PASS, cell
@@ -161,14 +154,12 @@ def test_with_the_detector_declared_a_real_d3_pass_makes_the_carr_cell_pass(read
 
 
 def test_a_partial_d3_does_not_close_the_cell(reads, monkeypatch):
-    flip(monkeypatch)
     got = ac.carriage_declared_checks(AID, car(), "chart_facts", True, asset_rows=530, **KW)          # retrograde_flag declared uncovered
     assert got["Carr.D3"]["v"] == PARTIAL
     assert ac.rollup_asset("L1", got)["Carr"]["v"] == PARTIAL
 
 
 def test_a_bare_or_forged_d3_pass_is_not_honoured(monkeypatch):
-    flip(monkeypatch)
     m = {"Carr.D3": dict(v=PASS, measured="hypothetical PASS (proof only)"),
          "Carr.D1": dict(v=NA, cause="not-the-declared-carriage", measured="n/a"), "Carr.D2": dict(v=NA, cause="not-the-declared-carriage", measured="n/a")}
     cell = ac.rollup_asset("L1", m)["Carr"]

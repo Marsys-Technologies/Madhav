@@ -1264,7 +1264,7 @@ def test_a_declared_d2_or_d3_has_no_detector_yet_and_the_other_two_read_na(appli
     assert got[own]["v"] == NO_DET and ("detector is built yet" in got[own]["measured"] or "without a `spec`" in got[own]["measured"])
     assert sorted(c for c in got if got[c]["v"] == NA) == sorted(c for c in ("Carr.D1", "Carr.D2", "Carr.D3") if c != own)
     assert ac.rollup_asset("L0", got)["Carr"]["v"] == NO_DET
-    assert ac.CRITERION_REGISTRY[own]["detector"] == "NONE"
+    assert ac.CRITERION_REGISTRY[own]["detector"] != "NONE"            # N-156: D3 is a real detector; a spec-less declaration still has nothing to re-derive
 
 
 def test_a_d1_declaration_without_a_spec_is_no_detector_not_pass():
@@ -1289,9 +1289,9 @@ def test_a_ratified_judgment_seed_reads_na_on_all_three_by_its_own_cause_and_nee
     assert ac.rollup_asset("L0", got)["Carr"]["v"] == NA
 
 
-def test_the_registry_gives_d1_a_detector_and_leaves_d2_d3_none_and_declares_the_three_rules():
-    assert ac.CRITERION_REGISTRY["Carr.D1"]["detector"] != "NONE" and ac.CRITERION_REGISTRY["Carr.D1"]["revision"] == 2
-    assert ac.CRITERION_REGISTRY["Carr.D2"]["detector"] == ac.CRITERION_REGISTRY["Carr.D3"]["detector"] == "NONE"
+def test_the_registry_gives_d1_and_d3_a_detector_leaves_d2_none_and_declares_the_rules():
+    assert ac.CRITERION_REGISTRY["Carr.D1"]["detector"] != "NONE" and ac.CRITERION_REGISTRY["Carr.D3"]["detector"] != "NONE"       # N-156: D3 lifted (rev 2), D1 rev 3
+    assert ac.CRITERION_REGISTRY["Carr.D2"]["detector"] == "NONE"
     assert r13.S2_IDS <= set(ac.NA_RULE_DECISIONS)
     assert not [i for i in ac.NA_RULE_DECISIONS if "ratified_judgment" in i]
 

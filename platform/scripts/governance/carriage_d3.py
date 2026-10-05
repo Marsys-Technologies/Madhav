@@ -126,7 +126,7 @@ def _where_problem(w, where: str):
     return None
 
 
-def validate_spec(spec, where: str, methods=None) -> dict:
+def validate_spec(spec, where: str, methods=None, asset_id=None) -> dict:
     """The spec, or SpecError naming the offending field. Pure syntax plus the method's own declared limits; it does not look at any database."""
     methods = load_methods() if methods is None else methods
     if not isinstance(spec, dict):
@@ -140,6 +140,8 @@ def validate_spec(spec, where: str, methods=None) -> dict:
     m = methods.get(spec["method"]) if isinstance(spec["method"], str) else None
     if m is None:
         raise SpecError(f"{where}.spec.method {spec['method']!r} is not a method of the closed registry METHODS {sorted(methods)}")
+    if asset_id is not None and asset_id not in m["assets"]:
+        raise SpecError(f"{where}.spec.method {spec['method']!r} serves {list(m['assets'])}, not {asset_id!r}: a computation declaration cannot borrow a method built for another asset")
     if not (isinstance(spec["table"], str) and _IDENT.fullmatch(spec["table"])):
         raise SpecError(f"{where}.spec.table must be a table identifier")
     if spec["table"] not in m["tables"]:
@@ -390,7 +392,7 @@ def d3_evidence_problem(meas) -> str:
 
 
 # ───────────────────────── the method registry (closed) ─────────────────────────
-METHOD_HOOKS = ("tables", "independence", "max_tol", "required_conventions", "reads", "logical_rows", "context", "ref", "rule_text", "version", "inputs_table")
+METHOD_HOOKS = ("tables", "assets", "independence", "max_tol", "required_conventions", "reads", "logical_rows", "context", "ref", "rule_text", "version", "inputs_table")
 METHODS: dict = {}
 
 

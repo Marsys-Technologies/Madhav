@@ -251,7 +251,7 @@ def ingress_ref(r, ctx):
 
 def register_all(d3) -> None:
     d3.register_method(
-        "swisseph_sidereal_positions_v1", tables=("chart_facts",), independence="independent_formula",
+        "swisseph_sidereal_positions_v1", tables=("chart_facts",), assets=("ga_positions",), independence="independent_formula",
         max_tol={"longitude_sidereal": 0.002, "degree_in_sign": 0.002, "sign_num": 0, "nakshatra_num": 0, "pada": 0, "house_d1": 0, "retrograde_flag": 0},
         required_conventions={"position_model": ("true_geometric", "apparent"), "node_model": ("mean_node",), "house_rule": ("whole_sign",)},
         reads=("chart_facts: the declared columns where the declared closed predicate holds (chart-scoped)", "charts: one row, the chart's birth parameters"),
@@ -262,7 +262,7 @@ def register_all(d3) -> None:
                    "nakshatra (the stored name's place in the classical order of the 27, spelling variants folded), pada and whole-sign house are derived from that longitude by arithmetic; the retrograde flag "
                    "is the sign of the longitude speed. A discrete value next to a cell edge is accepted only within the declared tolerance of the edge and listed"))
     d3.register_method(
-        "swisseph_ingress_root_find_v1", tables=("bg_sky_calendar",), independence="independent_formula",
+        "swisseph_ingress_root_find_v1", tables=("bg_sky_calendar",), assets=("bg_sky_calendar",), independence="independent_formula",
         max_tol={"edge_distance_deg": {"default": 0.002, "values": {"Rahu": 0.01, "Ketu": 0.01}}, "longitude_deg": {"default": 0.002, "values": {"Rahu": 0.01, "Ketu": 0.01}},
                  "sign": 0, "ayanamsha_key": 0},
         required_conventions={"position_model": ("apparent", "true_geometric"), "node_model": ("true_node",), "ayanamsha": ("lahiri",)},
