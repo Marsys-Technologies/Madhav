@@ -615,11 +615,12 @@ class _Analyzer:
             base = n.value
             if isinstance(base, ast.Name) and base.id in self.s.module_assigns and self.s.enclosing(n) is not None and not self._local_name(n, base.id):
                 for v in self.s.module_assigns[base.id]:
+                    dv = self._dict_display_values(v)
                     if isinstance(v, (ast.List, ast.Tuple, ast.Set)):
                         for e in v.elts:
                             self.expr(e, acc, depth + 1, seen, role)
-                    elif isinstance(v, ast.Dict):
-                        for e in v.values:
+                    elif dv is not None:
+                        for e in dv:
                             self.expr(e, acc, depth + 1, seen, role)
                     else:
                         self.expr(v, acc, depth + 1, seen, role)
@@ -638,6 +639,30 @@ class _Analyzer:
             self.expr(n.value, acc, depth + 1, seen, role)
             return
         acc.unres(f"{self.s.where(n)} an expression of kind {type(n).__name__} the scan does not follow")
+
+    @staticmethod
+    def _dict_display_values(v):
+        """The value nodes of a dict display `{...}` or a `dict(a=..., b=...)` / `dict({...}, k=...)` call; None when `v` is neither (a `**` unpack's value is read too)."""
+        if isinstance(v, ast.Dict):
+            return list(v.values)
+        if isinstance(v, ast.Call) and isinstance(v.func, ast.Name) and v.func.id == "dict":
+            out = [kw.value for kw in v.keywords]
+            for a in v.args:
+                if isinstance(a, ast.Dict):
+                    out.extend(a.values)
+                elif isinstance(a, ast.Call):
+                    out.extend(_Analyzer._dict_display_values(a) or [])
+            return out
+        return None
+
+    def _module_dict_values(self, recv, at) -> list:
+        """The values of a module-level dict constant named by `recv` (a bare Name that is not a local of the enclosing function), for `DEFS.get(k)`."""
+        if not isinstance(recv, ast.Name) or recv.id not in self.s.module_assigns or self.s.enclosing(at) is None or self._local_name(at, recv.id):
+            return []
+        out = []
+        for v in self.s.module_assigns[recv.id]:
+            out.extend(self._dict_display_values(v) or [])
+        return out
 
     def _local_name(self, n, name: str) -> bool:
         """`name` is a local variable or parameter of the function enclosing `n` (so it is not the module constant of that name)."""
@@ -663,6 +688,13 @@ class _Analyzer:
                     self.flag(a.value, a, acc, f"literal default of `{nm}(...)`", role)
                 elif isinstance(v, str):
                     self.flag(v, a, acc, f"literal default of `{nm}(...)`", role)
+                elif isinstance(a, (ast.Name, ast.Attribute)):
+                    # a default that is a NAME / ATTRIBUTE (`d.get('k', MISSING)` with MISSING = 'unknown'): follow it like any other value the column may be written
+                    self.expr(a, acc, depth + 1, seen, role)
+            if isinstance(f, ast.Attribute) and nm in ("get", "pop", "setdefault"):
+                # the RECEIVER may itself be a module-level dict display / `dict(...)` call: its values are what the lookup returns
+                for v in self._module_dict_values(f.value, n):
+                    self.expr(v, acc, depth + 1, seen, role)
             for a in list(n.args[:pos]) + ([f.value] if isinstance(f, ast.Attribute) else []):
                 if isinstance(a, ast.Constant):
                     continue

@@ -51,12 +51,16 @@ def _names(node):
     return {n.id for n in ast.walk(node) if isinstance(n, ast.Name)}
 
 
-def _picked_keys(node):
+def _picked_keys(node, is_builder_call=None):
     """The names a compared operand uses to PICK a value out of the built output, EXACTLY: a constant subscript key (`row["k"]`, a chain `row["a"][0]["k"]`), the first constant argument of `.get("k")` /
     `.pop("k")`, an attribute name (`row.k`) and a plain name (`k = build(...)`). Not call keyword names (an INPUT of the builder), not sentence text, and never a token of a longer name
-    (a variable `citation` does not cover `citation_human`)."""
+    (a variable `citation` does not cover `citation_human`). The arguments of a BUILDER call are its INPUTS, so the walk does not enter them: `build_narration(citation_human)["note"]` picks `note`."""
     out = set()
-    for n in ast.walk(node):
+
+    def walk(n):
+        if is_builder_call is not None and isinstance(n, ast.Call) and is_builder_call(n):
+            walk(n.func)                                  # the callee only (`mod.build`): never `Call.args` / `Call.keywords`
+            return
         if isinstance(n, ast.Subscript) and isinstance(n.slice, ast.Constant) and isinstance(n.slice.value, str):
             out.add(n.slice.value)
         elif isinstance(n, ast.Call) and isinstance(n.func, ast.Attribute) and n.func.attr in ("get", "pop") and n.args \
@@ -66,6 +70,10 @@ def _picked_keys(node):
             out.add(n.attr)
         elif isinstance(n, ast.Name):
             out.add(n.id)
+        for c in ast.iter_child_nodes(n):
+            walk(c)
+
+    walk(node)
     return out
 
 
@@ -92,22 +100,87 @@ def _target_names(assign):
     return {x.id for t in assign.targets for x in ast.walk(t) if isinstance(x, ast.Name)}
 
 
-_CONST_FALSE = (False, 0, None, "")
+_UNK = object()
+_CMP = {ast.Eq: lambda a, b: a == b, ast.NotEq: lambda a, b: a != b, ast.Lt: lambda a, b: a < b, ast.LtE: lambda a, b: a <= b, ast.Gt: lambda a, b: a > b,
+        ast.GtE: lambda a, b: a >= b, ast.Is: lambda a, b: a is b, ast.IsNot: lambda a, b: a is not b, ast.In: lambda a, b: a in b, ast.NotIn: lambda a, b: a not in b}
+
+
+def _const_eval(node, depth=0):
+    """The Python value of a CONSTANT expression (literals, containers of literals, `not`, `and` / `or`, comparisons, unary minus), else _UNK."""
+    if depth > 8:
+        return _UNK
+    if isinstance(node, ast.Constant):
+        return node.value
+    if isinstance(node, (ast.List, ast.Tuple, ast.Set)):
+        vals = [_const_eval(e, depth + 1) for e in node.elts]
+        if any(v is _UNK for v in vals):
+            return _UNK
+        return tuple(vals) if not isinstance(node, ast.Set) else frozenset(vals)
+    if isinstance(node, ast.Dict):
+        return {} if not node.keys else _UNK
+    if isinstance(node, ast.UnaryOp):
+        v = _const_eval(node.operand, depth + 1)
+        if v is _UNK:
+            return _UNK
+        try:
+            return (not v) if isinstance(node.op, ast.Not) else (-v) if isinstance(node.op, ast.USub) else (+v) if isinstance(node.op, ast.UAdd) else _UNK
+        except Exception:
+            return _UNK
+    if isinstance(node, ast.BoolOp):
+        vals = [_const_eval(e, depth + 1) for e in node.values]
+        if any(v is _UNK for v in vals):
+            return _UNK
+        if isinstance(node.op, ast.And):
+            for v in vals:
+                if not v:
+                    return v
+            return vals[-1]
+        for v in vals:
+            if v:
+                return v
+        return vals[-1]
+    if isinstance(node, ast.Compare):
+        left = _const_eval(node.left, depth + 1)
+        res = True
+        for op, c in zip(node.ops, node.comparators):
+            right = _const_eval(c, depth + 1)
+            fn = _CMP.get(type(op))
+            if left is _UNK or right is _UNK or fn is None:
+                return _UNK
+            try:
+                res = res and fn(left, right)
+            except Exception:
+                return _UNK
+            left = right
+        return res
+    return _UNK
 
 
 def _const_truth(test):
-    """True / False for a constant test (`if False:`, `if 0:`, `if True:`), None otherwise."""
-    if isinstance(test, ast.Constant):
-        return bool(test.value)
-    return None
+    """True / False for a constant test (`if False:`, `if 0:`, `if not True:`, `if 0 == 1:`, `if 1 and 0:`), None otherwise."""
+    v = _const_eval(test)
+    return None if v is _UNK else bool(v)
 
 
 _SWALLOW = ("AssertionError", "Exception", "BaseException")
 
 
+def _exc_names(t) -> list:
+    """The final names of an exception expression: `AssertionError`, `builtins.AssertionError`, `(ValueError, builtins.AssertionError)`."""
+    if t is None:
+        return []
+    out = []
+    for x in ast.walk(t):
+        if isinstance(x, ast.Name):
+            out.append(x.id)
+        elif isinstance(x, ast.Attribute):
+            out.append(x.attr)
+    return out
+
+
 def _swallows(handler) -> bool:
     t = handler.type
-    names = [x.id for x in ast.walk(t) if isinstance(x, ast.Name)] if t is not None else ["BaseException"]
+    names = _exc_names(t) if t is not None else ["BaseException"]
     return any(n in _SWALLOW for n in names) and not any(isinstance(x, ast.Raise) for x in ast.walk(handler))
 
 
@@ -118,7 +191,40 @@ def _expects_failure(w) -> bool:
             nm = c.func.attr if isinstance(c.func, ast.Attribute) else c.func.id if isinstance(c.func, ast.Name) else ""
             if nm in ("raises", "assertRaises", "assertRaisesRegex", "warns", "assertWarns", "expectedFailure"):
                 return True
+            if nm == "suppress" and any(n in _SWALLOW for a in c.args for n in _exc_names(a)):
+                return True                               # contextlib.suppress(AssertionError): an assertion failure inside is swallowed
     return False
+
+
+_TERMINATORS = ("skip", "skipTest", "fail", "exit", "_exit", "importorskip")
+
+
+def _terminates(body) -> bool:
+    """The statement list ends every path it takes in a return / raise / continue / break or a skip / fail call (`self.skipTest(...)`, `pytest.skip(...)`)."""
+    for st in body:
+        if isinstance(st, (ast.Return, ast.Raise, ast.Continue, ast.Break)):
+            return True
+        if isinstance(st, ast.Expr) and isinstance(st.value, ast.Call):
+            f = st.value.func
+            nm = f.attr if isinstance(f, ast.Attribute) else f.id if isinstance(f, ast.Name) else ""
+            if nm in _TERMINATORS:
+                return True
+        if isinstance(st, ast.If):
+            t = _const_truth(st.test)
+            if (t is True and _terminates(st.body)) or (t is False and _terminates(st.orelse)) or (t is None and _terminates(st.body) and _terminates(st.orelse)):
+                return True
+    return False
+
+
+def _empty_iter(it) -> bool:
+    """A `for` over a constant empty iterable (`[]`, `()`, `{}`, `""`, `range(0)`): its body never runs."""
+    if isinstance(it, ast.Call) and isinstance(it.func, ast.Name) and it.func.id == "range" and it.args:
+        vals = [_const_eval(a) for a in it.args]
+        if all(isinstance(v, int) and not isinstance(v, bool) for v in vals):
+            return len(range(*vals)) == 0
+        return False
+    v = _const_eval(it)
+    return v is not _UNK and hasattr(v, "__len__") and len(v) == 0
 
 
 def reachable(body):
@@ -135,7 +241,8 @@ def reachable(body):
             if t is not True:
                 yield from reachable(st.orelse)
         elif isinstance(st, (ast.For, ast.AsyncFor)):
-            yield from reachable(st.body)
+            if not _empty_iter(st.iter):
+                yield from reachable(st.body)
             yield from reachable(st.orelse)
         elif isinstance(st, ast.While):
             if _const_truth(st.test) is not False:
@@ -151,8 +258,8 @@ def reachable(body):
                 yield from reachable(h.body)
             yield from reachable(st.orelse)
             yield from reachable(st.finalbody)
-        if isinstance(st, (ast.Return, ast.Raise, ast.Continue, ast.Break)):
-            break
+        if _terminates([st]):
+            break                                         # nothing after a return / raise / skip, nor after an `if True:` / both-branch exit
 
 
 _COMPOUND_BODY = ("body", "orelse", "finalbody", "handlers", "cases")
@@ -241,7 +348,10 @@ class _Fn:
         self.params = _parametrized(fn)
         self.stmts = list(reachable(fn.body))
         self.nodes = [n for st in self.stmts for n in _own_nodes(st)]
-        self.tainted = set()
+        self.tainted = set()                    # the names tainted at the END of the function (the fallback view)
+        self.taint_at: dict = {}                # id(statement) -> the names tainted just BEFORE it runs (flow-sensitive: a rebinding to a non-builder value clears the taint)
+        self.over_at: dict = {}                 # id(statement) -> {(name, key)} of builder-output keys overwritten by a non-builder value just before it
+        self._cur = None
         self._taint()
 
     def builder_call(self, n) -> bool:
@@ -250,32 +360,68 @@ class _Fn:
             return bool(d) and any(self.calls_module(d, m) for m in self.mods)
         return False
 
-    def derived(self, node) -> bool:
+    def at(self, stmt):
+        """Evaluate `derived` / `literal` / `expected_nodes` / `defining_assigns` against the names tainted just before `stmt` (None = the end of the function)."""
+        self._cur = self.taint_at.get(id(stmt)) if stmt is not None else None
+
+    @property
+    def cur(self):
+        return self._cur if self._cur is not None else self.tainted
+
+    def overwritten(self, stmt) -> set:
+        return {k for (_n, k) in self.over_at.get(id(stmt), ())}
+
+    def derived(self, node, taint=None) -> bool:
+        taint = self.cur if taint is None else taint
         for n in ast.walk(node):
-            if self.builder_call(n) or (isinstance(n, ast.Name) and n.id in self.tainted):
+            if self.builder_call(n) or (isinstance(n, ast.Name) and n.id in taint):
                 return True
         return False
 
     def _taint(self):
-        for _ in range(4):
-            before = len(self.tainted)
-            for n in self.stmts:
-                tgt, val = None, None
-                if isinstance(n, ast.Assign):
-                    tgt, val = n.targets, n.value
-                elif isinstance(n, ast.AnnAssign) and n.value is not None:
-                    tgt, val = [n.target], n.value
-                elif isinstance(n, (ast.For, ast.AsyncFor)):
-                    tgt, val = [n.target], n.iter
-                elif isinstance(n, (ast.With, ast.AsyncWith)):
-                    for it in n.items:
-                        if it.optional_vars is not None and self.derived(it.context_expr):
-                            self.tainted |= _names(it.optional_vars)
-                if tgt is not None and self.derived(val):
-                    for t in tgt:
-                        self.tainted |= _names(t)
-            if len(self.tainted) == before:
-                break
+        """One forward pass over the reachable statements in source order. A name is tainted from a statement that binds it to a builder-derived value until the next statement that binds it to a
+        value that is NOT builder-derived (`out = build(...)` then `out = {"citation_human": "<s>"}` leaves the assertion comparing the literal with itself). A key of the output overwritten by
+        a non-builder value (`out["k"] = "<s>"`) is recorded the same way. Branches are read in source order, the last binding winning (conservative: it can only withdraw a golden verdict)."""
+        cur, over = set(), set()
+        for n in self.stmts:
+            self.taint_at[id(n)] = frozenset(cur)
+            self.over_at[id(n)] = frozenset(over)
+            if isinstance(n, (ast.With, ast.AsyncWith)):
+                for it in n.items:
+                    if it.optional_vars is not None and self.derived(it.context_expr, cur):
+                        cur |= _names(it.optional_vars)
+                continue
+            tgt, val = None, None
+            if isinstance(n, ast.Assign):
+                tgt, val = n.targets, n.value
+            elif isinstance(n, ast.AnnAssign) and n.value is not None:
+                tgt, val = [n.target], n.value
+            elif isinstance(n, (ast.For, ast.AsyncFor)):
+                tgt, val = [n.target], n.iter
+            elif isinstance(n, ast.AugAssign):
+                if self.derived(n.value, cur):
+                    cur |= _names(n.target)
+                continue
+            if tgt is None:
+                continue
+            d = self.derived(val, cur)
+            for t in tgt:
+                if isinstance(t, (ast.Name, ast.Tuple, ast.List, ast.Starred)):
+                    bound = {x.id for x in ast.walk(t) if isinstance(x, ast.Name)}
+                    if d:
+                        cur |= bound
+                        over = {(a, k) for (a, k) in over if a not in bound}
+                    else:
+                        cur -= bound
+                        over = {(a, k) for (a, k) in over if a not in bound}
+                elif isinstance(t, ast.Subscript) and isinstance(t.value, ast.Name) and isinstance(t.slice, ast.Constant) and isinstance(t.slice.value, str):
+                    if d:
+                        over.discard((t.value.id, t.slice.value))
+                    else:
+                        over.add((t.value.id, t.slice.value))
+                elif d:
+                    cur |= _names(t)
+        self.tainted = cur
 
     def literal(self, node, depth=0) -> bool:
         """The node states a value independent of the builder: literal constants and containers, a module constant or a parametrize value bound to such."""
@@ -294,7 +440,7 @@ class _Fn:
         if isinstance(node, ast.Dict):
             return all(k is not None and self.literal(k, depth + 1) and self.literal(v, depth + 1) for k, v in zip(node.keys, node.values))
         if isinstance(node, ast.Name):
-            if node.id in self.tainted:
+            if node.id in self.cur:
                 return False
             if node.id in self.params:
                 return all(self.literal(v, depth + 1) for v in self.params[node.id])
@@ -305,9 +451,9 @@ class _Fn:
 
     def expected_nodes(self, node):
         """The literal node(s) an expected side stands for (a parametrize name expands to its values)."""
-        if isinstance(node, ast.Name) and node.id in self.params and node.id not in self.tainted:
+        if isinstance(node, ast.Name) and node.id in self.params and node.id not in self.cur:
             return list(self.params[node.id])
-        if isinstance(node, ast.Name) and node.id not in self.tainted and len(self.module_consts.get(node.id, [])) == 1:
+        if isinstance(node, ast.Name) and node.id not in self.cur and len(self.module_consts.get(node.id, [])) == 1:
             return [self.module_consts[node.id][0]]
         return [node]
 
@@ -329,8 +475,8 @@ class _Fn:
         return out
 
     def defining_assigns(self, node):
-        used = _names(node) & self.tainted
-        return [n for n in self.stmts if isinstance(n, ast.Assign) and any(_names(t) & used for t in n.targets)]
+        used = _names(node) & self.cur
+        return [n for n in self.stmts if isinstance(n, ast.Assign) and any(_names(t) & used for t in n.targets) and self.derived(n.value, self.taint_at.get(id(n), self.tainted))]
 
     def called_builder_names(self):
         out = set()
@@ -356,6 +502,7 @@ def verify_test(fn_rec, tree, mods, dotted, calls_module):
     last = "no reachable equality assertion found"
     first, keys = None, {}
     for lhs, rhs, node in f.equalities():
+        f.at(node)                                           # taint as of THIS assertion (flow-sensitive)
         for actual, exp in ((lhs, rhs), (rhs, lhs)):
             if not f.derived(actual):
                 continue
@@ -369,9 +516,10 @@ def verify_test(fn_rec, tree, mods, dotted, calls_module):
             if not any(_prose_bearing(e) for e in exps):
                 last = f"line {node.lineno}: the expected literal carries no sentence (a string of >= {MIN_WORDS} words and >= {MIN_CHARS} characters)"
                 continue
-            picked = _picked_keys(actual)
+            picked = _picked_keys(actual, f.builder_call)
             for x in f.defining_assigns(node):
                 picked |= _target_names(x)                 # `citation_human = build(...)` names the column; the assigned call's own arguments do not
+            picked -= f.overwritten(node)                  # a key the test itself overwrote with a literal before asserting it is not the builder's
             by_key = {}
             for e in exps:
                 for k, vs in _dict_values_by_key(e).items():

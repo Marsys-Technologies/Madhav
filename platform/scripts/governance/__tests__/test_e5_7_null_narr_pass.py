@@ -588,3 +588,90 @@ def test_review_low_a_test_that_patches_the_builder_is_not_golden():
                f'def test_sentence(monkeypatch):\n    {patch}\n    out = build_narration({{"a": 1}})\n    assert out["citation_human"] == "Sun is exalted in Aries by rule"\n')
         r = _fid(src)
         assert r["v"] == ac.PARTIAL and "patches" in r["measured"] or "assigns over" in r["measured"], (patch, r)
+
+
+# ───────────────────────── scan residuals (Worker F, E's re-check MED/LOW siblings) ─────────────────────────
+
+@pytest.mark.parametrize("expr,pre", [
+    ("d.get('k', MISSING)", "MISSING = 'unknown'\n"),
+    ("getattr(r, 'name', MISSING)", "MISSING = 'unknown'\n"),
+    ("f\"{d.get('k', MISSING)}\"", "MISSING = 'unknown'\n"),
+    ("d.get('k', consts.MISSING)", "class consts:\n    MISSING = 'n/a'\n"),
+    ("d.get('k', default=MISSING)", "MISSING = 'unknown'\n"),
+    ("DEFS.get(g)", "DEFS = dict(k='n/a')\n"),
+    ("DEFS[g]", "DEFS = dict(k='n/a')\n"),
+    ("DEFS.get(g)", "DEFS = {'k': 'n/a'}\n"),
+    ("DEFS[g]", "DEFS = {'k': 'n/a'}\n"),
+    ("DEFS.get(g, g)", "DEFS = dict({'k': 'n/a'}, j='none')\n"),
+])
+def test_residual_a_module_constant_default_and_dict_receivers_are_followed(expr, pre):
+    r = _val(expr, pre)
+    assert r["v"] == "PARTIAL" and any(p["kind"] in ("literal_fallback", "constant_write") for p in r["problems"]), (expr, pre, r)
+
+
+@pytest.mark.parametrize("expr,pre", [
+    ("d.get('k', g)", ""), ("d.get('k', NOTHING)", "NOTHING = None\n"), ("getattr(r, 'name', g)", ""),
+    ("f\"{d.get('k', g)}\"", ""), ("DEFS.get(g)", "DEFS = dict(k=None)\n"),
+])
+def test_residual_a_clean_defaults_stay_clean(expr, pre):
+    assert _val(expr, pre)["v"] == "PASS", (expr, pre)
+
+
+TEST_A = '    assert out["citation_human"] == "Sun is exalted in Aries by rule"\n'
+BUILT = '    out = build_narration({"a": 1})\n'
+
+
+def _body(body, pre=BUILT):
+    return _fid(HEAD + "def test_sentence():\n" + pre + body)
+
+
+@pytest.mark.parametrize("body", [
+    '    out = {"citation_human": "Sun is exalted in Aries by rule"}\n' + TEST_A,                              # rebound to a literal: a tautology
+    '    out["citation_human"] = "Sun is exalted in Aries by rule"\n' + TEST_A,                                # the key overwritten by a literal
+    '    for _ in []:\n    ' + TEST_A,
+    '    for _ in ():\n    ' + TEST_A,
+    '    for _ in range(0):\n    ' + TEST_A,
+    '    if not True:\n    ' + TEST_A,
+    '    if 0 == 1:\n    ' + TEST_A,
+    '    if 1 and 0:\n    ' + TEST_A,
+    '    while False:\n    ' + TEST_A,
+    '    with contextlib.suppress(AssertionError):\n    ' + TEST_A,
+    '    with suppress(Exception):\n    ' + TEST_A,
+    '    try:\n    ' + TEST_A + '    except builtins.AssertionError:\n        pass\n',
+    '    try:\n    ' + TEST_A + '    except (ValueError, builtins.Exception):\n        pass\n',
+    '    if True:\n        return\n' + TEST_A,
+    '    self.skipTest("later")\n' + TEST_A,
+])
+def test_residual_dead_rebound_and_swallowed_assertions_are_not_golden(body):
+    r = _body(body)
+    assert r["v"] != ac.PASS and "golden" not in r, (body, r)
+
+
+@pytest.mark.parametrize("body", [
+    TEST_A,
+    '    out = build_narration({"b": 2})\n' + TEST_A,                                                             # rebound to the BUILDER again: still derived
+    '    out["note"] = "an unrelated sentence here"\n' + TEST_A,                                                  # another key overwritten: not the asserted one
+    '    for _ in [1]:\n    ' + TEST_A,
+    '    if 1 == 1:\n    ' + TEST_A,
+    '    with contextlib.suppress(ValueError):\n    ' + TEST_A,
+    '    if out:\n    ' + TEST_A,
+])
+def test_residual_live_assertions_stay_golden(body):
+    assert _body(body)["v"] == ac.PASS, body
+
+
+def test_residual_the_taint_ends_at_the_rebinding_not_before_it():
+    src = HEAD + ('def test_sentence():\n    out = build_narration({"a": 1})\n    assert out["citation_human"] == "Sun is exalted in Aries by rule"\n'
+                  '    out = {"citation_human": "Sun is exalted in Aries by rule"}\n    assert out["citation_human"] == "Sun is exalted in Aries by rule"\n')
+    assert _fid(src)["v"] == ac.PASS                             # the FIRST assertion is the builder's; the second (a tautology) adds nothing and does not remove it
+
+
+def test_residual_a_builder_input_argument_is_not_a_picked_key():
+    pick_arg = HEAD + 'def test_sentence():\n    citation_human = "x"\n    assert build_narration(citation_human)["note"] == "Sun is exalted in Aries by rule"\n'
+    r = _fid(pick_arg)
+    assert r["v"] == ac.PARTIAL and "not referenced" in r["measured"], r                     # `citation_human` is an INPUT of the builder here: not covered
+    assert _fid(pick_arg, covers=("note",), entries=("note",))["v"] == ac.PASS               # the key it really picks is covered
+    kw = HEAD + 'def test_sentence():\n    assert build_narration(x=1, citation_human=2)["note"] == "Sun is exalted in Aries by rule"\n'
+    assert _fid(kw)["v"] == ac.PARTIAL
+    direct = HEAD + 'def test_sentence():\n    assert build_narration({"a": 1})["citation_human"] == "Sun is exalted in Aries by rule"\n'
+    assert _fid(direct)["v"] == ac.PASS
