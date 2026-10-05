@@ -144,7 +144,7 @@ BUILD_RECORD_SPEC = {
         "`not_run` is accepted ONLY for the assets in the closed not_run_allowed list (decision N-121; extended only by editing NOT_RUN_ALLOWED in fingerprint_declarations.py with a decision id). On `compare --build-record`, a `not_run` entry is what makes the explanation code not_run_declared valid: that unit stays UNMEASURED, never equal, never counted toward the verdict.",
         "An asset that failed, errored, is incomplete, blocked or skipped is never accepted as `complete` or as `not_run`: it makes the record refuse, "
         "whatever the build_run_assets row says (build_run_assets.state is `complete` for terminal outcomes: see OPEN FINDINGS 4).",
-        "Expected in the linux/amd64 container run (SS decision B1): 33 of the 34 declared assets `complete`, including bg_sky_calendar, bg_cohort and bg_gochara_arcs, "
+        "Expected in the linux/amd64 container run (SS decision B1): 34 of the 35 declared assets `complete`, including bg_sky_calendar, bg_cohort and bg_gochara_arcs, "
         "and 1 `not_run`: bg_muhurta_lattice with NEEDS_AS_OF_PIN (see container_run_expectation). bg_sky_calendar and bg_cohort stay on the closed not_run list only "
         "for the case the container cannot run them; the validator accepts `complete` for every listed asset and `not_run` only as listed.",
         "A `reason` appears on a not_run entry only; an unknown asset id or state, a duplicate asset id or any extra key refuses the record.",

@@ -81,7 +81,7 @@ def test_the_teardown_removes_a_populated_candidate_verification_rows_included_a
     assert w.conn.execute("SELECT count(*) FROM public.ka_gochara_eval_window_record").fetchone()[0] >= 1
     assert w.conn.execute("SELECT count(*) FROM public.ka_gochara_record_prerequisite").fetchone()[0] >= 1
     survivors = ({t: _count(w.conn, t, OTHER_GEN) for t in ("ka_gochara_contact",)}, _coverage(w.conn, OTHER_GEN))
-    monkeypatch.setenv("DATABASE_URL", w.conn.info.dsn)
+    monkeypatch.setenv("DATABASE_URL", w.dsn)
     td.teardown(dry_run=False)
     for t in CHAIN_TABLES:
         assert _count(w.conn, t) == 0, f"{t} survived the teardown"

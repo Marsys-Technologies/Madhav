@@ -78,10 +78,10 @@ def test_every_active_l0_asset_is_declared_or_listed_undeclared_exactly_once():
     assert len(REG) == 40 and set(DOC["assets"]) == set(REG)
     d = fd.load_declarations()
     assert sorted(d.declared_assets() + list(d.undeclared_assets())) == sorted(REG)
-    assert len(d.declared_assets()) == 34 and len(d.undeclared_assets()) == 6
+    assert len(d.declared_assets()) == 35 and len(d.undeclared_assets()) == 5          # 34 / 6 before bg_transit_rules was declared (SS ruling 2, shared writer group bg_transit_seed)
     # the comparison units: the declared assets that own tables + one unit per shared-table group; undeclared assets are never units
     assert d.expected_assets() == sorted(d.units()) and len(d.expected_assets()) == 32
-    assert {u for u in d.units() if u.startswith("grp_")} == {"grp_brahma_class_priors", "grp_brahma_ontology", "grp_classical_text_chunks"}
+    assert {u for u in d.units() if u.startswith("grp_")} == {"grp_bg_transit_seed", "grp_brahma_class_priors", "grp_brahma_ontology", "grp_classical_text_chunks"}
     assert not set(d.expected_assets()) & set(d.undeclared_assets())
     for a, u in d.undeclared_assets().items():
         assert u["reason_code"] in fd.UNDECLARED_CODES and len(u["reason"]) >= fd.MIN_UNDECLARED_REASON_CHARS, a
@@ -91,9 +91,9 @@ def test_the_known_undeclared_assets_and_their_reasons():
     un = fd.load_declarations().undeclared_assets()
     assert {a: u["reason_code"] for a, u in un.items()} == {
         "bg_compendium_index": "no_plain_natural_key", "bg_ephemeris_engine": "no_table", "bg_panchanga": "no_table",
-        "bg_gochara_citation_resolution": "migration_owned_rows", "bg_sarvatobhadra_grid": "migration_owned_rows", "bg_transit_rules": "migration_owned_rows"}
-    # SS decision 5: the stated reasons carry the probe counts
-    assert "Jupiter 5, Saturn 2" in un["bg_transit_rules"]["reason"] and "14 rows" in un["bg_gochara_citation_resolution"]["reason"]
+        "bg_gochara_citation_resolution": "migration_owned_rows", "bg_sarvatobhadra_grid": "migration_owned_rows"}
+    # SS decision 5: the stated reasons carry the probe counts (bg_transit_rules is declared since SS ruling 2: its probe count lives in its partial_ownership detail)
+    assert "14 rows" in un["bg_gochara_citation_resolution"]["reason"]
     assert "count(*) = 0" in un["bg_sarvatobhadra_grid"]["reason"]
 
 
@@ -108,7 +108,8 @@ def test_the_three_shared_tables_are_declared_once_as_groups_with_all_their_memb
     assert {g: sorted(v["members"]) for g, v in d.groups.items()} == {
         "brahma_ontology": ["bg_dasha_systems", "bg_doshas", "bg_ontology", "bg_yogas"],
         "brahma_class_priors": ["bg_class_lifetime_counts", "bg_class_priors"],
-        "classical_text_chunks": ["bg_text_index", "bg_texts"]}
+        "classical_text_chunks": ["bg_text_index", "bg_texts"],
+        "bg_transit_seed": ["bg_transit_engine", "bg_transit_rules"]}
     assert d.members("grp_brahma_ontology") == ["bg_dasha_systems", "bg_doshas", "bg_ontology", "bg_yogas"]
     for g, v in d.groups.items():
         for m in v["members"]:
@@ -143,14 +144,15 @@ def test_ss_decision_3_ephemeris_node_columns_are_compared_now_that_3015_is_on_m
 
 def test_partly_writer_owned_tables_carry_the_closed_partial_ownership_field():
     d = fd.load_declarations()
-    assert d.partial_ownership_units() == {"bg_formula_constants": ["brahma_formula_constants"], "bg_ghatana": ["brahma_event_ontology"]}
+    assert d.partial_ownership_units() == {"bg_formula_constants": ["brahma_formula_constants"], "bg_ghatana": ["brahma_event_ontology"], "grp_bg_transit_seed": ["bg_transit_rules"]}
     for a, t in (("bg_formula_constants", "brahma_formula_constants"), ("bg_ghatana", "brahma_event_ontology")):
         po = next(x for x in DOC["assets"][a]["tables"] if x["name"] == t)["partial_ownership"]
         assert set(po) == {"reason_code", "detail", "evidence"} and po["reason_code"] == "migration_owned_rows" and po["evidence"] and "whole table" in po["detail"]
     assert d.drill_coverage()["partial_ownership"] == d.partial_ownership_units() and d.drill_coverage()["scope"] == "declared_only"
     assert d.coverage_report()["partial_ownership"] == d.partial_ownership_units()
-    # bg_transit_rules stays undeclared (its migration-owned rows are in the reason), so it carries no such field
-    assert DOC["assets"]["bg_transit_rules"]["status"] == "undeclared" and "double_transit" in DOC["assets"]["bg_transit_rules"]["reason"]
+    # bg_transit_rules is declared since SS ruling 2 (group bg_transit_seed): its migration-owned rows are in the group table's partial_ownership detail
+    grp = next(x for x in DOC["groups"]["bg_transit_seed"]["tables"] if x["name"] == "bg_transit_rules")
+    assert DOC["assets"]["bg_transit_rules"]["status"] == "declared" and "double_transit" in grp["partial_ownership"]["detail"] and "Jupiter 5, Saturn 2" in grp["partial_ownership"]["detail"]
 
 
 def test_ss_decision_5_bg_rules_is_declared_on_the_probe_evidence():
@@ -165,14 +167,14 @@ def test_ss_decision_5_bg_rules_is_declared_on_the_probe_evidence():
 
 def test_the_drill_coverage_block_says_what_the_verdict_covers():
     cov = fd.load_declarations().drill_coverage()
-    assert cov["scope"] == "declared_only" and len(cov["units"]) == 32 and len(cov["declared"]) == 34
+    assert cov["scope"] == "declared_only" and len(cov["units"]) == 32 and len(cov["declared"]) == 35
     assert sorted(cov["undeclared"]) == ["bg_compendium_index", "bg_ephemeris_engine", "bg_gochara_citation_resolution", "bg_panchanga",
-                                         "bg_sarvatobhadra_grid", "bg_transit_rules"] and sorted(cov["partial"]) == ["bg_remedies", "bg_texts"]
+                                         "bg_sarvatobhadra_grid"] and sorted(cov["partial"]) == ["bg_remedies", "bg_texts"]
     assert cov["non_deterministic"] == {"bg_cohort": ["platform_bound"], "bg_muhurta_lattice": ["rolling_horizon"],
                                         "bg_sky_calendar": ["rolling_horizon", "platform_bound"]}
     assert cov["declarations_sha256"] == fd.load_declarations().sha256 and sr.check_coverage(cov, cov["units"]) == cov
     assert cov["seeded"] == ["grp_classical_text_chunks"] and fd.load_declarations().coverage_report()["seeded"] == ["grp_classical_text_chunks"]
-    assert {g: v["seeded"] for g, v in DOC["groups"].items()} == {"brahma_ontology": False, "brahma_class_priors": False, "classical_text_chunks": True}
+    assert {g: v["seeded"] for g, v in DOC["groups"].items()} == {"brahma_ontology": False, "brahma_class_priors": False, "classical_text_chunks": True, "bg_transit_seed": False}
 
 
 def test_the_not_run_list_is_closed_decided_by_n_121_and_limited_to_declared_plain_units():
@@ -244,7 +246,7 @@ def test_table_fingerprints_are_independent_of_the_sql_row_order_and_the_collati
     assert nsc.fingerprint_rows(changed, decl) != nsc.fingerprint_rows(rows, decl)
     # the reader issues no ORDER BY at all: the order is irrelevant by construction, and nothing there can depend on a collation
     sels = fd.reader_selects(d)
-    assert len(sels) == 63 and all(x["sql"].startswith("SELECT ") and "ORDER BY" not in x["sql"].upper() and "COLLATE" not in x["sql"].upper() for x in sels)
+    assert len(sels) == 64 and all(x["sql"].startswith("SELECT ") and "ORDER BY" not in x["sql"].upper() and "COLLATE" not in x["sql"].upper() for x in sels)
     assert "ORDER BY" not in SRC_NSC.split("def build_select")[1].split("\ndef ")[0].upper()
     assert "keyed.sort()" in SRC_NSC                                          # the Python sort of the canonical key strings: byte/codepoint order
 
@@ -736,6 +738,12 @@ REFUSALS = [
     ("partial_without_not_covered", "partial_mismatch", lambda x: x["assets"]["bg_remedies"].update({"coverage": "full"}), None),
     ("full_with_not_covered", "partial_mismatch", lambda x: x["assets"]["bg_sign_medical"].update({"coverage": "partial"}), None),
     ("not_covered_reason_short", "undeclared_reason", lambda x: x["assets"]["bg_remedies"]["not_covered_tables"][0].update({"reason": "queue"}), None),
+    ("exclusion_bad_code", "bad_exclusion", lambda x: x["assets"]["bg_remedies"]["not_covered_tables"][0]["exclusion"].update({"reason_code": "migration_owned_rows"}), None),
+    ("exclusion_detail_short", "bad_exclusion", lambda x: x["assets"]["bg_remedies"]["not_covered_tables"][0]["exclusion"].update({"detail": "workflow"}), None),
+    ("exclusion_no_evidence", "evidence_missing", lambda x: x["assets"]["bg_remedies"]["not_covered_tables"][0]["exclusion"].update({"evidence": []}), None),
+    ("exclusion_unknown_key", "unknown_key", lambda x: x["assets"]["bg_remedies"]["not_covered_tables"][0]["exclusion"].update({"extra": 1}), None),
+    ("exclusion_missing_key", "missing_key", lambda x: x["assets"]["bg_remedies"]["not_covered_tables"][0]["exclusion"].pop("detail"), None),
+    ("exclusion_on_not_written", "unknown_key", lambda x: x["assets"]["bg_reference"]["not_written_tables"][0].update({"exclusion": x["assets"]["bg_remedies"]["not_covered_tables"][0]["exclusion"]}), None),
     ("top_definition", "bad_definition", lambda x: x.update({"fingerprint_definition": "other/1"}), None),
     ("asset_definition", "bad_definition", lambda x: x["assets"]["bg_sign_medical"].update({"fingerprint_definition": "other/1"}), None),
     ("schema_id", "bad_schema_id", lambda x: x.update({"schema": "other/v1"}), None),
@@ -954,7 +962,7 @@ def test_every_declared_table_is_a_valid_e55_declaration_in_volatile_mode():
             assert nsc.build_select(decl) == f'SELECT * FROM "{t}"'
             n += 1
     own = sum(len(x["tables"]) for x in DOC["assets"].values() if x["status"] == "declared")
-    assert n == own + sum(len(g["tables"]) for g in DOC["groups"].values()) == 63
+    assert n == own + sum(len(g["tables"]) for g in DOC["groups"].values()) == 64
 
 
 def test_group_unit_embedding_value_never_enters_the_fingerprint_but_its_sources_do():
@@ -1006,7 +1014,7 @@ def test_composite_fingerprint_single_table_is_passthrough_and_multi_is_order_in
 def test_reader_selects_are_exactly_the_build_select_of_each_unit_table():
     d = fd.load_declarations()
     sel = fd.reader_selects(d)
-    assert len(sel) == 63 and all(re.fullmatch(r'SELECT \* FROM "[a-z0-9_]+"', s["sql"]) for s in sel)
+    assert len(sel) == 64 and all(re.fullmatch(r'SELECT \* FROM "[a-z0-9_]+"', s["sql"]) for s in sel)
     assert [s for s in sel if s["asset"] == "bg_sign_medical"] == [{"asset": "bg_sign_medical", "table": "bg_sign_medical", "sql": 'SELECT * FROM "bg_sign_medical"'}]
     assert not [s for s in sel if s["asset"] in d.undeclared_assets()]
     assert [s["table"] for s in sel if s["asset"] == "grp_brahma_ontology"] == ["brahma_ontology"]
