@@ -20,7 +20,8 @@
   "evidence",
   "spec",
   "citation_state",
-  "ruling"
+  "ruling",
+  "per_witness_values"
  ],
  "vocab_alias_declaration_fields": [
   "na",

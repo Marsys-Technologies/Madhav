@@ -272,7 +272,9 @@ def test_every_registered_cause_is_observed_emitted_under_its_criterion(monkeypa
             observed.add((crit, rec["cause"]))
     for car in (dict(nature="derivation", applies="D3", why="w", evidence="e:1"),                           # S2: a declared carriage check
                 dict(nature="transcription", applies="D1", citation_state="sourced", why="w", evidence="e:1"),
-                dict(nature="ratified_judgment", ruling="N-73", why="w", evidence="e:1")):
+                dict(nature="ratified_judgment", ruling="N-73", why="w", evidence="e:1"),
+                dict(nature="single_derivation", applies="D3", why="w", evidence="e:1", per_witness_values=False),          # N-156: the three declared ceilings
+                dict(nature="unverified_transcription", applies="D1", why="w", evidence="e:1", per_witness_values=False)):
         for crit, rec in ac.carriage_declared_checks("x", car, None, column_types=None, prose_columns=[]).items():
             if rec["v"] == NA:
                 observed.add((crit, rec["cause"]))

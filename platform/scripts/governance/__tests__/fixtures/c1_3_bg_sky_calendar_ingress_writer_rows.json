@@ -1,0 +1,4195 @@
+{
+"generated_from": "origin/main f8fb06402 bg_sky_calendar.scan_ingresses + _to_insert_dict (Moshier backend, window 2010-01-01..2012-01-01)",
+"rows": [
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455318.60953,
+"event_type": "ingress",
+"longitude_deg": 330.0,
+"primary_body": "Jupiter",
+"secondary_body": null,
+"sign": "Pisces",
+"speed_dps": 0.199661
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455501.80827,
+"event_type": "ingress",
+"longitude_deg": 330.0,
+"primary_body": "Jupiter",
+"secondary_body": null,
+"sign": "Aquarius",
+"speed_dps": -0.05882
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455536.65267,
+"event_type": "ingress",
+"longitude_deg": 330.0,
+"primary_body": "Jupiter",
+"secondary_body": null,
+"sign": "Pisces",
+"speed_dps": 0.058987
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455689.86397,
+"event_type": "ingress",
+"longitude_deg": 0.0,
+"primary_body": "Jupiter",
+"secondary_body": null,
+"sign": "Aries",
+"speed_dps": 0.231149
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455684.59055,
+"event_type": "ingress",
+"longitude_deg": 60.0,
+"primary_body": "Ketu",
+"secondary_body": null,
+"sign": "Taurus",
+"speed_dps": -0.108814
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455342.93541,
+"event_type": "ingress",
+"longitude_deg": 120.0,
+"primary_body": "Mars",
+"secondary_body": null,
+"sign": "Leo",
+"speed_dps": 0.492236
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455397.54557,
+"event_type": "ingress",
+"longitude_deg": 150.0,
+"primary_body": "Mars",
+"secondary_body": null,
+"sign": "Virgo",
+"speed_dps": 0.595601
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455445.39914,
+"event_type": "ingress",
+"longitude_deg": 180.0,
+"primary_body": "Mars",
+"secondary_body": null,
+"sign": "Libra",
+"speed_dps": 0.656724
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455489.3692,
+"event_type": "ingress",
+"longitude_deg": 210.0,
+"primary_body": "Mars",
+"secondary_body": null,
+"sign": "Scorpio",
+"speed_dps": 0.707092
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455530.53897,
+"event_type": "ingress",
+"longitude_deg": 240.0,
+"primary_body": "Mars",
+"secondary_body": null,
+"sign": "Sagittarius",
+"speed_dps": 0.748954
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455569.77307,
+"event_type": "ingress",
+"longitude_deg": 270.0,
+"primary_body": "Mars",
+"secondary_body": null,
+"sign": "Capricorn",
+"speed_dps": 0.778034
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455607.97124,
+"event_type": "ingress",
+"longitude_deg": 300.0,
+"primary_body": "Mars",
+"secondary_body": null,
+"sign": "Aquarius",
+"speed_dps": 0.789658
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455646.04777,
+"event_type": "ingress",
+"longitude_deg": 330.0,
+"primary_body": "Mars",
+"secondary_body": null,
+"sign": "Pisces",
+"speed_dps": 0.782972
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455684.88789,
+"event_type": "ingress",
+"longitude_deg": 360.0,
+"primary_body": "Mars",
+"secondary_body": null,
+"sign": "Aries",
+"speed_dps": 0.759564
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455725.3091,
+"event_type": "ingress",
+"longitude_deg": 30.0,
+"primary_body": "Mars",
+"secondary_body": null,
+"sign": "Taurus",
+"speed_dps": 0.723466
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455768.03872,
+"event_type": "ingress",
+"longitude_deg": 60.0,
+"primary_body": "Mars",
+"secondary_body": null,
+"sign": "Gemini",
+"speed_dps": 0.679984
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455813.92758,
+"event_type": "ingress",
+"longitude_deg": 90.0,
+"primary_body": "Mars",
+"secondary_body": null,
+"sign": "Cancer",
+"speed_dps": 0.625613
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455865.19245,
+"event_type": "ingress",
+"longitude_deg": 120.0,
+"primary_body": "Mars",
+"secondary_body": null,
+"sign": "Leo",
+"speed_dps": 0.535139
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455233.48959,
+"event_type": "ingress",
+"longitude_deg": 270.0,
+"primary_body": "Mercury",
+"secondary_body": null,
+"sign": "Capricorn",
+"speed_dps": 1.321395
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455253.51173,
+"event_type": "ingress",
+"longitude_deg": 300.0,
+"primary_body": "Mercury",
+"secondary_body": null,
+"sign": "Aquarius",
+"speed_dps": 1.659828
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455270.13234,
+"event_type": "ingress",
+"longitude_deg": 330.0,
+"primary_body": "Mercury",
+"secondary_body": null,
+"sign": "Pisces",
+"speed_dps": 1.949979
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455285.46396,
+"event_type": "ingress",
+"longitude_deg": 0.0,
+"primary_body": "Mercury",
+"secondary_body": null,
+"sign": "Aries",
+"speed_dps": 1.784139
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455353.98167,
+"event_type": "ingress",
+"longitude_deg": 30.0,
+"primary_body": "Mercury",
+"secondary_body": null,
+"sign": "Taurus",
+"speed_dps": 1.511681
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455370.16697,
+"event_type": "ingress",
+"longitude_deg": 60.0,
+"primary_body": "Mercury",
+"secondary_body": null,
+"sign": "Gemini",
+"speed_dps": 2.137977
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455384.16456,
+"event_type": "ingress",
+"longitude_deg": 90.0,
+"primary_body": "Mercury",
+"secondary_body": null,
+"sign": "Cancer",
+"speed_dps": 2.026888
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455401.19153,
+"event_type": "ingress",
+"longitude_deg": 120.0,
+"primary_body": "Mercury",
+"secondary_body": null,
+"sign": "Leo",
+"speed_dps": 1.490966
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455469.72527,
+"event_type": "ingress",
+"longitude_deg": 150.0,
+"primary_body": "Mercury",
+"secondary_body": null,
+"sign": "Virgo",
+"speed_dps": 1.729659
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455486.8102,
+"event_type": "ingress",
+"longitude_deg": 180.0,
+"primary_body": "Mercury",
+"secondary_body": null,
+"sign": "Libra",
+"speed_dps": 1.692986
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455505.53168,
+"event_type": "ingress",
+"longitude_deg": 210.0,
+"primary_body": "Mercury",
+"secondary_body": null,
+"sign": "Scorpio",
+"speed_dps": 1.526536
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455526.4373,
+"event_type": "ingress",
+"longitude_deg": 240.0,
+"primary_body": "Mercury",
+"secondary_body": null,
+"sign": "Sagittarius",
+"speed_dps": 1.275937
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455553.60711,
+"event_type": "ingress",
+"longitude_deg": 240.0,
+"primary_body": "Mercury",
+"secondary_body": null,
+"sign": "Scorpio",
+"speed_dps": -1.190001
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455569.29343,
+"event_type": "ingress",
+"longitude_deg": 240.0,
+"primary_body": "Mercury",
+"secondary_body": null,
+"sign": "Sagittarius",
+"speed_dps": 0.903264
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455592.51672,
+"event_type": "ingress",
+"longitude_deg": 270.0,
+"primary_body": "Mercury",
+"secondary_body": null,
+"sign": "Capricorn",
+"speed_dps": 1.504848
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455611.00287,
+"event_type": "ingress",
+"longitude_deg": 300.0,
+"primary_body": "Mercury",
+"secondary_body": null,
+"sign": "Aquarius",
+"speed_dps": 1.750715
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455627.11668,
+"event_type": "ingress",
+"longitude_deg": 330.0,
+"primary_body": "Mercury",
+"secondary_body": null,
+"sign": "Pisces",
+"speed_dps": 1.928299
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455649.03343,
+"event_type": "ingress",
+"longitude_deg": 0.0,
+"primary_body": "Mercury",
+"secondary_body": null,
+"sign": "Aries",
+"speed_dps": 0.291368
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455653.76062,
+"event_type": "ingress",
+"longitude_deg": 360.0,
+"primary_body": "Mercury",
+"secondary_body": null,
+"sign": "Pisces",
+"speed_dps": -0.27635
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455692.63655,
+"event_type": "ingress",
+"longitude_deg": 360.0,
+"primary_body": "Mercury",
+"secondary_body": null,
+"sign": "Aries",
+"speed_dps": 1.132216
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455712.27585,
+"event_type": "ingress",
+"longitude_deg": 30.0,
+"primary_body": "Mercury",
+"secondary_body": null,
+"sign": "Taurus",
+"speed_dps": 1.900069
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455726.56015,
+"event_type": "ingress",
+"longitude_deg": 60.0,
+"primary_body": "Mercury",
+"secondary_body": null,
+"sign": "Gemini",
+"speed_dps": 2.197212
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455741.30033,
+"event_type": "ingress",
+"longitude_deg": 90.0,
+"primary_body": "Mercury",
+"secondary_body": null,
+"sign": "Cancer",
+"speed_dps": 1.802417
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455762.75947,
+"event_type": "ingress",
+"longitude_deg": 120.0,
+"primary_body": "Mercury",
+"secondary_body": null,
+"sign": "Leo",
+"speed_dps": 0.946043
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455790.29359,
+"event_type": "ingress",
+"longitude_deg": 120.0,
+"primary_body": "Mercury",
+"secondary_body": null,
+"sign": "Cancer",
+"speed_dps": -0.839153
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455809.37258,
+"event_type": "ingress",
+"longitude_deg": 120.0,
+"primary_body": "Mercury",
+"secondary_body": null,
+"sign": "Leo",
+"speed_dps": 1.153117
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455827.14287,
+"event_type": "ingress",
+"longitude_deg": 150.0,
+"primary_body": "Mercury",
+"secondary_body": null,
+"sign": "Virgo",
+"speed_dps": 1.859995
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455844.25144,
+"event_type": "ingress",
+"longitude_deg": 180.0,
+"primary_body": "Mercury",
+"secondary_body": null,
+"sign": "Libra",
+"speed_dps": 1.637042
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455863.90915,
+"event_type": "ingress",
+"longitude_deg": 210.0,
+"primary_body": "Mercury",
+"secondary_body": null,
+"sign": "Scorpio",
+"speed_dps": 1.419148
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455198.21402,
+"event_type": "ingress",
+"longitude_deg": 90.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Cancer",
+"speed_dps": 15.08321
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455200.21383,
+"event_type": "ingress",
+"longitude_deg": 120.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Leo",
+"speed_dps": 14.830951
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455202.28076,
+"event_type": "ingress",
+"longitude_deg": 150.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Virgo",
+"speed_dps": 14.154102
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455204.46422,
+"event_type": "ingress",
+"longitude_deg": 180.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Libra",
+"speed_dps": 13.333749
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455206.77942,
+"event_type": "ingress",
+"longitude_deg": 210.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Scorpio",
+"speed_dps": 12.620509
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455209.20794,
+"event_type": "ingress",
+"longitude_deg": 240.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Sagittarius",
+"speed_dps": 12.127803
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455211.71341,
+"event_type": "ingress",
+"longitude_deg": 270.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Capricorn",
+"speed_dps": 11.855662
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455214.25396,
+"event_type": "ingress",
+"longitude_deg": 300.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Aquarius",
+"speed_dps": 11.800582
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455216.77815,
+"event_type": "ingress",
+"longitude_deg": 330.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Pisces",
+"speed_dps": 12.024431
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455219.22104,
+"event_type": "ingress",
+"longitude_deg": 360.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Aries",
+"speed_dps": 12.602097
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455221.52482,
+"event_type": "ingress",
+"longitude_deg": 30.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Taurus",
+"speed_dps": 13.490005
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455223.67176,
+"event_type": "ingress",
+"longitude_deg": 60.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Gemini",
+"speed_dps": 14.451762
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455225.695,
+"event_type": "ingress",
+"longitude_deg": 90.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Cancer",
+"speed_dps": 15.132822
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455227.66336,
+"event_type": "ingress",
+"longitude_deg": 120.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Leo",
+"speed_dps": 15.239636
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455229.66063,
+"event_type": "ingress",
+"longitude_deg": 150.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Virgo",
+"speed_dps": 14.70885
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455231.76606,
+"event_type": "ingress",
+"longitude_deg": 180.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Libra",
+"speed_dps": 13.760492
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455234.03008,
+"event_type": "ingress",
+"longitude_deg": 210.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Scorpio",
+"speed_dps": 12.780441
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455236.44915,
+"event_type": "ingress",
+"longitude_deg": 240.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Sagittarius",
+"speed_dps": 12.094015
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455238.96643,
+"event_type": "ingress",
+"longitude_deg": 270.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Capricorn",
+"speed_dps": 11.805091
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455241.50956,
+"event_type": "ingress",
+"longitude_deg": 300.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Aquarius",
+"speed_dps": 11.828928
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455244.02487,
+"event_type": "ingress",
+"longitude_deg": 330.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Pisces",
+"speed_dps": 12.054445
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455246.47578,
+"event_type": "ingress",
+"longitude_deg": 0.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Aries",
+"speed_dps": 12.462523
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455248.8274,
+"event_type": "ingress",
+"longitude_deg": 30.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Taurus",
+"speed_dps": 13.096662
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455251.05027,
+"event_type": "ingress",
+"longitude_deg": 60.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Gemini",
+"speed_dps": 13.924473
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455253.14228,
+"event_type": "ingress",
+"longitude_deg": 90.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Cancer",
+"speed_dps": 14.73401
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455255.14186,
+"event_type": "ingress",
+"longitude_deg": 120.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Leo",
+"speed_dps": 15.187149
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455257.12089,
+"event_type": "ingress",
+"longitude_deg": 150.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Virgo",
+"speed_dps": 15.017564
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455259.16673,
+"event_type": "ingress",
+"longitude_deg": 180.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Libra",
+"speed_dps": 14.234216
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455261.35726,
+"event_type": "ingress",
+"longitude_deg": 210.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Scorpio",
+"speed_dps": 13.160541
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455263.72524,
+"event_type": "ingress",
+"longitude_deg": 240.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Sagittarius",
+"speed_dps": 12.249264
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455266.22909,
+"event_type": "ingress",
+"longitude_deg": 270.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Capricorn",
+"speed_dps": 11.804018
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455268.77453,
+"event_type": "ingress",
+"longitude_deg": 300.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Aquarius",
+"speed_dps": 11.833608
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455271.27995,
+"event_type": "ingress",
+"longitude_deg": 330.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Pisces",
+"speed_dps": 12.143755
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455273.71081,
+"event_type": "ingress",
+"longitude_deg": 0.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Aries",
+"speed_dps": 12.548467
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455276.06032,
+"event_type": "ingress",
+"longitude_deg": 30.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Taurus",
+"speed_dps": 13.003668
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455278.32092,
+"event_type": "ingress",
+"longitude_deg": 60.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Gemini",
+"speed_dps": 13.562827
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455280.48194,
+"event_type": "ingress",
+"longitude_deg": 90.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Cancer",
+"speed_dps": 14.210945
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455282.55082,
+"event_type": "ingress",
+"longitude_deg": 120.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Leo",
+"speed_dps": 14.750646
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455284.56956,
+"event_type": "ingress",
+"longitude_deg": 150.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Virgo",
+"speed_dps": 14.880484
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455286.61046,
+"event_type": "ingress",
+"longitude_deg": 180.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Libra",
+"speed_dps": 14.423137
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455288.75578,
+"event_type": "ingress",
+"longitude_deg": 210.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Scorpio",
+"speed_dps": 13.50602
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455291.06441,
+"event_type": "ingress",
+"longitude_deg": 240.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Sagittarius",
+"speed_dps": 12.524224
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455293.53014,
+"event_type": "ingress",
+"longitude_deg": 270.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Capricorn",
+"speed_dps": 11.90022
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455296.0687,
+"event_type": "ingress",
+"longitude_deg": 300.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Aquarius",
+"speed_dps": 11.825573
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455298.57312,
+"event_type": "ingress",
+"longitude_deg": 330.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Pisces",
+"speed_dps": 12.184699
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455300.98465,
+"event_type": "ingress",
+"longitude_deg": 360.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Aries",
+"speed_dps": 12.70402
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455303.30187,
+"event_type": "ingress",
+"longitude_deg": 30.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Taurus",
+"speed_dps": 13.176241
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455305.54472,
+"event_type": "ingress",
+"longitude_deg": 60.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Gemini",
+"speed_dps": 13.569274
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455307.72544,
+"event_type": "ingress",
+"longitude_deg": 90.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Cancer",
+"speed_dps": 13.947714
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455309.84848,
+"event_type": "ingress",
+"longitude_deg": 120.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Leo",
+"speed_dps": 14.301638
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455311.93036,
+"event_type": "ingress",
+"longitude_deg": 150.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Virgo",
+"speed_dps": 14.468897
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455314.01429,
+"event_type": "ingress",
+"longitude_deg": 180.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Libra",
+"speed_dps": 14.24792
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455316.16464,
+"event_type": "ingress",
+"longitude_deg": 210.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Scorpio",
+"speed_dps": 13.599063
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455318.44293,
+"event_type": "ingress",
+"longitude_deg": 240.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Sagittarius",
+"speed_dps": 12.740836
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455320.86973,
+"event_type": "ingress",
+"longitude_deg": 270.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Capricorn",
+"speed_dps": 12.048759
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455323.39224,
+"event_type": "ingress",
+"longitude_deg": 300.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Aquarius",
+"speed_dps": 11.830517
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455325.90358,
+"event_type": "ingress",
+"longitude_deg": 330.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Pisces",
+"speed_dps": 12.138975
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455328.31615,
+"event_type": "ingress",
+"longitude_deg": 0.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Aries",
+"speed_dps": 12.762704
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455330.60842,
+"event_type": "ingress",
+"longitude_deg": 30.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Taurus",
+"speed_dps": 13.397365
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455332.80802,
+"event_type": "ingress",
+"longitude_deg": 60.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Gemini",
+"speed_dps": 13.845053
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455334.95416,
+"event_type": "ingress",
+"longitude_deg": 90.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Cancer",
+"speed_dps": 14.082642
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455337.07608,
+"event_type": "ingress",
+"longitude_deg": 120.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Leo",
+"speed_dps": 14.173891
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455339.1935,
+"event_type": "ingress",
+"longitude_deg": 150.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Virgo",
+"speed_dps": 14.137641
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455341.32978,
+"event_type": "ingress",
+"longitude_deg": 180.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Libra",
+"speed_dps": 13.910356
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455343.52091,
+"event_type": "ingress",
+"longitude_deg": 210.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Scorpio",
+"speed_dps": 13.434801
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455345.80902,
+"event_type": "ingress",
+"longitude_deg": 240.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Sagittarius",
+"speed_dps": 12.77734
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455348.21877,
+"event_type": "ingress",
+"longitude_deg": 270.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Capricorn",
+"speed_dps": 12.156651
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455350.72575,
+"event_type": "ingress",
+"longitude_deg": 300.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Aquarius",
+"speed_dps": 11.850723
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455353.24676,
+"event_type": "ingress",
+"longitude_deg": 330.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Pisces",
+"speed_dps": 12.03494
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455355.68273,
+"event_type": "ingress",
+"longitude_deg": 0.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Aries",
+"speed_dps": 12.657078
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455357.98129,
+"event_type": "ingress",
+"longitude_deg": 30.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Taurus",
+"speed_dps": 13.456834
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455360.15374,
+"event_type": "ingress",
+"longitude_deg": 60.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Gemini",
+"speed_dps": 14.123482
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455362.24845,
+"event_type": "ingress",
+"longitude_deg": 90.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Cancer",
+"speed_dps": 14.459206
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455364.32098,
+"event_type": "ingress",
+"longitude_deg": 120.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Leo",
+"speed_dps": 14.436613
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455366.41765,
+"event_type": "ingress",
+"longitude_deg": 150.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Virgo",
+"speed_dps": 14.146962
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455368.57066,
+"event_type": "ingress",
+"longitude_deg": 180.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Libra",
+"speed_dps": 13.706158
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455370.80088,
+"event_type": "ingress",
+"longitude_deg": 210.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Scorpio",
+"speed_dps": 13.192468
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455373.12262,
+"event_type": "ingress",
+"longitude_deg": 240.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Sagittarius",
+"speed_dps": 12.654483
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455375.54196,
+"event_type": "ingress",
+"longitude_deg": 270.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Capricorn",
+"speed_dps": 12.167105
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455378.04303,
+"event_type": "ingress",
+"longitude_deg": 300.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Aquarius",
+"speed_dps": 11.870143
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455380.57141,
+"event_type": "ingress",
+"longitude_deg": 330.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Pisces",
+"speed_dps": 11.932042
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455383.04119,
+"event_type": "ingress",
+"longitude_deg": 0.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Aries",
+"speed_dps": 12.436644
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455385.37871,
+"event_type": "ingress",
+"longitude_deg": 30.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Taurus",
+"speed_dps": 13.27696
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455387.56416,
+"event_type": "ingress",
+"longitude_deg": 60.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Gemini",
+"speed_dps": 14.166699
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455389.63256,
+"event_type": "ingress",
+"longitude_deg": 90.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Cancer",
+"speed_dps": 14.775241
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455391.64913,
+"event_type": "ingress",
+"longitude_deg": 120.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Leo",
+"speed_dps": 14.889011
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455393.68541,
+"event_type": "ingress",
+"longitude_deg": 150.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Virgo",
+"speed_dps": 14.507162
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455395.80161,
+"event_type": "ingress",
+"longitude_deg": 180.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Libra",
+"speed_dps": 13.822749
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455398.03213,
+"event_type": "ingress",
+"longitude_deg": 210.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Scorpio",
+"speed_dps": 13.09523
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455400.37922,
+"event_type": "ingress",
+"longitude_deg": 240.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Sagittarius",
+"speed_dps": 12.50306
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455402.82157,
+"event_type": "ingress",
+"longitude_deg": 270.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Capricorn",
+"speed_dps": 12.096283
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455405.32817,
+"event_type": "ingress",
+"longitude_deg": 300.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Aquarius",
+"speed_dps": 11.873519
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455407.85884,
+"event_type": "ingress",
+"longitude_deg": 330.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Pisces",
+"speed_dps": 11.882173
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455410.35455,
+"event_type": "ingress",
+"longitude_deg": 360.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Aries",
+"speed_dps": 12.224014
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455412.74472,
+"event_type": "ingress",
+"longitude_deg": 30.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Taurus",
+"speed_dps": 12.943935
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455414.98191,
+"event_type": "ingress",
+"longitude_deg": 60.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Gemini",
+"speed_dps": 13.904463
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455417.07086,
+"event_type": "ingress",
+"longitude_deg": 90.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Cancer",
+"speed_dps": 14.780825
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455419.06516,
+"event_type": "ingress",
+"longitude_deg": 120.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Leo",
+"speed_dps": 15.207633
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455421.04508,
+"event_type": "ingress",
+"longitude_deg": 150.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Virgo",
+"speed_dps": 14.988715
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455423.09451,
+"event_type": "ingress",
+"longitude_deg": 180.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Libra",
+"speed_dps": 14.228227
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455425.27736,
+"event_type": "ingress",
+"longitude_deg": 210.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Scorpio",
+"speed_dps": 13.270838
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455427.6128,
+"event_type": "ingress",
+"longitude_deg": 240.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Sagittarius",
+"speed_dps": 12.477553
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455430.06818,
+"event_type": "ingress",
+"longitude_deg": 270.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Capricorn",
+"speed_dps": 12.018835
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455432.58551,
+"event_type": "ingress",
+"longitude_deg": 300.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Aquarius",
+"speed_dps": 11.856754
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455435.11462,
+"event_type": "ingress",
+"longitude_deg": 330.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Pisces",
+"speed_dps": 11.896321
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455437.61573,
+"event_type": "ingress",
+"longitude_deg": 360.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Aries",
+"speed_dps": 12.132381
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455440.04247,
+"event_type": "ingress",
+"longitude_deg": 30.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Taurus",
+"speed_dps": 12.649538
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455442.34374,
+"event_type": "ingress",
+"longitude_deg": 60.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Gemini",
+"speed_dps": 13.476032
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455444.49397,
+"event_type": "ingress",
+"longitude_deg": 90.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Cancer",
+"speed_dps": 14.433665
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455446.51739,
+"event_type": "ingress",
+"longitude_deg": 120.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Leo",
+"speed_dps": 15.150235
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455448.48239,
+"event_type": "ingress",
+"longitude_deg": 150.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Virgo",
+"speed_dps": 15.265059
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455450.47919,
+"event_type": "ingress",
+"longitude_deg": 180.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Libra",
+"speed_dps": 14.682528
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455452.59409,
+"event_type": "ingress",
+"longitude_deg": 210.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Scorpio",
+"speed_dps": 13.663462
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455454.87787,
+"event_type": "ingress",
+"longitude_deg": 240.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Sagittarius",
+"speed_dps": 12.661023
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455457.31625,
+"event_type": "ingress",
+"longitude_deg": 270.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Capricorn",
+"speed_dps": 12.027494
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455459.83765,
+"event_type": "ingress",
+"longitude_deg": 300.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Aquarius",
+"speed_dps": 11.834441
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455462.36525,
+"event_type": "ingress",
+"longitude_deg": 330.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Pisces",
+"speed_dps": 11.937311
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455464.8546,
+"event_type": "ingress",
+"longitude_deg": 0.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Aries",
+"speed_dps": 12.184084
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455467.28231,
+"event_type": "ingress",
+"longitude_deg": 30.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Taurus",
+"speed_dps": 12.560107
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455469.62036,
+"event_type": "ingress",
+"longitude_deg": 60.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Gemini",
+"speed_dps": 13.147451
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455471.83762,
+"event_type": "ingress",
+"longitude_deg": 90.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Cancer",
+"speed_dps": 13.944467
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455473.9284,
+"event_type": "ingress",
+"longitude_deg": 120.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Leo",
+"speed_dps": 14.72855
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455475.93179,
+"event_type": "ingress",
+"longitude_deg": 150.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Virgo",
+"speed_dps": 15.12903
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455477.92357,
+"event_type": "ingress",
+"longitude_deg": 180.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Libra",
+"speed_dps": 14.880899
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455479.99319,
+"event_type": "ingress",
+"longitude_deg": 210.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Scorpio",
+"speed_dps": 14.044018
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455482.21394,
+"event_type": "ingress",
+"longitude_deg": 240.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Sagittarius",
+"speed_dps": 12.991608
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455484.60566,
+"event_type": "ingress",
+"longitude_deg": 270.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Capricorn",
+"speed_dps": 12.173051
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455487.11329,
+"event_type": "ingress",
+"longitude_deg": 300.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Aquarius",
+"speed_dps": 11.841332
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455489.64113,
+"event_type": "ingress",
+"longitude_deg": 330.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Pisces",
+"speed_dps": 11.952235
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455492.1182,
+"event_type": "ingress",
+"longitude_deg": 0.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Aries",
+"speed_dps": 12.291077
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455494.52083,
+"event_type": "ingress",
+"longitude_deg": 30.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Taurus",
+"speed_dps": 12.686955
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455496.84694,
+"event_type": "ingress",
+"longitude_deg": 60.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Gemini",
+"speed_dps": 13.120849
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455499.08999,
+"event_type": "ingress",
+"longitude_deg": 90.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Cancer",
+"speed_dps": 13.649925
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455501.24161,
+"event_type": "ingress",
+"longitude_deg": 120.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Leo",
+"speed_dps": 14.236981
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455503.31383,
+"event_type": "ingress",
+"longitude_deg": 150.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Virgo",
+"speed_dps": 14.67001
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455505.35209,
+"event_type": "ingress",
+"longitude_deg": 180.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Libra",
+"speed_dps": 14.679179
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455507.42714,
+"event_type": "ingress",
+"longitude_deg": 210.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Scorpio",
+"speed_dps": 14.156027
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455509.61275,
+"event_type": "ingress",
+"longitude_deg": 240.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Sagittarius",
+"speed_dps": 13.27384
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455511.95342,
+"event_type": "ingress",
+"longitude_deg": 270.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Capricorn",
+"speed_dps": 12.405934
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455514.42979,
+"event_type": "ingress",
+"longitude_deg": 300.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Aquarius",
+"speed_dps": 11.908523
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455516.95631,
+"event_type": "ingress",
+"longitude_deg": 330.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Pisces",
+"speed_dps": 11.921399
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455519.43589,
+"event_type": "ingress",
+"longitude_deg": 0.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Aries",
+"speed_dps": 12.323472
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455521.81845,
+"event_type": "ingress",
+"longitude_deg": 30.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Taurus",
+"speed_dps": 12.867153
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455524.10481,
+"event_type": "ingress",
+"longitude_deg": 60.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Gemini",
+"speed_dps": 13.36173
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455526.31654,
+"event_type": "ingress",
+"longitude_deg": 90.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Cancer",
+"speed_dps": 13.751815
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455528.47326,
+"event_type": "ingress",
+"longitude_deg": 120.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Leo",
+"speed_dps": 14.055845
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455530.59092,
+"event_type": "ingress",
+"longitude_deg": 150.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Virgo",
+"speed_dps": 14.253784
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455532.69288,
+"event_type": "ingress",
+"longitude_deg": 180.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Libra",
+"speed_dps": 14.246451
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455534.81817,
+"event_type": "ingress",
+"longitude_deg": 210.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Scorpio",
+"speed_dps": 13.930655
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455537.01733,
+"event_type": "ingress",
+"longitude_deg": 240.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Sagittarius",
+"speed_dps": 13.317393
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455539.33457,
+"event_type": "ingress",
+"longitude_deg": 270.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Capricorn",
+"speed_dps": 12.584909
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455541.77874,
+"event_type": "ingress",
+"longitude_deg": 300.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Aquarius",
+"speed_dps": 12.020316
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455544.29838,
+"event_type": "ingress",
+"longitude_deg": 330.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Pisces",
+"speed_dps": 11.875973
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455546.79632,
+"event_type": "ingress",
+"longitude_deg": 0.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Aries",
+"speed_dps": 12.219695
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455549.18933,
+"event_type": "ingress",
+"longitude_deg": 30.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Taurus",
+"speed_dps": 12.891641
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455551.45258,
+"event_type": "ingress",
+"longitude_deg": 60.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Gemini",
+"speed_dps": 13.609248
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455553.61244,
+"event_type": "ingress",
+"longitude_deg": 90.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Cancer",
+"speed_dps": 14.125776
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455555.71711,
+"event_type": "ingress",
+"longitude_deg": 120.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Leo",
+"speed_dps": 14.329351
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455557.81382,
+"event_type": "ingress",
+"longitude_deg": 150.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Virgo",
+"speed_dps": 14.246523
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455559.93831,
+"event_type": "ingress",
+"longitude_deg": 180.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Libra",
+"speed_dps": 13.97281
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455562.11437,
+"event_type": "ingress",
+"longitude_deg": 210.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Scorpio",
+"speed_dps": 13.58656
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455564.36045,
+"event_type": "ingress",
+"longitude_deg": 240.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Sagittarius",
+"speed_dps": 13.11629
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455566.69457,
+"event_type": "ingress",
+"longitude_deg": 270.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Capricorn",
+"speed_dps": 12.588519
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455569.12679,
+"event_type": "ingress",
+"longitude_deg": 300.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Aquarius",
+"speed_dps": 12.104914
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455571.63669,
+"event_type": "ingress",
+"longitude_deg": 330.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Pisces",
+"speed_dps": 11.859287
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455574.15558,
+"event_type": "ingress",
+"longitude_deg": 360.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Aries",
+"speed_dps": 12.042434
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455576.58896,
+"event_type": "ingress",
+"longitude_deg": 30.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Taurus",
+"speed_dps": 12.687303
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455578.87434,
+"event_type": "ingress",
+"longitude_deg": 60.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Gemini",
+"speed_dps": 13.593276
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455581.01418,
+"event_type": "ingress",
+"longitude_deg": 90.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Cancer",
+"speed_dps": 14.408279
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455583.06168,
+"event_type": "ingress",
+"longitude_deg": 120.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Leo",
+"speed_dps": 14.810781
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455585.09043,
+"event_type": "ingress",
+"longitude_deg": 150.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Virgo",
+"speed_dps": 14.679092
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455587.16905,
+"event_type": "ingress",
+"longitude_deg": 180.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Libra",
+"speed_dps": 14.143628
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455589.34194,
+"event_type": "ingress",
+"longitude_deg": 210.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Scorpio",
+"speed_dps": 13.475068
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455591.6201,
+"event_type": "ingress",
+"longitude_deg": 240.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Sagittarius",
+"speed_dps": 12.889691
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455593.99076,
+"event_type": "ingress",
+"longitude_deg": 270.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Capricorn",
+"speed_dps": 12.44261
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455596.43747,
+"event_type": "ingress",
+"longitude_deg": 300.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Aquarius",
+"speed_dps": 12.096427
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455598.94387,
+"event_type": "ingress",
+"longitude_deg": 330.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Pisces",
+"speed_dps": 11.872073
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455601.47283,
+"event_type": "ingress",
+"longitude_deg": 360.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Aries",
+"speed_dps": 11.913331
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455603.95061,
+"event_type": "ingress",
+"longitude_deg": 30.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Taurus",
+"speed_dps": 12.383776
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455606.29489,
+"event_type": "ingress",
+"longitude_deg": 60.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Gemini",
+"speed_dps": 13.276193
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455608.46965,
+"event_type": "ingress",
+"longitude_deg": 90.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Cancer",
+"speed_dps": 14.316074
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455610.50616,
+"event_type": "ingress",
+"longitude_deg": 120.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Leo",
+"speed_dps": 15.069355
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455612.481,
+"event_type": "ingress",
+"longitude_deg": 150.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Virgo",
+"speed_dps": 15.194462
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455614.48463,
+"event_type": "ingress",
+"longitude_deg": 180.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Libra",
+"speed_dps": 14.661708
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455616.59411,
+"event_type": "ingress",
+"longitude_deg": 210.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Scorpio",
+"speed_dps": 13.765116
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455618.84748,
+"event_type": "ingress",
+"longitude_deg": 240.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Sagittarius",
+"speed_dps": 12.904921
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455621.23122,
+"event_type": "ingress",
+"longitude_deg": 270.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Capricorn",
+"speed_dps": 12.322594
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455623.70034,
+"event_type": "ingress",
+"longitude_deg": 300.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Aquarius",
+"speed_dps": 12.015531
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455626.21392,
+"event_type": "ingress",
+"longitude_deg": 330.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Pisces",
+"speed_dps": 11.876853
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455628.74191,
+"event_type": "ingress",
+"longitude_deg": 0.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Aries",
+"speed_dps": 11.890009
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455631.2409,
+"event_type": "ingress",
+"longitude_deg": 30.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Taurus",
+"speed_dps": 12.181301
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455633.64256,
+"event_type": "ingress",
+"longitude_deg": 60.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Gemini",
+"speed_dps": 12.87741
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455635.88733,
+"event_type": "ingress",
+"longitude_deg": 90.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Cancer",
+"speed_dps": 13.895325
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455637.97017,
+"event_type": "ingress",
+"longitude_deg": 120.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Leo",
+"speed_dps": 14.87745
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455639.94657,
+"event_type": "ingress",
+"longitude_deg": 150.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Virgo",
+"speed_dps": 15.370792
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455641.90607,
+"event_type": "ingress",
+"longitude_deg": 180.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Libra",
+"speed_dps": 15.126094
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455643.94253,
+"event_type": "ingress",
+"longitude_deg": 210.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Scorpio",
+"speed_dps": 14.273653
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455646.12588,
+"event_type": "ingress",
+"longitude_deg": 240.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Sagittarius",
+"speed_dps": 13.22748
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455648.4734,
+"event_type": "ingress",
+"longitude_deg": 270.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Capricorn",
+"speed_dps": 12.400649
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455650.94239,
+"event_type": "ingress",
+"longitude_deg": 300.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Aquarius",
+"speed_dps": 11.96849
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455653.4649,
+"event_type": "ingress",
+"longitude_deg": 330.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Pisces",
+"speed_dps": 11.858118
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455655.98953,
+"event_type": "ingress",
+"longitude_deg": 360.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Aries",
+"speed_dps": 11.931554
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455658.48303,
+"event_type": "ingress",
+"longitude_deg": 30.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Taurus",
+"speed_dps": 12.164514
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455660.90598,
+"event_type": "ingress",
+"longitude_deg": 60.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Gemini",
+"speed_dps": 12.653758
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455663.20913,
+"event_type": "ingress",
+"longitude_deg": 90.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Cancer",
+"speed_dps": 13.451155
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455665.36484,
+"event_type": "ingress",
+"longitude_deg": 120.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Leo",
+"speed_dps": 14.388296
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455667.39556,
+"event_type": "ingress",
+"longitude_deg": 150.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Virgo",
+"speed_dps": 15.089516
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455669.3689,
+"event_type": "ingress",
+"longitude_deg": 180.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Libra",
+"speed_dps": 15.199671
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455671.37339,
+"event_type": "ingress",
+"longitude_deg": 210.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Scorpio",
+"speed_dps": 14.637049
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455673.49224,
+"event_type": "ingress",
+"longitude_deg": 240.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Sagittarius",
+"speed_dps": 13.656306
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455675.7745,
+"event_type": "ingress",
+"longitude_deg": 270.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Capricorn",
+"speed_dps": 12.680818
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455678.20861,
+"event_type": "ingress",
+"longitude_deg": 300.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Aquarius",
+"speed_dps": 12.047112
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455680.72675,
+"event_type": "ingress",
+"longitude_deg": 330.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Pisces",
+"speed_dps": 11.847527
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455683.25022,
+"event_type": "ingress",
+"longitude_deg": 360.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Aries",
+"speed_dps": 11.968903
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455685.72846,
+"event_type": "ingress",
+"longitude_deg": 30.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Taurus",
+"speed_dps": 12.264376
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455688.13568,
+"event_type": "ingress",
+"longitude_deg": 60.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Gemini",
+"speed_dps": 12.685824
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455690.45087,
+"event_type": "ingress",
+"longitude_deg": 90.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Cancer",
+"speed_dps": 13.261591
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455692.6563,
+"event_type": "ingress",
+"longitude_deg": 120.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Leo",
+"speed_dps": 13.959574
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455694.75569,
+"event_type": "ingress",
+"longitude_deg": 150.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Virgo",
+"speed_dps": 14.59062
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455696.78655,
+"event_type": "ingress",
+"longitude_deg": 180.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Libra",
+"speed_dps": 14.875563
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455698.81371,
+"event_type": "ingress",
+"longitude_deg": 210.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Scorpio",
+"speed_dps": 14.631516
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455700.91167,
+"event_type": "ingress",
+"longitude_deg": 240.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Sagittarius",
+"speed_dps": 13.912812
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455703.14202,
+"event_type": "ingress",
+"longitude_deg": 270.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Capricorn",
+"speed_dps": 12.996591
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455705.52555,
+"event_type": "ingress",
+"longitude_deg": 300.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Aquarius",
+"speed_dps": 12.236373
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455708.02158,
+"event_type": "ingress",
+"longitude_deg": 330.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Pisces",
+"speed_dps": 11.880994
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455710.54448,
+"event_type": "ingress",
+"longitude_deg": 0.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Aries",
+"speed_dps": 11.96673
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455713.01522,
+"event_type": "ingress",
+"longitude_deg": 30.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Taurus",
+"speed_dps": 12.353896
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455715.39568,
+"event_type": "ingress",
+"longitude_deg": 60.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Gemini",
+"speed_dps": 12.863049
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455717.68198,
+"event_type": "ingress",
+"longitude_deg": 90.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Cancer",
+"speed_dps": 13.379696
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455719.8845,
+"event_type": "ingress",
+"longitude_deg": 120.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Leo",
+"speed_dps": 13.854532
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455722.01885,
+"event_type": "ingress",
+"longitude_deg": 150.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Virgo",
+"speed_dps": 14.236896
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455724.10886,
+"event_type": "ingress",
+"longitude_deg": 180.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Libra",
+"speed_dps": 14.42985
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455726.19159,
+"event_type": "ingress",
+"longitude_deg": 210.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Scorpio",
+"speed_dps": 14.32147
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455728.31612,
+"event_type": "ingress",
+"longitude_deg": 240.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Sagittarius",
+"speed_dps": 13.868066
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455730.53426,
+"event_type": "ingress",
+"longitude_deg": 270.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Capricorn",
+"speed_dps": 13.161377
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455732.8813,
+"event_type": "ingress",
+"longitude_deg": 300.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Aquarius",
+"speed_dps": 12.429455
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455735.34878,
+"event_type": "ingress",
+"longitude_deg": 330.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Pisces",
+"speed_dps": 11.953932
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455737.86974,
+"event_type": "ingress",
+"longitude_deg": 0.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Aries",
+"speed_dps": 11.92758
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455740.34849,
+"event_type": "ingress",
+"longitude_deg": 30.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Taurus",
+"speed_dps": 12.342078
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455742.71824,
+"event_type": "ingress",
+"longitude_deg": 60.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Gemini",
+"speed_dps": 13.001847
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455744.96833,
+"event_type": "ingress",
+"longitude_deg": 90.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Cancer",
+"speed_dps": 13.647045
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455747.1287,
+"event_type": "ingress",
+"longitude_deg": 120.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Leo",
+"speed_dps": 14.084407
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455749.24293,
+"event_type": "ingress",
+"longitude_deg": 150.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Virgo",
+"speed_dps": 14.251537
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455751.35003,
+"event_type": "ingress",
+"longitude_deg": 180.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Libra",
+"speed_dps": 14.192168
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455753.47869,
+"event_type": "ingress",
+"longitude_deg": 210.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Scorpio",
+"speed_dps": 13.971672
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455755.65218,
+"event_type": "ingress",
+"longitude_deg": 240.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Sagittarius",
+"speed_dps": 13.611357
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455757.89616,
+"event_type": "ingress",
+"longitude_deg": 270.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Capricorn",
+"speed_dps": 13.107849
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455760.23756,
+"event_type": "ingress",
+"longitude_deg": 300.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Aquarius",
+"speed_dps": 12.519676
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455762.68588,
+"event_type": "ingress",
+"longitude_deg": 330.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Pisces",
+"speed_dps": 12.026792
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455765.20411,
+"event_type": "ingress",
+"longitude_deg": 0.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Aries",
+"speed_dps": 11.87493
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455767.70359,
+"event_type": "ingress",
+"longitude_deg": 30.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Taurus",
+"speed_dps": 12.214983
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455770.09172,
+"event_type": "ingress",
+"longitude_deg": 60.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Gemini",
+"speed_dps": 12.965094
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455772.33107,
+"event_type": "ingress",
+"longitude_deg": 90.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Cancer",
+"speed_dps": 13.82499
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455774.44932,
+"event_type": "ingress",
+"longitude_deg": 120.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Leo",
+"speed_dps": 14.439394
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455776.50995,
+"event_type": "ingress",
+"longitude_deg": 150.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Virgo",
+"speed_dps": 14.597693
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455778.57979,
+"event_type": "ingress",
+"longitude_deg": 180.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Libra",
+"speed_dps": 14.335455
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455780.70673,
+"event_type": "ingress",
+"longitude_deg": 210.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Scorpio",
+"speed_dps": 13.861023
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455782.91089,
+"event_type": "ingress",
+"longitude_deg": 240.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Sagittarius",
+"speed_dps": 13.369867
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455785.19383,
+"event_type": "ingress",
+"longitude_deg": 270.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Capricorn",
+"speed_dps": 12.919222
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455787.55677,
+"event_type": "ingress",
+"longitude_deg": 300.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Aquarius",
+"speed_dps": 12.474531
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455790.00408,
+"event_type": "ingress",
+"longitude_deg": 330.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Pisces",
+"speed_dps": 12.059082
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455792.52036,
+"event_type": "ingress",
+"longitude_deg": 0.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Aries",
+"speed_dps": 11.838492
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455795.04236,
+"event_type": "ingress",
+"longitude_deg": 30.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Taurus",
+"speed_dps": 12.037042
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455797.47233,
+"event_type": "ingress",
+"longitude_deg": 60.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Gemini",
+"speed_dps": 12.737544
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455799.74112,
+"event_type": "ingress",
+"longitude_deg": 90.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Cancer",
+"speed_dps": 13.740494
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455801.85253,
+"event_type": "ingress",
+"longitude_deg": 120.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Leo",
+"speed_dps": 14.629292
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455803.8696,
+"event_type": "ingress",
+"longitude_deg": 150.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Virgo",
+"speed_dps": 15.014083
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455805.87738,
+"event_type": "ingress",
+"longitude_deg": 180.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Libra",
+"speed_dps": 14.774866
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455807.95173,
+"event_type": "ingress",
+"longitude_deg": 210.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Scorpio",
+"speed_dps": 14.112743
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455810.1365,
+"event_type": "ingress",
+"longitude_deg": 240.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Sagittarius",
+"speed_dps": 13.368854
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455812.4348,
+"event_type": "ingress",
+"longitude_deg": 270.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Capricorn",
+"speed_dps": 12.77462
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455814.82496,
+"event_type": "ingress",
+"longitude_deg": 300.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Aquarius",
+"speed_dps": 12.353483
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455817.28669,
+"event_type": "ingress",
+"longitude_deg": 330.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Pisces",
+"speed_dps": 12.034718
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455819.80363,
+"event_type": "ingress",
+"longitude_deg": 360.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Aries",
+"speed_dps": 11.833806
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455822.33734,
+"event_type": "ingress",
+"longitude_deg": 30.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Taurus",
+"speed_dps": 11.910852
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455824.80997,
+"event_type": "ingress",
+"longitude_deg": 60.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Gemini",
+"speed_dps": 12.44103
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455827.13778,
+"event_type": "ingress",
+"longitude_deg": 90.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Cancer",
+"speed_dps": 13.399311
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455829.29053,
+"event_type": "ingress",
+"longitude_deg": 120.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Leo",
+"speed_dps": 14.465073
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455831.30893,
+"event_type": "ingress",
+"longitude_deg": 150.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Virgo",
+"speed_dps": 15.17227
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455833.27624,
+"event_type": "ingress",
+"longitude_deg": 180.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Libra",
+"speed_dps": 15.205206
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455835.28394,
+"event_type": "ingress",
+"longitude_deg": 210.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Scorpio",
+"speed_dps": 14.599163
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455837.40469,
+"event_type": "ingress",
+"longitude_deg": 240.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Sagittarius",
+"speed_dps": 13.686114
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455839.66992,
+"event_type": "ingress",
+"longitude_deg": 270.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Capricorn",
+"speed_dps": 12.846657
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455842.0628,
+"event_type": "ingress",
+"longitude_deg": 300.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Aquarius",
+"speed_dps": 12.28163
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455844.53999,
+"event_type": "ingress",
+"longitude_deg": 330.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Pisces",
+"speed_dps": 11.976012
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455847.06146,
+"event_type": "ingress",
+"longitude_deg": 0.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Aries",
+"speed_dps": 11.845552
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455849.59247,
+"event_type": "ingress",
+"longitude_deg": 30.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Taurus",
+"speed_dps": 11.899153
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455852.08286,
+"event_type": "ingress",
+"longitude_deg": 60.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Gemini",
+"speed_dps": 12.257296
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455854.46455,
+"event_type": "ingress",
+"longitude_deg": 90.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Cancer",
+"speed_dps": 13.004533
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455856.68814,
+"event_type": "ingress",
+"longitude_deg": 120.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Leo",
+"speed_dps": 14.009171
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455858.76003,
+"event_type": "ingress",
+"longitude_deg": 150.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Virgo",
+"speed_dps": 14.904439
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455860.7401,
+"event_type": "ingress",
+"longitude_deg": 180.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Libra",
+"speed_dps": 15.289746
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455862.71444,
+"event_type": "ingress",
+"longitude_deg": 210.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Scorpio",
+"speed_dps": 14.990476
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455864.76887,
+"event_type": "ingress",
+"longitude_deg": 240.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Sagittarius",
+"speed_dps": 14.161933
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455866.96536,
+"event_type": "ingress",
+"longitude_deg": 270.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Capricorn",
+"speed_dps": 13.173159
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455869.31916,
+"event_type": "ingress",
+"longitude_deg": 300.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Aquarius",
+"speed_dps": 12.379371
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455871.79217,
+"event_type": "ingress",
+"longitude_deg": 330.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Pisces",
+"speed_dps": 11.947394
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455874.31897,
+"event_type": "ingress",
+"longitude_deg": 360.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Aries",
+"speed_dps": 11.844117
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455876.84208,
+"event_type": "ingress",
+"longitude_deg": 30.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Taurus",
+"speed_dps": 11.967862
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455879.31999,
+"event_type": "ingress",
+"longitude_deg": 60.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Gemini",
+"speed_dps": 12.280733
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455881.71487,
+"event_type": "ingress",
+"longitude_deg": 90.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Cancer",
+"speed_dps": 12.816524
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455883.99202,
+"event_type": "ingress",
+"longitude_deg": 120.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Leo",
+"speed_dps": 13.567014
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455886.1393,
+"event_type": "ingress",
+"longitude_deg": 150.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Virgo",
+"speed_dps": 14.369284
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455888.18282,
+"event_type": "ingress",
+"longitude_deg": 180.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Libra",
+"speed_dps": 14.929185
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455890.18212,
+"event_type": "ingress",
+"longitude_deg": 210.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Scorpio",
+"speed_dps": 14.984426
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455892.21325,
+"event_type": "ingress",
+"longitude_deg": 240.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Sagittarius",
+"speed_dps": 14.472869
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455894.34986,
+"event_type": "ingress",
+"longitude_deg": 270.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Capricorn",
+"speed_dps": 13.581474
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455896.63988,
+"event_type": "ingress",
+"longitude_deg": 300.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Aquarius",
+"speed_dps": 12.654937
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455899.07875,
+"event_type": "ingress",
+"longitude_deg": 330.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Pisces",
+"speed_dps": 12.020293
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455901.60258,
+"event_type": "ingress",
+"longitude_deg": 0.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Aries",
+"speed_dps": 11.827807
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455904.12418,
+"event_type": "ingress",
+"longitude_deg": 30.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Taurus",
+"speed_dps": 12.018245
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455906.58097,
+"event_type": "ingress",
+"longitude_deg": 60.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Gemini",
+"speed_dps": 12.429455
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455908.94823,
+"event_type": "ingress",
+"longitude_deg": 90.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Cancer",
+"speed_dps": 12.926922
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455911.22337,
+"event_type": "ingress",
+"longitude_deg": 120.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Leo",
+"speed_dps": 13.450395
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455913.4116,
+"event_type": "ingress",
+"longitude_deg": 150.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Virgo",
+"speed_dps": 13.966522
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455915.52549,
+"event_type": "ingress",
+"longitude_deg": 180.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Libra",
+"speed_dps": 14.393605
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455917.59234,
+"event_type": "ingress",
+"longitude_deg": 210.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Scorpio",
+"speed_dps": 14.583224
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455919.6581,
+"event_type": "ingress",
+"longitude_deg": 240.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Sagittarius",
+"speed_dps": 14.391134
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455921.78284,
+"event_type": "ingress",
+"longitude_deg": 270.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Capricorn",
+"speed_dps": 13.791684
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455924.02573,
+"event_type": "ingress",
+"longitude_deg": 300.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Aquarius",
+"speed_dps": 12.952229
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455926.41657,
+"event_type": "ingress",
+"longitude_deg": 330.0,
+"primary_body": "Moon",
+"secondary_body": null,
+"sign": "Pisces",
+"speed_dps": 12.194359
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455684.59055,
+"event_type": "ingress",
+"longitude_deg": 240.0,
+"primary_body": "Rahu",
+"secondary_body": null,
+"sign": "Scorpio",
+"speed_dps": -0.108814
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455880.69589,
+"event_type": "ingress",
+"longitude_deg": 180.0,
+"primary_body": "Saturn",
+"secondary_body": null,
+"sign": "Libra",
+"speed_dps": 0.112357
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455210.79733,
+"event_type": "ingress",
+"longitude_deg": 270.0,
+"primary_body": "Sun",
+"secondary_body": null,
+"sign": "Capricorn",
+"speed_dps": 1.018962
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455240.33886,
+"event_type": "ingress",
+"longitude_deg": 300.0,
+"primary_body": "Sun",
+"secondary_body": null,
+"sign": "Aquarius",
+"speed_dps": 1.011439
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455270.20808,
+"event_type": "ingress",
+"longitude_deg": 330.0,
+"primary_body": "Sun",
+"secondary_body": null,
+"sign": "Pisces",
+"speed_dps": 0.997222
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455300.5607,
+"event_type": "ingress",
+"longitude_deg": 360.0,
+"primary_body": "Sun",
+"secondary_body": null,
+"sign": "Aries",
+"speed_dps": 0.980215
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455331.42848,
+"event_type": "ingress",
+"longitude_deg": 30.0,
+"primary_body": "Sun",
+"secondary_body": null,
+"sign": "Taurus",
+"speed_dps": 0.964977
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455362.70195,
+"event_type": "ingress",
+"longitude_deg": 60.0,
+"primary_body": "Sun",
+"secondary_body": null,
+"sign": "Gemini",
+"speed_dps": 0.955475
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455394.15375,
+"event_type": "ingress",
+"longitude_deg": 90.0,
+"primary_body": "Sun",
+"secondary_body": null,
+"sign": "Cancer",
+"speed_dps": 0.954127
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455425.50291,
+"event_type": "ingress",
+"longitude_deg": 120.0,
+"primary_body": "Sun",
+"secondary_body": null,
+"sign": "Leo",
+"speed_dps": 0.961303
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455456.49962,
+"event_type": "ingress",
+"longitude_deg": 150.0,
+"primary_body": "Sun",
+"secondary_body": null,
+"sign": "Virgo",
+"speed_dps": 0.975165
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455486.99815,
+"event_type": "ingress",
+"longitude_deg": 180.0,
+"primary_body": "Sun",
+"secondary_body": null,
+"sign": "Libra",
+"speed_dps": 0.992053
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455516.99139,
+"event_type": "ingress",
+"longitude_deg": 210.0,
+"primary_body": "Sun",
+"secondary_body": null,
+"sign": "Scorpio",
+"speed_dps": 1.007454
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455546.6033,
+"event_type": "ingress",
+"longitude_deg": 240.0,
+"primary_body": "Sun",
+"secondary_body": null,
+"sign": "Sagittarius",
+"speed_dps": 1.017159
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455576.05147,
+"event_type": "ingress",
+"longitude_deg": 270.0,
+"primary_body": "Sun",
+"secondary_body": null,
+"sign": "Capricorn",
+"speed_dps": 1.018455
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455605.59228,
+"event_type": "ingress",
+"longitude_deg": 300.0,
+"primary_body": "Sun",
+"secondary_body": null,
+"sign": "Aquarius",
+"speed_dps": 1.010955
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455635.46064,
+"event_type": "ingress",
+"longitude_deg": 330.0,
+"primary_body": "Sun",
+"secondary_body": null,
+"sign": "Pisces",
+"speed_dps": 0.996718
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455665.81261,
+"event_type": "ingress",
+"longitude_deg": 0.0,
+"primary_body": "Sun",
+"secondary_body": null,
+"sign": "Aries",
+"speed_dps": 0.979622
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455696.68065,
+"event_type": "ingress",
+"longitude_deg": 30.0,
+"primary_body": "Sun",
+"secondary_body": null,
+"sign": "Taurus",
+"speed_dps": 0.96427
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455727.95583,
+"event_type": "ingress",
+"longitude_deg": 60.0,
+"primary_body": "Sun",
+"secondary_body": null,
+"sign": "Gemini",
+"speed_dps": 0.954745
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455759.41062,
+"event_type": "ingress",
+"longitude_deg": 90.0,
+"primary_body": "Sun",
+"secondary_body": null,
+"sign": "Cancer",
+"speed_dps": 0.953536
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455790.76314,
+"event_type": "ingress",
+"longitude_deg": 120.0,
+"primary_body": "Sun",
+"secondary_body": null,
+"sign": "Leo",
+"speed_dps": 0.960935
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455821.76235,
+"event_type": "ingress",
+"longitude_deg": 150.0,
+"primary_body": "Sun",
+"secondary_body": null,
+"sign": "Virgo",
+"speed_dps": 0.975018
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455852.26136,
+"event_type": "ingress",
+"longitude_deg": 180.0,
+"primary_body": "Sun",
+"secondary_body": null,
+"sign": "Libra",
+"speed_dps": 0.992087
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455882.25329,
+"event_type": "ingress",
+"longitude_deg": 210.0,
+"primary_body": "Sun",
+"secondary_body": null,
+"sign": "Scorpio",
+"speed_dps": 1.007571
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455911.86372,
+"event_type": "ingress",
+"longitude_deg": 240.0,
+"primary_body": "Sun",
+"secondary_body": null,
+"sign": "Sagittarius",
+"speed_dps": 1.017254
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455210.33814,
+"event_type": "ingress",
+"longitude_deg": 270.0,
+"primary_body": "Venus",
+"secondary_body": null,
+"sign": "Capricorn",
+"speed_dps": 1.257841
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455234.22279,
+"event_type": "ingress",
+"longitude_deg": 300.0,
+"primary_body": "Venus",
+"secondary_body": null,
+"sign": "Aquarius",
+"speed_dps": 1.253967
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455258.20939,
+"event_type": "ingress",
+"longitude_deg": 330.0,
+"primary_body": "Venus",
+"secondary_body": null,
+"sign": "Pisces",
+"speed_dps": 1.24648
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455282.37405,
+"event_type": "ingress",
+"longitude_deg": 0.0,
+"primary_body": "Venus",
+"secondary_body": null,
+"sign": "Aries",
+"speed_dps": 1.235426
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455306.79512,
+"event_type": "ingress",
+"longitude_deg": 30.0,
+"primary_body": "Venus",
+"secondary_body": null,
+"sign": "Taurus",
+"speed_dps": 1.220989
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455331.55137,
+"event_type": "ingress",
+"longitude_deg": 60.0,
+"primary_body": "Venus",
+"secondary_body": null,
+"sign": "Gemini",
+"speed_dps": 1.202417
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455356.76105,
+"event_type": "ingress",
+"longitude_deg": 90.0,
+"primary_body": "Venus",
+"secondary_body": null,
+"sign": "Cancer",
+"speed_dps": 1.176483
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455382.67713,
+"event_type": "ingress",
+"longitude_deg": 120.0,
+"primary_body": "Venus",
+"secondary_body": null,
+"sign": "Leo",
+"speed_dps": 1.13515
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455409.92923,
+"event_type": "ingress",
+"longitude_deg": 150.0,
+"primary_body": "Venus",
+"secondary_body": null,
+"sign": "Virgo",
+"speed_dps": 1.057346
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455440.77146,
+"event_type": "ingress",
+"longitude_deg": 180.0,
+"primary_body": "Venus",
+"secondary_body": null,
+"sign": "Libra",
+"speed_dps": 0.85377
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455562.96875,
+"event_type": "ingress",
+"longitude_deg": 210.0,
+"primary_body": "Venus",
+"secondary_body": null,
+"sign": "Scorpio",
+"speed_dps": 0.964542
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455591.43757,
+"event_type": "ingress",
+"longitude_deg": 240.0,
+"primary_body": "Venus",
+"secondary_body": null,
+"sign": "Sagittarius",
+"speed_dps": 1.118593
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455617.52958,
+"event_type": "ingress",
+"longitude_deg": 270.0,
+"primary_body": "Venus",
+"secondary_body": null,
+"sign": "Capricorn",
+"speed_dps": 1.174003
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455642.79854,
+"event_type": "ingress",
+"longitude_deg": 300.0,
+"primary_body": "Venus",
+"secondary_body": null,
+"sign": "Aquarius",
+"speed_dps": 1.197485
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455667.72284,
+"event_type": "ingress",
+"longitude_deg": 330.0,
+"primary_body": "Venus",
+"secondary_body": null,
+"sign": "Pisces",
+"speed_dps": 1.207893
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455692.49653,
+"event_type": "ingress",
+"longitude_deg": 360.0,
+"primary_body": "Venus",
+"secondary_body": null,
+"sign": "Aries",
+"speed_dps": 1.212994
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455717.18854,
+"event_type": "ingress",
+"longitude_deg": 30.0,
+"primary_body": "Venus",
+"secondary_body": null,
+"sign": "Taurus",
+"speed_dps": 1.21705
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455741.79156,
+"event_type": "ingress",
+"longitude_deg": 60.0,
+"primary_body": "Venus",
+"secondary_body": null,
+"sign": "Gemini",
+"speed_dps": 1.222484
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455766.26679,
+"event_type": "ingress",
+"longitude_deg": 90.0,
+"primary_body": "Venus",
+"secondary_body": null,
+"sign": "Cancer",
+"speed_dps": 1.229517
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455790.59422,
+"event_type": "ingress",
+"longitude_deg": 120.0,
+"primary_body": "Venus",
+"secondary_body": null,
+"sign": "Leo",
+"speed_dps": 1.23649
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455814.79936,
+"event_type": "ingress",
+"longitude_deg": 150.0,
+"primary_body": "Venus",
+"secondary_body": null,
+"sign": "Virgo",
+"speed_dps": 1.241397
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455838.93863,
+"event_type": "ingress",
+"longitude_deg": 180.0,
+"primary_body": "Venus",
+"secondary_body": null,
+"sign": "Libra",
+"speed_dps": 1.243557
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455863.06472,
+"event_type": "ingress",
+"longitude_deg": 210.0,
+"primary_body": "Venus",
+"secondary_body": null,
+"sign": "Scorpio",
+"speed_dps": 1.243482
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455887.21267,
+"event_type": "ingress",
+"longitude_deg": 240.0,
+"primary_body": "Venus",
+"secondary_body": null,
+"sign": "Sagittarius",
+"speed_dps": 1.241266
+},
+{
+"ayanamsha_key": "lahiri",
+"event_jd": 2455911.43023,
+"event_type": "ingress",
+"longitude_deg": 270.0,
+"primary_body": "Venus",
+"secondary_body": null,
+"sign": "Capricorn",
+"speed_dps": 1.235128
+}
+]
+}

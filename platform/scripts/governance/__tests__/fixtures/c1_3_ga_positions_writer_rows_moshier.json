@@ -1,0 +1,5312 @@
+{
+"chart": {
+"birth_date": "1984-02-05",
+"birth_lat": 20.27,
+"birth_lng": 85.84,
+"birth_time": "10:43:00",
+"timezone_id": "Asia/Kolkata"
+},
+"generated_from": "origin/main f8fb06402 ga_positions_writer._build_position_rows over pyjhora_adapter (Moshier backend)",
+"rows": [
+{
+"ayanamsha_id": "lahiri_chitrapaksha",
+"fact_category": "graha_position",
+"fact_key": "longitude_sidereal",
+"fact_subject": "SUN",
+"fact_value_num": 291.9626172849916,
+"fact_value_text": null,
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "lahiri_chitrapaksha",
+"fact_category": "graha_position",
+"fact_key": "sign",
+"fact_subject": "SUN",
+"fact_value_num": null,
+"fact_value_text": "Capricorn",
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "lahiri_chitrapaksha",
+"fact_category": "graha_position",
+"fact_key": "sign_lord",
+"fact_subject": "SUN",
+"fact_value_num": null,
+"fact_value_text": "Saturn",
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "lahiri_chitrapaksha",
+"fact_category": "graha_position",
+"fact_key": "nakshatra",
+"fact_subject": "SUN",
+"fact_value_num": null,
+"fact_value_text": "Shravana",
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "lahiri_chitrapaksha",
+"fact_category": "graha_position",
+"fact_key": "nakshatra_lord",
+"fact_subject": "SUN",
+"fact_value_num": null,
+"fact_value_text": "Moon",
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "lahiri_chitrapaksha",
+"fact_category": "graha_position",
+"fact_key": "pada",
+"fact_subject": "SUN",
+"fact_value_num": 4.0,
+"fact_value_text": null,
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "lahiri_chitrapaksha",
+"fact_category": "graha_position",
+"fact_key": "house_d1",
+"fact_subject": "SUN",
+"fact_value_num": 10.0,
+"fact_value_text": null,
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "lahiri_chitrapaksha",
+"fact_category": "graha_position",
+"fact_key": "retrograde_flag",
+"fact_subject": "SUN",
+"fact_value_num": null,
+"fact_value_text": "direct",
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "lahiri_chitrapaksha",
+"fact_category": "graha_position",
+"fact_key": "combustion_state",
+"fact_subject": "SUN",
+"fact_value_num": null,
+"fact_value_text": "none",
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "lahiri_chitrapaksha",
+"fact_category": "graha_sign_attributes",
+"fact_key": "sign_num",
+"fact_subject": "SUN",
+"fact_value_num": 10.0,
+"fact_value_text": null,
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "lahiri_chitrapaksha",
+"fact_category": "graha_sign_attributes",
+"fact_key": "degree_in_sign",
+"fact_subject": "SUN",
+"fact_value_num": 21.96261728499161,
+"fact_value_text": null,
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "lahiri_chitrapaksha",
+"fact_category": "graha_position",
+"fact_key": "longitude_sidereal",
+"fact_subject": "MOON",
+"fact_value_num": 327.055230133129,
+"fact_value_text": null,
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "lahiri_chitrapaksha",
+"fact_category": "graha_position",
+"fact_key": "sign",
+"fact_subject": "MOON",
+"fact_value_num": null,
+"fact_value_text": "Aquarius",
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "lahiri_chitrapaksha",
+"fact_category": "graha_position",
+"fact_key": "sign_lord",
+"fact_subject": "MOON",
+"fact_value_num": null,
+"fact_value_text": "Saturn",
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "lahiri_chitrapaksha",
+"fact_category": "graha_position",
+"fact_key": "nakshatra",
+"fact_subject": "MOON",
+"fact_value_num": null,
+"fact_value_text": "Purva Bhadrapada",
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "lahiri_chitrapaksha",
+"fact_category": "graha_position",
+"fact_key": "nakshatra_lord",
+"fact_subject": "MOON",
+"fact_value_num": null,
+"fact_value_text": "Jupiter",
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "lahiri_chitrapaksha",
+"fact_category": "graha_position",
+"fact_key": "pada",
+"fact_subject": "MOON",
+"fact_value_num": 3.0,
+"fact_value_text": null,
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "lahiri_chitrapaksha",
+"fact_category": "graha_position",
+"fact_key": "house_d1",
+"fact_subject": "MOON",
+"fact_value_num": 11.0,
+"fact_value_text": null,
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "lahiri_chitrapaksha",
+"fact_category": "graha_position",
+"fact_key": "retrograde_flag",
+"fact_subject": "MOON",
+"fact_value_num": null,
+"fact_value_text": "direct",
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "lahiri_chitrapaksha",
+"fact_category": "graha_position",
+"fact_key": "combustion_state",
+"fact_subject": "MOON",
+"fact_value_num": null,
+"fact_value_text": "none",
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "lahiri_chitrapaksha",
+"fact_category": "graha_sign_attributes",
+"fact_key": "sign_num",
+"fact_subject": "MOON",
+"fact_value_num": 11.0,
+"fact_value_text": null,
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "lahiri_chitrapaksha",
+"fact_category": "graha_sign_attributes",
+"fact_key": "degree_in_sign",
+"fact_subject": "MOON",
+"fact_value_num": 27.055230133128987,
+"fact_value_text": null,
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "lahiri_chitrapaksha",
+"fact_category": "graha_position",
+"fact_key": "longitude_sidereal",
+"fact_subject": "MAR",
+"fact_value_num": 198.5191875546223,
+"fact_value_text": null,
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "lahiri_chitrapaksha",
+"fact_category": "graha_position",
+"fact_key": "sign",
+"fact_subject": "MAR",
+"fact_value_num": null,
+"fact_value_text": "Libra",
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "lahiri_chitrapaksha",
+"fact_category": "graha_position",
+"fact_key": "sign_lord",
+"fact_subject": "MAR",
+"fact_value_num": null,
+"fact_value_text": "Venus",
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "lahiri_chitrapaksha",
+"fact_category": "graha_position",
+"fact_key": "nakshatra",
+"fact_subject": "MAR",
+"fact_value_num": null,
+"fact_value_text": "Swati",
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "lahiri_chitrapaksha",
+"fact_category": "graha_position",
+"fact_key": "nakshatra_lord",
+"fact_subject": "MAR",
+"fact_value_num": null,
+"fact_value_text": "Rahu",
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "lahiri_chitrapaksha",
+"fact_category": "graha_position",
+"fact_key": "pada",
+"fact_subject": "MAR",
+"fact_value_num": 4.0,
+"fact_value_text": null,
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "lahiri_chitrapaksha",
+"fact_category": "graha_position",
+"fact_key": "house_d1",
+"fact_subject": "MAR",
+"fact_value_num": 7.0,
+"fact_value_text": null,
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "lahiri_chitrapaksha",
+"fact_category": "graha_position",
+"fact_key": "retrograde_flag",
+"fact_subject": "MAR",
+"fact_value_num": null,
+"fact_value_text": "direct",
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "lahiri_chitrapaksha",
+"fact_category": "graha_position",
+"fact_key": "combustion_state",
+"fact_subject": "MAR",
+"fact_value_num": null,
+"fact_value_text": "none",
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "lahiri_chitrapaksha",
+"fact_category": "graha_sign_attributes",
+"fact_key": "sign_num",
+"fact_subject": "MAR",
+"fact_value_num": 7.0,
+"fact_value_text": null,
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "lahiri_chitrapaksha",
+"fact_category": "graha_sign_attributes",
+"fact_key": "degree_in_sign",
+"fact_subject": "MAR",
+"fact_value_num": 18.519187554622306,
+"fact_value_text": null,
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "lahiri_chitrapaksha",
+"fact_category": "graha_position",
+"fact_key": "longitude_sidereal",
+"fact_subject": "MER",
+"fact_value_num": 270.83875391869856,
+"fact_value_text": null,
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "lahiri_chitrapaksha",
+"fact_category": "graha_position",
+"fact_key": "sign",
+"fact_subject": "MER",
+"fact_value_num": null,
+"fact_value_text": "Capricorn",
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "lahiri_chitrapaksha",
+"fact_category": "graha_position",
+"fact_key": "sign_lord",
+"fact_subject": "MER",
+"fact_value_num": null,
+"fact_value_text": "Saturn",
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "lahiri_chitrapaksha",
+"fact_category": "graha_position",
+"fact_key": "nakshatra",
+"fact_subject": "MER",
+"fact_value_num": null,
+"fact_value_text": "Uttara Ashadha",
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "lahiri_chitrapaksha",
+"fact_category": "graha_position",
+"fact_key": "nakshatra_lord",
+"fact_subject": "MER",
+"fact_value_num": null,
+"fact_value_text": "Sun",
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "lahiri_chitrapaksha",
+"fact_category": "graha_position",
+"fact_key": "pada",
+"fact_subject": "MER",
+"fact_value_num": 2.0,
+"fact_value_text": null,
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "lahiri_chitrapaksha",
+"fact_category": "graha_position",
+"fact_key": "house_d1",
+"fact_subject": "MER",
+"fact_value_num": 10.0,
+"fact_value_text": null,
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "lahiri_chitrapaksha",
+"fact_category": "graha_position",
+"fact_key": "retrograde_flag",
+"fact_subject": "MER",
+"fact_value_num": null,
+"fact_value_text": "direct",
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "lahiri_chitrapaksha",
+"fact_category": "graha_position",
+"fact_key": "combustion_state",
+"fact_subject": "MER",
+"fact_value_num": null,
+"fact_value_text": "none",
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "lahiri_chitrapaksha",
+"fact_category": "graha_sign_attributes",
+"fact_key": "sign_num",
+"fact_subject": "MER",
+"fact_value_num": 10.0,
+"fact_value_text": null,
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "lahiri_chitrapaksha",
+"fact_category": "graha_sign_attributes",
+"fact_key": "degree_in_sign",
+"fact_subject": "MER",
+"fact_value_num": 0.8387539186985578,
+"fact_value_text": null,
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "lahiri_chitrapaksha",
+"fact_category": "graha_position",
+"fact_key": "longitude_sidereal",
+"fact_subject": "JUP",
+"fact_value_num": 249.7874970231815,
+"fact_value_text": null,
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "lahiri_chitrapaksha",
+"fact_category": "graha_position",
+"fact_key": "sign",
+"fact_subject": "JUP",
+"fact_value_num": null,
+"fact_value_text": "Sagittarius",
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "lahiri_chitrapaksha",
+"fact_category": "graha_position",
+"fact_key": "sign_lord",
+"fact_subject": "JUP",
+"fact_value_num": null,
+"fact_value_text": "Jupiter",
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "lahiri_chitrapaksha",
+"fact_category": "graha_position",
+"fact_key": "nakshatra",
+"fact_subject": "JUP",
+"fact_value_num": null,
+"fact_value_text": "Mula",
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "lahiri_chitrapaksha",
+"fact_category": "graha_position",
+"fact_key": "nakshatra_lord",
+"fact_subject": "JUP",
+"fact_value_num": null,
+"fact_value_text": "Ketu",
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "lahiri_chitrapaksha",
+"fact_category": "graha_position",
+"fact_key": "pada",
+"fact_subject": "JUP",
+"fact_value_num": 3.0,
+"fact_value_text": null,
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "lahiri_chitrapaksha",
+"fact_category": "graha_position",
+"fact_key": "house_d1",
+"fact_subject": "JUP",
+"fact_value_num": 9.0,
+"fact_value_text": null,
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "lahiri_chitrapaksha",
+"fact_category": "graha_position",
+"fact_key": "retrograde_flag",
+"fact_subject": "JUP",
+"fact_value_num": null,
+"fact_value_text": "direct",
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "lahiri_chitrapaksha",
+"fact_category": "graha_position",
+"fact_key": "combustion_state",
+"fact_subject": "JUP",
+"fact_value_num": null,
+"fact_value_text": "none",
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "lahiri_chitrapaksha",
+"fact_category": "graha_sign_attributes",
+"fact_key": "sign_num",
+"fact_subject": "JUP",
+"fact_value_num": 9.0,
+"fact_value_text": null,
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "lahiri_chitrapaksha",
+"fact_category": "graha_sign_attributes",
+"fact_key": "degree_in_sign",
+"fact_subject": "JUP",
+"fact_value_num": 9.787497023181487,
+"fact_value_text": null,
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "lahiri_chitrapaksha",
+"fact_category": "graha_position",
+"fact_key": "longitude_sidereal",
+"fact_subject": "VEN",
+"fact_value_num": 259.17269608945657,
+"fact_value_text": null,
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "lahiri_chitrapaksha",
+"fact_category": "graha_position",
+"fact_key": "sign",
+"fact_subject": "VEN",
+"fact_value_num": null,
+"fact_value_text": "Sagittarius",
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "lahiri_chitrapaksha",
+"fact_category": "graha_position",
+"fact_key": "sign_lord",
+"fact_subject": "VEN",
+"fact_value_num": null,
+"fact_value_text": "Jupiter",
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "lahiri_chitrapaksha",
+"fact_category": "graha_position",
+"fact_key": "nakshatra",
+"fact_subject": "VEN",
+"fact_value_num": null,
+"fact_value_text": "Purva Ashadha",
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "lahiri_chitrapaksha",
+"fact_category": "graha_position",
+"fact_key": "nakshatra_lord",
+"fact_subject": "VEN",
+"fact_value_num": null,
+"fact_value_text": "Venus",
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "lahiri_chitrapaksha",
+"fact_category": "graha_position",
+"fact_key": "pada",
+"fact_subject": "VEN",
+"fact_value_num": 2.0,
+"fact_value_text": null,
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "lahiri_chitrapaksha",
+"fact_category": "graha_position",
+"fact_key": "house_d1",
+"fact_subject": "VEN",
+"fact_value_num": 9.0,
+"fact_value_text": null,
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "lahiri_chitrapaksha",
+"fact_category": "graha_position",
+"fact_key": "retrograde_flag",
+"fact_subject": "VEN",
+"fact_value_num": null,
+"fact_value_text": "direct",
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "lahiri_chitrapaksha",
+"fact_category": "graha_position",
+"fact_key": "combustion_state",
+"fact_subject": "VEN",
+"fact_value_num": null,
+"fact_value_text": "none",
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "lahiri_chitrapaksha",
+"fact_category": "graha_sign_attributes",
+"fact_key": "sign_num",
+"fact_subject": "VEN",
+"fact_value_num": 9.0,
+"fact_value_text": null,
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "lahiri_chitrapaksha",
+"fact_category": "graha_sign_attributes",
+"fact_key": "degree_in_sign",
+"fact_subject": "VEN",
+"fact_value_num": 19.172696089456565,
+"fact_value_text": null,
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "lahiri_chitrapaksha",
+"fact_category": "graha_position",
+"fact_key": "longitude_sidereal",
+"fact_subject": "SAT",
+"fact_value_num": 202.43198605919548,
+"fact_value_text": null,
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "lahiri_chitrapaksha",
+"fact_category": "graha_position",
+"fact_key": "sign",
+"fact_subject": "SAT",
+"fact_value_num": null,
+"fact_value_text": "Libra",
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "lahiri_chitrapaksha",
+"fact_category": "graha_position",
+"fact_key": "sign_lord",
+"fact_subject": "SAT",
+"fact_value_num": null,
+"fact_value_text": "Venus",
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "lahiri_chitrapaksha",
+"fact_category": "graha_position",
+"fact_key": "nakshatra",
+"fact_subject": "SAT",
+"fact_value_num": null,
+"fact_value_text": "Vishakha",
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "lahiri_chitrapaksha",
+"fact_category": "graha_position",
+"fact_key": "nakshatra_lord",
+"fact_subject": "SAT",
+"fact_value_num": null,
+"fact_value_text": "Jupiter",
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "lahiri_chitrapaksha",
+"fact_category": "graha_position",
+"fact_key": "pada",
+"fact_subject": "SAT",
+"fact_value_num": 1.0,
+"fact_value_text": null,
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "lahiri_chitrapaksha",
+"fact_category": "graha_position",
+"fact_key": "house_d1",
+"fact_subject": "SAT",
+"fact_value_num": 7.0,
+"fact_value_text": null,
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "lahiri_chitrapaksha",
+"fact_category": "graha_position",
+"fact_key": "retrograde_flag",
+"fact_subject": "SAT",
+"fact_value_num": null,
+"fact_value_text": "direct",
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "lahiri_chitrapaksha",
+"fact_category": "graha_position",
+"fact_key": "combustion_state",
+"fact_subject": "SAT",
+"fact_value_num": null,
+"fact_value_text": "none",
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "lahiri_chitrapaksha",
+"fact_category": "graha_sign_attributes",
+"fact_key": "sign_num",
+"fact_subject": "SAT",
+"fact_value_num": 7.0,
+"fact_value_text": null,
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "lahiri_chitrapaksha",
+"fact_category": "graha_sign_attributes",
+"fact_key": "degree_in_sign",
+"fact_subject": "SAT",
+"fact_value_num": 22.43198605919548,
+"fact_value_text": null,
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "lahiri_chitrapaksha",
+"fact_category": "graha_position",
+"fact_key": "longitude_sidereal",
+"fact_subject": "RAH_MEAN",
+"fact_value_num": 49.0330441002811,
+"fact_value_text": null,
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "lahiri_chitrapaksha",
+"fact_category": "graha_position",
+"fact_key": "sign",
+"fact_subject": "RAH_MEAN",
+"fact_value_num": null,
+"fact_value_text": "Taurus",
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "lahiri_chitrapaksha",
+"fact_category": "graha_position",
+"fact_key": "sign_lord",
+"fact_subject": "RAH_MEAN",
+"fact_value_num": null,
+"fact_value_text": "Venus",
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "lahiri_chitrapaksha",
+"fact_category": "graha_position",
+"fact_key": "nakshatra",
+"fact_subject": "RAH_MEAN",
+"fact_value_num": null,
+"fact_value_text": "Rohini",
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "lahiri_chitrapaksha",
+"fact_category": "graha_position",
+"fact_key": "nakshatra_lord",
+"fact_subject": "RAH_MEAN",
+"fact_value_num": null,
+"fact_value_text": "Moon",
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "lahiri_chitrapaksha",
+"fact_category": "graha_position",
+"fact_key": "pada",
+"fact_subject": "RAH_MEAN",
+"fact_value_num": 3.0,
+"fact_value_text": null,
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "lahiri_chitrapaksha",
+"fact_category": "graha_position",
+"fact_key": "house_d1",
+"fact_subject": "RAH_MEAN",
+"fact_value_num": 2.0,
+"fact_value_text": null,
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "lahiri_chitrapaksha",
+"fact_category": "graha_position",
+"fact_key": "retrograde_flag",
+"fact_subject": "RAH_MEAN",
+"fact_value_num": null,
+"fact_value_text": "direct",
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "lahiri_chitrapaksha",
+"fact_category": "graha_position",
+"fact_key": "combustion_state",
+"fact_subject": "RAH_MEAN",
+"fact_value_num": null,
+"fact_value_text": "none",
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "lahiri_chitrapaksha",
+"fact_category": "graha_sign_attributes",
+"fact_key": "sign_num",
+"fact_subject": "RAH_MEAN",
+"fact_value_num": 2.0,
+"fact_value_text": null,
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "lahiri_chitrapaksha",
+"fact_category": "graha_sign_attributes",
+"fact_key": "degree_in_sign",
+"fact_subject": "RAH_MEAN",
+"fact_value_num": 19.033044100281103,
+"fact_value_text": null,
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "lahiri_chitrapaksha",
+"fact_category": "graha_position",
+"fact_key": "longitude_sidereal",
+"fact_subject": "KET_MEAN",
+"fact_value_num": 229.0330441002811,
+"fact_value_text": null,
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "lahiri_chitrapaksha",
+"fact_category": "graha_position",
+"fact_key": "sign",
+"fact_subject": "KET_MEAN",
+"fact_value_num": null,
+"fact_value_text": "Scorpio",
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "lahiri_chitrapaksha",
+"fact_category": "graha_position",
+"fact_key": "sign_lord",
+"fact_subject": "KET_MEAN",
+"fact_value_num": null,
+"fact_value_text": "Mars",
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "lahiri_chitrapaksha",
+"fact_category": "graha_position",
+"fact_key": "nakshatra",
+"fact_subject": "KET_MEAN",
+"fact_value_num": null,
+"fact_value_text": "Jyeshtha",
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "lahiri_chitrapaksha",
+"fact_category": "graha_position",
+"fact_key": "nakshatra_lord",
+"fact_subject": "KET_MEAN",
+"fact_value_num": null,
+"fact_value_text": "Mercury",
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "lahiri_chitrapaksha",
+"fact_category": "graha_position",
+"fact_key": "pada",
+"fact_subject": "KET_MEAN",
+"fact_value_num": 1.0,
+"fact_value_text": null,
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "lahiri_chitrapaksha",
+"fact_category": "graha_position",
+"fact_key": "house_d1",
+"fact_subject": "KET_MEAN",
+"fact_value_num": 8.0,
+"fact_value_text": null,
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "lahiri_chitrapaksha",
+"fact_category": "graha_position",
+"fact_key": "retrograde_flag",
+"fact_subject": "KET_MEAN",
+"fact_value_num": null,
+"fact_value_text": "direct",
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "lahiri_chitrapaksha",
+"fact_category": "graha_position",
+"fact_key": "combustion_state",
+"fact_subject": "KET_MEAN",
+"fact_value_num": null,
+"fact_value_text": "none",
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "lahiri_chitrapaksha",
+"fact_category": "graha_sign_attributes",
+"fact_key": "sign_num",
+"fact_subject": "KET_MEAN",
+"fact_value_num": 8.0,
+"fact_value_text": null,
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "lahiri_chitrapaksha",
+"fact_category": "graha_sign_attributes",
+"fact_key": "degree_in_sign",
+"fact_subject": "KET_MEAN",
+"fact_value_num": 19.033044100281103,
+"fact_value_text": null,
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "lahiri_chitrapaksha",
+"fact_category": "graha_position",
+"fact_key": "longitude_sidereal",
+"fact_subject": "LAGNA",
+"fact_value_num": 12.431149598843035,
+"fact_value_text": null,
+"source_calculation": "pyjhora_adapter.houses/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "lahiri_chitrapaksha",
+"fact_category": "graha_position",
+"fact_key": "sign",
+"fact_subject": "LAGNA",
+"fact_value_num": null,
+"fact_value_text": "Aries",
+"source_calculation": "pyjhora_adapter.houses/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "lahiri_chitrapaksha",
+"fact_category": "graha_position",
+"fact_key": "sign_lord",
+"fact_subject": "LAGNA",
+"fact_value_num": null,
+"fact_value_text": "Mars",
+"source_calculation": "pyjhora_adapter.houses/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "lahiri_chitrapaksha",
+"fact_category": "graha_position",
+"fact_key": "pada",
+"fact_subject": "LAGNA",
+"fact_value_num": 4.0,
+"fact_value_text": null,
+"source_calculation": "pyjhora_adapter.houses/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "lahiri_chitrapaksha",
+"fact_category": "graha_position",
+"fact_key": "house_d1",
+"fact_subject": "LAGNA",
+"fact_value_num": 1.0,
+"fact_value_text": null,
+"source_calculation": "pyjhora_adapter.houses/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "lahiri_chitrapaksha",
+"fact_category": "graha_sign_attributes",
+"fact_key": "sign_num",
+"fact_subject": "LAGNA",
+"fact_value_num": 1.0,
+"fact_value_text": null,
+"source_calculation": "pyjhora_adapter.houses/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "lahiri_chitrapaksha",
+"fact_category": "graha_sign_attributes",
+"fact_key": "degree_in_sign",
+"fact_subject": "LAGNA",
+"fact_value_num": 12.431149598843035,
+"fact_value_text": null,
+"source_calculation": "pyjhora_adapter.houses/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "true_chitra",
+"fact_category": "graha_position",
+"fact_key": "longitude_sidereal",
+"fact_subject": "SUN",
+"fact_value_num": 291.97815822007686,
+"fact_value_text": null,
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "true_chitra",
+"fact_category": "graha_position",
+"fact_key": "sign",
+"fact_subject": "SUN",
+"fact_value_num": null,
+"fact_value_text": "Capricorn",
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "true_chitra",
+"fact_category": "graha_position",
+"fact_key": "sign_lord",
+"fact_subject": "SUN",
+"fact_value_num": null,
+"fact_value_text": "Saturn",
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "true_chitra",
+"fact_category": "graha_position",
+"fact_key": "nakshatra",
+"fact_subject": "SUN",
+"fact_value_num": null,
+"fact_value_text": "Shravana",
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "true_chitra",
+"fact_category": "graha_position",
+"fact_key": "nakshatra_lord",
+"fact_subject": "SUN",
+"fact_value_num": null,
+"fact_value_text": "Moon",
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "true_chitra",
+"fact_category": "graha_position",
+"fact_key": "pada",
+"fact_subject": "SUN",
+"fact_value_num": 4.0,
+"fact_value_text": null,
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "true_chitra",
+"fact_category": "graha_position",
+"fact_key": "house_d1",
+"fact_subject": "SUN",
+"fact_value_num": 10.0,
+"fact_value_text": null,
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "true_chitra",
+"fact_category": "graha_position",
+"fact_key": "retrograde_flag",
+"fact_subject": "SUN",
+"fact_value_num": null,
+"fact_value_text": "direct",
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "true_chitra",
+"fact_category": "graha_position",
+"fact_key": "combustion_state",
+"fact_subject": "SUN",
+"fact_value_num": null,
+"fact_value_text": "none",
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "true_chitra",
+"fact_category": "graha_sign_attributes",
+"fact_key": "sign_num",
+"fact_subject": "SUN",
+"fact_value_num": 10.0,
+"fact_value_text": null,
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "true_chitra",
+"fact_category": "graha_sign_attributes",
+"fact_key": "degree_in_sign",
+"fact_subject": "SUN",
+"fact_value_num": 21.978158220076864,
+"fact_value_text": null,
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "true_chitra",
+"fact_category": "graha_position",
+"fact_key": "longitude_sidereal",
+"fact_subject": "MOON",
+"fact_value_num": 327.0707710682143,
+"fact_value_text": null,
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "true_chitra",
+"fact_category": "graha_position",
+"fact_key": "sign",
+"fact_subject": "MOON",
+"fact_value_num": null,
+"fact_value_text": "Aquarius",
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "true_chitra",
+"fact_category": "graha_position",
+"fact_key": "sign_lord",
+"fact_subject": "MOON",
+"fact_value_num": null,
+"fact_value_text": "Saturn",
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "true_chitra",
+"fact_category": "graha_position",
+"fact_key": "nakshatra",
+"fact_subject": "MOON",
+"fact_value_num": null,
+"fact_value_text": "Purva Bhadrapada",
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "true_chitra",
+"fact_category": "graha_position",
+"fact_key": "nakshatra_lord",
+"fact_subject": "MOON",
+"fact_value_num": null,
+"fact_value_text": "Jupiter",
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "true_chitra",
+"fact_category": "graha_position",
+"fact_key": "pada",
+"fact_subject": "MOON",
+"fact_value_num": 3.0,
+"fact_value_text": null,
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "true_chitra",
+"fact_category": "graha_position",
+"fact_key": "house_d1",
+"fact_subject": "MOON",
+"fact_value_num": 11.0,
+"fact_value_text": null,
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "true_chitra",
+"fact_category": "graha_position",
+"fact_key": "retrograde_flag",
+"fact_subject": "MOON",
+"fact_value_num": null,
+"fact_value_text": "direct",
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "true_chitra",
+"fact_category": "graha_position",
+"fact_key": "combustion_state",
+"fact_subject": "MOON",
+"fact_value_num": null,
+"fact_value_text": "none",
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "true_chitra",
+"fact_category": "graha_sign_attributes",
+"fact_key": "sign_num",
+"fact_subject": "MOON",
+"fact_value_num": 11.0,
+"fact_value_text": null,
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "true_chitra",
+"fact_category": "graha_sign_attributes",
+"fact_key": "degree_in_sign",
+"fact_subject": "MOON",
+"fact_value_num": 27.0707710682143,
+"fact_value_text": null,
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "true_chitra",
+"fact_category": "graha_position",
+"fact_key": "longitude_sidereal",
+"fact_subject": "MAR",
+"fact_value_num": 198.53472848970762,
+"fact_value_text": null,
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "true_chitra",
+"fact_category": "graha_position",
+"fact_key": "sign",
+"fact_subject": "MAR",
+"fact_value_num": null,
+"fact_value_text": "Libra",
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "true_chitra",
+"fact_category": "graha_position",
+"fact_key": "sign_lord",
+"fact_subject": "MAR",
+"fact_value_num": null,
+"fact_value_text": "Venus",
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "true_chitra",
+"fact_category": "graha_position",
+"fact_key": "nakshatra",
+"fact_subject": "MAR",
+"fact_value_num": null,
+"fact_value_text": "Swati",
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "true_chitra",
+"fact_category": "graha_position",
+"fact_key": "nakshatra_lord",
+"fact_subject": "MAR",
+"fact_value_num": null,
+"fact_value_text": "Rahu",
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "true_chitra",
+"fact_category": "graha_position",
+"fact_key": "pada",
+"fact_subject": "MAR",
+"fact_value_num": 4.0,
+"fact_value_text": null,
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "true_chitra",
+"fact_category": "graha_position",
+"fact_key": "house_d1",
+"fact_subject": "MAR",
+"fact_value_num": 7.0,
+"fact_value_text": null,
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "true_chitra",
+"fact_category": "graha_position",
+"fact_key": "retrograde_flag",
+"fact_subject": "MAR",
+"fact_value_num": null,
+"fact_value_text": "direct",
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "true_chitra",
+"fact_category": "graha_position",
+"fact_key": "combustion_state",
+"fact_subject": "MAR",
+"fact_value_num": null,
+"fact_value_text": "none",
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "true_chitra",
+"fact_category": "graha_sign_attributes",
+"fact_key": "sign_num",
+"fact_subject": "MAR",
+"fact_value_num": 7.0,
+"fact_value_text": null,
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "true_chitra",
+"fact_category": "graha_sign_attributes",
+"fact_key": "degree_in_sign",
+"fact_subject": "MAR",
+"fact_value_num": 18.534728489707618,
+"fact_value_text": null,
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "true_chitra",
+"fact_category": "graha_position",
+"fact_key": "longitude_sidereal",
+"fact_subject": "MER",
+"fact_value_num": 270.85429485378387,
+"fact_value_text": null,
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "true_chitra",
+"fact_category": "graha_position",
+"fact_key": "sign",
+"fact_subject": "MER",
+"fact_value_num": null,
+"fact_value_text": "Capricorn",
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "true_chitra",
+"fact_category": "graha_position",
+"fact_key": "sign_lord",
+"fact_subject": "MER",
+"fact_value_num": null,
+"fact_value_text": "Saturn",
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "true_chitra",
+"fact_category": "graha_position",
+"fact_key": "nakshatra",
+"fact_subject": "MER",
+"fact_value_num": null,
+"fact_value_text": "Uttara Ashadha",
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "true_chitra",
+"fact_category": "graha_position",
+"fact_key": "nakshatra_lord",
+"fact_subject": "MER",
+"fact_value_num": null,
+"fact_value_text": "Sun",
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "true_chitra",
+"fact_category": "graha_position",
+"fact_key": "pada",
+"fact_subject": "MER",
+"fact_value_num": 2.0,
+"fact_value_text": null,
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "true_chitra",
+"fact_category": "graha_position",
+"fact_key": "house_d1",
+"fact_subject": "MER",
+"fact_value_num": 10.0,
+"fact_value_text": null,
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "true_chitra",
+"fact_category": "graha_position",
+"fact_key": "retrograde_flag",
+"fact_subject": "MER",
+"fact_value_num": null,
+"fact_value_text": "direct",
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "true_chitra",
+"fact_category": "graha_position",
+"fact_key": "combustion_state",
+"fact_subject": "MER",
+"fact_value_num": null,
+"fact_value_text": "none",
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "true_chitra",
+"fact_category": "graha_sign_attributes",
+"fact_key": "sign_num",
+"fact_subject": "MER",
+"fact_value_num": 10.0,
+"fact_value_text": null,
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "true_chitra",
+"fact_category": "graha_sign_attributes",
+"fact_key": "degree_in_sign",
+"fact_subject": "MER",
+"fact_value_num": 0.8542948537838697,
+"fact_value_text": null,
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "true_chitra",
+"fact_category": "graha_position",
+"fact_key": "longitude_sidereal",
+"fact_subject": "JUP",
+"fact_value_num": 249.80303795826677,
+"fact_value_text": null,
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "true_chitra",
+"fact_category": "graha_position",
+"fact_key": "sign",
+"fact_subject": "JUP",
+"fact_value_num": null,
+"fact_value_text": "Sagittarius",
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "true_chitra",
+"fact_category": "graha_position",
+"fact_key": "sign_lord",
+"fact_subject": "JUP",
+"fact_value_num": null,
+"fact_value_text": "Jupiter",
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "true_chitra",
+"fact_category": "graha_position",
+"fact_key": "nakshatra",
+"fact_subject": "JUP",
+"fact_value_num": null,
+"fact_value_text": "Mula",
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "true_chitra",
+"fact_category": "graha_position",
+"fact_key": "nakshatra_lord",
+"fact_subject": "JUP",
+"fact_value_num": null,
+"fact_value_text": "Ketu",
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "true_chitra",
+"fact_category": "graha_position",
+"fact_key": "pada",
+"fact_subject": "JUP",
+"fact_value_num": 3.0,
+"fact_value_text": null,
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "true_chitra",
+"fact_category": "graha_position",
+"fact_key": "house_d1",
+"fact_subject": "JUP",
+"fact_value_num": 9.0,
+"fact_value_text": null,
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "true_chitra",
+"fact_category": "graha_position",
+"fact_key": "retrograde_flag",
+"fact_subject": "JUP",
+"fact_value_num": null,
+"fact_value_text": "direct",
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "true_chitra",
+"fact_category": "graha_position",
+"fact_key": "combustion_state",
+"fact_subject": "JUP",
+"fact_value_num": null,
+"fact_value_text": "none",
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "true_chitra",
+"fact_category": "graha_sign_attributes",
+"fact_key": "sign_num",
+"fact_subject": "JUP",
+"fact_value_num": 9.0,
+"fact_value_text": null,
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "true_chitra",
+"fact_category": "graha_sign_attributes",
+"fact_key": "degree_in_sign",
+"fact_subject": "JUP",
+"fact_value_num": 9.80303795826677,
+"fact_value_text": null,
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "true_chitra",
+"fact_category": "graha_position",
+"fact_key": "longitude_sidereal",
+"fact_subject": "VEN",
+"fact_value_num": 259.1882370245419,
+"fact_value_text": null,
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "true_chitra",
+"fact_category": "graha_position",
+"fact_key": "sign",
+"fact_subject": "VEN",
+"fact_value_num": null,
+"fact_value_text": "Sagittarius",
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "true_chitra",
+"fact_category": "graha_position",
+"fact_key": "sign_lord",
+"fact_subject": "VEN",
+"fact_value_num": null,
+"fact_value_text": "Jupiter",
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "true_chitra",
+"fact_category": "graha_position",
+"fact_key": "nakshatra",
+"fact_subject": "VEN",
+"fact_value_num": null,
+"fact_value_text": "Purva Ashadha",
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "true_chitra",
+"fact_category": "graha_position",
+"fact_key": "nakshatra_lord",
+"fact_subject": "VEN",
+"fact_value_num": null,
+"fact_value_text": "Venus",
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "true_chitra",
+"fact_category": "graha_position",
+"fact_key": "pada",
+"fact_subject": "VEN",
+"fact_value_num": 2.0,
+"fact_value_text": null,
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "true_chitra",
+"fact_category": "graha_position",
+"fact_key": "house_d1",
+"fact_subject": "VEN",
+"fact_value_num": 9.0,
+"fact_value_text": null,
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "true_chitra",
+"fact_category": "graha_position",
+"fact_key": "retrograde_flag",
+"fact_subject": "VEN",
+"fact_value_num": null,
+"fact_value_text": "direct",
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "true_chitra",
+"fact_category": "graha_position",
+"fact_key": "combustion_state",
+"fact_subject": "VEN",
+"fact_value_num": null,
+"fact_value_text": "none",
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "true_chitra",
+"fact_category": "graha_sign_attributes",
+"fact_key": "sign_num",
+"fact_subject": "VEN",
+"fact_value_num": 9.0,
+"fact_value_text": null,
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "true_chitra",
+"fact_category": "graha_sign_attributes",
+"fact_key": "degree_in_sign",
+"fact_subject": "VEN",
+"fact_value_num": 19.188237024541877,
+"fact_value_text": null,
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "true_chitra",
+"fact_category": "graha_position",
+"fact_key": "longitude_sidereal",
+"fact_subject": "SAT",
+"fact_value_num": 202.4475269942808,
+"fact_value_text": null,
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "true_chitra",
+"fact_category": "graha_position",
+"fact_key": "sign",
+"fact_subject": "SAT",
+"fact_value_num": null,
+"fact_value_text": "Libra",
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "true_chitra",
+"fact_category": "graha_position",
+"fact_key": "sign_lord",
+"fact_subject": "SAT",
+"fact_value_num": null,
+"fact_value_text": "Venus",
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "true_chitra",
+"fact_category": "graha_position",
+"fact_key": "nakshatra",
+"fact_subject": "SAT",
+"fact_value_num": null,
+"fact_value_text": "Vishakha",
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "true_chitra",
+"fact_category": "graha_position",
+"fact_key": "nakshatra_lord",
+"fact_subject": "SAT",
+"fact_value_num": null,
+"fact_value_text": "Jupiter",
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "true_chitra",
+"fact_category": "graha_position",
+"fact_key": "pada",
+"fact_subject": "SAT",
+"fact_value_num": 1.0,
+"fact_value_text": null,
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "true_chitra",
+"fact_category": "graha_position",
+"fact_key": "house_d1",
+"fact_subject": "SAT",
+"fact_value_num": 7.0,
+"fact_value_text": null,
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "true_chitra",
+"fact_category": "graha_position",
+"fact_key": "retrograde_flag",
+"fact_subject": "SAT",
+"fact_value_num": null,
+"fact_value_text": "direct",
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "true_chitra",
+"fact_category": "graha_position",
+"fact_key": "combustion_state",
+"fact_subject": "SAT",
+"fact_value_num": null,
+"fact_value_text": "none",
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "true_chitra",
+"fact_category": "graha_sign_attributes",
+"fact_key": "sign_num",
+"fact_subject": "SAT",
+"fact_value_num": 7.0,
+"fact_value_text": null,
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "true_chitra",
+"fact_category": "graha_sign_attributes",
+"fact_key": "degree_in_sign",
+"fact_subject": "SAT",
+"fact_value_num": 22.447526994280793,
+"fact_value_text": null,
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "true_chitra",
+"fact_category": "graha_position",
+"fact_key": "longitude_sidereal",
+"fact_subject": "RAH_MEAN",
+"fact_value_num": 49.048585035366386,
+"fact_value_text": null,
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "true_chitra",
+"fact_category": "graha_position",
+"fact_key": "sign",
+"fact_subject": "RAH_MEAN",
+"fact_value_num": null,
+"fact_value_text": "Taurus",
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "true_chitra",
+"fact_category": "graha_position",
+"fact_key": "sign_lord",
+"fact_subject": "RAH_MEAN",
+"fact_value_num": null,
+"fact_value_text": "Venus",
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "true_chitra",
+"fact_category": "graha_position",
+"fact_key": "nakshatra",
+"fact_subject": "RAH_MEAN",
+"fact_value_num": null,
+"fact_value_text": "Rohini",
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "true_chitra",
+"fact_category": "graha_position",
+"fact_key": "nakshatra_lord",
+"fact_subject": "RAH_MEAN",
+"fact_value_num": null,
+"fact_value_text": "Moon",
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "true_chitra",
+"fact_category": "graha_position",
+"fact_key": "pada",
+"fact_subject": "RAH_MEAN",
+"fact_value_num": 3.0,
+"fact_value_text": null,
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "true_chitra",
+"fact_category": "graha_position",
+"fact_key": "house_d1",
+"fact_subject": "RAH_MEAN",
+"fact_value_num": 2.0,
+"fact_value_text": null,
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "true_chitra",
+"fact_category": "graha_position",
+"fact_key": "retrograde_flag",
+"fact_subject": "RAH_MEAN",
+"fact_value_num": null,
+"fact_value_text": "direct",
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "true_chitra",
+"fact_category": "graha_position",
+"fact_key": "combustion_state",
+"fact_subject": "RAH_MEAN",
+"fact_value_num": null,
+"fact_value_text": "none",
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "true_chitra",
+"fact_category": "graha_sign_attributes",
+"fact_key": "sign_num",
+"fact_subject": "RAH_MEAN",
+"fact_value_num": 2.0,
+"fact_value_text": null,
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "true_chitra",
+"fact_category": "graha_sign_attributes",
+"fact_key": "degree_in_sign",
+"fact_subject": "RAH_MEAN",
+"fact_value_num": 19.048585035366386,
+"fact_value_text": null,
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "true_chitra",
+"fact_category": "graha_position",
+"fact_key": "longitude_sidereal",
+"fact_subject": "KET_MEAN",
+"fact_value_num": 229.0485850353664,
+"fact_value_text": null,
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "true_chitra",
+"fact_category": "graha_position",
+"fact_key": "sign",
+"fact_subject": "KET_MEAN",
+"fact_value_num": null,
+"fact_value_text": "Scorpio",
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "true_chitra",
+"fact_category": "graha_position",
+"fact_key": "sign_lord",
+"fact_subject": "KET_MEAN",
+"fact_value_num": null,
+"fact_value_text": "Mars",
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "true_chitra",
+"fact_category": "graha_position",
+"fact_key": "nakshatra",
+"fact_subject": "KET_MEAN",
+"fact_value_num": null,
+"fact_value_text": "Jyeshtha",
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "true_chitra",
+"fact_category": "graha_position",
+"fact_key": "nakshatra_lord",
+"fact_subject": "KET_MEAN",
+"fact_value_num": null,
+"fact_value_text": "Mercury",
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "true_chitra",
+"fact_category": "graha_position",
+"fact_key": "pada",
+"fact_subject": "KET_MEAN",
+"fact_value_num": 1.0,
+"fact_value_text": null,
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "true_chitra",
+"fact_category": "graha_position",
+"fact_key": "house_d1",
+"fact_subject": "KET_MEAN",
+"fact_value_num": 8.0,
+"fact_value_text": null,
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "true_chitra",
+"fact_category": "graha_position",
+"fact_key": "retrograde_flag",
+"fact_subject": "KET_MEAN",
+"fact_value_num": null,
+"fact_value_text": "direct",
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "true_chitra",
+"fact_category": "graha_position",
+"fact_key": "combustion_state",
+"fact_subject": "KET_MEAN",
+"fact_value_num": null,
+"fact_value_text": "none",
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "true_chitra",
+"fact_category": "graha_sign_attributes",
+"fact_key": "sign_num",
+"fact_subject": "KET_MEAN",
+"fact_value_num": 8.0,
+"fact_value_text": null,
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "true_chitra",
+"fact_category": "graha_sign_attributes",
+"fact_key": "degree_in_sign",
+"fact_subject": "KET_MEAN",
+"fact_value_num": 19.048585035366386,
+"fact_value_text": null,
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "true_chitra",
+"fact_category": "graha_position",
+"fact_key": "longitude_sidereal",
+"fact_subject": "LAGNA",
+"fact_value_num": 12.446690533928319,
+"fact_value_text": null,
+"source_calculation": "pyjhora_adapter.houses/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "true_chitra",
+"fact_category": "graha_position",
+"fact_key": "sign",
+"fact_subject": "LAGNA",
+"fact_value_num": null,
+"fact_value_text": "Aries",
+"source_calculation": "pyjhora_adapter.houses/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "true_chitra",
+"fact_category": "graha_position",
+"fact_key": "sign_lord",
+"fact_subject": "LAGNA",
+"fact_value_num": null,
+"fact_value_text": "Mars",
+"source_calculation": "pyjhora_adapter.houses/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "true_chitra",
+"fact_category": "graha_position",
+"fact_key": "pada",
+"fact_subject": "LAGNA",
+"fact_value_num": 4.0,
+"fact_value_text": null,
+"source_calculation": "pyjhora_adapter.houses/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "true_chitra",
+"fact_category": "graha_position",
+"fact_key": "house_d1",
+"fact_subject": "LAGNA",
+"fact_value_num": 1.0,
+"fact_value_text": null,
+"source_calculation": "pyjhora_adapter.houses/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "true_chitra",
+"fact_category": "graha_sign_attributes",
+"fact_key": "sign_num",
+"fact_subject": "LAGNA",
+"fact_value_num": 1.0,
+"fact_value_text": null,
+"source_calculation": "pyjhora_adapter.houses/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "true_chitra",
+"fact_category": "graha_sign_attributes",
+"fact_key": "degree_in_sign",
+"fact_subject": "LAGNA",
+"fact_value_num": 12.446690533928319,
+"fact_value_text": null,
+"source_calculation": "pyjhora_adapter.houses/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "krishnamurti",
+"fact_category": "graha_position",
+"fact_key": "longitude_sidereal",
+"fact_subject": "SUN",
+"fact_value_num": 292.05946961832245,
+"fact_value_text": null,
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "krishnamurti",
+"fact_category": "graha_position",
+"fact_key": "sign",
+"fact_subject": "SUN",
+"fact_value_num": null,
+"fact_value_text": "Capricorn",
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "krishnamurti",
+"fact_category": "graha_position",
+"fact_key": "sign_lord",
+"fact_subject": "SUN",
+"fact_value_num": null,
+"fact_value_text": "Saturn",
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "krishnamurti",
+"fact_category": "graha_position",
+"fact_key": "nakshatra",
+"fact_subject": "SUN",
+"fact_value_num": null,
+"fact_value_text": "Shravana",
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "krishnamurti",
+"fact_category": "graha_position",
+"fact_key": "nakshatra_lord",
+"fact_subject": "SUN",
+"fact_value_num": null,
+"fact_value_text": "Moon",
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "krishnamurti",
+"fact_category": "graha_position",
+"fact_key": "pada",
+"fact_subject": "SUN",
+"fact_value_num": 4.0,
+"fact_value_text": null,
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "krishnamurti",
+"fact_category": "graha_position",
+"fact_key": "house_d1",
+"fact_subject": "SUN",
+"fact_value_num": 10.0,
+"fact_value_text": null,
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "krishnamurti",
+"fact_category": "graha_position",
+"fact_key": "retrograde_flag",
+"fact_subject": "SUN",
+"fact_value_num": null,
+"fact_value_text": "direct",
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "krishnamurti",
+"fact_category": "graha_position",
+"fact_key": "combustion_state",
+"fact_subject": "SUN",
+"fact_value_num": null,
+"fact_value_text": "none",
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "krishnamurti",
+"fact_category": "graha_sign_attributes",
+"fact_key": "sign_num",
+"fact_subject": "SUN",
+"fact_value_num": 10.0,
+"fact_value_text": null,
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "krishnamurti",
+"fact_category": "graha_sign_attributes",
+"fact_key": "degree_in_sign",
+"fact_subject": "SUN",
+"fact_value_num": 22.059469618322453,
+"fact_value_text": null,
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "krishnamurti",
+"fact_category": "graha_position",
+"fact_key": "longitude_sidereal",
+"fact_subject": "MOON",
+"fact_value_num": 327.15208246645983,
+"fact_value_text": null,
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "krishnamurti",
+"fact_category": "graha_position",
+"fact_key": "sign",
+"fact_subject": "MOON",
+"fact_value_num": null,
+"fact_value_text": "Aquarius",
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "krishnamurti",
+"fact_category": "graha_position",
+"fact_key": "sign_lord",
+"fact_subject": "MOON",
+"fact_value_num": null,
+"fact_value_text": "Saturn",
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "krishnamurti",
+"fact_category": "graha_position",
+"fact_key": "nakshatra",
+"fact_subject": "MOON",
+"fact_value_num": null,
+"fact_value_text": "Purva Bhadrapada",
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "krishnamurti",
+"fact_category": "graha_position",
+"fact_key": "nakshatra_lord",
+"fact_subject": "MOON",
+"fact_value_num": null,
+"fact_value_text": "Jupiter",
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "krishnamurti",
+"fact_category": "graha_position",
+"fact_key": "pada",
+"fact_subject": "MOON",
+"fact_value_num": 3.0,
+"fact_value_text": null,
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "krishnamurti",
+"fact_category": "graha_position",
+"fact_key": "house_d1",
+"fact_subject": "MOON",
+"fact_value_num": 11.0,
+"fact_value_text": null,
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "krishnamurti",
+"fact_category": "graha_position",
+"fact_key": "retrograde_flag",
+"fact_subject": "MOON",
+"fact_value_num": null,
+"fact_value_text": "direct",
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "krishnamurti",
+"fact_category": "graha_position",
+"fact_key": "combustion_state",
+"fact_subject": "MOON",
+"fact_value_num": null,
+"fact_value_text": "none",
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "krishnamurti",
+"fact_category": "graha_sign_attributes",
+"fact_key": "sign_num",
+"fact_subject": "MOON",
+"fact_value_num": 11.0,
+"fact_value_text": null,
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "krishnamurti",
+"fact_category": "graha_sign_attributes",
+"fact_key": "degree_in_sign",
+"fact_subject": "MOON",
+"fact_value_num": 27.15208246645983,
+"fact_value_text": null,
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "krishnamurti",
+"fact_category": "graha_position",
+"fact_key": "longitude_sidereal",
+"fact_subject": "MAR",
+"fact_value_num": 198.61603988795315,
+"fact_value_text": null,
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "krishnamurti",
+"fact_category": "graha_position",
+"fact_key": "sign",
+"fact_subject": "MAR",
+"fact_value_num": null,
+"fact_value_text": "Libra",
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "krishnamurti",
+"fact_category": "graha_position",
+"fact_key": "sign_lord",
+"fact_subject": "MAR",
+"fact_value_num": null,
+"fact_value_text": "Venus",
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "krishnamurti",
+"fact_category": "graha_position",
+"fact_key": "nakshatra",
+"fact_subject": "MAR",
+"fact_value_num": null,
+"fact_value_text": "Swati",
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "krishnamurti",
+"fact_category": "graha_position",
+"fact_key": "nakshatra_lord",
+"fact_subject": "MAR",
+"fact_value_num": null,
+"fact_value_text": "Rahu",
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "krishnamurti",
+"fact_category": "graha_position",
+"fact_key": "pada",
+"fact_subject": "MAR",
+"fact_value_num": 4.0,
+"fact_value_text": null,
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "krishnamurti",
+"fact_category": "graha_position",
+"fact_key": "house_d1",
+"fact_subject": "MAR",
+"fact_value_num": 7.0,
+"fact_value_text": null,
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "krishnamurti",
+"fact_category": "graha_position",
+"fact_key": "retrograde_flag",
+"fact_subject": "MAR",
+"fact_value_num": null,
+"fact_value_text": "direct",
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "krishnamurti",
+"fact_category": "graha_position",
+"fact_key": "combustion_state",
+"fact_subject": "MAR",
+"fact_value_num": null,
+"fact_value_text": "none",
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "krishnamurti",
+"fact_category": "graha_sign_attributes",
+"fact_key": "sign_num",
+"fact_subject": "MAR",
+"fact_value_num": 7.0,
+"fact_value_text": null,
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "krishnamurti",
+"fact_category": "graha_sign_attributes",
+"fact_key": "degree_in_sign",
+"fact_subject": "MAR",
+"fact_value_num": 18.61603988795315,
+"fact_value_text": null,
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "krishnamurti",
+"fact_category": "graha_position",
+"fact_key": "longitude_sidereal",
+"fact_subject": "MER",
+"fact_value_num": 270.9356062520294,
+"fact_value_text": null,
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "krishnamurti",
+"fact_category": "graha_position",
+"fact_key": "sign",
+"fact_subject": "MER",
+"fact_value_num": null,
+"fact_value_text": "Capricorn",
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "krishnamurti",
+"fact_category": "graha_position",
+"fact_key": "sign_lord",
+"fact_subject": "MER",
+"fact_value_num": null,
+"fact_value_text": "Saturn",
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "krishnamurti",
+"fact_category": "graha_position",
+"fact_key": "nakshatra",
+"fact_subject": "MER",
+"fact_value_num": null,
+"fact_value_text": "Uttara Ashadha",
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "krishnamurti",
+"fact_category": "graha_position",
+"fact_key": "nakshatra_lord",
+"fact_subject": "MER",
+"fact_value_num": null,
+"fact_value_text": "Sun",
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "krishnamurti",
+"fact_category": "graha_position",
+"fact_key": "pada",
+"fact_subject": "MER",
+"fact_value_num": 2.0,
+"fact_value_text": null,
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "krishnamurti",
+"fact_category": "graha_position",
+"fact_key": "house_d1",
+"fact_subject": "MER",
+"fact_value_num": 10.0,
+"fact_value_text": null,
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "krishnamurti",
+"fact_category": "graha_position",
+"fact_key": "retrograde_flag",
+"fact_subject": "MER",
+"fact_value_num": null,
+"fact_value_text": "direct",
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "krishnamurti",
+"fact_category": "graha_position",
+"fact_key": "combustion_state",
+"fact_subject": "MER",
+"fact_value_num": null,
+"fact_value_text": "none",
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "krishnamurti",
+"fact_category": "graha_sign_attributes",
+"fact_key": "sign_num",
+"fact_subject": "MER",
+"fact_value_num": 10.0,
+"fact_value_text": null,
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "krishnamurti",
+"fact_category": "graha_sign_attributes",
+"fact_key": "degree_in_sign",
+"fact_subject": "MER",
+"fact_value_num": 0.9356062520294017,
+"fact_value_text": null,
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "krishnamurti",
+"fact_category": "graha_position",
+"fact_key": "longitude_sidereal",
+"fact_subject": "JUP",
+"fact_value_num": 249.88434935651233,
+"fact_value_text": null,
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "krishnamurti",
+"fact_category": "graha_position",
+"fact_key": "sign",
+"fact_subject": "JUP",
+"fact_value_num": null,
+"fact_value_text": "Sagittarius",
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "krishnamurti",
+"fact_category": "graha_position",
+"fact_key": "sign_lord",
+"fact_subject": "JUP",
+"fact_value_num": null,
+"fact_value_text": "Jupiter",
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "krishnamurti",
+"fact_category": "graha_position",
+"fact_key": "nakshatra",
+"fact_subject": "JUP",
+"fact_value_num": null,
+"fact_value_text": "Mula",
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "krishnamurti",
+"fact_category": "graha_position",
+"fact_key": "nakshatra_lord",
+"fact_subject": "JUP",
+"fact_value_num": null,
+"fact_value_text": "Ketu",
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "krishnamurti",
+"fact_category": "graha_position",
+"fact_key": "pada",
+"fact_subject": "JUP",
+"fact_value_num": 3.0,
+"fact_value_text": null,
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "krishnamurti",
+"fact_category": "graha_position",
+"fact_key": "house_d1",
+"fact_subject": "JUP",
+"fact_value_num": 9.0,
+"fact_value_text": null,
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "krishnamurti",
+"fact_category": "graha_position",
+"fact_key": "retrograde_flag",
+"fact_subject": "JUP",
+"fact_value_num": null,
+"fact_value_text": "direct",
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "krishnamurti",
+"fact_category": "graha_position",
+"fact_key": "combustion_state",
+"fact_subject": "JUP",
+"fact_value_num": null,
+"fact_value_text": "none",
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "krishnamurti",
+"fact_category": "graha_sign_attributes",
+"fact_key": "sign_num",
+"fact_subject": "JUP",
+"fact_value_num": 9.0,
+"fact_value_text": null,
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "krishnamurti",
+"fact_category": "graha_sign_attributes",
+"fact_key": "degree_in_sign",
+"fact_subject": "JUP",
+"fact_value_num": 9.884349356512331,
+"fact_value_text": null,
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "krishnamurti",
+"fact_category": "graha_position",
+"fact_key": "longitude_sidereal",
+"fact_subject": "VEN",
+"fact_value_num": 259.2695484227874,
+"fact_value_text": null,
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "krishnamurti",
+"fact_category": "graha_position",
+"fact_key": "sign",
+"fact_subject": "VEN",
+"fact_value_num": null,
+"fact_value_text": "Sagittarius",
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "krishnamurti",
+"fact_category": "graha_position",
+"fact_key": "sign_lord",
+"fact_subject": "VEN",
+"fact_value_num": null,
+"fact_value_text": "Jupiter",
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "krishnamurti",
+"fact_category": "graha_position",
+"fact_key": "nakshatra",
+"fact_subject": "VEN",
+"fact_value_num": null,
+"fact_value_text": "Purva Ashadha",
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "krishnamurti",
+"fact_category": "graha_position",
+"fact_key": "nakshatra_lord",
+"fact_subject": "VEN",
+"fact_value_num": null,
+"fact_value_text": "Venus",
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "krishnamurti",
+"fact_category": "graha_position",
+"fact_key": "pada",
+"fact_subject": "VEN",
+"fact_value_num": 2.0,
+"fact_value_text": null,
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "krishnamurti",
+"fact_category": "graha_position",
+"fact_key": "house_d1",
+"fact_subject": "VEN",
+"fact_value_num": 9.0,
+"fact_value_text": null,
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "krishnamurti",
+"fact_category": "graha_position",
+"fact_key": "retrograde_flag",
+"fact_subject": "VEN",
+"fact_value_num": null,
+"fact_value_text": "direct",
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "krishnamurti",
+"fact_category": "graha_position",
+"fact_key": "combustion_state",
+"fact_subject": "VEN",
+"fact_value_num": null,
+"fact_value_text": "none",
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "krishnamurti",
+"fact_category": "graha_sign_attributes",
+"fact_key": "sign_num",
+"fact_subject": "VEN",
+"fact_value_num": 9.0,
+"fact_value_text": null,
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "krishnamurti",
+"fact_category": "graha_sign_attributes",
+"fact_key": "degree_in_sign",
+"fact_subject": "VEN",
+"fact_value_num": 19.26954842278741,
+"fact_value_text": null,
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "krishnamurti",
+"fact_category": "graha_position",
+"fact_key": "longitude_sidereal",
+"fact_subject": "SAT",
+"fact_value_num": 202.52883839252632,
+"fact_value_text": null,
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "krishnamurti",
+"fact_category": "graha_position",
+"fact_key": "sign",
+"fact_subject": "SAT",
+"fact_value_num": null,
+"fact_value_text": "Libra",
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "krishnamurti",
+"fact_category": "graha_position",
+"fact_key": "sign_lord",
+"fact_subject": "SAT",
+"fact_value_num": null,
+"fact_value_text": "Venus",
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "krishnamurti",
+"fact_category": "graha_position",
+"fact_key": "nakshatra",
+"fact_subject": "SAT",
+"fact_value_num": null,
+"fact_value_text": "Vishakha",
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "krishnamurti",
+"fact_category": "graha_position",
+"fact_key": "nakshatra_lord",
+"fact_subject": "SAT",
+"fact_value_num": null,
+"fact_value_text": "Jupiter",
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "krishnamurti",
+"fact_category": "graha_position",
+"fact_key": "pada",
+"fact_subject": "SAT",
+"fact_value_num": 1.0,
+"fact_value_text": null,
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "krishnamurti",
+"fact_category": "graha_position",
+"fact_key": "house_d1",
+"fact_subject": "SAT",
+"fact_value_num": 7.0,
+"fact_value_text": null,
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "krishnamurti",
+"fact_category": "graha_position",
+"fact_key": "retrograde_flag",
+"fact_subject": "SAT",
+"fact_value_num": null,
+"fact_value_text": "direct",
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "krishnamurti",
+"fact_category": "graha_position",
+"fact_key": "combustion_state",
+"fact_subject": "SAT",
+"fact_value_num": null,
+"fact_value_text": "none",
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "krishnamurti",
+"fact_category": "graha_sign_attributes",
+"fact_key": "sign_num",
+"fact_subject": "SAT",
+"fact_value_num": 7.0,
+"fact_value_text": null,
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "krishnamurti",
+"fact_category": "graha_sign_attributes",
+"fact_key": "degree_in_sign",
+"fact_subject": "SAT",
+"fact_value_num": 22.528838392526325,
+"fact_value_text": null,
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "krishnamurti",
+"fact_category": "graha_position",
+"fact_key": "longitude_sidereal",
+"fact_subject": "RAH_MEAN",
+"fact_value_num": 49.12989643361194,
+"fact_value_text": null,
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "krishnamurti",
+"fact_category": "graha_position",
+"fact_key": "sign",
+"fact_subject": "RAH_MEAN",
+"fact_value_num": null,
+"fact_value_text": "Taurus",
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "krishnamurti",
+"fact_category": "graha_position",
+"fact_key": "sign_lord",
+"fact_subject": "RAH_MEAN",
+"fact_value_num": null,
+"fact_value_text": "Venus",
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "krishnamurti",
+"fact_category": "graha_position",
+"fact_key": "nakshatra",
+"fact_subject": "RAH_MEAN",
+"fact_value_num": null,
+"fact_value_text": "Rohini",
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "krishnamurti",
+"fact_category": "graha_position",
+"fact_key": "nakshatra_lord",
+"fact_subject": "RAH_MEAN",
+"fact_value_num": null,
+"fact_value_text": "Moon",
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "krishnamurti",
+"fact_category": "graha_position",
+"fact_key": "pada",
+"fact_subject": "RAH_MEAN",
+"fact_value_num": 3.0,
+"fact_value_text": null,
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "krishnamurti",
+"fact_category": "graha_position",
+"fact_key": "house_d1",
+"fact_subject": "RAH_MEAN",
+"fact_value_num": 2.0,
+"fact_value_text": null,
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "krishnamurti",
+"fact_category": "graha_position",
+"fact_key": "retrograde_flag",
+"fact_subject": "RAH_MEAN",
+"fact_value_num": null,
+"fact_value_text": "direct",
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "krishnamurti",
+"fact_category": "graha_position",
+"fact_key": "combustion_state",
+"fact_subject": "RAH_MEAN",
+"fact_value_num": null,
+"fact_value_text": "none",
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "krishnamurti",
+"fact_category": "graha_sign_attributes",
+"fact_key": "sign_num",
+"fact_subject": "RAH_MEAN",
+"fact_value_num": 2.0,
+"fact_value_text": null,
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "krishnamurti",
+"fact_category": "graha_sign_attributes",
+"fact_key": "degree_in_sign",
+"fact_subject": "RAH_MEAN",
+"fact_value_num": 19.12989643361194,
+"fact_value_text": null,
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "krishnamurti",
+"fact_category": "graha_position",
+"fact_key": "longitude_sidereal",
+"fact_subject": "KET_MEAN",
+"fact_value_num": 229.12989643361195,
+"fact_value_text": null,
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "krishnamurti",
+"fact_category": "graha_position",
+"fact_key": "sign",
+"fact_subject": "KET_MEAN",
+"fact_value_num": null,
+"fact_value_text": "Scorpio",
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "krishnamurti",
+"fact_category": "graha_position",
+"fact_key": "sign_lord",
+"fact_subject": "KET_MEAN",
+"fact_value_num": null,
+"fact_value_text": "Mars",
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "krishnamurti",
+"fact_category": "graha_position",
+"fact_key": "nakshatra",
+"fact_subject": "KET_MEAN",
+"fact_value_num": null,
+"fact_value_text": "Jyeshtha",
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "krishnamurti",
+"fact_category": "graha_position",
+"fact_key": "nakshatra_lord",
+"fact_subject": "KET_MEAN",
+"fact_value_num": null,
+"fact_value_text": "Mercury",
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "krishnamurti",
+"fact_category": "graha_position",
+"fact_key": "pada",
+"fact_subject": "KET_MEAN",
+"fact_value_num": 1.0,
+"fact_value_text": null,
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "krishnamurti",
+"fact_category": "graha_position",
+"fact_key": "house_d1",
+"fact_subject": "KET_MEAN",
+"fact_value_num": 8.0,
+"fact_value_text": null,
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "krishnamurti",
+"fact_category": "graha_position",
+"fact_key": "retrograde_flag",
+"fact_subject": "KET_MEAN",
+"fact_value_num": null,
+"fact_value_text": "direct",
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "krishnamurti",
+"fact_category": "graha_position",
+"fact_key": "combustion_state",
+"fact_subject": "KET_MEAN",
+"fact_value_num": null,
+"fact_value_text": "none",
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "krishnamurti",
+"fact_category": "graha_sign_attributes",
+"fact_key": "sign_num",
+"fact_subject": "KET_MEAN",
+"fact_value_num": 8.0,
+"fact_value_text": null,
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "krishnamurti",
+"fact_category": "graha_sign_attributes",
+"fact_key": "degree_in_sign",
+"fact_subject": "KET_MEAN",
+"fact_value_num": 19.129896433611947,
+"fact_value_text": null,
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "krishnamurti",
+"fact_category": "graha_position",
+"fact_key": "longitude_sidereal",
+"fact_subject": "LAGNA",
+"fact_value_num": 12.52800193217388,
+"fact_value_text": null,
+"source_calculation": "pyjhora_adapter.houses/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "krishnamurti",
+"fact_category": "graha_position",
+"fact_key": "sign",
+"fact_subject": "LAGNA",
+"fact_value_num": null,
+"fact_value_text": "Aries",
+"source_calculation": "pyjhora_adapter.houses/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "krishnamurti",
+"fact_category": "graha_position",
+"fact_key": "sign_lord",
+"fact_subject": "LAGNA",
+"fact_value_num": null,
+"fact_value_text": "Mars",
+"source_calculation": "pyjhora_adapter.houses/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "krishnamurti",
+"fact_category": "graha_position",
+"fact_key": "pada",
+"fact_subject": "LAGNA",
+"fact_value_num": 4.0,
+"fact_value_text": null,
+"source_calculation": "pyjhora_adapter.houses/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "krishnamurti",
+"fact_category": "graha_position",
+"fact_key": "house_d1",
+"fact_subject": "LAGNA",
+"fact_value_num": 1.0,
+"fact_value_text": null,
+"source_calculation": "pyjhora_adapter.houses/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "krishnamurti",
+"fact_category": "graha_sign_attributes",
+"fact_key": "sign_num",
+"fact_subject": "LAGNA",
+"fact_value_num": 1.0,
+"fact_value_text": null,
+"source_calculation": "pyjhora_adapter.houses/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "krishnamurti",
+"fact_category": "graha_sign_attributes",
+"fact_key": "degree_in_sign",
+"fact_subject": "LAGNA",
+"fact_value_num": 12.52800193217388,
+"fact_value_text": null,
+"source_calculation": "pyjhora_adapter.houses/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "raman",
+"fact_category": "graha_position",
+"fact_key": "longitude_sidereal",
+"fact_subject": "SUN",
+"fact_value_num": 293.40891861832245,
+"fact_value_text": null,
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "raman",
+"fact_category": "graha_position",
+"fact_key": "sign",
+"fact_subject": "SUN",
+"fact_value_num": null,
+"fact_value_text": "Capricorn",
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "raman",
+"fact_category": "graha_position",
+"fact_key": "sign_lord",
+"fact_subject": "SUN",
+"fact_value_num": null,
+"fact_value_text": "Saturn",
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "raman",
+"fact_category": "graha_position",
+"fact_key": "nakshatra",
+"fact_subject": "SUN",
+"fact_value_num": null,
+"fact_value_text": "Dhanishta",
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "raman",
+"fact_category": "graha_position",
+"fact_key": "nakshatra_lord",
+"fact_subject": "SUN",
+"fact_value_num": null,
+"fact_value_text": "Mars",
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "raman",
+"fact_category": "graha_position",
+"fact_key": "pada",
+"fact_subject": "SUN",
+"fact_value_num": 1.0,
+"fact_value_text": null,
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "raman",
+"fact_category": "graha_position",
+"fact_key": "house_d1",
+"fact_subject": "SUN",
+"fact_value_num": 10.0,
+"fact_value_text": null,
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "raman",
+"fact_category": "graha_position",
+"fact_key": "retrograde_flag",
+"fact_subject": "SUN",
+"fact_value_num": null,
+"fact_value_text": "direct",
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "raman",
+"fact_category": "graha_position",
+"fact_key": "combustion_state",
+"fact_subject": "SUN",
+"fact_value_num": null,
+"fact_value_text": "none",
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "raman",
+"fact_category": "graha_sign_attributes",
+"fact_key": "sign_num",
+"fact_subject": "SUN",
+"fact_value_num": 10.0,
+"fact_value_text": null,
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "raman",
+"fact_category": "graha_sign_attributes",
+"fact_key": "degree_in_sign",
+"fact_subject": "SUN",
+"fact_value_num": 23.408918618322446,
+"fact_value_text": null,
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "raman",
+"fact_category": "graha_position",
+"fact_key": "longitude_sidereal",
+"fact_subject": "MOON",
+"fact_value_num": 328.5015314664598,
+"fact_value_text": null,
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "raman",
+"fact_category": "graha_position",
+"fact_key": "sign",
+"fact_subject": "MOON",
+"fact_value_num": null,
+"fact_value_text": "Aquarius",
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "raman",
+"fact_category": "graha_position",
+"fact_key": "sign_lord",
+"fact_subject": "MOON",
+"fact_value_num": null,
+"fact_value_text": "Saturn",
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "raman",
+"fact_category": "graha_position",
+"fact_key": "nakshatra",
+"fact_subject": "MOON",
+"fact_value_num": null,
+"fact_value_text": "Purva Bhadrapada",
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "raman",
+"fact_category": "graha_position",
+"fact_key": "nakshatra_lord",
+"fact_subject": "MOON",
+"fact_value_num": null,
+"fact_value_text": "Jupiter",
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "raman",
+"fact_category": "graha_position",
+"fact_key": "pada",
+"fact_subject": "MOON",
+"fact_value_num": 3.0,
+"fact_value_text": null,
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "raman",
+"fact_category": "graha_position",
+"fact_key": "house_d1",
+"fact_subject": "MOON",
+"fact_value_num": 11.0,
+"fact_value_text": null,
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "raman",
+"fact_category": "graha_position",
+"fact_key": "retrograde_flag",
+"fact_subject": "MOON",
+"fact_value_num": null,
+"fact_value_text": "direct",
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "raman",
+"fact_category": "graha_position",
+"fact_key": "combustion_state",
+"fact_subject": "MOON",
+"fact_value_num": null,
+"fact_value_text": "none",
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "raman",
+"fact_category": "graha_sign_attributes",
+"fact_key": "sign_num",
+"fact_subject": "MOON",
+"fact_value_num": 11.0,
+"fact_value_text": null,
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "raman",
+"fact_category": "graha_sign_attributes",
+"fact_key": "degree_in_sign",
+"fact_subject": "MOON",
+"fact_value_num": 28.501531466459824,
+"fact_value_text": null,
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "raman",
+"fact_category": "graha_position",
+"fact_key": "longitude_sidereal",
+"fact_subject": "MAR",
+"fact_value_num": 199.96548888795314,
+"fact_value_text": null,
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "raman",
+"fact_category": "graha_position",
+"fact_key": "sign",
+"fact_subject": "MAR",
+"fact_value_num": null,
+"fact_value_text": "Libra",
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "raman",
+"fact_category": "graha_position",
+"fact_key": "sign_lord",
+"fact_subject": "MAR",
+"fact_value_num": null,
+"fact_value_text": "Venus",
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "raman",
+"fact_category": "graha_position",
+"fact_key": "nakshatra",
+"fact_subject": "MAR",
+"fact_value_num": null,
+"fact_value_text": "Swati",
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "raman",
+"fact_category": "graha_position",
+"fact_key": "nakshatra_lord",
+"fact_subject": "MAR",
+"fact_value_num": null,
+"fact_value_text": "Rahu",
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "raman",
+"fact_category": "graha_position",
+"fact_key": "pada",
+"fact_subject": "MAR",
+"fact_value_num": 4.0,
+"fact_value_text": null,
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "raman",
+"fact_category": "graha_position",
+"fact_key": "house_d1",
+"fact_subject": "MAR",
+"fact_value_num": 7.0,
+"fact_value_text": null,
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "raman",
+"fact_category": "graha_position",
+"fact_key": "retrograde_flag",
+"fact_subject": "MAR",
+"fact_value_num": null,
+"fact_value_text": "direct",
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "raman",
+"fact_category": "graha_position",
+"fact_key": "combustion_state",
+"fact_subject": "MAR",
+"fact_value_num": null,
+"fact_value_text": "none",
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "raman",
+"fact_category": "graha_sign_attributes",
+"fact_key": "sign_num",
+"fact_subject": "MAR",
+"fact_value_num": 7.0,
+"fact_value_text": null,
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "raman",
+"fact_category": "graha_sign_attributes",
+"fact_key": "degree_in_sign",
+"fact_subject": "MAR",
+"fact_value_num": 19.965488887953143,
+"fact_value_text": null,
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "raman",
+"fact_category": "graha_position",
+"fact_key": "longitude_sidereal",
+"fact_subject": "MER",
+"fact_value_num": 272.2850552520294,
+"fact_value_text": null,
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "raman",
+"fact_category": "graha_position",
+"fact_key": "sign",
+"fact_subject": "MER",
+"fact_value_num": null,
+"fact_value_text": "Capricorn",
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "raman",
+"fact_category": "graha_position",
+"fact_key": "sign_lord",
+"fact_subject": "MER",
+"fact_value_num": null,
+"fact_value_text": "Saturn",
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "raman",
+"fact_category": "graha_position",
+"fact_key": "nakshatra",
+"fact_subject": "MER",
+"fact_value_num": null,
+"fact_value_text": "Uttara Ashadha",
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "raman",
+"fact_category": "graha_position",
+"fact_key": "nakshatra_lord",
+"fact_subject": "MER",
+"fact_value_num": null,
+"fact_value_text": "Sun",
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "raman",
+"fact_category": "graha_position",
+"fact_key": "pada",
+"fact_subject": "MER",
+"fact_value_num": 2.0,
+"fact_value_text": null,
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "raman",
+"fact_category": "graha_position",
+"fact_key": "house_d1",
+"fact_subject": "MER",
+"fact_value_num": 10.0,
+"fact_value_text": null,
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "raman",
+"fact_category": "graha_position",
+"fact_key": "retrograde_flag",
+"fact_subject": "MER",
+"fact_value_num": null,
+"fact_value_text": "direct",
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "raman",
+"fact_category": "graha_position",
+"fact_key": "combustion_state",
+"fact_subject": "MER",
+"fact_value_num": null,
+"fact_value_text": "none",
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "raman",
+"fact_category": "graha_sign_attributes",
+"fact_key": "sign_num",
+"fact_subject": "MER",
+"fact_value_num": 10.0,
+"fact_value_text": null,
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "raman",
+"fact_category": "graha_sign_attributes",
+"fact_key": "degree_in_sign",
+"fact_subject": "MER",
+"fact_value_num": 2.2850552520293945,
+"fact_value_text": null,
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "raman",
+"fact_category": "graha_position",
+"fact_key": "longitude_sidereal",
+"fact_subject": "JUP",
+"fact_value_num": 251.23379835651235,
+"fact_value_text": null,
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "raman",
+"fact_category": "graha_position",
+"fact_key": "sign",
+"fact_subject": "JUP",
+"fact_value_num": null,
+"fact_value_text": "Sagittarius",
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "raman",
+"fact_category": "graha_position",
+"fact_key": "sign_lord",
+"fact_subject": "JUP",
+"fact_value_num": null,
+"fact_value_text": "Jupiter",
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "raman",
+"fact_category": "graha_position",
+"fact_key": "nakshatra",
+"fact_subject": "JUP",
+"fact_value_num": null,
+"fact_value_text": "Mula",
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "raman",
+"fact_category": "graha_position",
+"fact_key": "nakshatra_lord",
+"fact_subject": "JUP",
+"fact_value_num": null,
+"fact_value_text": "Ketu",
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "raman",
+"fact_category": "graha_position",
+"fact_key": "pada",
+"fact_subject": "JUP",
+"fact_value_num": 4.0,
+"fact_value_text": null,
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "raman",
+"fact_category": "graha_position",
+"fact_key": "house_d1",
+"fact_subject": "JUP",
+"fact_value_num": 9.0,
+"fact_value_text": null,
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "raman",
+"fact_category": "graha_position",
+"fact_key": "retrograde_flag",
+"fact_subject": "JUP",
+"fact_value_num": null,
+"fact_value_text": "direct",
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "raman",
+"fact_category": "graha_position",
+"fact_key": "combustion_state",
+"fact_subject": "JUP",
+"fact_value_num": null,
+"fact_value_text": "none",
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "raman",
+"fact_category": "graha_sign_attributes",
+"fact_key": "sign_num",
+"fact_subject": "JUP",
+"fact_value_num": 9.0,
+"fact_value_text": null,
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "raman",
+"fact_category": "graha_sign_attributes",
+"fact_key": "degree_in_sign",
+"fact_subject": "JUP",
+"fact_value_num": 11.233798356512352,
+"fact_value_text": null,
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "raman",
+"fact_category": "graha_position",
+"fact_key": "longitude_sidereal",
+"fact_subject": "VEN",
+"fact_value_num": 260.6189974227874,
+"fact_value_text": null,
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "raman",
+"fact_category": "graha_position",
+"fact_key": "sign",
+"fact_subject": "VEN",
+"fact_value_num": null,
+"fact_value_text": "Sagittarius",
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "raman",
+"fact_category": "graha_position",
+"fact_key": "sign_lord",
+"fact_subject": "VEN",
+"fact_value_num": null,
+"fact_value_text": "Jupiter",
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "raman",
+"fact_category": "graha_position",
+"fact_key": "nakshatra",
+"fact_subject": "VEN",
+"fact_value_num": null,
+"fact_value_text": "Purva Ashadha",
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "raman",
+"fact_category": "graha_position",
+"fact_key": "nakshatra_lord",
+"fact_subject": "VEN",
+"fact_value_num": null,
+"fact_value_text": "Venus",
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "raman",
+"fact_category": "graha_position",
+"fact_key": "pada",
+"fact_subject": "VEN",
+"fact_value_num": 3.0,
+"fact_value_text": null,
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "raman",
+"fact_category": "graha_position",
+"fact_key": "house_d1",
+"fact_subject": "VEN",
+"fact_value_num": 9.0,
+"fact_value_text": null,
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "raman",
+"fact_category": "graha_position",
+"fact_key": "retrograde_flag",
+"fact_subject": "VEN",
+"fact_value_num": null,
+"fact_value_text": "direct",
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "raman",
+"fact_category": "graha_position",
+"fact_key": "combustion_state",
+"fact_subject": "VEN",
+"fact_value_num": null,
+"fact_value_text": "none",
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "raman",
+"fact_category": "graha_sign_attributes",
+"fact_key": "sign_num",
+"fact_subject": "VEN",
+"fact_value_num": 9.0,
+"fact_value_text": null,
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "raman",
+"fact_category": "graha_sign_attributes",
+"fact_key": "degree_in_sign",
+"fact_subject": "VEN",
+"fact_value_num": 20.6189974227874,
+"fact_value_text": null,
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "raman",
+"fact_category": "graha_position",
+"fact_key": "longitude_sidereal",
+"fact_subject": "SAT",
+"fact_value_num": 203.87828739252635,
+"fact_value_text": null,
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "raman",
+"fact_category": "graha_position",
+"fact_key": "sign",
+"fact_subject": "SAT",
+"fact_value_num": null,
+"fact_value_text": "Libra",
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "raman",
+"fact_category": "graha_position",
+"fact_key": "sign_lord",
+"fact_subject": "SAT",
+"fact_value_num": null,
+"fact_value_text": "Venus",
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "raman",
+"fact_category": "graha_position",
+"fact_key": "nakshatra",
+"fact_subject": "SAT",
+"fact_value_num": null,
+"fact_value_text": "Vishakha",
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "raman",
+"fact_category": "graha_position",
+"fact_key": "nakshatra_lord",
+"fact_subject": "SAT",
+"fact_value_num": null,
+"fact_value_text": "Jupiter",
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "raman",
+"fact_category": "graha_position",
+"fact_key": "pada",
+"fact_subject": "SAT",
+"fact_value_num": 2.0,
+"fact_value_text": null,
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "raman",
+"fact_category": "graha_position",
+"fact_key": "house_d1",
+"fact_subject": "SAT",
+"fact_value_num": 7.0,
+"fact_value_text": null,
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "raman",
+"fact_category": "graha_position",
+"fact_key": "retrograde_flag",
+"fact_subject": "SAT",
+"fact_value_num": null,
+"fact_value_text": "direct",
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "raman",
+"fact_category": "graha_position",
+"fact_key": "combustion_state",
+"fact_subject": "SAT",
+"fact_value_num": null,
+"fact_value_text": "none",
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "raman",
+"fact_category": "graha_sign_attributes",
+"fact_key": "sign_num",
+"fact_subject": "SAT",
+"fact_value_num": 7.0,
+"fact_value_text": null,
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "raman",
+"fact_category": "graha_sign_attributes",
+"fact_key": "degree_in_sign",
+"fact_subject": "SAT",
+"fact_value_num": 23.878287392526346,
+"fact_value_text": null,
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "raman",
+"fact_category": "graha_position",
+"fact_key": "longitude_sidereal",
+"fact_subject": "RAH_MEAN",
+"fact_value_num": 50.47934543361193,
+"fact_value_text": null,
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "raman",
+"fact_category": "graha_position",
+"fact_key": "sign",
+"fact_subject": "RAH_MEAN",
+"fact_value_num": null,
+"fact_value_text": "Taurus",
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "raman",
+"fact_category": "graha_position",
+"fact_key": "sign_lord",
+"fact_subject": "RAH_MEAN",
+"fact_value_num": null,
+"fact_value_text": "Venus",
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "raman",
+"fact_category": "graha_position",
+"fact_key": "nakshatra",
+"fact_subject": "RAH_MEAN",
+"fact_value_num": null,
+"fact_value_text": "Rohini",
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "raman",
+"fact_category": "graha_position",
+"fact_key": "nakshatra_lord",
+"fact_subject": "RAH_MEAN",
+"fact_value_num": null,
+"fact_value_text": "Moon",
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "raman",
+"fact_category": "graha_position",
+"fact_key": "pada",
+"fact_subject": "RAH_MEAN",
+"fact_value_num": 4.0,
+"fact_value_text": null,
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "raman",
+"fact_category": "graha_position",
+"fact_key": "house_d1",
+"fact_subject": "RAH_MEAN",
+"fact_value_num": 2.0,
+"fact_value_text": null,
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "raman",
+"fact_category": "graha_position",
+"fact_key": "retrograde_flag",
+"fact_subject": "RAH_MEAN",
+"fact_value_num": null,
+"fact_value_text": "direct",
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "raman",
+"fact_category": "graha_position",
+"fact_key": "combustion_state",
+"fact_subject": "RAH_MEAN",
+"fact_value_num": null,
+"fact_value_text": "none",
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "raman",
+"fact_category": "graha_sign_attributes",
+"fact_key": "sign_num",
+"fact_subject": "RAH_MEAN",
+"fact_value_num": 2.0,
+"fact_value_text": null,
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "raman",
+"fact_category": "graha_sign_attributes",
+"fact_key": "degree_in_sign",
+"fact_subject": "RAH_MEAN",
+"fact_value_num": 20.479345433611932,
+"fact_value_text": null,
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "raman",
+"fact_category": "graha_position",
+"fact_key": "longitude_sidereal",
+"fact_subject": "KET_MEAN",
+"fact_value_num": 230.47934543361194,
+"fact_value_text": null,
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "raman",
+"fact_category": "graha_position",
+"fact_key": "sign",
+"fact_subject": "KET_MEAN",
+"fact_value_num": null,
+"fact_value_text": "Scorpio",
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "raman",
+"fact_category": "graha_position",
+"fact_key": "sign_lord",
+"fact_subject": "KET_MEAN",
+"fact_value_num": null,
+"fact_value_text": "Mars",
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "raman",
+"fact_category": "graha_position",
+"fact_key": "nakshatra",
+"fact_subject": "KET_MEAN",
+"fact_value_num": null,
+"fact_value_text": "Jyeshtha",
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "raman",
+"fact_category": "graha_position",
+"fact_key": "nakshatra_lord",
+"fact_subject": "KET_MEAN",
+"fact_value_num": null,
+"fact_value_text": "Mercury",
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "raman",
+"fact_category": "graha_position",
+"fact_key": "pada",
+"fact_subject": "KET_MEAN",
+"fact_value_num": 2.0,
+"fact_value_text": null,
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "raman",
+"fact_category": "graha_position",
+"fact_key": "house_d1",
+"fact_subject": "KET_MEAN",
+"fact_value_num": 8.0,
+"fact_value_text": null,
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "raman",
+"fact_category": "graha_position",
+"fact_key": "retrograde_flag",
+"fact_subject": "KET_MEAN",
+"fact_value_num": null,
+"fact_value_text": "direct",
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "raman",
+"fact_category": "graha_position",
+"fact_key": "combustion_state",
+"fact_subject": "KET_MEAN",
+"fact_value_num": null,
+"fact_value_text": "none",
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "raman",
+"fact_category": "graha_sign_attributes",
+"fact_key": "sign_num",
+"fact_subject": "KET_MEAN",
+"fact_value_num": 8.0,
+"fact_value_text": null,
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "raman",
+"fact_category": "graha_sign_attributes",
+"fact_key": "degree_in_sign",
+"fact_subject": "KET_MEAN",
+"fact_value_num": 20.47934543361194,
+"fact_value_text": null,
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "raman",
+"fact_category": "graha_position",
+"fact_key": "longitude_sidereal",
+"fact_subject": "LAGNA",
+"fact_value_num": 13.877450932173872,
+"fact_value_text": null,
+"source_calculation": "pyjhora_adapter.houses/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "raman",
+"fact_category": "graha_position",
+"fact_key": "sign",
+"fact_subject": "LAGNA",
+"fact_value_num": null,
+"fact_value_text": "Aries",
+"source_calculation": "pyjhora_adapter.houses/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "raman",
+"fact_category": "graha_position",
+"fact_key": "sign_lord",
+"fact_subject": "LAGNA",
+"fact_value_num": null,
+"fact_value_text": "Mars",
+"source_calculation": "pyjhora_adapter.houses/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "raman",
+"fact_category": "graha_position",
+"fact_key": "pada",
+"fact_subject": "LAGNA",
+"fact_value_num": 1.0,
+"fact_value_text": null,
+"source_calculation": "pyjhora_adapter.houses/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "raman",
+"fact_category": "graha_position",
+"fact_key": "house_d1",
+"fact_subject": "LAGNA",
+"fact_value_num": 1.0,
+"fact_value_text": null,
+"source_calculation": "pyjhora_adapter.houses/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "raman",
+"fact_category": "graha_sign_attributes",
+"fact_key": "sign_num",
+"fact_subject": "LAGNA",
+"fact_value_num": 1.0,
+"fact_value_text": null,
+"source_calculation": "pyjhora_adapter.houses/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "raman",
+"fact_category": "graha_sign_attributes",
+"fact_key": "degree_in_sign",
+"fact_subject": "LAGNA",
+"fact_value_num": 13.877450932173872,
+"fact_value_text": null,
+"source_calculation": "pyjhora_adapter.houses/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "surya_siddhanta_classical",
+"fact_category": "graha_position",
+"fact_key": "longitude_sidereal",
+"fact_subject": "SUN",
+"fact_value_num": 294.92465007801997,
+"fact_value_text": null,
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "surya_siddhanta_classical",
+"fact_category": "graha_position",
+"fact_key": "sign",
+"fact_subject": "SUN",
+"fact_value_num": null,
+"fact_value_text": "Capricorn",
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "surya_siddhanta_classical",
+"fact_category": "graha_position",
+"fact_key": "sign_lord",
+"fact_subject": "SUN",
+"fact_value_num": null,
+"fact_value_text": "Saturn",
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "surya_siddhanta_classical",
+"fact_category": "graha_position",
+"fact_key": "nakshatra",
+"fact_subject": "SUN",
+"fact_value_num": null,
+"fact_value_text": "Dhanishta",
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "surya_siddhanta_classical",
+"fact_category": "graha_position",
+"fact_key": "nakshatra_lord",
+"fact_subject": "SUN",
+"fact_value_num": null,
+"fact_value_text": "Mars",
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "surya_siddhanta_classical",
+"fact_category": "graha_position",
+"fact_key": "pada",
+"fact_subject": "SUN",
+"fact_value_num": 1.0,
+"fact_value_text": null,
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "surya_siddhanta_classical",
+"fact_category": "graha_position",
+"fact_key": "house_d1",
+"fact_subject": "SUN",
+"fact_value_num": 10.0,
+"fact_value_text": null,
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "surya_siddhanta_classical",
+"fact_category": "graha_position",
+"fact_key": "retrograde_flag",
+"fact_subject": "SUN",
+"fact_value_num": null,
+"fact_value_text": "direct",
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "surya_siddhanta_classical",
+"fact_category": "graha_position",
+"fact_key": "combustion_state",
+"fact_subject": "SUN",
+"fact_value_num": null,
+"fact_value_text": "none",
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "surya_siddhanta_classical",
+"fact_category": "graha_sign_attributes",
+"fact_key": "sign_num",
+"fact_subject": "SUN",
+"fact_value_num": 10.0,
+"fact_value_text": null,
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "surya_siddhanta_classical",
+"fact_category": "graha_sign_attributes",
+"fact_key": "degree_in_sign",
+"fact_subject": "SUN",
+"fact_value_num": 24.924650078019965,
+"fact_value_text": null,
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "surya_siddhanta_classical",
+"fact_category": "graha_position",
+"fact_key": "longitude_sidereal",
+"fact_subject": "MOON",
+"fact_value_num": 330.01726292615734,
+"fact_value_text": null,
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "surya_siddhanta_classical",
+"fact_category": "graha_position",
+"fact_key": "sign",
+"fact_subject": "MOON",
+"fact_value_num": null,
+"fact_value_text": "Pisces",
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "surya_siddhanta_classical",
+"fact_category": "graha_position",
+"fact_key": "sign_lord",
+"fact_subject": "MOON",
+"fact_value_num": null,
+"fact_value_text": "Jupiter",
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "surya_siddhanta_classical",
+"fact_category": "graha_position",
+"fact_key": "nakshatra",
+"fact_subject": "MOON",
+"fact_value_num": null,
+"fact_value_text": "Purva Bhadrapada",
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "surya_siddhanta_classical",
+"fact_category": "graha_position",
+"fact_key": "nakshatra_lord",
+"fact_subject": "MOON",
+"fact_value_num": null,
+"fact_value_text": "Jupiter",
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "surya_siddhanta_classical",
+"fact_category": "graha_position",
+"fact_key": "pada",
+"fact_subject": "MOON",
+"fact_value_num": 4.0,
+"fact_value_text": null,
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "surya_siddhanta_classical",
+"fact_category": "graha_position",
+"fact_key": "house_d1",
+"fact_subject": "MOON",
+"fact_value_num": 12.0,
+"fact_value_text": null,
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "surya_siddhanta_classical",
+"fact_category": "graha_position",
+"fact_key": "retrograde_flag",
+"fact_subject": "MOON",
+"fact_value_num": null,
+"fact_value_text": "direct",
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "surya_siddhanta_classical",
+"fact_category": "graha_position",
+"fact_key": "combustion_state",
+"fact_subject": "MOON",
+"fact_value_num": null,
+"fact_value_text": "none",
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "surya_siddhanta_classical",
+"fact_category": "graha_sign_attributes",
+"fact_key": "sign_num",
+"fact_subject": "MOON",
+"fact_value_num": 12.0,
+"fact_value_text": null,
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "surya_siddhanta_classical",
+"fact_category": "graha_sign_attributes",
+"fact_key": "degree_in_sign",
+"fact_subject": "MOON",
+"fact_value_num": 0.017262926157343372,
+"fact_value_text": null,
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "surya_siddhanta_classical",
+"fact_category": "graha_position",
+"fact_key": "longitude_sidereal",
+"fact_subject": "MAR",
+"fact_value_num": 201.48122034765066,
+"fact_value_text": null,
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "surya_siddhanta_classical",
+"fact_category": "graha_position",
+"fact_key": "sign",
+"fact_subject": "MAR",
+"fact_value_num": null,
+"fact_value_text": "Libra",
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "surya_siddhanta_classical",
+"fact_category": "graha_position",
+"fact_key": "sign_lord",
+"fact_subject": "MAR",
+"fact_value_num": null,
+"fact_value_text": "Venus",
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "surya_siddhanta_classical",
+"fact_category": "graha_position",
+"fact_key": "nakshatra",
+"fact_subject": "MAR",
+"fact_value_num": null,
+"fact_value_text": "Vishakha",
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "surya_siddhanta_classical",
+"fact_category": "graha_position",
+"fact_key": "nakshatra_lord",
+"fact_subject": "MAR",
+"fact_value_num": null,
+"fact_value_text": "Jupiter",
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "surya_siddhanta_classical",
+"fact_category": "graha_position",
+"fact_key": "pada",
+"fact_subject": "MAR",
+"fact_value_num": 1.0,
+"fact_value_text": null,
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "surya_siddhanta_classical",
+"fact_category": "graha_position",
+"fact_key": "house_d1",
+"fact_subject": "MAR",
+"fact_value_num": 7.0,
+"fact_value_text": null,
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "surya_siddhanta_classical",
+"fact_category": "graha_position",
+"fact_key": "retrograde_flag",
+"fact_subject": "MAR",
+"fact_value_num": null,
+"fact_value_text": "direct",
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "surya_siddhanta_classical",
+"fact_category": "graha_position",
+"fact_key": "combustion_state",
+"fact_subject": "MAR",
+"fact_value_num": null,
+"fact_value_text": "none",
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "surya_siddhanta_classical",
+"fact_category": "graha_sign_attributes",
+"fact_key": "sign_num",
+"fact_subject": "MAR",
+"fact_value_num": 7.0,
+"fact_value_text": null,
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "surya_siddhanta_classical",
+"fact_category": "graha_sign_attributes",
+"fact_key": "degree_in_sign",
+"fact_subject": "MAR",
+"fact_value_num": 21.481220347650662,
+"fact_value_text": null,
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "surya_siddhanta_classical",
+"fact_category": "graha_position",
+"fact_key": "longitude_sidereal",
+"fact_subject": "MER",
+"fact_value_num": 273.8007867117269,
+"fact_value_text": null,
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "surya_siddhanta_classical",
+"fact_category": "graha_position",
+"fact_key": "sign",
+"fact_subject": "MER",
+"fact_value_num": null,
+"fact_value_text": "Capricorn",
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "surya_siddhanta_classical",
+"fact_category": "graha_position",
+"fact_key": "sign_lord",
+"fact_subject": "MER",
+"fact_value_num": null,
+"fact_value_text": "Saturn",
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "surya_siddhanta_classical",
+"fact_category": "graha_position",
+"fact_key": "nakshatra",
+"fact_subject": "MER",
+"fact_value_num": null,
+"fact_value_text": "Uttara Ashadha",
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "surya_siddhanta_classical",
+"fact_category": "graha_position",
+"fact_key": "nakshatra_lord",
+"fact_subject": "MER",
+"fact_value_num": null,
+"fact_value_text": "Sun",
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "surya_siddhanta_classical",
+"fact_category": "graha_position",
+"fact_key": "pada",
+"fact_subject": "MER",
+"fact_value_num": 3.0,
+"fact_value_text": null,
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "surya_siddhanta_classical",
+"fact_category": "graha_position",
+"fact_key": "house_d1",
+"fact_subject": "MER",
+"fact_value_num": 10.0,
+"fact_value_text": null,
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "surya_siddhanta_classical",
+"fact_category": "graha_position",
+"fact_key": "retrograde_flag",
+"fact_subject": "MER",
+"fact_value_num": null,
+"fact_value_text": "direct",
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "surya_siddhanta_classical",
+"fact_category": "graha_position",
+"fact_key": "combustion_state",
+"fact_subject": "MER",
+"fact_value_num": null,
+"fact_value_text": "none",
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "surya_siddhanta_classical",
+"fact_category": "graha_sign_attributes",
+"fact_key": "sign_num",
+"fact_subject": "MER",
+"fact_value_num": 10.0,
+"fact_value_text": null,
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "surya_siddhanta_classical",
+"fact_category": "graha_sign_attributes",
+"fact_key": "degree_in_sign",
+"fact_subject": "MER",
+"fact_value_num": 3.8007867117269143,
+"fact_value_text": null,
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "surya_siddhanta_classical",
+"fact_category": "graha_position",
+"fact_key": "longitude_sidereal",
+"fact_subject": "JUP",
+"fact_value_num": 252.74952981620987,
+"fact_value_text": null,
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "surya_siddhanta_classical",
+"fact_category": "graha_position",
+"fact_key": "sign",
+"fact_subject": "JUP",
+"fact_value_num": null,
+"fact_value_text": "Sagittarius",
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "surya_siddhanta_classical",
+"fact_category": "graha_position",
+"fact_key": "sign_lord",
+"fact_subject": "JUP",
+"fact_value_num": null,
+"fact_value_text": "Jupiter",
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "surya_siddhanta_classical",
+"fact_category": "graha_position",
+"fact_key": "nakshatra",
+"fact_subject": "JUP",
+"fact_value_num": null,
+"fact_value_text": "Mula",
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "surya_siddhanta_classical",
+"fact_category": "graha_position",
+"fact_key": "nakshatra_lord",
+"fact_subject": "JUP",
+"fact_value_num": null,
+"fact_value_text": "Ketu",
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "surya_siddhanta_classical",
+"fact_category": "graha_position",
+"fact_key": "pada",
+"fact_subject": "JUP",
+"fact_value_num": 4.0,
+"fact_value_text": null,
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "surya_siddhanta_classical",
+"fact_category": "graha_position",
+"fact_key": "house_d1",
+"fact_subject": "JUP",
+"fact_value_num": 9.0,
+"fact_value_text": null,
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "surya_siddhanta_classical",
+"fact_category": "graha_position",
+"fact_key": "retrograde_flag",
+"fact_subject": "JUP",
+"fact_value_num": null,
+"fact_value_text": "direct",
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "surya_siddhanta_classical",
+"fact_category": "graha_position",
+"fact_key": "combustion_state",
+"fact_subject": "JUP",
+"fact_value_num": null,
+"fact_value_text": "none",
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "surya_siddhanta_classical",
+"fact_category": "graha_sign_attributes",
+"fact_key": "sign_num",
+"fact_subject": "JUP",
+"fact_value_num": 9.0,
+"fact_value_text": null,
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "surya_siddhanta_classical",
+"fact_category": "graha_sign_attributes",
+"fact_key": "degree_in_sign",
+"fact_subject": "JUP",
+"fact_value_num": 12.749529816209872,
+"fact_value_text": null,
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "surya_siddhanta_classical",
+"fact_category": "graha_position",
+"fact_key": "longitude_sidereal",
+"fact_subject": "VEN",
+"fact_value_num": 262.1347288824849,
+"fact_value_text": null,
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "surya_siddhanta_classical",
+"fact_category": "graha_position",
+"fact_key": "sign",
+"fact_subject": "VEN",
+"fact_value_num": null,
+"fact_value_text": "Sagittarius",
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "surya_siddhanta_classical",
+"fact_category": "graha_position",
+"fact_key": "sign_lord",
+"fact_subject": "VEN",
+"fact_value_num": null,
+"fact_value_text": "Jupiter",
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "surya_siddhanta_classical",
+"fact_category": "graha_position",
+"fact_key": "nakshatra",
+"fact_subject": "VEN",
+"fact_value_num": null,
+"fact_value_text": "Purva Ashadha",
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "surya_siddhanta_classical",
+"fact_category": "graha_position",
+"fact_key": "nakshatra_lord",
+"fact_subject": "VEN",
+"fact_value_num": null,
+"fact_value_text": "Venus",
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "surya_siddhanta_classical",
+"fact_category": "graha_position",
+"fact_key": "pada",
+"fact_subject": "VEN",
+"fact_value_num": 3.0,
+"fact_value_text": null,
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "surya_siddhanta_classical",
+"fact_category": "graha_position",
+"fact_key": "house_d1",
+"fact_subject": "VEN",
+"fact_value_num": 9.0,
+"fact_value_text": null,
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "surya_siddhanta_classical",
+"fact_category": "graha_position",
+"fact_key": "retrograde_flag",
+"fact_subject": "VEN",
+"fact_value_num": null,
+"fact_value_text": "direct",
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "surya_siddhanta_classical",
+"fact_category": "graha_position",
+"fact_key": "combustion_state",
+"fact_subject": "VEN",
+"fact_value_num": null,
+"fact_value_text": "none",
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "surya_siddhanta_classical",
+"fact_category": "graha_sign_attributes",
+"fact_key": "sign_num",
+"fact_subject": "VEN",
+"fact_value_num": 9.0,
+"fact_value_text": null,
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "surya_siddhanta_classical",
+"fact_category": "graha_sign_attributes",
+"fact_key": "degree_in_sign",
+"fact_subject": "VEN",
+"fact_value_num": 22.13472888248492,
+"fact_value_text": null,
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "surya_siddhanta_classical",
+"fact_category": "graha_position",
+"fact_key": "longitude_sidereal",
+"fact_subject": "SAT",
+"fact_value_num": 205.39401885222384,
+"fact_value_text": null,
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "surya_siddhanta_classical",
+"fact_category": "graha_position",
+"fact_key": "sign",
+"fact_subject": "SAT",
+"fact_value_num": null,
+"fact_value_text": "Libra",
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "surya_siddhanta_classical",
+"fact_category": "graha_position",
+"fact_key": "sign_lord",
+"fact_subject": "SAT",
+"fact_value_num": null,
+"fact_value_text": "Venus",
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "surya_siddhanta_classical",
+"fact_category": "graha_position",
+"fact_key": "nakshatra",
+"fact_subject": "SAT",
+"fact_value_num": null,
+"fact_value_text": "Vishakha",
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "surya_siddhanta_classical",
+"fact_category": "graha_position",
+"fact_key": "nakshatra_lord",
+"fact_subject": "SAT",
+"fact_value_num": null,
+"fact_value_text": "Jupiter",
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "surya_siddhanta_classical",
+"fact_category": "graha_position",
+"fact_key": "pada",
+"fact_subject": "SAT",
+"fact_value_num": 2.0,
+"fact_value_text": null,
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "surya_siddhanta_classical",
+"fact_category": "graha_position",
+"fact_key": "house_d1",
+"fact_subject": "SAT",
+"fact_value_num": 7.0,
+"fact_value_text": null,
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "surya_siddhanta_classical",
+"fact_category": "graha_position",
+"fact_key": "retrograde_flag",
+"fact_subject": "SAT",
+"fact_value_num": null,
+"fact_value_text": "direct",
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "surya_siddhanta_classical",
+"fact_category": "graha_position",
+"fact_key": "combustion_state",
+"fact_subject": "SAT",
+"fact_value_num": null,
+"fact_value_text": "none",
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "surya_siddhanta_classical",
+"fact_category": "graha_sign_attributes",
+"fact_key": "sign_num",
+"fact_subject": "SAT",
+"fact_value_num": 7.0,
+"fact_value_text": null,
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "surya_siddhanta_classical",
+"fact_category": "graha_sign_attributes",
+"fact_key": "degree_in_sign",
+"fact_subject": "SAT",
+"fact_value_num": 25.394018852223837,
+"fact_value_text": null,
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "surya_siddhanta_classical",
+"fact_category": "graha_position",
+"fact_key": "longitude_sidereal",
+"fact_subject": "RAH_MEAN",
+"fact_value_num": 51.99507691196768,
+"fact_value_text": null,
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "surya_siddhanta_classical",
+"fact_category": "graha_position",
+"fact_key": "sign",
+"fact_subject": "RAH_MEAN",
+"fact_value_num": null,
+"fact_value_text": "Taurus",
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "surya_siddhanta_classical",
+"fact_category": "graha_position",
+"fact_key": "sign_lord",
+"fact_subject": "RAH_MEAN",
+"fact_value_num": null,
+"fact_value_text": "Venus",
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "surya_siddhanta_classical",
+"fact_category": "graha_position",
+"fact_key": "nakshatra",
+"fact_subject": "RAH_MEAN",
+"fact_value_num": null,
+"fact_value_text": "Rohini",
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "surya_siddhanta_classical",
+"fact_category": "graha_position",
+"fact_key": "nakshatra_lord",
+"fact_subject": "RAH_MEAN",
+"fact_value_num": null,
+"fact_value_text": "Moon",
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "surya_siddhanta_classical",
+"fact_category": "graha_position",
+"fact_key": "pada",
+"fact_subject": "RAH_MEAN",
+"fact_value_num": 4.0,
+"fact_value_text": null,
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "surya_siddhanta_classical",
+"fact_category": "graha_position",
+"fact_key": "house_d1",
+"fact_subject": "RAH_MEAN",
+"fact_value_num": 2.0,
+"fact_value_text": null,
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "surya_siddhanta_classical",
+"fact_category": "graha_position",
+"fact_key": "retrograde_flag",
+"fact_subject": "RAH_MEAN",
+"fact_value_num": null,
+"fact_value_text": "direct",
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "surya_siddhanta_classical",
+"fact_category": "graha_position",
+"fact_key": "combustion_state",
+"fact_subject": "RAH_MEAN",
+"fact_value_num": null,
+"fact_value_text": "none",
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "surya_siddhanta_classical",
+"fact_category": "graha_sign_attributes",
+"fact_key": "sign_num",
+"fact_subject": "RAH_MEAN",
+"fact_value_num": 2.0,
+"fact_value_text": null,
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "surya_siddhanta_classical",
+"fact_category": "graha_sign_attributes",
+"fact_key": "degree_in_sign",
+"fact_subject": "RAH_MEAN",
+"fact_value_num": 21.99507691196768,
+"fact_value_text": null,
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "surya_siddhanta_classical",
+"fact_category": "graha_position",
+"fact_key": "longitude_sidereal",
+"fact_subject": "KET_MEAN",
+"fact_value_num": 231.9950769119677,
+"fact_value_text": null,
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "surya_siddhanta_classical",
+"fact_category": "graha_position",
+"fact_key": "sign",
+"fact_subject": "KET_MEAN",
+"fact_value_num": null,
+"fact_value_text": "Scorpio",
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "surya_siddhanta_classical",
+"fact_category": "graha_position",
+"fact_key": "sign_lord",
+"fact_subject": "KET_MEAN",
+"fact_value_num": null,
+"fact_value_text": "Mars",
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "surya_siddhanta_classical",
+"fact_category": "graha_position",
+"fact_key": "nakshatra",
+"fact_subject": "KET_MEAN",
+"fact_value_num": null,
+"fact_value_text": "Jyeshtha",
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "surya_siddhanta_classical",
+"fact_category": "graha_position",
+"fact_key": "nakshatra_lord",
+"fact_subject": "KET_MEAN",
+"fact_value_num": null,
+"fact_value_text": "Mercury",
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "surya_siddhanta_classical",
+"fact_category": "graha_position",
+"fact_key": "pada",
+"fact_subject": "KET_MEAN",
+"fact_value_num": 2.0,
+"fact_value_text": null,
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "surya_siddhanta_classical",
+"fact_category": "graha_position",
+"fact_key": "house_d1",
+"fact_subject": "KET_MEAN",
+"fact_value_num": 8.0,
+"fact_value_text": null,
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "surya_siddhanta_classical",
+"fact_category": "graha_position",
+"fact_key": "retrograde_flag",
+"fact_subject": "KET_MEAN",
+"fact_value_num": null,
+"fact_value_text": "direct",
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "surya_siddhanta_classical",
+"fact_category": "graha_position",
+"fact_key": "combustion_state",
+"fact_subject": "KET_MEAN",
+"fact_value_num": null,
+"fact_value_text": "none",
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "surya_siddhanta_classical",
+"fact_category": "graha_sign_attributes",
+"fact_key": "sign_num",
+"fact_subject": "KET_MEAN",
+"fact_value_num": 8.0,
+"fact_value_text": null,
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "surya_siddhanta_classical",
+"fact_category": "graha_sign_attributes",
+"fact_key": "degree_in_sign",
+"fact_subject": "KET_MEAN",
+"fact_value_num": 21.995076911967686,
+"fact_value_text": null,
+"source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "surya_siddhanta_classical",
+"fact_category": "graha_position",
+"fact_key": "longitude_sidereal",
+"fact_subject": "LAGNA",
+"fact_value_num": 15.393182410529619,
+"fact_value_text": null,
+"source_calculation": "pyjhora_adapter.houses/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "surya_siddhanta_classical",
+"fact_category": "graha_position",
+"fact_key": "sign",
+"fact_subject": "LAGNA",
+"fact_value_num": null,
+"fact_value_text": "Aries",
+"source_calculation": "pyjhora_adapter.houses/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "surya_siddhanta_classical",
+"fact_category": "graha_position",
+"fact_key": "sign_lord",
+"fact_subject": "LAGNA",
+"fact_value_num": null,
+"fact_value_text": "Mars",
+"source_calculation": "pyjhora_adapter.houses/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "surya_siddhanta_classical",
+"fact_category": "graha_position",
+"fact_key": "pada",
+"fact_subject": "LAGNA",
+"fact_value_num": 1.0,
+"fact_value_text": null,
+"source_calculation": "pyjhora_adapter.houses/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "surya_siddhanta_classical",
+"fact_category": "graha_position",
+"fact_key": "house_d1",
+"fact_subject": "LAGNA",
+"fact_value_num": 1.0,
+"fact_value_text": null,
+"source_calculation": "pyjhora_adapter.houses/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "surya_siddhanta_classical",
+"fact_category": "graha_sign_attributes",
+"fact_key": "sign_num",
+"fact_subject": "LAGNA",
+"fact_value_num": 1.0,
+"fact_value_text": null,
+"source_calculation": "pyjhora_adapter.houses/pyjhora/1.0.0",
+"verification_pass_status": "single"
+},
+{
+"ayanamsha_id": "surya_siddhanta_classical",
+"fact_category": "graha_sign_attributes",
+"fact_key": "degree_in_sign",
+"fact_subject": "LAGNA",
+"fact_value_num": 15.393182410529619,
+"fact_value_text": null,
+"source_calculation": "pyjhora_adapter.houses/pyjhora/1.0.0",
+"verification_pass_status": "single"
+}
+]
+}

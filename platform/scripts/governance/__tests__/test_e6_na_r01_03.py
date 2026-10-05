@@ -33,7 +33,8 @@ S2_IDS = frozenset(f"Carr.D{i}#measured:not-the-declared-carriage" for i in (1, 
 S3_IDS = frozenset({"Vocab.alias#measured:no-alias-class", "Ldgr.source_presence#measured:no-classical-claim"})   # SS N-72 S3, N-73 (1)/(4)
 N151_IDS = frozenset({"Ldgr.source_presence#measured:no-data", "Ldgr.source_presence#measured:no-claims"})              # SS N-151 (REGISTRY_REVISION 26): N/A only by a checked declaration
 N150_IDS = frozenset({"Null.schema_default#measured:no-prose-declared", "Null.blank_rows#measured:no-prose-declared"})     # SS N-150 R1: released only through the checked prose_none block
-DECLARED_IDS = N65_IDS | PIN10_IDS | S2_IDS | S3_IDS | N151_IDS | N150_IDS     # the exact production table since REGISTRY_REVISION 26
+N156_IDS = frozenset({"Carr.D3#measured:single-derivation", "Carr.D1#measured:transcription-not-verified", "Carr.D2#measured:no-per-witness-values"})       # SS N-156 (the Carr declared ceiling)
+DECLARED_IDS = N65_IDS | PIN10_IDS | S2_IDS | S3_IDS | N151_IDS | N150_IDS | N156_IDS     # the exact production table since REGISTRY_REVISION 26
 R01_ASSETS = ("bg_gochara_citation_resolution", "bg_nakshatra_medical", "bg_sarvatobhadra_grid", "bg_sign_medical",
               "bg_transit_engine", "lel_events")
 R02_ASSETS = ("bg_gochara_arcs", "bg_kota_chakra_rings", "bg_kp_sublord_division")
@@ -63,8 +64,8 @@ def test_exactly_the_approved_rules_are_declared_and_they_validate():
         if rid in N151_IDS | N150_IDS:
             assert ("N-151" if rid in N151_IDS else "N-150") in why, (rid, why)                                                 # the N-151 rules cite their own ruling
             continue
-        assert "N-22" in why, (rid, why)                                                      # every rule cites its decisions
-        assert ("N-65" if rid in N65_IDS else "N-72") in why, (rid, why)                      # ... and the ruling that approved it (per rule)
+        assert ("N-22" in why) or (rid in N156_IDS and "N-156" in why), (rid, why)                                                      # every rule cites its decisions
+        assert ("N-65" if rid in N65_IDS else "N-156" if rid in N156_IDS else "N-72") in why, (rid, why)                      # ... and the ruling that approved it (per rule)
 
 
 def test_no_rule_beyond_the_ruling_is_declared():
@@ -73,7 +74,7 @@ def test_no_rule_beyond_the_ruling_is_declared():
     assert {i for i in ids if i.startswith("Null.")} == N150_IDS
     assert {i for i in ids if i.startswith(("Vocab.", "Ldgr."))} == S3_IDS | N151_IDS   # S3: the declaration-keyed words (+ the two N-151 checked-declaration words), never a column pattern
     assert not [i for i in ids if i.endswith(("#columns_any", "#asset_kinds"))]        # A5: no applicability-pattern N/A is declared anywhere
-    assert not [i for i in ids if i.startswith("Carr.") and i not in S2_IDS]            # no no-carriage / not-chosen / ratified_judgment rule
+    assert not [i for i in ids if i.startswith("Carr.") and i not in S2_IDS | N156_IDS]            # no no-carriage / not-chosen / ratified_judgment rule
     assert not [i for i in ids if i.startswith("Earn.") and i != "Earn.service_state#measured:not-a-service"]    # Earn.build_record stays held
     assert not [i for i in ids if i.startswith("Build.") and i not in ("Build.history#measured:never-run",
                                                                       "Build.dep_liveness#measured:no-declared-dependencies")]
