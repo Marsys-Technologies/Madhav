@@ -3658,7 +3658,9 @@
   "method",
   "version",
   "seed",
+  "version_digest",
   "columns",
+  "provenance_columns",
   "citation_state",
   "why",
   "evidence"
@@ -3671,7 +3673,10 @@
   "dataset_column",
   "method_column",
   "version_column",
-  "seed_column"
+  "seed_column",
+  "path",
+  "resolves_to",
+  "except_when"
  ],
  "prose_none_declaration_fields": [
   "why",
