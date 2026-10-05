@@ -901,6 +901,9 @@ def validate_carriage_declaration(where: str, car: dict, e: dict) -> None:
             raise DeclarationsError(f"{where}.carriage.citation_state must be one of {list(CITATION_STATES)} (or absent) for an unverified transcription, got {cs!r}")
     elif cs is not None:
         raise DeclarationsError(f"{where}.carriage.citation_state is only declared for nature transcription / unverified_transcription")
+    if nature == "unverified_transcription" and source_kinds(e.get("source")) and not (source_kinds(e.get("source")) - {"K2", "K3", "LEDGER"}):
+        raise DeclarationsError(f"{where}.carriage: nature unverified_transcription is refused: the source declaration names only {sorted(source_kinds(e.get('source')))} (a ratification or "
+                                "derivation, not a classical passage): declare not_a_transcription (N-156 C8)")
     if nature == NOT_A_TRANSCRIPTION:
         bad = not_a_transcription_problem(e.get("source"))
         if bad:

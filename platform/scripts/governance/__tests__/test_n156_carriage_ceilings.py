@@ -212,6 +212,8 @@ def test_validator_refuses_a_spec_a_citation_state_and_refuses_unverified_on_a_k
         mutate(c)
         with pytest.raises(ac.DeclarationsError, match=msg):
             ac.validate_declarations(decl_src("bg_vidhi_floors", c, SRC_K2))
+    with pytest.raises(ac.DeclarationsError, match="declare not_a_transcription"):
+        ac.validate_declarations(decl_src("bg_vidhi_floors", unverified(), SRC_K2))
     ac.validate_declarations(decl_src("bg_vidhi_floors", unverified(), SRC_K1))             # K1 keeps the label
     ac.validate_declarations(decl_src("bg_vidhi_floors", unverified(), SRC_MIX))            # a mixed K1 / K2 source is still (partly) a transcription
 
