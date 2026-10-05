@@ -373,7 +373,137 @@
      },
      "why": "the writer deletes and re-inserts only the brahma_ontology rows whose entity_class is dosha"
     }
-   ]
+   ],
+   "prose_none": {
+    "why": "the dosha catalog, its reference list and its ontology rows hold identifiers and classical text hand-authored in the seed module: the writer composes no narration",
+    "closed_columns": [
+     {
+      "table": "brahma_ontology",
+      "column": "entity_class",
+      "values": [
+       "dosha"
+      ],
+      "why": "the ontology rows this writer owns carry the one entity class dosha"
+     }
+    ],
+    "identifier_columns": [
+     {
+      "column": "canonical_id",
+      "why": "canonical_id is the primary key of the dosha catalog",
+      "evidence": "platform/python-sidecar/brahmagyan/l0_doshas.py:43"
+     },
+     {
+      "table": "reference_doshas",
+      "column": "canonical_id",
+      "why": "canonical_id is the primary key of the reference list",
+      "evidence": "platform/python-sidecar/brahmagyan/l0_doshas.py:2014"
+     },
+     {
+      "table": "brahma_ontology",
+      "column": "canonical_id",
+      "why": "canonical_id is the dosha identifier, a member of the unique key (entity_class, canonical_id)",
+      "evidence": "platform/python-sidecar/brahmagyan/l0_doshas.py:1992"
+     }
+    ],
+    "transcription_columns": [
+     {
+      "table": "brahma_dosha_catalog",
+      "column": "category",
+      "why": "category is the classical dosha category, hand-authored in the seed module from the classical tradition, a transcription of the source and not text the writer composes from computed values",
+      "evidence": "platform/python-sidecar/brahmagyan/l0_doshas.py:43"
+     },
+     {
+      "table": "brahma_dosha_catalog",
+      "column": "school",
+      "why": "school is the tradition the dosha is taken from, hand-authored in the seed module from the classical tradition, a transcription of the source and not text the writer composes from computed values",
+      "evidence": "platform/python-sidecar/brahmagyan/l0_doshas.py:43"
+     },
+     {
+      "table": "brahma_dosha_catalog",
+      "column": "name_en",
+      "why": "name_en is the English dosha name, hand-authored in the seed module from the classical tradition, a transcription of the source and not text the writer composes from computed values",
+      "evidence": "platform/python-sidecar/brahmagyan/l0_doshas.py:43"
+     },
+     {
+      "table": "brahma_dosha_catalog",
+      "column": "name_sa",
+      "why": "name_sa is the Sanskrit dosha name, hand-authored in the seed module from the classical tradition, a transcription of the source and not text the writer composes from computed values",
+      "evidence": "platform/python-sidecar/brahmagyan/l0_doshas.py:43"
+     },
+     {
+      "table": "brahma_dosha_catalog",
+      "column": "effects_text",
+      "why": "effects_text is the classical statement of the dosha effects, hand-authored in the seed module from the classical tradition, a transcription of the source and not text the writer composes from computed values",
+      "evidence": "platform/python-sidecar/brahmagyan/l0_doshas.py:43"
+     },
+     {
+      "table": "brahma_dosha_catalog",
+      "column": "formation_text",
+      "why": "formation_text is the classical formation statement, hand-authored in the seed module from the classical tradition, a transcription of the source and not text the writer composes from computed values",
+      "evidence": "platform/python-sidecar/brahmagyan/l0_doshas.py:43"
+     },
+     {
+      "table": "brahma_dosha_catalog",
+      "column": "cancellation_conditions",
+      "why": "cancellation_conditions is the classical cancellation conditions document, hand-authored in the seed module from the classical tradition, a transcription of the source and not text the writer composes from computed values",
+      "evidence": "platform/python-sidecar/brahmagyan/l0_doshas.py:43"
+     },
+     {
+      "table": "brahma_dosha_catalog",
+      "column": "formation_rule_jsonb",
+      "why": "formation_rule_jsonb is the classical formation rule document, hand-authored in the seed module from the classical tradition, a transcription of the source and not text the writer composes from computed values",
+      "evidence": "platform/python-sidecar/brahmagyan/l0_doshas.py:43"
+     },
+     {
+      "table": "brahma_dosha_catalog",
+      "column": "severity_grades",
+      "why": "severity_grades is the classical severity grading document, hand-authored in the seed module from the classical tradition, a transcription of the source and not text the writer composes from computed values",
+      "evidence": "platform/python-sidecar/brahmagyan/l0_doshas.py:43"
+     },
+     {
+      "table": "reference_doshas",
+      "column": "category",
+      "why": "category is the classical dosha category copied from the catalog, hand-authored in the seed module from the classical tradition, a transcription of the source and not text the writer composes from computed values",
+      "evidence": "platform/python-sidecar/brahmagyan/l0_doshas.py:2014"
+     },
+     {
+      "table": "reference_doshas",
+      "column": "name_en",
+      "why": "name_en is the English dosha name copied from the catalog, hand-authored in the seed module from the classical tradition, a transcription of the source and not text the writer composes from computed values",
+      "evidence": "platform/python-sidecar/brahmagyan/l0_doshas.py:2014"
+     },
+     {
+      "table": "brahma_ontology",
+      "column": "canonical_name_en",
+      "why": "canonical_name_en is the English dosha name copied from the catalog, hand-authored in the seed module from the classical tradition, a transcription of the source and not text the writer composes from computed values",
+      "evidence": "platform/python-sidecar/brahmagyan/l0_doshas.py:1992"
+     },
+     {
+      "table": "brahma_ontology",
+      "column": "canonical_name_sa",
+      "why": "canonical_name_sa is the Sanskrit dosha name copied from the catalog, hand-authored in the seed module from the classical tradition, a transcription of the source and not text the writer composes from computed values",
+      "evidence": "platform/python-sidecar/brahmagyan/l0_doshas.py:1992"
+     },
+     {
+      "table": "brahma_ontology",
+      "column": "description",
+      "why": "description is the dosha description copied from the catalog, hand-authored in the seed module from the classical tradition, a transcription of the source and not text the writer composes from computed values",
+      "evidence": "platform/python-sidecar/brahmagyan/l0_doshas.py:1992"
+     },
+     {
+      "table": "brahma_ontology",
+      "column": "synonyms",
+      "why": "synonyms is the dosha alias list copied from the catalog, hand-authored in the seed module from the classical tradition, a transcription of the source and not text the writer composes from computed values",
+      "evidence": "platform/python-sidecar/brahmagyan/l0_doshas.py:1992"
+     },
+     {
+      "table": "brahma_ontology",
+      "column": "source_citation",
+      "why": "source_citation names the classical source copied from the catalog, hand-authored in the seed module from the classical tradition, a transcription of the source and not text the writer composes from computed values",
+      "evidence": "platform/python-sidecar/brahmagyan/l0_doshas.py:1992"
+     }
+    ]
+   }
   },
   "bg_ephemeris": {
    "kind": "data",
@@ -937,6 +1067,62 @@
     "citation_state": "sourced",
     "why": "each ontology entity row carries source_citation; the planet and varga rows name BPHS chapters while some rows name only the classical tradition",
     "evidence": "platform/python-sidecar/brahmagyan/l0_ontology.py:45"
+   },
+   "prose_none": {
+    "why": "the ontology holds identifiers, one closed class vocabulary and hand-authored entity names and descriptions that transcribe the classical vocabulary: the writer composes no narration",
+    "closed_columns": [
+     {
+      "column": "entity_class",
+      "values": [
+       "aspect_type",
+       "concept",
+       "dasha_system",
+       "domain",
+       "dosha",
+       "house",
+       "karaka",
+       "nakshatra",
+       "planet",
+       "remedy_type",
+       "school",
+       "sign",
+       "text",
+       "upagraha",
+       "varga",
+       "yoga"
+      ],
+      "why": "entity_class is one of the sixteen entity classes the ontology seed and its dasha, dosha and yoga co-writers use"
+     }
+    ],
+    "identifier_columns": [
+     {
+      "column": "canonical_id",
+      "why": "canonical_id is the entity identifier, a member of the unique key (entity_class, canonical_id)",
+      "evidence": "platform/python-sidecar/brahmagyan/l0_ontology.py:36"
+     }
+    ],
+    "transcription_columns": [
+     {
+      "column": "canonical_name_en",
+      "why": "canonical_name_en is the English name of the entity, hand-authored in the seed module from the classical vocabulary",
+      "evidence": "platform/python-sidecar/brahmagyan/l0_ontology.py:36"
+     },
+     {
+      "column": "canonical_name_sa",
+      "why": "canonical_name_sa is the Sanskrit name of the entity, hand-authored in the seed module from the classical vocabulary",
+      "evidence": "platform/python-sidecar/brahmagyan/l0_ontology.py:36"
+     },
+     {
+      "column": "description",
+      "why": "description is the one-line entity description hand-authored in the seed module, a transcription of the classical definition and not composed from computed values",
+      "evidence": "platform/python-sidecar/brahmagyan/l0_ontology.py:36"
+     },
+     {
+      "column": "synonyms",
+      "why": "synonyms is the list of classical alias names of the entity, hand-authored in the seed module",
+      "evidence": "platform/python-sidecar/brahmagyan/l0_ontology.py:36"
+     }
+    ]
    }
   },
   "bg_panchanga": {
@@ -1803,7 +1989,167 @@
      },
      "why": "the writer deletes and re-inserts only the brahma_ontology rows whose entity_class is yoga"
     }
-   ]
+   ],
+   "prose_none": {
+    "why": "the yoga catalog, its source-chunk links, the reference list and its ontology rows hold identifiers, one class label and classical text transcribed or extracted from the corpus: the writer composes no narration",
+    "closed_columns": [
+     {
+      "table": "brahma_ontology",
+      "column": "entity_class",
+      "values": [
+       "yoga"
+      ],
+      "why": "the ontology rows this writer owns carry the one entity class yoga"
+     }
+    ],
+    "identifier_columns": [
+     {
+      "column": "canonical_id",
+      "why": "canonical_id is the primary key of the yoga catalog",
+      "evidence": "platform/python-sidecar/brahmagyan/l0_yogas.py:87"
+     },
+     {
+      "table": "brahma_yoga_source_chunks",
+      "column": "canonical_id",
+      "why": "canonical_id is the yoga identifier, a member of the primary key (canonical_id, source_chunk_id)",
+      "evidence": "platform/python-sidecar/brahmagyan/l0_yogas.py:2292"
+     },
+     {
+      "table": "reference_yogas",
+      "column": "canonical_id",
+      "why": "canonical_id is the primary key of the reference list",
+      "evidence": "platform/python-sidecar/brahmagyan/l0_yogas.py:2323"
+     },
+     {
+      "table": "brahma_ontology",
+      "column": "canonical_id",
+      "why": "canonical_id is the yoga identifier, a member of the unique key (entity_class, canonical_id)",
+      "evidence": "platform/python-sidecar/brahmagyan/l0_yogas.py:2301"
+     }
+    ],
+    "transcription_columns": [
+     {
+      "table": "brahma_yoga_catalog",
+      "column": "category",
+      "why": "category is the classical yoga category, values come from the inline classical yoga table or are extracted from the classical corpus by extract_yogas_from_corpus, not authored by the writer: transcription of the source",
+      "evidence": "platform/python-sidecar/brahmagyan/l0_yogas.py:1965"
+     },
+     {
+      "table": "brahma_yoga_catalog",
+      "column": "school",
+      "why": "school is the tradition the yoga is taken from, values come from the inline classical yoga table or are extracted from the classical corpus by extract_yogas_from_corpus, not authored by the writer: transcription of the source",
+      "evidence": "platform/python-sidecar/brahmagyan/l0_yogas.py:1965"
+     },
+     {
+      "table": "brahma_yoga_catalog",
+      "column": "result_class",
+      "why": "result_class is the classical result class of the yoga, values come from the inline classical yoga table or are extracted from the classical corpus by extract_yogas_from_corpus, not authored by the writer: transcription of the source",
+      "evidence": "platform/python-sidecar/brahmagyan/l0_yogas.py:1965"
+     },
+     {
+      "table": "brahma_yoga_catalog",
+      "column": "name_en",
+      "why": "name_en is the English yoga name, values come from the inline classical yoga table or are extracted from the classical corpus by extract_yogas_from_corpus, not authored by the writer: transcription of the source",
+      "evidence": "platform/python-sidecar/brahmagyan/l0_yogas.py:1965"
+     },
+     {
+      "table": "brahma_yoga_catalog",
+      "column": "name_sa",
+      "why": "name_sa is the Sanskrit yoga name, values come from the inline classical yoga table or are extracted from the classical corpus by extract_yogas_from_corpus, not authored by the writer: transcription of the source",
+      "evidence": "platform/python-sidecar/brahmagyan/l0_yogas.py:1965"
+     },
+     {
+      "table": "brahma_yoga_catalog",
+      "column": "formation_text",
+      "why": "formation_text is the classical formation statement, values come from the inline classical yoga table or are extracted from the classical corpus by extract_yogas_from_corpus, not authored by the writer: transcription of the source",
+      "evidence": "platform/python-sidecar/brahmagyan/l0_yogas.py:1965"
+     },
+     {
+      "table": "brahma_yoga_catalog",
+      "column": "significations_text",
+      "why": "significations_text is the classical statement of what the yoga signifies, values come from the inline classical yoga table or are extracted from the classical corpus by extract_yogas_from_corpus, not authored by the writer: transcription of the source",
+      "evidence": "platform/python-sidecar/brahmagyan/l0_yogas.py:1965"
+     },
+     {
+      "table": "brahma_yoga_catalog",
+      "column": "computed_strength_formula",
+      "why": "computed_strength_formula is the strength formula stated by the classical source, values come from the inline classical yoga table or are extracted from the classical corpus by extract_yogas_from_corpus, not authored by the writer: transcription of the source",
+      "evidence": "platform/python-sidecar/brahmagyan/l0_yogas.py:1965"
+     },
+     {
+      "table": "brahma_yoga_catalog",
+      "column": "strength_formula_ref",
+      "why": "strength_formula_ref names the formula reference of the classical source, values come from the inline classical yoga table or are extracted from the classical corpus by extract_yogas_from_corpus, not authored by the writer: transcription of the source",
+      "evidence": "platform/python-sidecar/brahmagyan/l0_yogas.py:1965"
+     },
+     {
+      "table": "brahma_yoga_catalog",
+      "column": "bhanga_rules_jsonb",
+      "why": "bhanga_rules_jsonb is the classical cancellation rule document, values come from the inline classical yoga table or are extracted from the classical corpus by extract_yogas_from_corpus, not authored by the writer: transcription of the source",
+      "evidence": "platform/python-sidecar/brahmagyan/l0_yogas.py:1965"
+     },
+     {
+      "table": "brahma_yoga_catalog",
+      "column": "cancellation_conditions",
+      "why": "cancellation_conditions is the classical cancellation conditions document, values come from the inline classical yoga table or are extracted from the classical corpus by extract_yogas_from_corpus, not authored by the writer: transcription of the source",
+      "evidence": "platform/python-sidecar/brahmagyan/l0_yogas.py:1965"
+     },
+     {
+      "table": "brahma_yoga_catalog",
+      "column": "formation_rule_jsonb",
+      "why": "formation_rule_jsonb is the classical formation rule document, values come from the inline classical yoga table or are extracted from the classical corpus by extract_yogas_from_corpus, not authored by the writer: transcription of the source",
+      "evidence": "platform/python-sidecar/brahmagyan/l0_yogas.py:1965"
+     },
+     {
+      "table": "brahma_yoga_catalog",
+      "column": "significations_jsonb",
+      "why": "significations_jsonb is the classical significations document, values come from the inline classical yoga table or are extracted from the classical corpus by extract_yogas_from_corpus, not authored by the writer: transcription of the source",
+      "evidence": "platform/python-sidecar/brahmagyan/l0_yogas.py:1965"
+     },
+     {
+      "table": "reference_yogas",
+      "column": "category",
+      "why": "category is the classical yoga category copied from the catalog, values come from the inline classical yoga table or are extracted from the classical corpus by extract_yogas_from_corpus, not authored by the writer: transcription of the source",
+      "evidence": "platform/python-sidecar/brahmagyan/l0_yogas.py:2323"
+     },
+     {
+      "table": "reference_yogas",
+      "column": "name_en",
+      "why": "name_en is the English yoga name copied from the catalog, values come from the inline classical yoga table or are extracted from the classical corpus by extract_yogas_from_corpus, not authored by the writer: transcription of the source",
+      "evidence": "platform/python-sidecar/brahmagyan/l0_yogas.py:2323"
+     },
+     {
+      "table": "brahma_ontology",
+      "column": "canonical_name_en",
+      "why": "canonical_name_en is the English yoga name copied from the catalog, values come from the inline classical yoga table or are extracted from the classical corpus by extract_yogas_from_corpus, not authored by the writer: transcription of the source",
+      "evidence": "platform/python-sidecar/brahmagyan/l0_yogas.py:2301"
+     },
+     {
+      "table": "brahma_ontology",
+      "column": "canonical_name_sa",
+      "why": "canonical_name_sa is the Sanskrit yoga name copied from the catalog, values come from the inline classical yoga table or are extracted from the classical corpus by extract_yogas_from_corpus, not authored by the writer: transcription of the source",
+      "evidence": "platform/python-sidecar/brahmagyan/l0_yogas.py:2301"
+     },
+     {
+      "table": "brahma_ontology",
+      "column": "description",
+      "why": "description is the yoga description copied from the catalog, values come from the inline classical yoga table or are extracted from the classical corpus by extract_yogas_from_corpus, not authored by the writer: transcription of the source",
+      "evidence": "platform/python-sidecar/brahmagyan/l0_yogas.py:2301"
+     },
+     {
+      "table": "brahma_ontology",
+      "column": "synonyms",
+      "why": "synonyms is the yoga alias list copied from the catalog, values come from the inline classical yoga table or are extracted from the classical corpus by extract_yogas_from_corpus, not authored by the writer: transcription of the source",
+      "evidence": "platform/python-sidecar/brahmagyan/l0_yogas.py:2301"
+     },
+     {
+      "table": "brahma_ontology",
+      "column": "source_citation",
+      "why": "source_citation names the classical source copied from the catalog, values come from the inline classical yoga table or are extracted from the classical corpus by extract_yogas_from_corpus, not authored by the writer: transcription of the source",
+      "evidence": "platform/python-sidecar/brahmagyan/l0_yogas.py:2301"
+     }
+    ]
+   }
   },
   "bo_anveshana": {
    "kind": "data",
