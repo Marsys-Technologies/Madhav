@@ -426,15 +426,11 @@ def test_an_undeclared_asset_reads_no_detector_on_all_six_and_says_undeclared_no
             assert "cause" not in r
 
 
-def test_a_bare_empty_declaration_is_no_release_except_for_the_enumerated_legacy_assets():
-    got = ac.prose_checks("a", _decl([]), _ctx(written={"t": {"valence"}}))
-    for c in NARR + NULL:                                                       # N-150 R1: not checked against the schema, so not a release
-        assert got[c]["v"] == ac.NO_DET and "prose_none" in got[c]["measured"], (c, got[c])
-    got = ac.prose_checks("bo_laksana_rerank", _decl([]), _ctx(written={"t": {"valence"}}))      # the enumerated pre-N-150 declaration keeps its measured N/A candidates
-    for c in NARR:
-        assert got[c]["v"] == ac.NA and got[c]["cause"] == "no-prose", (c, got[c])
-    for c in NULL:                                                              # the grandfather is Narr-ONLY: the rollup would read a Null N/A as NO_DETECTOR, so the record says so
-        assert got[c]["v"] == ac.NO_DET and "cause" not in got[c] and "Narr only" in got[c]["measured"], (c, got[c])
+def test_a_bare_empty_declaration_is_no_release_for_every_asset():
+    for aid in ("a", "bo_laksana_rerank"):                                      # no grandfather remains (N-150 R1): the former legacy asset reads like any other
+        got = ac.prose_checks(aid, _decl([]), _ctx(written={"t": {"valence"}}))
+        for c in NARR + NULL:                                                   # not checked against the schema, so not a release
+            assert got[c]["v"] == ac.NO_DET and "prose_none" in got[c]["measured"] and "cause" not in got[c], (aid, c, got[c])
 
 
 def test_an_empty_declaration_with_a_contradicting_write_fails_agree_and_the_rest_are_no_detector():
@@ -475,13 +471,12 @@ def test_every_record_is_a_closed_vocabulary_verdict():
 
 def test_the_na_candidates_read_no_detector_in_the_rollup_until_a_rule_is_declared(monkeypatch):
     monkeypatch.setattr(ac, "NA_RULE_DECISIONS", {})       # the UNDECLARED path; the declared Narr rules are tested in test_e6_na_r01_03
-    m = ac.prose_checks("bo_laksana_rerank", _decl([]), _ctx(written={"t": set()}))
+    pn = dict(why="the reviewed reason this declaration is true", closed_columns=[])
+    m = ac.grade_prose_none("x", {"prose_fields": [], "evidence": {"prose_fields": "w.py:1"}, "prose_none": pn}, {"t": (["id"], {"id": "integer"}, None)}, "t", {})
     cells = ac.rollup_asset("L2", m)
     assert cells["Narr"]["v"] == ac.NO_DET and cells["Null"]["v"] == ac.NO_DET
-    for c in cells["Narr"]["checks"]:
+    for c in cells["Narr"]["checks"] + cells["Null"]["checks"]:
         assert c["v"] == ac.NO_DET and "undecided" in c["reason"], c
-    for c in cells["Null"]["checks"]:                                           # the grandfather is Narr-only: a Null record is a measured NO_DETECTOR, not an N/A candidate
-        assert c["v"] == ac.NO_DET and c["reason"] == "measured", c
 
 
 def test_the_null_cell_never_reads_pass_and_the_narr_cell_never_reads_pass_through_fidelity():

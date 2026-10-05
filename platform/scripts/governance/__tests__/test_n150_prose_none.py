@@ -140,16 +140,14 @@ def test_produced_tables_with_a_filter_are_the_tables_checked():
 
 # ───────────────────────── a bare [] is no release ─────────────────────────
 
-def test_a_bare_empty_prose_fields_is_no_release_for_a_new_asset_and_the_legacy_assets_keep_their_narr_na_only():
+def test_a_bare_empty_prose_fields_is_no_release_for_any_asset_and_no_asset_is_left_bare():
     bare = {"prose_fields": [], "evidence": {"prose_fields": EV}}
-    got = _run(bare, _ctx(COLS, TYPES))
-    assert all(got[c]["v"] == NO_DET and "prose_none" in got[c]["measured"] for c in NARR + NULL)
-    assert ac.PROSE_BARE_EMPTY_LEGACY == frozenset({"bo_laksana_rerank"})      # E5.7 fills converted bg_kp_sublord_division, bg_transit_engine, bg_doshas, bg_ontology and bg_yogas
-    legacy = ac.prose_checks("bo_laksana_rerank", bare, _ctx(COLS, TYPES))
-    assert all(legacy[c]["v"] == NA for c in NARR)
-    committed = ac.load_asset_declarations()                                                  # the enumerated table is exactly the committed bare [] assets (no coupling, no prose_none)
-    bare_committed = {a for a, e in committed.items() if e.get("prose_fields") == [] and e.get("prose_none") is None and e.get("prose_coupling") is None}
-    assert bare_committed == ac.PROSE_BARE_EMPTY_LEGACY
+    for aid in ("a_new_asset", "bo_laksana_rerank", "bg_doshas"):                             # no grandfather: the former legacy asset reads exactly like a new one
+        got = ac.prose_checks(aid, bare, _ctx(COLS, TYPES))
+        assert all(got[c]["v"] == NO_DET and "prose_none" in got[c]["measured"] for c in NARR + NULL), aid
+    assert not hasattr(ac, "PROSE_BARE_EMPTY_LEGACY")                                          # the table is deleted (E5.7 final): bo_laksana_rerank is converted to a checked prose_none
+    committed = ac.load_asset_declarations()                                                  # and no committed declaration is a bare [] (no coupling, no prose_none)
+    assert {a for a, e in committed.items() if e.get("prose_fields") == [] and e.get("prose_none") is None and e.get("prose_coupling") is None} == set()
 
 
 # ───────────────────────── the rollup honours only a checked block ─────────────────────────
@@ -181,17 +179,14 @@ def test_the_gap_ledger_releases_a_no_prose_na_only_where_the_rollup_does():
     assert ac._na_released("Narr.agree", ms["Narr.agree"]) is True and ac._na_released("Null.blank_rows", ms["Null.blank_rows"]) is True
     bare = dict(v=NA, measured="m", cause="no-prose")
     assert ac._na_released("Narr.agree", bare) is False
-    assert ac._na_released("Narr.agree", bare, facts={"declared_prose_bare_legacy": True}) is True
-    assert ac._na_released("Null.blank_rows", dict(v=NA, measured="m", cause="no-prose-declared"), facts={"declared_prose_bare_legacy": True}) is False     # Null releases nothing unchecked
+    assert ac._na_released("Narr.agree", bare, facts={"declared_prose_bare_legacy": True}) is False      # a stale legacy fact releases nothing: the fact is no longer read
+    assert ac._na_released("Null.blank_rows", dict(v=NA, measured="m", cause="no-prose-declared")) is False     # Null releases nothing unchecked
 
 
-def test_the_legacy_fact_is_derived_from_the_declaration_by_asset_id_and_never_for_a_converted_asset():
+def test_no_legacy_fact_is_derived_for_any_declaration():
     d = ac.load_asset_declarations()
-    assert ac.declared_facts(d, "bo_laksana_rerank")["declared_prose_bare_legacy"] is True
-    assert "declared_prose_bare_legacy" not in ac.declared_facts(d, "bg_doshas")                  # converted to prose_none (E5.7 fills)
-    assert "declared_prose_bare_legacy" not in ac.declared_facts(d, "bg_phaladeepika_latta")       # coupled, not bare
-    conv = {"bo_laksana_rerank": {**copy.deepcopy(d["bo_laksana_rerank"]), "prose_none": dict(why=WHY, closed_columns=[])}}
-    assert "declared_prose_bare_legacy" not in ac.declared_facts(conv, "bo_laksana_rerank")                # converted: the checked path only
+    for a in ("bo_laksana_rerank", "bg_doshas", "bg_phaladeepika_latta"):
+        assert "declared_prose_bare_legacy" not in ac.declared_facts(d, a), a
     assert "declared_prose_bare_legacy" not in ac.declared_facts({"new_asset": {"prose_fields": []}}, "new_asset")
 
 

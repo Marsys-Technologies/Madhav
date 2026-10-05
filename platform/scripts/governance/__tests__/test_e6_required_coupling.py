@@ -128,13 +128,13 @@ def test_the_double_deletion_reads_no_detector_at_measure_time_never_na():
 def test_the_measure_time_glue_is_unchanged_where_the_coupling_is_declared_and_for_every_other_empty_asset():
     out = _checks(ENTRY)
     assert all(out[c]["v"] == NA and "prose_coupling" in out[c] for c in NARR)
-    for a in ng.LEGACY_BARE:      # E5.7: the three converted assets read the checked prose_none (test_e6_narr_guard); only the grandfathered bare [] keeps the unchecked Narr N/A
-        ent = ac.load_asset_declarations()[a]
+    for a in ng.CONVERTED:      # no grandfather: a bare [] (the checked prose_none stripped) reads NO_DETECTOR on every Narr check
+        ent = {k: v for k, v in ac.load_asset_declarations()[a].items() if k != "prose_none"}
         got = ac.prose_checks(a, ent, dict(table="t", own={"t": (["a"], {"a": "text"}, {})}, tests=(), vocabulary=set(), counts=None, paths=[], written={"t": {"a"}}))
-        assert all(got[c]["v"] == NA and got[c]["cause"] == "no-prose" for c in NARR), a
+        assert all(got[c]["v"] == NO_DET and "prose_none" in got[c]["measured"] for c in NARR), a
     # the hypothetical double deletion of an asset that is NOT required reads the plain N/A it always did
     out = ac.prose_checks("bo_laksana_rerank", _without(*BOTH_GONE), ng._ctx())
-    assert all(out[c]["v"] == NA and out[c]["cause"] == "no-prose" for c in NARR)
+    assert all(out[c]["v"] == NO_DET and "prose_none" in out[c]["measured"] for c in NARR)       # N-150 R1: no bare-[] N/A is reachable for any asset
 
 
 def test_MUTATION_without_the_table_the_double_deletion_reads_plain_na_at_measure_time(monkeypatch):
@@ -168,9 +168,9 @@ def test_the_rollup_reads_no_detector_for_a_plain_narr_na_of_a_required_asset():
     assert cell["v"] == NO_DET
     for chk in cell["checks"]:
         assert chk["v"] == NO_DET and "the asset declares prose_fields [] with a D1 transcription carriage but no prose_coupling" in chk["reason"]
-    # the same record for an asset the pin does not name stays the N/A it always was
-    assert ac.rollup_asset("L0", ms, ac.declared_facts({"bo_laksana_rerank": _without(*BOTH_GONE)}, "bo_laksana_rerank"))["Narr"]["v"] == NA
-    assert ac.rollup_asset("L0", ms, {})["Narr"]["v"] == NO_DET                              # N-150 R1: a plain N/A with no facts is no release (only an enumerated legacy asset's declaration releases it)
+    # the same record for an asset the pin does not name is no release either: no grandfather remains (N-150 R1), the plain unchecked N/A reads NO_DETECTOR
+    assert ac.rollup_asset("L0", ms, ac.declared_facts({"bo_laksana_rerank": _without(*BOTH_GONE)}, "bo_laksana_rerank"))["Narr"]["v"] == NO_DET
+    assert ac.rollup_asset("L0", ms, {})["Narr"]["v"] == NO_DET                              # N-150 R1: a plain N/A with no facts is no release
 
 
 def test_the_rollup_with_the_coupling_present_is_unchanged():

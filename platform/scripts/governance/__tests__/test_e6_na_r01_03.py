@@ -94,13 +94,15 @@ def test_R02_a_measured_dens_na_with_its_cause_reads_na_in_the_cell():
     assert cell["v"] == NA and cell["checks"][0]["rule_id"] == "Dens.served#measured:no-served-surface"
 
 
-def test_R03_all_four_narr_checks_na_make_the_narr_cell_na_and_three_do_not():
+def test_R03_all_four_narr_checks_na_need_a_checked_prose_none_block_to_make_the_narr_cell_na():
     full = {c: _na("no-prose") for c in NARR}
-    LEG = {"declared_prose_bare_legacy": True}                                            # N-150 R1: a plain no-prose N/A is released only for an enumerated legacy asset
-    assert ac.rollup_asset("L2", full, LEG)["Narr"]["v"] == NA
+    assert ac.rollup_asset("L2", full)["Narr"]["v"] == NO_DET                                   # N-150 R1: a plain no-prose N/A with no checked block is no release (no grandfather)
+    block = dict(checked=True, tables=["t"], open=[], contradicted=[], unread=[])
+    checked = {c: dict(v, prose_none=dict(block)) for c, v in full.items()}
+    assert ac.rollup_asset("L2", checked)["Narr"]["v"] == NA
     for missing in NARR:
-        part = {c: v for c, v in full.items() if c != missing}
-        assert ac.rollup_asset("L2", part, LEG)["Narr"]["v"] == NO_DET, missing        # absence is never N/A
+        part = {c: v for c, v in checked.items() if c != missing}
+        assert ac.rollup_asset("L2", part)["Narr"]["v"] == NO_DET, missing                      # absence is never N/A
 
 
 def test_R01_a_never_run_history_check_reads_na_but_does_not_make_the_build_cell_na():

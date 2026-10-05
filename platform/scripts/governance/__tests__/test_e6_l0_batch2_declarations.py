@@ -413,16 +413,13 @@ def test_the_writer_scope_is_readable_and_writes_exactly_the_pinned_columns_none
 
 
 @pytest.mark.parametrize("aid", EMPTY_ASSETS)
-def test_the_four_narr_checks_read_na_no_prose_and_the_null_checks_stay_unreleased(aid, monkeypatch):
-    legacy = {k: v for k, v in ASSETS[aid].items() if k != "prose_none"}                  # E5.7 fills converted this asset to a checked prose_none (test_n150_prose_none): the bare form is read as the legacy grandfather
-    monkeypatch.setattr(ac, "PROSE_BARE_EMPTY_LEGACY", ac.PROSE_BARE_EMPTY_LEGACY | {aid})
-    out = ac.prose_checks(aid, legacy, _ctx(aid))
-    for c in ac.NARR_CHECKS:
-        assert out[c]["v"] == NA and out[c]["cause"] == "no-prose", (c, out[c])
-    for c in ac.NULL_CHECKS:                                      # the grandfather is Narr-ONLY: a Null record is a measured NO_DETECTOR (no N/A candidate, no cause)
-        assert out[c]["v"] == ac.NO_DET and "cause" not in out[c]
-    cells = ac.rollup_asset("L0", {**out, "Vocab.identity": dict(v=PASS, measured="m")}, ac.facts_for_asset(dict(asset_id=aid, layer="L0"), {**ac.load_asset_declarations(), aid: legacy}))
-    assert cells["Narr"]["v"] == NA and cells["Null"]["v"] == NO_DET and cells["Carr"]["v"] == NO_DET and cells["Ldgr"]["v"] == NO_DET
+def test_a_bare_empty_prose_fields_reads_no_detector_on_every_narr_and_null_check_with_no_grandfather(aid):
+    bare = {k: v for k, v in ASSETS[aid].items() if k != "prose_none"}                    # E5.7 fills converted this asset to a checked prose_none (test_n150_prose_none): the bare form is no release
+    out = ac.prose_checks(aid, bare, _ctx(aid))
+    for c in ac.NARR_CHECKS + ac.NULL_CHECKS:
+        assert out[c]["v"] == ac.NO_DET and "cause" not in out[c] and "prose_none" in out[c]["measured"], (c, out[c])
+    cells = ac.rollup_asset("L0", {**out, "Vocab.identity": dict(v=PASS, measured="m")}, ac.facts_for_asset(dict(asset_id=aid, layer="L0"), {**ac.load_asset_declarations(), aid: bare}))
+    assert cells["Narr"]["v"] == NO_DET and cells["Null"]["v"] == NO_DET and cells["Carr"]["v"] == NO_DET and cells["Ldgr"]["v"] == NO_DET
 
 
 @pytest.mark.parametrize("aid", EMPTY_ASSETS)
