@@ -153,7 +153,7 @@ class _Harness:
     def __init__(self, *, dependents=None, registry_row=None, row_missing=False, commit_error=None, rollback_error=None,
                  fail_on=None, published=None, seal=None, authority_generation=None, catalog_status="CURRENT", receipts=0,
                  existing_runs=None, output_rows=0, manifest=None, snapshot=None, inventory_mismatch=0, evidence=None,
-                 run_manifests=None, lock_error=None, active_runs=None, created_at=None, list_runs=None):
+                 run_manifests=None, lock_error=None, active_runs=None, created_at=None, list_runs=None, close_error=None):
         self.statements: list[str] = []
         self.params: list[tuple] = []
         self.commits: list[int] = []
@@ -171,6 +171,7 @@ class _Harness:
         self.active_runs = active_runs or []
         self.created_at = created_at or STORED_CREATED_AT
         self.list_runs = list_runs
+        self.close_error = close_error
         harness = self
 
         class FakeCur:
@@ -250,7 +251,8 @@ class _Harness:
                     raise harness.rollback_error
 
             def close(self):
-                pass
+                if harness.close_error:
+                    raise harness.close_error
 
         self.conn = FakeConn()
 
@@ -422,7 +424,7 @@ def test_execute_still_needs_both_steward_flags(capsys):
     assert exc.value.code == 2 and h.statements == []
 
 
-def _run_cli(harness, argv, capsys, *, connect_error=None, database_url="postgresql://fake/fake"):
+def _run_cli(harness, argv, capsys, *, connect_error=None, database_url="postgresql://fake/fake", after_commit=None):
     fake_psycopg = types.ModuleType("psycopg")
     fake_rows = types.ModuleType("psycopg.rows")
     fake_rows.dict_row = object()
@@ -443,7 +445,10 @@ def _run_cli(harness, argv, capsys, *, connect_error=None, database_url="postgre
             os.environ.pop("DATABASE_URL", None)
         else:
             os.environ["DATABASE_URL"] = database_url
-        code = _load_fresh().cli(argv)
+        module = _load_fresh()
+        if after_commit is not None:
+            module._AFTER_COMMIT = after_commit
+        code = module.cli(argv)
         return code, capsys.readouterr(), connects
     finally:
         for name in ("psycopg", "psycopg.rows"):
@@ -892,3 +897,41 @@ def test_the_exit_code_finding_is_printed_and_documented(capsys):
 
 def test_db1_the_docstring_states_the_role_data_plane_builder_suffices():
     assert "data_plane_builder" in dispatch.__doc__ and "SUFFICES" in dispatch.__doc__ and "amjis_app` is not needed" in dispatch.__doc__
+
+
+# ── Codex round 5 (1): an interrupt never erases the known transaction outcome ──────────────────────────────────────────────────
+
+def _interrupt():
+    raise KeyboardInterrupt()
+
+
+def test_r5_an_interrupt_INSIDE_the_commit_is_commit_outcome_unknown_and_names_the_run(capsys):
+    h = _Harness(commit_error=KeyboardInterrupt())
+    code, streams, _ = _run_cli(h, BASE_ARGV, capsys)
+    assert code == 130 and "COMMIT OUTCOME UNKNOWN" in streams.err and "Attempted run id:" in streams.err
+    assert "ROLLBACK CONFIRMED" not in streams.err and h.rollbacks == []
+
+
+def test_r5_an_interrupt_JUST_AFTER_a_confirmed_commit_is_commit_confirmed_and_no_rollback_is_issued(capsys):
+    h = _Harness()
+    code, streams, _ = _run_cli(h, BASE_ARGV, capsys, after_commit=_interrupt)
+    assert len(h.commits) == 1 and code == 130 and "COMMIT CONFIRMED" in streams.err and "Attempted run id:" in streams.err
+    assert "ROLLBACK CONFIRMED" not in streams.err and h.rollbacks == []
+
+
+def test_r5_an_interrupt_DURING_THE_CLOSE_after_a_confirmed_commit_is_commit_confirmed(capsys):
+    h = _Harness(close_error=KeyboardInterrupt())
+    code, streams, _ = _run_cli(h, BASE_ARGV, capsys)
+    assert len(h.commits) == 1 and code == 130 and "COMMIT CONFIRMED" in streams.err and "Attempted run id:" in streams.err
+
+
+def test_r5_an_interrupt_during_the_close_after_a_dry_run_reports_a_confirmed_rollback(capsys):
+    h = _Harness(close_error=KeyboardInterrupt())
+    code, streams, _ = _run_cli(h, BASE + ["--dry-run"], capsys)
+    assert code == 130 and "ROLLBACK CONFIRMED" in streams.err and not h.commits
+
+
+def test_r5_an_interrupt_during_the_close_never_replaces_a_refusal_already_propagating(capsys):
+    h = _Harness(active_runs=[{"id": "r-1", "state": "planned"}], close_error=KeyboardInterrupt())
+    code, streams, _ = _run_cli(h, BASE_ARGV, capsys)
+    assert code == 1 and "a build run is already active" in streams.err and not h.commits

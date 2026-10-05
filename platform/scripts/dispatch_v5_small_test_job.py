@@ -151,6 +151,10 @@ OUTCOME_TEXT = {
 }
 
 
+def _AFTER_COMMIT() -> None:
+    """The point right after a confirmed COMMIT. Does nothing; it exists so a test can fail exactly here (Codex round 5)."""
+
+
 def _note_outcome(exc: BaseException, outcome: str) -> None:
     """Attach what is KNOWN about the transaction to the exception, for the process boundary to report."""
     try:
@@ -556,10 +560,15 @@ def main(argv: list[str] | None = None) -> None:
             phase = "committing"
             conn.commit()
             phase = "committed"
+            _AFTER_COMMIT()
     except BaseException as exc:
-        _note_outcome(exc, "commit_unknown" if phase == "committing" else None)
         exc.dispatch_run_id = run_id                 # type: ignore[attr-defined]
-        if phase != "committing":                    # never roll back (or claim 'unchanged') once COMMIT went out
+        if phase == "committing":                    # the COMMIT was sent and nothing came back: never roll back or claim 'unchanged'
+            _note_outcome(exc, "commit_unknown")
+        elif phase == "committed":                   # Codex round 5 (1): confirmed; no rollback is attempted or reported
+            _note_outcome(exc, "committed")
+        else:
+            _note_outcome(exc, None)
             try:
                 conn.rollback()
                 _note_outcome(exc, "rolled_back")
@@ -567,13 +576,17 @@ def main(argv: list[str] | None = None) -> None:
                 _note_outcome(exc, "rollback_unconfirmed")
         try:
             conn.close()
-        except Exception:
+        except BaseException:                        # an interruption here must not replace the exception already propagating
             pass
         raise
     try:
         conn.close()
     except Exception:
         pass
+    except BaseException as exc:                     # Codex round 5 (1): an interrupt during the close keeps the known outcome
+        _note_outcome(exc, "rolled_back" if dry_run else "committed")
+        exc.dispatch_run_id = run_id                 # type: ignore[attr-defined]
+        raise
 
     plan = {
         "run_id": run_id,
@@ -639,6 +652,9 @@ def cli(argv: list[str] | None = None) -> int:
         main(argv)
     except SystemExit as exc:
         return exc.code if isinstance(exc.code, int) else (0 if exc.code is None else 1)
+    except KeyboardInterrupt as exc:              # Codex round 5 (1): an interrupt is reported WITH the known transaction outcome
+        print(_safe_failure(exc), file=sys.stderr)
+        return 130
     except RuntimeError as exc:                   # the named refusals this script raises itself
         known = OUTCOME_TEXT.get(getattr(exc, "dispatch_outcome", None) or "", "")
         run = getattr(exc, "dispatch_run_id", None)

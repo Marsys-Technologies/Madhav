@@ -35,6 +35,10 @@ SELECT (SELECT count(*) FROM build_runs WHERE chart_id = '482012f1-710e-4a25-994
        (SELECT count(*) FROM ka_gochara_search_input_snapshot WHERE chart_id = '482012f1-710e-4a25-994a-93821f5871aa' AND generation = '5.0') AS snapshots_5_0,
        (SELECT count(*) FROM ka_gochara_contact WHERE chart_id = '482012f1-710e-4a25-994a-93821f5871aa' AND generation = '5.0') AS contacts_5_0;
 
+-- 4b. NO RESUMPTION LEDGER ROWS for the asset: the v5 writer and the runner never write build_substep_progress (only ka_kshetra, ka_sangam and
+--     bg_gochara_arcs do) and the runner never resumes from it, so none are expected. expected: 0.
+SELECT count(*) AS substep_progress_rows FROM build_substep_progress WHERE asset_id = 'ka_gochara_v5';
+
 -- 5. THE CONCURRENCY CAP: the runner defers (exit 3) when 6 or more OTHER runs are 'running'. expected: well under 6.
 SELECT count(*) AS running_runs_anywhere FROM build_runs WHERE state = 'running';
 
