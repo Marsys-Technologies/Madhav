@@ -169,16 +169,16 @@ ALIAS_COLUMN = "synonyms"   # the alias-bearing column: read by the Vocab.alias 
 CITATION_COLUMNS = ("source_citation", "source_text_id", "classical_citation", "classical_citations", "citation_ref")
 CRITERION_REGISTRY: dict[str, dict] = {
     # ── auto-measured every run (detector = this module's own measure()) ──
-    "Build.registered":      dict(gate="Build", check="registered",       applicability="always (writer-backed or not — a false has_writer is itself the failure)", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=1),
-    "Build.contract":        dict(gate="Build", check="contract",         applicability="has_writer=true",       detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=1),
+    "Build.registered":      dict(gate="Build", check="registered",       applicability="always (writer-backed or not — a false has_writer is itself the failure); N-150 R5 (REGISTRY_REVISION 26): a no-writer N/A (cause no-writer-registry-agrees) is released ONLY when the asset declares `has_writer: false` AND the registry row (has_writer false) and the @register scan (none found) agree; a registry-only no-writer asset reads NO_DETECTOR", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=2),
+    "Build.contract":        dict(gate="Build", check="contract",         applicability="has_writer=true; N-150 R5 (REGISTRY_REVISION 26): a no-writer N/A (cause no-writer-registry-agrees) is released ONLY when the asset declares `has_writer: false` AND the registry row (has_writer false) and the @register scan (none found) agree; a registry-only no-writer asset reads NO_DETECTOR",       detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=2),
     "Build.target":          dict(gate="Build", check="target",          applicability="always",                detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=2),
     "Build.dag":             dict(gate="Build", check="dag",              applicability="always",                detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=2),
     "Build.count_integrity": dict(gate="Build", check="count_integrity", applicability="always; presence of count_sql and integrity_check_sql is what is graded: a view target whose registered count_sql reads no table (a constant stub) reads PARTIAL naming that count_sql is constant", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=2),
     "Build.completion":      dict(gate="Build", check="completion",       applicability="a count_sql or view target exists; a writer-backed asset with live 0 and rows_written 0 reads PASS only where it DECLARES a zero_row_convention (SS N-149: the chart is absent from the declared scope_table.scope_column) AND the census verified that against the live table for the measured chart (a declared convention that does not hold, or cannot be verified, keeps the PARTIAL); PASS also requires, WHEN the asset declares an integrity_check_sql, that it holds: one read-only SELECT/WITH statement (conservative lexer and closed allow-list, run only as a subquery in a READ ONLY session, no bind parameters, at most 1000000 bytes (one -c argument up to 120000 bytes; a larger text goes on psql stdin through the same wrapper and guards; past 1000000 it is refused), the engine's own convention in asset_runner._probe_asset) whose first column of its first row is true (a boolean or a finite non-zero number); counts equal but the integrity SQL false, refused, oversize, errored or timed out reads PARTIAL naming which; an integrity SQL the census role is not permitted to read (SQLSTATE 42501 permission denied) reads NO_DETECTOR (not measurable under the census role: never PASS, never a verdict on the data), and the text names the denied object and the declared way to measure it (the engine runs the same SQL at build time under the runner role; the census role is not widened); the text carries sha256(sql)[:12] and the elapsed seconds; no declared integrity_check_sql reads exactly as before. An asset that DECLARES `produced_tables` (N-150) is compared against that declared set, not count_sql: each declared table (filtered slice of a shared table, chart-scoped where it carries chart_id) is counted read-only, an UPDATE-only table the writer scan shows is excluded, PASS needs rows_written = the SUM of the declared set, a different sum reads FAIL, and a table the writer writes that the set does not name (the orchestrator bookkeeping tables excepted) reads FAIL, a writer scope the scan could not read fully reads PARTIAL; a declaration is not a tolerance; no declaration reads exactly as before", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=4),  # SS role reading bumped (rev 4); R99 bumped: a writer-backed empty table under target_floor=0 now reads PARTIAL, not the R52-era blanket PASS; N-99 bumped (rev 3): count equality alone no longer reads PASS when a declared integrity_check_sql does not hold
-    "Build.exercised":       dict(gate="Build", check="exercised",        applicability="always",                detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=1),
+    "Build.exercised":       dict(gate="Build", check="exercised",        applicability="always; N-150 R5 (REGISTRY_REVISION 26): a never-run / never-executed no-writer N/A is released ONLY when the asset declares `has_writer: false` AND the registry row and the @register scan agree, else NO_DETECTOR",                detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=2),
     "Build.history":         dict(gate="Build", check="history",          applicability="has been exercised at least once; judges the attempts SINCE the later of the asset's last writer-digest change on main (newest commit on origin/main, else main, touching the engine's writer source set, build_window.py) and its last registry-identity change (newest commit on that ref touching a migration that names asset_registry and the asset id, or changing the asset's own row in the registry seed); older errors and aborts are REPORTED as pre-window history, never judged; no attempt since (a skip_no_delta, cascade-blocked or never-started row is not an attempt of the current code; a forced rebuild is) reads NO_DETECTOR, never PASS; an undeterminable window (shallow clone, no main ref, working tree differing from main in the writer files, a path not tracked, no migration or seed naming the asset, git failing, the timed attempt log unreadable or disagreeing with the history tally) reads NO_DETECTOR naming why", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=2),  # SS Build.history window
     "Build.dep_liveness":     dict(gate="Build", check="dep_liveness",     applicability="declares at least one depends_on; a dependency in state service_ok is live when its registry asset_kind is service (the engine gate rule); the cell names each not-lit dependency with its state, scope and last build date, and for a stale one the upstream(s) built after it (or that none is on record)", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=2),  # cause text only: the verdict logic is unchanged
-    "Idem.pattern":          dict(gate="Idem",  check="pattern",          applicability="has_writer=true",       detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=2),
+    "Idem.pattern":          dict(gate="Idem",  check="pattern",          applicability="has_writer=true; N-150 R5 (REGISTRY_REVISION 26): a no-writer N/A (cause no-writer-registry-agrees) is released ONLY when the asset declares `has_writer: false` AND the registry row (has_writer false) and the @register scan (none found) agree; a registry-only no-writer asset reads NO_DETECTOR",       detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=3),
     "Earn.build_record":     dict(gate="Earn",  check="build_record",     applicability="has a build/attempt record to grade", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=1),
     # NOTE: "Cost", "Count", "Complete" and "Reach" are not among the nine gates in
     # ASSET_ELEVATION_TEMPLATE_v2_0.md §4 (Ldgr/Idem/Earn/Null/Vocab/Carr/Narr/Dens/Build) — they
@@ -355,6 +355,12 @@ NA_RULE_DECISIONS: dict[str, str] = {
     "Narr.fidelity_test#measured:no-prose": "N-22/N-22a row 17 (AMENDED, principles 1, 3, 8); N-65 (R03)",
     "Narr.lint#measured:no-prose": "N-22/N-22a row 17 (AMENDED, principles 1, 3, 8); N-65 (R03)",
     # N-150 R2: the narration lints do not apply (no chart_facts fact_category selection, no raw-token narrative column in the writer scope): N/A only for an asset that DECLARES lint_none AND whose lint scan agrees.
+    # N-150 R5: a no-writer asset reads N/A for the four build checks ONLY when it declares `has_writer: false` AND the registry row and the @register scan agree (the rollup refuses the record without all three).
+    "Build.registered#measured:no-writer-registry-agrees": "N-150 R5: no writer; declaration-keyed (has_writer: false) and checked against the registry row and the @register scan",
+    "Build.contract#measured:no-writer-registry-agrees": "N-150 R5: no writer; declaration-keyed (has_writer: false) and checked against the registry row and the @register scan",
+    "Idem.pattern#measured:no-writer-registry-agrees": "N-150 R5: no writer; declaration-keyed (has_writer: false) and checked against the registry row and the @register scan",
+    "Build.exercised#measured:never-run-no-writer": "N-150 R5: never run and no writer; declaration-keyed (has_writer: false) and checked against the registry row and the @register scan",
+    "Build.exercised#measured:never-executed-no-writer": "N-150 R5: never executed and no writer; declaration-keyed (has_writer: false) and checked against the registry row and the @register scan",
     "Narr.lint#measured:lint-not-applicable": "N-150 R2: N/A only for an asset that declares lint_none and whose own lint scan agrees (a scanned writer file, no lint surface); never on the declaration alone",
 }
 
@@ -566,6 +572,7 @@ def _check_contribution(crit: str, layer: str, meas: dict | None, facts: dict | 
                 bad = narr_coupling_problem(crit, layer, meas, facts, all_meas)       # NARR-GUARD (pin 16): a coupled Narr N/A needs its Carr.D1 PASS
                 bad = bad or prose_none_na_problem(crit, meas, facts)                         # N-150 R1: a no-prose N/A needs its CHECKED prose_none block
                 bad = bad or lint_na_problem(crit, meas)                                      # N-150 R2: a lint-not-applicable N/A needs the scan's agreement
+                bad = bad or no_writer_na_problem(crit, meas)                                 # N-150 R5: a no-writer N/A needs the declaration and the two agreeing facts
                 if bad:
                     return dict(criterion=crit, v=NO_DET, state="MEASURED", rule_id=rid, cause=cause, reason=bad)
                 return dict(criterion=crit, v=NA, state="MEASURED", rule_id=rid, cause=cause,
@@ -1972,6 +1979,16 @@ def validate_density_facet_declaration(where: str, e: dict) -> None:
         raise DeclarationsError(f"{where}.{bad}" if bad.startswith("density_facet") else f"{where}.density_facet: {bad}")
 
 
+# `has_writer` (N-150 R5, REGISTRY_REVISION 26): the declared fact that the asset has NO writer (a service, a static or dormant asset). The only value that means anything is `false`: with it AND the
+# registry row agreeing (has_writer false, no @register found) the Build.registered / Build.contract / Build.exercised / Idem.pattern N/A reads released (causes no-writer-registry-agrees,
+# never-run-no-writer, never-executed-no-writer); a declaration the registry or the code contradicts releases nothing, and a registry-only no-writer asset (no declaration) keeps reading NO_DETECTOR.
+def has_writer_problem(entry):
+    """None when `entry` has no `has_writer` or `false`; else why it is refused (only `false` is a declaration: `true` says nothing a release could rest on)."""
+    if not isinstance(entry, dict) or entry.get("has_writer") is None:
+        return None
+    return None if entry["has_writer"] is False else f"has_writer must be false or absent (the declared fact that the asset has no writer), got {entry['has_writer']!r}"
+
+
 # `lint_none` (N-150 R2, REGISTRY_REVISION 26): the declared form of "the narration lints do not apply to this asset's writer". An asset that declares prose columns but whose writer scope selects
 # no chart_facts by fact_category and writes no column the raw-token lint's field pattern covers has nothing for either lint to read: Narr.lint then reads N/A (cause lint-not-applicable) ONLY
 # when the asset DECLARES this AND the lint scan's own surface test agrees (applied == [], at least one writer file scanned, no violation). A declaration the scan contradicts (a surface exists)
@@ -2017,7 +2034,7 @@ def validate_lint_none_declaration(where: str, e: dict) -> None:
 
 _DECL_ENTRY_KEYS = ("kind", "carriage", "prose_fields", "terminal_by_construction", "cross_asset_writes",
                     "read_evidence", "read_table", "read_kind", "evidence", "evidence_kind", "vocab_alias", "ldgr_source", "null_convention",
-                    "prose_coupling", "density_tier_columns", "source", "prose_none", "produced_tables", "density_facet", "uniform_authority", "service_probe", "zero_row_convention", "lint_none")
+                    "prose_coupling", "density_tier_columns", "source", "prose_none", "produced_tables", "density_facet", "uniform_authority", "service_probe", "zero_row_convention", "lint_none", "has_writer")
 _DECL_EVIDENCE_KEYS = ("kind", "carriage", "prose_fields", "cross_asset_writes")
 # E5.7 (Worker E, SS N-150 R7): `fidelity_tests` declares the golden-value test(s) of the asset's narration builder: [{test: "platform/python-sidecar/<...>/test_x.py::[Class::]test_name",
 # covers: [<declared prose entries>]}]. The census VERIFIES each from the test's source (golden_test_scan.py); the declaration names, it never decides.
@@ -2213,6 +2230,9 @@ def validate_declarations(doc, registry_ids=None) -> dict:
             validate_prose_none_declaration(where, e["prose_none"], e)
         if e.get("lint_none") is not None:
             validate_lint_none_declaration(where, e)
+        bad = has_writer_problem(e)
+        if bad:
+            raise DeclarationsError(f"{where}.{bad}")
         if e.get("produced_tables") is not None:
             validate_produced_tables_declaration(where, e["produced_tables"], e)
         if e.get("density_facet") is not None:
@@ -3854,6 +3874,23 @@ def grade_prose_none(aid: str, decl: dict, tables: dict, target, outside: dict, 
     note = (f"prose_none declared and CHECKED against the live schema (N-150 R1): {len(tables)} produced table(s), every text-capable column closed ({len(closed)} declared closed, data "
             f"inside the vocabulary), no open text column")
     return {c: dict(_na(f"{note}: {pn['why']}", "no-prose" if c.startswith("Narr.") else "no-prose-declared"), prose_none=dict(block)) for c in allc}
+
+
+NO_WRITER_CAUSES = {"Build.registered": ("no-writer-registry-agrees",), "Build.contract": ("no-writer-registry-agrees",), "Idem.pattern": ("no-writer-registry-agrees",),
+                    "Build.exercised": ("never-run-no-writer", "never-executed-no-writer")}
+
+
+def no_writer_na_problem(crit: str, meas) -> str | None:
+    """None unless a no-writer N/A of Build.registered / Build.contract / Build.exercised / Idem.pattern is NOT backed by the three agreeing facts (N-150 R5): the asset DECLARES `has_writer: false`,
+    the registry row says has_writer false, and no @register was found. The record carries them as `no_writer` {declared, registry_has_writer, register_files}; a record without the block, or with
+    any fact other than (true, false, 0), is not a release. Pure; read by `_check_contribution` and `_na_released`."""
+    if crit not in NO_WRITER_CAUSES or not isinstance(meas, dict) or meas.get("v") != NA or meas.get("cause") not in NO_WRITER_CAUSES[crit]:
+        return None
+    b = meas.get("no_writer")
+    if not (isinstance(b, dict) and b.get("declared") is True and b.get("registry_has_writer") is False and b.get("register_files") == 0):
+        return (f"{crit} N/A rests on the declared fact `has_writer: false` that the registry row and the code scan agree with (N-150 R5): this record does not carry all three "
+                "(declared, registry has_writer false, no @register), so a registry-only no-writer asset is not released")
+    return None
 
 
 def lint_na_problem(crit: str, meas) -> str | None:
@@ -9779,19 +9816,25 @@ def alias_census(table: str, cols: list[str]) -> dict | None:
     return {r[0]: dict(rows=int(r[1]), no_alias=int(r[2])) for r in rows}
 
 
-def _no_writer_scanned(aid: str, has_writer: bool, check: str) -> dict:
+def _no_writer_block(declared: bool, has_writer: bool, files) -> dict:
+    """The three facts an N-150 R5 release rests on, as measured: the declaration, the registry row, the @register scan."""
+    return dict(declared=bool(declared), registry_has_writer=bool(has_writer), register_files=len(files))
+
+
+def _no_writer_scanned(aid: str, has_writer: bool, check: str, declared: bool = False) -> dict:
     """R222 / N2 (A_REVIEW2 G2): no writer file was recognised for this asset. That is a genuine
     N/A only when the registry agrees there is no writer. With `has_writer=true` the writer exists
     but its `@register` was not recognised (e.g. `@register(ASSET_ID)`, R43), so the scan never ran:
     NO_DETECTOR, never the closable N/A (one live ledger-copy run closed bg_reference-Idem.pattern
     on exactly this; live today on L3/L4/L5, where 13 writer-backed assets are unrecognised)."""
     if not has_writer:
-        return _na("no writer, and the registry agrees (has_writer=false) — nothing to scan", "no-writer-registry-agrees")
+        return dict(_na("no writer, and the registry agrees (has_writer=false) — nothing to scan" + ("; declared has_writer: false (N-150 R5)" if declared else "; NOT declared has_writer: false, so no release (N-150 R5)"),
+                        "no-writer-registry-agrees"), no_writer=_no_writer_block(declared, has_writer, ()))
     return dict(v=NO_DET, measured=f"NO_DETECTOR — registry says has_writer=true but no @register('{aid}') "
                                    f"was recognised in writers/; {check} was never scanned (see Build.registered)")
 
 
-def _measure_contract(aid: str, files: list[str], has_writer: bool) -> dict:
+def _measure_contract(aid: str, files: list[str], has_writer: bool, declared_no_writer: bool = False) -> dict:
     """R41 fault isolation for Build.contract, extracted as its own pure-ish function (F3,
     A_REVIEW.md: the inline try/except could only be proven by grepping measure()'s source text,
     which survives a mutation that makes the guard re-raise instead of catching. Extracting it
@@ -9799,7 +9842,7 @@ def _measure_contract(aid: str, files: list[str], has_writer: bool) -> dict:
     RETURN VALUE is ERRORED — a mutation that removes or breaks the try/except now fails that
     assertion instead of surviving on source text alone)."""
     if not files:
-        return _no_writer_scanned(aid, has_writer, "the contract")
+        return _no_writer_scanned(aid, has_writer, "the contract", declared_no_writer)
     try:
         v, notes = contract_scan(aid, files)
         return dict(v=v, measured="; ".join(notes) or "conformant")
@@ -9807,11 +9850,11 @@ def _measure_contract(aid: str, files: list[str], has_writer: bool) -> dict:
         return dict(v=ERRORED, measured=f"check errored: {exc}")
 
 
-def _measure_idem(aid: str, files: list[str], convention: str, has_writer: bool, targets=()) -> dict:
+def _measure_idem(aid: str, files: list[str], convention: str, has_writer: bool, targets=(), declared_no_writer: bool = False) -> dict:
     """R41 fault isolation for Idem.pattern — same discipline as `_measure_contract`. `targets`
     (C-KSHETRA): the asset's own tables — target_table ∪ count_sql tables — a counted DELETE must name."""
     if not files:
-        return _no_writer_scanned(aid, has_writer, "the idempotency pattern")
+        return _no_writer_scanned(aid, has_writer, "the idempotency pattern", declared_no_writer)
     try:
         v, notes = idem_scan(aid, files, convention, targets)
         return dict(v=v, measured="; ".join(notes))
@@ -11593,6 +11636,7 @@ def measure(layer_key: str, assets=None) -> dict:
     for aid, r in reg.items():
         m: dict[str, dict] = {}
         files = regd.get(aid, [])
+        _nwd = bool(isinstance(declarations, dict) and isinstance(declarations.get(aid), dict) and declarations[aid].get("has_writer") is False)     # N-150 R5: the declared fact
 
         # Build.registered
         if len(files) == 1 and r["has_writer"]:
@@ -11604,12 +11648,13 @@ def measure(layer_key: str, assets=None) -> dict:
         elif r["has_writer"]:
             m["Build.registered"] = dict(v=FAIL, measured="registry says has_writer=true and no @register found")
         else:
-            m["Build.registered"] = _na("no writer, and the registry agrees (service or static)", "no-writer-registry-agrees")
+            m["Build.registered"] = dict(_na("no writer, and the registry agrees (service or static)" + ("; declared has_writer: false (N-150 R5)" if _nwd else "; NOT declared has_writer: false, so no release (N-150 R5)"),
+                                             "no-writer-registry-agrees"), no_writer=_no_writer_block(_nwd, r["has_writer"], files))
 
         # R41: a per-check exception must degrade THAT check to ERRORED, never abort the layer.
-        m["Build.contract"] = _measure_contract(aid, files, r["has_writer"])
+        m["Build.contract"] = _measure_contract(aid, files, r["has_writer"], _nwd)
         m["Idem.pattern"] = _measure_idem(aid, files, cfg["idem"], r["has_writer"],
-                                          [r["target_table"]] + _count_tables(r["count_sql"]))
+                                          [r["target_table"]] + _count_tables(r["count_sql"]), _nwd)
 
         # Build.target
         m["Build.target"] = _measure_target(
@@ -12003,7 +12048,8 @@ def measure(layer_key: str, assets=None) -> dict:
                     v=FAIL, measured="registered with a writer and the orchestrator has NEVER run it "
                                      "(no build_run_assets row)")
             else:
-                m["Build.exercised"] = _na("never run, and it has no writer — consistent", "never-run-no-writer")
+                m["Build.exercised"] = dict(_na("never run, and it has no writer — consistent" + ("; declared has_writer: false (N-150 R5)" if _nwd else "; NOT declared has_writer: false, so no release (N-150 R5)"),
+                                                "never-run-no-writer"), no_writer=_no_writer_block(_nwd, r["has_writer"], files))
             if hist["per"]:
                 m["Build.history"] = _na("never run; check 7 owns this", "never-run")
             else:
@@ -12024,8 +12070,9 @@ def measure(layer_key: str, assets=None) -> dict:
                                      f"{h['runs']} build_run_assets row(s), none ever started "
                                      f"(states: {h.get('states') or 'n/a'})")
             else:
-                m["Build.exercised"] = _na(f"never executed ({h['runs']} unstarted row(s)), and it has no "
-                                           "writer — consistent", "never-executed-no-writer")
+                m["Build.exercised"] = dict(_na(f"never executed ({h['runs']} unstarted row(s)), and it has no "
+                                                "writer — consistent" + ("; declared has_writer: false (N-150 R5)" if _nwd else "; NOT declared has_writer: false, so no release (N-150 R5)"),
+                                                "never-executed-no-writer"), no_writer=_no_writer_block(_nwd, r["has_writer"], files))
             m["Build.history"] = whist.cell(aid, h, r["has_writer"], files)      # review fix: judged inside the window too (old aborts of code that no longer exists are reported, not judged)
         else:
             m["Build.exercised"] = dict(
@@ -12134,6 +12181,8 @@ def _na_released(crit: str, rec: dict, all_meas=None, layer=None, facts=None) ->
     if not (isinstance(cause, str) and _CAUSE_SLUG.fullmatch(cause)):
         return False
     if not (cause in NA_CAUSES.get(crit, ()) and f"{crit}#measured:{cause}" in NA_RULE_DECISIONS):
+        return False
+    if no_writer_na_problem(crit, rec):            # N-150 R5: a no-writer N/A closes a ledger row only with the declaration and the agreeing facts
         return False
     if lint_na_problem(crit, rec):                 # N-150 R2: a lint-not-applicable N/A closes a ledger row only with the scan's agreement
         return False

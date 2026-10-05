@@ -36,7 +36,10 @@ S3_IDS = frozenset({"Vocab.alias#measured:no-alias-class", "Ldgr.source_presence
 N151_IDS = frozenset({"Ldgr.source_presence#measured:no-data", "Ldgr.source_presence#measured:no-claims"})              # SS N-151 (REGISTRY_REVISION 26): N/A only by a checked declaration
 N150_R1_IDS = frozenset({"Null.schema_default#measured:no-prose-declared", "Null.blank_rows#measured:no-prose-declared"})          # SS N-150 R1: released only through the checked prose_none block
 N150_R2_IDS = frozenset({"Narr.lint#measured:lint-not-applicable"})                                                                  # SS N-150 R2: only with a declared lint_none AND the lint scan's agreement
-N150_IDS = N150_R1_IDS | N150_R2_IDS
+N150_R5_IDS = frozenset({"Build.registered#measured:no-writer-registry-agrees", "Build.contract#measured:no-writer-registry-agrees",   # SS N-150 R5: only with a declared has_writer false AND the registry row
+                         "Idem.pattern#measured:no-writer-registry-agrees", "Build.exercised#measured:never-run-no-writer",            # and the @register scan agreeing
+                         "Build.exercised#measured:never-executed-no-writer"})
+N150_IDS = N150_R1_IDS | N150_R2_IDS | N150_R5_IDS
 N156_IDS = frozenset({"Carr.D1#measured:not-a-transcription", "Carr.D3#measured:single-derivation", "Carr.D1#measured:transcription-not-verified", "Carr.D2#measured:no-per-witness-values"})       # SS N-156 (the Carr declared ceiling)
 DECLARED_IDS = N65_IDS | PIN10_IDS | S2_IDS | S3_IDS | N151_IDS | N150_IDS | N156_IDS     # the exact production table since REGISTRY_REVISION 26
 R01_ASSETS = ("bg_gochara_citation_resolution", "bg_nakshatra_medical", "bg_sarvatobhadra_grid", "bg_sign_medical",
@@ -74,7 +77,7 @@ def test_exactly_the_approved_rules_are_declared_and_they_validate():
 
 def test_no_rule_beyond_the_ruling_is_declared():
     ids = set(ac.NA_RULE_DECISIONS)
-    assert not [i for i in ids if i.startswith(("Count.", "Complete.", "Idem."))]
+    assert not [i for i in ids if i.startswith(("Count.", "Complete.")) or (i.startswith("Idem.") and i not in N150_R5_IDS)]
     assert {i for i in ids if i.startswith("Null.")} == N150_R1_IDS
     assert {i for i in ids if i.startswith("Narr.") and "lint-not-applicable" in i} == N150_R2_IDS
     assert {i for i in ids if i.startswith(("Vocab.", "Ldgr."))} == S3_IDS | N151_IDS   # S3: the declaration-keyed words (+ the two N-151 checked-declaration words), never a column pattern
@@ -82,7 +85,7 @@ def test_no_rule_beyond_the_ruling_is_declared():
     assert not [i for i in ids if i.startswith("Carr.") and i not in S2_IDS | N156_IDS]            # no no-carriage / not-chosen / ratified_judgment rule
     assert not [i for i in ids if i.startswith("Earn.") and i != "Earn.service_state#measured:not-a-service"]    # Earn.build_record stays held
     assert not [i for i in ids if i.startswith("Build.") and i not in ("Build.history#measured:never-run",
-                                                                      "Build.dep_liveness#measured:no-declared-dependencies")]
+                                                                      "Build.dep_liveness#measured:no-declared-dependencies") and i not in N150_R5_IDS]
     assert not [i for i in ids if "user_data" in i or "write-nothing" in i or "rolling_horizon" in i or "no-carriage" in i]
 
 

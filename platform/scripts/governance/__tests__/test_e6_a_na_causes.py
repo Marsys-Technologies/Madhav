@@ -310,7 +310,7 @@ def test_the_harness_coverage_check_fails_for_an_unused_registered_cause(monkeyp
 # ───────────────────────── (2) the rollup keys the rule id by cause ─────────────────────────
 
 def _na(cause="__absent__"):
-    r = dict(v=NA, measured="m")
+    r = dict(v=NA, measured="m", no_writer=dict(declared=True, registry_has_writer=False, register_files=0))     # N-150 R5: the three facts a no-writer release rests on (inert for any other cause)
     if cause != "__absent__":
         r["cause"] = cause
     return r
@@ -327,7 +327,8 @@ def _chk(ms, crit="Build.registered", layer="L2"):
     return cell, next(c for c in cell["checks"] if c["criterion"] == crit)
 
 
-def test_a_cause_becomes_the_rule_id_and_an_undeclared_one_reads_no_detector():
+def test_a_cause_becomes_the_rule_id_and_an_undeclared_one_reads_no_detector(monkeypatch):
+    monkeypatch.setattr(ac, "NA_RULE_DECISIONS", {})                 # N-150 R5 declares this rule in production: the undeclared reading is the emptied table
     cell, c = _chk(_build_ms(**{"Build.registered": _na("no-writer-registry-agrees")}))
     assert cell["v"] == "NO_DETECTOR"
     assert c["v"] == "NO_DETECTOR" and c["state"] == "MEASURED"
@@ -416,6 +417,7 @@ def test_a_cause_on_a_non_na_record_is_ignored_and_changes_nothing(monkeypatch):
 def test_a_gate_is_na_only_when_every_check_is_na_by_a_declared_cause(monkeypatch):
     crits = [c for c, e in ac.CRITERION_REGISTRY.items() if e["gate"] == "Idem"]
     ms = {c: _na("no-writer-registry-agrees") for c in crits}
+    monkeypatch.setattr(ac, "NA_RULE_DECISIONS", {})                 # N-150 R5 declares this rule in production
     assert ac.rollup_asset("L2", ms)["Idem"]["v"] == "NO_DETECTOR"
     monkeypatch.setattr(ac, "NA_RULE_DECISIONS", {f"{c}#measured:no-writer-registry-agrees": "d" for c in crits})
     assert ac.rollup_asset("L2", ms)["Idem"]["v"] == NA

@@ -101,6 +101,8 @@ def _restore_pre_retirement(monkeypatch):
     reg["Build.count_integrity"] = dict(reg["Build.count_integrity"], revision=1, applicability="always")     # revision 26 (role reading) re-worded and bumped it
     reg["Build.dep_liveness"] = dict(reg["Build.dep_liveness"], revision=1, applicability="declares at least one depends_on")     # revision 26 (cause text) re-worded and bumped it
     reg["Build.history"] = dict(reg["Build.history"], revision=1, applicability="has been exercised at least once")     # revision 26 (SS Build.history window) re-worded and bumped it
+    for crit, rev in (("Build.registered", 1), ("Build.contract", 1), ("Build.exercised", 1), ("Idem.pattern", 2)):     # pin 26 (N-150 R5) appended its clause last and bumped each
+        reg[crit] = dict(reg[crit], revision=rev, applicability=re.sub(r"; N-150 R5.*$", "", reg[crit]["applicability"]))
     causes = dict(ac.NA_CAUSES)
     causes["Count.floor"] = ("target-floor-zero",)          # revision 26 (N-149) added `zero-row-convention-holds`
     causes["Narr.lint"] = ("no-prose",)                    # pin 26 (N-150 R2) added `lint-not-applicable`

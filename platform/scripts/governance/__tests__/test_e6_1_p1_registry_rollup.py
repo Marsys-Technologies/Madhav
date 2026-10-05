@@ -326,9 +326,13 @@ def test_worst_measured_verdict_wins_in_a_gate():
     assert ac.rollup_asset("L2", ms)["Build"]["v"] == "FAIL"
 
 
+NW = dict(declared=True, registry_has_writer=False, register_files=0)      # the three facts an N-150 R5 no-writer release rests on
+
+
 def test_measured_na_is_not_na_without_a_declared_rule_and_is_na_with_one(monkeypatch):
     ms = {c: _m("PASS") for c, e in ac.CRITERION_REGISTRY.items() if e["gate"] == "Build"}
-    ms["Build.registered"] = dict(_m("N/A"), cause="no-writer-registry-agrees")    # E6 (a): N/A carries a cause
+    ms["Build.registered"] = dict(_m("N/A"), cause="no-writer-registry-agrees", no_writer=NW)    # E6 (a): N/A carries a cause (N-150 R5: and the three facts)
+    monkeypatch.setattr(ac, "NA_RULE_DECISIONS", {})
     cell = ac.rollup_asset("L2", ms)["Build"]
     assert cell["v"] == "NO_DETECTOR"
     chk = next(c for c in cell["checks"] if c["criterion"] == "Build.registered")
@@ -342,7 +346,8 @@ def test_measured_na_is_not_na_without_a_declared_rule_and_is_na_with_one(monkey
 
 def test_a_gate_is_na_only_when_every_check_is_na_by_declared_rule(monkeypatch):
     crits = [c for c, e in ac.CRITERION_REGISTRY.items() if e["gate"] == "Idem"]
-    ms = {c: dict(_m("N/A"), cause="no-writer-registry-agrees") for c in crits}
+    ms = {c: dict(_m("N/A"), cause="no-writer-registry-agrees", no_writer=NW) for c in crits}
+    monkeypatch.setattr(ac, "NA_RULE_DECISIONS", {})
     assert ac.rollup_asset("L2", ms)["Idem"]["v"] == "NO_DETECTOR"
     monkeypatch.setattr(ac, "NA_RULE_DECISIONS", {f"{c}#measured:no-writer-registry-agrees": "N-22/test" for c in crits})
     assert ac.rollup_asset("L2", ms)["Idem"]["v"] == "N/A"
