@@ -239,6 +239,16 @@ class TestFetchRefusesBadFacts:
         with pytest.raises(RuntimeError, match="argala_graha_natal fact_id="):
             k._fetch_argala_facts(FakeConn([self._row(**{field: bad})]), CHART_ID, AYA)
 
+    @pytest.mark.parametrize("bad", [None, "", "sideways", "Forward"])
+    def test_missing_or_unknown_count_direction_raises(self, bad):
+        r = self._row()
+        if bad is None:
+            del r["fact_value_jsonb"]["count_direction"]
+        else:
+            r["fact_value_jsonb"]["count_direction"] = bad
+        with pytest.raises(RuntimeError, match="count_direction"):
+            k._fetch_argala_facts(FakeConn([r]), CHART_ID, AYA)
+
     def test_non_object_value_raises(self):
         with pytest.raises(RuntimeError, match="not an object"):
             k._fetch_argala_facts(FakeConn([self._row(fact_value_jsonb=[1])]), CHART_ID, AYA)

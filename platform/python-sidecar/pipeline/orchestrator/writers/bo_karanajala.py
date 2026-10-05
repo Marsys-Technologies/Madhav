@@ -526,6 +526,12 @@ def _fetch_argala_facts(conn, chart_id: str, aya: str) -> list[dict]:
         obstructors = val.get("obstructor_grahas")
         if not isinstance(obstructors, list) or any(g not in KNOWN_GRAHAS for g in obstructors):
             raise RuntimeError(f"[bo_karanajala] {where}: obstructor_grahas is not a list of known grahas")
+        direction = val.get("count_direction")
+        if direction not in ("forward", "reverse"):
+            raise RuntimeError(
+                f"[bo_karanajala] {where}: count_direction={direction!r} is not 'forward' or 'reverse'; "
+                "a missing direction is not read as forward (N.7 item 6)"
+            )
         if (target, source) in seen:
             raise RuntimeError(
                 f"[bo_karanajala] {where}: second argala row for ({target}, {source}); "
@@ -539,7 +545,7 @@ def _fetch_argala_facts(conn, chart_id: str, aya: str) -> list[dict]:
             "offset": offset,
             "obstruction_offset": obstruction_offset,
             "obstructors": list(obstructors),
-            "direction": val.get("count_direction", "forward"),
+            "direction": direction,
         })
     return out
 
