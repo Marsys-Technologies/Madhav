@@ -177,6 +177,25 @@ def test_cause_text_prefers_measurement_then_rollup_reason(tmp_path):
     assert items["Carr.D1"]["cause_class"] == "(a) detector/declaration (carriage)"
 
 
+KNOWN = pathlib.Path("/Users/Dev/suvarna-evidence/E5.7/known_findings.json")
+
+
+@pytest.mark.skipif(not (KNOWN.exists() and all(p.exists() for p in REAL)), reason="the E5.7 known-findings evidence file is not on this machine (CI)")
+def test_findings_accepts_exactly_the_shape_of_the_known_findings_file(tmp_path):
+    """The reviewed known_findings.json is {asset: 'one sentence'} (30 assets): `--findings` takes it as is and each sentence lands on that asset's line, verbatim."""
+    raw = json.loads(KNOWN.read_text(encoding="utf-8"))
+    assert isinstance(raw, dict) and len(raw) == 30 and all(isinstance(k, str) and isinstance(v, str) and v for k, v in raw.items())
+    rc, out = run(REAL, tmp_path, "--assets-expected", "82", "--criteria-expected", "25", "--findings", str(KNOWN))
+    assert rc == 0                                                                          # accepted whole: no refusal for the real file against the real census
+    merged = tmp_path / "merged.json"                                                      # a sentence lands only on a CERTIFIED asset (none is at rev 25): prove the flow with a synthetic certified asset
+    merged.write_text(json.dumps({**raw, "a1": "PG339 citation finding"}))
+    (tmp_path / "w").mkdir()
+    paths = world(tmp_path / "w", {"a1": good_cells()})
+    rc, out2 = run(paths, tmp_path / "w", "--assets-expected", "4", "--criteria-expected", "4", "--findings", str(merged))
+    cert = json.loads((out2 / "CERTIFIED_LIST.json").read_text())
+    assert rc == 0 and cert["certified"][0]["asset"] == "a1" and cert["certified"][0]["findings"] == "PG339 citation finding"
+
+
 # ───────────────────────────── the CERTIFIED rule ─────────────────────────────
 
 def test_all_pass_and_ruled_na_certifies(tmp_path):
