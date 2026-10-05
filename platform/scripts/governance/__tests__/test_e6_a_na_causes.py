@@ -253,7 +253,7 @@ def test_every_registered_cause_is_observed_emitted_under_its_criterion(monkeypa
         rec = ac._grade_earn_cost(attempt, True, None, attempt_linkage_wired=True)[0]
         assert rec["v"] == NA, rec
         observed.add(("Earn.build_record", rec["cause"]))
-    for crit, rec in ac.prose_checks("bg_doshas", {"prose_fields": [], "evidence": {"prose_fields": "w.py:1"}},
+    for crit, rec in ac.prose_checks("bo_laksana_rerank", {"prose_fields": [], "evidence": {"prose_fields": "w.py:1"}},
                                      dict(written={"t": set()}, vocabulary=set())).items():
         if crit.startswith("Null."):         # the grandfather is Narr-only: a Null record is a measured NO_DETECTOR (its cause is observed through the checked prose_none form below)
             assert rec["v"] == "NO_DETECTOR", rec

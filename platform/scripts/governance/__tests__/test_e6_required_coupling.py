@@ -128,12 +128,12 @@ def test_the_double_deletion_reads_no_detector_at_measure_time_never_na():
 def test_the_measure_time_glue_is_unchanged_where_the_coupling_is_declared_and_for_every_other_empty_asset():
     out = _checks(ENTRY)
     assert all(out[c]["v"] == NA and "prose_coupling" in out[c] for c in NARR)
-    for a in ng.EXISTING_EMPTY:
+    for a in ng.LEGACY_BARE:      # E5.7: the three converted assets read the checked prose_none (test_e6_narr_guard); only the grandfathered bare [] keeps the unchecked Narr N/A
         ent = ac.load_asset_declarations()[a]
         got = ac.prose_checks(a, ent, dict(table="t", own={"t": (["a"], {"a": "text"}, {})}, tests=(), vocabulary=set(), counts=None, paths=[], written={"t": {"a"}}))
         assert all(got[c]["v"] == NA and got[c]["cause"] == "no-prose" for c in NARR), a
     # the hypothetical double deletion of an asset that is NOT required reads the plain N/A it always did
-    out = ac.prose_checks("bg_yogas", _without(*BOTH_GONE), ng._ctx())
+    out = ac.prose_checks("bo_laksana_rerank", _without(*BOTH_GONE), ng._ctx())
     assert all(out[c]["v"] == NA and out[c]["cause"] == "no-prose" for c in NARR)
 
 
@@ -169,7 +169,7 @@ def test_the_rollup_reads_no_detector_for_a_plain_narr_na_of_a_required_asset():
     for chk in cell["checks"]:
         assert chk["v"] == NO_DET and "the asset declares prose_fields [] with a D1 transcription carriage but no prose_coupling" in chk["reason"]
     # the same record for an asset the pin does not name stays the N/A it always was
-    assert ac.rollup_asset("L0", ms, ac.declared_facts({"bg_yogas": _without(*BOTH_GONE)}, "bg_yogas"))["Narr"]["v"] == NA
+    assert ac.rollup_asset("L0", ms, ac.declared_facts({"bo_laksana_rerank": _without(*BOTH_GONE)}, "bo_laksana_rerank"))["Narr"]["v"] == NA
     assert ac.rollup_asset("L0", ms, {})["Narr"]["v"] == NO_DET                              # N-150 R1: a plain N/A with no facts is no release (only an enumerated legacy asset's declaration releases it)
 
 
@@ -316,7 +316,7 @@ def test_on_the_six_saved_censuses_the_pin_moves_no_cell_and_no_check(monkeypatc
                 n += 1
                 if c["v"] != saved_all[L][aid][g]["v"]:
                     moved.append(("saved", aid, g, saved_all[L][aid][g]["v"], c["v"]))
-    assert n == 1143 and moved == []
+    assert n == 1143 and sorted(moved) == [("saved", a, "Narr", "N/A", "NO_DETECTOR") for a in ng.CONVERTED]      # E5.7: the three converted assets read NO_DETECTOR on a saved census until re-measured with the checked prose_none (a saved unchecked N/A is no release)
     assert on == off                                                                          # verdicts AND per-check readings identical with the pin removed: it decides nothing where the coupling is declared
 
 
