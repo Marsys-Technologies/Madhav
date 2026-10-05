@@ -176,7 +176,7 @@ CRITERION_REGISTRY: dict[str, dict] = {
     "Build.completion":      dict(gate="Build", check="completion",       applicability="a count_sql or view target exists; PASS also requires, WHEN the asset declares an integrity_check_sql, that it holds: one read-only SELECT/WITH statement (conservative lexer and closed allow-list, run only as a subquery in a READ ONLY session, no bind parameters, at most 120000 bytes, the engine's own convention in asset_runner._probe_asset) whose first column of its first row is true (a boolean or a finite non-zero number); counts equal but the integrity SQL false, refused, oversize, errored or timed out reads PARTIAL naming which; an integrity SQL the census role is not permitted to read (SQLSTATE 42501 permission denied) reads NO_DETECTOR (not measurable under the census role: never PASS, never a verdict on the data); the text carries sha256(sql)[:12] and the elapsed seconds; no declared integrity_check_sql reads exactly as before", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=3),  # R99 bumped: a writer-backed empty table under target_floor=0 now reads PARTIAL, not the R52-era blanket PASS; N-99 bumped (rev 3): count equality alone no longer reads PASS when a declared integrity_check_sql does not hold
     "Build.exercised":       dict(gate="Build", check="exercised",        applicability="always",                detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=1),
     "Build.history":         dict(gate="Build", check="history",          applicability="has been exercised at least once; judges the attempts SINCE the later of the asset's last writer-digest change on main (newest commit on origin/main, else main, touching the engine's writer source set, build_window.py) and its last registry-identity change (newest commit on that ref touching a migration that names asset_registry and the asset id, or changing the asset's own row in the registry seed); older errors and aborts are REPORTED as pre-window history, never judged; no attempt since (a skip_no_delta, cascade-blocked or never-started row is not an attempt of the current code; a forced rebuild is) reads NO_DETECTOR, never PASS; an undeterminable window (shallow clone, no main ref, working tree differing from main in the writer files, a path not tracked, no migration or seed naming the asset, git failing, the timed attempt log unreadable or disagreeing with the history tally) reads NO_DETECTOR naming why", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=2),  # SS Build.history window
-    "Build.dep_liveness":     dict(gate="Build", check="dep_liveness",     applicability="declares at least one depends_on", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=1),
+    "Build.dep_liveness":     dict(gate="Build", check="dep_liveness",     applicability="declares at least one depends_on; the cell names each not-lit dependency with its state, scope and last build date, and for a stale one the upstream(s) built after it (or that none is on record)", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=2),  # cause text only: the verdict logic is unchanged
     "Idem.pattern":          dict(gate="Idem",  check="pattern",          applicability="has_writer=true",       detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=2),
     "Earn.build_record":     dict(gate="Earn",  check="build_record",     applicability="has a build/attempt record to grade", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=1),
     # NOTE: "Cost", "Count", "Complete" and "Reach" are not among the nine gates in
@@ -8410,7 +8410,55 @@ def _grade_target_less(r: dict, owners) -> dict:
                                  "orchestrator's clear/count steps have nothing to aim at")
 
 
-def _grade_dep_liveness(deps: list[str], deprec: dict, chart_id: str) -> dict:
+def _scope_record(by: dict, chart_id: str):
+    """A dependency's build record at the census's chart scope: its row for `chart_id`, else its global (chart_id NULL) row, else None."""
+    return by[chart_id] if chart_id in by else by[""] if "" in by else None
+
+
+def _upstream_closure(graph: dict, start: str) -> list[str]:
+    """The declared upstream closure of `start` (every asset it transitively depends on), nearest first, `start` excluded."""
+    out, seen, queue = [], {start}, list(graph.get(start, []))
+    while queue:
+        u = queue.pop(0)
+        if u in seen:
+            continue
+        seen.add(u)
+        out.append(u)
+        queue.extend(graph.get(u, []))
+    return out
+
+
+def stale_dependency_causes(stale: list[str], graph: dict | None, records: dict | None, chart_id: str, why_unread: str | None = None) -> dict[str, str]:
+    """For each dependency whose record reads `stale` at the census's chart scope, WHY: the engine marks a completed build stale when something
+    upstream of it completes a build afterwards, so the candidates are the assets in the dependency's declared upstream closure whose build record at
+    the same scope is LATER than its own. `records` is asset -> {chart -> record} for the dependencies and their closure. Names the rebuilt
+    upstream(s) with their build dates, or says plainly that none is on record (the mark then did not come from a recorded upstream rebuild, e.g. it
+    was set by a registry change or by a build on another chart): never a guess. Pure."""
+    out: dict[str, str] = {}
+    for d in stale:
+        if graph is None or records is None:
+            out[d] = f"cause not determinable: {why_unread or 'the dependency graph or the upstream build records were not read'}"
+            continue
+        rec = _scope_record(records.get(d, {}), chart_id)
+        built = _epoch(rec.get("built_epoch", "")) if rec else float("-inf")
+        if built == float("-inf"):
+            out[d] = "cause not determinable: its own build time is not recorded"
+            continue
+        later = []
+        for u in _upstream_closure(graph, d):
+            ur = _scope_record(records.get(u, {}), chart_id)
+            if ur and _epoch(ur.get("built_epoch", "")) > built:
+                later.append(f"{u} (built {ur.get('last_built') or 'undated'}, state {ur.get('state') or 'none'})")
+        if later:
+            shown = ", ".join(later[:5]) + (f", +{len(later) - 5} more" if len(later) > 5 else "")
+            out[d] = f"stale because upstream built after it ({rec.get('last_built') or 'undated'}): {shown}"
+        else:
+            out[d] = (f"no asset in its upstream closure has a build record later than its own ({rec.get('last_built') or 'undated'}) at this "
+                      "scope: the stale mark did not come from a recorded upstream rebuild (a registry change or a build on another chart can set it)")
+    return out
+
+
+def _grade_dep_liveness(deps: list[str], deprec: dict, chart_id: str, causes: dict | None = None) -> dict:
     """R45 (L2 handverify; W2-1_REVIEW C2): Build.dep_liveness at the census's CHART SCOPE.
 
     The claim is "every declared dependency is live for the chart this census measures". It used to
@@ -8421,8 +8469,12 @@ def _grade_dep_liveness(deps: list[str], deprec: dict, chart_id: str) -> dict:
     moved) → stale; no record at this scope, or any other state (error, dormant, incomplete,
     building) → not live; an R44-ambiguous record → undetermined. Verdict: any not live → FAIL;
     else any undetermined → ERRORED (never closable); else any stale → PARTIAL; else PASS, naming
-    the scope measured."""
+    the scope measured.
+
+    The verdict logic is unchanged by the cause text: `causes` (dep -> why, from `stale_dependency_causes`) only says, for each STALE dependency,
+    which upstream was rebuilt after it; every not-live dependency carries its state, scope and last build date."""
     short = chart_id[:8]
+    causes = causes or {}
     live, stale, dead, undet = [], [], [], []
     for d in deps:
         by = deprec.get(d, {})
@@ -8437,9 +8489,12 @@ def _grade_dep_liveness(deps: list[str], deprec: dict, chart_id: str) -> dict:
         elif rec.get("state") == "lit":
             live.append(d)
         elif rec.get("state") == "stale":
-            stale.append(f"{d} (stale, {where})")
+            stale.append(f"{d} (stale, {where}; last built {rec.get('last_built') or 'undated'}"
+                         + (f"; {causes[d]}" if d in causes else "") + ")")
         else:
-            dead.append(f"{d} ({rec.get('state') or 'no state'}, {where})")
+            note = (" — the engine's dependency gate accepts service_ok, this check reads only `lit` (finding, verdict unchanged)"
+                    if rec.get("state") == "service_ok" else "")
+            dead.append(f"{d} ({rec.get('state') or 'no state'}, {where}; last built {rec.get('last_built') or 'undated'}{note})")
     head = f"{len(live)}/{len(deps)} declared dependencies lit at chart {short} (or global)"
     if dead:
         return dict(v=FAIL, measured=f"{head}; not live: {dead}" + (f"; stale: {stale}" if stale else "")
@@ -9093,6 +9148,22 @@ def measure(layer_key: str, assets=None) -> dict:
         if "map" not in produced:                         # an unreadable map raises and is NOT cached as empty
             produced["map"] = produced_table_owners()
         return produced["map"]
+    # Build.dep_liveness cause text: why each STALE dependency is stale (the upstream built after it). One batched read of the stale dependencies'
+    # upstream closure, once per layer run; a failed read leaves the cause "not determinable" with its reason, the verdict never moves.
+    _stale_all = sorted({d for d, by in deprec.items() if (_scope_record(by, CHART_ID) or {}).get("state") == "stale"})
+    _cause_cache: dict = {}
+    if _stale_all:
+        try:
+            if dep_graph is None:
+                raise Unknown("the dependency graph could not be read")
+            _closure = sorted({u for d in _stale_all for u in _upstream_closure(dep_graph, d)} - set(deprec))
+            _crec = dict(deprec, **(throughput("", _closure) if _closure else {}))
+            _cause_cache.update(stale_dependency_causes(_stale_all, dep_graph, _crec, CHART_ID))
+        except Unknown as exc:
+            _cause_cache.update(stale_dependency_causes(_stale_all, None, None, CHART_ID, str(exc)))
+
+    def dep_causes(deps):
+        return {d: _cause_cache[d] for d in deps if d in _cause_cache}
     whist = _WindowedHistory(cfg["prefix"], ids)             # SS Build.history window: read lazily, once per layer run
     assets = []
     for aid, r in reg.items():
@@ -9467,7 +9538,7 @@ def measure(layer_key: str, assets=None) -> dict:
                                  f"{h['last_executed_when']}")
             m["Build.history"] = whist.cell(aid, h, r["has_writer"], files)      # SS window: the attempts since the code / registry identity last changed
 
-        m["Build.dep_liveness"] = (_grade_dep_liveness(r["depends_on"], deprec, CHART_ID) if r["depends_on"]
+        m["Build.dep_liveness"] = (_grade_dep_liveness(r["depends_on"], deprec, CHART_ID, dep_causes(r["depends_on"])) if r["depends_on"]
                                    else _grade_dep_liveness_none(m.get("Build.dag"), scanned=bool(files)))
 
         m["Complete.width"] = dict(v=NOT_GENERIC, measured="no declared universe for this asset — declaring one is the first width gap")
