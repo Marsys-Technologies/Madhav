@@ -212,11 +212,32 @@ STATION_COARSE_TOL_DAYS = 1e-4     # the sign bisection stops where the speed (a
 STATION_FIT_HALF_WINDOW_DAYS = 0.05
 STATION_SPEED_WINDOWS_DAYS = (0.01, 0.02, 0.05, 0.1)
 STATION_SAMPLE_POINTS = 201            # over ±max(STATION_SPEED_WINDOWS_DAYS)
-STATION_SIGMA_K = 3.0              # the stored uncertainty is at least K standard errors of the fitted instant
+STATION_SIGMA_K = 3.0              # K standard errors of the longitude fit (an audit value; the STORED bound is the per-body domain bound below)
+
+# The STORED delta_t of a station row is a defensible per-body BOUND, not an estimator spread (Codex STATION-CODEX-1, ruling B). Measured over the WHOLE 1998-2085
+# domain on the pinned files (1,066 stations) against an ensemble of independent estimators (cubic and quartic fits of the longitude over ±0.05..±0.6 d, quadratic fits
+# of the speed over ±0.02..±0.3 d), the greatest deviation of any estimator from the stored instant is Mars 1.38 s, Mercury 0.47 s, Jupiter 3.68 s, Venus 1.54 s
+# (estimator spread 2.46 s), Saturn 1.35 s; the bounds below are about 2.5 times the worst deviation. They are seconds on purpose: Swiss's speed noise (~1e-8 deg/day) and
+# the flatness of the longitude at a station (a few 1e-3 deg/day^2) limit what an ephemeris "station instant" can mean. test_station_refine recomputes the ensemble over
+# the whole domain and fails if a deviation exceeds HALF the bound (margin 2).
+STATION_DELTA_T_BOUND_SECONDS = {"Mars": 4.0, "Mercury": 2.0, "Jupiter": 10.0, "Venus": 6.0, "Saturn": 4.0}
+
+# The in-memory arc boundary at a station is the SPLINE's own extremum (the arcs must be monotone on the spline they are solved on, so it is deliberately not moved).
+# Its distance to the ephemeris station, measured over the whole domain: Mars 1.84 s, Mercury 16.74 s, Jupiter 0.98 s, Venus 2.59 s, Saturn 0.63 s. These are the
+# documented bounds (about twice the measurement); test_station_refine pins the measurement against them so a regression in the spline shows up.
+SPLINE_STATION_ERROR_BOUND_SECONDS = {"Mars": 4.0, "Mercury": 30.0, "Jupiter": 3.0, "Venus": 6.0, "Saturn": 3.0}
+
+
+def station_delta_t_bound_days(body: str) -> float:
+    """The stored delta_t (days) of a station row of `body`: the documented domain bound. A body without one has no stations (Sun, Rahu, Ketu): refused by name."""
+    try:
+        return STATION_DELTA_T_BOUND_SECONDS[body] / 86400.0
+    except KeyError:
+        raise StationRefinementError(f"{body}: no station uncertainty bound is declared — only {sorted(STATION_DELTA_T_BOUND_SECONDS)} have stations") from None
 
 
 class StationFix(tuple):
-    """(jd, sidereal longitude in [0, 360), delta_t_days): one ephemeris station and the uncertainty of its instant (days). Audit attributes (not part of the tuple):
+    """(jd, sidereal longitude in [0, 360), delta_t_days): one ephemeris station and the fit's OWN uncertainty of its instant (days; an audit value — the stored bound is `station_delta_t_bound_days`). Audit attributes (not part of the tuple):
     `centre_jd` (where the fit grid was centred), `sigma_longitude_days` (1 sigma of the longitude fit), `speed_spread_days` (greatest disagreement of a speed
     root with the longitude's stationary point)."""
 
@@ -306,10 +327,6 @@ def refine_station(body: str, jd_spline: float, ephe_path: str | None, *, bracke
     _check_retflag(body, rf)
     return StationFix(jd, lon % 360.0, max(STATION_SIGMA_K * sigma_v, spread, 1e-9), centre_jd=centre, sigma_longitude_days=sigma_v, speed_spread_days=spread)
 
-
-def station_refiner(body: str, ephe_path: str | None):
-    """The callable `build_arc_index(station_refiner=...)` takes: spline station jd -> StationFix."""
-    return lambda jd_spline: refine_station(body, jd_spline, ephe_path)
 
 
 def sample_knots(
