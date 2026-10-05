@@ -2617,7 +2617,12 @@
   "bo_anveshana": {
    "kind": "data",
    "carriage": {
-    "served_surface": true
+    "served_surface": true,
+    "applies": "D3",
+    "nature": "single_derivation",
+    "why": "computed once by its writer; no independent second route exists; verified by integrity checks and internal consistency (the single tier)",
+    "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/bo_anveshana.py:782",
+    "per_witness_values": false
    },
    "prose_fields": [
     "surface_reading",
@@ -2679,7 +2684,12 @@
   "bo_arudha": {
    "kind": "data",
    "carriage": {
-    "served_surface": true
+    "served_surface": true,
+    "applies": "D3",
+    "nature": "single_derivation",
+    "why": "computed once by its writer; no independent second route exists; verified by integrity checks and internal consistency (the single tier)",
+    "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/bo_arudha.py:135",
+    "per_witness_values": false
    },
    "prose_fields": [
     "signal_headline_text",
@@ -2724,7 +2734,12 @@
   "bo_bimba": {
    "kind": "data",
    "carriage": {
-    "served_surface": true
+    "served_surface": true,
+    "applies": "D3",
+    "nature": "single_derivation",
+    "why": "computed once by its writer; no independent second route exists; verified by integrity checks and internal consistency (the single tier)",
+    "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/bo_bimba.py:615",
+    "per_witness_values": false
    },
    "prose_fields": [
     "citation_human"
@@ -2757,7 +2772,12 @@
   "bo_cdlm_summary": {
    "kind": "data",
    "carriage": {
-    "served_surface": true
+    "served_surface": true,
+    "applies": "D3",
+    "nature": "single_derivation",
+    "why": "computed once by its writer; no independent second route exists; verified by integrity checks and internal consistency (the single tier)",
+    "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/bo_cdlm_summary.py:409",
+    "per_witness_values": false
    },
    "prose_fields": [
     "citation_human"
@@ -2796,7 +2816,12 @@
   "bo_cgm_motifs": {
    "kind": "data",
    "carriage": {
-    "served_surface": true
+    "served_surface": true,
+    "applies": "D3",
+    "nature": "single_derivation",
+    "why": "computed once by its writer; no independent second route exists; verified by integrity checks and internal consistency (the single tier)",
+    "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/bo_cgm_motifs.py:887",
+    "per_witness_values": false
    },
    "prose_fields": [
     "citation_human",
@@ -2837,7 +2862,12 @@
   "bo_cgm_paths": {
    "kind": "data",
    "carriage": {
-    "served_surface": true
+    "served_surface": true,
+    "applies": "D3",
+    "nature": "single_derivation",
+    "why": "computed once by its writer; no independent second route exists; verified by integrity checks and internal consistency (the single tier)",
+    "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/bo_cgm_paths.py:360",
+    "per_witness_values": false
    },
    "prose_fields": [
     "path_label_human"
@@ -2865,7 +2895,12 @@
   "bo_chart_gestalt": {
    "kind": "data",
    "carriage": {
-    "served_surface": true
+    "served_surface": true,
+    "applies": "D3",
+    "nature": "single_derivation",
+    "why": "computed once by its writer; no independent second route exists; verified by integrity checks and internal consistency (the single tier)",
+    "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/bo_chart_gestalt.py:661",
+    "per_witness_values": false
    },
    "prose_fields": null,
    "terminal_by_construction": null,
@@ -2896,7 +2931,12 @@
   "bo_drishti": {
    "kind": "data",
    "carriage": {
-    "served_surface": true
+    "served_surface": true,
+    "applies": "D3",
+    "nature": "single_derivation",
+    "why": "computed once by its writer; no independent second route exists; verified by integrity checks and internal consistency (the single tier)",
+    "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/bo_drishti.py:288",
+    "per_witness_values": false
    },
    "prose_fields": null,
    "terminal_by_construction": null,
@@ -2918,7 +2958,12 @@
   "bo_grounding": {
    "kind": "data",
    "carriage": {
-    "served_surface": null
+    "served_surface": null,
+    "applies": "D3",
+    "nature": "single_derivation",
+    "why": "computed once by its writer; no independent second route exists; verified by integrity checks and internal consistency (the single tier)",
+    "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/bo_grounding.py:112",
+    "per_witness_values": false
    },
    "prose_fields": null,
    "terminal_by_construction": null,
@@ -2958,7 +3003,12 @@
   "bo_karanajala": {
    "kind": "data",
    "carriage": {
-    "served_surface": true
+    "served_surface": true,
+    "applies": "D3",
+    "nature": "single_derivation",
+    "why": "computed once by its writer; no independent second route exists; verified by integrity checks and internal consistency (the single tier)",
+    "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/bo_karanajala.py:1739",
+    "per_witness_values": false
    },
    "prose_fields": [
     "citation_human"
@@ -3020,7 +3070,12 @@
   "bo_laksana": {
    "kind": "data",
    "carriage": {
-    "served_surface": true
+    "served_surface": true,
+    "applies": "D3",
+    "nature": "single_derivation",
+    "why": "computed once by its writer; no independent second route exists; verified by integrity checks and internal consistency (the single tier)",
+    "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/bo_laksana.py:3355",
+    "per_witness_values": false
    },
    "prose_fields": [
     "signal_headline_text",
@@ -3072,7 +3127,12 @@
   "bo_laksana_rerank": {
    "kind": "data",
    "carriage": {
-    "served_surface": true
+    "served_surface": true,
+    "applies": "D3",
+    "nature": "single_derivation",
+    "why": "computed once by its writer; no independent second route exists; verified by integrity checks and internal consistency (the single tier)",
+    "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/bo_laksana.py:3355",
+    "per_witness_values": false
    },
    "prose_fields": [],
    "terminal_by_construction": null,
@@ -3103,7 +3163,12 @@
   "bo_nakshatra_semantic": {
    "kind": "data",
    "carriage": {
-    "served_surface": true
+    "served_surface": true,
+    "applies": "D3",
+    "nature": "single_derivation",
+    "why": "computed once by its writer; no independent second route exists; verified by integrity checks and internal consistency (the single tier)",
+    "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/bo_nakshatra_semantic.py:110",
+    "per_witness_values": false
    },
    "prose_fields": [
     "signal_headline_text",
@@ -3146,7 +3211,12 @@
   "bo_pramana_mapa": {
    "kind": "data",
    "carriage": {
-    "served_surface": true
+    "served_surface": true,
+    "applies": "D3",
+    "nature": "single_derivation",
+    "why": "computed once by its writer; no independent second route exists; verified by integrity checks and internal consistency (the single tier)",
+    "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/bo_pramana_mapa.py:650",
+    "per_witness_values": false
    },
    "prose_fields": null,
    "terminal_by_construction": null,
@@ -3168,7 +3238,12 @@
   "bo_pratijna": {
    "kind": "data",
    "carriage": {
-    "served_surface": true
+    "served_surface": true,
+    "applies": "D3",
+    "nature": "single_derivation",
+    "why": "computed once by its writer; no independent second route exists; verified by integrity checks and internal consistency (the single tier)",
+    "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/bo_pratijna.py:435",
+    "per_witness_values": false
    },
    "prose_fields": [
     "derivation.$.factor_ledger[*].detail",
@@ -3231,7 +3306,12 @@
   "bo_samskara": {
    "kind": "data",
    "carriage": {
-    "served_surface": null
+    "served_surface": null,
+    "applies": "D3",
+    "nature": "single_derivation",
+    "why": "computed once by its writer; no independent second route exists; verified by integrity checks and internal consistency (the single tier)",
+    "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/bo_samskara.py:205",
+    "per_witness_values": false
    },
    "prose_fields": null,
    "terminal_by_construction": null,
@@ -3253,7 +3333,12 @@
   "bo_samvada": {
    "kind": "view",
    "carriage": {
-    "served_surface": true
+    "served_surface": true,
+    "applies": "D3",
+    "nature": "single_derivation",
+    "why": "computed once by its writer; no independent second route exists; verified by integrity checks and internal consistency (the single tier)",
+    "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/bo_samvada.py:139",
+    "per_witness_values": false
    },
    "prose_fields": null,
    "terminal_by_construction": null,
@@ -3270,7 +3355,12 @@
   "bo_sangati": {
    "kind": "data",
    "carriage": {
-    "served_surface": true
+    "served_surface": true,
+    "applies": "D3",
+    "nature": "single_derivation",
+    "why": "computed once by its writer; no independent second route exists; verified by integrity checks and internal consistency (the single tier)",
+    "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/bo_sangati.py:457",
+    "per_witness_values": false
    },
    "prose_fields": [
     "citation_human"
@@ -3309,7 +3399,12 @@
   "bo_special_lagna": {
    "kind": "data",
    "carriage": {
-    "served_surface": true
+    "served_surface": true,
+    "applies": "D3",
+    "nature": "single_derivation",
+    "why": "computed once by its writer; no independent second route exists; verified by integrity checks and internal consistency (the single tier)",
+    "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/bo_special_lagna.py:105",
+    "per_witness_values": false
    },
    "prose_fields": [
     "signal_headline_text",
@@ -3352,7 +3447,12 @@
   "bo_sudarshana": {
    "kind": "data",
    "carriage": {
-    "served_surface": true
+    "served_surface": true,
+    "applies": "D3",
+    "nature": "single_derivation",
+    "why": "computed once by its writer; no independent second route exists; verified by integrity checks and internal consistency (the single tier)",
+    "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/bo_sudarshana.py:167",
+    "per_witness_values": false
    },
    "prose_fields": [
     "signal_headline_text",
@@ -3395,7 +3495,12 @@
   "bo_upaya": {
    "kind": "data",
    "carriage": {
-    "served_surface": true
+    "served_surface": true,
+    "applies": "D3",
+    "nature": "single_derivation",
+    "why": "computed once by its writer; no independent second route exists; verified by integrity checks and internal consistency (the single tier)",
+    "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/bo_upaya.py:1898",
+    "per_witness_values": false
    },
    "prose_fields": [
     "prescription_detail_jsonb.$.maraka_contraindication_verdict.reason",
@@ -3451,7 +3556,12 @@
   "bo_vargottama_dhana": {
    "kind": "data",
    "carriage": {
-    "served_surface": true
+    "served_surface": true,
+    "applies": "D3",
+    "nature": "single_derivation",
+    "why": "computed once by its writer; no independent second route exists; verified by integrity checks and internal consistency (the single tier)",
+    "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/bo_vargottama_dhana.py:115",
+    "per_witness_values": false
    },
    "prose_fields": [
     "signal_headline_text",
@@ -3496,7 +3606,12 @@
   "bo_yantra_mechanism": {
    "kind": "data",
    "carriage": {
-    "served_surface": true
+    "served_surface": true,
+    "applies": "D3",
+    "nature": "single_derivation",
+    "why": "computed once by its writer; no independent second route exists; verified by integrity checks and internal consistency (the single tier)",
+    "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/bo_yantra_mechanism.py:590",
+    "per_witness_values": false
    },
    "prose_fields": [
     "citation_human",
