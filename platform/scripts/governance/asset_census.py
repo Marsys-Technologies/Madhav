@@ -1255,8 +1255,39 @@ _K2_ID_RE = re.compile(r"[A-Za-z][A-Za-z0-9]{0,5}-?[0-9]{1,6}[A-Za-z0-9._-]{0,24
 _ID_PREFIX_RE = re.compile(r"[A-Z]{1,4}")
 
 
+_SRC_BARE_PLACEHOLDERS = frozenset({"tbc", "unsourced", "tradition", "classical tradition"})      # bare labels that state no source ('classical_tradition' normalises to 'classical tradition')
+
+
+def _src_text_problem(v):
+    """None when `v` is a real one-line value for a source field, else why not: a non-blank string with no control character and at least one real word, that is no placeholder
+    (the S3 placeholder words anywhere: tbd, todo, none, n/a, xxx, pending, unknown ...; tbc; a value with no letter or digit such as '?'; 'unsourced ...'; a bare tradition label such as
+    classical_tradition). N-151: a placeholder is no source."""
+    bad = _s3_text_problem(v, min_chars=1, min_words=1)
+    if bad:
+        return bad
+    n = re.sub(r"[\W_]+", " ", v).strip().casefold()
+    if not n or n in _SRC_BARE_PLACEHOLDERS or n.startswith("unsourced"):
+        return "is a placeholder (a status word, 'unsourced', or a bare tradition label states no source)"
+    return None
+
+
 def _src_text(v) -> bool:
-    return isinstance(v, str) and bool(v.strip()) and v == v.strip() and not _blank_text(v)
+    return _src_text_problem(v) is None
+
+
+def _k2_problem(v):
+    """None when `v` is a decision-id string (N-154: a string, no register lookup), else why not: the K2 shape, an alphabetic prefix that is no placeholder word (TBD-1, TODO1, none-1, XXX-7 are
+    not decision ids), and a NON-ZERO number (N-0, XXX-000 are not)."""
+    if not (isinstance(v, str) and _K2_ID_RE.fullmatch(v)):
+        return f"{v!r} is not a decision id (shape like N-150, D-4, F-2): a bare word is not a source"
+    m = re.match(r"([A-Za-z]+)-?([0-9]+)", v)
+    if not m:
+        return f"{v!r} is not a decision id (a letter prefix, then a number)"
+    if m.group(1).casefold() in _S3_PLACEHOLDER_WORDS or m.group(1).casefold() in _SRC_BARE_PLACEHOLDERS or m.group(1).casefold() == "tbc":
+        return f"{v!r} has a placeholder prefix: it is not a decision id"
+    if int(m.group(2)) == 0:
+        return f"{v!r} has a zero number: it is not a decision id"
+    return None
 
 
 def source_declaration_problem(src, entry=None):
@@ -1302,17 +1333,20 @@ def source_declaration_problem(src, entry=None):
         for f in ("citation", "locus", "decision_id", "generator", "dataset", "method", "version", "seed"):
             v = src.get(f)
             if f in allowed:
-                if v is not None and not _src_text(v):
-                    return f"{f} must be a non-blank one-line string"
+                bad = None if v is None else _src_text_problem(v)
+                if bad:
+                    return f"{f} {bad}"
             elif v is not None:
                 return f"{f} is not a field of a {kind} source"
         for f in need:
-            if not _src_text(src.get(f)):
+            if src.get(f) is None:
                 return f"a {kind} source needs {f}"
         if kind == "K1" and cs is None:
             return "a K1 source states its citation_state (sourced / sourced_ocr_unverified / unsourced / refuted): a citation is never assumed verified"
-        if kind == "K2" and not _K2_ID_RE.fullmatch(src["decision_id"]):
-            return f"decision_id {src['decision_id']!r} is not a decision id (shape like N-150, D-4, F-2): a bare word is not a source"
+        if kind == "K2":
+            bad = _k2_problem(src["decision_id"])
+            if bad:
+                return f"decision_id {bad}"
         if kind == "K3":
             if (src.get("generator") is None) == (src.get("dataset") is None):
                 return "a K3 source names exactly one of generator / dataset"
@@ -1518,7 +1552,8 @@ def produced_tables_extra(entry, observed) -> list | None:
     if decl is None:
         return None
     names = {d["table"] for d in decl}
-    return sorted({t for t in observed if isinstance(t, str) and t not in names})
+    # a non-string observed name is never silently dropped: it cannot be in the declared set, so it is an EXTRA (reported as its repr)
+    return sorted({(t if isinstance(t, str) else repr(t)) for t in observed if not (isinstance(t, str) and t in names)})
 
 
 _DECL_ENTRY_KEYS = ("kind", "carriage", "prose_fields", "terminal_by_construction", "cross_asset_writes",

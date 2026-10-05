@@ -219,3 +219,43 @@ def test_the_doc_level_field_lists_are_checked_when_present():
     with pytest.raises(ac.DeclarationsError, match="source_declaration_fields"):
         ac.validate_declarations(doc)
     json.dumps(ac.SOURCE_DECL_FIELDS)
+
+
+# ───────────────────────── a placeholder is no source (review MED) ─────────────────────────
+
+@pytest.mark.parametrize("v", ["TBD", "tbd", "TODO", "none", "n/a", "N/A", "xxx", "tbc", "TBC", "?", "-", "unsourced", "UNSOURCED - no doctrine", "classical_tradition", "Classical Tradition"])
+def test_k1_citation_and_locus_refuse_placeholders(v):
+    _bad(_table(kind="K1", citation=v, locus="ch 3", citation_state="sourced"), "citation")
+    _bad(_table(kind="K1", citation="BPHS", locus=v, citation_state="sourced"), "locus")
+
+
+@pytest.mark.parametrize("v", ["TBD", "todo", "none", "n/a", "xxx", "tbc", "?", "unsourced"])
+def test_k3_fields_refuse_placeholders(v):
+    base = dict(kind="K3", generator="bg_cohort_builder", method="seeded sampling", version="2.10")
+    for f in ("generator", "method", "version"):
+        _bad(_table(**{**base, f: v}), f)
+    _bad(_table(kind="K3", dataset=v, method="lookup", seed="1"), "dataset")
+    _bad(_table(kind="K3", generator="g", method="m", seed=v), "seed")
+    _bad(_table(kind="K3", generator=v, method=v, version="0"), "generator")                         # the reviewer's case: placeholder generator and method beside version 0
+
+
+@pytest.mark.parametrize("v", ["TBD-0", "TODO1", "N-0", "XXX-000", "none-1", "TBD-1", "tbc-4", "NA-2", "N-", "ratified", "N", "1", "n/a-1"])
+def test_k2_decision_id_refuses_placeholders_and_a_zero_number(v):
+    _bad(_table(kind="K2", decision_id=v), "decision_id")
+
+
+@pytest.mark.parametrize("v", ["N-150", "D-4", "F-2", "N-72a", "AR-12", "N150"])
+def test_k2_real_decision_ids_are_accepted(v):
+    _ok(_table(kind="K2", decision_id=v))
+
+
+def test_a_produced_filter_value_refuses_a_placeholder():
+    for v in ("TBD", "none", "?", "n/a"):
+        _bad({"produced_tables": [dict(table="t", filter=dict(column="c", equals=v))]}, "filter must be")
+    _ok({"produced_tables": [dict(table="t", filter=dict(column="c", equals="dasha_scope_cap"))]})
+
+
+def test_produced_tables_extra_never_drops_a_non_string_observed_name():
+    e = {"produced_tables": [dict(table="t")]}
+    assert ac.produced_tables_extra(e, ["t", None, 5, ("t",)]) == sorted(["None", "5", "('t',)"])
+    assert ac.produced_tables_extra(e, ["t"]) == []
