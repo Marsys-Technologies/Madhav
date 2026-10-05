@@ -443,7 +443,7 @@ def unit_row_count(fp: Mapping[str, Any]) -> int:
     return sum(int(v["rows"]) for v in fp["tables"].values())
 
 
-def changed_output_lines(impact: Mapping[str, Any], spec: Mapping[str, Any], pre_rows: int | None) -> list[str]:
+def changed_output_lines(impact: Mapping[str, Any], spec: Mapping[str, Any], pre_rows: int | None, excluded: Sequence[Mapping[str, Any]] = ()) -> list[str]:
     """The CHANGING REBUILD block of the plan: the declared change, then every dependent row (every chart) a changed output stales or
     forces to rebuild, marking the rows the runner stales itself (the anchor chart's lit / service_ok rows)."""
     lines = [f"CHANGING REBUILD of {impact['asset']}: declared post rows {spec['expected_post_row_count']} (pre {'not read yet' if pre_rows is None else pre_rows})"
@@ -460,6 +460,8 @@ def changed_output_lines(impact: Mapping[str, Any], spec: Mapping[str, Any], pre
                                 " (its next build is not delta-skipped: this asset's last_built_at moves)"))
     if not n:
         lines.append("  (no lit dependent row)")
+    for e in excluded:
+        lines.append(f"  - EXCLUDED FROM THE COMPARISON: {e['table']}: {e['detail']} It is NOT fingerprinted: the rebuild may still WRITE to it, and the post-state check says nothing about it.")
     return lines
 
 
@@ -750,6 +752,16 @@ def check_excluded_acknowledged(spec: Mapping[str, Any], excluded: Sequence[Mapp
                       f"excluded_tables_acknowledged must be exactly that list (it is {have})", excluded=list(excluded))
 
 
+def check_receipt_exclusions(rec_ec: Mapping[str, Any] | None, excluded: Sequence[Mapping[str, Any]]) -> None:
+    """RECEIPT_EXCLUSION_DRIFT: the exclusions the CURRENT declarations carry for this run must equal what the receipt recorded (table, code and the declared text): a declaration edited
+    after the commit would otherwise change what "not compared" means for a run that is already done. Receipts of runs with no exclusion record none and must see none."""
+    rec = sorted((x["table"], x["code"], x["detail"]) for x in ((rec_ec or {}).get("excluded_tables") or []))
+    now = sorted((e["table"], e["code"], e["detail"]) for e in excluded)
+    if rec != now:
+        raise _refuse("RECEIPT_EXCLUSION_DRIFT", f"the declared workflow-owned exclusions changed since the run was committed: the receipt recorded {[r[0] for r in rec]}, this checkout declares "
+                      f"{[n[0] for n in now]}" + (" (the declared text differs)" if [r[:2] for r in rec] == [n[:2] for n in now] else "") + ": verify from the checkout the run was planned on.")
+
+
 def unit_siblings(decls, asset: str, unit: str, writer_sibs: Sequence[str] = ()) -> list[str]:
     """The OTHER assets whose rows are inside the fingerprint unit or written by the same run: the members of every group unit of `unit` and the writer-run siblings.
     A concurrent run of one of them would change the very tables this run is judged on, so they are listed in the impact statement (their lit rows need acceptance)
@@ -877,7 +889,7 @@ def validate_receipt(doc: Any) -> None:
         if not (isinstance(ec, dict) and (set(ec) == base_keys or set(ec) == base_keys | {"excluded_tables"})):
             bad("expected_change must carry exactly file_sha256, spec, accepted_changed_output, pre_row_count, post_row_count, outcome (and excluded_tables when tables are excluded)")
         if "excluded_tables" in ec and not (isinstance(ec["excluded_tables"], list) and ec["excluded_tables"] and all(
-                isinstance(x, dict) and set(x) == {"table", "code"} for x in ec["excluded_tables"])):
+                isinstance(x, dict) and set(x) == {"table", "code", "detail"} and isinstance(x["detail"], str) and x["detail"].strip() for x in ec["excluded_tables"])):
             bad("expected_change.excluded_tables is malformed")
         if not (isinstance(ec["file_sha256"], str) and _HEX64.fullmatch(ec["file_sha256"]) and isinstance(ec["spec"], dict)
                 and ec["accepted_changed_output"] is True and isinstance(ec["pre_row_count"], int) and not isinstance(ec["pre_row_count"], bool)
@@ -1448,7 +1460,7 @@ def _run_cli(args, *, connect, fp_connect, git, out, sleep, monotonic, dispatch,
     check_lit_dependents(impact, accepted)
     if expected is not None and not args.accept_changed_output:
         raise slw.LevelWaveRefusal([{"code": "CHANGED_OUTPUT_NOT_ACCEPTED", "impact_lines": impact_lines(impact),
-                                     "changed_output_lines": changed_output_lines(impact, expected, None),
+                                     "changed_output_lines": changed_output_lines(impact, expected, None, excluded),
                                      "detail": "--expected-change declares a CHANGING rebuild: every dependent row listed above will be staled or "
                                                "rebuilt by the changed output. Read the impact, then pass --accept-changed-output (and every "
                                                "--accept-lit-dependent) to proceed."}])
@@ -1478,7 +1490,7 @@ def _run_cli(args, *, connect, fp_connect, git, out, sleep, monotonic, dispatch,
                           expected_change=(None if expected is None else {
                               "file_sha256": expected_sha, "spec": expected, "accepted_changed_output": True,
                               "pre_row_count": unit_row_count(pre), "post_row_count": None, "outcome": None,
-                              **({"excluded_tables": [{"table": e["table"], "code": e["code"]} for e in excluded]} if excluded else {})}))
+                              **({"excluded_tables": [{"table": e["table"], "code": e["code"], "detail": e["detail"]} for e in excluded]} if excluded else {})}))
     summary = {"asset": asset, "anchor_chart": anchor, "anchor_is_canonical": anchor == CANONICAL_CHART_ID, "scope": row["scope"],
                "manifest_digest": digest, "plan": [asset], "triggered_by": triggered_by, "deployed_job_sha": pinned,
                "force_support_check": force_support, "force_execute": True, "impact_sha256": impact_sha,
@@ -1493,10 +1505,10 @@ def _run_cli(args, *, connect, fp_connect, git, out, sleep, monotonic, dispatch,
                                                "so the rebuild passes only if every row of every one is unchanged"}
     if expected is not None:
         if excluded:
-            summary["excluded_from_comparison"] = {"tables": excluded, "note": "these tables are workflow-owned and NOT fingerprinted: the rebuild may still write to them, and "
-                                                   "the post-state check below says nothing about them"}
+            summary["excluded_from_comparison"] = {"tables": excluded, "note": "EXCLUDED FROM THE COMPARISON: " + " | ".join(f"{e['table']}: {e['detail']}" for e in excluded)
+                                                   + " These tables are NOT fingerprinted: the rebuild may still WRITE to them, and the post-state check says nothing about them."}
         summary["expected_change"] = {"file_sha256": expected_sha, "spec": expected, "pre_row_count": unit_row_count(pre),
-                                      "accepted_changed_output": True, "changed_output_lines": changed_output_lines(impact, expected, unit_row_count(pre))}
+                                      "accepted_changed_output": True, "changed_output_lines": changed_output_lines(impact, expected, unit_row_count(pre), excluded)}
 
     if commit and args.confirm != token:
         raise _refuse("CONFIRM_TOKEN_MISMATCH", f"--commit requires --confirm {token}", expected=token)
@@ -1638,6 +1650,10 @@ def _verify_run_mode(args, *, asset, anchor, receipt_path, connect, fp_connect, 
     decls = decls or load_declarations_or_refuse(args.declarations)
     vsibs = writer_siblings(args.repo, asset)
     unit = declared_unit_or_refuse(decls, asset, vsibs, allow_excluded_partial=expected is not None)
+    vexcluded = excluded_tables_of(decls, [asset, *vsibs]) if expected is not None else []
+    if expected is not None:
+        check_excluded_acknowledged(expected, vexcluded)                    # the FILE still acknowledges exactly the tables this checkout excludes
+    check_receipt_exclusions(receipt.get("expected_change"), vexcluded)    # and the receipt recorded the same exclusions (a drifted declaration refuses)
     if unit != (receipt["pre_fingerprint"] or {}).get("unit"):
         raise _refuse("RECEIPT_UNIT_MISMATCH", f"the fingerprint unit of {asset} in this checkout is {unit!r} but the receipt was committed under "
                       f"{(receipt['pre_fingerprint'] or {}).get('unit')!r}: the declarations or the writers changed since the run; the post state cannot be judged against the pre state "

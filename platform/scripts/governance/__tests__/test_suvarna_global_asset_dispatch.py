@@ -2455,11 +2455,13 @@ def test_bg_remedies_plans_commits_and_records_the_exclusion_in_expected_change_
     s = last(ev)
     assert code == 0, s
     ex = s["excluded_from_comparison"]
-    assert [t["table"] for t in ex["tables"]] == ["remedy_review_queue"] and "NOT fingerprinted" in ex["note"] and "may still write to them" in ex["note"]
+    assert [t["table"] for t in ex["tables"]] == ["remedy_review_queue"] and "NOT fingerprinted" in ex["note"] and "may still WRITE to them" in ex["note"]
+    assert "may still insert rejected rows into it and delete obsolete tantric rows" in ex["note"] and ex["note"].startswith("EXCLUDED FROM THE COMPARISON: remedy_review_queue:")
     assert s["pre_fingerprint"]["unit"] == REM and list(s["pre_fingerprint"]["tables"]) == ["brahma_remedy_corpus"]
     rec = json.loads(pathlib.Path(env["receipt"]).read_text())
     gad.validate_receipt(rec)
-    assert rec["expected_change"]["excluded_tables"] == [{"table": "remedy_review_queue", "code": "workflow_owned_rows"}]
+    et = rec["expected_change"]["excluded_tables"]
+    assert [(x["table"], x["code"]) for x in et] == [("remedy_review_queue", "workflow_owned_rows")] and "may still insert rejected rows into it and delete obsolete tantric rows" in et[0]["detail"]
     token = s["confirm_token"]
     db = FakeDB(candidates=[[onto]], downstream=(), dispositions={REM: "build"})
     orig = db.respond
@@ -2473,7 +2475,69 @@ def test_bg_remedies_plans_commits_and_records_the_exclusion_in_expected_change_
 def test_the_receipt_schema_checks_the_excluded_tables_block(env):
     rec = _valid_receipt(env)
     block = {"file_sha256": _hex("f"), "spec": _spec(), "accepted_changed_output": True, "pre_row_count": 8, "post_row_count": None, "outcome": None}
-    gad.validate_receipt(dict(rec, expected_change={**block, "excluded_tables": [{"table": "t", "code": "workflow_owned_rows"}]}))
-    for bad in ([], [{"table": "t"}], ["t"], [{"table": "t", "code": "c", "x": 1}], "t"):
+    gad.validate_receipt(dict(rec, expected_change={**block, "excluded_tables": [{"table": "t", "code": "workflow_owned_rows", "detail": "the loader may write here"}]}))
+    for bad in ([], [{"table": "t"}], ["t"], [{"table": "t", "code": "c", "detail": "d", "x": 1}], [{"table": "t", "code": "c", "detail": " "}], [{"table": "t", "code": "c"}], "t"):
         with pytest.raises(slw.LevelWaveError):
             gad.validate_receipt(dict(rec, expected_change={**block, "excluded_tables": bad}))
+
+
+# ── review fixes: the exclusion is stated in the CHANGING REBUILD block, and verify-run refuses a drifted exclusion ──
+
+def test_the_changing_rebuild_block_and_the_not_accepted_refusal_state_the_exclusion_and_that_the_loader_may_write(env):
+    onto, git = _rem_env(env)
+    path = _rem_spec(env)
+    code, ev = run(env, xargs(env, path, accept=False, asset=REM), db=FakeDB(candidates=[[onto]], downstream=()), fp=FakeFpRows((PRE_SHA,), (ROWS_PRE,)), git=git)
+    r = last(ev)["refusals"][0]
+    assert code == slw.REFUSAL_EXIT_CODE and r["code"] == "CHANGED_OUTPUT_NOT_ACCEPTED"
+    block = "\n".join(r["changed_output_lines"])
+    assert "EXCLUDED FROM THE COMPARISON: remedy_review_queue:" in block and "may still insert rejected rows into it and delete obsolete tantric rows" in block and "may still WRITE to it" in block
+    code, ev = run(env, xargs(env, path, asset=REM), db=FakeDB(candidates=[[onto]], downstream=()), fp=FakeFpRows((PRE_SHA,), (ROWS_PRE,)), git=git)
+    plan_block = "\n".join(last(ev)["expected_change"]["changed_output_lines"])
+    assert "EXCLUDED FROM THE COMPARISON: remedy_review_queue:" in plan_block and "may still WRITE to it" in plan_block
+    assert gad.changed_output_lines({"asset": "a", "dependents": []}, _spec(), 3) == gad.changed_output_lines({"asset": "a", "dependents": []}, _spec(), 3, [])      # no exclusion: no extra line
+
+
+def _committed_rem_receipt(env):
+    onto, git = _rem_env(env)
+    path = _rem_spec(env)
+    code, ev = run(env, xargs(env, path, asset=REM), db=FakeDB(candidates=[[onto]], downstream=()), fp=FakeFpRows((PRE_SHA,), (ROWS_PRE,)), git=git)
+    token = last(ev)["confirm_token"]
+    db = FakeDB(candidates=[[onto]], downstream=(), dispositions={REM: "build"})
+    orig = db.respond
+    db.respond = lambda sql, params: ([{"state": "lit", "last_built_at": db.ended, "duration_seconds": 5.0}] if "FROM asset_throughput WHERE asset_id = %s AND chart_id IS NULL" in sql else orig(sql, params))
+    code, ev = run(env, xargs(env, path, asset=REM, commit=True, confirm=token), db=db, fp=FakeFpRows((PRE_SHA, POST_SHA), (ROWS_PRE, ROWS_POST)), git=git, dispatch=Dispatch())
+    assert code == 0
+    rec = json.loads(pathlib.Path(env["receipt"]).read_text())
+    run_row = {"id": rec["run_id"], "chart_id": CHART, "state": "completed", "triggered_by": rec["triggered_by"], "plan_manifest_digest": rec["manifest_digest"]}
+    args = gad.build_parser().parse_args(["--assets", REM, "--anchor-chart", CHART, "--receipt", env["receipt"], "--repo", env["repo"], "--verify-run", rec["run_id"], "--expected-change", path])
+    return rec, args, run_row, git
+
+
+def test_verify_run_accepts_an_unchanged_exclusion_and_refuses_a_drifted_one(env):
+    rec, args, run_row, git = _committed_rem_receipt(env)
+    db = FakeDB(run_row=run_row, dispositions={REM: "build"})
+    orig = db.respond
+    db.respond = lambda sql, params: ([{"state": "lit", "last_built_at": db.ended, "duration_seconds": 5.0}] if "FROM asset_throughput WHERE asset_id = %s AND chart_id IS NULL" in sql else orig(sql, params))
+    code, ev = run(env, args, db=db, fp=FakeFpRows((POST_SHA,), (ROWS_POST,)), git=git)
+    assert code == 0, last(ev)
+    # the declared text edited after the commit
+    doc = json.loads(json.dumps(DECLS.doc))
+    doc["assets"][REM]["not_covered_tables"][0]["exclusion"]["detail"] += " Edited after the run."
+    drifted = fd.Declarations(doc=doc, sha256=DECLS.sha256, path=DECLS.path)
+    code, ev = run(env, args, db=FakeDB(run_row=run_row), fp=FakeFpRows((POST_SHA,), (ROWS_POST,)), git=git, decls=drifted)
+    assert code == slw.REFUSAL_EXIT_CODE and codes_of(ev) == ["RECEIPT_EXCLUSION_DRIFT"] and "declared text differs" in last(ev)["refusals"][0]["detail"]
+    # the exclusion removed from the declarations: the file's acknowledgement no longer matches
+    doc2 = json.loads(json.dumps(DECLS.doc))
+    del doc2["assets"][REM]["not_covered_tables"][0]["exclusion"]
+    code, ev = run(env, args, db=FakeDB(run_row=run_row), fp=FakeFpRows((POST_SHA,), (ROWS_POST,)), git=git, decls=fd.Declarations(doc=doc2, sha256=DECLS.sha256, path=DECLS.path))
+    assert code == slw.REFUSAL_EXIT_CODE and codes_of(ev)[0] in ("FINGERPRINT_COVERAGE_PARTIAL", "EXCLUDED_TABLES_NOT_ACKNOWLEDGED")
+
+
+def test_a_receipt_without_exclusions_must_see_none_now():
+    gad.check_receipt_exclusions(None, [])
+    gad.check_receipt_exclusions({"excluded_tables": []}, [])
+    with pytest.raises(slw.LevelWaveRefusal) as exc:
+        gad.check_receipt_exclusions(None, [{"table": "t", "code": "workflow_owned_rows", "detail": "d"}])
+    assert exc.value.refusals[0]["code"] == "RECEIPT_EXCLUSION_DRIFT"
+    with pytest.raises(slw.LevelWaveRefusal):
+        gad.check_receipt_exclusions({"excluded_tables": [{"table": "t", "code": "c", "detail": "d"}]}, [])
