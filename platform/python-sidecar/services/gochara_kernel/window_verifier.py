@@ -599,7 +599,7 @@ def _probe_contact(position_at, body, relation, target, t_in, t_out, open_start,
 
 
 def _probe_contact_derived(position_at, body, relation, target, t_in, t_out, open_start, open_end, accuracy_deg,
-                           floor_seconds):
+                           floor_seconds, *, seam_start=False, seam_end=False, seam_margin=None):
     """`_probe_contact` with margins DERIVED per end (see `boundary_match`): inside/outside probes sit `2 x` the time
     tolerance from the stored edge (never closer than `floor_seconds`, never more than a quarter of the span); an end where
     no time tolerance exists (a station) is verified in angle: the stored boundary must lie within the stated accuracy of an
@@ -607,7 +607,13 @@ def _probe_contact_derived(position_at, body, relation, target, t_in, t_out, ope
     span = (t_out - t_in).total_seconds()
     problems = []
     margins = []
-    for t, is_open in ((t_in, open_start), (t_out, open_end)):
+    for t, is_open, is_seam in ((t_in, open_start, seam_start), (t_out, open_end, seam_end)):
+        if is_seam:
+            # an interior JUNCTION with an abutting contact of the same (body, relation, target), already independently confirmed as a
+            # station with the body inside the geometry on both sides (`_junction_problem`): there is no edge here to cross, so the
+            # OUTSIDE probe is not made at this end; the INSIDE probe is kept, at the junction margin
+            margins.append(min(float(seam_margin), span / 4.0))
+            continue
         tol = bm.time_tolerance_seconds(position_at, body, t, accuracy_deg)
         if tol is None:
             # a station: no time margin means anything. If the body IS at an edge of the geometry the boundary is
@@ -621,8 +627,45 @@ def _probe_contact_derived(position_at, body, relation, target, t_in, t_out, ope
     if not m:
         return problems
     return problems + _probe_contact(position_at, body, relation, target, t_in, t_out,
-                                     open_start or margins[0] is None, open_end or margins[1] is None,
+                                     open_start or margins[0] is None or seam_start, open_end or margins[1] is None or seam_end,
                                      min(max(m), span / 4.0))
+
+
+def _inside_fn(position_at, body, relation, target):
+    """The ephemeris-only predicate 'the body is in the geometry at t' of `_probe_contact` (same branches), or None when the relation has none."""
+    if relation == "residence":
+        want = int(target.split(":", 1)[1]) - 1
+        return lambda t: int((position_at(body, t) % 360.0) // 30.0) == want
+    if relation == "aspect" and target.startswith("span:"):
+        n = int(target.split(":", 1)[1]) - 1
+        signs = [(n - int(a // 30.0)) % 12 for a in _ASPECT_ANGLES[body]]
+        return lambda t: int((position_at(body, t) % 360.0) // 30.0) in signs
+    if relation in ("conjunction", "aspect"):
+        lam = float(target.split(":", 1)[1]) % 360.0
+        orb = _POINT_ORB_DEG[relation]
+        angles = (0.0,) if relation == "conjunction" else _ASPECT_ANGLES[body]
+        levels = [(lam - a) % 360.0 for a in angles]
+        return lambda t: min(_angdiff(position_at(body, t), lv) for lv in levels) <= orb
+    return None
+
+
+def _junction_problem(position_at, body, relation, target, junction, accuracy_deg, margin_seconds) -> str | None:
+    """Is `junction` (the shared instant of two abutting stored contacts of one (body, relation, target)) a LEGITIMATE seam of the contact SET?
+    A5.3 brief v1.36: the builder emits one episode per MONOTONE ARC, so a station inside the band yields two abutting episodes [entry, S] and
+    [S, exit]; certification compares the UNION and a seam between abutting episodes is not a boundary of the contact set. Confirmed here
+    INDEPENDENTLY, from the ephemeris alone, never from the ledger: (a) the body is at a STATION at the junction (`boundary_match`'s own
+    criterion: no usable time tolerance), and (b) the body is INSIDE the geometry on both sides of it. Returns the reason it is not, or None."""
+    inside = _inside_fn(position_at, body, relation, target)
+    if inside is None:
+        return f"no independent geometry for {relation}"
+    if bm.time_tolerance_seconds(position_at, body, junction, accuracy_deg) is not None:
+        return f"{body} is not at a station at {junction.isoformat()} (an arc seam exists only where the motion reverses)"
+    from datetime import timedelta
+    dt = timedelta(seconds=margin_seconds)
+    for side, t in (("before", junction - dt), ("after", junction + dt)):
+        if not inside(t):
+            return f"{body} is not inside the geometry just {side} the junction {junction.isoformat()} (the seam is not interior to one continuous span)"
+    return None
 
 
 def verify_member_geometry(conn, *, chart_id: str, generation: str, event_class: str, path_id: str,
@@ -647,6 +690,19 @@ def verify_member_geometry(conn, *, chart_id: str, generation: str, event_class:
         " AND m.rule_version = %s ORDER BY 1", grain).fetchall()
     problems: list[str] = []
     probed = 0
+    # A5.3 brief v1.36 (union contract): the builder stores one contact per monotone ARC, so a station inside the band leaves two ABUTTING
+    # contacts of one (body, relation, target). Neighbours are looked up among ALL the generation's stored contacts of that key, not only the
+    # members (a partner need not be a member of this grain's windows); each shared instant is then confirmed independently (`_junction_problem`).
+    keys = {(r[1] if not isinstance(r, dict) else r["body"], r[2] if not isinstance(r, dict) else r["relation_kind"],
+             r[6] if not isinstance(r, dict) else r["canonical_target"]) for r in rows}
+    ledger: dict[tuple, list[tuple]] = {}
+    for body_, rel_, target_ in keys:
+        ledger[(body_, rel_, target_)] = [
+            (a, b, str(cid_)) for cid_, a, b in (tuple(x.values()) if isinstance(x, dict) else tuple(x) for x in conn.execute(
+                "SELECT c.contact_id::text, c.t_in, c.t_out FROM public.ka_gochara_contact c"
+                " JOIN public.ka_gochara_physical_object o ON o.physical_object_id = c.physical_object_id"
+                " WHERE c.chart_id = %s AND c.generation = %s AND c.body = %s AND c.relation_kind = %s AND o.canonical_target = %s"
+                " ORDER BY c.t_in", (chart_id, generation, body_, rel_, target_)).fetchall())]
     for row in rows:
         cid, body, relation, t_in, t_out, t_exact, target, h_lo, h_hi, delta_lambda = (
             tuple(row.values()) if isinstance(row, dict) else tuple(row))
@@ -661,8 +717,20 @@ def verify_member_geometry(conn, *, chart_id: str, generation: str, event_class:
         # a fixed 1 s margin rejected correct contacts on the real sky (the solver is accurate to 1 arcsecond: ≈ 24 s for
         # the Sun, ≈ 12 min for Saturn). At a station (no usable time tolerance) the end is checked in ANGLE instead.
         acc = bm.accuracy_degrees(delta_lambda)
+        seam = {}
+        for which, junction, others in (("start", t_in, [b for a, b, c in ledger.get((body, relation, target), ()) if c != cid and b is not None and abs((b - t_in).total_seconds()) <= probe_seconds]),
+                                        ("end", t_out, [a for a, b, c in ledger.get((body, relation, target), ()) if c != cid and t_out is not None and abs((a - t_out).total_seconds()) <= probe_seconds])):
+            if not others:
+                continue                       # no abutting contact: an ordinary edge, probed outside as before (a real GAP keeps both probes)
+            margin = max(probe_seconds, 60.0)
+            why = _junction_problem(position_at, body, rel, target, junction, acc, min(margin, (end - t_in).total_seconds() / 4.0))
+            if why is None:
+                seam[which] = True
+            else:
+                problems.append(f"contact {cid}: the {which} junction with an abutting contact is not a legitimate seam: {why}")
         problems.extend(f"contact {cid}: {p}" for p in _probe_contact_derived(
-            position_at, body, rel, target, t_in, end, open_start, open_end, acc, probe_seconds))
+            position_at, body, rel, target, t_in, end, open_start, open_end, acc, probe_seconds,
+            seam_start=seam.get("start", False), seam_end=seam.get("end", False), seam_margin=max(probe_seconds, 60.0)))
         probed += 1
     if problems:
         raise RuntimeError(f"member geometry verification failed {event_class}/{path_id}: " + "; ".join(problems))
