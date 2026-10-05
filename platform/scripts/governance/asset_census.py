@@ -192,7 +192,7 @@ CRITERION_REGISTRY: dict[str, dict] = {
     "Vocab.identity":        dict(gate="Vocab", check="identity",         applicability="a declared key exists and the table is non-empty", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=1),
     "Vocab.alias":           dict(gate="Vocab", check="alias",            applicability="the table declares an alias-bearing class census (an undeclared asset with a `synonyms` column keeps the per-class empty-alias census); an asset's reviewed declaration `vocab_alias` makes it applicable by declaration, as a measured alias class against bg_ontology (class planet: canonical id, display name, and the ontology synonyms when an alias column is declared) or as `no_alias_class` (N/A, N-72 S3, N-73 (4)). A column pattern alone never makes it N/A; N-150 R3 (REGISTRY_REVISION 26): `no_alias_class` reads N/A only where the table carries neither an alias-like column nor a vocabulary column the registry's own ontology aliases (ALIAS_VOCAB_COLUMNS: graha, planet, star_lord, ...: such a column must be measured by a declared alias class)", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=(ALIAS_COLUMN,), asset_kinds=None, revision=3),  # S3: declared form added; was rev 1
     "Ldgr.source_presence":  dict(gate="Ldgr",  check="source_presence",  applicability="the target table carries a recognised citation column (R60: singular classical_citation included); an asset's reviewed declaration `ldgr_source` makes it applicable by declaration, naming the column that carries the source and the citation_state it stands on, or as `no_classical_claim` (N/A, N-72 S3, N-73 (1)). A column pattern alone never makes it N/A. A row of an UNDECLARED asset names a source only when its first recognised citation column is not NULL and not a placeholder (C2(ii), pin 24, N-98): NULL, punctuation-only, the closed no-source list ('not traced', 'n/a', 'none', ...), a bare tradition label ('classical_tradition', 'classical tradition (Jyotish)') and an 'UNSOURCED ...' disclosure are not a citation; an array / JSON array names a source unless empty or every element is one of those; PASS = every row names a source, FAIL = none does, PARTIAL = some do; N-151 (REGISTRY_REVISION 26): an asset that declares `source` is read by its declared source (K1 citation + locus / K2 decision-id string / K3 generator-or-dataset + method + version-or-seed / LEDGER fact ids resolved against chart_facts.fact_id; table level or per row, entries are alternatives): FAIL on a placeholder or an unresolved id, NO_DETECTOR on an absent / empty table, PASS only where the source resolves on every row; a LEDGER entry may read inside an object column (`path`, e.g. $.signal_ids, $.factor_ledger[*]) and names what its ids resolve to (`resolves_to`: chart_facts.fact_id, or bodha_msr_signals.signal_id, which must itself chain through its constituent_facts_array to chart_facts); an entry may except the rows of one declared tier (`except_when {column, equals}`: those rows are counted, never judged; all rows excepted reads NO_DETECTOR); a table-level K3 may state its version as the code digest of its generator (`version_digest {file, sha256}`, FAIL when the committed file no longer hashes to it); N/A only by a CHECKED `na: no_data` (the asset owns no existing table; cause no-data) or `na: no_claims` (its own prose_none check passed and no citation or ledger column exists; cause no-claims); an undeclared L0 asset that holds data and carries no citation column reads FAIL (no source declared)", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=CITATION_COLUMNS, asset_kinds=None, revision=5),  # N-151: declared source (K1/K2/K3/LEDGER) + checked N/A; C2(ii): legacy IS NOT NULL count replaced by the placeholder-aware shared predicate; was rev 3 (S3: declared form + citation_state)
-    "Dens.served":           dict(gate="Dens",  check="served",           applicability="reaches a served capability module (one that SELECTS from the asset's table, or names it in a form the scan cannot classify; naming it only as a label, in a provenance string, prose, a type name or an import path, is not a reach; for a service-kind asset a service_probe envelope is a reach); PASS (structural) needs ONE capability entry (the object literal that declares density_contract) whose own served read of the asset's table selects a tier column; a tier column is a CLOSED list: exactly `tier` or `verification_pass_status`, or a column the asset declares in density_tier_columns (a reviewed {column, why, evidence}), and never a name carrying a deny-listed word (cost, price, pricing, plan, access, subscription, billing, fee, tariff, in any spelling: split on underscores, digits and camelCase, plurals included, or run together with tier, fail-closed; declared or not); any other `<x>_tier` (severity_tier, cost_tier, access_tier, ...) is not a tier column; a sibling entry, a sub-select, an INSERT...SELECT or a UNION branch does not count", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=6),  # E6.1(d): was file-level 'declares density_contract anywhere' (rev 1); rev 5 (N-74(a)): select vs label; rev 6 (N-98): closed tier vocabulary
+    "Dens.served":           dict(gate="Dens",  check="served",           applicability="reaches a served capability module (one that SELECTS from the asset's table, or names it in a form the scan cannot classify; naming it only as a label, in a provenance string, prose, a type name or an import path, is not a reach; for a service-kind asset a service_probe envelope is a reach); PASS (structural) needs ONE capability entry (the object literal that declares density_contract) whose own served read of the asset's table selects a tier column; a tier column is a CLOSED list: exactly `tier` or `verification_pass_status`, or a column the asset declares in density_tier_columns (a reviewed {column, why, evidence}), and never a name carrying a deny-listed word (cost, price, pricing, plan, access, subscription, billing, fee, tariff, in any spelling: split on underscores, digits and camelCase, plurals included, or run together with tier, fail-closed; declared or not); any other `<x>_tier` (severity_tier, cost_tier, access_tier, ...) is not a tier column; a sibling entry, a sub-select, an INSERT...SELECT or a UNION branch does not count; a select of a table other assets share counts for the asset only through its declared density_facet {column, values, why, evidence} (an asset-attribution key, a row selector of the SHARED table; NOT the `facets` of a density_contract, which are the served surface's own layering axes): a literal predicate on that column pinning a declared value in the select's own top-level declaration (a bind-parameter filter credits nothing); a `FROM ${expr}` whose const string map names the table is a select of it; a serving-root file the lexer cannot close stays NO_DETECTOR naming the file; an asset that declares `uniform_authority` {why, evidence} also reads PASS, without a tier column, when ONE capability entry that references it declares density_contract as an inline object with a non-empty facets list AND holds a real served SELECT of its table (the tier-column PASS is tried first and is unchanged)", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=7),  # E6.1(d): was file-level 'declares density_contract anywhere' (rev 1); rev 5 (N-74(a)): select vs label; rev 6 (N-98): closed tier vocabulary; rev 7 (DENS-SCANNER, REGISTRY_REVISION 26): real TS lexer, facet declaration, const-map table names, uniform_authority (TI-L0-04, folded from #3105)
     "Narr.agree":            dict(gate="Narr",  check="agree",            applicability="prose_fields declared non-empty (null = undeclared: NO_DETECTOR; [] = declared no prose: measured N/A, cause no-prose, released by the declared rule Narr.agree#measured:no-prose, N-65); an asset that declares prose_fields [] WITH a prose_coupling to carriage_d1 (NARR-GUARD, pin 16, N-94) reads N/A only while its own Carr.D1 reads PASS, else NO_DETECTOR; N-150 R1/R2 (REGISTRY_REVISION 26): a declared-none N/A (`prose_fields []`) reads N/A ONLY through the explicit `prose_none` form, CHECKED against the asset's produced tables (every text-capable column declared closed and the data inside the vocabulary, or json(b) with no string leaves; an open text column FAILs the check; a bare `prose_fields []` reads NO_DETECTOR); the rollup honours a no-prose N/A only with that checked block (a coupled Narr N/A keeps its Carr.D1 rule; PROSE_BARE_EMPTY_LEGACY enumerates the six pre-N-150 bare declarations that keep their unchecked N/A until converted)", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=3),  # E6 (c): the declaration and the table's columns agree
     "Narr.checkable":        dict(gate="Narr",  check="checkable",        applicability="prose_fields declared non-empty; zero checkable rows is INCONCLUSIVE, never PASS; an asset that declares prose_fields [] WITH a prose_coupling to carriage_d1 (NARR-GUARD, pin 16, N-94) reads N/A only while its own Carr.D1 reads PASS, else NO_DETECTOR; N-150 R1/R2 (REGISTRY_REVISION 26): a declared-none N/A (`prose_fields []`) reads N/A ONLY through the explicit `prose_none` form, CHECKED against the asset's produced tables (every text-capable column declared closed and the data inside the vocabulary, or json(b) with no string leaves; an open text column FAILs the check; a bare `prose_fields []` reads NO_DETECTOR); the rollup honours a no-prose N/A only with that checked block (a coupled Narr N/A keeps its Carr.D1 rule; PROSE_BARE_EMPTY_LEGACY enumerates the six pre-N-150 bare declarations that keep their unchecked N/A until converted)", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=3),
     "Narr.fidelity_test":    dict(gate="Narr",  check="fidelity_test",    applicability="prose_fields declared non-empty; structural test discovery (N.7 item 5); never PASS; an asset that declares prose_fields [] WITH a prose_coupling to carriage_d1 (NARR-GUARD, pin 16, N-94) reads N/A only while its own Carr.D1 reads PASS, else NO_DETECTOR; N-150 R1/R2 (REGISTRY_REVISION 26): a declared-none N/A (`prose_fields []`) reads N/A ONLY through the explicit `prose_none` form, CHECKED against the asset's produced tables (every text-capable column declared closed and the data inside the vocabulary, or json(b) with no string leaves; an open text column FAILs the check; a bare `prose_fields []` reads NO_DETECTOR); the rollup honours a no-prose N/A only with that checked block (a coupled Narr N/A keeps its Carr.D1 rule; PROSE_BARE_EMPTY_LEGACY enumerates the six pre-N-150 bare declarations that keep their unchecked N/A until converted)", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=3),
@@ -1630,11 +1630,110 @@ def produced_tables_extra(entry, observed) -> list | None:
     names = {d["table"] for d in decl}
     # a non-string observed name is never silently dropped: it cannot be in the declared set, so it is an EXTRA (reported as its repr)
     return sorted({(t if isinstance(t, str) else repr(t)) for t in observed if not (isinstance(t, str) and t in names)})
+# DENS-FACET (REGISTRY_REVISION 26, Worker D; TI-L2-04). An asset that lives in a table other assets share (chart_facts, bodha_msr_signals) is attributed to a served select by a
+# FACET it DECLARES: `density_facet: {column, values, why, evidence}` -- the column that tells this asset's rows from the table's other rows (`fact_category`, `signal_type_class`,
+# `producer_asset_id`) and the value(s) that are its own. The scan then credits a served `SELECT ... FROM <shared table>` only when the SAME top-level declaration carries a literal
+# predicate on that column pinning at least one declared value (`col = 'v'`, `col IN ('v', ...)`, `col = ANY(ARRAY['v'])`); a bind-parameter filter (`col = ANY($2)`) is reported and credits
+# nothing (the value is not readable from the SQL, never guessed). Inert until an asset declares one; the evidence file must mention the column and every declared value.
+DENS_FACET_DECL_FIELDS = ("column", "values", "why", "evidence")
+DENS_FACET_MAX_VALUES = 32
+
+
+def density_facet_problem(entry, table_columns=None):
+    """None when `entry` has no `density_facet`, or a sound one; else why it is refused (ONE definition: the validator and the measure-time glue both call it)."""
+    if not isinstance(entry, dict) or entry.get("density_facet") is None:
+        return None
+    d = entry["density_facet"]
+    if not isinstance(d, dict):
+        return "density_facet must be an object {column, values, why, evidence}"
+    extra = sorted(set(d) - set(DENS_FACET_DECL_FIELDS))
+    if extra:
+        return f"density_facet: unknown field(s) {extra}"
+    missing = [f for f in DENS_FACET_DECL_FIELDS if f not in d]
+    if missing:
+        return f"density_facet: missing field(s) {missing}"
+    c = d["column"]
+    if not (isinstance(c, str) and _DECL_IDENT.fullmatch(c)):
+        return f"density_facet.column must be a column name (an identifier), got {c!r}"
+    vs = d["values"]
+    if not (isinstance(vs, list) and vs and len(vs) <= DENS_FACET_MAX_VALUES
+            and all(isinstance(v, str) and v.strip() and v == v.strip() and "'" not in v and "${" not in v for v in vs) and len(set(vs)) == len(vs)):
+        return (f"density_facet.values must be a non-empty list of at most {DENS_FACET_MAX_VALUES} distinct plain strings (no quote, no interpolation), got {vs!r}")
+    bad = _s3_text_problem(d["why"], min_chars=15, min_words=3)
+    if bad:
+        return f"density_facet.why {bad} (why these values are this asset's rows of the shared table)"
+    ev = d["evidence"]
+    if isinstance(ev, str) and ev.startswith("unverified:"):
+        return "density_facet.evidence may not be `unverified:`: a facet lifts a Dens cell, so it must point at a real file:line the reviewer read"
+    bad = _s3_evidence_problem(ev, allow_unverified=False, needle=c)
+    if bad:
+        return f"density_facet.evidence {ev!r} {bad}"
+    if not re.search(r":[0-9]+$", ev):
+        return f"density_facet.evidence {ev!r} must name a line (repo-relative file:LINE)"
+    body = (ROOT / re.sub(r":[0-9]+$", "", ev)).read_text(encoding="utf-8", errors="replace")
+    absent = [v for v in vs if v not in body]
+    if absent:
+        return f"density_facet.evidence {ev!r} is a real file but does not mention the declared value(s) {absent}: the evidence must be about the facet it supports"
+    if table_columns is not None and c.casefold() not in {x.casefold() for x in table_columns if isinstance(x, str)}:
+        return f"declared facet column {c!r} is not a column of the asset's table"
+    return None
+
+
+def density_facet_measure_problem(entry, table, table_columns):
+    """Measure-time form (same shape as `density_tier_measure_problem`): a declaration on an asset with no target table or unknown table columns is UNVERIFIABLE, never read as present."""
+    if not isinstance(entry, dict) or entry.get("density_facet") is None:
+        return None
+    if not table:
+        return "the asset has no target table, so the declared facet cannot apply to any table (declaration unverifiable)"
+    if table_columns is None:
+        return f"table columns unknown for {table} (a view, or the catalog lists no columns for it), declaration unverifiable"
+    return density_facet_problem(entry, table_columns)
+
+
+UNIFORM_AUTHORITY_DECL_FIELDS = ("why", "evidence")
+
+
+def uniform_authority_problem(entry):
+    """None when `entry` has no `uniform_authority`, or a sound one; else why it is refused. TI-L0-04 (SS Q2, folded from held PR #3105) as ruled N-154 Q1: the
+    declaration is an object {why, evidence} (the key present = this asset's table is a reference vocabulary of UNIFORM authority, so a tier column has nothing to
+    distinguish and Dens.served may PASS on density_contract facets). `why` a real one-line reason that says every row carries the same authority (the word 'uniform'
+    or 'authority'); `evidence` a real repo-relative file:LINE (never `unverified:`) that the reviewer read. Absent or null = not declared."""
+    if not isinstance(entry, dict) or entry.get("uniform_authority") is None:
+        return None
+    d = entry["uniform_authority"]
+    if not isinstance(d, dict):
+        return "must be an object {why, evidence} (omit the key to declare none)"
+    extra = sorted(set(d) - set(UNIFORM_AUTHORITY_DECL_FIELDS))
+    if extra:
+        return f"unknown field(s) {extra}"
+    missing = [f for f in UNIFORM_AUTHORITY_DECL_FIELDS if f not in d]
+    if missing:
+        return f"missing field(s) {missing}"
+    bad = _s3_text_problem(d["why"], min_chars=15, min_words=3)
+    if bad:
+        return f"why {bad} (why every row of the table carries the same authority)"
+    if not any(w in d["why"].casefold() for w in ("uniform", "authority")):
+        return f"why must say the table's rows are of uniform authority (the word 'uniform' or 'authority'): {d['why']!r}"
+    ev = d["evidence"]
+    if isinstance(ev, str) and ev.startswith("unverified:"):
+        return "evidence may not be `unverified:`: a declaration that lifts a Dens cell must point at a real file:line the reviewer read"
+    bad = _s3_evidence_problem(ev, allow_unverified=False)
+    if bad:
+        return f"evidence {ev!r} {bad}"
+    if not re.search(r":[0-9]+$", ev):
+        return f"evidence {ev!r} must name a line (repo-relative file:LINE)"
+    return None
+
+
+def validate_density_facet_declaration(where: str, e: dict) -> None:
+    bad = density_facet_problem(e)
+    if bad:
+        raise DeclarationsError(f"{where}.{bad}" if bad.startswith("density_facet") else f"{where}.density_facet: {bad}")
 
 
 _DECL_ENTRY_KEYS = ("kind", "carriage", "prose_fields", "terminal_by_construction", "cross_asset_writes",
                     "read_evidence", "read_table", "read_kind", "evidence", "evidence_kind", "vocab_alias", "ldgr_source", "null_convention",
-                    "prose_coupling", "density_tier_columns", "source", "prose_none", "produced_tables")
+                    "prose_coupling", "density_tier_columns", "source", "prose_none", "produced_tables", "density_facet", "uniform_authority")
 _DECL_EVIDENCE_KEYS = ("kind", "carriage", "prose_fields", "cross_asset_writes")
 # prose_fields entries (SS ruling 2026-10-01; CLAUDE.md N.7 concerns GENERATED prose): a column name, or a JSON path into
 # a JSONB column, `column.$.seg(.seg)*` where a seg is an identifier key, optionally followed by ONE `[*]` (every element
@@ -1792,6 +1891,12 @@ def validate_declarations(doc, registry_ids=None) -> dict:
             validate_prose_none_declaration(where, e["prose_none"], e)
         if e.get("produced_tables") is not None:
             validate_produced_tables_declaration(where, e["produced_tables"], e)
+        if e.get("density_facet") is not None:
+            validate_density_facet_declaration(where, e)
+        if e.get("uniform_authority") is not None:
+            bad = uniform_authority_problem(e)
+            if bad:
+                raise DeclarationsError(f"{where}.uniform_authority: {bad}")
         bad = prose_empty_d1_problem(e)
         if bad:
             raise DeclarationsError(f"{where}.prose_coupling is missing: {bad}")
@@ -6204,87 +6309,166 @@ def dens_tier_counts(name, declared=()) -> bool:
 TIER_YES, TIER_NO, TIER_UNKNOWN = "tier", "no-tier", "unknown"
 
 
-def _ts_mask(src: str, blank_strings: bool = False) -> str:
-    """`_ts_code`'s comment discipline with POSITIONS KEPT: same length as `src`; every comment character becomes a
-    space (newlines stay); with `blank_strings`, literal contents too. Offsets found in the mask are offsets in `src`,
-    which `_ts_code` (it deletes comment text) cannot give — needed to say WHICH top-level declaration a token, a
-    `density_contract:` and a SELECT literal sit in."""
-    out = list(src)
-    i, n = 0, len(src)
+# ───────────── DENS-SCANNER (REGISTRY_REVISION 26, Worker D): ONE TypeScript lexer for the Dens scan ─────────────
+# The old three scanners (`_ts_mask`, `_ts_literal_spans`, `_ts_desynced`) each hand-rolled the same quote loop and shared its three blind spots: a TEMPLATE
+# LITERAL whose `${ ... }` holds another quote or backtick (a nested template closed at the first inner backtick, flipping the parity of every later literal),
+# a REGEX LITERAL holding a quote / a bracket / `//`, and a `${` that is never closed. They are now views of ONE lexer, `_ts_lex`: top-level tokens are
+# `comment` (line / block), `string` ('..' / ".."), `template` (the whole backticked literal, `${...}` included, nested templates / strings / comments / regexes
+# inside an interpolation lexed recursively and NOT reported as tokens of their own: they are part of the template's text, as before) and `regex`.
+# A `/` is a regex only where a regex may start (previous significant token is an operator / opening bracket / separator / start, or one of the keywords below)
+# AND a closing `/` is found on the same line (a class `[...]` may hold a `/`); anywhere else (after an identifier, number, string, `)`, `]`, `}`) it is division.
+# After `)` a regex is possible (`if (x) /re/.test(y)`) and after `}` too; both are read as DIVISION on purpose: the quote in such a regex then desyncs the file,
+# and a desynced file is NO_DETECTOR naming it, never read as "no served select" (the safe direction). Desync = a `'`/`"` string across a raw newline, a string /
+# template / interpolation / block comment never closed. A file whose tokens close cleanly is parsed; one that does not is never trusted.
+_TS_REGEX_AFTER_WORDS = frozenset({"return", "typeof", "instanceof", "in", "of", "new", "delete", "void", "throw", "case", "do", "else", "yield", "await"})
+_TS_IDENT = re.compile(r"[A-Za-z_$][\w$]*|\d[\w.]*")
+
+
+def _ts_regex_end(src: str, i: int) -> int:
+    """End offset (exclusive, flags included) of a regex literal opening at `i` (a `/`), or -1 when none closes on this line."""
+    n, j, in_class = len(src), i + 1, False
+    while j < n:
+        ch = src[j]
+        if ch == "\n":
+            return -1
+        if ch == "\\":
+            j += 2
+            continue
+        if ch == "[":
+            in_class = True
+        elif ch == "]":
+            in_class = False
+        elif ch == "/" and not in_class:
+            j += 1
+            while j < n and (src[j].isalnum() or src[j] in "_$"):
+                j += 1
+            return j
+        j += 1
+    return -1
+
+
+def _ts_lex_code(src: str, i: int, toks: list | None, nested: bool):
+    """Lex code from `i`. `nested`: inside a `${ ... }` (stops at its closing `}`, returns its index; -1 desynced). Top level appends tokens to `toks`
+    (`(kind, start, end)`) and returns `(index, ok)`."""
+    n, depth, prev = len(src), 0, ("start", "")
     while i < n:
-        c, nx = src[i], src[i + 1] if i + 1 < n else ""
-        if c == "/" and nx == "/":
+        c = src[i]
+        nx = src[i + 1] if i + 1 < n else ""
+        if c.isspace():
+            i += 1
+        elif c == "/" and nx == "/":
             j = src.find("\n", i)
             j = n if j < 0 else j
-            out[i:j] = " " * (j - i)
+            if toks is not None:
+                toks.append(("comment", i, j))
             i = j
         elif c == "/" and nx == "*":
             j = src.find("*/", i + 2)
-            j = n if j < 0 else j + 2
-            out[i:j] = [ch if ch == "\n" else " " for ch in src[i:j]]
-            i = j
-        elif c in "'\"`":
+            if j < 0:
+                return (-1, False) if nested else (n, False)
+            if toks is not None:
+                toks.append(("comment", i, j + 2))
+            i = j + 2
+        elif c in "'\"":
             j = i + 1
             while j < n and src[j] != c:
+                if src[j] == "\n":
+                    return (-1, False) if nested else (j, False)
                 j += 2 if src[j] == "\\" else 1
-            if blank_strings:
-                out[i + 1:min(j, n)] = [ch if ch == "\n" else " " for ch in src[i + 1:min(j, n)]]
-            i = j + 1
+            if j >= n:
+                return (-1, False) if nested else (n, False)
+            if toks is not None:
+                toks.append(("string", i, j + 1))
+            i, prev = j + 1, ("value", "")
+        elif c == "`":
+            j, ok = _ts_template_end(src, i)
+            if not ok:
+                return (-1, False) if nested else (n, False)
+            if toks is not None:
+                toks.append(("template", i, j))
+            i, prev = j, ("value", "")
+        elif c == "/":
+            allow = (prev[0] in ("start", "punct") and prev[1] not in (")", "]", "}")) or (prev[0] == "word" and prev[1] in _TS_REGEX_AFTER_WORDS)
+            j = _ts_regex_end(src, i) if allow else -1
+            if j > 0:
+                if toks is not None:
+                    toks.append(("regex", i, j))
+                i, prev = j, ("value", "")
+            else:
+                i, prev = i + 1, ("punct", "/")
+        elif c == "{":
+            depth += 1
+            i, prev = i + 1, ("punct", c)
+        elif c == "}":
+            if nested and depth == 0:
+                return i, True
+            depth = max(depth - 1, 0)
+            i, prev = i + 1, ("punct", c)
         else:
-            i += 1
-    return "".join(out)[:n]
+            m = _TS_IDENT.match(src, i)
+            if m:
+                i, prev = m.end(), ("word", m.group(0))
+            else:
+                i, prev = i + 1, ("punct", c)
+    return (-1, False) if nested else (n, True)
+
+
+def _ts_template_end(src: str, i: int) -> tuple[int, bool]:
+    """End offset (exclusive) of the template literal opening at `i` (a backtick), nested `${ ... }` lexed as code; `(n, False)` when it never closes."""
+    n, j = len(src), i + 1
+    while j < n:
+        ch = src[j]
+        if ch == "\\":
+            j += 2
+        elif ch == "`":
+            return j + 1, True
+        elif ch == "$" and src[j + 1:j + 2] == "{":
+            k, ok = _ts_lex_code(src, j + 2, None, True)
+            if not ok:
+                return n, False
+            j = k + 1
+        else:
+            j += 1
+    return n, False
+
+
+@functools.lru_cache(maxsize=16)
+def _ts_lex(src: str) -> tuple[tuple, bool]:
+    """`(tokens, ok)`: every top-level token (`(kind, start, end)`, kind comment / string / template / regex) and whether the file lexed cleanly."""
+    toks: list = []
+    _end, ok = _ts_lex_code(src, 0, toks, False)
+    return tuple(toks), ok
+
+
+def _ts_mask(src: str, blank_strings: bool = False) -> str:
+    """Comments blanked with POSITIONS KEPT: same length as `src`; every comment character becomes a space (newlines stay); with `blank_strings`, string / template
+    contents and regex literal bodies too (the delimiters stay). Offsets found in the mask are offsets in `src` (`_ts_code`, which deletes comment text, cannot give
+    that): needed to say WHICH top-level declaration a token, a `density_contract:` and a SELECT literal sit in."""
+    out = list(src)
+    for kind, a, b in _ts_lex(src)[0]:
+        if kind == "comment":
+            out[a:b] = [ch if ch == "\n" else " " for ch in src[a:b]]
+        elif blank_strings and kind in ("string", "template"):
+            out[a + 1:b - 1] = [ch if ch == "\n" else " " for ch in src[a + 1:b - 1]]
+        elif blank_strings and kind == "regex":
+            e = src.rfind("/", a, b)                       # the closing slash: flags follow it
+            out[a + 1:e] = [ch if ch == "\n" else " " for ch in src[a + 1:e]]
+    return "".join(out)
 
 
 def _ts_literal_spans(src: str) -> list[tuple[int, str]]:
-    """`_ts_literals` with each literal's start offset in `src` (comments skipped, strings respected)."""
-    out, i, n = [], 0, len(src)
-    while i < n:
-        c, nx = src[i], src[i + 1] if i + 1 < n else ""
-        if c == "/" and nx == "/":
-            j = src.find("\n", i)
-            i = n if j < 0 else j
-        elif c == "/" and nx == "*":
-            j = src.find("*/", i + 2)
-            i = n if j < 0 else j + 2
-        elif c in "'\"`":
-            j = i + 1
-            while j < n and src[j] != c:
-                j += 2 if src[j] == "\\" else 1
-            out.append((i + 1, src[i + 1:min(j, n)]))
-            i = j + 1
-        else:
-            i += 1
-    return out
+    """`_ts_literals` with each literal's start offset in `src` (comments skipped, strings and templates respected, a regex literal is not a string)."""
+    return [(a + 1, src[a + 1:b - 1]) for kind, a, b in _ts_lex(src)[0] if kind in ("string", "template")]
 
 
 def _ts_desynced(src: str) -> bool:
-    """Did the string/comment scanner lose sync with the file? True when a quoted string is never closed, or a `'` / `"`
-    string spans a raw newline (neither is legal TypeScript; both are what a stray quote — an apostrophe in JSX text
-    (`<p>don't</p>`), a quote inside a regex literal — does to every literal after it). Everything `_ts_mask`,
-    `_ts_literal_spans` and `_ts_decl_starts` report for such a file is unreliable, so the outside probe never reads
-    "no served select" from it. Limit, disclosed: two stray quotes re-sync by accident and are not detected (a `.tsx`
-    file is never trusted for that reason — it is always read textually)."""
-    i, n = 0, len(src)
-    while i < n:
-        c, nx = src[i], src[i + 1] if i + 1 < n else ""
-        if c == "/" and nx == "/":
-            j = src.find("\n", i)
-            i = n if j < 0 else j
-        elif c == "/" and nx == "*":
-            j = src.find("*/", i + 2)
-            i = n if j < 0 else j + 2
-        elif c in "'\"`":
-            j = i + 1
-            while j < n and src[j] != c:
-                if c != "`" and src[j] == "\n":
-                    return True
-                j += 2 if src[j] == "\\" else 1
-            if j >= n:
-                return True
-            i = j + 1
-        else:
-            i += 1
-    return False
+    """Did the lexer lose sync with the file? True when a `'` / `"` string spans a raw newline, or a string, template literal, `${` interpolation or block comment is
+    never closed (none is legal TypeScript; each is what a stray quote — an apostrophe in JSX text (`<p>don't</p>`), a quote in a regex the lexer did not
+    recognise (after `)` or `}`) — does to every literal after it). Everything `_ts_mask`, `_ts_literal_spans` and `_ts_decl_starts` report for such a file is
+    unreliable, so the outside probe never reads "no served select" from it. Limit, disclosed: two stray quotes re-sync by accident and are not detected (a `.tsx`
+    file is never trusted for that reason — it is always read textually). Nested templates, regex literals holding quotes / brackets / `//`, and `${}` interpolations
+    holding strings are lexed and do NOT desync (DENS-SCANNER, REGISTRY_REVISION 26)."""
+    return not _ts_lex(src)[1]
 
 
 _DYN_FROM = re.compile(r"\b(?:FROM|JOIN)\s+(?:ONLY\s+)?(?:\"?[A-Za-z_]\w*\"?\.)?\"?\$\{|\b(?:FROM|JOIN)\s+(?:ONLY\s+)?(?:[\w\"]+\.)?%(?:\d+\$)?[IsL]", re.I)
@@ -6293,14 +6477,24 @@ _DYN_FROM_TAIL = re.compile(r"\b(?:FROM|JOIN)\b(?:\s+(?:ONLY\s+)?[\w.\"]*)?\s*$"
 _DYN_JOINED = re.compile(r"(?:\s|/\*.*?\*/|//[^\n]*\n)*(?:\+|,|\.concat\s*\()", re.S)
 
 
+def _sqlish_dynamic(rx, c: str) -> bool:
+    """`rx` (a case-insensitive FROM/JOIN pattern) matches in literal `c` AS SQL: the keyword in UPPER case (this codebase's SQL), or any case when the literal
+    carries a SELECT. A lower-case `from` in prose ("held-out, isolated from generation") is not a table read: DENS-SCANNER (REGISTRY_REVISION 26) -- the
+    catalogue file `jyotish/asset_names.ts` held two such descriptions, each followed by the `,` of the next object property, and read as a run-time table name."""
+    m = rx.search(c)
+    if not m:
+        return False
+    return bool(re.search(r"\b(?:FROM|JOIN)\b", m.group(0))) or bool(re.search(r"\bSELECT\b", c, re.I))
+
+
 def _dynamic_from(txt: str, spans: list[tuple[int, str]]) -> bool:
     """Does any literal name its table at run time: `FROM ${T}` (also `"${T}"`, `"public"."${T}"`, `public.${T}`, JOIN,
     ONLY), a `format(… FROM %I …)` placeholder, or a literal ending in `FROM`/`JOIN`/`FROM t_` that has a name joined
-    on with `+`, `.concat(` or an array `,` (a comment between is skipped)?"""
+    on with `+`, `.concat(` or an array `,` (a comment between is skipped)? SQL only (`_sqlish_dynamic`): prose that says "from" is not a read."""
     for pos, c in spans:
-        if _DYN_FROM.search(c):
+        if _sqlish_dynamic(_DYN_FROM, c):
             return True
-        if _DYN_FROM_TAIL.search(c) and _DYN_JOINED.match(txt[pos + len(c) + 1:pos + len(c) + 200]):
+        if _sqlish_dynamic(_DYN_FROM_TAIL, c) and _DYN_JOINED.match(txt[pos + len(c) + 1:pos + len(c) + 200]):
             return True
     return False
 
@@ -6664,6 +6858,37 @@ def _enclosing_object(blank: str, pos: int) -> tuple[int, int]:
     return i, len(blank)
 
 
+_DENSITY_KEY_VALUE = re.compile(r"\bdensity_contract\s*\??\s*:\s*")
+_FACETS_LIST = re.compile(r"\bfacets\s*:\s*\[([^\]]*)\]")
+
+
+def _contract_has_facets(blank: str, key_pos: int) -> bool:
+    """TI-L0-04 (folded from held PR #3105): does the `density_contract:` declared at `key_pos` hold, as an INLINE object, a `facets` list with at least one entry?
+    `blank` is the comment- and string-blanked text (brace structure; string delimiters kept, so a list of strings is non-empty). A contract that is an identifier
+    or call, a `facets` that is not an inline list, an empty list, or a `facets:` key outside the contract object (a sibling property, a comment) is NOT
+    established: False. Only the contract object's own top level is read (a nested object's `facets` is not the contract's)."""
+    m = _DENSITY_KEY_VALUE.match(blank, key_pos)
+    if m is None or m.end() >= len(blank) or blank[m.end()] != "{":
+        return False
+    depth, end = 0, None
+    for j in range(m.end(), len(blank)):
+        depth += (blank[j] == "{") - (blank[j] == "}")
+        if depth == 0:
+            end = j + 1
+            break
+    if end is None:
+        return False
+    depth_at, d = [], 0
+    for ch in blank[m.end():end]:                       # bracket depth BEFORE each character; the contract's own keys sit at depth 1
+        depth_at.append(d)
+        d += (ch in "{[(") - (ch in "}])")
+    for fm in _FACETS_LIST.finditer(blank, m.end(), end):
+        at = fm.start() - m.end()
+        if depth_at[at] == 1 and re.search(r"['\"`\w]", fm.group(1)):
+            return True
+    return False
+
+
 def _dens_facts(txt: str) -> dict:
     """The module text parsed once (see `_dens_module`): comment-masked text, string-blanked text, declaration starts, `density_contract:`
     declarations, string-literal spans, desync, run-time table access."""
@@ -6868,12 +7093,92 @@ def _select_tier(sel: str, alias: str | None, table: str, cols: list[str] | None
     return (TIER_UNKNOWN if ((star and not cols) or dynamic) else TIER_NO), []
 
 
+# ───────────── DENS-SCANNER (REGISTRY_REVISION 26): registry-driven table names and declared facets ─────────────
+_DYN_FROM_EXPR = re.compile(r"\b((?:FROM|JOIN)\s+(?:ONLY\s+)?)\$\{\s*([^{}]+?)\s*\}", re.I)
+_CONST_MAP_ENTRY = re.compile(r"\s*(?:[A-Za-z_$][\w$]*|'[^'\n]*'|\"[^\"\n]*\")\s*:\s*(?:'([^'\n]*)'|\"([^\"\n]*)\")\s*(?:,|$)")
+
+
+def _const_map_values(mod: dict, name: str):
+    """The string values of a module-level `const NAME[: type] = { k: 'v', ... }` whose EVERY entry is `key: 'string literal'` (else None: a computed or
+    non-literal entry means the set of names is not readable)."""
+    m = re.search(r"\bconst\s+" + re.escape(name) + r"\b[^=\n]*=\s*\{", mod["cmask"])
+    if not m:
+        return None
+    lo, hi = _enclosing_object(mod["blank"], m.end())
+    if lo != m.end() - 1:
+        return None
+    body, vals, pos = mod["txt"][lo + 1:hi - 1], [], 0
+    while pos < len(body) and body[pos:].strip():
+        e = _CONST_MAP_ENTRY.match(body, pos)
+        if not e:
+            return None
+        vals.append(e.group(1) if e.group(1) is not None else e.group(2))
+        pos = e.end()
+    return set(vals) if vals else None
+
+
+def _dyn_names(mod: dict, expr: str):
+    """The table names a `FROM ${expr}` interpolation can take, when readable from the module: `expr` is a const string, an identifier const-assigned a const string or
+    `MAP[...]` / `MAP.key` of a const map of string literals, or `MAP[...]` itself. None = not readable (a parameter, a call, a computed map)."""
+    expr = expr.strip()
+    mm = re.fullmatch(r"([A-Za-z_$][\w$]*)\s*(?:\[[^\]]*\]|\.[A-Za-z_$][\w$]*)", expr)
+    if mm:
+        return _const_map_values(mod, mm.group(1))
+    if not re.fullmatch(r"[A-Za-z_$][\w$]*", expr):
+        return None
+    a = re.search(r"\bconst\s+" + re.escape(expr) + r"\b[^=\n]*=\s*([^\n;]+)", mod["cmask"])
+    if not a:
+        return None
+    rhs = a.group(1).strip()
+    lit = re.fullmatch(r"'([^'\n]*)'|\"([^\"\n]*)\"", rhs)
+    if lit:
+        return {lit.group(1) if lit.group(1) is not None else lit.group(2)}
+    return _dyn_names(mod, rhs) if re.fullmatch(r"[A-Za-z_$][\w$]*\s*(?:\[[^\]]*\]|\.[A-Za-z_$][\w$]*)", rhs) else None
+
+
+def _dyn_lits(mod: dict, table: str, lits: list[str]) -> tuple[list[str], list[int]]:
+    """`lits` with every `FROM|JOIN ${expr}` whose readable name set (`_dyn_names`) contains `table` rewritten to name it, so the one served-select reader sees the
+    registry-driven select the way it runs when that name is picked; the indexes of the literals rewritten are returned (empty = none does). The select list is
+    unchanged, so a run-time list stays UNKNOWN."""
+    changed, out = [], []
+    for i, lit in enumerate(lits):
+        def rep(m):
+            names = _dyn_names(mod, m.group(2))
+            if names and table in names:
+                if i not in changed:
+                    changed.append(i)
+                return m.group(1) + table
+            return m.group(0)
+        out.append(_DYN_FROM_EXPR.sub(rep, lit))
+    return out, changed
+
+
+def _facet_pins(lits, column: str) -> tuple[set, bool]:
+    """`(values pinned, bound)` for `column` over the literals of ONE top-level declaration: the string values a literal predicate pins (`col = 'v'`, `col IN ('v', ..)`,
+    `col = ANY(ARRAY['v', ..])`, `col = ANY('{v,..}')`; an interpolated value is not a pin) and whether the column is also filtered by a bind parameter (`col = $n`,
+    `col = ANY($n)`, `col IN ($n)`), whose value the SQL does not carry."""
+    c = r"(?<![\w])(?:\w+\.)?\"?" + re.escape(column) + r"\"?\b"
+    vals, bound = set(), False
+    for lit in lits:
+        for m in re.finditer(c + r"\s*=\s*'((?:[^']|'')*)'", lit):
+            vals.add(m.group(1).replace("''", "'"))
+        for m in re.finditer(c + r"\s+IN\s*\(([^)]*)\)", lit, re.I):
+            vals.update(v.replace("''", "'") for v in re.findall(r"'((?:[^']|'')*)'", m.group(1)))
+        for m in re.finditer(c + r"\s*=\s*ANY\s*\(\s*(?:ARRAY\s*)?\[([^\]]*)\]", lit, re.I):
+            vals.update(v.replace("''", "'") for v in re.findall(r"'((?:[^']|'')*)'", m.group(1)))
+        for m in re.finditer(c + r"\s*=\s*ANY\s*\(\s*'\{([^}]*)\}'", lit, re.I):
+            vals.update(v.strip().strip('"') for v in m.group(1).split(",") if v.strip())
+        if re.search(c + r"\s*(?:=\s*(?:ANY\s*\(\s*)?|\s+IN\s*\(\s*)\$", lit, re.I):
+            bound = True
+    return {v for v in vals if "${" not in v}, bound
+
+
 def _name(rel: Path, root: str, first: bool) -> str:
     return rel.as_posix() if first else f"{root}/{rel.as_posix()}"
 
 
 def capability_scan(caps_dirs, tables: list[str], shared=(), columns: dict | None = None, outside_roots=(), service: bool = False,
-                    tier_declared: dict | None = None) -> dict:
+                    tier_declared: dict | None = None, facets: dict | None = None) -> dict:
     """E6.1 (d): the Dens scanner, repaired (N-22 ruling principle 4). Structural: it reads source, not behaviour.
 
     SCOPE. `caps_dirs` (one path or several; `measure()` passes `CAPS_ROOTS`, R23's serving roots) are read
@@ -6937,9 +7242,13 @@ def capability_scan(caps_dirs, tables: list[str], shared=(), columns: dict | Non
     toks = [t for t in dict.fromkeys(tables) if t and t not in shared]
     sh = [t for t in dict.fromkeys(tables) if t and t in shared]
     hits, dense, declared, tier_only, shared_only, mentions, elsewhere = [], [], [], [], [], [], []
+    facet_dense: list[str] = []         # TI-L0-04: modules whose contract-declaring entry has facets AND holds a real served read (read only for `uniform_authority`)
     label_only: list[str] = []
     label_comment: list[str] = []
     unparsed: list[str] = []
+    facet_hits: list[str] = []
+    facet_bound: list[str] = []
+    dyn_resolved: list[str] = []
     served = 0
     seen: set[str] = set()
     for i, root in enumerate(dirs):
@@ -6963,30 +7272,58 @@ def capability_scan(caps_dirs, tables: list[str], shared=(), columns: dict | Non
                 continue
             has = lambda t: re.search(r"\b" + re.escape(t) + r"\b", mod["cmask"])      # noqa: E731  (code, strings kept)
             ref_toks = [t for t in code_toks if has(t)]                                # R51: code, not a comment
-            if not ref_toks:
+            # DENS-FACET: a served select of a SHARED table is attributed to THIS asset when its top-level declaration pins a value the asset declared for the facet column
+            facet_decls: set[int] = set()
+            if facets:
+                lits0 = [c for _p, c in mod["spans"]]
+                for t in (x for x in code_sh if has(x)):
+                    fct = facets.get(t.lower())
+                    if not fct:
+                        continue
+                    for li, _m, _a, _sel in _served_selects(t, lits0, strict=True):
+                        d0 = _decl_of(mod, mod["spans"][li][0])
+                        pins, bound = _facet_pins([c for p, c in mod["spans"] if _decl_of(mod, p) == d0], fct["column"])
+                        if pins & set(fct["values"]):
+                            facet_decls.add(d0)
+                        elif bound:
+                            facet_bound.append(name)
+            if not ref_toks and not facet_decls:
                 if any(has(t) for t in code_sh):
                     shared_only.append(name)
                 elif code_toks:
                     mentions.append(name)                                              # R51: named in a comment only
                 continue
             kinds = [k for t in ref_toks for k in _ref_kinds_mod(mod, t, service)]                # SS N-74(a): SELECT or LABEL, per occurrence
-            refs = {_decl_of(mod, m.start()) for t in ref_toks for m in re.finditer(r"\b" + re.escape(t) + r"\b", mod["cmask"])}
+            refs = {_decl_of(mod, m.start()) for t in ref_toks for m in re.finditer(r"\b" + re.escape(t) + r"\b", mod["cmask"])} | facet_decls
+            lits = [c for _p, c in mod["spans"]]
+            # DENS-SCANNER: a `FROM ${expr}` whose const map / const string names THIS asset's table is a select of it, and the declaration holding it references the asset
+            dyn_lits: dict[str, list[str]] = {}
+            if mod["dynamic_from"]:
+                for t in ref_toks:
+                    lt, changed = _dyn_lits(mod, t, lits)
+                    if changed:
+                        dyn_lits[t] = lt
+                        refs |= {_decl_of(mod, mod["spans"][i][0]) for i in changed}
+                        if name not in dyn_resolved:
+                            dyn_resolved.append(name)
             # a capability ENTRY that declares the contract: the object literal holding the `density_contract:` key, in a
             # top-level declaration that references the asset
             cobjs = [o for o in mod["contract_objs"] if _decl_of(mod, o[0]) in refs]
             contract_decls = {_decl_of(mod, o[0]) for o in cobjs}
-            lits = [c for _p, c in mod["spans"]]
             sels: list[tuple[int, int, str, list[str]]] = []                           # (declaration, offset, tier state, columns)
+            real_reads: set[int] = set()                                               # TI-L0-04: offsets of literals holding a real served read (sel is not None)
             # a select of a SHARED table counts only inside a capability that names THIS asset (by its id or by a table
             # only it declares): the asset id discriminates what the shared table cannot
             for t in ref_toks + [x for x in code_sh if has(x)]:
-                for li, m, alias, sel in _served_selects(t, lits, strict=True):
+                for li, m, alias, sel in _served_selects(t, dyn_lits.get(t, lits), strict=True):
                     pos = mod["spans"][li][0]
                     d = _decl_of(mod, pos)
                     if d in refs:
                         st = (_select_tier(sel, alias, t, columns.get(t.lower()) or columns.get(t), (tier_declared or {}).get(t.lower(), ()))
                               if sel is not None else (TIER_UNKNOWN, []))           # not the served read: credits nothing
                         sels.append((d, pos, st[0], st[1]))
+                        if sel is not None:
+                            real_reads.add(pos)
                         served += 1
             if not sels and not _module_reaches(kinds):
                 # every occurrence is a label (a provenance string, prose, a type name, an import path, a label-keyed value, a map key) and no
@@ -7000,9 +7337,13 @@ def capability_scan(caps_dirs, tables: list[str], shared=(), columns: dict | Non
                     label_comment.append(name)
                 continue
             hits.append(name)
+            if facet_decls:
+                facet_hits.append(name)
             tier_decls = {d for d, _p, st, _c in sels if st == TIER_YES}
             inside = lambda o: [(st, cs) for _d, p, st, cs in sels if o[1] <= p < o[2]]    # noqa: E731
             dense_cols = sorted({c for o in cobjs for st, cs in inside(o) if st == TIER_YES for c in cs})
+            if any(o[1] <= p < o[2] and _contract_has_facets(mod["blank"], o[0]) for o in cobjs for p in real_reads):
+                facet_dense.append(name)
             if dense_cols:
                 # PASS: the contract and the tier select belong to the SAME capability entry (the contract's own object)
                 dense.append((name, dense_cols))
@@ -7061,8 +7402,8 @@ def capability_scan(caps_dirs, tables: list[str], shared=(), columns: dict | Non
                 elif mod["dynamic_from"]:
                     outside_named.append(f"{rel} (holds the table and selects FROM a run-time table name)")
     return dict(modules=hits, label_only=label_only, label_comment=label_comment, density=len(dense), note="", scanned=True, comment_only=mentions, dense=dense,
-                declared=declared, tier_only=tier_only, served=served, shared_only=shared_only, outside=outside, outside_named=outside_named, unparsed=unparsed, elsewhere=elsewhere,
-                shared_tokens=sh, tokens=toks, roots=dirs)
+                declared=declared, facet_dense=facet_dense, tier_only=tier_only, served=served, shared_only=shared_only, outside=outside, outside_named=outside_named, unparsed=unparsed, elsewhere=elsewhere,
+                shared_tokens=sh, tokens=toks, roots=dirs, facet_attributed=facet_hits, facet_bound=sorted(set(facet_bound)), dynamic_resolved=dyn_resolved)
 
 
 def _few(xs, n: int = 6) -> str:
@@ -7070,7 +7411,7 @@ def _few(xs, n: int = 6) -> str:
     return ", ".join(xs[:n]) + (f" (+{len(xs) - n} more)" if len(xs) > n else "")
 
 
-def _grade_dens(cap: dict, label: str) -> dict:
+def _grade_dens(cap: dict, label: str, uniform_authority: bool = False) -> dict:
     """`Dens.served` from a `capability_scan` result. STRUCTURAL throughout: the contract is a declared property and the
     tier column a name in a served select — neither is a check that the served rows are in fact layered.
     PASS only when a capability that references the asset declares the contract AND a served select of its table in that
@@ -7085,7 +7426,9 @@ def _grade_dens(cap: dict, label: str) -> dict:
     outside = cap.get("outside") or []
     lab = cap.get("label_only") or []
     reach = (f"{len(mods)} module(s) reach it by code: {_few(mods)}"
-             + (f" (+{len(lab)} name it only as a label)" if lab else ""))
+             + (f" (+{len(lab)} name it only as a label)" if lab else "")
+             + (f" ({len(cap['facet_attributed'])} attributed by the declared facet: {_few(cap['facet_attributed'], 3)})" if cap.get("facet_attributed") else "")
+             + (f" (table name resolved from a module const map in: {_few(cap['dynamic_resolved'], 3)})" if cap.get("dynamic_resolved") else ""))
     tail = (f"; also a served select outside the scanned serving roots (not graded): {_few(outside, 3)}"
             if outside and mods else "")
     if mods and cap.get("density"):
@@ -7093,6 +7436,13 @@ def _grade_dens(cap: dict, label: str) -> dict:
         return dict(v=PASS, measured=(f"STRUCTURAL: {reach}; {cap['density']} capability(ies) declare density_contract AND "
                                       f"select a tier column from it ({_few(sorted({c for _n, cs in d for c in cs}))}) "
                                       f"in: {_few(n for n, _c in d)}" + tail))
+    if uniform_authority and mods and cap.get("facet_dense"):
+        # TI-L0-04 (SS Q2, folded from held PR #3105; PROVISIONAL until the J1 review): the asset DECLARES uniform authority (a reference vocabulary: every row the
+        # same authority), so a tier column has nothing to distinguish; the contract's facets are what the served surface layers by. Reached only after the tier-column
+        # PASS above, and only when the SAME capability entry that declares the contract (with a non-empty inline `facets` list) holds a real served SELECT of the table.
+        return dict(v=PASS, measured=(f"STRUCTURAL: {reach}; uniform_authority declared (SS Q2, provisional until the J1 review): "
+                                      f"{len(cap['facet_dense'])} capability(ies) declare density_contract with facets AND serve its table, "
+                                      f"no tier column required: {_few(cap['facet_dense'])}" + tail))
     if mods and cap.get("declared"):
         det = "; ".join(f"{n}: {', '.join(w)}" for n, w in cap["declared"][:4])
         return dict(v=PARTIAL, measured=(f"STRUCTURAL: {reach}; a referencing capability declares density_contract but "
@@ -7125,7 +7475,9 @@ def _grade_dens(cap: dict, label: str) -> dict:
     if cap.get("shared_only"):
         return dict(v=NO_DET, measured=(f"NO_DETECTOR — only a table other assets share ({_few(cap.get('shared_tokens') or [])}) "
                                         f"is referenced, by {len(cap['shared_only'])} module(s): {_few(cap['shared_only'], 3)}; "
-                                        f"the served surface cannot be attributed to {label} by code (never the closable N/A)"))
+                                        f"the served surface cannot be attributed to {label} by code (never the closable N/A)"
+                                        + (f"; a served select filters the declared facet column by a bind parameter in {_few(cap['facet_bound'], 3)}: its value is not "
+                                           "readable from the SQL, never guessed" if cap.get("facet_bound") else "")))
     if cap.get("comment_only"):
         # R51 + §N.8: no module's CODE references the table, but comments do — the asset is named as served (e.g.
         # "already-served-elsewhere bg_dignity_reference", served by the generic MCP DB route). "Not served" was never
@@ -10066,9 +10418,16 @@ def measure(layer_key: str, assets=None) -> dict:
         _dt_bad = density_tier_measure_problem(_sd, tbl, _target_columns_fact(tbl, cat) if tbl else None)
         _dt = ({tbl.lower(): [d["column"] for d in _sd["density_tier_columns"]]}
                if (tbl and not _dt_bad and isinstance(_sd.get("density_tier_columns"), list)) else None)
+        # DENS-FACET (REGISTRY_REVISION 26): the asset's declared facet on its own (shared) target table; a refusal reads NO_DETECTOR with the disagreement, never PASS
+        _df_bad = density_facet_measure_problem(_sd, tbl, _target_columns_fact(tbl, cat) if tbl else None)
+        _df = ({tbl.lower(): dict(column=_sd["density_facet"]["column"], values=list(_sd["density_facet"]["values"]))}
+               if (tbl and not _df_bad and isinstance(_sd.get("density_facet"), dict)) else None)
         cap = capability_scan(CAPS_ROOTS, dtoks, shared=dens_shared, columns=cat["cols"],
-                              outside_roots=DENS_OUTSIDE_ROOTS, service=(r.get("asset_kind") == "service"), tier_declared=_dt)
-        m["Dens.served"] = _grade_dens(cap, tbl or aid)
+                              outside_roots=DENS_OUTSIDE_ROOTS, service=(r.get("asset_kind") == "service"), tier_declared=_dt, facets=_df)
+        m["Dens.served"] = _grade_dens(cap, tbl or aid, uniform_authority=(isinstance(_sd, dict) and _sd.get("uniform_authority") is not None and not uniform_authority_problem(_sd)))
+        if _df_bad:
+            m["Dens.served"] = dict(v=NO_DET, measured=f"NO_DETECTOR — the declared density_facet is refused ({_df_bad}); never PASS: the asset is not attributed by facet "
+                                                       f"(graded without it: {m['Dens.served']['v']})")
         if _dt_bad:
             m["Dens.served"] = dict(v=NO_DET, measured=f"NO_DETECTOR — the declared density_tier_columns are refused ({_dt_bad}); never PASS: the tier vocabulary stays the closed "
                                                        f"default (tier / verification_pass_status) until the declaration is sound (graded on that default: "
