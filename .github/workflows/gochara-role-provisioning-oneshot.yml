@@ -1,0 +1,98 @@
+# Gochara verifier/sealer ROLE PROVISIONING — ONE-SHOT. DRAFT: HOLD. Codex reviews this file BEFORE it is ever dispatched.
+#
+# Authority: the native's direct ruling #1 (2026-10-02): SQL admin route = option A — a reviewed one-shot workflow over the
+# existing governed ownership-admin secret, run under the owner's credentials by the steward.
+#   decisions/NATIVE_DIRECT_RULINGS_20261002.md · runbooks/ROLES_AND_SEAL_PROVISIONING_RUNBOOK_v1_0.md (acts 1, 2a, 2b)
+#
+# It does exactly one thing, and only the statements in platform/scripts/gochara-provision-roles.sh (reviewed with it):
+#   create-roles     SQL CREATE ROLE for gochara_verifier and gochara_sealer (both PASSWORD NULL; never `gcloud sql users create`),
+#                    post-check pg_has_role(...,'cloudsqlsuperuser','MEMBER') = false, the verifier's password generated in the run
+#                    and written straight to Secret Manager; refuses if either role already exists.
+#   sealer-password  act 2b only, after the live-gate proof (see the runbook §7.1).
+# It prints only non-secret verification facts. No artifact is uploaded. It is workflow_dispatch ONLY.
+#
+# AFTER USE this file is removed or disabled in a follow-up PR (the runbook's rollback step); until then it must never be dispatched
+# without the steward telling the owner the sequence is starting.
+name: Gochara role provisioning (one-shot, reviewed)
+
+on:
+  workflow_dispatch:
+    inputs:
+      stage:
+        description: 'create-roles (acts 1+2a) or sealer-password (act 2b)'
+        required: true
+        type: choice
+        options: [create-roles, sealer-password]
+      dsn_tail:
+        description: 'create-roles only: the NON-SECRET tail of the verifier DSN, e.g. @/dbname?host=/cloudsql/<connection-name> (starts with @, no credentials)'
+        required: false
+        type: string
+      confirm:
+        description: 'Type exactly: PROVISION-GOCHARA-ROLES'
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: gochara-role-provisioning
+  cancel-in-progress: false
+
+env:
+  WIF_PROVIDER: projects/938361928218/locations/global/workloadIdentityPools/github/providers/github-actions
+  WIF_SERVICE_ACCOUNT: github-actions@madhav-astrology.iam.gserviceaccount.com
+
+jobs:
+  provision:
+    name: Provision (${{ inputs.stage }})
+    if: github.ref == 'refs/heads/main' && inputs.confirm == 'PROVISION-GOCHARA-ROLES'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    # the existing governed environment that holds the ownership-admin secret (deployment branches: protected only)
+    environment: data-plane-production-cutover
+    steps:
+      - name: Checkout the dispatched commit
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ env.WIF_PROVIDER }}
+          service_account: ${{ env.WIF_SERVICE_ACCOUNT }}
+
+      - name: Start Cloud SQL Auth Proxy
+        run: |
+          curl -fsSL \
+            "https://storage.googleapis.com/cloud-sql-connectors/cloud-sql-proxy/v2.10.1/cloud-sql-proxy.linux.amd64" \
+            -o cloud-sql-proxy
+          echo "276139ff5d5dc484c51e1a9c065d69a9f6e47d5b726f94dced253b0227df2056  cloud-sql-proxy" | sha256sum -c -         # pinned (Fable): the v2.10.1 linux/amd64 binary as served on 2026-10-02
+          chmod +x cloud-sql-proxy
+          ./cloud-sql-proxy --address 127.0.0.1 --port 5432 \
+            madhav-astrology:asia-south1:amjis-postgres >cloud-sql-proxy-5432.log 2>&1 &
+          proxy_pid=$!
+          ready=false
+          for _ in {1..20}; do
+            if kill -0 "$proxy_pid" 2>/dev/null && (echo >"/dev/tcp/127.0.0.1/5432") 2>/dev/null; then ready=true; break; fi
+            sleep 1
+          done
+          if [ "$ready" != true ]; then
+            echo "::error::Cloud SQL Auth Proxy did not become ready on 127.0.0.1:5432."
+            exit 1
+          fi
+
+      - name: Install the PostgreSQL client
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq postgresql-client
+
+      - name: Run the reviewed provisioning script (prints non-secret facts only)
+        shell: bash
+        env:
+          STAGE: ${{ inputs.stage }}
+          DSN_TAIL: ${{ inputs.dsn_tail }}
+          ADMIN_DATABASE_URL: ${{ secrets.DATA_PLANE_OWNERSHIP_ADMIN_DATABASE_URL }}
+          SEALER_PASSWORD_STAGING: ${{ secrets.GOCHARA_SEALER_PASSWORD_STAGING }}
+          GCLOUD_PROJECT: madhav-astrology
+        run: bash platform/scripts/gochara-provision-roles.sh

@@ -143,3 +143,10 @@ Disposition accepted as proposed (Q10). Items marked (R) are PROVISIONAL until t
 2. CF-12: ANSWERED by SS 2026-10-01 (Q12): yes: 'no orphan rows under the writer's own partition' is the Idem claim for L0 upsert writers.
 
 **Track I items arising (see INDEX section 8):** TI-L0-06, TI-L0-25.
+
+
+## 8 · WAVE addendum (2026-10-03, Track I I.FL0; docs only, additive, PROVISIONAL like the rest of this brief)
+
+**Disposition note, N-102 (owner ruling): deferred by owner (N-102): source not held.** The owner ruled to leave classical texts the platform does not hold: this asset is NOT being provenance-confirmed now. It stays NO_DETECTOR on Carr and is not elevated in this campaign. This is an OWNER DECISION relayed by Exec Suvarna (the N-102 text itself was not available to this lane); it is not a finding about the corpus. No other disposition in this brief changes; the fix designs above stay valid but are not to be scheduled for Carr in this campaign.
+
+**Reconciliation with this brief:** the table carries a `corpus_status` column that records, per ring, whether the passage is held (tier-(iii) secondary-source transcription, section 0 and FD-1). Some passages may be held and some not; the deferral is the owner's decision not to confirm provenance now, not a statement that none is held.

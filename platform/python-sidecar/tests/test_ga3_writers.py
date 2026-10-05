@@ -35,7 +35,7 @@ Tests (no DB required — all unit tests):
   31. Bhava bala: each house has total field
   32. Shadbala rows: each graha has 7 sub-bala rows
   33. Shadbala rows: all verification_pass_status = two_pass_verified (non-naisargika)
-  34. Shadbala rows: naisargika verification = classical_match, ayanamsha = INVARIANT
+  34. Shadbala rows: naisargika verification = single (Q03), ayanamsha = INVARIANT
   35. Ashtakavarga rows: compound subject format 'SUN-HOUSE_1'..'SUN-HOUSE_12'
   36. Ashtakavarga rows: pinda rows have subject 'SUN' (not compound)
   37. Schema JSON: parses without error
@@ -404,10 +404,13 @@ class TestAshtakavargaDerivation:
         # bindu arithmetic is internally consistent (SARVA=337, SARVA=sum of
         # 7 graha arrays) — a real check, but not an independent second
         # computation, and it says nothing about the shodhana step (M-3:
-        # sodhita ≡ raw, no real trikona shodhana). Demoted to "single_pass".
+        # sodhita ≡ raw, no real trikona shodhana). Q03 / SS N-62: `classical_match` (a
+        # consistency check over the raw bindus, not an independent re-derivation); the writer
+        # applies it only to the raw-bindu rows it examines.
+        from brahmagyan.verification_tiers import CLASSICAL_MATCH
         from ga_writers.ga_strength_writer import _verify_ashtakavarga
         result = _verify_ashtakavarga(ashtakavarga, tolerance=10)
-        assert result == "single_pass"
+        assert result == CLASSICAL_MATCH
 
 
 # ── 29-31: Bhava bala ───────────────────────────────────────────────────────
@@ -442,7 +445,7 @@ class TestStrengthRows:
         return _build_shadbala_rows(
             shadbala, ik, vm,
             CANONICAL_CHART_ID, "test-bid", "lahiri_chitrapaksha",
-            "2026-06-10T00:00:00+00:00", ENGINE_VERSION, "two_pass_verified",
+            "2026-06-10T00:00:00+00:00", ENGINE_VERSION, "classical_match",
         )
 
     def test_7_sub_bala_rows_per_graha(self, shadbala_rows):
@@ -462,23 +465,31 @@ class TestStrengthRows:
                 f"{subject}: expected 7 sub-bala rows, got {len(graha_rows)}"
             )
 
-    def test_non_naisargika_two_pass_verified(self, shadbala_rows):
+    def test_shadbala_tiers_only_on_examined_rows(self, shadbala_rows):
+        """Q03 / SS N-62: the verifier's tier (here `classical_match`) lands ONLY on the six
+        examined sub-balas of the seven classical grahas; naisargika, required_rupa, ratio,
+        ishta/kashta, vimsopaka and the nodal extension rows are `single` (or
+        `not_defined_for_nodes`), never a broadcast verdict."""
         _NODAL_SUBJECTS = frozenset({"RAH_MEAN", "KET_MEAN"})
         _NODAL_UNDEFINED_CATS = frozenset({
             "graha_shadbala_dig", "graha_shadbala_kala",
             "graha_shadbala_cheshta", "graha_shadbala_naisargika",
         })
+        _EXAMINED = {
+            "graha_shadbala_sthana", "graha_shadbala_dig", "graha_shadbala_kala",
+            "graha_shadbala_cheshta", "graha_shadbala_drik", "graha_shadbala_total",
+        }
         for r in shadbala_rows:
-            if r["fact_category"] == "graha_shadbala_naisargika":
-                if r["fact_subject"] in _NODAL_SUBJECTS:
-                    assert r["verification_pass_status"] == "not_defined_for_nodes"
-                else:
-                    assert r["verification_pass_status"] == "classical_match"
-            elif r["fact_category"].startswith("graha_shadbala") and r["fact_key"] == "rupa":
-                if r["fact_subject"] in _NODAL_SUBJECTS and r["fact_category"] in _NODAL_UNDEFINED_CATS:
-                    assert r["verification_pass_status"] == "not_defined_for_nodes"
-                else:
-                    assert r["verification_pass_status"] == "two_pass_verified"
+            st = r["verification_pass_status"]
+            nodal = r["fact_subject"] in _NODAL_SUBJECTS
+            if nodal and r["fact_key"] == "rupa" and r["fact_category"] in _NODAL_UNDEFINED_CATS:
+                assert st == "not_defined_for_nodes"
+            elif nodal:
+                assert st == "single", (r["fact_category"], r["fact_key"], st)
+            elif r["fact_category"] in _EXAMINED and r["fact_key"] == "rupa":
+                assert st == "classical_match", (r["fact_category"], r["fact_subject"], st)
+            else:
+                assert st == "single", (r["fact_category"], r["fact_key"], st)
 
     def test_naisargika_invariant(self, shadbala_rows):
         _NODAL_SUBJECTS = frozenset({"RAH_MEAN", "KET_MEAN"})
@@ -488,7 +499,8 @@ class TestStrengthRows:
                 if r["fact_subject"] in _NODAL_SUBJECTS:
                     assert r["verification_pass_status"] == "not_defined_for_nodes"
                 else:
-                    assert r["verification_pass_status"] == "classical_match"
+                    # no comparison against the L0 reference table is wired -> `single`
+                    assert r["verification_pass_status"] == "single"
 
     @pytest.fixture(scope="class")
     def bav_rows(self, native_chart, ashtakavarga, ashtakavarga_pinda):
@@ -496,7 +508,7 @@ class TestStrengthRows:
         from pyjhora_adapter.version import ENGINE_VERSION
         return _build_ashtakavarga_rows(
             ashtakavarga, ashtakavarga_pinda, CANONICAL_CHART_ID, "test-bid", "lahiri_chitrapaksha",
-            "2026-06-10T00:00:00+00:00", ENGINE_VERSION, "two_pass_verified",
+            "2026-06-10T00:00:00+00:00", ENGINE_VERSION, "classical_match",
         )
 
     def test_ashtakavarga_compound_subject_format(self, bav_rows):
@@ -621,15 +633,15 @@ class TestHardRails:
         all_rows = []
         all_rows.extend(_build_shadbala_rows(
             shadbala, ik, vm, CANONICAL_CHART_ID, "test", "lahiri_chitrapaksha",
-            "2026-06-10T00:00:00+00:00", ENGINE_VERSION, "two_pass_verified",
+            "2026-06-10T00:00:00+00:00", ENGINE_VERSION, "classical_match",
         ))
         all_rows.extend(_build_ashtakavarga_rows(
             ashtakavarga, ashtakavarga_pinda, CANONICAL_CHART_ID, "test", "lahiri_chitrapaksha",
-            "2026-06-10T00:00:00+00:00", ENGINE_VERSION, "two_pass_verified",
+            "2026-06-10T00:00:00+00:00", ENGINE_VERSION, "classical_match",
         ))
         all_rows.extend(_build_bhava_bala_rows(
             bhava_bala, CANONICAL_CHART_ID, "test", "lahiri_chitrapaksha",
-            "2026-06-10T00:00:00+00:00", ENGINE_VERSION, "two_pass_verified",
+            "2026-06-10T00:00:00+00:00", ENGINE_VERSION, "classical_match",
         ))
         for r in all_rows:
             assert r["fact_value_jsonb"] is None, (

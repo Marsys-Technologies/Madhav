@@ -59,6 +59,13 @@ CANONICAL_VECTOR_KEYS = (
 )
 
 
+class TestSlicePublicationRefusal(Exception):
+    """A TEST SLICE candidate (stored_scope = 'test_slice' / a test_slice component in its input vector) may never be published.
+    Raised by `publish` itself — independent of the seal flow, which only refuses when a seal exists (Codex P1 on PR 3110: the builder
+    holds UPDATE on the publication table and `publish` flipped candidate -> published without reading the vector)."""
+    __test__ = False                       # not a pytest class
+
+
 class PublishedGenerationRefusal(Exception):
     """Raised by any write/delete operation targeting a `published` generation.
 
@@ -558,6 +565,28 @@ def publish_candidate(conn, chart_id: str, generation: str, convention_id: str,
     return str(row[0])
 
 
+def _candidate_boundary():
+    """The sibling `candidate_boundary` module. The a25 candidate writer loads this file BY PATH (no parent package), where a relative import
+    cannot resolve — so fall back to loading the sibling file the same way (the writer's `_load_module` precedent). In a package context the
+    ordinary relative import is used, so there is still exactly one module object there."""
+    try:
+        from . import candidate_boundary as cb  # type: ignore
+        return cb
+    except ImportError:
+        import importlib.util
+        import sys
+        from pathlib import Path
+        name = "gochara_ledger_bypath_candidate_boundary"
+        cached = sys.modules.get(name)
+        if cached is not None:
+            return cached
+        spec = importlib.util.spec_from_file_location(name, Path(__file__).with_name("candidate_boundary.py"))
+        module = importlib.util.module_from_spec(spec)
+        sys.modules[name] = module
+        spec.loader.exec_module(module)
+        return module
+
+
 def _canonical_row_set(conn, chart_id: str, generation: str) -> str:
     """sha256 over the canonical sorted row content of contacts + coverage —
     the manifest content_digest (plan §4.7)."""
@@ -566,17 +595,54 @@ def _canonical_row_set(conn, chart_id: str, generation: str) -> str:
         "WHERE chart_id = %s AND generation = %s",
         (chart_id, generation),
     ).fetchall()
-    coverage_rows = conn.execute(
-        "SELECT row_to_json(c.*) FROM kala_gochara_coverage c "
-        "WHERE chart_id = %s AND generation = %s",
-        (chart_id, generation),
-    ).fetchall()
+    # R12-1: the publication boundary is the CANDIDATE boundary (`candidate_boundary`): for a governed (5.x) generation the
+    # on-demand Moon receipts (AM-4: written at query time) are NOT part of the published content — the approval binds exactly
+    # what this digest covers. Legacy (pre-5) generations keep every coverage row.
+    cb = _candidate_boundary()
+    EXCLUDED_ON_DEMAND_KINDS, is_governed = cb.EXCLUDED_ON_DEMAND_KINDS, cb.is_governed
+    if is_governed(generation):
+        coverage_rows = conn.execute(
+            "SELECT row_to_json(c.*) FROM kala_gochara_coverage c "
+            "WHERE chart_id = %s AND generation = %s AND partition_kind <> ALL(%s)",
+            (chart_id, generation, list(EXCLUDED_ON_DEMAND_KINDS)),
+        ).fetchall()
+    else:
+        coverage_rows = conn.execute(
+            "SELECT row_to_json(c.*) FROM kala_gochara_coverage c "
+            "WHERE chart_id = %s AND generation = %s",
+            (chart_id, generation),
+        ).fetchall()
     canon = sorted(
         canonical_json(_scalar(r)) for r in list(contact_rows) + list(coverage_rows)
     )
     return sha256_tag(canonical_json(
         {"chart_id": str(chart_id), "generation": generation, "rows": canon}
     ))
+
+
+def _refuse_test_slice(conn, manifest_id, generation: str) -> None:
+    """Refuse, by name, to publish a manifest whose input vector says it is a TEST SLICE (either marker is enough: the scope word
+    or the component). Read from the stored row itself, never from a caller's say-so."""
+    row = conn.execute("SELECT input_generation_vector FROM kala_gochara_publication WHERE manifest_id = %s",
+                       (manifest_id,)).fetchone()
+    vector = (row.get("input_generation_vector") if isinstance(row, dict) else row[0]) if row is not None else None
+    if isinstance(vector, str):
+        import json as _json
+        vector = _json.loads(vector)
+    if isinstance(vector, dict) and (vector.get("stored_scope") == "test_slice" or "test_slice" in vector):
+        raise TestSlicePublicationRefusal(
+            f"publish refused: the manifest of generation {generation!r} is a TEST SLICE (stored_scope="
+            f"{vector.get('stored_scope')!r}, test_slice component {'present' if 'test_slice' in vector else 'absent'}) — a "
+            "small-test candidate is unsealable and unpublishable by construction; run the full build under a real manifest")
+
+
+def _take_chart_lock(conn, chart_id: str) -> None:
+    """The established chart TRANSACTION lock (`ka_gochara_lock_chart`, migration 1153) — the one every Gochara writer, including
+    the manifest substep that replaces a candidate's input vector, takes before it touches the chart. Taken only where the function
+    exists (ledger-only fixtures do not carry it)."""
+    probe = conn.execute("SELECT to_regprocedure('public.ka_gochara_lock_chart(uuid)') IS NOT NULL").fetchone()
+    if probe is not None and _scalar(probe):
+        conn.execute("SELECT public.ka_gochara_lock_chart(%s::uuid)", (str(chart_id),))
 
 
 def publish(conn, chart_id: str, generation: str) -> str:
@@ -587,7 +653,35 @@ def publish(conn, chart_id: str, generation: str) -> str:
     already-published generation. The partial unique index
     kala_gochara_publication_one_published enforces N-10 (one published
     manifest per chart+generation) at the database level.
-    """
+
+    GOVERNED generations (5.x, `candidate_boundary.is_governed`) are published ATOMICALLY against a concurrent rebuild (Codex rounds
+    3 and 4 on PR 3110): the Gochara-5 chart transaction lock (`ka_gochara_lock_chart`, migration 1153) is taken BEFORE the first
+    read, and the flip itself is CONDITIONAL — still a candidate, no `test_slice` scope word, no `test_slice` component — refusing
+    by name when it updates no row. LEGACY generations (3.x, 4.x) behave EXACTLY as before for every chart: no lock (the Gochara-5
+    lock function refuses any chart but the canonical one, and a legacy flip of another chart must not start failing), no slice
+    check, the original unconditional flip.
+
+    TRANSACTIONS. For a governed generation the lock and the flip run inside `conn.transaction()`. That block BEGINs and COMMITS
+    when it is entered on an IDLE connection (autocommit, or no transaction open yet) — the commit covers this publish only — and is
+    a SAVEPOINT when the connection is already inside a transaction, which is the case for both production callers: `seal_flow`
+    (inside its seal transaction, under the seal locks, so nothing stays published if its later checks refuse) and `step08_flip`
+    (autocommit=False, earlier statements already issued). A caller that wants publish and its next statement to commit together
+    must already be inside a transaction.
+
+    The unconditional database-level guarantee (a CHECK refusing `published` for a slice-stamped vector, and the builder's UPDATE
+    grant from migration 1216) is a migration for a later protected window (draft PR 3140)."""
+    if not _candidate_boundary().is_governed(generation):
+        return _publish(conn, chart_id, generation, governed=False)
+    transaction = getattr(conn, "transaction", None)
+    if transaction is None:                               # a ledger-only fake without transactions
+        return _publish(conn, chart_id, generation, governed=True)
+    with transaction():
+        return _publish(conn, chart_id, generation, governed=True)
+
+
+def _publish(conn, chart_id: str, generation: str, *, governed: bool) -> str:
+    if governed:
+        _take_chart_lock(conn, chart_id)
     row = _manifest_row(conn, chart_id, generation)
     if row is None:
         raise ValueError(f"no manifest for chart {chart_id} generation {generation!r}")
@@ -597,6 +691,8 @@ def publish(conn, chart_id: str, generation: str) -> str:
         raise ValueError(
             f"cannot publish generation {generation!r}: manifest status is {row[1]!r}"
         )
+    if governed:
+        _refuse_test_slice(conn, row[0], generation)
     digest = _canonical_row_set(conn, chart_id, generation)
     counts = {
         "contacts": _scalar(conn.execute(
@@ -624,15 +720,35 @@ def publish(conn, chart_id: str, generation: str) -> str:
             else 0
         ),
     }
-    conn.execute(
+    if not governed:
+        # LEGACY (3.x / 4.x): the original flip, unchanged
+        conn.execute(
+            """
+            UPDATE kala_gochara_publication
+            SET status = 'published', published_at = now(),
+                content_digest = %s, row_counts = %s::jsonb
+            WHERE manifest_id = %s
+            """,
+            (digest, canonical_json(counts), row[0]),
+        )
+        return str(row[0])
+    flipped = conn.execute(
         """
         UPDATE kala_gochara_publication
         SET status = 'published', published_at = now(),
             content_digest = %s, row_counts = %s::jsonb
-        WHERE manifest_id = %s
+        WHERE manifest_id = %s AND status = 'candidate'
+          AND COALESCE(input_generation_vector->>'stored_scope', '') <> 'test_slice'
+          AND NOT COALESCE(input_generation_vector ? 'test_slice', false)
         """,
         (digest, canonical_json(counts), row[0]),
     )
+    if getattr(flipped, "rowcount", None) == 0:
+        # the row changed after it was read (or the checks above were bypassed): say WHICH, by name
+        _refuse_test_slice(conn, row[0], generation)
+        raise PublishedGenerationRefusal(
+            f"publish refused: the manifest of generation {generation!r} was no longer an unstamped candidate when it was flipped "
+            "(it changed concurrently); nothing was published")
     return str(row[0])
 
 
@@ -651,17 +767,34 @@ def supersede(conn, chart_id: str, generation: str) -> str:
     return str(row[0])
 
 
+def _generation_sealed(conn, chart_id: str, generation: str) -> bool:
+    """Does a seal row exist for the generation? (False where the seal relation does not exist — ledger-only fixtures.)"""
+    if not _scalar(conn.execute("SELECT to_regclass('public.ka_gochara_generation_seal') IS NOT NULL").fetchone()):
+        return False
+    return bool(_scalar(conn.execute(
+        "SELECT EXISTS (SELECT 1 FROM public.ka_gochara_generation_seal WHERE chart_id = %s AND generation = %s)",
+        (chart_id, generation)).fetchone()))
+
+
 def rollback(conn, chart_id: str, generation: str) -> str:
     """Full rollback of a generation: manifest -> rolled_back, rows under own
     (chart_id, generation) scope removed (coverage then contacts, the C-1
     order). The manifest row itself is MARKED, never deleted (plan §4.7 /
-    WP1 §5.4: `rolled_back`, not deleted)."""
+    WP1 §5.4: `rolled_back`, not deleted).
+
+    A SEALED generation is never row-deleted (its rows are the attested candidate — R14-2): the explicit sealed route is a METADATA-ONLY
+    WITHDRAWAL — the manifest goes `published` -> `rolled_back` (1240's sealed-lifecycle whitelist) and every attested row, the seal and the
+    approval receipt stay exactly as they were. A sealed generation that is not `published` (e.g. already superseded) is refused by name."""
     row = _manifest_row(conn, chart_id, generation)
     if row is None:
         raise ValueError(f"no manifest for chart {chart_id} generation {generation!r}")
     if row[1] in ("superseded", "rolled_back"):
         raise ValueError(f"cannot rollback generation {generation!r}: status {row[1]!r}")
-    _delete_generation_rows(conn, chart_id, generation)
+    if _generation_sealed(conn, chart_id, generation):
+        if row[1] != "published":
+            raise ValueError(f"cannot withdraw sealed generation {generation!r}: status {row[1]!r} (a sealed generation is withdrawn only from 'published')")
+    else:
+        _delete_generation_rows(conn, chart_id, generation)
     conn.execute(
         "UPDATE kala_gochara_publication SET status = 'rolled_back' "
         "WHERE manifest_id = %s",
