@@ -167,14 +167,10 @@ def _row_dates(r: dict, by_id: dict, reading: str):
 
 
 def _lel_id(r: dict):
-    """The human `EVT.*` id of a row: `provenance->>'lel_id'` (the intake stores the uuid5 in `event_id` and the EVT id in provenance). When the
-    provenance carries a `lel_id`, THAT is the id, whatever the top-level `event_id` looks like; only when it carries none does an `event_id` of the EVT
-    form stand in (the contract's fallback)."""
+    """The human `EVT.*` id of a row: `provenance->>'lel_id'` ONLY. The intake stores a uuid5 in `event_id` and the EVT id in provenance; a dated
+    top-level `event_id` is NOT a substitute (a row without a provenance lel id has no id: rule I cannot hold for it)."""
     prov = r.get("provenance") if isinstance(r.get("provenance"), dict) else {}
-    if prov.get("lel_id") is not None:
-        return str(prov["lel_id"])
-    eid = str(r.get("event_id") or "")
-    return eid if _EVENT_ID.match(eid) else None
+    return str(prov["lel_id"]) if prov.get("lel_id") is not None else None
 
 
 def _id_dated(r: dict) -> bool:

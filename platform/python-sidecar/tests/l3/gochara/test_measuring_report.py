@@ -166,8 +166,13 @@ def test_a_candidate_first_event_with_no_lel_id_at_all_is_the_one_refusal():
     # a row WITHOUT an id that is not the earliest exact-flagged row is merely excluded
     late = LEL(date(2009, 3, 3), lel_id=None)
     assert fully_dated_events([BIRTH_ROW, late, LEL(date(2001, 6, 9))], birth_date=BIRTH)["dates"] == [date(2001, 6, 9)]
-    # the contract's fallback: no provenance lel_id, but an event_id of the EVT form stands in
-    assert fully_dated_events([BIRTH_ROW, LEL(date(2001, 6, 9), event_id="EVT.2001.06.09.07", lel_id=None)], birth_date=BIRTH)["dates"] == [date(2001, 6, 9)]
+    # NO fallback to the top-level event_id: a dated event_id with no provenance.lel_id is refused as a candidate first event
+    _refuses(lambda: fully_dated_events([BIRTH_ROW, LEL(date(2001, 6, 9), event_id="EVT.2001.06.09.07", lel_id=None)], birth_date=BIRTH),
+             "lel_id_missing_on_candidate_first_event")
+    # ... and as a later row it is merely excluded (its id cannot be read), never accepted as fully dated
+    later = LEL(date(2009, 3, 3), event_id="EVT.2009.03.03.07", lel_id=None)
+    info = fully_dated_events([BIRTH_ROW, LEL(date(2001, 6, 9)), later], birth_date=BIRTH)
+    assert info["dates"] == [date(2001, 6, 9)] and [r["event_id"] for r in info["flag_exact_but_id_undated"]] == ["EVT.2009.03.03.07"]
 
 
 def test_a_shape_reading_that_would_change_start_is_refused_and_one_that_does_not_is_not():
