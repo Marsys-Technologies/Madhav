@@ -1,8 +1,8 @@
 {
  "schema": 2,
  "registry_revision": 26,
- "registry_fingerprint": "0f5744b2f38ce8cdbe315617b976c592dd585cba96175f59a6996ad8d15f8580",
- "inspector_commit": "e5bf36edcf7c6f910884594489bca2ecf16af1e7",
+ "registry_fingerprint": "c3047651d0837e8d541286a22aa82f2bc831c2d678c633fffb04b9d28e9bb778",
+ "inspector_commit": "c88a086f26d85ab05b2dc62eccfa23987121a573",
  "inspector_commit_note": "the last commit touching asset_census.py when this report was generated; a provenance pointer, not a reachability claim (it may be unreachable after a squash or rebase); --check never compares it",
  "expected_cells": 54,
  "covered_cells": 48,
@@ -334,12 +334,28 @@
  "deferred_by_owner_note": "owner-deferred assets (SS N-102): reported apart from `uncovered`; never fail the check, never counted as covered cells",
  "na_rules": [
   {
+   "rule_id": "Build.contract#measured:no-writer-registry-agrees",
+   "decision": "N-150 R5: no writer; declaration-keyed (has_writer: false) and checked against the registry row and the @register scan"
+  },
+  {
    "rule_id": "Build.dep_liveness#measured:no-declared-dependencies",
    "decision": "N-22/N-22a row 23 (re-proposed: reads-match detector landed in revision 6, principle 3); N-72 (S4)"
   },
   {
+   "rule_id": "Build.exercised#measured:never-executed-no-writer",
+   "decision": "N-150 R5: never executed and no writer; declaration-keyed (has_writer: false) and checked against the registry row and the @register scan"
+  },
+  {
+   "rule_id": "Build.exercised#measured:never-run-no-writer",
+   "decision": "N-150 R5: never run and no writer; declaration-keyed (has_writer: false) and checked against the registry row and the @register scan"
+  },
+  {
    "rule_id": "Build.history#measured:never-run",
    "decision": "N-22/N-22a row 20 (APPROVED, principles 2-3); N-65 (R01)"
+  },
+  {
+   "rule_id": "Build.registered#measured:no-writer-registry-agrees",
+   "decision": "N-150 R5: no writer; declaration-keyed (has_writer: false) and checked against the registry row and the @register scan"
   },
   {
    "rule_id": "Carr.D1#measured:not-a-transcription",
@@ -378,6 +394,10 @@
    "decision": "N-22/N-22a row 9 (AMENDED, principles 2, 3, 5); N-72 (not-a-service keyed on the declared kind)"
   },
   {
+   "rule_id": "Idem.pattern#measured:no-writer-registry-agrees",
+   "decision": "N-150 R5: no writer; declaration-keyed (has_writer: false) and checked against the registry row and the @register scan"
+  },
+  {
    "rule_id": "Ldgr.source_presence#measured:no-claims",
    "decision": "N-151 (R4 final): an asset that makes no claims; declaration-keyed, checked against its prose_none schema check and the absence of a citation or ledger column"
   },
@@ -400,6 +420,10 @@
   {
    "rule_id": "Narr.fidelity_test#measured:no-prose",
    "decision": "N-22/N-22a row 17 (AMENDED, principles 1, 3, 8); N-65 (R03)"
+  },
+  {
+   "rule_id": "Narr.lint#measured:lint-not-applicable",
+   "decision": "N-150 R2: N/A only for an asset that declares lint_none and whose own lint scan agrees (a scanned writer file, no lint surface); never on the declaration alone"
   },
   {
    "rule_id": "Narr.lint#measured:no-prose",
@@ -428,11 +452,7 @@
  "undeclared_na_causes": [
   "Build.completion#measured:no-writer-no-count-sql",
   "Build.completion#measured:service-no-target-table-no-count-sql",
-  "Build.contract#measured:no-writer-registry-agrees",
   "Build.count_integrity#measured:no-writer-no-count-sql",
-  "Build.exercised#measured:never-executed-no-writer",
-  "Build.exercised#measured:never-run-no-writer",
-  "Build.registered#measured:no-writer-registry-agrees",
   "Build.target#measured:no-writer-no-target-table",
   "Build.target#measured:service-no-target-table",
   "Carr.D1#measured:no-carriage",
@@ -446,8 +466,7 @@
   "Earn.build_record#measured:before-completion-write",
   "Earn.build_record#measured:healthy-non-execution",
   "Earn.build_record#measured:never-attempted",
-  "Earn.build_record#measured:no-registered-writer",
-  "Idem.pattern#measured:no-writer-registry-agrees"
+  "Earn.build_record#measured:no-registered-writer"
  ],
  "non_core_detector_none": [
   "Completeness.depth.dasha_link"
@@ -620,7 +639,9 @@
    "detector_none": [],
    "per_asset_pending": [],
    "uncovered": [],
-   "declared_na_rules": []
+   "declared_na_rules": [
+    "Idem.pattern#measured:no-writer-registry-agrees"
+   ]
   },
   {
    "gate": "Idem",
@@ -635,7 +656,9 @@
    "detector_none": [],
    "per_asset_pending": [],
    "uncovered": [],
-   "declared_na_rules": []
+   "declared_na_rules": [
+    "Idem.pattern#measured:no-writer-registry-agrees"
+   ]
   },
   {
    "gate": "Idem",
@@ -650,7 +673,9 @@
    "detector_none": [],
    "per_asset_pending": [],
    "uncovered": [],
-   "declared_na_rules": []
+   "declared_na_rules": [
+    "Idem.pattern#measured:no-writer-registry-agrees"
+   ]
   },
   {
    "gate": "Idem",
@@ -665,7 +690,9 @@
    "detector_none": [],
    "per_asset_pending": [],
    "uncovered": [],
-   "declared_na_rules": []
+   "declared_na_rules": [
+    "Idem.pattern#measured:no-writer-registry-agrees"
+   ]
   },
   {
    "gate": "Idem",
@@ -680,7 +707,9 @@
    "detector_none": [],
    "per_asset_pending": [],
    "uncovered": [],
-   "declared_na_rules": []
+   "declared_na_rules": [
+    "Idem.pattern#measured:no-writer-registry-agrees"
+   ]
   },
   {
    "gate": "Idem",
@@ -695,7 +724,9 @@
    "detector_none": [],
    "per_asset_pending": [],
    "uncovered": [],
-   "declared_na_rules": []
+   "declared_na_rules": [
+    "Idem.pattern#measured:no-writer-registry-agrees"
+   ]
   },
   {
    "gate": "Earn",
@@ -1248,6 +1279,7 @@
     "Narr.agree#measured:no-prose",
     "Narr.checkable#measured:no-prose",
     "Narr.fidelity_test#measured:no-prose",
+    "Narr.lint#measured:lint-not-applicable",
     "Narr.lint#measured:no-prose"
    ]
   },
@@ -1274,6 +1306,7 @@
     "Narr.agree#measured:no-prose",
     "Narr.checkable#measured:no-prose",
     "Narr.fidelity_test#measured:no-prose",
+    "Narr.lint#measured:lint-not-applicable",
     "Narr.lint#measured:no-prose"
    ]
   },
@@ -1300,6 +1333,7 @@
     "Narr.agree#measured:no-prose",
     "Narr.checkable#measured:no-prose",
     "Narr.fidelity_test#measured:no-prose",
+    "Narr.lint#measured:lint-not-applicable",
     "Narr.lint#measured:no-prose"
    ]
   },
@@ -1326,6 +1360,7 @@
     "Narr.agree#measured:no-prose",
     "Narr.checkable#measured:no-prose",
     "Narr.fidelity_test#measured:no-prose",
+    "Narr.lint#measured:lint-not-applicable",
     "Narr.lint#measured:no-prose"
    ]
   },
@@ -1352,6 +1387,7 @@
     "Narr.agree#measured:no-prose",
     "Narr.checkable#measured:no-prose",
     "Narr.fidelity_test#measured:no-prose",
+    "Narr.lint#measured:lint-not-applicable",
     "Narr.lint#measured:no-prose"
    ]
   },
@@ -1378,6 +1414,7 @@
     "Narr.agree#measured:no-prose",
     "Narr.checkable#measured:no-prose",
     "Narr.fidelity_test#measured:no-prose",
+    "Narr.lint#measured:lint-not-applicable",
     "Narr.lint#measured:no-prose"
    ]
   },
@@ -1513,8 +1550,12 @@
    "per_asset_pending": [],
    "uncovered": [],
    "declared_na_rules": [
+    "Build.contract#measured:no-writer-registry-agrees",
     "Build.dep_liveness#measured:no-declared-dependencies",
-    "Build.history#measured:never-run"
+    "Build.exercised#measured:never-executed-no-writer",
+    "Build.exercised#measured:never-run-no-writer",
+    "Build.history#measured:never-run",
+    "Build.registered#measured:no-writer-registry-agrees"
    ]
   },
   {
@@ -1547,8 +1588,12 @@
    "per_asset_pending": [],
    "uncovered": [],
    "declared_na_rules": [
+    "Build.contract#measured:no-writer-registry-agrees",
     "Build.dep_liveness#measured:no-declared-dependencies",
-    "Build.history#measured:never-run"
+    "Build.exercised#measured:never-executed-no-writer",
+    "Build.exercised#measured:never-run-no-writer",
+    "Build.history#measured:never-run",
+    "Build.registered#measured:no-writer-registry-agrees"
    ]
   },
   {
@@ -1581,8 +1626,12 @@
    "per_asset_pending": [],
    "uncovered": [],
    "declared_na_rules": [
+    "Build.contract#measured:no-writer-registry-agrees",
     "Build.dep_liveness#measured:no-declared-dependencies",
-    "Build.history#measured:never-run"
+    "Build.exercised#measured:never-executed-no-writer",
+    "Build.exercised#measured:never-run-no-writer",
+    "Build.history#measured:never-run",
+    "Build.registered#measured:no-writer-registry-agrees"
    ]
   },
   {
@@ -1615,8 +1664,12 @@
    "per_asset_pending": [],
    "uncovered": [],
    "declared_na_rules": [
+    "Build.contract#measured:no-writer-registry-agrees",
     "Build.dep_liveness#measured:no-declared-dependencies",
-    "Build.history#measured:never-run"
+    "Build.exercised#measured:never-executed-no-writer",
+    "Build.exercised#measured:never-run-no-writer",
+    "Build.history#measured:never-run",
+    "Build.registered#measured:no-writer-registry-agrees"
    ]
   },
   {
@@ -1649,8 +1702,12 @@
    "per_asset_pending": [],
    "uncovered": [],
    "declared_na_rules": [
+    "Build.contract#measured:no-writer-registry-agrees",
     "Build.dep_liveness#measured:no-declared-dependencies",
-    "Build.history#measured:never-run"
+    "Build.exercised#measured:never-executed-no-writer",
+    "Build.exercised#measured:never-run-no-writer",
+    "Build.history#measured:never-run",
+    "Build.registered#measured:no-writer-registry-agrees"
    ]
   },
   {
@@ -1683,8 +1740,12 @@
    "per_asset_pending": [],
    "uncovered": [],
    "declared_na_rules": [
+    "Build.contract#measured:no-writer-registry-agrees",
     "Build.dep_liveness#measured:no-declared-dependencies",
-    "Build.history#measured:never-run"
+    "Build.exercised#measured:never-executed-no-writer",
+    "Build.exercised#measured:never-run-no-writer",
+    "Build.history#measured:never-run",
+    "Build.registered#measured:no-writer-registry-agrees"
    ]
   }
  ]
