@@ -6456,7 +6456,38 @@ def _code_strings(node: ast.AST) -> list[str]:
             if isinstance(n, ast.Constant) and isinstance(n.value, str) and id(n) not in docs]
 
 
+_MEMO: dict | None = None      # one measure() run's memo of tree-wide scans that cannot change while it runs (None outside a run: nothing is cached)
+
+
+def _memoized_run(fn):
+    """Decorator for measure(): open a fresh memo for the duration of ONE run (and restore the previous one after), so the writer-tree scans that every asset's R5 block repeats
+    (`_writer_modules`, `register_call_mentions`: a full AST walk of every writer module, once per asset and per criterion) are done once per run. Nothing is cached outside a run, so a
+    caller that changes the tree between runs, or calls a scan directly, always sees the tree as it is. `functools.wraps` keeps the source and signature of the wrapped function."""
+    @functools.wraps(fn)
+    def run(*a, **k):
+        global _MEMO
+        prev, _MEMO = _MEMO, {}
+        try:
+            return fn(*a, **k)
+        finally:
+            _MEMO = prev
+    return run
+
+
+def _memo(key, compute):
+    if _MEMO is None:
+        return compute()
+    if key not in _MEMO:
+        _MEMO[key] = compute()
+    return _MEMO[key]
+
+
 def _writer_modules() -> list[tuple[str, Path]]:
+    """R43 (memoised per measure() run, see `_memoized_run`): the modules the engine's writer discovery executes; the list is a fresh copy, callers may keep it."""
+    return list(_memo(("writer_modules",), _writer_modules_scan))
+
+
+def _writer_modules_scan() -> list[tuple[str, Path]]:
     """R43: every module the engine's writer discovery executes, as (scan name, path):
     writers/*.py (the framework `__init__.py` excluded), each package directory's modules
     (`ph_rectification/__init__.py`; test directories and caches skipped), and — one level deep —
@@ -6512,28 +6543,43 @@ def register_call_mentions(asset_id: str) -> list[str]:
     Sorted module names; [] = no such call. Zero today: every `register(` in the discovery set is a class decorator over a literal or a resolved module constant."""
     out: set[str] = set()
     for name, f in _writer_modules():
-        tree = _parse(f)
-        consts = _module_constants(tree)
-        for n in ast.walk(tree):
-            if not isinstance(n, ast.Call):
-                continue
-            fn = n.func
-            if not ((isinstance(fn, ast.Name) and fn.id == "register") or (isinstance(fn, ast.Attribute) and fn.attr == "register")):
-                continue
-            args = list(n.args) + [k.value for k in n.keywords]
-            if not args:
-                continue
+        for strs, names, consts in _memo(("register_calls", str(f)), lambda f=f: _register_call_facts(f)):
             hit = False
-            for a in args:
-                strs = [x.value for x in ast.walk(a) if isinstance(x, ast.Constant) and isinstance(x.value, str)]
-                names = [x.id for x in ast.walk(a) if isinstance(x, ast.Name)]
-                if asset_id in strs or any(consts.get(nm) == asset_id for nm in names):
+            for a_strs, a_names in zip(strs, names):
+                if asset_id in a_strs or any(consts.get(nm) == asset_id for nm in a_names):
                     hit = True
-                elif any(nm not in consts for nm in names):
+                elif any(nm not in consts for nm in a_names):
                     hit = True                                  # an id the scan cannot read: it may be this one
             if hit:
                 out.add(name)
     return sorted(out)
+
+
+def _register_call_facts(f: Path) -> list:
+    """Per `register(` call of one module (`register(x)`, `mod.register(x)`) with at least one argument: ([string constants of each argument], [names of each argument], the module's string
+    constants). The asset-independent half of `register_call_mentions` (the full AST walk), computed once per module per run."""
+    tree = _parse(f)
+    hit = _REGISTER_FACTS.get(id(tree))
+    if hit is not None and hit[0] is tree:               # `_parse` returns ONE tree object per (path, text) and keeps it alive: the tree's identity IS its content
+        return hit[1]
+    consts = _module_constants(tree)
+    out = []
+    for n in ast.walk(tree):
+        if not isinstance(n, ast.Call):
+            continue
+        fn = n.func
+        if not ((isinstance(fn, ast.Name) and fn.id == "register") or (isinstance(fn, ast.Attribute) and fn.attr == "register")):
+            continue
+        args = list(n.args) + [k.value for k in n.keywords]
+        if not args:
+            continue
+        out.append(([[x.value for x in ast.walk(a) if isinstance(x, ast.Constant) and isinstance(x.value, str)] for a in args],
+                    [[x.id for x in ast.walk(a) if isinstance(x, ast.Name)] for a in args], consts))
+    _REGISTER_FACTS[id(tree)] = (tree, out)
+    return out
+
+
+_REGISTER_FACTS: dict[int, tuple] = {}
 
 
 def _writer_class(f: Path, asset_id: str) -> ast.ClassDef | None:
@@ -11582,6 +11628,7 @@ def load_full_census(path) -> dict:
     return obj
 
 
+@_memoized_run
 def measure(layer_key: str, assets=None) -> dict:
     """Measure one layer — or, with `assets` (E1.9), ONLY those assets of it.
 
