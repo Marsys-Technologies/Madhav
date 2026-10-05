@@ -1,5 +1,7 @@
 'use client'
 
+import { PageTitle } from '@/components/journey1/Titles'
+
 import Link from 'next/link'
 import { useMemo, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
@@ -308,17 +310,17 @@ export function EditClientForm({ chart }: { chart: EditableChart }) {
   const birthLine = [formatDate(chart.birth_date), initialTime(chart.birth_time), chart.birth_place].filter(Boolean).join(' · ')
 
   return (
-    <div className="jw-root min-h-full px-4 py-8 sm:px-6">
+    <div className="j1 j1-chart-form jw-root min-h-full px-4 py-8 sm:px-6">
       <div className="mx-auto flex max-w-2xl flex-col gap-6">
         <header className="flex flex-col gap-2">
           <Link
             href={`/clients/${chart.id}`}
             className="jw-touch inline-flex min-h-11 w-fit items-center text-xs uppercase tracking-[0.2em] text-[var(--jw-gold-dim)] hover:text-[var(--jw-gold)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--jw-gold)]"
           >
-            ← Jātaka workspace
+            ← Chart overview
           </Link>
-          <p className="jw-eyebrow">Edit chart details</p>
-          <h1 className="jw-display text-4xl">{chart.name}</h1>
+          <PageTitle name="details"/>
+          <h2 className="jw-display text-3xl">{chart.name}</h2>
           <p className="text-sm text-[var(--jw-ink-dim)]">{birthLine}</p>
         </header>
 

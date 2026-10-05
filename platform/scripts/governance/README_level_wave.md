@@ -456,3 +456,28 @@ read after a completed run is `BUILD_RECORD_UNREADABLE` (exit 10, the run id is 
 run of this tool for the asset refuses any further dispatch (`ALREADY_DISPATCHED`) unless every such run is named with
 `--allow-redispatch <run_id>`. Exit codes: those of the wave plus 8 / 9 / 10 (see the module docstring). Tests:
 `__tests__/test_suvarna_global_asset_dispatch.py` (fakes only; any real subprocess is an error there).
+
+### Expected-change mode (a rebuild that is MEANT to change rows): `--expected-change FILE`
+
+The default is unchanged: no `--expected-change`, a rebuild passes only if the content is UNCHANGED (exit 9 otherwise). For an L0 fix the operator
+declares the change in a small JSON file, names it with `--expected-change`, and accepts its consequences explicitly:
+
+```
+{"asset": "bg_phaladeepika_latta",
+ "expected_post_row_count": 11,                       # total rows of the asset's declared fingerprint unit after the rebuild (>= 1)
+ "expected_post_fingerprint": "<64 hex composite>",   # optional, from the rehearsal cluster; must differ from the pre fingerprint
+ "why": "<a real reason>", "decision": "N-150", "evidence": "<pointer>"}     # why + decision and/or evidence; placeholders are refused
+```
+
+Flow: (1) PLAN: the usual arguments plus `--expected-change F --accept-changed-output` and one `--accept-lit-dependent <asset>@<chart|global>` per lit
+dependent row. Without `--accept-changed-output` the plan refuses (`CHANGED_OUTPUT_NOT_ACCEPTED`) and prints the impact and the CHANGING REBUILD block
+(every dependent row on every chart that a changed output stales or forces to rebuild; the anchor chart's rows are the ones the runner stales itself).
+The printed confirm token binds the sha256 of the file's bytes and the acceptance, so a swapped or edited file is `CONFIRM_TOKEN_MISMATCH`.
+(2) COMMIT: the same arguments plus `--job-sha-file ... --commit --confirm <token>`. The receipt's `expected_change` records the declaration, its digest, the
+pre and post row counts and the outcome (`MET` / `MISMATCH`), next to the pre and post fingerprints. Verification still needs the run `completed`, the
+force effective (`skip_no_delta` stays exit 8, no second dispatch) and a duration-bearing build record, and then compares the post state to the
+declaration instead of to the pre state: the row count, the declared post fingerprint when one is given, and (when none is given) a post fingerprint
+that differs from the pre one. Any difference is exit 11 (`EXPECTED_ROW_COUNT_MISMATCH`, `EXPECTED_FINGERPRINT_MISMATCH`,
+`EXPECTED_CHANGE_NOT_OBSERVED`) with an honest receipt: the build cannot be undone. Precedence: 8 > 11 > 9 > 10. (3) `--verify-run <run_id>` of such a run
+needs the same `--expected-change` file (`RECEIPT_EXPECTED_CHANGE_MISMATCH` otherwise) and grades the receipt's declaration. `--accept-changed-output`
+without a file is bad input (exit 2). The file must be a regular `.json` (no symlink, no env/credential-looking name, at most 64 KiB, `why`/`evidence` at most 500 characters). A receipt of the default mode carries no `expected_change` key and no `expectation` / `row_counts` in `verification`; in this mode `outcome` is `MET` only when the whole verification passed, `MISMATCH` only when the post state was read and differs from the declaration, and null otherwise.
