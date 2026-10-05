@@ -6,7 +6,7 @@
     "A reviewed output-digest specification establishes deterministic output hashing, not semantic value, population, planner reachability, or empirical validity.",
     "The full MCP profile is registration-gated by the reviewed route authority; its real registration set is exact-set tested independently."
   ],
-  "content_sha256": "16ef79e0a7831a883ee393409be22c75a71a1c9aa8e032fd00c54c0c6d3ff398",
+  "content_sha256": "ecf3f0b0817efbcec1b9e01b22f626addd4d89117c5a9558786c8eb077a3543f",
   "denominators": {
     "descriptor_route_contracts": {
       "by_public_route_disposition": {
@@ -21567,11 +21567,11 @@
           },
           {
             "path": "platform-mcp/src/tools/retrieval/register_gochara_contact_ledger.ts",
-            "sha256": "40efd0025c2e8fdc50322099226c1feae17f78e79837a27e570ad2f73d7b730e"
+            "sha256": "bcf30fbab670391962c848b00af9872eed6a441806c43bb0a4a8ab8ab28f270b"
           },
           {
             "path": "platform-mcp/src/tools/retrieval/register_gochara_windows.ts",
-            "sha256": "b034e41e92450004a6510936d31298d4a3ff7bfab8b278dd176215a3515f44bd"
+            "sha256": "234f580b894a39bc05b69442862472c07a83cac0def958a1db1e4db4cded112b"
           },
           {
             "path": "platform-mcp/src/tools/retrieval/remedy_tools.ts",
@@ -21587,7 +21587,7 @@
           }
         ],
         "path": "platform-mcp/src/tools/**/*.ts (excluding tests)",
-        "sha256": "2c226c52d581f9927359795911844ac43a62effd2a6eea4150396a2819542f9c"
+        "sha256": "bcf7c9dc92819d7b380d26838fbe408c92cc5603b824a75445e57f9fc2c45530"
       },
       {
         "id": "registrar_bridge_extractor",
@@ -22445,10 +22445,10 @@
       {
         "id": "writer_digest_inventory",
         "path": "platform/src/generated/nirmana-writer-digests.json",
-        "sha256": "566bfed6e09612c00396008bc5d52b182e138e02e3d5ec7f408d697e484908df"
+        "sha256": "e8006f4584f8d90e65b413b051040e6187c98c62d438ef61ed29a55ccb841609"
       }
     ]
   },
   "schema_version": "capability-estate-census/v1.2",
-  "source_revision": "867621fd205f1f309020d0e6300b103825d2acaf"
+  "source_revision": "8f1d613fe83c34188284240acbcd598bf38c1491"
 }

@@ -582,3 +582,35 @@ def test_a_legacy_manifest_is_not_given_the_slice_condition(sworld):
                             " WHERE generation = '4.1'")
     ledger.publish(sworld.conn, CHART_ID, "4.1")
     assert sworld.conn.execute("SELECT status FROM public.kala_gochara_publication WHERE generation = '4.1'").fetchone()[0] == "published"
+
+
+# --- 11. follow-up (d): publish_candidate refuses a stale caller ------------------------------------------------------------------
+
+def test_followup_d_a_stale_publish_candidate_cannot_rewrite_the_vector_of_a_published_manifest(sworld, monkeypatch):
+    """The replace UPDATE used to filter only by manifest_id: a caller that read `candidate` just before a publish flipped the row would
+    then rewrite a PUBLISHED manifest's input vector (even stamp it as a test slice). Now the UPDATE is conditional on status."""
+    from services.gochara_kernel import record_store as rs
+    sworld.step_as(writer_mod.MANIFEST_SUBSTEP, sworld.run_id(None), FULLL)
+    ledger.publish(sworld.conn, CHART_ID, GEN)
+    assert _status(sworld) == "published"
+    vector_before = sworld.conn.execute("SELECT input_generation_vector::text FROM public.kala_gochara_publication WHERE generation = %s", (GEN,)).fetchone()[0]
+    manifest_id = sworld.conn.execute("SELECT manifest_id FROM public.kala_gochara_publication WHERE generation = %s", (GEN,)).fetchone()[0]
+    monkeypatch.setattr(ledger, "_manifest_row", lambda conn, chart, generation: (manifest_id, "candidate"))      # the stale read
+    convention = rs.RecordStore(sworld.conn).ensure_kala_convention()
+    stamped = {"stored_scope": "test_slice", "test_slice": {"run": "one_class_full"}}
+    with sworld.conn.transaction():
+        sworld.conn.execute("SET LOCAL session_replication_role = replica")     # the published-row guards are bypassed: only the UPDATE's own filter stands
+        with pytest.raises(ledger.PublishedGenerationRefusal, match="no longer a candidate"):
+            ledger.publish_candidate(sworld.conn, CHART_ID, GEN, convention, stamped, {"backend": "swieph"}, "[2025-01-01,2025-02-01)")
+    assert sworld.conn.execute("SELECT input_generation_vector::text FROM public.kala_gochara_publication WHERE generation = %s", (GEN,)).fetchone()[0] == vector_before
+    assert _status(sworld) == "published"
+
+
+def test_followup_d_publish_candidate_still_replaces_a_candidate_in_place(sworld):
+    from services.gochara_kernel import record_store as rs
+    sworld.step_as(writer_mod.MANIFEST_SUBSTEP, sworld.run_id(None), FULLL)
+    mid = sworld.conn.execute("SELECT manifest_id FROM public.kala_gochara_publication WHERE generation = %s", (GEN,)).fetchone()[0]
+    convention = rs.RecordStore(sworld.conn).ensure_kala_convention()
+    again = ledger.publish_candidate(sworld.conn, CHART_ID, GEN, convention, {"k": "v2"}, {"backend": "swieph"}, "[2025-01-01,2025-03-01)")
+    assert str(again) == str(mid)                                               # same manifest_id: replaced in place, never accreted
+    assert sworld.conn.execute("SELECT input_generation_vector->>'k' FROM public.kala_gochara_publication WHERE generation = %s", (GEN,)).fetchone()[0] == "v2"
