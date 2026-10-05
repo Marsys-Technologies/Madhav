@@ -2032,3 +2032,48 @@ def test_a_group_member_plans_and_verifies_over_the_whole_shared_table(env):
                                        else orig2(sql, params))
     code, ev = run(env, argv_for(env, asset=asset, commit=True, confirm=token), db=db2, fp=FakeFp((PRE_SHA, POST_SHA)), git=git, dispatch=Dispatch())
     assert code == gad.EXIT_FINGERPRINT_CHANGED and last(ev)["verification"]["codes"] == ["FINGERPRINT_CHANGED_ON_FORCED_REBUILD"]       # another member's slice changing is caught too
+
+
+# ── group siblings: listed in the impact, their lit rows need acceptance, a concurrent run of one refuses ──
+
+def _onto(env):
+    asset, table = "bg_ontology", "brahma_ontology"
+    onto = row(asset, scope="global", layer="brahmagyan", target=table, part="entity_class, canonical_id")
+    digests = {**env["digests"], asset: _hex(asset)}
+    (pathlib.Path(env["repo"]) / "platform/src/generated/nirmana-writer-digests.json").write_text(json.dumps({"version": 1, "writers": digests}))
+    return asset, onto, FakeGit(deployed=digests)
+
+
+def test_the_siblings_of_a_group_unit_are_listed_in_the_impact_with_their_relation(env):
+    asset, onto, git = _onto(env)
+    assert gad.unit_siblings(DECLS, asset, "grp_brahma_ontology") == ["bg_dasha_systems", "bg_doshas", "bg_yogas"]
+    assert gad.unit_siblings(DECLS, ASSET, ASSET) == []
+    reg = [row(a, scope="global", layer="brahmagyan", target="brahma_ontology") for a in ("bg_dasha_systems", "bg_doshas", "bg_yogas")]
+    code, ev = run(env, argv_for(env, asset=asset), db=FakeDB(candidates=[[onto]], downstream=(), registry=reg), fp=FakeFp((PRE_SHA,)), git=git)
+    s = last(ev)
+    assert code == 0, s
+    rec = json.loads(pathlib.Path(env["receipt"]).read_text())
+    deps = {d["asset_id"]: d["relations"] for d in rec["impact"]["dependents"]}
+    assert deps == {a: ["sibling_in_fingerprint_unit"] for a in ("bg_dasha_systems", "bg_doshas", "bg_yogas")}
+    assert s["impact_summary"]["dependents"] == 3
+
+
+def test_a_lit_row_of_a_sibling_needs_its_own_acceptance(env):
+    asset, onto, git = _onto(env)
+    sib = {"asset_id": "bg_doshas", "chart_id": None, "state": "lit", "last_built_at": T0, "freshness_state": "fresh"}
+    db = FakeDB(candidates=[[onto]], downstream=(), throughput=[sib])
+    code, ev = run(env, argv_for(env, asset=asset), db=db, fp=FakeFp((PRE_SHA,)), git=git)
+    assert code == slw.REFUSAL_EXIT_CODE and last(ev)["refusals"][0]["rows"] == ["bg_doshas@global"] and db.inserts("build_runs") == []
+    code, ev = run(env, argv_for(env, "--accept-lit-dependent", "bg_doshas@global", asset=asset), db=FakeDB(candidates=[[onto]], downstream=(), throughput=[sib]),
+                   fp=FakeFp((PRE_SHA,)), git=git)
+    assert code == 0
+
+
+def test_a_concurrent_run_of_a_sibling_is_looked_for_by_id_and_refuses(env):
+    asset, onto, git = _onto(env)
+    conflict = {"id": "r9", "chart_id": OTHER_CHART, "state": "running", "asset_id": "bg_yogas"}
+    db = FakeDB(candidates=[[onto]], downstream=(), conflicts=[conflict])
+    code, ev = run(env, argv_for(env, asset=asset), db=db, fp=FakeFp((PRE_SHA,)), git=git)
+    assert code == slw.REFUSAL_EXIT_CODE and codes_of(ev) == ["CONFLICTING_ACTIVE_RUN"] and db.inserts("build_runs") == []
+    q = [e for e in db.statements() if "bra.asset_id = ANY(%s)" in e[1]]
+    assert q and set(q[0][2][0]) == {"bg_ontology", "bg_dasha_systems", "bg_doshas", "bg_yogas"}      # the siblings are in the ids the conflict query is run for

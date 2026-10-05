@@ -496,12 +496,12 @@ def accept_global_candidate(asset: str, rows: Sequence[Mapping[str, Any]]) -> di
 
 def build_impact_statement(*, asset: str, anchor_chart: str, target_table: str | None, downstream: Sequence[str],
                            shared_target_peers: Sequence[str], registry: Sequence[Mapping[str, Any]],
-                           throughput: Sequence[Mapping[str, Any]]) -> dict:
+                           throughput: Sequence[Mapping[str, Any]], unit_siblings: Sequence[str] = ()) -> dict:
     """Pure: the closed impact statement for one asset. `downstream` = the transitive depends_on closure (the runner's own),
     `shared_target_peers` = other active writers of the same registry target_table. Every dependent is listed with its registry
     scope and EVERY asset_throughput row it has (any chart) with freshness; `lit` is a row a changed output would stale or force a
     rebuild of (LIT_STATES). The statement is deterministic: its sha256 is bound into the confirm token and the receipt."""
-    ids = sorted(set(downstream) | set(shared_target_peers))
+    ids = sorted(set(downstream) | set(shared_target_peers) | set(unit_siblings))
     reg = {r["asset_id"]: r for r in registry}
     rows_by_asset: dict[str, list[Mapping[str, Any]]] = {}
     for t in throughput:
@@ -509,7 +509,8 @@ def build_impact_statement(*, asset: str, anchor_chart: str, target_table: str |
     dependents, lit_rows = [], []
     for a in ids:
         r = reg.get(a, {})
-        relations = [name for name, members in (("shares_target_table", shared_target_peers), ("transitive_depends_on", downstream))
+        relations = [name for name, members in (("shares_target_table", shared_target_peers), ("transitive_depends_on", downstream),
+                                              ("sibling_in_fingerprint_unit", unit_siblings))
                      if a in members]
         trows = []
         for t in sorted(rows_by_asset.get(a, []), key=lambda x: (x.get("chart_id") is not None, str(x.get("chart_id") or ""))):
@@ -555,14 +556,15 @@ def impact_lines(impact: Mapping[str, Any]) -> list[str]:
     return lines
 
 
-def read_impact(cur, *, asset: str, anchor_chart: str, target_table: str | None) -> dict:
+def read_impact(cur, *, asset: str, anchor_chart: str, target_table: str | None, unit_siblings: Sequence[str] = ()) -> dict:
     """Read-only SELECTs through `cur`: the downstream closure, the shared-target peers, their registry rows and every throughput
     row with its latest freshness. Returns build_impact_statement(...)."""
     cur.execute(DOWNSTREAM_SQL, (asset, asset))
     downstream = sorted({r["asset_id"] for r in cur.fetchall()})
     cur.execute(SHARED_TARGET_SQL, (asset,))
     peers = sorted({r["asset_id"] for r in cur.fetchall()})
-    ids = sorted(set(downstream) | set(peers))
+    siblings = sorted(set(unit_siblings) - {asset})
+    ids = sorted(set(downstream) | set(peers) | set(siblings))
     registry, throughput = [], []
     if ids:
         cur.execute(IMPACT_REGISTRY_SQL, (ids,))
@@ -570,13 +572,13 @@ def read_impact(cur, *, asset: str, anchor_chart: str, target_table: str | None)
         cur.execute(IMPACT_THROUGHPUT_SQL, (ids,))
         throughput = [dict(r) for r in cur.fetchall()]
     return build_impact_statement(asset=asset, anchor_chart=anchor_chart, target_table=target_table, downstream=downstream,
-                                  shared_target_peers=peers, registry=registry, throughput=throughput)
+                                  shared_target_peers=peers, registry=registry, throughput=throughput, unit_siblings=siblings)
 
 
-def read_impact_via(connect, *, asset: str, anchor_chart: str, target_table: str | None) -> dict:
+def read_impact_via(connect, *, asset: str, anchor_chart: str, target_table: str | None, unit_siblings: Sequence[str] = ()) -> dict:
     conn = connect()
     try:
-        impact = read_impact(conn.cursor(), asset=asset, anchor_chart=anchor_chart, target_table=target_table)
+        impact = read_impact(conn.cursor(), asset=asset, anchor_chart=anchor_chart, target_table=target_table, unit_siblings=unit_siblings)
         conn.rollback()
         return impact
     finally:
@@ -627,10 +629,22 @@ def group_unit_for_member(decls, asset: str) -> str | None:
     return unit if u is not None and u["kind"] == "group" and asset in u["members"] else None
 
 
+def unit_siblings(decls, asset: str, unit: str) -> list[str]:
+    """The OTHER assets whose rows are inside the fingerprint unit (the members of a group unit): a concurrent run of one of them would change the very
+    table this run is judged on, so they are listed in the impact statement (and their lit rows need acceptance) and a planned / running / paused run
+    of any of them refuses (CONFLICTING_ACTIVE_RUN). [] for an asset whose unit is its own."""
+    if unit == asset:
+        return []
+    units = decls.units()
+    return sorted(m for m in units.get(unit, {}).get("members", []) if m != asset)
+
+
 def declared_unit_or_refuse(decls, asset: str) -> str:
     """The asset must be a comparison unit of its own (declared, with tables), or the only-group member of a non-seeded deterministic group (its
-    group's unit), and fully covered and deterministic. A mixed member (own tables AND a group), an undeclared asset, a partial declaration, a
-    SEEDED group (copied from production, never rebuilt) or a non-deterministic one cannot show that a forced rebuild left the content alone."""
+    group's unit), and fully covered and deterministic. An asset that has own tables AND belongs to a group is judged on its own tables only (this
+    function's historical reading; the group's shared table is NOT in its unit: see the mixed-member finding in DISPATCH_L0_COVERAGE.md); an undeclared
+    asset, a partial declaration, a SEEDED group (copied from production, never rebuilt) or a non-deterministic one is refused: it cannot show that a
+    forced rebuild left the content alone."""
     units = decls.units()
     gunit = None
     if asset not in units or units[asset]["kind"] != "asset":
@@ -1307,9 +1321,12 @@ def _run_cli(args, *, connect, fp_connect, git, out, sleep, monotonic, dispatch,
     manifest, digest = slw.build_level_manifest(chart_id=anchor, plan_waves=[[asset]], rows=by_id, writer_digests=local)
     row_digests = {asset: slw.registry_row_digest(row)}
 
-    # 3. the impact statement (every dependent, every chart) and the lit-dependent gate
-    impact_of = lambda cur: read_impact(cur, asset=asset, anchor_chart=anchor, target_table=row.get("target_table"))  # noqa: E731
-    impact = read_impact_via(connect, asset=asset, anchor_chart=anchor, target_table=row.get("target_table"))
+    # 3. the fingerprint unit (declared) and the impact statement (every dependent, every chart, and every sibling writer of the unit) with the lit-dependent gate
+    decls = decls or load_declarations_or_refuse(args.declarations)
+    unit = declared_unit_or_refuse(decls, asset)
+    siblings = unit_siblings(decls, asset, unit)
+    impact_of = lambda cur: read_impact(cur, asset=asset, anchor_chart=anchor, target_table=row.get("target_table"), unit_siblings=siblings)  # noqa: E731
+    impact = read_impact_via(connect, asset=asset, anchor_chart=anchor, target_table=row.get("target_table"), unit_siblings=siblings)
     impact_sha = sha256_json(impact)
     check_lit_dependents(impact, accepted)
     if expected is not None and not args.accept_changed_output:
@@ -1320,8 +1337,6 @@ def _run_cli(args, *, connect, fp_connect, git, out, sleep, monotonic, dispatch,
                                                "--accept-lit-dependent) to proceed."}])
 
     # 4. the pre fingerprint through the committed declarations
-    decls = decls or load_declarations_or_refuse(args.declarations)
-    unit = declared_unit_or_refuse(decls, asset)
     pre = read_fingerprint(fp_connect, decls, unit, reader=fp_reader)
     check_pre_fingerprint(pre, decls, empty_fn=empty_fn)
     if expected is not None:
