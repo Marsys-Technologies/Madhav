@@ -270,7 +270,8 @@ def derive_near_misses(position_at, body: str, centres, lo: datetime, hi: dateti
                                              clearance_deg=res["clearance_deg"], clearance_certified=res["certified"],
                                              clearance_tol=used_tol)
             rec.update(state=state, reason=reason, clearance_deg=res["clearance_deg"], t_closest=res["t_closest"],
-                       closest_candidates=res["closest_candidates"], closest_certified=res["closest_certified"], certificate_reason=res["reason"])
+                       closest_candidates=res["closest_candidates"], closest_certified=res["closest_certified"], certificate_reason=res["reason"],
+                       distance_at=dist_at)
         out.append(rec)
     return out
 
@@ -469,12 +470,21 @@ def compare_sets(rederived, stored, *, junction_source, expected_orb_deg: float,
             tc = s.get("t_closest")
             cands = w.get("closest_candidates")
             slack = timedelta(seconds=CLOSEST_SLACK_SECONDS)
-            if w.get("closest_certified") is not True or not cands:
-                # no affirmative certification of the closest time and a non-empty validated candidate set: NOT "any time in the stretch"
-                p.append(f"near_miss_closest_evidence_missing: certified {w.get('closest_certified')!r}, {len(cands or [])} candidate interval(s)")
+            dist = w.get("distance_at")
+            if w.get("closest_certified") is not True or not cands or not callable(dist):
+                # no affirmative certification of the closest time, no non-empty validated candidate set, or no way to evaluate the geometry at the
+                # stored instant: NOT "any time in the stretch"
+                p.append(f"near_miss_closest_evidence_missing: certified {w.get('closest_certified')!r}, {len(cands or [])} candidate interval(s), "
+                         f"geometry {'present' if callable(dist) else 'absent'}")
             elif tc is None or not any(lo - slack <= tc <= hi + slack for lo, hi in cands):
                 p.append(f"near_miss_t_closest_mismatch: stored {tc} is in none of the {len(cands)} candidate interval(s)")
-        expect = junction_field(s["t_in"], s["t_out"], events, coverage_complete=coverage_complete)
+            elif abs(dist(tc)) > w["clearance_deg"] + CERT_TOL_DEG:
+                # a candidate interval says the minimiser MIGHT lie in it, not that every instant in it is close to the minimum: the separation at the
+                # STORED instant must itself be within the certificate tolerance of the certified minimum
+                p.append(f"near_miss_t_closest_separation_mismatch: |d| at the stored instant is {abs(dist(tc)):.6f} vs the certified minimum "
+                         f"{w['clearance_deg']:.6f} (tolerance {CERT_TOL_DEG})")
+        # the junction is recomputed on the RE-DERIVED interval, not the stored one: a tolerated endpoint shift must not move a junction in or out
+        expect = junction_field(w["t_in"], w["t_out"], events, coverage_complete=coverage_complete)
         stored_kinds = None if s.get("junction") is None else sorted(s["junction"])
         if (expect["kinds"], expect["complete"]) != (stored_kinds, s.get("junction_complete")):
             p.append(f"near_miss_junction_mismatch: stored {stored_kinds}/{s.get('junction_complete')} vs recomputed "

@@ -228,7 +228,8 @@ def test_an_orb_change_is_a_new_object_key():
 def _nm(t_in, t_out, clearance=0.4):
     mid = t_in + (t_out - t_in) / 2
     return {"state": "near_miss", "reason": None, "t_in": t_in, "t_out": t_out, "clearance_deg": clearance, "t_closest": mid,
-            "closest_candidates": [(mid - timedelta(minutes=5), mid + timedelta(minutes=5))], "closest_certified": True}
+            "closest_candidates": [(mid - timedelta(minutes=5), mid + timedelta(minutes=5))], "closest_certified": True,
+            "distance_at": (lambda t, c=clearance: c)}                    # a flat stand-in geometry: |d| = the clearance everywhere
 
 
 def _stored(t_in, t_out, clearance=0.4, junction=(), complete=True, closest="mid", ordinal=1):
@@ -617,3 +618,43 @@ def test_the_band_search_has_a_work_budget_and_names_its_exhaustion():
     with pytest.raises(nm.NearMissError, match="band_search_work_budget_exhausted"):
         nm.derive_near_misses(counting, BODY, [100.0], LO, HI, orb_deg=ORB, max_position_calls=20)
     assert calls[0] <= 21
+
+
+# ── round 3 (VERIFIER-CODEX-3) ───────────────────────────────────────────────────────────────────────────────────────
+def test_a_stored_closest_time_inside_a_candidate_interval_but_far_from_the_minimum_is_refused():
+    # the reviewer's curve: |d| is 0.5 at 12:00 and rises with a sqrt flank; the candidate interval is wide, but 5 minutes off the minimum the
+    # separation is already 0.5027 deg
+    d = lambda t: min(1.1, 0.5 + (_x(t) ** 2 + 0.000001) ** 0.5 - 0.001)
+    r = _derive(d, lo=TC - timedelta(days=3), hi=TC + timedelta(days=3))[0]
+    assert r["state"] == "near_miss" and r["closest_certified"] is True
+    lo, hi = r["closest_candidates"][0]
+    assert lo <= TC - timedelta(minutes=5) <= hi                                      # inside the certified interval...
+    stored = lambda t: dict(_stored(r["t_in"], r["t_out"], clearance=0.5), t_closest=t, closest_state="placed")      # noqa: E731
+    cmp = lambda t: nm.compare_sets([r], [stored(t)], junction_source=NO_JUNCTIONS, **ID)                           # noqa: E731
+    bad = cmp(TC - timedelta(minutes=5, seconds=10))                                  # the reviewer's 11:54:50
+    assert [x.split(":")[0] for x in bad] == ["near_miss_t_closest_separation_mismatch"], bad
+    assert abs(d(TC - timedelta(minutes=5, seconds=10)) - 0.5) > 0.002                # ...yet 0.0027 deg from the minimum
+    assert cmp(TC) == [] and cmp(r["t_closest"]) == []                                # the true minimiser and the certified one are accepted
+
+
+def test_the_closest_time_check_needs_the_geometry_to_evaluate_the_stored_instant():
+    w = _nm(utc(2000, 3, 1), utc(2000, 3, 4))
+    ok = _stored(utc(2000, 3, 1), utc(2000, 3, 4), clearance=0.4)
+    no_geom = {k: v for k, v in w.items() if k != "distance_at"}
+    try:
+        out = nm.compare_sets([no_geom], [ok], junction_source=NO_JUNCTIONS, **ID)
+    except Exception as exc:                                                    # noqa: BLE001
+        raise AssertionError(f"missing geometry must be a named refusal, not {type(exc).__name__}: {exc}") from None
+    assert [x.split(":")[0] for x in out] == ["near_miss_closest_evidence_missing"]
+
+
+def test_a_tolerated_endpoint_shift_cannot_hide_a_junction_because_the_junction_is_recomputed_on_the_rederived_interval():
+    d = lambda t: min(1.1, 0.5 + 0.2 * _x(t) ** 2)
+    r = _derive(d)[0]
+    events = [("dasha_md_ad_boundary", r["t_in"])]                                   # an MD/AD boundary exactly at the re-derived t_in
+    shifted = dict(_stored(r["t_in"] + timedelta(seconds=1), r["t_out"], clearance=r["clearance_deg"], junction=[], complete=True),
+                   t_closest=r["t_closest"], closest_state="placed")
+    out = nm.compare_sets([r], [shifted], junction_source=(events, True), **ID)
+    assert [x.split(":")[0] for x in out] == ["near_miss_junction_mismatch"], out
+    honest = dict(shifted, t_in=r["t_in"] + timedelta(seconds=1), junction=["dasha_md_ad_boundary"])
+    assert nm.compare_sets([r], [honest], junction_source=(events, True), **ID) == []             # the junction the re-derived interval contains
