@@ -81,12 +81,6 @@
     "level": "row",
     "columns": [
      {
-      "column": "ratified_by",
-      "kinds": [
-       "K2"
-      ]
-     },
-     {
       "kinds": [
        "K3"
       ],
@@ -95,7 +89,7 @@
       "version_column": "prior_version"
      }
     ],
-    "why": "each lifetime count row is derived from a published statistic named in source_ref with its prior_basis tier and prior_version, and is ratified in ratified_by",
+    "why": "each lifetime count row is derived from a published statistic named in source_ref with its prior_basis tier and prior_version",
     "evidence": "platform/python-sidecar/brahmagyan/l0_class_lifetime_counts.py:640"
    }
   },
@@ -116,25 +110,13 @@
     "prose_fields": null
    },
    "source": {
-    "level": "row",
-    "columns": [
-     {
-      "column": "ratified_by",
-      "kinds": [
-       "K2"
-      ]
-     },
-     {
-      "kinds": [
-       "K3"
-      ],
-      "dataset_column": "source_ref",
-      "method_column": "prior_basis",
-      "version_column": "prior_version"
-     }
-    ],
-    "why": "each prior row is ratified in ratified_by (the W1 seed package) or, for the demographic rows, derived with source_ref, prior_basis and prior_version",
-    "evidence": "platform/python-sidecar/brahmagyan/l0_class_priors.py:323"
+    "level": "table",
+    "kind": "K3",
+    "dataset": "W1_SEED_PACKAGE_v1_0 (BEYOND_ACHARYA_W1_JUDGMENT_SEED_PACKAGE_v1_0, sections 2 to 4)",
+    "method": "judgment seed priors ratified as one package and seeded as literal rows",
+    "version": "1.0",
+    "why": "the prior rows are the literal W1 judgment seed package at prior_version 1.0, named as the dataset with its version, not a register decision id",
+    "evidence": "platform/python-sidecar/brahmagyan/l0_class_priors.py:29"
    }
   },
   "bg_cohort": {
@@ -598,20 +580,6 @@
     "kind": "registry kind data (seed, T0 data); writer-backed own table(s) bg_kota_chakra_rings; census Idem.pattern PASS: INSERT … ON CONFLICT into the asset's own table(s) (upsert):",
     "carriage": "served_surface null (unknown): negative scan is not proof; editorial map PRODUCER_SEMANTIC_REVIEW marks it directly_serves_output for scu.catalog.query_kota_chakra.",
     "prose_fields": null
-   },
-   "source": {
-    "level": "row",
-    "columns": [
-     {
-      "column": "citation",
-      "kinds": [
-       "K1"
-      ]
-     }
-    ],
-    "citation_state": "unsourced",
-    "why": "each ring row carries citation, which states that the partition is a secondary-source transcription not yet traced to an ingested primary text",
-    "evidence": "platform/python-sidecar/brahmagyan/l0_kota_chakra_rings.py:75"
    },
    "vocab_alias": {
     "na": "no_alias_class",
@@ -1256,6 +1224,11 @@
     "kind": "migration supabase/529 creates it deliberately empty (ADJUDICATION-11); seed only; has_writer=false and no @register (census writer_files empty); T0 execution_obligation static_acceptance/empty_acceptance; registry asset_kind reads data",
     "carriage": "served_surface null (unknown): the only evidence is a provenance LABEL (query_vedha_gochara.ts:169-170 lists the table in `provenance.tables`; the query reads kala_vedha_gochara only); Dens.served N/A.",
     "prose_fields": null
+   },
+   "source": {
+    "na": "no_data",
+    "why": "the sarvatobhadra grid table exists but no writer builds it and it holds no rows: the asset is declared not built",
+    "evidence": "platform/supabase/migrations/529_bg_sarvatobhadra_grid.sql:1"
    }
   },
   "bg_sign_medical": {
@@ -1577,7 +1550,14 @@
     {
      "table": "vidhi_floor_items"
     }
-   ]
+   ],
+   "source": {
+    "level": "table",
+    "kind": "K2",
+    "decision_id": "N-156",
+    "why": "the vidhi registry rows are project-defined constructs from lane D-2 V-1, kept as our own judgment under SS ruling N-156",
+    "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/bg_vidhi_floors.py:2"
+   }
   },
   "bg_vidhi_primitives": {
    "kind": "data",
@@ -1599,6 +1579,13 @@
     "na": "no_alias_class",
     "why": "its columns are primitive ids, categories, definitions and tool arguments of the vidhi registry: no column carries an alias or synonym set",
     "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/bg_vidhi_primitives.py:125"
+   },
+   "source": {
+    "level": "table",
+    "kind": "K2",
+    "decision_id": "N-156",
+    "why": "the vidhi registry rows are project-defined constructs from lane D-2 V-1, kept as our own judgment under SS ruling N-156",
+    "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/bg_vidhi_primitives.py:2"
    }
   },
   "bg_yogas": {
