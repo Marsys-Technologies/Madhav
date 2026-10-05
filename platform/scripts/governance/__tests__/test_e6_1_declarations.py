@@ -300,8 +300,8 @@ NARR_CITES = {
                            (_WR + "ka_bhavishya_lekha.py", 528, "confirm = f"), (_WR + "ka_bhavishya_lekha.py", 529, "deny = f"),
                            (_L + "L3_kala/query_projections.ts", 248, "narrative,")],
     "bo_upaya": [(_WR + "bo_upaya.py", 1008, "reason = ("), (_WR + "bo_upaya.py", 1690, '"maraka_contraindication_verdict": maraka_verdict'),
-                 (_L + "L2_bodha/query_remedies.ts", 404, "prescription_detail_jsonb"),
-                 (_L + "L2_bodha/query_remedies.ts", 564, "marakaVerdictFrom(r['prescription_detail_jsonb'])")],
+                 (_L + "L2_bodha/query_remedies.ts", 411, "prescription_detail_jsonb"),
+                 (_L + "L2_bodha/query_remedies.ts", 571, "marakaVerdictFrom(r['prescription_detail_jsonb'])")],
     "ka_vighnakara": [(_WR + "ka_vighnakara.py", 641, "'reason': f\"Saturn in adversarial transit window"), (_WR + "ka_vighnakara.py", 693, "'reason': ("),
                       (_WR + "ka_vighnakara.py", 750, "'reason': f\"Tithi"), (_WR + "ka_vighnakara.py", 827, "'reason': ("),
                       (_WR + "ka_vighnakara.py", 906, "'reason': ("), (_WR + "ka_vighnakara.py", 962, "'reason': f\"{planet_str} combust"),
@@ -1505,7 +1505,7 @@ CITATION_DECISIONS = json.loads(r"""
   ],
   "served": [
    "platform/src/lib/retrieval/registry/layers/L2_bodha/query_cgm_motifs.ts",
-   73,
+   80,
    "classical_citation_id, verif"
   ],
   "fields": [
@@ -1538,7 +1538,7 @@ CITATION_DECISIONS = json.loads(r"""
   ],
   "served": [
    "platform/src/lib/retrieval/registry/layers/L2_bodha/query_cgm_paths.ts",
-   75,
+   82,
    "verification_pass_status, ci"
   ],
   "fields": null,
@@ -2623,7 +2623,7 @@ def test_committed_read_evidence_repoints_and_kinds():
     decl = ac.load_asset_declarations()
     L = "platform/src/lib/retrieval/registry/layers/"
     want = {
-        "bo_sangati": L + "L2_bodha/query_domain_reading.ts:821",
+        "bo_sangati": L + "L2_bodha/query_domain_reading.ts:828",
         "ka_gochara": "platform-mcp/src/tools/retrieval/register_gochara_windows.ts:1809",
         "mi_bhavisya": L + "L5_mimamsa/query_predictions.ts:138",
         "ph_nimitta": L + "L4_phala/query_predictive_anchors.ts:139",

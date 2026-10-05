@@ -316,6 +316,13 @@ export const queryRemediesCapability: CapabilityDescriptor = {
     },
   },
 
+  // Suvarna DENS (§N.6, §N.8): hand-authored from what this handler actually does, not the derived default.
+  density_contract: {
+    paginated: false, // optional per-section `limit` cap only; no offset, no cursor
+    facets: ['ayanamsha_id', 'tradition', 'graha', 'domain', 'keyword'],
+    empty_reason: false, // handler never sets `empty_reason`
+  },
+
   async handler(args: Record<string, unknown>, _ctx: unknown) {
     const chart_id = args['chart_id'] as string
     if (!chart_id) {

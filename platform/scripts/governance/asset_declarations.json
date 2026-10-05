@@ -1087,13 +1087,13 @@
    ],
    "terminal_by_construction": null,
    "cross_asset_writes": null,
-   "read_evidence": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_cgm_motifs.ts:74",
+   "read_evidence": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_cgm_motifs.ts:81",
    "read_table": "bodha_cgm_motifs",
    "read_kind": null,
    "evidence": {
     "kind": "registry kind data (seed default, T0 data); writer-backed own table(s) bodha_cgm_motifs; census Idem.pattern PASS: DELETE FROM the asset's own table(s) (delete-then-insert): b",
-    "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L2_bodha/query_cgm_motifs.ts:74 reads `bodha_cgm_motifs` (`FROM bodha_cgm_motifs`). Dens.served=FAIL.",
-    "prose_fields": "citation_human (SS ruling 2026-10-01: a composed string that states or grades a computed value is narration, counts included): motif citations embed node, edge, component and diameter counts, constituent counts and stellium sizes; motif_name is composed and served (platform/src/lib/retrieval/registry/layers/L2_bodha/query_cgm_motifs.ts:71): 'Stellium in House {house_key}: ...' (:342) states the computed stellium house and 'Parivartana Chain (length {depth}): ...' (:400) the chain length; bo_yantra_mechanism forwards motif_name as mechanism_name (platform/python-sidecar/pipeline/orchestrator/writers/bo_yantra_mechanism.py:229). Composed at platform/python-sidecar/pipeline/orchestrator/writers/bo_cgm_motifs.py:777, platform/python-sidecar/pipeline/orchestrator/writers/bo_cgm_motifs.py:232, platform/python-sidecar/pipeline/orchestrator/writers/bo_cgm_motifs.py:348, platform/python-sidecar/pipeline/orchestrator/writers/bo_cgm_motifs.py:342, platform/python-sidecar/pipeline/orchestrator/writers/bo_cgm_motifs.py:400. AST census of the writer's citation_human sites (platform/python-sidecar/pipeline/orchestrator/writers/bo_cgm_motifs.py): 7 composed, 2 constant, 0 forwarded, 0 other. Column bound at platform/python-sidecar/pipeline/orchestrator/writers/bo_cgm_motifs.py:86 (INSERT INTO bodha_cgm_motifs); platform/python-sidecar/pipeline/orchestrator/writers/bo_cgm_motifs.py:107 (INSERT INTO bodha_cgm_sub_graphs); platform/python-sidecar/pipeline/orchestrator/writers/bo_cgm_motifs.py:125 (INSERT INTO bodha_cgm_chart_topology_summary); served by platform/src/lib/retrieval/registry/layers/L2_bodha/query_cgm_motifs.ts:73."
+    "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L2_bodha/query_cgm_motifs.ts:81 reads `bodha_cgm_motifs` (`FROM bodha_cgm_motifs`). Dens.served=FAIL.",
+    "prose_fields": "citation_human (SS ruling 2026-10-01: a composed string that states or grades a computed value is narration, counts included): motif citations embed node, edge, component and diameter counts, constituent counts and stellium sizes; motif_name is composed and served (platform/src/lib/retrieval/registry/layers/L2_bodha/query_cgm_motifs.ts:78): 'Stellium in House {house_key}: ...' (:342) states the computed stellium house and 'Parivartana Chain (length {depth}): ...' (:400) the chain length; bo_yantra_mechanism forwards motif_name as mechanism_name (platform/python-sidecar/pipeline/orchestrator/writers/bo_yantra_mechanism.py:229). Composed at platform/python-sidecar/pipeline/orchestrator/writers/bo_cgm_motifs.py:777, platform/python-sidecar/pipeline/orchestrator/writers/bo_cgm_motifs.py:232, platform/python-sidecar/pipeline/orchestrator/writers/bo_cgm_motifs.py:348, platform/python-sidecar/pipeline/orchestrator/writers/bo_cgm_motifs.py:342, platform/python-sidecar/pipeline/orchestrator/writers/bo_cgm_motifs.py:400. AST census of the writer's citation_human sites (platform/python-sidecar/pipeline/orchestrator/writers/bo_cgm_motifs.py): 7 composed, 2 constant, 0 forwarded, 0 other. Column bound at platform/python-sidecar/pipeline/orchestrator/writers/bo_cgm_motifs.py:86 (INSERT INTO bodha_cgm_motifs); platform/python-sidecar/pipeline/orchestrator/writers/bo_cgm_motifs.py:107 (INSERT INTO bodha_cgm_sub_graphs); platform/python-sidecar/pipeline/orchestrator/writers/bo_cgm_motifs.py:125 (INSERT INTO bodha_cgm_chart_topology_summary); served by platform/src/lib/retrieval/registry/layers/L2_bodha/query_cgm_motifs.ts:80."
    },
    "evidence_kind": "writer"
   },
@@ -1105,12 +1105,12 @@
    "prose_fields": null,
    "terminal_by_construction": null,
    "cross_asset_writes": null,
-   "read_evidence": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_cgm_paths.ts:76",
+   "read_evidence": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_cgm_paths.ts:83",
    "read_table": "bodha_cgm_paths",
    "read_kind": null,
    "evidence": {
     "kind": "registry kind data (seed default, T0 data); writer-backed own table(s) bodha_cgm_paths; census Idem.pattern PASS: DELETE FROM the asset's own table(s) (delete-then-insert): b",
-    "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L2_bodha/query_cgm_paths.ts:76 reads `bodha_cgm_paths` (`FROM bodha_cgm_paths`). Dens.served=FAIL.",
+    "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L2_bodha/query_cgm_paths.ts:83 reads `bodha_cgm_paths` (`FROM bodha_cgm_paths`). Dens.served=FAIL.",
     "prose_fields": null
    }
   },
@@ -1139,12 +1139,12 @@
    "prose_fields": null,
    "terminal_by_construction": null,
    "cross_asset_writes": null,
-   "read_evidence": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_domain_reading.ts:777",
+   "read_evidence": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_domain_reading.ts:784",
    "read_table": "bodha_question_lenses",
    "read_kind": null,
    "evidence": {
     "kind": "registry kind data (seed default, T0 data); writer-backed own table(s) bodha_question_lenses; census Idem.pattern PASS: DELETE FROM the asset's own table(s) (delete-then-insert): b",
-    "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L2_bodha/query_domain_reading.ts:777 reads `bodha_question_lenses` (`FROM bodha_question_lenses`). Dens.served=PASS.",
+    "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L2_bodha/query_domain_reading.ts:784 reads `bodha_question_lenses` (`FROM bodha_question_lenses`). Dens.served=PASS.",
     "prose_fields": null
    }
   },
@@ -1254,12 +1254,12 @@
    "prose_fields": null,
    "terminal_by_construction": null,
    "cross_asset_writes": null,
-   "read_evidence": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_quality_scorecard.ts:86",
+   "read_evidence": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_quality_scorecard.ts:93",
    "read_table": "synthesis_quality_scorecard",
    "read_kind": null,
    "evidence": {
     "kind": "registry kind data (seed default, T0 data); writer-backed own table(s) synthesis_quality_scorecard; census Idem.pattern PASS: DELETE FROM the asset's own table(s) (delete-then-insert): s",
-    "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L2_bodha/query_quality_scorecard.ts:86 reads `synthesis_quality_scorecard` (`FROM synthesis_quality_scorecard`). Dens.served=FAIL.",
+    "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L2_bodha/query_quality_scorecard.ts:93 reads `synthesis_quality_scorecard` (`FROM synthesis_quality_scorecard`). Dens.served=FAIL.",
     "prose_fields": null
    }
   },
@@ -1329,12 +1329,12 @@
    ],
    "terminal_by_construction": null,
    "cross_asset_writes": null,
-   "read_evidence": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_domain_reading.ts:821",
+   "read_evidence": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_domain_reading.ts:828",
    "read_table": "bodha_cdlm_cells",
    "read_kind": null,
    "evidence": {
     "kind": "registry kind data (seed default, T0 data); writer-backed own table(s) bodha_cdlm_cells; census Idem.pattern PASS: DELETE FROM the asset's own table(s) (delete-then-insert): b",
-    "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L2_bodha/query_domain_reading.ts:821 reads `bodha_cdlm_cells` (`FROM bodha_cdlm_cells`). Dens.served=FAIL. Served domain-reading capability (per-cell rows with cell_remedy_priority_rank).",
+    "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L2_bodha/query_domain_reading.ts:828 reads `bodha_cdlm_cells` (`FROM bodha_cdlm_cells`). Dens.served=FAIL. Served domain-reading capability (per-cell rows with cell_remedy_priority_rank).",
     "prose_fields": "citation_human (SS ruling 2026-10-01: a composed string that states or grades a computed value is narration, counts included): citation_human embeds the shared-signal count (len(shared_ids)) and the signal count (len(sigs)). Composed at platform/python-sidecar/pipeline/orchestrator/writers/bo_sangati.py:365, platform/python-sidecar/pipeline/orchestrator/writers/bo_sangati.py:440. AST census of the writer's citation_human sites (platform/python-sidecar/pipeline/orchestrator/writers/bo_sangati.py): 2 composed, 0 constant, 0 forwarded, 0 other. Column bound at platform/python-sidecar/pipeline/orchestrator/writers/bo_sangati.py:55 (INSERT INTO bodha_cdlm_cells); platform/python-sidecar/pipeline/orchestrator/writers/bo_sangati.py:100 (INSERT INTO bodha_convergence); emitted by the writer INSERT (no served read of this table's citation_human confirmed)."
    },
    "evidence_kind": "writer"
@@ -1392,13 +1392,13 @@
    ],
    "terminal_by_construction": null,
    "cross_asset_writes": null,
-   "read_evidence": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_remedies.ts:362",
+   "read_evidence": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_remedies.ts:369",
    "read_table": "bodha_rm_resonances",
    "read_kind": null,
    "evidence": {
     "kind": "registry kind data (seed default, T0 data); writer-backed own table(s) bodha_rm_resonances; census Idem.pattern PASS: DELETE FROM the asset's own table(s) (delete-then-insert): b",
-    "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L2_bodha/query_remedies.ts:362 reads `bodha_rm_resonances` (`FROM bodha_rm_resonances`). Dens.served=FAIL.",
-    "prose_fields": "writers/bo_upaya.py _compute_gemstone_maraka_verdict composes verdict['reason'] by f-string in both the contraindicated and the no-contraindication branches (platform/python-sidecar/pipeline/orchestrator/writers/bo_upaya.py:1008; the fact-missing branch at :989 is a constant); the verdict is bound as prescription_detail_jsonb['maraka_contraindication_verdict'] (platform/python-sidecar/pipeline/orchestrator/writers/bo_upaya.py:1690) into bodha_rm_remedy_prescriptions. Served: platform/src/lib/retrieval/registry/layers/L2_bodha/query_remedies.ts:404 selects the column and platform/src/lib/retrieval/registry/layers/L2_bodha/query_remedies.ts:564 surfaces the verdict via marakaVerdictFrom. The other keys of prescription_detail_jsonb (prescription_text, mantra_text, gemstone, charity_action, deity) are copied from brahma_remedy_corpus (composed upstream by bg_remedies), not declared here. | citation_human (SS ruling 2026-10-01: a composed string that states or grades a computed value is narration, counts included): resonance citation embeds the normalized shadbala and dosha count; summaries embed resonance and prescription counts. Composed at platform/python-sidecar/pipeline/orchestrator/writers/bo_upaya.py:1549, platform/python-sidecar/pipeline/orchestrator/writers/bo_upaya.py:1798, platform/python-sidecar/pipeline/orchestrator/writers/bo_upaya.py:1842. AST census of the writer's citation_human sites (platform/python-sidecar/pipeline/orchestrator/writers/bo_upaya.py): 5 composed, 0 constant, 0 forwarded, 0 other. Column bound at platform/python-sidecar/pipeline/orchestrator/writers/bo_upaya.py:57 (INSERT INTO bodha_rm_resonances); platform/python-sidecar/pipeline/orchestrator/writers/bo_upaya.py:77 (INSERT INTO bodha_rm_remedy_prescriptions); platform/python-sidecar/pipeline/orchestrator/writers/bo_upaya.py:124 (INSERT INTO bodha_rm_chart_summary); platform/python-sidecar/pipeline/orchestrator/writers/bo_upaya.py:142 (INSERT INTO bodha_rm_dosha_remedy_bundles); platform/python-sidecar/pipeline/orchestrator/writers/bo_upaya.py:157 (INSERT INTO bodha_rm_pattern_remedies); served by platform/src/lib/retrieval/registry/layers/L2_bodha/query_rm_chart_summary.ts:78."
+    "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L2_bodha/query_remedies.ts:369 reads `bodha_rm_resonances` (`FROM bodha_rm_resonances`). Dens.served=FAIL.",
+    "prose_fields": "writers/bo_upaya.py _compute_gemstone_maraka_verdict composes verdict['reason'] by f-string in both the contraindicated and the no-contraindication branches (platform/python-sidecar/pipeline/orchestrator/writers/bo_upaya.py:1008; the fact-missing branch at :989 is a constant); the verdict is bound as prescription_detail_jsonb['maraka_contraindication_verdict'] (platform/python-sidecar/pipeline/orchestrator/writers/bo_upaya.py:1690) into bodha_rm_remedy_prescriptions. Served: platform/src/lib/retrieval/registry/layers/L2_bodha/query_remedies.ts:411 selects the column and platform/src/lib/retrieval/registry/layers/L2_bodha/query_remedies.ts:571 surfaces the verdict via marakaVerdictFrom. The other keys of prescription_detail_jsonb (prescription_text, mantra_text, gemstone, charity_action, deity) are copied from brahma_remedy_corpus (composed upstream by bg_remedies), not declared here. | citation_human (SS ruling 2026-10-01: a composed string that states or grades a computed value is narration, counts included): resonance citation embeds the normalized shadbala and dosha count; summaries embed resonance and prescription counts. Composed at platform/python-sidecar/pipeline/orchestrator/writers/bo_upaya.py:1549, platform/python-sidecar/pipeline/orchestrator/writers/bo_upaya.py:1798, platform/python-sidecar/pipeline/orchestrator/writers/bo_upaya.py:1842. AST census of the writer's citation_human sites (platform/python-sidecar/pipeline/orchestrator/writers/bo_upaya.py): 5 composed, 0 constant, 0 forwarded, 0 other. Column bound at platform/python-sidecar/pipeline/orchestrator/writers/bo_upaya.py:57 (INSERT INTO bodha_rm_resonances); platform/python-sidecar/pipeline/orchestrator/writers/bo_upaya.py:77 (INSERT INTO bodha_rm_remedy_prescriptions); platform/python-sidecar/pipeline/orchestrator/writers/bo_upaya.py:124 (INSERT INTO bodha_rm_chart_summary); platform/python-sidecar/pipeline/orchestrator/writers/bo_upaya.py:142 (INSERT INTO bodha_rm_dosha_remedy_bundles); platform/python-sidecar/pipeline/orchestrator/writers/bo_upaya.py:157 (INSERT INTO bodha_rm_pattern_remedies); served by platform/src/lib/retrieval/registry/layers/L2_bodha/query_rm_chart_summary.ts:78."
    },
    "evidence_kind": "writer"
   },

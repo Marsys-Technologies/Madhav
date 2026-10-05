@@ -2,9 +2,9 @@
   "schema_version": "2.3.0",
   "compatibility_version": "planner-scu-v2",
   "generated_at": "2026-10-02T02:18:40.000Z",
-  "content_hash": "sha256:bff49e66b133a837aab85a209679b0a0f8c476b2a13734765fe7d064dc0d417b",
-  "source_catalog_fingerprint": "sha256:9a31905a8bf8945a6ff4985ae7bd858e793756bf2f2676c7c7061259680d52f7",
-  "semantic_review_fingerprint": "sha256:76d0e651c73670672907b06fd74766e5bb9838d0fe097c962ba41146f1b7d53f",
+  "content_hash": "sha256:33c8b73f73ec1ac89056a36691f821a28f6b7876e95a9b82ce71063f95678ad1",
+  "source_catalog_fingerprint": "sha256:62d4dda63cfacb2a5c358b1a929959779fca2d08739ce575cc007b740c498460",
+  "semantic_review_fingerprint": "sha256:f48e5a0bb1d5d6b496e23a3b030bfeae145a424ade44eff64b3b28c8659e5b12",
   "producer_contract_fingerprint": "sha256:e52114464a82bb9ff6c3392202fdda7a31770dcffc6e49d93eebcf4fffeba4e5",
   "scus": [
     {
@@ -14770,9 +14770,7 @@
       "safety_notes": [
         "Read-only evidence surface; planner must not interpret returned chart facts."
       ],
-      "known_gaps": [
-        "Pagination or bounded retrieval lacks a complete, source-reviewed exhaustion contract; the planner must retain a material frontier."
-      ],
+      "known_gaps": [],
       "availability_contracts": [
         {
           "binding_id": "registry:marsys://tool/L2/query_cgm_motifs",
@@ -14781,9 +14779,9 @@
               "kind": "source_query",
               "contract_id": "source-query:query-cgm-motifs:v1",
               "capability_uri": "marsys://tool/L2/query_cgm_motifs",
-              "contract_sha256": "sha256:ee9fe8f73582ff95b21e95ea6cc1f6a3db56c83a399c57170d1dcaed7b59ef6d",
+              "contract_sha256": "sha256:94856a48808a83668e9238d4900aabfea7b65f38b15b4f4189ade725a3d70ed5",
               "scope": "chart",
-              "source_ref": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_cgm_motifs.ts:67-84 | platform/migrations/1000_nirmana_l2_bo_cgm_motifs_output_digest_spec.sql:1-80"
+              "source_ref": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_cgm_motifs.ts:74-91 | platform/migrations/1000_nirmana_l2_bo_cgm_motifs_output_digest_spec.sql:1-80"
             }
           ]
         }
@@ -14804,14 +14802,13 @@
           "output_contract": {
             "content": "ToolResult.content"
           },
-          "pagination": "bounded_unverified",
-          "pagination_verified": false,
+          "pagination": "none",
+          "pagination_verified": null,
           "executable": true,
           "route_evidence": "CapabilityDescriptor:marsys://tool/L2/query_cgm_motifs | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed",
           "pagination_review": {
-            "disposition": "non_exhaustible",
-            "source_ref": "platform/src/generated/capability_estate_census.json#details.descriptor_route_contracts:marsys://tool/L2/query_cgm_motifs",
-            "blocker": "response collection and exhaustion paths are not source-reviewed"
+            "disposition": "not_paginated",
+            "source_ref": "platform/src/generated/capability_estate_census.json#details.descriptor_route_contracts:marsys://tool/L2/query_cgm_motifs"
           },
           "execution_channels": [
             "platform_internal"
@@ -14881,14 +14878,7 @@
           "source_ref": "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#relational:query_cgm_motifs"
         }
       ],
-      "gap_dispositions": [
-        {
-          "gap": "Pagination or bounded retrieval lacks a complete, source-reviewed exhaustion contract; the planner must retain a material frontier.",
-          "status": "deferred_contract",
-          "rationale": "Retained as a named contract boundary until its evidence gate is separately closed.",
-          "source_ref": "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#relational:query_cgm_motifs"
-        }
-      ],
+      "gap_dispositions": [],
       "graph_disposition": {
         "status": "isolated_dispositioned",
         "rationale": "No authored declaration or descriptor drill-child contract names a semantic relationship; shared labels alone are not treated as edge evidence.",
@@ -14957,9 +14947,7 @@
       "safety_notes": [
         "Read-only evidence surface; planner must not interpret returned chart facts."
       ],
-      "known_gaps": [
-        "Pagination or bounded retrieval lacks a complete, source-reviewed exhaustion contract; the planner must retain a material frontier."
-      ],
+      "known_gaps": [],
       "availability_contracts": [
         {
           "binding_id": "registry:marsys://tool/L2/query_cgm_paths",
@@ -14968,9 +14956,9 @@
               "kind": "source_query",
               "contract_id": "source-query:query-cgm-paths:v1",
               "capability_uri": "marsys://tool/L2/query_cgm_paths",
-              "contract_sha256": "sha256:40657ad02e34ae576e3d167523bc18695dd38590e979f424503315b4958f26a1",
+              "contract_sha256": "sha256:b29e9eff87aeaac09556c6e85569c4004a4644c7fe915c1610d8203399fc0616",
               "scope": "chart",
-              "source_ref": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_cgm_paths.ts:66-83 | platform/migrations/982_nirmana_l2_bo_cgm_paths_output_digest_spec.sql:1-80"
+              "source_ref": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_cgm_paths.ts:73-90 | platform/migrations/982_nirmana_l2_bo_cgm_paths_output_digest_spec.sql:1-80"
             }
           ]
         }
@@ -14992,14 +14980,13 @@
           "output_contract": {
             "content": "ToolResult.content"
           },
-          "pagination": "bounded_unverified",
-          "pagination_verified": false,
+          "pagination": "none",
+          "pagination_verified": null,
           "executable": true,
           "route_evidence": "CapabilityDescriptor:marsys://tool/L2/query_cgm_paths | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed",
           "pagination_review": {
-            "disposition": "non_exhaustible",
-            "source_ref": "platform/src/generated/capability_estate_census.json#details.descriptor_route_contracts:marsys://tool/L2/query_cgm_paths",
-            "blocker": "response collection and exhaustion paths are not source-reviewed"
+            "disposition": "not_paginated",
+            "source_ref": "platform/src/generated/capability_estate_census.json#details.descriptor_route_contracts:marsys://tool/L2/query_cgm_paths"
           },
           "execution_channels": [
             "platform_internal"
@@ -15069,14 +15056,7 @@
           "source_ref": "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#relational:query_cgm_paths"
         }
       ],
-      "gap_dispositions": [
-        {
-          "gap": "Pagination or bounded retrieval lacks a complete, source-reviewed exhaustion contract; the planner must retain a material frontier.",
-          "status": "deferred_contract",
-          "rationale": "Retained as a named contract boundary until its evidence gate is separately closed.",
-          "source_ref": "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#relational:query_cgm_paths"
-        }
-      ],
+      "gap_dispositions": [],
       "graph_disposition": {
         "status": "isolated_dispositioned",
         "rationale": "No authored declaration or descriptor drill-child contract names a semantic relationship; shared labels alone are not treated as edge evidence.",
@@ -17421,7 +17401,9 @@
       "safety_notes": [
         "Read-only evidence surface; planner must not interpret returned chart facts."
       ],
-      "known_gaps": [],
+      "known_gaps": [
+        "Pagination or bounded retrieval lacks a complete, source-reviewed exhaustion contract; the planner must retain a material frontier."
+      ],
       "availability_contracts": [
         {
           "binding_id": "registry:marsys://tool/L2/query_domain_reading",
@@ -17430,9 +17412,9 @@
               "kind": "source_query",
               "contract_id": "source-query:query-domain-reading:v1",
               "capability_uri": "marsys://tool/L2/query_domain_reading",
-              "contract_sha256": "sha256:14e905164f92bbcaac9a7283ee754607543cf3598e065298e38056cdbcc07d92",
+              "contract_sha256": "sha256:1a95b0ebb93dc902b3cee760cebf63a98a48d05dd318ed134001ddda519d7cfa",
               "scope": "chart",
-              "source_ref": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_domain_reading.ts:174-533 | platform/src/lib/retrieval/registry/layers/L2_bodha/query_domain_reading.ts:680-1010 | platform/src/lib/retrieval/ranking/l1_context_fetcher.ts:93-157 | platform/src/lib/retrieval/provenance/freshness_notes.ts:84-111"
+              "source_ref": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_domain_reading.ts:174-533 | platform/src/lib/retrieval/registry/layers/L2_bodha/query_domain_reading.ts:680-1017 | platform/src/lib/retrieval/ranking/l1_context_fetcher.ts:93-157 | platform/src/lib/retrieval/provenance/freshness_notes.ts:84-111"
             }
           ]
         }
@@ -17458,13 +17440,14 @@
           "output_contract": {
             "content": "ToolResult.content"
           },
-          "pagination": "none",
-          "pagination_verified": null,
+          "pagination": "bounded_unverified",
+          "pagination_verified": false,
           "executable": true,
           "route_evidence": "CapabilityDescriptor:marsys://tool/L2/query_domain_reading | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_allowlist | platform-mcp/src/tools/register_p1_aliases.ts:bodha_domain_reading_get | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_allowlist | platform-mcp/src/tools/register_p1_aliases.ts:bodha_domain_reading_get",
           "pagination_review": {
-            "disposition": "not_paginated",
-            "source_ref": "platform/src/generated/capability_estate_census.json#details.descriptor_route_contracts:marsys://tool/L2/query_domain_reading"
+            "disposition": "non_exhaustible",
+            "source_ref": "platform/src/generated/capability_estate_census.json#details.descriptor_route_contracts:marsys://tool/L2/query_domain_reading",
+            "blocker": "response collection and exhaustion paths are not source-reviewed"
           },
           "execution_channels": [
             "platform_internal",
@@ -17536,7 +17519,14 @@
           "source_ref": "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#assessment:query_domain_reading"
         }
       ],
-      "gap_dispositions": [],
+      "gap_dispositions": [
+        {
+          "gap": "Pagination or bounded retrieval lacks a complete, source-reviewed exhaustion contract; the planner must retain a material frontier.",
+          "status": "deferred_contract",
+          "rationale": "Retained as a named contract boundary until its evidence gate is separately closed.",
+          "source_ref": "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#assessment:query_domain_reading"
+        }
+      ],
       "graph_disposition": {
         "status": "connected",
         "rationale": "At least one authored declaration or descriptor drill-child contract names this relationship.",
@@ -24384,9 +24374,9 @@
               "kind": "source_query",
               "contract_id": "source-query:query-quality-scorecard:v1",
               "capability_uri": "marsys://tool/L2/query_quality_scorecard",
-              "contract_sha256": "sha256:6087e5a45c14ae0b541b65d2ec10512ca6d459e9811bfcb15ee207269f95b6b0",
+              "contract_sha256": "sha256:f7267c87bb99004fa68e1ef70e5a64f38433ffed7963adece33469c5f0bd9bce",
               "scope": "chart",
-              "source_ref": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_quality_scorecard.ts:78-97 | platform/src/lib/retrieval/provenance/freshness_notes.ts:73-107"
+              "source_ref": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_quality_scorecard.ts:85-104 | platform/src/lib/retrieval/provenance/freshness_notes.ts:73-107"
             }
           ]
         }
@@ -24942,9 +24932,7 @@
       "safety_notes": [
         "Read-only evidence surface; planner must not interpret returned chart facts."
       ],
-      "known_gaps": [
-        "Pagination or bounded retrieval lacks a complete, source-reviewed exhaustion contract; the planner must retain a material frontier."
-      ],
+      "known_gaps": [],
       "availability_contracts": [
         {
           "binding_id": "registry:marsys://tool/L2/query_remedies",
@@ -24953,9 +24941,9 @@
               "kind": "source_query",
               "contract_id": "source-query:query-remedies:v1",
               "capability_uri": "marsys://tool/L2/query_remedies",
-              "contract_sha256": "sha256:e6520068171272669679226e68631a277eb13a1050e0a6543b17d4d7802ae372",
+              "contract_sha256": "sha256:49a8cd7ee8572edaad81ee1a56ada3132cdd596f6331928bb3d4794883b41be4",
               "scope": "chart",
-              "source_ref": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_remedies.ts:126-175 | platform/src/lib/retrieval/registry/layers/L2_bodha/query_remedies.ts:320-422"
+              "source_ref": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_remedies.ts:126-175 | platform/src/lib/retrieval/registry/layers/L2_bodha/query_remedies.ts:327-429"
             }
           ]
         }
@@ -24981,14 +24969,13 @@
           "output_contract": {
             "content": "ToolResult.content"
           },
-          "pagination": "bounded_unverified",
-          "pagination_verified": false,
+          "pagination": "none",
+          "pagination_verified": null,
           "executable": true,
           "route_evidence": "CapabilityDescriptor:marsys://tool/L2/query_remedies | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_allowlist | platform-mcp/src/tools/register_p1_aliases.ts:bodha_remedies_get | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_allowlist | platform-mcp/src/tools/register_p1_aliases.ts:bodha_remedies_get",
           "pagination_review": {
-            "disposition": "non_exhaustible",
-            "source_ref": "platform/src/generated/capability_estate_census.json#details.descriptor_route_contracts:marsys://tool/L2/query_remedies",
-            "blocker": "response collection and exhaustion paths are not source-reviewed"
+            "disposition": "not_paginated",
+            "source_ref": "platform/src/generated/capability_estate_census.json#details.descriptor_route_contracts:marsys://tool/L2/query_remedies"
           },
           "execution_channels": [
             "platform_internal",
@@ -25060,14 +25047,7 @@
           "source_ref": "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#remedial:query_remedies"
         }
       ],
-      "gap_dispositions": [
-        {
-          "gap": "Pagination or bounded retrieval lacks a complete, source-reviewed exhaustion contract; the planner must retain a material frontier.",
-          "status": "deferred_contract",
-          "rationale": "Retained as a named contract boundary until its evidence gate is separately closed.",
-          "source_ref": "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#remedial:query_remedies"
-        }
-      ],
+      "gap_dispositions": [],
       "graph_disposition": {
         "status": "isolated_dispositioned",
         "rationale": "No authored declaration or descriptor drill-child contract names a semantic relationship; shared labels alone are not treated as edge evidence.",
@@ -30293,9 +30273,7 @@
       "safety_notes": [
         "Read-only evidence surface; planner must not interpret returned chart facts."
       ],
-      "known_gaps": [
-        "Pagination or bounded retrieval lacks a complete, source-reviewed exhaustion contract; the planner must retain a material frontier."
-      ],
+      "known_gaps": [],
       "availability_contracts": [
         {
           "binding_id": "registry:marsys://tool/L2/query_triangulation",
@@ -30304,9 +30282,9 @@
               "kind": "source_query",
               "contract_id": "source-query:query-triangulation:v1",
               "capability_uri": "marsys://tool/L2/query_triangulation",
-              "contract_sha256": "sha256:28782be52e090734032e7c3ee3a4dfd48252a255d19d935d044f196772393e64",
+              "contract_sha256": "sha256:3c11d52cbe0465b75d89bba2fe2c630d96ef9adcb4b31fd8c4d0b1a29e99dcb1",
               "scope": "chart",
-              "source_ref": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_triangulation.ts:74-98"
+              "source_ref": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_triangulation.ts:81-105"
             }
           ]
         }
@@ -30328,14 +30306,13 @@
           "output_contract": {
             "content": "ToolResult.content"
           },
-          "pagination": "bounded_unverified",
-          "pagination_verified": false,
+          "pagination": "none",
+          "pagination_verified": null,
           "executable": true,
           "route_evidence": "CapabilityDescriptor:marsys://tool/L2/query_triangulation | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed",
           "pagination_review": {
-            "disposition": "non_exhaustible",
-            "source_ref": "platform/src/generated/capability_estate_census.json#details.descriptor_route_contracts:marsys://tool/L2/query_triangulation",
-            "blocker": "response collection and exhaustion paths are not source-reviewed"
+            "disposition": "not_paginated",
+            "source_ref": "platform/src/generated/capability_estate_census.json#details.descriptor_route_contracts:marsys://tool/L2/query_triangulation"
           },
           "execution_channels": [
             "platform_internal"
@@ -30405,14 +30382,7 @@
           "source_ref": "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#assessment:query_triangulation"
         }
       ],
-      "gap_dispositions": [
-        {
-          "gap": "Pagination or bounded retrieval lacks a complete, source-reviewed exhaustion contract; the planner must retain a material frontier.",
-          "status": "deferred_contract",
-          "rationale": "Retained as a named contract boundary until its evidence gate is separately closed.",
-          "source_ref": "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#assessment:query_triangulation"
-        }
-      ],
+      "gap_dispositions": [],
       "graph_disposition": {
         "status": "isolated_dispositioned",
         "rationale": "No authored declaration or descriptor drill-child contract names a semantic relationship; shared labels alone are not treated as edge evidence.",
@@ -38944,9 +38914,9 @@
     "publicly_named_bindings": 73,
     "reviewed_pagination_bindings": 5,
     "reviewed_pagination_dispositions": 186,
-    "reviewed_paginated_descriptors": 96,
+    "reviewed_paginated_descriptors": 93,
     "exhaustible_reviewed_descriptors": 5,
-    "non_exhaustible_descriptors": 91,
+    "non_exhaustible_descriptors": 88,
     "reviewed_route_descriptors": 186,
     "reviewed_public_descriptors": 71,
     "reviewed_nonpublic_descriptors": 115,

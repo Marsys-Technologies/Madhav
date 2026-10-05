@@ -101,6 +101,13 @@ const historicalV14 = {
   report_hash: 'sha256:0899b303104a534f2222d5845bd1cb1ac1061a0b25b736307bdbcaa0c63e8a88',
   artifact_hash: 'sha256:d61bc95fa74dff4da2bfd050e936f6388aa94a657589c1bc7053eb65fd705133',
 } as const
+// The Pravāha ka_gochara registry-revert successor of v14. Immutable since the Suvarna DENS PR-1
+// (L2 density_contract, v16) snapshot regeneration superseded it.
+const historicalV15 = {
+  capability_content_hash: 'sha256:bff49e66b133a837aab85a209679b0a0f8c476b2a13734765fe7d064dc0d417b',
+  report_hash: 'sha256:f35696cc07f5df555e07dbb33b096e46501896048b8be45456a895f75b03f558',
+  artifact_hash: 'sha256:988f9ceb467f62a10e8a14e2bbd0109bd3c8e55689a7765c25fd91cc0be93c83',
+} as const
 
 function withoutScu(
   source: CapabilityKnowledgeSnapshot,
@@ -168,7 +175,12 @@ describe('Purna Anvesana Wave 7 Beyond-Acarya source acceptance', () => {
     // report_hash; source_catalog/semantic_review fingerprints coincide with v14's and no SCU,
     // edge, proof kind or availability disposition changed (the metric assertions above are
     // unchanged). Only this pinned hash was re-pinned.
-    expect(report.report_hash).toBe('sha256:f35696cc07f5df555e07dbb33b096e46501896048b8be45456a895f75b03f558')
+    // Suvarna DENS PR-1 (v16): hand-authored, handler-corroborated density_contract literals on six
+    // L2 serving capabilities moved source_catalog_fingerprint (route pagination dispositions and
+    // empty_result_state) and, with it, capability_content_hash and report_hash; semantic_review moved only
+    // because six source_ref line ranges were re-pointed after the inserted literals, producer_contract
+    // coincides with v15's, and no SCU, edge, proof kind or availability disposition changed (the metric assertions above are unchanged). Only this pinned hash was re-pinned.
+    expect(report.report_hash).toBe('sha256:b6b7939999746b75d4fd17c5ec99d13db4bfb937a0ce6b8562bcb083b0de55de')
   })
 
   it('detects an independently expected concept omitted from the snapshot', () => {
@@ -554,9 +566,31 @@ describe('Purna Anvesana Wave 7 Beyond-Acarya source acceptance', () => {
     })
   })
 
-  it('pins the v15 source-successor artifact to the current executable report without claiming live acceptance (Pravāha ka_gochara registry revert)', () => {
-    const artifact = JSON.parse(readFileSync(new URL(
+  it('keeps the v15 source-successor artifact immutable after the Suvarna DENS PR-1 (L2) advance', () => {
+    const artifactBytes = readFileSync(new URL(
       '../../../../../00_ARCHITECTURE/briefs/nirmana/purna_anvesana/BEYOND_ACARYA_ACCEPTANCE_v15.json',
+      import.meta.url,
+    ))
+    const artifact = JSON.parse(artifactBytes.toString('utf8')) as Record<string, unknown>
+
+    expect(`sha256:${createHash('sha256').update(artifactBytes).digest('hex')}`).toBe(historicalV15.artifact_hash)
+    expect(artifact).toMatchObject({
+      schema_version: 'madhav-purna-anvesana/beyond-acarya-acceptance/v15',
+      predecessor: {
+        artifact: 'BEYOND_ACARYA_ACCEPTANCE_v14.json',
+        capability_content_hash: historicalV14.capability_content_hash,
+        report_hash: historicalV14.report_hash,
+      },
+      capability_content_hash: historicalV15.capability_content_hash,
+      report_hash: historicalV15.report_hash,
+      verdict: 'ACCEPTED_SOURCE_LOCAL',
+      evaluated_source_revision: '2560ca184d2527b351cdb86fdba4bd878feb5d92',
+    })
+  })
+
+  it('pins the v16 source-successor artifact to the current executable report without claiming live acceptance (Suvarna DENS PR-1 L2 density_contract)', () => {
+    const artifact = JSON.parse(readFileSync(new URL(
+      '../../../../../00_ARCHITECTURE/briefs/nirmana/purna_anvesana/BEYOND_ACARYA_ACCEPTANCE_v16.json',
       import.meta.url,
     ), 'utf8')) as Record<string, unknown>
     const report = evaluateBeyondAcaryaAcceptance(snapshot, BEYOND_ACARYA_ACCEPTANCE_CASES)
@@ -564,12 +598,12 @@ describe('Purna Anvesana Wave 7 Beyond-Acarya source acceptance', () => {
     const snapshotFileSha256 = `sha256:${createHash('sha256').update(snapshotBytes).digest('hex')}`
 
     expect(artifact).toMatchObject({
-      schema_version: 'madhav-purna-anvesana/beyond-acarya-acceptance/v15',
+      schema_version: 'madhav-purna-anvesana/beyond-acarya-acceptance/v16',
       predecessor: {
-        artifact: 'BEYOND_ACARYA_ACCEPTANCE_v14.json',
+        artifact: 'BEYOND_ACARYA_ACCEPTANCE_v15.json',
         acceptance_version: 'beyond-acarya-source-acceptance-v2',
-        capability_content_hash: historicalV14.capability_content_hash,
-        report_hash: historicalV14.report_hash,
+        capability_content_hash: historicalV15.capability_content_hash,
+        report_hash: historicalV15.report_hash,
       },
       acceptance_version: report.acceptance_version,
       corpus_version: report.corpus_version,
@@ -612,11 +646,10 @@ describe('Purna Anvesana Wave 7 Beyond-Acarya source acceptance', () => {
         semantic_review_fingerprint: snapshot.semantic_review_fingerprint,
         producer_contract_fingerprint: snapshot.producer_contract_fingerprint,
       },
-      // Pravāha A5.7 (PR #2889): migration 1230 reverts the ka_gochara registry row to the
-      // pre-1091 registered-writer surface (kala_gochara_windows_v2 / generation '2.0'); the
-      // snapshot is regenerated on the merged tree (producer_contract_fingerprint moved to e5211;
-      // source_catalog/semantic_review fingerprints coincide with v14's).
-      evaluated_source_revision: '2560ca184d2527b351cdb86fdba4bd878feb5d92',
+      // Suvarna DENS PR-1 (L2): six hand-authored density_contract literals moved source_catalog_fingerprint
+      // (route pagination dispositions + empty_result_state) and re-pointed six source_ref line ranges
+      // (semantic_review); producer_contract coincides with v15's.
+      evaluated_source_revision: 'f72dc9d93921c1fd5c9497d72c044483fc7ba8a2',
     })
   })
 })
