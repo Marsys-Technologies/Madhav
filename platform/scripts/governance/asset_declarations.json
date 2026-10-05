@@ -1426,6 +1426,10 @@
   },
   "bo_yantra_mechanism": {
    "kind": "data",
+   "uniform_authority": {
+    "why": "every bodha_mechanisms row carries verification_pass_status single, with no catalog-only versus confirmed split in the table, so its rows are of one uniform authority",
+    "evidence": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_mechanisms.ts:27"
+   },
    "carriage": {
     "served_surface": true
    },
@@ -1447,6 +1451,14 @@
   },
   "ga_ayurdaya": {
    "kind": "data",
+   "density_facet": {
+    "column": "fact_category",
+    "values": [
+     "ayurdaya"
+    ],
+    "why": "the ayurdaya longevity rows are the fact_category value the ga_ayurdaya writer stores and its capability pins in its served SELECT",
+    "evidence": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_ayurdaya.ts:71"
+   },
    "carriage": {
     "served_surface": true
    },
