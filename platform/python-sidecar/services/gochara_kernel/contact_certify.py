@@ -97,12 +97,17 @@ def _full_stretch(position_at, body: str, levels, orb: float, a, b, lo, hi, *, m
         stretches = cr.band_intervals(position_at, body, levels, orb, w_lo, w_hi)
         mine = [s for s in stretches if s[0] < b and a < s[1]]
         if len(mine) != 1:
+            _full_stretch.last_detail = "ambiguous_extension"          # why it could not be settled (read by `classify_graze_detail`'s caller)
             return None
         A, B = mine[0]
         if not ((a <= lo and A <= w_lo) or (b >= hi and B >= w_hi)):
             return A, B
         ext *= 2.0
+    _full_stretch.last_detail = "exceeds_1500_days"
     return None
+
+
+_full_stretch.last_detail = None
 
 
 #: Why a stretch was NOT classified a graze (MB-ADDITIONS 4): the reasons `classify_graze_detail` returns with a None. Only the first four are UNRESOLVED
@@ -188,12 +193,26 @@ def classify_graze_detail(position_at, body: str, relation: str, target: str, in
     return out, None
 
 
-UNRESOLVED_RAISE = "raise"          # an unresolved stretch is a certification problem, as before (every run but the measuring build)
-UNRESOLVED_REPORT = "report"        # the MEASURING build counts them: an UNRESOLVED stretch is recorded in the stretch sink, not raised (a proven omission still raises)
+POLICY_RAISE = "raise"            # a stretch no ledger contact touches is a certification problem unless it is a graze (every run but the measuring build)
+POLICY_SINK_ALL = "sink_all"      # the MEASURING build (all_classes_full): near-misses, UNRESOLVED stretches and OMISSIONS are sunk with their reason and the build continues
+SINK_POLICIES = (POLICY_RAISE, POLICY_SINK_ALL)
+
+#: the sink KIND and REASON each `classify_graze_detail` outcome becomes (MEASURING_BUILD_CONTRACT MB-2.2, closed lists). `anomaly` is NOT sunk under sink_all: the
+#: steward's ruling names near-misses, unresolved stretches and omissions only.
+OUTCOME_KIND_REASON = {
+    None: ("near_miss", "certified_positive_clearance"),
+    REASON_APPROACH_BELOW_MINIMUM: ("unresolved", "clearance_below_min_approach"),
+    REASON_EXTENSION_NOT_SETTLED: ("unresolved", "extension_unsettled"),
+    REASON_CROSSING_NOT_PROVED: ("unresolved", "no_crossing_unproved"),
+    REASON_LEVEL_CROSSED: ("omission", "crossing_detected"),
+    REASON_NOT_APPLICABLE: ("omission", "unsupported_target"),
+    REASON_NO_LEVEL_IN_BAND: ("anomaly", "no_relevant_level"),
+}
+SUNK_KINDS_UNDER_SINK_ALL = ("near_miss", "unresolved", "omission")
 
 
 def compare_contact_sets(position_at, body: str, relation: str, target: str, want, have, lo, hi, graze_sink=None, stretch_sink=None,
-                         unresolved_policy: str = UNRESOLVED_RAISE) -> list[str]:
+                         sink_policy: str = POLICY_RAISE) -> list[str]:
     """Compare the reconstructed in-geometry intervals `want` with the ledger's contacts `have` — [(t_in, t_out, accuracy_deg)]
     clipped to [lo, hi) — for ONE (body, relation, target). Returns the problems (empty = they agree).
 
@@ -206,42 +225,46 @@ def compare_contact_sets(position_at, body: str, relation: str, target: str, wan
     not a boundary of the contact SET, so it is not (and must not be) required to sit on an edge."""
     label = f"{body} {relation} {target}"
     problems: list[str] = []
-    if unresolved_policy not in (UNRESOLVED_RAISE, UNRESOLVED_REPORT):
-        raise ValueError(f"unresolved_policy {unresolved_policy!r} is not one of {(UNRESOLVED_RAISE, UNRESOLVED_REPORT)}")
+    if sink_policy not in SINK_POLICIES:
+        raise ValueError(f"sink_policy {sink_policy!r} is not one of {SINK_POLICIES}")
     if graze_sink is not None:
         # INTERIM (steward GRAZE-INTERIM), only when the caller holds a VALIDATED test-slice marker: an in-band interval with NO ledger contact touching it and
         # NO exact crossing of any ray level (a graze: the builder mints a point contact only around an exact root) is REPORTED into `graze_sink` instead
         # of raised; every other difference still raises. Without a sink (any full build, the verification job) nothing changes.
-        # MB-ADDITIONS 4: `stretch_sink` (optional) receives ONE structured record per reconstructed in-band stretch, whatever became of it: `contact` (a
-        # ledger contact touches it), `graze` (reported), `unresolved` (classify_graze said None with a reason that is not a proof of omission), or
-        # `omission` (an exact crossing exists and no contact does: raised, as before). Under `unresolved_policy="report"` (the measuring build, which exists to
-        # COUNT them) an unresolved stretch is recorded and not raised; under "raise" it stays a problem.
+        # `stretch_sink` (optional, MEASURING_BUILD_CONTRACT MB-2) receives ONE record per reconstructed in-band stretch (every one, in `t_in` order, with its
+        # 1-based `stretch_ordinal`): `kind` contact when a ledger contact touches it, else the kind and reason `OUTCOME_KIND_REASON` names. Under POLICY_SINK_ALL
+        # (the measuring build) near-miss, unresolved and omission stretches are recorded and not raised and the build continues; under POLICY_RAISE only a
+        # near-miss is not raised. A stretch a contact touches that does not match it is the old, raised problem under every policy.
         kept = []
-        for w in want:
-            rec = {"body": body, "relation": relation, "target": target, "interval": [w[0].isoformat(), w[1].isoformat()],
-                   "clipped_at_horizon": [x for x, hit in (("start", w[0] <= lo), ("end", w[1] >= hi)) if hit]}
-            if not any(h[0] < w[1] and w[0] < h[1] for h in have):
-                g, reason = classify_graze_detail(position_at, body, relation, target, w, lo, hi)
-                if g is not None:
-                    graze_sink.append(g)
-                    if stretch_sink is not None:
-                        stretch_sink.append({**rec, "class": "graze", "closest_approach_deg": g["closest_approach_deg"], "level_deg": g["level_deg"]})
-                    continue
-                if reason in UNRESOLVED_REASONS:
-                    if stretch_sink is not None:
-                        stretch_sink.append({**rec, "class": "unresolved", "reason": reason})
-                    if unresolved_policy == UNRESOLVED_REPORT:
-                        continue
-                elif stretch_sink is not None:
-                    stretch_sink.append({**rec, "class": "omission", "reason": reason})
-            elif stretch_sink is not None:
-                stretch_sink.append({**rec, "class": "contact"})
+        for ordinal, w in enumerate(want, start=1):
+            episodes = sum(1 for h in have if h[0] < w[1] and w[0] < h[1])
+            rec = {"body": body, "relation": relation, "target": target, "interval": [w[0].isoformat(), w[1].isoformat()], "stretch_ordinal": ordinal,
+                   "clipped_at_horizon": [x for x, hit in (("start", w[0] <= lo), ("end", w[1] >= hi)) if hit], "episode_count": episodes}
+            if episodes:
+                if stretch_sink is not None:
+                    stretch_sink.append({**rec, "kind": "contact", "reason": None})
+                kept.append(w)
+                continue
+            g, reason = classify_graze_detail(position_at, body, relation, target, w, lo, hi)
+            kind, why = OUTCOME_KIND_REASON[reason]
+            if stretch_sink is not None:
+                detail = {"extension": _full_stretch.last_detail} if reason == REASON_EXTENSION_NOT_SETTLED else None
+                extra = {} if g is None else {"closest_approach_deg": g["closest_approach_deg"], "closest_approach_at": g["closest_approach_at"],
+                                                "peak_activity": g["peak_activity"], "level_deg": g["level_deg"], "full_interval": g.get("interval") if g.get("clipped_by_horizon") else None}
+                stretch_sink.append({**rec, "kind": kind, "reason": why, "detail": detail, **extra})
+            if g is not None:
+                graze_sink.append(g)
+                continue
+            if sink_policy == POLICY_SINK_ALL and kind in SUNK_KINDS_UNDER_SINK_ALL:
+                continue
             kept.append(w)
         want = kept
     elif stretch_sink is not None:
-        stretch_sink.extend({"body": body, "relation": relation, "target": target, "interval": [w[0].isoformat(), w[1].isoformat()],
+        stretch_sink.extend({"body": body, "relation": relation, "target": target, "interval": [w[0].isoformat(), w[1].isoformat()], "stretch_ordinal": i,
                              "clipped_at_horizon": [x for x, hit in (("start", w[0] <= lo), ("end", w[1] >= hi)) if hit],
-                             "class": "contact" if any(h[0] < w[1] and w[0] < h[1] for h in have) else "unclassified"} for w in want)
+                             "episode_count": sum(1 for h in have if h[0] < w[1] and w[0] < h[1]),
+                             "kind": "contact" if any(h[0] < w[1] and w[0] < h[1] for h in have) else "unclassified", "reason": None}
+                            for i, w in enumerate(want, start=1))
     acc = max([h[2] for h in have] or [bm.DEFAULT_ACCURACY_DEG])
     union = _merge([(h[0], h[1]) for h in have])
 
@@ -263,7 +286,7 @@ def compare_contact_sets(position_at, body: str, relation: str, target: str, wan
 
 
 def certify_contact_geometry(conn, *, chart_id: str, generation: str, event_class: str, position_at, graze_sink=None, stretch_sink=None,
-                             unresolved_policy: str = UNRESOLVED_RAISE) -> dict:
+                             sink_policy: str = POLICY_RAISE) -> dict:
     """Compare the ledger's contacts with the reconstructed ones for every concrete transit obligation of the class."""
     from .inventory_verifier import Unverifiable
     if position_at is None:
@@ -298,7 +321,7 @@ def certify_contact_geometry(conn, *, chart_id: str, generation: str, event_clas
         have = sorted(ledger.get((agent, relation, target), []))
         expected_total += len(want)
         problems.extend(compare_contact_sets(position_at, agent, relation, target, want, have, lo, hi, graze_sink=graze_sink,
-                                             stretch_sink=stretch_sink, unresolved_policy=unresolved_policy))
+                                             stretch_sink=stretch_sink, sink_policy=sink_policy))
     if problems:
         raise RuntimeError(f"contact geometry certification failed {event_class}: " + "; ".join(problems))
     return {"obligations_certified": len(concrete), "contacts_expected": expected_total,
@@ -308,5 +331,5 @@ def certify_contact_geometry(conn, *, chart_id: str, generation: str, event_clas
 
 
 __all__ = ["BOUNDARY_TOLERANCE_STATEMENT", "GRAZE_MIN_APPROACH_DEG", "REASON_APPROACH_BELOW_MINIMUM", "REASON_CROSSING_NOT_PROVED", "REASON_EXTENSION_NOT_SETTLED",
-           "REASON_LEVEL_CROSSED", "REASON_NO_LEVEL_IN_BAND", "REASON_NOT_APPLICABLE", "UNRESOLVED_RAISE", "UNRESOLVED_REASONS", "UNRESOLVED_REPORT",
+           "REASON_LEVEL_CROSSED", "REASON_NO_LEVEL_IN_BAND", "REASON_NOT_APPLICABLE", "POLICY_RAISE", "POLICY_SINK_ALL", "OUTCOME_KIND_REASON", "SINK_POLICIES", "UNRESOLVED_REASONS",
            "certify_contact_geometry", "classify_graze", "classify_graze_detail", "compare_contact_sets", "expected_intervals"]

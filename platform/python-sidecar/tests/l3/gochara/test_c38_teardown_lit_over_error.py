@@ -17,7 +17,7 @@ def _make_asset_rows_say(w, rid, asset_state, run_asset_state):
     w.conn.execute("ALTER TABLE public.build_run_assets ADD COLUMN IF NOT EXISTS state text")
     w.conn.execute("ALTER TABLE public.build_run_assets ADD COLUMN IF NOT EXISTS error text")
     w.conn.execute("UPDATE public.build_run_assets SET state = %s, error = %s WHERE run_id = %s",
-                   (run_asset_state, "BLOCKED: upstream dependency(ies) timeout:28800s did not complete in this run" if run_asset_state == "error" else None, rid))
+                   (run_asset_state, "TIMEOUT: writer exceeded its writer_timeout_seconds budget (28800s)" if run_asset_state == "error" else None, rid))
     w.conn.execute("UPDATE public.asset_throughput SET state = %s WHERE asset_id = %s AND chart_id = %s", (asset_state, ASSET, CHART_ID))
 
 

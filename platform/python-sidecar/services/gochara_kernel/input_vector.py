@@ -53,7 +53,7 @@ _K, _R = "services.gochara_kernel.", "services.gochara_rules."
 # the vector). Verifiers sit with the stage they verify; nothing here is "optional".
 IMPLEMENTATION_MODULES = {
     "geometry": tuple(_K + m for m in (
-        "arcs", "boundary_match", "contact_certify", "contact_reconstruct", "contacts", "convention", "episodes", "ids", "interim_sink", "knots", "materialise", "record_store",
+        "arcs", "boundary_match", "contact_certify", "contact_reconstruct", "contacts", "convention", "episodes", "ids", "knots", "materialise", "record_store", "stretch_sink",
         "substrate", "targets")),
     "evaluation": tuple(_K + m for m in (
         "chart_context", "coverage", "dasha_read", "ephemeris_pins", "evaluator", "horizon", "input_vector", "input_vector_verifier",

@@ -66,6 +66,7 @@ def apply_orchestrator_schema(conn) -> None:
                  " ON CONFLICT (id) DO UPDATE SET chart_id = EXCLUDED.chart_id, name = EXCLUDED.name, birth_date = EXCLUDED.birth_date,"
                  " birth_time = EXCLUDED.birth_time, birth_lat = EXCLUDED.birth_lat, birth_lng = EXCLUDED.birth_lng,"
                  " birth_place = EXCLUDED.birth_place, timezone_id = EXCLUDED.timezone_id", (CHART, CHART))
+    apply_life_events(conn)         # the writer DERIVES its horizon from the chart's life-event-log rows (MEASURING_BUILD_CONTRACT MB-1): a real run needs the table
 
 
 def seed_registry(conn, asset_ids, v5_row=V5_ROW) -> None:
@@ -116,11 +117,18 @@ def stage_run(conn, marker: dict, writer_digest: str) -> str:
     return run_id
 
 
-def run_real_entry_point(dsn: str, run_id: str, *, ephe_env: str | None, timeout: float = 3000.0) -> dict:
+def run_real_entry_point(dsn: str, run_id: str, *, ephe_env: str | None, timeout: float = 3000.0, extra_pythonpath: str | None = None) -> dict:
     """`python -m pipeline.orchestrator.main --run-id <id>` as a SUBPROCESS: the real entry point, the real runner, the real asset_runner.
     Nothing is patched; ctx.config is whatever the runner builds. `ephe_env` sets (or, when None, REMOVES) SE_EPHE_PATH and SWE_EPHE_PATH."""
+    if extra_pythonpath is None:
+        # the subprocess pins the birth-word column exactly as the constant will be pinned after the production read (steward OS-1); a test-only shim
+        import tempfile
+        shim = tempfile.mkdtemp(prefix="lel_shim_")
+        Path(shim, "sitecustomize.py").write_text("from services.gochara_kernel import horizon\nhorizon.LEL_BIRTH_WORD_COLUMN = 'category'\n")
+        extra_pythonpath = shim
     env = {k: v for k, v in os.environ.items() if k not in ("SE_EPHE_PATH", "SWE_EPHE_PATH", "NIRMANA_FORCE_EXECUTE")}
-    env.update({"DATABASE_URL": dsn, "PUBSUB_DISABLED": "1", "ORCHESTRATOR_WORKER_LIMIT": "1", "PYTHONPATH": str(SIDECAR),
+    env.update({"DATABASE_URL": dsn, "PUBSUB_DISABLED": "1", "ORCHESTRATOR_WORKER_LIMIT": "1",
+                "PYTHONPATH": str(SIDECAR) if extra_pythonpath is None else f"{extra_pythonpath}{os.pathsep}{SIDECAR}",
                 "PYTHONUNBUFFERED": "1"})
     if ephe_env is not None:
         env["SE_EPHE_PATH"] = ephe_env
@@ -144,15 +152,18 @@ def substep_events(stdout: str) -> list[dict]:
     return out
 
 
-#: the life-event-log rows the pinned chart's horizon derivation reads (id, date, confidence): the birth entry, two placeholders and the first fully dated event
-PINNED_LEL_ROWS = (("EVT.1984.02.05.01", "1984-02-05", "exact"), ("EVT.1995.XX.XX.01", "1995-01-01", "year_only"),
-                   ("EVT.1998.02.16.01", "1998-02-16", "exact"), ("EVT.2001.03.XX.01", "2001-03-01", "month_known"),
-                   ("EVT.2007.06.10.01", "2007-06-10", "exact"))
+#: the life-event-log rows of the pinned chart the horizon derivation reads (id, date, confidence, birth word): the birth entry, two placeholders and dated rows. The birth word is
+#: stored in `category` here, the column the tests pin as `LEL_BIRTH_WORD_COLUMN` (steward OS-1 pins the real one from a production read).
+PINNED_LEL_ROWS = (("EVT.1984.02.05.01", "1984-02-05", "exact", "birth"), ("EVT.1995.XX.XX.01", "1995-07-01", "year_only", "other"),
+                   ("EVT.1998.02.16.01", "1998-02-16", "exact", "other"), ("EVT.2001.03.XX.01", "2001-03-01", "month_known", "other"),
+                   ("EVT.2007.06.10.01", "2007-06-10", "exact", "other"))
+OTHER_CHART = "11111111-2222-4333-8444-555555555555"
 
 
 def apply_life_events(conn, rows=PINNED_LEL_ROWS) -> None:
-    """`public.life_events` from the REAL DDL (the baseline's CREATE TABLE, then migration 457's shape columns and checks), with `rows` inserted
-    (event_id, event_date, date_confidence). The horizon derivation (FB-1/FB-2) reads every raw row of this table."""
+    """`public.life_events` from the REAL DDL: the baseline's CREATE TABLE, migration 457's shape columns and checks, and migration 423's per-chart key (`chart_id uuid NOT NULL
+    REFERENCES charts(id)`, unique with event_id). `rows` (event_id, event_date, date_confidence, category) are inserted for the pinned chart, plus ONE row of another chart that the
+    chart filter must never read. The horizon derivation reads every raw row of its chart."""
     import re
     baseline = (REPO / "platform" / "migrations" / "001_baseline.sql").read_text(encoding="utf-8")
     ddl = re.search(r"CREATE TABLE IF NOT EXISTS public\.life_events \(.*?\n\);", baseline, re.S)
@@ -160,7 +171,14 @@ def apply_life_events(conn, rows=PINNED_LEL_ROWS) -> None:
     conn.execute(ddl.group(0))
     for f in _files(457):
         conn.execute(Path(f).read_text(encoding="utf-8"))
-    for event_id, event_date, confidence in rows:
-        conn.execute("INSERT INTO public.life_events (event_id, event_date, category, description, chart_state, source_section, build_id, provenance,"
-                     " date_confidence) VALUES (%s, %s, 'other', 'test row', '{}'::jsonb, 'test', 'test', '{}'::jsonb, %s)",
-                     (event_id, event_date, confidence))
+    conn.execute("ALTER TABLE public.life_events ADD COLUMN IF NOT EXISTS chart_id uuid REFERENCES public.charts(id)")        # migration 423 (empty table at that point: no backfill)
+    conn.execute("INSERT INTO public.charts (id, chart_id, name) VALUES (%s, %s, 'other') ON CONFLICT (id) DO NOTHING", (OTHER_CHART, OTHER_CHART))
+    def insert(chart, event_id, event_date, confidence, category):
+        conn.execute("INSERT INTO public.life_events (chart_id, event_id, event_date, category, description, chart_state, source_section, build_id, provenance, date_confidence)"
+                     " VALUES (%s, %s, %s, %s, 'test row', '{}'::jsonb, 'test', 'test', '{}'::jsonb, %s)", (chart, event_id, event_date, category, confidence))
+    conn.execute("ALTER TABLE public.life_events DROP CONSTRAINT IF EXISTS life_events_event_id_key")
+    for event_id, event_date, confidence, category in rows:
+        insert(CHART, event_id, event_date, confidence, category)
+    insert(OTHER_CHART, "EVT.1990.01.01.01", "1990-01-01", "exact", "other")                                                       # another chart's row: must never be read
+    conn.execute("ALTER TABLE public.life_events ALTER COLUMN chart_id SET NOT NULL")
+    conn.execute("ALTER TABLE public.life_events ADD CONSTRAINT life_events_chart_event_uq UNIQUE (chart_id, event_id)")

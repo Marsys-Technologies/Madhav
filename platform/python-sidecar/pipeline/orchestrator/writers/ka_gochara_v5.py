@@ -59,7 +59,7 @@ from pipeline.orchestrator.writers import (
 )
 from services.gochara_kernel import evaluator as gk_evaluator
 from services.gochara_kernel import horizon as gk_horizon
-from services.gochara_kernel import interim_sink as gk_interim_sink
+from services.gochara_kernel import stretch_sink as gk_stretch_sink
 from services.gochara_kernel import ephemeris_pins as gk_ephemeris_pins
 from services.gochara_kernel.native_conn import native_connection
 from services.gochara_kernel import arcs as gk_arcs
@@ -154,13 +154,14 @@ WINDOW_PATHS = tuple(p for p in RECORD_PATHS if p in gk_window_sweep.SWEEP_PATHS
 # crash the build at its first substep.
 SCORED_CLASSES = tuple(sorted(c for c, k in gk_evaluator.ROW_MEMBERSHIP.items()
                               if k is not None))
-# FB-2 (FINAL_BUILD_SCOPE; owner rulings 7 and 13): the horizon of a chart is DERIVED (`gk_horizon.derive_chart_horizon`: end = birth + 100 years,
-# start = 1 January of the year of the first fully dated life-event-log event) and read from the database at run time (`_derive_horizon`). This constant
-# is the PINNED chart's derived horizon, [1998-01-01, 2084-02-05), and has ONE use in production code: the default outer bound the test-slice
+# FB-2 / MEASURING_BUILD_CONTRACT MB-1 (owner rulings 7 and 13): the horizon of a chart is DERIVED (`gk_horizon.derive_chart_horizon`: end = birth + 100 years,
+# start = 1 January of the year of the first fully dated life-event-log event) from the chart's raw rows at run time (`_derive_horizon`), and for the pinned chart
+# it is GUARDED by the owner-approved pair (`horizon_derivation_disagrees_with_ruling`). This constant IS that approved pair, [1998-01-01, 2084-02-05), and has ONE
+# use in production code: the default outer bound the test-slice
 # validator compares a marker's horizon against when it has no database to derive from (the dispatch stages a marker before any run exists). A run
 # never falls back to it: an absent config horizon is DERIVED or refused by name. (It was [1998-01-01, 2026-04-17), the scored window, until the
 # measuring build: the scored window is now the scoring harness's clip, FB-5.)
-DEFAULT_HORIZON = gk_horizon.PINNED_CHART_HORIZON.bounds
+DEFAULT_HORIZON = gk_horizon.RULED_HORIZON
 
 # ── gochara_v5_test_slice (C46; Stream A's spec M20261003T181323-f9c7 §3) ─────
 # A staged test run carries a digest-protected marker in build_runs.plan_manifest
@@ -463,14 +464,31 @@ def _station_instants_in(body: str, t0: datetime, t1: datetime, ephe_path: str |
     return [t.isoformat() for t in (jd_to_utc(jd) for jd in _STATION_JD_CACHE[key]) if t0 <= t < t1]
 
 
-def _interim_sink_record(event_class: str, horizon, graze_sink: list, stretch_sink: list, ephe_path: str | None) -> dict:
-    """The class's structured interim-sink record (MB-ADDITIONS 4) from the certifier's per-stretch records."""
+def _stretch_sink_records(event_class: str, horizon, stretch_sink: list, position_at, ephe_path: str | None) -> list[dict]:
+    """The class's STRETCH_SINK/1 records (MEASURING_BUILD_CONTRACT MB-2) from the certifier's per-stretch results; seams, wraps and horizon clipping are added
+    here from the arc index, the ray levels and the ephemeris."""
+    from datetime import timedelta
     from services.gochara_kernel.window_verifier import _ASPECT_ANGLES, _POINT_ORB_DEG
-    return gk_interim_sink.build_record(
-        event_class=event_class, generation=GENERATION, horizon=(horizon[0], horizon[1]), stretches=stretch_sink, grazes=graze_sink,
+
+    def wrapped_inside(body: str, t0: datetime, t1: datetime) -> bool:
+        n = max(2, min(200, int((t1 - t0).total_seconds() // 21600) + 2))                  # at most every six hours, never more than 200 samples
+        lons = [float(position_at(body, t0 + (t1 - t0) * k / (n - 1))) for k in range(n)]
+        return any(abs(b - a) > 180.0 for a, b in zip(lons, lons[1:]))
+    return gk_stretch_sink.build_records(
+        event_class=event_class, horizon=(horizon[0], horizon[1]), stretches=stretch_sink,
         stations_in=lambda body, t0, t1: _station_instants_in(body, t0, t1, ephe_path),
-        levels_for=lambda body, relation, target: gk_interim_sink.levels_of(relation, target, _ASPECT_ANGLES.get(body, ())),
-        orb_for=lambda relation: _POINT_ORB_DEG[relation])
+        levels_for=lambda body, relation, target: gk_stretch_sink.levels_of(relation, target, _ASPECT_ANGLES.get(body, ())),
+        orb_for=lambda relation: _POINT_ORB_DEG[relation], body_wrapped_inside=wrapped_inside)
+
+
+def _emit_stretch_sink(event_class: str, horizon, stretch_sink: list, position_at, ephe_path: str | None) -> dict:
+    """Log the records (WARNING for a certification finding, INFO for the rest) and the per-class summary; return the summary."""
+    records = _stretch_sink_records(event_class, horizon, stretch_sink, position_at, ephe_path)
+    for r in records:
+        logger.log(logging.WARNING if r["kind"] in gk_stretch_sink.WARNING_KINDS else logging.INFO, "%s", gk_stretch_sink.log_line(r))
+    summary = gk_stretch_sink.summary(event_class, GENERATION, (horizon[0], horizon[1]), records, stretch_sink)
+    logger.warning("%s", gk_stretch_sink.summary_line(summary))
+    return summary
 
 
 class AssetNotBuilding(RuntimeError):
@@ -504,7 +522,7 @@ def _require_building(ctx: ContextSpec, chart_id: str) -> None:
     state = row["state"] if isinstance(row, dict) else row[0]
     if state != "building":
         raise AssetNotBuilding(
-            f"{ASSET_ID}: asset_throughput.state for chart {chart_id} is {state!r}, not 'building' — the orchestrator has given up on this asset "
+            f"asset_not_building: {ASSET_ID}: asset_throughput.state for chart {chart_id} is {state!r}, not 'building' — the orchestrator has given up on this asset "
             "(a writer timeout or an operator stop marks it error and does not stop this thread): no further substep is written")
 
 
@@ -535,23 +553,32 @@ def _derive_horizon(ctx: ContextSpec) -> "gk_horizon.ChartHorizon":
     `public.life_events`, and the build date (read only when no event is fully dated) from this run's `build_runs.created_at`. Pure derivation in
     `services.gochara_kernel.horizon`; this function only reads."""
     birth_params = ctx.config.get("birth_params")
-    if not birth_params or birth_params.get("birth_date") in (None, ""):
-        raise HorizonUnderivable(f"{ASSET_ID}: no horizon in ctx.config and no birth date in ctx.config['birth_params'] — the horizon cannot be "
-                                 "derived (refused by name; a build never falls back to a constant horizon)")
+    # the REAL runner's birth parameters (`birth_params._to_birth_params`): datetime_iso (the civil birth datetime in its own offset), latitude_deg,
+    # longitude_deg, tz_offset_hours, place_name, subject_label. There is NO birth_date key: the birth date is the civil DATE of datetime_iso.
+    if not birth_params or birth_params.get("datetime_iso") in (None, ""):
+        raise HorizonUnderivable(f"{ASSET_ID}: no horizon in ctx.config and no birth date (the date of ctx.config['birth_params']['datetime_iso']) — the "
+                                 "horizon cannot be derived (refused by name; a build never falls back to a constant horizon)")
     if ctx.db_conn is None:
         raise HorizonUnderivable(f"{ASSET_ID}: no horizon in ctx.config and no connection to read the life-event log — refused by name")
-    birth = _as_date(birth_params["birth_date"])
+    birth = _as_date(str(birth_params["datetime_iso"])[:10])      # the civil date, never converted to another zone
     # the RAW rows, every one, with the shape column: the "fully dated, birth entry aside" rule is applied by the derivation, never pre-filtered here
-    events = [gk_horizon.LelEvent(str(r[0]), _as_date(r[1]), str(r[2]), str(r[3]))
+    chart_id = str(ctx.config["chart_id"])
+    word_col = gk_horizon.LEL_BIRTH_WORD_COLUMN                    # steward OS-1: pinned from a production read after the release; None = refused by name
+    if word_col is not None and word_col not in gk_horizon.LEL_BIRTH_WORD_COLUMNS:
+        raise HorizonUnderivable(f"{ASSET_ID}: LEL_BIRTH_WORD_COLUMN {word_col!r} is not one of {list(gk_horizon.LEL_BIRTH_WORD_COLUMNS)}")
+    optional = lambda v: None if v is None else _as_date(v)         # noqa: E731
+    events = [gk_horizon.LelEvent(str(r[0]), optional(r[1]), str(r[2]), str(r[3]), optional(r[4]), optional(r[5]), None if r[6] is None else str(r[6]),
+                                  None if r[7] is None else str(r[7]))
               for r in map(_row_values, ctx.db_conn.execute(
-                  "SELECT event_id, event_date, date_confidence, shape FROM public.life_events ORDER BY event_date, event_id").fetchall())]
+                  "SELECT event_id, event_date, date_confidence, shape, interval_start, interval_end, chain_parent_event_id, "
+                  f"{word_col or 'NULL'} AS birth_word FROM public.life_events WHERE chart_id = %s ORDER BY event_date, event_id", (chart_id,)).fetchall())]
     row = ctx.db_conn.execute("SELECT created_at FROM public.build_runs WHERE id = %s", (str(ctx.build_id),)).fetchone()
     if row is None:
         raise HorizonUnderivable(f"{ASSET_ID}: build run {ctx.build_id!r} has no created_at to take the build date from (the start-in-the-future "
                                  "check and a build-date start both need it) — refused by name")
     created = _row_values(row)[0]
     build_date = created.astimezone(timezone.utc).date() if isinstance(created, datetime) else _as_date(created)
-    return gk_horizon.derive_chart_horizon(birth, events, build_date)
+    return gk_horizon.derive_chart_horizon(birth, events, build_date, birth_word_column=word_col, ruled=gk_horizon.RULED_HORIZONS.get(chart_id))
 
 
 def _horizon_basis(ctx: ContextSpec, slice_: "TestSlice | None") -> dict | None:
@@ -717,6 +744,20 @@ def _require_manifest_horizon(ctx: ContextSpec, chart_id: str, slice_: "TestSlic
             "written; a different horizon is a new build through the manifest substep, never a continuation")
 
 
+def _live_basis_for_check(ctx: ContextSpec, slice_: "TestSlice | None", stored: dict):
+    """The horizon basis a later substep compares with the one pinned in the manifest (steward ruling 3 on MB-1.4): a log edit that CHANGES the derived horizon
+    refuses the next substep by name (the live basis is handed to the check, which names `horizon_basis`); an edit that does NOT change the horizon is a REPORT
+    line `horizon_basis_rows_changed` with the changed row ids and never a refusal (the stored basis is handed to the check)."""
+    live = _horizon_basis(ctx, slice_)
+    pinned = stored.get("horizon_basis")
+    if live is None or pinned is None or live == pinned:
+        return live
+    if live.get("horizon") != pinned.get("horizon") or live.get("basis") != pinned.get("basis"):
+        return live
+    logger.warning("horizon_basis_rows_changed: %s", json.dumps(gk_horizon.changed_row_ids(pinned.get("consumed_rows", []), live.get("consumed_rows", []))))
+    return pinned
+
+
 def _verify_live_inputs(ctx: ContextSpec, chart_id: str) -> None:
     """R6: a substep must consume the inputs its manifest was bound to. The vector is recomputed from
     what is consumed NOW (registry rows, ephemeris files, orb policy, rulings, implementation) and
@@ -737,7 +778,7 @@ def _verify_live_inputs(ctx: ContextSpec, chart_id: str) -> None:
         rulings=_applicable_rulings(),
         stored_scope=TEST_SLICE_SCOPE if slice_ is not None else gk_input_vector.STORED_SCOPE,
         test_slice=_slice_component(slice_) if slice_ is not None else None,
-        horizon_basis=_horizon_basis(ctx, slice_))
+        horizon_basis=_live_basis_for_check(ctx, slice_, stored))
     # ... and every component that can be derived WITHOUT the builder's code is (registry + L0 + sky in
     # Postgres, ephemeris files + runtime library + implementation by direct hashing). Under a slice the
     # check runs on the SCOPE-NORMALISED copy: the stored vector's unknown scope is the unsealability
@@ -864,6 +905,8 @@ class GocharaV5Writer(WriterBase):
         ctx = _native_ctx(ctx)
         _require_pinned_chart(ctx.config["chart_id"])
         slice_ = _test_slice(ctx)
+        if slice_ is None and "horizon" not in ctx.config and ctx.config.get("birth_params") and ctx.db_conn is not None:
+            _derive_horizon(ctx)         # MB-1.2 item 7: for the pinned chart the derived pair must equal the ruled pair, refused at PLAN time otherwise
         classes = slice_.classes if slice_ is not None else SCORED_CLASSES
         steps = [
             SubStep(key=RULES_SUBSTEP,
@@ -1190,22 +1233,20 @@ class GocharaV5Writer(WriterBase):
         # point contact only around an exact root) are REPORTED in the notes below, not raised; every other certification failure still raises. Without a
         # slice marker (any full build) nothing changes, so a full build keeps failing on a graze until the owner's decision on grazes is implemented.
         graze_sink: list | None = [] if slice_ is not None else None
-        # MB-ADDITIONS 4: under a slice every reconstructed stretch is ALSO recorded in a structured sink, which is logged as ONE `GOCHARA_INTERIM_SINK <json>` line
-        # per class (even when the certification then raises: the finally). The MEASURING build (all_classes_full) exists to COUNT the stretches the builder cannot
-        # classify (unresolved: approach below the minimum, extension not settled, no-crossing not proved) and so REPORTS them instead of aborting at the first; every
-        # other slice shape keeps raising on them. A proven omission (an exact crossing without a contact) raises in every shape.
+        # MEASURING_BUILD_CONTRACT MB-2: under a slice every reconstructed stretch is ALSO handed to the structured STRETCH_SINK/1 (one log line per record and one
+        # summary line per class, emitted even when the certification then raises: the finally). POLICY: the MEASURING build (all_classes_full) exists to COUNT
+        # defects in one run, so there near-misses, unresolved stretches and omissions are sunk with their reason and the class CONTINUES (steward ruling 4(f) /
+        # OS-6; the acceptance then fails by name on omissions); every other shape, and any non-slice build, keeps the old behaviour.
         stretch_sink: list | None = [] if slice_ is not None else None
-        policy = (gk_contact_certify.UNRESOLVED_REPORT if slice_ is not None and slice_.run == "all_classes_full"
-                  else gk_contact_certify.UNRESOLVED_RAISE)
+        policy = (gk_contact_certify.POLICY_SINK_ALL if slice_ is not None and slice_.run == "all_classes_full" else gk_contact_certify.POLICY_RAISE)
+        sink_summary = None
         try:
             geometry = gk_contact_certify.certify_contact_geometry(
                 ctx.db_conn, chart_id=chart_id, generation=GENERATION, event_class=event_class, position_at=position_at,
-                graze_sink=graze_sink, stretch_sink=stretch_sink, unresolved_policy=policy)
+                graze_sink=graze_sink, stretch_sink=stretch_sink, sink_policy=policy)
         finally:
-            sink_record = None
             if stretch_sink is not None:
-                sink_record = _interim_sink_record(event_class, horizon, graze_sink or [], stretch_sink, ephe_path)
-                logger.warning("%s", gk_interim_sink.log_line(sink_record))
+                sink_summary = _emit_stretch_sink(event_class, horizon, stretch_sink, position_at, ephe_path)
         graze_note = ""
         if graze_sink:
             graze_note = (f"; GRAZES REPORTED, NOT RAISED (validated test slice; {len(graze_sink)}): " + " | ".join(
@@ -1221,8 +1262,10 @@ class GocharaV5Writer(WriterBase):
         # R8-4: the candidate gate's window half — every included P1–P4 grain of this class must carry a
         # VERIFIED, current, input-bound verification result. The build refuses a class that cannot pass it
         # rather than leave a candidate no sealer could accept (UNVERIFIED_DYNAMIC / missing both fail).
-        sink_note = ("" if sink_record is None else
-                     "; interim sink " + gk_interim_sink.SINK_SCHEMA + " " + ", ".join(f"{k}={v}" for k, v in sink_record["counts"].items()))
+        sink_note = ("" if sink_summary is None else
+                     f"; {gk_stretch_sink.SCHEMA}: {sink_summary['stretches']} stretches, {sink_summary['records']} records, "
+                     f"certifier_omissions_present={sum(n for k, n in sink_summary['counts_by_kind_reason'].items() if k.startswith('omission/'))}, "
+                     f"digest {sink_summary['record_ids_digest'][:12]}")
         gate_note = ("; verification NOT persisted by the builder — verification_pending_verifier_principal: the separate "
                      "verification job persists the 1206 and 1240 rows; the candidate gate stays CLOSED until it has run")
         return WriterResult(asset_id=self.asset_id, rows_inserted=1,
